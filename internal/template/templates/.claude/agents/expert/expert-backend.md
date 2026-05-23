@@ -10,7 +10,7 @@ description: |
   JA: バックエンド, API, サーバー, 認証, データベース, マイクロサービス, SQL, PostgreSQL, MongoDB, Oracle, PL/SQL, スキーマ
   ZH: 后端, API, 服务器, 认证, 数据库, 微服务, SQL, PostgreSQL, MongoDB, Oracle, PL/SQL, 架构
   NOT for: frontend UI, CSS styling, React components, mobile apps, CLI tools, DevOps/deployment, security audits
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, mcp__sequential-thinking__sequentialthinking, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 effort: high
 permissionMode: bypassPermissions

@@ -283,7 +283,6 @@
       "Write",
       "mcp__context7__get-library-docs",
       "mcp__context7__resolve-library-id",
-      "mcp__sequential-thinking__*",
       "Bash(git status:*)",
       "Bash(git log:*)",
       "Bash(git diff:*)",

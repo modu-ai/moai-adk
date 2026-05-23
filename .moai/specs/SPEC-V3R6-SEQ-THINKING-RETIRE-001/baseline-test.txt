@@ -1,0 +1,41 @@
+--- FAIL: TestBackwardCompatibility (0.00s)
+    contract_schema_test.go:103: Failed to read agents directory "harness": open templates/.claude/agents/harness: no such file or directory
+--- FAIL: TestAgentFrontmatterAudit (0.00s)
+    agent_frontmatter_audit_test.go:88: .claude/agents/moai/ 하위 에이전트 파일이 없음
+--- FAIL: TestEmbeddedTemplates_AgentDefinitions (0.00s)
+    embed_test.go:52: ReadDir(".claude/agents/harness") error: open .claude/agents/harness: file does not exist
+--- FAIL: TestLateBranchTemplateMirror (0.00s)
+    --- FAIL: TestLateBranchTemplateMirror/spec-assembly.md (0.00s)
+        rule_template_mirror_test.go:182: RULE_TEMPLATE_MIRROR_DRIFT: source file .claude/skills/moai/workflows/plan/spec-assembly.md differs from its mirror at /Users/goos/moai/moai-adk-go/internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md (source 28423 bytes, mirror 25939 bytes); run 'cp /Users/goos/moai/moai-adk-go/.claude/skills/moai/workflows/plan/spec-assembly.md /Users/goos/moai/moai-adk-go/internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md' and stage both files
+--- FAIL: TestAllAgentsInCatalog (0.00s)
+    catalog_tier_audit_test.go:211: expected 19 agent files on disk, found 0: []
+    catalog_tier_audit_test.go:220: audited 0 agents on disk against catalog
+--- FAIL: TestLoadEmbeddedCatalog_Success (0.00s)
+    embed_catalog_test.go:35: LoadEmbeddedCatalog() AllEntries() = 50, want 60
+--- FAIL: TestRetirementCompletenessAssertion (0.00s)
+    --- FAIL: TestRetirementCompletenessAssertion/manager-ddd_replacement_manager-develop_must_exist (0.00s)
+        agent_frontmatter_audit_test.go:175: RETIREMENT_INCOMPLETE_manager-ddd: 교체 에이전트 '.claude/agents/moai/manager-develop.md'가 embedded FS에 없음. SPEC-V3R3-RETIRED-DDD-001 M2에서 manager-develop.md 추가 필요 (REQ-RD-012)
+    --- FAIL: TestRetirementCompletenessAssertion/manager-tdd_replacement_manager-develop_must_exist (0.00s)
+        agent_frontmatter_audit_test.go:162: RETIREMENT_INCOMPLETE_manager-tdd: 교체 에이전트 '.claude/agents/moai/manager-develop.md'가 embedded FS에 없음. SPEC-V3R3-RETIRED-AGENT-001 M2에서 manager-develop.md 추가 필요 (REQ-RA-016)
+--- FAIL: TestLoadCatalog (0.01s)
+    catalog_loader_test.go:42: AllEntries() returned 50 entries, want 60
+    catalog_loader_test.go:104: LoadCatalog: version=1.0.0, generated_at=2026-05-12T03:00:00Z, total_entries=50
+--- FAIL: TestRuleTemplateMirrorDrift (0.00s)
+    --- FAIL: TestRuleTemplateMirrorDrift/manager-develop-prompt-template.md (0.00s)
+        rule_template_mirror_test.go:122: RULE_TEMPLATE_MIRROR_DRIFT: source file .claude/rules/moai/development/manager-develop-prompt-template.md differs from its mirror at /Users/goos/moai/moai-adk-go/internal/template/templates/.claude/rules/moai/development/manager-develop-prompt-template.md (source 8496 bytes, mirror 7180 bytes); run 'cp /Users/goos/moai/moai-adk-go/.claude/rules/moai/development/manager-develop-prompt-template.md /Users/goos/moai/moai-adk-go/internal/template/templates/.claude/rules/moai/development/manager-develop-prompt-template.md' and stage both files
+    --- FAIL: TestRuleTemplateMirrorDrift/spec-workflow.md (0.00s)
+        rule_template_mirror_test.go:122: RULE_TEMPLATE_MIRROR_DRIFT: source file .claude/rules/moai/workflow/spec-workflow.md differs from its mirror at /Users/goos/moai/moai-adk-go/internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md (source 29363 bytes, mirror 26709 bytes); run 'cp /Users/goos/moai/moai-adk-go/.claude/rules/moai/workflow/spec-workflow.md /Users/goos/moai/moai-adk-go/internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md' and stage both files
+    --- FAIL: TestRuleTemplateMirrorDrift/plan-auditor.md (0.00s)
+        rule_template_mirror_test.go:122: RULE_TEMPLATE_MIRROR_DRIFT: source file .claude/agents/meta/plan-auditor.md differs from its mirror at /Users/goos/moai/moai-adk-go/internal/template/templates/.claude/agents/meta/plan-auditor.md (source 21042 bytes, mirror 18778 bytes); run 'cp /Users/goos/moai/moai-adk-go/.claude/agents/meta/plan-auditor.md /Users/goos/moai/moai-adk-go/internal/template/templates/.claude/agents/meta/plan-auditor.md' and stage both files
+--- FAIL: TestSkillsContainPlanAuditGateMarkers (0.00s)
+    skills_audit_test.go:102: audited 4 skill files for Plan Audit Gate markers
+    --- FAIL: TestSkillsContainPlanAuditGateMarkers/solo_run.md_—_plan_audit_gate_markers (0.00s)
+        skills_audit_test.go:96: file ".claude/skills/moai/workflows/run.md" missing required pattern: "Phase 0.5: Plan Audit Gate"
+        skills_audit_test.go:96: file ".claude/skills/moai/workflows/run.md" missing required pattern: "plan-auditor"
+        skills_audit_test.go:96: file ".claude/skills/moai/workflows/run.md" missing required pattern: "--skip-audit"
+        skills_audit_test.go:96: file ".claude/skills/moai/workflows/run.md" missing required pattern: "INCONCLUSIVE"
+        skills_audit_test.go:96: file ".claude/skills/moai/workflows/run.md" missing required pattern: ".moai/reports/plan-audit/"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.640s
+?   	github.com/modu-ai/moai-adk/internal/template/scripts	[no test files]
+FAIL

@@ -400,6 +400,8 @@ MoAI-ADK integrates multiple MCP servers for specialized capabilities:
 - **Context7**: Up-to-date library documentation lookup via resolve-library-id and get-library-docs.
 - **claude-in-chrome**: Browser automation for web-based tasks.
 
+> Sequential Thinking MCP retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001. The `ultrathink` keyword (Adaptive Thinking on Opus 4.7+) is the canonical deep-reasoning path. Users who require Sequential Thinking for personal workflow may install it independently via `~/.claude/settings.json` (user-local scope); the project namespace remains clean.
+
 For MCP configuration and usage patterns, see .claude/rules/moai/core/settings-management.md.
 
 ---

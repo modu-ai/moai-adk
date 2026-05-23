@@ -100,7 +100,6 @@ When the run phase begins, evaluate whether to activate deep analysis mode for t
 
 **UltraThink (primary deep reasoning trigger)**:
 - `ultrathink`: Extended reasoning within the current agent (Adaptive Thinking on Opus 4.7+) — deeper strategy analysis, more thorough trade-off evaluation
-- Note: Sequential Thinking MCP (`mcp__sequential-thinking__sequentialthinking`) remains available for on-demand structured step-by-step analysis but is no longer bound to a CLI flag.
 
 When activated: Apply to Phase 1 (Strategy) for deeper architectural analysis. Log: "UltraThink mode activated for strategy phase: [reason]"
 

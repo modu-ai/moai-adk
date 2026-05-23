@@ -126,12 +126,6 @@ MCP Server Setup:
  },
  "timeout": 30000
  },
- "sequential-thinking": {
- "command": "npx",
- "args": ["@modelcontextprotocol/server-sequential-thinking"],
- "env": {},
- "timeout": 60000
- },
  "figma": {
  "command": "npx",
  "args": ["@figma/mcp-server"],
@@ -153,10 +147,6 @@ MCP Permission Management:
  "requestsPerMinute": 60,
  "burstSize": 10
  }
- },
- "sequential-thinking": {
- "allowed": ["*"], // All permissions
- "maxContextSize": 100000
  }
  }
 }

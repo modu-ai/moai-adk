@@ -1,0 +1,19 @@
+# SPEC-V3R6-SEQ-THINKING-RETIRE-001 — Audit Allow-List
+#
+# Each non-empty, non-comment line below is a verbatim fragment of a permitted
+# line that contains a sequential-thinking literal. The audit test
+# (TestSeqThinkingRetired in seq_thinking_retire_audit_test.go) tolerates
+# any source line that *contains* one of these fragments as a substring.
+#
+# Maintenance rules:
+# - Add only the smallest unique substring needed to disambiguate the
+#   permitted line from arbitrary reintroductions.
+# - Never add entries that would mask a real reintroduction (e.g., the
+#   bare token "sequential-thinking" by itself).
+# - When a permitted line is rewritten, update this allow-list in the
+#   same commit.
+#
+# Permitted: retirement notes that reference SPEC-V3R6-SEQ-THINKING-RETIRE-001.
+# These notes are intentionally retained as audit trail / cross-reference.
+retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001
+SPEC-V3R6-SEQ-THINKING-RETIRE-001

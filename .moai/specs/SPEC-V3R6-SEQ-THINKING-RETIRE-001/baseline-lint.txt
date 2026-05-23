@@ -1,0 +1,50 @@
+internal/cli/harness_mute.go:115:15: Error return value of `fmt.Fprintf` is not checked (errcheck)
+			fmt.Fprintf(cmd.OutOrStdout(), "category %q is already muted\n", category)
+			           ^
+internal/cli/harness_mute.go:124:13: Error return value of `fmt.Fprintf` is not checked (errcheck)
+	fmt.Fprintf(cmd.OutOrStdout(), "muted category %q\n", category)
+	           ^
+internal/cli/harness_mute.go:141:15: Error return value of `fmt.Fprintln` is not checked (errcheck)
+		fmt.Fprintln(cmd.OutOrStdout(), "(no muted categories)")
+		            ^
+internal/cli/harness_mute.go:145:15: Error return value of `fmt.Fprintln` is not checked (errcheck)
+		fmt.Fprintln(cmd.OutOrStdout(), c)
+		            ^
+internal/cli/harness_mute.go:173:14: Error return value of `fmt.Fprintf` is not checked (errcheck)
+		fmt.Fprintf(cmd.OutOrStdout(), "category %q was not in mute list\n", category)
+		           ^
+internal/cli/harness_mute.go:186:14: Error return value of `fmt.Fprintln` is not checked (errcheck)
+	fmt.Fprintln(cmd.OutOrStdout(),
+	            ^
+internal/cli/agent_lint_test.go:2008:5: ineffectual assignment to p (ineffassign)
+				p := filepath.Join(tmpDir, filepath.Join(tmpDir, strings.ReplaceAll(tt.name, " ", "-")+"-agent"+string(rune('0'+i))+".md"))
+				^
+internal/merge/confirm.go:559:3: QF1012: Use fmt.Fprintf(...) instead of WriteString(fmt.Sprintf(...)) (staticcheck)
+		b.WriteString(fmt.Sprintf("Selected: %d / %d files\n\n", selectedCount, len(f.selectedFiles)))
+		^
+internal/merge/confirm.go:637:2: QF1012: Use fmt.Fprintf(...) instead of WriteString(fmt.Sprintf(...)) (staticcheck)
+	b.WriteString(fmt.Sprintf("%s  %s\n", verbStyle.Render(fmt.Sprintf("%10s", verb)), value))
+	^
+internal/tmux/session_sensitive_test.go:35:5: SA4032: due to the file's build constraints, runtime.GOOS will never equal "windows" (staticcheck)
+	if runtime.GOOS == "windows" {
+	   ^
+internal/tmux/session_sensitive_test.go:80:5: SA4032: due to the file's build constraints, runtime.GOOS will never equal "windows" (staticcheck)
+	if runtime.GOOS == "windows" {
+	   ^
+internal/tmux/session_sensitive_test.go:114:5: SA4032: due to the file's build constraints, runtime.GOOS will never equal "windows" (staticcheck)
+	if runtime.GOOS == "windows" {
+	   ^
+internal/cli/branch_protection.go:35:6: type ttyConfirmer is unused (unused)
+type ttyConfirmer struct{}
+     ^
+internal/cli/branch_protection.go:38:24: func (*ttyConfirmer).Confirm is unused (unused)
+func (t *ttyConfirmer) Confirm(prompt string) (bool, error) {
+                       ^
+internal/cli/init_layout.go:21:6: func renderInitHeader is unused (unused)
+func renderInitHeader(rootPath string, opts project.InitOptions, profileName string, prefs profile.ProfilePreferences) string {
+     ^
+internal/cli/init_layout.go:61:6: func renderInitNextSteps is unused (unused)
+func renderInitNextSteps(projectRoot, projectName string) string {
+     ^
+internal/cli/wizard/review.go:15:2: const reviewChoiceProceed is unused (unused)
+	reviewChoiceProceed = "proceed"

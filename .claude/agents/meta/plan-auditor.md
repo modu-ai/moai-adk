@@ -8,7 +8,7 @@ description: |
   JA: SPEC 監査, BRIEF 監査, プロジェクト文書レビュー, 計画監査, 独立レビュー, 偏見防止, EARS 準拠, 文書検証
   ZH: SPEC 审计, BRIEF 审计, 项目文档审查, 计划审计, 独立审查, 偏见防止, EARS 合规, 文档验证
   NOT for: code implementation, code review, documentation writing, git operations, running tests
-tools: Read, Grep, Glob, Bash, mcp__sequential-thinking__sequentialthinking, Write, Edit
+tools: Read, Grep, Glob, Bash, Write, Edit
 model: inherit
 effort: xhigh
 permissionMode: default

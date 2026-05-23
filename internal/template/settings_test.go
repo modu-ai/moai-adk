@@ -556,11 +556,18 @@ func TestMCPTemplateRequiredServers(t *testing.T) {
 		t.Fatal("missing mcpServers section")
 	}
 
-	requiredServers := []string{"context7", "sequential-thinking"}
+	// Sequential Thinking MCP retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001;
+	// canonical deep-reasoning path is the ultrathink keyword.
+	requiredServers := []string{"context7"}
 	for _, name := range requiredServers {
 		if _, ok := servers[name]; !ok {
 			t.Errorf("missing required MCP server %q", name)
 		}
+	}
+
+	// Confirm sequential-thinking is NOT present (retirement enforced).
+	if _, exists := servers["sequential-thinking"]; exists {
+		t.Errorf("sequential-thinking server entry present; retired per SPEC-V3R6-SEQ-THINKING-RETIRE-001")
 	}
 }
 
@@ -657,10 +664,12 @@ func TestMCPTemplateAlwaysLoadOnContext7(t *testing.T) {
 	}
 }
 
-// TestMCPTemplateAlwaysLoadOnSequentialThinking verifies that the rendered
-// .mcp.json sets "alwaysLoad": true on the sequential-thinking server entry
-// (REQ-001, REQ-003).
-func TestMCPTemplateAlwaysLoadOnSequentialThinking(t *testing.T) {
+// TestMCPTemplateSequentialThinkingRetired verifies that the rendered
+// .mcp.json does NOT contain a sequential-thinking server entry across
+// all supported platforms. Retired per SPEC-V3R6-SEQ-THINKING-RETIRE-001
+// (REQ-STR-001, REQ-STR-002). The previous test
+// (TestMCPTemplateAlwaysLoadOnSequentialThinking) is replaced.
+func TestMCPTemplateSequentialThinkingRetired(t *testing.T) {
 	platforms := []string{"darwin", "linux", "windows"}
 
 	for _, platform := range platforms {
@@ -676,17 +685,8 @@ func TestMCPTemplateAlwaysLoadOnSequentialThinking(t *testing.T) {
 			if !ok {
 				t.Fatal("missing mcpServers")
 			}
-			server, ok := servers["sequential-thinking"].(map[string]any)
-			if !ok {
-				t.Fatal("missing sequential-thinking server entry")
-			}
-			val, exists := server["alwaysLoad"]
-			if !exists {
-				t.Error("sequential-thinking: alwaysLoad field is absent; want true")
-				return
-			}
-			if val != true {
-				t.Errorf("sequential-thinking: alwaysLoad = %v, want true", val)
+			if _, exists := servers["sequential-thinking"]; exists {
+				t.Errorf("%s: sequential-thinking server entry present; retired per SPEC-V3R6-SEQ-THINKING-RETIRE-001", platform)
 			}
 		})
 	}
@@ -742,17 +742,8 @@ func TestMCPTemplateExistingFieldsPreserved(t *testing.T) {
 		t.Error("context7: args field missing after alwaysLoad insertion")
 	}
 
-	// sequential-thinking must still have command and args
-	st, ok := servers["sequential-thinking"].(map[string]any)
-	if !ok {
-		t.Fatal("missing sequential-thinking")
-	}
-	if st["command"] == nil {
-		t.Error("sequential-thinking: command field missing after alwaysLoad insertion")
-	}
-	if st["args"] == nil {
-		t.Error("sequential-thinking: args field missing after alwaysLoad insertion")
-	}
+	// sequential-thinking retired per SPEC-V3R6-SEQ-THINKING-RETIRE-001;
+	// no longer present in the rendered template.
 
 	// moai-lsp must still have command, args, and timeout
 	lsp, ok := servers["moai-lsp"].(map[string]any)
