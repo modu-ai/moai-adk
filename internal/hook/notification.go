@@ -33,7 +33,15 @@ func (h *notificationHandler) EventType() EventType {
 
 // Handle processes a Notification event. Returns silently when not opted in.
 // When observability_events includes "notification", logs the event details.
+//
+// SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001: HOI master toggle (hook.opt_in.enabled)
+// is checked FIRST as defense-in-depth. When disabled (default), the handler
+// short-circuits regardless of the RT-006 per-event whitelist.
 func (h *notificationHandler) Handle(_ context.Context, input *HookInput) (*HookOutput, error) {
+	if !hookOptInEnabled(h.cfg) {
+		// HOI master toggle off — Pattern A silent return.
+		return &HookOutput{}, nil
+	}
 	if !observabilityOptIn(h.cfg, "notification") {
 		// Pattern A: silent return, no logging, no user-facing message.
 		return &HookOutput{}, nil

@@ -54,6 +54,19 @@ type TemplateContext struct {
 
 	// Model policy for agent model assignment
 	ModelPolicy string // "high", "medium", "low" (default: "high")
+
+	// HookOptIn controls rendering of the 3 observability hook series in
+	// settings.json.tmpl (SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-004).
+	// When Enabled is false (default), settings.json omits TaskCreated +
+	// Notification + handle-harness-observe-* hook entries. When true, all
+	// hook stanzas render. INDEPENDENT of REQ-OBS-005 trace logging.
+	HookOptIn HookOptInContext
+}
+
+// HookOptInContext mirrors config.HookOptInConfig for the template renderer.
+// See SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 §A.3 cohabitation contract.
+type HookOptInContext struct {
+	Enabled bool
 }
 
 // ContextOption configures a TemplateContext.
@@ -232,6 +245,16 @@ func WithModelPolicy(policy string) ContextOption {
 		if IsValidModelPolicy(policy) {
 			c.ModelPolicy = policy
 		}
+	}
+}
+
+// WithHookOptIn sets the HOI master toggle flag for settings.json conditional
+// rendering (SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-004). When enabled is
+// false (default), the 3 secondary observability hook wrappers are omitted
+// from the rendered settings.json.
+func WithHookOptIn(enabled bool) ContextOption {
+	return func(c *TemplateContext) {
+		c.HookOptIn.Enabled = enabled
 	}
 }
 

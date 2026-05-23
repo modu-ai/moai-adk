@@ -159,6 +159,26 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 		input.HookEventName = string(event)
 	}
 
+	// SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-002: HOI master toggle gates
+	// TaskCreated + Notification dispatch at the central dispatcher (defense-
+	// in-depth — runtime gate even if settings.json is hand-edited). The 3
+	// secondary harness-observe wrappers are gated separately in their
+	// runHarnessObserve* handlers. See SPEC §A.3 cohabitation contract.
+	if event == hook.EventTaskCreated || event == hook.EventNotification {
+		cwd, cwdErr := os.Getwd()
+		if cwdErr != nil {
+			cwd = "."
+		}
+		if !isHookOptInEnabled(cwd) {
+			// Pattern A silent return: write empty HookOutput and exit.
+			emptyOutput := &hook.HookOutput{}
+			if writeErr := writeHookOutput(event, input, emptyOutput); writeErr != nil {
+				return writeErr
+			}
+			return nil
+		}
+	}
+
 	ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
 	defer cancel()
 
@@ -505,6 +525,43 @@ func isHarnessLearningEnabled(projectRoot string) bool {
 	return *doc.Learning.Enabled
 }
 
+// isHookOptInEnabled reports whether the SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001
+// master toggle (`hook.opt_in.enabled` in `.moai/config/sections/system.yaml`)
+// is enabled. Used to gate the 3 secondary observability wrappers:
+// handle-harness-observe-stop, handle-harness-observe-subagent-stop,
+// handle-harness-observe-user-prompt-submit.
+//
+// Truth table (fail-CLOSED for HOI — opposite of learning gate):
+//
+//   - file missing / unreadable          → false (default disabled, R3 mitigation)
+//   - YAML parse error                   → false (default disabled)
+//   - `hook` block absent                → false (default disabled)
+//   - `hook.opt_in` block absent         → false (Go zero-value default)
+//   - `hook.opt_in.enabled: false`       → false
+//   - `hook.opt_in.enabled: true`        → true
+//
+// Fail-CLOSED semantics intentionally differ from isHarnessLearningEnabled —
+// HOI is an opt-in toggle whose default state is OFF (REQ-HOI-001 default false).
+// See SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 §A.3 cohabitation contract.
+func isHookOptInEnabled(projectRoot string) bool {
+	configPath := filepath.Join(projectRoot, ".moai", "config", "sections", "system.yaml")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return false
+	}
+	var doc struct {
+		Hook struct {
+			OptIn struct {
+				Enabled bool `yaml:"enabled"`
+			} `yaml:"opt_in"`
+		} `yaml:"hook"`
+	}
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return false
+	}
+	return doc.Hook.OptIn.Enabled
+}
+
 // runHarnessObserve reads PostToolUse hook stdin JSON and records event to usage-log.jsonl.
 // T-P1-03: handle-harness-observe.sh → moai hook harness-observe routing implementation.
 //
@@ -584,6 +641,12 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 		cwd = "."
 	}
 
+	// SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-002: HOI master toggle gates the
+	// 3 secondary observability wrappers. Default off; runtime defense-in-depth.
+	if !isHookOptInEnabled(cwd) {
+		return nil
+	}
+
 	if !isHarnessLearningEnabled(cwd) {
 		return nil
 	}
@@ -658,6 +721,12 @@ func runHarnessObserveSubagentStop(cmd *cobra.Command, _ []string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		cwd = "."
+	}
+
+	// SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-002: HOI master toggle gates the
+	// 3 secondary observability wrappers. Default off; runtime defense-in-depth.
+	if !isHookOptInEnabled(cwd) {
+		return nil
 	}
 
 	if !isHarnessLearningEnabled(cwd) {
@@ -806,6 +875,12 @@ func runHarnessObserveUserPromptSubmit(cmd *cobra.Command, _ []string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		cwd = "."
+	}
+
+	// SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-002: HOI master toggle gates the
+	// 3 secondary observability wrappers. Default off; runtime defense-in-depth.
+	if !isHookOptInEnabled(cwd) {
+		return nil
 	}
 
 	if !isHarnessLearningEnabled(cwd) {

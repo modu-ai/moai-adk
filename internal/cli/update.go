@@ -597,6 +597,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					template.WithSmartPATH(template.BuildSmartPATH()),
 					template.WithPlatform(runtime.GOOS),
 					template.WithVersion(version.GetVersion()),
+					template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
 				)
 
 				// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces
@@ -634,6 +635,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					template.WithSmartPATH(template.BuildSmartPATH()),
 					template.WithPlatform(runtime.GOOS),
 					template.WithVersion(version.GetVersion()),
+					template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
 				)
 
 				if deployErr := deployer.Deploy(ctx, projectRoot, mgr, tmplCtx); deployErr != nil {
@@ -2761,6 +2763,29 @@ func execCommand(name string, args ...string) (string, error) {
 // REQ-V3R2-RT-007-001: deduplicated via the gobin.Detect helper.
 func detectGoBinPathForUpdate(homeDir string) string {
 	return gobin.Detect(homeDir)
+}
+
+// readHookOptInEnabled reads the SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 master
+// toggle from .moai/config/sections/system.yaml at the given project root.
+// Returns false on any error (file missing, parse error, key absent) — fail-CLOSED
+// per R3 mitigation. Used by `moai update` to render settings.json conditionally.
+func readHookOptInEnabled(projectRoot string) bool {
+	configPath := filepath.Join(projectRoot, ".moai", "config", "sections", "system.yaml")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return false
+	}
+	var doc struct {
+		Hook struct {
+			OptIn struct {
+				Enabled bool `yaml:"enabled"`
+			} `yaml:"opt_in"`
+		} `yaml:"hook"`
+	}
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return false
+	}
+	return doc.Hook.OptIn.Enabled
 }
 
 // scaffoldEvolutionDir ensures the .moai/evolution/ directory tree exists.

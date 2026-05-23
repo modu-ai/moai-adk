@@ -92,7 +92,7 @@
 {{- end}}
             "timeout": 5,
             "type": "command"
-          },
+          }{{ if .HookOptIn.Enabled }},
           {
 {{- if eq .Platform "windows"}}
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-stop.sh\"",
@@ -101,7 +101,7 @@
 {{- end}}
             "timeout": 5,
             "type": "command"
-          }
+          }{{ end }}
         ]
       }
     ],
@@ -116,7 +116,7 @@
 {{- end}}
             "timeout": 5,
             "type": "command"
-          },
+          }{{ if .HookOptIn.Enabled }},
           {
 {{- if eq .Platform "windows"}}
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-subagent-stop.sh\"",
@@ -125,7 +125,7 @@
 {{- end}}
             "timeout": 5,
             "type": "command"
-          }
+          }{{ end }}
         ]
       }
     ],
@@ -170,7 +170,7 @@
 {{- end}}
             "timeout": 5,
             "type": "command"
-          },
+          }{{ if .HookOptIn.Enabled }},
           {
 {{- if eq .Platform "windows"}}
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-user-prompt-submit.sh\"",
@@ -179,7 +179,7 @@
 {{- end}}
             "timeout": 5,
             "type": "command"
-          }
+          }{{ end }}
         ]
       }
     ],
