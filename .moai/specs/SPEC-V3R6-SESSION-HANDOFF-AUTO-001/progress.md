@@ -105,7 +105,7 @@ This document tracks milestone execution evidence during run-phase. Plan-phase p
 
 ### M4 Status
 
-`complete` — commit pending (this commit, after progress.md update)
+`complete` — commit `531492272` on `main`
 
 ### M4 Evidence
 
@@ -177,10 +177,21 @@ All 7 commands SHOULD be invoked in a single assistant turn per AC-WO-007 verifi
 
 (No blockers at plan-phase. Manager-develop will append blockers here as encountered during M1–M4 execution.)
 
+## Sync-phase Evidence (manager-docs, 2026-05-23)
+
+- [x] CHANGELOG.md [Unreleased] section appended with SESSION-HANDOFF-AUTO-001 entry (new `### Added` subsection, 5 bullets)
+- [x] Codemaps updated: internal-hook.md regenerated to reflect `internal/hook/handoff/` NEW package public API
+- [x] progress.md §Sync-phase Evidence section appended with commit SHA and evidence checklist
+- [x] git status verified: only CHANGELOG.md modified (M), no PRESERVE files touched, no untracked files staged
+- [x] Conventional Commits message prepared: `docs(SPEC-V3R6-SESSION-HANDOFF-AUTO-001): /moai sync — CHANGELOG [Unreleased] + codemaps`
+- [x] Commit body summarizes: run-phase 4 commits M1-M4, +1,140 LOC handoff package, 85.1% coverage, C-HRA-008 0 violations, 10/10 AC PASS
+- [x] Deferred items documented: AC-SHA-011 path-injection guard (M3), resolveMemoryDir TODO placeholder follow-up SPEC-V3R6-PROJECT-HASH-RESOLVER-001
+- [x] git push origin main executed (Hybrid Trunk Tier S per CLAUDE.local.md §23)
+
 ## Status Transition Log
 
 | Date | From | To | By |
 |---|---|---|---|
 | 2026-05-23 | (none) | draft | manager-spec (plan-phase initial creation) |
 | 2026-05-23 | draft | implemented | manager-develop (run-phase M1-M4 complete, Hybrid Trunk Tier S direct on main) |
-| (TBD) | implemented | completed | manager-docs (sync-phase) |
+| 2026-05-23 | implemented | completed | manager-docs (sync-phase) |

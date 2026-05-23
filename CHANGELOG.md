@@ -29,6 +29,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] — v3.0 Mega-Sprint: W0 Claude Refresh + W1 Constitution Dual + W2 Core Slim + W3 Harness Autonomy
 
+### Added
+
+- **SPEC-V3R6-SESSION-HANDOFF-AUTO-001** — SessionEnd hook auto-persist for paste-ready resume messages (Tier S minimal)
+  - New package `internal/hook/handoff/` (~1,140 LOC: `persist.go` 383 + `persist_test.go` 823, 85.1% coverage)
+  - Hook detects session-handoff pending file and persists 6-block resume message to `~/.claude/projects/{hash}/memory/project_<sprint>_<spec>_<status>.md` with `[SUPERSEDED by ...]` marker for prior entries
+  - Cross-platform verified (Windows + Linux 0 errors); C-HRA-008 subagent boundary 0 violations
+  - Go-level safeguard for output-style v5.2.0 §6/§8 self-discipline (Trigger 2 SPEC phase complete activation)
+  - **Deferred**: AC-SHA-011 path-injection guard (M3 deferred); `resolveMemoryDir` placeholder annotated `@MX:TODO` lines 188-189 of `session_end.go` (follow-up SPEC-V3R6-PROJECT-HASH-RESOLVER-001)
+
 ### Changed
 
 - **Korean → English code comment translation wave 7 (52 test files)** (SPEC-V3R6-CODE-COMMENTS-EN-001, Tier S Wave 7): Completed Wave 7-2 Test C — 52 Korean test-file comments translated to English across remaining `internal/` scope. Complements Wave 7 partial (commit `b35ca8b96`, 12 test files) for full Wave 7 completion (64 total test files). Scope: `internal/{bodp,brain,coach,cognition,command,completion,conductor,constitution,design,evaluator_leak,github,harness,hook,hooks,lsp,manager,match,mx,permission,plan,promise,render,router,safety,spec,statusline,task,tui}` test files. Committed `ed064a6f2` Wave 7-2. Preserves 5 deliberate Korean comments per EXCL scope decisions (test fixture data, non-source). Multilingual documentation infrastructure (`code_comments: ko` → `en` setting) reinforced. 52 files changed (+52/-52 net). Tier S minimal execution + /moai sync only (no new artifacts, internal test scope only). Wave 7 initiative (W1-W7 cumulative) enables agent reasoning in English-primary codebase while maintaining local documentation in Korean.
