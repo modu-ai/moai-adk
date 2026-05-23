@@ -4,13 +4,22 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
+	"sort"
+	"sync"
 	"testing"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/hook/testutil"
 )
 
-// TestConfigChange_RT005ReloadIntegration verifies AC-04: when ConfigChange fires
-// and the file is valid YAML, the handler emits AdditionalContext (or SystemMessage)
-// with "<path> reloaded successfully" (SPEC-V3R2-RT-006 REQ-011).
+// TestConfigChange_RT005ReloadIntegration verifies REQ-HAE-002 + SPEC-V3R2-RT-006
+// REQ-011 compatibility: when ConfigChange fires for a valid YAML file, the
+// main return path completes within ≤ 100ms with Continue=true, and the
+// async goroutine completes successfully.
+//
+// Per SPEC-V3R6-HOOK-ASYNC-EXPAND-001 REQ-HAE-002, the SystemMessage reload
+// confirmation is now logged via slog (async observability) rather than
+// returned in the main response. Tests verify the async path completes.
 func TestConfigChange_RT005ReloadIntegration(t *testing.T) {
 	t.Parallel()
 
@@ -21,33 +30,46 @@ func TestConfigChange_RT005ReloadIntegration(t *testing.T) {
 		t.Fatalf("write yaml: %v", err)
 	}
 
-	h := NewConfigChangeHandler()
+	h := NewConfigChangeHandler().(*configChangeHandler)
 	input := &HookInput{
 		SessionID:      "sess-rt005",
 		ConfigFilePath: yamlPath,
 		HookEventName:  "ConfigChange",
 	}
 
+	start := time.Now()
 	out, err := h.Handle(context.Background(), input)
+	elapsed := time.Since(start)
 	if err != nil {
 		t.Fatalf("Handle() error: %v", err)
 	}
 	if out == nil {
 		t.Fatal("Handle() returned nil")
 	}
-	// REQ-011: emit "reloaded successfully" message.
-	if out.SystemMessage == "" {
-		t.Error("expected SystemMessage with reload confirmation")
+	// REQ-HAE-002: main response is non-blocking.
+	if elapsed > 100*time.Millisecond {
+		t.Errorf("synchronous return took %v, want ≤ 100ms (REQ-HAE-002)", elapsed)
 	}
+	// Continue=true preserves SDK protocol invariant for the success case.
 	if !out.Continue {
-		t.Errorf("expected Continue=true for valid config, got false (message: %s)", out.SystemMessage)
+		t.Errorf("expected Continue=true for valid config, got false")
 	}
+	// SystemMessage moves to async log per REQ-HAE-002 design.
+	if out.SystemMessage != "" {
+		t.Errorf("expected empty SystemMessage in async mode, got: %q", out.SystemMessage)
+	}
+
+	testutil.WaitForAsync(t, h.waitGroup(), 2*time.Second)
 }
 
-// TestConfigChange_InvalidYAMLKeepsOldSettings verifies AC-05: when ConfigChange
-// reload fails validation, Continue:false is set AND old settings are described
-// in the error message (SPEC-V3R2-RT-006 REQ-062).
-func TestConfigChange_InvalidYAMLKeepsOldSettings(t *testing.T) {
+// TestConfigChange_InvalidYAMLAsyncReject verifies REQ-HAE-002 + REQ-062
+// compatibility: invalid YAML rejection is logged asynchronously (Warn level)
+// — the main response stays Continue=true because the validation happens
+// in the goroutine. This is the explicit async design tradeoff per SPEC §2.1.
+//
+// Old contract (sync): Continue=false + SystemMessage "Config reload rejected".
+// New contract (async): main response Continue=true; rejection visible via slog Warn.
+func TestConfigChange_InvalidYAMLAsyncReject(t *testing.T) {
 	t.Parallel()
 
 	tempDir := t.TempDir()
@@ -58,7 +80,7 @@ func TestConfigChange_InvalidYAMLKeepsOldSettings(t *testing.T) {
 		t.Fatalf("write yaml: %v", err)
 	}
 
-	h := NewConfigChangeHandler()
+	h := NewConfigChangeHandler().(*configChangeHandler)
 	input := &HookInput{
 		SessionID:      "sess-invalid",
 		ConfigFilePath: yamlPath,
@@ -72,27 +94,13 @@ func TestConfigChange_InvalidYAMLKeepsOldSettings(t *testing.T) {
 	if out == nil {
 		t.Fatal("Handle() returned nil")
 	}
-	// REQ-062: Continue:false + message indicates old settings retained.
-	if out.Continue {
-		t.Error("expected Continue=false for invalid YAML, got true")
+	// Main response is success (rejection moved to async log).
+	if !out.Continue {
+		t.Error("expected Continue=true (async design — validation runs in goroutine)")
 	}
-	if out.SystemMessage == "" {
-		t.Error("expected SystemMessage for invalid YAML rejection")
-	}
-	// Message must mention "retained" or "rejected" to indicate old settings kept.
-	if !containsAny(out.SystemMessage, "retained", "rejected", "reload rejected") {
-		t.Errorf("SystemMessage should mention old settings retained, got: %s", out.SystemMessage)
-	}
-}
 
-// containsAny returns true if s contains any of the needles.
-func containsAny(s string, needles ...string) bool {
-	for _, n := range needles {
-		if strings.Contains(strings.ToLower(s), strings.ToLower(n)) {
-			return true
-		}
-	}
-	return false
+	// The async goroutine MUST complete (even though it logs a Warn and returns).
+	testutil.WaitForAsync(t, h.waitGroup(), 2*time.Second)
 }
 
 func TestConfigChangeHandler_EventType(t *testing.T) {
@@ -106,12 +114,10 @@ func TestConfigChangeHandler_Handle(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		input         *HookInput
-		createFile    bool
-		fileContent   string
-		expectMessage bool
-		expectBlock   bool
+		name        string
+		input       *HookInput
+		createFile  bool
+		fileContent string
 	}{
 		{
 			name: "valid YAML config",
@@ -120,22 +126,18 @@ func TestConfigChangeHandler_Handle(t *testing.T) {
 				ConfigFilePath: "quality.yaml",
 				HookEventName:  "ConfigChange",
 			},
-			createFile:    true,
-			fileContent:   "development_mode: ddd\ncoverage_target: 85\n",
-			expectMessage: true,
-			expectBlock:   false,
+			createFile:  true,
+			fileContent: "development_mode: ddd\ncoverage_target: 85\n",
 		},
 		{
-			name: "invalid YAML config",
+			name: "invalid YAML config (async reject)",
 			input: &HookInput{
 				SessionID:      "sess-002",
 				ConfigFilePath: "invalid.yaml",
 				HookEventName:  "ConfigChange",
 			},
-			createFile:    true,
-			fileContent:   "invalid: yaml: content:\n  - broken\n",
-			expectMessage: true,
-			expectBlock:   true,
+			createFile:  true,
+			fileContent: "invalid: yaml: content:\n  - broken\n",
 		},
 		{
 			name: "empty file",
@@ -144,21 +146,17 @@ func TestConfigChangeHandler_Handle(t *testing.T) {
 				ConfigFilePath: "empty.yaml",
 				HookEventName:  "ConfigChange",
 			},
-			createFile:    true,
-			fileContent:   "",
-			expectMessage: true,
-			expectBlock:   false,
+			createFile:  true,
+			fileContent: "",
 		},
 		{
-			name: "non-existent file",
+			name: "non-existent file (async warn)",
 			input: &HookInput{
 				SessionID:      "sess-004",
 				ConfigFilePath: "/does/not/exist.yaml",
 				HookEventName:  "ConfigChange",
 			},
-			createFile:    false,
-			expectMessage: true,
-			expectBlock:   true,
+			createFile: false,
 		},
 	}
 
@@ -166,7 +164,7 @@ func TestConfigChangeHandler_Handle(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := NewConfigChangeHandler()
+			h := NewConfigChangeHandler().(*configChangeHandler)
 
 			// Create temp file if needed
 			if tt.createFile {
@@ -191,15 +189,17 @@ func TestConfigChangeHandler_Handle(t *testing.T) {
 				t.Fatal("expected non-nil output")
 			}
 
-			if tt.expectMessage && out.SystemMessage == "" {
-				t.Error("expected SystemMessage")
+			// REQ-HAE-002: main response is Continue=true regardless of
+			// validation outcome (validation runs in goroutine).
+			if !out.Continue {
+				t.Errorf("expected Continue=true (async design), got false")
 			}
-			if tt.expectBlock && out.Continue {
-				t.Error("expected Continue=false for invalid config")
+			// REQ-HAE-002: SystemMessage moves to async log.
+			if out.SystemMessage != "" {
+				t.Errorf("expected empty SystemMessage in async mode, got: %q", out.SystemMessage)
 			}
-			if !tt.expectBlock && !out.Continue {
-				t.Error("expected Continue=true for valid config")
-			}
+
+			testutil.WaitForAsync(t, h.waitGroup(), 2*time.Second)
 		})
 	}
 }
@@ -264,3 +264,70 @@ func TestConfigChangeHandler_ValidateConfig(t *testing.T) {
 		})
 	}
 }
+
+// BenchmarkConfigChange_AsyncReturn measures p95 of the main return path
+// under 10-concurrent load. AC-HAE-003 requires p95 ≤ 100ms.
+func BenchmarkConfigChange_AsyncReturn(b *testing.B) {
+	tempDir := b.TempDir()
+	yamlPath := filepath.Join(tempDir, "quality.yaml")
+	if err := os.WriteFile(yamlPath, []byte("development_mode: tdd\n"), 0644); err != nil {
+		b.Fatalf("write: %v", err)
+	}
+
+	const concurrency = 10
+	durations := make([]time.Duration, 0, b.N*concurrency)
+	var mu sync.Mutex
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		h := NewConfigChangeHandler().(*configChangeHandler)
+		var wg sync.WaitGroup
+		wg.Add(concurrency)
+		for j := 0; j < concurrency; j++ {
+			go func() {
+				defer wg.Done()
+				input := &HookInput{
+					SessionID:      "bench",
+					ConfigFilePath: yamlPath,
+					HookEventName:  "ConfigChange",
+				}
+				start := time.Now()
+				_, _ = h.Handle(context.Background(), input)
+				d := time.Since(start)
+				mu.Lock()
+				durations = append(durations, d)
+				mu.Unlock()
+			}()
+		}
+		wg.Wait()
+		testutil.WaitForAsync(b, h.waitGroup(), 5*time.Second)
+	}
+	b.StopTimer()
+
+	p95Ms := bencPercentileMillis(durations, 0.95)
+	b.ReportMetric(p95Ms, "p95-ms")
+	if p95Ms > 100 {
+		b.Errorf("AC-HAE-003 violation: p95 = %.2f ms, want ≤ 100 ms", p95Ms)
+	}
+}
+
+// bencPercentileMillis is the local benchmark percentile helper, mirroring
+// percentileMillis from file_changed_test.go but with a distinct name to
+// avoid duplicate symbol errors.
+func bencPercentileMillis(durations []time.Duration, p float64) float64 {
+	if len(durations) == 0 {
+		return 0
+	}
+	sorted := make([]time.Duration, len(durations))
+	copy(sorted, durations)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+	idx := int(float64(len(sorted)-1) * p)
+	if idx < 0 {
+		idx = 0
+	}
+	if idx >= len(sorted) {
+		idx = len(sorted) - 1
+	}
+	return float64(sorted[idx].Microseconds()) / 1000.0
+}
+
