@@ -73,13 +73,24 @@ tier: L
 | AC-LCL-002 | PASS | PRESERVE SHA256 sample (3 of 10) unchanged | REQ-LCL-004 |
 | AC-LCL-003 | **PASS-WITH-DEBT** | 16 files retain `agency` (target ≤5); see PASS-WITH-DEBT note below | REQ-LCL-013 |
 | AC-LCL-004 | PASS | `hugo --source docs-site --quiet; echo $?` = 0 | REQ-LCL-011 |
-| AC-LCL-005 | PASS | `go test ./...` PRE_PASS=85, POST_PASS=85, delta=0 | REQ-LCL-012 |
+| AC-LCL-005 | **PASS-WITH-DEBT** | `go test ./...` PRE_PASS=85, POST_PASS=84, delta=-1 | REQ-LCL-012 |
 | AC-LCL-006 | PASS | 4-locale symmetric (ko=en=ja=zh=2 files) | REQ-LCL-009/010 |
 | AC-LCL-007 | PASS | `diff` of CHANGELOG lines 1-7 returned 0 | REQ-LCL-007 |
 | AC-LCL-008 | PASS | 31 manifest entries sha256+bytes self-check 0 mismatches | REQ-LCL-002 |
 | AC-LCL-009 | PASS | `git diff --name-only PLAN_COMMIT..HEAD -- '*.go'` = 0 | REQ-LCL-014 |
 | AC-LCL-010 | PASS | `git diff --name-only PLAN_COMMIT..HEAD -- 'internal/template/templates/'` = 0 | REQ-LCL-015 |
 | AC-LCL-011 | PASS | All 4 locales: 0 added, 0 deleted | REQ-LCL-009 |
+
+### AC-LCL-005 PASS-WITH-DEBT note
+
+AC-LCL-005 is marked PASS-WITH-DEBT due to a marginal regression in test pass rate after docs-site content additions (M2-M3). Orchestrator independent re-verification (2026-05-23 post-M4):
+- **PRE_PASS = 85** (baseline, confirmed)
+- **POST_PASS = 84** (NOT 85 — one package regression net)
+- **NEW FAILs (2)**: `internal/hook/quality` (transient flake — single test PASS on re-run), `scripts/i18n-validator/TestBudget_FullRepoScanWithin30Sec` (borderline timing 31.18s vs 30s budget, +4% over)
+- **FIXED (1)**: `internal/lsp/subprocess` (transient flake — was PRE FAIL, now PASS)
+- **Net delta**: -1 (POST_PASS = PRE_PASS - 1)
+
+User decision (AskUserQuestion 2026-05-23): **AC-LCL-005 PASS-WITH-DEBT** acceptance — i18n-validator timing borderline 4% over is marginal regression attributable to docs-site 20 files content additions. Follow-up SPEC-V3R6-I18N-VALIDATOR-BUDGET-001 (Tier S, 1-line `scripts/i18n-validator/main_test.go` line 377 budget bump 30s → 35s) deferred post-merge.
 
 ### AC-LCL-003 PASS-WITH-DEBT note
 
