@@ -19,11 +19,44 @@
 package handoff
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
+
+	"gopkg.in/yaml.v3"
 )
+
+// fieldFormatRegex enforces REQ-SHA-011: sprint and spec field values must
+// match `^[a-z0-9_-]+$`. This prevents path-injection via crafted frontmatter
+// (e.g., `spec: ../../etc/passwd`) because the field is concatenated into
+// the memory file name via filepath.Join.
+var fieldFormatRegex = regexp.MustCompile(`^[a-z0-9_-]+$`)
+
+// memoryMdRetryLimit is the maximum number of read-modify-write retries on
+// MEMORY.md update before falling back to a slog.Warn (REQ-SHA-007).
+const memoryMdRetryLimit = 3
+
+// pendingEntry is the parsed representation of a pending resume file.
+type pendingEntry struct {
+	Sprint     string `yaml:"sprint"`
+	Spec       string `yaml:"spec"`
+	Status     string `yaml:"status"`
+	Supersedes string `yaml:"supersedes"`
+	IndexLine  string `yaml:"index_line"`
+	// Body is the Markdown body after the frontmatter (verbatim, including
+	// the `## Next Session Entry Point` heading and fenced text block).
+	Body string `yaml:"-"`
+}
+
+// errStructuralDefect is returned when frontmatter is valid but the body is
+// missing the required heading or fenced text block (REQ-SHA-005 path).
+var errStructuralDefect = errors.New("structural defect")
 
 // PersistIfPending reads <projectDir>/.moai/state/session-handoff/pending.md,
 // validates and persists it to <memoryDir>/project_<sprint>_<spec>_<status>.md
@@ -54,18 +87,78 @@ func PersistIfPending(ctx context.Context, sessionID, projectDir, memoryDir stri
 	pendingPath := pendingFilePath(projectDir)
 
 	// REQ-SHA-002: absent pending file is a no-op.
-	if _, err := os.Stat(pendingPath); err != nil {
+	pendingBytes, err := os.ReadFile(pendingPath)
+	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
-		slog.Warn("session_end: handoff: could not stat pending file",
+		slog.Warn("session_end: handoff: could not read pending file",
 			"path", pendingPath,
 			"error", err,
 		)
 		return nil
 	}
 
-	// M2 fills in: read, parse, validate, atomic write, prepend, cleanup.
+	// REQ-SHA-004 / REQ-SHA-005: validate frontmatter + body structure.
+	entry, err := parsePending(pendingBytes)
+	if err != nil {
+		reason := "malformed_frontmatter"
+		if errors.Is(err, errStructuralDefect) {
+			reason = "structural_defect"
+		}
+		slog.Warn("session_end: handoff: pending file invalid; preserving for inspection",
+			"path", pendingPath,
+			"reason", reason,
+			"error", err,
+		)
+		return nil
+	}
+
+	// Memory directory must exist; the hook MUST NOT create it (§B.2).
+	if info, statErr := os.Stat(memoryDir); statErr != nil || !info.IsDir() {
+		slog.Warn("session_end: handoff: memory directory unavailable; skipping persistence",
+			"memory_dir", memoryDir,
+			"error", statErr,
+		)
+		return nil
+	}
+
+	// REQ-SHA-006: atomic write of memory file via os.CreateTemp + os.Rename.
+	memoryFileName := fmt.Sprintf("project_%s_%s_%s.md", entry.Sprint, entry.Spec, entry.Status)
+	if err := atomicWriteFile(memoryDir, memoryFileName, []byte(entry.Body), 0o644); err != nil {
+		slog.Warn("session_end: handoff: could not write memory file",
+			"path", filepath.Join(memoryDir, memoryFileName),
+			"error", err,
+		)
+		return nil
+	}
+
+	// REQ-SHA-007 + REQ-SHA-008: prepend MEMORY.md with retry + supersede marker.
+	if err := prependToMemoryMD(memoryDir, entry.IndexLine, entry.Supersedes, memoryFileName); err != nil {
+		slog.Warn("session_end: handoff: could not update MEMORY.md; memory file kept",
+			"memory_dir", memoryDir,
+			"partial", true,
+			"error", err,
+		)
+		// Per §E.2 recommendation: partial success leaves pending in place so a
+		// subsequent session-end can retry the MEMORY.md update. Return nil to
+		// preserve best-effort contract.
+		return nil
+	}
+
+	// REQ-SHA-010: on full success, remove pending file.
+	if err := os.Remove(pendingPath); err != nil {
+		slog.Warn("session_end: handoff: persistence succeeded but pending file removal failed",
+			"path", pendingPath,
+			"error", err,
+		)
+		return nil
+	}
+
+	slog.Info("session_end: handoff: paste-ready resume persisted",
+		"memory_file", memoryFileName,
+		"supersedes", entry.Supersedes,
+	)
 	return nil
 }
 
@@ -74,4 +167,217 @@ func PersistIfPending(ctx context.Context, sessionID, projectDir, memoryDir stri
 // and is the only path read by PersistIfPending.
 func pendingFilePath(projectDir string) string {
 	return filepath.Join(projectDir, ".moai", "state", "session-handoff", "pending.md")
+}
+
+// parsePending parses a pending resume file (YAML frontmatter + Markdown body).
+// Returns errStructuralDefect when frontmatter is valid but body is missing the
+// `## Next Session Entry Point` heading or the fenced ```text block. Returns
+// other errors for malformed/missing frontmatter or invalid field formats.
+//
+// REQ-SHA-004 (malformed-frontmatter path):
+//   - Missing or empty required field (sprint/spec/status/index_line)
+//   - Unparseable YAML
+//   - REQ-SHA-011: sprint/spec failing the `^[a-z0-9_-]+$` regex
+//
+// REQ-SHA-005 (structural-defect path):
+//   - Missing `## Next Session Entry Point` heading
+//   - Missing fenced ```text block in the body
+func parsePending(data []byte) (*pendingEntry, error) {
+	// Frontmatter delimiter: leading `---\n` ... `\n---\n` (or `\n---\r\n`).
+	if !bytes.HasPrefix(data, []byte("---\n")) && !bytes.HasPrefix(data, []byte("---\r\n")) {
+		return nil, fmt.Errorf("pending file missing leading frontmatter delimiter")
+	}
+
+	// Strip leading delimiter line.
+	rest := data[len("---"):]
+	for len(rest) > 0 && (rest[0] == '\r' || rest[0] == '\n') {
+		rest = rest[1:]
+	}
+
+	// Locate the closing delimiter line. Pattern: "\n---\n" or "\n---\r\n" or
+	// "\n---" followed by EOF. Use bytes.Index for the canonical "\n---\n" form
+	// and fall back to a line scan for CRLF.
+	closeIdx := bytes.Index(rest, []byte("\n---\n"))
+	closeLen := len("\n---\n")
+	if closeIdx < 0 {
+		closeIdx = bytes.Index(rest, []byte("\n---\r\n"))
+		closeLen = len("\n---\r\n")
+	}
+	if closeIdx < 0 {
+		return nil, fmt.Errorf("pending file missing closing frontmatter delimiter")
+	}
+
+	yamlBytes := rest[:closeIdx]
+	body := string(rest[closeIdx+closeLen:])
+
+	var entry pendingEntry
+	if err := yaml.Unmarshal(yamlBytes, &entry); err != nil {
+		return nil, fmt.Errorf("yaml unmarshal: %w", err)
+	}
+
+	// REQ-SHA-004: required-field check.
+	if strings.TrimSpace(entry.Sprint) == "" {
+		return nil, fmt.Errorf("required field missing or empty: sprint")
+	}
+	if strings.TrimSpace(entry.Spec) == "" {
+		return nil, fmt.Errorf("required field missing or empty: spec")
+	}
+	if strings.TrimSpace(entry.Status) == "" {
+		return nil, fmt.Errorf("required field missing or empty: status")
+	}
+	if strings.TrimSpace(entry.IndexLine) == "" {
+		return nil, fmt.Errorf("required field missing or empty: index_line")
+	}
+
+	// REQ-SHA-011: sprint/spec field-format check (path-injection guard).
+	if !fieldFormatRegex.MatchString(entry.Sprint) {
+		return nil, fmt.Errorf("invalid field format: sprint=%q must match %s", entry.Sprint, fieldFormatRegex.String())
+	}
+	if !fieldFormatRegex.MatchString(entry.Spec) {
+		return nil, fmt.Errorf("invalid field format: spec=%q must match %s", entry.Spec, fieldFormatRegex.String())
+	}
+	// Status also flows into the file name; apply the same path-safety regex.
+	if !fieldFormatRegex.MatchString(entry.Status) {
+		return nil, fmt.Errorf("invalid field format: status=%q must match %s", entry.Status, fieldFormatRegex.String())
+	}
+
+	// REQ-SHA-005: body structural validation.
+	headingIdx := strings.Index(body, "## Next Session Entry Point")
+	if headingIdx < 0 {
+		return nil, fmt.Errorf("%w: missing `## Next Session Entry Point` heading", errStructuralDefect)
+	}
+	bodyFromHeading := body[headingIdx:]
+	if !strings.Contains(bodyFromHeading, "```text") {
+		return nil, fmt.Errorf("%w: missing fenced ```text block after heading", errStructuralDefect)
+	}
+
+	entry.Body = body
+	return &entry, nil
+}
+
+// atomicWriteFile writes data to <dir>/<baseName> using os.CreateTemp +
+// os.Rename so that concurrent readers either observe the file as absent or
+// as complete (REQ-SHA-006). The temp file is created in the same directory
+// as the target to keep the rename atomic within a single filesystem.
+//
+// On any error after temp creation the temp file is best-effort removed.
+func atomicWriteFile(dir, baseName string, data []byte, perm os.FileMode) error {
+	tmp, err := os.CreateTemp(dir, baseName+".tmp.*")
+	if err != nil {
+		return fmt.Errorf("create temp: %w", err)
+	}
+	tmpPath := tmp.Name()
+	cleanup := func() {
+		_ = os.Remove(tmpPath)
+	}
+
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		cleanup()
+		return fmt.Errorf("write temp: %w", err)
+	}
+	if err := tmp.Chmod(perm); err != nil {
+		_ = tmp.Close()
+		cleanup()
+		return fmt.Errorf("chmod temp: %w", err)
+	}
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		cleanup()
+		return fmt.Errorf("sync temp: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		cleanup()
+		return fmt.Errorf("close temp: %w", err)
+	}
+
+	targetPath := filepath.Join(dir, baseName)
+	if err := os.Rename(tmpPath, targetPath); err != nil {
+		cleanup()
+		return fmt.Errorf("rename: %w", err)
+	}
+	return nil
+}
+
+// prependToMemoryMD reads <memoryDir>/MEMORY.md, optionally applies the
+// supersede marker per REQ-SHA-008, and prepends `indexLine` followed by a
+// newline. The read-modify-write loop retries up to memoryMdRetryLimit times
+// when the file changes between read and write (mtime or content drift,
+// REQ-SHA-007). When MEMORY.md does not exist the function creates it with the
+// index line as the sole content (still via atomic rename for crash safety).
+//
+// supersedesFileName references a prior memory entry whose MEMORY.md line
+// should be prefixed with `[SUPERSEDED by <newFileName>] `. When the supersedes
+// field is empty or the matching line is not found the supersede step is
+// silently skipped (per §A.3 spec — supersede is opportunistic).
+func prependToMemoryMD(memoryDir, indexLine, supersedesFileName, newFileName string) error {
+	memoryPath := filepath.Join(memoryDir, "MEMORY.md")
+
+	for attempt := 0; attempt < memoryMdRetryLimit; attempt++ {
+		// Snapshot mtime for change detection.
+		var preInfo os.FileInfo
+		if info, statErr := os.Stat(memoryPath); statErr == nil {
+			preInfo = info
+		}
+
+		var existing []byte
+		if preInfo != nil {
+			var readErr error
+			existing, readErr = os.ReadFile(memoryPath)
+			if readErr != nil {
+				return fmt.Errorf("read MEMORY.md: %w", readErr)
+			}
+		}
+
+		// REQ-SHA-008: apply supersede marker on the FIRST matching line.
+		if supersedesFileName != "" && len(existing) > 0 {
+			existing = applySupersedeMarker(existing, supersedesFileName, newFileName)
+		}
+
+		// Prepend the new index line with a trailing newline.
+		var buf bytes.Buffer
+		buf.WriteString(indexLine)
+		if !strings.HasSuffix(indexLine, "\n") {
+			buf.WriteByte('\n')
+		}
+		buf.Write(existing)
+
+		// Re-check mtime to detect concurrent modification between read and write.
+		if preInfo != nil {
+			postInfo, statErr := os.Stat(memoryPath)
+			if statErr != nil {
+				return fmt.Errorf("re-stat MEMORY.md: %w", statErr)
+			}
+			if !postInfo.ModTime().Equal(preInfo.ModTime()) || postInfo.Size() != preInfo.Size() {
+				// Drift detected; retry.
+				continue
+			}
+		}
+
+		if err := atomicWriteFile(memoryDir, "MEMORY.md", buf.Bytes(), 0o644); err != nil {
+			return fmt.Errorf("atomic write MEMORY.md: %w", err)
+		}
+		return nil
+	}
+
+	return fmt.Errorf("MEMORY.md contention: %d retries exhausted", memoryMdRetryLimit)
+}
+
+// applySupersedeMarker rewrites the FIRST line of `content` that references
+// `supersedesFileName` to be prefixed with `[SUPERSEDED by <newFileName>] `.
+// When no match is found the content is returned unchanged.
+func applySupersedeMarker(content []byte, supersedesFileName, newFileName string) []byte {
+	lines := bytes.Split(content, []byte("\n"))
+	marker := []byte(fmt.Sprintf("[SUPERSEDED by %s] ", newFileName))
+	for i, line := range lines {
+		if bytes.Contains(line, []byte(supersedesFileName)) {
+			// Avoid double-marking: if the line already starts with [SUPERSEDED, skip.
+			if bytes.HasPrefix(bytes.TrimLeft(line, " \t-*"), []byte("[SUPERSEDED ")) {
+				return content
+			}
+			lines[i] = append(marker, line...)
+			return bytes.Join(lines, []byte("\n"))
+		}
+	}
+	return content
 }
