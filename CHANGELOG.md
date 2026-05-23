@@ -29,6 +29,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] — v3.0 Mega-Sprint: W0 Claude Refresh + W1 Constitution Dual + W2 Core Slim + W3 Harness Autonomy
 
+### Documentation
+
+- **SPEC-V3R6-CLI-AUDIT-001** — moai CLI audit baseline for Sprint 7 FINAL (Tier M research-only)
+  - Research deliverable at `.moai/reports/cli-audit/audit-2026-05-23.md` (667 lines, 6 sections)
+  - **§1 Subcommand Inventory**: 113 total moai subcommands enumerated (1 root + 23 root-level + 89 nested) with registration paths, flags, and use descriptions
+  - **§2 Dead-Command Classification**: 116 classified + 10 dead-suspect candidates identified. Refuted preliminary suspects: `moai hook harness-observe*` family (4 sub-subcommands) — NOT dead, calls documented in `.claude/hooks/moai/handle-harness-observe*.sh`
+  - **§3 Integration Map**: `moai init` → `moai update -c` → `moai cc -p <profile>` triad with 10-flag matrix and profile system architecture
+  - **§4 Sprint 7 Baseline Scope**: 5-section outline directly consumable by SPEC-V3R6-CLI-INTEGRATION-001 manager-spec (unifications + retirements + gap bridging)
+  - **§5 Methodology Appendix**: Grep commands and reproducibility checklist for future audits
+  - **6/6 acceptance criteria PASS**: AC-CLA-001 (≥40 inventory entries) PASS / AC-CLA-002 (classification table + dead-suspect coverage) PASS / AC-CLA-003 (integration mapping sections) PASS / AC-CLA-004 (Sprint 7 outline) PASS / AC-CLA-005 (protected-path constraints: 0 `.go`/`.sh`/`.yaml` changes, 0 docs-site modifications) PASS / AC-CLA-006 (metadata completeness: generated-at timestamp, git SHA, 4 artifact frontmatter sync) PASS with AC-CLA-006 minor note (acceptance.md L255-257 awk verification command structural defect in SSOT definition, but deliverable count (6 metadata fields) genuinely PASS)
+  - No code, hook script, template, or docs-site content modified (REQ-CLA-005 [Unwanted])
+  - **Scope discipline**: 0 Go files, 0 shell scripts, 0 YAML config, 0 template tree modifications; research-only baseline ready for Sprint 7 consumer
+
 ### Added
 
 - **SPEC-V3R6-SESSION-HANDOFF-AUTO-001** — SessionEnd hook auto-persist for paste-ready resume messages (Tier S minimal)
