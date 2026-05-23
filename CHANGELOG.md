@@ -45,6 +45,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Harness Autonomy — 4-Tier Self-Evolution + 5-Layer Safety + Cold-Start Seeds** (SPEC-V3R5-HARNESS-AUTONOMY-001, W3): 하네스 자율 진화 메커니즘 완성. 7개 신규 패키지: `internal/harness/{capture,router,safety,seeds,throttle,tier}` + root. 18 sentinels (8 HARNESS_FROZEN_* + 10 HARNESS_LEARNING_*) 카탈로그 정의. 10 CLI verbs (route/validate + status/apply/rollback/disable/mute/mute-list/unmute/verify per AC-HRA-009). ≥85% 커버리지 (harness 87.9%, capture 94.9%, router 89.2%, safety 86.5%, seeds 100%, throttle 88.2%, tier 90.0%). 벤치마크: L1 46ns (p99 10ms 대비 우수), L4 1.54µs (p99 100ms 대비 우수). 교차 플랫폼 빌드 PASS (Windows flock split). 메타-분석 결과 SPEC-V3R5-WORKFLOW-OPT-001에서 형식화 (-73% wall-time 검증). 본 SPEC은 그 SPEC의 dogfooding 기준이 됨. PR #1023 plan + PR #1024 run 머지 + sync 완료.
 
+- **Observability hook 3계열 opt-in 마스터 토글 신설** (SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 Tier S, commits `18112a7b6..adcb206f2`): `.moai/config/sections/system.yaml` 기존 `hook:` 블록에 NEW `opt_in.enabled: false` 키 추가. 3 observability hook 계열 (`TaskCreated` + `Notification` + `handle-harness-observe-*` secondary wrappers) opt-in 전환 마스터 토글. Default `false` — 매 turn당 hook 호출 ~25-30% 감소. Defense-in-depth: M2 `settings.json.tmpl` conditional render + runtime dispatcher gate (`hookOptInEnabled()` in NEW `internal/hook/hook_opt_in.go`) 양층. **§A.3 3-key cohabitation contract**: 기존 `observability.enabled` (REQ-OBS-005 trace logging, observability.yaml) + `hook.observability_events` (SPEC-V3R2-RT-006 REQ-040 per-event whitelist, system.yaml) 모두 독립 read path 유지 — AC-HOI-007 4-quadrant cohabitation 통합 테스트 + `cohabitation_guard_test.go` static CI guard (5 assertion) 영구 회귀 방어. 7/7 AC PASS. `moai doctor` Hook opt-in 상태 라인 추가 (M3). 3 observability hook 계열 default behavior shift: always-active → opt-in disabled (v3.0 major bump 시그널).
+
+### Changed (Hook opt-in context)
+
+- **3 observability hook 계열 default behavior: always-active → opt-in disabled**: v3.0 major bump 시그널, harness 학습 파이프라인이 telemetry에 의존하는 사용자는 upgrade 후 `system.yaml` `hook.opt_in.enabled: true` 명시 설정 필요. Sibling SPEC `SPEC-V3R6-HOOK-ASYNC-EXPAND-001` (Sprint 2 R2 partner)이 HOI 머지 후 진입하며 `TaskCreated`/`Notification` async stanzas를 `hook.opt_in.enabled == true` 조건부로 래핑.
+
+- **`audit_test.go` baseline 정정** (commit `adcb206f2`): TestAuditRegistrationParity expectedNative 22→20 (M2 conditional rendering note + a3239d3de pre-existing WorktreeCreate/Remove deregistration). TestAuditThreeWaySync 4-way 확장 with `deregisteredButLiveEventNames` allowlist. `TestAuditObservabilityWhitelist` function body는 §A.3 cohabitation contract per UNTOUCHED.
+
 ## [Unreleased] — v2.20.0-rc1: 11 SPECs complete (RT-002 + RT-003 + RT-006 + CI-FASTTRACK-001 + WORKFLOW-SPLIT-001 + SPC-001 + WF-004 + ORC-002 + ORC-004 + HRN-001 + STATUSLINE-STDINFIELDS-001)
 
 ### Added
