@@ -10,13 +10,15 @@ updated: 2026-05-23
 
 ## Status
 
-- **Phase**: run (Wave 1 complete; Waves 2-7 pending)
+- **Phase**: sync (Wave 7 complete — full run phase delivered on origin/main)
 - **plan_complete_at**: 2026-05-23
 - **plan_status**: audit-ready
 - **plan_auditor_invoked**: true (PASS aggregate 0.87 iter 2, Tier L threshold 0.85, margin +0.02)
-- **wave_1_complete_at**: 2026-05-23
-- **wave_1_commit**: (pending Phase D commit on main per Hybrid Trunk Tier L feat-branch policy — orchestrator decides)
-- **next_phase**: run (Wave 2 entry — CLI surface, 25 files, OQ-CCE-001 resolved Option B)
+- **run_phase_complete_at**: 2026-05-23
+- **run_status**: delivered (Wave 7-2 Test C + Wave 7 partial cumulative, 64 test files total, commits b35ca8b96 + ed064a6f2)
+- **sync_phase_complete_at**: 2026-05-23
+- **sync_status**: complete (CHANGELOG.md entry added, direct push to origin/main per Hybrid Trunk Tier S docs sync)
+- **next_phase**: archive (SPEC-V3R6-CODE-COMMENTS-EN-001 complete — no follow-up waves pending)
 
 ## Wave 1 — Foundation (COMPLETE 2026-05-23)
 
