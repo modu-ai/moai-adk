@@ -23,7 +23,7 @@ tags: "cli, audit, research, sprint-2, sprint-7-baseline, progress"
 | M1 — Subcommand Inventory | PASS | b5ea8d936 | audit-2026-05-23.md (NEW §1) + progress.md (NEW) | AC-CLA-001 | Cobra command tree walked from cmd/moai/main.go root → 113 total subcommands |
 | M2 — Dead-Command Classification | PASS | 2464ece58 | audit-2026-05-23.md (APPEND §2) + progress.md (UPDATE) | AC-CLA-002 | 116 classification rows (active/internal-only/dead-suspect). 10 dead-suspect candidates (Claude Code forward-compat hook events). harness-observe* preliminary suspect REFUTED (4 hooks reference). db-schema-sync confirmed internal-only per SPEC-DB-SYNC-001. |
 | M3 — Integration Map | PASS | 123ddcb1a | audit-2026-05-23.md (APPEND §3) + progress.md (UPDATE) | AC-CLA-003 | §3.1 moai init flow + §3.2 moai update 10×10 flag matrix (11 awk-bounded rows) + §3.3 moai cc -p profile system + §3.4 cross-cutting concerns + §3.5 mermaid diagram (TD direction). Init/update/profile triad mapped, 4 integration gaps surfaced for Sprint 7. |
-| M4 — Sprint 7 Baseline + Methodology + Frontmatter Sync | PASS | TBD | audit-2026-05-23.md (APPEND §4 + §5 + §6) + 4 SPEC artifacts (frontmatter sync) + progress.md (UPDATE) | AC-CLA-004 + AC-CLA-005 + AC-CLA-006 | §4.1-§4.4 Sprint 7 baseline scope + §5 methodology appendix (reproducibility) + §6 audit closure. 4 SPEC artifacts frontmatter status `draft → implemented`, version `0.1.0 → 0.2.0`. Sprint 7 5-section outline (§4.4) directly consumable by future manager-spec invocation. |
+| M4 — Sprint 7 Baseline + Methodology + Frontmatter Sync | PASS | 631e4903e | audit-2026-05-23.md (APPEND §4 + §5 + §6) + 4 SPEC artifacts (frontmatter sync) + progress.md (UPDATE) | AC-CLA-004 + AC-CLA-005 + AC-CLA-006 | §4.1-§4.4 Sprint 7 baseline scope + §5 methodology appendix (reproducibility) + §6 audit closure. 4 SPEC artifacts frontmatter status `draft → implemented`, version `0.1.0 → 0.2.0`. Sprint 7 5-section outline (§4.4) directly consumable by future manager-spec invocation. |
 
 ## AC Verification Matrix (M4 final)
 
@@ -52,7 +52,7 @@ tags: "cli, audit, research, sprint-2, sprint-7-baseline, progress"
 
 ## Run-phase Closure
 
-- 4 commits on main: M1 b5ea8d936 + M2 2464ece58 + M3 123ddcb1a + M4 TBD
+- 4 commits on main: M1 b5ea8d936 + M2 2464ece58 + M3 123ddcb1a + M4 631e4903e
 - All 4 SPEC artifacts frontmatter synced: status `draft → implemented`, version `0.1.0 → 0.2.0`, updated `2026-05-23`
 - Audit report at `.moai/reports/cli-audit/audit-2026-05-23.md` complete (667 lines, §1-§6 all populated)
 - AC-CLA-005 [Unwanted] research-only constraint verified: 0 protected-path-class diff vs main
