@@ -1,11 +1,11 @@
 ---
 id: SPEC-V3R6-CI-BASELINE-DRIFT-001
 title: "CI baseline drift cleanup (lint 27 + TestStatus golden + ConfigManager race)"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-23
 updated: 2026-05-23
-author: manager-spec
+author: manager-develop
 priority: P3
 phase: v3.0.0
 module: "internal/cli, internal/config, internal/statusline, internal/cli/wizard, internal/constitution, internal/template, internal/merge, internal/tmux"
