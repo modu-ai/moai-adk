@@ -50,6 +50,13 @@ type GitStrategyConfig struct {
 // SystemHookConfig holds hook observability settings (SPEC-V3R2-RT-006 REQ-004).
 // It controls which retired events are re-enabled as observability taps and
 // whether strict mode behavior applies to retired events.
+//
+// COHABITATION NOTE (SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 §A.3): the OptIn field
+// is an INDEPENDENT master toggle for 3 hook series (TaskCreated, Notification,
+// handle-harness-observe-*). ObservabilityEvents (SPEC-V3R2-RT-006 REQ-040
+// per-event whitelist) and Observability.Enabled (REQ-OBS-005 trace-logging
+// master, separate file) are NOT collapsed with OptIn — do NOT unify without
+// a fresh SPEC. See internal/hook/observability.go file-top note.
 type SystemHookConfig struct {
 	// ObservabilityEvents is the list of retired event names that are re-enabled
 	// as observability taps. Empty list (default) means silent no-op for all.
@@ -57,6 +64,18 @@ type SystemHookConfig struct {
 	ObservabilityEvents []string `yaml:"observability_events" validate:"omitempty"`
 	// StrictMode: when true, retired events in strict mode still succeed silently.
 	StrictMode bool `yaml:"strict_mode"`
+	// OptIn is the master toggle for SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 hook series
+	// (TaskCreated, Notification, handle-harness-observe-*). When absent in YAML,
+	// Go zero-value (false) is used; this matches plan.md R3 mitigation.
+	OptIn HookOptInConfig `yaml:"opt_in"`
+}
+
+// HookOptInConfig holds the master opt-in toggle for SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001.
+// Currently a single boolean; designed as a sub-struct so future fields (per-series
+// granularity, scheduling, etc.) can be added without breaking existing YAML.
+type HookOptInConfig struct {
+	// Enabled is the master toggle for 3 observability hook series. Default false.
+	Enabled bool `yaml:"enabled"`
 }
 
 // SystemConfig represents the system configuration section.

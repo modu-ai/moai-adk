@@ -38,6 +38,13 @@ hook:
   observability_events: []
   # When true, retired events in strict mode still succeed silently.
   strict_mode: false
+  # Hook opt-in master toggle (SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-001)
+  # Controls TaskCreated, Notification, and handle-harness-observe-* hook execution.
+  # Default: false (hooks are skipped, reduces per-turn overhead by ~25-30%).
+  # NOTE: This key is INDEPENDENT of `observability.enabled` in observability.yaml
+  # (REQ-OBS-005 trace-logging master toggle). See SPEC §A.3 cohabitation contract.
+  opt_in:
+    enabled: false
 
 # Document Management Configuration
 document_management:
