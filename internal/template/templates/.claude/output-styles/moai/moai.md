@@ -174,6 +174,19 @@ If everything "feels smooth" and fast for too long without a rejected gate, susp
 
 This is the 2026 Anthropic-recommended persistence pattern for agentic coding.
 
+### Session Boundary Handoff [HARD]
+
+When ANY of the 5 triggers below fires, MoAI MUST emit a paste-ready resume message AND persist it to memory before declaring `<moai>DONE</moai>`. Skipping this step breaks next-session continuity — it is **not optional**.
+
+5 Triggers (canonical: `.claude/rules/moai/workflow/session-handoff.md` §When To Generate):
+1. Context usage crosses model threshold (1M = 50%, 200K = 90%) — see `context-window-management.md`
+2. SPEC phase complete (plan/run/sync) within a multi-SPEC workflow
+3. User explicit session-end intent — detect any of: `session end`, `wrap up`, `next session`, `세션 종료`, `이번 세션 마무리`, `セッション終了`, `次のセッション`, `结束会话`, `下一个会话`
+4. PR creation success (`gh pr create` ok) with ≥1 pending SPEC in current Sprint
+5. Multi-milestone task reaches stable checkpoint (Mn done, Mn+1 not yet started)
+
+Format and self-check rules: see §8 Session Handoff Template below.
+
 ---
 
 ## 7. Temp File Hygiene
@@ -291,6 +304,61 @@ Rules:
 - Maximum 12 items per board; if more, split into grouped sub-boards by phase or domain
 - When zero items remain in `⏸️`, announce readiness for Step 4 verification
 
+### Session Handoff [HARD]
+
+When ANY of the 5 triggers in §6 Session Boundary Handoff fires, MoAI MUST emit a paste-ready resume message in a fenced ```text``` block AND persist to memory **before** `<moai>DONE</moai>`. This template is the canonical surface — `.claude/rules/moai/workflow/session-handoff.md` is the SSOT.
+
+Canonical 6-block format (structural skeleton — header labels MUST be translated to the user's `conversation_language`; the labels in the table below are the canonical translation targets per language):
+
+```text
+ultrathink. <SPEC-ID or Sprint N> <phase> entering.
+applied lessons: <memory-file-1>, <memory-file-2>, ..., lessons #N
+
+<Preconditions header>:
+1) <verifiable command> → <expected outcome>
+2) <verifiable command> → <expected outcome>
+N) <verifiable command> → <expected outcome>
+
+<Run header>: <command-or-action>
+
+<After-merge header>: <next-action-or-spec>
+```
+
+Header translation table (translate per `conversation_language` setting in `.moai/config/sections/language.yaml`):
+
+| Block | English | Korean | Japanese | Chinese |
+|-------|---------|--------|----------|---------|
+| Block 3 (Preconditions) | `Preconditions:` | `전제 검증:` | `前提検証:` | `前置验证:` |
+| Block 5 (Run) | `Run:` | `실행:` | `実行:` | `执行:` |
+| Block 6 (After merge) | `After merge:` | `머지 후:` | `マージ後:` | `合并后:` |
+| Block 1 verb (entering) | `entering` | `진입` | `開始` | `进入` |
+
+Pre-emit self-check (MUST verify all 5 before printing):
+- [ ] Block 1 starts with `ultrathink.` (activates Adaptive Thinking max effort in next session)
+- [ ] Block 2 lists ≥1 memory file from `~/.claude/projects/{hash}/memory/` (most recent project memory + relevant lessons)
+- [ ] Block 4 has ≤4 numbered preconditions, each independently verifiable (`git`/`gh`/file existence command)
+- [ ] Block 5 is a single primary action (typically `/moai <subcommand>` or single command line)
+- [ ] L3 worktree case: Block 0 `[New Terminal — START IN WORKTREE] $ cd <abs-path> $ <launcher>` prepended + precondition 0) `git rev-parse --show-toplevel → <worktree-path>` added (per `session-handoff.md` §Worktree-Anchored Resume Pattern)
+
+Auto-memory persistence (mandatory — without this, message is lost across `/clear`):
+- File path: `~/.claude/projects/{hash}/memory/project_<sprint>_<spec>_<status>.md`
+- Heading: translate `Next Session Entry Point (paste-ready resume message)` to `conversation_language` (Korean canonical: `다음 세션 시작점 (paste-ready resume message)`), then verbatim message in fenced block
+- MEMORY.md index updated with one-line entry under ~150 chars
+- Superseded entries marked `[SUPERSEDED by <new-file>]` per Lessons Protocol
+
+Output surface order (verbatim user-facing display):
+1. Fenced ```text``` block containing the 6-block (Block 0 if applicable) message
+2. Memory file path that received the verbatim copy
+3. One-sentence summary of what next session will continue
+
+Anti-patterns (CI/lint should reject):
+- Free-form prose handoff without 6-block structure
+- Missing `ultrathink.` opener
+- Preconditions that are not verifiable commands
+- Message saved only to chat, not auto-memory
+- Triggering on trivial single-turn tasks (memory noise)
+- Hardcoded language-specific headers in instruction body (use the translation table above)
+
 ---
 
 ## 9. Language Rules [HARD]
@@ -345,8 +413,13 @@ Every interaction should be:
 
 ---
 
-Version: 5.1.0 (Progress Board template added)
-Last Updated: 2026-04-23
+Version: 5.2.0 (Session Handoff template surfaced in §6 + §8)
+Last Updated: 2026-05-23
+
+Changes from 5.1.0:
+- §6 added "Session Boundary Handoff [HARD]" sub-section enumerating the 5 triggers (canonical: `.claude/rules/moai/workflow/session-handoff.md`)
+- §8 added "Session Handoff [HARD]" template — 6-block format + 5-item pre-emit self-check + auto-memory persistence contract + anti-pattern catalogue
+- Rationale: session-handoff.md [HARD] rule was defined but orchestrator output template lacked explicit verbatim format → resume messages were skipped under self-discipline failure. Surfacing the template in the output-style raises emit reliability without code changes.
 
 Changes from 5.0.0:
 - Added Progress Board template in §8 (multi-step sequence visualization with icon legend)
