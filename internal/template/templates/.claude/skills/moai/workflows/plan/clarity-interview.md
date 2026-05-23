@@ -76,7 +76,6 @@ Purpose: Automatically activate deep analysis mode for complex SPECs that benefi
 
 **UltraThink (primary deep reasoning trigger)**:
 - `ultrathink`: Claude Code native deep analysis mode — activates Adaptive Thinking (Opus 4.7+) within the current agent context. Triggered by keyword detection in user input.
-- Note: Sequential Thinking MCP (`mcp__sequential-thinking__sequentialthinking`) remains available for on-demand structured step-by-step analysis but is no longer bound to a CLI flag.
 
 When UltraThink auto-activates:
 - Log: "UltraThink mode activated: [reason]"
