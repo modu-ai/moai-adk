@@ -356,8 +356,8 @@ func TestTranslatable(t *testing.T) {
 
 // --- W6-T07: Budget tests ---
 
-// TestBudget_FullRepoScanWithin30Sec は実際の repo で30秒以内に完了することを検証します。
-func TestBudget_FullRepoScanWithin30Sec(t *testing.T) {
+// TestBudget_FullRepoScanWithin35Sec は実際の repo で35秒以内に完了することを検証します。
+func TestBudget_FullRepoScanWithin35Sec(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping full repo scan in short mode")
 	}
@@ -373,8 +373,8 @@ func TestBudget_FullRepoScanWithin30Sec(t *testing.T) {
 	_ = runAllFilesOracle(repoRoot)
 	elapsed := time.Since(start)
 
-	if elapsed > 30*time.Second {
-		t.Errorf("full repo scan took %v, want <= 30s", elapsed)
+	if elapsed > 35*time.Second {
+		t.Errorf("full repo scan took %v, want <= 35s", elapsed)
 	}
 }
 

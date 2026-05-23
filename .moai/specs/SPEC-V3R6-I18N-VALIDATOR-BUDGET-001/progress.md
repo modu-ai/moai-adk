@@ -33,11 +33,15 @@ tier: S
 
 | AC | Status | Command / Output | Note |
 |----|--------|------------------|------|
-| AC-IVB-001 | TBD | `grep -n "if elapsed > 35\*time.Second" scripts/i18n-validator/main_test.go` | Budget threshold at line 376 |
-| AC-IVB-002 | TBD | `grep -n "TestBudget_FullRepoScanWithin35Sec" scripts/i18n-validator/main_test.go` | Function renamed + JP comment updated |
-| AC-IVB-003 | TBD | `go test -timeout 60s -v -run TestBudget_FullRepoScanWithin35Sec ./scripts/i18n-validator/...` | Renamed test passes |
-| AC-IVB-004 | TBD | elapsed = `<X.YYs>` recorded here | Risk-E1 warning if ≥ 33.00s |
-| AC-IVB-005 | TBD | `go test -timeout 90s -count=1 ./scripts/i18n-validator/...` | No regression in non-budget tests |
+| AC-IVB-001 | PASS | `grep -n "if elapsed > 35\*time.Second"` → `376:	if elapsed > 35*time.Second {` | Budget threshold updated at line 376 |
+| AC-IVB-002 | PASS | `grep -nE "TestBudget_FullRepoScanWithin35Sec\|35秒以内"` → 359 (JP godoc) + 360 (func decl) both match | Function renamed + JP comment updated, both grep terms hit |
+| AC-IVB-003 | PASS | `go test -timeout 60s -v -run TestBudget_FullRepoScanWithin35Sec ./scripts/i18n-validator/...` → `--- PASS: TestBudget_FullRepoScanWithin35Sec (3.01s)` `ok github.com/modu-ai/moai-adk/scripts/i18n-validator 3.529s` | Renamed test passes; old name no longer exists (`grep -c TestBudget_FullRepoScanWithin30Sec` = 0) |
+| AC-IVB-004 | PASS | elapsed = `3.01s` (well below 33.00s warn threshold and far below 35.00s budget; +31.99s headroom) | No Risk-E1 warning; threshold restored to 11.7x margin |
+| AC-IVB-005 | PASS | `go test -timeout 90s -count=1 ./scripts/i18n-validator/...` → `ok github.com/modu-ai/moai-adk/scripts/i18n-validator 3.312s` | No regression in non-budget tests; full package PASS in 3.312s |
+
+**Build**: `go build ./scripts/i18n-validator/...` → exit 0
+**Lint**: `golangci-lint run --timeout=2m ./scripts/i18n-validator/...` → `0 issues.` (baseline preserved)
+**Negative verification**: `grep -c TestBudget_FullRepoScanWithin30Sec` = 0 + `grep -c "30\*time.Second"` = 0 (no stale references)
 
 ## Sync-phase Evidence
 
