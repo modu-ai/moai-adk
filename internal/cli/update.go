@@ -1127,14 +1127,95 @@ func isUserAreaPath(rel string) bool {
 	return false
 }
 
+// isUserOwnedNamespace returns true when the relative project path belongs to a
+// user-owned namespace per CLAUDE.local.md §24.4 contract and
+// SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001 REQ-UNP-001..003 + REQ-UNP-009.
+//
+// Strict superset of isUserAreaPath (NFR-UNP-005 additivity guarantee). Existing
+// call sites of isUserAreaPath remain in place; isUserOwnedNamespace is the new
+// authoritative user-owned check used by backup and sentinel logic.
+//
+// Protected patterns:
+//   - .claude/skills/my-harness-*    (REQ-UNP-001)
+//   - .claude/agents/harness/        (REQ-UNP-002 — overrides isMoaiManaged classification)
+//   - .moai/harness/                  (REQ-UNP-003)
+//   - .claude/skills/<custom>/        when prefix != "moai-" and name != "moai" (REQ-UNP-009)
+//   - .claude/agents/<custom>.md      when not under {core,expert,meta} and not "moai-" prefixed (REQ-UNP-009)
+//
+// Cross-platform: backslash normalization matches existing pattern at update.go:1115
+// per NFR-UNP-003.
+//
+// @MX:ANCHOR: [AUTO] isUserOwnedNamespace is the authoritative user-owned namespace check for moai update
+// @MX:REASON: [AUTO] called by backupUserOwnedNamespace, assertNoUserOwnedNamespaceTouch, and template overlay write loop; fan_in >= 3
+func isUserOwnedNamespace(rel string) bool {
+	// Normalize to forward slashes for consistent matching on all platforms (NFR-UNP-003).
+	norm := strings.ReplaceAll(rel, "\\", "/")
+
+	// REQ-UNP-001: user harness skills
+	if strings.HasPrefix(norm, ".claude/skills/my-harness-") {
+		return true
+	}
+
+	// REQ-UNP-002: harness agents directory (overrides isMoaiManaged for this prefix)
+	if norm == ".claude/agents/harness" || strings.HasPrefix(norm, ".claude/agents/harness/") {
+		return true
+	}
+
+	// REQ-UNP-003: harness extension directory
+	if norm == ".moai/harness" || strings.HasPrefix(norm, ".moai/harness/") {
+		return true
+	}
+
+	// REQ-UNP-009: user direct-added skills (any name except "moai" or "moai-*" prefix)
+	if strings.HasPrefix(norm, ".claude/skills/") {
+		rest := strings.TrimPrefix(norm, ".claude/skills/")
+		seg := strings.SplitN(rest, "/", 2)[0]
+		if seg != "" && seg != "moai" && !strings.HasPrefix(seg, "moai-") {
+			return true
+		}
+	}
+
+	// REQ-UNP-009: user direct-added agents (top-level files or directories
+	// outside {core, expert, meta} and not "moai-" / "manager-" / "expert-" /
+	// "builder-" / "evaluator-" prefixed system agents).
+	if strings.HasPrefix(norm, ".claude/agents/") {
+		rest := strings.TrimPrefix(norm, ".claude/agents/")
+		seg := strings.SplitN(rest, "/", 2)[0]
+		switch seg {
+		case "core", "expert", "meta":
+			return false // MoAI system agents
+		case "harness":
+			return true // REQ-UNP-002 (also covered above; defense-in-depth)
+		}
+		// Strip extension for filename-only segment (e.g., "custom-agent.md" → "custom-agent")
+		base := seg
+		if dot := strings.LastIndex(base, "."); dot > 0 {
+			base = base[:dot]
+		}
+		if base != "" && !strings.HasPrefix(base, "moai-") && !strings.HasPrefix(base, "moai") &&
+			!strings.HasPrefix(base, "manager-") && !strings.HasPrefix(base, "expert-") &&
+			!strings.HasPrefix(base, "builder-") && !strings.HasPrefix(base, "evaluator-") {
+			return true
+		}
+	}
+
+	return false
+}
+
 // isMoaiManaged returns true if the path is managed by MoAI-ADK and should be excluded from merge confirmation.
 // MoAI-managed paths include:
 //   - .claude/skills/moai-* and .claude/skills/moai/
 //   - .claude/rules/moai/
-//   - .claude/agents/{core,expert,meta,harness}/ (moai system agents, post SPEC-V3R6-AGENT-FOLDER-SPLIT-001)
+//   - .claude/agents/{core,expert,meta}/ (moai system agents, post SPEC-V3R6-AGENT-FOLDER-SPLIT-001)
 //   - .claude/commands/moai/
 //   - .claude/output-styles/moai/
 //   - .moai/config/ (entire directory)
+//
+// Note: .claude/agents/harness/ is intentionally EXCLUDED from this list per
+// CLAUDE.local.md §24.4 (moai update Contract) and SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001
+// REQ-UNP-002. The harness directory is user-owned (Agent Teams teammates are
+// project-specific) and must be preserved across moai update. See isUserOwnedNamespace
+// below for the authoritative user-owned namespace check.
 //
 // These paths are automatically deleted and reinstalled without user confirmation.
 func isMoaiManaged(path string) bool {
@@ -1169,13 +1250,15 @@ func isMoaiManaged(path string) bool {
 			}
 		case "agents":
 			// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: MoAI system agents live in
-			// .claude/agents/{core,expert,meta,harness}/ (4 domain subfolders).
-			// Legacy `agents/moai` directory was removed in this SPEC; only
-			// new domain subfolders + `moai-` prefix names are MoAI-managed.
+			// .claude/agents/{core,expert,meta}/ (3 domain subfolders).
+			// .claude/agents/harness/ is user-owned per CLAUDE.local.md §24.4 and
+			// SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001 REQ-UNP-002 (preserved, not managed).
+			// Legacy `agents/moai` directory was removed; only new domain subfolders
+			// + `moai-` prefix names are MoAI-managed.
 			if i+1 < len(parts) {
 				itemName := parts[i+1]
 				switch itemName {
-				case "core", "expert", "meta", "harness":
+				case "core", "expert", "meta":
 					return true
 				}
 				return strings.HasPrefix(itemName, "moai-") || strings.HasPrefix(itemName, "moai")

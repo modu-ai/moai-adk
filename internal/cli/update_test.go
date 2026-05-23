@@ -805,6 +805,219 @@ func TestIsMoaiManaged_MoaiConfig(t *testing.T) {
 	}
 }
 
+// TestIsMoaiManaged_HarnessNotManaged verifies SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001
+// REQ-UNP-002 — .claude/agents/harness/ is no longer classified as MoAI-managed.
+// The harness directory is user-owned per CLAUDE.local.md §24.4.
+func TestIsMoaiManaged_HarnessNotManaged(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+		want bool
+	}{
+		{
+			name: "harness directory file no longer managed",
+			path: ".claude/agents/harness/test-specialist.md",
+			want: false,
+		},
+		{
+			name: "harness directory windows separator",
+			path: ".claude\\agents\\harness\\test-specialist.md",
+			want: false,
+		},
+		{
+			name: "core still managed",
+			path: ".claude/agents/core/manager-develop.md",
+			want: true,
+		},
+		{
+			name: "expert still managed",
+			path: ".claude/agents/expert/expert-backend.md",
+			want: true,
+		},
+		{
+			name: "meta still managed",
+			path: ".claude/agents/meta/builder-agent.md",
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isMoaiManaged(tt.path)
+			if got != tt.want {
+				t.Errorf("isMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestIsUserOwnedNamespace verifies SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001
+// REQ-UNP-001 through REQ-UNP-003 and REQ-UNP-009 user-owned namespace recognition.
+func TestIsUserOwnedNamespace(t *testing.T) {
+	tests := []struct {
+		name string
+		rel  string
+		want bool
+	}{
+		// REQ-UNP-001: .claude/skills/my-harness-*
+		{
+			name: "REQ-UNP-001 my-harness skill",
+			rel:  ".claude/skills/my-harness-test/SKILL.md",
+			want: true,
+		},
+		{
+			name: "REQ-UNP-001 my-harness skill root",
+			rel:  ".claude/skills/my-harness-foo",
+			want: true,
+		},
+		// REQ-UNP-002: .claude/agents/harness/
+		{
+			name: "REQ-UNP-002 harness directory",
+			rel:  ".claude/agents/harness",
+			want: true,
+		},
+		{
+			name: "REQ-UNP-002 harness directory file",
+			rel:  ".claude/agents/harness/test-specialist.md",
+			want: true,
+		},
+		{
+			name: "REQ-UNP-002 harness windows separator",
+			rel:  ".claude\\agents\\harness\\test.md",
+			want: true,
+		},
+		// REQ-UNP-003: .moai/harness/
+		{
+			name: "REQ-UNP-003 moai harness root",
+			rel:  ".moai/harness",
+			want: true,
+		},
+		{
+			name: "REQ-UNP-003 moai harness file",
+			rel:  ".moai/harness/main.md",
+			want: true,
+		},
+		{
+			name: "REQ-UNP-003 moai harness nested",
+			rel:  ".moai/harness/extensions/custom.md",
+			want: true,
+		},
+		// REQ-UNP-009: user direct-added skills
+		{
+			name: "REQ-UNP-009 user custom skill dir",
+			rel:  ".claude/skills/custom-skill/SKILL.md",
+			want: true,
+		},
+		{
+			name: "REQ-UNP-009 user named skill",
+			rel:  ".claude/skills/my-tool/file.md",
+			want: true,
+		},
+		// REQ-UNP-009: user direct-added agents
+		{
+			name: "REQ-UNP-009 user custom agent file",
+			rel:  ".claude/agents/custom-agent.md",
+			want: true,
+		},
+		{
+			name: "REQ-UNP-009 user agent without prefix",
+			rel:  ".claude/agents/team-helper.md",
+			want: true,
+		},
+		// MoAI-managed paths must NOT be classified as user-owned
+		{
+			name: "MoAI skill not user-owned",
+			rel:  ".claude/skills/moai-workflow-spec/SKILL.md",
+			want: false,
+		},
+		{
+			name: "MoAI skill without dash not user-owned",
+			rel:  ".claude/skills/moai/SKILL.md",
+			want: false,
+		},
+		{
+			name: "core agent not user-owned",
+			rel:  ".claude/agents/core/manager-develop.md",
+			want: false,
+		},
+		{
+			name: "expert agent not user-owned",
+			rel:  ".claude/agents/expert/expert-backend.md",
+			want: false,
+		},
+		{
+			name: "meta agent not user-owned",
+			rel:  ".claude/agents/meta/builder-agent.md",
+			want: false,
+		},
+		{
+			name: "moai-prefixed agent not user-owned",
+			rel:  ".claude/agents/moai-helper.md",
+			want: false,
+		},
+		{
+			name: "manager-prefixed agent not user-owned",
+			rel:  ".claude/agents/manager-strategy.md",
+			want: false,
+		},
+		{
+			name: "expert-prefixed agent not user-owned",
+			rel:  ".claude/agents/expert-security.md",
+			want: false,
+		},
+		// Negative cases — outside protected scope
+		{
+			name: "non-claude path",
+			rel:  "src/main.go",
+			want: false,
+		},
+		{
+			name: "moai config not user-owned",
+			rel:  ".moai/config/sections/quality.yaml",
+			want: false,
+		},
+		{
+			name: "empty path",
+			rel:  "",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isUserOwnedNamespace(tt.rel)
+			if got != tt.want {
+				t.Errorf("isUserOwnedNamespace(%q) = %v, want %v", tt.rel, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestIsUserOwnedNamespace_AdditivityWithIsUserAreaPath verifies NFR-UNP-005:
+// isUserOwnedNamespace returns true for every path previously matched by isUserAreaPath.
+func TestIsUserOwnedNamespace_AdditivityWithIsUserAreaPath(t *testing.T) {
+	// Paths that isUserAreaPath protects:
+	previouslyCovered := []string{
+		".claude/skills/my-harness-test/SKILL.md",
+		".claude/skills/my-harness-foo/file.md",
+		".claude/agents/my-harness",
+		".claude/agents/my-harness/teammate.md",
+	}
+
+	for _, path := range previouslyCovered {
+		t.Run(path, func(t *testing.T) {
+			// Existing function must still return true (NFR-UNP-005 additivity)
+			if !isUserAreaPath(path) {
+				t.Errorf("isUserAreaPath(%q) regression: expected true", path)
+			}
+			// New function must return true for the same paths (strict superset)
+			if !isUserOwnedNamespace(path) {
+				t.Errorf("isUserOwnedNamespace(%q) additivity violation: expected true, got false", path)
+			}
+		})
+	}
+}
+
 // --- Backup functionality tests (matching Python moai template backup) ---
 
 func TestBackupMoaiConfig_CreateBackup(t *testing.T) {
