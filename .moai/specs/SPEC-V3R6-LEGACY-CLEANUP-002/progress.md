@@ -4,10 +4,10 @@
 
 | Phase | Status | Commit | Date |
 |-------|--------|--------|------|
-| plan | DONE | `0f813831b` (spec + plan plan-phase) | 2026-05-23 |
-| run M1 | DONE | (M1 commit pending) | 2026-05-23 |
-| sync | TBD | — | — |
-| mx | TBD (skip candidate — no Go code in scope) | — | — |
+| plan | DONE | `0f813831b` (spec + plan, manager-spec Tier S) | 2026-05-23 |
+| run M1 | DONE | `da5f9906b` (manager-develop, 5 file cp -p + 5 ACs PASS) | 2026-05-23 |
+| sync | DONE | `26db0dc92` (manager-docs, B12 3rd self-test PASS) | 2026-05-23 |
+| mx | DONE (skip justified) | — (this commit) | 2026-05-23 |
 
 ## Run-phase Evidence (M1 — Template Mirror Cascade)
 
@@ -93,6 +93,24 @@
 
 All 6 checks PASS — sync-phase deliverables verified complete.
 
-## MX-phase Evidence
+## MX-phase Evidence (2026-05-23, [this commit])
 
-Skip candidate — SPEC scope is 5 `.md` files only, no Go code in scope. `/moai mx` would have nothing to annotate.
+| Item | Result | Verification |
+|------|--------|--------------|
+| Run+sync phase Go file count | **0** | `git diff --name-only 0f813831b..26db0dc92 \| grep -E "\.go$" \| wc -l` = 0 |
+| Scope C content | 5 template mirror `.md` files (4 skills + 1 rule in `internal/template/templates/.claude/`) | per spec.md §A.2; identical scope to LEGACY-CLEANUP-001 minus root markdown + docs-site |
+| @MX:NOTE / @MX:ANCHOR / @MX:WARN / @MX:TODO insertion candidates | **0** | `.md` template mirror files do NOT carry code-level annotations (no functions, no fan_in/fan_out analysis applicable, no execution surface) |
+| mx Step decision | **SKIP (justified)** | Per CLAUDE.md §5 MX Tag Integration table — mx phase applies to source code (Go); `.md` files outside scope. Precedent: SPEC-V3R6-LEGACY-CLEANUP-001 mx (commit `2509de913` progress.md §mx-phase Evidence) — `.md`-only SPECs justifiably skip mx |
+| Lifecycle close | plan → run → sync → mx (skip) | all 4 phases closed at 4 commits: `0f813831b` → `da5f9906b` → `26db0dc92` → (this commit) |
+| Frontmatter version bump | NOT applied | per L33 precedent — mx-phase skip does NOT bump version (sync was final semantic bump → 0.2.0) |
+
+## Lessons Captured (post-merge candidates)
+
+- **L28 reinforced 2nd time (2026-05-23 26db0dc92)**: manager-docs sync commit added Sync-phase Evidence section but did NOT update status matrix (sync/mx rows remained TBD). Fix-forward in mx commit. Same pattern as LCL-001 (19bc873ff) — recurring issue. Mitigation: manager-docs spawn prompt MUST explicitly include status matrix update as deliverable; orchestrator post-sync verification MUST `grep -c "TBD" <progress.md>` to catch stale rows.
+- **L45 candidate captured by manager-develop (M1)**: `tail -N` test baseline capture obscures earlier failures; use full output or `grep -E "^(=== RUN|--- (FAIL|PASS):)"` per-test categorization for baseline reliability.
+- **L46 candidate captured by manager-develop (M1)**: SPEC scope discipline against ambient test failures — verify NEW vs pre-existing via per-file `git log --oneline -1 -- <failing-file>` BEFORE attributing to current SPEC.
+
+## Open Follow-up SPEC Candidates (from manager-develop M1 discoveries)
+
+- **SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-002a** (Tier S, similar to LCL-002): `spec-assembly.md` mirror cascade — pre-existing `RULE_TEMPLATE_MIRROR_DRIFT` for `spec-assembly.md` requires separate SPEC.
+- **SPEC-V3R6-SKILLS-AUDIT-RUN-MD-001** (Tier S, audit fix): `internal/template/skills_audit_test.go:96` expects content patterns in `internal/template/templates/.claude/skills/moai/workflows/run.md` removed by PR #1038. Test needs update OR run.md needs additions back.
