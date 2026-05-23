@@ -20,7 +20,7 @@ tags: "template-mirror, cascade, drift-fix, tier-s, sprint-2-p4-3"
 | Phase | Status | Reference |
 |-------|--------|-----------|
 | Plan  | audit-ready | 28f783c2a |
-| Run   | in-progress | <run-commit-sha-placeholder> |
+| Run   | implemented | 5af40acc3 |
 | Sync  | pending | — |
 | Mx    | pending | — |
 
@@ -92,7 +92,7 @@ _Populated by orchestrator after sync. Expected rows:_
 
 - run_complete_at: 2026-05-24T04:30:00Z
 - run_status: implemented
-- run_commit_sha: <run-commit-sha-placeholder>
+- run_commit_sha: 5af40acc3
 
 ## Exemptions / Carry-over
 
