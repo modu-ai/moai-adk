@@ -55,7 +55,7 @@ tier: S
 
 | Item | Status | Note |
 |------|--------|------|
-| Step C SKIP justification | TBD | 0 Go production .go files modified; only test file `main_test.go`; no @MX:ANCHOR/WARN/NOTE/TODO trigger; existing @MX tags (if any) preserved verbatim per §a exemption pattern |
+| Step C SKIP justification | SKIP-JUSTIFIED | 0 Go production .go files modified; only test file `scripts/i18n-validator/main_test.go` touched (4 line edits at 359/360/376/377); no @MX trigger conditions present per orchestrator independent verify: `grep -cE "@MX:(NOTE\|WARN\|ANCHOR\|TODO\|SPEC\|REASON)" scripts/i18n-validator/main_test.go` = `0` (zero pre-existing @MX tags in file means no tags to preserve or update). Per `.claude/rules/moai/workflow/mx-tag-protocol.md` § When to Add Tags: function changes alone do not trigger @MX:NOTE (no magic constant introduced, no unexplained business rule, no exported function lacking godoc, no goroutine without context, no high-complexity branching, no high fan_in API boundary change). LCL-003 4-phase lifecycle precedent applied (mechanical rename, SKIP-justified). |
 
 ## Exemptions / Carry-over
 
