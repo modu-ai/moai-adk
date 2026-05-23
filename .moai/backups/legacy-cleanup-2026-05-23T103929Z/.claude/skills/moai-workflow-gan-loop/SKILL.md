@@ -32,7 +32,7 @@ triggers:
 
 # moai-workflow-gan-loop
 
-Implements the Builder-Evaluator GAN loop for iterative design quality improvement. Absorbed from the retired v2.x design constitution Section 11 and Section 12 (see [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md)). Integrates Sprint Contract Protocol, 4-dimension scoring, stagnation detection, and Evaluator Leniency Prevention.
+Implements the Builder-Evaluator GAN loop for iterative design quality improvement. Absorbed from agency constitution Section 11 and Section 12. Integrates Sprint Contract Protocol, 4-dimension scoring, stagnation detection, and Evaluator Leniency Prevention.
 
 All loop parameters are read from `.moai/config/sections/design.yaml`. Do not hardcode thresholds.
 
@@ -279,6 +279,6 @@ When testing tools are unavailable, fall back to static code analysis only, and 
 
 ---
 
-Source: Absorbed from the retired v2.x design constitution (see [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md); Section 11 GAN Loop Contract, Section 12 Evaluator Leniency Prevention) on 2026-04-20.
+Source: Absorbed from agency constitution (Section 11 GAN Loop Contract, Section 12 Evaluator Leniency Prevention) on 2026-04-20.
 REQ coverage: REQ-SKILL-011, REQ-SKILL-012, REQ-SKILL-012a, REQ-SKILL-013, REQ-SKILL-014, REQ-CONST-004
 Version: 1.0.0

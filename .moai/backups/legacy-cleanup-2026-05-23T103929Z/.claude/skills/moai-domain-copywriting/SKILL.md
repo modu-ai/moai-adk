@@ -32,7 +32,7 @@ triggers:
 
 # moai-domain-copywriting
 
-Brand-aligned copywriting skill for marketing and product websites. Absorbed from the retired v2.x `*-copywriting` capability (see [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md)) at v3.2.0. Enforces anti-AI-slop rules, requires brand voice context, and outputs structured JSON per section.
+Brand-aligned copywriting skill for marketing and product websites. Absorbed from agency-copywriting (v3.2.0). Enforces anti-AI-slop rules, requires brand voice context, and outputs structured JSON per section.
 
 ---
 
@@ -208,6 +208,6 @@ When testimonials or case study data are available in brand context:
 
 ---
 
-Source: Absorbed from the retired v2.x `*-copywriting` capability v3.2.0 (see [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md)) on 2026-04-20.
+Source: Absorbed from agency-copywriting v3.2.0 on 2026-04-20.
 REQ coverage: REQ-SKILL-001, REQ-SKILL-002, REQ-SKILL-003
 Version: 1.0.0

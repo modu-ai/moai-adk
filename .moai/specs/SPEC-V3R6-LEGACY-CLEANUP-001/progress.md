@@ -107,6 +107,33 @@ iter-2 expected plan-auditor recomputation:
 
 iter-2 NOT re-running plan-auditor (per lesson L20 monotonic delta + L25 cosmetic ≤5 orchestrator-direct decision boundary). 4 BLOCKING + 6 SHOULD-FIX all addressed. iter-3 invocation only if user requests independent audit.
 
+## Known Pre-existing State (Out-of-scope)
+
+Run-phase entry pre-flight (2026-05-23 at HEAD `23bd658a2`) captured baseline `go test ./...`:
+- **PRE_PASS = 85** (out of 86 total packages)
+- **1 package FAIL**: `github.com/modu-ai/moai-adk/internal/template` (13 sub-failures)
+
+The 13 failing sub-tests predate this SPEC's run-phase and are orthogonal to scope C (lexical `agency` cleanup in `.md` files, zero `.go` modifications per AC-LCL-009 / REQ-LCL-014). They cannot be caused or fixed by this SPEC.
+
+| Failing Sub-Test | Root Cause (orthogonal) |
+|---|---|
+| `TestLoadEmbeddedCatalog_Success` | catalog `AllEntries() = 50, want 60` (agent catalog count drift) |
+| `TestEmbeddedTemplates_AgentDefinitions` | expects `.claude/agents/harness/` directory in template; per CLAUDE.local.md §24.2 [HARD] this directory MUST NOT exist in template (policy conflict) |
+| `TestAllAgentsInCatalog` | catalog drift (same as above) |
+| `TestAgentFrontmatterAudit` | agent frontmatter audit drift |
+| `TestBackwardCompatibility` | backward-compat catalog check |
+| `TestLateBranchTemplateMirror/spec-assembly.md` | rule-template mirror drift on `spec-assembly.md` |
+| `TestLoadCatalog` | catalog load drift |
+| `TestRuleTemplateMirrorDrift/plan-auditor.md` | rule-template mirror drift |
+| `TestRuleTemplateMirrorDrift/spec-workflow.md` | rule-template mirror drift |
+| `TestSkillsContainPlanAuditGateMarkers/solo_run.md` | plan-audit gate marker check drift |
+| `TestRetirementCompletenessAssertion/manager-tdd_replacement_manager-develop_must_exist` | `manager-tdd` consolidated to `manager-develop` w/ `cycle_type=tdd`; test expects standalone replacement file |
+| `TestRetirementCompletenessAssertion/manager-ddd_replacement_manager-develop_must_exist` | `manager-ddd` consolidated to `manager-develop` w/ `cycle_type=ddd` (same as above) |
+
+AC-LCL-005 disposition: `proceed-delta-only` (orchestrator decision 2026-05-23). The AC verification block computes PRE_PASS vs POST_PASS delta; treat AC-LCL-005 as a delta requirement (delta = 0 — no new regressions introduced). Absolute "all tests PASS" condition is currently unmet baseline-wide and cannot be remediated by this SPEC.
+
+Follow-up SPEC candidate: `SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001` (Tier S/M, separate post-merge) to clear the 13 baseline failures.
+
 ## Notes
 
 ### Plan-phase deviations from spawn prompt §C

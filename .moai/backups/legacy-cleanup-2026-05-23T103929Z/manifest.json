@@ -1,0 +1,157 @@
+[
+  {
+    "bytes": 447324,
+    "path": "CHANGELOG.md",
+    "sha256": "182a7e519f94cb6c19e60cd95258021b6078fed0dec42c20e005b700548381e3"
+  },
+  {
+    "bytes": 27404,
+    "path": "CLAUDE.md",
+    "sha256": "af30723207bb1523554d51ad0214e1fabb4bd0ce13217d68845888bd5901dc39"
+  },
+  {
+    "bytes": 56922,
+    "path": "README.md",
+    "sha256": "80cccc355429c00eae808ca8f3b093113de50bc6941f6740cc93b28866c1486d"
+  },
+  {
+    "bytes": 62672,
+    "path": "README.ko.md",
+    "sha256": "218edbbcc6093b72daf4c2a98ec32a4913221af3bda6e0e95b061d61a861da67"
+  },
+  {
+    "bytes": 64537,
+    "path": "README.ja.md",
+    "sha256": "22ae1282e7631dcbade2431adcf49323c24659521a0efa4f245240387776b28c"
+  },
+  {
+    "bytes": 51734,
+    "path": "README.zh.md",
+    "sha256": "5033bbc38928dcd639c3a5a050f30282a089d47ceebed6917fc9cdd2b91976be"
+  },
+  {
+    "bytes": 9725,
+    "path": ".claude/skills/moai-domain-brand-design/SKILL.md",
+    "sha256": "02fd775882a1c7975435a3f7345207a9905e6bc4077dcf09c4c7e0c8c3f47c2b"
+  },
+  {
+    "bytes": 8242,
+    "path": ".claude/skills/moai-domain-copywriting/SKILL.md",
+    "sha256": "dc69e8164fb514ad6a80be90d20e8026c87aba498ca53fa7095e8906f60fbbc8"
+  },
+  {
+    "bytes": 10903,
+    "path": ".claude/skills/moai-workflow-gan-loop/SKILL.md",
+    "sha256": "c10f0565a46e770633a2adcf7de61f12a2cb97d8cf59d354bcb19558571da288"
+  },
+  {
+    "bytes": 15078,
+    "path": ".claude/skills/moai/workflows/design.md",
+    "sha256": "6ed27ea61739841f8caef7fa1907cf44cb3f3a5216e089b1c648892f0287e940"
+  },
+  {
+    "bytes": 19050,
+    "path": ".claude/rules/moai/design/constitution.md",
+    "sha256": "0519f5e4e1cedd83538e4f3eeab5e4c3d5b4c2a01c1e36d3fd1366a4005eefde"
+  },
+  {
+    "bytes": 2200,
+    "path": "docs-site/content/ko/design/_index.md",
+    "sha256": "48b51941b3b4f85958194a6960d31a64afa95658372835795e52c474feb40d49"
+  },
+  {
+    "bytes": 7586,
+    "path": "docs-site/content/ko/design/gan-loop.md",
+    "sha256": "26b8174a35dd0caff0db6c66c8706fd09131b2b957b4b903f6cebb1564fc1a36"
+  },
+  {
+    "bytes": 3140,
+    "path": "docs-site/content/ko/design/getting-started.md",
+    "sha256": "c2e36769f761ebed3875d2e4767df21b901e968fcf94c5e90805e507bd06d084"
+  },
+  {
+    "bytes": 7240,
+    "path": "docs-site/content/ko/design/migration-guide.md",
+    "sha256": "43fa6f70d9820d72963ef5e96618728b7629b6d988ee6ff4d272d2824c473236"
+  },
+  {
+    "bytes": 4039,
+    "path": "docs-site/content/ko/workflow-commands/moai-design.md",
+    "sha256": "71ae84ef93e9b98c32d8d27e6ed2296f7536675edf4a8e312a0d1530fee706d3"
+  },
+  {
+    "bytes": 1962,
+    "path": "docs-site/content/en/design/_index.md",
+    "sha256": "652c0b8ee89882e560811cc54204f7e30c835ddc588b2b2d8dc8c20488717888"
+  },
+  {
+    "bytes": 7265,
+    "path": "docs-site/content/en/design/gan-loop.md",
+    "sha256": "b60750772e2230eb6abaccd06aa5dac0c09e7a87707101ef6995398ae1f05a09"
+  },
+  {
+    "bytes": 2737,
+    "path": "docs-site/content/en/design/getting-started.md",
+    "sha256": "afccf89b868e1966589027e2053682b9f4029a80ff253fd178fa5d4282d3a9b9"
+  },
+  {
+    "bytes": 6280,
+    "path": "docs-site/content/en/design/migration-guide.md",
+    "sha256": "67fc6cbf4b70af3e886ced281a2a2275dda7d9a766d11044655778be0308df73"
+  },
+  {
+    "bytes": 4039,
+    "path": "docs-site/content/en/workflow-commands/moai-design.md",
+    "sha256": "71ae84ef93e9b98c32d8d27e6ed2296f7536675edf4a8e312a0d1530fee706d3"
+  },
+  {
+    "bytes": 2352,
+    "path": "docs-site/content/ja/design/_index.md",
+    "sha256": "1d2b6a0bb57fabeb93a2aa8536602a83df3c7e4f716374882a7c640331f5f7e2"
+  },
+  {
+    "bytes": 4467,
+    "path": "docs-site/content/ja/design/gan-loop.md",
+    "sha256": "84458912e655f1ee87797e6fbe877c99178cef9fa6686e493b36570cfbdbe051"
+  },
+  {
+    "bytes": 3394,
+    "path": "docs-site/content/ja/design/getting-started.md",
+    "sha256": "a9dbeec729f5a2d6525d486243a171f09da149d42127baaed70e7cdf060bf8e1"
+  },
+  {
+    "bytes": 6175,
+    "path": "docs-site/content/ja/design/migration-guide.md",
+    "sha256": "fd24d58f6bde50da9b4eab854dd75a5c6a649773c24dba94bfd381df9f11681b"
+  },
+  {
+    "bytes": 4039,
+    "path": "docs-site/content/ja/workflow-commands/moai-design.md",
+    "sha256": "71ae84ef93e9b98c32d8d27e6ed2296f7536675edf4a8e312a0d1530fee706d3"
+  },
+  {
+    "bytes": 1778,
+    "path": "docs-site/content/zh/design/_index.md",
+    "sha256": "a1bc0796ab79a59290c362a5844ceb189d0896ca285721d4596642d8d73d292d"
+  },
+  {
+    "bytes": 3624,
+    "path": "docs-site/content/zh/design/gan-loop.md",
+    "sha256": "8ef916511ffadd3b084a5413948bc69eb9ccbb1a592dfe1e0adcab2e8abab6bf"
+  },
+  {
+    "bytes": 2479,
+    "path": "docs-site/content/zh/design/getting-started.md",
+    "sha256": "1d8a120ad34045e04b352ff17acee19f716dc5d9dd272fa43e963e412895ef19"
+  },
+  {
+    "bytes": 4854,
+    "path": "docs-site/content/zh/design/migration-guide.md",
+    "sha256": "7f0f69f994288c1ee3859be5eb56620063f5f52b95977fdde09142c9a25ff682"
+  },
+  {
+    "bytes": 4039,
+    "path": "docs-site/content/zh/workflow-commands/moai-design.md",
+    "sha256": "71ae84ef93e9b98c32d8d27e6ed2296f7536675edf4a8e312a0d1530fee706d3"
+  }
+]
