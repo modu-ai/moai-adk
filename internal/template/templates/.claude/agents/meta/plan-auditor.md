@@ -142,6 +142,93 @@ After completing your initial audit and drafting verdicts, you MUST run a second
 
 Document this second-pass result in the report under "Chain-of-Verification Pass". If new defects are found, add them to the defect list and adjust verdicts accordingly.
 
+## Verification Execution Mandate
+
+[ZONE:Evolvable] [HARD] All read-only verification commands invoked during audit MUST follow this tool-selection + batching priority order. Origin: SPEC-V3R6-CLI-AUDIT-001 plan-auditor audit (2026-05-23) consumed 53 tool calls × ~5s avg = 4m57s wall-time; this mandate targets ~1m30s (65-70% reduction) via Grep/Glob native preference + multi-tool batching.
+
+### Tool Selection Priority
+
+1. **Grep tool** for content search — preferred over Bash `grep`/`rg`/`ag`. Lower tool-call overhead (~0.5-1s vs ~3-5s), structured output (file:line built-in), supports multiline mode + `-A`/`-B` context lines. Internally uses ripgrep.
+2. **Glob tool** for file discovery — preferred over Bash `find`/`ls`. Same rationale; native pattern matching, recursive by default.
+3. **Read tool** for file content — preferred over Bash `cat`/`head`/`tail`. Use `offset`/`limit` for targeted sections.
+4. **Bash tool** ONLY for:
+   - Compound shell pipelines (awk-bounded extraction, `grep | sort | uniq`, `git log --format` + `head`)
+   - CLI tools without native Grep/Glob equivalent (`git`, `gh`, `jq`, `wc -l` on dynamically-substituted shell lists)
+   - Cases where structured output requires shell transformation (e.g., per-SPEC-ID status loop with shell variable expansion)
+
+### Mandatory Parallel Batching
+
+[ZONE:Evolvable] [HARD] Independent read-only verifications MUST be issued as a multi-tool batch within a single response turn. Per `agent-common-protocol.md` § Parallel Execution and `verification-batch-pattern.md`, serial across-turns issuance multiplies round-trip latency (~5s round-trip × N calls).
+
+### Canonical 4-Group Audit Verification Batch
+
+Organize audit verifications into these 4 logical groups, issuing each group as a single-turn parallel batch:
+
+#### Group A — Frontmatter + REQ/AC Structural Checks (3-5 parallel calls)
+
+```
+Grep(pattern: "^### REQ-", path: ".moai/specs/<SPEC-ID>/spec.md", output_mode: "content", -n: true)
+Grep(pattern: "^## AC-",   path: ".moai/specs/<SPEC-ID>/acceptance.md", output_mode: "content", -n: true)
+Grep(pattern: "^(id|version|status|created|updated|priority|phase|module|lifecycle|tags|tier):",
+     path: ".moai/specs/<SPEC-ID>/spec.md", output_mode: "content")
+Grep(pattern: "AC-[A-Z]+-", path: ".moai/specs/<SPEC-ID>/plan.md", output_mode: "count")
+```
+
+#### Group B — Document Structure + Milestone Enumeration (2-3 parallel calls)
+
+```
+Grep(pattern: "^### M[0-9]+", path: ".moai/specs/<SPEC-ID>/plan.md", output_mode: "content")
+Grep(pattern: "^## §[A-Z0-9]", path: ".moai/specs/<SPEC-ID>/spec.md", output_mode: "content")
+Read(file_path: ".moai/specs/<SPEC-ID>/spec.md", limit: 50)   # head for HISTORY/WHY context
+```
+
+#### Group C — Cross-SPEC Reconciliation (D7) Discovery (2 parallel + per-SID batch)
+
+```
+Grep(pattern: "SPEC-([A-Z][A-Z0-9]+-)+[0-9]+", path: ".moai/specs/<SPEC-ID>/spec.md",
+     output_mode: "content")
+Glob(pattern: ".moai/specs/SPEC-*/spec.md")
+
+# Then per discovered SID, multi-Bash parallel batch (CLI tool needs shell substitution):
+Bash("grep '^status:' .moai/specs/SPEC-X/spec.md")
+Bash("grep '^status:' .moai/specs/SPEC-Y/spec.md")
+Bash("grep '^status:' .moai/specs/SPEC-Z/spec.md")
+```
+
+#### Group D — Code Cross-Reference (D8 syscall + audit-specific) (varies)
+
+For dimensions requiring code-side verification (D8 syscall detection, AC verification of code-side claims, baseline diff check):
+
+```
+Grep(pattern: "syscall",     path: ".moai/specs/<SPEC-ID>/spec.md", output_mode: "count")
+Grep(pattern: "AddCommand",  path: "internal/cli/", type: "go", output_mode: "count")
+Bash("awk '/^### §X.Y/,/^### §X\\.[Z]|^## /' file.md | grep -c '^| '")   # awk-bounded extraction
+```
+
+### ast-grep Advisory (NOT Mandated)
+
+ast-grep provides structural code search. Its value to plan-auditor is **LIMITED**: spec.md/plan.md/acceptance.md are markdown, not Go code. Use ast-grep ONLY when:
+
+- Audit subject is Go source code cross-reference (e.g., AC verification of Cobra `AddCommand` registration tree → ast-grep `cmd.AddCommand($_)` is faster + safer than text grep on large codebases)
+- Audit dimension requires Go AST verification (rare in plan-phase audit; more common in evaluator-active post-implementation review)
+
+For pure markdown audit (spec/plan/acceptance), Grep tool with regex is faster + simpler — ast-grep overhead (~100-200ms AST parsing) is not justified.
+
+### Anti-Patterns (Verification Execution)
+
+- **AP-VEM-001 — Serial Bash across turns**: 8 sequential Bash grep calls (one per dimension across 8 turns) adds ~40s wall-time vs 1 turn parallel batch. Use Group A-D batching.
+- **AP-VEM-002 — Bash `grep -rn` when Grep tool suffices**: Adds ~2-3s overhead per call vs Grep tool's ~0.5-1s. Same result.
+- **AP-VEM-003 — Pseudo-batching via `&&` chaining**: Short-circuits on first non-zero exit; structured per-command output lost. Use orchestrator-level multi-Bash instead.
+- **AP-VEM-004 — ast-grep on markdown spec files**: Wrong tool. Markdown has no AST suitable for structural matching of REQ/AC patterns. Text grep is faster + sufficient.
+
+### Cross-References
+
+- `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution (HARD multi-tool batching obligation + 7-item canonical example)
+- `.claude/rules/moai/workflow/verification-batch-pattern.md` (Verification Class Taxonomy + grouping heuristic)
+- SPEC-V3R6-CLI-AUDIT-001 plan-auditor audit (2026-05-23) — origin meta-analysis
+
+---
+
 ## Audit Checklist
 
 Execute each check in order. Mark each item PASS, FAIL, or N/A with evidence.

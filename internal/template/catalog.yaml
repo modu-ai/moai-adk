@@ -86,7 +86,7 @@ catalog:
             - name: moai-workflow-worktree
               tier: core
               path: templates/.claude/skills/moai-workflow-worktree/
-              hash: 8d61561dbac941bab8693b3c33a69a3bb4c5885a5d23a150f2f3469a2f59f396
+              hash: b2f60abfd9566da4164d73356034b0a1d1dd4bd4890111859a1af9d84825ecbc
               version: 1.0.0
             - name: moai-domain-ideation
               tier: core
@@ -157,7 +157,7 @@ catalog:
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/meta/plan-auditor.md
-              hash: 9145555304e9992559c3df73b525a1330b03a195a37906acbee268ce4be73a20
+              hash: 23b8d17c943e86b9549eda8669530467855c9344c589c40653c50d92c9d3baa7
               version: 1.0.0
             - name: researcher
               tier: core
@@ -214,12 +214,12 @@ catalog:
                 - name: moai-domain-brand-design
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-domain-brand-design/
-                  hash: 02fd775882a1c7975435a3f7345207a9905e6bc4077dcf09c4c7e0c8c3f47c2b
+                  hash: 5185d309df1fd0ef9265b87f9952207ed297428601446c1397360c1386577421
                   version: 1.0.0
                 - name: moai-domain-copywriting
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-domain-copywriting/
-                  hash: dc69e8164fb514ad6a80be90d20e8026c87aba498ca53fa7095e8906f60fbbc8
+                  hash: e00607b138afe71fab38dfb43026ea1d3794c51d946cc266b0711eb2d28ec1af
                   version: 1.0.0
                 - name: moai-domain-design-handoff
                   tier: optional-pack:design
@@ -234,7 +234,7 @@ catalog:
                 - name: moai-workflow-gan-loop
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-workflow-gan-loop/
-                  hash: c10f0565a46e770633a2adcf7de61f12a2cb97d8cf59d354bcb19558571da288
+                  hash: e57bff5ccc8cf403fb96d9e0967e6f93c7d9f56146765a245909f3d1d3a2fde5
                   version: 1.0.0
             agents: []
         devops:
