@@ -12,7 +12,7 @@
 - Expected line 34-39 sha256 (Phase 0 / M0 pre-flight, run-phase 시작 시 기록):
 
 ```
-expected_line_34_39_sha256: PLACEHOLDER_PHASE_0_PRE_FLIGHT_FILLS_THIS_LINE
+expected_line_34_39_sha256: 044c70f72f577a5cc5ec0a9df45b948bca134d131f2efb2deca3d84b397a77f7
 ```
 
 (Phase 0 pre-flight 는 위 fenced block 내 라인을 실제 64-hex sha256 으로 교체. AC-CHL-004 의 `grep -E '^expected_line_34_39_sha256:' progress.md | awk '{print $2}'` 가 그 라인의 두 번째 토큰을 추출하여 검증.)

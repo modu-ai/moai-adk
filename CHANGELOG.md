@@ -62,8 +62,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **CI baseline drift cleanup — lint 27→0 + TestStatus golden + race fix** (SPEC-V3R6-CI-BASELINE-DRIFT-001 Tier S, commits `fc9ce6822..b159cca36`): Pre-existing baseline (lint 27 + TestStatus golden stale + ConfigManager race) 정리. Lint 27 resolve: errcheck 16 (`os.Remove` + `defer Close` unhandled) / ineffassign 4 / staticcheck 5 / unused 2. TestStatus golden update: v2.17.0 → v3.0.0-rc1 timestamp. ConfigManager race fix: `sync.Mutex` guard on shared `Config` map writes (M3 `internal/quality/gate.go`). AC 8/8 PASS. 5 files +247/-169.
 
-- **Paste-ready resume auto-persistence — session_end integration** (SPEC-V3R6-SESSION-HANDOFF-AUTO-001 Tier S, commits `eaff5f272..531492272`): `.moai/state/session-handoff.json` 자동 저장 (session_end hook) via NEW `internal/handoff/{package,atomic_write,parser}.go`. Resume message 구조 (Block 1-6: `ultrathink` + `applied lessons` + `전제 검증` + `실행` + `머지 후` + `감정`) 자동 생성. `pendingPath` 추적 (최근 SPEC 경로 감지) + parser combinator (`parsePreamble` / `parseBlock`). Atomic write: temp file → rename (race-safe on POSIX). Supersede marker: old session path `~/.claude/projects/{hash}/session/` 에 `.supersede` 파일 (자동 감지). NEW `internal/handoff/persist_test.go` 15 functions race-safe. AC 10/10 PASS. 10 files +556/-3.
-
 ### Changed (Hook opt-in context)
 
 - **3 observability hook 계열 default behavior: always-active → opt-in disabled**: v3.0 major bump 시그널, harness 학습 파이프라인이 telemetry에 의존하는 사용자는 upgrade 후 `system.yaml` `hook.opt_in.enabled: true` 명시 설정 필요. Sibling SPEC `SPEC-V3R6-HOOK-ASYNC-EXPAND-001` (Sprint 2 R2 partner)이 HOI 머지 후 진입하며 `TaskCreated`/`Notification` async stanzas를 `hook.opt_in.enabled == true` 조건부로 래핑.
