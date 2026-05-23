@@ -12,8 +12,13 @@
 package worktree
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -207,6 +212,293 @@ func TestLaunchP3_LookPathFails(t *testing.T) {
 	}
 	if execCalled {
 		t.Errorf("syscallExecFn must NOT be called when lookPathFn fails")
+	}
+}
+
+// =============================================================================
+// M3 — Pattern P1/P2 tmux window spawn tests
+// =============================================================================
+//
+// These tests inject `tmuxNewWindowFn` to capture the cwd/command arguments
+// that production code would otherwise pass to `tmux new-window`. The injection
+// seam lets us assert argv correctness, pane_id format, and the fallback
+// behavior on tmux failure without depending on an actual tmux server.
+
+// TestLaunchP1_CG_TmuxGLMWindow verifies AC-WTL-001: when --team is set inside
+// a tmux session with CG mode active, launchP1P2 must spawn a new tmux window
+// with cwd=worktree-path and command `moai glm`. The pane_id returned by tmux
+// must be propagated to the caller for swarm registry use (M4).
+//
+// REQ-WTL-001: P1 dispatch = tmux + CG → moai glm window.
+func TestLaunchP1_CG_TmuxGLMWindow(t *testing.T) {
+	origFn := tmuxNewWindowFn
+	defer func() { tmuxNewWindowFn = origFn }()
+
+	var capturedCwd, capturedCommand string
+	tmuxNewWindowFn = func(cwd, command string) (string, error) {
+		capturedCwd = cwd
+		capturedCommand = command
+		return "%5", nil
+	}
+
+	wt := t.TempDir()
+	cfg := TeamLaunchConfig{
+		Pattern:      PatternP1TmuxGLM,
+		WorktreePath: wt,
+		SpecID:       "SPEC-WTL-DEMO-001",
+		Branch:       "feature/SPEC-WTL-DEMO-001",
+		LLM:          "glm",
+	}
+	paneID, err := launchP1P2(cfg)
+	if err != nil {
+		t.Fatalf("launchP1P2 returned unexpected error: %v", err)
+	}
+	if paneID != "%5" {
+		t.Errorf("paneID = %q, want %q", paneID, "%5")
+	}
+	if capturedCwd != wt {
+		t.Errorf("captured cwd = %q, want %q", capturedCwd, wt)
+	}
+	if !strings.Contains(capturedCommand, "moai glm") {
+		t.Errorf("captured command = %q, want substring %q", capturedCommand, "moai glm")
+	}
+	if strings.Contains(capturedCommand, "moai cc") {
+		t.Errorf("captured command = %q must NOT contain %q", capturedCommand, "moai cc")
+	}
+}
+
+// TestLaunchP2_NoCG_TmuxCCWindow verifies AC-WTL-002: when --team is set
+// inside a tmux session but CG mode is NOT active, launchP1P2 must spawn a
+// new tmux window with cwd=worktree-path and command `moai cc`.
+//
+// REQ-WTL-002: P2 dispatch = tmux + CC → moai cc window.
+func TestLaunchP2_NoCG_TmuxCCWindow(t *testing.T) {
+	origFn := tmuxNewWindowFn
+	defer func() { tmuxNewWindowFn = origFn }()
+
+	var capturedCwd, capturedCommand string
+	tmuxNewWindowFn = func(cwd, command string) (string, error) {
+		capturedCwd = cwd
+		capturedCommand = command
+		return "%7", nil
+	}
+
+	wt := t.TempDir()
+	cfg := TeamLaunchConfig{
+		Pattern:      PatternP2TmuxCC,
+		WorktreePath: wt,
+		SpecID:       "SPEC-WTL-DEMO-002",
+		Branch:       "feature/SPEC-WTL-DEMO-002",
+		LLM:          "cc",
+	}
+	paneID, err := launchP1P2(cfg)
+	if err != nil {
+		t.Fatalf("launchP1P2 returned unexpected error: %v", err)
+	}
+	if paneID != "%7" {
+		t.Errorf("paneID = %q, want %q", paneID, "%7")
+	}
+	if capturedCwd != wt {
+		t.Errorf("captured cwd = %q, want %q", capturedCwd, wt)
+	}
+	if !strings.Contains(capturedCommand, "moai cc") {
+		t.Errorf("captured command = %q, want substring %q", capturedCommand, "moai cc")
+	}
+	if strings.Contains(capturedCommand, "moai glm") {
+		t.Errorf("captured command = %q must NOT contain %q", capturedCommand, "moai glm")
+	}
+}
+
+// TestLaunchP1P2_PaneSpawnFailure_FallbackHandoff verifies AC-WTL-007: when
+// tmux new-window returns a non-zero exit, launchP1P2 returns a wrapped error
+// containing "tmux" so the caller (dispatchTeamLaunch in new.go) can fall
+// back to the P4 handoff path with a stderr notice.
+//
+// REQ-WTL-007: Pane spawn failure → P4 fallback.
+func TestLaunchP1P2_PaneSpawnFailure_FallbackHandoff(t *testing.T) {
+	origFn := tmuxNewWindowFn
+	defer func() { tmuxNewWindowFn = origFn }()
+
+	tmuxNewWindowFn = func(cwd, command string) (string, error) {
+		return "", errors.New("tmux: no server running on /tmp/tmux-1000/default")
+	}
+
+	cfg := TeamLaunchConfig{
+		Pattern:      PatternP1TmuxGLM,
+		WorktreePath: t.TempDir(),
+		SpecID:       "SPEC-WTL-DEMO-003",
+		LLM:          "glm",
+	}
+	paneID, err := launchP1P2(cfg)
+	if err == nil {
+		t.Fatalf("launchP1P2 should return error when tmux fails; got paneID=%q", paneID)
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "tmux") {
+		t.Errorf("error message = %q, want substring %q", err.Error(), "tmux")
+	}
+	if paneID != "" {
+		t.Errorf("paneID on failure = %q, want empty", paneID)
+	}
+}
+
+// TestLaunchP1P2_PaneIDCaptured verifies that the pane_id returned by tmux
+// matches the canonical `%N` format (tmux convention) and is propagated to
+// the caller. This pane_id is the swarm registry's "success signal" for
+// P1/P2 entries (M4 REQ-WTL-008).
+func TestLaunchP1P2_PaneIDCaptured(t *testing.T) {
+	origFn := tmuxNewWindowFn
+	defer func() { tmuxNewWindowFn = origFn }()
+
+	tmuxNewWindowFn = func(cwd, command string) (string, error) {
+		return "%17", nil
+	}
+
+	cfg := TeamLaunchConfig{
+		Pattern:      PatternP1TmuxGLM,
+		WorktreePath: t.TempDir(),
+		SpecID:       "SPEC-WTL-DEMO-004",
+		LLM:          "glm",
+	}
+	paneID, err := launchP1P2(cfg)
+	if err != nil {
+		t.Fatalf("launchP1P2 returned unexpected error: %v", err)
+	}
+	paneIDPattern := regexp.MustCompile(`^%[0-9]+$`)
+	if !paneIDPattern.MatchString(paneID) {
+		t.Errorf("paneID = %q does not match ^%%[0-9]+$ (tmux pane_id format)", paneID)
+	}
+}
+
+// TestLaunchP1P2_SettingsLocalJSON_ByteIdentical verifies AC-WTL-001 and
+// AC-WTL-002 sub-assertion: launchP1P2 must NEVER mutate settings.local.json
+// (R7 HARD constraint — settings.local.json is runtime-managed by `moai cg`
+// and SessionStart hook, not by team launch).
+//
+// The test creates a settings.local.json, hashes it before launch, runs
+// launchP1P2 with a tmux fake, and asserts the file's SHA-256 is unchanged.
+func TestLaunchP1P2_SettingsLocalJSON_ByteIdentical(t *testing.T) {
+	origFn := tmuxNewWindowFn
+	defer func() { tmuxNewWindowFn = origFn }()
+
+	tmuxNewWindowFn = func(cwd, command string) (string, error) {
+		return "%9", nil
+	}
+
+	// Prepare a settings.local.json with realistic content (teammateMode +
+	// env vars). The HARD constraint is: launchP1P2 must not write to this
+	// file at all.
+	wt := t.TempDir()
+	settingsDir := filepath.Join(wt, ".claude")
+	if err := os.MkdirAll(settingsDir, 0o755); err != nil {
+		t.Fatalf("mkdir settings dir: %v", err)
+	}
+	settingsPath := filepath.Join(settingsDir, "settings.local.json")
+	originalContent := []byte(`{
+  "teammateMode": "tmux",
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "sk-fake-token-do-not-mutate",
+    "ANTHROPIC_BASE_URL": "https://api.fake.example.com"
+  }
+}
+`)
+	if err := os.WriteFile(settingsPath, originalContent, 0o644); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	hashFile := func(path string) string {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read settings: %v", err)
+		}
+		sum := sha256.Sum256(data)
+		return hex.EncodeToString(sum[:])
+	}
+
+	before := hashFile(settingsPath)
+
+	cfg := TeamLaunchConfig{
+		Pattern:      PatternP1TmuxGLM,
+		WorktreePath: wt,
+		SpecID:       "SPEC-WTL-DEMO-005",
+		LLM:          "glm",
+	}
+	if _, err := launchP1P2(cfg); err != nil {
+		t.Fatalf("launchP1P2 returned unexpected error: %v", err)
+	}
+
+	after := hashFile(settingsPath)
+	if before != after {
+		t.Errorf("settings.local.json mutated by launchP1P2: before=%q, after=%q", before, after)
+	}
+}
+
+// TestLaunchP1P2_GLMDriftFallback_P2 verifies REQ-WTL-009 drift case
+// propagation into M3: when CG mode is configured (teammateMode=tmux) but
+// the GLM env vars are missing, IsCGMode returns false (with stderr warning).
+// dispatchTeamLaunch then selects PatternP2TmuxCC and constructs a
+// TeamLaunchConfig with LLM="cc" — NOT "glm". This test verifies that, given
+// such a config (P2 + LLM=cc), launchP1P2 dispatches `moai cc` even though
+// the original user intent (per settings.local.json) was GLM.
+//
+// REQ-WTL-009: teammateMode=tmux + no GLM env → P2 fallback (cc, not glm).
+func TestLaunchP1P2_GLMDriftFallback_P2(t *testing.T) {
+	origFn := tmuxNewWindowFn
+	defer func() { tmuxNewWindowFn = origFn }()
+
+	var capturedCommand string
+	tmuxNewWindowFn = func(cwd, command string) (string, error) {
+		capturedCommand = command
+		return "%11", nil
+	}
+
+	// Simulate the post-dispatchTeamLaunch state: P2 was chosen because
+	// IsCGMode returned false (drift case), LLM was set to "cc" not "glm".
+	cfg := TeamLaunchConfig{
+		Pattern:      PatternP2TmuxCC,
+		WorktreePath: t.TempDir(),
+		SpecID:       "SPEC-WTL-DEMO-006",
+		Branch:       "feature/SPEC-WTL-DEMO-006",
+		LLM:          "cc", // drift fallback already applied upstream
+	}
+	if _, err := launchP1P2(cfg); err != nil {
+		t.Fatalf("launchP1P2 returned unexpected error: %v", err)
+	}
+	if !strings.Contains(capturedCommand, "moai cc") {
+		t.Errorf("captured command = %q must contain %q (drift fallback)", capturedCommand, "moai cc")
+	}
+	if strings.Contains(capturedCommand, "moai glm") {
+		t.Errorf("captured command = %q must NOT contain %q (drift means no GLM)", capturedCommand, "moai glm")
+	}
+}
+
+// TestLaunchP1P2_EmptyLLMDefaultsToCC verifies the defensive `llm == ""`
+// guard: if a TeamLaunchConfig is constructed without setting LLM (e.g., by
+// a future caller that bypasses dispatchTeamLaunch), launchP1P2 defaults to
+// `moai cc` rather than producing an empty command string like `moai`.
+//
+// This is a defense-in-depth guarantee — dispatchTeamLaunch always populates
+// cfg.LLM today, so this branch is unreachable in normal flow.
+func TestLaunchP1P2_EmptyLLMDefaultsToCC(t *testing.T) {
+	origFn := tmuxNewWindowFn
+	defer func() { tmuxNewWindowFn = origFn }()
+
+	var capturedCommand string
+	tmuxNewWindowFn = func(cwd, command string) (string, error) {
+		capturedCommand = command
+		return "%99", nil
+	}
+
+	cfg := TeamLaunchConfig{
+		Pattern:      PatternP2TmuxCC,
+		WorktreePath: t.TempDir(),
+		SpecID:       "SPEC-WTL-DEMO-007",
+		// LLM intentionally omitted — defensive default should kick in.
+	}
+	if _, err := launchP1P2(cfg); err != nil {
+		t.Fatalf("launchP1P2 returned unexpected error: %v", err)
+	}
+	if !strings.Contains(capturedCommand, "moai cc") {
+		t.Errorf("captured command = %q must default to %q when cfg.LLM is empty", capturedCommand, "moai cc")
 	}
 }
 

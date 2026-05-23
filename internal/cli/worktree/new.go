@@ -272,12 +272,23 @@ func dispatchTeamLaunch(cmd *cobra.Command, repoRoot, specID, branchName, wtPath
 		return launchP3(cfg)
 
 	case PatternP1TmuxGLM, PatternP2TmuxCC:
-		// M3 territory — tmux pane spawn for P1 (moai glm) and P2 (moai cc)
-		// lands in M3 alongside the swarm registry. For now, emit an info
-		// notice and degrade to handoff so users still receive a working
-		// paste-ready command during the M2 → M3 transition.
-		_, _ = fmt.Fprintln(stderr, "info: --team tmux pane spawn is implemented in M3 (this build emits handoff guidance instead)")
-		printHandoff(out, cfg)
+		// M3 implementation — spawn a new tmux window in the caller's current
+		// tmux session. On failure (tmux server down, syntax error, etc.) we
+		// degrade to the P4 handoff path with a stderr notice (REQ-WTL-007).
+		// Worktree creation already succeeded, so exit code remains 0 either
+		// way.
+		paneID, launchErr := launchP1P2(cfg)
+		if launchErr != nil {
+			// REQ-WTL-007: pane spawn failure → P4 handoff fallback. The
+			// "tmux pane spawn failed" substring is the verification anchor
+			// for AC-WTL-007's stderr assertion.
+			printHandoffWithError(out, stderr, cfg, fmt.Sprintf("tmux pane spawn failed: %v", launchErr))
+			return nil
+		}
+		// Success: report the captured pane_id so the user can switch to the
+		// new window (tmux: C-b w, or use `tmux select-window -t <pane>`).
+		// The pane_id will also feed the M4 swarm registry entry.
+		_, _ = fmt.Fprintf(out, "tmux window spawned in pane %s — running `moai %s` in %s\n", paneID, cfg.LLM, cfg.WorktreePath)
 		return nil
 	}
 	// Defensive: decidePattern returns one of the four constants above; an
