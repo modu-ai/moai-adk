@@ -81,6 +81,8 @@ This SPEC has **4 milestones (M1-M4)**. Each milestone produces a discrete secti
 - `grep -c "^| \`moai " .moai/reports/cli-audit/audit-*.md` returns ≥40 (one table row per subcommand)
 - `grep "Total subcommands:" .moai/reports/cli-audit/audit-*.md` returns 1 line with positive count
 
+**Satisfies AC**: AC-CLA-001 (subcommand inventory ≥40 entries with structured fields)
+
 **Risk**: LOW. Pure read + table writing. No code touched.
 
 ---
@@ -105,6 +107,7 @@ This SPEC has **4 milestones (M1-M4)**. Each milestone produces a discrete secti
   - **active**: ≥1 reference in F (docs-site) OR ≥2 references across A/B/C/D
   - **internal-only**: References only in A/B (hooks-local + hooks-template) with zero in C/D/F
   - **dead-suspect**: Zero references in A/B/C/D/F (self-references in command file excluded)
+  - **Sub-subcommand handling** (e.g., `moai hook X`): classify the *root* + *sub* full path (`moai hook X`), NOT the bare sub-subcommand name. References to the bare sub-subcommand name (e.g., `db-schema-sync` without `moai hook` prefix) MAY indicate internal hook routing, not user-facing dead command. Cross-check with corresponding SPEC-{ID} status when sub-subcommand has an associated SPEC (e.g., `db-schema-sync` → SPEC-DB-SYNC-001 status check before dead-suspect classification).
 - T2.3: Build classification table at `## §2`:
   - Column 1: Full command path
   - Column 2: Classification (active/internal-only/dead-suspect)
@@ -120,6 +123,8 @@ This SPEC has **4 milestones (M1-M4)**. Each milestone produces a discrete secti
 - `grep -c "| dead-suspect |" .moai/reports/cli-audit/audit-*.md` returns ≥1
 - `grep "### §2.1 Dead-Suspect Candidates" .moai/reports/cli-audit/audit-*.md` returns 1 match
 - Every M1 subcommand appears as a classification row (count parity: M1 subcommands == M2 classified entries)
+
+**Satisfies AC**: AC-CLA-002 (every inventoried subcommand classified with grep evidence + harness-observe family confirmed/refuted)
 
 **Risk**: MEDIUM. False-positive dead classification = high cost (Sprint 7 mistakenly retires a used command). Mitigation: require ≥2 negative evidence sources + user review at run-phase completion.
 
@@ -153,7 +158,7 @@ This SPEC has **4 milestones (M1-M4)**. Each milestone produces a discrete secti
   - `moai init` template selection interacts with `moai cc -p` profile choice
   - `moai update -c` (config-only) interacts with profile-managed config sections
   - Sprint 7 unification opportunities surface
-- T3.5: Mermaid TD-only diagram (per CLAUDE.local.md §17 docs-site Mermaid rule, applied here for consistency) showing the 3-way relationship between init/update/profile commands
+- T3.5: Mermaid diagram (TD or TB direction recommended, not enforced — local research report scope, distinct from docs-site Mermaid TD-only rule which applies only to `docs-site/` per CLAUDE.local.md §17 — see `.moai/docs/docs-site-i18n-rules.md`) showing the 3-way relationship between init/update/profile commands
 - T3.6: Commit `plan(SPEC-V3R6-CLI-AUDIT-001): M3 — integration map`
 
 **Verification (binary)**:
@@ -162,6 +167,8 @@ This SPEC has **4 milestones (M1-M4)**. Each milestone produces a discrete secti
 - `grep "## §3.3 moai cc -p profile system" .moai/reports/cli-audit/audit-*.md` returns 1
 - `grep "## §3.4 Cross-cutting" .moai/reports/cli-audit/audit-*.md` returns 1
 - `grep '```mermaid' .moai/reports/cli-audit/audit-*.md` returns ≥1
+
+**Satisfies AC**: AC-CLA-003 (integration map 4 sub-sections + 10×10 flag matrix + mermaid diagram)
 
 **Risk**: MEDIUM. Integration map complexity grows with command count. Mitigation: 4 sub-sections (§3.1-§3.4) decompose work; mermaid keeps cross-reference visual.
 
@@ -204,6 +211,8 @@ This SPEC has **4 milestones (M1-M4)**. Each milestone produces a discrete secti
 - `grep "## §5 Methodology Appendix" .moai/reports/cli-audit/audit-*.md` returns 1
 - `grep "^status: implemented" .moai/specs/SPEC-V3R6-CLI-AUDIT-001/spec.md` returns 1
 - `grep "^version: \"0.2.0\"" .moai/specs/SPEC-V3R6-CLI-AUDIT-001/spec.md` returns 1
+
+**Satisfies AC**: AC-CLA-004 (§4 Sprint 7 baseline 4 sub-sections + 5-section outline directly consumable) + AC-CLA-005 (spans all M1-M4 — zero protected-path diff verified at completion) + AC-CLA-006 (§5 methodology appendix reproducibility — grep commands + files scanned + metadata)
 
 **Risk**: LOW. M4 is consolidation + frontmatter sync, well-understood pattern from prior Sprint 2 SPECs.
 

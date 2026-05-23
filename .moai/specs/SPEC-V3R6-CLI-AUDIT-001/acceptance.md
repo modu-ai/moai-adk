@@ -121,19 +121,21 @@ grep "^### §3.3 moai cc -p profile system" .moai/reports/cli-audit/audit-*.md |
 grep "^### §3.4 Cross-cutting" .moai/reports/cli-audit/audit-*.md | wc -l
 # Expected: 1
 
-# 10×10 flag matrix presence (10 flag names from spec.md §2 REQ-CLA-003 listed)
-for flag in check shell-env config force yes templates-only binary dry-run no-hooks verbose; do
-  grep -c "$flag" .moai/reports/cli-audit/audit-*.md
-done
-# Expected: each grep returns ≥1 (all 10 flags documented in §3.2 matrix)
+# 10×10 flag matrix structural row count (within §3.2 sub-section bounds, awk-bounded — primary check per S2 fix-forward)
+awk '/^### §3.2 moai update 10-flag matrix/,/^### §3\.[3-9]|^## /' .moai/reports/cli-audit/audit-*.md \
+  | grep -c '^| '
+# Expected: ≥11 (1 header row + 10 data rows minimum for a 10×10 matrix; if column header row also present, ≥12)
 
-# Mermaid TD diagram present
+# Each of 10 flags appears within §3.2 sub-section bounds (NOT anywhere in report — supplementary scoped check)
+for flag in check shell-env config force yes templates-only binary dry-run no-hooks verbose; do
+  awk '/^### §3.2 moai update 10-flag matrix/,/^### §3\.[3-9]|^## /' .moai/reports/cli-audit/audit-*.md \
+    | grep -c "$flag"
+done
+# Expected: each grep returns ≥1 (all 10 flags scoped to §3.2 matrix, not generic prose match)
+
+# Mermaid diagram present (direction TD/TB recommended but not enforced — local research report scope per S6 fix-forward; docs-site Mermaid TD-only rule applies only to docs-site/ per CLAUDE.local.md §17)
 grep -c '```mermaid' .moai/reports/cli-audit/audit-*.md
 # Expected: ≥1
-
-# Mermaid uses TD/TB direction (per CLAUDE.local.md §17 Mermaid TD-only rule for consistency)
-grep -cE 'graph (TD|TB)' .moai/reports/cli-audit/audit-*.md
-# Expected: ≥1 (at least one TD/TB diagram in §3)
 ```
 
 ---

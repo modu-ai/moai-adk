@@ -41,7 +41,7 @@ Produce a research-only audit baseline of the moai CLI surface — subcommand in
 |----------------|-------------------|
 | Non-test Go files in `internal/cli/` | 106 |
 | `AddCommand` invocations (`internal/cli/` + `cmd/moai/`) | 110 |
-| Hook scripts in `.claude/hooks/moai/` | 32 (incl. 4 `harness-observe*` candidates) |
+| Hook scripts in `.claude/hooks/moai/` | 32-34 (drift +2 observed at plan-audit; baseline 32 at SPEC creation, current 34 — incl. 4 `harness-observe*` candidates) |
 | `moai ` invocation references (local + template hooks) | 310 |
 | Estimated subcommand surface (preliminary) | 40–55 (refined in M1) |
 
@@ -50,7 +50,7 @@ Produce a research-only audit baseline of the moai CLI surface — subcommand in
 Pre-flight grep surfaced these candidates — **enumeration is NOT exhaustive** (full inventory in M2 deliverable):
 
 1. `moai harness-observe` family (4 hook scripts: `handle-harness-observe.sh` / `handle-harness-observe-stop.sh` / `handle-harness-observe-subagent-stop.sh` / `handle-harness-observe-user-prompt-submit.sh`) — code paths exist (`internal/cli/doctor_harness.go` line 32-line, others) but production usage uncertain.
-2. `moai db-schema-sync` (per memory `project_v3r6_sprint2_amr_run_ready` Round 2) — code presence unverified.
+2. `moai hook db-schema-sync` (SPEC-DB-SYNC-001 — internal-only candidate, NOT dead-suspect; verified at plan-audit as registered sub-subcommand of `moai hook` per `internal/cli/hook.go:124-126` + test comment "domain hook, not a Claude Code event"; M2 must confirm internal-only classification with SPEC-DB-SYNC-001 status check, not classify as dead-suspect).
 3. Other candidates TBD via cross-reference grep in M2.
 
 ### Out of scope (deferred to Sprint 7 CLI-INTEGRATION-001)
@@ -105,7 +105,7 @@ Pre-flight grep surfaced these candidates — **enumeration is NOT exhaustive** 
 | AC-CLA-002 | Audit report `## §2` classifies every inventoried subcommand as active/dead-suspect/internal-only with grep evidence per class | REQ-CLA-002 |
 | AC-CLA-003 | Audit report `## §3` integration map covers init/update/profile triad with dataflow diagram + flag matrix | REQ-CLA-003 |
 | AC-CLA-004 | Audit report `## §4` Sprint 7 baseline section directly consumable by future manager-spec invocation | REQ-CLA-004 |
-| AC-CLA-005 | `git diff --name-only main -- '*.go' '*.sh' '*.yaml' 'docs-site/' 'internal/template/templates/'` returns empty after run-phase | REQ-CLA-005 |
+| AC-CLA-005 | `git diff --name-only main -- '*.go' '*.sh' '*.yaml' 'docs-site/' 'internal/template/templates/' '.claude/hooks/' '.claude/skills/' '.claude/rules/' '.claude/agents/'` returns empty after run-phase (9 path classes — full canonical set per acceptance.md AC-CLA-005 verification) | REQ-CLA-005 |
 
 ---
 
