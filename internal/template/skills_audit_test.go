@@ -36,8 +36,8 @@ func TestSkillsContainPlanAuditGateMarkers(t *testing.T) {
 		{
 			// AC-WAG-01: solo run.md must invoke plan-auditor before Phase 1.
 			// AC-WAG-02, 03, 04, 06, 07, 08, 09: gate body must document full verdict routing.
-			name:     "solo run.md — plan audit gate markers",
-			filePath: ".claude/skills/moai/workflows/run.md",
+			name:     "solo run/phase-execution.md — plan audit gate markers",
+			filePath: ".claude/skills/moai/workflows/run/phase-execution.md",
 			requiredPatterns: []string{
 				"Phase 0.5: Plan Audit Gate",
 				"plan-auditor",

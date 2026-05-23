@@ -19,8 +19,8 @@ tags: "template-mirror-drift, test-fix, workflow-split"
 
 | Phase | Status | Commit SHA | Notes |
 |-------|--------|------------|-------|
-| Plan | in-progress | (pending) | manager-spec Tier S 4 artifacts authored 2026-05-24; awaiting plan-auditor + commit |
-| Run | not-started | TBD | M1 single-milestone edit (2-4 lines in skills_audit_test.go) |
+| Plan | completed | ea798aec2 | manager-spec Tier S 4 artifacts + plan-auditor iter-2 PASS 0.89 |
+| Run | implemented-ready | (pending — this commit) | M1 single-milestone 2-line edit applied; 4/5 AC PASS + AC-SARM-003 PASS-WITH-DEBT (pre-existing TEMPLATE-MIRROR-DRIFT-001 baseline failures, stash-and-rerun verified) |
 | Sync | not-started | TBD | CHANGELOG entry + 4 frontmatter status `draft → implemented` + B12 8th self-test |
 | Mx | not-started | TBD | Step C judgment per scope (test-file edit alone → SKIP-justified candidate) |
 
@@ -37,11 +37,11 @@ tags: "template-mirror-drift, test-fix, workflow-split"
 
 | AC ID | Verification | Result | Evidence |
 |-------|--------------|--------|----------|
-| AC-SARM-001 | `TestSkillsContainPlanAuditGateMarkers` 4/4 sub-tests PASS | TBD | TBD |
-| AC-SARM-002 | `TestReportsDirGitkeepExists` no regression | TBD | TBD |
-| AC-SARM-003 | Full `internal/template/...` package suite PASS | TBD | TBD |
-| AC-SARM-004 | Unrelated test entries byte-identical (git diff isolation check) | TBD | TBD |
-| AC-SARM-005 | `go vet` + `golangci-lint` baseline preserved (0 new findings) | TBD | TBD |
+| AC-SARM-001 | `TestSkillsContainPlanAuditGateMarkers` 4/4 sub-tests PASS | **PASS** | `go test ./internal/template/ -run "TestSkillsContainPlanAuditGateMarkers" -v` → 4/4 `--- PASS` (solo run/phase-execution.md / team run.md / plan.md / spec-workflow.md), 0 FAIL, `ok ... 0.448s`, exit 0. |
+| AC-SARM-002 | `TestReportsDirGitkeepExists` no regression | **PASS** | `go test ./internal/template/ -run "TestReportsDirGitkeepExists" -v` → `--- PASS: TestReportsDirGitkeepExists`, `ok ... 0.274s`, exit 0. |
+| AC-SARM-003 | Full `internal/template/...` package suite PASS | **PASS-WITH-DEBT** | `go test ./internal/template/... -count=1` shows 10 pre-existing baseline failures (TestBackwardCompatibility / TestAgentFrontmatterAudit / TestAllAgentsInCatalog / TestEmbeddedTemplates_AgentDefinitions / TestLoadCatalog / TestLoadEmbeddedCatalog_Success / TestLateBranchTemplateMirror/spec-assembly.md / TestRuleTemplateMirrorDrift × 3 / TestRetirementCompletenessAssertion × 2). Stash-and-rerun verified: with this SPEC's edit stashed, the SAME 10 failures persist + 1 additional `TestSkillsContainPlanAuditGateMarkers/solo_run.md` failure (which this SPEC clears). Net effect: -1 failure. All 10 baseline failures attributable per L46 to sibling SPECs (TEMPLATE-MIRROR-DRIFT-001 family + catalog/agent-folder drift), NOT regression caused by this SPEC's scope. AC intent (no regression caused by this edit) met. |
+| AC-SARM-004 | Unrelated test entries byte-identical (git diff isolation check) | **PASS** | `git diff HEAD -- internal/template/skills_audit_test.go` shows ONLY lines 39-40 in the `solo run.md` test entry region (`name:` + `filePath:`); team/plan/spec-workflow sub-tests + TestReportsDirGitkeepExists byte-identical. `git diff HEAD -- 'internal/template/templates/.claude/skills/moai/workflows/run.md' 'internal/template/templates/.claude/skills/moai/workflows/run/phase-execution.md'` returns empty (zero template content changes). |
+| AC-SARM-005 | `go vet` + `golangci-lint` baseline preserved (0 new findings) | **PASS** | `go vet ./internal/template/...` exit 0; `golangci-lint run --timeout=2m ./internal/template/...` → `0 issues.`, exit 0. |
 
 ## Sync-phase Evidence
 
@@ -65,3 +65,5 @@ tags: "template-mirror-drift, test-fix, workflow-split"
 
 - plan_complete_at: 2026-05-24T00:00:00Z
 - plan_status: audit-ready
+- run_complete_at: 2026-05-24T05:00:00Z
+- run_status: implemented-ready
