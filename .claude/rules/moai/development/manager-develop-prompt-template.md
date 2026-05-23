@@ -97,6 +97,13 @@ Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` §
 - Blocker report format: 4-옵션 + 각 옵션의 변경/영향/위험/ETA 명시
 - free-form prose 질문 절대 금지 (response body에 "? 어떻게 진행할까요?" 패턴 금지)
 
+**B12. Sync-phase CHANGELOG emission discipline (manager-docs only)**
+- Before drafting CHANGELOG entries, `Read` every implementation file referenced in the SPEC plan.md (do NOT rely on plan.md description alone — plan-phase placeholders may diverge from final implementation).
+- Before appending to `CHANGELOG.md` `[Unreleased]` section, run `grep -c '<SPEC-ID>' CHANGELOG.md` — if the count is ≥1, halt emission and return blocker report (avoid duplicate entries from parallel BATCH-SYNC sessions).
+- Verify file paths claimed in CHANGELOG match actual `ls <package-path>` output before committing.
+- Verify AC count in CHANGELOG matches `acceptance.md` (SSOT) — NOT `progress.md` (which may include deferred AC).
+- Origin: SPEC-V3R6-CHANGELOG-CLEANUP-001 §A.4 root cause analysis (BATCH-SYNC line 65 hallucination, 2026-05-23).
+
 ### Section C — Pre-flight Check List (착수 전 의무 검증)
 
 위임 받은 manager-develop가 코드 변경 전 실행:
