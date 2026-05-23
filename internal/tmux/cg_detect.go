@@ -62,7 +62,9 @@ func IsCGMode(settingsPath string, stderrSink io.Writer) (bool, error) {
 
 	if !hasGLMEnv() {
 		if stderrSink != nil {
-			fmt.Fprintln(stderrSink,
+			// Best-effort warning emit; stderr write errors are not actionable
+			// here (caller already has the (false, nil) signal it needs).
+			_, _ = fmt.Fprintln(stderrSink,
 				"warning: teammateMode=tmux but GLM env vars are absent; "+
 					"falling back to Claude (P2)")
 		}
