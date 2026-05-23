@@ -178,21 +178,41 @@ func generateSessionSummary(sessionID, traceDir, reportDir string) {
 }
 
 // resolveMemoryDir returns the Claude Code memory directory for the given
-// project. Currently the project-hash convention used by Claude Code under
-// `~/.claude/projects/{hash}/memory/` is not documented in this codebase, so
-// this helper returns a TODO-marked placeholder path. The caller (SessionEnd
-// Handle) discards persistence errors per the best-effort contract, but the
-// placeholder will not produce real memory writes until the project-hash
-// resolver is implemented.
-//
-// @MX:TODO: [AUTO] resolve Claude Code project-hash convention; placeholder fails to produce real memory writes until resolved
-// @MX:REASON: Claude Code memory directory hashing is undocumented in our repo (no crypto/sha256 site computes the convention). SPEC-V3R6-SESSION-HANDOFF-AUTO-001 §E.1 defers the resolver to a follow-up SPEC. Returning a TODO placeholder lets the SessionEnd integration ship safely; PersistIfPending logs warn and skips when memoryDir does not exist.
+// project under `~/.claude/projects/{slug}/memory/`. The slug is derived from
+// the project's absolute path by replacing path separators and dots with
+// dashes (Claude Code's observed naming convention).
 func resolveMemoryDir(homeDir, projectDir string) (string, error) {
 	if homeDir == "" {
 		return "", fmt.Errorf("home directory is empty")
 	}
-	_ = projectDir
-	return filepath.Join(homeDir, ".claude", "projects", "TODO-project-hash", "memory"), nil
+	if projectDir == "" {
+		return "", fmt.Errorf("project directory is empty")
+	}
+	absDir, err := filepath.Abs(projectDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve absolute project path: %w", err)
+	}
+	return filepath.Join(homeDir, ".claude", "projects", projectSlug(absDir), "memory"), nil
+}
+
+// projectSlug encodes an absolute path into Claude Code's project directory
+// naming convention. Both `/` (or `\` on Windows) and `.` are mapped to `-`.
+//
+// Examples (observed empirically from ~/.claude/projects/):
+//
+//	/Users/goos/MoAI/moai-adk-go        → -Users-goos-MoAI-moai-adk-go
+//	/Users/goos/.moai/worktrees/foo     → -Users-goos--moai-worktrees-foo
+//	/Users/goos/.claude                 → -Users-goos--claude
+func projectSlug(absPath string) string {
+	clean := filepath.Clean(absPath)
+	return strings.Map(func(r rune) rune {
+		switch r {
+		case '/', '\\', '.':
+			return '-'
+		default:
+			return r
+		}
+	}, clean)
 }
 
 // getModifiedGoFiles returns the list of .go files modified in the current session.
