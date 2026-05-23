@@ -54,9 +54,9 @@ SPEC-V3R2-WF-003의 Multi-Mode Router를 지원합니다.
 
 파일이 없거나 `_TBD_` 마커가 있으면 브랜드 인터뷰가 먼저 진행됩니다.
 
-### Agency 데이터 감지
+### 레거시 v2.x 데이터 감지
 
-기존 `.agency/` 디렉터리가 있으면 마이그레이션을 제안합니다:
+레거시 v2.x 디렉터리가 있으면 마이그레이션을 제안합니다 (자세한 내용은 [마이그레이션 가이드](../design/migration-guide.md)):
 
 ```bash
 moai migrate agency --dry-run   # 미리보기

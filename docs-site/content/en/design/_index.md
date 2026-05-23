@@ -41,7 +41,7 @@ flowchart TD
 - **[Claude Design Handoff](./claude-design-handoff.md)** — Learn Claude Design features and bundle export
 - **[Code-Based Path](./code-based-path.md)** — Design using brand-voice.md
 - **[GAN Loop](./gan-loop.md)** — Builder-Evaluator iteration process
-- **[Migration Guide](./migration-guide.md)** — Convert existing .agency/ projects
+- **[Migration Guide](./migration-guide.md)** — Convert legacy v2.x projects
 
 ## Requirements
 

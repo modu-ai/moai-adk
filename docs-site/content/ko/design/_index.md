@@ -41,7 +41,7 @@ flowchart TD
 - **[Claude Design 핸드오프](./claude-design-handoff.md)** — Claude Design 기능 소개 및 bundle 내보내기
 - **[코드 기반 경로](./code-based-path.md)** — brand-voice.md를 활용한 설계
 - **[GAN Loop](./gan-loop.md)** — Builder-Evaluator 반복 프로세스
-- **[마이그레이션 가이드](./migration-guide.md)** — 기존 .agency/ 프로젝트 전환
+- **[마이그레이션 가이드](./migration-guide.md)** — 레거시 v2.x 프로젝트 전환
 
 ## 요구 사항
 

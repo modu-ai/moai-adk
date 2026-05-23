@@ -280,4 +280,4 @@ sprint_contract:
 
 ## 다음 단계
 
-- [마이그레이션 가이드](./migration-guide.md) — 기존 .agency/ 프로젝트 전환
+- [마이그레이션 가이드](./migration-guide.md) — 레거시 v2.x 프로젝트 전환

@@ -280,4 +280,4 @@ sprint_contract:
 
 ## Next Steps
 
-- [Migration Guide](./migration-guide.md) — Convert existing .agency/ projects
+- [Migration Guide](./migration-guide.md) — Convert legacy v2.x projects

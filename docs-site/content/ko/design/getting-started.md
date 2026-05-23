@@ -74,7 +74,7 @@ draft: false
 ```
 
 실행 순서:
-1. `.agency/` 검사 (migration 안내 표시)
+1. 레거시 v2.x 데이터 검사 (migration 안내 표시 — 자세한 내용은 [마이그레이션 가이드](./migration-guide.md))
 2. 브랜드 컨텍스트 확인
 3. 부족한 파일 인터뷰 진행
 4. 경로 선택 UI 표시

@@ -75,7 +75,7 @@ Use **moai-domain-copywriting** and **moai-domain-brand-design** skills
 ```
 
 Execution sequence:
-1. Check for `.agency/` (show migration guide)
+1. Check for legacy v2.x data (show [migration guide](./migration-guide.md))
 2. Verify brand context
 3. Interview missing files
 4. Show path choice UI
