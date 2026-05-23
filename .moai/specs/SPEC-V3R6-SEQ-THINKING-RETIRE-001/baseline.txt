@@ -1,0 +1,109 @@
+=== M1 BASELINE — sequential-thinking inventory ===
+Captured at: 2026-05-23T01:33:13Z
+Branch: feat/SPEC-V3R6-SEQ-THINKING-RETIRE-001
+HEAD: 367a847159fa23677d6e6c814bdfb812ec05cd45
+
+=== Local source files (.claude/) ===
+.claude/agents/core/manager-develop.md
+.claude/agents/core/manager-docs.md
+.claude/agents/core/manager-project.md
+.claude/agents/core/manager-quality.md
+.claude/agents/core/manager-spec.md
+.claude/agents/core/manager-strategy.md
+.claude/agents/expert/expert-backend.md
+.claude/agents/expert/expert-devops.md
+.claude/agents/expert/expert-frontend.md
+.claude/agents/expert/expert-refactoring.md
+.claude/agents/expert/expert-security.md
+.claude/agents/meta/builder-harness.md
+.claude/agents/meta/evaluator-active.md
+.claude/agents/meta/plan-auditor.md
+.claude/rules/moai/core/settings-management.md
+.claude/skills/moai-foundation-cc/reference/claude-code-settings-official.md
+.claude/skills/moai-foundation-cc/reference/skill-formatting-guide.md
+.claude/skills/moai-foundation-core/modules/agents-reference.md
+.claude/skills/moai-foundation-thinking/SKILL.md
+.claude/skills/moai/workflows/plan/clarity-interview.md
+.claude/skills/moai/workflows/run/context-loading.md
+
+=== Configuration files ===
+.claude/settings.json
+.mcp.json
+CLAUDE.local.md
+
+=== Template mirrors ===
+internal/template/templates/.claude/agents/core/manager-develop.md
+internal/template/templates/.claude/agents/core/manager-docs.md
+internal/template/templates/.claude/agents/core/manager-project.md
+internal/template/templates/.claude/agents/core/manager-quality.md
+internal/template/templates/.claude/agents/core/manager-spec.md
+internal/template/templates/.claude/agents/core/manager-strategy.md
+internal/template/templates/.claude/agents/expert/expert-backend.md
+internal/template/templates/.claude/agents/expert/expert-devops.md
+internal/template/templates/.claude/agents/expert/expert-frontend.md
+internal/template/templates/.claude/agents/expert/expert-refactoring.md
+internal/template/templates/.claude/agents/expert/expert-security.md
+internal/template/templates/.claude/agents/meta/builder-harness.md
+internal/template/templates/.claude/agents/meta/evaluator-active.md
+internal/template/templates/.claude/agents/meta/plan-auditor.md
+internal/template/templates/.claude/rules/moai/core/settings-management.md
+internal/template/templates/.claude/settings.json.tmpl
+internal/template/templates/.claude/skills/moai-foundation-cc/reference/claude-code-settings-official.md
+internal/template/templates/.claude/skills/moai-foundation-cc/reference/skill-formatting-guide.md
+internal/template/templates/.claude/skills/moai-foundation-core/modules/agents-reference.md
+internal/template/templates/.claude/skills/moai-foundation-thinking/SKILL.md
+internal/template/templates/.claude/skills/moai/workflows/plan/clarity-interview.md
+internal/template/templates/.claude/skills/moai/workflows/run/context-loading.md
+internal/template/templates/.mcp.json.tmpl
+
+=== Per-file occurrence counts ===
+  1 .claude/agents/core/manager-develop.md
+  1 .claude/agents/core/manager-docs.md
+  1 .claude/agents/core/manager-project.md
+  1 .claude/agents/core/manager-quality.md
+  1 .claude/agents/core/manager-spec.md
+  1 .claude/agents/core/manager-strategy.md
+  1 .claude/agents/expert/expert-backend.md
+  1 .claude/agents/expert/expert-devops.md
+  1 .claude/agents/expert/expert-frontend.md
+  1 .claude/agents/expert/expert-refactoring.md
+  1 .claude/agents/expert/expert-security.md
+  1 .claude/agents/meta/builder-harness.md
+  1 .claude/agents/meta/evaluator-active.md
+  1 .claude/agents/meta/plan-auditor.md
+  1 .claude/rules/moai/core/settings-management.md
+  1 .claude/settings.json
+  3 .claude/skills/moai-foundation-cc/reference/claude-code-settings-official.md
+  1 .claude/skills/moai-foundation-cc/reference/skill-formatting-guide.md
+  2 .claude/skills/moai-foundation-core/modules/agents-reference.md
+  2 .claude/skills/moai-foundation-thinking/SKILL.md
+  1 .claude/skills/moai/workflows/plan/clarity-interview.md
+  1 .claude/skills/moai/workflows/run/context-loading.md
+  2 .mcp.json
+  1 CLAUDE.local.md
+  1 internal/template/templates/.claude/agents/core/manager-develop.md
+  1 internal/template/templates/.claude/agents/core/manager-docs.md
+  1 internal/template/templates/.claude/agents/core/manager-project.md
+  1 internal/template/templates/.claude/agents/core/manager-quality.md
+  1 internal/template/templates/.claude/agents/core/manager-spec.md
+  1 internal/template/templates/.claude/agents/core/manager-strategy.md
+  1 internal/template/templates/.claude/agents/expert/expert-backend.md
+  1 internal/template/templates/.claude/agents/expert/expert-devops.md
+  1 internal/template/templates/.claude/agents/expert/expert-frontend.md
+  1 internal/template/templates/.claude/agents/expert/expert-refactoring.md
+  1 internal/template/templates/.claude/agents/expert/expert-security.md
+  1 internal/template/templates/.claude/agents/meta/builder-harness.md
+  1 internal/template/templates/.claude/agents/meta/evaluator-active.md
+  1 internal/template/templates/.claude/agents/meta/plan-auditor.md
+  1 internal/template/templates/.claude/rules/moai/core/settings-management.md
+  2 internal/template/templates/.claude/settings.json.tmpl
+  3 internal/template/templates/.claude/skills/moai-foundation-cc/reference/claude-code-settings-official.md
+  1 internal/template/templates/.claude/skills/moai-foundation-cc/reference/skill-formatting-guide.md
+  2 internal/template/templates/.claude/skills/moai-foundation-core/modules/agents-reference.md
+  2 internal/template/templates/.claude/skills/moai-foundation-thinking/SKILL.md
+  1 internal/template/templates/.claude/skills/moai/workflows/plan/clarity-interview.md
+  1 internal/template/templates/.claude/skills/moai/workflows/run/context-loading.md
+  3 internal/template/templates/.mcp.json.tmpl
+
+=== Catalog YAML state ===
+       0 total
