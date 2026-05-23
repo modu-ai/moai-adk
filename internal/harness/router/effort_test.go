@@ -7,7 +7,7 @@ import (
 )
 
 // TestEffortForLevel — AC-HRN-001-10, REQ-HRN-001-005.
-// 3-row 테이블: minimal→medium, standard→high, thorough→xhigh.
+// 3-row table: minimal→medium, standard→high, thorough→xhigh.
 func TestEffortForLevel(t *testing.T) {
 	t.Parallel()
 
@@ -34,11 +34,11 @@ func TestEffortForLevel(t *testing.T) {
 	}
 }
 
-// TestEffortForLevel_Fallback — EffortMapping이 없으면 기본값 반환.
+// TestEffortForLevel_Fallback — returns the default when EffortMapping is absent.
 func TestEffortForLevel_Fallback(t *testing.T) {
 	t.Parallel()
 
-	// EffortMapping이 비어있는 config
+	// Config with an empty EffortMapping
 	emptyCfg := &router.ConfigProxy{EffortMapping: map[string]string{}}
 
 	tests := []struct {

@@ -6,11 +6,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/harness/router"
 )
 
-// TestComplexitySignals — REQ-HRN-001-007: 복잡도 추정 신호 검증.
+// TestComplexitySignals — REQ-HRN-001-007: verify complexity estimation signals.
 func TestComplexitySignals_FileCount(t *testing.T) {
 	t.Parallel()
 
-	// 5개의 REQ가 있는 SPEC — file_count 추정은 > 3이어야 함
+	// A SPEC with 5 REQs — file_count estimate must be > 3
 	body := `## 5. Requirements
 
 - REQ-TST-001-001 (Ubiquitous) — System shall implement feature A. File: internal/a/file1.go
@@ -32,7 +32,7 @@ func TestComplexitySignals_FileCount(t *testing.T) {
 	}
 }
 
-// TestComplexitySignals_DomainCount — domain_count 추정 검증.
+// TestComplexitySignals_DomainCount — verify domain_count estimation.
 func TestComplexitySignals_DomainCount(t *testing.T) {
 	t.Parallel()
 
@@ -43,13 +43,13 @@ func TestComplexitySignals_DomainCount(t *testing.T) {
 		Body:     "",
 	})
 
-	// auth, backend, cli → 3개 도메인
+	// auth, backend, cli → 3 domains
 	if signals.DomainCount < 2 {
 		t.Errorf("DomainCount for 3-tag SPEC: got %d, want >= 2", signals.DomainCount)
 	}
 }
 
-// TestComplexitySignals_SpecType — spec_type 추정 검증.
+// TestComplexitySignals_SpecType — verify spec_type estimation.
 func TestComplexitySignals_SpecType(t *testing.T) {
 	t.Parallel()
 
@@ -83,7 +83,7 @@ func TestComplexitySignals_SpecType(t *testing.T) {
 	}
 }
 
-// TestComplexitySignals_SecurityKeywords — 보안 키워드 감지 검증.
+// TestComplexitySignals_SecurityKeywords — verify security keyword detection.
 func TestComplexitySignals_SecurityKeywords(t *testing.T) {
 	t.Parallel()
 
@@ -106,7 +106,7 @@ func TestComplexitySignals_SecurityKeywords(t *testing.T) {
 	}
 }
 
-// TestComplexitySignals_PaymentKeywords — 결제 키워드 감지 검증.
+// TestComplexitySignals_PaymentKeywords — verify payment keyword detection.
 func TestComplexitySignals_PaymentKeywords(t *testing.T) {
 	t.Parallel()
 

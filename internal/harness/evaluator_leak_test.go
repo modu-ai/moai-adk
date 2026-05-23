@@ -7,9 +7,9 @@ import (
 	"github.com/modu-ai/moai-adk/internal/harness"
 )
 
-// TestEvaluatorPriorJudgmentLeak는 evaluator spawn 프롬프트에서
-// 이전 iteration 판단 흔적을 탐지하는 DetectPriorJudgmentLeak 함수를 검증합니다.
-// AC-HRN-002-07 leaf 시나리오를 포함합니다.
+// TestEvaluatorPriorJudgmentLeak verifies the DetectPriorJudgmentLeak function,
+// which detects prior-iteration judgment traces in the evaluator spawn prompt.
+// Covers the AC-HRN-002-07 leaf scenarios.
 func TestEvaluatorPriorJudgmentLeak(t *testing.T) {
 	t.Parallel()
 
@@ -19,7 +19,7 @@ func TestEvaluatorPriorJudgmentLeak(t *testing.T) {
 		wantErr     bool
 		wantErrIs   error
 	}{
-		// AC-HRN-002-07.a: 깨끗한 프롬프트 — 오류 없음
+		// AC-HRN-002-07.a: clean prompt — no error
 		{
 			name: "clean prompt no leak",
 			spawnPrompt: `You are a fresh evaluator.
@@ -28,7 +28,7 @@ Sprint Contract: criteria.yaml
 Artifact path: /output/index.html`,
 			wantErr: false,
 		},
-		// AC-HRN-002-07.a.i: 숫자 iteration 참조 — ErrPriorJudgmentLeak
+		// AC-HRN-002-07.a.i: numeric iteration reference — ErrPriorJudgmentLeak
 		{
 			name: "numbered iteration reference",
 			spawnPrompt: `Iteration 3 produced a score of 0.82.
@@ -37,7 +37,7 @@ BRIEF: Build a landing page.`,
 			wantErr:   true,
 			wantErrIs: harness.ErrPriorJudgmentLeak,
 		},
-		// AC-HRN-002-07.a.ii: 이전 evaluator 언급 — ErrPriorJudgmentLeak
+		// AC-HRN-002-07.a.ii: prior evaluator mention — ErrPriorJudgmentLeak
 		{
 			name: "paraphrased prior evaluator rationale",
 			spawnPrompt: `The previous evaluator reasoned that the design was incomplete.
@@ -46,7 +46,7 @@ BRIEF: Build a landing page.`,
 			wantErr:   true,
 			wantErrIs: harness.ErrPriorJudgmentLeak,
 		},
-		// AC-HRN-002-07.b: Score: 서브스트링 — ErrPriorJudgmentLeak
+		// AC-HRN-002-07.b: "Score:" substring — ErrPriorJudgmentLeak
 		{
 			name: "score substring present",
 			spawnPrompt: `Score: 0.85
@@ -55,7 +55,7 @@ BRIEF: Build a landing page.`,
 			wantErr:   true,
 			wantErrIs: harness.ErrPriorJudgmentLeak,
 		},
-		// Feedback: 서브스트링 — ErrPriorJudgmentLeak
+		// "Feedback:" substring — ErrPriorJudgmentLeak
 		{
 			name: "feedback substring present",
 			spawnPrompt: `Feedback: Please fix the color contrast issue.
@@ -63,7 +63,7 @@ BRIEF: Build a landing page.`,
 			wantErr:   true,
 			wantErrIs: harness.ErrPriorJudgmentLeak,
 		},
-		// Verdict: 서브스트링 — ErrPriorJudgmentLeak
+		// "Verdict:" substring — ErrPriorJudgmentLeak
 		{
 			name: "verdict substring present",
 			spawnPrompt: `Verdict: FAIL
@@ -72,7 +72,7 @@ BRIEF: Build a landing page.`,
 			wantErr:   true,
 			wantErrIs: harness.ErrPriorJudgmentLeak,
 		},
-		// AC-HRN-002-07.c: 깨끗한 BRIEF 참조 — 오류 없음
+		// AC-HRN-002-07.c: clean BRIEF reference — no error
 		{
 			name: "clean brief reference no leak",
 			spawnPrompt: `You are a fresh evaluator for this iteration.
@@ -81,7 +81,7 @@ Check the Sprint Contract at .moai/sprints/my-spec/contract.yaml.
 Artifact: /output/index.html`,
 			wantErr: false,
 		},
-		// lowercase iteration N 패턴 — ErrPriorJudgmentLeak
+		// lowercase "iteration N" pattern — ErrPriorJudgmentLeak
 		{
 			name: "lowercase iteration reference",
 			spawnPrompt: `In iteration 2, the evaluator found issues.
@@ -89,7 +89,7 @@ Please address those issues.`,
 			wantErr:   true,
 			wantErrIs: harness.ErrPriorJudgmentLeak,
 		},
-		// prior evaluator 대소문자 변형 — ErrPriorJudgmentLeak
+		// "prior evaluator" case variant — ErrPriorJudgmentLeak
 		{
 			name: "prior evaluator uppercase variant",
 			spawnPrompt: `The Prior Evaluator found that the design was incomplete.

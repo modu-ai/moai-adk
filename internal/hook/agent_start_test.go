@@ -1,8 +1,8 @@
-// agent_start_test.go: SubagentStart hook의 retired-agent 거부 로직 검증.
-// REQ-RA-004, REQ-RA-007, REQ-RA-008, REQ-RA-009, REQ-RA-012 매핑.
+// agent_start_test.go: verifies the SubagentStart hook's retired-agent rejection logic.
+// Mapping: REQ-RA-004, REQ-RA-007, REQ-RA-008, REQ-RA-009, REQ-RA-012.
 //
-// M3 GREEN-2 phase: agentStartHandler가 subagent_start.go에 구현되었으므로
-// 모든 t.Skip이 실제 assertion으로 전환된다.
+// M3 GREEN-2 phase: agentStartHandler is implemented in subagent_start.go, so
+// every t.Skip is converted into a real assertion.
 package hook
 
 import (
@@ -15,15 +15,15 @@ import (
 	"time"
 )
 
-// agentStartHandlerExists는 AgentStartHandler 구조체가 이 패키지에 존재하는지
-// 컴파일 타임에 확인하기 위한 타입 단언 헬퍼 인터페이스.
+// agentStartInterface is a type-assertion helper used at compile time to confirm
+// that the AgentStartHandler struct exists in this package.
 type agentStartInterface interface {
 	Handle(ctx context.Context, input *HookInput) (*HookOutput, error)
 	EventType() EventType
 }
 
-// buildRetiredAgentDir는 테스트용 임시 디렉터리를 생성하고
-// .claude/agents/core/<agentName>.md 파일을 retired frontmatter와 함께 작성한다.
+// buildRetiredAgentDir creates a test temp directory and writes
+// .claude/agents/core/<agentName>.md with retired frontmatter.
 // (post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: agents are split into core/expert/meta/harness)
 func buildRetiredAgentDir(t *testing.T, agentName, replacement, paramHint string) string {
 	t.Helper()
@@ -34,7 +34,7 @@ func buildRetiredAgentDir(t *testing.T, agentName, replacement, paramHint string
 		t.Fatalf("임시 에이전트 디렉터리 생성 실패: %v", err)
 	}
 
-	// retired stub frontmatter 표준화 (REQ-RA-002)
+	// Standardized retired stub frontmatter (REQ-RA-002)
 	content := strings.Join([]string{
 		"---",
 		"name: " + agentName,
@@ -61,8 +61,8 @@ func buildRetiredAgentDir(t *testing.T, agentName, replacement, paramHint string
 	return dir
 }
 
-// buildActiveAgentDir는 테스트용 임시 디렉터리를 생성하고
-// .claude/agents/core/<agentName>.md 파일을 활성 frontmatter와 함께 작성한다.
+// buildActiveAgentDir creates a test temp directory and writes
+// .claude/agents/core/<agentName>.md with active frontmatter.
 // (post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: agents are split into core/expert/meta/harness)
 func buildActiveAgentDir(t *testing.T, agentName string) string {
 	t.Helper()
@@ -95,8 +95,8 @@ func buildActiveAgentDir(t *testing.T, agentName string) string {
 	return dir
 }
 
-// buildHookInputForAgent는 주어진 에이전트 이름으로 HookInput을 생성한다.
-// SubagentStart 이벤트에서 AgentName 필드 사용 (types.go line 233).
+// buildHookInputForAgent builds a HookInput for the given agent name.
+// On SubagentStart events the AgentName field is used (types.go line 233).
 func buildHookInputForAgent(agentName, projectDir string) *HookInput {
 	return &HookInput{
 		HookEventName: string(EventSubagentStart),
@@ -106,10 +106,10 @@ func buildHookInputForAgent(agentName, projectDir string) *HookInput {
 	}
 }
 
-// TestAgentStartHandler_RoutesViaFactory는 NewAgentStartHandler() 생성자가
-// 비-nil Handler를 반환하고 EventType이 EventSubagentStart인지 검증한다.
+// TestAgentStartHandler_RoutesViaFactory verifies that the NewAgentStartHandler()
+// constructor returns a non-nil Handler whose EventType is EventSubagentStart.
 //
-// REQ-RA-004: SubagentStart handler 신규 등록
+// REQ-RA-004: register the new SubagentStart handler
 // REQ-RA-009: factory dispatch for agent-start event
 func TestAgentStartHandler_RoutesViaFactory(t *testing.T) {
 	t.Parallel()
@@ -127,10 +127,10 @@ func TestAgentStartHandler_RoutesViaFactory(t *testing.T) {
 	}
 }
 
-// TestAgentStartHandler_BlocksRetiredAgent는 retired:true frontmatter를 가진
-// 에이전트 이름으로 호출 시 decision=block이 반환되는지 검증한다.
+// TestAgentStartHandler_BlocksRetiredAgent verifies that decision=block is returned
+// when invoked with an agent name whose frontmatter has retired:true.
 //
-// REQ-RA-007: retired agent spawn 시 block decision + reason
+// REQ-RA-007: block decision + reason when spawning a retired agent
 func TestAgentStartHandler_BlocksRetiredAgent(t *testing.T) {
 	t.Parallel()
 
@@ -145,24 +145,24 @@ func TestAgentStartHandler_BlocksRetiredAgent(t *testing.T) {
 	if output == nil {
 		t.Fatal("Handle() returned nil output")
 	}
-	// decision=block 검증 (REQ-RA-007)
+	// Verify decision=block (REQ-RA-007)
 	if output.Decision != DecisionBlock && output.Decision != DecisionDeny {
 		t.Errorf("retired agent에 대해 block/deny 결정이 없음, got: %q", output.Decision)
 	}
-	// reason에 replacement 에이전트 이름 포함 (REQ-RA-007)
+	// reason must include the replacement agent name (REQ-RA-007)
 	if !strings.Contains(output.Reason, "manager-develop") {
 		t.Errorf("reason에 'manager-develop' 없음: %q", output.Reason)
 	}
-	// reason에 cycle_type=tdd 힌트 포함 (REQ-RA-007)
+	// reason must include the cycle_type=tdd hint (REQ-RA-007)
 	if !strings.Contains(output.Reason, "cycle_type") && !strings.Contains(output.Reason, "tdd") {
 		t.Errorf("reason에 cycle_type 힌트 없음: %q", output.Reason)
 	}
 }
 
-// TestAgentStartHandler_AllowsActiveAgent는 활성 에이전트에 대해
-// 거부 없이 allow가 반환되는지 검증한다.
+// TestAgentStartHandler_AllowsActiveAgent verifies that an active agent
+// is allowed without rejection.
 //
-// REQ-RA-008: 비-retired 에이전트는 spawn 허용
+// REQ-RA-008: non-retired agents are allowed to spawn
 func TestAgentStartHandler_AllowsActiveAgent(t *testing.T) {
 	t.Parallel()
 
@@ -174,21 +174,21 @@ func TestAgentStartHandler_AllowsActiveAgent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Handle() 오류: %v", err)
 	}
-	// block/deny가 없어야 함
+	// Must have no block/deny
 	if output != nil && (output.Decision == DecisionBlock || output.Decision == DecisionDeny) {
 		t.Errorf("활성 에이전트에 대해 block/deny 결정이 반환됨: %q (이유: %q)",
 			output.Decision, output.Reason)
 	}
 }
 
-// TestAgentStartHandler_AllowsUnknownAgent는 파일이 없는 에이전트 이름에 대해
-// allow가 반환되는지 검증한다 (non-MoAI 에이전트 bypass).
+// TestAgentStartHandler_AllowsUnknownAgent verifies that an agent name with no
+// corresponding file is allowed (non-MoAI agent bypass).
 //
-// REQ-RA-008: 알 수 없는 에이전트 이름은 bypass (exit 0)
+// REQ-RA-008: unknown agent names are bypassed (exit 0)
 func TestAgentStartHandler_AllowsUnknownAgent(t *testing.T) {
 	t.Parallel()
 
-	dir := t.TempDir() // 에이전트 파일 없는 빈 디렉터리
+	dir := t.TempDir() // Empty directory with no agent files
 	handler := NewAgentStartHandler()
 	input := buildHookInputForAgent("non-existent-agent-xyz", dir)
 
@@ -196,16 +196,16 @@ func TestAgentStartHandler_AllowsUnknownAgent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Handle() 오류: %v", err)
 	}
-	// unknown agent는 block/deny 없이 통과해야 함
+	// Unknown agents must pass without block/deny
 	if output != nil && (output.Decision == DecisionBlock || output.Decision == DecisionDeny) {
 		t.Errorf("알 수 없는 에이전트에 대해 block/deny 결정이 반환됨 (REQ-RA-008): %q", output.Decision)
 	}
 }
 
-// TestAgentStartHandler_PerformanceUnder500ms는 retired stub frontmatter 파싱 포함
-// 100회 호출의 평균 응답 시간이 500ms 이하인지 검증한다.
+// TestAgentStartHandler_PerformanceUnder500ms verifies that the mean response time
+// across 100 calls — including retired stub frontmatter parsing — is at most 500ms.
 //
-// REQ-RA-012: SubagentStart guard ≤500ms 응답 시간
+// REQ-RA-012: SubagentStart guard must respond in ≤500ms
 func TestAgentStartHandler_PerformanceUnder500ms(t *testing.T) {
 	if testing.Short() {
 		t.Skip("성능 테스트: -short 플래그로 스킵")
@@ -234,10 +234,10 @@ func TestAgentStartHandler_PerformanceUnder500ms(t *testing.T) {
 	t.Logf("성능: %d회 평균 %dms (총 %v)", iterations, avgMs, elapsed)
 }
 
-// TestAgentStartHandler_OutputFormat은 block decision 출력이
-// 올바른 JSON 형식인지 검증한다 (hook stdout 프로토콜 호환).
+// TestAgentStartHandler_OutputFormat verifies the block-decision output is in
+// the correct JSON form (compatible with the hook stdout protocol).
 //
-// REQ-RA-007: {"decision":"block","reason":"..."} JSON 형식
+// REQ-RA-007: JSON form {"decision":"block","reason":"..."}
 func TestAgentStartHandler_OutputFormat(t *testing.T) {
 	t.Parallel()
 
@@ -250,14 +250,14 @@ func TestAgentStartHandler_OutputFormat(t *testing.T) {
 		t.Fatalf("Handle() 오류: %v", err)
 	}
 
-	// JSON 직렬화 가능 여부 검증
+	// Verify JSON serialization succeeds
 	jsonBytes, marshalErr := json.Marshal(output)
 	if marshalErr != nil {
 		t.Fatalf("HookOutput JSON 직렬화 실패: %v", marshalErr)
 	}
 	t.Logf("block output JSON: %s", jsonBytes)
 
-	// decision, reason 필드 존재 확인
+	// Verify the decision and reason fields exist
 	var parsed map[string]any
 	if err := json.Unmarshal(jsonBytes, &parsed); err != nil {
 		t.Fatalf("JSON 역직렬화 실패: %v", err)
@@ -269,5 +269,5 @@ func TestAgentStartHandler_OutputFormat(t *testing.T) {
 	if reason, ok := parsed["reason"]; !ok || reason == "" {
 		t.Errorf("JSON에 'reason' 필드가 없거나 비어있음: %s", jsonBytes)
 	}
-	_ = strings.Contains // 컴파일러 경고 방지
+	_ = strings.Contains // avoid compiler warning
 }

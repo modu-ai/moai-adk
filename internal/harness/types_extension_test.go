@@ -1,6 +1,6 @@
-// Package harness — EventType 확장 및 Event 옵션 필드 테스트.
-// REQ-HRN-OBS-001..005: 4개 후크 이벤트 유형 열거형 테스트.
-// REQ-HRN-OBS-009: omitempty로 인한 기존 4-필드 스키마 보존 테스트.
+// Package harness — EventType extension and Event optional-field tests.
+// REQ-HRN-OBS-001..005: 4 hook event types enum tests.
+// REQ-HRN-OBS-009: preserve the existing 4-field schema via omitempty.
 package harness
 
 import (
@@ -10,12 +10,12 @@ import (
 )
 
 // ─────────────────────────────────────────────
-// T-A1: EventType 상수 확장 테스트
+// T-A1: EventType constant extension tests
 // ─────────────────────────────────────────────
 
-// TestEventType_Extension은 3개의 신규 EventType 상수가 정확한 문자열 값으로
-// 존재하는지 검증한다.
-// REQ-HRN-OBS-015: SEMANTIC 값(런타임 훅 이름 아님) 사용.
+// TestEventType_Extension verifies that the 3 new EventType constants exist with the
+// exact expected string values.
+// REQ-HRN-OBS-015: use SEMANTIC values (not the runtime hook names).
 func TestEventType_Extension(t *testing.T) {
 	t.Parallel()
 
@@ -30,18 +30,18 @@ func TestEventType_Extension(t *testing.T) {
 
 	for _, tc := range cases {
 		if string(tc.constant) != tc.want {
-			t.Errorf("EventType 상수 값: got=%q, want=%q", string(tc.constant), tc.want)
+			t.Errorf("EventType constant value: got=%q, want=%q", string(tc.constant), tc.want)
 		}
 	}
 }
 
 // ─────────────────────────────────────────────
-// T-A2: Event 옵션 필드 omitempty 테스트
+// T-A2: Event optional-field omitempty tests
 // ─────────────────────────────────────────────
 
-// TestEvent_OptionalFieldsOmitEmpty는 12개 옵션 필드가 전부 제로 값일 때
-// JSONL 직렬화 결과에 포함되지 않음을 검증한다.
-// REQ-HRN-OBS-009: 기존 4-필드 스키마 보존 — 새 필드는 additive omitempty 전용.
+// TestEvent_OptionalFieldsOmitEmpty verifies that when all 12 optional fields hold
+// zero values they are not included in the JSONL serialization output.
+// REQ-HRN-OBS-009: preserve the existing 4-field schema — new fields are additive omitempty only.
 func TestEvent_OptionalFieldsOmitEmpty(t *testing.T) {
 	t.Parallel()
 
@@ -56,22 +56,22 @@ func TestEvent_OptionalFieldsOmitEmpty(t *testing.T) {
 
 	data, err := json.Marshal(evt)
 	if err != nil {
-		t.Fatalf("json.Marshal 실패: %v", err)
+		t.Fatalf("json.Marshal failed: %v", err)
 	}
 
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(data, &raw); err != nil {
-		t.Fatalf("json.Unmarshal 실패: %v", err)
+		t.Fatalf("json.Unmarshal failed: %v", err)
 	}
 
-	// 기존 필드는 항상 존재해야 함 (REQ-HRN-FND-010 보존)
+	// Existing fields must always be present (REQ-HRN-FND-010 preservation)
 	for _, field := range []string{"timestamp", "event_type", "subject", "tier_increment", "schema_version"} {
 		if _, ok := raw[field]; !ok {
-			t.Errorf("기존 필드 %q가 누락됨 — schema additivity 위반", field)
+			t.Errorf("existing field %q is missing — schema additivity violation", field)
 		}
 	}
 
-	// 옵션 필드는 제로 값일 때 누락되어야 함
+	// Optional fields must be omitted when they hold zero values
 	optionalFields := []string{
 		"session_id",
 		"last_assistant_message_hash",
@@ -88,13 +88,13 @@ func TestEvent_OptionalFieldsOmitEmpty(t *testing.T) {
 	}
 	for _, field := range optionalFields {
 		if _, ok := raw[field]; ok {
-			t.Errorf("옵션 필드 %q가 제로 값임에도 직렬화됨 — omitempty 위반", field)
+			t.Errorf("optional field %q was serialized despite holding the zero value — omitempty violation", field)
 		}
 	}
 }
 
-// TestEvent_OptionalFieldsSerializedWhenSet은 옵션 필드가 설정됐을 때
-// 직렬화 결과에 올바르게 포함되는지 검증한다.
+// TestEvent_OptionalFieldsSerializedWhenSet verifies that, when set, optional fields
+// are included correctly in the serialization output.
 func TestEvent_OptionalFieldsSerializedWhenSet(t *testing.T) {
 	t.Parallel()
 
@@ -105,7 +105,7 @@ func TestEvent_OptionalFieldsSerializedWhenSet(t *testing.T) {
 		ContextHash:   "",
 		TierIncrement: 0,
 		SchemaVersion: LogSchemaVersion,
-		// Stop 이벤트 옵션 필드
+		// Stop-event optional fields
 		SessionID:                "sess-abc123",
 		LastAssistantMessageHash: "sha256-xyz",
 		LastAssistantMessageLen:  4200,
@@ -113,25 +113,25 @@ func TestEvent_OptionalFieldsSerializedWhenSet(t *testing.T) {
 
 	data, err := json.Marshal(evt)
 	if err != nil {
-		t.Fatalf("json.Marshal 실패: %v", err)
+		t.Fatalf("json.Marshal failed: %v", err)
 	}
 
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(data, &raw); err != nil {
-		t.Fatalf("json.Unmarshal 실패: %v", err)
+		t.Fatalf("json.Unmarshal failed: %v", err)
 	}
 
-	// 설정된 옵션 필드는 존재해야 함
+	// Set optional fields must be present
 	for _, field := range []string{"session_id", "last_assistant_message_hash", "last_assistant_message_len"} {
 		if _, ok := raw[field]; !ok {
-			t.Errorf("설정된 옵션 필드 %q가 직렬화에서 누락됨", field)
+			t.Errorf("set optional field %q is missing from serialization", field)
 		}
 	}
 
-	// 설정 안 된 옵션 필드는 없어야 함
+	// Unset optional fields must be absent
 	for _, field := range []string{"agent_name", "agent_type", "prompt_hash"} {
 		if _, ok := raw[field]; ok {
-			t.Errorf("미설정 옵션 필드 %q가 직렬화에 포함됨 — omitempty 위반", field)
+			t.Errorf("unset optional field %q appears in serialization — omitempty violation", field)
 		}
 	}
 }

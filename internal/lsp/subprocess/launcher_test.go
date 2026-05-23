@@ -13,10 +13,10 @@ import (
 	"github.com/modu-ai/moai-adk/internal/lsp/subprocess"
 )
 
-// @MX:NOTE: [AUTO] launcher_test.go — fork-exec ETXTBSY race를 피하기 위해
-// fake binary가 필요한 테스트는 sharedFakeBinaryPath(t)로 패키지 전역 공유
-// 바이너리를 사용한다. 고유 파일이 필요한 테스트(TestLauncher_Launch_StartFails 등)만
-// t.TempDir() + os.WriteFile로 직접 생성한다.
+// @MX:NOTE: [AUTO] launcher_test.go — to avoid the fork-exec ETXTBSY race,
+// tests that need a fake binary use the package-wide shared binary via
+// sharedFakeBinaryPath(t). Only tests requiring a unique file (e.g.,
+// TestLauncher_Launch_StartFails) create one directly with t.TempDir() + os.WriteFile.
 // @MX:SPEC: SPEC-LSP-FLAKY-001 REQ-LSP-FLAKY-001-001 ~ 005
 
 // launchWithETXTBSYRetry calls Launcher.Launch and retries up to maxAttempts
@@ -53,7 +53,7 @@ func launchWithETXTBSYRetry(t *testing.T, l *subprocess.Launcher, cfg config.Ser
 // binary exists, returns a non-nil LaunchResult, and all three stdio pipes are
 // non-nil (REQ-LC-005).
 //
-// @MX:NOTE: [AUTO] HappyPath — 공유 fake binary 사용, ETXTBSY race 제거
+// @MX:NOTE: [AUTO] HappyPath — uses the shared fake binary; ETXTBSY race eliminated
 func TestLauncher_Launch_HappyPath(t *testing.T) {
 	t.Parallel()
 
@@ -112,7 +112,7 @@ func TestLauncher_Launch_BinaryNotFound(t *testing.T) {
 // TestLauncher_Launch_StdioPipesNonNil verifies each stdio pipe is independently
 // non-nil and writable/readable (REQ-LC-005 isolation).
 //
-// @MX:NOTE: [AUTO] StdioPipesNonNil — 공유 fake binary 사용, ETXTBSY race 제거
+// @MX:NOTE: [AUTO] StdioPipesNonNil — uses the shared fake binary; ETXTBSY race eliminated
 func TestLauncher_Launch_StdioPipesNonNil(t *testing.T) {
 	t.Parallel()
 
@@ -144,7 +144,7 @@ func TestLauncher_Launch_StdioPipesNonNil(t *testing.T) {
 // TestLauncher_Launch_WithArgs verifies that additional Args from ServerConfig
 // are forwarded to the subprocess (REQ-LC-005).
 //
-// @MX:NOTE: [AUTO] WithArgs — 공유 fake binary 사용, ETXTBSY race 제거
+// @MX:NOTE: [AUTO] WithArgs — uses the shared fake binary; ETXTBSY race eliminated
 func TestLauncher_Launch_WithArgs(t *testing.T) {
 	t.Parallel()
 
@@ -214,8 +214,8 @@ func TestLauncher_Launch_EmptyCommand(t *testing.T) {
 // TestLauncher_Launch_StartFails verifies that Launch returns an error when the
 // binary exists but cannot be executed (e.g., not executable).
 //
-// 이 테스트는 비실행(0o644) 파일이 필요하므로 공유 fake binary를 사용할 수 없다.
-// exec()이 발생하지 않으므로 ETXTBSY race도 영향이 없다.
+// This test needs a non-executable (0o644) file, so it cannot use the shared
+// fake binary. Because exec() never runs, the ETXTBSY race does not apply.
 func TestLauncher_Launch_StartFails(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {

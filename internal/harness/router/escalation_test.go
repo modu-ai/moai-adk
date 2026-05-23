@@ -7,14 +7,14 @@ import (
 )
 
 // TestEscalationCapEnforcement — AC-HRN-001-08, REQ-HRN-001-009/013/018.
-// max_escalations=2 설정 시 3번째 에스컬레이션 시도는 false를 반환하고
-// HRN_ESCALATION_CAP_REACHED 로그를 출력합니다.
+// When max_escalations=2, the 3rd escalation attempt returns false and emits the
+// HRN_ESCALATION_CAP_REACHED log.
 func TestEscalationCapEnforcement(t *testing.T) {
 	t.Parallel()
 
 	mgr := router.NewEscalationManager(2) // max_escalations: 2
 
-	// 1번째 에스컬레이션: minimal → standard
+	// 1st escalation: minimal → standard
 	newLevel, escalated := mgr.CheckTriggers(router.EscalationContext{
 		CurrentLevel: router.LevelMinimal,
 		TriggerType:  "quality_gate_fail",
@@ -26,7 +26,7 @@ func TestEscalationCapEnforcement(t *testing.T) {
 		t.Errorf("1st escalation: newLevel got %q, want %q", newLevel, router.LevelStandard)
 	}
 
-	// 2번째 에스컬레이션: standard → thorough
+	// 2nd escalation: standard → thorough
 	newLevel, escalated = mgr.CheckTriggers(router.EscalationContext{
 		CurrentLevel: router.LevelStandard,
 		TriggerType:  "quality_gate_fail",
@@ -38,7 +38,7 @@ func TestEscalationCapEnforcement(t *testing.T) {
 		t.Errorf("2nd escalation: newLevel got %q, want %q", newLevel, router.LevelThorough)
 	}
 
-	// 3번째 에스컬레이션 시도: cap 초과 → escalated: false, level 유지
+	// 3rd escalation attempt: cap exceeded → escalated: false, level unchanged
 	newLevel, escalated = mgr.CheckTriggers(router.EscalationContext{
 		CurrentLevel: router.LevelThorough,
 		TriggerType:  "quality_gate_fail",
@@ -51,7 +51,7 @@ func TestEscalationCapEnforcement(t *testing.T) {
 	}
 }
 
-// TestEscalationTriggers — REQ-HRN-001-009: 다양한 trigger 타입 검증.
+// TestEscalationTriggers — REQ-HRN-001-009: verify various trigger types.
 func TestEscalationTriggers(t *testing.T) {
 	t.Parallel()
 
@@ -75,7 +75,7 @@ func TestEscalationTriggers(t *testing.T) {
 	}
 }
 
-// TestEscalationAtThorough — thorough에서 에스컬레이션 시도 시 cap 없어도 thorough 유지.
+// TestEscalationAtThorough — attempting to escalate at thorough keeps thorough even without a cap.
 func TestEscalationAtThorough(t *testing.T) {
 	t.Parallel()
 
@@ -84,7 +84,7 @@ func TestEscalationAtThorough(t *testing.T) {
 		CurrentLevel: router.LevelThorough,
 		TriggerType:  "quality_gate_fail",
 	})
-	// thorough에서 에스컬레이션 — 이미 최고 레벨
+	// Escalation at thorough — already at the max level
 	if escalated {
 		t.Error("escalation at thorough: already at max level, escalated should be false")
 	}
@@ -97,10 +97,10 @@ func TestEscalationAtThorough(t *testing.T) {
 func TestEscalationMaxHardCeiling(t *testing.T) {
 	t.Parallel()
 
-	// max_escalations > 3을 시도해도 hard ceiling 3이 적용되어야 합니다
+	// Even with max_escalations > 3, the hard ceiling of 3 must apply
 	mgr := router.NewEscalationManager(10)
 
-	// 3번 에스컬레이션
+	// 3 escalations
 	for i := 0; i < 3; i++ {
 		mgr.CheckTriggers(router.EscalationContext{
 			CurrentLevel: router.LevelMinimal,
@@ -108,7 +108,7 @@ func TestEscalationMaxHardCeiling(t *testing.T) {
 		})
 	}
 
-	// 4번째 시도: hard ceiling으로 차단
+	// 4th attempt: blocked by the hard ceiling
 	_, escalated := mgr.CheckTriggers(router.EscalationContext{
 		CurrentLevel: router.LevelMinimal,
 		TriggerType:  "quality_gate_fail",

@@ -1,5 +1,5 @@
 // Package safety — canary unit test.
-// REQ-HL-007: EvaluateCanary baseline vs proposal 비교 테스트.
+// REQ-HL-007: EvaluateCanary baseline vs proposal comparison tests.
 package safety
 
 import (
@@ -9,7 +9,7 @@ import (
 	harness "github.com/modu-ai/moai-adk/internal/harness"
 )
 
-// makeSession은 테스트용 Session을 생성하는 헬퍼이다.
+// makeSession is a helper that builds a Session for tests.
 func makeSession(id string, subSuccess, agentSuccess, completion float64) harness.Session {
 	return harness.Session{
 		ID:                     id,
@@ -20,7 +20,7 @@ func makeSession(id string, subSuccess, agentSuccess, completion float64) harnes
 	}
 }
 
-// makeProposal은 테스트용 Proposal을 생성하는 헬퍼이다.
+// makeProposal is a helper that builds a Proposal for tests.
 func makeProposal(id, targetPath string) harness.Proposal {
 	return harness.Proposal{
 		ID:               id,
@@ -34,7 +34,7 @@ func makeProposal(id, targetPath string) harness.Proposal {
 	}
 }
 
-// TestEvaluateCanary_PassesWhenNoDrop는 effectiveness 하락이 없으면 통과하는지 검증한다.
+// TestEvaluateCanary_PassesWhenNoDrop verifies that the canary passes when there is no effectiveness drop.
 func TestEvaluateCanary_PassesWhenNoDrop(t *testing.T) {
 	t.Parallel()
 
@@ -52,30 +52,30 @@ func TestEvaluateCanary_PassesWhenNoDrop(t *testing.T) {
 	}
 
 	if result.Rejected {
-		t.Errorf("Rejected = true, 하락 없이 거부되어서는 안 된다. reason: %s", result.Reason)
+		t.Errorf("Rejected = true, must not be rejected without a drop. reason: %s", result.Reason)
 	}
 
 	if result.BaselineScore <= 0 {
-		t.Errorf("BaselineScore = %.4f, 양수여야 한다", result.BaselineScore)
+		t.Errorf("BaselineScore = %.4f, must be positive", result.BaselineScore)
 	}
 }
 
-// TestEvaluateCanary_RejectsWhenDropExceedsThreshold는 0.10 초과 하락 시 거부하는지 검증한다.
+// TestEvaluateCanary_RejectsWhenDropExceedsThreshold verifies rejection when the drop exceeds 0.10.
 func TestEvaluateCanary_RejectsWhenDropExceedsThreshold(t *testing.T) {
 	t.Parallel()
 
-	// 좋은 baseline
+	// Solid baseline
 	sessions := []harness.Session{
 		makeSession("s1", 0.95, 0.92, 0.90),
 		makeSession("s2", 0.93, 0.91, 0.88),
 		makeSession("s3", 0.94, 0.93, 0.89),
 	}
 
-	// 제안 자체가 target path를 통해 score를 하락시키는 경우를 시뮬레이션
-	// canary는 내부적으로 modified proposal을 통해 projected score를 계산한다
-	// degradingProposal은 낮은 effectiveness를 유발하는 제안이다
+	// Simulate a proposal that lowers the score via its target path.
+	// Internally the canary computes the projected score from the modified proposal.
+	// degradingProposal is a proposal that induces lower effectiveness.
 	proposal := makeProposal("p-degrade", ".claude/skills/my-harness-bad/SKILL.md")
-	// canary에게 "이 제안은 degrading"임을 알리기 위해 NewValue를 빈 값으로 설정
+	// To signal "this proposal is degrading" to the canary, set NewValue to empty.
 	proposal.NewValue = ""
 	proposal.FieldKey = ""
 
@@ -84,28 +84,28 @@ func TestEvaluateCanary_RejectsWhenDropExceedsThreshold(t *testing.T) {
 		t.Fatalf("EvaluateCanary 실패: %v", err)
 	}
 
-	// 빈 제안(의미없는 변경)이 있을 때는 BaselineScore와 ProjectedScore를 반환해야 함
+	// When the proposal is empty (no-op change), BaselineScore and ProjectedScore must still be returned
 	if result.BaselineScore <= 0 {
-		t.Errorf("BaselineScore = %.4f, 양수여야 한다", result.BaselineScore)
+		t.Errorf("BaselineScore = %.4f, must be positive", result.BaselineScore)
 	}
 }
 
-// TestEvaluateCanary_StrongDegradation는 명확한 하락 케이스를 검증한다.
+// TestEvaluateCanary_StrongDegradation verifies a clear degradation case.
 func TestEvaluateCanary_StrongDegradation(t *testing.T) {
 	t.Parallel()
 
-	// 높은 baseline 세션
+	// High baseline sessions
 	sessions := []harness.Session{
 		makeSession("s1", 0.95, 0.95, 0.95),
 		makeSession("s2", 0.95, 0.95, 0.95),
 		makeSession("s3", 0.95, 0.95, 0.95),
 	}
 
-	// degradingScore를 직접 주입할 수 있는 방법: EvaluateCanaryWithScorer를 사용
+	// We can inject a degradingScore directly via EvaluateCanaryWithScorer.
 	result, err := EvaluateCanaryWithScorer(
 		makeProposal("p-degrade", ".moai/harness/test.yaml"),
 		sessions,
-		// projected score가 baseline보다 0.20 낮은 scorer
+		// projected score is 0.20 below baseline
 		func(_ harness.Proposal, baseline float64) float64 {
 			return baseline - 0.20
 		},
@@ -115,15 +115,15 @@ func TestEvaluateCanary_StrongDegradation(t *testing.T) {
 	}
 
 	if !result.Rejected {
-		t.Errorf("Rejected = false, 0.20 하락은 거부되어야 한다. delta=%.4f", result.Delta)
+		t.Errorf("Rejected = false, a 0.20 drop must be rejected. delta=%.4f", result.Delta)
 	}
 
 	if result.Reason == "" {
-		t.Error("거부 이유(Reason)가 비어 있다")
+		t.Error("rejection reason (Reason) is empty")
 	}
 }
 
-// TestEvaluateCanary_AcceptsSmallDrop은 0.10 미만 하락은 통과하는지 검증한다.
+// TestEvaluateCanary_AcceptsSmallDrop verifies that a drop under 0.10 passes.
 func TestEvaluateCanary_AcceptsSmallDrop(t *testing.T) {
 	t.Parallel()
 
@@ -133,7 +133,7 @@ func TestEvaluateCanary_AcceptsSmallDrop(t *testing.T) {
 		makeSession("s3", 0.90, 0.90, 0.90),
 	}
 
-	// 0.05 하락 (임계값 0.10 미만) → 통과
+	// 0.05 drop (below the 0.10 threshold) → pass
 	result, err := EvaluateCanaryWithScorer(
 		makeProposal("p-small", ".moai/harness/test.yaml"),
 		sessions,
@@ -146,11 +146,11 @@ func TestEvaluateCanary_AcceptsSmallDrop(t *testing.T) {
 	}
 
 	if result.Rejected {
-		t.Errorf("Rejected = true, 0.05 하락은 통과되어야 한다. delta=%.4f", result.Delta)
+		t.Errorf("Rejected = true, a 0.05 drop must pass. delta=%.4f", result.Delta)
 	}
 }
 
-// TestEvaluateCanary_ExactThreshold는 정확히 0.10 하락은 거부 경계를 검증한다.
+// TestEvaluateCanary_ExactThreshold verifies the exact 0.10 drop boundary for rejection.
 func TestEvaluateCanary_ExactThreshold(t *testing.T) {
 	t.Parallel()
 
@@ -160,7 +160,7 @@ func TestEvaluateCanary_ExactThreshold(t *testing.T) {
 		makeSession("s3", 0.90, 0.90, 0.90),
 	}
 
-	// 정확히 0.10 하락 → 거부 (> 0.10이 아니라 >= 0.10이면 거부)
+	// Exactly 0.10 drop → rejected (>= 0.10, not > 0.10)
 	result, err := EvaluateCanaryWithScorer(
 		makeProposal("p-exact", ".moai/harness/test.yaml"),
 		sessions,
@@ -172,47 +172,47 @@ func TestEvaluateCanary_ExactThreshold(t *testing.T) {
 		t.Fatalf("EvaluateCanaryWithScorer 실패: %v", err)
 	}
 
-	// >= 0.10이면 거부
+	// Rejected when >= 0.10
 	if !result.Rejected {
-		t.Errorf("Rejected = false, 0.10 하락은 거부 임계값(>=0.10)이어야 한다. delta=%.4f", result.Delta)
+		t.Errorf("Rejected = false, a 0.10 drop must hit the rejection threshold (>=0.10). delta=%.4f", result.Delta)
 	}
 }
 
-// TestEvaluateCanary_EmptySessions는 세션이 없을 때 오류 없이 처리하는지 검증한다.
+// TestEvaluateCanary_EmptySessions verifies handling without sessions (no error).
 func TestEvaluateCanary_EmptySessions(t *testing.T) {
 	t.Parallel()
 
 	result, err := EvaluateCanary(makeProposal("p1", ".moai/harness/test.yaml"), nil)
 	if err != nil {
-		t.Fatalf("빈 세션 시 EvaluateCanary 오류: %v", err)
+		t.Fatalf("EvaluateCanary error with empty sessions: %v", err)
 	}
 
-	// 세션이 없으면 baseline=0, projected=0, delta=0 → 통과
+	// With no sessions, baseline=0, projected=0, delta=0 → pass
 	if result.Rejected {
-		t.Errorf("세션이 없을 때 Rejected = true, 거부되어서는 안 된다")
+		t.Errorf("Rejected = true with no sessions, must not be rejected")
 	}
 }
 
-// TestEvaluateCanary_UsesUpToThreeSessions는 최대 3개 세션만 사용하는지 검증한다.
+// TestEvaluateCanary_UsesUpToThreeSessions verifies that only the most recent 3 sessions are used.
 func TestEvaluateCanary_UsesUpToThreeSessions(t *testing.T) {
 	t.Parallel()
 
-	// 4개 세션 제공, 최신 3개만 사용되어야 함
+	// 4 sessions provided; only the most recent 3 should be used
 	sessions := []harness.Session{
-		makeSession("old", 0.10, 0.10, 0.10), // 오래된 세션 (낮은 score)
+		makeSession("old", 0.10, 0.10, 0.10), // old session (low score)
 		makeSession("s1", 0.90, 0.90, 0.90),
 		makeSession("s2", 0.90, 0.90, 0.90),
 		makeSession("s3", 0.90, 0.90, 0.90),
 	}
 
-	// 최신 3개만 사용하면 baseline이 높아야 함
+	// Using only the latest 3 must make the baseline higher
 	result, err := EvaluateCanary(makeProposal("p1", ".moai/harness/test.yaml"), sessions)
 	if err != nil {
 		t.Fatalf("EvaluateCanary 실패: %v", err)
 	}
 
-	// baseline은 최신 3개(0.90 기반)여야 함, 낮은 "old" 세션 제외
+	// Baseline must be based on the latest 3 (around 0.90), excluding the low "old" session
 	if result.BaselineScore < 0.80 {
-		t.Errorf("BaselineScore = %.4f, 최신 3개 세션 기준으로 0.80 이상이어야 한다", result.BaselineScore)
+		t.Errorf("BaselineScore = %.4f, must be at least 0.80 based on the latest 3 sessions", result.BaselineScore)
 	}
 }

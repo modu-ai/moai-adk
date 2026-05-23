@@ -10,7 +10,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/harness"
 )
 
-// makeAnswer는 테스트용 Answer 생성 헬퍼 함수.
+// makeAnswer is a helper that builds an Answer for tests.
 func makeAnswer(qid string, round int, questionText, answerText string) harness.Answer {
 	return harness.Answer{
 		QuestionID:   qid,
@@ -21,7 +21,7 @@ func makeAnswer(qid string, round int, questionText, answerText string) harness.
 	}
 }
 
-// make16Answers는 테스트용 16개 Answer 슬라이스를 반환.
+// make16Answers returns a slice of 16 Answers for tests.
 func make16Answers() []harness.Answer {
 	data := []struct {
 		qid   string
@@ -53,7 +53,7 @@ func make16Answers() []harness.Answer {
 	return answers
 }
 
-// TestBuffer_AppendAndCommit: 16개 답변 append 후 Commit 및 Frozen 상태 검증.
+// TestBuffer_AppendAndCommit verifies Commit and Frozen state after appending 16 answers.
 func TestBuffer_AppendAndCommit(t *testing.T) {
 	t.Parallel()
 
@@ -82,46 +82,46 @@ func TestBuffer_AppendAndCommit(t *testing.T) {
 		t.Fatal("buffer should be frozen after Commit()")
 	}
 
-	// Commit 후 Append는 반드시 error를 반환해야 함.
+	// After Commit, Append must return an error.
 	extraAnswer := makeAnswer("Q17", 5, "extra question", "extra answer")
 	if err := buf.Append(extraAnswer); err == nil {
 		t.Fatal("Append after Commit() should return error")
 	}
 }
 
-// TestBuffer_Abort_NoDiskWrite: abort 시 in-memory buffer 초기화 및 디스크 쓰기 없음 검증.
+// TestBuffer_Abort_NoDiskWrite verifies that Abort clears the in-memory buffer and writes nothing to disk.
 func TestBuffer_Abort_NoDiskWrite(t *testing.T) {
 	t.Parallel()
 
 	tempDir := t.TempDir()
 
 	buf := harness.NewBuffer()
-	answers := make16Answers()[:5] // 5개만 추가
+	answers := make16Answers()[:5] // append only 5
 	for _, a := range answers {
 		if err := buf.Append(a); err != nil {
 			t.Fatalf("Append(%s) failed: %v", a.QuestionID, err)
 		}
 	}
 
-	// Abort 전에 Len이 5인지 확인
+	// Before Abort, verify Len == 5
 	if buf.Len() != 5 {
 		t.Fatalf("before Abort: expected 5, got %d", buf.Len())
 	}
 
 	buf.Abort()
 
-	// Abort 후 Frozen() == true
+	// After Abort, Frozen() == true
 	if !buf.Frozen() {
 		t.Fatal("buffer should be frozen after Abort()")
 	}
 
-	// Abort 후 Answers()는 빈 슬라이스를 반환해야 함.
+	// After Abort, Answers() must return an empty slice.
 	if got := buf.Answers(); len(got) != 0 {
 		t.Fatalf("Answers() after Abort() should be empty, got %d items", len(got))
 	}
 
-	// 디스크 쓰기 없음 검증: tempDir이 비어 있어야 함.
-	// Abort는 디스크에 아무것도 쓰지 않으므로 tempDir은 그대로임.
+	// Verify no disk writes: tempDir must be empty.
+	// Abort writes nothing to disk, so tempDir is unchanged.
 	entries, err := os.ReadDir(tempDir)
 	if err != nil {
 		t.Fatalf("ReadDir(%s): %v", tempDir, err)
@@ -131,7 +131,7 @@ func TestBuffer_Abort_NoDiskWrite(t *testing.T) {
 	}
 }
 
-// TestBuffer_AppendAfterFrozen_Error: Commit 후 Append 시 error 반환 검증.
+// TestBuffer_AppendAfterFrozen_Error verifies Append returns an error after Commit.
 func TestBuffer_AppendAfterFrozen_Error(t *testing.T) {
 	t.Parallel()
 
@@ -146,7 +146,7 @@ func TestBuffer_AppendAfterFrozen_Error(t *testing.T) {
 	}
 }
 
-// TestWriteResults_FullFlow: 16개 답변 → Commit → Write 후 출력 형식 검증.
+// TestWriteResults_FullFlow verifies the output format after 16 answers → Commit → Write.
 func TestWriteResults_FullFlow(t *testing.T) {
 	t.Parallel()
 
@@ -168,7 +168,7 @@ func TestWriteResults_FullFlow(t *testing.T) {
 
 	content := out.String()
 
-	// YAML frontmatter 검증
+	// Verify YAML frontmatter
 	if !strings.Contains(content, "spec_id: SPEC-PROJ-INIT-001") {
 		t.Error("output missing spec_id in frontmatter")
 	}
@@ -182,7 +182,7 @@ func TestWriteResults_FullFlow(t *testing.T) {
 		t.Error("output missing conversation_language in frontmatter")
 	}
 
-	// 4개 Round 헤더 검증
+	// Verify the 4 Round headers
 	expectedHeaders := []string{
 		"## Round 1: Domain & Technology Foundation",
 		"## Round 2: Methodology & Design",
@@ -195,20 +195,20 @@ func TestWriteResults_FullFlow(t *testing.T) {
 		}
 	}
 
-	// 16개 Q 항목 검증 (각 라인이 "- Q"로 시작)
+	// Verify 16 Q entries (each line starts with "- Q")
 	qCount := strings.Count(content, "\n- Q")
 	if qCount != 16 {
 		t.Errorf("expected 16 '- Q' entries, got %d", qCount)
 	}
 
-	// 16개 "Recorded at:" 항목 검증
+	// Verify 16 "Recorded at:" entries
 	recCount := strings.Count(content, "  - Recorded at:")
 	if recCount != 16 {
 		t.Errorf("expected 16 'Recorded at:' entries, got %d", recCount)
 	}
 }
 
-// TestWriteResults_NotFrozen_Error: Commit 전 Write 시 error 반환 검증.
+// TestWriteResults_NotFrozen_Error verifies an error when Write is called before Commit.
 func TestWriteResults_NotFrozen_Error(t *testing.T) {
 	t.Parallel()
 
@@ -218,7 +218,7 @@ func TestWriteResults_NotFrozen_Error(t *testing.T) {
 			t.Fatalf("Append(%s): %v", a.QuestionID, err)
 		}
 	}
-	// Commit을 호출하지 않음
+	// Do not call Commit
 
 	var out bytes.Buffer
 	if err := harness.WriteResults(buf, "/tmp", "SPEC-001", "ko", &out); err == nil {
@@ -226,12 +226,12 @@ func TestWriteResults_NotFrozen_Error(t *testing.T) {
 	}
 }
 
-// TestWriteResults_Incomplete_Error: 15개 답변 후 Commit → Write 시 error 반환 검증.
+// TestWriteResults_Incomplete_Error verifies an error when Write is called with 15 answers after Commit.
 func TestWriteResults_Incomplete_Error(t *testing.T) {
 	t.Parallel()
 
 	buf := harness.NewBuffer()
-	answers := make16Answers()[:15] // 15개만
+	answers := make16Answers()[:15] // only 15
 	for _, a := range answers {
 		if err := buf.Append(a); err != nil {
 			t.Fatalf("Append(%s): %v", a.QuestionID, err)
@@ -247,7 +247,7 @@ func TestWriteResults_Incomplete_Error(t *testing.T) {
 	}
 }
 
-// TestBuffer_DoubleCommit_Error: Commit 후 재Commit 시 error 반환 검증.
+// TestBuffer_DoubleCommit_Error verifies an error on re-Commit after Commit.
 func TestBuffer_DoubleCommit_Error(t *testing.T) {
 	t.Parallel()
 
@@ -260,7 +260,7 @@ func TestBuffer_DoubleCommit_Error(t *testing.T) {
 	}
 }
 
-// TestWriteResultsToFile_CreatesFile: WriteResultsToFile이 부모 디렉터리 생성 및 파일 작성 검증.
+// TestWriteResultsToFile_CreatesFile verifies WriteResultsToFile creates the parent directory and the file.
 func TestWriteResultsToFile_CreatesFile(t *testing.T) {
 	t.Parallel()
 
@@ -281,7 +281,7 @@ func TestWriteResultsToFile_CreatesFile(t *testing.T) {
 		t.Fatalf("WriteResultsToFile(): %v", err)
 	}
 
-	// 파일이 생성되었는지 확인
+	// Verify the file was created
 	info, err := os.Stat(outPath)
 	if err != nil {
 		t.Fatalf("file not created: %v", err)
@@ -290,7 +290,7 @@ func TestWriteResultsToFile_CreatesFile(t *testing.T) {
 		t.Fatal("created file should not be empty")
 	}
 
-	// 내용 검증
+	// Verify contents
 	data, err := os.ReadFile(outPath)
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
@@ -301,7 +301,7 @@ func TestWriteResultsToFile_CreatesFile(t *testing.T) {
 	}
 }
 
-// TestWriteResults_KoLanguage_Preserved: 한국어 답변이 출력에 그대로 보존되는지 검증.
+// TestWriteResults_KoLanguage_Preserved verifies that Korean answers are preserved verbatim in the output.
 func TestWriteResults_KoLanguage_Preserved(t *testing.T) {
 	t.Parallel()
 
@@ -340,7 +340,7 @@ func TestWriteResults_KoLanguage_Preserved(t *testing.T) {
 
 	content := out.String()
 
-	// 한국어 답변이 그대로 보존되는지 검증
+	// Verify that Korean answers are preserved verbatim
 	koreanTexts := []string{
 		"모바일 (iOS)",
 		"스위프트 + SwiftUI",

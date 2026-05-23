@@ -1,5 +1,5 @@
-// Package harness — learner.go 테스트.
-// REQ-HL-002: 패턴 집계, tier 분류, promotion 기록 검증.
+// Package harness — learner.go tests.
+// REQ-HL-002: pattern aggregation, tier classification, promotion record verification.
 package harness
 
 import (
@@ -14,10 +14,10 @@ import (
 )
 
 // ─────────────────────────────────────────────
-// AggregatePatterns 테스트 (T-P2-02)
+// AggregatePatterns tests (T-P2-02)
 // ─────────────────────────────────────────────
 
-// TestAggregatePatterns_EmptyFile은 빈 JSONL 파일에서 빈 map을 반환하는지 검증한다.
+// TestAggregatePatterns_EmptyFile verifies that an empty JSONL file returns an empty map.
 func TestAggregatePatterns_EmptyFile(t *testing.T) {
 	t.Parallel()
 
@@ -31,11 +31,11 @@ func TestAggregatePatterns_EmptyFile(t *testing.T) {
 		t.Fatalf("AggregatePatterns 오류: %v", err)
 	}
 	if len(patterns) != 0 {
-		t.Errorf("빈 파일: len(patterns) = %d, want 0", len(patterns))
+		t.Errorf("empty file: len(patterns) = %d, want 0", len(patterns))
 	}
 }
 
-// TestAggregatePatterns_FileNotExist은 파일이 없으면 빈 map을 반환하는지 검증한다.
+// TestAggregatePatterns_FileNotExist verifies that a missing file returns an empty map.
 func TestAggregatePatterns_FileNotExist(t *testing.T) {
 	t.Parallel()
 
@@ -46,11 +46,11 @@ func TestAggregatePatterns_FileNotExist(t *testing.T) {
 		t.Fatalf("AggregatePatterns 오류: %v", err)
 	}
 	if len(patterns) != 0 {
-		t.Errorf("없는 파일: len(patterns) = %d, want 0", len(patterns))
+		t.Errorf("missing file: len(patterns) = %d, want 0", len(patterns))
 	}
 }
 
-// TestAggregatePatterns_Groups은 1,000개 이벤트를 (event_type,subject,context_hash)로 그룹핑하는지 검증한다.
+// TestAggregatePatterns_Groups verifies that 1,000 events are grouped by (event_type, subject, context_hash).
 func TestAggregatePatterns_Groups(t *testing.T) {
 	t.Parallel()
 
@@ -61,19 +61,19 @@ func TestAggregatePatterns_Groups(t *testing.T) {
 		t.Fatalf("AggregatePatterns 오류: %v", err)
 	}
 
-	// 10가지 (event_type, subject, context_hash) 조합 * 100 = 1000 이벤트
-	// 각 패턴의 count = 100
+	// 10 (event_type, subject, context_hash) combinations * 100 = 1000 events
+	// Each pattern's count = 100
 	if len(patterns) != 10 {
-		t.Errorf("패턴 수 = %d, want 10", len(patterns))
+		t.Errorf("pattern count = %d, want 10", len(patterns))
 	}
 	for key, p := range patterns {
 		if p.Count != 100 {
-			t.Errorf("패턴[%s].Count = %d, want 100", key, p.Count)
+			t.Errorf("pattern[%s].Count = %d, want 100", key, p.Count)
 		}
 	}
 }
 
-// TestAggregatePatterns_CountAccumulation은 동일 키가 count를 누적하는지 검증한다.
+// TestAggregatePatterns_CountAccumulation verifies that duplicate keys accumulate count.
 func TestAggregatePatterns_CountAccumulation(t *testing.T) {
 	t.Parallel()
 
@@ -94,21 +94,21 @@ func TestAggregatePatterns_CountAccumulation(t *testing.T) {
 		t.Fatalf("AggregatePatterns 오류: %v", err)
 	}
 	if len(patterns) != 2 {
-		t.Fatalf("패턴 수 = %d, want 2", len(patterns))
+		t.Fatalf("pattern count = %d, want 2", len(patterns))
 	}
 
 	key1 := patternKey(EventTypeMoaiSubcommand, "/moai plan", "hash1")
 	if patterns[key1].Count != 3 {
-		t.Errorf("패턴[key1].Count = %d, want 3", patterns[key1].Count)
+		t.Errorf("pattern[key1].Count = %d, want 3", patterns[key1].Count)
 	}
 
 	key2 := patternKey(EventTypeAgentInvocation, "expert-backend", "hash2")
 	if patterns[key2].Count != 2 {
-		t.Errorf("패턴[key2].Count = %d, want 2", patterns[key2].Count)
+		t.Errorf("pattern[key2].Count = %d, want 2", patterns[key2].Count)
 	}
 }
 
-// TestAggregatePatterns_MalformedLinesSkipped은 파싱 실패 줄을 건너뛰는지 검증한다.
+// TestAggregatePatterns_MalformedLinesSkipped verifies that lines failing to parse are skipped.
 func TestAggregatePatterns_MalformedLinesSkipped(t *testing.T) {
 	t.Parallel()
 
@@ -128,15 +128,15 @@ func TestAggregatePatterns_MalformedLinesSkipped(t *testing.T) {
 	}
 	key := patternKey(EventTypeFeedback, "/moai feedback", "h1")
 	if patterns[key].Count != 2 {
-		t.Errorf("유효 이벤트 count = %d, want 2", patterns[key].Count)
+		t.Errorf("valid event count = %d, want 2", patterns[key].Count)
 	}
 }
 
 // ─────────────────────────────────────────────
-// ClassifyTier 테스트 (T-P2-03)
+// ClassifyTier tests (T-P2-03)
 // ─────────────────────────────────────────────
 
-// TestClassifyTier_BoundaryValues는 {0,1,2,3,4,5,9,10,11}에서 올바른 tier를 반환하는지 검증한다.
+// TestClassifyTier_BoundaryValues verifies the correct tier for {0,1,2,3,4,5,9,10,11}.
 func TestClassifyTier_BoundaryValues(t *testing.T) {
 	t.Parallel()
 
@@ -146,15 +146,15 @@ func TestClassifyTier_BoundaryValues(t *testing.T) {
 		confidence float64
 		wantTier   Tier
 	}{
-		{0, 0.90, TierObservation}, // count=0: 아직 미관찰
+		{0, 0.90, TierObservation}, // count=0: not yet observed
 		{1, 0.90, TierObservation}, // count=1: Observation
-		{2, 0.90, TierObservation}, // count=2: 아직 Observation
+		{2, 0.90, TierObservation}, // count=2: still Observation
 		{3, 0.90, TierHeuristic},   // count=3: Heuristic
-		{4, 0.90, TierHeuristic},   // count=4: 아직 Heuristic
+		{4, 0.90, TierHeuristic},   // count=4: still Heuristic
 		{5, 0.90, TierRule},        // count=5: Rule
-		{9, 0.90, TierRule},        // count=9: 아직 Rule
+		{9, 0.90, TierRule},        // count=9: still Rule
 		{10, 0.90, TierAutoUpdate}, // count=10: AutoUpdate
-		{11, 0.90, TierAutoUpdate}, // count=11: 여전히 AutoUpdate
+		{11, 0.90, TierAutoUpdate}, // count=11: still AutoUpdate
 	}
 
 	for _, tc := range cases {
@@ -171,7 +171,7 @@ func TestClassifyTier_BoundaryValues(t *testing.T) {
 	}
 }
 
-// TestClassifyTier_LowConfidenceForceObservation은 신뢰도 < 0.70이면 count에 관계없이 TierObservation을 반환하는지 검증한다.
+// TestClassifyTier_LowConfidenceForceObservation verifies that confidence < 0.70 forces TierObservation regardless of count.
 func TestClassifyTier_LowConfidenceForceObservation(t *testing.T) {
 	t.Parallel()
 
@@ -182,7 +182,7 @@ func TestClassifyTier_LowConfidenceForceObservation(t *testing.T) {
 		count := count
 		t.Run(fmt.Sprintf("count=%d_lowconf", count), func(t *testing.T) {
 			t.Parallel()
-			p := &Pattern{Count: count, Confidence: 0.69} // 0.70 미만
+			p := &Pattern{Count: count, Confidence: 0.69} // below 0.70
 			got := ClassifyTier(p, thresholds)
 			if got != TierObservation {
 				t.Errorf("count=%d confidence=0.69: got %s, want observation", count, got)
@@ -191,20 +191,20 @@ func TestClassifyTier_LowConfidenceForceObservation(t *testing.T) {
 	}
 }
 
-// TestClassifyTier_ExactBoundaryConfidence는 0.70 경계에서 올바르게 분류하는지 검증한다.
+// TestClassifyTier_ExactBoundaryConfidence verifies correct classification at the 0.70 boundary.
 func TestClassifyTier_ExactBoundaryConfidence(t *testing.T) {
 	t.Parallel()
 
 	thresholds := []int{1, 3, 5, 10}
 
-	// 정확히 0.70: count 충분하면 Observation 탈출 가능
+	// Exactly 0.70: can escape Observation when count is sufficient
 	p := &Pattern{Count: 3, Confidence: 0.70}
 	got := ClassifyTier(p, thresholds)
 	if got != TierHeuristic {
 		t.Errorf("count=3 confidence=0.70: got %s, want heuristic", got)
 	}
 
-	// 0.699: 여전히 Observation 강제
+	// 0.699: still forced to Observation
 	p2 := &Pattern{Count: 3, Confidence: 0.699}
 	got2 := ClassifyTier(p2, thresholds)
 	if got2 != TierObservation {
@@ -212,7 +212,7 @@ func TestClassifyTier_ExactBoundaryConfidence(t *testing.T) {
 	}
 }
 
-// TestClassifyTier_EmptyThresholds는 thresholds가 없으면 TierObservation을 반환하는지 검증한다.
+// TestClassifyTier_EmptyThresholds verifies TierObservation is returned when thresholds are absent.
 func TestClassifyTier_EmptyThresholds(t *testing.T) {
 	t.Parallel()
 
@@ -224,10 +224,10 @@ func TestClassifyTier_EmptyThresholds(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────
-// WritePromotion 테스트 (T-P2-06)
+// WritePromotion tests (T-P2-06)
 // ─────────────────────────────────────────────
 
-// TestWritePromotion_AppendsLine은 Promotion이 JSONL 파일에 올바르게 기록되는지 검증한다.
+// TestWritePromotion_AppendsLine verifies that Promotion is recorded correctly into the JSONL file.
 func TestWritePromotion_AppendsLine(t *testing.T) {
 	t.Parallel()
 
@@ -249,14 +249,14 @@ func TestWritePromotion_AppendsLine(t *testing.T) {
 		t.Fatalf("WritePromotion 오류: %v", err)
 	}
 
-	// 파일이 존재하고 유효한 JSON인지 검증
+	// Verify the file exists and contains valid JSON
 	data, err := os.ReadFile(promoPath)
 	if err != nil {
 		t.Fatalf("파일 읽기 실패: %v", err)
 	}
 	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
 	if len(lines) != 1 {
-		t.Fatalf("라인 수 = %d, want 1", len(lines))
+		t.Fatalf("line count = %d, want 1", len(lines))
 	}
 
 	var got Promotion
@@ -277,7 +277,7 @@ func TestWritePromotion_AppendsLine(t *testing.T) {
 	}
 }
 
-// TestWritePromotion_Appends은 여러 번 호출 시 누적 append되는지 검증한다.
+// TestWritePromotion_Appends verifies cumulative appends across multiple calls.
 func TestWritePromotion_Appends(t *testing.T) {
 	t.Parallel()
 
@@ -314,11 +314,11 @@ func TestWritePromotion_Appends(t *testing.T) {
 		}
 	}
 	if lineCount != 3 {
-		t.Errorf("라인 수 = %d, want 3", lineCount)
+		t.Errorf("line count = %d, want 3", lineCount)
 	}
 }
 
-// TestWritePromotion_DirectoryAutoCreate은 부모 디렉토리가 없어도 자동 생성하는지 검증한다.
+// TestWritePromotion_DirectoryAutoCreate verifies that a missing parent directory is auto-created.
 func TestWritePromotion_DirectoryAutoCreate(t *testing.T) {
 	t.Parallel()
 
@@ -338,15 +338,15 @@ func TestWritePromotion_DirectoryAutoCreate(t *testing.T) {
 		t.Fatalf("WritePromotion 오류: %v", err)
 	}
 	if _, err := os.Stat(promoPath); os.IsNotExist(err) {
-		t.Error("프로모션 파일이 생성되지 않음")
+		t.Error("promotion file was not created")
 	}
 }
 
 // ─────────────────────────────────────────────
-// Tier.String 테스트
+// Tier.String tests
 // ─────────────────────────────────────────────
 
-// TestTierString은 Tier 열거형의 String() 결과를 검증한다.
+// TestTierString verifies the String() result of the Tier enum.
 func TestTierString(t *testing.T) {
 	t.Parallel()
 
@@ -368,10 +368,10 @@ func TestTierString(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────
-// 테스트 헬퍼
+// Test helpers
 // ─────────────────────────────────────────────
 
-// makeEvent는 테스트용 Event를 생성한다.
+// makeEvent builds a test Event.
 func makeEvent(et EventType, subject, contextHash string) Event {
 	return Event{
 		Timestamp:     time.Now().UTC(),
@@ -383,7 +383,7 @@ func makeEvent(et EventType, subject, contextHash string) Event {
 	}
 }
 
-// writeEvents는 이벤트 슬라이스를 JSONL 파일로 기록한다.
+// writeEvents writes a slice of events to a JSONL file.
 func writeEvents(t *testing.T, logPath string, events []Event) {
 	t.Helper()
 
@@ -401,14 +401,14 @@ func writeEvents(t *testing.T, logPath string, events []Event) {
 	}
 }
 
-// writeSyntheticEvents는 10가지 패턴 * 100 반복 = 1,000개 이벤트를 기록한다.
+// writeSyntheticEvents writes 10 patterns * 100 repeats = 1,000 events.
 func writeSyntheticEvents(t *testing.T, total int) string {
 	t.Helper()
 
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "usage-log.jsonl")
 
-	// 10가지 (event_type, subject, context_hash) 조합
+	// 10 (event_type, subject, context_hash) combinations
 	combos := []struct {
 		et      EventType
 		subject string
@@ -438,7 +438,7 @@ func writeSyntheticEvents(t *testing.T, total int) string {
 	return logPath
 }
 
-// patternKey는 AggregatePatterns가 반환하는 map의 키를 생성한다.
+// patternKey constructs the map key returned by AggregatePatterns.
 func patternKey(et EventType, subject, contextHash string) string {
 	return fmt.Sprintf("%s:%s:%s", et, subject, contextHash)
 }

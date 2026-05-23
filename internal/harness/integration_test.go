@@ -1,5 +1,5 @@
-// Package harness — 샘플 세션 replay 통합 테스트.
-// REQ-HL-001: 실제 세션과 유사한 이벤트 시퀀스를 재생하여 전체 파이프라인을 검증한다.
+// Package harness — sample session replay integration tests.
+// REQ-HL-001: replay an event sequence resembling a real session to verify the full pipeline.
 package harness
 
 import (
@@ -9,9 +9,9 @@ import (
 	"time"
 )
 
-// TestIntegration_SampleSessionReplay는 실제 /moai 세션에서 발생하는
-// 이벤트 시퀀스를 재생하여 observer + retention 파이프라인을 검증한다.
-// T-P1-05: integration_test.go 샘플 세션 replay.
+// TestIntegration_SampleSessionReplay replays an event sequence that occurs in a
+// real /moai session to verify the observer + retention pipeline.
+// T-P1-05: integration_test.go sample session replay.
 func TestIntegration_SampleSessionReplay(t *testing.T) {
 	t.Parallel()
 
@@ -19,7 +19,7 @@ func TestIntegration_SampleSessionReplay(t *testing.T) {
 	logPath := dir + "/.moai/harness/usage-log.jsonl"
 	archiveDir := dir + "/.moai/harness/learning-history/archive"
 
-	// 고정 시각 사용 (테스트 결정론성)
+	// Use a fixed time (test determinism)
 	baseTime := time.Date(2026, 4, 27, 12, 0, 0, 0, time.UTC)
 	nowIdx := 0
 	times := []time.Time{
@@ -42,7 +42,7 @@ func TestIntegration_SampleSessionReplay(t *testing.T) {
 		nowFn:     nowFn,
 	}
 
-	// 샘플 세션 이벤트 시퀀스
+	// Sample session event sequence
 	events := []struct {
 		et      EventType
 		subject string
@@ -57,49 +57,49 @@ func TestIntegration_SampleSessionReplay(t *testing.T) {
 
 	for _, e := range events {
 		if err := obs.RecordEvent(e.et, e.subject, e.hash); err != nil {
-			t.Fatalf("RecordEvent(%s) 실패: %v", e.et, err)
+			t.Fatalf("RecordEvent(%s) failed: %v", e.et, err)
 		}
 	}
 
-	// 로그 파일 검증
+	// Verify the log file
 	data, err := readFile(logPath)
 	if err != nil {
-		t.Fatalf("로그 파일 읽기 실패: %v", err)
+		t.Fatalf("log file read failed: %v", err)
 	}
 
 	lines := splitNonEmptyLines(string(data))
 	if len(lines) != len(events) {
-		t.Errorf("기록된 이벤트 수: want=%d got=%d", len(events), len(lines))
+		t.Errorf("recorded event count: want=%d got=%d", len(events), len(lines))
 	}
 
-	// 각 라인이 유효한 JSON이며 필수 필드가 있는지 확인
+	// Verify each line is valid JSON and contains the required fields
 	for i, line := range lines {
 		var evt Event
 		if err := json.Unmarshal([]byte(line), &evt); err != nil {
-			t.Errorf("줄 %d 파싱 실패: %v", i, err)
+			t.Errorf("line %d parse failed: %v", i, err)
 			continue
 		}
 		if evt.SchemaVersion != LogSchemaVersion {
-			t.Errorf("줄 %d SchemaVersion: want=%q got=%q", i, LogSchemaVersion, evt.SchemaVersion)
+			t.Errorf("line %d SchemaVersion: want=%q got=%q", i, LogSchemaVersion, evt.SchemaVersion)
 		}
 		if evt.EventType == "" {
-			t.Errorf("줄 %d EventType이 비어있음", i)
+			t.Errorf("line %d EventType is empty", i)
 		}
 		if evt.Subject == "" {
-			t.Errorf("줄 %d Subject이 비어있음", i)
+			t.Errorf("line %d Subject is empty", i)
 		}
 		if evt.Timestamp.IsZero() {
-			t.Errorf("줄 %d Timestamp가 zero", i)
+			t.Errorf("line %d Timestamp is zero", i)
 		}
 	}
 }
 
-// TestIntegration_RetentionWithObserver는 Observer가 retention과 통합되어
-// 오래된 이벤트를 pruning하는 전체 흐름을 검증한다.
+// TestIntegration_RetentionWithObserver verifies the full flow where Observer integrates
+// with retention to prune stale events.
 // T-P1-05: integration test.
 func TestIntegration_RetentionWithObserver(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("Windows에서 파일 잠금으로 인해 pruning이 즉시 반영되지 않아 건너뜁니다")
+		t.Skip("Skipped because pruning is not reflected immediately on Windows due to file locking")
 	}
 
 	t.Parallel()
@@ -108,7 +108,7 @@ func TestIntegration_RetentionWithObserver(t *testing.T) {
 	logPath := dir + "/usage-log.jsonl"
 	archiveDir := dir + "/archive"
 
-	// 오래된 이벤트를 미리 기록
+	// Pre-record an old event
 	past := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	oldEvent := Event{
 		Timestamp:     past,
@@ -119,41 +119,41 @@ func TestIntegration_RetentionWithObserver(t *testing.T) {
 		SchemaVersion: LogSchemaVersion,
 	}
 	if err := appendEventsJSONL(logPath, []Event{oldEvent}); err != nil {
-		t.Fatalf("오래된 이벤트 기록 실패: %v", err)
+		t.Fatalf("recording the old event failed: %v", err)
 	}
 
-	// Observer + Retention 통합: now는 2026-04-27
+	// Observer + Retention integration: now is 2026-04-27
 	now := time.Date(2026, 4, 27, 0, 0, 0, 0, time.UTC)
 	retention := NewRetention(logPath, archiveDir, func() time.Time { return now })
 
-	// defaultRetentionDays(30일) 기준: 2026-01-01은 pruning 대상
+	// With defaultRetentionDays (30 days), 2026-01-01 is a pruning target
 	obs := NewObserverWithRetention(logPath, retention)
 
-	// 새 이벤트 기록 — 이때 lazy pruning이 실행된다
+	// Record a new event — lazy pruning runs at this point
 	if err := obs.RecordEvent(EventTypeAgentInvocation, "expert-backend", "new-hash"); err != nil {
-		t.Fatalf("RecordEvent 실패: %v", err)
+		t.Fatalf("RecordEvent failed: %v", err)
 	}
 
-	// 오래된 이벤트가 제거되었는지 확인
+	// Verify the old event was removed
 	data, err := readFile(logPath)
 	if err != nil {
-		t.Fatalf("로그 파일 읽기 실패: %v", err)
+		t.Fatalf("log file read failed: %v", err)
 	}
 
 	lines := splitNonEmptyLines(string(data))
-	// 새 이벤트 1개만 남아야 함
+	// Only the 1 new event must remain
 	if len(lines) != 1 {
-		t.Errorf("pruning 후 줄 수: want=1 got=%d", len(lines))
+		t.Errorf("post-pruning line count: want=1 got=%d", len(lines))
 	}
 
-	// 아카이브 파일이 생성되었는지 확인
+	// Verify an archive file was created
 	archiveFiles := listDir(archiveDir)
 	if len(archiveFiles) == 0 {
-		t.Error("아카이브 파일이 생성되지 않았습니다")
+		t.Error("archive file was not created")
 	}
 }
 
-// TestIntegration_JSONL_AllEventTypes는 모든 EventType을 기록하고 파싱하는 왕복을 검증한다.
+// TestIntegration_JSONL_AllEventTypes verifies the round-trip of recording and parsing every EventType.
 func TestIntegration_JSONL_AllEventTypes(t *testing.T) {
 	t.Parallel()
 
@@ -169,28 +169,28 @@ func TestIntegration_JSONL_AllEventTypes(t *testing.T) {
 
 	for _, et := range allTypes {
 		if err := obs.RecordEvent(et, "test-subject", "test-hash"); err != nil {
-			t.Errorf("RecordEvent(%s) 실패: %v", et, err)
+			t.Errorf("RecordEvent(%s) failed: %v", et, err)
 		}
 	}
 
 	data, err := readFile(dir + "/usage-log.jsonl")
 	if err != nil {
-		t.Fatalf("로그 파일 읽기 실패: %v", err)
+		t.Fatalf("log file read failed: %v", err)
 	}
 
 	lines := splitNonEmptyLines(string(data))
 	if len(lines) != len(allTypes) {
-		t.Errorf("이벤트 수: want=%d got=%d", len(allTypes), len(lines))
+		t.Errorf("event count: want=%d got=%d", len(allTypes), len(lines))
 	}
 
 	for i, line := range lines {
 		var evt Event
 		if err := json.Unmarshal([]byte(line), &evt); err != nil {
-			t.Errorf("줄 %d 파싱 실패: %v", i, err)
+			t.Errorf("line %d parse failed: %v", i, err)
 			continue
 		}
 		if evt.EventType != allTypes[i] {
-			t.Errorf("줄 %d EventType: want=%q got=%q", i, allTypes[i], evt.EventType)
+			t.Errorf("line %d EventType: want=%q got=%q", i, allTypes[i], evt.EventType)
 		}
 	}
 }

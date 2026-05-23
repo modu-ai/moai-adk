@@ -1,6 +1,6 @@
-// Package integration_test — HRN-003 통합 테스트: strict 프로필 임계값 검증.
-// AC-HRN-003-12: strict 프로필 per-dimension 임계값 (0.80) 정합성.
-// REQ-HRN-003-008: must-pass firewall — 모든 must-pass 차원이 임계값 이상이어야 통과.
+// Package integration_test — HRN-003 integration tests: strict profile threshold verification.
+// AC-HRN-003-12: strict profile per-dimension threshold (0.80) consistency.
+// REQ-HRN-003-008: must-pass firewall — every must-pass dimension must be at or above the threshold to pass.
 package integration_test
 
 import (
@@ -9,8 +9,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/harness"
 )
 
-// makeStrictRubric은 strict 프로필에 상응하는 Rubric을 직접 구성합니다.
-// strict 프로필: 모든 4개 차원이 개별적으로 0.80 이상이어야 통과.
+// makeStrictRubric constructs a Rubric matching the strict profile directly.
+// strict profile: all 4 dimensions individually must be at or above 0.80 to pass.
 func makeStrictRubric() *harness.Rubric {
 	anchors := map[float64]string{
 		0.25: "기준 미달",
@@ -32,7 +32,7 @@ func makeStrictRubric() *harness.Rubric {
 	}
 }
 
-// makeCardWithDimScore는 모든 차원에 동일한 점수를 가진 ScoreCard를 생성합니다.
+// makeCardWithDimScore builds a ScoreCard where every dimension has the same score.
 func makeCardWithDimScore(score float64) *harness.ScoreCard {
 	dims := []harness.Dimension{
 		harness.Functionality,
@@ -64,8 +64,8 @@ func makeCardWithDimScore(score float64) *harness.ScoreCard {
 	}
 }
 
-// TestStrictProfile_BelowThreshold는 strict 프로필에서 0.79 점수가 fail인지 검증합니다.
-// AC-HRN-003-12.a: score 0.79 → fail (must-pass Functionality + Security 모두 0.80 미만).
+// TestStrictProfile_BelowThreshold verifies that under the strict profile a score of 0.79 fails.
+// AC-HRN-003-12.a: score 0.79 → fail (must-pass Functionality + Security both below 0.80).
 func TestStrictProfile_BelowThreshold(t *testing.T) {
 	rubric := makeStrictRubric()
 	runner := harness.NewEvaluatorRunner(rubric)
@@ -81,8 +81,8 @@ func TestStrictProfile_BelowThreshold(t *testing.T) {
 	}
 }
 
-// TestStrictProfile_AtThreshold는 strict 프로필에서 0.80 점수가 pass인지 검증합니다.
-// AC-HRN-003-12.b: score 0.80 → pass (must-pass 차원이 정확히 임계값 도달).
+// TestStrictProfile_AtThreshold verifies that under the strict profile a score of 0.80 passes.
+// AC-HRN-003-12.b: score 0.80 → pass (must-pass dimensions exactly at the threshold).
 func TestStrictProfile_AtThreshold(t *testing.T) {
 	rubric := makeStrictRubric()
 	runner := harness.NewEvaluatorRunner(rubric)
@@ -98,8 +98,8 @@ func TestStrictProfile_AtThreshold(t *testing.T) {
 	}
 }
 
-// TestStrictProfile_AboveThreshold는 strict 프로필에서 0.90 점수가 pass인지 검증합니다.
-// AC-HRN-003-12.c: score 0.90 → pass (must-pass 차원이 임계값 초과).
+// TestStrictProfile_AboveThreshold verifies that under the strict profile a score of 0.90 passes.
+// AC-HRN-003-12.c: score 0.90 → pass (must-pass dimensions above the threshold).
 func TestStrictProfile_AboveThreshold(t *testing.T) {
 	rubric := makeStrictRubric()
 	runner := harness.NewEvaluatorRunner(rubric)

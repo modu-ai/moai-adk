@@ -10,13 +10,13 @@ import (
 	"github.com/modu-ai/moai-adk/internal/harness/router"
 )
 
-// testdataDir은 테스트 픽스처 루트 디렉토리 경로를 반환합니다.
+// testdataDir returns the path of the test fixtures root directory.
 func testdataDir() string {
 	_, filename, _, _ := runtime.Caller(0)
 	return filepath.Join(filepath.Dir(filename), "testdata")
 }
 
-// minimalHarnessConfig는 테스트용 최소 HarnessConfig를 반환합니다.
+// minimalHarnessConfig returns a minimal HarnessConfig used in tests.
 func minimalHarnessConfig() *config.HarnessConfig {
 	return &config.HarnessConfig{
 		DefaultProfile: "default",
@@ -65,8 +65,8 @@ func minimalHarnessConfig() *config.HarnessConfig {
 	}
 }
 
-// TestRoute_SpecOverride — REQ-HRN-001-015: SPEC frontmatter harness_level: 오버라이드.
-// spec.md에 harness_level: thorough가 있으면 matched_rule: spec_override를 반환해야 합니다.
+// TestRoute_SpecOverride — REQ-HRN-001-015: SPEC frontmatter harness_level: override.
+// When spec.md has harness_level: thorough, matched_rule: spec_override must be returned.
 func TestRoute_SpecOverride(t *testing.T) {
 	t.Parallel()
 
@@ -87,8 +87,8 @@ func TestRoute_SpecOverride(t *testing.T) {
 	}
 }
 
-// TestRoute_KeywordForceThorough — REQ-HRN-001-008: 보안/결제 키워드 force-thorough.
-// SPEC 본문에 oauth 또는 jwt 같은 키워드가 있으면 LevelThorough를 반환해야 합니다.
+// TestRoute_KeywordForceThorough — REQ-HRN-001-008: security/payment keyword force-thorough.
+// When the SPEC body contains keywords like oauth or jwt, LevelThorough must be returned.
 func TestRoute_KeywordForceThorough(t *testing.T) {
 	t.Parallel()
 
@@ -112,8 +112,8 @@ func TestRoute_KeywordForceThorough(t *testing.T) {
 	}
 }
 
-// TestRoute_NormalSpec_Standard — REQ-HRN-001-007: 일반 SPEC이 standard로 라우팅.
-// 단순 feature SPEC은 file_count > 3이면 standard로 라우팅됩니다.
+// TestRoute_NormalSpec_Standard — REQ-HRN-001-007: a normal SPEC routes to standard.
+// A simple feature SPEC routes to standard when file_count > 3.
 func TestRoute_NormalSpec_Standard(t *testing.T) {
 	t.Parallel()
 
@@ -126,24 +126,24 @@ func TestRoute_NormalSpec_Standard(t *testing.T) {
 		t.Fatalf("RouteFromFile() error: %v", err)
 	}
 
-	// SPEC-TEST-CCC-001은 5개의 REQ → file_count 추정 가능; domain 단일
-	// 라우팅 결과: minimal 또는 standard (파일 카운트에 따라 다름)
+	// SPEC-TEST-CCC-001 has 5 REQs → file_count is inferable; single domain.
+	// Routing result: minimal or standard (depending on file count).
 	switch level {
 	case router.LevelMinimal, router.LevelStandard:
-		// 정상 범위
+		// within expected range
 	default:
 		t.Errorf("unexpected level %q for normal feature SPEC", level)
 	}
 }
 
-// TestRoute_PriorityOrderRespected — REQ-HRN-001-007: 우선순위 순서 (minimal → standard → thorough).
+// TestRoute_PriorityOrderRespected — REQ-HRN-001-007: priority order (minimal → standard → thorough).
 func TestRoute_PriorityOrderRespected(t *testing.T) {
 	t.Parallel()
 
 	cfg := minimalHarnessConfig()
 	r := router.New(cfg)
 
-	// 빈 SPEC 구조 (기본값 적용 → minimal 또는 standard 폴백)
+	// Empty SPEC structure (defaults applied → fallback to minimal or standard)
 	doc := &router.SPECInput{
 		Priority: "P3",
 		Tags:     "test",
@@ -158,7 +158,7 @@ func TestRoute_PriorityOrderRespected(t *testing.T) {
 
 	switch level {
 	case router.LevelMinimal, router.LevelStandard, router.LevelThorough:
-		// 모두 유효한 결과
+		// all valid outcomes
 	default:
 		t.Errorf("unexpected level: %q", level)
 	}
@@ -167,7 +167,7 @@ func TestRoute_PriorityOrderRespected(t *testing.T) {
 	}
 }
 
-// TestRoute_CriticalPriority_ForceThorough — REQ-HRN-001-008: Critical 우선순위 → thorough.
+// TestRoute_CriticalPriority_ForceThorough — REQ-HRN-001-008: Critical priority → thorough.
 func TestRoute_CriticalPriority_ForceThorough(t *testing.T) {
 	t.Parallel()
 
@@ -221,7 +221,7 @@ func TestRoute_MinimalSpec(t *testing.T) {
 	}
 }
 
-// TestRoute_SensitiveDomain_ForceThorough — REQ-HRN-001-008: 민감 도메인 → thorough.
+// TestRoute_SensitiveDomain_ForceThorough — REQ-HRN-001-008: sensitive domain → thorough.
 func TestRoute_SensitiveDomain_ForceThorough(t *testing.T) {
 	t.Parallel()
 
@@ -262,7 +262,7 @@ func TestRoute_SensitiveDomain_ForceThorough(t *testing.T) {
 	}
 }
 
-// TestRoute_RouteFromFile_Error — RouteFromFile 오류 경로.
+// TestRoute_RouteFromFile_Error — RouteFromFile error path.
 func TestRoute_RouteFromFile_Error(t *testing.T) {
 	t.Parallel()
 
@@ -270,17 +270,17 @@ func TestRoute_RouteFromFile_Error(t *testing.T) {
 	r := router.New(cfg)
 
 	level, _, err := r.RouteFromFile("/nonexistent/path/spec.md", cfg)
-	// 오류 시 기본값 반환
+	// On error, a default value is returned.
 	_ = err
 	switch level {
 	case router.LevelMinimal, router.LevelStandard, router.LevelThorough:
-		// 유효한 기본값
+		// valid default
 	default:
 		t.Errorf("RouteFromFile error path: unexpected level %q", level)
 	}
 }
 
-// TestRoute_InvalidHarnessLevel_IgnoredAndFallthrough — 유효하지 않은 harness_level override 무시.
+// TestRoute_InvalidHarnessLevel_IgnoredAndFallthrough — invalid harness_level override is ignored.
 func TestRoute_InvalidHarnessLevel_IgnoredAndFallthrough(t *testing.T) {
 	t.Parallel()
 
@@ -292,14 +292,14 @@ func TestRoute_InvalidHarnessLevel_IgnoredAndFallthrough(t *testing.T) {
 		Tags:         "bugfix",
 		Title:        "Test",
 		Body:         "",
-		HarnessLevel: "extreme", // 유효하지 않은 값
+		HarnessLevel: "extreme", // invalid value
 	}
 
 	level, _, err := r.Route(doc, cfg)
 	if err != nil {
 		t.Fatalf("Route() error: %v", err)
 	}
-	// 유효하지 않은 override는 무시되고 auto-detection으로 폴백
+	// Invalid override is ignored and falls back to auto-detection
 	switch level {
 	case router.LevelMinimal, router.LevelStandard, router.LevelThorough:
 		// OK
@@ -308,7 +308,7 @@ func TestRoute_InvalidHarnessLevel_IgnoredAndFallthrough(t *testing.T) {
 	}
 }
 
-// TestParseProfileFloor_ValidFile — ParseProfileFloor 정상 케이스.
+// TestParseProfileFloor_ValidFile — ParseProfileFloor happy path.
 func TestParseProfileFloor_ValidFile(t *testing.T) {
 	t.Parallel()
 
@@ -338,7 +338,7 @@ func TestParseProfileFloor_ValidFile(t *testing.T) {
 	}
 }
 
-// TestParseProfileFloor_LowThreshold — ParseProfileFloor 0.5 임계값 케이스.
+// TestParseProfileFloor_LowThreshold — ParseProfileFloor 0.5 threshold case.
 func TestParseProfileFloor_LowThreshold(t *testing.T) {
 	t.Parallel()
 
@@ -363,13 +363,13 @@ func TestParseProfileFloor_LowThreshold(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseProfileFloor error: %v", err)
 	}
-	// 최솟값은 0.50이어야 합니다
+	// The minimum must be 0.50
 	if floor > 0.51 {
 		t.Errorf("floor should be ~0.50, got %f", floor)
 	}
 }
 
-// TestParseProfileFloor_NotFound — ParseProfileFloor 파일 없음.
+// TestParseProfileFloor_NotFound — ParseProfileFloor file not found.
 func TestParseProfileFloor_NotFound(t *testing.T) {
 	t.Parallel()
 
@@ -379,7 +379,7 @@ func TestParseProfileFloor_NotFound(t *testing.T) {
 	}
 }
 
-// TestEscalationManager_CountAndMax — Count() + MaxEscalations() 커버리지.
+// TestEscalationManager_CountAndMax — coverage for Count() + MaxEscalations().
 func TestEscalationManager_CountAndMax(t *testing.T) {
 	t.Parallel()
 
@@ -402,7 +402,7 @@ func TestEscalationManager_CountAndMax(t *testing.T) {
 	}
 }
 
-// TestEscalationManager_NegativeMax — 음수 max 처리.
+// TestEscalationManager_NegativeMax — negative max handling.
 func TestEscalationManager_NegativeMax(t *testing.T) {
 	t.Parallel()
 
@@ -420,7 +420,7 @@ func TestEscalationManager_NegativeMax(t *testing.T) {
 	}
 }
 
-// TestEffortForLevel_NilConfig — nil config → 기본값 반환.
+// TestEffortForLevel_NilConfig — nil config → returns the default.
 func TestEffortForLevel_NilConfig(t *testing.T) {
 	t.Parallel()
 

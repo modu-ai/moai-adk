@@ -1,6 +1,6 @@
-// Package harness — HRN-003 Rubric struct 및 Validate() 메서드 테스트.
-// REQ-HRN-003-003: 4개 anchor level 검증 (0.25, 0.50, 0.75, 1.00).
-// REQ-HRN-003-013: anchor level FROZEN.
+// Package harness — HRN-003 Rubric struct and Validate() method tests.
+// REQ-HRN-003-003: 4 anchor levels (0.25, 0.50, 0.75, 1.00).
+// REQ-HRN-003-013: anchor levels FROZEN.
 package harness
 
 import (
@@ -10,12 +10,12 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// TestRubric_AnchorLevelsValid는 4개의 canonical anchor level을 가진 Rubric이
-// Validate()를 통과하는지 검증합니다.
+// TestRubric_AnchorLevelsValid verifies that a Rubric with the 4 canonical anchor
+// levels passes Validate().
 // REQ-HRN-003-003, REQ-HRN-003-013.
 func TestRubric_AnchorLevelsValid(t *testing.T) {
 	rubric := &Rubric{
-		ProfileName: "test",
+		ProfileName:   "test",
 		PassThreshold: 0.60,
 		Aggregation:   "min",
 		MustPass:      []Dimension{Functionality, Security},
@@ -31,8 +31,8 @@ func TestRubric_AnchorLevelsValid(t *testing.T) {
 	}
 }
 
-// TestRubric_AnchorLevelsRejectFifth는 5개 anchor를 가진 경우 ErrInvalidConfig를
-// 반환하는지 검증합니다.
+// TestRubric_AnchorLevelsRejectFifth verifies that ErrInvalidConfig is returned
+// when there are 5 anchors.
 // REQ-HRN-003-013.
 func TestRubric_AnchorLevelsRejectFifth(t *testing.T) {
 	rubric := &Rubric{
@@ -44,7 +44,7 @@ func TestRubric_AnchorLevelsRejectFifth(t *testing.T) {
 			Functionality: {
 				Weight:        0.40,
 				PassThreshold: 0.60,
-				// 5번째 anchor 추가 — 거부되어야 합니다.
+				// Add a 5th anchor — must be rejected.
 				Anchors: map[float64]string{
 					0.25: "low",
 					0.50: "medium",
@@ -67,9 +67,9 @@ func TestRubric_AnchorLevelsRejectFifth(t *testing.T) {
 	}
 }
 
-// TestRubric_AnchorLevelsRejectNonCanonical는 non-canonical anchor 값이 포함된 경우
-// ErrInvalidConfig를 반환하는지 검증합니다.
-// REQ-HRN-003-013: {0.20, 0.40, 0.60, 0.80} 등은 거부됩니다.
+// TestRubric_AnchorLevelsRejectNonCanonical verifies that ErrInvalidConfig is
+// returned when non-canonical anchor values are included.
+// REQ-HRN-003-013: values such as {0.20, 0.40, 0.60, 0.80} are rejected.
 func TestRubric_AnchorLevelsRejectNonCanonical(t *testing.T) {
 	rubric := &Rubric{
 		ProfileName:   "test",
@@ -80,7 +80,7 @@ func TestRubric_AnchorLevelsRejectNonCanonical(t *testing.T) {
 			Functionality: {
 				Weight:        0.40,
 				PassThreshold: 0.60,
-				// non-canonical anchor 값들
+				// Non-canonical anchor values
 				Anchors: map[float64]string{
 					0.20: "low",
 					0.40: "medium",
@@ -102,8 +102,8 @@ func TestRubric_AnchorLevelsRejectNonCanonical(t *testing.T) {
 	}
 }
 
-// TestParseRubricMarkdown_DefaultProfile는 default.md 프로필을 로드하여
-// 4개의 차원과 각 차원에 4개의 anchor가 있는지 검증합니다.
+// TestParseRubricMarkdown_DefaultProfile verifies that loading the default.md
+// profile yields 4 dimensions, each with 4 anchors.
 // REQ-HRN-003-005, AC-HRN-003-07.a.
 func TestParseRubricMarkdown_DefaultProfile(t *testing.T) {
 	rubric, err := ParseRubricMarkdown("../../.moai/config/evaluator-profiles/default.md")
@@ -111,17 +111,17 @@ func TestParseRubricMarkdown_DefaultProfile(t *testing.T) {
 		t.Fatalf("ParseRubricMarkdown(default.md) = %v, want nil", err)
 	}
 
-	// 4개의 차원이 있어야 합니다.
+	// Must have 4 dimensions.
 	if len(rubric.Dimensions) != 4 {
 		t.Errorf("rubric.Dimensions count = %d, want 4", len(rubric.Dimensions))
 	}
 
-	// 각 차원에 4개의 anchor가 있어야 합니다.
+	// Each dimension must have 4 anchors.
 	for dim, dr := range rubric.Dimensions {
 		if len(dr.Anchors) != 4 {
 			t.Errorf("dimension %v has %d anchors, want 4", dim, len(dr.Anchors))
 		}
-		// canonical anchor 검증.
+		// Verify canonical anchors.
 		for anchor := range dr.Anchors {
 			if !canonicalAnchors[anchor] {
 				t.Errorf("dimension %v has non-canonical anchor %.2f", dim, anchor)
@@ -129,7 +129,7 @@ func TestParseRubricMarkdown_DefaultProfile(t *testing.T) {
 		}
 	}
 
-	// MustPass가 Functionality와 Security를 포함해야 합니다.
+	// MustPass must include Functionality and Security.
 	hasFunctionality, hasSecurity := false, false
 	for _, d := range rubric.MustPass {
 		if d == Functionality {
@@ -143,14 +143,14 @@ func TestParseRubricMarkdown_DefaultProfile(t *testing.T) {
 		t.Errorf("MustPass = %v, want to include Functionality and Security", rubric.MustPass)
 	}
 
-	// PassThreshold floor 검증.
+	// Verify PassThreshold floor.
 	if rubric.PassThreshold < 0.60 {
 		t.Errorf("PassThreshold = %.2f, want >= 0.60", rubric.PassThreshold)
 	}
 }
 
-// TestParseRubricMarkdown_AllProfiles는 4개의 shipping 프로필 파일이 모두
-// 오류 없이 로드되는지 검증합니다.
+// TestParseRubricMarkdown_AllProfiles verifies that all 4 shipping profile files
+// load without error.
 // AC-HRN-003-07.b.
 func TestParseRubricMarkdown_AllProfiles(t *testing.T) {
 	profiles := []string{
@@ -172,8 +172,8 @@ func TestParseRubricMarkdown_AllProfiles(t *testing.T) {
 	}
 }
 
-// TestRubric_ValidateCitation은 SubCriterionScore의 RubricAnchor 필드 검증을
-// 확인합니다.
+// TestRubric_ValidateCitation verifies validation of the RubricAnchor field on
+// SubCriterionScore.
 // REQ-HRN-003-009, AC-HRN-003-05.
 func TestRubric_ValidateCitation(t *testing.T) {
 	rubric := &Rubric{
@@ -186,10 +186,10 @@ func TestRubric_ValidateCitation(t *testing.T) {
 		},
 	}
 
-	// AC-HRN-003-05.a: RubricAnchor 필드가 없으면 ErrRubricCitationMissing.
+	// AC-HRN-003-05.a: missing RubricAnchor → ErrRubricCitationMissing.
 	emptyAnchor := SubCriterionScore{
 		Score:        0.75,
-		RubricAnchor: "", // 빈 값
+		RubricAnchor: "", // empty value
 		Evidence:     "test",
 		Dimension:    Functionality,
 	}
@@ -201,7 +201,7 @@ func TestRubric_ValidateCitation(t *testing.T) {
 		t.Errorf("ValidateCitation(empty anchor) = %v, want ErrRubricCitationMissing", err)
 	}
 
-	// AC-HRN-003-05.b: non-canonical anchor 값은 ErrRubricCitationMissing.
+	// AC-HRN-003-05.b: non-canonical anchor → ErrRubricCitationMissing.
 	nonCanonical := SubCriterionScore{
 		Score:        0.65,
 		RubricAnchor: "0.65", // non-canonical
@@ -216,7 +216,7 @@ func TestRubric_ValidateCitation(t *testing.T) {
 		t.Errorf("ValidateCitation(non-canonical anchor) = %v, want ErrRubricCitationMissing", err)
 	}
 
-	// AC-HRN-003-05.c: canonical anchor 값은 nil (성공).
+	// AC-HRN-003-05.c: canonical anchor → nil (success).
 	valid := SubCriterionScore{
 		Score:        0.75,
 		RubricAnchor: "0.75", // canonical
@@ -228,13 +228,13 @@ func TestRubric_ValidateCitation(t *testing.T) {
 	}
 }
 
-// TestRubric_PassThresholdFloor는 pass_threshold < 0.60이면 ErrInvalidConfig를
-// 반환하는지 검증합니다.
+// TestRubric_PassThresholdFloor verifies that ErrInvalidConfig is returned
+// when pass_threshold < 0.60.
 // REQ-HRN-003-014, AC-HRN-003-12.
 func TestRubric_PassThresholdFloor(t *testing.T) {
 	rubric := &Rubric{
 		ProfileName:   "test-low-threshold",
-		PassThreshold: 0.55, // 0.60 미만 — 거부되어야 합니다.
+		PassThreshold: 0.55, // below 0.60 — must be rejected.
 		Aggregation:   "min",
 		MustPass:      []Dimension{Functionality, Security},
 		Dimensions: map[Dimension]DimensionRubric{
@@ -253,16 +253,16 @@ func TestRubric_PassThresholdFloor(t *testing.T) {
 	}
 }
 
-// TestRubric_MustPassNonNarrowing는 MustPass에서 Security를 제거하면
-// ErrMustPassBypassProhibited를 반환하는지 검증합니다.
+// TestRubric_MustPassNonNarrowing verifies that removing Security from MustPass
+// returns ErrMustPassBypassProhibited.
 // REQ-HRN-003-018, AC-HRN-003-11.
 func TestRubric_MustPassNonNarrowing(t *testing.T) {
 	rubric := &Rubric{
 		ProfileName:   "test-bypass",
 		PassThreshold: 0.60,
 		Aggregation:   "min",
-		// Security를 제거하여 must-pass floor 위반을 시도합니다.
-		MustPass: []Dimension{Functionality}, // Security 누락 — 거부되어야 합니다.
+		// Attempt to violate the must-pass floor by removing Security.
+		MustPass: []Dimension{Functionality}, // Security missing — must be rejected.
 		Dimensions: map[Dimension]DimensionRubric{
 			Functionality: makeValidDimensionRubric(0.60),
 			Security:      makeValidDimensionRubric(0.60),
@@ -279,8 +279,8 @@ func TestRubric_MustPassNonNarrowing(t *testing.T) {
 	}
 }
 
-// makeValidDimensionRubric는 4개의 canonical anchor를 가진 유효한 DimensionRubric을
-// 생성하는 헬퍼 함수입니다.
+// makeValidDimensionRubric is a helper that builds a valid DimensionRubric with
+// the 4 canonical anchors.
 func makeValidDimensionRubric(passThreshold float64) DimensionRubric {
 	return DimensionRubric{
 		Weight:        0.25,

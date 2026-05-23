@@ -1,4 +1,4 @@
-// Package harness — HRN-003 M3 채점 엔진 테스트.
+// Package harness — HRN-003 M3 scoring engine tests.
 // EvaluatorRunner.Score(), aggregation (min/mean), must-pass firewall, WriteContract().
 // REQ-HRN-003-004: EvaluatorRunner.Score().
 // REQ-HRN-003-007: aggregation rules.
@@ -16,8 +16,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// makeScoreCard는 2 Dimension × 3 Criterion × 2 SubCriterion ScoreCard 픽스처를 생성합니다.
-// AC-HRN-003-02: 12개 SubCriterionScore 항목.
+// makeScoreCard builds a 2 Dimension × 3 Criterion × 2 SubCriterion ScoreCard fixture.
+// AC-HRN-003-02: 12 SubCriterionScore entries.
 func makeScoreCard(t *testing.T) *ScoreCard {
 	t.Helper()
 	card := &ScoreCard{
@@ -47,8 +47,8 @@ func makeScoreCard(t *testing.T) *ScoreCard {
 	return card
 }
 
-// TestEvaluatorRunner_ScoreAggregatesHierarchically는 EvaluatorRunner.Score가
-// 2×3×2 픽스처 ScoreCard를 계층 집계하여 올바른 Aggregate를 반환하는지 검증합니다.
+// TestEvaluatorRunner_ScoreAggregatesHierarchically verifies that EvaluatorRunner.Score
+// hierarchically aggregates a 2×3×2 ScoreCard fixture and returns the correct Aggregate.
 // REQ-HRN-003-004, AC-HRN-003-02.
 func TestEvaluatorRunner_ScoreAggregatesHierarchically(t *testing.T) {
 	rubric := &Rubric{
@@ -71,7 +71,7 @@ func TestEvaluatorRunner_ScoreAggregatesHierarchically(t *testing.T) {
 		t.Fatalf("AggregateScoreCard() error = %v, want nil", err)
 	}
 
-	// 각 Dimension의 Aggregate가 0으로 남지 않아야 합니다.
+	// Each Dimension's Aggregate must not remain at 0.
 	for dim, ds := range result.Dimensions {
 		if ds.Aggregate <= 0 {
 			t.Errorf("dimension %v Aggregate = %f, want > 0", dim, ds.Aggregate)
@@ -84,7 +84,7 @@ func TestEvaluatorRunner_ScoreAggregatesHierarchically(t *testing.T) {
 	}
 }
 
-// TestAggregateMin는 aggregateMin이 슬라이스의 최솟값을 반환하는지 검증합니다.
+// TestAggregateMin verifies that aggregateMin returns the minimum value of a slice.
 // REQ-HRN-003-007, AC-HRN-003-03.a.
 func TestAggregateMin(t *testing.T) {
 	scores := []float64{0.8, 0.5, 0.9}
@@ -95,7 +95,7 @@ func TestAggregateMin(t *testing.T) {
 	}
 }
 
-// TestAggregateMean는 aggregateMean이 슬라이스의 평균을 반환하는지 검증합니다.
+// TestAggregateMean verifies that aggregateMean returns the mean of a slice.
 // REQ-HRN-003-015, AC-HRN-003-03.b.
 func TestAggregateMean(t *testing.T) {
 	scores := []float64{0.8, 0.5}
@@ -106,7 +106,7 @@ func TestAggregateMean(t *testing.T) {
 	}
 }
 
-// TestAggregateMin_Empty는 aggregateMin이 빈 슬라이스에 대해 0을 반환하는지 검증합니다.
+// TestAggregateMin_Empty verifies that aggregateMin returns 0 for an empty slice.
 // Edge Case E6.
 func TestAggregateMin_Empty(t *testing.T) {
 	got := aggregateMin(nil)
@@ -115,7 +115,7 @@ func TestAggregateMin_Empty(t *testing.T) {
 	}
 }
 
-// TestAggregateMean_Single는 aggregateMean이 단일 값에 대해 그 값을 그대로 반환하는지 검증합니다.
+// TestAggregateMean_Single verifies that aggregateMean returns the single value unchanged.
 func TestAggregateMean_Single(t *testing.T) {
 	got := aggregateMean([]float64{0.75})
 	want := 0.75
@@ -124,8 +124,8 @@ func TestAggregateMean_Single(t *testing.T) {
 	}
 }
 
-// TestMustPassFirewall_SecurityFails는 Security.Aggregate < threshold일 때
-// applyMustPassFirewall이 "fail"을 반환하는지 검증합니다.
+// TestMustPassFirewall_SecurityFails verifies that applyMustPassFirewall returns "fail"
+// when Security.Aggregate < threshold.
 // REQ-HRN-003-008, AC-HRN-003-04.a.i.
 func TestMustPassFirewall_SecurityFails(t *testing.T) {
 	card := &ScoreCard{
@@ -133,7 +133,7 @@ func TestMustPassFirewall_SecurityFails(t *testing.T) {
 		SpecID:        "test",
 		Dimensions: map[Dimension]DimensionScore{
 			Functionality: {Aggregate: 1.00},
-			Security:      {Aggregate: 0.55}, // 0.60 floor 이하
+			Security:      {Aggregate: 0.55}, // below the 0.60 floor
 			Craft:         {Aggregate: 1.00},
 			Consistency:   {Aggregate: 1.00},
 		},
@@ -153,25 +153,25 @@ func TestMustPassFirewall_SecurityFails(t *testing.T) {
 	if verdict != VerdictFail {
 		t.Errorf("applyMustPassFirewall() verdict = %q, want %q", verdict, VerdictFail)
 	}
-	// AC-HRN-003-04.a.ii: Rationale에 실패 차원 정보가 포함되어야 합니다.
+	// AC-HRN-003-04.a.ii: Rationale must include the failing dimension info.
 	if rationale == "" {
 		t.Error("applyMustPassFirewall() rationale is empty, want non-empty failure message")
 	}
-	// Rationale에 "Security"와 실패 점수가 포함되어야 합니다.
+	// Rationale must contain "Security" and the failing score.
 	if !containsAll(rationale, "Security", "0.55") {
 		t.Errorf("applyMustPassFirewall() rationale = %q, want to contain 'Security' and '0.55'", rationale)
 	}
 }
 
-// TestMustPassFirewall_FunctionalityFails는 Functionality.Aggregate < threshold일 때
-// applyMustPassFirewall이 "fail"을 반환하는지 검증합니다.
+// TestMustPassFirewall_FunctionalityFails verifies that applyMustPassFirewall returns "fail"
+// when Functionality.Aggregate < threshold.
 // AC-HRN-003-04.b.
 func TestMustPassFirewall_FunctionalityFails(t *testing.T) {
 	card := &ScoreCard{
 		SchemaVersion: "v1",
 		SpecID:        "test",
 		Dimensions: map[Dimension]DimensionScore{
-			Functionality: {Aggregate: 0.55}, // 이번엔 Functionality가 실패
+			Functionality: {Aggregate: 0.55}, // this time Functionality fails
 			Security:      {Aggregate: 0.95},
 			Craft:         {Aggregate: 1.00},
 			Consistency:   {Aggregate: 1.00},
@@ -197,8 +197,8 @@ func TestMustPassFirewall_FunctionalityFails(t *testing.T) {
 	}
 }
 
-// TestMustPassFirewall_AllPass는 모든 must-pass 차원이 threshold 이상일 때
-// applyMustPassFirewall이 "pass"를 반환하는지 검증합니다.
+// TestMustPassFirewall_AllPass verifies that applyMustPassFirewall returns "pass"
+// when every must-pass dimension is at or above the threshold.
 // AC-HRN-003-04.c.
 func TestMustPassFirewall_AllPass(t *testing.T) {
 	card := &ScoreCard{
@@ -226,16 +226,16 @@ func TestMustPassFirewall_AllPass(t *testing.T) {
 	if verdict != VerdictPass {
 		t.Errorf("applyMustPassFirewall() verdict = %q, want %q", verdict, VerdictPass)
 	}
-	_ = rationale // pass 시 rationale은 비어 있어도 됩니다.
+	_ = rationale // rationale may be empty when pass.
 }
 
-// TestMustPassFirewall_StrictProfile은 strict.md 수준의 높은 threshold (0.85)를
-// 사용하는 rubric에서 0.84가 실패하고 0.86이 통과하는지 검증합니다.
+// TestMustPassFirewall_StrictProfile verifies that with a rubric using a strict.md-level
+// high threshold (0.85), 0.84 fails and 0.86 passes.
 // REQ-HRN-003-014, AC-HRN-003-12.
 func TestMustPassFirewall_StrictProfile(t *testing.T) {
 	strictDimRubric := DimensionRubric{
 		Weight:        0.30,
-		PassThreshold: 0.85, // strict 수준
+		PassThreshold: 0.85, // strict level
 		Anchors: map[float64]string{
 			0.25: "low",
 			0.50: "medium",
@@ -254,13 +254,13 @@ func TestMustPassFirewall_StrictProfile(t *testing.T) {
 		},
 	}
 
-	// 0.84: 실패해야 합니다.
+	// 0.84: must fail.
 	cardFail := &ScoreCard{
 		SchemaVersion: "v1",
 		SpecID:        "test-fail",
 		Dimensions: map[Dimension]DimensionScore{
 			Functionality: {Aggregate: 1.00},
-			Security:      {Aggregate: 0.84}, // 0.85 미만
+			Security:      {Aggregate: 0.84}, // below 0.85
 			Craft:         {Aggregate: 1.00},
 			Consistency:   {Aggregate: 1.00},
 		},
@@ -270,13 +270,13 @@ func TestMustPassFirewall_StrictProfile(t *testing.T) {
 		t.Errorf("strict profile 0.84: applyMustPassFirewall() = %q, want %q", verdict, VerdictFail)
 	}
 
-	// 0.86: 통과해야 합니다.
+	// 0.86: must pass.
 	cardPass := &ScoreCard{
 		SchemaVersion: "v1",
 		SpecID:        "test-pass",
 		Dimensions: map[Dimension]DimensionScore{
 			Functionality: {Aggregate: 1.00},
-			Security:      {Aggregate: 0.86}, // 0.85 이상
+			Security:      {Aggregate: 0.86}, // at or above 0.85
 			Craft:         {Aggregate: 1.00},
 			Consistency:   {Aggregate: 1.00},
 		},
@@ -287,8 +287,8 @@ func TestMustPassFirewall_StrictProfile(t *testing.T) {
 	}
 }
 
-// TestAggregateScoreCard_MinAggregation은 "min" aggregation 모드에서
-// criterion aggregate가 최솟값을 사용하는지 검증합니다.
+// TestAggregateScoreCard_MinAggregation verifies that in "min" aggregation mode
+// the criterion aggregate uses the minimum value.
 // AC-HRN-003-03.a.
 func TestAggregateScoreCard_MinAggregation(t *testing.T) {
 	rubric := &Rubric{
@@ -338,8 +338,8 @@ func TestAggregateScoreCard_MinAggregation(t *testing.T) {
 	}
 }
 
-// TestAggregateScoreCard_MeanAggregation은 "mean" aggregation 모드에서
-// criterion aggregate가 평균을 사용하는지 검증합니다.
+// TestAggregateScoreCard_MeanAggregation verifies that in "mean" aggregation mode
+// the criterion aggregate uses the mean.
 // AC-HRN-003-03.b.
 func TestAggregateScoreCard_MeanAggregation(t *testing.T) {
 	rubric := &Rubric{
@@ -390,21 +390,21 @@ func TestAggregateScoreCard_MeanAggregation(t *testing.T) {
 	}
 }
 
-// TestAggregateScoreCard_PerDimOverride는 차원별 aggregation override가
-// 올바르게 적용되는지 검증합니다.
+// TestAggregateScoreCard_PerDimOverride verifies that per-dimension aggregation overrides
+// are applied correctly.
 // AC-HRN-003-03.c.
 func TestAggregateScoreCard_PerDimOverride(t *testing.T) {
 	// Functionality: mean, Security: (profile default = min)
 	rubric := &Rubric{
 		ProfileName:   "test-override",
 		PassThreshold: 0.60,
-		Aggregation:   "min", // 프로필 기본값
+		Aggregation:   "min", // profile default
 		MustPass:      []Dimension{Functionality, Security},
 		Dimensions: map[Dimension]DimensionRubric{
 			Functionality: {
 				Weight:        0.25,
 				PassThreshold: 0.60,
-				Aggregation:   "mean", // 차원별 override
+				Aggregation:   "mean", // per-dimension override
 				Anchors:       map[float64]string{0.25: "low", 0.50: "med", 0.75: "high", 1.00: "perfect"},
 			},
 			Security:    makeValidDimensionRubric(0.60),
@@ -465,8 +465,8 @@ func TestAggregateScoreCard_PerDimOverride(t *testing.T) {
 	}
 }
 
-// TestWriteContract는 WriteContract가 sub-criterion status를 YAML로 올바르게
-// 저장하는지 검증합니다.
+// TestWriteContract verifies that WriteContract persists the sub-criterion status
+// correctly as YAML.
 // REQ-HRN-003-011, AC-HRN-003-10.
 func TestWriteContract(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -510,14 +510,14 @@ func TestWriteContract(t *testing.T) {
 		t.Fatalf("WriteContract() error = %v, want nil", err)
 	}
 
-	// 파일이 생성되었는지 확인합니다.
+	// Verify the file was created.
 	data, err := os.ReadFile(contractPath)
 	if err != nil {
 		t.Fatalf("ReadFile(%q) error = %v", contractPath, err)
 	}
 	content := string(data)
 
-	// YAML에 필수 필드가 포함되어야 합니다.
+	// YAML must contain the required fields.
 	for _, want := range []string{"spec_id", "SPEC-TEST-001", "verdict", "pass", "acceptance_checklist"} {
 		if !containsStr(content, want) {
 			t.Errorf("WriteContract YAML missing %q in:\n%s", want, content)
@@ -525,8 +525,8 @@ func TestWriteContract(t *testing.T) {
 	}
 }
 
-// TestWriteContract_NoLeakDetection는 WriteContract가 생성한 YAML이
-// HRN-002 leak detection 패턴을 트리거하지 않는지 검증합니다.
+// TestWriteContract_NoLeakDetection verifies that the YAML produced by WriteContract
+// does not trigger the HRN-002 leak-detection pattern.
 // AC-HRN-003-10: contract carries criterion state, not evaluator rationale.
 func TestWriteContract_NoLeakDetection(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -554,17 +554,17 @@ func TestWriteContract_NoLeakDetection(t *testing.T) {
 		t.Fatalf("ReadFile() error = %v", err)
 	}
 
-	// HRN-002 leak detection: YAML 내용이 forbidden substring을 포함하지 않아야 합니다.
-	// "Score:", "Feedback:", "Verdict:" 는 evaluator 판단 흔적이므로 금지됩니다.
-	// 단, "verdict:" (lowercase)는 상태 필드로 허용됩니다.
+	// HRN-002 leak detection: YAML contents must not contain forbidden substrings.
+	// "Score:", "Feedback:", "Verdict:" are evaluator-judgment traces and are forbidden.
+	// However, "verdict:" (lowercase) is allowed as a state field.
 	if err := DetectPriorJudgmentLeak(string(data)); err != nil {
 		t.Errorf("WriteContract YAML triggers leak detection: %v", err)
 	}
 }
 
-// TestValidateCitation_EmptyAnchor_M3은 M3 레벨에서 ValidateCitation이
-// 빈 RubricAnchor에 대해 ErrRubricCitationMissing을 반환하는지 재확인합니다.
-// AC-HRN-003-05.a — M2에서도 검증되었으나 M3 engine 맥락에서 재확인.
+// TestValidateCitation_EmptyAnchor_M3 re-verifies, at the M3 level, that ValidateCitation
+// returns ErrRubricCitationMissing for an empty RubricAnchor.
+// AC-HRN-003-05.a — also verified in M2; re-verified in the M3 engine context.
 func TestValidateCitation_EmptyAnchor_M3(t *testing.T) {
 	rubric := &Rubric{
 		ProfileName: "test",
@@ -586,7 +586,7 @@ func TestValidateCitation_EmptyAnchor_M3(t *testing.T) {
 	}
 }
 
-// containsAll는 s가 모든 substr을 포함하는지 확인하는 헬퍼입니다.
+// containsAll is a helper that checks whether s contains every substr.
 func containsAll(s string, substrs ...string) bool {
 	for _, sub := range substrs {
 		if !containsStr(s, sub) {
@@ -596,7 +596,7 @@ func containsAll(s string, substrs ...string) bool {
 	return true
 }
 
-// containsStr는 s가 substr을 포함하는지 확인하는 헬퍼입니다.
+// containsStr is a helper that checks whether s contains substr.
 func containsStr(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
 		func() bool {

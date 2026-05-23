@@ -1,5 +1,5 @@
 // Package safety — contradiction unit test.
-// REQ-HL-008: trigger 중첩 및 chaining rules 모순 탐지 테스트.
+// REQ-HL-008: trigger-overlap and chaining-rules contradiction detection tests.
 package safety
 
 import (
@@ -8,7 +8,7 @@ import (
 	harness "github.com/modu-ai/moai-adk/internal/harness"
 )
 
-// TestDetectContradictions_OverlappingTriggers는 여러 skill의 trigger가 겹칠 때 탐지하는지 검증한다.
+// TestDetectContradictions_OverlappingTriggers verifies detection when triggers across multiple skills overlap.
 func TestDetectContradictions_OverlappingTriggers(t *testing.T) {
 	t.Parallel()
 
@@ -19,7 +19,7 @@ func TestDetectContradictions_OverlappingTriggers(t *testing.T) {
 		},
 		{
 			SkillPath: ".claude/skills/my-harness-run/SKILL.md",
-			Keywords:  []string{"run", "execute", "plan"}, // "plan" 중첩
+			Keywords:  []string{"run", "execute", "plan"}, // "plan" overlaps
 		},
 		{
 			SkillPath: ".claude/skills/my-harness-sync/SKILL.md",
@@ -30,10 +30,10 @@ func TestDetectContradictions_OverlappingTriggers(t *testing.T) {
 	report := DetectOverlappingTriggers(skillTriggers)
 
 	if !report.HasContradiction() {
-		t.Fatal("중첩 trigger가 있는데 ContradictionReport가 비어 있다")
+		t.Fatal("ContradictionReport is empty despite overlapping triggers")
 	}
 
-	// "plan" 키워드가 중첩으로 탐지되어야 함
+	// The "plan" keyword must be detected as overlapping
 	found := false
 	for _, item := range report.Items {
 		if item.Type == harness.ContradictionOverlappingTriggers {
@@ -45,11 +45,11 @@ func TestDetectContradictions_OverlappingTriggers(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Error("'plan' 키워드 중첩이 ContradictionReport에 없다")
+		t.Error("'plan' keyword overlap missing from ContradictionReport")
 	}
 }
 
-// TestDetectContradictions_NoOverlap은 중첩이 없을 때 빈 보고서를 반환하는지 검증한다.
+// TestDetectContradictions_NoOverlap verifies an empty report when there is no overlap.
 func TestDetectContradictions_NoOverlap(t *testing.T) {
 	t.Parallel()
 
@@ -71,11 +71,11 @@ func TestDetectContradictions_NoOverlap(t *testing.T) {
 	report := DetectOverlappingTriggers(skillTriggers)
 
 	if report.HasContradiction() {
-		t.Errorf("중첩 없는데 ContradictionReport가 있다: %+v", report.Items)
+		t.Errorf("ContradictionReport present without overlap: %+v", report.Items)
 	}
 }
 
-// TestDetectContradictions_MultipleOverlaps는 여러 키워드가 중첩되는 경우를 검증한다.
+// TestDetectContradictions_MultipleOverlaps verifies the case when multiple keywords overlap.
 func TestDetectContradictions_MultipleOverlaps(t *testing.T) {
 	t.Parallel()
 
@@ -86,17 +86,17 @@ func TestDetectContradictions_MultipleOverlaps(t *testing.T) {
 		},
 		{
 			SkillPath: ".claude/skills/b/SKILL.md",
-			Keywords:  []string{"x", "y", "w"}, // x, y 중첩
+			Keywords:  []string{"x", "y", "w"}, // x, y overlap
 		},
 	}
 
 	report := DetectOverlappingTriggers(skillTriggers)
 
 	if !report.HasContradiction() {
-		t.Fatal("x, y 중첩이 있는데 ContradictionReport가 비어 있다")
+		t.Fatal("ContradictionReport is empty despite x, y overlap")
 	}
 
-	// 적어도 x와 y가 중첩으로 탐지되어야 함
+	// At least x and y must be detected as overlapping
 	var conflictingValues []string
 	for _, item := range report.Items {
 		if item.Type == harness.ContradictionOverlappingTriggers {
@@ -114,15 +114,15 @@ func TestDetectContradictions_MultipleOverlaps(t *testing.T) {
 		}
 	}
 	if !hasX || !hasY {
-		t.Errorf("x, y 모두 탐지되어야 하는데: hasX=%v, hasY=%v", hasX, hasY)
+		t.Errorf("both x and y must be detected: hasX=%v, hasY=%v", hasX, hasY)
 	}
 }
 
-// TestDetectContradictions_ChainRulesConflict는 chaining rules 모순을 탐지하는지 검증한다.
+// TestDetectContradictions_ChainRulesConflict verifies detection of a chaining-rules contradiction.
 func TestDetectContradictions_ChainRulesConflict(t *testing.T) {
 	t.Parallel()
 
-	// 같은 phase에 서로 충돌하는 체이닝 규칙
+	// Chaining rules that conflict within the same phase
 	existing := harness.ChainingRules{
 		Version: 1,
 		Chains: []harness.ChainEntry{
@@ -139,7 +139,7 @@ func TestDetectContradictions_ChainRulesConflict(t *testing.T) {
 		Chains: []harness.ChainEntry{
 			{
 				Phase:        "plan",
-				InsertBefore: []string{"agent-B"}, // 다른 agent-B 삽입 (충돌)
+				InsertBefore: []string{"agent-B"}, // inserting a different agent-B (conflict)
 				InsertAfter:  []string{},
 			},
 		},
@@ -148,10 +148,10 @@ func TestDetectContradictions_ChainRulesConflict(t *testing.T) {
 	report := DetectChainRuleContradictions(existing, proposed)
 
 	if !report.HasContradiction() {
-		t.Fatal("chaining rule 모순이 있는데 ContradictionReport가 비어 있다")
+		t.Fatal("ContradictionReport is empty despite a chaining-rule conflict")
 	}
 
-	// ContradictionChainRules 타입이 있어야 함
+	// A ContradictionChainRules entry must be present
 	found := false
 	for _, item := range report.Items {
 		if item.Type == harness.ContradictionChainRules {
@@ -159,11 +159,11 @@ func TestDetectContradictions_ChainRulesConflict(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Error("ContradictionChainRules 타입 항목이 없다")
+		t.Error("no ContradictionChainRules type entry found")
 	}
 }
 
-// TestDetectContradictions_ChainRulesNoConflict는 chaining rules 모순이 없을 때 빈 보고서를 반환하는지 검증한다.
+// TestDetectContradictions_ChainRulesNoConflict verifies an empty report when chaining rules do not conflict.
 func TestDetectContradictions_ChainRulesNoConflict(t *testing.T) {
 	t.Parallel()
 
@@ -174,7 +174,7 @@ func TestDetectContradictions_ChainRulesNoConflict(t *testing.T) {
 		},
 	}
 
-	// 다른 phase → 충돌 없음
+	// Different phase → no conflict
 	proposed := harness.ChainingRules{
 		Version: 1,
 		Chains: []harness.ChainEntry{
@@ -185,46 +185,46 @@ func TestDetectContradictions_ChainRulesNoConflict(t *testing.T) {
 	report := DetectChainRuleContradictions(existing, proposed)
 
 	if report.HasContradiction() {
-		t.Errorf("다른 phase이면 충돌 없어야 하는데: %+v", report.Items)
+		t.Errorf("different phases must not conflict: %+v", report.Items)
 	}
 }
 
-// TestDetectContradictions_EmptyInputs는 빈 입력에 대해 빈 보고서를 반환하는지 검증한다.
+// TestDetectContradictions_EmptyInputs verifies an empty report for empty inputs.
 func TestDetectContradictions_EmptyInputs(t *testing.T) {
 	t.Parallel()
 
 	report1 := DetectOverlappingTriggers(nil)
 	if report1.HasContradiction() {
-		t.Error("nil 입력에서 ContradictionReport가 있다")
+		t.Error("ContradictionReport present on nil input")
 	}
 
 	report2 := DetectOverlappingTriggers([]SkillTriggers{})
 	if report2.HasContradiction() {
-		t.Error("빈 슬라이스 입력에서 ContradictionReport가 있다")
+		t.Error("ContradictionReport present on empty slice input")
 	}
 
 	report3 := DetectChainRuleContradictions(harness.ChainingRules{}, harness.ChainingRules{})
 	if report3.HasContradiction() {
-		t.Error("빈 chaining rules에서 ContradictionReport가 있다")
+		t.Error("ContradictionReport present on empty chaining rules")
 	}
 }
 
-// TestDetectContradictions_SamePathNoConflict는 같은 skill path가 두 번 들어왔을 때를 검증한다.
+// TestDetectContradictions_SamePathNoConflict verifies behavior when the same skill path appears twice.
 func TestDetectContradictions_SamePathNoConflict(t *testing.T) {
 	t.Parallel()
 
 	skillTriggers := []SkillTriggers{
 		{SkillPath: ".claude/skills/a/SKILL.md", Keywords: []string{"x"}},
-		{SkillPath: ".claude/skills/a/SKILL.md", Keywords: []string{"x"}}, // 같은 skill, 같은 keyword
+		{SkillPath: ".claude/skills/a/SKILL.md", Keywords: []string{"x"}}, // same skill, same keyword
 	}
 
-	// 같은 skill의 동일 keyword는 conflict 아님 (다른 skill 간에만)
+	// The same skill with the same keyword is not a conflict (only across different skills)
 	report := DetectOverlappingTriggers(skillTriggers)
-	// 구현에 따라 다를 수 있으나, 같은 path면 conflict 아님
-	_ = report // 결과는 구현 정의
+	// Behavior may depend on the implementation, but the same path is not a conflict.
+	_ = report // result is implementation-defined
 }
 
-// TestDetectContradictions_InsertAfterConflict는 insert_after 충돌을 탐지하는지 검증한다.
+// TestDetectContradictions_InsertAfterConflict verifies detection of insert_after conflicts.
 func TestDetectContradictions_InsertAfterConflict(t *testing.T) {
 	t.Parallel()
 
@@ -245,7 +245,7 @@ func TestDetectContradictions_InsertAfterConflict(t *testing.T) {
 			{
 				Phase:        "run",
 				InsertBefore: []string{},
-				InsertAfter:  []string{"agent-Y"}, // 다른 agent-Y (충돌)
+				InsertAfter:  []string{"agent-Y"}, // different agent-Y (conflict)
 			},
 		},
 	}
@@ -253,11 +253,11 @@ func TestDetectContradictions_InsertAfterConflict(t *testing.T) {
 	report := DetectChainRuleContradictions(existing, proposed)
 
 	if !report.HasContradiction() {
-		t.Fatal("insert_after 충돌이 있는데 ContradictionReport가 비어 있다")
+		t.Fatal("ContradictionReport is empty despite an insert_after conflict")
 	}
 }
 
-// TestDetectContradictions_SameInsertNoConflict는 동일한 insert_before이면 충돌이 없는지 검증한다.
+// TestDetectContradictions_SameInsertNoConflict verifies no conflict for identical insert_before.
 func TestDetectContradictions_SameInsertNoConflict(t *testing.T) {
 	t.Parallel()
 
@@ -268,7 +268,7 @@ func TestDetectContradictions_SameInsertNoConflict(t *testing.T) {
 		},
 	}
 
-	// 같은 agent-A → 충돌 없음
+	// Same agent-A → no conflict
 	proposed := harness.ChainingRules{
 		Version: 1,
 		Chains: []harness.ChainEntry{
@@ -279,6 +279,6 @@ func TestDetectContradictions_SameInsertNoConflict(t *testing.T) {
 	report := DetectChainRuleContradictions(existing, proposed)
 
 	if report.HasContradiction() {
-		t.Errorf("동일한 insert_before이면 충돌이 없어야 하는데: %+v", report.Items)
+		t.Errorf("identical insert_before must not conflict: %+v", report.Items)
 	}
 }

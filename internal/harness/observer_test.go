@@ -1,4 +1,4 @@
-// Package harness — observer 및 JSONL 스키마 단위 테스트.
+// Package harness — observer and JSONL schema unit tests.
 package harness
 
 import (
@@ -9,12 +9,12 @@ import (
 )
 
 // ─────────────────────────────────────────────
-// T-P1-01: Event marshal/unmarshal 왕복 테스트
+// T-P1-01: Event marshal/unmarshal round-trip tests
 // ─────────────────────────────────────────────
 
-// TestEventMarshalUnmarshal은 Event 구조체가 JSON으로 직렬화/역직렬화되는지 검증한다.
-// REQ-HL-001: JSONL 한 줄에 timestamp, event_type, subject, context_hash,
-// tier_increment 필드가 포함되어야 한다.
+// TestEventMarshalUnmarshal verifies that the Event struct can be JSON-serialized and deserialized.
+// REQ-HL-001: each JSONL line must contain timestamp, event_type, subject, context_hash,
+// and tier_increment fields.
 func TestEventMarshalUnmarshal(t *testing.T) {
 	t.Parallel()
 
@@ -54,7 +54,7 @@ func TestEventMarshalUnmarshal(t *testing.T) {
 	}
 }
 
-// TestEventTypeValues는 EventType 열거형 값이 예상대로 정의되어 있는지 확인한다.
+// TestEventTypeValues verifies that the EventType enum values are defined as expected.
 func TestEventTypeValues(t *testing.T) {
 	t.Parallel()
 
@@ -75,7 +75,7 @@ func TestEventTypeValues(t *testing.T) {
 	}
 }
 
-// TestLogSchemaVersion은 상수 값이 "v1"인지 확인한다.
+// TestLogSchemaVersion verifies the constant value is "v1".
 func TestLogSchemaVersion(t *testing.T) {
 	t.Parallel()
 
@@ -85,11 +85,11 @@ func TestLogSchemaVersion(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────
-// T-P1-02: RecordEvent 테스트
+// T-P1-02: RecordEvent tests
 // ─────────────────────────────────────────────
 
-// TestRecordEventWritesJSONL는 RecordEvent가 파일에 유효한 JSONL을 기록하는지 검증한다.
-// REQ-HL-001: observer는 PostToolUse hook handler로 실행되며 이벤트당 <100ms.
+// TestRecordEventWritesJSONL verifies that RecordEvent writes valid JSONL to the file.
+// REQ-HL-001: observer runs as a PostToolUse hook handler and must complete in <100ms per event.
 func TestRecordEventWritesJSONL(t *testing.T) {
 	t.Parallel()
 
@@ -105,13 +105,13 @@ func TestRecordEventWritesJSONL(t *testing.T) {
 		t.Fatalf("RecordEvent 두 번째 호출 실패: %v", err)
 	}
 
-	// 파일이 생성되었는지 확인
+	// Verify the file was created
 	data, err := readFileBytes(logPath)
 	if err != nil {
 		t.Fatalf("로그 파일 읽기 실패: %v", err)
 	}
 
-	// JSONL 파싱: 각 줄이 유효한 JSON인지 확인
+	// Parse JSONL: verify each line is valid JSON
 	lines := splitNonEmptyLines(string(data))
 	if len(lines) != 2 {
 		t.Errorf("기록된 줄 수: want=2 got=%d", len(lines))
@@ -128,15 +128,15 @@ func TestRecordEventWritesJSONL(t *testing.T) {
 	}
 }
 
-// TestRecordEvent100Sequential는 100회 연속 RecordEvent가 각각 100ms 이내에 완료되는지 검증한다.
-// REQ-HL-001: observer는 부모 tool call을 블록하지 않아야 한다.
+// TestRecordEvent100Sequential verifies that 100 consecutive RecordEvent calls each complete within 100ms.
+// REQ-HL-001: observer must not block the parent tool call.
 func TestRecordEvent100Sequential(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		// Windows GitHub-hosted runners + race detector + antivirus 조합에서 file
-		// write latency가 100ms를 안정적으로 넘긴다 (CIAUT Wave 6 closure에서 관측,
-		// warmup 5 fix만으로는 부족). 본 테스트는 Linux/macOS에서만 perf 검증을
-		// 수행. Windows-specific 안정화는 별도 SPEC(예: SPEC-V3R3-WIN-FLAKY-001)
-		// 에서 다룬다.
+		// On the Windows GitHub-hosted runners + race detector + antivirus combination,
+		// file write latency reliably exceeds 100ms (observed in CIAUT Wave 6 closure;
+		// warmup 5 fix alone is insufficient). This test performs perf verification only
+		// on Linux/macOS. Windows-specific stabilization is handled in a separate SPEC
+		// (e.g., SPEC-V3R3-WIN-FLAKY-001).
 		t.Skip("Windows VM file-write latency가 100ms 한도를 안정적으로 위반 — Linux/macOS에서만 검증")
 	}
 	t.Parallel()
@@ -145,9 +145,9 @@ func TestRecordEvent100Sequential(t *testing.T) {
 	obs := NewObserver(dir + "/usage-log.jsonl")
 
 	const count = 100
-	// 첫 호출들은 OS 파일 캐시를 워밍업한다 (Windows/race detector 환경에서
-	// 첫 write가 antivirus/file system caching 영향으로 늦을 수 있음).
-	// 워밍업 이후의 안정 상태에서만 100ms 한도를 검증한다.
+	// Initial calls warm the OS file cache (on Windows/race-detector environments,
+	// the first writes may be slow due to antivirus/file-system caching).
+	// The 100ms limit is verified only against the steady state after warmup.
 	const warmup = 5
 	limit := 100 * time.Millisecond
 
@@ -166,7 +166,7 @@ func TestRecordEvent100Sequential(t *testing.T) {
 	}
 }
 
-// TestRecordEventAppends는 기존 파일에 새 이벤트가 추가(append)되는지 검증한다.
+// TestRecordEventAppends verifies that new events are appended to an existing file.
 func TestRecordEventAppends(t *testing.T) {
 	t.Parallel()
 
@@ -188,21 +188,21 @@ func TestRecordEventAppends(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────
-// T-P1-04: PruneStaleEntries 테스트
+// T-P1-04: PruneStaleEntries tests
 // ─────────────────────────────────────────────
 
-// TestPruneStaleEntriesRemovesOldEvents는 retentionDays보다 오래된 이벤트가
-// 제거되고 아카이브에 추가되는지 검증한다. REQ-HL-011.
+// TestPruneStaleEntriesRemovesOldEvents verifies that events older than retentionDays
+// are removed and added to the archive. REQ-HL-011.
 func TestPruneStaleEntriesRemovesOldEvents(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
 	logPath := dir + "/usage-log.jsonl"
 
-	// 테스트용 이벤트: 2개는 오래된 것, 1개는 최신
+	// Test events: 2 stale, 1 fresh
 	now := time.Now().UTC()
 	old1 := Event{
-		Timestamp:     now.AddDate(0, 0, -10), // 10일 전
+		Timestamp:     now.AddDate(0, 0, -10), // 10 days ago
 		EventType:     EventTypeMoaiSubcommand,
 		Subject:       "old1",
 		ContextHash:   "h1",
@@ -210,7 +210,7 @@ func TestPruneStaleEntriesRemovesOldEvents(t *testing.T) {
 		SchemaVersion: LogSchemaVersion,
 	}
 	old2 := Event{
-		Timestamp:     now.AddDate(0, 0, -8), // 8일 전
+		Timestamp:     now.AddDate(0, 0, -8), // 8 days ago
 		EventType:     EventTypeAgentInvocation,
 		Subject:       "old2",
 		ContextHash:   "h2",
@@ -218,7 +218,7 @@ func TestPruneStaleEntriesRemovesOldEvents(t *testing.T) {
 		SchemaVersion: LogSchemaVersion,
 	}
 	fresh := Event{
-		Timestamp:     now.AddDate(0, 0, -1), // 1일 전 (신선)
+		Timestamp:     now.AddDate(0, 0, -1), // 1 day ago (fresh)
 		EventType:     EventTypeFeedback,
 		Subject:       "fresh",
 		ContextHash:   "h3",
@@ -226,7 +226,7 @@ func TestPruneStaleEntriesRemovesOldEvents(t *testing.T) {
 		SchemaVersion: LogSchemaVersion,
 	}
 
-	// 이벤트를 파일에 직접 기록
+	// Write events directly to the file
 	if err := writeEventsToFile(logPath, []Event{old1, old2, fresh}); err != nil {
 		t.Fatalf("테스트 데이터 기록 실패: %v", err)
 	}
@@ -234,11 +234,11 @@ func TestPruneStaleEntriesRemovesOldEvents(t *testing.T) {
 	archiveDir := dir + "/archive"
 	retention := NewRetention(logPath, archiveDir, func() time.Time { return now })
 
-	if err := retention.PruneStaleEntries(7); err != nil { // 7일 보존
+	if err := retention.PruneStaleEntries(7); err != nil { // 7-day retention
 		t.Fatalf("PruneStaleEntries 실패: %v", err)
 	}
 
-	// 로그 파일에는 fresh 이벤트만 남아야 한다
+	// Only the fresh event must remain in the log file
 	data, err := readFileBytes(logPath)
 	if err != nil {
 		t.Fatalf("로그 파일 읽기 실패: %v", err)
@@ -257,14 +257,14 @@ func TestPruneStaleEntriesRemovesOldEvents(t *testing.T) {
 		}
 	}
 
-	// 아카이브 파일이 생성되었는지 확인 (gzip)
+	// Verify an archive file was created (gzip)
 	archiveFiles := listFilesInDir(archiveDir)
 	if len(archiveFiles) == 0 {
 		t.Error("아카이브 파일이 생성되지 않았습니다")
 	}
 }
 
-// TestPruneSkipsIfRecentlyPruned는 마지막 prune으로부터 1시간 이내면 skip하는지 검증한다.
+// TestPruneSkipsIfRecentlyPruned verifies pruning is skipped if it ran less than 1 hour ago.
 func TestPruneSkipsIfRecentlyPruned(t *testing.T) {
 	t.Parallel()
 
@@ -272,7 +272,7 @@ func TestPruneSkipsIfRecentlyPruned(t *testing.T) {
 	logPath := dir + "/usage-log.jsonl"
 
 	now := time.Now().UTC()
-	// 오래된 이벤트 1개 기록
+	// Record one stale event
 	old := Event{
 		Timestamp:     now.AddDate(0, 0, -10),
 		EventType:     EventTypeMoaiSubcommand,
@@ -287,24 +287,24 @@ func TestPruneSkipsIfRecentlyPruned(t *testing.T) {
 
 	archiveDir := dir + "/archive"
 
-	// 첫 번째 prune: 성공해야 함
+	// First prune: must succeed
 	retention := NewRetention(logPath, archiveDir, func() time.Time { return now })
 	if err := retention.PruneStaleEntries(7); err != nil {
 		t.Fatalf("첫 번째 PruneStaleEntries 실패: %v", err)
 	}
 
-	// 이벤트 다시 추가 (오래된 것)
+	// Add the event again (stale)
 	if err := writeEventsToFile(logPath, []Event{old}); err != nil {
 		t.Fatalf("재기록 실패: %v", err)
 	}
 
-	// 두 번째 prune: 1시간 이내이므로 skip해야 한다
-	// (동일한 retention 인스턴스 재사용 — lastPruneAt이 설정되어 있음)
+	// Second prune: must be skipped because it is within 1 hour
+	// (reusing the same retention instance — lastPruneAt is set)
 	if err := retention.PruneStaleEntries(7); err != nil {
 		t.Fatalf("두 번째 PruneStaleEntries 실패: %v", err)
 	}
 
-	// 이벤트가 아직 파일에 있어야 한다 (pruning이 skip되었으므로)
+	// The event must still be in the file (pruning was skipped)
 	data, _ := readFileBytes(logPath)
 	lines := splitNonEmptyLines(string(data))
 	if len(lines) != 1 {
@@ -313,16 +313,16 @@ func TestPruneSkipsIfRecentlyPruned(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────
-// 헬퍼 함수
+// Helper functions
 // ─────────────────────────────────────────────
 
-// readFileBytes는 파일 내용을 바이트로 읽는다.
+// readFileBytes reads the file contents as bytes.
 func readFileBytes(path string) ([]byte, error) {
-	// os는 harness 패키지에서 이미 임포트됨 (observer.go에서)
+	// os is already imported in the harness package (from observer.go)
 	return readFile(path)
 }
 
-// splitNonEmptyLines는 문자열을 개행 문자로 분리하고 빈 줄을 제거한다.
+// splitNonEmptyLines splits a string by newlines and drops empty lines.
 func splitNonEmptyLines(s string) []string {
 	var lines []string
 	start := 0
@@ -343,12 +343,12 @@ func splitNonEmptyLines(s string) []string {
 	return lines
 }
 
-// writeEventsToFile는 이벤트 슬라이스를 JSONL 형식으로 파일에 기록한다.
+// writeEventsToFile writes a slice of events to the file in JSONL format.
 func writeEventsToFile(path string, events []Event) error {
 	return appendEventsJSONL(path, events)
 }
 
-// listFilesInDir는 디렉토리 내 파일 목록을 반환한다.
+// listFilesInDir returns the list of files in the directory.
 func listFilesInDir(dir string) []string {
 	return listDir(dir)
 }

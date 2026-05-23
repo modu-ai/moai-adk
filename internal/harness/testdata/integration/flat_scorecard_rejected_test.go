@@ -1,6 +1,6 @@
-// Package integration_test — HRN-003 통합 테스트: flat ScoreCard 거부 검증.
+// Package integration_test — HRN-003 integration tests: flat ScoreCard rejection.
 // REQ-HRN-003-017: ScoreCard must be hierarchical; flat shape rejected.
-// AC-HRN-003-02: 12개 SubCriterionScore 항목 계층 구조 필수.
+// AC-HRN-003-02: hierarchical structure with 12 SubCriterionScore entries required.
 package integration_test
 
 import (
@@ -11,7 +11,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/harness"
 )
 
-// makeTestRubric은 통합 테스트용 최소 유효 Rubric을 생성합니다.
+// makeTestRubric builds a minimal valid Rubric for integration tests.
 func makeTestRubric() *harness.Rubric {
 	return &harness.Rubric{
 		ProfileName: "test",
@@ -45,11 +45,11 @@ func makeTestRubric() *harness.Rubric {
 	}
 }
 
-// TestFlatScoreCardRejected는 flat ScoreCard 입력 시 ErrFlatScoreCardProhibited가
-// 반환되는지 검증합니다.
-// REQ-HRN-003-017: flat-scorecard-prohibited 강제.
+// TestFlatScoreCardRejected verifies ErrFlatScoreCardProhibited is returned when
+// a flat ScoreCard is provided.
+// REQ-HRN-003-017: enforce flat-scorecard-prohibited.
 func TestFlatScoreCardRejected(t *testing.T) {
-	// flat ScoreCard: Dimensions 맵은 있지만 SubCriteria가 없는 구조.
+	// flat ScoreCard: a Dimensions map exists but with no SubCriteria.
 	flatCard := &harness.ScoreCard{
 		SchemaVersion: "v1",
 		SpecID:        "TEST-FLAT-001",
@@ -70,10 +70,10 @@ func TestFlatScoreCardRejected(t *testing.T) {
 	}
 }
 
-// TestHierarchicalScoreCardAccepted는 올바른 계층 ScoreCard가 수락되는지 검증합니다.
+// TestHierarchicalScoreCardAccepted verifies that a proper hierarchical ScoreCard is accepted.
 // REQ-HRN-003-017 positive case.
 func TestHierarchicalScoreCardAccepted(t *testing.T) {
-	// 계층 ScoreCard: Dimensions → Criteria → SubCriteria 구조 완비.
+	// Hierarchical ScoreCard: full Dimensions → Criteria → SubCriteria structure.
 	card := &harness.ScoreCard{
 		SchemaVersion: "v1",
 		SpecID:        "TEST-HIER-001",

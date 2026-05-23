@@ -1,7 +1,7 @@
-// Package harness — applier.go 테스트.
-// REQ-HL-003: EnrichDescription frontmatter 수정 검증.
-// REQ-HL-004: InjectTrigger dedup + feature flag 검증.
-// REQ-HL-005: Apply() snapshot + safety pipeline 검증 (Phase 4).
+// Package harness — applier.go tests.
+// REQ-HL-003: EnrichDescription frontmatter modification verification.
+// REQ-HL-004: InjectTrigger dedup + feature flag verification.
+// REQ-HL-005: Apply() snapshot + safety pipeline verification (Phase 4).
 package harness
 
 import (
@@ -14,11 +14,11 @@ import (
 )
 
 // ─────────────────────────────────────────────
-// 테스트 픽스처
+// Test fixtures
 // ─────────────────────────────────────────────
 
-// skillFixture는 SKILL.md 테스트용 픽스처 내용이다.
-// frontmatter 보존 검증을 위한 golden fixture.
+// skillFixture is the fixture content for SKILL.md tests.
+// Golden fixture for frontmatter preservation verification.
 const skillFixture = `---
 name: my-harness-test
 description: original description here
@@ -41,10 +41,10 @@ Some content here.
 `
 
 // ─────────────────────────────────────────────
-// EnrichDescription 테스트 (T-P2-04)
+// EnrichDescription tests (T-P2-04)
 // ─────────────────────────────────────────────
 
-// TestEnrichDescription_UpdatesDescriptionOnly는 description만 수정되고 나머지가 보존되는지 검증한다.
+// TestEnrichDescription_UpdatesDescriptionOnly verifies only description is modified and the rest is preserved.
 func TestEnrichDescription_UpdatesDescriptionOnly(t *testing.T) {
 	t.Parallel()
 
@@ -62,19 +62,19 @@ func TestEnrichDescription_UpdatesDescriptionOnly(t *testing.T) {
 		t.Fatalf("파일 읽기 실패: %v", err)
 	}
 
-	// description에 heuristic 노트가 추가되었는지 확인
+	// Verify the heuristic note was added to the description
 	if !strings.Contains(string(content), "# heuristic: "+heuristicNote) {
 		t.Errorf("description에 heuristic note 없음:\n%s", content)
 	}
 
-	// body가 byte-identical인지 확인
+	// Verify body is byte-identical
 	newBody := extractBody(string(content))
 	if newBody != originalBody {
 		t.Errorf("body 변경됨:\noriginal: %q\nnew:      %q", originalBody, newBody)
 	}
 }
 
-// TestEnrichDescription_PreservesAllOtherFrontmatterFields는 name, triggers, metadata 등이 보존되는지 검증한다.
+// TestEnrichDescription_PreservesAllOtherFrontmatterFields verifies name, triggers, metadata, etc. are preserved.
 func TestEnrichDescription_PreservesAllOtherFrontmatterFields(t *testing.T) {
 	t.Parallel()
 
@@ -91,7 +91,7 @@ func TestEnrichDescription_PreservesAllOtherFrontmatterFields(t *testing.T) {
 	}
 	text := string(content)
 
-	// 다른 frontmatter 필드 보존 확인
+	// Verify other frontmatter fields are preserved
 	if !strings.Contains(text, "name: my-harness-test") {
 		t.Error("name 필드 손실")
 	}
@@ -106,7 +106,7 @@ func TestEnrichDescription_PreservesAllOtherFrontmatterFields(t *testing.T) {
 	}
 }
 
-// TestEnrichDescription_Idempotent는 동일 노트로 두 번 호출해도 중복 추가되지 않는지 검증한다.
+// TestEnrichDescription_Idempotent verifies that calling twice with the same note does not add duplicates.
 func TestEnrichDescription_Idempotent(t *testing.T) {
 	t.Parallel()
 
@@ -114,27 +114,27 @@ func TestEnrichDescription_Idempotent(t *testing.T) {
 	a := NewApplier()
 	note := "idempotent test note"
 
-	// 첫 번째 호출
+	// First call
 	if err := a.EnrichDescription(skillPath, note); err != nil {
 		t.Fatalf("1차 EnrichDescription 오류: %v", err)
 	}
 
 	content1, _ := os.ReadFile(skillPath)
 
-	// 두 번째 호출 (동일 노트)
+	// Second call (same note)
 	if err := a.EnrichDescription(skillPath, note); err != nil {
 		t.Fatalf("2차 EnrichDescription 오류: %v", err)
 	}
 
 	content2, _ := os.ReadFile(skillPath)
 
-	// 내용이 동일해야 함
+	// Contents must be identical
 	if !bytes.Equal(content1, content2) {
 		t.Errorf("두 번째 호출 후 내용 변경:\nfirst:  %q\nsecond: %q", content1, content2)
 	}
 }
 
-// TestEnrichDescription_FileNotExist는 파일이 없으면 오류를 반환하는지 검증한다.
+// TestEnrichDescription_FileNotExist verifies an error is returned when the file does not exist.
 func TestEnrichDescription_FileNotExist(t *testing.T) {
 	t.Parallel()
 
@@ -145,7 +145,7 @@ func TestEnrichDescription_FileNotExist(t *testing.T) {
 	}
 }
 
-// TestEnrichDescription_NoFrontmatter는 frontmatter가 없는 파일에서도 오류 없이 처리하는지 검증한다.
+// TestEnrichDescription_NoFrontmatter verifies that files without frontmatter are handled without error.
 func TestEnrichDescription_NoFrontmatter(t *testing.T) {
 	t.Parallel()
 
@@ -153,8 +153,8 @@ func TestEnrichDescription_NoFrontmatter(t *testing.T) {
 	skillPath := writeSkillFixture(t, noFM)
 
 	a := NewApplier()
-	// frontmatter 없으면 오류 반환 또는 변경 없이 통과해야 함
-	// 이 구현에서는 오류 반환
+	// Without frontmatter, either return an error or pass through unchanged.
+	// This implementation returns an error.
 	err := a.EnrichDescription(skillPath, "note")
 	if err == nil {
 		t.Error("frontmatter 없는 파일에서 오류 없음")
@@ -162,10 +162,10 @@ func TestEnrichDescription_NoFrontmatter(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────
-// InjectTrigger 테스트 (T-P2-05)
+// InjectTrigger tests (T-P2-05)
 // ─────────────────────────────────────────────
 
-// TestInjectTrigger_FeatureFlagOff은 feature flag가 OFF이면 실제 파일 변경이 없는지 검증한다.
+// TestInjectTrigger_FeatureFlagOff verifies that when the feature flag is OFF, no actual file change occurs.
 func TestInjectTrigger_FeatureFlagOff(t *testing.T) {
 	t.Parallel()
 
@@ -173,7 +173,7 @@ func TestInjectTrigger_FeatureFlagOff(t *testing.T) {
 	originalContent, _ := os.ReadFile(skillPath)
 
 	a := NewApplier()
-	// feature flag는 기본 OFF — 실제 파일 write 발생하지 않아야 함
+	// Feature flag defaults to OFF — actual file write must not happen
 	if err := a.InjectTrigger(skillPath, "new-keyword"); err != nil {
 		t.Fatalf("InjectTrigger 오류: %v", err)
 	}
@@ -184,17 +184,17 @@ func TestInjectTrigger_FeatureFlagOff(t *testing.T) {
 	}
 }
 
-// TestInjectTrigger_DeduplicatesKeywords는 기존 키워드가 중복 추가되지 않는지 검증한다.
-// feature flag를 ON으로 설정한 Applier를 사용한다.
+// TestInjectTrigger_DeduplicatesKeywords verifies that existing keywords are not added as duplicates.
+// Uses an Applier with the feature flag set to ON.
 func TestInjectTrigger_DeduplicatesKeywords(t *testing.T) {
 	t.Parallel()
 
 	skillPath := writeSkillFixture(t, skillFixture)
 
-	// feature flag ON Applier 사용
+	// Use an Applier with feature flag ON
 	a := newApplierWithWritesEnabled()
 
-	// 이미 존재하는 키워드 ("harness test")를 다시 주입 시도
+	// Try to inject an existing keyword ("harness test") again
 	existingKeyword := "harness test"
 	if err := a.InjectTrigger(skillPath, existingKeyword); err != nil {
 		t.Fatalf("InjectTrigger 오류: %v", err)
@@ -203,14 +203,14 @@ func TestInjectTrigger_DeduplicatesKeywords(t *testing.T) {
 	content, _ := os.ReadFile(skillPath)
 	text := string(content)
 
-	// "harness test" 키워드가 한 번만 있어야 함
+	// The "harness test" keyword must appear only once
 	count := strings.Count(text, `keyword: "harness test"`)
 	if count != 1 {
 		t.Errorf(`"harness test" 키워드 횟수 = %d, want 1`, count)
 	}
 }
 
-// TestInjectTrigger_AddsNewKeyword는 새 키워드가 triggers 목록에 추가되는지 검증한다.
+// TestInjectTrigger_AddsNewKeyword verifies that a new keyword is added to the triggers list.
 func TestInjectTrigger_AddsNewKeyword(t *testing.T) {
 	t.Parallel()
 
@@ -228,7 +228,7 @@ func TestInjectTrigger_AddsNewKeyword(t *testing.T) {
 	}
 }
 
-// TestInjectTrigger_Idempotent는 동일 키워드로 두 번 호출해도 중복 추가되지 않는지 검증한다.
+// TestInjectTrigger_Idempotent verifies that calling twice with the same keyword does not add duplicates.
 func TestInjectTrigger_Idempotent(t *testing.T) {
 	t.Parallel()
 
@@ -251,7 +251,7 @@ func TestInjectTrigger_Idempotent(t *testing.T) {
 	}
 }
 
-// TestInjectTrigger_PreservesBody는 InjectTrigger 후 body가 byte-identical인지 검증한다.
+// TestInjectTrigger_PreservesBody verifies that the body is byte-identical after InjectTrigger.
 func TestInjectTrigger_PreservesBody(t *testing.T) {
 	t.Parallel()
 
@@ -271,14 +271,14 @@ func TestInjectTrigger_PreservesBody(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────
-// splitFrontmatterBody 추가 커버리지 테스트
+// splitFrontmatterBody additional coverage tests
 // ─────────────────────────────────────────────
 
-// TestSplitFrontmatterBody_NoClosingDelimiter는 종료 ---가 없으면 오류를 반환하는지 검증한다.
+// TestSplitFrontmatterBody_NoClosingDelimiter verifies an error is returned when the closing --- is missing.
 func TestSplitFrontmatterBody_NoClosingDelimiter(t *testing.T) {
 	t.Parallel()
 
-	// frontmatter 시작은 있지만 종료 없음
+	// Frontmatter start present but no closing
 	content := "---\nname: test\ndescription: broken\n"
 	_, _, err := splitFrontmatterBody(content)
 	if err == nil {
@@ -286,11 +286,11 @@ func TestSplitFrontmatterBody_NoClosingDelimiter(t *testing.T) {
 	}
 }
 
-// TestSplitFrontmatterBody_BodyEmpty는 frontmatter만 있고 body가 없는 경우를 검증한다.
+// TestSplitFrontmatterBody_BodyEmpty verifies the case where only frontmatter exists and body is empty.
 func TestSplitFrontmatterBody_BodyEmpty(t *testing.T) {
 	t.Parallel()
 
-	// 종료 --- 이후 body 없음
+	// No body after the closing ---
 	content := "---\nname: test\n---"
 	fm, body, err := splitFrontmatterBody(content)
 	if err != nil {
@@ -304,11 +304,11 @@ func TestSplitFrontmatterBody_BodyEmpty(t *testing.T) {
 	}
 }
 
-// TestEnrichDescription_BlockScalar는 description이 블록 스칼라 형태일 때 처리하는지 검증한다.
+// TestEnrichDescription_BlockScalar verifies handling when description is in block-scalar form.
 func TestEnrichDescription_BlockScalar(t *testing.T) {
 	t.Parallel()
 
-	// description: | 형태 (블록 스칼라)
+	// description: | form (block scalar)
 	blockFixture := `---
 name: my-block-skill
 description: |
@@ -323,19 +323,19 @@ Body content here.
 	skillPath := writeSkillFixture(t, blockFixture)
 	a := NewApplier()
 
-	// 블록 스칼라 형태에서도 오류 없이 처리되어야 함
+	// Block-scalar form must be handled without error
 	if err := a.EnrichDescription(skillPath, "block test note"); err != nil {
 		t.Fatalf("EnrichDescription 오류: %v", err)
 	}
 
 	content, _ := os.ReadFile(skillPath)
-	// 처리 후 파일이 여전히 유효해야 함
+	// File must remain valid after processing
 	if len(content) == 0 {
 		t.Error("파일 내용 없음")
 	}
 }
 
-// TestInjectTrigger_NoTriggersSection은 triggers 섹션이 없을 때 변경 없이 반환하는지 검증한다.
+// TestInjectTrigger_NoTriggersSection verifies that the file is unchanged when the triggers section is absent.
 func TestInjectTrigger_NoTriggersSection(t *testing.T) {
 	t.Parallel()
 
@@ -350,7 +350,7 @@ Body here.
 	originalContent, _ := os.ReadFile(skillPath)
 
 	a := newApplierWithWritesEnabled()
-	// triggers 없으면 변경 없음
+	// No change if triggers is missing
 	if err := a.InjectTrigger(skillPath, "new-kw"); err != nil {
 		t.Fatalf("InjectTrigger 오류: %v", err)
 	}
@@ -362,10 +362,10 @@ Body here.
 }
 
 // ─────────────────────────────────────────────
-// Apply() 테스트용 SafetyEvaluator stub
+// SafetyEvaluator stub for Apply() tests
 // ─────────────────────────────────────────────
 
-// stubEvaluator는 테스트용 SafetyEvaluator 구현체이다.
+// stubEvaluator is a SafetyEvaluator implementation for tests.
 type stubEvaluator struct {
 	decision Decision
 	err      error
@@ -375,12 +375,12 @@ func (s *stubEvaluator) Evaluate(_ Proposal, _ []Session) (Decision, error) {
 	return s.decision, s.err
 }
 
-// approvedEvaluator는 항상 DecisionApproved를 반환하는 stub이다.
+// approvedEvaluator is a stub that always returns DecisionApproved.
 func approvedEvaluator() SafetyEvaluator {
 	return &stubEvaluator{decision: Decision{Kind: DecisionApproved}}
 }
 
-// rejectedEvaluator는 Layer 1 거부를 반환하는 stub이다.
+// rejectedEvaluator is a stub that returns a Layer 1 rejection.
 func rejectedEvaluator() SafetyEvaluator {
 	return &stubEvaluator{decision: Decision{
 		Kind:       DecisionRejected,
@@ -389,7 +389,7 @@ func rejectedEvaluator() SafetyEvaluator {
 	}}
 }
 
-// pendingEvaluator는 pending_approval을 반환하는 stub이다.
+// pendingEvaluator is a stub that returns pending_approval.
 func pendingEvaluator(proposalID string) SafetyEvaluator {
 	return &stubEvaluator{decision: Decision{
 		Kind: DecisionPendingApproval,
@@ -405,11 +405,11 @@ func pendingEvaluator(proposalID string) SafetyEvaluator {
 }
 
 // ─────────────────────────────────────────────
-// Apply() 테스트 (T-P4-01)
+// Apply() tests (T-P4-01)
 // REQ-HL-005, REQ-HL-009
 // ─────────────────────────────────────────────
 
-// TestApply_SnapshotPrecedesWrite는 snapshot이 파일 write보다 먼저 생성되는지 검증한다.
+// TestApply_SnapshotPrecedesWrite verifies that a snapshot is created before the file write.
 // [HARD] Snapshot creation MUST precede the file write.
 func TestApply_SnapshotPrecedesWrite(t *testing.T) {
 	t.Parallel()
@@ -436,7 +436,7 @@ func TestApply_SnapshotPrecedesWrite(t *testing.T) {
 		t.Fatalf("Apply 오류: %v", err)
 	}
 
-	// 스냅샷 디렉토리가 생성되었는지 확인
+	// Verify the snapshot directory was created
 	entries, err := os.ReadDir(snapshotBase)
 	if err != nil {
 		t.Fatalf("스냅샷 디렉토리 읽기 실패: %v", err)
@@ -445,7 +445,7 @@ func TestApply_SnapshotPrecedesWrite(t *testing.T) {
 		t.Error("스냅샷 디렉토리가 비어 있음 — snapshot 생성 안 됨")
 	}
 
-	// manifest.json이 존재하는지 확인
+	// Verify that manifest.json exists
 	found := false
 	for _, e := range entries {
 		manifestPath := filepath.Join(snapshotBase, e.Name(), "manifest.json")
@@ -459,7 +459,7 @@ func TestApply_SnapshotPrecedesWrite(t *testing.T) {
 	}
 }
 
-// TestApply_RejectedByFrozenGuard는 거부 결정 시 Apply가 오류를 반환하는지 검증한다.
+// TestApply_RejectedByFrozenGuard verifies Apply returns an error on a rejection decision.
 // [HARD] Apply() must call evaluator.Evaluate() first; reject on Decision = Reject.
 func TestApply_RejectedByFrozenGuard(t *testing.T) {
 	t.Parallel()
@@ -486,7 +486,7 @@ func TestApply_RejectedByFrozenGuard(t *testing.T) {
 		t.Errorf("오류 메시지에 거부 원인 없음: %v", err)
 	}
 
-	// 스냅샷이 생성되지 않아야 함 (거부 시 write 발생 전 중단)
+	// No snapshot must be created (abort before write on rejection)
 	if _, statErr := os.Stat(snapshotBase); statErr == nil {
 		entries, _ := os.ReadDir(snapshotBase)
 		if len(entries) > 0 {
@@ -495,7 +495,7 @@ func TestApply_RejectedByFrozenGuard(t *testing.T) {
 	}
 }
 
-// TestApply_SnapshotFailAborts는 snapshot 디렉토리 생성 실패 시 write가 중단되는지 검증한다.
+// TestApply_SnapshotFailAborts verifies the write is aborted when snapshot directory creation fails.
 // [HARD] If snapshot fails, abort write.
 func TestApply_SnapshotFailAborts(t *testing.T) {
 	t.Parallel()
@@ -506,7 +506,7 @@ func TestApply_SnapshotFailAborts(t *testing.T) {
 		t.Fatalf("SKILL.md 생성 실패: %v", err)
 	}
 
-	// snapshotBase를 파일로 만들어 디렉토리 생성 실패 유발
+	// Create snapshotBase as a file to force directory creation failure
 	snapshotBase := filepath.Join(dir, "snapshots-file")
 	if err := os.WriteFile(snapshotBase, []byte("not a dir"), 0o644); err != nil {
 		t.Fatalf("스냅샷 기반 파일 생성 실패: %v", err)
@@ -530,15 +530,15 @@ func TestApply_SnapshotFailAborts(t *testing.T) {
 		t.Error("snapshot 실패 시 오류가 반환되어야 함")
 	}
 
-	// 파일이 변경되지 않아야 함
+	// File must not be modified
 	newContent, _ := os.ReadFile(skillPath)
 	if !bytes.Equal(originalContent, newContent) {
 		t.Error("snapshot 실패 후 파일이 변경됨 — abort가 동작하지 않음")
 	}
 }
 
-// TestApply_PendingApprovalReturnsOversightPayload는 pending_approval 상태에서
-// ApplyPendingError와 payload가 반환되는지 검증한다.
+// TestApply_PendingApprovalReturnsOversightPayload verifies that in the pending_approval state
+// ApplyPendingError and its payload are returned.
 func TestApply_PendingApprovalReturnsOversightPayload(t *testing.T) {
 	t.Parallel()
 
@@ -560,7 +560,7 @@ func TestApply_PendingApprovalReturnsOversightPayload(t *testing.T) {
 		ObservationCount: 10,
 	}
 
-	// pending_approval은 ApplyPendingError 타입이어야 함
+	// pending_approval must be of type ApplyPendingError
 	err := a.Apply(proposal, pendingEvaluator("pending-001"), snapshotBase, []Session{})
 	if err == nil {
 		t.Error("pending_approval 상태에서 오류 없이 성공 — ApplyPendingError가 반환되어야 함")
@@ -579,7 +579,7 @@ func TestApply_PendingApprovalReturnsOversightPayload(t *testing.T) {
 	}
 }
 
-// TestApply_ManifestContainsExpectedFields는 manifest.json이 올바른 필드를 포함하는지 검증한다.
+// TestApply_ManifestContainsExpectedFields verifies that manifest.json contains the expected fields.
 func TestApply_ManifestContainsExpectedFields(t *testing.T) {
 	t.Parallel()
 
@@ -605,7 +605,7 @@ func TestApply_ManifestContainsExpectedFields(t *testing.T) {
 		t.Fatalf("Apply 오류: %v", err)
 	}
 
-	// manifest.json 읽기
+	// Read manifest.json
 	entries, _ := os.ReadDir(snapshotBase)
 	if len(entries) == 0 {
 		t.Fatal("스냅샷 디렉토리 없음")
@@ -633,7 +633,7 @@ func TestApply_ManifestContainsExpectedFields(t *testing.T) {
 	}
 }
 
-// isPendingError는 err가 *ApplyPendingError인지 확인하는 헬퍼이다.
+// isPendingError is a helper that checks whether err is *ApplyPendingError.
 func isPendingError(err error, target **ApplyPendingError) bool {
 	if err == nil {
 		return false
@@ -645,7 +645,7 @@ func isPendingError(err error, target **ApplyPendingError) bool {
 	return false
 }
 
-// TestApplyPendingError_Error는 ApplyPendingError.Error() 메서드를 검증한다.
+// TestApplyPendingError_Error verifies the ApplyPendingError.Error() method.
 func TestApplyPendingError_Error(t *testing.T) {
 	t.Parallel()
 
@@ -670,20 +670,20 @@ func TestApplyPendingError_Error(t *testing.T) {
 	})
 }
 
-// TestRestoreSnapshot_RestoresByteIdentical은 RestoreSnapshot이 byte-identical로 복원하는지 검증한다.
+// TestRestoreSnapshot_RestoresByteIdentical verifies RestoreSnapshot restores the file byte-identically.
 func TestRestoreSnapshot_RestoresByteIdentical(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
 	originalContent := []byte(skillFixture)
 
-	// 원본 파일 생성
+	// Create the original file
 	targetPath := filepath.Join(dir, "SKILL.md")
 	if err := os.WriteFile(targetPath, originalContent, 0o644); err != nil {
 		t.Fatalf("원본 파일 생성 실패: %v", err)
 	}
 
-	// Apply로 스냅샷 생성 후 파일 변경
+	// Apply creates a snapshot and then modifies the file
 	snapshotBase := filepath.Join(dir, "snapshots")
 	a := NewApplier()
 	proposal := Proposal{
@@ -700,44 +700,44 @@ func TestRestoreSnapshot_RestoresByteIdentical(t *testing.T) {
 		t.Fatalf("Apply 오류: %v", err)
 	}
 
-	// Apply 후 파일이 변경되었는지 확인
+	// Verify the file was modified after Apply
 	after, _ := os.ReadFile(targetPath)
 	if bytes.Equal(originalContent, after) {
 		t.Skip("EnrichDescription이 변경을 만들지 않은 경우 (fixture에 이미 해당 값 포함)")
 	}
 
-	// 스냅샷 디렉토리 찾기
+	// Find the snapshot directory
 	entries, _ := os.ReadDir(snapshotBase)
 	if len(entries) == 0 {
 		t.Fatal("스냅샷 없음")
 	}
 	snapshotDir := filepath.Join(snapshotBase, entries[0].Name())
 
-	// RestoreSnapshot으로 복원
+	// Restore via RestoreSnapshot
 	if err := RestoreSnapshot(snapshotDir); err != nil {
 		t.Fatalf("RestoreSnapshot 오류: %v", err)
 	}
 
-	// byte-identical 복원 확인
+	// Verify byte-identical restoration
 	restored, _ := os.ReadFile(targetPath)
 	if !bytes.Equal(originalContent, restored) {
 		t.Errorf("복원 후 byte-identical 불일치:\ngot:  %q\nwant: %q", string(restored), string(originalContent))
 	}
 }
 
-// TestRestoreSnapshot_InvalidManifest는 manifest.json이 없으면 오류를 반환하는지 검증한다.
+// TestRestoreSnapshot_InvalidManifest verifies an error is returned when manifest.json is missing.
 func TestRestoreSnapshot_InvalidManifest(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
-	// manifest.json 없는 디렉토리
+	// Directory with no manifest.json
 	err := RestoreSnapshot(dir)
 	if err == nil {
 		t.Error("manifest.json 없는 디렉토리에서 오류가 반환되어야 함")
 	}
 }
 
-// TestApply_UnsupportedFieldKey는 알 수 없는 fieldKey에서 오류가 반환되는지 검증한다.
+// TestApply_UnsupportedFieldKey verifies an error is returned for an unknown fieldKey.
 func TestApply_UnsupportedFieldKey(t *testing.T) {
 	t.Parallel()
 
@@ -768,7 +768,7 @@ func TestApply_UnsupportedFieldKey(t *testing.T) {
 	}
 }
 
-// TestWritePromotion_ZeroTime은 Ts가 zero이면 자동으로 현재 시각이 설정되는지 검증한다.
+// TestWritePromotion_ZeroTime verifies that the current time is set automatically when Ts is zero.
 func TestWritePromotion_ZeroTime(t *testing.T) {
 	t.Parallel()
 
@@ -776,7 +776,7 @@ func TestWritePromotion_ZeroTime(t *testing.T) {
 	promoPath := filepath.Join(dir, "tier-promotions.jsonl")
 	l := NewLearner(promoPath)
 
-	// Ts를 zero value로 설정
+	// Set Ts to the zero value
 	promo := Promotion{
 		PatternKey:       "moai_subcommand:/moai plan",
 		FromTier:         TierObservation.String(),
@@ -784,7 +784,7 @@ func TestWritePromotion_ZeroTime(t *testing.T) {
 		ObservationCount: 3,
 		Confidence:       0.80,
 	}
-	// Ts는 zero value
+	// Ts is the zero value
 
 	if err := l.WritePromotion(promo); err != nil {
 		t.Fatalf("WritePromotion 오류: %v", err)
@@ -797,10 +797,10 @@ func TestWritePromotion_ZeroTime(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────
-// 테스트 헬퍼
+// Test helpers
 // ─────────────────────────────────────────────
 
-// writeSkillFixture는 임시 디렉토리에 SKILL.md 파일을 생성하고 경로를 반환한다.
+// writeSkillFixture creates a SKILL.md file in a temp directory and returns its path.
 func writeSkillFixture(t *testing.T, content string) string {
 	t.Helper()
 
@@ -812,9 +812,9 @@ func writeSkillFixture(t *testing.T, content string) string {
 	return skillPath
 }
 
-// extractBody는 SKILL.md 내용에서 frontmatter(---...---) 이후 body를 추출한다.
+// extractBody extracts the body of a SKILL.md after the frontmatter (---...---).
 func extractBody(content string) string {
-	// 첫 번째 --- 이후 두 번째 ---까지가 frontmatter
+	// Frontmatter spans from the first --- to the second ---
 	lines := strings.Split(content, "\n")
 	inFM := false
 	fmClosed := false

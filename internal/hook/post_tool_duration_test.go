@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// hookMetricEntry는 .moai/observability/hook-metrics.jsonl 한 줄의 구조이다.
+// hookMetricEntry is the structure of a single line in .moai/observability/hook-metrics.jsonl.
 type hookMetricEntry struct {
 	Ts         string  `json:"ts"`
 	Hook       string  `json:"hook"`
@@ -21,7 +21,7 @@ type hookMetricEntry struct {
 	Outcome    string  `json:"outcome,omitempty"`
 }
 
-// newDurationInput은 duration_ms 필드를 포함한 HookInput을 생성하는 헬퍼이다.
+// newDurationInput is a helper that builds a HookInput containing a duration_ms field.
 func newDurationInput(sessionID, toolName string, durationMs int64, hookEventName string) *HookInput {
 	raw, _ := json.Marshal(map[string]any{
 		"success":     true,
@@ -35,12 +35,12 @@ func newDurationInput(sessionID, toolName string, durationMs int64, hookEventNam
 	}
 }
 
-// readMetricsJSONL는 지정 경로의 JSONL 파일을 파싱해 엔트리 슬라이스를 반환한다.
+// readMetricsJSONL parses the JSONL file at the given path and returns a slice of entries.
 func readMetricsJSONL(t *testing.T, path string) []hookMetricEntry {
 	t.Helper()
 	f, err := os.Open(path)
 	if err != nil {
-		t.Fatalf("메트릭 파일 열기 실패: %v", err)
+		t.Fatalf("metric file open failed: %v", err)
 	}
 	defer func() { _ = f.Close() }()
 
@@ -53,23 +53,23 @@ func readMetricsJSONL(t *testing.T, path string) []hookMetricEntry {
 		}
 		var e hookMetricEntry
 		if err := json.Unmarshal([]byte(line), &e); err != nil {
-			t.Fatalf("JSONL 파싱 실패: %v (line=%q)", err, line)
+			t.Fatalf("JSONL parse failed: %v (line=%q)", err, line)
 		}
 		entries = append(entries, e)
 	}
 	return entries
 }
 
-// TestPostToolDuration_SlowHookWritesMetric은 duration_ms가 임계값(5000ms)을
-// 초과할 때 .moai/observability/hook-metrics.jsonl에 1줄이 기록되는지 검증한다.
+// TestPostToolDuration_SlowHookWritesMetric verifies that 1 line is written to
+// .moai/observability/hook-metrics.jsonl when duration_ms exceeds the threshold (5000ms).
 //
-// RED: 이 테스트는 PostToolUse 핸들러가 duration_ms 기반 메트릭 기록 기능을
-// 아직 구현하지 않았으므로 실패해야 한다.
+// RED: this test must fail because the PostToolUse handler has not yet implemented
+// the duration_ms-based metric writing feature.
 func TestPostToolDuration_SlowHookWritesMetric(t *testing.T) {
-	// t.Setenv 사용으로 병렬 실행 불가
+	// Cannot use t.Parallel because t.Setenv is used
 	dir := t.TempDir()
 
-	// observability 디렉토리 생성 (메트릭 쓰기 활성화 조건)
+	// Create the observability directory (precondition for enabling metric writes)
 	obsDir := filepath.Join(dir, ".moai", "observability")
 	if err := os.MkdirAll(obsDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -84,21 +84,21 @@ func TestPostToolDuration_SlowHookWritesMetric(t *testing.T) {
 	ctx := context.Background()
 	out, err := h.Handle(ctx, input)
 	if err != nil {
-		t.Fatalf("Handle() 에러: %v", err)
+		t.Fatalf("Handle() error: %v", err)
 	}
 	if out == nil {
-		t.Fatal("Handle() nil 반환")
+		t.Fatal("Handle() returned nil")
 	}
 
-	// 메트릭 파일이 생성되어야 함
+	// The metric file must be created
 	metricsPath := filepath.Join(obsDir, "hook-metrics.jsonl")
 	if _, err := os.Stat(metricsPath); os.IsNotExist(err) {
-		t.Fatalf("hook-metrics.jsonl 미생성: %s", metricsPath)
+		t.Fatalf("hook-metrics.jsonl not created: %s", metricsPath)
 	}
 
 	entries := readMetricsJSONL(t, metricsPath)
 	if len(entries) != 1 {
-		t.Fatalf("메트릭 엔트리 수 = %d, want 1", len(entries))
+		t.Fatalf("metric entry count = %d, want 1", len(entries))
 	}
 
 	e := entries[0]
@@ -115,20 +115,20 @@ func TestPostToolDuration_SlowHookWritesMetric(t *testing.T) {
 		t.Errorf("session_id = %q, want %q", e.SessionID, "sess-slow-001")
 	}
 	if e.Ts == "" {
-		t.Error("ts 필드 미설정")
+		t.Error("ts field is not set")
 	}
-	// ts가 ISO 8601 형식인지 확인
+	// Verify ts is in ISO 8601 form
 	if _, err := time.Parse(time.RFC3339, e.Ts); err != nil {
-		t.Errorf("ts 파싱 실패 (ISO 8601 기대): %v", err)
+		t.Errorf("ts parse failed (expected ISO 8601): %v", err)
 	}
 }
 
-// TestPostToolDuration_FastHookSkipsMetric은 duration_ms가 임계값 이하일 때
-// 메트릭을 기록하지 않는지 검증한다.
+// TestPostToolDuration_FastHookSkipsMetric verifies that no metric is recorded
+// when duration_ms is at or below the threshold.
 func TestPostToolDuration_FastHookSkipsMetric(t *testing.T) {
 	dir := t.TempDir()
 
-	// observability 디렉토리 생성
+	// Create the observability directory
 	obsDir := filepath.Join(dir, ".moai", "observability")
 	if err := os.MkdirAll(obsDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -144,25 +144,25 @@ func TestPostToolDuration_FastHookSkipsMetric(t *testing.T) {
 	ctx := context.Background()
 	_, err := h.Handle(ctx, input)
 	if err != nil {
-		t.Fatalf("Handle() 에러: %v", err)
+		t.Fatalf("Handle() error: %v", err)
 	}
 
-	// 메트릭 파일이 생성되지 않아야 함
+	// The metric file must not be created
 	metricsPath := filepath.Join(obsDir, "hook-metrics.jsonl")
 	if _, err := os.Stat(metricsPath); !os.IsNotExist(err) {
-		// 파일이 존재하면 내용 확인 (빈 파일일 수 있음)
+		// If the file exists, verify its contents (it may be empty)
 		if data, readErr := os.ReadFile(metricsPath); readErr == nil && len(strings.TrimSpace(string(data))) > 0 {
-			t.Errorf("fast hook에서 메트릭이 기록됨 (기대: 없음): %s", string(data))
+			t.Errorf("metric recorded for fast hook (expected: none): %s", string(data))
 		}
 	}
 }
 
-// TestPostToolDuration_NoObsDirSkipsMetricSilently는 observability 디렉토리가
-// 없을 때 훅이 실패하지 않고 조용히 건너뛰는지 검증한다.
+// TestPostToolDuration_NoObsDirSkipsMetricSilently verifies the hook does not fail
+// and silently skips when the observability directory does not exist.
 func TestPostToolDuration_NoObsDirSkipsMetricSilently(t *testing.T) {
 	dir := t.TempDir()
 
-	// observability 디렉토리를 생성하지 않음
+	// Do not create the observability directory
 	t.Setenv("CLAUDE_PROJECT_DIR", dir)
 
 	input := newDurationInput("sess-nodir-001", "Write", 9000, "PostToolUse")
@@ -172,21 +172,21 @@ func TestPostToolDuration_NoObsDirSkipsMetricSilently(t *testing.T) {
 	ctx := context.Background()
 	out, err := h.Handle(ctx, input)
 	if err != nil {
-		t.Fatalf("Handle() 에러 (observability 없음): %v", err)
+		t.Fatalf("Handle() error (no observability): %v", err)
 	}
 	if out == nil {
-		t.Fatal("Handle() nil 반환")
+		t.Fatal("Handle() returned nil")
 	}
 
-	// observability 디렉토리가 새로 생성되지 않아야 함
+	// The observability directory must not be newly created
 	obsDir := filepath.Join(dir, ".moai", "observability")
 	if _, err := os.Stat(obsDir); !os.IsNotExist(err) {
-		t.Error("observability 디렉토리가 자동 생성됨 (기대: 미생성)")
+		t.Error("observability directory was auto-created (expected: not created)")
 	}
 }
 
-// TestPostToolFailureDuration_SlowHookWritesFailureOutcome은 PostToolUseFailure
-// 이벤트에서 duration_ms가 임계값을 초과할 때 outcome: "failure"가 기록되는지 검증한다.
+// TestPostToolFailureDuration_SlowHookWritesFailureOutcome verifies that, on the
+// PostToolUseFailure event, outcome: "failure" is recorded when duration_ms exceeds the threshold.
 func TestPostToolFailureDuration_SlowHookWritesFailureOutcome(t *testing.T) {
 	dir := t.TempDir()
 
@@ -197,7 +197,7 @@ func TestPostToolFailureDuration_SlowHookWritesFailureOutcome(t *testing.T) {
 
 	t.Setenv("CLAUDE_PROJECT_DIR", dir)
 
-	// PostToolUseFailure용 입력 (failure 핸들러는 duration_ms를 포함한 ToolResponse를 받을 수 있음)
+	// Input for PostToolUseFailure (the failure handler may receive a ToolResponse containing duration_ms)
 	raw, _ := json.Marshal(map[string]any{
 		"duration_ms": int64(7500),
 	})
@@ -214,21 +214,21 @@ func TestPostToolFailureDuration_SlowHookWritesFailureOutcome(t *testing.T) {
 	ctx := context.Background()
 	out, err := h.Handle(ctx, input)
 	if err != nil {
-		t.Fatalf("Handle() 에러: %v", err)
+		t.Fatalf("Handle() error: %v", err)
 	}
 	if out == nil {
-		t.Fatal("Handle() nil 반환")
+		t.Fatal("Handle() returned nil")
 	}
 
-	// 메트릭 파일 검증
+	// Verify the metric file
 	metricsPath := filepath.Join(obsDir, "hook-metrics.jsonl")
 	if _, err := os.Stat(metricsPath); os.IsNotExist(err) {
-		t.Fatalf("hook-metrics.jsonl 미생성: %s", metricsPath)
+		t.Fatalf("hook-metrics.jsonl not created: %s", metricsPath)
 	}
 
 	entries := readMetricsJSONL(t, metricsPath)
 	if len(entries) != 1 {
-		t.Fatalf("메트릭 엔트리 수 = %d, want 1", len(entries))
+		t.Fatalf("metric entry count = %d, want 1", len(entries))
 	}
 
 	e := entries[0]
