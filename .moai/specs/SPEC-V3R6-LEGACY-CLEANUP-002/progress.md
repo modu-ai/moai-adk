@@ -60,9 +60,38 @@
 
 `internal/template/rule_template_mirror_test.go` reports `RULE_TEMPLATE_MIRROR_DRIFT` for `spec-assembly.md` (28423 bytes source vs 25939 bytes mirror). This file is OUT OF SCOPE for SPEC-V3R6-LEGACY-CLEANUP-002 (LCL-002 scope = exactly 5 files cleaned by LCL-001). The drift originates from a different upstream change and would require a separate SPEC to resolve.
 
-## Sync-phase Evidence
+## Sync-phase Evidence (2026-05-23, B12 3rd self-test)
 
-TBD — pending `/moai sync SPEC-V3R6-LEGACY-CLEANUP-002`.
+**B12.a Read-before-Write**: 7 files Read before any CHANGELOG write:
+- CHANGELOG.md (80 lines, [Unreleased] structure + insertion point verified)
+- spec.md (130 lines, all 5 REQs + 5 ACs confirmed)
+- plan.md (108 lines, M1 scope verified)
+- progress.md (70 lines PRE-sync, now updated POST-sync)
+- git commit da5f9906b (M1 verified — 5 files cp'd, all ACs PASS)
+- git log (precedence verified — proper commit chain)
+- LEGACY-CLEANUP-001 precedent (progress.md §Sync-phase Evidence, lines 113 area)
+
+**B12.b Acceptance Criteria SSOT**: spec.md §3 authoritative source = **5 ACs** (inline for Tier S minimal). All 5 PASS via binary SHA-256:
+- AC-LCL2-001: constitution.md        `aa45b0255eed...` ✓
+- AC-LCL2-002: brand-design SKILL     `5185d309df1f...` ✓
+- AC-LCL2-003: copywriting SKILL      `e00607b138af...` ✓
+- AC-LCL2-004: gan-loop SKILL         `e57bff5ccc8c...` ✓
+- AC-LCL2-005: design.md workflow     `fadac136e27b...` ✓
+
+**B12.c Duplicate Detection Pre-flight**: `grep -c "SPEC-V3R6-LEGACY-CLEANUP-002" CHANGELOG.md` = 0 PRE-sync → 1 POST-sync (exactly one new entry appended, no duplicate, no stale entries from parallel BATCH-SYNC sessions)
+
+**Trust-but-verify 6-item parallel batch**:
+
+| Check | Command | Result |
+|-------|---------|--------|
+| Per-file stage discipline | `git add CHANGELOG.md .moai/specs/SPEC-V3R6-LEGACY-CLEANUP-002/progress.md` (explicit paths, no `git add .`) | 2 files staged |
+| Ambient mutation absent | `git status --short \| grep -E '(usage-log\|observations\|v3.0-redesign)'` | No ambient files staged |
+| CHANGELOG entry count | `grep -c "SPEC-V3R6-LEGACY-CLEANUP-002" CHANGELOG.md` | 1 (exactly one new entry) |
+| Sister SPEC dirs | `git diff --name-only -- '.moai/specs/' \| grep -v SPEC-V3R6-LEGACY-CLEANUP-002` | 0 (no unrelated SPEC diffs) |
+| Source files PRESERVE | `git diff --name-only -- '.claude/'` | 0 (no source file modifications) |
+| No Go code change | `git diff --name-only -- '*.go'` | 0 (documentation-only sync) |
+
+All 6 checks PASS — sync-phase deliverables verified complete.
 
 ## MX-phase Evidence
 
