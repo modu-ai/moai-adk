@@ -141,7 +141,7 @@ Claude Code sends JSON payloads to `moai hook <event>` via stdin. The registry r
 | Event Name | Shell Wrapper | Handler File | Handler Purpose | Exit Code Semantics |
 |-----------|---------------|-------------|-----------------|---------------------|
 | `SessionStart` | `handle-session-start.sh` | `session_start.go`, `auto_update.go`, `rank_session.go` | Banner display, update check, rank session start | 0 = ok, 1 = error |
-| `SessionEnd` | `handle-session-end.sh` | `session_end.go`, `rank_session.go` | Session cleanup, metrics flush, rank session end | 0 = ok |
+| `SessionEnd` | `handle-session-end.sh` | `session_end.go`, `rank_session.go`, `handoff/persist.go` | Session cleanup, metrics flush, resume persist, rank session end | 0 = ok |
 | `PreToolUse` | `handle-pre-tool-use.sh` | `pre_tool.go` | AST security scan; can block dangerous tool calls | 0 = allow, 2 = block |
 | `PostToolUse` | `handle-post-tool-use.sh` | `post_tool.go`, `post_tool_metrics.go` | LSP diagnostics collection, token metrics | 0 = ok |
 | `PostToolUseFailure` | `handle-post-tool-use-failure.sh` | `post_tool_failure.go` | Error reporting | 0 = ok |
@@ -157,6 +157,12 @@ Claude Code sends JSON payloads to `moai hook <event>` via stdin. The registry r
 | `PreCompact` | `handle-pre-compact.sh` | `compact.go` | Context compaction preparation | 0 = ok |
 
 Shell wrappers are located at `.claude/hooks/moai/handle-<event>.sh` and call `moai hook <event>` with stdin piped through.
+
+**Recent Addition (2026-05-23):**
+
+| Entry Point | Function | Description |
+|------------|----------|-------------|
+| `internal/hook/handoff/persist.go` | `PersistIfPending()` | Called from `sessionEndHandler.Handle()` after MX validation. Reads `.moai/state/session-handoff/pending.md`, validates structure (frontmatter + body), atomically writes to `memoryDir/project_<sprint>_<spec>_<status>.md`, prepends MEMORY.md index line with optional `[SUPERSEDED by ...]` marker, deletes pending file on success. Best-effort: errors logged via `slog.Warn`, never block SessionEnd. Path resolution determined by `resolveMemoryDir()` helper in `session_end.go` (chore b6723b495). |
 
 ---
 

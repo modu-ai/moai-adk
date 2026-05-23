@@ -137,8 +137,8 @@ Detailed reference for all packages in moai-adk-go, grouped by architectural lay
 |-----------|--------|
 | Path | `internal/hook/` |
 | Purpose | Claude Code hook event system. Defines the `Registry` interface for event dispatch, the `Handler` interface for individual handlers, and all 24 handler implementations covering 17 event types. |
-| LOC | ~10,500 (including tests) |
-| Key Exports | `Registry`, `Handler`, `Protocol`, `NewRegistry()`, `NewProtocol()` |
+| LOC | ~12,500 (including tests) |
+| Key Exports | `Registry`, `Handler`, `Protocol`, `NewRegistry()`, `NewProtocol()`, `hookOptInEnabled`, `handoff.PersistIfPending` |
 
 **Handler inventory:**
 
@@ -172,11 +172,30 @@ Detailed reference for all packages in moai-adk-go, grouped by architectural lay
 | `protocol.go` | JSON stdin/stdout protocol implementation |
 | `contract.go` | `Handler` and `Registry` interface definitions |
 
+**Recent Changes (2026-05-23):**
+
+- **SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001** — 3-hook observability opt-in master toggle (`hook_opt_in.go`, `hook_opt_in_test.go`), cohabitation regression guard test (`cohabitation_guard_test.go`), separate from REQ-OBS-005 trace-logging in `observability.yaml`.
+- **SPEC-V3R6-HOOK-ASYNC-EXPAND-001** — 4 hook handlers refactored to async (FileChanged, ConfigChange, TaskCreated, Notification), critical-path <1 ms, dependency `go.uber.org/goleak` added.
+- **SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001** — 9 `os.Getwd()` sites eliminated via `resolveProjectRootFromEnv()` + `resolveProjectRootFromInputOrEnv()` helpers in `post_tool_metrics.go`.
+- **SPEC-V3R6-CI-BASELINE-DRIFT-001** — 27 golangci-lint issues eliminated (8 errcheck, 1 ineffassign, 5 staticcheck, 13 unused), 5 data-race conditions fixed via `sync.Once` + `sync.Mutex`.
+- **SPEC-V3R6-SESSION-HANDOFF-AUTO-001** — NEW `internal/hook/handoff/` sub-package (401 LOC production + 823 LOC test) with sole public API `PersistIfPending()` called from `session_end.go` after MX validation.
+- **chore b6723b495** — `resolveMemoryDir` now returns real `~/.claude/projects/{slug}/memory/` path via `projectSlug` helper (slash/backslash/dot → dash mapping), replacing TODO placeholder + @MX annotations.
+
 **Subdirectory:**
 
 | Subdirectory | Purpose |
 |-------------|---------|
 | `internal/hook/security/` | AST-based security scanner used by `PreToolUse` handler |
+| `internal/hook/handoff/` | NEW (2026-05-23) — Session handoff persistence: parse pending resume, atomic write to memoryDir, MEMORY.md index prepend, optional supersede marker |
+
+**internal/hook/handoff/ (NEW sub-package)**
+
+| Attribute | Detail |
+|-----------|--------|
+| Path | `internal/hook/handoff/` |
+| Purpose | Session-end persist-resume workflow. Reads `.moai/state/session-handoff/pending.md`, validates frontmatter + body structure, atomically writes to `memoryDir/project_<sprint>_<spec>_<status>.md`, prepends MEMORY.md index with optional `[SUPERSEDED by ...]` marker, deletes pending on success. Best-effort contract: all errors logged via `slog.Warn`, never block SessionEnd. |
+| LOC | 401 production + 823 test = 1,224 |
+| Key Exports | `PersistIfPending(ctx, sessionID, projectDir, memoryDir)` |
 
 ### `internal/config/`
 
