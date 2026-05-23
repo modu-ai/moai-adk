@@ -95,6 +95,11 @@ origin/main is safer because it always reflects the latest merged state.`,
 	// wire dispatch and M3's tmux tests can invoke the command consistently.
 	// Dispatch logic lands in M2 (handoff_guidance.go + decidePattern wiring).
 	cmd.Flags().Bool("team", false, "Spawn a Claude/GLM session in the new worktree (P1 tmux+CG → moai glm window, P2 tmux+CC → moai cc window, P3 no-tmux → in-process, P4 no-flag → handoff guidance)")
+	// SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001 M2 / R9 / OQ-2: --team subsumes tmux
+	// launching (P1/P2 paths). Combining --team with --tmux creates ambiguous
+	// intent, so cobra rejects them before any worktree-creation side-effect.
+	// AC-WTL-007 edge case: cobra reports the mutex error and exits non-zero.
+	cmd.MarkFlagsMutuallyExclusive("team", "tmux")
 	return cmd
 }
 
@@ -198,6 +203,85 @@ func runNew(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001 M2 — --team dispatch wiring.
+	//
+	// Cobra has already rejected `--team --tmux` via MarkFlagsMutuallyExclusive
+	// before reaching runNew, so the two flags can never both be true here.
+	//
+	// Dispatch decisions:
+	//   P4 (default, no --team)  → printHandoff on stdout
+	//   P3 (--team, no tmux)     → launchP3 (POSIX syscall.Exec; Windows: handoff)
+	//   P1/P2 (--team + in tmux) → M3 territory; for now fall back to handoff
+	//                              with an info notice so the user still has a
+	//                              paste-ready command while M3 lands.
+	if err := dispatchTeamLaunch(cmd, repoRoot, specID, branchName, wtPath); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// dispatchTeamLaunch is the M2 entry point for --team handling. It is invoked
+// after worktree creation + BODP audit trail write + tmux (legacy --tmux)
+// side-effects, so an error here does NOT roll back the worktree. P3 callers
+// should be aware: on POSIX with --team and a valid moai binary, this function
+// REPLACES the current process via syscall.Exec and never returns.
+//
+// @MX:NOTE Pattern dispatch is purely flag-driven; no user prompts (REQ-WTL-013).
+func dispatchTeamLaunch(cmd *cobra.Command, repoRoot, specID, branchName, wtPath string) error {
+	out := cmd.OutOrStdout()
+	stderr := cmd.ErrOrStderr()
+
+	teamFlag, _ := cmd.Flags().GetBool("team")
+	inTmux := tmux.NewDetector().InTmuxSession()
+	settingsPath := filepath.Join(repoRoot, ".claude", "settings.local.json")
+	cgMode, cgErr := tmux.IsCGMode(settingsPath, stderr)
+	if cgErr != nil {
+		// settings.local.json corrupt JSON (per acceptance.md §2 edge case):
+		// surface a warning, treat as CC mode (cgMode=false already by IsCGMode
+		// error path) and continue. Worktree creation already succeeded.
+		_, _ = fmt.Fprintf(stderr, "Warning: CG mode detection failed (assuming CC mode): %v\n", cgErr)
+	}
+
+	pattern := decidePattern(teamFlag, inTmux, cgMode)
+	llm := "cc"
+	if cgMode {
+		llm = "glm"
+	}
+	cfg := TeamLaunchConfig{
+		Pattern:      pattern,
+		WorktreePath: wtPath,
+		Branch:       branchName,
+		SpecID:       specID,
+		LLM:          llm,
+		LaunchTime:   time.Now(),
+	}
+
+	switch pattern {
+	case PatternP4Handoff:
+		// Default no-flag path: print paste-ready instructions and exit 0.
+		printHandoff(out, cfg)
+		return nil
+
+	case PatternP3InProgress:
+		// POSIX: launchP3 REPLACES the current process via syscall.Exec on
+		// success and never returns. The error path here covers: moai binary
+		// missing from PATH, worktree chdir failure, exec call failure.
+		// Windows: launchP3 returns nil after printing the handoff fallback
+		// (REQ-WTL-012).
+		return launchP3(cfg)
+
+	case PatternP1TmuxGLM, PatternP2TmuxCC:
+		// M3 territory — tmux pane spawn for P1 (moai glm) and P2 (moai cc)
+		// lands in M3 alongside the swarm registry. For now, emit an info
+		// notice and degrade to handoff so users still receive a working
+		// paste-ready command during the M2 → M3 transition.
+		_, _ = fmt.Fprintln(stderr, "info: --team tmux pane spawn is implemented in M3 (this build emits handoff guidance instead)")
+		printHandoff(out, cfg)
+		return nil
+	}
+	// Defensive: decidePattern returns one of the four constants above; an
+	// unreachable default is documented per Go style for completeness.
 	return nil
 }
 

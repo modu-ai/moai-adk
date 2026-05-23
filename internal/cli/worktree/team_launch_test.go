@@ -1,7 +1,8 @@
 // SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001 — M1 pattern dispatcher scaffolding tests.
 //
-// Covers `decidePattern` pure function and `Pattern` enum stringer. Execution
-// path tests (launchP1, launchP3, printHandoff) land in M2/M3.
+// Covers `decidePattern` pure function and `Pattern` enum stringer (M1).
+// POSIX-specific launchP3 execution path tests live in team_launch_posix_test.go
+// (build tag !windows). Tmux pane spawn tests (P1/P2) land in M3.
 
 package worktree
 
@@ -87,7 +88,7 @@ func TestPatternString(t *testing.T) {
 }
 
 // TestTeamLaunchConfig_ZeroValue verifies the zero-value TeamLaunchConfig is
-// sensible (P4Handoff = 0, empty paths). M2+ will extend with execution tests.
+// sensible (P4Handoff = 0, empty paths). M2+ extends with execution tests.
 func TestTeamLaunchConfig_ZeroValue(t *testing.T) {
 	var cfg TeamLaunchConfig
 	if cfg.Pattern != PatternP4Handoff {

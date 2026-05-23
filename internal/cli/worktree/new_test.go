@@ -732,13 +732,51 @@ func TestNew_NoFetchWhenFromCurrent(t *testing.T) {
 // TestNew_NoAskUserQuestion: static check — the CLI path must not import or
 // invoke AskUserQuestion. The orchestrator owns user interaction; the CLI
 // returns exit codes / writes audit trails only (agent-common-protocol).
+//
+// SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001 AC-WTL-006: extended in M2 to scan all
+// new --team-related source files (handoff_guidance.go, team_launch.go,
+// team_launch_posix.go, team_launch_windows.go). M3 will further extend with
+// swarm_registry.go / tmux_team.go.
 func TestNew_NoAskUserQuestion(t *testing.T) {
-	src, err := os.ReadFile("new.go")
-	if err != nil {
-		t.Fatalf("read new.go: %v", err)
+	files := []string{
+		"new.go",
+		"team_launch.go",          // M1 — pattern enum + decidePattern
+		"team_launch_posix.go",    // M2 — launchP3 (POSIX syscall.Exec)
+		"team_launch_windows.go",  // M2 — launchP3 (Windows fallback stub)
+		"handoff_guidance.go",     // M2 — printHandoff / printHandoffWithError
 	}
-	if strings.Contains(string(src), "AskUserQuestion") {
-		t.Errorf("internal/cli/worktree/new.go must NOT reference AskUserQuestion (orchestrator-only HARD)")
+	for _, file := range files {
+		src, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatalf("read %s: %v", file, err)
+		}
+		if strings.Contains(string(src), "AskUserQuestion") {
+			t.Errorf("internal/cli/worktree/%s must NOT reference AskUserQuestion (orchestrator-only HARD)", file)
+		}
+	}
+}
+
+// TestNewTeamTmuxMutex verifies cobra rejects `--team --tmux` combined usage
+// per R9 / OQ-2: the two flags are mutually exclusive because --team subsumes
+// tmux launching (P1/P2 paths) and combining them creates ambiguous intent.
+//
+// AC-WTL-007 extension (edge case from acceptance.md §2): "`--team` with
+// `--tmux` → Cobra reports mutually exclusive flags error; exit non-zero
+// before any worktree creation".
+func TestNewTeamTmuxMutex(t *testing.T) {
+	cmd := newNewCmd()
+	cmd.SetArgs([]string{"--team", "--tmux", "SPEC-WTL-MUTEX-001"})
+	// Silence cobra's auto-printed usage to keep test output clean.
+	cmd.SilenceUsage = true
+	cmd.SilenceErrors = true
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatalf("expected error from mutually-exclusive --team --tmux; got nil")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "team") || !strings.Contains(msg, "tmux") {
+		t.Errorf("error message must reference both `team` and `tmux`; got: %q", msg)
 	}
 }
 
