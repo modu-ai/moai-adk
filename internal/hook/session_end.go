@@ -4,6 +4,7 @@ package hook
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/hook/handoff"
 	"github.com/modu-ai/moai-adk/internal/hook/mx"
 	"github.com/modu-ai/moai-adk/internal/hook/trace"
 )
@@ -107,6 +109,20 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 		}
 	}
 
+	// Persist paste-ready resume message if the orchestrator wrote a pending file
+	// to .moai/state/session-handoff/pending.md during the session (SPEC-V3R6-SESSION-HANDOFF-AUTO-001).
+	// Best-effort: PersistIfPending always returns nil and logs failures via slog.Warn.
+	if projectDir != "" {
+		memoryDir, mErr := resolveMemoryDir(homeDir, projectDir)
+		if mErr != nil {
+			slog.Warn("session_end: could not resolve memory directory",
+				"error", mErr,
+			)
+		} else {
+			_ = handoff.PersistIfPending(ctx, input.SessionID, projectDir, memoryDir)
+		}
+	}
+
 	slog.Info("session_end: cleanup complete",
 		"session_id", input.SessionID,
 	)
@@ -159,6 +175,24 @@ func generateSessionSummary(sessionID, traceDir, reportDir string) {
 		"path", reportPath,
 		"total_hooks", summary.TotalHooks,
 	)
+}
+
+// resolveMemoryDir returns the Claude Code memory directory for the given
+// project. Currently the project-hash convention used by Claude Code under
+// `~/.claude/projects/{hash}/memory/` is not documented in this codebase, so
+// this helper returns a TODO-marked placeholder path. The caller (SessionEnd
+// Handle) discards persistence errors per the best-effort contract, but the
+// placeholder will not produce real memory writes until the project-hash
+// resolver is implemented.
+//
+// @MX:TODO: [AUTO] resolve Claude Code project-hash convention; placeholder fails to produce real memory writes until resolved
+// @MX:REASON: Claude Code memory directory hashing is undocumented in our repo (no crypto/sha256 site computes the convention). SPEC-V3R6-SESSION-HANDOFF-AUTO-001 §E.1 defers the resolver to a follow-up SPEC. Returning a TODO placeholder lets the SessionEnd integration ship safely; PersistIfPending logs warn and skips when memoryDir does not exist.
+func resolveMemoryDir(homeDir, projectDir string) (string, error) {
+	if homeDir == "" {
+		return "", fmt.Errorf("home directory is empty")
+	}
+	_ = projectDir
+	return filepath.Join(homeDir, ".claude", "projects", "TODO-project-hash", "memory"), nil
 }
 
 // getModifiedGoFiles returns the list of .go files modified in the current session.
