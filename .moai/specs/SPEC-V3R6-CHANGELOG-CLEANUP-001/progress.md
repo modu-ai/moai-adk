@@ -47,17 +47,17 @@ expected_line_34_39_sha256: 044c70f72f577a5cc5ec0a9df45b948bca134d131f2efb2deca3
 
 ## AC Verification Matrix
 
-| AC | Description | Verification Command | Status | Actual |
-|----|-------------|----------------------|--------|--------|
-| AC-CHL-001 | Line 65 hallucination 7-row 카탈로그 모두 제거 | `grep -c 'internal/handoff/{package,atomic_write,parser}' CHANGELOG.md` → 0 (+4 sub-conditions) | pending | _N/A_ |
-| AC-CHL-002 | Sibling AC 카운트 acceptance.md SSOT 일치 | `grep -c 'AC 12/12 PASS' CHANGELOG.md` → 0 + 4 sibling 매치 | pending | _N/A_ |
-| AC-CHL-003 | manager-develop-prompt-template B12 가드 삽입 | `grep -c 'B12. Sync-phase CHANGELOG emission'` → ≥1 (+ 3 sub-conditions) | pending | _N/A_ |
-| AC-CHL-004 | Line 34-39 byte-identical 보존 (sha256) | `sha256sum <(sed -n '34,39p' CHANGELOG.md)` matches baseline | pending | _N/A_ |
-| AC-CHL-005 | Diff scope 2 files only, 5 sibling 0 changes | `git diff --name-only HEAD~3..HEAD` matches expected list + sibling 0 changes | pending | _N/A_ |
+| AC | Description | Verification Command | Status | Note |
+|----|-------------|----------------------|--------|------|
+| AC-CHL-001 | Line 65 hallucination 7-row 카탈로그 모두 제거 | `grep -c 'internal/handoff/{package,atomic_write,parser}' CHANGELOG.md` → 0 (+4 sub-conditions) | PASS | M1 커밋 fdd30a94c 에서 검증 |
+| AC-CHL-002 | Sibling AC 카운트 acceptance.md SSOT 일치 | `grep -c 'AC 12/12 PASS' CHANGELOG.md` → 0 + 4 sibling 매치 | PASS | M2 커밋 930eb9420 에서 검증, HAE 8/8 + HCWA 7/7 |
+| AC-CHL-003 | manager-develop-prompt-template B12 가드 삽입 | `grep -c 'B12. Sync-phase CHANGELOG emission'` → ≥1 (+ 3 sub-conditions) | PASS | M3 커밋 87dd61564 에서 검증 |
+| AC-CHL-004 | Line 34-39 byte-identical 보존 (sha256) | `sha256sum <(sed -n '34,39p' CHANGELOG.md)` matches baseline | PASS | sha256 044c70f7... 유지 확인 |
+| AC-CHL-005 | Diff scope 2 files only, 5 sibling 0 changes | `git diff --name-only HEAD~3..HEAD` matches expected list + sibling 0 changes | PASS | CHANGELOG.md + manager-develop-prompt-template.md only |
 
 ## Sync-phase Evidence
 
-_(placeholder — sync-phase 진입 시 manager-docs 가 CHANGELOG.md `[Unreleased]` 에 본 SPEC 엔트리 추가 + 본 progress.md 에 sync commit SHA + evidence summary 기록)_
+SPEC-V3R6-CHANGELOG-CLEANUP-001 sync-phase 완료. 3 commits (M1 fdd30a94c + M2 930eb9420 + M3 87dd61564) 모두 main 에 squash-merge됨 (Hybrid Trunk Tier S direct push). CHANGELOG.md `## [Unreleased] — v3.0 Mega-Sprint` 그룹의 `### Changed` 섹션에 본 SPEC 엔트리 append 완료. 5/5 ACs binary PASS 검증됨 (sha256 line 34-39 044c70f7... preserved, sibling SPEC dirs 0 changes, acceptance.md SSOT reconciled). B12 standing-rule guard first self-test 성공 (manager-docs sync agent가 acceptance.md SSOT 참조 + grep -c duplicate detection 실행).
 
 ## Verification Batch Results (orchestrator-side, post-implementation)
 

@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-CHANGELOG-CLEANUP-001
 title: "CHANGELOG.md [Unreleased] hallucination + duplicate entry cleanup"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-23
 updated: 2026-05-23
 author: MoAI Maintainer
