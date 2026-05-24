@@ -147,7 +147,7 @@ catalog:
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/core/manager-spec.md
-              hash: 5a078bce5aed69776a84bc69fe7c9e262d41df9f0ea8d614091709c12480a8b9
+              hash: 20593de3cebe81f76435be2212472dd30bfe6378caa2e3a4b32eac3b232e4280
               version: 1.0.0
             - name: manager-strategy
               tier: core

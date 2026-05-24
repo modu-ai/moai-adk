@@ -114,66 +114,104 @@ OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager
 
 [HARD] Use MultiEdit for simultaneous 3-file creation (60% faster than sequential):
 
-**spec.md**: YAML frontmatter (9 required fields, see schema below), HISTORY section, EARS requirements, exclusions.
+**spec.md**: YAML frontmatter (12 canonical fields, see schema below), HISTORY section, EARS requirements, exclusions.
 
 **plan.md**: Implementation plan, milestones (priority-based, no time estimates), technical approach, risks.
 
 **acceptance.md**: Given-When-Then scenarios (minimum 2), edge cases, quality gate criteria, Definition of Done.
 
+#### [HARD] SPEC ID Pre-Write Self-Check Protocol
+
+[HARD] Before invoking `Write` or `MultiEdit` for any new SPEC document containing a SPEC ID in its YAML frontmatter, the agent MUST execute a regex match decomposition self-check and print the result to its response body. The canonical SPEC ID regex literal is `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$` (verbatim from `internal/spec/lint.go:573`). Skipping this self-check is a discipline lapse and reopens the L32 chain (5 historical SPEC ID drift incidents: CHANGELOG-CLEANUP-001, CLI-AUDIT-001, LCL-003, SARM-001, TMC-001).
+
+Self-check protocol (4 steps, performed in the agent turn BEFORE any filesystem write):
+
+1. **Decompose** the candidate SPEC ID into segments by `-` delimiter. The first segment MUST be the literal `SPEC`; the last segment MUST be exactly 3 digits (`\d{3}`, NEVER `\d{3}[a-z]`); every middle segment MUST match `[A-Z][A-Z0-9]*` (first char uppercase letter, rest uppercase alphanumerics, length ≥ 1).
+2. **Apply the canonical regex** `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$` mentally. The `(-[A-Z][A-Z0-9]*)+` group matches ONE OR MORE domain segments. The `\d{3}$` digit-only end anchor rejects any trailing alpha suffix (e.g., `001a` is invalid for a SPEC ID).
+3. **Print the decomposition** to the response body using the literal prefix `decomposition:` (or alternatively `segment match trace:`), one segment-check per `|` separator, ending with the literal line-end marker `→ PASS` or `→ FAIL`. Example output for `SPEC-V3R6-SPEC-ID-VALIDATION-001`:
+
+   ```
+   decomposition: SPEC ✓ | V3R6 ✓ | SPEC ✓ | ID ✓ | VALIDATION ✓ | 001 ✓ → PASS
+   ```
+
+   The literal markers `decomposition` / `segment match trace` + `→ PASS|FAIL` are mandatory — they enable downstream grep verification (`grep -E "decomposition|segment match trace|→ PASS"`).
+4. **Halt or proceed**: if any segment FAILS, the agent MUST halt the Write call and return a structured blocker report to the orchestrator naming the offending segment and proposing the canonical correction. If all segments PASS, proceed to Step 5 frontmatter schema validation, then Write/MultiEdit.
+
+[HARD] AC sub-ID convention (DO NOT confuse with SPEC ID):
+
+Acceptance criteria sub-IDs MAY use a trailing lowercase alphabetic suffix to denote paired sub-criteria within one logical AC (e.g., `AC-V3R6-001a` and `AC-V3R6-001b` are two sub-criteria of one logical AC group). This convention is for ACCEPTANCE CRITERIA ONLY and applies only inside `acceptance.md` body. **SPEC IDs themselves MUST NEVER carry an alphabetic suffix** — the `\d{3}$` digit-only anchor in the canonical regex rejects `SPEC-X-001a` outright.
+
+| Identifier | Valid examples | Invalid examples |
+|------------|----------------|------------------|
+| SPEC ID    | `SPEC-AUTH-001`, `SPEC-V3R6-SPEC-ID-VALIDATION-001` | `SPEC-AUTH-001a` (alpha suffix), `SPEC-001` (no domain), `SPEC-auth-001` (lowercase) |
+| AC sub-ID  | `AC-V3R6-001a`, `AC-V3R6-001b`, `AC-AUTH-005a` | (no constraint — AC sub-IDs are scoped to acceptance.md prose, not validated by spec-lint) |
+
+Confusion case (illustrative): `SPEC-RETIRED-DDD-001` is **VALID** per the canonical regex because `RETIRED` matches `[A-Z][A-Z0-9]*` and `DDD` matches `[A-Z][A-Z0-9]*` and `001` matches `\d{3}`. Multi-segment domain names with retired-marker prefixes remain canonical SPEC IDs.
+
+L32 chain context (informational footnote): The 5 historical drift incidents in 2026-05-23..2026-05-24 (CHANGELOG-CLEANUP-001 typo, CLI-AUDIT-001 sub-ID bleed-over, LCL-003 acronym ambiguity, SARM-001 doc-vs-lint regex drift, TMC-001 `-002a` digit-alpha suffix) collectively cost ~15 reactive Edit/mv operations downstream. This self-check protocol short-circuits the failure mode at the earliest possible detection point — inside the agent turn that decides to Write.
+
 #### [HARD] SPEC Frontmatter Canonical Schema
 
-[HARD] Every `spec.md` YAML frontmatter MUST contain ALL 9 required fields below. Missing any one is a schema violation and blocks creation. This schema is non-negotiable — aligns with plan-auditor expectations and prevents the 2026-04-21 mass-SPEC-drift incident (30 SPECs generated with inconsistent fields).
+[HARD] Every `spec.md` YAML frontmatter MUST contain ALL 12 canonical fields below. Missing any one is a schema violation and blocks creation. This schema is non-negotiable — aligns with `.claude/rules/moai/development/spec-frontmatter-schema.md` (SSOT) and `internal/spec/lint.go` `FrontmatterSchemaRule`, and prevents the 2026-04-21 mass-SPEC-drift incident (30 SPECs generated with inconsistent fields).
 
 ```yaml
 ---
-id: SPEC-{DOMAIN}-{NUM}                 # Required. Format: SPEC-[A-Z]+-[0-9]+
-version: "0.1.0"                         # Required. Semantic version as quoted string
-status: draft                            # Required. Enum: draft|approved|completed|superseded|archived
-created_at: YYYY-MM-DD                   # Required. ISO date. NEVER use `created` (legacy, rejected)
-updated_at: YYYY-MM-DD                   # Required. ISO date. NEVER use `updated` (legacy, rejected)
-author: <name or role>                   # Required. String. Recommended: agent name or user identifier
-priority: High|Medium|Low|Critical       # Required. Enum (Title case). Alt: P0|P1|P2|P3 (uppercase)
-labels: [domain1, domain2, ...]          # Required. YAML array of lowercase tags. Empty array [] allowed only if justified.
-issue_number: null                       # Required. Integer | null. GitHub Issue number when created.
+id: SPEC-{DOMAIN}-{NUM}                 # Required. Format matches ^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$
+title: "Human-readable title"            # Required. Quoted string, non-empty.
+version: "0.1.0"                         # Required. Semantic version as quoted string.
+status: draft                            # Required. Enum: draft|planned|in-progress|implemented|completed|superseded|archived|rejected
+created: YYYY-MM-DD                      # Required. ISO date.
+updated: YYYY-MM-DD                      # Required. ISO date.
+author: <name or role>                   # Required. String. Recommended: agent name or user identifier.
+priority: P1                             # Required. Enum: P0|P1|P2|P3 (uppercase) or High|Medium|Low|Critical (Title case).
+phase: "vX.Y.Z target"                   # Required. Non-empty release target string (e.g. "v3.0.0").
+module: "path/to/module"                 # Required. Affected Go module or directory path.
+lifecycle: spec-anchored                 # Required. Enum: spec-anchored|spec-lite|exploratory.
+tags: "tag1, tag2, tag3"                 # Required. Comma-separated string of lowercase tags.
 ---
 ```
 
 Optional fields (include when applicable):
-- `depends_on: [SPEC-X-001, SPEC-Y-002]` — SPEC IDs this one blocks on
-- `related_specs: [SPEC-Z-001]` — Non-blocking references
-- `superseded_by: SPEC-NEW-001` — When status=superseded
-- `partially_superseded_by: [SPEC-A-001]` — Partial supersession
-- `issue_number: 123` — After GitHub Issue creation
-- `merged_pr: [N, M]` — Post-merge provenance
-- `merged_commit: <hash>` — Post-merge provenance
+- `issue_number: 123` — Integer | null. GitHub Issue number when tracking; omit when not tracking.
+- `depends_on: [SPEC-X-001, SPEC-Y-002]` — SPEC IDs this one blocks on. Used by BODP signal A.
+- `related_specs: [SPEC-Z-001]` — Non-blocking references.
+- `superseded_by: SPEC-NEW-001` — When status=superseded.
+- `partially_superseded_by: [SPEC-A-001]` — Partial supersession.
+- `lint.skip: [<rule-code>]` — Lint rule codes to skip. Use only for documented debt.
+- `bc_id: <identifier>` — Backward-compatibility tracking ID.
+- `merged_pr: [N, M]` — Post-merge provenance.
+- `merged_commit: <hash>` — Post-merge provenance.
+- `tier: S|M|L` — Optional SPEC complexity Tier classification.
 
-[HARD] Field name aliases REJECTED (common errors caught by plan-auditor):
-- `created` → must be `created_at`
-- `updated` → must be `updated_at`
+[HARD] Snake_case aliases REJECTED (silently dropped by the YAML decoder in `internal/spec/lint.go`, producing empty-value `FrontmatterInvalid` findings):
+- `created_at` → must be `created`
+- `updated_at` → must be `updated`
+- `labels` → must be `tags`
 - `spec_id` → must be `id`
-- `title` in frontmatter → put title in H1 heading, not frontmatter
 
 Pre-write validation (you MUST verify before calling Write/MultiEdit):
-1. All 9 required fields present
-2. `id` matches regex `^SPEC-[A-Z][A-Z0-9]+-[0-9]{3}$`
-3. `status` is one of the 5 enum values
-4. `priority` is Title-case or P-prefixed uppercase
-5. `created_at` / `updated_at` are ISO YYYY-MM-DD (not `created` / `updated`)
-6. `labels` is a YAML array (not comma-separated string)
+1. All 12 canonical fields present
+2. `id` matches the canonical regex `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$` (multi-segment; digit-only end anchor — verified via the SPEC ID Pre-Write Self-Check Protocol above)
+3. `status` is one of the 8 enum values (draft|planned|in-progress|implemented|completed|superseded|archived|rejected)
+4. `priority` is Title-case (High|Medium|Low|Critical) or P-prefixed uppercase (P0|P1|P2|P3)
+5. `created` / `updated` are ISO YYYY-MM-DD (NEVER `created_at` / `updated_at`)
+6. `tags` is a comma-separated quoted string (NEVER a `labels` YAML array)
 7. `version` is a quoted string (not unquoted float like `0.1`)
-8. If any check fails: halt, report the missing/invalid field, do NOT write the file
+8. `phase`, `module`, `lifecycle` are non-empty
+9. If any check fails: halt, report the missing/invalid field, do NOT write the file
 
 ### Step 5: Verification Checklist
 
+- [ ] SPEC ID Pre-Write Self-Check Protocol decomposition printed with `→ PASS` marker (see Step 4)
 - [ ] Directory format: `.moai/specs/SPEC-{ID}/`
 - [ ] ID uniqueness verified
 - [ ] 3 files created (spec.md, plan.md, acceptance.md)
 - [ ] EARS format compliant
 - [ ] Exclusions section present
 - [ ] No implementation details in spec.md
-- [ ] Frontmatter 9-field canonical schema validated (see Step 4)
-- [ ] `created_at` / `updated_at` used (NOT `created` / `updated`)
-- [ ] `labels` array present (non-empty unless documented reason)
+- [ ] Frontmatter 12-canonical-field schema validated (see Step 4)
+- [ ] `created` / `updated` used (NEVER `created_at` / `updated_at`)
+- [ ] `tags` comma-separated string present (NEVER `labels` YAML array)
 
 ### Step 6: Expert Consultation (Conditional)
 

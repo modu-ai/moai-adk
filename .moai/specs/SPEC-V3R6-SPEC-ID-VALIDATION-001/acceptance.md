@@ -9,7 +9,7 @@
 | **AC-SIV-003** | REQ-SIV-003 | AC sub-ID convention enumerated | `grep -E "AC sub-ID\|NNNa"` × 2 files |
 | **AC-SIV-004** | REQ-SIV-004 | Regex decomposition print directive present (D4 wording lock-in) | `grep -E "decomposition\|segment match trace\|→ PASS"` × 2 files |
 | **AC-SIV-005** | REQ-SIV-007 + quality | Mirror parity (`diff -q` canonical) + lint clean | `diff -q` (primary) + `go vet` + `golangci-lint`; `TestLateBranchTemplateMirror` (supplementary, see AC-SIV-007 activation) |
-| **AC-SIV-006** | REQ-SIV-008 [iter-2 D1] | Frontmatter 9→12 schema substitution | `grep -c "9 required fields"` = 0 AND `grep -c "12 canonical\|12 required fields"` ≥ 1 AND `grep -cE "(created_at\|updated_at\|labels:)"` = 0 in EACH file |
+| **AC-SIV-006** | REQ-SIV-008 [iter-2 D1] | Frontmatter 9→12 schema substitution | `grep -c "9 required fields"` = 0 AND `grep -c "12 canonical\|12 required fields"` ≥ 1 AND `grep -cE "\b(created_at:\|updated_at:\|labels:)"` = 0 in EACH file (D-NEW-1 inline fix: trailing-colon anchor — rejection-table prose like `created_at → must be created` does NOT match the colon-anchored pattern) |
 | **AC-SIV-007** | REQ-SIV-009 [iter-2 D2] | Test allowlist enrollment + active subtest | `grep -c 'manager-spec.md' rule_template_mirror_test.go` ≥ 1 AND `go test -run TestLateBranchTemplateMirror -v` shows `manager-spec.md` PASS subtest |
 
 Total ACs: **7** (AC-SIV-001..007) [iter-2: was 5].
@@ -165,15 +165,18 @@ grep -c "9 required fields" internal/template/templates/.claude/agents/core/mana
 grep -cE "12 canonical fields|12 required fields" .claude/agents/core/manager-spec.md
 grep -cE "12 canonical fields|12 required fields" internal/template/templates/.claude/agents/core/manager-spec.md
 
-# Condition (c) — snake_case alias instructional text removed
-grep -cE "(created_at|updated_at|labels:)" .claude/agents/core/manager-spec.md
-grep -cE "(created_at|updated_at|labels:)" internal/template/templates/.claude/agents/core/manager-spec.md
+# Condition (c) — snake_case alias instructional text removed (D-NEW-1 inline fix: trailing-colon anchor)
+# Rationale: the rejection-table prose `created_at → must be created` legitimately mentions
+# the alias name but must not match. The trailing-colon anchor `\b<alias>:` matches only
+# YAML key declarations (e.g., `created_at: 2026-05-24`), not prose mentions.
+grep -cE "\b(created_at:|updated_at:|labels:)" .claude/agents/core/manager-spec.md
+grep -cE "\b(created_at:|updated_at:|labels:)" internal/template/templates/.claude/agents/core/manager-spec.md
 ```
 
 **Then** for EACH of the 2 mirror files:
 - Condition (a) result = **0** (the literal phrase "9 required fields" no longer appears anywhere in the file)
 - Condition (b) result ≥ **1** (the canonical 12-field phrasing is present at least once)
-- Condition (c) result = **0** (no instructional text referencing `created_at`, `updated_at`, or `labels:` remains — these snake_case aliases are explicitly rejected by canonical SSOT)
+- Condition (c) result = **0** (no YAML key declarations using `created_at:`, `updated_at:`, or `labels:` remain — the trailing-colon anchor permits rejection-table prose that mentions the alias names for educational purposes, e.g., `created_at → must be created`, since these are not YAML key declarations)
 
 **Manual qualitative check**: A human reader of the rewritten frontmatter schema block should see exactly the 12 canonical field names from `spec-frontmatter-schema.md`: `id`, `title`, `version`, `status`, `created`, `updated`, `author`, `priority`, `phase`, `module`, `lifecycle`, `tags`. The rejection table should invert: `created_at → must be created`, `updated_at → must be updated`, `labels → must be tags`.
 

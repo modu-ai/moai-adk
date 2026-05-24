@@ -79,6 +79,8 @@ var lateBranchMirroredPaths = []string{
 	".claude/skills/moai/SKILL.md",
 	// (spec-workflow.md is already in workflowOptMirroredPaths above — Late-branch
 	// closure additions are part of the same file, mirror parity verified there.)
+	// SPEC-V3R6-SPEC-ID-VALIDATION-001 — manager-spec.md mirror parity (REQ-SIV-007 + REQ-SIV-009)
+	".claude/agents/core/manager-spec.md",
 }
 
 // TestRuleTemplateMirrorDrift verifies that every SPEC-V3R5-WORKFLOW-OPT-001 modified
