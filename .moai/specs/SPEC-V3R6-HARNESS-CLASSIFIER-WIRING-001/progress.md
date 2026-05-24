@@ -2,7 +2,7 @@
 id: SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001
 title: "V3R4 Harness Classifier Runtime Wiring — Progress Tracker"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-05-24
 updated: 2026-05-24
 author: manager-spec
@@ -87,11 +87,11 @@ mx_commit_sha: null
 
 | Artifact | Path | Status | Notes |
 |----------|------|--------|-------|
-| CHANGELOG `[Unreleased] ### Fixed` entry | `CHANGELOG.md` | TBD | TBD |
-| spec.md frontmatter | `.moai/specs/SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001/spec.md` | TBD | `draft → implemented` |
-| plan.md frontmatter | `.moai/specs/SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001/plan.md` | TBD | `draft → implemented` |
-| acceptance.md frontmatter | `.moai/specs/SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001/acceptance.md` | TBD | `draft → implemented` |
-| progress.md frontmatter | This file | TBD | `draft → implemented` |
+| CHANGELOG `[Unreleased] ### Fixed` entry | `CHANGELOG.md` | **PASS** | Entry appended: 6 ACs PASS summary, workflow body wiring via Option A (hook CLI), file creation verification, cross-platform build confirmed, 10th B12 self-test PASS |
+| spec.md frontmatter | `.moai/specs/SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001/spec.md` | **PASS** | `status: draft → implemented` |
+| plan.md frontmatter | `.moai/specs/SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001/plan.md` | **PASS** | `status: draft → implemented` |
+| acceptance.md frontmatter | `.moai/specs/SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001/acceptance.md` | **PASS** | `status: draft → implemented` |
+| progress.md frontmatter | This file | **PASS** | `status: draft → implemented` |
 
 ## §G. Mx-phase Evidence (post mx Step C judge)
 
