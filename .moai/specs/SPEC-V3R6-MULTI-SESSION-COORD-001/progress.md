@@ -177,6 +177,33 @@ multi_session_coordination_note: |
     - Session B (concurrent): HARNESS-PROPOSAL-GEN-001 plan-phase (commits e5b2859a9 + 2b99be826) pushed during COORD-001 manager-spec resume (7-min race window)
   No conflict occurred because disjoint directories. Documented as §A.1 Case 2 motivating example.
   Sprint 8 P3 status: ARR-001 4-phase CLOSE + SIV-001 4-phase CLOSE + COORD-001 plan-phase PASS-WITH-DEBT.
+case_3_staging_area_race_observed: |
+  Commit 24cb6ad4b (이 §C backfill chore)에서 STAGING AREA RACE 실제 발생 (3번째 empirical case).
+  의도: `git add .moai/specs/SPEC-V3R6-MULTI-SESSION-COORD-001/progress.md` (1 file scope)
+  실제: 14 files committed + pushed (13 file은 concurrent session의 SPEC-V3R6-HARNESS-PROPOSAL-GEN-001 run-phase 작업)
+  흡수된 files:
+    - internal/cli/harness/propose.go (+151 NEW)
+    - internal/cli/harness/propose_boundary_test.go (+66 NEW)
+    - internal/cli/harness/propose_test.go (+300 NEW)
+    - internal/cli/harness_route.go (+8)
+    - internal/harness/proposalgen/{mapper,reader,scaffolder,types}.go (+497 NEW)
+    - internal/harness/proposalgen/{mapper_test,reader_test,scaffolder_test}.go (+749 NEW)
+    - internal/harness/proposalgen/testdata/tier-promotions-current-baseline.jsonl (+8 NEW)
+    - .moai/specs/SPEC-V3R6-HARNESS-PROPOSAL-GEN-001/progress.md (+31 -0)
+  Total race-absorbed: 1853 insertions (의도 92 insertions 대비 20배).
+
+  Root cause: Pre-spawn `git fetch origin main && git rev-list --count --left-right` = `0 0` (clean ahead).
+  그 직후 `git add <single-file>` 실행했으나 staging area에는 concurrent session이 stage한 13 file이 이미 존재.
+  `git commit`이 staged 모두 commit + push했음. Pre-spawn fetch는 staging area race에 무력.
+
+  L4 Pre-Spawn HARD rule (agent-common-protocol.md §Pre-Spawn Sync Check)에 추가 필요:
+    `git diff --cached --name-only` pre-commit assertion → 의도된 file list와 매치 확인
+    또는 git add 직전 `git reset` (atomic clear) → 본 commit scope만 staged 보장.
+
+  본 Case 3 사례는 spec.md §A.1 motivating example 추가 예정 (iter-2 OR run-phase manager-develop M2 시점 manager-spec re-engage).
+  Follow-up chore commit (별도)에서 incident 명시 후 spec body update는 별도 turn.
+
+  영향 평가: 데이터 손실 0 (모든 변경 보존), 다른 세션 정상화 가능 (nothing-to-commit), commit message 정확성 보완 필요.
 ```
 
 ## §D Run-Phase Evidence (placeholder — filled by manager-develop)
