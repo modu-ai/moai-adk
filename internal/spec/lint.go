@@ -122,6 +122,7 @@ func NewLinter(opts LinterOptions) *Linter {
 		&StatusValueEnumRule{},
 		&StatusCaseNormalizationRule{},
 		&StatusGitConsistencyRule{},
+		&OwnershipTransitionRule{},
 		// cross-SPEC rules
 		&DependencyCycleRule{},
 		&DuplicateSPECIDRule{},
