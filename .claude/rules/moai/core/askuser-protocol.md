@@ -121,6 +121,105 @@ Each option description MUST include:
 
 ---
 
+## Preview Field Standards
+
+The `preview` field on each `AskUserQuestion` option renders a multi-line content block in a monospace box alongside the option list. When ANY option in a question has a `preview`, the Claude Code TUI auto-switches to side-by-side layout (vertical option list on the left, focused option's preview on the right).
+
+This field complements `description` — it does NOT replace it. `description` carries the prose explanation that arrives with every option; `preview` carries the visual artifact (table / mockup / snippet) that benefits from side-by-side comparison.
+
+### When to Use (SHOULD)
+
+Apply `preview` when options carry **structural or quantitative differences** that benefit from visual side-by-side comparison:
+
+- Sprint entry SPEC selection (Tier / Scope / Files / Risk comparison)
+- Workflow branching decisions (cost / latency / risk trade-offs)
+- Migration strategy selection (rollback path / performance / scope deltas)
+- Architecture decision (component layout / dependency graph variants)
+- Tier classification (Tier S minimal / Tier M standard / Tier L thorough envelope comparison)
+
+### When NOT to Use
+
+Omit `preview` when labels and descriptions already suffice:
+
+- Simple yes/no confirmations
+- PR merge approval
+- Single-decision-point confirmations after the orchestrator has already laid out the structural context in prose
+- Permission grants (e.g., "allow Bash?", "allow Write?")
+- Continue / Abort prompts at a checkpoint gate
+
+### Constraint: Single-Select Only
+
+`preview` is rendered ONLY when `multiSelect: false`. The Claude Code TUI silently drops the `preview` field when `multiSelect: true`. Do not combine — if multi-select is required, fall back to richer `description` text instead.
+
+### Constraint: Scroll Limitation (Issue #33062)
+
+The Claude Code TUI preview pane is currently NOT scrollable. Content exceeding the visible window is truncated with an "N lines hidden" indicator, and arrow keys only navigate between options on the left (not within the preview pane). Mitigation guidelines (best-effort, not enforced):
+
+- Keep preview content under ~12 visible lines
+- Place the most decision-relevant information in the first 6 lines
+- For longer artifacts (full SPEC body, large diff), condense to a metadata table in `preview` and surface the full content via a follow-up message after selection
+
+Reference: `https://github.com/anthropics/claude-code/issues/33062`
+
+### Format Freedom
+
+`preview` content renders as markdown inside a monospace box. The author may use any visual format that fits the comparison:
+
+- **Compact metadata table** (one `key: value` per line) — preferred for option-set comparison; allows visual scanning of deltas when the same key set appears across all options
+- **ASCII art mockup** — UI layouts, architecture diagrams, component boundaries
+- **Code snippet** (fenced or unfenced) — implementation variants, configuration examples
+- **Mixed** — metadata table plus a small diagram, when both contribute to the decision
+
+When options carry comparable metadata, prefer a consistent key set across all options' previews so the user can visually scan the deltas. When options are fundamentally different in shape (e.g., "implement now" vs "ASCII mockup of UI"), format freedom is acceptable even if it sacrifices direct comparability.
+
+### Bias Prevention Inheritance
+
+The bias prevention rule from §Option Description Standards applies equally to `preview` content:
+
+- The recommendation signal is conveyed **exclusively** by the `(권장)` / `(Recommended)` label suffix on the first option
+- Preview content MUST use neutral, factual language — no persuasive framing, no decorations privileging one option
+- Do not visually inflate the recommended option's preview (no larger box, no extra emoji, no longer body)
+
+### Worked Example
+
+```
+ToolSearch(query: "select:AskUserQuestion")
+AskUserQuestion({
+  questions: [{
+    question: "Sprint 8 entry SPEC를 선택해주세요.",
+    header: "Sprint 8",
+    multiSelect: false,
+    options: [
+      {
+        label: "SPEC-V3R6-SPEC-ID-VALIDATION-001 (권장)",
+        description: "manager-spec body에 SPEC ID regex pre-write self-check 추가. Sprint 7 TMC-001 plan-phase L51 도출 원천 해소.",
+        preview: "Tier:    S (minimal)\nScope:   manager-spec.md body + regex pre-write check\nFiles:   1-2 edit\nRisk:    Low — agent body 수정, 동작 변경 없음\nL51 origin: Sprint 7 TMC-001 plan-phase 도출"
+      },
+      {
+        label: "SPEC-V3R6-CATALOG-FRONTMATTER-AUDIT-001",
+        description: "frontmatter schema audit + lint rule 확장. §24 namespace align 후속.",
+        preview: "Tier:    M (standard)\nScope:   internal/spec/lint.go + catalog.yaml\nFiles:   3-5 edit\nRisk:    Med — lint rule 확장은 cascade 가능\nOrigin:  §24 namespace align 후속"
+      },
+      {
+        label: "SPEC-V3R6-CLI-INTEGRATION-001",
+        description: "CLI subcommand integration test 추가. moai cli regression 방지.",
+        preview: "Tier:    M (standard)\nScope:   cmd/moai + internal/cli integration tests\nFiles:   5-8 edit\nRisk:    Med — sandbox env 의존성 추가 가능\nOrigin:  CI 회귀 방지 SHOULD-FIX"
+      }
+    ]
+  }]
+})
+```
+
+Note how each option's `preview` uses the same key set (`Tier`/`Scope`/`Files`/`Risk`/`Origin`-or-`L51 origin`), allowing the user to scan deltas vertically when navigating the option list.
+
+### Cross-references
+
+- Claude Code SDK documentation: `toolConfig.askUserQuestion.previewFormat` (`"markdown"` | `"html"`). The Claude Code native TUI auto-renders the `preview` field without explicit `previewFormat` config.
+- Constraint origin: GitHub issue `anthropics/claude-code#33062` (preview pane scroll limitation).
+- Related rule: §Option Description Standards (description is always required; preview is additive).
+
+---
+
 ## Orchestrator–Subagent Boundary
 
 The `AskUserQuestion` interaction channel is **asymmetric** by design.

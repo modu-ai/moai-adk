@@ -202,6 +202,56 @@ Checklist before declaring `<moai>DONE</moai>`:
 
 ## 8. Response Templates
 
+### Localization Contract [HARD]
+
+The templates in §8 are **structural skeletons**. The English labels exist for documentation purposes only. At render time, the orchestrator MUST localize every label using the `conversation_language` value declared in `.moai/config/sections/language.yaml` (see §9). There is no static lookup table — the rendering language is whatever the user's config currently says.
+
+**Translate to `conversation_language` (HARD):**
+
+Every English text label inside the templates below — banner names, section headers, criteria lists, arrow annotations, status descriptions, completion messages, error labels, recovery options. Examples (non-exhaustive) of labels that MUST translate at every render:
+
+- Status banners: `Status`, `Task Start`, `Delegation`, `Gate`, `Insight`, `Complete`, `Error`, `Preconditions`, `Progress Status`
+- Section headers: `Specialist:`, `Scope:`, `Constraints:`, `Return:`, `What:`, `Why:`, `Alternatives:`, `Implications:`, `Recovery options via AskUserQuestion:`
+- Criteria lists: `Functional / Minimal / Verified / Traceable / Safe`
+- Arrow annotations: `PASS → next stage`, `FAIL → iterate`, `next stage`, `iterate`
+- Completion phrases: `Intent delivered`, `Files: N`, `Tests: X/X pass`, `Coverage: N%`, `Deliverables:`, `Specialists used:`, `Cleanup: [temp files removed]`
+- Error phrases: `Retry as-is`, `Alt approach`, `Pause`, `Abort+preserve`
+- Progress Board icon meanings (when verbalized): `Done`, `In Progress`, `Pending`, `Under Review`, `Failed`, `Critical`
+- Session Handoff headers: `Preconditions:`, `Run:`, `After merge:`, `entering`
+- Step labels: `Step 1: Clarify`, `Step 2: Delegate`, `Step 3: Execute`, `Step 4: Verify`
+- WebSearch citation: `Sources:`
+
+**Preserve verbatim — DO NOT translate (HARD):**
+
+- Emoji decorations: 🤖 📋 🎯 ⏳ ★ ✅ ⏭ ⏮ 📊 🔄 🧹 ❌ 🔍 🔧 🟢 🟡 ⏸️ 🔵 🔴 🚧 📤 📦 🛑 👋 📚 🧠
+- Box-drawing and arrow characters: ─ │ └─ ┌ ┐ ┘ └ ▶ → ← ⏭ ⏮
+- Horizontal rules: `---`
+- Code/command literals: `go test ./...`, `gh pr create`, `git fetch origin main`, `/moai <subcommand>`, `<moai>DONE</moai>`, `<moai>COMPLETE</moai>`, `~/.claude/projects/{hash}/memory/`, fenced ```text``` blocks
+- Keyword tokens: `ultrathink.` (activates Adaptive Thinking max effort — treat as command keyword, NOT translatable English)
+- File paths: `.moai/config/sections/language.yaml`, `.moai/specs/<SPEC-ID>/progress.md`, etc.
+- Placeholder substitution: `[intent statement]`, `<SPEC-ID>`, `<phase>`, `[agent-name]`, `[N/M]`, etc. — substitute with the actual value for the current turn; do NOT keep the English placeholder text verbatim in output
+
+**Rendering rule (single source of truth):**
+
+- Read `conversation_language` from `.moai/config/sections/language.yaml`
+- If `en`: render the §8 templates verbatim (the documentation skeleton IS the output)
+- If `ko` / `ja` / `zh` / any other ISO-639 code: translate every label listed above into that language naturally — use idiomatic phrasing that a native reader would expect, not literal word-by-word translation
+- Banner alignment (separator dashes) should be preserved approximately; minor visual drift due to character width differences (CJK vs Latin) is acceptable
+
+**Anti-pattern (current defect being fixed):**
+
+When `conversation_language: ko`, emitting raw English like `🤖 MoAI ★ Gate [2/4]` + `✅ Functional / Minimal / Verified / Traceable / Safe` + `Preconditions:` + `Test file lines 39-40 verified verbatim` is a HARD violation. The Korean reader expects equivalent natural Korean phrasing (e.g., `🤖 MoAI ★ 게이트 [2/4]` + `✅ 기능성 / 최소성 / 검증 / 추적성 / 안전성` + `전제 검증:` + `테스트 파일 39-40번 줄 원문 일치 확인`). The English template skeleton is a reference, NOT the literal output surface.
+
+Root cause of the defect: §9 said "translate all text" but the §8 templates contained literal English example labels; models anchored to the literal examples and rendered them verbatim. This Localization Contract makes the translation obligation explicit at the surface where templates appear.
+
+**Pre-emit self-check (verify before printing any §8-derived block):**
+
+- [ ] Did I read `conversation_language` from `.moai/config/sections/language.yaml`?
+- [ ] Did I translate every English text label to `conversation_language` with natural idiomatic phrasing?
+- [ ] Did I preserve every emoji, separator, code literal, file path, and the `ultrathink.` keyword verbatim?
+- [ ] Did I substitute placeholder syntax (`[Task]`, `<SPEC-ID>`, `[agent-name]`, `[N/M]`, ...) with actual values for this turn?
+- [ ] If `conversation_language: en`, did I emit the English skeleton verbatim without redundant "translation"?
+
 ### Task Start
 ```
 🤖 MoAI ★ Task Start ─────────────────────────
@@ -363,11 +413,12 @@ Anti-patterns (CI/lint should reject):
 
 ## 9. Language Rules [HARD]
 
-- [HARD] All user-facing responses in `conversation_language` (CLAUDE.md §9)
-- [HARD] Templates above are structural references; translate all text
-- [HARD] Preserve emoji decorations unchanged across languages
-- [HARD] Internal agent-to-agent messages: English
-- [HARD] Code comments: per `code_comments` setting (default English)
+- [HARD] All user-facing responses in `conversation_language` — read the value from `.moai/config/sections/language.yaml`. This is the single source of truth; do NOT infer from prior turns, user-visible text, or training-time defaults.
+- [HARD] Templates in §8 are structural skeletons — translate every English label to `conversation_language` per §8 Localization Contract. The English text in §8 is documentation, not literal output. Anchoring to English literals is the exact defect §8 Localization Contract exists to prevent.
+- [HARD] Preserve verbatim across all languages: emoji decorations (🤖 📋 🎯 ⏳ ★ ✅ ⏭ ⏮ 📊 🔄 🧹 ❌ 🔍 🔧 🟢 🟡 ⏸️ 🔵 🔴 🚧 📤 📦 🛑 👋 📚 🧠), box-drawing and arrow characters (─ │ └─ ▶ → ←), code/command literals, file paths, and the `ultrathink.` keyword token.
+- [HARD] Internal agent-to-agent messages (Agent() prompts, SendMessage payloads): English
+- [HARD] Code comments: per `code_comments` setting in `.moai/config/sections/language.yaml` (default English)
+- [HARD] Pre-emit self-check: every banner/template-derived block MUST pass §8 Localization Contract self-check before printing.
 
 ---
 
@@ -380,6 +431,7 @@ Anti-patterns (CI/lint should reject):
 - [HARD] File paths include `file:line` for navigation
 - [HARD] No time estimates ("2-3 days" forbidden); use priority labels
 - [HARD] **free-form interrogative prose in response body is prohibited as a question channel.** All user-facing questions MUST go through `AskUserQuestion` (which automatically provides an `Other` option for free-form answers when needed). Anti-pattern: embedding `?` questions or `- A: / - B:` option lists in response prose instead of calling `AskUserQuestion`. Canonical reference: `.claude/rules/moai/core/askuser-protocol.md`
+- [SHOULD] **AskUserQuestion `preview` field for option comparison.** When options carry structural or quantitative differences (Sprint entry SPEC, workflow branching, migration strategy, Tier classification), include a `preview` field on each option to enable side-by-side TUI rendering. Constraints: single-select only (`multiSelect: false`), keep preview ≤12 visible lines (Issue #33062 scroll limitation), consistent key set across all options' previews for visual delta scanning, bias prevention inherited (recommendation signal stays on `(권장)` / `(Recommended)` label suffix only). Canonical reference: `.claude/rules/moai/core/askuser-protocol.md` §Preview Field Standards
 
 ---
 
@@ -413,8 +465,15 @@ Every interaction should be:
 
 ---
 
-Version: 5.2.0 (Session Handoff template surfaced in §6 + §8)
-Last Updated: 2026-05-23
+Version: 5.3.0 (Localization Contract HARD added to §8; §9 strengthened to point at `.moai/config/sections/language.yaml`)
+Last Updated: 2026-05-24
+
+Changes from 5.2.0:
+- §8 added "Localization Contract [HARD]" as the first subsection, BEFORE the template definitions. Explicit list of labels requiring translation + verbatim-preserve list (emoji, separators, code literals, file paths, `ultrathink.` keyword) + anti-pattern catalogue + pre-emit self-check.
+- §9 Language Rules: bullet 1 strengthened to cite `.moai/config/sections/language.yaml` as the single source of truth for `conversation_language`; bullet 2 reworded to reference §8 Localization Contract; bullet 3 expanded with comprehensive emoji and separator preservation list; new bullet 6 added requiring pre-emit self-check.
+- No template body changes — the §8 templates remain English skeletons (documentation surface). The fix is to make translation obligation surface-explicit so models do not anchor to literal English examples.
+- Rationale: prior versions had "translate all text" in §9 but §8 contained literal English example labels. Models reading both treated the §8 examples as the literal output surface, emitting English banners (e.g., `🤖 MoAI ★ Gate [2/4]`, `Preconditions:`, `Functional / Minimal / Verified / Traceable / Safe`) regardless of `conversation_language: ko`. Localization Contract closes the gap by making the rendering rule explicit at the same surface where templates appear, with a comprehensive list of which tokens translate vs which stay verbatim.
+- No static 4-locale lookup table added (per user feedback 2026-05-24) — the rule is "render in whatever `conversation_language` says", not "look up in a fixed table". This keeps the contract evergreen as new languages are configured.
 
 Changes from 5.1.0:
 - §6 added "Session Boundary Handoff [HARD]" sub-section enumerating the 5 triggers (canonical: `.claude/rules/moai/workflow/session-handoff.md`)
