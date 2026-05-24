@@ -162,47 +162,60 @@ canary_compliance_check:
 ## §E.5 Mx-phase Audit-Ready Signal
 
 ```yaml
-mx_complete_at: TBD
-mx_disposition: TBD                              # SKIP-eligible per spec.md §C.3 IF @MX tag count delta = 0 across 7 EXTEND files; else EVALUATE
+mx_complete_at: 2026-05-24T21:25:00Z              # Mx Step C SKIP-judge performed by orchestrator post-sync (separate session from sync-phase, see multi_session_coordination_note)
+mx_disposition: SKIP-justified                    # both conditions verified PASS
 mx_disposition_rationale: |
-  Per .claude/rules/moai/workflow/mx-tag-protocol.md §a, Mx Step C SKIP condition requires:
-    (1) .go file count = 0 in commit AND
-    (2) @MX tag count delta = 0
-  This SPEC modifies ONLY .md files (3 agent operational sources + 3 template mirrors + 1 schema doc = 7 .md files; 0 .go files).
-  Condition (1) PASS automatically.
-  Condition (2) requires verification: did the new `## SPEC Artifact Ownership` body sections introduce any @MX tags (TODO, NOTE, WARN, ANCHOR, REASON, LEGACY)? Expected: NO — ownership declarations are pure policy text, no code annotations.
-  If @MX tag count delta = 0: Mx Step C SKIP per §a.
-  If @MX tag count delta > 0: Mx Step C EVALUATE — orchestrator scans the new @MX tags + validates pairing rules (@MX:WARN MUST have paired @MX:REASON, etc.) per `mx-tag-protocol.md`.
+  Per .claude/rules/moai/workflow/mx-tag-protocol.md §a, Mx Step C SKIP condition verified:
+    (1) .go file count = 0 across ARR-001 5 commits (e2fbe4d60 + e6ad82031 + e48af1792 + 11abb9a30 + a25476e7e) → PASS
+        Verification: `for sha in <5 commits>; do git show --name-only $sha | grep '\.go$' || true; done` produced empty output
+    (2) @MX tag count delta = 0 across all 7 modified .md files → PASS
+        Verification per file: `pre=$(git show e6ad82031~1:"$f" | grep -c "@MX"); post=$(grep -c "@MX" "$f"); delta=$((post - pre))`
+  Both conditions PASS → SKIP-justified. Mx-chore commit emits this §E.5/§E.6 finalization only (no @MX scan needed).
 mx_tag_count_delta:
-  source_agent_files: TBD                         # `grep -c '@MX' .claude/agents/core/manager-{spec,develop,docs}.md` pre vs post — target: 0 delta
-  mirror_agent_files: TBD                         # same metric on template mirror — target: 0 delta (mirror parity)
-  schema_doc: TBD                                 # `grep -c '@MX' .claude/rules/moai/development/spec-frontmatter-schema.md` pre vs post — target: 0 delta
-mx_step_c_verdict: TBD                            # SKIP if delta = 0; EVALUATE-PASS if delta > 0 and all new @MX tags are properly paired
+  source_agent_files:                              # all delta = 0
+    manager-spec.md: 0                             # pre=0, post=0
+    manager-develop.md: 0                          # pre=10, post=10 (pre-existing tags untouched by ARR-001 edits)
+    manager-docs.md: 0                             # pre=0, post=0
+  mirror_agent_files:                              # mirror parity preserved (AC-ARR-005 guarantee)
+    manager-spec.md: 0                             # pre=0, post=0
+    manager-develop.md: 0                          # pre=10, post=10
+    manager-docs.md: 0                             # pre=0, post=0
+  schema_doc:
+    spec-frontmatter-schema.md: 0                  # pre=0, post=0 (Status Transition Ownership Matrix is pure policy markdown, no code annotations)
+mx_step_c_verdict: SKIP                           # ownership declarations are pure policy text, no code annotations introduced
+multi_session_coordination_note: |
+  ARR-001 4-phase lifecycle was distributed across 3 orchestrator sessions due to absence of multi-session coordination protocol at time of execution:
+    - Session A (~earlier): plan + run + run-backfill (commits e2fbe4d60 + e6ad82031 + e48af1792)
+    - Session B (f3d5f57e-4620-48a3-9a65-a9fe32b2816c, ≈2026-05-24T20:44Z): sync + sync-backfill (commits 11abb9a30 + a25476e7e)
+    - Session C (cd8d8946-e06f-4c76-a3ab-869eba092356, this Mx-chore commit): Mx Step C SKIP-judge finalization
+  Race signal: Session C started after Session B's sync commits were pushed to origin/main; Session C's `git fetch origin main` returned `0 0` (clean ahead) so Session B's work was already absorbed silently. Session C nearly delegated `/moai sync SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001` again (duplicate work, would have caused CHANGELOG duplicate + frontmatter overwrite race) before detecting the existence of commits 11abb9a30 + a25476e7e via `git log --all --oneline | grep ARR`.
+  Mitigation deferred to SPEC-V3R6-MULTI-SESSION-COORD-001 (new, plan-phase enters after this Mx-chore commit). This race case is cited as motivating example in that SPEC §A (Background) — empirical validation of the 4-layer solution (active-sessions.json registry + paste-ready session_id tagging + SessionStart surface + Pre-spawn HARD rule extension).
 ```
 
 ## §E.6 4-Phase Lifecycle Close Signal
 
 ```yaml
-lifecycle_close_at: TBD                           # final closure timestamp (Mx chore commit OR sync commit if Mx SKIP)
-final_status: TBD                                 # completed when 4-phase lifecycle closed: plan + run(M1-M3) + sync + Mx
-total_commits: TBD                                # target: 3-5 (plan + run [1-3 bundled or separate] + sync + optional Mx-chore if NOT SKIP)
-total_push_count: TBD                             # one per commit (Hybrid Trunk 1-person OSS per CLAUDE.local.md §23.7)
-sprint_position: Sprint 8 P2 — Audit Tier 2 COMPLETE — Tier S minimal 1-pass cohort 6/6 (IF SUCCESS)
+lifecycle_close_at: 2026-05-24T21:25:00Z          # final closure timestamp at Mx-chore commit (SKIP-justified path, no separate Mx-EVALUATE step)
+final_status: completed                           # 4-phase lifecycle closed: plan + run(M1-M3) + sync + Mx (SKIP-justified)
+total_commits: 6                                  # plan e2fbe4d60 + run e6ad82031 + chore-backfill e48af1792 + sync 11abb9a30 + sync-backfill a25476e7e + Mx-chore <this commit>
+total_push_count: 6                               # one per commit (Hybrid Trunk 1-person OSS per CLAUDE.local.md §23.7)
+sprint_position: Sprint 8 P2 — Audit Tier 2 COMPLETE — Tier S minimal 1-pass cohort 7/7 (IVB/SARM/TMC/TMD/SIV/HCW/ARR confirmed); first canary SPEC of new SPEC Artifact Ownership policy (F1+F12 resolution from Anthropic Best Practices Audit)
+canary_compliance_summary:
+  policy_self_application: PASS                   # this SPEC's own sync (Session B 11abb9a30) modified ONLY CHANGELOG.md + 4 frontmatter status fields, ZERO spec.md/plan.md/acceptance.md body modifications — policy is binding on all downstream SPEC syncs (SIV-001 sync 8b75ebbb3 already complied retroactively)
+  forward_looking_test_planned: SPEC-V3R6-MULTI-SESSION-COORD-001 will be the second canary (manager-spec authors body; manager-develop edits Go/hook; manager-docs sync; orchestrator Mx — clean DRI separation across 4 phases)
 next_action_paste_ready: |
-  TBD — populated by manager-docs during sync-phase. Expected pattern (following session-handoff.md 6-block structure):
-
-  ultrathink. Sprint 8 P3 — SIV-001 sync-phase enter (NEW ownership policy in effect).
-  applied lessons: project_sprint8_arr001_complete, project_sprint8_siv001_run_complete, anthropic_audit Tier 2 F1+F12 resolution.
+  ultrathink. Sprint 8 P3 — SIV-001 Mx Step C SKIP-judge + SPEC-V3R6-MULTI-SESSION-COORD-001 plan-phase enter.
+  applied lessons: project_sprint8_arr001_complete (NEW), L52 multi-session race absorbed (Session B sync→Session C Mx coordination gap → motivating COORD-001), L33 7th Tier S minimal cohort, L44 HARD pre-spawn fetch discipline.
 
   전제 검증:
-  1) git log --oneline -1 → <ARR-001-sync-SHA> (Sprint 8 P2 SPEC 4-phase complete)
-  2) git fetch origin main && git rev-list --count --left-right origin/main...HEAD → 0 0 (L44 HARD pre-SIV-sync)
-  3) grep -c '^## Status Transition Ownership Matrix$' .claude/rules/moai/development/spec-frontmatter-schema.md → 1 (new policy schema doc binding)
-  4) grep -c '^## SPEC Artifact Ownership$' .claude/agents/core/manager-docs.md → 1 (new manager-docs boundary binding)
+  1) git log --oneline -1 → <ARR-001-Mx-chore-SHA> (ARR-001 4-phase lifecycle complete)
+  2) git fetch origin main && git rev-list --count --left-right origin/main...HEAD → 0 0 (L44 HARD pre-spawn race recheck; verify no other-session activity since this Mx-chore)
+  3) grep "mx_status: TBD" .moai/specs/SPEC-V3R6-SPEC-ID-VALIDATION-001/progress.md → 1 line (SIV-001 Mx 잔여 미수행 확인)
+  4) grep -c "@MX" internal/template/rule_template_mirror_test.go → expected 0 (SIV-001 run-phase .go edit was structural-only slice add, no @MX tag)
 
-  실행: /moai sync SPEC-V3R6-SPEC-ID-VALIDATION-001 — manager-docs sync-phase MUST comply with new boundary (CHANGELOG + 4 frontmatter + progress.md §Sync-phase Audit-Ready Signal ONLY, NO spec.md / plan.md / acceptance.md body modifications)
+  실행: SIV-001 Mx Step C SKIP-judge — progress.md §F mx_status TBD → SKIP + chore commit `chore(SPEC-V3R6-SPEC-ID-VALIDATION-001): Mx-phase audit-ready signal + 4-phase close (SKIP-justified)`.
 
-  머지 후: Audit Tier 3 (F3 + F9 + F13) plan-phase 결정 OR Sprint 8 P4 entry SPEC 결정 via AskUserQuestion
+  머지 후: SPEC-V3R6-MULTI-SESSION-COORD-001 plan-phase 진입. manager-spec 위임. Tier M 예상 (~300 LOC Go + 2 hook script + 1 rule). 본 ARR-001 progress.md §E.5 multi_session_coordination_note를 motivating example로 §A.1 Background에 인용. 4-layer 솔루션: (L1) .moai/state/active-sessions.json registry + SessionStart/Stop/PreCompact hook 통합 / (L2) paste-ready emit 시 source_session_id 태깅 + MEMORY.md entry session_id 마킹 / (L3) SessionStart hook이 active-sessions 조회 → 진행 중 작업 surface / (L4) Pre-spawn HARD rule 확장 (agent-common-protocol.md §Pre-Spawn Sync Check에 active-sessions.json 조회 batch 추가).
 ```
 
 ## §E.7 L46 Attribution Discipline (post-merge audit)
