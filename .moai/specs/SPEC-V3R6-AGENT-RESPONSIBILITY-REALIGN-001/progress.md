@@ -98,7 +98,7 @@ Invariant verifications (no AC mapping — per acceptance.md §D.4):
 
 ```yaml
 run_complete_at: 2026-05-24T19:30:00Z             # M1-M3 bundled commit performed by manager-develop (timestamp at commit creation)
-run_commit_sha: TBD-orchestrator-backfill         # M1-M3 bundled commit SHA — orchestrator backfills via separate chore commit (manager-develop cannot self-amend per CLAUDE.md anti-amend policy)
+run_commit_sha: e6ad82031                         # M1-M3 bundled commit SHA — orchestrator backfilled via separate chore commit (manager-develop cannot self-amend per CLAUDE.md anti-amend policy)
 run_status: implemented                           # all 7 [HARD] ACs PASS + all invariants PASS
 ac_pass_count: 7                                  # AC-ARR-001..007 all PASS
 ac_fail_count: 0                                  # no [HARD] AC FAIL
