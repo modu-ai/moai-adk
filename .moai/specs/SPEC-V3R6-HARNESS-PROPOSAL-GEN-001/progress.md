@@ -19,7 +19,7 @@ tags: "harness, proposal, progress, tier-m"
 
 | Phase | Status | Started | Completed | Commit SHA |
 |-------|--------|---------|-----------|------------|
-| Plan | audit-ready | 2026-05-24 | 2026-05-24 | TBD (set by orchestrator on commit) |
+| Plan | audit-ready | 2026-05-24 | 2026-05-24 | e5b2859a9 |
 | Plan Audit | pending | — | — | — |
 | Run (M1) | pending | — | — | — |
 | Sync | pending | — | — | — |
@@ -30,7 +30,7 @@ tags: "harness, proposal, progress, tier-m"
 ```yaml
 plan_complete_at: 2026-05-24T21:15:00Z
 plan_status: audit-ready
-plan_commit_sha: TBD                # filled by orchestrator post-commit
+plan_commit_sha: e5b2859a9fa23f00c53ad3af74115235834009c0
 run_complete_at: null
 run_status: pending
 run_commit_sha: pending
