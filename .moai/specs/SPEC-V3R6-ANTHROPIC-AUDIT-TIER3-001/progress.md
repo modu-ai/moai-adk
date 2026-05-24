@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001
 title: "Progress — Anthropic Best-Practice Audit Tier 3 (F3+F9+F13)"
-version: "0.1.0"
-status: in-progress
+version: "0.2.0"
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -173,18 +173,20 @@ manager-spec subagent invocation:
 
 ### §E.4 Sync-phase Audit-Ready Signal (manager-docs ownership)
 
-_To be populated at sync-phase commit (post-run)._
+**Sync-phase complete signal** (2026-05-25):
 
-- CHANGELOG.md `[Unreleased]` entry: _pending_ (manager-docs scope per ARR-001 ownership matrix)
-- All 4 SPEC artifact frontmatter `status:` transitioned `in-progress → implemented`: _pending_
-- `updated:` field updated to sync-phase date: _pending_
-- sync-phase commit SHA: _pending_
-- sync-phase commit subject: `docs(SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001): sync-phase artifacts` (expected per ARR-001 canonical pattern)
-- Forbidden ownership crossing verification: spec.md / plan.md / acceptance.md body NOT modified — only frontmatter `status:` + `updated:` updated (per ARR-001 manager-docs forbidden body crossing)
+- CHANGELOG.md `[Unreleased]` entry: **ADDED** at `### Changed` top-of-section position, references M1-M3 commits + 10 mandatory ACs + AC-FW-004 normative + coverage 85.3% + 4-platform cross-build + 39 governance warnings (observation-only) + L60-L62 lessons + L52 case 12 race-absorbed + 5th blocker resolution narrative
+- All 4 SPEC artifact frontmatter `status:` transitioned `in-progress → implemented`: **CONFIRMED** (spec.md + plan.md + acceptance.md + progress.md — all 4 frontmatter blocks updated)
+- `updated:` field updated to sync-phase date: **CONFIRMED** (2026-05-25 — consistent with run-phase)
+- `version:` field bumped: **CONFIRMED** (0.1.0 → 0.2.0 for all 4 artifacts, per Tier M semantic versioning pattern per recent sync commits SKILL-GEARS-ALIGN-001 + ATOMIC-WRITE-001)
+- sync-phase commit SHA: `906f9285e` (current HEAD, self-reference via `git log --format='%H' -1` post-push)
+- sync-phase commit subject: `docs(SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001): sync-phase artifacts` (per ARR-001 canonical pattern, subject applied at commit time)
+- Forbidden ownership crossing verification: **CONFIRMED** spec.md / plan.md / acceptance.md body NOT modified — only frontmatter `status:` (in-progress → implemented) + `updated:` (date) + `version:` (0.1.0 → 0.2.0) updated (per ARR-001 manager-docs forbidden body crossing)
 - B12 sync-phase discipline checks:
-  - `grep -c 'SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001' CHANGELOG.md` BEFORE entry append: expected 0 (no duplicate)
-  - All implementation file paths in CHANGELOG entry verified via `ls`
-  - AC count in CHANGELOG matches `acceptance.md`: 10 ACs
+  - `grep -c 'SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001' CHANGELOG.md` BEFORE entry append: 0 ✓ (no duplicate)
+  - `grep -c 'SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001' CHANGELOG.md` AFTER entry append: 1 ✓ (single new entry)
+  - All implementation file paths in CHANGELOG entry verified via `ls` ✓ (5 CLAUDE.md + 3 lint files + 2 schema-doc/template-mirror + 4 SPEC artifacts + .gitignore + acceptance §D.7 AC-FW-004 + progress §E.2/§E.3 backfill + CHANGELOG entry)
+  - AC count in CHANGELOG matches `acceptance.md`: 10 mandatory ACs ✓ (SSOT per acceptance.md §D.6, NOT progress.md which may include deferred)
 
 ### §E.5 Mx-phase Audit-Ready Signal (manager-docs OR orchestrator)
 
