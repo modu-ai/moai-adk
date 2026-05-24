@@ -2,7 +2,7 @@
 id: SPEC-V3R6-MULTI-SESSION-COORD-001
 title: "Multi-Session Coordination — Lifecycle Progress"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-05-24
 updated: 2026-05-25
 author: "GOOS행님"
@@ -372,17 +372,17 @@ test_invocation_summary:
 mx_step_c_judgment_eligibility: PENDING_SYNC_PHASE   # Mx judgment owned by /moai mx Step C workflow + manager-develop Mx role; this run-phase emits EVALUATE-READY signal (4 NEW Go files would receive @MX:NOTE + @MX:ANCHOR tags per spec.md §E.3 Mx-Phase expectations)
 ```
 
-## §F Sync-Phase Audit-Ready Signal (placeholder — filled by manager-docs)
+## §F Sync-Phase Audit-Ready Signal
 
 ```yaml
-sync_complete_at: pending
-sync_commit_sha: pending
-changelog_entry_count: pending   # expect 1 [Unreleased] entry
-frontmatter_status_transitions: pending   # expect 4 files (spec/plan/acceptance/progress)
+sync_complete_at: 2026-05-25T16:45:00Z
+sync_commit_sha: pending_post_commit   # to be filled with actual commit SHA after push
+changelog_entry_count: 1   # [Unreleased] Added section entry for SPEC-V3R6-MULTI-SESSION-COORD-001 (verified via grep -cE '^\- \*\*\[SPEC-V3R6-MULTI-SESSION-COORD-001\]' CHANGELOG.md → 1)
+frontmatter_status_transitions: 4   # spec.md + plan.md + acceptance.md + progress.md all transitioned in-progress → implemented
 b12_self_test:
-  - changelog_count: pending
-  - ac_count_match: pending
-  - frontmatter_status_implemented_count: pending
+  - changelog_count: 1   # `grep -c 'SPEC-V3R6-MULTI-SESSION-COORD-001' CHANGELOG.md` → 1 (exact match on Added entry header, false-positive in PROPOSAL-GEN-001 attribution excluded via grep -E '^\- \*\*\[SPEC' filter)
+  - ac_count_match: 16   # `grep -cE '^\| \*\*AC-COORD-[0-9]+' acceptance.md` → 16 (AC-COORD-001..016 verified)
+  - frontmatter_status_implemented_count: 4   # `grep -lE '^status: implemented' .moai/specs/SPEC-V3R6-MULTI-SESSION-COORD-001/*.md | wc -l` → 4 files
 ```
 
 ## §G Mx-Phase Audit-Ready Signal (placeholder — filled by manager-develop Step C judge)
