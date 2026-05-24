@@ -113,13 +113,15 @@ Purpose: Specification-driven development ensuring clear requirements before imp
 
 Three-Phase Workflow:
 
-Phase 1 SPEC (/moai:1-plan): workflow-spec generates EARS format. Output is .moai/specs/SPEC-XXX/spec.md. Execute /clear to save 45-50K tokens.
+Phase 1 SPEC (/moai:1-plan): workflow-spec generates GEARS format (primary; EARS retained as 6-month backward-compat legacy reference for the 88 pre-v3 SPECs). Output is .moai/specs/SPEC-XXX/spec.md. Execute /clear to save 45-50K tokens.
 
 Phase 2 DDD (/moai:2-run): ANALYZE for requirements, PRESERVE for existing behavior, IMPROVE for enhancement. Validate with at least 85% coverage.
 
 Phase 3 Docs (/moai:3-sync): API documentation, architecture diagrams, project reports.
 
-EARS Format: Ubiquitous for system-wide always active requirements. Event-driven for trigger-based when X do Y requirements. State-driven for conditional while X do Y requirements. Unwanted for prohibited shall not do X requirements. Optional for nice-to-have where possible do X requirements.
+GEARS Format (current notation): Five patterns — Ubiquitous "The <subject> shall <behavior>" for system-wide always active requirements; Event-driven "When <event> the <subject> shall <behavior>" for trigger-response requirements; State-driven "While <state> the <subject> shall <behavior>" for conditional behavior; Where (capability gate) "Where <capability or feature flag>, the <subject> shall <behavior>" for capability-conditioned behavior; Event-detected (replaces legacy IF/THEN) "When <undesired-condition-detected>, the <subject> shall <response>" for failure-mode handling. Unified compound clause: `[Where ...][While ...][When ...] The <subject> shall <behavior>` — any subset of the three modifiers may chain. The `<subject>` is generalized — any noun (system, component, service, agent, function, artifact). See the canonical authoring guide at `.claude/skills/moai-workflow-spec/SKILL.md` § "GEARS Format".
+
+EARS Format (legacy reference, 6-month backward-compat — expires 2026-11-22): Five patterns Ubiquitous / Event-driven (WHEN/THEN) / State-driven (WHILE) / Unwanted (SHALL NOT) / Optional (WHERE possible). The 88 pre-v3 SPECs continue to use EARS; the lint engine emits a `LegacyEARSKeyword` warning on residual `IF/THEN` modality in NEW SPECs (warning non-strict, error under `moai spec lint --strict`). For NEW SPECs, use GEARS. See `modules/spec-ears-format.md` (legacy reference, deprecated — see GEARS Format guide).
 
 Token Budget: SPEC takes 30K, DDD takes 180K, Docs takes 40K, Total is 250K.
 
@@ -235,7 +237,7 @@ Detailed Reference: examples.md for working code samples
 
 ## Works Well With
 
-Agents: agent-factory for creating agents with foundation principles, skill-factory for generating skills with modular architecture, core-quality for automated TRUST 5 validation, workflow-spec for EARS format specification, workflow-ddd for ANALYZE-PRESERVE-IMPROVE execution, workflow-docs for documentation with progressive disclosure.
+Agents: agent-factory for creating agents with foundation principles, skill-factory for generating skills with modular architecture, core-quality for automated TRUST 5 validation, workflow-spec for GEARS format specification (current; EARS retained as legacy reference for 6-month backward-compat), workflow-ddd for ANALYZE-PRESERVE-IMPROVE execution, workflow-docs for documentation with progressive disclosure.
 
 Skills: moai-cc-claude-md for CLAUDE.md with foundation patterns, moai-cc-configuration for config with TRUST 5, moai-cc-memory for token optimization, moai-context7-integration for MCP integration.
 

@@ -30,11 +30,11 @@ Use Cases:
 ---
 
 ### 2. spec-first-ddd.md (866 lines)
-Specification-Driven Development - EARS format requirements with ANALYZE-PRESERVE-IMPROVE DDD cycles.
+Specification-Driven Development - GEARS format requirements (current; EARS retained as legacy reference for 6-month backward-compat) with ANALYZE-PRESERVE-IMPROVE DDD cycles.
 
 Quick Access:
 - SPEC generation (/moai:1-plan)
-- EARS format patterns
+- GEARS format patterns (current; EARS as legacy reference)
 - DDD implementation (/moai:2-run)
 - Documentation sync (/moai:3-sync)
 
@@ -259,7 +259,7 @@ Detailed Reference: [TRUST 5 Framework Module](modules/trust-5-framework.md)
 | Module | Lines | Topics Covered | Use Cases |
 |--------|-------|----------------|-----------|
 | trust-5-framework | 982 | Quality gates, CI/CD, validation | 4 |
-| spec-first-ddd | 866 | SPEC, EARS, DDD, docs | 4 |
+| spec-first-ddd | 866 | SPEC, GEARS (current) + EARS (legacy reference), DDD, docs | 4 |
 | delegation-patterns | 757 | Sequential, parallel, conditional | 4 |
 | token-optimization | 656 | Budget, /clear, loading, models | 4 |
 | progressive-disclosure | 576 | 3 levels, 500-line limit, splitting | 4 |
