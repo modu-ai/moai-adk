@@ -21,7 +21,7 @@ tags: "harness, classifier, wiring, runtime, v3r6, tier-s-minimal, progress"
 |-------|--------|---------|-----------|------------|
 | Plan | audit-ready | 2026-05-24 | 2026-05-24 | 6684b2fc28d229e62843a8da7871e1dc16538c97 |
 | Plan Audit | skip-eligible | 2026-05-24 | 2026-05-24 | (iter-1 score 0.935 ≥ 0.90 per spec-workflow.md skip policy) |
-| Run (M1) | implemented | 2026-05-24 | 2026-05-24 | (TBD post-commit) |
+| Run (M1) | implemented | 2026-05-24 | 2026-05-24 | 2a3497d592aa4dee94cb6f5fa01bb915b48dc6bf |
 | Sync | pending | — | — | — |
 | Mx (Step C) | pending | — | — | — |
 
@@ -33,7 +33,7 @@ plan_status: audit-ready
 plan_commit_sha: 6684b2fc28d229e62843a8da7871e1dc16538c97
 run_complete_at: 2026-05-24T19:15:00Z
 run_status: implemented
-run_commit_sha: (TBD post-commit)
+run_commit_sha: 2a3497d592aa4dee94cb6f5fa01bb915b48dc6bf
 sync_complete_at: null
 sync_commit_sha: null
 mx_complete_at: null
