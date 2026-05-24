@@ -2,7 +2,7 @@
 id: SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001
 title: "Progress — Harness Namespace 누출 검증 및 정리"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -158,7 +158,16 @@ mx_scan_required: false  # Mx Step C SKIP-judge likely — only Go test scaffold
 
 ### §E.4 Sync-phase Audit-Ready Signal (manager-docs 책임)
 
-(empty)
+```yaml
+sync_complete_at: 2026-05-25T16:30:00Z
+sync_commit_sha: 5c81ab745ef2f4cbe02a9d27a9b2e6bc2c31f88b
+changelog_entry_count: 1
+frontmatter_status_transitions: 4
+b12_self_test:
+  - changelog_count: 1   # grep -c 'SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001' CHANGELOG.md
+  - ac_count_match: 7    # grep -cE '^\| AC-HNC-[0-9]+' acceptance.md
+  - frontmatter_status_implemented_count: 4  # spec + plan + acceptance + progress
+```
 
 ### §E.5 Mx-phase Audit-Ready Signal (orchestrator + manager-docs 책임)
 

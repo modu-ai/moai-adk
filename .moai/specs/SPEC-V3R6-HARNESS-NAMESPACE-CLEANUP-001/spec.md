@@ -2,7 +2,7 @@
 id: SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001
 title: "Harness Namespace 누출 검증 및 정리 (§24 SSOT 자기 일관성)"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
