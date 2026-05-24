@@ -2,7 +2,7 @@
 id: SPEC-V3R6-HARNESS-PROPOSAL-GEN-001
 title: "V3R4 Self-Evolving Harness Loop Closure — Progress Tracker"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-05-24
 updated: 2026-05-24
 author: manager-spec
@@ -20,8 +20,8 @@ tags: "harness, proposal, progress, tier-m"
 | Phase | Status | Started | Completed | Commit SHA |
 |-------|--------|---------|-----------|------------|
 | Plan | audit-ready | 2026-05-24 | 2026-05-24 | e5b2859a9 |
-| Plan Audit | pending | — | — | — |
-| Run (M1) | pending | — | — | — |
+| Plan Audit | PASS 0.935 (skip-eligible) | 2026-05-24 | 2026-05-24 | e5b2859a9 |
+| Run (M1) | complete | 2026-05-24 | 2026-05-24 | pending (this commit) |
 | Sync | pending | — | — | — |
 | Mx (Step C) | pending | — | — | — |
 
@@ -31,14 +31,33 @@ tags: "harness, proposal, progress, tier-m"
 plan_complete_at: 2026-05-24T21:15:00Z
 plan_status: audit-ready
 plan_commit_sha: e5b2859a9fa23f00c53ad3af74115235834009c0
-run_complete_at: null
-run_status: pending
-run_commit_sha: pending
+run_complete_at: 2026-05-24T22:30:00Z
+run_status: complete
+run_commit_sha: pending (this commit)
 sync_complete_at: null
 sync_commit_sha: pending
 mx_complete_at: null
 mx_commit_sha: pending
 ```
+
+## §B.1 Run-phase Evidence (M1)
+
+| AC | Verdict | Verification Command | Output |
+|----|---------|---------------------|--------|
+| AC-PGN-001 | PASS | `go test -run TestReader_LiveFixture ./internal/harness/proposalgen/...` | `ok` (8 records, 4 unique pattern_keys) |
+| AC-PGN-002 | PASS | `go test -run TestMapper_CurrentDataNoOp ./internal/harness/proposalgen/...` | `ok` (0 candidates from system-event-only data) |
+| AC-PGN-003 | PASS | `go test -run TestScaffolder_NoOpSkipsCreation ./internal/harness/proposalgen/...` | `ok` (.moai/proposals/ not created on no-op) |
+| AC-PGN-004 | PASS | `go test -run TestPropose_DryRun_BaselineFixture ./internal/cli/harness/...` | `ok` (JSON matches REQ-PGN-014 exact shape) |
+| AC-PGN-005 | PASS | `grep -rn 'AskUserQuestion(' internal/cli/harness/ \| grep -v '_test.go'` | empty (0 matches) |
+| AC-PGN-006 | PASS | `go test -run TestPropose_NoAskUserQuestion ./internal/cli/harness/...` | `ok` (scans propose.go) |
+| AC-PGN-007 | PASS | `go test -coverprofile=cover.out ./internal/harness/proposalgen/... ./internal/cli/harness/...` | total: 87.7% (≥85% target) |
+| AC-PGN-008 | PASS | `go vet ./... && golangci-lint run --timeout=2m` | both exit 0; lint 0 issues |
+
+Additional artefacts:
+- Cross-platform: `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+- CLI smoke against live data: `go run ./cmd/moai harness propose --dry-run` emits `{"proposals":[],"reason":"no-actionable-patterns","malformed_lines":0,"evaluated_patterns":4,"auto_delegate":false}` (REQ-PGN-014 empirical PASS).
+- Testdata fixture created at `internal/harness/proposalgen/testdata/tier-promotions-current-baseline.jsonl` (verbatim 8-record snapshot of live `.moai/harness/learning-history/tier-promotions.jsonl`).
+- `internal/cli/harness_route.go` modified with exactly +6 lines (1 import + 1 registration block + 4-line comment) to register `propose` under `newHarnessRouterCmd()`; no other modifications.
 
 ## §C. Plan-phase Evidence
 

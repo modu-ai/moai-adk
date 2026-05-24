@@ -13,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	harnesscli "github.com/modu-ai/moai-adk/internal/cli/harness"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/harness/router"
 )
@@ -100,6 +101,13 @@ satisfies AC-HRA-009 (6+ verb surface).`,
 	cmd.AddCommand(newHarnessMuteListCmd())
 	cmd.AddCommand(newHarnessUnmuteCmd())
 	cmd.AddCommand(newHarnessVerifyCmd())
+
+	// SPEC-V3R6-HARNESS-PROPOSAL-GEN-001: V3R4 self-evolving harness loop
+	// closure — `moai harness propose` consumes tier-promotions.jsonl and
+	// emits draft SPEC proposals. The factory lives in package
+	// internal/cli/harness/ so the C-HRA-008-class boundary guard
+	// (TestPropose_NoAskUserQuestion) can scan a contained directory.
+	cmd.AddCommand(harnesscli.NewProposeCmd())
 
 	return cmd
 }

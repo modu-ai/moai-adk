@@ -93,28 +93,90 @@ Canonical regex `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$` matched. Recorded prior to firs
 ## §C Plan-Phase Audit-Ready Signal
 
 ```yaml
-plan_complete_at: _(filled by orchestrator after plan-auditor)_
-plan_commit_sha: _(filled by orchestrator after plan-commit)_
-plan_auditor_iter: _(filled by orchestrator after plan-auditor invocation)_
-plan_auditor_score: _(filled by orchestrator after plan-auditor invocation)_
-plan_auditor_verdict: _(PASS | PASS-WITH-DEBT | FAIL)_
-plan_auditor_threshold: 0.80   # Tier M baseline
-artifact_count: 4              # spec.md + plan.md + acceptance.md + progress.md
+plan_complete_at: 2026-05-24T22:15:00Z
+plan_commit_sha: 4d09214e9
+plan_auditor_iter: 1
+plan_auditor_score: 0.812
+plan_auditor_verdict: PASS-WITH-DEBT
+plan_auditor_threshold: 0.80   # Tier M baseline (PASS by aggregate, but Traceability 0.65 single-dim weakness → PASS-WITH-DEBT classification)
+plan_auditor_dimensions:
+  clarity: 0.92
+  completeness: 0.88
+  testability: 0.85
+  traceability: 0.65          # below 0.75 band — D1+D2 root cause
+plan_auditor_must_pass:
+  MP-1_REQ_sequencing: PASS    # 24 sequential REQ-COORD-001..024, no gaps/duplicates
+  MP-2_EARS_compliance: PASS   # 11 Ubiquitous + 9 Event-Driven + 1 State-Driven + 1 Optional + 1 Unwanted
+  MP-3_frontmatter_validity: PASS # 12/12 × 4 = 48/48 canonical
+  MP-4_tier_classification: AUTO-PASS # Tier M justified plan.md §A.1
+plan_auditor_skip_eligible: false  # 0.812 < 0.90 → Phase 0.5 Plan Audit Gate MUST re-execute at /moai run entry
+plan_auditor_recommendation: |
+  Option B accepted (PASS-WITH-DEBT commit-as-is). Debt accepted as documented inline below.
+  Run-phase manager-develop MAY inline-fix D1 (AC-COORD-013 add) at M2 verification step OR
+  iter-2 may be invoked separately to elevate score to ~0.88 (skip-eligible near-miss).
+plan_auditor_defects:
+  D1_BROKEN_AC_REFERENCE:
+    severity: SHOULD-FIX
+    location: plan.md:135, spec.md:243
+    description: AC-COORD-021 cited but acceptance.md max is AC-COORD-012 (does not exist)
+    inline_fix_path: |
+      Add AC-COORD-013 (REQ-COORD-021 CLI 5 verbs verification): `moai session --help | grep -cE '^  (register|heartbeat|deregister|list|purge)' → 5` + `moai session list --json | jq type → "array"`.
+      Update plan.md:135 + spec.md:243 to reference AC-COORD-013. Update progress.md §D.2 AC roster + §B.2 ac_count 12 → 13.
+    accept_decision: run-phase manager-develop MAY inline-fix at M2 step
+  D2_UNCOVERED_REQs:
+    severity: SHOULD-FIX
+    count: 6
+    list: [REQ-COORD-006, REQ-COORD-012, REQ-COORD-018, REQ-COORD-020, REQ-COORD-021, REQ-COORD-024]
+    inline_fix_path: |
+      REQ-006 (QueryActiveWork filter): add positive test for spec_id filter.
+      REQ-018 (orchestrator proceed-on-empty): behavioral contract test in run-phase.
+      REQ-020 (verbatim 2-cmd batch preservation): grep verification.
+      REQ-012/024: Optional/Unwanted may remain trace-orphaned per L48 spec.md SSOT canonical.
+    accept_decision: addressed during run-phase OR iter-2
+  D3_arch_diagram_dependency_direction:
+    severity: MINOR
+    location: spec.md:159-191
+    accept_decision: cosmetic, defer to sync-phase or iter-2
+  D4_M2_LOC_inconsistency:
+    severity: MINOR
+    location: plan.md:32-34 vs spec.md:189
+    accept_decision: cosmetic, defer
+  D5_self_bootstrap_risk_aspirational:
+    severity: MINOR
+    location: spec.md:302-309
+    inline_fix_path: add cross-ref to CLAUDE.local.md §23.8
+    accept_decision: defer (low-impact, well-acknowledged risk)
+  D6_SHOULD_to_MUST:
+    severity: MINOR
+    location: acceptance.md:303
+    inline_fix_path: change "SHOULD" → "MUST" to align with REQ-COORD-014 imperative
+    accept_decision: defer to sync-phase or iter-2
+  D7_HARNESS_PROPOSAL_concurrent_status:
+    severity: INFORMATIONAL
+    description: SPEC-V3R6-HARNESS-PROPOSAL-GEN-001 status:draft, concurrent in another session
+    accept_decision: PASS (already documented §A.1 Case 2)
+  D8_cross_platform_syscall_appropriate_justification:
+    severity: N/A
+    accept_decision: PASS
+artifact_count: 4
+artifact_line_count_total: 1301  # spec 353 + plan 291 + acceptance 393 + progress 264
 req_count: 24
-ac_count: 12
+ac_count: 12                   # planned 13 after iter-2 or run-phase inline-fix
 architecture_layers: 4
 milestones: 5
 risks: 6
 anti_patterns: 8
-exclusions: 10
-preserve_list_size: 11
+exclusions: 10                 # §H + Out of Scope sub-sections × 4 artifacts
+preserve_list_size_at_plan_commit: 10  # original 11 - 1 (HARNESS-PROPOSAL-GEN-001 merged to main by concurrent session during plan-phase)
 preserve_verified_verbatim: true
-l51_self_check: PASS
-frontmatter_12_field_validated: pending  # orchestrator verifies pre-commit
+l51_self_check: PASS           # SPEC ✓ | V3R6 ✓ | MULTI ✓ | SESSION ✓ | COORD ✓ | 001 ✓
+frontmatter_12_field_validated: PASS  # 48/48 verified pre-commit
 multi_session_coordination_note: |
-  This SPEC was authored in a 3rd orchestrator session (session_id pending tag implementation).
-  Sibling SPEC SPEC-V3R6-HARNESS-PROPOSAL-GEN-001 is concurrent in another session (PRESERVE entry 9).
-  Plan-phase author respected the PRESERVE list — no touch on other SPEC's directory.
+  This SPEC is itself an empirical demonstration of the problem it solves:
+    - Session A (cd8d8946-..., 본 세션): COORD-001 plan-phase delegation → manager-spec → re-engage → commit (4d09214e9)
+    - Session B (concurrent): HARNESS-PROPOSAL-GEN-001 plan-phase (commits e5b2859a9 + 2b99be826) pushed during COORD-001 manager-spec resume (7-min race window)
+  No conflict occurred because disjoint directories. Documented as §A.1 Case 2 motivating example.
+  Sprint 8 P3 status: ARR-001 4-phase CLOSE + SIV-001 4-phase CLOSE + COORD-001 plan-phase PASS-WITH-DEBT.
 ```
 
 ## §D Run-Phase Evidence (placeholder — filled by manager-develop)

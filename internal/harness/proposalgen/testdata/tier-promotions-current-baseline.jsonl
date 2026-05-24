@@ -1,0 +1,8 @@
+{"ts":"2026-05-24T10:08:37.191814Z","pattern_key":"agent_invocation:Bash:","from_tier":"","to_tier":"observation","observation_count":1,"confidence":1}
+{"ts":"2026-05-24T10:08:37.191953Z","pattern_key":"subagent_stop:unknown:","from_tier":"","to_tier":"auto_update","observation_count":41,"confidence":1}
+{"ts":"2026-05-24T10:08:37.191985Z","pattern_key":"session_stop::","from_tier":"","to_tier":"auto_update","observation_count":23,"confidence":1}
+{"ts":"2026-05-24T10:08:37.192059Z","pattern_key":"user_prompt::","from_tier":"","to_tier":"auto_update","observation_count":33,"confidence":1}
+{"ts":"2026-05-24T10:08:53.162213Z","pattern_key":"agent_invocation:Bash:","from_tier":"","to_tier":"observation","observation_count":1,"confidence":1}
+{"ts":"2026-05-24T10:08:53.162293Z","pattern_key":"subagent_stop:unknown:","from_tier":"","to_tier":"auto_update","observation_count":41,"confidence":1}
+{"ts":"2026-05-24T10:08:53.162316Z","pattern_key":"session_stop::","from_tier":"","to_tier":"auto_update","observation_count":23,"confidence":1}
+{"ts":"2026-05-24T10:08:53.162338Z","pattern_key":"user_prompt::","from_tier":"","to_tier":"auto_update","observation_count":33,"confidence":1}
