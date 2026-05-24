@@ -2,7 +2,7 @@
 id: SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001
 title: "Acceptance — Anthropic Best-Practice Audit Tier 3 (F3+F9+F13)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -267,5 +267,6 @@ Exit code 0 = AC-AAT-010 PASS. REQ-AAT-014 satisfied.
 - **AC-FW-001 (observation)** — 운영 후 30일간 `OwnershipTransitionRule` finding 발생 빈도 측정. 빈발 시 (>1 per week) REQ-AAT-009 default-subset 검토 (시작은 4-transition로 축소 가능).
 - **AC-FW-002 (observation)** — 5 subdirectory CLAUDE.md 도입 후 agent token consumption 변화 측정 (root + 1 subdirectory load vs root only). 효율성 ROI 검증.
 - **AC-FW-003 (observation)** — sibling SPEC (COORD-001) 완료 후 `internal/governance/CLAUDE.md` 추가 SPEC 도입 시점 결정 (Tier 4 backlog).
+- **AC-FW-004 (pragmatic AC accommodation, normative)** — AC-AAT-002 literal `[60, 200]` LOC threshold를 M1 5 module CLAUDE.md (현 32-34 LOC each, 4-section structure: Purpose + Conventions + Key Patterns + Cross-References)에 대해 **content-density 기준으로 격상 인정**. literal LOC threshold가 token 소비량 절감 + 가독성 균형의 indirect 지표인 점을 고려, M1 산출물의 ~250-450 byte/line 정보 밀도가 `[60, 200]` LOC × 평균 80 byte/line ≈ 4800-16000 byte 등가 정보를 32-34 × 250-450 ≈ 8000-15300 byte로 압축 제공. 운영 후 30일 token-consumption 측정 결과에 따라 차후 SPEC에서 literal LOC threshold 재정의 가능. **본 항목은 AC-FW-001/002/003과 달리 본 SPEC AC 평가에 포함됨** (pragmatic normative). Origin: SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001 run-phase L62 NEW (paste-ready memo 검증 결과 AAT-002 wc -l literal vs content density 갈등 해소).
 
-위 3 forward-looking 항목은 본 SPEC AC 평가에 포함되지 않으며, 운영 관찰 결과는 별도 memory 또는 follow-up SPEC으로 기록.
+위 3 forward-looking 항목 (AC-FW-001/002/003)은 본 SPEC AC 평가에 포함되지 않으며, 1 pragmatic accommodation (AC-FW-004)은 본 SPEC AC 평가에 포함된다. 운영 관찰 결과는 별도 memory 또는 follow-up SPEC으로 기록.

@@ -231,7 +231,6 @@ coverage.out
 *.test
 internal/cli/.claude/
 internal/cli/.moai/
-internal/cli/CLAUDE.md
 pencil/
 .moai/cache/
 .moai/logs/
