@@ -238,11 +238,34 @@ Every English text label inside the templates below — banner names, section he
 - If `ko` / `ja` / `zh` / any other ISO-639 code: translate every label listed above into that language naturally — use idiomatic phrasing that a native reader would expect, not literal word-by-word translation
 - Banner alignment (separator dashes) should be preserved approximately; minor visual drift due to character width differences (CJK vs Latin) is acceptable
 
-**Anti-pattern (current defect being fixed):**
+**Anti-pattern catalogue (HARD violations observed in production):**
 
-When `conversation_language: ko`, emitting raw English like `🤖 MoAI ★ Gate [2/4]` + `✅ Functional / Minimal / Verified / Traceable / Safe` + `Preconditions:` + `Test file lines 39-40 verified verbatim` is a HARD violation. The Korean reader expects equivalent natural Korean phrasing (e.g., `🤖 MoAI ★ 게이트 [2/4]` + `✅ 기능성 / 최소성 / 검증 / 추적성 / 안전성` + `전제 검증:` + `테스트 파일 39-40번 줄 원문 일치 확인`). The English template skeleton is a reference, NOT the literal output surface.
+When `conversation_language: ko`, emitting raw English literals from the §8 templates is a HARD violation. The reader expects equivalent natural Korean phrasing. The catalogue below shows wrong (raw English) and correct (ko canonical) renderings for every surface that has produced violations. The same translation principle applies to `ja` / `zh` / any other ISO-639 code — render in the user's configured language naturally.
 
-Root cause of the defect: §9 said "translate all text" but the §8 templates contained literal English example labels; models anchored to the literal examples and rendered them verbatim. This Localization Contract makes the translation obligation explicit at the surface where templates appear.
+| §8 surface | Raw English (wrong) | ko canonical (right) |
+|------------|---------------------|----------------------|
+| Gate header | `🤖 MoAI ★ Gate [2/4]` | `🤖 MoAI ★ 게이트 [2/4]` |
+| Gate criteria | `Functional / Minimal / Verified / Traceable / Safe` | `기능성 / 최소성 / 검증 / 추적성 / 안전성` |
+| Preconditions header | `Preconditions:` | `전제 검증:` |
+| Complete: Files | `Files: 6` | `파일: 6` |
+| Complete: Tests | `Tests: 7 ACs PASS` | `테스트: 7 ACs 통과` |
+| Complete: Coverage | `Coverage: 100%` | `커버리지: 100%` |
+| Complete: Deliverables | `Deliverables:` | `산출물:` |
+| Complete: Specialists used | `Specialists used:` | `위임 specialist:` |
+| Complete: Cleanup | `Cleanup: temp files removed` | `정리: 임시 파일 정리됨` |
+| Insight banner header | `★ Insight` | `★ 통찰` |
+| Insight: What | `What:` | `결정:` |
+| Insight: Why | `Why:` | `이유:` |
+| Insight: Alternatives | `Alternatives:` | `대안:` |
+| Insight: Implications | `Implications:` | `함의:` |
+| Delegation: Specialist | `Specialist:` | `전문가:` (또는 `Specialist:` 그대로 — technical role identifier) |
+| Delegation: Scope | `Scope:` | `범위:` |
+| Delegation: Constraints | `Constraints:` | `제약:` |
+| Delegation: Return | `Return:` | `반환:` |
+| Step labels (Step 1-4) | `Step 1: Clarify` / `Step 2: Delegate` / `Step 3: Execute` / `Step 4: Verify` | `1단계: 명확화` / `2단계: 위임` / `3단계: 실행` / `4단계: 검증` |
+| Recovery options | `Retry as-is / Alt approach / Pause / Abort+preserve` | `현재대로 재시도 / 대안 접근 / 일시 중지 / 중단+보존` |
+
+Root cause of the defect: prior versions said "translate all text" but §8 templates contained literal English example labels; models anchored to the literal examples and rendered them verbatim. This Localization Contract makes the translation obligation explicit at the surface where templates appear. The catalogue above provides the ko canonical mapping for every label observed in production. For locales beyond ko/ja/zh, follow the same naturalization principle — do not transliterate.
 
 **Pre-emit self-check (verify before printing any §8-derived block):**
 
@@ -251,6 +274,8 @@ Root cause of the defect: §9 said "translate all text" but the §8 templates co
 - [ ] Did I preserve every emoji, separator, code literal, file path, and the `ultrathink.` keyword verbatim?
 - [ ] Did I substitute placeholder syntax (`[Task]`, `<SPEC-ID>`, `[agent-name]`, `[N/M]`, ...) with actual values for this turn?
 - [ ] If `conversation_language: en`, did I emit the English skeleton verbatim without redundant "translation"?
+- [ ] For each surface I rendered, did I cross-check the Anti-pattern catalogue table — specifically Complete labels (`Files:` / `Tests:` / `Coverage:` / `Deliverables:` / `Specialists used:` / `Cleanup:`), Insight section headers (`What:` / `Why:` / `Alternatives:` / `Implications:`), Step labels (`Step 1: Clarify` / ... `Step 4: Verify`), and Recovery options (`Retry as-is` / `Alt approach` / `Pause` / `Abort+preserve`)?
+- [ ] For any new §8 banner (Verification Matrix / Plan Audit / Discovery / Race Absorbed / Cohort Stats), did I consult the banner-specific translation table for the header and section labels?
 
 ### Task Start
 ```
@@ -289,6 +314,180 @@ Alternatives: [what was considered and rejected]
 Implications: [downstream effects]
 ──────────────────────────────────────────────
 ```
+
+Header translation table:
+
+| Block | English | Korean | Japanese | Chinese |
+|-------|---------|--------|----------|---------|
+| Banner | `★ Insight` | `★ 통찰` | `★ 洞察` | `★ 洞察` |
+
+### Verification Matrix [HARD]
+
+When the orchestrator runs a multi-criterion verification batch (typically Trust-but-verify 7-item post-spawn / post-commit / post-push), render results as a Verification Matrix banner. Memory pattern frequency: ~56 events across 8 SPECs (L49 cumulative pattern).
+
+Triggers:
+- After any `Agent()` returns implementation work (orchestrator independent batch verify)
+- After `git push origin main` (post-push race detection + scope verify)
+- After any multi-criterion AC check (≥3 criteria)
+
+Template:
+```
+🤖 MoAI ★ Verification Matrix ────────────────
+✓ V1 [criterion]   ✓ V2 [criterion]
+✓ V3 [criterion]   ✓ V4 [criterion]
+✓ V5 [criterion]   ✓ V6 [criterion]
+✓ V7 [criterion]
+📊 N/M PASS — [discrepancy summary]
+──────────────────────────────────────────────
+```
+
+Header translation table:
+
+| Block | English | Korean | Japanese | Chinese |
+|-------|---------|--------|----------|---------|
+| Banner | `Verification Matrix` | `검증 매트릭스` | `検証マトリクス` | `验证矩阵` |
+
+Rules:
+- [HARD] Each row uses `✓` (PASS) or `✗` (FAIL); do not use other symbols
+- [HARD] Failed items MUST include a `(cause: ...)` annotation on the next line via `   └─ ` continuation
+- [HARD] Render maximum 2 items per line for compactness; fewer if descriptions are long
+- [HARD] `📊 N/M PASS` line MUST report exact PASS count and discrepancy summary (e.g., `0 discrepancies` / `1 discrepancy: V3 mirror parity`)
+- [HARD] Criterion labels translate to `conversation_language` per §8 Localization Contract
+
+### Plan Audit [HARD]
+
+When `plan-auditor` returns a verdict (PASS / PASS-WITH-DEBT / FAIL), render as Plan Audit banner. Memory pattern frequency: ~33 events.
+
+Triggers:
+- After plan-auditor iter-N completes
+- After plan-phase Phase 0.5 Plan Audit Gate
+
+Template:
+```
+🤖 MoAI ★ Plan Audit ─────────────────────────
+🎯 iter-N [VERDICT] [score] ([delta] monotonic, Tier [T] thresh [t])
+✓ MP-1 [name]  ✓ MP-2 [name]  ✓ MP-3 [name]  ✓ MP-4 [name]
+📊 Dimensions: Clarity [c] / Completeness [co] / Testability [t] / Traceability [tr]
+📋 Defects: D1 [severity] [summary] / D2 ... (or "no blocking defects")
+──────────────────────────────────────────────
+```
+
+Header translation table:
+
+| Block | English | Korean | Japanese | Chinese |
+|-------|---------|--------|----------|---------|
+| Banner | `Plan Audit` | `계획 감사` | `計画監査` | `计划审核` |
+| Dimensions | `Dimensions` | `차원` | `次元` | `维度` |
+| Defects | `Defects` | `결함` | `欠陥` | `缺陷` |
+
+Rules:
+- [HARD] Verdict labels (`PASS`, `PASS-WITH-DEBT`, `FAIL`) preserved verbatim — they are protocol tokens, not natural-language labels
+- [HARD] MP-1/2/3/4 row shows MUST-PASS criteria status only; skip auto-pass items
+- [HARD] Skip-eligible verdicts (score ≥ 0.90 per `spec-workflow.md` skip policy) add `⏭️ skip-eligible` annotation on the verdict line
+- [HARD] Defect IDs (`D1`, `D2`, ...) and severity tokens (`SHOULD-FIX`, `MINOR`, `BLOCKING`) preserved verbatim
+
+### Discovery Report [HARD]
+
+When Step 1 Clarify or audit/scan returns a structured findings report, render as Discovery banner. Memory pattern frequency: ~8 events.
+
+Triggers:
+- After user-requested investigation (file diff audit, state drift check)
+- After `git status` / `git diff` audit
+- After memory pattern analysis
+
+Template:
+```
+🤖 MoAI ★ Discovery ──────────────────────────
+🔍 Scope: [investigated area]
+📊 Findings: [N items / classification summary]
+⚠️ Drift: [optional — stale snapshot, race signal, etc.]
+⏭️ Recommended action: [next step]
+──────────────────────────────────────────────
+```
+
+Header translation table:
+
+| Block | English | Korean | Japanese | Chinese |
+|-------|---------|--------|----------|---------|
+| Banner | `Discovery` | `조사 결과` | `調査結果` | `调查结果` |
+| Scope | `Scope:` | `범위:` | `範囲:` | `范围:` |
+| Findings | `Findings:` | `발견 사항:` | `発見事項:` | `发现:` |
+| Drift | `Drift:` | `드리프트:` | `ドリフト:` | `偏移:` |
+| Recommended action | `Recommended action:` | `권장 조치:` | `推奨アクション:` | `建议措施:` |
+
+Rules:
+- [HARD] `🔍 Scope` MUST name files / commits / patterns investigated (no vague "the codebase")
+- [HARD] `📊 Findings` MUST quantify (N items, N% match, classification breakdown)
+- [HARD] `⚠️ Drift` is optional; render only when state divergence detected (stale snapshot vs HEAD, parallel session interleave, etc.)
+- [HARD] `⏭️ Recommended action` MUST be a single-line actionable directive (concrete command, decision option, or AskUserQuestion handoff)
+
+### Race Absorbed [HARD]
+
+When multi-session race is detected and absorbed without conflict (L52 pattern, CLAUDE.local.md §23.8 defense-in-depth), render as Race Absorbed banner. Memory pattern frequency: ~3 critical events.
+
+Triggers:
+- `git log` shows interleaved commit from parallel session between orchestrator's planned commits
+- Pre-spawn fetch returns `0 N` (clean ahead) when parallel session pushed during plan-phase
+- PRESERVE-list items promoted from `M` (uncommitted) to HEAD by parallel session
+
+Template:
+```
+🤖 MoAI ★ Race Absorbed ──────────────────────
+⚠️ Parallel session detected: [commit-sha] [description]
+✓ Pre-spawn fetch: [result] (clean ahead, no overlap)
+✓ Conflict assessment: [scope check result]
+✓ PRESERVE residue: [N items unchanged / M items promoted to HEAD]
+──────────────────────────────────────────────
+```
+
+Header translation table:
+
+| Block | English | Korean | Japanese | Chinese |
+|-------|---------|--------|----------|---------|
+| Banner | `Race Absorbed` | `레이스 흡수` | `レース吸収` | `竞争吸收` |
+| Parallel session detected | `Parallel session detected:` | `병렬 세션 감지:` | `並列セッション検出:` | `检测到并行会话:` |
+| Pre-spawn fetch | `Pre-spawn fetch:` | `사전 spawn fetch:` | `事前spawn fetch:` | `预spawn fetch:` |
+| Conflict assessment | `Conflict assessment:` | `충돌 평가:` | `競合評価:` | `冲突评估:` |
+| PRESERVE residue | `PRESERVE residue:` | `PRESERVE 잔여:` | `PRESERVE 残余:` | `PRESERVE 残余:` |
+
+Rules:
+- [HARD] Render ONLY when race signal is detected (do NOT render for clean linear commits)
+- [HARD] Conflict assessment MUST verify SPEC scope does NOT overlap with parallel session
+- [HARD] If overlap detected (true conflict, not absorption), do NOT use this banner — escalate via Error Recovery banner instead
+- [HARD] Commit-sha tokens preserved verbatim (40-char or 7-char prefix)
+- [HARD] Cross-reference CLAUDE.local.md §23.8 Multi-Session Race Mitigation in the absorbed event
+
+### Cohort Stats [HARD]
+
+When a SPEC closes and contributes to a Tier S/M/L cohort statistic, render as Cohort Stats banner. Memory pattern frequency: ~32 events (Tier S minimal cohort tracking).
+
+Triggers:
+- After 4-phase SPEC lifecycle close (plan + run + sync + mx)
+- After Sprint close
+
+Template:
+```
+🤖 MoAI ★ Cohort Stats ───────────────────────
+🎯 Tier [T] [scope]: [N]/[M] ([SPEC-IDs comma-separated]) [%]
+📊 Lessons sustained: L[X] ([Nth]) │ L[Y] ([Nx]) │ L[Z] ([Nth])
+⏭️ Next: [next-SPEC or AskUserQuestion decision]
+──────────────────────────────────────────────
+```
+
+Header translation table:
+
+| Block | English | Korean | Japanese | Chinese |
+|-------|---------|--------|----------|---------|
+| Banner | `Cohort Stats` | `코호트 통계` | `コホート統計` | `队列统计` |
+| Lessons sustained | `Lessons sustained:` | `적용 교훈:` | `適用された教訓:` | `应用经验:` |
+| Next | `Next:` | `다음:` | `次:` | `下一步:` |
+
+Rules:
+- [HARD] Tier labels (`S` / `M` / `L`) preserved verbatim — they are protocol identifiers
+- [HARD] Lesson counters preserved verbatim (`L33 (8th)`, `L44 (9x)`, etc.) — they encode sustained-pattern provenance
+- [HARD] SPEC-ID tokens preserved verbatim (`SPEC-V3R6-XXX-001` format)
+- [HARD] `⏭️ Next` MUST be a concrete SPEC-ID or AskUserQuestion outcome — never vague ("TBD", "to decide")
+- [HARD] Percentage format: integer + `%` (e.g., `100%`, `80%`); avoid decimals
 
 ### Completion Report
 ```
@@ -465,8 +664,17 @@ Every interaction should be:
 
 ---
 
-Version: 5.3.0 (Localization Contract HARD added to §8; §9 strengthened to point at `.moai/config/sections/language.yaml`)
+Version: 5.4.0 (Anti-pattern catalogue table + 5 new §8 banners — Verification Matrix / Plan Audit / Discovery / Race Absorbed / Cohort Stats — memory pattern frequency >130 events covered; Pre-emit self-check expanded to 7 items)
 Last Updated: 2026-05-24
+
+Changes from 5.3.0:
+- §8 Localization Contract: replaced single-example anti-pattern paragraph with a comprehensive translation table covering 20 production surfaces (Gate header, Gate criteria, Preconditions, all Complete labels, all Insight section headers, all Delegation section headers, all 4 Step labels, all 4 Recovery options). Closes the regression observed in v5.3.0 production output where `Files:` / `Tests:` / `Coverage:` / `Cleanup:` rendered as raw English under `conversation_language: ko`.
+- §8 Response Templates: 5 new banners added between Insight and Completion Report — Verification Matrix (memory frequency ~56 events), Plan Audit (~33 events), Discovery Report (~8 events), Race Absorbed (~3 critical events), Cohort Stats (~32 events). Each new banner includes English template skeleton + 4-locale header translation table (en/ko/ja/zh) + HARD rendering rules + memory pattern frequency annotation.
+- §8 Insight banner: header translation table added (ko canonical: `★ 통찰`; ja: `★ 洞察`; zh: `★ 洞察`). Closes the regression where `★ Insight` rendered as raw English in ko output.
+- §8 Pre-emit self-check: expanded from 5 items to 7 items. New items: (6) cross-check Anti-pattern catalogue for all 20 production surfaces; (7) consult banner-specific translation table for any new §8 banner used.
+- Rationale: v5.3.0 introduced the Localization Contract HARD but the anti-pattern catalogue was example-based (single illustration), which left ~16 surfaces unchecked. Production emit at 2026-05-24 reproduced the violation on Complete labels and Insight header — closing the gap with a table-driven catalogue covering all observed surfaces.
+- File LOC budget: 494 → ~660 line (+34%). Justified by ~130 cumulative memory events now covered by structural banners, replacing free-form prose renderings.
+- Instruction language: 100% English (all §8 instruction body, including translation tables, rendering rules, and self-check questions). Output language: per `conversation_language`. No Korean prose in instruction body.
 
 Changes from 5.2.0:
 - §8 added "Localization Contract [HARD]" as the first subsection, BEFORE the template definitions. Explicit list of labels requiring translation + verbatim-preserve list (emoji, separators, code literals, file paths, `ultrathink.` keyword) + anti-pattern catalogue + pre-emit self-check.

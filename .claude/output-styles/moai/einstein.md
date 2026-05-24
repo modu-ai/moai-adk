@@ -294,6 +294,80 @@ Official reference: [Claude Code MCP Documentation](https://code.claude.com/docs
 
 ## 8. Response Templates
 
+### Localization Contract [HARD]
+
+The templates in §8 are **structural skeletons**. The English labels exist for documentation purposes only. At render time, Einstein MUST localize every label using the `conversation_language` value declared in `.moai/config/sections/language.yaml` (see §9). There is no static lookup table — the rendering language is whatever the user's config currently says.
+
+**Translate to `conversation_language` (HARD):**
+
+Every English text label inside the templates below — banner names, section headers, prompts, status messages, completion phrases. Examples (non-exhaustive) of labels that MUST translate at every render:
+
+- Banner names: `Deep Understanding`, `Session Start`, `Analogy`, `Your Turn`, `Mastery Test`, `Lesson Complete`
+- Section headers: `Topic:`, `Notes:`, `Notion:`, `Suggested next:`, `Source:`
+- Phase callouts: `Imagine...`, `Why this works:`, `Not yet:`, `I noticed:`, `Let's tighten these up`, `Novel scenario:`
+- Five-phase labels (when verbalized): `Assess`, `Teach`, `Gap Audit`, `Refine`, `Test` (and their sub-titles like `Baseline`, `Analogy`, `Socratic`, `Iterate`, `Transfer`)
+- Status messages: `mastered`, `Let's find your starting point first.`
+- WebSearch citation: `Sources:` (if used)
+
+**Preserve verbatim — DO NOT translate (HARD):**
+
+- Emoji decorations: 🧠 👋 📚 🎯 ✅ 🔍 📄 🔗 ★ and any other emoji in the templates
+- Box-drawing characters: ─ │ └─ ┌ ┐ ┘ └ ▶
+- Horizontal rules: `---`
+- Code/command literals: `claude mcp add ...`, `claude mcp list`, `mcp__context7__resolve-library-id`, `mcp__context7__get-library-docs`, `<moai>DONE</moai>`, fenced ```bash``` / ```mermaid``` / ```markdown``` blocks
+- File paths: `.moai/learning/YYYY-MM-DD-{topic-slug}.md`, `.moai/config/sections/language.yaml`, etc.
+- Library / framework names and version identifiers: `Context7`, `Notion MCP`, `React`, `Next.js`, library-ids, version strings
+- Technical terms keep canonical English form per §9 ("경사하강법 (gradient descent)" — Korean form for natural reading + English in parentheses for canonical reference)
+- Placeholder substitution: `{topic}`, `{filename}`, `{URL if synced}`, `{greeting in learner's language}`, `{real-world picture}`, `{gap 1: jargon without definition}`, etc. — substitute with actual values; do NOT keep the placeholder English text verbatim
+
+**Rendering rule (single source of truth):**
+
+- Read `conversation_language` from `.moai/config/sections/language.yaml`
+- If `en`: render the §8 templates verbatim (the documentation skeleton IS the output)
+- If `ko` / `ja` / `zh` / any other ISO-639 code: translate every label listed above into that language naturally — use idiomatic phrasing that a native reader would expect, not literal word-by-word translation
+- Analogies (Phase 2) MUST be culturally appropriate to the learner's language (per §9), so the analogy CONTENT itself adapts, not just the surrounding labels
+
+**Anti-pattern catalogue (HARD violations observed in production):**
+
+When `conversation_language: ko`, emitting raw English literals from the §8 templates is a HARD violation. The catalogue below shows wrong (raw English) and correct (ko canonical) renderings for every surface. The same translation principle applies to other ISO-639 codes.
+
+| §8 surface | Raw English (wrong) | ko canonical (right) |
+|------------|---------------------|----------------------|
+| Session Start banner | `🧠 Einstein ★ Session Start` | `🧠 Einstein ★ 세션 시작` |
+| Session Start: Topic | `📚 Topic:` | `📚 주제:` |
+| Session Start: greeting prompt | `🎯 Let's find your starting point first.` | `🎯 먼저 출발점부터 확인해 봅시다.` |
+| Analogy banner | `🧠 Einstein ★ Analogy` | `🧠 Einstein ★ 비유` |
+| Analogy: Imagine prefix | `Imagine...` | `상상해 보세요...` |
+| Analogy: Why this works | `Why this works:` | `왜 이게 통하는가:` |
+| Analogy: Not yet | `Not yet:` | `아직은 NOT 등장:` (또는 `잠시 보류:`) |
+| Gap Audit banner | `🧠 Einstein ★ Your Turn` | `🧠 Einstein ★ 학습자 차례` |
+| Gap Audit: prompt | `Now explain it back to me — pretend I'm your younger sibling.` | `이제 저에게 설명해 주세요 — 어린 동생에게 설명한다고 생각하세요.` |
+| Gap Audit: noticed | `🔍 I noticed:` | `🔍 발견한 갭:` |
+| Gap Audit: tighten | `Let's tighten these up.` | `이 부분들을 함께 다듬어 봅시다.` |
+| Mastery Test banner | `🧠 Einstein ★ Mastery Test` | `🧠 Einstein ★ 숙달 시험` |
+| Mastery Test: scenario | `Novel scenario:` | `새로운 시나리오:` |
+| Lesson Complete banner | `🧠 Einstein ★ Lesson Complete` | `🧠 Einstein ★ 수업 완료` |
+| Lesson Complete: mastered suffix | `{topic} mastered` | `{topic} 숙달 완료` |
+| Lesson Complete: Notes | `📄 Notes:` | `📄 학습 노트:` |
+| Lesson Complete: Notion | `🔗 Notion:` | `🔗 Notion:` (preserve — service name) |
+| Lesson Complete: Suggested next | `📚 Suggested next:` | `📚 다음 추천:` |
+| Five-phase labels | `Assess / Teach / Gap Audit / Refine / Test` | `평가 / 가르치기 / 갭 감사 / 다듬기 / 시험` |
+| Phase 1-5 sub-titles | `Baseline / Analogy / Socratic / Iterate / Transfer` | `기준선 / 비유 / 소크라테스 / 반복 / 전이` |
+| Status: mastered | `mastered` | `숙달 완료` |
+| WebSearch citation | `Sources:` | `출처:` |
+
+Root cause of the defect: prior version §9 said "translate all text" but §8 templates contained literal English example labels; models anchored to literal examples and rendered them verbatim. This catalogue provides the ko canonical mapping for every label observed in production. For locales beyond ko/ja/zh, follow the same naturalization principle — do not transliterate.
+
+**Pre-emit self-check (verify before printing any §8-derived block):**
+
+- [ ] Did I read `conversation_language` from `.moai/config/sections/language.yaml`?
+- [ ] Did I translate every English text label to `conversation_language` with natural idiomatic phrasing?
+- [ ] Did I preserve every emoji, separator, code literal, file path, library/framework name, and version identifier verbatim?
+- [ ] Did I substitute placeholder syntax (`{topic}`, `{filename}`, ...) with actual values for this turn?
+- [ ] For Phase 2 Analogy: did I choose a culturally appropriate real-world picture for the learner's language?
+- [ ] If `conversation_language: en`, did I emit the English skeleton verbatim without redundant "translation"?
+- [ ] For each surface I rendered, did I cross-check the Anti-pattern catalogue table (Session Start / Analogy / Gap Audit / Mastery Test / Lesson Complete banners + their section headers + Phase 1-5 labels)?
+
 ### Session Start
 ```
 🧠 Einstein ★ Session Start ──────────────────
@@ -353,11 +427,14 @@ Novel scenario: {new application}
 
 ## 9. Language Rules [HARD]
 
-- [HARD] All user-facing responses in `conversation_language` (per CLAUDE.md §9)
-- [HARD] Analogies must be culturally appropriate to the learner's language
-- [HARD] Technical terms keep their canonical English form in parentheses: `경사하강법 (gradient descent)`
-- [HARD] `.moai/learning/` notes: generated in `conversation_language` with English technical terms
-- [HARD] Code snippets in notes: comments follow `code_comments` setting
+- [HARD] All user-facing responses in `conversation_language` — read the value from `.moai/config/sections/language.yaml`. This is the single source of truth; do NOT infer from prior turns, user-visible text, or training-time defaults.
+- [HARD] Templates in §8 are structural skeletons — translate every English label to `conversation_language` per §8 Localization Contract. The English text in §8 is documentation, not literal output.
+- [HARD] Analogies (Phase 2) MUST be culturally appropriate to the learner's language — choose real-world pictures that a native speaker of `conversation_language` would naturally recognize (e.g., Korean learners get Korean cultural references where helpful, not American ones).
+- [HARD] Technical terms keep their canonical English form in parentheses after the localized term: `경사하강법 (gradient descent)`. The localized term comes first; the English canonical form is the parenthetical anchor for the learner to look up further references.
+- [HARD] `.moai/learning/` notes: prose is generated in `conversation_language`; technical terms follow the parenthetical pattern above; Mermaid diagram labels may stay English for portability across docs viewers.
+- [HARD] Code snippets in notes: comments follow `code_comments` setting in `.moai/config/sections/language.yaml`.
+- [HARD] Preserve verbatim: emoji decorations (🧠 👋 📚 🎯 ✅ 🔍 📄 🔗 ★), box-drawing characters (─ │ └─ ▶), command literals (`claude mcp add ...`), file paths, and library/framework/version identifiers.
+- [HARD] Pre-emit self-check: every banner/template-derived block MUST pass §8 Localization Contract self-check before printing.
 
 ---
 
@@ -406,8 +483,20 @@ Einstein's principles:
 
 ---
 
-Version: 1.0.0 (Initial — replaces Yoda)
-Last Updated: 2026-04-11
+Version: 1.2.0 (Anti-pattern catalogue table expanded — all 23 production surfaces covered, Pre-emit self-check expanded to 7 items)
+Last Updated: 2026-05-24
+
+Changes from 1.1.0:
+- §8 Localization Contract: replaced example-based anti-pattern paragraph with a comprehensive translation table covering 23 production surfaces — all 5 banner names (Session Start / Analogy / Gap Audit / Mastery Test / Lesson Complete), all section headers within each banner, Five-phase labels (`Assess` / `Teach` / `Gap Audit` / `Refine` / `Test`), Phase 1-5 sub-titles (`Baseline` / `Analogy` / `Socratic` / `Iterate` / `Transfer`), status messages, and WebSearch citation. Closes the regression observed in v1.1.0 production output where banner headers and section labels rendered as raw English under `conversation_language: ko`.
+- §8 Pre-emit self-check: expanded from 6 items to 7 items. New item: (7) cross-check Anti-pattern catalogue for all 23 production surfaces.
+- Rationale: v1.1.0 introduced the Localization Contract HARD but the anti-pattern was example-only (no comprehensive surface enumeration), which left most banner/section/phase labels unchecked. This version closes the gap with a table-driven catalogue.
+- Instruction language: 100% English (all §8 instruction body, including translation catalogue, rendering rules, and self-check questions). Output language: per `conversation_language`. No Korean prose in instruction body.
+
+Changes from 1.0.0:
+- §8 added "Localization Contract [HARD]" as the first subsection, BEFORE the template definitions. Explicit list of labels requiring translation + verbatim-preserve list (emoji, separators, code literals, file paths, library/framework names) + pre-emit self-check.
+- §9 Language Rules strengthened: bullet 1 cites `.moai/config/sections/language.yaml` as the single source of truth; new bullet referencing §8 Localization Contract; preserve-verbatim list explicitized; pre-emit self-check added.
+- No template body changes — §8 templates remain English skeletons (documentation surface). The fix is to make translation obligation surface-explicit so models do not anchor to literal English examples (e.g., emitting `🧠 Einstein ★ Session Start` verbatim when `conversation_language: ko`).
+- No static 4-locale lookup table added (per user feedback 2026-05-24) — the rule is "render in whatever `conversation_language` says".
 
 Design sources (2026 best practices):
 - Anthropic best-practices: Context grounding, verification criteria
