@@ -13,10 +13,10 @@ lifecycle: spec-anchored
 tags: "harness, namespace, cleanup, progress, tier-s"
 issue_number: null
 tier: S
-plan_commit_sha: ""
-run_commit_sha: ""
-sync_commit_sha: ""
-mx_commit_sha: ""
+plan_commit_sha: "eb5d5764e"
+run_commit_sha: "0b99c4943"
+sync_commit_sha: "378ef732d"
+mx_commit_sha: "pending_post_commit"
 ---
 
 # Progress — SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001
@@ -160,7 +160,7 @@ mx_scan_required: false  # Mx Step C SKIP-judge likely — only Go test scaffold
 
 ```yaml
 sync_complete_at: 2026-05-25T16:30:00Z
-sync_commit_sha: 5c81ab745ef2f4cbe02a9d27a9b2e6bc2c31f88b
+sync_commit_sha: 378ef732d   # corrected from 5c81ab745 (manager-docs initial write recorded run backfill SHA by mistake) via orchestrator trust-but-verify batch L49
 changelog_entry_count: 1
 frontmatter_status_transitions: 4
 b12_self_test:
@@ -171,7 +171,23 @@ b12_self_test:
 
 ### §E.5 Mx-phase Audit-Ready Signal (orchestrator + manager-docs 책임)
 
-(empty — 본 SPEC은 plan/run/sync phase에서 .go 변경 ~50 LOC 예상, Mx Step C SKIP-judge 가능성 높음. manager-develop 결정.)
+```yaml
+mx_complete_at: 2026-05-25T17:30:00Z
+mx_commit_sha: pending_post_commit   # backfilled via self-reference (this chore commit doubles as Mx record)
+mx_step_c_verdict: SKIP
+mx_step_c_rationale: |
+  Per mx-tag-protocol.md §a Step C SKIP criteria — applies when:
+    - Production .go code delta: 0 (run-phase added only `internal/template/embedded_namespace_test.go` test file; test code excluded from MX scope per mx-tag-protocol.md)
+    - 6 file deletions are all .md (no Go production surface)
+    - No goroutines, no complexity ≥15, no fan_in ≥3 surface introduced
+    - Pure declarative test scaffold using existing `EmbeddedTemplates()` exported API
+  Verdict: SKIP. No MX tag scan or addition required. PROPOSAL-GEN-001 precedent + Tier S minimal cohort pattern (L33 8/8 sustained) applies.
+mx_tag_delta: 0
+mx_warn_reason_pairing: N/A   # zero @MX:WARN added
+followup_mx_eligibility: |
+  Not applicable — no production Go code modification triggered MX scope.
+  Test file is excluded from MX evaluation per mx-tag-protocol.md scope definition.
+```
 
 ## §F. Cross-References
 
