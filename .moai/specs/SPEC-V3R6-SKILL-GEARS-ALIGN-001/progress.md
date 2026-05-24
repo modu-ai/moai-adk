@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-SKILL-GEARS-ALIGN-001
 title: "Run-phase Progress — moai-workflow-spec SKILL GEARS 우선 정렬"
-version: "0.1.0"
-status: in-progress
+version: "0.2.0"
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-develop

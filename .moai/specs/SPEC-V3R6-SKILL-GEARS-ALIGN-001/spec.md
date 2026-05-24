@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-SKILL-GEARS-ALIGN-001
 title: "moai-workflow-spec SKILL을 GEARS 우선 가이드로 정렬"
-version: "0.1.0"
-status: in-progress
+version: "0.2.0"
+status: implemented
 created: 2026-05-23
 updated: 2026-05-25
 author: manager-spec
@@ -24,6 +24,7 @@ related_specs: [SPEC-V3R6-GEARS-MIGRATION-001]
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-23 | manager-spec | Initial draft — Wave 6 follow-up SPEC to predecessor SPEC-V3R6-GEARS-MIGRATION-001 (status: implemented v0.2.0, PR #1046 merged `134a43fac` 2026-05-22). Predecessor closed lint engine (`internal/spec/lint.go` `LegacyEARSKeyword`) + 4-locale docs-site migration guide. Predecessor did NOT update authoring guides (`.claude/skills/moai-workflow-spec/SKILL.md` + references + `moai-foundation-core/modules/spec-ears-format.md` + `manager-spec.md`). Baseline 50 EARS refs across 5 files (SKILL.md 18 + reference.md 13 + examples.md 1 + spec-ears-format.md 4 + manager-spec.md 14). Authors writing new SPECs receive EARS-only guidance and continue producing IF/THEN REQs that trigger `LegacyEARSKeyword` warnings. Tier M (3 artifacts) — markdown-only edits across 5 files + 5 template mirrors. Self-dogfooding: this SPEC's REQs are written in GEARS notation as the canonical example. |
+| 0.2.0 | 2026-05-25 | manager-docs | Sync-phase 4-phase close (plan + run + sync + Mx). 5 guide files updated: `.claude/skills/moai-workflow-spec/SKILL.md`, `.claude/skills/moai-workflow-spec/references/reference.md`, `.claude/skills/moai-workflow-spec/references/examples.md`, `.claude/skills/moai-foundation-core/modules/spec-ears-format.md`, `.claude/agents/core/manager-spec.md` + 5 template mirrors synchronized. All 13 AC PASS (plan-auditor iter-1 0.892 PASS, not skip-eligible; manager-develop 1-pass 1f3a734d8 + 353150294 all AC verified). Canonical GEARS references + compound clause guidance + If/Then deprecation callout + generalized subject examples + backward-compat window policy. Commits: `1f3a734d8` (M1-M5 guide alignment), `353150294` (M6 progress.md audit-ready signal). |
 
 ## 1. Goal
 
