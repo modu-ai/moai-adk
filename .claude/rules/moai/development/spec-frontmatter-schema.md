@@ -59,6 +59,29 @@ draft → planned → in-progress → implemented → completed
 
 Valid values: `draft`, `planned`, `in-progress`, `implemented`, `completed`, `superseded`, `archived`, `rejected`
 
+## Status Transition Ownership Matrix
+
+Per SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 (Audit Tier 2 F1 resolution — Anthropic Best Practice #7 DRI ownership at agent-artifact granularity). This matrix is the **schema-level SSOT** for which agent performs each canonical status transition. Cross-referenced by the `## SPEC Artifact Ownership` body sections in `.claude/agents/core/manager-{spec,develop,docs}.md`.
+
+| Transition | Owning agent | Canonical commit subject pattern |
+|------------|--------------|----------------------------------|
+| `(none) → draft` | manager-spec | `feat(SPEC-{ID}): plan-phase artifacts ({tier} Section A-E, 4 artifacts)` |
+| `draft → in-progress` | manager-develop (on M1 commit start) | `fix(SPEC-{ID}): M1 ...` or `feat(SPEC-{ID}): M1 ...` — first run-phase commit |
+| `in-progress → implemented` | manager-docs (on sync commit) | `docs(SPEC-{ID}): sync-phase artifacts` or `chore(SPEC-{ID}): sync-phase artifacts` |
+| `implemented → completed` | manager-docs OR orchestrator (on Mx chore commit) | `chore(SPEC-{ID}): Mx-phase audit-ready signal + 4-phase close` |
+| `* → superseded` | manager-spec (when authoring the new superseding SPEC) | `feat(SPEC-{NEW-ID}): supersedes SPEC-{OLD-ID}` |
+| `* → archived` | manager-docs (administrative cleanup) | `chore(specs): archive SPEC-{ID}` |
+| `* → rejected` | orchestrator decision, recorded by manager-docs | `chore(SPEC-{ID}): rejected per <rationale>` |
+
+### Forbidden ownership crossings
+
+- `manager-docs` MUST NOT modify `spec.md` / `plan.md` / `acceptance.md` body content (frontmatter `status:` + `updated:` updates on the `in-progress → implemented` transition are allowed; ALL other body modifications are forbidden). When sync-phase reveals a need to modify SPEC body content, manager-docs MUST return a blocker report and the orchestrator re-delegates to manager-spec.
+- `manager-develop` MUST NOT modify `spec.md` / `plan.md` / `acceptance.md` body content (frontmatter `status:` + `updated:` updates on the `draft → in-progress` transition are allowed; ALL other body modifications are forbidden). When run-phase reveals a need to modify SPEC body content, manager-develop MUST return a blocker report and the orchestrator re-delegates to manager-spec for the scope-doc update before re-delegating back.
+
+### Forward-looking enforcement (optional defense-in-depth)
+
+A future PostToolUse hook MAY validate at execution time that the agent performing a Write on a SPEC artifact body matches the expected owner per this matrix. This is OPTIONAL (REQ-ARR-009 of SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 — deferred to a follow-up SPEC if desired). The primary intervention is the declarative ownership in the agent body sections + this schema matrix; hook-based enforcement is a complementary layer.
+
 ## Optional Fields
 
 These fields may be included when needed but are NOT required by `FrontmatterSchemaRule`:
