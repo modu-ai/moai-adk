@@ -46,6 +46,8 @@ var workflowOptMirroredPaths = []string{
 	".claude/rules/moai/workflow/ci-watch-protocol.md",
 	// Layer D + H — parallel execution batching + tool optimization patterns
 	".claude/rules/moai/core/agent-common-protocol.md",
+	// (new entry — REQ-TMD-005 — hooks-system.md mirror parity)
+	".claude/rules/moai/core/hooks-system.md",
 	// Layer E — Phase Transitions skip policy
 	".claude/rules/moai/workflow/spec-workflow.md",
 	// Layer B — Agent Teams pattern (NEW file)

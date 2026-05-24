@@ -157,7 +157,7 @@ catalog:
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/meta/plan-auditor.md
-              hash: 23b8d17c943e86b9549eda8669530467855c9344c589c40653c50d92c9d3baa7
+              hash: 1ec112f4fae16512f73147dbed9d7d72aba1c5f0572c62047ee59eee0adf3ca8
               version: 1.0.0
             - name: researcher
               tier: core

@@ -408,6 +408,36 @@ If iteration 3 results in FAIL, the agent produces a final escalation report wit
 
 Stagnation detection: If a defect appears in all three iterations unchanged, flag it as "blocking defect — manager-spec made no progress". This indicates a misunderstanding, not just a missed fix.
 
+### LEAN Workflow Additions (SPEC-V3R5-WORKFLOW-LEAN-001)
+
+The following three clauses extend the retry loop contract to fix the score-regression pattern (0.78 → 0.81 → 0.77) observed in LANG-COMPLIANCE-001 plan-phase abandonment (2026-05-20).
+
+**STOP escalation on score regression.** If iter(N+1) aggregate score is **lower** than iter(N) aggregate score, the agent emits a `STOP` signal in the Verdict block of the report and proposes a scope-reduction action to the orchestrator. The orchestrator MUST NOT iterate further unconditionally; instead, present the user with three options via AskUserQuestion:
+
+1. Reduce scope (split SPEC into smaller sub-SPECs)
+2. Accept current iter(N+1) verdict with documented debt (PASS-with-debt)
+3. Explicit user override to continue iterating (rare)
+
+Rationale: continued unconditional iteration on a regressing score wastes orchestrator turns and indicates the SPEC has structural defects no number of revisions will resolve.
+
+**Tier-differentiated PASS threshold.** The PASS aggregate-score threshold varies by SPEC complexity tier (read from `tier:` frontmatter field in spec.md; absence = Tier L for backward compat):
+
+| Tier | PASS threshold |
+|------|---------------|
+| Tier S | **0.75** |
+| Tier M | **0.80** |
+| Tier L | **0.85** |
+
+Tier S SPECs (2 artifacts, narrow scope) intrinsically have less surface area for ambiguity defects, so a lower-threshold PASS is still high-confidence in absolute terms. Tier L retains the strict 0.85 to preserve quality for constitutional / large SPECs. Reference: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier.
+
+**Max 3 iterations cap (hard limit).** The retry loop MUST NOT exceed 3 iterations per SPEC plan-phase. After iter3 (regardless of verdict), the orchestrator escalates to the user via AskUserQuestion with three options:
+
+1. PASS-with-debt: accept current state, document residual defects, proceed to /moai run
+2. Scope-reduction: split or shrink SPEC and re-enter plan-phase
+3. Explicit user override: extend the cap to iter4+ (rare; conscious choice, not silent drift)
+
+This prevents the unbounded-iteration anti-pattern documented in `agent-patterns.md` § Pattern 4 (Producer-Reviewer) and matches `harness.yaml` `max_iterations: 3`.
+
 ## Input Contract
 
 This agent receives one input: the absolute path to the SPEC directory (e.g., `.moai/specs/SPEC-AUTH-001/`).
