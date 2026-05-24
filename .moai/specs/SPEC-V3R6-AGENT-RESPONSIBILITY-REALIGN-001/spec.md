@@ -2,9 +2,9 @@
 id: SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001
 title: "SPEC artifact ownership realignment across manager-spec / manager-develop / manager-docs (audit F1 + F12 resolution)"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-05-24
-updated: 2026-05-24
+updated: 2026-05-24T20:45:00Z
 author: GOOS행님
 priority: P1
 phase: "v3.0.0"

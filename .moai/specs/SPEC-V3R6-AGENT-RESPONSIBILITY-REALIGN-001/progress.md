@@ -2,9 +2,9 @@
 id: SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001
 title: "SPEC artifact ownership realignment across manager-spec / manager-develop / manager-docs — Lifecycle Progress"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-05-24
-updated: 2026-05-24
+updated: 2026-05-24T20:45:00Z
 author: GOOS행님
 priority: P1
 phase: "v3.0.0"
@@ -135,28 +135,28 @@ This SPEC is **forward-looking** in that its own sync-phase is the FIRST applica
 If sync-phase reveals a need to modify SPEC body content (e.g., last-minute REQ rewording, AC clarification), manager-docs MUST return a structured blocker report; orchestrator re-delegates to manager-spec for the body edit; THEN re-invokes manager-docs to complete sync.
 
 ```yaml
-sync_complete_at: TBD
-sync_commit_sha: TBD
-sync_status: TBD                                  # completed when CHANGELOG entry + 4 frontmatter status + this §E.4 update done
-b12_self_test_a_pre_emission_grep: TBD            # target: 0 (`grep -c 'SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001' CHANGELOG.md` pre-emission)
-b12_self_test_a_post_emission_grep: TBD           # target: 1 (post-emission)
-b12_self_test_b_ac_count_match: TBD               # target: 7 (acceptance.md SSOT AC count: `grep -cE '^\| \*\*AC-ARR-[0-9]+\*\*' .moai/specs/SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001/acceptance.md`)
-b12_self_test_c_file_paths_verified: TBD          # target: PASS (manager-docs Read plan.md §A.2 EXTEND entries: 7 files listed, all present in run commit + 1 progress.md = 8 total post-sync)
-changelog_entry_position: TBD                     # target: [Unreleased] ### Changed section (this is a governance/policy SPEC, not a bug fix)
+sync_complete_at: 2026-05-24T20:45:30Z
+sync_commit_sha: TBD                              # (orchestrator backfilled post-push)
+sync_status: completed                            # CHANGELOG entry + 4 frontmatter status + this §E.4 update done
+b12_self_test_a_pre_emission_grep: 0              # PASS: `grep -c 'SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001' CHANGELOG.md` pre-emission
+b12_self_test_a_post_emission_grep: 1             # PASS: (post-emission, 1 entry under [Unreleased] ### Changed section)
+b12_self_test_b_ac_count_match: 7                 # PASS: acceptance.md SSOT AC count `grep -cE '^\| \*\*AC-ARR-[0-9]+\*\*'` = 7 rows (AC-ARR-001..007)
+b12_self_test_c_file_paths_verified: PASS         # PASS: plan.md §A.2 EXTEND entries 7 files (manager-spec/develop/docs sources + mirrors + schema doc) all present + progress.md = 8 total post-sync
+changelog_entry_position: [Unreleased] ### Changed section    # PASS: governance/policy SPEC in Changed section (not Fixed), Korean body per git_commit_messages: ko
 frontmatter_status_transitions:
-  spec.md: TBD                                    # target: draft → implemented
-  plan.md: TBD                                    # target: draft → implemented
-  acceptance.md: TBD                              # target: draft → implemented
-  progress.md: TBD                                # target: draft → implemented (or directly draft → completed depending on Mx)
+  spec.md: implemented                            # PASS: draft → implemented
+  plan.md: implemented                            # PASS: draft → implemented
+  acceptance.md: implemented                      # PASS: draft → implemented
+  progress.md: implemented                        # PASS: draft → implemented (Mx deferred to post-sync)
 canary_compliance_check:
-  spec_md_body_modified: TBD                      # MUST be false (frontmatter status field only)
-  plan_md_body_modified: TBD                      # MUST be false (frontmatter status field only)
-  acceptance_md_body_modified: TBD                # MUST be false (frontmatter status field only)
+  spec_md_body_modified: false                    # PASS: frontmatter status field only, no body changes
+  plan_md_body_modified: false                    # PASS: frontmatter status field only, no body changes
+  acceptance_md_body_modified: false              # PASS: frontmatter status field only, no body changes
   rationale: |
     This SPEC defines the policy that manager-docs MUST NOT modify spec/plan/acceptance body content.
-    Its own sync is the FIRST test of compliance. If manager-docs modifies any SPEC body section
-    here (other than frontmatter status field), the canary FAILS and the new policy is not yet binding
-    on this SPEC's lifecycle — record as REGRESSION + blocker report for retrospective audit.
+    Its own sync is the FIRST test of compliance. Canary PASSED: manager-docs touched only CHANGELOG.md
+    + 4 frontmatter status transitions + this progress.md §E.4 block. Zero body content modifications.
+    Policy is now binding on all downstream SPEC syncs (SIV-001 onwards).
 ```
 
 ## §E.5 Mx-phase Audit-Ready Signal
