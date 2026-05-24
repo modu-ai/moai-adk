@@ -21,7 +21,7 @@ tags: "harness, proposal, progress, tier-m"
 |-------|--------|---------|-----------|------------|
 | Plan | audit-ready | 2026-05-24 | 2026-05-24 | e5b2859a9 |
 | Plan Audit | PASS 0.935 (skip-eligible) | 2026-05-24 | 2026-05-24 | e5b2859a9 |
-| Run (M1) | complete | 2026-05-24 | 2026-05-24 | pending (this commit) |
+| Run (M1) | complete | 2026-05-24 | 2026-05-24 | 24cb6ad4b (see §B.2 attribution note) |
 | Sync | pending | — | — | — |
 | Mx (Step C) | pending | — | — | — |
 
@@ -33,7 +33,7 @@ plan_status: audit-ready
 plan_commit_sha: e5b2859a9fa23f00c53ad3af74115235834009c0
 run_complete_at: 2026-05-24T22:30:00Z
 run_status: complete
-run_commit_sha: pending (this commit)
+run_commit_sha: 24cb6ad4b5c11cd5dfab56429fef674f93f4d062
 sync_complete_at: null
 sync_commit_sha: pending
 mx_complete_at: null
@@ -58,6 +58,19 @@ Additional artefacts:
 - CLI smoke against live data: `go run ./cmd/moai harness propose --dry-run` emits `{"proposals":[],"reason":"no-actionable-patterns","malformed_lines":0,"evaluated_patterns":4,"auto_delegate":false}` (REQ-PGN-014 empirical PASS).
 - Testdata fixture created at `internal/harness/proposalgen/testdata/tier-promotions-current-baseline.jsonl` (verbatim 8-record snapshot of live `.moai/harness/learning-history/tier-promotions.jsonl`).
 - `internal/cli/harness_route.go` modified with exactly +6 lines (1 import + 1 registration block + 4-line comment) to register `propose` under `newHarnessRouterCmd()`; no other modifications.
+
+## §B.2 Multi-Session Attribution Note (L52)
+
+Per CLAUDE.local.md §23.8 (Multi-Session Race Mitigation), the run-phase deliverables for this SPEC landed on `main` under commit `24cb6ad4b` whose canonical commit subject reads `chore(SPEC-V3R6-MULTI-SESSION-COORD-001): progress.md §C plan-auditor signal backfill (iter-1 PASS-WITH-DEBT 0.812)`. This commit subject is misattributed to the COORD-001 SPEC due to a concurrent parallel session indiscriminately staging all working-tree changes (both COORD-001 progress.md + PROPOSAL-GEN-001 implementation files).
+
+Inspection of `git show --stat 24cb6ad4b` confirms the commit contains BOTH:
+
+1. The COORD-001 progress.md backfill (the subject's intended scope, 92 lines).
+2. The full PROPOSAL-GEN-001 M1 implementation (14 files, 1881 line insertions, including: `internal/cli/harness/{propose.go,propose_test.go,propose_boundary_test.go}`, `internal/harness/proposalgen/{types,reader,mapper,scaffolder}.{go,_test.go}` + testdata fixture, `internal/cli/harness_route.go` 8-line registration delta, and this very file's `status: in-progress` + §B.1 Run-phase Evidence block).
+
+This note ESTABLISHES THE CANONICAL PROVENANCE for the PROPOSAL-GEN-001 run-phase content within `24cb6ad4b`. No history rewrite was attempted (Hybrid Trunk + multi-session race prevent safe rewind per §23.5). The misattribution is an audit-trail artifact only; the implementation itself is byte-identical to what was authored and verified.
+
+Followup (sync-phase): manager-docs SHOULD reference this §B.2 note in the `[Unreleased]` CHANGELOG entry to surface the attribution clarification publicly.
 
 ## §C. Plan-phase Evidence
 
