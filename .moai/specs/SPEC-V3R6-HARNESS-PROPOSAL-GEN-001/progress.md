@@ -2,7 +2,7 @@
 id: SPEC-V3R6-HARNESS-PROPOSAL-GEN-001
 title: "V3R4 Self-Evolving Harness Loop Closure — Progress Tracker"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-05-24
 updated: 2026-05-24
 author: manager-spec
@@ -22,7 +22,7 @@ tags: "harness, proposal, progress, tier-m"
 | Plan | audit-ready | 2026-05-24 | 2026-05-24 | e5b2859a9 |
 | Plan Audit | PASS 0.935 (skip-eligible) | 2026-05-24 | 2026-05-24 | e5b2859a9 |
 | Run (M1) | complete | 2026-05-24 | 2026-05-24 | 24cb6ad4b (see §B.2 attribution note) |
-| Sync | pending | — | — | — |
+| Sync | complete | 2026-05-24 | 2026-05-24 | TBD |
 | Mx (Step C) | pending | — | — | — |
 
 ## §B. Audit-Ready Signal

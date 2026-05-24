@@ -2,7 +2,7 @@
 id: SPEC-V3R6-HARNESS-PROPOSAL-GEN-001
 title: "V3R4 Self-Evolving Harness Loop Closure — Implementation Plan"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-05-24
 updated: 2026-05-24
 author: manager-spec
