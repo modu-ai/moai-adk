@@ -134,13 +134,14 @@ Baseline verification protocol: stashed all working tree changes, ran the failin
 
 ```yaml
 run_complete_at: 2026-05-25T03:58:00Z
-run_commit_sha: TBD (orchestrator backfills after M1 commit + push)
+run_commit_sha: "0b99c4943"
 run_status: PASS
 ac_pass_count: 7
 ac_fail_count: 0
 preserve_list_post_run_count: 9
 l44_pre_commit_fetch: "0 0"  # pre-spawn fetch verified clean before M1
-l44_post_push_fetch: TBD (orchestrator backfills post-push)
+l44_post_push_fetch: "0 0"   # post-push fetch verified clean, no race
+push_range: "d1558e092..0b99c4943"
 new_warnings_or_lints_introduced: 0  # golangci-lint ./internal/template/... → 0 issues
 cross_platform_build:
   linux_amd64: not_verified  # docs-only Go test, no platform-sensitive code
