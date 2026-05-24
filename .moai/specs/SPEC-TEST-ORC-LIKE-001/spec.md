@@ -2,9 +2,9 @@
 id: SPEC-TEST-ORC-LIKE-001
 title: "Agent Roster Consolidation Test (multi-domain, P1)"
 version: "0.1.0"
-status: draft
+status: archived
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-25
 author: HRN-001 AC Fixture
 priority: P1
 phase: "v3.0.0"

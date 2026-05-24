@@ -1,6 +1,6 @@
 ---
 id: SPEC-WT-DOC-001
-status: in-progress
+status: archived
 version: "0.1.0"
 priority: Low
 labels: [worktree, shared-state, documentation, anti-pattern, termination, wave-3, tier-2]
@@ -15,7 +15,7 @@ wave: 3
 tier: 2
 title: "Worktree Shared State 명시"
 created: 2026-05-04
-updated: 2026-05-13
+updated: 2026-05-25
 phase: "v2.x - Legacy"
 module: "worktree"
 lifecycle: completed

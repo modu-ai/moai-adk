@@ -2,9 +2,9 @@
 id: SPEC-UTIL-004
 title: "ast-grep ScanMultiple Goroutine Spawn Pattern Alignment"
 version: "0.1.0"
-status: in-progress
+status: archived
 created: 2026-04-24
-updated: 2026-04-24
+updated: 2026-05-25
 author: MoAI v2.15 Backlog Writer
 priority: P2 Medium
 phase: "v2.15 — Utility Performance Backlog"

@@ -1,10 +1,10 @@
 ---
 id: SPEC-EVO-001
-status: in-progress
+status: archived
 title: "Skill Evolution Preservation Infrastructure"
 version: "1.0.0"
 created: 2026-04-15
-updated: 2026-05-13
+updated: 2026-05-25
 author: GOOS
 priority: "P2 Medium"
 phase: "v2.x - Legacy"

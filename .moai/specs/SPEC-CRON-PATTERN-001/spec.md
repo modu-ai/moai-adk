@@ -1,6 +1,6 @@
 ---
 id: SPEC-CRON-PATTERN-001
-status: in-progress
+status: archived
 version: "0.1.0"
 priority: Medium
 labels: [routine, cron, automation, pattern, catalog, wave-4, tier-3]
@@ -15,7 +15,7 @@ wave: 4
 tier: 3
 title: "Routines/Cron Pattern Catalog"
 created: 2026-05-04
-updated: 2026-05-13
+updated: 2026-05-25
 phase: "v2.x - Legacy"
 module: "loop"
 lifecycle: completed

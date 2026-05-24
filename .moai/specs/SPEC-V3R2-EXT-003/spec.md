@@ -2,9 +2,9 @@
 id: SPEC-V3R2-EXT-003
 title: Plugin System (Design-Only Scope for v3.0.0)
 version: "0.1.0"
-status: draft
+status: archived
 created: 2026-04-23
-updated: 2026-04-23
+updated: 2026-05-25
 author: Wave 2 SPEC writer (Layer 6/7/Cleanup)
 priority: P3 Low
 phase: "v3.0.0 — Phase 7 — Extension"

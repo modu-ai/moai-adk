@@ -1,10 +1,10 @@
 ---
 id: SPEC-MX-001
-status: in-progress
+status: implemented
 title: "@MX TAG System -- MoAI eXtension Code Annotation System"
 version: "1.0.0"
 created: 2026-02-20
-updated: 2026-05-13
+updated: 2026-05-25
 author: GOOS
 priority: "P2 Medium"
 phase: "v2.x - Legacy"

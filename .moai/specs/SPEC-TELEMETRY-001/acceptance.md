@@ -1,7 +1,7 @@
 ---
 spec_id: SPEC-TELEMETRY-001
 version: 1.0.0
-status: backfilled
+status: implemented
 created_at: 2026-04-24
 author: manager-spec (backfill)
 backfill_reason: |

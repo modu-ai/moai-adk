@@ -2,9 +2,9 @@
 id: SPEC-TEST-AUTH-001
 title: "OAuth Authentication System Test (AC-03 Fixture)"
 version: "0.1.0"
-status: draft
+status: archived
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-25
 author: HRN-001 AC Fixture
 priority: P2
 phase: "v3.0.0"

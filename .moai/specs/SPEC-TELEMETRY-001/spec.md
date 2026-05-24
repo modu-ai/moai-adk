@@ -1,10 +1,10 @@
 ---
 id: SPEC-TELEMETRY-001
-status: in-progress
+status: implemented
 title: "Skill Usage Telemetry"
 version: "1.0.0"
 created: 2026-04-15
-updated: 2026-05-13
+updated: 2026-05-25
 author: GOOS
 priority: "P2 Medium"
 phase: "v2.x - Legacy"

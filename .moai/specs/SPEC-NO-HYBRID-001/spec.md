@@ -1,6 +1,6 @@
 ---
 id: SPEC-NO-HYBRID-001
-status: in-progress
+status: archived
 version: "0.1.0"
 priority: Medium
 labels: [srp, anti-hybrid, audit, policy, anti-pattern, wave-4, tier-3]
@@ -15,7 +15,7 @@ wave: 4
 tier: 3
 title: "Anti-Hybrid Tools 원칙 + Audit"
 created: 2026-05-04
-updated: 2026-05-13
+updated: 2026-05-25
 phase: "v2.x - Legacy"
 module: "legacy"
 lifecycle: completed

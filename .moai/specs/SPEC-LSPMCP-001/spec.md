@@ -1,9 +1,9 @@
 ---
 id: SPEC-LSPMCP-001
 version: "1.0.0"
-status: in-progress
+status: archived
 created: "2026-04-07"
-updated: "2026-04-07"
+updated: 2026-05-25
 author: GOOS
 priority: P2
 issue_number: 0

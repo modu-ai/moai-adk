@@ -1,9 +1,9 @@
 ---
 id: SPEC-ASTG-UPGRADE-001
 version: "1.0.0"
-status: in-progress
+status: archived
 created: "2026-04-11"
-updated: "2026-04-11"
+updated: 2026-05-25
 author: GOOS
 priority: P1
 issue_number: 0

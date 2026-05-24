@@ -7,8 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
+### Changed
 
+- **SPEC ledger 정리 — 26개 stale SPECs 일괄 상태 정정** (2026-05-25, chore commit 후속): 미구현 SPEC 39개를 audit한 결과 26개의 stale entry를 발견하여 일괄 처리. **22개 archived** (status: * → archived): (1) 3개 TEST fixture (AC test 용도) `SPEC-TEST-{AUTH,ORC-LIKE,OVERRIDE}-001`, (2) 1개 old design-only `SPEC-V3R2-EXT-003`, (3) 7개 Wave 3 Tier 2 plan-only (#749 commit으로만 존재, run-phase 진입 없음) `SPEC-{CONTEXT-INJ,MEM-SCOPE,PARALLEL-COOK,SKILL-DESC,STOP-HOOK,TOOL-AUDIT,WT-DOC}-001`, (4) 5개 Wave 4 Tier 3 plan-only (#750) `SPEC-{CACHE-ORDER,CRON-PATTERN,METRICS,NO-HYBRID,RESUME-MSG}-001`, (5) 3개 v2.15 UTIL backlog (#707, ast-grep 미도입) `SPEC-UTIL-{004,005,006}`, (6) 3개 abandoned `SPEC-{LSPMCP,EVO,ASTG-UPGRADE}-001` (stub만 또는 인프라 미구현). **4개 implemented 정정** (status: in-progress → implemented, frontmatter drift): `SPEC-MX-001` (@MX TAG 1465 occurrences in `internal/`), `SPEC-LSP-CORE-002` (`internal/lsp/` 12 sub-dirs), `SPEC-CI-MULTI-LLM-001` (`.github/workflows/claude.yml`), `SPEC-TELEMETRY-001` (`internal/telemetry/` + `internal/cli/telemetry.go`). 결과: 미구현 SPEC 39 → 13 (3분의 1로 축소, 모두 V3R5/V3R6 modern era draft). SPEC body 절대 미수정 (frontmatter status + updated 필드만, L48 SSOT canary). 본 정리 자체에 대한 SPEC 작성 없이 chore commit으로 처리 (Hybrid Trunk Tier S admin cleanup).
 - **`spec lint` MissingExclusions 회귀 정리** (SPEC-V3R6-SPEC-LINT-CLEANUP-001, commit `d1558e092`): 8개 sibling SPEC `spec.md` 본문에 H3 sub-heading retroactive 적용. lint count 10 → 2 (8 in-scope 해소). 분류 A (H3 추가) 2건 + 분류 B (기존 H3 하위 list item 추가 / hyphen→space heading 정정) 6건. 잔여 2건은 `ANTHROPIC-AUDIT-TIER3-001` + `HARNESS-NAMESPACE-CLEANUP-001 §5.3` 병렬 세션 drift로 본 SPEC out-of-scope (acceptance.md §D.4 edge case PASS-WITH-NOTE). 0 semantic deletions (PRESERVE invariant). Tier S minimal 1-pass run-phase 성공 + Trust-but-verify 7-item batch 0 critical discrepancies + L52 case 5 real-time race absorbed (HARNESS-NAMESPACE-CLEANUP-001 parallel session 8 NEW items 절대 흡수 0).
 
 ## [v3.0.0-rc1] — 2026-05-22: Hooks Contract Cleanup + 9-PR Batch Sync + Hybrid Trunk Config

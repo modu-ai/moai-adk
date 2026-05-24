@@ -2,9 +2,9 @@
 id: SPEC-TEST-OVERRIDE-001
 title: "Override Test SPEC (AC-09 Fixture)"
 version: "0.1.0"
-status: draft
+status: archived
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-25
 author: HRN-001 AC Fixture
 priority: P3
 phase: "v3.0.0"

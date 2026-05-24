@@ -1,7 +1,7 @@
 ---
 spec_id: SPEC-CI-MULTI-LLM-001
 created: 2026-04-27
-updated: 2026-04-27
+updated: 2026-05-25
 plan_complete_at: 2026-04-27
 plan_status: audit-ready
 phase: plan
