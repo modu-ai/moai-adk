@@ -265,14 +265,15 @@ The plan-auditor surfaced 5 MINOR defects (D1-D5) per orchestrator pre-flight Se
 
 ```yaml
 run_complete_at: "2026-05-25"
-run_commit_sha: "<pending>"  # backfilled in chore commit post-push
+run_commit_sha: "353150294"  # M6 chore commit SHA (M1-M5 combined commit: 1f3a734d8)
+sync_commit_sha: "7b8f939b7"  # sync-phase 4-phase close + CHANGELOG v0.2.0
 run_status: PASS
 ac_pass_count: 13
 ac_fail_count: 0
 ac_pass_with_note_count: 1  # AC-SGA-012 baseline composition drift (count 25 vs expected 21 — parallel ANTHROPIC-AUDIT-TIER3-001 advance)
 preserve_list_post_run_count: 13  # 4 unrelated config M + 2 parallel ANTHROPIC-AUDIT-TIER3-001 in-flight (lint.go M + lint_ownership.go ??) + 6 unrelated untracked + 1 unrelated SPEC dir
 l44_pre_commit_fetch: "0 0"  # clean
-l44_post_push_fetch: "<pending>"  # backfilled post-push
+l44_post_push_fetch: "0 0"  # clean (orchestrator post-push verify; race-absorbed L52 case 6 ANTHROPIC M1+M2 disjoint)
 new_warnings_or_lints_introduced: 0
 cross_platform_build:
   applicable: false  # markdown-only edits
