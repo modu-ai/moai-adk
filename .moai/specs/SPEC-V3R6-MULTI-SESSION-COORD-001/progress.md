@@ -313,6 +313,18 @@ b12_self_test_iter_2:
 | `golangci-lint` issues | 0 | 0 (full project: `golangci-lint run --timeout=2m` reports `0 issues.`) |
 | Race detector warnings | 0 | 0 (entire `go test -race -count=1 ./internal/session/ ./internal/cli/ ./internal/hook/` clean) |
 
+#### §D.4.1 Known Shortfall (User-Resolved 2026-05-25 via AskUserQuestion Option A)
+
+**Issue**: Package-wide coverage (77.7%) falls below acceptance.md §E.1 DoD #4 target (≥85%).
+
+**Root cause**: plan-phase §E.1 DoD #4 was written assuming `internal/session/` was a NEW package, but the directory pre-existed via SPEC-V3R2-RT-004 (checkpoint feature) with ~9 files / ~50KB code (blocker.go, checkpoint.go, hydrate.go, lock.go, lock_windows.go, phase.go, state.go, store.go, task_ledger.go) that have partial coverage. The aggregate package-wide percentage is dominated by this pre-existing baseline.
+
+**Differential measurement**: NEW SPEC-COORD-001 deliverables (registry.go + registry_lock_unix.go, 26 functions) average **93.7%** coverage — within SPEC scope target.
+
+**Resolution**: Accepted as-is. Coverage uplift for pre-existing files is out of this SPEC's scope (would violate §F.6 single-session + AP-MSC-007 cross-SPEC scope). Documented as candidate for follow-up SPEC (SPEC-V3R6-SESSION-LEGACY-COVERAGE-001 placeholder) at Sprint 8 close decision.
+
+**Sync-phase impact**: NONE — proceeds normally per user Option A selection. DoD #4 reframed as "≥85% on NEW code introduced by this SPEC" empirically met (93.7%).
+
 ### §D.5 Subagent Boundary Verification (C-HRA-008 / B3)
 
 ```bash
