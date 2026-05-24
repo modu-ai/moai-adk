@@ -103,22 +103,39 @@ sync_status: implemented
 sync_commit_sha: TBD (filled post-commit)
 ```
 
-## §F. Mx-Phase Evidence (placeholders) [iter-2: 1 .go file in scope]
+## §F. Mx-Phase Evidence [iter-2: 1 .go file + 1 .yaml file in scope, @MX delta = 0]
 
-To be filled during Mx-phase post-judge:
+Filled during Mx-phase post-judge by orchestrator (session cd8d8946):
 
 | Item | Status | Verification |
 |------|--------|--------------|
-| @MX tag delta scan (.go files modified) [iter-2 updated] | TBD | `git diff --name-only` → 1 .go file expected (`internal/template/rule_template_mirror_test.go`), but the modification is +1 slice string entry + +1 comment line (no @MX tag additions/removals expected) |
-| @MX tag delta scan (.md files modified) | TBD | manager-spec.md mirror pair, no @MX additions expected |
-| Mx Step C judge: SKIP vs EVALUATE [iter-2 updated] | TBD | Per `mx-tag-protocol.md §a`: if @MX tag delta = 0 across all modified files (expected), SKIP per IVB-001/SARM-001/TMC-001 precedent. The 1 .go file modification is trivially structural (allowlist enrollment) with no functional code or new exported function — typical case for SKIP. If any @MX tag is needed (e.g., the allowlist entry justifies an @MX:ANCHOR for fan_in tracking), EVALUATE-PASS per §a. |
+| @MX tag delta scan (.go files modified) [iter-2 updated] | PASS | `rule_template_mirror_test.go`: pre=4 post=4 delta=0 (slice entry add was structural-only, no @MX tag introduced/removed) |
+| @MX tag delta scan (.md files modified) | PASS | `manager-spec.md` source: pre=0 post=0 delta=0 / `internal/template/templates/.claude/agents/core/manager-spec.md` mirror: pre=0 post=0 delta=0 (body content edit, no @MX tag) |
+| @MX tag delta scan (.yaml files modified) | PASS | `catalog.yaml`: hash regen cascade only (L53 canonical path via gen-catalog-hashes.go --all), @MX tag 무관 (yaml format) |
+| Mx Step C judge: SKIP vs EVALUATE [iter-2 updated] | EVALUATE-PASS | Per `mx-tag-protocol.md §a`: SKIP condition strict (`.go file count = 0`) NOT met (1 .go file present), but @MX tag delta = 0 across ALL modified files → EVALUATE-PASS (structural-only changes, no @MX-tag-worthy semantic). Selected precedent: TMD-001 (Sprint 7 entry, 1 .go + 1 .yaml, MEMORY L53 documented EVALUATE-PASS pattern). |
 
-### Mx-phase Audit-Ready Signal (placeholder)
+### Mx-phase Audit-Ready Signal
 
 ```
-mx_complete_at: TBD
-mx_status: TBD (SKIP-justified expected per IVB-001/SARM-001/TMC-001 precedent; iter-2 1 .go file scope expansion does not change the expected outcome — slice entry addition is structural-only with no @MX-tag-worthy semantic change)
-mx_commit_sha: TBD (if any Mx-chore commit needed for progress.md finalization)
+mx_complete_at: 2026-05-24T21:30:00Z
+mx_status: EVALUATE-PASS (1 .go file + 1 .yaml file scope; @MX tag delta = 0 across all modified files; structural-only changes per TMD-001 precedent)
+mx_step_c_verdict: EVALUATE-PASS (NOT SKIP — .go file count > 0 strict condition unmet)
+mx_commit_sha: <this commit SHA, populated post-push>
+multi_session_coordination_note: |
+  SIV-001 4-phase lifecycle was distributed across multiple orchestrator sessions:
+    - Earlier session: plan (ee06d7fae) + run (0e103eacc) + sync (8b75ebbb3)
+    - Session cd8d8946-e06f-4c76-a3ab-869eba092356 (current): Mx-chore EVALUATE-PASS finalization
+  No race detected for SIV-001 specifically. Same multi-session coordination gap as ARR-001 (see ARR-001 progress.md §E.5 multi_session_coordination_note). Both cited as motivating examples for SPEC-V3R6-MULTI-SESSION-COORD-001 (next paste-ready).
+```
+
+### Lifecycle Close Signal
+
+```
+lifecycle_close_at: 2026-05-24T21:30:00Z
+final_status: completed (4-phase lifecycle closed: plan + run + sync + Mx EVALUATE-PASS)
+total_commits: 4 (plan ee06d7fae + run 0e103eacc + sync 8b75ebbb3 + Mx-chore <this commit>)
+total_push_count: 4
+sprint_position: Sprint 8 P1 entry SPEC — L51 7th regex pre-write self-check protocol embedded; manager-spec body canonical for SPEC ID validation. Tier S minimal 1-pass cohort 8/8 (IVB/SARM/TMC/TMD/HCW/ARR/**SIV**) — 100% sustained.
 ```
 
 ## §G. Lifecycle Cross-References
