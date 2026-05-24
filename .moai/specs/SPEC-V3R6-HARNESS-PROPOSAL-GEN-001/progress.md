@@ -22,8 +22,8 @@ tags: "harness, proposal, progress, tier-m"
 | Plan | audit-ready | 2026-05-24 | 2026-05-24 | e5b2859a9 |
 | Plan Audit | PASS 0.935 (skip-eligible) | 2026-05-24 | 2026-05-24 | e5b2859a9 |
 | Run (M1) | complete | 2026-05-24 | 2026-05-24 | 24cb6ad4b (see §B.2 attribution note) |
-| Sync | complete | 2026-05-24 | 2026-05-24 | TBD |
-| Mx (Step C) | pending | — | — | — |
+| Sync | complete | 2026-05-24 | 2026-05-24 | de760710a |
+| Mx (Step C) | EVALUATE-PASS | 2026-05-24 | 2026-05-24 | TBD-this-commit |
 
 ## §B. Audit-Ready Signal
 
@@ -34,10 +34,12 @@ plan_commit_sha: e5b2859a9fa23f00c53ad3af74115235834009c0
 run_complete_at: 2026-05-24T22:30:00Z
 run_status: complete
 run_commit_sha: 24cb6ad4b5c11cd5dfab56429fef674f93f4d062
-sync_complete_at: null
-sync_commit_sha: pending
-mx_complete_at: null
-mx_commit_sha: pending
+sync_complete_at: 2026-05-24T22:55:35Z
+sync_commit_sha: de760710ac16161965966ce17748f9a9d3899c4f
+mx_complete_at: 2026-05-24T23:10:00Z
+mx_commit_sha: TBD-this-commit
+mx_judgment: EVALUATE-PASS
+mx_judgment_rationale: "11 NEW .go files (24cb6ad4b race-absorbed) all pure functions with 1-caller fan_in surface; no goroutines, no complexity >=15, no high fan_in (>=3 callers). MX:ANCHOR not required, MX:WARN not required, MX:NOTE optional. EVALUATE-PASS per mx-tag-protocol.md §a."
 ```
 
 ## §B.1 Run-phase Evidence (M1)
@@ -116,3 +118,32 @@ Expected: `0 0` (clean) or `0 N` (local ahead). `N 0` or `N M` triggers AskUserQ
 ## §H. Open Issues
 
 None at plan completion. All architectural and policy decisions resolved (see §D and §E).
+
+## §I. Mx Step C Audit-Ready Signal (4-phase close)
+
+```yaml
+mx_phase_close_at: 2026-05-24T23:10:00Z
+mx_phase_judgment: EVALUATE-PASS
+mx_phase_scope_commits:
+  - 24cb6ad4b  # race-absorbed PROPOSAL-GEN-001 M1 (subject misattributed to COORD-001 per §B.2)
+  - 535b5b6ae  # attribution backfill chore (this SPEC scope)
+  - de760710a  # sync-phase artifacts (CHANGELOG + 4 frontmatter)
+mx_phase_go_files_in_scope: 11        # 11 NEW .go files in 24cb6ad4b
+mx_phase_mx_tag_delta: 0              # no @MX tags added (none required per criteria below)
+mx_phase_criteria_evaluation:
+  high_fan_in_ge3_callers: 0          # NEW exports all 1-caller surface (MX:ANCHOR not required)
+  goroutine_or_complexity_ge15: 0     # pure stateless functions (MX:WARN not required)
+  new_exports_consider_mx_note: optional  # MX:NOTE not mandatory
+mx_phase_verdict_rationale: |
+  EVALUATE-PASS per mx-tag-protocol.md §a. 11 NEW .go files in PROPOSAL-GEN-001
+  M1 are pure functions (reader/mapper/scaffolder) and cobra CLI factory with
+  1-caller fan_in surface. No goroutines, no complexity ≥15, no dangerous
+  patterns. MX:ANCHOR not required (1-caller), MX:WARN not required (no danger),
+  MX:NOTE optional (low fan_in exports). Subsequent V3R6+ SPECs that route
+  multiple callers to proposalgen.* APIs would warrant MX:ANCHOR addition;
+  for the current 1-caller harness CLI invocation pattern, no @MX tags are
+  required and EVALUATE-PASS is the canonical judgment.
+mx_phase_4_phase_close: complete
+```
+
+Sprint 8 P3 SPEC-V3R6-HARNESS-PROPOSAL-GEN-001 4-phase lifecycle (plan + run + sync + Mx) COMPLETE. V3R4 self-evolving harness learning loop generator half CLOSED. Generator is "future-data ready" — current 8-record / 4-system-event-pattern data correctly produces 0 actionable proposals (REQ-PGN-014 empirical PASS via CLI smoke).
