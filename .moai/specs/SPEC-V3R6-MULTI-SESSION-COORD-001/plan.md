@@ -132,7 +132,7 @@ progress.md      # NEW — lifecycle status + run/sync/Mx placeholders
 9. Smoke test each subcommand (table-driven, verify exit code 0)
 10. JSON output marshal stability test (parse output back to verify)
 
-**Verification**: AC-COORD-021 PASS via `moai session --help` + per-verb smoke
+**Verification**: AC-COORD-013 PASS via `moai session --help` + per-verb smoke
 
 ### §C.3 M3 — Hook Integration
 

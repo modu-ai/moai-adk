@@ -51,7 +51,7 @@ tags: "multi-session, coordination, registry, hook, race-mitigation"
 ### §B.2 REQ + AC Counts
 
 - **REQ count**: 24 (REQ-COORD-001..024)
-- **AC count**: 12 (AC-COORD-001..012)
+- **AC count**: 16 (AC-COORD-001..016) — iter-2 D1+D2 resolution added AC-COORD-013/014/015/016
 - **Architecture layers**: 4 (L1 registry + L2 paste-ready tagging + L3 hook + L4 pre-spawn rule)
 - **Milestones**: 5 (M1 Go primitive + M2 CLI + M3 hook + M4 rule + M5 finalization)
 - **Risks**: 6 (atomic-write portability + hook timeout + threshold tuning + false-positive + session_id collision + self-bootstrap)
@@ -118,7 +118,7 @@ plan_auditor_defects:
   D1_BROKEN_AC_REFERENCE:
     severity: SHOULD-FIX
     location: plan.md:135, spec.md:243
-    description: AC-COORD-021 cited but acceptance.md max is AC-COORD-012 (does not exist)
+    description: 'iter-1 cited a non-existent AC ID (max AC was AC-COORD-012); resolved in iter-2 by adding AC-COORD-013 + replacing plan.md:135 + spec.md:243 references'
     inline_fix_path: |
       Add AC-COORD-013 (REQ-COORD-021 CLI 5 verbs verification): `moai session --help | grep -cE '^  (register|heartbeat|deregister|list|purge)' → 5` + `moai session list --json | jq type → "array"`.
       Update plan.md:135 + spec.md:243 to reference AC-COORD-013. Update progress.md §D.2 AC roster + §B.2 ac_count 12 → 13.
@@ -161,7 +161,7 @@ plan_auditor_defects:
 artifact_count: 4
 artifact_line_count_total: 1301  # spec 353 + plan 291 + acceptance 393 + progress 264
 req_count: 24
-ac_count: 12                   # planned 13 after iter-2 or run-phase inline-fix
+ac_count: 16                   # iter-2 resolved D1 (AC-COORD-013) + D2 (AC-COORD-014/015/016 cover REQ-006/018/020; REQ-012/024 trace-orphan documented in spec.md §C.5)
 architecture_layers: 4
 milestones: 5
 risks: 6
@@ -204,6 +204,62 @@ case_3_staging_area_race_observed: |
   Follow-up chore commit (별도)에서 incident 명시 후 spec body update는 별도 turn.
 
   영향 평가: 데이터 손실 0 (모든 변경 보존), 다른 세션 정상화 가능 (nothing-to-commit), commit message 정확성 보완 필요.
+
+# ============================================================
+# iter-2 audit-ready signal (manager-spec re-engage + plan-auditor iter-2)
+# ============================================================
+
+plan_auditor_iter_2:
+  scored_at: 2026-05-24T23:30:00Z
+  plan_auditor_iter: 2
+  plan_auditor_score: 0.922
+  plan_auditor_verdict: PASS
+  plan_auditor_threshold: 0.80   # Tier M baseline
+  plan_auditor_skip_eligible: true    # 0.922 ≥ 0.90 → Phase 0.5 Plan Audit Gate MAY be skipped at /moai run entry per spec-workflow.md §Plan Audit Gate skip policy
+  plan_auditor_monotonic_progress: true   # iter-1 0.812 → iter-2 0.922 (+0.110 delta, STOP signal NOT triggered)
+  plan_auditor_dimensions:
+    clarity: 0.93              # +0.01 from iter-1 0.92 (Case 3 forensic narrative concrete with commit SHAs)
+    completeness: 0.92         # +0.04 from iter-1 0.88 (iter-2 HISTORY entry + L48 trace-orphan rationale block)
+    testability: 0.91          # +0.06 from iter-1 0.85 (AC-013/014/015/016 all binary-testable, AC-016 awk additive-order assertion rigorous)
+    traceability: 0.93         # +0.28 LIFT from iter-1 0.65 (D1+D2 root cause fully resolved, bidirectional REQ↔AC matrix complete)
+  plan_auditor_must_pass:
+    MP-1_REQ_sequencing: PASS    # 24 sequential REQ-COORD-001..024, no gaps, no duplicates
+    MP-2_EARS_compliance: PASS   # 11 Ubiquitous + 9 Event-Driven + 1 State-Driven + 1 Optional + 1 Unwanted + 1 nested cross-cutting
+    MP-3_frontmatter_validity: PASS  # 12 canonical fields × 4 artifacts = 48/48 verified
+    MP-4_tier_classification: AUTO-PASS  # Tier M justified plan.md §A.1
+  plan_auditor_defects_resolved_in_iter_2:
+    - D1_BROKEN_AC_REFERENCE: CLOSED        # AC-COORD-021 → AC-COORD-013 across 4 files, 0 residual references (grep verified)
+    - D2_UNCOVERED_REQs: CLOSED              # REQ-006/018/020 → AC-COORD-014/015/016; REQ-021 → AC-COORD-013; REQ-012/024 → L48 trace-orphan documented spec.md §C.5
+    - CASE_3_documentation: CLOSED           # spec.md §A.1 Case 3 sub-section + §F.6 L4 scope reinforcement (added Case 3 empirical evidence to motivating examples)
+  plan_auditor_defects_persisted:
+    D3_arch_diagram_dependency_direction:
+      severity: MINOR
+      disposition: defer (same as iter-1; cosmetic, sync-phase candidate)
+    D4_M2_LOC_inconsistency:
+      severity: MINOR
+      disposition: defer (same as iter-1; cosmetic, run-phase reports actual)
+    D5_self_bootstrap_risk_aspirational:
+      severity: MINOR
+      disposition: defer (severity reduced by iter-2 §F.6 L4 scope reinforcement addition)
+    D6_SHOULD_to_MUST:
+      severity: N/A
+      disposition: downgraded — SHOULD is appropriate in §D Forward-Looking Behavioral Tests context (post-merge guidance, NOT normative AC); line shift due to iter-2 content additions
+  plan_auditor_defects_new_in_iter_2: []   # zero new defects
+  plan_auditor_recommendation_iter_2: |
+    PASS at 0.922 ≥ 0.90 → skip-eligible per spec-workflow.md §Plan Audit Gate skip policy.
+    Phase 0.5 Plan Audit Gate MAY be skipped at /moai run entry.
+    Commit-as-is for plan-phase close. iter-3 NOT warranted.
+    Top 2-3 strengths of iter-2:
+      1. Traceability +0.28 lift (root-cause weakness fully resolved via 4 NEW ACs + L48 trace-orphan block)
+      2. Case 3 forensic addition (commit 24cb6ad4b, 14 files, 20× scope drift) + §F.6 L4 reinforcement (implementable assertions)
+      3. AC verification quality (jq type / Go test name / behavioral contract grep / awk additive-order assertion)
+    Next: /moai run SPEC-V3R6-MULTI-SESSION-COORD-001 (Phase 0.5 SKIP-eligible per CONST-V3R5-026).
+artifact_line_count_total_iter_2: 1473    # spec 366 + plan 291 + acceptance 459 + progress 357 (+83 from iter-1 1390)
+b12_self_test_iter_2:
+  changelog_count: 0           # sync-phase not yet run — expected
+  ac_count: 16                 # 12 → 16 (+4 NEW: AC-COORD-013/014/015/016)
+  frontmatter_status_unchanged: PASS   # all 4 frontmatters status: draft retained
+  frontmatter_updated_field: PASS      # all 4 frontmatters updated: 2026-05-24
 ```
 
 ## §D Run-Phase Evidence (placeholder — filled by manager-develop)
@@ -234,6 +290,10 @@ case_3_staging_area_race_observed: |
 | AC-COORD-010 | pending | — |
 | AC-COORD-011 | pending | — |
 | AC-COORD-012 | pending | — |
+| AC-COORD-013 | pending | — |
+| AC-COORD-014 | pending | — |
+| AC-COORD-015 | pending | — |
+| AC-COORD-016 | pending | — |
 
 ### §D.3 Cross-Platform Build Matrix
 

@@ -31,8 +31,12 @@ tags: "multi-session, coordination, registry, hook, race-mitigation"
 | **AC-COORD-010** | L4 | Rule body specifies AskUserQuestion options (wait / override / abort) on non-empty `moai session list --json` output | MUST | REQ-COORD-019 |
 | **AC-COORD-011** | Cross | Cross-platform build matrix (linux/amd64 + darwin/amd64 + darwin/arm64 + windows/amd64) exits 0 | MUST | REQ-COORD-022 |
 | **AC-COORD-012** | Cross | `go vet ./internal/session/... ./cmd/moai/...` + `golangci-lint run --timeout=2m` exit 0 issues | MUST | REQ-COORD-023 |
+| **AC-COORD-013** | CLI | `moai session` exposes 5 verbs (register / heartbeat / deregister / list / purge) with `--json` support | MUST | REQ-COORD-021 |
+| **AC-COORD-014** | L1 | `QueryActiveWork(opt_spec_id)` returns slice filtered by spec_id when non-empty arg | MUST | REQ-COORD-006 |
+| **AC-COORD-015** | L4 | When `moai session list --json --filter-spec=<SPEC-ID>` returns `[]`, orchestrator proceeds normally without AskUserQuestion | MUST | REQ-COORD-018 |
+| **AC-COORD-016** | L4 | `.claude/rules/moai/core/agent-common-protocol.md` § Pre-Spawn Sync Check preserves original 2-command batch verbatim (git fetch + git rev-list); 3rd command is additive only | MUST | REQ-COORD-020 |
 
-Total ACs: 12 (10 layer-specific + 2 cross-cutting).
+Total ACs: 16 (12 layer-specific + 2 cross-cutting + 1 CLI + 1 L1 filter).
 
 ### §A.1 Out of Scope
 
@@ -227,6 +231,68 @@ golangci-lint run --timeout=2m
 
 **Pass criterion**: `go vet` exit 0 + no output + `golangci-lint` reports `0 issues.`
 
+### §B.13 AC-COORD-013 — `moai session` Exposes 5 Verbs with `--json` Support
+
+**Verification**:
+```bash
+moai session --help | grep -cE '^  (register|heartbeat|deregister|list|purge)'
+# Expected: 5
+
+moai session list --json | jq type
+# Expected: "array"
+```
+
+**Pass criterion**: Verb count exactly 5 + `list --json` returns valid JSON array (possibly empty `[]`).
+
+### §B.14 AC-COORD-014 — `QueryActiveWork(opt_spec_id)` Filters by spec_id
+
+**Verification**:
+```bash
+go test -race -run TestQueryActiveWorkFilter ./internal/session/
+```
+
+**Expected**: Test sets up 3 entries with spec_ids `SPEC-A`, `SPEC-B`, `SPEC-A`. Calling `QueryActiveWork("SPEC-A")` returns slice of length 2 containing only `SPEC-A` entries. Calling `QueryActiveWork("")` returns all 3 entries.
+
+**Pass criterion**: PASS — filter behavior verified for non-empty and empty `opt_spec_id` arg.
+
+### §B.15 AC-COORD-015 — Empty Result Proceeds Normally
+
+**Verification**:
+```bash
+# When no other session is active, the orchestrator pre-spawn 3rd command returns []
+moai session list --json --filter-spec=SPEC-X-001 | jq length
+# Expected: 0 (when no concurrent session is registered on SPEC-X-001)
+```
+
+Behavioral contract (documented in `.claude/rules/moai/core/agent-common-protocol.md` § Pre-Spawn Sync Check Interpretation Matrix):
+
+```
+| Output  | Action                                          |
+|---------|-------------------------------------------------|
+| `[]`    | proceed normally (REQ-COORD-018)                |
+| `[{...}]` | STOP + AskUserQuestion (wait/override/abort)   |
+```
+
+**Pass criterion**: Grep the interpretation matrix in agent-common-protocol.md after M4 — must contain both `[]` proceed and non-empty STOP rows.
+
+### §B.16 AC-COORD-016 — Original 2-Command Batch Preserved Verbatim
+
+**Verification**:
+```bash
+# Assert the original git fetch + git rev-list commands appear verbatim in agent-common-protocol.md
+grep -cE "^git fetch origin main" .claude/rules/moai/core/agent-common-protocol.md
+# Expected: ≥ 1
+
+grep -cE "^git rev-list --count --left-right origin/main\.\.\.HEAD" .claude/rules/moai/core/agent-common-protocol.md
+# Expected: ≥ 1
+
+# Assert the new 3rd command is additive (appears after the 2-command batch)
+awk '/git fetch origin main/{found_fetch=1} /moai session list --json/{if (found_fetch) print "ADDITIVE_OK"}' .claude/rules/moai/core/agent-common-protocol.md | grep -c ADDITIVE_OK
+# Expected: ≥ 1
+```
+
+**Pass criterion**: All 3 grep/awk verifications return ≥ 1 — original 2-command batch preserved verbatim AND 3rd command appears AFTER (additive only).
+
 ## §C Invariants (PRESERVE)
 
 ### §C.1 PRESERVE List (11 entries — verbatim through plan/run/sync/Mx)
@@ -314,7 +380,7 @@ After 30 minutes of inactivity (no Heartbeat), entry SHOULD be auto-purged on ne
 
 [HARD] Run-phase complete when ALL of the following hold:
 
-1. ✅ All 12 ACs PASS (B.1 ~ B.12 verification commands all exit 0 with expected outputs)
+1. ✅ All 16 ACs PASS (B.1 ~ B.16 verification commands all exit 0 with expected outputs)
 2. ✅ All 5 invariants hold (§C.1 PRESERVE / §C.2 @MX delta / §C.3 no HARNESS-PROPOSAL-GEN touch / §C.4 path-specific add / §C.5 frontmatter 12-field)
 3. ✅ Cross-platform build matrix green (4 GOOS/GOARCH combos)
 4. ✅ Test coverage ≥ 85% for `internal/session/` package
@@ -332,10 +398,10 @@ grep -cE "SPEC-V3R6-MULTI-SESSION-COORD-001" CHANGELOG.md
 # Expected: ≥ 1 (1 [Unreleased] entry)
 ```
 
-(b) **AC count match**: acceptance.md AC row count = 12 (matches §A summary matrix)
+(b) **AC count match**: acceptance.md AC row count = 16 (matches §A summary matrix)
 ```bash
 grep -cE '^\| \*\*AC-COORD-[0-9]+\*\*' .moai/specs/SPEC-V3R6-MULTI-SESSION-COORD-001/acceptance.md
-# Expected: 12
+# Expected: 16
 ```
 
 (c) **Frontmatter status transition**: all 4 artifacts have `status: implemented` (sync-phase completes the transition from `draft` → `implemented` via manager-docs)

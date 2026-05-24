@@ -18,6 +18,7 @@ tags: "multi-session, coordination, registry, hook, race-mitigation"
 ## HISTORY
 
 - 2026-05-24: Plan-phase artifacts created. Tier M. 4-layer architecture (Go primitive + CLI + hook + pre-spawn rule extension). Origin: ARR-001/SIV-001 race incident 2026-05-24 + L52 lesson + CLAUDE.local.md §23.8.
+- 2026-05-24: Plan-phase iter-2 — D1 broken AC reference (iter-1 cited a non-existent AC ID) resolved by adding AC-COORD-013 (CLI 5 verbs verification, REQ-COORD-021 trace). D2 six uncovered REQs resolved: REQ-COORD-006/018/020/021 covered by new AC-COORD-013/014/015/016; REQ-COORD-012/024 documented as L48 trace-orphan in §C.5. Case 3 staging-area race (commit `24cb6ad4b`, 20× scope drift) added to §A.1 as 3rd empirical case + §F.6 mitigation extended with L4 scope reinforcement (`git diff --cached --name-only` pre-commit assertion).
 
 ## §A Background
 
@@ -41,6 +42,14 @@ SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 (ARR-001)의 4-phase lifecycle가 202
 
 Commits: `e5b2859a9` (HARNESS-PROPOSAL-GEN-001 plan) + `2b99be826` (progress.md backfill).
 Cross-reference: 본 SPEC plan.md §E PRESERVE list snapshot이 spawn 시점에는 `?? .moai/specs/SPEC-V3R6-HARNESS-PROPOSAL-GEN-001/` (untracked)였는데, manager-spec return 시점에는 main에 통합되어 status에서 사라진 것이 동시 활동의 증거.
+
+**Case 3 (staging-area race, 2026-05-24 ≈22:54 KST)**: 본 SPEC plan-phase 직후 progress.md `§C plan-auditor iter-1` row backfill을 위한 chore commit이 STAGING AREA RACE를 일으켰다. 의도는 `git add .moai/specs/SPEC-V3R6-MULTI-SESSION-COORD-001/progress.md` (1-file scope)였으나, 실제 commit `24cb6ad4b`는 14 files (1881 insertions vs intended ~92 insertions, **20× scope drift**)를 포함하여 origin/main에 push되었다. 흡수된 13 files는 concurrent session의 SPEC-V3R6-HARNESS-PROPOSAL-GEN-001 run-phase + sync-phase + Mx-phase 산출물이었다 (e5b2859a9 + 2b99be826 + 추가 commits의 working tree 잔여물).
+
+**Race signal**: `git status`가 본 commit 직전 14 modified/added files을 보였고, `git add .moai/specs/SPEC-V3R6-MULTI-SESSION-COORD-001/progress.md` 단일 path만 staging 의도였으나, 본 세션의 prior `git add -A` 또는 staging-area carry-over로 13 files이 silent하게 staged 상태였다. `git commit -m "chore..."`이 staged area 전체를 commit하면서 race가 표면화되었다. Push range mismatch (`535b5b6ae..24cb6ad4b` 의도 1 file vs 실제 14 files)로 retrospectively 감지되었다.
+
+**이 케이스는 L44 HARD (pre-spawn fetch obligation)의 한계를 입증한다**: fetch는 동일 commit-base를 보장할 뿐 staging-area scope-drift는 다루지 않는다. §F.6 mitigation에서 별도 다룬다.
+
+Commit reference: `24cb6ad4b` (본 SPEC chore commit이지만 13 PROPOSAL-GEN-001 files 흡수); `bdee48858` (governance documentation of this incident).
 
 ### §A.2 Cross-References (Verbatim Citation Sources)
 
@@ -154,6 +163,8 @@ Cross-reference: 본 SPEC plan.md §E PRESERVE list snapshot이 spawn 시점에�
 
 **REQ-COORD-024** (Unwanted): The system shall NOT modify the registry file format or schema after initial implementation without a follow-up SPEC; the schema in REQ-COORD-002 is the canonical contract.
 
+**REQ-COORD-012 + REQ-COORD-024 — Trace-orphan tolerance**: REQ-COORD-012 (Optional: backward compat for memory files lacking source_session_id) and REQ-COORD-024 (Unwanted: schema freeze post-implementation) are deliberately NOT covered by dedicated ACs per L48 SSOT canonical principle (spec.md is single source of truth for Requirements; Optional/Unwanted variants may remain trace-orphan if their behavioral assertion is captured implicitly by other ACs or by the absence of failure modes). REQ-COORD-012 is implicitly verified by AC-COORD-015 (orchestrator proceed-on-empty behavior — which applies equally when entries lack source_session_id as a degenerate empty-result case). REQ-COORD-024 is a future-looking prohibition with no observable behavior at run-phase; its enforcement is meta (any SPEC that modifies the schema must explicitly cite REQ-COORD-024 as superseded), and therefore lives outside the AC matrix scope.
+
 ## §D Architecture
 
 ### §D.1 Layer Breakdown
@@ -240,7 +251,7 @@ This pattern guarantees no partial-write corruption even if multiple Go processe
 | Milestone | Deliverable | Dependency | Verification |
 |-----------|-------------|------------|--------------|
 | M1 | `internal/session/registry.go` + `internal/session/registry_test.go` Go primitive with 5 functions + atomic-write semantics + unit tests | none | AC-COORD-001..004 + AC-COORD-011..012 |
-| M2 | `cmd/moai/session.go` CLI subcommand (5 verbs, --json flag) + `internal/cli/root.go` registration | M1 | AC-COORD-021 (verified via `moai session --help` + per-verb smoke test) |
+| M2 | `cmd/moai/session.go` CLI subcommand (5 verbs, --json flag) + `internal/cli/root.go` registration | M1 | AC-COORD-013 (verified via `moai session --help` + per-verb smoke test) |
 | M3 | `internal/hook/session_start.go` modification (3-step protocol) + `.claude/hooks/moai/handle-session-start.sh` modification (session_id pass-through) | M1 (registry) | AC-COORD-007..008 |
 | M4 | `.claude/rules/moai/core/agent-common-protocol.md` extension + `.claude/rules/moai/workflow/session-handoff.md` extension + `.claude/output-styles/moai/moai.md` extension (paste-ready tagging) | none (documentation) | AC-COORD-005..006 + AC-COORD-009..010 |
 | M5 | progress.md finalization + frontmatter status `draft → implemented` for all 4 artifacts + run-phase evidence/audit-ready signal | M1-M4 | progress.md §D run-phase complete + B12 self-test |
@@ -307,6 +318,8 @@ M4 may be authored in parallel with M1-M3 since it is documentation-only with no
 - Implementation SPEC is single-session (this SPEC's run-phase delegated to manager-develop in one session)
 - Pre-spawn check (current 2-command batch) suffices for this SPEC's run-phase
 - Post-merge, all subsequent SPECs benefit from the 3-command batch
+- **L4 scope reinforcement (added per Case 3 empirical evidence)**: pre-commit assertion `git diff --cached --name-only | sort -u` MUST be verified against the intended scope before EVERY commit on shared working tree. When the cached file set diverges from intent, the session MUST `git reset` (atomic clear of staging area, no destructive operation) and re-stage with explicit per-path `git add <specific-path>` invocations. This complements but does NOT replace L44 HARD pre-spawn fetch.
+- **Cross-reference**: `CLAUDE.local.md` §23.8 Multi-Session Race Mitigation (defense-in-depth policy at user-facing layer) is updated in parallel by orchestrator to reflect Case 3 evidence.
 
 ## §G Cross-References
 
