@@ -1,16 +1,16 @@
 ---
 id: SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001
 artifact: acceptance
-version: "0.1.0"
+version: "0.1.1"
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
 plan_commit_sha: "<pending>"
 ---
 
-## §A — Mandatory Acceptance Criteria (AC-WPG-001..010)
+## §A — Mandatory Acceptance Criteria (AC-WPG-001..011)
 
-10 mandatory ACs covering all 13 REQs. Severity per `.claude/rules/moai/quality/boundary-verification.md` § Severity Classification.
+11 mandatory ACs covering all 13 REQs. Severity per `.claude/rules/moai/quality/boundary-verification.md` § Severity Classification.
 
 ### AC-WPG-001 — GEARS-first language in plan.md entry file
 
@@ -142,10 +142,10 @@ grep -rE 'IF .* THEN' \
 **Evidence command**:
 ```bash
 diff -q .claude/skills/moai/workflows/plan.md internal/template/templates/.claude/skills/moai/workflows/plan.md
-diff -r .claude/skills/moai/workflows/plan/ internal/template/templates/.claude/skills/moai/workflows/plan/ | grep -v "Only in.*\.gitkeep"
+diff -r .claude/skills/moai/workflows/plan/ internal/template/templates/.claude/skills/moai/workflows/plan/ | grep -v "^Only in .*: \.gitkeep$"
 ```
 
-**Pass criterion**: Both commands produce empty output (apart from the .gitkeep exemption).
+**Pass criterion**: Both commands produce empty output. The anchored pattern `^Only in .*: \.gitkeep$` matches only the `.gitkeep` template-only divergence line; any other unmatched output (e.g., genuine byte divergence in a tracked file) will pass through and fail the check.
 
 **Verifies**: REQ-WPG-007, REQ-WPG-012.
 
@@ -211,6 +211,23 @@ git diff --cached --name-only | sort -u
 
 **Verifies**: L46 attribution discipline + L48 SSOT discipline + L59 pre-commit staging scope.
 
+### AC-WPG-011 — spec-assembly.md cross-link to canonical frontmatter schema SSOT
+
+**Severity**: Major (P1)
+
+**Given** M1 has completed and `.claude/skills/moai/workflows/plan/spec-assembly.md` has been GEARS-aligned
+**When** the orchestrator scans `spec-assembly.md` for a cross-link to the canonical frontmatter schema SSOT
+**Then** the file shall contain at least 1 explicit reference to `spec-frontmatter-schema.md` in the Phase 2 SPEC document creation section, replacing or supplementing any inline restatement of the 12 canonical frontmatter fields
+
+**Evidence command**:
+```bash
+grep -c 'spec-frontmatter-schema.md' .claude/skills/moai/workflows/plan/spec-assembly.md
+```
+
+**Pass criterion**: Output ≥ 1 (cross-link present, reduces drift risk per §22 SSOT discipline).
+
+**Verifies**: REQ-WPG-009 (cross-link instead of inline 12-field restatement).
+
 ## §B — Traceability Matrix (REQ-WPG ↔ AC-WPG)
 
 | REQ ID | AC IDs | Coverage |
@@ -223,7 +240,7 @@ git diff --cached --name-only | sort -u
 | REQ-WPG-006 (Event-driven: GEARS appears first) | AC-WPG-001, AC-WPG-003 | Full |
 | REQ-WPG-007 (Event-driven: mirror parity sync) | AC-WPG-007, AC-WPG-008 | Full |
 | REQ-WPG-008 (State-driven: EARS legacy retention) | AC-WPG-002, AC-WPG-003, AC-WPG-005 | Full |
-| REQ-WPG-009 (State-driven: frontmatter cross-link) | AC-WPG-008 | Full (indirect via §H cross-references in spec.md) |
+| REQ-WPG-009 (State-driven: frontmatter cross-link) | AC-WPG-011 | Full (direct: grep verifies cross-link presence in spec-assembly.md) |
 | REQ-WPG-010 (Capability-gate: no EARS warning) | AC-WPG-009 | Full |
 | REQ-WPG-011 (Event-detected: no IF/THEN intro) | AC-WPG-006, AC-WPG-009 | Full |
 | REQ-WPG-012 (Event-detected: mirror parity halt) | AC-WPG-007, AC-WPG-009 | Full |
@@ -254,17 +271,17 @@ If `go run ./cmd/moai spec lint --json` baseline at M1 start differs from baseli
 
 - [x] spec.md created with 12 canonical frontmatter fields + 13 REQ-WPG entries (≥80% GEARS notation; this SPEC achieves 100%)
 - [x] plan.md created with 6-milestone decomposition + lifecycle table + verification batch
-- [x] acceptance.md created with 10 mandatory ACs + traceability matrix + edge cases
+- [x] acceptance.md created with 11 mandatory ACs + traceability matrix + edge cases
 - [x] progress.md created with plan_commit_sha placeholder
 - [ ] Phase 0.5 plan-auditor independent verification ≥ 0.85 PASS (target 0.90 skip-eligible)
 
 ### D.2 Run-phase Definition of Done
 
-- [ ] M1: 4 local files edited per §D Milestone Decomposition
+- [ ] M1: 4 local files edited per §D Milestone Decomposition (including spec-assembly.md cross-link to spec-frontmatter-schema.md SSOT per REQ-WPG-009 / AC-WPG-011)
 - [ ] M2: 4 template mirror files byte-for-byte parity (AC-WPG-007 PASS)
-- [ ] M3: Sentinel verification batch + lint regression check (AC-WPG-006, AC-WPG-009 PASS)
-- [ ] M4: spec.md frontmatter `status: draft → in-progress` (AC-WPG-008 PASS) + pre-commit staging scope ≤ 10 paths (AC-WPG-010 PASS)
-- [ ] 10/10 ACs PASS verified inline in progress.md §E.2
+- [ ] M3: Sentinel verification batch + lint regression check (AC-WPG-006, AC-WPG-009 PASS) + spec-assembly.md cross-link grep ≥ 1 (AC-WPG-011 PASS)
+- [ ] M4: spec.md frontmatter `status: draft → in-progress` (AC-WPG-008 PASS) + pre-commit staging scope exactly 10 paths per single commit (AC-WPG-010 PASS)
+- [ ] 11/11 ACs PASS verified inline in progress.md §E.2
 
 ### D.3 Sync-phase Definition of Done
 
@@ -284,7 +301,7 @@ If `go run ./cmd/moai spec lint --json` baseline at M1 start differs from baseli
 This SPEC follows the cohort-3 FOUNDATION-CORE-GEARS-ALIGN-001 precedent:
 - Tier M, 1-pass run-phase target (6 commits acceptable: M1+M2+M3+M4 split, M5 sync, M6 Mx)
 - Plan-auditor target 0.87+ (PASS), 0.90+ (skip-eligible)
-- 13 REQs + 10 ACs (cohort-3 had 12 REQs + 9 ACs; this is appropriately scaled to 4-file scope)
+- 13 REQs + 11 ACs (cohort-3 had 12 REQs + 9 ACs; this is appropriately scaled to 4-file scope; +1 AC vs iter-1 closes D2 REQ-WPG-009 trace orphan)
 - 100% GEARS self-dogfood (cohort-3 achieved similar)
 - L46 + L48 + L59 attribution + SSOT + staging discipline maintained
 - Template mirror parity enforced via `diff -q` in M2 + AC-WPG-007

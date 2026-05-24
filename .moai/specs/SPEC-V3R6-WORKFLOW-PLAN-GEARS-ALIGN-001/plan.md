@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001
 artifact: plan
-version: "0.1.0"
+version: "0.1.1"
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -31,7 +31,7 @@ manager-develop receives a single spawn prompt enumerating:
 - Section A: file inventory (8 exact paths: 4 local + 4 mirror)
 - Section B: 13 edit zones (4 in plan.md, 3 in clarity-interview.md, 6 in spec-assembly.md, 0 in context-discovery.md)
 - Section C: 13 REQs (REQ-WPG-001..013) with GEARS-first phrasing patterns
-- Section D: 10 mandatory ACs (AC-WPG-001..010) with traceability matrix
+- Section D: 11 mandatory ACs (AC-WPG-001..011) with traceability matrix (iter-2 added AC-WPG-011 closing REQ-WPG-009 trace orphan)
 - Section E: verification batch (mirror parity `diff -q`, sentinel `grep -E 'IF .* THEN'`, lint regression, frontmatter status transition)
 
 ### B.2 Cohort precedent fidelity
@@ -88,9 +88,9 @@ Predecessor pattern observed from FOUNDATION-CORE-GEARS-ALIGN-001 `0156c7003` (T
 |------|-------------|-----------|------------|
 | `plan.md` | Lines 4, 37, 54, 62 | 4 | 4 (description block + intro + 2 phase routing table cells) |
 | `clarity-interview.md` | Lines 169, 175, 184 | 3 | 3 (Phase 1B agent task + output description + transition header) |
-| `spec-assembly.md` | Lines 73, 138, 260, 418, 506, 530 | 6 | 6 (Phase 2 frontmatter intro + frontmatter checklist + traceability summary + quality gate + completion check + Phase 1B JWT example) |
+| `spec-assembly.md` | Lines 73, 138, 260, 418, 506, 530 | 6 | 7 (Phase 2 frontmatter intro + frontmatter checklist + traceability summary + quality gate + completion check + Phase 1B JWT example + NEW cross-link to spec-frontmatter-schema.md SSOT per REQ-WPG-009) |
 | `context-discovery.md` | (none) | 0 | 0 (mirror parity only) |
-| **Total** | | **13** | **13** |
+| **Total** | | **13** | **14** |
 
 ### §C.3 Out-of-scope (preserved verbatim — L48 SSOT discipline)
 
@@ -110,7 +110,7 @@ Predecessor pattern observed from FOUNDATION-CORE-GEARS-ALIGN-001 `0156c7003` (T
 Path-specific scope:
 - `.claude/skills/moai/workflows/plan.md` — 4 edit zones (description frontmatter, intro para, 2 phase routing table cells)
 - `.claude/skills/moai/workflows/plan/clarity-interview.md` — 3 edit zones (Phase 1B agent task, Phase 1B output description, transition header to spec-assembly)
-- `.claude/skills/moai/workflows/plan/spec-assembly.md` — 6 edit zones (Phase 2 intro, frontmatter checklist intro, REQ format description, AC traceability summary, quality gate criteria, JWT example)
+- `.claude/skills/moai/workflows/plan/spec-assembly.md` — 7 edit zones (Phase 2 intro, frontmatter checklist intro, REQ format description, AC traceability summary, quality gate criteria, JWT example + NEW cross-link to spec-frontmatter-schema.md SSOT per REQ-WPG-009)
 - `.claude/skills/moai/workflows/plan/context-discovery.md` — no edits (mirror parity only)
 
 Edit pattern (GEARS-first with EARS legacy footnote):
@@ -119,8 +119,9 @@ Edit pattern (GEARS-first with EARS legacy footnote):
 - Replace verbatim "EARS ↔ AC coverage" → "GEARS ↔ AC coverage"
 - Replace verbatim "EARS-format requirements" → "GEARS-notation requirements (EARS legacy form accepted for pre-v3 SPECs until 2026-11-22)"
 - Add cross-link footnote to `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format at first GEARS reference in each file
+- In `spec-assembly.md` Phase 2 SPEC document creation section, add explicit cross-link to `.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields (REQ-WPG-009: cross-link instead of inline 12-field restatement to reduce drift risk per §22 schema SSOT)
 
-Verifies REQ-WPG-001, REQ-WPG-002, REQ-WPG-003, REQ-WPG-004, REQ-WPG-005, REQ-WPG-006, REQ-WPG-008, REQ-WPG-013.
+Verifies REQ-WPG-001, REQ-WPG-002, REQ-WPG-003, REQ-WPG-004, REQ-WPG-005, REQ-WPG-006, REQ-WPG-008, REQ-WPG-009, REQ-WPG-013.
 
 ### M2 — Template mirror parity sync (4 files)
 
@@ -181,8 +182,8 @@ Per Status Transition Ownership Matrix (`spec-frontmatter-schema.md` § Status T
 1. Update spec.md frontmatter `status: draft → in-progress` (frontmatter-only edit, body content untouched per L48 SSOT)
 2. Update spec.md frontmatter `updated: <today-ISO>`
 3. Append progress.md §E.2 Run-phase Audit-Ready Signal with M1+M2+M3 verification evidence
-4. Verify all 10 mandatory ACs (AC-WPG-001..010) PASS via inline assertion table in progress.md §E.2
-5. Pre-commit staging assertion (L59): `git diff --cached --name-only | sort -u | wc -l` must equal exactly 11 (8 .md files + spec.md frontmatter + progress.md + 1 manager-develop ownership backfill marker)
+4. Verify all 11 mandatory ACs (AC-WPG-001..011) PASS via inline assertion table in progress.md §E.2
+5. Pre-commit staging assertion (L59): `git diff --cached --name-only | sort -u | wc -l` must equal exactly 10 (8 .md files: 4 local + 4 mirror + spec.md frontmatter + progress.md). If M1+M2+M3+M4 split across multiple commits, each commit asserts its own subset count.
 
 Verifies REQ-WPG-007, REQ-WPG-009, REQ-WPG-012, REQ-WPG-013.
 
@@ -219,7 +220,7 @@ With progress.md §E.5 Mx-phase Audit-Ready Signal documenting SKIP-eligible ver
 ```bash
 # V1: Mirror parity (4 file pairs)
 diff -q .claude/skills/moai/workflows/plan.md internal/template/templates/.claude/skills/moai/workflows/plan.md
-diff -r .claude/skills/moai/workflows/plan/ internal/template/templates/.claude/skills/moai/workflows/plan/ | grep -v "Only in.*\.gitkeep"
+diff -r .claude/skills/moai/workflows/plan/ internal/template/templates/.claude/skills/moai/workflows/plan/ | grep -v "^Only in .*: \.gitkeep$"
 
 # V2: GEARS notation present
 grep -c 'GEARS' .claude/skills/moai/workflows/plan.md .claude/skills/moai/workflows/plan/clarity-interview.md .claude/skills/moai/workflows/plan/spec-assembly.md

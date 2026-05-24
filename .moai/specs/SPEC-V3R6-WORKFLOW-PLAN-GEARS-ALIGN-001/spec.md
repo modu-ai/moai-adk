@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001
 title: "/moai plan workflow skill bundle GEARS notation alignment"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-05-25
 updated: 2026-05-25
@@ -20,6 +20,7 @@ tier: M
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-05-25 | manager-spec | Initial plan-phase draft — Sprint 10 GEARS sweep cohort entry SPEC #4 of 8. Cohort progression: SKILL-GEARS-ALIGN-001 closed `ebe492670`, PLAN-AUDITOR-GEARS-ALIGN-001 closed `ebe492670`, FOUNDATION-CORE-GEARS-ALIGN-001 closed `0156c7003`, **WORKFLOW-PLAN-GEARS-ALIGN-001 (THIS)**, downstream: DOCS-SITE-FULL, WORKFLOW-SPEC-EXTRAS, MISC-DOCS, RULES-GO-DOCS. |
+| 0.1.1 | 2026-05-25 | manager-spec | iter-2 focused fix per plan-auditor iter-1 PASS 0.867 (NOT skip-eligible). D1 RESOLVED: plan.md M4 staging count 11→10 (Option A — phantom "ownership backfill marker" removed, aligned with acceptance.md AC-WPG-010). D2 RESOLVED: new AC-WPG-011 added with direct grep verification for spec-assembly.md → spec-frontmatter-schema.md cross-link (Option A — closes REQ-WPG-009 trace orphan, traceability 0.85→0.93). D3 RESOLVED: AC-WPG-007 grep pattern anchored to `^Only in .*: \.gitkeep$`. Side-effect updates: spec-assembly.md edit zones 6→7 (cross-link addition counts as edit zone), AC count 10→11 across all 3 files, total edit zones 13→14. Predicted iter-2 plan-auditor: 0.90+ skip-eligible. |
 
 ## §A — Goals
 
@@ -140,7 +141,7 @@ GEARS notation self-dogfood targets ≥80% of REQ entries below. Mix:
 
 ## §E — Acceptance Criteria Reference
 
-See `acceptance.md` for the full AC-WPG-001..AC-WPG-010 mandatory matrix, traceability mapping (REQ-WPG-XXX → AC-WPG-XXX), and predecessor pattern fidelity table.
+See `acceptance.md` for the full AC-WPG-001..AC-WPG-011 mandatory matrix (11 ACs; iter-2 added AC-WPG-011 closing REQ-WPG-009 trace orphan via direct grep verification), traceability mapping (REQ-WPG-XXX → AC-WPG-XXX), and predecessor pattern fidelity table.
 
 ## §F — Non-Goals
 
@@ -168,7 +169,7 @@ Risk: a sloppy GEARS rewrite at any of the 6 spec-assembly.md edit zones may acc
 
 ### G.4 Plan-auditor below skip threshold (Low)
 
-Risk: Tier M plan-auditor score may fall below 0.85 PASS threshold or 0.90 skip-eligible threshold. **Mitigation**: 13 REQs (100% GEARS self-dogfood), 10 mandatory ACs, explicit traceability matrix, clear scope boundaries, explicit out-of-scope enumeration. Target plan-auditor 0.87+ (PASS), aim for 0.90+ skip-eligible.
+Risk: Tier M plan-auditor score may fall below 0.85 PASS threshold or 0.90 skip-eligible threshold. **Mitigation**: 13 REQs (100% GEARS self-dogfood), 11 mandatory ACs (iter-2 added AC-WPG-011 closing REQ-WPG-009 trace orphan), explicit traceability matrix with 100% direct coverage, clear scope boundaries, explicit out-of-scope enumeration. Target plan-auditor 0.90+ (skip-eligible).
 
 ### G.5 Discovered count variance below estimate (Low — already mitigated)
 
