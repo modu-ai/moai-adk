@@ -11,7 +11,7 @@ phase: "v3.0.0"
 module: ".moai/specs"
 lifecycle: spec-anchored
 tags: "spec-lint, missing-exclusions, baseline-cleanup, h3-pattern, retroactive, tier-s"
-sync_commit_sha: "<pending>"
+sync_commit_sha: "0d777471c21f36f827752608ea6b7bcceea09fd8"
 ---
 
 # SPEC-V3R6-SPEC-LINT-CLEANUP-001 — Implementation Plan (Tier S minimal Section A)

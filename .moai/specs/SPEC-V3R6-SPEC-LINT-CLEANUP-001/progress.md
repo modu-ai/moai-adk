@@ -159,7 +159,7 @@ Run-phase commits follow Conventional Commits format with SPEC-V3R6-SPEC-LINT-CL
 
 ## §E. Sync-phase Audit-Ready Signal
 
-- **sync_commit_sha**: <will be backfilled after sync commit>
+- **sync_commit_sha**: 0d777471c21f36f827752608ea6b7bcceea09fd8
 - **sync_date**: 2026-05-25
 - **Trust-but-verify 7-item batch** (post-sync, expected):
   - V1: HEAD commit attribution to SPEC-V3R6-SPEC-LINT-CLEANUP-001 sync — PASS
