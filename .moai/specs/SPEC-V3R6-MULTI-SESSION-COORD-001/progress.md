@@ -20,11 +20,11 @@ tags: "multi-session, coordination, registry, hook, race-mitigation"
 | Phase | Status | Commit SHA | Timestamp (UTC) | Notes |
 |-------|--------|------------|-----------------|-------|
 | Plan | merged | `4d09214e9` (iter-1) + `e34e1d750` (iter-2 PASS 0.922) | 2026-05-24T23:30:00Z | 4 artifacts authored by manager-spec, plan-auditor iter-2 PASS skip-eligible |
-| Run M1 — Go primitive | implemented | PENDING_BACKFILL (bundled M1-M5) | 2026-05-25T07:00:00Z | `internal/session/registry.go` (473 LOC) + lock_unix/lock_windows + tests (598+148 LOC); 93.7% coverage on registry files |
-| Run M2 — CLI subcommand | implemented | PENDING_BACKFILL (bundled M1-M5) | 2026-05-25T07:00:00Z | `internal/cli/session.go` (212 LOC) + smoke tests (262 LOC); 5 verbs PASS |
-| Run M3 — Hook integration | implemented | PENDING_BACKFILL (bundled M1-M5) | 2026-05-25T07:00:00Z | `internal/hook/session_start.go` (+77 LOC for runMultiSessionProtocol helper) + 3 multi-session tests (147 LOC); handle-session-start.sh unchanged (session_id pass-through already correct) |
-| Run M4 — Rule + output-style extension | implemented | PENDING_BACKFILL (bundled M1-M5) | 2026-05-25T07:00:00Z | 3 .md files extended + 3 template mirror cp byte-identical |
-| Run M5 — Progress finalization | implemented | PENDING_BACKFILL (bundled M1-M5) | 2026-05-25T07:00:00Z | progress.md §D + §E filled, 4 frontmatters `draft → in-progress` per spec-frontmatter-schema.md ownership matrix |
+| Run M1 — Go primitive | implemented | `4b90e6de6` | 2026-05-25T07:00:00Z | `internal/session/registry.go` (473 LOC) + lock_unix/lock_windows + tests (598+148 LOC); 93.7% coverage on registry files |
+| Run M2 — CLI subcommand | implemented | `4b90e6de6` | 2026-05-25T07:00:00Z | `internal/cli/session.go` (212 LOC) + smoke tests (262 LOC); 5 verbs PASS |
+| Run M3 — Hook integration | implemented | `4b90e6de6` | 2026-05-25T07:00:00Z | `internal/hook/session_start.go` (+77 LOC for runMultiSessionProtocol helper) + 3 multi-session tests (147 LOC); handle-session-start.sh unchanged (session_id pass-through already correct) |
+| Run M4 — Rule + output-style extension | implemented | `4b90e6de6` | 2026-05-25T07:00:00Z | 3 .md files extended + 3 template mirror cp byte-identical |
+| Run M5 — Progress finalization | implemented | `4b90e6de6` | 2026-05-25T07:00:00Z | progress.md §D + §E filled, 4 frontmatters `draft → in-progress` per spec-frontmatter-schema.md ownership matrix |
 | Sync | pending | — | — | manager-docs CHANGELOG + 4 frontmatter `in-progress → implemented` + B12 self-test |
 | Mx | pending | — | — | @MX tag delta scan + Step C verdict (EVALUATE-PASS expected, 4 NEW Go files candidate for @MX:NOTE+@MX:ANCHOR) |
 
@@ -334,7 +334,7 @@ Pre-existing 9 PRESERVE entries (4 modified + 5 untracked) remain verbatim throu
 
 ```yaml
 run_complete_at: 2026-05-25T07:00:00Z
-run_commit_sha: PENDING_BACKFILL_M1_M5_BUNDLED_COMMIT
+run_commit_sha: 4b90e6de6
 run_status: implemented
 preserve_list_post_run_count: 9   # 4 M + 5 ?? (PROPOSAL-GEN-001 already merged by concurrent session during plan-phase, count corrected from 10 to 9)
 ac_pass_count: 16
