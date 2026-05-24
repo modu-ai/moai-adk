@@ -12,6 +12,7 @@ module: ".claude/rules + internal/spec"
 lifecycle: spec-anchored
 tags: "anthropic-best-practice, audit-tier-3, progress, tier-m"
 tier: M
+sync_commit_sha: "511d4fca6"
 ---
 
 # Progress — SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001
@@ -24,13 +25,13 @@ tier: M
 
 | Phase | Status | Owner | Commit SHA | Date | Audit-Ready Signal |
 |-------|--------|-------|-----------|------|---------------------|
-| Plan | draft | manager-spec | (pending — orchestrator commit) | 2026-05-25 | §E.1 (below) |
-| Run M1 | pending | manager-develop | — | — | §E.2 |
-| Run M2 | pending | manager-develop | — | — | §E.2 |
-| Run M3 | pending | manager-develop | — | — | §E.2 |
-| Run final | pending | manager-develop | — | — | §E.3 |
-| Sync | pending | manager-docs | — | — | §E.4 |
-| Mx | pending | manager-docs OR orchestrator | — | — | §E.5 |
+| Plan | implemented | manager-spec | `342b7a02b` + `8736baeec` (iter-2 D1+D2+D3 fix) | 2026-05-25 | §E.1 |
+| Run M1 | implemented | orchestrator (post-blocker-resolution) | `9d77f890b` | 2026-05-25 | §E.2 |
+| Run M2 | implemented | manager-develop (narrow-scope re-spawn) | `9d76d72be` | 2026-05-25 | §E.2 |
+| Run M3 | implemented | orchestrator (schema+template-mirror+progress backfill) | `91adaa53f` | 2026-05-25 | §E.2 + §E.3 |
+| Run final | implemented | (M3 marks run-phase completion) | `91adaa53f` | 2026-05-25 | §E.3 |
+| Sync | implemented | manager-docs | `511d4fca6` | 2026-05-25 | §E.4 |
+| Mx | SKIP-eligible | orchestrator (per mx-tag-protocol.md §a) | n/a (no Mx commit) | 2026-05-25 | §E.5 |
 
 ---
 
@@ -179,7 +180,7 @@ manager-spec subagent invocation:
 - All 4 SPEC artifact frontmatter `status:` transitioned `in-progress → implemented`: **CONFIRMED** (spec.md + plan.md + acceptance.md + progress.md — all 4 frontmatter blocks updated)
 - `updated:` field updated to sync-phase date: **CONFIRMED** (2026-05-25 — consistent with run-phase)
 - `version:` field bumped: **CONFIRMED** (0.1.0 → 0.2.0 for all 4 artifacts, per Tier M semantic versioning pattern per recent sync commits SKILL-GEARS-ALIGN-001 + ATOMIC-WRITE-001)
-- sync-phase commit SHA: `906f9285e` (current HEAD, self-reference via `git log --format='%H' -1` post-push)
+- sync-phase commit SHA: `511d4fca6` (verified via `git log --format='%H' -1 -- CHANGELOG.md` post-push; L60 partial backfill defect corrected via chore commit — manager-docs initial write recorded `906f9285e` which was actually the parallel PLAN-AUDITOR-GEARS-ALIGN-001 plan commit absorbed between M3 push and sync push, L52 case 13 NEW)
 - sync-phase commit subject: `docs(SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001): sync-phase artifacts` (per ARR-001 canonical pattern, subject applied at commit time)
 - Forbidden ownership crossing verification: **CONFIRMED** spec.md / plan.md / acceptance.md body NOT modified — only frontmatter `status:` (in-progress → implemented) + `updated:` (date) + `version:` (0.1.0 → 0.2.0) updated (per ARR-001 manager-docs forbidden body crossing)
 - B12 sync-phase discipline checks:
@@ -190,13 +191,18 @@ manager-spec subagent invocation:
 
 ### §E.5 Mx-phase Audit-Ready Signal (manager-docs OR orchestrator)
 
-_To be populated at Mx-phase (post-sync close)._
+**Mx-phase complete signal** (2026-05-25 — SKIP-eligible per mx-tag-protocol.md §a):
 
-- Mx Step C judge (mx-tag-protocol.md §a):
-  - 11+ NEW .go files? — NO (only 2: lint.go + lint_test.go extension to existing file, not new files; 5 CLAUDE.md are markdown, not Go)
-  - Complexity≥15 / goroutines / fan_in≥3? — _pending_ (manager-develop M2 verification)
-  - **Likely Mx Step C verdict**: **SKIP-eligible** (markdown-heavy + lint rule extension, not new behavior code with complex flows)
-- Mx commit (if EVALUATE-PASS): _pending_
+- Mx Step C judge inputs:
+  - NEW .go files: **2** (`internal/spec/lint_ownership.go` 356L + `internal/spec/lint_ownership_test.go` 444L) — well under 11+ threshold
+  - Complexity≥15 / goroutines: **0** (pure-function rule, no concurrency primitives, no `go ` keyword in rule body)
+  - fan_in projection: `lint.go` has 1 registration line for `OwnershipTransitionRule` (line 125, `&OwnershipTransitionRule{}` in `defaultRules()` slice); rule body in `lint_ownership.go` is invoked only through the slice (single-caller projection) — under 3+ threshold
+  - 5 module CLAUDE.md (M1) are markdown, not Go — outside Mx scope
+  - Schema doc + template mirror (M3) are markdown — outside Mx scope
+  - **Mx Step C verdict**: **EVALUATE-SKIP** (markdown-heavy M1 + lint extension M2 with pure-function design + schema mirror M3, no behavior code with goroutines/high-complexity/high-fan_in requiring `@MX:ANCHOR` or `@MX:WARN` annotations)
+- Mx commit: **N/A** (no Mx commit emitted per SKIP-eligible verdict)
+- 4-phase close marker: **SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001 4-phase FULLY CLOSED on main** (plan `342b7a02b`+`8736baeec` + run M1+M2+M3 `9d77f890b`+`9d76d72be`+`91adaa53f` + sync `511d4fca6` + Mx SKIP-eligible — 6 attributable commits + 1 chore backfill commit)
+- chore backfill commit (this commit): backfills 4 SPEC artifact frontmatter `sync_commit_sha: "511d4fca6"` + §A Lifecycle Status Table rows + §E.4 SHA correction (906f9285e → 511d4fca6) + §E.5 Mx Step C SKIP-judge per L60 partial backfill defect remediation (manager-docs initial sync write omitted these fields)
 - Mx commit (if SKIP-eligible): N/A — skipped
 - 4-phase close verdict: _pending_
 - L26 EVALUATE-PASS rationale (if applicable): _pending_

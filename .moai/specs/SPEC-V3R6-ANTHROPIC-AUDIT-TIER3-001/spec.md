@@ -14,6 +14,7 @@ tags: "anthropic-best-practice, audit-tier-3, subdirectory-claude-md, dri-verifi
 tier: M
 depends_on: [SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001]
 related_specs: [SPEC-V3R6-MULTI-SESSION-COORD-001]
+sync_commit_sha: "511d4fca6"
 ---
 
 # SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001 — Anthropic Best-Practice Audit Tier 3 (F9 + F13)

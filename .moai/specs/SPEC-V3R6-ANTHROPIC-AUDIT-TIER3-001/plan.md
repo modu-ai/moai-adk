@@ -12,6 +12,7 @@ module: ".claude/rules + internal/spec"
 lifecycle: spec-anchored
 tags: "anthropic-best-practice, audit-tier-3, plan, tier-m"
 tier: M
+sync_commit_sha: "511d4fca6"
 ---
 
 # Plan — SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001
