@@ -23,7 +23,7 @@ tags: "harness, proposal, progress, tier-m"
 | Plan Audit | PASS 0.935 (skip-eligible) | 2026-05-24 | 2026-05-24 | e5b2859a9 |
 | Run (M1) | complete | 2026-05-24 | 2026-05-24 | 24cb6ad4b (see §B.2 attribution note) |
 | Sync | complete | 2026-05-24 | 2026-05-24 | de760710a |
-| Mx (Step C) | EVALUATE-PASS | 2026-05-24 | 2026-05-24 | TBD-this-commit |
+| Mx (Step C) | EVALUATE-PASS | 2026-05-24 | 2026-05-24 | ea8853eb9 |
 
 ## §B. Audit-Ready Signal
 
@@ -37,7 +37,7 @@ run_commit_sha: 24cb6ad4b5c11cd5dfab56429fef674f93f4d062
 sync_complete_at: 2026-05-24T22:55:35Z
 sync_commit_sha: de760710ac16161965966ce17748f9a9d3899c4f
 mx_complete_at: 2026-05-24T23:10:00Z
-mx_commit_sha: TBD-this-commit
+mx_commit_sha: ea8853eb9
 mx_judgment: EVALUATE-PASS
 mx_judgment_rationale: "11 NEW .go files (24cb6ad4b race-absorbed) all pure functions with 1-caller fan_in surface; no goroutines, no complexity >=15, no high fan_in (>=3 callers). MX:ANCHOR not required, MX:WARN not required, MX:NOTE optional. EVALUATE-PASS per mx-tag-protocol.md §a."
 ```
