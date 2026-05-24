@@ -113,7 +113,7 @@ backend, frontend, security, devops, performance, refactoring
 
 ### Builder Agents (1)
 
-platform
+harness
 
 ### Evaluator Agents (2)
 

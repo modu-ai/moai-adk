@@ -617,13 +617,14 @@ Dart/Flutter 캐논 이름: **"flutter"** (not "dart").
 
 ## 16. 오케스트레이터 자가 점검
 
-### [HARD] 자가 점검 3 질문 (복잡 작업 시작 전 필수)
+### [HARD] 자가 점검 4 질문 (복잡 작업 시작 전 필수)
 
 1. 이 작업은 전문 에이전트의 고유 도메인인가?
 2. 해당 전문 에이전트가 카탈로그에 존재하는가? (CLAUDE.md Section 4)
 3. 직접 수행보다 위임이 품질/독립성/편향 방지에 유리한가?
+4. 이 작업의 일부를 read-only sub-agent 병렬 spawn으로 분해할 수 있는가? (Anthropic "Exploration-First Pattern": WebFetch + Explore subagent로 분석 → main agent로 종합)
 
-**3개 모두 YES → 직접 수행 금지**. AskUserQuestion으로 위임 방식 확인 후 실행.
+**3개 이상 YES → 직접 수행 금지**. 4번째 질문도 YES인 경우 Exploration-First Pattern (read-only sub-agent 병렬 spawn) 우선 적용. AskUserQuestion으로 위임 방식 확인 후 실행.
 
 ### 수량 기반 트리거
 
