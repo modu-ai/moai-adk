@@ -184,6 +184,8 @@ The PR SHALL NOT introduce any new lint issues. Any new issue introduced during 
 
 ## Exclusions (What NOT to Build)
 
+### Out of Scope — CI baseline drift restoration limits
+
 - **NO** v3.0.0-rc2 or v3.0.0 GA release version bump — `pkg/version` SoT remains `v3.0.0-rc1`; only golden files are aligned to the existing SoT
 - **NO** behavioral changes to `moai status`, `moai update`, or any other command — only golden file content is updated
 - **NO** fix for the underlying `sunset.yaml` template-only design (REQ-MIG003-018 contract preserved)

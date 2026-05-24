@@ -265,6 +265,14 @@ The following follow-up SPECs are explicitly out of THIS SPEC's scope and may be
 
 This SPEC explicitly excludes the following work to maintain Tier M scope and avoid cascading concerns:
 
+### §C.1 Out of Scope — Cascading concerns and follow-up SPECs
+
+- Production Go code edits, template mirror cascade, historical SPEC archive moves, and master design doc cleanup are deferred to dedicated follow-up SPECs (LEGACY-CLEANUP-003 / 002 / 005 / 004 respectively).
+- CHANGELOG historical entries (pre-v3.0) are preserved as append-only audit trail per REQ-LCL-007.
+- AGENCY-ABSORB-001 self-references and docs-site `code-based-path.md` content are not touched.
+
+The numbered list below enumerates each excluded item with its full rationale.
+
 1. **Production Go code edits** — `internal/cli/migrate_agency*.go` and related (19 files) are excluded; the `moai migrate agency` CLI command keeps its identifier. Future SPEC: SPEC-V3R6-LEGACY-CLEANUP-003.
 
 2. **Template mirror file edits** — `internal/template/templates/.claude/...` (7 files) are excluded from THIS SPEC. Future SPEC: SPEC-V3R6-LEGACY-CLEANUP-002. Note: This creates a temporary template-source desync; SPEC-V3R6-LEGACY-CLEANUP-002 must follow IMMEDIATELY after this SPEC merges.

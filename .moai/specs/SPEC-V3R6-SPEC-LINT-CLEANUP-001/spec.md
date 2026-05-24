@@ -2,7 +2,7 @@
 id: SPEC-V3R6-SPEC-LINT-CLEANUP-001
 title: "spec-lint MissingExclusions baseline cleanup — H3 sub-heading retroactive application to 8 sibling SPECs"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
 author: GOOS행님

@@ -84,7 +84,7 @@ The hook reads this file in SessionEnd, validates frontmatter, writes to `<memor
 9. NEW test file `persist_test.go` with table-driven cases for: absent pending file no-op, present + valid → memory + MEMORY.md written, present + malformed frontmatter → log warning + leave pending untouched, present + missing fenced text block → log warning + leave pending untouched, parallel-write contention smoke test
 10. Pending file is left in place after successful persistence for orchestrator follow-up (orchestrator deletes it on next session-start, OR the hook deletes it on success — decision deferred to M3, recommendation: hook deletes on success to prevent stale-state confusion)
 
-### B.2 — Out-of-scope (explicit, bullet form)
+### B.2 — Out of Scope (explicit, bullet form)
 
 - Trigger detection — remains orchestrator self-discipline per `.claude/rules/moai/workflow/session-handoff.md` §When To Generate
 - Full 6-block structural validation — minimal sanity (heading presence + fenced block presence) only; structural validation is deferred to a future SPEC if the hook discovers persistent malformed-pending issues in production

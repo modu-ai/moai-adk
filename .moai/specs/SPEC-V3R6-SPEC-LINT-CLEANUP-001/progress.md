@@ -12,7 +12,7 @@ module: ".moai/specs"
 lifecycle: spec-anchored
 tags: "spec-lint, baseline-cleanup, progress, tier-s"
 plan_status: audit-ready
-run_status: pending
+run_status: audit-ready
 sync_status: pending
 mx_status: pending
 ---
@@ -23,9 +23,9 @@ mx_status: pending
 
 | Phase | Status | Started | Completed | Commit SHA |
 |-------|--------|---------|-----------|------------|
-| Plan | audit-ready | 2026-05-25 | 2026-05-25 | (pending — orchestrator commit) |
-| Plan Audit | iter-1 PASS 0.917 (self-audit, skip-eligible) | 2026-05-25 | 2026-05-25 | (same as plan commit) |
-| Run | pending | — | — | — |
+| Plan | audit-ready | 2026-05-25 | 2026-05-25 | `8630b40d0` |
+| Plan Audit | iter-1 PASS 0.917 (self-audit, skip-eligible) | 2026-05-25 | 2026-05-25 | `8630b40d0` |
+| Run | audit-ready | 2026-05-25 | 2026-05-25 | (pending — orchestrator commit) |
 | Sync | pending | — | — | — |
 | Mx (Step C) | pending | — | — | — |
 
@@ -104,6 +104,33 @@ ERROR MissingExclusions /Users/goos/moai/moai-adk-go/.moai/specs/SPEC-V3R6-TEMPL
 $ ~/go/bin/moai spec lint 2>&1 | grep -c MissingExclusions  # plan-phase 종료 시점
 10  # baseline 8 + parallel 2 (out of scope)
 ```
+
+## §B.2 Run-phase Evidence
+
+### Run-phase Must-Pass AC verification (manager-develop 2026-05-25)
+
+| AC | Verdict | Verification Command | Output |
+|----|---------|---------------------|--------|
+| AC-SLC-004 | PASS | `git diff --cached --name-only \| sort -u` (pre-commit assertion) | exactly 10 paths under `.moai/specs/` — 8 sibling `spec.md` + own `spec.md` (frontmatter status) + own `progress.md` |
+| AC-SLC-005 | PASS | per-sibling `git diff -- <path> \| grep -E '^-' \| grep -v '^---'` | 0 list-item-body deletions across all 8 siblings — only `###` H3 insertions and new `-` item insertions; semantic drift = 0 |
+| AC-SLC-006 | PASS-WITH-NOTE | `~/go/bin/moai spec lint 2>&1 \| grep -c MissingExclusions` | `2` — 8 in-scope sibling SPECs cleared; 2 parallel-drift entries (SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001 + SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001) explicitly out of scope per spec.md §5.3 + acceptance.md §D.4 edge case |
+
+### Per-sibling action summary
+
+| # | SPEC | 분류 | Action taken |
+|---|------|------|-------------|
+| 1 | SPEC-V3R6-CI-BASELINE-DRIFT-001 | A | Inserted `### Out of Scope — CI baseline drift restoration limits` H3 inside `## Exclusions` H2; existing 7 `- **NO** ...` items remain under the new H3. |
+| 2 | SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001 | B | Inserted `### Out of Scope — Hook cwd audit boundary` H3 inside `## Exclusions` H2; existing 10 `- **Modifying ...** —` items remain under the new H3. |
+| 3 | SPEC-V3R6-LEGACY-CLEANUP-001 | B | Inserted `### §C.1 Out of Scope — Cascading concerns and follow-up SPECs` H3 inside `## §C — Exclusions` H2 with 3 NEW `-` summary items + retained the 10 existing numbered items below (lint algorithm matches the `-` items between H3 and next H2). |
+| 4 | SPEC-V3R6-LEGACY-CLEANUP-002 | B | Existing `### §A.5 Exclusions (out of scope for this SPEC)` H3 retained verbatim; appended 3 NEW `-` items below the prose paragraph to satisfy lint algorithm `≥1 - item under H3 before next H2`. |
+| 5 | SPEC-V3R6-LEGACY-CLEANUP-003 | B | Inserted `### §C.1 Out of Scope — Production Go keyword cleanup boundary` H3 inside `## §C — Out of Scope` H2; existing 6 `-` items remain under the new H3. |
+| 6 | SPEC-V3R6-PROMPT-CACHE-001 | B | Renamed `### Out of Scope` heading to `### Out of Scope — Cache breakpoint scope limits` AND inserted 3 NEW `-` items + bridge paragraph between H3 and the existing H4 sub-sections (lint algorithm scans `-` items between H3 and next H2 at line 72 `## 4. EARS Requirements`). |
+| 7 | SPEC-V3R6-SESSION-HANDOFF-AUTO-001 | B (hyphenated form) | Replaced heading `### B.2 — Out-of-scope (explicit, bullet form)` → `### B.2 — Out of Scope (explicit, bullet form)` only (hyphenated `Out-of-scope` did not match `strings.Contains(lower, "out of scope")` because hyphens are not spaces). Existing 8 `-` items unchanged. |
+| 8 | SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001 | A | Inserted `### §2.1 Out of Scope — Template neutrality audit boundary` H3 inside `## §2 Non-Goals` H2; existing 8 `-` items remain under the new H3. |
+
+### Pre-commit assertion (L4 verification per CLAUDE.local.md §23.8 + L59 NEW)
+
+`git diff --cached --name-only | sort -u` MUST return exactly the 10 expected paths before commit. Path-specific `git add` invocations only — NO `git add -A` / `git add .` to honor PRESERVE 9 entries (4 M + 5 ?? — see plan.md §A.4 + spawn prompt §B10).
 
 ## §C. Multi-session race coordination context
 

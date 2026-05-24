@@ -127,3 +127,7 @@ Mirror operation is a verbatim file-copy (`cp -p` semantics or equivalent); no m
 ### §A.5 Exclusions (out of scope for this SPEC)
 
 Mirror-target files NOT touched by LEGACY-CLEANUP-001 source edits — they remain unchanged in this SPEC. Specifically: docs-site, root markdown, CHANGELOG, README, and other 26+ template files unaffected by the 5-source-file scope.
+
+- Docs-site locale content (`docs-site/content/{en,ko,ja,zh}/...`) — handled by LEGACY-CLEANUP-001 M2/M3 directly on user-facing paths; no template mirror exists for docs-site content.
+- Root markdown files (`README.md`, `README.ko.md`, `README.ja.md`, `README.zh.md`, `CHANGELOG.md`) — not present under `internal/template/templates/` at the same relative path, so no mirror cascade applies.
+- The 26+ other template files under `internal/template/templates/` whose source counterparts contained no `agency` keyword in LEGACY-CLEANUP-001 — preserved byte-identical.

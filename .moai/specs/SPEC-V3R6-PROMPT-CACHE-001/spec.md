@@ -55,7 +55,13 @@ Sprint 1 Lane A 4/4 SPEC (2026-05-23 commit `fa658d927`) 머지로 always-loaded
 4. **Telemetry hook**: PostToolUse 후크가 API response에서 `cache_creation_input_tokens` / `cache_read_input_tokens` 필드 추출 후 `.moai/state/cache-usage.jsonl`에 append. 일별 집계 → cache hit rate metric 산출.
 5. **Smart 손익분기 guard**: 세션 길이 < 5분 (no second turn) 시 `cacheStrategy.session_ttl: "off"` bypass 권고 → 단일-turn 세션에서 +100% cache_write 페널티 회피.
 
-### Out of Scope
+### Out of Scope — Cache breakpoint scope limits
+
+- Auto-placing additional cache breakpoints inside long messages (per-paragraph optimization) — deferred to SPEC-V3R6-CACHE-GRANULAR-001.
+- GLM (Z.AI) cache compatibility — uses different control fields; deferred to Wave 3 SPEC-V3R6-BACKEND-ROUTING-001.
+- Pre-emptive background cache warming (cron-style) — out of scope; cache activates only on first user-triggered API call.
+
+Each of the three excluded categories is documented in the H4 sub-headings below with full rationale.
 
 #### Out of Scope: Per-message cache breakpoint optimization
 

@@ -31,6 +31,8 @@ tier: L
 
 본 SPEC은 다음을 **수행하지 않는다**:
 
+### §2.1 Out of Scope — Template neutrality audit boundary
+
 - Sprint 1 in-progress SPEC directories (`SPEC-V3R6-AGENT-MODEL-ROUTING-001/`, `SPEC-V3R6-HOOK-ASYNC-EXPAND-001/`, `SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001/`, `SPEC-V3R6-PROMPT-CACHE-001/`) 직접 수정 — 각 SPEC 개별 plan/run 흐름에서 처리
 - `docs-site/content/{en,ko,ja,zh}/book/` untracked 잔존 디렉토리 정리 — 별도 docs-site cleanup SPEC
 - `internal/hook/.moai/` working dir leak 정리 — git-strategy cleanup SPEC

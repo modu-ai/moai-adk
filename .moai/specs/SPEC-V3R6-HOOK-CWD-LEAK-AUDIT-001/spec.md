@@ -155,6 +155,8 @@ Acceptance criteria are defined in [acceptance.md](acceptance.md). Summary of th
 
 ## Exclusions (What NOT to Build)
 
+### Out of Scope — Hook cwd audit boundary
+
 The following are explicitly out of scope for this SPEC. Any work in these areas requires a separate SPEC.
 
 - **Modifying `internal/hook/subagent_stop.go`** — The `dispatchCapture` fix from commit `a9b3e8cd8` is shipping and correct. This SPEC PRESERVES that file unchanged.

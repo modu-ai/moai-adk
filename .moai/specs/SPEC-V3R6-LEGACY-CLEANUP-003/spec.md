@@ -161,6 +161,8 @@ Decision: MINIMAL SURGICAL rename. The default string is user-overridable via `r
 
 ## §C — Out of Scope
 
+### §C.1 Out of Scope — Production Go keyword cleanup boundary
+
 - Template mirror cascade (`internal/template/templates/.claude/*.md` content) — separate SPEC LCL-002 follow-up sweep
 - Markdown file cleanup in `.claude/`, `.moai/`, `docs-site/` — already closed by LCL-001
 - Public API breaking changes beyond the runtime package's internal parameter rename
