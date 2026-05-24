@@ -62,7 +62,14 @@ Phase 1 Result (.moai/specs/SPEC-001/spec.md):
 ==============================================
 ID: SPEC-001
 Title: JWT Authentication System
-EARS Format:
+GEARS Format (current):
+- [Ubiquitous] The auth service shall hash passwords using bcrypt.
+- [Event-driven] When a user submits credentials, the auth service shall validate them and return a JWT.
+- [State-driven] While a JWT is valid, the resource gateway shall grant the user access to protected resources.
+- [Where, capability] Where SSO is enabled, the auth service shall federate identity to the upstream IdP.
+- [Unwanted] The auth service shall not store plain-text passwords.
+
+EARS Format (legacy reference, 6-month backward-compat — expires 2026-11-22):
 - [Ubiquitous] System shall hash passwords using bcrypt
 - [Event-driven] When user submits credentials, system shall validate and return JWT
 - [State-driven] While token is valid, user shall access protected resources
@@ -84,7 +91,7 @@ Architecture Diagram: Created (docs/diagrams/auth-flow.mermaid)
 Token Usage: 35K/40K
 ```
 
-**Explanation**: SPEC-First DDD는 3단계로 진행됩니다. Phase 1에서 EARS 형식으로 요구사항을 정의하고, Phase 2에서 ANALYZE-PRESERVE-IMPROVE 사이클로 구현하며, Phase 3에서 문서를 생성합니다. 각 Phase 사이에 /clear를 실행하여 토큰을 절약합니다.
+**Explanation**: SPEC-First DDD는 3단계로 진행됩니다. Phase 1에서 GEARS 형식(current; EARS는 6개월 backward-compat legacy reference로 유지)으로 요구사항을 정의하고, Phase 2에서 ANALYZE-PRESERVE-IMPROVE 사이클로 구현하며, Phase 3에서 문서를 생성합니다. 각 Phase 사이에 /clear를 실행하여 토큰을 절약합니다.
 
 ---
 

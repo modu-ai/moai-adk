@@ -17,7 +17,7 @@ TRUST 5 Framework:
 SPEC-First DDD:
 - Purpose: Specification-driven development workflow
 - Phases: SPEC (Plan), DDD (Run), Docs (Sync)
-- Format: EARS (Event-Action-Response-State) specifications
+- Format: GEARS (Generalized EARS) — primary notation; EARS (Easy Approach to Requirements Syntax) retained as legacy reference for the 6-month backward-compatibility window (expires 2026-11-22)
 - Token Budget: 30K (SPEC) + 180K (DDD) + 40K (Docs) = 250K total
 
 Delegation Patterns:
@@ -195,7 +195,7 @@ async def spec_first_workflow(requirements: str):
     spec_manager = SPECManager()
     spec = await spec_manager.generate_spec(
         requirements=requirements,
-        format="EARS"
+        format="GEARS"  # current notation; format="EARS" supported for legacy SPECs during 6-month backward-compat window
     )
     print(f"Generated: {spec.id}")
 
@@ -374,7 +374,7 @@ moai-context analyze --show-breakdown
 moai-agent route --task "description" --dry-run
 
 # SPEC validation
-moai-spec validate SPEC-001 --format EARS
+moai-spec validate SPEC-001 --format GEARS  # current notation; --format EARS supported for legacy SPECs during the 6-month backward-compat window
 ```
 
 ### Validation Utilities
@@ -407,7 +407,8 @@ diagnose.verify_module_structure()
 
 - MoAI-ADK Documentation: See project README
 - Claude Code Skills Guide: https://docs.anthropic.com/claude-code/skills
-- EARS Specification Format: See `modules/spec-first-ddd.md`
+- GEARS Specification Format (current; canonical authoring guide): `.claude/skills/moai-workflow-spec/SKILL.md` § "GEARS Format"
+- EARS Specification Format (legacy reference, 6-month backward-compat): See `modules/spec-first-ddd.md` + `modules/spec-ears-format.md`
 
 ### Module References
 
@@ -444,7 +445,7 @@ TRUST 5 Implementation:
 - Track quality metrics over time
 
 SPEC-First Development:
-- Write clear EARS specifications
+- Write clear GEARS specifications (current notation; EARS retained as legacy reference for the 6-month backward-compat window)
 - Execute /clear between phases
 - Maintain 85%+ test coverage
 - Generate documentation with each feature

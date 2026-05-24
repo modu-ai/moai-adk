@@ -16,7 +16,7 @@ catalog:
             - name: moai-foundation-core
               tier: core
               path: templates/.claude/skills/moai-foundation-core/
-              hash: 5f7fffa319363b6f4c30ee526b521a9137534c695da166d77a8bb37fa8660063
+              hash: 9628f0930d2dee0dd4a58f5e5e2e40c9e453c022aa1cab81b388c60b539aa7a8
               version: 1.0.0
             - name: moai-foundation-quality
               tier: core
@@ -71,7 +71,7 @@ catalog:
             - name: moai-workflow-spec
               tier: core
               path: templates/.claude/skills/moai-workflow-spec/
-              hash: 3a37ae167fd1e0afb94fb935eb4e935fc73f5707799c0fd44813edba5672cdbe
+              hash: b15871c2e380d1f5914f5e301dc7ec683d04a1ec09d0cba3d0f2ca92c7c6de7a
               version: 1.0.0
             - name: moai-workflow-tdd
               tier: core
@@ -122,12 +122,12 @@ catalog:
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/core/manager-develop.md
-              hash: 12071447ab761e29fb698d077cf7fdc5c6006cb19310b98eff94fb2bfdd382da
+              hash: 9c45490dc667f6d693f94d640547b6493c1633335215e56f0cea30836c3a576b
               version: 1.0.0
             - name: manager-docs
               tier: core
               path: templates/.claude/agents/core/manager-docs.md
-              hash: 83d8d6f6ec95fd409228a7cfbecc490cf092c5609d3e8d344409ee364307b7f7
+              hash: 985911a27e0f775eb61be821abf073e918f891ac2eaa308eba13d5ad7b466887
               version: 1.0.0
             - name: manager-git
               tier: core
@@ -147,7 +147,7 @@ catalog:
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/core/manager-spec.md
-              hash: 20593de3cebe81f76435be2212472dd30bfe6378caa2e3a4b32eac3b232e4280
+              hash: ec47773118cd7e690a6fedfb4c3c6a7907a4174dd6fd604227a4e157f68698c9
               version: 1.0.0
             - name: manager-strategy
               tier: core
@@ -157,7 +157,7 @@ catalog:
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/meta/plan-auditor.md
-              hash: 1ec112f4fae16512f73147dbed9d7d72aba1c5f0572c62047ee59eee0adf3ca8
+              hash: b75e047670d9a1723315927816b91f79e96620361b0e4d7d48db6eaaf07e627b
               version: 1.0.0
             - name: researcher
               tier: core
