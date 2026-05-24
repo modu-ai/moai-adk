@@ -14,7 +14,7 @@ tags: "gears, ears, skill, foundation, core, guide, alignment, plan, sprint-10, 
 tier: M
 issue_number: null
 depends_on: [SPEC-V3R6-GEARS-MIGRATION-001, SPEC-V3R6-SKILL-GEARS-ALIGN-001, SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001]
-sync_commit_sha: "<pending>"
+sync_commit_sha: "a853f2954"
 ---
 
 # SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001 — Implementation Plan

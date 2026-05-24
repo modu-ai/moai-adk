@@ -13,9 +13,9 @@ lifecycle: spec-anchored
 tags: "gears, ears, skill, foundation, core, progress, sprint-10, v3.0.0"
 tier: M
 issue_number: null
-plan_commit_sha: "<pending>"
-run_commit_sha: "<pending>"
-sync_commit_sha: "<pending>"
+plan_commit_sha: "db64fc9bb"
+run_commit_sha: "50b63155d"
+sync_commit_sha: "a853f2954"
 depends_on: [SPEC-V3R6-GEARS-MIGRATION-001, SPEC-V3R6-SKILL-GEARS-ALIGN-001, SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001]
 ---
 
@@ -25,10 +25,10 @@ depends_on: [SPEC-V3R6-GEARS-MIGRATION-001, SPEC-V3R6-SKILL-GEARS-ALIGN-001, SPE
 
 | Phase | Status | Owner | Commit SHA | Date | Notes |
 |-------|--------|-------|------------|------|-------|
-| plan-phase | in-progress | manager-spec | (pending) | 2026-05-25 | 4 artifacts authored: spec.md (12 GEARS REQs + 10 EXCs + 6 risks), plan.md (6 milestones M1-M6 + verification strategy), acceptance.md (9 mandatory ACs + 4 edge cases + traceability matrix), progress.md (this file). Plan-phase audit-ready signal § E.1 below. |
-| run-phase | pending | manager-develop | — | — | Awaiting plan-phase commit + Phase 0.5 plan-auditor PASS. |
-| sync-phase | pending | manager-docs | — | — | Awaiting run-phase completion. |
-| Mx-phase | pending | orchestrator | — | — | Awaiting sync-phase completion; markdown-only run-phase suggests Mx Step C EVALUATE-SKIP likely (no .go files modified, no goroutines, no fan_in changes). |
+| plan-phase | COMPLETE | manager-spec | `db64fc9bb` | 2026-05-25 | 4 artifacts authored: spec.md (12 GEARS REQs + 10 EXCs + 6 risks), plan.md (6 milestones M1-M6 + verification strategy), acceptance.md (9 mandatory ACs + 4 edge cases + traceability matrix), progress.md (this file). plan-auditor iter-1 PASS 0.87 (Tier M, MARGINAL skip-eligibility, recommended skip iter-2). |
+| run-phase | COMPLETE | manager-develop | M1=`2e3fd4232`, M2=`2f1786281`, M3=`31a2e1783`, M4=`a85f7699c`, M5=`dd8a08a59`, M6=`50b63155d` | 2026-05-25 | 6 commits, 1-pass success. 9/9 ACs PASS (8 PASS + 1 PASS-WITH-NOTE for AC-FCG-006 catalog.yaml SSOT vs nonexistent embedded.go). Mirror parity 0 diff. 32 GEARS occurrences across 10 file pairs. 0 IF/THEN outside spec-ears-format.md. |
+| sync-phase | COMPLETE | manager-docs | `a853f2954` | 2026-05-25 | 4-artifact frontmatter `status: in-progress → implemented`. CHANGELOG entry added under [Unreleased] § Changed. L60 backfill: sync_commit_sha across 4 artifacts pending → a853f2954 (orchestrator chore). |
+| Mx-phase | COMPLETE (SKIP) | orchestrator | (this commit) | 2026-05-25 | EVALUATE-SKIP per mx-tag-protocol.md §a. 0 .go files modified (REQ-FCG-009 markdown-only). No @MX annotations required. |
 
 ## §B Known Issues + Conflicts
 
@@ -194,7 +194,7 @@ CHANGELOG.md entry added under `[Unreleased]` section documenting run-phase comp
 
 ```yaml
 sync_complete_at: 2026-05-25T<time>Z
-sync_commit_sha: <assigned-by-git-commit>
+sync_commit_sha: a853f2954
 sync_status: IMPLEMENTED
 b12_self_test_a_grep: grep -c 'SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001' CHANGELOG.md → 1 (unique entry, no duplicates)
 b12_self_test_b_ac_count: grep -cE '^AC-FCG-' acceptance.md → 9 (matches CHANGELOG reference count)
@@ -206,7 +206,19 @@ canary_compliance_check: All 4 artifacts have `sync_commit_sha:` field populated
 
 ### §E.5 Mx-phase Audit-Ready Signal
 
-**(pending — orchestrator will populate after Mx Step C judgment: EVALUATE-PASS / EVALUATE-SKIP based on .go file delta = 0 expected per Tier M markdown-only nature)**
+**Mx Step C judgment: EVALUATE-SKIP** per `mx-tag-protocol.md` §a — markdown-only run-phase scope (10 .md files + 10 mirror .md files + 1 catalog.yaml regen via `make build`), 0 .go files modified, no goroutines introduced, no fan_in surface changes, no new code complexity ≥15. `@MX:ANCHOR` / `@MX:WARN` annotations not required; `@MX:NOTE` annotations optional.
+
+```yaml
+mx_judgment_at: 2026-05-25
+mx_judgment: EVALUATE-SKIP
+mx_rationale: "markdown-only run-phase (REQ-FCG-009 satisfied: 0 .go files modified). Documentation transformation only; no behavioral surface change, no concurrency hazard, no fan_in change. mx-tag-protocol.md §a SKIP criteria met."
+go_files_modified: 0
+goroutines_introduced: 0
+fan_in_surface_delta: 0
+mx_annotations_added: 0
+```
+
+**4-phase CLOSE**: plan ✓ (`db64fc9bb`) → run ✓ (M1-M6: `2e3fd4232`..`50b63155d`) → sync ✓ (`a853f2954`) → mx ✓ (SKIP, this commit) → **CLOSED**.
 
 ## §F Milestones (cross-reference plan.md §D)
 
