@@ -625,7 +625,7 @@ Pre-emit self-check (MUST verify all 5 before printing):
 - [ ] Block 2 lists ≥1 memory file from `~/.claude/projects/{hash}/memory/` (most recent project memory + relevant lessons)
 - [ ] Block 4 has ≤4 numbered preconditions, each independently verifiable (`git`/`gh`/file existence command)
 - [ ] Block 5 is a single primary action (typically `/moai <subcommand>` or single command line)
-- [ ] L3 worktree case: Block 0 `[New Terminal — START IN WORKTREE] $ cd <abs-path> $ <launcher>` prepended + precondition 0) `git rev-parse --show-toplevel → <worktree-path>` added (per `session-handoff.md` §Worktree-Anchored Resume Pattern)
+- [ ] L3 worktree case: Block 0 `[New Terminal — START IN WORKTREE] $ cd <abs-path> $ <launcher>` prepended (Block 0 MUST surface 3 launchers verbatim: `moai cc` | `moai glm` | `claude` — per `session-handoff.md` §Worktree-Anchored Resume Pattern) + precondition 0) `git rev-parse --show-toplevel → <worktree-path>` added
 
 Auto-memory persistence (mandatory — without this, message is lost across `/clear`):
 - File path: `~/.claude/projects/{hash}/memory/project_<sprint>_<spec>_<status>.md`

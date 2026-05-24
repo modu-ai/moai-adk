@@ -105,11 +105,19 @@ Block 0 is **prepended** before Block 1:
 ```
 [New Terminal — START IN WORKTREE]
 $ cd <worktree-absolute-path>
-$ <session-launcher>
+$ <launcher>     # Choose one: moai cc | moai glm | claude
    └─ Claude Code session starts here (cwd = worktree)
 ```
 
-`<session-launcher>` ∈ `claude` (default), `moai cc [-p <name>]` (normal SPEC work), `moai cc --bypass` (sandboxed only), `moai cg` (Claude leader + GLM teammates; requires `tmux new-session` first), `moai glm` (GLM-only). For `--team`, use `moai cg` inside `tmux new-session -s <name>`.
+[ZONE:Evolvable] [HARD] Block 0 MUST surface the 3 primary launchers verbatim so the user can choose without consulting external docs:
+
+1. `moai cc` — Claude Code leader with MoAI orchestration (default for normal SPEC work; supports `-p <name>` profile flag)
+2. `moai glm` — cost-optimized GLM-only worker mode (no Claude Code leader, lower token cost)
+3. `claude` — native Claude Code without MoAI wrapper (minimal fallback)
+
+Advanced launchers (use only when user explicitly requests, NOT auto-surfaced in Block 0):
+- `moai cc --bypass` — sandboxed-only execution (testing scenarios)
+- `moai cg` — Claude leader + GLM teammates parallel mode (requires `tmux new-session -s <name>` first; pair with `--team`)
 
 ### Updated Block 4 (Preconditions)
 
@@ -132,7 +140,7 @@ Block 0 is REQUIRED only with L3 `--worktree`. For `--branch` (or no flag — 20
 ```
 [New Terminal — START IN WORKTREE]
 $ cd ~/.moai/worktrees/<project>/SPEC-MYPROJ-001
-$ moai cg
+$ moai cc        # 또는 moai glm | claude (3가지 launcher 중 선택; 본 예시는 moai cc)
 
 ultrathink. SPEC-MYPROJ-001 Wave N 진입.
 applied lessons: project_myproj_prev_wave_complete, lessons #12 #13 #14.
