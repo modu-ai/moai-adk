@@ -26,7 +26,7 @@ tags: "multi-session, coordination, registry, hook, race-mitigation"
 | Run M4 — Rule + output-style extension | implemented | `4b90e6de6` | 2026-05-25T07:00:00Z | 3 .md files extended + 3 template mirror cp byte-identical |
 | Run M5 — Progress finalization | implemented | `4b90e6de6` | 2026-05-25T07:00:00Z | progress.md §D + §E filled, 4 frontmatters `draft → in-progress` per spec-frontmatter-schema.md ownership matrix |
 | Sync | implemented | `58c70c66a` | 2026-05-25T16:45:00Z | manager-docs CHANGELOG + 4 frontmatter `in-progress → implemented` + B12 self-test (3/3 PASS) |
-| Mx | implemented | pending_post_commit | 2026-05-25T17:00:00Z | Step C verdict: **EVALUATE-PASS** (mx_tag_delta=0 per mx-tag-protocol.md §a criteria — pure-function/low-complexity/low-fan_in; PROPOSAL-GEN-001 precedent). Optional /moai mx follow-up eligible. |
+| Mx | implemented | ba9159fd2 | 2026-05-25T17:00:00Z | Step C verdict: **EVALUATE-PASS** (mx_tag_delta=0 per mx-tag-protocol.md §a criteria — pure-function/low-complexity/low-fan_in; PROPOSAL-GEN-001 precedent). Optional /moai mx follow-up eligible. |
 
 ### §A.1 Out of Scope
 
@@ -389,7 +389,7 @@ b12_self_test:
 
 ```yaml
 mx_complete_at: 2026-05-25T17:00:00Z
-mx_commit_sha: pending_post_commit   # backfilled post-chore-commit
+mx_commit_sha: ba9159fd2   # backfilled post-chore-commit
 mx_step_c_verdict: EVALUATE-PASS
 mx_step_c_rationale: |
   Per mx-tag-protocol.md §a EVALUATE-PASS criteria (PROPOSAL-GEN-001 precedent applied):
