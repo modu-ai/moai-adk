@@ -44,30 +44,37 @@ Default assumption is "this SPEC has defects". Your task is to disprove this ass
 
 Plausible failure modes to check in every SPEC:
 - REQ numbers have gaps or duplicates
-- Acceptance criteria use informal language rather than EARS patterns
+- Acceptance criteria use informal language rather than EARS/GEARS patterns
 - YAML frontmatter is missing required fields or has wrong types
 - Requirements contain implementation details (HOW, not WHAT/WHY)
 - Traceability is broken: some REQs have no AC, or some ACs trace to non-existent REQs
 - Language-specific tool names or library names are hardcoded in template-bound content
 - Exclusions section is absent or contains only vague entries
 - Contradictory requirements exist within the document
+- ACs use IF/THEN syntax without [DEPRECATED — use WHEN] marker (post-6-month backward-compat window, deprecation severity escalates from MINOR to BLOCKING)
 
 ### M3: Rubric Anchoring
 
-For EARS format compliance, anchor your judgment against these concrete examples:
+For EARS/GEARS format compliance, anchor your judgment against these concrete examples. GEARS is the current notation; EARS legacy patterns remain valid during the 6-month backward-compatibility window per SPEC-V3R6-GEARS-MIGRATION-001 v0.2.0 (PR #1046, commit 134a43fac, 2026-05-22) — through 2026-11-22.
 
-**Score 1.0** — All ACs match exactly one of the five EARS patterns:
-- Ubiquitous: "The [system] shall [response]"
-- Event-driven: "When [trigger], the [system] shall [response]"
-- State-driven: "While [condition], the [system] shall [response]"
-- Optional: "Where [feature exists], the [system] shall [response]"
-- Unwanted: "If [undesired condition], then the [system] shall [response]"
+**Score 1.0** — All ACs match exactly one of the five GEARS patterns (or their legacy EARS equivalents). The generalized `<subject>` MAY be any noun (system, component, service, agent, function, artifact) — substitution applies to all patterns:
 
-**Score 0.75** — Most ACs use EARS patterns; one or two use informal language ("should", "must try to") without full EARS structure.
+- Ubiquitous: "The <subject> shall [response]"
+- Event-driven: "When [trigger], the <subject> shall [response]"
+- State-driven: "While [condition], the <subject> shall [response]"
+- Where (capability-gate / feature flag / static config): "Where [capability exists], the <subject> shall [response]" — GEARS reframes `Where` as capability gate / feature flag / static config; NOT "feature option" (legacy EARS Optional usage)
+- Unwanted: "The <subject> shall not [action]" — GEARS canonical negative form; legacy `If [undesired condition], then the [system] shall [response]` retained with `[DEPRECATED — use shall not, see SPEC-V3R6-GEARS-MIGRATION-001]` annotation
 
-**Score 0.50** — Approximately half the ACs use EARS patterns; the rest are informal requirements or Given/When/Then test scenarios mislabeled as EARS.
+Note: GEARS compound clause `[Where ...][While ...][When ...] The <subject> shall <behavior>` (any subset of the three modifiers chained) is PASS-equivalent at Score 1.0.
 
-**Score 0.25** — Fewer than a quarter of ACs use EARS patterns; most are free-form text, user stories, or test cases presented as requirements.
+**Score 0.75** — Most ACs use EARS/GEARS patterns; one or two use informal language ("should", "must try to") without full EARS/GEARS structure.
+
+**Score 0.50** — Approximately half the ACs use EARS/GEARS patterns; the rest are informal requirements or Given/When/Then test scenarios mislabeled as EARS/GEARS.
+
+**Score 0.25** — Fewer than a quarter of ACs use EARS/GEARS patterns; most are free-form text, user stories, or test cases presented as requirements.
+
+See [GEARS notation](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation) — 4-locale canonical guide.
+Lint behavior canonicalized in SPEC-V3R6-GEARS-MIGRATION-001 v0.2.0 (PR #1046, commit 134a43fac, 2026-05-22). 6-month backward-compat window active through 2026-11-22.
 
 For Clarity anchoring:
 
@@ -123,7 +130,7 @@ Four criteria cannot be compensated by high scores in other dimensions. ANY sing
 
 **(MP-1) REQ Number Consistency**: REQ numbers must be sequential (REQ-001, REQ-002, ... REQ-N) with no gaps, no duplicates, and consistent zero-padding. Even one gap or duplicate = FAIL.
 
-**(MP-2) EARS Format Compliance**: Every acceptance criterion must match one of the five EARS patterns listed in M3. Informal language, Given/When/Then test scenarios mislabeled as EARS, or mixed informal/formal within a single criterion = FAIL.
+**(MP-2) EARS/GEARS Format Compliance**: Every acceptance criterion must match one of the five GEARS patterns (or their legacy EARS equivalents) listed in M3. Informal language, Given/When/Then test scenarios mislabeled as EARS/GEARS, or mixed informal/formal within a single criterion = FAIL. Backward compatibility: SPECs authored before SPEC-V3R6-GEARS-MIGRATION-001 v0.2.0 (predecessor migration) using EARS legacy notation remain valid for 6 months from v3.0.0 release; new SPECs SHOULD use GEARS canonical form.
 
 **(MP-3) YAML Frontmatter Validity**: Required fields must all be present with correct types. Required fields are: id (string), version (string), status (string), created_at (ISO date string), priority (string), labels (array or string). Any missing required field = FAIL. Type mismatch = FAIL.
 
