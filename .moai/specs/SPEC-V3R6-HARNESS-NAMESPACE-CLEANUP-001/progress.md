@@ -16,7 +16,7 @@ tier: S
 plan_commit_sha: "eb5d5764e"
 run_commit_sha: "0b99c4943"
 sync_commit_sha: "378ef732d"
-mx_commit_sha: "pending_post_commit"
+mx_commit_sha: "4485c772f"
 ---
 
 # Progress — SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001
@@ -173,7 +173,7 @@ b12_self_test:
 
 ```yaml
 mx_complete_at: 2026-05-25T17:30:00Z
-mx_commit_sha: pending_post_commit   # backfilled via self-reference (this chore commit doubles as Mx record)
+mx_commit_sha: 4485c772f   # backfilled via self-reference (this chore commit doubles as Mx record)
 mx_step_c_verdict: SKIP
 mx_step_c_rationale: |
   Per mx-tag-protocol.md §a Step C SKIP criteria — applies when:
