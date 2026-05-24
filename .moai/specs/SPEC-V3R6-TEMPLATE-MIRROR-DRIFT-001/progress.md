@@ -113,8 +113,8 @@ cascade_follow_up:
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_complete_at: 2026-05-24T<sync-commit-time>Z  # set on manager-docs CHANGELOG entry commit
-sync_commit_sha: <sync-commit>                    # manager-docs commit SHA (CHANGELOG + 4 frontmatter edits)
+sync_complete_at: 2026-05-24T02:15:48Z            # sync commit 009e68c5d timestamp (UTC)
+sync_commit_sha: 009e68c5d                        # manager-docs sync commit SHA (CHANGELOG + 4 frontmatter + §B.1 expansion)
 sync_status: completed                            # CHANGELOG entry + 4 frontmatter draft→implemented ✓
 b12_self_test_a_pre_emission_grep: 0              # pre-emission: grep -c 'SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001' CHANGELOG.md = 0 ✓
 b12_self_test_a_post_emission_grep: 1             # post-emission: grep -c 'SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001' CHANGELOG.md = 1 ✓
@@ -131,7 +131,7 @@ frontmatter_status_transitions:
 ## §E.5 Mx-phase Audit-Ready Signal
 
 ```yaml
-mx_complete_at: TBD
+mx_complete_at: 2026-05-24T02:18:09Z              # Mx scan execution timestamp (UTC)
 mx_disposition: EVALUATE                          # per spec.md §C.3: A4 `.go` registry change present, SKIP NOT eligible
 mx_disposition_rationale: |
   Per .claude/rules/moai/workflow/mx-tag-protocol.md §a, Mx Step C SKIP condition requires:
@@ -144,22 +144,39 @@ mx_disposition_rationale: |
   (rule_template_mirror_test.go already has explicit @MX:ANCHOR and @MX:NOTE at lines 24-26 and
   88-89; adding 1 slice entry does not change function fan_in or surface area).
 mx_tag_count_delta:
-  source_total: TBD                               # expected: 0 (4 .md sources unchanged per REQ-TMD-006)
-  mirror_total: TBD                               # expected: matches source (4 .md mirrors now byte-identical)
-  go_files: TBD                                   # expected: 0 new tags (registry add is mechanical slice insertion)
-mx_step_c_verdict: TBD                            # expected: EVALUATE-PASS (no @MX tag changes required)
+  source_total: 6                                 # spec-workflow.md=4 + agent-common-protocol.md=1 + plan-auditor.md=0 + hooks-system.md=1 = 6
+  mirror_total: 6                                 # byte-identical post-cp (diff -c source mirror = 0 @MX lines for all 4 pairs)
+  go_files: 0                                     # rule_template_mirror_test.go slice entry add: 0 new @MX tags (verified via git show 9fe1768e8 | grep -E '^\+' | grep '@MX' = 0 lines)
+  yaml_files: 0                                   # catalog.yaml line 160 hash field update only: 0 @MX impact
+mx_step_c_verdict: EVALUATE-PASS                  # @MX tag delta = 0 across all 6 scope files; EVALUATE procedure executed, no @MX tag changes required
 ```
 
 ## §E.6 4-Phase Lifecycle Close Signal
 
 ```yaml
-lifecycle_close_at: TBD
-final_status: draft                               # → completed after all 4 phases close + status transition
-total_commits: TBD                                # expected: 3 (plan self-commit + M1 run + manager-docs sync)
-                                                  # OR 4 if Mx orchestrator-direct chore needed (likely yes for EVALUATE-PASS frontmatter finalization)
-total_push_count: TBD                             # expected: 3-4 pushes (one per commit, hybrid trunk)
-sprint_position: Sprint 7 entry                   # follows Sprint 2 P4 trio close 38a638d3c
-next_action_paste_ready: TBD                      # populated by manager-docs sync (paste-ready resume message for next session)
+lifecycle_close_at: 2026-05-24T02:18:09Z          # final closure timestamp (Mx chore commit)
+final_status: completed                           # 4-phase lifecycle closed: plan(b2a3a14e1) + run(9fe1768e8) + sync(009e68c5d) + Mx-chore(this commit)
+total_commits: 4                                  # plan + run + sync + Mx-chore
+total_push_count: 4                               # one per commit (Hybrid Trunk 1-person OSS per CLAUDE.local.md §23.7)
+sprint_position: Sprint 7 entry COMPLETE          # follows Sprint 2 P4 trio close 38a638d3c — 4/4 Tier S minimal 1-pass success (P4 trio + Sprint 7 entry = 100%)
+next_action_paste_ready: |                        # Sprint 8 entry SPEC decision via AskUserQuestion (5 candidates per Sprint 7 closure memo)
+  ultrathink. Sprint 8 entry SPEC 결정 (Sprint 7 CLOSE — TMD-001 Tier S minimal 1-pass success).
+  applied lessons: project_sprint7_tmd001_complete, lessons L33 7th + L40 envelope override + L44 HARD 10x streak + L45 9th + L46 attribution 6th + L48 spec.md SSOT 5th + L49 8 cumulative 0 discrepancies + L51 SPEC ID regex pre-write + L52 NEW multi-session race coordination + L53 NEW catalog hash canonical path.
+
+  전제 검증:
+  1) git log --oneline -1 → <Mx-chore-SHA> (Sprint 7 entry SPEC 4-phase complete)
+  2) git fetch origin main && git rev-list --count --left-right origin/main...HEAD → 0 0 (L44 HARD pre-Sprint-8)
+  3) grep -c 'SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001' CHANGELOG.md → 1 (B12 (c) sustained)
+  4) ls .moai/specs/SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001/ → 4 files all status=completed
+
+  실행: AskUserQuestion으로 Sprint 8 entry SPEC 결정 (5 후보):
+  - (권장) B1 Retirement completeness — manager-tdd/ddd → manager-develop.md embedded FS 추가 (Tier S minimal, SPEC-V3R3-RETIRED-AGENT-001 M2 follow-up)
+  - SPEC-V3R6-CATALOG-FRONTMATTER-AUDIT-001 — TestAllAgentsInCatalog + TestAgentFrontmatterAudit + TestEmbeddedTemplates_AgentDefinitions test alignment + §24 namespace policy reconciliation (Tier M)
+  - SPEC-V3R6-SPEC-ID-VALIDATION-001 NEW per L51 — manager-spec body SPEC ID regex pre-write self-check enforcement (Tier S minimal)
+  - SPEC-V3R6-CLI-INTEGRATION-001 — moai init/update/cc triad unification per CLI-AUDIT-001 §4 (Tier M)
+  - SPEC-V3R6-PROMPT-CACHE-001 — Claude Code prompt caching 도입 (Tier M, 토큰 절감)
+
+  머지 후: 선택한 SPEC plan-phase → Sprint 8 시작
 ```
 
 ## §E.7 L46 Attribution Discipline (post-merge audit)
