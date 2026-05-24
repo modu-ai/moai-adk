@@ -2,7 +2,7 @@
 id: SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001
 title: "moai-foundation-core SKILL bundle을 GEARS 우선 가이드로 정렬"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
