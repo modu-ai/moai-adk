@@ -356,6 +356,7 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 		"harness-observe-subagent-stop":      true, // SPEC-V3R4-HARNESS-002: domain hook, not a Claude Code event
 		"harness-observe-user-prompt-submit": true, // SPEC-V3R4-HARNESS-002: domain hook, not a Claude Code event
 		"spec-status":                        true, // SPEC-STATUS-AUTO-001: domain hook, not a Claude Code event
+		"harness-classify":                   true, // SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001: domain hook, not a Claude Code event
 	}
 
 	for _, cmd := range hookCmd.Commands() {

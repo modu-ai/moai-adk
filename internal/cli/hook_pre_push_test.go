@@ -72,13 +72,14 @@ func TestReadStdinLines_Empty(t *testing.T) {
 
 func TestHookCmd_PrePushSubcommandCount(t *testing.T) {
 	// 36 previous - 1 "setup" (removed by SPEC-V3R2-MIG-002 M2.1) = 35.
+	// +1 "harness-classify" (added by SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001) = 36.
 	count := len(hookCmd.Commands())
-	if count != 35 {
+	if count != 36 {
 		names := make([]string, 0, count)
 		for _, cmd := range hookCmd.Commands() {
 			names = append(names, cmd.Name())
 		}
-		t.Errorf("hook should have 35 subcommands, got %d: %v", count, names)
+		t.Errorf("hook should have 36 subcommands, got %d: %v", count, names)
 	}
 }
 
