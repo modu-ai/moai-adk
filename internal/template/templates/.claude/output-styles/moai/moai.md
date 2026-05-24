@@ -595,9 +595,11 @@ Rules:
 
 When ANY of the 5 triggers in §6 Session Boundary Handoff fires, MoAI MUST emit a paste-ready resume message in a fenced ```text``` block AND persist to memory **before** `<moai>DONE</moai>`. This template is the canonical surface — `.claude/rules/moai/workflow/session-handoff.md` is the SSOT.
 
-Canonical 6-block format (structural skeleton — header labels MUST be translated to the user's `conversation_language`; the labels in the table below are the canonical translation targets per language):
+Canonical 6-block format **bounded by cut-line markers** (structural skeleton — header labels MUST be translated to the user's `conversation_language`; cut-line markers MUST be present at the boundaries of the fenced block, with `✂` symbol verbatim and marker text translated per the Cut-line Marker translation table below):
 
 ```text
+✂──── 여기부터 복사 ────✂
+
 ultrathink. <SPEC-ID or Sprint N> <phase> entering.
 applied lessons: <memory-file-1>, <memory-file-2>, ..., lessons #N
 
@@ -609,7 +611,16 @@ N) <verifiable command> → <expected outcome>
 <Run header>: <command-or-action>
 
 <After-merge header>: <next-action-or-spec>
+
+✂──── 여기까지 복사 ────✂
 ```
+
+Cut-line Marker translation table (`✂` symbol U+2702 and `─` U+2500 preserved verbatim across all locales; only the text translates):
+
+| Marker | English | Korean (canonical) | Japanese | Chinese |
+|--------|---------|--------------------|----------|---------|
+| Top text | `Copy from here` | `여기부터 복사` | `ここからコピー` | `从这里复制` |
+| Bottom text | `Copy to here` | `여기까지 복사` | `ここまでコピー` | `到这里复制` |
 
 Header translation table (translate per `conversation_language` setting in `.moai/config/sections/language.yaml`):
 
@@ -620,12 +631,13 @@ Header translation table (translate per `conversation_language` setting in `.moa
 | Block 6 (After merge) | `After merge:` | `머지 후:` | `マージ後:` | `合并后:` |
 | Block 1 verb (entering) | `entering` | `진입` | `開始` | `进入` |
 
-Pre-emit self-check (MUST verify all 5 before printing):
+Pre-emit self-check (MUST verify all 6 before printing):
 - [ ] Block 1 starts with `ultrathink.` (activates Adaptive Thinking max effort in next session)
 - [ ] Block 2 lists ≥1 memory file from `~/.claude/projects/{hash}/memory/` (most recent project memory + relevant lessons)
 - [ ] Block 4 has ≤4 numbered preconditions, each independently verifiable (`git`/`gh`/file existence command)
 - [ ] Block 5 is a single primary action (typically `/moai <subcommand>` or single command line)
 - [ ] L3 worktree case: Block 0 `[New Terminal — START IN WORKTREE] $ cd <abs-path> $ <launcher>` prepended (Block 0 MUST surface 3 launchers verbatim: `moai cc` | `moai glm` | `claude` — per `session-handoff.md` §Worktree-Anchored Resume Pattern) + precondition 0) `git rev-parse --show-toplevel → <worktree-path>` added
+- [ ] **Cut-line markers present** — top `✂──── 여기부터 복사 ────✂` before Block 1 (or Block 0 if L3 worktree), bottom `✂──── 여기까지 복사 ────✂` after Block 6. `✂` symbol (U+2702) and `─` (U+2500) preserved verbatim; marker text translated per `conversation_language` (Cut-line Marker translation table above). One blank line separates each marker from adjacent block content.
 
 Auto-memory persistence (mandatory — without this, message is lost across `/clear`):
 - File path: `~/.claude/projects/{hash}/memory/project_<sprint>_<spec>_<status>.md`
@@ -634,7 +646,7 @@ Auto-memory persistence (mandatory — without this, message is lost across `/cl
 - Superseded entries marked `[SUPERSEDED by <new-file>]` per Lessons Protocol
 
 Output surface order (verbatim user-facing display):
-1. Fenced ```text``` block containing the 6-block (Block 0 if applicable) message
+1. Fenced ```text``` block **bounded by cut-line markers** (`✂──── 여기부터 복사 ────✂` top + `✂──── 여기까지 복사 ────✂` bottom, marker text translated per `conversation_language` while `✂` and `─` symbols stay verbatim) containing the 6-block (Block 0 if applicable) message
 2. Memory file path that received the verbatim copy
 3. One-sentence summary of what next session will continue
 
@@ -645,6 +657,8 @@ Anti-patterns (CI/lint should reject):
 - Message saved only to chat, not auto-memory
 - Triggering on trivial single-turn tasks (memory noise)
 - Hardcoded language-specific headers in instruction body (use the translation table above)
+- Cut-line markers absent — user cannot identify exact copy boundary in long terminal scrollback
+- Cut-line `✂` symbol or `─` decorator translated/substituted — only the marker text translates; symbols are preserved verbatim across all locales
 
 ---
 
@@ -652,7 +666,7 @@ Anti-patterns (CI/lint should reject):
 
 - [HARD] All user-facing responses in `conversation_language` — read the value from `.moai/config/sections/language.yaml`. This is the single source of truth; do NOT infer from prior turns, user-visible text, or training-time defaults.
 - [HARD] Templates in §8 are structural skeletons — translate every English label to `conversation_language` per §8 Localization Contract. The English text in §8 is documentation, not literal output. Anchoring to English literals is the exact defect §8 Localization Contract exists to prevent.
-- [HARD] Preserve verbatim across all languages: emoji decorations (🤖 📋 🎯 ⏳ ★ ✅ ⏭ ⏮ 📊 🔄 🧹 ❌ 🔍 🔧 🟢 🟡 ⏸️ 🔵 🔴 🚧 📤 📦 🛑 👋 📚 🧠), box-drawing and arrow characters (─ │ └─ ▶ → ←), code/command literals, file paths, and the `ultrathink.` keyword token.
+- [HARD] Preserve verbatim across all languages: emoji decorations (🤖 📋 🎯 ⏳ ★ ✅ ⏭ ⏮ 📊 🔄 🧹 ❌ 🔍 🔧 🟢 🟡 ⏸️ 🔵 🔴 🚧 📤 📦 🛑 👋 📚 🧠), Session Handoff cut-line marker symbol (✂ U+2702 BLACK SCISSORS — used in `✂──── 여기부터 복사 ────✂` / `✂──── 여기까지 복사 ────✂` markers per §8 Session Handoff; only the marker text translates), box-drawing and arrow characters (─ │ └─ ▶ → ←), code/command literals, file paths, and the `ultrathink.` keyword token.
 - [HARD] Internal agent-to-agent messages (Agent() prompts, SendMessage payloads): English
 - [HARD] Code comments: per `code_comments` setting in `.moai/config/sections/language.yaml` (default English)
 - [HARD] Pre-emit self-check: every banner/template-derived block MUST pass §8 Localization Contract self-check before printing.

@@ -654,6 +654,14 @@ moai constitution list --format json
   clause: "[HARD] When generating a resume message, the orchestrator MUST also persist it to a memory project entry (project_<wave>_<spec>_<status>.md), include verbatim under '## 다음 세션 시작점 (paste-ready resume message)' heading, update MEMORY.md index, and mark superseded entries with [SUPERSEDED by <new-file>] prefix"
   canary_gate: false
 
+- id: CONST-V3R2-153
+  zone: Evolvable
+  zone_class: evolvable-tuning
+  file: .claude/rules/moai/workflow/session-handoff.md
+  anchor: "#canonical-format-verbatim-spec"
+  clause: "[HARD] Resume message fenced text block MUST be bounded by cut-line markers: top marker '✂──── 여기부터 복사 ────✂' before Block 1 (or Block 0 if L3 worktree), bottom marker '✂──── 여기까지 복사 ────✂' after Block 6. ✂ symbol (U+2702 BLACK SCISSORS) and ─ (U+2500) preserved verbatim across all locales; only the marker text translates per conversation_language. Markers sit inside the fenced block alongside content so they are copied verbatim with the message, providing an unambiguous copy boundary in long terminal scrollback."
+  canary_gate: false
+
 # ============================================================
 # CONST-V3R5-001..039: 신규 parallel namespace
 # 미매핑 [HARD] 규칙 coverage 완성 — 11개 소스 파일 신규 등록

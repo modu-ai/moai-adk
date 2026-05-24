@@ -24,9 +24,11 @@ When NONE apply (single-turn, trivial task, read-only query), emit a brief compl
 
 ## Canonical Format (Verbatim Spec)
 
-[ZONE:Evolvable] [HARD] Resume message MUST follow this exact 6-block structure:
+[ZONE:Evolvable] [HARD] Resume message MUST follow this exact 6-block structure, **bounded by cut-line markers** (`✂──── 여기부터 복사 ────✂` top, `✂──── 여기까지 복사 ────✂` bottom). Cut-line markers sit **inside** the fenced text block alongside the content so they are copied verbatim with the message; this provides the user an unambiguous copy boundary in long terminal scrollback:
 
 ```
+✂──── 여기부터 복사 ────✂
+
 ultrathink. <SPEC-ID> <phase> 진입.
 applied lessons: <memory-file-1>, <memory-file-2>, ...
 
@@ -38,7 +40,27 @@ N) <verifiable precondition N>
 실행: <command-or-action>
 
 머지 후: <next-action-or-spec>
+
+✂──── 여기까지 복사 ────✂
 ```
+
+### Cut-line Marker Specification
+
+- Top marker: `✂──── 여기부터 복사 ────✂` (scissors U+2702 + 4× U+2500 + space + text + space + 4× U+2500 + scissors)
+- Bottom marker: `✂──── 여기까지 복사 ────✂` (same structure, text differs)
+- One blank line separates each marker from adjacent block content (top → blank → Block 1; Block 6 → blank → bottom)
+- `✂` symbol (U+2702 BLACK SCISSORS) is **preserved verbatim across all locales** — never translate or substitute
+- Box-drawing characters (`─` U+2500) preserved verbatim
+- Marker text translates per `conversation_language` (see Localization table below)
+
+### Localization Table
+
+| Marker | English | Korean (canonical) | Japanese | Chinese |
+|--------|---------|--------------------|----------|---------|
+| Top text | `Copy from here` | `여기부터 복사` | `ここからコピー` | `从这里复制` |
+| Bottom text | `Copy to here` | `여기까지 복사` | `ここまでコピー` | `到这里复制` |
+
+Read `conversation_language` from `.moai/config/sections/language.yaml` at render time; substitute the localized text between the `✂────` decorators while keeping `✂` and `─` characters verbatim.
 
 ### Field-by-Field Specification
 
@@ -52,6 +74,8 @@ N) <verifiable precondition N>
 ### Example (Illustrative; substitute project-specific values when adapting)
 
 ```
+✂──── 여기부터 복사 ────✂
+
 ultrathink. SPEC-MYPROJ-001 implementation 진입.
 applied lessons: project_wave6_myproj001_plan_ready, lessons #9 wave-split.
 
@@ -62,6 +86,8 @@ applied lessons: project_wave6_myproj001_plan_ready, lessons #9 wave-split.
 실행: /moai run SPEC-MYPROJ-001
 
 머지 후: SPEC-MYPROJ-002 → SPEC-MYPROJ-003
+
+✂──── 여기까지 복사 ────✂
 ```
 
 ## Auto-Memory Integration (Mandatory)
@@ -77,7 +103,7 @@ This ensures the message survives `/clear` and is discoverable at the start of t
 
 ## Output Surface (User-Facing)
 
-At session end, the orchestrator displays: (1) the message in a fenced ```text``` block for verbatim paste, (2) the memory file path, (3) a one-sentence summary of what next session continues.
+At session end, the orchestrator displays: (1) the message in a fenced ```text``` block **bounded by cut-line markers** (`✂──── 여기부터 복사 ────✂` top + `✂──── 여기까지 복사 ────✂` bottom, with marker text translated per `conversation_language` and `✂` symbol preserved verbatim) for verbatim paste, (2) the memory file path, (3) a one-sentence summary of what next session continues.
 
 ## Anti-Patterns
 
@@ -87,6 +113,8 @@ At session end, the orchestrator displays: (1) the message in a fenced ```text``
 - Resume saved only to chat, not auto-memory — lost across `/clear`.
 - Duplicate memory entries without `[SUPERSEDED by ...]` markers — index pollution.
 - Forcing the format on trivial tasks — memory noise.
+- Cut-line markers absent — user cannot identify exact copy boundary in long terminal scrollback.
+- Cut-line markers translated `✂` symbol or `─` decorator — only the marker text translates; the symbols are preserved verbatim.
 
 ## Worktree-Anchored Resume Pattern
 
@@ -138,6 +166,8 @@ Block 0 is REQUIRED only with L3 `--worktree`. For `--branch` (or no flag — 20
 ### Example with Block 0 (Illustrative)
 
 ```
+✂──── 여기부터 복사 ────✂
+
 [New Terminal — START IN WORKTREE]
 $ cd ~/.moai/worktrees/<project>/SPEC-MYPROJ-001
 $ moai cc        # 또는 moai glm | claude (3가지 launcher 중 선택; 본 예시는 moai cc)
@@ -152,6 +182,8 @@ applied lessons: project_myproj_prev_wave_complete, lessons #12 #13 #14.
 실행: /moai run SPEC-MYPROJ-001 --team
 
 머지 후: Wave N+1
+
+✂──── 여기까지 복사 ────✂
 ```
 
 ## Cross-references
