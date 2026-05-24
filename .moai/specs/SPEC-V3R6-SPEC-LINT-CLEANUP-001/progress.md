@@ -13,9 +13,10 @@ lifecycle: spec-anchored
 tags: "spec-lint, baseline-cleanup, progress, tier-s"
 plan_status: audit-ready
 run_status: audit-ready
-sync_status: pending
-mx_status: pending
-sync_commit_sha: "<pending>"
+sync_status: implemented
+mx_status: implemented
+sync_commit_sha: "0d777471c21f36f827752608ea6b7bcceea09fd8"
+mx_commit_sha: "pending_post_commit"
 ---
 
 # Progress Tracker — SPEC-V3R6-SPEC-LINT-CLEANUP-001
@@ -26,9 +27,9 @@ sync_commit_sha: "<pending>"
 |-------|--------|---------|-----------|------------|
 | Plan | audit-ready | 2026-05-25 | 2026-05-25 | `8630b40d0` |
 | Plan Audit | iter-1 PASS 0.917 (self-audit, skip-eligible) | 2026-05-25 | 2026-05-25 | `8630b40d0` |
-| Run | audit-ready | 2026-05-25 | 2026-05-25 | (pending — orchestrator commit) |
-| Sync | pending | — | — | — |
-| Mx (Step C) | pending | — | — | — |
+| Run | audit-ready | 2026-05-25 | 2026-05-25 | `d1558e092` |
+| Sync | implemented | 2026-05-25 | 2026-05-25 | `0d777471c` (+ backfill `e5e7e6dad`) |
+| Mx (Step C) | SKIP-judge (implemented) | 2026-05-25 | 2026-05-25 | `pending_post_commit` (self-ref backfilled next chore if needed) |
 
 ## §B. Audit-Ready Signal (plan-phase)
 
@@ -174,7 +175,27 @@ Run-phase commits follow Conventional Commits format with SPEC-V3R6-SPEC-LINT-CL
   - AC count: 7 mandatory ACs (AC-SLC-001..007) per acceptance.md
   - Frontmatter status (all 4): `implemented` ✓
 
-## §F. Cross-references
+## §F. Mx-phase Audit-Ready Signal
+
+- **mx_commit_sha**: `pending_post_commit` (self-ref backfilled next chore if needed, per HARNESS-NAMESPACE-CLEANUP-001 4485c772f 4-phase close precedent)
+- **mx_date**: 2026-05-25
+- **Verdict**: **EVALUATE-SKIP** per `mx-tag-protocol.md` §a
+- **Rationale**: Run-phase + sync-phase 전 변경이 markdown only (10 .md files, 0 .go files involved). `@MX:NOTE` / `@MX:WARN` / `@MX:ANCHOR` / `@MX:TODO` delta = 0. mx-tag-protocol.md §a Step C judgment: "0 production .go delta → SKIP eligible". Test files excluded from MX scope.
+- **mx_tag_delta**: 0
+- **Cross-platform impact**: N/A (markdown only, no Go build / GOOS=windows cross-check needed beyond run-phase verification)
+- **4-phase lifecycle FULLY CLOSED**:
+  - plan: `8630b40d0` (iter-1 PASS 0.917 self-audit, skip-eligible)
+  - run:  `d1558e092` (M1 1-pass, 7/7 AC PASS, AC-SLC-006 PASS-WITH-NOTE per acceptance.md §D.4, race-absorbed HARNESS-NAMESPACE-CLEANUP-001 parallel session 8 NEW items 절대 흡수 0 per L46)
+  - sync: `0d777471c` (CHANGELOG NEW + 4 frontmatter status implemented + B12 3/3 PASS) + `e5e7e6dad` (sync_commit_sha backfill for spec/plan/acceptance, missed progress.md frontmatter — this commit fixes it)
+  - mx:   this commit (SKIP verdict, no production code changes, progress.md frontmatter + §A table + §F backfill)
+- **B12 final self-test (4-phase close)**:
+  - CHANGELOG count: 1 entry referencing SPEC-V3R6-SPEC-LINT-CLEANUP-001 ✓
+  - AC count: 7 mandatory ACs (AC-SLC-001..007) per acceptance.md ✓
+  - Frontmatter status (all 4 artifacts): `implemented` ✓
+  - Phase-status frontmatter (progress.md): plan/run/sync/mx all set ✓
+  - Phase commit_sha (progress.md): plan/sync filled, mx pending_post_commit (per precedent), run via §A table ✓
+
+## §G. Cross-references
 
 - spec.md — canonical SSOT (REQ-SLC-001..007 anchored).
 - plan.md — Tier S minimal Section A only.
@@ -182,3 +203,5 @@ Run-phase commits follow Conventional Commits format with SPEC-V3R6-SPEC-LINT-CL
 - `.claude/agents/meta/plan-auditor.md` — Phase 0.5 Plan Audit Gate authority.
 - `internal/spec/lint.go:678-728` — `OutOfScopeRule.Check()` ground truth.
 - MEMORY.md `Sprint 8 ARR-001 4-phase CLOSE` entry — next-SPEC 후보 명시: spec-lint baseline cleanup NEW SPEC (본 SPEC).
+- `.claude/rules/moai/workflow/mx-tag-protocol.md` §a Step C judgment policy — markdown-only SPEC EVALUATE-SKIP verdict.
+- HARNESS-NAMESPACE-CLEANUP-001 4485c772f — 병렬 세션 Mx-phase 4-phase close precedent (동일 패턴 적용, real-time L52 race-absorbed).
