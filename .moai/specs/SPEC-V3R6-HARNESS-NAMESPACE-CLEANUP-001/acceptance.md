@@ -2,7 +2,7 @@
 id: SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001
 title: "Acceptance — Harness Namespace 누출 검증 및 정리"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -167,10 +167,10 @@ find .moai/backups/harness-namespace-cleanup-*/ -type f -not -name '.complete' 2
 | REQ-HNC-001 | AC-HNC-001 | plan.md §A.1, §A.6.6 | grep + `make build` |
 | REQ-HNC-002 | AC-HNC-002 | plan.md §A.3 M1 | filesystem state check |
 | REQ-HNC-003 | AC-HNC-003 | plan.md §A.2, §A.3 M3 | manual cross-ref read, evidence in progress.md |
-| REQ-HNC-004 | AC-HNC-004 | plan.md §A.3 M1.5 | 3-grep batch |
+| REQ-HNC-004 | AC-HNC-004 | plan.md §A.3 M1 step 4-5 | 3-grep batch |
 | REQ-HNC-005 | AC-HNC-005 | plan.md §A.3 M2 | `go test` |
 | REQ-HNC-006 | AC-HNC-006 | plan.md §A.4 PRESERVE | `git diff --stat` |
-| REQ-HNC-007 | AC-HNC-007 | plan.md §A.3 M1.1-1.3 | backup directory inspection |
+| REQ-HNC-007 | AC-HNC-007 | plan.md §A.3 M1 steps 1-3 | backup directory inspection |
 
 ## §D.6 Closure Gates (Sync-phase)
 

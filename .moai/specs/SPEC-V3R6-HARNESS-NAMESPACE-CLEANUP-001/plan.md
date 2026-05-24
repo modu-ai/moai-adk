@@ -2,7 +2,7 @@
 id: SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001
 title: "Plan — Harness Namespace 누출 검증 및 정리"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -50,10 +50,10 @@ REQ-HNC-003 검증 대상 6개 cross-ref를 grep으로 확인했다:
 | `internal/cli/update.go` | 1166 (isUserOwnedNamespace REQ-UNP-002 comment) | PASS — `.claude/agents/harness/` 명시 |
 | `internal/cli/update.go` | 1240-1244 (isMoaiManaged exclusion) | PASS — `agents/harness/` 의도적 제외 명시 |
 | `internal/cli/update_namespace_protect.go` | 7-10 | PASS — REQ-UNP-006 sentinel 동작 명시 |
-| `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy | (read 보류, 본 SPEC 범위 외 검증) | DEFER to run-phase |
-| `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention | (read 보류) | DEFER to run-phase |
+| `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy | 285-307 | PASS — `moai-harness-*` builder/lifecycle limited to `moai-meta-harness` + `moai-harness-learner`, `my-harness-*` user-owned protection HARD, CI guard requirement explicit |
+| `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention | 13-36 | PASS — `internal/template/templates/.claude/agents/harness/` 존재 금지 HARD, `moai update` `.claude/agents/harness/` sync 제외 HARD |
 
-Run-phase에서 마지막 2개 (skill-authoring.md, agent-authoring.md)는 5-10분 read-only 확인으로 검증한다.
+Run-phase M3 verified both files inline; no separate deferred read needed. All 6 cross-refs PASS.
 
 ### §A.3 Run-phase Milestones (3개, 우선순위 순)
 
