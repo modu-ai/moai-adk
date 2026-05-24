@@ -2,7 +2,7 @@
 id: SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001
 title: "moai-foundation-core SKILL bundle을 GEARS 우선 가이드로 정렬"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -15,6 +15,7 @@ tier: M
 issue_number: null
 depends_on: [SPEC-V3R6-GEARS-MIGRATION-001, SPEC-V3R6-SKILL-GEARS-ALIGN-001, SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001]
 related_specs: [SPEC-V3R6-GEARS-MIGRATION-001, SPEC-V3R6-SKILL-GEARS-ALIGN-001, SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001]
+sync_commit_sha: "<pending>"
 ---
 
 # SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001 — moai-foundation-core SKILL Bundle GEARS 우선 정렬

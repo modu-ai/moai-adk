@@ -2,7 +2,7 @@
 id: SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001
 title: "moai-foundation-core SKILL bundle을 GEARS 우선 가이드로 정렬 — Acceptance Criteria"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -14,6 +14,7 @@ tags: "gears, ears, skill, foundation, core, acceptance, sprint-10, v3.0.0"
 tier: M
 issue_number: null
 depends_on: [SPEC-V3R6-GEARS-MIGRATION-001, SPEC-V3R6-SKILL-GEARS-ALIGN-001, SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001]
+sync_commit_sha: "<pending>"
 ---
 
 # SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001 — Acceptance Criteria

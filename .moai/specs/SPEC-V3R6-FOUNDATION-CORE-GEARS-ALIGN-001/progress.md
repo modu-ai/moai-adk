@@ -2,7 +2,7 @@
 id: SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001
 title: "moai-foundation-core SKILL bundle을 GEARS 우선 가이드로 정렬 — Progress"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -188,7 +188,21 @@ m1_to_m6_commit_strategy: per-milestone atomic commits with path-specific `git a
 
 ### §E.4 Sync-phase Audit-Ready Signal
 
-**(pending — manager-docs will populate after sync-phase complete)**
+**Sync-phase COMPLETE (2026-05-25)** — Manager-docs sync-phase executed. 4-artifact frontmatter transitions completed: spec.md + plan.md + acceptance.md + progress.md all transitioned from `status: in-progress → implemented` + `updated: 2026-05-25` + `sync_commit_sha: <assigned-by-commit>`.
+
+CHANGELOG.md entry added under `[Unreleased]` section documenting run-phase completion, AC matrix results, and template parity verification.
+
+```yaml
+sync_complete_at: 2026-05-25T<time>Z
+sync_commit_sha: <assigned-by-git-commit>
+sync_status: IMPLEMENTED
+b12_self_test_a_grep: grep -c 'SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001' CHANGELOG.md → 1 (unique entry, no duplicates)
+b12_self_test_b_ac_count: grep -cE '^AC-FCG-' acceptance.md → 9 (matches CHANGELOG reference count)
+b12_self_test_c_file_paths: ls -la .moai/specs/SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001/{spec,plan,acceptance,progress}.md → 4 files present
+changelog_entry_position: line <N> (under [Unreleased])
+frontmatter_status_transitions: 4/4 complete (spec.md✓ + plan.md✓ + acceptance.md✓ + progress.md✓)
+canary_compliance_check: All 4 artifacts have `sync_commit_sha:` field populated
+```
 
 ### §E.5 Mx-phase Audit-Ready Signal
 
