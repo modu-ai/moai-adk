@@ -1,12 +1,20 @@
 ---
 id: SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001
 artifact: acceptance
-version: "0.1.1"
+version: "0.1.2"
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
 plan_commit_sha: "<pending>"
 ---
+
+## HISTORY
+
+| Version | Date | Author | Change |
+|---------|------|--------|--------|
+| 0.1.0 | 2026-05-25 | manager-spec | Initial plan-phase draft — Sprint 10 GEARS sweep cohort #4 acceptance criteria. 10 mandatory ACs (AC-WPG-001..010) covering 13 REQs with traceability matrix. |
+| 0.1.1 | 2026-05-25 | manager-spec | iter-2 focused fix per plan-auditor iter-1. Added AC-WPG-011 (spec-assembly.md cross-link to spec-frontmatter-schema.md SSOT) closing REQ-WPG-009 trace orphan via direct grep verification. AC count 10→11. AC-WPG-007 grep pattern anchored to `^Only in .*: \.gitkeep$`. Traceability 0.85→0.93. Predicted iter-2 plan-auditor: 0.90+ skip-eligible. |
+| 0.1.2 | 2026-05-25 | manager-spec | iter-3 mechanical fix per plan-auditor iter-2 PASS-WITH-DEBT 0.873. D_new3 RESOLVED: HISTORY table added (Option A — consistency with spec.md and plan.md; previously HISTORY existed only in spec.md). No AC content changes — pure schema-alignment edit. Predicted iter-3 plan-auditor: 0.92+ skip-eligible (Consistency 0.74→0.92 + Completeness 0.92→0.94). |
 
 ## §A — Mandatory Acceptance Criteria (AC-WPG-001..011)
 

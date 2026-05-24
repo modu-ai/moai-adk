@@ -1,12 +1,20 @@
 ---
 id: SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001
 artifact: plan
-version: "0.1.1"
+version: "0.1.2"
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
 plan_commit_sha: "<pending>"
 ---
+
+## HISTORY
+
+| Version | Date | Author | Change |
+|---------|------|--------|--------|
+| 0.1.0 | 2026-05-25 | manager-spec | Initial plan-phase draft — Sprint 10 GEARS sweep cohort entry SPEC #4 of 8. Tier M, 1-pass run-phase target, 6-milestone decomposition (M1-M6), 4 local + 4 mirror = 8 .md files in scope, 13 edit zones (4 in plan.md + 3 in clarity-interview.md + 6 in spec-assembly.md + 0 in context-discovery.md). |
+| 0.1.1 | 2026-05-25 | manager-spec | iter-2 focused fix per plan-auditor iter-1. M4 staging count 11→10 (Option A — aligned with acceptance.md AC-WPG-010). spec-assembly.md edit zones 6→7 (cross-link addition to spec-frontmatter-schema.md SSOT counts as edit zone). Total edit zones 13→14. AC count 10→11. Predicted iter-2 plan-auditor: 0.90+ skip-eligible. |
+| 0.1.2 | 2026-05-25 | manager-spec | iter-3 mechanical fix per plan-auditor iter-2 PASS-WITH-DEBT 0.873. D_new1 RESOLVED: §B.1 "13 edit zones" → "14 edit zones" + §B.3 MP-1 "13 edit zones counted" → "14 edit zones counted" (residual stale counts from iter-1 incomplete patch). D_new2 RESOLVED: §B.3 MP-3 "13 REQs × 10 ACs" → "13 REQs × 11 ACs". D_new3 RESOLVED: HISTORY table added (Option A — consistency with spec.md and acceptance.md). Predicted iter-3 plan-auditor: 0.92+ skip-eligible (Consistency 0.74→0.92 + Completeness 0.92→0.94). |
 
 ## §A — Lifecycle Table
 
@@ -17,7 +25,7 @@ plan_commit_sha: "<pending>"
 | Run | M1 (local file notation edits, 4 files) | manager-develop | 4 local files edited with GEARS-first + EARS legacy footnote pattern | `<pending>` |
 | Run | M2 (template mirror parity sync, 4 files) | manager-develop | mirror files byte-for-byte identical to local files via `diff -q` | `<pending>` |
 | Run | M3 (sentinel verification + lint regression check) | manager-develop | `grep -E 'IF .* THEN'` 0 NEW occurrences + `moai spec lint` 0 regressions on 88 pre-v3 SPECs | `<pending>` |
-| Run | M4 (status transition + AC verification) | manager-develop | spec.md frontmatter `status: draft → in-progress` + 10/10 AC PASS | `<pending>` |
+| Run | M4 (status transition + AC verification) | manager-develop | spec.md frontmatter `status: draft → in-progress` + 11/11 AC PASS | `<pending>` |
 | Sync | M5 (manager-docs sync-phase emission) | manager-docs | sync_commit_sha 4-artifact backfill + CHANGELOG entry + status `in-progress → implemented` | `<pending>` |
 | Mx | M6 (orchestrator Mx Step C judge) | orchestrator | Mx Step C SKIP-eligible per mx-tag-protocol.md §a (markdown-only edits, 0 .go files, 0 @MX delta) + 4-phase close marker | `<pending>` |
 
@@ -29,7 +37,7 @@ Tier M minimal 1-pass strategy targeting plan-auditor 0.87+ PASS, ideal skip-eli
 
 manager-develop receives a single spawn prompt enumerating:
 - Section A: file inventory (8 exact paths: 4 local + 4 mirror)
-- Section B: 13 edit zones (4 in plan.md, 3 in clarity-interview.md, 6 in spec-assembly.md, 0 in context-discovery.md)
+- Section B: 14 edit zones (4 in plan.md, 3 in clarity-interview.md, 7 in spec-assembly.md, 0 in context-discovery.md)
 - Section C: 13 REQs (REQ-WPG-001..013) with GEARS-first phrasing patterns
 - Section D: 11 mandatory ACs (AC-WPG-001..011) with traceability matrix (iter-2 added AC-WPG-011 closing REQ-WPG-009 trace orphan)
 - Section E: verification batch (mirror parity `diff -q`, sentinel `grep -E 'IF .* THEN'`, lint regression, frontmatter status transition)
@@ -42,9 +50,9 @@ Predecessor pattern observed from FOUNDATION-CORE-GEARS-ALIGN-001 `0156c7003` (T
 
 | Dimension | Target | Rationale |
 |-----------|--------|-----------|
-| MP-1 Scope clarity | ≥ 0.90 | 8 files explicitly enumerated; 13 edit zones counted; no ambiguity |
+| MP-1 Scope clarity | ≥ 0.90 | 8 files explicitly enumerated; 14 edit zones counted; no ambiguity |
 | MP-2 GEARS/EARS notation rigor | ≥ 0.90 | 100% self-dogfood (13/13 REQs in GEARS form); compound + capability-gate present |
-| MP-3 Traceability matrix | ≥ 0.90 | 13 REQs × 10 ACs explicit mapping in acceptance.md |
+| MP-3 Traceability matrix | ≥ 0.90 | 13 REQs × 11 ACs explicit mapping in acceptance.md |
 | MP-4 Risk-mitigation pairing | ≥ 0.85 | 5 risks identified, each with explicit mitigation referencing milestone/AC |
 | Weighted overall | ≥ 0.87 | Aim ≥ 0.90 for skip-eligible |
 
