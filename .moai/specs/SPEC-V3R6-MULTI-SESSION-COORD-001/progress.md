@@ -25,7 +25,7 @@ tags: "multi-session, coordination, registry, hook, race-mitigation"
 | Run M3 — Hook integration | implemented | `4b90e6de6` | 2026-05-25T07:00:00Z | `internal/hook/session_start.go` (+77 LOC for runMultiSessionProtocol helper) + 3 multi-session tests (147 LOC); handle-session-start.sh unchanged (session_id pass-through already correct) |
 | Run M4 — Rule + output-style extension | implemented | `4b90e6de6` | 2026-05-25T07:00:00Z | 3 .md files extended + 3 template mirror cp byte-identical |
 | Run M5 — Progress finalization | implemented | `4b90e6de6` | 2026-05-25T07:00:00Z | progress.md §D + §E filled, 4 frontmatters `draft → in-progress` per spec-frontmatter-schema.md ownership matrix |
-| Sync | pending | — | — | manager-docs CHANGELOG + 4 frontmatter `in-progress → implemented` + B12 self-test |
+| Sync | implemented | `58c70c66a` | 2026-05-25T16:45:00Z | manager-docs CHANGELOG + 4 frontmatter `in-progress → implemented` + B12 self-test (3/3 PASS) |
 | Mx | pending | — | — | @MX tag delta scan + Step C verdict (EVALUATE-PASS expected, 4 NEW Go files candidate for @MX:NOTE+@MX:ANCHOR) |
 
 ### §A.1 Out of Scope
@@ -376,7 +376,7 @@ mx_step_c_judgment_eligibility: PENDING_SYNC_PHASE   # Mx judgment owned by /moa
 
 ```yaml
 sync_complete_at: 2026-05-25T16:45:00Z
-sync_commit_sha: pending_post_commit   # to be filled with actual commit SHA after push
+sync_commit_sha: 58c70c66a   # backfilled via chore commit post-push verification (orchestrator trust-but-verify batch L49)
 changelog_entry_count: 1   # [Unreleased] Added section entry for SPEC-V3R6-MULTI-SESSION-COORD-001 (verified via grep -cE '^\- \*\*\[SPEC-V3R6-MULTI-SESSION-COORD-001\]' CHANGELOG.md → 1)
 frontmatter_status_transitions: 4   # spec.md + plan.md + acceptance.md + progress.md all transitioned in-progress → implemented
 b12_self_test:
