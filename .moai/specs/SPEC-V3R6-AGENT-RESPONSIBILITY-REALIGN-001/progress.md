@@ -136,7 +136,7 @@ If sync-phase reveals a need to modify SPEC body content (e.g., last-minute REQ 
 
 ```yaml
 sync_complete_at: 2026-05-24T20:45:30Z
-sync_commit_sha: TBD                              # (orchestrator backfilled post-push)
+sync_commit_sha: 11abb9a30                        # (orchestrator backfilled post-push 2026-05-24T20:47Z)
 sync_status: completed                            # CHANGELOG entry + 4 frontmatter status + this §E.4 update done
 b12_self_test_a_pre_emission_grep: 0              # PASS: `grep -c 'SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001' CHANGELOG.md` pre-emission
 b12_self_test_a_post_emission_grep: 1             # PASS: (post-emission, 1 entry under [Unreleased] ### Changed section)
