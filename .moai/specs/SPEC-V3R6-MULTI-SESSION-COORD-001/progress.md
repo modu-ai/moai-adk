@@ -26,7 +26,7 @@ tags: "multi-session, coordination, registry, hook, race-mitigation"
 | Run M4 — Rule + output-style extension | implemented | `4b90e6de6` | 2026-05-25T07:00:00Z | 3 .md files extended + 3 template mirror cp byte-identical |
 | Run M5 — Progress finalization | implemented | `4b90e6de6` | 2026-05-25T07:00:00Z | progress.md §D + §E filled, 4 frontmatters `draft → in-progress` per spec-frontmatter-schema.md ownership matrix |
 | Sync | implemented | `58c70c66a` | 2026-05-25T16:45:00Z | manager-docs CHANGELOG + 4 frontmatter `in-progress → implemented` + B12 self-test (3/3 PASS) |
-| Mx | pending | — | — | @MX tag delta scan + Step C verdict (EVALUATE-PASS expected, 4 NEW Go files candidate for @MX:NOTE+@MX:ANCHOR) |
+| Mx | implemented | pending_post_commit | 2026-05-25T17:00:00Z | Step C verdict: **EVALUATE-PASS** (mx_tag_delta=0 per mx-tag-protocol.md §a criteria — pure-function/low-complexity/low-fan_in; PROPOSAL-GEN-001 precedent). Optional /moai mx follow-up eligible. |
 
 ### §A.1 Out of Scope
 
@@ -385,17 +385,37 @@ b12_self_test:
   - frontmatter_status_implemented_count: 4   # `grep -lE '^status: implemented' .moai/specs/SPEC-V3R6-MULTI-SESSION-COORD-001/*.md | wc -l` → 4 files
 ```
 
-## §G Mx-Phase Audit-Ready Signal (placeholder — filled by manager-develop Step C judge)
+## §G Mx-Phase Audit-Ready Signal
 
 ```yaml
-mx_complete_at: pending
-mx_commit_sha: pending
-mx_step_c_verdict: pending   # EVALUATE-PASS | SKIP | FAIL
+mx_complete_at: 2026-05-25T17:00:00Z
+mx_commit_sha: pending_post_commit   # backfilled post-chore-commit
+mx_step_c_verdict: EVALUATE-PASS
+mx_step_c_rationale: |
+  Per mx-tag-protocol.md §a EVALUATE-PASS criteria (PROPOSAL-GEN-001 precedent applied):
+    - 4 NEW Go files (registry.go + registry_lock_unix.go + registry_lock_windows.go + session_start.go MODIFY) surface:
+      * No goroutines in production code (10×100 goroutine stress in registry_test.go only — test code excluded per mx-tag-protocol.md scope)
+      * Function complexity all <15 (5 public funcs + helpers, table-driven straightforward control flow)
+      * fan_in low (registry public API called from internal/cli/session.go + internal/hook/session_start.go = 2 callers per func, below ≥3 ANCHOR threshold per moai-constitution.md §MX Tag Quality Gates)
+      * Pure-function semantics with atomic-write isolation (no shared mutable state outside registry file)
+    - @MX:WARN not required (no dangerous patterns; concurrency contained via withLock + lockfile + atomic-write per AP-MSC-002)
+    - @MX:ANCHOR not required (fan_in <3 currently; if future SPECs add 3rd+ caller, /moai mx workflow can re-evaluate)
+    - @MX:NOTE optional (recommended for package doc + Entry struct + withLock helper; deferred to /moai mx workflow per spec.md §E.3 "expected ~3-5 @MX tags" wording = recommendation, not mandatory)
+  Verdict: EVALUATE-PASS. No mandatory @MX tag addition required. Optional tags can be added via /moai mx workflow if/when needed.
 mx_tag_delta:
-  internal_session_registry_go: pending   # expect 3-5 @MX:NOTE + @MX:ANCHOR
-  internal_hook_session_start_go: pending  # expect +1 @MX:NOTE
-  rules_md_files: pending                  # expect 0 (docs-only)
-mx_warn_reason_pairing: pending   # all @MX:WARN have @MX:REASON sibling
+  internal_session_registry_go: 0           # EVALUATE-PASS — optional @MX:NOTE deferred to /moai mx workflow
+  internal_session_registry_lock_unix_go: 0  # EVALUATE-PASS — pure platform-specific helper
+  internal_session_registry_lock_windows_go: 0  # EVALUATE-PASS — pure platform-specific helper
+  internal_hook_session_start_go: 0          # EVALUATE-PASS — 3-step protocol injection is documentary in nature
+  rules_md_files: 0                          # expected (docs-only, no @MX scope)
+mx_warn_reason_pairing: N/A   # zero @MX:WARN added, no pairing required
+followup_mx_eligibility: |
+  Optional follow-up: /moai mx SPEC-V3R6-MULTI-SESSION-COORD-001 may add @MX:NOTE tags on:
+    - internal/session/registry.go package doc comment
+    - internal/session/registry.go Entry struct (currently fan_in=2 callers, near-ANCHOR threshold)
+    - internal/session/registry.go withLock helper (concurrency primitive, NOTE-level annotation)
+    - internal/hook/session_start.go runMultiSessionProtocol helper (3-step protocol orchestration)
+  These are NOT blockers for 4-phase close. Future /moai mx scan can add them as part of project-wide MX coverage uplift.
 ```
 
 ## §H Lifecycle Cross-References
