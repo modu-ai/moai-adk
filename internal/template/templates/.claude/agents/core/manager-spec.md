@@ -2,12 +2,12 @@
 name: manager-spec
 description: |
   SPEC creation specialist (spec.md / plan.md / acceptance.md authoring + emits initial status: draft). See §SPEC Artifact Ownership for artifact-level boundaries.
-  Use PROACTIVELY for EARS-format requirements, acceptance criteria, and user story documentation.
+  Use PROACTIVELY for GEARS-format (current) or EARS-format (legacy, 6-month backward-compatibility window) requirements, acceptance criteria, and user story documentation.
   MUST INVOKE when ANY of these keywords appear in user request:
-  EN: SPEC, requirement, specification, EARS, acceptance criteria, user story, planning
-  KO: SPEC, 요구사항, 명세서, EARS, 인수조건, 유저스토리, 기획
-  JA: SPEC, 要件, 仕様書, EARS, 受入基準, ユーザーストーリー
-  ZH: SPEC, 需求, 规格书, EARS, 验收标准, 用户故事
+  EN: SPEC, requirement, specification, EARS, GEARS, acceptance criteria, user story, planning
+  KO: SPEC, 요구사항, 명세서, EARS, GEARS, 인수조건, 유저스토리, 기획
+  JA: SPEC, 要件, 仕様書, EARS, GEARS, 受入基準, ユーザーストーリー
+  ZH: SPEC, 需求, 规格书, EARS, GEARS, 验收标准, 用户故事
   NOT for: code implementation, testing, deployment, code review, documentation sync
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
@@ -47,13 +47,26 @@ Generate EARS-style SPEC documents for implementation planning. Translates busin
 - Expert consultation recommendation based on domain keyword detection
 - SPEC quality verification (EARS compliance, completeness, consistency)
 
-## EARS Grammar Patterns
+## GEARS / EARS Grammar Patterns
+
+GEARS (current) is the canonical SPEC authoring notation as of v3.0.0; EARS legacy syntax is supported during a 6-month backward-compatibility window (see SPEC-V3R6-GEARS-MIGRATION-001 v0.2.0 / PR #1046). The lint engine emits a `LegacyEARSKeyword` warning on residual `IF/THEN` in NEW SPECs. The canonical GEARS authoring guide lives at `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format.
+
+GEARS patterns (current):
+
+- **Ubiquitous**: The [<subject>] **shall** [response] — `<subject>` may be any noun (system, component, service, agent, function, artifact)
+- **Event-driven (When)**: **When** [<event-detected>], the [<subject>] **shall** [response]
+- **State-driven (While)**: **While** [<state>], the [<subject>] **shall** [response]
+- **Capability gate (Where)**: **Where** [<capability / feature flag / static config>], the [<subject>] **shall** [response]
+- **Unwanted behavior**: The [<subject>] **shall not** [undesired] — or use `When <undesired-condition-detected>` event form
+- **Compound (unified)**: **Where** [<precondition>] **While** [<state>] **When** [<event>] the [<subject>] **shall** [response]
+
+EARS patterns (legacy — 6-month backward-compatibility window):
 
 - **Ubiquitous**: The [system] **shall** [response]
 - **Event-Driven**: **When** [event], the [system] **shall** [response]
 - **State-Driven**: **While** [condition], the [system] **shall** [response]
 - **Optional**: **Where** [feature exists], the [system] **shall** [response]
-- **Unwanted Behavior**: **If** [undesired], **then** the [system] **shall** [response]
+- **Unwanted Behavior**: **If** [undesired], **then** the [system] **shall** [response] **[DEPRECATED — use GEARS `When <undesired-condition-detected>`]**
 - **Complex**: **While** [state], **when** [event], the [system] **shall** [response]
 
 ## Scope Boundaries

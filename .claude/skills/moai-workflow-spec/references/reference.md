@@ -6,6 +6,30 @@ This document provides comprehensive reference information for SPEC workflow man
 
 ---
 
+## GEARS Migration (current notation)
+
+GEARS (Generalized EARS) is the canonical SPEC authoring notation as of v3.0.0. The lint engine (`internal/spec/lint.go` `EARSModalityRule`) emits a `LegacyEARSKeyword` warning when residual `IF/THEN` modality appears in NEW SPECs. The 88 existing SPECs are valid for 6 months from v3.0.0 release per the backward-compatibility window.
+
+GEARS-to-EARS pattern mapping (cross-link to canonical guide in SKILL.md "GEARS Format" section):
+
+| GEARS (current) | EARS (legacy — 6-month window) | Status |
+|-----------------|--------------------------------|--------|
+| `Ubiquitous` — "The <subject> shall <behavior>" | "The system shall <behavior>" | Unchanged semantics; subject generalized |
+| `When <event-detected>` — event-driven | "WHEN <event>, the system shall <action>" | Unchanged semantics; spelling formalized |
+| `While <state>` — state-driven | "WHILE <state>, the system shall <action>" | Promoted as first-class pattern |
+| `Where <capability>` — capability gate | "WHERE <feature exists>, the system shall <action>" | Reframed (capability gate / feature flag / static config) |
+| `When <undesired-condition-detected>` | `IF <condition> THEN <action>` **[DEPRECATED — use WHEN <event-detected>]** | `IF/THEN` modality replaced |
+
+Compound clause: `Where <precondition> While <state> When <event> the <subject> shall <behavior>` — any subset of the three modifiers may chain.
+
+Generalized subject: GEARS allows `<subject>` to be any noun (system, component, service, agent, function, artifact). The 88 legacy SPECs retain "The system" as the default; NEW SPECs MAY use generalized subjects (e.g., "The skill shall ...", "The agent shall ...").
+
+See SKILL.md "GEARS Format" section for canonical guidance and the [docs-site GEARS notation reference](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation) (4-locale) for the authoritative migration guide.
+
+> Templates in this file (Template 1 / Template 2 / Template 3 below) retain legacy EARS notation including `IF [condition] THEN [action]` constructs **[DEPRECATED — use WHEN <event-detected>]**. These templates remain valid examples during the 6-month backward-compatibility window; for NEW SPEC authoring prefer the GEARS forms documented above and in SKILL.md.
+
+---
+
 ## SPEC Document Templates
 
 ### Template 1: Simple CRUD Feature

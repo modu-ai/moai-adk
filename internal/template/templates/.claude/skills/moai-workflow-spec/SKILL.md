@@ -36,26 +36,55 @@ triggers:
 
 ## Quick Reference
 
-SPEC Workflow Orchestration using EARS format for systematic requirement definition and Plan-Run-Sync workflow integration.
+SPEC Workflow Orchestration using GEARS notation (current) — backed by the EARS legacy backward-compatibility window — for systematic requirement definition and Plan-Run-Sync workflow integration.
+
+Lint behavior canonicalized in SPEC-V3R6-GEARS-MIGRATION-001 v0.2.0 (PR #1046).
 
 Core Capabilities:
 
-- EARS Format Specifications: Five requirement patterns for unambiguous requirements
+- GEARS-Format Specifications (current): Five requirement patterns with the unified compound clause `[Where ...][While ...][When ...] The <subject> shall <behavior>` and a generalized `<subject>` (any noun, not only "the system")
+- EARS Legacy Reference: All EARS patterns preserved for 6 months from v3.0.0 release to keep the 88 pre-v3 SPECs readable
 - Requirement Clarification: Four-step systematic process with assumption analysis
 - SPEC Document Templates: Standardized 3-file structure (spec.md / plan.md / acceptance.md)
 - Plan-Run-Sync Integration: Seamless workflow connection
 - Parallel Development: Git Worktree-based SPEC isolation
 - Quality Gates: TRUST 5 framework validation
 
-EARS Five Patterns:
+GEARS Five Patterns (current notation):
+
+| Pattern | GEARS form (current) | EARS form (legacy) | Notes |
+|---------|----------------------|--------------------|-------|
+| Ubiquitous | "The <subject> shall <behavior>" | "The system shall <behavior>" | `<subject>` may be any noun: system, component, service, agent, function, artifact |
+| Event-driven | "**When** <event-detected>, the <subject> shall <behavior>" | "WHEN <event>, the system shall <action>" | Unchanged trigger semantics |
+| State-driven | "**While** <state>, the <subject> shall <behavior>" | "WHILE <state>, the system shall <action>" | Unchanged — promoted as a first-class pattern |
+| Capability gate | "**Where** <capability / feature flag / static config>, the <subject> shall <behavior>" | "WHERE <feature exists>, the system shall <action>" | Reframed — represents capability gate / feature flag / static config (no longer "Optional") |
+| Event-detected (replaces IF/THEN) | "**When** <undesired-condition-detected>, the <subject> shall <response>" | `IF <condition> THEN <action>` **[DEPRECATED — use WHEN <event-detected>]** | The `IF/THEN` modality was removed; describe the same intent as a detected event |
+
+Unified compound clause: `**Where** <precondition> **While** <state> **When** <event> the <subject> shall <behavior>` — any subset of the three modifiers may chain.
+
+See [GEARS notation reference](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation) — 4-locale (en / ko / ja / zh).
+
+> **IF/THEN deprecated callout**: Authoring guidance previously used `IF <condition> THEN <action>` to describe state-conditioned behavior. In GEARS that intent is expressed as `When <condition-detected>` (event-detected form). The lint engine emits a `LegacyEARSKeyword` warning (non-strict) or error (`moai spec lint --strict`) on residual `IF/THEN` in new SPECs. The 6-month backward-compatibility window remains active for legacy SPECs.
+
+Generalized subject substitution: GEARS replaces the hardcoded "the system" subject with `<subject>`, which may be any noun. Authors writing NEW SPECs MAY use the generalized form. Examples of valid non-"the system" subjects:
+
+- "The skill shall present GEARS as the primary notation." (Ubiquitous, `<subject>` = skill)
+- "The agent shall return a blocker report instead of prompting the user." (Ubiquitous, `<subject>` = agent)
+- "**When** a SPEC author opens the file, the component shall display the deprecation banner." (Event-driven, `<subject>` = component)
+
+The 88 existing SPECs keep "The system" as the default subject for readability; existing readers do not need to relearn the canonical phrase.
+
+EARS Five Patterns (legacy — 6-month backward-compatibility window):
 
 | Pattern | Format | Use |
 |---------|--------|-----|
 | Ubiquitous | "The system shall always X" | Always active |
 | Event-Driven | "WHEN event THEN action" | Trigger-response |
-| State-Driven | "IF condition THEN action" | Conditional behavior |
+| State-Driven | "WHILE state, the system shall ..." | Conditional behavior (use `WHILE`, not legacy `IF/THEN`) |
 | Unwanted | "The system shall not X" | Prohibition |
 | Optional | "Where possible, provide X" | Nice-to-have |
+
+The legacy `IF/THEN` modality is replaced by GEARS `When <event-detected>` — see callout above.
 
 When to Use:
 
@@ -110,9 +139,21 @@ WHY: Constitution prevents architectural drift and ensures maintainability.
 | 5 | Test Scenario Generation — create verification test cases |
 | 6 | SPEC Document Generation — produce standardized markdown |
 
-### EARS Format
+### GEARS Format (current)
 
-Five patterns cover all requirement types. Each pattern has a specific use case and test strategy.
+GEARS (Generalized EARS) is the canonical SPEC notation as of v3.0.0. It preserves Ubiquitous / `When` (event-driven) / `While` (state-driven) and reframes `Where` as a capability gate. The legacy `IF/THEN` modality is replaced by `When <event-detected>`.
+
+GEARS notation is exhaustively described in [docs-site GEARS notation reference](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation) (4-locale: en / ko / ja / zh) and the SPEC migration record `SPEC-V3R6-GEARS-MIGRATION-001` v0.2.0 (PR #1046).
+
+Compound clause example (with non-"the system" subject):
+
+> **Where** the project is initialized **While** strict mode is active **When** a SPEC author runs `moai spec lint`, the lint engine shall emit a `LegacyEARSKeyword` finding for every residual `IF/THEN` modality.
+
+This example chains all three GEARS modifiers (`Where`, `While`, `When`) and uses `<subject>` = "lint engine" rather than "the system".
+
+### EARS Format (legacy — 6-month backward-compatibility window)
+
+Five patterns cover all requirement types. Each pattern has a specific use case and test strategy. The 88 existing SPECs continue to use EARS notation and are valid for 6 months from the v3.0.0 release per the lint engine's backward-compatibility policy.
 
 See [EARS deep dive with examples per pattern](references/ears-deep-dive.md) for use cases, examples, and test strategies for Ubiquitous, Event-Driven, State-Driven, Unwanted, and Optional requirements.
 

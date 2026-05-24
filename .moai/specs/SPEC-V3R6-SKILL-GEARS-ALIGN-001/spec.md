@@ -2,9 +2,9 @@
 id: SPEC-V3R6-SKILL-GEARS-ALIGN-001
 title: "moai-workflow-spec SKILL을 GEARS 우선 가이드로 정렬"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-05-23
-updated: 2026-05-23
+updated: 2026-05-25
 author: manager-spec
 priority: P2
 phase: "v3.0.0"
