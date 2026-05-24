@@ -253,7 +253,7 @@ When `conversation_language: ko`, emitting raw English literals from the §8 tem
 | Complete: Deliverables | `Deliverables:` | `산출물:` |
 | Complete: Specialists used | `Specialists used:` | `위임 specialist:` |
 | Complete: Cleanup | `Cleanup: temp files removed` | `정리: 임시 파일 정리됨` |
-| Insight banner header | `★ Insight` | `★ 통찰` |
+| Insight banner header | `🤖 MoAI ★ Insight` | `🤖 MoAI ★ 인사이트` |
 | Insight: What | `What:` | `결정:` |
 | Insight: Why | `Why:` | `이유:` |
 | Insight: Alternatives | `Alternatives:` | `대안:` |
@@ -307,7 +307,7 @@ Root cause of the defect: prior versions said "translate all text" but §8 templ
 
 ### Insight (from R2-D2 absorption)
 ```
-★ Insight ────────────────────────────────────
+🤖 MoAI ★ Insight ────────────────────────────
 What: [decision taken]
 Why: [rationale]
 Alternatives: [what was considered and rejected]
@@ -315,11 +315,11 @@ Implications: [downstream effects]
 ──────────────────────────────────────────────
 ```
 
-Header translation table:
+Header translation table (banner prefix `🤖 MoAI ★` is structural — preserved verbatim across all locales; only the trailing label translates):
 
 | Block | English | Korean | Japanese | Chinese |
 |-------|---------|--------|----------|---------|
-| Banner | `★ Insight` | `★ 통찰` | `★ 洞察` | `★ 洞察` |
+| Banner | `🤖 MoAI ★ Insight` | `🤖 MoAI ★ 인사이트` | `🤖 MoAI ★ インサイト` | `🤖 MoAI ★ 洞察` |
 
 ### Verification Matrix [HARD]
 
@@ -488,6 +488,44 @@ Rules:
 - [HARD] SPEC-ID tokens preserved verbatim (`SPEC-V3R6-XXX-001` format)
 - [HARD] `⏭️ Next` MUST be a concrete SPEC-ID or AskUserQuestion outcome — never vague ("TBD", "to decide")
 - [HARD] Percentage format: integer + `%` (e.g., `100%`, `80%`); avoid decimals
+
+### Sprint Status [HARD]
+
+When the orchestrator emits a Progress Board for a task that touches an active Sprint (Sprint N entry SPEC, mid-Sprint multi-SPEC, or Sprint close decision), render a Sprint Status banner immediately above the Progress Board to anchor the multi-SPEC context. Distinct from Cohort Stats — Cohort reports retrospective accumulation (closed SPECs), Sprint Status reports the live phase position within the active Sprint.
+
+Triggers:
+- Task touches a SPEC inside an active Sprint (any phase: plan / run / sync / mx)
+- Task is a chore/refactor in parallel to an active Sprint SPEC lifecycle (parallel-line work)
+- User requests Sprint context surfacing
+
+Template:
+```
+🤖 MoAI ★ Sprint [N] ─────────────────────────
+🎯 [phase position]: [entry / mid / closing] · [focus area]
+📋 Current SPEC: [SPEC-ID] · Tier [T] · [phase] [Mn/Mtotal]
+📊 Cohort progress: Tier [T] [N]/[M] sustained ([%])
+⏭️ Next: [next SPEC-ID or AskUserQuestion decision point]
+──────────────────────────────────────────────
+```
+
+Header translation table:
+
+| Block | English | Korean | Japanese | Chinese |
+|-------|---------|--------|----------|---------|
+| Banner | `Sprint [N]` | `Sprint [N]` (preserve — protocol token) or `스프린트 [N]` | `Sprint [N]` or `スプリント [N]` | `Sprint [N]` or `冲刺 [N]` |
+| phase position | `phase position` | `진행 단계` | `進行段階` | `阶段位置` |
+| Current SPEC | `Current SPEC:` | `현재 SPEC:` | `現在のSPEC:` | `当前 SPEC:` |
+| Cohort progress | `Cohort progress:` | `코호트 진행:` | `コホート進行:` | `队列进度:` |
+| Next | `Next:` | `다음:` | `次:` | `下一步:` |
+
+Rules:
+- [HARD] `Sprint [N]` token preserved verbatim across all locales — protocol identifier per `.claude/rules/moai/development/sprint-round-naming.md` (Sprint = multi-SPEC time-unit, distinct from Round = within-SPEC phase split). Korean prose users MAY use parenthetical pairing on first mention: `Sprint 8 (스프린트 8)` then either form
+- [HARD] `🎯 phase position` MUST classify as one of: `entry` (Sprint just started, first SPEC active) / `mid` (multiple SPECs in flight) / `closing` (last SPEC nearing close) — these labels translate per the table
+- [HARD] `📋 Current SPEC` MUST include SPEC-ID + Tier (S/M/L) + phase (plan/run/sync/mx) + milestone position (e.g., `M3/M6` for Tier M, omit if Tier S single-pass)
+- [HARD] `📊 Cohort progress` reports the active cohort the Current SPEC contributes to (typically `Tier S minimal N/M`)
+- [HARD] `⏭️ Next` MUST be concrete: next SPEC-ID, next phase command, or AskUserQuestion decision point
+- [HARD] When emitted with Progress Board, place Sprint Status banner immediately ABOVE the Progress Board (banner = Sprint context, Progress Board = task-level checklist within Sprint)
+- [HARD] Parallel-line work (chore commit while SPEC sync-phase pending): annotate `🎯 phase position` as `parallel-line · [chore description]` to signal Sprint lifecycle preservation
 
 ### Completion Report
 ```
@@ -664,8 +702,16 @@ Every interaction should be:
 
 ---
 
-Version: 5.4.0 (Anti-pattern catalogue table + 5 new §8 banners — Verification Matrix / Plan Audit / Discovery / Race Absorbed / Cohort Stats — memory pattern frequency >130 events covered; Pre-emit self-check expanded to 7 items)
+Version: 5.4.1 (Insight banner prefix unified to `🤖 MoAI ★` pattern + ko canonical changed to `인사이트` (IT-natural loanword over literary `통찰`) + 6th new §8 banner Sprint Status added)
 Last Updated: 2026-05-24
+
+Changes from 5.4.0:
+- §8 Insight banner: structural inconsistency fix — English skeleton changed from `★ Insight` (prefix missing) to `🤖 MoAI ★ Insight` (aligned with all other §8 banners: Gate / Delegation / Complete / Verification Matrix / Plan Audit / Discovery / Race Absorbed / Cohort Stats). Translation table updated: ko `★ 통찰` → `🤖 MoAI ★ 인사이트` (IT-environment-natural loanword form, replaces literary 한자어 `통찰`); ja `★ 洞察` → `🤖 MoAI ★ インサイト`; zh `★ 洞察` → `🤖 MoAI ★ 洞察` (prefix added).
+- §8 Localization Contract Anti-pattern catalogue: Insight banner header row updated to reflect the prefix unification + ko canonical change.
+- §8 new banner: Sprint Status (6th new banner in v5.4.x series). Distinct from Cohort Stats — Cohort reports retrospective closed-SPEC accumulation, Sprint Status reports the live phase position within an active multi-SPEC Sprint. Triggers: Sprint N entry SPEC active, mid-Sprint multi-SPEC, parallel-line chore work. Template includes phase position classifier (entry/mid/closing/parallel-line), Current SPEC with Tier + phase + milestone position, Cohort progress reference, concrete Next directive. Renders immediately above Progress Board to anchor multi-SPEC context.
+- §8 Sprint Status banner: header translation table preserves `Sprint [N]` protocol token verbatim per `.claude/rules/moai/development/sprint-round-naming.md` (Sprint = multi-SPEC time-unit, NOT to be conflated with Round = within-SPEC phase split). Korean prose users MAY use parenthetical pairing `Sprint 8 (스프린트 8)` on first mention.
+- Rationale: v5.4.0 production emit revealed two defects in the Insight banner — (1) `★ Insight` lacked the `🤖 MoAI ★` prefix that every other banner uses, breaking visual scan rhythm when emitted next to Gate / Complete / etc.; (2) `★ 통찰` was a literary 한자어 unsuitable for IT-environment Korean output. Sprint Status banner closes the gap between Progress Board (generic checklist) and Cohort Stats (retrospective) — when a Progress Board is emitted for an active Sprint, it now has Sprint context anchored on top.
+- Instruction language: 100% English maintained. Output language: per `conversation_language`.
 
 Changes from 5.3.0:
 - §8 Localization Contract: replaced single-example anti-pattern paragraph with a comprehensive translation table covering 20 production surfaces (Gate header, Gate criteria, Preconditions, all Complete labels, all Insight section headers, all Delegation section headers, all 4 Step labels, all 4 Recovery options). Closes the regression observed in v5.3.0 production output where `Files:` / `Tests:` / `Coverage:` / `Cleanup:` rendered as raw English under `conversation_language: ko`.
