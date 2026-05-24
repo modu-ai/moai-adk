@@ -1,6 +1,6 @@
 # SPEC-First DDD - Specification-Driven Development
 
-Purpose: Specification-driven domain-driven development workflow ensuring clear requirements before implementation through EARS format and ANALYZE-PRESERVE-IMPROVE cycles.
+Purpose: Specification-driven domain-driven development workflow ensuring clear requirements before implementation through GEARS format (current; EARS retained as legacy reference for 6-month backward-compat) and ANALYZE-PRESERVE-IMPROVE cycles.
 
 Version: 3.0.0 (DDD Migration)
 Last Updated: 2026-01-17
@@ -11,7 +11,7 @@ Last Updated: 2026-01-17
 
 SPEC-First DDD is MoAI-ADK's development methodology combining:
 
-1. SPEC Generation - EARS format requirements (/moai:1-plan)
+1. SPEC Generation - GEARS format requirements (current; EARS as legacy reference) (/moai:1-plan)
 2. Domain-Driven Development - ANALYZE-PRESERVE-IMPROVE (/moai:2-run)
 3. Documentation Sync - Auto-generated docs (/moai:3-sync)
 
@@ -26,7 +26,16 @@ Token Budget: SPEC 30K | DDD 180K | Docs 40K | Total 250K
 
 Key Practice: Execute `/clear` after Phase 1 to save 45-50K tokens.
 
-EARS Patterns:
+GEARS Patterns (current notation):
+- Ubiquitous: The <subject> shall <behavior>
+- Event-driven: When <event>, the <subject> shall <behavior>
+- State-driven: While <state>, the <subject> shall <behavior>
+- Where (capability gate): Where <capability or feature flag>, the <subject> shall <behavior>
+- Event-detected (replaces the deprecated conditional modality): When <undesired-condition-detected>, the <subject> shall <response>
+
+Unified compound clause: `[Where ...][While ...][When ...] The <subject> shall <behavior>` — any subset of the three modifiers may chain. The `<subject>` is generalized (any noun: system, component, service, agent, function, artifact).
+
+EARS Patterns (legacy reference, 6-month backward-compat — expires 2026-11-22):
 - Ubiquitous: System SHALL always...
 - Event-driven: WHEN <event>, system SHALL...
 - State-driven: WHILE <state>, system SHALL...
@@ -34,7 +43,8 @@ EARS Patterns:
 - Optional: WHERE possible, system SHOULD...
 
 Extended Documentation:
-- [EARS Format Reference](spec-ears-format.md) - Detailed EARS patterns and examples
+- Canonical GEARS authoring guide: `.claude/skills/moai-workflow-spec/SKILL.md` § "GEARS Format" (current)
+- [EARS Format Reference (legacy reference, deprecated — see GEARS Format guide)](spec-ears-format.md) - Detailed EARS patterns and examples for legacy SPECs
 - [DDD Implementation](spec-ddd-implementation.md) - ANALYZE-PRESERVE-IMPROVE workflows
 
 ---
@@ -43,7 +53,7 @@ Extended Documentation:
 
 ### Phase 1: SPEC Generation
 
-Purpose: Define clear, testable requirements in EARS format before coding.
+Purpose: Define clear, testable requirements in GEARS format (current; EARS legacy reference supported for the 6-month backward-compat window) before coding.
 
 Workflow:
 ```bash
@@ -52,7 +62,7 @@ Workflow:
 
 # 2. spec-builder creates:
 .moai/specs/SPEC-001/
-    spec.md           # EARS format requirements
+    spec.md           # GEARS format requirements (current; EARS for legacy SPECs)
     acceptance.md     # Acceptance criteria
     complexity.yaml   # Complexity analysis
 
@@ -60,7 +70,7 @@ Workflow:
 /clear    # Saves 45-50K tokens, prepares clean context
 ```
 
-EARS Format Structure:
+GEARS Format Structure (current; subject "system" shown for readability, but any noun is valid per generalized-subject rule):
 
 ```markdown
 ---
@@ -150,7 +160,8 @@ Workflow:
 
 For comprehensive implementation patterns including MFA examples, iterative SPEC refinement, and CI/CD integration, see:
 
-- [EARS Format Reference](spec-ears-format.md) - All EARS patterns with examples
+- Canonical GEARS authoring guide: `.claude/skills/moai-workflow-spec/SKILL.md` § "GEARS Format" (current notation)
+- [EARS Format Reference (legacy reference, deprecated — see GEARS Format guide)](spec-ears-format.md) - All EARS patterns with examples for the 88 legacy SPECs
 - [DDD Implementation](spec-ddd-implementation.md) - Advanced DDD workflows
 
 ---
@@ -158,7 +169,7 @@ For comprehensive implementation patterns including MFA examples, iterative SPEC
 ## Works Well With
 
 Agents:
-- spec-builder - EARS format SPEC generation
+- spec-builder - GEARS format SPEC generation (current; EARS as legacy reference)
 - ddd-implementer - ANALYZE-PRESERVE-IMPROVE execution
 - quality-gate - TRUST 5 validation
 - docs-manager - Documentation generation

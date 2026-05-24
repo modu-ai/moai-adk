@@ -285,7 +285,8 @@ jobs:
 ## Works Well With
 
 - [spec-first-ddd.md](spec-first-ddd.md) - Main workflow overview
-- [spec-ears-format.md](spec-ears-format.md) - EARS patterns
+- Canonical GEARS authoring guide: `.claude/skills/moai-workflow-spec/SKILL.md` § "GEARS Format" (current notation)
+- [spec-ears-format.md (legacy reference, deprecated — see GEARS Format guide)](spec-ears-format.md) - EARS patterns for legacy SPECs
 
 ---
 

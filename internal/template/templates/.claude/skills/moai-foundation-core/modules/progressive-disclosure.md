@@ -181,7 +181,7 @@ Example - DDD Workflow:
 
 ### Phase 1: SPEC Generation
 
-Purpose: Define clear, testable requirements in EARS format before coding.
+Purpose: Define clear, testable requirements in GEARS format (current; EARS as legacy reference for 6-month backward-compat) before coding.
 
 Workflow:
 ```bash
@@ -190,7 +190,7 @@ Workflow:
 
 # 2. spec-builder creates:
 .moai/specs/SPEC-001/
- spec.md # EARS format requirements
+ spec.md # GEARS format requirements (current; EARS for legacy SPECs)
  acceptance.md # Acceptance criteria
  complexity.yaml # Complexity analysis
 
@@ -198,7 +198,7 @@ Workflow:
 /clear # Saves 45-50K tokens, prepares clean context
 ```
 
-EARS Format Structure:
+GEARS Format Structure (current notation; subject "system" shown for readability — any noun valid per generalized-subject rule):
 ```markdown
 ### SPEC-001-REQ-01: User Registration (Ubiquitous)
 Pattern: Ubiquitous

@@ -41,7 +41,7 @@ Standard Feature Budget (250K tokens):
 
 | Phase | Budget | Purpose | Breakdown |
 |-------|--------|---------|-----------|
-| Phase 1: SPEC | 30K | Requirements definition | EARS format, acceptance criteria, complexity |
+| Phase 1: SPEC | 30K | Requirements definition | GEARS format (current; EARS as legacy reference), acceptance criteria, complexity |
 | /clear | - | Context reset | Saves 45-50K tokens |
 | Phase 2: DDD | 180K | Implementation + tests | ANALYZE (40K) + PRESERVE (80K) + IMPROVE (60K) |
 | Phase 3: Docs | 40K | Documentation | API docs, architecture, reports |

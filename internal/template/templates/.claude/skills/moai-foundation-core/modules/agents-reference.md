@@ -60,7 +60,7 @@ Core command processors directly bound to MoAI commands.
 | Agent | Command | Purpose |
 |-------|---------|---------|
 | `workflow-project` | `/moai:0-project` | Project initialization and setup |
-| `workflow-spec` | `/moai:1-plan` | EARS SPEC generation and planning |
+| `workflow-spec` | `/moai:1-plan` | GEARS SPEC generation and planning (current; EARS retained as legacy reference for 6-month backward-compat) |
 | `workflow-ddd` | `/moai:2-run` | DDD ANALYZE-PRESERVE-IMPROVE execution |
 | `workflow-docs` | `/moai:3-sync` | Documentation generation and synchronization |
 
