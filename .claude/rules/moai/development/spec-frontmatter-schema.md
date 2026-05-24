@@ -118,6 +118,19 @@ Snake_case aliases are silently dropped by the decoder, causing empty-value `Fro
 
 See `internal/spec/lint.go` `FrontmatterSchemaRule.Check()` for the authoritative implementation.
 
+## OwnershipTransitionRule Cross-Reference
+
+The Status Transition Ownership Matrix above is enforced at lint-time by the `OwnershipTransitionRule` in `internal/spec/lint_ownership.go` (registered in `defaultRules()` of `internal/spec/lint.go`). The rule emits two finding codes:
+
+- **`OwnershipTransitionInvalid`** (Warning severity): Emitted when a SPEC's git-log history shows a status transition performed by an agent whose commit subject prefix does NOT match the canonical owner for that transition. Example: `manager-docs` performing `draft → in-progress` (which the matrix above assigns to `manager-develop`) triggers a finding.
+- **`OwnershipTransitionUnreachable`** (Info severity): Emitted when the rule cannot read git history for the SPEC file (non-git environment, fresh clone without history, or `git log --follow` error). Graceful observation — no panic, no error escalation.
+
+Default subset (REQ-AAT-009 of SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001): the rule evaluates the two most common transitions by default (`draft → in-progress` and `in-progress → implemented`). Terminal states (`superseded`, `archived`, `rejected`) are exempted via the `terminalStatusEnum` shared with `StatusGitConsistencyRule`.
+
+Configuration: severity can be promoted to Error under `--strict` mode (same as `StatusGitConsistencyRule`). Per-SPEC opt-out via `lint.skip: [OwnershipTransitionInvalid]` in optional frontmatter (see Optional Fields above).
+
+Implementation files: `internal/spec/lint_ownership.go` (rule body) + `internal/spec/lint_ownership_test.go` (TDD coverage, introduced by SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001 M2).
+
 ## Examples
 
 ### Correct (all 12 fields, canonical names)

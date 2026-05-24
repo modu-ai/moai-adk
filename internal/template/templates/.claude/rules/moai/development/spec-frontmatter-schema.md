@@ -59,6 +59,29 @@ draft → planned → in-progress → implemented → completed
 
 Valid values: `draft`, `planned`, `in-progress`, `implemented`, `completed`, `superseded`, `archived`, `rejected`
 
+## Status Transition Ownership Matrix
+
+Per SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 (Audit Tier 2 F1 resolution — Anthropic Best Practice #7 DRI ownership at agent-artifact granularity). This matrix is the **schema-level SSOT** for which agent performs each canonical status transition. Cross-referenced by the `## SPEC Artifact Ownership` body sections in `.claude/agents/core/manager-{spec,develop,docs}.md`.
+
+| Transition | Owning agent | Canonical commit subject pattern |
+|------------|--------------|----------------------------------|
+| `(none) → draft` | manager-spec | `feat(SPEC-{ID}): plan-phase artifacts ({tier} Section A-E, 4 artifacts)` |
+| `draft → in-progress` | manager-develop (on M1 commit start) | `fix(SPEC-{ID}): M1 ...` or `feat(SPEC-{ID}): M1 ...` — first run-phase commit |
+| `in-progress → implemented` | manager-docs (on sync commit) | `docs(SPEC-{ID}): sync-phase artifacts` or `chore(SPEC-{ID}): sync-phase artifacts` |
+| `implemented → completed` | manager-docs OR orchestrator (on Mx chore commit) | `chore(SPEC-{ID}): Mx-phase audit-ready signal + 4-phase close` |
+| `* → superseded` | manager-spec (when authoring the new superseding SPEC) | `feat(SPEC-{NEW-ID}): supersedes SPEC-{OLD-ID}` |
+| `* → archived` | manager-docs (administrative cleanup) | `chore(specs): archive SPEC-{ID}` |
+| `* → rejected` | orchestrator decision, recorded by manager-docs | `chore(SPEC-{ID}): rejected per <rationale>` |
+
+### Forbidden ownership crossings
+
+- `manager-docs` MUST NOT modify `spec.md` / `plan.md` / `acceptance.md` body content (frontmatter `status:` + `updated:` updates on the `in-progress → implemented` transition are allowed; ALL other body modifications are forbidden). When sync-phase reveals a need to modify SPEC body content, manager-docs MUST return a blocker report and the orchestrator re-delegates to manager-spec.
+- `manager-develop` MUST NOT modify `spec.md` / `plan.md` / `acceptance.md` body content (frontmatter `status:` + `updated:` updates on the `draft → in-progress` transition are allowed; ALL other body modifications are forbidden). When run-phase reveals a need to modify SPEC body content, manager-develop MUST return a blocker report and the orchestrator re-delegates to manager-spec for the scope-doc update before re-delegating back.
+
+### Forward-looking enforcement (optional defense-in-depth)
+
+A future PostToolUse hook MAY validate at execution time that the agent performing a Write on a SPEC artifact body matches the expected owner per this matrix. This is OPTIONAL (REQ-ARR-009 of SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 — deferred to a follow-up SPEC if desired). The primary intervention is the declarative ownership in the agent body sections + this schema matrix; hook-based enforcement is a complementary layer.
+
 ## Optional Fields
 
 These fields may be included when needed but are NOT required by `FrontmatterSchemaRule`:
@@ -94,6 +117,19 @@ Snake_case aliases are silently dropped by the decoder, causing empty-value `Fro
   Snake_case aliases in the source YAML file are not recognized — they produce empty values.
 
 See `internal/spec/lint.go` `FrontmatterSchemaRule.Check()` for the authoritative implementation.
+
+## OwnershipTransitionRule Cross-Reference
+
+The Status Transition Ownership Matrix above is enforced at lint-time by the `OwnershipTransitionRule` in `internal/spec/lint_ownership.go` (registered in `defaultRules()` of `internal/spec/lint.go`). The rule emits two finding codes:
+
+- **`OwnershipTransitionInvalid`** (Warning severity): Emitted when a SPEC's git-log history shows a status transition performed by an agent whose commit subject prefix does NOT match the canonical owner for that transition. Example: `manager-docs` performing `draft → in-progress` (which the matrix above assigns to `manager-develop`) triggers a finding.
+- **`OwnershipTransitionUnreachable`** (Info severity): Emitted when the rule cannot read git history for the SPEC file (non-git environment, fresh clone without history, or `git log --follow` error). Graceful observation — no panic, no error escalation.
+
+Default subset (REQ-AAT-009 of SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001): the rule evaluates the two most common transitions by default (`draft → in-progress` and `in-progress → implemented`). Terminal states (`superseded`, `archived`, `rejected`) are exempted via the `terminalStatusEnum` shared with `StatusGitConsistencyRule`.
+
+Configuration: severity can be promoted to Error under `--strict` mode (same as `StatusGitConsistencyRule`). Per-SPEC opt-out via `lint.skip: [OwnershipTransitionInvalid]` in optional frontmatter (see Optional Fields above).
+
+Implementation files: `internal/spec/lint_ownership.go` (rule body) + `internal/spec/lint_ownership_test.go` (TDD coverage, introduced by SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001 M2).
 
 ## Examples
 
