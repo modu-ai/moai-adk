@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-HOOK-CONTRACT-FIX-001
 title: "WorktreeCreate/Remove Hook Contract Fix — Regression Guards + Working Tree Hygiene"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-22
 updated: 2026-05-22
 author: manager-spec
@@ -24,6 +24,7 @@ related_specs: [SPEC-V3R6-AGENT-FOLDER-SPLIT-001, SPEC-V3R6-HARNESS-RENAME-001]
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-22 | manager-spec | Initial draft — Wave 0 SPEC #1. Lock in PR #1044 (commit `1b376eaef`) workaround as the canonical active-creator contract: cement regression guards (CI test against re-registration in settings.json + .tmpl), fix `internal/hook/.moai/` working-tree leak from subagent_stop.go observer fallback (REQ-HCF-005), close documentation drift (settings_test.go contract test + plain-text-stdout unit test in worktree_create_test.go / worktree_remove_test.go), and preserve handlers + shell wrappers + CLI subcommands as opt-in infrastructure. Tier S (~120 LOC, 6 files in-scope). |
+| 0.2.0 | 2026-05-22 | manager-develop | Implemented. 3 commits on main (Hybrid Trunk Tier S): 8319c6efa (M3 source fix — resolveObservationsPath helper with input.CWD → $CLAUDE_PROJECT_DIR → os.Getwd() order) + ba96ffc6e (M1+M2 new regression guards — TestWriteHookOutput_WorktreeCreatePlainText / TestWriteHookOutput_WorktreeRemovePlainText / TestWriteHookOutput_EmptyWorktreePathProducesEmptyStdout / TestSettingsJsonHasNoWorktreeCreateKey / TestSettingsTmplHasNoWorktreeCreateKey) + d3d9b829f (M3 pollution fix in 4 existing tests via t.Setenv + M4 working-tree cleanup of internal/hook/.moai/). All 14 ACs PASS (in-scope). 2 baseline residual FAIL preserved (TestAuditRegistrationParity + TestAuditThreeWaySync — PR #1044 incomplete adjustment, out of scope per AC-HCF-012). Cross-platform PASS (darwin + windows). C-HRA-008 grep 0 matches. M5 documentation crosswalk pass-by-inspection (no drift). |
 
 ## 1. Goal
 
