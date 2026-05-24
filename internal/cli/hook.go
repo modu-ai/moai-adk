@@ -139,6 +139,27 @@ func init() {
 		RunE:  runSpecStatus,
 	}
 	hookCmd.AddCommand(specStatusCmd)
+
+	// Add "harness-classify" subcommand (SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001).
+	// Wired into the /moai:harness status workflow body §2.1 to close the V3R4
+	// learning loop. Reuses the existing hook namespace per
+	// BC-V3R4-HARNESS-001-CLI-RETIREMENT (no new top-level harness namespace).
+	hookCmd.AddCommand(&cobra.Command{
+		Use:   "harness-classify",
+		Short: "Run V3R4 harness classifier and write tier promotions",
+		Long: `Reads .moai/harness/usage-log.jsonl, aggregates events into patterns,
+classifies tier per learning.tier_thresholds in harness.yaml, and appends
+promotions to .moai/harness/learning-history/tier-promotions.jsonl.
+
+Gated by learning.enabled in .moai/config/sections/harness.yaml — when false,
+the subcommand is a complete no-op (REQ-HCW-004, preserves REQ-HRN-FND-009).
+
+On classifier error the subcommand emits a "harness-classify error: ..."
+annotation to stderr and exits with code 1 so the workflow body can render
+the error annotation above its status sections without aborting (REQ-HCW-003
+fail-open).`,
+		RunE: runHarnessClassify,
+	})
 }
 
 // @MX:ANCHOR: [AUTO] runHookEvent is the central dispatcher for all Claude Code hook events
@@ -950,6 +971,125 @@ func runHarnessObserveUserPromptSubmit(cmd *cobra.Command, _ []string) error {
 	if err := obs.RecordExtendedEvent(evt); err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-user-prompt-submit: event recording failed: %v\n", err)
 	}
+
+	return nil
+}
+
+// ─────────────────────────────────────────────
+// SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001 (HCW)
+// harness-classify subcommand: runs the V3R4 classifier and writes promotions
+// ─────────────────────────────────────────────
+
+// defaultTierThresholds are the canonical 4-tier cutoffs per V3R4-HARNESS-003
+// (count >= 1 → observation, >= 3 → heuristic, >= 5 → rule, >= 10 → auto_update).
+// Mirrors the fallback in internal/cli/harness.go runHarnessStatus when
+// learning.tier_thresholds is absent from harness.yaml.
+var defaultTierThresholds = []int{1, 3, 5, 10}
+
+// readTierThresholds reads learning.tier_thresholds from
+// .moai/config/sections/harness.yaml. Returns defaultTierThresholds when the
+// config is missing, unreadable, or the field is absent — matches the
+// fail-open semantics of isHarnessLearningEnabled.
+func readTierThresholds(projectRoot string) []int {
+	configPath := filepath.Join(projectRoot, ".moai", "config", "sections", "harness.yaml")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return defaultTierThresholds
+	}
+	var doc struct {
+		Learning struct {
+			TierThresholds []int `yaml:"tier_thresholds,omitempty"`
+		} `yaml:"learning,omitempty"`
+	}
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return defaultTierThresholds
+	}
+	if len(doc.Learning.TierThresholds) == 0 {
+		return defaultTierThresholds
+	}
+	return doc.Learning.TierThresholds
+}
+
+// runHarnessClassify runs the V3R4 harness classifier (AggregatePatterns +
+// ClassifyTier + WritePromotion) against the current project's usage-log.jsonl
+// and appends promotions to tier-promotions.jsonl.
+//
+// Behavior contract (REQ-HCW-001..004):
+//   - REQ-HCW-004 gate: if learning.enabled is false, return immediately
+//     without reading the log or touching tier-promotions.jsonl. stderr stays
+//     silent. Preserves the REQ-HRN-FND-009 no-op contract for the entire
+//     learning subsystem.
+//   - REQ-HCW-002 happy path: read usage-log.jsonl via AggregatePatterns,
+//     classify each pattern via ClassifyTier with thresholds from harness.yaml
+//     (default [1,3,5,10]), and append one Promotion per pattern to
+//     tier-promotions.jsonl via Learner.WritePromotion.
+//   - REQ-HCW-003 fail-open: if AggregatePatterns returns an unrecoverable
+//     error (e.g., I/O failure other than ENOENT — ENOENT yields an empty map
+//     per AggregatePatterns semantics), emit a "harness-classify error: ..."
+//     annotation to stderr and return the error so the workflow body Bash
+//     wrapper can read exit code 1 and render the annotation above its status
+//     sections without aborting.
+//   - REQ-HCW-001 summary: on success, emit one stderr line
+//     "harness-classify: N patterns → M promotions written" so the workflow
+//     body can render the summary above the tier distribution table.
+//
+// Note: corrupt JSONL lines in usage-log.jsonl are SILENTLY SKIPPED by
+// AggregatePatterns (see learner.go scanner loop). The hook itself does not
+// observe the skip count — observability of corrupt entries is the
+// responsibility of a separate audit subcommand (out of scope for HCW-001).
+//
+// @MX:ANCHOR: [AUTO] runHarnessClassify is the runtime caller of the V3R4
+// harness classifier API — closes the learning loop for /moai:harness status.
+// @MX:REASON: [AUTO] fan_in = 2 (cobra dispatch + hook_harness_classify_test.go).
+// The fan_in is below the ANCHOR threshold today but will grow when future
+// SPECs (PROPOSAL-GEN-001, RATELIMIT-001, SNAPSHOT-001) layer atop the loop.
+// ANCHOR is added preemptively because this function is the canonical
+// invocation site of the classifier pipeline.
+func runHarnessClassify(cmd *cobra.Command, _ []string) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = "."
+	}
+
+	// REQ-HCW-004 gate — silent no-op when learning is disabled.
+	if !isHarnessLearningEnabled(cwd) {
+		return nil
+	}
+
+	logPath := filepath.Join(cwd, ".moai", "harness", "usage-log.jsonl")
+	promoPath := filepath.Join(cwd, ".moai", "harness", "learning-history", "tier-promotions.jsonl")
+
+	// REQ-HCW-002: aggregate patterns from the usage log. AggregatePatterns
+	// returns an empty map when the file does not exist (normal first-run
+	// state on a fresh project) — no error in that path.
+	patterns, err := harness.AggregatePatterns(logPath)
+	if err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-classify error: aggregate patterns: %v\n", err)
+		return err
+	}
+
+	thresholds := readTierThresholds(cwd)
+	learner := harness.NewLearner(promoPath)
+
+	promoCount := 0
+	for _, p := range patterns {
+		tier := harness.ClassifyTier(p, thresholds)
+		promo := harness.Promotion{
+			PatternKey:       p.Key,
+			FromTier:         "",
+			ToTier:           tier.String(),
+			ObservationCount: p.Count,
+			Confidence:       p.Confidence,
+		}
+		if writeErr := learner.WritePromotion(promo); writeErr != nil {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-classify error: write promotion (pattern=%s): %v\n", p.Key, writeErr)
+			return writeErr
+		}
+		promoCount++
+	}
+
+	// REQ-HCW-001 summary line for workflow body rendering.
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-classify: %d patterns → %d promotions written\n", len(patterns), promoCount)
 
 	return nil
 }
