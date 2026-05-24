@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **`spec lint` MissingExclusions 회귀 정리** (SPEC-V3R6-SPEC-LINT-CLEANUP-001, commit `d1558e092`): 8개 sibling SPEC `spec.md` 본문에 H3 sub-heading retroactive 적용. lint count 10 → 2 (8 in-scope 해소). 분류 A (H3 추가) 2건 + 분류 B (기존 H3 하위 list item 추가 / hyphen→space heading 정정) 6건. 잔여 2건은 `ANTHROPIC-AUDIT-TIER3-001` + `HARNESS-NAMESPACE-CLEANUP-001 §5.3` 병렬 세션 drift로 본 SPEC out-of-scope (acceptance.md §D.4 edge case PASS-WITH-NOTE). 0 semantic deletions (PRESERVE invariant). Tier S minimal 1-pass run-phase 성공 + Trust-but-verify 7-item batch 0 critical discrepancies + L52 case 5 real-time race absorbed (HARNESS-NAMESPACE-CLEANUP-001 parallel session 8 NEW items 절대 흡수 0).
+
 ## [v3.0.0-rc1] — 2026-05-22: Hooks Contract Cleanup + 9-PR Batch Sync + Hybrid Trunk Config
 
 ### Fixed

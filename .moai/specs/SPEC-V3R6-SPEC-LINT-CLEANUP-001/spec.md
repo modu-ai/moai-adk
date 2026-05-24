@@ -2,7 +2,7 @@
 id: SPEC-V3R6-SPEC-LINT-CLEANUP-001
 title: "spec-lint MissingExclusions baseline cleanup — H3 sub-heading retroactive application to 8 sibling SPECs"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: GOOS행님
@@ -11,6 +11,7 @@ phase: "v3.0.0"
 module: ".moai/specs"
 lifecycle: spec-anchored
 tags: "spec-lint, missing-exclusions, baseline-cleanup, h3-pattern, retroactive, tier-s"
+sync_commit_sha: "<pending>"
 ---
 
 # SPEC-V3R6-SPEC-LINT-CLEANUP-001 — spec-lint MissingExclusions baseline cleanup

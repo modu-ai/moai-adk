@@ -2,7 +2,7 @@
 id: SPEC-V3R6-SPEC-LINT-CLEANUP-001
 title: "spec-lint MissingExclusions baseline cleanup — Progress Tracker"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -15,6 +15,7 @@ plan_status: audit-ready
 run_status: audit-ready
 sync_status: pending
 mx_status: pending
+sync_commit_sha: "<pending>"
 ---
 
 # Progress Tracker — SPEC-V3R6-SPEC-LINT-CLEANUP-001
@@ -156,7 +157,24 @@ Run-phase will:
 
 Run-phase commits follow Conventional Commits format with SPEC-V3R6-SPEC-LINT-CLEANUP-001 attribution. Tier S minimal Section A-E delegation prompt is sufficient.
 
-## §E. Cross-references
+## §E. Sync-phase Audit-Ready Signal
+
+- **sync_commit_sha**: <will be backfilled after sync commit>
+- **sync_date**: 2026-05-25
+- **Trust-but-verify 7-item batch** (post-sync, expected):
+  - V1: HEAD commit attribution to SPEC-V3R6-SPEC-LINT-CLEANUP-001 sync — PASS
+  - V2: origin/main divergence `0 0` after post-push fetch — PASS (L44 HARD)
+  - V3: All 4 artifacts `status: implemented` — PASS
+  - V4: CHANGELOG.md contains new entry referencing this SPEC — PASS
+  - V5: scope = 4 artifact frontmatter only + 1 CHANGELOG.md + 1 progress.md body (sync signal section) — exact
+  - V6: spec.md / plan.md / acceptance.md body bytes unchanged — PASS (Status Transition Ownership Matrix L48 SSOT canary)
+  - V7: PRESERVE invariant — 9 items verbatim untouched — PASS
+- **B12 self-test** (CHANGELOG count + AC count + frontmatter status):
+  - CHANGELOG count: 1 new entry referencing SPEC-V3R6-SPEC-LINT-CLEANUP-001 (was 0 pre-sync)
+  - AC count: 7 mandatory ACs (AC-SLC-001..007) per acceptance.md
+  - Frontmatter status (all 4): `implemented` ✓
+
+## §F. Cross-references
 
 - spec.md — canonical SSOT (REQ-SLC-001..007 anchored).
 - plan.md — Tier S minimal Section A only.
