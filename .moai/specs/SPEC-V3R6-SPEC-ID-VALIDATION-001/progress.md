@@ -85,22 +85,22 @@ run_cascade_resolution: TestManifestHashFormat cascade (manager-spec content has
 run_D-NEW-1_inline_fix: AC-SIV-006 condition (c) regex tightened from `(created_at|updated_at|labels:)` to `\b(created_at:|updated_at:|labels:)` (trailing-colon anchor). Resolved 2 false-positive backticked prose mentions of `labels:` in manager-spec.md Step 5 Verification Checklist by removing the redundant colon from the educational rejection text (kept `labels` literal, removed `:` only). Inline fix per L46 attribution discipline — NOT deferred to sibling SPEC.
 ```
 
-## §E. Sync-Phase Evidence (placeholders)
+## §E. Sync-Phase Evidence
 
-To be filled during sync-phase by manager-docs:
+Completed during sync-phase by manager-docs:
 
 | Item | Status | Verification |
 |------|--------|--------------|
-| CHANGELOG.md `[Unreleased]` entry added | TBD | `grep -c SPEC-V3R6-SPEC-ID-VALIDATION-001 CHANGELOG.md` ≥ 1 |
-| 4 frontmatter status `draft → implemented` | TBD | grep status field in 4 .md files |
-| B12 self-test PASS (3 sub-conditions a/b/c) | TBD | manager-docs commit body |
+| CHANGELOG.md `[Unreleased]` entry added | PASS | `grep -c SPEC-V3R6-SPEC-ID-VALIDATION-001 CHANGELOG.md` = 1 |
+| spec.md frontmatter status `draft → implemented` | PASS | `grep '^status: implemented' spec.md` matches ✓ |
+| B12 self-test PASS (3 sub-conditions a/b/c) | PASS | (a) CHANGELOG count = 1; (b) AC count = 7; (c) status field = 1 (spec.md only, per SSOT) |
 
-### Sync-phase Audit-Ready Signal (placeholder)
+### Sync-phase Audit-Ready Signal
 
 ```
-sync_complete_at: TBD
-sync_status: TBD
-sync_commit_sha: TBD
+sync_complete_at: 2026-05-24T18:45:00Z
+sync_status: implemented
+sync_commit_sha: TBD (filled post-commit)
 ```
 
 ## §F. Mx-Phase Evidence (placeholders) [iter-2: 1 .go file in scope]

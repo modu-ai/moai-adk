@@ -2,7 +2,7 @@
 id: SPEC-V3R6-SPEC-ID-VALIDATION-001
 title: "manager-spec SPEC ID Regex Pre-Write Self-Check (L51 Implementation)"
 version: "0.2.0"
-status: draft
+status: implemented
 created: 2026-05-24
 updated: 2026-05-24
 author: MoAI
