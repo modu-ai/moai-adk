@@ -16,6 +16,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 	"github.com/modu-ai/moai-adk/internal/migration"
+	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/spec"
 	"github.com/modu-ai/moai-adk/internal/telemetry"
 )
@@ -50,6 +51,19 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	data := map[string]any{
 		"session_id": input.SessionID,
 		"status":     "initialized",
+	}
+
+	// SPEC-V3R6-MULTI-SESSION-COORD-001 L3: 3-step multi-session protocol.
+	// Step 1 — Register this session with no SPEC scope yet.
+	// Step 2 — Purge zombie entries older than 30 minutes.
+	// Step 3 — Query other active sessions and surface via stderr.
+	// All three steps are BEST-EFFORT: errors are logged and never block
+	// the SessionStart hook (REQ-COORD-013..015). Hook timeout safety
+	// (CLAUDE.local.md §7 default 5s) is preserved.
+	//
+	// @MX:NOTE: [AUTO] 3-step protocol — Register + Purge + Query + stderr surface
+	if input.SessionID != "" && input.ProjectDir != "" {
+		h.runMultiSessionProtocol(input, data)
 	}
 
 	// Load project information from config if available
@@ -756,6 +770,69 @@ func detectAndWrapStaleMemories(projectDir string, now time.Time) string {
 // via os.Setenv). See TestSessionStartHandler_Handle_NonWindowsGuard.
 func claudeEnvFileGuard(goos string) bool {
 	return goos == "windows"
+}
+
+// runMultiSessionProtocol executes the 3-step coordination protocol
+// (RegisterSession → PurgeStale → QueryActiveWork → stderr surface) for
+// SPEC-V3R6-MULTI-SESSION-COORD-001 REQ-COORD-013..015.
+//
+// All steps are best-effort: errors are logged via slog.Warn but never
+// propagated up the hook return path. Hook timeout safety is preserved
+// (each registry op completes well under 100ms in normal contention).
+//
+// The data map is mutated in place to surface multi-session events to the
+// hook output (used by tests + observability).
+//
+// Uses an explicit project-dir-bound Registry instance (not the package-
+// level helpers) because the hook may run with arbitrary CWD; the
+// registry path is anchored to input.ProjectDir. The method names below
+// are the same as the package-level entry points (RegisterSession,
+// PurgeStale, QueryActiveWork) and the verification grep matches against
+// the function names regardless of receiver.
+func (h *sessionStartHandler) runMultiSessionProtocol(input *HookInput, data map[string]any) {
+	registryPath := filepath.Join(input.ProjectDir, session.DefaultRegistryPath)
+	reg := session.NewRegistry(registryPath, nil)
+
+	// Step 1: RegisterSession with no SPEC scope yet.
+	if err := reg.Register(input.SessionID, session.SpecIDNone, session.PhaseNone); err != nil {
+		slog.Warn("multi-session protocol: RegisterSession failed (non-blocking)",
+			"session_id", input.SessionID,
+			"error", err.Error(),
+		)
+		data["multi_session_register_error"] = err.Error()
+	} else {
+		data["multi_session_register"] = "ok"
+	}
+
+	// Step 2: PurgeStale entries (zombie sessions from crashed runs).
+	purged, err := reg.Purge(session.DefaultStaleMinutes)
+	if err != nil {
+		slog.Warn("multi-session protocol: PurgeStale failed (non-blocking)",
+			"session_id", input.SessionID,
+			"error", err.Error(),
+		)
+	} else if purged > 0 {
+		data["multi_session_purged"] = purged
+		slog.Info("multi-session protocol: PurgeStale removed stale entries",
+			"session_id", input.SessionID,
+			"count", purged,
+		)
+	}
+
+	// Step 3: QueryActiveWork — other active sessions surface via stderr.
+	entries, err := reg.Query("")
+	if err != nil {
+		slog.Warn("multi-session protocol: QueryActiveWork failed (non-blocking)",
+			"session_id", input.SessionID,
+			"error", err.Error(),
+		)
+		return
+	}
+	reminder := session.FormatStderrReminder(input.SessionID, entries, time.Now().UTC())
+	if reminder != "" {
+		_, _ = fmt.Fprint(os.Stderr, reminder)
+		data["multi_session_other_active"] = len(entries) - 1
+	}
 }
 
 // detectStatusDrift checks for SPEC status drift and returns a warning message

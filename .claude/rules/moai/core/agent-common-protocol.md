@@ -287,9 +287,14 @@ git fetch origin main 2>&1
 
 # 2. Count divergence between local HEAD and origin/main
 git rev-list --count --left-right origin/main...HEAD
+
+# 3. Query active sessions on this host for the same SPEC scope (L1 of
+#    SPEC-V3R6-MULTI-SESSION-COORD-001 4-layer race mitigation).
+#    Replace <SPEC-ID> with the SPEC about to be operated on.
+moai session list --json --filter-spec=<SPEC-ID>
 ```
 
-Interpretation matrix:
+Interpretation matrix (git divergence):
 
 | Output | Meaning | Action |
 |--------|---------|--------|
@@ -297,6 +302,20 @@ Interpretation matrix:
 | `0 0` | Synced (local == origin/main) | Proceed normally |
 | `N 0` | Origin ahead by N — **parallel session race detected** | STOP, surface via AskUserQuestion: rebase / inspect / abort |
 | `N M` | Diverged (both ahead) | STOP, MUST resolve before spawn |
+
+Interpretation matrix (active-sessions query — 3rd command):
+
+| Output | Meaning | Action |
+|--------|---------|--------|
+| `[]` | No other session on this SPEC (REQ-COORD-018) | Proceed normally |
+| `[{...}]` (≥1 entry from another session) | **Concurrent session race detected on same SPEC** | STOP, surface entries via prose summary, AskUserQuestion: **wait** / **override** / **abort** |
+
+The 3rd command is **additive only** (REQ-COORD-020) — the original
+2-command batch (git fetch + git rev-list) is preserved verbatim above.
+Backward compatibility: sessions running before
+SPEC-V3R6-MULTI-SESSION-COORD-001 was deployed (no registry hook) emit
+no entries, so the 3rd command returns `[]` and the orchestrator
+proceeds normally without false positives.
 
 Rationale: When 2+ Claude Code sessions operate on the same project root
 + same memory hash (`~/.claude/projects/{hash}/memory/`), they may both

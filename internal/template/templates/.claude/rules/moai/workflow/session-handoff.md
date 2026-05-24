@@ -65,7 +65,7 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
 ### Field-by-Field Specification
 
 - **Block 1**: `ultrathink.` triggers Adaptive Thinking max effort on Opus 4.7+ (next session lacks accumulated reasoning). `<phase>` ∈ `plan | run | sync | loop`.
-- **Block 2**: `applied lessons:` — relevant memory files from `~/.claude/projects/{hash}/memory/`. MUST include the most recent relevant project memory + any relevant lessons.
+- **Block 2**: `applied lessons:` — relevant memory files from `~/.claude/projects/{hash}/memory/`. MUST include the most recent relevant project memory + any relevant lessons. Block 2 MUST also include a `source_session_id: <UUID>` line carrying the Claude Code session_id of the orchestrator turn that generated this resume message (REQ-COORD-009 of SPEC-V3R6-MULTI-SESSION-COORD-001 L2). The session_id is the same value emitted by `moai session list --json` and stored in `.moai/state/active-sessions.json` — readers can correlate the resume back to its originating session.
 - **Block 3**: separator + `전제 검증:` (Korean) or `Preconditions:` (English).
 - **Block 4**: numbered preconditions `<N>) <action> → <expected outcome>`. Each MUST be independently verifiable (git/gh command, file existence). Max 4 preconditions.
 - **Block 5**: separator + `실행: <command-or-action>` — single primary action (typically `/moai <subcommand>`).
@@ -78,6 +78,7 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
 
 ultrathink. SPEC-MYPROJ-001 implementation 진입.
 applied lessons: project_wave6_myproj001_plan_ready, lessons #9 wave-split.
+source_session_id: <orchestrator-uuid-here>
 
 전제 검증:
 1) git log --oneline -1 → <commit-sha> 확인
@@ -112,6 +113,7 @@ At session end, the orchestrator displays: (1) the message in a fenced ```text``
 - Resume without `ultrathink.` — fails to activate max effort.
 - Resume saved only to chat, not auto-memory — lost across `/clear`.
 - Duplicate memory entries without `[SUPERSEDED by ...]` markers — index pollution.
+- Resume Block 2 missing `source_session_id: <UUID>` — multi-session coordination L2 (SPEC-V3R6-MULTI-SESSION-COORD-001) cannot correlate the resume back to its originating session for race attribution.
 - Forcing the format on trivial tasks — memory noise.
 - Cut-line markers absent — user cannot identify exact copy boundary in long terminal scrollback.
 - Cut-line markers translated `✂` symbol or `─` decorator — only the marker text translates; the symbols are preserved verbatim.

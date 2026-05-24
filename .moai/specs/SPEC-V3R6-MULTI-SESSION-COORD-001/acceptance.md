@@ -2,9 +2,9 @@
 id: SPEC-V3R6-MULTI-SESSION-COORD-001
 title: "Multi-Session Coordination — Acceptance Criteria"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-05-24
-updated: 2026-05-24
+updated: 2026-05-25
 author: "GOOS행님"
 priority: P1
 phase: "v3.0.0"

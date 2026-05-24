@@ -602,6 +602,7 @@ Canonical 6-block format **bounded by cut-line markers** (structural skeleton �
 
 ultrathink. <SPEC-ID or Sprint N> <phase> entering.
 applied lessons: <memory-file-1>, <memory-file-2>, ..., lessons #N
+source_session_id: <orchestrator-uuid-from-current-turn>
 
 <Preconditions header>:
 1) <verifiable command> → <expected outcome>
@@ -614,6 +615,8 @@ N) <verifiable command> → <expected outcome>
 
 ✂──── 여기까지 복사 ────✂
 ```
+
+The `source_session_id` field is REQUIRED (SPEC-V3R6-MULTI-SESSION-COORD-001 L2 / REQ-COORD-010). The orchestrator MUST populate `<orchestrator-uuid-from-current-turn>` with the Claude Code session_id of the current turn (the same UUID written to `.moai/state/active-sessions.json` by the SessionStart hook). The auto-memory `project_*.md` file MUST mirror this field in its prose body so that readers can correlate the resume back to its originating session. MEMORY.md index entries SHOULD include a `(session: <UUID-8-char-prefix>)` parenthetical annotation when the SPEC was worked across multiple sessions.
 
 Cut-line Marker translation table (`✂` symbol U+2702 and `─` U+2500 preserved verbatim across all locales; only the text translates):
 
@@ -631,9 +634,10 @@ Header translation table (translate per `conversation_language` setting in `.moa
 | Block 6 (After merge) | `After merge:` | `머지 후:` | `マージ後:` | `合并后:` |
 | Block 1 verb (entering) | `entering` | `진입` | `開始` | `进入` |
 
-Pre-emit self-check (MUST verify all 6 before printing):
+Pre-emit self-check (MUST verify all 7 before printing):
 - [ ] Block 1 starts with `ultrathink.` (activates Adaptive Thinking max effort in next session)
 - [ ] Block 2 lists ≥1 memory file from `~/.claude/projects/{hash}/memory/` (most recent project memory + relevant lessons)
+- [ ] Block 2 includes `source_session_id: <UUID>` line carrying current orchestrator turn's session_id (SPEC-V3R6-MULTI-SESSION-COORD-001 L2 / REQ-COORD-010 — enables race attribution across multi-session work)
 - [ ] Block 4 has ≤4 numbered preconditions, each independently verifiable (`git`/`gh`/file existence command)
 - [ ] Block 5 is a single primary action (typically `/moai <subcommand>` or single command line)
 - [ ] L3 worktree case: Block 0 `[New Terminal — START IN WORKTREE] $ cd <abs-path> $ <launcher>` prepended (Block 0 MUST surface 3 launchers verbatim: `moai cc` | `moai glm` | `claude` — per `session-handoff.md` §Worktree-Anchored Resume Pattern) + precondition 0) `git rev-parse --show-toplevel → <worktree-path>` added
