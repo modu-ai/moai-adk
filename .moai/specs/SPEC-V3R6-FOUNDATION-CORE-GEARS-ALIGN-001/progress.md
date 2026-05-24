@@ -97,12 +97,28 @@ depends_on: [SPEC-V3R6-GEARS-MIGRATION-001, SPEC-V3R6-SKILL-GEARS-ALIGN-001, SPE
 
 ### §E.2 Run-phase Evidence
 
-**(pending — manager-develop will populate after M1-M6 execution)**
+**M1 — Pre-flight Verification + Edit Set Finalization (2026-05-25)**
 
-Expected content per plan.md §D:
-- M1 verification log (grep inventory + diff -r baseline + spec-ears-format.md banner confirmation + plan.md §C.1 update if needed)
-- M2-M5 commit SHAs (one per milestone or batched as appropriate per Tier M discipline)
-- M6 frontmatter transition log (`status: draft → in-progress`) + progress.md §E.2 self-population
+M1 verification log:
+
+1. **Pre-spawn fetch**: `git fetch origin main && git rev-list --count --left-right origin/main...HEAD` → `0 0` (clean, no divergence)
+2. **Comprehensive notation grep across all 20 local files** (`grep -rn 'EARS\|GEARS\|shall\|WHEN \|WHILE \|WHERE \|IF.*THEN' .claude/skills/moai-foundation-core/`):
+   - 30 total matches across 8 distinct files (plan.md §5.1 baseline confirmed)
+   - **D1 finding (orchestrator pre-flight)**: 2 additional files contain EARS references beyond initial 7-file estimate:
+     - `modules/agents-reference.md:63` "EARS SPEC generation" (workflow-spec row)
+     - `modules/token-optimization.md:44` "EARS format, acceptance criteria" (Phase 1 row)
+   - These were classified as "no SPEC notation content" in plan.md §5.1 initial discovery — **corrected** per L46 attribution discipline
+3. **Template mirror parity baseline**: `diff -r .claude/skills/moai-foundation-core/ internal/template/templates/.claude/skills/moai-foundation-core/` → EMPTY (zero pre-existing drift; 100% parity baseline established)
+4. **DEPRECATED banner confirmation**: `head -20 .claude/skills/moai-foundation-core/modules/spec-ears-format.md` confirmed v3.0.0 DEPRECATED banner present verbatim at lines 9-15 (REQ-FCG-005 + REQ-FCG-011 baseline)
+5. **Intentional-skip files verified clean** (no SPEC notation): trust-5-{framework,implementation,validation}.md (note: trust-5-implementation.md:178 is SQL `WHERE`, not requirements syntax), delegation-{patterns,implementation,advanced}.md, modular-system.md, execution-rules.md, patterns.md
+6. **Final edit set FINALIZED**: 10 local files + 10 template mirrors = 20 files (vs initial estimate 8+8=16; +2 files per D1 surface)
+7. **Plan.md §C.1 + §B.3 updated** in this M1 commit reflecting actual scope per L46 attribution discipline (orchestrator pre-authorized scope-doc update for D1 fix)
+
+**M1 commit attribution** (this commit; SHA to be assigned by `git commit`): `feat(SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001): M1 pre-flight audit + scope finalization (D1+D3 plan fixes)`
+
+Expected content from M2-M6 (pending):
+- M2-M5 commit SHAs (one per milestone)
+- M6 frontmatter transition log (`status: draft → in-progress`) + progress.md §E.2 final self-population
 - 9 AC verification results (PASS/FAIL/PASS-with-note)
 - 7-item Trust-but-verify batch results (per plan.md §E.2)
 

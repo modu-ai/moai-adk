@@ -54,7 +54,7 @@ Follow the cohort pattern established by SPEC-V3R6-SKILL-GEARS-ALIGN-001 + SPEC-
 |-------------|------|-------|------|-----|--------------|-------|---------|
 | SKILL-GEARS-ALIGN-001 | M | 5+5 | 12 GEARS | 13 PASS | 0.892 (PASS, not skip) | 1-pass run | CLOSED `ebe492670` |
 | PLAN-AUDITOR-GEARS-ALIGN-001 | S | 1+1 | 9 GEARS | 8 PASS | 0.913 (skip-eligible) | 1-pass run | CLOSED `ebe492670` |
-| **This SPEC (FOUNDATION-CORE-GEARS-ALIGN-001)** | **M** | **≤7+7 (14 of 40 scope)** | **12 GEARS** | **9 mandatory** | **target ≥0.85 PASS, ideal ≥0.90 skip-eligible** | **1-pass target** | **(pending)** |
+| **This SPEC (FOUNDATION-CORE-GEARS-ALIGN-001)** | **M** | **10+10 = 20 (of 40 scope)** | **12 GEARS** | **9 mandatory** | **target ≥0.85 PASS, ideal ≥0.90 skip-eligible** | **1-pass target** | **(pending)** |
 
 ## §C Scope
 
@@ -88,22 +88,24 @@ Follow the cohort pattern established by SPEC-V3R6-SKILL-GEARS-ALIGN-001 + SPEC-
 
 **Template mirror files (20)**: 1:1 mirror at `internal/template/templates/.claude/skills/moai-foundation-core/` — same 20 paths. Verified via `find` 2026-05-25.
 
-**Actual edit set (preliminary ≤7 local + 7 template mirror = 14 files)** — finalized at M1 boundary after re-confirmation grep:
+**Actual edit set (M1 boundary FINALIZED: 10 local + 10 template mirror = 20 files)** — re-confirmed via comprehensive grep `EARS\|GEARS\|shall\|WHEN \|WHILE \|WHERE \|IF.*THEN` across all 20 local files. D1 finding from orchestrator pre-flight: `modules/agents-reference.md:63` + `modules/token-optimization.md:44` both contain 1 EARS reference each (previously classified as "no SPEC notation content" in initial estimate — incorrect classification per L46 attribution discipline, corrected here).
 
 | # | Path (local; mirror is parallel) | Edit type |
 |---|----------------------------------|-----------|
 | 1 | `SKILL.md` | § "SPEC-First DDD - Development Workflow" lines 116, 122 EARS→GEARS re-label + line 238 cross-reference label |
-| 2 | `modules/INDEX.md` | Lines 32-46 (spec-first-ddd description), 188 cross-ref label |
+| 2 | `modules/INDEX.md` | Lines 33, 37 (spec-first-ddd description), 262 (Module Statistics table) cross-ref labels |
 | 3 | `modules/spec-first-ddd.md` | Lines 3, 14, 29-34 (EARS pattern table → GEARS), 37, 55, 63, 153, 161 cross-refs |
 | 4 | `modules/spec-ddd-implementation.md` | Line 288 cross-ref label |
 | 5 | `modules/progressive-disclosure.md` | Lines 184, 193, 201 EARS→GEARS re-label |
 | 6 | `modules/commands-reference.md` | Lines 78, 90, 94-102 (EARS Format → GEARS Format with deprecated EARS sub-block) |
-| 7 | `references/examples.md` | Lines 65-69 EARS block → GEARS block + EARS legacy sub-block |
-| 8 | `references/reference.md` | Lines 20 (format declaration), 198, 377, 410, 447 EARS→GEARS with legacy cross-ref labels |
-| 9 (PROTECTED) | `modules/spec-ears-format.md` | **NOT edited** per EXC-FCG-008 + REQ-FCG-005 + REQ-FCG-011 (banner already present) |
-| 10 (No edit) | `modules/patterns.md` + 9 other modules | Verify in M2 grep that they contain no SPEC notation references |
+| 7 | `modules/agents-reference.md` | Line 63 (workflow-spec EARS→GEARS label) **[D1 scope addition]** |
+| 8 | `modules/token-optimization.md` | Line 44 (Phase 1 EARS format→GEARS format label) **[D1 scope addition]** |
+| 9 | `references/examples.md` | Lines 65-69 EARS block → GEARS block + EARS legacy sub-block |
+| 10 | `references/reference.md` | Lines 20 (format declaration; correct expansion), 198, 377, 410 EARS→GEARS with legacy cross-ref labels |
+| 11 (PROTECTED) | `modules/spec-ears-format.md` | **NOT edited** per EXC-FCG-008 + REQ-FCG-005 + REQ-FCG-011 (banner already present) |
+| 12 (No edit) | `modules/patterns.md` + trust-5-* (3 files) + delegation-* (3 files) + modular-system.md + execution-rules.md = 9 files | Verified via M1 grep: no SPEC notation references (trust-5-implementation.md:178 is SQL `WHERE`, not requirements syntax) |
 
-Final edit set scope: ≤8 local files + ≤8 template mirrors = **≤16 files modified**. Plan.md §C.1 will be updated at M1 boundary if discovery reveals additional or fewer needed edits.
+Final edit set scope: 10 local files + 10 template mirrors = **20 files modified** (+4 from initial estimate of 16; D1 surfaced 2 additional files agents-reference.md + token-optimization.md). Plan.md §B.3 "≤7+7" reconciled to actual 10+10 below.
 
 ### §C.2 Out of Scope (mirrors spec.md §1.2)
 
