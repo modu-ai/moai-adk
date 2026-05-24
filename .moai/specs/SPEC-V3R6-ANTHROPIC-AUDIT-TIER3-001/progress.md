@@ -61,11 +61,13 @@ manager-spec subagent invocation:
 | SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001 | Future Tier 4 | LOW (skill namespace) | §B.2 item #5 F3 deferred to Tier 4 chore |
 | SPEC-V3R6-SPEC-LINT-CLEANUP-001 | Future Tier 4 | LOW (lint baseline) | Independent; our M2 introduces new rule that may add findings to baseline — observation-only severity |
 
-### §B.3 Plan-auditor verdict (pending — to be filled after iter-1)
+### §B.3 Plan-auditor verdict
 
-- iter-1 score: _pending_
-- Verdict: _pending_
-- Skip-eligible (≥0.90): _pending_
+- iter-1 score: 0.7350
+- Verdict: FAIL (Tier M PASS threshold 0.80)
+- Skip-eligible (≥0.90): no
+- iter-2 focus (per user AskUserQuestion decision): D1 [CRITICAL] MissingExclusions lint resolution (OutOfScope H3 sub-heading pattern, §B.2 "(out of scope)" qualifier drop + §B.3.1..6 h4 "Out of Scope — " infix) + D2 [MAJOR] 3 orphan REQs annotated (REQ-AAT-002 / -006 / -012 each receive `(see §C.4)` parenthetical + new §C.4 explanatory subsection + acceptance.md §D.2 matrix annotation row) + D3 [MINOR] title declaration corrected (F3+F9 → F9 in spec.md L3 title and L19 H1 heading; HISTORY entry L25 retains "F3 was deferred" note). D4-D6 deferred as PASS-with-debt per user decision.
+- iter-2 expected score: ~0.85 (D1 root cause + D2 traceability + D3 title coherence all resolved → 3 highest-weight defects cleared)
 
 ---
 

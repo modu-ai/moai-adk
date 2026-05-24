@@ -1,6 +1,6 @@
 ---
 id: SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001
-title: "Anthropic Best-Practice Audit Tier 3 — Subdirectory CLAUDE.md (F3+F9) + Programmatic DRI Ownership Verification (F13)"
+title: "Anthropic Best-Practice Audit Tier 3 — Subdirectory CLAUDE.md (F9) + Programmatic DRI Ownership Verification (F13)"
 version: "0.1.0"
 status: draft
 created: 2026-05-25
@@ -16,7 +16,7 @@ depends_on: [SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001]
 related_specs: [SPEC-V3R6-MULTI-SESSION-COORD-001]
 ---
 
-# SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001 — Anthropic Best-Practice Audit Tier 3 (F3 + F9 + F13)
+# SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001 — Anthropic Best-Practice Audit Tier 3 (F9 + F13)
 
 ## HISTORY
 
@@ -138,7 +138,7 @@ Tier 2 SPEC ARR-001은 7-row `Status Transition Ownership Matrix`를 정의했�
 
 Total run-phase delta: **10 files modified or created** (5 CREATE module CLAUDE.md + 2 EXTEND `internal/spec/` lint+test + 1 EXTEND schema doc + 1 mirror + 1 progress.md). Total LOC delta: **~700-1000 LOC** — Tier M envelope (300-1000 LOC, 5-15 files acceptable).
 
-### §B.2 Non-Goals (out of scope)
+### §B.2 Non-Goals
 
 [HARD] 본 SPEC은 다음을 변경하지 않는다 (deferred to follow-up SPECs):
 
@@ -153,40 +153,40 @@ Total run-phase delta: **10 files modified or created** (5 CREATE module CLAUDE.
 
 ### §B.3 Out of Scope (explicit boundary clauses for plan-auditor §7 lint compliance)
 
-#### §B.3.1 Cross-SPEC scope discipline
+#### §B.3.1 Out of Scope — Cross-SPEC scope discipline
 
 - **NOT MODIFYING** `.claude/rules/moai/core/agent-common-protocol.md` (COORD-001 active)
 - **NOT MODIFYING** `internal/governance/*` (COORD-001 active, new package)
 - **NOT MODIFYING** `.claude/agents/core/manager-*.md` body (ARR-001 already operationalized)
 - **NOT MODIFYING** `.claude/rules/moai/development/agent-authoring.md` (separate SPEC if agent-frontmatter ownership field formalized)
 
-#### §B.3.2 Hook-layer enforcement deferral
+#### §B.3.2 Out of Scope — Hook-layer enforcement deferral
 
 - **NOT IMPLEMENTING** PostToolUse hook validating agent-vs-transition (ARR-001 REQ-009 explicit deferral)
 - **NOT IMPLEMENTING** SubagentStop hook validating commit attribution (would conflict with COORD-001 race detection scope)
 - **DEFERRED TO** follow-up SPEC: `SPEC-V3R6-OWNERSHIP-HOOK-ENFORCEMENT-001` (post-Tier-3 lint-rule observation period required)
 
-#### §B.3.3 F3 unused skills reconnect deferral
+#### §B.3.3 Out of Scope — F3 unused skills reconnect deferral
 
 - **NOT RECONNECTING** moai-ref-git-workflow → manager-git skills:list
 - **NOT RECONNECTING** moai-ref-react-patterns → expert-frontend skills:list
 - **NOT INVOKING** moai-workflow-loop in /moai loop command body
 - **DEFERRED TO** Tier 4 chore commit (3 simple frontmatter edits, separate from Tier 3 SPEC scope)
 
-#### §B.3.4 Subdirectory CLAUDE.md candidate exclusions
+#### §B.3.4 Out of Scope — Subdirectory CLAUDE.md candidate exclusions
 
 - **NOT CREATING** `internal/governance/CLAUDE.md` (COORD-001 will own this when COORD-001 establishes the package)
 - **NOT CREATING** `pkg/CLAUDE.md` (separate exported-API SPEC if needed)
 - **NOT CREATING** `cmd/moai/CLAUDE.md` (low fan-out, root CLAUDE.md suffices)
 - **NOT CREATING** `scripts/CLAUDE.md`, `.github/CLAUDE.md`, or any infra directory CLAUDE.md (Anthropic best-practice is module-level, not infra-level)
 
-#### §B.3.5 DRI prose documentation deferral
+#### §B.3.5 Out of Scope — DRI prose documentation deferral
 
 - **NOT MODIFYING** `README.md` to add DRI ownership / governance maintainer section (separate docs PR)
 - **NOT MODIFYING** `CLAUDE.local.md` to add DRI maintainer (user-local file, separate edit if user chooses)
 - **DEFERRED TO** docs-site update or README.md follow-up — F13 prose dimension separate from programmatic verification
 
-#### §B.3.6 Run-phase commit scope
+#### §B.3.6 Out of Scope — Run-phase commit scope
 
 - Implementation MUST land in **at most 3 commits** (M1 = subdirectory CLAUDE.md × 5, M2 = OwnershipTransitionRule lint, M3 = schema doc cross-ref + template mirror)
 - NO cascade-style mid-run scope expansion permitted; if mid-run scope adjustment needed → blocker report + orchestrator re-delegate to manager-spec for body edit (D-NEW-1 inline-fix pattern from SIV-001 precedent)
@@ -199,7 +199,7 @@ Total run-phase delta: **10 files modified or created** (5 CREATE module CLAUDE.
 
 **REQ-AAT-001 (Ubiquitous)** — The 5 subdirectory CLAUDE.md files (`internal/cli/`, `internal/template/`, `internal/spec/`, `internal/hook/`, `internal/config/`) **shall** be created in run-phase and exist at the canonical paths listed in §B.1 rows #1..#5.
 
-**REQ-AAT-002 (Event-Driven)** — **When** Claude Code agent operates in any of the 5 module directories listed in REQ-AAT-001, the system **shall** automatically load the corresponding subdirectory CLAUDE.md (per Anthropic best-practice #2 native loading behavior — no MoAI-side wiring required; the file presence is sufficient).
+**REQ-AAT-002 (Event-Driven)** — **When** Claude Code agent operates in any of the 5 module directories listed in REQ-AAT-001, the system **shall** automatically load the corresponding subdirectory CLAUDE.md (per Anthropic best-practice #2 native loading behavior — no MoAI-side wiring required; the file presence is sufficient). (intentionally not in §D.2 AC matrix — verified by Claude Code native loading semantics; no MoAI-side test possible; see §C.4)
 
 **REQ-AAT-003 (Ubiquitous)** — Each subdirectory CLAUDE.md **shall** contain the following sections at minimum: (a) module purpose statement (1-3 sentences), (b) key files / packages list with one-line annotations, (c) module-specific conventions (e.g., naming, error wrapping, test isolation pattern), (d) cross-references to root CLAUDE.md and related rules.
 
@@ -207,7 +207,7 @@ Total run-phase delta: **10 files modified or created** (5 CREATE module CLAUDE.
 
 **REQ-AAT-005 (Unwanted)** — Subdirectory CLAUDE.md **shall not** duplicate content already present in root CLAUDE.md. If a convention applies project-wide, it belongs in root; if module-specific, it belongs in subdirectory. Detection mechanism: `diff <root-section> <subdir-section>` should not yield >50% line overlap.
 
-**REQ-AAT-006 (Optional)** — Where the module has language-specific conventions (e.g., Go build tags, Python virtualenv layout, TypeScript tsconfig), the subdirectory CLAUDE.md **shall** surface those conventions in a dedicated "Language & Tooling" subsection.
+**REQ-AAT-006 (Optional)** — Where the module has language-specific conventions (e.g., Go build tags, Python virtualenv layout, TypeScript tsconfig), the subdirectory CLAUDE.md **shall** surface those conventions in a dedicated "Language & Tooling" subsection. (intentionally not in §D.2 AC matrix — Optional EARS pattern, conditionally verified by AC-AAT-002 grep when language-specific tooling present; see §C.4)
 
 ### §C.2 F13 — Programmatic DRI Ownership Verification (REQ-AAT-007..012)
 
@@ -221,7 +221,7 @@ Total run-phase delta: **10 files modified or created** (5 CREATE module CLAUDE.
 
 **REQ-AAT-011 (Unwanted)** — The rule **shall not** auto-modify any file. Findings are surfaced for human/CI review; no mutation is permitted. The rule is observation-only (consistent with all existing rules in `internal/spec/lint.go`).
 
-**REQ-AAT-012 (Ubiquitous)** — The rule **shall** be covered by table-driven tests in `internal/spec/lint_test.go` with at least 7 PASS scenarios (one per canonical transition) and at least 5 FAIL scenarios (forbidden crossings, format mismatches, regex non-match, multi-transition single-commit ambiguity, unreachable-git fallback).
+**REQ-AAT-012 (Ubiquitous)** — The rule **shall** be covered by table-driven tests in `internal/spec/lint_test.go` with at least 7 PASS scenarios (one per canonical transition) and at least 5 FAIL scenarios (forbidden crossings, format mismatches, regex non-match, multi-transition single-commit ambiguity, unreachable-git fallback). (intentionally not in §D.2 AC matrix — collectively verified by AC-AAT-005 + AC-AAT-006 + AC-AAT-007 which jointly enumerate the required test scenarios; see §C.4)
 
 ### §C.3 Cross-cutting / integration (REQ-AAT-013..015)
 
@@ -230,6 +230,14 @@ Total run-phase delta: **10 files modified or created** (5 CREATE module CLAUDE.
 **REQ-AAT-014 (Unwanted)** — The implementation **shall not** modify `.claude/rules/moai/core/agent-common-protocol.md` (active in COORD-001 scope) or `internal/governance/*` (COORD-001 scope) or `.claude/agents/core/manager-*.md` body (ARR-001 closed scope).
 
 **REQ-AAT-015 (Ubiquitous)** — Cross-platform build **shall** pass (linux/amd64 + darwin/arm64 + darwin/amd64 + windows/amd64). Subdirectory CLAUDE.md files are markdown — no build impact. `internal/spec/lint.go` extension MUST not introduce platform-specific syscalls.
+
+### §C.4 Non-AC-mapped REQ explanations
+
+본 SPEC은 15 REQ 중 12 REQ를 §D.2 AC matrix에 매핑하고, 다음 3 REQ는 의도적으로 별도 AC를 두지 않는다 — 각 REQ는 (a) MoAI-side 검증이 기술적으로 불가능하거나 (REQ-AAT-002), (b) Optional EARS 패턴으로 조건부 검증되거나 (REQ-AAT-006), (c) 다른 AC에 의해 집합적으로 검증된다 (REQ-AAT-012). 본 분리는 traceability bar 100% 유지 의도이며, plan-auditor MP-3 검증 시 본 §C.4를 reference로 처리한다.
+
+- **REQ-AAT-002**: Claude Code 네이티브 loading semantics에 의해 검증 — MoAI 자체 테스트 불필요. 본 REQ는 Anthropic best-practice #2의 약속을 spec.md에 명시하는 의도이며, 행위는 외부 substrate에 위임된다.
+- **REQ-AAT-006**: Optional EARS 패턴. 5 module 중 language-specific tooling을 가진 module이 있을 때 AC-AAT-002의 grep section count (≥4)가 자연스럽게 "Language & Tooling" 섹션을 포착한다. 별도 AC는 false-positive 위험 (조건 충족 안 될 때 spurious failure).
+- **REQ-AAT-012**: AC-AAT-005 (7 PASS scenarios) + AC-AAT-006 (5 FAIL scenarios) + AC-AAT-007 (unreachable-git fallback) 3 AC가 12 test scenarios를 집합적으로 enumerate. 별도 "test count ≥12" AC는 중복 검증.
 
 ---
 

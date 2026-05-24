@@ -42,6 +42,7 @@ tier: M
 | AC-AAT-008 | REQ-AAT-013 | diff byte-identical | mandatory |
 | AC-AAT-009 | REQ-AAT-015 | 4-platform build + vet + lint | mandatory |
 | AC-AAT-010 | REQ-AAT-014 (scope disjointness) | git diff --name-only | mandatory |
+| — (annotation) | REQ-AAT-002, REQ-AAT-006, REQ-AAT-012 | See spec.md §C.4 — non-AC-mapped REQ explanations | informational |
 
 ### §D.3 Given-When-Then scenarios
 
