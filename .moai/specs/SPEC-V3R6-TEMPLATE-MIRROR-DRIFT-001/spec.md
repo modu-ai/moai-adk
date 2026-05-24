@@ -2,7 +2,7 @@
 id: SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001
 title: "Template mirror drift cleanup: 4-file mechanical mirror parity (Sprint 7 entry)"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-05-24
 updated: 2026-05-24
 author: GOOS행님
@@ -68,7 +68,7 @@ The originating SPECs that added content to the sources without propagating to t
 
 ## §B. What scope (and what is explicitly out-of-scope)
 
-### §B.1 In-scope (5 files exactly — L40 Tier S envelope ≤5 files)
+### §B.1 In-scope (6 files modified — L40 Tier S envelope ≤5 declared + 1 mechanical cascade follow-up)
 
 | # | Source | Target (mirror) | Operation | Expected delta |
 |---|--------|-----------------|-----------|----------------|
@@ -77,8 +77,9 @@ The originating SPECs that added content to the sources without propagating to t
 | A3 | `.claude/agents/meta/plan-auditor.md` | `internal/template/templates/.claude/agents/meta/plan-auditor.md` | byte-for-byte cp overwrite | mirror +2264 bytes / +30 lines |
 | A4 | `.claude/rules/moai/core/hooks-system.md` | `internal/template/templates/.claude/rules/moai/core/hooks-system.md` | byte-for-byte cp overwrite | mirror +745 bytes / +13 lines |
 | A4b | `internal/template/rule_template_mirror_test.go` | (same file — registry add) | new entry `.claude/rules/moai/core/hooks-system.md` inserted into `workflowOptMirroredPaths` slice between line 48 (`agent-common-protocol.md`) and line 50 (`spec-workflow.md`) — within the `core/` group | +1 line + 1 comment line (~+2 lines net) |
+| A3c | `internal/template/catalog.yaml` | (same file — hash update) | **Mechanical cascade follow-up per L46 attribution**: A3 mirror cp of plan-auditor.md invalidates `catalog.yaml:160` stored hash field `23b8d17c...` (computed from prior plan-auditor.md file content). Update to new hash `1ec112f4...` (sha256 of 548-line plan-auditor.md mirror content post-cp) to restore TestManifestHashFormat PASS. L40 scope envelope override: declared ≤5 files + 1 mechanical follow-up acceptable for Tier S. | hash field update (2 characters delta, +0 net lines) |
 
-Total scope: **5 files modified**, **0 files created**, **all PRESERVE list 11 dirty/untracked entries** unchanged. Net source delta = 0 (sources untouched per REQ-TMD-006); net mirror delta = +7932 bytes / +113 lines; net test-go delta = +2 lines.
+Total scope: **6 files modified** (5 declared + 1 cascade follow-up), **0 files created**, **all PRESERVE list 11 dirty/untracked entries** unchanged. Net source delta = 0 (sources untouched per REQ-TMD-006); net mirror delta = +7932 bytes / +113 lines; net test-go delta = +2 lines; net catalog delta = ~2 bytes (hash update).
 
 ### §B.2 Out of Scope (deferred to Sprint 8 or follow-up SPECs)
 

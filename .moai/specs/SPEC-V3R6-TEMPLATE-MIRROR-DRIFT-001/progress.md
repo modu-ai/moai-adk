@@ -2,7 +2,7 @@
 id: SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001
 title: "Template mirror drift cleanup: 4-file mechanical mirror parity — Lifecycle Progress"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-05-24
 updated: 2026-05-24
 author: GOOS행님
@@ -113,19 +113,19 @@ cascade_follow_up:
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_complete_at: TBD                             # set on manager-docs CHANGELOG entry commit
-sync_commit_sha: TBD                              # manager-docs commit SHA
-sync_status: pending                              # → completed after CHANGELOG entry + 4 frontmatter draft→implemented
-b12_self_test_a_pre_emission_grep: TBD            # expected: 0 (grep -c 'SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001' CHANGELOG.md pre-emission)
-b12_self_test_a_post_emission_grep: TBD           # expected: 1
-b12_self_test_b_ac_count_match: TBD               # expected: 5 (matches acceptance.md SSOT AC-TMD-001..005)
-b12_self_test_c_file_paths_verified: TBD          # expected: PASS (manager-docs Read every plan.md §A.2 EXTEND entry)
-changelog_entry_position: TBD                     # expected: under [Unreleased] ### Fixed
+sync_complete_at: 2026-05-24T<sync-commit-time>Z  # set on manager-docs CHANGELOG entry commit
+sync_commit_sha: <sync-commit>                    # manager-docs commit SHA (CHANGELOG + 4 frontmatter edits)
+sync_status: completed                            # CHANGELOG entry + 4 frontmatter draft→implemented ✓
+b12_self_test_a_pre_emission_grep: 0              # pre-emission: grep -c 'SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001' CHANGELOG.md = 0 ✓
+b12_self_test_a_post_emission_grep: 1             # post-emission: grep -c 'SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001' CHANGELOG.md = 1 ✓
+b12_self_test_b_ac_count_match: 5                 # acceptance.md SSOT AC count: grep -cE '^\| \*\*AC-TMD-[0-9]+\*\*' = 5 ✓
+b12_self_test_c_file_paths_verified: PASS         # manager-docs Read plan.md §A.2 EXTEND entries: 6 files listed, all present in commit ✓
+changelog_entry_position: line 36                 # [Unreleased] ### Fixed section, TMD-001 entry appended after TMC-001 ✓
 frontmatter_status_transitions:
-  spec.md: TBD                                    # expected: draft → implemented
-  plan.md: TBD                                    # expected: draft → implemented
-  acceptance.md: TBD                              # expected: draft → implemented
-  progress.md: TBD                                # expected: draft → implemented
+  spec.md: draft → implemented                    # ✓
+  plan.md: draft → implemented                    # ✓
+  acceptance.md: draft → implemented              # ✓
+  progress.md: draft → implemented                # ✓
 ```
 
 ## §E.5 Mx-phase Audit-Ready Signal
