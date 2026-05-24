@@ -75,7 +75,7 @@ MoAI: Project initialized successfully.
 
 ### `/moai:1-plan` - SPEC Generation
 
-Purpose: Generate SPEC document in EARS format
+Purpose: Generate SPEC document in GEARS format (current; EARS retained as legacy reference for the 6-month backward-compat window)
 
 Agent Delegation: `workflow-spec`
 
@@ -87,19 +87,28 @@ Usage:
 
 What It Does:
 1. Analyzes user request
-2. Generates EARS format SPEC document
+2. Generates GEARS format SPEC document (current; EARS for legacy SPECs)
 3. Creates `.moai/specs/SPEC-XXX/` directory
 4. Saves `spec.md` with requirements
 
-EARS Format (5 sections):
+GEARS Format (5 patterns; current notation):
+- Ubiquitous: "The <subject> shall <behavior>"
+- Event-driven: "When <event>, the <subject> shall <behavior>"
+- State-driven: "While <state>, the <subject> shall <behavior>"
+- Where (capability gate): "Where <capability or feature flag>, the <subject> shall <behavior>"
+- Event-detected (replaces the deprecated conditional modality): "When <undesired-condition-detected>, the <subject> shall <response>"
+
+Unified compound clause: `[Where ...][While ...][When ...] The <subject> shall <behavior>` — any subset may chain. `<subject>` is generalized (any noun: system, component, service, agent, function, artifact). See `.claude/skills/moai-workflow-spec/SKILL.md` § "GEARS Format" for the canonical authoring guide.
+
+EARS Format (legacy reference, 6-month backward-compat — expires 2026-11-22):
 - WHEN (trigger conditions)
-- IF (preconditions)
+- WHILE (state-driven conditions; preferred over the deprecated conditional modality)
 - THE SYSTEM SHALL (functional requirements)
 - WHERE (constraints)
 - UBIQUITOUS (quality requirements)
 
 Output:
-- `.moai/specs/SPEC-001/spec.md` (EARS document)
+- `.moai/specs/SPEC-001/spec.md` (GEARS document; EARS for legacy SPECs)
 - SPEC ID assigned (auto-incremented)
 
 CRITICAL: Execute `/clear` immediately after completion
