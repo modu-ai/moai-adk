@@ -13,6 +13,7 @@ lifecycle: spec-anchored
 tags: "moai-update, v2-v3-migration, run-phase, progress, milestone-tracking"
 tier: M
 sync_commit_sha: "259e2b228"
+mx_commit_sha: "4df83da1a"
 ---
 
 # Progress — SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 (Run-phase)
