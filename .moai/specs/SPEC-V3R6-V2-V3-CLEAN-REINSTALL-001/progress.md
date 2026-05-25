@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001
 title: "Progress — v2-to-v3 Clean Reinstall (Tier M, cycle_type=tdd)"
-version: "0.1.1"
+version: "0.1.2"
 status: in-progress
 created: 2026-05-25
 updated: 2026-05-26
@@ -54,7 +54,8 @@ The SPEC has 6+1 milestones (M1, M2, M2a, M3, M4, M5, M6) with strict sequential
 | M4 (Clean reinstall impl) | COMPLETE | cc53ad421 | +320 LOC update_preserve_inventory.go + +275 LOC update_clean_install.go + +290 LOC preserve_inventory_test.go + +330 LOC clean_install_test.go = 1215 LOC | AC-VVCR-002 / 003 / 007..013 PASS (verified via stub deployer + integration tests) |
 | M5 (runUpdate integration + catalog regen) | COMPLETE | dec24f962 | +66 LOC update.go (v2 detection branch + runAgencyMigrationAdapter) + 7 catalog.yaml path edits + automatic catalog hash regen | AC-VVCR-LR-005 PASS (7 FLAT paths, 0 split paths) |
 | M6 (Test coverage + cross-platform) | COMPLETE | 6c33a1bf4 | +3 test-file path updates (FLAT layout reflection in catalog_tier_audit_test.go + agent_frontmatter_audit_test.go + rule_template_mirror_test.go) | AC-VVCR-014 PASS (cross-platform), AC-VVCR-015 PASS (no-op idempotency via Scenario C in M4), AC-VVCR-016 PASS (DryRun via M4 test), AC-VVCR-017 deferred (telemetry not yet wired) |
-| M2a-M6 L67 보강 (incomplete commit residual) | COMPLETE | (this commit) | 5 NEW WT mutations 분리 보강: Category 1 V2-V3 absorbed (2 builder-harness cross-ref residual + update_clean_install.go manifest.Load bug fix + §A SHA backfill) + Category 2 별도 chore (internal/update/checker.go 'v' tag prefix 확장) | Trust-but-verify 11/11 PASS (L62 cumulative) — manager-develop "all committed" claim 부정확, paste-ready memo verification으로 발견 |
+| M2a-M6 L67 보강 (Category 1 V2-V3 absorbed) | COMPLETE | 5cbf1f69f (race-absorbed by LOCAL-NAMESPACE-CONSOLIDATION-001 subject; L52 case 29 attribution hijack) | 4 files: 2 builder-harness.md cross-ref + update_clean_install.go manifest.Load bug fix + progress.md §A SHA backfill (13 insertions, 9 deletions) | L52 case 29 NEW occurrence — content 정확하나 attribution hijack (parallel session `.git/index` 공유 turn-mid race) |
+| L52 case 29 attribution restoration | COMPLETE | (this commit) | Non-destructive attribution anchor on top — 5cbf1f69f hijack 정정, V2-V3 scope git log --grep 발견성 회복 | L52 case 29 canonical Option A (비파괴 chore on top, NOT --amend/force-push) |
 
 ## §B — Status Transitions
 
