@@ -267,6 +267,46 @@ When `conversation_language: ko`, emitting raw English literals from the §8 tem
 
 Root cause of the defect: prior versions said "translate all text" but §8 templates contained literal English example labels; models anchored to the literal examples and rendered them verbatim. This Localization Contract makes the translation obligation explicit at the surface where templates appear. The catalogue above provides the ko canonical mapping for every label observed in production. For locales beyond ko/ja/zh, follow the same naturalization principle — do not transliterate.
 
+**Banner body prose translation obligation (HARD — extends labels into full sentences):**
+
+The label-level catalogue above governs **field keys and headers** (e.g., `What:` / `Why:` / `Scope:` / `Findings:`). Banner body content also includes **prose sentences** — Discovery `Findings:` body content, Gate `Summary:` body content, Insight `Why:` body content, Race Absorbed / Cohort Stats / Sprint Status body content, `AskUserQuestion` `description` and `preview` fields, and step/round update prose in the response body. These prose sentences MUST also be rendered in the user's `conversation_language` with natural idiomatic phrasing. Raw English noun-phrases / verb-phrases embedded in otherwise-translated banners are a HARD violation.
+
+Surfaces governed by this obligation:
+
+- Banner body prose (Discovery `Findings:` content, Gate `Summary:` content, Insight `Why:` / `Alternatives:` / `Implications:` content, Race Absorbed body, Cohort Stats body, Sprint Status body)
+- `AskUserQuestion` `description` field (per-option prose explanation)
+- `AskUserQuestion` `preview` field (multi-line content rendered in side-by-side panel)
+- Response body prose outside banner blocks (status updates, transition narration, completion summaries, error explanations)
+
+English content permitted in user-facing prose (preserve verbatim — DO NOT translate):
+
+- Technical identifiers preserved per §10 Output Rules: `SPEC-V3R6-*`, `REQ-TII-001`, `AC-TII-007`, file paths (`internal/template/templates/...`, `.moai/specs/...`), command literals (`git fetch`, `grep -rln`, `go test`, `gh pr create`), function/variable/type names, protocol tokens (`PASS` / `FAIL` / `PASS-WITH-DEBT` / `Tier S/M/L` / `Mode 5` / `cycle_type=tdd`)
+- Emoji and box-drawing characters (already verbatim per §9 Language Rules)
+- The `ultrathink.` keyword token
+- Quoted code or command examples that the user will execute literally
+- Agent type identifiers (`manager-develop`, `manager-spec`, `plan-auditor`, `evaluator-active`) — role tokens
+
+**Banner body prose Anti-pattern catalogue (extended — ko canonical; same naturalization principle applies to ja / zh / other ISO-639 codes):**
+
+| Surface | Raw English prose (wrong) | ko natural language (right) |
+|---------|---------------------------|-----------------------------|
+| Discovery `Findings:` body | `manager-develop pre-flight discovered scope ground-truth divergence` | `manager-develop이 사전 점검 중 범위 기준이 두 가지로 갈리는 문제를 발견` |
+| Discovery `Findings:` body | `bash-grep literal substring narrow (35 files) vs Go regex word-boundary + prefix-allowlist (45 files) — 11 extras` | `spec.md §A.4에서 35개 파일로 측정한 누출 목록이 Go 테스트 regex로는 45개로 잡힘 — 11개가 추가로 식별됨` |
+| Discovery `Recommended action:` body | `User 4-option 결정 (A/B/C/D, manager-develop alt recommendation = Option A 44 files comprehensive cleanup)` | `사용자가 A/B/C/D 4개 선택지 중 결정 필요 (manager-develop 대체 권장 = A안, 44개 파일 전체 정리)` |
+| AskUserQuestion `description` field | `Clean all 44 files to match Go test scope. AC-TII-007 GREEN proof = clean PASS.` | `Go 테스트가 잡아내는 44개 파일을 모두 정리. 결과: AC-TII-007이 명확하게 통과로 마무리됩니다.` |
+| AskUserQuestion `preview` field | `actual cleanup: 39 files (45 - .gitignore - allowlist 5)` | `실제 정리 대상: 39개 파일 (45개 중 .gitignore 1개 + 교육 예외 5개 제외)` |
+| AskUserQuestion `preview` field | `장점: doctrinally 정확 + AC-TII-007 명확 PASS` | `장점: 정책 의도에 정확히 부합 + AC-TII-007 명확 통과` |
+| AskUserQuestion `preview` field | `단점: scope expansion +11 files, +1-2 commits` | `단점: 정리 범위가 11개 파일 늘어남, 커밋이 1-2개 추가됨` |
+| Step/round update prose | `빠른 독립 verify 후 사용자 결정 surface합니다` | `빠르게 독립적으로 확인한 뒤 사용자 결정을 받겠습니다` |
+| Gate body prose | `comprehensive cleanup` | `전체 정리` (또는 맥락에 따라 `포괄적 정리`) |
+| Gate body prose | `scope discipline` | `범위 절제` (또는 `범위 규율 준수`) |
+| Gate body prose | `narrow canonical` | `좁은 기준 채택` (또는 `좁은 정의 우선`) |
+| Gate body prose | `silent semantic divergence` | `의미 차이가 조용히 누적된 상태` |
+| Insight body prose | `decision required pending blocker` | `차단 사유로 사용자 결정이 필요한 상황` |
+| Race Absorbed body prose | `parallel session race-absorbed clean fast-forward` | `병렬 세션 commit이 fast-forward로 흡수됨 (충돌 없음)` |
+
+이 catalogue는 ko canonical. ja / zh / 기타 locale은 동일한 자연화 원칙으로 prose를 풀어쓴다 — 단어 단위 치환이 아닌 native speaker가 자연스럽게 듣는 문장 구조 채택. transliteration (음역) 금지.
+
 **Pre-emit self-check (verify before printing any §8-derived block):**
 
 - [ ] Did I read `conversation_language` from `.moai/config/sections/language.yaml`?
@@ -276,6 +316,8 @@ Root cause of the defect: prior versions said "translate all text" but §8 templ
 - [ ] If `conversation_language: en`, did I emit the English skeleton verbatim without redundant "translation"?
 - [ ] For each surface I rendered, did I cross-check the Anti-pattern catalogue table — specifically Complete labels (`Files:` / `Tests:` / `Coverage:` / `Deliverables:` / `Specialists used:` / `Cleanup:`), Insight section headers (`What:` / `Why:` / `Alternatives:` / `Implications:`), Step labels (`Step 1: Clarify` / ... `Step 4: Verify`), and Recovery options (`Retry as-is` / `Alt approach` / `Pause` / `Abort+preserve`)?
 - [ ] For any new §8 banner (Verification Matrix / Plan Audit / Discovery / Race Absorbed / Cohort Stats), did I consult the banner-specific translation table for the header and section labels?
+- [ ] Did I scan **banner body prose** (Discovery `Findings:`, Gate `Summary:`, Insight `Why:` content, Race Absorbed body, Cohort Stats body, Sprint Status body) for raw English noun-phrases / verb-phrases that should be in `conversation_language` with natural idiomatic phrasing per the Banner body prose Anti-pattern catalogue above?
+- [ ] Did I scan every `AskUserQuestion` `description` and `preview` field for raw English prose, ensuring only technical identifiers (SPEC IDs, file paths, command literals, protocol tokens, agent role tokens) remain in English while explanatory prose is naturalized to `conversation_language` with native idiomatic phrasing?
 
 ### Task Start
 ```
