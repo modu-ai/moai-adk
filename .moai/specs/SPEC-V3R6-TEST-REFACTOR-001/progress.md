@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-TEST-REFACTOR-001
 title: "Go test suite refactor — phase progress tracker"
-version: "0.1.2"
-status: implemented
+version: "0.1.3"
+status: completed
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -21,10 +21,10 @@ tier: M
 
 | Field | Value |
 |-------|-------|
-| plan_commit_sha | pending |
+| plan_commit_sha | b84e77d5d |
 | sync_commit_sha | d9838995d |
-| mx_commit_sha | pending |
-| sync_status | in-progress |
+| mx_commit_sha | 23f91adf5 |
+| sync_status | completed |
 | supersedes | (none) |
 | superseded_by | (none) |
 | anchor SPEC | SPEC-V3R6-AGENT-TEAM-REBUILD-001 |
@@ -250,6 +250,13 @@ Per-package breakdown:
 *(emitted at Mx-phase close terminator commit per L60 atomic chicken-and-egg pattern)*
 
 ## HISTORY
+
+### v0.1.3 (2026-05-25) — 4-phase close terminator + L60 plan/mx_commit_sha atomic backfill
+
+- Frontmatter status transition: `implemented → completed` (orchestrator-direct chore — actual 4-phase close marker; manager-docs Mx attempt at `23f91adf5` did NOT transition status).
+- §A Lifecycle Sync atomic backfill: plan_commit_sha (pending → b84e77d5d), mx_commit_sha (pending → 23f91adf5), sync_status (in-progress → completed).
+- Sprint 10 lane B 4/4 closed. Sprint 10 cohort 8/8 complete. ATR-001 PROCEED-WITH-DEBT directive fully discharged.
+- 4-phase lifecycle COMPLETE: plan `b84e77d5d` + run (M1-M6: `4c0bb8424..6ed1155ea`) + sync `d9838995d` + L60 sync backfill `5418d90eb` + Mx `23f91adf5` (EVALUATE-SKIP) + this terminator commit.
 
 ### v0.1.2 (2026-05-25) — sync-phase status:in-progress → implemented + §E.4 sync-phase audit-ready signal
 

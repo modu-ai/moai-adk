@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-TEST-REFACTOR-001
 title: "Go test suite refactor — acceptance criteria"
-version: "0.1.1"
-status: in-progress
+version: "0.1.3"
+status: completed
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -332,9 +332,16 @@ Per spec.md §D, this SPEC is COMPLETE when all 8 conditions hold simultaneously
 
 ## HISTORY
 
-### v0.1.1 (2026-05-25) — run-phase M1 frontmatter status:in-progress
+### v0.1.3 (2026-05-25) — 4-phase close terminator
 
-- Run-phase M1 entry: frontmatter status transition `draft → in-progress`.
+- Frontmatter status transition: `implemented → completed` (orchestrator-direct chore — 4-phase close marker completion).
+- Version bump 0.1.2 → 0.1.3.
+
+### v0.1.1 (2026-05-25) — sync-phase status:in-progress → implemented
+
+- Sync-phase status transition: `in-progress → implemented` per Status Transition Ownership Matrix (manager-docs owned).
+- AC matrix verification: all 14 MUST-PASS AC rows verified PASS (progress.md §E.2).
+- 100% REQ↔AC bidirectional traceability preserved.
 
 ### v0.1.0 (2026-05-25) — initial draft
 

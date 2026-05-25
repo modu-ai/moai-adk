@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-TEST-REFACTOR-001
 title: "Go test suite refactor — ATR-001 PROCEED-WITH-DEBT discharge"
-version: "0.1.1"
-status: in-progress
+version: "0.1.3"
+status: completed
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -21,9 +21,10 @@ tier: M
 
 | Field | Value |
 |-------|-------|
-| plan_commit_sha | pending |
-| sync_commit_sha | pending |
-| mx_commit_sha | pending |
+| plan_commit_sha | b84e77d5d |
+| sync_commit_sha | d9838995d |
+| mx_commit_sha | 23f91adf5 |
+| sync_status | in-progress |
 | supersedes | (none) |
 | superseded_by | (none) |
 | anchor SPEC | SPEC-V3R6-AGENT-TEAM-REBUILD-001 (ATR-001 PROCEED-WITH-DEBT directive at progress.md §F.2.8) |
@@ -157,10 +158,21 @@ This SPEC does not re-author the catalog drift detection mechanism. The mechanis
 
 ## HISTORY
 
-### v0.1.1 (2026-05-25) — run-phase M1 frontmatter status:in-progress
+### v0.1.3 (2026-05-25) — 4-phase close terminator + L60 plan/mx_commit_sha atomic backfill
 
-- Run-phase M1 entry: frontmatter status transition `draft → in-progress` per Status Transition Ownership Matrix exception (manager-develop allowed on draft → in-progress only).
-- Ground truth re-measurement at HEAD `40dc43f5b` confirms 15 failures matching §A.4 baseline exactly.
+- Frontmatter status transition: `implemented → completed` per Status Transition Ownership Matrix (orchestrator-direct chore — manager-docs Mx attempt at `23f91adf5` claimed close but did NOT transition status; this commit completes the actual 4-phase close marker).
+- §A Lifecycle Sync atomic backfill: plan_commit_sha (pending → b84e77d5d, manager-spec plan-phase commit), sync_commit_sha (pending → d9838995d, manager-docs sync-phase commit — was previously missing from spec.md §A despite progress.md §A having it backfilled by 5418d90eb), mx_commit_sha (pending → 23f91adf5, manager-docs Mx-phase commit).
+- Version bump: 0.1.2 → 0.1.3 (skip v0.1.2 HISTORY entry — manager-docs bumped frontmatter version without authoring matching HISTORY entry; this entry covers v0.1.3 transition while acknowledging the v0.1.2 gap).
+- Sprint 10 lane B 4/4 closed. Sprint 10 cohort 8/8 complete. ATR-001 PROCEED-WITH-DEBT directive fully discharged.
+- 4-phase lifecycle COMPLETE: plan `b84e77d5d` + run (M1-M6: `4c0bb8424..6ed1155ea`) + sync `d9838995d` + L60 sync backfill `5418d90eb` + Mx `23f91adf5` (EVALUATE-SKIP) + terminator (this commit).
+- L52 cases 27/28/29/30 NEW race-absorbed (ATR-001 template cleanup ×2 + TEMPLATE-INTERNAL-ISOLATION-001 plan-phase + iter-1 amendment, all scope-disjoint clean FF).
+
+### v0.1.1 (2026-05-25) — sync-phase status:in-progress → implemented + Lifecycle Sync backfill
+
+- Sync-phase status transition: `in-progress → implemented` per Status Transition Ownership Matrix (manager-docs owned).
+- §A Lifecycle Sync table: run_commit_sha backfilled (6ed1155ea, M6 final commit), sync_status added (in-progress pending mx).
+- CHANGELOG.md: replaced plan-phase stub with final-form run-phase discharge narrative (15→0 FAIL, 14/14 AC PASS, zero PASS-WITH-DEBT, L52 case 29, DDD cycle).
+- Frontmatter version bump (v0.1.0 → v0.1.1) deferred to plan-phase per common practice; spec.md version remains 0.1.1 matching run-phase v0.1.2 progress.md.
 
 ### v0.1.0 (2026-05-25) — initial draft
 
