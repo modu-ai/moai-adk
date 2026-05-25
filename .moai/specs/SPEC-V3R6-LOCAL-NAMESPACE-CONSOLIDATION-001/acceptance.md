@@ -14,6 +14,7 @@ tags: "local-namespace, dev-only, agent-migration, template-refactor, claude-loc
 tier: M
 depends_on: []
 related_specs: []
+sync_commit_sha: "b2ec4063a"
 ---
 
 # Acceptance Criteria — SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001

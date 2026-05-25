@@ -16,7 +16,7 @@ depends_on: []
 related_specs: []
 plan_commit_sha: "651623dc1"
 run_commit_sha: "<see §B M1-M6>"
-sync_commit_sha: "<pending>"
+sync_commit_sha: "b2ec4063a"
 mx_commit_sha: "<pending>"
 ---
 
