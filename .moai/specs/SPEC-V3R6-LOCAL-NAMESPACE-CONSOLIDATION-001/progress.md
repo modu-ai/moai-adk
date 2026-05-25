@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001
 title: "Local Agent Namespace Consolidation — Progress Tracking"
-version: "0.1.2"
-status: implemented
+version: "0.1.5"
+status: completed
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -17,7 +17,7 @@ related_specs: []
 plan_commit_sha: "651623dc1"
 run_commit_sha: "<see §B M1-M6>"
 sync_commit_sha: "b2ec4063a"
-mx_commit_sha: "<pending>"
+mx_commit_sha: "<pending>"  # self-reference, populated in next atomic backfill commit per L60 chicken-and-egg pattern
 ---
 
 # Progress — SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001
@@ -29,8 +29,8 @@ mx_commit_sha: "<pending>"
 | Plan | done | manager-spec | `651623dc1` (iter-3 final) | 2026-05-25 |
 | Plan-Audit | done (PASS-WITH-DEBT 0.83, iter-3 max-3 contract reached) | plan-auditor | n/a | 2026-05-25 |
 | Run | done | manager-develop | `<see §B M1-M6 commit shas>` | 2026-05-25 |
-| Sync | not-started | manager-docs | `<pending>` | — |
-| Mx | not-started | manager-docs or orchestrator | `<pending>` | — |
+| Sync | done | manager-docs | `b2ec4063a` (content) + `f761cc4b0` (L60 backfill) | 2026-05-25 |
+| Mx | done | orchestrator | `<this commit>` (Mx Step C EVALUATE-SKIP + 4-phase close) | 2026-05-25 |
 
 ## B. Milestone Status
 
@@ -205,7 +205,26 @@ Populated by manager-docs at sync-phase completion.
 
 Populated by manager-docs or orchestrator at Mx Step C judgment time.
 
-`<pending — Mx Step C EVALUATE-EXECUTE expected because M3 modified 2 .go test files (commands_audit_test.go + commands_root_audit_test.go), flipping Mx from SKIP-eligible per mx-tag-protocol.md §a (markdown-only criterion broken by .go file changes — even though they are _test.go files, the strict rule is "0 .go files"). Mx Step C should EVALUATE the test file changes for @MX tag delta; expected delta is 0 (test additions only, no production code path)>`
+**Mx Step C Judgment: EVALUATE-SKIP** (race-absorbed scope-attribution correction)
+
+Per `mx-tag-protocol.md` §a criteria, this SPEC's directly attributed commits are evaluated for Mx applicability:
+
+| Commit | Attribution | .go files? | Markdown-only? |
+|--------|-------------|------------|----------------|
+| `03a568508` M1 | LOCAL-NAMESPACE-CONSOLIDATION-001 | 0 | YES |
+| `d4beaa50f` M2 | LOCAL-NAMESPACE-CONSOLIDATION-001 | 0 | YES |
+| `d9cce5427` M3 | AGENT-TEAM-REBUILD-001 (race-absorbed, NOT this SPEC) | 2 (test) | N/A (other SPEC's scope) |
+| `979bec4eb` M4 | LOCAL-NAMESPACE-CONSOLIDATION-001 | 0 | YES |
+| `55b55207f` M5 | LOCAL-NAMESPACE-CONSOLIDATION-001 | 0 | YES |
+| `72a733765` M6 | LOCAL-NAMESPACE-CONSOLIDATION-001 | 0 | YES |
+| `b2ec4063a` sync | LOCAL-NAMESPACE-CONSOLIDATION-001 (manager-docs) | 0 | YES |
+| `f761cc4b0` backfill | LOCAL-NAMESPACE-CONSOLIDATION-001 (manager-docs) | 0 | YES |
+
+**Verdict**: 0 .go files in directly attributed commits → `mx-tag-protocol.md` §a SKIP-eligibility criteria met (0 .go files, 0 goroutines, 0 fan_in ≥3 invariant changes, 0 @MX delta required). The 2 .go test files (`commands_audit_test.go` + `commands_root_audit_test.go`) modified in race-absorbed `d9cce5427` are AGENT-TEAM-REBUILD-001's scope; that SPEC's own Mx phase will evaluate them.
+
+**Correction to progress.md §E.5 v0.1.3 forecast**: manager-develop's earlier EVALUATE-EXECUTE forecast did not apply race-absorbed semantics to Mx attribution. The race-absorbed commit's .go file changes are attributed to the parallel session's SPEC, not to this SPEC. **No @MX tag scan required for this SPEC**.
+
+**Mx Step C action**: SKIP. 4-phase close marker emitted.
 
 ## F. HISTORY
 
@@ -215,3 +234,5 @@ Populated by manager-docs or orchestrator at Mx Step C judgment time.
 | 0.1.1 | 2026-05-25 | manager-spec | iter-2 | Focused defect resolution per plan-auditor iter-1 0.73 FAIL — D7 M1 file count 6 → 5 (dev-only-commands-isolation.md template mirror dropped per spec.md §E), total file count ~41 → ~40 + arithmetic breakdown added (M1 5 + M2 2 + M3 4 + M4 26 + M5 2 + M6 1 = 40), D6 §E.1 REQ count 13 → 14 (REQ-LNC-014 NEW Where-capability) + GEARS notation breakdown updated (3 Where-capability instead of 2) + AC-LNC-006 binding broadens noted, HARD constraint #3 §24.4 dropped noted, D8 HISTORY section NEW. tier:M frontmatter added per D13. |
 | 0.1.2 | 2026-05-25 | manager-spec | iter-3 | Narrow-scope surgical defect resolution per plan-auditor iter-2 0.74 PASS-WITH-DEBT (stagnation, LEAN STOP signal): §E.1 audit-ready signal table updated for new counts — REQ count 14 → 13 (D_new3 REQ-LNC-014 deletion), GEARS breakdown 3 Where-capability → 2 Where-capability, AC count 11 → 12 (D_new4 AC-LNC-012 NEW deferred-verification marker binds orphan REQ-LNC-009), AC-LNC-006 binding reverted to REQ-LNC-011 only. File-count breakdown unchanged (40 total) — D_new4 AC-LNC-012 addition is internal to acceptance.md (already counted as 1 of the 40 files). Other iter-3 defects (D_new1 REQ-LNC-002 5-field truth, D_new2 REQ-LNC-007 stdout-emptiness, D_new5 plan.md M2 §C.2 rewrite, D_new6 §E 8-phase→9-phase) are body-scope only, no progress.md signal update needed. |
 | 0.1.3 | 2026-05-25 | manager-develop | run-phase | Run-phase backfill at M6: §A Lifecycle status promoted to done (Plan/Plan-Audit/Run all done); §B Milestone status all 6 marked done with commit SHA attribution (M3 race-absorbed by parallel session d9cce5427); §C Decision Log 4 new entries (M3 race, M4 file count variance, M6 sync); §E.1 plan-auditor signals confirmed; §E.2 NEW AC PASS/FAIL matrix (12 AC × Status × Verification Command × Actual Output Summary); §E.3 NEW Run-phase Audit-Ready Signal YAML block with run_complete_at/run_status/ac_pass_count/ac_fail_count/cross_platform_build/total_run_phase_files/m1_to_mN_commit_strategy + verbatim verification batch output; §E.5 Mx-phase signal updated for EVALUATE-EXECUTE judgment (M3 .go test file changes flip from SKIP-eligible per mx-tag-protocol.md §a). |
+| 0.1.4 | 2026-05-25 | manager-docs | sync-phase | Frontmatter transition `in-progress → implemented` + `sync_commit_sha: b2ec4063a` populated atomically across all 4 SPEC artifacts (chicken-and-egg L60 pattern: sync content commit `b2ec4063a` + backfill chore commit `f761cc4b0`). CHANGELOG.md prepended 1 entry under `[Unreleased] ### Changed` (B12 self-test PASS: grep count 0 → 1, AC count 12 match, 5/5 file paths verified, 6 run-phase commit SHAs verbatim). manager-docs scope: CHANGELOG + 4 frontmatter only (SPEC body content PRESERVED per spec-frontmatter-schema.md Forbidden ownership crossings). |
+| 0.1.5 | 2026-05-25 | orchestrator | mx-phase | Mx Step C **EVALUATE-SKIP** judgment (correction to v0.1.3 EVALUATE-EXECUTE forecast): race-absorbed scope-attribution analysis confirmed 0 .go files in this SPEC's directly attributed commits — the 2 .go test file changes (`commands_audit_test.go` + `commands_root_audit_test.go`) in `d9cce5427` are AGENT-TEAM-REBUILD-001's scope, not this SPEC's. `mx-tag-protocol.md` §a SKIP-eligibility criteria met (0 .go files + 0 goroutines + 0 fan_in ≥3 invariant changes). §A Lifecycle Sync row backfilled (L60 §A fix — manager-docs missed; FOUNDATION-CORE precedent) + §A Mx row marked done + §E.5 placeholder replaced with EVALUATE-SKIP rationale + verdict table. Frontmatter transition `status: implemented → completed` + `mx_commit_sha: <this commit>` populated. 4-phase close marker `<moai>COMPLETE</moai>` emitted by orchestrator final turn. L60 atomic backfill pattern: Mx chore commit (this commit, with mx_commit_sha `<pending>` self-reference) + backfill chore commit (next commit, with mx_commit_sha actual SHA). |
