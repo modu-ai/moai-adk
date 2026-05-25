@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001
 title: "Progress — Template Internal-Content Isolation"
-version: "0.1.5"
-status: in-progress
+version: "0.1.6"
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: orchestrator
@@ -223,3 +223,4 @@ run_phase_audit_ready_signal:
 | v0.1.3 | 2026-05-25 | manager-develop (second spawn) | Post-M6 backfill — Option A 44-file scope adopted at run-phase pre-flight (supersedes §A.5 v0.1.2 narrow 35-file canonical via §A.5.b cross-reference). 8 commits this spawn: M3-b allowlist (23cb2a894) + M4.1-redo agents/core 4 files (d37d4ca49) + M4.2-redo 12 files via L52 case 29 RECURRENCE (content in 69075e8cb, attribution in 100e603d3) + M4.3 skills 19 files (e94321bec) + M4.4 singletons 8 files (8758fadd4) + M5 CI policy anchor (a2ce47deb) + M6 audit (476c222a3) + post-M6 backfill (this commit). §A.5 reframed to "Option A scope expansion" + §A.5.b output-styles scope exclusion + §A.1.b L52 case 29 recurrence anchor + §E.0 Phase 0.95 Mode Selection (sub-agent Mode 5) + §D 12-row AC matrix backfill + §E run-phase audit-ready signal yaml populated (PASS-WITH-DEBT with 8 PASS + 2 PASS-WITH-VARIANCE + 1 PASS-WITH-DEBT + 1 N/A). Final lint test state: 91 violations (M3 baseline post-allowlist) → 5 occurrences (all in scope-excluded output-styles per orchestrator directive 2026-05-25). |
 | v0.1.4 | 2026-05-25 | orchestrator | Sync-phase entry — §A Lifecycle Sync table status: in-progress → implemented (all 6 SPEC artifacts frontmatter status field updated 2026-05-25). §B-E unchanged from v0.1.3. §G HISTORY v0.1.3 backfill absorbed previous spawn post-M6 work + this version v0.1.4 records sync-phase entry (version bump only, no prior version field backfill). |
 | v0.1.5 | 2026-05-25 | orchestrator | L60 chicken-and-egg backfill — §A Lifecycle Sync table `sync_commit_sha: 3cb0c849a` (sync-phase artifacts commit d9838995d + subsequent L60 backfill chore); frontmatter version incremented 0.1.4 → 0.1.5 to match backfill completion. §B-E unchanged. This backfill concludes 4-phase close Mx Step D (sync-phase artifact + L60 backfill) atomic chain. |
+| v0.1.6 | 2026-05-25 | orchestrator | 보강 chore — 사용자 AskUserQuestion Option A 결정에 따라 sync-phase 잔존 불일치 2건 정정: (1) progress.md frontmatter `status: in-progress → implemented` 정상 전환 (다른 5개 SPEC artifact와 정합 회복, sync-phase ownership matrix 준수). (2) v0.1.5 HISTORY entry 본문의 SHA 오기 정정: `sync-phase artifacts commit d9838995d` 라는 표현은 부정확. `d9838995d`는 M1 content + L52 case 29 hijack 사례 commit이며 sync-phase commit이 아님. 실제 sync commit은 `3cb0c849a`. v0.1.5 entry 자체는 historical record로 보존하고 본 v0.1.6 entry가 retrospective 정정 anchor 역할 (HISTORY append-only 원칙 준수). 별도 chore로 CHANGELOG entry 3건 부정확 표현도 정정 예정 (35→4 narrow scope + coverage commingling 제거 + Sprint cohort 정정). |
