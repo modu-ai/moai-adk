@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-LIFECYCLE-SYNC-GATE-001
 title: "Lifecycle Sync Gate — Atomic 4-Phase Close + Cross-File Status Audit + Pre-Commit Drift Detection"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-05-25
 updated: 2026-05-25
@@ -17,6 +17,20 @@ related_specs: [SPEC-V3R6-AGENT-TEAM-REBUILD-001, SPEC-V3R6-TEMPLATE-INTERNAL-IS
 ---
 
 ## HISTORY
+
+### v0.1.1 (2026-05-25, manager-spec — iter-2 narrow-scope defect resolution)
+- 10 plan-auditor iter-1 defects (D1-D10) resolved per FAIL 0.78 → expected iter-2 ~0.87
+- **D1 (BLOCKING)** — Added AC-LSG-019 (Cross-Platform binding NFR-LSG-003) + AC-LSG-020 (Observability binding NFR-LSG-004); NFR coverage 3/5 → 5/5 (100%)
+- **D2 (MUST-FIX)** — Resolved template scope three-way contradiction: plan.md D.1.2 amended with explicit "this SPEC's plan-phase artifacts" qualifier + M3 carve-out clause for settings.json.tmpl PreCommit registration
+- **D3 (MUST-FIX)** — Reconciled DoD math: acceptance.md L257 "21 total" = 15 functional + 1 M6 dogfood + 5 NFR AC (post-D1 fix)
+- **D5 (MUST-FIX)** — Defined "author trailer" mechanism concretely: `Authored-By-Agent: manager-develop` convention added to §D.1.6 HARD; AC-LSG-004 testability anchored
+- **D4 (SHOULD-FIX)** — Renumbered AC-LSG-018a → AC-LSG-021 (after D1 introduced AC-019/020)
+- **D6 (SHOULD-FIX)** — §B.5 header renamed "Event-detected (Unwanted Behavior) Requirements" → "Error-Handling Event-driven Requirements"; REQ-LSG-014/015 remain Event-driven semantically
+- **D7 (SHOULD-FIX)** — Added AC-LSG-022 specifying `--backfill-only` semantics (input precondition, operation, exit codes, verification command); REQ-LSG-001 wording amended to enumerate both modes (full close + backfill-only)
+- **D8 (MINOR)** — Added §A.3 1-line clarification on "5 deliverables" vs ~15 source files framing
+- **D9 (MINOR)** — Updated plan.md L80 self-verification commit count to ≥ 15 expected commits
+- **D10 (INFO)** — Acknowledged, no fix required
+- AC count: 19 → 22 (+3 net: AC-019/020/022 NEW; AC-018a → AC-021 renumber preserves continuity)
 
 ### v0.1.0 (2026-05-25, manager-spec)
 - Initial plan-phase artifact set authored after 154-SPEC era × sync-signal cross-tab audit
@@ -72,6 +86,8 @@ The L60 atomic backfill design (chicken-and-egg: sync_commit_sha references its 
 
 5-deliverable single SPEC reduces 5 commits → 1 commit via atomic close + adds 3 defensive layers (audit, hook, lint):
 
+> **Note (D8 clarification)**: "5 deliverables" refers to **logical functional units** (atomic close CLI, audit CLI, pre-commit hook, spec-lint extension, rule file). Run-phase implementation produces **~15 source files** realizing these units (Go primitives + CLI wiring + tests + shell hook + rule markdown). The "5 deliverables" and "~15 files" framings refer to the same scope at different granularities.
+
 1. **`moai spec close SPEC-XXX` CLI subcommand** — atomic single-commit 4-phase close. Reads progress.md §E.2/§E.3/§E.5 (sync + Mx body), validates 4-phase precondition matrix, writes spec.md `status: completed` + sync_commit_sha + mx_commit_sha + progress.md status in one staging cycle, emits single commit `chore(SPEC-XXX): 4-phase close — atomic` with deterministic message structure.
 
 2. **`moai spec audit` CLI subcommand** — era-aware cross-file status drift detection. Iterates all `.moai/specs/SPEC-*/` directories, classifies each by era (V2.x / V3R2-R4 / V3R5 / V3R6) per heuristics (file presence + content patterns), grandfather-clauses 145 historical SPECs to "era-final" status, surfaces drift only for V3R6 modern-era SPECs. JSON output for CI integration.
@@ -116,7 +132,7 @@ All requirements use GEARS notation per `.claude/skills/moai-workflow-spec/SKILL
 
 ### B.1 Ubiquitous Requirements
 
-**REQ-LSG-001** — The `moai spec close` subcommand SHALL execute a single atomic commit that transitions spec.md `status: implemented → completed` AND backfills sync_commit_sha AND backfills mx_commit_sha AND updates progress.md `§E.3 status: completed` in one staging cycle.
+**REQ-LSG-001** — The `moai spec close` subcommand SHALL execute a single atomic commit covering both modes: (a) **full close mode** (default) — transitions spec.md `status: implemented → completed` AND backfills sync_commit_sha AND backfills mx_commit_sha AND updates progress.md `§E.3 status: completed` in one staging cycle; AND (b) **backfill-only mode** (`--backfill-only` flag) — atomically transitions only the missing fields among {spec.md `status: completed`, sync_commit_sha, mx_commit_sha, progress.md `§E.3 status`} for an already-implemented SPEC, leaving existing fields untouched (see AC-LSG-022 for backfill-only semantics).
 
 **REQ-LSG-002** — The `moai spec audit` subcommand SHALL classify every `.moai/specs/SPEC-*/` directory into one of five era buckets (V2.x, V3R2-R4, V3R5, V3R6, unclassified) based on file presence and content heuristics specified in design.md §C.
 
@@ -148,7 +164,9 @@ All requirements use GEARS notation per `.claude/skills/moai-workflow-spec/SKILL
 
 **REQ-LSG-013** — **Where** the frontmatter `era:` field is absent, the audit tool SHALL auto-detect the era using the heuristic table (design.md §C.2) and emit an `EraAutoDetected` informational finding.
 
-### B.5 Event-detected (Unwanted Behavior) Requirements
+### B.5 Error-Handling Event-driven Requirements
+
+> **Section header note (D6 fix)**: REQ-LSG-014/015 are Event-driven requirements (When/SHALL form per GEARS) that respond to error conditions. Earlier draft mislabeled this section as "Unwanted Behavior" (which connotes SHALL NOT prohibitions); these REQs are positive Event-driven responses to detected error events. Stable IDs preserved.
 
 **REQ-LSG-014** — **When** the `moai spec close` precondition matrix validation fails (any required artifact missing), the CLI SHALL abort with exit code 1, emit a structured error message naming the missing artifact, AND NOT stage any change.
 
@@ -177,8 +195,9 @@ All requirements use GEARS notation per `.claude/skills/moai-workflow-spec/SKILL
 1. **[HARD]** The 145 pre-V3R6 SPECs MUST be classified as era-final by the audit tool and MUST NOT be surfaced as drift findings (grandfather clause).
 2. **[HARD]** The pre-commit hook MUST NOT invoke `AskUserQuestion` — exit code 2 + JSON output ONLY (REQ-LSG-011).
 3. **[HARD]** `moai spec close` MUST be atomic: either all 5 state transitions occur in a single commit OR no transition is staged.
-4. **[HARD]** Template directory (`internal/template/templates/**`) MUST NOT be modified by this SPEC's plan-phase artifacts (A.5.4 Out of Scope).
+4. **[HARD]** Template directory (`internal/template/templates/**`) MUST NOT be modified by this SPEC's plan-phase artifacts (A.5.4 Out of Scope). Run-phase M3 settings.json.tmpl PreCommit hook entry registration is a narrow allowed exception (see plan.md D.1.2 M3 carve-out).
 5. **[HARD]** The L60 atomic backfill design MUST remain backward-compatible — `moai spec close` is additive, not a replacement.
+6. **[HARD]** **Authored-By-Agent commit trailer convention** (D5 resolution): `manager-develop` run-phase commits MUST include a trailer line `Authored-By-Agent: manager-develop` (lowercase agent name) immediately before the canonical `🗿 MoAI <email@mo.ai.kr>` trailer. This convention is the mechanical signal consumed by REQ-LSG-004's `OwnershipTransitionRule` to detect ownership violations (manager-develop authoring a `* → implemented` transition that the Status Transition Ownership Matrix assigns to manager-docs). Implementation of trailer emission is deferred to run-phase M2 (manager-develop-prompt-template.md amendment); plan-phase only documents the convention. The trailer is also valid for `manager-docs`, `manager-spec`, `manager-git`, `orchestrator-direct` actors; commit objects without the trailer (legacy commits + non-MoAI commits) are NOT subject to OwnershipTransitionRule enforcement (silent SKIP).
 
 ### D.2 SHOULD Constraints
 
@@ -190,7 +209,13 @@ All requirements use GEARS notation per `.claude/skills/moai-workflow-spec/SKILL
 
 ## E. Acceptance Criteria Reference
 
-Acceptance criteria enumerated in `acceptance.md`. Summary: 15 AC-LSG items binding 1:1 to REQ-LSG-001..015, plus 3 NFR verification AC items, plus 1 M6 dogfood AC verifying the 5 remaining violations are resolved via `moai spec close --backfill-only` after implementation.
+Acceptance criteria enumerated in `acceptance.md`. Summary (v0.1.1 post-D1/D4/D7 fix):
+- 15 functional AC-LSG items binding 1:1 to REQ-LSG-001..015
+- 5 NFR verification AC items (AC-LSG-016 NFR-001 / AC-LSG-017 NFR-002 / AC-LSG-019 NFR-003 / AC-LSG-020 NFR-004 / AC-LSG-021 NFR-005 — formerly AC-018a, renumbered per D4) — NFR coverage 5/5 (100%)
+- 1 M6 dogfood AC (AC-LSG-018) verifying the 5 remaining violations are resolved via `moai spec close --backfill-only` after implementation
+- 1 backfill-only semantics AC (AC-LSG-022 per D7) specifying input precondition + operation + exit codes + verification command
+
+**Total**: 22 AC items (15 functional + 5 NFR + 1 dogfood + 1 backfill-only).
 
 ---
 

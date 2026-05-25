@@ -1,12 +1,17 @@
 ---
 id: SPEC-V3R6-LIFECYCLE-SYNC-GATE-001
 artifact: plan
-version: "0.1.0"
+version: "0.1.1"
 created: 2026-05-25
 updated: 2026-05-25
 ---
 
 ## HISTORY
+
+### v0.1.1 (2026-05-25, manager-spec — iter-2 narrow-scope defect resolution)
+- D2 resolved: D.1.2 HARD amended with explicit "this SPEC's plan-phase artifacts" qualifier + M3 carve-out clause (settings.json.tmpl PreCommit array registration is the SOLE allowed template change)
+- D9 resolved: E7 self-verification commit count updated to ≥ 15 expected commits (6 M1-M6 + 5 M6 dogfood close + plan chore + sync chore + mx chore + atomic terminator)
+- Cross-reference to spec.md v0.1.1 HISTORY for full D1-D10 defect catalogue
 
 ### v0.1.0 (2026-05-25, manager-spec)
 - Initial plan-phase implementation roadmap authored
@@ -55,7 +60,7 @@ git rev-list --count --left-right origin/main...HEAD   # → 0 N (clean)
 ### D.1 Run-phase HARD Constraints
 
 1. **[HARD]** Each milestone M1-M6 MUST commit independently with explicit attribution to SPEC-V3R6-LIFECYCLE-SYNC-GATE-001
-2. **[HARD]** `internal/template/templates/**` MUST NOT be modified (template-internal-isolation policy per CLAUDE.local.md §25)
+2. **[HARD]** `internal/template/templates/**` MUST NOT be modified by this SPEC's plan-phase artifacts (template-internal-isolation policy per CLAUDE.local.md §25), **EXCEPT** `internal/template/templates/.claude/settings.json.tmpl` PreCommit hook array entry registration per M3 scope (REQ-LSG-003 binding). The M3 carve-out is narrowly scoped: registration of the `handle-pre-commit-spec-status.sh` entry in the `hooks.PreCommit` array ONLY; no other template directory changes are permitted by any milestone of this SPEC.
 3. **[HARD]** L60 atomic backfill design MUST remain backward-compatible (additive close, not replacement)
 4. **[HARD]** Pre-V3R6 SPECs (145) MUST be grandfather-clause-protected — no retroactive normalization
 5. **[HARD]** Pre-commit hook MUST NOT call AskUserQuestion (exit 2 + JSON only)
@@ -77,7 +82,7 @@ E3. **Coverage threshold**: per-package coverage meets D.2 SHOULD thresholds (wa
 E4. **CLI smoke**: `go run ./cmd/moai spec close --help` AND `go run ./cmd/moai spec audit --help` produce expected output
 E5. **Hook smoke**: `bash .claude/hooks/moai/handle-pre-commit-spec-status.sh < test-input.json` exits 0 or 2 per expected
 E6. **AC binding traceability**: each AC-LSG item references the run-phase artifact that satisfies it
-E7. **Commit attribution**: `git log --oneline --grep="SPEC-V3R6-LIFECYCLE-SYNC-GATE-001"` returns ≥ 6 commits (one per milestone) plus plan/sync/mx chore
+E7. **Commit attribution**: `git log --oneline --grep="SPEC-V3R6-LIFECYCLE-SYNC-GATE-001"` returns **≥ 15 commits** expected: 6 milestone commits (M1-M6) + 5 M6 dogfood close commits (one per known violation) + plan chore (already committed `0616823dc`) + plan iter-2 chore (this commit) + sync chore + mx chore + atomic close terminator chore. Pre-iter-2 baseline includes the 0616823dc plan-phase commit; iter-2 amendment adds 1 to baseline.
 
 ## F. Milestones (Priority Order, No Time Estimates)
 
@@ -118,7 +123,7 @@ E7. **Commit attribution**: `git log --oneline --grep="SPEC-V3R6-LIFECYCLE-SYNC-
 **Scope**:
 - `.claude/hooks/moai/handle-pre-commit-spec-status.sh` (~80 LOC bash) — read staged diff, check for spec.md status field changes, compare with progress.md §E.3 status field, emit exit 0/2 + JSON output
 - `.claude/hooks/moai/handle-pre-commit-spec-status_test.sh` (~50 LOC bash) — bats-style test harness OR Go test invoking the script via os/exec
-- `internal/template/templates/.claude/settings.json.tmpl` — register hook under `hooks.PreCommit` array — **NOTE**: this MAY require modification despite D.1.2 HARD because hook registration is the only template change needed; if so, restrict modification to settings.json.tmpl `PreCommit` array entry only, NO other template changes
+- `internal/template/templates/.claude/settings.json.tmpl` — register hook under `hooks.PreCommit` array. This modification is **explicitly permitted** by the D.1.2 HARD carve-out (v0.1.1, D2 fix): registration is the SOLE allowed template change for this SPEC. Restrict modification to the PreCommit array entry for `handle-pre-commit-spec-status.sh` only; NO other template changes (other files, other hook arrays, settings.json keys outside hooks.PreCommit) are permitted.
 
 **Exit criteria**: M3 commit `feat(SPEC-V3R6-LIFECYCLE-SYNC-GATE-001): M3 pre-commit hook + settings.json registration`, hook script executable, test harness PASS, `git commit` with staged spec.md status mismatch fails with exit 2 + structured JSON
 
@@ -173,7 +178,7 @@ Each close produces one atomic chore commit. M6 produces 5 chore commits.
 - **AP-1**: Do not modify L60 atomic backfill code paths — `moai spec close` is purely additive (D.1.5 HARD)
 - **AP-2**: Do not surface pre-V3R6 SPECs as drift findings — grandfather clause is non-negotiable (D.1.1 HARD)
 - **AP-3**: Do not invoke `AskUserQuestion` from inside the pre-commit hook — exit 2 + JSON only (D.1.5 HARD)
-- **AP-4**: Do not modify `internal/template/templates/**` except for the M3 settings.json.tmpl hook registration (D.1.2 HARD with M3 narrow exception)
+- **AP-4**: Do not modify `internal/template/templates/**` except for the M3 settings.json.tmpl `hooks.PreCommit` array entry registration for `handle-pre-commit-spec-status.sh` (D.1.2 HARD with M3 carve-out per v0.1.1 D2 fix; carve-out is single-file + single-array narrow scope)
 - **AP-5**: Do not retroactively normalize pre-V3R6 SPECs — out-of-scope per A.5.1
 - **AP-6**: Do not change CHANGELOG.md in plan-phase — sync-phase responsibility (A.5.3)
 - **AP-7**: Do not split `moai spec close` into multi-commit cadence — atomicity is the central invariant (D.1.3 HARD)

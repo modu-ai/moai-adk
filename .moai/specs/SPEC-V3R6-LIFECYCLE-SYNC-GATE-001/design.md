@@ -1,12 +1,17 @@
 ---
 id: SPEC-V3R6-LIFECYCLE-SYNC-GATE-001
 artifact: design
-version: "0.1.0"
+version: "0.1.1"
 created: 2026-05-25
 updated: 2026-05-25
 ---
 
 ## HISTORY
+
+### v0.1.1 (2026-05-25, manager-spec — iter-2 cross-reference sync)
+- No design changes in this iteration; version bumped for consistency with spec.md v0.1.1 + acceptance.md v0.1.1
+- D5 trailer convention (`Authored-By-Agent: manager-develop`) cross-referenced in §B.4 (see acceptance.md AC-LSG-004 v0.1.1 wording for binding rule)
+- §A.1 component diagram remains accurate for 5-deliverable architecture (D8 framing — 5 deliverables = 5 logical units realized by ~15 source files)
 
 ### v0.1.0 (2026-05-25, manager-spec)
 - Initial design.md authored documenting architecture diagrams + decision rationale

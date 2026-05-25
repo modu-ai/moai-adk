@@ -1,12 +1,21 @@
 ---
 id: SPEC-V3R6-LIFECYCLE-SYNC-GATE-001
 artifact: acceptance
-version: "0.1.0"
+version: "0.1.1"
 created: 2026-05-25
 updated: 2026-05-25
 ---
 
 ## HISTORY
+
+### v0.1.1 (2026-05-25, manager-spec — iter-2 narrow-scope defect resolution)
+- D1 BLOCKING resolved: added AC-LSG-019 (Cross-Platform binding NFR-LSG-003) + AC-LSG-020 (Observability binding NFR-LSG-004) — NFR coverage 3/5 → 5/5 (100%)
+- D3 MUST-FIX resolved: DoD math reconciled to "21 total" = 15 functional + 1 M6 dogfood + 5 NFR
+- D4 SHOULD-FIX resolved: AC-LSG-018a renumbered to AC-LSG-021 (5 occurrences updated)
+- D7 SHOULD-FIX resolved: added AC-LSG-022 specifying `--backfill-only` semantics (input precondition + operation + exit codes + verification command)
+- D5 MUST-FIX resolved: AC-LSG-004 Then clause amended to bind on `Authored-By-Agent: manager-develop` trailer convention (defined in spec.md §D.1.6 HARD)
+- Total AC count: 19 → 22 (+3 net new; existing IDs preserved except AC-018a → AC-021 renumber)
+- Cross-reference to spec.md v0.1.1 HISTORY for full D1-D10 defect catalogue
 
 ### v0.1.0 (2026-05-25, manager-spec)
 - Initial acceptance criteria authored
@@ -38,19 +47,27 @@ updated: 2026-05-25
 | AC-LSG-014 | REQ-LSG-014 | MUST-PASS | Precondition failure abort + exit 1 + no staging test |
 | AC-LSG-015 | REQ-LSG-015 | MUST-PASS | Pre-commit hook mismatch exit 2 + JSON output test |
 
-### A.2 Non-Functional AC Items (NFR-LSG-001..005 binding)
+### A.2 Non-Functional AC Items (NFR-LSG-001..005 binding) — 5/5 coverage post-v0.1.1 D1 fix
 
 | AC ID | NFR binding | Severity | Verification Method |
 |-------|-------------|----------|---------------------|
 | AC-LSG-016 | NFR-LSG-001 | SHOULD-PASS | `time moai spec audit` on 200-SPEC fixture < 5s |
 | AC-LSG-017 | NFR-LSG-002 | MUST-PASS | Legacy 5-commit close still functional (regression test) |
-| AC-LSG-018a | NFR-LSG-005 | MUST-PASS | Concurrent close test (2 sessions, same SPEC, file lock holds) |
+| AC-LSG-019 | NFR-LSG-003 | MUST-PASS | Cross-Platform — GitHub Actions matrix runs M1 atomic commit verification on macOS AND Linux runners |
+| AC-LSG-020 | NFR-LSG-004 | MUST-PASS | Observability — `.moai/logs/lifecycle-close.log` contains ≥ 5 entries after M6 dogfood execution |
+| AC-LSG-021 | NFR-LSG-005 | MUST-PASS | Concurrent close test (2 sessions, same SPEC, file lock holds) — formerly AC-LSG-018a, renumbered per v0.1.1 D4 fix |
 
 ### A.3 M6 Dogfood AC
 
 | AC ID | M6 binding | Severity | Verification Method |
 |-------|-----------|----------|---------------------|
 | AC-LSG-018 | M6 dogfood | MUST-PASS | All 5 known modern-era violations resolved via `moai spec close --backfill-only` |
+
+### A.4 Backfill-Only Semantics AC
+
+| AC ID | REQ binding | Severity | Verification Method |
+|-------|-------------|----------|---------------------|
+| AC-LSG-022 | REQ-LSG-001 (extended) | MUST-PASS | `--backfill-only` flag semantics: input precondition + operation + exit codes + verification command (see §B.20) |
 
 ---
 
@@ -89,11 +106,13 @@ updated: 2026-05-25
 
 ### B.4 AC-LSG-004 — Spec-Lint Ownership Transition Detection
 
-**Given** a commit with subject matching `^(feat|fix|chore)\(SPEC-[A-Z0-9-]+\):.*$` AND author trailer indicating `manager-develop` AND diff containing spec.md frontmatter `status: in-progress → implemented`,
+**Given** a commit with subject matching `^(feat|fix|chore)\(SPEC-[A-Z0-9-]+\):.*$` AND commit body trailer containing the literal line `Authored-By-Agent: manager-develop` (canonical convention per spec.md §D.1.6 HARD) AND diff containing spec.md frontmatter `status: in-progress → implemented`,
 **When** `moai spec lint --include-ownership` is invoked on the commit range,
-**Then** the lint engine SHALL emit one `OwnershipTransitionInvalid` finding referencing the offending commit SHA + the matrix rule from spec-frontmatter-schema.md.
+**Then** the lint engine SHALL emit exactly one `OwnershipTransitionInvalid` finding referencing the offending commit SHA + the canonical owner per the Status Transition Ownership Matrix in `.claude/rules/moai/development/spec-frontmatter-schema.md`.
 
-**Verification**: `internal/spec/lint_ownership_test.go::TestOwnershipTransitionDetected` — fixture commit with the described signature, assert finding emission.
+**Trailer convention (D5 resolution)**: The `Authored-By-Agent` trailer is the mechanical signal consumed by this AC. Trailer values: `manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `orchestrator-direct` (lowercase, single-token). Commits without the trailer (legacy / non-MoAI / pre-v3.0.1) are NOT subject to OwnershipTransitionRule and produce no finding (silent SKIP).
+
+**Verification**: `internal/spec/lint_ownership_test.go::TestOwnershipTransitionDetected` — fixture commit with subject + `Authored-By-Agent: manager-develop` trailer + `status: in-progress → implemented` diff. Assertion: exactly one `OwnershipTransitionInvalid` finding emitted referencing the commit SHA. Negative fixture: same diff without trailer → zero findings (silent SKIP).
 
 ### B.5 AC-LSG-005 — Rule File Authored
 
@@ -224,13 +243,72 @@ updated: 2026-05-25
 
 **Verification**: Post-M6 manual + automated check: `moai spec audit --filter-era=V3R6 --json | jq '.drift_findings | length'` returns 0; `git log --oneline --grep="SPEC-V3R6-LIFECYCLE-SYNC-GATE-001.*M6"` returns ≥ 5 commits.
 
-### B.19 AC-LSG-018a — Concurrent Close Safety (NFR-LSG-005)
+### B.19 AC-LSG-021 — Concurrent Close Safety (NFR-LSG-005)
+
+> **Renumbered per v0.1.1 D4 fix**: previously AC-LSG-018a; renumbered to AC-LSG-021 to follow standard sequential ID format after D1 introduced AC-LSG-019/020.
 
 **Given** two sessions concurrently attempt `moai spec close SPEC-FOO-001`,
 **When** both processes execute simultaneously,
 **Then** exactly one SHALL succeed (atomic commit produced) AND the other SHALL fail with lock-held error AND post-execution `git log` SHALL show exactly ONE close commit (not two, not zero).
 
 **Verification**: Same harness as AC-LSG-010, additionally verify post-execution git state.
+
+### B.20 AC-LSG-019 — Cross-Platform GitHub Actions Matrix (NFR-LSG-003)
+
+**Given** the M1 milestone commits the `moai spec close` atomic commit verification test (`internal/cli/spec_close_test.go::TestAtomicClose`),
+**When** the CI workflow runs on `macos-latest` AND `ubuntu-latest` GitHub Actions runners,
+**Then** the test SHALL pass on BOTH platforms AND the workflow matrix configuration SHALL include both `os: macos-latest` and `os: ubuntu-latest` entries. Windows support is best-effort per NFR-LSG-003 wording; failure on Windows runner SHALL NOT block the matrix (continue-on-error allowed for `windows-latest`).
+
+**Verification**: Two parallel CI commands:
+```bash
+# Inspect workflow file
+grep -E 'os:\s+(macos-latest|ubuntu-latest)' .github/workflows/*.yml | sort -u | wc -l  # expected: ≥ 2 (both OS entries present)
+
+# Inspect latest CI run after M1 merge
+gh run list --workflow=ci.yml --branch=main --limit=1 --json conclusion,name,jobs | jq '.[].jobs[] | select(.name | contains("macos") or contains("ubuntu")) | {name, conclusion}'
+# expected: both jobs conclusion: "success"
+```
+
+### B.21 AC-LSG-020 — Observability Audit Trail (NFR-LSG-004)
+
+**Given** the M6 dogfood milestone executes `moai spec close SPEC-XXX --backfill-only` on each of the 5 known modern-era violations,
+**When** the M6 milestone completes,
+**Then** the file `.moai/logs/lifecycle-close.log` SHALL exist AND contain ≥ 5 entries (one per closed SPEC). Each entry SHALL be a single JSON line containing `timestamp` (RFC3339), `spec_id`, `mode` (`full-close|backfill-only`), `transitions` (object listing changed fields), `commit_sha`, `result` (`success|failure`), `duration_ms`.
+
+**Verification**: Post-M6 commands:
+```bash
+test -f .moai/logs/lifecycle-close.log                                              # expected: exit 0
+wc -l .moai/logs/lifecycle-close.log | awk '{print $1}'                              # expected: ≥ 5
+jq -c 'select(.result == "success") | .spec_id' .moai/logs/lifecycle-close.log | sort -u | wc -l  # expected: ≥ 5 (5 distinct successful closes)
+```
+
+### B.22 AC-LSG-022 — Backfill-Only Mode Semantics (REQ-LSG-001 extended, D7 fix)
+
+**Given** a SPEC with the following partial state (any subset of the following missing fields):
+- spec.md `status:` ≠ `completed` (typically `implemented`)
+- progress.md `§E.2 sync_commit_sha:` missing or empty (Y_N_N_Y or Y_Y_N_Y drift cases)
+- progress.md `§E.5 mx_commit_sha:` missing or empty
+- progress.md `§E.3 status:` ≠ `completed`
+
+AND progress.md `§E.2 sync section` is present (sync-phase has run) AND progress.md `§E.5 mx section` is present (Mx-phase has run),
+
+**When** the user invokes `moai spec close SPEC-XXX --backfill-only`,
+
+**Then** the CLI SHALL:
+1. Atomically transition ONLY the missing fields among the 4 above (leaving existing fields untouched)
+2. Produce exactly one commit with subject `chore(SPEC-XXX): 4-phase close — atomic (backfill-only)` and body listing transitioned fields
+3. Exit code 0 on success
+4. Exit code 1 on precondition failure (missing sync or mx section in progress.md) with stderr identifying the missing precondition
+5. Exit code 2 on lock contention (same as full close mode)
+
+**Verification**:
+```bash
+# Dry-run on a known Y_Y_Y_Y drift fixture
+moai spec close SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001 --backfill-only --dry-run
+# expected stdout: dry-run summary listing 1 transition (spec.md status: implemented → completed) + exit 0
+```
+
+Plus parametric unit test `internal/cli/spec_close_test.go::TestBackfillOnlyVariants` iterating 4 fixture states (Y_N_N_Y, Y_Y_N_Y, Y_Y_Y_Y_StatusDrift, fully-completed-noop), asserting per-fixture exit code + commit subject suffix + transitioned field set.
 
 ---
 
@@ -244,8 +322,12 @@ A milestone is "Done" when:
 5. CHANGELOG entry drafted (sync-phase will commit)
 6. Commit attribution `feat|docs|fix(SPEC-V3R6-LIFECYCLE-SYNC-GATE-001): Mn ...` clean
 
-SPEC 4-phase close is "Done" when:
-1. All 18 functional AC items + 3 NFR AC items PASS (21 total)
+SPEC 4-phase close is "Done" when (v0.1.1 post-D3 fix):
+1. All **15 functional AC items + 1 M6 dogfood AC + 5 NFR AC items + 1 backfill-only AC = 22 total** PASS
+   - Functional (15): AC-LSG-001..015
+   - M6 dogfood (1): AC-LSG-018
+   - NFR (5): AC-LSG-016 (NFR-001) + AC-LSG-017 (NFR-002) + AC-LSG-019 (NFR-003 NEW) + AC-LSG-020 (NFR-004 NEW) + AC-LSG-021 (NFR-005, renumbered from AC-018a)
+   - Backfill-only (1): AC-LSG-022 (REQ-LSG-001 extended, NEW per D7)
 2. M6 dogfood verifies 0 drift findings post-execution
 3. sync-phase chore committed + audit-ready signal §E.4 emitted
 4. Mx-phase chore committed + audit-ready signal §E.5 emitted
@@ -255,11 +337,11 @@ SPEC 4-phase close is "Done" when:
 
 ## D. Bidirectional Traceability Matrix
 
-### D.1 REQ → AC Mapping
+### D.1 REQ → AC Mapping (v0.1.1 — 5/5 NFR coverage + AC-022 backfill-only)
 
 | REQ | Bound AC |
 |-----|----------|
-| REQ-LSG-001 | AC-LSG-001 |
+| REQ-LSG-001 | AC-LSG-001, AC-LSG-022 (backfill-only mode extension per D7) |
 | REQ-LSG-002 | AC-LSG-002 |
 | REQ-LSG-003 | AC-LSG-003 |
 | REQ-LSG-004 | AC-LSG-004 |
@@ -268,7 +350,7 @@ SPEC 4-phase close is "Done" when:
 | REQ-LSG-007 | AC-LSG-007 |
 | REQ-LSG-008 | AC-LSG-008 |
 | REQ-LSG-009 | AC-LSG-009 |
-| REQ-LSG-010 | AC-LSG-010, AC-LSG-018a |
+| REQ-LSG-010 | AC-LSG-010, AC-LSG-021 (formerly AC-018a) |
 | REQ-LSG-011 | AC-LSG-011 |
 | REQ-LSG-012 | AC-LSG-012 |
 | REQ-LSG-013 | AC-LSG-013 |
@@ -276,9 +358,11 @@ SPEC 4-phase close is "Done" when:
 | REQ-LSG-015 | AC-LSG-015 |
 | NFR-LSG-001 | AC-LSG-016 |
 | NFR-LSG-002 | AC-LSG-017 |
-| NFR-LSG-005 | AC-LSG-018a |
+| NFR-LSG-003 | AC-LSG-019 (NEW per D1) |
+| NFR-LSG-004 | AC-LSG-020 (NEW per D1) |
+| NFR-LSG-005 | AC-LSG-021 (formerly AC-018a per D4 renumber) |
 
-### D.2 AC → REQ Reverse Mapping
+### D.2 AC → REQ Reverse Mapping (v0.1.1)
 
 | AC | Traces to REQ/NFR |
 |----|-------------------|
@@ -300,9 +384,12 @@ SPEC 4-phase close is "Done" when:
 | AC-LSG-016 | NFR-LSG-001 |
 | AC-LSG-017 | NFR-LSG-002 |
 | AC-LSG-018 | M6 dogfood (verifies all REQ in production usage) |
-| AC-LSG-018a | NFR-LSG-005, REQ-LSG-010 |
+| AC-LSG-019 | NFR-LSG-003 (Cross-Platform — NEW per D1) |
+| AC-LSG-020 | NFR-LSG-004 (Observability — NEW per D1) |
+| AC-LSG-021 | NFR-LSG-005, REQ-LSG-010 (formerly AC-018a per D4 renumber) |
+| AC-LSG-022 | REQ-LSG-001 (backfill-only mode extension — NEW per D7) |
 
-### D.3 AC → Milestone Mapping
+### D.3 AC → Milestone Mapping (v0.1.1)
 
 | AC | Bound Milestone(s) |
 |----|---------------------|
@@ -324,6 +411,9 @@ SPEC 4-phase close is "Done" when:
 | AC-LSG-016 | M1, M2 |
 | AC-LSG-017 | M1 (regression check) |
 | AC-LSG-018 | M6 |
-| AC-LSG-018a | M1 |
+| AC-LSG-019 | M1 (CI workflow matrix configured at M1 commit + verified by M1 PR check) |
+| AC-LSG-020 | M1 (log emission code path) + M6 (verifies ≥ 5 entries after dogfood) |
+| AC-LSG-021 | M1 (formerly AC-018a per D4 renumber) |
+| AC-LSG-022 | M1 (Close core), M2 (CLI flag wiring), M6 (--backfill-only used by all 5 dogfood closes) |
 
-**Coverage Summary**: 100% bidirectional traceability — every REQ binds to ≥1 AC and every AC traces back to ≥1 REQ/NFR. All 6 milestones (M1-M6) referenced by ≥1 AC.
+**Coverage Summary (v0.1.1)**: 100% bidirectional traceability — every REQ + every NFR binds to ≥ 1 AC, and every AC traces back to ≥ 1 REQ/NFR. All 6 milestones (M1-M6) referenced by ≥ 1 AC. NFR coverage 5/5 (100%, up from 3/5 in v0.1.0). Total AC count: 22 (15 functional + 1 M6 dogfood + 5 NFR + 1 backfill-only).

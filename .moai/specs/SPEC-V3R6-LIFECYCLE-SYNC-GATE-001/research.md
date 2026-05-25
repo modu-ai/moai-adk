@@ -1,12 +1,16 @@
 ---
 id: SPEC-V3R6-LIFECYCLE-SYNC-GATE-001
 artifact: research
-version: "0.1.0"
+version: "0.1.1"
 created: 2026-05-25
 updated: 2026-05-25
 ---
 
 ## HISTORY
+
+### v0.1.1 (2026-05-25, manager-spec — iter-2 cross-reference sync)
+- No research changes in this iteration; version bumped for consistency with spec.md v0.1.1 + acceptance.md v0.1.1 + design.md v0.1.1
+- Verbatim 154-SPEC era × sync-signal cross-tab audit data unchanged (research origin remains stable)
 
 ### v0.1.0 (2026-05-25, manager-spec)
 - Initial research.md authored capturing origin context + verbatim memory citations
