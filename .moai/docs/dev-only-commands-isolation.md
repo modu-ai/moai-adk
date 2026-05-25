@@ -22,6 +22,8 @@
 | `.claude/commands/98-github.md` | Entry slash command — GitHub workflow with Agent Teams | 사용자 프로젝트에 `gh` 권한/repo 컨텍스트 미보장 |
 | `.claude/skills/moai/workflows/release-update.md` | 7-phase 워크플로우 본문 (97 entry) | 사용자에게 의미 없는 dev 인프라 |
 | `.claude/skills/moai/workflows/github.md` | GitHub 워크플로우 본문 (98 entry) | 동일 — dev maintainer 전용 |
+| `.claude/skills/moai/workflows/release.md` | Production release 워크플로우 본문 (99 entry) | 동일 — dev maintainer 전용, Enhanced GitHub Flow (CLAUDE.local.md §18) |
+| `.claude/commands/99-release.md` | Entry slash command — production release | 사용자 프로젝트에는 release 권한/repo 컨텍스트 미보장 |
 | `.moai/state/last-cc-version.json` | 마지막 분석 버전 + history | 사용자 프로젝트별 상태 추적 불요 |
 | `.moai/research/cc-update-*.md` | 분석 보고서 + update plan | dev 산출물, 사용자 사용 안 함 |
 
@@ -32,6 +34,7 @@
 - [ ] `find internal/template/templates -name "99-*"` 결과 비어있음
 - [ ] `find internal/template/templates -name "release-update.md"` 결과 비어있음
 - [ ] `find internal/template/templates -name "github.md" -path "*/workflows/*"` 결과 비어있음
+- [ ] `find internal/template/templates -name "release.md" -path "*/workflows/*"` 결과 비어있음
 - [ ] `find internal/template/templates -name "last-cc-version.json"` 결과 비어있음
 - [ ] `find internal/template/templates -name "cc-update-*.md"` 결과 비어있음
 - [ ] `moai init test-project` 후 위 모두 사용자 프로젝트에 복사되지 않음 확인
@@ -42,8 +45,10 @@
 
 - `.claude/skills/moai/workflows/release-update.md` 최상단에 `> **[DEV-ONLY]**` 경고 banner 유지
 - `.claude/skills/moai/workflows/github.md` 최상단에 `> **[DEV-ONLY]**` 경고 banner 유지 (없으면 추가)
+- `.claude/skills/moai/workflows/release.md` frontmatter `description`에 `"(dev-only) MoAI-ADK production release skill"` 명시 유지 (body banner 또는 frontmatter 명시 중 하나로 충분)
 - `.claude/commands/97-release-update.md` frontmatter `description`에 `"NOT distributed to user projects"` 문구 유지
 - `.claude/commands/98-github.md` frontmatter `description`에 `"(dev-only). NOT distributed to user projects."` 문구 유지
+- `.claude/commands/99-release.md` frontmatter `description`에 `"NOT distributed to user projects (dev-only)"` 문구 유지
 
 ### 위반 시 영향
 
@@ -53,6 +58,8 @@
 - `98-github.md` 배포 → `/98-github` 슬래시 커맨드가 사용자 UI에 노출. 사용자 repo에 무관한 dev-only PR/issue 관리 워크플로우 호출 가능 → 혼란
 - `workflows/release-update.md` 배포 → MoAI 스킬 intent router에 등록되어 "release-update" 키워드 자동 매칭 → 의도치 않은 routing
 - `workflows/github.md` 배포 → MoAI 스킬 intent router에 "github" 키워드 자동 매칭 → 사용자가 의도하지 않은 PR 관리 시도
+- `99-release.md` 배포 → `/99-release` 슬래시 커맨드가 사용자 UI에 노출. 사용자 repo에 release 권한/PR merge 권한 부재 → 실행 시 오류 + 혼란
+- `workflows/release.md` 배포 → MoAI 스킬 intent router에 "release" 키워드 자동 매칭 → 사용자가 의도하지 않은 production release 시도 + 위험
 - `last-cc-version.json` 배포 → 사용자 프로젝트가 moai-adk 자체의 CC 추적 상태를 들고다님 (의미 없음)
 - `cc-update-*.md` 배포 → 사용자 `.moai/research/`에 메인테이너 보고서 섞임
 

@@ -217,7 +217,7 @@ Every English text label inside the templates below — banner names, section he
 - Completion phrases: `Intent delivered`, `Files: N`, `Tests: X/X pass`, `Coverage: N%`, `Deliverables:`, `Specialists used:`, `Cleanup: [temp files removed]`
 - Error phrases: `Retry as-is`, `Alt approach`, `Pause`, `Abort+preserve`
 - Progress Board icon meanings (when verbalized): `Done`, `In Progress`, `Pending`, `Under Review`, `Failed`, `Critical`
-- Session Handoff headers: `Preconditions:`, `Run:`, `After merge:`, `entering`
+- Session Handoff headers: `Preconditions:`, `Run:`, `After merge:` / `Follow-up:` (workflow-context conditional), `entering`
 - Step labels: `Step 1: Clarify`, `Step 2: Delegate`, `Step 3: Execute`, `Step 4: Verify`
 - WebSearch citation: `Sources:`
 
@@ -631,10 +631,11 @@ Header translation table (translate per `conversation_language` setting in `.moa
 |-------|---------|--------|----------|---------|
 | Block 3 (Preconditions) | `Preconditions:` | `전제 검증:` | `前提検証:` | `前置验证:` |
 | Block 5 (Run) | `Run:` | `실행:` | `実行:` | `执行:` |
-| Block 6 (After merge) | `After merge:` | `머지 후:` | `マージ後:` | `合并后:` |
+| Block 6 PR-based (After merge) | `After merge:` | `머지 후:` | `マージ後:` | `合并后:` |
+| Block 6 Trunk-based (Follow-up) | `Follow-up:` | `후속:` | `後続:` | `后续:` |
 | Block 1 verb (entering) | `entering` | `진입` | `開始` | `进入` |
 
-Pre-emit self-check (MUST verify all 7 before printing):
+Pre-emit self-check (MUST verify all 9 before printing):
 - [ ] Block 1 starts with `ultrathink.` (activates Adaptive Thinking max effort in next session)
 - [ ] Block 2 lists ≥1 memory file from `~/.claude/projects/{hash}/memory/` (most recent project memory + relevant lessons)
 - [ ] Block 2 includes `source_session_id: <UUID>` line carrying current orchestrator turn's session_id (SPEC-V3R6-MULTI-SESSION-COORD-001 L2 / REQ-COORD-010 — enables race attribution across multi-session work)
@@ -642,6 +643,8 @@ Pre-emit self-check (MUST verify all 7 before printing):
 - [ ] Block 5 is a single primary action (typically `/moai <subcommand>` or single command line)
 - [ ] L3 worktree case: Block 0 `[New Terminal — START IN WORKTREE] $ cd <abs-path> $ <launcher>` prepended (Block 0 MUST surface 3 launchers verbatim: `moai cc` | `moai glm` | `claude` — per `session-handoff.md` §Worktree-Anchored Resume Pattern) + precondition 0) `git rev-parse --show-toplevel → <worktree-path>` added
 - [ ] **Cut-line markers present** — top `✂──── 여기부터 복사 ────✂` before Block 1 (or Block 0 if L3 worktree), bottom `✂──── 여기까지 복사 ────✂` after Block 6. `✂` symbol (U+2702) and `─` (U+2500) preserved verbatim; marker text translated per `conversation_language` (Cut-line Marker translation table above). One blank line separates each marker from adjacent block content.
+- [ ] **Block 6 workflow-context header**: PR-based(`머지 후:` / `After merge:`) vs Trunk-based(`후속:` / `Follow-up:`) vs single-SPEC close(omit) 중 적절 선택 — per session-handoff.md §Field-by-Field Specification Block 6 conditional rule. Trunk-based(no PR merge) 환경에서 `머지 후:` 사용은 의미적 거짓 (HARD violation).
+- [ ] **Block 2 source_session_id environment fallback**: `moai` CLI 부재 또는 `.moai/state/active-sessions.json` 미존재 시 verbatim 인식 fallback 사용 — `source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>`. fallback 패턴 자체는 anti-pattern 아님 (graceful degradation HARD).
 
 Auto-memory persistence (mandatory — without this, message is lost across `/clear`):
 - File path: `~/.claude/projects/{hash}/memory/project_<sprint>_<spec>_<status>.md`
