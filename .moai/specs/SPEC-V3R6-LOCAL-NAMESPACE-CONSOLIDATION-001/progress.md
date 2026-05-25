@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001
 title: "Local Agent Namespace Consolidation — Progress Tracking"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-05-25
 updated: 2026-05-25
@@ -83,8 +83,8 @@ Authored by manager-spec at plan-phase completion. Populated upon Phase 0.5 plan
 | 4 artifacts created (spec/plan/acceptance/progress) | YES — all 4 written in single manager-spec session | `<pending verification>` |
 | Frontmatter 12-canonical-field validation | PASSED at write time per pre-write checklist | `<pending plan-auditor confirmation>` |
 | SPEC ID regex compliance | PASSED — decomposition: SPEC ✓ \| V3R6 ✓ \| LOCAL ✓ \| NAMESPACE ✓ \| CONSOLIDATION ✓ \| 001 ✓ → PASS | `<pending plan-auditor confirmation>` |
-| 14 REQ-LNC GEARS notation compliance (iter-2) | 4 Ubiquitous + 3 Event-driven + 2 State-driven + 3 Where capability + 2 Unwanted = 14 total, zero IF/THEN. REQ-LNC-014 NEW Where-capability added in iter-2 per D6. | `<pending plan-auditor confirmation>` |
-| 11 AC-LNC independent verifiability | All 11 AC have grep/test/file-existence commands per acceptance.md §B. AC-LNC-006 binding broadens to REQ-LNC-011 + REQ-LNC-014 in iter-2 (no AC count change). | `<pending plan-auditor confirmation>` |
+| 13 REQ-LNC GEARS notation compliance (iter-3) | 4 Ubiquitous + 3 Event-driven + 2 State-driven + 2 Where capability + 2 Unwanted = 13 total, zero IF/THEN. iter-3 D_new3: REQ-LNC-014 DELETED (redundant subset of REQ-LNC-011 second clause); REQ count 14 → 13; Where-capability count 3 → 2. | `<pending plan-auditor confirmation>` |
+| 12 AC-LNC independent verifiability | 11 MUST-PASS AC (AC-LNC-001 through AC-LNC-011) have grep/test/file-existence commands per acceptance.md §B; AC-LNC-012 NEW SOFT (deferred) for REQ-LNC-009 traceability anchor — does NOT block Definition of Done. AC-LNC-006 binding reverted to REQ-LNC-011 only in iter-3 (REQ-LNC-014 deleted). AC count 11 → 12. | `<pending plan-auditor confirmation>` |
 | HARD constraints documented | 5 HARD constraints (Thin Command Pattern, Template-First, Namespace contract update [iter-2: §24.4 dropped, 2 in-scope SSOTs only], Dev-only isolation, GEARS discipline) per spec.md §D.1 | `<pending plan-auditor confirmation>` |
 | plan-auditor verdict | Tier M PASS threshold ≥ 0.80 | `<pending>` |
 | plan-auditor 4-dimension scores | Functionality / Security / Craft / Consistency | `<pending>` |
@@ -119,3 +119,4 @@ Populated by manager-docs or orchestrator at Mx Step C judgment time.
 |---------|------|--------|-----------|-------------|
 | 0.1.0 | 2026-05-25 | manager-spec | iter-1 | Initial progress.md authoring — §A Lifecycle Reflection + §B Milestone Status (M1-M6) + §C Decision Log (4 entries) + §D References + §E Phase-Specific Audit-Ready Signals (E.1-E.5). All milestones not-started. |
 | 0.1.1 | 2026-05-25 | manager-spec | iter-2 | Focused defect resolution per plan-auditor iter-1 0.73 FAIL — D7 M1 file count 6 → 5 (dev-only-commands-isolation.md template mirror dropped per spec.md §E), total file count ~41 → ~40 + arithmetic breakdown added (M1 5 + M2 2 + M3 4 + M4 26 + M5 2 + M6 1 = 40), D6 §E.1 REQ count 13 → 14 (REQ-LNC-014 NEW Where-capability) + GEARS notation breakdown updated (3 Where-capability instead of 2) + AC-LNC-006 binding broadens noted, HARD constraint #3 §24.4 dropped noted, D8 HISTORY section NEW. tier:M frontmatter added per D13. |
+| 0.1.2 | 2026-05-25 | manager-spec | iter-3 | Narrow-scope surgical defect resolution per plan-auditor iter-2 0.74 PASS-WITH-DEBT (stagnation, LEAN STOP signal): §E.1 audit-ready signal table updated for new counts — REQ count 14 → 13 (D_new3 REQ-LNC-014 deletion), GEARS breakdown 3 Where-capability → 2 Where-capability, AC count 11 → 12 (D_new4 AC-LNC-012 NEW deferred-verification marker binds orphan REQ-LNC-009), AC-LNC-006 binding reverted to REQ-LNC-011 only. File-count breakdown unchanged (40 total) — D_new4 AC-LNC-012 addition is internal to acceptance.md (already counted as 1 of the 40 files). Other iter-3 defects (D_new1 REQ-LNC-002 5-field truth, D_new2 REQ-LNC-007 stdout-emptiness, D_new5 plan.md M2 §C.2 rewrite, D_new6 §E 8-phase→9-phase) are body-scope only, no progress.md signal update needed. |

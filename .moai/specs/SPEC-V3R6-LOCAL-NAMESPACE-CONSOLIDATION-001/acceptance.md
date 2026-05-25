@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001
 title: "Local Agent Namespace Consolidation — Acceptance Criteria"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-05-25
 updated: 2026-05-25
@@ -20,7 +20,7 @@ related_specs: []
 
 ## A. AC Index
 
-This SPEC has 11 acceptance criteria (AC-LNC-001 through AC-LNC-011). All MUST pass for the SPEC to transition `in-progress → implemented` at sync-phase. Each AC has an independently verifiable command sequence specified in §B.
+This SPEC has 12 acceptance criteria (AC-LNC-001 through AC-LNC-012). All MUST pass for the SPEC to transition `in-progress → implemented` at sync-phase. Each AC has an independently verifiable command sequence specified in §B.
 
 | AC ID | Title | Coverage | Severity |
 |-------|-------|----------|----------|
@@ -29,12 +29,13 @@ This SPEC has 11 acceptance criteria (AC-LNC-001 through AC-LNC-011). All MUST p
 | AC-LNC-003 | `release-update-specialist.md` agent body created with full migrated content | REQ-LNC-005, REQ-LNC-008 | MUST |
 | AC-LNC-004 | `github-specialist.md` agent body created with full migrated content | REQ-LNC-006 | MUST |
 | AC-LNC-005 | Predecessor dev-only skill files removed | REQ-LNC-001 (cleanup obligation) | MUST |
-| AC-LNC-006 | `.claude/rules/moai/development/agent-authoring.md` namespace contract updated + `skill-authoring.md` deprecation entries | REQ-LNC-011, REQ-LNC-014 | MUST |
+| AC-LNC-006 | `.claude/rules/moai/development/agent-authoring.md` namespace contract updated + `skill-authoring.md` deprecation entries | REQ-LNC-011 | MUST |
 | AC-LNC-007 | Template surface contains zero `CLAUDE.local.md` references | REQ-LNC-003, REQ-LNC-007 | MUST |
 | AC-LNC-008 | `.moai/docs/dev-only-commands-isolation.md` verification checklist updated | REQ-LNC-001 (operational discipline) | MUST |
 | AC-LNC-009 | `internal/template/templates/.claude/agents/local/` does NOT exist (REQ-LNC-012 negative test) | REQ-LNC-012 | MUST |
 | AC-LNC-010 | `.moai/docs/generic-patterns-guide.md` exists in both local and template with 4 sections | REQ-LNC-004, REQ-LNC-010 | MUST |
 | AC-LNC-011 | Full project `go test ./...` passes (commands_audit_test.go non-regression) | REQ-LNC-002, REQ-LNC-013 | MUST |
+| AC-LNC-012 | REQ-LNC-009 deferred-verification traceability marker (binds orphan REQ to acceptance for MP-3 compliance; substantive verification deferred to follow-up SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001) | REQ-LNC-009 | SOFT (deferred) |
 
 ## B. Per-AC Verification Commands
 
@@ -118,7 +119,7 @@ Expected output contains `No such file or directory` for both paths. Exit code: 
 **When** the orchestrator greps for the new `local/` row in the namespace table AND for deprecation markers in the skills namespace policy table,
 **Then** entries are present at both SSOT locations (agent-authoring.md table + skill-authoring.md deprecation entries) and in both local and template copies.
 
-Verification 1 — agent-authoring.md namespace table:
+Verification 1 — agent-authoring.md namespace table (verifies REQ-LNC-011 first clause):
 
 ```bash
 grep -c "\.claude/agents/local/" .claude/rules/moai/development/agent-authoring.md internal/template/templates/.claude/rules/moai/development/agent-authoring.md
@@ -126,7 +127,7 @@ grep -c "\.claude/agents/local/" .claude/rules/moai/development/agent-authoring.
 
 Expected: Each file shows at least 2 matches (table row + at least one body reference). Both files must report ≥ 2.
 
-Verification 2 — skill-authoring.md deprecation entries (REQ-LNC-014):
+Verification 2 — skill-authoring.md deprecation entries (verifies REQ-LNC-011 second clause):
 
 ```bash
 grep -cE "97-release-update|98-github" .claude/rules/moai/development/skill-authoring.md internal/template/templates/.claude/rules/moai/development/skill-authoring.md
@@ -224,6 +225,22 @@ go test -v -run TestCommandsAudit ./internal/template/...
 
 Expected: PASS for the audit test (Thin Command Pattern body LOC bound and YAML frontmatter shape verified).
 
+### AC-LNC-012 — REQ-LNC-009 deferred verification marker
+
+**Binds REQ**: REQ-LNC-009 (moai update PRESERVE behavior)
+
+**Verification status**: Deferred to follow-up `SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001` (code-level enforcement track) — REQ-LNC-009 documents a runtime invariant (`moai update` must preserve `.claude/agents/local/`) but the Go implementation change is explicitly out of scope per spec.md §E ("**`moai update` Go implementation change** ... is deferred to SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001"). This AC serves as a traceability anchor to maintain MP-3 bidirectional REQ↔AC binding within the present SPEC.
+
+**Verification command** (deferred to follow-up SPEC):
+
+```bash
+grep -F "REQ-LNC-009" .moai/specs/SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001/spec.md
+# Expected (when follow-up SPEC exists): ≥ 1 cross-reference back to REQ-LNC-009 demonstrating handoff
+# Until follow-up SPEC opens: returns 0 (acceptable for plan-phase; surfaced in M6 as a flag for sync-phase)
+```
+
+**Note**: This AC is intentionally "soft" within the present SPEC scope. The doctrinal anchor (REQ-LNC-009 + AC-LNC-012 pair) ensures the deferred work is not forgotten when SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001 is opened. AC-LNC-012 does NOT block the 11 MUST-PASS acceptance criteria (AC-LNC-001 through AC-LNC-011); the Definition of Done in §D continues to require those 11 PASS. AC-LNC-012 transitions from SOFT to MUST only when the follow-up SPEC is authored.
+
 ## C. Edge Cases
 
 | Edge Case | Handling | AC Coverage |
@@ -263,3 +280,4 @@ The SPEC is considered DONE when all of the following hold simultaneously:
 |---------|------|--------|-----------|-------------|
 | 0.1.0 | 2026-05-25 | manager-spec | iter-1 | Initial acceptance criteria authoring — 11 AC-LNC-XXX entries (AC-LNC-001 through AC-LNC-011) with per-AC verification commands, edge cases table, Definition of Done, Quality Gate Criteria. |
 | 0.1.1 | 2026-05-25 | manager-spec | iter-2 | Focused defect resolution per plan-auditor iter-1 0.73 FAIL — D4 AC-LNC-007 exit code `1` → `in {0, 1}` (allows robust shell variants), D5 AC-LNC-009 prepended `[ ! -d ... ]` directory-absence assertion as primary truth source (find exit-code quirks not load-bearing), D6 AC-LNC-006 verification broadened to dual SSOT (agent-authoring.md + skill-authoring.md) with two grep commands, D7 AC-LNC-008 grep target reduced to local path only (template mirror intentionally absent per spec.md §E), D9 AC-LNC-003 wording `8 phases` → `9 phases (Phase 0 through Phase 8)` clarified inclusive endpoints, D11 AC-LNC-004 threshold ≥4 → ≥10 (matches observed predecessor section structure depth), D8 HISTORY section NEW. tier:M frontmatter added per D13. AC count 11 → 11 (no addition; AC-LNC-006 binding broadens to REQ-LNC-011 + REQ-LNC-014). |
+| 0.1.2 | 2026-05-25 | manager-spec | iter-3 | Narrow-scope surgical defect resolution per plan-auditor iter-2 0.74 PASS-WITH-DEBT (stagnation, LEAN STOP signal): D_new4 (MUST-FIX) NEW AC-LNC-012 deferred-verification marker added — binds orphan REQ-LNC-009 (moai update PRESERVE behavior) which previously had 0 AC binding (MP-3 bidirectional traceability FAIL). AC-LNC-012 is SOFT severity (substantive verification deferred to follow-up SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001), does NOT block the 11 MUST-PASS criteria. AC count 11 → 12. D_new3 propagation: AC-LNC-006 binding reverted to `REQ-LNC-011` only (REQ-LNC-014 deleted in spec.md iter-3 as redundant subset of REQ-LNC-011 second clause); Verification 1/Verification 2 dual grep commands preserved (both still verify REQ-LNC-011's two clauses — first clause `.claude/agents/local/` row in agent-authoring.md, second clause deprecation entries in skill-authoring.md). |

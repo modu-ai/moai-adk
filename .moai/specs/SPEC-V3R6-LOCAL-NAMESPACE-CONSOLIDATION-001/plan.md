@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001
 title: "Local Agent Namespace Consolidation — Implementation Plan"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-05-25
 updated: 2026-05-25
@@ -43,7 +43,7 @@ Scope: Update three SSOT documents to register `.claude/agents/local/` as a user
 
 Files modified (3):
 - `.claude/rules/moai/development/agent-authoring.md` — Add `.claude/agents/local/` row to the Agent Directory Convention table (between `meta/` row and `harness/` row, alphabetic and conceptual ordering). Update the [HARD] rule block to list local/ alongside harness/ in the PRESERVE clauses.
-- `.claude/rules/moai/development/skill-authoring.md` — Update § Skills Namespace Policy table to mark the removed `97-release-update` and `98-github` skill slots as deprecated with migration target annotation (`.claude/agents/local/<specialist-name>.md`). Update cross-reference section to mention the new local agent namespace as a related pattern (satisfies REQ-LNC-011 + REQ-LNC-014).
+- `.claude/rules/moai/development/skill-authoring.md` — Update § Skills Namespace Policy table to mark the removed `97-release-update` and `98-github` skill slots as deprecated with migration target annotation (`.claude/agents/local/<specialist-name>.md`). Update cross-reference section to mention the new local agent namespace as a related pattern (satisfies REQ-LNC-011 second clause).
 - `.moai/docs/dev-only-commands-isolation.md` (LOCAL-ONLY, no template mirror per spec.md §E) — Add agent-local-namespace verification checklist entries: `find internal/template/templates -path "*/agents/local/*"` returns empty (HARD), `find internal/template/templates -name "release-update-specialist.md"` returns empty, `find internal/template/templates -name "github-specialist.md"` returns empty. Update the "배포 금지 파일 목록" table with the two new agent body file rows.
 
 Mirror requirement: 2 of the 3 modified files have template mirrors (`internal/template/templates/.claude/rules/moai/development/agent-authoring.md` + `internal/template/templates/.claude/rules/moai/development/skill-authoring.md`). The `dev-only-commands-isolation.md` file is local-only by §21 isolation policy (no template mirror exists or is created — see spec.md §E Out of Scope). Total file count for M1: **5 files** (3 local + 2 template mirror).
@@ -52,7 +52,7 @@ Acceptance verification (AC-LNC-001, AC-LNC-008, AC-LNC-011).
 
 ### M2 — Local Agent Body Authoring
 
-Scope: Create two new agent body files under `.claude/agents/local/` and mirror the same two files (which is forbidden — see paragraph after this) — clarification: agent body files are USER-OWNED, mirror to `internal/template/templates/.claude/agents/local/` is PROHIBITED per REQ-LNC-012.
+Scope: Create two new agent body files under `.claude/agents/local/release-update-specialist.md` and `.claude/agents/local/github-specialist.md` — LOCAL ONLY. Do NOT create mirrors under `internal/template/templates/.claude/agents/local/` (PROHIBITED per REQ-LNC-012, namespace is maintainer-owned).
 
 Files created (2, local-only — NO template mirror):
 - `.claude/agents/local/release-update-specialist.md` — YAML frontmatter (name, description, tools, model, color, effort) + agent body containing the 9-phase (Phase 0 through Phase 8) CC upstream tracker workflow migrated from `.claude/skills/moai/workflows/release-update.md` (lines 34 onward) with structural fidelity preserved. Approximate body LOC: 600 (matches predecessor skill body Phase 0-8 + Agent Delegation Map + Output Artifacts + Verification Gate + Anti-Patterns + References).
@@ -189,3 +189,4 @@ Acceptance verification (all AC-LNC-001 through AC-LNC-011 final pass).
 |---------|------|--------|-----------|-------------|
 | 0.1.0 | 2026-05-25 | manager-spec | iter-1 | Initial plan-phase authoring — Section A-F + 6 milestones (M1-M6). M1 originally specified 6 files (3 local + 3 mirror). |
 | 0.1.1 | 2026-05-25 | manager-spec | iter-2 | Focused defect resolution per plan-auditor iter-1 0.73 FAIL — D2 commit subject template drift fix (`Section A-G` → drop section enumeration), D7 M1 file count 6 → 5 (drop `dev-only-commands-isolation.md` template mirror per spec.md §E out-of-scope local-only acknowledgement), D9 M2 `8-phase` → `9-phase (Phase 0 through Phase 8)`, D10 M4 branch-origin-protocol replacement clarified to remove BOTH §18.11 and §18.12, D8 HISTORY section NEW. tier:M frontmatter added per D13. |
+| 0.1.2 | 2026-05-25 | manager-spec | iter-3 | Narrow-scope surgical defect resolution per plan-auditor iter-2 0.74 PASS-WITH-DEBT (stagnation, LEAN STOP signal): D_new5 M2 §C.2 self-contradictory sentence rewrite ("mirror the same two files (which is forbidden — see paragraph after this) — clarification:" → clean "LOCAL ONLY. Do NOT create mirrors..." statement); D_new3 propagation — M1 skill-authoring.md update note `(satisfies REQ-LNC-011 + REQ-LNC-014)` → `(satisfies REQ-LNC-011 second clause)` (REQ-LNC-014 deleted in spec.md iter-3 as redundant subset of REQ-LNC-011). REQ count tracking: 14 → 13 (synchronized with spec.md iter-3). |

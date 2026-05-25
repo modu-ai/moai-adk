@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001
 title: "Local Agent Namespace Consolidation — Dev-Only Skill Migration + Template Generic Refactor + CLAUDE.local.md Pattern Externalization"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-05-25
 updated: 2026-05-25
@@ -78,7 +78,7 @@ W5 does NOT modify CLAUDE.local.md itself (out of scope per task brief). Future 
 
 **REQ-LNC-001**: The `.claude/agents/local/` namespace shall house all maintainer-only domain specialist agents that are protected from `moai update` overwrite per the namespace separation contract.
 
-**REQ-LNC-002**: The thin command wrappers `.claude/commands/97-release-update.md` and `.claude/commands/98-github.md` shall preserve their Thin Command Pattern compliance per REQ-LNC-013 (body content ≤ 20 LOC), and their YAML frontmatter (delimited by `---` markers, containing 8 fields: `description`, `argument-hint`, `allowed-tools`, `model`, `effort`, `runtime`, `color`, `category`) shall remain structurally unchanged across the migration.
+**REQ-LNC-002**: The thin command wrappers `.claude/commands/97-release-update.md` and `.claude/commands/98-github.md` shall preserve their Thin Command Pattern compliance per REQ-LNC-013 (body content ≤ 20 LOC); the YAML frontmatter (7 lines: opening `---` + 5 fields + closing `---`) shall remain structurally unchanged. The 5 fields are: `description`, `argument-hint`, `type`, `allowed-tools`, `version`.
 
 **REQ-LNC-003**: The template surface under `internal/template/templates/` shall contain zero references to `CLAUDE.local.md` after migration completion.
 
@@ -90,7 +90,7 @@ W5 does NOT modify CLAUDE.local.md itself (out of scope per task brief). Future 
 
 **REQ-LNC-006**: When a maintainer invokes `/98-github` from the Claude Code chat input, the thin command wrapper shall delegate to the `github-specialist` subagent instead of invoking `Skill("moai/workflows/github")`.
 
-**REQ-LNC-007**: When the lint engine executes `grep -rln "CLAUDE.local.md\|CLAUDE\.local" internal/template/templates/`, the command shall return exit code 1 (no matches) on a clean working tree after M4 completion.
+**REQ-LNC-007**: When the lint engine executes `grep -rln "CLAUDE.local.md\|CLAUDE\.local" internal/template/templates/`, the command shall produce empty stdout (exit code in {0, 1} permitted — grep exits 1 on no-match, 0 on success but truth source is stdout emptiness) on a clean working tree after M4 completion.
 
 ### C.3 State-Driven Requirements
 
@@ -109,10 +109,6 @@ W5 does NOT modify CLAUDE.local.md itself (out of scope per task brief). Future 
 **REQ-LNC-012**: The migration shall not introduce any `.claude/agents/local/*` file into `internal/template/templates/`.
 
 **REQ-LNC-013**: The thin command wrappers `.claude/commands/97-release-update.md` and `.claude/commands/98-github.md` shall not exceed 20 lines of body content (excluding YAML frontmatter), preserving the Thin Command Pattern body-LOC bound.
-
-### C.6 Where-Capability Requirements (continued)
-
-**REQ-LNC-014**: Where the maintainer references `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy for namespace classification, the table shall list the removed `97-release-update` and `98-github` slots as deprecated entries with `migration target: .claude/agents/local/<specialist-name>.md` annotation.
 
 ## D. Constraints
 
@@ -134,7 +130,7 @@ W5 does NOT modify CLAUDE.local.md itself (out of scope per task brief). Future 
 - **CLAUDE.local.md §24.2 (Storage Roots) and §24.4 (`moai update` Contract) PRESERVE-list entry for `.claude/agents/local/`** — explicitly deferred to a follow-up maintenance commit or `SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001` if a code-level enforcement track is opened. Rationale: `CLAUDE.local.md` is local-only documentation, not user-distributed, and the in-scope SSOT updates (`agent-authoring.md` + `skill-authoring.md`) provide the user-facing contract.
 - **Template mirror of `.moai/docs/dev-only-commands-isolation.md`** — intentionally absent. The file is local-maintainer-only per its own §21 isolation policy (`.moai/docs/dev-only-commands-isolation.md`). M1 updates the local copy only; no template mirror is created or expected. AC-LNC-008 verification command grep targets the local path only.
 - **CLAUDE.local.md body modification**: W5 EXTRACTS generic patterns into a new template-distributed guide. It does NOT modify CLAUDE.local.md itself. The maintainer file remains the source of detailed local doctrine; the externalized guide is a generalized derivative.
-- **Predecessor skill body content change**: The migration copies the 8-phase workflow body verbatim from the dev-only skills into the new agent bodies. Editorial changes to phase sequencing, agent delegation patterns, or anti-pattern catalogs are out of scope. M2 is mechanical translation; behavioral revisions belong to a follow-up SPEC if needed.
+- **Predecessor skill body content change**: The migration copies the 9-phase (Phase 0 through Phase 8) workflow body from the dev-only skills into the new agent bodies with structural fidelity preserved. Editorial changes to phase sequencing, agent delegation patterns, or anti-pattern catalogs are out of scope. M2 is mechanical translation; behavioral revisions belong to a follow-up SPEC if needed.
 - **`moai update` Go implementation change** (`internal/cli/update.go`, `internal/cli/update_archive.go`): The PRESERVE-list contract update is documentation-only (in agent-authoring.md, skill-authoring.md). Verifying that the Go code actually honors the `.claude/agents/local/` PRESERVE entry is deferred to SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001 (per CLAUDE.local.md §24.4 forward-reference). If the Go code already covers `.claude/agents/harness/` via a generic pattern, `.claude/agents/local/` may inherit protection at runtime; verification is the follow-up SPEC's scope.
 - **Other dev-only artifact migration**: The 99-release.md command + `workflows/release.md` skill (production release workflow per `.moai/docs/dev-only-commands-isolation.md`) is NOT migrated in this SPEC. Migration is deferred to a follow-up if the namespace pattern proves stable. The dev-only-commands-isolation.md update in M3 documents the rationale for the 97/98 vs 99 differential treatment.
 - **CHANGELOG entry authoring**: manager-docs writes the CHANGELOG entry during sync-phase. Plan-phase does not pre-author the entry.
@@ -172,3 +168,4 @@ W5 does NOT modify CLAUDE.local.md itself (out of scope per task brief). Future 
 |---------|------|--------|--------|
 | 0.1.0 | 2026-05-25 | manager-spec | Initial plan-phase authoring — 3-scope consolidation (W3-arch + W4 + W5) per Sprint 10 lane B entry directive. 13 REQ-LNC + 4 HARD constraints + 4 risks. SPEC ID pre-write self-check PASSED (decomposition: SPEC ✓ \| V3R6 ✓ \| LOCAL ✓ \| NAMESPACE ✓ \| CONSOLIDATION ✓ \| 001 ✓ → PASS). Frontmatter 12-canonical-field validation PASSED. |
 | 0.1.1 | 2026-05-25 | manager-spec | iter-2 focused defect resolution per plan-auditor iter-1 0.73 FAIL verdict — D3 HARD #3 `§24.4` drop + §E out-of-scope clarification (CLAUDE.local.md update deferred), D6 REQ-LNC-011 broaden to 2 in-scope SSOTs + REQ-LNC-014 NEW Where-capability, D7 `dev-only-commands-isolation.md` local-only acknowledgement, D9 `8-phase` → `9-phase (Phase 0 through Phase 8)`, D11 REQ-LNC-008 verbatim → structural fidelity, D14 REQ-LNC-002 vs REQ-LNC-013 reconciliation (REQ-LNC-002 cross-refs REQ-LNC-013 for LOC budget, retains YAML structural invariant). REQ count 13 → 14 (REQ-LNC-014 added). AC count 11 → 11 (AC-LNC-006 binding broadens to REQ-LNC-011 + REQ-LNC-014). 5 HARD constraints preserved. Frontmatter tier:M added per D13. |
+| 0.1.2 | 2026-05-25 | manager-spec | iter-3 narrow-scope surgical defect resolution per plan-auditor iter-2 0.74 PASS-WITH-DEBT (stagnation, LEAN STOP signal): D_new1 (BLOCKING) REQ-LNC-002 rewritten with verified 5-field ground truth (`description`/`argument-hint`/`type`/`allowed-tools`/`version`) + 7-line frontmatter (replaces phantom 8-field/9-line enumeration that listed 5 non-existent fields `model`/`effort`/`runtime`/`color`/`category` and omitted 2 actual fields `type`/`version`); D_new2 (MUST-FIX) REQ-LNC-007 rewritten to `stdout-emptiness` truth source (replaces hard `exit code 1` that contradicted AC-LNC-007 `in {0,1}`); D_new3 (SHOULD-FIX) REQ-LNC-014 DELETED entirely (redundant subset of REQ-LNC-011 second clause; REQ count 14→13); D_new4 (MUST-FIX) NEW AC-LNC-012 deferred-verification marker added in acceptance.md to bind orphan REQ-LNC-009 (AC count 11→12, MP-3 bidirectional traceability restored); D_new6 §E predecessor skill content `8-phase verbatim` → `9-phase (Phase 0-8) with structural fidelity preserved` consistency fix; D_new5 plan.md M2 §C.2 self-contradictory sentence rewrite. HARD constraints preserved (5 → 5). |
