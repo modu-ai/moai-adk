@@ -21,7 +21,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["run", "implement", "build", "create", "develop", "code"]
-  agents: ["manager-develop", "manager-strategy", "manager-quality", "manager-git"]
+  agents: ["manager-develop", "manager-git", "Explore"]
   phases: ["run"]
 ---
 
@@ -32,6 +32,14 @@ triggers:
 # Run Workflow Entry Router
 
 이 파일은 `/moai run` 진입점 라우터입니다. 각 Phase는 on-demand로 해당 sub-skill을 `Read`하여 로드합니다.
+
+## Phase Owners (per SPEC-V3R6-AGENT-TEAM-REBUILD-001)
+
+Phase Owners: `manager-develop` (run-phase implementation — single-spawn per Anthropic 2026 Finding A4 "most coding tasks involve fewer truly parallelizable tasks than research"; `cycle_type` ∈ `{tdd, ddd, autofix}` per REQ-ATR-012) + `manager-git` (Tier L PR creation OR `--pr` flag per REQ-ATR-020 + CLAUDE.local.md §23) + `Explore` (read-only investigation when scope discovery needed).
+
+Phase 0.95 Mode Selection (NEW — REQ-ATR-008): orchestrator autonomous 5-mode decision (autopilot / loop / team / pipeline / background) is logged at `.moai/specs/SPEC-{ID}/progress.md` § Phase 0.95 Mode Selection. Phase 0.95 SHOULD be invoked before any manager-develop spawn for SPECs sized ≥ Tier M.
+
+`cycle_type=autofix` mode: `/moai fix` workflow integration delegates to manager-develop with the utility-class pipeline 3-phase contract (localize → repair → validate per `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification) and the max-3-iteration contract per `.claude/rules/moai/workflow/ci-autofix-protocol.md`.
 
 ## Phase Routing Table
 

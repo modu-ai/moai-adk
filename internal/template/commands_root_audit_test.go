@@ -99,14 +99,24 @@ func TestRootLevelCommandsThinPattern(t *testing.T) {
 				t.Errorf("body has %d non-empty lines (max 19 for thin commands)", bodyLines)
 			}
 
-			// R4: body must contain a Skill() invocation
-			if !strings.Contains(body, "Skill(") {
-				t.Errorf("body does not contain Skill() invocation")
+			// R4: body must contain a routing target — either Skill() invocation OR
+			// a subagent delegation directive. The subagent pattern (`Use the
+			// X-specialist subagent`) was introduced by
+			// SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001 M3 when dev-only skill
+			// bodies migrated to `.claude/agents/local/` namespace while their
+			// thin command wrappers were retained.
+			hasSkill := strings.Contains(body, "Skill(")
+			hasSubagent := strings.Contains(body, "subagent")
+			if !hasSkill && !hasSubagent {
+				t.Errorf("body does not contain Skill() invocation or `subagent` delegation directive")
 			}
 
 			// R5: partial migration gate (REQ-WF002-015)
-			// When body references Skill("<name>"), the .claude/skills/<name>/ directory must exist
-			checkSkillDirExists(t, body, skillsDir, path)
+			// When body references Skill("<name>"), the .claude/skills/<name>/ directory must exist.
+			// The check is skipped when the body uses only the subagent pattern (no Skill() reference).
+			if hasSkill {
+				checkSkillDirExists(t, body, skillsDir, path)
+			}
 		})
 	}
 
