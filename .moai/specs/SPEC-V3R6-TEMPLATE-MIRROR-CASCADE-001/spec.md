@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001
 title: "Template mirror cascade: spec-assembly.md drift fix"
-version: "0.1.0"
-status: implemented
+version: "0.1.1"
+status: completed
 created: 2026-05-24
-updated: 2026-05-24
+updated: 2026-05-25
 author: GOOS행님
 priority: P3
 phase: "v3.0.0"
