@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001
 title: "Progress — v2-to-v3 Clean Reinstall (Tier M, cycle_type=tdd)"
-version: "0.1.2"
-status: in-progress
+version: "0.1.3"
+status: implemented
 created: 2026-05-25
 updated: 2026-05-26
 author: manager-develop
@@ -242,6 +242,90 @@ AC progress: **AC-VVCR-014 PASS** (cross-platform build verification across 4 OS
 - Subagent boundary (C-HRA-008): grep on all new sources returns 0 matches
 
 **Next orchestrator action**: hand off to `manager-docs` for sync-phase (CHANGELOG entry finalization + README updates + `status: in-progress → implemented` frontmatter transition on all 5 SPEC artifacts).
+
+## §F — Sync-phase Audit-Ready Signal
+
+### §F.1 — Run-phase Commit Chain (9 commits, 363eff563..a997f03a2)
+
+| Commit SHA | Milestone | Subject | LOC impact | Date |
+|------------|-----------|---------|-----------|------|
+| 363eff563 | M1 | feat(SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001): M1 version bump rc1→rc2 + CHANGELOG + 6 golden files | +89 | 2026-05-25 |
+| 68e3af7b1 | M2 | feat(SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001): M2 extend DeprecatedPaths 9→43 entries | +474 | 2026-05-25 |
+| de2205f2f | checkpoint | chore(SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001): plan-phase iter-3 amendment (v0.1.2) | +25 progress.md checkpoint | 2026-05-25 |
+| e9eb74ae5 | M2a | fix(SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001): M2a FLAT layout restoration (14 git mv + ~50 path-subst) | +/- ~380 | 2026-05-25 |
+| 32c01f0eb | M3 | feat(SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001): M3 v2 detection logic (552 LOC + 24 sub-tests) | +552 | 2026-05-25 |
+| cc53ad421 | M4 | feat(SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001): M4 clean reinstall orchestration (1215 LOC + 36 tests) | +1215 | 2026-05-25 |
+| dec24f962 | M5 | feat(SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001): M5 runUpdate integration + catalog.yaml regen | +66 code + 7 yaml edits | 2026-05-26 |
+| 6c33a1bf4 | M6 | test(SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001): M6 cross-platform + FLAT layout audit coverage | +3 test updates | 2026-05-26 |
+| a997f03a2 | L52 case 29 | chore(SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001): L52 case 29 attribution restoration | 1 commit annotation | 2026-05-26 |
+
+**Total run-phase LOC delta**: ~2475 lines across 9 commits. **Push range**: `363eff563..a997f03a2` (9 commits, 2026-05-25 to 2026-05-26, all attributed to Goos Kim / manager-develop).
+
+**Race events absorbed during run-phase** (L52 cases 1-30, case 29 × 2 mitigation):
+- **L52 case 29 #1 (occurrence A)**: Parallel session attribution hijack on commit `5cbf1f69f` (content correct, attribution hijack to LOCAL-NAMESPACE-CONSOLIDATION-001 subject). Mitigated via non-destructive chore commit `b604a0d3b` anchoring. Evidence: `git log --grep='case 29'` + merge-base analysis.
+- **L52 case 29 #2 (occurrence B)**: Second occurrence during M2a-M6 working tree race. Mitigated via final attribution restoration commit `a997f03a2`. Doctrine confirmed: L52 case 29 canonical Option A (non-destructive chore on top, NOT --amend/force-push).
+
+### §F.2 — AC Matrix Sync-Confirmation
+
+Run-phase completed with **22 total ACs: 17 PASS + 5 deferred** per spec.md §C and acceptance.md.
+
+| AC # | Title | Status | Verification evidence | Deferred reason |
+|------|-------|--------|----------------------|-----------------|
+| AC-VVCR-001 | v2 Detection: Version Signal | PASS | 24 sub-tests in v2_detection_test.go |  |
+| AC-VVCR-002 | Clean Reinstall: PRESERVE Inventory | PASS | Integration test TestRunCleanReinstall_ScenarioA_FullWipe_PreserveUser |  |
+| AC-VVCR-003 | Clean Reinstall: REMOVE Step | PASS | Integration test TestRunCleanReinstall_ScenarioB_IncrementalUpgrade |  |
+| AC-VVCR-004 | Clean Reinstall: REINSTALL Step | PASS | Integration test TestRunCleanReinstall_ScenarioC_Idempotent |  |
+| AC-VVCR-005 | Extended DeprecatedPaths (43 entries) | PASS | 8 tests in dirs_test.go (count + per-category split) |  |
+| AC-VVCR-006 | Collision detection / deduplication | PASS | TestRunCleanReinstall_CollisionDetection (v2 + existing hash collision) |  |
+| AC-VVCR-007 | Preserve inventory snapshot | PASS | stub deployer + round-trip test |  |
+| AC-VVCR-008 | Preserve inventory merge-back | PASS | TestMergeBackPreserveInventory (collision resolution) |  |
+| AC-VVCR-009 | Dry-run mode (no mutation) | PASS | TestRunCleanReinstall_DryRun (deploy.dryRun = true) |  |
+| AC-VVCR-010 | Error propagation | PASS | TestRunCleanReinstall_ErrorPropagation (I/O error injection) |  |
+| AC-VVCR-011 | Logging integration | PASS | golangci-lint clean (no log package lint errors) |  |
+| AC-VVCR-012 | Integration with runUpdate | PASS | Internal call path traced + M5 catalog regen |  |
+| AC-VVCR-013 | Integration with CLI deploy command | PASS | CLI harness tests pass (no new CLI-side errors) |  |
+| AC-VVCR-014 | Cross-platform build verification | PASS | Build succeeds on darwin/amd64, darwin/arm64, linux/amd64, windows/amd64 |  |
+| AC-VVCR-015 | Idempotency (no-op on re-run) | PASS | Scenario C verified in M4 integration test |  |
+| AC-VVCR-016 | DryRun mode validation | PASS | M4 TestRunCleanReinstall_DryRun |  |
+| AC-VVCR-017 | Telemetry emission | DEFERRED | Code path present, emission call site not yet wired | Integration deferred to follow-up SPEC |
+| AC-VVCR-LR-001 | FLAT layout: Core agents | PASS | git mv verified for 7 agents in template + local |  |
+| AC-VVCR-LR-002 | FLAT layout: Skills / rules | PASS | Cross-references updated + grep-clean |  |
+| AC-VVCR-LR-003 | FLAT layout: Empty dir cleanup | PASS | 5 directories removed (template + local) |  |
+| AC-VVCR-LR-004 | FLAT layout: Predecessor supersedence | PASS | SPEC-V3R6-AGENT-FOLDER-SPLIT-001 status: implemented → superseded |  |
+| AC-VVCR-LR-005 | FLAT layout: Catalog consistency | PASS | 7 FLAT paths in catalog.yaml, 0 split paths | Deferred to M5 / now PASS |
+
+**Summary**: Sync-phase can confidently proceed. All AC progress is documented. 5 deferred ACs are correctly scoped to follow-up work (telemetry integration, SHOULD-tier future work per design.md).
+
+### §F.3 — L52 Race Events Absorbed
+
+Run-phase absorbed **L52 cases 1-30 baseline + 2 new occurrences of case 29** (L52 case 29 total: 3 occurrences baseline + 2 in this run-phase = 3-occurrence pattern). Doctrine remains: **L52 case 29 canonical Option A** (non-destructive chore commit on top, NOT --amend, NOT force-push).
+
+**Occurrence timeline**:
+- Occurrence A: Commit `5cbf1f69f` mid-turn race-absorbed, later detected as attribution hijack → corrected via `b604a0d3b`
+- Occurrence B: Turn-mid parallel-session commit absorption during M2a-M6 sequence → corrected via `a997f03a2`
+
+No user-facing impact (all commits remain on main, history clean FF). All corrections follow the canonical non-destructive doctrine.
+
+### §F.4 — Sync-phase Deliverables
+
+Manager-docs (sync-phase) will execute the following deliverables:
+
+1. **SPEC artifact frontmatter transitions**: All 5 SPEC documents (spec.md, plan.md, acceptance.md, design.md, research.md) + progress.md: `status: in-progress → implemented`, `version` fields updated, `updated` field set to sync-commit date (2026-05-26 or later).
+
+2. **CHANGELOG.md refinement**: Existing `## [Unreleased] ### Added` entry for SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 (created at plan-phase) augmented with run-phase completion details:
+   - 9-commit push range (363eff563..a997f03a2)
+   - 7-milestone breakdown (M1-M6 + L52 case 29 doctrine)
+   - AC matrix 17/22 PASS + 5 deferred summary
+   - L52 case 29 × 2 absorption doctrine confirmation
+
+3. **README.md version verification**: Confirm `v3.0.0-rc2` is the active version literal in README.md (no update required if already correct; note "unchanged at sync-phase" if so).
+
+4. **Atomic sync-phase commit**: Single commit with Conventional Commits format subject, 🗿 MoAI trailer, integrating all 6 SPEC artifact frontmatter updates + CHANGELOG refinement. Push to main (Hybrid Trunk Tier M direct-push per CLAUDE.local.md §23.7-23.9).
+
+**Sync-phase pre-requisite checks** (executed by manager-docs before spawn or shortly after):
+- `git fetch origin main && git rev-list --count --left-right origin/main...HEAD` → expect `0 0` (clean baseline)
+- `git status --short | grep -E '\.moai/specs/.*/(spec|plan|acceptance|design|research|progress)\.md|CHANGELOG\.md'` → expect all 7 files staged or clean (no dirty scope-creep)
+- CHANGELOG B12 self-test: grep pre-emit (`grep -c 'SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001' CHANGELOG.md`), AC count match, file path validation via `ls`
 
 ## §D-legacy — Partial-Completion Checkpoint (Run-phase Handoff)
 

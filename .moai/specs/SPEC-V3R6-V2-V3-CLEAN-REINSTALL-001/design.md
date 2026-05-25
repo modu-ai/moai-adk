@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001
 title: "Design — v2-to-v3 Clean Reinstall Architecture with v.2.x FLAT layout restoration"
-version: "0.5.0"
-status: in-progress
+version: "0.5.1"
+status: implemented
 created: 2026-05-25
-updated: 2026-05-25
+updated: 2026-05-26
 author: manager-spec
 priority: P1
 phase: "v3.0.0-rc2"
