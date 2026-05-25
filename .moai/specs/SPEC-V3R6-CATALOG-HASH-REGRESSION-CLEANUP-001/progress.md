@@ -35,7 +35,7 @@ depends_on: [SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001, SPEC-V3R6-LOCAL-NAMESPACE-
 | Plan-Audit | implemented | (in spec.md HISTORY) | plan-auditor | iter-1 PASS skip-eligible 0.915 (Tier S ≥ 0.75 threshold + 0.165 margin, skip-eligible 0.90 threshold + 0.015 margin). 0 BLOCKING / 0 SHOULD-FIX / 3 MINOR defects (D1 commit-window regex / D2 AC-CHR-006 Variant choice / D3 file location preference). All 3 MINOR scheduled for inline-resolve at run-phase M1 per plan-auditor PROCEED directive. Phase 0.5 SKIP-eligible flag set per CONST-V3R5-026. v0.1.1 amendment stays within Tier S envelope; verdict remains valid (same M1 atomic pattern, same test design, mechanical YAML edit expansion). |
 | Run | implemented | `eabb8db14` (M1 atomic commit) | manager-develop | Phase 0.5 SKIPPED per CONST-V3R5-026 (plan-auditor PASS ≥ 0.90 + no plan-PR commit altering audit scope since verdict). Phase 0.95 Mode Selection autopilot Mode 5 sub-agent sequential (Tier S minimal scope, single milestone, default fallback per `.claude/rules/moai/workflow/orchestration-mode-selection.md` §B.2). 5 deliverables in single atomic M1 commit (D1 NEW test + D2 catalog cleanup + D3 progress.md + D4 spec.md frontmatter + D5 plan.md frontmatter). All 8 AC-CHR PASS via independent verification (7 at M1 close + 1 trust-but-verify: pre-existing test suite delta -3 failures as ORPHAN purge side-effect). |
 | Sync | implemented | `5171da19e` | manager-docs | CHANGELOG.md (2 entries: Added + Changed), spec.md frontmatter (`status: implemented → synced`, HISTORY), plan.md frontmatter (`status: implemented → synced`, HISTORY). **L60 chicken-and-egg** — sync_commit_sha placeholder `<this-commit>` replaced atomically via follow-up chore commit (Option α). |
-| Mx | complete | `<this-commit>` (mx-phase EVALUATE-SKIP + 4-phase close marker) | orchestrator | **Mx Step C verdict: EVALUATE-SKIP**. `internal/spec/catalog_hash_test.go` TestCatalogHashParity = test function (fan_in 0, not invoked by production code) → ineligible for @MX:ANCHOR (threshold fan_in ≥ 3). `resolveHashSourcePath` helper = test-internal (fan_in 2, below threshold). `internal/template/catalog.yaml` = YAML data, no @MX scope. progress.md/spec.md/plan.md = markdown documentation, no @MX scope. Zero @MX additions warranted per `.claude/rules/moai/workflow/mx-tag-protocol.md` §a fan_in evaluation. **L60 chicken-and-egg** — mx_commit_sha placeholder `<this-commit>` replaced atomically via follow-up chore commit (Option α, same pattern as sync). **4-phase fully closed on main**. |
+| Mx | complete | `014b0344d` (mx-phase EVALUATE-SKIP + 4-phase close marker) | orchestrator | **Mx Step C verdict: EVALUATE-SKIP**. `internal/spec/catalog_hash_test.go` TestCatalogHashParity = test function (fan_in 0, not invoked by production code) → ineligible for @MX:ANCHOR (threshold fan_in ≥ 3). `resolveHashSourcePath` helper = test-internal (fan_in 2, below threshold). `internal/template/catalog.yaml` = YAML data, no @MX scope. progress.md/spec.md/plan.md = markdown documentation, no @MX scope. Zero @MX additions warranted per `.claude/rules/moai/workflow/mx-tag-protocol.md` §a fan_in evaluation. **L60 chicken-and-egg** — mx_commit_sha placeholder `<this-commit>` replaced atomically via follow-up chore commit (Option α, same pattern as sync). **4-phase fully closed on main**. |
 
 ---
 
@@ -271,7 +271,7 @@ mx_step_c_candidate_invariants:
     fan_in: 2
     eligibility: BELOW-THRESHOLD  # < @MX:ANCHOR threshold fan_in ≥ 3
     decision: SKIP
-mx_commit_sha: <this-commit>  # L60 chicken-and-egg — Option α placeholder, replaced via follow-up chore backfill
+mx_commit_sha: 014b0344d  # L60 atomic backfill — chicken-and-egg placeholder replaced (Option α terminator)
 mx_phase_close_marker: 4-phase-closed  # plan + amend + run + sync + mx all on main HEAD
 status_transition_synced_to_completed:
   spec_md: complete  # frontmatter `status: synced → completed` per ownership matrix
@@ -282,7 +282,7 @@ status_transition_synced_to_completed:
   amend_commit: "61016ad3b (v0.1.1 scope expansion post-ATR-001 M8 baseline drift)"
   run_commit: "eabb8db14 (M1 atomic — 5 deliverables + 8/8 AC PASS + 12 ORPHAN purge + 8 hash refresh + generated_at)"
   sync_commit: "5171da19e + a045b2506 (sync artifacts + L60 backfill Option α)"
-  mx_commit: "<this-commit> + L60 backfill (mx EVALUATE-SKIP + 4-phase close marker)"
+  mx_commit: "014b0344d + L60 backfill (mx EVALUATE-SKIP + 4-phase close marker)"
   total_commits_on_main: 6  # for this SPEC, attribution-only (excludes 4 race-absorbed ATR-001 cohort commits per L52 cases 22-26)
   l66_pattern_validated: true  # pre-flight ground truth invalidated by intervening cohort commits (defer/scope-expand decision tree)
 ```
