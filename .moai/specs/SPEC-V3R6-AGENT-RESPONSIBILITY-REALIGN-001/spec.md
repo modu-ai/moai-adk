@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001
 title: "SPEC artifact ownership realignment across manager-spec / manager-develop / manager-docs (audit F1 + F12 resolution)"
-version: "0.1.0"
-status: implemented
+version: "0.1.1"
+status: completed
 created: 2026-05-24
-updated: 2026-05-24T20:45:00Z
+updated: 2026-05-25
 author: GOOS행님
 priority: P1
 phase: "v3.0.0"
@@ -20,6 +20,7 @@ tags: "agent-ownership, soc, manager-spec, manager-develop, manager-docs, status
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-24 | GOOS행님 | Initial creation (plan-phase). Tier 2 SPEC derived from `.moai/research/anthropic-best-practices-2026-05-24.md` §3 F1 + F12. Audits Anthropic Best Practice Category #7 (DRI ownership) at the agent-artifact ownership granularity. Tier S minimal Section A-E variant (precedent: IVB-001 / SARM-001 / TMC-001 / TMD-001 / SIV-001 — 5/5 Tier S minimal 1-pass cohort). |
+| 0.1.1 | 2026-05-25 | orchestrator | L60 retroactive Mx-phase backfill — `status: implemented → completed`. progress.md §E.5 Mx-phase Audit-Ready Signal (L162-216) was already authored with SKIP-justified judgment but `mx_commit_sha` frontmatter field never backfilled (L60 chicken-and-egg) and spec.md status drift persisted (L67 manager-docs scope-creep). Cross-file consistency restored. Body 변경 없음. Original sync `11abb9a30`; this commit (post-`d74095e75`)는 atomic close terminator로 작동, mx 본문은 progress.md에서 self-reference. |
 
 ## §A. Why this SPEC
 
