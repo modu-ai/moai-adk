@@ -248,7 +248,7 @@ These fields only work for project-level and personal-level agent definitions.
 
 ## Static Agent File vs Per-Spawn Specialization Decision Tree
 
-Per SPEC-V3R6-AGENT-TEAM-REBUILD-001 Finding A3 (Anthropic 2026 alignment) — Anthropic best-practices state verbatim: *"Define a custom subagent when you keep spawning the same kind of worker with the same instructions."* This criterion is the canonical test for when to author a static `.claude/agents/*.md` file versus when to use per-spawn `Agent(general-purpose, ...)` injection with domain instructions embedded in the spawn prompt.
+Per Anthropic best-practices guidance: *"Define a custom subagent when you keep spawning the same kind of worker with the same instructions."* This criterion is the canonical test for when to author a static `.claude/agents/*.md` file versus when to use per-spawn `Agent(general-purpose, ...)` injection with domain instructions embedded in the spawn prompt.
 
 ### Decision Tree
 
@@ -258,8 +258,7 @@ START
   ├── Is this work recurring across SPEC sessions
   │   AND with substantially the same instructions each time?
   │   ├── YES → Author a static agent file under .claude/agents/{core,expert,meta}/
-  │   │         (subject to the 8-agent retention ceiling per
-  │   │         SPEC-V3R6-AGENT-TEAM-REBUILD-001 — exceeding the ceiling requires
+  │   │         (subject to the agent retention ceiling — exceeding it requires
   │   │         a dedicated revision SPEC)
   │   └── NO  → Use per-spawn Agent(general-purpose) injection
   │             (compose domain instructions inline at delegation time)
@@ -273,11 +272,11 @@ START
 
 ### Per-Spawn Pattern Reference
 
-For the canonical per-spawn `Agent(general-purpose, ...)` spawn pattern with per-domain tool whitelists, see `.claude/rules/moai/development/agent-patterns.md` § Per-Spawn Domain Specialization. The 6 archived `expert-*` agents (backend, frontend, security, devops, performance, refactoring) all migrated to the per-spawn pattern as of 2026-05-25; the migration table in `.claude/rules/moai/workflow/archived-agent-rejection.md` § Migration Table provides per-agent example invocations.
+For the canonical per-spawn `Agent(general-purpose, ...)` spawn pattern with per-domain tool whitelists, see `.claude/rules/moai/development/agent-patterns.md` § Per-Spawn Domain Specialization. The migration table in `.claude/rules/moai/workflow/archived-agent-rejection.md` § Migration Table provides per-agent example invocations.
 
 ### Anti-Patterns
 
 - **Authoring a static agent file for one-off domain work** — if the spawn instructions vary substantially per invocation, the file is dead weight and trains the orchestrator to spawn an under-instructed agent
 - **Embedding domain knowledge in agent body** — domain knowledge belongs in the active conversation context (per-spawn prompt) where the orchestrator can tailor it to the current task; embedding it in agent body traps it behind explicit invocation
-- **Re-introducing archived agent files** — the 12 agents archived in `.moai/backups/agent-archive-2026-05-25/` MUST NOT be reintroduced under `.claude/agents/` without a dedicated revival SPEC justifying the recurrence criterion; see `.claude/rules/moai/workflow/archived-agent-rejection.md` § Anti-Patterns
-- **Adding a new MoAI-custom agent without a SPEC** — the 8-agent retention ceiling is an architectural invariant; new agent additions must justify the "keep spawning the same worker" criterion via a SPEC that documents recurrence evidence
+- **Re-introducing archived agent files** — agents listed in the archive registry MUST NOT be reintroduced under `.claude/agents/` without a dedicated revival SPEC justifying the recurrence criterion; see `.claude/rules/moai/workflow/archived-agent-rejection.md` § Anti-Patterns
+- **Adding a new MoAI-custom agent without a SPEC** — the agent retention ceiling is an architectural invariant; new agent additions must justify the "keep spawning the same worker" criterion via a SPEC that documents recurrence evidence

@@ -6,7 +6,7 @@ paths: "**/*.md,.moai/specs/**/*.md"
 # SPEC Frontmatter Schema — SSOT
 
 > **Single Source of Truth** for the canonical SPEC frontmatter schema.
-> Enforcement: `internal/spec/lint.go` `FrontmatterSchemaRule` (REQ-SPC-003-006).
+> Enforcement: `internal/spec/lint.go` `FrontmatterSchemaRule`.
 > Cross-referenced by: `.claude/skills/moai/workflows/plan.md` § Pre-Write Frontmatter Checklist,
 > `.claude/skills/moai/team/plan.md` § Pre-Write Frontmatter Checklist.
 
@@ -111,7 +111,6 @@ Snake_case aliases are silently dropped by the decoder, causing empty-value `Fro
 
 - **Rule code**: `FrontmatterInvalid`
 - **Severity**: Warning
-- **REQ coverage**: REQ-SPC-003-006
 - **Check**: Iterates all 12 required fields; emits one finding per missing/empty field.
 - **YAML binding**: `SPECFrontmatter` struct uses canonical field names (`created`, `updated`, `tags`).
   Snake_case aliases in the source YAML file are not recognized — they produce empty values.
