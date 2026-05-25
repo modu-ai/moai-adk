@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001
 title: "Local Agent Namespace Consolidation — Progress Tracking"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-05-25
 updated: 2026-05-25
@@ -11,6 +11,7 @@ phase: "v3.7.0"
 module: ".claude/agents/local + .claude/skills/moai/workflows + internal/template/templates + .moai/docs"
 lifecycle: spec-anchored
 tags: "local-namespace, dev-only, agent-migration, template-refactor, claude-local-externalization, sprint-10-lane-b, thin-command-pattern"
+tier: M
 depends_on: []
 related_specs: []
 plan_commit_sha: "<pending>"
@@ -35,14 +36,14 @@ mx_commit_sha: "<pending>"
 
 | Milestone | Description | Status | Files Modified | Commit SHA |
 |-----------|-------------|--------|----------------|------------|
-| M1 | Namespace contract documentation update (agent-authoring.md + skill-authoring.md + dev-only-isolation.md, local + template mirror) | not-started | 6 expected | `<pending>` |
+| M1 | Namespace contract documentation update (agent-authoring.md + skill-authoring.md local+template mirror; dev-only-isolation.md local-only per spec.md §E) | not-started | 5 expected | `<pending>` |
 | M2 | Local agent body authoring (release-update-specialist + github-specialist, local-only, NO template mirror) | not-started | 2 expected | `<pending>` |
 | M3 | Dev-only skill removal + thin command rewiring (97/98 wrappers + 2 skill file deletions) | not-started | 4 expected (2 modified + 2 deleted) | `<pending>` |
 | M4 | Template generic refactor — 17 leak removal across 13 template files + 13 local mirror | not-started | 26 expected | `<pending>` |
 | M5 | Generic patterns guide authoring (.moai/docs/generic-patterns-guide.md, local + template mirror) | not-started | 2 expected | `<pending>` |
 | M6 | progress.md backfill + verification batch + handoff to manager-docs | not-started | 1 expected (this file) | `<pending>` |
 
-Total expected file count across M1-M6: ~41 files (some overlap possible if M4 mirrors M1 files; tracked precisely in run-phase commit attributions per L46 path-specific staging discipline).
+Total expected file count across M1-M6: ~40 files (M1 5 + M2 2 + M3 4 + M4 26 + M5 2 + M6 1 = 40; some overlap possible if M4 mirrors M1 files; tracked precisely in run-phase commit attributions per L46 path-specific staging discipline). Updated from iter-1 estimate of ~41 per D7 dev-only-commands-isolation.md template mirror removal.
 
 ## C. Decision Log
 
@@ -82,9 +83,9 @@ Authored by manager-spec at plan-phase completion. Populated upon Phase 0.5 plan
 | 4 artifacts created (spec/plan/acceptance/progress) | YES — all 4 written in single manager-spec session | `<pending verification>` |
 | Frontmatter 12-canonical-field validation | PASSED at write time per pre-write checklist | `<pending plan-auditor confirmation>` |
 | SPEC ID regex compliance | PASSED — decomposition: SPEC ✓ \| V3R6 ✓ \| LOCAL ✓ \| NAMESPACE ✓ \| CONSOLIDATION ✓ \| 001 ✓ → PASS | `<pending plan-auditor confirmation>` |
-| 13 REQ-LNC GEARS notation compliance | 4 Ubiquitous + 3 Event-driven + 2 State-driven + 2 Where capability + 2 Unwanted = 13 total, zero IF/THEN | `<pending plan-auditor confirmation>` |
-| 11 AC-LNC independent verifiability | All 11 AC have grep/test/file-existence commands per acceptance.md §B | `<pending plan-auditor confirmation>` |
-| HARD constraints documented | 5 HARD constraints (Thin Command Pattern, Template-First, Namespace contract update, Dev-only isolation, GEARS discipline) per spec.md §D.1 | `<pending plan-auditor confirmation>` |
+| 14 REQ-LNC GEARS notation compliance (iter-2) | 4 Ubiquitous + 3 Event-driven + 2 State-driven + 3 Where capability + 2 Unwanted = 14 total, zero IF/THEN. REQ-LNC-014 NEW Where-capability added in iter-2 per D6. | `<pending plan-auditor confirmation>` |
+| 11 AC-LNC independent verifiability | All 11 AC have grep/test/file-existence commands per acceptance.md §B. AC-LNC-006 binding broadens to REQ-LNC-011 + REQ-LNC-014 in iter-2 (no AC count change). | `<pending plan-auditor confirmation>` |
+| HARD constraints documented | 5 HARD constraints (Thin Command Pattern, Template-First, Namespace contract update [iter-2: §24.4 dropped, 2 in-scope SSOTs only], Dev-only isolation, GEARS discipline) per spec.md §D.1 | `<pending plan-auditor confirmation>` |
 | plan-auditor verdict | Tier M PASS threshold ≥ 0.80 | `<pending>` |
 | plan-auditor 4-dimension scores | Functionality / Security / Craft / Consistency | `<pending>` |
 
@@ -111,3 +112,10 @@ Populated by manager-docs at sync-phase completion.
 Populated by manager-docs or orchestrator at Mx Step C judgment time.
 
 `<pending — Mx Step C EVALUATE-SKIP expected for markdown-only changes; if M3 updates commands_audit_test.go .go file, EVALUATE-EXECUTE applies>`
+
+## F. HISTORY
+
+| Version | Date | Author | Iteration | Description |
+|---------|------|--------|-----------|-------------|
+| 0.1.0 | 2026-05-25 | manager-spec | iter-1 | Initial progress.md authoring — §A Lifecycle Reflection + §B Milestone Status (M1-M6) + §C Decision Log (4 entries) + §D References + §E Phase-Specific Audit-Ready Signals (E.1-E.5). All milestones not-started. |
+| 0.1.1 | 2026-05-25 | manager-spec | iter-2 | Focused defect resolution per plan-auditor iter-1 0.73 FAIL — D7 M1 file count 6 → 5 (dev-only-commands-isolation.md template mirror dropped per spec.md §E), total file count ~41 → ~40 + arithmetic breakdown added (M1 5 + M2 2 + M3 4 + M4 26 + M5 2 + M6 1 = 40), D6 §E.1 REQ count 13 → 14 (REQ-LNC-014 NEW Where-capability) + GEARS notation breakdown updated (3 Where-capability instead of 2) + AC-LNC-006 binding broadens noted, HARD constraint #3 §24.4 dropped noted, D8 HISTORY section NEW. tier:M frontmatter added per D13. |

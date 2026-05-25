@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001
 title: "Local Agent Namespace Consolidation — Acceptance Criteria"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-05-25
 updated: 2026-05-25
@@ -11,6 +11,7 @@ phase: "v3.7.0"
 module: ".claude/agents/local + .claude/skills/moai/workflows + internal/template/templates + .moai/docs"
 lifecycle: spec-anchored
 tags: "local-namespace, dev-only, agent-migration, template-refactor, claude-local-externalization, sprint-10-lane-b, thin-command-pattern"
+tier: M
 depends_on: []
 related_specs: []
 ---
@@ -28,7 +29,7 @@ This SPEC has 11 acceptance criteria (AC-LNC-001 through AC-LNC-011). All MUST p
 | AC-LNC-003 | `release-update-specialist.md` agent body created with full migrated content | REQ-LNC-005, REQ-LNC-008 | MUST |
 | AC-LNC-004 | `github-specialist.md` agent body created with full migrated content | REQ-LNC-006 | MUST |
 | AC-LNC-005 | Predecessor dev-only skill files removed | REQ-LNC-001 (cleanup obligation) | MUST |
-| AC-LNC-006 | `.claude/rules/moai/development/agent-authoring.md` namespace contract updated | REQ-LNC-011 | MUST |
+| AC-LNC-006 | `.claude/rules/moai/development/agent-authoring.md` namespace contract updated + `skill-authoring.md` deprecation entries | REQ-LNC-011, REQ-LNC-014 | MUST |
 | AC-LNC-007 | Template surface contains zero `CLAUDE.local.md` references | REQ-LNC-003, REQ-LNC-007 | MUST |
 | AC-LNC-008 | `.moai/docs/dev-only-commands-isolation.md` verification checklist updated | REQ-LNC-001 (operational discipline) | MUST |
 | AC-LNC-009 | `internal/template/templates/.claude/agents/local/` does NOT exist (REQ-LNC-012 negative test) | REQ-LNC-012 | MUST |
@@ -69,11 +70,11 @@ grep -E "release-update-specialist|github-specialist" .claude/commands/97-releas
 
 Expected: 2 matches (one per file). Exit code: 0.
 
-### AC-LNC-003 — release-update-specialist body contains all 8 phases
+### AC-LNC-003 — release-update-specialist body contains all 9 phases (Phase 0 through Phase 8)
 
 **Given** M2 migration is complete,
 **When** the orchestrator greps for canonical phase headers,
-**Then** all 8 phase headers (Phase 0 through Phase 8) are present.
+**Then** all 9 phase headers (Phase 0 through Phase 8 — total 9 entries because the sequence is inclusive on both endpoints) are present.
 
 ```bash
 grep -cE "^### Phase [0-8]" .claude/agents/local/release-update-specialist.md
@@ -94,10 +95,10 @@ Expected: 1.
 **Then** the body shows the expected migrated structure.
 
 ```bash
-grep -cE "^## (Purpose|Activation|Phase|Anti-Pattern|Reference)" .claude/agents/local/github-specialist.md
+grep -cE "^## (Purpose|Activation|Phase|Anti-Pattern|Reference|Output|Verification|Agent)" .claude/agents/local/github-specialist.md
 ```
 
-Expected: Count ≥ 4 (matches the migrated section structure from `.claude/skills/moai/workflows/github.md`).
+Expected: Count ≥ 10 (matches the rich migrated section structure from `.claude/skills/moai/workflows/github.md` — accounts for Purpose & Scope + Activation + Phase Sequence + Agent Delegation Map + Output Artifacts + Verification Gate + Anti-Patterns + References + sub-sections).
 
 ### AC-LNC-005 — Predecessor dev-only skill files removed
 
@@ -111,17 +112,27 @@ ls -la .claude/skills/moai/workflows/release-update.md .claude/skills/moai/workf
 
 Expected output contains `No such file or directory` for both paths. Exit code: non-zero (ls reports missing files).
 
-### AC-LNC-006 — agent-authoring.md namespace contract updated
+### AC-LNC-006 — agent-authoring.md + skill-authoring.md namespace contract updated
 
 **Given** M1 contract update is complete,
-**When** the orchestrator greps for the new `local/` row in the namespace table,
-**Then** the entry is present in both local and template copies.
+**When** the orchestrator greps for the new `local/` row in the namespace table AND for deprecation markers in the skills namespace policy table,
+**Then** entries are present at both SSOT locations (agent-authoring.md table + skill-authoring.md deprecation entries) and in both local and template copies.
+
+Verification 1 — agent-authoring.md namespace table:
 
 ```bash
 grep -c "\.claude/agents/local/" .claude/rules/moai/development/agent-authoring.md internal/template/templates/.claude/rules/moai/development/agent-authoring.md
 ```
 
 Expected: Each file shows at least 2 matches (table row + at least one body reference). Both files must report ≥ 2.
+
+Verification 2 — skill-authoring.md deprecation entries (REQ-LNC-014):
+
+```bash
+grep -cE "97-release-update|98-github" .claude/rules/moai/development/skill-authoring.md internal/template/templates/.claude/rules/moai/development/skill-authoring.md
+```
+
+Expected: Each file shows at least 2 matches (one per deprecated slot). Both files must report ≥ 2.
 
 ### AC-LNC-007 — Template surface zero `CLAUDE.local.md` references
 
@@ -133,31 +144,41 @@ Expected: Each file shows at least 2 matches (table row + at least one body refe
 grep -rln "CLAUDE.local.md\|CLAUDE\.local" internal/template/templates/
 ```
 
-Expected: Empty output. Exit code: 1 (grep returns 1 on no matches).
+Expected: stdout empty; exit code in {0, 1}. Rationale: `grep -E` returns 1 on no matches (canonical "clean" result); a `0` exit MAY occur under robust shell variants where upstream pipefail or unusual locale settings short-circuit the no-match path. Exit code 2 (grep pattern/IO error) is FAIL. The truth source is stdout emptiness — if stdout is non-empty, AC-LNC-007 FAILS regardless of exit code.
 
-### AC-LNC-008 — dev-only-commands-isolation.md checklist updated
+### AC-LNC-008 — dev-only-commands-isolation.md checklist updated (LOCAL-ONLY per spec.md §E)
 
 **Given** M1 documentation update is complete,
-**When** the orchestrator greps for the new agent-local-namespace checklist entries,
-**Then** at least 3 new verification commands are present.
+**When** the orchestrator greps for the new agent-local-namespace checklist entries in the LOCAL copy only (the template mirror is intentionally absent per `.moai/docs/dev-only-commands-isolation.md` §21 isolation policy + spec.md §E Out of Scope),
+**Then** at least 3 new verification command markers are present.
 
 ```bash
-grep -cE "agents/local|release-update-specialist|github-specialist" .moai/docs/dev-only-commands-isolation.md internal/template/templates/.moai/docs/dev-only-commands-isolation.md
+grep -cE "agents/local|release-update-specialist|github-specialist" .moai/docs/dev-only-commands-isolation.md
 ```
 
-Expected: Each file shows ≥ 3 matches.
+Expected: ≥ 3 matches in the single local file. The template path `internal/template/templates/.moai/docs/dev-only-commands-isolation.md` is intentionally NOT in this grep — its absence is verified separately by AC-LNC-009's `find` command pattern (the directory itself does not exist under the template surface for `dev-only-commands-isolation.md` per §21).
 
 ### AC-LNC-009 — `internal/template/templates/.claude/agents/local/` does NOT exist (REQ-LNC-012 negative test)
 
 **Given** the migration is complete and the namespace separation contract holds,
-**When** the orchestrator searches the template surface for any agents/local/ artifact,
-**Then** zero files are returned.
+**When** the orchestrator asserts directory absence AND searches the template surface for any agents/local/ artifact,
+**Then** the directory does not exist AND zero artifact files are returned.
+
+Primary assertion — directory absence (most robust, independent of `find` exit-code quirks):
+
+```bash
+[ ! -d internal/template/templates/.claude/agents/local ] && echo PASS || echo FAIL
+```
+
+Expected: stdout = `PASS`. If `FAIL` is emitted, AC-LNC-009 FAILS immediately — the protected directory exists on the template surface, breaking REQ-LNC-012.
+
+Supplementary negative test — path-based:
 
 ```bash
 find internal/template/templates -path "*/agents/local/*"
 ```
 
-Expected: Empty output. Exit code: 0 (find returns 0 even on empty results unless error).
+Expected: Empty stdout. (Note: `find` returns exit code 0 whether or not the directory exists, so the truth source is stdout emptiness — paired with the `[ ! -d ... ]` assertion above for completeness.)
 
 Additional negative test for the specific agent file names:
 
@@ -165,7 +186,7 @@ Additional negative test for the specific agent file names:
 find internal/template/templates -name "release-update-specialist.md" -o -name "github-specialist.md"
 ```
 
-Expected: Empty output. Exit code: 0.
+Expected: Empty stdout.
 
 ### AC-LNC-010 — generic-patterns-guide.md exists in both locations with 4 sections
 
@@ -235,3 +256,10 @@ The SPEC is considered DONE when all of the following hold simultaneously:
 | Namespace separation contract | `.claude/agents/local/` registered in 3 SSOT locations | AC-LNC-006 + AC-LNC-008 |
 | Zero template leak | grep returns 0 matches under `internal/template/templates/` | AC-LNC-007 (truth source) |
 | Go test suite non-regression | All packages PASS | AC-LNC-011 |
+
+## F. HISTORY
+
+| Version | Date | Author | Iteration | Description |
+|---------|------|--------|-----------|-------------|
+| 0.1.0 | 2026-05-25 | manager-spec | iter-1 | Initial acceptance criteria authoring — 11 AC-LNC-XXX entries (AC-LNC-001 through AC-LNC-011) with per-AC verification commands, edge cases table, Definition of Done, Quality Gate Criteria. |
+| 0.1.1 | 2026-05-25 | manager-spec | iter-2 | Focused defect resolution per plan-auditor iter-1 0.73 FAIL — D4 AC-LNC-007 exit code `1` → `in {0, 1}` (allows robust shell variants), D5 AC-LNC-009 prepended `[ ! -d ... ]` directory-absence assertion as primary truth source (find exit-code quirks not load-bearing), D6 AC-LNC-006 verification broadened to dual SSOT (agent-authoring.md + skill-authoring.md) with two grep commands, D7 AC-LNC-008 grep target reduced to local path only (template mirror intentionally absent per spec.md §E), D9 AC-LNC-003 wording `8 phases` → `9 phases (Phase 0 through Phase 8)` clarified inclusive endpoints, D11 AC-LNC-004 threshold ≥4 → ≥10 (matches observed predecessor section structure depth), D8 HISTORY section NEW. tier:M frontmatter added per D13. AC count 11 → 11 (no addition; AC-LNC-006 binding broadens to REQ-LNC-011 + REQ-LNC-014). |

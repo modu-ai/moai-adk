@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001
 title: "Local Agent Namespace Consolidation — Implementation Plan"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-05-25
 updated: 2026-05-25
@@ -11,6 +11,7 @@ phase: "v3.7.0"
 module: ".claude/agents/local + .claude/skills/moai/workflows + internal/template/templates + .moai/docs"
 lifecycle: spec-anchored
 tags: "local-namespace, dev-only, agent-migration, template-refactor, claude-local-externalization, sprint-10-lane-b, thin-command-pattern"
+tier: M
 depends_on: []
 related_specs: []
 ---
@@ -42,10 +43,10 @@ Scope: Update three SSOT documents to register `.claude/agents/local/` as a user
 
 Files modified (3):
 - `.claude/rules/moai/development/agent-authoring.md` — Add `.claude/agents/local/` row to the Agent Directory Convention table (between `meta/` row and `harness/` row, alphabetic and conceptual ordering). Update the [HARD] rule block to list local/ alongside harness/ in the PRESERVE clauses.
-- `.claude/rules/moai/development/skill-authoring.md` — No structural namespace addition here (skills do not have a local/ namespace); but update the cross-reference section to mention the new local agent namespace as a related pattern.
-- `.moai/docs/dev-only-commands-isolation.md` — Add agent-local-namespace verification checklist entries: `find internal/template/templates -path "*/agents/local/*"` returns empty (HARD), `find internal/template/templates -name "release-update-specialist.md"` returns empty, `find internal/template/templates -name "github-specialist.md"` returns empty. Update the "배포 금지 파일 목록" table with the two new agent body file rows.
+- `.claude/rules/moai/development/skill-authoring.md` — Update § Skills Namespace Policy table to mark the removed `97-release-update` and `98-github` skill slots as deprecated with migration target annotation (`.claude/agents/local/<specialist-name>.md`). Update cross-reference section to mention the new local agent namespace as a related pattern (satisfies REQ-LNC-011 + REQ-LNC-014).
+- `.moai/docs/dev-only-commands-isolation.md` (LOCAL-ONLY, no template mirror per spec.md §E) — Add agent-local-namespace verification checklist entries: `find internal/template/templates -path "*/agents/local/*"` returns empty (HARD), `find internal/template/templates -name "release-update-specialist.md"` returns empty, `find internal/template/templates -name "github-specialist.md"` returns empty. Update the "배포 금지 파일 목록" table with the two new agent body file rows.
 
-Mirror requirement: same 3 paths under `internal/template/templates/.claude/rules/moai/development/` + `internal/template/templates/.moai/docs/` need parallel updates. Total file count for M1: 6 files (3 local + 3 mirror).
+Mirror requirement: 2 of the 3 modified files have template mirrors (`internal/template/templates/.claude/rules/moai/development/agent-authoring.md` + `internal/template/templates/.claude/rules/moai/development/skill-authoring.md`). The `dev-only-commands-isolation.md` file is local-only by §21 isolation policy (no template mirror exists or is created — see spec.md §E Out of Scope). Total file count for M1: **5 files** (3 local + 2 template mirror).
 
 Acceptance verification (AC-LNC-001, AC-LNC-008, AC-LNC-011).
 
@@ -54,7 +55,7 @@ Acceptance verification (AC-LNC-001, AC-LNC-008, AC-LNC-011).
 Scope: Create two new agent body files under `.claude/agents/local/` and mirror the same two files (which is forbidden — see paragraph after this) — clarification: agent body files are USER-OWNED, mirror to `internal/template/templates/.claude/agents/local/` is PROHIBITED per REQ-LNC-012.
 
 Files created (2, local-only — NO template mirror):
-- `.claude/agents/local/release-update-specialist.md` — YAML frontmatter (name, description, tools, model, color, effort) + agent body containing the 8-phase CC upstream tracker workflow migrated verbatim from `.claude/skills/moai/workflows/release-update.md` (lines 34 onward). Approximate body LOC: 600 (matches predecessor skill body Phase 0-8 + Agent Delegation Map + Output Artifacts + Verification Gate + Anti-Patterns + References).
+- `.claude/agents/local/release-update-specialist.md` — YAML frontmatter (name, description, tools, model, color, effort) + agent body containing the 9-phase (Phase 0 through Phase 8) CC upstream tracker workflow migrated from `.claude/skills/moai/workflows/release-update.md` (lines 34 onward) with structural fidelity preserved. Approximate body LOC: 600 (matches predecessor skill body Phase 0-8 + Agent Delegation Map + Output Artifacts + Verification Gate + Anti-Patterns + References).
 - `.claude/agents/local/github-specialist.md` — YAML frontmatter + agent body containing the GitHub issue/PR Agent Teams workflow migrated from `.claude/skills/moai/workflows/github.md` (approximate body LOC: 580).
 
 Total LOC for M2: ~1184 LOC across 2 files.
@@ -89,7 +90,7 @@ Files modified (13, all under `internal/template/templates/`):
 |---------------------------|---------|----------------------|
 | `.claude/rules/moai/core/agent-common-protocol.md` | 339 | Rewrite race mitigation cross-ref to point at `.moai/docs/generic-patterns-guide.md` § Multi-Session Race Mitigation (W5 deliverable). |
 | `.claude/rules/moai/development/agent-authoring.md` | 34 | Replace `CLAUDE.local.md §24.2 + §24.4` with same-file `§ Agent Directory Convention` and `.claude/skills/moai-meta-harness/SKILL.md § Namespace Separation` (both already cited verbatim elsewhere in the body). |
-| `.claude/rules/moai/development/branch-origin-protocol.md` | 73 | Replace `CLAUDE.local.md §18.12 — dev-project specific notes` with generic `(see project-local maintenance documentation if applicable; stacked PR Case Study reference is §18.11)` — the §18.11 ref was already orphaned; reword to remove both. |
+| `.claude/rules/moai/development/branch-origin-protocol.md` | 73 | Remove BOTH `CLAUDE.local.md §18.12 — dev-project specific notes` AND the orphaned `CLAUDE.local.md §18.11 — stacked PR Case Study` reference; replace with generic `(see project-local maintenance documentation if applicable)`. Both §18.11 and §18.12 cross-references are eliminated. |
 | `.claude/rules/moai/development/skill-authoring.md` | 264, 282, 305 | All three are `§15 / §24` language-neutrality + harness-namespace cross-refs. Replace with self-references to the same file's § Language Guidance Lives in Rules + § Skills Namespace Policy sections (which already contain the canonical content). |
 | `.claude/rules/moai/workflow/moai-memory.md` | 17 | The line lists CLAUDE.local.md in a 5-level file inventory ("Local Instructions: CLAUDE.local.md (personal project, not committed)"). Rewrite to a generic 4-level inventory or note as "Optional local instructions file (e.g., CLAUDE.local.md if used; not committed)". |
 | `.claude/output-styles/moai/moai.md` | 426, 458, 707 | All three are race-mitigation + namespace cross-refs. Rewrite to point at `.moai/docs/generic-patterns-guide.md` § Multi-Session Race Mitigation (lines 426, 458) and `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention (line 707). |
@@ -180,4 +181,11 @@ Acceptance verification (all AC-LNC-001 through AC-LNC-011 final pass).
 | Readable | All 13 REQ-LNC + 11 AC-LNC use GEARS notation per skill-authoring.md § GEARS-discipline; HISTORY tables in all 4 artifacts; cross-references resolve to canonical SSOT locations. |
 | Unified | Single SPEC consolidates 3 scopes (W3-arch + W4 + W5); single CHANGELOG entry; single sync-phase frontmatter status transition. |
 | Secured | No secrets, credentials, or auth code modified. Dev-only namespace separation enhances security boundary (maintainer-only agents not exposed to user projects). |
-| Trackable | SPEC frontmatter 12-canonical-field validated; conventional commit subject pattern per Status Transition Ownership Matrix in spec-frontmatter-schema.md (plan-phase commit subject: `feat(SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001): plan-phase artifacts (Tier M Section A-G, 4 artifacts)`). |
+| Trackable | SPEC frontmatter 12-canonical-field validated; conventional commit subject pattern per Status Transition Ownership Matrix in spec-frontmatter-schema.md (plan-phase commit subject: `feat(SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001): plan-phase artifacts (Tier M, 4 artifacts)`). |
+
+## G. HISTORY
+
+| Version | Date | Author | Iteration | Description |
+|---------|------|--------|-----------|-------------|
+| 0.1.0 | 2026-05-25 | manager-spec | iter-1 | Initial plan-phase authoring — Section A-F + 6 milestones (M1-M6). M1 originally specified 6 files (3 local + 3 mirror). |
+| 0.1.1 | 2026-05-25 | manager-spec | iter-2 | Focused defect resolution per plan-auditor iter-1 0.73 FAIL — D2 commit subject template drift fix (`Section A-G` → drop section enumeration), D7 M1 file count 6 → 5 (drop `dev-only-commands-isolation.md` template mirror per spec.md §E out-of-scope local-only acknowledgement), D9 M2 `8-phase` → `9-phase (Phase 0 through Phase 8)`, D10 M4 branch-origin-protocol replacement clarified to remove BOTH §18.11 and §18.12, D8 HISTORY section NEW. tier:M frontmatter added per D13. |
