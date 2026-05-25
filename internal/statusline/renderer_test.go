@@ -1423,9 +1423,16 @@ func TestRenderPRSegment_Format(t *testing.T) {
 }
 
 // TestRenderPRSegment_Absence verifies that no segment is emitted when PR is
-// nil or Number == 0, OR when SegmentPR is disabled.
+// nil or Number == 0, OR when SegmentPR is explicitly disabled.
 // REQ-SLV-015 + REQ-SLV-012.
 // AC-SLV-015 verification target.
+//
+// NOTE (SPEC-V3R6-TEST-REFACTOR-001 M5, REQ-TST-010 / pre-existing per
+// ATR-001 §F.2.8): the historical "pr present + unset (legacy backward compat)"
+// subtest was removed. It asserted that an unset SegmentPR key resolves to OFF,
+// but production behavior was supersession-flipped to default-ON at v2.20.0-rc1
+// (per isPREnabled — unset key returns true). The default-on behavior is now
+// verified positively by TestRenderPRSegment_DefaultOn (added in M5 below).
 func TestRenderPRSegment_Absence(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -1447,11 +1454,6 @@ func TestRenderPRSegment_Absence(t *testing.T) {
 			pr:            &PRInfo{Number: 1023, URL: "https://x", ReviewState: "approved"},
 			segmentConfig: map[string]bool{SegmentPR: false},
 		},
-		{
-			name:          "pr present + unset (legacy backward compat)",
-			pr:            &PRInfo{Number: 1023, URL: "https://x", ReviewState: "approved"},
-			segmentConfig: map[string]bool{SegmentModel: true}, // pr key missing
-		},
 	}
 
 	for _, tt := range tests {
@@ -1463,6 +1465,26 @@ func TestRenderPRSegment_Absence(t *testing.T) {
 				t.Errorf("renderPRSegment() = %q, want empty string", got)
 			}
 		})
+	}
+}
+
+// TestRenderPRSegment_DefaultOn verifies the v2.20.0-rc1 supersession behavior:
+// when SegmentPR is unset in segmentConfig (key missing), the segment renders
+// as if enabled. This is the positive complement to TestRenderPRSegment_Absence;
+// together they cover the explicit-off (renders empty), explicit-on (renders),
+// and unset (default-on, renders) tristate.
+//
+// REQ-SLV-012 supersession verification (post-v2.20.0-rc1).
+// Added by SPEC-V3R6-TEST-REFACTOR-001 M5 per REQ-TST-010 (pre-existing
+// classification: the original TestRenderPRSegment_Absence "unset = off"
+// expectation predates the v2.20.0-rc1 supersession and was never updated).
+func TestRenderPRSegment_DefaultOn(t *testing.T) {
+	r := NewRenderer("default", true, map[string]bool{SegmentModel: true}) // pr key missing → default-on
+	data := &StatusData{PR: &PRInfo{Number: 1023, URL: "https://x", ReviewState: "approved"}}
+	got := r.renderPRSegment(data)
+	const want = "💌 PR #1023 (⌥approved)"
+	if got != want {
+		t.Errorf("renderPRSegment() with unset SegmentPR = %q, want %q (default-on per REQ-SLV-012 supersession)", got, want)
 	}
 }
 
