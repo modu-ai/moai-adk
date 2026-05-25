@@ -959,9 +959,9 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 |--------|------|-----------------|---------------------|
 | `moai-foundation-*` / `moai-workflow-*` / `moai-domain-*` / `moai-ref-*` / `moai-meta-*` | 범용 배포 — moai-adk 패키지에 포함, 모든 사용자 프로젝트에 deploy | template | sync (overwrite local) |
 | `moai-harness-*` | **하네스 빌더 (builder/lifecycle)** — moai-adk 패키지가 제공하는 generator/learner. 현재 `moai-meta-harness` + `moai-harness-learner`만 해당 | template | sync |
-| **`my-harness-*`** | **사용자 생성** — `moai-meta-harness`가 `/moai project` Phase 5+ 인터뷰 후 사용자 프로젝트 도메인에 맞춰 generate | user project | **NOT synced (보호)** |
+| **`harness-*`** | **사용자 생성** — `moai-meta-harness`가 `/moai project` Phase 5+ 인터뷰 후 사용자 프로젝트 도메인에 맞춰 generate | user project | **NOT synced (보호)** |
 
-[HARD] 사용자 프로젝트별 도메인 specialist skill은 **`my-harness-*` prefix만** 사용. `moai-harness-*` 또는 다른 `moai-*` prefix로 emit하면 contract 위반.
+[HARD] 사용자 프로젝트별 도메인 specialist skill은 **`harness-*` prefix만** 사용. `moai-harness-*` 또는 다른 `moai-*` prefix로 emit하면 contract 위반.
 
 ### §24.2 Agents Directory
 
@@ -974,11 +974,12 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 
 ### §24.3 운영 원칙
 
-- [HARD] `moai-harness-*` prefix로 사용자 프로젝트별 skill generate 금지 — `moai-meta-harness`는 `my-harness-*` prefix만 emit
-- [HARD] template (`internal/template/templates/`)에 `my-harness-*` skill 또는 `.claude/agents/harness/*-specialist.md` 누출 금지
-- [HARD] `moai update`의 namespace 보호 contract: `my-harness-*` skill + `.claude/agents/harness/` 디렉토리는 sync 대상 제외 (user-owned)
+- [HARD] `moai-harness-*` prefix로 사용자 프로젝트별 skill generate 금지 — `moai-meta-harness`는 `harness-*` prefix만 emit
+- [HARD] template (`internal/template/templates/`)에 `harness-*` skill 또는 `.claude/agents/harness/*-specialist.md` 누출 금지
+- [HARD] `moai update`의 namespace 보호 contract: `harness-*` skill + `.claude/agents/harness/` 디렉토리는 sync 대상 제외 (user-owned)
 - [HARD] `moai-meta-harness` skill 본체는 `moai-*` namespace (generator/builder이므로 범용 배포 대상)
 - 선례: chore commit `4f1135684` (2026-05-23) — moai-adk-go 도메인 specialist 4 agent + `moai-harness-cli-template` / `moai-harness-patterns` 2 skill 잘못된 누출을 제거하면서 본 정책 명문화. 정정 전 SPEC-V3R6-HARNESS-RENAME-001 (PR #1043, 2026-05-22)의 my-harness → moai-harness 통합은 본 namespace 분리 정책 도입으로 부분 supersede됨
+- 후속: 2026-05-26 prefix doctrine을 `my-harness-*` → `harness-*` 으로 migration (이번 Phase 1 doctrine-only 변경). Go code enforcement (`internal/cli/update.go`, `internal/cli/update_archive.go`, `internal/cli/update_preserve_inventory.go`, `internal/harness/prefix_conflict.go`, test fixtures)는 여전히 `my-harness-*` enforce 상태이며 별개 SPEC (가칭 `SPEC-V3R6-HARNESS-NAMESPACE-V2-001`, Tier M, 39 Go files + 30+ tests scope)에서 catch-up 예정. **그 때까지 `harness-*` prefix actual generation 금지** — 새 prefix는 protection 안 받으므로 `moai update` 시 삭제 위험.
 
 ### §24.4 `moai update` 동작 Contract
 
@@ -987,7 +988,7 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 | Namespace / Path | 동작 | 백업 정책 |
 |------------------|------|-----------|
 | `.claude/skills/moai-*` (incl. `moai-harness-*`, `moai-meta-*`, `moai-foundation-*`, `moai-workflow-*`, `moai-domain-*`, `moai-ref-*`) | **삭제 후 신규 설치** (overwrite) | 백업 불필요 — template-managed, 사용자 수정 시 손실됨 |
-| **`.claude/skills/my-harness-*`** | **절대 삭제 금지 + 절대 modify 금지** | **백업 + 보존** (user-owned) |
+| **`.claude/skills/harness-*`** | **절대 삭제 금지 + 절대 modify 금지** | **백업 + 보존** (user-owned, Phase 2 SPEC catch-up 후 Go enforcement 작동) |
 | `.claude/agents/moai/` | 삭제 후 신규 설치 (overwrite) | 백업 불필요 — template-managed (FLAT layout per v.2.x baseline) |
 | **`.claude/agents/harness/`** | **절대 삭제 금지 + 절대 modify 금지** | **백업 + 보존** (user-owned) |
 | 기타 사용자 직접 추가 자산 (`.claude/agents/<custom>.md`, `.claude/skills/<custom>/` 단 prefix가 `moai-` 시작 아닌 것) | 보존 | 백업 + 보존 |
@@ -1001,6 +1002,20 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 - `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention
 
 [HARD] Go 구현 (`internal/cli/update.go`, `internal/cli/update_archive.go`)이 본 contract를 정확히 준수하는지는 SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001 (별도 작성 예정)에서 검증한다. 현재 본 contract는 정책 명문화이며, 코드 구현 검증은 후속 작업.
+
+### §24.5 Phase 2 Drift Entry-Condition (2026-05-26 ~ Phase 2 SPEC 완료 전)
+
+[HARD] 본 doctrine은 2026-05-26 chore commit으로 `harness-*` prefix를 user-owned namespace로 선언했으나, Go code (`internal/cli/update.go`, `internal/cli/update_archive.go`, `internal/cli/update_preserve_inventory.go`, `internal/harness/prefix_conflict.go`, test fixtures ~39 files)는 여전히 `my-harness-*` enforce 중이다. 이는 **의도된 doctrine-code drift**이며, 별개 SPEC (가칭 `SPEC-V3R6-HARNESS-NAMESPACE-V2-001`, Tier M, 39 Go files + 30+ tests scope)에서 catch-up 한다.
+
+drift 운영 원칙 (Phase 2 SPEC 완료 전):
+
+- [HARD] 새 `harness-*` prefix로 **실제 skill generate 금지** — Go code가 protection 안 하므로 `moai update` 시 삭제 위험. 사용자 데이터 손실 critical.
+- [HARD] `moai-meta-harness` actual emission은 **잠정 `my-harness-*` prefix 유지** — generator runtime behavior는 Phase 2 SPEC 완료 후 `harness-*`로 전환. 본 Phase 1 변경은 declarative intent만.
+- [HARD] 본 doctrine 변경은 **intent declaration only**, runtime behavior 변경 아님. `moai update`, `moai-meta-harness` Phase 4/5 generation, `internal/harness/prefix_conflict.go` 모든 enforcement layer는 `my-harness-*` 그대로 작동.
+- [HARD] CI test `TestNamespaceLeakMyHarnessSkills` (`internal/template/namespace_protection_audit_test.go`)는 Phase 2 SPEC 진행 시 `harness-*` 패턴으로 갱신 — 현재 prefix `my-harness-` substring hardcoded는 본 Phase 1과 무관하게 작동 유지.
+- [SHOULD] Phase 2 SPEC entry-condition: `harness-*` 패턴으로 Go enforcement + test fixture + `moai-meta-harness` runtime behavior 전환 + substring conflict 검증 (`harness-*` vs `moai-harness-*` 정확 분리) 모두 atomic하게.
+
+본 §24.5 노트는 Phase 2 SPEC sync-phase 종료 시 제거 (drift 해소 완료 후).
 
 ---
 
@@ -1097,6 +1112,6 @@ predecessor cleanup history (`research.md` §B 참조: chore commits `20a66df85`
 - Cross-references:
   - §15 — Template language neutrality (16-language equal treatment)
   - §21 — 97/98/99 dev-only commands isolation
-  - §24 — Harness namespace separation (`my-harness-*` user-owned vs `moai-harness-*` template-managed)
+  - §24 — Harness namespace separation (`harness-*` user-owned vs `moai-harness-*` template-managed)
   - SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001 §B (Substitution Dictionary) — generic-prose 치환 패턴 SSOT
   - `internal/template/internal_content_leak_test.go` — automated regression guard (M3 deliverable)
