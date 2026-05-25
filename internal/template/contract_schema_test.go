@@ -9,16 +9,18 @@ import (
 
 // TestContractSchemaVerification verifies that agent contract sections follow SEMAP schema
 func TestContractSchemaVerification(t *testing.T) {
-	// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: manager-quality lives under core/.
+	// Post SPEC-V3R6-AGENT-TEAM-REBUILD-001: manager-quality archived; manager-develop
+	// is the retained-catalog agent carrying the Behavioral Contract (SEMAP) section.
+	// REQ-TST-013: archived-agent assertion replaced with retained-catalog equivalent.
 	templatesDir := filepath.Join(".", "templates", ".claude", "agents", "core")
 
 	if _, err := os.ReadDir(templatesDir); err != nil {
 		t.Fatalf("Failed to read agents directory: %v", err)
 	}
 
-	// Phase 1: Only manager-quality should have a contract (manager-ddd is retired)
+	// Phase 1: manager-develop carries the Behavioral Contract section (post-ATR-001)
 	agentsWithContracts := []string{
-		"manager-quality.md",
+		"manager-develop.md",
 	}
 
 	for _, agentFile := range agentsWithContracts {
@@ -90,11 +92,13 @@ func TestContractSchemaVerification(t *testing.T) {
 }
 
 // TestBackwardCompatibility verifies agents without contracts remain functional.
-// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: agents are split into 4 domain subfolders.
-// This test iterates over all 4 subfolders to maintain coverage parity.
+// Post SPEC-V3R6-AGENT-TEAM-REBUILD-001: agent catalog consolidated to 7 retained
+// MoAI-custom agents under 2 subfolders {core, meta}. Empty/archived domains
+// {expert, harness} no longer have template files per the 17→8 consolidation.
+// REQ-TST-011: enumeration updated to current retained catalog reality.
 func TestBackwardCompatibility(t *testing.T) {
 	templatesRoot := filepath.Join(".", "templates", ".claude", "agents")
-	domains := []string{"core", "expert", "meta", "harness"}
+	domains := []string{"core", "meta"}
 
 	for _, domain := range domains {
 		templatesDir := filepath.Join(templatesRoot, domain)
@@ -134,9 +138,11 @@ func TestBackwardCompatibility(t *testing.T) {
 
 // TestContractAssertionsNaturalLanguage verifies contract assertions are natural language
 func TestContractAssertionsNaturalLanguage(t *testing.T) {
-	// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: manager-quality lives under core/.
+	// Post SPEC-V3R6-AGENT-TEAM-REBUILD-001: manager-quality archived; manager-develop
+	// is the retained-catalog agent carrying the Behavioral Contract section.
+	// REQ-TST-013: archived-agent assertion replaced with retained-catalog equivalent.
 	templatesDir := filepath.Join(".", "templates", ".claude", "agents", "core")
-	agentPath := filepath.Join(templatesDir, "manager-quality.md")
+	agentPath := filepath.Join(templatesDir, "manager-develop.md")
 
 	content, err := os.ReadFile(agentPath)
 	if err != nil {

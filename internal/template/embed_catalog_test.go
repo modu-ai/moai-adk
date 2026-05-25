@@ -29,7 +29,11 @@ func TestLoadEmbeddedCatalog_Success(t *testing.T) {
 	// (4 moai-harness-{cli-template,hook-ci,quality,workflow} skills +
 	// 4 moai-harness-{cli-template,hook-ci,quality,workflow}-specialist agents
 	// as Template-First mirror per REQ-HRN-003), raising count from 52 to 60.
-	const wantTotal = 60
+	// SPEC-V3R6-AGENT-TEAM-REBUILD-001 (2026-05-25): 17→8 agent catalog consolidation
+	// per Anthropic 2026 alignment (12 phantom/domain-expert agents archived). Catalog
+	// purged + skill cleanup reducing total to 38.
+	// REQ-TST-011: count constant updated to current retained catalog reality.
+	const wantTotal = 38
 	all := cat.AllEntries()
 	if len(all) != wantTotal {
 		t.Errorf("LoadEmbeddedCatalog() AllEntries() = %d, want %d", len(all), wantTotal)

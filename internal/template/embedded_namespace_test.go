@@ -47,10 +47,13 @@ func TestTemplateAgentsStructure(t *testing.T) {
 		t.Fatalf("fs.ReadDir(.claude/agents) error = %v, want nil", err)
 	}
 
+	// Post SPEC-V3R6-AGENT-TEAM-REBUILD-001: agent catalog consolidated to 7 retained
+	// MoAI-custom agents organized in 2 active subdirs {core, meta}. The {expert} subdir
+	// was archived (12 agents archived per Anthropic 2026 alignment).
+	// REQ-TST-011: enumeration updated to current retained catalog reality.
 	expected := map[string]bool{
-		"core":   true,
-		"expert": true,
-		"meta":   true,
+		"core": true,
+		"meta": true,
 	}
 
 	actual := make(map[string]bool)
@@ -70,7 +73,7 @@ func TestTemplateAgentsStructure(t *testing.T) {
 	// Detect unexpected (leaked) subdirs.
 	for name := range actual {
 		if !expected[name] {
-			t.Errorf("unexpected .claude/agents/%s/ subdir in embedded template — only {core,expert,meta} allowed per CLAUDE.local.md §24 (HARNESS_NAMESPACE_LEAK)", name)
+			t.Errorf("unexpected .claude/agents/%s/ subdir in embedded template — only {core,meta} allowed post SPEC-V3R6-AGENT-TEAM-REBUILD-001 (HARNESS_NAMESPACE_LEAK)", name)
 		}
 	}
 }

@@ -42,8 +42,11 @@ func TestEmbeddedTemplates_AgentDefinitions(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
 
-	// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: agents are split into 4 domain subfolders.
-	domains := []string{"core", "expert", "meta", "harness"}
+	// Post SPEC-V3R6-AGENT-TEAM-REBUILD-001: agents consolidated to 7 retained MoAI-custom
+	// agents under 2 subfolders {core, meta}. The {expert, harness} subdirs were archived
+	// per Anthropic 2026 alignment (17→8 catalog, 12 agents archived).
+	// REQ-TST-011: enumeration updated to current retained catalog reality.
+	domains := []string{"core", "meta"}
 	var mdCount int
 	for _, domain := range domains {
 		agentDir := ".claude/agents/" + domain
@@ -58,17 +61,18 @@ func TestEmbeddedTemplates_AgentDefinitions(t *testing.T) {
 		}
 	}
 
-	if mdCount < 15 {
-		t.Errorf("expected at least 15 agent .md files across all domain subfolders, got %d", mdCount)
+	// Post-ATR-001: 7 retained agents (4 core + 3 meta).
+	if mdCount < 7 {
+		t.Errorf("expected at least 7 retained agent .md files across {core, meta} subfolders, got %d", mdCount)
 	}
 
-	// Verify a specific agent file is readable and non-empty
-	data, err := fs.ReadFile(fsys, ".claude/agents/expert/expert-backend.md")
+	// Verify a specific retained agent file is readable and non-empty.
+	data, err := fs.ReadFile(fsys, ".claude/agents/core/manager-develop.md")
 	if err != nil {
-		t.Fatalf("read expert-backend.md: %v", err)
+		t.Fatalf("read manager-develop.md: %v", err)
 	}
 	if len(data) == 0 {
-		t.Error("expert-backend.md is empty")
+		t.Error("manager-develop.md is empty")
 	}
 }
 

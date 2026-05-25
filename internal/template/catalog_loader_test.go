@@ -26,7 +26,7 @@ func TestLoadCatalog(t *testing.T) {
 		t.Error("LoadCatalog: OptionalPacks is nil")
 	}
 
-	// AllEntries should return all 60 entries.
+	// AllEntries should return all 38 entries.
 	// Workflow audit 2026-05-16 Bundle C / F-003: 8 zombie agents purged
 	// (was 65 = 57 + 8 retired stubs).
 	// SPEC-V3R5-CORE-SLIM-B-001 (2026-05-20): 5 entries removed
@@ -36,8 +36,13 @@ func TestLoadCatalog(t *testing.T) {
 	// (4 moai-harness-{cli-template,hook-ci,quality,workflow} skills +
 	// 4 moai-harness-{cli-template,hook-ci,quality,workflow}-specialist agents
 	// as Template-First mirror per REQ-HRN-003), raising count from 52 to 60.
+	// SPEC-V3R6-AGENT-TEAM-REBUILD-001 (2026-05-25): 17→8 agent catalog consolidation
+	// per Anthropic 2026 alignment (12 phantom/domain-expert agents archived to
+	// .moai/backups/agent-archive-2026-05-25/). Catalog purged + skill cleanup
+	// (HARNESS-TEMPLATE-CLEANUP removed user-area harness skills), reducing total to 38.
+	// REQ-TST-011: count constant updated to current retained catalog reality.
 	all := cat.AllEntries()
-	const expectedTotal = 60
+	const expectedTotal = 38
 	if len(all) != expectedTotal {
 		t.Errorf("AllEntries() returned %d entries, want %d", len(all), expectedTotal)
 	}

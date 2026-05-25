@@ -55,11 +55,16 @@ func parseRetiredFields(fm map[string]string) retiredFrontmatter {
 	return result
 }
 
-// TestAgentFrontmatterAudit walks .claude/agents/moai/*.md files and verifies
-// that the five standard retired:true frontmatter fields are present.
+// TestAgentFrontmatterAudit walks the retained-agent subfolders (.claude/agents/{core,meta}/*.md)
+// and verifies that the five standard retired:true frontmatter fields are present
+// when an agent declares retired:true.
 //
 // REQ-RA-002: standard retired frontmatter field validation
-// Expected RED: FAIL because manager-tdd.md still lacks retired:true
+// REQ-TST-011: walk path updated to current retained catalog reality (post SPEC-V3R6-AGENT-TEAM-REBUILD-001).
+// Post-ATR-001: no retired stubs remain in the embedded template (12 archived agents
+// physically moved to .moai/backups/agent-archive-2026-05-25/). The audit therefore
+// validates retained-agent frontmatter cleanliness (no orphan retired:true keys, no
+// legacy status: retired field) across the {core, meta} subfolders.
 func TestAgentFrontmatterAudit(t *testing.T) {
 	t.Parallel()
 
@@ -69,23 +74,26 @@ func TestAgentFrontmatterAudit(t *testing.T) {
 	}
 
 	var agentFiles []string
-	walkErr := fs.WalkDir(fsys, ".claude/agents/moai", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
+	for _, domain := range []string{"core", "meta"} {
+		agentDir := ".claude/agents/" + domain
+		walkErr := fs.WalkDir(fsys, agentDir, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return nil
+			}
+			if d.IsDir() {
+				return nil
+			}
+			if strings.HasSuffix(path, ".md") {
+				agentFiles = append(agentFiles, path)
+			}
 			return nil
+		})
+		if walkErr != nil {
+			t.Fatalf("WalkDir(%q) 오류: %v", agentDir, walkErr)
 		}
-		if d.IsDir() {
-			return nil
-		}
-		if strings.HasSuffix(path, ".md") {
-			agentFiles = append(agentFiles, path)
-		}
-		return nil
-	})
-	if walkErr != nil {
-		t.Fatalf("WalkDir 오류: %v", walkErr)
 	}
 	if len(agentFiles) == 0 {
-		t.Fatal(".claude/agents/moai/ 하위 에이전트 파일이 없음")
+		t.Fatal(".claude/agents/{core,meta}/ 하위 에이전트 파일이 없음")
 	}
 
 	// Validation rules:
@@ -142,7 +150,8 @@ func TestAgentFrontmatterAudit(t *testing.T) {
 // the replacement agent file exists in the embedded FS.
 //
 // REQ-RA-016: CI must perform the RETIREMENT_INCOMPLETE_<agent> check
-// Expected RED: FAIL because manager-develop.md is missing from the embedded FS
+// REQ-TST-010: path drift fix — .claude/agents/moai/ → .claude/agents/core/
+// per SPEC-V3R6-AGENT-FOLDER-SPLIT-001 (pre-existing per ATR-001 §F.2.8).
 func TestRetirementCompletenessAssertion(t *testing.T) {
 	t.Parallel()
 
@@ -151,12 +160,13 @@ func TestRetirementCompletenessAssertion(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() 오류: %v", err)
 	}
 
-	// Explicit assertion of the manager-tdd → manager-develop replacement (RED trigger pre-M2)
-	// When manager-tdd.md has retired:true, manager-develop.md must exist in the embedded FS
+	// Explicit assertion of the manager-tdd → manager-develop replacement.
+	// When manager-tdd.md has retired:true, manager-develop.md must exist in the embedded FS.
+	// Post AGENT-FOLDER-SPLIT-001: manager-develop.md lives under core/ subfolder.
 	t.Run("manager-tdd replacement manager-develop must exist", func(t *testing.T) {
 		t.Parallel()
 
-		const replacementPath = ".claude/agents/moai/manager-develop.md"
+		const replacementPath = ".claude/agents/core/manager-develop.md"
 		_, statErr := fs.Stat(fsys, replacementPath)
 		if statErr != nil {
 			t.Errorf("RETIREMENT_INCOMPLETE_manager-tdd: 교체 에이전트 '%s'가 embedded FS에 없음. "+
@@ -164,12 +174,13 @@ func TestRetirementCompletenessAssertion(t *testing.T) {
 		}
 	})
 
-	// Explicit assertion of the manager-ddd → manager-develop replacement (RED trigger pre-M2)
-	// When manager-ddd.md has retired:true, manager-develop.md must exist in the embedded FS
+	// Explicit assertion of the manager-ddd → manager-develop replacement.
+	// When manager-ddd.md has retired:true, manager-develop.md must exist in the embedded FS.
+	// Post AGENT-FOLDER-SPLIT-001: manager-develop.md lives under core/ subfolder.
 	t.Run("manager-ddd replacement manager-develop must exist", func(t *testing.T) {
 		t.Parallel()
 
-		const replacementPath = ".claude/agents/moai/manager-develop.md"
+		const replacementPath = ".claude/agents/core/manager-develop.md"
 		_, statErr := fs.Stat(fsys, replacementPath)
 		if statErr != nil {
 			t.Errorf("RETIREMENT_INCOMPLETE_manager-ddd: 교체 에이전트 '%s'가 embedded FS에 없음. "+
@@ -177,20 +188,24 @@ func TestRetirementCompletenessAssertion(t *testing.T) {
 		}
 	})
 
-	// Generic check: for every retired:true agent in the embedded FS, verify the replacement file exists
+	// Generic check: for every retired:true agent in the embedded FS, verify the replacement file exists.
+	// Post AGENT-FOLDER-SPLIT-001: walk retained subfolders {core, meta} and resolve
+	// retired_replacement to whichever subfolder contains the file.
 	t.Run("all retired agents have replacement in embedded FS", func(t *testing.T) {
 		t.Parallel()
 
 		var agentFiles []string
-		_ = fs.WalkDir(fsys, ".claude/agents/moai", func(path string, d fs.DirEntry, err error) error {
-			if err != nil || d.IsDir() {
+		for _, domain := range []string{"core", "meta"} {
+			_ = fs.WalkDir(fsys, ".claude/agents/"+domain, func(path string, d fs.DirEntry, err error) error {
+				if err != nil || d.IsDir() {
+					return nil
+				}
+				if strings.HasSuffix(path, ".md") {
+					agentFiles = append(agentFiles, path)
+				}
 				return nil
-			}
-			if strings.HasSuffix(path, ".md") {
-				agentFiles = append(agentFiles, path)
-			}
-			return nil
-		})
+			})
+		}
 
 		for _, path := range agentFiles {
 			data, readErr := fs.ReadFile(fsys, path)
@@ -206,12 +221,20 @@ func TestRetirementCompletenessAssertion(t *testing.T) {
 				continue
 			}
 
-			// Resolve the replacement file path: .claude/agents/moai/<replacement>.md
-			replacementPath := fmt.Sprintf(".claude/agents/moai/%s.md", rf.retiredReplacement)
-			_, statErr := fs.Stat(fsys, replacementPath)
-			if statErr != nil {
-				t.Errorf("RETIREMENT_INCOMPLETE_%s: retired_replacement '%s' 파일이 embedded FS에 없음 (%s)",
-					agentNameFromPath(path), rf.retiredReplacement, replacementPath)
+			// Resolve the replacement file path: search both retained subfolders.
+			found := false
+			var attempted []string
+			for _, domain := range []string{"core", "meta"} {
+				replacementPath := fmt.Sprintf(".claude/agents/%s/%s.md", domain, rf.retiredReplacement)
+				attempted = append(attempted, replacementPath)
+				if _, statErr := fs.Stat(fsys, replacementPath); statErr == nil {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("RETIREMENT_INCOMPLETE_%s: retired_replacement '%s' 파일이 embedded FS에 없음 (시도: %v)",
+					agentNameFromPath(path), rf.retiredReplacement, attempted)
 			}
 		}
 	})

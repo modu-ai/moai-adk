@@ -180,40 +180,46 @@ func TestAllAgentsInCatalog(t *testing.T) {
 		catalogAgents[e.Name] = true
 	}
 
-	// Walk .claude/agents/moai/*.md files
+	// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: agents live under domain subfolders
+	// {core, meta} (post SPEC-V3R6-AGENT-TEAM-REBUILD-001 the {expert, harness}
+	// subfolders are archived). Walk both retained subfolders.
+	// REQ-TST-011: enumeration updated to current retained catalog reality.
 	diskAgents := []string{}
-	walkErr := fs.WalkDir(fsys, ".claude/agents/moai", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
+	for _, domain := range []string{"core", "meta"} {
+		agentDir := ".claude/agents/" + domain
+		walkErr := fs.WalkDir(fsys, agentDir, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return nil
+			}
+			if d.IsDir() {
+				return nil
+			}
+			if strings.HasSuffix(path, ".md") {
+				// Extract agent name: .claude/agents/<domain>/<name>.md → <name>
+				parts := strings.Split(path, "/")
+				fileName := parts[len(parts)-1]
+				agentName := strings.TrimSuffix(fileName, ".md")
+				diskAgents = append(diskAgents, agentName)
+			}
 			return nil
+		})
+		if walkErr != nil {
+			t.Fatalf("WalkDir(%q) error: %v", agentDir, walkErr)
 		}
-		if d.IsDir() {
-			return nil
-		}
-		if strings.HasSuffix(path, ".md") {
-			// Extract agent name: .claude/agents/moai/<name>.md → <name>
-			parts := strings.Split(path, "/")
-			fileName := parts[len(parts)-1]
-			agentName := strings.TrimSuffix(fileName, ".md")
-			diskAgents = append(diskAgents, agentName)
-		}
-		return nil
-	})
-	if walkErr != nil {
-		t.Fatalf("WalkDir(.claude/agents/moai) error: %v", walkErr)
 	}
 
-	// Workflow audit 2026-05-16 Bundle C / F-003: 8 zombie agents purged.
-	// Wave 1 ABSORB-CLEANUP-001 reconciliation 2026-05-22: my-harness category
-	// removed from disk; actual breakdown is 8 manager + 6 expert + 1 builder +
-	// 1 evaluator-active + 1 plan-auditor + 1 researcher + 1 claude-code-guide = 19.
-	const expectedAgentCount = 19
+	// SPEC-V3R6-AGENT-TEAM-REBUILD-001 (2026-05-25): 17→8 agent catalog consolidation.
+	// 7 retained MoAI-custom agents (4 core + 3 meta) + 1 Anthropic built-in Explore
+	// (no MoAI file). 12 phantom/domain-expert agents archived to
+	// .moai/backups/agent-archive-2026-05-25/.
+	const expectedAgentCount = 7
 	if len(diskAgents) != expectedAgentCount {
 		t.Errorf("expected %d agent files on disk, found %d: %v", expectedAgentCount, len(diskAgents), diskAgents)
 	}
 
 	for _, agentName := range diskAgents {
 		if !catalogAgents[agentName] {
-			t.Errorf("CATALOG_ENTRY_MISSING: .claude/agents/moai/%s.md exists on disk but is not in catalog.yaml", agentName)
+			t.Errorf("CATALOG_ENTRY_MISSING: agent %q exists on disk but is not in catalog.yaml", agentName)
 		}
 	}
 

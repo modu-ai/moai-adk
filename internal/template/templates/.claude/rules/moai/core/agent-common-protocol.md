@@ -34,13 +34,13 @@ Canonical reference: see `.claude/rules/moai/core/askuser-protocol.md` for full 
 
 ### Hook Invocation Surface
 
-The orchestrator interacts with hook scripts (`.claude/hooks/moai/*.sh`) that mechanically enforce orchestrator-discipline obligations. Hook script roles and exit-code semantics:
+Per SPEC-V3R6-AGENT-TEAM-REBUILD-001 REQ-ATR-009 + REQ-ATR-014, the orchestrator interacts with three NEW hook scripts that mechanically enforce orchestrator-discipline obligations previously delegated to phantom `manager-quality` / `expert-security` spawn calls:
 
-| Hook script | Trigger | Purpose | Exit-code semantics |
-|-------------|---------|---------|---------------------|
-| `.claude/hooks/moai/status-transition-ownership.sh` | PostToolUse on Write/Edit of `.moai/specs/SPEC-*/{spec,plan,acceptance}.md` body content | Enforce Status Transition Ownership Matrix per `.claude/rules/moai/development/spec-frontmatter-schema.md` | exit 0 = continue (transition matches canonical owner); exit 2 = block (owner mismatch) |
-| `.claude/hooks/moai/sync-phase-quality-gate.sh` | Stop hook on sync-phase commit completion | Lint + test + coverage delta + dependency manifest audit on `go.mod` / `package-lock.json` / etc. changes | exit 0 = continue (all gates pass); exit 2 = block (any gate failed) |
-| `.claude/hooks/moai/team-ac-verify.sh` | TaskCompleted in team mode (dormant by default — activates only under harness `thorough` + team mode prerequisites) | per-AC PASS evidence file verification | exit 0 = acknowledge completion; exit 2 = reject completion |
+| Hook script | Trigger | Owning REQ | Exit-code semantics |
+|-------------|---------|------------|---------------------|
+| `.claude/hooks/moai/status-transition-ownership.sh` | PostToolUse on Write/Edit of `.moai/specs/SPEC-*/{spec,plan,acceptance}.md` body content | Status Transition Ownership Matrix per `.claude/rules/moai/development/spec-frontmatter-schema.md` | exit 0 = continue (transition matches canonical owner); exit 2 = block (owner mismatch) |
+| `.claude/hooks/moai/sync-phase-quality-gate.sh` | Stop hook on sync-phase commit completion | REQ-ATR-009 (lint + test + coverage delta) + REQ-ATR-014 (dependency manifest audit on `go.mod` / `package-lock.json` / etc. changes) | exit 0 = continue (all gates pass); exit 2 = block (any gate failed) |
+| `.claude/hooks/moai/team-ac-verify.sh` | TaskCompleted in team mode (dormant by default — activates only under harness `thorough` + team mode prerequisites per REQ-ATR-013) | per-AC PASS evidence file verification | exit 0 = acknowledge completion; exit 2 = reject completion |
 
 #### Orchestrator translation responsibility
 
@@ -50,7 +50,7 @@ Hooks return exit codes and structured JSON; they MUST NOT invoke `AskUserQuesti
 2. Preload `AskUserQuestion` via `ToolSearch(query: "select:AskUserQuestion")`
 3. Compose an `AskUserQuestion` round presenting the user with at least: (a) accept the block and address the failed gate, (b) override with `--skip-hook` opt-out (logged to `.moai/logs/hook-skip.log` per audit trail), (c) abort the workflow
 
-This translation pattern preserves the orchestrator's single-point-of-contact with the user per CLAUDE.md §8 + this rule's User Interaction Boundary section above. Hook subagent boundary verification:
+This translation pattern preserves the orchestrator's single-point-of-contact with the user per CLAUDE.md §8 + this rule's User Interaction Boundary section above. Hook subagent boundary verification is covered by AC-ATR-022 of SPEC-V3R6-AGENT-TEAM-REBUILD-001:
 
 ```bash
 grep -rn 'AskUserQuestion\|mcp__askuser' .claude/hooks/moai/ \
