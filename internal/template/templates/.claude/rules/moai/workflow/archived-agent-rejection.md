@@ -4,15 +4,14 @@ paths: ".claude/skills/moai/workflows/run.md,.claude/skills/moai/workflows/plan.
 metadata:
   version: "1.0.0"
   status: "active"
-  updated: "2026-05-25"
-  tags: "archived-agent, migration, anthropic-2026-alignment, error-spec, orchestrator-discipline"
+  tags: "archived-agent, migration, error-spec, orchestrator-discipline"
 ---
 
 # Archived Agent Rejection
 
-Canonical specification of the `ARCHIVED_AGENT_REJECTED` error and the 12-agent migration table introduced by SPEC-V3R6-AGENT-TEAM-REBUILD-001 (M3 archive, M5 rule documentation). When the MoAI orchestrator detects an `Agent()` spawn attempt — or a paste-ready resume reference — naming one of the 12 archived agents, the orchestrator MUST reject the spawn, emit a structured error referencing this migration table, and (when proceeding) consult the user via `AskUserQuestion` on the replacement-pattern decision.
+Canonical specification of the `ARCHIVED_AGENT_REJECTED` error and the 12-agent migration table. When the MoAI orchestrator detects an `Agent()` spawn attempt — or a paste-ready resume reference — naming one of the 12 archived agents, the orchestrator MUST reject the spawn, emit a structured error referencing this migration table, and (when proceeding) consult the user via `AskUserQuestion` on the replacement-pattern decision.
 
-> Cross-reference: `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/spec.md` §B.3 retain-vs-archive matrix is the design-time SSOT for the retention decision; this rule is the canonical runtime SSOT for the orchestrator's rejection behavior. The archive backup directory is `.moai/backups/agent-archive-2026-05-25/` (preserves original `core/`, `meta/`, `expert/`, `agency/` substructure with a per-agent README).
+> This rule is the canonical runtime SSOT for the orchestrator's rejection behavior.
 
 ---
 

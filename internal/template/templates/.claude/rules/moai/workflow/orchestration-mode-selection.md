@@ -4,15 +4,14 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 metadata:
   version: "1.0.0"
   status: "active"
-  updated: "2026-05-25"
-  tags: "orchestration, mode-selection, agent-teams, phase-0.95, anthropic-2026-alignment"
+  tags: "orchestration, mode-selection, agent-teams, phase-0.95"
 ---
 
 # Orchestration Mode Selection — Phase 0.95
 
-Canonical 5-mode autonomous decision tree for the MoAI orchestrator. Activated at Phase 0.95 (after Phase 0.5 plan-auditor verdict, before Phase 1 implementation) per REQ-ATR-008 + REQ-ATR-013 + REQ-ATR-017 of SPEC-V3R6-AGENT-TEAM-REBUILD-001. The decision is autonomous (no `AskUserQuestion` round); the chosen mode and the selection rationale are logged to `progress.md § Mode Selection`.
+Canonical 5-mode autonomous decision tree for the MoAI orchestrator. Activated at Phase 0.95 (after Phase 0.5 plan-auditor verdict, before Phase 1 implementation). The decision is autonomous (no `AskUserQuestion` round); the chosen mode and the selection rationale are logged to `progress.md § Mode Selection`.
 
-> Cross-reference: `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/design.md` §B.4 documents the design-level decision tree; this rule file is the canonical runtime SSOT for the orchestrator's mode-selection behavior. `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification covers the `--mode` flag matrix (autopilot / loop / team / pipeline) which interacts with — but is separate from — the 5-mode catalog below.
+> Cross-reference: `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification covers the `--mode` flag matrix (autopilot / loop / team / pipeline) which interacts with — but is separate from — the 5-mode catalog below.
 
 ---
 

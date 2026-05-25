@@ -2,9 +2,7 @@
 # Hook: status-transition-ownership
 # Purpose: Verify Write/Edit invoker matches Status Transition Ownership Matrix
 # Trigger: PostToolUse event when tool ∈ {Write, Edit, MultiEdit} on SPEC artifact files
-# Origin: SPEC-V3R6-AGENT-TEAM-REBUILD-001 M4 (2026-05-25)
-# REQs: REQ-ATR-009 (hook architecture); Status Transition Ownership Matrix per
-#       .claude/rules/moai/development/spec-frontmatter-schema.md
+# Cross-reference: .claude/rules/moai/development/spec-frontmatter-schema.md (Status Transition Ownership Matrix)
 
 set -e
 

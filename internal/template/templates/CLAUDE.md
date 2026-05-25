@@ -95,7 +95,7 @@ For detailed design rules, see .claude/rules/moai/design/constitution.md
 
 ## 4. Agent Catalog
 
-Per SPEC-V3R6-AGENT-TEAM-REBUILD-001 (Anthropic 2026 alignment, 2026-05-25), the MoAI agent catalog consists of exactly **8 retained agents** (7 MoAI-custom + 1 Anthropic built-in). The previous 17-agent enumeration was consolidated to align with Anthropic best practices: "Subagents cannot spawn other subagents" (claude.com/docs/en/sub-agents), "Start with 3-5 teammates for most workflows" (claude.com/docs/en/agent-teams), and "Define a custom subagent when you keep spawning the same kind of worker" (claude.com/docs/en/best-practices). Twelve phantom and domain-expert agents were archived (see Archive cross-reference below).
+The MoAI agent catalog consists of exactly **8 retained agents** (7 MoAI-custom + 1 Anthropic built-in `Explore`). The catalog is aligned with Anthropic's published best practices: "Subagents cannot spawn other subagents" (claude.com/docs/en/sub-agents), "Start with 3-5 teammates for most workflows" (claude.com/docs/en/agent-teams), and "Define a custom subagent when you keep spawning the same kind of worker" (claude.com/docs/en/best-practices).
 
 ### Selection Decision Tree
 
@@ -122,11 +122,11 @@ Per SPEC-V3R6-AGENT-TEAM-REBUILD-001 (Anthropic 2026 alignment, 2026-05-25), the
 | `builder-harness` | builder | Dynamic project-specific harness specialist generation | `.claude/agents/builder/builder-harness.md` |
 | `Explore` | Anthropic built-in | Read-only codebase exploration (no MoAI file — invoked directly) | claude.com/docs/en/sub-agents |
 
-### Archive Cross-Reference (12 phantom/domain-expert agents archived 2026-05-25)
+### Archived Agents (legacy references rejected at spawn)
 
-Twelve agents previously listed in this catalog (`manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, `expert-backend`, `expert-frontend`, `expert-security`, `expert-devops`, `expert-performance`, `expert-refactoring`) were archived per SPEC-V3R6-AGENT-TEAM-REBUILD-001 M3 milestone. Archive count: **11 actual archived** (preserved at `.moai/backups/agent-archive-2026-05-25/` with `core/`, `meta/`, `expert/` substructure and per-agent README) **+ 1 originally absent** (`researcher.md` — never present as a MoAI file in this repo; archive variance documented in progress.md).
+The following agent names are **archived** and MUST NOT be spawned: `manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, `expert-backend`, `expert-frontend`, `expert-security`, `expert-devops`, `expert-performance`, `expert-refactoring`.
 
-When a paste-ready resume message or `Agent()` invocation references one of these 12 archived agents, the orchestrator MUST reject the spawn and consult the migration table at `.claude/rules/moai/workflow/archived-agent-rejection.md`. The retained-agent replacement pattern for each archived agent (per-spawn `Agent(general-purpose)` with domain-specific instructions, or routing to one of the 8 retained agents above) is documented there.
+When a paste-ready resume message or `Agent()` invocation references one of these archived agents, the orchestrator MUST reject the spawn and consult the migration table at `.claude/rules/moai/workflow/archived-agent-rejection.md`. The retained-agent replacement pattern (per-spawn `Agent(general-purpose)` with domain-specific instructions, or routing to one of the 8 retained agents above) is documented there.
 
 ### Dynamic Team Generation (Experimental)
 

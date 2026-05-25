@@ -2,9 +2,6 @@
 # Hook: sync-phase-quality-gate
 # Purpose: Enforce sync-phase quality gate (lint + test + coverage delta + dependency manifest audit)
 # Trigger: Stop event when current session contains sync-phase commit
-# Origin: SPEC-V3R6-AGENT-TEAM-REBUILD-001 M4 (2026-05-25)
-# REQs: REQ-ATR-009 (replaces manager-quality spawn in workflows/sync.md);
-#       REQ-ATR-014 (dependency manifest audit)
 #
 # Manual smoke test:
 #   echo '{}' | bash .claude/hooks/moai/sync-phase-quality-gate.sh
@@ -63,7 +60,7 @@ fi
 (go test ./... > "$TMPDIR/test.log" 2>&1; echo $? > "$TMPDIR/test.exit") &
 TEST_PID=$!
 
-# 4. Dependency manifest audit (REQ-ATR-014)
+# 4. Dependency manifest audit
 (git diff HEAD~1..HEAD -- go.mod go.sum > "$TMPDIR/deps.diff" 2>&1; echo $? > "$TMPDIR/deps.exit") &
 DEPS_PID=$!
 
