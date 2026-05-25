@@ -34,7 +34,7 @@ depends_on: [SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001, SPEC-V3R6-LOCAL-NAMESPACE-
 | Plan | implemented | `128947eb6` (initial v0.1.0) + `61016ad3b` (v0.1.1 amendment) | manager-spec | spec.md (~ 32K v0.1.1) + plan.md (~ 19K v0.1.1) authored as Tier S LEAN 2-artifact form. AC inline in spec.md §3 (8 AC total post-amendment). progress.md deliberately deferred to run-phase per Tier S minimal form. |
 | Plan-Audit | implemented | (in spec.md HISTORY) | plan-auditor | iter-1 PASS skip-eligible 0.915 (Tier S ≥ 0.75 threshold + 0.165 margin, skip-eligible 0.90 threshold + 0.015 margin). 0 BLOCKING / 0 SHOULD-FIX / 3 MINOR defects (D1 commit-window regex / D2 AC-CHR-006 Variant choice / D3 file location preference). All 3 MINOR scheduled for inline-resolve at run-phase M1 per plan-auditor PROCEED directive. Phase 0.5 SKIP-eligible flag set per CONST-V3R5-026. v0.1.1 amendment stays within Tier S envelope; verdict remains valid (same M1 atomic pattern, same test design, mechanical YAML edit expansion). |
 | Run | implemented | `eabb8db14` (M1 atomic commit) | manager-develop | Phase 0.5 SKIPPED per CONST-V3R5-026 (plan-auditor PASS ≥ 0.90 + no plan-PR commit altering audit scope since verdict). Phase 0.95 Mode Selection autopilot Mode 5 sub-agent sequential (Tier S minimal scope, single milestone, default fallback per `.claude/rules/moai/workflow/orchestration-mode-selection.md` §B.2). 5 deliverables in single atomic M1 commit (D1 NEW test + D2 catalog cleanup + D3 progress.md + D4 spec.md frontmatter + D5 plan.md frontmatter). All 8 AC-CHR PASS via independent verification (7 at M1 close + 1 trust-but-verify: pre-existing test suite delta -3 failures as ORPHAN purge side-effect). |
-| Sync | implemented | `<this-commit>` | manager-docs | CHANGELOG.md (2 entries: Added + Changed), spec.md frontmatter (`status: implemented → synced`, HISTORY), plan.md frontmatter (`status: implemented → synced`, HISTORY). **L60 chicken-and-egg** — sync_commit_sha placeholder `<this-commit>` replaced atomically via follow-up chore commit (Option α). |
+| Sync | implemented | `5171da19e` | manager-docs | CHANGELOG.md (2 entries: Added + Changed), spec.md frontmatter (`status: implemented → synced`, HISTORY), plan.md frontmatter (`status: implemented → synced`, HISTORY). **L60 chicken-and-egg** — sync_commit_sha placeholder `<this-commit>` replaced atomically via follow-up chore commit (Option α). |
 | Mx | pending | (n/a) | manager-docs / orchestrator | Tier S markdown-light + minimal Go diff (~237 LOC test addition + ~50 lines catalog YAML edits + ~150 lines progress.md edits + 2 frontmatter status transitions). Mx Step C EVALUATE expected per mx-tag-protocol.md (zero existing @MX delta in scope; potential candidates: `TestCatalogHashParity` exported invariant function, `resolveHashSourcePath` helper). |
 
 ---
@@ -239,10 +239,10 @@ v0_1_1_amendment_scope_discharged:
 ### §E.4 Sync-phase Audit-Ready Signal (placeholder — owned by manager-docs)
 
 ```yaml
-sync_complete_at: <pending — populated by manager-docs at /moai sync invocation>
-sync_status: pending
-sync_commit_sha: <pending>
-changelog_entry_added: <pending — manager-docs will append to CHANGELOG.md [Unreleased] section per CHANGELOG-CLEANUP-001 discipline>
+sync_complete_at: 2026-05-25T08:10:42Z  # manager-docs completed sync-phase at this UTC timestamp
+sync_status: complete
+sync_commit_sha: 5171da19e  # L60 atomic backfill — chicken-and-egg placeholder replaced
+changelog_entry_added: true  # manager-docs appended 2 entries to CHANGELOG.md [Unreleased] section per B12 self-tests
 status_transition_in_progress_to_implemented:
   progress_md: pending  # manager-docs owns this transition per ownership matrix
   spec_md: pending  # manager-docs owns frontmatter status update at sync
