@@ -12,6 +12,7 @@ sources:
   - "Internal: .moai/research/anthropic-best-practices-2026-05-24.md (13 findings prior audit) + .moai/specs/SPEC-V3R6-WORKFLOW-ORCHESTRATION-FIX-001/research.md (base prior research, 2026-05-25)"
   - "Deep audit reports 2026-05-25 (prior session turn): Audit 1 (17 agent SRP) + Audit 2 (workflow phase ownership) + Audit 3 (Anthropic 2026 verbatim)"
 research_method: "Inherits the 3 parallel general-purpose subagents output from the superseded SPEC's research.md (§A through §G below, verbatim preserved) AND appends §H Audit 3 synthesis specific to this SPEC's architectural-pivot rationale"
+sync_commit_sha: "<pending>"
 ---
 
 ## HISTORY

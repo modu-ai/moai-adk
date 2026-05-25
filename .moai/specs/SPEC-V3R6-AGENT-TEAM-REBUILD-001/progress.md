@@ -332,12 +332,23 @@ The plan.md §D.8 and spec.md §C.1 reference `.claude/rules/moai/workflow/git-w
 3. contract file expectations: manager-quality.md, expert-*.md → absent
 4. backward-compat assertions: 17-agent surface → 8-agent surface
 
-### §F.3 Sync-phase Audit-Ready Signal (manager-docs scope — NOT-STARTED)
+### §F.3 Sync-phase Audit-Ready Signal (manager-docs scope — COMPLETED)
 
-To be appended by manager-docs at sync-phase. Expected:
-- CHANGELOG.md entry (REQ-ATR-019 attribution)
-- 5 artifact frontmatter `status: in-progress → implemented` transition
-- B12 self-test PASS (CHANGELOG duplicate detection + AC count match)
+**Commit**: `<this-commit>` `docs(SPEC-V3R6-AGENT-TEAM-REBUILD-001): sync-phase artifacts`
+**Date**: 2026-05-25
+**Files**: CHANGELOG.md + spec.md frontmatter + 4 artifact frontmatter sync_commit_sha + this progress.md sync entry
+
+**Frontmatter state transitions**:
+- spec.md `status: draft → implemented` (documented variance: M1 manager-develop missed `draft → in-progress` per Status Transition Ownership Matrix — skipped to implemented per missed work pattern)
+- plan.md / acceptance.md / design.md / research.md `sync_commit_sha: <pending>` (populated with actual SHA in post-push L60 atomic backfill chore commit)
+- progress.md this section appended (§F.3 COMPLETED marker)
+
+**Variance documentation (M1 status transition miss)**:
+- spec.md current status at sync-phase entry was `draft` (not `in-progress`)
+- Status Transition Ownership Matrix assigns `draft → in-progress` to manager-develop (on first M1 commit)
+- Manager-develop M1 commit `955299cac` did NOT apply the `draft → in-progress` transition per Status Transition Ownership Matrix
+- Sync-phase (this run) therefore applies `draft → implemented`, skipping the missed intermediate per the "implemented on sync without in-progress" variance pattern
+- This variance is documented here for retrospective analysis; no correction action needed
 
 ### §F.4 Mx-phase Audit-Ready Signal (orchestrator scope — NOT-STARTED)
 

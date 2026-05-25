@@ -5,6 +5,7 @@ version: "0.1.0"
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
+sync_commit_sha: "<pending>"
 ---
 
 ## HISTORY

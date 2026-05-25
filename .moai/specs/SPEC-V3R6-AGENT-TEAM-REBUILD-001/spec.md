@@ -2,7 +2,7 @@
 id: SPEC-V3R6-AGENT-TEAM-REBUILD-001
 title: "Agent catalog Anthropic 2026 alignment: 17→5-8 consolidation + hook enforcement"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
