@@ -97,6 +97,33 @@ main ──●──●──●──●──●──  (protected, 항상 배
 - [HARD] `--rebase`는 금지 (main history linear가 아니어도 OK, merge commit 보존 중요)
 - [HARD] Force push to `main` 금지 (branch protection으로 차단)
 
+### §18.3.1 [HARD] Tier-based PR Routing (SPEC-V3R6-AGENT-TEAM-REBUILD-001 REQ-ATR-020)
+
+SPEC tier에 따라 PR 생성 경로가 다르며, 본 정책은 Hybrid Trunk 1-person OSS 운영의 기본 (default) 동작을 명문화한다:
+
+| SPEC tier | Branch policy | Owner | Rationale |
+|-----------|---------------|-------|-----------|
+| **Tier S** (≤ 300 LOC, < 5 files) | **main-direct push** (Hybrid Trunk default) | orchestrator OR manager-develop (per `.claude/rules/moai/development/manager-develop-prompt-template.md` B9) | Tier S commits 직접 main 적층; pre-push hook warn-only 5s + CI 4 status checks가 보호 |
+| **Tier M** (300-1000 LOC, 5-15 files) | **main-direct push** (Hybrid Trunk default) | orchestrator OR manager-develop | Tier M도 main 직진; CI 4 status checks + pre-push hook이 안전 보장 |
+| **Tier L** (> 1000 LOC OR constitutional) | **PR via manager-git** on `feat/SPEC-XXX` branch + `gh pr create` | manager-git | Tier L의 광범위한 scope (≥ 15 files OR constitutional)는 PR review window 확보 + CI 풀 매트릭스 검증 필요 |
+| **Explicit `--pr` flag** (any tier) | **PR via manager-git** on `feat/SPEC-XXX` branch + `gh pr create` | manager-git | 사용자가 명시적으로 review round 요구한 경우 (cross-team review, security-sensitive change, breaking change 검토 등) |
+
+#### Tier L OR --pr flag → manager-git invocation pattern
+
+```
+Agent(subagent_type: "manager-git",
+      prompt: "... Create PR for SPEC-XXX via feat/SPEC-XXX branch + gh pr create; Tier L (or --pr explicit). ...")
+```
+
+manager-git은 본 매트릭스 (Tier L OR --pr) 조건에서만 invoke된다. Tier S/M의 main-direct push는 manager-develop이 자체 수행 (per manager-develop-prompt-template.md B9 Git Commit + Push 자체 수행 절). 본 정책은 §23.7 [HARD] 운영 원칙의 "1-person OSS Hybrid Trunk: 모든 tier (S/M/L) main 직진 push 허용" 기본 동작과 manager-git PR routing의 명시적 opt-in의 합집합으로 운영된다.
+
+#### Cross-reference
+
+- `CLAUDE.local.md` §23.7 — Hybrid Trunk 운영 원칙 (1-person OSS) + multi-session race mitigation
+- `.claude/skills/moai/workflows/sync.md` — sync-phase PR creation logic (manager-docs 호출 + Tier-based routing 적용)
+- `.claude/rules/moai/development/manager-develop-prompt-template.md` § Section B9 — manager-develop의 main-direct push 자체 수행 contract
+- SPEC-V3R6-AGENT-TEAM-REBUILD-001 §B.3 retain-vs-archive matrix — manager-git이 8 retained agents 중 하나로 유지된 이유 (Tier L OR --pr flag PR ops 전담)
+
 ### §18.4 Release Cadence 공식화
 
 | 타입 | 기준 | 주기 | 브랜치 |

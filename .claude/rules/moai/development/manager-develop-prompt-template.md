@@ -9,6 +9,34 @@ paths: ".moai/specs/**,.claude/agents/moai/manager-develop.md,.claude/skills/moa
 
 [ZONE:Evolvable] [HARD] The Section A-E 5-section delegation template defined in this rule is **REQUIRED for Tier M and Tier L SPEC delegations** and **OPTIONAL for Tier S** delegations. Tier S SPECs (≤300 LOC, <5 files affected, 2 artifacts per the LEAN workflow) MAY use minimal delegation prompts (~500-800 tokens) covering only:
 
+## cycle_type Mode Reference
+
+Per SPEC-V3R6-AGENT-TEAM-REBUILD-001 REQ-ATR-010 / REQ-ATR-011 / REQ-ATR-012, the `manager-develop` agent operates in one of three `cycle_type` modes selected per the run-phase task profile:
+
+| cycle_type | Loop pattern | When to use | Iteration contract | Canonical reference |
+|------------|--------------|-------------|---------------------|---------------------|
+| `ddd` | ANALYZE-PRESERVE-IMPROVE | Existing codebases with minimal test coverage (< 10% per quality.yaml `development_mode: ddd` selection); characterization-test-first preservation of behavior | No fixed iteration limit; one cycle per logical refactoring chunk | `.claude/rules/moai/workflow/spec-workflow.md` § Run Phase DDD Mode |
+| `tdd` | RED-GREEN-REFACTOR | Default — all new development work, brownfield projects with pre-RED analysis (≥ 10% coverage per quality.yaml `development_mode: tdd` selection); test-first development | No fixed iteration limit; one cycle per behavior specification | `.claude/rules/moai/workflow/spec-workflow.md` § Run Phase TDD Mode |
+| `autofix` | **DIAGNOSE-PATCH-VERIFY** | CI auto-fix loop after `scripts/ci-watch/run.sh` detects a failing required check; semantic-failure-safe patching of lint / build / type errors | **Maximum 3 iterations** per PR push (per-PR-push counter, not per-session); escalation to `AskUserQuestion` after iteration 3 with no auto-resume timeout | `.claude/rules/moai/workflow/ci-autofix-protocol.md` |
+
+### cycle_type=autofix DIAGNOSE-PATCH-VERIFY pattern
+
+Each iteration of the autofix loop executes the three-step DIAGNOSE-PATCH-VERIFY pattern:
+
+1. **DIAGNOSE**: Read the failing CI check output (provided by the orchestrator from `scripts/ci-watch/run.sh`). Identify the root cause — lint rule violation, build error, type error, missing dependency, etc.
+2. **PATCH**: Apply a minimal fix that addresses the root cause without expanding scope. The autofix loop MUST NOT modify `.env`, `.env.*`, credentials files, secrets, or `scripts/ci-watch/run.sh` or any Wave 2 infrastructure scripts (per CONST-V3R5-011 + CONST-V3R5-013).
+3. **VERIFY**: Re-run the failing check locally; if exit 0, push the patch as a new commit on the PR branch (force-push and `--amend` are prohibited per CONST-V3R5-007). If still failing, increment the iteration counter and repeat from DIAGNOSE.
+
+### autofix escalation contract
+
+After 3 iterations without success, the loop MUST halt and the orchestrator MUST trigger an `AskUserQuestion` blocking call (no auto-resume timeout per CONST-V3R5-006) presenting the user with at least: (a) continue with manual investigation, (b) revert the offending change and re-plan, (c) abort with structured failure report. Semantic failures (data race, deadlock, panic, test assertion failure) MUST NOT be auto-patched without human approval per CONST-V3R5-010.
+
+### Logged at
+
+Every autofix iteration MUST be logged to `.moai/logs/ci-autofix/` with timestamp, patch summary, and CI result per CONST-V3R5-012.
+
+
+
 - Goal (single-paragraph task description)
 - Deliverables (concrete file/commit list)
 - Constraints (PRESERVE list, forbidden commands)
