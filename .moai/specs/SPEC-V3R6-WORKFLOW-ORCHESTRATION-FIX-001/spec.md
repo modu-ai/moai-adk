@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-WORKFLOW-ORCHESTRATION-FIX-001
 title: "Workflow orchestration architecture fix: 17 skip phases + autonomous mode selection"
-version: "0.1.1"
-status: draft
+version: "0.1.2"
+status: superseded
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -10,8 +10,9 @@ priority: P0
 phase: "v3.0.0"
 module: ".claude/skills/moai/workflows + .claude/rules/moai/* + .claude/agents/*"
 lifecycle: spec-anchored
-tags: "workflow, orchestration, gears, delegation, hierarchical, mode-selection, sprint-10, cohort-7"
+tags: "workflow, orchestration, gears, delegation, hierarchical, mode-selection, sprint-10, cohort-7, superseded"
 depends_on: [SPEC-V3R6-GEARS-MIGRATION-001, SPEC-V3R6-SKILL-GEARS-ALIGN-001, SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001]
+superseded_by: SPEC-V3R6-AGENT-TEAM-REBUILD-001
 tier: L
 ---
 
@@ -21,6 +22,7 @@ tier: L
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-25 | manager-spec | Initial Tier L spec authored from research.md synthesis (3 parallel research agents) — covers 6 findings + 12 recommendations R1-R12 + user-flagged Finding #6 (5-mode autonomous selection) |
 | 0.1.1 | 2026-05-25 | manager-spec | iter-2 focused fix per plan-auditor iter-1 PASS-WITH-DEBT 0.8625. D1 RESOLVED (acceptance.md §B REQ-WOF-013 trace fixed `spec.md §G R9` → `research.md §D.3 R9`). D3 RESOLVED (plan.md §C.1 Tier 5 → Tier 6 rename, spec.md §C.1 Tier 5 unchanged as canonical). D6 RESOLVED (NEW AC-WOF-018 multi-spawn parallel preference verifying REQ-WOF-013 Compound; AC total 17→18; §B Traceability Matrix updated). spec.md body unchanged in this iter; frontmatter version + HISTORY only. Predicted iter-2 plan-auditor: ~0.90 skip-eligible. |
+| 0.1.2 | 2026-05-25 | manager-spec | **Superseded by SPEC-V3R6-AGENT-TEAM-REBUILD-001** — Audit 3 findings (catalog inflation 17→5-8 vs Anthropic 3-built-in + 3-5-teammate ceiling + hierarchical fiction "subagents cannot spawn other subagents" per claude.com/docs/en/sub-agents + 12 phantom agents with 0 invocations across recent 4-SPEC cohort) require fundamental architecture pivot beyond original 17-phase-restoration scope. The restoration strategy is architecturally invalid because (a) Finding A2 makes `manager-strategy → manager-develop` chain impossible at runtime, (b) restoring phantom agents reinforces over-engineering rather than addressing it, (c) Finding A6's hook-based enforcement is the more reliable substitute for orchestrator-discipline phantom-agent spawns. Status transitioned `draft → superseded` per Status Transition Ownership Matrix `* → superseded` owner = manager-spec. Original status prior to supersedence: `draft`. spec.md / plan.md / acceptance.md / research.md / design.md body content untouched per L48 SSOT discipline; frontmatter-only modification scope. |
 
 ---
 
