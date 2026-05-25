@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001
 title: "Harness Namespace 누출 검증 및 정리 (§24 SSOT 자기 일관성)"
-version: "0.1.0"
-status: implemented
+version: "0.1.1"
+status: completed
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -24,6 +24,7 @@ tier: S
 | 날짜 | 버전 | 변경 내용 | 작성자 |
 |------|------|----------|--------|
 | 2026-05-25 | 0.1.0 | 초안 작성 — §24 SSOT 자기 일관성 검증 + 로컬 dev 프로젝트 누출 정리 | manager-spec |
+| 2026-05-25 | 0.1.1 | L60 spec.md status backfill — `implemented` → `completed`. progress.md 4-phase 완전 종료 (sync `378ef732d` + mx `4485c772f` + L60 atomic backfill `43e65bd03`) 상태였으나 spec.md frontmatter status drift 잔존 (L67 manager-docs scope-creep 패턴). Cross-file 일관성 복원. Body 변경 없음; frontmatter status + version만. | orchestrator |
 
 ## 1. 배경 (Why)
 
