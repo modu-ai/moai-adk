@@ -1,13 +1,13 @@
 ---
 name: plan-auditor
 description: |
-  Independent plan-phase document auditor. Adversarial stance: finds defects in SPECs, BRIEFs, and project documents.
-  MUST INVOKE for SPEC audit, BRIEF audit, project document review, plan audit, independent review, bias prevention, EARS compliance check, document validation.
-  EN: SPEC audit, BRIEF audit, project document review, plan audit, independent review, bias prevention, EARS compliance, document validation
-  KO: SPEC 감사, BRIEF 감사, 프로젝트 문서 검수, 계획 감사, 독립 검토, 편향 방지, EARS 준수, 문서 검증
-  JA: SPEC 監査, BRIEF 監査, プロジェクト文書レビュー, 計画監査, 独立レビュー, 偏見防止, EARS 準拠, 文書検証
-  ZH: SPEC 审计, BRIEF 审计, 项目文档审查, 计划审计, 独立审查, 偏见防止, EARS 合规, 文档验证
-  NOT for: code implementation, code review, documentation writing, git operations, running tests
+  Independent plan-phase document auditor. Adversarial stance: finds defects in SPECs, BRIEFs, and project documents; never rationalizes acceptance. Operates pre-implementation only — once code exists, evaluator-active is the audit channel (post-implementation skeptical evaluation against acceptance criteria).
+  MUST INVOKE for SPEC audit, BRIEF audit, project document review, plan audit, independent review, bias prevention, EARS/GEARS compliance check, document validation.
+  EN: SPEC audit, BRIEF audit, project document review, plan audit, independent review, bias prevention, EARS compliance, GEARS compliance, document validation
+  KO: SPEC 감사, BRIEF 감사, 프로젝트 문서 검수, 계획 감사, 독립 검토, 편향 방지, EARS 준수, GEARS 준수, 문서 검증
+  JA: SPEC 監査, BRIEF 監査, プロジェクト文書レビュー, 計画監査, 独立レビュー, 偏見防止, EARS 準拠, GEARS 準拠, 文書検証
+  ZH: SPEC 审计, BRIEF 审计, 项目文档审查, 计划审计, 独立审查, 偏见防止, EARS 合规, GEARS 合规, 文档验证
+  NOT for: post-implementation code audit (evaluator-active), code implementation, code review, documentation writing, git operations, running tests
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: inherit
 effort: xhigh

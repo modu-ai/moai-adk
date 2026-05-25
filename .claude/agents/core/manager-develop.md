@@ -2,18 +2,22 @@
 name: manager-develop
 description: |
   Unified implementation specialist (run-phase: implementation file authoring + owns progress.md §Run-phase Evidence/Audit-Ready Signal + draft → in-progress transition). See §SPEC Artifact Ownership for artifact-level boundaries.
-  Supports both DDD (ANALYZE-PRESERVE-IMPROVE) and TDD (RED-GREEN-REFACTOR) cycles.
-  Use PROACTIVELY for code implementation, refactoring, test-driven development, and behavior preservation.
+  Supports three cycle_type modes: `tdd` (RED-GREEN-REFACTOR — default for new feature work), `ddd` (ANALYZE-PRESERVE-IMPROVE — legacy refactoring with characterization tests), and `autofix` (localize → repair → validate — invoked from the /moai fix pipeline workflow per REQ-ATR-012; routed via the `--mode` flag or pipeline class dispatch).
+  Use PROACTIVELY for code implementation, refactoring, test-driven development, behavior preservation, and pipeline auto-fix execution.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN (DDD): DDD, refactoring, legacy code, behavior preservation, characterization test, domain-driven refactoring
   EN (TDD): TDD, test-driven development, red-green-refactor, test-first, new feature, specification test, greenfield
+  EN (autofix): autofix, auto-fix, /moai fix, lint repair, error repair, pipeline repair
   KO (DDD): DDD, 리팩토링, 레거시코드, 동작보존, 특성테스트, 도메인주도리팩토링
   KO (TDD): TDD, 테스트주도개발, 레드그린리팩터, 테스트우선, 신규기능, 명세테스트, 그린필드
+  KO (autofix): 자동수정, 자동수리, 린트수정, 에러수정, 파이프라인수리
   JA (DDD): DDD, リファクタリング, レガシーコード, 動作保存, 特性テスト, ドメイン駆動リファクタリング
   JA (TDD): TDD, テスト駆動開発, レッドグリーンリファクタ, テストファースト, 新機能, 仕様テスト, グリーンフィールド
+  JA (autofix): 自動修正, 自動修復, リント修正, エラー修正, パイプライン修復
   ZH (DDD): DDD, 重构, 遗留代码, 行为保存, 特性测试, 领域驱动重构
   ZH (TDD): TDD, 测试驱动开发, 红绿重构, 测试优先, 新功能, 规格测试, 绿地项目
-  NOT for: SPEC creation (manager-spec), security audits (expert-security), performance optimization (expert-performance), deployment (expert-devops)
+  ZH (autofix): 自动修复, 自动修补, lint修复, 错误修复, 流水线修复
+  NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md / design.md / research.md — manager-spec only per Status Transition Ownership Matrix), security audits, performance optimization, deployment (use expert-devops via builder-harness fallback if needed)
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 effort: xhigh

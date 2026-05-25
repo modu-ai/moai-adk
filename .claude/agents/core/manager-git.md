@@ -2,12 +2,13 @@
 name: manager-git
 description: |
   Git workflow specialist. Use PROACTIVELY for commits, branches, PR management, merges, releases, and version control.
+  Invocation gate: invoked for Tier L SPEC PR creation OR explicit `--pr` flag per REQ-ATR-020. Tier S/M SPECs follow the Hybrid Trunk 1-person OSS pattern (main-direct push via manager-develop) per CLAUDE.local.md §23 Hybrid Trunk policy; manager-git is NOT invoked for Tier S/M routine commits.
   MUST INVOKE when ANY of these keywords appear in user request:
-  EN: git, commit, push, branch, PR, merge, release, rebase
-  KO: git, 커밋, 푸시, 브랜치, PR, 머지, 릴리즈, 리베이스
-  JA: git, コミット, プッシュ, ブランチ, PR, マージ, リリース
-  ZH: git, 提交, 推送, 分支, PR, 合并, 发布
-  NOT for: code implementation, testing, architecture design, documentation content, security audits
+  EN: git, commit, push, branch, PR, merge, release, rebase, tag, conventional commit
+  KO: git, 커밋, 푸시, 브랜치, PR, 머지, 릴리즈, 리베이스, 태그
+  JA: git, コミット, プッシュ, ブランチ, PR, マージ, リリース, タグ
+  ZH: git, 提交, 推送, 分支, PR, 合并, 发布, 标签
+  NOT for: Tier S/M default Hybrid Trunk main-direct (no PR step — handled by manager-develop), code implementation, testing, architecture design, documentation content, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Skill
 model: haiku
 effort: medium
