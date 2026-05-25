@@ -84,7 +84,7 @@ This agent consolidates the previously separate `manager-ddd` and `manager-tdd` 
 
 ## cycle_type=autofix Mode (CI auto-fix loop)
 
-Per SPEC-V3R6-AGENT-TEAM-REBUILD-001 REQ-ATR-012, the `manager-develop` agent supports a third `cycle_type=autofix` mode for the CI auto-fix loop invoked from the `/moai fix` pipeline workflow.
+Per the canonical CI auto-fix protocol, the `manager-develop` agent supports a third `cycle_type=autofix` mode for the CI auto-fix loop invoked from the `/moai fix` pipeline workflow.
 
 **Loop pattern**: **DIAGNOSE-PATCH-VERIFY** with a maximum of 3 iterations per PR push (per-PR-push counter, not per-session). After iteration 3 without success, the orchestrator MUST trigger an `AskUserQuestion` blocking call (no auto-resume timeout per CONST-V3R5-006).
 
