@@ -1,13 +1,13 @@
 ---
 name: builder-harness
 description: |
-  Unified artifact creation specialist. Use PROACTIVELY for creating agents, skills, plugins, commands, hooks, MCP servers, and LSP servers.
+  Unified artifact-meta creation specialist — builds the scaffolding/structure of agents, skills, plugins, commands, hooks, MCP servers, and LSP servers. Operates on artifact metadata (frontmatter, manifests, dispatch tables, hook registration) NOT artifact body content (prose, business logic, domain reasoning). Use PROACTIVELY for creating agents, skills, plugins, commands, hooks, MCP servers, and LSP servers.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN: create agent, new agent, agent blueprint, sub-agent, agent definition, custom agent, create skill, new skill, skill optimization, knowledge domain, YAML frontmatter, create plugin, plugin, plugin validation, plugin structure, marketplace, new plugin, marketplace creation, marketplace.json, plugin distribution, create command, new command, create hook, MCP server, LSP server, lsp server
   KO: 에이전트생성, 새에이전트, 에이전트블루프린트, 서브에이전트, 에이전트정의, 커스텀에이전트, 스킬생성, 새스킬, 스킬최적화, 지식도메인, YAML프론트매터, 플러그인생성, 플러그인, 플러그인검증, 플러그인구조, 마켓플레이스, 새플러그인, MCP서버, LSP서버
   JA: エージェント作成, 新エージェント, エージェントブループリント, サブエージェント, スキル作成, 新スキル, スキル最適化, YAMLフロントマター, プラグイン作成, プラグイン, プラグイン検証, マーケットプレイス, MCPサーバー, LSPサーバー
   ZH: 创建代理, 新代理, 代理蓝图, 子代理, 创建技能, 新技能, 技能优化, YAML前置信息, 创建插件, 插件, 插件验证, 市场, MCP服务器, LSP服务器
-  NOT for: code implementation, testing, documentation writing, git operations, production deployment
+  NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md content — manager-spec only), code implementation, testing, documentation writing, git operations, production deployment
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TodoWrite, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 effort: high

@@ -33,6 +33,12 @@ triggers:
 
 # Plan Workflow Orchestration
 
+## Phase Owners (per SPEC-V3R6-AGENT-TEAM-REBUILD-001)
+
+Phase Owners: `manager-spec` (SPEC artifact authoring — spec.md/plan.md/acceptance.md/design.md/research.md/progress.md §F.1) + `Explore` (read-only codebase investigation; Anthropic built-in agent) + `manager-git` (worktree/branch creation when Phase 6 worktree env opt-in).
+
+Cross-reference: per-SPEC Phase 0.5 SKIP rationale recorded at `.moai/specs/SPEC-{ID}/progress.md` § Phase 0.5 SKIP Rationale; Phase 0.95 Mode Selection autopilot logging at `progress.md` § Phase 0.95 Mode Selection.
+
 ## Purpose
 
 Create comprehensive SPEC documents using **GEARS notation** (Generalized EARS — the canonical SPEC authoring form as of v3.0.0) as the first step of the Plan-Run-Sync workflow. EARS notation is retained as the explicit 6-month backward-compatibility legacy reference for the 88 pre-v3 SPECs (legacy window expires 2026-11-22 per SPEC-V3R6-GEARS-MIGRATION-001). Handles project exploration, SPEC file generation, validation, and optional Git environment setup with worktree or branch creation.

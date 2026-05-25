@@ -198,3 +198,76 @@ Maps to **Expert Pool** singleton. A single expert agent handles all tasks of a 
 
 ### Pipeline
 Generic **Pipeline** pattern. Sequential stages with each agent's output feeding the next. Already native to MoAI workflows. Use when linear dependency is explicit: requirements → design → implement → test → ship.
+
+---
+
+## Per-Spawn Domain Specialization
+
+Per SPEC-V3R6-AGENT-TEAM-REBUILD-001 Finding A5 (Anthropic 2026 alignment), domain expertise is canonically delivered through **per-spawn parameter injection**, not through static agent definition files. This replaces the 6 archived `expert-*` agents (backend, frontend, security, devops, performance, refactoring) that were retired on 2026-05-25 because they failed Anthropic's "Define a custom subagent when you keep spawning the same kind of worker with the same instructions" criterion (0 invocations across the recent 4-SPEC cohort).
+
+### Canonical Spawn Pattern
+
+```
+Agent(
+  subagent_type: "general-purpose",
+  model: "opus",
+  tools: "<domain-specific tool whitelist as CSV>",
+  prompt: "You are a <domain> specialist. <domain-specific instructions tailored to the current task>"
+)
+```
+
+The orchestrator composes the domain instructions inline at delegation time rather than referencing a pre-authored agent body. Domain knowledge lives in the active conversation context, not trapped inside individual agent files loaded only when explicitly invoked.
+
+### Per-Domain Tool Whitelist Recommendations
+
+| Domain | Recommended tools whitelist |
+|--------|------------------------------|
+| backend | `Read, Write, Edit, Bash, Grep, Glob` |
+| frontend | `Read, Write, Edit, Bash, Grep, Glob` |
+| security (review) | `Read, Grep, Bash` (read-only review surface; Write only if patching) |
+| devops | `Read, Write, Edit, Bash, Grep, Glob` |
+| performance | `Read, Bash, Grep, Glob` (profiling tools via Bash; no Write unless adding benchmarks) |
+| refactoring | `Read, Write, Edit, Grep, Glob, Bash` |
+
+### When to Author a Static Agent File Instead
+
+Reserve `.claude/agents/*.md` static files for agents meeting Anthropic's "keep spawning the same kind of worker with the same instructions" criterion. The 7 MoAI-custom retained agents (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `evaluator-active`, `builder-harness`) all satisfy this criterion via recurring SPEC-phase invocations. Domain-specific work that does NOT recur with identical instructions across SPEC sessions belongs in per-spawn pattern, not in a static file.
+
+See `.claude/rules/moai/development/agent-authoring.md` § Static Agent File vs Per-Spawn Specialization Decision Tree for the authoring decision tree.
+
+---
+
+## Read-only Investigation — Explore Canonical Agent
+
+Per Finding A1 (Anthropic ships exactly 3 built-in subagents: Explore, Plan, general-purpose), the Anthropic built-in `Explore` agent is the canonical read-only investigation surface for the MoAI orchestrator. This replaces the archived `claude-code-guide` and `researcher` custom agents (both retired on 2026-05-25 for 0-invocation phantom-agent failure).
+
+### Canonical Spawn Pattern
+
+```
+Agent(subagent_type: "Explore", prompt: "<investigation task description>")
+```
+
+`Explore` is Anthropic-shipped and not a MoAI file; it lives in the Claude Code runtime. No customization is performed.
+
+### Use Cases
+
+- Codebase exploration (find files matching patterns, summarize package structure)
+- Upstream documentation investigation (fetch and analyze Claude Code release notes, library API surface)
+- Auto-research (gather context on unfamiliar libraries, APIs, or domain concepts)
+- Pre-flight reconnaissance before delegating implementation work (build a context summary the implementation agent consumes)
+
+### Not for
+
+- Implementation work — `Explore` is read-only; route Write/Edit work to `manager-develop` or a per-spawn `Agent(general-purpose, ...)` specialist
+- SPEC body authoring — that is `manager-spec`'s scope
+- Sync-phase documentation — that is `manager-docs`'s scope
+
+---
+
+## Deprecated: Hierarchical Manager Chain Pattern
+
+The `manager-strategy → manager-develop` hierarchical chain pattern (previously documented as a viable Pattern 6 Hierarchical Delegation variant for MoAI workflows) is **deprecated** as of SPEC-V3R6-AGENT-TEAM-REBUILD-001. Anthropic Sub-agents documentation states verbatim: *"Subagents cannot spawn other subagents. If your workflow requires nested delegation, use Skills or chain subagents from the main conversation."* The MoAI `manager-strategy → manager-develop` chain is therefore architecturally impossible to execute at runtime — the chain pattern was a documentation fiction rather than a runtime reality.
+
+All multi-agent coordination MUST happen at the **orchestrator (L1) level** in the main conversation. The 8-agent retention graph (see `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/design.md` §B.1) respects this constraint: all retained sub-agents are leaves of the L1 orchestrator, never branches that recurse into further sub-agent spawns.
+
+For migration from `manager-strategy` references in existing code, paste-ready resumes, or documentation, see `.claude/rules/moai/workflow/archived-agent-rejection.md` § Migration Table — the canonical replacement for the planning role absorbed by `manager-strategy` is `manager-spec` (planning IS strategy per Anthropic 4-phase Step 2).

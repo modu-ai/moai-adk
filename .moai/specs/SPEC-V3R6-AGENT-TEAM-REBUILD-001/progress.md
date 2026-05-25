@@ -45,9 +45,9 @@ Per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transi
 | 1 | Run-phase M3 — Archive 12 phantom agents | manager-develop | COMPLETED | `476b04ffb` | REQ-ATR-005 |
 | 1 | Run-phase M4 — 3 NEW hook scripts | manager-develop | COMPLETED | `fdd4aa37a` | REQ-ATR-009 + REQ-ATR-014 |
 | 1 | Run-phase M5 — Rule files (2 NEW + 8 modified) | manager-develop | COMPLETED | `498ea18a2` | REQ-ATR-007/008/012/016/020 |
-| 1 | Run-phase M6 — Predecessor SPEC supersedence verify + AC-ATR-012 reinforcement | orchestrator (verify) + manager-spec (original plan-phase transition) | COMPLETED | `<this-commit>` | REQ-ATR-006 (supersedence already applied at plan-phase `b957a4d04`; M6 verifies + adds AC-ATR-012 boost via manager-develop.md cycle_type=autofix body refinement, grep count 1 → ≥3) |
-| 1 | Run-phase M7 — CLAUDE.md + CLAUDE.local.md + NOTICE.md | manager-develop | COMPLETED | `<this-commit>` | REQ-ATR-001/015/019/020 |
-| 1 | Run-phase M8 — Template parity + verification batch | manager-develop | NOT-STARTED | `<pending>` | REQ-ATR-018 |
+| 1 | Run-phase M6 — Predecessor SPEC supersedence verify + AC-ATR-012 reinforcement | orchestrator (verify) + manager-spec (original plan-phase transition) | COMPLETED | `3136733f6` | REQ-ATR-006 (supersedence already applied at plan-phase `b957a4d04`; M6 verifies + adds AC-ATR-012 boost via manager-develop.md cycle_type=autofix body refinement, grep count 1 → 7) |
+| 1 | Run-phase M7 — CLAUDE.md + CLAUDE.local.md + NOTICE.md | manager-develop | COMPLETED | `4f37a7643` | REQ-ATR-001/015/019/020 — NOTICE.md path variance documented (canonical: `.claude/rules/moai/NOTICE.md`) |
+| 1 | Run-phase M8 — Template parity + verification batch (PROCEED-WITH-DEBT) | orchestrator-direct | COMPLETED | `<this-commit>` | REQ-ATR-018 + catalog.yaml 12-archived purge + AC-ATR-018 PASS (parity); 8 Go test fails (1 pre-existing path drift + 7 architectural-pivot consequences) deferred to follow-up SPEC-V3R6-TEST-REFACTOR-001 per user PROCEED-WITH-DEBT directive |
 | 2 | Sync-phase | manager-docs | NOT-STARTED | `<pending>` | CHANGELOG + 5 frontmatter `status: implemented` |
 | 3 | Mx-phase | orchestrator | NOT-STARTED | `<pending>` | Step C judgement (expected EVALUATE-SKIP per markdown-heavy) |
 | 4 | 4-phase close | orchestrator | NOT-STARTED | `<pending>` | `status: implemented → completed` + L60 atomic backfill |
@@ -249,6 +249,88 @@ The plan.md §D.8 and spec.md §C.1 reference `.claude/rules/moai/workflow/git-w
 | AC-ATR-020 (CLAUDE.local.md side) | `grep -c "Tier L.*--pr\|--pr.*manager-git\|Tier L OR.*pr" CLAUDE.local.md` | ≥ 1 | 6 | **PASS** |
 | AC-ATR-020 (sync.md baseline, M2) | `grep -c "Tier L.*--pr\|--pr.*manager-git\|Tier L OR.*pr" .claude/skills/moai/workflows/sync.md` | ≥ 1 | 1 | **PASS** (M2 baseline) |
 | AC-ATR-021 | `grep -A 30 "## 4. Agent Catalog" CLAUDE.md \| grep -c "manager-strategy\|manager-quality\|manager-brain\|manager-project\|claude-code-guide\|expert-backend\|expert-frontend\|expert-security\|expert-devops\|expert-performance\|expert-refactoring"` | 0 | 0 | **PASS** |
+
+### §F.2.8 — M8 Run-phase Audit-Ready Signal (orchestrator-direct, PROCEED-WITH-DEBT)
+
+**Commit**: `<this-commit>` `feat(SPEC-V3R6-AGENT-TEAM-REBUILD-001): M8 — template parity + catalog.yaml 12-archived purge + 7-item verification batch (PROCEED-WITH-DEBT)`
+**Date**: 2026-05-25
+**Files**: ~30 modified (template mirror sync of M1-M7 work + catalog.yaml + embedded.go regen + archive cleanup)
+
+### M8 work breakdown
+
+**Template archive completion** (M3 was incomplete — local only, template still had 12 archived agents):
+- Removed 11 archived agents from `internal/template/templates/.claude/agents/`: `manager-{strategy,quality,brain,project}.md` (core) + `claude-code-guide.md` (meta) + 6 `expert-*.md` (expert)
+- Archived template's `researcher.md` to `.moai/backups/agent-archive-2026-05-25/meta/researcher.md` (preserves source for history)
+- Also archived local's `.claude/agents/meta/researcher.md` (M3 missed — plan.md §C.1 Tier 2 listed wrong path `agency/`, actual location was `meta/`)
+- **Final archive: 12 .md + README.md = 13 files** (12 archived agents preserved + documentation README)
+
+**Template mirror sync** (M1-M7 modifications synced byte-for-byte):
+- 7 retained agents (M1 frontmatter + M6 manager-develop.md cycle_type=autofix)
+- 3 workflow routers (M2)
+- 3 NEW hook scripts (M4) + executable bit preserved
+- 2 NEW rule files (M5: orchestration-mode-selection.md + archived-agent-rejection.md)
+- 6 modified rule files (M5)
+- NOTICE.md (M7 attribution — canonical `.claude/rules/moai/NOTICE.md`)
+- moai-foundation-core SKILL.md (M5)
+
+**Catalog manifest cleanup** (`internal/template/catalog.yaml`):
+- Removed 12 archived agent entries (7 from core tier + 5 from optional-packs backend/deployment/devops/frontend)
+- `optional_packs.{backend,deployment,devops,frontend}.agents` set to `[]` (skills preserved where present)
+- `optional_packs.deployment` now skills:[]+agents:[] — empty pack metadata preserved per catalog schema
+- `make build` regenerated `internal/template/embedded.go` + hashes for 7 retained agents
+- catalog.yaml grep for archived names = 0 ✓
+
+### M8 AC verification
+
+| AC | Verification | Expected | Actual | Status |
+|----|--------------|----------|--------|--------|
+| AC-ATR-018 (agents parity) | `diff -rq .claude/agents/core/ template/agents/core/ \| wc -l` | 0 | 0 | **PASS** |
+| AC-ATR-018 (meta parity) | `diff -rq .claude/agents/meta/ template/agents/meta/ \| wc -l` | 0 | 0 | **PASS** |
+| AC-ATR-018 (workflow routers parity) | per-file `diff -q` | empty | empty | **PASS** |
+| AC-ATR-018 (hooks parity) | 3 NEW hooks per-file diff | empty | empty | **PASS** |
+| AC-ATR-018 (rule files parity) | 10 M5 files per-file diff | empty | empty | **PASS** |
+| AC-ATR-001 (local active 7 retained + 0 phantom) | `find .claude/agents/{core,meta}/ -name "*.md" \| wc -l` | 7 | 7 | **PASS** |
+| AC-ATR-001 (template active 7 retained + 0 phantom) | `find internal/template/templates/.claude/agents/ -name "*.md" \| wc -l` | 7 | 7 | **PASS** |
+| AC-ATR-005 (archive 11 or 12) | `find .moai/backups/agent-archive-2026-05-25/ -name "*.md" -not -name "README*" \| wc -l` | 11 or 12 | 12 | **PASS** |
+
+### 7-item Trust-but-verify batch results
+
+| # | Verification | Status |
+|---|--------------|--------|
+| 1 | `go test ./...` (full Go suite) | **FAIL (8 tests)** — see §M8 Test Debt below |
+| 2 | Coverage report (internal/template) | 84.8% (baseline; degraded due to test fails) |
+| 3 | Subagent-boundary grep (C-HRA-008) | **PASS** (3 NEW hooks contain no executable `AskUserQuestion(`) |
+| 4 | Archived-agent reference scan (active paths) | **PASS** (only L1 worktree ephemeral matches; 0 in `.claude/agents/` + `internal/template/templates/`) |
+| 5 | CLI smoke (`go run ./cmd/moai --version`) | **PASS** — `moai-adk v3.0.0-rc1` |
+| 6 | `make build` + embedded.go regen | **PASS** — catalog.yaml updated 11204 bytes + hashes regenerated for 7 retained agents |
+| 7 | `golangci-lint run --timeout=2m` | **PASS** — 0 issues |
+
+### M8 Test Debt (PROCEED-WITH-DEBT per user AskUserQuestion 2026-05-25)
+
+8 Go test fails fall into 2 categories:
+
+**Pre-existing (NOT M8-caused, was failing before M8)**:
+- `TestRetirementCompletenessAssertion/manager-{tdd,ddd}_replacement_manager-develop_must_exist` — test author path drift expects `.claude/agents/moai/manager-develop.md`, actual location `.claude/agents/core/manager-develop.md` per SPEC-V3R6-AGENT-FOLDER-SPLIT-001 split. Predates M8 by months.
+
+**M8-caused (architectural pivot consequences)**:
+- `TestContractSchemaVerification/manager-quality.md` — test specifically expects `manager-quality.md` contract validation (archived 2026-05-25, no longer exists in active paths)
+- `TestBackwardCompatibility` — likely tests 17-agent backward compatibility surface
+- `TestContractAssertionsNaturalLanguage` — natural-language assertion catalog references archived agents
+- `TestAgentFrontmatterAudit` — frontmatter audit walks all active agent files; assumes 17 entries
+- `TestEmbeddedTemplates_AgentDefinitions` — expects ≥15 agent .md files across all domain subfolders; now 7
+- `TestTemplateAgentsStructure` — expects `.claude/agents/expert/` subdir; now empty after expert-* removal
+- `TestAllAgentsInCatalog` — expects 19 agent files on disk via catalog.yaml; now 7
+- `TestLoadCatalog`, `TestLoadEmbeddedCatalog_Success` — catalog assertion baked to old 19-entry assumption
+
+**Resolution path**: follow-up SPEC `SPEC-V3R6-TEST-REFACTOR-001` (placeholder name — actual ID TBD) shall refactor the 8 tests to embed the new 8-agent architecture assumption. M8 commits the architectural pivot; test refactor is incremental cleanup that can land in the next SPEC.
+
+**User AskUserQuestion decision rationale** (2026-05-25): Tests embed assumptions about the OLD 17-agent architecture (pre-SPEC-V3R6-AGENT-TEAM-REBUILD-001). The architectural pivot is the SPEC's core deliverable; test refactor to match the new architecture is incremental cleanup, not a blocker to commit/push. Selected Option A (PROCEED-WITH-DEBT) for scope discipline.
+
+**Documented dimensions of failure** (for follow-up SPEC):
+1. count assertions: 19 → 7 (or 8 with Explore documentation)
+2. path expectations: `expert/` subdir non-empty → may be empty
+3. contract file expectations: manager-quality.md, expert-*.md → absent
+4. backward-compat assertions: 17-agent surface → 8-agent surface
 
 ### §F.3 Sync-phase Audit-Ready Signal (manager-docs scope — NOT-STARTED)
 

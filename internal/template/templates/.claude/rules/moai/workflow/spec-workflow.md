@@ -11,8 +11,10 @@ MoAI's three-phase development workflow with token budget management.
 | Phase | Command | Agent | Token Budget | Purpose |
 |-------|---------|-------|--------------|---------|
 | Plan | /moai plan | manager-spec | 30K | Create SPEC document |
-| Run | /moai run | manager-develop (per quality.yaml development_mode) | 180K | DDD/TDD implementation |
+| Run | /moai run | manager-develop (per quality.yaml development_mode; cycle_type=ddd / tdd / autofix) | 180K | DDD / TDD / autofix implementation |
 | Sync | /moai sync | manager-docs | 40K | Documentation sync |
+
+Per SPEC-V3R6-AGENT-TEAM-REBUILD-001, the MoAI agent catalog consists of exactly 8 retained agents (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `evaluator-active`, `builder-harness`, plus the Anthropic built-in `Explore`). 12 phantom and domain-expert agents (`manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, and the 6 `expert-*` agents) were archived to `.moai/backups/agent-archive-2026-05-25/` on 2026-05-25. For migration guidance and the per-archived-agent replacement pattern, see `.claude/rules/moai/workflow/archived-agent-rejection.md`.
 
 <!-- @MX:ANCHOR fan_in=10 - Subcommand classification single source of truth; cross-referenced by 10 workflow skills (5 multi-agent + 5 utility). Changes here affect all workflow contracts. -->
 
@@ -246,7 +248,7 @@ Communication path:
 - MoAI presents gap analysis to user via AskUserQuestion with options:
   - Continue with current approach (minor adjustments needed)
   - Revise SPEC (requirements need refinement)
-  - Try alternative approach (re-delegate to manager-strategy)
+  - Try alternative approach (re-spawn manager-develop with revised cycle_type, or escalate to a per-spawn `Agent(general-purpose)` specialist with domain-specific instructions per `.claude/rules/moai/workflow/archived-agent-rejection.md` migration table)
   - Pause for manual intervention (user takes over)
 
 Detection method:
