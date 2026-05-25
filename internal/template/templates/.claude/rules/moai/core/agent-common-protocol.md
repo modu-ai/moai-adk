@@ -34,7 +34,7 @@ Canonical reference: see `.claude/rules/moai/core/askuser-protocol.md` for full 
 
 ### Hook Invocation Surface
 
-Per SPEC-V3R6-AGENT-TEAM-REBUILD-001 REQ-ATR-009 + REQ-ATR-014, the orchestrator interacts with three NEW hook scripts that mechanically enforce orchestrator-discipline obligations previously delegated to phantom `manager-quality` / `expert-security` spawn calls:
+Per the canonical hook invocation surface policy, the orchestrator interacts with three NEW hook scripts that mechanically enforce orchestrator-discipline obligations previously delegated to phantom `manager-quality` / `expert-security` spawn calls:
 
 | Hook script | Trigger | Owning REQ | Exit-code semantics |
 |-------------|---------|------------|---------------------|

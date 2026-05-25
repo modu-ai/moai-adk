@@ -48,7 +48,7 @@ violator: <agent-name>
 context: <spawn-call | paste-ready-resume | workflow-skill | other>
 canonical_replacement: <see migration table in §C below>
 migration_doc: .claude/rules/moai/workflow/archived-agent-rejection.md §C
-retention_matrix: .moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/spec.md §B.3
+retention_matrix: .moai/specs/the canonical agent catalog policy/spec.md §B.3
 ```
 
 Note: the orchestrator generates the prose summary above and surfaces it via the response body and (when applicable) via the `AskUserQuestion` prompt body. Subagents themselves MUST NOT invoke `AskUserQuestion` per the orchestrator-subagent boundary in `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary; the orchestrator translates the rejection into the user-facing prompt.
@@ -95,7 +95,7 @@ Anthropic's recommended pattern for domain expertise is per-spawn parameter inje
 
 ### §C.2 Why hook-based enforcement (Finding A6)
 
-`manager-quality` (#2) and `expert-security` (#9) overlap with Anthropic's published hook patterns (Stop, PostToolUse, SubagentStop, TaskCompleted). The Stop hook (`sync-phase-quality-gate.sh` per `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/design.md` §D.2) mechanically enforces lint + test + coverage-delta + dependency-manifest audit at every sync-phase commit, which is more reliable than orchestrator-discipline phantom-agent spawn calls that historically went unfulfilled.
+`manager-quality` (#2) and `expert-security` (#9) overlap with Anthropic's published hook patterns (Stop, PostToolUse, SubagentStop, TaskCompleted). The Stop hook (`sync-phase-quality-gate.sh` per `.moai/specs/the canonical agent catalog policy/design.md` §D.2) mechanically enforces lint + test + coverage-delta + dependency-manifest audit at every sync-phase commit, which is more reliable than orchestrator-discipline phantom-agent spawn calls that historically went unfulfilled.
 
 ---
 
@@ -144,26 +144,26 @@ The following patterns violate the archived-agent rejection contract:
 - **Paste-ready resume → autonomous execution without GATE-2** — when a paste-ready resume references an archived agent and the orchestrator silently substitutes, the user loses the GATE-2 plan-to-implement gate signal (EC-ATR-008 + REQ-ATR-015 cross-reference)
 - **Skipping the `ToolSearch` preload before `AskUserQuestion`** — `AskUserQuestion` is a deferred tool; the orchestrator MUST `ToolSearch(query: "select:AskUserQuestion")` per `.claude/rules/moai/core/askuser-protocol.md` § ToolSearch Preload Procedure
 - **Returning an `AskUserQuestion` invocation from a subagent body** — subagents MUST NOT prompt the user; this is the orchestrator's responsibility (CLAUDE.md §8 + agent-common-protocol.md § User Interaction Boundary). If a subagent encounters an archived-agent reference in its scope, it returns a structured blocker report and the orchestrator runs the recovery flow
-- **Updating an archived agent's body content** — archived agents under `.moai/backups/agent-archive-2026-05-25/` are read-only historical preservation; future revival requires a dedicated revival SPEC, not a body modification
+- **Updating an archived agent's body content** — archived agents under `the archived-agent backup directory` are read-only historical preservation; future revival requires a dedicated revival SPEC, not a body modification
 
 ---
 
 ## §F — Cross-References
 
-- `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/spec.md` §B.3 — retain-vs-archive matrix (design-time SSOT for the 8-retain / 12-archive decision with per-agent rationale and Anthropic citations)
-- `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/design.md` §B.5 — design-level migration table (this rule's §C is the canonical runtime SSOT)
-- `.moai/backups/agent-archive-2026-05-25/README.md` — archive backup directory with per-agent README entries
+- `.moai/specs/the canonical agent catalog policy/spec.md` §B.3 — retain-vs-archive matrix (design-time SSOT for the 8-retain / 12-archive decision with per-agent rationale and Anthropic citations)
+- `.moai/specs/the canonical agent catalog policy/design.md` §B.5 — design-level migration table (this rule's §C is the canonical runtime SSOT)
+- `the archived-agent backup directoryREADME.md` — archive backup directory with per-agent README entries
 - `.claude/rules/moai/workflow/orchestration-mode-selection.md` — sibling rule documenting the 5-mode autonomous selection at Phase 0.95 (independent of archived-agent rejection)
 - `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary — orchestrator-subagent boundary (subagents return blocker reports; orchestrator runs `AskUserQuestion`)
 - `.claude/rules/moai/core/askuser-protocol.md` § ToolSearch Preload Procedure — deferred tool preload contract
 - `.claude/rules/moai/development/agent-patterns.md` § Per-Spawn Domain Specialization — canonical per-spawn-prompt pattern documentation (Finding A5 implementation)
 - `.claude/rules/moai/development/agent-patterns.md` § Read-only Investigation — `Explore` canonical reference (Finding A1 implementation for rows #5, #6)
-- `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/acceptance.md` AC-ATR-016 — verification commands for this rule's §A error token + §C migration table coverage
+- `.moai/specs/the canonical agent catalog policy/acceptance.md` AC-ATR-016 — verification commands for this rule's §A error token + §C migration table coverage
 - Anthropic Sub-agents documentation — *"Subagents cannot spawn other subagents. If your workflow requires nested delegation, use Skills or chain subagents from the main conversation."*
 - Anthropic best-practices documentation — *"Define a custom subagent when you keep spawning the same kind of worker with the same instructions."*
 
 ---
 
 Version: 1.0.0
-Origin: SPEC-V3R6-AGENT-TEAM-REBUILD-001 (M5)
+Origin: the canonical agent catalog policy (M5)
 Status: Active — applies to all `Agent()` spawn attempts and paste-ready resume executions
