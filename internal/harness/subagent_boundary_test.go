@@ -16,16 +16,28 @@ import (
 
 // TestSubagentBoundary_NoAskUserQuestion is the C-HRA-008 binary CI guard.
 // It walks internal/harness/ and internal/hook/ and fails if any .go source file
-// contains a non-comment line with the literal strings "AskUserQuestion" or "mcp__askuser".
+// contains an actual call-site invocation of AskUserQuestion or mcp__askuser.
 //
-// Comment lines (lines starting with optional whitespace + "//") are excluded because
-// all harness/hook packages document their non-invocation in godoc comments (e.g.,
-// "// [HARD] No AskUserQuestion calls. Blocker reports are emitted..."). Those comment
-// lines are precisely the intended documentation pattern. What C-HRA-008 forbids is
-// actual Go call-site invocations in executable code — not explanatory comments.
+// Detection strategy (post REQ-TST-011 / SPEC-V3R6-TEST-REFACTOR-001 M4 refinement):
+// The guard targets ACTUAL call-site signatures — `AskUserQuestion(` or
+// `mcp__askuser(` with an open paren attached. This avoids false-positives when
+// the harness emits SPEC template content that legitimately mentions the
+// "AskUserQuestion gate" in human-readable prose (e.g., proposalgen scaffolder
+// writing a §5.2 Out-of-Scope section describing the orchestrator's
+// AskUserQuestion gate semantics — that is documentation OUTPUT, not a call).
 //
-// Test files (*_test.go) are also excluded — they may reference sentinel names
-// in comment blocks for documentation or guard purposes.
+// What C-HRA-008 forbids is executable Go invocations of the prohibited tools
+// from harness/hook source files — not the literal occurrence of the word in
+// string literals or comments.
+//
+// Excluded contexts:
+//   - Comment lines (lines starting with optional whitespace + "//")
+//   - Test files (*_test.go) — they may reference sentinel names in comments
+//     for documentation or guard purposes.
+//
+// SPEC anchor: SPEC-V3R6-AGENT-TEAM-REBUILD-001 §B.5 (no harness AskUserQuestion
+// callsite). M4 of SPEC-V3R6-TEST-REFACTOR-001 refines detection to call-site
+// patterns to eliminate false-positive on documentation prose in code.
 func TestSubagentBoundary_NoAskUserQuestion(t *testing.T) {
 	t.Parallel()
 
@@ -42,9 +54,18 @@ func TestSubagentBoundary_NoAskUserQuestion(t *testing.T) {
 		filepath.Join(projectRoot, "internal", "hook"),
 	}
 
-	forbidden := []string{
-		"AskUserQuestion",
-		"mcp__askuser",
+	// Detect ACTUAL call-site patterns (open-paren attached). This matches:
+	//   AskUserQuestion(...)
+	//   mcp__askuser(...)
+	//   client.AskUserQuestion(...)
+	//   askuser.AskUserQuestion(...)
+	// while NOT matching:
+	//   - documentation prose: "the AskUserQuestion gate"
+	//   - string literals: "Use AskUserQuestion to ..."
+	//   - bare type/identifier references without invocation
+	forbiddenCallsite := []string{
+		"AskUserQuestion(",
+		"mcp__askuser(",
 	}
 
 	var violations []string
@@ -77,10 +98,10 @@ func TestSubagentBoundary_NoAskUserQuestion(t *testing.T) {
 				if strings.HasPrefix(trimmed, "//") {
 					continue
 				}
-				for _, needle := range forbidden {
+				for _, needle := range forbiddenCallsite {
 					if strings.Contains(line, needle) {
 						rel, _ := filepath.Rel(projectRoot, path)
-						violations = append(violations, fmt.Sprintf("%s:%d: non-comment line contains %q", rel, lineNum+1, needle))
+						violations = append(violations, fmt.Sprintf("%s:%d: non-comment line contains call-site %q", rel, lineNum+1, needle))
 					}
 				}
 			}
@@ -92,7 +113,7 @@ func TestSubagentBoundary_NoAskUserQuestion(t *testing.T) {
 	}
 
 	if len(violations) > 0 {
-		t.Errorf("C-HRA-008 VIOLATED — AskUserQuestion/mcp__askuser found in harness/hook source (executable code, not comments):\n%s",
+		t.Errorf("C-HRA-008 VIOLATED — AskUserQuestion/mcp__askuser call-site found in harness/hook source (executable code, not comments or string literals):\n%s",
 			strings.Join(violations, "\n"))
 	}
 }
