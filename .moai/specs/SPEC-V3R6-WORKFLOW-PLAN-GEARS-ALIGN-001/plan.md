@@ -90,7 +90,7 @@ Predecessor pattern observed from FOUNDATION-CORE-GEARS-ALIGN-001 `0156c7003` (T
 - `plan/` directory differs only by `.gitkeep` (template-only, presentational)
 - All 3 plan/ sub-files (`clarity-interview.md`, `context-discovery.md`, `spec-assembly.md`) byte-identical local vs mirror
 
-### §C.2 Notation reference distribution (13 total)
+### §C.2 Notation reference distribution (13 EARS refs / 14 edit zones)
 
 | File | Line ranges | EARS refs | Edit zones |
 |------|-------------|-----------|------------|

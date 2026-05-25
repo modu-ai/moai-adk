@@ -1,17 +1,18 @@
 ---
 name: moai-workflow-plan
 description: >
-  Creates comprehensive SPEC documents using EARS format as the first step
+  Creates comprehensive SPEC documents using GEARS notation (EARS retained
+  as legacy reference, 6-month backward-compat window) as the first step
   of the Plan-Run-Sync workflow. Handles project exploration, SPEC file
   generation, validation, and optional Git environment setup with worktree
   or branch creation. Use when planning features or creating specifications.
 user-invocable: false
 metadata:
-  version: "2.6.0"
+  version: "2.7.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-23"
-  tags: "plan, spec, ears, requirements, specification, design"
+  updated: "2026-05-25"
+  tags: "plan, spec, gears, ears, requirements, specification, design"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -34,7 +35,9 @@ triggers:
 
 ## Purpose
 
-Create comprehensive SPEC documents using EARS format as the first step of the Plan-Run-Sync workflow. Handles project exploration, SPEC file generation, validation, and optional Git environment setup with worktree or branch creation.
+Create comprehensive SPEC documents using **GEARS notation** (Generalized EARS — the canonical SPEC authoring form as of v3.0.0) as the first step of the Plan-Run-Sync workflow. EARS notation is retained as the explicit 6-month backward-compatibility legacy reference for the 88 pre-v3 SPECs (legacy window expires 2026-11-22 per SPEC-V3R6-GEARS-MIGRATION-001). Handles project exploration, SPEC file generation, validation, and optional Git environment setup with worktree or branch creation.
+
+Canonical GEARS authoring guide: `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format.
 
 For phase overview and token budgets, see: `.claude/rules/moai/workflow/spec-workflow.md`
 
@@ -51,7 +54,7 @@ For phase overview and token budgets, see: `.claude/rules/moai/workflow/spec-wor
 | Phase 0.4: UltraThink Auto-Activation | `plan/clarity-interview.md` | Complexity-based extended reasoning activation |
 | Phase 0.5: Deep Research | `plan/clarity-interview.md` | Explore subagent research.md artifact |
 | Phase 1.25: Design Direction | `plan/clarity-interview.md` | UI/UX intent-first design direction |
-| Phase 1B: SPEC Planning | `plan/clarity-interview.md` | manager-spec EARS structure + candidate proposal |
+| Phase 1B: SPEC Planning | `plan/clarity-interview.md` | manager-spec GEARS structure (EARS legacy retained) + candidate proposal |
 | Decision Point 1 + Annotation Cycle | `plan/clarity-interview.md` | Plan review HUMAN GATE + 1-6 iteration cycle |
 | Phase 1.5: Pre-Creation Validation | `plan/spec-assembly.md` | Document type classification + SPEC ID validation |
 | Phase 2: SPEC Document Creation | `plan/spec-assembly.md` | spec.md + plan.md + acceptance.md + spec-compact.md |
@@ -59,7 +62,7 @@ For phase overview and token budgets, see: `.claude/rules/moai/workflow/spec-wor
 | Phase 2.5: GitHub Issue Creation | `plan/spec-assembly.md` | gh issue create + bidirectional reference |
 | Phase 3: Git Environment Setup | `plan/spec-assembly.md` | BODP Gate + Worktree/Branch/Current path |
 | Phase 3.5: MX Tag Planning | `plan/spec-assembly.md` | ANCHOR/WARN/NOTE target identification |
-| Phase 3.6: SPEC Quality Gate | `plan/spec-assembly.md` | EARS ↔ AC coverage + security scope check |
+| Phase 3.6: SPEC Quality Gate | `plan/spec-assembly.md` | GEARS ↔ AC coverage (EARS legacy form accepted for pre-v3 SPECs) + security scope check |
 | Decision Point 2/3/3.5 | `plan/spec-assembly.md` | Dev environment + next action + execution mode |
 | Completion Criteria | `plan/spec-assembly.md` | All checklist items + audit-ready signal |
 | Test Scenarios | `plan/spec-assembly.md` | Normal/Existing Assets/Error flow examples |

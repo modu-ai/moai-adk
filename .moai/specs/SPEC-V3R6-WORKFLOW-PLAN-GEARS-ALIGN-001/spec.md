@@ -43,7 +43,7 @@ Sprint 10 GEARS sweep cohort sequence (8 SPECs total):
 
 ### B.2 Why the `/moai plan` skill bundle matters
 
-`/moai plan` is the entry point through which every SPEC author begins requirement authoring. Three of its four files contain explicit EARS notation references (plan.md ×4, clarity-interview.md ×3, spec-assembly.md ×7 = 14 total). When the workflow body describes EARS as the canonical SPEC notation form, downstream authors consult that text first, propagating EARS notation into new SPEC bodies even though `SPEC-V3R6-GEARS-MIGRATION-001` v0.2.0 has already made GEARS canonical. This SPEC closes that discrepancy at the orchestration-skill body layer.
+`/moai plan` is the entry point through which every SPEC author begins requirement authoring. Three of its four files contain explicit EARS notation references (plan.md ×4, clarity-interview.md ×3, spec-assembly.md ×6 = 13 total). When the workflow body describes EARS as the canonical SPEC notation form, downstream authors consult that text first, propagating EARS notation into new SPEC bodies even though `SPEC-V3R6-GEARS-MIGRATION-001` v0.2.0 has already made GEARS canonical. This SPEC closes that discrepancy at the orchestration-skill body layer.
 
 ### B.3 Template mirror parity rationale
 
@@ -166,7 +166,7 @@ L48 SSOT discipline — Sprint 10 cohort has SKILL-GEARS-ALIGN-001 + PLAN-AUDITO
 
 ### G.3 IF/THEN deprecated modality re-introduction (Low)
 
-Risk: a sloppy GEARS rewrite at any of the 6 spec-assembly.md edit zones may accidentally introduce or fail to remove `IF/THEN` patterns. **Mitigation**: AC-WPG-006 includes a `grep -E 'IF .* THEN'` sentinel scan post-edit; AC-WPG-009 confirms `LegacyEARSKeyword` lint rule self-dogfood does not regress (lint clean across the 88 pre-v3 SPECs + 0 NEW IF/THEN introductions in the modified files).
+Risk: a sloppy GEARS rewrite at any of the 7 spec-assembly.md edit zones may accidentally introduce or fail to remove `IF/THEN` patterns. **Mitigation**: AC-WPG-006 includes a `grep -E 'IF .* THEN'` sentinel scan post-edit; AC-WPG-009 confirms `LegacyEARSKeyword` lint rule self-dogfood does not regress (lint clean across the 88 pre-v3 SPECs + 0 NEW IF/THEN introductions in the modified files).
 
 ### G.4 Plan-auditor below skip threshold (Low)
 

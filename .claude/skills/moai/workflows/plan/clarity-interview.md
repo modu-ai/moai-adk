@@ -166,13 +166,13 @@ Tasks for manager-spec:
 - Analyze project documents (product.md, structure.md, tech.md)
 - Propose 1-3 SPEC candidates with proper naming
 - Check for duplicate SPECs in .moai/specs/
-- Design EARS structure for each candidate
+- Design GEARS structure for each candidate using the 5 GEARS patterns (Ubiquitous, Event-driven `When`, State-driven `While`, Capability-gate `Where`, Event-detected unwanted). EARS legacy form is accepted for pre-v3 SPECs until 2026-11-22; new SPECs MUST use GEARS. Canonical authoring reference: `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format.
 - Create implementation plan with technical constraints
 - Identify library versions (production stable only, no beta/alpha)
 - Search for reference implementations: Identify similar patterns in the existing codebase or well-documented approaches that can guide implementation
 - When reference implementations are found, include them in the plan as "Reference: {file_path}:{line_range}" to improve implementation quality
 
-Output: Implementation plan with SPEC candidates, EARS structure, and technical constraints.
+Output: Implementation plan with SPEC candidates, GEARS-notation requirements (EARS legacy form accepted for pre-v3 SPECs until 2026-11-22), and technical constraints.
 
 Implementation guard: [HARD] During Phases 0.5, 1A, and 1B, all agent prompts MUST include the instruction: "DO NOT write implementation code. Focus exclusively on research, analysis, and planning." This separation of thinking and typing is the foundation of effective AI-assisted development.
 
@@ -181,7 +181,7 @@ Implementation guard: [HARD] During Phases 0.5, 1A, and 1B, all agent prompts MU
 <!-- moai:evolvable-start id="gate-plan-1" -->
 ### HUMAN GATE: Plan Review
 
-**Previous phase output:** SPEC draft with EARS-format requirements and acceptance criteria
+**Previous phase output:** SPEC draft with GEARS-notation requirements (EARS retained as legacy reference for pre-v3 SPECs) and acceptance criteria
 **Approval question:** Does this SPEC capture the correct requirements and scope?
 **Cannot proceed until:**
 - [ ] User has reviewed the SPEC document

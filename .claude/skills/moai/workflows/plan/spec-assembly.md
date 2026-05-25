@@ -68,9 +68,9 @@ Input: Approved plan from Phase 1B, validated SPEC ID from Phase 1.5.
 File generation (all three files created simultaneously):
 
 - .moai/specs/SPEC-{ID}/spec.md
-  - YAML frontmatter with **12 required fields** (canonical schema — see checklist below and `.claude/rules/moai/development/spec-frontmatter-schema.md`)
+  - YAML frontmatter with **12 required fields** (canonical schema — see checklist below and `.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields)
   - HISTORY section immediately after frontmatter
-  - Complete EARS structure with all 5 requirement types
+  - Complete GEARS structure with the 5 GEARS patterns (Ubiquitous, Event-driven `When`, State-driven `While`, Capability-gate `Where`, Event-detected unwanted — see `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format). EARS legacy form is accepted for pre-v3 SPECs until 2026-11-22 per `SPEC-V3R6-GEARS-MIGRATION-001` v0.2.0.
   - Content written in conversation_language
 
 #### [HARD] Pre-Write Frontmatter Checklist
@@ -135,7 +135,7 @@ Delta markers are OPTIONAL and only suggested for brownfield projects. Greenfiel
 After all SPEC files are created, auto-generate `.moai/specs/SPEC-{ID}/spec-compact.md`:
 
 Extract from spec.md:
-- All REQ-XXX requirements (EARS format entries)
+- All REQ-XXX requirements (GEARS-notation entries — EARS legacy form accepted for pre-v3 SPECs until 2026-11-22)
 - All acceptance criteria (Given/When/Then scenarios)
 - Files to modify list
 - Exclusions (What NOT to Build) section
@@ -257,7 +257,7 @@ gh issue create \
 
 ## Requirements Summary
 
-{Brief summary from spec.md EARS requirements}
+{Brief summary from spec.md GEARS-notation requirements (EARS legacy form for pre-v3 SPECs)}
 
 ## Acceptance Criteria
 
@@ -415,7 +415,7 @@ Tasks:
 Purpose: Verify SPEC document quality before proceeding to implementation. Catches incomplete or inconsistent specs early.
 
 Tasks:
-- Verify all EARS-format requirements have corresponding acceptance criteria
+- Verify all GEARS-notation requirements (EARS legacy form for pre-v3 SPECs) have corresponding acceptance criteria
 - Check that affected files list is complete (cross-reference with codebase)
 - Validate that MX tag plan covers all high-risk areas (fan_in >= 3, goroutines)
 - Run lightweight security check on SPEC scope (flag if auth/crypto/input-validation areas are touched)
@@ -503,7 +503,7 @@ All of the following must be verified:
 - Phase 2: All SPEC files created (spec.md, plan.md, acceptance.md, spec-compact.md)
 - Directory naming follows .moai/specs/SPEC-{ID}/ format
 - YAML frontmatter contains all 8 required fields (including issue_number)
-- EARS structure is complete
+- GEARS structure is complete (EARS legacy form accepted for pre-v3 SPECs until 2026-11-22)
 - Exclusions section present with at least 1 entry
 - Delta markers applied for brownfield requirements (if applicable)
 - spec-compact.md auto-generated with requirements + acceptance criteria only
@@ -527,7 +527,7 @@ All of the following must be verified:
 **Prompt**: "/moai plan JWT authentication with refresh token rotation"
 **Expected Result**:
 - Phase 1A: Explore discovers existing auth files if any
-- Phase 1B: manager-spec designs EARS requirements for JWT auth
+- Phase 1B: manager-spec designs GEARS-notation requirements for JWT auth (canonical notation; EARS legacy form for pre-v3 SPECs only)
 - Annotation cycle: 1-3 iterations refining requirements
 - Phase 2: SPEC-AUTH-001 created with spec.md, plan.md, acceptance.md
 - Phase 2.5: GitHub Issue created and linked to SPEC
