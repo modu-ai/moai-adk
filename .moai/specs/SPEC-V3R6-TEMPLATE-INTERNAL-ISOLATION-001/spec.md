@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001
 title: "Template Internal-Content Isolation — Permanent Removal of moai-adk Dev-Internal Tokens from internal/template/templates/"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-05-25
 updated: 2026-05-25
@@ -22,7 +22,7 @@ related_specs: [SPEC-V3R6-AGENT-TEAM-REBUILD-001]
 
 ### A.1 문제 진술
 
-`internal/template/templates/` 디렉토리는 moai-adk-go CLI가 전 세계 사용자 프로젝트로 deploy하는 템플릿 자산의 단일 소스다. 본 디렉토리에는 다음과 같은 moai-adk 내부 개발 컨텍스트(이하 "internal-content")가 누출되어서는 안 된다:
+`internal/template/templates/` 디렉토리는 moai-adk-go CLI가 전 세계 사용자 프로젝트로 deploy하는 템플릿 자산의 단일 소스다. 본 SPEC은 이 디렉토리에 누출되어서는 안 되는 콘텐츠를 **moai-adk dev-internal-content token** (canonical term; 약식: "internal-content" — frontmatter tags 및 약식 prose에서만 사용)으로 정의한다. 누출 금지 대상:
 
 - moai-adk 개발 과정에서 등장한 SPEC ID 문자열 (예: `SPEC-V3R6-AGENT-TEAM-REBUILD-001`, `SPEC-V3R6-WORKFLOW-OPT-001`)
 - REQ token 문자열 (예: `REQ-ATR-009`, `REQ-ATR-014`, `REQ-WO-007`)
@@ -41,7 +41,7 @@ related_specs: [SPEC-V3R6-AGENT-TEAM-REBUILD-001]
 - **§21 Dev-Only Commands Isolation**: 97/98/99 prefix 커맨드 파일 격리는 명시하나, 일반 템플릿 본문 내 토큰 격리는 다루지 않음
 - **§24 Harness Namespace 분리 정책**: namespace 차원의 격리는 명시하나, content 차원의 격리는 다루지 않음
 
-결과적으로 SPEC-V3R6-AGENT-TEAM-REBUILD-001 (Tier L, 2026-05-25 완료) 진행 중 M5/M7 milestones에서 약 44개의 internal-content leak이 templates 디렉토리에 유입됐고, 2회의 partial cleanup 작업(11 files 처리) 이후에도 35 files 잔존.
+결과적으로 SPEC-V3R6-AGENT-TEAM-REBUILD-001 (Tier L, 2026-05-25 완료) 진행 중 M5/M7 milestones에서 moai-adk dev-internal-content token이 templates 디렉토리에 유입됐고, 2회의 predecessor partial cleanup (pass 1 + pass 2)을 거친 본 SPEC plan-phase 시점의 ground-truth 잔존은 **35 files** (`grep -rln ... | wc -l` 로 검증, §A.3 ground truth 표 참조).
 
 ### A.3 Ground Truth (verified at plan-phase start)
 
@@ -55,6 +55,7 @@ related_specs: [SPEC-V3R6-AGENT-TEAM-REBUILD-001]
 | 메모리 feedback 파일 | 존재 (8996 bytes, 2026-05-25 18:48) | `ls -la /Users/goos/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/feedback_template_internal_content_isolation.md` |
 | Predecessor partial cleanup pass 1 | `20a66df85` (9 files, -80 lines) | `git show --stat 20a66df85` |
 | Predecessor partial cleanup pass 2 | `40dc43f5b` (2 files) | `git show --stat 40dc43f5b` |
+| Plan-phase commit anchor (canonical attribution base for AC verification) | `b7d1528c8` | `git log --grep='SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001' --format=%H b7d1528c8..HEAD` |
 
 ### A.4 35개 잔여 leak files 분포 (ground-truth verified)
 
@@ -79,7 +80,7 @@ related_specs: [SPEC-V3R6-AGENT-TEAM-REBUILD-001]
 
 ### A.5 5 Deliverables Summary
 
-1. **(a) 35 잔여 leak files cleanup** — internal-content → generic patterns 변환
+1. **(a) 35 잔여 leak files cleanup** — moai-adk dev-internal-content token → generic patterns 변환
 2. **(b) CLAUDE.local.md §25 NEW HARD rule** — Template Internal-Content Isolation 영구 anchor
 3. **(c) Go lint test `TestTemplateNoInternalContentLeak`** — `internal/template/internal_content_leak_test.go` 신규
 4. **(d) CI workflow integration** — `.github/workflows/` 내 본 lint test gating
@@ -93,7 +94,7 @@ related_specs: [SPEC-V3R6-AGENT-TEAM-REBUILD-001]
 
 **REQ-TII-001** (Ubiquitous): The `internal/template/templates/` directory **shall** be free of moai-adk dev-internal-content tokens including, but not limited to: actual SPEC ID literals matching `SPEC-V3R6-`, REQ token literals matching `REQ-ATR-`, audit citations matching `Audit 3` or `Finding A[1-6]`, and archive date references matching `archive-2026-05-25`.
 
-**REQ-TII-002** (Event-driven): **When** a template author identifies an existing leak token within `internal/template/templates/`, the author **shall** apply a generic substitution pattern (예: actual SPEC ID → "선행 SPEC" or "predecessor SPEC"; REQ token → 일반 prose 설명) that preserves the pedagogical intent without naming the specific moai-adk dev artifact.
+**REQ-TII-002** (Event-driven): **When** a template author identifies an existing moai-adk dev-internal-content token within `internal/template/templates/`, the author **shall** apply a generic substitution pattern (예: actual SPEC ID → "선행 SPEC" or "predecessor SPEC"; REQ token → 일반 prose 설명) that preserves the pedagogical intent without naming the specific moai-adk dev-internal-content token.
 
 **REQ-TII-003** (Where-capability): **Where** a template file is a generated mirror of a source-of-truth file located elsewhere in the repository (e.g., `internal/template/templates/.claude/rules/moai/NOTICE.md` mirrors `.claude/rules/moai/NOTICE.md`), the template mirror **shall** be re-generated from the cleaned source-of-truth via `make build`, not edited independently.
 
@@ -163,3 +164,4 @@ related_specs: [SPEC-V3R6-AGENT-TEAM-REBUILD-001]
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | v0.1.0 | 2026-05-25 | manager-spec | Initial plan-phase 5-artifact set authored (Tier M); 13 REQ-TII / 12 AC-TII / 35 leak files ground-truth verified / 5 deliverables anchored |
+| v0.1.1 | 2026-05-25 | manager-spec | iter-1 amendment — 4 SHOULD-FIX 해소: (D-001) AC verification command coverage 회복 (REQ-TII-013 5-class 중 commit sha class 누락 보강 — acceptance.md AC-TII-001 grep 패턴에 40-char/7-8-char-space sha 추가); (D-002) AC-TII-011 §25-scoped awk range (기존 전체 파일 grep은 §17/18/21/23/24 정당 인용 5건 때문에 deterministic FAIL); (D-003) `HEAD~N..HEAD` 하드코딩 → SPEC-scoped attribution range (plan-phase anchor `b7d1528c8` added to §A.3 ground truth table; AC-TII-002/008/010 verification commands rewritten with `git log --grep=<SPEC-ID> b7d1528c8..HEAD`); (D-005) terminology canonicalization — "moai-adk dev-internal-content token" 단일 표현 통일 (§A.1 도입부 + REQ-TII-001/002 + §A.5 deliverable 라인); (D-006) §A.2 산수 phrasing 단순화 ("약 44개 leak 유입" 추정치 제거 → "35 files ground-truth 잔존" verified 수치). REQ count 불변 (13). AC count 불변 (12). frontmatter `version: 0.1.0` → `0.1.1`. |
