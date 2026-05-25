@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001
 title: "Progress — Template Internal-Content Isolation"
-version: "0.1.7"
+version: "0.1.8"
 status: completed
 created: 2026-05-25
 updated: 2026-05-25
@@ -38,7 +38,7 @@ tier: M
 | `m5_commit_sha` | `a2ce47deb` (M5 CI workflow policy anchor) |
 | `m6_commit_sha` | `476c222a3` (M6 maintainer-only audit) |
 | `sync_commit_sha` | `3cb0c849a` (sync-phase frontmatter + CHANGELOG entry + version bump) |
-| `mx_commit_sha` | _(self-reference 본 atomic terminator commit SHA — 후속 L60 backfill chore로 실제 SHA 기록 예정, sync_commit_sha 패턴과 동일)_ |
+| `mx_commit_sha` | `35bc1ad44` (Mx-phase EVALUATE-SKIP + 4-phase close terminator atomic chore) |
 
 ### §A.1 L52 Case 29 NEW Variant — Commit-Attribution Hijack (M1, from prior spawn)
 
@@ -226,3 +226,4 @@ run_phase_audit_ready_signal:
 | v0.1.5 | 2026-05-25 | orchestrator | L60 chicken-and-egg backfill — §A Lifecycle Sync table `sync_commit_sha: 3cb0c849a` (sync-phase artifacts commit d9838995d + subsequent L60 backfill chore); frontmatter version incremented 0.1.4 → 0.1.5 to match backfill completion. §B-E unchanged. This backfill concludes 4-phase close Mx Step D (sync-phase artifact + L60 backfill) atomic chain. |
 | v0.1.6 | 2026-05-25 | orchestrator | 보강 chore — 사용자 AskUserQuestion Option A 결정에 따라 sync-phase 잔존 불일치 2건 정정: (1) progress.md frontmatter `status: in-progress → implemented` 정상 전환 (다른 5개 SPEC artifact와 정합 회복, sync-phase ownership matrix 준수). (2) v0.1.5 HISTORY entry 본문의 SHA 오기 정정: `sync-phase artifacts commit d9838995d` 라는 표현은 부정확. `d9838995d`는 M1 content + L52 case 29 hijack 사례 commit이며 sync-phase commit이 아님. 실제 sync commit은 `3cb0c849a`. v0.1.5 entry 자체는 historical record로 보존하고 본 v0.1.6 entry가 retrospective 정정 anchor 역할 (HISTORY append-only 원칙 준수). 별도 chore로 CHANGELOG entry 3건 부정확 표현도 정정 예정 (35→4 narrow scope + coverage commingling 제거 + Sprint cohort 정정). |
 | v0.1.7 | 2026-05-25 | orchestrator | Mx-phase EVALUATE-SKIP + 4-phase close terminator atomic chore — (1) Mx-phase Step C 결정: mx-tag-protocol.md §a 기준에 따라 EVALUATE-SKIP. 본 SPEC run-phase에서 신규 추가된 .go 파일은 `internal/template/internal_content_leak_test.go` 1개 (337 LOC = M3 226 + M3-b 110 + M3-a narrow 정렬). 본 파일은 lint test 자체이며 (a) fan_in 0 (private test function), (b) danger zone 아님, (c) external 호출 없음으로 @MX:NOTE / @MX:ANCHOR / @MX:WARN 적용 의미가 약함. 그 외 modified files 모두 .md / .yaml / .sh 등 비-Go markdown 자산 — @MX 적용 대상 외. (2) 4-phase close terminator: 6 SPEC artifact frontmatter `status: implemented → completed` 일괄 전환 (spec/plan/acceptance/design/research/progress.md atomic). (3) §A mx_commit_sha 행 추가 (self-reference placeholder; 후속 L60 backfill chore에서 실제 SHA 기록 예정 — sync_commit_sha 패턴과 동일). Run-phase 최종 상태: PASS-WITH-DEBT (12 AC matrix = 8 PASS + 2 PASS-WITH-VARIANCE + 1 PASS-WITH-DEBT + 1 N/A). 본 SPEC 4-phase close 완료 (plan → run → sync → Mx). Sprint 11 entry SPEC cohort 정상 마감. |
+| v0.1.8 | 2026-05-25 | orchestrator | L60 mx_commit_sha 백필 — §A Lifecycle Sync table `mx_commit_sha: 35bc1ad44` (Mx-phase EVALUATE-SKIP + 4-phase close terminator atomic chore). sync_commit_sha 백필 패턴과 동일 (L60 chicken-and-egg: terminator commit이 self-reference 불가하므로 후속 chore로 실제 SHA 기록). 본 백필 chore가 본 SPEC 4-phase close lifecycle의 최종 atomic 정합성 anchor 역할. SPEC complete + lifecycle audit-ready. |
