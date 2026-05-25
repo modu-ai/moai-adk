@@ -685,11 +685,29 @@ See: `.moai/docs/git-workflow-doctrine.md`
 - CLAUDE.md §8 User Interaction Architecture
 - `.claude/skills/moai/SKILL.md` § Red Flags + Verification
 
+### §19.1 GATE-2 Mandatory Restoration (REQ-ATR-015 — SPEC-V3R6-AGENT-TEAM-REBUILD-001)
+
+[HARD] **GATE-2 (plan-to-implement HUMAN GATE)는 자율 bypass 대상이 아니다.** Plan-phase 산출물이 audit-ready 상태로 PASS 되었더라도, run-phase 진입 직전 orchestrator는 자율 흐름을 중단하고 사용자에게 명시적 진행 승인을 `AskUserQuestion`으로 받아야 한다. 이는 Anthropic Claude Code의 Ctrl+G plan editor mandate (plan-to-implement 경계에서 사용자 개입 의무)와 정합한다.
+
+**skip-eligible 0.90 autonomous bypass 정책의 적용 범위**: `skip-eligible` (score ≥ 0.90) autonomous bypass는 **Phase 0.5 plan-auditor verdict 재실행에만** 적용된다 — CONST-V3R5-026 + `.claude/rules/moai/workflow/spec-workflow.md` § Plan Audit Gate skip policy 참조. **GATE-2 (plan-to-implement HUMAN GATE)에는 적용되지 않는다**. Phase 0.5 SKIP과 GATE-2 SKIP은 서로 다른 결정 — Phase 0.5는 plan-auditor의 verdict 재실행 여부 (자동화 가능), GATE-2는 사용자가 run-phase 진입을 승인할지 여부 (사용자 결정 필수).
+
+**오케스트레이터 의무 (GATE-2 entry)**:
+1. Plan-phase 산출물 + plan-auditor verdict 요약을 사용자에게 prose로 제시
+2. `ToolSearch(query: "select:AskUserQuestion")` preload
+3. `AskUserQuestion` 으로 "run-phase 진입 / 추가 검토 / 중단" 3-option 제시 (첫 옵션 "(권장)" 라벨)
+4. 사용자 응답 수신 후 run-phase 진입 (또는 중단)
+
+**위반 anti-pattern**: Phase 0.5 verdict가 PASS skip-eligible (≥ 0.90)이라는 이유만으로 사용자 승인 없이 `/moai run`을 자율 시작하는 행위. GATE-2는 plan-auditor 점수와 무관한 별도 사용자 의지 확인 절차다.
+
+상위 SPEC 참조:
+- `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/spec.md` REQ-ATR-015 (GATE-2 restoration)
+- `.claude/rules/moai/workflow/orchestration-mode-selection.md` §E (GATE-2 vs Phase 0.5 vs Phase 0.95 boundary)
+
 ---
 
 **Status**: Active (Local Development)
-**Version**: 3.8.0 (§19 → canonical cross-reference로 축소, /doctor 경고 해소)
-**Last Updated**: 2026-05-18
+**Version**: 3.9.0 (§19.1 GATE-2 mandatory restoration cross-reference 추가 per REQ-ATR-015)
+**Last Updated**: 2026-05-25
 
 ---
 
@@ -877,6 +895,32 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 - [HARD] `gh pr merge --delete-branch` 후 fatal 발생 시 `gh pr view --json state` 별도 확인 (실제 머지 여부)
 - [HARD] `git stash pop` 결과는 `git status` 별도 검증 필수 (silent skip 가능성)
 - [HARD] 1-person OSS Hybrid Trunk: 모든 tier (S/M/L) main 직진 push 허용 — CI 4 status checks + pre-push hook 5s warn + Conventional Commits + Release Drafter 4중 보호 (§23.0 chore commit `cd9eead14`, 2026-05-22 채택). feat 브랜치 + 자동 PR은 사용자가 명시적으로 review round 필요하다고 결정한 경우 (예: cross-team review, security-sensitive change) opt-in으로만 사용
+
+### §23.9 Tier-based PR Routing (REQ-ATR-020 — SPEC-V3R6-AGENT-TEAM-REBUILD-001)
+
+[HARD] **§23.7의 "모든 tier main 직진" 일반화에 대한 Tier-based 예외 명문화.** Hybrid Trunk 1-person OSS 정책의 기본은 모든 tier (S/M/L) main 직진 push이지만, SPEC tier 가 L 이거나 사용자가 명시적으로 `--pr` 플래그를 사용한 경우 `manager-git` 서브에이전트로 PR 생성을 routing한다.
+
+| Tier / 조건 | 기본 routing | Owner | 비고 |
+|------------|-------------|-------|------|
+| Tier S (< 300 LOC, < 5 files) | main 직접 push | manager-develop / manager-docs (commit 직접 수행) | Hybrid Trunk 기본 — CI 4 status checks + pre-push hook 5s warn |
+| Tier M (300-1000 LOC, 5-15 files) | main 직접 push | manager-develop / manager-docs (commit 직접 수행) | Hybrid Trunk 기본 |
+| Tier L (> 1000 LOC OR > 15 files OR constitutional) | `feat/SPEC-XXX` 브랜치 + `gh pr create` | **manager-git** | Tier L 또는 사용자 `--pr` 플래그 시 PR routing |
+| Tier S/M + 사용자 `--pr` opt-in | `feat/SPEC-XXX` 브랜치 + `gh pr create` | **manager-git** | 사용자 명시적 review round 요구 시 (cross-team review, security-sensitive change 등) |
+
+**Owner 명시 (REQ-ATR-020 정합)**: Tier L OR `--pr` 케이스에서 PR 생성은 `manager-git` 의 책임이다. `manager-develop` 또는 `manager-docs` 는 PR 생성을 직접 수행하지 않으며, commit 만 수행 후 `manager-git` 에게 PR 생성을 위임한다. 이는 Anthropic 2026 SRP (Single Responsibility Principle) 정합 — 각 retained agent 가 명확한 phase boundary 를 가진다.
+
+**Late-Branch 4-Phase Pattern**: Tier L PR routing 시 `manager-git` 은 `.moai/docs/git-workflow-doctrine.md` §18.3.1 의 Late-Branch 4-Phase 패턴 (A: branch creation / B: commit / C: PR creation / D: Late-Branch closure)을 따른다. Phase D Late-Branch closure 는 PR 머지 후 local main 정렬 의무 — `.claude/agents/core/manager-git.md` § Late-Branch Invocation Pattern 참조.
+
+**Routing 결정 흐름**:
+1. SPEC tier 가 L → `manager-git` routing (자동)
+2. 사용자가 `/moai sync --pr` 또는 `/moai run --pr` 명시적 사용 → `manager-git` routing
+3. 그 외 (Tier S/M without `--pr`) → main 직접 push (manager-develop/manager-docs commit 직접 수행)
+
+상위 SPEC 참조:
+- `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/spec.md` REQ-ATR-020 (manager-git PR doctrine reconciliation)
+- `.moai/docs/git-workflow-doctrine.md` §18.3.1 [HARD] Tier-based PR Routing (SPEC-V3R6-AGENT-TEAM-REBUILD-001 REQ-ATR-020) — M5 NEW section
+- `.claude/agents/core/manager-git.md` § Late-Branch Invocation Pattern
+- `.claude/skills/moai/workflows/sync.md` § Phase Owners (Tier L OR `--pr` 플래그 시 manager-git)
 
 ### §23.8 [HARD] Multi-Session Race Mitigation
 

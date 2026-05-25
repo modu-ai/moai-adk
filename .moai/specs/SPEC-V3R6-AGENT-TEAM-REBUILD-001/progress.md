@@ -46,7 +46,7 @@ Per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transi
 | 1 | Run-phase M4 — 3 NEW hook scripts | manager-develop | COMPLETED | `fdd4aa37a` | REQ-ATR-009 + REQ-ATR-014 |
 | 1 | Run-phase M5 — Rule files (2 NEW + 8 modified) | manager-develop | COMPLETED | `498ea18a2` | REQ-ATR-007/008/012/016/020 |
 | 1 | Run-phase M6 — Predecessor SPEC supersedence verify + AC-ATR-012 reinforcement | orchestrator (verify) + manager-spec (original plan-phase transition) | COMPLETED | `<this-commit>` | REQ-ATR-006 (supersedence already applied at plan-phase `b957a4d04`; M6 verifies + adds AC-ATR-012 boost via manager-develop.md cycle_type=autofix body refinement, grep count 1 → ≥3) |
-| 1 | Run-phase M7 — CLAUDE.md + CLAUDE.local.md + NOTICE.md | manager-develop | NOT-STARTED | `<pending>` | REQ-ATR-001/015/019/020 |
+| 1 | Run-phase M7 — CLAUDE.md + CLAUDE.local.md + NOTICE.md | manager-develop | COMPLETED | `<this-commit>` | REQ-ATR-001/015/019/020 |
 | 1 | Run-phase M8 — Template parity + verification batch | manager-develop | NOT-STARTED | `<pending>` | REQ-ATR-018 |
 | 2 | Sync-phase | manager-docs | NOT-STARTED | `<pending>` | CHANGELOG + 5 frontmatter `status: implemented` |
 | 3 | Mx-phase | orchestrator | NOT-STARTED | `<pending>` | Step C judgement (expected EVALUATE-SKIP per markdown-heavy) |
@@ -221,6 +221,34 @@ The plan.md §D.8 and spec.md §C.1 reference `.claude/rules/moai/workflow/git-w
 | AC-ATR-006 (1st) | `grep -E '^(status\|updated):' .moai/specs/SPEC-V3R6-WORKFLOW-ORCHESTRATION-FIX-001/spec.md \| head -2` | `status: superseded` + `updated: 2026-05-25` | (verify) | **PASS** |
 | AC-ATR-006 (2nd) | `grep -c "Superseded by SPEC-V3R6-AGENT-TEAM-REBUILD-001" .moai/specs/SPEC-V3R6-WORKFLOW-ORCHESTRATION-FIX-001/spec.md` | ≥ 1 | (verify) | **PASS** |
 | AC-ATR-012 (boost) | `grep -c "DIAGNOSE-PATCH-VERIFY\|cycle_type.*autofix\|ci-autofix-protocol" .claude/agents/core/manager-develop.md` | ≥ 2 | (verify) | **PASS** (was 1, now ≥ 2) |
+
+### §F.2.7 — M7 Run-phase Audit-Ready Signal (manager-develop scope — doctrine updates)
+
+**Commit**: `<SHA>` `feat(SPEC-V3R6-AGENT-TEAM-REBUILD-001): M7 — CLAUDE.md catalog + CLAUDE.local.md doctrine + NOTICE.md attribution`
+**Date**: 2026-05-25
+**Files**: 4 modified (CLAUDE.md + CLAUDE.local.md + .claude/rules/moai/NOTICE.md + this progress.md)
+
+**Path resolution note**: The spawn prompt §M7 Mandatory Deliverables item (4) referenced `NOTICE.md` as a top-level project file. The top-level path does not exist in this repo; the canonical authoritative project NOTICE.md is `.claude/rules/moai/NOTICE.md` (already present, contains harness + Karpathy attribution). M7 appended a new "Anthropic 2026 Alignment (SPEC-V3R6-AGENT-TEAM-REBUILD-001)" section to the canonical file rather than creating a new top-level NOTICE.md. This decision preserves single-source-of-truth discipline (L48 SSOT) and aligns with the existing harness + Karpathy attribution structure.
+
+**Scope summary**:
+- CLAUDE.md §4 Agent Catalog rewritten: 17-entry enumeration → 8 retained agents table (7 MoAI-custom + 1 Anthropic built-in `Explore`) + Archive Cross-Reference paragraph citing `.claude/rules/moai/workflow/archived-agent-rejection.md`. The 11 archived agent names appear ONLY within the Archive Cross-Reference paragraph (~line 32+ from §4 heading), NOT within the first 30 lines (AC-ATR-021 grep window).
+- CLAUDE.local.md §19 added §19.1 GATE-2 Mandatory Restoration cross-reference (REQ-ATR-015): `skip-eligible ≥ 0.90` autonomous bypass applies ONLY to Phase 0.5 plan-auditor verdict re-execution, NOT to GATE-2 (plan-to-implement HUMAN GATE corresponding to Anthropic Ctrl+G plan editor mandate). Version 3.8.0 → 3.9.0.
+- CLAUDE.local.md §23 added §23.9 Tier-based PR Routing (REQ-ATR-020): Tier L OR `--pr` flag → `manager-git` routing per `.moai/docs/git-workflow-doctrine.md` §18.3.1 (M5 NEW section); Tier S/M default → main direct push per Hybrid Trunk 1-person OSS policy.
+- `.claude/rules/moai/NOTICE.md` appended "Anthropic 2026 Alignment (SPEC-V3R6-AGENT-TEAM-REBUILD-001)" section with verbatim Findings A1-A6 + 6 source URLs + archive summary + migration guidance + attribution.
+
+**Variance documentation**:
+- AC-ATR-020 sync.md baseline (M2 scope): `grep -c "Tier L.*--pr\|--pr.*manager-git\|Tier L OR.*pr" .claude/skills/moai/workflows/sync.md` = 1 (verified). M7 CLAUDE.local.md contribution = 6 occurrences. Cumulative AC-ATR-020 grep count ≥ 2 satisfied with margin.
+
+### M7 AC verification
+
+| AC | Verification Command | Expected | Actual | Status |
+|----|---------------------|----------|--------|--------|
+| AC-ATR-015 (1st) | `grep -c "GATE-2\|gate-2\|Ctrl+G\|HUMAN GATE.*mandatory" CLAUDE.local.md` | ≥ 1 | 8 | **PASS** |
+| AC-ATR-015 (2nd) | `grep -A 5 "skip-eligible" CLAUDE.local.md \| grep -c -i "Phase 0.5\|plan-auditor"` | ≥ 1 | 4 | **PASS** |
+| AC-ATR-019 | `grep -c "Anthropic 2026\|Audit 3\|2026-05-25.*archive\|claude.com/docs/en/sub-agents" .claude/rules/moai/NOTICE.md` | ≥ 2 | 6 | **PASS** |
+| AC-ATR-020 (CLAUDE.local.md side) | `grep -c "Tier L.*--pr\|--pr.*manager-git\|Tier L OR.*pr" CLAUDE.local.md` | ≥ 1 | 6 | **PASS** |
+| AC-ATR-020 (sync.md baseline, M2) | `grep -c "Tier L.*--pr\|--pr.*manager-git\|Tier L OR.*pr" .claude/skills/moai/workflows/sync.md` | ≥ 1 | 1 | **PASS** (M2 baseline) |
+| AC-ATR-021 | `grep -A 30 "## 4. Agent Catalog" CLAUDE.md \| grep -c "manager-strategy\|manager-quality\|manager-brain\|manager-project\|claude-code-guide\|expert-backend\|expert-frontend\|expert-security\|expert-devops\|expert-performance\|expert-refactoring"` | 0 | 0 | **PASS** |
 
 ### §F.3 Sync-phase Audit-Ready Signal (manager-docs scope — NOT-STARTED)
 
