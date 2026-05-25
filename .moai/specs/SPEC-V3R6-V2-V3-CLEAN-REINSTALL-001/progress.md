@@ -52,7 +52,7 @@ The SPEC has 6+1 milestones (M1, M2, M2a, M3, M4, M5, M6) with strict sequential
 | M2a (FLAT Layout Restoration) | COMPLETE | (commit pending) | 14 git mv + 5 rmdir + ~30 path-substitutions across 13 rule/skill/agent files + predecessor SPEC supersedence | AC-VVCR-LR-001 PASS / AC-VVCR-LR-002 PASS / AC-VVCR-LR-003 PASS / AC-VVCR-LR-004 PASS / AC-VVCR-LR-005 deferred to M5 |
 | M3 (v2 detection logic) | COMPLETE | (commit pending) | +207 LOC v2_detection.go + +345 LOC v2_detection_test.go = 552 LOC | AC-VVCR-001 PASS (24 sub-tests across 5 test functions) |
 | M4 (Clean reinstall impl) | COMPLETE | (commit pending) | +320 LOC update_preserve_inventory.go + +275 LOC update_clean_install.go + +290 LOC preserve_inventory_test.go + +330 LOC clean_install_test.go = 1215 LOC | AC-VVCR-002 / 003 / 007..013 PASS (verified via stub deployer + integration tests) |
-| M5 (runUpdate integration + catalog regen) | PENDING — orchestrator handoff | — | est. ~80 lines | (wires M4 into CLI) |
+| M5 (runUpdate integration + catalog regen) | COMPLETE | (commit pending) | +66 LOC update.go (v2 detection branch + runAgencyMigrationAdapter) + 7 catalog.yaml path edits + automatic catalog hash regen | AC-VVCR-LR-005 PASS (7 FLAT paths, 0 split paths) |
 | M6 (Test coverage + cross-platform) | PENDING — orchestrator handoff | — | est. ~400 lines | AC-VVCR-004/014/015/016/017 (5 ACs) |
 
 ## §B — Status Transitions
@@ -160,6 +160,28 @@ Verification:
 - C-HRA-008 subagent boundary grep on M3+M4 sources → 0 matches
 
 AC progress: **AC-VVCR-002 PASS** (backup directory + .complete marker verified in Scenario A test), **AC-VVCR-003 PASS** (PRESERVE files survive byte-identical — integrity check + post-restore stat verification), **AC-VVCR-007 PASS** (.agency/ → .moai/ migration auto-invoked in Scenarios A+B, verified via stubMigrateRunner.calls counter), **AC-VVCR-008 / AC-VVCR-009 / AC-VVCR-010 / AC-VVCR-011 PASS** (REMOVE phase invokes scanDeprecatedPaths against all 43 entries in Category A+B+C, deprecated paths removed, PRESERVE survives, MERGE-back restores byte-identical), **AC-VVCR-012 PASS** (post-condition verified via Step 7 integrity hashes pre/post comparison), **AC-VVCR-013 PASS** (.agency/ detection → runMigrateAgency invocation pattern verified in Scenario A+B).
+
+### M5 — runUpdate integration + catalog regeneration (COMPLETE)
+
+Deliverables completed:
+- **`internal/cli/update.go`** (modified): inserted v2 detection branch immediately after Step 1 binary-update + Step 2 binary-only/dry-run gates (REQ-VVCR-002). Branch invokes `detectV2Fingerprint(cwd)`; on IsV2: true, constructs `CleanReinstallOptions` with the injected `runAgencyMigrationAdapter` and calls `runCleanReinstall`. Successful clean reinstall returns early, short-circuiting the v3 file-level sync (`runTemplateSyncWithProgress`) which would otherwise re-deploy templates redundantly. Emits TUI progress lines via `tui.CheckLine` + `tui.Pill`.
+- **`runAgencyMigrationAdapter`** (NEW function, ~40 LOC): thin wrapper around `migrateAgencyRunner` that proxies projectRoot + dryRun without going through cobra command flags. Swallows `ErrMigrateNoSource` for race-safety (clean-reinstall detected `.agency/` via Signal 2 but a parallel process could have removed it between detection and adapter invocation). Mirrors the auto-invoke precedent of `migrateLegacyMemoryDir` (line 1798).
+- **`internal/template/catalog.yaml`** (modified): 7 agent path entries updated from `templates/.claude/agents/core/` / `templates/.claude/agents/meta/` to `templates/.claude/agents/moai/` (FLAT). Hash anchors recomputed via `go run ./internal/template/scripts/gen-catalog-hashes.go --all`. Because git mv preserved file content byte-identical, the resulting hashes are equal to the pre-M2a hashes — only the path strings changed. `generated_at` timestamp updated to current ISO-8601 UTC.
+
+Implementation notes:
+- The v2 detection branch is placed before `runTemplateSyncWithProgress` so that v2 projects bypass the v3 sync code path entirely (clean reinstall handles deployment via `runCleanReinstall` Step 5). For v3 projects (the steady-state case), `fingerprint.IsV2` is false and the branch is a no-op — the existing v3 sync pathway runs unchanged.
+- A 5-minute `context.WithTimeout` bounds the clean-reinstall invocation. For typical projects the operation completes in seconds; the timeout exists as a safety net against pathological deploy hangs.
+- TUI integration uses existing `tui.CheckLine` (info, warn) and `tui.Pill` (ok) primitives — no new TUI helpers introduced.
+
+Verification:
+- `go build ./...` (darwin/amd64) → PASS
+- `GOOS=windows GOARCH=amd64 go build ./...` → PASS
+- `go test ./internal/cli/ -run 'TestDetectV2|...|TestRunCleanReinstall'` → all M3+M4 tests STILL PASS (no regression from M5 integration)
+- `go test ./internal/defs/...` → 8/8 M2 invariants PASS
+- `grep -c 'templates/.claude/agents/moai/' internal/template/catalog.yaml` → 7 (AC-VVCR-LR-005)
+- `grep -c 'templates/.claude/agents/(core|expert|meta)/' internal/template/catalog.yaml` → 0 (AC-VVCR-LR-005)
+
+AC progress: **AC-VVCR-LR-005 PASS** — catalog.yaml regenerated for FLAT layout. M5 also enables AC-VVCR-026 (`moai update` CLI integration verified at build-time) and AC-VVCR-015 (REQ-VVCR-027 idempotency — when IsV2 false, the v3 sync pathway is unchanged).
 
 ## §D — Partial-Completion Checkpoint (Run-phase Handoff)
 

@@ -246,6 +246,62 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return dryRunArchiveLegacySkills(cwd, out)
 	}
 
+	// SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 REQ-VVCR-002: detect v2 fingerprint
+	// and short-circuit to the clean-reinstall code path when the project is
+	// v2 (or partial-v2). The detector inspects three signals (system.yaml
+	// moai.version, .agency/ presence, DeprecatedPaths enumeration); ANY
+	// positive signal triggers runCleanReinstall instead of the v3 file-level
+	// sync below. On IsV2: false this is a no-op and the v3 sync proceeds.
+	{
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory for v2 detection: %w", err)
+		}
+		fingerprint, fpErr := detectV2Fingerprint(cwd)
+		if fpErr != nil {
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "v2 detection", "failed", fpErr.Error(), &th))
+		} else if fingerprint.IsV2 {
+			_, _ = fmt.Fprintln(out, tui.CheckLine("info", "v2 detected",
+				"running clean reinstall",
+				fmt.Sprintf("signals: version=%v agency=%v deprecated=%v",
+					fingerprint.V2DetectedViaVersion,
+					fingerprint.V2DetectedViaAgencyDir,
+					fingerprint.V2DetectedViaDeprecatedPath),
+				&th))
+
+			ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Minute)
+			defer cancel()
+
+			result, runErr := runCleanReinstall(ctx, cwd, CleanReinstallOptions{
+				DryRun: getBoolFlag(cmd, "dry-run"),
+				Out:    out,
+				// Inject the canonical .agency/ migration adapter. When the
+				// project carries a .agency/ legacy directory, this is invoked
+				// in Step 3.5 of the canonical order (REQ-VVCR-025), mirroring
+				// the migrateLegacyMemoryDir auto-invoke precedent at line 1731.
+				RunMigrateAgency: func(projectRoot string, dryRun bool, out io.Writer) error {
+					return runAgencyMigrationAdapter(projectRoot, dryRun, out)
+				},
+			})
+			if runErr != nil {
+				return fmt.Errorf("v2-to-v3 clean reinstall: %w", runErr)
+			}
+
+			// On successful clean reinstall, the v3 file-level sync below is
+			// redundant — runCleanReinstall already invoked deployer.Deploy.
+			// Return early so subsequent steps (archive legacy skills, design
+			// dir sync, profile sync) skip the v3 file-level pathway.
+			_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{
+				Kind:  tui.PillOk,
+				Solid: false,
+				Label: fmt.Sprintf("Clean reinstall complete (%d files preserved, %d deprecated removed)",
+					len(result.Inventory.Files), len(result.RemovedPaths)),
+				Theme: &th,
+			}))
+			return nil
+		}
+	}
+
 	syncSkipped, err := runTemplateSyncWithProgress(cmd)
 	if err != nil {
 		return err
@@ -1779,6 +1835,46 @@ func migrateLegacyMemoryDir(projectRoot string, out io.Writer) error {
 		plLegacy.Done(fmt.Sprintf("Removed legacy %s", legacyDisplayPath))
 	}
 
+	return nil
+}
+
+// runAgencyMigrationAdapter is the auto-invoke entrypoint for the
+// .agency/ → .moai/ migration triggered by runCleanReinstall Step 3.5
+// (REQ-VVCR-025 of SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001).
+//
+// Unlike runMigrateAgency (which is cobra-driven and reads --dry-run /
+// --force / --resume from CLI flags), this adapter constructs the runner
+// directly with the values supplied by the clean-reinstall orchestrator.
+// It mirrors the auto-invoke precedent of migrateLegacyMemoryDir.
+//
+// When `.agency/` is absent at projectRoot, the underlying migrateAgency
+// runner returns ErrMigrateNoSource — which this adapter swallows
+// gracefully because the clean-reinstall flow already verified .agency/
+// presence via Signal 2.
+func runAgencyMigrationAdapter(projectRoot string, dryRun bool, out io.Writer) error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("agency migration adapter: home dir: %w", err)
+	}
+
+	r := &migrateAgencyRunner{
+		projectRoot: projectRoot,
+		homeDir:     homeDir,
+		dryRun:      dryRun,
+		// force=false: respect existing .moai/ contents; clean-reinstall
+		// pre-emptively preserves user-owned namespaces via Step 2 inventory
+		// so any forced overwrite here would risk re-introducing collisions.
+		force: false,
+	}
+
+	if _, runErr := r.Run(); runErr != nil {
+		// ErrMigrateNoSource is acceptable when .agency/ disappeared
+		// between detection and adapter invocation (race-safe no-op).
+		if me, ok := runErr.(*MigrateError); ok && me.Code == ErrMigrateNoSource {
+			return nil
+		}
+		return fmt.Errorf("agency migration: %w", runErr)
+	}
 	return nil
 }
 

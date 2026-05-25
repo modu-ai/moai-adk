@@ -31,12 +31,12 @@ catalog:
             - name: moai-harness-learner
               tier: core
               path: templates/.claude/skills/moai-harness-learner/
-              hash: 9684c94ba6886f7e79ca5fdb307560a6099c58f1672fbb7d6f8602528e6b367f
+              hash: e994d0dbffd90ca25a704481ba2ed9b204f519197e9cb18ab9b22046ae89a828
               version: 1.0.0
             - name: moai-meta-harness
               tier: core
               path: templates/.claude/skills/moai-meta-harness/
-              hash: 9c7de9660546386095bf68b6588327fa2e7df0f54d3ffcacb6065bbf567e01e3
+              hash: 5381b6655144435a3680e689f6c3b452d45440c03795e6e0adac38af93a13dd9
               version: 1.0.0
             - name: moai-ref-git-workflow
               tier: core
@@ -101,32 +101,32 @@ catalog:
         agents:
             - name: evaluator-active
               tier: core
-              path: templates/.claude/agents/meta/evaluator-active.md
+              path: templates/.claude/agents/moai/evaluator-active.md
               hash: 43f763cf221a872855f12e9d0ec6a8ce62e1af340b1d3736a17f0d8c35685d5a
               version: 1.0.0
             - name: manager-develop
               tier: core
-              path: templates/.claude/agents/core/manager-develop.md
+              path: templates/.claude/agents/moai/manager-develop.md
               hash: 61e9511daab35bbd49d31e0dee5c7cfd925a3ad88dfd8bcbd23bf9d7d14ddbb6
               version: 1.0.0
             - name: manager-docs
               tier: core
-              path: templates/.claude/agents/core/manager-docs.md
+              path: templates/.claude/agents/moai/manager-docs.md
               hash: 427db8cc8e1b9e1e66cbd19c80f3723a43e0661060bf6a0cb7219e479c8f5be1
               version: 1.0.0
             - name: manager-git
               tier: core
-              path: templates/.claude/agents/core/manager-git.md
+              path: templates/.claude/agents/moai/manager-git.md
               hash: 2545e0929ce2fe3f679996e9cf1719bb9dcc8d77f1bc5f302328a8cdb56f1831
               version: 1.0.0
             - name: manager-spec
               tier: core
-              path: templates/.claude/agents/core/manager-spec.md
+              path: templates/.claude/agents/moai/manager-spec.md
               hash: cec3cd91be366d315b876276c2fe99bf552f7df1c14c457ef858aa244c0e3c92
               version: 1.0.0
             - name: plan-auditor
               tier: core
-              path: templates/.claude/agents/meta/plan-auditor.md
+              path: templates/.claude/agents/moai/plan-auditor.md
               hash: 64807064d2ad6fb3a07e83a4e09ac1151df622662fcc28827db80577350fa301
               version: 1.0.0
     optional_packs:
@@ -228,6 +228,6 @@ catalog:
         agents:
             - name: builder-harness
               tier: harness-generated
-              path: templates/.claude/agents/meta/builder-harness.md
-              hash: 16ca25c757d7d904c7a42af098aa209af88c018ad399a4222d3ae190f0603afc
+              path: templates/.claude/agents/moai/builder-harness.md
+              hash: a4d58126c0df773b47dfc5803c2fce525f375879ead0aad139984782dd6a697d
               version: 1.0.0
