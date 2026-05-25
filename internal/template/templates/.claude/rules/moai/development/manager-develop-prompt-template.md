@@ -11,7 +11,7 @@ paths: ".moai/specs/**,.claude/agents/moai/manager-develop.md,.claude/skills/moa
 
 ## cycle_type Mode Reference
 
-Per SPEC-V3R6-AGENT-TEAM-REBUILD-001 REQ-ATR-010 / REQ-ATR-011 / REQ-ATR-012, the `manager-develop` agent operates in one of three `cycle_type` modes selected per the run-phase task profile:
+Per the canonical agent catalog policy, the `manager-develop` agent operates in one of three `cycle_type` modes selected per the run-phase task profile:
 
 | cycle_type | Loop pattern | When to use | Iteration contract | Canonical reference |
 |------------|--------------|-------------|---------------------|---------------------|
@@ -130,7 +130,7 @@ Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` §
 - Before appending to `CHANGELOG.md` `[Unreleased]` section, run `grep -c '<SPEC-ID>' CHANGELOG.md` — if the count is ≥1, halt emission and return blocker report (avoid duplicate entries from parallel BATCH-SYNC sessions).
 - Verify file paths claimed in CHANGELOG match actual `ls <package-path>` output before committing.
 - Verify AC count in CHANGELOG matches `acceptance.md` (SSOT) — NOT `progress.md` (which may include deferred AC).
-- Origin: SPEC-V3R6-CHANGELOG-CLEANUP-001 §A.4 root cause analysis (BATCH-SYNC line 65 hallucination, 2026-05-23).
+- Origin: an earlier CHANGELOG cleanup root cause analysis (BATCH-SYNC line hallucination incident).
 
 ### Section C — Pre-flight Check List (착수 전 의무 검증)
 

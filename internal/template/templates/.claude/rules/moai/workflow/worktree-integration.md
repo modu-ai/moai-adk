@@ -295,13 +295,13 @@ Static guard: `internal/cli/worktree/new_test.go` `TestNew_NoAskUserQuestion` sc
 
 `.moai/state/swarm/<SPEC-ID>.json` (per-project, 0o600 perms) is written after successful team launch in P1, P2, or P3. The registry is NOT written for P4 (no spawn occurred), and is NOT written if pane spawn fails or worktree creation fails.
 
-The 7-field schema (`spec_id`, `worktree_path`, `branch`, `pane_id`, `mode`, `created_at`, `created_by_pid`) is the baseline for future `moai swarm status / done / kill-all` commands. Those commands are out of scope for SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001 — this SPEC delivers only the registry write.
+The 7-field schema (`spec_id`, `worktree_path`, `branch`, `pane_id`, `mode`, `created_at`, `created_by_pid`) is the baseline for future `moai swarm status / done / kill-all` commands. Those commands are out of scope for the current worktree team-launch contract — the current contract delivers only the registry write.
 
 ### Cross-references
 
 - `.claude/skills/moai-workflow-worktree/SKILL.md` § `--team` Flag (P1-P4 matrix + examples)
 - `internal/cli/worktree/team_launch.go`, `team_launch_posix.go`, `team_launch_windows.go`, `swarm_registry.go`, `handoff_guidance.go`
-- SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001 (REQ-WTL-001..013)
+- The canonical worktree team-launch contract requirements
 - CONST-V3R5-030 — Branch Origin Decision Protocol (BODP)
 
 ## Minimum Version Requirements

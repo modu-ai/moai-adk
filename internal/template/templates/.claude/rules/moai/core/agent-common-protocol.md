@@ -39,8 +39,8 @@ Per the canonical hook invocation surface policy, the orchestrator interacts wit
 | Hook script | Trigger | Owning REQ | Exit-code semantics |
 |-------------|---------|------------|---------------------|
 | `.claude/hooks/moai/status-transition-ownership.sh` | PostToolUse on Write/Edit of `.moai/specs/SPEC-*/{spec,plan,acceptance}.md` body content | Status Transition Ownership Matrix per `.claude/rules/moai/development/spec-frontmatter-schema.md` | exit 0 = continue (transition matches canonical owner); exit 2 = block (owner mismatch) |
-| `.claude/hooks/moai/sync-phase-quality-gate.sh` | Stop hook on sync-phase commit completion | REQ-ATR-009 (lint + test + coverage delta) + REQ-ATR-014 (dependency manifest audit on `go.mod` / `package-lock.json` / etc. changes) | exit 0 = continue (all gates pass); exit 2 = block (any gate failed) |
-| `.claude/hooks/moai/team-ac-verify.sh` | TaskCompleted in team mode (dormant by default — activates only under harness `thorough` + team mode prerequisites per REQ-ATR-013) | per-AC PASS evidence file verification | exit 0 = acknowledge completion; exit 2 = reject completion |
+| `.claude/hooks/moai/sync-phase-quality-gate.sh` | Stop hook on sync-phase commit completion | sync-phase quality gate policy (lint + test + coverage delta) + dependency manifest audit on `go.mod` / `package-lock.json` / etc. changes | exit 0 = continue (all gates pass); exit 2 = block (any gate failed) |
+| `.claude/hooks/moai/team-ac-verify.sh` | TaskCompleted in team mode (dormant by default — activates only under harness `thorough` + team mode prerequisites per the canonical team activation policy) | per-AC PASS evidence file verification | exit 0 = acknowledge completion; exit 2 = reject completion |
 
 #### Orchestrator translation responsibility
 
@@ -50,7 +50,7 @@ Hooks return exit codes and structured JSON; they MUST NOT invoke `AskUserQuesti
 2. Preload `AskUserQuestion` via `ToolSearch(query: "select:AskUserQuestion")`
 3. Compose an `AskUserQuestion` round presenting the user with at least: (a) accept the block and address the failed gate, (b) override with `--skip-hook` opt-out (logged to `.moai/logs/hook-skip.log` per audit trail), (c) abort the workflow
 
-This translation pattern preserves the orchestrator's single-point-of-contact with the user per CLAUDE.md §8 + this rule's User Interaction Boundary section above. Hook subagent boundary verification is covered by AC-ATR-022 of SPEC-V3R6-AGENT-TEAM-REBUILD-001:
+This translation pattern preserves the orchestrator's single-point-of-contact with the user per CLAUDE.md §8 + this rule's User Interaction Boundary section above. Hook subagent boundary verification is covered by the canonical hook subagent boundary acceptance criterion:
 
 ```bash
 grep -rn 'AskUserQuestion\|mcp__askuser' .claude/hooks/moai/ \
@@ -241,7 +241,7 @@ When the orchestrator needs to verify implementation completion, it SHOULD issue
 multiple Bash tool calls within a single response turn. Independent verifications
 that do not share state are safe to parallelize.
 
-### Canonical 7-item example (AC-WO-007)
+### Canonical 7-item example
 
 The following 7 verification commands cover the standard read-only verification
 batch for a typical run-phase completion. The orchestrator SHOULD invoke all 7
@@ -294,7 +294,8 @@ each, serial execution adds ~14 s of dead-time per run-phase completion.
 
 ### Cross-reference
 
-- AC-WO-007 (SPEC-V3R5-WORKFLOW-OPT-001) verifies this section contains the
+- The canonical verification-batch acceptance criterion (recorded in the
+  predecessor workflow optimization rule) verifies this section contains the
   7 verification keywords (`go test`, `coverprofile`, `grep `, `sentinel`,
   `cmd/moai`, `bench`, `lint`).
 - `.claude/rules/moai/workflow/verification-batch-pattern.md` documents the
@@ -315,7 +316,7 @@ git fetch origin main 2>&1
 git rev-list --count --left-right origin/main...HEAD
 
 # 3. Query active sessions on this host for the same SPEC scope (L1 of
-#    SPEC-V3R6-MULTI-SESSION-COORD-001 4-layer race mitigation).
+#    the canonical 4-layer multi-session race mitigation policy).
 #    Replace <SPEC-ID> with the SPEC about to be operated on.
 moai session list --json --filter-spec=<SPEC-ID>
 ```
@@ -333,15 +334,15 @@ Interpretation matrix (active-sessions query — 3rd command):
 
 | Output | Meaning | Action |
 |--------|---------|--------|
-| `[]` | No other session on this SPEC (REQ-COORD-018) | Proceed normally |
+| `[]` | No other session on this SPEC (per the multi-session coordination policy) | Proceed normally |
 | `[{...}]` (≥1 entry from another session) | **Concurrent session race detected on same SPEC** | STOP, surface entries via prose summary, AskUserQuestion: **wait** / **override** / **abort** |
 
-The 3rd command is **additive only** (REQ-COORD-020) — the original
-2-command batch (git fetch + git rev-list) is preserved verbatim above.
-Backward compatibility: sessions running before
-SPEC-V3R6-MULTI-SESSION-COORD-001 was deployed (no registry hook) emit
-no entries, so the 3rd command returns `[]` and the orchestrator
-proceeds normally without false positives.
+The 3rd command is **additive only** — the original 2-command batch
+(git fetch + git rev-list) is preserved verbatim above.
+Backward compatibility: sessions running before the multi-session
+coordination policy was deployed (no registry hook) emit no entries,
+so the 3rd command returns `[]` and the orchestrator proceeds normally
+without false positives.
 
 Rationale: When 2+ Claude Code sessions operate on the same project root
 + same memory hash (`~/.claude/projects/{hash}/memory/`), they may both
@@ -351,11 +352,11 @@ a pre-spawn fetch, the second session works on a stale baseline and may
 produce duplicate commits, conflicting frontmatter edits, or CHANGELOG
 entry races.
 
-Origin: SPEC-V3R6-LEGACY-CLEANUP-001 sync-phase race (2026-05-23) —
-parallel session committed `aea0cf7b9` (spec.md frontmatter status update)
-between manager-develop M4 (`ccd1fa9cf`) and manager-docs sync
-(`19bc873ff`). Detection occurred retrospectively when `git push` succeeded
-with an unexpected intermediate commit in the push range. L9 reinforced
+Origin: an earlier sync-phase race incident — a parallel session
+committed a spec.md frontmatter status update between manager-develop's
+final run-phase commit and manager-docs' sync commit. Detection occurred
+retrospectively when `git push` succeeded with an unexpected intermediate
+commit in the push range. Lesson L9 reinforced
 (parallel session race during long agent runs) + L44 NEW (pre-spawn fetch
 discipline).
 
@@ -377,7 +378,7 @@ expanded into multiple sequential commands.
 ### CI Status Query
 
 ```bash
-# Canonical pattern (AC-WO-013) — single command, structured JSON output.
+# Canonical pattern — single command, structured JSON output.
 gh pr checks <PR> --json name,state,conclusion | jq '.[] | select(.conclusion != "SUCCESS")'
 
 # Why: single round-trip, parseable, easier to integrate with subsequent steps.
@@ -406,7 +407,8 @@ turn where deferred tools may be needed. See
 
 ### Cross-reference
 
-- AC-WO-013 (SPEC-V3R5-WORKFLOW-OPT-001) verifies this section contains
+- The canonical CI-status-query acceptance criterion (recorded in the
+  predecessor workflow optimization rule) verifies this section contains
   `gh pr checks --json` and `jq` literals in proximity.
 
 ## Time Estimation
