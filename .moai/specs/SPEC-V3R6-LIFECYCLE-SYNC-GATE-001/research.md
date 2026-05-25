@@ -1,12 +1,17 @@
 ---
 id: SPEC-V3R6-LIFECYCLE-SYNC-GATE-001
 artifact: research
-version: "0.1.1"
+version: "0.1.2"
 created: 2026-05-25
-updated: 2026-05-25
+updated: 2026-05-26
 ---
 
 ## HISTORY
+
+### v0.1.2 (2026-05-26, manager-spec — iter-3 cross-reference sync + ground-truth update)
+- §A.1 background updated to note that the 5 modern-era violations originally identified were transitioned to `status: completed` via orchestrator-direct retroactive Mx chores (2026-05-25 20:54-20:57, post-iter-2 verdict) — these chores were NOT performed by this SPEC's run-phase implementation; they were preemptive orchestrator-direct discharge using the legacy 5-commit cadence pattern. Origin context preserved verbatim (154-SPEC cross-tab audit data unchanged); ground-truth ledger amended to reflect post-discharge state for iter-3 audit alignment.
+- M6 dogfood verification reframed as no-op regression validation per spec.md v0.1.2 D1 BLOCKING resolution (cross-reference only; research.md §A.1 origin remains the verbatim 2026-05-25 audit data)
+- Cross-reference to spec.md v0.1.2 HISTORY for full D1/D2/D3 defect catalogue
 
 ### v0.1.1 (2026-05-25, manager-spec — iter-2 cross-reference sync)
 - No research changes in this iteration; version bumped for consistency with spec.md v0.1.1 + acceptance.md v0.1.1 + design.md v0.1.1
@@ -41,14 +46,23 @@ The session resolved 4 violations (3 Y|Y|Y|Y + 1 LOCAL-NAMESPACE-CONSOLIDATION-0
 - `b8be7e44a` SPEC-V3R6-HARNESS-PROPOSAL-GEN-001: spec.md status backfill — implemented → completed
 - `d74095e75` SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001: spec.md status backfill — implemented → completed
 
-**5 modern-era violations remain** (Y|Y|N|Y category from above, minus 1 already-closed SPEC):
-- SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 (sync `11abb9a30`, mx missing)
-- SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001 (sync `a853f2954`, mx missing)
-- SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001 (sync `2d9871208b09e1ce647a4cc134b24267b713b42f`, mx=null literal)
-- SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001 (sync `009e68c5d`, mx missing)
-- SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001 (sync + mx both missing — broken state)
+**5 modern-era violations were originally identified** (Y|Y|N|Y category from above, minus 1 already-closed SPEC):
+- SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 (sync `11abb9a30`, mx originally missing)
+- SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001 (sync `a853f2954`, mx originally missing)
+- SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001 (sync `2d9871208b09e1ce647a4cc134b24267b713b42f`, mx originally null literal)
+- SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001 (sync `009e68c5d`, mx originally missing)
+- SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001 (sync + mx originally both missing — broken state)
 
-These 5 SPECs constitute the M6 dogfood verification target.
+These 5 SPECs originally constituted the M6 dogfood verification target.
+
+> **Iter-3 ground-truth update (v0.1.2, D1 BLOCKING resolution)**: All 5 SPECs above were transitioned to `status: completed` via orchestrator-direct retroactive Mx chores executed on 2026-05-25 20:54-20:57 (AFTER iter-2 PASS verdict at 20:37, BEFORE iter-3 audit verdict on 2026-05-26):
+> - `a1fb04625` SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001: retroactive Mx + status completed
+> - `8d0b1fdf9` SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001: retroactive Mx + status completed
+> - `d167eb08b` SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001: retroactive Mx + status completed
+> - `ac8ba9a99` SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001: retroactive Mx + status completed
+> - `adc75a33c` SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001: PROCEED-WITH-DEBT corrective chore + status completed
+>
+> Note: these chores used the legacy 5-commit cadence pattern (orchestrator-direct, not via `moai spec close` — which is the deliverable of this very SPEC and does not yet exist at run-phase entry). M6 scope is therefore reframed from active backfill dogfood (which is no longer applicable to these 5 SPECs) to no-op regression validation: `moai spec close --backfill-only` MUST exit 0 as no-op against each, with no staging change and no commit produced. This binds M6 to AC-LSG-022's existing `fully-completed-noop` fixture state at the integration level. The iter-3 ground-truth amendment does not invalidate the original 154-SPEC cross-tab audit findings (which remain verbatim above) — it merely records the post-iter-2 orchestrator-direct discharge that intervened between iter-2 and iter-3.
 
 ## B. Root Cause Analysis (Verbatim Memory Citations)
 

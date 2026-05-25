@@ -1,12 +1,17 @@
 ---
 id: SPEC-V3R6-LIFECYCLE-SYNC-GATE-001
 artifact: plan
-version: "0.1.1"
+version: "0.1.2"
 created: 2026-05-25
-updated: 2026-05-25
+updated: 2026-05-26
 ---
 
 ## HISTORY
+
+### v0.1.2 (2026-05-26, manager-spec — iter-3 narrow-scope defect resolution)
+- D3 SHOULD-FIX resolved: milestone "Binds to AC" lines in F.1 (M1) / F.2 (M2) / F.6 (M6) synchronized with acceptance.md §D.3 AC→Milestone mapping (v0.1.1). F.1 appends AC-019/020/021/022; F.2 appends AC-022; F.6 appends AC-020/022. F.3/F.4/F.5 unchanged.
+- D1 BLOCKING resolved (mirror): F.6 M6 milestone scope reframed from active backfill dogfood (5 modern-era violations) to no-op regression validation against 5 already-discharged SPECs. M6 commit count expectation revised from "produces 5 chore commits" to "produces 0 chore commits (no-op success path)"; E7 self-verification commit count adjusted accordingly.
+- Cross-reference to spec.md v0.1.2 HISTORY for full D1/D2/D3 defect catalogue and trajectory analysis
 
 ### v0.1.1 (2026-05-25, manager-spec — iter-2 narrow-scope defect resolution)
 - D2 resolved: D.1.2 HARD amended with explicit "this SPEC's plan-phase artifacts" qualifier + M3 carve-out clause (settings.json.tmpl PreCommit array registration is the SOLE allowed template change)
@@ -82,7 +87,7 @@ E3. **Coverage threshold**: per-package coverage meets D.2 SHOULD thresholds (wa
 E4. **CLI smoke**: `go run ./cmd/moai spec close --help` AND `go run ./cmd/moai spec audit --help` produce expected output
 E5. **Hook smoke**: `bash .claude/hooks/moai/handle-pre-commit-spec-status.sh < test-input.json` exits 0 or 2 per expected
 E6. **AC binding traceability**: each AC-LSG item references the run-phase artifact that satisfies it
-E7. **Commit attribution**: `git log --oneline --grep="SPEC-V3R6-LIFECYCLE-SYNC-GATE-001"` returns **≥ 15 commits** expected: 6 milestone commits (M1-M6) + 5 M6 dogfood close commits (one per known violation) + plan chore (already committed `0616823dc`) + plan iter-2 chore (this commit) + sync chore + mx chore + atomic close terminator chore. Pre-iter-2 baseline includes the 0616823dc plan-phase commit; iter-2 amendment adds 1 to baseline.
+E7. **Commit attribution**: `git log --oneline --grep="SPEC-V3R6-LIFECYCLE-SYNC-GATE-001"` returns **≥ 11 commits** expected (revised v0.1.2 per D1 reframe): 6 milestone commits (M1-M6, where M6 produces 0 SPEC-targeted close commits per no-op reframe but is itself one M6 verification chore commit attributed to this SPEC) + plan chore (already committed `0616823dc`) + plan iter-2 chore (`2c4513930`) + plan iter-3 chore (this iter-3 amendment) + sync chore + mx chore + atomic close terminator chore. The 5 M6 close-target commits previously expected (one per violation) are eliminated by the v0.1.2 D1 reframe (no-op semantics produce 0 commits per close invocation against already-completed SPECs).
 
 ## F. Milestones (Priority Order, No Time Estimates)
 
@@ -99,7 +104,7 @@ E7. **Commit attribution**: `git log --oneline --grep="SPEC-V3R6-LIFECYCLE-SYNC-
 
 **Exit criteria**: M1 commit `feat(SPEC-V3R6-LIFECYCLE-SYNC-GATE-001): M1 closer.go + audit.go primitives + era field`, all unit tests PASS, coverage ≥85% for new files
 
-**Binds to AC**: AC-LSG-001, AC-LSG-002, AC-LSG-006, AC-LSG-007, AC-LSG-009, AC-LSG-010, AC-LSG-013, AC-LSG-014
+**Binds to AC**: AC-LSG-001, AC-LSG-002, AC-LSG-006, AC-LSG-007, AC-LSG-009, AC-LSG-010, AC-LSG-013, AC-LSG-014, AC-LSG-019 (Cross-Platform CI matrix, NEW per v0.1.1 D1), AC-LSG-020 (Observability log emission, NEW per v0.1.1 D1), AC-LSG-021 (Concurrent close safety, formerly AC-018a renumbered per v0.1.1 D4), AC-LSG-022 (Backfill-only mode core, NEW per v0.1.1 D7)
 
 ### F.2 M2 — CLI Subcommands (`moai spec close` + `moai spec audit`)
 
@@ -114,7 +119,7 @@ E7. **Commit attribution**: `git log --oneline --grep="SPEC-V3R6-LIFECYCLE-SYNC-
 
 **Exit criteria**: M2 commit `feat(SPEC-V3R6-LIFECYCLE-SYNC-GATE-001): M2 spec close + spec audit CLI subcommands`, `go run ./cmd/moai spec close --help` + `go run ./cmd/moai spec audit --help` produce expected output, all integration tests PASS
 
-**Binds to AC**: AC-LSG-001, AC-LSG-002, AC-LSG-006, AC-LSG-007, AC-LSG-014, AC-LSG-016 (NFR performance)
+**Binds to AC**: AC-LSG-001, AC-LSG-002, AC-LSG-006, AC-LSG-007, AC-LSG-014, AC-LSG-016 (NFR performance), AC-LSG-022 (Backfill-only mode CLI flag wiring, NEW per v0.1.1 D7)
 
 ### F.3 M3 — Pre-Commit Hook + settings.json.tmpl Registration
 
@@ -156,22 +161,24 @@ E7. **Commit attribution**: `git log --oneline --grep="SPEC-V3R6-LIFECYCLE-SYNC-
 
 **Binds to AC**: AC-LSG-005, AC-LSG-013, AC-LSG-017 (worked example)
 
-### F.6 M6 — Dogfood Verification (5 Known Modern-Era Violations)
+### F.6 M6 — No-Op Regression Validation (5 Already-Discharged SPECs)
 
 **Priority**: P1 (depends on M1-M5)
 
-**Scope**: Execute `moai spec close SPEC-XXX --backfill-only` (where --backfill-only signals atomic close of an already-implemented SPEC's spec.md status + sync_commit_sha + mx_commit_sha without requiring a new sync/mx body) for each of:
-- SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001
-- SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001
-- SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001
-- SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001
-- SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001
+**Scope (v0.1.2 reframe per D1 BLOCKING)**: Execute `moai spec close SPEC-XXX --backfill-only` against each of the 5 SPECs originally identified as modern-era violations but now already at `status: completed` (transitioned via orchestrator-direct retroactive Mx chores `a1fb04625` / `8d0b1fdf9` / `d167eb08b` / `ac8ba9a99` / `adc75a33c` executed 2026-05-25 20:54-20:57, post-iter-2 verdict):
+- SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 (status: completed)
+- SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001 (status: completed)
+- SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001 (status: completed — PROCEED-WITH-DEBT precedent)
+- SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001 (status: completed)
+- SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001 (status: completed)
 
-Each close produces one atomic chore commit. M6 produces 5 chore commits.
+**Expected behavior per close invocation**: command MUST exit code 0 as no-op (no staging change, no commit produced). Each invocation logs a single line to `.moai/logs/lifecycle-close.log` with `mode: "backfill-only"`, `result: "success"`, `transitions: {}` (empty object indicates no fields needed transition), and a structured log signal indicating "noop: already completed" pattern (stderr or log body — implementation detail in M1 closer.go).
 
-**Exit criteria**: M6 produces 5 `chore(SPEC-XXX): 4-phase close — atomic` commits, post-M6 `moai spec audit --filter-era=V3R6 --json` returns 0 drift findings, all 5 SPECs frontmatter status = completed
+**Rationale (v0.1.2 reframe)**: This validates the implementation handles the already-completed precondition state gracefully (success path, not failure). Active backfill dogfood is no longer applicable because the 5 target SPECs are no longer in modern-era-violation state. The no-op regression validation binds to AC-LSG-022's existing `fully-completed-noop` fixture state (acceptance.md §B.22 last fixture in parametric `TestBackfillOnlyVariants`); no new fixture or AC required.
 
-**Binds to AC**: AC-LSG-018 (dogfood verification — all 5 closes succeed)
+**Exit criteria**: M6 produces **0 chore commits** (5 no-op invocations, each producing zero staging changes and zero commits). Post-M6 `moai spec audit --filter-era=V3R6 --json` returns 0 drift findings for these 5 SPECs (precondition already satisfied). `.moai/logs/lifecycle-close.log` contains ≥ 5 entries (one per no-op invocation) with `result: "success"` and `transitions: {}`. All 5 SPECs' spec.md frontmatter status remains `completed` (unchanged — no-op).
+
+**Binds to AC**: AC-LSG-018 (no-op regression verification — all 5 invocations exit 0 with no-op semantics), AC-LSG-020 (Observability — verifies ≥ 5 log entries appended per NFR-LSG-004, NEW per v0.1.1 D1), AC-LSG-022 (Backfill-only mode `fully-completed-noop` fixture verified in production usage, NEW per v0.1.1 D7)
 
 ## G. Anti-Patterns (DO NOT)
 

@@ -1,12 +1,17 @@
 ---
 id: SPEC-V3R6-LIFECYCLE-SYNC-GATE-001
 artifact: design
-version: "0.1.1"
+version: "0.1.2"
 created: 2026-05-25
-updated: 2026-05-25
+updated: 2026-05-26
 ---
 
 ## HISTORY
+
+### v0.1.2 (2026-05-26, manager-spec — iter-3 cross-reference sync)
+- No design changes in this iteration; version bumped for consistency with spec.md v0.1.2 + plan.md v0.1.2 + acceptance.md v0.1.2 + research.md v0.1.2
+- Component architecture, era classification heuristic table, file lock mechanism unchanged — D1 BLOCKING (M6 scope reframe) does not affect design layer; D2 (REQ-LSG-010 lock path) aligns spec.md wording with design.md L105/L192/L333 per-SPEC pattern that was already canonical here; D3 (plan.md Binds to AC sync) is a plan/acceptance asymmetry fix that does not touch design
+- Cross-reference to spec.md v0.1.2 HISTORY for full D1/D2/D3 defect catalogue
 
 ### v0.1.1 (2026-05-25, manager-spec — iter-2 cross-reference sync)
 - No design changes in this iteration; version bumped for consistency with spec.md v0.1.1 + acceptance.md v0.1.1

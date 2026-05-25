@@ -1,12 +1,17 @@
 ---
 id: SPEC-V3R6-LIFECYCLE-SYNC-GATE-001
 artifact: acceptance
-version: "0.1.1"
+version: "0.1.2"
 created: 2026-05-25
-updated: 2026-05-25
+updated: 2026-05-26
 ---
 
 ## HISTORY
+
+### v0.1.2 (2026-05-26, manager-spec — iter-3 narrow-scope defect resolution)
+- D1 BLOCKING resolved (acceptance.md side): AC-LSG-018 Given/When/Then triplet rewritten from active backfill dogfood (5 modern-era violations resolved) to no-op regression validation (5 already-discharged SPECs at `status: completed`, verify no-op success path). New AC-LSG-018 binds to AC-LSG-022's `fully-completed-noop` fixture state (parametric `TestBackfillOnlyVariants` last variant) — no new fixture or AC required; AC count stays at 22.
+- No changes to AC-LSG-001..017, AC-LSG-019, AC-LSG-020, AC-LSG-021, AC-LSG-022 — narrow-scope amendment per Path A
+- Cross-reference to spec.md v0.1.2 HISTORY for full D1/D2/D3 defect catalogue and trajectory analysis
 
 ### v0.1.1 (2026-05-25, manager-spec — iter-2 narrow-scope defect resolution)
 - D1 BLOCKING resolved: added AC-LSG-019 (Cross-Platform binding NFR-LSG-003) + AC-LSG-020 (Observability binding NFR-LSG-004) — NFR coverage 3/5 → 5/5 (100%)
@@ -61,7 +66,7 @@ updated: 2026-05-25
 
 | AC ID | M6 binding | Severity | Verification Method |
 |-------|-----------|----------|---------------------|
-| AC-LSG-018 | M6 dogfood | MUST-PASS | All 5 known modern-era violations resolved via `moai spec close --backfill-only` |
+| AC-LSG-018 | M6 dogfood (v0.1.2 reframe: no-op regression) | MUST-PASS | All 5 already-discharged SPECs exit 0 as no-op via `moai spec close --backfill-only` (verifies `fully-completed-noop` fixture state at integration level — see §B.18 v0.1.2 reframe) |
 
 ### A.4 Backfill-Only Semantics AC
 
@@ -232,16 +237,44 @@ updated: 2026-05-25
 
 **Verification**: Regression test on actual repo SPECs that were closed pre-this-SPEC (e.g., SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001 closed via legacy cadence), assert clean audit result.
 
-### B.18 AC-LSG-018 — M6 Dogfood: 5 Known Violations Resolved
+### B.18 AC-LSG-018 — M6 No-Op Regression Validation (5 Already-Discharged SPECs)
 
-**Given** the 5 known modern-era violations listed in spec.md §A.1,
-**When** M6 milestone executes `moai spec close SPEC-XXX --backfill-only` for each,
+> **v0.1.2 reframe per D1 BLOCKING resolution**: Originally specified active backfill dogfood of 5 modern-era violations. After iter-2 PASS verdict (2026-05-25 20:37) but before iter-3 audit (2026-05-26), orchestrator-direct retroactive Mx chores `a1fb04625` (ARR-001) + `8d0b1fdf9` (FCG-001) + `d167eb08b` (TMD-001) + `ac8ba9a99` (TMC-001) + `adc75a33c` (HCW-001 PROCEED-WITH-DEBT) discharged all 5 target SPECs to `status: completed`. M6 scope is reframed to no-op regression validation that exercises the `fully-completed-noop` fixture state of AC-LSG-022's parametric test in production usage. The reframe binds AC-LSG-018 to AC-LSG-022's existing `fully-completed-noop` fixture (acceptance.md §B.22 last variant in `TestBackfillOnlyVariants`); no new fixture is introduced.
+
+**Given** the 5 SPECs originally identified in spec.md §A.1 are now all at `status: completed` (ARR-001 / FCG-001 / HCW-001 / TMD-001 / TMC-001),
+**When** M6 milestone executes `moai spec close SPEC-XXX --backfill-only` for each of the 5 SPECs,
 **Then** after M6 completion:
-1. `moai spec audit --filter-era=V3R6 --json` SHALL return 0 entries in `drift_findings`
-2. Each of the 5 SPECs SHALL have spec.md `status: completed`
-3. Each close SHALL have produced exactly one atomic chore commit attributable to SPEC-V3R6-LIFECYCLE-SYNC-GATE-001 M6
+1. Each invocation SHALL exit code 0 (no-op success path)
+2. Each invocation SHALL produce **0 commits** (no staging change, no commit object created — verifies the implementation handles already-completed precondition gracefully)
+3. Each invocation SHALL log a single line entry to `.moai/logs/lifecycle-close.log` with `mode: "backfill-only"`, `result: "success"`, `transitions: {}` (empty object — no fields needed transition), and a structured noop signal (stderr or log body) matching the pattern `noop: already completed` (case-insensitive substring acceptable; implementation-level detail in M1 closer.go)
+4. `moai spec audit --filter-era=V3R6 --json` SHALL return 0 entries in `drift_findings` for these 5 SPECs (precondition already satisfied — they are already-completed; verifies the audit tool does not erroneously surface drift for already-completed modern-era SPECs)
+5. All 5 SPECs' spec.md frontmatter status SHALL remain `completed` (unchanged — no-op produces no transition)
 
-**Verification**: Post-M6 manual + automated check: `moai spec audit --filter-era=V3R6 --json | jq '.drift_findings | length'` returns 0; `git log --oneline --grep="SPEC-V3R6-LIFECYCLE-SYNC-GATE-001.*M6"` returns ≥ 5 commits.
+**Verification**: Post-M6 automated checks:
+```bash
+# 1. No-op exit code 0 verification (per-SPEC)
+moai spec close SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 --backfill-only ; echo $?   # expected: 0
+moai spec close SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001 --backfill-only ; echo $?    # expected: 0
+moai spec close SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001 --backfill-only ; echo $?      # expected: 0
+moai spec close SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001 --backfill-only ; echo $?          # expected: 0
+moai spec close SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001 --backfill-only ; echo $?        # expected: 0
+
+# 2. Zero commits produced by no-op invocations
+git log --oneline --grep="SPEC-V3R6-LIFECYCLE-SYNC-GATE-001.*M6.*close"                # expected: empty (no commits)
+
+# 3. Log audit trail emitted (per AC-LSG-020 cross-binding)
+jq -c 'select(.mode == "backfill-only" and .result == "success" and .transitions == {})' .moai/logs/lifecycle-close.log | wc -l   # expected: ≥ 5
+
+# 4. Audit drift findings empty for these 5 SPECs
+moai spec audit --filter-era=V3R6 --json | jq '[.drift_findings[] | select(.spec_id | test("ARR-001|FCG-001|HCW-001|TMD-001|TMC-001"))] | length'   # expected: 0
+
+# 5. SPEC status unchanged (still completed)
+for s in ARR-001 FCG-001 HCW-001 TMD-001 TMC-001; do
+  grep "^status:" ".moai/specs/SPEC-V3R6-${s}/spec.md"   # expected each: status: completed
+done
+```
+
+**Cross-binding to AC-LSG-022**: AC-LSG-018 references the `fully-completed-noop` fixture state already enumerated in AC-LSG-022's parametric `TestBackfillOnlyVariants` test (acceptance.md §B.22 fixture list: `Y_N_N_Y`, `Y_Y_N_Y`, `Y_Y_Y_Y_StatusDrift`, **`fully-completed-noop`**). M6 production execution against the 5 already-completed SPECs exercises the same fixture state at the integration level; AC-LSG-022 covers the unit-test level. No new fixture is introduced.
 
 ### B.19 AC-LSG-021 — Concurrent Close Safety (NFR-LSG-005)
 
