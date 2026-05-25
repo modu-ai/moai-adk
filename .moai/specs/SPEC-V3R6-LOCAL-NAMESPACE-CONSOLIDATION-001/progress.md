@@ -17,7 +17,7 @@ related_specs: []
 plan_commit_sha: "651623dc1"
 run_commit_sha: "<see §B M1-M6>"
 sync_commit_sha: "b2ec4063a"
-mx_commit_sha: "<pending>"  # self-reference, populated in next atomic backfill commit per L60 chicken-and-egg pattern
+mx_commit_sha: "2c96d98ab"
 ---
 
 # Progress — SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001
@@ -30,7 +30,7 @@ mx_commit_sha: "<pending>"  # self-reference, populated in next atomic backfill 
 | Plan-Audit | done (PASS-WITH-DEBT 0.83, iter-3 max-3 contract reached) | plan-auditor | n/a | 2026-05-25 |
 | Run | done | manager-develop | `<see §B M1-M6 commit shas>` | 2026-05-25 |
 | Sync | done | manager-docs | `b2ec4063a` (content) + `f761cc4b0` (L60 backfill) | 2026-05-25 |
-| Mx | done | orchestrator | `<this commit>` (Mx Step C EVALUATE-SKIP + 4-phase close) | 2026-05-25 |
+| Mx | done | orchestrator | `2c96d98ab` (Mx Step C EVALUATE-SKIP + 4-phase close) | 2026-05-25 |
 
 ## B. Milestone Status
 
