@@ -280,6 +280,10 @@ type SPECFrontmatter struct {
 	// precedence over auto-detection. It is not one of the 12 required fields, so
 	// FrontmatterSchemaRule does not report its absence as a finding.
 	HarnessLevel string `yaml:"harness_level,omitempty"`
+	// Era is the optional era classification override (V2.x | V3R2-R4 | V3R5 | V3R6).
+	// SPEC-V3R6-LIFECYCLE-SYNC-GATE-001 REQ-LSG-002 / AC-LSG-013: when present,
+	// overrides auto-detection in ClassifyEra. Not one of the 12 required fields.
+	Era string `yaml:"era,omitempty"`
 }
 
 type REQEntry struct {
