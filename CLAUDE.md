@@ -58,7 +58,7 @@ Route request based on command type:
 
 Execute using explicit agent invocation:
 
-- "Use the expert-backend subagent to develop the API"
+- "Use the manager-develop subagent to implement the API (cycle_type=tdd, domain context: backend)"
 - "Use the manager-develop subagent to implement with DDD approach (cycle_type=ddd)"
 - "Use the Explore subagent to analyze the codebase structure"
 
@@ -152,14 +152,14 @@ MoAI uses DDD and TDD as its development methodologies, selected via quality.yam
 
 For detailed workflow specifications, see .claude/rules/moai/workflow/spec-workflow.md
 
-### Agent Chain for SPEC Execution
+### Agent Chain for SPEC Execution (Anthropic 2026 Aligned, post-SPEC-V3R6-AGENT-TEAM-REBUILD-001)
 
-- Phase 1: manager-spec → understand requirements
-- Phase 2: manager-strategy → create system design
-- Phase 3: expert-backend → implement core features
-- Phase 4: expert-frontend → create user interface
-- Phase 5: manager-quality → ensure quality standards
-- Phase 6: manager-docs → create documentation
+- Phase 1 (plan-phase): manager-spec → SPEC artifacts (spec/plan/acceptance/research/design — absorbed planning/strategy role per Audit 3 Finding A1)
+- Phase 2 (plan audit gate): plan-auditor → independent skeptical audit, bias prevention, GEARS compliance verification
+- Phase 3 (run-phase): manager-develop → implementation (cycle_type ∈ {ddd, tdd, autofix}); for domain-specific work (backend/frontend/security/etc.) the orchestrator spawns `Agent(general-purpose)` with domain whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C migration table
+- Phase 4 (sync-phase): manager-docs → CHANGELOG/README/docs + frontmatter status transitions (in-progress → implemented)
+- Phase 5 (sync audit gate): evaluator-active → independent 4-dimension quality scoring (Functionality/Security/Craft/Consistency)
+- Phase 6 (optional, Tier L OR explicit `--pr`): manager-git → branch creation + `gh pr create` + Late-Branch closure per CLAUDE.local.md §23.9 Tier-based PR Routing
 
 ### MX Tag Integration
 
@@ -380,10 +380,10 @@ For anti-hallucination policy, see .claude/rules/moai/core/moai-constitution.md
 
 ### Error Recovery
 
-- Agent execution errors: Use manager-quality subagent
-- Token limit errors: Execute /clear, then guide user to resume
-- Permission errors: Review settings.json manually
-- Integration errors: Use expert-devops subagent
+- Agent execution errors: Consult `.claude/rules/moai/workflow/archived-agent-rejection.md` §C migration table; orchestrator emits `ARCHIVED_AGENT_REJECTED` when an archived agent is referenced; for diagnostic work spawn `Agent(general-purpose)` with diagnostic scope OR `Agent(Explore)` for read-only investigation
+- Token limit errors: Execute /clear, then guide user to resume via paste-ready resume message per `.claude/rules/moai/workflow/session-handoff.md`
+- Permission errors: Review settings.json manually (project + user scope)
+- Integration / DevOps errors: spawn `Agent(general-purpose)` with infrastructure/CI domain context per `archived-agent-rejection.md` §C migration table (formerly handled by archived `expert-devops`)
 - MoAI-ADK errors: Suggest /moai feedback
 
 ### Resumable Agents
@@ -609,13 +609,18 @@ Large PDFs (>10 pages) return a lightweight reference when @-mentioned. Always s
 
 ---
 
-Version: 14.1.0 (Workflow Audit 2026-05-16 — Bundle B/G/H/I integration)
-Last Updated: 2026-05-17
+Version: 14.2.0 (Anthropic 2026 Alignment + Archived-Agent Reference Cleanup 2026-05-25)
+Last Updated: 2026-05-25
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 
+Changes in v14.2.0 (from v14.1.0):
+- §5 Agent Chain for SPEC Execution: 6-phase legacy chain → 4-phase Anthropic 2026 model (manager-spec → plan-auditor → manager-develop → manager-docs/evaluator-active → optional manager-git PR routing)
+- §2 Phase 3 Execute example: archived `expert-backend` → retained `manager-develop` invocation example
+- §11 Error Handling: archived `manager-quality` / `expert-devops` references → cross-reference to `.claude/rules/moai/workflow/archived-agent-rejection.md` migration table
+- Aligned with SPEC-V3R6-AGENT-TEAM-REBUILD-001 (17→8 catalog consolidation, M3 archive 2026-05-25)
+
 Changes in v14.1.0 (from v14.0.0):
-- §11 Error Handling: canonical rule citation 추가 (manager-quality / expert-devops)
 - §13 Progressive Disclosure System: canonical rule citation 추가 (`.claude/rules/moai/workflow/progressive-disclosure.md`)
 - §16 Context Search Protocol: canonical rule citation 추가 (`.claude/rules/moai/workflow/context-window-management.md`)
 - Note: §4 Agent Catalog의 `cycle` 제거는 별도 PR (Bundle C / PR #958)에서 처리됨

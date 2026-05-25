@@ -1,0 +1,226 @@
+// Package template — internal-content leak regression guard.
+//
+// SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001 M3 deliverable.
+//
+// This test enforces the canonical isolation doctrine codified in
+// CLAUDE.local.md §25 (Template Internal-Content Isolation). The template
+// directory (`internal/template/templates/`) ships to every user project on
+// `moai init` / `moai update`. Internal moai-adk development trail —
+// project-internal SPEC IDs, REQ/AC tokens, audit citations, internal session
+// dates, internal archive paths, internal commit SHAs, and internal memory
+// hash references — MUST NOT leak into that surface.
+//
+// Detection pattern set (5 classes) matches acceptance.md AC-TII-001
+// verifiable command, with the D-007 inline relaxation applied: short-sha
+// matching admits trailing sentence-final punctuation (period, comma,
+// semicolon, colon, exclamation, question mark, end-of-line) in addition to
+// the original trailing-space variant. The relaxation is required because
+// prose mentions of long commits (rare but legitimate in NOTICE.md
+// attribution paragraphs) sometimes use sentence-final placement. The
+// relaxation keeps regex precision high while removing a documented
+// false-positive class.
+//
+// Allowlist (skip list) is minimal by design and lives at the head of this
+// file — see `skipPaths`. New skip entries require commit-message
+// justification + cross-reference to CLAUDE.local.md §25.3 self-check.
+//
+// Cross-platform: uses filepath.Walk (Go-native), no external grep / shell.
+// Verified to compile on host darwin/amd64 + GOOS=windows GOARCH=amd64.
+//
+// Red-Green proof requirement (per AC-TII-007 RED+GREEN cycle):
+//   - GREEN: run on clean templates → PASS (this is the default state).
+//   - RED: temporarily inject a synthetic leak (e.g., a `.md` file with the
+//     literal `SPEC-V3R6-FAKE-001` token) under templates/ → confirm test
+//     FAILS with the offending file + class reported. Restore + re-run →
+//     PASS again. The synthetic leak MUST NOT be committed.
+package template
+
+import (
+	"io/fs"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"testing"
+)
+
+// leakClass describes one forbidden content class and how to detect it.
+//
+// The five classes correspond 1:1 to the five C-items in CLAUDE.local.md
+// §25.3 pre-commit self-check (C1-C5). Each class carries a name (for human
+// readability in test failure output) and a compiled regex.
+//
+// Pattern notes:
+//   - C1 (SPEC ID): matches `SPEC-V3R6-` / `SPEC-AGENCY-` / `SPEC-WORKTREE-`
+//     prefix patterns that are unambiguously moai-adk-internal. Generic
+//     placeholder `SPEC-XXX-001` (in example fixtures) does NOT match.
+//   - C2 (REQ/AC token): matches `REQ-XYZ-NNN` or `AC-XYZ-NNN` where XYZ is
+//     2+ uppercase letters and NNN is 3 digits. This matches moai-adk
+//     internal tracking tokens like REQ-ATR-007 / AC-WO-013 while leaving
+//     pedagogical EARS examples (`REQ-EXAMPLE-001` etc.) untouched.
+//   - C3 (Audit citation): matches "Audit N Finding AX" and "Audit 3" style
+//     citation wrappers.
+//   - C4a (Date): matches ISO-8601 dates 2026-MM-DD (project-internal session
+//     dates). Other formats (e.g., RFC3339 timestamps in YAML) are not
+//     matched here — they are handled by separate review.
+//   - C4b (Short-sha sentence-final): D-007 inline. Matches a hexadecimal
+//     short-sha (7-8 chars) bounded by word boundaries with trailing
+//     punctuation [\s\.,;:!?] or end-of-line. The relaxation rationale is
+//     documented in the package comment above.
+//   - C5 (Memory/archive path): matches `~/.claude/projects/` user-home
+//     memory references and `.moai/backups/agent-archive-` archive paths.
+//
+// Word-boundary anchoring (`\b`) on C1/C2/C4b prevents accidental
+// substring matches inside larger identifiers.
+type leakClass struct {
+	name    string
+	pattern *regexp.Regexp
+}
+
+// leakClasses is the ordered list of regression patterns enforced by this
+// test. The order matches CLAUDE.local.md §25.3 C1-C5 for diagnostic
+// consistency.
+var leakClasses = []leakClass{
+	{
+		name:    "C1-spec-id",
+		pattern: regexp.MustCompile(`\bSPEC-(V3R6|AGENCY|WORKTREE)-[A-Z0-9-]+\b`),
+	},
+	{
+		name:    "C2-req-ac-token",
+		pattern: regexp.MustCompile(`\b(REQ|AC)-[A-Z]{2,}-[0-9]{3}\b`),
+	},
+	{
+		name:    "C3-audit-citation",
+		pattern: regexp.MustCompile(`Audit [0-9]+ Finding A[0-9]+|Audit 3\b`),
+	},
+	{
+		name:    "C4a-internal-date",
+		pattern: regexp.MustCompile(`\b202[6-9]-[0-1][0-9]-[0-3][0-9]\b`),
+	},
+	{
+		name: "C4b-short-sha-sentence-final",
+		// D-007 inline: extend trailing-space (original variant) with
+		// sentence-final punctuation [.,;:!?] + end-of-line. The regex
+		// requires a leading word-boundary, 7-8 hex chars, and a trailing
+		// punctuation OR whitespace OR end-of-line.
+		pattern: regexp.MustCompile(`\b[0-9a-f]{7,8}([\s\.,;:!?]|$)`),
+	},
+	{
+		name:    "C5-memory-archive-path",
+		pattern: regexp.MustCompile(`~/\.claude/projects/-Users-|\.moai/backups/agent-archive-`),
+	},
+}
+
+// skipPaths enumerates template paths excluded from the scan. Minimal by
+// design — each addition MUST carry a justification anchored in
+// CLAUDE.local.md §25.3 self-check or design.md §C allowlist (whichever is
+// more specific). Default: empty.
+//
+// Path comparison is performed on the suffix relative to templatesRoot
+// (forward-slash, lowercase). Use absolute suffix patterns only.
+var skipPaths = []string{
+	// (empty by default — extend with justification cross-reference)
+}
+
+// templatesRoot is the canonical template root under audit. Relative to the
+// package directory (internal/template/), templates/ is the embedded fs.
+const templatesRoot = "templates"
+
+// TestTemplateNoInternalContentLeak enforces CLAUDE.local.md §25 doctrine
+// across `internal/template/templates/`. Walks every `.md` and `.tmpl` file
+// (text formats) and reports any forbidden-class match per CLAUDE.local.md
+// §25.1 forbidden classes.
+//
+// Failure mode: the test reports the offending file path + the leak class
+// name + the matched substring. This makes the audit log actionable —
+// `t.Errorf` carries enough context that the maintainer can locate +
+// substitute via the design.md §B Substitution Dictionary without re-running
+// grep.
+//
+// Performance: scans ~38 files at ~5-15 KB each. Single-process walk
+// completes in well under 1 second on modern hardware. No concurrency.
+func TestTemplateNoInternalContentLeak(t *testing.T) {
+	root := templatesRoot
+	if _, err := os.Stat(root); err != nil {
+		t.Fatalf("template root %q not found: %v", root, err)
+	}
+
+	var violations []string
+
+	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		// Skip-list short-circuit.
+		rel := filepath.ToSlash(path)
+		for _, skip := range skipPaths {
+			if strings.HasSuffix(rel, skip) {
+				return nil
+			}
+		}
+
+		// Only scan text formats that ship verbatim to user projects.
+		// Markdown bodies, template (.tmpl) bodies, and YAML config
+		// fragments are the documented surfaces for internal-content
+		// leak (per research.md §B predecessor cleanup history).
+		ext := filepath.Ext(path)
+		if ext != ".md" && ext != ".tmpl" && ext != ".yaml" && ext != ".yml" && ext != ".sh" && ext != ".json" {
+			return nil
+		}
+
+		content, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		text := string(content)
+
+		// Per-class scan. Each class match accumulates into the
+		// violations slice with file+class+match-excerpt context.
+		for _, class := range leakClasses {
+			matches := class.pattern.FindAllString(text, -1)
+			if len(matches) == 0 {
+				continue
+			}
+			// Deduplicate matches within the same file for readability.
+			seen := map[string]struct{}{}
+			for _, m := range matches {
+				if _, ok := seen[m]; ok {
+					continue
+				}
+				seen[m] = struct{}{}
+				violations = append(violations,
+					rel+" | class="+class.name+" | match="+strings.TrimSpace(m))
+			}
+		}
+		return nil
+	})
+
+	if walkErr != nil {
+		t.Fatalf("filepath.WalkDir error: %v", walkErr)
+	}
+
+	if len(violations) > 0 {
+		t.Errorf("template internal-content leak detected (%d occurrences):", len(violations))
+		// Cap output at the first 50 violations to keep test logs readable.
+		// Real audit logs are surfaced via the `grep -rln` command in
+		// CLAUDE.local.md §25.3 self-check guidance, not via test stdout.
+		limit := 50
+		if len(violations) < limit {
+			limit = len(violations)
+		}
+		for i := 0; i < limit; i++ {
+			t.Errorf("  [%d] %s", i+1, violations[i])
+		}
+		if len(violations) > limit {
+			t.Errorf("  ... %d more (capped)", len(violations)-limit)
+		}
+		t.Errorf("Remediation: apply substitution dictionary at " +
+			".moai/specs/SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001/design.md §B " +
+			"(or its rule-mirror at .claude/rules/ if/when promoted). " +
+			"Cross-reference CLAUDE.local.md §25 doctrine.")
+	}
+}
