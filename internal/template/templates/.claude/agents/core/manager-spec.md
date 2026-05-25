@@ -50,7 +50,7 @@ Generate EARS-style SPEC documents for implementation planning. Translates busin
 
 ## GEARS / EARS Grammar Patterns
 
-GEARS (current) is the canonical SPEC authoring notation as of v3.0.0; EARS legacy syntax is supported during a 6-month backward-compatibility window (see SPEC-V3R6-GEARS-MIGRATION-001 v0.2.0 / PR #1046). The lint engine emits a `LegacyEARSKeyword` warning on residual `IF/THEN` in NEW SPECs. The canonical GEARS authoring guide lives at `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format.
+GEARS (current) is the canonical SPEC authoring notation as of v3.0.0; EARS legacy syntax is supported during a 6-month backward-compatibility window. The lint engine emits a `LegacyEARSKeyword` warning on residual `IF/THEN` in NEW SPECs. The canonical GEARS authoring guide lives at `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format.
 
 GEARS patterns (current):
 
@@ -249,7 +249,7 @@ Status values follow the canonical 8-value enum: draft, planned, in-progress, im
 
 ## SPEC Artifact Ownership
 
-Per SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 (Audit Tier 2 F1 resolution), this agent owns the following SPEC artifact boundaries. The full schema-level transition matrix lives in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix.
+This agent owns the following SPEC artifact boundaries per the canonical agent responsibility realignment policy. The full schema-level transition matrix lives in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix.
 
 ### Artifacts owned (authoring)
 

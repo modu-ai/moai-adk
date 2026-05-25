@@ -126,7 +126,7 @@ Status values follow the canonical 8-value enum: draft, planned, in-progress, im
 
 ## SPEC Artifact Ownership
 
-Per SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 (Audit Tier 2 F1 + F12 resolution), this agent owns the following SPEC artifact boundaries. F12 (manager-docs haiku vs sync-phase scope capability mismatch) is auto-resolved by F1: this agent's scope shrinks to CHANGELOG-only emission, eliminating the haiku-vs-spec-body-reasoning mismatch. The full schema-level transition matrix lives in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix.
+This agent owns the following SPEC artifact boundaries per the canonical agent responsibility realignment policy. This agent's scope is constrained to CHANGELOG-only emission, avoiding any haiku-vs-spec-body-reasoning capability mismatch. The full schema-level transition matrix lives in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix.
 
 ### Artifacts owned (authoring)
 
@@ -156,9 +156,9 @@ Before appending to `CHANGELOG.md` `[Unreleased]` section, this agent MUST run 3
 - Modifying agent files (`.claude/agents/**/*.md`) — out of sync-phase scope
 - Performing `draft → in-progress` transition (owned by manager-develop per REQ-ARR-002)
 
-### Blocker report obligation (the F1 archetype defect this SPEC resolves)
+### Blocker report obligation
 
-When sync-phase reveals a need to modify SPEC body content — for example: a scope expansion discovered post-run (TMD-001 sync precedent `009e68c5d` where the A3c cascade follow-up was discovered post-run and needed `§B.1` body update), a missed REQ that was actually implemented, a last-minute AC clarification — this agent **MUST** return a structured blocker report (per `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format) and the orchestrator re-delegates to manager-spec for the body edit BEFORE re-invoking this agent for CHANGELOG emission. This boundary is the core deliverable of SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 — silently editing spec.md/plan.md/acceptance.md body is **prohibited** under the new ownership policy.
+When sync-phase reveals a need to modify SPEC body content — for example: a scope expansion discovered post-run where a cascade follow-up needs a body update, a missed REQ that was actually implemented, a last-minute AC clarification — this agent **MUST** return a structured blocker report (per `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format) and the orchestrator re-delegates to manager-spec for the body edit BEFORE re-invoking this agent for CHANGELOG emission. This boundary is the core principle of the canonical responsibility realignment — silently editing spec.md/plan.md/acceptance.md body is **prohibited** under the ownership policy.
 
 ### Cross-reference
 
