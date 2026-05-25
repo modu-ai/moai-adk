@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R6-HARNESS-PROPOSAL-GEN-001
 title: "V3R4 Self-Evolving Harness Loop Closure — Automatic SPEC Proposal Generator"
-version: "0.1.0"
-status: implemented
+version: "0.1.1"
+status: completed
 created: 2026-05-24
-updated: 2026-05-24
+updated: 2026-05-25
 author: manager-spec
 priority: P1
 phase: "v3.0.0 R6 — Harness Self-Evolution Closure"
@@ -20,6 +20,13 @@ tier: M
 ---
 
 # SPEC-V3R6-HARNESS-PROPOSAL-GEN-001 — V3R4 Self-Evolving Harness Loop Closure: Automatic SPEC Proposal Generator
+
+## HISTORY
+
+| Version | Date | Author | Change |
+|---------|------|--------|--------|
+| 0.1.0 | 2026-05-24 | manager-spec | Initial plan-phase authoring (Tier M, plan-auditor 0.835 PASS). V3R4 self-evolving harness loop closure — automatic SPEC proposal generator. 7 REQ-HPG + cycle_type=tdd. |
+| 0.1.1 | 2026-05-25 | orchestrator | L60 spec.md status backfill — `implemented` → `completed`. progress.md 4-phase fully closed (sync `de760710a` + mx `ea8853eb9` + L60 atomic backfill `b47eb4428`) but spec.md frontmatter status drift remained (L67 manager-docs scope-creep pattern). Cross-file consistency restored. No body content changes; frontmatter status + version + updated date only. HISTORY section newly added (predecessor SPEC body had no HISTORY heading; row 0.1.0 retroactively captured from plan-phase commit `e5b2859a9`). |
 
 ## §1. Purpose & Background
 
