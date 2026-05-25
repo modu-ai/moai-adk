@@ -336,10 +336,10 @@ discipline).
 Exemption: read-only agents (`Explore`, `manager-quality` in diagnostic
 mode) do not require pre-spawn fetch — they cannot trigger race conflicts.
 
-Cross-reference: `.moai/docs/generic-patterns-guide.md` § Multi-Session Race Mitigation Procedure
-(defense-in-depth policy at user-facing layer); `.claude/rules/moai/
-workflow/session-handoff.md` § Worktree-Anchored Resume Pattern (L2/L3
-worktree as race-elimination alternative).
+Cross-reference: `.moai/docs/generic-patterns-guide.md` § Multi-Session
+Race Mitigation Procedure (defense-in-depth policy at user-facing
+layer); `.claude/rules/moai/workflow/session-handoff.md` § Worktree-Anchored
+Resume Pattern (L2/L3 worktree as race-elimination alternative).
 
 ## Tool Optimization Patterns
 
