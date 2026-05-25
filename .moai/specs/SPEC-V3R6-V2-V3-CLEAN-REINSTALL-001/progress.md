@@ -51,7 +51,7 @@ The SPEC has 6+1 milestones (M1, M2, M2a, M3, M4, M5, M6) with strict sequential
 | M2 (Extend DeprecatedPaths) | COMPLETE | 68e3af7b1 | +474 net (dirs.go +234 + dirs_test.go +218 + golden +22) | AC-VVCR-005 PASS (43 entries; 9/31/3 split) |
 | M2a (FLAT Layout Restoration) | COMPLETE | (commit pending) | 14 git mv + 5 rmdir + ~30 path-substitutions across 13 rule/skill/agent files + predecessor SPEC supersedence | AC-VVCR-LR-001 PASS / AC-VVCR-LR-002 PASS / AC-VVCR-LR-003 PASS / AC-VVCR-LR-004 PASS / AC-VVCR-LR-005 deferred to M5 |
 | M3 (v2 detection logic) | COMPLETE | (commit pending) | +207 LOC v2_detection.go + +345 LOC v2_detection_test.go = 552 LOC | AC-VVCR-001 PASS (24 sub-tests across 5 test functions) |
-| M4 (Clean reinstall impl) | PENDING — orchestrator handoff | — | est. ~550 lines (2 NEW Go files + 2 NEW tests) | AC-VVCR-002/003/007/008/009/010/011/012/013 (9 ACs) |
+| M4 (Clean reinstall impl) | COMPLETE | (commit pending) | +320 LOC update_preserve_inventory.go + +275 LOC update_clean_install.go + +290 LOC preserve_inventory_test.go + +330 LOC clean_install_test.go = 1215 LOC | AC-VVCR-002 / 003 / 007..013 PASS (verified via stub deployer + integration tests) |
 | M5 (runUpdate integration + catalog regen) | PENDING — orchestrator handoff | — | est. ~80 lines | (wires M4 into CLI) |
 | M6 (Test coverage + cross-platform) | PENDING — orchestrator handoff | — | est. ~400 lines | AC-VVCR-004/014/015/016/017 (5 ACs) |
 
@@ -139,6 +139,27 @@ Verification:
 - `grep -n 'AskUserQuestion\|mcp__askuser' internal/cli/v2_detection*.go | grep -v "// "` → 0 matches (C-HRA-008 subagent boundary preserved)
 
 AC progress: **AC-VVCR-001 PASS** — v2 detection heuristic correctness verified by table-driven tests covering all signal sources × Option α sub-states.
+
+### M4 — Clean reinstall implementation (COMPLETE)
+
+Deliverables completed:
+- **`internal/cli/update_preserve_inventory.go`** (NEW, 320 LOC): `PreserveInventory` struct + `buildPreserveInventory(projectRoot string) (PreserveInventory, error)` + `detectUserModifiedConfigs(projectRoot string, configPaths []string, baseline BaselineReader) ([]string, error)` (REQ-VVCR-007 SHA-256 hash diff) + `snapshotPreserveInventory(projectRoot string, inv PreserveInventory, backupDir string) error` (REQ-VVCR-006 atomic snapshot with .complete marker) + `mergeBackPreserveInventory` (REQ-VVCR-021/022 restore) + `computeInventoryHashes` (REQ-VVCR-023 integrity verification helper). Renamed local `hashBytes → sha256Hex` to avoid collision with existing `design_folder.go:191` helper. @MX:ANCHOR on PreserveInventory struct citing AC-VVCR-003 contract.
+- **`internal/cli/update_clean_install.go`** (NEW, 275 LOC): `CleanReinstallOptions` struct (dependency injection: DryRun, Out, Deployer, EmbeddedFS, Manifest, RunMigrateAgency) + `CleanReinstallResult` struct (Detected, BackupDir, RemovedPaths, AgencyMigrated, Inventory, IntegrityPassed, IntegrityMismatches, DryRun) + `runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinstallOptions) (CleanReinstallResult, error)` orchestrating the 7-step canonical order (Step 1 detect → Step 2 inventory + pre-hashes → Step 3 backup → Step 3.5 .agency/ migration auto-invoke → Step 4 REMOVE → Step 5 reinstall → Step 6 MERGE-back → Step 7 integrity verify). Plus `resolveV2BackupDir` (NFR collision avoidance helper mirroring `resolveNamespaceBackupDir`). @MX:ANCHOR on `runCleanReinstall`.
+- **`internal/cli/update_preserve_inventory_test.go`** (NEW, 290 LOC): 8 test functions covering inventory composition (full coverage + empty + empty-root error), hash diff (4-way: unchanged/modified/missing-current/user-added + nil baseline error), snapshot+merge-back round-trip with byte-identity invariant, snapshot empty-backupDir errors, hash determinism, path normalization (no backslashes).
+- **`internal/cli/update_clean_install_test.go`** (NEW, 330 LOC): 7 test functions covering Scenario A (full v2 — all 3 signals + PRESERVE seed + migrate-agency invocation + deployer call + integrity PASS), Scenario B (partial v2 — only .agency/ + migrate-agency invocation), Scenario C (clean v3 — REQ-VVCR-027 no-op idempotency), DryRun (REQ-VVCR-028 — no mutations + planning output), empty-root error, deployer-error propagation, resolveV2BackupDir collision handling. Uses `stubDeployer` test double implementing the full `template.Deployer` interface (Deploy / ListTemplates / ValidateAll / ExtractTemplate) and `stubMigrateRunner` for migration injection.
+
+TDD cycle (RED → GREEN):
+- RED: preserve_inventory_test.go authored first → compile failed with undefined `sha256Hex` (resolved by rename) → all preserve_inventory tests PASS.
+- RED: clean_install_test.go authored next → compile failed with stubDeployer missing `ExtractTemplate` interface method → method added → all clean_install tests PASS.
+
+Verification:
+- `go test ./internal/cli/ -run 'TestBuildPreserveInventory|TestDetectUserModified|TestSnapshot|TestComputeInventory'` → 8/8 PASS
+- `go test ./internal/cli/ -run 'TestRunCleanReinstall|TestResolveV2'` → 7/7 PASS
+- `go test ./internal/defs/...` → 8/8 M2 invariants STILL PASS (no regression)
+- `GOOS=windows GOARCH=amd64 go build ./...` → PASS
+- C-HRA-008 subagent boundary grep on M3+M4 sources → 0 matches
+
+AC progress: **AC-VVCR-002 PASS** (backup directory + .complete marker verified in Scenario A test), **AC-VVCR-003 PASS** (PRESERVE files survive byte-identical — integrity check + post-restore stat verification), **AC-VVCR-007 PASS** (.agency/ → .moai/ migration auto-invoked in Scenarios A+B, verified via stubMigrateRunner.calls counter), **AC-VVCR-008 / AC-VVCR-009 / AC-VVCR-010 / AC-VVCR-011 PASS** (REMOVE phase invokes scanDeprecatedPaths against all 43 entries in Category A+B+C, deprecated paths removed, PRESERVE survives, MERGE-back restores byte-identical), **AC-VVCR-012 PASS** (post-condition verified via Step 7 integrity hashes pre/post comparison), **AC-VVCR-013 PASS** (.agency/ detection → runMigrateAgency invocation pattern verified in Scenario A+B).
 
 ## §D — Partial-Completion Checkpoint (Run-phase Handoff)
 
