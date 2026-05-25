@@ -50,7 +50,7 @@ The SPEC has 6+1 milestones (M1, M2, M2a, M3, M4, M5, M6) with strict sequential
 | M1 (Version bump + CHANGELOG) | COMPLETE | 5a18dd98f | ~89 lines (incl. 8 SPEC frontmatter + progress.md NEW) | Foundation (no binary AC) |
 | M2 (Extend DeprecatedPaths) | COMPLETE | 68e3af7b1 | +474 net (dirs.go +234 + dirs_test.go +218 + golden +22) | AC-VVCR-005 PASS (43 entries; 9/31/3 split) |
 | M2a (FLAT Layout Restoration) | COMPLETE | (commit pending) | 14 git mv + 5 rmdir + ~30 path-substitutions across 13 rule/skill/agent files + predecessor SPEC supersedence | AC-VVCR-LR-001 PASS / AC-VVCR-LR-002 PASS / AC-VVCR-LR-003 PASS / AC-VVCR-LR-004 PASS / AC-VVCR-LR-005 deferred to M5 |
-| M3 (v2 detection logic) | PENDING — orchestrator handoff | — | est. ~250 lines (NEW Go file + test) | AC-VVCR-001 |
+| M3 (v2 detection logic) | COMPLETE | (commit pending) | +207 LOC v2_detection.go + +345 LOC v2_detection_test.go = 552 LOC | AC-VVCR-001 PASS (24 sub-tests across 5 test functions) |
 | M4 (Clean reinstall impl) | PENDING — orchestrator handoff | — | est. ~550 lines (2 NEW Go files + 2 NEW tests) | AC-VVCR-002/003/007/008/009/010/011/012/013 (9 ACs) |
 | M5 (runUpdate integration + catalog regen) | PENDING — orchestrator handoff | — | est. ~80 lines | (wires M4 into CLI) |
 | M6 (Test coverage + cross-platform) | PENDING — orchestrator handoff | — | est. ~400 lines | AC-VVCR-004/014/015/016/017 (5 ACs) |
@@ -116,6 +116,29 @@ Verification:
 - **AC-VVCR-LR-003 PASS**: `internal/defs/dirs.go:349` `AgentsMoaiSubdir = "agents/moai"` constant value unchanged. `go build ./...` PASS (darwin/amd64). `GOOS=windows GOARCH=amd64 go build ./...` PASS. `go test ./internal/defs/...` PASS (8/8 M2 invariants).
 - **AC-VVCR-LR-004 PASS**: Cross-reference grep `grep -rln '.claude/agents/core/|.claude/agents/meta/|.claude/agents/expert/|.claude/agents/{core' .claude/ CLAUDE.md CLAUDE.local.md` excluding ephemeral `.claude/worktrees/` (gitignored) returns 0 matches. Same grep over `internal/template/templates/` returns 0 matches.
 - **AC-VVCR-LR-005 deferred to M5**: catalog.yaml regeneration via `gen-catalog-hashes.go --all` must run AFTER M4 implementation lands; deferred per plan.md §F.M5 dependency note.
+
+### M3 — v2 detection logic (COMPLETE)
+
+Deliverables completed:
+- **`internal/cli/v2_detection.go`** (NEW, 207 LOC): `V2Fingerprint` struct + `detectV2Fingerprint(projectRoot string) (V2Fingerprint, error)` + 3 private signal-probe helpers (`probeVersionSignal`, `probeAgencyDirSignal`, `probeDeprecatedPathSignal`). YAML parsing via `gopkg.in/yaml.v3` (existing go.sum dependency from internal/spec usage). @MX:ANCHOR on `V2Fingerprint` struct citing AC-VVCR-001 contract.
+- **`internal/cli/v2_detection_test.go`** (NEW, 345 LOC): 5 test functions × 24 sub-tests total covering all 3 signals + Option α sub-states + aggregation + edge cases (empty project, nonexistent root). All use `t.TempDir()` for filesystem isolation per CLAUDE.local.md §6 HARD.
+
+Signal coverage:
+- **Signal 1 (V2DetectedViaVersion)**: 7 sub-tests — v2.0.0 prefix / v2.16.1 prefix / empty version / missing version field / missing system.yaml file / v3.0.0-rc2 negative / v3.1.0 negative. Per Option α, all 5 Signal-1-positive sub-states (v2.*, empty, missing field, missing file, parse error) resolve to positive.
+- **Signal 2 (V2DetectedViaAgencyDir)**: 2 sub-tests — present / absent.
+- **Signal 3 (V2DetectedViaDeprecatedPath)**: 4 sub-tests — agency agent path / retired manager / rc1-stage core/ / no deprecated paths. Uses real `defs.DeprecatedPaths` entries from M2.
+- **IsV2 aggregation**: 6 sub-tests — all-negative + each-signal-alone + all-combined. Disjunction (any positive ⇒ true) verified.
+- **Edge cases**: 5 sub-tests — empty project (Signal 1 positive via missing system.yaml), nonexistent root (error).
+
+RED-GREEN cycle: v2_detection_test.go authored first → compile failed with "undefined: detectV2Fingerprint" × 6 references → v2_detection.go implemented → all 24 sub-tests PASS.
+
+Verification:
+- `go test ./internal/cli/ -run TestDetectV2Fingerprint -v` → 24/24 PASS
+- `go build ./...` (darwin/amd64) → PASS
+- `GOOS=windows GOARCH=amd64 go build ./...` → PASS
+- `grep -n 'AskUserQuestion\|mcp__askuser' internal/cli/v2_detection*.go | grep -v "// "` → 0 matches (C-HRA-008 subagent boundary preserved)
+
+AC progress: **AC-VVCR-001 PASS** — v2 detection heuristic correctness verified by table-driven tests covering all signal sources × Option α sub-states.
 
 ## §D — Partial-Completion Checkpoint (Run-phase Handoff)
 
