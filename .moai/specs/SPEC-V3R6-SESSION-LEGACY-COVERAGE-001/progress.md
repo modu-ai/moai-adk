@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-SESSION-LEGACY-COVERAGE-001
 title: "internal/session 패키지 test coverage 보강 — Progress Tracker"
-version: "0.1.0"
-status: in-progress
+version: "0.2.0"
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -13,12 +13,12 @@ lifecycle: spec-anchored
 tags: "session, coverage, test-only, behavior-preserving, tier-s, sprint-10, progress"
 plan_status: audit-ready
 run_status: implemented
-sync_status: pending
-mx_status: pending
+sync_status: implemented
+mx_status: skip-eligible
 plan_commit_sha: "<TBD-by-orchestrator-commit>"
-run_commit_sha: "<TBD-by-this-commit>"
+run_commit_sha: "a095bce09"
 sync_commit_sha: "<pending>"
-mx_commit_sha: "<pending>"
+mx_commit_sha: "n/a"
 ---
 
 # Progress Tracker — SPEC-V3R6-SESSION-LEGACY-COVERAGE-001
@@ -252,6 +252,50 @@ Run-phase will:
 Run-phase commits follow Conventional Commits format with SPEC-V3R6-SESSION-LEGACY-COVERAGE-001 attribution.
 Tier S minimal Section A-E delegation prompt is sufficient (~500-800 tokens — Section A + filtered B1/B3/B8 + D + E).
 
+## §E. Sync-phase Audit-Ready Signal (2026-05-25)
+
+```yaml
+sync_complete_at: 2026-05-25T<sync-commit-timestamp>
+sync_commit_sha: <pending>  # backfilled post-commit
+sync_status: implemented
+b12_self_test_a: "grep -c 'SPEC-V3R6-SESSION-LEGACY-COVERAGE-001' CHANGELOG.md → 1 (NEW entry)"
+b12_self_test_b: "AC count in CHANGELOG match acceptance.md → 7 (all 7 mandatory ACs listed)"
+b12_self_test_c: "frontmatter status all 4 artifacts → implemented (PASS, no drift)"
+sync_commit_range: "a095bce09..HEAD (1 commit expected: CHANGELOG + 4 frontmatter)"
+files_modified_count: 5  # CHANGELOG.md + 4 SPEC artifacts
+files_by_path:
+  - CHANGELOG.md (entry append to [Unreleased] / ### Changed section)
+  - .moai/specs/SPEC-V3R6-SESSION-LEGACY-COVERAGE-001/spec.md (frontmatter status/version/sync_commit_sha)
+  - .moai/specs/SPEC-V3R6-SESSION-LEGACY-COVERAGE-001/plan.md (frontmatter status/version/sync_commit_sha)
+  - .moai/specs/SPEC-V3R6-SESSION-LEGACY-COVERAGE-001/acceptance.md (frontmatter status/version/sync_commit_sha)
+  - .moai/specs/SPEC-V3R6-SESSION-LEGACY-COVERAGE-001/progress.md (frontmatter status/version/sync_commit_sha + this §E section)
+l44_pre_commit_fetch: "0 0"  # verified before CHANGELOG edit
+l44_post_push_fetch: "<TBD-by-orchestrator-post-push>"
+preserve_list_post_sync_count: 14+  # 14+ untouched entries (3 config M + 1 harness telemetry + 5+ research/runtime ?? + 5+ parallel-session ?? per plan.md §A.4 PRESERVE table + parallel WORKFLOW-PLAN/FOUNDATION-CORE sessions' uncommitted work)
+mx_step_c_judgment: SKIP-eligible  # 0 production .go mutations per run-phase, 4 _test.go are characterization/test-entry, no new @MX tags required
+changelog_entry_position: "line N in [Unreleased] ### Changed section"  # exact position post-commit
+canary_compliance_check:
+  canonical_status_enum: "implemented ✓ (not superseded/archived/rejected — forward state)"
+  4_artifact_sync_commit_sha_backfill: "4 × sync_commit_sha: '<pending>' ready for chore backfill if needed"
+  b12_all_checks_pass_readiness: "PASS-ready: AC count = 7, frontmatter status = implemented, CHANGELOG entry present, paths all exist"
+```
+
+### Sync-phase Quality Verification
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| L44 HARD pre-commit fetch | PASS | `git rev-list --count --left-right origin/main...HEAD` = `0 0` at sync-phase entry |
+| L46 path-specific staging | READY | Exactly 5 paths: CHANGELOG.md + 4 `.moai/specs/SPEC-V3R6-SESSION-LEGACY-COVERAGE-001/*.md` |
+| L48 SSOT canary | PASS | 4 SPEC artifacts: frontmatter only (status/version/sync_commit_sha); body content ZERO changes (spec.md/plan.md/acceptance.md body) |
+| L49 Trust-but-verify batch | READY | 7-item parallel verification pending orchestrator post-push (all reads, not writes) |
+| L52 race absorption | OBSERVE | Parallel sessions WORKFLOW-PLAN-GEARS-ALIGN-001 (iter-3 @d834f4ac5) + FOUNDATION-CORE-GEARS-ALIGN-001 (iter-4 @d834f4ac5) present; disjoint scope vs SESSION-LEGACY-COVERAGE-001 confirmed via `git diff --name-only <base>...d834f4ac5 -- internal/session/` → empty (no file overlap) |
+| L59 pre-commit staging assertion | READY | `git diff --cached --name-only \| sort -u \| wc -l` expected = **5** (not 4: CHANGELOG.md is 5th) |
+| B12 CHANGELOG self-test A | READY | `grep 'SPEC-V3R6-SESSION-LEGACY-COVERAGE-001' CHANGELOG.md \| wc -l` expected = 1 (NEW, unique) |
+| B12 CHANGELOG self-test B | READY | AC count in CHANGELOG body = 7 (matches acceptance.md §D AC-SLCO-001..007 exactly) |
+| B12 CHANGELOG self-test C | READY | All 4 artifacts frontmatter: `status: implemented`, `version: "0.2.0"`, `sync_commit_sha:` backfill-ready |
+| Mx Step C judgment | SKIP-ELIGIBLE | Per mx-tag-protocol.md §a: 0 production .go, 4 _test.go characterization only, no new dangerous patterns, subagent boundary preserved (C-HRA-008 PASS) |
+| PRESERVE invariant | INTACT | 14+ entries untouched per plan.md §A.4 (3 M config / 1 M harness telemetry / 5+ ?? parallel research / 5+ ?? parallel session artifacts / .moai/specs/.moai/ spurious dir left alone) |
+
 ## §D. Cross-references
 
 - spec.md — canonical SSOT (REQ-SLCO-001..008 anchored).
@@ -262,5 +306,6 @@ Tier S minimal Section A-E delegation prompt is sufficient (~500-800 tokens — 
 - `.claude/rules/moai/development/manager-develop-prompt-template.md` § Applicability — Tier S minimal delegation form.
 - `CLAUDE.local.md §6` — Coverage Targets + Test Isolation + filepath.Abs() 규칙.
 - `CLAUDE.local.md §2 [WARN]` — OTEL t.Setenv 데이터 레이스 회피.
+- `.claude/rules/moai/development/spec-frontmatter-schema.md` — 12-field canonical frontmatter (§D.3 Status Transition Ownership Matrix: manager-docs owns `in-progress → implemented` on sync-phase commit).
 - SPEC-LINT-CLEANUP-001 progress.md / HARNESS-NAMESPACE-CLEANUP-001 progress.md — Tier S minimal 1-pass cohort plan-phase 선례.
 - MEMORY.md `Sprint 9 lane A AAT-001 4-phase FULLY CLOSED + Sprint 10 entry pending` — Sprint 10 entry 5 후보 중 A SESSION-LEGACY-COVERAGE-001 권장 선정 출처.

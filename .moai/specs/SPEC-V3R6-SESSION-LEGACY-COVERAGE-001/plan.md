@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-SESSION-LEGACY-COVERAGE-001
 title: "internal/session 패키지 test coverage 보강 — Implementation Plan (Tier S minimal Section A)"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -11,6 +11,7 @@ phase: "v3.0.0"
 module: "internal/session"
 lifecycle: spec-anchored
 tags: "session, coverage, test-only, behavior-preserving, tier-s, sprint-10, plan"
+sync_commit_sha: "<pending>"
 ---
 
 # SPEC-V3R6-SESSION-LEGACY-COVERAGE-001 — Implementation Plan (Tier S minimal Section A)
