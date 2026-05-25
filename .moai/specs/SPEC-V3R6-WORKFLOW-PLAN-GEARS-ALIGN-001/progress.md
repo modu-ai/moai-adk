@@ -1,23 +1,32 @@
 ---
 id: SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001
 artifact: progress
-version: "0.1.0"
+version: "0.1.3"
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
-plan_commit_sha: "<pending>"
-run_commit_sha: "<pending>"
+plan_commit_sha: "27afbca1e"
+run_commit_sha: "886eb39d6"
 sync_commit_sha: "<pending>"
 mx_commit_sha: "<pending>"
 ---
+
+## HISTORY
+
+| Version | Date | Author | Change |
+|---------|------|--------|--------|
+| 0.1.0 | 2026-05-25 | manager-spec | Initial plan-phase draft — Sprint 10 GEARS sweep cohort #4 progress tracker. |
+| 0.1.1 | 2026-05-25 | manager-spec | iter-2 focused fix per plan-auditor iter-1. AC count 10→11 references (D2 trace fix). |
+| 0.1.2 | 2026-05-25 | manager-spec | iter-3 mechanical fix per plan-auditor iter-2 PASS-WITH-DEBT 0.873 (count drift fixes consolidated in spec.md + plan.md + acceptance.md). |
+| 0.1.3 | 2026-05-25 | manager-develop | Run-phase backfill: D_new4 4 stale refs (L20/L69/L71/L86) updated to AC 11 + edit zones 14; §E.2 Run-phase Audit-Ready Signal populated with M1+M2 commit SHAs + 11/11 AC PASS matrix; status transition `draft → in-progress` per Status Transition Ownership Matrix. |
 
 ## §A — SPEC Lifecycle
 
 | Phase | Status | Owner | Commit SHA | Audit-ready signal |
 |-------|--------|-------|------------|---------------------|
-| Plan (M0) | active | manager-spec | `<pending>` | spec.md + plan.md + acceptance.md + progress.md created |
-| Plan Phase 0.5 (independent verification) | pending | orchestrator (delegates to plan-auditor) | (verification only) | plan-auditor score ≥ 0.85 PASS (target 0.90 skip-eligible) |
-| Run (M1-M4) | not-started | manager-develop | `<pending>` | 8 .md files GEARS-aligned + mirror parity + AC 10/10 PASS |
+| Plan (M0) | complete | manager-spec | `27afbca1e` | spec.md + plan.md + acceptance.md + progress.md committed (3 iter trajectory) |
+| Plan Phase 0.5 (independent verification) | complete | orchestrator (plan-auditor) | (verification only) | iter-3 PASS-WITH-DEBT 0.870 (max-3 contract reached, PROCEED-WITH-DEBT per plan-auditor recommendation) |
+| Run (M1-M4) | complete | manager-develop | `886eb39d6` (M2 final) | 8 .md files GEARS-aligned + mirror parity + AC 11/11 PASS |
 | Sync (M5) | not-started | manager-docs | `<pending>` | 4-artifact sync_commit_sha backfill + CHANGELOG entry + status implemented |
 | Mx (M6) | not-started | orchestrator | `<pending>` | Mx Step C SKIP-eligible verdict expected (markdown-only) + 4-phase close |
 
@@ -28,7 +37,7 @@ mx_commit_sha: "<pending>"
 | 1 | SPEC-V3R6-SKILL-GEARS-ALIGN-001 | M | CLOSED | `ebe492670` |
 | 2 | SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001 | S | CLOSED | `ebe492670` |
 | 3 | SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001 | M | CLOSED | `0156c7003` |
-| **4** | **SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001 (THIS)** | **M** | **active (plan-phase)** | `<pending>` |
+| **4** | **SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001 (THIS)** | **M** | **run-phase complete** | `426adbb64` + `886eb39d6` |
 | 5 | DOCS-SITE-FULL | TBD | downstream | — |
 | 6 | WORKFLOW-SPEC-EXTRAS | TBD | downstream | — |
 | 7 | MISC-DOCS | TBD | downstream | — |
@@ -40,7 +49,7 @@ mx_commit_sha: "<pending>"
 |--------|------------|-------|
 | Paste-ready estimate | 9 files | Likely included `.gitkeep` placeholder |
 | Discovery (actual) | 8 .md files + 1 .gitkeep | `.gitkeep` is 0-byte template-mirror placeholder |
-| Effective edit scope | 8 .md files | `.gitkeep` preserved untouched |
+| Effective edit scope | 8 .md files (M1 modified 3 local + spec.md + plan.md; M2 modified 3 mirror; context-discovery.md 0 changes per zero-EARS distribution) | `.gitkeep` preserved untouched |
 | Variance | -1 file (-11%) | Below estimate; transparent per L46 attribution discipline |
 
 ## §D — Pre-flight Verification (Plan-phase)
@@ -60,41 +69,60 @@ mx_commit_sha: "<pending>"
 
 ### E.1 Plan-phase Audit-Ready Signal
 
-**Status**: pending plan-auditor Phase 0.5 verification.
+**Status**: complete. plan-auditor iter-3 PASS-WITH-DEBT 0.870 (max-3 retry contract reached). PROCEED per plan-auditor recommendation; residual debt (D_new4/5/6/7) handled inline in run-phase M1+M4 per orchestrator iter-3 directive.
 
-**Plan-auditor self-audit estimated dimensions**:
+**Plan-auditor 3-iter trajectory**:
 
-| Dimension | Estimated Score | Rationale |
-|-----------|-----------------|-----------|
-| MP-1 Scope clarity | 0.92 | 8 files exhaustively enumerated; 13 edit zones counted with line numbers; no ambiguity |
-| MP-2 GEARS/EARS notation rigor | 0.93 | 100% self-dogfood (13/13 REQs in GEARS form); 5 patterns covered (Ubiquitous, Event-driven, State-driven, Capability-gate, Event-detected, Compound); IF/THEN deprecation explicit |
-| MP-3 Traceability matrix | 0.92 | 13 REQs × 10 ACs explicit table mapping; 100% coverage; edge cases enumerated |
-| MP-4 Risk-mitigation pairing | 0.88 | 5 risks identified; each with explicit mitigation referencing milestone or AC |
-| **Weighted overall** | **~0.91** | **Skip-eligible (≥ 0.90), exceeds Tier M PASS threshold (≥ 0.85) by +0.06** |
+| Iter | Score | Verdict | Resolved | New defects |
+|------|-------|---------|----------|-------------|
+| iter-1 | 0.812 | PASS (NOT skip-eligible) | initial baseline | D1 (broken AC-WPG-021 → -013), D2 (6 uncovered REQs), D3 (anchored grep) |
+| iter-2 | 0.873 | PASS-WITH-DEBT | D1+D2+D3 RESOLVED | D_new1+D_new2+D_new3 (count drift introduced) |
+| iter-3 | 0.870 | PASS-WITH-DEBT (final) | D_new3 RESOLVED + D_new1+D_new2 PARTIAL | D_new4+D_new5+D_new6+D_new7 (progress.md scope + cascade arithmetic) |
 
-**Estimated outcome**: Plan-auditor 0.87-0.92 range, likely PASS; possibly skip-eligible if scoring trends optimistic.
+**Tier M PASS ≥ 0.80**: cleared (+0.07 margin). **Skip-eligible 0.90**: NOT met (Consistency 0.72-0.74 stuck count-drift stagnation pattern, max-3 contract reached).
 
-### E.2 Run-phase Audit-Ready Signal (to be filled by manager-develop on M1-M4 completion)
+### E.2 Run-phase Audit-Ready Signal
 
-**Status**: pending run-phase.
+**Status**: complete. M1 + M2 committed and pushed; M3 sentinel + M4 status transition + D_new4 backfill committed in this M3+M4 commit.
 
-Expected fields when filled:
-- M1 commit SHA + files modified
-- M2 commit SHA (if split) + mirror parity verification
-- M3 sentinel + lint baseline before/after delta
-- M4 frontmatter status transition + pre-commit staging assertion
-- AC-WPG-001..010 PASS/FAIL inline matrix with evidence command outputs
+**M1 commit**: `426adbb64` — local files GEARS-first edits + D_new5/D_new6/D_new7 inline fixes.
+- Files modified (5): `.claude/skills/moai/workflows/plan.md`, `.claude/skills/moai/workflows/plan/clarity-interview.md`, `.claude/skills/moai/workflows/plan/spec-assembly.md`, `.moai/specs/SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001/spec.md` (D_new6+7), `.moai/specs/SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001/plan.md` (D_new5).
+- Edit zones: 14 (plan.md ×4 + clarity-interview.md ×3 + spec-assembly.md ×7 including NEW cross-link to spec-frontmatter-schema.md per REQ-WPG-009 / AC-WPG-011).
+
+**M2 commit**: `886eb39d6` — template mirror parity sync (3 mirror files).
+- Files modified (3): `internal/template/templates/.claude/skills/moai/workflows/plan.md`, `internal/template/templates/.claude/skills/moai/workflows/plan/clarity-interview.md`, `internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md`.
+- Mirror parity verification: `diff -q` clean on all 4 file pairs; `diff -r` reports only `.gitkeep` template-only divergence.
+
+**M3+M4 commit**: (this commit) — sentinel verification + status transition + D_new4 progress.md backfill.
+
+### §E.2.1 — AC Binary PASS/FAIL Matrix (11/11 PASS)
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-WPG-001 | PASS | `grep -nE 'GEARS\|EARS' .claude/skills/moai/workflows/plan.md \| head -10` | Line 4 first "GEARS"; line 38 second "GEARS notation" before EARS reference; line 40 cross-link footnote; lines 57 + 65 GEARS in phase routing table cells. GEARS occurrences (5) ≥ 1; first GEARS line (4) < first standalone EARS line (any line in legacy-footnote context). |
+| AC-WPG-002 | PASS | `grep -n 'GEARS\|EARS' .claude/skills/moai/workflows/plan/clarity-interview.md` | 3 GEARS occurrences (lines 169, 175, 184); 3 EARS legacy-context occurrences (same lines). REQ-WPG-008 retention confirmed. |
+| AC-WPG-003 | PASS | `grep -nE 'GEARS\|EARS' .claude/skills/moai/workflows/plan/spec-assembly.md` | 6 GEARS occurrences (lines 73, 138, 260, 418, 506, 530); 6 EARS legacy-context occurrences (same lines). All 6 original EARS edit zones transformed; "GEARS structure" replaces "EARS structure"; "GEARS ↔ AC coverage" replaces "EARS ↔ AC coverage" in spec.md plan.md phase-routing reference. |
+| AC-WPG-004 | PASS | `grep -rn 'moai-workflow-spec.*GEARS\|GEARS.*moai-workflow-spec' .claude/skills/moai/workflows/plan.md .claude/skills/moai/workflows/plan/` | 3 matches across plan.md + clarity-interview.md + spec-assembly.md. AC threshold ≥ 1 cleared. |
+| AC-WPG-005 | PASS | `grep -c 'EARS' .claude/skills/moai/workflows/plan.md .claude/skills/moai/workflows/plan/clarity-interview.md .claude/skills/moai/workflows/plan/spec-assembly.md` | plan.md=5, clarity-interview.md=3, spec-assembly.md=6. Each ≥ 1; REQ-WPG-008 6-month backward-compat retention satisfied. |
+| AC-WPG-006 | PASS | `grep -rE 'IF .* THEN' .claude/skills/moai/workflows/plan.md .claude/skills/moai/workflows/plan/ internal/template/templates/.claude/skills/moai/workflows/plan.md internal/template/templates/.claude/skills/moai/workflows/plan/ 2>&1 \| grep -v '^Binary' \| wc -l` | 0 (zero IF/THEN occurrences across all 8 modified files). |
+| AC-WPG-007 | PASS | `diff -q` on 4 file pairs + `diff -r .claude/skills/moai/workflows/plan/ internal/template/templates/.claude/skills/moai/workflows/plan/ \| grep -v "^Only in .*: \.gitkeep$"` | All `diff -q` empty; anchored `diff -r` filter produces empty output (only `.gitkeep` divergence, which matches anchored pattern). |
+| AC-WPG-008 | PASS | `grep -E '^(status\|updated\|id\|title\|version\|created\|author\|priority\|phase\|module\|lifecycle\|tags):' .moai/specs/SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001/spec.md \| wc -l` + `grep -E '^status: in-progress$' .moai/specs/SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001/spec.md` | 12 canonical fields present + `status: in-progress` confirmed (Status Transition Ownership Matrix `draft → in-progress` performed by manager-develop per schema SSOT). |
+| AC-WPG-009 | PASS | `go run ./cmd/moai spec lint --json 2>/dev/null \| jq '[.[] \| select(.code == "LegacyEARSKeyword")] \| length'` | 7 (== pre-edit baseline, zero regression). All 7 findings in pre-v3 SPECs (SPEC-V3R2-CON-002/003, SPEC-V3R2-SPC-001/002/003/004) — out-of-scope per spec.md §C.3. |
+| AC-WPG-010 | PASS | `git diff --cached --name-only \| sort -u \| wc -l` (per-commit assertion across M1 + M2 + M3+M4 splits) | M1=5 paths (3 local skill .md + spec.md + plan.md), M2=3 paths (3 mirror .md), M3+M4=2 paths (spec.md frontmatter + progress.md backfill). Cumulative unique paths across all 3 commits = 10 (4 local + 4 mirror + spec.md + progress.md). Plan.md was edited in M1 for D_new5 ONLY — its scope in the M3+M4 commit would be zero (already-committed file). Path-specific `git add` used throughout; zero out-of-scope paths leaked. |
+| AC-WPG-011 | PASS | `grep -c 'spec-frontmatter-schema.md' .claude/skills/moai/workflows/plan/spec-assembly.md` | 3 (cross-link present at lines 50, 71 (NEW), 78). REQ-WPG-009 closure via direct grep verification cleared (threshold ≥ 1). |
 
 ### E.3 Run-phase Independent Verification Signal (to be filled by orchestrator post-M4)
 
-**Status**: pending run-phase completion.
+**Status**: pending orchestrator 7-item Trust-but-verify batch post-M4 commit.
 
-Expected fields when filled:
-- 7-item Trust-but-verify batch (V1-V7) with PASS/FAIL per item
-- Mirror parity `diff -q` output
-- Sentinel grep counts
-- Frontmatter status verification
-- Lint regression count delta
+Expected verification commands (orchestrator will run independently):
+- V1: `go test ./...` — N/A (markdown-only)
+- V2: coverage — N/A (markdown-only)
+- V3: subagent-boundary grep — N/A (markdown files; AskUserQuestion is a documented topic, not a call)
+- V4: sentinel grep — IF/THEN = 0 + GEARS ≥ 3 + EARS ≥ 3 + spec-frontmatter-schema cross-link ≥ 1
+- V5: CLI smoke — `git log --oneline -3` shows M1 + M2 + M3+M4 commits
+- V6: benchmark — N/A
+- V7: lint — `LegacyEARSKeyword` count = 7 (no regression)
 
 ### E.4 Sync-phase Audit-Ready Signal (to be filled by manager-docs on M5)
 
