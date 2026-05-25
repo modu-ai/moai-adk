@@ -213,7 +213,7 @@ moai worktree new SPEC-Q-001             # P4: prints "cd <wt> && moai cc" paste
 
 Mutual Exclusion with --tmux:
 
-`--team` and `--tmux` are mutually exclusive (cobra enforces at flag parsing). The legacy `--tmux` flag (from SPEC-WORKTREE-002) creates a detached tmux session for the worktree, while `--team` launches a session in the current pane context with contextual pattern selection. Combining them is rejected.
+`--team` and `--tmux` are mutually exclusive (cobra enforces at flag parsing). The legacy `--tmux` flag (from the earlier worktree session creation contract) creates a detached tmux session for the worktree, while `--team` launches a session in the current pane context with contextual pattern selection. Combining them is rejected.
 
 Swarm Registry:
 
@@ -232,7 +232,7 @@ Failure Modes:
 - Worktree creation failure — no launch is attempted and no registry entry is written.
 - Windows — `--team` automatically routes to a stub that notes tmux is unsupported on Windows, then falls back to P4 handoff guidance.
 
-Detailed Reference: SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001 (REQ-WTL-001..013); implementation files `internal/cli/worktree/team_launch.go`, `team_launch_posix.go`, `team_launch_windows.go`, `swarm_registry.go`, `handoff_guidance.go`.
+Detailed Reference: the canonical worktree team-launch contract requirements; implementation files `internal/cli/worktree/team_launch.go`, `team_launch_posix.go`, `team_launch_windows.go`, `swarm_registry.go`, `handoff_guidance.go`.
 
 ---
 

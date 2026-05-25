@@ -10,7 +10,7 @@ Parent: [spec-first-ddd.md](spec-first-ddd.md)
 >
 > For NEW SPECs, use GEARS notation per the [docs-site GEARS migration guide](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation) (4-locale: en / ko / ja / zh).
 >
-> Backward-compatibility for legacy EARS REQs is supported for 6 months from v3.0.0 release. See `SPEC-V3R6-GEARS-MIGRATION-001` v0.2.0 (PR #1046) for the lint engine canonicalization that emits a `LegacyEARSKeyword` warning on residual `IF/THEN` modality in NEW SPECs.
+> Backward-compatibility for legacy EARS REQs is supported for 6 months from v3.0.0 release. The lint engine emits a `LegacyEARSKeyword` warning on residual `IF/THEN` modality in NEW SPECs per the canonical GEARS migration policy.
 >
 > The canonical GEARS authoring guide lives in `.claude/skills/moai-workflow-spec/SKILL.md` "GEARS Format" section. This file is retained as legacy reference for the 6-month backward-compatibility window.
 

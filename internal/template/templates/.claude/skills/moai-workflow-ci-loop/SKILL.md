@@ -195,4 +195,4 @@ fallback); `scripts/ci-autofix/log-fetch.sh` (failure log + PR diff);
 - [ ] `grep -r 'push -f\|push --force' scripts/ci-autofix/ scripts/ci-watch/` returns no matches
 - [ ] Audit log `.moai/reports/ci-autofix/<PR>-<DATE>.md` contains every iteration
 
-<!-- absorbed from moai-workflow-ci-watch + moai-workflow-ci-autofix (SPEC-V3R6-SKILL-CONSOLIDATE-001, 2026-05-22) -->
+<!-- absorbed from moai-workflow-ci-watch + moai-workflow-ci-autofix per the skill consolidation policy -->

@@ -307,4 +307,4 @@ On Opus 4.7+: Adaptive Thinking handles reasoning depth automatically — no fix
 
 ## Backward Compatibility Marker
 
-Sequential Thinking MCP support retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001. For deep reasoning use the `ultrathink` keyword (triggers Opus 4.7+ Adaptive Thinking). The earlier "Sequential Thinking MCP (absorbed from moai-workflow-thinking)" content is superseded; this skill's deep-reasoning path is consolidated onto ultrathink + the creative frameworks above.
+Sequential Thinking MCP support retired in an earlier deep-reasoning consolidation. For deep reasoning use the `ultrathink` keyword (triggers Opus 4.7+ Adaptive Thinking). The earlier "Sequential Thinking MCP (absorbed from moai-workflow-thinking)" content is superseded; this skill's deep-reasoning path is consolidated onto ultrathink + the creative frameworks above.

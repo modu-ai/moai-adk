@@ -217,4 +217,4 @@ priority + reserved paths).
 
 REQ coverage: REQ-DPL-001..003, REQ-SKILL-007..015 (Path A); REQ-1..16 (context).
 
-<!-- absorbed from moai-workflow-design-import + moai-workflow-design-context (SPEC-V3R6-SKILL-CONSOLIDATE-001, 2026-05-22) -->
+<!-- absorbed from moai-workflow-design-import + moai-workflow-design-context per the skill consolidation policy -->

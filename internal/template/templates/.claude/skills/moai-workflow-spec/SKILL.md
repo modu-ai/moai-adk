@@ -38,7 +38,7 @@ triggers:
 
 SPEC Workflow Orchestration using GEARS notation (current) — backed by the EARS legacy backward-compatibility window — for systematic requirement definition and Plan-Run-Sync workflow integration.
 
-Lint behavior canonicalized in SPEC-V3R6-GEARS-MIGRATION-001 v0.2.0 (PR #1046).
+Lint behavior canonicalized per the GEARS migration policy.
 
 Core Capabilities:
 
@@ -143,7 +143,7 @@ WHY: Constitution prevents architectural drift and ensures maintainability.
 
 GEARS (Generalized EARS) is the canonical SPEC notation as of v3.0.0. It preserves Ubiquitous / `When` (event-driven) / `While` (state-driven) and reframes `Where` as a capability gate. The legacy `IF/THEN` modality is replaced by `When <event-detected>`.
 
-GEARS notation is exhaustively described in [docs-site GEARS notation reference](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation) (4-locale: en / ko / ja / zh) and the SPEC migration record `SPEC-V3R6-GEARS-MIGRATION-001` v0.2.0 (PR #1046).
+GEARS notation is exhaustively described in [docs-site GEARS notation reference](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation) (4-locale: en / ko / ja / zh) and the canonical GEARS migration policy record.
 
 Compound clause example (with non-"the system" subject):
 
@@ -284,7 +284,7 @@ For migration scenarios and validation scripts: [reference/migration-guide.md](r
 
 ---
 
-Version: 1.3.1 (SPEC-V3R6-SKILL-COMPRESS-001 body compression)
+Version: 1.3.1 (skill body compression pass)
 Last Updated: 2026-05-23
 Integration Status: Complete - Plan-Run-Sync workflow with SDD 2025 features
 

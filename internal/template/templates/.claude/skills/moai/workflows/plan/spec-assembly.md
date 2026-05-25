@@ -70,7 +70,7 @@ File generation (all three files created simultaneously):
 - .moai/specs/SPEC-{ID}/spec.md
   - YAML frontmatter with **12 required fields** (canonical schema — see checklist below and `.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields)
   - HISTORY section immediately after frontmatter
-  - Complete GEARS structure with the 5 GEARS patterns (Ubiquitous, Event-driven `When`, State-driven `While`, Capability-gate `Where`, Event-detected unwanted — see `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format). EARS legacy form is accepted for pre-v3 SPECs until 2026-11-22 per `SPEC-V3R6-GEARS-MIGRATION-001` v0.2.0.
+  - Complete GEARS structure with the 5 GEARS patterns (Ubiquitous, Event-driven `When`, State-driven `While`, Capability-gate `Where`, Event-detected unwanted — see `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format). EARS legacy form is accepted for pre-v3 SPECs until 2026-11-22 per the canonical GEARS migration policy.
   - Content written in conversation_language
 
 #### [HARD] Pre-Write Frontmatter Checklist

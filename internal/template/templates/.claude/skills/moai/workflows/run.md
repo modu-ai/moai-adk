@@ -33,11 +33,11 @@ triggers:
 
 이 파일은 `/moai run` 진입점 라우터입니다. 각 Phase는 on-demand로 해당 sub-skill을 `Read`하여 로드합니다.
 
-## Phase Owners (per SPEC-V3R6-AGENT-TEAM-REBUILD-001)
+## Phase Owners (per the canonical agent catalog policy)
 
-Phase Owners: `manager-develop` (run-phase implementation — single-spawn per Anthropic 2026 Finding A4 "most coding tasks involve fewer truly parallelizable tasks than research"; `cycle_type` ∈ `{tdd, ddd, autofix}` per REQ-ATR-012) + `manager-git` (Tier L PR creation OR `--pr` flag per REQ-ATR-020 + CLAUDE.local.md §23) + `Explore` (read-only investigation when scope discovery needed).
+Phase Owners: `manager-develop` (run-phase implementation — single-spawn per Anthropic's coding-task parallelism caveat "most coding tasks involve fewer truly parallelizable tasks than research"; `cycle_type` ∈ `{tdd, ddd, autofix}` per the canonical cycle-type contract) + `manager-git` (Tier L PR creation OR `--pr` flag per the canonical Tier-based PR routing policy + CLAUDE.local.md §23) + `Explore` (read-only investigation when scope discovery needed).
 
-Phase 0.95 Mode Selection (NEW — REQ-ATR-008): orchestrator autonomous 5-mode decision (autopilot / loop / team / pipeline / background) is logged at `.moai/specs/SPEC-{ID}/progress.md` § Phase 0.95 Mode Selection. Phase 0.95 SHOULD be invoked before any manager-develop spawn for SPECs sized ≥ Tier M.
+Phase 0.95 Mode Selection: orchestrator autonomous 5-mode decision (autopilot / loop / team / pipeline / background) is logged at `.moai/specs/SPEC-{ID}/progress.md` § Phase 0.95 Mode Selection. Phase 0.95 SHOULD be invoked before any manager-develop spawn for SPECs sized ≥ Tier M.
 
 `cycle_type=autofix` mode: `/moai fix` workflow integration delegates to manager-develop with the utility-class pipeline 3-phase contract (localize → repair → validate per `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification) and the max-3-iteration contract per `.claude/rules/moai/workflow/ci-autofix-protocol.md`.
 

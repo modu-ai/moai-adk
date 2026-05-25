@@ -35,11 +35,11 @@ triggers:
 
 이 파일은 `/moai sync` 진입점 라우터입니다. 각 Phase 그룹은 on-demand로 해당 sub-skill을 `Read`하여 로드합니다.
 
-## Phase Owners (per SPEC-V3R6-AGENT-TEAM-REBUILD-001)
+## Phase Owners (per the canonical agent catalog policy)
 
-Phase Owners: `manager-docs` (sync-phase artifact authoring — CHANGELOG.md + README.md + docs-site + progress.md §F.3 + frontmatter `in-progress → implemented` transition for all SPEC artifacts; MUST NOT modify spec.md/plan.md/acceptance.md body content per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix) + `manager-git` (PR creation per branching strategy when Tier L OR `--pr` flag per REQ-ATR-020).
+Phase Owners: `manager-docs` (sync-phase artifact authoring — CHANGELOG.md + README.md + docs-site + progress.md §F.3 + frontmatter `in-progress → implemented` transition for all SPEC artifacts; MUST NOT modify spec.md/plan.md/acceptance.md body content per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix) + `manager-git` (PR creation per branching strategy when Tier L OR `--pr` flag per the canonical Tier-based PR routing policy).
 
-Sync-phase quality gate (REQ-ATR-009) is enforced by the `.claude/hooks/moai/sync-phase-quality-gate.sh` Stop hook (authored in M4) — lint + test + coverage delta verification + dependency manifest audit (REQ-ATR-014). The hook returns exit 2 to block sync completion on lint/test failure or coverage regression > 5pp. The hook replaces the prior pattern of spawning `manager-quality` for inline coverage and security analysis during sync.
+Sync-phase quality gate (per the canonical sync-phase quality gate policy) is enforced by the `.claude/hooks/moai/sync-phase-quality-gate.sh` Stop hook — lint + test + coverage delta verification + dependency manifest audit. The hook returns exit 2 to block sync completion on lint/test failure or coverage regression > 5pp. The hook replaces the prior pattern of spawning `manager-quality` for inline coverage and security analysis during sync.
 
 ## Phase Routing Table
 
