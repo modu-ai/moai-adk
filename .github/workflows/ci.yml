@@ -1,5 +1,18 @@
 name: CI
 
+# Template Internal-Content Isolation Policy:
+# The 'Run tests with race detector and coverage' step below executes
+# `go test ./...` which includes TestTemplateNoInternalContentLeak in
+# internal/template/internal_content_leak_test.go. This test enforces
+# CLAUDE.local.md §25 (Template Internal-Content Isolation): the template
+# directory (internal/template/templates/) must not contain moai-adk
+# dev-internal-content tokens (SPEC IDs, REQ/AC tokens, audit citations,
+# internal session dates, internal archive paths, internal commit SHAs,
+# internal memory hash references). Failure mode:
+# TestTemplateNoInternalContentLeak reports offending file path + leak
+# class. Policy rationale memory feedback:
+# /Users/goos/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/feedback_template_internal_content_isolation.md
+
 on:
   push:
     branches: [main]
