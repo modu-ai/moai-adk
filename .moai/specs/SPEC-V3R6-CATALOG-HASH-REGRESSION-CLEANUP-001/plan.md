@@ -2,7 +2,7 @@
 id: SPEC-V3R6-CATALOG-HASH-REGRESSION-CLEANUP-001
 title: "Catalog Hash Regression Cleanup — Plan"
 version: "0.1.1"
-status: synced
+status: completed
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -25,6 +25,7 @@ depends_on: [SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001, SPEC-V3R6-LOCAL-NAMESPACE-
 | 0.1.1 | 2026-05-25 | manager-spec | Scope amendment mirror of spec.md v0.1.1 — post-ATR-001 M8 baseline drift discovery (12 ORPHAN + 8 HASH DRIFT at HEAD `f91acb3a3`, see spec.md §A.4-amended). §A M1 D2 deliverable expanded from cosmetic `generated_at` 1-line refresh to full cleanup (3 ordered steps: ORPHAN purge → hash refresh → generated_at). §B.2 catalog.yaml diff plan replaced with 3-step expansion. §A acceptance gating updated 7 AC → 8 AC (AC-CHR-008 added per spec.md). Phase 0.5 plan-auditor iter-1 PASS skip-eligible 0.915 verdict remains valid for expanded scope — amendment stays within Tier S envelope (mechanical YAML edit + same M1 atomic commit pattern + same test design). Predecessor SPEC bodies PRESERVED. |
 | 0.1.1 (run-close) | 2026-05-25 | manager-develop | Frontmatter-only update: `status: in-progress → implemented` per Status Transition Ownership Matrix (mirrors spec.md). Body content NOT modified (manager-develop forbidden from §A-H body touch per ownership matrix). Run-phase M1 close: 5 deliverables in single atomic commit (D1 test + D2 catalog full cleanup + D3 progress.md + D4 spec.md frontmatter + D5 plan.md frontmatter). 8/8 AC-CHR PASS. v0.1.1 §A.6 OPTIONAL D3 (`internal/template/normalize_hash.go` extraction) NOT performed — exported helpers already present in pre-existing `internal/template/catalog_hash_norm.go` (per progress.md §B Option α confirmation). |
 | 0.1.1 (sync-close) | 2026-05-25 | manager-docs | Frontmatter-only update: `status: implemented → synced` per Status Transition Ownership Matrix. Body content NOT modified. |
+| 0.1.1 (mx-close) | 2026-05-25 | orchestrator | Frontmatter-only update: `status: synced → completed` per Status Transition Ownership Matrix (Mx chore orchestrator-direct path). Mx Step C: **EVALUATE-SKIP** (test file fan_in 0 + markdown/YAML 비대상). 4-phase fully closed on main. Mirrors spec.md v0.1.1 (mx-close). |
 
 ---
 
