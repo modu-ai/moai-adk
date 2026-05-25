@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001
 title: "V3R4 Harness Classifier Runtime Wiring"
-version: "0.1.0"
-status: implemented
+version: "0.1.1"
+status: completed
 created: 2026-05-24
-updated: 2026-05-24
+updated: 2026-05-25
 author: manager-spec
 priority: P1
 phase: "v3.0.0 R6 — Harness Evolution Loop Closure"

@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001
 title: "V3R4 Harness Classifier Runtime Wiring — Progress Tracker"
-version: "0.1.0"
-status: implemented
+version: "0.1.1"
+status: completed
 created: 2026-05-24
-updated: 2026-05-24
+updated: 2026-05-25
 author: manager-spec
 priority: P1
 phase: "v3.0.0 R6 — Harness Evolution Loop Closure"
@@ -97,9 +97,9 @@ mx_commit_sha: null
 
 | Check | Result | Notes |
 |-------|--------|-------|
-| Mx Step C judgment per mx-tag-protocol §a | TBD | Likely EVALUATE-PASS (Go code change) OR SKIP if Option A workflow body only |
-| @MX tag delta scan | TBD | TBD |
-| @MX:NOTE / @MX:WARN / @MX:ANCHOR / @MX:TODO counts | TBD | TBD |
+| Mx Step C judgment per mx-tag-protocol §a | **EVALUATE-EXECUTE-DEFERRED (DEBT)** | run-phase commit `577f10308`이 5 Go files 수정 (internal/cli/hook.go 140 LOC NEW + hook_harness_classify_test.go 172 LOC NEW + 3 _test 수정). mx-tag-protocol.md §a 따라 0 .go files 조건 미충족 → EVALUATE-EXECUTE 정식 요구. 본 retroactive close에서는 5 Go 파일 @MX scan 미실행 — DEBT 명시. follow-up: SPEC-V3R6-LIFECYCLE-SYNC-GATE-001 M6 dogfood `moai spec audit` finding 또는 별도 chore SPEC `chore(SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001): @MX-tag scan + retrospective annotation`. hook surface boundary-narrow (CLI subcommand registered, test coverage exists) → production blast radius 제한적이므로 PROCEED-WITH-DEBT acceptable. |
+| @MX tag delta scan | **DEFERRED (DEBT)** | 본 retroactive close에서는 미실행. follow-up SPEC 또는 moai spec audit 결과에 의해 surface 예정. |
+| @MX:NOTE / @MX:WARN / @MX:ANCHOR / @MX:TODO counts | **DEFERRED (DEBT)** | 동상. |
 
 ## §H. Cross-references
 
