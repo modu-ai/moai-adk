@@ -162,11 +162,11 @@ func TestRetirementCompletenessAssertion(t *testing.T) {
 
 	// Explicit assertion of the manager-tdd → manager-develop replacement.
 	// When manager-tdd.md has retired:true, manager-develop.md must exist in the embedded FS.
-	// Post AGENT-FOLDER-SPLIT-001: manager-develop.md lives under core/ subfolder.
+	// Post SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 M2a: manager-develop.md lives under moai/ (FLAT, v.2.x baseline restored).
 	t.Run("manager-tdd replacement manager-develop must exist", func(t *testing.T) {
 		t.Parallel()
 
-		const replacementPath = ".claude/agents/core/manager-develop.md"
+		const replacementPath = ".claude/agents/moai/manager-develop.md"
 		_, statErr := fs.Stat(fsys, replacementPath)
 		if statErr != nil {
 			t.Errorf("RETIREMENT_INCOMPLETE_manager-tdd: 교체 에이전트 '%s'가 embedded FS에 없음. "+
@@ -176,11 +176,11 @@ func TestRetirementCompletenessAssertion(t *testing.T) {
 
 	// Explicit assertion of the manager-ddd → manager-develop replacement.
 	// When manager-ddd.md has retired:true, manager-develop.md must exist in the embedded FS.
-	// Post AGENT-FOLDER-SPLIT-001: manager-develop.md lives under core/ subfolder.
+	// Post SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 M2a: manager-develop.md lives under moai/ (FLAT, v.2.x baseline restored).
 	t.Run("manager-ddd replacement manager-develop must exist", func(t *testing.T) {
 		t.Parallel()
 
-		const replacementPath = ".claude/agents/core/manager-develop.md"
+		const replacementPath = ".claude/agents/moai/manager-develop.md"
 		_, statErr := fs.Stat(fsys, replacementPath)
 		if statErr != nil {
 			t.Errorf("RETIREMENT_INCOMPLETE_manager-ddd: 교체 에이전트 '%s'가 embedded FS에 없음. "+

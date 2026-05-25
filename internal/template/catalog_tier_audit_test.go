@@ -180,32 +180,31 @@ func TestAllAgentsInCatalog(t *testing.T) {
 		catalogAgents[e.Name] = true
 	}
 
-	// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: agents live under domain subfolders
-	// {core, meta} (post SPEC-V3R6-AGENT-TEAM-REBUILD-001 the {expert, harness}
-	// subfolders are archived). Walk both retained subfolders.
+	// Post SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 M2a (2026-05-25): the
+	// v.2.x FLAT `.claude/agents/moai/` layout is restored; SPEC-V3R6-AGENT-
+	// FOLDER-SPLIT-001 was superseded. All 7 retained agents live directly
+	// under `.claude/agents/moai/<name>.md`.
 	// REQ-TST-011: enumeration updated to current retained catalog reality.
 	diskAgents := []string{}
-	for _, domain := range []string{"core", "meta"} {
-		agentDir := ".claude/agents/" + domain
-		walkErr := fs.WalkDir(fsys, agentDir, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return nil
-			}
-			if d.IsDir() {
-				return nil
-			}
-			if strings.HasSuffix(path, ".md") {
-				// Extract agent name: .claude/agents/<domain>/<name>.md → <name>
-				parts := strings.Split(path, "/")
-				fileName := parts[len(parts)-1]
-				agentName := strings.TrimSuffix(fileName, ".md")
-				diskAgents = append(diskAgents, agentName)
-			}
+	agentDir := ".claude/agents/moai"
+	walkErr := fs.WalkDir(fsys, agentDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
 			return nil
-		})
-		if walkErr != nil {
-			t.Fatalf("WalkDir(%q) error: %v", agentDir, walkErr)
 		}
+		if d.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(path, ".md") {
+			// Extract agent name: .claude/agents/moai/<name>.md → <name>
+			parts := strings.Split(path, "/")
+			fileName := parts[len(parts)-1]
+			agentName := strings.TrimSuffix(fileName, ".md")
+			diskAgents = append(diskAgents, agentName)
+		}
+		return nil
+	})
+	if walkErr != nil {
+		t.Fatalf("WalkDir(%q) error: %v", agentDir, walkErr)
 	}
 
 	// SPEC-V3R6-AGENT-TEAM-REBUILD-001 (2026-05-25): 17→8 agent catalog consolidation.
