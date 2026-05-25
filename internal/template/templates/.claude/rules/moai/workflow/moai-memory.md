@@ -14,7 +14,7 @@ Claude Code supports multiple memory levels (highest priority first):
 2. Project Instructions: CLAUDE.md (checked into repo)
 3. Project Rules: .claude/rules/**/*.md (auto-discovered, conditional via paths)
 4. User Instructions: ~/.claude/CLAUDE.md (personal global)
-5. Local Instructions: CLAUDE.local.md (personal project, not committed)
+5. Optional local instructions file (e.g., a project-local override document if your team maintains one; not committed)
 6. Auto Memory: ~/.claude/projects/{hash}/memory/ (AI-managed)
 
 ## SPEC Context Persistence

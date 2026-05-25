@@ -212,7 +212,7 @@ Resume commands:
 Test runner and coverage tool selection is based on auto-detected project language:
 
 All 16 MoAI-supported languages are listed alphabetically with equal
-priority. Per CLAUDE.local.md Section 22, no language receives PRIMARY
+priority. Per `.claude/rules/moai/development/coding-standards.md` § Language Policy (16-language neutrality contract), no language receives PRIMARY
 or SECONDARY classification.
 
 | Language   | Indicator File           | Test Command                                          | Coverage Command                                  |

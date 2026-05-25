@@ -177,7 +177,7 @@ User-generated artifacts:
 
 ### Cross-References
 
-- `CLAUDE.local.md` §24 Harness Namespace 분리 정책 (운영 doctrine + moai update contract)
+- `.claude/skills/moai-meta-harness/SKILL.md` § Namespace Separation (this file — canonical generator-side namespace contract)
 - `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy
 - `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention
 

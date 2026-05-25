@@ -786,7 +786,7 @@ spawns the corresponding server on demand.
 Note: all 16 languages in this table match the canonical Language
 Detection table in `.claude/skills/moai/workflows/sync.md` Phase 0.6.1
 and the `servers:` matrix in `.moai/config/sections/lsp.yaml.tmpl`.
-Per CLAUDE.local.md Section 22, no language receives priority over another.
+Per `.claude/rules/moai/development/coding-standards.md` § Language Policy (16-language neutrality contract), no language receives priority over another.
 
 ---
 

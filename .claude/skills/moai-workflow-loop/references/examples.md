@@ -507,7 +507,7 @@ The same diagnostic collection, classification, and fix patterns apply
 uniformly regardless of language. These three samples were chosen for
 their concise demonstration of common LSP diagnostic categories: type
 errors (Sample 1), deprecated imports (Sample 2), and unused variables
-(Sample 3). Per CLAUDE.local.md Section 22 (Template Language Neutrality),
+(Sample 3). Per `.claude/rules/moai/development/coding-standards.md` § Language Policy (16-language neutrality contract),
 no language receives priority over another; for the complete
 language-to-server mapping table, see `references/reference.md`.
 

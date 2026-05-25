@@ -70,7 +70,7 @@ The notice mentions the branch name and the opt-out env var. Exit code is unaffe
 
 ## Cross-References
 
-- CLAUDE.local.md §18.12 — dev-project specific notes (stacked PR Case Study reference is §18.11).
+- Project-local git workflow doctrine (if maintained) — dev-project specific notes including stacked PR case studies (see project-local maintenance documentation if applicable).
 - `agent-common-protocol.md` § User Interaction Boundary — orchestrator-only AskUserQuestion HARD.
 - `askuser-protocol.md` § Socratic Interview Structure — option label/order rules.
 

@@ -261,7 +261,7 @@ The 16 supported languages live as **rules** under
   16 supported languages: `cpp`, `csharp`, `elixir`, `flutter`, `go`,
   `java`, `javascript`, `kotlin`, `php`, `python`, `r`, `ruby`, `rust`,
   `scala`, `swift`, `typescript`. Canonical Dart name is `flutter` per
-  `CLAUDE.local.md` §15.
+  `.claude/rules/moai/development/coding-standards.md` § Language Policy (16-language neutrality contract).
 - **Loading mechanism**: each language rule uses `paths:` frontmatter for
   conditional loading (e.g., `paths: "**/*.py,**/pyproject.toml"`).
   Path-based loading is the structurally correct primary mechanism for
@@ -279,7 +279,7 @@ The 16 supported languages live as **rules** under
   this principle.
 
 See `.claude/rules/moai/languages/*.md` (16 files) for the canonical
-per-language guidance, and `CLAUDE.local.md` §15 for the 16-language
+per-language guidance, and `.claude/rules/moai/development/coding-standards.md` § Language Policy (16-language neutrality contract).for the 16-language
 neutrality contract.
 
 ## Skills Namespace Policy

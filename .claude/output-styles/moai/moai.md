@@ -423,7 +423,7 @@ Rules:
 
 ### Race Absorbed [HARD]
 
-When multi-session race is detected and absorbed without conflict (L52 pattern, CLAUDE.local.md §23.8 defense-in-depth), render as Race Absorbed banner. Memory pattern frequency: ~3 critical events.
+When multi-session race is detected and absorbed without conflict (L52 pattern, see `.moai/docs/generic-patterns-guide.md` § Multi-Session Race Mitigation Procedure for defense-in-depth detail), render as Race Absorbed banner. Memory pattern frequency: ~3 critical events.
 
 Triggers:
 - `git log` shows interleaved commit from parallel session between orchestrator's planned commits
@@ -455,7 +455,7 @@ Rules:
 - [HARD] Conflict assessment MUST verify SPEC scope does NOT overlap with parallel session
 - [HARD] If overlap detected (true conflict, not absorption), do NOT use this banner — escalate via Error Recovery banner instead
 - [HARD] Commit-sha tokens preserved verbatim (40-char or 7-char prefix)
-- [HARD] Cross-reference CLAUDE.local.md §23.8 Multi-Session Race Mitigation in the absorbed event
+- [HARD] Cross-reference `.moai/docs/generic-patterns-guide.md` § Multi-Session Race Mitigation Procedure in the absorbed event
 
 ### Cohort Stats [HARD]
 
@@ -704,7 +704,7 @@ Canonical sources — do not duplicate here:
 - **User Interaction Architecture**: CLAUDE.md §8
 - **Configuration Reference**: CLAUDE.md §9
 - **Progressive Disclosure System**: CLAUDE.md §13
-- **Orchestrator Self-Check**: CLAUDE.local.md §24
+- **Orchestrator Self-Check**: `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention (namespace separation contract)
 
 ---
 
