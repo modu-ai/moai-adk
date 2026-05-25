@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-CATALOG-HASH-REGRESSION-CLEANUP-001
 title: "Catalog Hash Regression Cleanup — Plan"
-version: "0.1.0"
-status: draft
+version: "0.1.1"
+status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -22,6 +22,7 @@ depends_on: [SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001, SPEC-V3R6-LOCAL-NAMESPACE-
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-05-25 | manager-spec | Initial plan-phase artifact. Tier S minimal LEAN, single M1 milestone, 1-pass run-phase expected. Phase 0.5 SKIP-eligible candidate per CONST-V3R5-026 (manager-spec self-projection ≥ 0.90). |
+| 0.1.1 | 2026-05-25 | manager-spec | Scope amendment mirror of spec.md v0.1.1 — post-ATR-001 M8 baseline drift discovery (12 ORPHAN + 8 HASH DRIFT at HEAD `f91acb3a3`, see spec.md §A.4-amended). §A M1 D2 deliverable expanded from cosmetic `generated_at` 1-line refresh to full cleanup (3 ordered steps: ORPHAN purge → hash refresh → generated_at). §B.2 catalog.yaml diff plan replaced with 3-step expansion. §A acceptance gating updated 7 AC → 8 AC (AC-CHR-008 added per spec.md). Phase 0.5 plan-auditor iter-1 PASS skip-eligible 0.915 verdict remains valid for expanded scope — amendment stays within Tier S envelope (mechanical YAML edit + same M1 atomic commit pattern + same test design). Predecessor SPEC bodies PRESERVED. |
 
 ---
 
@@ -34,12 +35,12 @@ depends_on: [SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001, SPEC-V3R6-LOCAL-NAMESPACE-
 | Deliverable | File | Operation | LOC estimate |
 |-------------|------|-----------|--------------|
 | D1 | `internal/spec/catalog_hash_test.go` (NEW) OR `internal/template/catalog_hash_test.go` (NEW) | CREATE — Go test that loads catalog.yaml, recomputes 38 entry hashes, asserts parity | ~100-150 LOC (test fixture + walker + assertion + 1 sub-test for missing-templates if Variant A per AC-CHR-006) |
-| D2 | `internal/template/catalog.yaml` | MODIFY — single-line `generated_at:` field update to current ISO-8601 UTC | 1 line changed |
+| D2 | `internal/template/catalog.yaml` | MODIFY — **full cleanup (v0.1.1 amendment per spec.md §A.4-amended)**: (a) remove 12 ORPHAN entries (`claude-code-guide`, `manager-{brain,project,quality,strategy}`, `researcher`, 6 `expert-*`) under `catalog.core.agents` + `catalog.optional_packs.{backend,deployment,devops,frontend}.agents` arrays — manual YAML edit; (b) refresh 8 hash drift entries (`moai-foundation-core`, `evaluator-active`, `manager-{develop,docs,git,spec}`, `plan-auditor`, `builder-harness`) via `gen-catalog-hashes.go --all` (post-ORPHAN-purge — `--all` errors on ORPHAN entries' missing source files, hence the strict sequence); (c) update `generated_at:` to current ISO-8601 UTC (verify post-script-run — manual fallback if script does not auto-update per spec.md §A.4 generator "NO" cell) | ~30-40 lines changed (12 ORPHAN entries × 2-3 lines each + 8 hash field updates + generated_at) |
 | D3 (optional) | `internal/template/normalize_hash.go` (NEW, if §E.1 Variant A chosen) | CREATE — extract `normalizeForHash` as exported helper; update `gen-catalog-hashes.go` to import it | ~30-50 LOC |
 
 **Decision**: D3 (extraction) is manager-develop's call at run-phase. If extraction is chosen, the generator's existing inline `normalizeForHash` is deleted and replaced with the imported helper — verify no behavior change via the existing dry-run output unchanged.
 
-**Acceptance gating**: M1 completes when all 7 AC-CHR (AC-CHR-001 through AC-CHR-007) PASS independently via their §3 verification commands.
+**Acceptance gating**: M1 completes when all 8 AC-CHR (AC-CHR-001 through AC-CHR-008) PASS independently via their §3 verification commands. (v0.1.1: AC-CHR-008 added — ORPHAN purge post-condition verification.)
 
 **No M2, M3, etc.** — Tier S minimal scope. If unexpected complexity emerges (e.g., generator coupling, test fixture explosion), manager-develop returns a blocker report with proposed M2 split rather than expanding M1 silently.
 
@@ -112,9 +113,49 @@ func TestCatalogHashParity(t *testing.T) {
 
 Option β is structurally superior but expands scope (touches `gen-catalog-hashes.go` to switch from inline to imported helpers). Option α is simpler and keeps the SPEC scope tight. Tier S preference: **Option α**. If manager-develop discovers Option β is necessary (e.g., compile failures, package boundary violations), it's an in-scope sub-decision recorded in the run-phase commit message.
 
-### B.2 MODIFIED file: `internal/template/catalog.yaml`
+### B.2 MODIFIED file: `internal/template/catalog.yaml` (v0.1.1 amendment per spec.md §A.4-amended)
 
-**Change**: line 2 only
+**Original v0.1.0 plan**: single-line `generated_at:` field update only (1 line changed).
+
+**Revised v0.1.1 plan**: 3-step ordered cleanup covering the full post-ATR-001 M8 drift (12 ORPHAN + 8 HASH DRIFT). The ordering is enforced because `gen-catalog-hashes.go --all` errors on missing source files (`resolveHashSourcePath` returns `stat %q: %w` at line 123) — ORPHAN entries MUST be removed before script invocation.
+
+**Step 1 — Manual ORPHAN entry removal** (12 entries):
+
+Remove the following entries from `internal/template/catalog.yaml` (located under `catalog.core.agents` and `catalog.optional_packs.{backend,deployment,devops,frontend}.agents` arrays — exact YAML location varies per entry):
+
+- `claude-code-guide` (under `catalog.core.agents`)
+- `manager-brain` (under `catalog.core.agents`)
+- `manager-project` (under `catalog.core.agents`)
+- `manager-quality` (under `catalog.core.agents`)
+- `manager-strategy` (under `catalog.core.agents`)
+- `researcher` (under `catalog.core.agents` or `catalog.optional_packs.*.agents`)
+- `expert-backend` (under `catalog.optional_packs.backend.agents`)
+- `expert-frontend` (under `catalog.optional_packs.frontend.agents`)
+- `expert-security` (under `catalog.optional_packs.backend.agents` or `catalog.optional_packs.devops.agents`)
+- `expert-devops` (under `catalog.optional_packs.devops.agents`)
+- `expert-refactoring` (under `catalog.optional_packs.backend.agents` or similar)
+- `expert-performance` (under `catalog.optional_packs.backend.agents` or similar)
+
+manager-develop MAY execute Step 1 via either: (α) manual YAML editing with text editor + `git diff` verification, OR (β) a one-off scripted removal (e.g., `yq` or sed pattern). Either approach is acceptable per Tier S envelope. Post-condition: `grep -cE "claude-code-guide|manager-brain|manager-project|manager-quality|manager-strategy|researcher|expert-backend|expert-frontend|expert-security|expert-devops|expert-refactoring|expert-performance" internal/template/catalog.yaml` returns **0** (down from baseline 24 = 12 entries × 2 lines).
+
+**Step 2 — Hash refresh via generator** (8 entries):
+
+```bash
+go run internal/template/scripts/gen-catalog-hashes.go --all
+```
+
+Updates the `hash:` field for the 8 retained entries whose source body was modified by ATR-001: `moai-foundation-core`, `evaluator-active`, `manager-develop`, `manager-docs`, `manager-git`, `manager-spec`, `plan-auditor`, `builder-harness`. The script reads each entry's `path:` field, normalizes the source body (CRLF→LF, trailing-whitespace strip, single trailing newline), recomputes sha256, and writes back via `yaml.Marshal(&cat)`.
+
+Post-condition: `go test ./internal/spec/ -run TestCatalogHashParity` reports `0 drift` (or `PASS — verified <N> catalog entries — 0 drift` per REQ-CHR-005).
+
+**Step 3 — `generated_at` refresh verification**:
+
+```bash
+grep -E "^generated_at:" internal/template/catalog.yaml
+# Expected match: generated_at: "2026-05-25THH:MM:SSZ" (current UTC)
+```
+
+The Step 2 script may or may not auto-update `generated_at:` (per spec.md §A.4 original measurement "NO" cell — the generator serializes the field AS-IS via `yaml.Marshal(&cat)`). If grep returns the stale `"2026-05-12T03:00:00Z"`, perform manual one-line update:
 
 ```diff
  version: 1.0.0
@@ -123,9 +164,17 @@ Option β is structurally superior but expands scope (touches `gen-catalog-hashe
  catalog:
 ```
 
-Where `HH:MM:SS` is the actual UTC time of the run-phase commit. Use `date -u +"%Y-%m-%dT%H:%M:%SZ"` to populate at commit time.
+Where `HH:MM:SS` is current UTC time (`date -u +"%Y-%m-%dT%H:%M:%SZ"`).
 
-**Verification**: AC-CHR-002 grep regex `\"2026-05-2[5-9]T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\"` matches.
+**Execution order rationale**: Steps 1 → 2 → 3 sequencing is critical. Step 2 (`--all`) on ORPHAN entries errors out and aborts before reaching the retained entries (script does not have `--skip-orphan` flag — see spec.md §B.2 OOS). manager-develop SHOULD verify Step 1 completion via the grep check BEFORE invoking Step 2 to avoid retry cycles.
+
+**Verification batch (post-run, all 3 steps complete)**:
+- AC-CHR-001: per-entry drift check (8 entries refresh confirmed)
+- AC-CHR-002: `generated_at:` matches `2026-05-2[5-9]T[0-9]{2}:[0-9]{2}:[0-9]{2}Z`
+- AC-CHR-004: `TestCatalogHashParity` reports 0 drift (HASH DRIFT + ORPHAN both 0)
+- AC-CHR-008: grep against 12 archived name pattern returns 0
+
+**Scope discipline reminder** (per spec.md §B.2 OOS): manager-develop MUST NOT use the in-tree time to refactor `gen-catalog-hashes.go` to auto-update `generated_at:` or add `--skip-orphan` mode. Generator refactoring remains deferred to future `SPEC-V3R6-CATALOG-GENERATOR-MODE-001` per spec.md §F.3. The manual fallback in Step 3 is the v0.1.1 amendment's accepted approach.
 
 ### B.3 OPTIONAL NEW file: `internal/template/catalog_hash.go` (Option β only)
 

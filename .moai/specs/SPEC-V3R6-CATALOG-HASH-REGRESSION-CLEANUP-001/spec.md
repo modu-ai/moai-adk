@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-CATALOG-HASH-REGRESSION-CLEANUP-001
 title: "Catalog Hash Regression Cleanup — Drift Verification + Generated-At Refresh + Lint Regression Guard"
-version: "0.1.0"
-status: draft
+version: "0.1.1"
+status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -22,6 +22,7 @@ depends_on: [SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001, SPEC-V3R6-LOCAL-NAMESPACE-
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-05-25 | manager-spec | Initial draft — plan-phase artifacts authored. Pre-flight ground-truth measurement: 0 hash drift across 38 catalog entries, stale `generated_at: "2026-05-12T03:00:00Z"` (13 days), no lint enforcement against future drift. Tier S minimal LEAN form (2 artifacts: spec.md + plan.md, AC inline in §3). |
+| 0.1.1 | 2026-05-25 | manager-spec | Scope amendment per user AskUserQuestion Option A (post-ATR-001 M8 baseline drift discovery). §A.4 ground truth updated: pre-flight `0 drift / 38 entries` (against plan-phase commit `128947eb6`) invalidated by intervening ATR-001 M3-M8 cohort commits (`476b04ffb` M3 archive + `fdd4aa37a` M4 hooks + M5/M6 rules/doctrine + `f91acb3a3` M8 template parity). Actual post-M8 state at HEAD `f91acb3a3` is **12 ORPHAN + 8 HASH DRIFT** (20 total drift) — live `TestCatalogHashParity` failure confirms. M8 commit message claimed `catalog.yaml grep for archived names = 0` (false positive — actual `grep` returns 24 = 12 entries × 2 lines). D2 deliverable expanded from cosmetic `generated_at` 1-line refresh to full cleanup: (a) 12 ORPHAN entry removal (`claude-code-guide`, `manager-{brain,project,quality,strategy}`, `researcher`, 6 `expert-*`), (b) 8 hash refresh via `gen-catalog-hashes.go --all` post-ORPHAN-purge, (c) `generated_at` refresh. AC-CHR-004 wording expanded to include ORPHAN as drift type (alongside HASH DRIFT). NEW **AC-CHR-008** added (ORPHAN purge post-condition verification). NEW **REQ-CHR-009** added (Ubiquitous — catalog excludes ORPHAN entries). Total AC count 7 → 8. **L66 NEW pattern (proposed)**: pre-flight ground truth invalidated by intervening cohort commits — defer + re-baseline OR scope-expand. Side-effect benefit: discharges M8 misreported PROCEED-WITH-DEBT. Predecessor SPEC bodies still PRESERVED (HARNESS-NAMESPACE-CLEANUP-001 + LOCAL-NAMESPACE-CONSOLIDATION-001 untouched). |
 
 ---
 
@@ -84,6 +85,37 @@ This SPEC closes a residual gap left by:
 | Lint rules referencing catalog hash | 0 | `grep -E "CatalogHash\|catalog\.hash" internal/spec/lint.go` |
 | §24 namespace lint rules | 0 | `grep -E "HarnessNamespace\|harness\.namespace" internal/spec/lint.go` |
 
+### A.4-amended (v0.1.1): Post-ATR-001 M8 actual ground truth
+
+**Discovery context** (orchestrator pre-flight verification, 2026-05-25, run-phase resumption attempt):
+
+The original §A.4 measurement above was performed against plan-phase commit `128947eb6` (catalog state at that point: 0 drift / 38 entries valid). Between commit `128947eb6` and current HEAD `f91acb3a3`, the SPEC-V3R6-AGENT-TEAM-REBUILD-001 (ATR-001) cohort committed M3 through M8 (5 ATR-001 commits + 1 LNCO reconcile interleaved):
+
+- `476b04ffb` ATR-001 M3 — 11 agent archive (deleted 11 source files under `internal/template/templates/.claude/agents/{core,meta,expert}/`)
+- `fdd4aa37a` ATR-001 M4 — 3 NEW hook scripts (orchestrator-direct)
+- M5 `498ea18a2` — rule files (10 rules)
+- M6 `3136733f6` — supersedence verify + AC-ATR-012 reinforcement
+- M7 `4f37a7643` — CLAUDE.md catalog + CLAUDE.local.md doctrine + NOTICE.md attribution
+- `f91acb3a3` ATR-001 M8 — template parity + catalog.yaml 12-archived purge + 7-item verification batch (PROCEED-WITH-DEBT)
+
+ATR-001 M3 archive made the 12 catalog entries point to non-existent source files (ORPHAN). ATR-001 M1/M5/M6/M7 modified 6+ retained agent bodies (manager-develop, manager-docs, manager-git, manager-spec, plan-auditor, builder-harness, evaluator-active) + 1 SKILL.md (moai-foundation-core) without invoking `gen-catalog-hashes.go --all`, producing 8 HASH DRIFT.
+
+**Actual post-M8 ground truth (verified via `go test ./internal/spec/ -run TestCatalogHashParity 2>&1`, 2026-05-25, HEAD `f91acb3a3`)**:
+
+| Drift Class | Count | Entries |
+|-------------|-------|---------|
+| ORPHAN (source file deleted) | 12 | `claude-code-guide`, `manager-brain`, `manager-project`, `manager-quality`, `manager-strategy`, `researcher`, `expert-backend`, `expert-frontend`, `expert-security`, `expert-devops`, `expert-refactoring`, `expert-performance` |
+| HASH DRIFT (source body modified, hash stale) | 8 | `moai-foundation-core`, `evaluator-active`, `manager-develop`, `manager-docs`, `manager-git`, `manager-spec`, `plan-auditor`, `builder-harness` |
+| **Total drift** | **20** | (12 ORPHAN + 8 HASH DRIFT) |
+
+**M8 commit message false positive** (`f91acb3a3`): M8 PROCEED-WITH-DEBT verification batch claimed `catalog.yaml grep for archived names = 0 ✓`. This was a false positive — live `grep -cE "claude-code-guide|manager-brain|manager-project|manager-quality|manager-strategy|researcher|expert-backend|expert-frontend|expert-security|expert-devops|expert-refactoring|expert-performance" internal/template/catalog.yaml` returns **24** (12 entries × 2 lines each: `- name:` + `path:`). The catalog purge claimed in M8 commit body did not occur. Discharging this M8 debt is now a side-effect of this CATALOG SPEC's expanded scope per v0.1.1 amendment.
+
+**`gen-catalog-hashes.go --all` behavior on ORPHAN entries**: The generator only updates `hash:` for existing entries; it does NOT remove entries whose source file is missing. On ORPHAN entries, `resolveHashSourcePath` returns an error (`stat %q: %w` at line 123) and `updateEntryHash` propagates. Therefore the v0.1.1 D2 deliverable cleanup procedure MUST sequence: **(1) manually remove 12 ORPHAN entries from catalog.yaml** first → **(2) then run `gen-catalog-hashes.go --all`** to refresh remaining 8 hash drift entries → **(3) verify `generated_at` is refreshed** (script may or may not auto-update; manual verification required per spec.md §A.4 original "NO" cell).
+
+**Original §A.4 historical value**: The original §A.4 measurement table above remains the historical record of catalog state at plan-phase commit `128947eb6` and is NOT deleted. This v0.1.1 amendment is additive — both ground truths coexist, anchored to their respective commit baselines.
+
+**L66 NEW pattern (proposed)**: pre-flight ground truth invalidated by intervening cohort commits. When a SPEC's pre-flight measurement establishes a baseline (e.g., "0 drift") AT a specific commit, and cohort sibling SPECs (here ATR-001 M3-M8) modify shared state between the SPEC's plan-phase commit and run-phase start, the original ground truth no longer reflects HEAD state. Mitigation options at run-phase: **defer** (Option 1 — wait for cohort to stabilize, then re-baseline), **PASS-WITH-DEBT** (Option 2 — proceed against new state, accept residual drift), **scope-expand** (Option 3 — this SPEC's chosen path, amend SPEC body to cover the expanded drift), **pause** (Option 4 — halt and request user direction). Distinct from L52 committed-commit race (which is about fast-forward attribution); L66 is about ground-truth invalidation between plan and run.
+
 ---
 
 ## §B — Scope
@@ -128,7 +160,7 @@ The §24 separation policy (`my-harness-*` vs `moai-*` skill prefix, `.claude/ag
 
 ### C.2 Event-Driven (When ...)
 
-- **REQ-CHR-004** [Event-driven]: When a contributor runs `go test ./internal/spec/... -run TestCatalogHashParity`, the test harness shall load `internal/template/catalog.yaml`, iterate all entries in `catalog.core.{skills,agents,rules}` + `catalog.optional.*` sections, and report drift as t.Errorf with `entry name | stored hash | computed hash` triplet for each mismatch. (Binds: AC-CHR-004)
+- **REQ-CHR-004** [Event-driven]: When a contributor runs `go test ./internal/spec/... -run TestCatalogHashParity`, the test harness shall load `internal/template/catalog.yaml`, iterate all entries in `catalog.core.{skills,agents,rules}` + `catalog.optional.*` sections, and report drift as t.Errorf with `entry name | stored hash | computed hash` triplet for each mismatch. **Drift is defined to include two distinct classes**: (a) **HASH DRIFT** — catalog entry whose stored sha256 mismatches the recomputed normalized source hash (existing source file present); and (b) **ORPHAN** — catalog entry whose `path:` field points to a source file that no longer exists on disk (detected via `resolveHashSourcePath` returning a non-nil error). Both classes constitute drift; either failure mode produces a t.Errorf. (Binds: AC-CHR-004, AC-CHR-008)
 
 - **REQ-CHR-005** [Event-driven]: When the `catalog_hash_test.go` test detects zero drift, the test shall complete with PASS status and emit a single informational t.Logf summary `verified <N> catalog entries against normalized source bodies — 0 drift` where N matches the catalog's entry count. (Binds: AC-CHR-004)
 
@@ -143,6 +175,8 @@ The §24 separation policy (`my-harness-*` vs `moai-*` skill prefix, `.claude/ag
 ### C.5 Unwanted (shall not ...)
 
 - **REQ-CHR-008** [Unwanted]: The `catalog_hash_test.go` test shall not mutate `internal/template/catalog.yaml`, source body files, or any file under the repository working tree, irrespective of detected drift. Hash regeneration is reserved for `gen-catalog-hashes.go --all` (manual, explicit). (Binds: AC-CHR-007)
+
+- **REQ-CHR-009** [Ubiquitous]: The `internal/template/catalog.yaml` file shall not contain catalog entries whose `path:` field points to a source file that does not exist on disk. ORPHAN entries (catalog entry whose source file has been deleted, archived, or moved without a corresponding catalog update) constitute a doctrinal violation of the "catalog tracks template-distributed assets only" rule from spec.md §B.4. The 12 known ORPHAN entries at run-phase baseline HEAD `f91acb3a3` (per §A.4-amended: `claude-code-guide`, `manager-brain`, `manager-project`, `manager-quality`, `manager-strategy`, `researcher`, `expert-backend`, `expert-frontend`, `expert-security`, `expert-devops`, `expert-refactoring`, `expert-performance`) shall be removed from `catalog.yaml` during the v0.1.1 D2 cleanup. (Binds: AC-CHR-008)
 
 ---
 
@@ -311,6 +345,29 @@ diff /tmp/pre.txt /tmp/post.txt
 # Expected: empty diff (zero file modifications)
 ```
 
+### AC-CHR-008 [MUST-PASS] — ORPHAN purge post-condition verification
+
+**Binds**: REQ-CHR-009, REQ-CHR-004 (ORPHAN drift class)
+
+**Given**: Run-phase D2 cleanup has completed — 12 archived agent entries removed from `internal/template/catalog.yaml`.
+
+**When**: The contributor runs the ORPHAN grep check against catalog.yaml.
+
+**Then**: The `grep -cE` against the 12 archived agent name pattern returns exactly **0** matches (down from the pre-v0.1.1 baseline of 24 — see §A.4-amended). Zero residual references to any of the 12 archived agent names in catalog.yaml.
+
+**Verification command**:
+```bash
+grep -cE "claude-code-guide|manager-brain|manager-project|manager-quality|manager-strategy|researcher|expert-backend|expert-frontend|expert-security|expert-devops|expert-refactoring|expert-performance" internal/template/catalog.yaml
+# Expected: 0
+```
+
+**Secondary verification** (TestCatalogHashParity ORPHAN class signal): after D2 cleanup, the test's per-entry walker MUST NOT encounter any `CATALOG_ENTRY_ORPHAN` error class for the 12 listed agent names. Combined with the hash-refresh of the 8 remaining HASH DRIFT entries, the full test run reports `0 drift` per AC-CHR-004.
+
+```bash
+go test ./internal/spec/... -run TestCatalogHashParity -v 2>&1 | grep -cE "claude-code-guide|manager-brain|manager-project|manager-quality|manager-strategy|researcher|expert-backend|expert-frontend|expert-security|expert-devops|expert-refactoring|expert-performance"
+# Expected: 0 (no test-error references to the 12 archived names)
+```
+
 ### REQ↔AC Bidirectional Traceability Matrix
 
 | REQ-CHR | Pattern | Binds to AC | Notes |
@@ -318,11 +375,12 @@ diff /tmp/pre.txt /tmp/post.txt
 | REQ-CHR-001 | Ubiquitous | AC-CHR-001 | Hash parity invariant |
 | REQ-CHR-002 | Ubiquitous | AC-CHR-002 | `generated_at` ISO-8601 format invariant |
 | REQ-CHR-003 | Ubiquitous | AC-CHR-003 | Test file exists + compiles |
-| REQ-CHR-004 | Event-driven (When ... runs go test) | AC-CHR-004 | Per-entry drift report format |
+| REQ-CHR-004 | Event-driven (When ... runs go test) | AC-CHR-004, AC-CHR-008 | Per-entry drift report format (HASH DRIFT + ORPHAN classes) |
 | REQ-CHR-005 | Event-driven (When ... 0 drift) | AC-CHR-004 | PASS-status summary log |
 | REQ-CHR-006 | State-driven (While ... exists) | AC-CHR-005 | No skip behavior |
 | REQ-CHR-007 | Where (capability gate ... templates available) | AC-CHR-006 | Fail-loud on missing templates |
 | REQ-CHR-008 | Unwanted (shall not mutate) | AC-CHR-007 | Observation-only test discipline |
+| REQ-CHR-009 | Ubiquitous | AC-CHR-008 | Catalog excludes ORPHAN entries (12 archived agents removed) |
 
 | AC-CHR | Cites REQ-CHR | MUST-PASS? |
 |--------|---------------|------------|
@@ -333,8 +391,9 @@ diff /tmp/pre.txt /tmp/post.txt
 | AC-CHR-005 | REQ-CHR-006 | YES — no skip |
 | AC-CHR-006 | REQ-CHR-007 | YES — fail-loud on missing templates |
 | AC-CHR-007 | REQ-CHR-008 | YES — no mutation |
+| AC-CHR-008 | REQ-CHR-009, REQ-CHR-004 | YES — 12 ORPHAN entries purged from catalog (grep returns 0) |
 
-7 AC total, all MUST-PASS, 100% bidirectional traceability.
+8 AC total, all MUST-PASS, 100% bidirectional traceability.
 
 ---
 
