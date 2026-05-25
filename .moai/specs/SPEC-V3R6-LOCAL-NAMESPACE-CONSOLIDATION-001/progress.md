@@ -2,7 +2,7 @@
 id: SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001
 title: "Local Agent Namespace Consolidation — Progress Tracking"
 version: "0.1.2"
-status: draft
+status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -14,7 +14,7 @@ tags: "local-namespace, dev-only, agent-migration, template-refactor, claude-loc
 tier: M
 depends_on: []
 related_specs: []
-plan_commit_sha: "<pending>"
+plan_commit_sha: "651623dc1"
 run_commit_sha: "<pending>"
 sync_commit_sha: "<pending>"
 mx_commit_sha: "<pending>"

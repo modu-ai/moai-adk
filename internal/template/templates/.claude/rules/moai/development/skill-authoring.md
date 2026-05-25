@@ -292,6 +292,17 @@ neutrality contract.
 | `moai-harness-*` | **하네스 builder/lifecycle** (현재 `moai-meta-harness` + `moai-harness-learner`만 해당) | template | **삭제 후 신규 설치** (overwrite) |
 | **`my-harness-*`** | **사용자 생성** — `moai-meta-harness`가 `/moai project` Phase 5+ 인터뷰 후 generate | user project | **절대 삭제/modify 금지 + 백업 보존** |
 
+### Deprecated Skill Slots (migrated to `.claude/agents/local/`)
+
+The following dev-only skill slots were retired and their workflows migrated into hand-authored local agents under `.claude/agents/local/` (see agent-authoring.md § Agent Directory Convention). Thin command wrappers `.claude/commands/97-release-update.md` and `.claude/commands/98-github.md` now delegate to the new local agents instead of skill invocations.
+
+| Retired Skill | Migration Target | Entry Point |
+|---------------|------------------|-------------|
+| `.claude/skills/moai/workflows/release-update.md` (97 series) | `.claude/agents/local/release-update-specialist.md` | `/97-release-update` thin command |
+| `.claude/skills/moai/workflows/github.md` (98 series) | `.claude/agents/local/github-specialist.md` | `/98-github` thin command |
+
+The migration preserves the Thin Command Pattern (`coding-standards.md` § Thin Command Pattern) while shifting routing from `Skill("moai/workflows/<name>")` to `Use the <name>-specialist subagent` delegation. The underlying workflow bodies are retained verbatim with structural fidelity; the namespace shift is purely architectural to align maintainer-only assets under the local namespace contract.
+
 ### Rules
 
 - [HARD] `moai-*` namespace (모든 prefix 포함)는 template-distributed. 사용자가 직접 수정 시 다음 `moai update`로 overwrite — 사용자 customization은 손실됨.
@@ -302,6 +313,7 @@ neutrality contract.
 
 ### Cross-References
 
-- `CLAUDE.local.md` §24 Harness Namespace 분리 정책 (운영 doctrine + moai update contract)
+- `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy (this section — canonical skill namespace SSOT)
 - `.claude/skills/moai-meta-harness/SKILL.md` § Namespace Separation (canonical generator contract)
-- `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention (agent counterpart)
+- `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention (agent counterpart — includes `.claude/agents/local/` for the migrated 97/98 specialists)
+- `.moai/docs/dev-only-commands-isolation.md` (maintainer-local — dev-only 97/98/99 isolation policy)

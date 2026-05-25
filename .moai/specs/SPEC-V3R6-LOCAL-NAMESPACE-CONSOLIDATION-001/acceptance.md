@@ -2,7 +2,7 @@
 id: SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001
 title: "Local Agent Namespace Consolidation — Acceptance Criteria"
 version: "0.1.2"
-status: draft
+status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec

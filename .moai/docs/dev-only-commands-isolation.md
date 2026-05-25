@@ -20,12 +20,14 @@
 |---------|------|----------|
 | `.claude/commands/97-release-update.md` | Entry slash command — CC upstream tracker | 사용자 프로젝트에는 CC 추적 권한 부재 |
 | `.claude/commands/98-github.md` | Entry slash command — GitHub workflow with Agent Teams | 사용자 프로젝트에 `gh` 권한/repo 컨텍스트 미보장 |
-| `.claude/skills/moai/workflows/release-update.md` | 7-phase 워크플로우 본문 (97 entry) | 사용자에게 의미 없는 dev 인프라 |
-| `.claude/skills/moai/workflows/github.md` | GitHub 워크플로우 본문 (98 entry) | 동일 — dev maintainer 전용 |
-| `.claude/skills/moai/workflows/release.md` | Production release 워크플로우 본문 (99 entry) | 동일 — dev maintainer 전용, Enhanced GitHub Flow (CLAUDE.local.md §18) |
+| `.claude/agents/local/release-update-specialist.md` | Agent body — CC upstream tracker 9-phase workflow (97 entry target) | 메인테이너 전용 hand-authored agent, 사용자 프로젝트 무관 |
+| `.claude/agents/local/github-specialist.md` | Agent body — GitHub issue/PR workflow (98 entry target) | 메인테이너 전용 hand-authored agent, 사용자 프로젝트 무관 |
+| `.claude/skills/moai/workflows/release.md` | Production release 워크플로우 본문 (99 entry) | 동일 — dev maintainer 전용, Enhanced GitHub Flow (project-local git workflow doctrine) |
 | `.claude/commands/99-release.md` | Entry slash command — production release | 사용자 프로젝트에는 release 권한/repo 컨텍스트 미보장 |
 | `.moai/state/last-cc-version.json` | 마지막 분석 버전 + history | 사용자 프로젝트별 상태 추적 불요 |
 | `.moai/research/cc-update-*.md` | 분석 보고서 + update plan | dev 산출물, 사용자 사용 안 함 |
+
+> **Migration note (2026-05-25 — SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001)**: The `.claude/skills/moai/workflows/release-update.md` and `.claude/skills/moai/workflows/github.md` skill bodies were removed in M3 of the local-namespace consolidation SPEC. Their 9-phase / multi-phase workflow contents migrated verbatim (with structural fidelity preserved) into the two new `.claude/agents/local/*-specialist.md` agent files listed above. The thin command wrappers (`97-release-update.md` + `98-github.md`) now delegate to the local agents via `Use the <name>-specialist subagent` routing instead of `Skill("moai/workflows/<name>")` invocation. The migration retained the Thin Command Pattern (body ≤ 20 LOC) on both wrappers.
 
 ### [HARD] 검증 체크리스트 (dev-only 커맨드 변경 시 매번)
 
@@ -37,6 +39,9 @@
 - [ ] `find internal/template/templates -name "release.md" -path "*/workflows/*"` 결과 비어있음
 - [ ] `find internal/template/templates -name "last-cc-version.json"` 결과 비어있음
 - [ ] `find internal/template/templates -name "cc-update-*.md"` 결과 비어있음
+- [ ] `find internal/template/templates -path "*/agents/local/*"` 결과 비어있음 (HARD — SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001 REQ-LNC-012)
+- [ ] `find internal/template/templates -name "release-update-specialist.md"` 결과 비어있음
+- [ ] `find internal/template/templates -name "github-specialist.md"` 결과 비어있음
 - [ ] `moai init test-project` 후 위 모두 사용자 프로젝트에 복사되지 않음 확인
 
 만약 위 파일 중 하나가 `internal/template/templates/`에 발견되면 즉시 `git rm` + `make build` 재실행 + commit.
