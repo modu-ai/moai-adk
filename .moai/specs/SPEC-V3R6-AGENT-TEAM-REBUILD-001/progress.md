@@ -5,8 +5,8 @@ version: "0.1.0"
 created: 2026-05-25
 updated: 2026-05-25
 author: orchestrator
-run_commit_sha: "<pending>"
-sync_commit_sha: "<pending>"
+run_commit_sha: "955299cac"
+sync_commit_sha: "f0f222fa3"
 mx_commit_sha: "<pending>"
 ---
 
@@ -47,10 +47,10 @@ Per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transi
 | 1 | Run-phase M5 — Rule files (2 NEW + 8 modified) | manager-develop | COMPLETED | `498ea18a2` | REQ-ATR-007/008/012/016/020 |
 | 1 | Run-phase M6 — Predecessor SPEC supersedence verify + AC-ATR-012 reinforcement | orchestrator (verify) + manager-spec (original plan-phase transition) | COMPLETED | `3136733f6` | REQ-ATR-006 (supersedence already applied at plan-phase `b957a4d04`; M6 verifies + adds AC-ATR-012 boost via manager-develop.md cycle_type=autofix body refinement, grep count 1 → 7) |
 | 1 | Run-phase M7 — CLAUDE.md + CLAUDE.local.md + NOTICE.md | manager-develop | COMPLETED | `4f37a7643` | REQ-ATR-001/015/019/020 — NOTICE.md path variance documented (canonical: `.claude/rules/moai/NOTICE.md`) |
-| 1 | Run-phase M8 — Template parity + verification batch (PROCEED-WITH-DEBT) | orchestrator-direct | COMPLETED | `<this-commit>` | REQ-ATR-018 + catalog.yaml 12-archived purge + AC-ATR-018 PASS (parity); 8 Go test fails (1 pre-existing path drift + 7 architectural-pivot consequences) deferred to follow-up SPEC-V3R6-TEST-REFACTOR-001 per user PROCEED-WITH-DEBT directive |
-| 2 | Sync-phase | manager-docs | NOT-STARTED | `<pending>` | CHANGELOG + 5 frontmatter `status: implemented` |
-| 3 | Mx-phase | orchestrator | NOT-STARTED | `<pending>` | Step C judgement (expected EVALUATE-SKIP per markdown-heavy) |
-| 4 | 4-phase close | orchestrator | NOT-STARTED | `<pending>` | `status: implemented → completed` + L60 atomic backfill |
+| 1 | Run-phase M8 — Template parity + verification batch (PROCEED-WITH-DEBT) | orchestrator-direct | COMPLETED | `f91acb3a3` | REQ-ATR-018 + catalog.yaml 12-archived purge + AC-ATR-018 PASS (parity); 8 Go test fails (1 pre-existing path drift + 7 architectural-pivot consequences) deferred to follow-up SPEC-V3R6-TEST-REFACTOR-001 per user PROCEED-WITH-DEBT directive |
+| 2 | Sync-phase | manager-docs | COMPLETED | `f0f222fa3` | CHANGELOG.md [Unreleased] entry + spec.md status:draft→implemented (variance: M1 missed draft→in-progress) + 5 artifact sync_commit_sha placeholder + §F.3 Audit-Ready Signal |
+| 3 | Mx-phase | orchestrator | COMPLETED (EVALUATE-SKIP) | `<this-commit>` | Step C judgement per mx-tag-protocol.md §a — markdown-heavy + 0 .go modifications + 3 .sh scripts + 0 goroutines + 0 fan_in delta = SKIP-eligible; see §F.4 below |
+| 4 | 4-phase close | orchestrator | COMPLETED | `<this-commit>` | spec.md status:implemented→completed + L60 atomic backfill (4 SPEC artifact sync_commit_sha pending→f0f222fa3 + progress.md run/sync_commit_sha populated; mx_commit_sha self-reference fixed in post-commit atomic chore) |
 
 ---
 
@@ -350,7 +350,53 @@ The plan.md §D.8 and spec.md §C.1 reference `.claude/rules/moai/workflow/git-w
 - Sync-phase (this run) therefore applies `draft → implemented`, skipping the missed intermediate per the "implemented on sync without in-progress" variance pattern
 - This variance is documented here for retrospective analysis; no correction action needed
 
-### §F.4 Mx-phase Audit-Ready Signal (orchestrator scope — NOT-STARTED)
+### §F.4 Mx-phase Audit-Ready Signal (orchestrator scope — COMPLETED, EVALUATE-SKIP)
+
+**Commit**: `<this-commit>` `chore(SPEC-V3R6-AGENT-TEAM-REBUILD-001): Mx-phase EVALUATE-SKIP + 4-phase close + L60 atomic backfill`
+**Date**: 2026-05-25
+**Step C Judgement**: **EVALUATE-SKIP** per `.claude/rules/moai/workflow/mx-tag-protocol.md` §a
+
+### Skip-eligibility verification (mx-tag-protocol.md §a markdown-heavy criteria)
+
+| Criterion | Required for SKIP | Actual | PASS? |
+|-----------|---------------------|--------|-------|
+| Go source modifications (`*.go`) | 0 | 0 (8 Go test fails are pre-existing or architectural-pivot consequence in test files only, no production code change) | ✓ |
+| Goroutine introductions | 0 | 0 | ✓ |
+| @MX:ANCHOR fan_in delta | 0 | 0 (no @MX:ANCHOR additions/removals; existing @MX:ANCHOR in spec-workflow.md fan_in=10 unchanged) | ✓ |
+| @MX:NOTE / @MX:WARN / @MX:TODO net additions | 0 | 0 (M1-M8 scope = markdown + shell script only; no @MX tag changes) | ✓ |
+| Shell script additions affecting tag scope | Allowed (informational) | 3 NEW hook scripts (status-transition-ownership.sh + sync-phase-quality-gate.sh + team-ac-verify.sh); each is markdown-equivalent in @MX scope (no fan_in callers, no goroutines, no complexity ≥15) | ✓ |
+
+**Decision**: SKIP Mx-phase tag scan. Per protocol §a, markdown-heavy + 0 production code change SPECs SHALL NOT require @MX tag annotation pass.
+
+### 4-phase close consolidation
+
+This chore commit ALSO performs:
+1. **L60 atomic backfill** for 4 SPEC artifact `sync_commit_sha: "<pending>"` → `"f0f222fa3"` (plan.md / acceptance.md / design.md / research.md)
+2. **progress.md frontmatter**: `run_commit_sha: "955299cac"` (M1 first run-phase commit) + `sync_commit_sha: "f0f222fa3"` populated
+3. **§B Lifecycle backfill**: M8 row `<this-commit>` → `f91acb3a3`; Sync/Mx/close rows COMPLETED
+4. **spec.md status transition**: `implemented → completed` per Status Transition Ownership Matrix (`implemented → completed` owner: orchestrator on Mx chore)
+5. **mx_commit_sha self-reference**: deferred to atomic chore 2 (chicken-and-egg pattern per L60 precedent — this commit's SHA cannot be known until commit lands)
+
+### Post-this-commit atomic backfill chore (forthcoming)
+
+A second atomic chore commit will populate:
+- `progress.md` frontmatter `mx_commit_sha: "<pending>"` → `"<this-commit>"` (this Mx + close commit SHA)
+- That chore commit's own SHA does not require self-reference (it's the L60 atomic backfill terminator)
+
+### Sprint 10 cohort participation
+
+This SPEC closes as Sprint 10 Tier L cohort entry (alongside Tier S minimal entries SLCO-001, FOUNDATION-CORE-GEARS-ALIGN-001, WORKFLOW-PLAN-GEARS-ALIGN-001 + Tier M LNCO-001). Architectural pivot from SPEC-V3R6-WORKFLOW-ORCHESTRATION-FIX-001 (supersession path).
+
+### §F.5 — 4-phase close marker (orchestrator scope — COMPLETED)
+
+**Date**: 2026-05-25
+**Close decision**: This SPEC's 4-phase lifecycle (plan → run → sync → mx + close) is fully closed.
+**Frontmatter final state**:
+- spec.md `status: completed` ✓
+- plan.md / acceptance.md / design.md / research.md `sync_commit_sha: "f0f222fa3"` ✓
+- progress.md `run_commit_sha: "955299cac"` + `sync_commit_sha: "f0f222fa3"` + `mx_commit_sha: <atomic-chore-2-SHA>` (after L60 atomic backfill chore 2)
+**Predecessor SPEC**: SPEC-V3R6-WORKFLOW-ORCHESTRATION-FIX-001 status confirmed `superseded` (HISTORY v0.1.2 entry — applied at plan-phase commit `b957a4d04`, verified at M6 `3136733f6`)
+**Sprint 10 cohort entry**: Tier L architectural pivot — 17→8 agent catalog + hook enforcement + Anthropic 2026 verbatim alignment + PROCEED-WITH-DEBT for 8 test refactor (follow-up SPEC-V3R6-TEST-REFACTOR-001)
 
 To be appended at Mx-phase. Expected EVALUATE-SKIP per mx-tag-protocol.md §a (markdown-heavy: 0 .go files, 0 goroutines, 0 fan_in delta, only 3 NEW shell scripts).
 
