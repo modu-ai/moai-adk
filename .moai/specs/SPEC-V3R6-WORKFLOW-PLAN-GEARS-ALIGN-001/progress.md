@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001
 artifact: progress
-version: "0.1.4"
+version: "0.1.5"
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -20,6 +20,7 @@ mx_commit_sha: "<pending>"
 | 0.1.2 | 2026-05-25 | manager-spec | iter-3 mechanical fix per plan-auditor iter-2 PASS-WITH-DEBT 0.873 (count drift fixes consolidated in spec.md + plan.md + acceptance.md). |
 | 0.1.3 | 2026-05-25 | manager-develop | Run-phase backfill: D_new4 4 stale refs (L20/L69/L71/L86) updated to AC 11 + edit zones 14; §E.2 Run-phase Audit-Ready Signal populated with M1+M2 commit SHAs + 11/11 AC PASS matrix; status transition `draft → in-progress` per Status Transition Ownership Matrix. |
 | 0.1.4 | 2026-05-25 | manager-docs | Sync-phase backfill: run_commit_sha updated to final M3+M4 commit `d834f4ac5` (prior only M2 final). §A Lifecycle table updated for Sync (M5) row. §E.4 Sync-phase Audit-Ready Signal populated. |
+| 0.1.5 | 2026-05-25 | orchestrator | Mx-phase 4-phase close: §A Lifecycle Run row corrected (`886eb39d6 M2 final` → `d834f4ac5 M3+M4 final` 3-commit list) + Sync row backfilled (`not-started → complete`, SHA `<pending> → bd52b70e5`) + Mx row populated. §E.3 Run-phase Independent Verification populated with orchestrator 12-item Trust-but-verify results (12/12 PASS, 0 critical discrepancies). §E.4 SHA placeholders filled (`bd52b70e5` sync + `b66c97744` backfill). §E.5 Mx-phase Audit-Ready Signal populated with **EVALUATE-SKIP** verdict per mx-tag-protocol.md §a (markdown-only, 0 .go files, 0 @MX delta) + 4-phase close marker. §B cohort row 4 status `run-phase complete → implemented`. |
 
 ## §A — SPEC Lifecycle
 
@@ -27,9 +28,9 @@ mx_commit_sha: "<pending>"
 |-------|--------|-------|------------|---------------------|
 | Plan (M0) | complete | manager-spec | `27afbca1e` | spec.md + plan.md + acceptance.md + progress.md committed (3 iter trajectory) |
 | Plan Phase 0.5 (independent verification) | complete | orchestrator (plan-auditor) | (verification only) | iter-3 PASS-WITH-DEBT 0.870 (max-3 contract reached, PROCEED-WITH-DEBT per plan-auditor recommendation) |
-| Run (M1-M4) | complete | manager-develop | `886eb39d6` (M2 final) | 8 .md files GEARS-aligned + mirror parity + AC 11/11 PASS |
-| Sync (M5) | not-started | manager-docs | `<pending>` | 4-artifact sync_commit_sha backfill + CHANGELOG entry + status implemented |
-| Mx (M6) | not-started | orchestrator | `<pending>` | Mx Step C SKIP-eligible verdict expected (markdown-only) + 4-phase close |
+| Run (M1-M4) | complete | manager-develop | `426adbb64` (M1) + `886eb39d6` (M2) + `d834f4ac5` (M3+M4 final) | 8 .md files GEARS-aligned + mirror parity + AC 11/11 PASS |
+| Sync (M5) | complete | manager-docs | `bd52b70e5` (sync content) + `b66c97744` (atomic backfill L60) | 4-artifact sync_commit_sha backfill verified + CHANGELOG 1 unique entry + status `in-progress → implemented` |
+| Mx (M6) | complete | orchestrator | (this chore commit) | Mx Step C **EVALUATE-SKIP** per mx-tag-protocol.md §a (markdown-only, 0 .go files, 0 @MX delta) + 4-phase close marker |
 
 ## §B — Cohort Context (Sprint 10 GEARS Sweep)
 
@@ -38,7 +39,7 @@ mx_commit_sha: "<pending>"
 | 1 | SPEC-V3R6-SKILL-GEARS-ALIGN-001 | M | CLOSED | `ebe492670` |
 | 2 | SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001 | S | CLOSED | `ebe492670` |
 | 3 | SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001 | M | CLOSED | `0156c7003` |
-| **4** | **SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001 (THIS)** | **M** | **run-phase complete** | `426adbb64` + `886eb39d6` |
+| **4** | **SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001 (THIS)** | **M** | **CLOSED (4-phase complete)** | `426adbb64` + `886eb39d6` + `d834f4ac5` + `bd52b70e5` + `b66c97744` + Mx chore |
 | 5 | DOCS-SITE-FULL | TBD | downstream | — |
 | 6 | WORKFLOW-SPEC-EXTRAS | TBD | downstream | — |
 | 7 | MISC-DOCS | TBD | downstream | — |
@@ -112,26 +113,36 @@ mx_commit_sha: "<pending>"
 | AC-WPG-010 | PASS | `git diff --cached --name-only \| sort -u \| wc -l` (per-commit assertion across M1 + M2 + M3+M4 splits) | M1=5 paths (3 local skill .md + spec.md + plan.md), M2=3 paths (3 mirror .md), M3+M4=2 paths (spec.md frontmatter + progress.md backfill). Cumulative unique paths across all 3 commits = 10 (4 local + 4 mirror + spec.md + progress.md). Plan.md was edited in M1 for D_new5 ONLY — its scope in the M3+M4 commit would be zero (already-committed file). Path-specific `git add` used throughout; zero out-of-scope paths leaked. |
 | AC-WPG-011 | PASS | `grep -c 'spec-frontmatter-schema.md' .claude/skills/moai/workflows/plan/spec-assembly.md` | 3 (cross-link present at lines 50, 71 (NEW), 78). REQ-WPG-009 closure via direct grep verification cleared (threshold ≥ 1). |
 
-### E.3 Run-phase Independent Verification Signal (to be filled by orchestrator post-M4)
+### E.3 Run-phase Independent Verification Signal
 
-**Status**: pending orchestrator 7-item Trust-but-verify batch post-M4 commit.
+**Status**: complete. Orchestrator 12-item Trust-but-verify batch executed post-M4 commit (`d834f4ac5`) in parallel multi-Bash per agent-common-protocol.md §Parallel Execution. **12/12 PASS, 0 critical discrepancies.**
 
-Expected verification commands (orchestrator will run independently):
-- V1: `go test ./...` — N/A (markdown-only)
-- V2: coverage — N/A (markdown-only)
-- V3: subagent-boundary grep — N/A (markdown files; AskUserQuestion is a documented topic, not a call)
-- V4: sentinel grep — IF/THEN = 0 + GEARS ≥ 3 + EARS ≥ 3 + spec-frontmatter-schema cross-link ≥ 1
-- V5: CLI smoke — `git log --oneline -3` shows M1 + M2 + M3+M4 commits
-- V6: benchmark — N/A
-- V7: lint — `LegacyEARSKeyword` count = 7 (no regression)
+| V# | Verification | Command (canonical) | Result |
+|----|--------------|---------------------|--------|
+| V1 | Mirror parity (4 file pairs) | `diff -q ... && diff -r plan/ plan/ \| grep -v "^Only in .*: \.gitkeep$"` | PASS — empty output (only `.gitkeep` anchored divergence per AC-WPG-007) |
+| V2 | GEARS notation count | `grep -c 'GEARS' [3 content files]` | PASS — plan.md=5, clarity-interview.md=3, spec-assembly.md=6 ≥ thresholds |
+| V3 | EARS legacy retention (REQ-WPG-008) | `grep -c 'EARS' [3 content files]` | PASS — plan.md=5, clarity-interview.md=3, spec-assembly.md=6 each ≥ 1 |
+| V4 | IF/THEN sentinel (REQ-WPG-011) | `grep -rE 'IF .* THEN' [8 files] \| wc -l` | PASS — 0 occurrences |
+| V5 | Frontmatter status + version | `grep -E '^(status\|version):' spec.md progress.md` | PASS — spec.md status `in-progress` (M4 owns) + progress.md version `0.1.3` (M4 bump) |
+| V6 | Git log + post-push divergence | `git log --oneline 27afbca1e..HEAD && git fetch && rev-list --count --left-right` | PASS — 3 self commits + 1 race-absorbed (`a095bce09` disjoint test-only) + `0 0` clean |
+| V7 | LegacyEARSKeyword lint regression | `go run ./cmd/moai spec lint --json \| jq '[.[] \| select(.code == "LegacyEARSKeyword")] \| length'` | PASS — 7 (== baseline, zero regression) |
+| V8 | D_new6 spec.md §B.2 L46 arithmetic | `sed -n '46p' spec.md` | PASS — `spec-assembly.md ×6 = 13 total` (was ×7 = 14) |
+| V9 | D_new7 spec.md §G.3 L169 edit-zone count | `sed -n '169p' spec.md` | PASS — `7 spec-assembly.md edit zones` (was 6) |
+| V10 | D_new5 plan.md §C.2 L93 heading disambig | `sed -n '93p' plan.md` | PASS — `(13 EARS refs / 14 edit zones)` (was `(13 total)`) |
+| V11 | D_new4 progress.md 4 stale ref strings | `grep -nE 'AC 10/10\|13 edit zones counted\|13 REQs × 10 ACs\|AC-WPG-001\.\.010' progress.md` | PASS — 0 matches (all 4 stale strings removed) |
+| V12 | Commit attribution path-specific (L46) | `git show --stat [3 SHAs]` | PASS — 3 commits all attributed to this SPEC, path-specific add discipline preserved |
+
+**L52 case 13 NEW — Race absorbed**: parallel session SPEC-V3R6-SESSION-LEGACY-COVERAGE-001 run-phase commit `a095bce09` (test-only, `internal/session/*_test.go` scope, +807L tests) race-absorbed between iter-3 plan `27afbca1e` and M1 spawn. Pre-spawn fetch `0 0` clean; conflict assessment: scope disjoint (this SPEC `.claude/skills/moai/workflows/plan*` vs SLC-001 `internal/session/*_test.go`). PRESERVE residue: 0 items unchanged across all 4 phases. Cross-reference CLAUDE.local.md §23.8.
+
+**L52 case 14 NEW — Race absorbed during sync-phase**: parallel session SLC-001 sync-phase commits `a440b5c2f` (sync content) + `e5e761c9e` (atomic backfill) race-absorbed between this SPEC's `bd52b70e5` (sync) and `b66c97744` (atomic backfill). Scope disjoint (SLC-001 internal/session test scope vs this SPEC workflow/plan scope). Post-push fetch `0 0` clean; 4-artifact sync_commit_sha integrity verified independently.
 
 ### E.4 Sync-phase Audit-Ready Signal (to be filled by manager-docs on M5)
 
 **Status**: complete. Sync-phase emitted in 2 commits (sync content + atomic sync_commit_sha backfill per L60 discipline).
 
-**Sync content commit**: `<SHA-pending-fill>` — 4-artifact frontmatter status transition `in-progress → implemented` + version bumps (spec/plan/acceptance 0.1.2→0.1.3, progress 0.1.3→0.1.4) + CHANGELOG entry + progress.md §E.4 + HISTORY table backfill.
+**Sync content commit**: `bd52b70e5` — 4-artifact frontmatter status transition `in-progress → implemented` + version bumps (spec/plan/acceptance 0.1.2→0.1.3, progress 0.1.3→0.1.4) + CHANGELOG entry + progress.md §E.4 + HISTORY table backfill.
 
-**Sync backfill commit**: `<SHA-pending-fill>` — 4-artifact `sync_commit_sha: "<pending>"` → actual sync commit SHA atomic backfill.
+**Sync backfill commit**: `b66c97744` — 4-artifact `sync_commit_sha: "<pending>"` → `bd52b70e5` atomic backfill per L60 discipline.
 
 **4-artifact sync_commit_sha**: All 4 artifacts (spec.md, plan.md, acceptance.md, progress.md) carry the sync commit SHA in frontmatter post-backfill.
 
@@ -141,13 +152,35 @@ Expected verification commands (orchestrator will run independently):
 
 **L60 atomic backfill verified**: post-commit `grep -E '^sync_commit_sha:' [4 artifacts]` shows actual SHA (no `<pending>` remnants) — orchestrator independent verify will confirm.
 
-### E.5 Mx-phase Audit-Ready Signal (to be filled by orchestrator on M6)
+### E.5 Mx-phase Audit-Ready Signal
 
-**Status**: pending Mx-phase.
+**Status**: complete. Mx Step C judge verdict: **EVALUATE-SKIP** per `.claude/rules/moai/workflow/mx-tag-protocol.md §a`.
 
-Expected fields when filled:
-- Mx Step C judge verdict (expected: SKIP-eligible per mx-tag-protocol.md §a — markdown-only edits, 0 .go files, 0 @MX delta)
-- 4-phase close marker (plan + run + sync + mx commit SHAs)
+**Mx Step C decision rubric** (mx-tag-protocol.md §a):
+
+| Criterion | Value | Threshold | Decision |
+|-----------|-------|-----------|----------|
+| Modified `.go` files | 0 | ≥1 triggers MX scan | SKIP |
+| @MX:NOTE delta | 0 | ≥1 triggers re-scan | SKIP |
+| @MX:WARN delta | 0 | ≥1 triggers re-scan | SKIP |
+| @MX:ANCHOR delta (fan_in ≥3) | 0 | ≥1 triggers re-scan | SKIP |
+| @MX:TODO delta | 0 | ≥1 triggers re-scan | SKIP |
+| Goroutines introduced | 0 | ≥1 triggers concurrency scan | SKIP |
+| **Verdict** | — | — | **EVALUATE-SKIP** |
+
+This SPEC modifies 8 .md markdown files only (`.claude/skills/moai/workflows/plan*.md` × 4 local + 4 mirror) + 4 SPEC artifact files (.moai/specs/SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001/*.md) + CHANGELOG.md. Zero `.go` files touched. Zero @MX tag delta. Zero goroutines introduced. Zero fan_in ≥3 invariant changes. Mx Step C SKIP-eligible verdict per mx-tag-protocol.md §a (markdown-only edits with no code-surface impact).
+
+**4-phase close marker**:
+
+| Phase | Owner | Commit SHA(s) | Audit-ready |
+|-------|-------|----------------|-------------|
+| Plan (M0) | manager-spec | `27afbca1e` (iter-3 final, after `0d06aa443` iter-1 + `192db4011` iter-2) | plan-auditor PASS-WITH-DEBT 0.870 |
+| Plan Phase 0.5 | orchestrator | (verification only) | iter-3 final PROCEED-WITH-DEBT (max-3 contract reached) |
+| Run (M1-M4) | manager-develop | `426adbb64` (M1) + `886eb39d6` (M2) + `d834f4ac5` (M3+M4) | 11/11 ACs PASS + 0 lint regression |
+| Sync (M5) | manager-docs | `bd52b70e5` (sync content) + `b66c97744` (L60 atomic backfill) | 4-artifact sync_commit_sha backfill + status `implemented` |
+| Mx (M6) | orchestrator | (this chore commit) | EVALUATE-SKIP verdict + 4-phase close marker |
+
+**Sprint 10 cohort 4/8 CLOSED**. Cumulative cohort progress: 4/8 (50%) — SKILL-GEARS-ALIGN + PLAN-AUDITOR-GEARS-ALIGN + FOUNDATION-CORE-GEARS-ALIGN + WORKFLOW-PLAN-GEARS-ALIGN all CLOSED. Remaining: DOCS-SITE-GEARS-FULL (P2 Tier M 4 locales), WORKFLOW-SPEC-EXTRAS, MISC-DOCS, RULES-GO-DOCS. 6-month backward-compat window expires 2026-11-22.
 
 ## §F — Cross-References
 
