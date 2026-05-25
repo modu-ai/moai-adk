@@ -175,6 +175,94 @@ var skipPaths = []string{
 	// (empty by default — extend with justification cross-reference)
 }
 
+// pedagogicalAllowlistEntry documents a legitimate pedagogical SPEC ID
+// illustration in template body content that must NOT be flagged as a leak.
+// Per progress.md §A.6 (user AskUserQuestion Q3 decision, 2026-05-25).
+//
+// Each entry pins a specific (file, SPEC ID literal) pair. The lint walker
+// consults the allowlist before raising a violation; matches by (relative
+// path suffix + matched substring) are skipped as legitimate pedagogical
+// content.
+//
+// LineStart / LineEnd are diagnostic-only (recorded for human review and
+// future drift detection); the actual match check is by literal substring.
+type pedagogicalAllowlistEntry struct {
+	File      string // relative path under internal/template/templates/
+	LineStart int    // diagnostic — approximate, recorded for review
+	LineEnd   int    // diagnostic — approximate, recorded for review
+	SpecID    string // literal SPEC ID expected at this location
+	Rationale string // why this is pedagogical, not internal-content leak
+}
+
+// pedagogicalAllowlist defines the 5 legitimate pedagogical SPEC ID
+// illustrations preserved across the M4 cleanup pass. Two files contribute:
+//
+//   - .claude/rules/moai/core/askuser-protocol.md — Socratic interview
+//     example block demonstrating AskUserQuestion option-label format for
+//     SPEC selection UI (lines 194 / 199 / 204).
+//   - .claude/agents/core/manager-spec.md — SPEC ID regex pre-write
+//     self-check walkthrough demonstrating valid SPEC ID grammar
+//     (lines 146 / 161).
+//
+// Anchored at CLAUDE.local.md §25 (Template Internal-Content Isolation)
+// future evolution policy + progress.md §A.6 user decision evidence
+// (AskUserQuestion Q3, 2026-05-25).
+var pedagogicalAllowlist = []pedagogicalAllowlistEntry{
+	{
+		File:      ".claude/rules/moai/core/askuser-protocol.md",
+		LineStart: 194,
+		LineEnd:   194,
+		SpecID:    "SPEC-V3R6-SPEC-ID-VALIDATION-001",
+		Rationale: "Demonstrates AskUserQuestion option-label format for SPEC selection UI (Socratic example block, illustrative #1)",
+	},
+	{
+		File:      ".claude/rules/moai/core/askuser-protocol.md",
+		LineStart: 199,
+		LineEnd:   199,
+		SpecID:    "SPEC-V3R6-CATALOG-FRONTMATTER-AUDIT-001",
+		Rationale: "Demonstrates AskUserQuestion option-label format for SPEC selection UI (Socratic example block, illustrative #2)",
+	},
+	{
+		File:      ".claude/rules/moai/core/askuser-protocol.md",
+		LineStart: 204,
+		LineEnd:   204,
+		SpecID:    "SPEC-V3R6-CLI-INTEGRATION-001",
+		Rationale: "Demonstrates AskUserQuestion option-label format for SPEC selection UI (Socratic example block, illustrative #3)",
+	},
+	{
+		File:      ".claude/agents/core/manager-spec.md",
+		LineStart: 146,
+		LineEnd:   146,
+		SpecID:    "SPEC-V3R6-SPEC-ID-VALIDATION-001",
+		Rationale: "Demonstrates SPEC ID regex validation pre-write self-check pattern (regex walkthrough)",
+	},
+	{
+		File:      ".claude/agents/core/manager-spec.md",
+		LineStart: 161,
+		LineEnd:   161,
+		SpecID:    "SPEC-AUTH-001",
+		Rationale: "Demonstrates SPEC ID regex format for non-V3R6 domain (regex walkthrough valid-example column)",
+	},
+}
+
+// isPedagogicallyAllowed returns true when the (relPath, matched) pair
+// matches a registered pedagogical allowlist entry. The check is by literal
+// path suffix + literal SPEC ID substring; no regex, no line-number
+// verification (line numbers are diagnostic-only).
+//
+// relPath: path relative to templatesRoot, forward-slash separated
+// (e.g., ".claude/agents/core/manager-spec.md").
+// matched: the literal substring captured by the leak regex
+// (e.g., "SPEC-V3R6-SPEC-ID-VALIDATION-001").
+func isPedagogicallyAllowed(relPath, matched string) bool {
+	for _, entry := range pedagogicalAllowlist {
+		if entry.File == relPath && entry.SpecID == matched {
+			return true
+		}
+	}
+	return false
+}
+
 // templatesRoot is the canonical template root under audit. Relative to the
 // package directory (internal/template/), templates/ is the embedded fs.
 const templatesRoot = "templates"
@@ -245,8 +333,17 @@ func TestTemplateNoInternalContentLeak(t *testing.T) {
 		}
 		text := string(content)
 
+		// relForAllowlist: relative path under templatesRoot
+		// (e.g., ".claude/agents/core/manager-spec.md"). The
+		// pedagogicalAllowlist entries are keyed by this form.
+		relForAllowlist := strings.TrimPrefix(rel, root+"/")
+
 		// Per-class scan. Each class match accumulates into the
 		// violations slice with file+class+match-excerpt context.
+		// Pedagogical allowlist consultation (progress.md §A.6):
+		// matches that pair (relForAllowlist, matched-substring) with a
+		// registered pedagogicalAllowlistEntry are skipped as legitimate
+		// pedagogical illustrations, not internal-content leak.
 		for _, class := range classes {
 			matches := class.pattern.FindAllString(text, -1)
 			if len(matches) == 0 {
@@ -255,12 +352,19 @@ func TestTemplateNoInternalContentLeak(t *testing.T) {
 			// Deduplicate matches within the same file for readability.
 			seen := map[string]struct{}{}
 			for _, m := range matches {
-				if _, ok := seen[m]; ok {
+				trimmed := strings.TrimSpace(m)
+				if _, ok := seen[trimmed]; ok {
 					continue
 				}
-				seen[m] = struct{}{}
+				seen[trimmed] = struct{}{}
+				// Pedagogical allowlist gate: skip legitimate
+				// pedagogical SPEC ID illustrations per
+				// progress.md §A.6 user decision.
+				if isPedagogicallyAllowed(relForAllowlist, trimmed) {
+					continue
+				}
 				violations = append(violations,
-					rel+" | class="+class.name+" | match="+strings.TrimSpace(m))
+					rel+" | class="+class.name+" | match="+trimmed)
 			}
 		}
 		return nil
