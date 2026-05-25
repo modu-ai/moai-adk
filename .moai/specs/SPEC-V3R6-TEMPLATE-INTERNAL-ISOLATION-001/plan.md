@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001
 title: "Plan — Template Internal-Content Isolation"
-version: "0.1.1"
-status: in-progress
+version: "0.1.2"
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec

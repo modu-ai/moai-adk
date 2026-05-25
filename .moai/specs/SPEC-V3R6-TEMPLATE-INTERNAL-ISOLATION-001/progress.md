@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001
 title: "Progress — Template Internal-Content Isolation"
-version: "0.1.3"
+version: "0.1.4"
 status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
