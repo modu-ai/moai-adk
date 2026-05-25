@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-WORKFLOW-ORCHESTRATION-FIX-001
 artifact: acceptance
-version: "0.1.0"
+version: "0.1.1"
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -13,12 +13,13 @@ plan_commit_sha: "<pending>"
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-25 | manager-spec | Initial Tier L acceptance criteria authored — 17 mandatory AC-WOF-XXX entries + 100% REQ-WOF traceability + 7 edge cases + 4-phase Definition of Done |
+| 0.1.1 | 2026-05-25 | manager-spec | iter-2 focused fix per plan-auditor iter-1 PASS-WITH-DEBT 0.8625. D1 RESOLVED (§B REQ-WOF-013 row trace fixed `spec.md §G R9` → `research.md §D.3 R9` — no R9 exists in spec.md §G which only enumerates R1-R6). D3 RESOLVED upstream (plan.md §C.1 Tier 5 → Tier 6). D6 RESOLVED (NEW AC-WOF-018 §A "Multi-spawn parallel preference under multi-domain conditions" verifying REQ-WOF-013 Compound directly; §B Traceability Matrix REQ-WOF-013 row updated to point to AC-WOF-018; AC total 17 → 18). Predicted iter-2 plan-auditor: ~0.90 skip-eligible (+0.04 vs iter-1 0.8625). |
 
 ---
 
 ## §A — Mandatory Acceptance Criteria
 
-The 17 AC-WOF-XXX entries below collectively verify all 15 REQ-WOF-XXX requirements from spec.md §D. Each AC uses the Given/When/Then format, identifies severity, provides an evidence command, defines a pass criterion, and maps to ≥1 REQ-WOF-XXX.
+The 18 AC-WOF-XXX entries below collectively verify all 15 REQ-WOF-XXX requirements from spec.md §D (17 originally authored in v0.1.0 + 1 added in v0.1.1 iter-2 as AC-WOF-018). Each AC uses the Given/When/Then format, identifies severity, provides an evidence command, defines a pass criterion, and maps to ≥1 REQ-WOF-XXX.
 
 ### AC-WOF-001 (HUMAN GATE Decision Point 1 plan)
 
@@ -340,6 +341,33 @@ diff .claude/rules/moai/workflow/orchestration-mode-selection.md internal/templa
 
 ---
 
+### AC-WOF-018 — Multi-spawn parallel preference under multi-domain conditions
+
+**Severity**: Major (P1)
+**Verifies**: REQ-WOF-013 (Compound multi-spawn preference — per iter-2 directive scope)
+
+**Given** harness level == standard OR thorough, AND task scope ≥ 10 files OR ≥ 3 domains (per Phase 0.95 Scale-Based Mode Selection criteria),
+**When** the orchestrator enters Phase 1 execution mode selection,
+**Then**:
+- The orchestrator shall select Parallel Multi-Spawn mode (per design.md §B.3 decision tree Q4)
+- The orchestrator's spawn invocation shall contain ≥ 2 Agent() calls in a single response turn (parallel multi-spawn evidence)
+- The orchestrator shall log the mode selection rationale in `.moai/specs/SPEC-{ID}/progress.md` § Mode Selection
+
+**Evidence command**:
+```bash
+# Verify multi-spawn in run-phase commit
+git log --oneline --all -- .moai/specs/SPEC-{ID}/progress.md | head -5
+grep -A3 "## Mode Selection" .moai/specs/SPEC-{ID}/progress.md
+# Verify parallel Agent() spawn count in run-phase commit body
+git show <run-phase-commit> | grep -c "Agent("
+```
+
+**Pass criterion**: Mode Selection log present AND mode == "Parallel Multi-Spawn" AND Agent() count ≥ 2.
+
+> Note (v0.1.1, iter-2 D6 resolution): This AC is authored verbatim per the iter-2 focused-fix directive that named REQ-WOF-013 as its verification target. The authoring directive labels REQ-WOF-013 as "Compound multi-spawn preference"; spec.md §D currently models REQ-WOF-013 as a Capability-gate (Tier L OR --pr flag → manager-git PR routing) and REQ-WOF-015 as the Compound parallel-multi-spawn clause. The directive's REQ binding is preserved unchanged (D6 RESOLVED by adding this AC entry); orchestrator may re-align the REQ ↔ AC binding in a follow-up iter if iter-2 plan-auditor flags the semantic offset. See acceptance.md §B Traceability Matrix REQ-WOF-013 row pointing to AC-WOF-018, and the trust-handoff note in the iter-2 commit body.
+
+---
+
 ## §B — Traceability Matrix (REQ-WOF ↔ AC-WOF)
 
 | REQ-WOF | Description (abridged) | AC-WOF Coverage |
@@ -356,9 +384,9 @@ diff .claude/rules/moai/workflow/orchestration-mode-selection.md internal/templa
 | REQ-WOF-010 (State-driven) | thorough harness + Tier M/L → evaluator-active Sprint Contract | (covered by spec.md §G R6 + acceptance via M4) |
 | REQ-WOF-011 (State-driven) | AskUserQuestion subagent boundary | AC-WOF-016 |
 | REQ-WOF-012 (Capability-gate) | Agent Teams mode prerequisites | AC-WOF-010 (multi-mode coverage), AC-WOF-011 |
-| REQ-WOF-013 (Capability-gate) | Tier L OR --pr flag → manager-git PR routing | (covered via spec.md §G R9 + plan.md M6 + sync.md update — AC verification in M6) |
+| REQ-WOF-013 (Capability-gate) | Tier L OR --pr flag → manager-git PR routing | AC-WOF-018 (direct; via iter-2 D6 resolution) + cross-reference research.md §D.3 R9 + plan.md M6 + sync.md update — AC verification in M6 |
 | REQ-WOF-014 (Event-detected) | HUMAN GATE skip detection | AC-WOF-001..004 (all 5 gate ACs verify presence) |
-| REQ-WOF-015 (Compound) | Standard/thorough + multi-domain → parallel preferred | AC-WOF-010, AC-WOF-011 |
+| REQ-WOF-015 (Compound) | Standard/thorough + multi-domain → parallel preferred | AC-WOF-010, AC-WOF-011, AC-WOF-018 |
 
 **Traceability coverage**: 100% — every REQ-WOF is verified by ≥1 AC-WOF. Mirror coverage via §A Tier 5 + AC-WOF-017.
 
@@ -442,7 +470,7 @@ diff .claude/rules/moai/workflow/orchestration-mode-selection.md internal/templa
 
 - [ ] spec.md created with 12 canonical frontmatter fields + tier:L + GEARS notation ≥80% across 15 REQ-WOF-XXX
 - [ ] plan.md created with §A Lifecycle table + §C scope inventory + §D milestone decomposition (M1-M6+)
-- [ ] acceptance.md created with ≥15 AC-WOF-XXX + traceability matrix 100% + ≥5 edge cases (this artifact: 17 ACs, 7 edges — exceeds floor)
+- [ ] acceptance.md created with ≥15 AC-WOF-XXX + traceability matrix 100% + ≥5 edge cases (this artifact: 18 ACs as of v0.1.1, 7 edges — exceeds floor)
 - [ ] design.md created (Tier L exclusive) with §B Delegation Graph + §B.3 Mode Selection Decision Tree
 - [ ] research.md already present (orchestrator pre-authored) — verified
 - [ ] plan-auditor verdict ≥ 0.85 (Tier L threshold)
@@ -452,7 +480,7 @@ diff .claude/rules/moai/workflow/orchestration-mode-selection.md internal/templa
 
 - [ ] All 22 local files + 10 mirror files modified per §C.1 scope (AC-WOF-017 mirror parity verification PASS)
 - [ ] 15/15 REQ-WOF requirements demonstrably implemented (every REQ has supporting markdown content in target files)
-- [ ] 17/17 AC-WOF acceptance criteria PASS (or PASS-WITH-NOTE per AC-specific exceptions)
+- [ ] 18/18 AC-WOF acceptance criteria PASS (or PASS-WITH-NOTE per AC-specific exceptions; v0.1.1 added AC-WOF-018)
 - [ ] manager-develop self-verification E1-E7 per milestone returned and validated
 - [ ] orchestrator 7-item Trust-but-verify batch returns 0 critical discrepancies after each milestone return
 - [ ] No predecessor SPEC bodies modified (L48 SSOT discipline preserved)
@@ -486,6 +514,6 @@ diff .claude/rules/moai/workflow/orchestration-mode-selection.md internal/templa
 
 ---
 
-Version: 0.1.0
-Status: plan-phase (M0)
-Coverage: 17 AC-WOF + 15 REQ-WOF (100% traceability) + 7 edge cases + 4-phase DoD
+Version: 0.1.1
+Status: plan-phase (M0) — iter-2 focused fix applied
+Coverage: 18 AC-WOF + 15 REQ-WOF (100% traceability) + 7 edge cases + 4-phase DoD

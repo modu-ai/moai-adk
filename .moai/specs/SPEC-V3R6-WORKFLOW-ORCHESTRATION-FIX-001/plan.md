@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-WORKFLOW-ORCHESTRATION-FIX-001
 artifact: plan
-version: "0.1.0"
+version: "0.1.1"
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -13,6 +13,7 @@ plan_commit_sha: "<pending>"
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-25 | manager-spec | Initial Tier L plan-phase artifact authored from research.md §G suggested split; 6 milestones (M1-M6); 22 in-scope files + 10 mirror parity = ~32 files total scope |
+| 0.1.1 | 2026-05-25 | manager-spec | iter-2 focused fix per plan-auditor iter-1 PASS-WITH-DEBT 0.8625. D1 RESOLVED (acceptance.md §B REQ-WOF-013 trace fixed `spec.md §G R9` → `research.md §D.3 R9`). D3 RESOLVED (plan.md §C.1 Tier 5 → Tier 6 rename, spec.md unchanged). D6 RESOLVED (NEW AC-WOF-018 multi-spawn parallel preference verifying REQ-WOF-013 Compound; AC total 17→18; §B Traceability Matrix updated). Predicted iter-2 plan-auditor: ~0.90 skip-eligible. |
 
 ---
 
@@ -119,7 +120,9 @@ This subsection enumerates the run-phase modification scope. See spec.md §C.1 f
 - `.claude/agents/core/manager-quality.md`
 - `.claude/agents/expert/expert-security.md`
 
-**Tier 5 — Mirror parity (template synchronization, ~10 files)**:
+**Tier 6 — Mirror parity (template synchronization, ~10 files)**:
+
+> Note (v0.1.1): Renamed from "Tier 5" to "Tier 6" to resolve D3 naming collision with spec.md §C.1 Tier 5 ("SPEC artifacts (4 files — this SPEC)"). spec.md Tier 5 remains canonical for the SPEC-artifact set; plan.md Tier 6 covers the template-synchronization mirror group.
 - `internal/template/templates/.claude/skills/moai/workflows/plan.md`
 - `internal/template/templates/.claude/skills/moai/workflows/run.md`
 - `internal/template/templates/.claude/skills/moai/workflows/sync.md`
@@ -384,6 +387,6 @@ For this SPEC (Tier L), the self-audit estimate is ~0.87 (MARGINAL). Phase 0.5 w
 
 ---
 
-Version: 0.1.0
-Status: plan-phase initial authoring (M0 in progress)
+Version: 0.1.1
+Status: plan-phase initial authoring (M0 in progress) — iter-2 focused fix applied
 Tier: L

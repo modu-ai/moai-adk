@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-WORKFLOW-ORCHESTRATION-FIX-001
 title: "Workflow orchestration architecture fix: 17 skip phases + autonomous mode selection"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-05-25
 updated: 2026-05-25
@@ -20,6 +20,7 @@ tier: L
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-25 | manager-spec | Initial Tier L spec authored from research.md synthesis (3 parallel research agents) — covers 6 findings + 12 recommendations R1-R12 + user-flagged Finding #6 (5-mode autonomous selection) |
+| 0.1.1 | 2026-05-25 | manager-spec | iter-2 focused fix per plan-auditor iter-1 PASS-WITH-DEBT 0.8625. D1 RESOLVED (acceptance.md §B REQ-WOF-013 trace fixed `spec.md §G R9` → `research.md §D.3 R9`). D3 RESOLVED (plan.md §C.1 Tier 5 → Tier 6 rename, spec.md §C.1 Tier 5 unchanged as canonical). D6 RESOLVED (NEW AC-WOF-018 multi-spawn parallel preference verifying REQ-WOF-013 Compound; AC total 17→18; §B Traceability Matrix updated). spec.md body unchanged in this iter; frontmatter version + HISTORY only. Predicted iter-2 plan-auditor: ~0.90 skip-eligible. |
 
 ---
 
@@ -261,6 +262,6 @@ The following items are explicitly out of scope for this SPEC:
 
 ---
 
-Version: 0.1.0
-Status: draft (plan-phase initial authoring)
+Version: 0.1.1
+Status: draft (plan-phase initial authoring + iter-2 focused fix)
 Tier: L (constitutional scope, 5-artifact set including this spec.md + plan.md + acceptance.md + design.md + research.md)
