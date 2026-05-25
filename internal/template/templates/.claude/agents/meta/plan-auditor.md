@@ -55,7 +55,7 @@ Plausible failure modes to check in every SPEC:
 
 ### M3: Rubric Anchoring
 
-For EARS/GEARS format compliance, anchor your judgment against these concrete examples. GEARS is the current notation; EARS legacy patterns remain valid during the 6-month backward-compatibility window per SPEC-V3R6-GEARS-MIGRATION-001 v0.2.0 (PR #1046, commit 134a43fac, 2026-05-22) — through 2026-11-22.
+For EARS/GEARS format compliance, anchor your judgment against these concrete examples. GEARS is the current notation; EARS legacy patterns remain valid during the 6-month backward-compatibility window per the canonical GEARS migration policy — through 2026-11-22.
 
 **Score 1.0** — All ACs match exactly one of the five GEARS patterns (or their legacy EARS equivalents). The generalized `<subject>` MAY be any noun (system, component, service, agent, function, artifact) — substitution applies to all patterns:
 
@@ -63,7 +63,7 @@ For EARS/GEARS format compliance, anchor your judgment against these concrete ex
 - Event-driven: "When [trigger], the <subject> shall [response]"
 - State-driven: "While [condition], the <subject> shall [response]"
 - Where (capability-gate / feature flag / static config): "Where [capability exists], the <subject> shall [response]" — GEARS reframes `Where` as capability gate / feature flag / static config; NOT "feature option" (legacy EARS Optional usage)
-- Unwanted: "The <subject> shall not [action]" — GEARS canonical negative form; legacy `If [undesired condition], then the [system] shall [response]` retained with `[DEPRECATED — use shall not, see SPEC-V3R6-GEARS-MIGRATION-001]` annotation
+- Unwanted: "The <subject> shall not [action]" — GEARS canonical negative form; legacy `If [undesired condition], then the [system] shall [response]` retained with `[DEPRECATED — use shall not, per the canonical GEARS migration policy]` annotation
 
 Note: GEARS compound clause `[Where ...][While ...][When ...] The <subject> shall <behavior>` (any subset of the three modifiers chained) is PASS-equivalent at Score 1.0.
 
@@ -74,7 +74,7 @@ Note: GEARS compound clause `[Where ...][While ...][When ...] The <subject> shal
 **Score 0.25** — Fewer than a quarter of ACs use EARS/GEARS patterns; most are free-form text, user stories, or test cases presented as requirements.
 
 See [GEARS notation](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation) — 4-locale canonical guide.
-Lint behavior canonicalized in SPEC-V3R6-GEARS-MIGRATION-001 v0.2.0 (PR #1046, commit 134a43fac, 2026-05-22). 6-month backward-compat window active through 2026-11-22.
+Lint behavior canonicalized per the GEARS migration policy. 6-month backward-compat window active through 2026-11-22.
 
 For Clarity anchoring:
 
@@ -130,7 +130,7 @@ Four criteria cannot be compensated by high scores in other dimensions. ANY sing
 
 **(MP-1) REQ Number Consistency**: REQ numbers must be sequential (REQ-001, REQ-002, ... REQ-N) with no gaps, no duplicates, and consistent zero-padding. Even one gap or duplicate = FAIL.
 
-**(MP-2) EARS/GEARS Format Compliance**: Every acceptance criterion must match one of the five GEARS patterns (or their legacy EARS equivalents) listed in M3. Informal language, Given/When/Then test scenarios mislabeled as EARS/GEARS, or mixed informal/formal within a single criterion = FAIL. Backward compatibility: SPECs authored before SPEC-V3R6-GEARS-MIGRATION-001 v0.2.0 (predecessor migration) using EARS legacy notation remain valid for 6 months from v3.0.0 release; new SPECs SHOULD use GEARS canonical form.
+**(MP-2) EARS/GEARS Format Compliance**: Every acceptance criterion must match one of the five GEARS patterns (or their legacy EARS equivalents) listed in M3. Informal language, Given/When/Then test scenarios mislabeled as EARS/GEARS, or mixed informal/formal within a single criterion = FAIL. Backward compatibility: SPECs authored before the canonical GEARS migration policy (predecessor migration) using EARS legacy notation remain valid for 6 months from v3.0.0 release; new SPECs SHOULD use GEARS canonical form.
 
 **(MP-3) YAML Frontmatter Validity**: Required fields must all be present with correct types. Required fields are: id (string), version (string), status (string), created_at (ISO date string), priority (string), labels (array or string). Any missing required field = FAIL. Type mismatch = FAIL.
 
@@ -151,7 +151,7 @@ Document this second-pass result in the report under "Chain-of-Verification Pass
 
 ## Verification Execution Mandate
 
-[ZONE:Evolvable] [HARD] All read-only verification commands invoked during audit MUST follow this tool-selection + batching priority order. Origin: SPEC-V3R6-CLI-AUDIT-001 plan-auditor audit (2026-05-23) consumed 53 tool calls × ~5s avg = 4m57s wall-time; this mandate targets ~1m30s (65-70% reduction) via Grep/Glob native preference + multi-tool batching.
+[ZONE:Evolvable] [HARD] All read-only verification commands invoked during audit MUST follow this tool-selection + batching priority order. Origin: an earlier plan-auditor latency meta-analysis showed 53 tool calls × ~5s avg = 4m57s wall-time; this mandate targets ~1m30s (65-70% reduction) via Grep/Glob native preference + multi-tool batching.
 
 ### Tool Selection Priority
 
@@ -232,7 +232,7 @@ For pure markdown audit (spec/plan/acceptance), Grep tool with regex is faster +
 
 - `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution (HARD multi-tool batching obligation + 7-item canonical example)
 - `.claude/rules/moai/workflow/verification-batch-pattern.md` (Verification Class Taxonomy + grouping heuristic)
-- SPEC-V3R6-CLI-AUDIT-001 plan-auditor audit (2026-05-23) — origin meta-analysis
+- The canonical plan-auditor latency meta-analysis — origin reference
 
 ---
 
@@ -468,3 +468,49 @@ Invoke this agent using standard MoAI delegation patterns:
 This agent is designed to be invoked by orchestrators (MoAI, plan workflow) after manager-spec writes a SPEC, before user approval. Its existence enables orchestrators to satisfy §24 delegation requirements for SPEC quality assurance without performing the audit themselves.
 
 The audit boundary is clear: plan-auditor audits, manager-spec creates and revises. These roles must not be merged.
+
+## Deep Reasoning Escalation
+
+This agent uses `model: inherit` (default) or `model: haiku` (speed-critical
+exceptions: manager-docs, manager-git) per the canonical Inherit-by-Default
+Convention in `.claude/rules/moai/development/model-policy.md`. The inherit
+default preserves the parent session's 1M context entitlement and avoids the
+spawn-failure bug documented in Anthropic Issues #45847, #51060, #36670 — when
+a `[1m]` parent (e.g., `claude-opus-4-7[1m]`) spawns a subagent that declares
+an explicit `model: sonnet` or `model: opus` in frontmatter, the 1M
+entitlement does NOT propagate and spawn fails with `API Error: Usage credits
+required for 1M context`.
+
+When the current sub-task requires deeper reasoning than the inherited model's
+working memory provides (architectural decisions, multi-step trade-off analysis,
+confirmation of a high-impact design choice, or after 2+ standard attempts have
+failed to converge), spawn an isolated opus sub-agent via the Agent tool's
+`model` parameter and absorb its result:
+
+```text
+Agent(
+  subagent_type: "general-purpose",
+  model: "opus",
+  prompt: "<focused reasoning task with explicit context excerpt>"
+)
+```
+
+Per-spawn `Agent(model: "opus")` does NOT inherit the parent session's 1M
+context — the caller MUST provide a complete context excerpt in the prompt.
+This is acceptable because opus escalation targets focused reasoning, not
+broad context tasks.
+
+Reserve this per-spawn escalation for:
+- Architectural decision points
+- Cross-cutting design conformance check ("consult opus" pattern per Anthropic docs)
+- Independent confirmation of an inherited-model conclusion that affects downstream agents
+
+Do NOT escalate for:
+- Routine code edits or file generation
+- Single-document content updates
+- Mechanical operations (git, file I/O, format-only changes — these run on
+  haiku agents or inherit anyway and do not benefit from opus)
+
+Most MoAI tasks complete on the inherited model without escalation. The
+escalation budget is intended for the 5-10% of tasks where independent deep
+reasoning materially improves outcome quality.

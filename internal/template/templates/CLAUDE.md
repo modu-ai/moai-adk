@@ -336,7 +336,7 @@ MoAI-ADK uses Claude Code's official rules system at `.claude/rules/moai/`:
 - **Language rules**: Path-specific rules for 16 programming languages
 - **Design rules**: Design system constitution (.claude/rules/moai/design/constitution.md)
 
-### Design System Configuration (absorbed from agency, SPEC-AGENCY-ABSORB-001)
+### Design System Configuration (absorbed from agency per the design-system absorption policy)
 
 - `.moai/config/sections/design.yaml`: Design pipeline settings, GAN loop parameters, sprint contract, evolution thresholds
 - `.moai/project/brand/`: Brand voice (brand-voice.md), visual identity (visual-identity.md), target audience (target-audience.md)

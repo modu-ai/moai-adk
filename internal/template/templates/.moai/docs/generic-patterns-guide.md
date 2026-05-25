@@ -6,7 +6,7 @@
 > user-audience-neutral prose — if your team adopts the pattern, customize the
 > specifics to your environment.
 >
-> Created: 2026-05-25 — per SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001 M5
+> Created per the local-namespace consolidation policy.
 > Audience: any MoAI-ADK user project (template-distributed)
 
 ---

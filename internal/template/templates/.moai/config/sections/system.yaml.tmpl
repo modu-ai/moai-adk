@@ -38,7 +38,7 @@ hook:
   observability_events: []
   # When true, retired events in strict mode still succeed silently.
   strict_mode: false
-  # Hook opt-in master toggle (SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-001)
+  # Hook opt-in master toggle (per the canonical hook observability opt-in policy)
   # Controls TaskCreated, Notification, and handle-harness-observe-* hook execution.
   # Default: false (hooks are skipped, reduces per-turn overhead by ~25-30%).
   # NOTE: This key is INDEPENDENT of `observability.enabled` in observability.yaml

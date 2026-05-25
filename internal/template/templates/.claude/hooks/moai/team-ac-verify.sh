@@ -62,7 +62,7 @@ if [ -z "$TASK_AC_REF" ]; then
     exit 0
 fi
 
-# Try to verify AC: expect format like "SPEC-V3R6-FOO-001#AC-FOO-003"
+# Try to verify AC: expect format like "SPEC-XXX-001#AC-FOO-003"
 # This is a stub for future expansion; full AC verification would parse acceptance.md
 # and run the AC's evidence command. For M4 baseline, log the reference and allow.
 mkdir -p "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs"

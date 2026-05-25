@@ -11,7 +11,7 @@ paths: ".moai/design/**,.moai/specs/SPEC-*-DESIGN-*/**,.moai/project/brand/**,.c
 - 2026-04-26: §4 Phase Contracts table extended with Path B1 (figma-extractor) and Path B2 (pencil-mcp) rows. Version 3.3.1 → 3.4.0.
 - 2026-04-26: §3.2 footnote 추가 — Reserved name violation은 `moai update` (update path)에서 warning + skip, `moai init` (scaffold path)에서 hard error. v3.3.0 → 3.3.1.
 - 2026-04-20: Section 3 expanded to tripartite structure (3.1/3.2/3.3). Version 3.2.0 → 3.3.0 (v3.3.0). FROZEN zone extended to cover each subsection individually.
-- 2026-04-20: Relocated from `.claude/rules/agency/constitution.md` (v3.2.0; the `agency/` rule namespace was retired in this relocation — see [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md)) to `.claude/rules/moai/design/constitution.md`. Original path: `.claude/rules/agency/constitution.md`. No content changes. FROZEN zone and EVOLVABLE zone definitions are preserved verbatim.
+- Relocated from `.claude/rules/agency/constitution.md` (v3.2.0; the `agency/` rule namespace was retired in this relocation per the design-system absorption policy) to `.claude/rules/moai/design/constitution.md`. Original path: `.claude/rules/agency/constitution.md`. No content changes. FROZEN zone and EVOLVABLE zone definitions are preserved verbatim.
 
 ---
 
@@ -409,7 +409,7 @@ If a graduated learning causes regression:
 
 Version: 3.5.0
 Classification: FROZEN_AMENDMENT
-Original Source: v2.x `agency/constitution.md` v3.2.0 (retired, see [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md))
+Original Source: v2.x `agency/constitution.md` v3.2.0 (retired per the design-system absorption policy)
 Last Updated: 2026-04-26
 Relocated: 2026-04-20
 REQ coverage: REQ-CONST-001, REQ-CONST-002, REQ-CONST-003, REQ-CONST-004
