@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-TEST-REFACTOR-001
 title: "Go test suite refactor — phase progress tracker"
-version: "0.1.0"
-status: draft
+version: "0.1.1"
+status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -36,7 +36,7 @@ L60 atomic backfill protocol: `pending` placeholders replaced by actual SHAs via
 
 | Milestone | Commit SHA | Status | Date | Notes |
 |-----------|-----------|--------|------|-------|
-| M1 | pending | not started | — | — |
+| M1 | pending | in-progress | 2026-05-25 | Ground truth re-measured at HEAD 40dc43f5b: exactly 15 FAIL lines matching §A.4 (zero drift). Frontmatter draft→in-progress applied to 4 SPEC artifacts. |
 | M2 | pending | not started | — | — |
 | M3 | pending | not started | — | — |
 | M4 | pending | not started | — | — |
@@ -82,11 +82,40 @@ L60 atomic backfill protocol: `pending` placeholders replaced by actual SHAs via
 
 *(populated during Mx-phase)*
 
-## Section F — 4-phase close marker
+## Section F — Run-phase verification + close marker
+
+### F.0 Pre-run-phase ground truth (M1)
+
+Measured at HEAD `40dc43f5b` on 2026-05-25:
+
+```
+$ go test ./... 2>&1 | grep -c "^--- FAIL"
+15
+```
+
+Per-package breakdown:
+- `internal/template`: 11 failures (TestContractSchemaVerification, TestBackwardCompatibility, TestContractAssertionsNaturalLanguage, TestAgentFrontmatterAudit, TestTemplateAgentsStructure, TestEmbeddedTemplates_AgentDefinitions, TestLoadEmbeddedCatalog_Success, TestLoadCatalog, TestAllAgentsInCatalog, TestRuleTemplateMirrorDrift, TestRetirementCompletenessAssertion)
+- `internal/skills`: 2 failures (TestTemplateMirrorParity, TestSubSkillLOCCeiling)
+- `internal/harness`: 1 failure (TestSubagentBoundary_NoAskUserQuestion)
+- `internal/statusline`: 1 failure (TestRenderPRSegment_Absence)
+
+**Zero drift from §A.4 baseline (measured at HEAD `e7b119924`).** Ground truth verification PASS — proceed to M2.
+
+### F.x Run-phase milestone records
+
+*(populated by manager-develop M1–M6)*
+
+### 4-phase close marker
 
 *(emitted at Mx-phase close terminator commit per L60 atomic chicken-and-egg pattern)*
 
 ## HISTORY
+
+### v0.1.1 (2026-05-25) — run-phase M1 frontmatter status:in-progress + ground truth verification
+
+- Run-phase M1 entry: frontmatter status transition `draft → in-progress` per Status Transition Ownership Matrix exception (manager-develop allowed on draft → in-progress only).
+- §F.0 Pre-run-phase ground truth populated: 15 failures measured at HEAD `40dc43f5b`, zero drift from §A.4 baseline.
+- §B Run-phase milestone log §B M1 row populated (commit SHA pending L60 atomic backfill).
 
 ### v0.1.0 (2026-05-25) — initial draft
 

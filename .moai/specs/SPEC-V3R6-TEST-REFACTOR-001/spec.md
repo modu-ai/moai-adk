@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-TEST-REFACTOR-001
 title: "Go test suite refactor — ATR-001 PROCEED-WITH-DEBT discharge"
-version: "0.1.0"
-status: draft
+version: "0.1.1"
+status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -156,6 +156,11 @@ This SPEC does not address residual EARS legacy modality in the 88 pre-v3 SPECs.
 This SPEC does not re-author the catalog drift detection mechanism. The mechanism authored by CATALOG-HASH-REGRESSION-CLEANUP-001 is treated as a verified guardrail; tests that fail because the catalog drifted are fixed by routing catalog regen through `make build`, not by altering the drift-detection mechanism.
 
 ## HISTORY
+
+### v0.1.1 (2026-05-25) — run-phase M1 frontmatter status:in-progress
+
+- Run-phase M1 entry: frontmatter status transition `draft → in-progress` per Status Transition Ownership Matrix exception (manager-develop allowed on draft → in-progress only).
+- Ground truth re-measurement at HEAD `40dc43f5b` confirms 15 failures matching §A.4 baseline exactly.
 
 ### v0.1.0 (2026-05-25) — initial draft
 

@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-TEST-REFACTOR-001
 title: "Go test suite refactor — implementation plan"
-version: "0.1.0"
-status: draft
+version: "0.1.1"
+status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -300,6 +300,11 @@ Halt + blocker conditions (any of): ground truth drift detected at M1 entry; Tes
 ```
 
 ## HISTORY
+
+### v0.1.1 (2026-05-25) — run-phase M1 frontmatter status:in-progress
+
+- Run-phase M1 entry: frontmatter status transition `draft → in-progress`.
+- Ground truth re-measurement at HEAD `40dc43f5b` confirms 15 failures matching §A.4 baseline.
 
 ### v0.1.0 (2026-05-25) — initial draft
 

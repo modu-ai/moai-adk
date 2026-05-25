@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-TEST-REFACTOR-001
 title: "Go test suite refactor — acceptance criteria"
-version: "0.1.0"
-status: draft
+version: "0.1.1"
+status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -331,6 +331,10 @@ Per spec.md §D, this SPEC is COMPLETE when all 8 conditions hold simultaneously
 8. ✅ Predecessor SPEC bodies unmodified (AC-TST-010 verifies)
 
 ## HISTORY
+
+### v0.1.1 (2026-05-25) — run-phase M1 frontmatter status:in-progress
+
+- Run-phase M1 entry: frontmatter status transition `draft → in-progress`.
 
 ### v0.1.0 (2026-05-25) — initial draft
 
