@@ -497,12 +497,14 @@ func TestChecker_CheckLatest_ReleasesArray(t *testing.T) {
 	}
 }
 
-func TestChecker_CheckLatest_ReleasesArray_NoGoVReleases(t *testing.T) {
+func TestChecker_CheckLatest_ReleasesArray_NoMatchingPrefix(t *testing.T) {
 	t.Parallel()
 
+	// Tags that match neither "v" nor "go-v" prefix should be filtered out,
+	// producing the "no releases with v/go-v prefix" error.
 	releases := []githubRelease{
-		{TagName: "v3.0.0", PublishedAt: time.Now(), Assets: nil},
-		{TagName: "v2.0.0", PublishedAt: time.Now(), Assets: nil},
+		{TagName: "release-3.0.0", PublishedAt: time.Now(), Assets: nil},
+		{TagName: "foo-2.0.0", PublishedAt: time.Now(), Assets: nil},
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -516,7 +518,50 @@ func TestChecker_CheckLatest_ReleasesArray_NoGoVReleases(t *testing.T) {
 	checker := NewChecker(ts.URL+"/releases", http.DefaultClient)
 	_, err := checker.CheckLatest(context.Background())
 	if err == nil {
-		t.Error("expected error when no go-v releases found")
+		t.Error("expected error when no releases match recognized prefix")
+	}
+}
+
+func TestChecker_CheckLatest_ReleasesArray_VPrefixOnly(t *testing.T) {
+	t.Parallel()
+
+	// Modern modu-ai/moai-adk release pattern: all tags use plain "v" prefix
+	// (no "go-v"). The first release in array order must be selected.
+	archiveName := platformArchiveName("3.0.0")
+	checksumsTS := newChecksumsServer(t, archiveName)
+	defer checksumsTS.Close()
+
+	releases := []githubRelease{
+		{
+			TagName:     "v3.0.0",
+			PublishedAt: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC),
+			Assets: []githubAsset{
+				{Name: archiveName, BrowserDownloadURL: "https://example.com/v3.tar.gz"},
+				{Name: "checksums.txt", BrowserDownloadURL: checksumsTS.URL},
+			},
+		},
+		{
+			TagName:     "v2.14.0",
+			PublishedAt: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC),
+			Assets:      []githubAsset{},
+		},
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, _ := json.Marshal(releases)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(data)
+	}))
+	defer ts.Close()
+
+	checker := NewChecker(ts.URL+"/releases", http.DefaultClient)
+	info, err := checker.CheckLatest(context.Background())
+	if err != nil {
+		t.Fatalf("CheckLatest: %v", err)
+	}
+	if info.Version != "v3.0.0" {
+		t.Errorf("Version = %q, want %q", info.Version, "v3.0.0")
 	}
 }
 

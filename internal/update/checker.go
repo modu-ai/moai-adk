@@ -54,7 +54,8 @@ func NewChecker(apiURL string, client *http.Client) Checker {
 
 // CheckLatest fetches the latest release metadata from GitHub.
 // If the API URL ends with /releases (not /latest), it returns all releases
-// and filters for the appropriate version (e.g., "go-v" prefix for Go versions).
+// and filters for releases tagged with a recognized version prefix
+// ("v" for the current convention, "go-v" for historical Go-edition releases).
 func (c *checker) CheckLatest(ctx context.Context) (*VersionInfo, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.apiURL, nil)
 	if err != nil {
@@ -86,16 +87,18 @@ func (c *checker) CheckLatest(ctx context.Context) (*VersionInfo, error) {
 			return nil, fmt.Errorf("checker: decode releases array: %w", err)
 		}
 
-		// Filter for go-v prefix tags (e.g., go-v2.0.0)
+		// Filter for releases with a recognized version prefix.
+		// "v" is the current convention (e.g., v3.0.0); "go-v" is preserved
+		// for backward compatibility with historical Go-edition releases.
 		var filteredReleases []releaseResponse
 		for _, r := range releases {
-			if strings.HasPrefix(r.TagName, "go-v") {
+			if strings.HasPrefix(r.TagName, "go-v") || strings.HasPrefix(r.TagName, "v") {
 				filteredReleases = append(filteredReleases, r)
 			}
 		}
 
 		if len(filteredReleases) == 0 {
-			return nil, fmt.Errorf("checker: no go-v releases found in repository")
+			return nil, fmt.Errorf("checker: no releases with v/go-v prefix found in repository")
 		}
 
 		// Get the first (latest) filtered release
