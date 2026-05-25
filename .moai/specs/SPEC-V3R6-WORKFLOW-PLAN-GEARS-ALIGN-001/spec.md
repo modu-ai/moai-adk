@@ -5,6 +5,7 @@ version: "0.1.3"
 status: implemented
 created: 2026-05-25
 updated: 2026-05-25
+sync_commit_sha: "bd52b70e5"
 author: manager-spec
 priority: P2
 phase: "v3.0.0"
