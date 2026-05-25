@@ -1,12 +1,17 @@
 ---
 id: SPEC-V3R6-LIFECYCLE-SYNC-GATE-001
 artifact: acceptance
-version: "0.1.2"
+version: "0.1.3"
 created: 2026-05-25
 updated: 2026-05-26
 ---
 
 ## HISTORY
+
+### v0.1.3 (2026-05-26, manager-spec — iter-5 narrow-scope residual defect resolution)
+- No AC body changes (v0.1.3 amendment is plan.md F.1/F.5 reverse-traceability symmetric restoration + spec.md F.4 Description path correction). acceptance.md §D.3 remains the canonical SSOT.
+- AC count unchanged at 22 (15 functional + 5 NFR + 1 dogfood + 1 backfill-only).
+- Cross-reference to spec.md v0.1.3 HISTORY for full D1/D2 residual defect catalogue.
 
 ### v0.1.2 (2026-05-26, manager-spec — iter-3 narrow-scope defect resolution)
 - D1 BLOCKING resolved (acceptance.md side): AC-LSG-018 Given/When/Then triplet rewritten from active backfill dogfood (5 modern-era violations resolved) to no-op regression validation (5 already-discharged SPECs at `status: completed`, verify no-op success path). New AC-LSG-018 binds to AC-LSG-022's `fully-completed-noop` fixture state (parametric `TestBackfillOnlyVariants` last variant) — no new fixture or AC required; AC count stays at 22.

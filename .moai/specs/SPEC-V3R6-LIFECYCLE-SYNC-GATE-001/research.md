@@ -1,12 +1,16 @@
 ---
 id: SPEC-V3R6-LIFECYCLE-SYNC-GATE-001
 artifact: research
-version: "0.1.2"
+version: "0.1.3"
 created: 2026-05-25
 updated: 2026-05-26
 ---
 
 ## HISTORY
+
+### v0.1.3 (2026-05-26, manager-spec — iter-5 narrow-scope residual defect resolution)
+- No research.md body changes. v0.1.3 amendment is confined to spec.md F.4 R-LSG-004 Description (path correction) + plan.md F.1/F.5 "Binds to AC" reverse-traceability symmetric restoration. Origin / motivation / verbatim memory citations remain accurate.
+- Cross-reference to spec.md v0.1.3 HISTORY for full D1/D2 residual defect catalogue.
 
 ### v0.1.2 (2026-05-26, manager-spec — iter-3 cross-reference sync + ground-truth update)
 - §A.1 background updated to note that the 5 modern-era violations originally identified were transitioned to `status: completed` via orchestrator-direct retroactive Mx chores (2026-05-25 20:54-20:57, post-iter-2 verdict) — these chores were NOT performed by this SPEC's run-phase implementation; they were preemptive orchestrator-direct discharge using the legacy 5-commit cadence pattern. Origin context preserved verbatim (154-SPEC cross-tab audit data unchanged); ground-truth ledger amended to reflect post-discharge state for iter-3 audit alignment.

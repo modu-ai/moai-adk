@@ -1,12 +1,18 @@
 ---
 id: SPEC-V3R6-LIFECYCLE-SYNC-GATE-001
 artifact: plan
-version: "0.1.2"
+version: "0.1.3"
 created: 2026-05-25
 updated: 2026-05-26
 ---
 
 ## HISTORY
+
+### v0.1.3 (2026-05-26, manager-spec — iter-5 narrow-scope residual defect resolution)
+- D2 (residual, Option A) resolved: F.1 (M1) "Binds to AC" line appended AC-LSG-016 (NFR performance) + AC-LSG-017 (NFR backward-compatibility regression). Restores forward-traceability symmetry with acceptance.md §D.3 (canonical SSOT). F.5 (M5) "Binds to AC" removed AC-LSG-017 — the parenthetical "(worked example)" label was a mis-binding; AC-LSG-017's backward-compat regression test is M1 work, not M5 documentation work. M5 worked example correctly binds to AC-LSG-013 (era auto-detection), unchanged.
+- D1 (residual) — spec.md side only: F.4 R-LSG-004 Description lock path corrected. plan.md not affected by D1.
+- acceptance.md §D.3 (canonical SSOT) unchanged.
+- Cross-reference to spec.md v0.1.3 HISTORY for full D1/D2 residual defect catalogue and trajectory analysis
 
 ### v0.1.2 (2026-05-26, manager-spec — iter-3 narrow-scope defect resolution)
 - D3 SHOULD-FIX resolved: milestone "Binds to AC" lines in F.1 (M1) / F.2 (M2) / F.6 (M6) synchronized with acceptance.md §D.3 AC→Milestone mapping (v0.1.1). F.1 appends AC-019/020/021/022; F.2 appends AC-022; F.6 appends AC-020/022. F.3/F.4/F.5 unchanged.
@@ -104,7 +110,7 @@ E7. **Commit attribution**: `git log --oneline --grep="SPEC-V3R6-LIFECYCLE-SYNC-
 
 **Exit criteria**: M1 commit `feat(SPEC-V3R6-LIFECYCLE-SYNC-GATE-001): M1 closer.go + audit.go primitives + era field`, all unit tests PASS, coverage ≥85% for new files
 
-**Binds to AC**: AC-LSG-001, AC-LSG-002, AC-LSG-006, AC-LSG-007, AC-LSG-009, AC-LSG-010, AC-LSG-013, AC-LSG-014, AC-LSG-019 (Cross-Platform CI matrix, NEW per v0.1.1 D1), AC-LSG-020 (Observability log emission, NEW per v0.1.1 D1), AC-LSG-021 (Concurrent close safety, formerly AC-018a renumbered per v0.1.1 D4), AC-LSG-022 (Backfill-only mode core, NEW per v0.1.1 D7)
+**Binds to AC**: AC-LSG-001, AC-LSG-002, AC-LSG-006, AC-LSG-007, AC-LSG-009, AC-LSG-010, AC-LSG-013, AC-LSG-014, AC-LSG-016 (NFR performance — appended per v0.1.3 D2 Option A, dual-binding M1+M2 per acceptance.md §D.3), AC-LSG-017 (NFR backward-compat regression check — appended per v0.1.3 D2 Option A, M1 binding per acceptance.md §D.3), AC-LSG-019 (Cross-Platform CI matrix, NEW per v0.1.1 D1), AC-LSG-020 (Observability log emission, NEW per v0.1.1 D1), AC-LSG-021 (Concurrent close safety, formerly AC-018a renumbered per v0.1.1 D4), AC-LSG-022 (Backfill-only mode core, NEW per v0.1.1 D7)
 
 ### F.2 M2 — CLI Subcommands (`moai spec close` + `moai spec audit`)
 
@@ -159,7 +165,7 @@ E7. **Commit attribution**: `git log --oneline --grep="SPEC-V3R6-LIFECYCLE-SYNC-
 
 **Exit criteria**: M5 commit `docs(SPEC-V3R6-LIFECYCLE-SYNC-GATE-001): M5 lifecycle-sync-gate.md rule file + schema amendment`, rule file authored, schema cross-reference added
 
-**Binds to AC**: AC-LSG-005, AC-LSG-013, AC-LSG-017 (worked example)
+**Binds to AC**: AC-LSG-005, AC-LSG-013 (worked example — era auto-detection demonstration in rule file)
 
 ### F.6 M6 — No-Op Regression Validation (5 Already-Discharged SPECs)
 

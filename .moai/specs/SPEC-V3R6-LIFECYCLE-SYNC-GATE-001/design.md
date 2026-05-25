@@ -1,12 +1,16 @@
 ---
 id: SPEC-V3R6-LIFECYCLE-SYNC-GATE-001
 artifact: design
-version: "0.1.2"
+version: "0.1.3"
 created: 2026-05-25
 updated: 2026-05-26
 ---
 
 ## HISTORY
+
+### v0.1.3 (2026-05-26, manager-spec — iter-5 narrow-scope residual defect resolution)
+- No design.md body changes. v0.1.3 amendment is confined to spec.md F.4 R-LSG-004 Description (path correction) + plan.md F.1/F.5 "Binds to AC" reverse-traceability symmetric restoration. design.md §D lock path already specifies the per-SPEC pattern as of v0.1.2; v0.1.3 propagates the consistency to spec.md F.4 Description.
+- Cross-reference to spec.md v0.1.3 HISTORY for full D1/D2 residual defect catalogue.
 
 ### v0.1.2 (2026-05-26, manager-spec — iter-3 cross-reference sync)
 - No design changes in this iteration; version bumped for consistency with spec.md v0.1.2 + plan.md v0.1.2 + acceptance.md v0.1.2 + research.md v0.1.2
