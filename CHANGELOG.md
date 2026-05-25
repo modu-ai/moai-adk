@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned
+- chore(SPEC-V3R6-TEST-REFACTOR-001): plan-phase 5-artifact set (Tier M, 14 AC, 13 REQ, ATR-001 PROCEED-WITH-DEBT discharge — 15 baseline Go test failures across `internal/template` 11 + `internal/skills` 2 + `internal/harness` 1 + `internal/statusline` 1; M1–M6 milestones; HARD-1..5 + SHOULD-1..3 constraints; full body to be refined during sync-phase)
+
 ### Changed
 - **`internal/template/catalog.yaml`: Catalog cleanup — 12 archived agent entries removed, 8 retained agent hashes refreshed, `generated_at` updated to 2026-05-25T08:06:18Z. Entry count 50 → 38. Discharges ATR-001 M8 misreported catalog cleanup debt (commit message claimed `grep = 0` but entries remained until this SPEC). [SPEC-V3R6-CATALOG-HASH-REGRESSION-CLEANUP-001]**
 
