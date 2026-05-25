@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001
 title: "Template Internal-Content Isolation — Permanent Removal of moai-adk Dev-Internal Tokens from internal/template/templates/"
-version: "0.1.1"
-status: draft
+version: "0.1.2"
+status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -165,3 +165,4 @@ related_specs: [SPEC-V3R6-AGENT-TEAM-REBUILD-001]
 |---------|------|--------|--------|
 | v0.1.0 | 2026-05-25 | manager-spec | Initial plan-phase 5-artifact set authored (Tier M); 13 REQ-TII / 12 AC-TII / 35 leak files ground-truth verified / 5 deliverables anchored |
 | v0.1.1 | 2026-05-25 | manager-spec | iter-1 amendment — 4 SHOULD-FIX 해소: (D-001) AC verification command coverage 회복 (REQ-TII-013 5-class 중 commit sha class 누락 보강 — acceptance.md AC-TII-001 grep 패턴에 40-char/7-8-char-space sha 추가); (D-002) AC-TII-011 §25-scoped awk range (기존 전체 파일 grep은 §17/18/21/23/24 정당 인용 5건 때문에 deterministic FAIL); (D-003) `HEAD~N..HEAD` 하드코딩 → SPEC-scoped attribution range (plan-phase anchor `b7d1528c8` added to §A.3 ground truth table; AC-TII-002/008/010 verification commands rewritten with `git log --grep=<SPEC-ID> b7d1528c8..HEAD`); (D-005) terminology canonicalization — "moai-adk dev-internal-content token" 단일 표현 통일 (§A.1 도입부 + REQ-TII-001/002 + §A.5 deliverable 라인); (D-006) §A.2 산수 phrasing 단순화 ("약 44개 leak 유입" 추정치 제거 → "35 files ground-truth 잔존" verified 수치). REQ count 불변 (13). AC count 불변 (12). frontmatter `version: 0.1.0` → `0.1.1`. |
+| v0.1.2 | 2026-05-25 | manager-develop | run-phase M1 — frontmatter status transition `draft` → `in-progress` (Status Transition Ownership Matrix per `.claude/rules/moai/development/spec-frontmatter-schema.md`); 4-artifact frontmatter (spec/plan/acceptance/design/research) 동기화. progress.md initial §A Lifecycle Sync 작성 (plan_commit_sha `b7d1528c8`, iter1_amend_commit_sha `5ff9da7d2`). REQ/AC count 불변 (13 REQ / 12 AC). 본 SPEC body 무변경. |

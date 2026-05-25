@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001
 title: "Research — Template Internal-Content Isolation"
-version: "0.1.0"
-status: draft
+version: "0.1.1"
+status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -114,7 +114,7 @@ import (
 )
 
 // TestTemplateNoInternalContentLeak walks internal/template/templates/ and asserts
-// no template file contains moai-adk dev-internal content tokens.
+// no template file contains moai-adk dev-internal-content token.
 //
 // Sentinel: TEMPLATE_INTERNAL_CONTENT_LEAK_FORBIDDEN
 // Policy: CLAUDE.local.md §25 (Template Internal-Content Isolation)
