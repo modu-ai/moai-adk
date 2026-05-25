@@ -257,6 +257,9 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	mgr := opts.Manifest
 	if mgr == nil {
 		mgr = manifest.NewManager()
+		if _, loadErr := mgr.Load(projectRoot); loadErr != nil {
+			return result, fmt.Errorf("step 5: load manifest: %w", loadErr)
+		}
 	}
 
 	// Use a default template context — same as runTemplateSync default path.

@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001
 title: "Progress — v2-to-v3 Clean Reinstall (Tier M, cycle_type=tdd)"
-version: "0.1.0"
+version: "0.1.1"
 status: in-progress
 created: 2026-05-25
-updated: 2026-05-25
+updated: 2026-05-26
 author: manager-develop
 priority: P1
 phase: "v3.0.0-rc2"
@@ -49,11 +49,12 @@ The SPEC has 6+1 milestones (M1, M2, M2a, M3, M4, M5, M6) with strict sequential
 |-----------|--------|------------|-----------|-------------|
 | M1 (Version bump + CHANGELOG) | COMPLETE | 5a18dd98f | ~89 lines (incl. 8 SPEC frontmatter + progress.md NEW) | Foundation (no binary AC) |
 | M2 (Extend DeprecatedPaths) | COMPLETE | 68e3af7b1 | +474 net (dirs.go +234 + dirs_test.go +218 + golden +22) | AC-VVCR-005 PASS (43 entries; 9/31/3 split) |
-| M2a (FLAT Layout Restoration) | COMPLETE | (commit pending) | 14 git mv + 5 rmdir + ~30 path-substitutions across 13 rule/skill/agent files + predecessor SPEC supersedence | AC-VVCR-LR-001 PASS / AC-VVCR-LR-002 PASS / AC-VVCR-LR-003 PASS / AC-VVCR-LR-004 PASS / AC-VVCR-LR-005 deferred to M5 |
-| M3 (v2 detection logic) | COMPLETE | (commit pending) | +207 LOC v2_detection.go + +345 LOC v2_detection_test.go = 552 LOC | AC-VVCR-001 PASS (24 sub-tests across 5 test functions) |
-| M4 (Clean reinstall impl) | COMPLETE | (commit pending) | +320 LOC update_preserve_inventory.go + +275 LOC update_clean_install.go + +290 LOC preserve_inventory_test.go + +330 LOC clean_install_test.go = 1215 LOC | AC-VVCR-002 / 003 / 007..013 PASS (verified via stub deployer + integration tests) |
-| M5 (runUpdate integration + catalog regen) | COMPLETE | (commit pending) | +66 LOC update.go (v2 detection branch + runAgencyMigrationAdapter) + 7 catalog.yaml path edits + automatic catalog hash regen | AC-VVCR-LR-005 PASS (7 FLAT paths, 0 split paths) |
-| M6 (Test coverage + cross-platform) | COMPLETE | (commit pending) | +3 test-file path updates (FLAT layout reflection in catalog_tier_audit_test.go + agent_frontmatter_audit_test.go + rule_template_mirror_test.go) | AC-VVCR-014 PASS (cross-platform), AC-VVCR-015 PASS (no-op idempotency via Scenario C in M4), AC-VVCR-016 PASS (DryRun via M4 test), AC-VVCR-017 deferred (telemetry not yet wired) |
+| M2a (FLAT Layout Restoration) | COMPLETE | e9eb74ae5 | 14 git mv + 5 rmdir + ~30 path-substitutions across 13 rule/skill/agent files + predecessor SPEC supersedence | AC-VVCR-LR-001 PASS / AC-VVCR-LR-002 PASS / AC-VVCR-LR-003 PASS / AC-VVCR-LR-004 PASS / AC-VVCR-LR-005 deferred to M5 |
+| M3 (v2 detection logic) | COMPLETE | 32c01f0eb | +207 LOC v2_detection.go + +345 LOC v2_detection_test.go = 552 LOC | AC-VVCR-001 PASS (24 sub-tests across 5 test functions) |
+| M4 (Clean reinstall impl) | COMPLETE | cc53ad421 | +320 LOC update_preserve_inventory.go + +275 LOC update_clean_install.go + +290 LOC preserve_inventory_test.go + +330 LOC clean_install_test.go = 1215 LOC | AC-VVCR-002 / 003 / 007..013 PASS (verified via stub deployer + integration tests) |
+| M5 (runUpdate integration + catalog regen) | COMPLETE | dec24f962 | +66 LOC update.go (v2 detection branch + runAgencyMigrationAdapter) + 7 catalog.yaml path edits + automatic catalog hash regen | AC-VVCR-LR-005 PASS (7 FLAT paths, 0 split paths) |
+| M6 (Test coverage + cross-platform) | COMPLETE | 6c33a1bf4 | +3 test-file path updates (FLAT layout reflection in catalog_tier_audit_test.go + agent_frontmatter_audit_test.go + rule_template_mirror_test.go) | AC-VVCR-014 PASS (cross-platform), AC-VVCR-015 PASS (no-op idempotency via Scenario C in M4), AC-VVCR-016 PASS (DryRun via M4 test), AC-VVCR-017 deferred (telemetry not yet wired) |
+| M2a-M6 L67 보강 (incomplete commit residual) | COMPLETE | (this commit) | 5 NEW WT mutations 분리 보강: Category 1 V2-V3 absorbed (2 builder-harness cross-ref residual + update_clean_install.go manifest.Load bug fix + §A SHA backfill) + Category 2 별도 chore (internal/update/checker.go 'v' tag prefix 확장) | Trust-but-verify 11/11 PASS (L62 cumulative) — manager-develop "all committed" claim 부정확, paste-ready memo verification으로 발견 |
 
 ## §B — Status Transitions
 

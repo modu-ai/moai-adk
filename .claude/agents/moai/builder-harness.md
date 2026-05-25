@@ -215,7 +215,7 @@ Anthropic resolves the upstream issues OR the user disables `[1m]` context).
 
 Additionally, every generated agent body MUST include the canonical
 "Deep Reasoning Escalation" section (`Agent(model: "opus")` per-spawn pattern)
-at body tail — see `.claude/agents/core/manager-spec.md` for the verbatim
+at body tail — see `.claude/agents/moai/manager-spec.md` for the verbatim
 template. The per-spawn escalation is the canonical way to invoke opus-tier
 reasoning on demand without paying opus cost on routine work AND without
 the 1M-context-incompatibility risk of explicit `model: opus` frontmatter.
