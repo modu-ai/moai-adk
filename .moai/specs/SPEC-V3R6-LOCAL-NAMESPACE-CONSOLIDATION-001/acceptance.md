@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001
 title: "Local Agent Namespace Consolidation — Acceptance Criteria"
-version: "0.1.2"
+version: "0.1.3"
 status: implemented
 created: 2026-05-25
 updated: 2026-05-25
@@ -21,7 +21,7 @@ sync_commit_sha: "b2ec4063a"
 
 ## A. AC Index
 
-This SPEC has 12 acceptance criteria (AC-LNC-001 through AC-LNC-012). All MUST pass for the SPEC to transition `in-progress → implemented` at sync-phase. Each AC has an independently verifiable command sequence specified in §B.
+This SPEC has 12 acceptance criteria (AC-LNC-001 through AC-LNC-012). All MUST pass for the SPEC to transition `in-progress → implemented` at sync-phase. Each AC has an independently verifiable command sequence specified in §B. AC-LNC-012 was originally introduced as SOFT (deferred) in v0.1.2 (iter-3) pending follow-up SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001; v0.1.3 retrospectively transitions it to MUST after empirical verification that PR #1048 (commit `767bc04a4`, merged 2026-05-23) covers REQ-LNC-009 via `isUserOwnedNamespace()` REQ-UNP-009 generic pattern.
 
 | AC ID | Title | Coverage | Severity |
 |-------|-------|----------|----------|
@@ -36,7 +36,7 @@ This SPEC has 12 acceptance criteria (AC-LNC-001 through AC-LNC-012). All MUST p
 | AC-LNC-009 | `internal/template/templates/.claude/agents/local/` does NOT exist (REQ-LNC-012 negative test) | REQ-LNC-012 | MUST |
 | AC-LNC-010 | `.moai/docs/generic-patterns-guide.md` exists in both local and template with 4 sections | REQ-LNC-004, REQ-LNC-010 | MUST |
 | AC-LNC-011 | Full project `go test ./...` passes (commands_audit_test.go non-regression) | REQ-LNC-002, REQ-LNC-013 | MUST |
-| AC-LNC-012 | REQ-LNC-009 deferred-verification traceability marker (binds orphan REQ to acceptance for MP-3 compliance; substantive verification deferred to follow-up SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001) | REQ-LNC-009 | SOFT (deferred) |
+| AC-LNC-012 | REQ-LNC-009 runtime invariant verification (`moai update` PRESERVE behavior for `.claude/agents/local/`) — substantively covered by PR #1048 (`767bc04a4`, 2026-05-23) `isUserOwnedNamespace()` REQ-UNP-009 generic pattern (transitioned SOFT → MUST in v0.1.3 reconcile) | REQ-LNC-009 | MUST |
 
 ## B. Per-AC Verification Commands
 
@@ -226,21 +226,29 @@ go test -v -run TestCommandsAudit ./internal/template/...
 
 Expected: PASS for the audit test (Thin Command Pattern body LOC bound and YAML frontmatter shape verified).
 
-### AC-LNC-012 — REQ-LNC-009 deferred verification marker
+### AC-LNC-012 — REQ-LNC-009 runtime invariant verification (retrospective MUST)
 
-**Binds REQ**: REQ-LNC-009 (moai update PRESERVE behavior)
+**Binds REQ**: REQ-LNC-009 (moai update PRESERVE behavior for `.claude/agents/local/`)
 
-**Verification status**: Deferred to follow-up `SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001` (code-level enforcement track) — REQ-LNC-009 documents a runtime invariant (`moai update` must preserve `.claude/agents/local/`) but the Go implementation change is explicitly out of scope per spec.md §E ("**`moai update` Go implementation change** ... is deferred to SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001"). This AC serves as a traceability anchor to maintain MP-3 bidirectional REQ↔AC binding within the present SPEC.
+**Verification status (v0.1.3 reconcile, 2026-05-25)**: PASS — retrospectively transitioned SOFT → MUST after empirical verification that REQ-LNC-009 runtime invariant is covered by PR #1048 (commit `767bc04a4`, merged 2026-05-23). The Go code in `internal/cli/update.go:1156-1228` introduces `isUserOwnedNamespace()` with the REQ-UNP-009 generic clause: `.claude/agents/<custom>` where `<custom>` is NOT in {core, expert, meta, harness} and NOT prefixed with {moai-, moai, manager-, expert-, builder-, evaluator-} returns `true` (preserves the path across `moai update`). The `local` segment matches trivially (`local` ∉ excluded set, no excluded prefix), so the runtime invariant holds without any explicit enumeration of `local` in UPDATE-NAMESPACE-PROTECT-001 spec.md body.
 
-**Verification command** (deferred to follow-up SPEC):
+**Verification commands** (independently verifiable):
 
 ```bash
-grep -F "REQ-LNC-009" .moai/specs/SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001/spec.md
-# Expected (when follow-up SPEC exists): ≥ 1 cross-reference back to REQ-LNC-009 demonstrating handoff
-# Until follow-up SPEC opens: returns 0 (acceptable for plan-phase; surfaced in M6 as a flag for sync-phase)
+# Verification 1 — confirm REQ-UNP-009 generic clause exists in update.go
+grep -nE "REQ-UNP-009: user direct-added agents" internal/cli/update.go
+# Expected: ≥ 1 match (line ≈1204 introduces the clause)
+
+# Verification 2 — confirm PR #1048 commit landed on main
+git log --oneline --grep "UPDATE-NAMESPACE-PROTECT" | head -5
+# Expected: contains `767bc04a4 feat(SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001): User-Owned Namespace Protection + Backup Standardization (#1048)`
+
+# Verification 3 — confirm `.claude/agents/local/` is NOT in the moai-managed set (would force deletion otherwise)
+grep -nE "\.claude/agents/local" internal/cli/update.go
+# Expected: 0 matches (local/ is not enumerated in isMoaiManaged; preservation comes from generic REQ-UNP-009 instead)
 ```
 
-**Note**: This AC is intentionally "soft" within the present SPEC scope. The doctrinal anchor (REQ-LNC-009 + AC-LNC-012 pair) ensures the deferred work is not forgotten when SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001 is opened. AC-LNC-012 does NOT block the 11 MUST-PASS acceptance criteria (AC-LNC-001 through AC-LNC-011); the Definition of Done in §D continues to require those 11 PASS. AC-LNC-012 transitions from SOFT to MUST only when the follow-up SPEC is authored.
+**Note (v0.1.3 reconcile, 2026-05-25)**: The original v0.1.2 (iter-3) framing of AC-LNC-012 as "SOFT (deferred) traceability anchor" assumed UPDATE-NAMESPACE-PROTECT-001 did not yet exist. L62 paste-ready memo verification at Sprint 10 lane B 2nd SPEC entry (2026-05-25) surfaced ground truth: UPDATE-NAMESPACE-PROTECT-001 was authored 2026-05-23 (`ff93ccdbb` plan-phase) and implemented as PR #1048 (`767bc04a4` feat) BEFORE LNCO-001 plan-phase began (2026-05-25). The runtime invariant is empirically covered. Doc-gap (UPDATE-NAMESPACE-PROTECT-001 spec.md body does NOT explicitly enumerate `.claude/agents/local/`) is a SHOULD-FIX low-priority documentation improvement, anchored in MEMORY.md `project_aclnc012_retrospective_reconcile.md` — no separate follow-up SPEC required because behavioral coverage is complete via generic pattern. AC-LNC-012 transition rule (acceptance.md v0.1.2 line 243: "transitions from SOFT to MUST only when the follow-up SPEC is authored") is satisfied: UPDATE-NAMESPACE-PROTECT-001 was authored AND implemented before this reconcile.
 
 ## C. Edge Cases
 
@@ -256,7 +264,7 @@ grep -F "REQ-LNC-009" .moai/specs/SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001/spec.md
 
 The SPEC is considered DONE when all of the following hold simultaneously:
 
-1. All 11 AC-LNC-XXX checks pass per §B verification commands (orchestrator-side verification batch executed and all 7 commands return expected output).
+1. All 12 AC-LNC-XXX checks pass per §B verification commands (orchestrator-side verification batch executed and all 7 commands return expected output; AC-LNC-012 verified retrospectively in v0.1.3 reconcile per PR #1048 `isUserOwnedNamespace()` REQ-UNP-009 generic-cover, transitioned SOFT → MUST).
 2. Frontmatter `status: draft` → `implemented` in all 4 artifacts (spec.md, plan.md, acceptance.md, progress.md), with `sync_commit_sha:` populated atomically (per L60 atomic backfill obligation).
 3. CHANGELOG.md contains exactly one new entry attributing SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001 with AC count = 11, file count summary, and merged_commit reference.
 4. progress.md §E Run-phase Audit-Ready Signal section is authored with verification command outputs verbatim.
@@ -282,3 +290,4 @@ The SPEC is considered DONE when all of the following hold simultaneously:
 | 0.1.0 | 2026-05-25 | manager-spec | iter-1 | Initial acceptance criteria authoring — 11 AC-LNC-XXX entries (AC-LNC-001 through AC-LNC-011) with per-AC verification commands, edge cases table, Definition of Done, Quality Gate Criteria. |
 | 0.1.1 | 2026-05-25 | manager-spec | iter-2 | Focused defect resolution per plan-auditor iter-1 0.73 FAIL — D4 AC-LNC-007 exit code `1` → `in {0, 1}` (allows robust shell variants), D5 AC-LNC-009 prepended `[ ! -d ... ]` directory-absence assertion as primary truth source (find exit-code quirks not load-bearing), D6 AC-LNC-006 verification broadened to dual SSOT (agent-authoring.md + skill-authoring.md) with two grep commands, D7 AC-LNC-008 grep target reduced to local path only (template mirror intentionally absent per spec.md §E), D9 AC-LNC-003 wording `8 phases` → `9 phases (Phase 0 through Phase 8)` clarified inclusive endpoints, D11 AC-LNC-004 threshold ≥4 → ≥10 (matches observed predecessor section structure depth), D8 HISTORY section NEW. tier:M frontmatter added per D13. AC count 11 → 11 (no addition; AC-LNC-006 binding broadens to REQ-LNC-011 + REQ-LNC-014). |
 | 0.1.2 | 2026-05-25 | manager-spec | iter-3 | Narrow-scope surgical defect resolution per plan-auditor iter-2 0.74 PASS-WITH-DEBT (stagnation, LEAN STOP signal): D_new4 (MUST-FIX) NEW AC-LNC-012 deferred-verification marker added — binds orphan REQ-LNC-009 (moai update PRESERVE behavior) which previously had 0 AC binding (MP-3 bidirectional traceability FAIL). AC-LNC-012 is SOFT severity (substantive verification deferred to follow-up SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001), does NOT block the 11 MUST-PASS criteria. AC count 11 → 12. D_new3 propagation: AC-LNC-006 binding reverted to `REQ-LNC-011` only (REQ-LNC-014 deleted in spec.md iter-3 as redundant subset of REQ-LNC-011 second clause); Verification 1/Verification 2 dual grep commands preserved (both still verify REQ-LNC-011's two clauses — first clause `.claude/agents/local/` row in agent-authoring.md, second clause deprecation entries in skill-authoring.md). |
+| 0.1.3 | 2026-05-25 | orchestrator | retro-reconcile | AC-LNC-012 retrospective SOFT → MUST PASS transition per Sprint 10 lane B 2nd SPEC entry L62 paste-ready memo verification discovery (2026-05-25): SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001 was authored 2026-05-23 (`ff93ccdbb` plan-phase) AND implemented as PR #1048 (`767bc04a4` feat) BEFORE LNCO-001 plan-phase began (2026-05-25). The Go function `isUserOwnedNamespace()` (`internal/cli/update.go:1156-1228`) introduces the REQ-UNP-009 generic clause for `.claude/agents/<custom>` where `<custom>` ∉ {core, expert, meta, harness, moai*, manager-, expert-, builder-, evaluator-} → returns `true`. `local` segment matches trivially. REQ-LNC-009 runtime invariant is empirically covered without explicit `local/` enumeration in UPDATE-NAMESPACE-PROTECT-001 spec.md body. AC-LNC-012 transition rule (v0.1.2 line 243: "transitions from SOFT to MUST only when the follow-up SPEC is authored") is satisfied. Changes: §A row 12 severity SOFT (deferred) → MUST + verification description updated; §A leader paragraph reconcile context appended; §B AC-LNC-012 section verification command updated from forward-ref grep to inline REQ-UNP-009 cite + PR #1048 commit confirmation; §D Definition of Done item 1 "11" → "12" + retrospective verification annotation. Files changed (3): acceptance.md (this), progress.md (§E.1 row + §E.2 row + §E.3 yaml metrics + HISTORY), MEMORY.md (new entry + new memory file `project_aclnc012_retrospective_reconcile.md`). 0 .go modification. Doc-gap (UNP-001 spec.md body does NOT explicitly enumerate `.claude/agents/local/`) anchored as SHOULD-FIX low-priority chore in MEMORY.md — no separate follow-up SPEC required. |
