@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001
 title: "Progress — Template Internal-Content Isolation"
-version: "0.1.4"
+version: "0.1.5"
 status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
@@ -37,6 +37,7 @@ tier: M
 | `m44_commit_sha` | `8758fadd4` (M4.4 singletons + 11-extras 8 files) |
 | `m5_commit_sha` | `a2ce47deb` (M5 CI workflow policy anchor) |
 | `m6_commit_sha` | `476c222a3` (M6 maintainer-only audit) |
+| `sync_commit_sha` | `3cb0c849a` (sync-phase frontmatter + CHANGELOG entry + version bump) |
 
 ### §A.1 L52 Case 29 NEW Variant — Commit-Attribution Hijack (M1, from prior spawn)
 
@@ -220,3 +221,5 @@ run_phase_audit_ready_signal:
 | v0.1.1 | 2026-05-25 | orchestrator | M1-a attribution correction — L52 case 29 NEW variant (Commit-Attribution Hijack) 대응 |
 | v0.1.2 | 2026-05-25 | orchestrator | M4-correction-anchor — 사용자 AskUserQuestion 결정 (Option A + Q1 D-009 OOS + Q2 narrow 35-file canonical + Q3 allowlist 5 entries) 영구 기록. §A.2 L67 NEW variant evidence + §A.3 M3 CLAUDE.md scope creep + §A.4 D-009 OOS + §A.5 AC-TII-001 narrow-canonical + §A.6 pedagogical allowlist |
 | v0.1.3 | 2026-05-25 | manager-develop (second spawn) | Post-M6 backfill — Option A 44-file scope adopted at run-phase pre-flight (supersedes §A.5 v0.1.2 narrow 35-file canonical via §A.5.b cross-reference). 8 commits this spawn: M3-b allowlist (23cb2a894) + M4.1-redo agents/core 4 files (d37d4ca49) + M4.2-redo 12 files via L52 case 29 RECURRENCE (content in 69075e8cb, attribution in 100e603d3) + M4.3 skills 19 files (e94321bec) + M4.4 singletons 8 files (8758fadd4) + M5 CI policy anchor (a2ce47deb) + M6 audit (476c222a3) + post-M6 backfill (this commit). §A.5 reframed to "Option A scope expansion" + §A.5.b output-styles scope exclusion + §A.1.b L52 case 29 recurrence anchor + §E.0 Phase 0.95 Mode Selection (sub-agent Mode 5) + §D 12-row AC matrix backfill + §E run-phase audit-ready signal yaml populated (PASS-WITH-DEBT with 8 PASS + 2 PASS-WITH-VARIANCE + 1 PASS-WITH-DEBT + 1 N/A). Final lint test state: 91 violations (M3 baseline post-allowlist) → 5 occurrences (all in scope-excluded output-styles per orchestrator directive 2026-05-25). |
+| v0.1.4 | 2026-05-25 | orchestrator | Sync-phase entry — §A Lifecycle Sync table status: in-progress → implemented (all 6 SPEC artifacts frontmatter status field updated 2026-05-25). §B-E unchanged from v0.1.3. §G HISTORY v0.1.3 backfill absorbed previous spawn post-M6 work + this version v0.1.4 records sync-phase entry (version bump only, no prior version field backfill). |
+| v0.1.5 | 2026-05-25 | orchestrator | L60 chicken-and-egg backfill — §A Lifecycle Sync table `sync_commit_sha: 3cb0c849a` (sync-phase artifacts commit d9838995d + subsequent L60 backfill chore); frontmatter version incremented 0.1.4 → 0.1.5 to match backfill completion. §B-E unchanged. This backfill concludes 4-phase close Mx Step D (sync-phase artifact + L60 backfill) atomic chain. |
