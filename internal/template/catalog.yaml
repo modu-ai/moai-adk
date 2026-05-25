@@ -1,5 +1,5 @@
 version: 1.0.0
-generated_at: "2026-05-25T06:57:42Z"
+generated_at: "2026-05-25T08:06:18Z"
 catalog:
     core:
         skills:
@@ -16,7 +16,7 @@ catalog:
             - name: moai-foundation-core
               tier: core
               path: templates/.claude/skills/moai-foundation-core/
-              hash: 9628f0930d2dee0dd4a58f5e5e2e40c9e453c022aa1cab81b388c60b539aa7a8
+              hash: 092a53fbcd376d114bacc730c8b26bb89e94e265b31ba2fac3019a04b7a6a417
               version: 1.0.0
             - name: moai-foundation-quality
               tier: core
@@ -99,70 +99,35 @@ catalog:
               hash: 60fac9275edd13da7ac957aba236e497aaf4ebc3d939c3167d42df11adc5cead
               version: 1.0.0
         agents:
-            - name: claude-code-guide
-              tier: core
-              path: templates/.claude/agents/meta/claude-code-guide.md
-              hash: 7fafd091001b3321c13df66d48be080312aa99e7a1d7eed427f6de73f120dfd0
-              version: 1.0.0
             - name: evaluator-active
               tier: core
               path: templates/.claude/agents/meta/evaluator-active.md
-              hash: 265456ad3acca6406666651daec34b2ec41499a25a49a139548e2bcbbe5aa945
-              version: 1.0.0
-            - name: expert-refactoring
-              tier: core
-              path: templates/.claude/agents/expert/expert-refactoring.md
-              hash: f5cc9cf625ca78124cb20357e86e5d742f21cb9dfab20fd08c6531da777f2e21
-              version: 1.0.0
-            - name: manager-brain
-              tier: core
-              path: templates/.claude/agents/core/manager-brain.md
-              hash: db0888fcf636d71af96d34608999330fb69a3542df5fd96b9520bb1d90f74e04
+              hash: 2a8052cff9f7ca67075d8d5fe8263f7019e11e0a55c9f3dbe569ed88b9b788f7
               version: 1.0.0
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/core/manager-develop.md
-              hash: 9c45490dc667f6d693f94d640547b6493c1633335215e56f0cea30836c3a576b
+              hash: 18f3767f1c53ef1957c2bd13b3db07970167de92340cb2ee97f0379bb138cea5
               version: 1.0.0
             - name: manager-docs
               tier: core
               path: templates/.claude/agents/core/manager-docs.md
-              hash: 985911a27e0f775eb61be821abf073e918f891ac2eaa308eba13d5ad7b466887
+              hash: 28b773c8bbf1340c21b9891660e69a7baca5b5d1451fb9adf498209252dd6630
               version: 1.0.0
             - name: manager-git
               tier: core
               path: templates/.claude/agents/core/manager-git.md
-              hash: 28ab2a44c2a4fd0d437071ca301b16cd335b991c51bbb630703ab67414c162d3
-              version: 1.0.0
-            - name: manager-project
-              tier: core
-              path: templates/.claude/agents/core/manager-project.md
-              hash: 696b7ebf4d096e7ec61833910adc049107a49e5ca036712f86ff426ee78d8683
-              version: 1.0.0
-            - name: manager-quality
-              tier: core
-              path: templates/.claude/agents/core/manager-quality.md
-              hash: d63267a3f77b784cd670bb7b9753259a55776c2a3a06b4c15146d89d3c655759
+              hash: e2f3e8aaf562efafc300acaf3291229e72b7c05379ff1987fcef7e4878f3c8e3
               version: 1.0.0
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/core/manager-spec.md
-              hash: ec47773118cd7e690a6fedfb4c3c6a7907a4174dd6fd604227a4e157f68698c9
-              version: 1.0.0
-            - name: manager-strategy
-              tier: core
-              path: templates/.claude/agents/core/manager-strategy.md
-              hash: cd9cee2fa86eed0be40620447e2830ed97417e0d4941178916fa6a93107cfb14
+              hash: eb254f43907055fddeb0e3e84404964ed5c5066e2a8df5624defe8b3931f830b
               version: 1.0.0
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/meta/plan-auditor.md
-              hash: b75e047670d9a1723315927816b91f79e96620361b0e4d7d48db6eaaf07e627b
-              version: 1.0.0
-            - name: researcher
-              tier: core
-              path: templates/.claude/agents/meta/researcher.md
-              hash: 1f8b2b4ff87ce45807fb304eda7ab9c4e835f9748ed246fe4ce6ed659bc7ae65
+              hash: 22a9c18831246d8b765aa8bf525d43eff5e5bb7132dd9ad5cceb9529b3c868e5
               version: 1.0.0
     optional_packs:
         backend:
@@ -184,23 +149,13 @@ catalog:
                   path: templates/.claude/skills/moai-ref-api-patterns/
                   hash: 966174d691c7c05446066d3dcf60abeaa953b0a6d60cdd7011b9bf52711ca1b8
                   version: 1.0.0
-            agents:
-                - name: expert-backend
-                  tier: optional-pack:backend
-                  path: templates/.claude/agents/expert/expert-backend.md
-                  hash: 7343465334e6fb3695210552b9671bca3892adccdd52d164fc904c16035229d9
-                  version: 1.0.0
+            agents: []
         deployment:
             description: Deployment and hosting with Vercel, Railway, Convex, and serverless infrastructure
             depends_on:
                 - backend
             skills: []
-            agents:
-                - name: expert-devops
-                  tier: optional-pack:deployment
-                  path: templates/.claude/agents/expert/expert-devops.md
-                  hash: 6c61eb8e2d24ed6c021db5b83ab1234fc26d52b14550372b4aba4b8c50232c56
-                  version: 1.0.0
+            agents: []
         design:
             description: Brand-aligned design system, copywriting, GAN loop, and Claude Design handoff workflow
             depends_on:
@@ -247,17 +202,7 @@ catalog:
                   path: templates/.claude/skills/moai-ref-owasp-checklist/
                   hash: 99f97b4d75c70627a391a14302ec477ddb858201990492263d96b7cd06d09d10
                   version: 1.0.0
-            agents:
-                - name: expert-performance
-                  tier: optional-pack:devops
-                  path: templates/.claude/agents/expert/expert-performance.md
-                  hash: f1f3256d7a924f0f8f0c36d2ed06db76c0f08d99bbd7621265277de3d32b1510
-                  version: 1.0.0
-                - name: expert-security
-                  tier: optional-pack:devops
-                  path: templates/.claude/agents/expert/expert-security.md
-                  hash: e7a6d4d5b97c39a30a6880034af64daeb2ceeed31b9b9c7f24e2c604e6bb2d9d
-                  version: 1.0.0
+            agents: []
         frontend:
             description: Frontend development with React, Next.js, Vue, and modern UI patterns
             depends_on: []
@@ -272,12 +217,7 @@ catalog:
                   path: templates/.claude/skills/moai-ref-react-patterns/
                   hash: c6ce63165897a16fe9ab7b98c7ce344bb260daea347b42979d81b8e5949dec6a
                   version: 1.0.0
-            agents:
-                - name: expert-frontend
-                  tier: optional-pack:frontend
-                  path: templates/.claude/agents/expert/expert-frontend.md
-                  hash: dec3221d148aa59683e8a8221b3027ca78eb439f2821c4f970973fbb9645687d
-                  version: 1.0.0
+            agents: []
         testing:
             description: Comprehensive test automation, E2E testing, and quality assurance workflows
             depends_on: []
@@ -289,5 +229,5 @@ catalog:
             - name: builder-harness
               tier: harness-generated
               path: templates/.claude/agents/meta/builder-harness.md
-              hash: 9f940a34a766eedfdd77d5c96dd2db1d1bb668385a6d3d284533a928f9361713
+              hash: c4f3263498c12e0b18f888b86e3c52c6bae386c6aabb62a8d97ce37fe4218024
               version: 1.0.0
