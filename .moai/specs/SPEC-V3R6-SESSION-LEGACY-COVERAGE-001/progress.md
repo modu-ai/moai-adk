@@ -17,7 +17,7 @@ sync_status: implemented
 mx_status: skip-eligible
 plan_commit_sha: "<TBD-by-orchestrator-commit>"
 run_commit_sha: "a095bce09"
-sync_commit_sha: "<pending>"
+sync_commit_sha: "a440b5c2f"
 mx_commit_sha: "n/a"
 ---
 

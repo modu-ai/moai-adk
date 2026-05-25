@@ -11,7 +11,7 @@ phase: "v3.0.0"
 module: "internal/session"
 lifecycle: spec-anchored
 tags: "session, coverage, test-only, behavior-preserving, tier-s, sprint-10, plan"
-sync_commit_sha: "<pending>"
+sync_commit_sha: "a440b5c2f"
 ---
 
 # SPEC-V3R6-SESSION-LEGACY-COVERAGE-001 — Implementation Plan (Tier S minimal Section A)
