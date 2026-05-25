@@ -198,6 +198,20 @@ secret-*.*
 !.moai/evolution/telemetry/.gitkeep
 
 # ===========================================
+# Harness Auto-Generated Data (local-only)
+# observations / usage-log / learning-history are runtime artifacts
+# ===========================================
+.moai/harness/observations.yaml
+.moai/harness/usage-log.jsonl
+.moai/harness/learning-history/
+
+# ===========================================
+# Build Test Artifacts (local-only)
+# i18n-validator: 3.4MB build output, test scope only
+# ===========================================
+/i18n-validator
+
+# ===========================================
 # Node.js (for docs/Nextra)
 # ===========================================
 node_modules/
