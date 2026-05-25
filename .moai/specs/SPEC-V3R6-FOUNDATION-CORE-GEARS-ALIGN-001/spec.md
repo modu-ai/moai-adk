@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001
 title: "moai-foundation-core SKILL bundle을 GEARS 우선 가이드로 정렬"
-version: "0.1.0"
-status: implemented
+version: "0.1.1"
+status: completed
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -25,6 +25,7 @@ sync_commit_sha: "a853f2954"
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-05-25 | manager-spec | Initial draft — Sprint 10 GEARS sweep cohort entry SPEC #3 of 8. Predecessor SPECs SPEC-V3R6-SKILL-GEARS-ALIGN-001 (Tier M, commits `1f3a734d8+353150294+7b8f939b7+263db0600` 4-phase CLOSED, 5 authoring guide files + 5 template mirrors with 12 GEARS-notation REQs self-dogfooded + 13/13 ACs PASS + plan-auditor 0.892 not skip-eligible) and SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001 (Tier S minimal, commits `906f9285e+6366d7428+7cd25e386+ebe492670` 4-phase CLOSED, plan-auditor.md MP-2 EARS→EARS/GEARS + M3 Unwanted IF/THEN→`shall not` + M2 failure modes IF/THEN deprecation entry + #gears-notation cross-link, 9 REQs + 8 ACs + plan-auditor 0.913 skip-eligible) established the migration pattern. This SPEC extends the cohort to the `moai-foundation-core` SKILL bundle: 1 SKILL.md entry point + 17 modules + 2 references = 20 files local + 20 template mirrors = **40 files total scope** (significantly more than initial "10 files" estimate; documented honestly per L46 attribution discipline). Baseline scan: 30 EARS/GEARS/shall/WHEN/WHILE/WHERE/IF…THEN references discovered across local files; `modules/spec-ears-format.md` already carries the v3.0.0 DEPRECATED banner pointing at the canonical GEARS guide (no further edit needed) but downstream loaders (`SKILL.md` §SPEC-First DDD + `references/examples.md` + `references/reference.md` + `modules/spec-first-ddd.md` + `modules/progressive-disclosure.md` + `modules/commands-reference.md`) still describe EARS as the primary notation, creating drift between the canonical GEARS authoritative source (`.claude/skills/moai-workflow-spec/SKILL.md` § "GEARS Format") and the foundation tier. Tier M markdown-only edits across ≤7 files (those with EARS references) + their template mirrors. Self-dogfooding: this SPEC's REQs are written in GEARS notation. |
+| 0.1.1 | 2026-05-25 | orchestrator | L60 retroactive Mx-phase backfill — `status: implemented → completed`. progress.md §A Lifecycle Mx row (L31 "Mx-phase COMPLETE (SKIP) — `(this commit)` placeholder") + §E.5 Mx-phase Audit-Ready Signal (L207+ EVALUATE-SKIP per mx-tag-protocol.md §a, 0 .go files) were already authored but `mx_commit_sha` frontmatter field never backfilled (L60 chicken-and-egg) and spec.md status drift persisted (L67 manager-docs scope-creep). Cross-file consistency restored. Body 변경 없음. sync `a853f2954`; this commit은 atomic close terminator, mx 본문 progress.md self-reference. |
 
 ## 1. Goal
 
