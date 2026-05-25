@@ -2,7 +2,7 @@
 id: SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001
 title: "Plan — v2-to-v3 Clean Reinstall with v.2.x FLAT layout restoration"
 version: "0.5.0"
-status: draft
+status: in-progress
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
