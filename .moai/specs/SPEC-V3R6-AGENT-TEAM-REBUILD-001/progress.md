@@ -44,8 +44,8 @@ Per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transi
 | 1 | Run-phase M2 — 3 workflow router phase-owner declarations | manager-develop | COMPLETED | `d9cce5427` | REQ-ATR-001 + REQ-ATR-007 + REQ-ATR-008 + REQ-ATR-012 |
 | 1 | Run-phase M3 — Archive 12 phantom agents | manager-develop | COMPLETED | `476b04ffb` | REQ-ATR-005 |
 | 1 | Run-phase M4 — 3 NEW hook scripts | manager-develop | COMPLETED | `fdd4aa37a` | REQ-ATR-009 + REQ-ATR-014 |
-| 1 | Run-phase M5 — Rule files (2 NEW + 8 modified) | manager-develop | COMPLETED | `<this-commit>` | REQ-ATR-007/008/012/016/020 |
-| 1 | Run-phase M6 — Predecessor SPEC supersedence | manager-spec | NOT-STARTED | `<pending>` | REQ-ATR-006; frontmatter-only per L48 SSOT |
+| 1 | Run-phase M5 — Rule files (2 NEW + 8 modified) | manager-develop | COMPLETED | `498ea18a2` | REQ-ATR-007/008/012/016/020 |
+| 1 | Run-phase M6 — Predecessor SPEC supersedence verify + AC-ATR-012 reinforcement | orchestrator (verify) + manager-spec (original plan-phase transition) | COMPLETED | `<this-commit>` | REQ-ATR-006 (supersedence already applied at plan-phase `b957a4d04`; M6 verifies + adds AC-ATR-012 boost via manager-develop.md cycle_type=autofix body refinement, grep count 1 → ≥3) |
 | 1 | Run-phase M7 — CLAUDE.md + CLAUDE.local.md + NOTICE.md | manager-develop | NOT-STARTED | `<pending>` | REQ-ATR-001/015/019/020 |
 | 1 | Run-phase M8 — Template parity + verification batch | manager-develop | NOT-STARTED | `<pending>` | REQ-ATR-018 |
 | 2 | Sync-phase | manager-docs | NOT-STARTED | `<pending>` | CHANGELOG + 5 frontmatter `status: implemented` |
@@ -190,6 +190,37 @@ Logged in `~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/project_agent_
 #### Path-correction note (informational; documented inline per spec.md §H drift acknowledgement)
 
 The plan.md §D.8 and spec.md §C.1 reference `.claude/rules/moai/workflow/git-workflow-doctrine.md` for the manager-git PR doctrine reinforcement. The actual file resides at `.moai/docs/git-workflow-doctrine.md` (per `CLAUDE.local.md` §18 reference and the 2026-05-20 externalization commit). M5 modified the actual path. This is a plan.md/spec.md authoring drift (path documented in two locations vs the actual single location); no functional impact on this SPEC's deliverables. Recommend a future plan.md amendment to correct the path drift; the M5 commit message body documents the correction.
+
+### §F.2.6 — M6 Run-phase Audit-Ready Signal (orchestrator-direct verify + AC-ATR-012 reinforcement)
+
+**Commit**: `<this-commit>` `chore(SPEC-V3R6-AGENT-TEAM-REBUILD-001): M6 — supersedence verify + AC-ATR-012 reinforcement`
+**Date**: 2026-05-25
+**Files**: 2 modified (`.claude/agents/core/manager-develop.md` body + this progress.md §B + §F.2.6)
+
+**REQ-ATR-006 Verify (supersedence)**:
+- `.moai/specs/SPEC-V3R6-WORKFLOW-ORCHESTRATION-FIX-001/spec.md` frontmatter: `status: superseded` ✓ + `updated: 2026-05-25` ✓ + `superseded_by: SPEC-V3R6-AGENT-TEAM-REBUILD-001` ✓
+- HISTORY v0.1.2 entry present (line 25) — cites Audit 3 findings architectural-pivot rationale + original status `draft` recorded ✓
+- Applied at plan-phase commit `b957a4d04` by manager-spec (Status Transition Ownership Matrix `* → superseded` owner)
+- M6 is verify-only; no new transition required
+
+**Variance documentation — researcher.md archive absence (M3 retrospective)**:
+- spec.md §B.3 / plan.md §C.1 enumerate 12 archived agents including `researcher.md` under `.claude/agents/agency/`
+- Actual M3 archive: 11 files (researcher.md "originally absent variance" — `.claude/agents/agency/` directory itself did not exist at M3 time)
+- AC-ATR-005 evidence allows 11 or 12 file count per `## Pass criterion` second clause — PASS unaffected
+- M7 doctrine updates MUST cite 11 actual archived + 1 originally-absent (researcher.md) in CLAUDE.md §4 Agent Catalog annotation
+
+**REQ-ATR-012 Reinforcement (AC-ATR-012 boost)**:
+- Pre-M6: `.claude/agents/core/manager-develop.md` grep count = 1 (cycle_type=autofix mention only, line 5)
+- Post-M6: NEW §"cycle_type=autofix Mode (CI auto-fix loop)" section added (DIAGNOSE-PATCH-VERIFY pattern + ci-autofix-protocol cross-reference + max-3-iteration contract + protected-files list)
+- Body line count: 303 → 320 (≤500 REQ-ATR-002 invariant preserved)
+
+### M6 AC verification
+
+| AC | Verification Command | Expected | Actual | Status |
+|----|---------------------|----------|--------|--------|
+| AC-ATR-006 (1st) | `grep -E '^(status\|updated):' .moai/specs/SPEC-V3R6-WORKFLOW-ORCHESTRATION-FIX-001/spec.md \| head -2` | `status: superseded` + `updated: 2026-05-25` | (verify) | **PASS** |
+| AC-ATR-006 (2nd) | `grep -c "Superseded by SPEC-V3R6-AGENT-TEAM-REBUILD-001" .moai/specs/SPEC-V3R6-WORKFLOW-ORCHESTRATION-FIX-001/spec.md` | ≥ 1 | (verify) | **PASS** |
+| AC-ATR-012 (boost) | `grep -c "DIAGNOSE-PATCH-VERIFY\|cycle_type.*autofix\|ci-autofix-protocol" .claude/agents/core/manager-develop.md` | ≥ 2 | (verify) | **PASS** (was 1, now ≥ 2) |
 
 ### §F.3 Sync-phase Audit-Ready Signal (manager-docs scope — NOT-STARTED)
 
