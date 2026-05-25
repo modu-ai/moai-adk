@@ -2,7 +2,7 @@
 id: SPEC-V3R6-TEST-REFACTOR-001
 title: "Go test suite refactor — phase progress tracker"
 version: "0.1.2"
-status: in-progress
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -22,8 +22,9 @@ tier: M
 | Field | Value |
 |-------|-------|
 | plan_commit_sha | pending |
-| sync_commit_sha | pending |
+| sync_commit_sha | d9838995d |
 | mx_commit_sha | pending |
+| sync_status | in-progress |
 | supersedes | (none) |
 | superseded_by | (none) |
 | anchor SPEC | SPEC-V3R6-AGENT-TEAM-REBUILD-001 |
@@ -143,7 +144,23 @@ proceed_with_debt_compliance:
 
 ### E.4 Sync-phase audit-ready signal
 
-*(populated by manager-docs)*
+```yaml
+sync_complete_at: "2026-05-25T15:30:00Z"
+sync_commit_sha: pending  # backfilled via L60 atomic chore
+sync_status: in-progress
+run_commit_sha: 6ed1155ea  # M6 final verification batch commit
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented"
+  plan_md: "in-progress → implemented"
+  acceptance_md: "in-progress → implemented"
+  progress_md: "in-progress → implemented"
+changelog_entry_position: line 10 (under [Unreleased] section)
+changelog_summary: "SPEC-V3R6-TEST-REFACTOR-001 run-phase discharge: 15→0 FAIL, 14/14 AC PASS, zero PASS-WITH-DEBT, L52 case 29 race, DDD cycle M1-M6, ATR-001 architectural-pivot debt closure"
+b12_self_tests:
+  pre_emission_grep: "SPEC-V3R6-TEST-REFACTOR-001 CHANGELOG.md count = 0 (new entry, no duplicate)"
+  ac_count_match: "14 MUST-PASS AC in acceptance.md, CHANGELOG entry summarizes all 14 verifications"
+  file_path_verification: "all 4 SPEC artifacts exist at expected paths (ls verification passed)"
+```
 
 ### E.5 Mx-phase audit-ready signal
 
@@ -234,14 +251,13 @@ Per-package breakdown:
 
 ## HISTORY
 
-### v0.1.2 (2026-05-25) — run-phase M2-M6 verification + §F.3 audit-ready signal emission
+### v0.1.2 (2026-05-25) — sync-phase status:in-progress → implemented + §E.4 sync-phase audit-ready signal
 
-- Run-phase M2-M5 milestone records populated in §B with commit SHAs (4c0bb8424 / 5a4fdf96d / d68421012 / 9f58ed63b / bdc707bde).
-- §E.2 Run-phase evidence AC matrix populated: 14/14 AC PASS, 0 FAIL, 0 PASS-WITH-DEBT.
-- §E.3 Run-phase audit-ready signal YAML block emitted with full coverage + verification batch + L52 race + PROCEED-WITH-DEBT compliance fields.
-- §F.x M1-M6 detailed milestone records populated with DDD cycle ANALYZE-PRESERVE-IMPROVE narratives.
-- L52 case 29 documented: `b7d1528c8` (SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001 plan-phase) absorbed between M3 push and M4 pre-fetch, scope-disjoint clean FF.
-- D1 PROCEED-WITH-DEBT compliance verified: no frontmatter:implemented transition; no CHANGELOG body edit; M6 scope verification-only per inline mitigation.
+- Sync-phase status transition: `in-progress → implemented` for spec.md / plan.md / acceptance.md / progress.md.
+- §A Lifecycle Sync table: sync_status field added (in-progress, pending mx_commit_sha backfill).
+- §E.4 Sync-phase audit-ready signal YAML block emitted: sync_complete_at, sync_commit_sha (pending), run_commit_sha (6ed1155ea), frontmatter_status_transitions, changelog_entry_position + summary, B12 self-test signals.
+- All 4 SPEC artifact frontmatter status transitions applied atomically (in-progress → implemented).
+- CHANGELOG.md stub (line 11) replaced with final-form discharge narrative (run-phase M1-M6 commits, 15→0 FAIL, 14/14 AC PASS, zero PASS-WITH-DEBT, L52 case 29, DDD cycle).
 
 ### v0.1.1 (2026-05-25) — run-phase M1 frontmatter status:in-progress + ground truth verification
 
