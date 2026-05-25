@@ -171,7 +171,7 @@ User-generated artifacts:
 |------------------|----------|--------|---------------------|
 | `moai-*` skills (incl. `moai-harness-*` builders) | `.claude/skills/moai-*/` | template | 삭제 후 신규 설치 (overwrite) |
 | **`my-harness-*` skills** | `.claude/skills/my-harness-*/` | **user project (this meta-harness emits)** | **절대 삭제/modify 금지 + 백업 보존** |
-| MoAI agents (core/expert/meta) | `.claude/agents/{core,expert,meta}/` | template | 삭제 후 신규 설치 (overwrite) |
+| MoAI agents (retained 7, FLAT) | `.claude/agents/moai/` | template | 삭제 후 신규 설치 (overwrite) |
 | **Generated harness agents** | `.claude/agents/harness/` | **user project (this meta-harness emits)** | **절대 삭제/modify 금지 + 백업 보존** |
 | Harness config | `.moai/harness/` | user project | 절대 삭제 금지 + 백업 보존 |
 
@@ -214,7 +214,7 @@ The following capabilities are explicitly NOT implemented by this skill:
 - **5-layer integration mechanism** — owned by SPEC-V3R3-PROJECT-HARNESS-001. The integration with `/moai project` phases, hook installation, and CLAUDE.md marker management are all delegated to that SPEC.
 - **16-question Socratic interview** — owned by SPEC-V3R3-PROJECT-HARNESS-001. The `manager-spec` conducts the interview under that SPEC's control.
 - **Auto-evolution loop** — owned by SPEC-V3R3-HARNESS-LEARNING-001. The learning feedback mechanism (Phase 7) and delta capture are separate work items outside Wave A.
-- **Modification of `.claude/agents/{core,expert,meta,harness}/` or static `moai-*` skills** — this meta-harness generates only `moai-harness-*` prefixed artifacts and has no write access to MoAI's own agent/skill directories.
+- **Modification of `.claude/agents/{moai,harness}/` or static `moai-*` skills** — this meta-harness generates only `moai-harness-*` prefixed artifacts and has no write access to MoAI's own agent/skill directories.
 
 ---
 

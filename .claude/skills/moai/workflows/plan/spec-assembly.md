@@ -305,7 +305,7 @@ Before evaluating any of the paths below (Worktree / Branch / Current Branch), t
 
 - When `auto_enabled == true`: continue to the Worktree/Branch/Current Branch path evaluation below (existing behavior, unchanged).
 
-Reference: see `.claude/agents/core/manager-git.md` § Late-Branch Invocation Pattern for the 4-phase procedure (A→D) the user follows after this skill defers branch creation.
+Reference: see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern for the 4-phase procedure (A→D) the user follows after this skill defers branch creation.
 
 #### Phase 3.0: BODP Gate (공통)
 

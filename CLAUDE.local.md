@@ -909,7 +909,7 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 
 **Owner 명시 (REQ-ATR-020 정합)**: Tier L OR `--pr` 케이스에서 PR 생성은 `manager-git` 의 책임이다. `manager-develop` 또는 `manager-docs` 는 PR 생성을 직접 수행하지 않으며, commit 만 수행 후 `manager-git` 에게 PR 생성을 위임한다. 이는 Anthropic 2026 SRP (Single Responsibility Principle) 정합 — 각 retained agent 가 명확한 phase boundary 를 가진다.
 
-**Late-Branch 4-Phase Pattern**: Tier L PR routing 시 `manager-git` 은 `.moai/docs/git-workflow-doctrine.md` §18.3.1 의 Late-Branch 4-Phase 패턴 (A: branch creation / B: commit / C: PR creation / D: Late-Branch closure)을 따른다. Phase D Late-Branch closure 는 PR 머지 후 local main 정렬 의무 — `.claude/agents/core/manager-git.md` § Late-Branch Invocation Pattern 참조.
+**Late-Branch 4-Phase Pattern**: Tier L PR routing 시 `manager-git` 은 `.moai/docs/git-workflow-doctrine.md` §18.3.1 의 Late-Branch 4-Phase 패턴 (A: branch creation / B: commit / C: PR creation / D: Late-Branch closure)을 따른다. Phase D Late-Branch closure 는 PR 머지 후 local main 정렬 의무 — `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern 참조.
 
 **Routing 결정 흐름**:
 1. SPEC tier 가 L → `manager-git` routing (자동)
@@ -919,7 +919,7 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 상위 SPEC 참조:
 - `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/spec.md` REQ-ATR-020 (manager-git PR doctrine reconciliation)
 - `.moai/docs/git-workflow-doctrine.md` §18.3.1 [HARD] Tier-based PR Routing (SPEC-V3R6-AGENT-TEAM-REBUILD-001 REQ-ATR-020) — M5 NEW section
-- `.claude/agents/core/manager-git.md` § Late-Branch Invocation Pattern
+- `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern
 - `.claude/skills/moai/workflows/sync.md` § Phase Owners (Tier L OR `--pr` 플래그 시 manager-git)
 
 ### §23.8 [HARD] Multi-Session Race Mitigation
@@ -967,9 +967,7 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 
 | Path | 범위 | Source of Truth | `moai update` 영향 |
 |------|------|-----------------|---------------------|
-| `.claude/agents/core/` | manager-spec, manager-develop, manager-docs, manager-git (retained 4) | template | sync |
-| `.claude/agents/expert/` | (모두 archived per SPEC-V3R6-AGENT-TEAM-REBUILD-001 M3 — 사용자 머신에 잔존 시 cleanup 대상) | template (empty after archive) | sync |
-| `.claude/agents/meta/` | plan-auditor, evaluator-active, builder-harness (retained 3) | template | sync |
+| `.claude/agents/moai/` | manager-spec, manager-develop, manager-docs, manager-git, plan-auditor, evaluator-active, builder-harness (retained 7, FLAT layout per v.2.x baseline) | template | sync |
 | **`.claude/agents/harness/`** | **사용자 생성 domain specialist agents** — `moai-meta-harness`가 `/moai project` Phase 5+ 인터뷰 후 generate | user project | **NOT synced (보호)** |
 
 [HARD] `internal/template/templates/.claude/agents/harness/` 디렉토리는 **존재 자체가 금지**. template에는 `{core,expert,meta}/` 만 mirror. `harness/` directory 등장 시 cleanup chore + 본 §24 cross-reference.
@@ -990,7 +988,7 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 |------------------|------|-----------|
 | `.claude/skills/moai-*` (incl. `moai-harness-*`, `moai-meta-*`, `moai-foundation-*`, `moai-workflow-*`, `moai-domain-*`, `moai-ref-*`) | **삭제 후 신규 설치** (overwrite) | 백업 불필요 — template-managed, 사용자 수정 시 손실됨 |
 | **`.claude/skills/my-harness-*`** | **절대 삭제 금지 + 절대 modify 금지** | **백업 + 보존** (user-owned) |
-| `.claude/agents/{core,expert,meta}/` | 삭제 후 신규 설치 (overwrite) | 백업 불필요 — template-managed |
+| `.claude/agents/moai/` | 삭제 후 신규 설치 (overwrite) | 백업 불필요 — template-managed (FLAT layout per v.2.x baseline) |
 | **`.claude/agents/harness/`** | **절대 삭제 금지 + 절대 modify 금지** | **백업 + 보존** (user-owned) |
 | 기타 사용자 직접 추가 자산 (`.claude/agents/<custom>.md`, `.claude/skills/<custom>/` 단 prefix가 `moai-` 시작 아닌 것) | 보존 | 백업 + 보존 |
 | `.moai/harness/` (main.md, interview-results.md, extensions) | 절대 삭제 금지 | 백업 + 보존 (user-owned) |
@@ -1083,7 +1081,7 @@ predecessor cleanup history (`research.md` §B 참조: chore commits `20a66df85`
 
 #### Anti-pattern AP-25.3 — REQ token + date 본문 leak (canonical rule citation 변형)
 
-원천: agent body 파일 (특히 `.claude/agents/core/manager-*.md` template mirrors) 이 정책 변경 사유 footnote로 "Per REQ-ATR-008 + REQ-ATR-014 (added 2026-05-25)" 같이 REQ token + date 조합을 추가.
+원천: agent body 파일 (특히 `.claude/agents/moai/manager-*.md` template mirrors) 이 정책 변경 사유 footnote로 "Per REQ-ATR-008 + REQ-ATR-014 (added 2026-05-25)" 같이 REQ token + date 조합을 추가.
 
 위반 양상: REQ token은 본 프로젝트 acceptance.md row 식별자. 사용자 프로젝트에는 acceptance.md 가 없어 token 자체가 의미 없음. date는 본 프로젝트 작업 history 노출.
 

@@ -148,7 +148,7 @@ The 5-Layer Safety Pipeline (L1 Frozen Guard → L2 Canary Check → L3 Contradi
 | L5 | Human Oversight | Orchestrator surfaces user-approval via AskUserQuestion (this skill emits payload) |
 
 [HARD] L1 Frozen paths (never auto-modified at runtime):
-- `.claude/agents/{core,expert,meta,harness}/**`
+- `.claude/agents/{moai,harness}/**`
 - `.claude/skills/moai-*/**`
 - `.claude/rules/moai/**`
 - `.moai/project/brand/**`

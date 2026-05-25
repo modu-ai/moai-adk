@@ -141,7 +141,7 @@ For all other rows (multi-option replacements), `AskUserQuestion` is mandatory.
 The following patterns violate the archived-agent rejection contract:
 
 - **Silent substitution for multi-option replacements** — rows #1, #3, #4, #7-#12 require `AskUserQuestion`; silently switching `manager-strategy` → `manager-spec` without user confirmation can mis-frame the task scope (planning vs strategic decomposition)
-- **Re-introducing archived agents in template** — `internal/template/templates/.claude/agents/{core,meta,expert,agency}/<archived>.md` MUST NOT contain any of the 12 archived files; re-introduction triggers AC-ATR-005 failure
+- **Re-introducing archived agents in template** — `internal/template/templates/.claude/agents/moai/<archived>.md` MUST NOT contain any of the 12 archived files; re-introduction triggers AC-ATR-005 failure
 - **Paste-ready resume → autonomous execution without GATE-2** — when a paste-ready resume references an archived agent and the orchestrator silently substitutes, the user loses the GATE-2 plan-to-implement gate signal (EC-ATR-008 + REQ-ATR-015 cross-reference)
 - **Skipping the `ToolSearch` preload before `AskUserQuestion`** — `AskUserQuestion` is a deferred tool; the orchestrator MUST `ToolSearch(query: "select:AskUserQuestion")` per `.claude/rules/moai/core/askuser-protocol.md` § ToolSearch Preload Procedure
 - **Returning an `AskUserQuestion` invocation from a subagent body** — subagents MUST NOT prompt the user; this is the orchestrator's responsibility (CLAUDE.md §8 + agent-common-protocol.md § User Interaction Boundary). If a subagent encounters an archived-agent reference in its scope, it returns a structured blocker report and the orchestrator runs the recovery flow

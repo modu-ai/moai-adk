@@ -133,10 +133,10 @@ Before executing any verb, verify:
 
 Operations:
 
-0. **Invoke classifier** (per the canonical harness classifier wiring contract): run `moai hook harness-classify 2>&1` and capture stderr + exit code:
+0. **Invoke classifier** (SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001): run `moai hook harness-classify 2>&1` and capture stderr + exit code:
    - On exit 0 (success): render the classifier summary line (e.g., `harness-classify: N patterns → M promotions written`) above the tier distribution table.
-   - On exit 1 (classifier error): render an error annotation block (`> ⚠ classifier error: <stderr>`) above the tier distribution table, then CONTINUE rendering the remaining sections (fail-open per the canonical fail-open policy — do NOT abort the status command).
-   - The classifier is gated by `learning.enabled` in `.moai/config/sections/harness.yaml`; when disabled, it is a complete no-op (per the canonical learning-disabled contract) and tier-promotions.jsonl is left untouched.
+   - On exit 1 (classifier error): render an error annotation block (`> ⚠ classifier error: <stderr>`) above the tier distribution table, then CONTINUE rendering the remaining sections (fail-open per REQ-HCW-003 — do NOT abort the status command).
+   - The classifier is gated by `learning.enabled` in `.moai/config/sections/harness.yaml`; when disabled, it is a complete no-op (REQ-HCW-004) and tier-promotions.jsonl is left untouched.
 1. Read `.moai/harness/usage-log.jsonl` (line-count via `wc -l` or progressive Read).
 2. Read `.moai/harness/learning-history/tier-promotions.jsonl` (group by tier: observation / heuristic / rule / auto_update).
 3. Read `.moai/harness/learning-history/applied/` directory listing for Tier-4 application count within the last 7 days (REQ-HRN-FND-016 telemetry).
@@ -176,7 +176,7 @@ Operations:
    - Render "Tier-4 rate-limit window active — proposal <id> deferred" and STOP. Do NOT invoke AskUserQuestion (REQ-HRN-FND-012).
 2. **Load next pending proposal**: Read `.moai/harness/proposals/` directory; pick the oldest pending entry (`.json` payload). If none, render "No Tier-4 proposals awaiting approval" and stop.
 3. **Layer 1 (Frozen Guard) pre-screen**: Read the proposal's `target_path`. Match against the FROZEN prefix list:
-   - `.claude/agents/{core,expert,meta,harness}/`
+   - `.claude/agents/{moai,harness}/`
    - `.claude/skills/moai-`
    - `.claude/rules/moai/`
    - `.moai/project/brand/`

@@ -14,7 +14,7 @@ MoAI's three-phase development workflow with token budget management.
 | Run | /moai run | manager-develop (per quality.yaml development_mode; cycle_type=ddd / tdd / autofix) | 180K | DDD / TDD / autofix implementation |
 | Sync | /moai sync | manager-docs | 40K | Documentation sync |
 
-The MoAI agent catalog consists of exactly 8 retained agents (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `evaluator-active`, `builder-harness`, plus the Anthropic built-in `Explore`). 12 phantom and domain-expert agents (`manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, and the 6 `expert-*` agents) were archived to the archive backup directory during the catalog consolidation. For migration guidance and the per-archived-agent replacement pattern, see `.claude/rules/moai/workflow/archived-agent-rejection.md`.
+Per SPEC-V3R6-AGENT-TEAM-REBUILD-001, the MoAI agent catalog consists of exactly 8 retained agents (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `evaluator-active`, `builder-harness`, plus the Anthropic built-in `Explore`). 12 phantom and domain-expert agents (`manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, and the 6 `expert-*` agents) were archived to `.moai/backups/agent-archive-2026-05-25/` on 2026-05-25. For migration guidance and the per-archived-agent replacement pattern, see `.claude/rules/moai/workflow/archived-agent-rejection.md`.
 
 <!-- @MX:ANCHOR fan_in=10 - Subcommand classification single source of truth; cross-referenced by 10 workflow skills (5 multi-agent + 5 utility). Changes here affect all workflow contracts. -->
 
@@ -44,7 +44,7 @@ The MoAI agent catalog consists of exactly 8 retained agents (`manager-spec`, `m
   git pull origin main   # verify
   ```
 
-  Post-condition: `git status --porcelain` returns empty AND `git rev-parse main` == `git rev-parse origin/main`. Failure mode: skipping this step leaves local main with un-squashed history that conflicts with the next `git pull`. For the complete 4-phase Late-branch invocation pattern (A→D), see `.claude/agents/core/manager-git.md` § Late-Branch Invocation Pattern.
+  Post-condition: `git status --porcelain` returns empty AND `git rev-parse main` == `git rev-parse origin/main`. Failure mode: skipping this step leaves local main with un-squashed history that conflicts with the next `git pull`. For the complete 4-phase Late-branch invocation pattern (A→D), see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern.
 
 [SHOULD] Anti-patterns (advisory):
 - Creating an L2/L3 worktree for plan (Step 1). Plan-in-worktree forces a base rebase after plan PR merge and prevents parallel SPEC plan visibility.
@@ -136,7 +136,7 @@ Tier field in frontmatter: optional. The `tier:` YAML field carries the classifi
 
 Section A-E delegation template (`manager-develop-prompt-template.md`): REQUIRED for Tier M/L delegations, OPTIONAL for Tier S. Tier S delegations MAY use minimal prompts (~500-800 tokens) covering only goal + deliverables + constraints + self-verification. See `.claude/rules/moai/development/manager-develop-prompt-template.md` § Applicability.
 
-plan-auditor escalation: iter(N+1) aggregate score lower than iter(N) triggers a STOP signal and scope-reduction proposal — no unconditional further iteration. Maximum 3 plan-auditor iterations per SPEC plan-phase; after iter3, escalate via PASS-with-debt OR scope-reduction OR explicit user override. See `.claude/agents/meta/plan-auditor.md` § Retry Loop Contract.
+plan-auditor escalation: iter(N+1) aggregate score lower than iter(N) triggers a STOP signal and scope-reduction proposal — no unconditional further iteration. Maximum 3 plan-auditor iterations per SPEC plan-phase; after iter3, escalate via PASS-with-debt OR scope-reduction OR explicit user override. See `.claude/agents/moai/plan-auditor.md` § Retry Loop Contract.
 
 Anti-pattern: classifying a 1000+ LOC SPEC as Tier S to skip overhead. Mitigation: plan-auditor first-pass score regression triggers a tier-up suggestion to the user; the Tier field is recorded in the SPEC for retrospective audit.
 

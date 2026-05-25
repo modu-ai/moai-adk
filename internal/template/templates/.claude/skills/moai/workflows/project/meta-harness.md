@@ -224,7 +224,7 @@ generating project-specific dynamic harness artifacts in the user area
 (REQ-PH-004, T-P2-01).
 
 [HARD] This phase MUST run the FROZEN guard (`EnsureAllowed`) as the **first check**
-before any write attempt. Paths in `.claude/agents/{core,expert,meta,harness}/`, `.claude/skills/moai-*/`,
+before any write attempt. Paths in `.claude/agents/{moai,harness}/`, `.claude/skills/moai-*/`,
 or `.claude/rules/moai/` are permanently FROZEN and must be rejected immediately.
 
 [HARD] If meta-harness generation fails mid-way, `CleanupOnFailure` MUST remove all

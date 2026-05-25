@@ -113,13 +113,13 @@ Per SPEC-V3R6-AGENT-TEAM-REBUILD-001 (Anthropic 2026 alignment, 2026-05-25), the
 
 | Agent | Class | Phase scope | Reference |
 |-------|-------|-------------|-----------|
-| `manager-spec` | core/manager | Plan-phase artifact authoring (spec/plan/acceptance/research/design) | `.claude/agents/core/manager-spec.md` |
-| `manager-develop` | core/manager | Run-phase implementation (cycle_type ∈ {ddd, tdd, autofix}) | `.claude/agents/core/manager-develop.md` |
-| `manager-docs` | core/manager | Sync-phase documentation (CHANGELOG, README, frontmatter transitions) | `.claude/agents/core/manager-docs.md` |
-| `manager-git` | core/manager | PR creation per Tier-based routing + Late-Branch closure | `.claude/agents/core/manager-git.md` |
-| `plan-auditor` | meta/evaluator | Independent plan-phase audit, bias prevention, GEARS compliance | `.claude/agents/meta/plan-auditor.md` |
-| `evaluator-active` | meta/evaluator | Independent skeptical quality assessment, 4-dimension scoring | `.claude/agents/meta/evaluator-active.md` |
-| `builder-harness` | builder | Dynamic project-specific harness specialist generation | `.claude/agents/builder/builder-harness.md` |
+| `manager-spec` | core/manager | Plan-phase artifact authoring (spec/plan/acceptance/research/design) | `.claude/agents/moai/manager-spec.md` |
+| `manager-develop` | core/manager | Run-phase implementation (cycle_type ∈ {ddd, tdd, autofix}) | `.claude/agents/moai/manager-develop.md` |
+| `manager-docs` | core/manager | Sync-phase documentation (CHANGELOG, README, frontmatter transitions) | `.claude/agents/moai/manager-docs.md` |
+| `manager-git` | core/manager | PR creation per Tier-based routing + Late-Branch closure | `.claude/agents/moai/manager-git.md` |
+| `plan-auditor` | meta/evaluator | Independent plan-phase audit, bias prevention, GEARS compliance | `.claude/agents/moai/plan-auditor.md` |
+| `evaluator-active` | meta/evaluator | Independent skeptical quality assessment, 4-dimension scoring | `.claude/agents/moai/evaluator-active.md` |
+| `builder-harness` | builder | Dynamic project-specific harness specialist generation | `.claude/agents/moai/builder-harness.md` |
 | `Explore` | Anthropic built-in | Read-only codebase exploration (no MoAI file — invoked directly) | claude.com/docs/en/sub-agents |
 
 ### Archive Cross-Reference (12 phantom/domain-expert agents archived 2026-05-25)

@@ -49,7 +49,7 @@ The SPEC has 6+1 milestones (M1, M2, M2a, M3, M4, M5, M6) with strict sequential
 |-----------|--------|------------|-----------|-------------|
 | M1 (Version bump + CHANGELOG) | COMPLETE | 5a18dd98f | ~89 lines (incl. 8 SPEC frontmatter + progress.md NEW) | Foundation (no binary AC) |
 | M2 (Extend DeprecatedPaths) | COMPLETE | 68e3af7b1 | +474 net (dirs.go +234 + dirs_test.go +218 + golden +22) | AC-VVCR-005 PASS (43 entries; 9/31/3 split) |
-| M2a (FLAT Layout Restoration) | PENDING — orchestrator handoff | — | est. ~50 lines path-string subst | AC-VVCR-LR-001/002/003/004/005 (5 ACs) |
+| M2a (FLAT Layout Restoration) | COMPLETE | (commit pending) | 14 git mv + 5 rmdir + ~30 path-substitutions across 13 rule/skill/agent files + predecessor SPEC supersedence | AC-VVCR-LR-001 PASS / AC-VVCR-LR-002 PASS / AC-VVCR-LR-003 PASS / AC-VVCR-LR-004 PASS / AC-VVCR-LR-005 deferred to M5 |
 | M3 (v2 detection logic) | PENDING — orchestrator handoff | — | est. ~250 lines (NEW Go file + test) | AC-VVCR-001 |
 | M4 (Clean reinstall impl) | PENDING — orchestrator handoff | — | est. ~550 lines (2 NEW Go files + 2 NEW tests) | AC-VVCR-002/003/007/008/009/010/011/012/013 (9 ACs) |
 | M5 (runUpdate integration + catalog regen) | PENDING — orchestrator handoff | — | est. ~80 lines | (wires M4 into CLI) |
@@ -100,6 +100,22 @@ Verification:
 - `go vet ./...` → clean
 
 AC progress: **AC-VVCR-005 PASS** (Extended DeprecatedPaths enumeration verified by 43-entry count + per-category split assertion).
+
+### M2a — v.2.x FLAT Layout Restoration (NEW milestone, COMPLETE)
+
+Deliverables completed:
+- **Template git mv (7 ops)**: `internal/template/templates/.claude/agents/{core,meta}/{manager-develop,manager-docs,manager-git,manager-spec,builder-harness,evaluator-active,plan-auditor}.md` → `internal/template/templates/.claude/agents/moai/<file>.md`
+- **Local git mv (7 ops)**: Same 7 files under `.claude/agents/{core,meta}/` → `.claude/agents/moai/`
+- **Empty-directory removal (5 ops)**: `internal/template/templates/.claude/agents/{core,meta}/` + `.claude/agents/{core,expert,meta}/` (5 ops — template had no `expert/`)
+- **Cross-reference grep+replace (~13 files)**: Active references to `.claude/agents/{core,meta,expert}/<file>.md` and `.claude/agents/{core,expert,meta}/` directory patterns updated to flat `.claude/agents/moai/` form across `.claude/skills/moai/workflows/{plan/spec-assembly.md,release.md,harness.md,project/meta-harness.md}`, `.claude/skills/moai-{harness-learner,meta-harness}/SKILL.md`, `.claude/rules/moai/{development/{agent-authoring.md,model-policy.md,spec-frontmatter-schema.md},workflow/{spec-workflow.md,team-protocol.md,archived-agent-rejection.md}}`, `.claude/agents/moai/builder-harness.md`, `CLAUDE.md`, `CLAUDE.local.md`, and 11 template mirrors (byte-identical sync via cp)
+- **Predecessor SPEC supersedence (#5)**: `.moai/specs/SPEC-V3R6-AGENT-FOLDER-SPLIT-001/spec.md` frontmatter `status: implemented → superseded`, `version: 0.2.0 → 0.3.0`, `updated: 2026-05-22 → 2026-05-25`, `superseded_by: SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001`, HISTORY row 0.3.0 documenting the rationale
+
+Verification:
+- **AC-VVCR-LR-001 PASS**: `find .claude/agents/moai -name '*.md' | wc -l` = 7; template-local byte parity confirmed (same 7 filenames each, FLAT, no subdirectories)
+- **AC-VVCR-LR-002 PASS**: SPEC-V3R6-AGENT-FOLDER-SPLIT-001 frontmatter carries `status: superseded` + `superseded_by: SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001` + HISTORY row
+- **AC-VVCR-LR-003 PASS**: `internal/defs/dirs.go:349` `AgentsMoaiSubdir = "agents/moai"` constant value unchanged. `go build ./...` PASS (darwin/amd64). `GOOS=windows GOARCH=amd64 go build ./...` PASS. `go test ./internal/defs/...` PASS (8/8 M2 invariants).
+- **AC-VVCR-LR-004 PASS**: Cross-reference grep `grep -rln '.claude/agents/core/|.claude/agents/meta/|.claude/agents/expert/|.claude/agents/{core' .claude/ CLAUDE.md CLAUDE.local.md` excluding ephemeral `.claude/worktrees/` (gitignored) returns 0 matches. Same grep over `internal/template/templates/` returns 0 matches.
+- **AC-VVCR-LR-005 deferred to M5**: catalog.yaml regeneration via `gen-catalog-hashes.go --all` must run AFTER M4 implementation lands; deferred per plan.md §F.M5 dependency note.
 
 ## §D — Partial-Completion Checkpoint (Run-phase Handoff)
 

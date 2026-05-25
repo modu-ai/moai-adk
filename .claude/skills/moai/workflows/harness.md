@@ -176,7 +176,7 @@ Operations:
    - Render "Tier-4 rate-limit window active — proposal <id> deferred" and STOP. Do NOT invoke AskUserQuestion (REQ-HRN-FND-012).
 2. **Load next pending proposal**: Read `.moai/harness/proposals/` directory; pick the oldest pending entry (`.json` payload). If none, render "No Tier-4 proposals awaiting approval" and stop.
 3. **Layer 1 (Frozen Guard) pre-screen**: Read the proposal's `target_path`. Match against the FROZEN prefix list:
-   - `.claude/agents/{core,expert,meta,harness}/`
+   - `.claude/agents/{moai,harness}/`
    - `.claude/skills/moai-`
    - `.claude/rules/moai/`
    - `.moai/project/brand/`
