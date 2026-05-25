@@ -7,7 +7,7 @@ updated: 2026-05-25
 author: orchestrator
 run_commit_sha: "955299cac"
 sync_commit_sha: "f0f222fa3"
-mx_commit_sha: "<pending>"
+mx_commit_sha: "ccb4a14c0"
 ---
 
 ## HISTORY
@@ -49,8 +49,8 @@ Per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transi
 | 1 | Run-phase M7 — CLAUDE.md + CLAUDE.local.md + NOTICE.md | manager-develop | COMPLETED | `4f37a7643` | REQ-ATR-001/015/019/020 — NOTICE.md path variance documented (canonical: `.claude/rules/moai/NOTICE.md`) |
 | 1 | Run-phase M8 — Template parity + verification batch (PROCEED-WITH-DEBT) | orchestrator-direct | COMPLETED | `f91acb3a3` | REQ-ATR-018 + catalog.yaml 12-archived purge + AC-ATR-018 PASS (parity); 8 Go test fails (1 pre-existing path drift + 7 architectural-pivot consequences) deferred to follow-up SPEC-V3R6-TEST-REFACTOR-001 per user PROCEED-WITH-DEBT directive |
 | 2 | Sync-phase | manager-docs | COMPLETED | `f0f222fa3` | CHANGELOG.md [Unreleased] entry + spec.md status:draft→implemented (variance: M1 missed draft→in-progress) + 5 artifact sync_commit_sha placeholder + §F.3 Audit-Ready Signal |
-| 3 | Mx-phase | orchestrator | COMPLETED (EVALUATE-SKIP) | `<this-commit>` | Step C judgement per mx-tag-protocol.md §a — markdown-heavy + 0 .go modifications + 3 .sh scripts + 0 goroutines + 0 fan_in delta = SKIP-eligible; see §F.4 below |
-| 4 | 4-phase close | orchestrator | COMPLETED | `<this-commit>` | spec.md status:implemented→completed + L60 atomic backfill (4 SPEC artifact sync_commit_sha pending→f0f222fa3 + progress.md run/sync_commit_sha populated; mx_commit_sha self-reference fixed in post-commit atomic chore) |
+| 3 | Mx-phase | orchestrator | COMPLETED (EVALUATE-SKIP) | `ccb4a14c0` | Step C judgement per mx-tag-protocol.md §a — markdown-heavy + 0 .go modifications + 3 .sh scripts + 0 goroutines + 0 fan_in delta = SKIP-eligible; see §F.4 below |
+| 4 | 4-phase close | orchestrator | COMPLETED | `ccb4a14c0` | spec.md status:implemented→completed + L60 atomic backfill (4 SPEC artifact sync_commit_sha pending→f0f222fa3 + progress.md run/sync_commit_sha populated; mx_commit_sha self-reference fixed in post-commit atomic chore) |
 
 ---
 
@@ -150,7 +150,7 @@ Logged in `~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/project_agent_
 - **Files**: `.claude/hooks/moai/{status-transition-ownership,sync-phase-quality-gate,team-ac-verify}.sh`
 
 #### M5 — Rule files (2 NEW + 8 modified)
-- **Commit**: `<this-commit>` `feat(SPEC-V3R6-AGENT-TEAM-REBUILD-001): M5 — rule files (2 NEW + 8 modified)`
+- **Commit**: `ccb4a14c0` `feat(SPEC-V3R6-AGENT-TEAM-REBUILD-001): M5 — rule files (2 NEW + 8 modified)`
 - **Date**: 2026-05-25
 - **REQs covered**: REQ-ATR-007, REQ-ATR-008, REQ-ATR-012 (reinforced; primary AC binding is manager-develop.md per M1), REQ-ATR-016, REQ-ATR-020 (reinforced; primary AC binding is CLAUDE.local.md + sync.md per M7)
 - **Files (2 NEW)**:
@@ -193,7 +193,7 @@ The plan.md §D.8 and spec.md §C.1 reference `.claude/rules/moai/workflow/git-w
 
 ### §F.2.6 — M6 Run-phase Audit-Ready Signal (orchestrator-direct verify + AC-ATR-012 reinforcement)
 
-**Commit**: `<this-commit>` `chore(SPEC-V3R6-AGENT-TEAM-REBUILD-001): M6 — supersedence verify + AC-ATR-012 reinforcement`
+**Commit**: `ccb4a14c0` `chore(SPEC-V3R6-AGENT-TEAM-REBUILD-001): M6 — supersedence verify + AC-ATR-012 reinforcement`
 **Date**: 2026-05-25
 **Files**: 2 modified (`.claude/agents/core/manager-develop.md` body + this progress.md §B + §F.2.6)
 
@@ -252,7 +252,7 @@ The plan.md §D.8 and spec.md §C.1 reference `.claude/rules/moai/workflow/git-w
 
 ### §F.2.8 — M8 Run-phase Audit-Ready Signal (orchestrator-direct, PROCEED-WITH-DEBT)
 
-**Commit**: `<this-commit>` `feat(SPEC-V3R6-AGENT-TEAM-REBUILD-001): M8 — template parity + catalog.yaml 12-archived purge + 7-item verification batch (PROCEED-WITH-DEBT)`
+**Commit**: `ccb4a14c0` `feat(SPEC-V3R6-AGENT-TEAM-REBUILD-001): M8 — template parity + catalog.yaml 12-archived purge + 7-item verification batch (PROCEED-WITH-DEBT)`
 **Date**: 2026-05-25
 **Files**: ~30 modified (template mirror sync of M1-M7 work + catalog.yaml + embedded.go regen + archive cleanup)
 
@@ -334,7 +334,7 @@ The plan.md §D.8 and spec.md §C.1 reference `.claude/rules/moai/workflow/git-w
 
 ### §F.3 Sync-phase Audit-Ready Signal (manager-docs scope — COMPLETED)
 
-**Commit**: `<this-commit>` `docs(SPEC-V3R6-AGENT-TEAM-REBUILD-001): sync-phase artifacts`
+**Commit**: `ccb4a14c0` `docs(SPEC-V3R6-AGENT-TEAM-REBUILD-001): sync-phase artifacts`
 **Date**: 2026-05-25
 **Files**: CHANGELOG.md + spec.md frontmatter + 4 artifact frontmatter sync_commit_sha + this progress.md sync entry
 
@@ -352,7 +352,7 @@ The plan.md §D.8 and spec.md §C.1 reference `.claude/rules/moai/workflow/git-w
 
 ### §F.4 Mx-phase Audit-Ready Signal (orchestrator scope — COMPLETED, EVALUATE-SKIP)
 
-**Commit**: `<this-commit>` `chore(SPEC-V3R6-AGENT-TEAM-REBUILD-001): Mx-phase EVALUATE-SKIP + 4-phase close + L60 atomic backfill`
+**Commit**: `ccb4a14c0` `chore(SPEC-V3R6-AGENT-TEAM-REBUILD-001): Mx-phase EVALUATE-SKIP + 4-phase close + L60 atomic backfill`
 **Date**: 2026-05-25
 **Step C Judgement**: **EVALUATE-SKIP** per `.claude/rules/moai/workflow/mx-tag-protocol.md` §a
 
@@ -373,7 +373,7 @@ The plan.md §D.8 and spec.md §C.1 reference `.claude/rules/moai/workflow/git-w
 This chore commit ALSO performs:
 1. **L60 atomic backfill** for 4 SPEC artifact `sync_commit_sha: "<pending>"` → `"f0f222fa3"` (plan.md / acceptance.md / design.md / research.md)
 2. **progress.md frontmatter**: `run_commit_sha: "955299cac"` (M1 first run-phase commit) + `sync_commit_sha: "f0f222fa3"` populated
-3. **§B Lifecycle backfill**: M8 row `<this-commit>` → `f91acb3a3`; Sync/Mx/close rows COMPLETED
+3. **§B Lifecycle backfill**: M8 row `ccb4a14c0` → `f91acb3a3`; Sync/Mx/close rows COMPLETED
 4. **spec.md status transition**: `implemented → completed` per Status Transition Ownership Matrix (`implemented → completed` owner: orchestrator on Mx chore)
 5. **mx_commit_sha self-reference**: deferred to atomic chore 2 (chicken-and-egg pattern per L60 precedent — this commit's SHA cannot be known until commit lands)
 
