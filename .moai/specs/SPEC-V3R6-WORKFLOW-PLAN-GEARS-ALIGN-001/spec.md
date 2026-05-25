@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001
 title: "/moai plan workflow skill bundle GEARS notation alignment"
-version: "0.1.2"
-status: in-progress
+version: "0.1.3"
+status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -22,6 +22,7 @@ tier: M
 | 0.1.0 | 2026-05-25 | manager-spec | Initial plan-phase draft — Sprint 10 GEARS sweep cohort entry SPEC #4 of 8. Cohort progression: SKILL-GEARS-ALIGN-001 closed `ebe492670`, PLAN-AUDITOR-GEARS-ALIGN-001 closed `ebe492670`, FOUNDATION-CORE-GEARS-ALIGN-001 closed `0156c7003`, **WORKFLOW-PLAN-GEARS-ALIGN-001 (THIS)**, downstream: DOCS-SITE-FULL, WORKFLOW-SPEC-EXTRAS, MISC-DOCS, RULES-GO-DOCS. |
 | 0.1.1 | 2026-05-25 | manager-spec | iter-2 focused fix per plan-auditor iter-1 PASS 0.867 (NOT skip-eligible). D1 RESOLVED: plan.md M4 staging count 11→10 (Option A — phantom "ownership backfill marker" removed, aligned with acceptance.md AC-WPG-010). D2 RESOLVED: new AC-WPG-011 added with direct grep verification for spec-assembly.md → spec-frontmatter-schema.md cross-link (Option A — closes REQ-WPG-009 trace orphan, traceability 0.85→0.93). D3 RESOLVED: AC-WPG-007 grep pattern anchored to `^Only in .*: \.gitkeep$`. Side-effect updates: spec-assembly.md edit zones 6→7 (cross-link addition counts as edit zone), AC count 10→11 across all 3 files, total edit zones 13→14. Predicted iter-2 plan-auditor: 0.90+ skip-eligible. |
 | 0.1.2 | 2026-05-25 | manager-spec | iter-3 mechanical fix per plan-auditor iter-2 PASS-WITH-DEBT 0.873. D_new1 RESOLVED: 4 stale "13 edit zones" sites updated to "14" (spec.md §B.2 line 45 + spec.md §C.2 table spec-assembly.md row + spec.md §C.2 table Total row + plan.md §B.1 + plan.md §B.3 MP-1; iter-2 added 1 NEW edit zone for spec-assembly.md cross-link addition). D_new2 RESOLVED: plan.md §B.3 MP-3 "13 REQs × 10 ACs" → "13 REQs × 11 ACs" (residual stale AC count from iter-1). D_new3 RESOLVED: HISTORY tables added to plan.md AND acceptance.md per Option A (consistency across all 3 artifacts; previously HISTORY existed only in spec.md). No new REQs, no new ACs, no milestone re-decomposition. Predicted iter-3 plan-auditor: 0.92+ skip-eligible (Consistency 0.74→0.92 + Completeness 0.92→0.94). |
+| 0.1.3 | 2026-05-25 | manager-docs | Sync-phase completion: status `in-progress → implemented` per Status Transition Ownership Matrix. Version bump, HISTORY entry added. 4-artifact sync_commit_sha backfill + CHANGELOG entry + progress.md §E.4 populated. |
 
 ## §A — Goals
 

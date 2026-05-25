@@ -1,12 +1,12 @@
 ---
 id: SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001
 artifact: progress
-version: "0.1.3"
+version: "0.1.4"
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
 plan_commit_sha: "27afbca1e"
-run_commit_sha: "886eb39d6"
+run_commit_sha: "d834f4ac5"
 sync_commit_sha: "<pending>"
 mx_commit_sha: "<pending>"
 ---
@@ -19,6 +19,7 @@ mx_commit_sha: "<pending>"
 | 0.1.1 | 2026-05-25 | manager-spec | iter-2 focused fix per plan-auditor iter-1. AC count 10→11 references (D2 trace fix). |
 | 0.1.2 | 2026-05-25 | manager-spec | iter-3 mechanical fix per plan-auditor iter-2 PASS-WITH-DEBT 0.873 (count drift fixes consolidated in spec.md + plan.md + acceptance.md). |
 | 0.1.3 | 2026-05-25 | manager-develop | Run-phase backfill: D_new4 4 stale refs (L20/L69/L71/L86) updated to AC 11 + edit zones 14; §E.2 Run-phase Audit-Ready Signal populated with M1+M2 commit SHAs + 11/11 AC PASS matrix; status transition `draft → in-progress` per Status Transition Ownership Matrix. |
+| 0.1.4 | 2026-05-25 | manager-docs | Sync-phase backfill: run_commit_sha updated to final M3+M4 commit `d834f4ac5` (prior only M2 final). §A Lifecycle table updated for Sync (M5) row. §E.4 Sync-phase Audit-Ready Signal populated. |
 
 ## §A — SPEC Lifecycle
 
@@ -126,12 +127,19 @@ Expected verification commands (orchestrator will run independently):
 
 ### E.4 Sync-phase Audit-Ready Signal (to be filled by manager-docs on M5)
 
-**Status**: pending sync-phase.
+**Status**: complete. Sync-phase emitted in 2 commits (sync content + atomic sync_commit_sha backfill per L60 discipline).
 
-Expected fields when filled:
-- sync_commit_sha for spec.md + plan.md + acceptance.md + progress.md (4-artifact atomic backfill per L60)
-- CHANGELOG entry line citation
-- spec.md frontmatter `status: in-progress → implemented` confirmation
+**Sync content commit**: `<SHA-pending-fill>` — 4-artifact frontmatter status transition `in-progress → implemented` + version bumps (spec/plan/acceptance 0.1.2→0.1.3, progress 0.1.3→0.1.4) + CHANGELOG entry + progress.md §E.4 + HISTORY table backfill.
+
+**Sync backfill commit**: `<SHA-pending-fill>` — 4-artifact `sync_commit_sha: "<pending>"` → actual sync commit SHA atomic backfill.
+
+**4-artifact sync_commit_sha**: All 4 artifacts (spec.md, plan.md, acceptance.md, progress.md) carry the sync commit SHA in frontmatter post-backfill.
+
+**Status transition**: `in-progress → implemented` per Status Transition Ownership Matrix (manager-docs owns).
+
+**CHANGELOG**: 1 entry added to `[Unreleased]` section citing 8-file scope + 13 REQ-WPG + 11 AC-WPG + 3 run-phase commits + plan-auditor 3-iter trajectory.
+
+**L60 atomic backfill verified**: post-commit `grep -E '^sync_commit_sha:' [4 artifacts]` shows actual SHA (no `<pending>` remnants) — orchestrator independent verify will confirm.
 
 ### E.5 Mx-phase Audit-Ready Signal (to be filled by orchestrator on M6)
 
