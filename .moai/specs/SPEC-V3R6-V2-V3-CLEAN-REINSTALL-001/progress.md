@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001
 title: "Progress — v2-to-v3 Clean Reinstall (Tier M, cycle_type=tdd)"
-version: "0.1.3"
-status: implemented
+version: "0.1.4"
+status: completed
 created: 2026-05-25
 updated: 2026-05-26
 author: manager-develop
@@ -12,6 +12,7 @@ module: "internal/cli, internal/defs, pkg/version, internal/template/templates/.
 lifecycle: spec-anchored
 tags: "moai-update, v2-v3-migration, run-phase, progress, milestone-tracking"
 tier: M
+sync_commit_sha: "259e2b228"
 ---
 
 # Progress — SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 (Run-phase)
@@ -355,4 +356,55 @@ Resume the run-phase in a fresh session by re-spawning `manager-develop` with `c
 ### Status transition note
 
 The `draft → in-progress` transition is owned by manager-develop on M1 commit start per the Status Transition Ownership Matrix and was applied in commit `5a18dd98f`. The `in-progress → implemented` transition is reserved for manager-docs at sync-phase per the matrix and MUST NOT be applied at this checkpoint.
+
+## §G — Mx-phase EVALUATE-SKIP Decision + 4-phase Close Terminator
+
+### §G.1 — Mx-phase Decision: EVALUATE-SKIP
+
+본 SPEC scope (`internal/cli`, `internal/defs`, `pkg/version`, `internal/template/templates/.claude/agents`)에 대한 @MX tag 추가 작업은 본 4-phase close 시점에서 EVALUATE-SKIP 결정. 근거:
+
+1. **scope 광범위 + high fan_in 함수 다수**: detectV2Fingerprint (M3), runCleanReinstall (M4), runUpdate (M5)는 모두 high fan_in critical paths. @MX:ANCHOR + @MX:WARN tagging은 single SPEC scope 외 별도 maintenance work로 더 적합.
+2. **paradigm shift 안정화 우선**: v3.0.0-rc2 paradigm shift (file-level sync → version-aware clean reinstall)은 1차 release 시점. 실제 사용 + telemetry feedback 후 @MX tagging이 더 정확한 hotspot identification 가능.
+3. **scope discipline (Karpathy Behavior 6)**: 본 SPEC은 clean reinstall mechanism 구현이 목적이며, @MX tagging은 후속 maintenance SPEC 또는 `/moai mx` workflow의 scheduled scan 결과로 처리하는 것이 단일 책임 원칙 정합.
+
+향후 @MX tagging 후속 SPEC 후보 (참고용, 본 SPEC 외부):
+- SPEC candidate: `SPEC-V3R6-V2-V3-MX-TAGGING-001` (Tier S, V2-V3 critical paths @MX:ANCHOR + @MX:WARN scan)
+- 또는 `/moai mx` workflow에서 자동 처리 (next quarterly scan)
+
+### §G.2 — 4-phase Close Terminator
+
+본 commit으로 SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 4-phase 완료:
+
+| Phase | Owner | Commit | Status transition |
+|-------|-------|--------|-------------------|
+| 1 (plan) | manager-spec | `363eff563` | (none) → draft |
+| 2 (run) | manager-develop | `5a18dd98f` (M1 entry) → ... → `6c33a1bf4` (M6) | draft → in-progress |
+| 3 (sync) | manager-docs (work) + orchestrator (recovery) | `259e2b228` (d8feaa8ab orphan recovery, L52 NEW variant) | in-progress → implemented |
+| 4 (Mx + close) | orchestrator | (this commit) | implemented → completed |
+
+**Frontmatter backfill** (this commit):
+- 6 SPEC artifacts: status: implemented → completed, version bump (0.5.1 → 0.5.2 for SPEC artifacts, 0.1.3 → 0.1.4 for progress.md)
+- progress.md sync_commit_sha: "259e2b228" (L60 chicken-and-egg backfill — synchronous with this Mx+close commit)
+- progress.md mx_commit_sha: TBD (follow-up backfill chore commit per L60 doctrine — chicken-and-egg cannot self-reference)
+
+### §G.3 — Audit-Ready Signal (Mx-phase)
+
+본 SPEC의 4-phase close가 의도된 결과 (final outcomes per acceptance.md):
+- 22 AC matrix: 17 PASS + 5 deferred (AC-VVCR-017 telemetry emission + 4 SHOULD-tier follow-up per design.md)
+- 9-commit run-phase chain on origin/main: 363eff563..a997f03a2
+- 1-commit sync-phase recovery: 259e2b228 (atomic, doctrine-clean, L52 NEW variant orphan recovery doctrine 입증)
+- L52 case 29 cumulative: 4 occurrences absorbed (1차 5cbf1f69f → 정정 b604a0d3b/a997f03a2 / 2차 d9838995d → 정정 c5ed59907 / 3차 69075e8cb → 정정 100e603d3 / 4차 d8feaa8ab orphan reset → recovery 259e2b228, **first work-loss variant** documented)
+- Cross-platform verified: darwin/amd64, darwin/arm64, linux/amd64, windows/amd64 (4 OS/arch build passing)
+- Subagent boundary (C-HRA-008): grep returns 0 matches on all new code
+
+### §G.4 — Lessons Cumulative
+
+본 SPEC 마감 시점 누적 lessons:
+
+- **L52 case 29 4th occurrence (NEW variant)**: pure attribution hijack에서 **work loss + parallel reset 복합 패턴**으로 진화. d8feaa8ab orphan reachable via reflog → `git checkout d8feaa8ab -- <files>` clean atomic recovery 가능. 추가 mitigation pattern: orphan recovery doctrine.
+- **L67 manager-develop incomplete commit** sustained: Trust-but-verify 11-cmd batch + `git diff --staged --stat` 분리 점검 정착.
+- **L44 HARD sustained**: ToolSearch preload + 4-precondition 병렬 verification batch 53x cumulative.
+- **L60 chicken-and-egg L60 backfill**: sync + mx 두 번 적용 (sync_commit_sha synchronous, mx_commit_sha follow-up chore).
+- **L_NEW_SPRINT 7-retry mitigation effectiveness pattern**: paste-ready strict gate doctrine이 6차 retry abort → 7차 사용자 override 강행 → V0 17 무시 + V1/V2/V3 PASS 근거로 진행 → L52 case 29 4th immediate occurrence → orphan recovery 패턴 정착. paste-ready strict gate 가 critical race risk 환경에서 race를 사전 차단하지 못해도, post-hoc recovery doctrine이 확립되어 있음을 입증.
+
 
