@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-MULTI-SESSION-COORD-001
 title: "Multi-Session Coordination — 4-Layer Race Mitigation Architecture"
-version: "0.1.0"
-status: implemented
+version: "0.1.1"
+status: completed
 created: 2026-05-24
 updated: 2026-05-25
 author: "GOOS행님"
@@ -19,6 +19,7 @@ tags: "multi-session, coordination, registry, hook, race-mitigation"
 
 - 2026-05-24: Plan-phase artifacts created. Tier M. 4-layer architecture (Go primitive + CLI + hook + pre-spawn rule extension). Origin: ARR-001/SIV-001 race incident 2026-05-24 + L52 lesson + CLAUDE.local.md §23.8.
 - 2026-05-24: Plan-phase iter-2 — D1 broken AC reference (iter-1 cited a non-existent AC ID) resolved by adding AC-COORD-013 (CLI 5 verbs verification, REQ-COORD-021 trace). D2 six uncovered REQs resolved: REQ-COORD-006/018/020/021 covered by new AC-COORD-013/014/015/016; REQ-COORD-012/024 documented as L48 trace-orphan in §C.5. Case 3 staging-area race (commit `24cb6ad4b`, 20× scope drift) added to §A.1 as 3rd empirical case + §F.6 mitigation extended with L4 scope reinforcement (`git diff --cached --name-only` pre-commit assertion).
+- 2026-05-25 (v0.1.1): L60 spec.md status backfill — `implemented` → `completed`. progress.md fully 4-phase closed (sync `58c70c66a` + mx `ba9159fd2` + L60 atomic backfill `0cbe793a6`/`878801e88`) but spec.md frontmatter status drift remained per L67 manager-docs scope-creep pattern. Cross-file consistency restored. No body content changes; frontmatter status + version only.
 
 ## §A Background
 
