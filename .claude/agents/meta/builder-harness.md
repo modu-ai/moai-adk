@@ -148,3 +148,80 @@ OUT OF SCOPE:
 - Complex backend/frontend implementation: Delegate to expert-backend/expert-frontend
 - Quality validation: Delegate to manager-quality
 - Documentation research: Use Context7 MCP or WebSearch
+
+## Deep Reasoning Escalation
+
+This agent uses `model: inherit` (default) or `model: haiku` (speed-critical
+exceptions: manager-docs, manager-git) per the canonical Inherit-by-Default
+Convention in `.claude/rules/moai/development/model-policy.md`. The inherit
+default preserves the parent session's 1M context entitlement and avoids the
+spawn-failure bug documented in Anthropic Issues #45847, #51060, #36670 — when
+a `[1m]` parent (e.g., `claude-opus-4-7[1m]`) spawns a subagent that declares
+an explicit `model: sonnet` or `model: opus` in frontmatter, the 1M
+entitlement does NOT propagate and spawn fails with `API Error: Usage credits
+required for 1M context`.
+
+When the current sub-task requires deeper reasoning than the inherited model's
+working memory provides (architectural decisions, multi-step trade-off analysis,
+confirmation of a high-impact design choice, or after 2+ standard attempts have
+failed to converge), spawn an isolated opus sub-agent via the Agent tool's
+`model` parameter and absorb its result:
+
+```text
+Agent(
+  subagent_type: "general-purpose",
+  model: "opus",
+  prompt: "<focused reasoning task with explicit context excerpt>"
+)
+```
+
+Per-spawn `Agent(model: "opus")` does NOT inherit the parent session's 1M
+context — the caller MUST provide a complete context excerpt in the prompt.
+This is acceptable because opus escalation targets focused reasoning, not
+broad context tasks.
+
+Reserve this per-spawn escalation for:
+- Architectural decision points
+- Cross-cutting design conformance check ("consult opus" pattern per Anthropic docs)
+- Independent confirmation of an inherited-model conclusion that affects downstream agents
+
+Do NOT escalate for:
+- Routine code edits or file generation
+- Single-document content updates
+- Mechanical operations (git, file I/O, format-only changes — these run on
+  haiku agents or inherit anyway and do not benefit from opus)
+
+Most MoAI tasks complete on the inherited model without escalation. The
+escalation budget is intended for the 5-10% of tasks where independent deep
+reasoning materially improves outcome quality.
+
+## Harness Generation Model Policy
+
+When generating new agents (slash command, sub-agent, harness specialist),
+apply the canonical MoAI agent model policy per
+`.claude/rules/moai/development/model-policy.md`:
+
+| Frontmatter field | Default value | Notes |
+|------------------|---------------|-------|
+| `model:` | `inherit` | Inherit-by-default — preserves parent's 1M context entitlement (avoids Anthropic Issues #45847/#51060/#36670) |
+| `model:` (speed-critical exception) | `haiku` | For mechanical agents (documentation sync, git operations, format-only edits). haiku has no 1M variant so the spawn-failure bug does NOT apply. |
+| `effort:` | `xhigh` (recommended) or per-agent appropriate | Uniform reasoning depth recommended across the catalog; lower values acceptable for haiku-tier mechanical agents |
+| `permissionMode:` | (depends on agent role — `default` for read-mostly, `bypassPermissions` for trusted write-agents) | |
+
+DO NOT generate agents with explicit `model: sonnet` or `model: opus` unless
+the user explicitly opts into the 1M-context-incompatible path (and accepts
+that the agent will fail to spawn from `[1m]` parent sessions until either
+Anthropic resolves the upstream issues OR the user disables `[1m]` context).
+
+Additionally, every generated agent body MUST include the canonical
+"Deep Reasoning Escalation" section (`Agent(model: "opus")` per-spawn pattern)
+at body tail — see `.claude/agents/core/manager-spec.md` for the verbatim
+template. The per-spawn escalation is the canonical way to invoke opus-tier
+reasoning on demand without paying opus cost on routine work AND without
+the 1M-context-incompatibility risk of explicit `model: opus` frontmatter.
+
+Rationale: keep cost-optimization + escalation policy uniform across
+hand-authored retained agents and harness-generated specialists. The existing
+catalog (inherit-by-default + haiku exception + per-spawn opus) is ALREADY
+the cost-optimized design — uniformity of this design across future harness
+output preserves the design contract AND the 1M-context-safety guarantee.

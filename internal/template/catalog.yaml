@@ -16,7 +16,7 @@ catalog:
             - name: moai-foundation-core
               tier: core
               path: templates/.claude/skills/moai-foundation-core/
-              hash: 092a53fbcd376d114bacc730c8b26bb89e94e265b31ba2fac3019a04b7a6a417
+              hash: e56d4ab3cf3d5e87956b35793c435df822e399cbd06be732fa9f90107d063f0a
               version: 1.0.0
             - name: moai-foundation-quality
               tier: core
@@ -26,7 +26,7 @@ catalog:
             - name: moai-foundation-thinking
               tier: core
               path: templates/.claude/skills/moai-foundation-thinking/
-              hash: f0b44b551ae1d8da44814e301897b8c7de8ede6fe96f28e63a6c05a65dd71aac
+              hash: 9bbbce7a1a6d0079c77996bd412c85e3da70ed893f336f3f9481ce24af243cc1
               version: 1.0.0
             - name: moai-harness-learner
               tier: core
@@ -51,7 +51,7 @@ catalog:
             - name: moai-workflow-ci-loop
               tier: core
               path: templates/.claude/skills/moai-workflow-ci-loop/
-              hash: ee784c449cf9756a22b1a6fffcf79b86d2d7c5c3bb9a7c45b747d7c3441495c9
+              hash: f672e92ee883d4c2098fb2e5cd9d73ccedc49560be604d6bae436e6f688b3591
               version: 0.1.0
             - name: moai-workflow-ddd
               tier: core
@@ -71,7 +71,7 @@ catalog:
             - name: moai-workflow-spec
               tier: core
               path: templates/.claude/skills/moai-workflow-spec/
-              hash: b15871c2e380d1f5914f5e301dc7ec683d04a1ec09d0cba3d0f2ca92c7c6de7a
+              hash: b3fd54fe89eb8f5c7f001fd639c7fdc7fb5f234a6c3c9c9abfd8d76372c1b136
               version: 1.0.0
             - name: moai-workflow-tdd
               tier: core
@@ -81,12 +81,12 @@ catalog:
             - name: moai-workflow-testing
               tier: core
               path: templates/.claude/skills/moai-workflow-testing/
-              hash: f9b257f0e67eccc7586f5f6650e4d3c960e628fda84033e71f414dabb06d1be2
+              hash: 12698228eca29f7386d46a2d9e8fccd0e1e6796397c76c3f11baea49fba5c6f4
               version: 1.0.0
             - name: moai-workflow-worktree
               tier: core
               path: templates/.claude/skills/moai-workflow-worktree/
-              hash: b2f60abfd9566da4164d73356034b0a1d1dd4bd4890111859a1af9d84825ecbc
+              hash: c945746377c426bd8257bc436652f9444e29af807f9593edc2e3d59c769499e3
               version: 1.0.0
             - name: moai-domain-ideation
               tier: core
@@ -102,32 +102,32 @@ catalog:
             - name: evaluator-active
               tier: core
               path: templates/.claude/agents/meta/evaluator-active.md
-              hash: 2a8052cff9f7ca67075d8d5fe8263f7019e11e0a55c9f3dbe569ed88b9b788f7
+              hash: 43f763cf221a872855f12e9d0ec6a8ce62e1af340b1d3736a17f0d8c35685d5a
               version: 1.0.0
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/core/manager-develop.md
-              hash: 18f3767f1c53ef1957c2bd13b3db07970167de92340cb2ee97f0379bb138cea5
+              hash: 61e9511daab35bbd49d31e0dee5c7cfd925a3ad88dfd8bcbd23bf9d7d14ddbb6
               version: 1.0.0
             - name: manager-docs
               tier: core
               path: templates/.claude/agents/core/manager-docs.md
-              hash: 28b773c8bbf1340c21b9891660e69a7baca5b5d1451fb9adf498209252dd6630
+              hash: 427db8cc8e1b9e1e66cbd19c80f3723a43e0661060bf6a0cb7219e479c8f5be1
               version: 1.0.0
             - name: manager-git
               tier: core
               path: templates/.claude/agents/core/manager-git.md
-              hash: e2f3e8aaf562efafc300acaf3291229e72b7c05379ff1987fcef7e4878f3c8e3
+              hash: 2545e0929ce2fe3f679996e9cf1719bb9dcc8d77f1bc5f302328a8cdb56f1831
               version: 1.0.0
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/core/manager-spec.md
-              hash: eb254f43907055fddeb0e3e84404964ed5c5066e2a8df5624defe8b3931f830b
+              hash: cec3cd91be366d315b876276c2fe99bf552f7df1c14c457ef858aa244c0e3c92
               version: 1.0.0
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/meta/plan-auditor.md
-              hash: 22a9c18831246d8b765aa8bf525d43eff5e5bb7132dd9ad5cceb9529b3c868e5
+              hash: 64807064d2ad6fb3a07e83a4e09ac1151df622662fcc28827db80577350fa301
               version: 1.0.0
     optional_packs:
         backend:
@@ -169,12 +169,12 @@ catalog:
                 - name: moai-domain-brand-design
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-domain-brand-design/
-                  hash: 5185d309df1fd0ef9265b87f9952207ed297428601446c1397360c1386577421
+                  hash: 27f55e802f2e2e2d78fe6dca1330dc8a334f3f6886f717c9dcb6a726934d1726
                   version: 1.0.0
                 - name: moai-domain-copywriting
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-domain-copywriting/
-                  hash: e00607b138afe71fab38dfb43026ea1d3794c51d946cc266b0711eb2d28ec1af
+                  hash: b55d62fb1a189e1fef23a44d6d9312c5e089f039d56fc1e39b6ff97c09c689d0
                   version: 1.0.0
                 - name: moai-domain-design-handoff
                   tier: optional-pack:design
@@ -184,12 +184,12 @@ catalog:
                 - name: moai-workflow-design
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-workflow-design/
-                  hash: 63c2a2689e966cfb6aba8b74ce36d6fff6683b4eaea3a08608d4a63c7f9b4caf
+                  hash: 4362fffd233d099ef88ecb031795c6fd19ccc96e6b9617356e81e0f985254037
                   version: 0.1.0
                 - name: moai-workflow-gan-loop
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-workflow-gan-loop/
-                  hash: e57bff5ccc8cf403fb96d9e0967e6f93c7d9f56146765a245909f3d1d3a2fde5
+                  hash: 511dffbd4bad1c5f1ee056ad8fc95d849477eada2ea65417013bce0662027eda
                   version: 1.0.0
             agents: []
         devops:
@@ -229,5 +229,5 @@ catalog:
             - name: builder-harness
               tier: harness-generated
               path: templates/.claude/agents/meta/builder-harness.md
-              hash: c4f3263498c12e0b18f888b86e3c52c6bae386c6aabb62a8d97ce37fe4218024
+              hash: 16ca25c757d7d904c7a42af098aa209af88c018ad399a4222d3ae190f0603afc
               version: 1.0.0

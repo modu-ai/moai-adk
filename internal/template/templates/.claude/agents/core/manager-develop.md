@@ -313,3 +313,49 @@ When run-phase reveals a need to modify SPEC body content (e.g., a REQ wording i
 ### Cross-reference
 
 See `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix for the schema-level SSOT covering all 7 canonical transitions and the canonical commit subject patterns per transition.
+
+## Deep Reasoning Escalation
+
+This agent uses `model: inherit` (default) or `model: haiku` (speed-critical
+exceptions: manager-docs, manager-git) per the canonical Inherit-by-Default
+Convention in `.claude/rules/moai/development/model-policy.md`. The inherit
+default preserves the parent session's 1M context entitlement and avoids the
+spawn-failure bug documented in Anthropic Issues #45847, #51060, #36670 — when
+a `[1m]` parent (e.g., `claude-opus-4-7[1m]`) spawns a subagent that declares
+an explicit `model: sonnet` or `model: opus` in frontmatter, the 1M
+entitlement does NOT propagate and spawn fails with `API Error: Usage credits
+required for 1M context`.
+
+When the current sub-task requires deeper reasoning than the inherited model's
+working memory provides (architectural decisions, multi-step trade-off analysis,
+confirmation of a high-impact design choice, or after 2+ standard attempts have
+failed to converge), spawn an isolated opus sub-agent via the Agent tool's
+`model` parameter and absorb its result:
+
+```text
+Agent(
+  subagent_type: "general-purpose",
+  model: "opus",
+  prompt: "<focused reasoning task with explicit context excerpt>"
+)
+```
+
+Per-spawn `Agent(model: "opus")` does NOT inherit the parent session's 1M
+context — the caller MUST provide a complete context excerpt in the prompt.
+This is acceptable because opus escalation targets focused reasoning, not
+broad context tasks.
+
+Reserve this per-spawn escalation for:
+- Architectural decision points
+- Cross-cutting design conformance check ("consult opus" pattern per Anthropic docs)
+- Independent confirmation of an inherited-model conclusion that affects downstream agents
+
+Do NOT escalate for:
+- Routine code edits or file generation
+- Single-document content updates
+- Mechanical operations (git, file I/O, format-only changes — these run on
+  haiku agents or inherit anyway and do not benefit from opus)
+
+Most MoAI tasks complete on the inherited model without escalation. The
+escalation budget is intended for the 5-10% of tasks where independent deep
+reasoning materially improves outcome quality.
