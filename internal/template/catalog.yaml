@@ -36,7 +36,7 @@ catalog:
             - name: moai-meta-harness
               tier: core
               path: templates/.claude/skills/moai-meta-harness/
-              hash: 5381b6655144435a3680e689f6c3b452d45440c03795e6e0adac38af93a13dd9
+              hash: 608a77db33f49b44788342ba290d15690c478001110c6f79f6b0db926c26e30b
               version: 1.0.0
             - name: moai-ref-git-workflow
               tier: core
