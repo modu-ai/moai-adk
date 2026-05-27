@@ -24,6 +24,9 @@ func newSpecCmd() *cobra.Command {
 	specCmd.AddCommand(newSpecDriftCmd())
 	specCmd.AddCommand(newSpecViewCmd())
 	specCmd.AddCommand(newSpecLintCmd())
+	// SPEC-V3R6-LIFECYCLE-SYNC-GATE-001 M2 — atomic close + audit subcommands
+	specCmd.AddCommand(newSpecCloseCmd())
+	specCmd.AddCommand(newSpecAuditCmd())
 
 	return specCmd
 }

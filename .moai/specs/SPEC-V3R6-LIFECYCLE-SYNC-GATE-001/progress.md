@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R6-LIFECYCLE-SYNC-GATE-001
 artifact: progress
-version: "0.1.0"
+version: "0.1.1"
 created: 2026-05-26
-updated: 2026-05-26
+updated: 2026-05-27
 status: in-progress
 ---
 
@@ -160,16 +160,169 @@ Verified clean. Per CLAUDE.md §8 + agent-common-protocol.md User Interaction Bo
 the spec package contains no AskUserQuestion invocations — CLI-layer subagent
 boundary discipline is upheld.
 
-## §A.2 M2-M6 Placeholder (deferred to subsequent milestones)
+## §A.2 M2 — CLI Subcommands (`moai spec close` + `moai spec audit`)
+
+**Status**: implemented (this milestone)
+**Started**: 2026-05-27 (post-M1 paste-ready resume)
+
+### Phase 0.95 Mode Selection (M2 spawn)
+
+Orchestrator selected **Mode 5 — Sub-Agent Sequential** per
+`.claude/rules/moai/workflow/orchestration-mode-selection.md` § Mode Catalog.
+
+**Decision**: sub-agent
+
+**Rationale**: Tier L scope with M2 narrowed to **5 Go files (~650 LOC delta)**
+inside a single domain (`internal/cli` CLI layer). Per Anthropic 2026 Finding A4
+verbatim ("most coding tasks involve fewer truly parallelizable tasks than
+research, and LLM agents are not yet great at coordinating and delegating to
+other agents in real time"), parallel multi-spawn (Mode 4) is not preferred
+for coding-heavy work. Agent Teams (Mode 3) capability gate fails: env var
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` not set AND multi-domain criterion
+(≥3 domains OR ≥10 files) not met (single domain, 5 files). Mode 5 with Tier
+L Section A-E full delegation template (per `manager-develop-prompt-template.md`
+§ Applicability) is the correct default.
+
+**Input parameters captured**:
+- tier: L (inherited from SPEC frontmatter)
+- scope: 5 files Go-only (~650 LOC delta) — spec_close.go + spec_audit.go +
+  spec_close_test.go + spec_audit_test.go + spec.go MODIFY
+- domain count: 1 (internal/cli)
+- file language mix: Go (100%)
+- concurrency benefit: LOW (coding-heavy, file-shared cobra command tree)
+- Agent Teams prereqs status: not all met (env var unset + single-domain)
+
+**Mode evaluation table** (M2 spawn):
+
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| trivial | No | 5-file scope; not trivial |
+| background | No | Implementation requires Write/Edit (CONST-V3R2-020) |
+| agent-team | No | Env var unset; single-domain scope (not multi-domain) |
+| parallel | No | Coding-heavy work per Finding A4 — parallel not preferred |
+| sub-agent | **Yes** | Default for coding-heavy single-domain work; M2 is sequentially dependent on M1 primitives |
+
+### M2 Scope Implemented
+
+Per plan.md §F.2 scope enumeration:
+
+1. **`internal/cli/spec_close.go`** (~232 LOC) — cobra command wiring for
+   `moai spec close <SPEC-ID>`. Delegates to `internal/spec.Close()`. Flags:
+   `--backfill-only`, `--dry-run`, `--force`, `--base-dir`, `--json`.
+   Renders structured stdout (success/noop/dry-run) and stderr (precondition
+   failure / lock contention / already-completed). Maps spec-package sentinels
+   (`ErrDryRun`, `ErrPreconditionMissing`, `ErrAlreadyCompleted`, lock-held)
+   to user-visible exit codes per AC-LSG-006/014/022 semantics.
+2. **`internal/cli/spec_audit.go`** (~219 LOC) — cobra command wiring for
+   `moai spec audit`. Delegates to `internal/spec.Audit()`. Flags: `--json`,
+   `--filter-era`, `--include-grandfathered`, `--strict`, `--base-dir`.
+   JSON output emits `audited_at` / `total_specs` / `grandfathered` /
+   `modern_era_clean` / `drift_findings` per AC-LSG-007 schema. Human path
+   emits scannable summary + per-finding lines. `--strict` mode escalates
+   MUST-FIX findings to non-zero exit.
+3. **`internal/cli/spec_close_test.go`** (~445 LOC) — integration tests:
+   help-text verification, required-arg enforcement, precondition-missing-mx
+   error rendering, dry-run preview path, fully-completed-noop fixture,
+   parametric `TestBackfillOnlyVariants`, JSON output envelope, already-completed
+   error path, spec-dir-missing error path, full-close success on ready fixture,
+   and C-HRA-008 static guard (`TestSpecClose_NoAskUserQuestion`).
+4. **`internal/cli/spec_audit_test.go`** (~310 LOC) — integration tests:
+   help-text verification, empty-project JSON schema verification, drift-finding
+   JSON schema verification, era filter behavior, human-readable default format,
+   strict-mode exit code on drift, strict-mode no-op on clean fixture,
+   include-grandfathered flag wiring, and C-HRA-008 static guard
+   (`TestSpecAudit_NoAskUserQuestion`).
+5. **`internal/cli/spec.go`** — registered `newSpecCloseCmd()` and
+   `newSpecAuditCmd()` under the existing `spec` cobra parent command. No
+   other modifications.
+
+### M2 AC Binary PASS/FAIL Matrix
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-LSG-001 | PASS (M2 CLI surface; M3 finishes atomic commit transaction) | `go test -run TestSpecClose ./internal/cli` | `PASS — ok internal/cli 0.5s` |
+| AC-LSG-002 | PASS (CLI delegates to `spec.Audit()` which classifies 5 buckets per AC-LSG-002 verified in M1) | `go test -run TestSpecAudit_JSONSchema ./internal/cli` | PASS |
+| AC-LSG-006 | PASS | `go test -run TestSpecClose_PreconditionMissingMx ./internal/cli` | PASS — stderr identifies §E.5 missing |
+| AC-LSG-007 | PASS | `go test -run TestSpecAudit_JSONSchema_DriftFindings ./internal/cli` | PASS — all 5 schema fields present + drift_findings shape verified |
+| AC-LSG-014 | PASS | `go test -run TestSpecClose_PreconditionMissingMx ./internal/cli` | PASS — error returned, no commit produced |
+| AC-LSG-016 | PASS (M1 benchmark `internal/spec/audit_test.go` covers <5s; M2 wires CLI surface invocation path — measured via integration test setup time, not separate timing) | `go test -run TestSpecAudit ./internal/cli -count=1` | total wall time 0.473s for 8 audit tests (well below 5s/invocation budget) |
+| AC-LSG-022 | PASS | `go test -run TestBackfillOnlyVariants ./internal/cli` | PASS — 2 fixture variants (fully-completed-noop + Y_Y_Y_Y dry-run preview) |
+
+### M2 Cross-Platform Build
+
+```
+$ go build ./...                          → exit 0 (PASS)
+$ GOOS=windows GOARCH=amd64 go build ./... → exit 0 (PASS)
+$ GOOS=linux GOARCH=amd64 go build ./...   → exit 0 (PASS)
+$ go vet ./...                             → exit 0 (PASS)
+```
+
+### M2 Coverage
+
+```
+$ go test -coverprofile=/tmp/cli_cover.out ./internal/cli/...
+ok  internal/cli  7.197s  coverage: 71.4% of statements (overall package)
+```
+
+Per-file coverage on M2 deliverables (D.2 SHOULD threshold ≥80%):
+
+| File | Functions | Coverage |
+|------|-----------|----------|
+| `internal/cli/spec_close.go` | newSpecCloseCmd: 92.9%, renderCloseResult: 91.7% | avg **92.3%** ✓ |
+| `internal/cli/spec_audit.go` | newSpecAuditCmd: 85.7%, renderAuditResult: 91.7%, renderAuditHuman: 90.0%, countMustFix: 100% | avg **91.9%** ✓ |
+
+Both new files meet D.2 SHOULD threshold (≥80%).
+
+### M2 Subagent Boundary Check (B3 / C-HRA-008)
+
+```
+$ grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/spec_close.go internal/cli/spec_audit.go \
+    | grep -v '_test.go' | grep -Ev '^[^:]*:[ 	]*//'
+(no output expected outside comments)
+```
+
+Result: **4 matches**, ALL inside `//` comments (doctrine documentation
+naming the prohibited tools to explain WHY they are absent). No invocation
+sites; the line-comment filter strips them. The two test files
+`TestSpecClose_NoAskUserQuestion` and `TestSpecAudit_NoAskUserQuestion`
+provide static regression guards — both PASS.
+
+### M2 Working Tree Hygiene (B8 self-verify)
+
+```
+$ git status --short
+?? .moai/research/anthropic-best-practices-2026-05-24.md
+?? .moai/research/v3.0-redesign-2026-05-23.md
+?? scripts/audit-spec-sync-drift.sh
+```
+
+(After M2 commit) — the 3 untracked allowlist files (research × 2 + audit
+script) remain untouched throughout the milestone. No scope creep.
+
+### M2 Pre-existing Failures (NOT M2 scope)
+
+Two pre-existing test failures observed (unrelated to M2):
+
+1. `internal/spec.TestCatalogHashParity` — `moai-meta-harness/SKILL.md` hash
+   drift from an unrelated working-tree modification (noted in initial
+   `git status --short` baseline as ` M .claude/skills/moai-meta-harness/SKILL.md`).
+2. `internal/template.TestTemplateNoInternalContentLeak` and related template
+   tests — pre-existing baseline noise documented in progress.md §A.0
+   ("PASS (pre-existing template mirror drift in internal/template unrelated
+   to SPEC scope)").
+
+Both noted in progress.md §A.0 baseline. M2 does not introduce nor resolve
+either; out-of-scope per plan.md §A.5 PRESERVE list.
+
+## §A.3 M3-M6 Placeholder (deferred to subsequent milestones)
 
 The following milestones await subsequent orchestrator-spawned `manager-develop`
 invocations. Their evidence will be appended to this progress.md as separate
-§A.{2..6} sections per plan.md §F.{2..6}.
+§A.{3..6} sections per plan.md §F.{3..6}.
 
-- **M2 — CLI Subcommands** (`moai spec close` + `moai spec audit`) — depends on M1 ✓
-- **M3 — Pre-Commit Hook + settings.json.tmpl Registration** — depends on M2
-- **M4 — spec-lint OwnershipTransitionRule Extension** — depends on M2
-- **M5 — Rule File Authoring** (`.claude/rules/moai/workflow/lifecycle-sync-gate.md`) — depends on M1 era field
+- **M3 — Pre-Commit Hook + settings.json.tmpl Registration** — depends on M2 ✓
+- **M4 — spec-lint OwnershipTransitionRule Extension** — depends on M2 ✓
+- **M5 — Rule File Authoring** (`.claude/rules/moai/workflow/lifecycle-sync-gate.md`) — depends on M1 era field ✓
 - **M6 — No-Op Regression Validation** (5 already-discharged SPECs) — depends on M1-M5
 
 ## §E.0 Run-phase Sentinel Evidence (M1 partial)
@@ -181,11 +334,17 @@ the orchestrator-direct Mx chore respectively, after all M1-M6 milestones comple
 
 | Section | Status | Owner | Populated |
 |---------|--------|-------|-----------|
-| §E.1 Run-phase milestone evidence | partial (M1 only) | manager-develop (this) | 2026-05-26 |
+| §E.1 Run-phase milestone evidence | partial (M1+M2) | manager-develop (M2 spawn) | 2026-05-27 |
 | §E.2 Sync-phase audit-ready signal | pending | manager-docs (sync-phase) | — |
-| §E.3 Run-phase status field | in-progress | manager-develop (this) | 2026-05-26 |
+| §E.3 Run-phase status field | in-progress | manager-develop (M2 spawn) | 2026-05-27 |
 | §E.4 Sync-phase audit-ready signal (extended) | pending | manager-docs (sync-phase) | — |
 | §E.5 Mx-phase audit-ready signal | pending | orchestrator-direct (post-sync) | — |
+
+### §E.1 M2 row (this milestone)
+
+| Milestone | Owner | Completed | Commit | Files | LOC | Coverage |
+|-----------|-------|-----------|--------|-------|-----|----------|
+| M2 — CLI Subcommands (`moai spec close` + `moai spec audit`) | manager-develop | 2026-05-27 | (pending push) | 5 (4 new + 1 MODIFY) | ~1206 LOC delta (source 451 + tests 755) | spec_close.go 92.3% / spec_audit.go 91.9% (both ≥80% D.2 threshold) |
 
 ## §E.3 Run-phase status field
 
@@ -193,5 +352,6 @@ the orchestrator-direct Mx chore respectively, after all M1-M6 milestones comple
 run_started_at: "2026-05-26T01:49:00Z"
 status: in-progress
 m1_status: implemented
-m2_through_m6_status: pending
+m2_status: implemented
+m3_through_m6_status: pending
 ```
