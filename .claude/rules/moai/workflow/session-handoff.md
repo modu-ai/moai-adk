@@ -124,6 +124,103 @@ At session end, the orchestrator displays: (1) the message in a fenced ```text``
 - Cut-line markers absent — user cannot identify exact copy boundary in long terminal scrollback.
 - Cut-line markers translated `✂` symbol or `─` decorator — only the marker text translates; the symbols are preserved verbatim.
 
+## Diet Constraints
+
+[ZONE:Evolvable] [HARD] paste-ready resume message는 "next session minimum executable context"이다 — audit trail, history record, ceremonial commitment record가 아니다. 차수 누적 retry 진행 시 본문에 history/lesson/directive escalation prose를 append-only로 누적하는 것은 cross-line empirical 입증된 anti-pattern (LIFECYCLE-SYNC-GATE-001 line C 1~14차 + HARNESS-NAMESPACE Phase 1B line B 1~5차에서 동일 비대화 패턴 관측).
+
+### Block 2 applied lessons 제약
+
+- 최대 **4개 references** (memory file slug 또는 lesson identifier)
+- 각 reference는 **1줄 identifier** (예: `L52#33`, `L_NEW_V0_ABORT_GATE` — full prose history 금지)
+- 5개 이상은 anti-pattern → memory file body로 이관
+
+### Block 4 precondition 제약
+
+- 각 precondition **≤ 200 chars** target (실용적 가독성 한계)
+- Format: `N) <verifiable command> → <expected outcome>`
+- History tracking / lesson narrative / 누적 패턴 추적 prose 금지
+- Multi sub-command (V0a/V0b/V0c)는 단일 precondition으로 통합 가능, STRICT criterion만 1줄로
+
+### Block 5 실행 제약
+
+- **단일 primary action** (typically 1줄 command, 예: `/moai run SPEC-ID`)
+- Sub-detail (agent scope, AC bindings, file path line numbers)은 SPEC artifacts(plan.md / acceptance.md) 내부에 존재 — paste-ready inline 금지
+- Ceremonial reminder ("정확 참조", "discipline 엄수", "self-verify") 금지 — 이는 agent body 내부 책임
+
+### Block 6 후속 제약
+
+- **≤ 2줄** (next concrete SPEC ID 또는 next phase command)
+- Multi-step 후속 (M4→M5→M6→sync→Mx→close)는 SPEC plan.md milestone로 관리 — paste-ready inline 금지
+
+### Doctrine reference 패턴
+
+- N차 sustained 1st→2nd→3rd→4th→5th 같은 history는 lesson memory file에만 보관
+- paste-ready에서는 `per session-handoff.md § <Doctrine Section>` 1줄 reference만 사용
+
+### Anti-pattern catalogue
+
+- **AP-D-001**: Block 2 lessons 5+ references → 4 이하로 trim, 나머지는 memory file body로 이관
+- **AP-D-002**: precondition 본문 prose (history/lesson narrative/누적 패턴) → 1줄 verifiable command + STRICT criterion만 남기기
+- **AP-D-003**: Block 5 sub-step nesting (Phase 0 + Phase 0.5 + Phase 1B 같은 multi-phase 11-substep) → single primary action으로 압축, sub-detail은 SPEC artifacts에
+- **AP-D-004**: directive escalation 본문 임베드 (N차 "stronger directive", N+1차 "even-stronger directive", N+2차 "documentation-level codification entry-condition") → rule file로 codification, paste-ready는 reference만
+- **AP-D-005**: ceremonial reminder ("B8/B15 discipline 엄수", "manager-develop은 plan.md §F.3 line 130-143 정확 참조") → SPEC artifact 내부 보관, paste-ready는 trust delegation
+
+### Pre-emit self-check (8 items)
+
+- [ ] Block 2 ≤ 4 references
+- [ ] Block 2 각 reference 1줄 identifier (full history 금지)
+- [ ] Block 4 각 precondition ≤ 200 chars
+- [ ] Block 4 precondition prose에 history 임베드 없음
+- [ ] Block 5 single primary action (command + 1줄 context max)
+- [ ] Block 6 ≤ 2 lines
+- [ ] Doctrine history not embedded → rule file reference only
+- [ ] Ceremonial reminder 없음
+
+### 적용 범위
+
+- 모든 신규 paste-ready resume message
+- 차수 누적 retry paste-ready (다이어트 vs 본문 누적 선택 → 다이어트 default)
+- Cross-line 일관 적용 (LIFECYCLE-SYNC-GATE / HARNESS-NAMESPACE / SESSION-AUTO-RESUME 등 모든 SPEC line)
+
+## V0 Abort Gate Doctrine
+
+[ZONE:Evolvable] [HARD] paste-ready Block 4 V0 precondition은 **lsof + cwd 교차 검증**을 사용한다. `ps aux` raw count는 environmental baseline noise이며 단독 V0 검증으로 사용 시 multi-session 환경에서 STRICT ≤2 위반이 13회+ 연속 누적되는 false-positive를 발생시킨다 (cross-line empirical 입증).
+
+### V0 검증 명령 (canonical)
+
+```bash
+# V0-a: informational baseline (blocking 아님 — multi-session 정상 환경에서 16-19 expected)
+ps aux | grep -iE '\bclaude\b' | grep -v -E 'plugin|Helper|Application|antigravity|grep' | wc -l
+
+# V0-b: critical blocking — 본 WT cwd로 file handle 보유 claude session 수
+lsof +D "$PWD" 2>/dev/null | grep -iE 'claude' | wc -l   # STRICT 0
+
+# V0-c: critical blocking — cwd가 본 WT인 active claude session 수 (본 세션 + parent process만)
+lsof -a -c claude -d cwd 2>/dev/null | awk 'NR>1 && $NF ~ /<본_WT_경로>/' | wc -l   # STRICT ≤2
+```
+
+### Abort 의무
+
+V0-b ≥ 1 OR V0-c ≥ 3 시 (다른 precondition V1/V2/V3 PASS 여부 무관):
+- 다음 paste-ready 차수 산출 + memory write
+- **Spawn 금지** (manager-develop / manager-spec / manager-docs / 기타 implementation agents)
+- **AskUserQuestion 강행 옵션 제시 금지** (override option은 doctrine 위반)
+- 본 세션 종료
+
+### Cross-pollination 이력
+
+- **Line C** (LIFECYCLE-SYNC-GATE-001) 9차 — first introduction
+- **Line C** 10차 — ground-truth signal first emergence (lsof=8 + cwd=10 cwd-co-located active sessions 캡처)
+- **Line A** (SESSION-AUTO-RESUME-001) 13차 — cross-line introduction
+- **Line B** (HARNESS-NAMESPACE Phase 1B) 14차 — cross-line introduction
+- 본 § V0 Abort Gate Doctrine 공식 codification 이후 모든 line은 본 section reference만 사용 (paste-ready 본문 history embed 금지)
+
+### Anti-pattern
+
+- **AP-V-001**: `ps aux` raw count `≤ 2 STRICT`을 단독 V0 검증으로 사용 → environmental baseline noise (multi-session normal state에서 16-19 sessions은 정상)
+- **AP-V-002**: V0 FAIL 후 "사용자 약속 누적 미이행 N회" 본문 추적 → 죄책감 부담만 부과 + 실질 행동 변화 0 + paste-ready 비대화 → 도구화 anti-pattern
+- **AP-V-003**: V0 FAIL 시 AskUserQuestion에 강행 옵션 (option D "override + spawn") 제시 → doctrine 위반
+
 ## Worktree-Anchored Resume Pattern
 
 [ZONE:Evolvable] [HARD] When the SPEC was initialized via L3 `/moai plan --worktree` (creating an L2 SPEC worktree at `~/.moai/worktrees/<project>/<spec-or-name>/`), the resume message MUST include **Block 0 (cwd anchoring)** prepended before the standard 6-block structure. Without Block 0, the next session starts in main project cwd by default, breaking L2 SPEC worktree isolation expectations.
