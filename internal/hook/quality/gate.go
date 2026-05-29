@@ -302,11 +302,11 @@ func (g *QualityGate) detectToolchain() *langToolchain {
 				// Glob pattern (e.g., "*.csproj")
 				matches, err := filepath.Glob(filepath.Join(dir, marker))
 				if err == nil && len(matches) > 0 {
-					return resolveDartFlutter(&toolchains[i], dir)
+					return resolveNodeTurbo(resolveDartFlutter(&toolchains[i], dir), dir)
 				}
 			} else {
 				if fileExists(filepath.Join(dir, marker)) {
-					return resolveDartFlutter(&toolchains[i], dir)
+					return resolveNodeTurbo(resolveDartFlutter(&toolchains[i], dir), dir)
 				}
 			}
 		}
@@ -336,6 +336,34 @@ func resolveDartFlutter(tc *langToolchain, dir string) *langToolchain {
 		markerFiles: tc.markerFiles,
 		vetSteps:    []gateStep{{name: "flutter analyze", binary: "flutter", args: []string{"analyze"}}},
 		testStep:    &gateStep{name: "flutter test", binary: "flutter", args: []string{"test"}, optional: true},
+	}
+}
+
+// resolveNodeTurbo returns a Turborepo-safe Node.js toolchain variant when the
+// matched Node.js toolchain's project dir contains turbo.json. In a Turborepo
+// monorepo the root `test` script is typically `turbo run test`, and turbo
+// rejects the `--passWithNoTests` flag (a vitest/jest-only flag) that the default
+// Node test step appends ("unexpected argument '--passWithNoTests'"), which would
+// block every commit. The variant drops that flag so `npm test` defers to the
+// project's own turbo test pipeline. The package-level toolchains slice is not
+// mutated, mirroring resolveDartFlutter.
+//
+// Non-Node toolchains are returned unchanged.
+func resolveNodeTurbo(tc *langToolchain, dir string) *langToolchain {
+	// Only process the Node.js toolchain entry (first marker package.json).
+	if len(tc.markerFiles) == 0 || tc.markerFiles[0] != "package.json" {
+		return tc
+	}
+	if !fileExists(filepath.Join(dir, "turbo.json")) {
+		return tc
+	}
+	// Return a new langToolchain with a turbo-safe test step so we do not mutate
+	// the package-level toolchains slice. lintSteps/vetSteps are preserved.
+	return &langToolchain{
+		markerFiles: tc.markerFiles,
+		vetSteps:    tc.vetSteps,
+		lintSteps:   tc.lintSteps,
+		testStep:    &gateStep{name: "npm test", binary: "npm", args: []string{"test"}},
 	}
 }
 
