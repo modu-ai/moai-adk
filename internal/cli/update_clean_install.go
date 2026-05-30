@@ -147,11 +147,11 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	if !fp.IsV2 {
 		// Caller should not have invoked us; return gracefully without
 		// mutations. This is REQ-VVCR-027 (idempotency on clean v3 projects).
-		fmt.Fprintln(out, "[clean-reinstall] not a v2 project — no-op")
+		_, _ = fmt.Fprintln(out, "[clean-reinstall] not a v2 project — no-op")
 		return result, nil
 	}
 
-	fmt.Fprintf(out, "[clean-reinstall] v2 fingerprint detected (signals: version=%v agency=%v deprecated=%v)\n",
+	_, _ = fmt.Fprintf(out, "[clean-reinstall] v2 fingerprint detected (signals: version=%v agency=%v deprecated=%v)\n",
 		fp.V2DetectedViaVersion, fp.V2DetectedViaAgencyDir, fp.V2DetectedViaDeprecatedPath)
 
 	// ---------------------------------------------------------------
@@ -163,7 +163,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	}
 	result.Inventory = inv
 
-	fmt.Fprintf(out, "[clean-reinstall] PRESERVE inventory: %d files\n", len(inv.Files))
+	_, _ = fmt.Fprintf(out, "[clean-reinstall] PRESERVE inventory: %d files\n", len(inv.Files))
 
 	// Pre-snapshot hashes for Step 7 integrity verification.
 	hashesPre, err := computeInventoryHashes(projectRoot, inv)
@@ -174,14 +174,14 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// Dry-run early return — emit planned actions and stop before any
 	// filesystem mutation.
 	if opts.DryRun {
-		fmt.Fprintln(out, "[clean-reinstall] DRY-RUN — no filesystem mutations performed")
-		fmt.Fprintf(out, "[clean-reinstall] Would back up %d files into .moai/backups/v2-to-v3-<stamp>/\n", len(inv.Files))
+		_, _ = fmt.Fprintln(out, "[clean-reinstall] DRY-RUN — no filesystem mutations performed")
+		_, _ = fmt.Fprintf(out, "[clean-reinstall] Would back up %d files into .moai/backups/v2-to-v3-<stamp>/\n", len(inv.Files))
 		if planRemoved, scanErr := scanDeprecatedPaths(projectRoot); scanErr == nil {
-			fmt.Fprintf(out, "[clean-reinstall] Would remove %d deprecated paths\n", len(planRemoved))
+			_, _ = fmt.Fprintf(out, "[clean-reinstall] Would remove %d deprecated paths\n", len(planRemoved))
 			result.RemovedPaths = planRemoved
 		}
 		if fp.V2DetectedViaAgencyDir {
-			fmt.Fprintln(out, "[clean-reinstall] Would auto-invoke `moai migrate agency` for .agency/ contents")
+			_, _ = fmt.Fprintln(out, "[clean-reinstall] Would auto-invoke `moai migrate agency` for .agency/ contents")
 			result.AgencyMigrated = true
 		}
 		return result, nil
@@ -208,7 +208,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	}
 	result.BackupDir = finalBackupDir
 
-	fmt.Fprintf(out, "[clean-reinstall] Backup created at %s\n", finalBackupDir)
+	_, _ = fmt.Fprintf(out, "[clean-reinstall] Backup created at %s\n", finalBackupDir)
 
 	// ---------------------------------------------------------------
 	// Step 3.5 — Auto-invoke .agency/ migration if present (REQ-VVCR-025)
@@ -218,7 +218,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 			return result, fmt.Errorf("step 3.5: auto-invoke migrate agency: %w", err)
 		}
 		result.AgencyMigrated = true
-		fmt.Fprintln(out, "[clean-reinstall] .agency/ → .moai/ migration completed")
+		_, _ = fmt.Fprintln(out, "[clean-reinstall] .agency/ → .moai/ migration completed")
 	}
 
 	// ---------------------------------------------------------------
@@ -235,7 +235,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		}
 	}
 	result.RemovedPaths = deprecated
-	fmt.Fprintf(out, "[clean-reinstall] Removed %d deprecated paths\n", len(deprecated))
+	_, _ = fmt.Fprintf(out, "[clean-reinstall] Removed %d deprecated paths\n", len(deprecated))
 
 	// ---------------------------------------------------------------
 	// Step 5 — Reinstall embedded templates
@@ -268,7 +268,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	if deployErr := deployer.Deploy(ctx, projectRoot, mgr, tmplCtx); deployErr != nil {
 		return result, fmt.Errorf("step 5: reinstall templates: %w", deployErr)
 	}
-	fmt.Fprintln(out, "[clean-reinstall] Embedded templates reinstalled")
+	_, _ = fmt.Fprintln(out, "[clean-reinstall] Embedded templates reinstalled")
 
 	// ---------------------------------------------------------------
 	// Step 6 — MERGE-back PRESERVE inventory
@@ -276,7 +276,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	if err := mergeBackPreserveInventory(projectRoot, inv, finalBackupDir); err != nil {
 		return result, fmt.Errorf("step 6: merge-back PRESERVE inventory: %w", err)
 	}
-	fmt.Fprintln(out, "[clean-reinstall] PRESERVE inventory restored")
+	_, _ = fmt.Fprintln(out, "[clean-reinstall] PRESERVE inventory restored")
 
 	// ---------------------------------------------------------------
 	// Step 7 — Integrity verification (REQ-VVCR-023)
@@ -301,10 +301,10 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	result.IntegrityPassed = len(mismatches) == 0
 
 	if !result.IntegrityPassed {
-		fmt.Fprintf(out, "[clean-reinstall] Integrity check FAILED: %d mismatches\n", len(mismatches))
+		_, _ = fmt.Fprintf(out, "[clean-reinstall] Integrity check FAILED: %d mismatches\n", len(mismatches))
 		return result, fmt.Errorf("step 7: PRESERVE integrity violation on %d paths (backup retained at %s)", len(mismatches), finalBackupDir)
 	}
-	fmt.Fprintln(out, "[clean-reinstall] Integrity check PASSED")
+	_, _ = fmt.Fprintln(out, "[clean-reinstall] Integrity check PASSED")
 
 	return result, nil
 }
