@@ -295,7 +295,7 @@ The model's built-in reasoning mode (Opus 4.7 and later, including 4.8) that dyn
 | `ultrathink` | Keyword | Claude native extended reasoning | YES |
 | Adaptive Thinking | Automatic | Opus 4.7+ built-in (incl. 4.8) | YES |
 
-Rules: `ultrathink` → ALWAYS use Claude native extended reasoning with high effort.
+Rules: `ultrathink` → ALWAYS use Claude native extended reasoning with xhigh effort.
 
 ### When to Activate
 

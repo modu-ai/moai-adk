@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: bfa6efa5185c5cf623dac9a4394280cadc2bff2ec983aa3f876d1289bbaa9bec
+              hash: baf997fb327133ce141ae8abc0ae6e8c9595b858bbea924fe3f568ddffc259e8
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -26,7 +26,7 @@ catalog:
             - name: moai-foundation-thinking
               tier: core
               path: templates/.claude/skills/moai-foundation-thinking/
-              hash: d4c0ca01403d9c42ffbde16a436d6b9fe2edda89d43ce55cce5ec23a2f4dafbd
+              hash: d6c06792c5ebc710161a3cf6f3d0905f46cec5600ef268b8d4422fffb2d6bb44
               version: 1.0.0
             - name: moai-harness-learner
               tier: core

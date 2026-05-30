@@ -64,7 +64,7 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
 
 ### Field-by-Field Specification
 
-- **Block 1**: `ultrathink.` triggers Adaptive Thinking max effort on Opus 4.7+ (next session lacks accumulated reasoning). `<phase>` ∈ `plan | run | sync | loop`.
+- **Block 1**: `ultrathink.` triggers Adaptive Thinking xhigh effort on Opus 4.7+ (next session lacks accumulated reasoning). `<phase>` ∈ `plan | run | sync | loop`.
 - **Block 2**: `applied lessons:` — relevant memory files from `~/.claude/projects/{hash}/memory/`. MUST include the most recent relevant project memory + any relevant lessons. Block 2 MUST also include a `source_session_id: <UUID>` line carrying the Claude Code session_id of the orchestrator turn that generated this resume message (REQ-COORD-009 of SPEC-V3R6-MULTI-SESSION-COORD-001 L2). The session_id is the same value emitted by `moai session list --json` and stored in `.moai/state/active-sessions.json` — readers can correlate the resume back to its originating session.
   - **Environment fallback** [HARD]: if `moai session list --json` returns error (CLI not installed in PATH) OR `.moai/state/active-sessions.json` does not exist (SPEC-V3R6-MULTI-SESSION-COORD-001 not yet deployed in this project), the orchestrator MUST emit the recognized fallback pattern verbatim: `source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>`. This pattern is NOT an anti-pattern; it is the prescribed graceful degradation when the CLI/registry layer is absent. The next session, upon `/moai session register` activation, MAY backfill the UUID by appending a `[backfilled: <UUID>]` annotation to the memory file's Block 2 line.
 - **Block 3**: separator + `전제 검증:` (Korean) or `Preconditions:` (English).
@@ -116,7 +116,7 @@ At session end, the orchestrator displays: (1) the message in a fenced ```text``
 
 - Free-form prose handoff — no executable context.
 - Resume without preconditions — next session cannot detect state drift.
-- Resume without `ultrathink.` — fails to activate max effort.
+- Resume without `ultrathink.` — fails to activate xhigh effort.
 - Resume saved only to chat, not auto-memory — lost across `/clear`.
 - Duplicate memory entries without `[SUPERSEDED by ...]` markers — index pollution.
 - Resume Block 2 missing `source_session_id: <UUID>` **AND missing the environment fallback pattern** (`<not-available — environment-fallback, ...>`) — multi-session coordination L2 (SPEC-V3R6-MULTI-SESSION-COORD-001) cannot correlate the resume back to its originating session for race attribution. The environment fallback pattern itself is NOT an anti-pattern; only the complete absence of both UUID and fallback pattern is the violation.

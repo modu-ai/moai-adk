@@ -227,7 +227,7 @@ Every English text label inside the templates below — banner names, section he
 - Box-drawing and arrow characters: ─ │ └─ ┌ ┐ ┘ └ ▶ → ← ⏭ ⏮
 - Horizontal rules: `---`
 - Code/command literals: `go test ./...`, `gh pr create`, `git fetch origin main`, `/moai <subcommand>`, `<moai>DONE</moai>`, `<moai>COMPLETE</moai>`, `~/.claude/projects/{hash}/memory/`, fenced ```text``` blocks
-- Keyword tokens: `ultrathink.` (activates Adaptive Thinking max effort — treat as command keyword, NOT translatable English)
+- Keyword tokens: `ultrathink.` (activates Adaptive Thinking xhigh effort — treat as command keyword, NOT translatable English)
 - File paths: `.moai/config/sections/language.yaml`, `.moai/specs/<SPEC-ID>/progress.md`, etc.
 - Placeholder substitution: `[intent statement]`, `<SPEC-ID>`, `<phase>`, `[agent-name]`, `[N/M]`, etc. — substitute with the actual value for the current turn; do NOT keep the English placeholder text verbatim in output
 
@@ -678,7 +678,7 @@ Header translation table (translate per `conversation_language` setting in `.moa
 | Block 1 verb (entering) | `entering` | `진입` | `開始` | `进入` |
 
 Pre-emit self-check (MUST verify all 9 before printing):
-- [ ] Block 1 starts with `ultrathink.` (activates Adaptive Thinking max effort in next session)
+- [ ] Block 1 starts with `ultrathink.` (activates Adaptive Thinking xhigh effort in next session)
 - [ ] Block 2 lists ≥1 memory file from `~/.claude/projects/{hash}/memory/` (most recent project memory + relevant lessons)
 - [ ] Block 2 includes `source_session_id: <UUID>` line carrying current orchestrator turn's session_id (SPEC-V3R6-MULTI-SESSION-COORD-001 L2 / REQ-COORD-010 — enables race attribution across multi-session work)
 - [ ] Block 4 has ≤4 numbered preconditions, each independently verifiable (`git`/`gh`/file existence command)

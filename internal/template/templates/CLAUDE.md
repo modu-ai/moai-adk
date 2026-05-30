@@ -398,7 +398,7 @@ Resume interrupted agent work using agentId:
 
 MoAI-ADK integrates multiple MCP servers for specialized capabilities:
 
-- **UltraThink** (`ultrathink` keyword): Sets `effort: max` in Claude Code v2.1.110+. On claude-opus-4-7 and later (including claude-opus-4-8), this triggers Adaptive Thinking (dynamically allocated reasoning tokens, no fixed budget_tokens). For older models, maps to extended thinking with high budget. No MCP dependency — compatible with all APIs.
+- **UltraThink** (`ultrathink` keyword): Sets `effort: xhigh` in Claude Code v2.1.110+. On claude-opus-4-7 and later (including claude-opus-4-8), this triggers Adaptive Thinking (dynamically allocated reasoning tokens, no fixed budget_tokens). For older models, maps to extended thinking with high budget. No MCP dependency — compatible with all APIs.
 - **Adaptive Thinking** (Opus 4.7+, including 4.8): the model's thinking mode. Unlike earlier models that use `budget_tokens`, Adaptive Thinking dynamically allocates reasoning based on task complexity. On Opus 4.7 and later it is the only supported thinking mode and is off by default — enable via `thinking: {type: "adaptive"}`; depth is controlled by `effort` level (high/xhigh/max) — not by `budget_tokens` (which now returns HTTP 400). See Skill("moai-workflow-thinking").
 - **Context7**: Up-to-date library documentation lookup via resolve-library-id and get-library-docs.
 - **claude-in-chrome**: Browser automation for web-based tasks.

@@ -74,7 +74,7 @@ Claude models support effort levels that control reasoning depth (Opus 4.8 calib
 - medium: cost-sensitive work that can trade off intelligence
 - low: short, scoped, latency-sensitive tasks
 
-Note: `ultrathink` is a Claude Code one-turn keyword that adds an in-context request for deeper reasoning on that prompt only; per official Claude Code docs it does NOT change the session effort level sent to the API (it is orthogonal to the low/medium/high/xhigh/max ladder above).
+Note: `ultrathink` is a Claude Code one-turn keyword that requests deeper reasoning for that prompt; MoAI standardizes it to `effort: xhigh` (the coding/agentic level above) for that turn.
 
 ## Rules
 
