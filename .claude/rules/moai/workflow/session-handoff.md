@@ -192,8 +192,11 @@ At session end, the orchestrator displays: (1) the message in a fenced ```text``
 # V0-a: informational baseline (blocking 아님 — multi-session 정상 환경에서 16-19 expected)
 ps aux | grep -iE '\bclaude\b' | grep -v -E 'plugin|Helper|Application|antigravity|grep' | wc -l
 
-# V0-b: critical blocking — 본 WT cwd로 file handle 보유 claude session 수
-lsof +D "$PWD" 2>/dev/null | grep -iE 'claude' | wc -l   # STRICT 0
+# V0-b: critical blocking — 본 WT 내부에 file handle 보유한 claude *프로세스* 수
+# 주의: `grep -iE 'claude'` 단독은 파일명에 'claude' 포함된 콘텐츠(claude-*.md 등)까지 매칭하는
+#       false-positive 결함이 있다 (Hugo docs 서버 PID 1개 → 8 entry 오탐, cross-line 입증).
+#       반드시 COMMAND 컬럼으로 claude *프로세스*만 필터한다 (`lsof -a -c claude`).
+lsof -a -c claude +D "$PWD" 2>/dev/null | awk 'NR>1' | wc -l   # STRICT 0
 
 # V0-c: critical blocking — cwd가 본 WT인 active claude session 수 (본 세션 + parent process만)
 lsof -a -c claude -d cwd 2>/dev/null | awk 'NR>1 && $NF ~ /<본_WT_경로>/' | wc -l   # STRICT ≤2
@@ -220,6 +223,7 @@ V0-b ≥ 1 OR V0-c ≥ 3 시 (다른 precondition V1/V2/V3 PASS 여부 무관):
 - **AP-V-001**: `ps aux` raw count `≤ 2 STRICT`을 단독 V0 검증으로 사용 → environmental baseline noise (multi-session normal state에서 16-19 sessions은 정상)
 - **AP-V-002**: V0 FAIL 후 "사용자 약속 누적 미이행 N회" 본문 추적 → 죄책감 부담만 부과 + 실질 행동 변화 0 + paste-ready 비대화 → 도구화 anti-pattern
 - **AP-V-003**: V0 FAIL 시 AskUserQuestion에 강행 옵션 (option D "override + spawn") 제시 → doctrine 위반
+- **AP-V-004**: V0-b 측정에 `lsof +D "$PWD" | grep -iE 'claude'` 사용 → 파일명에 'claude' 포함된 콘텐츠(`claude-md-guide.md`·`claude-design-handoff.md` 등)까지 매칭하는 false-positive (Hugo docs 서버 PID 1개가 8 entry로 오탐 → LIFECYCLE-SYNC-GATE-001 M4 1·2차에서 동일 false abort 유발). COMMAND 컬럼 프로세스 필터 `lsof -a -c claude +D "$PWD"` 필수 — genuine claude race signal만 카운트해야 abort 의무가 정확히 발동한다
 
 ## Worktree-Anchored Resume Pattern
 
