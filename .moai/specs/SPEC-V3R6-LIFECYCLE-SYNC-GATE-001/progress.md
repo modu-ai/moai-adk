@@ -619,10 +619,14 @@ in internal/template unrelated to SPEC scope"). M5 adds 2 new drift entries
 **expected and out-of-scope** — reconciled by a future batch template-sync chore per
 plan.md AP-4 / Section B B-CRITICAL note.
 
-## §A.6 Placeholder — M6 (deferred to subsequent milestone)
+## §A.6 — M6 (implemented 2026-05-30)
 
 **M6 — No-Op Regression Validation** (5 already-discharged SPECs: ARR-001 / FCG-001 /
-HCW-001 / TMD-001 / TMC-001) — depends on M1-M5 all implemented.
+HCW-001 / TMD-001 / TMC-001) — **IMPLEMENTED**. All 5 SPECs exit 0 as no-op via
+`moai spec close --backfill-only`, 0 commits produced, `.moai/logs/lifecycle-close.log`
+accumulated 5 entries (AC-LSG-018: 5 ≥5, AC-LSG-020: 5 distinct ≥5). Required M1/M2
+remediation first (commit `b1710fd92`) — see § §E.1 M6 evidence block for the defect
+catalogue and verbatim AC verification command outputs.
 
 ## §E.0 Run-phase Sentinel Evidence (M1 partial)
 
@@ -663,6 +667,56 @@ the orchestrator-direct Mx chore respectively, after all M1-M6 milestones comple
 |-----------|-------|-----------|--------|-------|-----|----------|
 | M5 — Rule File Authoring | manager-develop | 2026-05-30 | (pending — M5 atomic commit) | 2 (1 NEW lifecycle-sync-gate.md + 1 MODIFY spec-frontmatter-schema.md) + progress.md | ≥ 250 lines lifecycle-sync-gate.md + +6 lines spec-frontmatter-schema.md | N/A (documentation milestone — no Go code) |
 
+### §E.1 M6 row (no-op regression dogfood + M1/M2 remediation)
+
+| Milestone | Owner | Completed | Commit | Files | LOC | Coverage |
+|-----------|-------|-----------|--------|-------|-----|----------|
+| M1/M2 remediation (closer no-op predicate relaxation + lifecycle-close.log emission) | manager-develop | 2026-05-30 | b1710fd92 | 2 (closer.go + closer_test.go MODIFY) | +570 / -27 lines | internal/spec 86.3% (≥85% D.2 threshold) |
+| M6 — No-Op Regression Dogfood (5 already-discharged SPECs) | manager-develop | 2026-05-30 | (this progress.md commit) | progress.md only (runtime log .moai/logs/ is gitignored) | N/A (dogfood — no source change) | N/A |
+
+### §E.1 M6 evidence block (AC-LSG-018 / AC-LSG-020 verification)
+
+**M1/M2 remediation context** — the prior M6 dogfood attempt produced a validated blocker report identifying two real defects in this SPEC's own M1/M2 deliverables, which prevented AC-LSG-018/020/022 from passing:
+
+1. **Defect 1 — no-op detection too strict** (`internal/spec/closer.go`): the triple-AND gate `status=="completed" && SyncCommitSHA!="" && MxCommitSHA!=""` failed for 4 of 5 target SPECs because their §E.5 `mx_commit_sha` was left in non-extractable forms (absent / `null` / `(this commit)` placeholder / empty) by the orchestrator-direct Mx chores (2026-05-25). Fix: in `--backfill-only` mode, key the no-op predicate ONLY on `spec.md status == "completed"`. Truth-table-safe against AC-LSG-022 (the 3 transition fixtures Y_N_N_Y / Y_Y_N_Y / Y_Y_Y_Y_StatusDrift all carry `status: implemented`, never entering the no-op branch).
+2. **Defect 2 — `.moai/logs/lifecycle-close.log` write code did not exist** (NFR-LSG-004 / AC-LSG-020): no code anywhere emitted the audit log (M1 claimed "DEFERRED to M2", M2 claimed `spec_close.go` "wires the file write" — both false). Fix: `Close()` now appends one 7-field JSON line per invocation; the log `result` field maps the in-memory `"noop"` to `"success"` (no-op IS a success per AC-LSG-020), reconciling AC-LSG-018's jq filter (`result=="success" && transitions=={}`) with AC-LSG-020's `result=="success"` filter.
+
+**M6 dogfood results** (5 sequential `moai spec close <ID> --backfill-only --json` against the real project):
+
+| SPEC | spec.md status | mx_commit_sha state | close exit | no-op | transitions |
+|------|----------------|---------------------|-----------|-------|-------------|
+| SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 | completed | field absent | 0 | true | {} |
+| SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001 | completed | field absent | 0 | true | {} |
+| SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001 | completed | `null` | 0 | true | {} |
+| SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001 | completed | field absent | 0 | true | {} |
+| SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001 | completed | `(this commit)` placeholder | 0 | true | {} |
+
+**AC verification command outputs** (verbatim):
+
+```text
+# AC-LSG-018 — jq filter: mode=backfill-only && result=success && transitions=={} → ≥5
+$ jq -c 'select(.mode == "backfill-only" and .result == "success" and .transitions == {})' \
+    .moai/logs/lifecycle-close.log | wc -l
+5
+
+# AC-LSG-020 — log exists + ≥5 distinct successful spec_ids
+$ test -f .moai/logs/lifecycle-close.log ; echo $?
+0
+$ jq -c 'select(.result=="success") | .spec_id' .moai/logs/lifecycle-close.log | sort -u | wc -l
+5
+
+# 0-commit verification — HEAD unchanged across all 5 no-op closes
+$ git rev-parse HEAD   # before AND after dogfood == b1710fd92e8761fbf2b53b537adb4db1dbf15b87
+
+# audit drift — 0 genuine MUST-FIX status-drift findings for the 5 SPECs
+$ moai spec audit --filter-era=V3R6 --json | jq '[.drift_findings[]? \
+    | select(.spec_id | test("ARR-001|FCG-001|HCW-001|TMD-001|TMC-001")) \
+    | select(.finding_type | test("Y_N_N_Y|Y_Y_N_Y|StatusDrift"))] | length'
+0
+```
+
+**Audit drift note (interpretation)**: the literal `[.drift_findings[]] | length` count for the 5 SPECs returns 3, but all 3 are `finding_type: "EraAutoDetected"`, `severity: "INFO"` — informational era-auto-detection notices emitted for 3 SPECs (ARR-001 / FCG-001 / TMD-001) that lack an explicit `era:` frontmatter field. These are NOT status-drift findings. The genuine drift count (MUST-FIX severity OR Y_N_N_Y / Y_Y_N_Y / Y_Y_Y_Y_StatusDrift finding_type) is **0**, satisfying AC-LSG-018 part 4 ("the audit tool does not erroneously surface drift for already-completed modern-era SPECs"). Suppressing the INFO finding would require adding `era: V3R6` to the 3 sibling SPECs' frontmatter — out of run-phase scope (forbidden sibling-SPEC modification); it is correct, by-design behavior per `.claude/rules/moai/workflow/lifecycle-sync-gate.md` § Worked Example.
+
 ## §E.3 Run-phase status field
 
 ```yaml
@@ -673,5 +727,5 @@ m2_status: implemented
 m3_status: implemented
 m4_status: implemented
 m5_status: implemented
-m6_status: pending
+m6_status: implemented
 ```
