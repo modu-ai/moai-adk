@@ -14,12 +14,12 @@ Agent definition `model` field accepts only these values:
 - sonnet: Claude Sonnet (balanced)
 - haiku: Claude Haiku (fastest, lowest cost)
 
-Current model generation mapping (as of v2.1.69):
-- opus = Opus 4.6 (default effort: medium for Max/Team, use "ultrathink" keyword for high effort)
-- sonnet = Sonnet 4.6
-- haiku = Haiku 4.5
+Current model generation mapping:
+- opus = Opus 4.8 (default effort: high across all surfaces incl. Claude Code; set xhigh explicitly for coding/agentic work)
+- sonnet = Sonnet (current generation)
+- haiku = Haiku (current generation)
 
-Opus 4.6 fast mode: 1M context window with faster output. Toggle with /fast.
+Opus 4.8 serves the full 1M token context window by default (no beta header, no long-context premium). Fast mode (speed: "fast") is a research preview for higher output throughput.
 
 Invalid values (NEVER use):
 - glm: Not a model field value (GLM is configured via environment variables)
@@ -68,10 +68,13 @@ CG Mode (Claude + GLM) uses environment variable overrides, not model field chan
 
 ## Effort Levels
 
-Claude models support effort levels that control reasoning depth:
-- low: Fastest responses, less thorough
-- medium: Default for Max/Team subscribers (v2.1.68+)
-- high: Deep reasoning, activated by "ultrathink" keyword
+Claude models support effort levels that control reasoning depth (Opus 4.8 calibration):
+- xhigh: best setting for coding and agentic use cases
+- high: default on Opus 4.8 across all surfaces; minimum for intelligence-sensitive work
+- medium: cost-sensitive work that can trade off intelligence
+- low: short, scoped, latency-sensitive tasks
+
+Note: `ultrathink` is a Claude Code one-turn keyword that adds an in-context request for deeper reasoning on that prompt only; per official Claude Code docs it does NOT change the session effort level sent to the API (it is orthogonal to the low/medium/high/xhigh/max ladder above).
 
 ## Rules
 

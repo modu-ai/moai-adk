@@ -304,7 +304,7 @@ Trigger detected
 
 ## Free-form Circumvention Prohibition
 
-Free-form interrogative prose in the response body is **prohibited** as a substitute for `AskUserQuestion`. Using free-form prose questions is prohibited and circumvents the required AskUserQuestion channel. This prohibition is absolute and cannot be overridden by the appearance of a "simple" or "quick" question.
+Free-form interrogative prose in the response body MUST NOT be used as a substitute for `AskUserQuestion` — always use AskUserQuestion.
 
 ### Why this matters
 

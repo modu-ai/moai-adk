@@ -31,7 +31,7 @@ Standard MCP servers in MoAI-ADK:
 - claude-in-chrome: Browser automation
 - zai-mcp-server (optional): Z.AI hosted MCP for Vision OCR / WebSearch / WebReader. Registered via `moai glm tools enable [vision|websearch|webreader|all]`.
 
-> Sequential Thinking MCP was retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001. Use the `ultrathink` keyword (Adaptive Thinking on Opus 4.7+) for deep reasoning.
+> Sequential Thinking MCP was retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001. Use the `ultrathink` keyword (Adaptive Thinking on Opus 4.7+ / 4.8) for deep reasoning.
 
 **`alwaysLoad` field (Claude Code v2.1.119+)**
 
@@ -106,7 +106,7 @@ Example `.mcp.json` configuration:
 - Architecture decisions
 - Technology trade-off analysis
 
-Use the `ultrathink` keyword in user prompts to activate Adaptive Thinking (Opus 4.7+). This is the canonical deep-reasoning path; Sequential Thinking MCP was retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001.
+Use the `ultrathink` keyword in user prompts to activate Adaptive Thinking (Opus 4.7+ / 4.8). This is the canonical deep-reasoning path; Sequential Thinking MCP was retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001.
 
 ### MoAI Configuration
 

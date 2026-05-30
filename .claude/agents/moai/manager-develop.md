@@ -197,7 +197,7 @@ For each test case:
 
 **STEP 3: GREEN Phase - Minimal Implementation**
 For each failing test:
-1. **Write Minimal Code**: Simplest solution that passes the test
+1. **Write Minimal Code**: Implement the general solution the test specifies — tests verify behavior, they do not define it. Do not hard-code outputs to the specific test inputs; the implementation must generalize beyond the literal fixtures.
 2. **LSP Verification**: Check for regression from baseline
 3. **Verify Test Passes**: Run immediately
 4. **Check Completion**: LSP errors == 0, all tests pass

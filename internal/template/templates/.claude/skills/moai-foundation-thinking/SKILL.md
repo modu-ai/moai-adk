@@ -284,16 +284,16 @@ Examples and reference: [examples.md](references/philosopher-examples.md), [refe
 
 ---
 
-## Adaptive Thinking (Opus 4.7 built-in)
+## Adaptive Thinking (Opus 4.7+ built-in, including 4.8)
 
-Opus 4.7's built-in reasoning mode that dynamically allocates reasoning tokens based on task complexity.
+The model's built-in reasoning mode (Opus 4.7 and later, including 4.8) that dynamically allocates reasoning tokens based on task complexity.
 
 ### Reasoning Modes
 
 | Mode | Trigger | Mechanism | GLM Compatible? |
 |------|---------|-----------|-----------------|
 | `ultrathink` | Keyword | Claude native extended reasoning | YES |
-| Adaptive Thinking | Automatic | Opus 4.7 built-in | YES |
+| Adaptive Thinking | Automatic | Opus 4.7+ built-in (incl. 4.8) | YES |
 
 Rules: `ultrathink` → ALWAYS use Claude native extended reasoning with high effort.
 
@@ -302,6 +302,10 @@ Rules: `ultrathink` → ALWAYS use Claude native extended reasoning with high ef
 Architecture decisions affecting 3+ files, technology selection between options, breaking changes under consideration, performance vs maintainability trade-offs, complex problems with multiple viable approaches.
 
 On Opus 4.7+: Adaptive Thinking handles reasoning depth automatically — no fixed budget needed. The orchestrator activates deep reasoning by prepending the `ultrathink` keyword to the user prompt.
+
+### Steering thinking down (optional)
+
+A large system prompt (loading CLAUDE.md plus many rule files) can cause the model to think more than a routine turn warrants. To suppress over-triggered reasoning on simple turns, you may add a steer such as: "Thinking adds latency and should only be used when it will meaningfully improve answer quality — typically for problems that require multi-step reasoning. When in doubt, respond directly." The `ultrathink` keyword still overrides this to force deeper reasoning when needed.
 
 ---
 
