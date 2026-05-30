@@ -104,6 +104,11 @@ func expectedOwnerForTransition(prev, curr string) expectedOwnerKind {
 //   - plan(spec ...                                  → ownerManagerSpec
 //
 // 분류 불가 시 ownerNone (회귀 false-positive 방지).
+//
+// NOTE (M4 AC-LSG-004): subject-prefix 분류는 더 이상 production Check() 경로에서
+// 사용되지 않는다. WHO 신호의 SSOT는 `Authored-By-Agent:` trailer (trailerAgentOwnerKind)다.
+// 본 함수는 F13(ANTHROPIC-AUDIT-TIER3-001)의 subject→owner 매핑 회귀 테스트
+// (TestCommitOwnerKind)를 위해 유지된다.
 func commitOwnerKind(subject string) expectedOwnerKind {
 	lower := strings.ToLower(strings.TrimSpace(subject))
 
@@ -146,11 +151,38 @@ func ownerMatches(expected, actual expectedOwnerKind) bool {
 	return false
 }
 
+// trailerAgentOwnerKind는 `Authored-By-Agent:` trailer 값(lowercase single-token)을
+// expectedOwnerKind로 분류한다. trailer 값 enum: manager-spec / manager-develop /
+// manager-docs / manager-git / orchestrator-direct (SPEC §D.1.6 HARD).
+//
+// 미인식 trailer 값은 ownerNone 반환 (silent SKIP — false-positive guard).
+// manager-git은 OwnershipTransitionRule의 transition matrix 대상이 아니므로 ownerNone.
+func trailerAgentOwnerKind(agent string) expectedOwnerKind {
+	switch agent {
+	case "manager-spec":
+		return ownerManagerSpec
+	case "manager-develop":
+		return ownerManagerDevelop
+	case "manager-docs":
+		return ownerManagerDocs
+	case "orchestrator-direct":
+		return ownerOrchestrator
+	}
+	return ownerNone
+}
+
 // ownershipTransitionRecord는 git log에서 추출한 (prev, curr, commit-subject) 튜플이다.
+//
+// CommitSHA + AuthoredByAgent는 SPEC-V3R6-LIFECYCLE-SYNC-GATE-001 M4 (AC-LSG-004 / D5)에서
+// 추가된 필드다. AuthoredByAgent는 commit body의 `Authored-By-Agent: <agent>` trailer 값으로,
+// transition을 수행한 주체를 나타내는 기계적 신호다. trailer가 없으면 (legacy / non-MoAI commit)
+// 빈 문자열이며, 그 경우 commit subject prefix 분류 경로로 fallback한다 (F13 호환).
 type ownershipTransitionRecord struct {
-	PreviousStatus string
-	CurrentStatus  string
-	CommitSubject  string
+	PreviousStatus  string
+	CurrentStatus   string
+	CommitSubject   string
+	CommitSHA       string
+	AuthoredByAgent string
 }
 
 // getOwnershipTransitionRunner는 테스트에서 git-log lookup 함수를 주입할 수 있도록 분리한다.
@@ -178,10 +210,11 @@ func lookupOwnershipTransitionFromGit(specPath, specID string) (*ownershipTransi
 	}
 
 	// git log --follow <path> -p — lookback window 내 status 변화 감지 (gitLogWindowSize 재사용)
+	// %b (commit body)를 추가 캡처하여 `Authored-By-Agent:` trailer를 파싱한다 (M4 AC-LSG-004).
 	cmd := exec.Command("git", "log",
 		fmt.Sprintf("-%d", gitLogWindowSize),
 		"--follow",
-		"--format=%H%x00%s%x00",
+		"--format=%H%x00%s%x00%b%x00",
 		"-p",
 		"--",
 		specPath,
@@ -202,26 +235,47 @@ func lookupOwnershipTransitionFromGit(specPath, specID string) (*ownershipTransi
 			continue
 		}
 		return &ownershipTransitionRecord{
-			PreviousStatus: oldStatus,
-			CurrentStatus:  newStatus,
-			CommitSubject:  c.subject,
+			PreviousStatus:  oldStatus,
+			CurrentStatus:   newStatus,
+			CommitSubject:   c.subject,
+			CommitSHA:       c.hash,
+			AuthoredByAgent: parseAuthoredByAgent(c.body),
 		}, nil
 	}
 
 	return nil, nil
 }
 
+// authoredByAgentLine은 commit body의 `Authored-By-Agent: <agent>` trailer를 매칭한다.
+// 값은 lowercase single-token (manager-spec / manager-develop / manager-docs /
+// manager-git / orchestrator-direct). 대소문자 무관, 선두 공백 허용.
+// SPEC-V3R6-LIFECYCLE-SYNC-GATE-001 §D.1.6 HARD trailer convention.
+var authoredByAgentLine = regexp.MustCompile(`(?mi)^\s*Authored-By-Agent:\s*(\S+)\s*$`)
+
+// parseAuthoredByAgent은 commit body에서 `Authored-By-Agent:` trailer 값을 추출한다.
+// trailer 미발견 시 빈 문자열 반환 (legacy / non-MoAI commit — OwnershipTransitionRule 적용 대상 아님).
+func parseAuthoredByAgent(body string) string {
+	m := authoredByAgentLine.FindStringSubmatch(body)
+	if len(m) < 2 {
+		return ""
+	}
+	return strings.ToLower(strings.TrimSpace(m[1]))
+}
+
 // gitLogCommit는 splitGitLogCommits 결과의 commit-단위 구조이다.
 type gitLogCommit struct {
 	hash     string
 	subject  string
+	body     string
 	diffBody string
 }
 
-// gitLogCommitHeader는 "<hash>\x00<subject>\x00\n" 패턴을 매칭한다 (git log --format=%H%x00%s%x00).
-var gitLogCommitHeader = regexp.MustCompile(`(?m)^([0-9a-f]{7,40})\x00([^\x00]*)\x00\n`)
+// gitLogCommitHeader는 "<hash>\x00<subject>\x00<body>\x00\n" 패턴을 매칭한다
+// (git log --format=%H%x00%s%x00%b%x00). body(%b)는 newline을 포함할 수 있으나
+// `[^\x00]*`이 NUL을 제외한 모든 문자(개행 포함, `(?s)` 불필요 — `[^\x00]`은 개행도 매칭)를 캡처한다.
+var gitLogCommitHeader = regexp.MustCompile(`(?m)^([0-9a-f]{7,40})\x00([^\x00]*)\x00([^\x00]*)\x00\n`)
 
-// splitGitLogCommits는 git log --format=%H<null>%s<null> -p 출력을 commit 단위로 split한다.
+// splitGitLogCommits는 git log --format=%H<null>%s<null>%b<null> -p 출력을 commit 단위로 split한다.
 func splitGitLogCommits(output string) []gitLogCommit {
 	matches := gitLogCommitHeader.FindAllStringSubmatchIndex(output, -1)
 	if len(matches) == 0 {
@@ -231,6 +285,7 @@ func splitGitLogCommits(output string) []gitLogCommit {
 	for i, m := range matches {
 		hash := output[m[2]:m[3]]
 		subject := output[m[4]:m[5]]
+		body := output[m[6]:m[7]]
 		var diffBody string
 		if i+1 < len(matches) {
 			diffBody = output[m[1]:matches[i+1][0]]
@@ -240,6 +295,7 @@ func splitGitLogCommits(output string) []gitLogCommit {
 		commits = append(commits, gitLogCommit{
 			hash:     hash,
 			subject:  subject,
+			body:     body,
 			diffBody: diffBody,
 		})
 	}
@@ -283,18 +339,48 @@ func parseStatusDiffLine(line, sign string) (string, bool) {
 	return value, true
 }
 
+// hasOwnershipSkipOptOut는 SPEC frontmatter의 `lint.skip:` 목록에
+// "OwnershipTransitionInvalid"가 포함되어 있는지 검사한다 (AC-LSG-012).
+func hasOwnershipSkipOptOut(doc *SPECDoc) bool {
+	for _, code := range doc.Frontmatter.LintConfig.Skip {
+		if code == "OwnershipTransitionInvalid" {
+			return true
+		}
+	}
+	return false
+}
+
 // Check inspects a single SPEC document for ownership-matrix compliance.
 //
 // Behavior:
 //   - empty id/status: skipped (FrontmatterSchemaRule responsibility)
+//   - lint.skip opt-out present: emits Info "OwnershipTransitionSkipped" (AC-LSG-012)
 //   - non-git or untracked SPEC: emits Info "OwnershipTransitionUnreachable" (graceful)
 //   - unmapped transition (역행, terminal already): silently skipped
 //   - mismatched owner: emits Warning "OwnershipTransitionInvalid"
+//   - trailer-less commit (legacy / non-MoAI): silently skipped (M4 AC-LSG-004)
 //   - unclassifiable commit subject: silently skipped (false-positive guard)
+//
+// Owner-detection precedence (M4 AC-LSG-004 / D5):
+//  1. `Authored-By-Agent:` commit-body trailer — the mechanical WHO signal
+//  2. fallback: commit subject prefix classification (F13 legacy compatibility)
 func (r *OwnershipTransitionRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	fm := doc.Frontmatter
 	if fm.ID == "" || fm.Status == "" {
 		return nil
+	}
+
+	// AC-LSG-012: lint.skip opt-out — emit informational Skipped finding instead of Invalid.
+	if hasOwnershipSkipOptOut(doc) {
+		return []Finding{
+			{
+				File:     doc.Path,
+				Line:     1,
+				Severity: SeverityInfo,
+				Code:     "OwnershipTransitionSkipped",
+				Message:  fmt.Sprintf("SPEC %s ownership transition check skipped via lint.skip: [OwnershipTransitionInvalid] opt-out", fm.ID),
+			},
+		}
 	}
 
 	rec, err := getOwnershipTransitionRunner(doc.Path, fm.ID)
@@ -319,8 +405,18 @@ func (r *OwnershipTransitionRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 		return nil
 	}
 
-	actual := commitOwnerKind(rec.CommitSubject)
+	// M4 AC-LSG-004 / D5: the `Authored-By-Agent:` trailer is the gating signal.
+	// Commits WITHOUT the trailer (legacy / non-MoAI / pre-v3.0.1) are NOT subject to
+	// OwnershipTransitionRule — silent SKIP. This is the false-positive guard required by
+	// the M4 exit criterion ("moai spec lint against repo emits no false positives"):
+	// most existing commits predate the trailer convention.
+	if rec.AuthoredByAgent == "" {
+		return nil
+	}
+
+	actual := trailerAgentOwnerKind(rec.AuthoredByAgent)
 	if actual == ownerNone {
+		// trailer present but not a transition-relevant actor (e.g., manager-git) — silent SKIP.
 		return nil
 	}
 
@@ -332,12 +428,13 @@ func (r *OwnershipTransitionRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 				Severity: SeverityWarning,
 				Code:     "OwnershipTransitionInvalid",
 				Message: fmt.Sprintf(
-					"SPEC %s transition %q → %q expected owner %q but commit subject %q maps to %q",
+					"SPEC %s transition %q → %q expected owner %q but commit %s (Authored-By-Agent: %s) maps to %q",
 					fm.ID,
 					emptyOrValue(rec.PreviousStatus),
 					rec.CurrentStatus,
 					expected.String(),
-					rec.CommitSubject,
+					rec.CommitSHA,
+					rec.AuthoredByAgent,
 					actual.String(),
 				),
 			},

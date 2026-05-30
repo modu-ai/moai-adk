@@ -412,13 +412,130 @@ Hook emits exit 2 + structured JSON only (no user interaction surface).
 - `.moai/research/*`, `scripts/audit-spec-sync-drift.sh` (untracked carry) — preserved as-is, not staged
 - `pkg/version/version.go` (out-of-scope drift detected during run-phase) — reverted to baseline by orchestrator before M3 commit; drift origin remains unknown (not introduced by M3)
 
-## §A.4 M4-M6 Placeholder (deferred to subsequent milestones)
+## §A.4 M4 — spec-lint OwnershipTransitionRule Extension (implemented)
+
+**Status**: implemented (this milestone)
+**Started**: 2026-05-30 (post-M3 paste-ready resume)
+
+### Phase 0.95 Mode Selection (M4 spawn)
+
+Orchestrator selected **Mode 5 — Sub-Agent Sequential** per
+`.claude/rules/moai/workflow/orchestration-mode-selection.md` § Mode Catalog.
+
+**Decision**: sub-agent
+
+**Rationale**: Tier L scope with M4 narrowed to **2 Go files** (1 MODIFY rule body
++ 1 MODIFY test) inside a single domain (`internal/spec`). Coding-heavy
+single-milestone EXTEND task per Anthropic 2026 Finding A4 verbatim — parallel
+multi-spawn (Mode 4) not preferred. Agent Teams (Mode 3) capability gate fails
+(single domain, < 10 files). Mode 5 with Tier L Section A-E delegation template.
+
+### M4 Scope Implemented
+
+Per plan.md §F.4 scope enumeration. This milestone **EXTENDS** the existing
+`OwnershipTransitionRule` (introduced by SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001 F13);
+it does NOT recreate it.
+
+1. **`internal/spec/lint_ownership.go`** (MODIFY, +123 lines / source delta) — three EXTEND features:
+   - **AC-LSG-004 / D5**: `Authored-By-Agent:` commit-body trailer parsing as the
+     mechanical WHO signal. Added `CommitSHA` + `AuthoredByAgent` fields to
+     `ownershipTransitionRecord`; new `parseAuthoredByAgent(body)` helper +
+     `authoredByAgentLine` regex (`(?mi)^\s*Authored-By-Agent:\s*(\S+)\s*$`,
+     lowercase-normalized); new `trailerAgentOwnerKind(agent)` classifier mapping
+     the 5 trailer enum values (manager-spec / manager-develop / manager-docs /
+     orchestrator-direct → expectedOwnerKind; manager-git → ownerNone). `git log`
+     format extended `%H%x00%s%x00` → `%H%x00%s%x00%b%x00` to capture the commit
+     body; `gitLogCommit` + header regex updated to the 3-NUL-field layout.
+   - **AC-LSG-004 negative (silent SKIP)**: trailer-less commits (legacy /
+     non-MoAI / pre-v3.0.1) → `Check()` returns nil (zero findings). The trailer
+     is the gating signal. This is the false-positive guard satisfying the M4 exit
+     criterion ("moai spec lint against repo emits no false positives") — real
+     repo commits currently lack the trailer (M2 of this SPEC deferred trailer
+     emission to `manager-develop-prompt-template.md`).
+   - **AC-LSG-012**: `lint.skip: [OwnershipTransitionInvalid]` opt-out → new
+     `hasOwnershipSkipOptOut(doc)` helper; `Check()` short-circuits to emit an
+     `OwnershipTransitionSkipped` informational (Info severity) finding instead of
+     `OwnershipTransitionInvalid`.
+2. **`internal/spec/lint_ownership_test.go`** (MODIFY, +390/-102 lines) — RED-first:
+   - NEW `TestOwnershipTransitionDetected` (positive: trailer + invalid transition
+     → exactly 1 `OwnershipTransitionInvalid` referencing the SHA; negative: same
+     diff without trailer → zero findings; trailer + valid owner → zero findings)
+   - NEW `TestSkipOptOut` (lint.skip opt-out → no Invalid + presence of Skipped Info)
+   - NEW `TestParseAuthoredByAgent` (6 trailer-extraction cases incl. mixed-case
+     normalization + leading whitespace + absent)
+   - F13 migration: `TestOwnershipTransitionRule_Pass` + `_Fail` fixtures gained
+     `authoredByAgent` field (trailer is now the WHO signal); `TestSplitGitLogCommits`
+     updated to the 3-NUL-field format.
+3. **`internal/spec/lint.go`** — `OwnershipTransitionRule{}` already registered in
+   `defaultRules()` (`NewLinter`); no registration change required (rule emits the
+   new `OwnershipTransitionSkipped` code through the same registered instance).
+
+### M4 AC Binary PASS/FAIL Matrix
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-LSG-004 | PASS | `go test -run TestOwnershipTransitionDetected ./internal/spec` | `PASS` — positive subtest emits exactly 1 `OwnershipTransitionInvalid` referencing commit SHA `deadbeef1234`; negative subtest (trailer absent) emits zero findings (silent SKIP); valid-owner subtest emits zero findings |
+| AC-LSG-012 | PASS | `go test -run TestSkipOptOut ./internal/spec` | `PASS` — `lint.skip: [OwnershipTransitionInvalid]` opt-out yields zero `OwnershipTransitionInvalid` + one `OwnershipTransitionSkipped` Info finding |
+
+**M4 AC count**: 2 / 2 in scope (2 PASS + 0 DEFERRED).
+
+### M4 Cross-Platform Build Verification
+
+```
+$ go build ./...                                          → exit 0 (PASS)
+$ GOOS=windows GOARCH=amd64 go build ./internal/spec/...  → exit 0 (PASS)
+$ go vet ./internal/spec/...                              → exit 0 (PASS)
+```
+
+### M4 Coverage
+
+```
+$ go test -cover ./internal/spec/...
+ok  github.com/modu-ai/moai-adk/internal/spec  86.2% of statements
+```
+
+Overall internal/spec **86.2%** ≥ 85% threshold (unchanged from M1 baseline; M4
+EXTEND keeps the package above the D.2 SHOULD threshold).
+
+### M4 Subagent Boundary Check (B3 — C-HRA-008 discipline)
+
+```
+$ grep -rn 'AskUserQuestion\|mcp__askuser' internal/spec/lint_ownership.go internal/spec/lint_ownership_test.go \
+    | grep -v "_test.go" | grep -v "^[^:]*:[0-9]*:[ \t]*//"
+(no output)
+```
+
+Verified clean. The lint rule body contains no `AskUserQuestion` or `mcp__askuser`
+references — subagent-boundary discipline preserved.
+
+### M4 Scope Discipline Verification (B10 — PRESERVE list)
+
+- `internal/spec/*` (M1) other than `lint_ownership.go` / `lint_ownership_test.go` — untouched
+- `internal/cli/spec*.go` (M2), `.claude/hooks/moai/handle-pre-commit-spec-status.sh` (M3) — untouched
+- `internal/template/templates/**` — untouched (no template change in M4)
+- `.moai/research/*`, `scripts/audit-spec-sync-drift.sh` (untracked carry) — preserved as-is, not staged
+
+### M4 Architectural Decision Note (AC-LSG-004 vs F13 reconciliation)
+
+AC-LSG-004 mandates the `Authored-By-Agent:` trailer as the **gating signal**:
+trailer-less commits are NOT subject to `OwnershipTransitionRule` (silent SKIP).
+The predecessor F13 (ANTHROPIC-AUDIT-TIER3-001) behavior classified ownership via
+commit-subject prefix on trailer-less records. These two semantics conflict for
+trailer-less commits. M4 resolves in favor of the trailer-gating semantics (the
+authoritative M4 SPEC requirement), since: (a) the M4 exit criterion requires zero
+false positives on the live repo, and (b) live repo commits currently lack the
+trailer. Consequently the F13 `Pass`/`Fail` test fixtures were migrated to carry
+trailers (testing the same ownership-violation concept via the new mechanism). The
+`commitOwnerKind` subject-prefix classifier is retained for `TestCommitOwnerKind`
+regression coverage but is no longer invoked from the production `Check()` path
+(documented in its godoc).
+
+## §A.5 M5-M6 Placeholder (deferred to subsequent milestones)
 
 The following milestones await subsequent orchestrator-spawned `manager-develop`
 invocations. Their evidence will be appended to this progress.md as separate
-§A.{4..6} sections per plan.md §F.{4..6}.
+§A.{5..6} sections per plan.md §F.{5..6}.
 
-- **M4 — spec-lint OwnershipTransitionRule Extension** — depends on M2 ✓
 - **M5 — Rule File Authoring** (`.claude/rules/moai/workflow/lifecycle-sync-gate.md`) — depends on M1 era field ✓
 - **M6 — No-Op Regression Validation** (5 already-discharged SPECs) — depends on M1-M5
 
@@ -431,9 +548,9 @@ the orchestrator-direct Mx chore respectively, after all M1-M6 milestones comple
 
 | Section | Status | Owner | Populated |
 |---------|--------|-------|-----------|
-| §E.1 Run-phase milestone evidence | partial (M1+M2) | manager-develop (M2 spawn) | 2026-05-27 |
+| §E.1 Run-phase milestone evidence | partial (M1+M2+M3+M4) | manager-develop (M4 spawn) | 2026-05-30 |
 | §E.2 Sync-phase audit-ready signal | pending | manager-docs (sync-phase) | — |
-| §E.3 Run-phase status field | in-progress | manager-develop (M2 spawn) | 2026-05-27 |
+| §E.3 Run-phase status field | in-progress | manager-develop (M4 spawn) | 2026-05-30 |
 | §E.4 Sync-phase audit-ready signal (extended) | pending | manager-docs (sync-phase) | — |
 | §E.5 Mx-phase audit-ready signal | pending | orchestrator-direct (post-sync) | — |
 
@@ -443,11 +560,17 @@ the orchestrator-direct Mx chore respectively, after all M1-M6 milestones comple
 |-----------|-------|-----------|--------|-------|-----|----------|
 | M2 — CLI Subcommands (`moai spec close` + `moai spec audit`) | manager-develop | 2026-05-27 | a0d2aa0c0 | 5 (4 new + 1 MODIFY) | ~1206 LOC delta (source 451 + tests 755) | spec_close.go 92.3% / spec_audit.go 91.9% (both ≥80% D.2 threshold) |
 
-### §E.1 M3 row (this milestone)
+### §E.1 M3 row
 
 | Milestone | Owner | Completed | Commit | Files | LOC | Coverage |
 |-----------|-------|-----------|--------|-------|-----|----------|
-| M3 — Pre-Commit Hook + settings.json.tmpl Registration | manager-develop | 2026-05-28 | (pending push) | 5 (3 new bash/test + 1 MODIFY + 1 auto-regenerated) | ~17542B (hook + mirror + Go test) + 15 lines tmpl | Go test 6/6 subtests PASS (internal/hook package) |
+| M3 — Pre-Commit Hook + settings.json.tmpl Registration | manager-develop | 2026-05-28 | e23b3b3ba | 5 (3 new bash/test + 1 MODIFY + 1 auto-regenerated) | ~17542B (hook + mirror + Go test) + 15 lines tmpl | Go test 6/6 subtests PASS (internal/hook package) |
+
+### §E.1 M4 row (this milestone)
+
+| Milestone | Owner | Completed | Commit | Files | LOC | Coverage |
+|-----------|-------|-----------|--------|-------|-----|----------|
+| M4 — spec-lint OwnershipTransitionRule Extension | manager-develop | 2026-05-30 | (pending — orchestrator atomic commit) | 2 (both MODIFY: lint_ownership.go + lint_ownership_test.go) | +411 / -102 lines | internal/spec 86.2% (≥85% D.2 threshold) |
 
 ## §E.3 Run-phase status field
 
@@ -457,5 +580,6 @@ status: in-progress
 m1_status: implemented
 m2_status: implemented
 m3_status: implemented
-m4_through_m6_status: pending
+m4_status: implemented
+m5_through_m6_status: pending
 ```
