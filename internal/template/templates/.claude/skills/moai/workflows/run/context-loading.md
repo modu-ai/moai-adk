@@ -173,7 +173,7 @@ Before Phase 1, check if `.moai/specs/SPEC-{ID}/progress.md` exists:
 When delegating to ANY agent with `isolation: "worktree"` (sub-agent mode or team mode):
 
 - [HARD] Reference all write-target files by project-root-relative paths (e.g., `src/auth/handler.go`)
-- [HARD] Do NOT include absolute paths (e.g., `/Users/.../project/src/auth/handler.go`) in agent prompts
+- [HARD] Do NOT include absolute paths (e.g., `$HOME/project/src/auth/handler.go`) in agent prompts
 - [HARD] Do NOT include `cd /absolute/path &&` in any Bash commands within agent prompts
 - [HARD] SPEC files: use `.moai/specs/SPEC-XXX/spec.md` (relative), not absolute paths
 - [HARD] The agent's CWD is automatically set to the worktree root by Claude Code — all relative paths resolve correctly
@@ -181,10 +181,10 @@ When delegating to ANY agent with `isolation: "worktree"` (sub-agent mode or tea
 Anti-patterns that bypass worktree isolation:
 ```
 # WRONG: Absolute path bypasses worktree
-"Read /Users/user/project/src/auth/handler.go and fix the bug"
+"Read $HOME/project/src/auth/handler.go and fix the bug"
 
 # WRONG: cd to main project in Bash command
-"Run: cd /Users/user/project && go test ./..."
+"Run: cd $HOME/project && go test ./..."
 
 # CORRECT: Relative path — agent resolves from its own CWD (worktree root)
 "The bug is in src/auth/handler.go. Read the file and fix it."

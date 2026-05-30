@@ -2,7 +2,7 @@
 id: SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001
 title: "Template Neutrality Audit — Progress Tracking"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-05-23
 updated: 2026-05-30
 author: Author Name
@@ -19,9 +19,38 @@ related_specs: [SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]
 
 ## Status
 
-**Phase**: plan-phase (draft v0.1.1) — M1 already executed + committed; plan-audit iter-1 remediation applied
+**Phase**: run-phase (in-progress v0.1.1) — M1 complete; M2-M5 run-phase entered after plan-auditor iter-2 PASS 0.88 + GATE-2 approval
 **Created**: 2026-05-23
-**Last update**: 2026-05-30 (plan-audit iter-1 remediation: rescope to NEUTRALITY-unique C1/C2/C4/C5/C6/C8 + C3/C7 deferred to ISOLATION-001 + AC awk fix + baseline refresh + M1 marked complete)
+**Last update**: 2026-05-30 (run-phase M2 begin: status draft → in-progress + Mode Selection logged)
+
+## §E — Phase 0.95 Mode Selection
+
+### Input parameters
+
+- **tier**: L (Large; > 15 files affected across M2-M5)
+- **scope (file count)**: ~12-80 template markdown files (C2 dominates at 73 files; total kept-class union before dedup) + 2 new files (Go test + CI workflow)
+- **domain count**: 1 primary (markdown/template content under `internal/template/templates/`) + 1 secondary (Go test infra + CI YAML at M5)
+- **file language mix**: ~95% markdown/template content; ~5% Go + YAML (M5 only)
+- **concurrency benefit**: LOW — per Finding A4 (coding/content-heavy caveat), template-content sweep is sequential grep+rewrite per-milestone with a shared working tree; parallel spawn would race on the same tree
+- **Agent Teams prereqs status**: NOT evaluated (harness level not `thorough` + no multi-domain research benefit)
+
+### Mode evaluation table
+
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| 1 trivial | not selected | Multi-milestone semantic content changes across 80+ files; not a single-line fix |
+| 2 background | not selected | Write/Edit operations required (CONST-V3R2-020 forbids background writes) |
+| 3 agent-team | not selected | Agent Teams capability gate not met; content-sweep is not multi-domain research-heavy |
+| 4 parallel | not selected | Finding A4 — content/coding-heavy work, LOW concurrency benefit; shared working tree race risk |
+| 5 sub-agent | **selected** | Tier L markdown/template sweep, sequential per-milestone manager-develop (cycle_type=ddd), Section A-E delegation |
+
+### Decision
+
+Decision: sub-agent
+
+### Justification
+
+Mode 5 (sub-agent, sequential per milestone) is the correct choice for this SPEC. Per Anthropic Finding A4 ("most coding tasks involve fewer truly parallelizable tasks than research"), template-content sanitization is content-heavy with LOW concurrency benefit — the work is a deterministic grep+rewrite over a shared working tree where parallel spawn would race on the same files (M3 alone touches 73 markdown files). The orchestration-mode-selection.md tie-breaker rule for "Tier L + markdown / shell-script-only scope" explicitly prescribes Mode 5 with the Tier L Section A-E delegation template. The milestones run sequentially (M2 → M3 → M4 → M5) with a checkpoint commit per milestone.
 
 ## Plan-Phase Summary
 
