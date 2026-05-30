@@ -204,6 +204,7 @@ func runGroupedChecks(verbose bool, filterCheck string) []checkGroup {
 		{"Worktree State", func(v bool) DiagnosticCheck { return checkWorktreeState(cwd, v) }},
 		{"BODP Config", func(v bool) DiagnosticCheck { return checkBODPConfig(cwd, v) }},
 		{"Telemetry Config", func(v bool) DiagnosticCheck { return checkTelemetryConfig(cwd, v) }},
+		{"Cache Hit Rate", func(v bool) DiagnosticCheck { return checkCacheHitRate(cwd, v) }},
 		{"Glamour Cache", checkGlamourCache},
 	}
 

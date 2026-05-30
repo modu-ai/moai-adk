@@ -26,8 +26,9 @@
 │  !  Worktree State  .moai/state/ not found — worktree checkpoint storage unavailable                                                          │
 │  !  BODP Config  .moai/branches/ not found — BODP audit trail disabled                                                                        │
 │  !  Telemetry Config  .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                                │
+│  ✓  Cache Hit Rate  prompt caching disabled (cacheStrategy.enabled: false)                                                                    │
 │  !  Glamour Cache  glamour 미도입                                                                                                             │
 │                                                                                                                                               │
-│  [통과 10]  [주의 11]  [실패 0]                                                                                                               │
+│  [통과 11]  [주의 11]  [실패 0]                                                                                                               │
 │                                                                                                                                               │
 ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
