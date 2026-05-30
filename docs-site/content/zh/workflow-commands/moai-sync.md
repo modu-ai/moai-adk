@@ -370,6 +370,56 @@ MoAI-ADK 遵循 [Conventional Commits](https://www.conventionalcommits.org/) 格
 | `refactor` | 重构  | `refactor(auth): centralize auth logic`     |
 | `test`     | 测试    | `test(auth): add characterization tests`    |
 
+## PR 创建后的 CI 监控
+
+`/moai sync` 创建 PR 后，MoAI-ADK 立即执行两阶段的自动监控流程。Wave 1
+通过轮询 CI 结果判断哪个 required check 失败，Wave 2 在出现失败时进入
+自动修复循环。
+
+### Wave 1 — CI 结果轮询
+
+- 以 **30 秒间隔**调用 `gh pr checks` (尊重 GitHub API rate limit)
+- 30 分钟硬性超时 — 若 required check 未在该时间内完成，
+  watch loop 以 exit code 3 退出
+- required check 定义 SSoT: `.github/required-checks.yml`
+- auxiliary check 失败不会阻止 merge (仅作为 warning)
+
+### Wave 2 — 自动修复循环 (最多 3 次)
+
+required check 失败时，MoAI-ADK 进入自动修复循环。
+
+- 每次 iteration 以**新 commit** 应用修复 (禁止 force-push / amend)
+- 每次 PR push 最多 3 iterations (非 per-session)
+- iteration ≥ 4 时通过 blocking AskUserQuestion 升级到用户
+
+### 自动处理 vs 需人工决定
+
+| 故障类型                   | 自动处理?  | 备注                                            |
+| -------------------------- | ---------- | ----------------------------------------------- |
+| lint error                 | 自动       | `golangci-lint` autofix 可处理的项目            |
+| format drift               | 自动       | `gofmt` / `prettier` 等                         |
+| test syntax error          | 自动       | import 缺失 / 编译错误                          |
+| **data race**              | **人工**   | semantic failure — 是否为预期并发？             |
+| **deadlock**               | **人工**   | semantic failure                                |
+| **panic**                  | **人工**   | semantic failure                                |
+| **test assertion failure** | **人工**   | 由人工判断 spec 还是代码正确                    |
+
+### auto-fix 绝不修改的文件
+
+{{< callout type="warning" >}}
+auto-fix 循环**绝不修改**以下文件:
+
+- `.env`, `.env.*` (环境变量 / 密钥)
+- credentials 文件
+- `scripts/ci-watch/run.sh` (Wave 2 infrastructure)
+- `.github/required-checks.yml` (Wave 1 SSoT)
+{{< /callout >}}
+
+### 相关文档
+
+- 轮询 doctrine SSoT: `.claude/rules/moai/workflow/ci-watch-protocol.md`
+- auto-fix doctrine SSoT: `.claude/rules/moai/workflow/ci-autofix-protocol.md`
+
 ## 质量门
 
 Sync 阶段的质量标准比 Run 阶段更注重文档:

@@ -369,6 +369,56 @@ MoAI-ADK follows [Conventional Commits](https://www.conventionalcommits.org/) fo
 | `refactor` | Refactoring | `refactor(auth): centralize auth logic`    |
 | `test`     | Testing    | `test(auth): add characterization tests`       |
 
+## CI monitoring after PR creation
+
+Immediately after `/moai sync` creates a PR, MoAI-ADK runs a two-stage automated
+monitoring sequence. Wave 1 polls CI results to determine which required check
+failed, and Wave 2 enters an auto-fix loop when a failure occurs.
+
+### Wave 1 — CI result polling
+
+- Calls `gh pr checks` at **30-second intervals** (respects GitHub API rate limit)
+- 30-minute hard timeout — if required checks do not complete within that window,
+  the watch loop exits with code 3
+- Required check definition SSoT: `.github/required-checks.yml`
+- Auxiliary check failures are NOT merge blockers (warnings only)
+
+### Wave 2 — Auto-fix loop (max 3 iterations)
+
+When a required check fails, MoAI-ADK enters the auto-fix loop.
+
+- Each iteration applies the fix as a **new commit** (force-push / amend prohibited)
+- Maximum 3 iterations per PR push (not per session)
+- Iteration ≥ 4 escalates to the user via a blocking AskUserQuestion
+
+### Auto-handled vs human decision required
+
+| Failure type               | Auto-handled?      | Notes                                                    |
+| -------------------------- | ------------------ | -------------------------------------------------------- |
+| lint error                 | Auto               | Items fixable by `golangci-lint` autofix                 |
+| format drift               | Auto               | `gofmt` / `prettier` etc.                                |
+| test syntax error          | Auto               | Missing imports / compile errors                         |
+| **data race**              | **Human decision** | Semantic failure — was the concurrency intended?         |
+| **deadlock**               | **Human decision** | Semantic failure                                         |
+| **panic**                  | **Human decision** | Semantic failure                                         |
+| **test assertion failure** | **Human decision** | Human must judge whether the spec or the code is correct |
+
+### Files auto-fix never modifies
+
+{{< callout type="warning" >}}
+The auto-fix loop **never modifies** the following files:
+
+- `.env`, `.env.*` (environment variables / secrets)
+- credentials files
+- `scripts/ci-watch/run.sh` (Wave 2 infrastructure)
+- `.github/required-checks.yml` (Wave 1 SSoT)
+{{< /callout >}}
+
+### Related documentation
+
+- Polling doctrine SSoT: `.claude/rules/moai/workflow/ci-watch-protocol.md`
+- Auto-fix doctrine SSoT: `.claude/rules/moai/workflow/ci-autofix-protocol.md`
+
 ## Quality Gates
 
 Sync phase quality criteria are more documentation-focused than Run phase:

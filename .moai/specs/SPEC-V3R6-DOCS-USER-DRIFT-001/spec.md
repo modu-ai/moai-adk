@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-DOCS-USER-DRIFT-001
 title: "docs-site 사용자 가시 잔여 drift 정리 (F8 sync CI doctrine + 4-locale 회귀 차단)"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: implemented
 created: 2026-05-22
 updated: 2026-05-22
 author: manager-spec
@@ -20,6 +20,7 @@ related_specs: [SPEC-V3R5-DOCS-SECURITY-001, SPEC-V3R6-DOCS-CMD-CATALOG-001]
 
 ## HISTORY
 
+- v0.2.0 (2026-05-22): run-phase COMPLETE. 4-locale `docs-site/content/{ko,en,ja,zh}/workflow-commands/moai-sync.md` 에 새 H2 섹션 `## PR 머지 후 CI 모니터링` (en: `CI monitoring after PR creation` / ja: `PR 作成後の CI モニタリング` / zh: `PR 创建后的 CI 监控`) 삽입 완료. 5 h3 subsection + 7-row 표 + warning callout × 4 locale 동일 구조. 51 lines per locale (max/min ratio 1.000, AC-DUD-008 threshold 1.20 통과). Hugo build PASS (Total 1197ms, 4 페이지 public html 모두 새 heading 포함). PR #1045 file overlap = 0 (AC-DUD-002). 8/8 AC PASS. orchestrator direct execution (Tier S LEAN, manager-develop 위임 skip).
 - v0.1.0 (2026-05-22): 초기 draft. Wave 0 두 번째 SPEC (Wave 0 SPEC #2 — `.moai/research/v3.0-design-2026-05-22.md` §Wave 0 라인 351-356). baseline 보고서 `.moai/research/moai-adk-current-state-2026-05-22.md` §8 사용자 가시 표면 결함 F1-F8 중 F1/F2/F3/F4는 선행 PR #1045 (SPEC-V3R6-DOCS-CMD-CATALOG-001, OPEN MERGEABLE)이 완전 해소. 본 SPEC은 **F8 (sync workflow CI watch/autofix doctrine 사용자 미가시)** 만 처리하는 좁은 scope. F5/F7 (weight 충돌 + design migration-guide ambiguity)은 별도 SPEC 후보로 명시 deferral. F6 (WorktreeCreate hook 회귀) 은 commit `a3239d3de`로 정리 완료.
 
 ---
