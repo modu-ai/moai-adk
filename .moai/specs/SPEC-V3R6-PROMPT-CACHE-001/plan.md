@@ -1,51 +1,47 @@
 # SPEC-V3R6-PROMPT-CACHE-001 — Implementation Plan
 
-## Section A — Baseline (Design Doc Verbatim)
+## Section A — Baseline (Estimated / Illustrative — 검증된 출처 없음)
 
-본 SPEC는 `.moai/research/v3.0-design-2026-05-22.md` § 4 Layer 5 "Prompt Caching 적극 활용" 결정 사항의 후속 구현이다. 핵심 baseline 인용 (verbatim):
+> **[출처 정정 2026-05-30, v0.1.1]** 초안(v0.1.0)은 본 Section A를 `.moai/research/v3.0-design-2026-05-22.md` 및 `.moai/research/moai-adk-current-state-2026-05-22.md` 의 "verbatim 인용"으로 기술했으나, 두 파일은 **현재 디스크에 존재하지 않는다**(committed 흔적 없음). 따라서 아래 손익분기 수치는 verbatim 인용이 아니라 **공개된 Anthropic Prompt Caching 가격 정책 구조에 기반한 estimated / illustrative 산술 예시**로 재명시한다. 본 SPEC의 동기(motivation)일 뿐 acceptance 기준이 아니며, 실제 수치는 머지 후 K1-K5 KPI로 실측한다(spec.md § 1 동기).
 
-> **§ 4 Layer 5 (Prompt Caching 적극 활용)**
->
-> - 1h cache write at session start (CLAUDE.md + always-loaded rules + output style + MCP initial context을 단일 breakpoint로 묶음)
-> - 5min cache for SPEC body (`/moai run SPEC-XXX` 진입 시 spec.md + acceptance.md + plan.md 묶음)
-> - 손익분기: 1h cache write 1회 + 14회 hit → $16.6 → $7.06, 일일 -57%
+본 SPEC는 Anthropic Prompt Caching을 MoAI-ADK 워크플로우에 도입하는 enablement layer다. 설계 골격(estimated):
 
-> **§ 1.4 가격 레버** (Anthropic 2026-06-15 정책)
->
-> - Cache Read: 90% off (input 단가 대비)
-> - Cache Write 5min: +25%
-> - Cache Write 1h: +100%
+- **1h cache write at session start**: CLAUDE.md + always-loaded rules + output style + MCP initial context을 단일 breakpoint로 묶음
+- **5min cache for SPEC body**: `/moai run SPEC-XXX` 진입 시 spec.md + acceptance.md + plan.md 묶음
 
-> **§ 2.3 손익분기 계산**
->
-> Sonnet 4.6 기준, 일일 평균 15 turn 가정:
-> - No cache: 15 turn × $1.10 = **$16.6/일**
-> - With 1h cache: 1회 write ($2.20) + 14회 read ($4.86) = **$7.06/일** (-57%)
-> - 본 SPEC는 위 계산을 실제 워크플로우에 적용 가능하게 만드는 enablement layer다.
+**가격 레버 (Anthropic 공개 정책 구조 — verify 대상)**:
+- Cache Read: 입력 단가 대비 약 90% off
+- Cache Write 5min: +25%
+- Cache Write 1h: +100%
 
-§ 7.4 (settings.json 책임 분리)에서 cache_control 주입 위치는 `internal/cli/cc.go` SDK wrapper 진입점으로 명시되어 있다. 현재 baseline (`.moai/research/moai-adk-current-state-2026-05-22.md` § 2)은 cache_control 미사용, 0% hit rate.
+**illustrative 손익분기 (Sonnet 단가 가정, 일일 ~15 turn 가정 — 측정값 아님)**:
+- No cache: `15 turn × turn당 단가`
+- With 1h cache: `1회 write (+100%) + 14회 read (−90%)`
+- 위 구조에서 일일 비용이 약 50% 안팎 절감될 수 있다는 추정. 구체 금액은 검증된 baseline이 없으므로 머지 후 실측한다.
 
-§ 5 Wave 2 표에서 본 SPEC은 `SPEC-V3R6-PROMPT-CACHE-001 Tier M`로 분류되었다.
+cache_control 주입 위치는 `internal/cli/cc.go` SDK wrapper 진입점(또는 신규 `internal/runtime/cache_control.go`)이다. 현재 baseline은 cache_control 미사용, 0% hit rate.
+
+본 SPEC은 `SPEC-V3R6-PROMPT-CACHE-001 Tier M`로 분류된다.
 
 ## Section B — Goal & KPIs
 
 ### Goal
 
-단일 `/moai run` 턴 평균 비용 $1.10 → ≤ $0.45로 감축한다 (design doc § 6.1 KPI). cache hit rate ≥ 80% (7-day rolling)을 달성하여 종량제 Agent SDK 풀에서도 지속 가능한 토큰 이코노미를 확보한다.
+cache hit rate ≥ 80% (7-day rolling)을 달성하여 종량제 Agent SDK 풀에서도 지속 가능한 토큰 이코노미를 확보한다. cache hit rate가 **유일한 측정 가능 1차 성공 지표(K1)**이며, 평균 turn 비용 절감은 estimated 방향성 목표일 뿐 hard acceptance 기준이 아니다(검증된 baseline 출처 없음 — Section A 참조).
 
 ### KPIs (post-merge 측정)
 
 | KPI | Target | Measurement |
 |-----|--------|-------------|
-| **K1**: cache hit rate (7-day rolling) | ≥ 80% | `sum(cache_read_input_tokens) / (sum(cache_read_input_tokens) + sum(cache_creation_input_tokens))` from `.moai/state/cache-usage.jsonl` |
+| **K1** (1차 지표): cache hit rate (7-day rolling) | ≥ 80% | `sum(cache_read_input_tokens) / (sum(cache_read_input_tokens) + sum(cache_creation_input_tokens))` from `.moai/state/cache-usage.jsonl` |
 | **K2**: cache_creation log entries per session | ≥ 1 | grep `cache_creation_input_tokens` in JSONL, count per session_id |
 | **K3**: cache_read log entries per session | ≥ N-1 (N = turn count) | grep `cache_read_input_tokens` in JSONL, count per session_id |
-| **K4**: 평균 turn 비용 | ≤ $0.45 (was $1.10) | derived from cache hit rate × Anthropic 단가 |
+| **K4** (estimated 방향성 목표): 평균 turn 비용 절감률 | 약 50% 안팎 (illustrative, baseline 출처 없음 → 절대 금액 hard target 아님) | derived from K1 hit rate × Anthropic 공개 단가 — 머지 후 실측 |
 | **K5**: 단일-turn 세션 비율 (cache penalty risk) | ≤ 10% | REQ-PC-007 warning log count / total sessions |
 
 ### Non-Goals
 
-- GLM cache 호환성 확보 (Out of Scope, Wave 3로 이연)
+- GLM cache 호환성 확보 (Out of Scope, Sprint 3로 이연)
 - Per-message cache breakpoint 최적화 (Out of Scope, 별도 SPEC)
 - Background cache warming (Out of Scope, 후속 SPEC)
 
@@ -59,15 +55,16 @@
 | REQ-PC-004 | Ubiquitous | PostToolUse hook이 cache token 필드 추출 + JSONL append | AC-PC-005, AC-PC-006 |
 | REQ-PC-005 | When | `session_ttl: "off"` 시 session-level breakpoint 미주입 | AC-PC-002 |
 | REQ-PC-006 | Ubiquitous | `moai doctor`가 7-day cache hit rate 표시 | AC-PC-007 |
-| REQ-PC-007 | While | 단일-turn 세션 종료 시 cache penalty 경고 로그 | (AC 미설정 — observational only) |
+| REQ-PC-007 | While | 단일-turn 세션 종료 시 cache penalty 경고 로그 | AC-PC-010 |
 
 추가 ACs:
 - AC-PC-008: Race-safe test suite green (`-race -count=1`)
 - AC-PC-009: docs-site 4-locale 손익분기 문서화
+- AC-PC-010: 단일-turn fixture에서 REQ-PC-007 warning 라인 + `session_ttl: "off"` 권고 문자열 검증 (M3 unit test)
 
-100% traceability: 7 REQs → 9 ACs (REQ-PC-007은 observational warning이므로 AC 비매핑, AC-PC-008/009는 cross-cutting 품질 게이트).
+100% traceability: 7 REQs → 10 ACs (모든 normative `shall`이 ≥1 AC로 매핑됨 — REQ-PC-007도 AC-PC-010으로 binary-testable; AC-PC-008/009는 cross-cutting 품질 게이트). D3 해소: REQ-PC-007은 `shall log <specific string> with <specific recommendation>` 형태이므로 합성 단일-turn fixture로 binary 검증 가능 (이전 "observational only" 라벨 철회).
 
-## Section D — Milestones (Tier M, no Waves)
+## Section D — Milestones (Tier M, no Rounds)
 
 Tier M SPEC 표준 lifecycle 5 milestones. Sequencing 순서 의무. 각 M은 manager-develop cycle_type=ddd Section A-E MANDATORY로 위임 대상.
 
@@ -80,13 +77,14 @@ Tier M SPEC 표준 lifecycle 5 milestones. Sequencing 순서 의무. 각 M은 ma
 **동작**:
 1. Claude Code SDK 호출 직전 outgoing request payload 검사
 2. `cacheStrategy.enabled == true` AND `llm.mode != "glm"` 시
-3. system prompt array의 LAST item에 `cache_control: {type: "ephemeral", ttl: "1h"}` 주입
-4. messages array에서 SPEC body marker (예: `<spec-body>...</spec-body>` 또는 `/moai run` 시 자동 삽입된 SPEC bundle) 직후에 `ttl: "5m"` 주입
+3. **threshold-agnostic fallback (R4 decoupled)**: cacheable 후보 payload의 토큰 수가 `cacheStrategy.min_cacheable_tokens` (default 2048) 미만이면 cache_control을 주입하지 않는다. 이 임계값은 `cache.yaml` 설정 상수이며 per-agent model 배정(SPEC-V3R6-AGENT-MODEL-ROUTING-001)에 의존하지 않는다 (spec.md § 6 R4 NOTE).
+4. system prompt array의 LAST item에 `cache_control: {type: "ephemeral", ttl: "1h"}` 주입
+5. messages array에서 SPEC body marker (예: `<spec-body>...</spec-body>` 또는 `/moai run` 시 자동 삽입된 SPEC bundle) 직후에 `ttl: "5m"` 주입
 
 **REQ 매핑**: REQ-PC-001, REQ-PC-002, REQ-PC-003
 **AC 매핑**: AC-PC-001 (grep ≥ 2), AC-PC-003 (integration test), AC-PC-004 (GLM omit)
 
-**리스크**: Anthropic SDK 버전 의존성 (R3) — SDK pin + schema test로 완화.
+**리스크**: Anthropic SDK 버전 의존성 (R3) — SDK pin + schema test로 완화. model-specific minimum cacheable tokens (R4) — `min_cacheable_tokens` 설정 상수로 self-contained 처리.
 
 ### M2 — cache.yaml config schema
 
@@ -99,18 +97,22 @@ Tier M SPEC 표준 lifecycle 5 milestones. Sequencing 순서 의무. 각 M은 ma
 ```yaml
 cacheStrategy:
   enabled: true
-  session_ttl: "1h"   # enum: "1h" | "5m" | "off"
-  spec_ttl: "5m"      # enum: "5m" | "off"
+  session_ttl: "1h"            # enum: "1h" | "5m" | "off"
+  spec_ttl: "5m"               # enum: "5m" | "off"
+  min_cacheable_tokens: 2048   # int; payload가 이 값 미만이면 cache_control 미주입 (R4 self-contained fallback)
 ```
 
 **Validation**:
 - `enabled: bool` (required)
 - `session_ttl: enum["1h", "5m", "off"]` (default "1h")
 - `spec_ttl: enum["5m", "off"]` (default "5m")
+- `min_cacheable_tokens: int` (default 2048 — haiku 임계값 기준 보수 안전 상한; R4 decoupling — SPEC-V3R6-AGENT-MODEL-ROUTING-001 의존 제거. spec.md § 6 R4 NOTE 참조)
 - Missing/invalid → log warning, fall back to `enabled: false` (safe default)
 
 **REQ 매핑**: REQ-PC-005
-**AC 매핑**: AC-PC-002 (config 키 3개 검증)
+**AC 매핑**: AC-PC-002 (config 키 검증 — `min_cacheable_tokens` 포함)
+
+**R4 decoupling NOTE**: `min_cacheable_tokens`는 Anthropic 공개 정책상 모델별 최소 캐시 가능 토큰을 자체 처리하기 위한 self-contained 설정이다. per-agent model 배정(SPEC-V3R6-AGENT-MODEL-ROUTING-001)에 의존하지 않으므로, 해당 SPEC의 머지 여부와 무관하게 M1 fallback이 threshold-agnostic으로 동작한다.
 
 **리스크**: Template mirror 동기화 누락 — `make build` + `commands_audit_test.go` 패턴으로 회귀 차단.
 
@@ -130,7 +132,7 @@ cacheStrategy:
 3. 단일-turn 세션 검출 시 (session_id 첫 등장 + turn=1만 존재 + wall-time < 5min) `WARN: single-turn cache write penalty risk` 추가 로그
 
 **REQ 매핑**: REQ-PC-004, REQ-PC-007
-**AC 매핑**: AC-PC-005 (JSONL append 검증), AC-PC-006 (2-turn 시 turn 2 cache_read 비zero)
+**AC 매핑**: AC-PC-005 (JSONL append 검증), AC-PC-006 (2-turn 시 turn 2 cache_read 비zero), AC-PC-010 (단일-turn fixture warning 라인 + `session_ttl: "off"` 권고 검증 — D3 해소)
 
 **리스크**: PostToolUse 후크 contract 변경 (HOOK-ASYNC-EXPAND-001과 충돌 가능) — 본 SPEC는 PostToolUse만 사용 (HOOK-OBSERVE-OPT-IN-001은 독립).
 
@@ -192,7 +194,7 @@ M1 + M2는 양방향 의존 (M1 동작이 M2 config 키 참조, M2는 M1 진입 
 | R1 | Medium/High | 단일-turn 세션 1h cache_write +100% 페널티 | M3 (REQ-PC-007 warning) + M2 (`session_ttl: "off"` opt-out) |
 | R2 | Medium/Medium | Cache prefix exact-match — rule churn 시 무효화 | Sprint 1 머지 완료로 사전 완화 (always-loaded baseline 안정) |
 | R3 | Low/Medium | Anthropic SDK schema 변경 | M1 (SDK 버전 pin + AC-PC-003 schema test) |
-| R4 | Medium/Medium | model-specific minimum cacheable token (sonnet 1024 / haiku 2048) — SPEC-V3R6-AGENT-MODEL-ROUTING-001과 cross-Sprint | M1 진입 시 session start payload size 실측, 임계값 미달 시 cache_control 미주입 fallback. KNOWN CONFLICT: AGENT-MODEL-ROUTING-001 머지 후 본 SPEC 재검증 의무. |
+| R4 | Low/Medium | model-specific minimum cacheable token (모델별 상이) — **decoupled from SPEC-V3R6-AGENT-MODEL-ROUTING-001** | M2 `cache.yaml` `min_cacheable_tokens` (보수 default 2048) self-contained 설정 + M1 threshold-agnostic fallback. AGENT-MODEL-ROUTING-001에 **의존하지 않음** (spec.md § 6 R4 NOTE). |
 | R5 | Low/Low | cache-usage.jsonl 무한 성장 | 본 SPEC 범위 외 — 후속 telemetry rotation SPEC로 deferred |
 
 ### Out of Scope (3 h3 sections)
@@ -203,7 +205,7 @@ Auto-placing additional cache breakpoints inside long messages (예: per-paragra
 
 #### Out of Scope: GLM cache compatibility
 
-GLM (Z.AI) cache 메커니즘은 다른 control 필드를 사용한다. 본 SPEC는 Anthropic Claude SDK에만 적용된다. GLM cache 지원은 Wave 3 SPEC-V3R6-BACKEND-ROUTING-001에서 다룬다.
+GLM (Z.AI) cache 메커니즘은 다른 control 필드를 사용한다. 본 SPEC는 Anthropic Claude SDK에만 적용된다. GLM cache 지원은 Sprint 3 SPEC-V3R6-BACKEND-ROUTING-001에서 다룬다.
 
 #### Out of Scope: Pre-emptive cache warming
 
@@ -213,9 +215,9 @@ GLM (Z.AI) cache 메커니즘은 다른 control 필드를 사용한다. 본 SPEC
 
 ### Unit Tests
 
-- `internal/runtime/cache_control_test.go`: cache_control 주입 위치 검증 (system LAST + SPEC body 직후)
-- `internal/config/cache_config_test.go`: cache.yaml 스키마 validation
-- `internal/hook/posttooluse_cache_test.go`: JSONL append + 단일-turn 검출
+- `internal/runtime/cache_control_test.go`: cache_control 주입 위치 검증 (system LAST + SPEC body 직후) + `min_cacheable_tokens` 미만 payload omit 검증 (R4 threshold-agnostic fallback)
+- `internal/config/cache_config_test.go`: cache.yaml 스키마 validation (`min_cacheable_tokens` 키 포함)
+- `internal/hook/posttooluse_cache_test.go`: JSONL append + 단일-turn 검출 + AC-PC-010 (warning 라인 + `session_ttl: "off"` 권고 문자열 검증)
 - `internal/cli/doctor_cache_test.go`: 7-day window 집계 + warning surfacing
 
 ### Integration Tests
@@ -239,9 +241,8 @@ GLM (Z.AI) cache 메커니즘은 다른 control 필드를 사용한다. 본 SPEC
 ## Section G — Cross-References
 
 - spec.md § 9 Cross-References (Sprint 2 sibling SPECs + Sprint 1 dependencies)
-- `.claude/rules/moai/development/sprint-wave-naming.md` (Tier M needs Milestones M1-M5, no Waves)
+- `.claude/rules/moai/development/sprint-round-naming.md` (Sprint = multi-SPEC, Round = within-SPEC; Tier M은 Milestones M1-M5로 구성, Round 분할 불필요. "Wave" terminology는 AP-SRN-004로 retired)
 - `.claude/rules/moai/development/spec-frontmatter-schema.md` (canonical 12 fields)
-- `.moai/research/v3.0-design-2026-05-22.md` § 4 Layer 5, § 2.3, § 1.4, § 5, § 6.1, § 7.4
-- `.moai/research/moai-adk-current-state-2026-05-22.md` § 2, § 7.4
+- **출처 정정**: 초안이 인용한 `.moai/research/v3.0-design-2026-05-22.md` / `.moai/research/moai-adk-current-state-2026-05-22.md` 두 파일은 현재 디스크에 부재 (Section A + spec.md § 8 참조). 손익분기는 estimated/illustrative로 재명시됨.
 - `CLAUDE.local.md` § 22 (settings.json local intent)
 - PR #1046 머지 `134a43fac` (GEARS notation 의무)

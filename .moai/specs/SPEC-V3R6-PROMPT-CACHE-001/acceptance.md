@@ -2,7 +2,7 @@
 
 ## Overview
 
-9 binary acceptance criteria (AC-PC-001..009). 모든 AC는 `bash` 명령 또는 코드 실행으로 검증 가능한 binary outcome (PASS / FAIL). 100% traceability with `spec.md` § 4 REQs (7 REQs ↔ 9 ACs, REQ-PC-007은 observational warning이므로 AC 비매핑, AC-PC-008/009는 cross-cutting 품질 게이트).
+10 binary acceptance criteria (AC-PC-001..010). 모든 AC는 `bash` 명령 또는 코드 실행으로 검증 가능한 binary outcome (PASS / FAIL). 100% traceability with `spec.md` § 4 REQs (7 REQs ↔ 10 ACs — 모든 normative `shall`이 ≥1 AC로 매핑됨. REQ-PC-007은 AC-PC-010으로 binary-testable이며, AC-PC-008/009는 cross-cutting 품질 게이트).
 
 ## AC-PC-001 — cache_control 주입 호출부 식별
 
@@ -76,7 +76,7 @@ go test -run 'TestCacheControl_GLMMode_NoInjection' \
 1. `--- PASS: TestCacheControl_GLMMode_NoInjection` 출현
 2. `llm.mode = "glm"` 설정 시 outgoing payload에 `cache_control` 필드 부재
 
-**Rationale**: Wave 3 SPEC-V3R6-BACKEND-ROUTING-001 분리 boundary 준수.
+**Rationale**: Sprint 3 SPEC-V3R6-BACKEND-ROUTING-001 분리 boundary 준수.
 
 ## AC-PC-005 — PostToolUse hook JSONL append
 
@@ -185,6 +185,27 @@ done
 
 **Rationale**: `.moai/docs/docs-site-i18n-rules.md` 4-locale discipline. KPI 사용자 이해를 위한 손익분기 가이드 필수.
 
+## AC-PC-010 — 단일-turn cache penalty 경고 로그 검증
+
+**REQ 매핑**: REQ-PC-007
+**Severity**: Blocking
+
+**Verification command**:
+```bash
+go test -run 'TestPostToolUseCache_SingleTurnSession_PenaltyWarning' \
+  ./internal/hook/... -count=1 -v 2>&1 | tail -15
+```
+
+**Expected**: `TestPostToolUseCache_SingleTurnSession_PenaltyWarning PASS`.
+
+**PASS criterion**:
+1. `--- PASS: TestPostToolUseCache_SingleTurnSession_PenaltyWarning` 출현, `--- FAIL:` 0, exit 0
+2. 합성 단일-turn 세션 fixture (turn=1 only AND elapsed wall-time < 5min) 처리 시, 로그 출력에 `single-turn cache write penalty risk` 경고 문자열이 존재
+3. 동일 경고 라인 또는 인접 권고에 `session_ttl: "off"` 권고 문자열이 존재 (REQ-PC-007의 "concrete recommendation" 검증)
+4. (negative case) 2-turn 이상 fixture 처리 시 해당 경고 라인 **부재** (false-positive 회피)
+
+**Rationale**: REQ-PC-007은 `shall log <specific string> with <specific recommendation>` 형태의 normative 요구이므로 binary 검증 가능하다 (이전 "observational only" 라벨 철회 — D3 해소). 검출 로직은 plan.md M3 §3에 명시되어 있어 unit test가 feasible하다.
+
 ## Traceability Matrix
 
 | AC | REQ | Milestone | Severity |
@@ -198,17 +219,18 @@ done
 | AC-PC-007 | REQ-PC-006 | M4 | Blocking |
 | AC-PC-008 | (cross-cutting) | M1-M4 | Blocking |
 | AC-PC-009 | (cross-cutting) | M5 | Should-fix |
+| AC-PC-010 | REQ-PC-007 | M3 | Blocking |
 
-REQ-PC-007 (단일-turn 경고)은 observational warning이므로 binary AC 미설정. M4 doctor 출력에서 단일-turn 비율 > 10% 시 WARN 라인 surfacing되는지 manual verification으로 확인 (test fixture는 M4 unit test에서 다룸).
+모든 normative `shall`(REQ-PC-001..007)이 ≥1 binary AC로 매핑되었다 (D3 해소 — REQ-PC-007의 이전 "observational only, AC 미설정" 라벨은 철회되었고 AC-PC-010으로 대체). AC-PC-010은 합성 단일-turn fixture 기반 unit test로 경고 문자열 + `session_ttl: "off"` 권고를 binary 검증한다. M4 doctor 출력의 단일-turn 비율 surfacing(K5)은 AC-PC-007과 동일 doctor unit test에서 추가 확인한다.
 
 ## Definition of Done
 
 본 SPEC가 "implemented" 상태로 전환되려면:
 
-1. **AC-PC-001 ~ AC-PC-008 모두 PASS** (Blocking 8개)
+1. **AC-PC-001 ~ AC-PC-008 + AC-PC-010 모두 PASS** (Blocking 9개)
 2. **AC-PC-009 PASS** 또는 **Should-fix exception 문서화** (i18n discipline)
 3. **manager-develop progress.md** 작성 (M1~M5 evidence + AC PASS 증거 보존)
-4. **plan-auditor 통과** (Tier M threshold 0.80, margin ≥ +0.030)
+4. **plan-auditor 통과** (Tier M threshold 0.80)
 5. **CI green**: `go test ./... -race`, `golangci-lint run`, `make build` 모두 exit 0
 6. **머지 후 7일 K1 측정**: 실제 hit rate ≥ 80% 확인 (실패 시 follow-up SPEC)
 
