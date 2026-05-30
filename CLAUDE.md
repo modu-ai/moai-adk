@@ -402,6 +402,7 @@ MoAI-ADK integrates multiple MCP servers for specialized capabilities:
 - **Adaptive Thinking** (Opus 4.7+, including 4.8): the model's thinking mode. Unlike earlier models that use `budget_tokens`, Adaptive Thinking dynamically allocates reasoning based on task complexity. On Opus 4.7 and later it is the only supported thinking mode and is off by default — enable via `thinking: {type: "adaptive"}`; depth is controlled by `effort` level (high/xhigh/max) — not by `budget_tokens` (which now returns HTTP 400). See Skill("moai-workflow-thinking").
 - **Context7**: Up-to-date library documentation lookup via resolve-library-id and get-library-docs.
 - **claude-in-chrome**: Browser automation for web-based tasks.
+- **Dynamic Workflows / ultracode**: `/effort ultracode` combines xhigh effort with automatic workflow orchestration — a script the runtime executes to fan out across dozens-to-hundreds of subagents (Claude Code v2.1.154+). See .claude/rules/moai/workflow/dynamic-workflows.md.
 
 > Sequential Thinking MCP retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001. The `ultrathink` keyword (Adaptive Thinking on Opus 4.7+) is the canonical deep-reasoning path. Users who require Sequential Thinking for personal workflow may install it independently via `~/.claude/settings.json` (user-local scope); the project namespace remains clean.
 
@@ -418,6 +419,8 @@ MoAI-ADK implements a 3-level Progressive Disclosure system:
 **Level 1** (Metadata): ~100 tokens per skill, always loaded
 **Level 2** (Body): ~5K tokens, loaded when triggers match
 **Level 3** (Bundled): On-demand, Claude decides when to access
+
+The Claude Code runtime additionally applies a skill-listing budget (~1% of context, tunable via `skillListingBudgetFraction`) and a ~25K-token post-compaction budget (~5K per skill). See .claude/rules/moai/development/skill-authoring.md § Skill Listing Budget and Compaction.
 
 ### Benefits
 
@@ -516,6 +519,12 @@ MoAI-ADK supports CG Mode for 60-70% cost reduction on implementation-heavy task
 - Planning/architecture decisions (needs Opus reasoning)
 - Security reviews (needs Claude's security training)
 - Complex debugging (needs advanced reasoning)
+
+### Dynamic Workflows (Research Preview)
+
+Dynamic workflows are a third orchestration primitive alongside sub-agents and Agent Teams: a JavaScript script the Claude Code runtime executes to orchestrate dozens-to-hundreds of subagents, with intermediate results kept in script variables rather than the conversation context. Use for codebase-wide sweeps, large migrations, and cross-checked research; prefer sequential sub-agents for coding-heavy work. The bundled `/deep-research` workflow and `/effort ultracode` mode build on this primitive. Workflow subagents cannot prompt the user — the AskUserQuestion boundary holds, so collect preferences before launching. Requires Claude Code v2.1.154 or later.
+
+For the full primitive-selection guide (sub-agents vs Agent Teams vs workflows), see .claude/rules/moai/workflow/dynamic-workflows.md. For the `/goal` autonomous-continuation directive (related but distinct), see .claude/rules/moai/workflow/goal-directive.md.
 
 ---
 
