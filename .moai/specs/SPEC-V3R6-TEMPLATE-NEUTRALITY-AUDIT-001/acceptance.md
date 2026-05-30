@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001
 title: "Template Neutrality Audit — Acceptance Criteria"
-version: "0.1.1"
-status: draft
+version: "0.1.2"
+status: in-progress
 created: 2026-05-23
 updated: 2026-05-30
 author: Author Name
@@ -21,12 +21,14 @@ related_specs: [SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]
 
 11 active binary AC scenarios + 2 deferred markers. Each active AC has an explicit verification command and expected outcome. AC failure = SPEC NOT done. AC-TNA-003 (C3) and AC-TNA-007 (C7) are **DEFERRED** to SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001 per the v0.1.1 rescope (see spec.md §3.3 partition); their numbers are preserved for traceability contiguity and they emit no verification command here.
 
+> **Pre-existing package RED (v0.1.2, out of scope — see spec.md §3.4)**: at run-phase baseline (HEAD `1162b0de8`) the `internal/template` Go package is already RED with 13 pre-existing failing test functions unrelated to this SPEC (notably `TestTemplateNoInternalContentLeak`, `TestRuleTemplateMirrorDrift`, `TestLateBranchTemplateMirror`, `TestManagerDevelopActiveAgentPresent`/`TestManagerDevelopIsActiveAgent`, `TestEmbeddedTemplates_AgentDefinitions`, `TestAgentFrontmatterAudit`, `TestBuilderSkillPathStructure`, `TestTemplateAgentsStructure`, `TestSettingsTemplateHookEventCount`, `TestContractSchemaVerification`, `TestBackwardCompatibility`, `TestContractAssertionsNaturalLanguage`). **This SPEC does NOT fix them.** All AC commands that invoke `go test` (AC-TNA-008) MUST use the **isolated** `-run TestTemplateNeutralityAudit` form — a package-wide green (`go test ./internal/template/...`) is NOT a precondition and MUST NOT block this SPEC's closure. A separate cleanup SPEC (provisional `SPEC-V3R6-TEMPLATE-PACKAGE-RED-CLEANUP-001`, Tier M) is recommended to own the package-wide green. Mirror-drift caveat (F3): when editing the 4 byte-parity files (`manager-develop-prompt-template.md`, `manager-spec.md`, `spec-workflow.md`, `manager-git.md`), run-phase manager-develop MUST keep template ↔ `.claude/` mirror parity (edit both sides, or verify the `.claude/` side already matches the intended generic form).
+
 ### Traceability Matrix (AC → REQ)
 
 | AC | Satisfies REQ | Verification mode | Status |
 |----|---------------|-------------------|--------|
 | AC-TNA-001 | REQ-TNA-001 | Binary grep | Active |
-| AC-TNA-002 | REQ-TNA-002 | Awk allow-list count + grep | Active |
+| AC-TNA-002 | REQ-TNA-002 | Awk allow-list count + perl negative-lookbehind grep (bare-narrative) | Active |
 | AC-TNA-003 | REQ-TNA-003 | (none) | **DEFERRED → ISOLATION** |
 | AC-TNA-004 | REQ-TNA-004 | Awk allow-list count + grep | Active |
 | AC-TNA-005 | REQ-TNA-005 | Awk allow-list count + grep | Active |
@@ -53,23 +55,25 @@ test "$(grep -rln '/Users/' internal/template/templates/ 2>/dev/null | wc -l | t
 **Baseline (2026-05-23)**: 4 files / 8 lines (worktree-integration.md / context-loading.md / moai-foundation-cc-examples.md / moai-workflow-loop-examples.md)
 **Post-fix expected**: 0
 
-### AC-TNA-002 — C2 V3R[0-9] refs ≤ allow-list count
+### AC-TNA-002 — C2 V3R[0-9] **bare-narrative** files ≤ allow-list count
 
-**Given** the migration matrix at `.moai/specs/SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001/migration-matrix.md` defines an allow-list of file paths permitted to contain `V3R[0-9]` substrings
-**When** the auditor counts files matching the V3R regex
+**Given** the migration matrix at `.moai/specs/SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001/migration-matrix.md` defines an allow-list of file paths permitted to contain **bare-narrative** `V3R[0-9]` sigils (NOT ID-embedded `SPEC-V3R…` / `CONST-V3R…` / `REQ-V3R…`)
+**When** the auditor counts files matching the **bare-narrative** V3R regex (a `V3R[0-9]` NOT immediately preceded by `[A-Za-z0-9-]`)
 **Then** the count shall be equal to or less than the allow-list size.
 
-**Verification command** (read allow-list count `N` from migration-matrix.md §C2 — corrected non-self-terminating awk per plan-audit iter-1 D2 fix):
+**Verification command** (bare-narrative detection via perl PCRE negative-lookbehind; allow-list count via the corrected non-self-terminating awk flag-based extractor per plan-audit iter-1 D2 fix):
 ```bash
-actual=$(grep -rln 'V3R[0-9]' internal/template/templates/ 2>/dev/null | wc -l | tr -d ' ')
+actual=$(grep -rlP '(?<![A-Za-z0-9-])V3R[0-9]' internal/template/templates/ 2>/dev/null | wc -l | tr -d ' ')
 allowlist=$(awk '/^### C2 /{f=1;next} /^### C[0-9] /{f=0} f' .moai/specs/SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001/migration-matrix.md | grep -c '^- ')
 test "$actual" -le "$allowlist"
 ```
 
-> **D2 fix rationale**: the original command used `awk '/^### C2 /,/^### C[0-9]+/'` (a range expression). The range-END pattern `^### C[0-9]+` matches the range-START header `### C2 V3R[0-9]...` itself, so awk opened AND closed the range on the same single line, extracting only the header and **0 bullets** (making `actual <= 0` impossible to satisfy). The corrected form uses a flag-based block extractor: set flag on the C2 header (and skip the header line via `next`), clear flag on the NEXT `### C<digit> ` header, print while flag set. Verified 2026-05-30 against migration-matrix.md: returns **18** (the C2 allow-list bullet count), not 0.
+> **Bare-narrative narrowing (v0.1.2 M3 blocker resolution)**: the broad `grep -rln 'V3R[0-9]'` form matched 341 occurrences, of which 299 (88%) are ID-embedded substrings inside `SPEC-V3R…` / `CONST-V3R…` / `REQ-V3R…` identifiers — a domain owned by the sibling SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001's `C1-spec-id` leak-test class. Counting those 299 would force this SPEC to sanitize SPEC-IDs (ISOLATION's job — forbidden cross-SPEC scope bleed), making the broad ≤18 target unachievable. The corrected verification uses `grep -rlP '(?<![A-Za-z0-9-])V3R[0-9]'` (perl PCRE negative-lookbehind) which matches ONLY the 7 bare-narrative files. The Go audit script (REQ-TNA-009) implements the same exclusion as a two-pass approach (RE2 lacks lookbehind) — see spec.md REQ-TNA-002 § "Two-pass detection approach".
 
-**Baseline (re-measured 2026-05-30 at HEAD `ecda4ef04`)**: 73 files (allow-list = 18, computable). Point-in-time; run-phase M3 re-measures `actual` and reduces it below the allow-list before this AC passes.
-**Post-fix expected**: ≤ 18 (allow-list size; M3 refines the allow-list and reduces `actual` to satisfy `actual <= allowlist`).
+> **D2 fix rationale (preserved)**: the awk allow-list count uses a flag-based block extractor (set flag on the `### C2 ` header + skip via `next`, clear on the next `### C<digit> ` header, print while flag set), NOT the original self-terminating range expression `awk '/^### C2 /,/^### C[0-9]+/'` which extracted 0 bullets because the range-END pattern matched the range-START header on the same line. Verified 2026-05-30: returns the C2 file-path bullet count (the post-narrow allow-list, computable, non-zero).
+
+**Baseline (orchestrator-measured 2026-05-30 at HEAD `1162b0de8`, bare-narrative grep)**: **7 bare-narrative files** (replaces the stale 70/73 broad-regex counts). The broad `V3R[0-9]`=341 hits; 299 are ID-embedded (ISOLATION-owned, NOT a C2 target). Point-in-time; run-phase M3 re-measures the bare-narrative set and reduces it to the allow-list before this AC passes.
+**Post-fix expected**: ≤ allow-list size (6 PRESERVE: zone-registry namespace decision record + CONST section headers; manager-spec.md SPEC-ID decomposition self-check example; the 4 harness `V3R4 Self-Evolving` authoritative-SPEC decision-record citations — but `moai-harness-learner` + `moai/SKILL.md` + `harness.md` + `moai-meta-harness` count as the harness PRESERVE group; `manager-develop-prompt-template.md` is GENERALIZE/REMOVE). M3 refines the C2 allow-list and reduces `actual` to satisfy `actual <= allowlist`.
 
 ### AC-TNA-003 — C3 dates — **[DEFERRED to SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]**
 
@@ -145,15 +149,15 @@ MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ -run TestTemplateNoInte
 ### AC-TNA-008 — Audit Go test PASS on darwin + linux + windows
 
 **Given** the new audit script `internal/template/template_neutrality_audit_test.go` is implemented per REQ-TNA-009 (scoped to kept classes C1/C2/C4/C5/C6/C8; C3/C7 NOT scanned — owned by the leak test)
-**When** `go test ./internal/template/... -run TestTemplateNeutralityAudit` is executed on darwin, linux, and windows runners
-**Then** all three platforms shall report PASS (exit code 0).
+**When** the **isolated** `go test ./internal/template/... -run TestTemplateNeutralityAudit` is executed on darwin, linux, and windows runners
+**Then** all three platforms shall report PASS (exit code 0) **for this test function in isolation** (the package-wide `go test ./internal/template/...` remains RED due to 13 pre-existing failures unrelated to this SPEC — see §1 package-RED note + spec.md §3.4; that package-wide RED MUST NOT block this AC).
 
-**Verification command** (per platform):
+**Verification command** (per platform — isolated `-run` form only):
 ```bash
 go test ./internal/template/... -run TestTemplateNeutralityAudit -v
 ```
 
-**Expected**: 0 FAIL, optional WARN logs for C2/C4 within allow-list. The audit script's pattern set is **disjoint** from `internal_content_leak_test.go` (no class enforced by both files).
+**Expected**: 0 FAIL for `TestTemplateNeutralityAudit` (and its C1/C2/C4/C5/C6/C8 subtests), optional WARN logs for C2 (bare-narrative)/C4 within allow-list. The audit script's pattern set is **disjoint** from `internal_content_leak_test.go` (no class enforced by both files). The C2 subtest implements the bare-narrative two-pass exclusion (RE2 lacks lookbehind) and its file set MUST equal `grep -rlP '(?<![A-Za-z0-9-])V3R[0-9]'`.
 
 ### AC-TNA-009 — CI workflow `template-neutrality-check.yaml` triggers on template/ PR
 
@@ -233,7 +237,7 @@ grep -q 'Acceptable Content Range\|template-acceptable-content\|contributor-chec
 
 - `internal/template/template_neutrality_audit_test.go` :: `TestTemplateNeutralityAudit` (scoped to kept classes; C3/C7 NOT scanned — owned by `internal_content_leak_test.go`)
   - Subtest `C1_macos_bias`: regex `/Users/`, expect 0 hits post-M2 (binary FAIL category)
-  - Subtest `C2_v3r_refs`: regex `V3R[0-9]`, WARN if > allow-list (advisory category)
+  - Subtest `C2_v3r_bare_narrative`: bare-narrative `V3R[0-9]` via **two-pass exclusion** (Pass 1 `\bV3R[0-9]`; Pass 2 drop `SPEC-V3R`/`CONST-V3R`/`REQ-V3R` ID-embedded + preceding-rune `[A-Za-z0-9-]`), WARN if > allow-list (advisory category). MUST equal `grep -rlP '(?<![A-Za-z0-9-])V3R[0-9]'`. MUST NOT match the 299 ID-embedded `SPEC-V3R…`/`CONST-V3R…`/`REQ-V3R…` substrings (those are ISOLATION-001's `C1-spec-id` domain).
   - Subtest `C4_feedback_memory`: regex `feedback_|memory\.md`, WARN if > allow-list (advisory; NEUTRALITY-unique, not covered by leak test)
   - Subtest `C5_claude_local`: regex `CLAUDE\.local\.md`, FAIL if > allow-list (binary, empty allow-list)
   - Subtest `C6_pr_refs`: regex `PR #[0-9]+`, FAIL if > 0 (binary)

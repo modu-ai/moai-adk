@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001
 title: "Template Neutrality Audit — Implementation Plan"
-version: "0.1.1"
-status: draft
+version: "0.1.2"
+status: in-progress
 created: 2026-05-23
 updated: 2026-05-30
 author: Author Name
@@ -50,18 +50,24 @@ related_specs: [SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]
 
 **Deliverables**: 4 file modifications. Tests: AC-TNA-001 / AC-TNA-008 / AC-TNA-013 PASS.
 
-### M3 — V3R[0-9] refs classification + fix (C2, 73 files)
+### M3 — V3R[0-9] **bare-narrative** sigils classification + fix (C2, 7 files) — **[NARROWED v0.1.2, blocker resolution]**
 
 **Owner**: manager-develop cycle_type=ddd Section A-E Tier L MANDATORY
-**Activity**:
-- M1 migration-matrix.md §C2 allow-list (18 entries)에 따라 PRESERVE / GENERALIZE / REMOVE 적용
-- PRESERVE 예: `decisions/lsp-client-choice.md` V3R5 decision record, `agent-common-protocol.md` `CONST-V3R5-NNN` registry IDs, `worktree-state-guard.md` CONST-V3R5-029
-- GENERALIZE 예: "a workflow audit finding F-009" → "a workflow audit finding"
-- REMOVE 예: 단순 dev-history 흔적
-- Pre-fix re-measure (run-phase): `grep -rln 'V3R[0-9]' internal/template/templates/ | wc -l` (baseline 73 at 2026-05-30; M3 re-measures at run-phase HEAD)
-- AC-TNA-002 verify: post-fix `actual` ≤ allow-list count (18, computable via corrected awk per D2 fix)
 
-**Deliverables**: 73 files audit + modifications (allow-list 외 모두 fix). Tests: AC-TNA-002 / AC-TNA-008 / AC-TNA-013 PASS.
+**Blocker context (v0.1.2)**: M3 진입 시 broad `V3R[0-9]` (341 hits)의 ≤18 / 73-file target이 구조적으로 달성 불가능함이 발견됐다 (299/341 = 88%가 `SPEC-V3R…`/`CONST-V3R…`/`REQ-V3R…` ID-embedded, ISOLATION-001 소유). Option A (user-approved): C2를 **bare-narrative sigil (7 files)** 로 narrow. 상세는 spec.md REQ-TNA-002 § C2 detection scope + migration-matrix.md §C2.
+
+**Activity**:
+- migration-matrix.md §C2 allow-list (6 bare-narrative PRESERVE entries)에 따라 PRESERVE / GENERALIZE 적용
+- PRESERVE 예 (6 files): `zone-registry.md` V3R2/V3R5 namespace + CONST section headers, `manager-spec.md` SPEC-ID decomposition self-check 예시 `V3R6`, harness `V3R4 Self-Evolving` authoritative-SPEC citations (`moai-harness-learner/SKILL.md`, `moai/SKILL.md`, `harness.md`, `moai-meta-harness/SKILL.md` — 4개가 harness PRESERVE group)
+- GENERALIZE 예 (1 file): `manager-develop-prompt-template.md` 2 hits — `V3R4 HARNESS retirement` → "a prior harness retirement", `다른 V3R6 SPEC` → "다른 SPEC". **F3 mirror caveat**: 이 파일은 `rule_template_mirror_test.go` byte-parity allow-list 대상 — template + `.claude/` 양쪽 동시 수정 (또는 `.claude/` 측이 이미 generic form인지 확인 후 template만)
+- REMOVE: 없음 (bare-narrative set의 7 files 모두 PRESERVE 6 + GENERALIZE 1)
+- Pre-fix re-measure (run-phase): `grep -rlP '(?<![A-Za-z0-9-])V3R[0-9]' internal/template/templates/ | wc -l` (baseline 7 at 2026-05-30; M3 re-measures at run-phase HEAD)
+- **DO NOT** touch the 299 ID-embedded `SPEC-V3R…`/`CONST-V3R…`/`REQ-V3R…` matches (ISOLATION-001 domain — cross-SPEC scope bleed 금지)
+- AC-TNA-002 verify: post-fix `actual` ≤ allow-list count (6, computable via corrected awk; bare-narrative grep)
+
+**Deliverables**: 7 bare-narrative files audit (6 PRESERVE + 1 GENERALIZE). Tests: AC-TNA-002 / AC-TNA-008 (isolated `-run`) / AC-TNA-013 PASS.
+
+> **Run-phase note (v0.1.2)**: `internal/template` package는 이미 13 pre-existing 실패 test로 RED (본 SPEC scope 외 — spec.md §3.4). AC-TNA-008 검증은 package-wide green이 아니라 `go test ./internal/template/... -run TestTemplateNeutralityAudit` isolated form으로만 수행. package-wide RED은 본 SPEC closure를 block하지 않는다.
 
 ### M4 — memory + CLAUDE.local refs (C4+C5, ~12 files) — **[C3 DEFERRED, dropped from M4]**
 
@@ -110,13 +116,14 @@ related_specs: [SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]
 
 ## §2 Risks
 
-### R1 — Dev-history justification ambiguity (HIGH)
+### R1 — Dev-history justification ambiguity (MEDIUM, narrowed v0.1.2)
 
-**Issue**: 70 V3R refs 중 어느 것이 PRESERVE 정당하고 어느 것이 REMOVE 대상인지 case-by-case 판정 필요. 잘못 PRESERVE하면 dev-incident가 distribute됨.
+**Issue**: bare-narrative V3R sigils (7 files) 중 어느 것이 PRESERVE 정당하고 어느 것이 GENERALIZE 대상인지 case-by-case 판정 필요. (v0.1.2 narrow로 ambiguity 크게 축소 — 299 ID-embedded matches는 ISOLATION-001 소유로 본 SPEC scope 밖, 판정 대상에서 제외.)
 
 **Mitigation**:
-- M1 migration-matrix.md PRESERVE 기준 명문화: (a) rule SSOT citation, (b) decision record file (`.moai/decisions/*.md`), (c) zone-registry.md CONST-V3R5-NNN entries
-- M3 manager-develop에 PRESERVE 기준 + allow-list explicit injection
+- migration-matrix.md §C2 PRESERVE 기준 명문화: (a) rule SSOT / zone-registry namespace decision record, (b) named-doctrine citation (`V3R4 Self-Evolving Harness` authoritative-SPEC), (c) SPEC-ID decomposition self-check 예시
+- M3 manager-develop에 6-entry allow-list + 1 GENERALIZE target explicit injection (bare-narrative set 7 files 전수 enumerate)
+- bare-narrative two-pass detection (RE2 lookbehind 부재 대응)으로 ID-embedded false-positive 원천 차단
 - AC-TNA-002 WARN-level finding으로 표면화하여 미식별 항목 post-hoc 검출
 
 ### R2 — False positive in C8 detection

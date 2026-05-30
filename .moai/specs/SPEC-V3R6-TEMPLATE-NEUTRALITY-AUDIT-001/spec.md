@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001
 title: "Template Neutrality Audit — dev incident/path/refs sanitization for 16-language template distribution"
-version: "0.1.1"
-status: draft
+version: "0.1.2"
+status: in-progress
 created: 2026-05-23
 updated: 2026-05-30
 author: Author Name
@@ -56,7 +56,7 @@ related_specs: [SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]
 
 그러나 본 세션 추가 audit 결과 (baseline re-measured 2026-05-30, absolute-path grep at HEAD `ecda4ef04`):
 - **C1 macOS-biased path placeholder 4 files** (`worktree-integration.md`, `run/context-loading.md`, `moai-foundation-cc/examples.md`, `moai-workflow-loop/examples.md`) — 모두 `/Users/user/...` 또는 `/Users/john/...` generic placeholder이나 macOS-only path syntax — **KEEP (NEUTRALITY-unique)**
-- **C2 V3R[0-9] refs 73 files** — 일부는 정당한 doctrine 인용 (`decisions/lsp-client-choice.md` V3R5 결정 기록), 다수는 incident traceability 노출 — **KEEP (NEUTRALITY-unique, the bulk)**
+- **C2 V3R[0-9] bare-narrative sigils 7 files** — broad `V3R[0-9]` regex가 341 hits를 매칭하나 그중 299 (88%)는 `SPEC-V3R…` / `CONST-V3R…` / `REQ-V3R…` ID-embedded substring이며 이는 ISOLATION-001의 `C1-spec-id` leak-test class 소유. C2는 **bare-narrative sigil (ID-embedded 아닌 7 files)** 만 scope — **KEEP (NEUTRALITY-unique, narrowed)**. ID-embedded 299 sanitization은 ISOLATION-001 job (forbidden cross-SPEC scope bleed).
 - **C3 2026-05-XX dates 39 files** — incident date allow-list 외 generalize — **DEFERRED to SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001** (그 SPEC의 `internal_content_leak_test.go` strict-tier `S1-internal-date` `\b202[6-9]-MM-DD\b` 가 본 class를 enforce; 본 SPEC은 중복 enforcement 제거. 자세한 partition은 §3.3 참조)
 - **C4 feedback_/memory refs 9 files** — rule/doctrine 인용 정상, 외 generalize — **KEEP (NEUTRALITY-unique)**. `internal_content_leak_test.go`는 memory *path* class (`~/.claude/projects/-Users-` / `.moai/backups/agent-archive-`)만 enforce하며, 본 C4의 `feedback_` / `memory.md` *substring reference* class는 default/strict 어느 모드에서도 enforce하지 않음 (§3.3 partition 표 참조)
 - **C5 CLAUDE.local.md refs 3 files** — local-only file ref는 template에 부적합 — **KEEP (NEUTRALITY-unique)** (baseline 10→3, partial prior cleanup 반영)
@@ -66,7 +66,7 @@ related_specs: [SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]
 
 **Rescope (v0.1.1)**: 본 SPEC은 plan-audit iter-1 (FAIL 0.71) 후 **NEUTRALITY-unique 카테고리 (C1/C2/C4/C5/C6/C8)** 로 rescope되었으며, **C3/C7** 는 이미 shipped된 sibling SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001 (status `completed`, `internal/template/internal_content_leak_test.go` 16810B) 의 strict-tier pattern class로 defer한다. 이로써 같은 Go package (`internal/template/`) 안에 date/SHA class에 대한 dual-allow-list drift를 제거한다. 자세한 partition은 §3.3 참조.
 
-KEPT class baselines (re-measured 2026-05-30 at HEAD `ecda4ef04`, absolute-path grep — point-in-time; run-phase M1 re-measures before fixing): C1=4, C2=73, C4=9, C5=3, C6=3, C8=3 files. KEPT class scope (overlaps account for dedupe). Tier L migration SPEC scope.
+KEPT class baselines (re-measured 2026-05-30 at HEAD `1162b0de8`, point-in-time; run-phase M1/M3 re-measures before fixing): C1=4, **C2=7 (bare-narrative only; broad `V3R[0-9]`=341 hits of which 299 ID-embedded are ISOLATION-owned)**, C4=9, C5=3, C6=3, C8=3 files. KEPT class scope (overlaps account for dedupe). Tier L migration SPEC scope.
 
 ### 3.2 Template-First Rule 부작용
 
@@ -91,7 +91,8 @@ shipped sibling **SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001** (status `completed
 | NEUTRALITY 카테고리 | leak-test enforcement | partition 결정 |
 |---|---|---|
 | C1 `/Users/` paths | 미enforce | **KEEP (NEUTRALITY)** |
-| C2 `V3R[0-9]` refs | 미enforce | **KEEP (NEUTRALITY — the bulk, 73 files)** |
+| C2 bare-narrative `V3R[0-9]` (NOT ID-embedded) | 미enforce | **KEEP (NEUTRALITY — narrowed to 7 bare-narrative files)** |
+| C2 ID-embedded `SPEC-V3R…` / `REQ-V3R…` (299 of 341 hits) | ISOLATION `C1-spec-id` leak-test class | **DEFER to ISOLATION (not a C2 target)** |
 | C3 generic ISO date `2026-0[5-9]` | enforce via strict-tier `S1-internal-date` `\b202[6-9]-[0-1][0-9]-[0-3][0-9]\b` (opt-in `MOAI_TEMPLATE_LEAK_STRICT=1`; §25.1 evolution policy의 future-tightening tier) | **DEFER to ISOLATION** |
 | C4 `feedback_` / `memory.md` *substring reference* | **미enforce** (default 및 strict 모두). leak-test C5는 memory *path* class (`~/.claude/projects/-Users-` / `.moai/backups/agent-archive-`)만 enforce하며 이는 본 C4와 disjoint pattern | **KEEP (NEUTRALITY)** |
 | C5 `CLAUDE.local.md` refs | 미enforce | **KEEP (NEUTRALITY)** |
@@ -102,6 +103,45 @@ shipped sibling **SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001** (status `completed
 **C4 discrepancy note**: plan-audit iter-1 SCOPE 권고는 C3/C4/C7 일괄 defer였으나, leak-test 실측 결과 **C4 (`feedback_`/`memory.md` substring reference) class는 leak test가 enforce하지 않음** (default/strict 모두). leak-test C5 path class와 disjoint pattern이므로 C4를 silently drop하면 enforcement gap이 발생한다. 따라서 C4는 NEUTRALITY에 **유지**한다 (per orchestrator guardrail: "If the leak test does NOT enforce one of C3/C4/C7, keep that category in NEUTRALITY"). C3/C7만 defer.
 
 **dual-allow-list drift 제거**: defer된 C3/C7은 본 SPEC의 audit script (REQ-TNA-009)가 scan하지 않으므로, `internal/template/` package 안에 date/SHA class에 대한 allow-list가 ISOLATION의 leak-test 하나만 존재한다 (drift 원천 제거).
+
+**C2 narrow note (v0.1.2 M3 blocker resolution)**: M3 진입 시 manager-develop이 broad `V3R[0-9]` regex의 ≤18 target과 73-file baseline이 **달성 불가능**임을 구조적 C2 conflict로 발견하고 blocker를 반환했다. 근본 원인: broad `V3R[0-9]` (341 hits) 중 299 (88%)가 `SPEC-V3R…` / `CONST-V3R…` / `REQ-V3R…` ID-embedded substring이며, 이를 sanitize하려면 ISOLATION-001의 `C1-spec-id` leak-test class 영역을 침범해야 한다 (forbidden cross-SPEC scope bleed). 해소 (Option A, user-approved): C2 detection을 **bare-narrative `V3R[0-9]` (ID-prefix token에 직접 선행되지 않는 sigil)** 으로 narrow한다 (REQ-TNA-002 § C2 detection scope 참조). 이로써 C2는 7 bare-narrative files만 owns하고, 299 ID-embedded matches는 ISOLATION-001로 defer되어 disjointness가 보존된다 (C3/C7과 동일 disjoint discipline).
+
+### 3.4 Known Pre-existing Issues (out of scope)
+
+#### Pre-existing package RED at run-phase baseline
+
+[HARD] At this SPEC's run-phase baseline (HEAD `1162b0de8`), the `internal/template` Go package is **already RED** — `go test ./internal/template/...` reports **13 pre-existing failing test functions** that exist independently of this SPEC's work. **This SPEC does NOT fix these failures; they are explicitly out of scope.**
+
+The 13 pre-existing failing test functions (orchestrator-measured 2026-05-30):
+
+1. `TestTemplateNoInternalContentLeak` — the ISOLATION-001 leak test, **RED despite ISOLATION-001 `status: completed`**
+2. `TestRuleTemplateMirrorDrift` — template ↔ `.claude/` byte-parity drift
+3. `TestLateBranchTemplateMirror` — Late-branch doctrine mirror parity
+4. `TestManagerDevelopActiveAgentPresent`
+5. `TestManagerDevelopIsActiveAgent`
+6. `TestEmbeddedTemplates_AgentDefinitions`
+7. `TestAgentFrontmatterAudit`
+8. `TestBuilderSkillPathStructure`
+9. `TestTemplateAgentsStructure`
+10. `TestSettingsTemplateHookEventCount`
+11. `TestContractSchemaVerification`
+12. `TestBackwardCompatibility`
+13. `TestContractAssertionsNaturalLanguage`
+
+**Implication for this SPEC's verification**: the new audit script (REQ-TNA-009 `TestTemplateNeutralityAudit`) is designed to PASS as an **independent test function** — it is verified in isolation via `go test ./internal/template/... -run TestTemplateNeutralityAudit` (AC-TNA-008), NOT via the package-wide `go test ./internal/template/...`. The package-level run remains **RED** until a separate cleanup SPEC addresses the 13 pre-existing failures. Acceptance of this SPEC MUST use the `-run TestTemplateNeutralityAudit` targeted form; a package-wide green is NOT a precondition and MUST NOT block this SPEC's closure.
+
+**Recommended follow-up (successor SPEC)**: a dedicated `internal/template` package-RED cleanup SPEC (provisional `SPEC-V3R6-TEMPLATE-PACKAGE-RED-CLEANUP-001`, Tier M) should triage and fix the 13 failures — notably `TestTemplateNoInternalContentLeak` (which is RED despite ISOLATION-001 being marked `completed`, indicating an unresolved leak or an over-broad strict-tier assertion) and the 3 mirror-drift tests (`TestRuleTemplateMirrorDrift` / `TestLateBranchTemplateMirror` / `TestEmbeddedTemplates_AgentDefinitions`). That successor SPEC owns the package-wide green; this NEUTRALITY SPEC is scoped to its own 6 kept-class fixes + the disjoint audit script only.
+
+#### F3 — template ↔ `.claude/` mirror-drift caveat (4 byte-parity files)
+
+[HARD] Four files touched by C2/C4/C5/C6 are on the `rule_template_mirror_test.go` byte-parity allow-list, meaning their `internal/template/templates/…` mirror MUST stay byte-identical to their `.claude/…` counterpart:
+
+- `manager-develop-prompt-template.md` (C2 bare-narrative target + C8 GOOS preserve)
+- `manager-spec.md` (C2 bare-narrative — SPEC-ID decomposition self-check example)
+- `spec-workflow.md` (C2/C4 context)
+- `manager-git.md` (C6 PR-ref context)
+
+Some of these `.claude/` mirrors are already genericized while the template mirrors lag (pre-existing drift surfaced by `TestRuleTemplateMirrorDrift` RED). When run-phase manager-develop edits any of these 4 files, it MUST keep template ↔ `.claude/` mirror parity: edit **both sides** in the same milestone, OR verify the `.claude/` side already matches the intended generic form before editing only the template side. Failing to maintain parity widens the existing `TestRuleTemplateMirrorDrift` failure rather than resolving it.
 
 ## §4 EARS GEARS Requirements
 
@@ -119,11 +159,39 @@ Affected baseline (verified 2026-05-23): 4 files / 8 lines
 - `internal/template/templates/.claude/skills/moai-foundation-cc/references/examples.md` — line 646
 - `internal/template/templates/.claude/skills/moai-workflow-loop/references/examples.md` — line 396
 
-### REQ-TNA-002 — V3R[0-9] dev version refs classification (C2)
+### REQ-TNA-002 — V3R[0-9] bare-narrative dev version sigils classification (C2)
 
-**Where** the template tree contains a substring matching the regex `V3R[0-9]`, **the system shall** classify each occurrence per the migration matrix into PRESERVE (rule SSOT citation / decision record), GENERALIZE (incident pattern), or REMOVE (dev-history trace). **If** the occurrence is classified as PRESERVE, **then** the file shall be added to the allow-list defined in `migration-matrix.md` §C2 with explicit rationale; otherwise the occurrence shall be transformed per the classified action.
+**Where** the template tree contains a **bare-narrative** occurrence of `V3R[0-9]` — i.e. a `V3R[0-9]` substring NOT immediately preceded by an ID-prefix token (`SPEC-`, `CONST-`, `REQ-`) nor part of any larger `[A-Za-z0-9-]` identifier — **the system shall** classify each occurrence per the migration matrix into PRESERVE (rule SSOT citation / decision record / named-doctrine citation), GENERALIZE (incident pattern), or REMOVE (dev-history trace). **If** the occurrence is classified as PRESERVE, **then** the file shall be added to the allow-list defined in `migration-matrix.md` §C2 with explicit rationale; otherwise the occurrence shall be transformed per the classified action.
 
-Baseline (re-measured 2026-05-30 at HEAD `ecda4ef04`): **73 files** containing `V3R[0-9]` substring (was 70 at 2026-05-23 plan-phase; +3 drift). Examples include `.moai/decisions/lsp-client-choice.md` (V3R5 decision record — PRESERVE), `.moai/config/sections/git-strategy.yaml.tmpl` (V3R[0-9] mention — case-by-case), etc. Point-in-time; run-phase M3 re-measures before fixing.
+#### C2 detection scope — bare-narrative only (ID-embedded matches are out of scope)
+
+[HARD] The C2 detection target is the **bare-narrative version sigil** ONLY. The broad `V3R[0-9]` regex collides with the SPEC-ID / CONST-registry-ID / REQ-ID domain that is owned by the sibling SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001's `C1-spec-id` leak-test class. C2 owns ONLY the bare-narrative sigil so the two SPECs stay disjoint (the same disjointness discipline already applied to C3/C7 in §3.3).
+
+Ground-truth measurement (orchestrator-measured, absolute-path grep, 2026-05-30 HEAD `1162b0de8`):
+
+| Subset | Count | Owner |
+|---|---|---|
+| Total `V3R[0-9]` occurrences | 341 | — |
+| `SPEC-V3R[0-9]` (ID-embedded) | 165 | ISOLATION-001 `C1-spec-id` (DEFER) |
+| `CONST-V3R[0-9]` (registry-ID-embedded) | 130 | zone-registry SSOT (PRESERVE — see §C2 allow-list) |
+| `REQ-V3R[0-9]` (ID-embedded) | 4 | ISOLATION-001 leak-test (DEFER) |
+| **ID-embedded subtotal** | **299 (88%)** | **NOT a C2 target** |
+| **Bare-narrative `V3R[0-9]`** | **7 files** | **C2 target (this REQ)** |
+
+The old `V3R[0-9]` regex + the ≤18 allow-list target were unachievable without sanitizing the 299 ID-embedded matches — which is ISOLATION-001's job (forbidden cross-SPEC scope bleed). The narrowed C2 measures only the 7 bare-narrative files.
+
+#### Two-pass detection approach for the Go audit script (REQ-TNA-009)
+
+Go's `regexp` package (RE2) does NOT support lookbehind, so the audit script MUST implement bare-narrative detection as an explicit two-pass exclusion (a single Go regex cannot express "not preceded by an ID prefix"):
+
+1. **Pass 1 — find all candidates**: match `\bV3R[0-9]` on each line (RE2-compatible word-boundary anchor).
+2. **Pass 2 — exclude ID-embedded hits**: for each Pass-1 hit, inspect the immediately preceding non-space token. Drop the hit when the `V3R` is part of a larger identifier — concretely, drop it when the match is reached via any of the prefix forms `SPEC-V3R`, `CONST-V3R`, `REQ-V3R`, OR when the preceding character is a member of `[A-Za-z0-9-]` (i.e. the `V3R` continues an identifier token). Equivalently, the script MAY pre-compile the negative forms `SPEC-V3R[0-9]`, `CONST-V3R[0-9]`, `REQ-V3R[0-9]` and subtract their hit set from the Pass-1 hit set, then additionally drop any residual hit whose preceding rune is `[A-Za-z0-9-]`.
+
+A shell-verifiable equivalent (perl PCRE supports negative lookbehind) is `grep -rlP '(?<![A-Za-z0-9-])V3R[0-9]'`, used by AC-TNA-002 below. The Go two-pass exclusion MUST produce the same file set as this perl form.
+
+Baseline (orchestrator-measured 2026-05-30 at HEAD `1162b0de8`, bare-narrative grep `grep -rlP '(?<![A-Za-z0-9-])V3R[0-9]'`): **7 bare-narrative files** (replaces the stale 70/73 broad-regex counts). The 7 files are: `manager-spec.md`, `zone-registry.md`, `manager-develop-prompt-template.md`, `moai-harness-learner/SKILL.md`, `moai/SKILL.md`, `moai/workflows/harness.md`, `moai-meta-harness/SKILL.md`. Point-in-time; run-phase M3 re-measures the bare-narrative set before fixing.
+
+**Post-fix target**: ≤ allow-list count. Of the 7 bare-narrative files, the legitimate PRESERVE entries (zone-registry V3R2/V3R5 namespace decision record + CONST-registry section headers; manager-spec.md SPEC-ID decomposition self-check example; the harness `V3R4 Self-Evolving` authoritative-SPEC decision-record citations in `moai-harness-learner/SKILL.md`, `moai/SKILL.md`, `harness.md`, `moai-meta-harness/SKILL.md`) stay; the remainder (`manager-develop-prompt-template.md` `V3R4 HARNESS retirement` example + `다른 V3R6 SPEC` generic) is GENERALIZE/REMOVE. Expected post-fix bare-narrative count: **6 PRESERVE** (matching the allow-list) after `manager-develop-prompt-template.md` is generalized.
 
 ### REQ-TNA-003 — Date refs classification (C3) — **[DEFERRED to SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]**
 
@@ -168,7 +236,11 @@ Baseline (verified 2026-05-23): 4 hits / 3 files
 
 ### REQ-TNA-009 — Audit script (`template_neutrality_audit_test.go`) — **[SCOPED to kept classes C1/C2/C4/C5/C6/C8]**
 
-**Where** `internal/template/` is the Go test discovery root, **the system shall** provide a new test file `internal/template/template_neutrality_audit_test.go` containing the function `TestTemplateNeutralityAudit`. **When** invoked via `go test ./internal/template/...`, the test shall scan `internal/template/templates/**` and emit a single FAIL with a structured violation report when category C1, C5, or C6 (binary patterns) finds a hit outside its allow-list, and a WARN log line (not a FAIL) when C2 or C4 (case-by-case patterns) find a hit outside the migration-matrix allow-list. **If** the C8 false-positive pattern (`GOOS=(linux|windows|darwin|freebsd|openbsd|netbsd)`) matches, **then** the hit shall be excluded from all reports.
+**Where** `internal/template/` is the Go test discovery root, **the system shall** provide a new test file `internal/template/template_neutrality_audit_test.go` containing the function `TestTemplateNeutralityAudit`. **When** invoked via `go test ./internal/template/... -run TestTemplateNeutralityAudit`, the test shall scan `internal/template/templates/**` and emit a single FAIL with a structured violation report when category C1, C5, or C6 (binary patterns) finds a hit outside its allow-list, and a WARN log line (not a FAIL) when C2 (bare-narrative `V3R[0-9]`) or C4 (case-by-case patterns) find a hit outside the migration-matrix allow-list. **If** the C8 false-positive pattern (`GOOS=(linux|windows|darwin|freebsd|openbsd|netbsd)`) matches, **then** the hit shall be excluded from all reports.
+
+**[C2 two-pass detection]** Because Go's `regexp` (RE2) lacks lookbehind, the C2 subtest MUST implement the **bare-narrative two-pass exclusion** specified in REQ-TNA-002 § "Two-pass detection approach": Pass 1 matches `\bV3R[0-9]`; Pass 2 drops hits reached via `SPEC-V3R` / `CONST-V3R` / `REQ-V3R` ID prefixes or whose preceding rune is `[A-Za-z0-9-]`. The C2 subtest's resulting file set MUST equal the perl PCRE form `grep -rlP '(?<![A-Za-z0-9-])V3R[0-9]'` (AC-TNA-002). The C2 subtest MUST NOT match the 299 ID-embedded `SPEC-V3R…` / `CONST-V3R…` / `REQ-V3R…` substrings (those belong to ISOLATION-001's `C1-spec-id` class).
+
+**[run-phase isolation note]** This audit script is run and verified in **isolation** (`-run TestTemplateNeutralityAudit`), NOT via the package-wide `go test ./internal/template/...` — the package is RED at run-phase baseline with 13 pre-existing failures unrelated to this SPEC (see §3.4). The new test function is designed to PASS standalone.
 
 **[SCOPE] C3 / C7 are NOT scanned by this test.** The date class (C3) and commit-hash class (C7) are owned by the shipped sibling `internal/template/internal_content_leak_test.go` (strict-tier `S1-internal-date` / `S2-short-sha-sentence-final`). Re-scanning them here would create two test files in the same Go package (`internal/template/`) with two divergent allow-lists for one pattern class — a guaranteed drift source. This audit script's pattern set is therefore **disjoint** from `internal_content_leak_test.go`.
 
