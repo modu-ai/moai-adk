@@ -530,14 +530,99 @@ trailers (testing the same ownership-violation concept via the new mechanism). T
 regression coverage but is no longer invoked from the production `Check()` path
 (documented in its godoc).
 
-## §A.5 M5-M6 Placeholder (deferred to subsequent milestones)
+## §A.5 M5 — Rule File Authoring (implemented)
 
-The following milestones await subsequent orchestrator-spawned `manager-develop`
-invocations. Their evidence will be appended to this progress.md as separate
-§A.{5..6} sections per plan.md §F.{5..6}.
+**Status**: implemented (this milestone)
+**Started**: 2026-05-30 (post-M4 paste-ready resume)
 
-- **M5 — Rule File Authoring** (`.claude/rules/moai/workflow/lifecycle-sync-gate.md`) — depends on M1 era field ✓
-- **M6 — No-Op Regression Validation** (5 already-discharged SPECs) — depends on M1-M5
+### Phase 0.95 Mode Selection (M5 spawn)
+
+Orchestrator selected **Mode 5 — Sub-Agent Sequential** per
+`.claude/rules/moai/workflow/orchestration-mode-selection.md` § Mode Catalog.
+
+**Decision**: sub-agent
+
+**Rationale**: M5 scope is documentation/rule-authoring only — 2 markdown files
+(1 NEW + 1 MODIFY) + progress.md evidence update. Markdown-heavy but single-milestone
+scope (< 3 domains, < 10 files). Per the tie-breaker rule in
+`orchestration-mode-selection.md` §B.2 ("Tier L + markdown / shell-script-only scope:
+Mode 5 with Tier L Section A-E delegation template"), Mode 5 sub-agent sequential
+with the Tier L full delegation template is the correct default. Agent Teams
+capability gate not met (single-domain markdown scope).
+
+**Input parameters captured**:
+- tier: L (inherited from SPEC frontmatter)
+- scope: 2 markdown files + progress.md update
+- domain count: 1 (`.claude/rules/moai/workflow/` + `.claude/rules/moai/development/`)
+- file language mix: Markdown (100%)
+- concurrency benefit: LOW (single-milestone documentation authoring)
+- Agent Teams prereqs status: not met (single-domain < 3 threshold)
+
+**Mode evaluation table** (M5 spawn):
+
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| trivial | No | Tier L scope; documentation authoring requires meaningful content generation |
+| background | No | Write operations prohibited for background agents (CONST-V3R2-020) |
+| agent-team | No | Single-domain markdown scope; capability gate not met |
+| parallel | No | Single-milestone sequential authoring; no parallelism benefit |
+| sub-agent | **Yes** | Default for documentation-heavy single-milestone work; M5 depends on M1 era field ✓ |
+
+### M5 Scope Implemented
+
+Per plan.md §F.5 scope enumeration:
+
+1. **`.claude/rules/moai/workflow/lifecycle-sync-gate.md`** (NEW, ≥ 250 lines) — canonical
+   rule file with 5 mandatory h2 sections + Version/Status footer + Cross-references:
+   - `## Era Classification Heuristic` — H-1..H-6 Heuristic Detection Table reproduced from
+     design.md §C.2; era definitions; `EraSignals` structure; `modernEraThreshold`;
+     `normalizeEra` accepted alias table; reference to Go implementation.
+   - `## Grandfather Clause Policy` — V2.x / V3R2-R4 / V3R5 are grandfather-protected;
+     rationale; `modernEraThreshold` as boundary; audit output field semantics.
+   - `## Frontmatter Era Field Semantics` — optional `era:` field specification; accepted
+     values; when to set/not set; relationship to `lint.skip`; H-override behavior.
+   - `## Status Transition Ownership Matrix Cross-Reference` — how era classification
+     modulates `OwnershipTransitionRule` enforcement (V3R6-only); canonical ownership
+     matrix summary; `Authored-By-Agent:` trailer as gating signal; lint finding codes.
+   - `## Worked Example: Era Auto-Detection` — concrete scenario: V3R6 SPEC without `era:`
+     field → `ClassifyEra()` fires H-4 → audit emits `EraAutoDetected` INFO finding with
+     `details.heuristic_matched: "H-4 (§E.2 + §E.5 + both commit_sha present)"`;
+     JSON output excerpt; Go test binding (`TestEraAutoDetection`); suppression instruction.
+2. **`.claude/rules/moai/development/spec-frontmatter-schema.md`** (MODIFY, minimal — +1 row
+   to Optional Fields table + cross-reference sentence):
+   - Added `era` row: `V2.x | V3R2-R4 | V3R5 | V3R6 | unclassified` enum; description
+     explaining optional override of auto-detection; cross-reference to lifecycle-sync-gate.md.
+   - No other sections modified; body structure preserved per manager-develop forbidden-modifications.
+
+### M5 AC Binary PASS/FAIL Matrix
+
+| AC | Status | Verification | Evidence |
+|----|--------|--------------|----------|
+| AC-LSG-005 | PASS | `grep -c "^## " .claude/rules/moai/workflow/lifecycle-sync-gate.md` ≥ 5 AND `wc -l` ≥ 250 AND 5 literal headings present | See E1 self-verification below |
+| AC-LSG-013 (M5 binding) | PASS | `## Worked Example: Era Auto-Detection` section demonstrates `EraAutoDetected` INFO finding flow | See E1 self-verification below |
+
+**M5 AC count**: 2 / 2 in scope (2 PASS).
+
+### M5 Scope Discipline Verification (B10 — PRESERVE list)
+
+- `internal/spec/*` (M1), `internal/cli/spec*.go` (M2), `.claude/hooks/moai/handle-pre-commit-spec-status.sh` (M3), `internal/spec/lint_ownership.go` (M4) — untouched
+- `internal/template/templates/**` — untouched per D.1.2 HARD; M5 is local-only (no template mirror)
+- `.moai/research/*`, `scripts/audit-spec-sync-drift.sh` (untracked carry) — preserved as-is, not staged
+- `spec.md`, `plan.md`, `acceptance.md`, `design.md`, `research.md` body content — untouched (manager-spec ownership boundary preserved)
+
+### M5 Template Isolation Note
+
+M5 delivers **local-only** rule files. The internal/template `TestRuleTemplateMirrorDrift`
+baseline was already RED at run-phase entry (§A.0 note: "pre-existing template mirror drift
+in internal/template unrelated to SPEC scope"). M5 adds 2 new drift entries
+(lifecycle-sync-gate.md + spec-frontmatter-schema.md local amendments). This is
+**expected and out-of-scope** — reconciled by a future batch template-sync chore per
+plan.md AP-4 / Section B B-CRITICAL note.
+
+## §A.6 Placeholder — M6 (deferred to subsequent milestone)
+
+**M6 — No-Op Regression Validation** (5 already-discharged SPECs: ARR-001 / FCG-001 /
+HCW-001 / TMD-001 / TMC-001) — depends on M1-M5 all implemented.
 
 ## §E.0 Run-phase Sentinel Evidence (M1 partial)
 
@@ -566,11 +651,17 @@ the orchestrator-direct Mx chore respectively, after all M1-M6 milestones comple
 |-----------|-------|-----------|--------|-------|-----|----------|
 | M3 — Pre-Commit Hook + settings.json.tmpl Registration | manager-develop | 2026-05-28 | e23b3b3ba | 5 (3 new bash/test + 1 MODIFY + 1 auto-regenerated) | ~17542B (hook + mirror + Go test) + 15 lines tmpl | Go test 6/6 subtests PASS (internal/hook package) |
 
-### §E.1 M4 row (this milestone)
+### §E.1 M4 row
 
 | Milestone | Owner | Completed | Commit | Files | LOC | Coverage |
 |-----------|-------|-----------|--------|-------|-----|----------|
-| M4 — spec-lint OwnershipTransitionRule Extension | manager-develop | 2026-05-30 | (pending — orchestrator atomic commit) | 2 (both MODIFY: lint_ownership.go + lint_ownership_test.go) | +411 / -102 lines | internal/spec 86.2% (≥85% D.2 threshold) |
+| M4 — spec-lint OwnershipTransitionRule Extension | manager-develop | 2026-05-30 | 142aa6228 | 2 (both MODIFY: lint_ownership.go + lint_ownership_test.go) | +411 / -102 lines | internal/spec 86.2% (≥85% D.2 threshold) |
+
+### §E.1 M5 row (this milestone)
+
+| Milestone | Owner | Completed | Commit | Files | LOC | Coverage |
+|-----------|-------|-----------|--------|-------|-----|----------|
+| M5 — Rule File Authoring | manager-develop | 2026-05-30 | (pending — M5 atomic commit) | 2 (1 NEW lifecycle-sync-gate.md + 1 MODIFY spec-frontmatter-schema.md) + progress.md | ≥ 250 lines lifecycle-sync-gate.md + +6 lines spec-frontmatter-schema.md | N/A (documentation milestone — no Go code) |
 
 ## §E.3 Run-phase status field
 
@@ -581,5 +672,6 @@ m1_status: implemented
 m2_status: implemented
 m3_status: implemented
 m4_status: implemented
-m5_through_m6_status: pending
+m5_status: implemented
+m6_status: pending
 ```
