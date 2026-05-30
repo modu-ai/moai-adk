@@ -2,7 +2,7 @@
 id: SPEC-V3R6-PROMPT-CACHE-001
 title: "Anthropic Prompt Caching 도입 (1h 세션 시작 + 5m SPEC body)"
 version: "0.1.1"
-status: in-progress
+status: implemented
 created: 2026-05-23
 updated: 2026-05-30
 author: GOOS행님
