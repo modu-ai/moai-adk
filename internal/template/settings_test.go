@@ -508,8 +508,9 @@ func TestSettingsTemplateHookEventCount(t *testing.T) {
 	// - 2 WorktreeCreate/WorktreeRemove (unregistered by default per
 	// .claude/rules/moai/workflow/worktree-integration.md §WorktreeCreate and
 	// WorktreeRemove Hooks; Claude Code default git worktree behavior is used)
-	// = 20 active hook registrations.
-	const expectedCount = 20
+	// = 20 base hook registrations + 1 PreCommit (added by the pre-commit
+	// spec-status hook registration) = 21 active hook registrations.
+	const expectedCount = 21
 	if len(hooks) != expectedCount {
 		t.Errorf("hook event count = %d, want %d; events: %v", len(hooks), expectedCount, hookKeys(hooks))
 	}
