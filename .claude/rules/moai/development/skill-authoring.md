@@ -29,6 +29,10 @@ Optional standard fields:
 - agent: Subagent type when context is fork. Built-in: Explore, Plan, general-purpose, or custom agent name
 - hooks: Hook definitions scoped to skill lifecycle
 - paths: Glob patterns limiting auto-invocation to matching files (comma-separated or YAML array)
+- when_to_use: Additional trigger context (trigger phrases, example requests) appended to description in the skill listing; counts toward the 1,536-character listing cap
+- argument-hint: Autocomplete hint for expected arguments, e.g. `[issue-number]` or `[filename] [format]`. Top-level field — NOT a metadata key
+- arguments: Named positional arguments for `$name` substitution in skill content; space-separated string or YAML list, mapped to argument positions in order
+- disallowed-tools: Tools removed from Claude's available pool while this skill is active (comma/space-separated string or YAML list). Use for autonomous skills that must never call certain tools (e.g. AskUserQuestion in a background loop); the restriction clears on the next user message
 
 ### metadata Map
 
@@ -45,9 +49,8 @@ Common metadata keys:
 - context7-libraries: Comma-separated library identifiers for Context7 MCP
 - related-skills: Comma-separated related skill names
 - aliases: Comma-separated alternative names
-- argument-hint: Usage hint for user-invocable skills
-- context: Contextual description for skill behavior
-- agent: Target agent name
+
+Note: `argument-hint`, `arguments`, `context`, and `agent` are **top-level frontmatter fields** (see Optional standard fields above), NOT metadata keys. Do not nest them under `metadata:`.
 
 ### MoAI Extension Fields
 
@@ -134,6 +137,13 @@ Level 3 (Bundled):
 - Tokens: Variable
 - Content: reference.md, modules/, examples/
 - Loading: On-demand by Claude
+
+### Skill Listing Budget and Compaction (Claude Code runtime)
+
+MoAI's 3-level disclosure sits on top of two runtime budgets the Claude Code host applies. CLAUDE.md § Progressive Disclosure System cross-references this section as canonical:
+
+- **Listing budget**: skill descriptions are loaded so Claude knows what is available; the budget scales at ~1% of the model context window. On overflow, the least-used skills' descriptions are dropped first (names are always kept). Raise it with the `skillListingBudgetFraction` setting (e.g. `0.02` = 2%) or the `SLASH_COMMAND_TOOL_CHAR_BUDGET` env var; each entry's combined `description` + `when_to_use` text is capped at 1,536 characters (`maxSkillDescriptionChars`). Run `/doctor` to detect overflow.
+- **Compaction budget**: an invoked skill's rendered content stays in context across turns. After auto-compaction, Claude Code re-attaches the most recent invocation of each skill keeping its first ~5,000 tokens, sharing a combined ~25,000-token budget filled from the most-recently-invoked skill. Older skills can be dropped entirely; re-invoke a skill after compaction to restore its full content.
 
 ## Tool Permissions by Category
 
@@ -261,7 +271,8 @@ The 16 supported languages live as **rules** under
   16 supported languages: `cpp`, `csharp`, `elixir`, `flutter`, `go`,
   `java`, `javascript`, `kotlin`, `php`, `python`, `r`, `ruby`, `rust`,
   `scala`, `swift`, `typescript`. Canonical Dart name is `flutter` per
-  `.claude/rules/moai/development/coding-standards.md` § Language Policy (16-language neutrality contract).
+  `.claude/rules/moai/development/coding-standards.md` § Language Policy
+  (16-language neutrality contract).
 - **Loading mechanism**: each language rule uses `paths:` frontmatter for
   conditional loading (e.g., `paths: "**/*.py,**/pyproject.toml"`).
   Path-based loading is the structurally correct primary mechanism for
@@ -279,8 +290,8 @@ The 16 supported languages live as **rules** under
   this principle.
 
 See `.claude/rules/moai/languages/*.md` (16 files) for the canonical
-per-language guidance, and `.claude/rules/moai/development/coding-standards.md` § Language Policy (16-language neutrality contract).for the 16-language
-neutrality contract.
+per-language guidance, and `.claude/rules/moai/development/coding-standards.md`
+§ Language Policy for the 16-language neutrality contract.
 
 ## Skills Namespace Policy
 
@@ -290,7 +301,7 @@ neutrality contract.
 |--------|------|-----------------|---------------------|
 | `moai-foundation-*` / `moai-workflow-*` / `moai-domain-*` / `moai-ref-*` / `moai-meta-*` | 핵심 framework + workflow + 도메인 + reference | template | **삭제 후 신규 설치** (overwrite) |
 | `moai-harness-*` | **하네스 builder/lifecycle** (현재 `moai-meta-harness` + `moai-harness-learner`만 해당) | template | **삭제 후 신규 설치** (overwrite) |
-| **`harness-*`** | **사용자 생성** — `moai-meta-harness`가 `/moai project` Phase 5+ 인터뷰 후 generate | user project | **절대 삭제/modify 금지 + 백업 보존** (Phase 2 SPEC 완료 전까지 Go enforcement는 `my-harness-*`로 작동 — CLAUDE.local.md §24.5 참조) |
+| **`harness-*`** | **사용자 생성** — `moai-meta-harness`가 `/moai project` Phase 5+ 인터뷰 후 generate | user project | **절대 삭제/modify 금지 + 백업 보존** (intent declaration — Go enforcement는 별도 catch-up SPEC에서 작동 전환) |
 
 ### Deprecated Skill Slots (migrated to `.claude/agents/local/`)
 
@@ -309,9 +320,8 @@ The migration preserves the Thin Command Pattern (`coding-standards.md` § Thin 
 - [HARD] `harness-*` namespace는 user-owned. `moai update`가 본 namespace의 skill을 **삭제, modify, sync 금지**. 백업 의무.
 - [HARD] `moai-meta-harness`가 emit하는 사용자 프로젝트별 domain skill은 **`harness-*` prefix만** 허용. `moai-harness-*` 또는 다른 `moai-*` prefix로 emit하면 contract 위반.
 - [HARD] `moai-harness-*` namespace를 사용자 프로젝트별 artifact로 오인 금지 — 본 namespace는 framework builder 전용이며 현재 `moai-harness-learner`, `moai-meta-harness`만 해당한다.
-- [HARD] `harness-*` (user-owned) vs `moai-harness-*` (template builder) substring 구분: `harness-*` glob/prefix 매칭은 정확한 startsWith 비교를 사용하고, `*harness-*` substring 패턴은 false positive 위험이 있으므로 금지.
-- [HARD] CI guard: `internal/template/templates/.claude/skills/harness-*` 누출 시 lint 실패해야 한다 (Phase 2 SPEC catch-up 시 sentinel pattern을 `my-harness-` → `harness-` 으로 갱신).
-- [HARD] Doctrine-code drift 운영: 본 doctrine은 `harness-*` 선언이지만 Go enforcement는 Phase 2 SPEC 완료 전까지 `my-harness-*` 유지. 새 `harness-*` prefix actual generation 금지 — protection 없음. SSOT 참조: CLAUDE.local.md §24.5.
+- [HARD] `harness-*` (user-owned) vs `moai-harness-*` (template builder) substring 구분: prefix 매칭은 정확한 startsWith 비교를 사용하고, `*harness-*` substring 패턴은 false positive 위험이 있으므로 금지.
+- [HARD] CI guard: `internal/template/templates/.claude/skills/harness-*` 누출 시 lint 실패해야 한다 (intent declaration; sentinel pattern은 catch-up SPEC에서 `my-harness-` → `harness-` 으로 갱신).
 
 ### Cross-References
 

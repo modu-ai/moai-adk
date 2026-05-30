@@ -104,6 +104,38 @@ For write-heavy agents without pre-approval, use `background: false` (foreground
 
 Kill background agent: Press `Ctrl+X Ctrl+K` in Claude Code interface (v2.1.83+).
 
+### Worktree Base Branch (`worktree.baseRef`)
+
+Native worktrees (`--worktree` and subagent `isolation: worktree`) branch from the repository's default branch (`origin/HEAD`) by default, so they start from a clean tree matching the remote. If no remote is configured or the fetch fails, the worktree falls back to the current local `HEAD`. To always branch from local `HEAD` instead (carrying unpushed commits and feature-branch state), set `worktree.baseRef` to `"head"` in settings (accepts only `"fresh"` or `"head"`, not arbitrary refs):
+
+```json
+{
+  "worktree": {
+    "baseRef": "head"
+  }
+}
+```
+
+Use `"head"` when isolating subagents that must operate on in-progress work. To branch a native worktree from a specific pull request, pass the PR number prefixed with `#` (e.g. `claude --worktree "#1234"`); Claude Code fetches `pull/<number>/head` and creates the worktree at `.claude/worktrees/pr-<number>`.
+
+This setting governs **Claude-native** worktrees only. MoAI's own `moai worktree new` uses the Branch Origin Decision Protocol (`origin/main` default; see `.claude/rules/moai/development/branch-origin-protocol.md`) and is unaffected by `worktree.baseRef`.
+
+### `.worktreeinclude` (Copy Gitignored Files into Native Worktrees)
+
+A native worktree is a fresh checkout, so untracked files (`.env`, `.env.local`, local config) are not present. Add a `.worktreeinclude` file at the project root to copy them automatically when Claude creates a worktree. It uses `.gitignore` syntax; only files that match a pattern AND are gitignored are copied (tracked files are never duplicated):
+
+```text
+.env
+.env.local
+.moai/config/sections/*.local.yaml
+```
+
+Applies to `--worktree`, subagent `isolation: worktree` worktrees, and desktop parallel sessions. NOT processed when a custom `WorktreeCreate` hook replaces the default git behavior — copy local files inside the hook script instead.
+
+### `EnterWorktree` / `ExitWorktree` Tools
+
+Claude can move the session into a worktree mid-session via the `EnterWorktree` tool (e.g. when the user says "work in a worktree"), creating one under `.claude/worktrees/`. Once inside, Claude can switch directly to another worktree by calling `EnterWorktree` with a target path; the previous worktree stays on disk untouched. `ExitWorktree` returns to the originating checkout. These are Claude Code runtime tools — MoAI does not mandate their use; they are the interactive counterpart to the `--worktree` launch flag and `isolation: worktree` frontmatter.
+
 ## Worktree Selection Rules [ZONE:Evolvable] [HARD]
 
 ### Decision Tree
@@ -295,13 +327,13 @@ Static guard: `internal/cli/worktree/new_test.go` `TestNew_NoAskUserQuestion` sc
 
 `.moai/state/swarm/<SPEC-ID>.json` (per-project, 0o600 perms) is written after successful team launch in P1, P2, or P3. The registry is NOT written for P4 (no spawn occurred), and is NOT written if pane spawn fails or worktree creation fails.
 
-The 7-field schema (`spec_id`, `worktree_path`, `branch`, `pane_id`, `mode`, `created_at`, `created_by_pid`) is the baseline for future `moai swarm status / done / kill-all` commands. Those commands are out of scope for SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001 — this SPEC delivers only the registry write.
+The 7-field schema (`spec_id`, `worktree_path`, `branch`, `pane_id`, `mode`, `created_at`, `created_by_pid`) is the baseline for future `moai swarm status / done / kill-all` commands. Those commands are out of scope for the current worktree team-launch contract — the current contract delivers only the registry write.
 
 ### Cross-references
 
 - `.claude/skills/moai-workflow-worktree/SKILL.md` § `--team` Flag (P1-P4 matrix + examples)
 - `internal/cli/worktree/team_launch.go`, `team_launch_posix.go`, `team_launch_windows.go`, `swarm_registry.go`, `handoff_guidance.go`
-- SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001 (REQ-WTL-001..013)
+- The canonical worktree team-launch contract requirements
 - CONST-V3R5-030 — Branch Origin Decision Protocol (BODP)
 
 ## Minimum Version Requirements

@@ -193,6 +193,18 @@ Requires: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
 - Use permissionMode: plan for read-only agents
 - Preload skills for domain expertise instead of relying on runtime loading
 
+## Prompt Craft
+
+Agent bodies are system prompts. Author them per Anthropic's prompting best practices (`.claude/rules/moai/development/prompting-best-practices.md`):
+
+- Be clear and direct; state scope explicitly. Opus 4.8 follows instructions literally and does not silently generalize one instruction to other items ("apply to every section, not just the first").
+- Do NOT add Opus 4.6-era defensive scaffolding ("double-check N times", "verify before returning", "explicitly confirm before proceeding") — counterproductive given literal instruction following.
+- Use normal tool-trigger phrasing ("Use this tool when…"), not "CRITICAL: you MUST" — aggressive language overtriggers tools/skills on the latest models.
+- Control reasoning depth with `effort` (xhigh for coding/agentic, minimum high for intelligence-sensitive); never `budget_tokens` (rejected on Opus 4.7+).
+- Steer subagent fan-out explicitly: Opus 4.8 spawns fewer subagents by default — say when fan-out across items/files is desirable, and when to work directly instead.
+
+See also `.claude/rules/moai/development/karpathy-quickref.md` (4 coding principles) and `.claude/rules/moai/core/moai-constitution.md` § Opus 4.7+ / 4.8 Prompt Philosophy.
+
 ## Tool Permissions
 
 Recommended tool sets by category:
