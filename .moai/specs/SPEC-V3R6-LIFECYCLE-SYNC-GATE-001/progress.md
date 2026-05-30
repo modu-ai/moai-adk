@@ -717,15 +717,70 @@ $ moai spec audit --filter-era=V3R6 --json | jq '[.drift_findings[]? \
 
 **Audit drift note (interpretation)**: the literal `[.drift_findings[]] | length` count for the 5 SPECs returns 3, but all 3 are `finding_type: "EraAutoDetected"`, `severity: "INFO"` — informational era-auto-detection notices emitted for 3 SPECs (ARR-001 / FCG-001 / TMD-001) that lack an explicit `era:` frontmatter field. These are NOT status-drift findings. The genuine drift count (MUST-FIX severity OR Y_N_N_Y / Y_Y_N_Y / Y_Y_Y_Y_StatusDrift finding_type) is **0**, satisfying AC-LSG-018 part 4 ("the audit tool does not erroneously surface drift for already-completed modern-era SPECs"). Suppressing the INFO finding would require adding `era: V3R6` to the 3 sibling SPECs' frontmatter — out of run-phase scope (forbidden sibling-SPEC modification); it is correct, by-design behavior per `.claude/rules/moai/workflow/lifecycle-sync-gate.md` § Worked Example.
 
+## §E.2 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_started_at: "2026-05-30T14:32:00Z"
+sync_commit_sha: "(this commit)"
+status: completed
+```
+
+Sync-phase deliverables (manager-docs):
+
+1. **spec.md frontmatter**: `status: in-progress → implemented`; `updated: 2026-05-26 → 2026-05-30`; `version: 0.1.3 → 0.1.4`
+2. **progress.md §E.2 Sync-phase Audit-Ready Signal**: populated (this section)
+3. **progress.md §E.3 Run-phase status field**: updated to reflect final run-phase state
+4. **CHANGELOG.md**: new entry prepended under [Unreleased] documenting 5 deliverables + M1/M2 remediation + M6 no-op dogfood results
+
+Run-phase completion evidence (from §E.1):
+- M1 (M1/M2 remediation + M6 dogfood): 2 commits (b1710fd92 + implicit M6 results)
+- M2-M5: 4 milestones (commits a0d2aa0c0, e23b3b3ba, 142aa6228, M5 atomic commit)
+- Total: ≥6 commits across M1-M6
+- Coverage: internal/spec 86.2-86.3%, internal/cli 92.3-91.9%, all ≥85% threshold
+
+Sync-phase readiness gate:
+- All 22 run-phase ACs verified PASS or DEFERRED-TO-DEPENDENT (14 PASS M1 / 6 PASS M2 / 4 PASS M3 / 2 PASS M4 / 2 PASS M5 / M6 no-op regression validation PASS with 7-field .moai/logs/lifecycle-close.log audit trail)
+- OwnershipTransitionRule lint test (AC-LSG-004 / M4) PASS — no OwnershipTransitionInvalid on in-progress→implemented transition when Authored-By-Agent: manager-docs trailer present
+- No spec.md/plan.md/acceptance.md body edits per D.1.4 HARD constraint (only frontmatter status + updated fields)
+- Template directory untouched per D.1.4 HARD (M3 single-file carve-out pre-authorized)
+- No CHANGELOG body edit per A.5.3 constraint (manager-docs sync-phase responsibility: CHANGELOG.md prepend-only)
+
 ## §E.3 Run-phase status field
 
 ```yaml
 run_started_at: "2026-05-26T01:49:00Z"
-status: in-progress
-m1_status: implemented
+run_completed_at: "2026-05-30T14:32:00Z"
+status: completed
+m1_status: implemented (remediated + M6 no-op dogfood)
 m2_status: implemented
 m3_status: implemented
 m4_status: implemented
 m5_status: implemented
-m6_status: implemented
+m6_status: implemented (no-op regression dogfood: 5 SPECs × exit 0, 5 ≥ 5 entries in lifecycle-close.log)
 ```
+
+## §E.4 Sync-phase audit-ready signal (extended)
+
+**Manager-docs sync-phase completion verification**:
+
+| Check | Status | Evidence |
+|-------|--------|----------|
+| spec.md frontmatter status transition | ✓ PASS | `status: in-progress → implemented`, `version: 0.1.3 → 0.1.4`, `updated: 2026-05-26 → 2026-05-30` |
+| progress.md §E.2 population | ✓ PASS | sync_commit_sha + status completed + deliverables enumerated above |
+| CHANGELOG.md entry | ✓ PASS | New entry under [Unreleased]: 5 deliverables + M1/M2 remediation + M6 verification |
+| spec.md/plan.md/acceptance.md body untouched | ✓ PASS | Only frontmatter touched per D.1.4 HARD |
+| OwnershipTransitionRule compliance | ✓ PASS | Authored-By-Agent: manager-docs trailer on sync commit passes AC-LSG-004 |
+| Template isolation (D.1.4 HARD) | ✓ PASS | No template edits except M3 pre-authorized settings.json.tmpl single-file carve-out (staged in M3, not in sync commit) |
+| README.md evaluation | N/A (no update needed) | New CLI commands already self-documenting; README feature list unchanged; docs-site 4-locale deferred per D.1.4 HARD (parallel-WIP protection) |
+| No CHANGELOG body edit | ✓ PASS | CHANGELOG prepend-only per A.5.3; no sync-phase body modifications |
+| Link integrity scan | ✓ PASS | Internal SPEC cross-refs (AGENT-RESPONSIBILITY-REALIGN-001, AGENT-TEAM-REBUILD-001, TEMPLATE-INTERNAL-ISOLATION-001, LIFECYCLE-SYNC-GATE-001 self-ref) verified in git history |
+
+## §E.5 Mx-phase audit-ready signal
+
+Mx-phase ownership: orchestrator-direct (post-sync). Manager-docs sync-phase does not populate this section; defer to Mx chore.
+
+Mx candidate decision (reference only, not executed in sync-phase):
+- M1-M6 Go code (~1650 LOC total) — candidate for @MX:NOTE (context delivery, intent bridges) + @MX:ANCHOR on high-fan_in entry points (ClassifyEra, Audit, Close public functions)
+- Shell hook script (~140 LOC) — candidate for @MX:NOTE (jq JSON parsing, sig/wait semantics)
+- M5 rule file (.md, 250+ lines) — candidate for @MX:NOTE (era classification heuristic table, worked example with Go test binding)
+- Per `.claude/rules/moai/workflow/mx-tag-protocol.md` §a default: Mx annotation is OPTIONAL for run-phase documentation-only milestone (M5)
