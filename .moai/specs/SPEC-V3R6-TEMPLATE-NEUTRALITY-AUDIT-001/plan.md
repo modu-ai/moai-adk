@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001
 title: "Template Neutrality Audit — Implementation Plan"
-version: "0.1.2"
-status: in-progress
+version: "0.2.0"
+status: implemented
 created: 2026-05-23
 updated: 2026-05-30
 author: Author Name
