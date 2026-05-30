@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001
 title: "Template Neutrality Audit — Implementation Plan"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-05-23
-updated: 2026-05-23
+updated: 2026-05-30
 author: Author Name
 priority: P1
 phase: "v3.0.0"
@@ -12,26 +12,30 @@ module: "internal/template/templates"
 lifecycle: spec-anchored
 tags: "template-system, audit, plan, migration, ci-guard"
 tier: L
+related_specs: [SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]
 ---
 
 # SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001 — Implementation Plan
 
 ## §1 Milestones
 
-본 Tier L SPEC은 **6 milestones (M1–M6)**로 분할된다. Milestones는 manager-develop의 standard delegation 단위이며, Section A-E (Tier L MANDATORY)로 위임된다. Wave 분할은 본 SPEC scope에서는 불필요 (138 files이나 작업 자체는 단순 grep+rewrite로 sequential 가능; SSE stall threshold 30+ tasks 기준 미해당).
+본 Tier L SPEC은 **6 milestones (M1–M6)**로 분할된다. Milestones는 manager-develop의 standard delegation 단위이며, Section A-E (Tier L MANDATORY)로 위임된다. Wave 분할은 본 SPEC scope에서는 불필요 (작업 자체는 단순 grep+rewrite로 sequential 가능; SSE stall threshold 30+ tasks 기준 미해당).
 
-### M1 — SPEC scope finalize + allow-list draft
+**Rescope (v0.1.1, plan-audit iter-1 remediation)**: kept classes = **C1/C2/C4/C5/C6/C8** (NEUTRALITY-unique). C3 (dates) / C7 (commit hash)는 shipped sibling SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001의 `internal_content_leak_test.go` strict-tier classes로 **deferred** (§3 Dependencies 참조). 따라서 milestone 분배가 조정됐다: M3은 C2 유지; M4는 (C3+C4+C5)→**C4+C5만**; M5는 (C6+C7+test)→**C6+audit-script+CI-guard만** (C7 deferred).
+
+### M1 — SPEC scope finalize + allow-list draft — **[COMPLETE, commit `367a84715`]**
 
 **Owner**: orchestrator-direct (또는 필요 시 manager-spec follow-up)
-**Activity**:
-- `migration-matrix.md` 초안 작성 (`.moai/specs/SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001/migration-matrix.md`)
-- 8 카테고리별 detection regex, action policy, allow-list draft, baseline counts 확정
-- C8 false positive exclusion regex 확정 (`GOOS=(linux|windows|darwin|freebsd|openbsd|netbsd)`)
-- C2 V3R[0-9] 70 files 중 PRESERVE 후보 식별 (rule SSOT cite, decision record, doctrine citation)
-- C3 dates 32 files 중 incident allow-list 식별
-- M2~M5 분배 plan 확정
+**Status**: **COMPLETE**. `migration-matrix.md` (232 lines, 8/8 sections)가 commit `367a84715` (`chore(SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001): M1 migration-matrix.md draft`)으로 작성·머지되었다. AC-TNA-010 (matrix 8-section header count) PASS.
+**Activity (완료됨)**:
+- `migration-matrix.md` 초안 작성 (`.moai/specs/SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001/migration-matrix.md`) ✅
+- 8 카테고리별 detection regex, action policy, allow-list draft, baseline counts 확정 ✅
+- C8 false positive exclusion regex 확정 (`GOOS=(linux|windows|darwin|freebsd|openbsd|netbsd)`) ✅
+- C2 V3R[0-9] PRESERVE 후보 식별 (rule SSOT cite, decision record, doctrine citation) ✅
+- v0.1.1 rescope: C3/C7 matrix sections를 DEFERRED action policy로 전환 (M6 chore 또는 run-phase 진입 전 반영)
+- M2~M5 분배 plan 확정 (rescope 반영) ✅
 
-**Deliverables**: migration-matrix.md (~400 lines), updated progress.md (M1 status: complete)
+**Deliverables**: migration-matrix.md (232 lines, committed `367a84715`). Run-phase는 M2부터 진입.
 
 ### M2 — Critical: macOS-bias fix (C1, 4 files / 8 lines)
 
@@ -46,47 +50,50 @@ tier: L
 
 **Deliverables**: 4 file modifications. Tests: AC-TNA-001 / AC-TNA-008 / AC-TNA-013 PASS.
 
-### M3 — V3R[0-9] refs classification + fix (C2, 70 files)
+### M3 — V3R[0-9] refs classification + fix (C2, 73 files)
 
 **Owner**: manager-develop cycle_type=ddd Section A-E Tier L MANDATORY
 **Activity**:
-- M1 migration-matrix.md §C2 allow-list에 따라 PRESERVE / GENERALIZE / REMOVE 적용
+- M1 migration-matrix.md §C2 allow-list (18 entries)에 따라 PRESERVE / GENERALIZE / REMOVE 적용
 - PRESERVE 예: `decisions/lsp-client-choice.md` V3R5 decision record, `agent-common-protocol.md` `CONST-V3R5-NNN` registry IDs, `worktree-state-guard.md` CONST-V3R5-029
-- GENERALIZE 예: "V3R6 finding F-009" → "a workflow audit finding"
-- REMOVE 예: 단순 dev-history 흔적 ("V3R6 cleanup commit `fc47f31a7`로 해결")
-- AC-TNA-002 verify: post-fix count ≤ allow-list count
+- GENERALIZE 예: "a workflow audit finding F-009" → "a workflow audit finding"
+- REMOVE 예: 단순 dev-history 흔적
+- Pre-fix re-measure (run-phase): `grep -rln 'V3R[0-9]' internal/template/templates/ | wc -l` (baseline 73 at 2026-05-30; M3 re-measures at run-phase HEAD)
+- AC-TNA-002 verify: post-fix `actual` ≤ allow-list count (18, computable via corrected awk per D2 fix)
 
-**Deliverables**: 70 files audit + modifications (allow-list 외 모두 fix). Tests: AC-TNA-002 / AC-TNA-008 / AC-TNA-013 PASS.
+**Deliverables**: 73 files audit + modifications (allow-list 외 모두 fix). Tests: AC-TNA-002 / AC-TNA-008 / AC-TNA-013 PASS.
 
-### M4 — Dates + memory + CLAUDE.local refs (C3+C4+C5, 51 files)
+### M4 — memory + CLAUDE.local refs (C4+C5, ~12 files) — **[C3 DEFERRED, dropped from M4]**
 
 **Owner**: manager-develop cycle_type=ddd Section A-E Tier L MANDATORY
 **Activity**:
-- C3 dates 32 files: M1 allow-list 외 dates를 month-year granularity로 generalize
-- C4 feedback_/memory refs 9 files: rule SSOT citation 외 generalize ("auto-memory") 또는 remove
-- C5 `CLAUDE.local.md` refs 10 files: remove or generic-replace ("machine-specific configuration")
-- AC-TNA-003 / AC-TNA-004 / AC-TNA-005 verify
+- ~~C3 dates~~ — **DEFERRED to ISOLATION-001** (leak-test strict-tier `S1-internal-date`); NOT in M4 scope (avoids dual-allow-list drift)
+- C4 feedback_/memory refs 9 files: M1 allow-list 외 generalize ("auto-memory") 또는 remove. **NEUTRALITY-unique** — leak test does NOT cover the `feedback_`/`memory.md` substring class (only memory *path* class, which is disjoint)
+- C5 `CLAUDE.local.md` refs 3 files (re-measured 2026-05-30, was 10): remove or generic-replace ("machine-specific configuration")
+- Pre-fix re-measure (run-phase): C4 `grep -rln 'feedback_\|memory\.md'` + C5 `grep -rln 'CLAUDE\.local\.md'`
+- AC-TNA-004 / AC-TNA-005 verify (AC-TNA-003 is deferred — no verification command)
 
-**Deliverables**: 59 file audit + modifications (overlap 가능, unique ~50-55 files). Tests: AC-TNA-003 / AC-TNA-004 / AC-TNA-005 / AC-TNA-008 / AC-TNA-013 PASS.
+**Deliverables**: C4 (9 files) + C5 (3 files) audit + modifications (overlap 가능, unique ~12 files). Tests: AC-TNA-004 / AC-TNA-005 / AC-TNA-008 / AC-TNA-013 PASS.
 
-### M5 — PR + commit hash refs + audit script + CI guard (C6+C7+REQ-009+REQ-010)
+### M5 — PR refs + audit script + CI guard (C6+REQ-009+REQ-010) — **[C7 DEFERRED, dropped from M5]**
 
 **Owner**: manager-develop cycle_type=ddd Section A-E Tier L MANDATORY
 **Activity**:
 - C6 PR #N refs 3 files: remove or generic-replace ("a prior round of the same rule")
-- C7 commit hash refs 2 files: replace with doctrine name / rule citation
-- 신규 `internal/template/template_neutrality_audit_test.go` 작성:
+- ~~C7 commit hash refs~~ — **DEFERRED to ISOLATION-001** (leak-test strict-tier `S2-short-sha-sentence-final`); NOT in M5 scope. This also resolves the original D3 problem (FP-saturated broad regex + dependency on a not-yet-existing test).
+- 신규 `internal/template/template_neutrality_audit_test.go` 작성 (**NEW disjoint test file, NOT an extension of `internal_content_leak_test.go`** — different severity semantics + ownership lifecycle, per REQ-TNA-009 DECISION note):
   - Function `TestTemplateNeutralityAudit`
-  - C1/C5/C6/C7 binary FAIL patterns + C2/C3/C4 WARN patterns + C8 exclusion
+  - C1/C5/C6 binary FAIL patterns + C2/C4 WARN patterns + C8 exclusion
+  - **C3/C7 NOT scanned** (owned by `internal_content_leak_test.go` strict-tier — pattern set MUST be disjoint from the leak test; no class enforced by both files)
   - allow-list driven from migration-matrix.md (Go test reads .md or duplicated Go constant)
   - Cross-platform (darwin + linux + windows) PASS
 - 신규 `.github/workflows/template-neutrality-check.yaml`:
   - Trigger: `on.pull_request.paths: [internal/template/templates/**]`
   - Run: `go test ./internal/template/... -run TestTemplateNeutralityAudit`
   - Required status check 등록
-- AC-TNA-006 / AC-TNA-007 / AC-TNA-009 / AC-TNA-010 / AC-TNA-011 verify
+- AC-TNA-006 / AC-TNA-008 / AC-TNA-009 / AC-TNA-011 verify (AC-TNA-007 is deferred — no verification command)
 
-**Deliverables**: 5+ files (3 PR refs fix + 2 commit hash fix + 1 new Go test + 1 new workflow yaml + migration-matrix.md ref). Tests: AC-TNA-006 / AC-TNA-007 / AC-TNA-009 / AC-TNA-010 / AC-TNA-011 PASS.
+**Deliverables**: 5 files (3 PR refs fix + 1 new Go test + 1 new workflow yaml + migration-matrix.md ref). Tests: AC-TNA-006 / AC-TNA-008 / AC-TNA-009 / AC-TNA-011 PASS.
 
 ### M6 — Migration matrix finalize + Template-First guideline + status implemented v0.2.0
 
@@ -149,6 +156,20 @@ tier: L
 - 측정 시 timeout 60s buffer 설정
 
 ## §3 Dependencies
+
+### Overlapping / sibling SPEC — SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001 (status `completed`)
+
+[HARD] **SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001** (status `completed`, 2026-05-25) ships `internal/template/internal_content_leak_test.go` (16810B) in the SAME Go package (`internal/template/`) that this SPEC's audit script (REQ-TNA-009) targets. It enforces moai-adk dev-internal-content classes (SPEC IDs, REQ/AC tokens, audit citations, dates, memory paths, commit SHAs) over `internal/template/templates/**`. **This SPEC was rescoped (v0.1.1) to deconflict with it.**
+
+**C3 / C4 / C7 ↔ ISOLATION partition** (leak-test pattern catalog verified 2026-05-30):
+
+| NEUTRALITY class | leak-test enforcement | partition |
+|---|---|---|
+| C3 generic ISO date `2026-0[5-9]` | strict-tier `S1-internal-date` `\b202[6-9]-[0-1][0-9]-[0-3][0-9]\b` (opt-in `MOAI_TEMPLATE_LEAK_STRICT=1`, §25.1 evolution tier) | **DEFER to ISOLATION** |
+| C4 `feedback_` / `memory.md` substring | **NOT enforced** (default OR strict). leak-test C5 enforces only memory *paths* (`~/.claude/projects/-Users-` / `.moai/backups/agent-archive-`) — disjoint pattern | **KEEP in NEUTRALITY** |
+| C7 commit hash | strict-tier `S2-short-sha-sentence-final` `\b[0-9a-f]{7,8}([\s\.,;:!?]\|$)` (opt-in strict) | **DEFER to ISOLATION** |
+
+**REQ-TNA-009 scope (NEW disjoint test, NOT an extension)**: the new `template_neutrality_audit_test.go` scans ONLY the kept classes {C1 `/Users/`, C2 `V3R[0-9]`, C4 `feedback_`/`memory.md`, C5 `CLAUDE.local.md`, C6 `PR #N`, C8 `GOOS=` exclude}. It does NOT re-scan C3/C7 (those belong to `internal_content_leak_test.go`). The two test files' pattern sets are DISJOINT — no class is enforced by both. A NEW test file (not an extension of the leak test) is chosen because the two tests have different severity semantics (NEUTRALITY C2/C4 are WARN-level advisory vs the leak test's all-FAIL) and different ownership lifecycles (NEUTRALITY is the active SPEC; ISOLATION is `completed`/frozen). This eliminates the dual-allow-list drift risk that plan-audit iter-1 D1 identified (two test files independently scanning the same tree for overlapping date/SHA classes with divergent allow-lists → flaky CI on the next template date edit).
 
 ### Prerequisites (merged ✅)
 

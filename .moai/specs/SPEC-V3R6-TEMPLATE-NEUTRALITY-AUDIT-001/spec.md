@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001
 title: "Template Neutrality Audit — dev incident/path/refs sanitization for 16-language template distribution"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-05-23
-updated: 2026-05-23
+updated: 2026-05-30
 author: Author Name
 priority: P1
 phase: "v3.0.0"
@@ -12,6 +12,7 @@ module: "internal/template/templates"
 lifecycle: spec-anchored
 tags: "template-system, audit, neutrality, distribution, ci-guard"
 tier: L
+related_specs: [SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]
 ---
 
 # SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001 — Template Neutrality Audit
@@ -33,6 +34,8 @@ tier: L
 
 ### §2.1 Out of Scope — Template neutrality audit boundary
 
+- **C3 (generic ISO date `2026-0[5-9]`) enforcement** — DEFERRED to SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001 (`internal_content_leak_test.go` strict-tier `S1-internal-date`). 본 SPEC은 date class를 scan하지 않는다 (dual-allow-list drift 회피).
+- **C7 (commit hash) enforcement** — DEFERRED to SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001 (`internal_content_leak_test.go` strict-tier `S2-short-sha-sentence-final`). 본 SPEC은 commit-hash class를 scan하지 않는다.
 - Sprint 1 in-progress SPEC directories (`SPEC-V3R6-AGENT-MODEL-ROUTING-001/`, `SPEC-V3R6-HOOK-ASYNC-EXPAND-001/`, `SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001/`, `SPEC-V3R6-PROMPT-CACHE-001/`) 직접 수정 — 각 SPEC 개별 plan/run 흐름에서 처리
 - `docs-site/content/{en,ko,ja,zh}/book/` untracked 잔존 디렉토리 정리 — 별도 docs-site cleanup SPEC
 - `internal/hook/.moai/` working dir leak 정리 — git-strategy cleanup SPEC
@@ -51,17 +54,19 @@ tier: L
 - `internal/template/templates/.claude/rules/moai/development/spec-frontmatter-schema.md` 2 lines: `author: GOOS Kim` → `author: Author Name`
 - 신규 `internal/template/templates/.claude/rules/moai/development/sprint-round-naming.md` SSOT (V3R6 / PR #819 refs 제거된 generic version)
 
-그러나 본 세션 추가 audit 결과:
-- **C1 macOS-biased path placeholder NEW 4 files / 8 lines** (`worktree-integration.md`, `run/context-loading.md`, `moai-foundation-cc/examples.md`, `moai-workflow-loop/examples.md`) — 모두 `/Users/user/...` 또는 `/Users/john/...` generic placeholder이나 macOS-only path syntax
-- **C2 V3R[0-9] refs 70 files** — 일부는 정당한 doctrine 인용 (`decisions/lsp-client-choice.md` V3R5 결정 기록), 다수는 incident traceability 노출
-- **C3 2026-05-XX dates 32 files** — incident date allow-list 외 generalize
-- **C4 feedback_/memory refs 9 files** — rule/doctrine 인용 정상, 외 generalize
-- **C5 CLAUDE.local.md refs 10 files** — local-only file ref는 template에 부적합
-- **C6 PR #N refs 3 files** — 특정 PR 번호는 template 부적합
-- **C7 commit hash refs 2 files** — 특정 hash는 template 부적합
-- **C8 False positive** `GOOS=(linux|windows|darwin)` Go env var 4 hits / 3 files — PRESERVE
+그러나 본 세션 추가 audit 결과 (baseline re-measured 2026-05-30, absolute-path grep at HEAD `ecda4ef04`):
+- **C1 macOS-biased path placeholder 4 files** (`worktree-integration.md`, `run/context-loading.md`, `moai-foundation-cc/examples.md`, `moai-workflow-loop/examples.md`) — 모두 `/Users/user/...` 또는 `/Users/john/...` generic placeholder이나 macOS-only path syntax — **KEEP (NEUTRALITY-unique)**
+- **C2 V3R[0-9] refs 73 files** — 일부는 정당한 doctrine 인용 (`decisions/lsp-client-choice.md` V3R5 결정 기록), 다수는 incident traceability 노출 — **KEEP (NEUTRALITY-unique, the bulk)**
+- **C3 2026-05-XX dates 39 files** — incident date allow-list 외 generalize — **DEFERRED to SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001** (그 SPEC의 `internal_content_leak_test.go` strict-tier `S1-internal-date` `\b202[6-9]-MM-DD\b` 가 본 class를 enforce; 본 SPEC은 중복 enforcement 제거. 자세한 partition은 §3.3 참조)
+- **C4 feedback_/memory refs 9 files** — rule/doctrine 인용 정상, 외 generalize — **KEEP (NEUTRALITY-unique)**. `internal_content_leak_test.go`는 memory *path* class (`~/.claude/projects/-Users-` / `.moai/backups/agent-archive-`)만 enforce하며, 본 C4의 `feedback_` / `memory.md` *substring reference* class는 default/strict 어느 모드에서도 enforce하지 않음 (§3.3 partition 표 참조)
+- **C5 CLAUDE.local.md refs 3 files** — local-only file ref는 template에 부적합 — **KEEP (NEUTRALITY-unique)** (baseline 10→3, partial prior cleanup 반영)
+- **C6 PR #N refs 3 files** — 특정 PR 번호는 template 부적합 — **KEEP (NEUTRALITY-unique)**
+- **C7 commit hash refs 2 files** — 특정 hash는 template 부적합 — **DEFERRED to SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001** (그 SPEC의 strict-tier `S2-short-sha-sentence-final` `\b[0-9a-f]{7,8}([\s\.,;:!?]|$)` 가 본 class를 enforce)
+- **C8 False positive** `GOOS=(linux|windows|darwin)` Go env var 4 hits / 3 files — **KEEP (NEUTRALITY-unique, PRESERVE)**
 
-총 **138 unique files** (Critical NEW 4 + Medium deferred 134). Tier L mass-migration SPEC scope.
+**Rescope (v0.1.1)**: 본 SPEC은 plan-audit iter-1 (FAIL 0.71) 후 **NEUTRALITY-unique 카테고리 (C1/C2/C4/C5/C6/C8)** 로 rescope되었으며, **C3/C7** 는 이미 shipped된 sibling SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001 (status `completed`, `internal/template/internal_content_leak_test.go` 16810B) 의 strict-tier pattern class로 defer한다. 이로써 같은 Go package (`internal/template/`) 안에 date/SHA class에 대한 dual-allow-list drift를 제거한다. 자세한 partition은 §3.3 참조.
+
+KEPT class baselines (re-measured 2026-05-30 at HEAD `ecda4ef04`, absolute-path grep — point-in-time; run-phase M1 re-measures before fixing): C1=4, C2=73, C4=9, C5=3, C6=3, C8=3 files. KEPT class scope (overlaps account for dedupe). Tier L migration SPEC scope.
 
 ### 3.2 Template-First Rule 부작용
 
@@ -70,18 +75,39 @@ tier: L
 - CI workflow (`template-neutrality-check.yaml`)으로 PR-level enforcement
 - Template-First Rule guideline 보강 — acceptable content range 명문화
 
-### 3.3 분류 매트릭스 필요성
+### 3.3 분류 매트릭스 필요성 + ISOLATION partition (rescope v0.1.1)
 
-70 V3R refs / 34 dates / 15 memory refs는 일괄 removal하면 안 됨. 각 카테고리에 **case-by-case classify**가 필요:
+KEPT case-by-case 카테고리 (C2 V3R refs 73 / C4 memory refs 9)는 일괄 removal하면 안 됨. 각 카테고리에 **case-by-case classify**가 필요:
 - **PRESERVE (allow-list)**: rule SSOT 인용, decision rationale, doctrine citation (예: "Per session-handoff.md, the 5 triggers are ..." — V3R5 ID로 등록된 HARD clause는 보존)
-- **GENERALIZE**: incident-specific 표현을 패턴 표현으로 변경 (예: "2026-04-25 incident" → "the 2026 stream-stall incident" 또는 "a prior stream-stall incident")
-- **REMOVE**: 단순 dev-history 흔적 (예: "fc47f31a7로 fix됨" → 제거)
+- **GENERALIZE**: incident-specific 표현을 패턴 표현으로 변경 (예: "a 2026 stream-stall incident" 또는 "a prior stream-stall incident")
+- **REMOVE**: 단순 dev-history 흔적 (제거)
 
 이 매트릭스는 `.moai/specs/SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001/migration-matrix.md`에 single source로 기록되며, M2~M5에서 manager-develop이 참조한다.
+
+#### ISOLATION-001 deconfliction (C3/C7 defer, C4 keep)
+
+shipped sibling **SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001** (status `completed`, `internal/template/internal_content_leak_test.go` 16810B, same Go package `internal/template/`)가 date/SHA/memory-path class를 enforce하므로, 본 SPEC은 중복(dual-allow-list) 회피를 위해 다음 partition을 적용한다. (leak-test pattern 검증 2026-05-30):
+
+| NEUTRALITY 카테고리 | leak-test enforcement | partition 결정 |
+|---|---|---|
+| C1 `/Users/` paths | 미enforce | **KEEP (NEUTRALITY)** |
+| C2 `V3R[0-9]` refs | 미enforce | **KEEP (NEUTRALITY — the bulk, 73 files)** |
+| C3 generic ISO date `2026-0[5-9]` | enforce via strict-tier `S1-internal-date` `\b202[6-9]-[0-1][0-9]-[0-3][0-9]\b` (opt-in `MOAI_TEMPLATE_LEAK_STRICT=1`; §25.1 evolution policy의 future-tightening tier) | **DEFER to ISOLATION** |
+| C4 `feedback_` / `memory.md` *substring reference* | **미enforce** (default 및 strict 모두). leak-test C5는 memory *path* class (`~/.claude/projects/-Users-` / `.moai/backups/agent-archive-`)만 enforce하며 이는 본 C4와 disjoint pattern | **KEEP (NEUTRALITY)** |
+| C5 `CLAUDE.local.md` refs | 미enforce | **KEEP (NEUTRALITY)** |
+| C6 `PR #N` refs | 미enforce | **KEEP (NEUTRALITY)** |
+| C7 commit hash | enforce via strict-tier `S2-short-sha-sentence-final` `\b[0-9a-f]{7,8}([\s\.,;:!?]\|$)` (opt-in strict mode) | **DEFER to ISOLATION** |
+| C8 `GOOS=` Go env var | 미enforce (false-positive PRESERVE) | **KEEP (NEUTRALITY)** |
+
+**C4 discrepancy note**: plan-audit iter-1 SCOPE 권고는 C3/C4/C7 일괄 defer였으나, leak-test 실측 결과 **C4 (`feedback_`/`memory.md` substring reference) class는 leak test가 enforce하지 않음** (default/strict 모두). leak-test C5 path class와 disjoint pattern이므로 C4를 silently drop하면 enforcement gap이 발생한다. 따라서 C4는 NEUTRALITY에 **유지**한다 (per orchestrator guardrail: "If the leak test does NOT enforce one of C3/C4/C7, keep that category in NEUTRALITY"). C3/C7만 defer.
+
+**dual-allow-list drift 제거**: defer된 C3/C7은 본 SPEC의 audit script (REQ-TNA-009)가 scan하지 않으므로, `internal/template/` package 안에 date/SHA class에 대한 allow-list가 ISOLATION의 leak-test 하나만 존재한다 (drift 원천 제거).
 
 ## §4 EARS GEARS Requirements
 
 다음 13개 REQ는 GEARS notation (Where / When / While / If-Then) self-dogfooding 원칙을 따른다. EARS-only "The system shall …" 패턴 사용 시에도 GEARS-compatible context 선언과 결합한다.
+
+**Rescope status (v0.1.1)**: REQ-TNA-001/002/004/005/006/008 (kept classes C1/C2/C4/C5/C6/C8) + 인프라 REQ-TNA-009..013 은 본 SPEC에서 active하다. **REQ-TNA-003 (C3 dates)** 및 **REQ-TNA-007 (C7 commit hash)** 는 sibling SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001 (`internal/template/internal_content_leak_test.go` strict-tier classes)로 **DEFERRED** 되었다. REQ 번호는 contiguity 보존을 위해 재번호하지 않고 원번호 유지 + 명시적 DEFERRED status line으로 표기한다 (§3.3 partition 참조).
 
 ### REQ-TNA-001 — macOS-biased path placeholder removal (C1)
 
@@ -97,25 +123,27 @@ Affected baseline (verified 2026-05-23): 4 files / 8 lines
 
 **Where** the template tree contains a substring matching the regex `V3R[0-9]`, **the system shall** classify each occurrence per the migration matrix into PRESERVE (rule SSOT citation / decision record), GENERALIZE (incident pattern), or REMOVE (dev-history trace). **If** the occurrence is classified as PRESERVE, **then** the file shall be added to the allow-list defined in `migration-matrix.md` §C2 with explicit rationale; otherwise the occurrence shall be transformed per the classified action.
 
-Baseline (verified 2026-05-23): 70 files containing `V3R[0-9]` substring. Examples include `.moai/decisions/lsp-client-choice.md` (V3R5 decision record — PRESERVE), `.moai/config/sections/git-strategy.yaml.tmpl` (V3R[0-9] mention — case-by-case), etc.
+Baseline (re-measured 2026-05-30 at HEAD `ecda4ef04`): **73 files** containing `V3R[0-9]` substring (was 70 at 2026-05-23 plan-phase; +3 drift). Examples include `.moai/decisions/lsp-client-choice.md` (V3R5 decision record — PRESERVE), `.moai/config/sections/git-strategy.yaml.tmpl` (V3R[0-9] mention — case-by-case), etc. Point-in-time; run-phase M3 re-measures before fixing.
 
-### REQ-TNA-003 — Date refs classification (C3)
+### REQ-TNA-003 — Date refs classification (C3) — **[DEFERRED to SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]**
 
-**Where** the template tree contains an ISO date matching `2026-0[5-9]-[0-9]{2}`, **the system shall** classify each occurrence per the migration matrix. **If** the date is tied to an incident referenced in active doctrine (e.g., `feedback_large_spec_wave_split.md` cross-reference), **then** the file shall be added to the C3 allow-list; **otherwise** the date shall be generalized to month-year granularity or removed.
+**[DEFERRED]** Date-class enforcement (generic ISO `2026-0[5-9]-[0-9]{2}`) is delegated to the shipped sibling SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001, whose `internal/template/internal_content_leak_test.go` strict-tier `S1-internal-date` class (`\b202[6-9]-[0-1][0-9]-[0-3][0-9]\b`, opt-in via `MOAI_TEMPLATE_LEAK_STRICT=1`, tracked under its §25.1 evolution policy) already owns this class. This SPEC does NOT re-scan generic dates (avoids dual-allow-list drift within the `internal/template/` Go package). The REQ number is preserved for traceability contiguity; no acceptance criterion is emitted for C3 (see acceptance.md AC-TNA-003 deferred marker).
 
-Baseline (verified 2026-05-23): 32 files. Allow-list candidates: rule files referencing canonical incident dates (e.g., the 2026-04-25 stream-stall incident, the 2026-05-09 model-specific threshold revision).
+Baseline (re-measured 2026-05-30): 39 files (was 32 at 2026-05-23; +7 drift) — informational only; enforcement owned by ISOLATION strict tier.
 
-### REQ-TNA-004 — feedback_/memory refs classification (C4)
+### REQ-TNA-004 — feedback_/memory refs classification (C4) — **[KEPT — NEUTRALITY-unique]**
 
 **Where** the template tree contains a substring matching `feedback_` or `memory\.md`, **the system shall** classify each occurrence. **If** the reference cites a rule SSOT or doctrine pattern (e.g., "Lessons Protocol writes to memory `lessons.md`"), **then** PRESERVE; **otherwise** the reference shall be removed or replaced with a generic "auto-memory" phrasing.
 
-Baseline (verified 2026-05-23): 9 files.
+**Why kept (not deferred)**: the shipped `internal_content_leak_test.go` does NOT enforce the `feedback_` / `memory.md` *substring reference* class in either default or strict mode. Its C5 class enforces only memory *paths* (`~/.claude/projects/-Users-` / `.moai/backups/agent-archive-`), which is a disjoint pattern from this C4 substring class. Deferring C4 would silently drop enforcement of a class no other test covers — therefore C4 remains a NEUTRALITY-unique requirement (verified 2026-05-30 against `internal_content_leak_test.go` pattern catalog; see §3.3 partition table).
+
+Baseline (re-measured 2026-05-30 at HEAD `ecda4ef04`): 9 files (unchanged from 2026-05-23). Point-in-time; run-phase M3 re-measures before fixing.
 
 ### REQ-TNA-005 — CLAUDE.local.md refs handling (C5)
 
 **Where** the template tree references `CLAUDE.local.md` directly, **the system shall** remove the reference because `CLAUDE.local.md` is documented as a maintainer-only local file (per `CLAUDE.local.md` self-description). **If** the surrounding context discusses local-only configuration in the abstract, **then** the reference shall be replaced with a generic statement (e.g., "local override file" or "machine-specific configuration").
 
-Baseline (verified 2026-05-23): 10 files.
+Baseline (re-measured 2026-05-30 at HEAD `ecda4ef04`): **3 files** (was 10 at 2026-05-23; −7 from partial prior cleanup). Point-in-time; run-phase M3 re-measures before fixing.
 
 ### REQ-TNA-006 — PR #N refs removal (C6)
 
@@ -123,11 +151,11 @@ Baseline (verified 2026-05-23): 10 files.
 
 Baseline (verified 2026-05-23): 3 files. Examples include `manager-develop-prompt-template.md`, `sync/delivery.md`, `scripts/ci-mirror/cross-compile.sh`.
 
-### REQ-TNA-007 — Commit hash refs removal (C7)
+### REQ-TNA-007 — Commit hash refs removal (C7) — **[DEFERRED to SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]**
 
-**Where** the template tree contains a substring matching `[a-f0-9]{7,40}` that resolves to a specific commit hash (verified via git context, not coincidental hex strings such as color codes or SHA test fixtures), **the system shall** remove the hash. **If** the surrounding context cites a doctrinal decision rooted in a commit, **then** the hash shall be replaced with a doctrine name or rule citation.
+**[DEFERRED]** Commit-hash-class enforcement is delegated to the shipped sibling SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001, whose `internal/template/internal_content_leak_test.go` strict-tier `S2-short-sha-sentence-final` class (`\b[0-9a-f]{7,8}([\s\.,;:!?]|$)`, opt-in via `MOAI_TEMPLATE_LEAK_STRICT=1`) already owns this class with a more conservative, false-positive-aware detection than the broad `[a-f0-9]{7,40}` regex this REQ originally proposed. This SPEC does NOT re-scan commit hashes (avoids dual-allow-list drift within the `internal/template/` Go package). The REQ number is preserved for traceability contiguity; no acceptance criterion is emitted for C7 (see acceptance.md AC-TNA-007 deferred marker).
 
-Baseline (verified 2026-05-23): ~2 files (post-deduplication of false-positive hex matches in color codes / test fixtures).
+Baseline (re-measured 2026-05-30): ~2 files — informational only; enforcement owned by ISOLATION strict tier. The original broad C7 regex was FP-saturated (45 raw hits) and depended on a not-yet-existing test, which is precisely the hard problem ISOLATION already solved conservatively.
 
 ### REQ-TNA-008 — False positive exclusion (`GOOS=...` Go env var) (C8)
 
@@ -138,17 +166,21 @@ Baseline (verified 2026-05-23): 4 hits / 3 files
 - `internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md`
 - `internal/template/templates/scripts/ci-mirror/cross-compile.sh`
 
-### REQ-TNA-009 — Audit script (`template_neutrality_audit_test.go`)
+### REQ-TNA-009 — Audit script (`template_neutrality_audit_test.go`) — **[SCOPED to kept classes C1/C2/C4/C5/C6/C8]**
 
-**Where** `internal/template/` is the Go test discovery root, **the system shall** provide a new test file `internal/template/template_neutrality_audit_test.go` containing the function `TestTemplateNeutralityAudit`. **When** invoked via `go test ./internal/template/...`, the test shall scan `internal/template/templates/**` and emit a single FAIL with a structured violation report when any of categories C1, C5, C6, C7 (binary patterns) finds a hit outside its allow-list, and a WARN log line (not a FAIL) when C2, C3, C4 (case-by-case patterns) find a hit outside the migration-matrix allow-list. **If** the C8 false-positive pattern (`GOOS=(linux|windows|darwin)`) matches, **then** the hit shall be excluded from all reports.
+**Where** `internal/template/` is the Go test discovery root, **the system shall** provide a new test file `internal/template/template_neutrality_audit_test.go` containing the function `TestTemplateNeutralityAudit`. **When** invoked via `go test ./internal/template/...`, the test shall scan `internal/template/templates/**` and emit a single FAIL with a structured violation report when category C1, C5, or C6 (binary patterns) finds a hit outside its allow-list, and a WARN log line (not a FAIL) when C2 or C4 (case-by-case patterns) find a hit outside the migration-matrix allow-list. **If** the C8 false-positive pattern (`GOOS=(linux|windows|darwin|freebsd|openbsd|netbsd)`) matches, **then** the hit shall be excluded from all reports.
+
+**[SCOPE] C3 / C7 are NOT scanned by this test.** The date class (C3) and commit-hash class (C7) are owned by the shipped sibling `internal/template/internal_content_leak_test.go` (strict-tier `S1-internal-date` / `S2-short-sha-sentence-final`). Re-scanning them here would create two test files in the same Go package (`internal/template/`) with two divergent allow-lists for one pattern class — a guaranteed drift source. This audit script's pattern set is therefore **disjoint** from `internal_content_leak_test.go`.
+
+**[DECISION] New disjoint test file, NOT an extension of the leak test.** REQ-TNA-009 creates a NEW `template_neutrality_audit_test.go` rather than extending `internal_content_leak_test.go`, because the two tests have different severity semantics (NEUTRALITY C2/C4 are WARN-level advisory; the leak test is all-FAIL) and different ownership lifecycles (NEUTRALITY is the active SPEC; ISOLATION is `completed`/frozen). The pattern sets MUST remain disjoint: NEUTRALITY enforces {C1, C2, C4, C5, C6, C8-exclude}; the leak test enforces {C1-spec-id, C2-req-ac, C3-audit, C4-finding/archive-date, C5-memory-path} + strict {S1-date, S2-sha, S3-req-ac}. No pattern is enforced by both files.
 
 ### REQ-TNA-010 — CI guard workflow (PR touching template/)
 
-**Where** a GitHub PR modifies any file under `internal/template/templates/**`, **the system shall** trigger the `template-neutrality-check.yaml` workflow which runs `TestTemplateNeutralityAudit` and surfaces failures as a required status check. **If** the workflow detects a C1/C5/C6/C7 violation, **then** the PR check shall fail; **if** only C2/C3/C4 WARN-level findings are emitted, **then** the check shall pass with annotations.
+**Where** a GitHub PR modifies any file under `internal/template/templates/**`, **the system shall** trigger the `template-neutrality-check.yaml` workflow which runs `TestTemplateNeutralityAudit` and surfaces failures as a required status check. **If** the workflow detects a C1/C5/C6 violation (kept binary classes), **then** the PR check shall fail; **if** only C2/C4 WARN-level findings are emitted, **then** the check shall pass with annotations. (C3/C7 are out of this workflow's scope — owned by the leak-test gate per the ISOLATION SPEC; see REQ-TNA-009 SCOPE note.)
 
 ### REQ-TNA-011 — Migration matrix (`migration-matrix.md`)
 
-**Where** the SPEC directory is `.moai/specs/SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001/`, **the system shall** include a file `migration-matrix.md` containing one section per category (C1–C8) with: (a) the regex / detection rule, (b) the action policy (PRESERVE / GENERALIZE / REMOVE), (c) the allow-list (file paths + rationale), (d) the baseline count, and (e) the post-fix expected count. **If** a category has zero allow-list entries, **then** the allow-list section shall explicitly state "Empty (no exceptions)".
+**Where** the SPEC directory is `.moai/specs/SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001/`, **the system shall** include a file `migration-matrix.md` containing one section per category (C1–C8) with: (a) the regex / detection rule, (b) the action policy (PRESERVE / GENERALIZE / REMOVE / DEFERRED), (c) the allow-list (file paths + rationale), (d) the baseline count, and (e) the post-fix expected count. **If** a category has zero allow-list entries, **then** the allow-list section shall explicitly state "Empty (no exceptions)". **If** a category is deferred to the ISOLATION SPEC (C3, C7), **then** its section shall carry a `DEFERRED` action policy and reference the owning leak-test class rather than an allow-list.
 
 ### REQ-TNA-012 — Template-First Rule guideline reinforcement
 
