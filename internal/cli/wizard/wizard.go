@@ -23,6 +23,77 @@ func RunWithDefaults(projectRoot, locale string) (*WizardResult, error) {
 	return RunWithLocale(questions, nil, locale)
 }
 
+// RunWithDefaultsModes runs the wizard with mode flags controlling Phase 1 question visibility.
+// standardMode=true presents Phase 1 questions; advancedMode=true implies standardMode.
+func RunWithDefaultsModes(projectRoot, locale string, standardMode, advancedMode bool) (*WizardResult, error) {
+	// Merge default + Phase 1 questions
+	questions := DefaultQuestions(projectRoot)
+	questions = append(questions, Phase1Questions(projectRoot)...)
+
+	// When advanced mode requested, check Phase 2 prerequisites and append stubs.
+	if advancedMode {
+		gate := IsAdvancedWizardReady()
+		questions = append(questions, Phase2Questions(gate)...)
+	}
+
+	// Pre-populate mode flags so Condition funcs see them from the start
+	result := &WizardResult{
+		StandardMode: standardMode || advancedMode,
+		AdvancedMode: advancedMode,
+		// Phase 1 boolean defaults (applied before wizard so non-interactive path works)
+		EnforceQuality:           true,
+		CoverageExemptionsEnabled: false,
+		DesignEnabled:            true,
+		ClaudeDesignEnabled:      true,
+	}
+
+	// Run wizard with pre-populated result
+	if err := runWithResult(questions, nil, locale, result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// runWithResult runs wizard questions into an existing WizardResult (instead of creating a new one).
+func runWithResult(questions []Question, styles *Styles, locale string, result *WizardResult) error {
+	if len(questions) == 0 {
+		return ErrNoQuestions
+	}
+
+	currentLocale := locale
+	theme := newMoAIWizardTheme()
+	visibleIdx := 0
+
+	for i := range questions {
+		q := &questions[i]
+
+		// Skip questions whose condition is not met.
+		if q.Condition != nil && !q.Condition(result) {
+			continue
+		}
+
+		visibleIdx++
+		fmt.Println(tui.Stepper(visibleIdx, TotalVisibleQuestions(questions, result), nil))
+
+		g := buildQuestionGroup(q, result, &currentLocale)
+		form := huh.NewForm(g).
+			WithTheme(theme).
+			WithAccessible(false)
+
+		if err := form.Run(); err != nil {
+			if errors.Is(err, huh.ErrUserAborted) {
+				return ErrCancelled
+			}
+			return fmt.Errorf("wizard error: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// _ ensures styles type is used (prevent unused import if styles param is nil)
+var _ = (*Styles)(nil)
+
 // wizardTotalSteps is the canonical step count for the init wizard (AC-CLI-TUI-007).
 // It reflects the 6-step init flow from screens.jsx:ScreenInit.
 const wizardTotalSteps = 6
@@ -80,6 +151,8 @@ func buildQuestionGroup(q *Question, result *WizardResult, locale *string) *huh.
 		field = buildSelectField(q, result, locale)
 	case QuestionTypeInput:
 		field = buildInputField(q, result, locale)
+	case QuestionTypeConfirm:
+		field = buildConfirmField(q, result, locale)
 	}
 
 	g := huh.NewGroup(field)
@@ -214,8 +287,54 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 		result.GitLabUsername = value
 	case "gitlab_token":
 		result.GitLabToken = value
+	// Phase 1 fields (REQ-IWE-001..005)
+	case "project_mode":
+		result.ProjectMode = value
+	case "harness_profile":
+		result.HarnessProfile = value
 	}
 	_ = locale // locale is kept for GetLocalizedQuestion compatibility
+}
+
+// saveBoolAnswer stores a boolean answer in the result.
+func saveBoolAnswer(id string, value bool, result *WizardResult) {
+	switch id {
+	case "lsp_enabled":
+		result.LSPEnabled = value
+	case "enforce_quality":
+		result.EnforceQuality = value
+	case "coverage_exemptions_enabled":
+		result.CoverageExemptionsEnabled = value
+	case "design_enabled":
+		result.DesignEnabled = value
+	case "claude_design_enabled":
+		result.ClaudeDesignEnabled = value
+	}
+}
+
+// buildConfirmField creates a huh.Confirm field for a boolean question.
+func buildConfirmField(q *Question, result *WizardResult, locale *string) *huh.Confirm {
+	// Parse default value
+	value := q.Default == "true"
+
+	conf := huh.NewConfirm().
+		TitleFunc(func() string {
+			lq := GetLocalizedQuestion(q, *locale)
+			return lq.Title
+		}, locale).
+		DescriptionFunc(func() string {
+			lq := GetLocalizedQuestion(q, *locale)
+			return lq.Description
+		}, locale).
+		Value(&value)
+
+	qID := q.ID
+	conf = conf.Validate(func(v bool) error {
+		saveBoolAnswer(qID, v, result)
+		return nil
+	})
+
+	return conf
 }
 
 // newMoAIWizardTheme creates a huh.Theme with MoAI wizard branding.

@@ -25,4 +25,7 @@ const (
 	GitStrategyYAML = "git-strategy.yaml"
 	SystemYAML      = "system.yaml"
 	StatuslineYAML  = "statusline.yaml"
+	HarnessYAML     = "harness.yaml"
+	LSPYAML         = "lsp.yaml"
+	DesignYAML      = "design.yaml"
 )

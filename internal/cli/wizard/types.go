@@ -27,6 +27,19 @@ type WizardResult struct {
 	GitLabInstanceURL string // GitLab instance URL (for self-hosted, e.g. "https://gitlab.company.com")
 	GitLabUsername    string // GitLab username (for personal/team modes with gitlab provider)
 	GitLabToken       string // GitLab personal access token (optional)
+
+	// Mode flags — set by CLI before wizard invocation (REQ-IWE-006, REQ-IWE-007)
+	StandardMode bool // True when --standard or --advanced flag is set
+	AdvancedMode bool // True when --advanced flag is set (implies StandardMode)
+
+	// Phase 1 fields — exposed by --standard/--advanced (REQ-IWE-001..005)
+	ProjectMode              string // project.mode: personal, team (B1)
+	HarnessProfile           string // harness.default_profile: default, strict, lenient, frontend (B2)
+	LSPEnabled               bool   // lsp.enabled: false (opt-in) (B3)
+	EnforceQuality           bool   // quality.enforce_quality: true (B5)
+	CoverageExemptionsEnabled bool   // quality.coverage_exemptions.enabled: false (B5)
+	DesignEnabled            bool   // design.enabled: true (B8)
+	ClaudeDesignEnabled      bool   // design.claude_design.enabled: true (B8)
 }
 
 // QuestionType represents the type of wizard question.
@@ -37,6 +50,8 @@ const (
 	QuestionTypeSelect QuestionType = iota
 	// QuestionTypeInput is a text input question.
 	QuestionTypeInput
+	// QuestionTypeConfirm is a yes/no boolean question.
+	QuestionTypeConfirm
 )
 
 // Question defines a single wizard question.
