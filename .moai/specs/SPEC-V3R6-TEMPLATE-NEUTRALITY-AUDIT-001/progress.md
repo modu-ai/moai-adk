@@ -93,7 +93,7 @@ KEPT-class scope (C1/C2/C4/C5/C6/C8). Drift since plan-phase: C2 +3, C3 +7 (defe
 | M2 — C1 macOS-bias fix (4 files) | **complete** (commit `1046c6a3c`; AC-TNA-001 PASS, C1=0) | manager-develop ddd Tier L | (done) |
 | M3 — C2 bare-narrative classification + fix (v0.1.2 narrowed; 7→6 files) | **complete** (AC-TNA-002 PASS, `actual=6 ≤ allowlist=6`) | manager-develop ddd Tier L | (done) |
 | M4 — memory + CLAUDE.local refs (C4+C5, ~12 files; C3 deferred) | **complete** (AC-TNA-004 C4=7≤7 PASS + AC-TNA-005 C5=0 PASS) | manager-develop ddd Tier L | (done) |
-| M5 — PR refs + audit script + CI guard (C6; C7 deferred) | in-progress | manager-develop ddd Tier L | After M4 |
+| M5 — PR refs + audit script + CI guard (C6; C7 deferred) | **complete** (AC-TNA-006 C6=0 + AC-TNA-008 isolated test PASS + AC-TNA-009 workflow + AC-TNA-011 C8=3) | manager-develop ddd Tier L | (done) |
 | M6 — Migration matrix finalize + guideline + chore implemented | pending | orchestrator-direct chore | After M5 |
 
 ## Next Steps
@@ -116,12 +116,12 @@ M1 evidence populated (migration-matrix.md shipped `367a84715`). M2–M6 populat
 | AC-TNA-003 | — | **DEFERRED → ISOLATION-001** (leak-test `S1-internal-date`) | n/a |
 | AC-TNA-004 | M4 | **PASS** — C4 `actual=7 ≤ allowlist=7`. 2 GENERALIZE targets fixed (`mode-orchestration.md` + `workflow.yaml`: `feedback_worktree_autonomous` → generic phrasing); 7 PRESERVE allow-list files remain | ☑ |
 | AC-TNA-005 | M4 | **PASS** — C5 `CLAUDE.local.md` refs = 0 (3 files fixed: manager-git.md both-side mirror-parity-preserved + moai-meta-harness/SKILL.md + run.md both sides; allow-list empty) | ☑ |
-| AC-TNA-006 | M5 | (pending) | ☐ |
+| AC-TNA-006 | M5 | **PASS** — C6 `PR #N` refs = 0 (3 files fixed: CLAUDE.md `PR #958` removed + quality.yaml.tmpl `PR #622` → generic + ci-loop SKILL.md `PR #785` → `PR #<N>` placeholder both sides) | ☑ |
 | AC-TNA-007 | — | **DEFERRED → ISOLATION-001** (leak-test `S2-short-sha-sentence-final`) | n/a |
-| AC-TNA-008 | M5 | (pending) | ☐ |
-| AC-TNA-009 | M5 | (pending) | ☐ |
+| AC-TNA-008 | M5 | **PASS** — `internal/template/template_neutrality_audit_test.go` NEW (disjoint from leak test); `go test ./internal/template/... -run TestTemplateNeutralityAudit` PASS in isolation (5 class subtests + C8 preserve). Two-pass C2 bare-narrative detection (RE2 no-lookbehind). darwin+windows build clean for `internal/template/...` | ☑ |
+| AC-TNA-009 | M5 | **PASS** — `.github/workflows/template-neutrality-check.yaml` NEW; `python3 yaml.safe_load` parses clean; triggers `on.pull_request.paths: [internal/template/templates/**]`; runs `-run TestTemplateNeutralityAudit` | ☑ |
 | AC-TNA-010 | M1 | **PASS** — migration-matrix.md 8/8 sections, `grep -cE '^### C[1-8] '` = 8 (commit `367a84715`, re-verified 2026-05-30) | ☑ |
-| AC-TNA-011 | M5 | C8 baseline = 3 files preserved (verified 2026-05-30) | ☐ (run-phase) |
+| AC-TNA-011 | M5 | **PASS** — C8 `GOOS=(linux\|windows\|...)` 3 files preserved; `TestTemplateNeutralityAuditC8Preserve` asserts exactly 3 files retain GOOS= AND audit emits no violation on them | ☑ |
 | AC-TNA-012 | M6 | (pending) | ☐ |
 | AC-TNA-013 | M6 | (pending) | ☐ |
 

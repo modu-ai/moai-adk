@@ -90,7 +90,7 @@ prohibited — they block the orchestrator's main session.
 
 **Status report format** (stderr, state-change ticks only, no ANSI):
 ```
-[ci-watch] PR #785: required 4/6 pass, 2 pending; advisory 0 fail
+[ci-watch] PR #<N>: required 4/6 pass, 2 pending; advisory 0 fail
 ```
 
 **Handoff schema on exit 2** — JSON with stable fields: `prNumber`, `branch`,

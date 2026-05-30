@@ -625,6 +625,6 @@ Changes in v14.1.0 (from v14.0.0):
 - §11 Error Handling: canonical rule citation 추가 (manager-quality / expert-devops)
 - §13 Progressive Disclosure System: canonical rule citation 추가 (`.claude/rules/moai/workflow/progressive-disclosure.md`)
 - §16 Context Search Protocol: canonical rule citation 추가 (`.claude/rules/moai/workflow/context-window-management.md`)
-- Note: §4 Agent Catalog의 `cycle` 제거는 별도 PR (Bundle C / PR #958)에서 처리됨
+- Note: §4 Agent Catalog의 `cycle` 제거는 별도 PR에서 처리됨
 
 For detailed patterns on plugins, sandboxing, headless mode, and version management, see Skill("moai-foundation-cc").

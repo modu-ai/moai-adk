@@ -1,0 +1,58 @@
+name: Template Neutrality Check
+
+# SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001 REQ-TNA-010 CI guard.
+#
+# Enforces template neutrality over the 16-language user-distributed template
+# tree (internal/template/templates/**). Runs TestTemplateNeutralityAudit
+# (internal/template/template_neutrality_audit_test.go) which detects the
+# NEUTRALITY-unique kept classes:
+#   C1 /Users/ macOS-bias path     — binary FAIL
+#   C2 bare-narrative V3R[0-9]      — advisory WARN
+#   C4 feedback_/memory.md ref      — advisory WARN
+#   C5 CLAUDE.local.md ref          — binary FAIL
+#   C6 PR #N ref                    — binary FAIL
+#   C8 GOOS=<os> Go env var         — PRESERVE (never a violation)
+#
+# Pattern set is DISJOINT from internal_content_leak_test.go (the date class C3
+# and commit-hash class C7 are owned by that test's strict tier). This workflow
+# runs ONLY the -run TestTemplateNeutralityAudit target in isolation; a
+# package-wide green is NOT required (the internal/template package has
+# pre-existing failures unrelated to this SPEC — see SPEC-V3R6-TEMPLATE-
+# NEUTRALITY-AUDIT-001 spec.md §3.4).
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'internal/template/templates/**'
+      - 'internal/template/template_neutrality_audit_test.go'
+  push:
+    branches: [main]
+    paths:
+      - 'internal/template/templates/**'
+      - 'internal/template/template_neutrality_audit_test.go'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  template-neutrality:
+    name: Template Neutrality Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Run TestTemplateNeutralityAudit (isolated)
+        run: |
+          go test ./internal/template/... \
+            -run 'TestTemplateNeutralityAudit' -v
