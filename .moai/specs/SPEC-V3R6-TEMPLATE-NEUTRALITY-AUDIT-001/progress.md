@@ -111,8 +111,8 @@ M1 evidence populated (migration-matrix.md shipped `367a84715`). M2–M6 populat
 
 | AC | M-source | Evidence | Verified |
 |---|---|---|---|
-| AC-TNA-001 | M2 | (pending) | ☐ |
-| AC-TNA-002 | M3 | corrected awk allow-list=15 computable (D2 fix verified 2026-05-30) | ☐ (run-phase) |
+| AC-TNA-001 | M2 | `grep -rln '/Users/' internal/template/templates/` = 0 (commit `1046c6a3c`, 4 files C1-sanitized) | ☑ |
+| AC-TNA-002 | M3 | **BLOCKED** — see §Run-phase M3 Blocker below. C2 `V3R[0-9]` reduction to ≤18 is unachievable without ISOLATION-owned SPEC-ID sanitization | ☐ (blocked) |
 | AC-TNA-003 | — | **DEFERRED → ISOLATION-001** (leak-test `S1-internal-date`) | n/a |
 | AC-TNA-004 | M4 | corrected awk allow-list=7 computable (D2 fix verified 2026-05-30) | ☐ (run-phase) |
 | AC-TNA-005 | M4 | binary; allow-list empty (corrected awk=0) | ☐ (run-phase) |
@@ -124,6 +124,18 @@ M1 evidence populated (migration-matrix.md shipped `367a84715`). M2–M6 populat
 | AC-TNA-011 | M5 | C8 baseline = 3 files preserved (verified 2026-05-30) | ☐ (run-phase) |
 | AC-TNA-012 | M6 | (pending) | ☐ |
 | AC-TNA-013 | M6 | (pending) | ☐ |
+
+## Run-phase M3 Blocker (2026-05-30)
+
+M2 complete (`1046c6a3c`, AC-TNA-001 PASS). M3 (C2 `V3R[0-9]` reduction to ≤18) is **blocked** by a scope/design conflict discovered at run-phase. Summary (full detail returned to orchestrator as a structured blocker report):
+
+1. **C2 target unachievable within scope**: 73 files contain `V3R[0-9]`. After excluding `zone-registry.md` (128 hits, allow-listed PRESERVE) and `CONST-V3R5-NNN` registry-ID citations (allow-listed PRESERVE), the residual bulk of `V3R[0-9]` hits are inside `SPEC-V3R6-*` SPEC-ID literals (~50+ files). Only ~6 files carry genuinely bare narrative `V3R4`/`V3R6` tokens (manager-spec.md decomposition example line 149, harness.md/moai SKILL.md "V3R4 Self-Evolving Harness", manager-develop-prompt-template.md Korean prose). Reducing `V3R[0-9]` to ≤18 would require removing/generalizing the `SPEC-V3R6-*` IDs from ~50 files — which the partition table (spec.md §3.3) assigns to **ISOLATION-001's `C1-spec-id-prefix` leak-test class, NOT NEUTRALITY's C2 class**, and which Section B2/D constraints forbid (must keep C2 disjoint from the leak test).
+
+2. **`internal_content_leak_test.go` already RED (30 pre-existing violations)**: ISOLATION-001's CI guard (a `completed` SPEC, same Go package) is failing on `main` @ `a9757f484` with 30 `C1-spec-id` / `C2-req-ac` / `C4-finding` / `C5-archive-path` violations — independent of this SPEC. M2 introduced 0 regressions (its 5 files are disjoint from all failures). The `internal/template` package has **13 pre-existing failing test functions** at the M2 parent commit, including `TestRuleTemplateMirrorDrift` (6 workflowOpt mirror files drifted) + `TestLateBranchTemplateMirror` (manager-git/manager-spec) + `TestTemplateAgentsStructure`.
+
+3. **Mirror-parity coupling**: 4 of the M3/M4/M5 C2/C5/C6 target files (`manager-develop-prompt-template.md`, `manager-spec.md`, `spec-workflow.md`, `manager-git.md`) sit on the byte-parity mirror allow-list (`rule_template_mirror_test.go`). Editing the template side without the operational `.claude/` side (or vice-versa) trips `RULE_TEMPLATE_MIRROR_DRIFT`. The operational `.claude/` mirrors are ALREADY ahead (genericized per CLAUDE.local.md §25) while the template mirrors lag — a pre-existing drift this SPEC's scope does not cover.
+
+**Decision required** (manager-spec scope-doc update + orchestrator GATE): the C2 ≤18 target conflicts with the C2/C1-spec-id partition. Resolution options surfaced in the blocker report.
 
 ## Notes
 
