@@ -40,25 +40,27 @@ import (
 // Allowlist is intentionally explicit (no glob) so that adding a new mirrored file
 // is a deliberate code change visible in PR review.
 var workflowOptMirroredPaths = []string{
-	// Layer A — manager-develop prompt template
-	".claude/rules/moai/development/manager-develop-prompt-template.md",
-	// Layer C — CI watch background standardization
-	".claude/rules/moai/workflow/ci-watch-protocol.md",
-	// Layer D + H — parallel execution batching + tool optimization patterns
-	".claude/rules/moai/core/agent-common-protocol.md",
 	// (new entry — REQ-TMD-005 — hooks-system.md mirror parity)
 	".claude/rules/moai/core/hooks-system.md",
 	// Layer E — Phase Transitions skip policy
 	".claude/rules/moai/workflow/spec-workflow.md",
-	// Layer B — Agent Teams pattern (NEW file)
-	".claude/rules/moai/workflow/agent-teams-pattern.md",
-	// Layer D — verification batch pattern (NEW file)
-	".claude/rules/moai/workflow/verification-batch-pattern.md",
-	// Layer G — plan-auditor D7/D8 dimensions (post SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 M2a FLAT layout)
-	".claude/agents/moai/plan-auditor.md",
 	// Layer G — evaluator profile D7/D8 weight registration
 	".moai/config/evaluator-profiles/default.md",
 	".moai/config/evaluator-profiles/frontend.md",
+	// per-file §25 sanitization targets — REMOVED from the byte-parity allowlist.
+	// The 6 source files below retain internal-development content (SPEC-IDs, REQ/AC
+	// tokens) in their .claude/ working copy, while their template mirrors are held
+	// sanitized for neutral distribution (CLAUDE.local.md §25). byte-parity therefore
+	// cannot hold for them; mirror cleanliness is enforced by
+	// TestTemplateNoInternalContentLeak instead of byte-identity here. Ground-truth at
+	// remediation time: drift∩leak = 8 files (not 1), so all leak-bearing drift files
+	// move to leak-test coverage:
+	//   - .claude/rules/moai/development/manager-develop-prompt-template.md (5 tokens)
+	//   - .claude/rules/moai/workflow/ci-watch-protocol.md (1 token)
+	//   - .claude/rules/moai/core/agent-common-protocol.md (17 tokens)
+	//   - .claude/rules/moai/workflow/agent-teams-pattern.md (1 token)
+	//   - .claude/rules/moai/workflow/verification-batch-pattern.md (2 tokens)
+	//   - .claude/agents/moai/plan-auditor.md (6 tokens)
 }
 
 // SPEC-V3R5-LATE-BRANCH-001 mirrored files. Each entry MUST have a byte-identical
@@ -73,14 +75,17 @@ var workflowOptMirroredPaths = []string{
 var lateBranchMirroredPaths = []string{
 	// D2 — spec-assembly Phase 3 Late-branch pre-check + Phase 2.5 opt-in
 	".claude/skills/moai/workflows/plan/spec-assembly.md",
-	// D3 — manager-git Late-Branch Invocation Pattern + Personal Mode main_late_branch (post SPEC-V3R6-AGENT-FOLDER-SPLIT-001)
-	".claude/agents/moai/manager-git.md",
 	// D5 — SKILL.md --issue flag opt-in semantics
 	".claude/skills/moai/SKILL.md",
 	// (spec-workflow.md is already in workflowOptMirroredPaths above — Late-branch
 	// closure additions are part of the same file, mirror parity verified there.)
-	// SPEC-V3R6-SPEC-ID-VALIDATION-001 — manager-spec.md mirror parity (REQ-SIV-007 + REQ-SIV-009)
-	".claude/agents/moai/manager-spec.md",
+	// per-file §25 sanitization targets — REMOVED from the byte-parity allowlist:
+	//   - manager-spec.md: source retains the SPEC ID regex pedagogical example
+	//     (working copy) while the mirror is held sanitized for distribution.
+	//   - manager-git.md: source retains internal SPEC-ID/token content while the
+	//     mirror is held sanitized.
+	// byte-parity cannot hold for either; mirror cleanliness is covered by
+	// TestTemplateNoInternalContentLeak (leak test) instead of byte-parity here.
 }
 
 // TestRuleTemplateMirrorDrift verifies that every SPEC-V3R5-WORKFLOW-OPT-001 modified
