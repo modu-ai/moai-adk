@@ -36,7 +36,7 @@ catalog:
             - name: moai-meta-harness
               tier: core
               path: templates/.claude/skills/moai-meta-harness/
-              hash: 608a77db33f49b44788342ba290d15690c478001110c6f79f6b0db926c26e30b
+              hash: 477930e2b95c571f7579cbd14152587c23a2c1f67ea63b80653bd2de801beaa0
               version: 1.0.0
             - name: moai-ref-git-workflow
               tier: core
@@ -51,7 +51,7 @@ catalog:
             - name: moai-workflow-ci-loop
               tier: core
               path: templates/.claude/skills/moai-workflow-ci-loop/
-              hash: f672e92ee883d4c2098fb2e5cd9d73ccedc49560be604d6bae436e6f688b3591
+              hash: cdf8d26b0c5b089064a5a4ce8c273d0052198aa6cece04abcf614f5db7fd3805
               version: 0.1.0
             - name: moai-workflow-ddd
               tier: core
@@ -117,7 +117,7 @@ catalog:
             - name: manager-git
               tier: core
               path: templates/.claude/agents/moai/manager-git.md
-              hash: 2545e0929ce2fe3f679996e9cf1719bb9dcc8d77f1bc5f302328a8cdb56f1831
+              hash: 747609fcbd306324a60709f1b0561d2771d0dcd6790ad61b224268ffd50a827e
               version: 1.0.0
             - name: manager-spec
               tier: core
