@@ -607,9 +607,20 @@ func loadSpecCloseState(specDir, specID string) (*closeState, error) {
 }
 
 // passWithDebtTableCell matches a genuine PASS-WITH-DEBT verdict in a markdown
-// AC table cell: `| <something> PASS-WITH-DEBT <something> |`. The cell-boundary
-// pipes anchor the match to an actual verdict column, not prose.
-var passWithDebtTableCell = regexp.MustCompile(`(?i)\|[^|\n]*\bPASS-WITH-DEBT\b[^|\n]*\|`)
+// AC table cell. The cell MUST START with PASS-WITH-DEBT (after leading
+// whitespace only): `| PASS-WITH-DEBT ... |`. Anchoring the verdict to the cell
+// START distinguishes a real verdict column from a HISTORY / change-log cell that
+// merely NARRATES a plan-auditor score mid-sentence
+// (e.g. "| ... | iter-3 ... per plan-auditor iter-2 PASS-WITH-DEBT 0.873 ... |").
+//
+// Defect 4 remediation 보완: the prior pattern `\|[^|\n]*\bPASS-WITH-DEBT\b[^|\n]*\|`
+// matched ANY cell containing the substring, false-positiving on HISTORY-cell
+// narrations across ≥4 V3R6 SPECs (SESSION-LEGACY-COVERAGE-001,
+// LOCAL-NAMESPACE-CONSOLIDATION-001, WORKFLOW-PLAN-GEARS-ALIGN-001,
+// WORKFLOW-ORCHESTRATION-FIX-001), each of which has zero genuine run-phase debt.
+// The bold form `| **PASS-WITH-DEBT** |` is intentionally NOT matched here (the
+// cell starts with `**`) — it is covered by passWithDebtBoldVerdict instead.
+var passWithDebtTableCell = regexp.MustCompile(`(?i)\|\s*PASS-WITH-DEBT\b[^|\n]*\|`)
 
 // passWithDebtBoldVerdict matches a bold **PASS-WITH-DEBT** verdict marker
 // (used in narrative AC verdict lines, e.g., "verdict: **PASS-WITH-DEBT** ...").

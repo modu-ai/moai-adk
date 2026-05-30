@@ -1136,6 +1136,56 @@ AC-TEST-009 verdict: **PASS-WITH-DEBT** — deferred cleanup tracked.
 	}
 }
 
+// TestClose_PassWithDebt_HistoryCellNotDetected — Defect 4 remediation 보완
+// (HISTORY-cell false-positive). The prior table-cell regex
+// `\|[^|\n]*\bPASS-WITH-DEBT\b[^|\n]*\|` matched ANY cell containing the
+// substring, including a HISTORY / change-log table cell that merely NARRATES a
+// plan-auditor verdict (e.g. "iter-3 ... per plan-auditor iter-2 PASS-WITH-DEBT
+// 0.873 ..."). That narration is NOT a run-phase AC verdict. A SPEC whose ONLY
+// PASS-WITH-DEBT occurrence is such a HISTORY cell — and whose run-phase ACs are
+// all PASS — MUST close cleanly. Modeled on the real offending fixture
+// SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001/acceptance.md line 18.
+func TestClose_PassWithDebt_HistoryCellNotDetected(t *testing.T) {
+	specID := "SPEC-TEST-DEBTHIST-001"
+	fixture := closeFixtureSpec{
+		id:     specID,
+		specMD: makeSpecMD(specID, "implemented", "V3R6", "2026-05-25"),
+		progressMD: `## §E.2 Sync
+sync_commit_sha: abc
+
+## §E.5 Mx
+mx_commit_sha: def
+`,
+		// HISTORY / change-log table whose cell merely narrates a plan-auditor
+		// score — NOT a run-phase AC verdict. The genuine AC matrix below it is
+		// all PASS, so the close MUST proceed.
+		acceptanceMD: `# Acceptance
+
+## HISTORY
+
+| Version | Date | Author | Note |
+|---------|------|--------|------|
+| 0.1.2 | 2026-05-25 | manager-spec | iter-3 mechanical fix per plan-auditor iter-2 PASS-WITH-DEBT 0.873. D_new3 RESOLVED: HISTORY table added. |
+
+## AC Matrix
+
+| AC | Status |
+|----|--------|
+| AC-TEST-001 | **PASS** |
+`,
+	}
+	baseDir := buildCloseGitFixture(t, fixture)
+
+	result, err := Close(specID, CloseOptions{BaseDir: baseDir})
+	if err != nil {
+		t.Fatalf("HISTORY-cell PASS-WITH-DEBT narration must NOT block close; got err = %v\npreconditions=%v",
+			err, resultPreconditions(result))
+	}
+	if result.Result != "success" {
+		t.Errorf("Result = %q, want success (HISTORY-cell false-positive regression)", result.Result)
+	}
+}
+
 // resultPreconditions is a nil-safe accessor for assertion messages.
 func resultPreconditions(r *CloseResult) []string {
 	if r == nil {
