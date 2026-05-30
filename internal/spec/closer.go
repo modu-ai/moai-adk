@@ -20,6 +20,7 @@
 package spec
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -46,6 +47,11 @@ type CloseOptions struct {
 	// Force bypasses precondition checks. Reserved for emergency recovery; not
 	// part of normal close flow. Use only when L60 backfill rule applies.
 	Force bool
+
+	// LogPath overrides the audit-trail log destination. When empty, the log is
+	// written to <BaseDir>/.moai/logs/lifecycle-close.log per NFR-LSG-004. Tests
+	// inject a t.TempDir() path so they never touch the real project log.
+	LogPath string
 }
 
 // CloseResult is the structured output of Close().
@@ -62,7 +68,10 @@ type CloseResult struct {
 	// PreconditionsFailed lists the precondition names that prevented close.
 	// Populated only when error == ErrPreconditionMissing.
 	PreconditionsFailed []string `json:"preconditions_failed,omitempty"`
-	// Result is "success" | "failure" | "noop" per AC-LSG-020 log schema.
+	// Result is the in-memory outcome: "success" | "failure" | "noop".
+	// NOTE: the on-disk AC-LSG-020 audit log uses a narrower {success, failure}
+	// enum — "noop" maps to "success" there via lifecycleCloseLogResult, because
+	// a no-op close IS a successful close (see lifecycleCloseLogEntry).
 	Result string `json:"result"`
 	// DurationMs is total wall-clock time of the close invocation.
 	DurationMs int64 `json:"duration_ms"`
@@ -90,13 +99,22 @@ var (
 	ErrAlreadyCompleted = errors.New("SPEC already at status: completed")
 )
 
+// @MX:ANCHOR: [AUTO] Close는 `moai spec close`의 단일 진입점 — CLI(spec_close.go) + 단위/통합 테스트가 호출(fan_in=3)
+// @MX:REASON: [AUTO] no-op 판정 불변식(--backfill-only 모드에서 spec.md status=="completed"면 mx_commit_sha 백필 형태와 무관하게 무조건 no-op, 0 commit)이 AC-LSG-018/022 진실표에 묶여 있다. 이 술어를 변경하면 5개 이미-종료 SPEC의 dogfood가 깨진다.
+//
 // Close orchestrates the atomic 4-phase close transition for a SPEC.
 //
 // M1 implementation (this milestone): precondition matrix + lock + dry-run +
 // no-op detection. M3 will add the atomic git commit transaction.
 //
 // The lock is held only for the duration of this call (released on return).
-func Close(specID string, opts CloseOptions) (*CloseResult, error) {
+//
+// Every invocation (success / no-op / failure / dry-run) appends one JSON line
+// to the audit-trail log per NFR-LSG-004 (AC-LSG-020). The log destination is
+// opts.LogPath, defaulting to <BaseDir>/.moai/logs/lifecycle-close.log. The
+// empty-specID guard is the sole exception: it predates result construction and
+// has no SPEC to attribute the log entry to.
+func Close(specID string, opts CloseOptions) (result *CloseResult, err error) {
 	startedAt := time.Now()
 
 	if specID == "" {
@@ -113,53 +131,72 @@ func Close(specID string, opts CloseOptions) (*CloseResult, error) {
 		mode = "backfill-only"
 	}
 
-	result := &CloseResult{
+	result = &CloseResult{
 		SpecID:      specID,
 		Transitions: map[string]string{},
 		Mode:        mode,
 		AuditedAt:   startedAt.UTC(),
 	}
 
-	// AC-LSG-010 — acquire per-SPEC lock; ErrSpecCloseLockHeld on contention.
-	lock, err := AcquireSpecCloseLock(baseDir, specID)
-	if err != nil {
-		if IsLockHeldError(err) {
-			result.Result = "failure"
-			result.DurationMs = time.Since(startedAt).Milliseconds()
-			return result, err
-		}
-		result.Result = "failure"
+	// Single audit-trail emission per invocation (NFR-LSG-004 / AC-LSG-020).
+	// Runs on every return path below; DurationMs is finalized here so all paths
+	// record consistent wall-clock time without per-return duplication. The log
+	// `result` field maps the in-memory "noop" value to "success" (no-op IS a
+	// success per AC-LSG-020 — the log schema's result enum is {success, failure}
+	// only). Log I/O failure is non-fatal: it never overrides the close outcome.
+	defer func() {
 		result.DurationMs = time.Since(startedAt).Milliseconds()
-		return result, fmt.Errorf("acquire lock: %w", err)
+		writeLifecycleCloseLog(baseDir, opts.LogPath, result)
+	}()
+
+	// AC-LSG-010 — acquire per-SPEC lock; ErrSpecCloseLockHeld on contention.
+	lock, lockErr := AcquireSpecCloseLock(baseDir, specID)
+	if lockErr != nil {
+		result.Result = "failure"
+		if IsLockHeldError(lockErr) {
+			return result, lockErr
+		}
+		return result, fmt.Errorf("acquire lock: %w", lockErr)
 	}
 	defer func() { _ = lock.Release() }()
 
 	// Read spec.md + progress.md + acceptance.md
 	specDir := filepath.Join(baseDir, ".moai", "specs", specID)
-	if _, err := os.Stat(specDir); err != nil {
+	if _, statErr := os.Stat(specDir); statErr != nil {
 		result.Result = "failure"
-		result.DurationMs = time.Since(startedAt).Milliseconds()
 		return result, fmt.Errorf("spec directory not found: %s", specDir)
 	}
 
-	state, err := loadSpecCloseState(specDir, specID)
-	if err != nil {
+	state, loadErr := loadSpecCloseState(specDir, specID)
+	if loadErr != nil {
 		result.Result = "failure"
-		result.DurationMs = time.Since(startedAt).Milliseconds()
-		return result, fmt.Errorf("load spec state: %w", err)
+		return result, fmt.Errorf("load spec state: %w", loadErr)
 	}
 
-	// Detect no-op (AC-LSG-018 fully-completed fixture)
-	if state.SpecMDStatus == "completed" && state.SyncCommitSHA != "" && state.MxCommitSHA != "" {
+	// Detect no-op (AC-LSG-018 / AC-LSG-022 fully-completed fixture state).
+	//
+	// M1/M2 remediation (Defect 1): the no-op predicate keys ONLY on
+	// `spec.md status == "completed"`. A terminal-state SPEC is already closed
+	// regardless of how its §E.5 mx_commit_sha was backfilled (the 5 already-
+	// discharged target SPECs left mx_commit_sha empty / `null` / `(this commit)`
+	// placeholder / absent). The earlier triple-AND gate additionally required
+	// non-empty SyncCommitSHA AND MxCommitSHA, which let only the literal both-
+	// SHA-present fixture through and caused 4/5 production SPECs to fall through
+	// to the precondition matrix or compute-transitions — violating AC-LSG-018's
+	// 0-commit no-op requirement.
+	//
+	// Truth-table safety (AC-LSG-022): the three transition fixtures
+	// (Y_N_N_Y / Y_Y_N_Y / Y_Y_Y_Y_StatusDrift) all carry status: implemented,
+	// so they never enter this branch — only `fully-completed-noop` (status:
+	// completed) and the 5 production SPECs do.
+	if state.SpecMDStatus == "completed" {
 		if opts.BackfillOnly {
-			// Already complete + backfill-only = no-op success path
+			// Already complete + backfill-only = no-op success path.
 			result.NoOp = true
 			result.Result = "noop"
-			result.DurationMs = time.Since(startedAt).Milliseconds()
 			return result, nil
 		}
 		result.Result = "failure"
-		result.DurationMs = time.Since(startedAt).Milliseconds()
 		return result, ErrAlreadyCompleted
 	}
 
@@ -168,7 +205,6 @@ func Close(specID string, opts CloseOptions) (*CloseResult, error) {
 	if len(preconditionsFailed) > 0 && !opts.Force {
 		result.PreconditionsFailed = preconditionsFailed
 		result.Result = "failure"
-		result.DurationMs = time.Since(startedAt).Milliseconds()
 		return result, fmt.Errorf("%w: %s", ErrPreconditionMissing, strings.Join(preconditionsFailed, ", "))
 	}
 
@@ -179,7 +215,6 @@ func Close(specID string, opts CloseOptions) (*CloseResult, error) {
 	// Dry-run path — return ErrDryRun without staging
 	if opts.DryRun {
 		result.Result = "success"
-		result.DurationMs = time.Since(startedAt).Milliseconds()
 		return result, ErrDryRun
 	}
 
@@ -191,8 +226,83 @@ func Close(specID string, opts CloseOptions) (*CloseResult, error) {
 	// M3 will replace this stub with: write changes to disk, git add, git commit,
 	// then populate result.CommitSHA.
 	result.Result = "success"
-	result.DurationMs = time.Since(startedAt).Milliseconds()
 	return result, nil
+}
+
+// lifecycleCloseLogEntry is the on-disk NFR-LSG-004 audit-trail schema. One
+// such entry is appended (as a single JSON line) per Close() invocation.
+//
+// Distinct from CloseResult: the log `result` enum is {success, failure} ONLY
+// (AC-LSG-020). A no-op close — whose in-memory CloseResult.Result is "noop" —
+// serializes here as result: "success" with transitions: {} (empty object).
+// This reconciliation lets BOTH AC-LSG-018's jq filter
+// (`.result == "success" and .transitions == {}`) AND AC-LSG-020's
+// `.result == "success"` filter match the 5 no-op dogfood closes.
+type lifecycleCloseLogEntry struct {
+	Timestamp   string            `json:"timestamp"`   // RFC3339
+	SpecID      string            `json:"spec_id"`
+	Mode        string            `json:"mode"`        // full-close | backfill-only
+	Transitions map[string]string `json:"transitions"` // changed fields; {} when none
+	CommitSHA   string            `json:"commit_sha"`
+	Result      string            `json:"result"`      // success | failure
+	DurationMs  int64             `json:"duration_ms"`
+}
+
+// lifecycleCloseLogResult maps the in-memory CloseResult.Result to the log
+// schema's {success, failure} enum. "noop" maps to "success" (a no-op IS a
+// successful close); any non-"failure" value is treated as success.
+func lifecycleCloseLogResult(in string) string {
+	if in == "failure" {
+		return "failure"
+	}
+	return "success"
+}
+
+// writeLifecycleCloseLog appends one JSON line describing the close outcome to
+// the audit-trail log. logPath overrides the destination; when empty it
+// defaults to <baseDir>/.moai/logs/lifecycle-close.log per NFR-LSG-004. The
+// parent directory is created if absent. All I/O errors are swallowed — the
+// audit trail is best-effort and MUST NOT alter the close outcome.
+func writeLifecycleCloseLog(baseDir, logPath string, result *CloseResult) {
+	if result == nil {
+		return
+	}
+
+	path := logPath
+	if path == "" {
+		path = filepath.Join(baseDir, ".moai", "logs", "lifecycle-close.log")
+	}
+
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return
+	}
+
+	transitions := result.Transitions
+	if transitions == nil {
+		transitions = map[string]string{}
+	}
+
+	entry := lifecycleCloseLogEntry{
+		Timestamp:   result.AuditedAt.UTC().Format(time.RFC3339),
+		SpecID:      result.SpecID,
+		Mode:        result.Mode,
+		Transitions: transitions,
+		CommitSHA:   result.CommitSHA,
+		Result:      lifecycleCloseLogResult(result.Result),
+		DurationMs:  result.DurationMs,
+	}
+
+	line, err := json.Marshal(entry)
+	if err != nil {
+		return
+	}
+
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return
+	}
+	defer func() { _ = f.Close() }()
+	_, _ = f.Write(append(line, '\n'))
 }
 
 // closeState captures the parsed state of spec.md + progress.md needed for
