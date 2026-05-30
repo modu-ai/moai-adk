@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001
 title: "Template Neutrality Audit — Progress Tracking"
-version: "0.1.1"
-status: in-progress
+version: "0.2.0"
+status: implemented
 created: 2026-05-23
 updated: 2026-05-30
 author: Author Name
@@ -19,9 +19,9 @@ related_specs: [SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]
 
 ## Status
 
-**Phase**: run-phase (in-progress v0.1.1) — M1 complete; M2-M5 run-phase entered after plan-auditor iter-2 PASS 0.88 + GATE-2 approval
+**Phase**: sync-phase M6 (final) — in-progress → implemented transition at sync commit
 **Created**: 2026-05-23
-**Last update**: 2026-05-30 (run-phase M2 begin: status draft → in-progress + Mode Selection logged)
+**Last update**: 2026-05-30 (run-phase M2-M5 complete: all 8 active ACs PASS; status in-progress → implemented)
 
 ## §E — Phase 0.95 Mode Selection
 

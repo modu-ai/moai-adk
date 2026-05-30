@@ -103,6 +103,8 @@ Never add files directly to the local project directories without also adding th
 
 **Verification**: Before committing, check that every new file under `.claude/`, `.moai/`, or `.agency/` has a corresponding file in `internal/template/templates/`.
 
+**§2.1 Template Content Neutrality**: When editing template source files in `internal/template/templates/`, ensure content adheres to the acceptable kept-classes (C1/C2/C4/C5/C6/C8 per `.claude/rules/moai/development/coding-standards.md` MUST constraints). FORBIDDEN content classes (SPEC IDs, REQ tokens, Audit citations, internal dates, commit SHAs, macOS-bias paths, CLAUDE.local references) are enforced by CI guard (`.github/workflows/template-neutrality-check.yaml` trigger on path change). See `.claude/rules/moai/development/coding-standards.md` § MUST for the canonical guidance. This ensures 16-language template distribution remains neutral to moai-adk internal development state.
+
 ### Local-Only Files (Never in Templates)
 ```
 .claude/settings.local.json    # Personal settings — runtime-managed, NEVER template

@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001
-title: "Template Neutrality Audit — Migration Matrix (M1 Draft)"
-version: "0.1.2"
-status: in-progress
+title: "Template Neutrality Audit — Migration Matrix (M6 Final)"
+version: "0.2.0"
+status: implemented
 created: 2026-05-23
 updated: 2026-05-30
 author: Author Name
@@ -10,14 +10,14 @@ priority: P1
 phase: "v3.0.0"
 module: "internal/template/templates"
 lifecycle: spec-anchored
-tags: "template-system, audit, migration-matrix, allow-list, m1-draft"
+tags: "template-system, audit, migration-matrix, allow-list, m6-final"
 tier: L
 related_specs: [SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]
 ---
 
 # SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001 — Migration Matrix
 
-> **M1 Draft (2026-05-23), rescoped v0.1.1 (2026-05-30)**. M2–M5에서 manager-develop가 본 matrix를 참조하여 PRESERVE / GENERALIZE / REMOVE 정책을 적용한다. M6 chore에서 실측 결과를 반영하여 final로 승격한다.
+> **M6 Final (2026-05-30)**. M2–M5 run-phase complete. All 8 active ACs PASS. Actual post-fix counts verified and matched to allow-list expectations.
 >
 > **Rescope (v0.1.1)**: kept classes = C1/C2/C4/C5/C6/C8 (NEUTRALITY-unique). **C3 (dates) / C7 (commit hash)** 는 shipped sibling SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001 (`internal/template/internal_content_leak_test.go` strict-tier `S1-internal-date` / `S2-short-sha-sentence-final`)로 **DEFERRED**. 본 matrix의 C3/C7 sections는 DEFERRED action policy로 표기되며 audit script (REQ-TNA-009)가 scan하지 않는다. Baselines re-measured 2026-05-30.
 >
