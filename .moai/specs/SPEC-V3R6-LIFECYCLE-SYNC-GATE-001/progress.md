@@ -4,7 +4,7 @@ artifact: progress
 version: "0.1.2"
 created: 2026-05-26
 updated: 2026-05-28
-status: in-progress
+status: completed
 ---
 
 # Progress Tracking — SPEC-V3R6-LIFECYCLE-SYNC-GATE-001
@@ -721,7 +721,7 @@ $ moai spec audit --filter-era=V3R6 --json | jq '[.drift_findings[]? \
 
 ```yaml
 sync_started_at: "2026-05-30T14:32:00Z"
-sync_commit_sha: "(this commit)"
+sync_commit_sha: ea7bc2e37f747bc1b70ab481df10d11f8be661d6
 status: completed
 ```
 
@@ -784,3 +784,4 @@ Mx candidate decision (reference only, not executed in sync-phase):
 - Shell hook script (~140 LOC) — candidate for @MX:NOTE (jq JSON parsing, sig/wait semantics)
 - M5 rule file (.md, 250+ lines) — candidate for @MX:NOTE (era classification heuristic table, worked example with Go test binding)
 - Per `.claude/rules/moai/workflow/mx-tag-protocol.md` §a default: Mx annotation is OPTIONAL for run-phase documentation-only milestone (M5)
+mx_commit_sha: (this commit)
