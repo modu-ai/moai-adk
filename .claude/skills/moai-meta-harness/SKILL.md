@@ -165,7 +165,7 @@ User-generated artifacts:
 - [HARD] `moai update` MUST NOT delete, modify, or sync `harness-*` skills or `.claude/agents/harness/*` files. Backup before update is mandatory.
 - [HARD] Template (`internal/template/templates/`) MUST NOT contain `harness-*` skills or `.claude/agents/harness/*-specialist.md` files. Leak detection triggers cleanup chore.
 - [HARD] `harness-*` (user-owned) vs `moai-harness-*` (template builder) substring 구분: prefix 매칭은 정확한 startsWith 비교를 사용 (`*harness-*` substring 패턴은 false positive 위험으로 금지).
-- [HARD] Doctrine-code drift (2026-05-26 ~ catch-up SPEC 완료 전): 본 namespace 정책은 `harness-*` declaration이지만 Go enforcement (update.go / prefix_conflict.go / test fixtures)는 `my-harness-*` 작동 유지. **새 `harness-*` prefix로 실제 generation 금지** — protection 없음. catch-up SPEC 완료 후 generator runtime behavior가 `harness-*`로 전환. SSOT 참조: CLAUDE.local.md §24.5.
+- [HARD] Doctrine-code drift (2026-05-26 ~ catch-up SPEC 완료 전): 본 namespace 정책은 `harness-*` declaration이지만 Go enforcement (update.go / prefix_conflict.go / test fixtures)는 `my-harness-*` 작동 유지. **새 `harness-*` prefix로 실제 generation 금지** — protection 없음. catch-up SPEC 완료 후 generator runtime behavior가 `harness-*`로 전환. SSOT 참조: the harness namespace separation policy (maintainer doctrine).
 
 ### Storage Roots
 

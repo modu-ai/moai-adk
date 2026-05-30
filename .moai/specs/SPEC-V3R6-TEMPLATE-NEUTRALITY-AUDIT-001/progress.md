@@ -92,8 +92,8 @@ KEPT-class scope (C1/C2/C4/C5/C6/C8). Drift since plan-phase: C2 +3, C3 +7 (defe
 | M1 — SPEC scope finalize + allow-list draft | **complete** (commit `367a84715`; migration-matrix.md 232L, 8/8 sections, AC-TNA-010 PASS) | orchestrator-direct | (done) |
 | M2 — C1 macOS-bias fix (4 files) | **complete** (commit `1046c6a3c`; AC-TNA-001 PASS, C1=0) | manager-develop ddd Tier L | (done) |
 | M3 — C2 bare-narrative classification + fix (v0.1.2 narrowed; 7→6 files) | **complete** (AC-TNA-002 PASS, `actual=6 ≤ allowlist=6`) | manager-develop ddd Tier L | (done) |
-| M4 — memory + CLAUDE.local refs (C4+C5, ~12 files; C3 deferred) | in-progress | manager-develop ddd Tier L | After M3 |
-| M5 — PR refs + audit script + CI guard (C6; C7 deferred) | pending | manager-develop ddd Tier L | After M4 |
+| M4 — memory + CLAUDE.local refs (C4+C5, ~12 files; C3 deferred) | **complete** (AC-TNA-004 C4=7≤7 PASS + AC-TNA-005 C5=0 PASS) | manager-develop ddd Tier L | (done) |
+| M5 — PR refs + audit script + CI guard (C6; C7 deferred) | in-progress | manager-develop ddd Tier L | After M4 |
 | M6 — Migration matrix finalize + guideline + chore implemented | pending | orchestrator-direct chore | After M5 |
 
 ## Next Steps
@@ -114,8 +114,8 @@ M1 evidence populated (migration-matrix.md shipped `367a84715`). M2–M6 populat
 | AC-TNA-001 | M2 | `grep -rln '/Users/' internal/template/templates/` = 0 (commit `1046c6a3c`, 4 files C1-sanitized) | ☑ |
 | AC-TNA-002 | M3 | **PASS** — C2 bare-narrative `actual=6 ≤ allowlist=6` (v0.1.2 narrowed scope). `manager-develop-prompt-template.md` GENERALIZEd both template + `.claude/` sides (identical edit, mirror delta -53 preserved, no new drift); 6 PRESERVE files remain (zone-registry namespace + manager-spec decomposition example + 4 harness V3R4-doctrine citations) | ☑ |
 | AC-TNA-003 | — | **DEFERRED → ISOLATION-001** (leak-test `S1-internal-date`) | n/a |
-| AC-TNA-004 | M4 | corrected awk allow-list=7 computable (D2 fix verified 2026-05-30) | ☐ (run-phase) |
-| AC-TNA-005 | M4 | binary; allow-list empty (corrected awk=0) | ☐ (run-phase) |
+| AC-TNA-004 | M4 | **PASS** — C4 `actual=7 ≤ allowlist=7`. 2 GENERALIZE targets fixed (`mode-orchestration.md` + `workflow.yaml`: `feedback_worktree_autonomous` → generic phrasing); 7 PRESERVE allow-list files remain | ☑ |
+| AC-TNA-005 | M4 | **PASS** — C5 `CLAUDE.local.md` refs = 0 (3 files fixed: manager-git.md both-side mirror-parity-preserved + moai-meta-harness/SKILL.md + run.md both sides; allow-list empty) | ☑ |
 | AC-TNA-006 | M5 | (pending) | ☐ |
 | AC-TNA-007 | — | **DEFERRED → ISOLATION-001** (leak-test `S2-short-sha-sentence-final`) | n/a |
 | AC-TNA-008 | M5 | (pending) | ☐ |

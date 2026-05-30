@@ -45,7 +45,7 @@ Team composition: backend-dev (inherit) + frontend-dev (inherit) + tester (inher
 
 ## Worktree Isolation [HARD]
 
-- [SHOULD] When spawning implementation teammates (backend-dev, frontend-dev, tester) via `Agent(isolation: "worktree")`, Claude Code runtime decides whether to materialize an L1 worktree. MoAI orchestrator does NOT mandate isolation (per user policy 2026-05-17 `feedback_worktree_autonomous`).
+- [SHOULD] When spawning implementation teammates (backend-dev, frontend-dev, tester) via `Agent(isolation: "worktree")`, Claude Code runtime decides whether to materialize an L1 worktree. MoAI orchestrator does NOT mandate isolation (per the worktree-autonomous user policy).
 - [SHOULD] Read-only teammates (quality) typically do not benefit from `isolation: "worktree"`; omit the flag unless a specific reason applies. `permissionMode: plan` is sufficient.
 - [HARD] All worktree path rules from context-loading.md "Worktree Path Rules [HARD] (All Modes)" section apply to team mode as well
 - After team shutdown, run `git worktree prune` to clean up stale worktree references
