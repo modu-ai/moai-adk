@@ -14,6 +14,7 @@ package cli
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -430,14 +431,33 @@ func TestSpecClose_SpecDirMissing(t *testing.T) {
 	}
 }
 
-// TestSpecClose_FullCloseSuccess_ReadyFixture — exercises the success path
-// (M1 stub returns success without staging when all preconditions are met).
-// This covers the renderCloseResult happy branch including the transition
-// rendering + M3-deferred note.
+// initGitRepoFixture initializes a git repo at dir and commits all current
+// files so the close transaction edits a tracked file. Used by the full-close
+// CLI integration test (M3: transaction implemented — requires a real repo).
+func initGitRepoFixture(t *testing.T, dir string) {
+	t.Helper()
+	run := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v failed: %v\n%s", args, err, out)
+		}
+	}
+	run("init", "-b", "main")
+	run("config", "user.email", "test@example.com")
+	run("config", "user.name", "Test User")
+	run("add", ".")
+	run("commit", "-m", "chore: initial fixture")
+}
+
+// TestSpecClose_FullCloseSuccess_ReadyFixture — exercises the full-close success
+// path with the M3 atomic-commit transaction implemented. The close stages this
+// SPEC's spec.md + progress.md, commits, and reports the commit SHA.
 //
 // Fixture: spec.md status=implemented, both §E.2 + §E.5 sections present, all
-// ACs PASS. Close without --backfill-only → full-close mode, all preconditions
-// satisfied, no NoOp, transitions computed.
+// ACs PASS, in a real git repo. Close without --backfill-only → full-close mode,
+// all preconditions satisfied, no NoOp, real commit produced.
 func TestSpecClose_FullCloseSuccess_ReadyFixture(t *testing.T) {
 	tmpDir := t.TempDir()
 	specID := "SPEC-FIXTURE-READY-001"
@@ -498,6 +518,9 @@ artifact: acceptance
 		t.Fatalf("write acceptance.md: %v", err)
 	}
 
+	// M3: full-close performs a real atomic commit, so the fixture must be a git repo.
+	initGitRepoFixture(t, tmpDir)
+
 	stdout, stderr, err := runSpecCloseCmd(t, tmpDir, specID)
 	if err != nil {
 		t.Fatalf("full-close on ready fixture should succeed; err=%v stderr=%q", err, stderr)
@@ -506,10 +529,13 @@ artifact: acceptance
 	if !strings.Contains(combined, "full-close") && !strings.Contains(combined, "transition") {
 		t.Errorf("output should announce close + transitions; got stdout=%q stderr=%q", stdout, stderr)
 	}
-	// M1 stub: result.CommitSHA is empty + transitions computed. Verify the
-	// M3-deferred note is emitted so users know this is not the final state.
-	if !strings.Contains(stdout, "M3") && !strings.Contains(stdout, "deferred") {
-		t.Errorf("output should mention M3 stub deferral; got: %q", stdout)
+	// M3: the transaction commits, so the CLI must report the resulting commit SHA.
+	if !strings.Contains(stdout, "Commit:") {
+		t.Errorf("output should report the close commit SHA; got: %q", stdout)
+	}
+	// The obsolete M2-stub "deferred to M3" note must be gone.
+	if strings.Contains(stdout, "deferred to M3") || strings.Contains(stdout, "M2 stub") {
+		t.Errorf("obsolete M2-stub note must be removed; got: %q", stdout)
 	}
 }
 

@@ -35,7 +35,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -230,10 +229,6 @@ func renderCloseResult(cmd *cobra.Command, specID string, result *spec.CloseResu
 	}
 	if result != nil && result.CommitSHA != "" {
 		_, _ = fmt.Fprintf(out, "Commit: %s\n", result.CommitSHA)
-	}
-	// Mention the M3 deferral so users understand the M2-era stub behavior.
-	if result != nil && result.CommitSHA == "" && !strings.Contains(mode, "noop") {
-		_, _ = fmt.Fprintln(out, "Note: atomic commit transaction is deferred to M3 (this is the M2 stub).")
 	}
 
 	return nil

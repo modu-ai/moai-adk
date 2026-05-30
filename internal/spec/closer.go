@@ -24,7 +24,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -218,15 +220,239 @@ func Close(specID string, opts CloseOptions) (result *CloseResult, err error) {
 		return result, ErrDryRun
 	}
 
-	// M1 stub: actual atomic commit transaction is M3 deliverable.
-	// For now, M1 returns the computed transitions without performing the commit.
-	// This allows AC-LSG-014 (precondition abort atomicity) to be verified — no
-	// staging is performed because the commit phase is not yet implemented.
-	//
-	// M3 will replace this stub with: write changes to disk, git add, git commit,
-	// then populate result.CommitSHA.
+	// Atomic commit transaction (M1/M3 remediation, Defect 3).
+	// Writes the computed transitions to disk, stages ONLY this SPEC's spec.md +
+	// progress.md by exact path, commits, and populates result.CommitSHA. On any
+	// failure, performs a full rollback so no partial staging remains (AC-LSG-014).
+	sha, txErr := performAtomicClose(baseDir, specID, state)
+	if txErr != nil {
+		result.Result = "failure"
+		return result, fmt.Errorf("atomic close transaction: %w", txErr)
+	}
+	result.CommitSHA = sha
 	result.Result = "success"
 	return result, nil
+}
+
+// performAtomicClose executes the atomic close transaction for a non-no-op,
+// non-dry-run, preconditions-met SPEC. It:
+//
+//  1. Rewrites spec.md frontmatter status → completed.
+//  2. Rewrites progress.md §E.3 status → completed (when progress.md present).
+//  3. Backfills §E.2 sync_commit_sha if missing/placeholder (BACKWARD reference
+//     to the existing sync commit; the `(this commit)` placeholder resolves to
+//     the most recent sync commit SHA touching this SPEC).
+//  4. Backfills §E.5 mx_commit_sha per the L60 atomic-backfill chicken-and-egg
+//     convention (placeholder acceptable — the no-op predicate no longer
+//     requires a non-empty mx_commit_sha).
+//  5. Stages EXACTLY this SPEC's spec.md + progress.md (explicit paths only —
+//     NEVER `git add -A` / `.` / `-u`).
+//  6. Commits and returns the new commit SHA.
+//
+// Atomicity (AC-LSG-014): any step failure triggers full rollback — staged
+// paths are unstaged (`git restore --staged`) and on-disk file contents are
+// restored from the in-memory snapshots captured at load time. After rollback,
+// `git status --porcelain` shows no staged changes attributable to this call.
+//
+// @MX:ANCHOR: [AUTO] performAtomicClose는 Close()의 유일한 commit 수행 경로 — full-close happy path가 여기로 수렴(AC-LSG-001/014)
+// @MX:REASON: [AUTO] explicit-path staging 불변식(이 SPEC의 spec.md + progress.md만 stage, 절대 git add -A 금지)과 rollback 원자성(어떤 step 실패 시 staged 0)이 active multi-session race 하에서 다른 세션의 parallel-WIP 파일을 침범하지 않도록 보장한다.
+func performAtomicClose(baseDir, specID string, state *closeState) (commitSHA string, err error) {
+	// Resolve relative paths (git add wants paths relative to the repo root, or
+	// absolute paths under it; we use the recorded absolute paths directly).
+	specMDPath := state.SpecMDPath
+	progressMDPath := state.ProgressMDPath
+
+	// Snapshot on-disk contents for rollback.
+	origSpec := state.SpecMDContent
+	origProgress := state.ProgressMDContent
+
+	// staged tracks the exact paths we `git add`-ed, for precise unstaging on rollback.
+	var staged []string
+
+	// rollback restores file contents and unstages anything we staged. Best-effort:
+	// rollback errors are joined into the returned error but never panic.
+	rollback := func(cause error) (string, error) {
+		// Restore on-disk file contents from snapshots.
+		_ = os.WriteFile(specMDPath, []byte(origSpec), 0644)
+		if progressMDPath != "" {
+			_ = os.WriteFile(progressMDPath, []byte(origProgress), 0644)
+		}
+		// Unstage the exact paths we staged (git restore --staged <path>).
+		if len(staged) > 0 {
+			args := append([]string{"restore", "--staged"}, staged...)
+			_ = runGitInDir(baseDir, args...)
+		}
+		return "", cause
+	}
+
+	// Step 1 — spec.md frontmatter status → completed.
+	newSpec := rewriteSpecStatusCompleted(origSpec)
+	if err := os.WriteFile(specMDPath, []byte(newSpec), 0644); err != nil {
+		return rollback(fmt.Errorf("write spec.md: %w", err))
+	}
+
+	// Steps 2-4 — progress.md transitions + backfills (when progress.md present).
+	if progressMDPath != "" {
+		newProgress := origProgress
+		// §E.3 status → completed.
+		newProgress = rewriteProgressStatusCompleted(newProgress)
+		// §E.2 sync_commit_sha backfill (BACKWARD reference to existing sync commit).
+		// The dogfood SPEC carries the `(this commit)` placeholder here, which must
+		// be resolved to the actual prior sync commit SHA.
+		if needsSHABackfill(state.SyncCommitSHA) {
+			resolved := resolveRecentSpecCommitSHA(baseDir, specID)
+			if resolved != "" {
+				newProgress = backfillProgressField(newProgress, "sync_commit_sha", resolved)
+			}
+		}
+		// §E.5 mx_commit_sha backfill per L60 (placeholder acceptable — the close
+		// commit's own SHA cannot be embedded in itself, chicken-and-egg).
+		if needsSHABackfill(state.MxCommitSHA) {
+			newProgress = backfillProgressField(newProgress, "mx_commit_sha", l60MxBackfillPlaceholder)
+		}
+		if err := os.WriteFile(progressMDPath, []byte(newProgress), 0644); err != nil {
+			return rollback(fmt.Errorf("write progress.md: %w", err))
+		}
+	}
+
+	// Step 5 — stage EXACTLY this SPEC's spec.md + progress.md by explicit path.
+	if err := runGitInDir(baseDir, "add", specMDPath); err != nil {
+		return rollback(fmt.Errorf("git add spec.md: %w", err))
+	}
+	staged = append(staged, specMDPath)
+	if progressMDPath != "" {
+		if err := runGitInDir(baseDir, "add", progressMDPath); err != nil {
+			return rollback(fmt.Errorf("git add progress.md: %w", err))
+		}
+		staged = append(staged, progressMDPath)
+	}
+
+	// Step 6 — commit and capture the new SHA.
+	subject := fmt.Sprintf("chore(%s): Mx-phase audit-ready signal + 4-phase close", specID)
+	body := "Authored-By-Agent: orchestrator-direct"
+	if err := runGitInDir(baseDir, "commit", "-m", subject, "-m", body); err != nil {
+		return rollback(fmt.Errorf("git commit: %w", err))
+	}
+
+	sha, shaErr := gitRevParseHead(baseDir)
+	if shaErr != nil {
+		// Commit succeeded but we cannot read the SHA — surface as failure (do NOT
+		// roll back a successful commit; report the read error instead).
+		return "", fmt.Errorf("read commit SHA after commit: %w", shaErr)
+	}
+	return sha, nil
+}
+
+// l60MxBackfillPlaceholder is the L60 atomic-backfill placeholder for the §E.5
+// mx_commit_sha field. The close commit's own SHA cannot be embedded in itself
+// (chicken-and-egg, plan.md §B1); this placeholder follows the established
+// backward-compat convention. The remediated no-op predicate no longer requires
+// a non-empty mx_commit_sha, so a placeholder is acceptable.
+const l60MxBackfillPlaceholder = "(this commit)"
+
+// needsSHABackfill reports whether a §E.2/§E.5 commit-SHA field value requires
+// backfill. A value needs backfill when it is empty OR a `(this commit)`-style
+// placeholder. `extractProgressField` (via cleanFieldValue) strips quotes but
+// does NOT normalize `(this commit)` to empty, so the dogfood SPEC's
+// `sync_commit_sha: "(this commit)"` arrives here as the literal placeholder.
+//
+// This predicate is transaction-local and does NOT alter cleanFieldValue, whose
+// `(this commit)`-as-value behavior the era classification heuristics rely on.
+func needsSHABackfill(value string) bool {
+	v := strings.ToLower(strings.TrimSpace(value))
+	v = strings.Trim(v, `"'`+"`")
+	switch v {
+	case "", "(this commit)", "(pending)", "<pending>":
+		return true
+	}
+	return false
+}
+
+// runGitInDir runs a git subcommand in dir, returning a wrapped error on failure.
+func runGitInDir(dir string, args ...string) error {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git %s: %w (output: %s)", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// gitRevParseHead returns the current HEAD commit SHA for the repo at dir.
+func gitRevParseHead(dir string) (string, error) {
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("git rev-parse HEAD: %w", err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// resolveRecentSpecCommitSHA returns the most recent commit SHA whose message
+// references the SPEC ID (a BACKWARD reference to the existing sync commit used
+// to backfill an empty §E.2 sync_commit_sha). Returns "" when no such commit
+// exists or git is unreachable — the caller then leaves the placeholder.
+func resolveRecentSpecCommitSHA(dir, specID string) string {
+	cmd := exec.Command("git", "log", "-1", "--format=%H", fmt.Sprintf("--grep=%s", specID))
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// rewriteSpecStatusCompleted rewrites the spec.md frontmatter `status:` line to
+// `completed`. Idempotent: when already completed, the content is returned
+// unchanged. Matches the canonical specStatusPattern anchor.
+func rewriteSpecStatusCompleted(content string) string {
+	return specStatusLinePattern.ReplaceAllString(content, "status: completed")
+}
+
+// specStatusLinePattern matches the frontmatter `status:` line (line-anchored,
+// no leading indent — frontmatter fields are column-0). Distinct from
+// specStatusPattern (which captures the value) — this one rewrites the whole line.
+var specStatusLinePattern = regexp.MustCompile(`(?m)^status:[ \t]*.*$`)
+
+// progressStatusLinePattern matches a `status:` line in progress.md body (allows
+// leading whitespace or markdown-list prefix). Used to flip §E.3 status to completed.
+var progressStatusLinePattern = regexp.MustCompile(`(?m)^([ \t]*(?:[-*][ \t]*)?` + "`?" + `status` + "`?" + `[ \t]*:[ \t]*).*$`)
+
+// rewriteProgressStatusCompleted rewrites the first progress.md `status:` line to
+// `completed`, preserving any leading whitespace / list-marker prefix. When no
+// status line exists, the content is returned unchanged (caller already gated on
+// progress.md presence; a missing §E.3 status line is tolerated).
+func rewriteProgressStatusCompleted(content string) string {
+	loc := progressStatusLinePattern.FindStringSubmatchIndex(content)
+	if loc == nil {
+		return content
+	}
+	// loc[2]:loc[3] is the captured prefix (indent + `status:` + spacing).
+	prefix := content[loc[2]:loc[3]]
+	return content[:loc[0]] + prefix + "completed" + content[loc[1]:]
+}
+
+// backfillProgressField rewrites an existing `field:` line in progress.md to the
+// given value, or appends `field: value` when the field line is absent. Empty /
+// placeholder existing values (null, none, "", `(this commit)`) are overwritten.
+//
+// The rewritten line preserves the original line's leading indent + optional
+// markdown-list marker, but normalizes the `key:` separator to exactly one space
+// before the value (so `mx_commit_sha:` with no trailing space yields
+// `mx_commit_sha: <value>`, not `mx_commit_sha:<value>`).
+func backfillProgressField(content, field, value string) string {
+	// Capture group 1: leading indent + optional list marker + backtick-wrapped key.
+	pattern := regexp.MustCompile(`(?m)^([ \t]*(?:[-*][ \t]*)?` + "`?" + regexp.QuoteMeta(field) + "`?" + `)[ \t]*:[ \t]*.*$`)
+	if loc := pattern.FindStringSubmatchIndex(content); loc != nil {
+		keyPrefix := content[loc[2]:loc[3]] // indent + (list marker) + key (no colon)
+		return content[:loc[0]] + keyPrefix + ": " + value + content[loc[1]:]
+	}
+	// Field line absent — append under the existing body (best-effort; rare path).
+	if !strings.HasSuffix(content, "\n") {
+		content += "\n"
+	}
+	return content + field + ": " + value + "\n"
 }
 
 // lifecycleCloseLogEntry is the on-disk NFR-LSG-004 audit-trail schema. One
@@ -306,16 +532,23 @@ func writeLifecycleCloseLog(baseDir, logPath string, result *CloseResult) {
 }
 
 // closeState captures the parsed state of spec.md + progress.md needed for
-// precondition validation.
+// precondition validation AND the atomic close transaction (M3 remediation).
 type closeState struct {
-	SpecMDStatus      string // current spec.md frontmatter status
-	HasSyncSection    bool   // §E.2 section present in progress.md
-	HasMxSection      bool   // §E.5 section present in progress.md
-	SyncCommitSHA     string // extracted §E.2 sync_commit_sha
-	MxCommitSHA       string // extracted §E.5 mx_commit_sha
-	ProgressMDStatus  string // progress.md §E.3 status field
-	ACAllPass         bool   // all MUST-PASS acceptance criteria PASS
-	HasPassWithDebt   bool   // any AC marked PASS-WITH-DEBT
+	SpecMDStatus     string // current spec.md frontmatter status
+	HasSyncSection   bool   // §E.2 section present in progress.md
+	HasMxSection     bool   // §E.5 section present in progress.md
+	SyncCommitSHA    string // extracted §E.2 sync_commit_sha
+	MxCommitSHA      string // extracted §E.5 mx_commit_sha
+	ProgressMDStatus string // progress.md §E.3 status field
+	ACAllPass        bool   // all MUST-PASS acceptance criteria PASS
+	HasPassWithDebt  bool   // any AC marked PASS-WITH-DEBT (genuine verdict, not descriptive text)
+
+	// Transaction inputs (M3): raw file paths + contents captured at load time so
+	// the atomic transaction can rewrite them and roll back from in-memory snapshots.
+	SpecMDPath        string // absolute path to spec.md
+	SpecMDContent     string // raw spec.md bytes (pre-transition)
+	ProgressMDPath    string // absolute path to progress.md ("" when absent)
+	ProgressMDContent string // raw progress.md bytes ("" when absent)
 }
 
 // loadSpecCloseState reads spec.md + progress.md + acceptance.md and populates
@@ -330,6 +563,8 @@ func loadSpecCloseState(specDir, specID string) (*closeState, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read spec.md: %w", err)
 	}
+	state.SpecMDPath = specMDPath
+	state.SpecMDContent = string(specContent)
 	if m := specStatusPattern.FindStringSubmatch(string(specContent)); len(m) > 1 {
 		state.SpecMDStatus = strings.TrimSpace(m[1])
 	}
@@ -338,6 +573,8 @@ func loadSpecCloseState(specDir, specID string) (*closeState, error) {
 	progressMDPath := filepath.Join(specDir, "progress.md")
 	if progressContent, perr := os.ReadFile(progressMDPath); perr == nil {
 		body := string(progressContent)
+		state.ProgressMDPath = progressMDPath
+		state.ProgressMDContent = body
 		state.HasSyncSection = hasProgressMarker(body, "§E.2")
 		state.HasMxSection = hasProgressMarker(body, "§E.5")
 		state.SyncCommitSHA = extractProgressField(body, "sync_commit_sha")
@@ -348,14 +585,15 @@ func loadSpecCloseState(specDir, specID string) (*closeState, error) {
 		state.ProgressMDStatus = extractProgressField(body, "status")
 	}
 
-	// acceptance.md AC PASS check (M1: simple grep-based)
+	// acceptance.md AC PASS check (M3: precise marker detection)
 	acMDPath := filepath.Join(specDir, "acceptance.md")
 	if acContent, aerr := os.ReadFile(acMDPath); aerr == nil {
 		acBody := string(acContent)
-		// Look for PASS-WITH-DEBT marker (case-insensitive)
-		state.HasPassWithDebt = strings.Contains(strings.ToUpper(acBody), "PASS-WITH-DEBT")
-		// M1: assume all PASS unless we can detect failures; M3 will parse the AC table.
-		// For now we treat presence of FAIL markers as failure.
+		// Defect 4 remediation: detect ONLY a genuine PASS-WITH-DEBT AC verdict
+		// (table-cell verdict or bold **PASS-WITH-DEBT** marker), NOT the
+		// descriptive precondition-definition phrase "no PASS-WITH-DEBT".
+		state.HasPassWithDebt = hasGenuinePassWithDebtVerdict(acBody)
+		// M3: treat presence of FAIL verdict markers as failure.
 		hasFail := strings.Contains(strings.ToUpper(acBody), "**FAIL**") ||
 			strings.Contains(strings.ToUpper(acBody), "| FAIL |") ||
 			strings.Contains(strings.ToUpper(acBody), "| FAILED |")
@@ -366,6 +604,37 @@ func loadSpecCloseState(specDir, specID string) (*closeState, error) {
 	}
 
 	return state, nil
+}
+
+// passWithDebtTableCell matches a genuine PASS-WITH-DEBT verdict in a markdown
+// AC table cell: `| <something> PASS-WITH-DEBT <something> |`. The cell-boundary
+// pipes anchor the match to an actual verdict column, not prose.
+var passWithDebtTableCell = regexp.MustCompile(`(?i)\|[^|\n]*\bPASS-WITH-DEBT\b[^|\n]*\|`)
+
+// passWithDebtBoldVerdict matches a bold **PASS-WITH-DEBT** verdict marker
+// (used in narrative AC verdict lines, e.g., "verdict: **PASS-WITH-DEBT** ...").
+var passWithDebtBoldVerdict = regexp.MustCompile(`(?i)\*\*\s*PASS-WITH-DEBT\s*\*\*`)
+
+// hasGenuinePassWithDebtVerdict reports whether acceptance.md contains a real
+// PASS-WITH-DEBT AC verdict, as distinct from the descriptive precondition
+// phrase "no PASS-WITH-DEBT" that merely DEFINES the concept (AC-LSG-014 text).
+//
+// Defect 4 (M1/M3 remediation): the prior naive substring match
+// (strings.Contains(upper, "PASS-WITH-DEBT")) false-positived on
+// acceptance.md's own AC-LSG-014 descriptive text
+// "(sync section / mx section / AC PASS / no PASS-WITH-DEBT)", causing this
+// SPEC's own --dry-run to falsely report a precondition failure when it has
+// ZERO real debt ACs.
+//
+// Detection grounds on two genuine verdict forms ONLY:
+//  1. a markdown table cell carrying the PASS-WITH-DEBT verdict, OR
+//  2. a bold **PASS-WITH-DEBT** verdict marker.
+//
+// A bare "no PASS-WITH-DEBT" / "PASS-WITH-DEBT" appearing in flowing prose
+// (precondition definition) matches NEITHER pattern and is correctly ignored.
+func hasGenuinePassWithDebtVerdict(acBody string) bool {
+	return passWithDebtTableCell.MatchString(acBody) ||
+		passWithDebtBoldVerdict.MatchString(acBody)
 }
 
 // validatePreconditions checks the 4-phase precondition matrix per AC-LSG-006.
@@ -422,10 +691,10 @@ func computeTransitions(state *closeState, opts CloseOptions) map[string]string 
 	if state.ProgressMDStatus != "completed" {
 		transitions["progress.md:§E.3.status"] = "completed"
 	}
-	if state.SyncCommitSHA == "" {
+	if needsSHABackfill(state.SyncCommitSHA) {
 		transitions["progress.md:§E.2.sync_commit_sha"] = "<derived-from-recent-sync-commit>"
 	}
-	if state.MxCommitSHA == "" {
+	if needsSHABackfill(state.MxCommitSHA) {
 		transitions["progress.md:§E.5.mx_commit_sha"] = "<derived-from-recent-mx-commit>"
 	}
 
