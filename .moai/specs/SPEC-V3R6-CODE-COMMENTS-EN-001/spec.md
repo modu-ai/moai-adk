@@ -2,9 +2,9 @@
 id: SPEC-V3R6-CODE-COMMENTS-EN-001
 title: "Mass migration of Korean comments to English in Go source code"
 version: "0.2.0"
-status: draft
+status: completed
 created: 2026-05-23
-updated: 2026-05-23
+updated: 2026-05-30
 author: manager-spec
 priority: Medium
 phase: "v3.0.0"

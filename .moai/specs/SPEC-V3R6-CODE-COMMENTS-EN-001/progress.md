@@ -157,5 +157,5 @@ Use the plan-auditor subagent to audit SPEC-V3R6-CODE-COMMENTS-EN-001 at Tier L 
 
 ---
 
-Version: 0.1.0
-Plan-phase complete: 2026-05-23
+Version: 0.3.0
+4-phase complete: 2026-05-23 — plan + run (Wave 1-7) + sync (CHANGELOG `74ef492bd`) delivered on origin/main. Status set to `completed` 2026-05-30 (Sprint 13 cohort cleanup; the "Next action" / "Notes for run-phase" sections above are historical plan-phase records superseded by the Status block at the top of this file).

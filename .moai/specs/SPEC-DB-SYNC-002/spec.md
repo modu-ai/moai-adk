@@ -1,22 +1,19 @@
 ---
 id: SPEC-DB-SYNC-002
 version: 0.1.0
-status: draft
-created_at: 2026-04-24
-updated_at: 2026-04-24
+status: archived
 author: manager-spec (follow-up to plan-auditor 2026-04-24)
 priority: High
-labels: [db, parser, migration, prisma, alembic, rails, raw-sql, follow-up]
 issue_number: null
 depends_on: [SPEC-DB-SYNC-001]
 related_specs: [SPEC-DB-SYNC-RELOC-001, SPEC-DB-SYNC-HARDEN-001, SPEC-DB-CMD-001]
 title: "Migration File Parser Backends for DB Schema Sync"
 created: 2026-04-28
-updated: 2026-05-13
+updated: 2026-05-30
 phase: "v2.x - Legacy"
 module: "database"
-lifecycle: completed
-tags: "legacy"
+lifecycle: spec-anchored
+tags: "legacy, db, parser, migration, follow-up"
 ---
 
 # SPEC-DB-SYNC-002: Migration File Parser Backends for DB Schema Sync
