@@ -28,7 +28,7 @@ func TestManagerDevelopActiveAgentPresent(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
 
-	const managerDevelopPath = ".claude/agents/core/manager-develop.md"
+	const managerDevelopPath = ".claude/agents/moai/manager-develop.md"
 
 	// Verify file presence
 	_, statErr := fs.Stat(fsys, managerDevelopPath)
@@ -51,7 +51,7 @@ func TestManagerDevelopIsActiveAgent(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
 
-	const managerDevelopPath = ".claude/agents/core/manager-develop.md"
+	const managerDevelopPath = ".claude/agents/moai/manager-develop.md"
 
 	data, readErr := fs.ReadFile(fsys, managerDevelopPath)
 	if readErr != nil {
@@ -110,8 +110,9 @@ func TestPurgedZombieAgentsAbsent(t *testing.T) {
 		"manager-tdd",
 	}
 
-	// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: scan all 4 domain subfolders for zombie regression.
-	domains := []string{"core", "expert", "meta", "harness"}
+	// Canonical FLAT layout (the {core,expert,meta,harness} split was superseded;
+	// FLAT moai/ restored): scan the single retained subfolder for zombie regression.
+	domains := []string{"moai"}
 	for _, name := range purged {
 		for _, domain := range domains {
 			path := ".claude/agents/" + domain + "/" + name + ".md"

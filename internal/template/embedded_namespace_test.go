@@ -12,8 +12,8 @@ import (
 // These tests statically verify the CLAUDE.local.md §24 "Harness Namespace 분리 정책"
 // invariants on the embedded template filesystem:
 //
-//  1. internal/template/templates/.claude/agents/ MUST contain ONLY the three
-//     system subdirectories {core, expert, meta} — NO user-domain directories
+//  1. internal/template/templates/.claude/agents/ MUST contain ONLY the
+//     canonical FLAT system subdirectory {moai} — NO user-domain directories
 //     such as `harness/` (which belongs to USER projects post-/moai project
 //     interview, not to the moai-adk template baseline).
 //
@@ -32,8 +32,8 @@ import (
 // the build will fail at `go test ./internal/template/...` time.
 
 // TestTemplateAgentsStructure verifies REQ-HNC-005 invariant 1:
-// internal/template/templates/.claude/agents/ contains exactly the three
-// system subdirectories {core, expert, meta} and no others.
+// internal/template/templates/.claude/agents/ contains exactly the canonical
+// FLAT system subdirectory {moai} and no others.
 func TestTemplateAgentsStructure(t *testing.T) {
 	t.Parallel()
 
@@ -47,13 +47,13 @@ func TestTemplateAgentsStructure(t *testing.T) {
 		t.Fatalf("fs.ReadDir(.claude/agents) error = %v, want nil", err)
 	}
 
-	// Post SPEC-V3R6-AGENT-TEAM-REBUILD-001: agent catalog consolidated to 7 retained
-	// MoAI-custom agents organized in 2 active subdirs {core, meta}. The {expert} subdir
-	// was archived (12 agents archived per Anthropic 2026 alignment).
-	// REQ-TST-011: enumeration updated to current retained catalog reality.
+	// Post SPEC-V3R6-AGENT-TEAM-REBUILD-001 (+ V2-V3-CLEAN-REINSTALL-001): the
+	// agent catalog consolidated to 7 retained MoAI-custom agents organized in a
+	// single FLAT subdir {moai}. The earlier {core, expert, meta} split was
+	// superseded (FLAT layout restored as canonical). REQ-MRR-001: enumeration
+	// updated to current retained catalog reality.
 	expected := map[string]bool{
-		"core": true,
-		"meta": true,
+		"moai": true,
 	}
 
 	actual := make(map[string]bool)
@@ -73,7 +73,7 @@ func TestTemplateAgentsStructure(t *testing.T) {
 	// Detect unexpected (leaked) subdirs.
 	for name := range actual {
 		if !expected[name] {
-			t.Errorf("unexpected .claude/agents/%s/ subdir in embedded template — only {core,meta} allowed post SPEC-V3R6-AGENT-TEAM-REBUILD-001 (HARNESS_NAMESPACE_LEAK)", name)
+			t.Errorf("unexpected .claude/agents/%s/ subdir in embedded template — only {moai} allowed post SPEC-V3R6-AGENT-TEAM-REBUILD-001 FLAT layout (HARNESS_NAMESPACE_LEAK)", name)
 		}
 	}
 }

@@ -42,11 +42,11 @@ func TestEmbeddedTemplates_AgentDefinitions(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
 
-	// Post SPEC-V3R6-AGENT-TEAM-REBUILD-001: agents consolidated to 7 retained MoAI-custom
-	// agents under 2 subfolders {core, meta}. The {expert, harness} subdirs were archived
-	// per Anthropic 2026 alignment (17→8 catalog, 12 agents archived).
-	// REQ-TST-011: enumeration updated to current retained catalog reality.
-	domains := []string{"core", "meta"}
+	// Post SPEC-V3R6-AGENT-TEAM-REBUILD-001 (+ V2-V3-CLEAN-REINSTALL-001): agents
+	// consolidated to 7 retained MoAI-custom agents under a single FLAT subfolder {moai}.
+	// The earlier {core, expert, meta} split was superseded (FLAT moai/ restored as
+	// canonical). REQ-MRR-002: enumeration aligned to current retained catalog reality.
+	domains := []string{"moai"}
 	var mdCount int
 	for _, domain := range domains {
 		agentDir := ".claude/agents/" + domain
@@ -61,13 +61,13 @@ func TestEmbeddedTemplates_AgentDefinitions(t *testing.T) {
 		}
 	}
 
-	// Post-ATR-001: 7 retained agents (4 core + 3 meta).
+	// 7 retained agents in the FLAT moai/ subfolder.
 	if mdCount < 7 {
-		t.Errorf("expected at least 7 retained agent .md files across {core, meta} subfolders, got %d", mdCount)
+		t.Errorf("expected at least 7 retained agent .md files in the {moai} subfolder, got %d", mdCount)
 	}
 
 	// Verify a specific retained agent file is readable and non-empty.
-	data, err := fs.ReadFile(fsys, ".claude/agents/core/manager-develop.md")
+	data, err := fs.ReadFile(fsys, ".claude/agents/moai/manager-develop.md")
 	if err != nil {
 		t.Fatalf("read manager-develop.md: %v", err)
 	}

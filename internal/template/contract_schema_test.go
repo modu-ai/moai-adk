@@ -11,8 +11,9 @@ import (
 func TestContractSchemaVerification(t *testing.T) {
 	// Post SPEC-V3R6-AGENT-TEAM-REBUILD-001: manager-quality archived; manager-develop
 	// is the retained-catalog agent carrying the Behavioral Contract (SEMAP) section.
-	// REQ-TST-013: archived-agent assertion replaced with retained-catalog equivalent.
-	templatesDir := filepath.Join(".", "templates", ".claude", "agents", "core")
+	// Canonical FLAT layout restored ({core,meta} split superseded) — agents live in
+	// .claude/agents/moai/. REQ-MRR-001: path expectation aligned to FLAT moai/.
+	templatesDir := filepath.Join(".", "templates", ".claude", "agents", "moai")
 
 	if _, err := os.ReadDir(templatesDir); err != nil {
 		t.Fatalf("Failed to read agents directory: %v", err)
@@ -92,13 +93,13 @@ func TestContractSchemaVerification(t *testing.T) {
 }
 
 // TestBackwardCompatibility verifies agents without contracts remain functional.
-// Post SPEC-V3R6-AGENT-TEAM-REBUILD-001: agent catalog consolidated to 7 retained
-// MoAI-custom agents under 2 subfolders {core, meta}. Empty/archived domains
-// {expert, harness} no longer have template files per the 17→8 consolidation.
-// REQ-TST-011: enumeration updated to current retained catalog reality.
+// Post SPEC-V3R6-AGENT-TEAM-REBUILD-001 (+ V2-V3-CLEAN-REINSTALL-001): agent catalog
+// consolidated to 7 retained MoAI-custom agents under a single FLAT subfolder {moai}.
+// The earlier {core, expert, meta} split was superseded (FLAT layout restored as
+// canonical). REQ-MRR-002: enumeration aligned to current retained catalog reality.
 func TestBackwardCompatibility(t *testing.T) {
 	templatesRoot := filepath.Join(".", "templates", ".claude", "agents")
-	domains := []string{"core", "meta"}
+	domains := []string{"moai"}
 
 	for _, domain := range domains {
 		templatesDir := filepath.Join(templatesRoot, domain)
@@ -140,8 +141,9 @@ func TestBackwardCompatibility(t *testing.T) {
 func TestContractAssertionsNaturalLanguage(t *testing.T) {
 	// Post SPEC-V3R6-AGENT-TEAM-REBUILD-001: manager-quality archived; manager-develop
 	// is the retained-catalog agent carrying the Behavioral Contract section.
-	// REQ-TST-013: archived-agent assertion replaced with retained-catalog equivalent.
-	templatesDir := filepath.Join(".", "templates", ".claude", "agents", "core")
+	// Canonical FLAT layout restored ({core,meta} split superseded) — agents live in
+	// .claude/agents/moai/. REQ-MRR-002: path expectation aligned to FLAT moai/.
+	templatesDir := filepath.Join(".", "templates", ".claude", "agents", "moai")
 	agentPath := filepath.Join(templatesDir, "manager-develop.md")
 
 	content, err := os.ReadFile(agentPath)

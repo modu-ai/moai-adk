@@ -30,7 +30,9 @@ func TestBuilderSkillPathStructure(t *testing.T) {
 
 	// builder-skill.md is a retired stub (SPEC-V3R2-ORC-001); skill authoring
 	// guidance has moved to builder-harness.md (artifact_type=skill workflow).
-	const agentPath = ".claude/agents/meta/builder-harness.md"
+	// Canonical FLAT layout: builder-harness.md lives under .claude/agents/moai/
+	// (the {meta} split was superseded; FLAT moai/ restored as canonical).
+	const agentPath = ".claude/agents/moai/builder-harness.md"
 
 	data, err := fs.ReadFile(fsys, agentPath)
 	if err != nil {
