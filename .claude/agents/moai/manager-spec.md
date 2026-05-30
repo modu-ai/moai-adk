@@ -266,7 +266,7 @@ Per SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 (Audit Tier 2 F1 resolution), thi
 This agent MAY adjust `spec.md`, `plan.md`, or `acceptance.md` body content **mid-run** when the orchestrator explicitly re-delegates per the D-NEW-1 inline-fix pattern (SIV-001 run-phase precedent — AC re-tightening discovered during M1 execution, returned as blocker by manager-develop, re-delegated to manager-spec for the body edit, then re-delegated back to manager-develop to continue). Mid-run authority is conditional:
 
 - ONLY upon explicit orchestrator re-delegation (never as a side-effect of another agent's turn)
-- The orchestrator MUST surface the AC inadequacy via AskUserQuestion before re-delegating, OR the user MUST have pre-approved the inline-fix pattern in the run-phase delegation prompt
+- The orchestrator MUST surface the AC inadequacy to the user via the orchestrator's user-question channel (`.claude/rules/moai/core/askuser-protocol.md`) before re-delegating, OR the user MUST have pre-approved the inline-fix pattern in the run-phase delegation prompt
 - The mid-run edit is committed in a separate commit attributed to this agent (`feat(SPEC-{ID}): mid-run AC re-tightening per D-NEW-1`)
 
 ### Forbidden modifications

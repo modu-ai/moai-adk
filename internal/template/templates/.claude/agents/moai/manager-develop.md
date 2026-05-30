@@ -22,6 +22,7 @@ tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Skill, mcp__co
 model: inherit
 effort: xhigh
 permissionMode: bypassPermissions
+isolation: worktree
 memory: project
 skills:
   - moai-foundation-core
@@ -86,7 +87,7 @@ This agent consolidates the previously separate `manager-ddd` and `manager-tdd` 
 
 Per the canonical CI auto-fix protocol, the `manager-develop` agent supports a third `cycle_type=autofix` mode for the CI auto-fix loop invoked from the `/moai fix` pipeline workflow.
 
-**Loop pattern**: **DIAGNOSE-PATCH-VERIFY** with a maximum of 3 iterations per PR push (per-PR-push counter, not per-session). After iteration 3 without success, the orchestrator MUST trigger an `AskUserQuestion` blocking call (no auto-resume timeout per CONST-V3R5-006).
+**Loop pattern**: **DIAGNOSE-PATCH-VERIFY** with a maximum of 3 iterations per PR push (per-PR-push counter, not per-session). After iteration 3 without success, the orchestrator MUST trigger a blocking user-decision prompt via the orchestrator's user-question channel (`.claude/rules/moai/core/askuser-protocol.md`; no auto-resume timeout per CONST-V3R5-006).
 
 **Canonical reference**: `.claude/rules/moai/workflow/ci-autofix-protocol.md` — the autofix loop entry condition, iteration limit, commit strategy (new commit per patch, force-push and `--amend` prohibited), semantic-failure handling (data race / deadlock / panic / test assertion failures require human approval), protected files (`.env`, `.env.*`, credentials, `scripts/ci-watch/run.sh`), and audit log requirements (`.moai/logs/ci-autofix/`).
 

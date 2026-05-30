@@ -107,7 +107,7 @@ catalog:
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/moai/manager-develop.md
-              hash: 570b6c96b1e5ae6da6de861f93ae77c64959a0b044489cc53fff94483aab458b
+              hash: dbd1fa25e7b26150f8f3cea7804ca3a1e9240104e1e1c668dce7d7c5a3bb3fcd
               version: 1.0.0
             - name: manager-docs
               tier: core
@@ -122,12 +122,12 @@ catalog:
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/moai/manager-spec.md
-              hash: b626ba01f3edd3bd0d955ed526cb8f7271773d1dcc6d39492963100e779c7364
+              hash: 70396d6fce901ce01b20abd33c31e4d7ff09f01d70b438bb09ee89e4f6d8b70b
               version: 1.0.0
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
-              hash: 64807064d2ad6fb3a07e83a4e09ac1151df622662fcc28827db80577350fa301
+              hash: 07d24ac25e3e8edd5de8c0e232ebfdffb615606f6a037bc63673aa50e46a9f6b
               version: 1.0.0
     optional_packs:
         backend:
