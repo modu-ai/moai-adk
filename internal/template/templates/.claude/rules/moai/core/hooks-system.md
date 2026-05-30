@@ -74,6 +74,14 @@ Active settings.json keys: 22. RETIRE-OBS-ONLY (Go-only, opt-in via system.yaml)
 
 **Conversation State Events**: Stop, StopFailure
 
+### Upstream Events Not Yet Adopted by MoAI
+
+The following Claude Code hook event exists upstream but MoAI does not register a handler for it by default. Documented here for reference:
+
+| Event | Matcher | Can Block | Description |
+|-------|---------|-----------|-------------|
+| MessageDisplay | No | No | Runs while assistant message text is displayed (v2.1.152+). Returns `hookSpecificOutput.displayContent` to replace the on-screen text; display-only — the transcript and what Claude sees keep the original. No MoAI handler registered by default. |
+
 ## Hook Event stdin/stdout Reference
 
 | Event | stdin | stdout | Notes |
@@ -88,6 +96,7 @@ Active settings.json keys: 22. RETIRE-OBS-ONLY (Go-only, opt-in via system.yaml)
 | SubagentStart | `agentType`, `agentName`, `agent_id` | `additionalContext` | Inject context into subagent. `agent_id` added in v2.1.69 |
 | TeammateIdle | `agentType`, `agentName`, `tasksSummary`, `agent_id` | `systemMessage` or JSON | Exit 2 = keep working. Also accepts JSON: `{"continue": false, "stopReason": "..."}` to stop teammate (v2.1.69+) |
 | TaskCompleted | `taskId`, `taskSummary`, `agentName`, `agent_id` | `reason` or JSON | Exit 2 = reject completion. Also accepts JSON: `{"continue": false, "stopReason": "..."}` to reject (v2.1.69+) |
+| SessionStart | `source` | `hookSpecificOutput`: `additionalContext`, `reloadSkills`, `sessionTitle` | `reloadSkills` (bool): when `true`, re-scans skill/command directories after SessionStart hooks complete, so skills the hook installed are available in the same session. `sessionTitle`: sets the session title (same effect as `/rename`); applies on `startup`/`resume` only, ignored on `clear`/`compact` (v2.1.152+) |
 | SessionEnd | `reason`, `sessionId` | - | Reasons: clear, logout, prompt_input_exit, bypass_permissions_disabled, other |
 | Stop | `last_assistant_message` | `systemMessage` | Includes last assistant message (v2.1.49+) |
 | SubagentStop | `agentType`, `agentName`, `last_assistant_message`, `agent_id`, `agent_transcript_path` | `systemMessage` | `agent_id` and `agent_transcript_path` added in v2.1.42/v2.1.69 |
