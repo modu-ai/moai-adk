@@ -200,7 +200,7 @@ type pedagogicalAllowlistEntry struct {
 //   - .claude/rules/moai/core/askuser-protocol.md — Socratic interview
 //     example block demonstrating AskUserQuestion option-label format for
 //     SPEC selection UI (lines 194 / 199 / 204).
-//   - .claude/agents/core/manager-spec.md — SPEC ID regex pre-write
+//   - .claude/agents/moai/manager-spec.md — SPEC ID regex pre-write
 //     self-check walkthrough demonstrating valid SPEC ID grammar
 //     (lines 146 / 161).
 //
@@ -230,14 +230,14 @@ var pedagogicalAllowlist = []pedagogicalAllowlistEntry{
 		Rationale: "Demonstrates AskUserQuestion option-label format for SPEC selection UI (Socratic example block, illustrative #3)",
 	},
 	{
-		File:      ".claude/agents/core/manager-spec.md",
+		File:      ".claude/agents/moai/manager-spec.md",
 		LineStart: 146,
 		LineEnd:   146,
 		SpecID:    "SPEC-V3R6-SPEC-ID-VALIDATION-001",
 		Rationale: "Demonstrates SPEC ID regex validation pre-write self-check pattern (regex walkthrough)",
 	},
 	{
-		File:      ".claude/agents/core/manager-spec.md",
+		File:      ".claude/agents/moai/manager-spec.md",
 		LineStart: 161,
 		LineEnd:   161,
 		SpecID:    "SPEC-AUTH-001",
@@ -251,7 +251,7 @@ var pedagogicalAllowlist = []pedagogicalAllowlistEntry{
 // verification (line numbers are diagnostic-only).
 //
 // relPath: path relative to templatesRoot, forward-slash separated
-// (e.g., ".claude/agents/core/manager-spec.md").
+// (e.g., ".claude/agents/moai/manager-spec.md").
 // matched: the literal substring captured by the leak regex
 // (e.g., "SPEC-V3R6-SPEC-ID-VALIDATION-001").
 func isPedagogicallyAllowed(relPath, matched string) bool {
@@ -334,7 +334,7 @@ func TestTemplateNoInternalContentLeak(t *testing.T) {
 		text := string(content)
 
 		// relForAllowlist: relative path under templatesRoot
-		// (e.g., ".claude/agents/core/manager-spec.md"). The
+		// (e.g., ".claude/agents/moai/manager-spec.md"). The
 		// pedagogicalAllowlist entries are keyed by this form.
 		relForAllowlist := strings.TrimPrefix(rel, root+"/")
 
