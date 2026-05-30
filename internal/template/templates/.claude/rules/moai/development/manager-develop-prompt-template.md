@@ -73,7 +73,7 @@ Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` §
 - 검증: `GOOS=windows GOARCH=amd64 go build ./...` 통과 의무
 
 **B2. Cross-SPEC 정책 충돌 사전 스캔**
-- 영향 받는 패키지의 retired/superseded SPEC 확인 (예: W3 ↔ V3R4 HARNESS retirement)
+- 영향 받는 패키지의 retired/superseded SPEC 확인 (예: 이전 harness retirement)
 - `grep -r "Retired\|TestHarnessRetirement\|deprecation-marker" internal/<pkg>` 실행
 - 충돌 발견 시: SPEC 본문에서 reversal 명시 또는 새 SPEC scope 정의
 
@@ -116,7 +116,7 @@ Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` §
 - 본 SPEC plan.md §A.5 PRESERVE list 외 working tree 변경 절대 금지
 - parallel manager-develop instance 진행 중일 때 특히 주의 (다른 디렉토리 scope 손대지 말 것)
 - runtime-managed files (`.moai/harness/*`, `.moai/state/*`, `.moai/cache/*`) 손대지 말 것
-- 무관 SPEC 디렉토리 (다른 V3R6 SPEC plan-phase artifacts) 손대지 말 것
+- 무관 SPEC 디렉토리 (다른 SPEC plan-phase artifacts) 손대지 말 것
 - parallel session research/audit 산출물 (`.moai/research/*`) 손대지 말 것
 
 **B11. AskUserQuestion 금지 (Subagent Boundary)**

@@ -90,9 +90,9 @@ KEPT-class scope (C1/C2/C4/C5/C6/C8). Drift since plan-phase: C2 +3, C3 +7 (defe
 | Milestone | Status | Owner | Trigger |
 |---|---|---|---|
 | M1 — SPEC scope finalize + allow-list draft | **complete** (commit `367a84715`; migration-matrix.md 232L, 8/8 sections, AC-TNA-010 PASS) | orchestrator-direct | (done) |
-| M2 — C1 macOS-bias fix (4 files) | pending | manager-develop ddd Tier L | After plan-audit PASS + GATE-2 |
-| M3 — C2 V3R refs classification + fix (73 files) | pending | manager-develop ddd Tier L | After M2 |
-| M4 — memory + CLAUDE.local refs (C4+C5, ~12 files; C3 deferred) | pending | manager-develop ddd Tier L | After M3 |
+| M2 — C1 macOS-bias fix (4 files) | **complete** (commit `1046c6a3c`; AC-TNA-001 PASS, C1=0) | manager-develop ddd Tier L | (done) |
+| M3 — C2 bare-narrative classification + fix (v0.1.2 narrowed; 7→6 files) | **complete** (AC-TNA-002 PASS, `actual=6 ≤ allowlist=6`) | manager-develop ddd Tier L | (done) |
+| M4 — memory + CLAUDE.local refs (C4+C5, ~12 files; C3 deferred) | in-progress | manager-develop ddd Tier L | After M3 |
 | M5 — PR refs + audit script + CI guard (C6; C7 deferred) | pending | manager-develop ddd Tier L | After M4 |
 | M6 — Migration matrix finalize + guideline + chore implemented | pending | orchestrator-direct chore | After M5 |
 
@@ -112,7 +112,7 @@ M1 evidence populated (migration-matrix.md shipped `367a84715`). M2–M6 populat
 | AC | M-source | Evidence | Verified |
 |---|---|---|---|
 | AC-TNA-001 | M2 | `grep -rln '/Users/' internal/template/templates/` = 0 (commit `1046c6a3c`, 4 files C1-sanitized) | ☑ |
-| AC-TNA-002 | M3 | **BLOCKED** — see §Run-phase M3 Blocker below. C2 `V3R[0-9]` reduction to ≤18 is unachievable without ISOLATION-owned SPEC-ID sanitization | ☐ (blocked) |
+| AC-TNA-002 | M3 | **PASS** — C2 bare-narrative `actual=6 ≤ allowlist=6` (v0.1.2 narrowed scope). `manager-develop-prompt-template.md` GENERALIZEd both template + `.claude/` sides (identical edit, mirror delta -53 preserved, no new drift); 6 PRESERVE files remain (zone-registry namespace + manager-spec decomposition example + 4 harness V3R4-doctrine citations) | ☑ |
 | AC-TNA-003 | — | **DEFERRED → ISOLATION-001** (leak-test `S1-internal-date`) | n/a |
 | AC-TNA-004 | M4 | corrected awk allow-list=7 computable (D2 fix verified 2026-05-30) | ☐ (run-phase) |
 | AC-TNA-005 | M4 | binary; allow-list empty (corrected awk=0) | ☐ (run-phase) |
@@ -125,9 +125,9 @@ M1 evidence populated (migration-matrix.md shipped `367a84715`). M2–M6 populat
 | AC-TNA-012 | M6 | (pending) | ☐ |
 | AC-TNA-013 | M6 | (pending) | ☐ |
 
-## Run-phase M3 Blocker (2026-05-30)
+## Run-phase M3 Blocker (2026-05-30) — **RESOLVED by manager-spec C2 narrow (commit `c7c7b4e32`, v0.1.2)**
 
-M2 complete (`1046c6a3c`, AC-TNA-001 PASS). M3 (C2 `V3R[0-9]` reduction to ≤18) is **blocked** by a scope/design conflict discovered at run-phase. Summary (full detail returned to orchestrator as a structured blocker report):
+M2 complete (`1046c6a3c`, AC-TNA-001 PASS). M3 was initially **blocked** by a scope/design conflict; **manager-spec narrowed C2 to bare-narrative only (v0.1.2, commit `c7c7b4e32`)** which resolves Finding 1. Findings 2 (package RED) and 3 (mirror drift) are acknowledged as OUT-OF-SCOPE in spec.md §3.4. M3 then completed: bare-narrative C2 `actual=6 ≤ allowlist=6` (AC-TNA-002 PASS), `manager-develop-prompt-template.md` GENERALIZEd on both template + `.claude/` sides identically (mirror delta -53 preserved). Original blocker analysis (historical record):
 
 1. **C2 target unachievable within scope**: 73 files contain `V3R[0-9]`. After excluding `zone-registry.md` (128 hits, allow-listed PRESERVE) and `CONST-V3R5-NNN` registry-ID citations (allow-listed PRESERVE), the residual bulk of `V3R[0-9]` hits are inside `SPEC-V3R6-*` SPEC-ID literals (~50+ files). Only ~6 files carry genuinely bare narrative `V3R4`/`V3R6` tokens (manager-spec.md decomposition example line 149, harness.md/moai SKILL.md "V3R4 Self-Evolving Harness", manager-develop-prompt-template.md Korean prose). Reducing `V3R[0-9]` to ≤18 would require removing/generalizing the `SPEC-V3R6-*` IDs from ~50 files — which the partition table (spec.md §3.3) assigns to **ISOLATION-001's `C1-spec-id-prefix` leak-test class, NOT NEUTRALITY's C2 class**, and which Section B2/D constraints forbid (must keep C2 disjoint from the leak test).
 
