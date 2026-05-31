@@ -55,12 +55,12 @@ Justification: SPEC scope는 Go test-infrastructure 안정화 (single domain, 4 
 coding-heavy). Anthropic Finding A4 (coding-task parallelism caveat)에 따라 Mode 5
 (sub-agent sequential)가 적합. manager-develop 1 spawn (cycle_type=tdd).
 
-## §E.2 Run-phase Audit-Ready Signal
+## §E.2 Sync-phase Audit-Ready Signal
 
 ```yaml
-run_started_at: "2026-05-31"
-run_commit_sha: "(this commit)"
-status: in-progress
+sync_started_at: "2026-05-31"
+sync_commit_sha: "(this commit)"
+status: implemented
 ```
 
 Run-phase 구현 evidence (M1-M3):

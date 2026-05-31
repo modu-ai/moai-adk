@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-CI-FLAKY-STABILIZE-001
 title: "CI Flaky Test Stabilization — internal/spec race + Windows merge-TUI hang"
-version: "0.1.1"
-status: in-progress
+version: "0.2.0"
+status: implemented
 created: 2026-05-31
 updated: 2026-05-31
 author: manager-spec
