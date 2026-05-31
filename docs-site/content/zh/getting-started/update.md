@@ -65,7 +65,7 @@ moai update --check-only
 发布说明:
 - 添加新的 expert-performance 代理
 - 改进令牌优化
-- 修复 SPEC-First 验证问题
+- 修复 SPEC 验证问题
 
 有可用更新! 运行 'moai update' 进行升级。
 ```
@@ -393,7 +393,7 @@ $ moai update --force
     "context7"
   ],
   "companyAnnouncements": [
-    "🗿 MoAI-ADK: 28个专业代理 + 52个技能的SPEC优先DDD",
+    "🗿 MoAI-ADK: 28个专业代理 + 52个技能的SPEC-First DDD",
     "⚡ /moai: 一站式 Plan→Run→Sync 自动化（智能路由）",
     "🌳 moai worktree: 在隔离的工作树环境中并行SPEC开发",
     "🤖 Expert Agents (8): backend, frontend, security, devops, debug, performance, refactoring, testing",
