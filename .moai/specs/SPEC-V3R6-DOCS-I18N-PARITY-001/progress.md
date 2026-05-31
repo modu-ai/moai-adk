@@ -59,12 +59,13 @@ Baseline: 53 errors (4 frontmatter + 26 H1 + 23 glossary)
 
 **All 9 ACs: PASS**
 
-### §E.4 Phase Closure Status
+### §E.4 Sync-phase Audit-Ready Signal
 
-- **Status**: `in-progress` (run-phase completed, awaiting sync-phase)
-- **Run-phase commit**: Prepared (staged: 39 files, awaiting git commit)
-- **Blocker count**: 0
-- **Known issues**: None
+```yaml
+sync_started_at: "2026-05-31"
+sync_commit_sha: "(this commit)"
+status: implemented
+```
 
 ---
 
