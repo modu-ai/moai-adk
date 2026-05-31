@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-DOCS-I18N-PARITY-001
 title: "docs-site 4-locale i18n parity baseline clearance"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-05-31
 updated: 2026-05-31
@@ -20,6 +20,7 @@ tags: "docs-site, i18n, parity, ci, 4-locale"
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-05-31 | manager-spec | Initial plan-phase authoring. Reproduced checker: 53 ERRORs (4 frontmatter + 26 H1 + 23 glossary). |
+| 0.1.1 | 2026-05-31 | manager-spec | D1 (plan-audit SHOULD-FIX) resolution: added AC-DIP-009 mapping orphaned REQ-DIP-008 (canonical-URL / Mermaid TD-only / forbidden-URL regression guard). AC matrix updated; no normative REQ text changed. |
 
 ## A. Context (WHY)
 

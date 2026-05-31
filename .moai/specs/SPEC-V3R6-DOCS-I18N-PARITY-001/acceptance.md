@@ -21,6 +21,23 @@ All criteria are **binary** and **command-verifiable**. The authoritative tool i
 | AC-DIP-006 | full warn-mode gate | REQ-DIP-004 | `Errors:   0` |
 | AC-DIP-007 | full strict-mode gate | REQ-DIP-005 | exit 0 |
 | AC-DIP-008 | file-path parity intact | REQ-DIP-007 | 78 .md per locale, no add/remove |
+| AC-DIP-009 | authoring-contract regression guard | REQ-DIP-008 | 0 forbidden URLs; canonical URL intact; Mermaid non-TD count not increased vs baseline (≤ 4) |
+
+### Traceability — REQ ↔ AC (no orphan REQ, no dangling AC)
+
+| REQ | Mapped AC(s) |
+|-----|--------------|
+| REQ-DIP-001 | AC-DIP-001 |
+| REQ-DIP-002 | AC-DIP-002, AC-DIP-003 |
+| REQ-DIP-003 | AC-DIP-004, AC-DIP-005 |
+| REQ-DIP-004 | AC-DIP-006 |
+| REQ-DIP-005 | AC-DIP-007 |
+| REQ-DIP-006 | AC-DIP-003, AC-DIP-004 |
+| REQ-DIP-007 | AC-DIP-008 |
+| REQ-DIP-008 | **AC-DIP-009** |
+
+Every REQ-DIP-001..008 maps to at least one AC; every AC-DIP-001..009 maps to at
+least one REQ. No orphaned requirement, no dangling criterion.
 
 ---
 
@@ -106,6 +123,64 @@ grep -Fq -- "SPEC-First" docs-site/content/zh/getting-started/update.md && echo 
 # PASS iff OK1 and OK2
 ```
 
+### AC-DIP-009 — authoring-contract regression guard (canonical-URL / Mermaid TD-only / forbidden-URL)
+
+Maps **REQ-DIP-008** (State-driven: *"While editing any docs-site content file, the
+editor shall preserve the canonical-URL and Mermaid TD-only rules … and shall not
+introduce any forbidden URL"*). The operative word is **introduce** — this AC is a
+regression guard against the parity edits adding a NEW contract violation, not a
+retroactive sweep of pre-existing docs-site state. Ground-truth contract values are
+from `.moai/docs/docs-site-i18n-rules.md` §17.1 (forbidden URLs + canonical URL) and
+§17.2 (Mermaid TD-only). Run all commands from repo root.
+
+**Baseline captured at this AC's authoring (HEAD `66da0bdec`)** — these are the
+fixed reference counts the guard compares against:
+
+| Dimension | Whole-docs-site baseline | Edited-file-set baseline |
+|-----------|--------------------------|--------------------------|
+| Forbidden URLs (`docs.moai-ai.dev`, `adk.moai.com`, `adk.moai.kr`) | 0 | 0 |
+| Mermaid non-TD direction (`graph LR` etc.) | 4 (all in `core-concepts/harness-engineering.md`, 1 per locale — pre-existing, out of scope per spec.md §C) | 4 (same files) |
+
+**(a) Forbidden-URL absence — target 0 (no NEW forbidden URL introduced).**
+
+The three forbidden URLs (`docs.moai-ai.dev`, `adk.moai.com`, `adk.moai.kr`) must
+not appear anywhere in docs-site content. The patterns are anchored with literal
+dots so the canonical `adk.mo.ai.kr` (which contains `mo.ai`, not `moai`) is NOT
+matched — verified distinct strings.
+
+```bash
+grep -rIE 'docs\.moai-ai\.dev|adk\.moai\.com|adk\.moai\.kr' docs-site/content/ | wc -l
+# PASS iff output == 0   (baseline 0 — guard against introducing any forbidden URL)
+```
+
+**(b) Canonical-URL preservation — the official URL remains the only docs home.**
+
+The single canonical docs URL `https://adk.mo.ai.kr` (§17.1) must still be present
+in the site (sanity check that no edit replaced it with a forbidden variant).
+
+```bash
+grep -rIFq -- "adk.mo.ai.kr" docs-site/content/ && echo "OK canonical-url-present" || echo "FAIL canonical-url-missing"
+# PASS iff output == "OK canonical-url-present"
+```
+
+**(c) Mermaid TD-only — no NEW non-TD diagram introduced (non-increase vs baseline).**
+
+§17.2 mandates `flowchart TD` / `graph TB` only; `LR` / `RL` / `BT` directions are
+forbidden. The current tree has a baseline of **4** pre-existing `graph LR`
+occurrences (in `core-concepts/harness-engineering.md`, one per locale) that this
+SPEC does NOT fix — fixing them is a separate, broader docs effort excluded by
+spec.md §C. This guard therefore asserts the count does NOT INCREASE (no new non-TD
+diagram added by the parity edits), matching REQ-DIP-008's "shall not introduce"
+semantics.
+
+```bash
+DIRCNT=$(grep -rIE '(flowchart|graph)[[:space:]]+(LR|RL|BT)' docs-site/content/ | wc -l | tr -d '[:space:]')
+[ "$DIRCNT" -le 4 ] && echo "OK mermaid-td (count=$DIRCNT ≤ baseline 4)" || echo "FAIL mermaid-td (count=$DIRCNT > baseline 4 — new non-TD diagram introduced)"
+# PASS iff output starts with "OK mermaid-td"
+```
+
+PASS for AC-DIP-009 iff all three sub-checks (a), (b), (c) pass.
+
 ---
 
 ## D.2 Closure gates (must-pass)
@@ -165,6 +240,7 @@ DOCS_I18N_STRICT=0 bash scripts/docs-i18n-check.sh 2>&1 | grep -E "missing trans
 - [ ] AC-DIP-006 PASS (`Errors:   0` in warn mode)
 - [ ] AC-DIP-007 PASS (strict mode exit 0)
 - [ ] AC-DIP-008 PASS (78 .md per locale, 0 parity/orphan lines)
+- [ ] AC-DIP-009 PASS (0 forbidden URLs; canonical URL present; Mermaid non-TD count ≤ baseline 4)
 - [ ] No edits outside `docs-site/content/{ko,en,ja,zh}/`
 - [ ] No glossary term translated; no checker rule relaxed
 - [ ] 2 local-ahead parallel-session commits untouched
