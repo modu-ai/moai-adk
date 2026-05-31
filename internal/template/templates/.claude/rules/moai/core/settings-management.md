@@ -95,6 +95,8 @@ Example `.mcp.json` configuration:
 | v2.1.119 | `claude --print` mode honors agent `tools:` / `disallowedTools:` frontmatter | CG Mode regression risk — verify `disallowedTools` in agent frontmatter is intentional |
 | v2.1.121 | PostToolUse `hookSpecificOutput.updatedToolOutput` extended from MCP-only to all tools | `MOAI_HOOK_OUTPUT_TRANSFORM=1` env var activates output transform scaffold |
 
+**Claude Code `agent` settings field (v2.1.157+)**: The top-level `agent` key in `settings.json` (string; User/Project/Local scope — not Managed; example `"code-reviewer"`) runs the main thread as a named subagent and sets the default agent for sessions dispatched from `claude agents`, applying that subagent's system prompt, tool restrictions, and model. MoAI-ADK does NOT set this key in `settings.json.tmpl` by default — the retained agent catalog is invoked via explicit delegation, not a session-wide default agent. Reference: https://code.claude.com/docs/en/settings.
+
 **Context7 Usage** - For up-to-date library documentation:
 
 1. resolve-library-id: Find library identifier
