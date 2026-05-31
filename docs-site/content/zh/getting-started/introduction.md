@@ -22,7 +22,7 @@ MoAI-ADK 是一个基于 AI 的开发环境,是高效生成高质量代码的综
 
 ## 核心概念
 
-MoAI-ADK 基于 **SPEC 优先 DDD** (Domain-Driven Development) 方法论,并通过 **TRUST 5** 质量框架确保代码质量。
+MoAI-ADK 基于 **SPEC-First** (SPEC 优先 DDD Domain-Driven Development) 方法论,并通过 **TRUST 5** 质量框架确保代码质量。
 
 ### 什么是 SPEC?(简单理解)
 

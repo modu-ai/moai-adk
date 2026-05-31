@@ -1,3 +1,9 @@
+---
+title: Prompt Caching — Break-even Analysis and Implementation Guide
+weight: 30
+draft: false
+---
+
 # Prompt Caching — Break-Even Analysis
 
 Prompt caching reduces inference costs by reusing identical prompt prefixes across requests at 90% discount (0.1x base cost). This guide explains the break-even rule, cache mechanisms, and implementation best practices.

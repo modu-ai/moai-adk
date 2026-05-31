@@ -65,7 +65,7 @@ moai update --check-only
 发布说明:
 - 添加新的 expert-performance 代理
 - 改进令牌优化
-- 修复 SPEC 验证问题
+- 修复 SPEC-First 验证问题
 
 有可用更新! 运行 'moai update' 进行升级。
 ```
