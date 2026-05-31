@@ -1,22 +1,27 @@
 ---
 id: SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001
-title: "Template Neutrality Audit — Migration Matrix (M1 Draft)"
-version: "0.1.0"
-status: draft
+title: "Template Neutrality Audit — Migration Matrix (M6 Final)"
+version: "0.2.0"
+status: implemented
 created: 2026-05-23
-updated: 2026-05-23
+updated: 2026-05-30
 author: Author Name
 priority: P1
 phase: "v3.0.0"
 module: "internal/template/templates"
 lifecycle: spec-anchored
-tags: "template-system, audit, migration-matrix, allow-list, m1-draft"
+tags: "template-system, audit, migration-matrix, allow-list, m6-final"
 tier: L
+related_specs: [SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]
 ---
 
 # SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001 — Migration Matrix
 
-> **M1 Draft (2026-05-23)**. M2–M5에서 manager-develop가 본 matrix를 참조하여 PRESERVE / GENERALIZE / REMOVE 정책을 적용한다. M6 chore에서 실측 결과를 반영하여 final로 승격한다.
+> **M6 Final (2026-05-30)**. M2–M5 run-phase complete. All 8 active ACs PASS. Actual post-fix counts verified and matched to allow-list expectations.
+>
+> **Rescope (v0.1.1)**: kept classes = C1/C2/C4/C5/C6/C8 (NEUTRALITY-unique). **C3 (dates) / C7 (commit hash)** 는 shipped sibling SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001 (`internal/template/internal_content_leak_test.go` strict-tier `S1-internal-date` / `S2-short-sha-sentence-final`)로 **DEFERRED**. 본 matrix의 C3/C7 sections는 DEFERRED action policy로 표기되며 audit script (REQ-TNA-009)가 scan하지 않는다. Baselines re-measured 2026-05-30.
+>
+> **C2 narrow (v0.1.2, M3 blocker resolution)**: C2 detection을 broad `V3R[0-9]` (341 hits, 88% ID-embedded)에서 **bare-narrative `V3R[0-9]` (ID-prefix token에 직접 선행되지 않는 sigil, 7 files)** 으로 narrow. 299 ID-embedded matches (`SPEC-V3R…`/`CONST-V3R…`/`REQ-V3R…`)는 ISOLATION-001의 `C1-spec-id` leak-test class 소유 — C2는 침범하지 않는다 (cross-SPEC disjointness). 상세는 §C2 + spec.md REQ-TNA-002 § C2 detection scope. **Pre-existing package RED 인지**: run-phase baseline에서 `internal/template` package는 이미 13개 pre-existing 실패 test로 RED 상태 (본 SPEC scope 외 — spec.md §3.4). audit script는 isolation (`-run TestTemplateNeutralityAudit`)으로 검증.
 
 ## §1 Overview
 
@@ -34,9 +39,10 @@ tier: L
 
 | Class | Categories | Audit script behavior |
 |-------|------------|------------------------|
-| **Binary FAIL** | C1, C5, C6, C7 | 1+ hit (allow-list 외) → `t.Errorf` → CI red |
-| **Advisory WARN** | C2, C3, C4 | hit > allow-list → `t.Logf` WARN, CI green with annotations |
+| **Binary FAIL** | C1, C5, C6 | 1+ hit (allow-list 외) → `t.Errorf` → CI red |
+| **Advisory WARN** | C2 (bare-narrative only), C4 | hit > allow-list → `t.Logf` WARN, CI green with annotations |
 | **False positive PRESERVE** | C8 | 항상 PRESERVE, audit script `continue` |
+| **DEFERRED to ISOLATION** | C3, C7 | NOT scanned by `template_neutrality_audit_test.go`; owned by `internal_content_leak_test.go` strict-tier (`S1-internal-date` / `S2-short-sha-sentence-final`) |
 
 ### 1.2 PRESERVE 기준 (3 categories)
 
@@ -68,90 +74,70 @@ tier: L
 
 **M2 fix targets (informational; not an allow-list, line-level enumeration in `plan.md` §M2)**: `worktree-integration.md` (lines 260, 261, 270, 273), `run/context-loading.md` (lines 177, 185, 188), `moai-foundation-cc/references/examples.md` (line 646), `moai-workflow-loop/references/examples.md` (line 396).
 
-### C2 V3R[0-9] Dev Version Refs
+### C2 V3R[0-9] Bare-Narrative Dev Version Sigils — **[NARROWED v0.1.2: bare-narrative only]**
 
-**Detection regex**: `V3R[0-9]`
+**Detection regex (bare-narrative)**: `(?<![A-Za-z0-9-])V3R[0-9]` (perl PCRE negative-lookbehind). Go audit script (RE2, no lookbehind) implements the equivalent **two-pass exclusion** — see spec.md REQ-TNA-002 § "Two-pass detection approach": Pass 1 `\bV3R[0-9]`; Pass 2 drop `SPEC-V3R`/`CONST-V3R`/`REQ-V3R` ID-embedded + preceding-rune `[A-Za-z0-9-]`.
 
-**Action policy**: case-by-case classify per PRESERVE 기준 §1.2.
-- PRESERVE: rule SSOT citation, zone-registry CONST-V3R5-NNN, decision record
-- GENERALIZE: incident-specific finding ID 인용을 패턴 표현으로 변환 (예: "V3R5 W3 meta-analysis" → "a prior workflow audit")
-- REMOVE: 단순 dev-history 흔적 (예: "V3R6 cleanup commit으로 해결됨")
+**Why narrowed (v0.1.2 M3 blocker resolution)**: the original broad `V3R[0-9]` regex matched **341 occurrences**, of which **299 (88%) are ID-embedded substrings** inside identifiers — `SPEC-V3R[0-9]`=165, `CONST-V3R[0-9]`=130, `REQ-V3R[0-9]`=4 (orchestrator-measured 2026-05-30 HEAD `1162b0de8`). Those 299 belong to the SPEC-ID / CONST-registry-ID / REQ-ID domain **owned by sibling SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001's `C1-spec-id` leak-test class**. Targeting them would force this SPEC to sanitize SPEC-IDs (ISOLATION's job — forbidden cross-SPEC scope bleed), making the broad ≤18 / 73-file target structurally unachievable (the M3 blocker root cause). C2 therefore owns ONLY the **bare-narrative sigil** (the version mention NOT part of a larger identifier) — keeping C2 disjoint from ISOLATION, the same discipline already applied to C3/C7.
+
+**Action policy**: case-by-case classify per PRESERVE 기준 §1.2. (NOTE: action-policy items use `  · ` prefix, NOT `- `, so they are excluded from the AC-TNA-002 allow-list bullet count per §1.2 [HARD] hygiene rule — only file-path `- ` bullets are counted.)
+  · PRESERVE: rule SSOT citation, zone-registry namespace/section-header decision record, named-doctrine citation (e.g. `V3R4 Self-Evolving Harness` authoritative-SPEC reference), SPEC-ID decomposition self-check example
+  · GENERALIZE: incident-specific version sigil → pattern phrasing (예: "a prior harness retirement" 표현으로 일반화)
+  · REMOVE: 단순 dev-history 흔적
 
 **Severity**: Advisory WARN (audit script logs > allow-list, CI passes)
 
-**Baseline (2026-05-23)**: 70 files
+**Baseline (orchestrator-measured 2026-05-30 at HEAD `1162b0de8`, bare-narrative grep `grep -rlP '(?<![A-Za-z0-9-])V3R[0-9]'`)**: **7 bare-narrative files** (replaces the stale 70/73 broad counts). Broad `V3R[0-9]`=341 hits; 299 ID-embedded (ISOLATION-owned, NOT a C2 target). Point-in-time; run-phase M3 re-measures the bare-narrative set before fixing.
 
-**Post-fix expected**: ≤ 25 files (allow-list size, M3 실측 후 확정)
+**Post-fix expected**: ≤ 6 files (allow-list size below; M3 실측 후 확정). After `manager-develop-prompt-template.md` is GENERALIZEd, the 6 bare-narrative PRESERVE files remain.
 
-**Allow-list (PRESERVE — initial draft, M3 refinement)**:
+**Allow-list (PRESERVE — bare-narrative sigils with doctrinal anchor; 6 file-path entries, computable via corrected awk `awk '/^### C2 /{f=1;next} /^### C[0-9] /{f=0} f' | grep -c '^- '` = 6)**:
 
-- `internal/template/templates/.claude/rules/moai/core/zone-registry.md` — CONST-V3R2-NNN + CONST-V3R5-NNN registry IDs (127 hits in this file, all SSOT)
-- `internal/template/templates/.moai/decisions/lsp-client-choice.md` — V3R5 LSP client choice decision record
-- `internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md` — cites CONST-V3R5-001..039 boundary rules
-- `internal/template/templates/.claude/rules/moai/workflow/worktree-state-guard.md` — CONST-V3R5-029 escalation path
-- `internal/template/templates/.claude/rules/moai/workflow/ci-watch-protocol.md` — CONST-V3R5-014..021 protocol clauses
-- `internal/template/templates/.claude/rules/moai/workflow/context-window-management.md` — CONST-V3R5-022..026 threshold rules
-- `internal/template/templates/.claude/rules/moai/workflow/session-handoff.md` — CONST-V3R5-039 worktree-anchored resume
-- `internal/template/templates/.claude/rules/moai/development/branch-origin-protocol.md` — CONST-V3R5-030..036 BODP HARD rules
-- `internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md` — CONST-V3R5-027..028 step ordering rules
-- `internal/template/templates/.claude/rules/moai/development/agent-authoring.md` — CONST-V3R5-037 tools field format
-- `internal/template/templates/.claude/rules/moai/development/skill-authoring.md` — CONST-V3R5-038 allowed-tools format
-- `internal/template/templates/.claude/rules/moai/development/manager-develop-prompt-template.md` — Section A-E origin (W3 HARNESS-AUTONOMY-001 meta-analysis)
-- `internal/template/templates/.claude/rules/moai/workflow/verification-batch-pattern.md` — SPEC-V3R5-WORKFLOW-OPT-001 Layer D origin clause
-- `internal/template/templates/.claude/rules/moai/workflow/agent-teams-pattern.md` — V3R5 derivation context
-- `internal/template/templates/.claude/rules/moai/workflow/ci-autofix-protocol.md` — CONST-V3R5-004..013 auto-fix loop clauses
+- `internal/template/templates/.claude/rules/moai/core/zone-registry.md` — `V3R2`/`V3R5` namespace policy + `V3R5-NNN..NNN` CONST-registry section headers (decision-record / SSOT; bare-narrative namespace prose)
+- `internal/template/templates/.claude/agents/moai/manager-spec.md` — `V3R6` segment inside the SPEC-ID Pre-Write decomposition self-check **example** (`decomposition: SPEC ✓ | V3R6 ✓ | … → PASS`); doctrinal example, PRESERVE
+- `internal/template/templates/.claude/skills/moai-harness-learner/SKILL.md` — `V3R4`/`V3R3` Harness Learning Subsystem decision-record citation (authoritative harness SPEC reference, named-doctrine)
+- `internal/template/templates/.claude/skills/moai/SKILL.md` — `V3R4 Self-Evolving Harness` lifecycle authoritative-SPEC citation (named-doctrine, decision record)
+- `internal/template/templates/.claude/skills/moai/workflows/harness.md` — `V3R4 Self-Evolving Harness` lifecycle workflow decision-record citations (authoritative harness SPEC, named-doctrine; multiple bare-narrative mentions all doctrinal)
+- `internal/template/templates/.claude/skills/moai-meta-harness/SKILL.md` — `V3R4` meta-harness contract decision-record citation (named-doctrine)
 
-**GENERALIZE candidates (M3 manager-develop)**: ~30 files referencing V3R5/V3R6 round/sprint identifiers in narrative context (workflow/skill descriptions, harness references, project documentation). Replace specific version sigils with pattern names ("a prior workflow optimization SPEC", "the harness rename SPEC").
+**GENERALIZE candidate (M3 manager-develop)**: `internal/template/templates/.claude/rules/moai/development/manager-develop-prompt-template.md` — 2 bare-narrative hits: `W3 ↔ V3R4 HARNESS retirement` example (generalize to "a prior harness retirement") + `다른 V3R6 SPEC plan-phase artifacts` (generalize to "다른 SPEC plan-phase artifacts"). **F3 mirror caveat**: this file is on the `rule_template_mirror_test.go` byte-parity allow-list — edit both the template and the `.claude/` mirror (or verify the `.claude/` side already matches the intended generic form).
 
-**REMOVE candidates (M3 manager-develop)**: ~25 files containing single-mention dev-history traces with no doctrinal value.
+**REMOVE candidates (M3 manager-develop)**: none in the bare-narrative set — all 7 bare-narrative files are either PRESERVE (6) or GENERALIZE (1).
 
-### C3 ISO Date Refs (2026-0[5-9]-XX)
+**ID-embedded 299 matches (NOT a C2 target — deferred to ISOLATION-001)**: `SPEC-V3R[0-9]`=165 + `CONST-V3R[0-9]`=130 + `REQ-V3R[0-9]`=4. SPEC-ID / REQ-ID sanitization is owned by ISOLATION-001's `C1-spec-id` leak-test class; CONST-registry IDs are zone-registry SSOT (legitimately preserved as the canonical registry). This SPEC's audit script does NOT count these.
 
-**Detection regex**: `2026-0[5-9]`
+### C3 ISO Date Refs (2026-0[5-9]-XX) — **[DEFERRED to SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]**
 
-**Action policy**: case-by-case classify per PRESERVE 기준 §1.2.
-- PRESERVE: canonical incident dates documented in active doctrine (2026-04-25 stream-stall, 2026-05-09 model-specific threshold revision, 2026-05-17 worktree opt-in policy, 2026-05-20 W3 meta-analysis)
-- GENERALIZE: incident-specific dates → month-year granularity ("2026 mid-May") or doctrine name reference
-- REMOVE: SPEC frontmatter dates outside allow-list (these are template-managed, not incident references)
+**Detection regex**: `2026-0[5-9]` (informational only — NOT scanned by this SPEC's audit script)
 
-**Severity**: Advisory WARN
+**Action policy**: **DEFERRED**. The generic ISO-date class is owned by the shipped sibling SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001, whose `internal/template/internal_content_leak_test.go` strict-tier `S1-internal-date` class (`\b202[6-9]-[0-1][0-9]-[0-3][0-9]\b`, opt-in `MOAI_TEMPLATE_LEAK_STRICT=1`, tracked under its §25.1 evolution policy) enforces it. This SPEC's `template_neutrality_audit_test.go` does NOT scan C3 — re-scanning would create a second, divergent date allow-list in the same `internal/template/` Go package (dual-allow-list drift).
 
-**Baseline (2026-05-23)**: 32 files
+**Severity**: DEFERRED (owned by leak-test strict tier; NOT a NEUTRALITY binary/advisory class)
 
-**Post-fix expected**: ≤ 22 files (allow-list size, M4 실측 후 확정)
+**Baseline (re-measured 2026-05-30 at HEAD `ecda4ef04`)**: 39 files (was 32 at 2026-05-23; +7 drift) — informational only.
 
-**Allow-list (PRESERVE — canonical incident date citations)**:
+**Post-fix expected**: n/a (enforcement owned by ISOLATION strict tier).
 
-- `internal/template/templates/CLAUDE.md` — 2026-05-17 worktree opt-in policy reference in §14
-- `internal/template/templates/.claude/rules/moai/design/constitution.md` — design constitution dates (TBD M4 line-level audit)
-- `internal/template/templates/.claude/rules/moai/core/zone-registry.md` — 2026-05-09 model-specific threshold revision context for CONST-V3R5-022..026
-- `internal/template/templates/.claude/rules/moai/development/manager-develop-prompt-template.md` — 2026-05-20 W3 HARNESS-AUTONOMY-001 meta-analysis date (Section A-E origin)
-- `internal/template/templates/.claude/rules/moai/workflow/context-window-management.md` — 2026-05-09 threshold revision (model-specific)
-- `internal/template/templates/.claude/rules/moai/workflow/agent-teams-pattern.md` — 2026-05-17 user policy citation
-- `internal/template/templates/.claude/rules/moai/workflow/verification-batch-pattern.md` — 2026-05-20 W3 meta-analysis origin
-- `internal/template/templates/.claude/rules/moai/workflow/session-handoff.md` — 2026-04-25 stream-stall incident + 2026-05-09 threshold revision
-- `internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md` — 2026-05-17 worktree opt-in policy
-- `internal/template/templates/.claude/rules/moai/workflow/worktree-state-guard.md` — 2026-05-17 policy context for Wave 5 primitive
-- `internal/template/templates/.claude/skills/moai/team/run.md` — 2026-05-17 worktree opt-in for team mode
+**Allow-list**: Not applicable — deferred. No NEUTRALITY-owned allow-list bullets (to avoid awk mis-count for adjacent kept categories). Date-class allow-listing, if needed, lives in the leak-test `skipPaths` / strict-tier evolution policy of ISOLATION-001.
 
-**GENERALIZE candidates (M4 manager-develop)**: ~11 files (sync/run workflow templates, harness skills) referencing dates in narrative context without canonical incident value.
-
-### C4 feedback_/memory.md Refs
+### C4 feedback_/memory.md Refs — **[KEPT — NEUTRALITY-unique]**
 
 **Detection regex**: `feedback_\|memory\.md`
 
-**Action policy**: case-by-case classify per PRESERVE 기준 §1.2.
-- PRESERVE: rule SSOT citation of canonical memory file (e.g., `feedback_w3_metaanalysis_lessons.md`, `feedback_large_spec_wave_split.md`, `feedback_worktree_autonomous.md`) when cited in active doctrine
-- GENERALIZE: `feedback_*.md` reference → "auto-memory" generic phrasing
-- REMOVE: incident-specific memory ref with no doctrinal anchor
+**Why kept (not deferred)**: `internal/template/internal_content_leak_test.go` does NOT enforce the `feedback_` / `memory.md` *substring reference* class (default OR strict). Its C5 class enforces only memory *paths* (`~/.claude/projects/-Users-` / `.moai/backups/agent-archive-`), a disjoint pattern. Deferring C4 would silently drop enforcement, so C4 remains NEUTRALITY-owned (verified 2026-05-30).
+
+**Action policy**: case-by-case classify per PRESERVE 기준 §1.2. (NOTE: action-policy items use `  · ` prefix, NOT `- `, so they are excluded from the AC-TNA-004 allow-list bullet count per §1.2 [HARD] hygiene rule — only file-path `- ` bullets are counted.)
+  · PRESERVE: rule SSOT citation of canonical memory file (e.g., `feedback_w3_metaanalysis_lessons.md`, `feedback_large_spec_wave_split.md`, `feedback_worktree_autonomous.md`) when cited in active doctrine
+  · GENERALIZE: `feedback_*.md` reference → "auto-memory" generic phrasing
+  · REMOVE: incident-specific memory ref with no doctrinal anchor
 
 **Severity**: Advisory WARN
 
-**Baseline (2026-05-23)**: 9 files
+**Baseline (re-measured 2026-05-30 at HEAD `ecda4ef04`)**: 9 files (unchanged from 2026-05-23)
 
 **Post-fix expected**: ≤ 7 files (allow-list size, M4 실측 후 확정)
 
-**Allow-list (PRESERVE — canonical memory citations in rule doctrine)**:
+**Allow-list (PRESERVE — canonical memory citations in rule doctrine; 7 file-path entries)**:
 
 - `internal/template/templates/CLAUDE.md` — §16 Context Search Protocol references auto-memory pattern
 - `internal/template/templates/.claude/rules/moai/workflow/context-window-management.md` — `feedback_large_spec_wave_split.md` doctrine reference (2026-04-25 incident)
@@ -171,11 +157,11 @@ tier: L
 
 **Severity**: Binary FAIL (1+ hit → audit FAIL, CI red)
 
-**Baseline (2026-05-23)**: 10 files
+**Baseline (re-measured 2026-05-30 at HEAD `ecda4ef04`)**: 3 files (was 10 at 2026-05-23; −7 partial prior cleanup)
 
 **Post-fix expected**: 0 files
 
-**Allow-list**: Empty (no exceptions). 10 files 모두 M4에서 remove or generic-replace 대상이다.
+**Allow-list**: Empty (no exceptions). 3 files 모두 M4에서 remove or generic-replace 대상이다.
 
 **Fix targets (M4 manager-develop)**: `lsp.yaml.tmpl`, `output-styles/moai/moai.md`, `agent-authoring.md`, `skill-authoring.md`, `branch-origin-protocol.md`, `moai-memory.md`, `workflows/loop.md`, `workflows/project/doc-generation.md`, `moai-meta-harness/SKILL.md`, `moai-workflow-loop/SKILL.md`, `moai-workflow-loop/references/reference.md`, `moai-workflow-loop/references/examples.md` — line-level audit는 M4에서 수행.
 
@@ -195,21 +181,19 @@ tier: L
 
 **Fix targets (M5 manager-develop)**: `CLAUDE.md`, `quality.yaml.tmpl`, `moai-workflow-ci-loop/SKILL.md` — line-level audit는 M5에서 수행.
 
-### C7 Commit Hash Refs
+### C7 Commit Hash Refs — **[DEFERRED to SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]**
 
-**Detection regex**: `\b[a-f0-9]{7,40}\b` (audit script filters via allow-list to exclude color codes, SHA test fixtures, non-commit hex)
+**Detection regex**: informational only — NOT scanned by this SPEC's audit script. The original broad `\b[a-f0-9]{7,40}\b` proposal was FP-saturated (45 raw hits including color codes / SHA test fixtures) with no written discrimination rule (plan-audit iter-1 D3).
 
-**Action policy**: REMOVE. 특정 commit hash는 dev-history specific. doctrinal decision 인용이 필요하면 doctrine name / rule citation으로 대체.
+**Action policy**: **DEFERRED**. The commit-hash class is owned by the shipped sibling SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001, whose `internal/template/internal_content_leak_test.go` strict-tier `S2-short-sha-sentence-final` class (`\b[0-9a-f]{7,8}([\s\.,;:!?]|$)`, opt-in `MOAI_TEMPLATE_LEAK_STRICT=1`) enforces it with a deliberately conservative, false-positive-aware detector. This SPEC's `template_neutrality_audit_test.go` does NOT scan C7 — re-scanning would create a second, divergent SHA allow-list in the same `internal/template/` Go package (dual-allow-list drift).
 
-**Severity**: Binary FAIL (audit script handles allow-list logic; manual grep approximation insufficient — see AC-TNA-007 for go test verification)
+**Severity**: DEFERRED (owned by leak-test strict tier; NOT a NEUTRALITY binary class)
 
-**Baseline (2026-05-23)**: ~2 files (post-deduplication of false-positive hex matches)
+**Baseline (re-measured 2026-05-30 at HEAD `ecda4ef04`)**: ~2 files — informational only.
 
-**Post-fix expected**: 0 files (typical) or allow-list size
+**Post-fix expected**: n/a (enforcement owned by ISOLATION strict tier).
 
-**Allow-list**: Empty (no exceptions).
-
-**M5 candidate files (informational; line-level audit confirms commit-hash vs hex-example classification)**: `moai/workflows/project/mode-detection.md`, `moai-workflow-testing/references/pr-review-multi-agent.md`. 본 2 files은 fix target이며, allow-list이 아니다. M5 audit script가 hex match를 allow-list (color codes / SHA test fixtures)와 commit hash로 구분한다.
+**Allow-list**: Not applicable — deferred. No NEUTRALITY-owned allow-list bullets. SHA-class discrimination (commit hash vs color code vs SHA test fixture) is handled by the leak-test strict tier of ISOLATION-001, which resolves the original D3 FP-saturation problem.
 
 ### C8 GOOS= Go Env Var (False Positive Preservation)
 

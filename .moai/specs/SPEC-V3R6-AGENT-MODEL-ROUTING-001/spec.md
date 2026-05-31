@@ -2,9 +2,9 @@
 id: SPEC-V3R6-AGENT-MODEL-ROUTING-001
 title: "Agent 23개 모델 명시 라우팅 (opus 7 / sonnet 13 / haiku 3)"
 version: "0.2.1"
-status: draft
+status: archived
 created: 2026-05-23
-updated: 2026-05-23
+updated: 2026-05-30
 author: manager-spec
 priority: P1
 phase: "v3.0.0"

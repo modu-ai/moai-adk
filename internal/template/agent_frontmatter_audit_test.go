@@ -55,16 +55,17 @@ func parseRetiredFields(fm map[string]string) retiredFrontmatter {
 	return result
 }
 
-// TestAgentFrontmatterAudit walks the retained-agent subfolders (.claude/agents/{core,meta}/*.md)
+// TestAgentFrontmatterAudit walks the retained-agent FLAT subfolder (.claude/agents/moai/*.md)
 // and verifies that the five standard retired:true frontmatter fields are present
 // when an agent declares retired:true.
 //
 // REQ-RA-002: standard retired frontmatter field validation
-// REQ-TST-011: walk path updated to current retained catalog reality (post SPEC-V3R6-AGENT-TEAM-REBUILD-001).
+// REQ-MRR-002: walk path aligned to canonical FLAT moai/ layout (the {core,meta} split
+// was superseded by V2-V3-CLEAN-REINSTALL-001 which restored the FLAT moai/ baseline).
 // Post-ATR-001: no retired stubs remain in the embedded template (12 archived agents
-// physically moved to .moai/backups/agent-archive-2026-05-25/). The audit therefore
-// validates retained-agent frontmatter cleanliness (no orphan retired:true keys, no
-// legacy status: retired field) across the {core, meta} subfolders.
+// physically moved offline). The audit therefore validates retained-agent frontmatter
+// cleanliness (no orphan retired:true keys, no legacy status: retired field) across
+// the single FLAT {moai} subfolder.
 func TestAgentFrontmatterAudit(t *testing.T) {
 	t.Parallel()
 
@@ -74,7 +75,7 @@ func TestAgentFrontmatterAudit(t *testing.T) {
 	}
 
 	var agentFiles []string
-	for _, domain := range []string{"core", "meta"} {
+	for _, domain := range []string{"moai"} {
 		agentDir := ".claude/agents/" + domain
 		walkErr := fs.WalkDir(fsys, agentDir, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
@@ -93,7 +94,7 @@ func TestAgentFrontmatterAudit(t *testing.T) {
 		}
 	}
 	if len(agentFiles) == 0 {
-		t.Fatal(".claude/agents/{core,meta}/ 하위 에이전트 파일이 없음")
+		t.Fatal(".claude/agents/moai/ 하위 에이전트 파일이 없음")
 	}
 
 	// Validation rules:
@@ -150,8 +151,8 @@ func TestAgentFrontmatterAudit(t *testing.T) {
 // the replacement agent file exists in the embedded FS.
 //
 // REQ-RA-016: CI must perform the RETIREMENT_INCOMPLETE_<agent> check
-// REQ-TST-010: path drift fix — .claude/agents/moai/ → .claude/agents/core/
-// per SPEC-V3R6-AGENT-FOLDER-SPLIT-001 (pre-existing per ATR-001 §F.2.8).
+// REQ-MRR-002: canonical FLAT layout — agents live under .claude/agents/moai/
+// (the {core,meta} split was superseded; FLAT moai/ restored as canonical).
 func TestRetirementCompletenessAssertion(t *testing.T) {
 	t.Parallel()
 
@@ -189,13 +190,13 @@ func TestRetirementCompletenessAssertion(t *testing.T) {
 	})
 
 	// Generic check: for every retired:true agent in the embedded FS, verify the replacement file exists.
-	// Post AGENT-FOLDER-SPLIT-001: walk retained subfolders {core, meta} and resolve
-	// retired_replacement to whichever subfolder contains the file.
+	// Canonical FLAT layout: walk the single retained subfolder {moai} and resolve
+	// retired_replacement within it.
 	t.Run("all retired agents have replacement in embedded FS", func(t *testing.T) {
 		t.Parallel()
 
 		var agentFiles []string
-		for _, domain := range []string{"core", "meta"} {
+		for _, domain := range []string{"moai"} {
 			_ = fs.WalkDir(fsys, ".claude/agents/"+domain, func(path string, d fs.DirEntry, err error) error {
 				if err != nil || d.IsDir() {
 					return nil
@@ -221,10 +222,10 @@ func TestRetirementCompletenessAssertion(t *testing.T) {
 				continue
 			}
 
-			// Resolve the replacement file path: search both retained subfolders.
+			// Resolve the replacement file path: search the FLAT retained subfolder.
 			found := false
 			var attempted []string
-			for _, domain := range []string{"core", "meta"} {
+			for _, domain := range []string{"moai"} {
 				replacementPath := fmt.Sprintf(".claude/agents/%s/%s.md", domain, rf.retiredReplacement)
 				attempted = append(attempted, replacementPath)
 				if _, statErr := fs.Stat(fsys, replacementPath); statErr == nil {

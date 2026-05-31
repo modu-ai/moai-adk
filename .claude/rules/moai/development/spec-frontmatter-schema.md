@@ -92,6 +92,7 @@ These fields may be included when needed but are NOT required by `FrontmatterSch
 | `depends_on` | list | SPEC IDs this SPEC depends on. Used by BODP signal A. |
 | `lint.skip` | list | Lint rule codes to skip. Use only for documented debt. |
 | `bc_id` | string | Backward-compatibility tracking ID. |
+| `era` | enum | `V2.x` \| `V3R2-R4` \| `V3R5` \| `V3R6` \| `unclassified`. Optional override of auto-detection; when absent, `moai spec audit` classifies the SPEC via the H-1..H-6 heuristic chain. See `.claude/rules/moai/workflow/lifecycle-sync-gate.md` for full era semantics, accepted alias values, and auto-detection rules. |
 
 ## Rejected Snake_Case Aliases
 

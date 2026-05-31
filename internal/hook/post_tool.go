@@ -170,6 +170,11 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		logTaskMetrics(input)
 	}
 
+	// Record Anthropic Prompt Caching telemetry when the tool response carries a
+	// usage block (SPEC-V3R6-PROMPT-CACHE-001 M3, REQ-PC-004). Best-effort and
+	// observation-only — appends to .moai/state/cache-usage.jsonl, never blocks.
+	logCacheUsage(input)
+
 	// Record Skill tool invocations for telemetry (SPEC-TELEMETRY-001 R1).
 	// Best-effort: errors are logged and never propagated.
 	if input.ToolName == "Skill" {

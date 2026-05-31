@@ -54,7 +54,7 @@ taking any further action.
 ## Patch Commit Rule — No Force-Push
 
 [ZONE:Frozen] [HARD] Every auto-fix patch MUST be applied as a **new commit** on the PR branch.
-Force-push is absolutely prohibited.
+Do not force-push.
 
 Prohibited commands:
 - `git push --force`

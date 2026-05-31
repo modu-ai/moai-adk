@@ -193,6 +193,18 @@ Requires: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
 - Use permissionMode: plan for read-only agents
 - Preload skills for domain expertise instead of relying on runtime loading
 
+## Prompt Craft
+
+Agent bodies are system prompts. Author them per Anthropic's prompting best practices (`.claude/rules/moai/development/prompting-best-practices.md`):
+
+- Be clear and direct; state scope explicitly. Opus 4.8 follows instructions literally and does not silently generalize one instruction to other items ("apply to every section, not just the first").
+- Do NOT add Opus 4.6-era defensive scaffolding ("double-check N times", "verify before returning", "explicitly confirm before proceeding") — counterproductive given literal instruction following.
+- Use normal tool-trigger phrasing ("Use this tool when…"), not "CRITICAL: you MUST" — aggressive language overtriggers tools/skills on the latest models.
+- Control reasoning depth with `effort` (xhigh for coding/agentic, minimum high for intelligence-sensitive); never `budget_tokens` (rejected on Opus 4.7+).
+- Steer subagent fan-out explicitly: Opus 4.8 spawns fewer subagents by default — say when fan-out across items/files is desirable, and when to work directly instead.
+
+See also `.claude/rules/moai/development/karpathy-quickref.md` (4 coding principles) and `.claude/rules/moai/core/moai-constitution.md` § Opus 4.7+ / 4.8 Prompt Philosophy.
+
 ## Tool Permissions
 
 Recommended tool sets by category:
@@ -246,7 +258,7 @@ These fields only work for project-level and personal-level agent definitions.
 
 ## Static Agent File vs Per-Spawn Specialization Decision Tree
 
-Per SPEC-V3R6-AGENT-TEAM-REBUILD-001 Finding A3 (Anthropic 2026 alignment) — Anthropic best-practices state verbatim: *"Define a custom subagent when you keep spawning the same kind of worker with the same instructions."* This criterion is the canonical test for when to author a static `.claude/agents/*.md` file versus when to use per-spawn `Agent(general-purpose, ...)` injection with domain instructions embedded in the spawn prompt.
+Per the canonical agent catalog policy (Anthropic 2026 alignment) — Anthropic best-practices state verbatim: *"Define a custom subagent when you keep spawning the same kind of worker with the same instructions."* This criterion is the canonical test for when to author a static `.claude/agents/*.md` file versus when to use per-spawn `Agent(general-purpose, ...)` injection with domain instructions embedded in the spawn prompt.
 
 ### Decision Tree
 
@@ -256,9 +268,9 @@ START
   ├── Is this work recurring across SPEC sessions
   │   AND with substantially the same instructions each time?
   │   ├── YES → Author a static agent file under .claude/agents/moai/
-  │   │         (subject to the 8-agent retention ceiling per
-  │   │         SPEC-V3R6-AGENT-TEAM-REBUILD-001 — exceeding the ceiling requires
-  │   │         a dedicated revision SPEC)
+  │   │         (subject to the 8-agent retention ceiling per the
+  │   │         canonical agent catalog policy — exceeding the ceiling
+  │   │         requires a dedicated revision SPEC)
   │   └── NO  → Use per-spawn Agent(general-purpose) injection
   │             (compose domain instructions inline at delegation time)
   │
@@ -271,11 +283,11 @@ START
 
 ### Per-Spawn Pattern Reference
 
-For the canonical per-spawn `Agent(general-purpose, ...)` spawn pattern with per-domain tool whitelists, see `.claude/rules/moai/development/agent-patterns.md` § Per-Spawn Domain Specialization. The 6 archived `expert-*` agents (backend, frontend, security, devops, performance, refactoring) all migrated to the per-spawn pattern as of 2026-05-25; the migration table in `.claude/rules/moai/workflow/archived-agent-rejection.md` § Migration Table provides per-agent example invocations.
+For the canonical per-spawn `Agent(general-purpose, ...)` spawn pattern with per-domain tool whitelists, see `.claude/rules/moai/development/agent-patterns.md` § Per-Spawn Domain Specialization. The 6 archived `expert-*` agents (backend, frontend, security, devops, performance, refactoring) all migrated to the per-spawn pattern during the catalog consolidation; the migration table in `.claude/rules/moai/workflow/archived-agent-rejection.md` § Migration Table provides per-agent example invocations.
 
 ### Anti-Patterns
 
 - **Authoring a static agent file for one-off domain work** — if the spawn instructions vary substantially per invocation, the file is dead weight and trains the orchestrator to spawn an under-instructed agent
 - **Embedding domain knowledge in agent body** — domain knowledge belongs in the active conversation context (per-spawn prompt) where the orchestrator can tailor it to the current task; embedding it in agent body traps it behind explicit invocation
-- **Re-introducing archived agent files** — the 12 agents archived in `.moai/backups/agent-archive-2026-05-25/` MUST NOT be reintroduced under `.claude/agents/` without a dedicated revival SPEC justifying the recurrence criterion; see `.claude/rules/moai/workflow/archived-agent-rejection.md` § Anti-Patterns
+- **Re-introducing archived agent files** — the 12 agents archived offline during the catalog consolidation MUST NOT be reintroduced under `.claude/agents/` without a dedicated revival SPEC justifying the recurrence criterion; see `.claude/rules/moai/workflow/archived-agent-rejection.md` § Anti-Patterns
 - **Adding a new MoAI-custom agent without a SPEC** — the 8-agent retention ceiling is an architectural invariant; new agent additions must justify the "keep spawning the same worker" criterion via a SPEC that documents recurrence evidence

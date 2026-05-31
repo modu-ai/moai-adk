@@ -393,7 +393,7 @@ ralph:
 {
   "tool_name": "Write",
   "tool_input": {
-    "file_path": "/Users/project/src/auth.py",
+    "file_path": "$HOME/project/src/auth.py",
     "content": "def authenticate(user: str, password: str):\n    return True"
   },
   "tool_output": "File written successfully"

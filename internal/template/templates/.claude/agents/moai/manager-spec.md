@@ -137,7 +137,7 @@ OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager
 
 #### [HARD] SPEC ID Pre-Write Self-Check Protocol
 
-[HARD] Before invoking `Write` or `MultiEdit` for any new SPEC document containing a SPEC ID in its YAML frontmatter, the agent MUST execute a regex match decomposition self-check and print the result to its response body. The canonical SPEC ID regex literal is `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$` (verbatim from `internal/spec/lint.go:573`). Skipping this self-check is a discipline lapse and reopens the L32 chain (5 historical SPEC ID drift incidents: CHANGELOG-CLEANUP-001, CLI-AUDIT-001, LCL-003, SARM-001, TMC-001).
+[HARD] Before invoking `Write` or `MultiEdit` for any new SPEC document containing a SPEC ID in its YAML frontmatter, the agent MUST execute a regex match decomposition self-check and print the result to its response body. The canonical SPEC ID regex literal is `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$` (verbatim from `internal/spec/lint.go:573`). Run this self-check before every SPEC Write; skipping it has historically caused SPEC ID drift.
 
 Self-check protocol (4 steps, performed in the agent turn BEFORE any filesystem write):
 
@@ -167,7 +167,7 @@ L32 chain context (informational footnote): The 5 historical drift incidents in 
 
 #### [HARD] SPEC Frontmatter Canonical Schema
 
-[HARD] Every `spec.md` YAML frontmatter MUST contain ALL 12 canonical fields below. Missing any one is a schema violation and blocks creation. This schema is non-negotiable — aligns with `.claude/rules/moai/development/spec-frontmatter-schema.md` (SSOT) and `internal/spec/lint.go` `FrontmatterSchemaRule`, and prevents the 2026-04-21 mass-SPEC-drift incident (30 SPECs generated with inconsistent fields).
+[HARD] Every `spec.md` YAML frontmatter MUST contain ALL 12 canonical fields below. Missing any one is a schema violation and blocks creation. This schema aligns with `.claude/rules/moai/development/spec-frontmatter-schema.md` (SSOT) and `internal/spec/lint.go` `FrontmatterSchemaRule`.
 
 ```yaml
 ---
@@ -266,7 +266,7 @@ This agent owns the following SPEC artifact boundaries per the canonical agent r
 This agent MAY adjust `spec.md`, `plan.md`, or `acceptance.md` body content **mid-run** when the orchestrator explicitly re-delegates per the D-NEW-1 inline-fix pattern (SIV-001 run-phase precedent — AC re-tightening discovered during M1 execution, returned as blocker by manager-develop, re-delegated to manager-spec for the body edit, then re-delegated back to manager-develop to continue). Mid-run authority is conditional:
 
 - ONLY upon explicit orchestrator re-delegation (never as a side-effect of another agent's turn)
-- The orchestrator MUST surface the AC inadequacy via AskUserQuestion before re-delegating, OR the user MUST have pre-approved the inline-fix pattern in the run-phase delegation prompt
+- The orchestrator MUST surface the AC inadequacy to the user via the orchestrator's user-question channel (`.claude/rules/moai/core/askuser-protocol.md`) before re-delegating, OR the user MUST have pre-approved the inline-fix pattern in the run-phase delegation prompt
 - The mid-run edit is committed in a separate commit attributed to this agent (`feat(SPEC-{ID}): mid-run AC re-tightening per D-NEW-1`)
 
 ### Forbidden modifications

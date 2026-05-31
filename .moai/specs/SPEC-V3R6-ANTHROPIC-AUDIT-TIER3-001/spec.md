@@ -2,7 +2,7 @@
 id: SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001
 title: "Anthropic Best-Practice Audit Tier 3 — Subdirectory CLAUDE.md (F9) + Programmatic DRI Ownership Verification (F13)"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec

@@ -31,7 +31,7 @@ Standard MCP servers in MoAI-ADK:
 - claude-in-chrome: Browser automation
 - zai-mcp-server (optional): Z.AI hosted MCP for Vision OCR / WebSearch / WebReader. Registered via `moai glm tools enable [vision|websearch|webreader|all]`.
 
-> Sequential Thinking MCP was retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001. Use the `ultrathink` keyword (Adaptive Thinking on Opus 4.7+) for deep reasoning.
+> Sequential Thinking MCP was retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001. Use the `ultrathink` keyword (Adaptive Thinking on Opus 4.7+ / 4.8) for deep reasoning.
 
 **`alwaysLoad` field (Claude Code v2.1.119+)**
 
@@ -95,6 +95,8 @@ Example `.mcp.json` configuration:
 | v2.1.119 | `claude --print` mode honors agent `tools:` / `disallowedTools:` frontmatter | CG Mode regression risk — verify `disallowedTools` in agent frontmatter is intentional |
 | v2.1.121 | PostToolUse `hookSpecificOutput.updatedToolOutput` extended from MCP-only to all tools | `MOAI_HOOK_OUTPUT_TRANSFORM=1` env var activates output transform scaffold |
 
+**Claude Code `agent` settings field (v2.1.157+)**: The top-level `agent` key in `settings.json` (string; User/Project/Local scope — not Managed; example `"code-reviewer"`) runs the main thread as a named subagent and sets the default agent for sessions dispatched from `claude agents`, applying that subagent's system prompt, tool restrictions, and model. MoAI-ADK does NOT set this key in `settings.json.tmpl` by default — the retained agent catalog is invoked via explicit delegation, not a session-wide default agent. Reference: https://code.claude.com/docs/en/settings.
+
 **Context7 Usage** - For up-to-date library documentation:
 
 1. resolve-library-id: Find library identifier
@@ -106,7 +108,7 @@ Example `.mcp.json` configuration:
 - Architecture decisions
 - Technology trade-off analysis
 
-Use the `ultrathink` keyword in user prompts to activate Adaptive Thinking (Opus 4.7+). This is the canonical deep-reasoning path; Sequential Thinking MCP was retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001.
+Use the `ultrathink` keyword in user prompts to activate Adaptive Thinking (Opus 4.7+ / 4.8). This is the canonical deep-reasoning path; Sequential Thinking MCP was retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001.
 
 ### MoAI Configuration
 

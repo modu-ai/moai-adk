@@ -104,6 +104,38 @@ For write-heavy agents without pre-approval, use `background: false` (foreground
 
 Kill background agent: Press `Ctrl+X Ctrl+K` in Claude Code interface (v2.1.83+).
 
+### Worktree Base Branch (`worktree.baseRef`)
+
+Native worktrees (`--worktree` and subagent `isolation: worktree`) branch from the repository's default branch (`origin/HEAD`) by default, so they start from a clean tree matching the remote. If no remote is configured or the fetch fails, the worktree falls back to the current local `HEAD`. To always branch from local `HEAD` instead (carrying unpushed commits and feature-branch state), set `worktree.baseRef` to `"head"` in settings (accepts only `"fresh"` or `"head"`, not arbitrary refs):
+
+```json
+{
+  "worktree": {
+    "baseRef": "head"
+  }
+}
+```
+
+Use `"head"` when isolating subagents that must operate on in-progress work. To branch a native worktree from a specific pull request, pass the PR number prefixed with `#` (e.g. `claude --worktree "#1234"`); Claude Code fetches `pull/<number>/head` and creates the worktree at `.claude/worktrees/pr-<number>`.
+
+This setting governs **Claude-native** worktrees only. MoAI's own `moai worktree new` uses the Branch Origin Decision Protocol (`origin/main` default; see `.claude/rules/moai/development/branch-origin-protocol.md`) and is unaffected by `worktree.baseRef`.
+
+### `.worktreeinclude` (Copy Gitignored Files into Native Worktrees)
+
+A native worktree is a fresh checkout, so untracked files (`.env`, `.env.local`, local config) are not present. Add a `.worktreeinclude` file at the project root to copy them automatically when Claude creates a worktree. It uses `.gitignore` syntax; only files that match a pattern AND are gitignored are copied (tracked files are never duplicated):
+
+```text
+.env
+.env.local
+.moai/config/sections/*.local.yaml
+```
+
+Applies to `--worktree`, subagent `isolation: worktree` worktrees, and desktop parallel sessions. NOT processed when a custom `WorktreeCreate` hook replaces the default git behavior — copy local files inside the hook script instead.
+
+### `EnterWorktree` / `ExitWorktree` Tools
+
+Claude can move the session into a worktree mid-session via the `EnterWorktree` tool (e.g. when the user says "work in a worktree"), creating one under `.claude/worktrees/`. Once inside, Claude can switch directly to another worktree by calling `EnterWorktree` with a target path; the previous worktree stays on disk untouched. `ExitWorktree` returns to the originating checkout. These are Claude Code runtime tools — MoAI does not mandate their use; they are the interactive counterpart to the `--worktree` launch flag and `isolation: worktree` frontmatter.
+
 ## Worktree Selection Rules [ZONE:Evolvable] [HARD]
 
 ### Decision Tree
@@ -257,8 +289,8 @@ When `isolation: "worktree"` is set, Claude Code:
 3. The agent constructs absolute paths from its own CWD
 
 ```
-Main repo:  /Users/user/project/src/auth/handler.go
-Worktree:   /Users/user/project/.claude/worktrees/abc123/src/auth/handler.go
+Main repo:  $HOME/project/src/auth/handler.go
+Worktree:   $HOME/project/.claude/worktrees/abc123/src/auth/handler.go
 ```
 
 Both share the same project structure. `src/auth/handler.go` resolves correctly in either context.
@@ -267,10 +299,10 @@ Both share the same project structure. `src/auth/handler.go` resolves correctly 
 
 ```
 # WRONG: Absolute path in prompt bypasses worktree
-"Read /Users/user/project/src/auth/handler.go and fix the bug"
+"Read $HOME/project/src/auth/handler.go and fix the bug"
 
 # WRONG: cd to main project in Bash command
-"Run: cd /Users/user/project && go test ./..."
+"Run: cd $HOME/project && go test ./..."
 
 # CORRECT: Relative path — agent resolves from its own CWD
 "The bug is in src/auth/handler.go. Read the file and fix it."

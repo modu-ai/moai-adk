@@ -1,0 +1,5 @@
+cacheStrategy:
+  enabled: true
+  session_ttl: "1h"
+  spec_ttl: "5m"
+  min_cacheable_tokens: 2048

@@ -1,0 +1,21 @@
+# Anthropic Prompt Caching strategy.
+#
+# Controls ephemeral cache_control breakpoint injection on outgoing Anthropic
+# API requests. A 1h breakpoint caches the session-start context (CLAUDE.md +
+# always-loaded rules + output style); a 5m breakpoint caches the SPEC body on
+# `/moai run SPEC-XXX`.
+#
+# GLM (Z.AI) backend ignores this section entirely — cache_control is omitted.
+cacheStrategy:
+  # Toggle cache_control injection. Ships disabled; flip to true to opt in.
+  enabled: false
+  # Session-start breakpoint TTL. Enum: "1h" | "5m" | "off".
+  #   "1h"  → +100% cache_write on first turn, -90% cache_read on every later turn
+  #   "5m"  → +25% cache_write, shorter window (best for short sessions)
+  #   "off" → no session-level breakpoint (avoids single-turn write penalty)
+  session_ttl: "1h"
+  # SPEC-body breakpoint TTL. Enum: "5m" | "off".
+  spec_ttl: "5m"
+  # Threshold (tokens) below which cache_control is omitted. Conservative
+  # model-agnostic default (haiku minimum) so injection is always valid.
+  min_cacheable_tokens: 2048

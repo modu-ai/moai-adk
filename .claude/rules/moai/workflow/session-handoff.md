@@ -64,7 +64,7 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
 
 ### Field-by-Field Specification
 
-- **Block 1**: `ultrathink.` triggers Adaptive Thinking max effort on Opus 4.7+ (next session lacks accumulated reasoning). `<phase>` ∈ `plan | run | sync | loop`.
+- **Block 1**: `ultrathink.` triggers Adaptive Thinking xhigh effort on Opus 4.7+ (next session lacks accumulated reasoning). `<phase>` ∈ `plan | run | sync | loop`.
 - **Block 2**: `applied lessons:` — relevant memory files from `~/.claude/projects/{hash}/memory/`. MUST include the most recent relevant project memory + any relevant lessons. Block 2 MUST also include a `source_session_id: <UUID>` line carrying the Claude Code session_id of the orchestrator turn that generated this resume message (REQ-COORD-009 of SPEC-V3R6-MULTI-SESSION-COORD-001 L2). The session_id is the same value emitted by `moai session list --json` and stored in `.moai/state/active-sessions.json` — readers can correlate the resume back to its originating session.
   - **Environment fallback** [HARD]: if `moai session list --json` returns error (CLI not installed in PATH) OR `.moai/state/active-sessions.json` does not exist (SPEC-V3R6-MULTI-SESSION-COORD-001 not yet deployed in this project), the orchestrator MUST emit the recognized fallback pattern verbatim: `source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>`. This pattern is NOT an anti-pattern; it is the prescribed graceful degradation when the CLI/registry layer is absent. The next session, upon `/moai session register` activation, MAY backfill the UUID by appending a `[backfilled: <UUID>]` annotation to the memory file's Block 2 line.
 - **Block 3**: separator + `전제 검증:` (Korean) or `Preconditions:` (English).
@@ -116,7 +116,7 @@ At session end, the orchestrator displays: (1) the message in a fenced ```text``
 
 - Free-form prose handoff — no executable context.
 - Resume without preconditions — next session cannot detect state drift.
-- Resume without `ultrathink.` — fails to activate max effort.
+- Resume without `ultrathink.` — fails to activate xhigh effort.
 - Resume saved only to chat, not auto-memory — lost across `/clear`.
 - Duplicate memory entries without `[SUPERSEDED by ...]` markers — index pollution.
 - Resume Block 2 missing `source_session_id: <UUID>` **AND missing the environment fallback pattern** (`<not-available — environment-fallback, ...>`) — multi-session coordination L2 (SPEC-V3R6-MULTI-SESSION-COORD-001) cannot correlate the resume back to its originating session for race attribution. The environment fallback pattern itself is NOT an anti-pattern; only the complete absence of both UUID and fallback pattern is the violation.
@@ -192,8 +192,11 @@ At session end, the orchestrator displays: (1) the message in a fenced ```text``
 # V0-a: informational baseline (blocking 아님 — multi-session 정상 환경에서 16-19 expected)
 ps aux | grep -iE '\bclaude\b' | grep -v -E 'plugin|Helper|Application|antigravity|grep' | wc -l
 
-# V0-b: critical blocking — 본 WT cwd로 file handle 보유 claude session 수
-lsof +D "$PWD" 2>/dev/null | grep -iE 'claude' | wc -l   # STRICT 0
+# V0-b: critical blocking — 본 WT 내부에 file handle 보유한 claude *프로세스* 수
+# 주의: `grep -iE 'claude'` 단독은 파일명에 'claude' 포함된 콘텐츠(claude-*.md 등)까지 매칭하는
+#       false-positive 결함이 있다 (Hugo docs 서버 PID 1개 → 8 entry 오탐, cross-line 입증).
+#       반드시 COMMAND 컬럼으로 claude *프로세스*만 필터한다 (`lsof -a -c claude`).
+lsof -a -c claude +D "$PWD" 2>/dev/null | awk 'NR>1' | wc -l   # STRICT 0
 
 # V0-c: critical blocking — cwd가 본 WT인 active claude session 수 (본 세션 + parent process만)
 lsof -a -c claude -d cwd 2>/dev/null | awk 'NR>1 && $NF ~ /<본_WT_경로>/' | wc -l   # STRICT ≤2
@@ -220,6 +223,7 @@ V0-b ≥ 1 OR V0-c ≥ 3 시 (다른 precondition V1/V2/V3 PASS 여부 무관):
 - **AP-V-001**: `ps aux` raw count `≤ 2 STRICT`을 단독 V0 검증으로 사용 → environmental baseline noise (multi-session normal state에서 16-19 sessions은 정상)
 - **AP-V-002**: V0 FAIL 후 "사용자 약속 누적 미이행 N회" 본문 추적 → 죄책감 부담만 부과 + 실질 행동 변화 0 + paste-ready 비대화 → 도구화 anti-pattern
 - **AP-V-003**: V0 FAIL 시 AskUserQuestion에 강행 옵션 (option D "override + spawn") 제시 → doctrine 위반
+- **AP-V-004**: V0-b 측정에 `lsof +D "$PWD" | grep -iE 'claude'` 사용 → 파일명에 'claude' 포함된 콘텐츠(`claude-md-guide.md`·`claude-design-handoff.md` 등)까지 매칭하는 false-positive (Hugo docs 서버 PID 1개가 8 entry로 오탐 → LIFECYCLE-SYNC-GATE-001 M4 1·2차에서 동일 false abort 유발). COMMAND 컬럼 프로세스 필터 `lsof -a -c claude +D "$PWD"` 필수 — genuine claude race signal만 카운트해야 abort 의무가 정확히 발동한다
 
 ## Worktree-Anchored Resume Pattern
 

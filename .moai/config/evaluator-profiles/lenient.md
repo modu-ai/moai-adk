@@ -28,6 +28,10 @@ Relaxed evaluation for prototypes, experiments, and non-production code.
 - Pattern deviations acceptable with rationale
 - Focus on "does it work" over "is it perfect"
 
+## Finding-Stage Reporting (coverage before filtering)
+
+At the finding stage, report every issue you find, including ones you are uncertain about or consider low-severity, each with a confidence level and an estimated severity. Do not filter for importance or confidence while finding — the verdict stage (must-pass thresholds + harmonic scoring) does the filtering downstream. The goal at this stage is coverage: surfacing a finding that later gets filtered out is preferable to silently dropping a real bug.
+
 ## Scoring Rubric
 
 ### Functionality (60%)

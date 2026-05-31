@@ -41,18 +41,21 @@ Rules:
 - For sub-agent mode: Launch multiple Agent() calls in a single message for parallel execution
 - For team mode: Use TeamCreate for persistent team coordination, SendMessage for inter-teammate communication
 - Team agents share TaskList for work coordination; sub-agents return results directly
+- Spawn multiple subagents in the same turn when fanning out across independent items or files; do not spawn a subagent for work completable directly in a single response
+- Three orchestration primitives exist — choose by who holds the plan: **sub-agents** (Claude orchestrates turn by turn, results land in Claude's context), **Agent Teams** (shared TaskList, start with 3-5 teammates), and **dynamic workflows** (a script orchestrates dozens-to-hundreds of agents, intermediate results stay in script variables). For coding-heavy work prefer sequential sub-agents; reserve workflow-scale fan-out for genuinely parallel high-volume tasks (codebase sweeps, large migrations, cross-checked research). See `.claude/rules/moai/workflow/dynamic-workflows.md`.
 
-## Opus 4.7 Prompt Philosophy
+## Opus 4.7+ / 4.8 Prompt Philosophy
 
-Reasoning-intensive agents targeting `claude-opus-4-7` must follow Anthropic's official prompt guidelines (platform.claude.com/docs/en/about-claude/models/whats-new-claude-4-7).
+Reasoning-intensive agents targeting `claude-opus-4-8` (and 4.7+) must follow Anthropic's official prompt guidelines (platform.claude.com/docs/en/about-claude/models/whats-new-claude-4-8).
 
 Rules:
-- One-turn fully-loaded: deliver intent + constraints + completion criteria + file locations in a single agent prompt. Avoid multi-turn ping-pong which wastes tokens on Opus 4.7
-- Adaptive Thinking: do NOT set fixed thinking budgets via `budget_tokens`; Opus 4.7 rejects fixed budgets with HTTP 400. Let the model self-allocate reasoning depth
-- Remove Opus 4.6-era defensive scaffolding: "double-check X before returning", "verify N times", "explicitly confirm before proceeding" patterns are counterproductive on Opus 4.7's literal instruction following
-- [ZONE:Evolvable] [HARD] Principle 4 — Fewer subagents spawned by default: Opus 4.7 does not auto-spawn subagents. When fan-out is needed, explicitly instruct "Use agent-A, agent-B in parallel (single message, multiple Agent() calls)" in the prompt
-- [ZONE:Evolvable] [HARD] Principle 5 — Fewer tool calls by default, more reasoning: Opus 4.7 prefers reasoning over tool invocation. When tool use is expected, specify "when and why to use each tool (Grep for content search, Glob for file discovery, Read for full-file context)" in the agent prompt
-- Effort level selection: reasoning-intensive agents (manager-spec, manager-strategy, plan-auditor, evaluator-active, expert-security, expert-refactoring) → `effort: xhigh` or `high`; implementation agents (expert-backend, expert-frontend, builder-*) → `effort: high` (default for Opus 4.7); speed-critical agents (manager-git, Explore) → `effort: medium`
+- One-turn fully-loaded: deliver intent + constraints + completion criteria + file locations in a single agent prompt. Avoid multi-turn ping-pong which wastes tokens.
+- Adaptive Thinking: do NOT set fixed thinking budgets via `budget_tokens` — Opus 4.7+ and 4.8 reject fixed budgets with HTTP 400. Enable thinking via `thinking: {type: "adaptive"}` and let the model self-allocate reasoning depth.
+- State scope explicitly: Opus 4.8 follows instructions literally and does not silently generalize from one item to another. When an instruction should apply broadly, say so (e.g. "apply to every section, not just the first").
+- Remove Opus 4.6-era defensive scaffolding: "double-check X before returning", "verify N times", "explicitly confirm before proceeding" patterns are counterproductive given literal instruction following.
+- [ZONE:Evolvable] [HARD] Principle 4 — Fewer subagents spawned by default: Opus 4.7 does not auto-spawn subagents. This behavior is steerable: when fan-out helps, instruct explicitly "Spawn multiple subagents in the same turn when fanning out across items or files; do not spawn a subagent for work you can complete directly in one response."
+- [ZONE:Evolvable] [HARD] Principle 5 — Fewer tool calls by default, more reasoning: Opus 4.7 prefers reasoning over tool invocation. When tool use is expected, specify when and why to use each tool (Grep for content search, Glob for file discovery, Read for full-file context). Raise effort to high/xhigh to increase tool usage when needed.
+- Effort defaults: Opus 4.8 defaults to `effort: high` on all surfaces (Claude API and Claude Code). Set `effort: xhigh` for coding/agentic work, keep a minimum of `high` for intelligence-sensitive work, and step down to `medium`/`low` only for speed-critical or simple tasks (route effort by role rather than by named agent).
 
 ## Output Format
 

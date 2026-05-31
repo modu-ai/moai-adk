@@ -75,6 +75,17 @@ func init() {
 	initCmd.Flags().Bool("force", false, "Reinitialize an existing project (backs up current .moai/)")
 	initCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
 	initCmd.Flags().Bool("all", false, "Deploy all catalog entries (core + optional packs + harness-generated). Bypasses slim mode (SPEC-V3R4-CATALOG-002).")
+
+	// Phase 1 mode flags (REQ-IWE-006, REQ-IWE-007)
+	initCmd.Flags().Bool("standard", false, "Present Phase 1 questions (project mode, harness profile, LSP, quality gates, design)")
+	initCmd.Flags().Bool("advanced", false, "Present Phase 1 + Phase 2 questions (implies --standard; Phase 2 skipped when prerequisites absent)")
+
+	// Phase 1 non-interactive override flags (REQ-IWE-008)
+	initCmd.Flags().String("project-mode", "", "Project mode: personal or team (default: personal)")
+	initCmd.Flags().String("harness-profile", "", "Default harness evaluator profile: default, strict, lenient, frontend")
+	initCmd.Flags().Bool("enable-lsp", false, "Enable LSP integration (default: false)")
+	initCmd.Flags().Bool("enforce-quality", true, "Enforce quality gates (default: true)")
+	initCmd.Flags().Bool("enable-design", true, "Enable design workflow (default: true)")
 }
 
 // getStringFlag retrieves a string flag value from the command.
@@ -91,6 +102,19 @@ func getBoolFlag(cmd *cobra.Command, name string) bool {
 	val, err := cmd.Flags().GetBool(name)
 	if err != nil {
 		return false
+	}
+	return val
+}
+
+// getBoolFlagWithDefault retrieves a bool flag value, returning defaultVal when
+// the flag is not set or an error occurs.
+func getBoolFlagWithDefault(cmd *cobra.Command, name string, defaultVal bool) bool {
+	if !cmd.Flags().Changed(name) {
+		return defaultVal
+	}
+	val, err := cmd.Flags().GetBool(name)
+	if err != nil {
+		return defaultVal
 	}
 	return val
 }
@@ -218,6 +242,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	nonInteractive := getBoolFlag(cmd, "non-interactive")
 
+	// Resolve mode flags: --advanced implies --standard (REQ-IWE-007, EC-3)
+	advancedMode := getBoolFlag(cmd, "advanced")
+	standardMode := getBoolFlag(cmd, "standard") || advancedMode
+
 	opts := project.InitOptions{
 		ProjectRoot:       rootFlag,
 		ProjectName:       projectName,
@@ -230,6 +258,16 @@ func runInit(cmd *cobra.Command, args []string) error {
 		GitLabInstanceURL: getStringFlag(cmd, "gitlab-instance-url"),
 		NonInteractive:    nonInteractive,
 		Force:             getBoolFlag(cmd, "force"),
+		// Phase 1 mode flags
+		StandardMode: standardMode,
+		// Phase 1 non-interactive overrides — defaults match wizard defaults (REQ-IWE-008)
+		ProjectMode:               getStringFlag(cmd, "project-mode"),
+		HarnessProfile:            getStringFlag(cmd, "harness-profile"),
+		LSPEnabled:                getBoolFlag(cmd, "enable-lsp"),
+		EnforceQuality:            getBoolFlagWithDefault(cmd, "enforce-quality", true),
+		CoverageExemptionsEnabled: false, // no CLI flag; wizard/default only
+		DesignEnabled:             getBoolFlagWithDefault(cmd, "enable-design", true),
+		ClaudeDesignEnabled:       true, // wizard-only; default true
 	}
 
 	// Apply user-level defaults from profile preferences.
@@ -279,14 +317,21 @@ func runInit(cmd *cobra.Command, args []string) error {
 		PrintBanner(version.GetVersion())
 		PrintWelcomeMessage()
 
-		// Run without locale in init.go (preserves existing behavior)
-		result, err := wizard.RunWithDefaults(rootFlag, "")
-		if err != nil {
-			if errors.Is(err, wizard.ErrCancelled) {
+		// Use RunWithDefaultsModes when --standard or --advanced is set; otherwise
+		// fall back to RunWithDefaults for Quick mode backward-compat (REQ-IWE-006).
+		var result *wizard.WizardResult
+		var wizErr error
+		if standardMode {
+			result, wizErr = wizard.RunWithDefaultsModes(rootFlag, "", standardMode, advancedMode)
+		} else {
+			result, wizErr = wizard.RunWithDefaults(rootFlag, "")
+		}
+		if wizErr != nil {
+			if errors.Is(wizErr, wizard.ErrCancelled) {
 				_, _ = fmt.Fprintln(cmd.OutOrStderr(), "Initialization cancelled.")
 				return nil
 			}
-			return fmt.Errorf("wizard failed: %w", err)
+			return fmt.Errorf("wizard failed: %w", wizErr)
 		}
 
 		// Apply wizard results to opts (wizard values override empty flags)
@@ -310,6 +355,20 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 		if result.ModelPolicy != "" {
 			opts.ModelPolicy = result.ModelPolicy
+		}
+		// Apply Phase 1 wizard results (only when StandardMode was active)
+		if result.StandardMode {
+			if result.ProjectMode != "" {
+				opts.ProjectMode = result.ProjectMode
+			}
+			if result.HarnessProfile != "" {
+				opts.HarnessProfile = result.HarnessProfile
+			}
+			opts.LSPEnabled = result.LSPEnabled
+			opts.EnforceQuality = result.EnforceQuality
+			opts.CoverageExemptionsEnabled = result.CoverageExemptionsEnabled
+			opts.DesignEnabled = result.DesignEnabled
+			opts.ClaudeDesignEnabled = result.ClaudeDesignEnabled
 		}
 	}
 

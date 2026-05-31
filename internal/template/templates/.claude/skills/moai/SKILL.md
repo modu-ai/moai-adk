@@ -254,7 +254,7 @@ Step 1 - Parse Arguments:
 Extract subcommand keywords and flags from the Raw User Input. Recognized global flags: --resume [ID], --seq, --team, --solo. Also detect `ultrathink` keyword in the input text.
 
 **CRITICAL: Deep analysis mode:**
-- `ultrathink` keyword detected → Activate Claude's native extended reasoning (high effort mode). This is native Claude behavior with no MCP dependency.
+- `ultrathink` keyword detected → Activate Claude's native extended reasoning (xhigh effort mode). This is native Claude behavior with no MCP dependency.
 
 Step 1.5 - Flag-Subcommand Compatibility Validation:
 [HARD] After parsing the subcommand and flags (Step 1), validate flag-subcommand compatibility BEFORE routing. If a forbidden combination is detected, STOP all further processing and output an error in the user's conversation_language. Do NOT proceed to Step 2.

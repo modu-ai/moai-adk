@@ -29,6 +29,10 @@ Optional standard fields:
 - agent: Subagent type when context is fork. Built-in: Explore, Plan, general-purpose, or custom agent name
 - hooks: Hook definitions scoped to skill lifecycle
 - paths: Glob patterns limiting auto-invocation to matching files (comma-separated or YAML array)
+- when_to_use: Additional trigger context (trigger phrases, example requests) appended to description in the skill listing; counts toward the 1,536-character listing cap
+- argument-hint: Autocomplete hint for expected arguments, e.g. `[issue-number]` or `[filename] [format]`. Top-level field — NOT a metadata key
+- arguments: Named positional arguments for `$name` substitution in skill content; space-separated string or YAML list, mapped to argument positions in order
+- disallowed-tools: Tools removed from Claude's available pool while this skill is active (comma/space-separated string or YAML list). Use for autonomous skills that must never call certain tools (e.g. AskUserQuestion in a background loop); the restriction clears on the next user message
 
 ### metadata Map
 
@@ -45,9 +49,8 @@ Common metadata keys:
 - context7-libraries: Comma-separated library identifiers for Context7 MCP
 - related-skills: Comma-separated related skill names
 - aliases: Comma-separated alternative names
-- argument-hint: Usage hint for user-invocable skills
-- context: Contextual description for skill behavior
-- agent: Target agent name
+
+Note: `argument-hint`, `arguments`, `context`, and `agent` are **top-level frontmatter fields** (see Optional standard fields above), NOT metadata keys. Do not nest them under `metadata:`.
 
 ### MoAI Extension Fields
 
@@ -134,6 +137,13 @@ Level 3 (Bundled):
 - Tokens: Variable
 - Content: reference.md, modules/, examples/
 - Loading: On-demand by Claude
+
+### Skill Listing Budget and Compaction (Claude Code runtime)
+
+MoAI's 3-level disclosure sits on top of two runtime budgets the Claude Code host applies. CLAUDE.md § Progressive Disclosure System cross-references this section as canonical:
+
+- **Listing budget**: skill descriptions are loaded so Claude knows what is available; the budget scales at ~1% of the model context window. On overflow, the least-used skills' descriptions are dropped first (names are always kept). Raise it with the `skillListingBudgetFraction` setting (e.g. `0.02` = 2%) or the `SLASH_COMMAND_TOOL_CHAR_BUDGET` env var; each entry's combined `description` + `when_to_use` text is capped at 1,536 characters (`maxSkillDescriptionChars`). Run `/doctor` to detect overflow.
+- **Compaction budget**: an invoked skill's rendered content stays in context across turns. After auto-compaction, Claude Code re-attaches the most recent invocation of each skill keeping its first ~5,000 tokens, sharing a combined ~25,000-token budget filled from the most-recently-invoked skill. Older skills can be dropped entirely; re-invoke a skill after compaction to restore its full content.
 
 ## Tool Permissions by Category
 

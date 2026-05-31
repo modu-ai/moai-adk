@@ -4,6 +4,8 @@ description: Default migration paths and configuration for 16 programming langua
 weight: 30
 draft: false
 ---
+# Migration Patterns
+
 
 ## Supported Languages and Tools
 

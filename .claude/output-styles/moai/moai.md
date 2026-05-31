@@ -227,7 +227,7 @@ Every English text label inside the templates below — banner names, section he
 - Box-drawing and arrow characters: ─ │ └─ ┌ ┐ ┘ └ ▶ → ← ⏭ ⏮
 - Horizontal rules: `---`
 - Code/command literals: `go test ./...`, `gh pr create`, `git fetch origin main`, `/moai <subcommand>`, `<moai>DONE</moai>`, `<moai>COMPLETE</moai>`, `~/.claude/projects/{hash}/memory/`, fenced ```text``` blocks
-- Keyword tokens: `ultrathink.` (activates Adaptive Thinking max effort — treat as command keyword, NOT translatable English)
+- Keyword tokens: `ultrathink.` (activates Adaptive Thinking xhigh effort — treat as command keyword, NOT translatable English)
 - File paths: `.moai/config/sections/language.yaml`, `.moai/specs/<SPEC-ID>/progress.md`, etc.
 - Placeholder substitution: `[intent statement]`, `<SPEC-ID>`, `<phase>`, `[agent-name]`, `[N/M]`, etc. — substitute with the actual value for the current turn; do NOT keep the English placeholder text verbatim in output
 
@@ -280,7 +280,7 @@ Surfaces governed by this obligation:
 
 English content permitted in user-facing prose (preserve verbatim — DO NOT translate):
 
-- Technical identifiers preserved per §10 Output Rules: `SPEC-V3R6-*`, `REQ-TII-001`, `AC-TII-007`, file paths (`internal/template/templates/...`, `.moai/specs/...`), command literals (`git fetch`, `grep -rln`, `go test`, `gh pr create`), function/variable/type names, protocol tokens (`PASS` / `FAIL` / `PASS-WITH-DEBT` / `Tier S/M/L` / `Mode 5` / `cycle_type=tdd`)
+- Technical identifiers preserved per §10 Output Rules: SPEC-ID tokens (`SPEC-<DOMAIN>-NNN` format), REQ/AC tokens (`REQ-<DOMAIN>-NNN` / `AC-<DOMAIN>-NNN` format), file paths (`internal/template/templates/...`, `.moai/specs/...`), command literals (`git fetch`, `grep -rln`, `go test`, `gh pr create`), function/variable/type names, protocol tokens (`PASS` / `FAIL` / `PASS-WITH-DEBT` / `Tier S/M/L` / `Mode 5` / `cycle_type=tdd`)
 - Emoji and box-drawing characters (already verbatim per §9 Language Rules)
 - The `ultrathink.` keyword token
 - Quoted code or command examples that the user will execute literally
@@ -293,9 +293,9 @@ English content permitted in user-facing prose (preserve verbatim — DO NOT tra
 | Discovery `Findings:` body | `manager-develop pre-flight discovered scope ground-truth divergence` | `manager-develop이 사전 점검 중 범위 기준이 두 가지로 갈리는 문제를 발견` |
 | Discovery `Findings:` body | `bash-grep literal substring narrow (35 files) vs Go regex word-boundary + prefix-allowlist (45 files) — 11 extras` | `spec.md §A.4에서 35개 파일로 측정한 누출 목록이 Go 테스트 regex로는 45개로 잡힘 — 11개가 추가로 식별됨` |
 | Discovery `Recommended action:` body | `User 4-option 결정 (A/B/C/D, manager-develop alt recommendation = Option A 44 files comprehensive cleanup)` | `사용자가 A/B/C/D 4개 선택지 중 결정 필요 (manager-develop 대체 권장 = A안, 44개 파일 전체 정리)` |
-| AskUserQuestion `description` field | `Clean all 44 files to match Go test scope. AC-TII-007 GREEN proof = clean PASS.` | `Go 테스트가 잡아내는 44개 파일을 모두 정리. 결과: AC-TII-007이 명확하게 통과로 마무리됩니다.` |
+| AskUserQuestion `description` field | `Clean all 44 files to match Go test scope. AC GREEN proof = clean PASS.` | `Go 테스트가 잡아내는 44개 파일을 모두 정리. 결과: 해당 AC가 명확하게 통과로 마무리됩니다.` |
 | AskUserQuestion `preview` field | `actual cleanup: 39 files (45 - .gitignore - allowlist 5)` | `실제 정리 대상: 39개 파일 (45개 중 .gitignore 1개 + 교육 예외 5개 제외)` |
-| AskUserQuestion `preview` field | `장점: doctrinally 정확 + AC-TII-007 명확 PASS` | `장점: 정책 의도에 정확히 부합 + AC-TII-007 명확 통과` |
+| AskUserQuestion `preview` field | `장점: doctrinally 정확 + 해당 AC 명확 PASS` | `장점: 정책 의도에 정확히 부합 + 해당 AC 명확 통과` |
 | AskUserQuestion `preview` field | `단점: scope expansion +11 files, +1-2 commits` | `단점: 정리 범위가 11개 파일 늘어남, 커밋이 1-2개 추가됨` |
 | Step/round update prose | `빠른 독립 verify 후 사용자 결정 surface합니다` | `빠르게 독립적으로 확인한 뒤 사용자 결정을 받겠습니다` |
 | Gate body prose | `comprehensive cleanup` | `전체 정리` (또는 맥락에 따라 `포괄적 정리`) |
@@ -527,7 +527,7 @@ Header translation table:
 Rules:
 - [HARD] Tier labels (`S` / `M` / `L`) preserved verbatim — they are protocol identifiers
 - [HARD] Lesson counters preserved verbatim (`L33 (8th)`, `L44 (9x)`, etc.) — they encode sustained-pattern provenance
-- [HARD] SPEC-ID tokens preserved verbatim (`SPEC-V3R6-XXX-001` format)
+- [HARD] SPEC-ID tokens preserved verbatim (`SPEC-<DOMAIN>-NNN` format)
 - [HARD] `⏭️ Next` MUST be a concrete SPEC-ID or AskUserQuestion outcome — never vague ("TBD", "to decide")
 - [HARD] Percentage format: integer + `%` (e.g., `100%`, `80%`); avoid decimals
 
@@ -658,7 +658,7 @@ N) <verifiable command> → <expected outcome>
 ✂──── 여기까지 복사 ────✂
 ```
 
-The `source_session_id` field is REQUIRED (SPEC-V3R6-MULTI-SESSION-COORD-001 L2 / REQ-COORD-010). The orchestrator MUST populate `<orchestrator-uuid-from-current-turn>` with the Claude Code session_id of the current turn (the same UUID written to `.moai/state/active-sessions.json` by the SessionStart hook). The auto-memory `project_*.md` file MUST mirror this field in its prose body so that readers can correlate the resume back to its originating session. MEMORY.md index entries SHOULD include a `(session: <UUID-8-char-prefix>)` parenthetical annotation when the SPEC was worked across multiple sessions.
+The `source_session_id` field is REQUIRED per the multi-session coordination policy (Layer 2 — session correlation). The orchestrator MUST populate `<orchestrator-uuid-from-current-turn>` with the Claude Code session_id of the current turn (the same UUID written to `.moai/state/active-sessions.json` by the SessionStart hook). The auto-memory `project_*.md` file MUST mirror this field in its prose body so that readers can correlate the resume back to its originating session. MEMORY.md index entries SHOULD include a `(session: <UUID-8-char-prefix>)` parenthetical annotation when the SPEC was worked across multiple sessions.
 
 Cut-line Marker translation table (`✂` symbol U+2702 and `─` U+2500 preserved verbatim across all locales; only the text translates):
 
@@ -678,9 +678,9 @@ Header translation table (translate per `conversation_language` setting in `.moa
 | Block 1 verb (entering) | `entering` | `진입` | `開始` | `进入` |
 
 Pre-emit self-check (MUST verify all 9 before printing):
-- [ ] Block 1 starts with `ultrathink.` (activates Adaptive Thinking max effort in next session)
+- [ ] Block 1 starts with `ultrathink.` (activates Adaptive Thinking xhigh effort in next session)
 - [ ] Block 2 lists ≥1 memory file from `~/.claude/projects/{hash}/memory/` (most recent project memory + relevant lessons)
-- [ ] Block 2 includes `source_session_id: <UUID>` line carrying current orchestrator turn's session_id (SPEC-V3R6-MULTI-SESSION-COORD-001 L2 / REQ-COORD-010 — enables race attribution across multi-session work)
+- [ ] Block 2 includes `source_session_id: <UUID>` line carrying current orchestrator turn's session_id (per the multi-session coordination policy Layer 2 — enables race attribution across multi-session work)
 - [ ] Block 4 has ≤4 numbered preconditions, each independently verifiable (`git`/`gh`/file existence command)
 - [ ] Block 5 is a single primary action (typically `/moai <subcommand>` or single command line)
 - [ ] L3 worktree case: Block 0 `[New Terminal — START IN WORKTREE] $ cd <abs-path> $ <launcher>` prepended (Block 0 MUST surface 3 launchers verbatim: `moai cc` | `moai glm` | `claude` — per `session-handoff.md` §Worktree-Anchored Resume Pattern) + precondition 0) `git rev-parse --show-toplevel → <worktree-path>` added

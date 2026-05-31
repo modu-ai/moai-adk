@@ -643,7 +643,7 @@ backend = Agent(subagent_type="backend-expert", prompt="...", context=database)
 
 ```markdown
 # Incorrect
-Load configuration from /Users/john/projects/myapp/config.yaml
+Load configuration from $HOME/projects/myapp/config.yaml
 ```
 
 **Solution**: Use relative paths and project references.

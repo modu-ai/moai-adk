@@ -12,7 +12,7 @@ Anthropic SSE streams stall (`stream_idle_partial`) near the context window ceil
 
 | Model class | Window | Handoff threshold | Absolute ceiling |
 |-------------|--------|-------------------|------------------|
-| Opus 4.7 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
+| Opus 4.8 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Sonnet/Opus standard (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 | Haiku (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 

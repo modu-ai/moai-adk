@@ -103,6 +103,20 @@ Never add files directly to the local project directories without also adding th
 
 **Verification**: Before committing, check that every new file under `.claude/`, `.moai/`, or `.agency/` has a corresponding file in `internal/template/templates/`.
 
+**§2.1 Template Content Neutrality — Acceptable Content Range for Templates**: When editing template source files in `internal/template/templates/`, ensure content adheres to the **acceptable** kept-classes (C1/C2/C4/C5/C6/C8 per `.claude/rules/moai/development/coding-standards.md` MUST constraints). FORBIDDEN content classes (SPEC IDs, REQ tokens, Audit citations, internal dates, commit SHAs, macOS-bias paths, CLAUDE.local references) are enforced by CI guard (`.github/workflows/template-neutrality-check.yaml` trigger on path change). See `.claude/rules/moai/development/coding-standards.md` § MUST and **§25 (Template Internal-Content Isolation)** of this file for the canonical acceptable-vs-forbidden content range. This ensures 16-language template distribution remains neutral to moai-adk internal development state.
+
+**Pre-PR Verification (template contributor-checklist)** — before opening a PR that touches `internal/template/templates/**` (the CI guard `template-neutrality-check.yaml` is the safety net):
+
+- [ ] No `/Users/` or OS-specific absolute path (C1) — use `$HOME` / `~`
+- [ ] No bare-narrative `V3R[0-9]` dev-version sigil (C2) outside the doctrine allow-list
+- [ ] No `feedback_` / `memory.md` ref (C4) outside the canonical-doctrine allow-list
+- [ ] No `CLAUDE.local.md` reference (C5)
+- [ ] No `PR #N` reference (C6)
+- [ ] `GOOS=` cross-compile env vars preserved (C8)
+- [ ] `go test ./internal/template/... -run TestTemplateNeutralityAudit` passes in isolation
+
+See §25.3 for the full 5-item pre-commit self-check and §25.1 for the forbidden/allowed content-class catalogue. (C3 dates + C7 commit-hashes are owned by the sibling `internal_content_leak_test.go` per §25, not this neutrality checklist.)
+
 ### Local-Only Files (Never in Templates)
 ```
 .claude/settings.local.json    # Personal settings — runtime-managed, NEVER template

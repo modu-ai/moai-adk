@@ -61,7 +61,7 @@ Valid values: `draft`, `planned`, `in-progress`, `implemented`, `completed`, `su
 
 ## Status Transition Ownership Matrix
 
-Per SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 (Audit Tier 2 F1 resolution — Anthropic Best Practice #7 DRI ownership at agent-artifact granularity) and SPEC-V3R6-AGENT-TEAM-REBUILD-001 (17→8 agent consolidation, 2026-05-25). This matrix is the **schema-level SSOT** for which agent performs each canonical status transition. Owner columns reference only the 7 MoAI-custom retained agents (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `evaluator-active`, `builder-harness`) plus orchestrator-direct entries; archived agent names (`manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, and the 6 `expert-*` agents) MUST NOT appear as owners — see `.claude/rules/moai/workflow/archived-agent-rejection.md` for migration guidance. Cross-referenced by the `## SPEC Artifact Ownership` body sections in `.claude/agents/moai/manager-{spec,develop,docs}.md`.
+Per the canonical agent-responsibility realignment policy (DRI ownership at agent-artifact granularity per Anthropic Best Practice #7) and the agent catalog consolidation policy (8 retained agents). This matrix is the **schema-level SSOT** for which agent performs each canonical status transition. Owner columns reference only the 7 MoAI-custom retained agents (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `evaluator-active`, `builder-harness`) plus orchestrator-direct entries; archived agent names (`manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, and the 6 `expert-*` agents) MUST NOT appear as owners — see `.claude/rules/moai/workflow/archived-agent-rejection.md` for migration guidance. Cross-referenced by the `## SPEC Artifact Ownership` body sections in `.claude/agents/moai/manager-{spec,develop,docs}.md`.
 
 | Transition | Owning agent | Canonical commit subject pattern |
 |------------|--------------|----------------------------------|
@@ -80,7 +80,7 @@ Per SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 (Audit Tier 2 F1 resolution — A
 
 ### Forward-looking enforcement (optional defense-in-depth)
 
-A future PostToolUse hook MAY validate at execution time that the agent performing a Write on a SPEC artifact body matches the expected owner per this matrix. This is OPTIONAL (REQ-ARR-009 of SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 — deferred to a follow-up SPEC if desired). The primary intervention is the declarative ownership in the agent body sections + this schema matrix; hook-based enforcement is a complementary layer.
+A future PostToolUse hook MAY validate at execution time that the agent performing a Write on a SPEC artifact body matches the expected owner per this matrix. This is OPTIONAL (deferred to a follow-up SPEC if desired per the agent-responsibility realignment policy). The primary intervention is the declarative ownership in the agent body sections + this schema matrix; hook-based enforcement is a complementary layer.
 
 ## Optional Fields
 
@@ -125,11 +125,11 @@ The Status Transition Ownership Matrix above is enforced at lint-time by the `Ow
 - **`OwnershipTransitionInvalid`** (Warning severity): Emitted when a SPEC's git-log history shows a status transition performed by an agent whose commit subject prefix does NOT match the canonical owner for that transition. Example: `manager-docs` performing `draft → in-progress` (which the matrix above assigns to `manager-develop`) triggers a finding.
 - **`OwnershipTransitionUnreachable`** (Info severity): Emitted when the rule cannot read git history for the SPEC file (non-git environment, fresh clone without history, or `git log --follow` error). Graceful observation — no panic, no error escalation.
 
-Default subset (REQ-AAT-009 of SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001): the rule evaluates the two most common transitions by default (`draft → in-progress` and `in-progress → implemented`). Terminal states (`superseded`, `archived`, `rejected`) are exempted via the `terminalStatusEnum` shared with `StatusGitConsistencyRule`.
+Default subset (per the ownership-transition lint policy): the rule evaluates the two most common transitions by default (`draft → in-progress` and `in-progress → implemented`). Terminal states (`superseded`, `archived`, `rejected`) are exempted via the `terminalStatusEnum` shared with `StatusGitConsistencyRule`.
 
 Configuration: severity can be promoted to Error under `--strict` mode (same as `StatusGitConsistencyRule`). Per-SPEC opt-out via `lint.skip: [OwnershipTransitionInvalid]` in optional frontmatter (see Optional Fields above).
 
-Implementation files: `internal/spec/lint_ownership.go` (rule body) + `internal/spec/lint_ownership_test.go` (TDD coverage, introduced by SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001 M2).
+Implementation files: `internal/spec/lint_ownership.go` (rule body) + `internal/spec/lint_ownership_test.go` (TDD coverage).
 
 ## Examples
 

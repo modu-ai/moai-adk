@@ -369,6 +369,56 @@ MoAI-ADK は [Conventional Commits](https://www.conventionalcommits.org/) 形式
 | `refactor` | リファクタリング  | `refactor(auth): centralize auth logic`     |
 | `test`     | テスト    | `test(auth): add characterization tests`    |
 
+## PR 作成後の CI モニタリング
+
+`/moai sync` が PR を作成した直後、MoAI-ADK は 2 段階の自動モニタリングを
+実行します。Wave 1 は CI 結果をポーリングしてどの required check が失敗
+したかを判定し、Wave 2 は失敗が発生した場合に自動 fix ループに入ります。
+
+### Wave 1 — CI 結果ポーリング
+
+- **30 秒間隔**で `gh pr checks` を呼び出し (GitHub API rate limit を尊重)
+- 30 分の hard timeout — その時間内に required check が完了しない場合、
+  watch loop は exit code 3 で終了
+- required check 定義 SSoT: `.github/required-checks.yml`
+- auxiliary check の失敗は merge blocker ではない (warning のみ)
+
+### Wave 2 — 自動 fix ループ (最大 3 回)
+
+required check が失敗すると、MoAI-ADK は自動 fix ループに入ります。
+
+- 各 iteration で fix を**新しい commit** として適用 (force-push / amend 禁止)
+- PR push あたり最大 3 iterations (per-session ではない)
+- iteration ≥ 4 になるとユーザーに blocking AskUserQuestion で escalation
+
+### 自動処理 vs 人間判断必要
+
+| 障害タイプ                 | 自動処理?     | 備考                                                 |
+| -------------------------- | ------------- | ---------------------------------------------------- |
+| lint error                 | 自動          | `golangci-lint` autofix で対応可能な項目             |
+| format drift               | 自動          | `gofmt` / `prettier` など                            |
+| test syntax error          | 自動          | import 欠落 / コンパイルエラー                       |
+| **data race**              | **人間判断**  | semantic failure — 意図された並行性かどうか判断      |
+| **deadlock**               | **人間判断**  | semantic failure                                     |
+| **panic**                  | **人間判断**  | semantic failure                                     |
+| **test assertion failure** | **人間判断**  | spec とコードのどちらが正しいか人間判断              |
+
+### auto-fix が絶対に変更しないファイル
+
+{{< callout type="warning" >}}
+auto-fix ループは次のファイルを**絶対に変更しません**:
+
+- `.env`, `.env.*` (環境変数 / シークレット)
+- credentials ファイル
+- `scripts/ci-watch/run.sh` (Wave 2 infrastructure)
+- `.github/required-checks.yml` (Wave 1 SSoT)
+{{< /callout >}}
+
+### 関連ドキュメント
+
+- ポーリング doctrine SSoT: `.claude/rules/moai/workflow/ci-watch-protocol.md`
+- auto-fix doctrine SSoT: `.claude/rules/moai/workflow/ci-autofix-protocol.md`
+
 ## 品質ゲート
 
 Sync フェーズの品質基準は Run フェーズよりも文書中心です:

@@ -2,7 +2,7 @@
 id: SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001
 title: "Progress — Anthropic Best-Practice Audit Tier 3 (F3+F9+F13)"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
@@ -233,3 +233,4 @@ _None to date._
 2. **SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001** (F3 unused skills reconnect) — 3 trivial frontmatter edit (moai-ref-git-workflow → manager-git, moai-ref-react-patterns → expert-frontend, moai-workflow-loop → /moai loop command body)
 3. **SPEC-V3R6-CHANGELOG-UNRELEASED-CLEANUP-001** (F6) — 30 stale `[Unreleased]` headings를 `CHANGELOG.archive.md`로 분리.
 4. **SPEC-V3R6-SUBDIR-CLAUDE-EXPANSION-001** (F9 확장) — `internal/governance/` (COORD-001 완료 후), `pkg/`, `cmd/moai/` CLAUDE.md 추가.
+mx_commit_sha: (this commit)

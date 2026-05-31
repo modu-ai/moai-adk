@@ -2,7 +2,7 @@
 id: SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001
 title: "/moai plan workflow skill bundle GEARS notation alignment"
 version: "0.1.3"
-status: implemented
+status: completed
 created: 2026-05-25
 updated: 2026-05-25
 sync_commit_sha: "bd52b70e5"

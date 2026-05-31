@@ -4,4 +4,6 @@ draft: true
 aliases: ["/ko/multi-llm/model-policy"]
 ---
 
-This page is only available in Korean.
+# Model Policy
+
+This page is only available in Korean. MoAI-ADK and Claude Code provide flexible model selection for different task types.

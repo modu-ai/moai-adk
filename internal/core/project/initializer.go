@@ -41,6 +41,16 @@ type InitOptions struct {
 	Force             bool     // If true, allow reinitializing an existing project.
 	SkipShellConfig   bool     // If true, skip shell environment configuration.
 	ModelPolicy       string   // Token consumption tier: "high", "medium", "low".
+
+	// Phase 1 wizard fields (REQ-IWE-001..005) — populated from wizard result or CLI flags.
+	ProjectMode               string // project.mode: personal, team (B1)
+	HarnessProfile            string // harness.default_profile (B2)
+	LSPEnabled                bool   // lsp.enabled (B3)
+	EnforceQuality            bool   // quality.enforce_quality (B5); default true
+	CoverageExemptionsEnabled bool   // quality.coverage_exemptions.enabled (B5); default false
+	DesignEnabled             bool   // design.enabled (B8); default true
+	ClaudeDesignEnabled       bool   // design.claude_design.enabled (B8); default true
+	StandardMode              bool   // True when Phase 1 wizard was active
 }
 
 // InitResult summarizes the outcome of project initialization.
@@ -395,6 +405,11 @@ func (i *projectInitializer) generateConfigsFallback(opts InitOptions, result *I
 		return fmt.Errorf("write project.yaml: %w", err)
 	}
 	result.CreatedFiles = append(result.CreatedFiles, filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.ProjectYAML))
+
+	// Phase 1 yaml writes (REQ-IWE-001..005) — only when StandardMode is active.
+	if err := WritePhase1Configs(opts, result); err != nil {
+		return fmt.Errorf("phase 1 config: %w", err)
+	}
 
 	return nil
 }

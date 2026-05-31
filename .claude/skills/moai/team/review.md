@@ -57,6 +57,8 @@ Flow: TeamCreate -> Perspective Assignment -> Parallel Review -> Report Consolid
 
 Use the review team pattern. All spawns MUST use Agent() with `team_name` and `name` parameters. Launch all four in a single response for parallel execution:
 
+Each spawn prompt MUST include the following finding-stage instruction so every reviewer surfaces complete coverage: "At the finding stage, report every issue you find, including ones you are uncertain about or consider low-severity, each with a confidence level and an estimated severity. Do not filter for importance or confidence while finding — the verdict stage (must-pass thresholds + harmonic scoring) does the filtering downstream. The goal at this stage is coverage: surfacing a finding that later gets filtered out is preferable to silently dropping a real bug."
+
 ```
 Agent(
   subagent_type: "team-validator",

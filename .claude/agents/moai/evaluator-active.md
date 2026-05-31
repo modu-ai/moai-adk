@@ -67,6 +67,8 @@ Overall Verdict: PASS | FAIL
 - {actionable fix suggestion}
 ```
 
+At the finding stage, report every issue you find, including ones you are uncertain about or consider low-severity, each with a confidence level and an estimated severity. Do not filter for importance or confidence while finding — the verdict stage (must-pass thresholds + harmonic scoring) does the filtering downstream. The goal at this stage is coverage: surfacing a finding that later gets filtered out is preferable to silently dropping a real bug.
+
 ## Evaluator Profile Loading
 
 At invocation, load the active evaluator profile to determine dimension weights and thresholds:

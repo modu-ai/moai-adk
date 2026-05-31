@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R6-LIFECYCLE-SYNC-GATE-001
 title: "Lifecycle Sync Gate — Atomic 4-Phase Close + Cross-File Status Audit + Pre-Commit Drift Detection"
-version: "0.1.3"
-status: in-progress
+version: "0.1.4"
+status: completed
 created: 2026-05-25
-updated: 2026-05-26
+updated: 2026-05-30
 author: manager-spec
 priority: P1
 phase: "v3.0.1 follow-up to AGENT-RESPONSIBILITY-REALIGN + LIFECYCLE doctrine"

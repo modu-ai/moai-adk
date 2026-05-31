@@ -35,7 +35,7 @@ triggers:
 
 ## Phase Owners (per SPEC-V3R6-AGENT-TEAM-REBUILD-001)
 
-Phase Owners: `manager-develop` (run-phase implementation — single-spawn per Anthropic 2026 Finding A4 "most coding tasks involve fewer truly parallelizable tasks than research"; `cycle_type` ∈ `{tdd, ddd, autofix}` per REQ-ATR-012) + `manager-git` (Tier L PR creation OR `--pr` flag per REQ-ATR-020 + CLAUDE.local.md §23) + `Explore` (read-only investigation when scope discovery needed).
+Phase Owners: `manager-develop` (run-phase implementation — single-spawn per Anthropic 2026 Finding A4 "most coding tasks involve fewer truly parallelizable tasks than research"; `cycle_type` ∈ `{tdd, ddd, autofix}` per REQ-ATR-012) + `manager-git` (Tier L PR creation OR `--pr` flag per REQ-ATR-020) + `Explore` (read-only investigation when scope discovery needed).
 
 Phase 0.95 Mode Selection (NEW — REQ-ATR-008): orchestrator autonomous 5-mode decision (autopilot / loop / team / pipeline / background) is logged at `.moai/specs/SPEC-{ID}/progress.md` § Phase 0.95 Mode Selection. Phase 0.95 SHOULD be invoked before any manager-develop spawn for SPECs sized ≥ Tier M.
 
