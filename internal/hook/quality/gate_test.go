@@ -459,6 +459,89 @@ dev_dependencies:
 	}
 }
 
+// TestQualityGate_detectToolchain_Turbo verifies that a Node.js project with a
+// turbo.json (Turborepo monorepo) resolves to a turbo-safe `npm test` without the
+// `--passWithNoTests` flag, which turbo rejects as an unknown argument. See
+// SPEC-GATE-TURBO-001.
+func TestQualityGate_detectToolchain_Turbo(t *testing.T) {
+	t.Parallel()
+
+	hasFlag := func(args []string, flag string) bool {
+		for _, a := range args {
+			if a == flag {
+				return true
+			}
+		}
+		return false
+	}
+
+	t.Run("package.json + turbo.json -> no --passWithNoTests", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"name":"test"}`), 0o644); err != nil {
+			t.Fatalf("write package.json: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "turbo.json"), []byte(`{"tasks":{}}`), 0o644); err != nil {
+			t.Fatalf("write turbo.json: %v", err)
+		}
+		g := NewQualityGate(&GateConfig{ProjectDir: dir})
+		tc := g.detectToolchain()
+		if tc == nil || tc.testStep == nil {
+			t.Fatalf("detectToolchain/testStep is nil")
+		}
+		if hasFlag(tc.testStep.args, "--passWithNoTests") {
+			t.Errorf("turbo project should not pass --passWithNoTests, got args %v", tc.testStep.args)
+		}
+		if len(tc.testStep.args) != 1 || tc.testStep.args[0] != "test" {
+			t.Errorf("turbo testStep args = %v, want [test]", tc.testStep.args)
+		}
+		if len(tc.lintSteps) == 0 || tc.lintSteps[0].name != "eslint" {
+			t.Errorf("turbo variant should preserve eslint lint step, got %v", tc.lintSteps)
+		}
+	})
+
+	t.Run("package.json without turbo.json -> flag retained", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"name":"test"}`), 0o644); err != nil {
+			t.Fatalf("write package.json: %v", err)
+		}
+		g := NewQualityGate(&GateConfig{ProjectDir: dir})
+		tc := g.detectToolchain()
+		if tc == nil || tc.testStep == nil {
+			t.Fatalf("detectToolchain/testStep is nil")
+		}
+		if !hasFlag(tc.testStep.args, "--passWithNoTests") {
+			t.Errorf("non-turbo Node project should retain --passWithNoTests, got args %v", tc.testStep.args)
+		}
+	})
+
+	t.Run("shared toolchains slice not mutated", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"name":"test"}`), 0o644); err != nil {
+			t.Fatalf("write package.json: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "turbo.json"), []byte(`{"tasks":{}}`), 0o644); err != nil {
+			t.Fatalf("write turbo.json: %v", err)
+		}
+		g := NewQualityGate(&GateConfig{ProjectDir: dir})
+		_ = g.detectToolchain()
+		var nodeTC *langToolchain
+		for i := range toolchains {
+			if len(toolchains[i].markerFiles) > 0 && toolchains[i].markerFiles[0] == "package.json" {
+				nodeTC = &toolchains[i]
+				break
+			}
+		}
+		if nodeTC == nil || nodeTC.testStep == nil {
+			t.Fatal("node toolchain not found in package-level slice")
+		}
+		if !hasFlag(nodeTC.testStep.args, "--passWithNoTests") {
+			t.Errorf("package-level Node toolchain must remain unmutated with --passWithNoTests, got %v", nodeTC.testStep.args)
+		}
+	})
+}
+
 func TestQualityGate_detectToolchain_GlobPattern(t *testing.T) {
 	t.Parallel()
 
