@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -104,6 +105,16 @@ func TestSkipSyncNoArchive(t *testing.T) {
 	})
 
 	t.Run("skip_sync_with_force_does_invoke_archive", func(t *testing.T) {
+		// REQ-CFS-006/009: --force + !--yes 경로는 version-match 조기 반환을
+		// 우회하여 merge.ConfirmMerge(Bubble Tea TUI)에 도달한다. Windows non-TTY
+		// CI stdin에서 bubbletea는 ReadConsole syscall에서 무한 block된다 →
+		// 600s timeout. M2 audit 결과 본 subtest가 coverage 테스트들 중 유일하게
+		// --yes 없이 ConfirmMerge에 도달하는 caller다 (다른 caller는 version-match
+		// 조기 반환 또는 --yes=true). 기존 precedent: target_coverage_test.go
+		// TestRunTemplateSyncWithProgress_ForceFlagBypassesVersionCheck.
+		if runtime.GOOS == "windows" {
+			t.Skip("charmbracelet/bubbletea blocks on Windows console ReadConsole in non-TTY CI")
+		}
 		// Uses os.Chdir — cannot run in parallel.
 		tmpDir := t.TempDir()
 

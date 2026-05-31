@@ -4275,6 +4275,16 @@ func TestSaveTemplateDefaults_CreatesFiles(t *testing.T) {
 // --- runTemplateSyncWithProgress: version mismatch path ---
 
 func TestRunTemplateSyncWithProgress_VersionMismatch(t *testing.T) {
+	// REQ-CFS-006/009 (defense-in-depth): version-mismatch 경로는 --yes 가 없으면
+	// merge.ConfirmMerge(Bubble Tea TUI)에 도달하며, Windows non-TTY CI stdin에서
+	// bubbletea는 ReadConsole syscall에서 무한 block된다 (600s timeout). 본 테스트는
+	// 아래에서 --yes=true 를 설정해 ConfirmMerge 분기를 우회하지만, 향후 누군가 그
+	// --yes 를 제거하더라도 Windows CI 가 hang 하지 않도록 방어적 skip 을 둔다.
+	// M2 audit: --yes 없이 ConfirmMerge 에 실제 도달하는 caller 는
+	// update_skip_sync_test.go 의 force-without-yes subtest 다.
+	if runtime.GOOS == "windows" {
+		t.Skip("charmbracelet/bubbletea blocks on Windows console ReadConsole in non-TTY CI")
+	}
 	tmpDir := t.TempDir()
 
 	// Create project with mismatched version

@@ -127,6 +127,13 @@ func Close(specID string, opts CloseOptions) (result *CloseResult, err error) {
 	if baseDir == "" {
 		baseDir = "."
 	}
+	// REQ-CFS-002: baseDir를 절대 경로로 정규화한다. 기본값 "." (상대 경로)에
+	// 의존하면 하위 git add / git restore --staged / git commit 작업이 cmd.Dir
+	// 파일시스템 타이밍에 따라 일관되지 않게 경로를 해석한다. filepath.Abs는
+	// 이미 절대 경로인 입력에 대해 멱등적이므로(§D.2 edge case) 회귀가 없다.
+	if absBase, absErr := filepath.Abs(baseDir); absErr == nil {
+		baseDir = absBase
+	}
 
 	mode := "full-close"
 	if opts.BackfillOnly {
@@ -257,10 +264,20 @@ func Close(specID string, opts CloseOptions) (result *CloseResult, err error) {
 // @MX:ANCHOR: [AUTO] performAtomicClose는 Close()의 유일한 commit 수행 경로 — full-close happy path가 여기로 수렴(AC-LSG-001/014)
 // @MX:REASON: [AUTO] explicit-path staging 불변식(이 SPEC의 spec.md + progress.md만 stage, 절대 git add -A 금지)과 rollback 원자성(어떤 step 실패 시 staged 0)이 active multi-session race 하에서 다른 세션의 parallel-WIP 파일을 침범하지 않도록 보장한다.
 func performAtomicClose(baseDir, specID string, state *closeState) (commitSHA string, err error) {
-	// Resolve relative paths (git add wants paths relative to the repo root, or
-	// absolute paths under it; we use the recorded absolute paths directly).
+	// Resolve the on-disk (absolute) paths used for os.WriteFile rollback.
 	specMDPath := state.SpecMDPath
 	progressMDPath := state.ProgressMDPath
+
+	// REQ-CFS-001: git add / git restore --staged 에 넘길 경로는 baseDir 기준
+	// 상대 경로로 변환한다. 절대 경로를 cmd.Dir=baseDir 환경에서 git에 넘기면
+	// 파일시스템 타이밍에 따라 일관되지 않게 해석되어 CI race-detector에서만
+	// 재현되는 경합을 유발한다. filepath.Rel 실패 시(다른 볼륨 등 §D.2 edge case)
+	// 절대 경로로 폴백한다 — 조용히 삼키지 않고 명시적으로 처리한다.
+	specMDGitPath := relToBaseOrAbs(baseDir, specMDPath)
+	var progressMDGitPath string
+	if progressMDPath != "" {
+		progressMDGitPath = relToBaseOrAbs(baseDir, progressMDPath)
+	}
 
 	// Snapshot on-disk contents for rollback.
 	origSpec := state.SpecMDContent
@@ -272,12 +289,13 @@ func performAtomicClose(baseDir, specID string, state *closeState) (commitSHA st
 	// rollback restores file contents and unstages anything we staged. Best-effort:
 	// rollback errors are joined into the returned error but never panic.
 	rollback := func(cause error) (string, error) {
-		// Restore on-disk file contents from snapshots.
+		// Restore on-disk file contents from snapshots (absolute paths for os.WriteFile).
 		_ = os.WriteFile(specMDPath, []byte(origSpec), 0644)
 		if progressMDPath != "" {
 			_ = os.WriteFile(progressMDPath, []byte(origProgress), 0644)
 		}
-		// Unstage the exact paths we staged (git restore --staged <path>).
+		// REQ-CFS-003: rollback의 git restore --staged 도 staging과 동일한
+		// 상대 경로 해석을 사용한다 — stage한 정확히 그 경로만 unstage된다.
 		if len(staged) > 0 {
 			args := append([]string{"restore", "--staged"}, staged...)
 			_ = runGitInDir(baseDir, args...)
@@ -316,15 +334,16 @@ func performAtomicClose(baseDir, specID string, state *closeState) (commitSHA st
 	}
 
 	// Step 5 — stage EXACTLY this SPEC's spec.md + progress.md by explicit path.
-	if err := runGitInDir(baseDir, "add", specMDPath); err != nil {
+	// REQ-CFS-001: baseDir 기준 상대 경로를 git에 넘긴다(절대 경로 race 회피).
+	if err := runGitInDir(baseDir, "add", specMDGitPath); err != nil {
 		return rollback(fmt.Errorf("git add spec.md: %w", err))
 	}
-	staged = append(staged, specMDPath)
-	if progressMDPath != "" {
-		if err := runGitInDir(baseDir, "add", progressMDPath); err != nil {
+	staged = append(staged, specMDGitPath)
+	if progressMDGitPath != "" {
+		if err := runGitInDir(baseDir, "add", progressMDGitPath); err != nil {
 			return rollback(fmt.Errorf("git add progress.md: %w", err))
 		}
-		staged = append(staged, progressMDPath)
+		staged = append(staged, progressMDGitPath)
 	}
 
 	// Step 6 — commit and capture the new SHA.
@@ -341,6 +360,19 @@ func performAtomicClose(baseDir, specID string, state *closeState) (commitSHA st
 		return "", fmt.Errorf("read commit SHA after commit: %w", shaErr)
 	}
 	return sha, nil
+}
+
+// relToBaseOrAbs는 abs(절대 파일 경로)를 baseDir 기준 상대 경로로 변환한다.
+// git add / git restore --staged 에 cmd.Dir=baseDir 와 함께 넘길 경로 해석을
+// 결정론적으로 만들기 위함이다(REQ-CFS-001/003). filepath.Rel이 실패하거나
+// (다른 볼륨 등 §D.2 edge case) ".." 로 baseDir 밖을 벗어나는 경로를 산출하면
+// 원래의 절대 경로로 폴백한다 — 조용히 삼키지 않고 안전한 입력만 상대화한다.
+func relToBaseOrAbs(baseDir, abs string) string {
+	rel, err := filepath.Rel(baseDir, abs)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return abs
+	}
+	return rel
 }
 
 // l60MxBackfillPlaceholder is the L60 atomic-backfill placeholder for the §E.5

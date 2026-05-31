@@ -2,12 +2,15 @@ package merge
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-isatty"
 
 	"github.com/modu-ai/moai-adk/internal/tui"
 )
@@ -849,6 +852,20 @@ func ConfirmMerge(analysis MergeAnalysis) (bool, error) {
 		analysis: analysis,
 		decision: false,
 		done:     false,
+	}
+
+	// REQ-CFS-007/008: Windows non-TTY stdin guard (defense-in-depth backstop).
+	// Bubble Tea의 tea.NewProgram().Run()은 Windows 콘솔 non-TTY stdin에서
+	// ReadConsole syscall에 무한 block된다 (CI 600s timeout). TUI 이벤트 루프에
+	// 진입하기 전에 fail open 하여 명시적 에러를 반환한다 — 호출자는 --yes/
+	// auto-confirm 경로로 진행해야 한다. mattn/go-isatty(이미 go.mod 에 vendored,
+	// internal/cli/update.go·init.go 와 동일 idiom)를 재사용한다; 신규 의존성 없음.
+	// 가드는 runtime.GOOS == "windows" 로 한정되므로 linux/darwin 동작은 불변이고
+	// (bubbletea hang은 Windows 전용), Windows에서 TTY가 있으면(개발자 대화형 실행)
+	// IsTerminal 이 true 를 반환해 정상 TUI 가 작동한다.
+	if runtime.GOOS == "windows" && !isatty.IsTerminal(os.Stdin.Fd()) {
+		return false, fmt.Errorf("merge confirmation UI requires an interactive terminal; " +
+			"rerun with --yes to auto-confirm in a non-TTY environment")
 	}
 
 	p := tea.NewProgram(m)
