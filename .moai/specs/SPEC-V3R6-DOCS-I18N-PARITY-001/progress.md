@@ -73,7 +73,7 @@ Mx-phase ownership: orchestrator-direct (post-sync). Manager-docs sync-phase doe
 
 ```yaml
 mx_started_at: "2026-05-31"
-mx_commit_sha: "9aebc92ed"
+mx_commit_sha: "895cee5ac"
 status: completed
 ```
 
