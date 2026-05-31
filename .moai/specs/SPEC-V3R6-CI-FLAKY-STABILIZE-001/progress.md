@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R6-CI-FLAKY-STABILIZE-001
 artifact: progress
-version: "0.1.1"
+version: "0.1.2"
 created: 2026-05-31
 updated: 2026-05-31
-status: in-progress
+status: completed
 ---
 
 # Progress Tracking — SPEC-V3R6-CI-FLAKY-STABILIZE-001
@@ -59,7 +59,7 @@ coding-heavy). Anthropic Finding A4 (coding-task parallelism caveat)에 따라 M
 
 ```yaml
 sync_started_at: "2026-05-31"
-sync_commit_sha: "(this commit)"
+sync_commit_sha: "3787ace23"
 status: implemented
 ```
 
@@ -112,3 +112,20 @@ m2_status: implemented
 m3_status: implemented
 ci_deferred: [AC-CFS-011, AC-CFS-012]
 ```
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+Mx-phase ownership: orchestrator-direct (post-sync). Manager-docs sync-phase does not populate this section.
+
+```yaml
+mx_started_at: "2026-05-31"
+mx_commit_sha: "(this commit)"
+status: completed
+ci_deferred_resolved: [AC-CFS-011, AC-CFS-012]
+```
+
+§D.3 HONESTY GATE 충족: AC-CFS-011/012 (Windows CI-deferred)는 main CI run (commit
+5352d49a2)의 `Test (windows-latest) → success` 로 green 확인됨 → deferred-AC gate 통과.
+4-phase close: plan (47ac3d31d) → run (a8a7f3c34) → sync (3787ace23) → Mx (this commit).
+12/12 AC 충족 (10 local PASS + 2 Windows green), evaluator PASS-WITH-DEBT (CHANGELOG status
+표현 cbd7d8264 해소).
