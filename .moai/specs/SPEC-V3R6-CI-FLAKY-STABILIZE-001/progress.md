@@ -119,7 +119,7 @@ Mx-phase ownership: orchestrator-direct (post-sync). Manager-docs sync-phase doe
 
 ```yaml
 mx_started_at: "2026-05-31"
-mx_commit_sha: "(this commit)"
+mx_commit_sha: "7ab847b3a"
 status: completed
 ci_deferred_resolved: [AC-CFS-011, AC-CFS-012]
 ```
