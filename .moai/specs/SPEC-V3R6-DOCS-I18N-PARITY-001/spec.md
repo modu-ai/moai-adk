@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DOCS-I18N-PARITY-001
 title: "docs-site 4-locale i18n parity baseline clearance"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-05-31
 updated: 2026-05-31
 author: manager-spec

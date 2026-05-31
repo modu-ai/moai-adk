@@ -63,9 +63,21 @@ Baseline: 53 errors (4 frontmatter + 26 H1 + 23 glossary)
 
 ```yaml
 sync_started_at: "2026-05-31"
-sync_commit_sha: "(this commit)"
+sync_commit_sha: "5c4e1aecd"
 status: implemented
 ```
+
+### §E.5 Mx-phase Audit-Ready Signal
+
+Mx-phase ownership: orchestrator-direct (post-sync). Manager-docs sync-phase does not populate this section.
+
+```yaml
+mx_started_at: "2026-05-31"
+mx_commit_sha: "(this commit)"
+status: completed
+```
+
+4-phase close: plan (66da0bdec) → run (ebd7a0089, AC-DIP-009 41f99173b) → sync (5c4e1aecd) → Mx (this commit). 9/9 AC PASS, evaluator PASS-WITH-DEBT (F1 zh glossary 의미 정정 5352d49a2 해소). EVALUATE-SKIP: sync-phase evaluator 이미 통과, Mx-phase 신규 코드 없음.
 
 ---
 
