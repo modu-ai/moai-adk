@@ -212,9 +212,36 @@ func validateDynamicTokens(cfg *Config) []ValidationError {
 	errs = append(errs, checkStringField("system.log_level", cfg.System.LogLevel)...)
 	errs = append(errs, checkStringField("system.log_format", cfg.System.LogFormat)...)
 
-	// Git strategy section
+	// Git strategy section — pre-existing FLAT field validations (preserved).
 	errs = append(errs, checkStringField("git_strategy.branch_prefix", cfg.GitStrategy.BranchPrefix)...)
 	errs = append(errs, checkStringField("git_strategy.commit_style", cfg.GitStrategy.CommitStyle)...)
+
+	// Git strategy section — nested mode profile validations
+	// (SPEC-V3R5-GIT-STRATEGY-SCHEMA-001 REQ-GSS-007). Explicit literal-path
+	// calls (not a dynamic-prefix loop) so each dotted path is greppable.
+	// Manual mode.
+	errs = append(errs, checkStringField("git_strategy.manual.workflow", cfg.GitStrategy.Manual.Workflow)...)
+	errs = append(errs, checkStringField("git_strategy.manual.environment", cfg.GitStrategy.Manual.Environment)...)
+	errs = append(errs, checkStringField("git_strategy.manual.commit_style.format", cfg.GitStrategy.Manual.CommitStyle.Format)...)
+	errs = append(errs, checkStringField("git_strategy.manual.hooks.pre_commit", cfg.GitStrategy.Manual.Hooks.PreCommit)...)
+	errs = append(errs, checkStringField("git_strategy.manual.hooks.pre_push", cfg.GitStrategy.Manual.Hooks.PrePush)...)
+	errs = append(errs, checkStringField("git_strategy.manual.hooks.commit_msg", cfg.GitStrategy.Manual.Hooks.CommitMsg)...)
+	// Personal mode (has branch_prefix; manual mode does not).
+	errs = append(errs, checkStringField("git_strategy.personal.workflow", cfg.GitStrategy.Personal.Workflow)...)
+	errs = append(errs, checkStringField("git_strategy.personal.environment", cfg.GitStrategy.Personal.Environment)...)
+	errs = append(errs, checkStringField("git_strategy.personal.branch_prefix", cfg.GitStrategy.Personal.BranchPrefix)...)
+	errs = append(errs, checkStringField("git_strategy.personal.commit_style.format", cfg.GitStrategy.Personal.CommitStyle.Format)...)
+	errs = append(errs, checkStringField("git_strategy.personal.hooks.pre_commit", cfg.GitStrategy.Personal.Hooks.PreCommit)...)
+	errs = append(errs, checkStringField("git_strategy.personal.hooks.pre_push", cfg.GitStrategy.Personal.Hooks.PrePush)...)
+	errs = append(errs, checkStringField("git_strategy.personal.hooks.commit_msg", cfg.GitStrategy.Personal.Hooks.CommitMsg)...)
+	// Team mode (has branch_prefix).
+	errs = append(errs, checkStringField("git_strategy.team.workflow", cfg.GitStrategy.Team.Workflow)...)
+	errs = append(errs, checkStringField("git_strategy.team.environment", cfg.GitStrategy.Team.Environment)...)
+	errs = append(errs, checkStringField("git_strategy.team.branch_prefix", cfg.GitStrategy.Team.BranchPrefix)...)
+	errs = append(errs, checkStringField("git_strategy.team.commit_style.format", cfg.GitStrategy.Team.CommitStyle.Format)...)
+	errs = append(errs, checkStringField("git_strategy.team.hooks.pre_commit", cfg.GitStrategy.Team.Hooks.PreCommit)...)
+	errs = append(errs, checkStringField("git_strategy.team.hooks.pre_push", cfg.GitStrategy.Team.Hooks.PrePush)...)
+	errs = append(errs, checkStringField("git_strategy.team.hooks.commit_msg", cfg.GitStrategy.Team.Hooks.CommitMsg)...)
 
 	// Git convention section
 	errs = append(errs, checkStringField("git_convention.convention", cfg.GitConvention.Convention)...)

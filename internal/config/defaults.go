@@ -219,12 +219,65 @@ func NewDefaultProjectConfig() models.ProjectConfig {
 }
 
 // NewDefaultGitStrategyConfig returns a GitStrategyConfig with default values.
+//
+// Per SPEC-V3R5-GIT-STRATEGY-SCHEMA-001 REQ-GSS-006: the three ModeProfile
+// instances mirror the template-canonical defaults in
+// internal/template/templates/.moai/config/sections/git-strategy.yaml.tmpl
+// (the schema SSOT). The deprecated FLAT fields retain their pre-existing
+// default values for backward-compat (Option (c)).
 func NewDefaultGitStrategyConfig() GitStrategyConfig {
 	return GitStrategyConfig{
-		AutoBranch:   false,
-		BranchPrefix: DefaultBranchPrefix,
-		CommitStyle:  DefaultCommitStyle,
-		Provider:     "github",
+		// Top-level wire-through defaults.
+		Mode:           "team",
+		Provider:       "github",
+		GitHubUsername: "",
+		GitLab:         GitLabConfig{InstanceURL: ""},
+
+		Manual: ModeProfile{
+			Workflow:          "github-flow",
+			Environment:       "local",
+			GitHubIntegration: false,
+			PushToRemote:      false,
+			AutoCheckpoint:    "disabled",
+			BranchCreation:    BranchCreationConfig{AutoEnabled: false, PromptAlways: true},
+			Automation:        AutomationConfig{AutoBranch: false, AutoCommit: true, AutoPR: false, AutoPush: false},
+			CommitStyle:       CommitStyleConfig{Format: "conventional", ScopeRequired: false},
+			Hooks:             HooksConfig{PreCommit: "enforce", PrePush: "warn", CommitMsg: "warn"},
+		},
+		Personal: ModeProfile{
+			Workflow:          "github-flow",
+			Environment:       "github",
+			GitHubIntegration: true,
+			PushToRemote:      true,
+			BranchPrefix:      "feature/SPEC-",
+			MainBranch:        "main",
+			BranchCreation:    BranchCreationConfig{AutoEnabled: false, PromptAlways: true},
+			Automation:        AutomationConfig{AutoBranch: false, AutoCommit: true, AutoPR: false, AutoPush: false},
+			CommitStyle:       CommitStyleConfig{Format: "conventional", ScopeRequired: false},
+			Hooks:             HooksConfig{PreCommit: "enforce", PrePush: "warn", CommitMsg: "warn"},
+		},
+		Team: ModeProfile{
+			Workflow:          "github-flow",
+			Environment:       "github",
+			GitHubIntegration: true,
+			PushToRemote:      true,
+			BranchPrefix:      "feature/SPEC-",
+			MainBranch:        "main",
+			DraftPR:           true,
+			RequiredReviews:   1,
+			BranchProtection:  true,
+			BranchCreation:    BranchCreationConfig{AutoEnabled: false, PromptAlways: true},
+			Automation:        AutomationConfig{AutoBranch: false, AutoCommit: true, AutoPR: false, AutoPush: true},
+			CommitStyle:       CommitStyleConfig{Format: "conventional", ScopeRequired: true},
+			Hooks:             HooksConfig{PreCommit: "enforce", PrePush: "warn", CommitMsg: "warn"},
+		},
+
+		// Deprecated FLAT fields — preserve existing default values for backward-compat.
+		AutoBranch:        false,
+		BranchPrefix:      DefaultBranchPrefix,
+		CommitStyle:       DefaultCommitStyle,
+		WorktreeRoot:      "",
+		GitLabInstanceURL: "",
 	}
 }
 
