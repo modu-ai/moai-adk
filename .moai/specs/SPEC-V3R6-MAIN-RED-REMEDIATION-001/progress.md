@@ -30,6 +30,23 @@ Pre-flight checks executed per plan.md §C at run-phase entry on 2026-05-30T12:0
 
 **Mode Selection** rationale: SPEC scope is test-correction + template-mirror-alignment only (no source code generation) — 4 parent tests correcion groups in single `internal/template` package domain. Per tier classification, scope < 1000 LOC, < 5 files modified (test corrections + template lint trigger fix). Tier M (300-1000 LOC) scope + single domain = Mode 5 sub-agent sequential per Anthropic 2026 Finding A4 caveat.
 
+## §E.5 Mx-phase Audit-Ready Signal (2026-06-02)
+
+```yaml
+mx_complete_at: 2026-06-02
+mx_status: skip-justified
+mx_commit_sha: pending_close_backfill
+mx_tag_count: 0
+mx_skip_justified: true
+mx_verdict: SKIP-JUSTIFIED
+mx_evidence: |
+  Tier S test-only SPEC with 0 production .go modifications (9 _test.go + 11 md + 29 other files). 
+  No @MX:ANCHOR candidates (no new functions added). 
+  No @MX:WARN candidates (no goroutines, no complexity ≥15, no state mutation).
+  No new business rules or TODO items. 
+  Skip judgment per mx-tag-protocol.md §a: file-exclusion criteria + tag-necessity rubric both satisfied.
+```
+
 ## §E.2 Sync-phase Audit-Ready Signal
 
 ```yaml

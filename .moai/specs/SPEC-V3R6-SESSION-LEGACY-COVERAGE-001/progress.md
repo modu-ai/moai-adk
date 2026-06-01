@@ -296,6 +296,24 @@ canary_compliance_check:
 | Mx Step C judgment | SKIP-ELIGIBLE | Per mx-tag-protocol.md §a: 0 production .go, 4 _test.go characterization only, no new dangerous patterns, subagent boundary preserved (C-HRA-008 PASS) |
 | PRESERVE invariant | INTACT | 14+ entries untouched per plan.md §A.4 (3 M config / 1 M harness telemetry / 5+ ?? parallel research / 5+ ?? parallel session artifacts / .moai/specs/.moai/ spurious dir left alone) |
 
+## §F. Mx-phase Audit-Ready Signal (2026-06-02)
+
+```yaml
+mx_complete_at: 2026-06-02
+mx_status: skip-justified
+mx_commit_sha: pending_close_backfill
+mx_tag_count: 0
+mx_skip_justified: true
+mx_verdict: SKIP-JUSTIFIED
+mx_evidence: |
+  Tier S test-only SPEC with 0 production .go modifications (4 _test.go files modified, 
+  1 NEW hydrate_test.go + 3 EXTEND). Test-only code is characterization by definition. 
+  No new functions added to production code (0 candidates for @MX:ANCHOR). 
+  No new goroutines, complexity ≥15, or state mutation (0 candidates for @MX:WARN). 
+  No new business rules or TODO items (0 candidates for @MX:NOTE/@MX:TODO). 
+  Subagent boundary preserved (C-HRA-008 PASS). Skip judgment per mx-tag-protocol.md §a.
+```
+
 ## §D. Cross-references
 
 - spec.md — canonical SSOT (REQ-SLCO-001..008 anchored).

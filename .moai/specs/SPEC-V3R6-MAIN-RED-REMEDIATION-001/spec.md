@@ -2,9 +2,9 @@
 id: SPEC-V3R6-MAIN-RED-REMEDIATION-001
 title: "internal/template main-RED 4-group 일괄 해소 — main green 복구"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-05-30
-updated: 2026-05-30
+updated: 2026-06-02
 author: manager-spec
 priority: P1
 phase: "v3.0.0"
