@@ -36,6 +36,28 @@
 | Secured | PASS — no auth/secrets/security-critical code touched |
 | Trackable | PASS — commits trace each milestone; ac.md traces reqs |
 
+## §E.5 — Mx-phase Audit-Ready Signal
+
+### mx_commit_sha
+
+`(this commit — backfill pending)` — 4-phase close commit; backfilled per chicken-and-egg pattern (placeholder replaced with the actual close commit SHA in the immediately following backfill commit).
+
+### 4-Phase Lifecycle Close
+
+- Phase 1 (plan): manager-spec artifacts (spec/plan/acceptance, draft) — plan-auditor PASS 0.88 + SHOULD-FIX D-1/D-2/D-3 resolved
+- Phase 2 (run): commit `b188cdc1f` — comma-ok+Skip (FLAKY-1) + 5s→60s SLA mirror (FLAKY-2), 7/7 AC PASS, status draft → in-progress
+- Phase 3 (sync): commit `c81dc81b1` (+ sync_sha backfill `0488a4851`) — CHANGELOG + progress.md §E + status in-progress → implemented
+- Phase 3.5 (cleanup): commit `cda2b89af` — dev-only cc-update research file untrack + .gitignore guard (CLAUDE.local.md §21)
+- Phase 4 (Mx): this commit — status implemented → completed + §E.5 audit-ready signal
+
+### Close Verification
+
+- Two target packages green (`go test -count=2 ./internal/lsp/subprocess/ ./internal/hook/quality/`)
+- Production byte-identity preserved: `supervisor.go` / `internal/lsp/core/client.go` / `gate.go` unchanged vs HEAD (AC-CFS2-006 cardinal invariant)
+- 7/7 AC PASS (run-phase), zero debt
+- Root cause: contention-driven TEST-ARTIFACT (empirical 7/40 reproduction + 3-skeptic adversarial workflow verification; production code correct)
+- Out of scope: 3rd residual flaky (`internal/hook/wrapper_test.go` TestHookWrapper_ValidJSON/MoaiBinaryFallback, same ~5.01s signature) — future STABILIZE-003 candidate
+
 ## §F — Sync Artifacts Generated
 
 - CHANGELOG.md entry (Fixed section): 2-flake summary with Tier S, 7/7 AC PASS, empirical 7/40 reproduction + adversarial root-cause, TEST-ARTIFACT classification

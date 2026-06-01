@@ -2,7 +2,7 @@
 id: SPEC-V3R6-CI-FLAKY-STABILIZE-002
 title: "CI Flaky Test Stabilization — supervisor Watch timeout + quality-gate dotnet timeout (contention-driven)"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-06-01
 updated: 2026-06-01
 author: manager-spec
