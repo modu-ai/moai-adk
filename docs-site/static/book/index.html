@@ -22,6 +22,9 @@
 <meta property="og:title" content="클로드 코드로 시작하는 실전 에이전틱 코딩">
 <meta property="og:description" content="바이브 코딩의 끝, 하네스 엔지니어링의 시작. 클로드 코드와 MoAI-ADK로 AI 개발팀을 지휘하는 실전 에이전틱 코딩. 488쪽 · 추천사 9인 · 독자 평점 4.9.">
 <meta property="og:image" content="https://adk.mo.ai.kr/book/assets/book_cover.png">
+<meta property="og:image:width" content="1475">
+<meta property="og:image:height" content="1920">
+<meta property="og:image:alt" content="클로드 코드로 시작하는 실전 에이전틱 코딩 표지">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:site_name" content="더타이즈 (THE TIES)">
 <meta property="book:author" content="Goos Kim">
@@ -33,6 +36,7 @@
 <meta name="twitter:title" content="클로드 코드로 시작하는 실전 에이전틱 코딩">
 <meta name="twitter:description" content="클로드 코드와 MoAI-ADK로 AI 개발팀을 지휘하는 실전 에이전틱 코딩. 488쪽 · 추천사 9인.">
 <meta name="twitter:image" content="https://adk.mo.ai.kr/book/assets/book_cover.png">
+<meta name="twitter:image:alt" content="클로드 코드로 시작하는 실전 에이전틱 코딩 표지">
 <style>
 /* ─── fonts ─────────────────────────────────────────── */
 @font-face{font-family:"Pretendard";src:url("/book/fonts/Pretendard-Regular.otf") format("opentype");font-weight:400;font-display:swap}
@@ -214,7 +218,7 @@ h1,h2,h3,h4{font-family:var(--ko);font-weight:700;letter-spacing:-.02em;line-hei
 .benefit-list li{list-style:none;display:grid;grid-template-columns:clamp(56px,7vw,110px) 1fr;gap:clamp(20px,2.5vw,44px);padding:clamp(28px,3.6vw,58px) clamp(22px,3vw,48px);border-top:1.5px solid var(--ink);align-items:start}
 .benefit-list li:first-child{border-top:0}
 .benefit-list .bn{font-family:var(--en);font-weight:800;font-size:clamp(36px,5.4vw,76px);line-height:1;color:var(--accent)}
-.benefit-list h4{font-size:clamp(20px,2.6vw,38px);line-height:1.2;letter-spacing:-.015em;color:var(--ink-dark);margin-bottom:clamp(10px,1.2vw,18px);font-weight:700}
+.benefit-list h3{font-size:clamp(20px,2.6vw,38px);line-height:1.2;letter-spacing:-.015em;color:var(--ink-dark);margin-bottom:clamp(10px,1.2vw,18px);font-weight:700}
 .benefit-list p{font-size:clamp(16px,1.85vw,26px);line-height:1.55;color:var(--sub)}
 .bonus{margin-top:clamp(40px,5vw,80px);background:var(--ink-dark);color:var(--cream);border-radius:8px;padding:clamp(40px,5vw,90px)}
 .bonus .row{display:flex;align-items:center;gap:clamp(18px,2vw,40px);margin-bottom:clamp(20px,2vw,36px)}
@@ -328,6 +332,9 @@ footer.foot .meta{font-family:var(--mono);font-weight:700;font-size:clamp(13px,1
 /* ─── tiny utilities ────────────────────────────────── */
 .spacer{height:clamp(24px,3vw,48px)}
 ul,ol{padding:0;margin:0}
+
+/* ─── reduced motion ────────────────────────────────── */
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{transition:none !important;animation:none !important;scroll-behavior:auto !important}}
 </style>
 </head>
 <body data-screen-label="Detail Page">
@@ -394,7 +401,7 @@ ul,ol{padding:0;margin:0}
       <div class="lbl before">Before — 바이브 코딩</div>
       <p>바이브 코딩에 기댄 프로젝트들이 줄줄이 멈춰 섰다. 맥락은 끊기고, 같은 프롬프트가 매번 다른 답을 내놓았고, 결국 코드는 처음부터 다시 짜야 했다.</p>
     </div>
-    <div class="story-divider"><span class="arrow">↓</span></div>
+    <div class="story-divider"><span class="arrow" aria-hidden="true">↓</span></div>
     <div class="story-block">
       <div class="lbl after">After — MoAI-ADK</div>
       <p>그렇게 태어난 오픈소스가 에이전틱 코딩 하네스 MoAI-ADK. 이 책은 그 설계 과정과 운영 노하우, 클로드 코드 위에서 하네스를 운용하는 방법을 한 권에 정리했다.</p>
@@ -465,19 +472,19 @@ ul,ol{padding:0;margin:0}
     </div>
 
     <figure class="testimonial">
-      <span class="qmk">"</span>
+      <span class="qmk" aria-hidden="true">"</span>
       <div class="body">단순히 '쓰는' 수준에 머물 것인가, 나만의 하네스를 구축할 것인가. 이 책은 바로 그 차이를 만들어 줍니다.</div>
       <div class="meta"><strong>테디노트</strong> · 유튜브·랭체인 앰배서더</div>
     </figure>
 
     <figure class="testimonial">
-      <span class="qmk">"</span>
+      <span class="qmk" aria-hidden="true">"</span>
       <div class="body">국내 최고의 바이브 코더가 쓴, AI 에이전트 해부학.</div>
       <div class="meta"><strong>김태영</strong> · 인공지능팩토리 CEO, 마이크로소프트 R&amp;D AI MVP</div>
     </figure>
 
     <figure class="testimonial">
-      <span class="qmk">"</span>
+      <span class="qmk" aria-hidden="true">"</span>
       <div class="body">AI 코딩 분야의 '수학의 정석' — 원리부터 실무까지 꿰뚫는 필독서.</div>
       <div class="meta"><strong>채승엽</strong> · 팝콘사 대표, 자동차 도메인 AX 리더</div>
     </figure>
@@ -504,7 +511,7 @@ ul,ol{padding:0;margin:0}
     </div>
 
     <div class="author-quote">
-      <span class="qmk">"</span>
+      <span class="qmk" aria-hidden="true">"</span>
       <p>소리바다·파일바다의 대용량 파일 시스템 개발로 시작해 위메프, 태국·한국에서 거위날다(FlyGoose Thailand)를 창업했습니다. 7년 만에 거위는 끝내 날개를 펴지 못하고 추락했고, 그 7년의 개발 공백을 에이전틱 AI로 메웠습니다. 지금은 '모두의 AI' 공장장으로 누구나 쓸 수 있는 오픈소스를 만들고, 노하우를 온라인에 나누는 반세기 개발자 아저씨입니다. 주말엔 가끔 DJ 부스에 섭니다.</p>
     </div>
   </div>
@@ -517,12 +524,12 @@ ul,ol{padding:0;margin:0}
     <h2 class="h-section">이 책으로 얻는<br>6가지.</h2>
 
     <ol class="benefit-list">
-      <li><span class="bn">1</span><div><h4>하네스 엔지니어링 심층 분석</h4><p>AI 시대의 새로운 일하는 방식. 코더에서 오케스트레이터로.</p></div></li>
-      <li><span class="bn">2</span><div><h4>재현 가능한 품질</h4><p>TDD · DDD · TRUST-5 게이트로 AI 코드의 비결정성을 손으로 막지 않아도 자동 통제.</p></div></li>
-      <li><span class="bn">3</span><div><h4>기존 코드 보호</h4><p>plan-run-sync 파이프라인이 멀쩡한 코드까지 갈아엎지 않도록 보호.</p></div></li>
-      <li><span class="bn">4</span><div><h4>나만의 가상 개발팀</h4><p>서브에이전트 · 에이전트 팀 · MCP로 1인 개발자도 팀 단위로 일하는 워크플로 구축.</p></div></li>
-      <li><span class="bn">5</span><div><h4>오픈소스 그대로 활용</h4><p>MoAI-ADK는 Copyleft 라이선스. 회사 프로젝트에도, 개인 작업에도 그대로 들고 갈 수 있다.</p></div></li>
-      <li><span class="bn">6</span><div><h4>다섯 가지 확장 도구</h4><p>스킬·훅·MCP·서브에이전트·출력 인터페이스. 클로드 코드의 다섯 가지 확장 도구를 실전 예제로 익힌다.</p></div></li>
+      <li><span class="bn">1</span><div><h3>하네스 엔지니어링 심층 분석</h3><p>AI 시대의 새로운 일하는 방식. 코더에서 오케스트레이터로.</p></div></li>
+      <li><span class="bn">2</span><div><h3>재현 가능한 품질</h3><p>TDD · DDD · TRUST-5 게이트로 AI 코드의 비결정성을 손으로 막지 않아도 자동 통제.</p></div></li>
+      <li><span class="bn">3</span><div><h3>기존 코드 보호</h3><p>plan-run-sync 파이프라인이 멀쩡한 코드까지 갈아엎지 않도록 보호.</p></div></li>
+      <li><span class="bn">4</span><div><h3>나만의 가상 개발팀</h3><p>서브에이전트 · 에이전트 팀 · MCP로 1인 개발자도 팀 단위로 일하는 워크플로 구축.</p></div></li>
+      <li><span class="bn">5</span><div><h3>오픈소스 그대로 활용</h3><p>MoAI-ADK는 Copyleft 라이선스. 회사 프로젝트에도, 개인 작업에도 그대로 들고 갈 수 있다.</p></div></li>
+      <li><span class="bn">6</span><div><h3>다섯 가지 확장 도구</h3><p>스킬·훅·MCP·서브에이전트·출력 인터페이스. 클로드 코드의 다섯 가지 확장 도구를 실전 예제로 익힌다.</p></div></li>
     </ol>
 
     <aside class="bonus">
@@ -592,14 +599,14 @@ ul,ol{padding:0;margin:0}
     </div>
 
     <div class="pipeline">
-      <div class="h"><span class="star">★</span>PLAN-RUN-SYNC PIPELINE</div>
+      <div class="h"><span class="star" aria-hidden="true">★</span>PLAN-RUN-SYNC PIPELINE</div>
       <div class="pipes">
         <span class="pbox hot">PROJECT</span>
-        <span class="arrow">→</span>
+        <span class="arrow" aria-hidden="true">→</span>
         <span class="pbox hot">PLAN</span>
-        <span class="arrow">→</span>
+        <span class="arrow" aria-hidden="true">→</span>
         <span class="pbox hot">RUN</span>
-        <span class="arrow">→</span>
+        <span class="arrow" aria-hidden="true">→</span>
         <span class="pbox hot">SYNC</span>
       </div>
     </div>
@@ -697,7 +704,7 @@ ul,ol{padding:0;margin:0}
   <div class="wrap">
     <div class="eyebrow">12 · Reviews</div>
     <div class="rating-head">
-      <div class="rh-stars">★★★★★</div>
+      <div class="rh-stars" role="img" aria-label="별점 5점 만점에 4.9점">★★★★★</div>
       <div class="rh-score">4.9<small> / 5.0</small></div>
       <div class="rh-sub">알라딘 · YES24 · 교보문고 독자 리뷰</div>
       <div class="rh-stores"><span>★ 알라딘</span><span>★ YES24</span><span>★ 교보문고</span></div>
@@ -785,21 +792,21 @@ ul,ol{padding:0;margin:0}
         <div class="label">01 · Online Bookstore</div>
         <div class="store">Aladin</div>
         <div class="ko">알라딘에서 구매</div>
-        <div class="arrow-row"><span>구매하기</span><span class="ico">→</span></div>
+        <div class="arrow-row"><span>구매하기</span><span class="ico" aria-hidden="true">→</span></div>
       </a>
 
       <a class="buy-card" href="https://product.kyobobook.co.kr/detail/S000219929026" target="_blank" rel="noopener">
         <div class="label">02 · Online Bookstore</div>
         <div class="store">Kyobo</div>
         <div class="ko">교보문고에서 구매</div>
-        <div class="arrow-row"><span>구매하기</span><span class="ico">→</span></div>
+        <div class="arrow-row"><span>구매하기</span><span class="ico" aria-hidden="true">→</span></div>
       </a>
 
       <a class="buy-card" href="https://www.yes24.com/product/goods/189211422" target="_blank" rel="noopener">
         <div class="label">03 · Online Bookstore</div>
         <div class="store">YES24</div>
         <div class="ko">예스24에서 구매</div>
-        <div class="arrow-row"><span>구매하기</span><span class="ico">→</span></div>
+        <div class="arrow-row"><span>구매하기</span><span class="ico" aria-hidden="true">→</span></div>
       </a>
     </div>
 
@@ -867,7 +874,7 @@ ul,ol{padding:0;margin:0}
           "datePublished": "2026-05-28",
           "reviewRating": {"@type": "Rating", "ratingValue": "5", "bestRating": "5"},
           "name": "개발자의 가치는 어디로 이동하는가",
-          "reviewBody": "AI라는 강력한 크루를 이끄는 선장이 되는 방법을 알려주는 최고의 지침서다. 내 업무와 서비스에 진짜 일하는 AI 에이전트를 도입해 생산성을 극대화하고 싶은 모든 IT 전문가에게 추천한다.",
+          "reviewBody": "AI라는 강력한 크루를 이끄는 선장이 되는 방법을 알려주는 최고의 지침서다.",
           "publisher": {"@type": "Organization", "name": "교보문고"}
         },
         {
@@ -929,6 +936,11 @@ ul,ol{padding:0;margin:0}
           "@type": "Question",
           "name": "팀·회사에 도입하기에 적합한가요?",
           "acceptedAnswer": {"@type": "Answer", "text": "TRUST-5 품질 게이트, plan-run-sync 워크플로, 에이전트 팀 구조 모두 엔터프라이즈를 전제로 설계됐습니다."}
+        },
+        {
+          "@type": "Question",
+          "name": "ChatGPT·Cursor가 아닌 클로드 코드만 다뤄도 충분한가요?",
+          "acceptedAnswer": {"@type": "Answer", "text": "방법론 자체는 도구를 가리지 않습니다. 책에서는 클로드 코드를 축으로 GLM-5(부록 A-5), 매니지드 에이전트(부록 A-6)까지 다루기 때문에 다른 도구로 옮기는 일도 어렵지 않습니다."}
         }
       ]
     }
