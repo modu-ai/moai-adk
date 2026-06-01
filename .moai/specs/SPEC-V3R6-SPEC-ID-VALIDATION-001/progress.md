@@ -4,10 +4,10 @@
 
 | Phase | Status | Started | Completed | Commit SHA |
 |-------|--------|---------|-----------|------------|
-| Plan | audit-ready | 2026-05-24 | 2026-05-24 | TBD (plan-phase commit) |
-| Run | pending | TBD | TBD | TBD |
-| Sync | pending | TBD | TBD | TBD |
-| Mx | pending | TBD | TBD | TBD |
+| Plan | completed | 2026-05-24 | 2026-05-24 | `ee06d7fae` |
+| Run | completed | 2026-05-24 | 2026-05-24 | `0e103eacc` |
+| Sync | completed | 2026-05-24 | 2026-05-24 | `8b75ebbb3` |
+| Mx | completed (EVALUATE-PASS) | 2026-05-24 | 2026-06-02 | `6b5c7f0b4` (status implemented→completed backfilled 2026-06-02) |
 
 ## §B. Plan-Phase Evidence [iter-2 updated]
 
@@ -120,7 +120,7 @@ Filled during Mx-phase post-judge by orchestrator (session cd8d8946):
 mx_complete_at: 2026-05-24T21:30:00Z
 mx_status: EVALUATE-PASS (1 .go file + 1 .yaml file scope; @MX tag delta = 0 across all modified files; structural-only changes per TMD-001 precedent)
 mx_step_c_verdict: EVALUATE-PASS (NOT SKIP — .go file count > 0 strict condition unmet)
-mx_commit_sha: <this commit SHA, populated post-push>
+mx_commit_sha: 6b5c7f0b4b1fc6151c4b62ab81afeb7ff54902d6
 multi_session_coordination_note: |
   SIV-001 4-phase lifecycle was distributed across multiple orchestrator sessions:
     - Earlier session: plan (ee06d7fae) + run (0e103eacc) + sync (8b75ebbb3)
@@ -133,7 +133,7 @@ multi_session_coordination_note: |
 ```
 lifecycle_close_at: 2026-05-24T21:30:00Z
 final_status: completed (4-phase lifecycle closed: plan + run + sync + Mx EVALUATE-PASS)
-total_commits: 4 (plan ee06d7fae + run 0e103eacc + sync 8b75ebbb3 + Mx-chore <this commit>)
+total_commits: 4 (plan ee06d7fae + run 0e103eacc + sync 8b75ebbb3 + Mx-chore 6b5c7f0b4)
 total_push_count: 4
 sprint_position: Sprint 8 P1 entry SPEC — L51 7th regex pre-write self-check protocol embedded; manager-spec body canonical for SPEC ID validation. Tier S minimal 1-pass cohort 8/8 (IVB/SARM/TMC/TMD/HCW/ARR/**SIV**) — 100% sustained.
 ```

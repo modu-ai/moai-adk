@@ -2,9 +2,9 @@
 id: SPEC-V3R6-SPEC-LINT-CLEANUP-001
 title: "spec-lint MissingExclusions baseline cleanup — Progress Tracker"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-05-25
-updated: 2026-05-25
+updated: 2026-06-02
 author: manager-spec
 priority: P2
 phase: "v3.0.0"
@@ -14,9 +14,9 @@ tags: "spec-lint, baseline-cleanup, progress, tier-s"
 plan_status: audit-ready
 run_status: audit-ready
 sync_status: implemented
-mx_status: implemented
+mx_status: completed
 sync_commit_sha: "0d777471c21f36f827752608ea6b7bcceea09fd8"
-mx_commit_sha: "pending_post_commit"
+mx_commit_sha: "a315928fd5984c203b167d29f60873ed6873a59f"
 ---
 
 # Progress Tracker — SPEC-V3R6-SPEC-LINT-CLEANUP-001
@@ -29,7 +29,7 @@ mx_commit_sha: "pending_post_commit"
 | Plan Audit | iter-1 PASS 0.917 (self-audit, skip-eligible) | 2026-05-25 | 2026-05-25 | `8630b40d0` |
 | Run | audit-ready | 2026-05-25 | 2026-05-25 | `d1558e092` |
 | Sync | implemented | 2026-05-25 | 2026-05-25 | `0d777471c` (+ backfill `e5e7e6dad`) |
-| Mx (Step C) | SKIP-judge (implemented) | 2026-05-25 | 2026-05-25 | `pending_post_commit` (self-ref backfilled next chore if needed) |
+| Mx (Step C) | completed (SKIP) | 2026-05-25 | 2026-05-25 | `a315928fd` (status implemented→completed backfilled 2026-06-02) |
 
 ## §B. Audit-Ready Signal (plan-phase)
 
@@ -177,7 +177,7 @@ Run-phase commits follow Conventional Commits format with SPEC-V3R6-SPEC-LINT-CL
 
 ## §F. Mx-phase Audit-Ready Signal
 
-- **mx_commit_sha**: `pending_post_commit` (self-ref backfilled next chore if needed, per HARNESS-NAMESPACE-CLEANUP-001 4485c772f 4-phase close precedent)
+- **mx_commit_sha**: `a315928fd5984c203b167d29f60873ed6873a59f` (backfilled 2026-06-02 — self-ref to Mx chore commit; status implemented→completed transition)
 - **mx_date**: 2026-05-25
 - **Verdict**: **EVALUATE-SKIP** per `mx-tag-protocol.md` §a
 - **Rationale**: Run-phase + sync-phase 전 변경이 markdown only (10 .md files, 0 .go files involved). `@MX:NOTE` / `@MX:WARN` / `@MX:ANCHOR` / `@MX:TODO` delta = 0. mx-tag-protocol.md §a Step C judgment: "0 production .go delta → SKIP eligible". Test files excluded from MX scope.
@@ -187,13 +187,13 @@ Run-phase commits follow Conventional Commits format with SPEC-V3R6-SPEC-LINT-CL
   - plan: `8630b40d0` (iter-1 PASS 0.917 self-audit, skip-eligible)
   - run:  `d1558e092` (M1 1-pass, 7/7 AC PASS, AC-SLC-006 PASS-WITH-NOTE per acceptance.md §D.4, race-absorbed HARNESS-NAMESPACE-CLEANUP-001 parallel session 8 NEW items 절대 흡수 0 per L46)
   - sync: `0d777471c` (CHANGELOG NEW + 4 frontmatter status implemented + B12 3/3 PASS) + `e5e7e6dad` (sync_commit_sha backfill for spec/plan/acceptance, missed progress.md frontmatter — this commit fixes it)
-  - mx:   this commit (SKIP verdict, no production code changes, progress.md frontmatter + §A table + §F backfill)
+  - mx:   `a315928fd` (SKIP verdict, no production code changes, progress.md frontmatter + §A table + §F backfill; status→completed backfilled 2026-06-02)
 - **B12 final self-test (4-phase close)**:
   - CHANGELOG count: 1 entry referencing SPEC-V3R6-SPEC-LINT-CLEANUP-001 ✓
   - AC count: 7 mandatory ACs (AC-SLC-001..007) per acceptance.md ✓
   - Frontmatter status (all 4 artifacts): `implemented` ✓
   - Phase-status frontmatter (progress.md): plan/run/sync/mx all set ✓
-  - Phase commit_sha (progress.md): plan/sync filled, mx pending_post_commit (per precedent), run via §A table ✓
+  - Phase commit_sha (progress.md): plan/sync/mx all filled (mx `a315928fd` backfilled 2026-06-02), run via §A table ✓
 
 ## §G. Cross-references
 

@@ -2,9 +2,9 @@
 id: SPEC-V3R6-SKILLS-AUDIT-RUN-MD-001
 title: Progress Tracker — skills_audit_test.go solo run.md path update
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-05-24
-updated: 2026-05-24
+updated: 2026-06-02
 author: manager-spec
 priority: P3
 phase: v3.0.0
@@ -22,7 +22,7 @@ tags: "template-mirror-drift, test-fix, workflow-split"
 | Plan | completed | ea798aec2 | manager-spec Tier S 4 artifacts + plan-auditor iter-2 PASS 0.89 |
 | Run | completed | 965d661f0 | M1 single-milestone 2-line edit applied; 5/5 AC PASS (4 PASS + AC-SARM-003 PASS-WITH-DEBT: 10 pre-existing TEMPLATE-MIRROR-DRIFT-001 baseline failures attributable to sibling SPECs, stash-and-rerun verified, net delta -1 cleared) |
 | Sync | completed | a56c6541d | CHANGELOG entry + 4 frontmatter status `draft → implemented` + B12 8th self-test PASS |
-| Mx | completed (SKIP-justified) | (this commit) | Step C SKIP per mx-tag-protocol §a (test-only edit triggers no @MX category); orchestrator-direct chore commit per IVB-001 precedent (d3ed4727d) |
+| Mx | completed (SKIP-justified) | 5e0dc6a9b | Step C SKIP per mx-tag-protocol §a (test-only edit triggers no @MX category); orchestrator-direct chore commit per IVB-001 precedent (d3ed4727d). Status transition implemented→completed backfilled 2026-06-02. |
 
 ## Plan-phase Evidence
 
