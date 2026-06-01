@@ -34,4 +34,4 @@ This skill orchestrates but does NOT replace existing agents. All agents referen
 
 ## Quality
 
-- `evaluator-active` — Sprint Contract evaluation (Phase 6)
+- `sync-auditor` — Sprint Contract evaluation (Phase 6)

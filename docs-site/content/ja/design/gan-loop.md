@@ -7,14 +7,14 @@ draft: false
 
 # GAN Loop — Builder-Evaluator反復
 
-GAN Loopは、**Builder**(manager-develop)と**Evaluator**(evaluator-active)が協力する反復プロセスです。設計が品質基準を満たすまで改善 → 評価 → 改善を繰り返します。
+GAN Loopは、**Builder**(manager-develop)と**Evaluator**(sync-auditor)が協力する反復プロセスです。設計が品質基準を満たすまで改善 → 評価 → 改善を繰り返します。
 
 ## プロセス概要
 
 ```mermaid
 flowchart TD
     A["設計トークン + コピー<br>入力"] --> B["manager-develop<br>コード生成<br>iteration 1"]
-    B --> C["evaluator-active<br>評価<br>点数: 0.0~1.0"]
+    B --> C["sync-auditor<br>評価<br>点数: 0.0~1.0"]
     C --> D{点数 >= 0.75?}
     D -->|YES| E["PASS<br>学習フェーズ進入"]
     D -->|NO| F["FAIL<br>フィードバック生成"]
@@ -38,7 +38,7 @@ flowchart TD
 
 ### ステップ2: Evaluator 評価
 
-**evaluator-active**:
+**sync-auditor**:
 - Sprint Contract読み込み(受け入れ基準)
 - 生成コード分析
 - 4次元スコア計算(各0.0~1.0)

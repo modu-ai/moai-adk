@@ -100,7 +100,7 @@ MoAI-ADK 根据 Claude Code 订阅计划为 8 个代理分配最优的 AI 模型
 | 代理 | High | Medium | Low |
 |------|------|--------|-----|
 | plan-auditor | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| evaluator-active | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| sync-auditor | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
 | builder-harness | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 
 ### 配置方法

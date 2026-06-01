@@ -76,7 +76,7 @@ flowchart TD
 
     subgraph EVALS["Evaluator 代理"]
         PA["plan-auditor<br/>独立计划验证"]
-        EA["evaluator-active<br/>质量 4 维评分"]
+        EA["sync-auditor<br/>质量 4 维评分"]
     end
 
     subgraph BUILDERS["Builder 代理"]
@@ -127,7 +127,7 @@ Evaluator 代理执行**独立质量评估**和验证。
 | 代理 | 角色 | 使用的技能 | 主要工具 |
 |--------|------|-------------|------------|
 | `plan-auditor` | 计划阶段: 独立怀疑审计、GEARS 合规、偏见防止 | `moai-foundation-core`, `moai-foundation-thinking` | Read, Grep |
-| `evaluator-active` | 同步阶段: 4 维质量评分(功能、安全、工艺、一致性) | `moai-foundation-quality`, `moai-foundation-core` | Read, Grep, Bash |
+| `sync-auditor` | 同步阶段: 4 维质量评分(功能、安全、工艺、一致性) | `moai-foundation-quality`, `moai-foundation-core` | Read, Grep, Bash |
 
 ## 领域专长模式
 
@@ -135,7 +135,7 @@ Evaluator 代理执行**独立质量评估**和验证。
 
 - **后端**: `manager-develop` + 后端领域上下文 + `moai-domain-backend` 技能
 - **前端**: `manager-develop` + 前端领域上下文 + `moai-domain-frontend` 技能
-- **安全**: `evaluator-active` 质量门 + `moai-foundation-quality` + OWASP 参考技能
+- **安全**: `sync-auditor` 质量门 + `moai-foundation-quality` + OWASP 参考技能
 - **数据库**: `moai-domain-database` 技能 + `manager-develop`
 - **其他领域**: 特定语言技能 + `manager-develop`
 
@@ -183,7 +183,7 @@ flowchart TD
 | API 开发 | manager-develop(后端上下文) | `/moai run SPEC-XXX` with 后端 SPEC |
 | UI 实现 | manager-develop(前端上下文) | `/moai run SPEC-XXX` with 前端 SPEC |
 | 测试编写 | manager-develop(TDD 模式) | `/moai run SPEC-XXX` with 测试优先 SPEC |
-| 安全审查 | evaluator-active | 同步阶段的独立质量验证 |
+| 安全审查 | sync-auditor | 同步阶段的独立质量验证 |
 | SPEC 创建 | manager-spec | `/moai plan "功能描述"` |
 | 实现 | manager-develop | `/moai run SPEC-XXX`(自动选择 DDD/TDD) |
 | 文档生成 | manager-docs | `/moai sync SPEC-XXX` |
@@ -203,7 +203,7 @@ flowchart TD
 ├── manager-docs.md
 ├── manager-git.md
 ├── plan-auditor.md
-├── evaluator-active.md
+├── sync-auditor.md
 ├── builder-harness.md
 └── Explore                # Anthropic 内置(无文件)
 ```
@@ -259,7 +259,7 @@ model: inherit
 # 1. manager-spec 创建 SPEC
 # 2. plan-auditor 验证 SPEC 完整性
 # 3. manager-develop 使用 DDD/TDD 实现
-# 4. evaluator-active 评分质量
+# 4. sync-auditor 评分质量
 # 5. manager-docs 生成文档
 > /moai plan "认证系统"
 > /moai run SPEC-AUTH-001
@@ -285,7 +285,7 @@ flowchart TD
     A["阶段 1: 计划<br/>manager-spec"] --> B["阶段 1b: 审计<br/>plan-auditor"]
     B --> C["阶段 2: 运行<br/>manager-develop<br/>(DDD 或 TDD)"]
     C --> D["阶段 3: 同步<br/>manager-docs"]
-    D --> E["阶段 4: Mx<br/>evaluator-active"]
+    D --> E["阶段 4: Mx<br/>sync-auditor"]
     E --> F["阶段 4 关闭<br/>manager-docs"]
 ```
 
@@ -402,5 +402,5 @@ workflow:
 - [SPEC 基于开发](/core-concepts/spec-based-dev) - SPEC 工作流详情
 
 {{< callout type="info" >}}
-**提示**: 您不需要直接指定代理。只需向 MoAI 提出自然语言请求,它会自动选择最佳代理。说"创建 API"会自动调用带后端上下文的 `manager-develop`,说"审查此代码"会自动调用 `evaluator-active`。
+**提示**: 您不需要直接指定代理。只需向 MoAI 提出自然语言请求,它会自动选择最佳代理。说"创建 API"会自动调用带后端上下文的 `manager-develop`,说"审查此代码"会自动调用 `sync-auditor`。
 {{< /callout >}}

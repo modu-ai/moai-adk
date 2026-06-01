@@ -273,7 +273,7 @@ flowchart TD
 | **manager-develop** | Backend fixes (Level 1-2) |
 | **manager-develop** | Frontend fixes (Level 1-2) |
 | **manager-develop** | Logic error fixes (Level 3-4) |
-| **evaluator-active** | Quality verification | Verify fix results |
+| **sync-auditor** | Quality verification | Verify fix results |
 
 ## Practical Examples
 

@@ -149,7 +149,7 @@ flowchart TD
     S --> T["同步架构文档"]
     T --> U["更新 SPEC 状态"]
 
-    U --> V["调用 evaluator-active<br/>质量验证"]
+    U --> V["调用 sync-auditor<br/>质量验证"]
     V --> W{"质量门?"}
     W -->|FAIL| G
     W -->|PASS| X["Phase 3<br/>Git 操作"]
@@ -204,7 +204,7 @@ flowchart TD
 
 **Step 4 - 代码审查:**
 
-**evaluator-active** subagent 执行 TRUST 5 质量验证并生成综合报告。
+**sync-auditor** subagent 执行 TRUST 5 质量验证并生成综合报告。
 
 **Step 5 - 生成质量报告:**
 
@@ -242,7 +242,7 @@ flowchart TD
 
 **Step 3 - 同步后质量验证:**
 
-**evaluator-active** subagent 根据 TRUST 5 标准验证同步质量:
+**sync-auditor** subagent 根据 TRUST 5 标准验证同步质量:
 
 - 所有项目链接完成
 - 文档格式良好

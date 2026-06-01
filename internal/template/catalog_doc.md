@@ -130,7 +130,7 @@ cat, err := template.LoadCatalog(embeddedRaw)
 
 // Look up a specific skill or agent by name.
 entry, ok := cat.LookupSkill("moai-domain-backend")
-entry, ok := cat.LookupAgent("evaluator-active")
+entry, ok := cat.LookupAgent("sync-auditor")
 
 // Flat list of all 65 entries.
 all := cat.AllEntries()

@@ -167,7 +167,7 @@ MoAI-ADK は 8 の専門 AI エージェントと 31 のスキルを提供し、
 | カテゴリ | 数 | 主なエージェント |
 |----------|-------|------------|
 | **Manager** | 4 | manager-spec, manager-develop, manager-docs, manager-git |
-| **Evaluator** | 2 | plan-auditor, evaluator-active |
+| **Evaluator** | 2 | plan-auditor, sync-auditor |
 | **Builder** | 1 | builder-harness |
 | **Explore** | 1 | Anthropic 組み込み (読み取り専用コード分析) |
 
@@ -190,7 +190,7 @@ Plus $20 プランには Opus アクセスが含まれていません。**Low** 
 | エージェント | High | Medium | Low |
 |--------------|------|--------|-----|
 | manager-spec, plan-auditor | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| manager-develop, evaluator-active | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| manager-develop, sync-auditor | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
 | manager-docs, manager-git, builder-harness | 🟡 haiku → 🔵 sonnet | 🟡 haiku | 🟡 haiku |
 
 ### デュアル実行モード

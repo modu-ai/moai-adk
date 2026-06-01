@@ -7,7 +7,7 @@ package harness
 // @MX:WARN: [AUTO] FROZEN-zone constraint; addition of 5th dimension requires CON-002 amendment per zone-registry CONST-V3R2-154
 // @MX:REASON: design-constitution §12 Mechanism 3 + SPEC-V3R2-HRN-003 REQ-001 — Dimension enum is FROZEN at {Functionality, Security, Craft, Consistency} for v3.0
 
-// Dimension is the 4-dimensional scoring enum for evaluator-active.
+// Dimension is the 4-dimensional scoring enum for sync-auditor.
 // FROZEN: holds exactly four values throughout v3.0.
 // REQ-HRN-003-001.
 type Dimension int

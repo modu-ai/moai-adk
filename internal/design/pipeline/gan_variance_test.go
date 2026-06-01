@@ -19,7 +19,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/design/dtcg"
 )
 
-// GANScore: the 4-dimension score struct returned by the GAN loop evaluator (evaluator-active).
+// GANScore: the 4-dimension score struct returned by the GAN loop evaluator (sync-auditor).
 // Reflects the design constitution §11 4-dimension scoring (Design Quality, Originality,
 // Completeness, Functionality).
 type GANScore struct {

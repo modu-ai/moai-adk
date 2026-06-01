@@ -61,13 +61,13 @@ Agents involved: `builder-harness` (artifact_type=agent or artifact_type=skill) 
 
 This skill fills the skeleton with domain-specific content:
 
-1. Generate agent definitions (`.claude/agents/harness/*.md`) referencing existing MoAI agents: `manager-spec`, `manager-strategy`, `manager-develop` (`cycle_type=tdd` or `cycle_type=ddd` per `quality.yaml` `development_mode`), `manager-quality` (diagnostic-mode replaces former expert-debug), `manager-docs`, `manager-git`, `manager-brain`, `expert-backend`, `expert-frontend`, `expert-security`, `expert-refactoring`, `expert-performance`, `expert-devops`, `builder-harness` (use `artifact_type=agent|skill|plugin`), `evaluator-active`, `plan-auditor`.
+1. Generate agent definitions (`.claude/agents/harness/*.md`) referencing existing MoAI agents: `manager-spec`, `manager-strategy`, `manager-develop` (`cycle_type=tdd` or `cycle_type=ddd` per `quality.yaml` `development_mode`), `manager-quality` (diagnostic-mode replaces former expert-debug), `manager-docs`, `manager-git`, `manager-brain`, `expert-backend`, `expert-frontend`, `expert-security`, `expert-refactoring`, `expert-performance`, `expert-devops`, `builder-harness` (use `artifact_type=agent|skill|plugin`), `sync-auditor`, `plan-auditor`.
 2. Generate domain skills (`.claude/skills/moai-harness-*/SKILL.md`) following the skill-authoring.md schema with `moai-harness-*` prefix.
 3. All artifacts are user-owned and never overwritten by `moai update`.
 
 ## Phase 6 — Evaluation
 
-`evaluator-active` runs the Sprint Contract protocol (design constitution §11.5) against generated artifacts:
+`sync-auditor` runs the Sprint Contract protocol (design constitution §11.5) against generated artifacts:
 
 - Functionality: Do agents execute their stated purpose?
 - Security: No credential leaks, safe tool permissions?

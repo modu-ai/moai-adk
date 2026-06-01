@@ -112,7 +112,7 @@ ls -la .moai/project/brand/
 `manager-develop`代理:
 1. 接收令牌和文案
 2. 生成React/Vue组件 + 样式
-3. `evaluator-active`评分(4维)
+3. `sync-auditor`评分(4维)
 4. 失败时修正迭代(最多5次)
 
 ## 设计期间编辑品牌文件

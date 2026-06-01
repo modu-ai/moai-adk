@@ -513,7 +513,7 @@ var canonicalEffortMatrix = map[string]string{
 	"expert-performance": "high",
 	"expert-refactoring": "xhigh",
 	"builder-platform":   "medium",
-	"evaluator-active":   "xhigh",
+	"sync-auditor":   "xhigh",
 	"plan-auditor":       "xhigh",
 	"researcher":         "xhigh",
 }

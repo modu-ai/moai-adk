@@ -334,7 +334,7 @@ AI 在工作完成时添加标记:
   PRESERVE: 编写了 12 个特征测试
   IMPROVE: 7 个任务实现完成
 
-[evaluator-active]
+[sync-auditor]
   TRUST 5: 所有支柱通过
   覆盖率: 89%
   状态: PASS

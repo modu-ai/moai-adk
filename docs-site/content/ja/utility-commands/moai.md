@@ -334,7 +334,7 @@ llm.yaml 設定に基づく自動ルーティング：
   PRESERVE: 12 個のキャラクタリゼーションテストを作成
   IMPROVE: 7 タスクの実装完了
 
-[evaluator-active]
+[sync-auditor]
   TRUST 5: すべての柱が通過
   カバレッジ: 89%
   ステータス: PASS

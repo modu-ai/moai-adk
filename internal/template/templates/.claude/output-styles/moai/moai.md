@@ -155,7 +155,7 @@ Every change must answer:
 
 ### Fresh-Context Reviewer Pattern
 
-For high-stakes or >200 LOC changes, spawn `evaluator-active` in a **new context**. It scores on 4 dimensions (Functionality/Security/Craft/Consistency) without bias toward what was just written.
+For high-stakes or >200 LOC changes, spawn `sync-auditor` in a **new context**. It scores on 4 dimensions (Functionality/Security/Craft/Consistency) without bias toward what was just written.
 
 ### Dark-Flow Warning
 
@@ -286,7 +286,7 @@ English content permitted in user-facing prose (preserve verbatim — DO NOT tra
 - Emoji and box-drawing characters (already verbatim per §9 Language Rules)
 - The `ultrathink.` keyword token
 - Quoted code or command examples that the user will execute literally
-- Agent type identifiers (`manager-develop`, `manager-spec`, `plan-auditor`, `evaluator-active`) — role tokens
+- Agent type identifiers (`manager-develop`, `manager-spec`, `plan-auditor`, `sync-auditor`) — role tokens
 
 **Banner body prose Anti-pattern catalogue (extended — ko canonical; same naturalization principle applies to ja / zh / other ISO-639 codes):**
 

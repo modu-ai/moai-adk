@@ -203,7 +203,7 @@ func resolveLimit(limit int) int {
 // Resolve queries @MX TAG based on Query.
 //
 // @MX:ANCHOR: [AUTO] Resolve — invariant contract of Query API entry point
-// @MX:REASON: fan_in >= 3 -- called by CLI mx_query.go, code map generation tools, evaluator (evaluator-active)
+// @MX:REASON: fan_in >= 3 -- called by CLI mx_query.go, code map generation tools, evaluator (sync-auditor)
 func (r *Resolver) Resolve(query Query) (QueryResult, error) {
 	// 1. Validate query (REQ-SPC-004-041)
 	if err := validateQuery(query); err != nil {

@@ -7,14 +7,14 @@ draft: false
 
 # GAN Loop — Builder-Evaluator Iteration
 
-The GAN Loop is an iterative process where **Builder** (manager-develop) and **Evaluator** (evaluator-active) collaborate. Design improves → evaluates → improves until quality threshold reached.
+The GAN Loop is an iterative process where **Builder** (manager-develop) and **Evaluator** (sync-auditor) collaborate. Design improves → evaluates → improves until quality threshold reached.
 
 ## Process Overview
 
 ```mermaid
 flowchart TD
     A["Design tokens + Copy<br>Input"] --> B["manager-develop<br>Generate code<br>iteration 1"]
-    B --> C["evaluator-active<br>Score<br>0.0 to 1.0"]
+    B --> C["sync-auditor<br>Score<br>0.0 to 1.0"]
     C --> D{Score >= 0.75?}
     D -->|YES| E["PASS<br>Enter learning phase"]
     D -->|NO| F["FAIL<br>Generate feedback"]
@@ -51,7 +51,7 @@ styles/
 
 ### Step 2: Evaluator Scores
 
-**evaluator-active**:
+**sync-auditor**:
 - Loads Sprint Contract (acceptance criteria)
 - Analyzes generated code
 - Calculates 4-dimensional score (each 0.0 to 1.0)
@@ -125,11 +125,11 @@ pass_conditions:
 
 ### Contract Negotiation
 
-1. **evaluator-active** proposes Contract
+1. **sync-auditor** proposes Contract
 2. **manager-develop** reviews
    - Feasibility check
    - Can request adjustments
-3. **evaluator-active** finalizes
+3. **sync-auditor** finalizes
    - Verify BRIEF compliance
    - Validate practicality
 

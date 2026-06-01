@@ -73,7 +73,7 @@ var agentEffortMap = map[string]string{
 	"manager-spec":       EffortLevelXHigh,
 	"manager-strategy":   EffortLevelXHigh,
 	"plan-auditor":       EffortLevelHigh,
-	"evaluator-active":   EffortLevelHigh,
+	"sync-auditor":   EffortLevelHigh,
 	"expert-security":    EffortLevelHigh,
 	"expert-refactoring": EffortLevelHigh,
 }

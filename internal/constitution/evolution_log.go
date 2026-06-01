@@ -84,7 +84,7 @@ func AppendEvolutionLog(path string, log *AmendmentLog) error {
 //
 // Rollback triggers:
 // - After amendment, score drops by 0.10 or more in the next SPEC evaluation
-// - evaluator-active detects regression
+// - sync-auditor detects regression
 func MarkRolledBack(path, ruleID string, reason string) error {
 	logs, err := LoadEvolutionLogs(path)
 	if err != nil {

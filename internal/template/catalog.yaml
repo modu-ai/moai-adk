@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: baf997fb327133ce141ae8abc0ae6e8c9595b858bbea924fe3f568ddffc259e8
+              hash: aebb9b17272c903c6ee3c1af41c97196bef8239b7ebc3fd0a3826b3fe39e0289
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -16,7 +16,7 @@ catalog:
             - name: moai-foundation-core
               tier: core
               path: templates/.claude/skills/moai-foundation-core/
-              hash: e56d4ab3cf3d5e87956b35793c435df822e399cbd06be732fa9f90107d063f0a
+              hash: f9c9c5d3a8fed86024064e5dc443b3f8366bd9ab02495db18e015a1ed4db9361
               version: 1.0.0
             - name: moai-foundation-quality
               tier: core
@@ -36,7 +36,7 @@ catalog:
             - name: moai-meta-harness
               tier: core
               path: templates/.claude/skills/moai-meta-harness/
-              hash: 477930e2b95c571f7579cbd14152587c23a2c1f67ea63b80653bd2de801beaa0
+              hash: ae7f5e24b8423441f3713e755be5614fa508d1252e77fbc3eba360ae6b34ff4d
               version: 1.0.0
             - name: moai-ref-git-workflow
               tier: core
@@ -99,10 +99,10 @@ catalog:
               hash: 60fac9275edd13da7ac957aba236e497aaf4ebc3d939c3167d42df11adc5cead
               version: 1.0.0
         agents:
-            - name: evaluator-active
+            - name: sync-auditor
               tier: core
-              path: templates/.claude/agents/moai/evaluator-active.md
-              hash: 4046f3d625edd96d704befbe3c957a7c0afc7713598a6ebfddad5171b0cd01dc
+              path: templates/.claude/agents/moai/sync-auditor.md
+              hash: 83bf8c1a5c5d05663242bdc4e57e329d1adceb859a74c6f2a70531b77316ccd8
               version: 1.0.0
             - name: manager-develop
               tier: core
@@ -127,7 +127,7 @@ catalog:
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
-              hash: 07d24ac25e3e8edd5de8c0e232ebfdffb615606f6a037bc63673aa50e46a9f6b
+              hash: 679fa09f9f695a854dead3521d9eb2e9304d8ed52c3d08e132af27a00e8334be
               version: 1.0.0
     optional_packs:
         backend:
@@ -174,7 +174,7 @@ catalog:
                 - name: moai-domain-copywriting
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-domain-copywriting/
-                  hash: b55d62fb1a189e1fef23a44d6d9312c5e089f039d56fc1e39b6ff97c09c689d0
+                  hash: bbfbf7abeb10ae008e801d2dcdde3c1357e976768759dde468b9ab3cc65ca77d
                   version: 1.0.0
                 - name: moai-domain-design-handoff
                   tier: optional-pack:design
@@ -189,7 +189,7 @@ catalog:
                 - name: moai-workflow-gan-loop
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-workflow-gan-loop/
-                  hash: 511dffbd4bad1c5f1ee056ad8fc95d849477eada2ea65417013bce0662027eda
+                  hash: 5a00ec61d4460b73f96e814e3b48d8940d029c7b5e3f2664ed3292675d0b89b9
                   version: 1.0.0
             agents: []
         devops:

@@ -24,7 +24,7 @@ MoAI-ADK是一个 **使Agent能够在Claude Code内通过交互进行Agent编码
 | 团队负责人 / Tech Lead | MoAI Orchestrator | 协调整体工作并委派给8个Agent |
 | 规划师 / Spec Writer | manager-spec | 将需求整理为SPEC文档 |
 | 开发者 / Engineers | manager-develop (带领域上下文) | 通过DDD/TDD实现实际代码 |
-| QA / 代码审查员 | evaluator-active | 通过4个维度验证质量 |
+| QA / 代码审查员 | sync-auditor | 通过4个维度验证质量 |
 
 ## 为什么选择MoAI-ADK？
 
@@ -243,7 +243,7 @@ flowchart TD
         M2["manager-develop\nDDD实现管理"]
         M3["manager-develop\nTDD实现管理"]
         M4["manager-docs\n文档生成"]
-        M5["evaluator-active\n质量验证"]
+        M5["sync-auditor\n质量验证"]
         M6["manager-spec\n设计策略"]
         M7["manager-docs\n项目管理"]
         M8["manager-git\nGit操作"]

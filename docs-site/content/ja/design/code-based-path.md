@@ -112,7 +112,7 @@ ls -la .moai/project/brand/
 `manager-develop`エージェント:
 1. トークンとコピー受け取り
 2. React/Vueコンポーネント + スタイル生成
-3. `evaluator-active`評価(4次元スコアリング)
+3. `sync-auditor`評価(4次元スコアリング)
 4. 不合格時は修正反復(最大5回)
 
 ## ブランドファイル修正

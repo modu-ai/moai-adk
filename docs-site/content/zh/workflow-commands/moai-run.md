@@ -136,7 +136,7 @@ flowchart TD
     Q -->|是| R["提交"]
     R --> S{"所有需求<br/>已实现?"}
     S -->|否| O
-    S -->|是| T["调用 evaluator-active"]
+    S -->|是| T["调用 sync-auditor"]
 
     Q -->|否| U["回滚"]
     U --> O
@@ -202,7 +202,7 @@ flowchart TD
 
 ### Phase 2.5: 质量验证
 
-**evaluator-active** subagent 执行 TRUST 5 验证:
+**sync-auditor** subagent 执行 TRUST 5 验证:
 
 | TRUST 5 支柱 | 验证项目                     |
 | -------------- | ------------------------------------ |

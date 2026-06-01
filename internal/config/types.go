@@ -641,7 +641,7 @@ type PlanAuditConfig struct {
 	MaxIterations int `yaml:"max_iterations"`
 	// RequireMustPass toggles must-pass enforcement.
 	RequireMustPass bool `yaml:"require_must_pass"`
-	// CrossValidateWithEvaluatorActive toggles cross-validation with evaluator-active.
+	// CrossValidateWithEvaluatorActive toggles cross-validation with sync-auditor.
 	CrossValidateWithEvaluatorActive bool `yaml:"cross_validate_with_evaluator_active"`
 }
 

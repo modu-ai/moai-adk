@@ -216,7 +216,7 @@ Harness configuration reference (harness.yaml):
 - `standard`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true
 - `thorough`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true, cross_validate_with_evaluator_active: true
 
-For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, additionally invoke evaluator-active in SPEC-review mode to cross-validate must-pass criteria. If evaluator-active disagrees with plan-auditor's PASS, treat as FAIL and trigger one additional iteration.
+For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, additionally invoke sync-auditor in SPEC-review mode to cross-validate must-pass criteria. If sync-auditor disagrees with plan-auditor's PASS, treat as FAIL and trigger one additional iteration.
 
 ### Phase 2.5: GitHub Issue Creation (Conditional, opt-in)
 

@@ -111,8 +111,8 @@ At Run phase entry, determine the pipeline depth:
 2. Apply level-specific phase configuration:
    - **minimal**: Skip phases [0, 0.6, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10]. Direct implementation only.
      Note: Phase 0.5 (Plan Audit Gate) is NEVER skipped, not even in minimal harness.
-   - **standard**: Execute all phases. evaluator-active in final-pass mode (Phase 2.8a only).
-   - **thorough**: Execute all phases. evaluator-active in per-sprint mode (Phase 2.0 + 2.8a). Sprint contract enabled.
+   - **standard**: Execute all phases. sync-auditor in final-pass mode (Phase 2.8a only).
+   - **thorough**: Execute all phases. sync-auditor in per-sprint mode (Phase 2.0 + 2.8a). Sprint contract enabled.
 3. Load SPEC context (token-efficient):
    - If `.moai/specs/SPEC-{ID}/spec-compact.md` exists: Load spec-compact.md (~30% token savings)
    - Otherwise: Load full spec.md (backward compatible)

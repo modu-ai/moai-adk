@@ -231,7 +231,7 @@ ls -la .moai/project/brand/
 `manager-develop` 에이전트가:
 1. 토큰과 카피를 받아
 2. React/Vue 컴포넌트 + 스타일 코드 생성
-3. `evaluator-active` 평가 (4차원 스코어링)
+3. `sync-auditor` 평가 (4차원 스코어링)
 4. 불합격 시 수정 반복 (최대 5회)
 
 ## 브랜드 파일 수정하기

@@ -273,7 +273,7 @@ flowchart TD
 | **manager-develop** | 后端修复 (Level 1-2) |
 | **manager-develop** | 前端修复 (Level 1-2) |
 | **manager-develop** | 逻辑错误修复 (Level 3-4) |
-| **evaluator-active** | 质量验证 | 验证修复结果 |
+| **sync-auditor** | 质量验证 | 验证修复结果 |
 
 ## 实际示例
 

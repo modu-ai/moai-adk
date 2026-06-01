@@ -100,7 +100,7 @@ The following **8 retained agents** use model assignment based on tier. The 12 a
 | Agent | High | Medium | Low |
 |-------|------|--------|-----|
 | plan-auditor | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| evaluator-active | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| sync-auditor | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
 | builder-harness | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 
 ### Configuration

@@ -336,7 +336,7 @@ Automatic routing based on llm.yaml settings:
   PRESERVE: Wrote 12 characterization tests
   IMPROVE: 7 tasks implementation complete
 
-[evaluator-active]
+[sync-auditor]
   TRUST 5: All pillars passed
   Coverage: 89%
   Status: PASS

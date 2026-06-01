@@ -49,7 +49,7 @@ The latest models tend to overengineer — extra files, unnecessary abstractions
 
 ## Code-Review Harness Note
 
-On the latest models, a review prompt that says "only report high-severity issues" / "be conservative" is followed faithfully — the model investigates just as deeply but reports fewer low-severity findings (precision up, measured recall down). For coverage, separate finding from filtering: "Report every issue including uncertain/low-severity ones; a later step will rank them. For each, include confidence and severity." This applies to MoAI's `evaluator-active` and review skills.
+On the latest models, a review prompt that says "only report high-severity issues" / "be conservative" is followed faithfully — the model investigates just as deeply but reports fewer low-severity findings (precision up, measured recall down). For coverage, separate finding from filtering: "Report every issue including uncertain/low-severity ones; a later step will rank them. For each, include confidence and severity." This applies to MoAI's `sync-auditor` and review skills.
 
 ## MoAI Alignment Summary
 

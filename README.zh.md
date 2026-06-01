@@ -319,7 +319,7 @@ graph LR
     MG --> MG1["spec · ddd · tdd · docs<br/>quality · project · strategy · git"]
     EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring"]
     BL --> BL1["agent · skill · plugin"]
-    EV --> EV1["evaluator-active · plan-auditor"]
+    EV --> EV1["sync-auditor · plan-auditor"]
     AG --> AG1["planner · copywriter · designer<br/>builder · evaluator · learner"]
 
     style M fill:#FF6B35,color:#fff
@@ -337,7 +337,7 @@ graph LR
 | **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | 工作流编排、SPEC 生成、质量管理 |
 | **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | 领域专业实现、分析、优化 |
 | **Builder** | 3 | agent, skill, plugin | 创建新的 MoAI 组件 |
-| **Evaluator** | 2 | evaluator-active, plan-auditor | 独立质量评估、计划阶段文档审计 |
+| **Evaluator** | 2 | sync-auditor, plan-auditor | 独立质量评估、计划阶段文档审计 |
 | **旧版 v2.x (已退役)** | 6 | planner, copywriter, designer, builder, evaluator, learner (吸收 — 参见 [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md)) | 创意生产流水线 (历史引用) |
 
 ### 47 个技能（渐进式披露）
@@ -957,7 +957,7 @@ flowchart TB
 | **品质** | 单一 manager-quality 通过 | **GAN Loop** (Builder↔Evaluator，最多 5 轮) |
 | **自学习** | 无 | **Learner** 检测模式 → 提议技能演进 |
 | **品牌** | 无 | 品牌上下文作为宪法约束 |
-| **实现** | 20 个智能体 (manager/expert/builder) | 4 个技能 (copywriting、brand-design、design-import、gan-loop) + evaluator-active |
+| **实现** | 20 个智能体 (manager/expert/builder) | 4 个技能 (copywriting、brand-design、design-import、gan-loop) + sync-auditor |
 
 **何时使用哪个？**
 - 构建 REST API、CLI 工具或库？ → `/moai`
@@ -976,8 +976,8 @@ flowchart TB
 2. **BRIEF 生成** — Manager-spec 将请求扩展为全面的项目简报
 3. **文案 + 设计** — moai-domain-copywriting 撰写品牌一致的营销文案；moai-domain-brand-design 创建基于令牌的设计系统（路径 B）。替代路径 A：moai-workflow-design-import 解析 Claude Design 交接包
 4. **代码实现** — expert-frontend 用 TDD 实现生产代码（默认：Next.js + Tailwind）
-5. **质量保证** — evaluator-active 运行 Playwright 测试、Lighthouse 审计和 4 维评分
-6. **GAN Loop** — 质量不达标时 expert-frontend 和 evaluator-active 通过 moai-workflow-gan-loop 迭代（最多 5 轮）
+5. **质量保证** — sync-auditor 运行 Playwright 测试、Lighthouse 审计和 4 维评分
+6. **GAN Loop** — 质量不达标时 expert-frontend 和 sync-auditor 通过 moai-workflow-gan-loop 迭代（最多 5 轮）
 7. **自我学习** — (可选) Learner 检测模式并提出技能改进建议
 
 **典型耗时**：完整落地页 15-45 分钟，完全自主。
@@ -1006,12 +1006,12 @@ flowchart LR
 | **moai-domain-brand-design** | 创建完整设计系统 — 颜色令牌、字体比例、间距、组件规范 (路径 B) |
 | **moai-workflow-design-import** | 解析 Claude Design 交接包(ZIP/HTML)获取设计令牌和组件 (路径 A) |
 | **expert-frontend** | 用 TDD（RED-GREEN-REFACTOR）实现生产代码。默认栈：Next.js、TypeScript、Tailwind、shadcn/ui |
-| **evaluator-active** | Playwright 视觉测试 + Lighthouse 审计。4 维评分：设计质量(30%)、原创性(25%)、完整度(25%)、功能性(20%) |
+| **sync-auditor** | Playwright 视觉测试 + Lighthouse 审计。4 维评分：设计质量(30%)、原创性(25%)、完整度(25%)、功能性(20%) |
 | **moai-workflow-gan-loop** | GAN Loop 迭代管理：Builder-Evaluator 间协商 Sprint Contract、实施、评分、停滞检测 |
 
 ### GAN Loop：对抗性质量保证
 
-evaluator-active **默认持怀疑态度** — 调整为发现缺陷而非合理化接受。
+sync-auditor **默认持怀疑态度** — 调整为发现缺陷而非合理化接受。
 
 **自动不合格触发条件**（与分数无关）：
 - 文案文本与 moai-domain-copywriting 输出不一致
@@ -1020,7 +1020,7 @@ evaluator-active **默认持怀疑态度** — 调整为发现缺陷而非合理
 - 链接 404 错误
 - Lighthouse 可访问性 < 80
 
-**迭代流程**：evaluator-active 提供带 file:line 引用的具体反馈 → Builder 修复 → 重新评估。3 次失败后升级给用户。
+**迭代流程**：sync-auditor 提供带 file:line 引用的具体反馈 → Builder 修复 → 重新评估。3 次失败后升级给用户。
 
 ### 品牌上下文：创意宪法
 
@@ -1033,7 +1033,7 @@ evaluator-active **默认持怀疑态度** — 调整为发现缺陷而非合理
 | 技术范围 | 所需页面、技术要求 | `.moai/project/tech.md` |
 | 质量期望 | 优先事项 | `.moai/config/sections/design.yaml` |
 
-品牌上下文作为**不可变约束**传递给所有技能。evaluator-active 将品牌一致性作为必须通过的标准进行评分。完成 5+ 项目后，访谈缩减为 3 个关键问题。
+品牌上下文作为**不可变约束**传递给所有技能。sync-auditor 将品牌一致性作为必须通过的标准进行评分。完成 5+ 项目后，访谈缩减为 3 个关键问题。
 
 ### 自我进化与安全
 

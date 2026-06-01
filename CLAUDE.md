@@ -106,7 +106,7 @@ Per SPEC-V3R6-AGENT-TEAM-REBUILD-001 (Anthropic 2026 alignment, 2026-05-25), the
 5. Sync-phase documentation? Use the `manager-docs` subagent
 6. PR creation per Tier-based routing (Tier L OR explicit `--pr`)? Use the `manager-git` subagent
 7. Plan-phase independent audit (bias prevention)? Use the `plan-auditor` subagent
-8. Sync-phase quality 4-dimension scoring? Use the `evaluator-active` subagent
+8. Sync-phase quality 4-dimension scoring? Use the `sync-auditor` subagent
 9. Dynamic specialist generation (project-specific harness)? Use the `builder-harness` subagent
 
 ### Retained Agents (8 total)
@@ -118,7 +118,7 @@ Per SPEC-V3R6-AGENT-TEAM-REBUILD-001 (Anthropic 2026 alignment, 2026-05-25), the
 | `manager-docs` | core/manager | Sync-phase documentation (CHANGELOG, README, frontmatter transitions) | `.claude/agents/moai/manager-docs.md` |
 | `manager-git` | core/manager | PR creation per Tier-based routing + Late-Branch closure | `.claude/agents/moai/manager-git.md` |
 | `plan-auditor` | meta/evaluator | Independent plan-phase audit, bias prevention, GEARS compliance | `.claude/agents/moai/plan-auditor.md` |
-| `evaluator-active` | meta/evaluator | Independent skeptical quality assessment, 4-dimension scoring | `.claude/agents/moai/evaluator-active.md` |
+| `sync-auditor` | meta/evaluator | Independent skeptical quality assessment, 4-dimension scoring | `.claude/agents/moai/sync-auditor.md` |
 | `builder-harness` | builder | Dynamic project-specific harness specialist generation | `.claude/agents/moai/builder-harness.md` |
 | `Explore` | Anthropic built-in | Read-only codebase exploration (no MoAI file — invoked directly) | claude.com/docs/en/sub-agents |
 
@@ -158,7 +158,7 @@ For detailed workflow specifications, see .claude/rules/moai/workflow/spec-workf
 - Phase 2 (plan audit gate): plan-auditor → independent skeptical audit, bias prevention, GEARS compliance verification
 - Phase 3 (run-phase): manager-develop → implementation (cycle_type ∈ {ddd, tdd, autofix}); for domain-specific work (backend/frontend/security/etc.) the orchestrator spawns `Agent(general-purpose)` with domain whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C migration table
 - Phase 4 (sync-phase): manager-docs → CHANGELOG/README/docs + frontmatter status transitions (in-progress → implemented)
-- Phase 5 (sync audit gate): evaluator-active → independent 4-dimension quality scoring (Functionality/Security/Craft/Consistency)
+- Phase 5 (sync audit gate): sync-auditor → independent 4-dimension quality scoring (Functionality/Security/Craft/Consistency)
 - Phase 6 (optional, Tier L OR explicit `--pr`): manager-git → branch creation + `gh pr create` + Late-Branch closure per CLAUDE.local.md §23.9 Tier-based PR Routing
 
 ### MX Tag Integration
@@ -191,9 +191,9 @@ MoAI-ADK uses a 3-level harness system for adaptive quality depth:
 
 - **minimal**: Fast validation for simple changes
 - **standard**: Default quality checks for most work
-- **thorough**: Full evaluator-active + TRUST 5 validation for complex SPECs
+- **thorough**: Full sync-auditor + TRUST 5 validation for complex SPECs
 
-Harness level is auto-determined by the Complexity Estimator based on SPEC scope. evaluator-active provides independent skeptical assessment with 4-dimension scoring (Functionality/Security/Craft/Consistency).
+Harness level is auto-determined by the Complexity Estimator based on SPEC scope. sync-auditor provides independent skeptical assessment with 4-dimension scoring (Functionality/Security/Craft/Consistency).
 
 **Configuration:** .moai/config/sections/harness.yaml, .moai/config/evaluator-profiles/
 
@@ -624,7 +624,7 @@ Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 
 Changes in v14.2.0 (from v14.1.0):
-- §5 Agent Chain for SPEC Execution: 6-phase legacy chain → 4-phase Anthropic 2026 model (manager-spec → plan-auditor → manager-develop → manager-docs/evaluator-active → optional manager-git PR routing)
+- §5 Agent Chain for SPEC Execution: 6-phase legacy chain → 4-phase Anthropic 2026 model (manager-spec → plan-auditor → manager-develop → manager-docs/sync-auditor → optional manager-git PR routing)
 - §2 Phase 3 Execute example: archived `expert-backend` → retained `manager-develop` invocation example
 - §11 Error Handling: archived `manager-quality` / `expert-devops` references → cross-reference to `.claude/rules/moai/workflow/archived-agent-rejection.md` migration table
 - Aligned with SPEC-V3R6-AGENT-TEAM-REBUILD-001 (17→8 catalog consolidation, M3 archive 2026-05-25)

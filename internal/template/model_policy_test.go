@@ -316,7 +316,7 @@ func TestGetAgentEffort(t *testing.T) {
 		{"manager-spec xhigh", "manager-spec", "xhigh"},
 		{"manager-strategy xhigh", "manager-strategy", "xhigh"},
 		{"plan-auditor high", "plan-auditor", "high"},
-		{"evaluator-active high", "evaluator-active", "high"},
+		{"sync-auditor high", "sync-auditor", "high"},
 		{"expert-security high", "expert-security", "high"},
 		{"expert-refactoring high", "expert-refactoring", "high"},
 		// 22 remaining agents: return "" (runtime default)

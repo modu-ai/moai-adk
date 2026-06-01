@@ -24,7 +24,7 @@ MoAI-ADK is an **Agentic Development Kit that enables agents to perform agentic 
 | Team Lead / Tech Lead | MoAI Orchestrator | Coordinates overall work and delegates to 8 retained agents |
 | Planner / Spec Writer | manager-spec | Documents requirements in SPEC |
 | Developers / Engineers | manager-develop (with domain context) | Implements code via DDD/TDD |
-| QA / Code Reviewer | evaluator-active | Validates quality standards (4-dimension scoring) |
+| QA / Code Reviewer | sync-auditor | Validates quality standards (4-dimension scoring) |
 
 ## Why MoAI-ADK?
 
@@ -230,7 +230,7 @@ MoAI is a **strategic orchestrator**. It does not write code directly, but deleg
 | Category | Count | Agents | Role |
 |----------|-------|--------|------|
 | **Manager** | 4 | manager-spec, manager-develop, manager-docs, manager-git | Workflow coordination, SPEC creation, DDD/TDD implementation, documentation, PR management |
-| **Evaluator** | 2 | plan-auditor, evaluator-active | Independent SPEC audit, 4-dimension quality scoring |
+| **Evaluator** | 2 | plan-auditor, sync-auditor | Independent SPEC audit, 4-dimension quality scoring |
 | **Builder** | 1 | builder-harness | Dynamic project-specific harness generation |
 | **Explore** | 1 | Anthropic built-in | Read-only codebase exploration |
 
@@ -247,7 +247,7 @@ flowchart TD
 
     subgraph Evaluators["Evaluator Agents (2)"]
         E1["plan-auditor\nIndependent SPEC audit"]
-        E2["evaluator-active\n4-dimension quality scoring"]
+        E2["sync-auditor\n4-dimension quality scoring"]
     end
 
     subgraph Builder["Builder Agent (1)"]

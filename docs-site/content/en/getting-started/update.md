@@ -65,7 +65,7 @@ Latest version: 1.3.0
 Release notes:
 - Improve token optimization for manager-develop
 - Fix SPEC validation issues
-- Enhance evaluator-active 4-dimension scoring
+- Enhance sync-auditor 4-dimension scoring
 
 Update available! Run 'moai update' to upgrade.
 ```
@@ -397,7 +397,7 @@ Store personal settings in separate files to prevent overwriting during updates:
     "⚡ /moai: One-stop Plan→Run→Sync automation with intelligent routing",
     "🌳 moai worktree: Parallel SPEC development in isolated worktree environments",
     "🤖 Manager Agents (4): manager-spec, manager-develop, manager-docs, manager-git",
-    "🤖 Evaluator Agents (2): plan-auditor, evaluator-active",
+    "🤖 Evaluator Agents (2): plan-auditor, sync-auditor",
     "🤖 Builder Agent (1): builder-harness",
     "🤖 Built-in: Explore (Anthropic read-only codebase exploration)",
     "📋 Workflow: /moai plan (SPEC) → /moai run (DDD) → /moai sync (Docs)",

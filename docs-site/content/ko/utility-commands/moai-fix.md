@@ -273,7 +273,7 @@ flowchart TD
 | **manager-develop** | 백엔드 수정 (Level 1-2) |
 | **manager-develop** | 프론트엔드 수정 (Level 1-2) |
 | **manager-develop** | 로직 오류 수정 (Level 3-4) |
-| **evaluator-active** | 품질 검증 | 수정 결과 확인 |
+| **sync-auditor** | 품질 검증 | 수정 결과 확인 |
 
 ## 실전 예시
 

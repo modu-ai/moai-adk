@@ -102,7 +102,7 @@ MoAI 是 Claude Code 的战略协调器。
 | 类别 | 代理 | 数量 |
 |------|----------|------|
 | Manager | spec, develop, docs, git | 4 个 |
-| Evaluator | plan-auditor, evaluator-active | 2 个 |
+| Evaluator | plan-auditor, sync-auditor | 2 个 |
 | Builder | builder-harness | 1 个 |
 | Built-in | Explore (Anthropic) | 1 个 |
 

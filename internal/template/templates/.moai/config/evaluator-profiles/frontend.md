@@ -75,7 +75,7 @@ When 1-2 AI-slop patterns are detected: Originality score capped at 0.50.
 ## D7/D8 Plan-Phase Dimensions (SPEC-V3R5-WORKFLOW-OPT-001 Layer G)
 
 The following two dimensions are evaluated by plan-auditor during plan-phase
-audit, not by evaluator-active during run-phase. Frontend SPECs (this profile)
+audit, not by sync-auditor during run-phase. Frontend SPECs (this profile)
 inherit the same binary BLOCKING semantics:
 
 | Plan-Auditor Dimension | Weight in Plan Verdict | Pass Threshold |

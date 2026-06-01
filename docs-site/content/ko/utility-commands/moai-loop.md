@@ -229,7 +229,7 @@ flowchart TD
     Todo --> Loop["루프 시작"]
 
     Loop --> Fix["전문가 에이전트에<br/>수정 위임"]
-    Fix --> Verify["evaluator-active<br/>검증"]
+    Fix --> Verify["sync-auditor<br/>검증"]
 
     Verify --> Complete{"완료 조건?"}
     Complete -->|아니오| Loop
@@ -243,7 +243,7 @@ flowchart TD
 | **MoAI 오케스트레이터** | 루프 조율 |
 | **manager-develop**         | 루프 관리 | TODO 생성, 수정 조율 |
 | **expert-\***           | 수정 실행 | 실제 코드 수정       |
-| **evaluator-active**     | 품질 검증 | 완료 조건 확인       |
+| **sync-auditor**     | 품질 검증 | 완료 조건 확인       |
 
 ## 실전 예시
 

@@ -215,7 +215,7 @@ flowchart TD
     Todo --> Loop["开始循环"]
 
     Loop --> Fix["委托给<br/>expert agents"]
-    Fix --> Verify["evaluator-active<br/>验证"]
+    Fix --> Verify["sync-auditor<br/>验证"]
 
     Verify --> Complete{"完成条件?"}
     Complete -->|否| Loop
@@ -229,7 +229,7 @@ flowchart TD
 | **MoAI Orchestrator** | 循环协调 |
 | **manager-develop**       | 循环管理 | 创建 TODO、协调修复 |
 | **expert-\***         | 执行修复 | 实际代码修改       |
-| **evaluator-active**   | 质量验证 | 检查完成条件       |
+| **sync-auditor**   | 质量验证 | 检查完成条件       |
 
 ## 实际示例
 

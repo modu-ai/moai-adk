@@ -153,7 +153,7 @@ flowchart TD
     S --> T["아키텍처 문서 동기화"]
     T --> U["SPEC 상태 업데이트"]
 
-    U --> V["evaluator-active 호출<br/>품질 검증"]
+    U --> V["sync-auditor 호출<br/>품질 검증"]
     V --> W{"품질 기준?"}
     W -->|FAIL| G
     W -->|PASS| X["Phase 3<br/>Git 작업"]
@@ -208,7 +208,7 @@ flowchart TD
 
 **Step 4 - 코드 리뷰:**
 
-**evaluator-active** 하위 에이전트가 TRUST 5 품질 검증을 수행하고 종합 보고를
+**sync-auditor** 하위 에이전트가 TRUST 5 품질 검증을 수행하고 종합 보고를
 생성합니다.
 
 **Step 5 - 품질 보고서 생성:**
@@ -249,7 +249,7 @@ project_improvements_needed, estimated_scope
 
 **Step 3 - 사후 동기화 품질 검증:**
 
-**evaluator-active** 하위 에이전트가 TRUST 5 기준으로 동기화 품질을 검증합니다:
+**sync-auditor** 하위 에이전트가 TRUST 5 기준으로 동기화 품질을 검증합니다:
 
 - 모든 프로젝트 링크 완료
 - 문서 잘 포맷됨

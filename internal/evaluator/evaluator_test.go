@@ -4,8 +4,8 @@ import (
 	"testing"
 )
 
-// SPEC-EVAL-001 M1 RED phase: evaluator-active agent scaffolding
-// The evaluator-active agent provides independent skeptical quality assessment
+// SPEC-EVAL-001 M1 RED phase: sync-auditor agent scaffolding
+// The sync-auditor agent provides independent skeptical quality assessment
 // with 4-dimension scoring (Functionality/Security/Craft/Consistency).
 
 func TestEvaluatorAgent_ScoreDimensions(t *testing.T) {

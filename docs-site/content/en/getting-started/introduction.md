@@ -167,7 +167,7 @@ MoAI-ADK provides 8 specialized AI agents and 31 skills to automate and optimize
 | Category | Count | Key Agents |
 |----------|-------|------------|
 | **Manager** | 4 | manager-spec, manager-develop, manager-docs, manager-git |
-| **Evaluator** | 2 | plan-auditor, evaluator-active |
+| **Evaluator** | 2 | plan-auditor, sync-auditor |
 | **Builder** | 1 | builder-harness |
 | **Explore** | 1 | Anthropic built-in (read-only codebase exploration) |
 
@@ -190,7 +190,7 @@ The Plus $20 plan does not include Opus access. Setting **Low** ensures all agen
 | Agent | High | Medium | Low |
 |---------|------|--------|-----|
 | manager-spec, plan-auditor | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| manager-develop, evaluator-active | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| manager-develop, sync-auditor | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
 | manager-docs, manager-git, builder-harness | 🟡 haiku → 🔵 sonnet | 🟡 haiku | 🟡 haiku |
 
 ### Dual Execution Modes

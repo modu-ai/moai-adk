@@ -231,7 +231,7 @@ Selection: 2
 `manager-develop` agent:
 1. Receives tokens and copy
 2. Generates React/Vue components + styles
-3. `evaluator-active` scores (4-dimensional)
+3. `sync-auditor` scores (4-dimensional)
 4. Failed → retry with feedback (max 5 iterations)
 
 ## Edit Brand Files During Design

@@ -76,7 +76,7 @@ flowchart TD
 
     subgraph EVALS["Evaluator Agents"]
         PA["plan-auditor<br/>Independent plan verification"]
-        EA["evaluator-active<br/>Quality 4-dimension scoring"]
+        EA["sync-auditor<br/>Quality 4-dimension scoring"]
     end
 
     subgraph BUILDERS["Builder Agent"]
@@ -127,7 +127,7 @@ Evaluator agents perform **independent quality assessment** and validation.
 | Agent | Role | Used Skills | Main Tools |
 |--------|------|-------------|------------|
 | `plan-auditor` | Plan-phase: Independent skeptical audit, GEARS compliance, bias prevention | `moai-foundation-core`, `moai-foundation-thinking` | Read, Grep |
-| `evaluator-active` | Sync-phase: 4-dimension quality scoring (Functionality, Security, Craft, Consistency) | `moai-foundation-quality`, `moai-foundation-core` | Read, Grep, Bash |
+| `sync-auditor` | Sync-phase: 4-dimension quality scoring (Functionality, Security, Craft, Consistency) | `moai-foundation-quality`, `moai-foundation-core` | Read, Grep, Bash |
 
 ## Domain Expertise Pattern
 
@@ -135,7 +135,7 @@ For domain-specific implementation work (backend API development, frontend UI, s
 
 - **Backend**: `manager-develop` with backend domain context + `moai-domain-backend` skill
 - **Frontend**: `manager-develop` with frontend domain context + `moai-domain-frontend` skill
-- **Security**: Quality gates via `evaluator-active` + `moai-foundation-quality` + OWASP reference skill
+- **Security**: Quality gates via `sync-auditor` + `moai-foundation-quality` + OWASP reference skill
 - **Database**: `moai-domain-database` skill with `manager-develop`
 - **Other domains**: Language-specific skills + `manager-develop`
 
@@ -183,7 +183,7 @@ flowchart TD
 | API development | manager-develop (backend context) | `/moai run SPEC-XXX` with backend SPEC |
 | UI implementation | manager-develop (frontend context) | `/moai run SPEC-XXX` with frontend SPEC |
 | Test writing | manager-develop (TDD mode) | `/moai run SPEC-XXX` with test-first SPEC |
-| Security review | evaluator-active | Independent quality validation during sync |
+| Security review | sync-auditor | Independent quality validation during sync |
 | SPEC creation | manager-spec | `/moai plan "feature description"` |
 | Implementation | manager-develop | `/moai run SPEC-XXX` (auto-selects DDD/TDD) |
 | Document generation | manager-docs | `/moai sync SPEC-XXX` |
@@ -203,7 +203,7 @@ The 8 retained agents are defined as markdown files in the `.claude/agents/moai/
 ├── manager-docs.md
 ├── manager-git.md
 ├── plan-auditor.md
-├── evaluator-active.md
+├── sync-auditor.md
 ├── builder-harness.md
 └── Explore                # Anthropic built-in (no file)
 ```
@@ -259,7 +259,7 @@ You are a backend specialist for this project.
 # 1. manager-spec creates SPEC
 # 2. plan-auditor verifies SPEC completeness
 # 3. manager-develop implements with DDD/TDD
-# 4. evaluator-active scores quality
+# 4. sync-auditor scores quality
 # 5. manager-docs generates documentation
 > /moai plan "authentication system"
 > /moai run SPEC-AUTH-001
@@ -285,7 +285,7 @@ flowchart TD
     A["Phase 1: Plan<br/>manager-spec"] --> B["Phase 1b: Audit<br/>plan-auditor"]
     B --> C["Phase 2: Run<br/>manager-develop<br/>(DDD or TDD)"]
     C --> D["Phase 3: Sync<br/>manager-docs"]
-    D --> E["Phase 4: Mx<br/>evaluator-active"]
+    D --> E["Phase 4: Mx<br/>sync-auditor"]
     E --> F["Phase 4 Close<br/>manager-docs"]
 ```
 
@@ -379,5 +379,5 @@ Each role spawns an `Agent(subagent_type: "general-purpose")` with domain-specif
 - [SPEC-based Development](/core-concepts/spec-based-dev) - SPEC workflow details
 
 {{< callout type="info" >}}
-**Tip**: You don't need to specify agents directly. Just make natural language requests to MoAI and it will automatically select the optimal agent. Say "Create API" and `manager-develop` is automatically invoked with backend context. Say "Review this code" and `evaluator-active` provides quality assessment.
+**Tip**: You don't need to specify agents directly. Just make natural language requests to MoAI and it will automatically select the optimal agent. Say "Create API" and `manager-develop` is automatically invoked with backend context. Say "Review this code" and `sync-auditor` provides quality assessment.
 {{< /callout >}}

@@ -28,7 +28,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["harness", "project-init", "meta-skill", "agent-team", "harness-evolve"]
-  agents: ["manager-spec", "manager-strategy", "evaluator-active"]
+  agents: ["manager-spec", "manager-strategy", "sync-auditor"]
   phases: ["plan", "run", "sync"]
 ---
 
@@ -39,7 +39,7 @@ triggers:
 <!-- ATTRIBUTION
 Original work: revfactory/harness (https://github.com/revfactory/harness)
 License: Apache License 2.0
-Adaptations: 7-Phase workflow integrated with MoAI agent ecosystem (manager-*, expert-*, evaluator-active)
+Adaptations: 7-Phase workflow integrated with MoAI agent ecosystem (manager-*, expert-*, sync-auditor)
 NOTICE: This file contains modifications. See SPEC-V3R3-HARNESS-001 for derivation history.
 -->
 
@@ -92,7 +92,7 @@ Each MoAI phase maps to upstream revfactory/harness phases (ref: https://github.
 | 3. Synthesis | Phase 2 team architecture design | manager-spec | Analysis report | SPEC doc with EARS |
 | 4. Skeleton | Phase 3 agent definition generation | meta-harness (this skill) | SPEC doc | `.moai/harness/main.md` + extensions |
 | 5. Customization | Phase 4 skill generation | meta-harness (this skill) | Skeleton | `.claude/agents/harness/*.md` + `.claude/skills/harness-*/SKILL.md` |
-| 6. Evaluation | Phase 5 integration + Phase 6 validation | evaluator-active | Generated artifacts | Sprint Contract score |
+| 6. Evaluation | Phase 5 integration + Phase 6 validation | sync-auditor | Generated artifacts | Sprint Contract score |
 | 7. Iteration | Harness Evolution Mechanism + Phase 7-5 ops | LEARNING-001 (separate SPEC) | Scoring deltas | Factory feedback (out of scope) |
 
 ### Phase Summaries
@@ -101,21 +101,21 @@ Each MoAI phase maps to upstream revfactory/harness phases (ref: https://github.
 - Phase 2 (Analysis): `manager-spec` + `manager-strategy` scan repo (file structure, existing agents/skills, dependency files, test coverage)
 - Phase 3 (Synthesis): `manager-spec` produces SPEC with EARS requirements selecting one of 6 architectural patterns, defining agent roles, skill categories, acceptance criteria
 - Phase 4 (Skeleton): This skill generates harness skeleton — main.md, agents.md, skills.md extensions, agent definition stubs
-- Phase 5 (Customization): This skill fills the skeleton with domain-specific content referencing existing MoAI agents (manager-*, expert-*, builder-harness, evaluator-active)
-- Phase 6 (Evaluation): `evaluator-active` runs Sprint Contract protocol (design constitution §11.5) — 4 dimensions, pass threshold 0.75 (FROZEN floor 0.60)
+- Phase 5 (Customization): This skill fills the skeleton with domain-specific content referencing existing MoAI agents (manager-*, expert-*, builder-harness, sync-auditor)
+- Phase 6 (Evaluation): `sync-auditor` runs Sprint Contract protocol (design constitution §11.5) — 4 dimensions, pass threshold 0.75 (FROZEN floor 0.60)
 - Phase 7 (Iteration): Owned by SPEC-V3R3-HARNESS-LEARNING-001 (out of scope for this skill)
 
 See [Phase 1-7 detailed walkthrough + agent involvement](references/seven-phase-workflow.md) for full per-phase activity, inputs, outputs, and cross-reference notes.
 
 ### MoAI Agent Cross-References
 
-This skill orchestrates but does NOT replace existing agents. All agents referenced are static MoAI agents — no new agents are introduced. Categories: Planning & Strategy (manager-spec, manager-strategy, plan-auditor), Implementation (expert-*, manager-develop, manager-quality), Builders (builder-harness with artifact_type=agent|skill|plugin), Workflow Managers (manager-develop, manager-quality, manager-docs, manager-git), Quality (evaluator-active).
+This skill orchestrates but does NOT replace existing agents. All agents referenced are static MoAI agents — no new agents are introduced. Categories: Planning & Strategy (manager-spec, manager-strategy, plan-auditor), Implementation (expert-*, manager-develop, manager-quality), Builders (builder-harness with artifact_type=agent|skill|plugin), Workflow Managers (manager-develop, manager-quality, manager-docs, manager-git), Quality (sync-auditor).
 
 See [agent cross-references full inventory](references/agent-cross-references.md) for per-agent role and phase mapping.
 
 ### Generated Harness Validation
 
-After Phase 5 (Customization) emits new `harness-*` skills, this meta-harness automatically hands off to `evaluator-active` using the Sprint Contract protocol (design constitution §11.5).
+After Phase 5 (Customization) emits new `harness-*` skills, this meta-harness automatically hands off to `sync-auditor` using the Sprint Contract protocol (design constitution §11.5).
 
 **4-Dimension Sprint Contract Assessment**:
 
@@ -130,7 +130,7 @@ After Phase 5 (Customization) emits new `harness-*` skills, this meta-harness au
 
 - Pass threshold: 0.75 default (configurable via `design.yaml pass_threshold`)
 - FROZEN floor: 0.60 (design constitution §2, immutable)
-- Scoring rubric: evaluator-active rubric anchoring (design constitution §12, Mechanism 1)
+- Scoring rubric: sync-auditor rubric anchoring (design constitution §12, Mechanism 1)
 
 For Phase 3b — HRN-003 Hierarchical Scoring (when `harness.yaml` sets `evaluator_mode: hierarchical`), see [HRN-003 hierarchical scoring detail](references/hrn-003-hierarchical-scoring.md).
 
@@ -197,7 +197,7 @@ User-generated artifacts:
 This skill loads when any of the following match:
 
 - Keywords: `harness`, `project-init`, `meta-skill`, `agent-team`, `harness-evolve`
-- Agents: `manager-spec`, `manager-strategy`, `evaluator-active`
+- Agents: `manager-spec`, `manager-strategy`, `sync-auditor`
 - Phases: `plan`, `run`, `sync`
 
 **Deferred Execution Contract**:
@@ -225,7 +225,7 @@ The following capabilities are explicitly NOT implemented by this skill:
 - `moai-foundation-core` — SPEC-First DDD and TRUST 5 quality gates
 - `moai-foundation-cc` — Claude Code skill/agent authoring standards
 - `manager-spec` — Conducts Discovery and Synthesis phases
-- `evaluator-active` — Sprint Contract evaluation in Phase 6
+- `sync-auditor` — Sprint Contract evaluation in Phase 6
 - `builder-harness` (artifact_type=agent|skill|plugin) — Artifact generation helper
 
 ---

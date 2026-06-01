@@ -215,7 +215,7 @@ flowchart TD
     Todo --> Loop["Start Loop"]
 
     Loop --> Fix["Delegate to<br/>expert agents"]
-    Fix --> Verify["evaluator-active<br/>Verify"]
+    Fix --> Verify["sync-auditor<br/>Verify"]
 
     Verify --> Complete{"Completion conditions?"}
     Complete -->|No| Loop
@@ -229,7 +229,7 @@ flowchart TD
 | **MoAI Orchestrator** | Loop coordination |
 | **manager-develop**       | Loop management | Create TODO, coordinate fixes |
 | **expert-\***         | Execute fixes | Actual code modification |
-| **evaluator-active**   | Quality verification | Check completion conditions |
+| **sync-auditor**   | Quality verification | Check completion conditions |
 
 ## Practical Examples
 

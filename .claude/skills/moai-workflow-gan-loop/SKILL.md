@@ -26,7 +26,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["gan loop", "builder evaluator", "quality score", "pass threshold", "sprint contract", "iterative review", "design quality"]
-  agents: ["evaluator-active", "expert-frontend"]
+  agents: ["sync-auditor", "expert-frontend"]
   phases: ["run"]
 ---
 
@@ -274,7 +274,7 @@ When testing tools are unavailable, fall back to static code analysis only, and 
 
 - `moai-domain-brand-design`: Provides design tokens that Evaluator validates in Design Quality dimension
 - `moai-domain-copywriting`: Copy JSON is the reference for Completeness dimension
-- `evaluator-active`: The GAN loop orchestrates evaluator-active for each scoring pass
+- `sync-auditor`: The GAN loop orchestrates sync-auditor for each scoring pass
 - `moai-workflow-design`: Extracted tokens (Path A) serve as the design reference baseline
 
 ---

@@ -1079,7 +1079,7 @@ func TestAuthoringDocHasEffortMatrix(t *testing.T) {
 		"manager-docs", "manager-git", "manager-project",
 		"expert-backend", "expert-frontend", "expert-security", "expert-devops", "expert-performance",
 		"expert-refactoring", "builder-platform",
-		"evaluator-active", "plan-auditor", "researcher",
+		"sync-auditor", "plan-auditor", "researcher",
 	}
 
 	missingAgents := []string{}
@@ -1650,9 +1650,9 @@ Body.
 // contains the ORC_WORKTREE_ON_READONLY sentinel key (AC-07).
 func TestLintLR09_OrcWorktreeOnReadonlySentinel(t *testing.T) {
 	tmpDir := t.TempDir()
-	agentFile := filepath.Join(tmpDir, "evaluator-active.md")
+	agentFile := filepath.Join(tmpDir, "sync-auditor.md")
 	err := os.WriteFile(agentFile, []byte(`---
-name: evaluator-active
+name: sync-auditor
 tools: Read, Grep, Glob
 permissionMode: plan
 isolation: worktree
@@ -1679,7 +1679,7 @@ Body.
 	}
 
 	if found == nil {
-		t.Fatal("expected LR-09 violation for evaluator-active with isolation:worktree on plan mode, got none")
+		t.Fatal("expected LR-09 violation for sync-auditor with isolation:worktree on plan mode, got none")
 	}
 	if found.Severity != SeverityError {
 		t.Errorf("LR-09 severity = %s, want error", found.Severity)

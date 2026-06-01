@@ -13,7 +13,7 @@ triggers:
     - "expert-backend"
     - "expert-frontend"
     - "manager-quality"
-    - "evaluator-active"
+    - "sync-auditor"
   phases:
     - "run"
     - "review"

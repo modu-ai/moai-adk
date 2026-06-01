@@ -273,7 +273,7 @@ flowchart TD
 | **manager-develop** | バックエンド修正 (レベル 1-2) |
 | **manager-develop** | フロントエンド修正 (レベル 1-2) |
 | **manager-develop** | ロジックエラー修正 (レベル 3-4) |
-| **evaluator-active** | 品質検証 | 修正結果を検証 |
+| **sync-auditor** | 品質検証 | 修正結果を検証 |
 
 ## 実践例
 

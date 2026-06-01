@@ -215,7 +215,7 @@ flowchart TD
     Todo --> Loop["ループ開始"]
 
     Loop --> Fix["expert エージェントに<br/>委任"]
-    Fix --> Verify["evaluator-active<br/>検証"]
+    Fix --> Verify["sync-auditor<br/>検証"]
 
     Verify --> Complete{"完了条件?"}
     Complete -->|いいえ| Loop
@@ -229,7 +229,7 @@ flowchart TD
 | **MoAI オーケストレータ** | ループ調整 |
 | **manager-develop**       | ループ管理 | TODO 作成、修正の調整 |
 | **expert-\***         | 修正を実行 | 実際のコード変更 |
-| **evaluator-active**   | 品質検証 | 完了条件を確認 |
+| **sync-auditor**   | 品質検証 | 完了条件を確認 |
 
 ## 実践例
 

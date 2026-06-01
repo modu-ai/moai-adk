@@ -39,12 +39,12 @@ func NewCanary() Canary {
 //
 // Canary evaluation strategy:
 // 1. Find recently completed SPEC directories in .moai/specs/ (progress.md with "completed" or similar marker)
-// 2. Read each SPEC's evaluator-active score (TODO: implement in SPEC-V3R2-CON-003)
+// 2. Read each SPEC's sync-auditor score (TODO: implement in SPEC-V3R2-CON-003)
 // 3. Estimate the impact of clause changes on SPEC application (simple keyword matching)
 // 4. Compare ScoreBefore vs ScoreAfter
 //
 // Current implementation: Returns CanaryUnavailable since there is no SPEC score store.
-// Future: Add evaluator-active integration in SPEC-V3R2-CON-003.
+// Future: Add sync-auditor integration in SPEC-V3R2-CON-003.
 func (c *canary) Evaluate(proposal *AmendmentProposal, projectDir string) (*CanaryResult, error) {
 	// Check .moai/specs/ directory
 	specsDir := filepath.Join(projectDir, ".moai", "specs")
@@ -92,7 +92,7 @@ func (c *canary) Evaluate(proposal *AmendmentProposal, projectDir string) (*Cana
 		selectedSpecs = c.sortMostRecent(selectedSpecs, specsDir, canaryMaxSpecs)
 	}
 
-	// TODO: Integrate evaluator-active score in SPEC-V3R2-CON-003
+	// TODO: Integrate sync-auditor score in SPEC-V3R2-CON-003
 	// Current implementation: Dummy score as placeholder
 	//
 	// Shadow simulation:
@@ -212,7 +212,7 @@ func (c *canary) sortMostRecent(specs []string, specsDir string, limit int) []st
 // canary satisfies the Canary interface.
 var _ Canary = (*canary)(nil)
 
-// parseScoreFromProgress parses the evaluator-active score from progress.md.
+// parseScoreFromProgress parses the sync-auditor score from progress.md.
 // TODO: To be implemented in SPEC-V3R2-CON-003. Currently unused.
 //
 //nolint:unused

@@ -148,7 +148,7 @@ flowchart TD
     S --> T["Sync Architecture Documentation"]
     T --> U["Update SPEC Status"]
 
-    U --> V["Call evaluator-active<br/>Quality Validation"]
+    U --> V["Call sync-auditor<br/>Quality Validation"]
     V --> W{"Quality Gates?"}
     W -->|FAIL| G
     W -->|PASS| X["Phase 3<br/>Git Operations"]
@@ -203,7 +203,7 @@ When tests fail, present options to the user:
 
 **Step 4 - Code Review:**
 
-The **evaluator-active** subagent performs TRUST 5 quality validation and generates a comprehensive report.
+The **sync-auditor** subagent performs TRUST 5 quality validation and generates a comprehensive report.
 
 **Step 5 - Generate Quality Report:**
 
@@ -241,7 +241,7 @@ The **manager-docs** subagent performs the following tasks:
 
 **Step 3 - Post-Sync Quality Validation:**
 
-The **evaluator-active** subagent validates synchronization quality against TRUST 5 criteria:
+The **sync-auditor** subagent validates synchronization quality against TRUST 5 criteria:
 
 - All project links complete
 - Documents well formatted

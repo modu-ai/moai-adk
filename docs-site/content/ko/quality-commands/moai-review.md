@@ -234,7 +234,7 @@ flowchart TD
     Team --> R3["품질 전문가"]
     Team --> R4["UX 전문가"]
 
-    Single --> Quality["evaluator-active<br/>4가지 관점 순차 분석"]
+    Single --> Quality["sync-auditor<br/>4가지 관점 순차 분석"]
 
     R1 --> Consolidate["보고서 통합"]
     R2 --> Consolidate
@@ -250,14 +250,14 @@ flowchart TD
 | 에이전트 | 역할 | 주요 작업 |
 |----------|------|----------|
 | **MoAI 오케스트레이터** | 변경 식별 및 결과 통합 | git diff, 보고서 생성 |
-| **evaluator-active** | 코드 품질 분석 (기본 모드) | 4가지 관점 순차 분석 |
+| **sync-auditor** | 코드 품질 분석 (기본 모드) | 4가지 관점 순차 분석 |
 | **manager-develop** | 보안 집중 분석 (`--security`) | OWASP, 인젝션, 인증 |
 
 ## 자주 묻는 질문
 
 ### Q: --team 모드와 기본 모드의 차이점은?
 
-기본 모드는 `evaluator-active` 에이전트가 4가지 관점을 순차적으로 분석합니다. `--team` 모드는 4명의 전문 리뷰어가 동시에 분석하므로 더 깊이 있지만, 토큰 소비가 약 4배 많습니다.
+기본 모드는 `sync-auditor` 에이전트가 4가지 관점을 순차적으로 분석합니다. `--team` 모드는 4명의 전문 리뷰어가 동시에 분석하므로 더 깊이 있지만, 토큰 소비가 약 4배 많습니다.
 
 ### Q: PR 전 리뷰에 가장 적합한 플래그 조합은?
 

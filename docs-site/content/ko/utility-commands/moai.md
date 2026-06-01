@@ -340,7 +340,7 @@ llm.yaml 설정에 따라 자동 라우팅:
   PRESERVE: 특성화 테스트 12개 작성
   IMPROVE: 7개 태스크 구현 완료
 
-[evaluator-active]
+[sync-auditor]
   TRUST 5: 모든 기둥 통과
   커버리지: 89%
   상태: PASS

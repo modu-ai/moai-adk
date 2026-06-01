@@ -148,7 +148,7 @@ flowchart TD
     S --> T["アーキテクチャ文書同期"]
     T --> U["SPEC ステータス更新"]
 
-    U --> V["evaluator-active 呼び出し<br/>品質検証"]
+    U --> V["sync-auditor 呼び出し<br/>品質検証"]
     V --> W{"品質ゲート?"}
     W -->|FAIL| G
     W -->|PASS| X["フェーズ 3<br/>Git 操作"]
@@ -203,7 +203,7 @@ flowchart TD
 
 **ステップ 4 - コードレビュー:**
 
-**evaluator-active** サブエージェントが TRUST 5 品質検証を実行して包括的なレポートを作成します。
+**sync-auditor** サブエージェントが TRUST 5 品質検証を実行して包括的なレポートを作成します。
 
 **ステップ 5 - 品質レポート生成:**
 
@@ -241,7 +241,7 @@ test-runner、linter、type-checker、code-review のステータスを集約し
 
 **ステップ 3 - 事後同期品質検証:**
 
-**evaluator-active** サブエージェントが TRUST 5 基準で同期品質を検証します:
+**sync-auditor** サブエージェントが TRUST 5 基準で同期品質を検証します:
 
 - すべてのプロジェクトリンク完了
 - 文書が適切にフォーマットされている

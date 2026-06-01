@@ -274,7 +274,7 @@ graph LR
     MG --> MG1["spec · ddd · tdd · docs<br/>quality · project · strategy · git"]
     EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring"]
     BL --> BL1["agent · skill · plugin"]
-    EV --> EV1["evaluator-active · plan-auditor"]
+    EV --> EV1["sync-auditor · plan-auditor"]
     AG --> AG1["planner · copywriter · designer<br/>builder · evaluator · learner"]
 
     style M fill:#FF6B35,color:#fff
@@ -292,7 +292,7 @@ graph LR
 | **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | Workflow coordination, SPEC creation, quality management |
 | **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | Domain-specific implementation, analysis, optimization |
 | **Builder** | 3 | agent, skill, plugin | Creating new MoAI components |
-| **Evaluator** | 2 | evaluator-active, plan-auditor | Independent quality assessment, plan-phase document audit |
+| **Evaluator** | 2 | sync-auditor, plan-auditor | Independent quality assessment, plan-phase document audit |
 | **Design System** | 4 (+ evaluator) | moai-domain-copywriting, moai-domain-brand-design, moai-workflow-design-import, moai-workflow-gan-loop | Hybrid creative + code production |
 
 **Total: 27 agents**
@@ -929,7 +929,7 @@ flowchart TB
 | **Quality** | Single manager-quality pass | **GAN Loop** (Builder↔Evaluator, max 5 rounds) |
 | **Self-Learning** | None | **Learner** detects patterns → proposes skill evolution |
 | **Brand** | None | Brand context as constitutional constraint |
-| **Implementation** | 20 agents (manager/expert/builder) | 4 skills (copywriting, brand-design, design-import, gan-loop) + evaluator-active |
+| **Implementation** | 20 agents (manager/expert/builder) | 4 skills (copywriting, brand-design, design-import, gan-loop) + sync-auditor |
 
 **When to use which:**
 - Building a REST API, CLI tool, or library? → `/moai`
@@ -948,8 +948,8 @@ This single command triggers the **entire autonomous workflow**:
 2. **BRIEF Generation** — Manager-spec expands your request into a comprehensive project brief
 3. **Copy + Design** — moai-domain-copywriting produces brand-aligned marketing copy; moai-domain-brand-design creates a full design system with tokens (Path B). Alternative Path A: moai-workflow-design-import parses Claude Design handoff bundles.
 4. **Code Implementation** — expert-frontend implements production code using TDD (Next.js + Tailwind by default)
-5. **Quality Assurance** — evaluator-active runs Playwright tests, Lighthouse audits, and 4-dimension scoring with Sprint Contract protocol
-6. **GAN Loop** — If quality fails, expert-frontend and evaluator-active iterate via moai-workflow-gan-loop (up to 5 rounds) until threshold is met
+5. **Quality Assurance** — sync-auditor runs Playwright tests, Lighthouse audits, and 4-dimension scoring with Sprint Contract protocol
+6. **GAN Loop** — If quality fails, expert-frontend and sync-auditor iterate via moai-workflow-gan-loop (up to 5 rounds) until threshold is met
 7. **Self-Learning** — (Optional) Learner detects patterns from the session and proposes skill improvements
 
 **Typical duration**: 15-45 minutes for a complete landing page, fully autonomous.
@@ -978,7 +978,7 @@ flowchart LR
 | **moai-domain-brand-design** | Creates complete design system — color tokens, typography scale, spacing, component specs (Path B) |
 | **moai-workflow-design-import** | Parses Claude Design handoff bundles (ZIP/HTML) for design tokens and components (Path A) |
 | **expert-frontend** | Implements production code with TDD (RED-GREEN-REFACTOR). Default stack: Next.js, TypeScript, Tailwind, shadcn/ui |
-| **evaluator-active** | Runs Playwright visual tests + Lighthouse audits. Scores 4 dimensions with Sprint Contract protocol and must-pass criteria validation |
+| **sync-auditor** | Runs Playwright visual tests + Lighthouse audits. Scores 4 dimensions with Sprint Contract protocol and must-pass criteria validation |
 | **moai-workflow-gan-loop** | Manages GAN Loop iteration: Builder-Evaluator negotiates Sprint Contract, implements, scores, escalates on stagnation |
 
 ### The GAN Loop: Adversarial Quality Assurance
@@ -1036,7 +1036,7 @@ On first run, Design System conducts a **structured client interview** (9 questi
 | Technical Scope | Pages needed, tech requirements | `.moai/project/tech.md` |
 | Quality Expectations | Priority factors | `.moai/config/sections/design.yaml` |
 
-Brand context flows through **every skill** as an immutable constraint. The evaluator-active scores brand consistency as a must-pass criterion. After 5+ projects, the interview adapts to ask only 3 key questions.
+Brand context flows through **every skill** as an immutable constraint. The sync-auditor scores brand consistency as a must-pass criterion. After 5+ projects, the interview adapts to ask only 3 key questions.
 
 ### Self-Evolution with Safety
 

@@ -134,7 +134,7 @@ flowchart TD
     Q -->|Yes| R["Commit"]
     R --> S{"All Requirements<br/>Implemented?"}
     S -->|No| O
-    S -->|Yes| T["Call evaluator-active"]
+    S -->|Yes| T["Call sync-auditor"]
 
     Q -->|No| U["Rollback"]
     U --> O
@@ -200,7 +200,7 @@ The **manager-develop** subagent executes the ANALYZE-PRESERVE-IMPROVE cycle:
 
 ### Phase 2.5: Quality Validation
 
-The **evaluator-active** subagent performs TRUST 5 validation:
+The **sync-auditor** subagent performs TRUST 5 validation:
 
 | TRUST 5 Pillar | Validation Items                     |
 | -------------- | ------------------------------------ |
