@@ -17,6 +17,33 @@ Claude Code supports multiple memory levels (highest priority first):
 5. Optional local instructions file (e.g., a project-local override document if your team maintains one; not committed)
 6. Auto Memory: ~/.claude/projects/{hash}/memory/ (AI-managed)
 
+## Official Claude Code Auto-Memory Feature
+
+Auto memory (level 6 above) is a native Claude Code feature (requires v2.1.59 or later). MoAI layers its taxonomy and Lessons Protocol on top of this native feature; the bullets below are the underlying Claude Code behavior.
+
+| Aspect | Behavior |
+|--------|----------|
+| Default | ON. Disable via the `/memory` toggle, `autoMemoryEnabled: false` in settings.json (any scope), or env `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` |
+| Storage | `~/.claude/projects/<project>/memory/`. The `<project>` path is derived from the **git repository root**, so all worktrees and subdirectories of the same repo share ONE memory directory. Outside a git repo, the project root is used |
+| Override | `autoMemoryDirectory` in settings.json (absolute or `~/` path; honored only after the workspace trust dialog) |
+| Index loading | `MEMORY.md` is loaded every session — the first **200 lines OR 25KB, whichever comes first**. Content beyond either limit is not loaded at session start |
+| Topic files | `debugging.md`, `api-conventions.md`, etc. are NOT loaded at startup; Claude reads them on demand. They are plain markdown with **no mandated frontmatter schema** |
+| Subagents | Subagents can maintain their own auto memory (see the Claude Code sub-agents documentation) |
+| Inspect | `/memory` lists the loaded CLAUDE.md and rules files, toggles auto memory, and links to the auto-memory folder |
+
+Full reference: `.claude/skills/moai-foundation-cc/reference/claude-code-memory-official.md`.
+
+## Two Memory Locations (do not conflate)
+
+MoAI deals with two distinct memory directories. Keep their rules separate:
+
+| Directory | Scope | Frontmatter schema | Enforcement |
+|-----------|-------|--------------------|-------------|
+| `.claude/agent-memory/<agent-name>/` | Per-agent memory | MoAI 4-type taxonomy (below) is REQUIRED | PostToolUse audit hook (warnings) |
+| `~/.claude/projects/<hash>/memory/` | Project/session auto-memory (the native feature above); `MEMORY.md` index lives here | None mandated by Claude Code; MoAI applies the 4-type convention to its own authored project entries only | Loader line/byte cap |
+
+The 4-type taxonomy below is a MoAI convention. The `### MEMORY.md Line Cap` rule applies to the auto-memory index in `~/.claude/projects/<hash>/memory/`, not to agent-memory files.
+
 ## SPEC Context Persistence
 
 SPEC documents serve as persistent context for multi-session work:
@@ -86,7 +113,7 @@ Files of type `user` and `reference` do not require this structure.
 
 ### MEMORY.md Line Cap
 
-`MEMORY.md` (the index file) must not exceed **200 lines**. Lines 201+ are silently truncated by the Claude Code memory loader. Keep each entry to a single line under 150 characters.
+`MEMORY.md` (the auto-memory index) is loaded each session up to the first **200 lines OR 25KB, whichever the Claude Code loader reaches first**. Content beyond either limit is silently truncated at session start — entries past the cap are NOT loaded. Keep each entry to a single line under 150 characters, and archive older entries so the index stays within both the 200-line and 25KB limits.
 
 ### Excluded Categories
 

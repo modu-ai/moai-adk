@@ -174,6 +174,8 @@ If everything "feels smooth" and fast for too long without a rejected gate, susp
 
 This is the 2026 Anthropic-recommended persistence pattern for agentic coding.
 
+> Note: the memory directory (`~/.claude/projects/{hash}/memory/`) is a **native Claude Code auto-memory feature** (v2.1.59+, toggled via `/memory` or `autoMemoryEnabled`), not a MoAI-proprietary store. This section covers MoAI's session-handoff and persistence usage of it. For the feature itself (storage derivation, MEMORY.md 200-line/25KB loading, topic files), see `.claude/rules/moai/workflow/moai-memory.md` § Official Claude Code Auto-Memory Feature.
+
 ### Session Boundary Handoff [HARD]
 
 When ANY of the 5 triggers below fires, MoAI MUST emit a paste-ready resume message AND persist it to memory before declaring `<moai>DONE</moai>`. Skipping this step breaks next-session continuity — it is **not optional**.
