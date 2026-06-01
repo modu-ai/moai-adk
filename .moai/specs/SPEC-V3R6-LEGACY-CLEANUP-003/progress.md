@@ -71,7 +71,7 @@ lifecycle: spec-anchored
 ```yaml
 mx_complete_at: 2026-06-02
 mx_status: skip-justified
-mx_commit_sha: pending_close_backfill
+mx_commit_sha: e979a4d13
 mx_tag_count: 0
 mx_skip_justified: true
 mx_verdict: SKIP-JUSTIFIED

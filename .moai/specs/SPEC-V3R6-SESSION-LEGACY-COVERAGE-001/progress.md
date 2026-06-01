@@ -18,7 +18,7 @@ mx_status: skip-eligible
 plan_commit_sha: "<TBD-by-orchestrator-commit>"
 run_commit_sha: "a095bce09"
 sync_commit_sha: "a440b5c2f"
-mx_commit_sha: "n/a"
+mx_commit_sha: "e979a4d13"
 ---
 
 # Progress Tracker — SPEC-V3R6-SESSION-LEGACY-COVERAGE-001
@@ -301,7 +301,7 @@ canary_compliance_check:
 ```yaml
 mx_complete_at: 2026-06-02
 mx_status: skip-justified
-mx_commit_sha: pending_close_backfill
+mx_commit_sha: e979a4d13
 mx_tag_count: 0
 mx_skip_justified: true
 mx_verdict: SKIP-JUSTIFIED

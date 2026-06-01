@@ -35,7 +35,7 @@ Pre-flight checks executed per plan.md §C at run-phase entry on 2026-05-30T12:0
 ```yaml
 mx_complete_at: 2026-06-02
 mx_status: skip-justified
-mx_commit_sha: pending_close_backfill
+mx_commit_sha: e979a4d13
 mx_tag_count: 0
 mx_skip_justified: true
 mx_verdict: SKIP-JUSTIFIED
@@ -51,7 +51,7 @@ mx_evidence: |
 
 ```yaml
 sync_started_at: "2026-05-30T14:32:00Z"
-sync_commit_sha: "(this commit)"
+sync_commit_sha: "7e5dbffb9"
 status: completed
 ```
 
@@ -121,4 +121,4 @@ m4_status: implemented
 
 Mx-phase ownership: orchestrator-direct (post-sync). Manager-docs sync-phase does not populate this section.
 
-mx_commit_sha: (this commit)
+mx_commit_sha: e979a4d13

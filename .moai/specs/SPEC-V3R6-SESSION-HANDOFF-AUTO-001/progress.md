@@ -201,7 +201,7 @@ All 7 commands SHOULD be invoked in a single assistant turn per AC-WO-007 verifi
 ```yaml
 mx_complete_at: 2026-06-02
 mx_status: evaluate-pass
-mx_commit_sha: pending_close_backfill
+mx_commit_sha: 97a36b5a2
 mx_tag_count: 1
 mx_new_tags_introduced: 1
 mx_skip_justified: false

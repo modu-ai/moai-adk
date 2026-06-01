@@ -43,7 +43,7 @@ Per Anthropic Finding A4 (most coding tasks involve fewer truly parallelizable t
 ```yaml
 mx_complete_at: 2026-06-02
 mx_status: evaluate-pass
-mx_commit_sha: pending_close_backfill
+mx_commit_sha: e979a4d13
 mx_tag_count: 10
 mx_new_tags_introduced: 0
 mx_skip_justified: false
@@ -54,7 +54,7 @@ mx_evidence: |
   cache_usage_log.go, doctor_cache.go, posttooluse_cache.go). 
   No new dangerous patterns introduced. TAG delta = +10. 
   AC-PC-001..009 all PASS (docs-site Should-fix AC-PC-009 deferred to Phase M5).
-  Sync commit 84a184f2c confirmed; mx_commit_sha pending backfill by orchestrator.
+  Sync commit 84a184f2c confirmed; mx_commit_sha e979a4d13 (backfilled by orchestrator 2026-06-02).
 ```
 
 ## §R — Run-phase Evidence
