@@ -3,7 +3,7 @@ id: SPEC-V3R5-GIT-STRATEGY-SCHEMA-001
 title: "git-strategy.yaml ↔ Go struct 정합 — Implementation Plan"
 version: "0.1.0"
 created: 2026-05-22
-updated: 2026-05-22
+updated: 2026-06-02
 ---
 
 # Implementation Plan — SPEC-V3R5-GIT-STRATEGY-SCHEMA-001
@@ -88,7 +88,7 @@ Each milestone produces a verifiable artifact and feeds the AC matrix. M1-M4 may
    ```
 4. Run `go build ./...` and `go vet ./...` after edit. Both MUST succeed.
 
-**Deliverable**: M0 commit `plan(SPEC-V3R5-GIT-STRATEGY-SCHEMA-001): M0 struct hierarchy + deprecation comments`
+**Deliverable**: M0 commit `feat(SPEC-V3R5-GIT-STRATEGY-SCHEMA-001): M0 struct hierarchy + deprecation comments`
 
 **Verification commands**:
 ```bash
@@ -118,7 +118,7 @@ go vet ./internal/config/...
    go test -race -run TestGitStrategyConfig_ ./internal/config/...
    ```
 
-**Deliverable**: M1 commit `plan(SPEC-V3R5-GIT-STRATEGY-SCHEMA-001): M1 nested roundtrip test`
+**Deliverable**: M1 commit `test(SPEC-V3R5-GIT-STRATEGY-SCHEMA-001): M1 nested roundtrip test`
 
 ---
 
@@ -154,7 +154,7 @@ go vet ./internal/config/...
    go test -v -run TestGitStrategyConfig_ActiveModeProfile ./internal/config/...
    ```
 
-**Deliverable**: M2 commit `plan(SPEC-V3R5-GIT-STRATEGY-SCHEMA-001): M2 ActiveModeProfile accessor`
+**Deliverable**: M2 commit `feat(SPEC-V3R5-GIT-STRATEGY-SCHEMA-001): M2 ActiveModeProfile accessor`
 
 ---
 
@@ -218,7 +218,7 @@ go vet ./internal/config/...
    go test -v -run TestNewDefaultGitStrategyConfig ./internal/config/...
    ```
 
-**Deliverable**: M3 commit `plan(SPEC-V3R5-GIT-STRATEGY-SCHEMA-001): M3 defaults extension`
+**Deliverable**: M3 commit `feat(SPEC-V3R5-GIT-STRATEGY-SCHEMA-001): M3 defaults extension`
 
 ---
 
@@ -264,7 +264,7 @@ go vet ./internal/config/...
    ```
 4. If `TestAuditLoaderCompleteness` fails citing missing loader for git-strategy, investigate `loader.go` Load() chain — git-strategy should already flow through normal config load. If not, add to `loadedSections` mapping (minor fix).
 
-**Deliverable**: M4 commit `plan(SPEC-V3R5-GIT-STRATEGY-SCHEMA-001): M4 validation extension + audit registry`
+**Deliverable**: M4 commit `feat(SPEC-V3R5-GIT-STRATEGY-SCHEMA-001): M4 validation extension + audit registry`
 
 ---
 
@@ -300,7 +300,7 @@ go vet ./internal/config/...
    go test ./...
    ```
 
-**Deliverable**: M5 commit `plan(SPEC-V3R5-GIT-STRATEGY-SCHEMA-001): M5 cross-platform + lint + race verification`
+**Deliverable**: M5 commit `chore(SPEC-V3R5-GIT-STRATEGY-SCHEMA-001): M5 cross-platform + lint + race verification`
 
 ---
 
@@ -398,7 +398,7 @@ git status --short | head -20
 - PRESERVE 대상: 8 files enumerated in §5 Section A above. All [EXTEND], 1 [NEW].
 - 무관 dirty / untracked: enumerated in §6 B8. DO NOT modify or commit.
 - 금지 명령: `--no-verify`, `--amend`, force-push to main, `git reset --hard`.
-- 사용 의무 명령: Conventional Commits format `plan(SPEC-V3R5-GIT-STRATEGY-SCHEMA-001): M{N} <summary>`, trailer `🗿 MoAI <email@mo.ai.kr>` per CLAUDE.md.
+- 사용 의무 명령: Conventional Commits format with the run-phase-appropriate type prefix per milestone — `feat(...)` for struct/accessor/defaults/validation milestones (M0/M2/M3/M4), `test(...)` for the test-authoring milestone (M1), `chore(...)` for the M5 verification milestone — body `M{N} <summary>`, trailer `🗿 MoAI <email@mo.ai.kr>` per CLAUDE.md. Do NOT use the `plan(...)` prefix for run-phase code commits: the `draft → in-progress` transition is owned by manager-develop and a `plan(...)` prefix triggers `OwnershipTransitionInvalid` lint per the Status Transition Ownership Matrix (`.claude/rules/moai/development/spec-frontmatter-schema.md`).
 - Late-Branch policy: commit to main, defer push to sync-phase per REQ-LB-005.
 - Subagent boundary (C-HRA-008): zero `AskUserQuestion` invocations in `internal/config/*.go`. Verified by AC-GSS-009.
 

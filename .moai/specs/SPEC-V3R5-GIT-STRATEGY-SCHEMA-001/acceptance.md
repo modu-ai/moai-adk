@@ -3,7 +3,7 @@ id: SPEC-V3R5-GIT-STRATEGY-SCHEMA-001
 title: "git-strategy.yaml ↔ Go struct 정합 — Acceptance Criteria"
 version: "0.1.0"
 created: 2026-05-22
-updated: 2026-05-22
+updated: 2026-06-02
 ---
 
 # Acceptance Criteria — SPEC-V3R5-GIT-STRATEGY-SCHEMA-001
@@ -44,9 +44,9 @@ go doc internal/config GitLabConfig 2>&1 | grep -E "InstanceURL" | wc -l
 
 **Status**: must-pass
 
-**Given** a yaml fixture matching the current production `.moai/config/sections/git-strategy.yaml` structure (3 modes fully populated, ~70 keys),
+**Given** a **synthetic, self-contained nested yaml fixture** (defined as a Go raw-string constant inside `internal/config/git_strategy_nested_test.go`) that mirrors the production yaml STRUCTURE (3-mode nested hierarchy, ~70 keys) and is populated with the **template-canonical DEFAULT VALUES** — the SSOT per spec.md §1.5 + REQ-GSS-006, sourced from `internal/template/templates/.moai/config/sections/git-strategy.yaml.tmpl`,
 **When** the test `TestGitStrategyConfig_NestedRoundTrip` in `internal/config/git_strategy_nested_test.go` runs,
-**Then** all of the following assertions shall pass:
+**Then** all of the following assertions shall pass (values are the template canonical defaults — NOT the production yaml, which intentionally diverges as a per-project customization per CLAUDE.local.md §22 and is therefore NOT the fixture oracle):
 - `cfg.Mode == "team"` (top-level mode)
 - `cfg.Provider == "github"` (top-level provider)
 - `cfg.GitLab.InstanceURL == ""` (top-level nested empty)
@@ -55,8 +55,12 @@ go doc internal/config GitLabConfig 2>&1 | grep -E "InstanceURL" | wc -l
 - `cfg.Team.Automation.AutoBranch == false`
 - `cfg.Team.Automation.AutoPush == true`
 - `cfg.Team.CommitStyle.ScopeRequired == true`
+- `cfg.Team.DraftPR == true`
+- `cfg.Team.RequiredReviews == 1`
 - `cfg.Manual.Environment == "local"`
 - `cfg.Personal.BranchPrefix == "feature/SPEC-"`
+
+> **Oracle note**: The fixture values above MUST be aligned with AC-GSS-005 (defaults) and M3 `NewDefaultGitStrategyConfig()` so that the fixture, the defaults assertion, and the constructor form ONE consistent oracle. The production `.moai/config/sections/git-strategy.yaml` (e.g., `branch_prefix: feat/SPEC-`, `team.draft_pr: false`, `team.required_reviews: 0`, `personal.automation.auto_branch: true`) is an intentional 1-person-OSS Hybrid Trunk customization and MUST NOT be used as the fixture oracle.
 
 **Verification (binary)**:
 ```bash
@@ -111,11 +115,25 @@ go test -v -run TestGitStrategyConfig_ActiveModeProfile ./internal/config/... 2>
 go test -run TestConfig ./internal/config/... 2>&1 | grep -E "PASS|FAIL"
 # Expected: PASS (no FAIL)
 
-grep -n "Deprecated:" internal/config/types.go | grep -i "GitStrategy\|AutoBranch\|WorktreeRoot\|FLAT" | wc -l
-# Expected: ≥ 2 (at minimum AutoBranch and WorktreeRoot deprecation comments)
+# Per-field deprecation assertion — each FLAT field named in REQ-GSS-005 MUST have
+# its own `// Deprecated:` comment line. Checked individually so that a present
+# AutoBranch comment cannot mask an absent WorktreeRoot comment (and vice versa).
+
+# AutoBranch deprecation comment present (the `// Deprecated:` line immediately
+# precedes the `AutoBranch bool` field declaration):
+grep -B1 'AutoBranch bool' internal/config/types.go | grep -c 'Deprecated:'
+# Expected: 1 (exactly one Deprecated line directly above AutoBranch)
+
+# WorktreeRoot deprecation comment present:
+grep -B1 'WorktreeRoot string' internal/config/types.go | grep -c 'Deprecated:'
+# Expected: 1 (exactly one Deprecated line directly above WorktreeRoot)
+
+# Aggregate count remains a sanity floor (does NOT replace the two per-field checks):
+grep -n "Deprecated:" internal/config/types.go | grep -i "GitStrategy\|AutoBranch\|BranchPrefix\|CommitStyle\|WorktreeRoot\|GitLabInstanceURL\|FLAT" | wc -l
+# Expected: ≥ 2
 ```
 
-**PASS** if both checks succeed.
+**PASS** if the test passes AND both per-field grep counts equal 1 (AutoBranch and WorktreeRoot each individually deprecated) AND the aggregate floor is met.
 
 ---
 
