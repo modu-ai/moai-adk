@@ -4,7 +4,7 @@
 
 ### sync_commit_sha
 
-`(this commit)` — backfilled at commit push (placeholder per `.claude/rules/moai/workflow/session-handoff.md` chicken-and-egg pattern).
+`c81dc81b1` — pushed to origin/main at 2026-06-01T16:48:00+0900 (backfilled per chicken-and-egg pattern)
 
 ### Run-phase Completion Reference
 
