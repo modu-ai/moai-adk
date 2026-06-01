@@ -40,7 +40,7 @@
 
 ### mx_commit_sha
 
-`(this commit — backfill pending)` — 4-phase close commit; backfilled per chicken-and-egg pattern (placeholder replaced with the actual close commit SHA in the immediately following backfill commit).
+`41868a664` — 4-phase close commit (status implemented → completed); backfilled per chicken-and-egg pattern.
 
 ### 4-Phase Lifecycle Close
 
