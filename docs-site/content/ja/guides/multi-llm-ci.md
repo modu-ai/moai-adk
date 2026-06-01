@@ -333,6 +333,6 @@ runnerバージョンチェックがシステム診断に統合されます (T-2
 
 ## 次のステップ
 
-- [CLIリファレンス](/docs/commands/)
-- [Workflow設定リファレンス](/docs/configuration/)
-- [セキュリティポリシー確認](/docs/security/)
+- [CLIリファレンス](/workflow-commands/)
+- [Workflow設定リファレンス](/advanced/settings-json/)
+- [セキュリティポリシー確認](/advanced/security-notes/)

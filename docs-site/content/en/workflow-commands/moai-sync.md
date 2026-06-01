@@ -148,7 +148,7 @@ flowchart TD
     S --> T["Sync Architecture Documentation"]
     T --> U["Update SPEC Status"]
 
-    U --> V["Call manager-quality<br/>Quality Validation"]
+    U --> V["Call evaluator-active<br/>Quality Validation"]
     V --> W{"Quality Gates?"}
     W -->|FAIL| G
     W -->|PASS| X["Phase 3<br/>Git Operations"]
@@ -203,7 +203,7 @@ When tests fail, present options to the user:
 
 **Step 4 - Code Review:**
 
-The **manager-quality** subagent performs TRUST 5 quality validation and generates a comprehensive report.
+The **evaluator-active** subagent performs TRUST 5 quality validation and generates a comprehensive report.
 
 **Step 5 - Generate Quality Report:**
 
@@ -241,7 +241,7 @@ The **manager-docs** subagent performs the following tasks:
 
 **Step 3 - Post-Sync Quality Validation:**
 
-The **manager-quality** subagent validates synchronization quality against TRUST 5 criteria:
+The **evaluator-active** subagent validates synchronization quality against TRUST 5 criteria:
 
 - All project links complete
 - Documents well formatted
@@ -441,7 +441,7 @@ Sync phase quality criteria are more documentation-focused than Run phase:
 
 ```bash
 # Check that Run phase is complete
-# manager-ddd should have output "DONE" or "COMPLETE" marker
+# manager-develop should have output "DONE" or "COMPLETE" marker
 ```
 
 **Step 2: Clear Tokens Then Run Sync**

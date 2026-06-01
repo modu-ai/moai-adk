@@ -12,7 +12,7 @@ draft: false
 
 ## 概述
 
-`/moai run` 是 MoAI-ADK 工作流的 **Phase 2 (Run)** 命令。它读取在 Phase 1 中创建的 SPEC 文档，通过 **ANALYZE-PRESERVE-IMPROVE** 周期安全地实现代码而不破坏现有功能。内部由 **manager-ddd** agent 管理整个过程。
+`/moai run` 是 MoAI-ADK 工作流的 **Phase 2 (Run)** 命令。它读取在 Phase 1 中创建的 SPEC 文档，通过 **ANALYZE-PRESERVE-IMPROVE** 周期安全地实现代码而不破坏现有功能。内部由 **manager-develop** agent 管理整个过程。
 
 {{< callout type="info" >}}
 
@@ -113,14 +113,14 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["执行命令<br/>/moai run SPEC-XXX"] --> B["调用 manager-strategy"]
+    A["执行命令<br/>/moai run SPEC-XXX"] --> B["调用 manager-spec"]
     B --> C["创建战略计划"]
 
     C --> D{"用户批准"}
     D -->|否| E["退出"]
     D -->|是| F["分解工作<br/>最多 10 个任务"]
 
-    F --> G["调用 manager-ddd"]
+    F --> G["调用 manager-develop"]
     G --> H["ANALYZE<br/>分析代码结构"]
     H --> I["映射依赖关系"]
     I --> J["检查现有测试"]
@@ -136,7 +136,7 @@ flowchart TD
     Q -->|是| R["提交"]
     R --> S{"所有需求<br/>已实现?"}
     S -->|否| O
-    S -->|是| T["调用 manager-quality"]
+    S -->|是| T["调用 evaluator-active"]
 
     Q -->|否| U["回滚"]
     U --> O
@@ -161,7 +161,7 @@ flowchart TD
 
 ### Phase 1: 分析和规划
 
-**manager-strategy** subagent 执行以下任务:
+**manager-spec** subagent 执行以下任务:
 
 - 完整的 SPEC 文档分析
 - 提取需求和成功标准
@@ -188,7 +188,7 @@ flowchart TD
 
 ### Phase 2: DDD 实现
 
-**manager-ddd** subagent 执行 ANALYZE-PRESERVE-IMPROVE 周期:
+**manager-develop** subagent 执行 ANALYZE-PRESERVE-IMPROVE 周期:
 
 **要求:**
 
@@ -202,7 +202,7 @@ flowchart TD
 
 ### Phase 2.5: 质量验证
 
-**manager-quality** subagent 执行 TRUST 5 验证:
+**evaluator-active** subagent 执行 TRUST 5 验证:
 
 | TRUST 5 支柱 | 验证项目                     |
 | -------------- | ------------------------------------ |
@@ -282,9 +282,9 @@ flowchart TD
 > /moai run SPEC-AUTH-001
 ```
 
-**步骤 3: manager-ddd 自动执行的任务**
+**步骤 3: manager-develop 自动执行的任务**
 
-manager-ddd agent 为实现 SPEC 执行的 4 个阶段。
+manager-develop agent 为实现 SPEC 执行的 4 个阶段。
 
 ---
 
@@ -410,12 +410,12 @@ Phase 4: 完成
 
 ### Q: 如果在实现期间 tokens 用完了怎么办？
 
-manager-ddd agent **自动保存进度**。在 `/clear` 之后，再次运行 `/moai run SPEC-XXX` 以基于 SPEC 文档继续工作。
+manager-develop agent **自动保存进度**。在 `/clear` 之后，再次运行 `/moai run SPEC-XXX` 以基于 SPEC 文档继续工作。
 
 ### Q: 如果难以达到 85% 的测试覆盖率怎么办？
 
 您可以在 `quality.yaml` 中调整覆盖率目标，但**不建议这样做**。
-85% 是确保核心逻辑经过测试的最低标准。如果覆盖率不足，manager-ddd 会自动添加缺失的测试。
+85% 是确保核心逻辑经过测试的最低标准。如果覆盖率不足，manager-develop 会自动添加缺失的测试。
 
 ### Q: 如果在 Phase 2.5 中出现 CRITICAL 状态怎么办？
 

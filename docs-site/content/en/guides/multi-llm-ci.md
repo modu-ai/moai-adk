@@ -333,6 +333,6 @@ Runner version check integrated into system diagnostics (T-27).
 
 ## Next Steps
 
-- [CLI Reference](/docs/commands/)
-- [Workflow Configuration](/docs/configuration/)
-- [Security Policy](/docs/security/)
+- [CLI Reference](/workflow-commands/)
+- [Workflow Configuration](/advanced/settings-json/)
+- [Security Policy](/advanced/security-notes/)

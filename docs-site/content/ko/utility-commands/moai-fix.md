@@ -270,10 +270,10 @@ flowchart TD
 | 에이전트 | 역할 | 주요 작업 |
 |----------|------|----------|
 | **MoAI 오케스트레이터** | 병렬 스캔 조율 |
-| **expert-backend** | 백엔드 수정 (Level 1-2) |
-| **expert-frontend** | 프론트엔드 수정 (Level 1-2) |
-| **expert-debug** | 로직 오류 수정 (Level 3-4) |
-| **manager-quality** | 품질 검증 | 수정 결과 확인 |
+| **manager-develop** | 백엔드 수정 (Level 1-2) |
+| **manager-develop** | 프론트엔드 수정 (Level 1-2) |
+| **manager-develop** | 로직 오류 수정 (Level 3-4) |
+| **evaluator-active** | 품질 검증 | 수정 결과 확인 |
 
 ## 실전 예시
 

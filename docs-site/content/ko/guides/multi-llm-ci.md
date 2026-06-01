@@ -326,6 +326,6 @@ runner 버전 체크가 시스템 진단에 통합됩니다.
 
 ## 다음 단계
 
-- [CLI 레퍼런스 참조](/docs/commands/)
-- [Workflow 설정 참조](/docs/configuration/)
-- [보안 정책 확인](/docs/security/)
+- [CLI 레퍼런스 참조](/workflow-commands/)
+- [Workflow 설정 참조](/advanced/settings-json/)
+- [보안 정책 확인](/advanced/security-notes/)

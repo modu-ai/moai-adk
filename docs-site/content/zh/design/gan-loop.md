@@ -7,19 +7,19 @@ draft: false
 
 # GAN Loop — Builder-Evaluator迭代
 
-GAN Loop是**Builder**(expert-frontend)和**Evaluator**(evaluator-active)协作的迭代过程。设计改进 → 评估 → 改进,直到达到质量阈值。
+GAN Loop是**Builder**(manager-develop)和**Evaluator**(evaluator-active)协作的迭代过程。设计改进 → 评估 → 改进,直到达到质量阈值。
 
 ## 流程概览
 
 ```mermaid
 flowchart TD
-    A["设计令牌 + 文案<br>输入"] --> B["expert-frontend<br>生成代码<br>iteration 1"]
+    A["设计令牌 + 文案<br>输入"] --> B["manager-develop<br>生成代码<br>iteration 1"]
     B --> C["evaluator-active<br>评分<br>0.0到1.0"]
     C --> D{分数 >= 0.75?}
     D -->|YES| E["通过<br>进入学习阶段"]
     D -->|NO| F["失败<br>生成反馈"]
     F --> G{超过<br>3次迭代?}
-    G -->|NO| H["expert-frontend<br>生成修订代码<br>iteration N"]
+    G -->|NO| H["manager-develop<br>生成修订代码<br>iteration N"]
     H --> C
     G -->|YES| I["用户干预<br>调整标准或<br>强制通过"]
     I --> E
@@ -30,7 +30,7 @@ flowchart TD
 
 ### 步骤1: Builder生成代码
 
-**expert-frontend**:
+**manager-develop**:
 - 加载设计令牌JSON
 - 加载文案部分
 - 编写React/Vue组件

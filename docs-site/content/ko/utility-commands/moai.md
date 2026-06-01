@@ -23,7 +23,7 @@ sync** 파이프라인을 자율적으로 실행합니다.
 따로 실행할 필요 없이, 단 한 번의 명령으로 전체 개발 프로세스가 자동화됩니다:
 
 1. **SPEC 생성** (manager-spec)
-2. **DDD 구현** (manager-ddd)
+2. **DDD/TDD 구현** (manager-develop — quality.yaml의 development_mode에 따라)
 3. **문서 동기화** (manager-docs)
 
 ## 사용법
@@ -178,23 +178,22 @@ flowchart TD
 
     J --> K["Phase 2<br/>DDD 구현"]
 
-    K --> L["manager-strategy 호출<br/>전략 계획"]
-    L --> M["manager-ddd 호출<br/>ANALYZE-PRESERVE-IMPROVE"]
-    M --> N{"구현 완료?"}
-    N -->|아니오| M
-    N -->|예| O{"--loop?"}
+    K --> L["manager-develop 호출<br/>DDD/TDD 순환 (quality.yaml에 따라)"]
+    L --> M{"구현 완료?"}
+    M -->|아니오| L
+    M -->|예| N{"--loop?"}
 
-    O -->|예| P["자동 루프 실행"]
-    P --> Q["모든 문제 해결"]
-    O -->|아니오| Q
+    N -->|예| O["자동 루프 실행"]
+    O --> P["모든 문제 해결"]
+    N -->|아니오| P
 
-    Q --> R["Phase 3<br/>문서 동기화"]
+    P --> Q["Phase 3<br/>문서 동기화"]
 
-    R --> S["manager-docs 호출<br/>문서 생성"]
-    S --> T{"--pr?"}
-    T -->|예| U["PR 생성"]
-    T -->|아니오| V["완료 마커"]
-    U --> V
+    Q --> R["manager-docs 호출<br/>문서 생성"]
+    R --> S{"--pr?"}
+    S -->|예| T["PR 생성"]
+    S -->|아니오| U["완료 마커"]
+    T --> U
 ```
 
 **핵심 포인트:**
@@ -234,28 +233,25 @@ flowchart TD
 - Given-When-Then 인수 기준
 - conversation_language로 작성된 콘텐츠
 
-### Phase 2: DDD 구현 루프
+### Phase 2: DDD/TDD 구현 루프
 
-**[HARD] 에이전트 위임 규정:** 모든 구현 작업은 전문화된 에이전트에 위임해야
-합니다. 자동 컴팩트 후에도 직접 구현을 금지합니다.
+**manager-develop** 하위 에이전트가 SPEC을 기반으로 구현을 수행합니다:
 
-**전문가 에이전트 선택:**
+- DDD 순환: ANALYZE-PRESERVE-IMPROVE (기존 코드 리팩토링)
+- TDD 순환: RED-GREEN-REFACTOR (새 기능 개발)
+- 도메인 컨텍스트 자동 주입 (백엔드, 프론트엔드, 보안, 데이터베이스 등)
 
-| 작업 유형           | 에이전트                         |
-| ------------------- | -------------------------------- |
-| 백엔드 로직         | expert-backend 하위 에이전트     |
-| 프론트엔드 컴포넌트 | expert-frontend 하위 에이전트    |
-| 테스트 생성         | expert-testing 하위 에이전트     |
-| 버그 수정           | expert-debug 하위 에이전트       |
-| 리팩토링            | expert-refactoring 하위 에이전트 |
-| 보안 수정           | expert-security 하위 에이전트    |
+**quality.yaml development_mode 설정:**
 
-**루프 동작 (--loop 또는 ralph.yaml loop.enabled가 true일 때):**
+- `development_mode: ddd` → DDD 순환 사용 (기존 코드 개선)
+- `development_mode: tdd` → TDD 순환 사용 (새 기능 개발, 기본값)
+
+**루프 동작 (--loop 또는 loop.enabled가 true일 때):**
 
 ```
 문제가 존재 AND 반복 < 최대값:
-  1. 진단 실행 (기본 병렬)
-  2. 적절한 전문가 에이전트에 수정 위임
+  1. 진단 실행 (LSP 오류, 테스트 실패, 커버리지)
+  2. manager-develop에 수정 위임
   3. 수정 결과 검증
   4. 완료 마커 확인
   5. 마커 발견 시 루프 종료
@@ -335,16 +331,16 @@ llm.yaml 설정에 따라 자동 라우팅:
 **4단계: Phase 2 - DDD 구현**
 
 ```
-[manager-strategy]
+[manager-spec]
   작업 분해: 7개 태스크
   전략 계획 완료
 
-[manager-ddd]
+[manager-develop]
   ANALYZE: 코드 구조 분석 완료
   PRESERVE: 특성화 테스트 12개 작성
   IMPROVE: 7개 태스크 구현 완료
 
-[manager-quality]
+[evaluator-active]
   TRUST 5: 모든 기둥 통과
   커버리지: 89%
   상태: PASS
@@ -355,7 +351,7 @@ llm.yaml 설정에 따라 자동 라우팅:
 ```
 [루프 시작 - 반복 1/100]
   진단: 타입 오류 2개 발견
-  수정: expert-backend 하위 에이전트에 위임
+  수정: manager-develop 하위 에이전트에 위임
   검증: 모든 오류 해결됨
 
 [루프 종료 - 1회 반복]

@@ -7,19 +7,19 @@ draft: false
 
 # GAN Loop — Builder-Evaluator 반복
 
-GAN Loop는 **Builder** (expert-frontend) 와 **Evaluator** (evaluator-active) 가 협력하는 반복 프로세스입니다. 설계가 품질 기준을 만족할 때까지 개선 → 평가 → 개선을 반복합니다.
+GAN Loop는 **Builder** (manager-develop) 와 **Evaluator** (evaluator-active) 가 협력하는 반복 프로세스입니다. 설계가 품질 기준을 만족할 때까지 개선 → 평가 → 개선을 반복합니다.
 
 ## 프로세스 개요
 
 ```mermaid
 flowchart TD
-    A["설계 토큰 + 카피<br>입력"] --> B["expert-frontend<br>코드 생성<br>iteration 1"]
+    A["설계 토큰 + 카피<br>입력"] --> B["manager-develop<br>코드 생성<br>iteration 1"]
     B --> C["evaluator-active<br>평가<br>점수: 0.0~1.0"]
     C --> D{점수 >= 0.75?}
     D -->|YES| E["PASS<br>학습 단계 진입"]
     D -->|NO| F["FAIL<br>피드백 생성"]
     F --> G{3회 반복<br>초과?}
-    G -->|NO| H["expert-frontend<br>수정 코드 생성<br>iteration N"]
+    G -->|NO| H["manager-develop<br>수정 코드 생성<br>iteration N"]
     H --> C
     G -->|YES| I["사용자 개입<br>기준 조정 또는<br>강제 통과"]
     I --> E
@@ -30,7 +30,7 @@ flowchart TD
 
 ### 1단계: Builder 코드 생성
 
-**expert-frontend** 가:
+**manager-develop** 가:
 - 설계 토큰 JSON 로드
 - 카피 섹션 로드
 - React/Vue 컴포넌트 작성
@@ -126,7 +126,7 @@ pass_conditions:
 ### Contract 협상
 
 1. **evaluator-active** 가 Contract 제안
-2. **expert-frontend** 가 검토
+2. **manager-develop** 가 검토
    - 실현 가능한지 확인
    - 조정 요청 가능
 3. **evaluator-active** 가 최종 확정

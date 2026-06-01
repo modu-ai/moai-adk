@@ -12,7 +12,7 @@ Implements code using DDD (Domain-Driven Development) methodology based on SPEC 
 
 ## Overview
 
-`/moai run` is the **Phase 2 (Run)** command of the MoAI-ADK workflow. It reads the SPEC document created in Phase 1 and safely implements code through the **ANALYZE-PRESERVE-IMPROVE** cycle without breaking existing functionality. Internally, the **manager-ddd** agent manages the entire process.
+`/moai run` is the **Phase 2 (Run)** command of the MoAI-ADK workflow. It reads the SPEC document created in Phase 1 and safely implements code through the **ANALYZE-PRESERVE-IMPROVE** cycle without breaking existing functionality. Internally, the **manager-develop** agent manages the entire process.
 
 {{< callout type="info" >}}
 **Understanding DDD through Home Renovation**
@@ -111,14 +111,14 @@ The entire process that `/moai run` performs internally:
 
 ```mermaid
 flowchart TD
-    A["Execute Command<br/>/moai run SPEC-XXX"] --> B["Call manager-strategy"]
+    A["Execute Command<br/>/moai run SPEC-XXX"] --> B["Call manager-develop"]
     B --> C["Create Strategic Plan"]
 
     C --> D{"User Approval"}
     D -->|No| E["Exit"]
     D -->|Yes| F["Decompose Work<br/>Max 10 tasks"]
 
-    F --> G["Call manager-ddd"]
+    F --> G["Call manager-develop"]
     G --> H["ANALYZE<br/>Analyze code structure"]
     H --> I["Map Dependencies"]
     I --> J["Check Existing Tests"]
@@ -134,7 +134,7 @@ flowchart TD
     Q -->|Yes| R["Commit"]
     R --> S{"All Requirements<br/>Implemented?"}
     S -->|No| O
-    S -->|Yes| T["Call manager-quality"]
+    S -->|Yes| T["Call evaluator-active"]
 
     Q -->|No| U["Rollback"]
     U --> O
@@ -159,7 +159,7 @@ flowchart TD
 
 ### Phase 1: Analysis and Planning
 
-The **manager-strategy** subagent performs the following tasks:
+The **manager-develop** subagent performs the following tasks:
 
 - Complete SPEC document analysis
 - Extract requirements and success criteria
@@ -186,7 +186,7 @@ Decompose approved execution plan into atomic and reviewable tasks:
 
 ### Phase 2: DDD Implementation
 
-The **manager-ddd** subagent executes the ANALYZE-PRESERVE-IMPROVE cycle:
+The **manager-develop** subagent executes the ANALYZE-PRESERVE-IMPROVE cycle:
 
 **Requirements:**
 
@@ -200,7 +200,7 @@ The **manager-ddd** subagent executes the ANALYZE-PRESERVE-IMPROVE cycle:
 
 ### Phase 2.5: Quality Validation
 
-The **manager-quality** subagent performs TRUST 5 validation:
+The **evaluator-active** subagent performs TRUST 5 validation:
 
 | TRUST 5 Pillar | Validation Items                     |
 | -------------- | ------------------------------------ |
@@ -280,9 +280,9 @@ Reasons for targeting 85% instead of 100%
 > /moai run SPEC-AUTH-001
 ```
 
-**Step 3: Tasks Automatically Performed by manager-ddd**
+**Step 3: Tasks Automatically Performed by manager-develop**
 
-The 4 Phases that manager-ddd agent performs to implement the SPEC.
+The 4 Phases that manager-develop agent performs to implement the SPEC.
 
 ---
 
@@ -408,12 +408,12 @@ The PRESERVE phase **passes quickly** if there's no existing code. Tests for new
 
 ### Q: What if tokens run out during implementation?
 
-The manager-ddd agent **automatically saves progress**. After `/clear`, run `/moai run SPEC-XXX` again to continue work based on the SPEC document.
+The manager-develop agent **automatically saves progress**. After `/clear`, run `/moai run SPEC-XXX` again to continue work based on the SPEC document.
 
 ### Q: What if it's difficult to achieve 85% test coverage?
 
 You can adjust the coverage target in `quality.yaml`, but **this is not recommended**.
-85% is the minimum standard to ensure core logic is tested. If coverage is insufficient, manager-ddd automatically adds missing tests.
+85% is the minimum standard to ensure core logic is tested. If coverage is insufficient, manager-develop automatically adds missing tests.
 
 ### Q: What if CRITICAL status appears in Phase 2.5?
 
@@ -427,5 +427,5 @@ The quality issues are reported to the user, and asked whether to retry fixes. S
 
 - [Domain-Driven Development](/core-concepts/ddd) - Detailed ANALYZE-PRESERVE-IMPROVE cycle explanation
 - [TRUST 5 Quality System](/core-concepts/trust-5) - Detailed quality gates explanation
-- [/moai plan](./moai-1-plan) - Previous phase: SPEC document creation
-- [/moai sync](./moai-3-sync) - Next phase: Documentation synchronization and PR
+- [/moai plan](./moai-plan) - Previous phase: SPEC document creation
+- [/moai sync](./moai-sync) - Next phase: Documentation synchronization and PR

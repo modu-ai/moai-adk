@@ -6,7 +6,7 @@ draft: false
 
 MoAI-ADK (Agentic Development Kit) 是 Claude Code 的战略编排框架。
 
-![MoAI-ADK](/og.png)
+![MoAI-ADK](/og.jpg)
 
 ## 主要特性
 

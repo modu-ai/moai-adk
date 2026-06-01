@@ -183,7 +183,7 @@ flowchart TD
     C["visual-identity.md<br>Complete"] --> D["moai-domain-brand-design<br>Generate tokens"]
     B --> E["copy.json<br>.moai/design/"]
     D --> F["tokens.json<br>.moai/design/"]
-    E --> G["expert-frontend<br>Code implementation"]
+    E --> G["manager-develop<br>Code implementation"]
     F --> G
     G --> H["React/Vue components<br>+<br>Tailwind/CSS Modules"]
 ```
@@ -228,7 +228,7 @@ Selection: 2
 
 ### Step 5: Enter GAN Loop
 
-`expert-frontend` agent:
+`manager-develop` agent:
 1. Receives tokens and copy
 2. Generates React/Vue components + styles
 3. `evaluator-active` scores (4-dimensional)

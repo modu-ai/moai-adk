@@ -179,15 +179,15 @@ After test generation:
 flowchart TD
     User["User Request"] --> MoAI["MoAI Orchestrator"]
     MoAI --> Measure["Phase 1-2: Measure & Analyze"]
-    Measure --> Testing["expert-testing"]
+    Measure --> Testing["manager-develop"]
 
     Testing --> Check{"--report?"}
     Check -->|Yes| ReportOnly["Output Report"]
     Check -->|No| Generate["Phase 3: Test Generation"]
-    Generate --> TestingGen["expert-testing"]
+    Generate --> TestingGen["manager-develop"]
 
     TestingGen --> Verify["Phase 4: Verification"]
-    Verify --> TestingVer["expert-testing"]
+    Verify --> TestingVer["manager-develop"]
 
     TestingVer --> Report["Phase 5: Report"]
     ReportOnly --> Done["Complete"]
@@ -199,7 +199,7 @@ flowchart TD
 | Agent | Role | Key Tasks |
 |-------|------|-----------|
 | **MoAI Orchestrator** | Workflow coordination, user interaction | Report output, next step guidance |
-| **expert-testing** | Measurement, analysis, generation, verification | Coverage measurement, gap analysis, test writing, verification |
+| **manager-develop** | Measurement, analysis, generation, verification | Coverage measurement, gap analysis, test writing, verification |
 
 ## FAQ
 

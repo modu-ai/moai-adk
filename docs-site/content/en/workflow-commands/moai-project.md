@@ -246,7 +246,7 @@ Checks if appropriate LSP servers are installed for the detected technology stac
 
 - **Continue without LSP**: Proceed to completion
 - **Show Installation Guide**: Display setup guide for detected language
-- **Auto Install Now**: Install via expert-devops agent (requires confirmation)
+- **Auto Install Now**: Install via manager-develop agent (requires confirmation)
 
 ### Phase 4: Completion
 
@@ -509,7 +509,7 @@ flowchart TD
     Phase3 --> Docs["manager-docs Subagent<br/>Delegate Document Generation"]
     Docs --> Phase35["Phase 3.5: LSP Check"]
 
-    Phase35 --> DevOps["expert-devops Subagent<br/>Install LSP (Optional)"]
+    Phase35 --> DevOps["manager-develop Subagent<br/>Install LSP (Optional)"]
     DevOps --> Phase4["Phase 4: Complete"]
 ```
 
@@ -534,6 +534,6 @@ Document generation proceeds even without an LSP server. However, code quality d
 ## Related Documents
 
 - [Quick Start](/getting-started/quickstart) - Complete workflow tutorial
-- [/moai plan](./moai-1-plan) - Next step: SPEC document creation
+- [/moai plan](./moai-plan) - Next step: SPEC document creation
 - [SPEC-based Development](/core-concepts/spec-based-dev) - Detailed SPEC methodology explanation
 - [Subagent Catalog](/advanced/agent-guide) - Explore, manager-docs agent details

@@ -64,7 +64,7 @@ flowchart TD
     C["visual-identity.md<br>完成"] --> D["moai-domain-brand-design<br>生成令牌"]
     B --> E["copy.json<br>.moai/design/"]
     D --> F["tokens.json<br>.moai/design/"]
-    E --> G["expert-frontend<br>代码实现"]
+    E --> G["manager-develop<br>代码实现"]
     F --> G
     G --> H["React/Vue组件<br>+<br>Tailwind/CSS Modules"]
 ```
@@ -109,7 +109,7 @@ ls -la .moai/project/brand/
 
 ### 步骤5: 进入GAN Loop
 
-`expert-frontend`代理:
+`manager-develop`代理:
 1. 接收令牌和文案
 2. 生成React/Vue组件 + 样式
 3. `evaluator-active`评分(4维)

@@ -23,9 +23,9 @@ flowchart TD
 
 | 명령어 | 단계 | 담당 에이전트 | 토큰 예산 | 목적 |
 |--------|------|---------------|-----------|------|
-| [`/moai project`](./moai-project) | Phase 0 | manager-project | - | 프로젝트 문서 자동 생성 |
+| [`/moai project`](./moai-project) | Phase 0 | manager-docs | - | 프로젝트 문서 자동 생성 |
 | [`/moai plan`](./moai-plan) | Phase 1 | manager-spec | 30K | SPEC 문서 생성 |
-| [`/moai run`](./moai-run) | Phase 2 | manager-ddd / manager-tdd | 180K | DDD/TDD 방식 구현 |
+| [`/moai run`](./moai-run) | Phase 2 | manager-develop / manager-develop | 180K | DDD/TDD 방식 구현 |
 | [`/moai sync`](./moai-sync) | Phase 3 | manager-docs | 40K | 문서 동기화 및 PR 생성 |
 
 {{< callout type="info" >}}

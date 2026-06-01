@@ -333,6 +333,6 @@ Runner 版本检查已集成到系统诊断中 (T-27)。
 
 ## 下一步
 
-- [CLI 参考](/docs/commands/)
-- [Workflow 配置](/docs/configuration/)
-- [安全策略](/docs/security/)
+- [CLI 参考](/workflow-commands/)
+- [Workflow 配置](/advanced/settings-json/)
+- [安全策略](/advanced/security-notes/)

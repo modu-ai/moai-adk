@@ -1,5 +1,5 @@
 ---
-title: 자율 CI/CD 가이드
+title: 自律 CI/CD ガイド
 weight: 10
 draft: false
 ---

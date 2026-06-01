@@ -130,7 +130,7 @@ MoAI-ADK 2.5 is a complete rewrite of the Python Edition in Go for maximum perfo
 
 - **34,220 lines** of Go code, **32** packages
 - **85-100%** test coverage
-- **28** specialized AI agents + **52** skills
+- **8** specialized AI agents + **31** skills
 - **18** programming languages supported
 - **16** Claude Code hook events
 
@@ -152,28 +152,28 @@ MoAI-ADK delivers the following core values:
 
 - **SPEC-based TDD/DDD**: A structured methodology for documenting requirements and developing incrementally with TDD (default) or DDD for legacy code
 - **TRUST 5 Quality Framework**: Five principles ensuring testing, readability, unification, security, and traceability
-- **28 Specialized Agents**: An AI agent team specialized for each stage of development
-- **52 Skills**: An extensible skill library supporting diverse development scenarios
+- **8 Specialized Agents**: An AI agent team specialized for each stage of development (7 MoAI-custom + Anthropic Explore)
+- **31 Skills**: An extensible skill library supporting diverse development scenarios
 - **Multilingual Support**: Support for 4 languages: Korean, English, Japanese, and Chinese
-- **Sequential Thinking MCP**: Structured problem-solving through step-by-step reasoning
+- **Adaptive Thinking**: Deep reasoning via `ultrathink` keyword on Opus 4.7+/4.8 and Sonnet 4.6
 - **Ralph-Style LSP Integration**: LSP-based autonomous workflow with real-time quality feedback
 
 ## Key Features
 
-MoAI-ADK provides 28 specialized AI agents and 52 skills to automate and optimize the entire development workflow.
+MoAI-ADK provides 8 specialized AI agents and 31 skills to automate and optimize the entire development workflow.
 
 ### Agent Categories
 
 | Category | Count | Key Agents |
 |----------|-------|------------|
-| **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git |
-| **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring |
-| **Builder** | 3 | agent, skill, plugin |
-| **Team** | 8 | researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality |
+| **Manager** | 4 | manager-spec, manager-develop, manager-docs, manager-git |
+| **Evaluator** | 2 | plan-auditor, evaluator-active |
+| **Builder** | 1 | builder-harness |
+| **Explore** | 1 | Anthropic built-in (read-only codebase exploration) |
 
 ### Model Policy (Token Optimization)
 
-MoAI-ADK assigns optimal AI models to each of 28 agents based on your Claude Code subscription plan. This maximizes quality within your plan's rate limits.
+MoAI-ADK assigns optimal AI models to each agent based on your Claude Code subscription plan. This maximizes quality within your plan's rate limits.
 
 | Policy | Plan | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku | Best For |
 |--------|------|---------|-----------|----------|----------|
@@ -185,13 +185,13 @@ MoAI-ADK assigns optimal AI models to each of 28 agents based on your Claude Cod
 The Plus $20 plan does not include Opus access. Setting **Low** ensures all agents use only Sonnet and Haiku, preventing rate limit errors. Higher plans benefit from Opus on critical agents (security, strategy, architecture) while using Sonnet/Haiku for routine tasks.
 {{< /callout >}}
 
-#### Key Agent Model Assignment
+#### Key Agent Model Assignment (8 Retained Agents)
 
 | Agent | High | Medium | Low |
 |---------|------|--------|-----|
-| manager-spec, manager-strategy, expert-security | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| manager-ddd/tdd, expert-backend/frontend | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| manager-quality, team-researcher | 🟡 haiku | 🟡 haiku | 🟡 haiku |
+| manager-spec, plan-auditor | 🟣 opus | 🟣 opus | 🔵 sonnet |
+| manager-develop, evaluator-active | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| manager-docs, manager-git, builder-harness | 🟡 haiku → 🔵 sonnet | 🟡 haiku | 🟡 haiku |
 
 ### Dual Execution Modes
 

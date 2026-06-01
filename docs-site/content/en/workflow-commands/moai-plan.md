@@ -59,7 +59,7 @@ Enter the following in the Claude Code conversation:
 | `--team`            | Force Agent Teams mode             | `/moai plan "feature" --team`          |
 | `--solo`            | Force sub-agent mode               | `/moai plan "feature" --solo`          |
 | `--seq`             | Sequential diagnosis instead of parallel | `/moai plan "feature" --seq`    |
-| `--ultrathink`      | Enable Sequential Thinking MCP     | `/moai plan "feature" --ultrathink`    |
+| `--ultrathink`      | Enable Adaptive Thinking (xhigh effort) | `/moai plan "feature" --ultrathink`    |
 
 ### Flag Priority
 
@@ -433,5 +433,5 @@ The normalization expresses the trigger as an *event*, not a *condition*, which 
 ## Related Documents
 
 - [SPEC-Based Development](/core-concepts/spec-based-dev) - Detailed explanation of EARS format
-- [/moai run](./moai-2-run) - Next step: DDD implementation
-- [/moai sync](./moai-3-sync) - Final step: Documentation synchronization
+- [/moai run](./moai-run) - Next step: DDD implementation
+- [/moai sync](./moai-sync) - Final step: Documentation synchronization

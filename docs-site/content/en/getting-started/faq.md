@@ -68,15 +68,15 @@ See [SPEC-STATUSLINE-001](https://github.com/modu-ai/moai-adk/blob/main/.moai/sp
 
 ## Q: How do I choose a model policy?
 
-MoAI-ADK assigns optimal AI models to each of 28 agents based on your Claude Code subscription plan. This maximizes quality within your plan's rate limits.
+MoAI-ADK assigns optimal AI models to each agent based on your Claude Code subscription plan. This maximizes quality within your plan's rate limits.
 
 ### Policy Tier Comparison
 
 | Policy | Plan | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku | Best For |
 |--------|------|---------|-----------|----------|----------|
-| **High** | Max $200/mo | 23 | 1 | 4 | Maximum quality, highest throughput |
-| **Medium** | Max $100/mo | 4 | 19 | 5 | Balanced quality and cost |
-| **Low** | Plus $20/mo | 0 | 12 | 16 | Budget-friendly, no Opus access |
+| **High** | Max $200/mo | 5 | 1 | 1 | Maximum quality, highest throughput |
+| **Medium** | Max $100/mo | 2 | 3 | 2 | Balanced quality and cost |
+| **Low** | Plus $20/mo | 0 | 4 | 3 | Budget-friendly, no Opus access |
 
 {{< callout type="warning" >}}
 **Why does this matter?** The Plus $20 plan does not include Opus access. Setting `Low` ensures all agents use only Sonnet and Haiku, preventing rate limit errors. Higher plans benefit from Opus on critical agents (security, strategy, architecture) while using Sonnet/Haiku for routine tasks.
@@ -84,31 +84,24 @@ MoAI-ADK assigns optimal AI models to each of 28 agents based on your Claude Cod
 
 ### Agent Model Assignment by Tier
 
-#### Manager Agents
+The following **8 retained agents** use model assignment based on tier. The 12 archived agents are not available.
+
+#### Manager Agents (4)
 
 | Agent | High | Medium | Low |
 |-------|------|--------|-----|
 | manager-spec | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| manager-strategy | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| manager-ddd | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| manager-tdd | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| manager-project | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| manager-develop | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
 | manager-docs | 🔵 sonnet | 🟡 haiku | 🟡 haiku |
-| manager-quality | 🟡 haiku | 🟡 haiku | 🟡 haiku |
 | manager-git | 🟡 haiku | 🟡 haiku | 🟡 haiku |
 
-#### Expert Agents
+#### Evaluator & Builder Agents (3)
 
 | Agent | High | Medium | Low |
 |-------|------|--------|-----|
-| expert-backend | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-frontend | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-security | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| expert-debug | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-refactoring | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-devops | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| expert-performance | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| expert-testing | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| plan-auditor | 🟣 opus | 🟣 opus | 🔵 sonnet |
+| evaluator-active | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| builder-harness | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 
 ### Configuration
 

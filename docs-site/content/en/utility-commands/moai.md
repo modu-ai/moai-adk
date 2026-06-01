@@ -19,7 +19,7 @@ Fully autonomous automation command. When you provide a goal, MoAI autonomously 
 `/moai` is the **fully autonomous automation workflow** command of MoAI-ADK. There's no need to execute subcommands separately - the entire development process is automated with a single command:
 
 1. **SPEC Creation** (manager-spec)
-2. **DDD Implementation** (manager-ddd)
+2. **DDD Implementation** (manager-develop)
 3. **Documentation Synchronization** (manager-docs)
 
 ## Usage
@@ -174,8 +174,8 @@ flowchart TD
 
     J --> K["Phase 2<br/>DDD Implementation"]
 
-    K --> L["Call manager-strategy<br/>Strategic planning"]
-    L --> M["Call manager-ddd<br/>ANALYZE-PRESERVE-IMPROVE"]
+    K --> L["Call manager-develop<br/>Strategic planning"]
+    L --> M["Call manager-develop<br/>ANALYZE-PRESERVE-IMPROVE"]
     M --> N{"Implementation complete?"}
     N -->|No| M
     N -->|Yes| O{"--loop?"}
@@ -235,12 +235,12 @@ The **manager-spec** subagent creates EARS format SPEC documents:
 
 | Task Type          | Agent                         |
 | ------------------ | ----------------------------- |
-| Backend logic      | expert-backend subagent       |
-| Frontend components| expert-frontend subagent      |
-| Test creation      | expert-testing subagent       |
-| Bug fixing         | expert-debug subagent         |
-| Refactoring        | expert-refactoring subagent   |
-| Security fixes     | expert-security subagent      |
+| Backend logic      | manager-develop subagent       |
+| Frontend components| manager-develop subagent      |
+| Test creation      | manager-develop subagent       |
+| Bug fixing         | manager-develop subagent         |
+| Refactoring        | manager-develop subagent   |
+| Security fixes     | manager-develop subagent      |
 
 **Loop Behavior (when --loop or ralph.yaml loop.enabled is true):**
 
@@ -327,16 +327,16 @@ Automatic routing based on llm.yaml settings:
 **Step 4: Phase 2 - DDD Implementation**
 
 ```
-[manager-strategy]
+[manager-develop]
   Work decomposition: 7 tasks
   Strategic planning complete
 
-[manager-ddd]
+[manager-develop]
   ANALYZE: Code structure analysis complete
   PRESERVE: Wrote 12 characterization tests
   IMPROVE: 7 tasks implementation complete
 
-[manager-quality]
+[evaluator-active]
   TRUST 5: All pillars passed
   Coverage: 89%
   Status: PASS
@@ -347,7 +347,7 @@ Automatic routing based on llm.yaml settings:
 ```
 [Starting loop - iteration 1/100]
   Diagnostics: Found 2 type errors
-  Fix: Delegated to expert-backend subagent
+  Fix: Delegated to manager-develop subagent
   Verify: All errors resolved
 
 [Loop complete - 1 iteration]

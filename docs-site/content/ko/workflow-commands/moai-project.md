@@ -252,7 +252,7 @@ flowchart TD
 
 - **LSP 없이 계속**: 완료까지 진행
 - **설치 안내 표시**: 감지된 언어의 설정 가이드 표시
-- **지금 자동 설치**: expert-devops 에이전트로 설치 (확인 필요)
+- **지금 자동 설치**: manager-develop 에이전트로 설치 (확인 필요)
 
 ### Phase 4: 완료
 
@@ -520,7 +520,7 @@ flowchart TD
     Phase3 --> Docs["manager-docs 하위 에이전트<br/>문서 생성 위임"]
     Docs --> Phase35["Phase 3.5: LSP 확인"]
 
-    Phase35 --> DevOps["expert-devops 하위 에이전트<br/>LSP 설치 (선택사항)"]
+    Phase35 --> DevOps["manager-develop 하위 에이전트<br/>LSP 설치 (선택사항)"]
     DevOps --> Phase4["Phase 4: 완료"]
 ```
 
@@ -550,7 +550,7 @@ LSP 서버가 없어도 문서 생성은 진행됩니다. 다만, 이후 `/moai 
 ## 관련 문서
 
 - [빠른 시작](/getting-started/quickstart) - 전체 워크플로우 튜토리얼
-- [/moai plan](./moai-1-plan) - 다음 단계: SPEC 문서 생성
+- [/moai plan](./moai-plan) - 다음 단계: SPEC 문서 생성
 - [SPEC 기반 개발](/core-concepts/spec-based-dev) - SPEC 방법론 상세 설명
-- [하위 에이전트 카탈로그](/advanced/agents) - Explore, manager-docs 에이전트
+- [하위 에이전트 카탈로그](/advanced/agent-guide) - Explore, manager-docs 에이전트
   상세

@@ -138,7 +138,7 @@ flowchart TD
     Info4 --> Format
     Info5 --> Format
 
-    Format --> GitHub["manager-quality Agent<br/>Create GitHub Issue"]
+    Format --> GitHub["manager-docs Agent<br/>Create GitHub Issue"]
     GitHub --> Complete["Return Issue URL"]
 ```
 
@@ -147,7 +147,7 @@ flowchart TD
 | Agent | Role | Main Tasks |
 |-------|------|------------|
 | **MoAI Orchestrator** | Guide feedback process |
-| **manager-quality** | GitHub integration | Create issue, return URL |
+| **manager-docs** | GitHub integration | Create issue, return URL |
 
 ## Practical Examples
 

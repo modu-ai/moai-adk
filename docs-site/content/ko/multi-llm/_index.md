@@ -69,4 +69,4 @@ moai cg            # CG 하이브리드 (tmux 필요)
 ## 다음 단계
 
 - [CG 모드 (Claude + GLM)](/ko/multi-llm/cg-mode) — tmux 격리 아키텍처 상세
-- [모델 정책](/ko/multi-llm/model-policy) — 24개 에이전트별 모델 배정표
+- [모델 정책](/ko/multi-llm/model-policy) — 8개 에이전트별 모델 배정표

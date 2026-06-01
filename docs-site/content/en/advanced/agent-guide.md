@@ -20,16 +20,17 @@ Using a company organization analogy: MoAI is the CEO, Manager agents are depart
 
 ## MoAI Orchestrator
 
-MoAI is the **top-level coordinator** of MoAI-ADK. It analyzes user requests and delegates tasks to appropriate agents.
+MoAI is the **top-level coordinator** of MoAI-ADK. It analyzes user requests and delegates tasks to appropriate agents (8 retained agents only).
 
 ### MoAI's Core Rules
 
 | Rule | Description |
 |------|-------------|
-| Delegation Only | Complex tasks are delegated to expert agents, not performed directly |
-| User Interface | Only MoAI handles user interaction (subagents cannot) |
-| Parallel Execution | Independent tasks are delegated to multiple agents simultaneously |
+| Delegation Only | Complex tasks are delegated to specialized agents (manager/evaluator/builder), not performed directly |
+| User Interface | Only MoAI handles user interaction (subagents cannot prompt users directly) |
+| Parallel Execution | Independent tasks are delegated to multiple agents simultaneously (Agent Teams mode) |
 | Result Integration | Consolidates agent execution results and reports to user |
+| No Archived Agents | The 12 archived agents are not available; domain expertise is injected via manager-develop context injection |
 
 ### MoAI's Request Processing Flow
 
@@ -38,58 +39,59 @@ flowchart TD
     USER[User Request] --> ANALYZE[1. Analyze Request]
     ANALYZE --> ROUTE[2. Routing Decision]
 
-    ROUTE -->|Read-only| EXPLORE["Explore Agent"]
-    ROUTE -->|Domain Expertise| EXPERT["Expert Agent"]
-    ROUTE -->|Workflow Coordination| MANAGER["Manager Agent"]
-    ROUTE -->|Extension Creation| BUILDER["Builder Agent"]
+    ROUTE -->|Read-only| EXPLORE["Explore<br/>(Anthropic built-in)"]
+    ROUTE -->|Workflow Coordination| MANAGER["Manager Agent<br/>(4 agents)"]
+    ROUTE -->|Quality Assessment| EVAL["Evaluator Agent<br/>(2 agents)"]
+    ROUTE -->|Extension Creation| BUILDER["Builder Agent<br/>(1 agent)"]
 
     EXPLORE --> RESULT[3. Integrate Results]
-    EXPERT --> RESULT
     MANAGER --> RESULT
+    EVAL --> RESULT
     BUILDER --> RESULT
 
     RESULT --> REPORT["4. Report to User"]
 ```
 
-## Agent 3-Tier Structure
+## Agent 8-Agent Consolidated Structure
 
-MoAI-ADK agents are organized into **3 tiers**:
+MoAI-ADK uses **8 retained agents** (7 MoAI-custom + 1 Anthropic built-in):
 
 ```mermaid
 flowchart TD
     MOAI["MoAI<br/>Orchestrator"]
 
-    subgraph TIER1["Tier 1: Manager Agents (8)"]
-        MS["manager-spec<br/>SPEC Creation"]
-        MD["manager-ddd<br/>DDD Implementation"]
-        MT["manager-tdd<br/>TDD Implementation"]
-        MDOC["manager-docs<br/>Document Generation"]
-        MQ["manager-quality<br/>Quality Verification"]
-        MST["manager-strategy<br/>Strategy Design"]
-        MP["manager-project<br/>Project Management"]
-        MG["manager-git<br/>Git Management"]
+    subgraph CORE["Core Agents (8)"]
+        MANAGER["Manager Agents (4)"]
+        EVAL["Evaluator Agents (2)"]
+        BUILDER["Builder Agents (1)"]
+        EXPLORE["Built-in (1)"]
     end
 
-    subgraph TIER2["Tier 2: Expert Agents (8)"]
-        EB["expert-backend<br/>Backend"]
-        EF["expert-frontend<br/>Frontend"]
-        ES["expert-security<br/>Security"]
-        ED["expert-devops<br/>DevOps"]
-        EP["expert-performance<br/>Performance"]
-        EDB["expert-debug<br/>Debugging"]
-        ET["expert-testing<br/>Testing"]
-        ER["expert-refactoring<br/>Refactoring"]
+    subgraph MANAGERAGENTS["Manager Agents"]
+        MS["manager-spec<br/>Plan-phase: SPEC creation"]
+        MD["manager-develop<br/>Run-phase: DDD/TDD implementation"]
+        MDOC["manager-docs<br/>Sync-phase: Documentation"]
+        MG["manager-git<br/>PR creation, branch management"]
     end
 
-    subgraph TIER3["Tier 3: Builder Agents (3)"]
-        BA["builder-agent<br/>Agent Creation"]
-        BS["builder-skill<br/>Skill Creation"]
-        BP["builder-plugin<br/>Plugin Creation"]
+    subgraph EVALS["Evaluator Agents"]
+        PA["plan-auditor<br/>Independent plan verification"]
+        EA["evaluator-active<br/>Quality 4-dimension scoring"]
     end
 
-    MOAI --> TIER1
-    MOAI --> TIER2
-    MOAI --> TIER3
+    subgraph BUILDERS["Builder Agent"]
+        BH["builder-harness<br/>Dynamic harness generation"]
+    end
+
+    subgraph EXPLOREAGENT["Built-in"]
+        EXP["Explore<br/>Read-only codebase exploration"]
+    end
+
+    MOAI --> CORE
+    MANAGER --> MANAGERAGENTS
+    EVAL --> EVALS
+    BUILDER --> BUILDERS
+    EXPLORE --> EXPLOREAGENT
 ```
 
 ## Manager Agent Details
@@ -98,14 +100,10 @@ Manager agents **coordinate and manage workflows**.
 
 | Agent | Role | Used Skills | Main Tools |
 |--------|------|-------------|------------|
-| `manager-spec` | SPEC document creation, EARS format requirements | `moai-workflow-spec` | Read, Write, Grep |
-| `manager-ddd` | ANALYZE-PRESERVE-IMPROVE cycle execution | `moai-workflow-ddd`, `moai-foundation-core` | Read, Write, Edit, Bash |
-| `manager-docs` | Document generation, Nextra integration | `moai-library-nextra`, `moai-docs-generation` | Read, Write, Edit |
-| `manager-quality` | TRUST 5 verification, code review | `moai-foundation-quality` | Read, Grep, Bash |
-| `manager-strategy` | System design, architecture decisions | `moai-foundation-core`, `moai-foundation-philosopher` | Read, Grep, Glob |
-| `manager-project` | Project configuration, initialization | `moai-workflow-project` | Read, Write, Bash |
-| `manager-tdd` | RED-GREEN-REFACTOR cycle execution | `moai-workflow-tdd`, `moai-foundation-core` | Read, Write, Edit, Bash |
-| `manager-git` | Git branching, merge strategy | `moai-foundation-core` | Bash (git) |
+| `manager-spec` | Plan-phase: SPEC document creation, EARS format requirements | `moai-workflow-spec` | Read, Write, Grep |
+| `manager-develop` | Run-phase: DDD/TDD cycle execution (cycle_type per quality.yaml) | `moai-workflow-ddd`, `moai-workflow-tdd`, `moai-foundation-core` | Read, Write, Edit, Bash |
+| `manager-docs` | Sync-phase: Documentation generation, CHANGELOG, README sync | `moai-workflow-project`, `moai-foundation-core` | Read, Write, Edit |
+| `manager-git` | PR creation, Git branching, merge strategy (Tier L or --pr flag) | `moai-foundation-core` | Bash (git) |
 
 ### Manager Agents and Workflow Commands
 
@@ -115,56 +113,39 @@ Manager agents connect directly to major MoAI workflow commands:
 # Plan phase: manager-spec creates SPEC document
 > /moai plan "Implement user authentication system"
 
-# Run phase: manager-ddd executes DDD cycle
+# Run phase: manager-develop executes DDD or TDD cycle
 > /moai run SPEC-AUTH-001
 
 # Sync phase: manager-docs synchronizes documentation
 > /moai sync SPEC-AUTH-001
 ```
 
-## Expert Agent Details
+## Evaluator Agent Details
 
-Expert agents perform **actual implementation work** in specific domains.
+Evaluator agents perform **independent quality assessment** and validation.
 
 | Agent | Role | Used Skills | Main Tools |
 |--------|------|-------------|------------|
-| `expert-backend` | API development, server logic, DB integration | `moai-domain-backend`, language-specific skills | Read, Write, Edit, Bash |
-| `expert-frontend` | React components, UI implementation | `moai-domain-frontend`, `moai-lang-typescript` | Read, Write, Edit, Bash |
-| `expert-security` | Security analysis, OWASP compliance | `moai-foundation-core` (TRUST 5) | Read, Grep, Bash |
-| `expert-devops` | CI/CD, infrastructure, deployment automation | Platform-specific skills | Read, Write, Bash |
-| `expert-performance` | Performance optimization, profiling | Domain-specific skills | Read, Grep, Bash |
-| `expert-debug` | Debugging, error analysis, problem resolution | Language-specific skills | Read, Grep, Bash |
-| `expert-testing` | Test creation, coverage improvement | `moai-workflow-testing` | Read, Write, Bash |
-| `expert-refactoring` | Code refactoring, architecture improvement | `moai-workflow-ddd` | Read, Write, Edit |
+| `plan-auditor` | Plan-phase: Independent skeptical audit, GEARS compliance, bias prevention | `moai-foundation-core`, `moai-foundation-thinking` | Read, Grep |
+| `evaluator-active` | Sync-phase: 4-dimension quality scoring (Functionality, Security, Craft, Consistency) | `moai-foundation-quality`, `moai-foundation-core` | Read, Grep, Bash |
 
-### Expert Agent Usage Examples
+## Domain Expertise Pattern
 
-```bash
-# Backend API development request
-> Create a user CRUD API with FastAPI
-# → MoAI delegates to expert-backend
-# → Activates moai-lang-python + moai-domain-backend skills
+For domain-specific implementation work (backend API development, frontend UI, security analysis, database design, etc.), the `manager-develop` agent is invoked with domain context injected via per-spawn `Agent(general-purpose)` patterns or domain-specific instructions in the spawn prompt. The archived `expert-*` agents (expert-backend, expert-frontend, expert-security, expert-devops, expert-performance, expert-refactoring) were consolidated per SPEC-V3R6-AGENT-TEAM-REBUILD-001. For modern domain-specific work, use:
 
-# Security analysis request
-> Analyze security vulnerabilities in this code
-# → MoAI delegates to expert-security
-# → Analyzes based on OWASP Top 10 criteria
-
-# Performance optimization request
-> This query is slow, optimize it
-# → MoAI delegates to expert-performance
-# → Profiling and optimization recommendations
-```
+- **Backend**: `manager-develop` with backend domain context + `moai-domain-backend` skill
+- **Frontend**: `manager-develop` with frontend domain context + `moai-domain-frontend` skill
+- **Security**: Quality gates via `evaluator-active` + `moai-foundation-quality` + OWASP reference skill
+- **Database**: `moai-domain-database` skill with `manager-develop`
+- **Other domains**: Language-specific skills + `manager-develop`
 
 ## Builder Agent Details
 
-Builder agents create **new components that extend MoAI-ADK**.
+Builder agent creates **new components that extend MoAI-ADK**.
 
 | Agent | Role | Output |
 |--------|------|--------|
-| `builder-agent` | Create new agent definitions | `.claude/agents/moai/*.md` |
-| `builder-skill` | Create new skills | `.claude/skills/my-skills/*/skill.md` |
-| `builder-plugin` | Create new plugins | `.claude-plugin/plugin.json` |
+| `builder-harness` | Dynamic project-specific agent team generation based on Socratic interview | `.claude/agents/harness/`, `.moai/harness/` |
 
 {{< callout type="info" >}}
 For details on builder agents, refer to [Builder Agent Guide](/advanced/builder-agents).
@@ -190,7 +171,7 @@ flowchart TD
     Q4 -->|Yes| MANAGER["manager-* Agent<br/>Process management"]
     Q4 -->|No| Q5{Complex<br/>multi-step?}
 
-    Q5 -->|Yes| STRATEGY["manager-strategy<br/>Design strategy then distribute"]
+    Q5 -->|Yes| MANAGER["manager-spec or<br/>manager-develop<br/>with broader scope"]
     Q5 -->|No| DIRECT["MoAI direct handling<br/>Simple tasks"]
 ```
 
@@ -199,58 +180,56 @@ flowchart TD
 | Task Type | Agent to Select | Example |
 |-----------|-----------------|---------|
 | Code reading/analysis | Explore | "Analyze this project's structure" |
-| API development | expert-backend | "Create REST API endpoints" |
-| UI implementation | expert-frontend | "Create login page" |
-| Bug fixing | expert-debug | "Find cause of this error" |
-| Test writing | expert-testing | "Add tests for this function" |
-| Security review | expert-security | "Check for security vulnerabilities" |
+| API development | manager-develop (backend context) | `/moai run SPEC-XXX` with backend SPEC |
+| UI implementation | manager-develop (frontend context) | `/moai run SPEC-XXX` with frontend SPEC |
+| Test writing | manager-develop (TDD mode) | `/moai run SPEC-XXX` with test-first SPEC |
+| Security review | evaluator-active | Independent quality validation during sync |
 | SPEC creation | manager-spec | `/moai plan "feature description"` |
-| DDD implementation | manager-ddd | `/moai run SPEC-XXX` |
+| Implementation | manager-develop | `/moai run SPEC-XXX` (auto-selects DDD/TDD) |
 | Document generation | manager-docs | `/moai sync SPEC-XXX` |
-| Code review | manager-quality | "Review this PR" |
-| Extension creation | builder-* | "Create new skill" |
+| Plan verification | plan-auditor | Independent audit of SPEC completeness |
+| Extension creation | builder-harness | `/moai project` Socratic interview |
 
 ## Agent Definition Files
 
-Agents are defined as markdown files in the `.claude/agents/moai/` directory.
+The 8 retained agents are defined as markdown files in the `.claude/agents/moai/` directory.
 
 ### File Structure
 
 ```
 .claude/agents/moai/
-├── expert-backend.md
-├── expert-frontend.md
-├── expert-security.md
-├── expert-devops.md
-├── expert-performance.md
-├── expert-debug.md
-├── expert-testing.md
-├── expert-refactoring.md
 ├── manager-spec.md
-├── manager-ddd.md
+├── manager-develop.md
 ├── manager-docs.md
-├── manager-quality.md
-├── manager-strategy.md
-├── manager-project.md
 ├── manager-git.md
-├── builder-agent.md
-├── builder-skill.md
-└── builder-plugin.md
+├── plan-auditor.md
+├── evaluator-active.md
+├── builder-harness.md
+└── Explore                # Anthropic built-in (no file)
 ```
+
+### Archived Agents
+
+Twelve agents were archived on 2026-05-25 per SPEC-V3R6-AGENT-TEAM-REBUILD-001 consolidation:
+- **Manager**: manager-strategy, manager-quality, manager-brain, manager-project
+- **Expert**: expert-backend, expert-frontend, expert-security, expert-devops, expert-performance, expert-refactoring
+- **Support**: claude-code-guide, researcher
+
+For migration guidance on references to archived agents, see `.claude/rules/moai/workflow/archived-agent-rejection.md`.
 
 ### Agent Definition Format
 
 ```markdown
 ---
-name: expert-backend
+name: my-backend-specialist
 description: >
-  Backend API development expert. Handles API design, server logic, database integration.
-  PROACTIVELY use for automatic delegation during backend implementation tasks.
-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite
-model: sonnet
+  Backend specialist for this project. Handles API design, server logic, database integration.
+  Generated by builder-harness based on project context.
+tools: Read, Write, Edit, Grep, Glob, Bash
+model: inherit
 ---
 
-You are a backend development expert.
+You are a backend specialist for this project.
 
 ## Role
 - REST/GraphQL API design and implementation
@@ -260,8 +239,7 @@ You are a backend development expert.
 
 ## Used Skills
 - moai-domain-backend
-- moai-lang-python (for Python projects)
-- moai-lang-typescript (for TypeScript projects)
+- Language-specific skills (Python, TypeScript, etc.)
 
 ## Quality Standards
 - TRUST 5 framework compliance
@@ -270,44 +248,45 @@ You are a backend development expert.
 ```
 
 {{< callout type="warning" >}}
-**Caution**: Subagents **cannot directly ask users questions**. All user interaction happens only through MoAI. Collect necessary information before delegating to agents.
+**Caution**: Subagents **cannot directly prompt users for questions**. All user interaction happens only through MoAI. Collect necessary information before delegating to agents. Subagents that need input from the user must return a blocker report to the orchestrator.
 {{< /callout >}}
 
 ## Agent Collaboration Patterns
 
-### Sequential Execution (With Dependencies)
+### Sequential Execution (Plan-Run-Sync)
 
 ```bash
 # 1. manager-spec creates SPEC
-# 2. manager-ddd implements based on SPEC
-# 3. manager-docs generates documentation
+# 2. plan-auditor verifies SPEC completeness
+# 3. manager-develop implements with DDD/TDD
+# 4. evaluator-active scores quality
+# 5. manager-docs generates documentation
 > /moai plan "authentication system"
 > /moai run SPEC-AUTH-001
 > /moai sync SPEC-AUTH-001
 ```
 
-### Parallel Execution (Independent Tasks)
+### Parallel Execution with Agent Teams (Experimental)
 
 ```bash
-# MoAI delegates independent tasks simultaneously
-# - expert-backend: API implementation
-# - expert-frontend: UI implementation
-# - expert-testing: Test writing
-> Create both backend API and frontend UI simultaneously
+# MoAI delegates parallel teams with --team flag
+# Plan phase: researcher + analyst + architect in parallel
+# Run phase: backend-dev + frontend-dev + tester in parallel
+> /moai plan --team "feature with multiple domains"
+> /moai run --team SPEC-XXX
 ```
 
-### Agent Chain
+### Agent Chain (4-Phase Workflow)
 
-For complex tasks, multiple agents work sequentially, handing off to each other.
+The standard MoAI workflow uses a 4-phase chain.
 
 ```mermaid
 flowchart TD
-    A["1. manager-spec<br/>Define requirements"] --> B["2. manager-strategy<br/>System design"]
-    B --> C["3. expert-backend<br/>API implementation"]
-    B --> D["4. expert-frontend<br/>UI implementation"]
-    C --> E["5. manager-quality<br/>Quality verification"]
-    D --> E
-    E --> F["6. manager-docs<br/>Document generation"]
+    A["Phase 1: Plan<br/>manager-spec"] --> B["Phase 1b: Audit<br/>plan-auditor"]
+    B --> C["Phase 2: Run<br/>manager-develop<br/>(DDD or TDD)"]
+    C --> D["Phase 3: Sync<br/>manager-docs"]
+    D --> E["Phase 4: Mx<br/>evaluator-active"]
+    E --> F["Phase 4 Close<br/>manager-docs"]
 ```
 
 ## Sub-agent System
@@ -333,12 +312,12 @@ Sub-agents are **AI assistants specialized for specific task types**.
 | Best for simple tasks | Best for complex multi-phase tasks |
 | Faster execution | Requires careful coordination |
 
-## Agent Teams
+## Agent Teams (Experimental)
 
-Agent Teams mode is an advanced workflow where multiple experts **collaborate in parallel**.
+Agent Teams mode is an advanced workflow where dynamic specialists **collaborate in parallel**. This mode spawns runtime-generated team members based on project context (role_profiles from `workflow.yaml`), NOT from a pre-defined list of archived agents.
 
 {{< callout type="info" >}}
-**Experimental Feature**: Agent Teams require Claude Code v2.1.32+ with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` environment variable and `workflow.team.enabled: true` setting.
+**Experimental Feature**: Agent Teams require Claude Code v2.1.50+ with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` environment variable and `workflow.team.enabled: true` setting.
 {{< /callout >}}
 
 ### Team Mode Settings
@@ -346,61 +325,51 @@ Agent Teams mode is an advanced workflow where multiple experts **collaborate in
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `workflow.team.enabled` | `false` | Enable Agent Teams mode |
-| `workflow.team.max_teammates` | `10` | Maximum number of teammates per team |
+| `workflow.team.max_teammates` | `5` | Maximum number of teammates per team (Anthropic recommendation) |
 | `workflow.team.auto_selection` | `true` | Auto-select mode based on complexity |
 
 ### Mode Selection
 
 | Flag | Behavior |
 |------|----------|
-| **--team** | Force team mode |
-| **--solo** | Force sub-agent mode |
-| **No flag** | Auto-select based on complexity thresholds |
+| **--team** | Force Agent Teams mode (dynamic team generation) |
+| **--solo** | Force sub-agent mode (sequential delegation) |
+| **No flag** | Auto-select based on complexity thresholds (domains >= 3, files >= 10, score >= 7) |
 
 ### /moai --team Workflow
 
-MoAI's `--team` flag activates Agent Teams for SPEC workflow.
+MoAI's `--team` flag activates Agent Teams with dynamically generated role profiles.
 
 ```bash
-# Plan phase: Team mode for research and analysis
+# Plan phase: Dynamic team for analysis
 > /moai plan --team "user authentication system"
-# researcher, analyst, architect work in parallel
+# Roles: researcher, analyst, architect (dynamically spawned)
 
-# Run phase: Team mode for implementation
+# Run phase: Dynamic team for implementation
 > /moai run --team SPEC-AUTH-001
-# backend-dev, frontend-dev, tester work in parallel
+# Roles: implementer, tester, designer (dynamically spawned per project context)
 
 # Sync phase: Documentation (always sub-agent)
 > /moai sync SPEC-AUTH-001
 # manager-docs generates documentation
 ```
 
-### Team Composition
+### Dynamic Team Generation
 
-| Role | Plan Phase | Run Phase | Permissions |
-|------|------------|-----------|-------------|
-| **Team Lead** | MoAI | MoAI | Coordinates all work |
-| **Researcher** | researcher (haiku) | - | Read-only code analysis |
-| **Analyst** | analyst (inherit) | - | Requirements analysis |
-| **Architect** | architect (inherit) | - | Technical design |
-| **Backend Dev** | - | backend-dev (acceptEdits) | Server-side files |
-| **Frontend Dev** | - | frontend-dev (acceptEdits) | Client-side files |
-| **Tester** | - | tester (acceptEdits) | Test files |
-| **Designer** | - | designer (acceptEdits) | UI/UX design |
-| **Quality** | - | quality (plan) | TRUST 5 validation |
+Rather than pre-defined agents, Agent Teams uses **runtime role profiles** defined in `workflow.yaml`:
 
-### Team File Ownership
+```yaml
+workflow:
+  team:
+    enabled: true
+    role_profiles:
+      researcher: { mode: "plan", model: "haiku" }
+      analyst: { mode: "plan", model: "inherit" }
+      implementer: { mode: "acceptEdits", model: "inherit" }
+      tester: { mode: "acceptEdits", model: "inherit" }
+```
 
-Agent Teams clearly separate file ownership to prevent conflicts.
-
-| File Type | Ownership |
-|----------|-----------|
-| `.md` docs | All team members |
-| `src/` | backend-dev |
-| `components/` | frontend-dev |
-| `tests/` | tester |
-| `*.design.pen` | designer |
-| Shared config | All team members |
+Each role spawns an `Agent(subagent_type: "general-purpose")` with domain-specific instructions injected at spawn time.
 
 ## Related Documents
 
@@ -410,5 +379,5 @@ Agent Teams clearly separate file ownership to prevent conflicts.
 - [SPEC-based Development](/core-concepts/spec-based-dev) - SPEC workflow details
 
 {{< callout type="info" >}}
-**Tip**: You don't need to specify agents directly. Just make natural language requests to MoAI and it will automatically select the optimal agent. Say "Create API" and `expert-backend` is automatically called, "Review this code" and `manager-quality` is automatically called.
+**Tip**: You don't need to specify agents directly. Just make natural language requests to MoAI and it will automatically select the optimal agent. Say "Create API" and `manager-develop` is automatically invoked with backend context. Say "Review this code" and `evaluator-active` provides quality assessment.
 {{< /callout >}}

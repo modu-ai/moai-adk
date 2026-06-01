@@ -234,7 +234,7 @@ flowchart TD
     Team --> R3["质量专家"]
     Team --> R4["UX 专家"]
 
-    Single --> Quality["manager-quality<br/>4角度顺序分析"]
+    Single --> Quality["evaluator-active<br/>4角度顺序分析"]
 
     R1 --> Consolidate["报告整合"]
     R2 --> Consolidate
@@ -250,14 +250,14 @@ flowchart TD
 | 代理 | 角色 | 主要工作 |
 |------|------|----------|
 | **MoAI 编排器** | 变更识别及结果整合 | git diff、报告生成 |
-| **manager-quality** | 代码质量分析 (默认模式) | 4角度顺序分析 |
-| **expert-security** | 安全集中分析 (`--security`) | OWASP、注入、认证 |
+| **evaluator-active** | 代码质量分析 (默认模式) | 4角度顺序分析 |
+| **manager-develop** | 安全集中分析 (`--security`) | OWASP、注入、认证 |
 
 ## 常见问题
 
 ### Q: --team 模式和默认模式有什么区别？
 
-默认模式由 `manager-quality` 代理顺序分析4个角度。`--team` 模式使用4名专业审查员同时分析，能进行更深入的分析，但令牌消耗约为4倍。
+默认模式由 `evaluator-active` 代理顺序分析4个角度。`--team` 模式使用4名专业审查员同时分析，能进行更深入的分析，但令牌消耗约为4倍。
 
 ### Q: PR 前审查最佳的标志组合是什么？
 

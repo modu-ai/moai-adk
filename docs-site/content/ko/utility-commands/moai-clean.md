@@ -171,18 +171,18 @@ flowchart TD
 ```mermaid
 flowchart TD
     User["사용자 요청"] --> MoAI["MoAI 오케스트레이터"]
-    MoAI --> Refactor1["expert-refactoring<br/>정적 분석 스캔"]
-    Refactor1 --> Refactor2["expert-refactoring<br/>사용 그래프 분석"]
+    MoAI --> Refactor1["manager-develop<br/>정적 분석 스캔"]
+    Refactor1 --> Refactor2["manager-develop<br/>사용 그래프 분석"]
     Refactor2 --> MoAI2["MoAI 오케스트레이터<br/>사용자 승인"]
-    MoAI2 --> Refactor3["expert-refactoring<br/>안전 제거"]
-    Refactor3 --> Testing["expert-testing<br/>테스트 검증"]
+    MoAI2 --> Refactor3["manager-develop<br/>안전 제거"]
+    Refactor3 --> Testing["manager-develop<br/>테스트 검증"]
     Testing --> Complete["완료"]
 ```
 
 | 에이전트 | 역할 | 주요 작업 |
 |----------|------|----------|
-| **expert-refactoring** | 분석 및 제거 | 정적 분석, 사용 그래프, 안전 제거 |
-| **expert-testing** | 검증 | 테스트 스위트 실행, 회귀 확인 |
+| **manager-develop** | 분석 및 제거 | 정적 분석, 사용 그래프, 안전 제거 |
+| **manager-develop** | 검증 | 테스트 스위트 실행, 회귀 확인 |
 | **MoAI 오케스트레이터** | 조율 | 사용자 승인, @MX 태그 정리 |
 
 ## 자주 묻는 질문

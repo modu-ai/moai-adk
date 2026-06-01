@@ -1,5 +1,5 @@
 ---
-title: Windows 사용 가이드
+title: Windows 指南
 weight: 40
 draft: false
 ---

@@ -7,7 +7,7 @@ draft: false
 详细介绍如何在 Claude Code 中使用 MCP (Model Context Protocol) 服务器。
 
 {{< callout type="info" >}}
-**一句话总结**: MCP 是 Claude Code 连接 **外部工具的 USB 端口**。使用 Context7 查询最新文档,使用 Sequential Thinking 分析复杂问题。
+**一句话总结**: MCP 是 Claude Code 连接 **外部工具的 USB 端口**。使用 Context7 查询最新文档，使用 Adaptive Thinking (via `--ultrathink` 关键字) 分析复杂问题。
 {{< /callout >}}
 
 ## MCP 是什么?
@@ -21,13 +21,9 @@ flowchart TD
     CC["Claude Code"] --> MCP_LAYER["MCP 协议层"]
 
     MCP_LAYER --> C7["Context7<br>库文档查询"]
-    MCP_LAYER --> ST["Sequential Thinking<br>分步推理"]
-    MCP_LAYER --> STITCH["Google Stitch<br>UI/UX 设计"]
     MCP_LAYER --> CHROME["Claude in Chrome<br>浏览器自动化"]
 
     C7 --> C7_OUT["最新 React、FastAPI<br>官方文档参考"]
-    ST --> ST_OUT["架构决策<br>复杂分析"]
-    STITCH --> STITCH_OUT["AI 基础<br>UI 设计生成"]
     CHROME --> CHROME_OUT["网页<br>自动化测试"]
 ```
 
@@ -38,8 +34,6 @@ flowchart TD
 | MCP 服务器 | 用途 | 工具 | 激活方式 |
 |----------|------|------|--------|
 | **Context7** | 实时查询库文档 | `resolve-library-id`, `get-library-docs` | `.mcp.json` |
-| **Sequential Thinking** | 分步推理、UltraThink | `sequentialthinking` | `.mcp.json` |
-| **Google Stitch** | AI 基础 UI/UX 设计生成 ([详细指南](/advanced/stitch-guide)) | `generate_screen`, `extract_context` 等 | `.mcp.json` |
 | **Claude in Chrome** | 浏览器自动化 | `navigate`, `screenshot` 等 | `.mcp.json` |
 
 ## Context7 使用方法
@@ -103,37 +97,30 @@ Context7 分 2 个阶段运行。
 | 基础设施 | Docker, Kubernetes, Terraform |
 | 其他 | TypeScript, Tailwind CSS, shadcn/ui |
 
-## Sequential Thinking (UltraThink)
+## Adaptive Thinking via UltraThink
 
-Sequential Thinking 是 **分步分析复杂问题**的 MCP 服务器。
+`--ultrathink` 关键字激活 Opus 4.7+/4.8 及 Sonnet 4.6 的**内置推理模式 Adaptive Thinking**。
 
-### 一般思考 vs Sequential Thinking
+与早期模型的固定 `budget_tokens` 参数不同，新模型的 Adaptive Thinking **根据任务复杂度动态分配推理令牌**。推理深度不是固定预算，而是通过 **effort** 参数 (`xhigh`, `high`, `medium`, `low`) 控制。
 
-| 项目 | 一般思考 | Sequential Thinking |
-|------|-----------|---------------------|
-| 分析深度 | 表面 | 深入的分步分析 |
-| 问题分解 | 简单 | 结构化分解 |
-| 重新思考/修改 | 受限 | 可以修改之前的思考 |
-| 分支探索 | 单一路径 | 探索多个路径 |
+### `--ultrathink` 使用时机
 
-### UltraThink 模式
-
-使用 `--ultrathink` 标志激活增强分析模式。
+使用 `--ultrathink` 关键字激活复杂问题的增强分析模式。
 
 ```bash
 # UltraThink 模式进行架构分析
 > 设计认证系统架构 --ultrathink
 
-# Claude Code 使用 Sequential Thinking MCP:
-# 1. 将问题分解为子问题
-# 2. 逐步分析每个子问题
-# 3. 重新审查和修改之前的结论
-# 4. 得出最佳解决方案
+# 在 Opus 4.7+/4.8 或 Sonnet 4.6 中:
+# 1. 根据任务复杂度动态分配推理令牌
+# 2. 从多个角度探索问题分解
+# 3. 系统地评估权衡
+# 4. 以验证推理得出最优解
 ```
 
 ### 激活条件
 
-以下情况会自动激活 Sequential Thinking:
+Adaptive Thinking 在以下情况下被利用：
 
 | 情况 | 示例 |
 |------|------|
@@ -143,22 +130,11 @@ Sequential Thinking 是 **分步分析复杂问题**的 MCP 服务器。
 | 权衡分析 | "在提升性能的同时保持可维护性?" |
 | 破坏性变更审查 | "这个 API 变更对现有客户端的影响?" |
 
-### Sequential Thinking 的步骤
+### 模型兼容性
 
-```mermaid
-flowchart TD
-    Q["复杂问题"] --> T1["思考 1: 问题分解"]
-    T1 --> T2["思考 2: 分析各部分"]
-    T2 --> T3["思考 3: 选项比较"]
-    T3 --> REV{"需要重新审查?"}
-
-    REV -->|是| T2_REV["修改思考 2:<br>补充之前的分析"]
-    REV -->|否| T4["思考 4: 得出结论"]
-
-    T2_REV --> T3
-    T4 --> T5["思考 5: 验证"]
-    T5 --> ANSWER["最终答案"]
-```
+- **Opus 4.8、Opus 4.7、Sonnet 4.6**: Adaptive Thinking（动态分配推理）
+- **Haiku 4.5**: 不支持扩展推理（`--ultrathink` 关键字激活为 no-op）
+- **早期模型**: 升级到当前 Claude 模型以获得深度推理支持
 
 ## MCP 配置方法
 
@@ -171,10 +147,6 @@ MCP 服务器在项目根目录的 `.mcp.json` 文件中配置。
   "context7": {
     "command": "npx",
     "args": ["-y", "@anthropic/context7-mcp-server"]
-  },
-  "sequential-thinking": {
-    "command": "npx",
-    "args": ["-y", "@anthropic/sequential-thinking-mcp-server"]
   }
 }
 ```
@@ -200,8 +172,7 @@ MCP 服务器在项目根目录的 `.mcp.json` 文件中配置。
   "permissions": {
     "allow": [
       "mcp__context7__resolve-library-id",
-      "mcp__context7__get-library-docs",
-      "mcp__sequential-thinking__*"
+      "mcp__context7__get-library-docs"
     ]
   }
 }
@@ -236,15 +207,11 @@ MCP 服务器在项目根目录的 `.mcp.json` 文件中配置。
 # 需要架构决策的情况
 > 分析我们的服务应该使用 JWT 还是会话认证 --ultrathink
 
-# Sequential Thinking 执行的步骤:
-# 思考 1: 整理两种方式的基本概念
-# 思考 2: 分析我们服务的特性 (SPA、需要支持移动应用)
-# 思考 3: 分析 JWT 优缺点
-# 思考 4: 分析会话优缺点
-# 思考 5: 从安全角度比较
-# 思考 6: 从可扩展性角度比较
-# 思考 7: 修改之前的思考 - 审查混合方式
-# 思考 8: 最终结论及实现策略
+# Adaptive Thinking 使用动态分配的推理:
+# 1. 将问题分解为子问题
+# 2. 逐步分析每个子问题
+# 3. 重新审查和修改之前的结论
+# 4. 得出最佳解决方案
 ```
 
 ## 相关文档

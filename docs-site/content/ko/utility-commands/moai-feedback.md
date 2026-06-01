@@ -139,7 +139,7 @@ flowchart TD
     Info4 --> Format
     Info5 --> Format
 
-    Format --> GitHub["manager-quality 에이전트<br/>GitHub 이슈 생성"]
+    Format --> GitHub["evaluator-active 에이전트<br/>GitHub 이슈 생성"]
     GitHub --> Complete["이슈 URL 반환"]
 ```
 
@@ -148,7 +148,7 @@ flowchart TD
 | 에이전트 | 역할 | 주요 작업 |
 |----------|------|----------|
 | **MoAI 오케스트레이터** | 피드백 프로세스 안내 |
-| **manager-quality** | GitHub 연동 | 이슈 생성, URL 반환 |
+| **evaluator-active** | GitHub 연동 | 이슈 생성, URL 반환 |
 
 ## 실전 예시
 

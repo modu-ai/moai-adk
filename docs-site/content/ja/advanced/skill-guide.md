@@ -56,7 +56,7 @@ flowchart TD
 
 ## スキルカテゴリ
 
-MoAI-ADKには計**52スキル**が9カテゴリに分類されています。
+MoAI-ADKには計**31スキル**が9カテゴリに分類されています。
 
 ### Foundation (中核哲学) - 5個
 
@@ -78,7 +78,7 @@ MoAI-ADKには計**52スキル**が9カテゴリに分類されています。
 | `moai-workflow-tdd` | RED-GREEN-REFACTOR テスト駆動開発 |
 | `moai-workflow-testing` | テスト作成、デバッグ、コードレビュー統合 |
 | `moai-workflow-worktree` | Git worktreeベース並列開発 |
-| `moai-workflow-thinking` | Sequential Thinking、UltraThinkモード |
+| `moai-workflow-thinking` | Adaptive Thinking、UltraThinkモード |
 | `moai-workflow-loop` | Ralph Engine自律ループ、LSP連携 |
 | `moai-workflow-jit-docs` | 必要時点ドキュメントローディング、インテリジェント検索 |
 | `moai-workflow-templates` | コードボイラープレート、プロジェクトテンプレート |
@@ -186,7 +186,7 @@ flowchart TD
 
 ### トークン節約効果
 
-- **従来方式**: 52スキル全ロード = 約260,000トークン (不可能)
+- **従来方式**: 31スキル全ロード = 約260,000トークン (不可能)
 - **段階的開示**: メタデータのみロード = 約5,200トークン (97%節約)
 - **必要時ロード**: タスクに必要な2〜3スキルのみ = 約15,000トークン追加
 
@@ -202,7 +202,7 @@ flowchart TD
     REQ --> LN{言語検出}
 
     KW -->|"api, database"| SKILL1[moai-domain-backend]
-    AG -->|"expert-backend"| SKILL1
+    AG -->|"manager-develop"| SKILL1
     PH -->|"run段階"| SKILL2[moai-workflow-ddd]
     LN -->|"Pythonファイル"| SKILL3[moai-lang-python]
 
@@ -217,7 +217,7 @@ flowchart TD
 # スキルフロントマターでトリガー定義
 triggers:
   keywords: ["api", "database", "authentication"] # キーワードマッチング
-  agents: ["manager-spec", "expert-backend"] # エージェント呼び出し時
+  agents: ["manager-spec", "manager-develop"] # エージェント呼び出し時
   phases: ["plan", "run"] # ワークフロー段階
   languages: ["python", "typescript"] # プログラミング言語
 ```

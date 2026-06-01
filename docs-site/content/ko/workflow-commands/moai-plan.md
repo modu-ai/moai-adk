@@ -66,7 +66,7 @@ Claude Code 대화창에서 다음과 같이 입력합니다:
 | `--team`            | 에이전트 팀 모드 강제       | `/moai plan "기능" --team`          |
 | `--solo`            | 하위 에이전트 모드 강제     | `/moai plan "기능" --solo`          |
 | `--seq`             | 병렬 대신 순차 진단          | `/moai plan "기능" --seq`           |
-| `--ultrathink`      | Sequential Thinking MCP 활성화 | `/moai plan "기능" --ultrathink`  |
+| `--ultrathink`      | Adaptive Thinking 활성화 | `/moai plan "기능" --ultrathink`  |
 
 ### 플래그 우선순위
 
@@ -498,5 +498,5 @@ WHEN input is null is detected, the system shall return an error.
 ## 관련 문서
 
 - [SPEC 기반 개발](/core-concepts/spec-based-dev) - EARS 형식 상세 설명
-- [/moai run](./moai-2-run) - 다음 단계: DDD 구현
-- [/moai sync](./moai-3-sync) - 최종 단계: 문서 동기화
+- [/moai run](./moai-run) - 다음 단계: DDD 구현
+- [/moai sync](./moai-sync) - 최종 단계: 문서 동기화

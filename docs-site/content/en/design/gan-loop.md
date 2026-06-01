@@ -7,19 +7,19 @@ draft: false
 
 # GAN Loop — Builder-Evaluator Iteration
 
-The GAN Loop is an iterative process where **Builder** (expert-frontend) and **Evaluator** (evaluator-active) collaborate. Design improves → evaluates → improves until quality threshold reached.
+The GAN Loop is an iterative process where **Builder** (manager-develop) and **Evaluator** (evaluator-active) collaborate. Design improves → evaluates → improves until quality threshold reached.
 
 ## Process Overview
 
 ```mermaid
 flowchart TD
-    A["Design tokens + Copy<br>Input"] --> B["expert-frontend<br>Generate code<br>iteration 1"]
+    A["Design tokens + Copy<br>Input"] --> B["manager-develop<br>Generate code<br>iteration 1"]
     B --> C["evaluator-active<br>Score<br>0.0 to 1.0"]
     C --> D{Score >= 0.75?}
     D -->|YES| E["PASS<br>Enter learning phase"]
     D -->|NO| F["FAIL<br>Generate feedback"]
     F --> G{Exceeded<br>3 iterations?}
-    G -->|NO| H["expert-frontend<br>Generate revised code<br>iteration N"]
+    G -->|NO| H["manager-develop<br>Generate revised code<br>iteration N"]
     H --> C
     G -->|YES| I["User intervention<br>Adjust criteria or<br>force pass"]
     I --> E
@@ -30,7 +30,7 @@ flowchart TD
 
 ### Step 1: Builder Generates Code
 
-**expert-frontend**:
+**manager-develop**:
 - Loads design tokens JSON
 - Loads copy sections
 - Writes React/Vue components
@@ -126,7 +126,7 @@ pass_conditions:
 ### Contract Negotiation
 
 1. **evaluator-active** proposes Contract
-2. **expert-frontend** reviews
+2. **manager-develop** reviews
    - Feasibility check
    - Can request adjustments
 3. **evaluator-active** finalizes

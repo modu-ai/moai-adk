@@ -143,18 +143,18 @@ flowchart TD
 ```mermaid
 flowchart TD
     User["ユーザーリクエスト"] --> MoAI["MoAI オーケストレーター"]
-    MoAI --> Refactor1["expert-refactoring<br/>静的解析スキャン"]
-    Refactor1 --> Refactor2["expert-refactoring<br/>使用グラフ分析"]
+    MoAI --> Refactor1["manager-develop<br/>静的解析スキャン"]
+    Refactor1 --> Refactor2["manager-develop<br/>使用グラフ分析"]
     Refactor2 --> MoAI2["MoAI オーケストレーター<br/>ユーザー承認"]
-    MoAI2 --> Refactor3["expert-refactoring<br/>安全な削除"]
-    Refactor3 --> Testing["expert-testing<br/>テスト検証"]
+    MoAI2 --> Refactor3["manager-develop<br/>安全な削除"]
+    Refactor3 --> Testing["manager-develop<br/>テスト検証"]
     Testing --> Complete["完了"]
 ```
 
 | エージェント | 役割 | 主要タスク |
 |-------------|------|----------|
-| **expert-refactoring** | 分析と削除 | 静的解析、使用グラフ、安全な削除 |
-| **expert-testing** | 検証 | テストスイート実行、回帰確認 |
+| **manager-develop** | 分析と削除 | 静的解析、使用グラフ、安全な削除 |
+| **manager-develop** | 検証 | テストスイート実行、回帰確認 |
 | **MoAI オーケストレーター** | 調整 | ユーザー承認、@MX タグクリーンアップ |
 
 ## よくある質問

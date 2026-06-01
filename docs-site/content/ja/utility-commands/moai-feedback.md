@@ -138,7 +138,7 @@ flowchart TD
     Info4 --> Format
     Info5 --> Format
 
-    Format --> GitHub["manager-quality エージェント<br/>GitHub Issue 作成"]
+    Format --> GitHub["evaluator-active エージェント<br/>GitHub Issue 作成"]
     GitHub --> Complete["Issue URL を返す"]
 ```
 
@@ -147,7 +147,7 @@ flowchart TD
 | エージェント | 役割 | 主なタスク |
 |-------|------|------------|
 | **MoAI オーケストレータ** | フィードバックプロセスをガイド |
-| **manager-quality** | GitHub 統合 | Issue 作成、URL 返却 |
+| **evaluator-active** | GitHub 統合 | Issue 作成、URL 返却 |
 
 ## 実践例
 

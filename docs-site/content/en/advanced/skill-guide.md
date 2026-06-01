@@ -46,9 +46,9 @@ the Frontend skill when creating React UIs.
 flowchart TD
     USER[User Request] --> DETECT[Keyword Detection]
     DETECT --> TRIGGER{Trigger Matching}
-    TRIGGER -->|Python Related| PY["moai-lang-python<br>Python Expertise"]
+    TRIGGER -->|Python Related| PY["moai-domain-backend<br>Backend Expertise"]
     TRIGGER -->|React Related| FE["moai-domain-frontend<br>Frontend Expertise"]
-    TRIGGER -->|Security Related| SEC["moai-foundation-core<br>TRUST 5 Security Principles"]
+    TRIGGER -->|Security Related| SEC["moai-foundation-quality<br>TRUST 5 Validation"]
     TRIGGER -->|DB Related| DB["moai-domain-database<br>Database Expertise"]
 
     PY --> AGENT[Inject Knowledge into Agent]
@@ -62,19 +62,18 @@ skills**: Applies MoAI-ADK's rules, patterns, and best practices to respond.
 
 ## Skill Categories
 
-MoAI-ADK has a total of **52 skills** classified into 9 categories.
+MoAI-ADK has a total of **31 skills** — the `moai` umbrella router plus 30 specialized skills classified into 6 categories: Foundation, Workflow, Domain, Reference, Meta/Harness, and Design. Programming-language support is delivered through rules under `rules/moai/languages/`, not as separate skills.
 
-### Foundation (Core Philosophy) - 5 skills
+### Foundation (Core Philosophy) - 4 skills
 
 | Skill Name                    | Description                                           |
 | ----------------------------- | ----------------------------------------------------- |
 | `moai-foundation-core`        | SPEC-based TDD/DDD, TRUST 5 framework, execution rules    |
-| `moai-foundation-claude`      | Claude Code extension patterns (Skills, Agents, etc.) |
-| `moai-foundation-philosopher` | Strategic thinking framework, decision analysis       |
+| `moai-foundation-cc`          | Claude Code extension patterns (Skills, Agents, hooks) |
+| `moai-foundation-thinking`    | Structured thinking, ideation, first principles analysis |
 | `moai-foundation-quality`     | Automatic code quality validation, TRUST 5 validation  |
-| `moai-foundation-context`     | Token budget management, session state maintenance    |
 
-### Workflow (Automation Workflows) - 11 skills
+### Workflow (Automation Workflows) - 10 skills
 
 | Skill Name                | Description                                     |
 | ------------------------- | ------------------------------------------------ |
@@ -84,77 +83,48 @@ MoAI-ADK has a total of **52 skills** classified into 9 categories.
 | `moai-workflow-tdd`       | RED-GREEN-REFACTOR test-driven development      |
 | `moai-workflow-testing`   | Test creation, debugging, code review           |
 | `moai-workflow-worktree`  | Git worktree based parallel development         |
-| `moai-workflow-thinking`  | Sequential Thinking, UltraThink mode            |
 | `moai-workflow-loop`      | Ralph Engine autonomous loop, LSP integration   |
-| `moai-workflow-jit-docs`  | Just-in-time document loading, smart search     |
-| `moai-workflow-templates` | Code boilerplates, project templates            |
-| `moai-docs-generation`     | Technical docs, API docs, user guides           |
+| `moai-workflow-ci-loop`   | CI watch and auto-fix loop workflow             |
+| `moai-workflow-gan-loop`  | Builder-Evaluator GAN loop for design quality   |
+| `moai-workflow-design`    | Design workflow, Claude Design import, brand context |
 
-### Domain (Domain Expertise) - 4 skills
+### Domain (Domain Expertise) - 8 skills
 
-| Skill Name            | Description                                             |
-| --------------------- | ------------------------------------------------------- |
-| `moai-domain-backend` | API design, microservices, database integration         |
-| `moai-domain-frontend`| React 19, Next.js 16, Vue 3.5, component architecture   |
-| `moai-domain-database`| PostgreSQL, MongoDB, Redis, advanced data patterns      |
-| `moai-domain-uiux`     | Design systems, accessibility, theme integration        |
+| Skill Name                        | Description                                             |
+| --------------------------------- | ------------------------------------------------------- |
+| `moai-domain-backend`             | API design, microservices, database integration         |
+| `moai-domain-frontend`            | React 19, Next.js 16, Vue 3.5, component architecture   |
+| `moai-domain-database`            | PostgreSQL, MongoDB, Redis, advanced data patterns      |
+| `moai-domain-ideation`            | Lean Canvas, proposal generation, diverge-converge      |
+| `moai-domain-research`            | Market research, ecosystem analysis, WebSearch           |
+| `moai-domain-brand-design`        | Brand-aligned visual design, design tokens              |
+| `moai-domain-design-handoff`      | Claude Design handoff packages                          |
+| `moai-domain-copywriting`         | Brand-aligned marketing copy, anti-AI-slop              |
 
-### Language (Programming Languages) - 16 skills
+### Reference (Best Practices) - 5 skills
 
-| Skill Name              | Target Language                           |
-| ----------------------- | ----------------------------------------- |
-| `moai-lang-python`      | Python 3.13+, FastAPI, Django             |
-| `moai-lang-typescript`  | TypeScript 5.9+, React 19, Next.js 16     |
-| `moai-lang-javascript`  | JavaScript ES2024+, Node.js 22, Bun, Deno |
-| `moai-lang-go`          | Go 1.23+, Fiber, Gin, GORM (consolidated) |
-| `moai-lang-rust`        | Rust 1.92+, Axum, Tokio (consolidated)    |
-| `moai-lang-flutter`     | Flutter 3.24+, Dart 3.5+, Riverpod (consolidated) |
-| `moai-lang-java`        | Java 21 LTS, Spring Boot 3.3              |
-| `moai-lang-cpp`         | C++23/C++20, CMake, RAII                  |
-| `moai-lang-ruby`        | Ruby 3.3+, Rails 7.2                      |
-| `moai-lang-php`         | PHP 8.3+, Laravel 11, Symfony 7           |
-| `moai-lang-kotlin`      | Kotlin 2.0+, Ktor, Compose Multiplatform  |
-| `moai-lang-csharp`      | C# 12, .NET 8, ASP.NET Core               |
-| `moai-lang-scala`       | Scala 3.4+, Akka, ZIO                     |
-| `moai-lang-elixir`      | Elixir 1.17+, Phoenix 1.7, LiveView       |
-| `moai-lang-swift`       | Swift 6+, SwiftUI, Combine                |
-| `moai-lang-r`           | R 4.4+, tidyverse, ggplot2, Shiny         |
+| Skill Name                   | Description                                             |
+| ----------------------------- | ------------------------------------------------------- |
+| `moai-ref-api-patterns`       | REST/GraphQL API design patterns, error handling        |
+| `moai-ref-git-workflow`       | Git workflow, branch strategies, Conventional Commits   |
+| `moai-ref-owasp-checklist`    | OWASP Top 10 security patterns, input validation        |
+| `moai-ref-react-patterns`     | React/Next.js component patterns, state management      |
+| `moai-ref-testing-pyramid`    | Test pyramid strategy, coverage targets                 |
 
-### Platform (Cloud/BaaS) - 4 skills
+### Meta/Harness (System Extension) - 2 skills
 
-| Skill Name                     | Target Platform                                  |
-| ----------------------------- | ------------------------------------------------ |
-| `moai-platform-auth`          | Auth0, Clerk, Firebase-auth integrated auth      |
-| `moai-platform-database-cloud`| Neon, Supabase, Firestore integrated database    |
-| `moai-platform-deployment`    | Vercel, Railway, Convex integrated deployment    |
+| Skill Name                 | Description                                      |
+| ------------------------- | ------------------------------------------------ |
+| `moai-meta-harness`       | Dynamic project-specific agent team generation   |
+| `moai-harness-learner`    | Harness learning subsystem, auto-update proposals |
 
-### Library (Special Libraries) - 4 skills
+### Design (Design System) - 1 skill
 
-| Skill Name            | Description                            |
-| --------------------- | -------------------------------------- |
-| `moai-library-shadcn` | shadcn/ui component implementation      |
-| `moai-library-mermaid`| Mermaid 11.12 diagram generation        |
-| `moai-library-nextra` | Nextra documentation site framework     |
-| `moai-formats-data`   | TOON encoding, JSON/YAML optimization   |
+| Skill Name             | Description                                            |
+| --------------------- | ------------------------------------------------------ |
+| `moai-design-system`   | Intent-first design, accessibility, design tokens     |
 
-### Tool (Development Tools) - 2 skills
-
-| Skill Name            | Description                                  |
-| --------------------- | -------------------------------------------- |
-| `moai-tool-ast-grep`  | AST-based structural code search, security   |
-| `moai-tool-svg`       | SVG generation, optimization, icon system    |
-
-### Framework (App Frameworks) - 1 skill
-
-| Skill Name                 | Description                          |
-| ------------------------- | ------------------------------------- |
-| `moai-framework-electron` | Electron 33+ desktop app development |
-
-### Design Tools - 1 skill
-
-| Skill Name                 | Description                          |
-| ------------------------- | ------------------------------------- |
-| `moai-design-tools`       | Figma, Pencil integrated design tools |
+> The `moai` umbrella skill (the unified `/moai` router) is counted in the total of 31 but is not a categorized capability skill — it dispatches the subcommands described in this guide.
 
 ## Progressive Disclosure System
 
@@ -194,8 +164,8 @@ flowchart TD
 
 ### Token Savings
 
-- **Old method**: Load all 52 skills = ~260,000 tokens (impossible)
-- **Progressive disclosure**: Load only metadata = ~5,200 tokens (97% savings)
+- **Old method**: Load all 31 skills = ~155,000 tokens (impossible)
+- **Progressive disclosure**: Load only metadata = ~3,100 tokens (98% savings)
 - **On-demand load**: Only 2-3 skills needed for task = ~15,000 additional tokens
 
 ## Skill Trigger Mechanism
@@ -210,7 +180,7 @@ flowchart TD
     REQ --> LN{Language Detection}
 
     KW -->|"api, database"| SKILL1[moai-domain-backend]
-    AG -->|"expert-backend"| SKILL1
+    AG -->|"manager-develop"| SKILL1
     PH -->|"run phase"| SKILL2[moai-workflow-ddd]
     LN -->|"Python file"| SKILL3[moai-lang-python]
 
@@ -225,15 +195,15 @@ flowchart TD
 # Define triggers in skill frontmatter
 triggers:
   keywords: ["api", "database", "authentication"] # Keyword matching
-  agents: ["manager-spec", "expert-backend"] # On agent invocation
+  agents: ["manager-spec", "manager-develop"] # On agent invocation (8 retained agents only)
   phases: ["plan", "run"] # Workflow phases
-  languages: ["python", "typescript"] # Programming languages
+  languages: ["python", "typescript"] # Programming language
 ```
 
 **Trigger Priority:**
 
 1. **Keywords**: Load immediately when keyword detected in user message
-2. **Agents**: Auto-load when specific agent is invoked
+2. **Agents**: Auto-load when specific agent is invoked (one of 8 retained agents)
 3. **Phases**: Load according to Plan/Run/Sync phase
 4. **Languages**: Load based on programming language of files being worked on
 

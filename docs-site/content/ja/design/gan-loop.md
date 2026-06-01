@@ -7,19 +7,19 @@ draft: false
 
 # GAN Loop — Builder-Evaluator反復
 
-GAN Loopは、**Builder**(expert-frontend)と**Evaluator**(evaluator-active)が協力する反復プロセスです。設計が品質基準を満たすまで改善 → 評価 → 改善を繰り返します。
+GAN Loopは、**Builder**(manager-develop)と**Evaluator**(evaluator-active)が協力する反復プロセスです。設計が品質基準を満たすまで改善 → 評価 → 改善を繰り返します。
 
 ## プロセス概要
 
 ```mermaid
 flowchart TD
-    A["設計トークン + コピー<br>入力"] --> B["expert-frontend<br>コード生成<br>iteration 1"]
+    A["設計トークン + コピー<br>入力"] --> B["manager-develop<br>コード生成<br>iteration 1"]
     B --> C["evaluator-active<br>評価<br>点数: 0.0~1.0"]
     C --> D{点数 >= 0.75?}
     D -->|YES| E["PASS<br>学習フェーズ進入"]
     D -->|NO| F["FAIL<br>フィードバック生成"]
     F --> G{3回反復<br>超過?}
-    G -->|NO| H["expert-frontend<br>修正コード生成<br>iteration N"]
+    G -->|NO| H["manager-develop<br>修正コード生成<br>iteration N"]
     H --> C
     G -->|YES| I["ユーザー介入<br>基準調整または<br>強制通過"]
     I --> E
@@ -30,7 +30,7 @@ flowchart TD
 
 ### ステップ1: Builder コード生成
 
-**expert-frontend**:
+**manager-develop**:
 - 設計トークンJSON読み込み
 - カピセクション読み込み
 - React/Vueコンポーネント作成

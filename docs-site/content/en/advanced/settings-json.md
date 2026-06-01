@@ -261,7 +261,7 @@ List of commands that are **immediately allowed to execute** without user confir
 | Code Quality | `ruff`, `black`, `prettier`, `eslint` | 6+ |
 | Exploration Tools | `ls`, `find`, `tree`, `cat`, `head` | 10+ |
 | GitHub CLI | `gh issue`, `gh pr`, `gh repo view` | 3 |
-| MCP Tools | `mcp__context7__*`, `mcp__sequential-thinking__*` | 3 |
+| MCP Tools | `mcp__context7__*` | 2 |
 | Other | `AskUserQuestion`, `Task`, `Skill`, `TodoWrite` | 4 |
 
 **allow Format Examples:**

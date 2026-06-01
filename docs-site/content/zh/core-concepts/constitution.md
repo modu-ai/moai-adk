@@ -1,5 +1,5 @@
 ---
-title: Constitution 시스템
+title: Constitution 系统
 weight: 35
 draft: false
 ---

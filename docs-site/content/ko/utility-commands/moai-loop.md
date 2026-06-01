@@ -213,7 +213,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     User["사용자 요청"] --> Orchestrator["MoAI 오케스트레이터"]
-    Orchestrator --> ManagerDDD["manager-ddd 에이전트"]
+    Orchestrator --> ManagerDDD["manager-develop 에이전트"]
 
     ManagerDDD --> Diagnose["병렬 진단"]
     Diagnose --> LSP["LSP"]
@@ -229,7 +229,7 @@ flowchart TD
     Todo --> Loop["루프 시작"]
 
     Loop --> Fix["전문가 에이전트에<br/>수정 위임"]
-    Fix --> Verify["manager-quality<br/>검증"]
+    Fix --> Verify["evaluator-active<br/>검증"]
 
     Verify --> Complete{"완료 조건?"}
     Complete -->|아니오| Loop
@@ -241,9 +241,9 @@ flowchart TD
 | 에이전트                | 역할      | 주요 작업            |
 | ----------------------- | --------- | -------------------- |
 | **MoAI 오케스트레이터** | 루프 조율 |
-| **manager-ddd**         | 루프 관리 | TODO 생성, 수정 조율 |
+| **manager-develop**         | 루프 관리 | TODO 생성, 수정 조율 |
 | **expert-\***           | 수정 실행 | 실제 코드 수정       |
-| **manager-quality**     | 품질 검증 | 완료 조건 확인       |
+| **evaluator-active**     | 품질 검증 | 완료 조건 확인       |
 
 ## 실전 예시
 

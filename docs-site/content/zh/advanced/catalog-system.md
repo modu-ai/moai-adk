@@ -1,5 +1,5 @@
 ---
-title: 카탈로그 시스템
+title: 目录系统
 weight: 80
 draft: false
 ---

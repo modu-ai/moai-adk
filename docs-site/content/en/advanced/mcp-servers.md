@@ -7,7 +7,7 @@ draft: false
 Detailed guide to leveraging Claude Code's MCP (Model Context Protocol) servers.
 
 {{< callout type="info" >}}
-**One-line summary**: MCP is the **USB port that connects external tools** to Claude Code. Query up-to-date documentation with Context7, analyze complex problems with Sequential Thinking.
+**One-line summary**: MCP is the **USB port that connects external tools** to Claude Code. Query up-to-date documentation with Context7, analyze complex problems with Adaptive Thinking (via `--ultrathink` keyword).
 {{< /callout >}}
 
 ## What is MCP?
@@ -21,14 +21,10 @@ flowchart TD
     CC["Claude Code"] --> MCP_LAYER["MCP Protocol Layer"]
 
     MCP_LAYER --> C7["Context7<br>Library Documentation Lookup"]
-    MCP_LAYER --> ST["Sequential Thinking<br>Step-by-step Reasoning"]
-    MCP_LAYER --> STITCH["Google Stitch<br>UI/UX Design"]
-    MCP_LAYER --> CHROME["Claude in Chrome<br>Browser Automation"]
+    MCP_LAYER --> STITCH["Claude in Chrome<br>Browser Automation"]
 
     C7 --> C7_OUT["Latest React, FastAPI<br>Official Documentation"]
-    ST --> ST_OUT["Architecture Decisions<br>Complex Analysis"]
-    STITCH --> STITCH_OUT["AI-powered<br>UI Design Generation"]
-    CHROME --> CHROME_OUT["Web Page<br>Automation Testing"]
+    STITCH --> STITCH_OUT["Web Page<br>Automation Testing"]
 ```
 
 ## MCP Servers Used in MoAI
@@ -38,8 +34,6 @@ flowchart TD
 | MCP Server | Purpose | Tools | Activation |
 |------------|---------|-------|------------|
 | **Context7** | Real-time library documentation lookup | `resolve-library-id`, `get-library-docs` | `.mcp.json` |
-| **Sequential Thinking** | Step-by-step reasoning, UltraThink | `sequentialthinking` | `.mcp.json` |
-| **Google Stitch** | AI-powered UI/UX design generation ([Detailed Guide](/advanced/stitch-guide)) | `generate_screen`, `extract_context` etc. | `.mcp.json` |
 | **Claude in Chrome** | Browser automation | `navigate`, `screenshot` etc. | `.mcp.json` |
 
 ## Using Context7
@@ -103,37 +97,30 @@ Context7 operates in two stages.
 | Infrastructure | Docker, Kubernetes, Terraform |
 | Other | TypeScript, Tailwind CSS, shadcn/ui |
 
-## Sequential Thinking (UltraThink)
+## Deep Reasoning with Adaptive Thinking
 
-Sequential Thinking is an MCP server that **analyzes complex problems step-by-step**.
+The `--ultrathink` keyword activates Adaptive Thinking on Opus 4.7+ (including 4.8) and Sonnet 4.6 — the model's built-in reasoning mode that **dynamically allocates reasoning tokens based on task complexity**.
 
-### Normal Thinking vs Sequential Thinking
+Unlike earlier models that used a fixed `budget_tokens` parameter, Adaptive Thinking on newer models intelligently scales reasoning depth based on the task. Control depth with the **effort** parameter (`xhigh`, `high`, `medium`, `low`) rather than a fixed budget.
 
-| Aspect | Normal Thinking | Sequential Thinking |
-|--------|----------------|---------------------|
-| Analysis Depth | Surface | Deep step-by-step analysis |
-| Problem Decomposition | Simple | Structured decomposition |
-| Revision/Correction | Limited | Can revise previous thoughts |
-| Branch Exploration | Single path | Explore multiple paths |
+### When to Use `--ultrathink`
 
-### UltraThink Mode
-
-Using the `--ultrathink` flag activates enhanced analysis mode.
+Using the `--ultrathink` keyword activates enhanced analysis mode for complex problems.
 
 ```bash
-# Architecture analysis with UltraThink mode
+# Architecture analysis with UltraThink
 > Design an authentication system architecture --ultrathink
 
-# Claude Code uses Sequential Thinking MCP to:
-# 1. Decompose problem into sub-problems
-# 2. Analyze each sub-problem step-by-step
-# 3. Review and revise previous conclusions
-# 4. Derive optimal solution
+# Deep reasoning on Opus 4.7+/4.8 or Sonnet 4.6 will:
+# 1. Dynamically allocate reasoning tokens (not fixed budget)
+# 2. Explore problem decomposition across multiple angles
+# 3. Evaluate trade-offs systematically
+# 4. Derive optimal solution with verified reasoning
 ```
 
 ### Activation Scenarios
 
-Sequential Thinking automatically activates in the following scenarios:
+Adaptive Thinking activates in the following scenarios:
 
 | Scenario | Example |
 |----------|---------|
@@ -143,22 +130,11 @@ Sequential Thinking automatically activates in the following scenarios:
 | Trade-off analysis | "How to maintain performance while improving maintainability?" |
 | Breaking change review | "What impact will this API change have on existing clients?" |
 
-### Sequential Thinking Stages
+### Model Compatibility
 
-```mermaid
-flowchart TD
-    Q["Complex Question"] --> T1["Thought 1: Problem Decomposition"]
-    T1 --> T2["Thought 2: Analyze Each Part"]
-    T2 --> T3["Thought 3: Compare Options"]
-    T3 --> REV{"Need Review?"}
-
-    REV -->|Yes| T2_REV["Thought 2 Revise:<br>Complement Previous Analysis"]
-    REV -->|No| T4["Thought 4: Derive Conclusion"]
-
-    T2_REV --> T3
-    T4 --> T5["Thought 5: Verification"]
-    T5 --> ANSWER["Final Answer"]
-```
+- **Opus 4.8, Opus 4.7, Sonnet 4.6**: Adaptive Thinking (dynamically allocated reasoning)
+- **Haiku 4.5**: No extended thinking support (use `--ultrathink` keyword for no-op activation)
+- **Earlier models**: Upgrade to current Claude models for deep reasoning support
 
 ## MCP Configuration
 
@@ -171,10 +147,6 @@ Configure MCP servers in the `.mcp.json` file at the project root.
   "context7": {
     "command": "npx",
     "args": ["-y", "@anthropic/context7-mcp-server"]
-  },
-  "sequential-thinking": {
-    "command": "npx",
-    "args": ["-y", "@anthropic/sequential-thinking-mcp-server"]
   }
 }
 ```
@@ -200,8 +172,7 @@ To use MCP tools, you must register them in `permissions.allow`.
   "permissions": {
     "allow": [
       "mcp__context7__resolve-library-id",
-      "mcp__context7__get-library-docs",
-      "mcp__sequential-thinking__*"
+      "mcp__context7__get-library-docs"
     ]
   }
 }
@@ -230,21 +201,18 @@ To use MCP tools, you must register them in `permissions.allow`.
 # 3. Result: Accurate code generation reflecting latest patterns
 ```
 
-### Using UltraThink for Complex Architecture Decisions
+### Using Adaptive Thinking for Complex Architecture Decisions
 
 ```bash
 # Architecture decision needed
 > Analyze whether to use JWT or session for our service authentication --ultrathink
 
-# Steps Sequential Thinking performs:
-# Thought 1: Basic concepts of both approaches
-# Thought 2: Analyze our service characteristics (SPA, mobile app support needed)
-# Thought 3: JWT pros and cons analysis
-# Thought 4: Session pros and cons analysis
-# Thought 5: Security perspective comparison
-# Thought 6: Scalability perspective comparison
-# Thought 7: Revise previous thought - review hybrid approach
-# Thought 8: Final conclusion and implementation strategy
+# Adaptive Thinking (Opus 4.7+/4.8 or Sonnet 4.6) will:
+# 1. Dynamically allocate reasoning based on complexity
+# 2. Analyze core concepts and trade-offs
+# 3. Evaluate service characteristics (SPA, mobile app support)
+# 4. Compare security, scalability, maintainability dimensions
+# 5. Derive optimal solution with verified reasoning
 ```
 
 ## Related Documentation

@@ -63,7 +63,7 @@ moai update --check-only
 最新版本: 1.3.0
 
 发布说明:
-- 添加新的 expert-performance 代理
+- 添加新的 manager-develop 代理
 - 改进令牌优化
 - 修复 SPEC 验证问题
 
@@ -393,7 +393,7 @@ $ moai update --force
     "context7"
   ],
   "companyAnnouncements": [
-    "🗿 MoAI-ADK: 28个专业代理 + 52个技能的SPEC-First DDD",
+    "🗿 MoAI-ADK: 8个专业代理 + 31个技能的SPEC-First DDD",
     "⚡ /moai: 一站式 Plan→Run→Sync 自动化（智能路由）",
     "🌳 moai worktree: 在隔离的工作树环境中并行SPEC开发",
     "🤖 Expert Agents (8): backend, frontend, security, devops, debug, performance, refactoring, testing",
@@ -401,7 +401,7 @@ $ moai update --force
     "🤖 Builder Agents (3): agent, skill, plugin",
     "🤖 Team Agents (8, 实验性): researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality",
     "📋 工作流程: /moai plan (SPEC) → /moai run (DDD) → /moai sync (Docs)",
-    "🚀 选项: --team (并行Agent Teams)、--ultrathink (Sequential Thinking MCP深度分析)、--loop (迭代自动修复)",
+    "🚀 选项: --team (并行Agent Teams)、--ultrathink (Adaptive Thinking深度分析)、--loop (迭代自动修复)",
     "✅ 质量: TRUST 5 + 85%+ 覆盖率 + Ralph Engine (LSP + AST-grep)",
     "🔄 Git策略: 3-Mode (Manual/Personal/Team) + Smart Merge配置更新",
     "📚 提示: moai update --templates-only 同步最新的skills和agents",

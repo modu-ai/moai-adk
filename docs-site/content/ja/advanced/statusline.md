@@ -363,6 +363,3 @@ echo '{"session_id":"test","model":{"display_name":"Opus 4.7"},"workspace":{"rep
 ## 関連ドキュメント
 
 - [Settings JSON](/advanced/settings-json) — Claude Code `statusLine` フィールド設定
-- [Context Window Management](/advanced/context-window-management) — handoff threshold ポリシー (1M = 50%, 200K = 90%)
-- [Session Handoff](/advanced/session-handoff) — paste-ready resume message 6-block フォーマット
-- [PR Workflow](/git/pr-workflow) — MoAI PR 中心ワークフロー

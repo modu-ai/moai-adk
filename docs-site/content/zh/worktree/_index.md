@@ -281,5 +281,5 @@ flowchart TD
 ## 相关文档
 
 - [MoAI-ADK 文档](https://adk.mo.ai.kr)
-- [SPEC 系统](../spec/)
-- [DDD 工作流程](../workflow/)
+- [SPEC 系统](/core-concepts/spec-based-dev/)
+- [DDD 工作流程](/core-concepts/ddd/)

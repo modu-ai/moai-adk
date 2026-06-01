@@ -179,15 +179,15 @@ flowchart TD
 flowchart TD
     User["用户请求"] --> MoAI["MoAI 编排器"]
     MoAI --> Measure["阶段1-2: 测量与分析"]
-    Measure --> Testing["expert-testing"]
+    Measure --> Testing["manager-develop"]
 
     Testing --> Check{"--report?"}
     Check -->|是| ReportOnly["输出报告"]
     Check -->|否| Generate["阶段3: 测试生成"]
-    Generate --> TestingGen["expert-testing"]
+    Generate --> TestingGen["manager-develop"]
 
     TestingGen --> Verify["阶段4: 验证"]
-    Verify --> TestingVer["expert-testing"]
+    Verify --> TestingVer["manager-develop"]
 
     TestingVer --> Report["阶段5: 报告"]
     ReportOnly --> Done["完成"]
@@ -199,7 +199,7 @@ flowchart TD
 | 代理 | 角色 | 主要工作 |
 |------|------|----------|
 | **MoAI 编排器** | 工作流协调, 用户交互 | 报告输出, 下一步指引 |
-| **expert-testing** | 测量、分析、生成、验证专员 | 覆盖率测量、缺口分析、测试编写、验证 |
+| **manager-develop** | 测量、分析、生成、验证专员 | 覆盖率测量、缺口分析、测试编写、验证 |
 
 ## 常见问题
 

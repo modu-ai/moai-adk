@@ -68,15 +68,15 @@ statusline:
 
 ## Q: モデルポリシーはどのように選択しますか？
 
-MoAI-ADK は Claude Code サブスクリプションプランに基づいて 28 エージェントに最適な AI モデルを割り当てます。プランのレート制限内で品質を最大化します。
+MoAI-ADK は Claude Code サブスクリプションプランに基づいて 8 エージェントに最適な AI モデルを割り当てます。プランのレート制限内で品質を最大化します。
 
 ### ポリシーティア比較
 
 | ポリシー | プラン | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku | 用途 |
 |----------|--------|---------|-----------|----------|------|
-| **High** | Max $200/月 | 23 | 1 | 4 | 最高品質、最大スループット |
-| **Medium** | Max $100/月 | 4 | 19 | 5 | 品質とコストのバランス |
-| **Low** | Plus $20/月 | 0 | 12 | 16 | 経済的、Opus アクセスなし |
+| **High** | Max $200/月 | 5 | 1 | 1 | 最高品質、最大スループット |
+| **Medium** | Max $100/月 | 2 | 3 | 2 | 品質とコストのバランス |
+| **Low** | Plus $20/月 | 0 | 4 | 3 | 経済的、Opus アクセスなし |
 
 {{< callout type="warning" >}}
 **なぜ重要？** Plus $20 プランには Opus アクセスが含まれていません。`Low` に設定すると、すべてのエージェントが Sonnet と Haiku のみを使用し、レート制限エラーを防ぎます。上位プランでは、重要なエージェント (セキュリティ、戦略、アーキテクチャ) に Opus を、通常タスクに Sonnet/Haiku を配分します。
@@ -84,31 +84,24 @@ MoAI-ADK は Claude Code サブスクリプションプランに基づいて 28 
 
 ### ティア別エージェントモデル割り当て
 
-#### Manager Agents
+以下の **8つの保持エージェント**はティアに基づいてモデルが割り当てられます。12個の保管エージェントは利用できません。
+
+#### Manager Agents (4)
 
 | エージェント | High | Medium | Low |
 |--------------|------|--------|-----|
 | manager-spec | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| manager-strategy | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| manager-ddd | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| manager-tdd | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| manager-project | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| manager-develop | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
 | manager-docs | 🔵 sonnet | 🟡 haiku | 🟡 haiku |
-| manager-quality | 🟡 haiku | 🟡 haiku | 🟡 haiku |
 | manager-git | 🟡 haiku | 🟡 haiku | 🟡 haiku |
 
-#### Expert Agents
+#### Evaluator & Builder Agents (3)
 
 | エージェント | High | Medium | Low |
 |--------------|------|--------|-----|
-| expert-backend | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-frontend | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-security | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| expert-debug | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-refactoring | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-devops | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| expert-performance | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| expert-testing | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| plan-auditor | 🟣 opus | 🟣 opus | 🔵 sonnet |
+| evaluator-active | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
+| builder-harness | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 
 ### 設定方法
 

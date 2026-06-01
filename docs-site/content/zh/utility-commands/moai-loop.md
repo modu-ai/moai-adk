@@ -199,7 +199,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     User["用户请求"] --> Orchestrator["MoAI Orchestrator"]
-    Orchestrator --> ManagerDDD["manager-ddd Agent"]
+    Orchestrator --> ManagerDDD["manager-develop Agent"]
 
     ManagerDDD --> Diagnose["并行诊断"]
     Diagnose --> LSP["LSP"]
@@ -215,7 +215,7 @@ flowchart TD
     Todo --> Loop["开始循环"]
 
     Loop --> Fix["委托给<br/>expert agents"]
-    Fix --> Verify["manager-quality<br/>验证"]
+    Fix --> Verify["evaluator-active<br/>验证"]
 
     Verify --> Complete{"完成条件?"}
     Complete -->|否| Loop
@@ -227,9 +227,9 @@ flowchart TD
 | Agent                | 角色        | 主要任务          |
 | -------------------- | ----------- | ------------------- |
 | **MoAI Orchestrator** | 循环协调 |
-| **manager-ddd**       | 循环管理 | 创建 TODO、协调修复 |
+| **manager-develop**       | 循环管理 | 创建 TODO、协调修复 |
 | **expert-\***         | 执行修复 | 实际代码修改       |
-| **manager-quality**   | 质量验证 | 检查完成条件       |
+| **evaluator-active**   | 质量验证 | 检查完成条件       |
 
 ## 实际示例
 

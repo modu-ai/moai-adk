@@ -19,7 +19,7 @@ draft: false
 `/moai` 是 MoAI-ADK 的**完全自主自动化工作流**命令。无需单独执行子命令 - 整个开发过程通过一个命令自动化:
 
 1. **SPEC 创建** (manager-spec)
-2. **DDD 实现** (manager-ddd)
+2. **DDD 实现** (manager-develop)
 3. **文档同步** (manager-docs)
 
 ## 用法
@@ -172,8 +172,8 @@ flowchart TD
 
     J --> K["Phase 2<br/>DDD 实现"]
 
-    K --> L["调用 manager-strategy<br/>战略规划"]
-    L --> M["调用 manager-ddd<br/>ANALYZE-PRESERVE-IMPROVE"]
+    K --> L["调用 manager-spec<br/>战略规划"]
+    L --> M["调用 manager-develop<br/>ANALYZE-PRESERVE-IMPROVE"]
     M --> N{"实现完成?"}
     N -->|否| M
     N -->|是| O{"--loop?"}
@@ -233,12 +233,12 @@ flowchart TD
 
 | 任务类型          | Agent                         |
 | ------------------ | ----------------------------- |
-| 后端逻辑      | expert-backend subagent       |
-| 前端组件| expert-frontend subagent      |
-| 测试创建      | expert-testing subagent       |
-| Bug 修复         | expert-debug subagent         |
-| 重构        | expert-refactoring subagent   |
-| 安全修复     | expert-security subagent      |
+| 后端逻辑      | manager-develop subagent       |
+| 前端组件| manager-develop subagent      |
+| 测试创建      | manager-develop subagent       |
+| Bug 修复         | manager-develop subagent         |
+| 重构        | manager-develop subagent   |
+| 安全修复     | manager-develop subagent      |
 
 **循环行为 (当 --loop 或 ralph.yaml loop.enabled 为 true 时):**
 
@@ -325,16 +325,16 @@ AI 在工作完成时添加标记:
 **步骤 4: Phase 2 - DDD 实现**
 
 ```
-[manager-strategy]
+[manager-spec]
   工作分解: 7 个任务
   战略规划完成
 
-[manager-ddd]
+[manager-develop]
   ANALYZE: 代码结构分析完成
   PRESERVE: 编写了 12 个特征测试
   IMPROVE: 7 个任务实现完成
 
-[manager-quality]
+[evaluator-active]
   TRUST 5: 所有支柱通过
   覆盖率: 89%
   状态: PASS
@@ -345,7 +345,7 @@ AI 在工作完成时添加标记:
 ```
 [开始循环 - 迭代 1/100]
   诊断: 发现 2 个类型错误
-  修复: 委托给 expert-backend subagent
+  修复: 委托给 manager-develop subagent
   验证: 所有错误已解决
 
 [循环完成 - 1 次迭代]
