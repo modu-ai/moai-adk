@@ -250,6 +250,7 @@ pencil/
 .moai/logs/
 .moai/state/
 .moai/reports/*.md
+.moai/research/cc-update-*.md
 .moai/temp/
 temp/
 /public/
