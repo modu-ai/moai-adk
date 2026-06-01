@@ -53,7 +53,7 @@ status: in-progress
 
 | Field | Value | Notes |
 |-------|-------|-------|
-| sync_commit_sha | pending_sync_backfill | Orchestrator backfills post-commit with actual SHA |
+| sync_commit_sha | 90bcb630a | Orchestrator backfills post-commit with actual SHA |
 | sync_date | 2026-06-02 | Sync-phase execution date |
 | AC count (PASS) | 9 | Blocking ACs all PASS (AC-IWE-001..009) |
 | AC count (DEFERRED) | 1 | AC-IWE-010 backward-compatibility deferred per acceptance.md §C.2 |
