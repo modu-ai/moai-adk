@@ -48,6 +48,17 @@ status: in-progress
 | AC-IWE-003 | PASS | `grep -n 'lsp_enabled' questions.go types.go` | wizard types.go:38 + questions.go:284 + initializer_expansion.go:99 |
 | AC-IWE-004 | PASS | `grep -n 'enforce_quality\|coverage_exemptions' questions.go types.go` | types.go:39-40, questions.go:292-304, expansion.go:127-143 |
 | AC-IWE-005 | PASS | `grep -n 'design_enabled\|claude_design' questions.go types.go` | types.go:41-42, questions.go:314-332, expansion.go:163-164 |
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+| Field | Value | Notes |
+|-------|-------|-------|
+| sync_commit_sha | pending_sync_backfill | Orchestrator backfills post-commit with actual SHA |
+| sync_date | 2026-06-02 | Sync-phase execution date |
+| AC count (PASS) | 9 | Blocking ACs all PASS (AC-IWE-001..009) |
+| AC count (DEFERRED) | 1 | AC-IWE-010 backward-compatibility deferred per acceptance.md §C.2 |
+| Status transition | in-progress → implemented | Manager-docs sync-phase transition |
+| Acceptance SSOT | .moai/specs/SPEC-V3R5-INIT-WIZARD-EXPANSION-001/acceptance.md | Authoritative AC reference |
 | AC-IWE-006 | PASS | `grep -n '"standard"' init.go` | init.go:80,247,262,359; StandardMode gates Phase1 via Condition func |
 | AC-IWE-007 | PASS | `grep -n '"advanced"' init.go` | init.go:81,246; IsAdvancedWizardReady() in advanced_gate.go detects P2/P4 readiness |
 | AC-IWE-008 | PASS | `grep -n 'enforce-quality\|enable-lsp\|harness-profile\|project-mode\|enable-design' init.go` | 5 flags registered at init.go:84-88; mapped at init.go:264-269 |
