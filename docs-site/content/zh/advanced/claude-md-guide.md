@@ -97,13 +97,14 @@ MoAI 是 Claude Code 的战略协调器。
 
 ### 4. 代理目录
 
-定义 20 个代理的角色和选择标准。
+定义 8 个核心代理的角色和选择标准。
 
-| 层级 | 代理 | 数量 |
+| 类别 | 代理 | 数量 |
 |------|----------|------|
-| Manager | spec, ddd, docs, quality, strategy, project, git | 7 个 |
-| Expert | backend, frontend, security, devops, performance, debug, testing, refactoring | 8 个 |
-| Builder | agent, skill, command, plugin | 4 个 |
+| Manager | spec, develop, docs, git | 4 个 |
+| Evaluator | plan-auditor, sync-auditor | 2 个 |
+| Builder | builder-harness | 1 个 |
+| Built-in | Explore (Anthropic) | 1 个 |
 
 ### 5. SPEC 工作流
 

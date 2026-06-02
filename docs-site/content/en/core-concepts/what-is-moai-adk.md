@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK is a **high-performance AI development environment** for Claude Code. 28 specialized AI agents and 52 skills collaborate to produce high-quality code. It automatically applies TDD (default) for new projects and feature development, and DDD for existing projects with low test coverage, while supporting both Sub-Agent and Agent Teams dual execution modes.
+MoAI-ADK is a **high-performance AI development environment** for Claude Code. 8 specialized AI agents and 31 skills collaborate to produce high-quality code. It automatically applies TDD (default) for new projects and feature development, and DDD for existing projects with low test coverage, while supporting both Sub-Agent and Agent Teams dual execution modes.
 
 Written as a single Go binary -- runs instantly on all platforms with zero dependencies.
 
@@ -21,10 +21,10 @@ MoAI-ADK is an **Agentic Development Kit that enables agents to perform agentic 
 | AI Development Team | MoAI-ADK | Role |
 |---------------------|----------|------|
 | Product Owner | User (Developer) | Decides what to build |
-| Team Lead / Tech Lead | MoAI Orchestrator | Coordinates overall work and delegates to team members |
-| Planner / Spec Writer | manager-spec | Documents requirements |
-| Developers / Engineers | expert-backend, expert-frontend | Implements actual code |
-| QA / Code Reviewer | manager-quality | Validates quality standards |
+| Team Lead / Tech Lead | MoAI Orchestrator | Coordinates overall work and delegates to 8 retained agents |
+| Planner / Spec Writer | manager-spec | Documents requirements in SPEC |
+| Developers / Engineers | manager-develop (with domain context) | Implements code via DDD/TDD |
+| QA / Code Reviewer | sync-auditor | Validates quality standards (4-dimension scoring) |
 
 ## Why MoAI-ADK?
 
@@ -45,7 +45,7 @@ The Python-based MoAI-ADK (~73,000 lines) was completely rewritten in Go.
 
 - **34,220 lines** of Go code, **32** packages
 - **85-100%** test coverage
-- **28** specialized AI agents + **52** skills
+- **8** specialized AI agents + **31** skills
 - **18** programming languages supported
 - **16** Claude Code Hook events
 
@@ -223,75 +223,61 @@ MoAI-ADK implements the **Harness Engineering** paradigm — designing the envir
 
 ## AI Agent Orchestration
 
-MoAI is a **strategic orchestrator**. It does not write code directly, but delegates work to 28 specialized agents.
+MoAI is a **strategic orchestrator**. It does not write code directly, but delegates work to **8 retained agents** (7 MoAI-custom + 1 Anthropic built-in). The 12 archived agents (manager-strategy, manager-quality, manager-brain, manager-project, claude-code-guide, researcher, and 6 expert-* agents) were consolidated per SPEC-V3R6-AGENT-TEAM-REBUILD-001.
 
-### Agent Categories
+### Agent Categories (8 Retained)
 
 | Category | Count | Agents | Role |
 |----------|-------|--------|------|
-| **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | Workflow coordination, SPEC creation, quality management |
-| **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | Domain-specific implementation, analysis, optimization |
-| **Builder** | 3 | agent, skill, plugin | Create new MoAI components |
-| **Team** | 8 | researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality | Parallel team-based development |
+| **Manager** | 4 | manager-spec, manager-develop, manager-docs, manager-git | Workflow coordination, SPEC creation, DDD/TDD implementation, documentation, PR management |
+| **Evaluator** | 2 | plan-auditor, sync-auditor | Independent SPEC audit, 4-dimension quality scoring |
+| **Builder** | 1 | builder-harness | Dynamic project-specific harness generation |
+| **Explore** | 1 | Anthropic built-in | Read-only codebase exploration |
 
 ```mermaid
 flowchart TD
     MoAI["MoAI Orchestrator\nAnalyze user requests and delegate"]
 
-    subgraph Managers["Manager Agents (8)"]
-        M1["manager-spec\nCreate SPEC documents"]
-        M2["manager-ddd\nManage DDD implementation"]
-        M3["manager-tdd\nManage TDD implementation"]
-        M4["manager-docs\nCreate documentation"]
-        M5["manager-quality\nQuality validation"]
-        M6["manager-strategy\nDesign strategy"]
-        M7["manager-project\nProject management"]
-        M8["manager-git\nGit operations"]
+    subgraph Managers["Manager Agents (4)"]
+        M1["manager-spec\nPlan-phase: SPEC creation"]
+        M2["manager-develop\nRun-phase: DDD/TDD implementation"]
+        M3["manager-docs\nSync-phase: Documentation"]
+        M4["manager-git\nPR creation, Git operations"]
     end
 
-    subgraph Experts["Expert Agents (8)"]
-        E1["expert-backend\nAPI, Server"]
-        E2["expert-frontend\nUI, React"]
-        E3["expert-security\nSecurity analysis"]
-        E4["expert-testing\nCreate tests"]
-        E5["Other expert agents"]
+    subgraph Evaluators["Evaluator Agents (2)"]
+        E1["plan-auditor\nIndependent SPEC audit"]
+        E2["sync-auditor\n4-dimension quality scoring"]
     end
 
-    subgraph Builders["Builder Agents (3)"]
-        B1["builder-agent\nCreate agents"]
-        B2["builder-skill\nCreate skills"]
-        B3["builder-plugin\nCreate plugins"]
+    subgraph Builder["Builder Agent (1)"]
+        B1["builder-harness\nDynamic harness generation"]
     end
 
-    subgraph Teams["Team Agents (8)"]
-        T1["team-researcher\nCodebase exploration"]
-        T2["team-analyst\nRequirements analysis"]
-        T3["team-architect\nTechnical design"]
-        T4["team-backend-dev\nServer implementation"]
-        T5["team-frontend-dev\nClient implementation"]
-        T6["team-tester\nCreate tests"]
+    subgraph Explore["Built-in (1)"]
+        X1["Explore\nRead-only code analysis"]
     end
 
     MoAI --> Managers
-    MoAI --> Experts
-    MoAI --> Builders
-    MoAI --> Teams
+    MoAI --> Evaluators
+    MoAI --> Builder
+    MoAI --> Explore
 ```
 
-### 52 Skills (Progressive Disclosure)
+### 31 Skills (Progressive Disclosure)
 
 Managed token-efficiently with a 3-level Progressive Disclosure system:
 
 | Category | Count | Examples |
 |----------|-------|---------|
-| **Foundation** | 5 | core, claude, philosopher, quality, context |
-| **Workflow** | 11 | spec, project, ddd, tdd, testing, worktree, thinking... |
-| **Domain** | 5 | backend, frontend, database, uiux, data-formats |
-| **Language** | 18 | Go, Python, TypeScript, Rust, Java, Kotlin, Swift, C++... |
-| **Platform** | 9 | Vercel, Supabase, Firebase, Auth0, Clerk, Railway... |
-| **Library** | 3 | shadcn, nextra, mermaid |
-| **Tool** | 2 | ast-grep, svg |
-| **Specialist** | 10 | Figma, Flutter, Pencil... |
+| **Foundation** | 4 | core, cc, thinking, quality |
+| **Workflow** | 7 | spec, project, ddd, tdd, testing, worktree, ci-loop... |
+| **Domain** | 9 | backend, frontend, database, ideation, research, design... |
+| **Reference** | 5 | api-patterns, git-workflow, owasp-checklist, react, testing-pyramid |
+| **Meta/Harness** | 2 | meta-harness, harness-learner |
+| **Design** | 1 | design-system |
+| **Tools** | 1 | foundation-cc |
+| **Integration** | 2 | claude-in-chrome, browser automation tools |
 
 ## MoAI Workflow
 
@@ -494,7 +480,7 @@ The @MX tag system is designed to **mark only the most dangerous and important c
 
 ## Model Policy (Token Optimization)
 
-MoAI-ADK assigns optimal AI models to 28 agents based on your Claude Code subscription plan. It maximizes quality within your plan's rate limits.
+MoAI-ADK assigns optimal AI models to each agent based on your Claude Code subscription plan. It maximizes quality within your plan's rate limits.
 
 | Policy | Plan | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku | Best For |
 |--------|------|---------|-----------|----------|----------|
@@ -662,8 +648,8 @@ When you install MoAI-ADK, the following structure is created in your project.
 my-project/
 ├── CLAUDE.md                  # MoAI execution guidelines
 ├── .claude/
-│   ├── agents/moai/           # 28 AI agent definitions
-│   ├── skills/moai-*/         # 52 skill modules
+│   ├── agents/moai/           # 8 AI agent definitions
+│   ├── skills/moai-*/         # 31 skill modules
 │   ├── hooks/moai/            # Automation hook scripts
 │   └── rules/moai/            # Coding rules and standards
 └── .moai/

@@ -155,7 +155,7 @@ Every change must answer:
 
 ### Fresh-Context Reviewer Pattern
 
-For high-stakes or >200 LOC changes, spawn `evaluator-active` in a **new context**. It scores on 4 dimensions (Functionality/Security/Craft/Consistency) without bias toward what was just written.
+For high-stakes or >200 LOC changes, spawn `sync-auditor` in a **new context**. It scores on 4 dimensions (Functionality/Security/Craft/Consistency) without bias toward what was just written.
 
 ### Dark-Flow Warning
 
@@ -173,6 +173,8 @@ If everything "feels smooth" and fast for too long without a rejected gate, susp
 - If a compaction happens mid-task, resume from memory notes, not from zero
 
 This is the 2026 Anthropic-recommended persistence pattern for agentic coding.
+
+> Note: the memory directory (`~/.claude/projects/{hash}/memory/`) is a **native Claude Code auto-memory feature** (v2.1.59+, toggled via `/memory` or `autoMemoryEnabled`), not a MoAI-proprietary store. This section covers MoAI's session-handoff and persistence usage of it. For the feature itself (storage derivation, MEMORY.md 200-line/25KB loading, topic files), see `.claude/rules/moai/workflow/moai-memory.md` § Official Claude Code Auto-Memory Feature.
 
 ### Session Boundary Handoff [HARD]
 
@@ -284,7 +286,7 @@ English content permitted in user-facing prose (preserve verbatim — DO NOT tra
 - Emoji and box-drawing characters (already verbatim per §9 Language Rules)
 - The `ultrathink.` keyword token
 - Quoted code or command examples that the user will execute literally
-- Agent type identifiers (`manager-develop`, `manager-spec`, `plan-auditor`, `evaluator-active`) — role tokens
+- Agent type identifiers (`manager-develop`, `manager-spec`, `plan-auditor`, `sync-auditor`) — role tokens
 
 **Banner body prose Anti-pattern catalogue (extended — ko canonical; same naturalization principle applies to ja / zh / other ISO-639 codes):**
 

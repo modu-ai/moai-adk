@@ -246,7 +246,7 @@ flowchart TD
 
 - **在没有 LSP 的情况下继续**：继续到完成
 - **显示安装指南**：显示检测到的语言的设置指南
-- **现在自动安装**：通过 expert-devops agent 安装（需要确认）
+- **现在自动安装**：通过 manager-develop agent 安装（需要确认）
 
 ### Phase 4: 完成
 
@@ -509,7 +509,7 @@ flowchart TD
     Phase3 --> Docs["manager-docs Subagent<br/>文档生成委托"]
     Docs --> Phase35["Phase 3.5: LSP 检查"]
 
-    Phase35 --> DevOps["expert-devops Subagent<br/>安装 LSP (可选)"]
+    Phase35 --> DevOps["manager-develop Subagent<br/>安装 LSP (可选)"]
     DevOps --> Phase4["Phase 4: 完成"]
 ```
 
@@ -534,6 +534,6 @@ flowchart TD
 ## 相关文档
 
 - [快速开始](/getting-started/quickstart) - 完整工作流教程
-- [/moai plan](./moai-1-plan) - 下一步：SPEC 文档创建
+- [/moai plan](./moai-plan) - 下一步：SPEC 文档创建
 - [基于 SPEC 的开发](/core-concepts/spec-based-dev) - SPEC 方法论详细说明
-- [Subagent 目录](/advanced/agents) - Explore、manager-docs agent 详细信息
+- [Subagent 目录](/advanced/agent-guide) - Explore、manager-docs agent 详细信息

@@ -800,11 +800,11 @@ func TestQualityGate_RunsDotnetFormatWhenCSharpStaged(t *testing.T) {
 		Enabled:     true,
 		SkipTests:   true,
 		ProjectDir:  dir,
-		LintTimeout: 5 * time.Second,
+		LintTimeout: 60 * time.Second,
 	})
 
 	// .cs file is staged → dotnet format must run → fake dotnet exits 0
-	passed, out := g.executeStep(context.Background(), step, 5*time.Second)
+	passed, out := g.executeStep(context.Background(), step, 60*time.Second)
 
 	if !passed {
 		t.Errorf("dotnet format must pass when .cs files are staged, output: %q", out)

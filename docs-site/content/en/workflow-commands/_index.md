@@ -23,9 +23,9 @@ flowchart TD
 
 | Command | Phase | Responsible Agent | Token Budget | Purpose |
 |---------|-------|-------------------|--------------|---------|
-| [`/moai project`](./moai-project) | Phase 0 | manager-project | - | Automatic project document generation |
+| [`/moai project`](./moai-project) | Phase 0 | manager-docs | - | Automatic project document generation |
 | [`/moai plan`](./moai-plan) | Phase 1 | manager-spec | 30K | SPEC document creation |
-| [`/moai run`](./moai-run) | Phase 2 | manager-ddd / manager-tdd | 180K | DDD/TDD-based implementation |
+| [`/moai run`](./moai-run) | Phase 2 | manager-develop | 180K | DDD/TDD-based implementation |
 | [`/moai sync`](./moai-sync) | Phase 3 | manager-docs | 40K | Document synchronization and PR creation |
 
 {{< callout type="info" >}}

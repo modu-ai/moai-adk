@@ -179,15 +179,15 @@ flowchart TD
 flowchart TD
     User["ユーザーリクエスト"] --> MoAI["MoAI オーケストレーター"]
     MoAI --> Measure["Phase 1-2: 測定と分析"]
-    Measure --> Testing["expert-testing"]
+    Measure --> Testing["manager-develop"]
 
     Testing --> Check{"--report?"}
     Check -->|はい| ReportOnly["レポート出力"]
     Check -->|いいえ| Generate["Phase 3: テスト生成"]
-    Generate --> TestingGen["expert-testing"]
+    Generate --> TestingGen["manager-develop"]
 
     TestingGen --> Verify["Phase 4: 検証"]
-    Verify --> TestingVer["expert-testing"]
+    Verify --> TestingVer["manager-develop"]
 
     TestingVer --> Report["Phase 5: レポート"]
     ReportOnly --> Done["完了"]
@@ -199,7 +199,7 @@ flowchart TD
 | エージェント | 役割 | 主な作業 |
 |-------------|------|----------|
 | **MoAI オーケストレーター** | ワークフロー調整、ユーザーインタラクション | レポート出力、次のステップ案内 |
-| **expert-testing** | 測定、分析、生成、検証の専任 | カバレッジ測定、ギャップ分析、テスト作成、検証 |
+| **manager-develop** | 測定、分析、生成、検証の専任 | カバレッジ測定、ギャップ分析、テスト作成、検証 |
 
 ## よくある質問
 

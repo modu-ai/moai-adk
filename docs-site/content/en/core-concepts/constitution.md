@@ -1,5 +1,5 @@
 ---
-title: Constitution 시스템
+title: Constitution System
 weight: 35
 draft: false
 ---
@@ -28,7 +28,7 @@ AI 에이전트가 절대 수정할 수 없는 규칙입니다. 인간 개발자
 | 평가 차원 4개 | Functionality/Security/Craft/Consistency | harness/scorer.go |
 | 루브릭 앵커 4단계 | 0.25/0.50/0.75/1.00 | harness/rubric.go |
 | 통과 임계값 하한 | 최소 0.60 (낮출 수 없음) | design-constitution.md |
-| 디자인 파이프라인 순서 | manager-spec 먼저, evaluator-active 마지막 | design-constitution.md |
+| 디자인 파이프라인 순서 | manager-spec 먼저, sync-auditor 마지막 | design-constitution.md |
 
 ### Evolvable Zone (진화 가능)
 

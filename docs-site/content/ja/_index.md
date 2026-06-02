@@ -6,7 +6,7 @@ draft: false
 
 MoAI-ADK (Agentic Development Kit) は、Claude Code 用の戦略的オーケストレーションフレームワークです。
 
-![MoAI-ADK](/og.png)
+![MoAI-ADK](/og.jpg)
 
 ## 主な機能
 

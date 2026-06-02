@@ -270,10 +270,10 @@ flowchart TD
 | Agent | 角色 | 主要任务 |
 |-------|------|------------|
 | **MoAI Orchestrator** | 协调并行扫描 |
-| **expert-backend** | 后端修复 (Level 1-2) |
-| **expert-frontend** | 前端修复 (Level 1-2) |
-| **expert-debug** | 逻辑错误修复 (Level 3-4) |
-| **manager-quality** | 质量验证 | 验证修复结果 |
+| **manager-develop** | 后端修复 (Level 1-2) |
+| **manager-develop** | 前端修复 (Level 1-2) |
+| **manager-develop** | 逻辑错误修复 (Level 3-4) |
+| **sync-auditor** | 质量验证 | 验证修复结果 |
 
 ## 实际示例
 

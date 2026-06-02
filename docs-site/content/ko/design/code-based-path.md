@@ -183,7 +183,7 @@ flowchart TD
     C["visual-identity.md<br>준비 완료"] --> D["moai-domain-brand-design<br>토큰 생성"]
     B --> E["copy.json<br>.moai/design/"]
     D --> F["tokens.json<br>.moai/design/"]
-    E --> G["expert-frontend<br>코드 구현"]
+    E --> G["manager-develop<br>코드 구현"]
     F --> G
     G --> H["React/Vue 컴포넌트<br>+<br>Tailwind/CSS Modules"]
 ```
@@ -228,10 +228,10 @@ ls -la .moai/project/brand/
 
 ### 5단계: GAN Loop 진입
 
-`expert-frontend` 에이전트가:
+`manager-develop` 에이전트가:
 1. 토큰과 카피를 받아
 2. React/Vue 컴포넌트 + 스타일 코드 생성
-3. `evaluator-active` 평가 (4차원 스코어링)
+3. `sync-auditor` 평가 (4차원 스코어링)
 4. 불합격 시 수정 반복 (최대 5회)
 
 ## 브랜드 파일 수정하기

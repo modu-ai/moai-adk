@@ -68,7 +68,7 @@ moai migrate agency             # 실행
 ## 파이프라인 아키텍처
 
 ```
-manager-spec → [copywriting, brand-design] (병렬) → expert-frontend → evaluator-active
+manager-spec → [copywriting, brand-design] (병렬) → manager-develop → sync-auditor
                                                                        ↑              |
                                                                        └──────────────┘
                                                                   GAN Loop (최대 5회)
@@ -76,8 +76,8 @@ manager-spec → [copywriting, brand-design] (병렬) → expert-frontend → ev
 
 1. **manager-spec** — 브리프 문서 생성 (Goal/Audience/Brand 섹션)
 2. **copywriting + brand-design** — 카피 JSON + 디자인 토큰 (병렬 실행)
-3. **expert-frontend** — 코드 구현
-4. **evaluator-active** → **GAN Loop** — 품질 검증 반복
+3. **manager-develop** — 코드 구현
+4. **sync-auditor** → **GAN Loop** — 품질 검증 반복
 
 ## GAN Loop
 
@@ -94,8 +94,8 @@ Builder-Evaluator 반복 루프가 품질을 보장합니다.
 
 `--mode team` 또는 `thorough` 하네스 레벨에서는 Sprint Contract가 협상됩니다:
 
-1. evaluator-active가 수락 체크리스트 생성
-2. expert-frontend가 체크리스트 리뷰
+1. sync-auditor가 수락 체크리스트 생성
+2. manager-develop가 체크리스트 리뷰
 3. 구현 → 평가 반복
 4. 통과한 기준은 다음 반복에서도 유지 (회귀 불가)
 

@@ -21,7 +21,7 @@ flowchart TD
     E --> G["Generate<br>copywriting +<br>design tokens"]
     F --> H["Parse and<br>convert bundle"]
     G --> H
-    H --> I["expert-frontend<br>Code implementation"]
+    H --> I["manager-develop<br>Code implementation"]
     I --> J["GAN Loop<br>Evaluate and iterate"]
     J --> K["Sprint Contract<br>Based completion"]
     K --> L["Final artifacts"]

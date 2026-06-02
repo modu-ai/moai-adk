@@ -89,7 +89,7 @@ Deliver a development orchestrator for Claude Code that makes *SPEC-driven, adve
 |---|---|---|---|---|---|---|
 | Core abstraction | SPEC contract + phases | Turn runtime | Outer loop + prd.json | Multi-mode router + 6-tier memory | Git-commit-native chat | Fixed 3-phase pipeline |
 | Intent source of truth | EARS SPEC + hierarchical acceptance | User prompt | prd.json | User prompt | User prompt + repo-map | GitHub issue text |
-| Evaluation | evaluator-active + Sprint Contract + TRUST 5 | None (runtime only) | None | None | `/undo` via git | Fail-to-pass test delta |
+| Evaluation | sync-auditor + Sprint Contract + TRUST 5 | None (runtime only) | None | None | `/undo` via git | Fail-to-pass test delta |
 | Memory | Typed taxonomy (user/feedback/project/reference) + staleness | memdir (user/feedback/project/reference) | `progress.md` + `.ralph/` files | 6-tier + session JSONL | Repo-map + chat | History processor compression |
 | Parallelism | DAG from plan phase + team-mode file ownership | Subagents + teams | Sequential-only | Tmux panes | None | None |
 | Sandboxing | Bubblewrap/Seatbelt/Docker default | None (permissions.allow) | None | None | Git undo | Docker for benchmark only |
@@ -439,7 +439,7 @@ Dynamic team generation (SPEC-TEAM-001 in v2) preserved: teammates spawned via `
 
 ### Layer 5: Harness
 
-**Purpose.** Route quality depth (minimal / standard / thorough) based on SPEC complexity and user opt-in. Own the evaluator-active flow, Sprint Contract negotiation, and GAN loop contract.
+**Purpose.** Route quality depth (minimal / standard / thorough) based on SPEC complexity and user opt-in. Own the sync-auditor flow, Sprint Contract negotiation, and GAN loop contract.
 
 **Owned SPECs.** `SPEC-V3R2-HRN-001`, `-HRN-002`, `-HRN-003`.
 
@@ -484,11 +484,11 @@ type EvaluatorProfile struct {
 
 **Key interfaces.**
 - `HarnessRouter.Route(spec) Level` — complexity estimator.
-- `SprintContractNegotiator.Propose(spec, iter) SprintContract` — evaluator-active proposes; Actor may request adjustment.
+- `SprintContractNegotiator.Propose(spec, iter) SprintContract` — sync-auditor proposes; Actor may request adjustment.
 - `EvaluatorRunner.Score(contract, artifact) ScoreCard` — fresh context per iteration.
 - `GanLoop.Execute(spec) Result` — Builder/Evaluator with max_iterations cap.
 
-**Mapped moai subsystem.** `.moai/config/sections/harness.yaml` + `.moai/config/evaluator-profiles/` + `evaluator-active` agent + `moai-workflow-gan-loop` skill + `.claude/rules/moai/design/constitution.md` §11 (Sprint Contract Protocol). v3 amends constitution §11.4 to explicitly scope evaluator memory per-iteration, closing P-Z01. v3 adds Go loader for harness.yaml (currently template-only per R6 §5.2). *Source: problem-catalog.md Cluster 4.*
+**Mapped moai subsystem.** `.moai/config/sections/harness.yaml` + `.moai/config/evaluator-profiles/` + `sync-auditor` agent + `moai-workflow-gan-loop` skill + `.claude/rules/moai/design/constitution.md` §11 (Sprint Contract Protocol). v3 amends constitution §11.4 to explicitly scope evaluator memory per-iteration, closing P-Z01. v3 adds Go loader for harness.yaml (currently template-only per R6 §5.2). *Source: problem-catalog.md Cluster 4.*
 
 ### Layer 6: Workflow
 
@@ -687,10 +687,10 @@ Cross-iteration reset: each Ralph iteration starts fresh; the prompt rebuilds fr
 v3 amends the design constitution:
 
 - **Sprint Contract state is durable** — passed criteria carry forward (no regression allowed); failed criteria get refined based on evaluator feedback; new criteria may be added if previous sprint revealed gaps.
-- **Evaluator judgment memory is ephemeral** — each iteration spawns evaluator-active with a fresh context that sees only: (a) the BRIEF / SPEC, (b) the Sprint Contract state, (c) the artifact to evaluate. It MUST NOT see prior scoring rationale.
+- **Evaluator judgment memory is ephemeral** — each iteration spawns sync-auditor with a fresh context that sees only: (a) the BRIEF / SPEC, (b) the Sprint Contract state, (c) the artifact to evaluate. It MUST NOT see prior scoring rationale.
 - Constitutional amendment: `evaluator.memory_scope: per_iteration` added to `.moai/config/sections/design.yaml` and harness.yaml.
 
-Cross-cuts: Layer 5 (evaluator-active flow), Layer 4 (evaluator agent frontmatter). *Source: r1-ai-harness-papers.md §9 anti-pattern flag; design-principles.md P4; problem-catalog.md P-Z01.*
+Cross-cuts: Layer 5 (sync-auditor flow), Layer 4 (evaluator agent frontmatter). *Source: r1-ai-harness-papers.md §9 anti-pattern flag; design-principles.md P4; problem-catalog.md P-Z01.*
 
 ---
 
@@ -866,7 +866,7 @@ Cross-cuts: Layer 5 (evaluator-active flow), Layer 4 (evaluator agent frontmatte
 | expert-performance | expert | REFACTOR | grant `Write` scoped to `.moai/docs/` or retire |
 | expert-refactoring | expert | KEEP | `effort: xhigh`; add `isolation: worktree`; document boundary vs manager-cycle IMPROVE |
 | builder-platform | builder | NEW | merges builder-agent + builder-skill + builder-plugin |
-| evaluator-active | evaluator | KEEP | `effort: xhigh`; evaluator memory per-iteration (P-Z01) |
+| sync-auditor | evaluator | KEEP | `effort: xhigh`; evaluator memory per-iteration (P-Z01) |
 | plan-auditor | evaluator | KEEP | `effort: xhigh`; add `memory: project` |
 | researcher | meta | REFACTOR | `effort: xhigh`; `isolation: worktree`; or retire to skill runbook |
 | manager-ddd | — | RETIRED (→ manager-cycle) | |
@@ -966,7 +966,7 @@ Each BC identifies what breaks, migration automation level, and the deprecation 
 | BC-V3R2-007 | `/moai fix | coverage | mx | codemaps | clean` become Agentless fixed pipelines (no subagents by default) | AUTO (flag flip) | Opt-in `--mode agent` preserves v2 behavior during v3.x |
 | BC-V3R2-008 | Hardcoded `/Users/goos/go/bin/moai` fallback removed from 26 shell wrappers | AUTO (`make build` regenerates via updated GoBinPath resolver) | N/A (bug fix) |
 | BC-V3R2-009 | 22 → 17 agents: manager-ddd + tdd → manager-cycle; 3 builders → builder-platform; expert-debug + testing retired | AUTO (migrator rewrites SPEC agent references; stub agents map to new) | Stubs removed after v3.1.0 |
-| BC-V3R2-010 | Evaluator memory scope per-iteration (design-constitution §11.4 amendment) | AUTO (config flag added; evaluator-active respawn per iteration) | Old evaluator sessions (memory-retentive) retired on first upgrade |
+| BC-V3R2-010 | Evaluator memory scope per-iteration (design-constitution §11.4 amendment) | AUTO (config flag added; sync-auditor respawn per iteration) | Old evaluator sessions (memory-retentive) retired on first upgrade |
 | BC-V3R2-011 | SPEC acceptance criteria become hierarchical (nested Given/When/Then); flat criteria promoted to 1-level tree | AUTO (migrator wraps flat criteria as single-level children) | Old flat SPECs remain parseable indefinitely |
 | BC-V3R2-012 | `/98-github.md` + `/99-release.md` extracted to `moai-workflow-github` + `moai-workflow-release` skills | AUTO (for dev tree) | Dev-local only; no user impact |
 | BC-V3R2-013 | Config sections gain Go loaders (constitution, context, interview, design, harness) | AUTO (loaders added; existing YAML files unchanged) | Template-only era deprecated at v3.0.0-alpha.1 |
@@ -1060,7 +1060,7 @@ Phase ordering is dependency-driven: Constitution (1) enables all others; Runtim
 
 - **SPEC-V3R2-HRN-001: Harness routing + harness.yaml loader** — complexity estimator (domains × files × score) → minimal/standard/thorough; Go loader for harness.yaml (currently template-only); evaluator-profiles per level. *Problem P-H06.*
 - **SPEC-V3R2-HRN-002: Evaluator fresh-memory amendment** — constitutional amendment to design-constitution §11.4: `evaluator.memory_scope: per_iteration` FROZEN; Sprint Contract state durable; judgment transcripts ephemeral. *Principle 4. Pattern E-1. Problem P-Z01.*
-- **SPEC-V3R2-HRN-003: Hierarchical acceptance scoring** — evaluator-active scores per-criterion per sub-criterion (Agent-as-a-Judge §9 shape); rubric files in `.moai/config/evaluator-profiles/` per harness level. *Pattern E-1, E-3.*
+- **SPEC-V3R2-HRN-003: Hierarchical acceptance scoring** — sync-auditor scores per-criterion per sub-criterion (Agent-as-a-Judge §9 shape); rubric files in `.moai/config/evaluator-profiles/` per harness level. *Pattern E-1, E-3.*
 
 ### 11.6 Workflow (Layer 6) — 6 SPECs
 

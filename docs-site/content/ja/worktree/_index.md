@@ -281,5 +281,5 @@ graph TB
 ## 関連ドキュメント
 
 - [MoAI-ADK ドキュメント](https://adk.mo.ai.kr)
-- [SPEC システム](../spec/)
-- [DDD ワークフロー](../workflow/)
+- [SPEC システム](/core-concepts/spec-based-dev/)
+- [DDD ワークフロー](/core-concepts/ddd/)

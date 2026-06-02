@@ -153,7 +153,7 @@ flowchart TD
     S --> T["아키텍처 문서 동기화"]
     T --> U["SPEC 상태 업데이트"]
 
-    U --> V["manager-quality 호출<br/>품질 검증"]
+    U --> V["sync-auditor 호출<br/>품질 검증"]
     V --> W{"품질 기준?"}
     W -->|FAIL| G
     W -->|PASS| X["Phase 3<br/>Git 작업"]
@@ -208,7 +208,7 @@ flowchart TD
 
 **Step 4 - 코드 리뷰:**
 
-**manager-quality** 하위 에이전트가 TRUST 5 품질 검증을 수행하고 종합 보고를
+**sync-auditor** 하위 에이전트가 TRUST 5 품질 검증을 수행하고 종합 보고를
 생성합니다.
 
 **Step 5 - 품질 보고서 생성:**
@@ -249,7 +249,7 @@ project_improvements_needed, estimated_scope
 
 **Step 3 - 사후 동기화 품질 검증:**
 
-**manager-quality** 하위 에이전트가 TRUST 5 기준으로 동기화 품질을 검증합니다:
+**sync-auditor** 하위 에이전트가 TRUST 5 기준으로 동기화 품질을 검증합니다:
 
 - 모든 프로젝트 링크 완료
 - 문서 잘 포맷됨
@@ -454,7 +454,7 @@ Sync 단계의 품질 기준은 Run 단계보다 문서 중심입니다:
 
 ```bash
 # Run 단계가 완료되었는지 확인
-# manager-ddd가 "DONE" 또는 "COMPLETE" 마커를 출력했어야 합니다
+# manager-develop가 "DONE" 또는 "COMPLETE" 마커를 출력했어야 합니다
 ```
 
 **2단계: 토큰 정리 후 Sync 실행**

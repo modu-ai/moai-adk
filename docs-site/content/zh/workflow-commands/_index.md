@@ -23,9 +23,9 @@ flowchart TD
 
 | 命令 | 阶段 | 负责 Agent | Token 预算 | 目的 |
 |---------|-------|-------------------|--------------|---------|
-| [`/moai project`](./moai-project) | Phase 0 | manager-project | - | 自动生成项目文档 |
+| [`/moai project`](./moai-project) | Phase 0 | manager-docs | - | 自动生成项目文档 |
 | [`/moai plan`](./moai-plan) | Phase 1 | manager-spec | 30K | SPEC 文档创建 |
-| [`/moai run`](./moai-run) | Phase 2 | manager-ddd / manager-tdd | 180K | DDD/TDD 方式实现 |
+| [`/moai run`](./moai-run) | Phase 2 | manager-develop / manager-develop | 180K | DDD/TDD 方式实现 |
 | [`/moai sync`](./moai-sync) | Phase 3 | manager-docs | 40K | 文档同步和 PR 创建 |
 
 {{< callout type="info" >}}

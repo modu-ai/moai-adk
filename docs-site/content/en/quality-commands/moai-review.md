@@ -234,7 +234,7 @@ flowchart TD
     Team --> R3["Quality Expert"]
     Team --> R4["UX Expert"]
 
-    Single --> Quality["manager-quality<br/>Sequential 4-perspective analysis"]
+    Single --> Quality["sync-auditor<br/>Sequential 4-perspective analysis"]
 
     R1 --> Consolidate["Report Consolidation"]
     R2 --> Consolidate
@@ -250,14 +250,14 @@ flowchart TD
 | Agent | Role | Key Tasks |
 |-------|------|-----------|
 | **MoAI Orchestrator** | Change identification & result consolidation | git diff, report generation |
-| **manager-quality** | Code quality analysis (default mode) | Sequential 4-perspective analysis |
-| **expert-security** | Security-focused analysis (`--security`) | OWASP, injection, authentication |
+| **sync-auditor** | Code quality analysis (default mode) | Sequential 4-perspective analysis |
+| **manager-develop** | Security-focused analysis (`--security`) | OWASP, injection, authentication |
 
 ## FAQ
 
 ### Q: What's the difference between --team mode and default mode?
 
-Default mode uses a single `manager-quality` agent to analyze all 4 perspectives sequentially. `--team` mode uses 4 expert reviewers analyzing simultaneously for deeper analysis, but consumes approximately 4x more tokens.
+Default mode uses a single `sync-auditor` agent to analyze all 4 perspectives sequentially. `--team` mode uses 4 expert reviewers analyzing simultaneously for deeper analysis, but consumes approximately 4x more tokens.
 
 ### Q: What's the best flag combination for pre-PR review?
 

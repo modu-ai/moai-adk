@@ -199,7 +199,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     User["ユーザーリクエスト"] --> Orchestrator["MoAI オーケストレータ"]
-    Orchestrator --> ManagerDDD["manager-ddd エージェント"]
+    Orchestrator --> ManagerDDD["manager-develop エージェント"]
 
     ManagerDDD --> Diagnose["並列診断"]
     Diagnose --> LSP["LSP"]
@@ -215,7 +215,7 @@ flowchart TD
     Todo --> Loop["ループ開始"]
 
     Loop --> Fix["expert エージェントに<br/>委任"]
-    Fix --> Verify["manager-quality<br/>検証"]
+    Fix --> Verify["sync-auditor<br/>検証"]
 
     Verify --> Complete{"完了条件?"}
     Complete -->|いいえ| Loop
@@ -227,9 +227,9 @@ flowchart TD
 | エージェント                | 役割        | 主なタスク          |
 | -------------------- | ----------- | ------------------- |
 | **MoAI オーケストレータ** | ループ調整 |
-| **manager-ddd**       | ループ管理 | TODO 作成、修正の調整 |
+| **manager-develop**       | ループ管理 | TODO 作成、修正の調整 |
 | **expert-\***         | 修正を実行 | 実際のコード変更 |
-| **manager-quality**   | 品質検証 | 完了条件を確認 |
+| **sync-auditor**   | 品質検証 | 完了条件を確認 |
 
 ## 実践例
 

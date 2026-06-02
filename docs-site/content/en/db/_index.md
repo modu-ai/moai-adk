@@ -39,4 +39,4 @@ MoAI-ADK's database workflow provides centralized management of your project's d
 
 ## Related Documentation
 
-See the [/moai db command reference](../../reference/moai-db.md) for more details.
+See the [/moai db command reference](/db/getting-started) for more details.

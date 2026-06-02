@@ -106,7 +106,7 @@ The MoAI agent catalog consists of exactly **8 retained agents** (7 MoAI-custom 
 5. Sync-phase documentation? Use the `manager-docs` subagent
 6. PR creation per Tier-based routing (Tier L OR explicit `--pr`)? Use the `manager-git` subagent
 7. Plan-phase independent audit (bias prevention)? Use the `plan-auditor` subagent
-8. Sync-phase quality 4-dimension scoring? Use the `evaluator-active` subagent
+8. Sync-phase quality 4-dimension scoring? Use the `sync-auditor` subagent
 9. Dynamic specialist generation (project-specific harness)? Use the `builder-harness` subagent
 
 ### Retained Agents (8 total)
@@ -118,7 +118,7 @@ The MoAI agent catalog consists of exactly **8 retained agents** (7 MoAI-custom 
 | `manager-docs` | core/manager | Sync-phase documentation (CHANGELOG, README, frontmatter transitions) | `.claude/agents/moai/manager-docs.md` |
 | `manager-git` | core/manager | PR creation per Tier-based routing + Late-Branch closure | `.claude/agents/moai/manager-git.md` |
 | `plan-auditor` | meta/evaluator | Independent plan-phase audit, bias prevention, GEARS compliance | `.claude/agents/moai/plan-auditor.md` |
-| `evaluator-active` | meta/evaluator | Independent skeptical quality assessment, 4-dimension scoring | `.claude/agents/moai/evaluator-active.md` |
+| `sync-auditor` | meta/evaluator | Independent skeptical quality assessment, 4-dimension scoring | `.claude/agents/moai/sync-auditor.md` |
 | `builder-harness` | builder | Dynamic project-specific harness specialist generation | `.claude/agents/builder/builder-harness.md` |
 | `Explore` | Anthropic built-in | Read-only codebase exploration (no MoAI file — invoked directly) | claude.com/docs/en/sub-agents |
 
@@ -191,9 +191,9 @@ MoAI-ADK uses a 3-level harness system for adaptive quality depth:
 
 - **minimal**: Fast validation for simple changes
 - **standard**: Default quality checks for most work
-- **thorough**: Full evaluator-active + TRUST 5 validation for complex SPECs
+- **thorough**: Full sync-auditor + TRUST 5 validation for complex SPECs
 
-Harness level is auto-determined by the Complexity Estimator based on SPEC scope. evaluator-active provides independent skeptical assessment with 4-dimension scoring (Functionality/Security/Craft/Consistency).
+Harness level is auto-determined by the Complexity Estimator based on SPEC scope. sync-auditor provides independent skeptical assessment with 4-dimension scoring (Functionality/Security/Craft/Consistency).
 
 **Configuration:** .moai/config/sections/harness.yaml, .moai/config/evaluator-profiles/
 

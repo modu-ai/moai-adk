@@ -204,7 +204,7 @@ When testimonials or case study data are available in brand context:
 - `moai-domain-brand-design`: Visual design must accommodate copy constraints
 - `moai-workflow-gan-loop`: GAN loop evaluates copy quality in Design Quality and Completeness dimensions
 - `expert-frontend`: Receives the JSON copy output for implementation
-- `evaluator-active`: Scores copy accuracy against original `brand-voice.md`
+- `sync-auditor`: Scores copy accuracy against original `brand-voice.md`
 
 ---
 

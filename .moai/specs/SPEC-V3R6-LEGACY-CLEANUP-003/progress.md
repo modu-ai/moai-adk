@@ -66,6 +66,21 @@ lifecycle: spec-anchored
 
 ## Mx-phase Evidence
 
+**Mx-phase Audit-Ready Signal (2026-06-02)**:
+
+```yaml
+mx_complete_at: 2026-06-02
+mx_status: skip-justified
+mx_commit_sha: e979a4d13
+mx_tag_count: 0
+mx_skip_justified: true
+mx_verdict: SKIP-JUSTIFIED
+mx_evidence: |
+  Tier M mechanical refactor (Wave → Round terminology, 14 production .go renames + 1 test file).
+  No new functions, no goroutines, no complexity ≥15. Existing @MX tags preserved per §a exemptions.
+  No new @MX:ANCHOR/@MX:WARN/@MX:NOTE/@MX:TODO candidates. Skip judgment per mx-tag-protocol.md §a.
+```
+
 Skip justified for `/moai mx` Step C per §D-3 reasoning:
 - All edits are mechanical Wave→Round renames in comments + 1 API parameter + 1 default string + test fixtures
 - No new functions added → no new @MX:ANCHOR candidates (fan_in unchanged)

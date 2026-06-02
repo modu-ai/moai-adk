@@ -386,8 +386,8 @@ func TestNoOrphanedManagerDDDReference(t *testing.T) {
 			description: "expert-refactoring.md 에이전트 위임 참조",
 		},
 		{
-			path:        ".claude/agents/moai/evaluator-active.md",
-			description: "evaluator-active.md 에이전트 위임 참조",
+			path:        ".claude/agents/moai/sync-auditor.md",
+			description: "sync-auditor.md 에이전트 위임 참조",
 		},
 		// Cat A3 — Output-style file (1 file)
 		{

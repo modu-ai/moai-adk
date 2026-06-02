@@ -2,9 +2,9 @@
 id: SPEC-V3R6-SKILLS-AUDIT-RUN-MD-001
 title: skills_audit_test.go solo run.md path update — TEMPLATE-MIRROR-DRIFT fix for SPEC-V3R4-WORKFLOW-SPLIT-001 cascade
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-05-24
-updated: 2026-05-24
+updated: 2026-06-02
 author: manager-spec
 priority: P3
 phase: v3.0.0

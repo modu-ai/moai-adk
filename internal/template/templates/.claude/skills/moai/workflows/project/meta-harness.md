@@ -197,7 +197,7 @@ Present via `AskUserQuestion` — 4 questions, each with 4 options:
 
 옵션:
 - (권장) standard: 기본 품질 게이트. 대부분의 프로젝트에 적합. 빠른 실행과 충분한 검증의 균형.
-- thorough: 전체 evaluator-active + TRUST 5 검증. 복잡한 SPEC 또는 엔터프라이즈 프로젝트에 권장.
+- thorough: 전체 sync-auditor + TRUST 5 검증. 복잡한 SPEC 또는 엔터프라이즈 프로젝트에 권장.
 - minimal: 빠른 검증만. 단순 변경 또는 프로토타입에 적합. 일부 품질 게이트 생략.
 - custom: 직접 구성. `.moai/config/sections/harness.yaml`에서 세부 설정 가능.
 

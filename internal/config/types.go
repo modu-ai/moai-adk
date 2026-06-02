@@ -37,14 +37,142 @@ type Config struct {
 	Design        DesignConfig       `yaml:"design"`
 }
 
+// GitLabConfig holds the nested gitlab.* settings of the git strategy section.
+//
+// Per SPEC-V3R5-GIT-STRATEGY-SCHEMA-001 REQ-GSS-001: the top-level
+// gitlab.instance_url key migrates here from the deprecated FLAT
+// GitStrategyConfig.GitLabInstanceURL field (Option (c) accessor-compat).
+type GitLabConfig struct {
+	InstanceURL string `yaml:"instance_url"`
+}
+
+// AutomationConfig holds the nested {mode}.automation.* settings.
+//
+// Per SPEC-V3R5-GIT-STRATEGY-SCHEMA-001 REQ-GSS-002 (forward-compat scaffold):
+// these keys are currently consumed by skill bodies via direct yaml reads, not
+// by Go code. The struct fields preserve yaml↔struct symmetry for future Go
+// consumers without altering the existing skill-body workflow.
+type AutomationConfig struct {
+	AutoBranch bool `yaml:"auto_branch"`
+	AutoCommit bool `yaml:"auto_commit"`
+	AutoPR     bool `yaml:"auto_pr"`
+	AutoPush   bool `yaml:"auto_push"`
+}
+
+// BranchCreationConfig holds the nested {mode}.branch_creation.* settings
+// (the Late-Branch opt-in default pair).
+//
+// Per SPEC-V3R5-GIT-STRATEGY-SCHEMA-001 REQ-GSS-002 (forward-compat scaffold).
+type BranchCreationConfig struct {
+	// AutoEnabled controls whether /moai plan creates a feat/SPEC-* branch.
+	// Forward-compat scaffold per SPEC-V3R5-GIT-STRATEGY-SCHEMA-001.
+	// Currently consumed by .claude/skills/moai/workflows/plan/spec-assembly.md
+	// Phase 3 (yaml-direct read), NOT by Go code. Future Go consumer may migrate
+	// to read this struct field via Config.GitStrategy.ActiveModeProfile().
+	// See SPEC-V3R5-LATE-BRANCH-001 REQ-LB-004.
+	AutoEnabled bool `yaml:"auto_enabled"`
+	// PromptAlways controls whether the workflow always prompts before creating
+	// a branch. Forward-compat scaffold; see AutoEnabled.
+	PromptAlways bool `yaml:"prompt_always"`
+}
+
+// CommitStyleConfig holds the nested {mode}.commit_style.* settings.
+//
+// Per SPEC-V3R5-GIT-STRATEGY-SCHEMA-001 REQ-GSS-002 (forward-compat scaffold).
+type CommitStyleConfig struct {
+	Format        string `yaml:"format"`
+	ScopeRequired bool   `yaml:"scope_required"`
+}
+
+// HooksConfig holds the nested {mode}.hooks.* settings.
+//
+// Per SPEC-V3R5-GIT-STRATEGY-SCHEMA-001 REQ-GSS-002 (forward-compat scaffold).
+type HooksConfig struct {
+	PreCommit string `yaml:"pre_commit"`
+	PrePush   string `yaml:"pre_push"`
+	CommitMsg string `yaml:"commit_msg"`
+}
+
+// ModeProfile holds the per-mode (manual/personal/team) settings of the git
+// strategy section.
+//
+// Per SPEC-V3R5-GIT-STRATEGY-SCHEMA-001 REQ-GSS-002: scalar fields plus four
+// sub-structs (Automation, BranchCreation, CommitStyle, Hooks) plus
+// mode-conditional optional fields (AutoCheckpoint is manual-only; BranchPrefix
+// and MainBranch are personal/team-only; DraftPR / RequiredReviews /
+// BranchProtection are team-only). Missing keys unmarshal to Go zero values.
+type ModeProfile struct {
+	Workflow          string `yaml:"workflow"`
+	Environment       string `yaml:"environment"`
+	GitHubIntegration bool   `yaml:"github_integration"`
+	PushToRemote      bool   `yaml:"push_to_remote"`
+
+	// Mode-conditional optional fields (zero value when the mode lacks the key).
+	AutoCheckpoint   string `yaml:"auto_checkpoint"`   // manual mode only
+	BranchPrefix     string `yaml:"branch_prefix"`     // personal/team modes only
+	MainBranch       string `yaml:"main_branch"`       // personal/team modes only
+	DraftPR          bool   `yaml:"draft_pr"`          // team mode only
+	RequiredReviews  int    `yaml:"required_reviews"`  // team mode only
+	BranchProtection bool   `yaml:"branch_protection"` // team mode only
+
+	// Nested sub-structs.
+	Automation     AutomationConfig     `yaml:"automation"`
+	BranchCreation BranchCreationConfig `yaml:"branch_creation"`
+	CommitStyle    CommitStyleConfig    `yaml:"commit_style"`
+	Hooks          HooksConfig          `yaml:"hooks"`
+}
+
 // GitStrategyConfig represents the git strategy configuration section.
+//
+// Schema reorganized per SPEC-V3R5-GIT-STRATEGY-SCHEMA-001 (Option (c)):
+//   - Top-level fields (Mode, Provider, GitHubUsername, GitLab) are wire-through.
+//   - Mode profiles (Manual, Personal, Team) are forward-compat scaffolds for
+//     future Go consumers of Late-Branch keys (see SPEC-V3R5-LATE-BRANCH-001).
+//   - FLAT fields (AutoBranch, BranchPrefix, CommitStyle, WorktreeRoot,
+//     GitLabInstanceURL) are deprecated per backward-compat Option (c) but
+//     retained per SPEC-CONFIG-001 historical contract.
 type GitStrategyConfig struct {
-	AutoBranch        bool   `yaml:"auto_branch"`
-	BranchPrefix      string `yaml:"branch_prefix"`
-	CommitStyle       string `yaml:"commit_style"`
-	WorktreeRoot      string `yaml:"worktree_root"`
-	Provider          string `yaml:"provider"`            // "github", "gitlab"
-	GitLabInstanceURL string `yaml:"gitlab_instance_url"` // GitLab instance URL
+	// Top-level wire-through fields.
+	Mode           string       `yaml:"mode"`     // "manual", "personal", "team"
+	Provider       string       `yaml:"provider"` // "github", "gitlab"
+	GitHubUsername string       `yaml:"github_username"`
+	GitLab         GitLabConfig `yaml:"gitlab"`
+
+	// Mode profile forward-compat scaffolds.
+	Manual   ModeProfile `yaml:"manual"`
+	Personal ModeProfile `yaml:"personal"`
+	Team     ModeProfile `yaml:"team"`
+
+	// Deprecated FLAT fields — preserved for backward-compat per Option (c).
+	// A future SPEC may sunset these with a SemVer major-bump.
+	// Deprecated: use ActiveModeProfile().Automation.AutoBranch instead.
+	AutoBranch bool `yaml:"auto_branch"`
+	// Deprecated: use ActiveModeProfile().BranchPrefix instead.
+	BranchPrefix string `yaml:"branch_prefix"`
+	// Deprecated: use ActiveModeProfile().CommitStyle.Format instead.
+	CommitStyle string `yaml:"commit_style"`
+	// Deprecated: no production consumer; preserved per SPEC-CONFIG-001.
+	WorktreeRoot string `yaml:"worktree_root"`
+	// Deprecated: use GitLab.InstanceURL instead.
+	GitLabInstanceURL string `yaml:"gitlab_instance_url"`
+}
+
+// ActiveModeProfile returns a pointer to the currently selected ModeProfile
+// based on the Mode field. Returns (nil, false) when Mode is empty or invalid.
+//
+// Per SPEC-V3R5-GIT-STRATEGY-SCHEMA-001 REQ-GSS-004. The accessor does not
+// modify any field; callers MUST check the boolean before dereferencing.
+func (c *GitStrategyConfig) ActiveModeProfile() (*ModeProfile, bool) {
+	switch c.Mode {
+	case "manual":
+		return &c.Manual, true
+	case "personal":
+		return &c.Personal, true
+	case "team":
+		return &c.Team, true
+	default:
+		return nil, false
+	}
 }
 
 // SystemHookConfig holds hook observability settings (SPEC-V3R2-RT-006 REQ-004).
@@ -513,7 +641,7 @@ type PlanAuditConfig struct {
 	MaxIterations int `yaml:"max_iterations"`
 	// RequireMustPass toggles must-pass enforcement.
 	RequireMustPass bool `yaml:"require_must_pass"`
-	// CrossValidateWithEvaluatorActive toggles cross-validation with evaluator-active.
+	// CrossValidateWithEvaluatorActive toggles cross-validation with sync-auditor.
 	CrossValidateWithEvaluatorActive bool `yaml:"cross_validate_with_evaluator_active"`
 }
 

@@ -1,608 +1,171 @@
-# Claude Code Memory System - Official Documentation Reference
+# Claude Code Memory System - Official Reference
 
 Source: https://code.claude.com/docs/en/memory
 
-## Key Concepts
+## Overview
 
-### What is Claude Code Memory?
+Claude Code has two complementary memory systems that carry knowledge across sessions:
 
-Claude Code Memory provides a hierarchical context management system that allows agents to maintain persistent information across sessions, projects, and organizations. It enables consistent behavior, knowledge retention, and context-aware interactions.
+1. **CLAUDE.md files** — Instructions you write to give Claude persistent context
+2. **Auto memory** — Notes Claude writes itself based on discoveries and patterns
 
-### Memory Architecture
+Both are loaded at the start of every session and treated as context, not enforced configuration.
 
-Three-Tier Hierarchy:
+## CLAUDE.md Files
 
-1. Enterprise Policy: Organization-wide policies and standards
-2. Project Memory: Project-specific knowledge and context
-3. User Memory: Personal preferences and individual knowledge
+### Purpose
 
-Memory Flow:
+CLAUDE.md files are markdown files that give Claude persistent instructions for a project, your personal workflow, or your organization. You write these files in plain text; Claude reads them at the start of every session.
 
-```
-Enterprise Policy → Project Memory → User Memory
- (Highest) (Project) (Personal)
- ↓ ↓ ↓
- Overrides Overrides Overrides
-```
+### File Locations (Load Order)
 
-## Memory Storage and Access
+CLAUDE.md files can live in several locations, each with a different scope. Files are loaded in order from broadest to most specific:
 
-### File-Based Memory System
+| Scope | Location | Purpose |
+|-------|----------|---------|
+| **Managed policy** | `/Library/Application Support/ClaudeCode/CLAUDE.md` (macOS)<br />`/etc/claude-code/CLAUDE.md` (Linux/WSL)<br />`C:\Program Files\ClaudeCode\CLAUDE.md` (Windows) | Organization-wide instructions managed by IT/DevOps |
+| **User** | `~/.claude/CLAUDE.md` | Personal preferences for all projects |
+| **Project** | `./CLAUDE.md` or `./.claude/CLAUDE.md` | Team-shared instructions for the project |
+| **Local** | gitignored local instructions file at the project root | Personal project-specific preferences |
 
-Memory File Locations:
+Files in subdirectories load on demand when Claude reads files in those directories, not at session start.
 
-- Enterprise: `/etc/claude/policies/` (system-wide)
-- Project: `./CLAUDE.md` (project-specific)
-- User: `~/.claude/CLAUDE.md` (personal preferences)
-- Local: `.claude/memory/` (project metadata)
+### Writing Effective Instructions
 
-File Types and Purpose:
+- **Size**: Target under 200 lines per file. Longer files consume more context tokens and reduce adherence.
+- **Structure**: Use markdown headers and bullets to group related instructions. Organized sections are easier to follow than dense paragraphs.
+- **Specificity**: Write instructions concrete enough to verify. "Use 2-space indentation" instead of "Format code properly." "API handlers live in src/api/handlers/" instead of "Keep files organized."
+- **Consistency**: If two rules contradict each other, Claude may pick one arbitrarily. Remove outdated or conflicting instructions periodically.
 
-```
-Project Root/
- CLAUDE.md # Main project memory (highest priority in project)
- .claude/memory/ # Structured project metadata
- execution-rules.md # Execution constraints and rules
- agents.md # Agent catalog and capabilities
- commands.md # Command references and patterns
- delegation-patterns.md # Agent delegation strategies
- token-optimization.md # Token budget management
- .moai/
- config/ # Configuration management
- config.json # Project settings
- cache/ # Memory cache and optimization
-```
+### Organizing Instructions with `.claude/rules/`
 
-### Memory Import Syntax
+For larger projects, organize instructions into multiple files using the `.claude/rules/` directory. Each file covers one topic with a descriptive filename like `testing.md` or `api-design.md`. Rules without `paths` frontmatter load at session start; rules with path-scoped `paths:` frontmatter load only when matching files are encountered.
 
-Direct Import Pattern:
+```yaml
+---
+paths: "src/api/**/*.ts"
+---
 
-```markdown
-# In CLAUDE.md files
+# API Development Rules
 
-@path/to/import.md # Import external memory file
-@.claude/memory/agents.md # Import agent reference
-@.claude/memory/commands.md # Import command reference
-@memory/delegation-patterns.md # Relative import from memory directory
+- All API endpoints must include input validation
+- Use the standard error response format
 ```
 
-Conditional Import:
+### Import Additional Files
 
-```markdown
-# Import based on environment or configuration
+CLAUDE.md files can import additional files using `@path/to/import` syntax. Imported files are expanded and loaded into context at launch.
 
-<!-- @if environment == "production" -->
-
-@memory/production-rules.md
-
-<!-- @endif -->
-
-<!-- @if features.security == "enabled" -->
-
-@memory/security-policies.md
-
-<!-- @endif -->
+Example:
+```
+See @README for project overview and @package.json for available npm commands.
 ```
 
-## Memory Content Types
+Relative paths resolve relative to the file containing the import. Maximum import depth is four hops. The first time Claude Code encounters external imports, it shows an approval dialog. Imports stay disabled if declined.
 
-### Policy and Rules Memory
+### Manage CLAUDE.md for Large Teams
 
-Execution Rules (`memory/execution-rules.md`):
+Organizations can deploy a centrally managed CLAUDE.md applied to all users on a machine. File locations are listed above under Managed policy scope. Use organization-wide configuration management systems (MDM, Group Policy, Ansible) to distribute the file.
 
-```markdown
-# Execution Rules and Constraints
+The `claudeMd` key in managed settings puts content directly in `managed-settings.json` instead of deploying a separate file.
 
-## Core Principles
-
-- Agent-first mandate: Always delegate to specialized agents
-- Security sandbox: All operations in controlled environment
-- Token budget management: Phase-based allocation strategy
-
-## Agent Delegation Rules
-
-- Required tools: Agent(), AskUserQuestion(), Skill()
-- Forbidden tools: Read(), Write(), Edit(), Bash(), Grep(), Glob()
-- Delegation pattern: Sequential → Parallel → Conditional
-
-## Security Constraints
-
-- Forbidden paths: .env\*, .vercel/, .github/workflows/secrets
-- Forbidden commands: rm -rf, sudo, chmod 777, dd, mkfs
-- Input validation: Required before all processing
-```
-
-Agent Catalog (`memory/agents.md`):
-
-```markdown
-# Agent Reference Catalog
-
-## Planning & Specification
-
-- spec-builder: SPEC generation in EARS format
-- plan: Decompose complex tasks step-by-step
-
-## Implementation
-
-- ddd-implementer: Execute DDD cycle (ANALYZE-PRESERVE-IMPROVE)
-- backend-expert: Backend architecture and API development
-- frontend-expert: Frontend UI component development
-
-## Usage Patterns
-
-- Simple tasks (1-2 files): Sequential execution
-- Medium tasks (3-5 files): Mixed sequential/parallel
-- Complex tasks (10+ files): Parallel with integration phase
-```
-
-### Configuration Memory
-
-Settings Management (`config/config.json`):
+Exclude specific CLAUDE.md files in large monorepos using the `claudeMdExcludes` setting in `.claude/settings.local.json`:
 
 ```json
 {
-  "user": {
-    "name": "Developer Name",
-    "preferences": {
-      "language": "en",
-      "timezone": "UTC"
-    }
-  },
-  "project": {
-    "name": "Project Name",
-    "type": "web-application",
-    "documentation_mode": "comprehensive"
-  },
-  "constitution": {
-    "test_coverage_target": 90,
-    "enforce_tdd": true,
-    "quality_gates": [
-      "test-first",
-      "readable",
-      "unified",
-      "secured",
-      "trackable"
-    ]
-  },
-  "git_strategy": {
-    "mode": "team",
-    "workflow": "github-flow",
-    "auto_pr": true
-  }
+  "claudeMdExcludes": [
+    "**/monorepo/CLAUDE.md",
+    "/path/to/other-team/.claude/rules/**"
+  ]
 }
 ```
 
-### Process Memory
+## Auto Memory
 
-Command References (`memory/commands.md`):
+Auto memory lets Claude accumulate knowledge across sessions without you writing anything. Claude saves notes for itself as it works: build commands, debugging insights, architecture notes, code style preferences, and workflow habits.
 
-```markdown
-# Command Reference Guide
+Auto memory requires Claude Code v2.1.59 or later (check with `claude --version`).
 
-## Core MoAI Commands
+### Enable or Disable
 
-- /moai:0-project: Initialize project structure
-- /moai:1-plan: Generate SPEC document
-- /moai:2-run: Execute DDD implementation
-- /moai:3-sync: Generate documentation
-- /moai:9-feedback: Collect improvement feedback
-
-## Command Execution Rules
-
-- After /moai:1-plan: Execute /clear (mandatory)
-- Token threshold: Execute /clear at >150K tokens
-- Error handling: Use /moai:9-feedback for all issues
-```
-
-## Memory Management Strategies
-
-### Memory Initialization
-
-Project Bootstrap:
-
-```bash
-# Initialize project memory structure
-/moai:0-project
-
-# Creates:
-# - .moai/config/config.yaml
-# - .moai/state/ directory
-# - CLAUDE.md template
-# - Memory structure files
-```
-
-Manual Memory Setup:
-
-```bash
-# Create memory directory structure
-mkdir -p .claude/memory
-mkdir -p .moai/config
-mkdir -p .moai/cache
-
-# Create initial memory files
-touch .claude/memory/agents.md
-touch .claude/memory/commands.md
-touch .claude/memory/execution-rules.md
-touch CLAUDE.md
-```
-
-### Memory Synchronization
-
-Import Resolution:
-
-```python
-# Memory import resolution order
-def resolve_memory_import(import_path, base_path):
- """
- Resolve @import paths in memory files
- 1. Check relative to current file
- 2. Check in .claude/memory/ directory
- 3. Check in project root
- 4. Check in user memory directory
- """
- candidates = [
- os.path.join(base_path, import_path),
- os.path.join(".claude/memory", import_path),
- os.path.join(".", import_path),
- os.path.expanduser(os.path.join("~/.claude", import_path))
- ]
-
- for candidate in candidates:
- if os.path.exists(candidate):
- return candidate
- return None
-```
-
-Memory Cache Management:
-
-```bash
-# Memory cache operations
-claude memory cache clear # Clear all memory cache
-claude memory cache list # List cached memory files
-claude memory cache refresh # Refresh memory from files
-claude memory cache status # Show cache statistics
-```
-
-### Memory Optimization
-
-Token Efficiency Strategies:
-
-```markdown
-# Memory optimization techniques
-
-## Progressive Loading
-
-- Load core memory first (2000 tokens)
-- Load detailed memory on-demand (5000 tokens each)
-- Cache frequently accessed memory files
-
-## Content Prioritization
-
-- Priority 1: Execution rules and agent catalog (must load)
-- Priority 2: Project-specific configurations (conditional)
-- Priority 3: Historical data and examples (on-demand)
-
-## Memory Compression
-
-- Use concise bullet points over paragraphs
-- Implement cross-references instead of duplication
-- Group related information in structured sections
-```
-
-## Memory Access Patterns
-
-### Agent Memory Access
-
-Agent Memory Loading:
-
-```python
-# Agent memory access pattern
-class AgentMemory:
- def __init__(self, session_id):
- self.session_id = session_id
- self.memory_cache = {}
- self.load_base_memory()
-
- def load_base_memory(self):
- """Load essential memory for agent operation"""
- essential_files = [
- ".claude/memory/execution-rules.md",
- ".claude/memory/agents.md",
- ".moai/config/config.yaml"
- ]
-
- for file_path in essential_files:
- self.memory_cache[file_path] = self.load_memory_file(file_path)
-
- def get_memory(self, key):
- """Get memory value with fallback hierarchy"""
- # 1. Check session cache
- if key in self.memory_cache:
- return self.memory_cache[key]
-
- # 2. Load from file system
- memory_value = self.load_memory_file(key)
- if memory_value:
- self.memory_cache[key] = memory_value
- return memory_value
-
- # 3. Return default or None
- return None
-```
-
-Context-Aware Memory:
-
-```python
-# Context-aware memory selection
-def select_relevant_memory(context, available_memory):
- """
- Select memory files relevant to current context
- """
- relevant_memory = []
-
- # Analyze context keywords
- context_keywords = extract_keywords(context)
-
- # Match memory files by content relevance
- for memory_file in available_memory:
- relevance_score = calculate_relevance(memory_file, context_keywords)
- if relevance_score > 0.7: # Threshold
- relevant_memory.append((memory_file, relevance_score))
-
- # Sort by relevance and return top N
- relevant_memory.sort(key=lambda x: x[1], reverse=True)
- return [memory[0] for memory in relevant_memory[:5]]
-```
-
-## Memory Configuration
-
-### Environment-Specific Memory
-
-Development Environment:
+Auto memory is on by default. Toggle it via `/memory` command in a session, or set `autoMemoryEnabled` in settings:
 
 ```json
 {
-  "memory": {
-    "mode": "development",
-    "cache_size": "100MB",
-    "auto_refresh": true,
-    "debug_memory": true,
-    "memory_files": [
-      ".claude/memory/execution-rules.md",
-      ".claude/memory/agents.md",
-      ".claude/memory/commands.md"
-    ]
-  }
+  "autoMemoryEnabled": false
 }
 ```
 
-Production Environment:
+Or set the environment variable: `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`
+
+### Storage Location
+
+Each project gets its own memory directory at `~/.claude/projects/<project>/memory/`. The `<project>` path is derived from the git repository; all worktrees and subdirectories within the same repo share one auto memory directory. Outside a git repo, the project root is used instead.
+
+To store auto memory in a different location, set `autoMemoryDirectory`:
 
 ```json
 {
-  "memory": {
-    "mode": "production",
-    "cache_size": "50MB",
-    "auto_refresh": false,
-    "debug_memory": false,
-    "memory_files": [
-      ".claude/memory/execution-rules.md",
-      ".claude/memory/production-policies.md"
-    ],
-    "memory_restrictions": {
-      "max_file_size": "1MB",
-      "allowed_extensions": [".md", ".json"],
-      "forbidden_patterns": ["password", "secret", "key"]
-    }
-  }
+  "autoMemoryDirectory": "~/my-custom-memory-dir"
 }
 ```
 
-### User Preference Memory
+The directory contains a `MEMORY.md` index and optional topic files:
 
-Personal Memory Structure (`~/.claude/CLAUDE.md`):
-
-```markdown
-# Personal Claude Code Preferences
-
-## User Information
-
-- Name: John Developer
-- Role: Senior Software Engineer
-- Expertise: Backend Development, DevOps
-
-## Development Preferences
-
-- Language: Python, TypeScript
-- Frameworks: FastAPI, React
-- Testing: pytest, Jest
-- Documentation: Markdown, OpenAPI
-
-## Workflow Preferences
-
-- Git strategy: feature branches
-- Code review: required for PRs
-- Testing coverage: >90%
-- Documentation: comprehensive
-
-## Tool Preferences
-
-- Editor: VS Code
-- Shell: bash
-- Package manager: npm, pip
-- Container: Docker
+```
+~/.claude/projects/<project>/memory/
+├── MEMORY.md                # Index, loaded every session
+├── debugging.md             # Detailed notes on demand
+├── api-conventions.md       # API design decisions
+└── ...
 ```
 
-## Memory Maintenance
+### How It Works
 
-### Memory Updates and Synchronization
+The first 200 lines of `MEMORY.md` (or the first 25KB, whichever comes first) are loaded at the start of every session. Content beyond that threshold is not loaded automatically.
 
-Automatic Memory Updates:
+Topic files like `debugging.md` are not loaded at startup. Claude reads them on demand using standard file tools when the information is needed.
 
-```bash
-# Update memory from templates
-claude memory update --from-templates
+Auto memory is machine-local. All worktrees and subdirectories within the same git repository share one auto memory directory. Files are not synced across machines or cloud environments.
 
-# Synchronize memory across team
-claude memory sync --team
+## View and Edit Memory with `/memory`
 
-# Validate memory structure
-claude memory validate --strict
-```
+The `/memory` command lists:
+- All loaded CLAUDE.md and `.claude/rules/` files in your current session
+- Toggle for auto memory on/off
+- Link to open the auto memory folder
+- Options to select and open any file in your editor
 
-Memory Version Control:
+## Troubleshoot Memory Issues
 
-```bash
-# Track memory changes in Git
-git add .claude/memory/ CLAUDE.md
-git commit -m "docs: Update project memory and agent catalog"
+### Claude isn't following my CLAUDE.md
 
-# Tag memory versions
-git tag -a "memory-v1.2.0" -m "Memory version 1.2.0"
-```
+CLAUDE.md content is delivered as context after the system prompt, not as the system prompt itself. Claude reads it and tries to follow it, but there's no strict enforcement, especially for vague or conflicting instructions.
 
-### Memory Cleanup
+Debug steps:
+1. Run `/memory` to verify your files are being loaded.
+2. Check that the file is in a location that gets loaded for your session.
+3. Make instructions more specific. "Use 2-space indentation" works better than "format code nicely."
+4. Look for conflicting instructions across CLAUDE.md files. If two files give different guidance, Claude may pick one arbitrarily.
+5. For instructions that must run at a specific point (before every commit, after file edits), write a [hook](/en/hooks-guide) instead. Hooks execute as shell commands at fixed lifecycle events.
 
-Cache Cleanup:
+Tip: Use the `InstructionsLoaded` hook to log exactly which instruction files are loaded, when they load, and why.
 
-```bash
-# Clear expired cache entries
-claude memory cache cleanup --older-than 7d
+### I don't know what auto memory saved
 
-# Remove unused memory files
-claude memory cleanup --unused
+Run `/memory` and select the auto memory folder to browse what Claude has saved. Everything is plain markdown you can read, edit, or delete.
 
-# Optimize memory file size
-claude memory optimize --compress
-```
+### My CLAUDE.md is too large
 
-Memory Audit:
+Files over 200 lines consume more context and may reduce adherence. Use [path-scoped rules](#organizing-instructions-with-claude/rules/) to load instructions only for matching files, or trim content not needed in every session. Splitting into `@path` imports helps organization but does not reduce context, since imported files load at launch.
 
-```bash
-# Audit memory usage
-claude memory audit --detailed
+### Instructions seem lost after `/compact`
 
-# Check for duplicate memory
-claude memory audit --duplicates
+Project-root CLAUDE.md survives compaction: Claude re-reads it from disk and re-injects it into the session. Nested CLAUDE.md files in subdirectories are not re-injected automatically; they reload the next time Claude reads a file in that subdirectory.
 
-# Validate memory references
-claude memory audit --references
-```
+## Related Resources
 
-## Advanced Memory Features
-
-### Memory Templates
-
-Template-Based Memory Initialization:
-
-```markdown
-<!-- memory/project-template.md -->
-
-# Project Memory Template
-
-## Project Structure
-
-- Name: {{project.name}}
-- Type: {{project.type}}
-- Language: {{project.language}}
-
-## Team Configuration
-
-- Team size: {{team.size}}
-- Workflow: {{team.workflow}}
-- Review policy: {{team.review_policy}}
-
-## Quality Standards
-
-- Test coverage: {{quality.test_coverage}}%
-- Documentation: {{quality.documentation_level}}
-- Security: {{quality.security_level}}
-```
-
-Template Instantiation:
-
-```bash
-# Create memory from template
-claude memory init --template web-app --config project.json
-
-# Variables in project.json:
-# {
-# "project": {"name": "MyApp", "type": "web-app", "language": "TypeScript"},
-# "team": {"size": 5, "workflow": "github-flow", "review_policy": "required"},
-# "quality": {"test_coverage": 90, "documentation_level": "comprehensive", "security_level": "high"}
-# }
-```
-
-### Memory Sharing and Distribution
-
-Team Memory Distribution:
-
-```bash
-# Export memory for team sharing
-claude memory export --team --format archive
-
-# Import shared memory
-claude memory import --team --file team-memory.tar.gz
-
-# Merge memory updates
-claude memory merge --base current --update team-updates
-```
-
-Memory Distribution Channels:
-
-- Git Repository: Version-controlled memory files
-- Package Distribution: Memory bundled with tools/libraries
-- Network Share: Centralized memory server
-- Cloud Storage: Distributed memory storage
-
-## Best Practices
-
-### Memory Organization
-
-Structural Guidelines:
-
-- Keep memory files focused on single topics
-- Use consistent naming conventions
-- Implement clear hierarchy and relationships
-- Maintain cross-references and links
-
-Content Guidelines:
-
-- Write memory content in clear, concise language
-- Use structured formats (markdown, JSON, YAML)
-- Include examples and use cases
-- Provide context and usage instructions
-
-### Performance Optimization
-
-Memory Loading Optimization:
-
-- Load memory files on-demand when possible
-- Implement caching for frequently accessed memory
-- Use compression for large memory files
-- Preload critical memory files
-
-Memory Access Patterns:
-
-- Group related memory access operations
-- Minimize memory file loading frequency
-- Use memory references instead of duplication
-- Implement lazy loading for optional memory
-
-### Security and Privacy
-
-Memory Security:
-
-- Never store sensitive credentials in memory files
-- Implement access controls for memory files
-- Use encryption for confidential memory content
-- Regular security audits of memory content
-
-Privacy Considerations:
-
-- Separate personal and project memory appropriately
-- Use anonymization for sensitive data in shared memory
-- Implement data retention policies for memory content
-- Respect user privacy preferences in memory usage
-
-This comprehensive reference provides all the information needed to effectively implement, manage, and optimize Claude Code Memory systems for projects of any scale and complexity.
+- [Debug your configuration](/en/debug-your-config): diagnose why CLAUDE.md or settings aren't taking effect
+- [Skills](/en/skills): package repeatable workflows that load on demand
+- [Settings](/en/settings): configure Claude Code behavior with settings files
+- [Subagent memory](/en/sub-agents#enable-persistent-memory): let subagents maintain their own auto memory

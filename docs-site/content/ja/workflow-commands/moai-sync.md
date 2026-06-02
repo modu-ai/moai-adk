@@ -148,7 +148,7 @@ flowchart TD
     S --> T["アーキテクチャ文書同期"]
     T --> U["SPEC ステータス更新"]
 
-    U --> V["manager-quality 呼び出し<br/>品質検証"]
+    U --> V["sync-auditor 呼び出し<br/>品質検証"]
     V --> W{"品質ゲート?"}
     W -->|FAIL| G
     W -->|PASS| X["フェーズ 3<br/>Git 操作"]
@@ -203,7 +203,7 @@ flowchart TD
 
 **ステップ 4 - コードレビュー:**
 
-**manager-quality** サブエージェントが TRUST 5 品質検証を実行して包括的なレポートを作成します。
+**sync-auditor** サブエージェントが TRUST 5 品質検証を実行して包括的なレポートを作成します。
 
 **ステップ 5 - 品質レポート生成:**
 
@@ -241,7 +241,7 @@ test-runner、linter、type-checker、code-review のステータスを集約し
 
 **ステップ 3 - 事後同期品質検証:**
 
-**manager-quality** サブエージェントが TRUST 5 基準で同期品質を検証します:
+**sync-auditor** サブエージェントが TRUST 5 基準で同期品質を検証します:
 
 - すべてのプロジェクトリンク完了
 - 文書が適切にフォーマットされている
@@ -441,7 +441,7 @@ Sync フェーズの品質基準は Run フェーズよりも文書中心です:
 
 ```bash
 # Run フェーズが完了したことを確認
-# manager-ddd が "DONE" または "COMPLETE" マーカーを出力している必要があります
+# manager-develop が "DONE" または "COMPLETE" マーカーを出力している必要があります
 ```
 
 **ステップ 2: トークンクリア後に Sync 実行**

@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3R5-INIT-WIZARD-EXPANSION-001
 version: "0.1.0"
-status: in-progress
+status: implemented
 created_at: 2026-05-22
-updated_at: 2026-05-30
+updated_at: 2026-06-02
 author: manager-spec
 priority: High
 labels: [wizard, init, profile, ux, configuration]

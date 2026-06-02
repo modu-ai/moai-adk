@@ -58,99 +58,67 @@ MoAI-ADK 的规则、模式、最佳实践来响应。
 
 ## 技能分类
 
-MoAI-ADK 共有 **52 个技能**,分为 9 个类别。
+MoAI-ADK 共有 **31 个技能** — moai 伞形路由器加上 30 个专业技能,分为 6 大类: Foundation(4)、Workflow(10)、Domain(8)、Reference(5)、Meta-Harness(2)、Design(1)。编程语言支持通过 `rules/moai/languages/` 下的规则提供,而不是单独的技能。
 
-### Foundation (核心哲学) - 5 个
+### Foundation (核心哲学) - 4 个
 
 | 技能名称                     | 描述                                             |
 | ----------------------------- | ------------------------------------------------ |
 | `moai-foundation-core`        | 基于 SPEC 的 TDD/DDD, TRUST 5 框架, 执行规则    |
-| `moai-foundation-claude`      | Claude Code 扩展模式 (Skills, Agents, Hooks 等) |
-| `moai-foundation-philosopher` | 战略思维框架, 决策分析            |
-| `moai-foundation-quality`     | 代码质量自动验证, TRUST 5 验证          |
-| `moai-foundation-context`     | Token 预算管理, 会话状态保持                   |
+| `moai-foundation-cc`          | Claude Code 扩展模式 (Skills, Agents, Hooks 等) |
+| `moai-foundation-thinking`    | 结构化思维, 创意框架, 第一性原理分析            |
+| `moai-foundation-quality`     | 企业级代码质量管理, TRUST 5 验证          |
 
-### Workflow (自动化工作流) - 11 个
+### Workflow (自动化工作流) - 10 个
 
 | 技能名称                 | 描述                                     |
 | ------------------------- | ---------------------------------------- |
-| `moai-workflow-spec`      | SPEC 文档创建, EARS 格式, 需求分析 |
-| `moai-workflow-project`   | 项目初始化, 文档创建, 语言设置    |
-| `moai-workflow-ddd`       | ANALYZE-PRESERVE-IMPROVE 周期          |
-| `moai-workflow-tdd`       | RED-GREEN-REFACTOR 测试驱动开发      |
-| `moai-workflow-testing`   | 测试创建, 调试, 代码审查集成      |
-| `moai-workflow-worktree`  | Git worktree 基础并行开发              |
-| `moai-workflow-thinking`  | Sequential Thinking, UltraThink 模式     |
-| `moai-workflow-loop`      | Ralph Engine 自主循环, LSP 联动         |
-| `moai-workflow-jit-docs`  | 按需文档加载, 智能搜索         |
-| `moai-workflow-templates` | 代码样板, 项目模板     |
-| `moai-docs-generation`     | 技术文档, API 文档, 用户指南       |
+| `moai-workflow-spec`      | SPEC 文档创建, GEARS 格式, 需求分析 |
+| `moai-workflow-project`   | 项目初始化, 文档生成, 语言设置, JIT 文档加载 |
+| `moai-workflow-ddd`       | 域驱动开发 ANALYZE-PRESERVE-IMPROVE 周期   |
+| `moai-workflow-tdd`       | 测试驱动开发 RED-GREEN-REFACTOR 周期     |
+| `moai-workflow-testing`   | 测试创建, 调试, 代码审查, 性能优化 |
+| `moai-workflow-worktree`  | Git worktree 管理, 并行 SPEC 开发   |
+| `moai-workflow-loop`      | Ralph Engine 自主循环, LSP 诊断    |
+| `moai-workflow-ci-loop`   | CI 监视和自动修复循环     |
+| `moai-workflow-gan-loop`  | GAN 循环, 迭代设计改进     |
+| `moai-workflow-design`    | 设计工作流, Claude Design 集成     |
 
-### Domain (领域专业性) - 4 个
+### Domain (领域专业性) - 8 个
 
 | 技能名称              | 描述                                             |
 | ---------------------- | ------------------------------------------------ |
-| `moai-domain-backend`  | API 设计, 微服务, 数据库集成      |
-| `moai-domain-frontend` | React 19, Next.js 16, Vue 3.5, 组件架构 |
-| `moai-domain-database` | PostgreSQL, MongoDB, Redis, 高级数据模式     |
-| `moai-domain-uiux`     | 设计系统, 可访问性, 主题集成                 |
+| `moai-domain-backend`  | 后端开发, API 设计, 数据库集成      |
+| `moai-domain-frontend` | 前端开发, React 19, Next.js 16, Vue 3.5 |
+| `moai-domain-database` | PostgreSQL, MongoDB, Redis 数据库设计 和查询优化 |
+| `moai-domain-design-handoff` | Claude Design 交接包, 设计系统 |
+| `moai-domain-ideation` | 创意头脑风暴, 提案生成     |
+| `moai-domain-research` | 市场和生态研究     |
+| `moai-design-system` | 意图优先设计, WCAG 2.1 可访问性     |
+| `moai-domain-copywriting` | 品牌对齐文案, 营销文本     |
 
-### Language (编程语言) - 16 个
+### Reference (参考) - 5 个
 
-| 技能名称              | 目标语言                                 |
-| ---------------------- | ----------------------------------------- |
-| `moai-lang-python`     | Python 3.13+, FastAPI, Django             |
-| `moai-lang-typescript` | TypeScript 5.9+, React 19, Next.js 16     |
-| `moai-lang-javascript` | JavaScript ES2024+, Node.js 22, Bun, Deno |
-| `moai-lang-go`         | Go 1.23+, Fiber, Gin, GORM (整合)           |
-| `moai-lang-rust`       | Rust 1.92+, Axum, Tokio (整合)                   |
-| `moai-lang-flutter`    | Flutter 3.24+, Dart 3.5+, Riverpod (整合)        |
-| `moai-lang-java`       | Java 21 LTS, Spring Boot 3.3              |
-| `moai-lang-cpp`        | C++23/C++20, CMake, RAII                  |
-| `moai-lang-ruby`       | Ruby 3.3+, Rails 7.2                      |
-| `moai-lang-php`        | PHP 8.3+, Laravel 11, Symfony 7           |
-| `moai-lang-kotlin`     | Kotlin 2.0+, Ktor, Compose Multiplatform  |
-| `moai-lang-csharp`     | C# 12, .NET 8, ASP.NET Core               |
-| `moai-lang-scala`      | Scala 3.4+, Akka, ZIO                     |
-| `moai-lang-elixir`     | Elixir 1.17+, Phoenix 1.7, LiveView       |
-| `moai-lang-swift`      | Swift 6+, SwiftUI, Combine                |
-| `moai-lang-r`          | R 4.4+, tidyverse, ggplot2, Shiny         |
+| 技能名称              | 描述                                             |
+| ---------------------- | ------------------------------------------------ |
+| `moai-ref-api-patterns`  | REST/GraphQL API 设计模式      |
+| `moai-ref-react-patterns` | React/Next.js 组件设计模式 |
+| `moai-ref-git-workflow` | Git 工作流, 分支策略, 常规提交     |
+| `moai-ref-owasp-checklist` | OWASP Top 10 安全检查表 |
+| `moai-ref-testing-pyramid` | 测试金字塔, 覆盖率策略     |
 
-### Platform (云/BaaS) - 4 个
+### Meta-Harness (Harness 专业化) - 2 个
 
-| 技能名称                     | 目标平台                                  |
-| ----------------------------- | -------------------------------------------- |
-| `moai-platform-auth`          | Auth0, Clerk, Firebase-auth 集成认证     |
-| `moai-platform-database-cloud`| Neon, Supabase, Firestore 集成数据库    |
-| `moai-platform-deployment`    | Vercel, Railway, Convex 集成部署        |
+| 技能名称              | 描述                                             |
+| ---------------------- | ------------------------------------------------ |
+| `moai-meta-harness`  | 项目特定代理团队设计      |
+| `moai-harness-learner` | Harness 学习子系统, 自适应更新     |
 
-### Library (特殊库) - 4 个
+### Design (设计系统) - 1 个
 
-| 技能名称              | 描述                            |
-| ---------------------- | ------------------------------- |
-| `moai-library-shadcn`  | shadcn/ui 组件实现指南  |
-| `moai-library-mermaid` | Mermaid 11.12 图表生成 |
-| `moai-library-nextra`  | Nextra 文档站点框架   |
-| `moai-formats-data`    | TOON 编码, JSON/YAML 优化   |
-
-### Tool (开发工具) - 2 个
-
-| 技能名称            | 描述                                 |
-| -------------------- | ------------------------------------ |
-| `moai-tool-ast-grep` | AST 基础结构代码搜索, 安全扫描 |
-| `moai-tool-svg`      | SVG 生成, 优化, 图标系统      |
-
-### Framework (应用框架) - 1 个
-
-| 技能名称                 | 描述                          |
-| ------------------------- | ----------------------------- |
-| `moai-framework-electron` | Electron 33+ 桌面应用开发 |
-
-### Design Tools (设计工具) - 1 个
-
-| 技能名称                 | 描述                          |
-| ------------------------- | ----------------------------- |
-| `moai-design-tools`       | Figma, Pencil 集成设计工具 |
+| 技能名称              | 描述                                             |
+| ---------------------- | ------------------------------------------------ |
+| `moai-domain-brand-design`  | 品牌对齐设计系统, 设计令牌提取      |
 
 ## 渐进式公开系统
 
@@ -189,7 +157,7 @@ flowchart TD
 
 ### Token 节省效果
 
-- **原有方式**: 52 个技能全部加载 = 约 260,000 tokens (不可行)
+- **原有方式**: 31 个技能全部加载 = 约 260,000 tokens (不可行)
 - **渐进式公开**: 仅加载元数据 = 约 5,200 tokens (节省 97%)
 - **按需加载**: 仅加载任务所需的 2~3 个技能 = 约 15,000 tokens 额外
 
@@ -205,7 +173,7 @@ flowchart TD
     REQ --> LN{语言检测}
 
     KW -->|"api, database"| SKILL1[moai-domain-backend]
-    AG -->|"expert-backend"| SKILL1
+    AG -->|"manager-develop"| SKILL1
     PH -->|"run 阶段"| SKILL2[moai-workflow-ddd]
     LN -->|"Python 文件"| SKILL3[moai-lang-python]
 
@@ -220,7 +188,7 @@ flowchart TD
 # 在技能 frontmatter 中定义触发器
 triggers:
   keywords: ["api", "database", "authentication"] # 关键词匹配
-  agents: ["manager-spec", "expert-backend"] # 代理调用时
+  agents: ["manager-spec", "manager-develop"] # 代理调用时
   phases: ["plan", "run"] # 工作流阶段
   languages: ["python", "typescript"] # 编程语言
 ```

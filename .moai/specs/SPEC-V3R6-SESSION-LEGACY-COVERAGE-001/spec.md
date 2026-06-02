@@ -2,9 +2,9 @@
 id: SPEC-V3R6-SESSION-LEGACY-COVERAGE-001
 title: "internal/session 패키지 test coverage 보강 (77.7% → ≥85%, test-only)"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-05-25
-updated: 2026-05-25
+updated: 2026-06-02
 author: manager-spec
 priority: P2
 phase: "v3.0.0"

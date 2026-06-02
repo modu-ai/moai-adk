@@ -16,7 +16,6 @@ var acknowledgedUnloadedSections = []string{
 	"db",             // out-of-scope: separate SPEC (database config not yet runtime-consumed)
 	"gate",           // out-of-scope: GateConfig exists but loaded via separate path (not Loader.Load)
 	"github-actions", // out-of-scope: CI config, not consumed at runtime
-	"git-strategy",   // out-of-scope: loaded via git-strategy.yaml.tmpl template rendering path
 	"lsp",            // out-of-scope: LSP config not yet runtime-enforced (separate SPEC)
 	"memo",           // out-of-scope: memo configuration, not runtime-consumed
 	"mx",             // out-of-scope: ad-hoc parsing retained; struct neuverbalisation deferred (spec.md §2.2)

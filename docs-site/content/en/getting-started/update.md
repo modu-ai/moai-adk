@@ -63,9 +63,9 @@ Current version: 1.2.0
 Latest version: 1.3.0
 
 Release notes:
-- Add new expert-performance agent
-- Improve token optimization
+- Improve token optimization for manager-develop
 - Fix SPEC validation issues
+- Enhance sync-auditor 4-dimension scoring
 
 Update available! Run 'moai update' to upgrade.
 ```
@@ -393,15 +393,15 @@ Store personal settings in separate files to prevent overwriting during updates:
     "context7"
   ],
   "companyAnnouncements": [
-    "🗿 MoAI-ADK: 28 Specialized Agents + 52 Skills with SPEC-First DDD",
+    "🗿 MoAI-ADK: 8 Specialized Agents + 31 Skills with SPEC-First DDD",
     "⚡ /moai: One-stop Plan→Run→Sync automation with intelligent routing",
     "🌳 moai worktree: Parallel SPEC development in isolated worktree environments",
-    "🤖 Expert Agents (8): backend, frontend, security, devops, debug, performance, refactoring, testing",
-    "🤖 Manager Agents (8): git, spec, ddd, tdd, docs, quality, project, strategy",
-    "🤖 Builder Agents (3): agent, skill, plugin",
-    "🤖 Team Agents (8, experimental): researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality",
+    "🤖 Manager Agents (4): manager-spec, manager-develop, manager-docs, manager-git",
+    "🤖 Evaluator Agents (2): plan-auditor, sync-auditor",
+    "🤖 Builder Agent (1): builder-harness",
+    "🤖 Built-in: Explore (Anthropic read-only codebase exploration)",
     "📋 Workflow: /moai plan (SPEC) → /moai run (DDD) → /moai sync (Docs)",
-    "🚀 Options: --team (parallel Agent Teams), --ultrathink (deep analysis via Sequential Thinking MCP), --loop (iterative auto-fix)",
+    "🚀 Options: --team (parallel Agent Teams), --ultrathink (deep analysis via Adaptive Thinking), --loop (iterative auto-fix)",
     "✅ Quality: TRUST 5 + ≥85% coverage + Ralph Engine (LSP + AST-grep)",
     "🔄 Git Strategy: 3-Mode (Manual/Personal/Team) with Smart Merge config updates",
     "📚 Tip: moai update --templates-only syncs latest skills and agents to your project",

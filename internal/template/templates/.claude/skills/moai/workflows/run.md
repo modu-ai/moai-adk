@@ -78,7 +78,7 @@ Phase 0.95 Mode Selection: orchestrator autonomous 5-mode decision (autopilot / 
 - `team`: Agent Teams 모드 (requires prerequisites)
 - `pipeline`: REJECTED — `MODE_PIPELINE_ONLY_UTILITY` 오류 반환
 
-**Harness levels**: `minimal` → skip optional phases | `standard` → all phases | `thorough` → sprint contract + evaluator-active
+**Harness levels**: `minimal` → skip optional phases | `standard` → all phases | `thorough` → sprint contract + sync-auditor
 
 **Phase 0.5 (Plan Audit Gate)**: 모든 harness level에서 SKIP 불가. SPEC plan 아티팩트 독립 감사 필수.
 

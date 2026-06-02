@@ -195,3 +195,21 @@ All 7 commands SHOULD be invoked in a single assistant turn per AC-WO-007 verifi
 | 2026-05-23 | (none) | draft | manager-spec (plan-phase initial creation) |
 | 2026-05-23 | draft | implemented | manager-develop (run-phase M1-M4 complete, Hybrid Trunk Tier S direct on main) |
 | 2026-05-23 | implemented | completed | manager-docs (sync-phase) |
+
+## §G. Mx-phase Audit-Ready Signal (2026-06-02)
+
+```yaml
+mx_complete_at: 2026-06-02
+mx_status: evaluate-pass
+mx_commit_sha: 97a36b5a2
+mx_tag_count: 1
+mx_new_tags_introduced: 1
+mx_skip_justified: false
+mx_verdict: EVALUATE-PASS
+mx_evidence: |
+  Tier S NEW package internal/hook/handoff/ (4 commits M1-M4, 1,140 LOC, 85.1% coverage). 
+  1 @MX:TODO annotation added: resolveMemoryDir placeholder in session_end.go (per §E.1 deferral). 
+  No @MX:WARN candidates (no goroutines, no complexity ≥15, no state mutation in new code). 
+  C-HRA-008 subagent boundary PASS (0 AskUserQuestion / mcp__askuser in non-test code). 
+  All 10 AC-SHA-* PASS. Verdict EVALUATE-PASS per mx-tag-protocol.md §b (1 legitimate @MX:TODO).
+```

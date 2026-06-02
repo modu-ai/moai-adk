@@ -2,9 +2,9 @@
 id: SPEC-V3R5-GIT-STRATEGY-SCHEMA-001
 title: "git-strategy.yaml nested mode-based 키들의 Go struct 정합 (v2 audit applied)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-05-22
-updated: 2026-05-22
+updated: 2026-06-02
 author: manager-spec
 priority: P1
 phase: "v3.0.0 — Round 5"

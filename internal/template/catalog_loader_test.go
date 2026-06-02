@@ -76,12 +76,12 @@ func TestLoadCatalog(t *testing.T) {
 	}
 
 	// LookupAgent: known core agent
-	e, ok = cat.LookupAgent("evaluator-active")
+	e, ok = cat.LookupAgent("sync-auditor")
 	if !ok {
-		t.Error("LookupAgent(evaluator-active) returned false")
+		t.Error("LookupAgent(sync-auditor) returned false")
 	} else {
 		if e.Tier != TierCore {
-			t.Errorf("LookupAgent(evaluator-active).Tier = %q, want %q", e.Tier, TierCore)
+			t.Errorf("LookupAgent(sync-auditor).Tier = %q, want %q", e.Tier, TierCore)
 		}
 	}
 
@@ -111,7 +111,7 @@ func TestLoadCatalog(t *testing.T) {
 }
 
 // TestLoadCatalog_MalformedYAML covers the yaml.Unmarshal error path of LoadCatalog.
-// Required by evaluator-active (eval-1) to satisfy the 85%+ coverage gate for catalog_loader.go.
+// Required by sync-auditor (eval-1) to satisfy the 85%+ coverage gate for catalog_loader.go.
 // Sentinel-style: LoadCatalog must return a non-nil error on malformed YAML input.
 func TestLoadCatalog_MalformedYAML(t *testing.T) {
 	t.Parallel()

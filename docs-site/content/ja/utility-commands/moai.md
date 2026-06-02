@@ -19,7 +19,7 @@ draft: false
 `/moai` は MoAI-ADK の**完全自律自動化ワークフロー**コマンドです。サブコマンドを個別に実行する必要はありません - 単一のコマンドで開発プロセス全体が自動化されます：
 
 1. **SPEC 作成** (manager-spec)
-2. **DDD 実装** (manager-ddd)
+2. **DDD 実装** (manager-develop)
 3. **文書同期** (manager-docs)
 
 ## 使用方法
@@ -172,8 +172,8 @@ flowchart TD
 
     J --> K["フェーズ 2<br/>DDD 実装"]
 
-    K --> L["manager-strategy を呼び出し<br/>戦略計画"]
-    L --> M["manager-ddd を呼び出し<br/>ANALYZE-PRESERVE-IMPROVE"]
+    K --> L["manager-develop を呼び出し<br/>戦略計画"]
+    L --> M["manager-develop を呼び出し<br/>ANALYZE-PRESERVE-IMPROVE"]
     M --> N{"実装完了?"}
     N -->|いいえ| M
     N -->|はい| O{"--loop?"}
@@ -233,12 +233,12 @@ flowchart TD
 
 | タスクタイプ          | エージェント                         |
 | ------------------ | ----------------------------- |
-| バックエンドロジック      | expert-backend サブエージェント       |
-| フロントエンドコンポーネント| expert-frontend サブエージェント      |
-| テスト作成      | expert-testing サブエージェント       |
-| バグ修正         | expert-debug サブエージェント         |
-| リファクタリング        | expert-refactoring サブエージェント   |
-| セキュリティ修正     | expert-security サブエージェント      |
+| バックエンドロジック      | manager-develop サブエージェント       |
+| フロントエンドコンポーネント| manager-develop サブエージェント      |
+| テスト作成      | manager-develop サブエージェント       |
+| バグ修正         | manager-develop サブエージェント         |
+| リファクタリング        | manager-develop サブエージェント   |
+| セキュリティ修正     | manager-develop サブエージェント      |
 
 **ループ動作 (--loop または ralph.yaml loop.enabled が true の場合):**
 
@@ -325,16 +325,16 @@ llm.yaml 設定に基づく自動ルーティング：
 **ステップ 4: フェーズ 2 - DDD 実装**
 
 ```
-[manager-strategy]
+[manager-develop]
   作業分解: 7 タスク
   戦略計画完了
 
-[manager-ddd]
+[manager-develop]
   ANALYZE: コード構造分析完了
   PRESERVE: 12 個のキャラクタリゼーションテストを作成
   IMPROVE: 7 タスクの実装完了
 
-[manager-quality]
+[sync-auditor]
   TRUST 5: すべての柱が通過
   カバレッジ: 89%
   ステータス: PASS
@@ -345,7 +345,7 @@ llm.yaml 設定に基づく自動ルーティング：
 ```
 [ループ開始 - 反復 1/100]
   診断: 2 個のタイプエラーを発見
-  修正: expert-backend サブエージェントに委任
+  修正: manager-develop サブエージェントに委任
   検証: すべてのエラーを解決
 
 [ループ完了 - 1 反復]

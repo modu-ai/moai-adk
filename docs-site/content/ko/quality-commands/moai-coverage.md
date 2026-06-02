@@ -179,15 +179,15 @@ flowchart TD
 flowchart TD
     User["사용자 요청"] --> MoAI["MoAI 오케스트레이터"]
     MoAI --> Measure["1-2단계: 측정 및 분석"]
-    Measure --> Testing["expert-testing"]
+    Measure --> Testing["manager-develop"]
 
     Testing --> Check{"--report?"}
     Check -->|예| ReportOnly["보고서 출력"]
     Check -->|아니오| Generate["3단계: 테스트 생성"]
-    Generate --> TestingGen["expert-testing"]
+    Generate --> TestingGen["manager-develop"]
 
     TestingGen --> Verify["4단계: 검증"]
-    Verify --> TestingVer["expert-testing"]
+    Verify --> TestingVer["manager-develop"]
 
     TestingVer --> Report["5단계: 보고서"]
     ReportOnly --> Done["완료"]
@@ -199,7 +199,7 @@ flowchart TD
 | 에이전트 | 역할 | 주요 작업 |
 |----------|------|----------|
 | **MoAI 오케스트레이터** | 워크플로우 조율, 사용자 상호작용 | 보고서 출력, 다음 단계 안내 |
-| **expert-testing** | 측정, 분석, 생성, 검증 전담 | 커버리지 측정, 갭 분석, 테스트 작성, 검증 |
+| **manager-develop** | 측정, 분석, 생성, 검증 전담 | 커버리지 측정, 갭 분석, 테스트 작성, 검증 |
 
 ## 자주 묻는 질문
 

@@ -18,7 +18,7 @@ MoAI-ADK v2.12+ requires Claude Code v2.1.110 or later to support:
 **Opus 4.7 Support** (v2.12.0+):
 - Model: `claude-opus-4-7`
 - Effort levels: `low`, `medium`, `high`, `xhigh` (default), `max`
-- Recommended for: manager-spec, plan-auditor, evaluator-active, manager-strategy, expert-security, expert-refactoring
+- Recommended for: manager-spec, plan-auditor, sync-auditor, manager-strategy, expert-security, expert-refactoring
 - Backward compatibility: Opus 4.6, Sonnet 4.6, Haiku 4.5 supported with effort field auto-downgrade
 - Windows support: CLAUDE_ENV_FILE injection via SessionStart hook (v2.12.0+)
 

@@ -140,7 +140,7 @@ flowchart TD
     Info4 --> Format
     Info5 --> Format
 
-    Format --> GitHub["manager-quality Agent<br/>创建 GitHub Issue"]
+    Format --> GitHub["sync-auditor Agent<br/>创建 GitHub Issue"]
     GitHub --> Complete["返回 Issue URL"]
 ```
 
@@ -149,7 +149,7 @@ flowchart TD
 | Agent | 角色 | 主要任务 |
 |-------|------|------------|
 | **MoAI Orchestrator** | 引导反馈流程 |
-| **manager-quality** | GitHub 集成 | 创建 issue、返回 URL |
+| **sync-auditor** | GitHub 集成 | 创建 issue、返回 URL |
 
 ## 实际示例
 

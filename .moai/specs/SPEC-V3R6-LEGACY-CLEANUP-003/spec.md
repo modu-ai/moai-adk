@@ -2,9 +2,9 @@
 id: SPEC-V3R6-LEGACY-CLEANUP-003
 title: "production Go legacy keyword audit + cleanup (Wave→Round)"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-05-24
-updated: 2026-05-24
+updated: 2026-06-02
 author: manager-spec
 priority: P3
 tags: "cleanup, legacy, terminology, sprint-2, p3, wave-to-round, ap-srn-004, cli-audit-001-follow-up"

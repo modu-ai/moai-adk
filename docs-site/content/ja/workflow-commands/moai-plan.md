@@ -59,7 +59,7 @@ Claude Code の会話で以下を入力します:
 | `--team`            | Agent Teams モードを強制      | `/moai plan "feature" --team`          |
 | `--solo`            | サブエージェントモードを強制  | `/moai plan "feature" --solo`          |
 | `--seq`             | 並列ではなく順次診断          | `/moai plan "feature" --seq`           |
-| `--ultrathink`      | Sequential Thinking MCP を有効化 | `/moai plan "feature" --ultrathink`  |
+| `--ultrathink`      | Adaptive Thinking を有効化 | `/moai plan "feature" --ultrathink`  |
 
 ### フラグ優先順位
 
@@ -433,5 +433,5 @@ WHEN input is null is detected, the system shall return an error.
 ## 関連ドキュメント
 
 - [SPEC ベース開発](/core-concepts/spec-based-dev) - EARS 形式詳細説明
-- [/moai run](./moai-2-run) - 次のステップ: DDD 実装
-- [/moai sync](./moai-3-sync) - 最終ステップ: 文書同期
+- [/moai run](./moai-run) - 次のステップ: DDD 実装
+- [/moai sync](./moai-sync) - 最終ステップ: 文書同期

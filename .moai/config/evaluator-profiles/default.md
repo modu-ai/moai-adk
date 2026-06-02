@@ -73,9 +73,9 @@ At the finding stage, report every issue you find, including ones you are uncert
 ## D7/D8 Plan-Phase Dimensions (SPEC-V3R5-WORKFLOW-OPT-001 Layer G)
 
 The following two dimensions are evaluated by plan-auditor during plan-phase
-audit, not by evaluator-active during run-phase. They are listed here for
+audit, not by sync-auditor during run-phase. They are listed here for
 cross-reference visibility — the weights apply ONLY to plan-auditor's PASS/FAIL
-decision and do NOT contribute to evaluator-active's 4-dimension overall score
+decision and do NOT contribute to sync-auditor's 4-dimension overall score
 (Functionality/Security/Craft/Consistency above).
 
 | Plan-Auditor Dimension | Weight in Plan Verdict | Pass Threshold |

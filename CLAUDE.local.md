@@ -981,7 +981,7 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 
 | Path | 범위 | Source of Truth | `moai update` 영향 |
 |------|------|-----------------|---------------------|
-| `.claude/agents/moai/` | manager-spec, manager-develop, manager-docs, manager-git, plan-auditor, evaluator-active, builder-harness (retained 7, FLAT layout per v.2.x baseline) | template | sync |
+| `.claude/agents/moai/` | manager-spec, manager-develop, manager-docs, manager-git, plan-auditor, sync-auditor, builder-harness (retained 7, FLAT layout per v.2.x baseline) | template | sync |
 | **`.claude/agents/harness/`** | **사용자 생성 domain specialist agents** — `moai-meta-harness`가 `/moai project` Phase 5+ 인터뷰 후 generate | user project | **NOT synced (보호)** |
 
 [HARD] `internal/template/templates/.claude/agents/harness/` 디렉토리는 **존재 자체가 금지**. template에는 `{core,expert,meta}/` 만 mirror. `harness/` directory 등장 시 cleanup chore + 본 §24 cross-reference.

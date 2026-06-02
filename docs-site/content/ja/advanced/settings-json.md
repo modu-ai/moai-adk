@@ -260,8 +260,8 @@ Claude Code を開いた時のデフォルト権限モードです。
 | ビルド/テスト | `pytest`、`make`、`node`、`python` | 10 個+ |
 | コード品質 | `ruff`、`black`、`prettier`、`eslint` | 6 個+ |
 | 探索ツール | `ls`、`find`、`tree`、`cat`、`head` | 10 個+ |
-| GitHub CLI | `gh issue`、`gh pr`、`gh repo view` | 3 個 |
-| MCP ツール | `mcp__context7__*`、`mcp__sequential-thinking__*` | 3 個 |
+| GitHub CLI | `gh issue`、`gh pr`、`gh repo view` | 2 個 |
+| MCP ツール | `mcp__context7__*` | 2 個 |
 | その他 | `AskUserQuestion`、`Task`、`Skill`、`TodoWrite` | 4 個 |
 
 **allow 形式例:**

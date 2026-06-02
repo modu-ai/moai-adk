@@ -140,18 +140,18 @@ flowchart TD
 ```mermaid
 flowchart TD
     User["用户请求"] --> MoAI["MoAI 编排器"]
-    MoAI --> Refactor1["expert-refactoring<br/>静态分析扫描"]
-    Refactor1 --> Refactor2["expert-refactoring<br/>使用图分析"]
+    MoAI --> Refactor1["manager-develop<br/>静态分析扫描"]
+    Refactor1 --> Refactor2["manager-develop<br/>使用图分析"]
     Refactor2 --> MoAI2["MoAI 编排器<br/>用户审批"]
-    MoAI2 --> Refactor3["expert-refactoring<br/>安全删除"]
-    Refactor3 --> Testing["expert-testing<br/>测试验证"]
+    MoAI2 --> Refactor3["manager-develop<br/>安全删除"]
+    Refactor3 --> Testing["manager-develop<br/>测试验证"]
     Testing --> Complete["完成"]
 ```
 
 | 代理 | 角色 | 主要任务 |
 |------|------|---------|
-| **expert-refactoring** | 分析和删除 | 静态分析、使用图、安全删除 |
-| **expert-testing** | 验证 | 运行测试套件、确认无回归 |
+| **manager-develop** | 分析和删除 | 静态分析、使用图、安全删除 |
+| **manager-develop** | 验证 | 运行测试套件、确认无回归 |
 | **MoAI 编排器** | 协调 | 用户审批、@MX 标签清理 |
 
 ## 常见问题

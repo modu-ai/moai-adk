@@ -21,7 +21,7 @@ flowchart TD
     E --> G["copywriting +<br>design tokens<br>생성"]
     F --> H["Bundle 파싱<br>및 변환"]
     G --> H
-    H --> I["expert-frontend<br>코드 구현"]
+    H --> I["manager-develop<br>코드 구현"]
     I --> J["GAN Loop<br>평가 및 반복"]
     J --> K["Sprint Contract<br>기반 완성"]
     K --> L["최종 산출물"]

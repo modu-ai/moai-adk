@@ -59,7 +59,7 @@ draft: false
 | `--team`            | 强制代理团队模式             | `/moai plan "feature" --team`          |
 | `--solo`            | 强制子代理模式               | `/moai plan "feature" --solo`          |
 | `--seq`             | 顺序诊断而不是并行诊断       | `/moai plan "feature" --seq`           |
-| `--ultrathink`      | 启用 Sequential Thinking MCP | `/moai plan "feature" --ultrathink`    |
+| `--ultrathink`      | 启用 Adaptive Thinking | `/moai plan "feature" --ultrathink`    |
 
 ### 标志优先级
 
@@ -433,5 +433,5 @@ WHEN input is null is detected, the system shall return an error.
 ## 相关文档
 
 - [基于 SPEC 的开发](/core-concepts/spec-based-dev) - EARS 格式详细说明
-- [/moai run](./moai-2-run) - 下一步：DDD 实现
-- [/moai sync](./moai-3-sync) - 最后一步：文档同步
+- [/moai run](./moai-run) - 下一步：DDD 实现
+- [/moai sync](./moai-sync) - 最后一步：文档同步

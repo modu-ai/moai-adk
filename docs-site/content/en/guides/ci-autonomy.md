@@ -1,5 +1,5 @@
 ---
-title: 자율 CI/CD 가이드
+title: Autonomous CI/CD Guide
 weight: 10
 draft: false
 ---

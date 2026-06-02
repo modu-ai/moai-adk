@@ -23,9 +23,9 @@ flowchart TD
 
 | コマンド | フェーズ | 担当エージェント | トークン予算 | 目的 |
 |---------|---------|-------------------|-------------|------|
-| [`/moai project`](./moai-project) | フェーズ 0 | manager-project | - | プロジェクト文書の自動生成 |
+| [`/moai project`](./moai-project) | フェーズ 0 | manager-docs | - | プロジェクト文書の自動生成 |
 | [`/moai plan`](./moai-plan) | フェーズ 1 | manager-spec | 30K | SPEC 文書作成 |
-| [`/moai run`](./moai-run) | フェーズ 2 | manager-ddd / manager-tdd | 180K | DDD / TDD 方式で実装 |
+| [`/moai run`](./moai-run) | フェーズ 2 | manager-develop / manager-develop | 180K | DDD / TDD 方式で実装 |
 | [`/moai sync`](./moai-sync) | フェーズ 3 | manager-docs | 40K | 文書同期と PR 作成 |
 
 {{< callout type="info" >}}

@@ -8,7 +8,7 @@ runtime:
         pre_clear_threshold: 0.75
     per_agent_budget:
         default: 30000
-        evaluator-active: 20000
+        sync-auditor: 20000
         expert-backend: 40000
         expert-debug: 40000
         expert-devops: 40000

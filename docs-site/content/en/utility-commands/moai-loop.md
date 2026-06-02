@@ -199,7 +199,7 @@ The agent delegation flow for the `/moai loop` command:
 ```mermaid
 flowchart TD
     User["User Request"] --> Orchestrator["MoAI Orchestrator"]
-    Orchestrator --> ManagerDDD["manager-ddd Agent"]
+    Orchestrator --> ManagerDDD["manager-develop Agent"]
 
     ManagerDDD --> Diagnose["Parallel Diagnosis"]
     Diagnose --> LSP["LSP"]
@@ -215,7 +215,7 @@ flowchart TD
     Todo --> Loop["Start Loop"]
 
     Loop --> Fix["Delegate to<br/>expert agents"]
-    Fix --> Verify["manager-quality<br/>Verify"]
+    Fix --> Verify["sync-auditor<br/>Verify"]
 
     Verify --> Complete{"Completion conditions?"}
     Complete -->|No| Loop
@@ -227,9 +227,9 @@ flowchart TD
 | Agent                | Role        | Main Tasks          |
 | -------------------- | ----------- | ------------------- |
 | **MoAI Orchestrator** | Loop coordination |
-| **manager-ddd**       | Loop management | Create TODO, coordinate fixes |
+| **manager-develop**       | Loop management | Create TODO, coordinate fixes |
 | **expert-\***         | Execute fixes | Actual code modification |
-| **manager-quality**   | Quality verification | Check completion conditions |
+| **sync-auditor**   | Quality verification | Check completion conditions |
 
 ## Practical Examples
 

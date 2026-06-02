@@ -100,7 +100,7 @@ The architectural pivot was grounded in 6 verbatim findings from Anthropic's off
 - **Archive count**: 11 actual archived + 1 originally absent (`researcher.md` — never present as a MoAI file in this repo)
 - **Archive location**: `.moai/backups/agent-archive-2026-05-25/` (preserves `core/`, `meta/`, `expert/` substructure with per-agent README)
 - **Archived agents (11 actual + 1 absent)**: `manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher` (originally absent), `expert-backend`, `expert-frontend`, `expert-security`, `expert-devops`, `expert-performance`, `expert-refactoring`
-- **Retained agents (8 total)**: `manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `evaluator-active`, `builder-harness`, plus Anthropic built-in `Explore`
+- **Retained agents (8 total)**: `manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `sync-auditor`, `builder-harness`, plus Anthropic built-in `Explore`
 
 ### Migration Guidance
 

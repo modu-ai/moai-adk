@@ -63,7 +63,7 @@ Current version: 1.2.0
 Latest version: 1.3.0
 
 Release notes:
-- Add new expert-performance agent
+- Add new manager-develop agent
 - Improve token optimization
 - Fix SPEC validation issues
 
@@ -401,7 +401,7 @@ MoAI-ADK 업데이트 시 **CLAUDE.md**와 **settings.json**은 새 버전으로
     "🤖 Builder Agents (3): agent, skill, plugin",
     "🤖 Team Agents (8, 실험적): researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality",
     "📋 워크플로우: /moai plan (SPEC) → /moai run (DDD) → /moai sync (Docs)",
-    "🚀 옵션: --team (병렬 Agent Teams), --ultrathink (Sequential Thinking MCP 깊은 분석), --loop (반복 자동 수정)",
+    "🚀 옵션: --team (병렬 Agent Teams), --ultrathink (Adaptive Thinking 깊은 분석), --loop (반복 자동 수정)",
     "✅ 품질: TRUST 5 + 85%+ 커버리지 + Ralph Engine (LSP + AST-grep)",
     "🔄 Git 전략: 3-Mode (Manual/Personal/Team) + Smart Merge 설정 업데이트",
     "📚 팁: moai update --templates-only로 최신 skills와 agents 동기화",

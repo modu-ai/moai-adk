@@ -169,17 +169,17 @@ Steps:
 
 Output: gate_report with pass/fail per check category. If all pass, continue to Phase 2.8a.
 
-## Phase 2.8a: Active Quality Evaluation (evaluator-active)
+## Phase 2.8a: Active Quality Evaluation (sync-auditor)
 
 **Condition**: Execute when harness level = standard or thorough (evaluator enabled).
 **Skip**: When harness level = minimal.
 
 Steps:
-1. Invoke evaluator-active with:
+1. Invoke sync-auditor with:
    - SPEC acceptance criteria (from spec-compact.md or spec.md)
    - Sprint contract (from contract.md, if thorough harness)
    - Implementation changeset (modified/created files)
-2. evaluator-active evaluates all 4 dimensions:
+2. sync-auditor evaluates all 4 dimensions:
    - Functionality (40%): Run tests, verify each acceptance criterion
    - Security (25%): OWASP check (HARD: Security FAIL = overall FAIL)
    - Craft (20%): Coverage >= 85%, error handling review
@@ -191,7 +191,7 @@ Steps:
    - After 3 FAIL cycles: Present findings to user via AskUserQuestion
 
 Mode-specific deployment:
-- Sub-agent mode: Agent(subagent_type="evaluator-active")
+- Sub-agent mode: Agent(subagent_type="sync-auditor")
 - Team mode: SendMessage to reviewer teammate
 - CG mode: Leader performs evaluation inline
 

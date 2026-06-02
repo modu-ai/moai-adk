@@ -270,10 +270,10 @@ flowchart TD
 | Agent | Role | Main Tasks |
 |-------|------|------------|
 | **MoAI Orchestrator** | Coordinate parallel scan |
-| **expert-backend** | Backend fixes (Level 1-2) |
-| **expert-frontend** | Frontend fixes (Level 1-2) |
-| **expert-debug** | Logic error fixes (Level 3-4) |
-| **manager-quality** | Quality verification | Verify fix results |
+| **manager-develop** | Backend fixes (Level 1-2) |
+| **manager-develop** | Frontend fixes (Level 1-2) |
+| **manager-develop** | Logic error fixes (Level 3-4) |
+| **sync-auditor** | Quality verification | Verify fix results |
 
 ## Practical Examples
 

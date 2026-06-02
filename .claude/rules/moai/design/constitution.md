@@ -21,7 +21,7 @@ Core principles governing the MoAI design production system. These rules define 
 
 ## 1. Identity and Purpose
 
-The MoAI design production system is a creative production capability built on top of MoAI-ADK. It orchestrates a pipeline of specialized skills and agents (`moai-domain-copywriting`, `moai-domain-brand-design`, `moai-workflow-design`, `moai-workflow-gan-loop`, `expert-frontend`, `evaluator-active`) to produce high-quality web experiences from natural language briefs.
+The MoAI design production system is a creative production capability built on top of MoAI-ADK. It orchestrates a pipeline of specialized skills and agents (`moai-domain-copywriting`, `moai-domain-brand-design`, `moai-workflow-design`, `moai-workflow-gan-loop`, `expert-frontend`, `sync-auditor`) to produce high-quality web experiences from natural language briefs.
 
 The design system is NOT a replacement for MoAI. It is a vertical specialization domain that:
 - Inherits MoAI's orchestration infrastructure, quality gates, and agent runtime
@@ -44,7 +44,7 @@ The following elements are immutable and can only be changed by human developers
 - [FROZEN] Safety architecture (Section 5)
 - [FROZEN] GAN Loop contract (Section 11)
 - [FROZEN] Evaluator leniency prevention mechanisms (Section 12)
-- [FROZEN] Pipeline phase ordering constraints (manager-spec always first, evaluator-active always last in loop)
+- [FROZEN] Pipeline phase ordering constraints (manager-spec always first, sync-auditor always last in loop)
 - [FROZEN] Pass threshold floor (minimum 0.60, cannot be lowered by evolution)
 - [FROZEN] Human approval requirement for evolution (require_approval in design.yaml)
 
@@ -70,7 +70,7 @@ Brand context is not optional decoration. It is a constitutional constraint that
 - [ZONE:Frozen] [HARD] moai-domain-copywriting MUST adhere to brand voice, tone, and terminology from brand-voice.md
 - [ZONE:Frozen] [HARD] moai-domain-brand-design MUST use brand color palette, typography, and visual language from visual-identity.md
 - [ZONE:Frozen] [HARD] expert-frontend MUST implement design tokens derived from brand context
-- [ZONE:Frozen] [HARD] evaluator-active MUST score brand consistency as a must-pass criterion
+- [ZONE:Frozen] [HARD] sync-auditor MUST score brand consistency as a must-pass criterion
 
 Brand context is stored in `.moai/project/brand/` and initialized through the brand interview process on first run. Context updates require explicit user approval.
 
@@ -100,7 +100,7 @@ Iteration-specific design briefs are stored in `.moai/design/`:
 ### Phase Ordering
 
 ```
-manager-spec -> [moai-domain-copywriting, moai-domain-brand-design] (parallel) -> expert-frontend -> evaluator-active
+manager-spec -> [moai-domain-copywriting, moai-domain-brand-design] (parallel) -> expert-frontend -> sync-auditor
                                                                                           ^                  |
                                                                                           |__________________|
                                                                                      GAN Loop (max 5 iterations)
@@ -120,7 +120,7 @@ Each phase produces typed artifacts consumed by downstream phases:
 | moai-domain-brand-design | BRIEF + visual identity | Design tokens JSON + component spec | Path B |
 | moai-workflow-design | Handoff bundle path | .moai/design/ reserved artifacts (see Section 3.2) | Path A |
 | expert-frontend | Copy JSON + design tokens | Working code (pages, components, styles) | Always |
-| evaluator-active | Built code + BRIEF | Score card + feedback | Always |
+| sync-auditor | Built code + BRIEF | Score card + feedback | Always |
 | figma-extractor (Path B1) | BRIEF + Figma file ID + page selectors | tokens.json + components.json | Path B1 |
 
 ---
@@ -270,7 +270,7 @@ When moai-adk-go updates (via moai update), check for upstream changes to design
 The pipeline can be adapted based on project characteristics. Five adaptation types are supported: Skip, Merge, Reorder, Inject, Iteration Adjust.
 
 Constraints:
-- manager-spec and evaluator-active can NEVER be skipped (FROZEN)
+- manager-spec and sync-auditor can NEVER be skipped (FROZEN)
 - Pass threshold floor is 0.60 (FROZEN, cannot be lowered)
 - Adaptations require confidence_threshold >= 0.70 and min_projects_for_adaptation from design.yaml
 
@@ -283,7 +283,7 @@ The Builder-Evaluator GAN Loop is the quality assurance mechanism. It operates u
 ### Loop Mechanics
 
 1. expert-frontend produces code artifacts from copy JSON + design tokens
-2. evaluator-active scores artifacts against BRIEF criteria (0.0 to 1.0)
+2. sync-auditor scores artifacts against BRIEF criteria (0.0 to 1.0)
 3. If score >= pass_threshold (0.75): PASS, proceed to learner phase
 4. If score < pass_threshold: FAIL, evaluator provides actionable feedback
 5. expert-frontend incorporates feedback and produces revised artifacts
@@ -292,7 +292,7 @@ The Builder-Evaluator GAN Loop is the quality assurance mechanism. It operates u
 ### Escalation
 
 After escalation_after (3) iterations without passing:
-- evaluator-active generates a detailed failure report
+- sync-auditor generates a detailed failure report
 - User is notified with the report and asked to intervene
 - User may: adjust criteria, provide guidance, or force-pass
 
@@ -300,7 +300,7 @@ After escalation_after (3) iterations without passing:
 
 If score improvement between iterations is less than improvement_threshold (0.05):
 - The loop is flagged as stagnating
-- evaluator-active must identify a different dimension for improvement
+- sync-auditor must identify a different dimension for improvement
 - If stagnation persists for 2 consecutive iterations, escalate to user
 
 ### Strict Mode
@@ -312,9 +312,9 @@ When strict_mode is true (from design.yaml):
 
 ### Sprint Contract Protocol
 
-Before each GAN Loop iteration, expert-frontend and evaluator-active negotiate a Sprint Contract:
+Before each GAN Loop iteration, expert-frontend and sync-auditor negotiate a Sprint Contract:
 
-1. **Contract Generation**: evaluator-active analyzes the BRIEF and produces a Sprint Contract containing:
+1. **Contract Generation**: sync-auditor analyzes the BRIEF and produces a Sprint Contract containing:
    - Acceptance checklist: concrete, testable criteria for this iteration
    - Priority dimension: which evaluation dimension to focus on (Design Quality, Originality, Completeness, or Functionality)
    - Test scenarios: specific Playwright test cases that will verify success
@@ -323,9 +323,9 @@ Before each GAN Loop iteration, expert-frontend and evaluator-active negotiate a
 2. **Contract Review**: expert-frontend reviews the Sprint Contract and may:
    - Accept as-is: proceed with implementation
    - Request adjustment: if criteria are infeasible, propose alternatives with rationale
-   - evaluator-active resolves disputes by referencing BRIEF requirements
+   - sync-auditor resolves disputes by referencing BRIEF requirements
 
-3. **Contract Execution**: expert-frontend implements against the agreed checklist. evaluator-active scores only against the contracted criteria (not arbitrary standards).
+3. **Contract Execution**: expert-frontend implements against the agreed checklist. sync-auditor scores only against the contracted criteria (not arbitrary standards).
 
 4. **Contract Evolution**: In subsequent iterations:
    - Passed criteria carry forward (no regression allowed)
@@ -335,7 +335,7 @@ Before each GAN Loop iteration, expert-frontend and evaluator-active negotiate a
 Rules:
 - [ZONE:Frozen] [HARD] Sprint Contracts are required when harness level is `thorough`
 - [ZONE:Frozen] [HARD] Sprint Contracts are optional but recommended for `standard` harness level
-- [ZONE:Frozen] [HARD] evaluator-active MUST NOT score on criteria not in the Sprint Contract
+- [ZONE:Frozen] [HARD] sync-auditor MUST NOT score on criteria not in the Sprint Contract
 - [ZONE:Frozen] [HARD] expert-frontend MUST NOT claim criteria as met without evidence
 - Sprint Contract artifacts are stored in `.moai/sprints/` (from design.yaml `sprint_contract.artifact_dir`)
 
@@ -343,15 +343,15 @@ Rules:
 
 ## 12. Evaluator Leniency Prevention
 
-evaluator-active must maintain objectivity. Five mechanisms prevent score inflation:
+sync-auditor must maintain objectivity. Five mechanisms prevent score inflation:
 
 ### Mechanism 1: Rubric Anchoring
 
-Every evaluation criterion has a concrete rubric with examples of scores at 0.25, 0.50, 0.75, and 1.0. evaluator-active MUST reference the rubric when assigning scores. Scores without rubric justification are invalid.
+Every evaluation criterion has a concrete rubric with examples of scores at 0.25, 0.50, 0.75, and 1.0. sync-auditor MUST reference the rubric when assigning scores. Scores without rubric justification are invalid.
 
 ### Mechanism 2: Regression Baseline
 
-evaluator-active maintains a running baseline of scores from previous projects. If the current project scores significantly above baseline (> 0.15) without corresponding quality improvement, the score is flagged for review.
+sync-auditor maintains a running baseline of scores from previous projects. If the current project scores significantly above baseline (> 0.15) without corresponding quality improvement, the score is flagged for review.
 
 ### Mechanism 3: Must-Pass Firewall
 
@@ -359,11 +359,11 @@ Must-pass criteria cannot be compensated by high scores in other areas. A projec
 
 ### Mechanism 4: Independent Re-evaluation
 
-Every 5th project undergoes independent re-evaluation: evaluator-active scores the project twice with different prompting, and the scores must be within 0.10 of each other. Divergence triggers a calibration review.
+Every 5th project undergoes independent re-evaluation: sync-auditor scores the project twice with different prompting, and the scores must be within 0.10 of each other. Divergence triggers a calibration review.
 
 ### Mechanism 5: Anti-Pattern Cross-check
 
-Before finalizing a passing score, evaluator-active checks all known anti-patterns. If the code exhibits any anti-pattern behavior, the relevant criterion score is capped at 0.50 regardless of other qualities.
+Before finalizing a passing score, sync-auditor checks all known anti-patterns. If the code exhibits any anti-pattern behavior, the relevant criterion score is capped at 0.50 regardless of other qualities.
 
 ---
 

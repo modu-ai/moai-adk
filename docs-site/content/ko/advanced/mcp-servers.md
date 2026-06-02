@@ -7,7 +7,7 @@ draft: false
 Claude Code의 MCP (Model Context Protocol) 서버를 활용하는 방법을 상세히 안내합니다.
 
 {{< callout type="info" >}}
-**한 줄 요약**: MCP는 Claude Code에 **외부 도구를 연결하는 USB 포트**입니다. Context7으로 최신 문서를 조회하고, Sequential Thinking으로 복잡한 문제를 분석합니다.
+**한 줄 요약**: MCP는 Claude Code에 **외부 도구를 연결하는 USB 포트**입니다. Context7으로 최신 문서를 조회하고, Adaptive Thinking (via `--ultrathink` 키워드)으로 복잡한 문제를 분석합니다.
 {{< /callout >}}
 
 ## MCP란?
@@ -21,13 +21,9 @@ flowchart TD
     CC["Claude Code"] --> MCP_LAYER["MCP 프로토콜 계층"]
 
     MCP_LAYER --> C7["Context7<br>라이브러리 문서 조회"]
-    MCP_LAYER --> ST["Sequential Thinking<br>단계적 추론"]
-    MCP_LAYER --> STITCH["Google Stitch<br>UI/UX 디자인"]
     MCP_LAYER --> CHROME["Claude in Chrome<br>브라우저 자동화"]
 
     C7 --> C7_OUT["최신 React, FastAPI<br>공식 문서 참조"]
-    ST --> ST_OUT["아키텍처 결정<br>복잡한 분석"]
-    STITCH --> STITCH_OUT["AI 기반<br>UI 디자인 생성"]
     CHROME --> CHROME_OUT["웹 페이지<br>자동화 테스트"]
 ```
 
@@ -38,8 +34,6 @@ flowchart TD
 | MCP 서버 | 용도 | 도구 | 활성화 |
 |----------|------|------|--------|
 | **Context7** | 라이브러리 문서 실시간 조회 | `resolve-library-id`, `get-library-docs` | `.mcp.json` |
-| **Sequential Thinking** | 단계적 추론, UltraThink | `sequentialthinking` | `.mcp.json` |
-| **Google Stitch** | AI 기반 UI/UX 디자인 생성 ([상세 가이드](/advanced/stitch-guide)) | `generate_screen`, `extract_context` 등 | `.mcp.json` |
 | **Claude in Chrome** | 브라우저 자동화 | `navigate`, `screenshot` 등 | `.mcp.json` |
 
 ## Context7 활용법
@@ -103,37 +97,30 @@ Context7은 2단계로 동작합니다.
 | 인프라 | Docker, Kubernetes, Terraform |
 | 기타 | TypeScript, Tailwind CSS, shadcn/ui |
 
-## Sequential Thinking (UltraThink)
+## Adaptive Thinking via UltraThink
 
-Sequential Thinking은 **복잡한 문제를 단계적으로 분석**하는 MCP 서버입니다.
+`--ultrathink` 키워드는 Opus 4.7+/4.8 및 Sonnet 4.6의 **내장 추론 모드인 Adaptive Thinking**을 활성화합니다.
 
-### 일반 사고 vs Sequential Thinking
+초기 모델의 고정적인 `budget_tokens` 파라미터와 달리, 새로운 모델의 Adaptive Thinking은 **작업 복잡도에 따라 동적으로 추론 토큰을 할당**합니다. 추론 깊이는 고정 예산이 아닌 **effort** 파라미터 (`xhigh`, `high`, `medium`, `low`)로 제어됩니다.
 
-| 항목 | 일반 사고 | Sequential Thinking |
-|------|-----------|---------------------|
-| 분석 깊이 | 표면적 | 깊이 있는 단계별 분석 |
-| 문제 분해 | 단순 | 구조화된 분해 |
-| 재고/수정 | 제한적 | 이전 생각 수정 가능 |
-| 분기 탐색 | 단일 경로 | 여러 경로 탐색 |
+### `--ultrathink` 사용 시기
 
-### UltraThink 모드
-
-`--ultrathink` 플래그를 사용하면 강화된 분석 모드가 활성화됩니다.
+`--ultrathink` 키워드를 사용하면 복잡한 문제를 위한 강화된 분석 모드가 활성화됩니다.
 
 ```bash
-# UltraThink 모드로 아키텍처 분석
+# UltraThink로 아키텍처 분석
 > 인증 시스템 아키텍처를 설계해줘 --ultrathink
 
-# Claude Code가 Sequential Thinking MCP를 사용하여:
-# 1. 문제를 하위 문제로 분해
-# 2. 각 하위 문제를 단계적으로 분석
-# 3. 이전 결론을 재검토하고 수정
-# 4. 최적의 솔루션 도출
+# Opus 4.7+/4.8 또는 Sonnet 4.6에서:
+# 1. 작업 복잡도에 따라 동적으로 추론 토큰 할당
+# 2. 여러 각도에서 문제 분해 탐색
+# 3. 트레이드오프를 체계적으로 평가
+# 4. 검증된 추론으로 최적 솔루션 도출
 ```
 
 ### 활성화되는 상황
 
-다음 상황에서 Sequential Thinking이 자동으로 활성화됩니다.
+Adaptive Thinking은 다음 상황에서 활용됩니다.
 
 | 상황 | 예시 |
 |------|------|
@@ -143,22 +130,11 @@ Sequential Thinking은 **복잡한 문제를 단계적으로 분석**하는 MCP 
 | 트레이드오프 분석 | "성능을 올리면서 유지보수성도 유지하려면?" |
 | 호환성 파괴 검토 | "이 API 변경이 기존 클라이언트에 미치는 영향은?" |
 
-### Sequential Thinking의 단계
+### 모델 호환성
 
-```mermaid
-flowchart TD
-    Q["복잡한 질문"] --> T1["생각 1: 문제 분해"]
-    T1 --> T2["생각 2: 각 부분 분석"]
-    T2 --> T3["생각 3: 옵션 비교"]
-    T3 --> REV{"재검토 필요?"}
-
-    REV -->|예| T2_REV["생각 2 수정:<br>이전 분석 보완"]
-    REV -->|아니오| T4["생각 4: 결론 도출"]
-
-    T2_REV --> T3
-    T4 --> T5["생각 5: 검증"]
-    T5 --> ANSWER["최종 답변"]
-```
+- **Opus 4.8, Opus 4.7, Sonnet 4.6**: Adaptive Thinking (동적 할당 추론)
+- **Haiku 4.5**: 확장 추론 미지원 (`--ultrathink` 키워드 활성화는 no-op)
+- **이전 모델**: 현재 Claude 모델로 업그레이드하면 깊은 추론 지원 가능
 
 ## MCP 설정 방법
 
@@ -171,10 +147,6 @@ MCP 서버는 프로젝트 루트의 `.mcp.json` 파일에서 설정합니다.
   "context7": {
     "command": "npx",
     "args": ["-y", "@anthropic/context7-mcp-server"]
-  },
-  "sequential-thinking": {
-    "command": "npx",
-    "args": ["-y", "@anthropic/sequential-thinking-mcp-server"]
   }
 }
 ```
@@ -200,8 +172,7 @@ MCP 도구를 사용하려면 `permissions.allow`에 등록해야 합니다.
   "permissions": {
     "allow": [
       "mcp__context7__resolve-library-id",
-      "mcp__context7__get-library-docs",
-      "mcp__sequential-thinking__*"
+      "mcp__context7__get-library-docs"
     ]
   }
 }
@@ -236,15 +207,11 @@ MCP 도구를 사용하려면 `permissions.allow`에 등록해야 합니다.
 # 아키텍처 결정이 필요한 상황
 > 우리 서비스의 인증을 JWT로 할지 세션으로 할지 분석해줘 --ultrathink
 
-# Sequential Thinking이 수행하는 단계:
-# 생각 1: 두 방식의 기본 개념 정리
-# 생각 2: 우리 서비스의 특성 분석 (SPA, 모바일 앱 지원 필요)
-# 생각 3: JWT 장단점 분석
-# 생각 4: 세션 장단점 분석
-# 생각 5: 보안 관점 비교
-# 생각 6: 확장성 관점 비교
-# 생각 7: 이전 생각 수정 - 하이브리드 방식 검토
-# 생각 8: 최종 결론 및 구현 전략
+# Adaptive Thinking이 동적으로 할당된 추론으로:
+# 1. 문제를 하위 문제로 분해
+# 2. 각 하위 문제를 단계적으로 분석
+# 3. 이전 결론을 재검토하고 수정
+# 4. 최적의 솔루션 도출
 ```
 
 ## 관련 문서

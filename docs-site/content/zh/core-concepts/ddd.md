@@ -226,7 +226,7 @@ flowchart TD
 | 测试现状   | 现有测试有多少                     | 查看现有保险       |
 | 问题点     | 重复代码、安全漏洞、性能瓶颈       | 检查墙壁裂缝和漏水 |
 
-**manager-ddd 生成的分析报告示例:**
+**manager-develop 生成的分析报告示例:**
 
 ```markdown
 ## 代码分析报告
@@ -414,7 +414,7 @@ SPEC 文档准备好后，使用以下命令执行 TDD 周期。
 > /moai run SPEC-AUTH-001
 ```
 
-执行该命令后，**manager-tdd 代理** 会自动执行 RED-GREEN-REFACTOR 周期:
+执行该命令后，**manager-develop 代理** 会自动执行 RED-GREEN-REFACTOR 周期:
 
 ```mermaid
 flowchart TD
@@ -434,7 +434,7 @@ flowchart TD
 > /moai run SPEC-AUTH-001
 ```
 
-执行该命令后，**manager-ddd 代理** 会自动执行 ANALYZE-PRESERVE-IMPROVE 周期:
+执行该命令后，**manager-develop 代理** 会自动执行 ANALYZE-PRESERVE-IMPROVE 周期:
 
 ```mermaid
 flowchart TD
@@ -524,7 +524,7 @@ constitution:
 # 第 2 步: 执行 DDD (Run)
 > /moai run SPEC-AUTH-REFACTOR-001
 
-# manager-ddd 执行 ANALYZE-PRESERVE-IMPROVE 周期
+# manager-develop 执行 ANALYZE-PRESERVE-IMPROVE 周期
 # ANALYZE: 分析代码，生成问题列表
 # PRESERVE: 编写 156 个特征化测试
 # IMPROVE: 通过 3 次迭代渐进式改进

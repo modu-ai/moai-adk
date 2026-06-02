@@ -21,7 +21,7 @@ flowchart TD
     E --> G["生成<br>文案+<br>设计令牌"]
     F --> H["解析和<br>转换包"]
     G --> H
-    H --> I["expert-frontend<br>代码实现"]
+    H --> I["manager-develop<br>代码实现"]
     I --> J["GAN Loop<br>评估和迭代"]
     J --> K["Sprint Contract<br>基础完成"]
     K --> L["最终工件"]

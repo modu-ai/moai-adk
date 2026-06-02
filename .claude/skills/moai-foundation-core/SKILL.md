@@ -33,7 +33,7 @@ triggers:
     - "manager-docs"
     - "manager-git"
     - "plan-auditor"
-    - "evaluator-active"
+    - "sync-auditor"
     - "builder-harness"
   phases:
     - "plan"

@@ -171,18 +171,18 @@ Codebase Reduction:
 ```mermaid
 flowchart TD
     User["User Request"] --> MoAI["MoAI Orchestrator"]
-    MoAI --> Refactor1["expert-refactoring<br/>Static Analysis Scan"]
-    Refactor1 --> Refactor2["expert-refactoring<br/>Usage Graph Analysis"]
+    MoAI --> Refactor1["manager-develop<br/>Static Analysis Scan"]
+    Refactor1 --> Refactor2["manager-develop<br/>Usage Graph Analysis"]
     Refactor2 --> MoAI2["MoAI Orchestrator<br/>User Approval"]
-    MoAI2 --> Refactor3["expert-refactoring<br/>Safe Removal"]
-    Refactor3 --> Testing["expert-testing<br/>Test Verification"]
+    MoAI2 --> Refactor3["manager-develop<br/>Safe Removal"]
+    Refactor3 --> Testing["manager-develop<br/>Test Verification"]
     Testing --> Complete["Complete"]
 ```
 
 | Agent | Role | Key Tasks |
 |-------|------|-----------|
-| **expert-refactoring** | Analysis & Removal | Static analysis, usage graph, safe removal |
-| **expert-testing** | Verification | Run test suite, confirm no regressions |
+| **manager-develop** | Analysis & Removal | Static analysis, usage graph, safe removal |
+| **manager-develop** | Verification | Run test suite, confirm no regressions |
 | **MoAI Orchestrator** | Coordination | User approval, @MX tag cleanup |
 
 ## Frequently Asked Questions

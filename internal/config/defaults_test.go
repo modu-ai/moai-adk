@@ -237,6 +237,54 @@ func TestNewDefaultGitStrategyConfig(t *testing.T) {
 	if cfg.WorktreeRoot != "" {
 		t.Errorf("WorktreeRoot: got %q, want empty", cfg.WorktreeRoot)
 	}
+
+	// Nested ModeProfile defaults (SPEC-V3R5-GIT-STRATEGY-SCHEMA-001 REQ-GSS-006,
+	// AC-GSS-005). Values mirror git-strategy.yaml.tmpl (the schema SSOT).
+	if cfg.Mode != "team" {
+		t.Errorf("Mode: got %q, want %q", cfg.Mode, "team")
+	}
+	if cfg.Provider != "github" {
+		t.Errorf("Provider: got %q, want %q", cfg.Provider, "github")
+	}
+	// Team mode (AC-GSS-005 enumerated assertions).
+	if !cfg.Team.Automation.AutoPush {
+		t.Error("Team.Automation.AutoPush: expected true")
+	}
+	if cfg.Team.Automation.AutoBranch {
+		t.Error("Team.Automation.AutoBranch: expected false")
+	}
+	if !cfg.Team.CommitStyle.ScopeRequired {
+		t.Error("Team.CommitStyle.ScopeRequired: expected true")
+	}
+	if !cfg.Team.BranchProtection {
+		t.Error("Team.BranchProtection: expected true")
+	}
+	if !cfg.Team.DraftPR {
+		t.Error("Team.DraftPR: expected true")
+	}
+	if cfg.Team.RequiredReviews != 1 {
+		t.Errorf("Team.RequiredReviews: got %d, want 1", cfg.Team.RequiredReviews)
+	}
+	// Manual mode.
+	if cfg.Manual.Environment != "local" {
+		t.Errorf("Manual.Environment: got %q, want %q", cfg.Manual.Environment, "local")
+	}
+	if cfg.Manual.PushToRemote {
+		t.Error("Manual.PushToRemote: expected false")
+	}
+	if cfg.Manual.GitHubIntegration {
+		t.Error("Manual.GitHubIntegration: expected false")
+	}
+	if cfg.Manual.AutoCheckpoint != "disabled" {
+		t.Errorf("Manual.AutoCheckpoint: got %q, want %q", cfg.Manual.AutoCheckpoint, "disabled")
+	}
+	// Personal mode.
+	if cfg.Personal.BranchPrefix != "feature/SPEC-" {
+		t.Errorf("Personal.BranchPrefix: got %q, want %q", cfg.Personal.BranchPrefix, "feature/SPEC-")
+	}
+	if !cfg.Personal.PushToRemote {
+		t.Error("Personal.PushToRemote: expected true")
+	}
 }
 
 func TestNewDefaultSystemConfig(t *testing.T) {

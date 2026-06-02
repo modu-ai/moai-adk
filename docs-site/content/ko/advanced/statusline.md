@@ -363,6 +363,3 @@ echo '{"session_id":"test","model":{"display_name":"Opus 4.7"},"workspace":{"rep
 ## 관련 문서
 
 - [Settings JSON](/advanced/settings-json) — Claude Code `statusLine` 필드 설정
-- [Context Window Management](/advanced/context-window-management) — handoff threshold 정책 (1M = 50%, 200K = 90%)
-- [Session Handoff](/advanced/session-handoff) — paste-ready resume message 6-block 포맷
-- [PR Workflow](/git/pr-workflow) — MoAI PR 중심 워크플로우

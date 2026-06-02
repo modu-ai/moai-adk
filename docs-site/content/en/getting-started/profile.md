@@ -1,5 +1,5 @@
 ---
-title: 프로필 관리
+title: Profile Management
 weight: 80
 draft: false
 ---

@@ -207,18 +207,18 @@ Playwright テストに含まれるもの:
 flowchart TD
     User["ユーザーリクエスト"] --> MoAI["MoAI オーケストレーター"]
     MoAI --> Phase0["Phase 0: ツール検出/インストール"]
-    Phase0 --> Testing0["expert-testing"]
+    Phase0 --> Testing0["manager-develop"]
 
     Testing0 --> Phase1["Phase 1: ジャーニーマッピング"]
-    Phase1 --> Testing1["expert-testing"]
+    Phase1 --> Testing1["manager-develop"]
 
     Testing1 --> Phase2["Phase 2: スクリプト生成"]
-    Phase2 --> Testing2["expert-testing"]
+    Phase2 --> Testing2["manager-develop"]
 
     Testing2 --> Phase3["Phase 3: 実行"]
     Phase3 --> Exec{"ツール?"}
-    Exec -->|Playwright/Agent Browser| Testing3["expert-testing"]
-    Exec -->|Chrome MCP| Frontend["expert-frontend"]
+    Exec -->|Playwright/Agent Browser| Testing3["manager-develop"]
+    Exec -->|Chrome MCP| Frontend["manager-develop"]
 
     Testing3 --> Phase5["Phase 5: レポート"]
     Frontend --> Phase5
@@ -229,8 +229,8 @@ flowchart TD
 | エージェント | 役割 | 主な作業 |
 |-------------|------|----------|
 | **MoAI オーケストレーター** | ワークフロー調整、ユーザーインタラクション | レポート出力、次のステップ案内 |
-| **expert-testing** | ツール検出、ジャーニーマッピング、スクリプト生成、実行 | E2E テストパイプライン全体 |
-| **expert-frontend** | Chrome MCP 実行 (Chrome モードのみ) | ブラウザ自動化、GIF 録画 |
+| **manager-develop** | ツール検出、ジャーニーマッピング、スクリプト生成、実行 | E2E テストパイプライン全体 |
+| **manager-develop** | Chrome MCP 実行 (Chrome モードのみ) | ブラウザ自動化、GIF 録画 |
 
 ## よくある質問
 

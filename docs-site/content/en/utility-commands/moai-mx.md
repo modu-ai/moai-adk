@@ -155,7 +155,7 @@ When a rate limit is detected, the current batch is saved and the scan stops gra
 flowchart TD
     User["User Request"] --> MoAI["MoAI Orchestrator"]
     MoAI --> Explore["Explore subagent<br/>Codebase Discovery"]
-    Explore --> Backend["expert-backend<br/>Tag Insertion"]
+    Explore --> Backend["manager-develop<br/>Tag Insertion"]
     Backend --> Report["MoAI<br/>Report Generation"]
 ```
 

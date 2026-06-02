@@ -260,8 +260,8 @@ Claude Code를 열 때의 기본 권한 모드입니다.
 | 빌드/테스트 | `pytest`, `make`, `node`, `python` | 10개+ |
 | 코드 품질 | `ruff`, `black`, `prettier`, `eslint` | 6개+ |
 | 탐색 도구 | `ls`, `find`, `tree`, `cat`, `head` | 10개+ |
-| GitHub CLI | `gh issue`, `gh pr`, `gh repo view` | 3개 |
-| MCP 도구 | `mcp__context7__*`, `mcp__sequential-thinking__*` | 3개 |
+| GitHub CLI | `gh issue`, `gh pr`, `gh repo view` | 2개 |
+| MCP 도구 | `mcp__context7__*` | 2개 |
 | 기타 | `AskUserQuestion`, `Task`, `Skill`, `TodoWrite` | 4개 |
 
 **allow 형식 예시:**

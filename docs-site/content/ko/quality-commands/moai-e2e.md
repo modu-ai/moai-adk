@@ -207,18 +207,18 @@ Playwright 테스트에는:
 flowchart TD
     User["사용자 요청"] --> MoAI["MoAI 오케스트레이터"]
     MoAI --> Phase0["Phase 0: 도구 감지/설치"]
-    Phase0 --> Testing0["expert-testing"]
+    Phase0 --> Testing0["manager-develop"]
 
     Testing0 --> Phase1["Phase 1: 여정 매핑"]
-    Phase1 --> Testing1["expert-testing"]
+    Phase1 --> Testing1["manager-develop"]
 
     Testing1 --> Phase2["Phase 2: 스크립트 생성"]
-    Phase2 --> Testing2["expert-testing"]
+    Phase2 --> Testing2["manager-develop"]
 
     Testing2 --> Phase3["Phase 3: 실행"]
     Phase3 --> Exec{"도구?"}
-    Exec -->|Playwright/Agent Browser| Testing3["expert-testing"]
-    Exec -->|Chrome MCP| Frontend["expert-frontend"]
+    Exec -->|Playwright/Agent Browser| Testing3["manager-develop"]
+    Exec -->|Chrome MCP| Frontend["manager-develop"]
 
     Testing3 --> Phase5["Phase 5: 보고서"]
     Frontend --> Phase5
@@ -229,8 +229,8 @@ flowchart TD
 | 에이전트 | 역할 | 주요 작업 |
 |----------|------|----------|
 | **MoAI 오케스트레이터** | 워크플로우 조율, 사용자 상호작용 | 보고서 출력, 다음 단계 안내 |
-| **expert-testing** | 도구 감지, 여정 매핑, 스크립트 생성, 실행 | 전체 E2E 테스트 파이프라인 |
-| **expert-frontend** | Chrome MCP 실행 (Chrome 모드만) | 브라우저 자동화, GIF 녹화 |
+| **manager-develop** | 도구 감지, 여정 매핑, 스크립트 생성, 실행 | 전체 E2E 테스트 파이프라인 |
+| **manager-develop** | Chrome MCP 실행 (Chrome 모드만) | 브라우저 자동화, GIF 녹화 |
 
 ## 자주 묻는 질문
 

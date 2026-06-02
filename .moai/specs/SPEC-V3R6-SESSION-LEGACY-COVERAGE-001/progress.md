@@ -18,7 +18,7 @@ mx_status: skip-eligible
 plan_commit_sha: "<TBD-by-orchestrator-commit>"
 run_commit_sha: "a095bce09"
 sync_commit_sha: "a440b5c2f"
-mx_commit_sha: "n/a"
+mx_commit_sha: "e979a4d13"
 ---
 
 # Progress Tracker — SPEC-V3R6-SESSION-LEGACY-COVERAGE-001
@@ -295,6 +295,24 @@ canary_compliance_check:
 | B12 CHANGELOG self-test C | READY | All 4 artifacts frontmatter: `status: implemented`, `version: "0.2.0"`, `sync_commit_sha:` backfill-ready |
 | Mx Step C judgment | SKIP-ELIGIBLE | Per mx-tag-protocol.md §a: 0 production .go, 4 _test.go characterization only, no new dangerous patterns, subagent boundary preserved (C-HRA-008 PASS) |
 | PRESERVE invariant | INTACT | 14+ entries untouched per plan.md §A.4 (3 M config / 1 M harness telemetry / 5+ ?? parallel research / 5+ ?? parallel session artifacts / .moai/specs/.moai/ spurious dir left alone) |
+
+## §F. Mx-phase Audit-Ready Signal (2026-06-02)
+
+```yaml
+mx_complete_at: 2026-06-02
+mx_status: skip-justified
+mx_commit_sha: e979a4d13
+mx_tag_count: 0
+mx_skip_justified: true
+mx_verdict: SKIP-JUSTIFIED
+mx_evidence: |
+  Tier S test-only SPEC with 0 production .go modifications (4 _test.go files modified, 
+  1 NEW hydrate_test.go + 3 EXTEND). Test-only code is characterization by definition. 
+  No new functions added to production code (0 candidates for @MX:ANCHOR). 
+  No new goroutines, complexity ≥15, or state mutation (0 candidates for @MX:WARN). 
+  No new business rules or TODO items (0 candidates for @MX:NOTE/@MX:TODO). 
+  Subagent boundary preserved (C-HRA-008 PASS). Skip judgment per mx-tag-protocol.md §a.
+```
 
 ## §D. Cross-references
 

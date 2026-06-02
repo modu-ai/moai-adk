@@ -510,7 +510,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#2-frozen-vs-evolvable-zones"
-  clause: "[FROZEN] Pipeline phase ordering constraints (manager-spec always first, evaluator-active always last in loop)"
+  clause: "[FROZEN] Pipeline phase ordering constraints (manager-spec always first, sync-auditor always last in loop)"
   canary_gate: true
 
 - id: CONST-V3R2-059
@@ -566,7 +566,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#31-brand-context-constitutional-parent"
-  clause: "[HARD] evaluator-active MUST score brand consistency as a must-pass criterion"
+  clause: "[HARD] sync-auditor MUST score brand consistency as a must-pass criterion"
   canary_gate: true
 
 - id: CONST-V3R2-066

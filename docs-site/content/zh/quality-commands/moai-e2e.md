@@ -207,18 +207,18 @@ Playwright 测试包含:
 flowchart TD
     User["用户请求"] --> MoAI["MoAI 编排器"]
     MoAI --> Phase0["Phase 0: 工具检测/安装"]
-    Phase0 --> Testing0["expert-testing"]
+    Phase0 --> Testing0["manager-develop"]
 
     Testing0 --> Phase1["Phase 1: 旅程映射"]
-    Phase1 --> Testing1["expert-testing"]
+    Phase1 --> Testing1["manager-develop"]
 
     Testing1 --> Phase2["Phase 2: 脚本创建"]
-    Phase2 --> Testing2["expert-testing"]
+    Phase2 --> Testing2["manager-develop"]
 
     Testing2 --> Phase3["Phase 3: 执行"]
     Phase3 --> Exec{"工具?"}
-    Exec -->|Playwright/Agent Browser| Testing3["expert-testing"]
-    Exec -->|Chrome MCP| Frontend["expert-frontend"]
+    Exec -->|Playwright/Agent Browser| Testing3["manager-develop"]
+    Exec -->|Chrome MCP| Frontend["manager-develop"]
 
     Testing3 --> Phase5["Phase 5: 报告"]
     Frontend --> Phase5
@@ -229,8 +229,8 @@ flowchart TD
 | 代理 | 角色 | 主要工作 |
 |------|------|----------|
 | **MoAI 编排器** | 工作流协调, 用户交互 | 报告输出, 下一步指引 |
-| **expert-testing** | 工具检测、旅程映射、脚本创建、执行 | 完整 E2E 测试管道 |
-| **expert-frontend** | Chrome MCP 执行 (仅 Chrome 模式) | 浏览器自动化、GIF 录制 |
+| **manager-develop** | 工具检测、旅程映射、脚本创建、执行 | 完整 E2E 测试管道 |
+| **manager-develop** | Chrome MCP 执行 (仅 Chrome 模式) | 浏览器自动化、GIF 录制 |
 
 ## 常见问题
 

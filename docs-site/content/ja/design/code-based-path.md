@@ -64,7 +64,7 @@ flowchart TD
     C["visual-identity.md<br>準備完了"] --> D["moai-domain-brand-design<br>トークン生成"]
     B --> E["copy.json<br>.moai/design/"]
     D --> F["tokens.json<br>.moai/design/"]
-    E --> G["expert-frontend<br>コード実装"]
+    E --> G["manager-develop<br>コード実装"]
     F --> G
     G --> H["React/Vueコンポーネント<br>+<br>Tailwind/CSSモジュール"]
 ```
@@ -109,10 +109,10 @@ ls -la .moai/project/brand/
 
 ### ステップ5: GAN Loop進入
 
-`expert-frontend`エージェント:
+`manager-develop`エージェント:
 1. トークンとコピー受け取り
 2. React/Vueコンポーネント + スタイル生成
-3. `evaluator-active`評価(4次元スコアリング)
+3. `sync-auditor`評価(4次元スコアリング)
 4. 不合格時は修正反復(最大5回)
 
 ## ブランドファイル修正

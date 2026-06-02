@@ -207,18 +207,18 @@ When `--record` flag is used:
 flowchart TD
     User["User Request"] --> MoAI["MoAI Orchestrator"]
     MoAI --> Phase0["Phase 0: Tool Detection/Install"]
-    Phase0 --> Testing0["expert-testing"]
+    Phase0 --> Testing0["manager-develop"]
 
     Testing0 --> Phase1["Phase 1: Journey Mapping"]
-    Phase1 --> Testing1["expert-testing"]
+    Phase1 --> Testing1["manager-develop"]
 
     Testing1 --> Phase2["Phase 2: Script Creation"]
-    Phase2 --> Testing2["expert-testing"]
+    Phase2 --> Testing2["manager-develop"]
 
     Testing2 --> Phase3["Phase 3: Execution"]
     Phase3 --> Exec{"Tool?"}
-    Exec -->|Playwright/Agent Browser| Testing3["expert-testing"]
-    Exec -->|Chrome MCP| Frontend["expert-frontend"]
+    Exec -->|Playwright/Agent Browser| Testing3["manager-develop"]
+    Exec -->|Chrome MCP| Frontend["manager-develop"]
 
     Testing3 --> Phase5["Phase 5: Report"]
     Frontend --> Phase5
@@ -229,8 +229,8 @@ flowchart TD
 | Agent | Role | Key Tasks |
 |-------|------|-----------|
 | **MoAI Orchestrator** | Workflow coordination, user interaction | Report output, next step guidance |
-| **expert-testing** | Tool detection, journey mapping, script creation, execution | Full E2E test pipeline |
-| **expert-frontend** | Chrome MCP execution (Chrome mode only) | Browser automation, GIF recording |
+| **manager-develop** | Tool detection, journey mapping, script creation, execution | Full E2E test pipeline |
+| **manager-develop** | Chrome MCP execution (Chrome mode only) | Browser automation, GIF recording |
 
 ## FAQ
 

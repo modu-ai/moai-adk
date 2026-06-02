@@ -155,7 +155,7 @@ Rate limit 감지 시 현재 배치를 저장하고 graceful 하게 중단합니
 flowchart TD
     User["사용자 요청"] --> MoAI["MoAI 오케스트레이터"]
     MoAI --> Explore["Explore subagent<br/>코드베이스 발견"]
-    Explore --> Backend["expert-backend<br/>태그 삽입"]
+    Explore --> Backend["manager-develop<br/>태그 삽입"]
     Backend --> Report["MoAI<br/>보고서 생성"]
 ```
 
