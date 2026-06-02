@@ -13,6 +13,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // WorkflowLintViolation represents a workflow.yaml lint rule violation.
@@ -38,52 +40,43 @@ type WorkflowLintSummary struct {
 	Errors int `json:"errors"`
 }
 
-// workflowConfig is the internal type matching the relevant subset of workflow.yaml.
-type workflowConfig struct {
-	Workflow struct {
-		Team struct {
-			RoleProfiles map[string]workflowRoleProfile `yaml:"role_profiles"`
-		} `yaml:"team"`
-	} `yaml:"workflow"`
-}
-
-// workflowRoleProfile captures the fields relevant to isolation enforcement.
-type workflowRoleProfile struct {
-	Mode        string `yaml:"mode"`
-	Model       string `yaml:"model"`
-	Isolation   string `yaml:"isolation"`
-	Description string `yaml:"description"`
+// workflowLintWrapper unmarshals only the workflow: section into the canonical
+// config.WorkflowConfig type. The lint reads the file literally (no default
+// seeding) so that a missing or misconfigured role_profiles entry surfaces as a
+// violation rather than being masked by construction-time defaults.
+type workflowLintWrapper struct {
+	Workflow config.WorkflowConfig `yaml:"workflow"`
 }
 
 // writeHeavyRoles enumerates the team-mode role profiles that MUST use isolation:worktree.
 var writeHeavyRoles = []string{"implementer", "tester", "designer"}
 
-// loadWorkflowYAML reads and parses workflow.yaml into a typed struct.
-// Returns exit code 2 error on malformed YAML.
-func loadWorkflowYAML(path string) (*workflowConfig, error) {
+// loadWorkflowYAML reads and parses workflow.yaml into the canonical
+// config.WorkflowConfig type. Returns exit code 2 error on malformed YAML.
+func loadWorkflowYAML(path string) (*config.WorkflowConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read workflow.yaml: %w", err)
 	}
 
-	var cfg workflowConfig
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	var wrapper workflowLintWrapper
+	if err := yaml.Unmarshal(data, &wrapper); err != nil {
 		return nil, fmt.Errorf("parse workflow.yaml: %w", err)
 	}
 
-	return &cfg, nil
+	return &wrapper.Workflow, nil
 }
 
 // validateRoleProfiles checks that role_profiles.{implementer,tester,designer}.isolation == "worktree".
 // Returns a slice of WorkflowLintViolation (one per offending role).
-func validateRoleProfiles(cfg *workflowConfig) []WorkflowLintViolation {
+func validateRoleProfiles(cfg *config.WorkflowConfig) []WorkflowLintViolation {
 	var violations []WorkflowLintViolation
 
 	if cfg == nil {
 		return violations
 	}
 
-	profiles := cfg.Workflow.Team.RoleProfiles
+	profiles := cfg.Team.RoleProfiles
 	if profiles == nil {
 		// No role_profiles defined — each write-heavy role is missing
 		for _, role := range writeHeavyRoles {

@@ -71,10 +71,10 @@ func TestNewDefaultConfigContainsAllSections(t *testing.T) {
 			cfg.Ralph.MaxIterations, DefaultMaxIterations)
 	}
 
-	// Workflow should have defaults
-	if cfg.Workflow.PlanTokens != DefaultPlanTokens {
-		t.Errorf("Workflow.PlanTokens: got %d, want %d",
-			cfg.Workflow.PlanTokens, DefaultPlanTokens)
+	// Workflow should have defaults (nested canonical location post Option (c)).
+	if cfg.Workflow.TokenBudget.Plan != DefaultPlanTokens {
+		t.Errorf("Workflow.TokenBudget.Plan: got %d, want %d",
+			cfg.Workflow.TokenBudget.Plan, DefaultPlanTokens)
 	}
 
 	// GitConvention should have defaults
@@ -359,17 +359,120 @@ func TestNewDefaultWorkflowConfig(t *testing.T) {
 
 	cfg := NewDefaultWorkflowConfig()
 
-	if !cfg.AutoClear {
-		t.Error("AutoClear: expected true")
+	// Post Option (c) migration: defaults populate the nested canonical fields.
+	if !cfg.AutoClear.Enabled {
+		t.Error("AutoClear.Enabled: expected true")
 	}
-	if cfg.PlanTokens != DefaultPlanTokens {
-		t.Errorf("PlanTokens: got %d, want %d", cfg.PlanTokens, DefaultPlanTokens)
+	if cfg.TokenBudget.Plan != DefaultPlanTokens {
+		t.Errorf("TokenBudget.Plan: got %d, want %d", cfg.TokenBudget.Plan, DefaultPlanTokens)
 	}
-	if cfg.RunTokens != DefaultRunTokens {
-		t.Errorf("RunTokens: got %d, want %d", cfg.RunTokens, DefaultRunTokens)
+	if cfg.TokenBudget.Run != DefaultRunTokens {
+		t.Errorf("TokenBudget.Run: got %d, want %d", cfg.TokenBudget.Run, DefaultRunTokens)
 	}
-	if cfg.SyncTokens != DefaultSyncTokens {
-		t.Errorf("SyncTokens: got %d, want %d", cfg.SyncTokens, DefaultSyncTokens)
+	if cfg.TokenBudget.Sync != DefaultSyncTokens {
+		t.Errorf("TokenBudget.Sync: got %d, want %d", cfg.TokenBudget.Sync, DefaultSyncTokens)
+	}
+}
+
+// TestNewDefaultWorkflowConfigNestedDefaults asserts every nested default value
+// exactly matches the template SSOT workflow.yaml
+// (internal/template/templates/.moai/config/sections/workflow.yaml).
+// This is the AC-WSE-007 36-assertion oracle (REQ-WSE-007).
+func TestNewDefaultWorkflowConfigNestedDefaults(t *testing.T) {
+	t.Parallel()
+
+	cfg := NewDefaultWorkflowConfig()
+
+	boolChecks := []struct {
+		name string
+		got  bool
+		want bool
+	}{
+		{"AutoClear.Enabled", cfg.AutoClear.Enabled, true},
+		{"AutoClear.AfterPlan", cfg.AutoClear.AfterPlan, true},
+		{"AutoClear.AfterRun", cfg.AutoClear.AfterRun, false},
+		{"Completion.DetectInOutput", cfg.Completion.DetectInOutput, true},
+		{"LoopPrevention.FailurePatternDetection", cfg.LoopPrevention.FailurePatternDetection, true},
+		{"Memory.AuditEnabled", cfg.Memory.AuditEnabled, true},
+		{"Team.Enabled", cfg.Team.Enabled, true},
+		{"Team.DelegateMode", cfg.Team.DelegateMode, true},
+		{"Team.RequirePlanApproval", cfg.Team.RequirePlanApproval, true},
+		{"Worktree.AutoCleanup", cfg.Worktree.AutoCleanup, true},
+		{"Worktree.AutoCreate", cfg.Worktree.AutoCreate, false},
+		{"Worktree.AutoMerge", cfg.Worktree.AutoMerge, true},
+		{"Worktree.TmuxPreferred", cfg.Worktree.TmuxPreferred, true},
+	}
+	for _, c := range boolChecks {
+		if c.got != c.want {
+			t.Errorf("%s: got %v, want %v", c.name, c.got, c.want)
+		}
+	}
+
+	intChecks := []struct {
+		name string
+		got  int
+		want int
+	}{
+		{"AutoClear.TokenThreshold", cfg.AutoClear.TokenThreshold, 150000},
+		{"LoopPrevention.MaxIterations", cfg.LoopPrevention.MaxIterations, 100},
+		{"LoopPrevention.MaxRetriesPerOperation", cfg.LoopPrevention.MaxRetriesPerOperation, 3},
+		{"Memory.IndexLineCap", cfg.Memory.IndexLineCap, 200},
+		{"Memory.StaleAggregateThreshold", cfg.Memory.StaleAggregateThreshold, 10},
+		{"Memory.StalenessThresholdHours", cfg.Memory.StalenessThresholdHours, 24},
+		{"TokenBudget.Plan", cfg.TokenBudget.Plan, 30000},
+		{"TokenBudget.Run", cfg.TokenBudget.Run, 180000},
+		{"TokenBudget.Sync", cfg.TokenBudget.Sync, 40000},
+		{"Team.MaxTeammates", cfg.Team.MaxTeammates, 10},
+		{"Team.AutoSelection.MinDomainsForTeam", cfg.Team.AutoSelection.MinDomainsForTeam, 3},
+		{"Team.AutoSelection.MinFilesForTeam", cfg.Team.AutoSelection.MinFilesForTeam, 10},
+		{"Team.AutoSelection.MinComplexityScore", cfg.Team.AutoSelection.MinComplexityScore, 7},
+	}
+	for _, c := range intChecks {
+		if c.got != c.want {
+			t.Errorf("%s: got %d, want %d", c.name, c.got, c.want)
+		}
+	}
+
+	strChecks := []struct {
+		name string
+		got  string
+		want string
+	}{
+		{"Completion.Markers.Done", cfg.Completion.Markers.Done, "<moai>DONE</moai>"},
+		{"Completion.Markers.Complete", cfg.Completion.Markers.Complete, "<moai>COMPLETE</moai>"},
+		{"Team.DefaultModel", cfg.Team.DefaultModel, "sonnet"},
+		{"Worktree.SessionNamePattern", cfg.Worktree.SessionNamePattern, "moai-{ProjectName}-{SPEC-ID}"},
+		{"RoleProfiles[implementer].Isolation", cfg.Team.RoleProfiles["implementer"].Isolation, "worktree"},
+		{"RoleProfiles[implementer].Mode", cfg.Team.RoleProfiles["implementer"].Mode, "acceptEdits"},
+		{"RoleProfiles[implementer].Model", cfg.Team.RoleProfiles["implementer"].Model, "sonnet"},
+		{"RoleProfiles[researcher].Model", cfg.Team.RoleProfiles["researcher"].Model, "haiku"},
+	}
+	for _, c := range strChecks {
+		if c.got != c.want {
+			t.Errorf("%s: got %q, want %q", c.name, c.got, c.want)
+		}
+	}
+
+	// RoleProfileKeys default (3-element subset per agent-teams-pattern 5+1+1).
+	wantKeys := []string{"implementer", "tester", "reviewer"}
+	if len(cfg.Team.RoleProfileKeys) != len(wantKeys) {
+		t.Errorf("RoleProfileKeys: got %d keys, want %d", len(cfg.Team.RoleProfileKeys), len(wantKeys))
+	} else {
+		for i, k := range wantKeys {
+			if cfg.Team.RoleProfileKeys[i] != k {
+				t.Errorf("RoleProfileKeys[%d]: got %q, want %q", i, cfg.Team.RoleProfileKeys[i], k)
+			}
+		}
+	}
+
+	// RoleProfiles must contain exactly 7 keys (AC-WO-009 contract).
+	if len(cfg.Team.RoleProfiles) != 7 {
+		t.Errorf("RoleProfiles: got %d entries, want 7", len(cfg.Team.RoleProfiles))
+	}
+	for _, name := range []string{"analyst", "architect", "designer", "implementer", "researcher", "reviewer", "tester"} {
+		if _, ok := cfg.Team.RoleProfiles[name]; !ok {
+			t.Errorf("RoleProfiles missing expected key %q", name)
+		}
 	}
 }
 

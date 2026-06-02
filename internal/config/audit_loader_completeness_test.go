@@ -24,7 +24,8 @@ var acknowledgedUnloadedSections = []string{
 	"security",       // out-of-scope: security config, partial loader via separate path
 	"sunset",         // out-of-scope: DORMANT — struct defined but no runtime hot path (REQ-MIG003-006)
 	"system",         // out-of-scope: SystemConfig has partial loader via template
-	"workflow",       // out-of-scope: role_profiles subset loaded; full unification deferred (spec.md §1.2)
+	// NOTE: "workflow" removed — workflow.yaml now has a complete loader path via
+	// Loader.Load() → loadWorkflowSection (SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001 REQ-WSE-008).
 }
 
 // acknowledgedDedicatedLoaders is the list of sections loaded via dedicated entry-points

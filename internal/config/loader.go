@@ -64,6 +64,9 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load state section
 	l.loadStateSection(sectionsDir, cfg)
 
+	// Load workflow section (SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001)
+	l.loadWorkflowSection(sectionsDir, cfg)
+
 	// Load statusline section
 	l.loadStatuslineSection(sectionsDir, cfg)
 
@@ -182,6 +185,23 @@ func (l *Loader) loadStateSection(dir string, cfg *Config) {
 	if loaded {
 		cfg.State = wrapper.State
 		l.loadedSections["state"] = true
+	}
+}
+
+// loadWorkflowSection loads the workflow configuration section from workflow.yaml.
+// The wrapper is seeded with the populated defaults (cfg.Workflow) so that yaml
+// keys omitted by the user retain their construction-time defaults rather than
+// silently collapsing to zero-values (Edge-WSE-003).
+func (l *Loader) loadWorkflowSection(dir string, cfg *Config) {
+	wrapper := &workflowFileWrapper{Workflow: cfg.Workflow}
+	loaded, err := loadYAMLFile(dir, "workflow.yaml", wrapper)
+	if err != nil {
+		slog.Warn("failed to load workflow config, using defaults", "error", err)
+		return
+	}
+	if loaded {
+		cfg.Workflow = wrapper.Workflow
+		l.loadedSections["workflow"] = true
 	}
 }
 

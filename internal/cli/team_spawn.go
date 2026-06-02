@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // Error constants for team spawn operations.
@@ -406,92 +408,52 @@ func ArchiveTeamState(stateDir, teamID string) error {
 	return nil
 }
 
-// LoadRoleProfiles parses workflow.yaml role_profiles section.
-// Uses simple YAML parsing (no external deps).
-// Determines WriteHeavy based on known write-heavy roles: implementer, tester, designer.
+// LoadRoleProfiles loads the workflow.yaml team.role_profiles section via the
+// canonical config loader (SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001 REQ-WSE-006).
+// The function signature is preserved: callers pass the path to a
+// .moai/config/sections/workflow.yaml file. WriteHeavy is determined verbatim
+// from the WriteHeavyRoles set (implementer, tester, designer).
+//
+// Note: the returned map's iteration order is unordered (Go map semantics);
+// callers MUST NOT rely on profile ordering.
 func LoadRoleProfiles(workflowPath string) (map[string]RoleProfile, error) {
-	content, err := os.ReadFile(workflowPath)
+	// workflowPath = <.moai>/config/sections/workflow.yaml → derive the .moai dir
+	// (3 levels up: sections → config → .moai).
+	moaiDir := filepath.Dir(filepath.Dir(filepath.Dir(workflowPath)))
+
+	cfg, err := config.NewLoader().Load(moaiDir)
 	if err != nil {
-		return nil, fmt.Errorf("read workflow.yaml: %w", err)
+		return nil, fmt.Errorf("load workflow config: %w", err)
 	}
 
-	profiles := make(map[string]RoleProfile)
+	entries := cfg.Workflow.Team.RoleProfiles
+	if len(entries) == 0 {
+		return nil, fmt.Errorf("no role_profiles found in workflow.yaml")
+	}
 
-	// Parse role_profiles section
-	lines := strings.Split(string(content), "\n")
-	inRoleProfiles := false
-	var currentProfile *RoleProfile
-	var currentName string
-
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-
-		if strings.HasPrefix(trimmed, "role_profiles:") {
-			inRoleProfiles = true
-			continue
-		}
-
-		if inRoleProfiles {
-			// Check for indentation level (2 spaces = profile name, 4 spaces = property)
-			indent := len(line) - len(strings.TrimLeft(line, " "))
-
-			if indent == 2 && !strings.HasPrefix(trimmed, "#") && trimmed != "" {
-				// New profile name
-				parts := strings.SplitN(trimmed, ":", 2)
-				if len(parts) == 2 {
-					currentName = strings.TrimSpace(parts[0])
-					currentProfile = &RoleProfile{
-						Name: currentName,
-					}
-					profiles[currentName] = *currentProfile
-				}
-			} else if indent == 4 && currentProfile != nil {
-				// Profile property
-				parts := strings.SplitN(trimmed, ":", 2)
-				if len(parts) == 2 {
-					key := strings.TrimSpace(parts[0])
-					value := strings.TrimSpace(parts[1])
-
-					switch key {
-					case "mode":
-						currentProfile.Mode = value
-						profiles[currentName] = *currentProfile
-					case "model":
-						currentProfile.Model = value
-						profiles[currentName] = *currentProfile
-					case "isolation":
-						currentProfile.Isolation = value
-						profiles[currentName] = *currentProfile
-					case "description":
-						currentProfile.Description = value
-						profiles[currentName] = *currentProfile
-					}
-				}
-			} else if indent == 0 && inRoleProfiles && trimmed != "" {
-				// End of role_profiles section
-				break
-			}
+	writeHeavySet := buildWriteHeavySet()
+	profiles := make(map[string]RoleProfile, len(entries))
+	for name, entry := range entries {
+		profiles[name] = RoleProfile{
+			Name:        name,
+			Mode:        entry.Mode,
+			Model:       entry.Model,
+			Isolation:   entry.Isolation,
+			Description: entry.Description,
+			WriteHeavy:  writeHeavySet[name],
 		}
 	}
 
-	// Determine WriteHeavy based on role name
+	return profiles, nil
+}
+
+// buildWriteHeavySet expands the WriteHeavyRoles CSV constant into a lookup set.
+func buildWriteHeavySet() map[string]bool {
 	writeHeavySet := make(map[string]bool)
 	for _, role := range strings.Split(WriteHeavyRoles, ",") {
 		writeHeavySet[strings.TrimSpace(role)] = true
 	}
-
-	for name, profile := range profiles {
-		if writeHeavySet[name] {
-			profile.WriteHeavy = true
-			profiles[name] = profile
-		}
-	}
-
-	if len(profiles) == 0 {
-		return nil, fmt.Errorf("no role_profiles found in workflow.yaml")
-	}
-
-	return profiles, nil
+	return writeHeavySet
 }
 
 // claimTaskWithRetry wraps ClaimTask with retry logic for concurrent access.

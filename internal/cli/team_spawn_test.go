@@ -648,31 +648,62 @@ func TestArchiveTeamState(t *testing.T) {
 	t.Log("AC-10: TeamDelete archives to team-archive/{team-id}-{timestamp}/")
 }
 
-// TestLoadRoleProfiles tests role profile loading from workflow.yaml.
+// TestLoadRoleProfiles tests role profile loading from workflow.yaml via the
+// canonical config loader (SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001 REQ-WSE-006).
 func TestLoadRoleProfiles(t *testing.T) {
 	tempDir := t.TempDir()
 
-	// Create test workflow.yaml
-	workflowPath := filepath.Join(tempDir, "workflow.yaml")
+	// Build the canonical .moai/config/sections/workflow.yaml layout so the
+	// typed loader path (config.Loader.Load) resolves the .moai dir from the
+	// supplied workflow.yaml path.
+	sectionsDir := filepath.Join(tempDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0755); err != nil {
+		t.Fatalf("mkdir sections: %v", err)
+	}
+	workflowPath := filepath.Join(sectionsDir, "workflow.yaml")
+	// Provide the full 7-profile production set so the loader's default-seeded
+	// role_profiles map is fully overridden (the loader merges file keys over
+	// the construction-time defaults; supplying all 7 makes the expectation
+	// deterministic).
 	workflowContent := `
-role_profiles:
-  researcher:
-    mode: plan
-    model: haiku
-    isolation: none
-    description: Research and analysis
-
-  implementer:
-    mode: acceptEdits
-    model: sonnet
-    isolation: worktree
-    description: Implementation
-
-  tester:
-    mode: acceptEdits
-    model: sonnet
-    isolation: worktree
-    description: Testing
+workflow:
+  team:
+    role_profiles:
+      researcher:
+        mode: plan
+        model: haiku
+        isolation: none
+        description: Research and analysis
+      analyst:
+        mode: plan
+        model: sonnet
+        isolation: none
+        description: Requirements analysis
+      architect:
+        mode: plan
+        model: sonnet
+        isolation: none
+        description: Solution design
+      implementer:
+        mode: acceptEdits
+        model: sonnet
+        isolation: worktree
+        description: Implementation
+      tester:
+        mode: acceptEdits
+        model: sonnet
+        isolation: worktree
+        description: Testing
+      designer:
+        mode: acceptEdits
+        model: sonnet
+        isolation: worktree
+        description: UI/UX design
+      reviewer:
+        mode: plan
+        model: haiku
+        isolation: none
+        description: Code review
 `
 
 	if err := os.WriteFile(workflowPath, []byte(workflowContent), 0644); err != nil {
@@ -685,12 +716,12 @@ role_profiles:
 		t.Fatalf("LoadRoleProfiles() error: %v", err)
 	}
 
-	// Verify profiles were loaded
-	if len(profiles) != 3 {
-		t.Errorf("got %d profiles, want 3", len(profiles))
+	// Verify all 7 profiles were loaded.
+	if len(profiles) != 7 {
+		t.Errorf("got %d profiles, want 7", len(profiles))
 	}
 
-	// Verify researcher profile
+	// Verify researcher profile content + non-write-heavy.
 	researcher, exists := profiles["researcher"]
 	if !exists {
 		t.Error("researcher profile not found")
@@ -706,19 +737,35 @@ role_profiles:
 		}
 	}
 
-	// Verify implementer is write-heavy
+	// Verify implementer is write-heavy with correct typed fields.
 	implementer, exists := profiles["implementer"]
 	if !exists {
 		t.Error("implementer profile not found")
-	} else if !implementer.WriteHeavy {
-		t.Error("implementer should be write-heavy")
+	} else {
+		if !implementer.WriteHeavy {
+			t.Error("implementer should be write-heavy")
+		}
+		if implementer.Isolation != "worktree" {
+			t.Errorf("implementer isolation = %q, want %q", implementer.Isolation, "worktree")
+		}
+		if implementer.Mode != "acceptEdits" {
+			t.Errorf("implementer mode = %q, want %q", implementer.Mode, "acceptEdits")
+		}
 	}
 
-	// Verify tester is write-heavy
+	// Verify tester is write-heavy.
 	tester, exists := profiles["tester"]
 	if !exists {
 		t.Error("tester profile not found")
 	} else if !tester.WriteHeavy {
 		t.Error("tester should be write-heavy")
+	}
+
+	// Verify designer is write-heavy (third write-heavy role).
+	designer, exists := profiles["designer"]
+	if !exists {
+		t.Error("designer profile not found")
+	} else if !designer.WriteHeavy {
+		t.Error("designer should be write-heavy")
 	}
 }

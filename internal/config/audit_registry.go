@@ -31,7 +31,7 @@ var yamlToStructRegistry = map[string]string{
 	"system":         "SystemConfig",
 	"llm":            "LLMConfig",
 	"ralph":          "RalphConfig",
-	"workflow":       "WorkflowConfig",
+	"workflow":       "WorkflowConfig", // complete nested struct binding via Loader.Load → loadWorkflowSection
 	"state":          "StateConfig",
 	"statusline":     "StatuslineConfig",
 	"gate":           "GateConfig",

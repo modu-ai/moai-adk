@@ -297,12 +297,115 @@ type RalphConfig struct {
 }
 
 // WorkflowConfig represents the workflow configuration section.
+//
+// The nested fields below mirror the rich workflow.yaml structure (auto_clear /
+// completion / default_mode / execution_mode / loop_prevention / memory / team /
+// token_budget / worktree). The trailing FLAT fields are retained for
+// backward-compat via the Option (c) accessor pattern. FLAT fields carry
+// yaml:"-" tags so yaml.Unmarshal never binds to them, eliminating the
+// historical path-mismatch unmarshal failure while preserving Go API binary
+// compatibility.
 type WorkflowConfig struct {
-	AutoClear     bool                    `yaml:"auto_clear"`
-	PlanTokens    int                     `yaml:"plan_tokens"`
-	RunTokens     int                     `yaml:"run_tokens"`
-	SyncTokens    int                     `yaml:"sync_tokens"`
-	AutoSelection TeamAutoSelectionConfig `yaml:"auto_selection"`
+	// Nested canonical fields (yaml-aligned with workflow.yaml top-level keys).
+	AutoClear      AutoClearConfig        `yaml:"auto_clear"`
+	Completion     CompletionConfig       `yaml:"completion"`
+	DefaultMode    string                 `yaml:"default_mode"`
+	ExecutionMode  string                 `yaml:"execution_mode"`
+	LoopPrevention LoopPreventionConfig   `yaml:"loop_prevention"`
+	Memory         MemoryConfig           `yaml:"memory"`
+	Team           TeamConfig             `yaml:"team"`
+	TokenBudget    TokenBudgetConfig      `yaml:"token_budget"`
+	Worktree       WorkflowWorktreeConfig `yaml:"worktree"`
+
+	// Deprecated FLAT fields (Option (c) — preserved for backward-compat).
+	// yaml:"-" prevents yaml.Unmarshal from binding to these legacy paths.
+
+	// Deprecated: use AutoClear.Enabled — the legacy scalar yaml tag pointed at a
+	// non-existent flat path (auto_clear is a nested struct in workflow.yaml).
+	AutoClearLegacy bool `yaml:"-"`
+	// Deprecated: use TokenBudget.Plan.
+	PlanTokens int `yaml:"-"`
+	// Deprecated: use TokenBudget.Run.
+	RunTokens int `yaml:"-"`
+	// Deprecated: use TokenBudget.Sync.
+	SyncTokens int `yaml:"-"`
+	// Deprecated: use Team.AutoSelection — the legacy field used a broken yaml
+	// path (workflow.auto_selection) that never matched team.auto_selection.
+	AutoSelectionLegacy TeamAutoSelectionConfig `yaml:"-"`
+}
+
+// AutoClearConfig mirrors workflow.auto_clear.* — context-window auto-clear policy.
+type AutoClearConfig struct {
+	Enabled        bool `yaml:"enabled"`
+	AfterPlan      bool `yaml:"after_plan"`
+	AfterRun       bool `yaml:"after_run"`
+	TokenThreshold int  `yaml:"token_threshold"`
+}
+
+// CompletionConfig mirrors workflow.completion.* — completion-marker detection policy.
+type CompletionConfig struct {
+	DetectInOutput bool          `yaml:"detect_in_output"`
+	Markers        MarkersConfig `yaml:"markers"`
+}
+
+// MarkersConfig mirrors workflow.completion.markers.* — the literal completion markers.
+type MarkersConfig struct {
+	Complete string `yaml:"complete"`
+	Done     string `yaml:"done"`
+}
+
+// LoopPreventionConfig mirrors workflow.loop_prevention.* — iteration/retry guards.
+type LoopPreventionConfig struct {
+	FailurePatternDetection bool `yaml:"failure_pattern_detection"`
+	MaxIterations           int  `yaml:"max_iterations"`
+	MaxRetriesPerOperation  int  `yaml:"max_retries_per_operation"`
+}
+
+// MemoryConfig mirrors workflow.memory.* — typed memory taxonomy audit settings.
+type MemoryConfig struct {
+	AuditEnabled            bool `yaml:"audit_enabled"`
+	IndexLineCap            int  `yaml:"index_line_cap"`
+	StaleAggregateThreshold int  `yaml:"stale_aggregate_threshold"`
+	StalenessThresholdHours int  `yaml:"staleness_threshold_hours"`
+}
+
+// TeamConfig mirrors workflow.team.* — Agent Teams configuration.
+// Note: workflow.team.patterns.* is intentionally NOT modeled (EXCL-WSE-004);
+// pattern dispatch is a skill-body responsibility, not a Go responsibility.
+type TeamConfig struct {
+	AutoSelection       TeamAutoSelectionConfig     `yaml:"auto_selection"`
+	Enabled             bool                        `yaml:"enabled"`
+	MaxTeammates        int                         `yaml:"max_teammates"`
+	DefaultModel        string                      `yaml:"default_model"`
+	DelegateMode        bool                        `yaml:"delegate_mode"`
+	RequirePlanApproval bool                        `yaml:"require_plan_approval"`
+	RoleProfileKeys     []string                    `yaml:"role_profile_keys"`
+	RoleProfiles        map[string]RoleProfileEntry `yaml:"role_profiles"`
+}
+
+// RoleProfileEntry mirrors a single workflow.team.role_profiles.<name> entry.
+type RoleProfileEntry struct {
+	Description string `yaml:"description"`
+	Isolation   string `yaml:"isolation"`
+	Mode        string `yaml:"mode"`
+	Model       string `yaml:"model"`
+}
+
+// TokenBudgetConfig mirrors workflow.token_budget.* — per-phase token budgets.
+type TokenBudgetConfig struct {
+	Plan int `yaml:"plan"`
+	Run  int `yaml:"run"`
+	Sync int `yaml:"sync"`
+}
+
+// WorkflowWorktreeConfig mirrors workflow.worktree.* — worktree automation settings.
+// Distinct from GitStrategyConfig.WorktreeRoot (different key domain, no conflict).
+type WorkflowWorktreeConfig struct {
+	AutoCleanup        bool   `yaml:"auto_cleanup"`
+	AutoCreate         bool   `yaml:"auto_create"`
+	AutoMerge          bool   `yaml:"auto_merge"`
+	SessionNamePattern string `yaml:"session_name_pattern"`
+	TmuxPreferred      bool   `yaml:"tmux_preferred"`
 }
 
 // RoleProfile represents an agent role profile configuration.
@@ -987,6 +1090,11 @@ type llmFileWrapper struct {
 // stateFileWrapper handles the state.yaml section file.
 type stateFileWrapper struct {
 	State StateConfig `yaml:"state"`
+}
+
+// workflowFileWrapper handles the workflow.yaml section file.
+type workflowFileWrapper struct {
+	Workflow WorkflowConfig `yaml:"workflow"`
 }
 
 // statuslineFileWrapper handles the statusline.yaml section file.

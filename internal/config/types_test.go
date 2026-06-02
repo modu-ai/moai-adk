@@ -276,17 +276,21 @@ func TestRalphConfigFields(t *testing.T) {
 	}
 }
 
+// TestWorkflowConfigFields verifies the deprecated FLAT fields remain
+// constructible for SPEC-CONFIG-001 backward-compat after the Option (c) rename
+// (AutoClear bool → AutoClearLegacy; AutoSelection → AutoSelectionLegacy;
+// PlanTokens/RunTokens/SyncTokens retained).
 func TestWorkflowConfigFields(t *testing.T) {
 	t.Parallel()
 
 	cfg := WorkflowConfig{
-		AutoClear:  true,
-		PlanTokens: 30000,
-		RunTokens:  180000,
-		SyncTokens: 40000,
+		AutoClearLegacy: true,
+		PlanTokens:      30000,
+		RunTokens:       180000,
+		SyncTokens:      40000,
 	}
-	if !cfg.AutoClear {
-		t.Error("AutoClear: expected true")
+	if !cfg.AutoClearLegacy {
+		t.Error("AutoClearLegacy: expected true")
 	}
 	if cfg.PlanTokens != 30000 {
 		t.Errorf("PlanTokens: got %d, want %d", cfg.PlanTokens, 30000)
@@ -296,6 +300,243 @@ func TestWorkflowConfigFields(t *testing.T) {
 	}
 	if cfg.SyncTokens != 40000 {
 		t.Errorf("SyncTokens: got %d, want %d", cfg.SyncTokens, 40000)
+	}
+}
+
+// TestWorkflowConfigNestedFieldReachability verifies every nested dotted path
+// declared by AC-WSE-001 exists on the WorkflowConfig type (REQ-WSE-001).
+func TestWorkflowConfigNestedFieldReachability(t *testing.T) {
+	t.Parallel()
+
+	type pathCheck struct {
+		typ  reflect.Type
+		path []string // nested field names
+	}
+	wfType := reflect.TypeOf(WorkflowConfig{})
+	checks := []pathCheck{
+		{wfType, []string{"AutoClear", "Enabled"}},
+		{wfType, []string{"AutoClear", "AfterPlan"}},
+		{wfType, []string{"AutoClear", "AfterRun"}},
+		{wfType, []string{"AutoClear", "TokenThreshold"}},
+		{wfType, []string{"Completion", "DetectInOutput"}},
+		{wfType, []string{"Completion", "Markers", "Complete"}},
+		{wfType, []string{"Completion", "Markers", "Done"}},
+		{wfType, []string{"DefaultMode"}},
+		{wfType, []string{"ExecutionMode"}},
+		{wfType, []string{"LoopPrevention", "FailurePatternDetection"}},
+		{wfType, []string{"LoopPrevention", "MaxIterations"}},
+		{wfType, []string{"LoopPrevention", "MaxRetriesPerOperation"}},
+		{wfType, []string{"Memory", "AuditEnabled"}},
+		{wfType, []string{"Memory", "IndexLineCap"}},
+		{wfType, []string{"Memory", "StaleAggregateThreshold"}},
+		{wfType, []string{"Memory", "StalenessThresholdHours"}},
+		{wfType, []string{"TokenBudget", "Plan"}},
+		{wfType, []string{"TokenBudget", "Run"}},
+		{wfType, []string{"TokenBudget", "Sync"}},
+		{wfType, []string{"Worktree", "AutoCleanup"}},
+		{wfType, []string{"Worktree", "AutoCreate"}},
+		{wfType, []string{"Worktree", "AutoMerge"}},
+		{wfType, []string{"Worktree", "SessionNamePattern"}},
+		{wfType, []string{"Worktree", "TmuxPreferred"}},
+	}
+	for _, c := range checks {
+		cur := c.typ
+		full := strings.Join(c.path, ".")
+		for _, name := range c.path {
+			f, ok := cur.FieldByName(name)
+			if !ok {
+				t.Errorf("path %q: field %q not found on %s", full, name, cur)
+				break
+			}
+			cur = f.Type
+		}
+	}
+}
+
+// TestTeamConfigStructShape asserts TeamConfig and RoleProfileEntry have exactly
+// the expected exported field sets and that Patterns is absent (REQ-WSE-002,
+// EXCL-WSE-004).
+func TestTeamConfigStructShape(t *testing.T) {
+	t.Parallel()
+
+	wantTeamFields := map[string]bool{
+		"AutoSelection":       true,
+		"Enabled":             true,
+		"MaxTeammates":        true,
+		"DefaultModel":        true,
+		"DelegateMode":        true,
+		"RequirePlanApproval": true,
+		"RoleProfileKeys":     true,
+		"RoleProfiles":        true,
+	}
+	gotTeamFields := map[string]bool{}
+	for _, f := range reflect.VisibleFields(reflect.TypeOf(TeamConfig{})) {
+		gotTeamFields[f.Name] = true
+	}
+	if gotTeamFields["Patterns"] {
+		t.Error("TeamConfig must NOT contain a Patterns field (EXCL-WSE-004)")
+	}
+	for name := range wantTeamFields {
+		if !gotTeamFields[name] {
+			t.Errorf("TeamConfig missing expected field %q", name)
+		}
+	}
+	for name := range gotTeamFields {
+		if !wantTeamFields[name] {
+			t.Errorf("TeamConfig has unexpected field %q", name)
+		}
+	}
+
+	wantEntryFields := map[string]bool{
+		"Description": true,
+		"Isolation":   true,
+		"Mode":        true,
+		"Model":       true,
+	}
+	gotEntryFields := map[string]bool{}
+	for _, f := range reflect.VisibleFields(reflect.TypeOf(RoleProfileEntry{})) {
+		gotEntryFields[f.Name] = true
+	}
+	for name := range wantEntryFields {
+		if !gotEntryFields[name] {
+			t.Errorf("RoleProfileEntry missing expected field %q", name)
+		}
+	}
+	for name := range gotEntryFields {
+		if !wantEntryFields[name] {
+			t.Errorf("RoleProfileEntry has unexpected field %q", name)
+		}
+	}
+}
+
+// TestWorkflowConfigLegacyFieldsRenamed verifies the FLAT-field rename +
+// deprecation pattern (REQ-WSE-004): AutoClearLegacy / AutoSelectionLegacy exist
+// with the correct types, and the legacy scalar AutoClear bool no longer exists.
+func TestWorkflowConfigLegacyFieldsRenamed(t *testing.T) {
+	t.Parallel()
+
+	wfType := reflect.TypeOf(WorkflowConfig{})
+
+	acl, ok := wfType.FieldByName("AutoClearLegacy")
+	if !ok {
+		t.Fatal("AutoClearLegacy field missing")
+	}
+	if acl.Type.Kind() != reflect.Bool {
+		t.Errorf("AutoClearLegacy: got kind %s, want bool", acl.Type.Kind())
+	}
+	if tag := acl.Tag.Get("yaml"); tag != "-" {
+		t.Errorf("AutoClearLegacy yaml tag: got %q, want %q", tag, "-")
+	}
+
+	asl, ok := wfType.FieldByName("AutoSelectionLegacy")
+	if !ok {
+		t.Fatal("AutoSelectionLegacy field missing")
+	}
+	if asl.Type != reflect.TypeOf(TeamAutoSelectionConfig{}) {
+		t.Errorf("AutoSelectionLegacy: got type %s, want TeamAutoSelectionConfig", asl.Type)
+	}
+
+	// AutoClear is now a nested struct, NOT a bool.
+	ac, ok := wfType.FieldByName("AutoClear")
+	if !ok {
+		t.Fatal("AutoClear (nested) field missing")
+	}
+	if ac.Type.Kind() == reflect.Bool {
+		t.Error("AutoClear must no longer be a bool (renamed to AutoClearLegacy)")
+	}
+
+	// The deprecated token fields retain their identifiers with yaml:"-".
+	for _, name := range []string{"PlanTokens", "RunTokens", "SyncTokens"} {
+		f, ok := wfType.FieldByName(name)
+		if !ok {
+			t.Errorf("%s field missing", name)
+			continue
+		}
+		if tag := f.Tag.Get("yaml"); tag != "-" {
+			t.Errorf("%s yaml tag: got %q, want %q", name, tag, "-")
+		}
+	}
+}
+
+// TestWorkflowAccessorMethods verifies the Option (c) accessors return the
+// nested values (REQ-WSE-005).
+func TestWorkflowAccessorMethods(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		setup  func(c *Config)
+		assert func(t *testing.T, c *Config)
+	}{
+		{
+			name: "AutoClearEnabled",
+			setup: func(c *Config) {
+				c.Workflow.AutoClear.Enabled = true
+			},
+			assert: func(t *testing.T, c *Config) {
+				if got := c.WorkflowAutoClearEnabled(); got != true {
+					t.Errorf("WorkflowAutoClearEnabled(): got %v, want true", got)
+				}
+			},
+		},
+		{
+			name: "PlanTokens",
+			setup: func(c *Config) {
+				c.Workflow.TokenBudget.Plan = 12345
+			},
+			assert: func(t *testing.T, c *Config) {
+				if got := c.WorkflowPlanTokens(); got != 12345 {
+					t.Errorf("WorkflowPlanTokens(): got %d, want 12345", got)
+				}
+			},
+		},
+		{
+			name: "RunTokens",
+			setup: func(c *Config) {
+				c.Workflow.TokenBudget.Run = 67890
+			},
+			assert: func(t *testing.T, c *Config) {
+				if got := c.WorkflowRunTokens(); got != 67890 {
+					t.Errorf("WorkflowRunTokens(): got %d, want 67890", got)
+				}
+			},
+		},
+		{
+			name: "SyncTokens",
+			setup: func(c *Config) {
+				c.Workflow.TokenBudget.Sync = 24680
+			},
+			assert: func(t *testing.T, c *Config) {
+				if got := c.WorkflowSyncTokens(); got != 24680 {
+					t.Errorf("WorkflowSyncTokens(): got %d, want 24680", got)
+				}
+			},
+		},
+		{
+			name: "TeamAutoSelection",
+			setup: func(c *Config) {
+				c.Workflow.Team.AutoSelection = TeamAutoSelectionConfig{
+					MinDomainsForTeam:  4,
+					MinFilesForTeam:    11,
+					MinComplexityScore: 8,
+				}
+			},
+			assert: func(t *testing.T, c *Config) {
+				got := c.WorkflowTeamAutoSelection()
+				want := TeamAutoSelectionConfig{MinDomainsForTeam: 4, MinFilesForTeam: 11, MinComplexityScore: 8}
+				if got != want {
+					t.Errorf("WorkflowTeamAutoSelection(): got %+v, want %+v", got, want)
+				}
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := &Config{}
+			tt.setup(c)
+			tt.assert(t, c)
+		})
 	}
 }
 

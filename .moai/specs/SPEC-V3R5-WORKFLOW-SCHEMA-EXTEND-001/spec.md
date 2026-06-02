@@ -2,9 +2,9 @@
 id: SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001
 title: "workflow.yaml nested keys (completion/loop_prevention/memory/default_mode/execution_mode/team.*) Go struct 정합 (v2 audit applied)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-05-22
-updated: 2026-06-02
+updated: 2026-06-03
 author: manager-spec
 priority: P1
 phase: "v3.0.0 — Round 5"
