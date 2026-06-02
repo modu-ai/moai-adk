@@ -3,7 +3,7 @@ id: SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001
 artifact: acceptance.md
 version: "0.1.0"
 created: 2026-05-22
-updated: 2026-05-22
+updated: 2026-06-02
 ---
 
 # Acceptance Criteria — SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001
@@ -101,7 +101,7 @@ Expected output: `PASS`. The test uses `reflect.VisibleFields(reflect.TypeOf(Tea
 
 ## AC-WSE-003 — yaml.Unmarshal correctness (REQ-WSE-003)
 
-**Given** the production `internal/template/templates/.moai/config/sections/workflow.yaml.tmpl` rendered with default template values (or `.moai/config/sections/workflow.yaml` from the local project as proxy)
+**Given** the production `internal/template/templates/.moai/config/sections/workflow.yaml` template SSOT (or `.moai/config/sections/workflow.yaml` from the local project as proxy)
 **When** the yaml content is loaded via the standard `config.LoadAll(projectRoot)` path
 **Then** the resulting `*Config` value SHALL satisfy:
 - `cfg.Workflow.Team.RoleProfiles["implementer"].Isolation == "worktree"`
@@ -234,7 +234,7 @@ Expected output: `PASS` from test + first 2 greps return zero + 3rd grep finds m
 - `cfg.TokenBudget.Sync == 40000`
 - `cfg.Team.Enabled == true`
 - `cfg.Team.MaxTeammates == 10`
-- `cfg.Team.DefaultModel == "opus[1m]"`
+- `cfg.Team.DefaultModel == "sonnet"`
 - `cfg.Team.DelegateMode == true`
 - `cfg.Team.RequirePlanApproval == true`
 - `cfg.Team.AutoSelection.MinDomainsForTeam == 3`
@@ -247,7 +247,7 @@ Expected output: `PASS` from test + first 2 greps return zero + 3rd grep finds m
 - `cfg.Team.RoleProfiles["implementer"].Model == "sonnet"`
 - `cfg.Team.RoleProfiles["researcher"].Model == "haiku"`
 - `cfg.Worktree.AutoCleanup == true`
-- `cfg.Worktree.AutoCreate == true`
+- `cfg.Worktree.AutoCreate == false`
 - `cfg.Worktree.AutoMerge == true`
 - `cfg.Worktree.SessionNamePattern == "moai-{ProjectName}-{SPEC-ID}"`
 - `cfg.Worktree.TmuxPreferred == true`
@@ -258,7 +258,7 @@ go test -run TestNewDefaultWorkflowConfigNestedDefaults -v ./internal/config/...
 ```
 Expected output: `PASS` with all 36 assertions in the table-driven test passing.
 
-**Outcome**: PASS = all defaults match `workflow.yaml.tmpl`; FAIL = any default mismatch (signals template drift).
+**Outcome**: PASS = all defaults match `workflow.yaml` (template SSOT); FAIL = any default mismatch (signals template drift).
 
 ---
 
@@ -267,7 +267,7 @@ Expected output: `PASS` with all 36 assertions in the table-driven test passing.
 **Given** the updated `internal/config/audit_loader_completeness_test.go`
 **When** the file is inspected and the test is executed
 **Then**:
-- `grep -n "\"workflow\"" internal/config/audit_loader_completeness_test.go` SHALL match zero lines containing `"workflow"` inside the `acknowledgedUnloadedSections` slice (the entry at the pre-migration line 28 is REMOVED).
+- `grep -n "\"workflow\"" internal/config/audit_loader_completeness_test.go` SHALL match zero lines containing `"workflow"` inside the `acknowledgedUnloadedSections` slice (the entry at the pre-migration line 27 is REMOVED).
 - The `TestAuditLoaderCompleteness` test SHALL PASS with the workflow section now counted under `loaded` (via `Loader.Load()` Config.Workflow field populated by yaml.Unmarshal — i.e., workflow has a covering loader because Config.Workflow is populated as part of the main config load).
 
 **Verification commands**:

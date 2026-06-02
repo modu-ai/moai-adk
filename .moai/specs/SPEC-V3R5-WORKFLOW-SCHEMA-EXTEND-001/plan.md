@@ -3,7 +3,7 @@ id: SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001
 artifact: plan.md
 version: "0.1.0"
 created: 2026-05-22
-updated: 2026-05-22
+updated: 2026-06-02
 ---
 
 # Implementation Plan — SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001
@@ -229,9 +229,9 @@ func validateRoleProfiles(cfg *config.Config) []WorkflowLintViolation {
   - Populate `Completion CompletionConfig{DetectInOutput: true, Markers: MarkersConfig{Done: "<moai>DONE</moai>", Complete: "<moai>COMPLETE</moai>"}}`.
   - `LoopPrevention LoopPreventionConfig{FailurePatternDetection: true, MaxIterations: 100, MaxRetriesPerOperation: 3}`.
   - `Memory MemoryConfig{AuditEnabled: true, IndexLineCap: 200, StaleAggregateThreshold: 10, StalenessThresholdHours: 24}`.
-  - `Team TeamConfig{...}` with 7-key `RoleProfiles` map matching `workflow.yaml.tmpl` exactly.
+  - `Team TeamConfig{Enabled: true, MaxTeammates: 10, DefaultModel: "sonnet", DelegateMode: true, RequirePlanApproval: true, AutoSelection: TeamAutoSelectionConfig{MinDomainsForTeam: 3, MinFilesForTeam: 10, MinComplexityScore: 7}, RoleProfileKeys: []string{"implementer", "tester", "reviewer"}, RoleProfiles: <7-key map>}` matching `workflow.yaml` (template SSOT) exactly. `DefaultModel` is `"sonnet"` per the template SSOT (NOT `"opus[1m]"`, which is this project's production override).
   - `TokenBudget TokenBudgetConfig{Plan: 30000, Run: 180000, Sync: 40000}`.
-  - `Worktree WorkflowWorktreeConfig{AutoCleanup: true, AutoCreate: true, AutoMerge: true, SessionNamePattern: "moai-{ProjectName}-{SPEC-ID}", TmuxPreferred: true}`.
+  - `Worktree WorkflowWorktreeConfig{AutoCleanup: true, AutoCreate: false, AutoMerge: true, SessionNamePattern: "moai-{ProjectName}-{SPEC-ID}", TmuxPreferred: true}` (AutoCreate: false per template SSOT 2026-05-22 worktree-autonomous user policy).
   - Legacy FLAT fields set to zero-values (deprecated, unused).
 - Add accessor methods (REQ-WSE-005) on `*Config` to `internal/config/manager.go` or new file `internal/config/workflow_accessors.go`.
 - Update `internal/config/defaults_test.go` `TestNewDefaultWorkflowConfig` to assert all 36 default values per AC-WSE-007.
@@ -244,7 +244,7 @@ func validateRoleProfiles(cfg *config.Config) []WorkflowLintViolation {
 
 **Deliverables**:
 - New file `internal/config/workflow_nested_test.go`:
-  - `TestWorkflowYAMLUnmarshalProductionFixture` — loads the embedded `workflow.yaml.tmpl` (rendered with default `TemplateContext`) or alternatively the in-tree `.moai/config/sections/workflow.yaml`, calls `LoadAll`, asserts all 20 values per AC-WSE-003.
+  - `TestWorkflowYAMLUnmarshalProductionFixture` — loads the embedded template SSOT `internal/template/templates/.moai/config/sections/workflow.yaml` or alternatively the in-tree `.moai/config/sections/workflow.yaml`, calls `LoadAll`, asserts all 20 values per AC-WSE-003.
   - `TestWorkflowYAMLUnmarshal_OmittedTokenBudget_PreservesDefaults` (Edge-WSE-003).
   - `TestWorkflowYAMLUnmarshal_LegacyFlatYamlTypeMismatch_BehaviorDocumented` (Edge-WSE-004).
   - `TestWorkflowConfigInconsistentRoleProfileKeys` (Edge-WSE-002) — observation-only, no error raised.
@@ -278,7 +278,7 @@ func validateRoleProfiles(cfg *config.Config) []WorkflowLintViolation {
 
 **Deliverables**:
 - `internal/config/audit_loader_completeness_test.go`:
-  - Remove `"workflow",` line (currently line 28) and its comment from `acknowledgedUnloadedSections`.
+  - Remove `"workflow",` line (currently line 27) and its comment from `acknowledgedUnloadedSections`.
 - `internal/config/audit_registry.go`:
   - Update comment on line 34 from `"workflow": "WorkflowConfig",` to reference the now-complete nested struct binding (optional — yaml binding correctness is the contract, comment is informational).
 
@@ -312,7 +312,7 @@ func validateRoleProfiles(cfg *config.Config) []WorkflowLintViolation {
 | `internal/cli/team_spawn_test.go` | [EXTEND] | +10 / -2 (Edge-WSE-001 update) | M3+M4 |
 | `internal/cli/workflow_lint.go` | [EXTEND] | +10 / -25 (remove internal types) | M4 |
 | `internal/cli/workflow_lint_test.go` | [EXTEND] | +5 / -3 (type sig fixups) | M4 |
-| `internal/config/audit_loader_completeness_test.go` | [EXTEND] | +0 / -3 (remove line 28 entry + comment) | M5 |
+| `internal/config/audit_loader_completeness_test.go` | [EXTEND] | +0 / -3 (remove line 27 entry + comment) | M5 |
 | `internal/config/audit_registry.go` | [EXTEND] | +1 / -1 (comment update) | M5 |
 
 Estimated total: ~500 LOC affected (≈+520 / -130 net). Fits Tier M (300-1000 LOC, 5-15 files; this SPEC affects 12 files).
@@ -374,7 +374,7 @@ plan(SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001): Tier M LEAN 3-artifact draft (v2 aud
 - plan.md: 5 milestones (M1..M5) / 12 files affected / Option (c) backward-compat
 - v2 audit Steps 1-6 applied per .moai/research/config-audit-2026-05-22.md
 - Owner SPECs: WF-003 (default_mode/execution_mode) + WORKFLOW-OPT-001 (role_profiles)
-- Closes the "workflow" exception entry in audit_loader_completeness_test.go:28
+- Closes the "workflow" exception entry in audit_loader_completeness_test.go:27
 
 🗿 MoAI <email@mo.ai.kr>
 ```

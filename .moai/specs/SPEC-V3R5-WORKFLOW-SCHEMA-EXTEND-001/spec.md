@@ -4,7 +4,7 @@ title: "workflow.yaml nested keys (completion/loop_prevention/memory/default_mod
 version: "0.1.0"
 status: draft
 created: 2026-05-22
-updated: 2026-05-22
+updated: 2026-06-02
 author: manager-spec
 priority: P1
 phase: "v3.0.0 — Round 5"
@@ -28,7 +28,7 @@ tier: M
 
 ### 1.1 Mission Statement
 
-`.moai/config/sections/workflow.yaml`는 200+ lines 의 풍부한 nested 구조 (`auto_clear` / `completion` / `default_mode` / `execution_mode` / `loop_prevention` / `memory` / `team.{auto_selection, role_profile_keys, role_profiles, patterns, ...}` / `token_budget` / `worktree`) 이지만, `internal/config/types.go:152-159` 의 `WorkflowConfig` struct 는 **FLAT 5필드**만 정의되어 있으며 그 중 4개 (`AutoClear bool`, `PlanTokens/RunTokens/SyncTokens int`, `AutoSelection TeamAutoSelectionConfig`) 가 **잘못된 yaml 경로에 매핑**되어 있다:
+`.moai/config/sections/workflow.yaml`는 200+ lines 의 풍부한 nested 구조 (`auto_clear` / `completion` / `default_mode` / `execution_mode` / `loop_prevention` / `memory` / `team.{auto_selection, role_profile_keys, role_profiles, patterns, ...}` / `token_budget` / `worktree`) 이지만, `internal/config/types.go:300-306` 의 `WorkflowConfig` struct 는 **FLAT 5필드**만 정의되어 있으며 그 중 4개 (`AutoClear bool`, `PlanTokens/RunTokens/SyncTokens int`, `AutoSelection TeamAutoSelectionConfig`) 가 **잘못된 yaml 경로에 매핑**되어 있다:
 
 - `WorkflowConfig.AutoClear bool yaml:"auto_clear"` ← yaml은 `auto_clear: {enabled, after_plan, after_run, token_threshold}` nested struct (scalar bool 매핑 실패)
 - `WorkflowConfig.PlanTokens/RunTokens/SyncTokens int yaml:"plan_tokens"` 등 ← yaml은 `token_budget.{plan, run, sync}` (path mismatch)
@@ -36,7 +36,7 @@ tier: M
 
 결과적으로 yaml의 ~30개 nested keys가 `yaml.Unmarshal`로 Go struct에 unmarshal 되지 않으며, `internal/cli/team_spawn.go:412-490` (`LoadRoleProfiles`)와 `internal/cli/workflow_lint.go:42-56` (`workflowConfig` 내부 type) 가 **ad-hoc 별도 parser**로 우회하고 있다.
 
-또한 `internal/config/audit_loader_completeness_test.go:28` 는 `"workflow"` 를 `acknowledgedUnloadedSections` 에 등록하며 코멘트 `"out-of-scope: role_profiles subset loaded; full unification deferred (spec.md §1.2)"` 를 명시한다. 즉, 본 SPEC이 해결할 "full unification deferred" 의 owner SPEC 이 된다.
+또한 `internal/config/audit_loader_completeness_test.go:27` 는 `"workflow"` 를 `acknowledgedUnloadedSections` 에 등록하며 코멘트 `"out-of-scope: role_profiles subset loaded; full unification deferred (spec.md §1.2)"` 를 명시한다. 즉, 본 SPEC이 해결할 "full unification deferred" 의 owner SPEC 이 된다.
 
 본 SPEC은 v2 audit (Step 1-6, 2026-05-22) 결과를 근거로:
 1. workflow.yaml nested keys ~30개의 **disposition (live wire-through / forward-compat scaffold / WontDo documentation-only / dead)** 를 명문화한다.
@@ -89,7 +89,7 @@ grep -rln "workflow.auto_clear\|workflow.completion\|workflow.loop_prevention\|w
 | SPEC-V3R2-WF-003 | completed | **No** | `default_mode`/`execution_mode` 는 skill-body 가 consumer; Go struct 필드 추가는 forward-compat scaffold |
 | SPEC-V3R5-WORKFLOW-OPT-001 | implemented | **No** | `role_profiles` 7-key 계약은 본 SPEC이 Go에 wire-through하면 강화됨 (regression NOT — AC-WO-009 검증이 새 struct 기반으로 가능) |
 | SPEC-CONFIG-001 | completed | **No** | Original FLAT design 보존 (Option (c) accessor 패턴, P2 SPEC 와 동일) |
-| SPEC-V3R2-RT-005 | implemented | **No** | `audit_loader_completeness_test.go:28` exception 제거가 본 SPEC의 완료 신호 |
+| SPEC-V3R2-RT-005 | implemented | **No** | `audit_loader_completeness_test.go:27` exception 제거가 본 SPEC의 완료 신호 |
 
 **No owner SPEC is `status: in-progress`. No blocker.** Proceeding.
 
@@ -136,7 +136,7 @@ SPEC-CONFIG-001 (completed, FLAT struct historical record)
 SPEC-V3R2-RT-005 (implemented)
         │
         └── audit_registry.go yaml↔struct parity tracking
-                └── audit_loader_completeness_test.go line 28:
+                └── audit_loader_completeness_test.go line 27:
                     "workflow — out-of-scope: role_profiles subset loaded; full unification deferred (spec.md §1.2)"
                     (this SPEC's CLOSURE TARGET — remove the exception when REQs satisfied)
 ```
@@ -194,12 +194,12 @@ P2 SPEC `SPEC-V3R5-GIT-STRATEGY-SCHEMA-001` 와 동일 패턴 (Option (c) access
 | Marker | 파일 | 분류 | 근거 |
 |--------|------|------|------|
 | [EXTEND] | `internal/config/types.go` | EXTEND | `WorkflowConfig` struct 확장 + 신규 sub-structs (`AutoClearConfig`, `CompletionConfig`, `MarkersConfig`, `LoopPreventionConfig`, `MemoryConfig`, `TeamConfig`, `RoleProfileEntry`, `TokenBudgetConfig`, `WorkflowWorktreeConfig`). FLAT 5필드 deprecated 보존 (1건 rename: `AutoClear bool` → `AutoClearLegacy bool` + `AutoSelection` → `AutoSelectionLegacy`). |
-| [EXTEND] | `internal/config/defaults.go` | EXTEND | `NewDefaultWorkflowConfig()` 갱신 — 신규 nested 필드 default 값 populated (`workflow.yaml.tmpl` template defaults 정확 미러: AutoClear.Enabled=true, TokenBudget.{Plan=30000,Run=180000,Sync=40000}, Team.AutoSelection.{MinDomainsForTeam=3, MinFilesForTeam=10, MinComplexityScore=7}, Team.RoleProfiles 7-key map populated, etc.). |
+| [EXTEND] | `internal/config/defaults.go` | EXTEND | `NewDefaultWorkflowConfig()` 갱신 — 신규 nested 필드 default 값 populated (`workflow.yaml` template SSOT defaults 정확 미러: AutoClear.Enabled=true, TokenBudget.{Plan=30000,Run=180000,Sync=40000}, Team.DefaultModel="sonnet", Team.AutoSelection.{MinDomainsForTeam=3, MinFilesForTeam=10, MinComplexityScore=7}, Team.RoleProfiles 7-key map populated, Worktree.AutoCreate=false, etc.). |
 | [EXTEND] | `internal/config/manager.go` | EXTEND | getSectionLocked / setSectionLocked 의 "workflow" case 는 변경 없음 (struct value semantic 유지). |
 | [EXTEND] | `internal/cli/team_spawn.go` | EXTEND | `LoadRoleProfiles` 함수가 `cfg.Workflow.Team.RoleProfiles` map 기반으로 마이그레이션 (lines 412-490 의 ad-hoc string parsing 제거). `WriteHeavyRoles` 결정 로직 보존. |
 | [EXTEND] | `internal/cli/workflow_lint.go` | EXTEND | internal `workflowConfig` type 을 `config.WorkflowConfig` 사용으로 변경 (lines 42-56 의 별도 type 정의 제거). validateRoleProfiles 는 새 type 시그니처로 갱신. |
 | [EXTEND] | `internal/config/audit_registry.go` | EXTEND | comment 갱신 — workflow 매핑이 nested struct 로 완전 정합 표기. |
-| [EXTEND] | `internal/config/audit_loader_completeness_test.go` | EXTEND | line 28 `"workflow"` 항목을 `acknowledgedUnloadedSections` 에서 **제거** (REQ-WSE-008 만족 신호). |
+| [EXTEND] | `internal/config/audit_loader_completeness_test.go` | EXTEND | line 27 `"workflow"` 항목을 `acknowledgedUnloadedSections` 에서 **제거** (REQ-WSE-008 만족 신호). |
 | [NEW]    | `internal/config/workflow_nested_test.go` | NEW | nested yaml fixture (auto_clear, completion, loop_prevention, memory, team.{auto_selection, role_profile_keys, role_profiles, patterns 제외}, token_budget, worktree 완전 populated) → `yaml.Unmarshal` → assert all nested 필드 present. RoundTrip + accessor 검증. |
 | [EXTEND] | `internal/config/types_test.go` | EXTEND | 기존 FLAT 테스트 보존 (backward-compat 검증) + 신규 nested 테스트 추가 + accessor 동작 검증 (FLAT-via-nested). |
 | [EXTEND] | `internal/config/defaults_test.go` | EXTEND | `TestNewDefaultWorkflowConfig` 확장 — 신규 nested 필드 defaults assertion (Team.RoleProfiles 7-key map count + Team.AutoSelection thresholds 등). |
@@ -220,9 +220,9 @@ P2 SPEC `SPEC-V3R5-GIT-STRATEGY-SCHEMA-001` 와 동일 패턴 (Option (c) access
 
 **REQ-WSE-006** (Ubiquitous, **must-pass**): The system shall migrate `internal/cli/team_spawn.go` `LoadRoleProfiles(workflowPath string)` function such that the resulting `map[string]RoleProfile` is derived from `config.LoadAll().Workflow.Team.RoleProfiles` via the standard config loader path, eliminating the manual line-by-line yaml string parsing block (current lines 412-490). The function signature shall remain unchanged for backward compatibility (callers continue to pass a `workflowPath`). The `WriteHeavyRoles` determination logic shall be preserved verbatim.
 
-**REQ-WSE-007** (Ubiquitous): WHEN `NewDefaultWorkflowConfig()` is called, THEN the returned value SHALL contain populated nested defaults exactly matching `workflow.yaml.tmpl` template defaults: `AutoClear.Enabled == true`, `AutoClear.AfterPlan == true`, `AutoClear.TokenThreshold == 150000`, `Completion.DetectInOutput == true`, `Completion.Markers.Done == "<moai>DONE</moai>"`, `Completion.Markers.Complete == "<moai>COMPLETE</moai>"`, `LoopPrevention.MaxIterations == 100`, `LoopPrevention.MaxRetriesPerOperation == 3`, `Memory.IndexLineCap == 200`, `TokenBudget.Plan == 30000`, `TokenBudget.Run == 180000`, `TokenBudget.Sync == 40000`, `Team.AutoSelection.MinDomainsForTeam == 3`, `Team.RoleProfiles` contains exactly 7 keys (analyst, architect, designer, implementer, researcher, reviewer, tester) per AC-WO-009.
+**REQ-WSE-007** (Ubiquitous): WHEN `NewDefaultWorkflowConfig()` is called, THEN the returned value SHALL contain populated nested defaults exactly matching the `workflow.yaml` template SSOT defaults: `AutoClear.Enabled == true`, `AutoClear.AfterPlan == true`, `AutoClear.TokenThreshold == 150000`, `Completion.DetectInOutput == true`, `Completion.Markers.Done == "<moai>DONE</moai>"`, `Completion.Markers.Complete == "<moai>COMPLETE</moai>"`, `LoopPrevention.MaxIterations == 100`, `LoopPrevention.MaxRetriesPerOperation == 3`, `Memory.IndexLineCap == 200`, `TokenBudget.Plan == 30000`, `TokenBudget.Run == 180000`, `TokenBudget.Sync == 40000`, `Team.DefaultModel == "sonnet"`, `Team.AutoSelection.MinDomainsForTeam == 3`, `Worktree.AutoCreate == false`, `Team.RoleProfiles` contains exactly 7 keys (analyst, architect, designer, implementer, researcher, reviewer, tester) per AC-WO-009.
 
-**REQ-WSE-008** (Ubiquitous, **must-pass**): The system shall remove the `"workflow"` entry from `acknowledgedUnloadedSections` in `internal/config/audit_loader_completeness_test.go` (currently at line 28 with comment `"out-of-scope: role_profiles subset loaded; full unification deferred (spec.md §1.2)"`). The removal shall occur only after REQ-WSE-001 through REQ-WSE-007 are satisfied, signaling that workflow.yaml has a complete loader path via `Loader.Load()` Config.Workflow field.
+**REQ-WSE-008** (Ubiquitous, **must-pass**): The system shall remove the `"workflow"` entry from `acknowledgedUnloadedSections` in `internal/config/audit_loader_completeness_test.go` (currently at line 27 with comment `"out-of-scope: role_profiles subset loaded; full unification deferred (spec.md §1.2)"`). The removal shall occur only after REQ-WSE-001 through REQ-WSE-007 are satisfied, signaling that workflow.yaml has a complete loader path via `Loader.Load()` Config.Workflow field.
 
 ---
 
@@ -286,8 +286,8 @@ P2 SPEC `SPEC-V3R5-GIT-STRATEGY-SCHEMA-001` 와 동일 패턴 (Option (c) access
 - **SPEC-V3R2-RT-005** (implemented): yaml↔struct parity audit registry — establishes the audit framework this SPEC extends.
 - **SPEC-V3R5-GIT-STRATEGY-SCHEMA-001** (draft, P2): Sibling SPEC using identical Tier M LEAN pattern and Option (c) backward-compat strategy.
 - **Production yaml**: `.moai/config/sections/workflow.yaml` (current nested structure 200+ lines).
-- **Template SSOT**: `internal/template/templates/.moai/config/sections/workflow.yaml.tmpl` (mirrored).
-- **Audit completeness test**: `internal/config/audit_loader_completeness_test.go:28` (current exception entry — REQ-WSE-008 removal target).
+- **Template SSOT**: `internal/template/templates/.moai/config/sections/workflow.yaml` (default-value oracle for `NewDefaultWorkflowConfig()`; note: plain `.yaml`, there is no `.tmpl` variant).
+- **Audit completeness test**: `internal/config/audit_loader_completeness_test.go:27` (current exception entry — REQ-WSE-008 removal target).
 - **Ad-hoc parsers (migration targets)**: `internal/cli/team_spawn.go:409-490` `LoadRoleProfiles`; `internal/cli/workflow_lint.go:42-56` `workflowConfig` internal type.
 
 ---
