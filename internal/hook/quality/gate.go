@@ -238,7 +238,7 @@ func NewQualityGate(cfg *GateConfig) *QualityGate {
 }
 
 // @MX:ANCHOR: [AUTO] Quality gate executor; primary entry point called by multiple hook handlers before git operations
-// @MX:REASON: fan_in=35, invoked by PreCommit, SubagentStop, and TeammateIdle handlers; returns block/pass decision that controls git flow
+// @MX:REASON: fan_in=35, invoked by SubagentStop and TeammateIdle handlers; returns block/pass decision that controls git flow
 // Run executes quality gate checks sequentially.
 // Returns (passed bool, output string) where output contains error details on failure.
 // When gate is disabled (config.Enabled == false), returns (true, "") immediately.
