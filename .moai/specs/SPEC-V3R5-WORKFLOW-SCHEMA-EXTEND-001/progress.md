@@ -67,3 +67,11 @@ before any edits. Implementation tracked against a clean origin/main baseline.
 | M5 — Audit registry cleanup | REQ-WSE-008 | `audit_loader_completeness_test.go`: "workflow" removed from acknowledgedUnloadedSections; `audit_registry.go`: comment updated | `TestAuditLoaderCompleteness` PASS (workflow now counted as loaded); exception grep = 0 |
 
 (Detailed E1-E7 self-verification matrix returned to orchestrator in the run-phase report.)
+
+## §E.2 Sync-phase Audit-Ready Signal
+
+sync_commit_sha:
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+mx_commit_sha:
