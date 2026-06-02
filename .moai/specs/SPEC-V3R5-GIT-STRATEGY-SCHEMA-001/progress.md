@@ -110,3 +110,16 @@ Coding-heavy single-package (`internal/config`) brownfield refactor with a hard 
 - new_warnings_or_lints_introduced: 0
 - m0_to_m5_commit_strategy: 5 milestone commits (M0 83caed674, M1 e8b57f36e, M3 13dbcae48, M4 ec6398b8b, M5 this commit); M2 accessor folded into M0 (same file)
 - preserve_list_post_run: docs-site dirty files untouched (in shared checkout; not present in isolated L1 worktree)
+
+## §E.2 Sync-phase Audit-Ready Signal
+
+sync_commit_sha: (this sync commit — backfilled by moai spec close)
+sync_deliverables:
+- spec.md frontmatter transition: status `in-progress → implemented` + `updated:` field refresh (2026-06-03) + `version: "0.1.0" → "0.2.0"`
+- CHANGELOG.md entry: [Unreleased] section, nested GitStrategyConfig schema alignment entry (9/9 AC PASS, 5 milestone commits, 7 files affected)
+- README.md: no update required (internal config struct — zero user-facing surface)
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+mx_commit_sha: (pending — backfilled by moai spec close)
+mx_determination: SKIP-eligible candidate per SPEC-V3R6-LIFECYCLE-SYNC-GATE-001 MX-Step-C guideline — 5 implementation commits (M0-M5) contain pure struct hierarchy + test additions (declarative, zero goroutines, no fan_in ≥3 functions, no conditional routing per-entity). EVALUATE-PASS verdict by orchestrator judgment; optional Mx pass-through not mandatory. Final MX tag annotation performed via separate `/moai mx` utility if high-context-value tags are identified in post-run review.
