@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -13,10 +14,10 @@ import (
 
 // DriftRecord represents a single SPEC status drift entry
 type DriftRecord struct {
-	SPECID           string
+	SPECID            string
 	FrontmatterStatus string
 	GitImpliedStatus  string
-	Drifted          bool
+	Drifted           bool
 }
 
 // DriftReport represents a complete drift detection report
@@ -70,10 +71,10 @@ func DetectDrift(baseDir string) (*DriftReport, error) {
 		drifted := frontmatterStatus != gitStatus
 
 		record := DriftRecord{
-			SPECID:           specID,
+			SPECID:            specID,
 			FrontmatterStatus: frontmatterStatus,
 			GitImpliedStatus:  gitStatus,
-			Drifted:          drifted,
+			Drifted:           drifted,
 		}
 
 		records = append(records, record)
@@ -210,16 +211,51 @@ func commitMatchesSPECID(commitTitle, specID string) bool {
 // Skip-pattern commits represent metadata maintenance work that must be excluded from
 // lifecycle status inference (frontmatter sweeps, lint.skip registration, etc.).
 //
-// v2.20.0-rc1 skip patterns: only chore(spec): and chore(specs):
-// Adding future patterns requires a separate SPEC plus the plan.md §7 OQ2 externalization decision.
+// 두 가지 skip 분류:
+//  1. metadata-sweep chore: chore(spec): / chore(specs): (LSCSK-001, AC-LSCSK-003 보존)
+//  2. SPEC-ID-scoped backfill chore: chore(SPEC-XXX-NNN): ...backfill... — 단,
+//     close-infix(4-phase close / Mx-phase audit-ready)를 포함하지 않을 때만 skip.
+//     newest-first walker가 backfill chore를 건너뛰고 그 아래의 진짜 close commit에
+//     도달하도록 한다 (SPEC-V3R6-DRIFT-CONVENTION-ALIGN-001 REQ-DCA-002/003).
 //
-// @MX:NOTE: [AUTO] shouldSkipCommitTitle — chore(spec) sweep commit filter
-// @MX:REASON: core helper for SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001; any change to the skip patterns MUST re-run the AC-LSCSK-003 regression guard
+// D5 guard (REQ-DCA-005 / AP-2): backfill과 close-infix가 결합된 단일 subject는
+// skip하지 않는다 — close-infix가 ClassifyPRTitle에서 이겨 completed로 분류되어야 한다.
+//
+// @MX:NOTE: [AUTO] shouldSkipCommitTitle — metadata-sweep + narrow backfill skip filter
+// @MX:REASON: core helper for SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001 (AC-LSCSK-003 regression guard)
+//
+//   - SPEC-V3R6-DRIFT-CONVENTION-ALIGN-001 narrow backfill-skip; 변경 시 AC-LSCSK-003 + AC-DCA-003/008 재실행 의무.
 func shouldSkipCommitTitle(title string) bool {
 	// Case-insensitive prefix match (plan.md §7 OQ1: strings.HasPrefix + ToLower chosen)
 	lower := strings.ToLower(strings.TrimSpace(title))
-	return strings.HasPrefix(lower, "chore(spec):") ||
-		strings.HasPrefix(lower, "chore(specs):")
+
+	// (1) metadata-sweep chore: chore(spec): / chore(specs): (AC-LSCSK-003 보존)
+	if strings.HasPrefix(lower, "chore(spec):") ||
+		strings.HasPrefix(lower, "chore(specs):") {
+		return true
+	}
+
+	// (2) SPEC-ID-scoped backfill chore: skip하되 close-infix가 있으면 skip 금지 (D5 guard).
+	if isSPECIDScopedChore(lower) &&
+		strings.Contains(lower, "backfill") &&
+		!closeInfixMatch(lower) {
+		return true
+	}
+
+	return false
+}
+
+// specIDScopedChorePattern은 chore(SPEC-XXX-NNN): 형태의 SPEC-ID-scoped chore prefix를
+// 매칭한다 (이미 소문자화된 title 대상). metadata-sweep chore(spec):/chore(specs):와
+// 구분하기 위해 `spec-` 뒤에 토큰이 이어지는지 확인한다.
+//
+// @MX:NOTE: [AUTO] SPEC-ID-scoped chore 식별 — backfill skip을 lifecycle-bearing chore에만 적용.
+// @MX:REASON: chore(spec):/chore(specs): metadata-sweep과 혼동 방지 (REQ-DCA-002).
+var specIDScopedChorePattern = regexp.MustCompile(`^chore\(spec-[a-z0-9-]+-[0-9]+\):`)
+
+// isSPECIDScopedChore는 (소문자) title이 SPEC-ID-scoped chore prefix인지 검사한다.
+func isSPECIDScopedChore(lowerTitle string) bool {
+	return specIDScopedChorePattern.MatchString(lowerTitle)
 }
 
 // DriftCount is a convenience function that returns only the drift count

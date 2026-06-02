@@ -6,11 +6,11 @@ import (
 
 func TestClassifyPRTitle(t *testing.T) {
 	tests := []struct {
-		name          string
-		title         string
-		wantCategory  string
-		wantStatus    string
-		wantErr       bool
+		name         string
+		title        string
+		wantCategory string
+		wantStatus   string
+		wantErr      bool
 	}{
 		{
 			name:         "plan merge - standard format",
@@ -90,26 +90,26 @@ func TestClassifyPRTitle(t *testing.T) {
 func TestPrefixToStatusCompleteness(t *testing.T) {
 	// Verify all canonical enum values are covered
 	canonicalValues := map[string]bool{
-		"draft":        false,
-		"planned":      false,
-		"in-progress":  false,
-		"implemented":  false,
-		"completed":    false,
-		"superseded":   false,
-		"archived":     false,
-		"rejected":     false,
+		"draft":       false,
+		"planned":     false,
+		"in-progress": false,
+		"implemented": false,
+		"completed":   false,
+		"superseded":  false,
+		"archived":    false,
+		"rejected":    false,
 	}
 
 	// Check which values are reachable via ClassifyPRTitle
 	testTitles := []string{
-		"status(draft): SPEC-001",                        // draft
-		"plan(spec): SPEC-001 — draft",                   // planned
-		"chore(SPEC-001): partial work",                  // in-progress
-		"feat(SPEC-001): implement",                      // implemented
-		"docs(sync): SPEC-001 status=completed",          // completed
+		"status(draft): SPEC-001",                           // draft
+		"plan(spec): SPEC-001 — draft",                      // planned
+		"chore(SPEC-001): partial work",                     // in-progress
+		"feat(SPEC-001): implement",                         // implemented
+		"docs(sync): SPEC-001 status=completed",             // completed
 		"status(superseded): SPEC-001 replaced by SPEC-002", // superseded
-		"status(archived): SPEC-001 obsolete",             // archived
-		"status(rejected): SPEC-001 won't fix",           // rejected
+		"status(archived): SPEC-001 obsolete",               // archived
+		"status(rejected): SPEC-001 won't fix",              // rejected
 	}
 
 	for _, title := range testTitles {
@@ -166,6 +166,62 @@ func TestClassifyPRTitle_ChoreSpecUnchanged(t *testing.T) {
 			// The walker handles the skip in shouldSkipCommitTitle, so this behavior is normal.
 			name:         "chore(specs) plural은 generic chore 규칙으로 분류됨 (walker에서 shouldSkipCommitTitle이 처리)",
 			title:        "chore(specs): bulk metadata update",
+			wantCategory: "run-partial",
+			wantStatus:   "in-progress",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			category, status, err := ClassifyPRTitle(tt.title)
+			if err != nil {
+				t.Fatalf("예상치 못한 오류: %v", err)
+			}
+			if category != tt.wantCategory {
+				t.Errorf("category = %q, want %q", category, tt.wantCategory)
+			}
+			if status != tt.wantStatus {
+				t.Errorf("status = %q, want %q", status, tt.wantStatus)
+			}
+		})
+	}
+}
+
+// TestClassifyPRTitle_CloseInfix는 AC-DCA-002 검증 (REQ-DCA-001, REQ-DCA-003).
+// 정규 close convention commit (`chore(SPEC-{ID}): ... 4-phase close` 또는
+// `Mx-phase audit-ready` infix)은 generic `chore` prefix 규칙보다 먼저
+// `completed`로 분류되어야 한다.
+func TestClassifyPRTitle_CloseInfix(t *testing.T) {
+	tests := []struct {
+		name         string
+		title        string
+		wantCategory string
+		wantStatus   string
+	}{
+		{
+			name:         "정규 4-phase close commit은 completed로 분류 (generic chore 아님)",
+			title:        "chore(SPEC-EXAMPLE-001): Mx-phase audit-ready signal + 4-phase close",
+			wantCategory: "mx-close",
+			wantStatus:   "completed",
+		},
+		{
+			name:         "Mx-phase audit-ready infix 단독도 completed",
+			title:        "chore(SPEC-EXAMPLE-001): Mx-phase audit-ready signal",
+			wantCategory: "mx-close",
+			wantStatus:   "completed",
+		},
+		{
+			name:         "4-phase close infix 단독도 completed (대소문자 무관)",
+			title:        "CHORE(SPEC-EXAMPLE-001): 4-Phase Close",
+			wantCategory: "mx-close",
+			wantStatus:   "completed",
+		},
+		{
+			// SHA-backfill chore는 close-infix가 없으므로 close 규칙에 걸리지 않고
+			// generic chore (run-partial, in-progress)로 분류된다. walker는 별도로
+			// shouldSkipCommitTitle에서 이 backfill chore를 skip한다 (AC-DCA-003).
+			name:         "SHA-backfill chore는 close-infix가 없어 generic chore로 분류 (walker가 별도 skip)",
+			title:        "chore(SPEC-EXAMPLE-001): backfill §E.2/§E.5 commit SHA",
 			wantCategory: "run-partial",
 			wantStatus:   "in-progress",
 		},

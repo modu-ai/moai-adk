@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DRIFT-CONVENTION-ALIGN-001
 title: "moai spec drift — canonical close/sync commit convention alignment"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-06-03
 updated: 2026-06-03
 author: manager-spec
