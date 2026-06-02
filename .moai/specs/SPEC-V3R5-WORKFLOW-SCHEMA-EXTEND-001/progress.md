@@ -70,8 +70,8 @@ before any edits. Implementation tracked against a clean origin/main baseline.
 
 ## §E.2 Sync-phase Audit-Ready Signal
 
-sync_commit_sha:
+sync_commit_sha: 0bc09b93b
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-mx_commit_sha: (this commit)
+mx_commit_sha: 7f141a925
