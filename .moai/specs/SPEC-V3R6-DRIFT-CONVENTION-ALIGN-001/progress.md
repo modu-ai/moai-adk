@@ -69,3 +69,18 @@ This is a single-domain, coding-heavy Tier S task confined to one Go package (`i
 - `transitions.go`: added pre-loop close-infix check (`4-phase close` / `mx-phase audit-ready` → `(mx-close, completed)`) + narrow `docs(SPEC-...): ...sync-phase` → `(sync-merge, implemented)` rule (AC-DCA-008 required this — plan.md §M2 escape hatch "unless a failing in-scope fixture requires it"). Generic `docs`→`in-progress` rule left untouched.
 - `drift.go`: extended `shouldSkipCommitTitle` with a narrow SPEC-ID-scoped backfill-skip (skip when SPEC-ID-scoped AND contains `backfill` AND NOT close-infix — D5 guard). `chore(spec):`/`chore(specs):` metadata-sweep skip + LSGF-001 word-boundary preserved verbatim.
 - New positive `completed` signal is the close-infix ONLY (REQ-DCA-005 / AP-2 anti-goal honored — no `completed` inferred for SPECs lacking a close commit).
+
+## §E.2 Sync-phase Audit-Ready Signal
+
+- `sync_commit_sha:` (left EMPTY for backfill by orchestrator's `moai spec close`)
+- Frontmatter transition: `status: in-progress` → `status: implemented` (applied at sync commit)
+- CHANGELOG entry: single line under `## [Unreleased]` → `### Fixed` (AC-LSCSK-003 + no-op status clause per plan.md §A.5)
+- README: no update (Tier S internal/spec, user-facing surface unchanged)
+- docs-site: no update (internal classifier, user docs stable)
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+- `mx_commit_sha:` (left EMPTY for backfill by orchestrator's `moai spec close`)
+- Mx determination: SKIP-eligible — classifier fix is purely declarative Go code (transitions.go + drift.go rewrites), no fan_in≥3 functions, no goroutines, no per-entity cross-module routing → Mx tags not required per MX-tag-protocol.md § Tag Necessity Heuristic
+- Plan-phase commit count: 1 (`de2f1ac40` plan-phase create) + run-phase 2 (`69966e8a9` final commit) = 3 commits total → audit eligible
+- version: append `v0.2.0 (sync-phase, 2026-06-03)` to §A.3 Version list
