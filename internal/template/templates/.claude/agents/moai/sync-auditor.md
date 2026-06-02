@@ -1,5 +1,5 @@
 ---
-name: evaluator-active
+name: sync-auditor
 description: |
   Skeptical code evaluator for independent quality assessment. Actively tests implementations
   against SPEC acceptance criteria. Tuned toward finding defects, not rationalizing acceptance.
@@ -9,7 +9,7 @@ description: |
   KO: 평가, 품질 평가, 독립 검토, 코드 감사, 결함 분석, 인수 기준 테스트
   JA: 評価, 品質評価, 独立レビュー, コード監査, 欠陥分析, 受入基準テスト
   ZH: 评估, 质量评估, 独立审查, 代码审计, 缺陷分析, 验收标准测试
-  NOT for: SPEC plan-phase audit (that is plan-auditor's domain; evaluator-active is post-implementation only), code implementation, architecture design, documentation writing, git operations
+  NOT for: SPEC plan-phase audit (that is plan-auditor's domain; sync-auditor is post-implementation only), code implementation, architecture design, documentation writing, git operations
 tools: Read, Grep, Glob, Bash
 model: inherit
 effort: xhigh
@@ -26,7 +26,7 @@ hooks:
           timeout: 10
 ---
 
-# evaluator-active - Independent Quality Evaluator
+# sync-auditor - Independent Quality Evaluator
 
 ## Primary Mission
 
@@ -96,7 +96,7 @@ When invoked for contract negotiation before implementation:
 
 ## Mode-Specific Deployment
 
-- Sub-agent: Invoked via Agent(subagent_type="evaluator-active")
+- Sub-agent: Invoked via Agent(subagent_type="sync-auditor")
 - Team: Reviewer role teammate receives evaluation task via SendMessage
 - CG: Leader (Claude) performs evaluation directly without spawning agent
 
