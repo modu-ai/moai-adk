@@ -32,10 +32,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/template"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 // CleanReinstallOptions configures runCleanReinstall behavior.
@@ -262,8 +264,22 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		}
 	}
 
-	// Use a default template context — same as runTemplateSync default path.
-	tmplCtx := template.NewTemplateContext()
+	// Build the deploy context with detected paths — identical to the normal
+	// `moai update` "Deploy Templates" step (see runUpdate). A bare context
+	// would leave SmartPATH/GoBinPath/HomeDir empty, which renders settings.json
+	// "PATH": "" and the status_line.sh "/moai" fallback, stripping the moai
+	// binary from PATH in every downstream session after a v2→v3 upgrade and
+	// breaking the statusline plus all PATH-resolved MCP servers (moai-lsp, npx).
+	homeDir, _ := userHomeDir()
+	goBinPath := detectGoBinPathForUpdate(homeDir)
+	tmplCtx := template.NewTemplateContext(
+		template.WithGoBinPath(goBinPath),
+		template.WithHomeDir(homeDir),
+		template.WithSmartPATH(template.BuildSmartPATH()),
+		template.WithPlatform(runtime.GOOS),
+		template.WithVersion(version.GetVersion()),
+		template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
+	)
 
 	if deployErr := deployer.Deploy(ctx, projectRoot, mgr, tmplCtx); deployErr != nil {
 		return result, fmt.Errorf("step 5: reinstall templates: %w", deployErr)

@@ -33,16 +33,18 @@ import (
 // minimally enough for runCleanReinstall integration testing. Deploy()
 // records the projectRoot it was invoked with and returns nil.
 type stubDeployer struct {
-	deployCalls   int
-	lastProjRoot  string
-	deployErr     error
-	listResult    []string
-	validateErr   error
+	deployCalls  int
+	lastProjRoot string
+	lastTmplCtx  *template.TemplateContext
+	deployErr    error
+	listResult   []string
+	validateErr  error
 }
 
 func (s *stubDeployer) Deploy(ctx context.Context, projectRoot string, mgr manifest.Manager, tmplCtx *template.TemplateContext) error {
 	s.deployCalls++
 	s.lastProjRoot = projectRoot
+	s.lastTmplCtx = tmplCtx
 	return s.deployErr
 }
 
@@ -345,6 +347,46 @@ func TestRunCleanReinstall_DeployerErrorPropagates(t *testing.T) {
 	_, err := runCleanReinstall(context.Background(), root, opts)
 	if err == nil {
 		t.Errorf("expected error from deployer failure; got nil")
+	}
+}
+
+// TestRunCleanReinstall_PopulatesPATHContext is the reproduction test for the
+// v2→v3 clean-reinstall PATH regression: the Step 5 deploy used a bare
+// template.NewTemplateContext() (no options), leaving SmartPATH/GoBinPath/HomeDir
+// empty. settings.json.tmpl then rendered "PATH": "" and status_line.sh rendered
+// the "/moai" fallback (posixPath("")+"/moai"), so downstream projects lost the
+// moai binary on PATH after upgrading — breaking the statusline and every
+// PATH-resolved MCP server (moai-lsp, npx-based servers).
+//
+// The deploy context MUST carry a populated SmartPATH and GoBinPath, matching
+// the normal `moai update` deploy path (update.go "Deploy Templates" step).
+func TestRunCleanReinstall_PopulatesPATHContext(t *testing.T) {
+	root := makeScenarioA(t)
+	deployer := &stubDeployer{}
+	migrate := &stubMigrateRunner{}
+
+	opts := CleanReinstallOptions{
+		Out:              io.Discard,
+		Deployer:         deployer,
+		RunMigrateAgency: migrate.Run,
+	}
+
+	if _, err := runCleanReinstall(context.Background(), root, opts); err != nil {
+		t.Fatalf("runCleanReinstall: %v", err)
+	}
+
+	if deployer.lastTmplCtx == nil {
+		t.Fatal("deployer was not invoked with a template context")
+	}
+	// Regression guard: an empty SmartPATH renders settings.json env.PATH = ""
+	// which strips the moai binary from PATH in all downstream sessions.
+	if deployer.lastTmplCtx.SmartPATH == "" {
+		t.Error("clean-reinstall deploy context SmartPATH is empty; settings.json would render \"PATH\": \"\"")
+	}
+	// Regression guard: an empty GoBinPath renders the status_line.sh fallback as
+	// "/moai" instead of the real Go bin path.
+	if deployer.lastTmplCtx.GoBinPath == "" {
+		t.Error("clean-reinstall deploy context GoBinPath is empty; status_line.sh would render the \"/moai\" fallback")
 	}
 }
 
