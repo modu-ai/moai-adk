@@ -94,7 +94,7 @@ scope change is requested; documented here for sync-phase awareness.
 
 ```yaml
 run_complete_at: 2026-06-03
-run_commit_sha: 39649c6c66bb5825d06c14624f8ef273bcf93d4a
+run_commit_sha: b1ab60454
 run_status: implemented
 ac_pass_count: 12
 ac_fail_count: 0
@@ -133,3 +133,19 @@ package_coverage_internal_web: "90.5%"
 - `internal/cli/help.go` — added `moai web` row to the Launcher (런처) help group for discoverability
 - `.moai/specs/SPEC-WEB-CONSOLE-001/spec.md` — frontmatter `status: draft → in-progress` (manager-develop owned transition)
 - `.moai/specs/SPEC-WEB-CONSOLE-001/progress.md` — this file
+
+## Sync-phase Audit-Ready Signal
+
+```yaml
+sync_commit_sha: (this commit)
+sync_status: complete
+changelog_entry_added: true
+status_transition: "in-progress → implemented"
+version_bump: "0.1.0 → 0.2.0"
+sync_executor: orchestrator-direct
+run_commit_sha_correction: "39649c6c (stale worktree SHA) → b1ab60454 (actual run commit on origin/main)"
+sync_rationale: >
+  Mother SPEC of the web-console-v3 cohort. Run (single cohesive M1) already on
+  origin/main; close-tail only. Orchestrator-direct sync/Mx (active parallel sessions;
+  Authored-By-Agent trailer omitted = legacy silent SKIP to avoid OwnershipTransitionInvalid).
+```
