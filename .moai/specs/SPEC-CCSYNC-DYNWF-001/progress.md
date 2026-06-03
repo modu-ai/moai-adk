@@ -23,7 +23,7 @@ neutrality + leak + catalog-hash-parity all pass).
 
 ```yaml
 run_complete_at: 2026-06-03
-run_commit_sha: <placeholder — backfill after M1 commit>
+run_commit_sha: c16fe5174
 run_status: implemented
 ac_pass_count: 8
 ac_fail_count: 0
