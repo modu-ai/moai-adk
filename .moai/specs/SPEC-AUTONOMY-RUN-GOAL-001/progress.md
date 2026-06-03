@@ -29,7 +29,7 @@ The run-phase scope is doctrine/rules editing (`orchestration-mode-selection.md`
 | M2 — D2 run.md `/goal ac_converge` autonomy section | completed | `36642c6c6` |
 | M3 — D3 GATE-2 preservation regression guard | completed | `1aa4a927e` |
 | M4 — Template mirror + make build | completed | `3c9af0bc1` |
-| M5 — Verification + AC-004 awk fix + MissingExclusions H3 | completed | (orchestrator close commit — backfill) |
+| M5 — Verification + AC-004 awk fix + MissingExclusions H3 | completed | `13fd09a11` |
 
 > Integration note: run-phase ran in an L1 worktree (`worktree-agent-aaacf3a2141bb6e93`); a parallel session committed `SPEC-CCSYNC-DYNWF-001` to main meanwhile (disjoint). M1-M4 were cherry-picked onto the diverged main (linear, no conflict); the original worktree backfill commit `31f231474` was dropped (SHAs changed on cherry-pick).
 
@@ -65,7 +65,7 @@ The run-phase scope is doctrine/rules editing (`orchestration-mode-selection.md`
 
 ```yaml
 run_complete_at: 2026-06-03
-run_commit_sha: "<backfill after orchestrator close commit>"
+run_commit_sha: "13fd09a11"
 run_status: implemented
 ac_pass_count: 13
 ac_fail_count: 0
