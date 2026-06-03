@@ -9,43 +9,60 @@ func TestValidEventTypes(t *testing.T) {
 	t.Parallel()
 
 	events := ValidEventTypes()
-	if len(events) != 26 {
-		t.Errorf("ValidEventTypes() returned %d events, want 26 (EventSetup retired by SPEC-V3R2-MIG-002)", len(events))
+	if len(events) != 29 {
+		t.Errorf("ValidEventTypes() returned %d events, want 29 (3 observe-only events added by SPEC-HOOK-EVENT-REGISTRY-001)", len(events))
 	}
 
 	expected := map[EventType]bool{
-		EventSessionStart:       true,
-		EventPreToolUse:         true,
-		EventPostToolUse:        true,
-		EventSessionEnd:         true,
-		EventStop:               true,
-		EventSubagentStop:       true,
-		EventPreCompact:         true,
-		EventPostToolUseFailure: true,
-		EventNotification:       true,
-		EventSubagentStart:      true,
-		EventUserPromptSubmit:   true,
-		EventPermissionRequest:  true,
-		EventTeammateIdle:       true,
-		EventTaskCompleted:      true,
-		EventWorktreeCreate:     true,
-		EventWorktreeRemove:     true,
-		EventPostCompact:        true,
-		EventInstructionsLoaded: true,
-		EventStopFailure:        true,
-		EventConfigChange:       true,
-		EventTaskCreated:        true,
-		EventCwdChanged:         true,
-		EventFileChanged:        true,
-		EventElicitation:        true,
-		EventElicitationResult:  true,
-		EventPermissionDenied:   true,
+		EventSessionStart:        true,
+		EventPreToolUse:          true,
+		EventPostToolUse:         true,
+		EventSessionEnd:          true,
+		EventStop:                true,
+		EventSubagentStop:        true,
+		EventPreCompact:          true,
+		EventPostToolUseFailure:  true,
+		EventNotification:        true,
+		EventSubagentStart:       true,
+		EventUserPromptSubmit:    true,
+		EventPermissionRequest:   true,
+		EventTeammateIdle:        true,
+		EventTaskCompleted:       true,
+		EventWorktreeCreate:      true,
+		EventWorktreeRemove:      true,
+		EventPostCompact:         true,
+		EventInstructionsLoaded:  true,
+		EventStopFailure:         true,
+		EventConfigChange:        true,
+		EventTaskCreated:         true,
+		EventCwdChanged:          true,
+		EventFileChanged:         true,
+		EventElicitation:         true,
+		EventElicitationResult:   true,
+		EventPermissionDenied:    true,
+		EventPostToolBatch:       true,
+		EventUserPromptExpansion: true,
+		EventMessageDisplay:      true,
 	}
 
 	for _, et := range events {
 		if !expected[et] {
 			t.Errorf("unexpected event type: %q", et)
 		}
+	}
+}
+
+// TestCoverageTableLen asserts the CoverageTable row count after the 3
+// observe-only events were added by SPEC-HOOK-EVENT-REGISTRY-001.
+// NOTE: this is 30 rows, NOT 29 — the table carries 26 real events + 1
+// synthetic COMPOSITE row ("AutoUpdate") + 3 new observe-only rows = 30.
+// The "29-event" figure in coverage_table.go is the event-semantic count,
+// distinct from len(CoverageTable).
+func TestCoverageTableLen(t *testing.T) {
+	t.Parallel()
+
+	if len(CoverageTable) != 30 {
+		t.Errorf("len(CoverageTable) = %d, want 30 (27 prior rows + 3 observe-only events)", len(CoverageTable))
 	}
 }
 
@@ -66,6 +83,9 @@ func TestIsValidEventType(t *testing.T) {
 		{"PreCompact is valid", EventPreCompact, true},
 		{"WorktreeCreate is valid", EventWorktreeCreate, true},
 		{"WorktreeRemove is valid", EventWorktreeRemove, true},
+		{"PostToolBatch is valid", EventPostToolBatch, true},
+		{"UserPromptExpansion is valid", EventUserPromptExpansion, true},
+		{"MessageDisplay is valid", EventMessageDisplay, true},
 		{"empty string is invalid", EventType(""), false},
 		{"unknown event is invalid", EventType("UnknownEvent"), false},
 	}

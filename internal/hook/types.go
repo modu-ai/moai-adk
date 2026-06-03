@@ -108,6 +108,18 @@ const (
 	// Return {retry: true} in hook output to allow the model to retry the operation.
 	// Available since Claude Code v2.1.89+.
 	EventPermissionDenied EventType = "PermissionDenied"
+
+	// EventPostToolBatch is triggered after a batch of parallel tool calls resolves.
+	// Available since Claude Code v2.1.89+. Observe-only: no MoAI handler registered.
+	EventPostToolBatch EventType = "PostToolBatch"
+
+	// EventUserPromptExpansion is triggered when a slash command expands into a prompt.
+	// Available since Claude Code v2.1.90+. Observe-only: no MoAI handler registered.
+	EventUserPromptExpansion EventType = "UserPromptExpansion"
+
+	// EventMessageDisplay is triggered while assistant message text is displayed.
+	// Available since Claude Code v2.1.152+. Observe-only: no MoAI handler registered.
+	EventMessageDisplay EventType = "MessageDisplay"
 )
 
 // ValidEventTypes returns all valid event types.
@@ -139,6 +151,9 @@ func ValidEventTypes() []EventType {
 		EventElicitation,
 		EventElicitationResult,
 		EventPermissionDenied,
+		EventPostToolBatch,
+		EventUserPromptExpansion,
+		EventMessageDisplay,
 	}
 }
 

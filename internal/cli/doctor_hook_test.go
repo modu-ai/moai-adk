@@ -13,27 +13,30 @@ import (
 )
 
 // TestDoctorHook_27EventTableCount verifies that the coverage table has the expected
-// number of entries after SPEC-V3R2-MIG-002 EventSetup retirement.
-// Post-MIG-002: 26 events + 1 composite (autoUpdate) = 27 entries total.
+// number of entries after SPEC-V3R2-MIG-002 EventSetup retirement and the
+// SPEC-HOOK-EVENT-REGISTRY-001 observe-only additions.
+// Post-registry: 29 events + 1 composite (autoUpdate) = 30 entries total.
 // AC-MIG002-A9: counts consistent with post-cleanup state.
 func TestDoctorHook_27EventTableCount(t *testing.T) {
-	// CoverageTable has 27 entries: 26 events + 1 composite (autoUpdate).
-	// EventSetup row removed by SPEC-V3R2-MIG-002 M2.1.
+	// CoverageTable has 30 entries: 29 events + 1 composite (autoUpdate).
+	// EventSetup row removed by SPEC-V3R2-MIG-002 M2.1; 3 observe-only rows
+	// added by SPEC-HOOK-EVENT-REGISTRY-001.
 	entries := buildDoctorHookEntries(false)
 	if len(entries) != len(hook.CoverageTable) {
 		t.Errorf("buildDoctorHookEntries() count = %d, want %d", len(entries), len(hook.CoverageTable))
 	}
 
-	// Verify exactly 26 canonical hook events (excluding composite).
-	// EventSetup retired: SPEC-V3R2-MIG-002 M2.1 removed the REMOVE-resolution row.
+	// Verify exactly 29 canonical hook events (excluding composite).
+	// EventSetup retired: SPEC-V3R2-MIG-002 M2.1 removed the REMOVE-resolution row;
+	// 3 observe-only events added by SPEC-HOOK-EVENT-REGISTRY-001.
 	eventCount := 0
 	for _, e := range hook.CoverageTable {
 		if e.Resolution != hook.ResolutionComposite {
 			eventCount++
 		}
 	}
-	if eventCount != 26 {
-		t.Errorf("non-composite event count = %d, want 26 (EventSetup row removed by SPEC-V3R2-MIG-002)", eventCount)
+	if eventCount != 29 {
+		t.Errorf("non-composite event count = %d, want 29 (3 observe-only events added by SPEC-HOOK-EVENT-REGISTRY-001)", eventCount)
 	}
 }
 
@@ -104,9 +107,10 @@ func TestDoctorHook_ObservabilityFilter(t *testing.T) {
 			t.Errorf("observability filter returned non-RETIRE-OBS-ONLY entry: %s (%s)", e.EventName, e.Resolution)
 		}
 	}
-	// Should have exactly 4 retired events.
-	if len(entries) != 4 {
-		t.Errorf("observability filter count = %d, want 4", len(entries))
+	// Should have exactly 7 retired events (4 prior + 3 observe-only added by
+	// SPEC-HOOK-EVENT-REGISTRY-001).
+	if len(entries) != 7 {
+		t.Errorf("observability filter count = %d, want 7", len(entries))
 	}
 }
 
@@ -122,8 +126,9 @@ func TestDoctorHook_SummaryCountsConsistent(t *testing.T) {
 	}
 
 	// Verify specific expectations from SPEC §5.7.
-	if summary.RetireObsOnly != 4 {
-		t.Errorf("RetireObsOnly count = %d, want 4", summary.RetireObsOnly)
+	// RetireObsOnly: 4 prior + 3 observe-only added by SPEC-HOOK-EVENT-REGISTRY-001 = 7.
+	if summary.RetireObsOnly != 7 {
+		t.Errorf("RetireObsOnly count = %d, want 7", summary.RetireObsOnly)
 	}
 	if summary.Fix != 1 {
 		t.Errorf("Fix count = %d, want 1 (subagentStop P-H02)", summary.Fix)

@@ -284,6 +284,13 @@ func TestAuditObservabilityWhitelist(t *testing.T) {
 var deregisteredButLiveEventNames = []string{
 	"WorktreeCreate",
 	"WorktreeRemove",
+	// Observe-only events (no Go handler yet) added by SPEC-HOOK-EVENT-REGISTRY-001.
+	// They are ResolutionRetireObsOnly in CoverageTable, hence classified Go-registered
+	// by the 3-way sync check, but have no settings.json key — so they belong on this
+	// 3-way-sync exemption leg to avoid a HOOK_SYNC_DRIFT false positive.
+	"PostToolBatch",
+	"UserPromptExpansion",
+	"MessageDisplay",
 }
 
 // TestAuditThreeWaySync verifies the 3-way sync invariant (extended to 4-way):

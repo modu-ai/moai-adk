@@ -198,9 +198,9 @@ func TestHookValidEventTypes_Complete(t *testing.T) {
 
 	validTypes := hook.ValidEventTypes()
 
-	// Verify exact count. EventSetup retired by SPEC-V3R2-MIG-002.
-	if got := len(validTypes); got != 26 {
-		t.Errorf("ValidEventTypes() returned %d types, want 26 (EventSetup retired)", got)
+	// Verify exact count. 3 observe-only events added by SPEC-HOOK-EVENT-REGISTRY-001.
+	if got := len(validTypes); got != 29 {
+		t.Errorf("ValidEventTypes() returned %d types, want 29 (3 observe-only events added by SPEC-HOOK-EVENT-REGISTRY-001)", got)
 	}
 
 	// Build a lookup set for quick membership checks.
@@ -288,7 +288,13 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 
 	// Events that do NOT have a direct hookCmd subcommand.
 	// (SubagentStop now has a direct subcommand in addition to the "agent" pattern.)
-	excludedEvents := map[hook.EventType]bool{}
+	// The 3 observe-only events added by SPEC-HOOK-EVENT-REGISTRY-001 have no
+	// subcommand (registry-only inventory entries), so they are excluded here.
+	excludedEvents := map[hook.EventType]bool{
+		hook.EventPostToolBatch:       true, // observe-only, no subcommand
+		hook.EventUserPromptExpansion: true, // observe-only, no subcommand
+		hook.EventMessageDisplay:      true, // observe-only, no subcommand
+	}
 
 	// Build a mapping from EventType to expected subcommand name.
 	eventToSubcmd := map[hook.EventType]string{
