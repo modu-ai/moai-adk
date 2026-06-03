@@ -29,22 +29,84 @@ import (
 // ─── Constants ─────────────────────────────────────────────────────────────
 
 const (
-	// zaiMCPServerKey is the key name of the Z.AI MCP server used in mcpServers
+	// zaiMCPServerKey는 mcpServers 에서 사용하는 Z.AI vision MCP 서버 키 이름이다 (stdio npx).
 	zaiMCPServerKey = "zai-mcp-server"
 
-	// zaiNPXPackage is the package name executed via npx
+	// zaiWebSearchPrimeKey는 web search HTTP MCP 서버 키 이름이다.
+	// 언더스코어 표기로 등록하여 canonical 툴 참조 mcp__web_search_prime__webSearchPrime 를 생성한다 (design.md §B.3).
+	zaiWebSearchPrimeKey = "web_search_prime"
+
+	// zaiWebReaderKey는 web reader HTTP MCP 서버 키 이름이다.
+	// 언더스코어 표기로 등록하여 canonical 툴 참조 mcp__web_reader__webReader 를 생성한다 (design.md §B.3).
+	zaiWebReaderKey = "web_reader"
+
+	// zaiNPXPackage는 npx 로 실행하는 vision 서버 패키지 이름이다.
 	zaiNPXPackage = "@z_ai/mcp-server@latest"
 
-	// nodeMinMajorVersion is the minimum Node.js major version required to run npx
+	// zaiWebSearchPrimeURL는 web search HTTP MCP 엔드포인트이다 (CLAUDE.local.md §14 하드코딩 금지 → const 추출).
+	zaiWebSearchPrimeURL = "https://api.z.ai/api/mcp/web_search_prime/mcp"
+
+	// zaiWebReaderURL는 web reader HTTP MCP 엔드포인트이다 (CLAUDE.local.md §14 하드코딩 금지 → const 추출).
+	zaiWebReaderURL = "https://api.z.ai/api/mcp/web_reader/mcp"
+
+	// zaiBearerHeaderTemplate는 HTTP MCP 서버의 Authorization 헤더 값 템플릿이다.
+	// ${Z_AI_API_KEY} 리터럴은 Claude Code 가 .mcp.json/.claude.json 헤더에서 확장한다 (design.md §B.4 R2).
+	zaiBearerHeaderTemplate = "Bearer ${Z_AI_API_KEY}"
+
+	// nodeMinMajorVersion는 npx 실행에 필요한 최소 Node.js major 버전이다 (vision 서버 전용).
 	nodeMinMajorVersion = 22
 )
 
-// Supported tool name list
+// 지원 도구명 목록
 var validToolNames = map[string]bool{
 	"vision":    true,
 	"websearch": true,
 	"webreader": true,
 	"all":       true,
+}
+
+// toolServerKeys는 각 도구명이 등록하는 서버 키 집합을 반환한다 (REQ-GWR-C1~C4).
+// vision→[zai-mcp-server], websearch→[web_search_prime], webreader→[web_reader], all→3개 전부.
+func toolServerKeys(toolName string) []string {
+	switch toolName {
+	case "vision":
+		return []string{zaiMCPServerKey}
+	case "websearch":
+		return []string{zaiWebSearchPrimeKey}
+	case "webreader":
+		return []string{zaiWebReaderKey}
+	case "all":
+		return []string{zaiMCPServerKey, zaiWebSearchPrimeKey, zaiWebReaderKey}
+	default:
+		return nil
+	}
+}
+
+// toolSetNeedsNode는 요청한 도구 집합이 npx vision 서버(Node 필요)를 포함하는지 판정한다 (REQ-GWR-C8).
+// vision 또는 all 일 때만 true — websearch/webreader 는 HTTP 서버라 Node 게이트가 무의미하다.
+func toolSetNeedsNode(toolName string) bool {
+	for _, key := range toolServerKeys(toolName) {
+		if key == zaiMCPServerKey {
+			return true
+		}
+	}
+	return false
+}
+
+// toolServerLabels는 각 서버 키에 대응하는 사용자 표시용 상세 라벨(한국어)이다.
+// enable 성공 메시지의 "활성화된 도구" 블록을 실제 등록된 서버 집합에서 데이터-구동으로 생성할 때 사용한다 (REQ-GWR-C5, design.md §B.6).
+var toolServerLabels = map[string]string{
+	zaiMCPServerKey:      "Vision (이미지 OCR, 스크린샷 분석)",
+	zaiWebSearchPrimeKey: "Web Search (실시간 웹 검색)",
+	zaiWebReaderKey:      "Web Reader (웹 페이지 내용 읽기)",
+}
+
+// toolServerShortLabels는 각 서버 키에 대응하는 짧은 라벨이다.
+// disable "제거된 도구" 한 줄 메시지를 콤마로 결합할 때 사용한다 (REQ-GWR-C5).
+var toolServerShortLabels = map[string]string{
+	zaiMCPServerKey:      "Vision",
+	zaiWebSearchPrimeKey: "Web Search",
+	zaiWebReaderKey:      "Web Reader",
 }
 
 // errNodeNotFound is the sentinel error returned when node is not found on PATH
@@ -137,29 +199,32 @@ func runGLMToolsEnable(cmd *cobra.Command, args []string) error {
 		)
 	}
 
-	// (c) Validate Node.js version (REQ-GMC-009, GWT-14, GWT-15)
-	major, versionStr, err := detectNodeFn()
-	if err != nil {
-		if errors.Is(err, errNodeNotFound) {
+	// (c) Validate Node.js version — vision(npx) 서버를 포함할 때만 (REQ-GWR-C8, REQ-GMC-009)
+	// websearch/webreader 전용 enable 은 HTTP 서버라 Node 게이트를 적용하지 않는다.
+	if toolSetNeedsNode(toolName) {
+		major, versionStr, err := detectNodeFn()
+		if err != nil {
+			if errors.Is(err, errNodeNotFound) {
+				return fmt.Errorf(
+					"no Node.js executable found on PATH\n\n"+
+						"최소 요구 버전: >= v%d.0.0\n\n"+
+						"설치 방법:\n"+
+						"  https://nodejs.org/ 에서 다운로드 또는\n"+
+						"  nvm install %d",
+					nodeMinMajorVersion, nodeMinMajorVersion,
+				)
+			}
+			return fmt.Errorf("node 버전 확인 실패: %w", err)
+		}
+		if major < nodeMinMajorVersion {
 			return fmt.Errorf(
-				"no Node.js executable found on PATH\n\n"+
-					"최소 요구 버전: >= v%d.0.0\n\n"+
-					"설치 방법:\n"+
-					"  https://nodejs.org/ 에서 다운로드 또는\n"+
+				"감지된 Node.js 버전이 너무 낮습니다: %s, 최소 요구 >= v%d.0.0\n\n"+
+					"업그레이드 방법:\n"+
+					"  https://nodejs.org/ 에서 최신 버전 다운로드 또는\n"+
 					"  nvm install %d",
-				nodeMinMajorVersion, nodeMinMajorVersion,
+				versionStr, nodeMinMajorVersion, nodeMinMajorVersion,
 			)
 		}
-		return fmt.Errorf("node 버전 확인 실패: %w", err)
-	}
-	if major < nodeMinMajorVersion {
-		return fmt.Errorf(
-			"감지된 Node.js 버전이 너무 낮습니다: %s, 최소 요구 >= v%d.0.0\n\n"+
-				"업그레이드 방법:\n"+
-				"  https://nodejs.org/ 에서 최신 버전 다운로드 또는\n"+
-				"  nvm install %d",
-			versionStr, nodeMinMajorVersion, nodeMinMajorVersion,
-		)
 	}
 
 	// (d) Determine scope (REQ-GMC-008, GWT-13)
@@ -171,37 +236,61 @@ func runGLMToolsEnable(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("설정 파일 경로 결정 실패: %w", err)
 	}
 
-	// (e) Enable after handling existing entry + force flag (REQ-GMC-003, REQ-GMC-006)
+	// (e) Enable after handling existing entry + force flag (REQ-GWR-C, REQ-GMC-006)
 	if force {
-		if err := runEnableMCPServer(configPath, token); err != nil {
+		if err := runEnableMCPServerForTool(configPath, toolName, token); err != nil {
 			return err
 		}
 	} else {
-		skipped, err := enableMCPServerIdempotent(configPath, token)
+		skipped, err := enableMCPServerIdempotentForTool(configPath, toolName, token)
 		if err != nil {
 			return err
 		}
 		if skipped {
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Z.AI MCP 서버가 이미 활성화되어 있습니다 (토큰 일치 — 변경 없음)")
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "비활성화: moai glm tools disable all")
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Z.AI MCP 서버가 이미 활성화되어 있습니다 (변경 없음)")
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "비활성화: moai glm tools disable "+toolName)
 			return nil
 		}
 	}
 
-	// (f) Emit success message (REQ-GMC-003, GWT-5)
+	// (f) Emit success message — 실제 등록된 서버 집합 기반 (REQ-GWR-C5, GWT-5)
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Z.AI MCP 서버 활성화 완료")
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "")
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "활성화된 도구:")
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "  - Vision (이미지 OCR, 스크린샷 분석)")
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "  - Web Search (실시간 웹 검색)")
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "  - Web Reader (웹 페이지 내용 읽기)")
+	for _, line := range registeredToolLines(toolName) {
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "  - "+line)
+	}
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "")
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "주의: Pro 플랜 ($9/월) 이상에서 모든 도구가 활성화됩니다")
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "")
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Claude Code 를 재시작해야 MCP 서버가 로드됩니다")
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "비활성화: moai glm tools disable all")
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "비활성화: moai glm tools disable "+toolName)
 
 	return nil
+}
+
+// registeredToolLines는 도구명에 대응하는 서버 상세 라벨 목록을 결정적 순서로 반환한다 (REQ-GWR-C5).
+// enable 성공 메시지에서 실제 등록된 서버만 정확히 나열하기 위해 사용한다.
+func registeredToolLines(toolName string) []string {
+	var lines []string
+	for _, key := range toolServerKeys(toolName) {
+		if label, ok := toolServerLabels[key]; ok {
+			lines = append(lines, label)
+		}
+	}
+	return lines
+}
+
+// registeredToolShortLabels는 도구명에 대응하는 짧은 라벨 목록을 결정적 순서로 반환한다 (REQ-GWR-C5).
+// disable 메시지의 한 줄 콤마 결합에 사용한다.
+func registeredToolShortLabels(toolName string) []string {
+	var lines []string
+	for _, key := range toolServerKeys(toolName) {
+		if label, ok := toolServerShortLabels[key]; ok {
+			lines = append(lines, label)
+		}
+	}
+	return lines
 }
 
 // runGLMToolsDisable — runs `moai glm tools disable [tool-name]`
@@ -223,8 +312,8 @@ func runGLMToolsDisable(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("설정 파일 경로 결정 실패: %w", err)
 	}
 
-	// Remove entry (REQ-GMC-004, GWT-6, GWT-7)
-	removed, err := disableMCPServerSafe(configPath)
+	// Remove entry — 도구명에 대응하는 서버만 제거 (REQ-GWR-C6, GWT-6, GWT-7)
+	removed, err := disableMCPServerForTool(configPath, toolName)
 	if err != nil {
 		return err
 	}
@@ -235,10 +324,10 @@ func runGLMToolsDisable(cmd *cobra.Command, args []string) error {
 	}
 
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Z.AI MCP 서버 비활성화 완료")
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "  제거된 도구: Vision, Web Search, Web Reader")
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "  제거된 도구: "+strings.Join(registeredToolShortLabels(toolName), ", "))
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "")
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Claude Code 를 재시작해야 변경사항이 반영됩니다")
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "재활성화: moai glm tools enable all")
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "재활성화: moai glm tools enable "+toolName)
 
 	return nil
 }
@@ -274,7 +363,8 @@ func validateToolName(name string) error {
 	)
 }
 
-// buildZAIMCPEntry constructs a Z.AI MCP server entry (REQ-GMC-003)
+// buildZAIMCPEntry는 vision(zai-mcp-server) stdio npx 엔트리를 구성한다 (REQ-GMC-003, REQ-GWR-C3).
+// env.Z_AI_API_KEY 에는 resolve 된 토큰을 그대로 기록한다 (HTTP 헤더와 달리 npx env 는 Claude Code 가 확장하지 않음).
 func buildZAIMCPEntry(token string) map[string]any {
 	return map[string]any{
 		"command": "npx",
@@ -284,6 +374,35 @@ func buildZAIMCPEntry(token string) map[string]any {
 			"Z_AI_MODE":    "ZAI",
 		},
 	}
+}
+
+// buildZAIHTTPEntry는 web_search_prime / web_reader 같은 HTTP MCP 엔트리를 구성한다 (REQ-GWR-C1/C2).
+// Authorization 헤더에는 리터럴 ${Z_AI_API_KEY} 를 기록한다 — Claude Code 가 런타임에 확장한다 (design.md §B.4 R2).
+func buildZAIHTTPEntry(url string) map[string]any {
+	return map[string]any{
+		"type": "http",
+		"url":  url,
+		"headers": map[string]string{
+			"Authorization": zaiBearerHeaderTemplate,
+		},
+	}
+}
+
+// buildZAIMCPEntries는 도구명을 받아 등록할 {서버키: 엔트리} 집합을 반환한다 (REQ-GWR-C1~C4).
+// vision→npx stdio 1개, websearch/webreader→HTTP 1개, all→3개 전부.
+func buildZAIMCPEntries(toolName, token string) map[string]map[string]any {
+	entries := map[string]map[string]any{}
+	for _, key := range toolServerKeys(toolName) {
+		switch key {
+		case zaiMCPServerKey:
+			entries[key] = buildZAIMCPEntry(token)
+		case zaiWebSearchPrimeKey:
+			entries[key] = buildZAIHTTPEntry(zaiWebSearchPrimeURL)
+		case zaiWebReaderKey:
+			entries[key] = buildZAIHTTPEntry(zaiWebReaderURL)
+		}
+	}
+	return entries
 }
 
 // buildBackupFilename generates a backup file name (REQ-GMC-005)
@@ -368,14 +487,20 @@ func backupClaudeJSON(configPath string) error {
 	return nil
 }
 
-// runEnableMCPServer adds the zai-mcp-server entry to configPath.
-// Returns an error on token mismatch (REQ-GMC-006 (b)).
-// Creates a backup before modifying the file (REQ-GMC-005).
-// Never modifies any other mcpServers entry (REQ-GMC-010).
+// runEnableMCPServer는 vision(zai-mcp-server) 엔트리를 configPath 에 추가한다 (legacy 시그니처 보존).
+// 토큰 불일치 시 에러 (REQ-GMC-006 (b)), 변경 전 백업 (REQ-GMC-005), 다른 엔트리 무변경 (REQ-GMC-010).
+// 내부적으로 per-tool dispatch(runEnableMCPServerForTool)에 위임한다 (REQ-GWR-C 리팩터).
 //
-// @MX:ANCHOR: [AUTO] Core entry point for all 22 GWT scenarios — signature changes affect every test
+// @MX:ANCHOR: [AUTO] Core entry point for all GWT scenarios — signature changes affect every test
 // @MX:REASON: fan_in = 6 (glmToolsEnableCmd, enableMCPServerIdempotent, runEnableMCPServerScoped, test helpers)
 func runEnableMCPServer(configPath string, token string) error {
+	return runEnableMCPServerForTool(configPath, "vision", token)
+}
+
+// runEnableMCPServerForTool는 도구명에 맞는 서버 집합을 configPath 에 등록한다 (--force 경로, REQ-GWR-C1~C4).
+// vision npx 엔트리에 한해 토큰 불일치를 검사한다 (HTTP 엔트리는 토큰을 직접 보유하지 않음).
+// 변경 전 백업 (REQ-GMC-005), 다른 mcpServers 엔트리 무변경 (REQ-GMC-010).
+func runEnableMCPServerForTool(configPath, toolName, token string) error {
 	if token == "" {
 		return fmt.Errorf(
 			"GLM API 키가 설정되지 않았습니다\n" +
@@ -388,24 +513,24 @@ func runEnableMCPServer(configPath string, token string) error {
 		return err
 	}
 
-	// Acquire the mcpServers map
 	mcpServers := getMCPServers(root)
+	entries := buildZAIMCPEntries(toolName, token)
 
-	// Inspect token of the existing entry (REQ-GMC-006)
-	if existing, ok := mcpServers[zaiMCPServerKey].(map[string]any); ok {
-		existingToken := extractTokenFromEntry(existing)
-		if existingToken != token {
-			// Token mismatch → reject + --force guidance
-			return fmt.Errorf(
-				"기존 zai-mcp-server 엔트리에 다른 토큰이 설정되어 있습니다\n"+
-					"  현재 토큰: %s...%s\n"+
-					"  새 토큰:   %s...%s\n\n"+
-					"강제 덮어쓰기: moai glm tools enable --force",
-				maskPartial(existingToken), maskPartial(existingToken)[len(maskPartial(existingToken))-4:],
-				maskPartial(token), maskPartial(token)[len(maskPartial(token))-4:],
-			)
+	// vision npx 엔트리에 한해 기존 토큰 불일치 검사 (REQ-GMC-006)
+	if _, want := entries[zaiMCPServerKey]; want {
+		if existing, ok := mcpServers[zaiMCPServerKey].(map[string]any); ok {
+			existingToken := extractTokenFromEntry(existing)
+			if existingToken != token {
+				return fmt.Errorf(
+					"기존 zai-mcp-server 엔트리에 다른 토큰이 설정되어 있습니다\n"+
+						"  현재 토큰: %s...%s\n"+
+						"  새 토큰:   %s...%s\n\n"+
+						"강제 덮어쓰기: moai glm tools enable --force",
+					maskPartial(existingToken), maskPartial(existingToken)[len(maskPartial(existingToken))-4:],
+					maskPartial(token), maskPartial(token)[len(maskPartial(token))-4:],
+				)
+			}
 		}
-		// Token match → already handled (idempotent: handled by enableMCPServerIdempotent)
 	}
 
 	// Create backup (REQ-GMC-005)
@@ -413,18 +538,28 @@ func runEnableMCPServer(configPath string, token string) error {
 		return fmt.Errorf("백업 생성 실패: %w", err)
 	}
 
-	// Add the entry (REQ-GMC-003, REQ-GMC-010)
-	mcpServers[zaiMCPServerKey] = buildZAIMCPEntry(token)
+	// 요청한 서버 집합 등록 (REQ-GWR-C, REQ-GMC-010 — 다른 엔트리 무변경)
+	for key, entry := range entries {
+		mcpServers[key] = entry
+	}
 	root["mcpServers"] = mcpServers
 
 	return writeClaudeJSONAtomic(configPath, root)
 }
 
-// enableMCPServerIdempotent performs an idempotent enable.
-// Return values: (skipped bool, err error)
-//   - skipped=true: already registered with the same token → no change, no backup (REQ-GMC-006 (a))
-//   - skipped=false: performs a new registration
+// enableMCPServerIdempotent는 vision 엔트리에 대한 idempotent enable 이다 (legacy 시그니처 보존).
+// per-tool dispatch(enableMCPServerIdempotentForTool)에 위임한다.
 func enableMCPServerIdempotent(configPath string, token string) (bool, error) {
+	return enableMCPServerIdempotentForTool(configPath, "vision", token)
+}
+
+// enableMCPServerIdempotentForTool는 도구명에 맞는 서버 집합을 idempotent 하게 등록한다 (REQ-GWR-C7).
+// Return values: (skipped bool, err error)
+//   - skipped=true: 요청한 모든 서버가 이미 동일하게 등록됨 → 변경 없음, 백업 없음 (REQ-GMC-006 (a), GWT-9)
+//   - skipped=false: 하나라도 신규/변경이 필요해 등록을 수행함
+//
+// vision npx 엔트리에 한해 토큰 불일치 시 에러를 반환한다 (REQ-GMC-006 (b)).
+func enableMCPServerIdempotentForTool(configPath, toolName, token string) (bool, error) {
 	if token == "" {
 		return false, fmt.Errorf(
 			"GLM API 키가 설정되지 않았습니다\n" +
@@ -438,27 +573,43 @@ func enableMCPServerIdempotent(configPath string, token string) (bool, error) {
 	}
 
 	mcpServers := getMCPServers(root)
+	entries := buildZAIMCPEntries(toolName, token)
 
-	// Check existing entry
-	if existing, ok := mcpServers[zaiMCPServerKey].(map[string]any); ok {
-		existingToken := extractTokenFromEntry(existing)
-		if existingToken == token {
-			// Token match → idempotent skip (REQ-GMC-006 (a), GWT-9: no backup)
-			return true, nil
+	// vision npx 엔트리 토큰 검사 — 불일치 시 에러 (REQ-GMC-006 (b))
+	if _, want := entries[zaiMCPServerKey]; want {
+		if existing, ok := mcpServers[zaiMCPServerKey].(map[string]any); ok {
+			if extractTokenFromEntry(existing) != token {
+				return false, fmt.Errorf(
+					"기존 zai-mcp-server 엔트리에 다른 토큰이 설정되어 있습니다\n" +
+						"강제 덮어쓰기: moai glm tools enable --force",
+				)
+			}
 		}
-		// Token mismatch → return error (REQ-GMC-006 (b))
-		return false, fmt.Errorf(
-			"기존 zai-mcp-server 엔트리에 다른 토큰이 설정되어 있습니다\n" +
-				"강제 덮어쓰기: moai glm tools enable --force",
-		)
 	}
 
-	// New registration → back up then write
+	// 요청한 서버 중 신규/변경이 필요한 것이 하나라도 있는지 판정
+	needsWrite := false
+	for key, entry := range entries {
+		existing, ok := mcpServers[key].(map[string]any)
+		if !ok || !mcpEntryEqual(existing, entry) {
+			needsWrite = true
+			break
+		}
+	}
+
+	if !needsWrite {
+		// 모든 서버가 이미 동일하게 등록됨 → idempotent skip (백업 없음)
+		return true, nil
+	}
+
+	// New/changed registration → back up then write
 	if err := backupClaudeJSON(configPath); err != nil {
 		return false, fmt.Errorf("백업 생성 실패: %w", err)
 	}
 
-	mcpServers[zaiMCPServerKey] = buildZAIMCPEntry(token)
+	for key, entry := range entries {
+		mcpServers[key] = entry
+	}
 	root["mcpServers"] = mcpServers
 
 	return false, writeClaudeJSONAtomic(configPath, root)
@@ -502,13 +653,19 @@ func runEnableMCPServerScoped(mcpJSONPath string, token string) error {
 	return runEnableMCPServer(mcpJSONPath, token)
 }
 
-// disableMCPServerSafe removes only the zai-mcp-server entry from configPath (REQ-GMC-004, REQ-GMC-010).
-// Does not modify other mcpServers entries.
-// Return values: (removed bool, err error) — removed=false when the entry is absent (idempotent)
+// disableMCPServerSafe는 vision(zai-mcp-server) 엔트리만 configPath 에서 제거한다 (legacy 시그니처 보존).
+// per-tool dispatch(disableMCPServerForTool)에 위임한다.
 //
 // @MX:ANCHOR: [AUTO] Core implementation of REQ-GMC-004/010 — partial-delete safety
 // @MX:REASON: fan_in = 4 (runGLMToolsDisable, many GWT tests)
 func disableMCPServerSafe(configPath string) (bool, error) {
+	return disableMCPServerForTool(configPath, "vision")
+}
+
+// disableMCPServerForTool는 도구명에 대응하는 서버만 제거한다 (REQ-GWR-C6, REQ-GMC-010).
+// 무관한 mcpServers 엔트리(context7, chrome-devtools 등)는 보존한다.
+// Return values: (removed bool, err error) — 요청한 서버가 하나도 없으면 removed=false (idempotent skip).
+func disableMCPServerForTool(configPath, toolName string) (bool, error) {
 	root, err := readClaudeJSON(configPath)
 	if err != nil {
 		return false, err
@@ -516,8 +673,16 @@ func disableMCPServerSafe(configPath string) (bool, error) {
 
 	mcpServers := getMCPServers(root)
 
-	if _, ok := mcpServers[zaiMCPServerKey]; !ok {
-		// No entry → idempotent skip
+	// 제거 대상 중 실제로 존재하는 서버 키 수집
+	var present []string
+	for _, key := range toolServerKeys(toolName) {
+		if _, ok := mcpServers[key]; ok {
+			present = append(present, key)
+		}
+	}
+
+	if len(present) == 0 {
+		// 제거할 엔트리 없음 → idempotent skip
 		return false, nil
 	}
 
@@ -526,10 +691,60 @@ func disableMCPServerSafe(configPath string) (bool, error) {
 		return false, fmt.Errorf("백업 생성 실패: %w", err)
 	}
 
-	delete(mcpServers, zaiMCPServerKey)
+	for _, key := range present {
+		delete(mcpServers, key)
+	}
 	root["mcpServers"] = mcpServers
 
 	return true, writeClaudeJSONAtomic(configPath, root)
+}
+
+// mcpEntryEqual는 두 MCP 엔트리가 의미상 동일한지 판정한다 (idempotency 검사용).
+// JSON round-trip 시 []string→[]any, map[string]string→map[string]any 로 변하므로
+// JSON 정규화 후 바이트 비교한다 (REQ-GWR-C7).
+func mcpEntryEqual(a, b map[string]any) bool {
+	ab, err := json.Marshal(normalizeForCompare(a))
+	if err != nil {
+		return false
+	}
+	bb, err := json.Marshal(normalizeForCompare(b))
+	if err != nil {
+		return false
+	}
+	return string(ab) == string(bb)
+}
+
+// normalizeForCompare는 []string / map[string]string 를 []any / map[string]any 로 변환해
+// JSON unmarshal 결과와 구조를 일치시킨다.
+func normalizeForCompare(v any) any {
+	switch t := v.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(t))
+		for k, val := range t {
+			out[k] = normalizeForCompare(val)
+		}
+		return out
+	case map[string]string:
+		out := make(map[string]any, len(t))
+		for k, val := range t {
+			out[k] = val
+		}
+		return out
+	case []any:
+		out := make([]any, len(t))
+		for i, val := range t {
+			out[i] = normalizeForCompare(val)
+		}
+		return out
+	case []string:
+		out := make([]any, len(t))
+		for i, val := range t {
+			out[i] = val
+		}
+		return out
+	default:
+		return v
+	}
 }
 
 // ─── Internal helper functions ─────────────────────────────────────────────

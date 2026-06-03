@@ -1207,3 +1207,517 @@ func TestAutoEnableMCPServer_NoToken(t *testing.T) {
 		t.Error("MCP server should not be enabled when no GLM token")
 	}
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// SPEC-GLM-WEBTOOL-ROUTING-001 — per-tool server registration (REQ-GWR-C)
+// ════════════════════════════════════════════════════════════════════════════
+
+// readServer는 ~/.claude.json 의 특정 mcpServers 키 엔트리를 읽는다.
+func readServer(t *testing.T, claudeJSONPath, key string) map[string]any {
+	t.Helper()
+	servers := readAllMCPServers(t, claudeJSONPath)
+	entry, ok := servers[key].(map[string]any)
+	if !ok {
+		return nil
+	}
+	return entry
+}
+
+// assertHTTPEntry는 HTTP MCP 엔트리가 기대한 url + Bearer 헤더 형태인지 검증한다.
+func assertHTTPEntry(t *testing.T, entry map[string]any, wantURL string) {
+	t.Helper()
+	if entry == nil {
+		t.Fatal("HTTP 엔트리가 없음")
+	}
+	if entry["type"] != "http" {
+		t.Errorf("type = %v, 기대: http", entry["type"])
+	}
+	if entry["url"] != wantURL {
+		t.Errorf("url = %v, 기대: %q", entry["url"], wantURL)
+	}
+	headers, ok := entry["headers"].(map[string]any)
+	if !ok {
+		t.Fatal("headers 필드가 없음")
+	}
+	if headers["Authorization"] != "Bearer ${Z_AI_API_KEY}" {
+		t.Errorf("Authorization = %v, 기대: Bearer ${Z_AI_API_KEY}", headers["Authorization"])
+	}
+	// HTTP 엔트리는 npx 토큰 필드를 가지면 안 됨
+	if _, hasEnv := entry["env"]; hasEnv {
+		t.Error("HTTP 엔트리에 env 필드가 있음 (Bearer 헤더만 사용해야 함)")
+	}
+}
+
+// AC-GWR-013 (REQ-GWR-C3) — enable vision → zai-mcp-server npx 엔트리.
+func TestGLMToolsEnable_Vision_RegistersNPXEntry(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	token := "vision-token"
+	setupGLMToken(t, homeDir, token)
+	claudeJSONPath := setupClaudeJSON(t, homeDir, nil)
+
+	if err := runEnableMCPServerForTool(claudeJSONPath, "vision", token); err != nil {
+		t.Fatalf("enable vision 실패: %v", err)
+	}
+
+	servers := readAllMCPServers(t, claudeJSONPath)
+	if len(servers) != 1 {
+		t.Fatalf("서버 수 = %d, 기대: 1 (vision 만)", len(servers))
+	}
+	entry := readServer(t, claudeJSONPath, "zai-mcp-server")
+	if entry == nil {
+		t.Fatal("zai-mcp-server 엔트리가 없음")
+	}
+	if entry["command"] != "npx" {
+		t.Errorf("command = %v, 기대: npx", entry["command"])
+	}
+	envMap, _ := entry["env"].(map[string]any)
+	if envMap == nil || envMap["Z_AI_API_KEY"] != token {
+		t.Errorf("Z_AI_API_KEY = %v, 기대: %q", envMap["Z_AI_API_KEY"], token)
+	}
+	// vision 만 등록 — HTTP 서버는 없어야 함
+	if _, ok := servers["web_search_prime"]; ok {
+		t.Error("vision enable 시 web_search_prime 가 등록됨 (잘못된 매핑)")
+	}
+	if _, ok := servers["web_reader"]; ok {
+		t.Error("vision enable 시 web_reader 가 등록됨 (잘못된 매핑)")
+	}
+}
+
+// AC-GWR-011 (REQ-GWR-C1) — enable websearch → web_search_prime HTTP 엔트리.
+func TestGLMToolsEnable_WebSearch_RegistersHTTPEntry(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	token := "search-token"
+	setupGLMToken(t, homeDir, token)
+	claudeJSONPath := setupClaudeJSON(t, homeDir, nil)
+
+	if err := runEnableMCPServerForTool(claudeJSONPath, "websearch", token); err != nil {
+		t.Fatalf("enable websearch 실패: %v", err)
+	}
+
+	servers := readAllMCPServers(t, claudeJSONPath)
+	if len(servers) != 1 {
+		t.Fatalf("서버 수 = %d, 기대: 1 (web_search_prime 만)", len(servers))
+	}
+	assertHTTPEntry(t, readServer(t, claudeJSONPath, "web_search_prime"),
+		"https://api.z.ai/api/mcp/web_search_prime/mcp")
+	// vision / web_reader 는 등록되면 안 됨 (잘못된 매핑 회귀 방지)
+	if _, ok := servers["zai-mcp-server"]; ok {
+		t.Error("websearch enable 시 zai-mcp-server(vision) 가 등록됨 (잘못된 매핑)")
+	}
+	if _, ok := servers["web_reader"]; ok {
+		t.Error("websearch enable 시 web_reader 가 등록됨 (잘못된 매핑)")
+	}
+}
+
+// AC-GWR-012 (REQ-GWR-C2, Scenario 3) — enable webreader → web_reader HTTP 엔트리.
+func TestGLMToolsEnable_WebReader_RegistersHTTPEntry(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	token := "reader-token"
+	setupGLMToken(t, homeDir, token)
+	claudeJSONPath := setupClaudeJSON(t, homeDir, nil)
+
+	if err := runEnableMCPServerForTool(claudeJSONPath, "webreader", token); err != nil {
+		t.Fatalf("enable webreader 실패: %v", err)
+	}
+
+	servers := readAllMCPServers(t, claudeJSONPath)
+	if len(servers) != 1 {
+		t.Fatalf("서버 수 = %d, 기대: 1 (web_reader 만)", len(servers))
+	}
+	assertHTTPEntry(t, readServer(t, claudeJSONPath, "web_reader"),
+		"https://api.z.ai/api/mcp/web_reader/mcp")
+	// vision / web_search_prime 는 등록되면 안 됨 (Scenario 3 명시)
+	if _, ok := servers["zai-mcp-server"]; ok {
+		t.Error("webreader enable 시 zai-mcp-server(vision) 가 등록됨 (잘못된 매핑)")
+	}
+	if _, ok := servers["web_search_prime"]; ok {
+		t.Error("webreader enable 시 web_search_prime 가 등록됨 (잘못된 매핑)")
+	}
+}
+
+// AC-GWR-014 (REQ-GWR-C4, Scenario 4) — enable all → 세 서버 모두 등록.
+func TestGLMToolsEnable_All_RegistersThreeServers(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	token := "all-token"
+	setupGLMToken(t, homeDir, token)
+	claudeJSONPath := setupClaudeJSON(t, homeDir, nil)
+
+	if err := runEnableMCPServerForTool(claudeJSONPath, "all", token); err != nil {
+		t.Fatalf("enable all 실패: %v", err)
+	}
+
+	servers := readAllMCPServers(t, claudeJSONPath)
+	if len(servers) != 3 {
+		t.Fatalf("서버 수 = %d, 기대: 3", len(servers))
+	}
+	if entry := readServer(t, claudeJSONPath, "zai-mcp-server"); entry == nil || entry["command"] != "npx" {
+		t.Error("all enable 시 zai-mcp-server npx 엔트리가 없거나 잘못됨")
+	}
+	assertHTTPEntry(t, readServer(t, claudeJSONPath, "web_search_prime"),
+		"https://api.z.ai/api/mcp/web_search_prime/mcp")
+	assertHTTPEntry(t, readServer(t, claudeJSONPath, "web_reader"),
+		"https://api.z.ai/api/mcp/web_reader/mcp")
+}
+
+// AC-GWR-016 (REQ-GWR-C6, EC-1) — disable webreader → web_reader 만 제거, 무관 엔트리 보존.
+func TestGLMToolsDisable_WebReader_RemovesOnlyMatching(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	setupGLMToken(t, homeDir, "test-token")
+	claudeJSONPath := setupClaudeJSON(t, homeDir, map[string]any{
+		"context7":        map[string]any{"command": "npx", "args": []any{"-y", "context7"}},
+		"chrome-devtools": map[string]any{"command": "npx", "args": []any{"-y", "chrome-devtools"}},
+		"web_reader":      map[string]any{"type": "http", "url": "https://api.z.ai/api/mcp/web_reader/mcp"},
+		"web_search_prime": map[string]any{"type": "http", "url": "https://api.z.ai/api/mcp/web_search_prime/mcp"},
+	})
+
+	removed, err := disableMCPServerForTool(claudeJSONPath, "webreader")
+	if err != nil {
+		t.Fatalf("disable webreader 실패: %v", err)
+	}
+	if !removed {
+		t.Error("disable webreader 가 web_reader 를 제거하지 않음")
+	}
+
+	servers := readAllMCPServers(t, claudeJSONPath)
+	if _, ok := servers["web_reader"]; ok {
+		t.Error("disable webreader 후에도 web_reader 가 남아 있음")
+	}
+	// 무관 엔트리 + 다른 z.ai 서버 보존 (REQ-GMC-010)
+	for _, key := range []string{"context7", "chrome-devtools", "web_search_prime"} {
+		if _, ok := servers[key]; !ok {
+			t.Errorf("disable webreader 가 무관 엔트리 %q 를 제거함 (REQ-GMC-010 위반)", key)
+		}
+	}
+}
+
+// EC-2 — disable all (부분 집합만 존재) → 존재하는 것만 제거, 무관 엔트리 보존.
+func TestGLMToolsDisable_All_PartialSet(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	setupGLMToken(t, homeDir, "test-token")
+	claudeJSONPath := setupClaudeJSON(t, homeDir, map[string]any{
+		"context7":       map[string]any{"command": "npx"},
+		"zai-mcp-server": buildZAIMCPEntry("test-token"), // vision 만 등록된 상태
+	})
+
+	removed, err := disableMCPServerForTool(claudeJSONPath, "all")
+	if err != nil {
+		t.Fatalf("disable all 실패: %v", err)
+	}
+	if !removed {
+		t.Error("disable all 이 존재하는 vision 엔트리를 제거하지 않음")
+	}
+
+	servers := readAllMCPServers(t, claudeJSONPath)
+	if _, ok := servers["zai-mcp-server"]; ok {
+		t.Error("disable all 후에도 zai-mcp-server 가 남아 있음")
+	}
+	if _, ok := servers["context7"]; !ok {
+		t.Error("disable all 이 무관 엔트리 context7 을 제거함 (REQ-GMC-010 위반)")
+	}
+}
+
+// EC-3 — websearch enable 후 webreader enable → 두 HTTP 엔트리 공존 (clobber 금지).
+func TestGLMToolsEnable_SequentialPartial_Coexist(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	token := "mix-token"
+	setupGLMToken(t, homeDir, token)
+	claudeJSONPath := setupClaudeJSON(t, homeDir, nil)
+
+	if err := runEnableMCPServerForTool(claudeJSONPath, "websearch", token); err != nil {
+		t.Fatalf("enable websearch 실패: %v", err)
+	}
+	if err := runEnableMCPServerForTool(claudeJSONPath, "webreader", token); err != nil {
+		t.Fatalf("enable webreader 실패: %v", err)
+	}
+
+	servers := readAllMCPServers(t, claudeJSONPath)
+	if _, ok := servers["web_search_prime"]; !ok {
+		t.Error("두 번째 enable 이 첫 번째 web_search_prime 를 덮어씀 (clobber)")
+	}
+	if _, ok := servers["web_reader"]; !ok {
+		t.Error("두 번째 enable 후 web_reader 가 없음")
+	}
+	if len(servers) != 2 {
+		t.Errorf("서버 수 = %d, 기대: 2 (두 HTTP 엔트리 공존)", len(servers))
+	}
+}
+
+// 혼합 enable — webreader 후 vision → npx + HTTP 두 엔트리 공존.
+func TestGLMToolsEnable_MixedHTTPAndNPX_Coexist(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	token := "mix2-token"
+	setupGLMToken(t, homeDir, token)
+	claudeJSONPath := setupClaudeJSON(t, homeDir, nil)
+
+	if err := runEnableMCPServerForTool(claudeJSONPath, "webreader", token); err != nil {
+		t.Fatalf("enable webreader 실패: %v", err)
+	}
+	if err := runEnableMCPServerForTool(claudeJSONPath, "vision", token); err != nil {
+		t.Fatalf("enable vision 실패: %v", err)
+	}
+
+	servers := readAllMCPServers(t, claudeJSONPath)
+	if len(servers) != 2 {
+		t.Errorf("서버 수 = %d, 기대: 2 (web_reader HTTP + zai-mcp-server npx)", len(servers))
+	}
+	if _, ok := servers["web_reader"]; !ok {
+		t.Error("vision enable 이 web_reader 를 덮어씀")
+	}
+	if entry := readServer(t, claudeJSONPath, "zai-mcp-server"); entry == nil || entry["command"] != "npx" {
+		t.Error("vision npx 엔트리가 없거나 잘못됨")
+	}
+}
+
+// AC-GWR-018 (REQ-GWR-C8, Scenario 6) — webreader enable 은 Node 부재 시에도 성공.
+func TestGLMToolsEnable_WebReader_NoNode_Succeeds(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	token := "reader-nonode-token"
+	setupGLMToken(t, homeDir, token)
+	setupClaudeJSON(t, homeDir, nil)
+	defer makeNodeMissing(t)() // Node 부재 시뮬레이션
+
+	outBuf := new(strings.Builder)
+	glmToolsEnableCmd.SetOut(outBuf)
+	glmToolsEnableCmd.SetErr(new(strings.Builder))
+
+	// HTTP 서버는 Node 게이트를 적용하면 안 됨 → 성공해야 함
+	err := glmToolsEnableCmd.RunE(glmToolsEnableCmd, []string{"webreader"})
+	if err != nil {
+		t.Fatalf("webreader enable 이 Node 부재로 실패함 (REQ-GWR-C8 위반): %v", err)
+	}
+
+	claudeJSONPath := filepath.Join(homeDir, ".claude.json")
+	if entry := readServer(t, claudeJSONPath, "web_reader"); entry == nil {
+		t.Error("webreader enable 후 web_reader 엔트리가 없음 (Node 부재 환경)")
+	}
+}
+
+// AC-GWR-018 보강 (REQ-GWR-C8, Scenario 6) — websearch enable 도 Node 부재 시 성공.
+func TestGLMToolsEnable_WebSearch_NoNode_Succeeds(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	token := "search-nonode-token"
+	setupGLMToken(t, homeDir, token)
+	setupClaudeJSON(t, homeDir, nil)
+	defer makeNodeMissing(t)()
+
+	outBuf := new(strings.Builder)
+	glmToolsEnableCmd.SetOut(outBuf)
+	glmToolsEnableCmd.SetErr(new(strings.Builder))
+
+	err := glmToolsEnableCmd.RunE(glmToolsEnableCmd, []string{"websearch"})
+	if err != nil {
+		t.Fatalf("websearch enable 이 Node 부재로 실패함 (REQ-GWR-C8 위반): %v", err)
+	}
+
+	claudeJSONPath := filepath.Join(homeDir, ".claude.json")
+	if entry := readServer(t, claudeJSONPath, "web_search_prime"); entry == nil {
+		t.Error("websearch enable 후 web_search_prime 엔트리가 없음 (Node 부재 환경)")
+	}
+}
+
+// AC-GWR-018 대칭 (REQ-GWR-C8, Scenario 6) — vision enable 은 Node 부재 시 실패해야 함.
+func TestGLMToolsEnable_Vision_NoNode_Fails(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	setupGLMToken(t, homeDir, "vision-nonode-token")
+	setupClaudeJSON(t, homeDir, nil)
+	defer makeNodeMissing(t)()
+
+	glmToolsEnableCmd.SetOut(new(strings.Builder))
+	glmToolsEnableCmd.SetErr(new(strings.Builder))
+
+	err := glmToolsEnableCmd.RunE(glmToolsEnableCmd, []string{"vision"})
+	if err == nil {
+		t.Fatal("vision enable 이 Node 부재인데도 성공함 (REQ-GWR-C8 — vision 은 npx 게이트 적용)")
+	}
+
+	// all 도 vision 을 포함하므로 Node 부재 시 실패해야 함
+	errAll := glmToolsEnableCmd.RunE(glmToolsEnableCmd, []string{"all"})
+	if errAll == nil {
+		t.Fatal("all enable 이 Node 부재인데도 성공함 (vision 포함 → Node 게이트 적용)")
+	}
+}
+
+// AC-GWR-015 (REQ-GWR-C5) — 성공 메시지가 실제 등록된 서버만 정확히 반영.
+func TestGLMToolsEnable_Message_ReflectsRegisteredServers(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	token := "msg-token"
+	setupGLMToken(t, homeDir, token)
+	setupClaudeJSON(t, homeDir, nil)
+	defer makeNodeMissing(t)() // HTTP 전용이라 Node 불필요
+
+	outBuf := new(strings.Builder)
+	glmToolsEnableCmd.SetOut(outBuf)
+	glmToolsEnableCmd.SetErr(new(strings.Builder))
+
+	if err := glmToolsEnableCmd.RunE(glmToolsEnableCmd, []string{"webreader"}); err != nil {
+		t.Fatalf("webreader enable 실패: %v", err)
+	}
+
+	out := outBuf.String()
+	if !strings.Contains(out, "Web Reader") {
+		t.Errorf("webreader enable 메시지에 'Web Reader' 가 없음: %q", out)
+	}
+	// 단일 webreader enable 인데 Vision / Web Search 를 거짓 보고하면 안 됨 (REQ-GWR-C5)
+	if strings.Contains(out, "Vision") {
+		t.Errorf("webreader 단일 enable 인데 메시지가 Vision 을 보고함 (잘못된 메시지): %q", out)
+	}
+	if strings.Contains(out, "Web Search") {
+		t.Errorf("webreader 단일 enable 인데 메시지가 Web Search 를 보고함 (잘못된 메시지): %q", out)
+	}
+}
+
+// AC-GWR-015 disable 메시지 — disable 메시지가 실제 제거된 서버만 반영.
+func TestGLMToolsDisable_Message_ReflectsRemovedServers(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	setupGLMToken(t, homeDir, "test-token")
+	setupClaudeJSON(t, homeDir, map[string]any{
+		"web_reader": map[string]any{"type": "http", "url": "https://api.z.ai/api/mcp/web_reader/mcp"},
+	})
+
+	outBuf := new(strings.Builder)
+	glmToolsDisableCmd.SetOut(outBuf)
+	glmToolsDisableCmd.SetErr(new(strings.Builder))
+
+	if err := glmToolsDisableCmd.RunE(glmToolsDisableCmd, []string{"webreader"}); err != nil {
+		t.Fatalf("disable webreader 실패: %v", err)
+	}
+
+	out := outBuf.String()
+	if !strings.Contains(out, "Web Reader") {
+		t.Errorf("disable webreader 메시지에 'Web Reader' 가 없음: %q", out)
+	}
+	if strings.Contains(out, "Vision") {
+		t.Errorf("webreader 단일 disable 인데 메시지가 Vision 을 보고함: %q", out)
+	}
+}
+
+// AC-GWR-017 (REQ-GWR-C7, Scenario 5) — websearch idempotency: 두 번째 enable 은 변경 없음.
+func TestGLMToolsEnable_WebSearch_Idempotent(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	token := "idem-token"
+	setupGLMToken(t, homeDir, token)
+	claudeJSONPath := setupClaudeJSON(t, homeDir, nil)
+
+	// 첫 enable
+	skipped, err := enableMCPServerIdempotentForTool(claudeJSONPath, "websearch", token)
+	if err != nil {
+		t.Fatalf("첫 번째 websearch enable 실패: %v", err)
+	}
+	if skipped {
+		t.Error("첫 번째 enable 은 skip 되면 안 됨")
+	}
+
+	info1, _ := os.Stat(claudeJSONPath)
+
+	// 두 번째 enable (동일 → idempotent skip)
+	skipped2, err := enableMCPServerIdempotentForTool(claudeJSONPath, "websearch", token)
+	if err != nil {
+		t.Fatalf("두 번째 websearch enable 실패: %v", err)
+	}
+	if !skipped2 {
+		t.Error("두 번째 websearch enable 은 idempotent skip 이어야 함 (REQ-GWR-C7)")
+	}
+
+	info2, _ := os.Stat(claudeJSONPath)
+	if !info1.ModTime().Equal(info2.ModTime()) {
+		t.Error("idempotent skip 시 mtime 이 변경됨 (HTTP 엔트리 변경 없음 기대)")
+	}
+}
+
+// AC-GWR-017 보강 — all idempotency: 세 서버 모두 동일하면 skip.
+func TestGLMToolsEnable_All_Idempotent(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	token := "idem-all-token"
+	setupGLMToken(t, homeDir, token)
+	claudeJSONPath := setupClaudeJSON(t, homeDir, nil)
+
+	if _, err := enableMCPServerIdempotentForTool(claudeJSONPath, "all", token); err != nil {
+		t.Fatalf("첫 번째 all enable 실패: %v", err)
+	}
+	info1, _ := os.Stat(claudeJSONPath)
+
+	skipped, err := enableMCPServerIdempotentForTool(claudeJSONPath, "all", token)
+	if err != nil {
+		t.Fatalf("두 번째 all enable 실패: %v", err)
+	}
+	if !skipped {
+		t.Error("동일 토큰으로 all 재실행 시 idempotent skip 이어야 함 (Scenario 5)")
+	}
+	info2, _ := os.Stat(claudeJSONPath)
+	if !info1.ModTime().Equal(info2.ModTime()) {
+		t.Error("all idempotent skip 시 mtime 이 변경됨")
+	}
+}
+
+// REQ-GWR-C7 — vision idempotency 에서 토큰 불일치는 에러 (force 안내).
+func TestGLMToolsEnable_Vision_TokenMismatch_Refused(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	setupGLMToken(t, homeDir, "new-vision-token")
+	claudeJSONPath := setupClaudeJSON(t, homeDir, map[string]any{
+		"zai-mcp-server": buildZAIMCPEntry("old-vision-token"),
+	})
+
+	_, err := enableMCPServerIdempotentForTool(claudeJSONPath, "vision", "new-vision-token")
+	if err == nil {
+		t.Fatal("vision 토큰 불일치 시 에러가 반환되어야 함 (REQ-GMC-006 (b))")
+	}
+	if !strings.Contains(err.Error(), "force") {
+		t.Errorf("토큰 불일치 에러에 --force 안내가 없음: %v", err)
+	}
+}
+
+// REQ-GWR-C5 — 빌더 단위 검증: buildZAIHTTPEntry 와 buildZAIMCPEntries 형태.
+func TestBuildZAIMCPEntries_PerTool(t *testing.T) {
+	token := "builder-token"
+
+	// vision → zai-mcp-server 1개
+	vis := buildZAIMCPEntries("vision", token)
+	if len(vis) != 1 {
+		t.Errorf("vision 엔트리 수 = %d, 기대: 1", len(vis))
+	}
+	if _, ok := vis["zai-mcp-server"]; !ok {
+		t.Error("vision 에 zai-mcp-server 가 없음")
+	}
+
+	// websearch → web_search_prime 1개 (HTTP)
+	ws := buildZAIMCPEntries("websearch", token)
+	if entry, ok := ws["web_search_prime"]; !ok {
+		t.Error("websearch 에 web_search_prime 가 없음")
+	} else if entry["type"] != "http" {
+		t.Errorf("web_search_prime type = %v, 기대: http", entry["type"])
+	}
+
+	// webreader → web_reader 1개 (HTTP)
+	wr := buildZAIMCPEntries("webreader", token)
+	if entry, ok := wr["web_reader"]; !ok {
+		t.Error("webreader 에 web_reader 가 없음")
+	} else if entry["url"] != "https://api.z.ai/api/mcp/web_reader/mcp" {
+		t.Errorf("web_reader url = %v", entry["url"])
+	}
+
+	// all → 3개
+	all := buildZAIMCPEntries("all", token)
+	if len(all) != 3 {
+		t.Errorf("all 엔트리 수 = %d, 기대: 3", len(all))
+	}
+}
+
+// REQ-GWR-C8 — toolSetNeedsNode: vision/all 만 Node 필요.
+func TestToolSetNeedsNode(t *testing.T) {
+	tests := []struct {
+		toolName string
+		want     bool
+	}{
+		{"vision", true},
+		{"all", true},
+		{"websearch", false},
+		{"webreader", false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.toolName, func(t *testing.T) {
+			if got := toolSetNeedsNode(tc.toolName); got != tc.want {
+				t.Errorf("toolSetNeedsNode(%q) = %v, 기대: %v", tc.toolName, got, tc.want)
+			}
+		})
+	}
+}
