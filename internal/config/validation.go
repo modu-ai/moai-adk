@@ -135,6 +135,30 @@ var validGitConventionNames = map[string]bool{
 	"custom":               true,
 }
 
+// IsValidConvention reports whether name is one of the 5 canonical git
+// convention names (auto, conventional-commits, angular, karma, custom).
+// It reuses the validGitConventionNames map — the single source of truth that
+// mirrors the pkg/models GitConventionConfig.Convention `oneof` validate tag —
+// so callers in other packages (internal/web, internal/cli) validate against
+// the same canonical set rather than authoring a parallel rule-set.
+// The empty string is NOT a member here; callers that treat empty as "keep
+// project default" must guard for empty before calling.
+func IsValidConvention(name string) bool {
+	return validGitConventionNames[name]
+}
+
+// ValidConventions returns the 5 canonical git convention names as a slice,
+// for populating UI option lists (web <select>, TUI huh.Select). Order is not
+// guaranteed (sourced from a map) — callers that need stable ordering must
+// sort the result.
+func ValidConventions() []string {
+	names := make([]string, 0, len(validGitConventionNames))
+	for name := range validGitConventionNames {
+		names = append(names, name)
+	}
+	return names
+}
+
 // validateGitConventionConfig checks the git convention configuration.
 func validateGitConventionConfig(gc *models.GitConventionConfig) []ValidationError {
 	var errs []ValidationError
