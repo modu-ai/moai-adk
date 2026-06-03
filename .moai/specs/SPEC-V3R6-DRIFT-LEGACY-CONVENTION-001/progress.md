@@ -28,8 +28,8 @@
 | M1 — era exemption + terminal authority (drift.go) | done | bd7b6bcc4 | DetectDrift ③+④; D3 record-emission contract |
 | M2 — stale sync→completed rule correction (transitions.go) | done | 4b301e0ab | 4-phase model: sync = implemented |
 | M3 — combined-scope secondary prefix-grep fallback (drift.go) | done | c64b050f7 | 3-gate LSGF-001-safe; live CCSYNC CLAUDEMD+TOOLCAT resolved |
-| M4 — close-subject full-ID doctrine amendment + mirror | done | (this commit) | lifecycle-sync-gate.md + spec-frontmatter-schema.md + template mirror (§25 C2 generalized) |
-| M5 — verification gate + genuine-⑤ residual classification | pending | — | strict drift decrease + residual handoff |
+| M4 — close-subject full-ID doctrine amendment + mirror | done | 527c7d53c | lifecycle-sync-gate.md + spec-frontmatter-schema.md + template mirror (§25 C2 generalized) |
+| M5 — verification gate + genuine-⑤ residual classification | done | (this commit) | drift 54→8; audit byte-identical; 12/12 AC PASS; residual classified (5a/5b/5c handoff) |
 
 ## §E.2 Run-phase Evidence
 
@@ -60,3 +60,72 @@
 - Named exemplars (pre-fix): SPEC-CCSYNC-CLAUDEMD-001 [completed↔implemented Drifted],
   SPEC-CCSYNC-TOOLCAT-001 [completed↔implemented Drifted],
   SPEC-CCSYNC-DYNWF-001 [in-progress↔implemented Drifted — collision case].
+
+## M5 Post-fix Results
+
+- `moai spec drift --count` = 54 → **8** (strict decrease, AC-DLC-009). (Earlier intermediate
+  read showed 7; the 7↔8 variance is parallel-session corpus churn — directional binding
+  signal holds.)
+- Named-exemplar jq proof (post-fix): SPEC-CCSYNC-CLAUDEMD-001 Drifted=false (combined-scope
+  fallback), SPEC-CCSYNC-TOOLCAT-001 Drifted=false (combined-scope fallback),
+  SPEC-CCSYNC-DYNWF-001 Drifted=false (genuinely closed by its own per-SPEC commit 21ac357c1
+  by the parallel session; fallback NOT invoked — primary walk gives completed). The
+  load-bearing collision guard (DYNWF NOT cleared by the (CLAUDEMD + TOOLCAT) combined close)
+  remains pinned by the deterministic unit fixture TestCombinedScopeCloseMatches/DYNWF_NOT_named,
+  immune to repo churn.
+- Audit parity (AC-DLC-007): pristine-main binary vs post-fix binary `moai spec audit --json`
+  on the same corpus → BYTE-IDENTICAL. era.go/audit.go call NONE of the modified functions.
+- Coverage 87.6% (≥85%). go test ./... green (93 packages). go vet/lint clean.
+  GOOS=windows build exit 0. Observation-only discipline verified (no new write primitive).
+
+## Genuine-⑤ Residual Classification (INFORMATIONAL — handoff to follow-up SPEC)
+
+The 8 post-fix residual drift records are NOT in this SPEC's mechanism ①②③④ scope. They
+decompose into 3 NEW sub-classes for a follow-up SPEC (this SPEC MUST NOT clear them — AP-1):
+
+**5a — post-close fix shadowing** (NEW mechanism): a `fix`/`feat` commit landed AFTER the
+`4-phase close`, so the newest-first walker adopts the post-close commit (→implemented) before
+reaching the close. The frontmatter `completed` is correct; git-walk infers `implemented`.
+  - SPEC-V3R6-LIFECYCLE-SYNC-GATE-001 [completed↔implemented] — close 203ed896b, then fix 38d07a6a0
+  - SPEC-V3R6-DOCS-I18N-PARITY-001 [completed↔implemented] — close present, then post-close fix
+
+**5b — group-label combined close** (NEW combined-scope variant NOT matched by M3 prefix-grep):
+closed by `chore(SPEC group C): Mx-phase close (...)` which names a free-text group label
+("SPEC group C"), NOT a `SPEC-<PREFIX>` scope-prefix. `deriveScopePrefix` cannot derive a
+hyphen-delimited prefix from a group label, so the M3 fallback correctly does not fire.
+  - SPEC-V3R6-MAIN-RED-REMEDIATION-001 [completed↔in-progress]
+  - SPEC-V3R6-PROMPT-CACHE-001 [completed↔implemented]
+
+**5c — genuine no-close / frontmatter lag** (true mechanism ⑤ — the deferred operational set):
+  - SPEC-AUTONOMY-RUN-GOAL-001 [implemented↔completed] — frontmatter BEHIND (git has close
+    11871ce61 → completed; frontmatter still implemented; needs frontmatter→completed)
+  - SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001 [completed↔implemented] — no per-SPEC close commit
+  - SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001 [completed↔in-progress] — no per-SPEC close commit
+  - SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001 [completed↔in-progress] — retroactive chore, no close-infix
+
+Follow-up SPEC recommendation: (i) handle 5a (post-close fix shadowing — walker should treat a
+close-infix commit ANYWHERE in the window as authoritative for `completed`, even if a newer
+non-close fix shadows it); (ii) handle 5b (group-label combined close — extend combinedScopeClose
+matching to free-text group labels with an explicit sibling enumeration); (iii) 5c is operational
+(actually run `moai spec close` / backfill frontmatter — NOT a detector change).
+
+## §E.3 Run-phase Audit-Ready Signal
+
+```yaml
+run_complete_at: 2026-06-03
+run_commit_sha: "<M5 commit — backfill after commit>"
+run_status: implemented
+ac_pass_count: 12
+ac_fail_count: 0
+preserve_list_post_run_count: 2  # era.go + audit.go byte-unchanged
+new_warnings_or_lints_introduced: 0  # golangci-lint 0 issues
+cross_platform_build:
+  darwin: pass
+  windows: pass  # GOOS=windows GOARCH=amd64 go build ./internal/spec/... exit 0
+total_run_phase_files: 7  # drift.go, transitions.go, +4 new/edited _test.go, 2 doctrine + 1 template mirror
+m1_to_mN_commit_strategy: "per-milestone main-direct (M1 bd7b6bcc4, M2 4b301e0ab, M3 c64b050f7, M4 527c7d53c, M5 this)"
+drift_count_before: 54
+drift_count_after: 8
+audit_parity: byte-identical
+coverage_internal_spec: 87.6%
+```
