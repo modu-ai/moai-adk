@@ -186,9 +186,19 @@ func TestComponentChromePresent(t *testing.T) {
 	}
 }
 
-// TestAppbarRendered verifies AC-WC4-004: the appbar renders brand badge SVG +
-// 모두의AI + loopback indicator + theme toggle, and contains NO interface-language
-// picker (S3 exclusion).
+// TestAppbarRendered verifies AC-WC4-004 + AC-WC5-012: the appbar renders brand
+// badge SVG + 모두의AI + loopback indicator + theme toggle, and (S3 landed) the
+// interface-language picker + data-i18n chrome.
+//
+// SPEC-WEB-CONSOLE-005 reconciliation (R4 / AC-WC5-012): 004 forbade the S3-scope
+// elements class="langpick", id="langSelect", and data-i18n in the appbar/body.
+// 005 INTENTIONALLY lands them, so the guard is INVERTED — the langpick class
+// token, the data-i18n chrome, and the NEW id="uiLangSelect" move from FORBIDDEN
+// to EXPECTED. The stale id="langSelect" forbidden entry is NOT inverted: it
+// referenced the never-landed original id; the appbar picker uses uiLangSelect,
+// and langSelect is the live content-language {{define "langSelect"}} helper
+// (whose rendered selects carry id="conversation_lang" etc., never the literal
+// id="langSelect"). So we keep asserting the literal id="langSelect" is ABSENT.
 func TestAppbarRendered(t *testing.T) {
 	body := renderIndexBody(t, profile.ProfilePreferences{})
 
@@ -198,23 +208,30 @@ func TestAppbarRendered(t *testing.T) {
 		`모두의AI`,                // brand name
 		`class="loopback"`,     // loopback indicator
 		`id="themeToggle"`,     // theme toggle button
+		`id="uiLangSelect"`,    // S3 langpick (the non-colliding interface id)
+		`data-i18n`,            // S3 chrome translation markers
 	} {
 		if !strings.Contains(body, marker) {
-			t.Errorf("appbar missing marker %q", marker)
+			t.Errorf("appbar/body missing expected marker %q", marker)
 		}
 	}
 
-	// NO interface-language picker in the appbar (S3 scope, §4 E.1).
-	for _, forbidden := range []string{
-		`class="langpick"`,
-		`id="langSelect"`,
-		`data-i18n`,
-	} {
-		if strings.Contains(body, forbidden) {
-			t.Errorf("appbar contains forbidden S3-scope element %q (interface i18n is S3)", forbidden)
-		}
+	// The langpick carries the langpick class token (class="select langpick").
+	if !appbarLangpickRe.MatchString(body) {
+		t.Error("appbar missing the langpick class token (S3 interface-language picker)")
+	}
+
+	// The stale id="langSelect" literal must remain ABSENT — the appbar picker is
+	// uiLangSelect, and the content-language helper renders id="<field-name>",
+	// never the literal id="langSelect" (R4: do NOT invert this forbidden entry).
+	if strings.Contains(body, `id="langSelect"`) {
+		t.Error(`rendered body contains the literal id="langSelect" — the appbar picker must use id="uiLangSelect"`)
 	}
 }
+
+// appbarLangpickRe matches the langpick class token whether standalone or
+// alongside the reused .select chrome (class="select langpick").
+var appbarLangpickRe = regexp.MustCompile(`class="[^"]*\blangpick\b[^"]*"`)
 
 // TestLoopbackIndicatorShowsRealBindAddr verifies AC-WC4-005: the loopback
 // indicator shows the real bound 127.0.0.1:<port> from the BindAddr view-model
