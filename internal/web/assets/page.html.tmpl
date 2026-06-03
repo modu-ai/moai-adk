@@ -6,8 +6,11 @@
   <title>MoAI Web Console</title>
   <link rel="stylesheet" href="/static/console.css">
   <script>
-    // FOUC-prevention: apply the persisted theme before first paint (REQ-WC4-006).
-    // Client-side only — no server round-trip, no theme persistence field.
+    // FOUC-prevention: apply the persisted theme + interface language before
+    // first paint (REQ-WC4-006 / REQ-WC5-005). Client-side only — no server
+    // round-trip, no theme/language persistence field. Setting <html lang>
+    // early activates the CJK @font-face stack for ja/zh before paint so the
+    // first render already uses the brand webfont (no system-ui flash).
     (function () {
       try {
         var t = localStorage.getItem("moai-console-theme");
@@ -15,6 +18,12 @@
           document.documentElement.setAttribute("data-theme", t);
         }
       } catch (e) { /* localStorage unavailable — keep the default light theme */ }
+      try {
+        var l = localStorage.getItem("moai-console-lang");
+        if (l === "en" || l === "ko" || l === "ja" || l === "zh") {
+          document.documentElement.setAttribute("lang", l);
+        }
+      } catch (e) { /* localStorage unavailable — keep the default en interface */ }
     })();
   </script>
 </head>
@@ -39,6 +48,21 @@
     <span class="appbar__divider"></span>
     <span class="loopback"><span class="loopback__dot"></span>{{.BindAddr}}</span>
     <span class="appbar__spacer"></span>
+    <!-- Interface-language picker (REQ-WC5-003) — a NON-form widget: it lives in
+         the appbar (which precedes the settings form), carries NO name= attribute,
+         submits nothing, and persists ONLY in localStorage("moai-console-lang").
+         It switches the UI chrome language (data-i18n), NOT the server-validated
+         content-language settings. id="uiLangSelect" deliberately avoids the
+         "langSelect" content-language helper id to keep interface and content
+         language orthogonal (the cohort core invariant). -->
+    <span class="select-wrap langpick-wrap">
+      <select class="select langpick" id="uiLangSelect" aria-label="Interface language" title="Interface language">
+        <option value="en">English</option>
+        <option value="ko">한국어</option>
+        <option value="ja">日本語</option>
+        <option value="zh">中文</option>
+      </select>
+    </span>
     <button class="iconbtn" id="themeToggle" type="button" aria-label="Toggle light / dark theme" title="Toggle theme">
       {{template "icon" "sun"}}
       {{template "icon" "moon"}}

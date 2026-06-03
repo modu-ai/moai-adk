@@ -289,8 +289,10 @@ func TestNoReviewKeys(t *testing.T) {
 func TestLangpickRendered(t *testing.T) {
 	body := renderIndexBody(t, profile.ProfilePreferences{})
 
-	if !strings.Contains(body, `class="langpick"`) {
-		t.Error("appbar missing the langpick select (class=\"langpick\")")
+	// The langpick reuses the .select chrome, so it carries the langpick class
+	// token (class="select langpick"). Assert the langpick class token is present.
+	if !langpickClassRe.MatchString(body) {
+		t.Error("appbar missing the langpick select (no element carries the langpick class)")
 	}
 	// The non-colliding id (NOT langSelect, which is the content-language helper).
 	if !strings.Contains(body, `id="uiLangSelect"`) {
@@ -308,16 +310,23 @@ func TestLangpickRendered(t *testing.T) {
 		}
 	}
 
-	// The langpick must appear BEFORE <form (it lives in the appbar, outside the form).
-	langIdx := strings.Index(body, `class="langpick"`)
-	formIdx := strings.Index(body, "<form")
-	if langIdx < 0 || formIdx < 0 {
-		t.Fatal("could not locate langpick and <form> for ordering check")
+	// The langpick must appear BEFORE the settings form's opening <form ...> tag
+	// (it lives in the appbar, outside the form). Match "<form " with a trailing
+	// space to hit the real opening tag, not a prose mention of the word "form".
+	langIdx := langpickClassRe.FindStringIndex(body)
+	formIdx := strings.Index(body, "<form ")
+	if langIdx == nil || formIdx < 0 {
+		t.Fatal("could not locate langpick and the <form ...> tag for ordering check")
 	}
-	if langIdx > formIdx {
-		t.Error("langpick appears AFTER <form> — it must be in the appbar, OUTSIDE the form (R1: server-contract leak)")
+	if langIdx[0] > formIdx {
+		t.Error("langpick appears AFTER the <form ...> tag — it must be in the appbar, OUTSIDE the form (R1: server-contract leak)")
 	}
 }
+
+// langpickClassRe matches an element carrying the langpick class token, whether
+// it stands alone (class="langpick") or alongside the reused .select chrome
+// (class="select langpick").
+var langpickClassRe = regexp.MustCompile(`class="[^"]*\blangpick\b[^"]*"`)
 
 // TestLangpickNotFormField verifies AC-WC5-008b: the langpick carries no name=
 // attribute and is not inside <form>; interface language persists only in
@@ -325,14 +334,10 @@ func TestLangpickRendered(t *testing.T) {
 func TestLangpickNotFormField(t *testing.T) {
 	tmplSrc := readEmbeddedAsset(t, "page.html.tmpl")
 
-	// Locate the langpick <select ...> opening tag and assert it has no name=.
-	pickRe := regexp.MustCompile(`<select[^>]*class="langpick"[^>]*>`)
+	// Locate the langpick <select ...> opening tag (anchored on its unique
+	// id="uiLangSelect") and assert it carries NO name= attribute.
+	pickRe := regexp.MustCompile(`<select[^>]*id="uiLangSelect"[^>]*>`)
 	tag := pickRe.FindString(tmplSrc)
-	if tag == "" {
-		// id may precede class; try a broader match anchored on uiLangSelect.
-		pickRe = regexp.MustCompile(`<select[^>]*id="uiLangSelect"[^>]*>`)
-		tag = pickRe.FindString(tmplSrc)
-	}
 	if tag == "" {
 		t.Fatal("could not find the langpick <select> opening tag")
 	}
@@ -340,11 +345,16 @@ func TestLangpickNotFormField(t *testing.T) {
 		t.Errorf("langpick <select> carries a name= attribute (must NOT be a form field): %q", tag)
 	}
 
-	// The langpick markup must sit before <form (outside the form element).
-	pickIdx := strings.Index(tmplSrc, "langpick")
-	formIdx := strings.Index(tmplSrc, "<form")
+	// The langpick markup must sit before the settings form's opening <form ...>
+	// tag (it lives in the appbar, outside the form). Match "<form " (trailing
+	// space) to hit the real tag, not a prose mention of the word "form".
+	pickIdx := strings.Index(tmplSrc, "uiLangSelect")
+	formIdx := strings.Index(tmplSrc, "<form ")
+	if pickIdx < 0 || formIdx < 0 {
+		t.Fatal("could not locate the langpick and the <form ...> tag")
+	}
 	if pickIdx > formIdx {
-		t.Error("langpick is positioned after <form> in the template (must be outside the form)")
+		t.Error("langpick is positioned after the <form ...> tag in the template (must be outside the form)")
 	}
 
 	// No interface-language config field leaked into the server handler.
@@ -383,8 +393,20 @@ func TestI18nLoadDefault(t *testing.T) {
 	js := readEmbeddedAsset(t, "app.js")
 	tmplSrc := readEmbeddedAsset(t, "page.html.tmpl")
 
-	if !strings.Contains(js, `localStorage.getItem("moai-console-lang"`) {
-		t.Error("app.js does not read the persisted moai-console-lang on load")
+	// The load path must read the persisted moai-console-lang value via
+	// localStorage.getItem. The read happens in app.js (via the LANG_KEY constant
+	// = "moai-console-lang") AND/OR in the <head> FOUC snippet (literal). Accept
+	// either: assert a getItem read that targets moai-console-lang somewhere on
+	// the load path.
+	jsReadsLang := strings.Contains(js, "localStorage.getItem(LANG_KEY)") ||
+		strings.Contains(js, `localStorage.getItem("moai-console-lang"`)
+	headReadsLang := strings.Contains(tmplSrc, `localStorage.getItem("moai-console-lang"`)
+	if !jsReadsLang && !headReadsLang {
+		t.Error("neither app.js nor the <head> snippet reads the persisted moai-console-lang on load")
+	}
+	// app.js must reference the LANG_KEY value (the localStorage key).
+	if !strings.Contains(js, "moai-console-lang") {
+		t.Error("app.js does not reference the moai-console-lang localStorage key")
 	}
 	// Default-to-en fallback present (a valid-locale whitelist guard).
 	if !strings.Contains(js, `"en"`) {
