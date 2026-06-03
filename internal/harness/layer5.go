@@ -119,6 +119,15 @@ func mainMD(opts ScaffoldOpts, now string) string {
 	b.WriteString("## Domain Summary\n\n")
 	b.WriteString("이 프로젝트는 ")
 	fmt.Fprintf(&b, "%s 도메인 기반입니다. 도메인 특화 패턴은 my-harness-* skills에 정의됩니다.\n\n", opts.Domain)
+	// REQ-HAW-006: task-shape → specialist ROUTER manifest. The orchestrator
+	// reads this table at activation time to route an observable task-shape to
+	// the matching generated harness specialist agent. Additive only — the
+	// Domain Summary above and Linked Files below are preserved verbatim.
+	b.WriteString("## Task-Shape Routing\n\n")
+	b.WriteString("| Task shape | Route to specialist |\n")
+	b.WriteString("|------------|---------------------|\n")
+	fmt.Fprintf(&b, "| 아키텍처 설계 / 구조 결정 (%s 도메인) | `.claude/agents/harness/%s-architect.md` |\n", opts.Domain, opts.Domain)
+	fmt.Fprintf(&b, "| 기능 구현 / 코드 작성 (%s 도메인) | `.claude/agents/harness/%s-engineer.md` |\n\n", opts.Domain, opts.Domain)
 	b.WriteString("## Linked Files\n\n")
 	b.WriteString("- `plan-extension.md` — Plan phase chain\n")
 	b.WriteString("- `run-extension.md` — Run phase chain\n")

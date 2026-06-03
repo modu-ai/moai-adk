@@ -70,6 +70,42 @@ func TestScaffoldHarnessDir_DomainEmbeddedInMain(t *testing.T) {
 	}
 }
 
+// TestScaffoldHarnessDir_MainMDIsRouterManifest verifies REQ-HAW-006 (AC-HAW-006):
+// main.md is a task-shape → specialist ROUTER manifest. It must contain a domain
+// summary metadata line, a routing-table heading, and a Linked Files section. The
+// Domain Summary + Linked Files sections are preserved verbatim (additive change);
+// only the Task-Shape Routing table is new.
+func TestScaffoldHarnessDir_MainMDIsRouterManifest(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "harness")
+	opts := ScaffoldOpts{Domain: "ios-mobile", SpecID: "SPEC-PROJ-INIT-001"}
+	if err := ScaffoldHarnessDir(dir, opts); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(filepath.Join(dir, "main.md"))
+	content := string(data)
+
+	// (a) Domain metadata line — preserved from the existing builder.
+	if !strings.Contains(content, "**Domain**:") {
+		t.Errorf("main.md missing **Domain**: metadata line")
+	}
+	// (b) Routing-table heading — the new router element (REQ-HAW-006).
+	if !strings.Contains(content, "## Task-Shape Routing") {
+		t.Errorf("main.md missing ## Task-Shape Routing heading")
+	}
+	// The routing table must map task-shapes to harness specialists.
+	if !strings.Contains(content, ".claude/agents/harness/") {
+		t.Errorf("main.md routing table missing .claude/agents/harness/ specialist route")
+	}
+	// (c) Linked Files section — preserved from the existing builder.
+	if !strings.Contains(content, "## Linked Files") {
+		t.Errorf("main.md missing ## Linked Files section")
+	}
+	// Domain Summary section preserved (additive, not a rewrite).
+	if !strings.Contains(content, "## Domain Summary") {
+		t.Errorf("main.md missing ## Domain Summary section (must be preserved)")
+	}
+}
+
 func TestScaffoldHarnessDir_FilePurposeFirstLine(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "harness")
 	if err := ScaffoldHarnessDir(dir, ScaffoldOpts{Domain: "d", SpecID: "S"}); err != nil {

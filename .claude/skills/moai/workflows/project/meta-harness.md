@@ -289,13 +289,61 @@ in the **user area** (FROZEN guard pre-verified):
 |----------|------|----------|
 | Architect agent | `.claude/agents/harness/<domain>-architect.md` | Always |
 | Engineer agent | `.claude/agents/harness/<domain>-engineer.md` | Always |
-| Patterns skill | `.claude/skills/moai-harness-<domain>-patterns/SKILL.md` | Always |
-| Best-practices skill | `.claude/skills/moai-harness-<domain>-best-practices/SKILL.md` | Always |
+| Patterns skill | `.claude/skills/my-harness-<domain>-patterns/SKILL.md` | Always |
+| Best-practices skill | `.claude/skills/my-harness-<domain>-best-practices/SKILL.md` | Always |
 | Harness directory | `.moai/harness/` | Always |
 | Design extension | `.moai/harness/design-extension.md` | Q13 == Advanced only |
 
+> **Prefix note (code-side):** the companion skills are emitted under the
+> `my-harness-*` prefix — the prefix the Go code + generator actually use today
+> (the prefix `doctor harness` `checkLayer1Triggers` matches and that
+> `moai update` namespace protection preserves). The doctrine-vs-code prefix
+> drift (`harness-*` doctrine target vs `my-harness-*` code reality) is documented
+> in the `moai-meta-harness` skill body § Namespace Separation; advancing the
+> generator to the bare `harness-*` prefix is a separate, future concern and is
+> NOT performed here. References above read `my-harness-`, never a bare `harness-`.
+
 All write paths must pass `EnsureAllowed(path)` before the file is created.
 Any `FrozenViolationError` causes immediate abort + `CleanupOnFailure`.
+
+### 6.4.1 Generated-Agent Self-Activation Contract
+
+Each generated `.claude/agents/harness/<role>.md` agent MUST be emitted with
+the following frontmatter so the generated harness self-activates when the
+agent is delegated:
+
+- A `skills:` frontmatter entry that **preloads the agent's companion
+  `my-harness-*` skill**, so the domain skill loads deterministically when the
+  agent runs (rather than relying on auto-discovery, which fails silently when
+  the companion skill is not in the agent's context). Example for a generated
+  architect agent:
+
+  ```yaml
+  ---
+  name: <domain>-architect
+  description: <non-empty trigger-shaped description — see below>
+  skills:
+    - my-harness-<domain>-patterns
+    - my-harness-<domain>-best-practices
+  ---
+  ```
+
+  Concrete example for an `ios-mobile` project (the `<domain>` placeholder
+  resolves to the project domain): the architect agent declares
+  `my-harness-ios-patterns` and `my-harness-ios-best-practices` under `skills:`,
+  matching the `.claude/skills/my-harness-ios-patterns/SKILL.md` and
+  `.claude/skills/my-harness-ios-best-practices/SKILL.md` directories emitted
+  by Phase 6 (the code-side `my-harness-*` prefix, never a bare `harness-*`).
+
+- A **non-empty, trigger-shaped `description`** frontmatter field naming the
+  domain and the observable task-shape that should route to this agent (so the
+  orchestrator's `main.md` Task-Shape Routing table can dispatch to it).
+
+These two frontmatter fields are enforced at runtime by the Phase-6 smoke gate
+(Phase 7.3): a generated agent with an empty `description`, with a `skills:`
+entry pointing at a non-existent `my-harness-*` directory (dangling), or with
+NO `skills:` key at all causes the gate to FAIL. A `skills:`-less agent must
+not pass silently — that is the auto-discovery failure mode this contract closes.
 
 ### 6.5 Failure Handling
 
