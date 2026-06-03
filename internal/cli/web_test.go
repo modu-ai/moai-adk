@@ -6,8 +6,10 @@ import (
 	"testing"
 )
 
-// TestWebCmd_FlagsRegistered verifies REQ-WC-001 / AC-WC-001:
-// the `web` subcommand exposes --port (int, default 8080) and --no-open (bool).
+// TestWebCmd_FlagsRegistered verifies REQ-WC2-001 / AC-WC2-001:
+// the `web` subcommand exposes --port (int, default 3041) and --no-open (bool).
+// SPEC-WEB-CONSOLE-002 supersedes the 8080 candidate from SPEC-WEB-CONSOLE-001
+// REQ-WC-001 with 3041 (8080 frequently collides with other local dev servers).
 func TestWebCmd_FlagsRegistered(t *testing.T) {
 	cmd := newWebCmd()
 
@@ -15,8 +17,8 @@ func TestWebCmd_FlagsRegistered(t *testing.T) {
 	if portFlag == nil {
 		t.Fatal("--port flag is not registered")
 	}
-	if portFlag.DefValue != "8080" {
-		t.Errorf("--port default = %q, want 8080", portFlag.DefValue)
+	if portFlag.DefValue != "3041" {
+		t.Errorf("--port default = %q, want 3041", portFlag.DefValue)
 	}
 	if portFlag.Value.Type() != "int" {
 		t.Errorf("--port type = %q, want int", portFlag.Value.Type())
@@ -53,6 +55,13 @@ func TestWebCmd_HelpListsFlags(t *testing.T) {
 	}
 	if !strings.Contains(help, "--no-open") {
 		t.Errorf("help output does not mention --no-open:\n%s", help)
+	}
+	// AC-WC2-001: the documented default port is 3041, not the superseded 8080.
+	if !strings.Contains(help, "3041") {
+		t.Errorf("help output does not document the 3041 default:\n%s", help)
+	}
+	if strings.Contains(help, "8080") {
+		t.Errorf("help output still references the superseded 8080 default:\n%s", help)
 	}
 }
 

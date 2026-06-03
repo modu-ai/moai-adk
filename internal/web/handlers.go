@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // pageView is the html/template view-model for the Console page.
@@ -16,6 +17,9 @@ type pageView struct {
 
 	// Option lists for the form selects.
 	LangOptions       []string
+	ModelOptions      []string
+	EffortLevels      []string
+	ModelPolicies     []string
 	PermissionModes   []string
 	StatuslineModes   []string
 	StatuslinePresets []string
@@ -39,6 +43,9 @@ func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pag
 		Profiles:          profiles,
 		ShowProfileSwitch: len(profiles) > 1, // REQ-WC-011: omit UI when only default
 		LangOptions:       langOptions,
+		ModelOptions:      modelCanonical,
+		EffortLevels:      effortLevelCanonical,
+		ModelPolicies:     template.ValidModelPolicies(),
 		PermissionModes:   profile.ValidPermissionModes,
 		StatuslineModes:   statuslineModeCanonical,
 		StatuslinePresets: statuslinePresetCanonical,

@@ -34,17 +34,17 @@ and persistence logic as the terminal profile wizard. There is no external
 database, no auth, and no network exposure.
 
 Flags:
-  --port <int>   TCP port to bind on 127.0.0.1 (default 8080)
+  --port <int>   TCP port to bind on 127.0.0.1 (default 3041)
   --no-open      Do not auto-open the browser
 
 Examples:
-  moai web                 # bind 127.0.0.1:8080 and open the browser
+  moai web                 # bind 127.0.0.1:3041 and open the browser
   moai web --port 9000     # bind a different port
   moai web --no-open       # start without launching a browser`,
 		GroupID: "tools",
 		RunE:    runWeb,
 	}
-	cmd.Flags().IntVar(&webPort, "port", 8080, "TCP port to bind on 127.0.0.1")
+	cmd.Flags().IntVar(&webPort, "port", 3041, "TCP port to bind on 127.0.0.1")
 	cmd.Flags().BoolVar(&webNoOpen, "no-open", false, "do not auto-open the browser")
 	return cmd
 }

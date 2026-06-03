@@ -197,6 +197,8 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 	// C-1: normalize deprecated model IDs to canonical aliases
 	model := normalizeModel(existingPrefs.Model)
 	effortLevel := existingPrefs.EffortLevel
+	// SPEC-WEB-CONSOLE-002 REQ-WC2-006: model_policy parity with the web console.
+	modelPolicy := existingPrefs.ModelPolicy
 	permissionMode := existingPrefs.PermissionMode
 	if permissionMode == "" {
 		permissionMode = defaultPermissionMode
@@ -294,7 +296,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Value(&docLang),
 		).Title(t.LanguagesTitle),
 
-		// Section 3: Model settings (model override + permission mode)
+		// Section 3: Model settings (model override + policy + permission mode)
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title(t.ModelOverrideTitle).
@@ -309,6 +311,19 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 					huh.NewOption(t.ModelOpusPlan, "opusplan"),
 				).
 				Value(&model),
+			// SPEC-WEB-CONSOLE-002 REQ-WC2-006: model_policy select — parity with
+			// the web console. Options mirror template.ValidModelPolicies() plus an
+			// empty "(project default)" option (reusing the ModelDefault label).
+			huh.NewSelect[string]().
+				Title(t.ModelPolicyTitle).
+				Description(t.ModelPolicyDesc).
+				Options(
+					huh.NewOption(t.ModelDefault, ""),
+					huh.NewOption(t.ModelPolicyHigh, "high"),
+					huh.NewOption(t.ModelPolicyMedium, "medium"),
+					huh.NewOption(t.ModelPolicyLow, "low"),
+				).
+				Value(&modelPolicy),
 			huh.NewSelect[string]().
 				Title(t.EffortLevelTitle).
 				Description(t.EffortLevelDesc).
@@ -436,6 +451,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		CodeCommentLang:    codeCommentLang,
 		DocLang:            docLang,
 		Model:              model,
+		ModelPolicy:        modelPolicy,
 		EffortLevel:        effortLevel,
 		PermissionMode:     permissionMode,
 		StatuslineMode:     statuslineMode,

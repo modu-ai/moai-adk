@@ -58,18 +58,9 @@
           </select>
           {{with index .FieldErrors "permission_mode"}}<div class="field-error">{{.}}</div>{{end}}
         </div>
-        <div class="field">
-          <label for="model_policy">Model policy</label>
-          <input type="text" id="model_policy" name="model_policy" value="{{.Prefs.ModelPolicy}}">
-        </div>
-        <div class="field">
-          <label for="model">Model</label>
-          <input type="text" id="model" name="model" value="{{.Prefs.Model}}">
-        </div>
-        <div class="field">
-          <label for="effort_level">Effort level</label>
-          <input type="text" id="effort_level" name="effort_level" value="{{.Prefs.EffortLevel}}">
-        </div>
+        {{template "optSelect" dict "Name" "model_policy" "Label" "Model policy" "Value" .Prefs.ModelPolicy "Empty" "(unset)" "Errors" .FieldErrors "Options" .ModelPolicies}}
+        {{template "optSelect" dict "Name" "model" "Label" "Model" "Value" .Prefs.Model "Empty" "(project default)" "Errors" .FieldErrors "Options" .ModelOptions}}
+        {{template "optSelect" dict "Name" "effort_level" "Label" "Effort level" "Value" .Prefs.EffortLevel "Empty" "(runtime default)" "Errors" .FieldErrors "Options" .EffortLevels}}
       </fieldset>
 
       <fieldset>
@@ -125,6 +116,19 @@
   <label for="{{.Name}}">{{.Label}}</label>
   <select id="{{.Name}}" name="{{.Name}}">
     <option value="" {{if eq .Value ""}}selected{{end}}>(unset)</option>
+    {{range .Options}}
+    <option value="{{.}}" {{if eq . $.Value}}selected{{end}}>{{.}}</option>
+    {{end}}
+  </select>
+  {{with index .Errors .Name}}<div class="field-error">{{.}}</div>{{end}}
+</div>
+{{end}}
+
+{{define "optSelect"}}
+<div class="field {{if index .Errors .Name}}has-error{{end}}">
+  <label for="{{.Name}}">{{.Label}}</label>
+  <select id="{{.Name}}" name="{{.Name}}">
+    <option value="" {{if eq .Value ""}}selected{{end}}>{{.Empty}}</option>
     {{range .Options}}
     <option value="{{.}}" {{if eq . $.Value}}selected{{end}}>{{.}}</option>
     {{end}}

@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // errDictKey is returned by the template "dict" helper when a non-string key is
@@ -21,6 +22,18 @@ var errDictKey = errors.New("web: dict key must be a string")
 // langOptions are the four supported conversation/commit/comment/doc languages.
 // Mirrors the en/ko/ja/zh options offered by the profile wizard.
 var langOptions = []string{"en", "ko", "ja", "zh"}
+
+// modelCanonical mirrors the wizard SSOT model Select option set
+// (internal/cli/profile_setup.go:303-310). The empty string ("project default")
+// is allowed by validatePrefs' empty-allowed guard and is not listed here.
+// Mirrored (not imported) because the wizard option strings are unexported and
+// internal/cli → internal/web is the only legal import direction.
+var modelCanonical = []string{"opus", "opus[1m]", "sonnet", "sonnet[1m]", "haiku", "opusplan"}
+
+// effortLevelCanonical mirrors the wizard SSOT effort Select option set
+// (internal/cli/profile_setup.go:316-322). The empty string ("runtime default")
+// is allowed by the empty-allowed guard and is not listed here.
+var effortLevelCanonical = []string{"low", "medium", "high", "xhigh", "max"}
 
 // statuslineModeCanonical mirrors internal/cli/profile_setup.go statuslineModeCanonical.
 var statuslineModeCanonical = []string{"default", "full"}
@@ -77,6 +90,20 @@ func validatePrefs(p profile.ProfilePreferences) map[string]string {
 		if val != "" && !inList(langOptions, val) {
 			errs[field] = "unrecognized language: " + val
 		}
+	}
+
+	// Model / effort_level / model_policy: empty allowed, otherwise canonical.
+	// REQ-WC2-002/003/004 — web↔TUI validation parity. model + effort_level reuse
+	// the mirrored wizard lists; model_policy wires in the existing exported
+	// predicate template.IsValidModelPolicy (no mirror — it is importable).
+	if p.Model != "" && !inList(modelCanonical, p.Model) {
+		errs["model"] = "unrecognized model: " + p.Model
+	}
+	if p.EffortLevel != "" && !inList(effortLevelCanonical, p.EffortLevel) {
+		errs["effort_level"] = "unrecognized effort level: " + p.EffortLevel
+	}
+	if p.ModelPolicy != "" && !template.IsValidModelPolicy(p.ModelPolicy) {
+		errs["model_policy"] = "unrecognized model policy: " + p.ModelPolicy
 	}
 
 	// Statusline mode / preset / theme: empty allowed, otherwise canonical.
