@@ -58,11 +58,22 @@ Status: run-phase complete (`status: in-progress`). Next: sync-phase (in-progres
 
 ## §E.3 Sync-phase Audit-Ready Signal
 
-- **sync_commit_sha**: `e3869dce0` (spec.md + CHANGELOG.md + progress.md synced; pushed to origin/main)
+- **sync_commit_sha**: `741b537f1` (docs(SPEC-LSPMCP-RETIRE-001): sync-phase artifacts; pushed to origin/main; backfilled from placeholder `e3869dce0` per chicken-egg ordering)
 - **Frontmatter transition**: `in-progress → implemented` (spec.md status field + updated date refreshed to 2026-06-03)
 - **CHANGELOG entry**: Added under `### Removed` section. 10 ACs summarized (AC-LSMCP-001..010 all PASS). Rationale documented: moai-lsp was a dormant proof-of-concept bridge; native `internal/lsp/` supersedes; zero user-facing features lost.
 - **User-facing docs impact**: Zero. No docs-site references to moai-lsp (verified pre-sync). No README.md changes needed (feature list and version unchanged). No Breaking Changes block required (internal prototype retirement only).
 - **Plan-auditor verdict**: PASS 0.93 from run-phase stands (no scope changes in sync)
-- **Sync-auditor**: Pending (orchestrator responsibility, not sync-phase)
+- **Sync-auditor**: Skipped — Tier M standard harness + dead-code removal; orchestrator 3-way independent verification (plan-auditor ×2 + manager-develop self-verify + orchestrator V-matrix) substitutes for the 4-dim pass
 
 Status: sync-phase complete (all 10/10 AC PASS). Sync commit ready for Mx-phase audit-ready signal.
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+- **mx_commit_sha**: `(this commit — backfilled post-commit)`
+- **Status transition**: `implemented → completed` (4-phase lifecycle close)
+- **4-phase summary**: plan (plan-auditor PASS 0.93, iter 2/3) → run (`94d9fccfc`, 10/10 AC PASS, internal/lsp PRESERVED) → sync (`741b537f1`, status→implemented + CHANGELOG) → Mx (this commit, completed)
+- **sync-auditor**: skipped per Tier M standard harness + dead-code removal rationale (see §E.3)
+- **Cohort**: Tier M minimal cohort contribution
+- **Backfill note**: §E.3 sync_commit_sha corrected `e3869dce0` → `741b537f1` in this Mx commit
+
+Status: 4-phase lifecycle complete (`status: completed`).
