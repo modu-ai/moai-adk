@@ -86,9 +86,6 @@ func TestWorkflowYAMLUnmarshalProductionFixture(t *testing.T) {
 	if got := wf.LoopPrevention.MaxIterations; got != 100 {
 		t.Errorf("LoopPrevention.MaxIterations: got %d, want 100", got)
 	}
-	if got := wf.Memory.IndexLineCap; got != 200 {
-		t.Errorf("Memory.IndexLineCap: got %d, want 200", got)
-	}
 	if got := wf.Worktree.SessionNamePattern; got != "moai-{ProjectName}-{SPEC-ID}" {
 		t.Errorf("Worktree.SessionNamePattern: got %q, want %q", got, "moai-{ProjectName}-{SPEC-ID}")
 	}

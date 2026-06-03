@@ -181,6 +181,15 @@ func generateSessionSummary(sessionID, traceDir, reportDir string) {
 // project under `~/.claude/projects/{slug}/memory/`. The slug is derived from
 // the project's absolute path by replacing path separators and dots with
 // dashes (Claude Code's observed naming convention).
+//
+// @MX:NOTE: [AUTO] per-cwd 해석(slug = raw session CWD 기반, git-root 정규화 없음)은
+// 의도된 동작이다. Claude Code 자체가 ~/.claude/projects/ 아래에 cwd별 해시 디렉터리를
+// 두는 per-cwd 메모리 모델을 따르므로, git-worktree 세션은 main repo와 다른 메모리
+// 디렉터리를 해석한다. git-root 정규화로 "고치면" MoAI의 쓰기(main-root)가 Claude Code의
+// 네이티브 auto-load(cwd)와 desync되어 오히려 회귀를 유발한다. 따라서 projectSlug /
+// resolveMemoryDir 해석 로직은 변경하지 않는다. L3 --worktree resume는 session-handoff.md
+// § Worktree-Anchored Resume Pattern의 Block 0 cwd 재앵커링에 의존한다.
+// 상세: .moai/docs/memory-dir-resolution-doctrine.md
 func resolveMemoryDir(homeDir, projectDir string) (string, error) {
 	if homeDir == "" {
 		return "", fmt.Errorf("home directory is empty")

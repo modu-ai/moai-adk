@@ -15,11 +15,6 @@ workflow:
         failure_pattern_detection: true
         max_iterations: 100
         max_retries_per_operation: 3
-    memory:
-        audit_enabled: true
-        index_line_cap: 200
-        stale_aggregate_threshold: 10
-        staleness_threshold_hours: 24
     team:
         auto_selection:
             min_complexity_score: 7

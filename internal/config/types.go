@@ -312,7 +312,6 @@ type WorkflowConfig struct {
 	DefaultMode    string                 `yaml:"default_mode"`
 	ExecutionMode  string                 `yaml:"execution_mode"`
 	LoopPrevention LoopPreventionConfig   `yaml:"loop_prevention"`
-	Memory         MemoryConfig           `yaml:"memory"`
 	Team           TeamConfig             `yaml:"team"`
 	TokenBudget    TokenBudgetConfig      `yaml:"token_budget"`
 	Worktree       WorkflowWorktreeConfig `yaml:"worktree"`
@@ -359,14 +358,6 @@ type LoopPreventionConfig struct {
 	FailurePatternDetection bool `yaml:"failure_pattern_detection"`
 	MaxIterations           int  `yaml:"max_iterations"`
 	MaxRetriesPerOperation  int  `yaml:"max_retries_per_operation"`
-}
-
-// MemoryConfig mirrors workflow.memory.* — typed memory taxonomy audit settings.
-type MemoryConfig struct {
-	AuditEnabled            bool `yaml:"audit_enabled"`
-	IndexLineCap            int  `yaml:"index_line_cap"`
-	StaleAggregateThreshold int  `yaml:"stale_aggregate_threshold"`
-	StalenessThresholdHours int  `yaml:"staleness_threshold_hours"`
 }
 
 // TeamConfig mirrors workflow.team.* — Agent Teams configuration.

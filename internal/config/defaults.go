@@ -71,6 +71,10 @@ const (
 	DefaultStaleSeconds = 3600
 
 	// Memory taxonomy defaults (SPEC-V3R2-EXT-001)
+	// @MX:NOTE: [AUTO] 메모리 감사 서브시스템의 실제 배선(wiring)은 아래 패키지 레벨 상수 +
+	// MOAI_MEMORY_AUDIT 환경변수 경로다. 과거 workflow.memory.* YAML 블록을 미러링하던
+	// 타입드 memory 설정 구조체는 프로덕션 소비자가 전무한 inert config(설정 극장)였기에 제거되었다.
+	// SessionStart 훅과 감사 엔진은 이 상수들을 직접 읽고, PostToolUse 훅은 환경변수를 읽는다.
 	DefaultMemoryStalenessHours          = 24  // files older than this are wrapped in staleness caveat
 	DefaultMemoryIndexLineCap            = 200 // MEMORY.md lines beyond this trigger MEMORY_INDEX_OVERFLOW
 	DefaultMemoryStaleAggregateThreshold = 10  // stale files >= this count emit one aggregated warning
@@ -361,12 +365,6 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			FailurePatternDetection: true,
 			MaxIterations:           100,
 			MaxRetriesPerOperation:  3,
-		},
-		Memory: MemoryConfig{
-			AuditEnabled:            true,
-			IndexLineCap:            200,
-			StaleAggregateThreshold: 10,
-			StalenessThresholdHours: 24,
 		},
 		Team: TeamConfig{
 			AutoSelection: TeamAutoSelectionConfig{

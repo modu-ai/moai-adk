@@ -119,8 +119,12 @@ func PersistIfPending(ctx context.Context, sessionID, projectDir, memoryDir stri
 	}
 
 	// Memory directory must exist; the hook MUST NOT create it (§B.2).
+	// The memory dir is resolved per-cwd (Claude Code's per-cwd memory model), so a
+	// git-worktree session resolves a different dir than the main repo. If this hook
+	// runs in a worktree cwd whose memory dir Claude Code has not yet materialized,
+	// the dir is legitimately absent and persistence is skipped (not an error).
 	if info, statErr := os.Stat(memoryDir); statErr != nil || !info.IsDir() {
-		slog.Warn("session_end: handoff: memory directory unavailable; skipping persistence",
+		slog.Warn("session_end: handoff: memory directory unavailable (per-cwd resolution; likely a worktree cwd whose memory dir is not yet created); skipping persistence",
 			"memory_dir", memoryDir,
 			"error", statErr,
 		)

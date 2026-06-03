@@ -2,7 +2,7 @@
 id: SPEC-V3R6-MEMORY-CONFIG-CLEANUP-001
 title: "Memory subsystem config theater removal + Gap C/B decision records"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-03
 updated: 2026-06-03
 author: manager-spec
