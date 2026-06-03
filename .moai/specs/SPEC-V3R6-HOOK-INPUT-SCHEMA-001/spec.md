@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-HOOK-INPUT-SCHEMA-001
 title: "Hook input schema robustness: globs array deserialization + empty-stdin graceful no-op"
-version: "0.1.0"
-status: implemented
+version: "0.2.0"
+status: completed
 created: 2026-06-03
 updated: 2026-06-03
 author: manager-spec

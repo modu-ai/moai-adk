@@ -71,7 +71,7 @@ m1_to_mN_commit_strategy: single-commit   # Tier S, M1-M5 in one atomic commit
 
 ```yaml
 sync_complete_at: 2026-06-03
-sync_commit_sha: "(this commit)"
+sync_commit_sha: "c255d31a0"
 sync_status: implemented
 spec_frontmatter_transitions:
   - field: status
@@ -87,3 +87,27 @@ sync_method: orchestrator-direct (Tier S, active parallel-session race — workt
 ## §G. Status Transition Note (orchestrator action)
 
 This is the M1 commit (`draft → in-progress`). The spec.md `status:` frontmatter transition `draft → in-progress` and `updated:` refresh MUST be applied by the orchestrator when reconciling, because `spec.md` is uncommitted in the shared checkout and absent from this isolated worktree (created from base `ad974fe5b` which predates the SPEC). The implementation source files + this progress.md are committed in the worktree for cherry-pick.
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+```yaml
+mx_complete_at: 2026-06-03
+mx_commit_sha: "(this commit)"
+mx_status: completed
+spec_frontmatter_transitions:
+  - field: status
+    old_value: implemented
+    new_value: completed
+  - field: version
+    old_value: "0.1.0"
+    new_value: "0.2.0"
+four_phase_close:
+  plan_artifacts: "authored by manager-spec (uncommitted in shared checkout), committed in reconcile 00f6c8c91"
+  run: "27745a7fa (cherry-pick of worktree 0258f4f6c)"
+  reconcile: 00f6c8c91
+  sync: c255d31a0
+  mx: "(this commit)"
+ac_final: "4/4 mandatory AC PASS"
+close_subject_doctrine_dogfood: "this close commit uses the full SPEC-ID per REQ-DLC-011"
+einstein_md_failure: "pre-existing uncommitted template drift (out of scope; not introduced by this SPEC)"
+```
