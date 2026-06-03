@@ -101,5 +101,18 @@ run_status: implementation-complete (sync pending)
 - **deliverable scope**: CHANGELOG.md + spec.md frontmatter + progress.md (orchestrator-direct sync — manager-docs spawn avoided per L_orchestrator_direct_sync_tier_m: active parallel session race + bounded internal scope; specific-path add, 0 parallel-session contamination).
 - **README / docs-site**: N/A (internal `moai web` console feature; no public API or docs-site surface change).
 
-sync_commit_sha: (this commit — backfilled in Mx)
+sync_commit_sha: e648efd69
 sync_status: implemented
+
+---
+
+## §E.5 — Mx-phase Audit-Ready Signal
+
+- **status transition**: implemented → completed (4-phase close — plan + run + sync + Mx all complete).
+- **cohort closure**: web-console-v3 (001 mother / 002 port+validation / 003 flat config / 004 visual restyle / 005 i18n+CJK font) **fully terminated** — 005 is the cohort terminator (S3).
+- **lifecycle SHAs**: plan `1f47127df` · run `a569058fa..5657e403d` (cherry-picked) + reconcile `e404e8452` · sync `e648efd69` · Mx (this commit — backfilled).
+- **4-phase lifecycle signal**: plan_status audit-ready + §E.2 sync_commit_sha + §E.5 mx_commit_sha (V3R6 era H-4 modern-standard complete).
+
+mx_commit_sha: (this commit — backfilled)
+mx_status: completed
+4_phase_close: complete

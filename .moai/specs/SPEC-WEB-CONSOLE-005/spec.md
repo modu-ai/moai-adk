@@ -2,7 +2,7 @@
 id: SPEC-WEB-CONSOLE-005
 title: "Web Console — Interface i18n (en/ko/ja/zh) + CJK self-host webfont coverage (zero server-contract change)"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-06-03
 updated: 2026-06-03
 author: GOOS
