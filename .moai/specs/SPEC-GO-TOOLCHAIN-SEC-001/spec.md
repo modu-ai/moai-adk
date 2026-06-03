@@ -2,7 +2,7 @@
 id: SPEC-GO-TOOLCHAIN-SEC-001
 title: "Go toolchain security bump (go1.26 → go1.26.4, 19 stdlib vulns → 0)"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-06-03
 updated: 2026-06-03
 author: manager-spec

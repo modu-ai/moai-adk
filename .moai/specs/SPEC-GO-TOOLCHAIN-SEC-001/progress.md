@@ -1,6 +1,6 @@
 # Progress — SPEC-GO-TOOLCHAIN-SEC-001
 
-## Status: in-progress (run-phase)
+## Status: implemented (sync-phase)
 
 Tier S (minimal). Hybrid Trunk 1-person OSS → main-direct, no PR.
 
@@ -10,8 +10,8 @@ Tier S (minimal). Hybrid Trunk 1-person OSS → main-direct, no PR.
 |-------|--------|-------|--------|
 | Plan | done | manager-spec | c5bd27fcf + 06c666a50 |
 | Run (M1–M3) | done | manager-develop | 36c190fd0 |
-| Sync (M4) | pending | manager-docs | — |
-| Mx (close) | pending | orchestrator/manager-docs | — |
+| Sync (M4) | done | orchestrator (manager-docs trailer) | (sync commit) |
+| Mx (close) | pending | orchestrator | — |
 
 ## Plan-phase notes
 
@@ -101,4 +101,17 @@ cross_platform_build:
   note: "toolchain bump is platform-agnostic; no syscall/build-tag code touched"
 total_run_phase_files: 6   # go.mod + ci.yml + claude.yml + codeql.yml + release-pr-multi-os.yml + release.yml
 m1_to_mN_commit_strategy: "single M1 commit (Tier S minimal; all of M1+M2+M3 in one run-phase commit)"
+```
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+Orchestrator-direct sync (Tier S, manager-docs trailer) per L_orchestrator_direct_sync_tier_s — active parallel-session race + L1-worktree cherry-pick overhead avoidance. Sync deliverable scope: CHANGELOG.md `### Security` entry + spec.md frontmatter `status: in-progress → implemented`. README / docs-site NOT touched — internal toolchain/CI security bump with no user-facing API or behavior change.
+
+```yaml
+sync_complete_at: 2026-06-03
+sync_commit_sha: (backfilled in Mx commit)
+sync_status: implemented
+changelog_entry: "### Security — SPEC-GO-TOOLCHAIN-SEC-001 (1 entry under [Unreleased])"
+readme_docs_site_touched: false   # no user-facing change; internal toolchain/CI only
+subagent_boundary_C_HRA_008: "n/a — orchestrator-direct doc edit, 0 AskUserQuestion in scope files"
 ```

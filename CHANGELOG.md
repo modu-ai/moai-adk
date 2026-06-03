@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **[SPEC-GO-TOOLCHAIN-SEC-001](.moai/specs/SPEC-GO-TOOLCHAIN-SEC-001/spec.md)** — Go toolchain security bump go1.26 → go1.26.4 (Tier S, v0.1.0, run-phase 2026-06-03, sync-phase 2026-06-03). Bumps the `go.mod` `go` directive `go 1.26` → `go 1.26.4`, clearing **19 affecting Go standard-library vulnerabilities** reported by `govulncheck ./...` (crypto/x509, net/http, crypto/tls, html/template, net/mail, net/textproto, net, archive/tar — fixes spanning go1.26.1–1.26.4) down to **0 affecting**. The 9 hardcoded `go-version: "1.26"` CI workflow pins (ci.yml ×5, claude/codeql/release-pr-multi-os/release ×1 each) are migrated to `go-version-file: go.mod` (SSOT — joining the 3 workflows already on that pattern, so future toolchain bumps touch only `go.mod`). No third-party module versions changed (scope-disciplined to the toolchain directive + CI pins per spec §E); the redundant `toolchain` directive was intentionally dropped because go1.26.x rejects `toolchain go1.26.4` when the `go` directive already pins the patch (run-phase decision, progress.md §E.2.1). 6/6 AC PASS (AC-GTS-001..006; AC-GTS-006 toolchain pre-check gate verifies effective go1.26.4 before trusting the govulncheck 0-affecting result). plan-auditor 0.88 PASS-WITH-DEBT → D1/D2/D3 patched.
+
 ### Changed
 
 - **[SPEC-WEB-CONSOLE-002](.moai/specs/SPEC-WEB-CONSOLE-002/spec.md)** — `moai web` port default superseded from 8080 to **3041** (Tier S, v0.1.0, run-phase 2026-06-03, manager-docs sync-phase 2026-06-03). `internal/cli/web.go` `--port` flag default updated from `8080` to `3041`; Long help text updated to document the new default. Supersedes the candidate 8080 default introduced by SPEC-WEB-CONSOLE-001 REQ-WC-001. 9/9 AC PASS, coverage internal/web 90.8%. Subagent boundary (C-HRA-008) verified 0 AskUserQuestion invocations.
