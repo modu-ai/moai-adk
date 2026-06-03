@@ -41,7 +41,7 @@ m1_to_m5_commit_strategy: single-cohesive  # Tier M — M1-M5 단일 run 커밋
 
 ```yaml
 sync_complete_at: 2026-06-03
-sync_commit_sha: PLACEHOLDER_SYNC
+sync_commit_sha: 4f4518e77
 sync_status: implemented
 changelog_entry: changed         # CHANGELOG.md [Unreleased] ### Changed — 1 entry (doc 정합 = 기존 문서 수정)
 readme_touched: false            # 내부 규칙/문서 정합 — user-facing README 무관

@@ -2,7 +2,7 @@
 id: SPEC-CC-DOCS-ALIGNMENT-001
 title: "Claude Code 공식 문서 대비 규칙·문서 정합화 (33 documentation/rules defects)"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-06-03
 updated: 2026-06-03
 author: manager-spec
