@@ -2,7 +2,7 @@
 id: SPEC-GO-DEPS-UPDATE-001
 title: "Go third-party dependency maintenance update (patch + golang.org/x/* minor; 0 major bumps)"
 version: "0.1.1"
-status: in-progress
+status: implemented
 created: 2026-06-03
 updated: 2026-06-03
 author: manager-spec

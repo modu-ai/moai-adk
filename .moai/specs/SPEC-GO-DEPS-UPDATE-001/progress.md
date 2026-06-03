@@ -1,12 +1,12 @@
 # SPEC-GO-DEPS-UPDATE-001 — Progress
 
-## Status: in-progress (run-phase M1 complete)
+## Status: implemented (sync-phase)
 
 | Phase | State | Commit | Notes |
 |-------|-------|--------|-------|
 | Plan | done | (plan commit) | spec.md + plan.md + acceptance.md + progress.md authored. Tier S. status: draft. |
 | Run | done | M1 (this commit) | Phase 1 (patch) + Phase 2 (x/* minor) + go mod tidy. main-direct, no PR. status: in-progress. |
-| Sync | pending | — | (Tier S maintenance — sync deliverable minimal; CHANGELOG entry if warranted) |
+| Sync | done | (sync commit) | CHANGELOG ### Changed entry + status implemented (orchestrator-direct, manager-docs trailer). |
 | Mx | pending | — | 4-phase close after run. |
 
 ## Plan-phase summary
@@ -91,3 +91,16 @@ no SPEC body change made by this agent (run-phase ownership boundary).
 - Rationale: scope is `go.mod` + `go.sum` only; sequential single manager-develop spawn is
   the default fallback (no multi-domain / no high-volume mechanical fan-out). Per
   `.claude/rules/moai/workflow/orchestration-mode-selection.md` §B default.
+
+## §E.3 Sync-phase Audit-Ready Signal
+
+Orchestrator-direct sync (Tier S, manager-docs trailer) per L_orchestrator_direct_sync_tier_s — active parallel-session race (GLM-WEBTOOL-ROUTING shared-branch push absorbed M1 250c93d32 onto origin/main) + L1-worktree overhead avoidance. Sync deliverable: CHANGELOG.md `### Changed` entry + spec.md `status: in-progress → implemented`. README / docs-site NOT touched — internal dependency maintenance with no user-facing API/behavior change.
+
+```yaml
+sync_complete_at: 2026-06-03
+sync_commit_sha: (backfilled in Mx commit)
+sync_status: implemented
+changelog_entry: "### Changed — SPEC-GO-DEPS-UPDATE-001 (1 entry under [Unreleased])"
+readme_docs_site_touched: false
+subagent_boundary_C_HRA_008: "n/a — orchestrator-direct doc edit, 0 AskUserQuestion in scope files"
+```
