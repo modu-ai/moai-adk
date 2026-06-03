@@ -23,8 +23,13 @@ var transitionRules = []struct {
 	{"docs(spec-plan)", transition{"plan-merge", "planned"}},
 
 	// Sync phase transitions (must come before generic "docs")
-	{"docs(sync)", transition{"sync-merge", "completed"}},
-	{"sync", transition{"sync-merge", "completed"}},
+	// SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001 M2 (mechanism ②): 4-phase model에서
+	// sync-phase = implemented이며 completed는 close-infix(ClassifyPRTitle에서 먼저
+	// 검사됨)로만 도달한다. legacy {sync/docs(sync) → completed} 규칙을 implemented로 정정.
+	// 이 두 규칙이 completed를 추론하면 frontmatter가 (정확히) implemented인 SPEC을
+	// drift로 오탐한다 (mechanism ②). close-infix가 유일한 positive completed 신호다 (AP-2).
+	{"docs(sync)", transition{"sync-merge", "implemented"}},
+	{"sync", transition{"sync-merge", "implemented"}},
 
 	// Run phase transitions
 	{"feat", transition{"run-complete", "implemented"}},

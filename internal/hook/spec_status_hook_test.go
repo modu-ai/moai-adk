@@ -165,9 +165,22 @@ func TestSpecStatusHandler_Integration(t *testing.T) {
 			wantErr:       false,
 		},
 		{
-			name:          "gh pr merge sync -> completed",
+			// SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001 M2 (mechanism ②): 4-phase model에서
+			// sync-phase = implemented이며 completed는 close-infix로만 도달한다. legacy
+			// {docs(sync)/sync → completed} 규칙이 implemented로 정정되었으므로, docs(sync)
+			// PR merge는 이제 status를 implemented로 설정한다 (completed 아님).
+			name:          "gh pr merge docs(sync) -> implemented (4-phase)",
 			command:       "gh pr merge 789 --squash",
-			title:         "docs(sync): SPEC-V3R4-STATUS-LIFECYCLE-001 status=completed",
+			title:         "docs(sync): SPEC-V3R4-STATUS-LIFECYCLE-001 status update",
+			initialStatus: "in-progress",
+			wantStatus:    "implemented",
+			wantErr:       false,
+		},
+		{
+			// close-infix는 여전히 completed의 유일한 신호다 (close-infix가 sync rule보다 먼저 검사됨).
+			name:          "gh pr merge close-infix -> completed",
+			command:       "gh pr merge 790 --squash",
+			title:         "chore(SPEC-V3R4-STATUS-LIFECYCLE-001): Mx-phase audit-ready signal + 4-phase close",
 			initialStatus: "implemented",
 			wantStatus:    "completed",
 			wantErr:       false,

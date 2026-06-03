@@ -5,18 +5,30 @@ import (
 	"testing"
 )
 
-// TestGetGitImpliedStatus_HARNESS001Resolution verifies the walker returns the
-// correct sync signal for SPEC-V3R4-HARNESS-001.
-// It must return the genuine completed status, not substring noise from the
-// NAMESPACE-001 plan commit.
+// TestGetGitImpliedStatus_HARNESS001Resolution verifies the walker adopts the
+// GENUINE SPEC-V3R4-HARNESS-001 sync commit, NOT substring noise from the
+// NAMESPACE-001 plan commit (the word-boundary protection assertion).
 //
-// Pre-fix (substring matching): returns "planned" (NAMESPACE plan-commit noise).
-// Post-fix (word-boundary matching): returns "completed" (genuine sync-commit signal).
+// Word-boundary semantics (the LSGF-001 protection this test guards): the walker
+// adopts the genuine `sync(SPEC-V3R4-HARNESS-001): ... draft → implemented` commit
+// (e8e38b17b) and NOT the `SPEC-V3R4-HARNESS-NAMESPACE-001` plan-commit substring
+// noise (which would yield "planned").
+//
+//   - Pre-LSGF-001 (substring matching): returned "planned" (NAMESPACE noise).
+//   - Post-LSGF-001 (word-boundary matching): adopts the genuine HARNESS-001 sync commit.
+//
+// SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001 M2 (mechanism ②): the genuine sync commit
+// subject literally reads "status transition draft → implemented", so the corrected
+// 4-phase model resolves it to "implemented" (sync-phase = implemented; "completed"
+// is reachable ONLY via a close-infix). The legacy expectation was "completed"
+// under the stale {sync→completed} rule; the corrected rule yields "implemented".
+// The word-boundary protection itself is UNCHANGED — that logic is fully verified
+// by TestGetGitImpliedStatus_SPECIDWordBoundary's 5 sub-cases (still green). The
+// binding assertion here is "NOT planned" (no NAMESPACE noise); "implemented" is
+// the corrected genuine-signal value.
 //
 // Because this test depends on live git history, it is skipped in:
 //   - fork/shallow clones where SPEC-V3R4-HARNESS-001 commits are absent.
-//
-// Word-boundary helper logic is fully verified by TestGetGitImpliedStatus_SPECIDWordBoundary's 5 sub-cases.
 func TestGetGitImpliedStatus_HARNESS001Resolution(t *testing.T) {
 	// @MX:NOTE: [AUTO] CI shallow-clone skip guard permanently removed.
 	// @MX:REASON: After SPEC-V3R4-CI-INFRA-FIX-001 W3, all 5 ci.yml checkout steps
@@ -34,8 +46,13 @@ func TestGetGitImpliedStatus_HARNESS001Resolution(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getGitImpliedStatus returned unexpected error: %v", err)
 	}
-	if status != "completed" {
-		t.Errorf("expected status 'completed' (genuine sync signal), got %q (likely NAMESPACE substring noise)", status)
+	// Binding word-boundary assertion: must NOT be "planned" (NAMESPACE substring noise).
+	if status == "planned" {
+		t.Errorf("got 'planned' — NAMESPACE-001 plan-commit substring noise was adopted (LSGF-001 word-boundary regression)")
+	}
+	// Corrected genuine-signal value (mechanism ②): sync-phase = implemented.
+	if status != "implemented" {
+		t.Errorf("expected status 'implemented' (genuine sync signal; sync-phase = implemented in 4-phase model), got %q", status)
 	}
 }
 

@@ -27,10 +27,13 @@ func TestClassifyPRTitle(t *testing.T) {
 			wantErr:      false,
 		},
 		{
-			name:         "sync merge - docs prefix",
-			title:        "docs(sync): SPEC-FOO-001 status=completed",
+			// SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001 M2 (mechanism ②): legacy bare
+			// docs(sync)/sync prefix는 4-phase model에서 sync-phase = implemented로
+			// 분류된다 (completed가 아님 — completed는 close-infix 전용).
+			name:         "sync merge - docs(sync) bare prefix → implemented (4-phase)",
+			title:        "docs(sync): SPEC-FOO-001 status update",
 			wantCategory: "sync-merge",
-			wantStatus:   "completed",
+			wantStatus:   "implemented",
 			wantErr:      false,
 		},
 		{
@@ -101,15 +104,17 @@ func TestPrefixToStatusCompleteness(t *testing.T) {
 	}
 
 	// Check which values are reachable via ClassifyPRTitle
+	// SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001 M2: completed는 이제 close-infix로만 도달한다
+	// (docs(sync) bare prefix → implemented). completed coverage를 close-infix title로 이동.
 	testTitles := []string{
-		"status(draft): SPEC-001",                           // draft
-		"plan(spec): SPEC-001 — draft",                      // planned
-		"chore(SPEC-001): partial work",                     // in-progress
-		"feat(SPEC-001): implement",                         // implemented
-		"docs(sync): SPEC-001 status=completed",             // completed
-		"status(superseded): SPEC-001 replaced by SPEC-002", // superseded
-		"status(archived): SPEC-001 obsolete",               // archived
-		"status(rejected): SPEC-001 won't fix",              // rejected
+		"status(draft): SPEC-001",                                     // draft
+		"plan(spec): SPEC-001 — draft",                                // planned
+		"chore(SPEC-001): partial work",                               // in-progress
+		"feat(SPEC-001): implement",                                   // implemented
+		"chore(SPEC-001): Mx-phase audit-ready signal + 4-phase close", // completed (close-infix)
+		"status(superseded): SPEC-001 replaced by SPEC-002",           // superseded
+		"status(archived): SPEC-001 obsolete",                         // archived
+		"status(rejected): SPEC-001 won't fix",                        // rejected
 	}
 
 	for _, title := range testTitles {
@@ -168,6 +173,71 @@ func TestClassifyPRTitle_ChoreSpecUnchanged(t *testing.T) {
 			title:        "chore(specs): bulk metadata update",
 			wantCategory: "run-partial",
 			wantStatus:   "in-progress",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			category, status, err := ClassifyPRTitle(tt.title)
+			if err != nil {
+				t.Fatalf("예상치 못한 오류: %v", err)
+			}
+			if category != tt.wantCategory {
+				t.Errorf("category = %q, want %q", category, tt.wantCategory)
+			}
+			if status != tt.wantStatus {
+				t.Errorf("status = %q, want %q", status, tt.wantStatus)
+			}
+		})
+	}
+}
+
+// TestClassifyPRTitle_StaleSyncRuleCorrected는 AC-DLC-002 검증 (REQ-DLC-003, REQ-DLC-004).
+// SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001 M2 (mechanism ②): legacy bare sync/docs(sync)
+// prefix는 4-phase model에서 sync-phase = implemented로 분류되어야 한다 (completed 아님).
+// close-infix는 여전히 completed의 유일한 신호이며 ClassifyPRTitle에서 먼저 검사되어
+// sync rule보다 우선한다.
+func TestClassifyPRTitle_StaleSyncRuleCorrected(t *testing.T) {
+	tests := []struct {
+		name         string
+		title        string
+		wantCategory string
+		wantStatus   string
+	}{
+		{
+			// 핵심: 정규 sync commit subject (implemented 표기 포함)는 implemented로 분류
+			name:         "sync(SPEC-X): lifecycle complete — v0.3.0 implemented → implemented",
+			title:        "sync(SPEC-EXAMPLE-001): lifecycle complete — v0.3.0 implemented",
+			wantCategory: "sync-merge",
+			wantStatus:   "implemented",
+		},
+		{
+			// legacy bare sync prefix → implemented (이전: completed)
+			name:         "bare sync prefix → implemented (4-phase 정정)",
+			title:        "sync(SPEC-EXAMPLE-001): status transition",
+			wantCategory: "sync-merge",
+			wantStatus:   "implemented",
+		},
+		{
+			// legacy bare docs(sync) prefix → implemented (이전: completed)
+			name:         "bare docs(sync) prefix → implemented (4-phase 정정)",
+			title:        "docs(sync): legacy bare prefix",
+			wantCategory: "sync-merge",
+			wantStatus:   "implemented",
+		},
+		{
+			// close-infix는 sync rule보다 먼저 검사되어 이긴다 (D3 edge case)
+			name:         "sync(SPEC-X): ... 4-phase close → completed (close-infix wins)",
+			title:        "sync(SPEC-EXAMPLE-001): lifecycle 4-phase close",
+			wantCategory: "mx-close",
+			wantStatus:   "completed",
+		},
+		{
+			// anti-regression: feat는 여전히 implemented
+			name:         "feat → implemented (변화 없음)",
+			title:        "feat(SPEC-EXAMPLE-001): M1 implementation",
+			wantCategory: "run-complete",
+			wantStatus:   "implemented",
 		},
 	}
 
