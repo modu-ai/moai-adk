@@ -218,6 +218,7 @@ Sequential calls (one tool per turn) violate REQ-BRAIN-003 and should be avoided
 - `moai-domain-ideation`: Research findings feed into Phase 4 Converge context for more grounded Lean Canvas
 - `moai-workflow-brain`: Orchestrates Phase 3 execution with proper IDEA-NNN directory management
 - `moai-foundation-thinking`: Critical evaluation in Phase 5 uses research findings as evidence
+- `/deep-research <question>`: The bundled deep-research workflow is a heavier multi-source path than this skill's own parallel WebSearch + Context7 — it fans out web searches, cross-checks sources against each other, votes on contested claims, and returns a cited report. It requires the WebSearch tool; a workflow run spends meaningfully more tokens than a single-pass search; and the AskUserQuestion boundary holds — the orchestrator collects and refines the research question before launch, never mid-run.
 
 ---
 

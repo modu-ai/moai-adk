@@ -96,7 +96,7 @@ catalog:
             - name: moai-domain-research
               tier: core
               path: templates/.claude/skills/moai-domain-research/
-              hash: 60fac9275edd13da7ac957aba236e497aaf4ebc3d939c3167d42df11adc5cead
+              hash: 731fd43edc364f0c08ddc2557256ed0dd936f59309a785e71806d22c86c4f8dc
               version: 1.0.0
         agents:
             - name: sync-auditor

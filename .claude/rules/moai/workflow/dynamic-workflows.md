@@ -40,6 +40,16 @@ Reach for a workflow when a task needs **more agents than one conversation can c
 
 The Anthropic guidance is explicit that most coding tasks involve fewer truly parallelizable subtasks than research, so the default for coding-heavy work remains sequential subagents; reserve workflow-scale fan-out for genuinely parallel, large-volume work.
 
+### Routing Heuristic (which primitive to pick)
+
+When choosing among the three runtime primitives, route by the **shape and volume** of the work (this heuristic reuses, and does not contradict, the three-primitive table above):
+
+- **Dynamic workflow** — when the work fans out over **dozens-to-hundreds** of mostly read-only, independent items (a codebase-wide sweep, a large mechanical migration, cross-checked research). The script holds the plan and the intermediate results, so the session context stays small even at high agent counts.
+- **Agent Teams** — when a **small number** of long-running peers must coordinate through a shared task list (cross-layer work where teammates hand off and review each other). Start with 3-5 teammates; coordination cost rises sharply beyond that.
+- **Sequential subagents** — the **default** for coding-heavy run-phase work. One subagent per milestone, each result landing back in Claude's context. Prefer this whenever the task is not genuinely high-volume parallel, because coding tasks rarely decompose into many truly independent subtasks.
+
+The deciding question is **who should hold the plan**: the script (workflow), a coordinating peer set (Agent Teams), or Claude turn-by-turn (sequential subagents).
+
 ## How a Workflow Runs
 
 - The runtime executes the script in an isolated environment, separate from the conversation.
@@ -48,6 +58,7 @@ The Anthropic guidance is explicit that most coding tasks involve fewer truly pa
 - The workflow script itself has **no direct filesystem or shell access** — its agents read, write, and run commands; the script only coordinates them.
 - Runs are **resumable within the same session**: completed agents return cached results, the rest run live. Exiting Claude Code restarts a running workflow fresh in the next session.
 - Workflow subagents always run in `acceptEdits` mode and inherit the session tool allowlist regardless of the session's permission mode. Add the commands agents need to the allowlist before a long run to avoid mid-run prompts.
+- **The script body must be deterministic** — it must not call wall-clock or random-number functions. Resume caching keys on the script's deterministic outputs, so a clock read or a random draw produces a different result on resume and silently breaks the cache. Any timestamp or random value the workflow needs must be injected through the script's input arguments, or stamped onto the results after the run returns — never generated inside the script body.
 
 ## MoAI Integration Notes
 
@@ -55,7 +66,7 @@ The Anthropic guidance is explicit that most coding tasks involve fewer truly pa
 - **GATE-2 is unaffected**: a workflow is a run-phase execution mechanism. The plan-to-implement human gate is decided by the orchestrator before any workflow launches, not by the workflow.
 - **Cost awareness**: a single workflow run can spend meaningfully more tokens than the same task in conversation. It counts toward the session's usage and the context-window thresholds in `.claude/rules/moai/workflow/context-window-management.md`. Surface the cost trade-off to the user before launching a large fan-out.
 - **Bundled `/deep-research`**: Claude Code ships a built-in research workflow (`/deep-research <question>`) that fans out web searches, cross-checks sources, votes on claims, and returns a cited report. It requires the WebSearch tool. This complements MoAI's WebSearch + Explore exploration pattern for research-heavy questions.
-- **`ultracode` effort**: `/effort ultracode` combines `xhigh` reasoning with automatic workflow orchestration — Claude plans a workflow for each substantive task. Use deliberately; every task then uses more tokens. Reverts on a new session; step back with `/effort high` for routine work.
+- **`ultracode` effort**: `/effort ultracode` combines `xhigh` reasoning with automatic workflow orchestration — Claude plans a workflow for each substantive task. Use deliberately; every task then uses more tokens. Reverts on a new session; step back with `/effort high` for routine work. Because it resets on a new session, `ultracode` is **not** restored by the `ultrathink.` opener of a paste-ready resume message — that opener restores reasoning effort only. A resumed session that needs auto-orchestration must explicitly re-issue `/effort ultracode`, parallel to how a `/goal` must be re-set after a session boundary.
 - **Saved workflows**: a run's script can be saved as a `/command` in `.claude/workflows/` (project, shared) or `~/.claude/workflows/` (personal). A project workflow with the same name wins over a personal one. MoAI does not ship any saved workflows by default; the user-owned `.claude/workflows/` directory is not template-managed.
 
 ## Disabling Workflows

@@ -372,6 +372,14 @@ For anti-hallucination policy, see .claude/rules/moai/core/moai-constitution.md
 - Never present information as fact when uncertain
 - Never omit "Sources:" section when WebSearch was used
 
+### Deep Research Workflow
+
+When a single-pass WebSearch is insufficient for a research-heavy question, use the bundled `/deep-research <question>` workflow: it fans out multiple web searches, cross-checks sources against each other, votes on contested claims, and returns a cited report. Three constraints apply:
+
+- `/deep-research` requires the WebSearch tool.
+- A workflow run spends meaningfully more tokens than a single-pass search — surface the cost trade-off before launching.
+- The AskUserQuestion boundary holds: the orchestrator collects and refines the research question before launch, never mid-run (workflow agents cannot prompt the user).
+
 ---
 
 ## 11. Error Handling
