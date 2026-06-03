@@ -81,3 +81,13 @@ total_run_phase_files: 5
 m1_to_mN_commit_strategy: "per-milestone commits M1-M5; status draft→in-progress on M1; NO push"
 spec_lint_blocker: "RESOLVED — orchestrator-direct added '### §D.1 Out of Scope (Exclusions — What NOT to Build)' H3 to spec.md §D (manager-spec rate-limited post-patch; surgical lint-satisfying heading + AC-004 awk bugfix, no scope/requirement change). OutOfScopeRule now satisfied (H3 'out of scope' infix + EX-1..EX-8 list items)."
 ```
+
+## §E.4 — Sync-phase Audit-Ready Signal
+
+```yaml
+sync_commit_sha: "(placeholder — backfill after sync commit lands)"
+sync_status: implemented
+sync_phase_summary: "Manager-docs SPEC-AUTONOMY-RUN-GOAL-001 sync-phase: (1) Updated spec.md frontmatter status in-progress→implemented + date refresh (2026-06-03). (2) Added progress.md §E.4 sync-audit-ready section. (3) Generated CHANGELOG.md entry under [Unreleased] section documenting 3 deliverables (D1 Mode 6 catalog, D2 run.md autonomy section, D3 GATE-2 regression guard) + template mirror + 13/13 AC PASS. (4) NO push — orchestrator handles multi-session coordination."
+ac_verification: "13 ACs in acceptance.md verified by grep. Sync commit adds no new implementation; deliverables all PASS via run-phase evidence."
+no_docs_site_update: "This SPEC is internal doctrine/workflow (rules + test) — no user-facing feature. docs-site updates deferred to product feature SPEC."
+```
