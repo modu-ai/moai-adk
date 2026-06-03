@@ -57,7 +57,7 @@ passing_ac_count: 17
 ```yaml
 mx_phase_ready: true
 mx_complete_at: "2026-06-03T15:30:00Z"
-mx_commit_sha: "MX_PLACEHOLDER"
+mx_commit_sha: "cf7d78a9c7d68e92c2018605448ed6e7cb1024bc"
 mx_status: ready
 four_phase_close: true
 ```
