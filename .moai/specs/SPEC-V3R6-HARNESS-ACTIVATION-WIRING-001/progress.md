@@ -158,7 +158,7 @@ spec_id: SPEC-V3R6-HARNESS-ACTIVATION-WIRING-001
 era: V3R6
 tier: M
 sync_complete_at: 2026-06-03
-sync_commit_sha: (this commit)
+sync_commit_sha: 16df5274f
 sync_status: implemented
 ac_pass_count: 17        # AC-HAW-001..015 (013b folded into 015) + PROC-1..2
 ac_fail_count: 0
@@ -180,4 +180,24 @@ authored_by: orchestrator-direct
 ```
 
 ## §E.5 Mx-phase Audit-Ready Signal
-_(populated at close)_
+
+```yaml
+spec_id: SPEC-V3R6-HARNESS-ACTIVATION-WIRING-001
+era: V3R6
+tier: M
+mx_complete_at: 2026-06-03
+mx_commit_sha: (this commit)
+final_status: completed
+four_phase_close:
+  plan: aa078e1f0 (plan-phase artifacts, 5 artifacts) + 532226a3c (plan-audit D1/D2/D3/D4 patch)
+  run: 92ce0b1ce..f9b54c07c (M1-M6, 5 commits cherry-pick integrated; worktree origin 0ebed07b9..c3a9872b4)
+  sync: 16df5274f
+  mx: (this commit)
+plan_audit_verdict: PASS-WITH-DEBT 0.86 (GATE-2 approved)
+ac_pass_count: 17
+ac_fail_count: 0
+integration_attributed_test_failures: 0   # proven via 8a6329b63..HEAD footprint
+known_preexisting_failures: TestOutputStylesTemplateLiveParity (einstein drift, EX-8) + TestHookWrapper flaky (CI-FLAKY-STABILIZE-003 candidate) — both NOT integration-attributed
+close_method: orchestrator-direct (Tier M bounded internal SPEC; manager-docs sync failure-mode avoidance, active multi-session race)
+authored_by: orchestrator-direct
+```
