@@ -238,22 +238,28 @@ func TestDataI18nWiring(t *testing.T) {
 }
 
 // TestDataI18nKeysSubsetOfDictionary verifies R6 boundary verification: every
-// data-i18n key used in the template is present in the EN dictionary (so no key
-// renders an absent/blank translation).
+// data-i18n key in the RENDERED page is present in the EN dictionary (so no key
+// renders an absent/blank translation). The render resolves the helper templates'
+// data-i18n="f.{{.Name}}.title" directives to concrete keys (e.g. f.model.title).
 func TestDataI18nKeysSubsetOfDictionary(t *testing.T) {
-	tmplSrc := readEmbeddedAsset(t, "page.html.tmpl")
+	body := renderIndexBody(t, profile.ProfilePreferences{UserName: "jline"})
 	dict := readEmbeddedAsset(t, "i18n.js")
 
 	keyRe := regexp.MustCompile(`data-i18n="([^"]+)"`)
-	matches := keyRe.FindAllStringSubmatch(tmplSrc, -1)
+	matches := keyRe.FindAllStringSubmatch(body, -1)
 	if len(matches) == 0 {
-		t.Fatal("no data-i18n keys found in template")
+		t.Fatal("no data-i18n keys found in rendered page")
 	}
 	for _, m := range matches {
 		key := m[1]
+		// Guard against an unresolved template directive leaking into the render.
+		if strings.Contains(key, "{{") {
+			t.Errorf("data-i18n key %q is an unresolved template directive (not rendered)", key)
+			continue
+		}
 		// The dictionary defines keys as "key": — assert the EN locale carries it.
 		if !strings.Contains(dict, `"`+key+`":`) {
-			t.Errorf("data-i18n key %q used in template is absent from the dictionary (R6: would render blank/untranslated)", key)
+			t.Errorf("data-i18n key %q in the rendered page is absent from the dictionary (R6: would render blank/untranslated)", key)
 		}
 	}
 }

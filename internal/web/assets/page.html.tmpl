@@ -50,13 +50,13 @@
     <!-- ============ Page header ============ -->
     <div class="pagehead">
       <h1>MoAI <span class="accent">Web Console</span></h1>
-      <p class="pagehead__sub">Edit profile preferences &amp; project settings (loopback only — local machine)</p>
+      <p class="pagehead__sub" data-i18n="app.subtitle">Edit profile preferences &amp; project settings (loopback only — local machine)</p>
     </div>
 
     <!-- ============ Profile switcher (server-conditional) ============ -->
     {{if .ShowProfileSwitch}}
     <div class="profilebar">
-      <label class="profilebar__label" for="__profile_select">Profile:</label>
+      <label class="profilebar__label" for="__profile_select" data-i18n="profile.label">Profile:</label>
       <span class="select-wrap">
         <select class="select" name="__profile_select" id="__profile_select" aria-label="Active profile">
           {{range .Profiles}}
@@ -86,16 +86,16 @@
       <fieldset class="section">
         <div class="section__head">
           <div class="section__head-row">
-            <legend class="section__legend"><span class="section__ico">{{template "icon" "user-round"}}</span><span>Identity</span></legend>
-            <span class="section__count">1 field</span>
+            <legend class="section__legend"><span class="section__ico">{{template "icon" "user-round"}}</span><span data-i18n="sec.identity.title">Identity</span></legend>
+            <span class="section__count" data-i18n="count.identity">1 field</span>
           </div>
-          <p class="section__desc">Who you are in commits and sessions.</p>
+          <p class="section__desc" data-i18n="sec.identity.desc">Who you are in commits and sessions.</p>
         </div>
         <div class="section__body">
           <div class="grid grid--1">
             <div class="field {{if index .FieldErrors "user_name"}}has-error{{end}}">
-              <span class="field__label"><span class="field__title">Display name</span><code class="field__key">user_name</code></span>
-              <span class="field__desc">The name shown in commits and session headers.</span>
+              <span class="field__label"><span class="field__title" data-i18n="f.user_name.title">Display name</span><code class="field__key">user_name</code></span>
+              <span class="field__desc" data-i18n="f.user_name.desc">The name shown in commits and session headers.</span>
               <input class="input" type="text" id="user_name" name="user_name" value="{{.Prefs.UserName}}" placeholder="e.g. jline" autocomplete="off"{{if index .FieldErrors "user_name"}} aria-invalid="true" aria-describedby="err_user_name"{{end}}>
               {{with index .FieldErrors "user_name"}}<span class="field-error" id="err_user_name">{{template "icon" "alert-circle"}}<span>{{.}}</span></span>{{end}}
             </div>
@@ -107,10 +107,10 @@
       <fieldset class="section">
         <div class="section__head">
           <div class="section__head-row">
-            <legend class="section__legend"><span class="section__ico">{{template "icon" "languages"}}</span><span>Language</span></legend>
-            <span class="section__count">4 fields</span>
+            <legend class="section__legend"><span class="section__ico">{{template "icon" "languages"}}</span><span data-i18n="sec.language.title">Language</span></legend>
+            <span class="section__count" data-i18n="count.language">4 fields</span>
           </div>
-          <p class="section__desc">Languages used across conversation, commits, comments, and docs.</p>
+          <p class="section__desc" data-i18n="sec.language.desc">Languages used across conversation, commits, comments, and docs.</p>
         </div>
         <div class="section__body">
           <div class="grid">
@@ -126,16 +126,16 @@
       <fieldset class="section">
         <div class="section__head">
           <div class="section__head-row">
-            <legend class="section__legend"><span class="section__ico">{{template "icon" "rocket"}}</span><span>Launch</span></legend>
-            <span class="section__count">4 fields</span>
+            <legend class="section__legend"><span class="section__ico">{{template "icon" "rocket"}}</span><span data-i18n="sec.launch.title">Launch</span></legend>
+            <span class="section__count" data-i18n="count.launch">4 fields</span>
           </div>
-          <p class="section__desc">How sessions start — permissions, model, and reasoning effort.</p>
+          <p class="section__desc" data-i18n="sec.launch.desc">How sessions start — permissions, model, and reasoning effort.</p>
         </div>
         <div class="section__body">
           <div class="grid">
             <div class="field {{if index .FieldErrors "permission_mode"}}has-error{{end}}">
-              <span class="field__label"><span class="field__title">Permission mode</span><code class="field__key">permission_mode</code></span>
-              <span class="field__desc">How much the agent may do before asking you.</span>
+              <span class="field__label"><span class="field__title" data-i18n="f.permission_mode.title">Permission mode</span><code class="field__key">permission_mode</code></span>
+              <span class="field__desc" data-i18n="f.permission_mode.desc">How much the agent may do before asking you.</span>
               <span class="select-wrap">
                 <select class="select" id="permission_mode" name="permission_mode"{{if index .FieldErrors "permission_mode"}} aria-invalid="true" aria-describedby="err_permission_mode"{{end}}>
                   {{range .PermissionModes}}
@@ -156,16 +156,16 @@
       <fieldset class="section">
         <div class="section__head">
           <div class="section__head-row">
-            <legend class="section__legend"><span class="section__ico">{{template "icon" "panel-bottom"}}</span><span>Statusline</span></legend>
-            <span class="section__count">3 fields · segments</span>
+            <legend class="section__legend"><span class="section__ico">{{template "icon" "panel-bottom"}}</span><span data-i18n="sec.statusline.title">Statusline</span></legend>
+            <span class="section__count" data-i18n="count.statusline">3 fields · segments</span>
           </div>
-          <p class="section__desc">The status bar shown at the bottom of your terminal.</p>
+          <p class="section__desc" data-i18n="sec.statusline.desc">The status bar shown at the bottom of your terminal.</p>
         </div>
         <div class="section__body">
           <div class="grid">
             <div class="field {{if index .FieldErrors "statusline_mode"}}has-error{{end}}">
-              <span class="field__label"><span class="field__title">Statusline mode</span><code class="field__key">statusline_mode</code></span>
-              <span class="field__desc">Overall density of the status bar.</span>
+              <span class="field__label"><span class="field__title" data-i18n="f.statusline_mode.title">Statusline mode</span><code class="field__key">statusline_mode</code></span>
+              <span class="field__desc" data-i18n="f.statusline_mode.desc">Overall density of the status bar.</span>
               <span class="select-wrap">
                 <select class="select" id="statusline_mode" name="statusline_mode"{{if index .FieldErrors "statusline_mode"}} aria-invalid="true" aria-describedby="err_statusline_mode"{{end}}>
                   {{range .StatuslineModes}}
@@ -176,8 +176,8 @@
               {{with index .FieldErrors "statusline_mode"}}<span class="field-error" id="err_statusline_mode">{{template "icon" "alert-circle"}}<span>{{.}}</span></span>{{end}}
             </div>
             <div class="field {{if index .FieldErrors "statusline_preset"}}has-error{{end}}">
-              <span class="field__label"><span class="field__title">Statusline preset</span><code class="field__key">statusline_preset</code></span>
-              <span class="field__desc">A predefined segment set. Choose “custom” to pick your own.</span>
+              <span class="field__label"><span class="field__title" data-i18n="f.statusline_preset.title">Statusline preset</span><code class="field__key">statusline_preset</code></span>
+              <span class="field__desc" data-i18n="f.statusline_preset.desc">A predefined segment set. Choose “custom” to pick your own.</span>
               <span class="select-wrap">
                 <select class="select" id="statusline_preset" name="statusline_preset"{{if index .FieldErrors "statusline_preset"}} aria-invalid="true" aria-describedby="err_statusline_preset"{{end}}>
                   {{range .StatuslinePresets}}
@@ -188,8 +188,8 @@
               {{with index .FieldErrors "statusline_preset"}}<span class="field-error" id="err_statusline_preset">{{template "icon" "alert-circle"}}<span>{{.}}</span></span>{{end}}
             </div>
             <div class="field col-span-2 {{if index .FieldErrors "statusline_theme"}}has-error{{end}}">
-              <span class="field__label"><span class="field__title">Statusline theme</span><code class="field__key">statusline_theme</code></span>
-              <span class="field__desc">Color theme for the status bar.</span>
+              <span class="field__label"><span class="field__title" data-i18n="f.statusline_theme.title">Statusline theme</span><code class="field__key">statusline_theme</code></span>
+              <span class="field__desc" data-i18n="f.statusline_theme.desc">Color theme for the status bar.</span>
               <span class="select-wrap" style="max-width:340px">
                 <select class="select" id="statusline_theme" name="statusline_theme"{{if index .FieldErrors "statusline_theme"}} aria-invalid="true" aria-describedby="err_statusline_theme"{{end}}>
                   {{range .StatuslineThemes}}
@@ -206,8 +206,8 @@
                bindForm binds segment_<key> only when preset==custom (EC-5). -->
           <div class="segments" id="custom-segments">
             <div class="segments__head">
-              <span class="segments__title">Custom segments</span>
-              <span class="segments__note">Choose exactly which pieces of information appear.</span>
+              <span class="segments__title" data-i18n="seg.title">Custom segments</span>
+              <span class="segments__note" data-i18n="seg.note">Choose exactly which pieces of information appear.</span>
             </div>
             <div class="segments__grid">
               {{range .AllSegments}}
@@ -222,10 +222,10 @@
       <fieldset class="section">
         <div class="section__head">
           <div class="section__head-row">
-            <legend class="section__legend"><span class="section__ico">{{template "icon" "folder-git"}}</span><span>Project</span></legend>
-            <span class="section__count">2 fields</span>
+            <legend class="section__legend"><span class="section__ico">{{template "icon" "folder-git"}}</span><span data-i18n="sec.project.title">Project</span></legend>
+            <span class="section__count" data-i18n="count.project">2 fields</span>
           </div>
-          <p class="section__desc">Project-level development and git conventions.</p>
+          <p class="section__desc" data-i18n="sec.project.desc">Project-level development and git conventions.</p>
         </div>
         <div class="section__body">
           <div class="grid">
@@ -237,19 +237,20 @@
 
       <!-- ---- Actions ---- -->
       <div class="actions">
-        <button class="btn btn--primary" type="submit">{{template "icon" "save"}}<span>Save settings</span></button>
-        <span class="actions__meta">writes to <span class="mono">~/.moai profile &amp; project config</span></span>
+        <button class="btn btn--primary" type="submit">{{template "icon" "save"}}<span data-i18n="actions.save">Save settings</span></button>
+        <span class="actions__meta" data-i18n="actions.meta">writes to ~/.moai profile &amp; project config</span>
       </div>
     </form>
   </main>
+  <script src="/static/i18n.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>
 
 {{define "langSelect"}}
 <div class="field {{if index .Errors .Name}}has-error{{end}}">
-  <span class="field__label"><span class="field__title">{{.Title}}</span><code class="field__key">{{.Key}}</code></span>
-  <span class="field__desc">{{.Desc}}</span>
+  <span class="field__label"><span class="field__title" data-i18n="f.{{.Name}}.title">{{.Title}}</span><code class="field__key">{{.Key}}</code></span>
+  <span class="field__desc" data-i18n="f.{{.Name}}.desc">{{.Desc}}</span>
   <span class="select-wrap">
     <select class="select select--lang" id="{{.Name}}" name="{{.Name}}"{{if index .Errors .Name}} aria-invalid="true"{{end}}>
       <option value="" {{if eq .Value ""}}selected{{end}}>(unset)</option>
@@ -264,8 +265,8 @@
 
 {{define "optSelect"}}
 <div class="field {{if index .Errors .Name}}has-error{{end}}">
-  <span class="field__label"><span class="field__title">{{.Title}}</span><code class="field__key">{{.Key}}</code></span>
-  <span class="field__desc">{{.Desc}}</span>
+  <span class="field__label"><span class="field__title" data-i18n="f.{{.Name}}.title">{{.Title}}</span><code class="field__key">{{.Key}}</code></span>
+  <span class="field__desc" data-i18n="f.{{.Name}}.desc">{{.Desc}}</span>
   <span class="select-wrap">
     <select class="select" id="{{.Name}}" name="{{.Name}}"{{if index .Errors .Name}} aria-invalid="true"{{end}}>
       <option value="" {{if eq .Value ""}}selected{{end}}>{{.Empty}}</option>

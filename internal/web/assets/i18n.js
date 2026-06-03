@@ -2,8 +2,9 @@
 // SPEC-WEB-CONSOLE-005 (web interface i18n + CJK self-host webfont).
 //
 // This is a DERIVATIVE of the Claude Design i18n.js with the design-review
-// rv.* keys STRIPPED and the key set reconciled to the actual rendered chrome.
-// It is NOT a verbatim copy of the design file.
+// preview keys STRIPPED (the design scaffold's "State preview" keys are NOT part
+// of the product) and the key set reconciled to the actual rendered chrome. It
+// is NOT a verbatim copy of the design file.
 //
 // The INTERFACE language (which language the console's own UI chrome is shown
 // in) is distinct from the CONTENT-language settings the server validates
