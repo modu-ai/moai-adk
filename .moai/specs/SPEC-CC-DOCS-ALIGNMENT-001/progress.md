@@ -54,7 +54,7 @@ authored_by: orchestrator-direct # bounded 내부 doc-alignment + active multi-s
 
 ```yaml
 mx_complete_at: 2026-06-03
-mx_commit_sha: PLACEHOLDER_MX
+mx_commit_sha: 94e65e88c
 mx_status: completed
 status_transition: implemented -> completed
 four_phase_close: true           # plan + run + sync + Mx 완료
