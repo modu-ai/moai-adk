@@ -27,8 +27,8 @@
 |-----------|--------|--------|-------|
 | M1 — era exemption + terminal authority (drift.go) | done | bd7b6bcc4 | DetectDrift ③+④; D3 record-emission contract |
 | M2 — stale sync→completed rule correction (transitions.go) | done | 4b301e0ab | 4-phase model: sync = implemented |
-| M3 — combined-scope secondary prefix-grep fallback (drift.go) | done | (this commit) | 3-gate LSGF-001-safe; live CCSYNC CLAUDEMD+TOOLCAT resolved |
-| M4 — close-subject full-ID doctrine amendment + mirror | pending | — | lifecycle-sync-gate.md + spec-frontmatter-schema.md |
+| M3 — combined-scope secondary prefix-grep fallback (drift.go) | done | c64b050f7 | 3-gate LSGF-001-safe; live CCSYNC CLAUDEMD+TOOLCAT resolved |
+| M4 — close-subject full-ID doctrine amendment + mirror | done | (this commit) | lifecycle-sync-gate.md + spec-frontmatter-schema.md + template mirror (§25 C2 generalized) |
 | M5 — verification gate + genuine-⑤ residual classification | pending | — | strict drift decrease + residual handoff |
 
 ## §E.2 Run-phase Evidence
@@ -45,7 +45,7 @@
 | AC-DLC-008 | MUST-PASS | PASS | TestDetectDrift_CombinedScopeCollisionGuard + era V3R2/V3R3 exemption | grandfathered sibling not newly flagged |
 | AC-DLC-009 | SHOULD-PASS | PASS | drift --count before/after | 54 → 7 (strict decrease) |
 | AC-DLC-010 | MUST-PASS (gate) | PASS | go test ./internal/spec/... + go vet + golangci-lint | green; lint 0 issues |
-| AC-DLC-011 | MUST-PASS | pending (M4) | doctrine co-located prohibition oracle (Go regexp) | — |
+| AC-DLC-011 | MUST-PASS | PASS | TestCloseSubjectDoctrineAmendment (portable Go regexp, D-NEW-2) | both doctrine files co-located prohibition; template mirror §25-generalized; mirror-parity + leak tests green |
 | AC-DLC-012 | MUST-PASS | PASS | TestDetectDrift_CombinedScopeCollisionGuard + TestCombinedScopeCloseMatches (OTHER/FOOBAR/EXTRA) | non-sibling partial-prefix not mapped; D-NEW-1 FOO vs FOOBAR guard |
 
 ## PRESERVE Verification

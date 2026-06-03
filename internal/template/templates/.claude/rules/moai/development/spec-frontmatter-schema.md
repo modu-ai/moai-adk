@@ -73,6 +73,10 @@ Per the canonical agent-responsibility realignment policy (DRI ownership at agen
 | `* → archived` | manager-docs (administrative cleanup) | `chore(specs): archive SPEC-{ID}` |
 | `* → rejected` | orchestrator decision, recorded by manager-docs | `chore(SPEC-{ID}): rejected per <rationale>` |
 
+### Close-subject full-ID mandate
+
+Per the drift-detector close-subject convention, every close commit (the `implemented → completed` transition above) MUST name exactly one individual full SPEC-ID in its subject scope — e.g. `chore(SPEC-{DOMAIN}-{SUB}-001): … 4-phase close`. A **combined/abbreviated scope** that names only a shared prefix (e.g. `chore(SPEC-{DOMAIN}): … 4-phase close (SUB-A + SUB-B)`) is **prohibited**: the drift detector's exact-token SPEC-ID extraction cannot map an abbreviated prefix to its sibling SPECs, so combined-scope close subjects regenerate lifecycle drift false-positives. When closing N sibling SPECs together, emit N separate close commits, one per full SPEC-ID — combined/abbreviated scope is disallowed in close subjects.
+
 ### Forbidden ownership crossings
 
 - `manager-docs` MUST NOT modify `spec.md` / `plan.md` / `acceptance.md` body content (frontmatter `status:` + `updated:` updates on the `in-progress → implemented` transition are allowed; ALL other body modifications are forbidden). When sync-phase reveals a need to modify SPEC body content, manager-docs MUST return a blocker report and the orchestrator re-delegates to manager-spec.

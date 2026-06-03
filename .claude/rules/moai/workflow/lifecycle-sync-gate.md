@@ -230,6 +230,10 @@ for reference:
 | `* → archived` | manager-docs (administrative cleanup) | `chore(specs): archive SPEC-{ID}` |
 | `* → rejected` | orchestrator, recorded by manager-docs | `chore(SPEC-{ID}): rejected per <rationale>` |
 
+### Close-subject full-ID mandate
+
+Per SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001, every close commit (the `implemented → completed` transition above) MUST name exactly one individual full SPEC-ID in its subject scope — e.g. `chore(SPEC-CCSYNC-CLAUDEMD-001): … 4-phase close`. A **combined/abbreviated scope** that names only a shared prefix (e.g. `chore(SPEC-CCSYNC): … 4-phase close (CLAUDEMD + TOOLCAT)`) is **prohibited**: the drift detector's exact-token SPEC-ID extraction cannot map an abbreviated prefix to its sibling SPECs, so combined-scope close subjects regenerate lifecycle drift false-positives. When closing N sibling SPECs together, emit N separate close commits, one per full SPEC-ID — combined/abbreviated scope is disallowed in close subjects. The drift detector accommodates historical combined-scope closes via a secondary scope-prefix grep fallback (see `internal/spec/drift.go` `resolveCombinedScopeClose`), but this doctrine prevents recurrence in new closes.
+
 ### `Authored-By-Agent` trailer as the gating signal
 
 The `OwnershipTransitionRule` uses the `Authored-By-Agent:` commit body trailer
