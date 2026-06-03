@@ -1,8 +1,8 @@
 ---
 id: SPEC-CCSYNC-DYNWF-001
 title: "Dynamic Workflows doctrine alignment (doc seams)"
-version: "0.1.0"
-status: in-progress
+version: "0.2.0"
+status: implemented
 created: 2026-06-03
 updated: 2026-06-03
 author: manager-spec

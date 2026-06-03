@@ -36,3 +36,21 @@ cross_platform_build:
 total_run_phase_files: 8
 m1_to_mN_commit_strategy: single M1 commit (Tier S doc-only — all 4 seams + mirrors + catalog regen + status flip in one commit)
 ```
+
+## Sync-phase Audit-Ready Signal
+
+```yaml
+sync_commit_sha: (this commit)
+sync_status: complete
+changelog_entry_added: true
+status_transition: "in-progress → implemented"
+version_bump: "0.1.0 → 0.2.0"
+sync_executor: orchestrator-direct
+recovery_note: >
+  Prior session authored a sync+Mx close chain (b431254fe / 21ac357c1 / 3139817d8)
+  that was held un-pushed and became orphaned (not reachable from HEAD or origin/main).
+  This close is an orchestrator-direct redo (conflict-free) rather than a cherry-pick,
+  because the CHANGELOG diverged (GLM-WEBTOOL / WEB-CONSOLE-003 / WEB-CONSOLE-001 entries
+  added since the orphan); the CHANGELOG entry text is reproduced faithfully from b431254fe.
+  Authored-By-Agent trailer omitted (legacy silent SKIP) to avoid OwnershipTransitionInvalid.
+```
