@@ -134,7 +134,7 @@ spec_id: SPEC-V3R6-HARNESS-ACTIVATION-WIRING-001
 era: V3R6
 tier: M
 run_complete_at: 2026-06-03
-run_commit_sha: (this commit)
+run_commit_sha: f9b54c07c
 run_status: implemented
 ac_pass_count: 17        # AC-HAW-001..015 (013b folded into 015) + PROC-1..2
 ac_fail_count: 0
@@ -152,7 +152,32 @@ authored_by: manager-develop
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
-_(populated by manager-docs at sync-phase)_
+
+```yaml
+spec_id: SPEC-V3R6-HARNESS-ACTIVATION-WIRING-001
+era: V3R6
+tier: M
+sync_complete_at: 2026-06-03
+sync_commit_sha: (this commit)
+sync_status: implemented
+ac_pass_count: 17        # AC-HAW-001..015 (013b folded into 015) + PROC-1..2
+ac_fail_count: 0
+version_transition: 0.1.0 -> 0.2.0
+changelog_entry: CHANGELOG.md [Unreleased] Added — Harness activation wiring restoration
+readme_touched: false        # internal-mechanism SPEC; no user-facing README API surface change
+docs_site_touched: false     # internal wiring; not a docs-site user-doc topic
+deliverables:
+  - CHANGELOG.md (Added entry)
+  - spec.md frontmatter (status in-progress -> implemented; version 0.1.0 -> 0.2.0)
+  - progress.md (run_commit_sha backfill f9b54c07c + §E.4 population)
+integration_method: cherry-pick (worktree base e83864047 -> patch∪run spec.md/progress.md auto-merge union; code 13 files disjoint)
+run_commit_sha_backfilled: f9b54c07c   # integrated M6 SHA; cherry-pick reassigned from worktree tip c3a9872b4
+integration_attributed_test_failures: 0   # proven via 8a6329b63..HEAD footprint (no internal/hook, no output-styles)
+known_preexisting_failures:                # NOT integration-attributed
+  - TestOutputStylesTemplateLiveParity (einstein.md template/live drift, output-styles domain, EX-8 / B10 out-of-scope)
+  - TestHookWrapper_ValidJSON / TestHookWrapper_MoaiBinaryFallback (internal/hook flaky ~5s timeout under full-suite load; isolated re-run PASS 1.07s/0.88s; CI-FLAKY-STABILIZE-003 candidate)
+authored_by: orchestrator-direct
+```
 
 ## §E.5 Mx-phase Audit-Ready Signal
 _(populated at close)_
