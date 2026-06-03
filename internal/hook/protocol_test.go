@@ -151,6 +151,29 @@ func TestReadInput(t *testing.T) {
 			},
 		},
 		{
+			// AC-1 (REQ-HIS-001): Claude Code v2.1.69+ sends `globs` as a JSON array
+			// of glob-pattern strings for the InstructionsLoaded event. The decoder
+			// must deserialize it without the "cannot unmarshal array into Go struct
+			// field HookInput.globs of type string" error and populate Globs.
+			name: "instructions-loaded globs array decodes",
+			input: `{
+				"session_id": "sess-il",
+				"cwd": "/tmp",
+				"hook_event_name": "InstructionsLoaded",
+				"globs": ["**/*.go", "**/*.md"]
+			}`,
+			wantErr: false,
+			check: func(t *testing.T, got *HookInput) {
+				t.Helper()
+				if len(got.Globs) != 2 {
+					t.Fatalf("Globs length = %d, want 2 (%v)", len(got.Globs), got.Globs)
+				}
+				if got.Globs[0] != "**/*.go" || got.Globs[1] != "**/*.md" {
+					t.Errorf("Globs = %v, want [**/*.go **/*.md]", got.Globs)
+				}
+			},
+		},
+		{
 			name:    "missing hook_event_name defaults to unknown",
 			input:   `{"session_id": "sess-1", "cwd": "/tmp"}`,
 			wantErr: false,
@@ -180,16 +203,36 @@ func TestReadInput(t *testing.T) {
 			errTarget: ErrHookInvalidInput,
 		},
 		{
-			name:      "empty stdin",
-			input:     ``,
-			wantErr:   true,
-			errTarget: ErrHookInvalidInput,
+			// AC-2 (REQ-HIS-002): empty stdin is a graceful no-op success, NOT
+			// ErrHookInvalidInput. A non-blocking observer hook must never fail the
+			// tool it observes (PreToolUse on Bash). This case is INTENTIONALLY
+			// inverted from the prior erroring behavior (wantErr true -> false).
+			name:    "empty stdin",
+			input:   ``,
+			wantErr: false,
+			check: func(t *testing.T, got *HookInput) {
+				t.Helper()
+				if got.HookEventName != "unknown" {
+					t.Errorf("HookEventName = %q, want %q (default)", got.HookEventName, "unknown")
+				}
+				if got.SessionID != "unknown" {
+					t.Errorf("SessionID = %q, want %q (default)", got.SessionID, "unknown")
+				}
+			},
 		},
 		{
-			name:      "whitespace only stdin",
-			input:     `   `,
-			wantErr:   true,
-			errTarget: ErrHookInvalidInput,
+			// AC-2 (REQ-HIS-002): whitespace-only stdin behaves identically to empty
+			// stdin — graceful no-op success. INTENTIONALLY inverted from the prior
+			// erroring behavior (wantErr true -> false).
+			name:    "whitespace only stdin",
+			input:   "   \n",
+			wantErr: false,
+			check: func(t *testing.T, got *HookInput) {
+				t.Helper()
+				if got.HookEventName != "unknown" {
+					t.Errorf("HookEventName = %q, want %q (default)", got.HookEventName, "unknown")
+				}
+			},
 		},
 		{
 			name: "extra unknown fields are ignored",

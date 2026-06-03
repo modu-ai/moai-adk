@@ -1,6 +1,7 @@
 package hook
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,11 +23,28 @@ func NewProtocol() Protocol {
 // flat snake_case format. Native format (session.id, eventType, toolName) is
 // normalized to flat snake_case before decoding.
 // It validates required fields: session_id, cwd, and hook_event_name.
-// Returns ErrHookInvalidInput if the JSON is malformed or required fields are missing.
+//
+// Empty, blank, or whitespace-only stdin is treated as a graceful no-op success:
+// a non-blocking observer hook (e.g. PreToolUse on Bash) must never fail the tool
+// it observes, so an absent payload yields a default *HookInput and a nil error
+// rather than ErrHookInvalidInput. This extends the existing graceful-fallback
+// philosophy already applied to missing session_id / cwd / hook_event_name in
+// validateInput. Non-empty malformed JSON still returns ErrHookInvalidInput.
+//
+// Returns ErrHookInvalidInput if non-empty JSON is malformed or otherwise unparseable.
 func (p *jsonProtocol) ReadInput(r io.Reader) (*HookInput, error) {
 	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrHookInvalidInput, err)
+	}
+
+	// Empty / blank / whitespace-only stdin: graceful no-op success. Return a
+	// default *HookInput (with validateInput defaults applied) and nil error so
+	// the caller exits 0 instead of surfacing a tool-execution failure.
+	if len(bytes.TrimSpace(data)) == 0 {
+		input := &HookInput{}
+		_ = validateInput(input)
+		return input, nil
 	}
 
 	normalized, err := normalizeHookInput(data)
