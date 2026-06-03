@@ -108,7 +108,7 @@ sync_method: orchestrator-direct (active parallel-session race + bounded interna
 
 ```yaml
 mx_complete_at: 2026-06-03
-mx_commit_sha: <backfill-after-mx-commit>
+mx_commit_sha: 23b0f4a05
 status_transition: implemented -> completed
 lifecycle: 4-phase close (plan -> run -> sync -> Mx)
 era: V3R6 (H-4: §E.2 run evidence + §E.4 sync_commit_sha + §E.5 mx_commit_sha present)
