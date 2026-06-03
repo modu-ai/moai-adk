@@ -46,6 +46,28 @@ func TestGetProfileText_AllLanguages(t *testing.T) {
 			if txt.EffortLevelMax == "" {
 				t.Errorf("EffortLevelMax is empty for lang %q", lang)
 			}
+			// SPEC-WEB-CONSOLE-003 AC-WC3-006a: project-config selects (development_mode + git_convention).
+			if txt.DevelopmentModeTitle == "" {
+				t.Errorf("DevelopmentModeTitle is empty for lang %q", lang)
+			}
+			if txt.DevelopmentModeDesc == "" {
+				t.Errorf("DevelopmentModeDesc is empty for lang %q", lang)
+			}
+			if txt.DevelopmentModeDDD == "" {
+				t.Errorf("DevelopmentModeDDD is empty for lang %q", lang)
+			}
+			if txt.DevelopmentModeTDD == "" {
+				t.Errorf("DevelopmentModeTDD is empty for lang %q", lang)
+			}
+			if txt.GitConventionTitle == "" {
+				t.Errorf("GitConventionTitle is empty for lang %q", lang)
+			}
+			if txt.GitConventionDesc == "" {
+				t.Errorf("GitConventionDesc is empty for lang %q", lang)
+			}
+			if txt.ProjectDefaultOption == "" {
+				t.Errorf("ProjectDefaultOption is empty for lang %q", lang)
+			}
 		})
 	}
 }

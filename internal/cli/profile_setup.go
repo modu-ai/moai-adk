@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 
 	"github.com/charmbracelet/huh"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/statusline"
+	"github.com/modu-ai/moai-adk/pkg/models"
 	"github.com/spf13/cobra"
 )
 
@@ -141,6 +143,63 @@ func normalizeModel(m string) string {
 	}
 }
 
+// readCurrentProjectConfig reads the current development_mode + git_convention
+// values from the project config (quality.yaml / git-convention.yaml) via the
+// config manager. SPEC-WEB-CONSOLE-003 — these are project-config values, NOT
+// ProfilePreferences fields, so the wizard initializes their selects from here
+// rather than from existingPrefs. An absent config dir yields LoadRaw defaults.
+func readCurrentProjectConfig(projectRoot string) (devMode, convention string, err error) {
+	mgr := config.NewConfigManager()
+	cfg, err := mgr.LoadRaw(projectRoot)
+	if err != nil {
+		return "", "", fmt.Errorf("read project config: %w", err)
+	}
+	return string(cfg.Quality.DevelopmentMode), cfg.GitConvention.Convention, nil
+}
+
+// persistProjectConfig writes the selected development_mode + git_convention
+// values into the project config via the config-manager API (LoadRaw → mutate
+// only non-empty → SetSection → Save). It writes ONLY the quality
+// (development_mode) and git_convention (convention) sections; every other
+// section round-trips unchanged. Empty values keep the existing persisted value
+// (EC-1). This is the TUI counterpart to the web layer's writeProjectConfig —
+// same canonical persistence path, no direct yaml.Marshal/os.WriteFile.
+// SPEC-WEB-CONSOLE-003 REQ-WC3-006/007.
+func persistProjectConfig(projectRoot, devMode, convention string) error {
+	mgr := config.NewConfigManager()
+	cfg, err := mgr.LoadRaw(projectRoot)
+	if err != nil {
+		return fmt.Errorf("load project config: %w", err)
+	}
+
+	changed := false
+
+	if devMode != "" && string(cfg.Quality.DevelopmentMode) != devMode {
+		quality := cfg.Quality
+		quality.DevelopmentMode = models.DevelopmentMode(devMode)
+		if err := mgr.SetSection("quality", quality); err != nil {
+			return fmt.Errorf("set quality section: %w", err)
+		}
+		changed = true
+	}
+
+	if convention != "" && cfg.GitConvention.Convention != convention {
+		gc := cfg.GitConvention
+		gc.Convention = convention
+		if err := mgr.SetSection("git_convention", gc); err != nil {
+			return fmt.Errorf("set git_convention section: %w", err)
+		}
+		changed = true
+	}
+
+	if changed {
+		if err := mgr.Save(); err != nil {
+			return fmt.Errorf("save project config: %w", err)
+		}
+	}
+	return nil
+}
+
 var profileSetupCmd = &cobra.Command{
 	Use:   "setup [name]",
 	Short: "Interactive setup wizard for profile preferences",
@@ -227,6 +286,20 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		statuslineSegmentsSelection = append(statuslineSegmentsSelection, statuslineAllSegments...)
+	}
+
+	// SPEC-WEB-CONSOLE-003: initialize the two project-config selects from the
+	// CURRENT project config (quality.yaml / git-convention.yaml) — NOT from
+	// existingPrefs, since development_mode/convention are project-config values,
+	// not ProfilePreferences fields. Outside a MoAI project (no .moai dir) the
+	// selects default to empty "(project default)" and the save is a no-op.
+	var developmentMode, gitConvention string
+	if cwd, err := os.Getwd(); err == nil {
+		if info, statErr := os.Stat(filepath.Join(cwd, ".moai")); statErr == nil && info.IsDir() {
+			if dm, gc, readErr := readCurrentProjectConfig(cwd); readErr == nil {
+				developmentMode, gitConvention = dm, gc
+			}
+		}
 	}
 
 	// ====== Step 1: Language selection ======
@@ -412,6 +485,33 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		).Title(t.StatuslineSegmentsTitle).WithHideFunc(func() bool {
 			return statuslinePreset != "custom"
 		}),
+
+		// Section 6: Project config (development_mode + git_convention) — SPEC-WEB-CONSOLE-003.
+		// Parity with the web console "Project" fieldset. Persisted to project config
+		// (quality.yaml / git-convention.yaml), NOT the profile store.
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title(t.DevelopmentModeTitle).
+				Description(t.DevelopmentModeDesc).
+				Options(
+					huh.NewOption(t.ProjectDefaultOption, ""),
+					huh.NewOption(t.DevelopmentModeDDD, "ddd"),
+					huh.NewOption(t.DevelopmentModeTDD, "tdd"),
+				).
+				Value(&developmentMode),
+			huh.NewSelect[string]().
+				Title(t.GitConventionTitle).
+				Description(t.GitConventionDesc).
+				Options(
+					huh.NewOption(t.ProjectDefaultOption, ""),
+					huh.NewOption("auto", "auto"),
+					huh.NewOption("conventional-commits", "conventional-commits"),
+					huh.NewOption("angular", "angular"),
+					huh.NewOption("karma", "karma"),
+					huh.NewOption("custom", "custom"),
+				).
+				Value(&gitConvention),
+		).Title(t.DevelopmentModeTitle),
 	)
 
 	if err := form.Run(); err != nil {
@@ -475,6 +575,14 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: failed to sync profile to project config: %v\n", err)
 			} else {
 				syncedProjectRoot = cwd
+			}
+			// SPEC-WEB-CONSOLE-003 REQ-WC3-006: persist the two project-config
+			// selects (development_mode + git_convention) to quality.yaml /
+			// git-convention.yaml via the config manager — the SAME write path as
+			// the web console, NOT into ProfilePreferences. Empty values keep the
+			// existing project-config value (EC-1).
+			if err := persistProjectConfig(cwd, developmentMode, gitConvention); err != nil {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: failed to persist project config: %v\n", err)
 			}
 		}
 	}
