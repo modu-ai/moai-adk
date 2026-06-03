@@ -153,7 +153,7 @@ progress_sections_updated:
 
 ```yaml
 mx_complete_at: 2026-06-03
-mx_commit_sha: "(this commit)"
+mx_commit_sha: "feff43cd8"
 mx_status: completed
 spec_frontmatter_transitions:
   - field: status
@@ -167,7 +167,7 @@ four_phase_close:
   run: "d8d2d8d9c (M1), 2fb2a5156 (M2), 7493472e0 (M3), 041e6fefb (M4), d00061a25 (M5)"
   sync: eae3cdad9
   backfill: 211d79936
-  mx: "(this commit)"
+  mx: "feff43cd8"
 ac_final: "12/12 PASS"
 drift_outcome: "54 → 8 (4 false-positive mechanisms ①②③④ resolved; 8 genuine-⑤ residual handed off to follow-up SPEC)"
 einstein_md_failure: "pre-existing uncommitted template drift (last touched 3d588317e, out of scope; not introduced by this SPEC)"
