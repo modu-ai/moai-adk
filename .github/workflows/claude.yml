@@ -39,7 +39,7 @@ jobs:
         # Tag: v6.0.0 | SHA: 44694675825211faa026b3c33043df3e48a5fa00 (Node 24 runtime)
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
         with:
-          go-version: "1.26"
+          go-version-file: go.mod
           cache: true
 
       - name: Run Claude Code

@@ -1,6 +1,6 @@
 module github.com/modu-ai/moai-adk
 
-go 1.26
+go 1.26.4
 
 require (
 	github.com/charmbracelet/bubbles v1.0.0
