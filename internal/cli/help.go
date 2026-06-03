@@ -41,6 +41,7 @@ func rootHelpGroups() []helpGroup {
 				{"moai cc", "Claude Code 실행 (브릿지 포함)"},
 				{"moai cg", "Claude + GLM 하이브리드 모드"},
 				{"moai glm", "GLM 백엔드로 Claude Code 실행"},
+				{"moai web", "브라우저 기반 설정 콘솔 실행"},
 				{"moai statusline", "tmux/vim용 상태줄 출력"},
 			},
 		},

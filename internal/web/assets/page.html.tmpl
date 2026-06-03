@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MoAI Web Console</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>MoAI Web Console</h1>
+    <p>Edit profile preferences &amp; project settings (loopback only — local machine)</p>
+  </header>
+  <main>
+    {{if .Banner}}
+    <div class="banner {{.BannerKind}}">{{.Banner}}</div>
+    {{end}}
+
+    {{if .ShowProfileSwitch}}
+    <div class="profile-switch">
+      <label for="__profile_select">Profile:</label>
+      <select name="__profile_select" id="__profile_select">
+        {{range .Profiles}}
+        <option value="{{.Name}}" {{if eq .Name $.SelectedProfile}}selected{{end}}>{{.Name}}{{if .Current}} (current){{end}}</option>
+        {{end}}
+      </select>
+      <span class="current">selected: {{.SelectedProfile}}</span>
+    </div>
+    {{end}}
+
+    <form method="POST" action="/save{{if .SelectedProfile}}?profile={{.SelectedProfile}}{{end}}">
+      <input type="hidden" name="__profile" value="{{.SelectedProfile}}">
+
+      <fieldset>
+        <legend>Identity</legend>
+        <div class="field">
+          <label for="user_name">User name</label>
+          <input type="text" id="user_name" name="user_name" value="{{.Prefs.UserName}}">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Language</legend>
+        {{template "langSelect" dict "Name" "conversation_lang" "Label" "Conversation language" "Value" .Prefs.ConversationLang "Errors" .FieldErrors "Options" .LangOptions}}
+        {{template "langSelect" dict "Name" "git_commit_lang" "Label" "Git commit language" "Value" .Prefs.GitCommitLang "Errors" .FieldErrors "Options" .LangOptions}}
+        {{template "langSelect" dict "Name" "code_comment_lang" "Label" "Code comment language" "Value" .Prefs.CodeCommentLang "Errors" .FieldErrors "Options" .LangOptions}}
+        {{template "langSelect" dict "Name" "doc_lang" "Label" "Documentation language" "Value" .Prefs.DocLang "Errors" .FieldErrors "Options" .LangOptions}}
+      </fieldset>
+
+      <fieldset>
+        <legend>Launch</legend>
+        <div class="field {{if index .FieldErrors "permission_mode"}}has-error{{end}}">
+          <label for="permission_mode">Permission mode</label>
+          <select id="permission_mode" name="permission_mode">
+            {{range .PermissionModes}}
+            <option value="{{.}}" {{if eq . $.Prefs.PermissionMode}}selected{{end}}>{{if eq . ""}}(project default){{else}}{{.}}{{end}}</option>
+            {{end}}
+          </select>
+          {{with index .FieldErrors "permission_mode"}}<div class="field-error">{{.}}</div>{{end}}
+        </div>
+        <div class="field">
+          <label for="model_policy">Model policy</label>
+          <input type="text" id="model_policy" name="model_policy" value="{{.Prefs.ModelPolicy}}">
+        </div>
+        <div class="field">
+          <label for="model">Model</label>
+          <input type="text" id="model" name="model" value="{{.Prefs.Model}}">
+        </div>
+        <div class="field">
+          <label for="effort_level">Effort level</label>
+          <input type="text" id="effort_level" name="effort_level" value="{{.Prefs.EffortLevel}}">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Statusline</legend>
+        <div class="field {{if index .FieldErrors "statusline_mode"}}has-error{{end}}">
+          <label for="statusline_mode">Mode</label>
+          <select id="statusline_mode" name="statusline_mode">
+            {{range .StatuslineModes}}
+            <option value="{{.}}" {{if eq . $.Prefs.StatuslineMode}}selected{{end}}>{{.}}</option>
+            {{end}}
+          </select>
+          {{with index .FieldErrors "statusline_mode"}}<div class="field-error">{{.}}</div>{{end}}
+        </div>
+        <div class="field {{if index .FieldErrors "statusline_preset"}}has-error{{end}}">
+          <label for="statusline_preset">Preset</label>
+          <select id="statusline_preset" name="statusline_preset">
+            {{range .StatuslinePresets}}
+            <option value="{{.}}" {{if eq . $.Prefs.StatuslinePreset}}selected{{end}}>{{.}}</option>
+            {{end}}
+          </select>
+          {{with index .FieldErrors "statusline_preset"}}<div class="field-error">{{.}}</div>{{end}}
+        </div>
+        <div class="field {{if index .FieldErrors "statusline_theme"}}has-error{{end}}">
+          <label for="statusline_theme">Theme</label>
+          <select id="statusline_theme" name="statusline_theme">
+            {{range .StatuslineThemes}}
+            <option value="{{.}}" {{if eq . $.Prefs.StatuslineTheme}}selected{{end}}>{{.}}</option>
+            {{end}}
+          </select>
+          {{with index .FieldErrors "statusline_theme"}}<div class="field-error">{{.}}</div>{{end}}
+        </div>
+        <div class="field" id="custom-segments">
+          <label>Custom segments</label>
+          <div class="segments">
+            {{range .AllSegments}}
+            <label><input type="checkbox" name="segment_{{.}}" value="1" {{if index $.Prefs.StatuslineSegments .}}checked{{end}}>{{.}}</label>
+            {{end}}
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="actions">
+        <button type="submit">Save settings</button>
+      </div>
+    </form>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
+
+{{define "langSelect"}}
+<div class="field {{if index .Errors .Name}}has-error{{end}}">
+  <label for="{{.Name}}">{{.Label}}</label>
+  <select id="{{.Name}}" name="{{.Name}}">
+    <option value="" {{if eq .Value ""}}selected{{end}}>(unset)</option>
+    {{range .Options}}
+    <option value="{{.}}" {{if eq . $.Value}}selected{{end}}>{{.}}</option>
+    {{end}}
+  </select>
+  {{with index .Errors .Name}}<div class="field-error">{{.}}</div>{{end}}
+</div>
+{{end}}
