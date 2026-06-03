@@ -2,7 +2,7 @@
 id: SPEC-WEB-CONSOLE-004
 title: "Web Console — 모두의AI Design System Application (visual restyle, zero server-contract change)"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-06-03
 updated: 2026-06-03
 author: manager-spec

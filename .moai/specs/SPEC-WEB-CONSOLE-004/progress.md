@@ -96,10 +96,22 @@ m1_to_mN_commit_strategy: "single feature-branch commit (M1-M5 holistic, worktre
 
 ```yaml
 sync_complete_at: 2026-06-03
-sync_commit_sha: <backfill-after-sync-commit>
+sync_commit_sha: 5294057cf
 status_transition: in-progress -> implemented
 version_bump: 0.1.0 -> 0.2.0
 changelog_entry: "Added — SPEC-WEB-CONSOLE-004 (web-console-v3 cohort, Tier M)"
 readme_change: none (internal moai web console; no README web-console reference — doc-seam)
 sync_method: orchestrator-direct (active parallel-session race + bounded internal/web scope; manager-docs broad-add contamination + worktree cherry-pick overhead avoidance per L_orchestrator_direct_sync_tier_m)
+```
+
+### §E.5 — Mx-phase Audit-Ready Signal
+
+```yaml
+mx_complete_at: 2026-06-03
+mx_commit_sha: <backfill-after-mx-commit>
+status_transition: implemented -> completed
+lifecycle: 4-phase close (plan -> run -> sync -> Mx)
+era: V3R6 (H-4: §E.2 run evidence + §E.4 sync_commit_sha + §E.5 mx_commit_sha present)
+final_ac: 13/13 PASS
+mx_method: orchestrator-direct
 ```
