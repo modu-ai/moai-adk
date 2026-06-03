@@ -92,7 +92,7 @@ This is the M1 commit (`draft → in-progress`). The spec.md `status:` frontmatt
 
 ```yaml
 mx_complete_at: 2026-06-03
-mx_commit_sha: "(this commit)"
+mx_commit_sha: "1c9c0a790"
 mx_status: completed
 spec_frontmatter_transitions:
   - field: status
