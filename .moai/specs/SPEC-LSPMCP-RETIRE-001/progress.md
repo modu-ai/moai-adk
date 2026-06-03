@@ -69,7 +69,7 @@ Status: sync-phase complete (all 10/10 AC PASS). Sync commit ready for Mx-phase 
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-- **mx_commit_sha**: `(this commit — backfilled post-commit)`
+- **mx_commit_sha**: `a5bc63017` (4-phase close commit; backfilled post-commit per chicken-egg ordering)
 - **Status transition**: `implemented → completed` (4-phase lifecycle close)
 - **4-phase summary**: plan (plan-auditor PASS 0.93, iter 2/3) → run (`94d9fccfc`, 10/10 AC PASS, internal/lsp PRESERVED) → sync (`741b537f1`, status→implemented + CHANGELOG) → Mx (this commit, completed)
 - **sync-auditor**: skipped per Tier M standard harness + dead-code removal rationale (see §E.3)
