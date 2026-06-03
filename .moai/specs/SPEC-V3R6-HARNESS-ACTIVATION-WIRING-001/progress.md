@@ -83,10 +83,73 @@ Pre-flight baseline (Section C):
 - `golangci-lint run ./internal/cli/... ./internal/harness/...` → 0 issues (clean baseline)
 - existing `TestRunHarnessCheck*` / `TestInjectMarker*` / `TestScaffold*` → all PASS (L1-L5 + installers unit-tested but unwired)
 
-_(M2-M6 evidence populated below as milestones complete)_
+### M2-M6 milestone summary
+
+| Milestone | Commit | What changed |
+|-----------|--------|--------------|
+| M1 | `0ebed07b9` | RED baseline + Phase 0.95 Mode Selection; draft→in-progress |
+| M2/M3 | `f45bc90d9` | Option A confirmed; `moai harness install` CLI (install.go + install_test.go) wiring InjectMarker+ScaffoldHarnessDir; harness_route.go registration; project/meta-harness.md Phase 7 body |
+| M4 | `6becb8550` | layer5.go mainMD() `## Task-Shape Routing` table; meta-harness emission contract (skills: preload + non-empty description); §6.4 `moai-harness-*` → `my-harness-*` prefix correction |
+| M5 | `2a90a28d7` | doctor_harness.go L6 smoke gate (checkLayer6AgentActivation) + frontmatter parser; 6 TDD cases |
+| M6 | (this commit) | layer5.go readmeMD() Activation/Retrofit note; final verification batch + §E.2/E.3 population |
+
+### Run-phase Evidence — AC PASS/FAIL matrix
+
+| AC | Binds | Status | Verification | Actual Output |
+|----|-------|--------|--------------|---------------|
+| AC-HAW-001 | REQ-HAW-001 | PASS | `grep InjectMarker( ... -v _test.go -v func` | 1 caller `internal/cli/harness/install.go:85` (was 0) |
+| AC-HAW-002 | REQ-HAW-002 | PASS | `TestRunInstall_Idempotent` (double install → 1 start/1 end/1 heading) | PASS |
+| AC-HAW-003 | REQ-HAW-003 | PASS | `grep 'AskUserQuestion(' install.go/layer3.go/layer5.go/doctor_harness.go` | 0 invocation matches; `TestPropose_NoAskUserQuestion` PASS |
+| AC-HAW-004 | REQ-HAW-004 | PASS | `TestRunInstall_MissingClaudeMd` (absent CLAUDE.md → wrapped error) | PASS |
+| AC-HAW-005 | REQ-HAW-005 | PASS | `grep ScaffoldHarnessDir( ... -v _test.go -v func` | 1 caller `internal/cli/harness/install.go:74` (was 0) |
+| AC-HAW-006 | REQ-HAW-006 | PASS | `TestScaffoldHarnessDir_MainMDIsRouterManifest` (Domain + Task-Shape Routing + Linked Files) | PASS |
+| AC-HAW-007 | REQ-HAW-007 | PASS | `TestRunHarnessCheck_L5Missing` (agents present + main.md removed → L5 FAIL) | PASS (existing L5 check) |
+| AC-HAW-008 | REQ-HAW-008,013b | PASS | `grep skills:` in SKILL.md + project workflow ≥1 | 8 matches; `TestRunHarnessCheck_MissingSkillsKey` PASS |
+| AC-HAW-009 | REQ-HAW-009 | PASS | `TestRunHarnessCheck_EmptyAgentDescription` (empty desc → FAIL) | PASS |
+| AC-HAW-010 | REQ-HAW-010 | PASS | `TestRunHarnessCheck_L5Missing` (main.md removed → FAIL) | PASS (L5) |
+| AC-HAW-011 | REQ-HAW-011 | PASS | `TestRunHarnessCheck_L3MarkerUnpaired` (markers unpaired → L3 FAIL) | PASS (L3) |
+| AC-HAW-012 | REQ-HAW-012 | PASS | `TestRunHarnessCheck_EmptyAgentDescription` detail names "description" + agent | PASS |
+| AC-HAW-013 | REQ-HAW-013 | PASS | `TestRunHarnessCheck_DanglingSkillReference` (my-harness-nonexistent → FAIL) | PASS |
+| AC-HAW-015 | REQ-HAW-008,013b | PASS | `TestRunHarnessCheck_MissingSkillsKey` (no skills: key → FAIL naming agent + skills) | PASS |
+| AC-HAW-014 | REQ-HAW-014 | PASS | `grep 'L1:..L5:..runHarnessCheck' doctor_harness.go` = 12; all 6 existing L1-L5 cases PASS | PASS (L6 additive, L1-L5 preserved) |
+| AC-HAW-PROC-1 | REQ-HAW-015 | PASS | template/working mirror byte-identity (meta-harness workflow + SKILL.md) | MIRROR OK both files; `make build` ran |
+| AC-HAW-PROC-2 | REQ-HAW-016 | PASS | (a) `my-harness-[a-z]` ≥1 = 3 matches; (b) no bare `harness-*` directive = 0 | PASS (EX-1 boundary held) |
+
+EC-4 (template `moai-*` skill ref not dangling): `TestRunHarnessCheck_TemplateSkillNotDangling` PASS.
+
+### Invariant verification
+
+| Invariant | Status | Evidence |
+|-----------|--------|----------|
+| All existing tests still pass | PASS-WITH-DEBT | `go test ./...` green EXCEPT `TestOutputStylesTemplateLiveParity` (einstein.md drift) — **pre-existing** at pre-M1 baseline `e83864047`, output-styles domain, NOT touched by this SPEC (EX-8 / B10 scope discipline) |
+| InjectMarker/ScaffoldHarnessDir core logic unchanged (EX-6/D-4) | PASS | layer3.go byte-unchanged; layer5.go change confined to mainMD()/readmeMD() body content (no scaffolding-algorithm edit) |
+| Prefix stays `my-harness-*` (D-2/EX-1) | PASS | no bare `harness-*` generation directive introduced; §6.4 corrected to `my-harness-*` |
+| No new lint/type errors | PASS | `golangci-lint run ./internal/cli/... ./internal/harness/...` = 0 issues; `go vet` clean |
+| Cross-platform build | PASS | `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0 |
 
 ## §E.3 Run-phase Audit-Ready Signal
-_(populated by manager-develop at run-phase)_
+
+```yaml
+spec_id: SPEC-V3R6-HARNESS-ACTIVATION-WIRING-001
+era: V3R6
+tier: M
+run_complete_at: 2026-06-03
+run_commit_sha: (this commit)
+run_status: implemented
+ac_pass_count: 17        # AC-HAW-001..015 (013b folded into 015) + PROC-1..2
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # no PRESERVE-list file modified outside scope
+l44_pre_commit_fetch: n/a (worktree-isolated agent; orchestrator owns push)
+l44_post_push_fetch: n/a (push deferred to orchestrator)
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin_amd64: exit 0
+  windows_amd64: exit 0
+total_run_phase_files: 10   # install.go install_test.go harness_route.go harness_retirement_test.go layer5.go layer5_test.go doctor_harness.go doctor_harness_test.go + 2 mirrored markdown (template+working ×2 files counted once each pair)
+m1_to_mN_commit_strategy: per-milestone separate commits (M1 / M2+M3 / M4 / M5 / M6), local only — push coordinated by orchestrator post-run (active parallel session on shared branch)
+known_preexisting_failure: TestOutputStylesTemplateLiveParity (einstein.md template/live drift) — present at pre-M1 baseline e83864047, output-styles domain, out of SPEC scope (EX-8)
+authored_by: manager-develop
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 _(populated by manager-docs at sync-phase)_

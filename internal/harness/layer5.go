@@ -198,7 +198,19 @@ func readmeMD(opts ScaffoldOpts) string {
 	b.WriteString("- `main.md` — CLAUDE.md @import 진입점 (편집 가능)\n")
 	b.WriteString("- `*-extension.md` — phase별 chain 확장 (편집 가능)\n")
 	b.WriteString("- `chaining-rules.yaml` — chain rules (편집 가능, schema 준수)\n")
-	b.WriteString("- `interview-results.md` — 인터뷰 답변 (참조용, 편집 비권장)\n")
+	b.WriteString("- `interview-results.md` — 인터뷰 답변 (참조용, 편집 비권장)\n\n")
+	// Activation / retrofit note: a harness only auto-triggers when the L3
+	// CLAUDE.md marker + L5 main.md entry point are installed. If this harness
+	// was generated before the activation wiring existed (markers absent), run
+	// the install command to retrofit the trigger chain. The install is
+	// idempotent, so re-running on an already-wired harness is safe.
+	b.WriteString("## Activation / Retrofit\n\n")
+	b.WriteString("이 하네스가 자동 활성화되려면 L3 (CLAUDE.md marker) + L5 (`main.md` 진입점)이 설치되어 있어야 합니다.\n")
+	b.WriteString("마커가 없는 (구버전 생성) 하네스는 다음 명령으로 트리거 체인을 복원합니다 (멱등 — 재실행 안전):\n\n")
+	b.WriteString("```bash\n")
+	fmt.Fprintf(&b, "moai harness install --spec-id %s --domain %s\n", opts.SpecID, opts.Domain)
+	b.WriteString("```\n\n")
+	b.WriteString("설치 후 `moai doctor harness`로 5-Layer 상태를 검증하세요 (Phase-6 smoke gate).\n")
 	return b.String()
 }
 
