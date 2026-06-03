@@ -67,6 +67,23 @@ m1_to_mN_commit_strategy: single-commit   # Tier S, M1-M5 in one atomic commit
 - `internal/hook/protocol_test.go` — added array-form globs decode case (AC-1) + inverted 2 empty/whitespace cases (AC-2)
 - `.moai/specs/SPEC-V3R6-HOOK-INPUT-SCHEMA-001/progress.md` — this file
 
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-06-03
+sync_commit_sha: "(this commit)"
+sync_status: implemented
+spec_frontmatter_transitions:
+  - field: status
+    old_value: in-progress
+    new_value: implemented
+changelog_entry_position: "[Unreleased]/Fixed section"
+ac_final: "4/4 mandatory AC PASS (AC-1 globs array, AC-2 empty-stdin no-op + 2 inverted cases, AC-3 regression, AC-4 pre-tool smoke exit-0)"
+fix_outcome: "both internal/hook defects resolved — instructions-loaded array globs decodes; pre-tool empty stdin → exit 0 (PostToolUseFailure: Bash symptom resolved)"
+d2_determination: "empty/blank stdin (NOT truncated) — handle-pre-tool.sh head -c 65536 truncates only >64KB; small Bash payloads never reach that"
+sync_method: orchestrator-direct (Tier S, active parallel-session race — worktree/cherry-pick overhead avoided)
+```
+
 ## §G. Status Transition Note (orchestrator action)
 
 This is the M1 commit (`draft → in-progress`). The spec.md `status:` frontmatter transition `draft → in-progress` and `updated:` refresh MUST be applied by the orchestrator when reconciling, because `spec.md` is uncommitted in the shared checkout and absent from this isolated worktree (created from base `ad974fe5b` which predates the SPEC). The implementation source files + this progress.md are committed in the worktree for cherry-pick.
