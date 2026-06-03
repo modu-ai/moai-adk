@@ -2,7 +2,7 @@
 
 ## §E.2 Sync-phase Audit-Ready Signal
 
-**sync_commit_sha**: (placeholder — to be backfilled)
+**sync_commit_sha**: 0dcd29647
 
 **era**: V3R6
 
