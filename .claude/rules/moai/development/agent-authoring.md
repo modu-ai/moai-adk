@@ -45,13 +45,13 @@ All agent definitions use YAML frontmatter. The following fields are available:
 
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
-| name | Yes | - | Unique identifier, lowercase with hyphens |
+| name | No | directory/file basename | Unique identifier, lowercase with hyphens. Optional — the agent's filename need not match this value; when omitted the basename is used. |
 | description | Yes | - | When Claude should delegate to this agent |
 | tools | No | Inherits all | Tools the agent can use (allowlist approach) |
 | disallowedTools | No | None | Tools to deny (denylist approach, alternative to tools) |
 | model | No | inherit | Model selection: sonnet, opus, haiku, or inherit |
 | permissionMode | No | default | Permission behavior for the agent |
-| maxTurns | No | Unlimited | Maximum agentic turns before stopping (deprecated since v2.1.69+, use maxContextSize instead) |
+| maxTurns | No | Unlimited | Maximum agentic turns before stopping (current optional field) |
 | skills | No | None | Skills injected into agent context at startup |
 | mcpServers | No | None | MCP servers available to this agent |
 | hooks | No | None | Lifecycle hooks scoped to this agent |
@@ -72,7 +72,9 @@ All agent definitions use YAML frontmatter. The following fields are available:
 
 **mcpServers**: Either a server name reference (matching a key in `.mcp.json`) or an inline server definition with command and args.
 
-**hooks**: Supports PreToolUse, PostToolUse, and SubagentStop events scoped to this agent. See @hooks-system.md for configuration format.
+**hooks**: Supports SubagentStart, PreToolUse, PostToolUse, and SubagentStop events scoped to this agent. The `SubagentStart` event fires when the subagent begins and is matched by the agent-type name. See @hooks-system.md for configuration format.
+
+**name**: The `name` value is used as the `agent_type` that hooks receive when this agent runs. It need NOT match the agent's filename — the filename and the `name` value may differ, and Claude Code uses the frontmatter `name` (falling back to the basename when omitted).
 
 **background**: When set to true, the agent runs in the background without blocking the main conversation. Results are delivered asynchronously on the next turn. Available since Claude Code v2.1.46. **WARNING**: Background agents auto-deny all non-pre-approved permission prompts. Do NOT set `background: true` for agents that need Write/Edit operations unless paths are pre-approved in settings.json.
 
@@ -92,6 +94,10 @@ The `tools` field supports `Agent(worker, researcher)` syntax to restrict which 
 - Has no effect on subagent definitions (subagents cannot spawn other subagents)
 - MoAI agents run as subagents, so this restriction is not currently applicable
 - Useful for creating coordinator agents that run as the main thread
+
+## Fork Subagents (experimental)
+
+Fork subagents are an experimental, opt-in feature (Claude Code v2.1.117+) enabled via the `CLAUDE_CODE_FORK_SUBAGENT` environment variable and invoked with `/fork`. A forked subagent inherits the parent conversation's context (rather than starting fresh), which makes it useful for branching exploratory work off the current state. Fork subagents cannot nest — a forked subagent cannot itself fork or spawn further subagents, consistent with the flat-hierarchy constraint that subagents cannot spawn other subagents. MoAI does not enable fork subagents by default; the env var is opt-in.
 
 ## Permission Modes
 
@@ -182,7 +188,11 @@ Requires: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
 - `disallowedTools`: Comma-separated string ONLY. Same format as tools.
 - `skills`: YAML array format (`skills:\n  - moai-domain-backend`). Exception to CSV convention. <!-- @MX:WARN: [AUTO] Example skill ID must be an existing skill (e.g., moai-domain-backend). Reverting to moai-lang-go or any moai-lang-* triggers either TestRelatedSkillsNoLangReference (frontmatter, DEAD_LANG_FRONTMATTER_REFERENCE) or TestSkillBodyNoLangReference (body prose, DEAD_LANG_SKILL_REFERENCE) depending on placement. @MX:REASON: Illustrative example easily reverted by refactoring — both CI sentinels catch any reintroduction. -->
 - `model`: One of: `inherit`, `opus`, `sonnet`, `haiku`. Never use `glm`, `high`, `medium`, `low`.
-- `permissionMode`: One of: `default`, `acceptEdits`, `auto`, `delegate`, `dontAsk`, `bypassPermissions`, `plan`.
+- `permissionMode`: One of the official enum values: `default`, `acceptEdits`, `auto`, `dontAsk`, `bypassPermissions`, `plan`. (`delegate` is NOT part of the official enum — it is a MoAI experimental extension for team-lead coordination agents; see § Permission Modes.)
+
+### managed-settings precedence
+
+Org-wide managed settings can define agents at the highest precedence level (priority 1). A project-local `.claude/agents/` definition with the same name is overridden by the managed-settings agent — managed (enterprise) agents win over project and personal agents.
 
 ## Rules
 

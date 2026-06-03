@@ -57,6 +57,7 @@ Rules:
 - All workflow logic belongs in `.claude/skills/moai/workflows/` or skill body
 - YAML frontmatter must include: description, argument-hint, allowed-tools (CSV string)
 - Root commands may contain router tables but no implementation logic
+- Custom commands and skills are merged into one namespace: a `.claude/commands/X.md` and a `.claude/skills/X/SKILL.md` with the same name are the same invocation, and the skill form wins when both exist. Author the workflow once as a skill rather than duplicating it across a command and a skill.
 
 Template:
 ```

@@ -128,6 +128,8 @@ Twelve agents previously listed in this catalog (`manager-strategy`, `manager-qu
 
 When a paste-ready resume message or `Agent()` invocation references one of these 12 archived agents, the orchestrator MUST reject the spawn and consult the migration table at `.claude/rules/moai/workflow/archived-agent-rejection.md`. The retained-agent replacement pattern for each archived agent (per-spawn `Agent(general-purpose)` with domain-specific instructions, or routing to one of the 8 retained agents above) is documented there.
 
+Note on `claude-code-guide`: the archived entry refers to the former MoAI-custom agent file of that name. It is distinct from the official Claude Code built-in helper agent that is also named `claude-code-guide` and ships with the runtime — that built-in is a separate, valid agent and invoking it does NOT trigger archived-agent rejection. The rejection binds only the MoAI-custom file.
+
 ### Dynamic Team Generation (Experimental)
 
 Agent Teams teammates are spawned dynamically using `Agent(subagent_type: "general-purpose")` with runtime parameter overrides from `workflow.yaml` role profiles. No static team agent definitions are used.
@@ -426,8 +428,8 @@ For MCP configuration and usage patterns, see .claude/rules/moai/core/settings-m
 
 MoAI-ADK implements a 3-level Progressive Disclosure system:
 
-**Level 1** (Metadata): ~100 tokens per skill, always loaded
-**Level 2** (Body): ~5K tokens, loaded when triggers match
+**Level 1** (Metadata): ~100 tokens per skill — the description is always listed so Claude knows the skill exists (the skill-listing step)
+**Level 2** (Body): ~5K tokens, loaded on invocation (description being listed does not by itself load the body) and retained in context until compaction
 **Level 3** (Bundled): On-demand, Claude decides when to access
 
 The Claude Code runtime additionally applies a skill-listing budget (~1% of context, tunable via `skillListingBudgetFraction`) and a ~25K-token post-compaction budget (~5K per skill). See .claude/rules/moai/development/skill-authoring.md § Skill Listing Budget and Compaction.

@@ -98,6 +98,10 @@ Anthropic's recommended pattern for domain expertise is per-spawn parameter inje
 
 `manager-quality` (#2) and `expert-security` (#9) overlap with Anthropic's published hook patterns (Stop, PostToolUse, SubagentStop, TaskCompleted). The Stop hook (`sync-phase-quality-gate.sh` per the canonical hook placement policy) mechanically enforces lint + test + coverage-delta + dependency-manifest audit at every sync-phase commit, which is more reliable than orchestrator-discipline phantom-agent spawn calls that historically went unfulfilled.
 
+### §C.3 `claude-code-guide` — MoAI-archived custom file vs official built-in (disambiguation)
+
+Row 5 above archives the MoAI-custom `claude-code-guide` agent **file** (a former `.claude/agents/` definition with 0 invocations). This is a DIFFERENT entity from the official Claude Code built-in helper agent that is also named `claude-code-guide` and ships with the Claude Code runtime. The built-in is a valid, current Anthropic-provided agent — it is NOT archived and invoking it does NOT trigger `ARCHIVED_AGENT_REJECTED`. The rejection rule binds only the MoAI-custom file by that name; the same-named runtime built-in is a separate, valid agent the orchestrator may use. (The archived-history row for the custom `claude-code-guide` file is retained above as a historical record and MUST NOT be removed.)
+
 ---
 
 ## §D — Orchestrator Recovery Flow

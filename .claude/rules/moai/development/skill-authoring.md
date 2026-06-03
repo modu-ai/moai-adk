@@ -13,10 +13,10 @@ MoAI skills follow the Agent Skills standard with MoAI-specific extensions.
 ### Standard Fields (agentskills.io)
 
 Required fields:
-- name: Skill identifier, lowercase with hyphens, max 64 characters (system: moai-{category}-{name}, user: custom-{name})
-- description: Purpose description using YAML folded scalar (>), max 1024 characters
+- description: Purpose description using YAML folded scalar (>). The official cap is 1,536 characters combined across `description` + `when_to_use` (the skill-listing entry).
 
 Optional standard fields:
+- name: Skill identifier, lowercase with hyphens, max 64 characters. Optional — when omitted it defaults to the skill directory name. The `moai-{category}-{name}` form (system) / `custom-{name}` form (user) remains the recommended convention for MoAI skills.
 - license: SPDX license identifier (default: Apache-2.0)
 - compatibility: Target platform description, max 500 characters (default: Designed for Claude Code)
 - allowed-tools: Comma-separated string of tool names the skill can use (experimental)
@@ -73,7 +73,7 @@ triggers: Loading trigger conditions
 ---
 name: moai-example-skill
 description: >
-  Brief description of what this skill does, max 1024 characters.
+  Brief description of what this skill does, within the 1,536-character listing cap.
   Use YAML folded scalar (>) for multi-line descriptions.
 license: Apache-2.0
 compatibility: Designed for Claude Code
@@ -126,12 +126,12 @@ Three-level system for token efficiency:
 Level 1 (Metadata):
 - Tokens: ~100
 - Content: name, description, version, triggers
-- Loading: Always for skills in agent frontmatter
+- Loading: The description is **always listed** so Claude (and the user's `/` menu) knows the skill exists — this is the skill-listing step, distinct from loading the body.
 
 Level 2 (Body):
 - Tokens: ~5000
 - Content: Full documentation, code examples
-- Loading: When trigger conditions match
+- Loading: The body is loaded **on invocation** (when the skill is invoked, whether by Claude auto-matching the description or by the user) and then stays in context across turns until compaction. "Listing the description" (Level 1) and "loading the body on invocation" (Level 2) are separate events — the description being listed does not by itself load the body.
 
 Level 3 (Bundled):
 - Tokens: Variable
@@ -222,6 +222,19 @@ When `disable-model-invocation: true` is set, the skill is NOT loaded into Claud
 
 When `user-invocable: false` is set, the skill is hidden from the `/` menu but Claude can still invoke it as background knowledge. Use for reference material.
 
+### skillOverrides setting
+
+The `skillOverrides` settings key (a map of skill name to override state) lets settings.json adjust how an individual skill is exposed without editing its frontmatter. Each entry takes one of four states:
+
+| State | Effect |
+|-------|--------|
+| `on` | Skill is fully available (user-invocable AND Claude-invocable) |
+| `name-only` | The skill name is listed, but its description is not loaded into context |
+| `user-invocable-only` | Only the user can invoke it; Claude cannot auto-invoke |
+| `off` | Skill is disabled entirely |
+
+`skillOverrides` applies to personal and project skills only — plugin skills are not affected by it.
+
 ## Shell Command Injection
 
 Skills support dynamic context via shell command injection. Commands run BEFORE skill content is sent to Claude, and their output replaces the placeholder in the skill content.
@@ -243,6 +256,10 @@ Skills can exist at multiple levels. When the same name exists across levels, hi
 | 3 | Project | .claude/skills/name/SKILL.md | This project |
 | 4 (lowest) | Plugin | plugin/skills/name/SKILL.md | Where enabled (uses plugin-name:skill-name namespace) |
 
+### Discovery (nested / monorepo / --add-dir)
+
+Project skill discovery walks the directory tree: Claude Code finds `.claude/skills/` not only at the project root but also in nested subdirectories (parent-walk), so a monorepo can place package-local skills in each package's own `.claude/skills/` directory. Directories added at launch via the `--add-dir` flag are an exception — their skills are NOT auto-loaded for skill discovery (use `permissions.additionalDirectories` in settings.json when an added directory's skills should participate in discovery rather than `--add-dir`, which grants file access only).
+
 ## Best Practices
 
 - Use minimum required permissions
@@ -255,7 +272,7 @@ Skills can exist at multiple levels. When the same name exists across levels, hi
 - Use comma-separated format for allowed-tools (YAML arrays also supported since v2.1.0)
 - Mark MoAI extension fields with standardized comments
 - Use `${CLAUDE_SKILL_DIR}` for self-referencing paths within skill content
-- Keep skill descriptions under 250 characters for menu display (v2.1.86+)
+- Keep skill descriptions concise for menu display, within the 1,536-character listing cap (combined `description` + `when_to_use`)
 
 ## Language Guidance Lives in Rules, Not Skills
 

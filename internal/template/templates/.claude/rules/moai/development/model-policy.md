@@ -25,6 +25,7 @@ Invalid values (NEVER use):
 - glm: Not a model field value (GLM is configured via environment variables)
 - high/medium/low: These are CLI policy flags, not model field values
 - Pinned old versions (opus-4-0, opus-4-1, sonnet-4-5): Auto-migrated to current generation
+- Full model-ID form (e.g., `claude-opus-4-8`): **official-but-intentionally-disallowed in MoAI.** Claude Code itself accepts a full model-ID string in the `model` field, but MoAI intentionally restricts agents to the four alias values above (`inherit` / `opus` / `sonnet` / `haiku`). The reason is the `[1m]` context-entitlement inheritance bug (see § Inherit-by-Default Convention): a subagent that pins a concrete full model ID — like an explicit `model: sonnet` / `model: opus` — does not inherit the parent session's `[1m]` entitlement and fails to spawn. The alias `inherit` sidesteps this. This restriction being a deliberate MoAI policy (not a stale gap) means "MoAI is outdated relative to Claude Code" is a misreading — the full-ID form is omitted on purpose.
 
 ## Inherit-by-Default Convention
 

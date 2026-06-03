@@ -127,6 +127,7 @@ Default hook type. Executes a shell command, communicates via stdin/stdout JSON.
 - Exit codes: 0 = success, 1 = error (shown to user), 2 = block/reject (for blocking events)
 - PreToolUse permission decisions: `allow`, `deny`, `ask`, `defer` (defer pauses headless sessions for --resume, v2.1.89+)
 - Hook stdout over 50K characters is saved to disk; only a file path + preview is injected into context (v2.1.89+)
+- Exec form (shell-bypass): supply `"args": []` alongside `"command"` to run the program directly without a shell, avoiding shell-quoting and word-splitting issues. When a hook script DOES depend on a shell and must not run under a non-interactive invocation, guard the shell-only branch with an interactive-shell check — `if [[ $- == *i* ]]; then ... fi` — so the body is skipped when the script is sourced non-interactively by the hook runner.
 
 ### Prompt Hooks (type: "prompt")
 
@@ -188,7 +189,7 @@ Execute a hook only once per session, then automatically skip subsequent trigger
 
 ### Conditional Hook Execution (if field)
 
-Filter when hooks run using permission rule syntax (v2.1.84+).
+Filter when hooks run using permission rule syntax (v2.1.85+).
 
 The `if` field accepts permission rule patterns to prevent unnecessary hook execution and reduce process spawning overhead. Use tool patterns like `Bash(git *)` for git commands, `Write|Edit` for write operations, or `Bash(npm *)` for npm commands.
 
@@ -199,6 +200,10 @@ Example configurations:
 - `"if": "Bash(pytest *)"` - Only run for pytest commands
 
 This field significantly reduces performance overhead by skipping hook evaluation for non-matching operations.
+
+### Stop Hook Block Cap
+
+A Stop hook that keeps blocking (exit 2) would otherwise loop indefinitely. The runtime applies a block cap: after 8 consecutive Stop-hook blocks the cap is reached and the block is overridden so the turn can end. The cap is tunable via the `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` environment variable.
 
 ## Agent-Specific Hooks
 

@@ -200,7 +200,6 @@ Every skill MUST have complete frontmatter:
 ---
 name: "Display Name of Skill"
 description: "One-line description for context matching"
-type: skill
 paths: "**/*.tsx,**/__tests__/**"
 domains: ["frontend", "testing"]
 model: "default"
@@ -214,9 +213,8 @@ allowed-tools: "WebSearch,WebFetch,Bash,Read,Write,Edit,Grep,Glob"
 
 | Field | Required | Type | Notes |
 |-------|----------|------|-------|
-| `name` | ✅ | string | Display name, 30-50 chars |
-| `description` | ✅ | string | Single sentence, ≤80 chars, context-matching optimized |
-| `type` | ✅ | string | Always `"skill"` |
+| `name` | Optional | string | Defaults to the skill directory name when omitted; recommended `moai-{category}-{name}` form for MoAI skills |
+| `description` | ✅ | string | Concise trigger summary; the official cap is 1,536 chars combined across `description` + `when_to_use` |
 | `paths` | Optional | string | Glob pattern CSV (no YAML array) |
 | `domains` | Optional | array | Topic categories for organization |
 | `model` | Optional | string | `"default"`, `"opus"`, `"sonnet"` |
@@ -275,7 +273,6 @@ domains: ["frontend"]  # Missing testing even though skill covers both
 ---
 name: "Tool Name Reference"
 description: "Tool Name CLI commands and API reference for common use cases"
-type: skill
 paths: "**/*.ts,**/*.py,README.md"
 domains: ["reference", "api"]
 effort: "low"
@@ -288,7 +285,6 @@ allowed-tools: "WebFetch,Read,Grep"
 ---
 name: "Framework Feature"
 description: "Framework Feature implementation patterns with examples"
-type: skill
 paths: "src/**/*.tsx,**/*_test.tsx"
 domains: ["framework", "implementation"]
 effort: "high"
@@ -301,7 +297,6 @@ allowed-tools: "WebSearch,WebFetch,Bash,Read,Write,Edit,Grep,Glob"
 ---
 name: "Topic Analysis"
 description: "Topic Analysis and research methodology with patterns"
-type: skill
 paths: "docs/**,**/*.md,SPEC-*"
 domains: ["research", "analysis"]
 effort: "medium"
@@ -317,7 +312,7 @@ Before committing a skill, verify:
 
 - [ ] Frontmatter fields all present and valid
 - [ ] `name` matches actual skill capability
-- [ ] `description` is single sentence, ≤80 characters
+- [ ] `description` is a concise trigger summary within the 1,536-char cap (combined `description` + `when_to_use`)
 - [ ] `paths` is CSV string (not YAML array)
 - [ ] `domains` accurately reflect skill scope
 - [ ] `allowed-tools` matches actual tool usage in body

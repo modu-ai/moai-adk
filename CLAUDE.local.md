@@ -383,7 +383,7 @@ moai hook session-start <<< "$INPUT"
 **Key Rules:**
 - [HARD] Always quote `$CLAUDE_PROJECT_DIR`: `"$CLAUDE_PROJECT_DIR"`
 - [HARD] Use full path to hook wrapper script
-- [HARD] Set appropriate timeout (default: 5 seconds)
+- [HARD] Set appropriate timeout. MoAI policy default is 5 seconds (the Claude Code platform default is 10 minutes; MoAI tightens this to 5 seconds to avoid stalling the session).
 
 ### Platform Differences
 

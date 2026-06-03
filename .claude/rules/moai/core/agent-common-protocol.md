@@ -58,6 +58,10 @@ grep -rn 'AskUserQuestion\|mcp__askuser' .claude/hooks/moai/ \
 # Expected: no matches (hook scripts do not invoke AskUserQuestion)
 ```
 
+#### Stop self-gate caveat
+
+The `sync-phase-quality-gate.sh` row above describes the Stop hook in the sync-phase context, but the Stop hook is not exclusive to sync-commit completion. The Stop hook fires on every turn-end — not only when a task is complete — so a Stop hook must self-gate: it inspects the conversation/working-tree state and decides whether the turn is a genuine completion point before acting, otherwise exiting 0 to allow the turn to end without intervention. The Stop hook does NOT fire when the user interrupts the turn, so it cannot be relied on as a guaranteed end-of-work signal.
+
 ### Blocker Report Format
 
 When a subagent requires user input not provided in the spawn prompt, it MUST return a structured blocker report:

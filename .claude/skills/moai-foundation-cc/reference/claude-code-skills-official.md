@@ -18,6 +18,8 @@ Three categories of Skills exist:
 2. Project Skills: Located at `.claude/skills/skill-name/`, shared via git with team members
 3. Plugin Skills: Bundled within Claude Code plugins
 
+Bundled skills: Claude Code ships several built-in skills (v2.1.145+), including `/run` (launch and drive the project's app to verify a change), `/verify` (run the app and observe behavior to confirm a fix works), and `/run-skill-generator` (scaffold a new skill). These are available without installation.
+
 ## Progressive Disclosure Architecture
 
 Skills leverage Claude's VM environment with a three-level loading system that optimizes context window usage:

@@ -10,8 +10,9 @@ For general hook system reference, see @hooks-system.md.
 
 ## Configuration
 
-Hooks are defined in agent YAML frontmatter using three event types:
+Hooks are defined in agent YAML frontmatter using these event types:
 
+- **SubagentStart**: Matched by the agent-type name; triggers when the subagent begins
 - **PreToolUse**: Matcher `Write|Edit|MultiEdit` for pre-change validation
 - **PostToolUse**: Matcher `Write|Edit|MultiEdit` for post-change verification
 - **SubagentStop**: No matcher, triggers on agent completion
