@@ -106,7 +106,7 @@ four_phase_close:
   run: "27745a7fa (cherry-pick of worktree 0258f4f6c)"
   reconcile: 00f6c8c91
   sync: c255d31a0
-  mx: "(this commit)"
+  mx: "1c9c0a790"
 ac_final: "4/4 mandatory AC PASS"
 close_subject_doctrine_dogfood: "this close commit uses the full SPEC-ID per REQ-DLC-011"
 einstein_md_failure: "pre-existing uncommitted template drift (out of scope; not introduced by this SPEC)"
