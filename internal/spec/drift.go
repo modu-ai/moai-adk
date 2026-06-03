@@ -104,6 +104,26 @@ func DetectDrift(baseDir string) (*DriftReport, error) {
 			continue
 		}
 
+		// (①) combined-scope secondary prefix-grep fallback (FALLBACK-ONLY) — primary walk가
+		// `completed`를 못 찾았는데 frontmatter가 `completed`라면, 이 SPEC은 scope-prefix를
+		// 명명하는 combined-scope close commit으로 닫혔을 수 있다 (예: cf7d78a9c
+		// "chore(SPEC-CCSYNC): ... 4-phase close (CLAUDEMD + TOOLCAT)"). 이런 close는
+		// per-SPEC `git log --grep=<full-specID>` 윈도우에 절대 안 잡히므로 (full-ID가 아닌
+		// scope-prefix만 명명), secondary `git log --grep=<scope-prefix>`로만 도달 가능하다.
+		// 3-gate(FALLBACK-ONLY + closeInfixMatch + distinguishing-segment word-boundary)로
+		// LSGF-001 보존: 명명되지 않은 sibling은 over-attribute하지 않는다 (AP-5).
+		// @MX:NOTE: [AUTO] combined-scope secondary prefix-grep fallback (D1 design).
+		// @MX:REASON: SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001 mechanism ① (M3) — combined-scope
+		//
+		//	close는 per-SPEC window에 없으므로 (full-ID 미명명) secondary scope-prefix grep만이
+		//	도달 가능. additive-only: exact-token primary walk는 불변, fallback은 primary가
+		//	completed/terminal을 못 줄 때만 fire (genuine-⑤ 보호).
+		if frontmatterStatus == "completed" && gitStatus != "completed" && !isTerminalStatus(gitStatus) {
+			if resolveCombinedScopeClose(specID) {
+				gitStatus = "completed"
+			}
+		}
+
 		// Check for drift
 		drifted := frontmatterStatus != gitStatus
 
@@ -309,6 +329,166 @@ func isTerminalStatus(status string) bool {
 	default:
 		return false
 	}
+}
+
+// specIDTailPattern은 full SPEC-ID의 trailing `-<SEGMENT>-<NNN>` 쌍을 매칭한다.
+// deriveScopePrefix가 이 마지막 쌍을 strip하여 combined-scope group이 사용하는
+// scope-prefix(SPEC-{PREFIX})를 얻는다.
+//
+// @MX:NOTE: [AUTO] scope-prefix 파생 — combined-scope close의 SPEC-{PREFIX} 추출.
+// @MX:REASON: SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001 mechanism ① (M3) — distinguishing
+//
+//	segment(+number)를 strip하여 secondary prefix-grep key를 만든다.
+var specIDTailPattern = regexp.MustCompile(`-[A-Za-z0-9]+-[0-9]+$`)
+
+// deriveScopePrefix는 full SPEC-ID에서 trailing distinguishing-segment+number를 strip하여
+// combined-scope group이 명명하는 scope-prefix를 반환한다. 예: SPEC-CCSYNC-CLAUDEMD-001 →
+// SPEC-CCSYNC. 마지막 `-<SEGMENT>-<NNN>` 쌍만 strip한다 (multi-segment ID도 마지막 쌍만).
+func deriveScopePrefix(specID string) string {
+	return specIDTailPattern.ReplaceAllString(specID, "")
+}
+
+// combinedScopeCloseGroupPattern은 combined-scope close subject의 그룹 표기
+// `(SEG1 + SEG2 + ...)` 또는 `(SEG1 + SEG2 ...추가설명)`에서 첫 괄호 그룹을 캡처한다.
+// 그룹 내 토큰을 `+` 및 공백/구두점으로 split하여 distinguishing-segment 후보를 얻는다.
+var combinedScopeCloseGroupPattern = regexp.MustCompile(`\(([^)]*)\)`)
+
+// distinguishingSegmentToken는 영숫자 토큰(distinguishing segment 후보)을 추출하는 패턴이다.
+var distinguishingSegmentToken = regexp.MustCompile(`[A-Za-z0-9]+`)
+
+// combinedScopeCloseMatches는 combined-scope close subject가 주어진 specID의
+// sibling을 close하는지 3-gate로 판정한다 (FALLBACK-ONLY gate는 DetectDrift에서 적용).
+//
+//	gate (a): subject prefix가 `chore(SPEC-<PREFIX>)` / `docs(SPEC-<PREFIX>)`이고
+//	          <PREFIX>가 trailing `-NNN`을 갖지 않는다 (즉 full SPEC-ID가 아닌 scope-prefix).
+//	gate (b): closeInfixMatch(subject) == true (정규 close 신호).
+//	gate (c): subject의 combined-scope 그룹 `(SEG1 + SEG2 ...)`을 토큰 단위로 split하여
+//	          specID의 distinguishing segment와 WORD-BOUNDARY/TOKEN 정확 일치하는지 검사한다
+//	          (D-NEW-1: FOO는 (FOOBAR + BAZ)에 의해 false-clear되면 안 된다).
+//
+// @MX:NOTE: [AUTO] combined-scope 3-gate matcher — LSGF-001 보존 (word-boundary token match).
+// @MX:REASON: SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001 mechanism ① (M3) — historical
+//
+//	combined-scope close(예: cf7d78a9c "chore(SPEC-CCSYNC): ... (CLAUDEMD + TOOLCAT)")를
+//	sibling에 매핑하되, 명명되지 않은 sibling은 over-attribute하지 않는다 (gate c, AP-5).
+func combinedScopeCloseMatches(subject, specID string) bool {
+	lower := strings.ToLower(strings.TrimSpace(subject))
+
+	// gate (b): close-infix가 없으면 combined-scope fallback 후보가 아니다.
+	if !closeInfixMatch(lower) {
+		return false
+	}
+
+	prefix := deriveScopePrefix(specID)
+
+	// gate (a): subject가 scope-prefix(trailing -NNN 없는 SPEC-{PREFIX})를 prefix-scope로
+	// 명명하는지 검사한다. subject에서 추출한 모든 SPEC-ID 토큰 중 어느 것도 full-ID가 아니면서
+	// (즉 ExtractSPECIDs가 full-ID 토큰을 잡지 않으면서) scope-prefix `SPEC-<PREFIX>(`가
+	// subject에 등장해야 한다.
+	//   - subject가 specID full-ID 토큰을 직접 명명하면 그것은 combined-scope가 아니라
+	//     per-SPEC commit이므로 primary walk가 처리한다 (여기서 false → fallback 미적용).
+	if slices.Contains(ExtractSPECIDs(subject), specID) {
+		return false
+	}
+	// scope-prefix가 `chore(spec-<prefix>)` / `docs(spec-<prefix>)` 형태로 등장하는지 확인.
+	// (이미 소문자) — scope-prefix 뒤에 `)` 또는 `:`가 와야 full-ID(-NNN)가 아님이 보장된다.
+	lowerPrefix := strings.ToLower(prefix)
+	hasScopePrefix := strings.Contains(lower, "chore("+lowerPrefix+")") ||
+		strings.Contains(lower, "chore("+lowerPrefix+":") ||
+		strings.Contains(lower, "docs("+lowerPrefix+")") ||
+		strings.Contains(lower, "docs("+lowerPrefix+":")
+	if !hasScopePrefix {
+		return false
+	}
+
+	// gate (c): distinguishing-segment word-boundary token match.
+	// specID의 distinguishing segment를 추출한다 (scope-prefix 제거 후 trailing -NNN 제거).
+	seg := distinguishingSegment(specID, prefix)
+	if seg == "" {
+		return false
+	}
+	segLower := strings.ToLower(seg)
+
+	// subject의 모든 괄호 그룹 `(...)`에서 토큰을 추출하여 정확 일치를 검사한다.
+	// 첫 그룹은 `chore(SPEC-PREFIX)` prefix의 괄호일 수 있으므로 (예: `(spec-abc)`),
+	// 모든 그룹을 스캔한다. 정확 토큰 일치이므로 prefix 그룹의 토큰(`spec`/`abc`)은
+	// distinguishing segment(`foo`)와 충돌하지 않는다.
+	allGroups := combinedScopeCloseGroupPattern.FindAllStringSubmatch(lower, -1)
+	for _, g := range allGroups {
+		if len(g) < 2 {
+			continue
+		}
+		tokens := distinguishingSegmentToken.FindAllString(g[1], -1)
+		if slices.Contains(tokens, segLower) {
+			return true
+		}
+	}
+	return false
+}
+
+// distinguishingSegment는 specID에서 scope-prefix를 제거하고 trailing -NNN을 제거하여
+// distinguishing segment를 반환한다. 예: (SPEC-CCSYNC-CLAUDEMD-001, SPEC-CCSYNC) → CLAUDEMD.
+// prefix가 hyphen-delimited boundary로 specID의 prefix가 아니면 "" 반환 (collision guard).
+func distinguishingSegment(specID, prefix string) string {
+	// hyphen-delimited prefix boundary: specID는 `SPEC-<PREFIX>-`로 시작해야 한다.
+	if !strings.HasPrefix(specID, prefix+"-") {
+		return ""
+	}
+	rest := strings.TrimPrefix(specID, prefix+"-") // 예: CLAUDEMD-001
+	// trailing -NNN 제거 → CLAUDEMD
+	if idx := strings.LastIndex(rest, "-"); idx > 0 {
+		return rest[:idx]
+	}
+	return rest
+}
+
+// resolveCombinedScopeClose는 secondary scope-prefix grep을 실행하여 specID를 close하는
+// combined-scope close commit이 존재하는지 검사한다 (mechanism ① M3 fallback).
+//
+// per-SPEC primary walk가 completed를 못 찾은 경우에만 DetectDrift에서 호출된다
+// (FALLBACK-ONLY). scope-prefix가 `SPEC` 같이 너무 broad하면 (single-domain ID) grep을
+// 건너뛴다 (collision 방지). combinedScopeCloseMatches 3-gate를 통과하는 후보가 있으면 true.
+//
+// @MX:NOTE: [AUTO] secondary scope-prefix git grep — combined-scope close 도달.
+// @MX:REASON: SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001 mechanism ① (M3) — read-only git log
+//
+//	exec (observation-only discipline 준수, write primitive 없음). primary walk와 분리된
+//	NEW grep이며 broad-prefix 시 skip하여 unrelated SPEC family collision 방지 (AP-4).
+func resolveCombinedScopeClose(specID string) bool {
+	prefix := deriveScopePrefix(specID)
+
+	// broad-prefix guard: scope-prefix가 `SPEC` 또는 `SPEC-`만으로 축약되면 (single-domain ID,
+	// 예: SPEC-FOO-001 → SPEC) 모든 SPEC을 잡으므로 fallback을 건너뛴다 (combined-scope close는
+	// 최소 2-segment family에서만 발생한다).
+	if prefix == "SPEC" || prefix == "" || !strings.HasPrefix(prefix, "SPEC-") {
+		return false
+	}
+
+	branch := "main"
+	if _, err := exec.Command("git", "rev-parse", "--verify", "main").Output(); err != nil {
+		branch = "master"
+	}
+
+	cmd := exec.Command("git", "log", branch, "--oneline", "--no-merges",
+		"--grep="+prefix, fmt.Sprintf("-%d", gitLogWindowSize))
+	output, err := cmd.Output()
+	if err != nil || len(output) == 0 {
+		return false
+	}
+
+	scanner := bufio.NewScanner(strings.NewReader(string(output)))
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.SplitN(line, " ", 2)
+		if len(parts) < 2 {
+			continue
+		}
+		subject := parts[1]
+		if combinedScopeCloseMatches(subject, specID) {
+			return true
+		}
+	}
+	return false
 }
 
 // DriftCount is a convenience function that returns only the drift count
