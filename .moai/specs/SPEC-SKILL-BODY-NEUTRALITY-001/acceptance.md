@@ -1,7 +1,7 @@
 ---
 id: SPEC-SKILL-BODY-NEUTRALITY-001
 title: "Skill-Body Neutrality — acceptance criteria"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-06-04
 updated: 2026-06-04
@@ -50,7 +50,7 @@ All AC are grep-verifiable or test-runnable. `$SK` denotes `internal/template/te
 - **Then**:
   - `grep -nE 'GOOS=(linux|darwin|windows).*cmd/moai/' $SK/moai/workflows/sync/delivery.md` returns **0 matches**.
   - `grep -n 'golangci-lint.*@v2\.1\.6' $SK/moai/workflows/sync/delivery.md` returns **0 matches**.
-- **And** the file still teaches a multi-platform build pattern (manual: `<your-binary>`/`<your-module>` or equivalent placeholder present).
+- **And** the file still teaches a multi-platform build pattern (binary positive grep): `grep -nE '<your-binary>|<your-module>|<target>' $SK/moai/workflows/sync/delivery.md` returns **≥1 match** (a generic placeholder replaced the moai-adk-specific build target).
 
 ### AC-SBN-005 — Real internal Go-impl paths removed (REQ-SBN-005)
 
@@ -77,10 +77,11 @@ All AC are grep-verifiable or test-runnable. `$SK` denotes `internal/template/te
 
 ### AC-SBN-008 — Dev-only command self-references removed (REQ-SBN-008)
 
-- **Given** `moai/SKILL.md` + `commands-reference.md` + `INDEX.md` reference `97-release-update` / `99-release`,
+- **Given** the 6 baseline `99-release` hits (`commands-reference.md` ×4, `INDEX.md`, **and `moai/references/reference.md:244`** per §B.4) plus `moai/SKILL.md`'s `97-release-update`,
 - **When** Part A (M5) completes,
 - **Then**:
-  - `grep -rnE '97-release-update|/moai:99-release|99-release' $SK/` returns **0 matches**.
+  - `grep -rn '99-release' $SK/` returns **0 matches** (all 6 baseline hits purged, including `moai/references/reference.md:244`).
+  - `grep -rnE '97-release-update|/moai:99-release' $SK/` returns **0 matches**.
   - `grep -rn 'NOT distributed to user projects' $SK/` returns **0 matches**.
 
 ### AC-SBN-009 — Maintainer doctrine removed (REQ-SBN-009)
@@ -90,7 +91,7 @@ All AC are grep-verifiable or test-runnable. `$SK` denotes `internal/template/te
 - **Then**:
   - `grep -nE 'Doctrine-code drift|catch-up SPEC|maintainer doctrine' $SK/moai-meta-harness/SKILL.md` returns **0 matches**.
   - `grep -nE '\b2026-05-26\b' $SK/moai-meta-harness/SKILL.md` returns **0 matches**.
-- **And** a generic namespace-separation statement remains (manual: the `harness-*` vs `moai-*` ownership policy is still described).
+- **And** a generic namespace-separation statement remains (binary positive grep): `grep -nE 'harness-\*|namespace' $SK/moai-meta-harness/SKILL.md` returns **≥1 match** (the `harness-*` vs `moai-*` ownership policy is still described after the doctrine note removal).
 
 ### AC-SBN-010 — Format-example placeholders preserved (REQ-SBN-010) [keep-list guard]
 
@@ -116,11 +117,11 @@ All AC are grep-verifiable or test-runnable. `$SK` denotes `internal/template/te
 - **When** `go test ./internal/template/... -run TestTemplateNoInternalContentLeak` runs at the M1 RED checkpoint,
 - **Then** the test FAILS and its output names the `agentless_audit_test` class with ≥6 file findings.
 
-### AC-SBN-013 — Guard has a Go-impl-path class (REQ-SBN-013)
+### AC-SBN-013 — Guard has a package-restricted Go-impl-path class (REQ-SBN-013)
 
 - **Given** the extended guard,
 - **When** inspecting `internal/template/internal_content_leak_test.go`,
-- **Then** `grep -nE 'internal/.*\\.go|internal-go-path|C7' internal/template/internal_content_leak_test.go` shows a leak class whose regex matches `internal/<pkg>/<file>.go`.
+- **Then** `grep -nE 'internal-go-path|C7' internal/template/internal_content_leak_test.go` shows a leak class (`C7`) whose regex matches real moai-adk internal Go paths, AND that regex is package-restricted (verified in detail by AC-SBN-020(a) — it contains `spec|cli|hook|ciwatch|design` and does NOT use bare `internal/.*\.go`).
 
 ### AC-SBN-014 — SPEC-ID class broadened to V3R0-9 (REQ-SBN-014)
 
@@ -146,25 +147,45 @@ All AC are grep-verifiable or test-runnable. `$SK` denotes `internal/template/te
 - **When** a CLASS 1-4 leak is reintroduced into any skill body (simulated in a focused sub-test or documented manual check),
 - **Then** the guard FAILS — demonstrated by the RED→GREEN evidence captured at M1 and M6.
 
-### AC-SBN-018 — No date/sha class overlap (REQ-SBN-018 / EXCL-SBN-001) [partition guard]
+### AC-SBN-018 — No date/sha/REQ-token class duplication (REQ-SBN-018 / EXCL-SBN-001) [partition guard]
 
-- **Given** ISOLATION-001 owns the date + short-sha strict-tier classes,
+- **Given** ISOLATION-001 owns the date (`S1-internal-date`), short-sha (`S2-short-sha-sentence-final`), and opt-in REQ/AC-token-any-prefix (`S3-req-ac-token-any-prefix` = `(REQ|AC)-[A-Z]{2,}-[0-9]{3}`) strict-tier classes,
 - **When** inspecting this SPEC's guard additions,
-- **Then** the NEW classes added by this SPEC do NOT include a generic date regex (`202[6-9]-MM-DD`) or a short-sha regex (`[0-9a-f]{7,8}`) — verified by diffing the added `leakClass` entries against the existing `strictLeakClasses` (no new date/sha class).
+- **Then** ALL of the following partition assertions hold:
+  - **(a) date/sha** — the NEW classes do NOT include a generic date regex (`202[6-9]-MM-DD`) or a short-sha regex (`[0-9a-f]{7,8}`) — verified by diffing the added `leakClass` entries against the existing `strictLeakClasses` (no new date/sha class).
+  - **(b) REQ-token** — the new default-tier REQ-token detection for skill bodies (REQ-SBN-007) MUST NOT introduce a second leak class whose regex duplicates the existing opt-in `S3-req-ac-token-any-prefix`. The skill-body REQ-token enforcement is satisfied by **promoting/reusing** the `S3` regex (or a strict-superset of it) into the default tier for the skill-body scan — NOT by adding a near-identical sibling class. Verified by: inspecting `internal_content_leak_test.go` shows at most ONE `leakClass` whose pattern matches `(REQ|AC)-[A-Z]{2,}-[0-9]{3}` (no duplicate REQ-token regex across `leakClasses` + `strictLeakClasses`).
+
+### AC-SBN-019 — 4-locale annotation dropped, URL preserved (REQ-SBN-019) [D2 binary verifier]
+
+- **Given** the §B.5 sites attach a "4-locale" maintainer annotation to the `adk.mo.ai.kr` URL,
+- **When** Part A (M4) completes,
+- **Then** BOTH conditions hold (drop annotation AND keep URL):
+  - `grep -rnE 'adk\.mo\.ai\.kr.*4-locale|4-locale.*\(en|4-locale[:( ].*en ?/ ?ko' $SK/` returns **0 matches** (the annotation in both surface forms — `4-locale: en / ko / ja / zh` and `4-locale (en / ko / ja / zh)` — is gone).
+  - `grep -rl 'adk.mo.ai.kr' $SK/` returns **≥1 file** (the public docs-site URL itself is preserved per EXCL-SBN-005).
+
+### AC-SBN-020 — C7 guard regex is package-restricted (REQ-SBN-013 / D5) [false-positive guard]
+
+- **Given** the `C7` Go-impl-path leak class MUST be package-restricted to `internal/(spec|cli|hook|ciwatch|design)` (REQ-SBN-013 HARD) so it cannot match the EXCL-SBN-003 illustrative example paths,
+- **When** inspecting the guard after Part B (M1) and running it after Part A (M6),
+- **Then** ALL of the following hold:
+  - **(a) regex form** — the `C7` `leakClass` pattern in `internal/template/internal_content_leak_test.go` contains the restricted package set `spec|cli|hook|ciwatch|design` and does NOT use the unrestricted `internal/.*\.go` form: `grep -nE 'spec\|cli\|hook\|ciwatch\|design' internal/template/internal_content_leak_test.go` returns **≥1 match**, AND no `leakClass` C7 pattern uses bare `internal/.*\.go`.
+  - **(b) zero findings on illustrative paths** — at the M6 GREEN run, the `C7` class reports **0 findings** on the 3 illustrative example paths (`internal/auth/login.go`, `internal/api/handler.go` in `pr-review-multi-agent.md`; `internal/core/handler.go` in `mx.md`), which remain present in the skill bodies (proven by AC-SBN-010 keep-list still matching).
+  - **(c) belt-and-suspenders allowlist** — the 3 illustrative paths are ALSO registered in the pedagogical allowlist (REQ-SBN-015), so even if the regex restriction regressed, the allowlist would still suppress them.
 
 ## §C Quality Gate / Definition of Done
 
-- [ ] All 18 AC pass (grep assertions return the asserted counts; tests pass).
+- [ ] All 20 AC pass (grep assertions return the asserted counts; tests pass).
 - [ ] `go test ./internal/template/...` passes (extended leak test GREEN + sentinel tests GREEN).
 - [ ] `go build ./...` succeeds; `go vet ./internal/template/...` clean.
 - [ ] `.github/workflows/template-neutrality-check.yaml` path filter covers `internal/template/templates/.claude/skills/**` and runs the leak test.
 - [ ] Local `.claude/skills/` mirror is byte-identical to `internal/template/templates/.claude/skills/` for every edited file.
 - [ ] RED→GREEN evidence captured: M1 failing finding list + M6 passing run recorded in run-phase progress.
 - [ ] No unrelated working-tree edits committed (specific-path discipline).
+- [ ] Traceability bijection holds: 20 REQ (REQ-SBN-001..019, with REQ-SBN-019 inserted) ↔ 20 AC (AC-SBN-001..020). Every REQ maps to ≥1 AC and every AC cites ≥1 REQ.
 
 ## §D Edge Cases
 
 - **EC-1** — A V3R-family SPEC ID embedded inside a longer token that is actually a placeholder (none found at baseline; if one appears, the pedagogical allowlist takes precedence over the leak class).
 - **EC-2** — A skill body that legitimately documents the `go install github.com/modu-ai/moai-adk/cmd/moai@latest` user-facing install command (EXCL-SBN-004) — the Go-impl-path regex (`internal/...`) does not match an install URL, so no special-casing needed; verify it remains present.
-- **EC-3** — The docs-site URL `adk.mo.ai.kr` (EXCL-SBN-005) — keep the URL; only the "4-locale" annotation is dropped. A grep for `adk.mo.ai.kr` after M4 should still return ≥1 match.
-- **EC-4** — Mixed-language modified-files list in `mx.md` (`internal/core/handler.go`, `src/api/server.ts`, `lib/utils/helper.py`) — illustrative; the Go-impl-path regex is scoped to real moai-adk packages (`spec|cli|hook|ciwatch|design`) and does not match `internal/core/`, so the example survives without an allowlist entry, OR an explicit allowlist entry is added for belt-and-suspenders.
+- **EC-3** — The docs-site URL `adk.mo.ai.kr` (EXCL-SBN-005) — keep the URL; only the "4-locale" annotation is dropped. This drop-and-keep split is now binary-verified by AC-SBN-019 (annotation grep → 0; URL grep → ≥1), not left to edge-case judgment.
+- **EC-4** — Mixed-language modified-files list in `mx.md` (`internal/core/handler.go`, `src/api/server.ts`, `lib/utils/helper.py`) — illustrative. Per REQ-SBN-013 (HARD) the `C7` Go-impl-path regex is package-restricted to `internal/(spec|cli|hook|ciwatch|design)` and does NOT match `internal/core/`, AND (belt-and-suspenders, no longer an "OR") the path is ALSO registered in the pedagogical allowlist. Both protections are required and verified by AC-SBN-020.

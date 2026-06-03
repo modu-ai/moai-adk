@@ -1,7 +1,7 @@
 ---
 id: SPEC-SKILL-BODY-NEUTRALITY-001
 title: "Skill-Body Neutrality — purge moai-adk local-dev traces from deployed skills + extend neutrality CI guard"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-06-04
 updated: 2026-06-04
@@ -22,6 +22,7 @@ related_specs: [SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001, SPEC-V3R6-TEMPLATE-INTE
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-06-04 | manager-spec | Initial plan-phase draft. Part A (purge skill-body internal traces) + Part B (extend neutrality CI guard to cover skill-body leak classes). |
+| 0.1.1 | 2026-06-04 | manager-spec | plan-auditor PASS-WITH-DEBT 0.84 defect patch (D1-D5): D1 add `moai/references/reference.md:244` to §B.4; D2 new §B.5 4-locale-annotation inventory + REQ-SBN-019 + AC-SBN-019; D5 REQ-SBN-013 C7 pkg-restriction HARD + AC-SBN-020; D4 REQ-token partition-guard extension to AC-SBN-018; D3 binary positive-greps for AC-SBN-004/009. 18-REQ↔18-AC bijection extended to 20↔20. |
 
 ## §A Goal
 
@@ -90,7 +91,23 @@ REQ token families present: `REQ-WF003`, `REQ-WF004`, `REQ-BRAIN`, `REQ-SKILL`, 
 | `moai/SKILL.md` | 76, 238, 244-245 | `release-update (dev-only) ... NOT distributed to user projects (entry: .claude/commands/97-release-update.md)` — self-contradictory text shipped to users |
 | `moai-foundation-core/modules/commands-reference.md` | 21, 264, 272, 329 | `/moai:99-release` (99-* prefix is dev-only-reserved) |
 | `moai-foundation-core/modules/INDEX.md` | 143 | `/moai:99-release (Deployment)` |
+| `moai/references/reference.md` | 244 | `Note: /moai:99-release is a separate local-only command, not part of the /moai skill.` — 99-* dev-only-reserved self-reference (6th `99-release` hit; required so AC-SBN-008 `grep -rn '99-release'` reaches 0) |
 | `moai-meta-harness/SKILL.md` | 168 | Korean maintainer doctrine: `Doctrine-code drift (2026-05-26 ~ catch-up SPEC 완료 전) ... maintainer doctrine` — internal date + catch-up-SPEC reference |
+
+`grep -rn '99-release' internal/template/templates/.claude/skills/` returns exactly **6 hits** at the plan-phase baseline: `commands-reference.md` (×4: lines 21, 264, 272, 329), `INDEX.md` (line 143), and `moai/references/reference.md` (line 244). All 6 are CLASS 4 dev-only self-references and ALL must be purged for AC-SBN-008's "0 matches".
+
+### §B.5 CLASS 5 — docs-site URL "4-locale" maintainer annotation
+
+The public docs-site GEARS URL `adk.mo.ai.kr` is legitimate and KEPT (EXCL-SBN-005). But several skill bodies attach a maintainer-facing "4-locale (en/ko/ja/zh)" annotation to that URL — a maintainer-internal concern (the docs-site's translation coverage) that is meaningless to an end user consulting the public URL. The annotation appears in two surface forms: `4-locale: en / ko / ja / zh` and `4-locale (en / ko / ja / zh)`.
+
+| File | Line | Annotation surface form |
+|------|------|-------------------------|
+| `moai-foundation-core/modules/spec-ears-format.md` | 11 | `... (4-locale: en / ko / ja / zh)` |
+| `moai-workflow-spec/SKILL.md` | 65 | `... — 4-locale (en / ko / ja / zh)` |
+| `moai-workflow-spec/SKILL.md` | 146 | `... (4-locale: en / ko / ja / zh) ...` |
+| `moai-workflow-spec/references/reference.md` | 27 | `... (4-locale) ...` |
+
+Note: `moai/SKILL.md:76,240` also carry a 4-locale annotation but tied to the dev-only `release-update` entry — those are removed wholesale by CLASS 4 / REQ-SBN-008, so they are not separately enumerated here (removing the dev-only entry removes the annotation with it). The KEPT object is the `adk.mo.ai.kr` URL itself; the DROPPED object is the `4-locale...` annotation attached to it.
 
 ## §C Requirements (GEARS)
 
@@ -118,11 +135,13 @@ REQ token families present: `REQ-WF003`, `REQ-WF004`, `REQ-BRAIN`, `REQ-SKILL`, 
 
 **REQ-SBN-011** (When event-driven): When Part A edits a skill file under `internal/template/templates/.claude/skills/`, the corresponding local mirror under `.claude/skills/` shall be synced to the same content (Template-First Rule, CLAUDE.local.md §2).
 
+**REQ-SBN-019** (Ubiquitous): The deployed skill bodies shall not attach a maintainer-facing "4-locale" translation-coverage annotation (`4-locale: en / ko / ja / zh` or `4-locale (en / ko / ja / zh)`) to the public docs-site URL `adk.mo.ai.kr`; the annotation shall be dropped at every §B.5 site while the `adk.mo.ai.kr` URL itself is preserved.
+
 ### §C.2 Part B — Extend the neutrality CI guard
 
 **REQ-SBN-012** (Ubiquitous): The neutrality guard test `internal/template/internal_content_leak_test.go` shall enforce a leak class that matches the internal CI-test-file reference `internal/template/agentless_audit_test.go` in any scanned skill body.
 
-**REQ-SBN-013** (Ubiquitous): The neutrality guard shall enforce a leak class that matches real internal Go implementation paths of the form `internal/<pkg>[/<subpkg>...]/<file>.go` in scanned skill bodies.
+**REQ-SBN-013** (Ubiquitous): The neutrality guard shall enforce a Go-impl-path leak class (`C7`) that matches real moai-adk internal Go implementation paths in scanned skill bodies. [HARD] The `C7` regex MUST be **package-restricted** to the same real moai-adk top-level package set used by AC-SBN-005 — `internal/(spec|cli|hook|ciwatch|design)/...\.go` — and MUST NOT use the unrestricted `internal/.*\.go` form. The package restriction is required because the unrestricted form would match the EXCL-SBN-003 illustrative example paths (`internal/auth/login.go`, `internal/api/handler.go`, `internal/core/handler.go`), making the M6 GREEN state unreachable. As belt-and-suspenders, the 3 illustrative paths MUST ALSO be registered in the pedagogical allowlist (REQ-SBN-015).
 
 **REQ-SBN-014** (Ubiquitous): The neutrality guard's internal-SPEC-ID leak class shall match the `SPEC-V3R[0-9]-*` family (currently the C1 class matches only `SPEC-(V3R6|AGENCY|WORKTREE)-*` and misses the V3R2-V3R5 families found in skill bodies).
 
@@ -138,7 +157,7 @@ REQ token families present: `REQ-WF003`, `REQ-WF004`, `REQ-BRAIN`, `REQ-SKILL`, 
 
 - **EXCL-SBN-001** — Date-class and commit-SHA-class enforcement. Owned by `SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001` strict tier (`S1-internal-date`, `S2-short-sha-sentence-final`). This SPEC does not add or duplicate those classes.
 - **EXCL-SBN-002** — Rules-file (`.claude/rules/`), agent-file (`.claude/agents/`), and command-file (`.claude/commands/`) neutrality. Out of scope; this SPEC's surface is skill bodies (`.claude/skills/`) only. (Rules-file neutrality is `SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001`.)
-- **EXCL-SBN-003** — Format-example placeholders and illustrative example IDs/paths. KEEP verbatim: `SPEC-AUTH-001`, `SPEC-{ID}`, `SPEC-XXX`, `SPEC-{DOMAIN}-{NUMBER}`, `SPEC-001`/`SPEC-002`/`SPEC-NNN` series, domain-example IDs (`SPEC-PAY-001`, `SPEC-API-001`, `SPEC-FASTAPI-001`, `SPEC-DASH-001`, `SPEC-UI-001`, etc.), and illustrative example Go paths inside fictional code-review / file-list examples (`internal/auth/login.go` and `internal/api/handler.go` in `pr-review-multi-agent.md`; `internal/core/handler.go` in `mx.md`'s mixed-language modified-files list).
+- **EXCL-SBN-003** — Format-example placeholders and illustrative example IDs/paths. KEEP verbatim: `SPEC-AUTH-001`, `SPEC-{ID}`, `SPEC-XXX`, `SPEC-{DOMAIN}-{NUMBER}`, `SPEC-001`/`SPEC-002`/`SPEC-NNN` series, domain-example IDs (`SPEC-PAY-001`, `SPEC-API-001`, `SPEC-FASTAPI-001`, `SPEC-DASH-001`, `SPEC-UI-001`, etc.), and illustrative example Go paths inside fictional code-review / file-list examples (`internal/auth/login.go` and `internal/api/handler.go` in `pr-review-multi-agent.md`; `internal/core/handler.go` in `mx.md`'s mixed-language modified-files list). The 3 illustrative Go paths are protected by **two** independent mechanisms per REQ-SBN-013: (a) the `C7` regex is package-restricted to `internal/(spec|cli|hook|ciwatch|design)` and so does not match `internal/auth`, `internal/api`, or `internal/core`; AND (b) all 3 are additionally registered in the pedagogical allowlist (belt-and-suspenders, REQ-SBN-015).
 - **EXCL-SBN-004** — Neutral multi-language tool lists. KEEP: `golangci-lint` when it appears as one item in a 16-language toolchain list (Go is 1 of 16); the user-facing install command `go install github.com/modu-ai/moai-adk/cmd/moai@latest`; Vercel in frontend/e2e/project/plugin domain-knowledge contexts.
 - **EXCL-SBN-005** — The public docs-site GEARS URL `adk.mo.ai.kr`. KEEP the URL (users may legitimately consult it); however the maintainer-facing "4-locale (en/ko/ja/zh)" annotation attached to that URL is a maintainer concern and is dropped where it appears in a skill body (decided in plan §F).
 - **EXCL-SBN-006** — Implementation of the Part B guard's exact regex literals, the precise generic-ized replacement prose for each file, and the pedagogical-allowlist entry list. These are run-phase (HOW) decisions deferred to plan.md milestones and the run phase; this spec.md defines only WHAT and WHY.

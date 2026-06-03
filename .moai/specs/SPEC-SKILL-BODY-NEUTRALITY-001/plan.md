@@ -1,7 +1,7 @@
 ---
 id: SPEC-SKILL-BODY-NEUTRALITY-001
 title: "Skill-Body Neutrality — implementation plan"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-06-04
 updated: 2026-06-04
@@ -68,12 +68,12 @@ Part A is grouped by leak class / file cluster so run-phase can purge in cohesiv
 
 ### M1 — Part B RED: extend the neutrality guard to fail on current leaks (Priority High)
 
-- Add three leak classes to `internal/template/internal_content_leak_test.go`:
+- Add leak classes to `internal/template/internal_content_leak_test.go`:
   - `C6-agentless-test-ref` — matches the literal `agentless_audit_test.go` reference (REQ-SBN-012).
-  - `C7-internal-go-path` — matches `internal/<pkg>[/<sub>...]/<file>.go` (REQ-SBN-013).
+  - `C7-internal-go-path` — [HARD per REQ-SBN-013 / D5] matches ONLY real moai-adk package paths via the package-restricted regex `internal/(spec|cli|hook|ciwatch|design)/[a-z0-9_/]*\.go`. MUST NOT use the unrestricted `internal/.*\.go` form (it would match the EXCL-SBN-003 illustrative paths `internal/auth/login.go`, `internal/api/handler.go`, `internal/core/handler.go` and make M6 GREEN unreachable). Keep the package set in sync with AC-SBN-005.
   - Broaden `C1-spec-id-prefix` to also match `SPEC-V3R[0-9]-` and `CONST-V3R[0-9]-` (REQ-SBN-014).
-- Add `REQ-WF<NNN>-NNN` + the §B.3 REQ-token families to the in-scope REQ class for skill bodies (REQ-SBN-007), partitioned away from the strict-tier date/sha classes (REQ-SBN-018).
-- Build the `pedagogicalAllowlist` entries for the EXCL-SBN-003 keep-list (REQ-SBN-015) so they are excluded from the RED run.
+- REQ-token enforcement for skill bodies (REQ-SBN-007): **promote/reuse** the existing opt-in `S3-req-ac-token-any-prefix` regex (`(REQ|AC)-[A-Z]{2,}-[0-9]{3}`, currently strict-tier-only) into the default tier for the skill-body scan — do NOT add a near-identical sibling class (REQ-SBN-018(b) / AC-SBN-018(b) partition guard: at most ONE leakClass matching the REQ-token pattern across `leakClasses` + `strictLeakClasses`). Partition away from the strict-tier date/sha classes (REQ-SBN-018(a)).
+- Build the `pedagogicalAllowlist` entries for the EXCL-SBN-003 keep-list (REQ-SBN-015), INCLUDING explicit belt-and-suspenders entries for the 3 illustrative Go paths (`internal/auth/login.go`, `internal/api/handler.go`, `internal/core/handler.go`) per REQ-SBN-013, so they are excluded from the RED run and protected even if the C7 regex restriction regresses.
 - **Gate (RED):** the extended test FAILS, reporting the CLASS 1-4 leaks enumerated in spec §B and NOT reporting any allow-listed placeholder. Capture the failing finding list as run-phase evidence.
 
 ### M2 — Part A CLASS 1 + CLASS 2 build/Go-path purge: workflow skills (Priority High)
@@ -92,13 +92,14 @@ Part A is grouped by leak class / file cluster so run-phase can purge in cohesiv
 ### M4 — Part A CLASS 3 purge: internal SPEC IDs + REQ tokens (Priority High)
 
 - Across the 37 files with V3R-family SPEC IDs + the REQ-token files (worst-affected: `design.md`, `brain.md`, `harness.md`, `plan/spec-assembly.md`): replace each real internal SPEC ID and REQ token with its plain-language policy/mechanism description (REQ-SBN-006/007). Preserve placeholders per EXCL-SBN-003.
-- Drop the docs-site URL's "4-locale (en/ko/ja/zh)" maintainer annotation where it appears; keep the `adk.mo.ai.kr` URL (EXCL-SBN-005).
+- Drop the docs-site URL's "4-locale" maintainer annotation at the §B.5 enumerated sites (REQ-SBN-019), keeping the `adk.mo.ai.kr` URL (EXCL-SBN-005). The 4 sites: `moai-foundation-core/modules/spec-ears-format.md:11`, `moai-workflow-spec/SKILL.md:65`, `moai-workflow-spec/SKILL.md:146`, `moai-workflow-spec/references/reference.md:27`. Handle both surface forms (`4-locale: en / ko / ja / zh` and `4-locale (en / ko / ja / zh)`). (The `moai/SKILL.md:76,240` 4-locale annotations are removed by M5 wholesale with the dev-only `release-update` entry, not here.)
 - Sync mirror (REQ-SBN-011).
 
 ### M5 — Part A CLASS 4 purge: dev-only self-reference + maintainer doctrine (Priority Medium)
 
 - `moai/SKILL.md` (76, 238, 244-245): remove the `release-update` dev-only entry + "NOT distributed to user projects (97-release-update.md)" self-contradiction from the user-facing command surface (REQ-SBN-008).
 - `commands-reference.md` (21, 264, 272, 329) + `INDEX.md` (143): remove the `/moai:99-release` dev-only-reserved command rows (REQ-SBN-008).
+- `moai/references/reference.md` (244): remove the `Note: /moai:99-release is a separate local-only command ...` self-reference line — this is the **6th** `99-release` baseline hit (§B.4 / D1); it MUST be purged for AC-SBN-008's `grep -rn '99-release'` → 0 (REQ-SBN-008).
 - `moai-meta-harness/SKILL.md` (168): replace the maintainer doctrine note (internal date + catch-up-SPEC ref) with a generic namespace-separation statement (REQ-SBN-009).
 - Sync mirror (REQ-SBN-011).
 
