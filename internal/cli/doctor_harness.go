@@ -66,6 +66,19 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 		failures = append(failures, "L5 "+l5Detail)
 	}
 
+	// L6 (SPEC-V3R6-HARNESS-ACTIVATION-WIRING-001 smoke gate): generated-agent
+	// frontmatter self-activation checks (REQ-HAW-012/013/013b). Iterates
+	// .claude/agents/harness/*.md and FAILs on an empty description, a missing
+	// skills: key, or a dangling my-harness-* skills: reference. No-op when no
+	// generated agents exist. Reuses skillsDir (resolved above) for reference
+	// resolution. Preserves L1-L5 semantics (AC-HAW-014) — additive layer only.
+	agentsDir := filepath.Join(projectRoot, ".claude", "agents", "harness")
+	l6, l6Detail := checkLayer6AgentActivation(agentsDir, skillsDir)
+	statuses = append(statuses, "L6:"+l6)
+	if l6 == "FAIL" {
+		failures = append(failures, "L6 "+l6Detail)
+	}
+
 	// Prefix conflicts (warn, not fail)
 	var warnSuffix string
 	conflicts, _ := harness.DetectPrefixConflicts(skillsDir)
@@ -200,4 +213,149 @@ func checkLayer5Files(harnessDir string) (string, string) {
 		return "FAIL", "missing: " + strings.Join(missing, ", ")
 	}
 	return "PASS", "ok"
+}
+
+// checkLayer6AgentActivation is the SPEC-V3R6-HARNESS-ACTIVATION-WIRING-001
+// Phase-6 smoke gate (REQ-HAW-012/013/013b). For each generated
+// .claude/agents/harness/*.md agent it asserts the self-activation frontmatter
+// contract:
+//
+//   - REQ-HAW-012: the `description:` field is non-empty.
+//   - REQ-HAW-013b: the `skills:` frontmatter key is present (a `skills:`-less
+//     agent would otherwise pass silently and reproduce the auto-discovery
+//     failure mode the SPEC exists to close).
+//   - REQ-HAW-013: each `skills:` entry that names a `my-harness-*` skill
+//     resolves to an existing .claude/skills/<name>/ directory (dangling
+//     references FAIL). Template-distributed `moai-*` references are NOT
+//     resolved against disk and are never dangling (EC-4).
+//
+// No-op (PASS) when the .claude/agents/harness/ directory is absent or contains
+// no *.md agents — the contract applies only to generated agents.
+func checkLayer6AgentActivation(agentsDir, skillsDir string) (string, string) {
+	entries, err := os.ReadDir(agentsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "PASS", "no generated agents"
+		}
+		return "FAIL", err.Error()
+	}
+
+	var problems []string
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+			continue
+		}
+		agentName := strings.TrimSuffix(e.Name(), ".md")
+		data, err := os.ReadFile(filepath.Join(agentsDir, e.Name()))
+		if err != nil {
+			problems = append(problems, agentName+": read error: "+err.Error())
+			continue
+		}
+		fm := extractFrontmatter(string(data))
+
+		// REQ-HAW-012: non-empty description.
+		if strings.TrimSpace(frontmatterScalar(fm, "description")) == "" {
+			problems = append(problems, agentName+": empty description frontmatter field")
+		}
+
+		// REQ-HAW-013b: skills: key present at all.
+		skillRefs, hasSkillsKey := frontmatterList(fm, "skills")
+		if !hasSkillsKey {
+			problems = append(problems, agentName+": missing skills: frontmatter key (no companion skill preload)")
+			continue
+		}
+
+		// REQ-HAW-013: my-harness-* references must resolve on disk (EC-4:
+		// moai-* template skills are not resolved here).
+		for _, ref := range skillRefs {
+			if !strings.HasPrefix(ref, "my-harness-") {
+				continue
+			}
+			if _, err := os.Stat(filepath.Join(skillsDir, ref)); err != nil {
+				problems = append(problems, agentName+": dangling skills: reference "+ref+" (skill dir absent)")
+			}
+		}
+	}
+
+	if len(problems) > 0 {
+		return "FAIL", strings.Join(problems, "; ")
+	}
+	return "PASS", "ok"
+}
+
+// extractFrontmatter returns the YAML frontmatter block (between the leading
+// `---` fences) of a markdown agent file, or "" when no frontmatter is present.
+func extractFrontmatter(content string) string {
+	trimmed := strings.TrimLeft(content, " \t\r\n")
+	if !strings.HasPrefix(trimmed, "---") {
+		return ""
+	}
+	rest := trimmed[len("---"):]
+	// Find the closing fence at the start of a line.
+	if idx := strings.Index(rest, "\n---"); idx >= 0 {
+		return rest[:idx]
+	}
+	return rest
+}
+
+// frontmatterScalar returns the trimmed scalar value of a top-level `key:` line
+// in the frontmatter block (empty string when absent or value-less).
+func frontmatterScalar(fm, key string) string {
+	for _, line := range strings.Split(fm, "\n") {
+		trimmed := strings.TrimRight(line, "\r")
+		if v, ok := strings.CutPrefix(trimmed, key+":"); ok {
+			return strings.TrimSpace(v)
+		}
+	}
+	return ""
+}
+
+// frontmatterList parses a top-level `key:` list from the frontmatter block.
+// It supports both the block-list form (`skills:` then `  - item` lines) and
+// the inline-flow form (`skills: [a, b]`). The second return value reports
+// whether the key was present at all (distinguishing an absent key from an
+// empty list — REQ-HAW-013b needs to FAIL on absence specifically).
+func frontmatterList(fm, key string) ([]string, bool) {
+	lines := strings.Split(fm, "\n")
+	for i, raw := range lines {
+		line := strings.TrimRight(raw, "\r")
+		v, ok := strings.CutPrefix(line, key+":")
+		if !ok {
+			continue
+		}
+		v = strings.TrimSpace(v)
+		// Inline-flow form: skills: [a, b]
+		if strings.HasPrefix(v, "[") {
+			inner := strings.TrimSuffix(strings.TrimPrefix(v, "["), "]")
+			var out []string
+			for _, item := range strings.Split(inner, ",") {
+				item = strings.TrimSpace(strings.Trim(item, "\"'"))
+				if item != "" {
+					out = append(out, item)
+				}
+			}
+			return out, true
+		}
+		// Block-list form: subsequent `  - item` lines until dedent.
+		var out []string
+		for _, sub := range lines[i+1:] {
+			s := strings.TrimRight(sub, "\r")
+			trimmed := strings.TrimSpace(s)
+			if trimmed == "" {
+				continue
+			}
+			// A non-indented, non-list line ends the block.
+			if !strings.HasPrefix(s, " ") && !strings.HasPrefix(s, "\t") {
+				break
+			}
+			if item, isItem := strings.CutPrefix(trimmed, "- "); isItem {
+				out = append(out, strings.TrimSpace(strings.Trim(item, "\"'")))
+			} else {
+				// Indented but not a list item → end of this key's block.
+				break
+			}
+		}
+		return out, true
+	}
+	return nil, false
 }
