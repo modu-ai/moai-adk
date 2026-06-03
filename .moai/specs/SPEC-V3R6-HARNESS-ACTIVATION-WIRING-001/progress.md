@@ -17,7 +17,7 @@ artifacts:
   - design.md        # wiring-mechanism decision (Option A recommended), main.md additive router, 3-check smoke gate
   - progress.md      # this file
 authored_by: manager-spec
-plan_commit_sha: (this commit)
+plan_commit_sha: aa078e1f0
 ```
 
 ### Plan-audit remediation log (2026-06-03)
@@ -91,7 +91,7 @@ Pre-flight baseline (Section C):
 | M2/M3 | `f45bc90d9` | Option A confirmed; `moai harness install` CLI (install.go + install_test.go) wiring InjectMarker+ScaffoldHarnessDir; harness_route.go registration; project/meta-harness.md Phase 7 body |
 | M4 | `6becb8550` | layer5.go mainMD() `## Task-Shape Routing` table; meta-harness emission contract (skills: preload + non-empty description); §6.4 `moai-harness-*` → `my-harness-*` prefix correction |
 | M5 | `2a90a28d7` | doctor_harness.go L6 smoke gate (checkLayer6AgentActivation) + frontmatter parser; 6 TDD cases |
-| M6 | (this commit) | layer5.go readmeMD() Activation/Retrofit note; final verification batch + §E.2/E.3 population |
+| M6 | f9b54c07c | layer5.go readmeMD() Activation/Retrofit note; final verification batch + §E.2/E.3 population |
 
 ### Run-phase Evidence — AC PASS/FAIL matrix
 
@@ -186,13 +186,13 @@ spec_id: SPEC-V3R6-HARNESS-ACTIVATION-WIRING-001
 era: V3R6
 tier: M
 mx_complete_at: 2026-06-03
-mx_commit_sha: (this commit)
+mx_commit_sha: 845bad045
 final_status: completed
 four_phase_close:
   plan: aa078e1f0 (plan-phase artifacts, 5 artifacts) + 532226a3c (plan-audit D1/D2/D3/D4 patch)
   run: 92ce0b1ce..f9b54c07c (M1-M6, 5 commits cherry-pick integrated; worktree origin 0ebed07b9..c3a9872b4)
   sync: 16df5274f
-  mx: (this commit)
+  mx: 845bad045
 plan_audit_verdict: PASS-WITH-DEBT 0.86 (GATE-2 approved)
 ac_pass_count: 17
 ac_fail_count: 0
