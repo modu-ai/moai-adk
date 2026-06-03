@@ -55,14 +55,22 @@ awk '/^## 10\. Web Search Protocol/{f=1} f; /^## 11\./{if(f)exit}' CLAUDE.md \
 
 - **Given** a reader of the `moai-domain-research` skill body,
 - **When** they need a heavier multi-source research path than the skill's own parallel WebSearch + Context7,
-- **Then** the skill body cross-references `/deep-research` for the same purpose, carrying the same three facts
-  (requires WebSearch tool; higher token cost; orchestrator collects the question before launch).
+- **Then** the skill body cross-references `/deep-research` (under the `## Works Well With` section)
+  for the same purpose, carrying the same three facts (requires WebSearch tool; higher token cost;
+  orchestrator collects the question before launch).
 
-Verification:
+Verification (heading-anchored per plan.md §D.4 — bound the grep to the `## Works Well With` section
+of the research skill, consistent with the awk-bounded pattern used by AC-001/004/005, rather than a
+bare file-wide grep):
 ```bash
-grep -iE "deep-research" .claude/skills/moai-domain-research/SKILL.md
-grep -iE "WebSearch tool|more token|before launch|mid-run" .claude/skills/moai-domain-research/SKILL.md
-# Expect: deep-research present AND the three required facts present.
+SECTION=$(awk '/^## Works Well With/{f=1} f; /^## /{if(f && !/Works Well With/)exit}' \
+  .claude/skills/moai-domain-research/SKILL.md)
+echo "$SECTION" | grep -iqE "deep-research" \
+  && echo "$SECTION" | grep -iqE "WebSearch tool|more token|before launch|mid-run" \
+  && echo "AC-003 PASS — /deep-research cross-ref + facts present in Works Well With section" \
+  || echo "AC-003 FAIL — cross-ref absent within bounded section"
+# Expect: AC-003 PASS only once REQ-2's cross-ref lands in the bounded section.
+# On the un-edited file this prints FAIL (true discriminator).
 ```
 
 ### AC-DYNWF-004 — REQ-3 routing heuristic (Blocking)
@@ -74,13 +82,24 @@ grep -iE "WebSearch tool|more token|before launch|mid-run" .claude/skills/moai-d
   number of coordinated long-running peers; sequential subagents → default for coding-heavy run-phase), and the
   heuristic reuses (does not contradict) the existing three-primitive table.
 
-Verification:
+Verification (section-bounded — NOT file-wide; the un-edited file already has
+`sequential subagents` at the §When-NOT-to-Use prose and `Agent Teams` in the L20 three-primitive
+table, so a file-wide grep false-positive PASSes 2/3 before REQ-3 lands; the discriminator REQUIRES
+all three primitive names AND the `dozens-to-hundreds` anchor to co-occur WITHIN the bounded
+`## When to Use a Dynamic Workflow` heuristic block):
 ```bash
-grep -iE "dozens-to-hundreds" .claude/rules/moai/workflow/dynamic-workflows.md
-grep -iE "sequential subagents" .claude/rules/moai/workflow/dynamic-workflows.md
-grep -iE "Agent Teams" .claude/rules/moai/workflow/dynamic-workflows.md
-# Expect: all three primitive names appear in a heuristic near the "When to Use" section,
-# with the dozens-to-hundreds anchor for the dynamic-workflow branch.
+# Extract only the "## When to Use a Dynamic Workflow" section body (awk-bounded, mirrors AC-001/AC-005).
+SECTION=$(awk '/^## When to Use a Dynamic Workflow/{f=1} f; /^## /{if(f && !/When to Use a Dynamic Workflow/)exit}' \
+  .claude/rules/moai/workflow/dynamic-workflows.md)
+# All four signals MUST be present WITHIN that bounded section:
+echo "$SECTION" | grep -iqE "dozens-to-hundreds" \
+  && echo "$SECTION" | grep -iqE "sequential subagents" \
+  && echo "$SECTION" | grep -iqE "Agent Teams" \
+  && echo "$SECTION" | grep -iqE "dynamic workflow" \
+  && echo "AC-004 PASS — heuristic co-occurs within bounded section" \
+  || echo "AC-004 FAIL — heuristic absent or incomplete within bounded section"
+# Expect: AC-004 PASS only once REQ-3's heuristic (3 primitive names + dozens-to-hundreds anchor)
+# lands inside the bounded section. On the un-edited file this prints FAIL (true discriminator).
 ```
 
 ### AC-DYNWF-005 — REQ-4 `ultracode` resume pairing (Blocking)
@@ -91,12 +110,21 @@ grep -iE "Agent Teams" .claude/rules/moai/workflow/dynamic-workflows.md
   NOT restored by the `ultrathink.` resume-message opener (which restores reasoning effort only); the session must
   explicitly re-issue `/effort ultracode`, parallel to the re-set `/goal` note.
 
-Verification:
+Verification (the pre-existing `ultracode` bullet in §MoAI Integration Notes already contains
+`Reverts on a new session`, so a grep that accepts `resume|new session` false-positive PASSes today;
+the discriminator REQUIRES the net-new REQ-4 pairing text — `ultracode` AND `ultrathink` AND
+(`re-issue` OR `/effort ultracode`) — to co-occur within the bounded section. None of `ultrathink`,
+`re-issue`, or `/effort ultracode` appear in the current bullet, so this only passes once REQ-4 lands):
 ```bash
-awk '/^## MoAI Integration Notes/{f=1} f; /^## /{if(f && !/MoAI Integration Notes/)exit}' \
-  .claude/rules/moai/workflow/dynamic-workflows.md \
-  | grep -iE "ultracode" | grep -iE "resume|new session|ultrathink|re-issue|/effort ultracode"
-# Expect: the resume-pairing note for ultracode is present in the section.
+SECTION=$(awk '/^## MoAI Integration Notes/{f=1} f; /^## /{if(f && !/MoAI Integration Notes/)exit}' \
+  .claude/rules/moai/workflow/dynamic-workflows.md)
+echo "$SECTION" | grep -iqE "ultracode" \
+  && echo "$SECTION" | grep -iqE "ultrathink" \
+  && echo "$SECTION" | grep -iqE "re-issue|/effort ultracode" \
+  && echo "AC-005 PASS — ultracode resume-pairing co-occurs within bounded section" \
+  || echo "AC-005 FAIL — resume-pairing text absent within bounded section"
+# Expect: AC-005 PASS only once REQ-4's net-new pairing text lands. On the un-edited file
+# this prints FAIL (true discriminator — the L58 bullet has 'new session' but not 'ultrathink'/'re-issue').
 ```
 
 ### AC-DYNWF-006 — Template mirror parity (Blocking)

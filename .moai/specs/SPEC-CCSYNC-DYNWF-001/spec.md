@@ -11,6 +11,7 @@ phase: "v3.0.0"
 module: ".claude/rules/moai/workflow, CLAUDE.md, .claude/skills/moai-domain-research"
 lifecycle: spec-anchored
 tags: "documentation, dynamic-workflows, deep-research, ccsync, doc-seam"
+tier: S
 ---
 
 # SPEC-CCSYNC-DYNWF-001 — Dynamic Workflows doctrine alignment (doc seams)
@@ -119,3 +120,11 @@ note in `goal-directive.md`.
 
 All listed artifacts have a byte-parity mirror under `internal/template/templates/<same-path>`; run-phase edits
 are subject to the Template-First mirror obligation documented in `plan.md § D`.
+
+Run-phase insertion anchors (heading-anchored per `plan.md § D.4`, NOT line numbers):
+
+- `dynamic-workflows.md` REQ-1 → within `## How a Workflow Runs`
+- `dynamic-workflows.md` REQ-3 → within/under `## When to Use a Dynamic Workflow`
+- `dynamic-workflows.md` REQ-4 → within `## MoAI Integration Notes` (augment the existing `ultracode` bullet)
+- `CLAUDE.md` REQ-2 → within `## 10. Web Search Protocol`
+- `moai-domain-research/SKILL.md` REQ-2 → within `## Works Well With`
