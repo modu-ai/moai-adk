@@ -127,7 +127,10 @@ generated (no agents-without-entry-point skeleton).
 
 REQ-HAW-008 — The harness generation flow **shall** emit each generated `.claude/agents/harness/*.md`
 agent with a `skills:` frontmatter entry that preloads the agent's companion harness skill, so the skill
-loads deterministically when the agent is delegated.
+loads deterministically when the agent is delegated. **When** a harness generation flow completes, the
+post-generation smoke gate (REQ-HAW-010..014) **shall** fail if any generated agent omits the `skills:`
+frontmatter key — i.e., the emission contract is enforced at runtime by the gate, not assumed (closes the
+auto-discovery failure mode where a `skills:`-less agent would otherwise pass silently). See AC-HAW-015.
 
 REQ-HAW-009 — Each generated `.claude/agents/harness/*.md` agent **shall** carry a non-empty,
 trigger-shaped `description` frontmatter field (this is already satisfied per B3 REFUTED; the requirement
@@ -148,6 +151,11 @@ if any generated `.claude/agents/harness/*.md` agent has an empty `description` 
 REQ-HAW-013 — **When** a harness generation flow completes, the post-generation smoke gate **shall** fail
 if any generated agent declares a `skills:` preload reference to a harness skill directory that does not
 exist on disk (dangling skill reference).
+
+REQ-HAW-013b — **When** a harness generation flow completes, the post-generation smoke gate **shall** fail
+if any generated `.claude/agents/harness/*.md` agent OMITS the `skills:` frontmatter key entirely (the
+runtime enforcement of REQ-HAW-008's emission contract — distinct from REQ-HAW-013, which catches a
+`skills:` key that is present but points to a non-existent skill dir).
 
 REQ-HAW-014 — The post-generation smoke gate **shall** extend the existing `doctor harness` 5-layer
 diagnosis (`internal/cli/doctor_harness.go`) rather than introduce a parallel diagnosis engine, and
@@ -179,10 +187,10 @@ Detailed, individually verifiable acceptance criteria (AC-HAW-001 .. AC-HAW-014)
 This section is mandatory. The following are explicitly OUT OF SCOPE for this SPEC:
 
 - **EX-1 — `my-harness-*` → `harness-*` prefix migration**: The namespace rename is a SEPARATE,
-  NON-BLOCKING concern owned by a future `SPEC-V3R6-HARNESS-NAMESPACE-V2-001` (doctrine-code split per
-  commit `66a3d53be` "Phase 1 doctrine-only"; `meta-harness SKILL.md:168` confirms `harness-*` generation
-  has no protection yet). Generation MUST stay on the protected `my-harness-*` prefix. This SPEC specifies
-  NO prefix rename.
+  NON-BLOCKING concern owned by a future `SPEC-V3R6-HARNESS-NAMESPACE-V2-001` **(planned — not yet
+  created; do not treat as an existing SPEC)** (doctrine-code split per commit `66a3d53be` "Phase 1
+  doctrine-only"; `meta-harness SKILL.md:168` confirms `harness-*` generation has no protection yet).
+  Generation MUST stay on the protected `my-harness-*` prefix. This SPEC specifies NO prefix rename.
 - **EX-2 — `moai update` namespace protection**: Already implemented by
   `SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001` (PR #1048). NOT re-specified here; referenced as an existing
   dependency only.

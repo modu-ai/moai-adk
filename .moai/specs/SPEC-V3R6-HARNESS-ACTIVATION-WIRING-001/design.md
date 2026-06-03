@@ -36,9 +36,11 @@ generation is entirely orchestrator-side with no natural CLI moment); the run-ph
 
 ## B. main.md Router Structure (REQ-HAW-006)
 
-The current `mainMD()` builder (`internal/harness/layer5.go`) emits a static description-style file. The
-router redesign keeps the scaffolding algorithm but changes the body to a **task-shape → specialist
-router manifest** so the orchestrator can route at activation time:
+The current `mainMD()` builder (`internal/harness/layer5.go`) already emits `**Domain**:` metadata, a
+`## Domain Summary` section, and a `## Linked Files` list. The router change is **additive, not a rewrite**:
+it inserts ONE new `## Task-Shape Routing` table between the existing Domain Summary and Linked Files
+sections so the orchestrator can route at activation time. Domain Summary + Linked Files are kept as-is;
+the scaffolding algorithm is untouched (D-4):
 
 ```
 # Harness Main
@@ -65,19 +67,26 @@ router manifest** so the orchestrator can route at activation time:
 - interview-results.md — original interview answers
 ```
 
-The routing table is the new element (current `mainMD()` has only "Linked Files"). The domain summary +
-Linked Files are preserved from the existing builder. The change is confined to `mainMD()` body
+The `## Task-Shape Routing` table is the ONLY new element. The `**Domain**:` metadata, the `## Domain
+Summary` section, and the `## Linked Files` list ALL already exist in the current `mainMD()` builder and
+are preserved verbatim. The change is confined to inserting the routing table into `mainMD()` body
 construction — the `ScaffoldHarnessDir` file-writing algorithm is untouched (D-4).
 
-## C. Smoke Gate Extension (REQ-HAW-010..014)
+## C. Smoke Gate Extension (REQ-HAW-010..014, plus REQ-HAW-013b)
 
-`runHarnessCheck` already performs L1-L5. The smoke gate adds two checks atop the existing layers:
+`runHarnessCheck` already performs L1-L5. The smoke gate adds three agent-frontmatter checks atop the
+existing layers:
 
 - **Agent description check** (REQ-HAW-012): iterate `.claude/agents/harness/*.md`, parse the
   `description:` frontmatter field, FAIL if empty.
+- **Missing-`skills:` check** (REQ-HAW-013b / AC-HAW-015): FAIL if a generated agent OMITS the `skills:`
+  frontmatter key entirely. This is the runtime enforcement of REQ-HAW-008's emission contract — without
+  it, a `skills:`-less agent would pass silently and reproduce the auto-discovery failure mode the SPEC
+  exists to close.
 - **Dangling skill reference check** (REQ-HAW-013): for each generated agent's `skills:` frontmatter
-  entry, resolve the referenced skill directory; FAIL if a `my-harness-*` reference points to a
-  non-existent dir. References to template-distributed `moai-*` skills are NOT dangling (EC-4).
+  entry that IS present, resolve the referenced skill directory; FAIL if a `my-harness-*` reference points
+  to a non-existent dir. References to template-distributed `moai-*` skills are NOT dangling (EC-4).
+  (Distinct from the missing-`skills:` check above: absent key vs present-but-dangling key.)
 
 These are added as either a new `checkLayer6...` helper or folded into the existing aggregation, preserving
 the L1-L5 status string semantics (REQ-HAW-014). L3 (marker pairing) and L5 (`main.md`) already satisfy

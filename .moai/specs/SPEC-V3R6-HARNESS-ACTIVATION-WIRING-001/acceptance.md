@@ -106,6 +106,14 @@ grep -n "skills:" .claude/skills/moai-meta-harness/SKILL.md .claude/skills/moai/
 **Binds**: REQ-HAW-013
 **Verify**: new `doctor_harness_test.go` case: generated agent declares `skills:` referencing a `my-harness-X` dir absent on disk → smoke gate FAIL with a dangling-reference detail message.
 
+### AC-HAW-015 (Blocking) — Gate fails when a generated agent OMITS skills: preload (runtime enforcement of REQ-HAW-008)
+**Binds**: REQ-HAW-008, REQ-HAW-013b
+**Given** a generated harness with ≥1 `.claude/agents/harness/*.md` agent,
+**When** the post-generation smoke gate runs and any such agent has NO `skills:` frontmatter key at all,
+**Then** the gate FAILs with a missing-`skills:`-preload detail message — so a `skills:`-less generated agent cannot pass silently (the auto-discovery failure mode the SPEC exists to close).
+**Verify**: new `doctor_harness_test.go` case: generated agent with frontmatter that lacks any `skills:` key → smoke gate status FAIL with a detail string naming the offending agent and the missing `skills:` key.
+**Note**: distinct from AC-HAW-013 (which covers a `skills:` key that is PRESENT but dangling). AC-HAW-015 covers a `skills:` key that is ABSENT. Both are enforced by the same `doctor harness`-extending smoke gate (REQ-HAW-014).
+
 ### AC-HAW-014 (Blocking) — Smoke gate extends doctor harness, preserves L1-L5
 **Binds**: REQ-HAW-014
 **Given** the smoke gate implementation,
@@ -126,21 +134,38 @@ go test ./internal/cli/ -run TestRunHarnessCheck   # all existing L1-L5 cases st
 **Then** the working `.claude/` copy matches `internal/template/templates/.claude/...`.
 **Verify**: `go test ./internal/template/... -run TestRuleTemplateMirror` (and `make build` ran).
 
-### AC-HAW-PROC-2 (Blocking) — Prefix stays my-harness-*
+### AC-HAW-PROC-2 (Blocking) — §6.4 prefix correction target equals `my-harness-*` (NOT the EX-1 migration)
 **Binds**: REQ-HAW-016
+**Disambiguation (EX-1 boundary)**: the §6.4 prefix-correction step (plan.md M4) corrects the stale
+`moai-harness-<domain>-*` reference to the **code-side `my-harness-*` prefix that the Go code + generator
+actually use today** — it does NOT advance the `my-harness-*` → `harness-*` migration (EX-1, OUT OF
+SCOPE). `meta-harness SKILL.md:168` documents the doctrine(`harness-*`)-vs-code(`my-harness-*`) drift; this
+SPEC deliberately stays on the code-side `my-harness-*`.
 **Given** the generated-artifact emission contract,
-**When** the emission templates are scanned,
-**Then** generation targets the `my-harness-*` prefix and introduces NO `harness-*` (without `my-` prefix) generation directive.
+**When** the §6.4 Expected Outputs prefix-correction is applied and the emission templates are scanned,
+**Then** every corrected generated/referenced skill prefix equals exactly `my-harness-` AND no new
+`harness-*`-rename directive (a bare `harness-` prefix without the `my-` lead) is introduced anywhere in
+the emission contract.
 **Verify**:
 ```bash
-# §6.4 Expected Outputs reference must read my-harness-, not moai-harness- or bare harness-
-grep -n "harness-" .claude/skills/moai/workflows/project/meta-harness.md | grep -i "patterns\|best-practices\|skill"
-# Expected: matches use the my-harness-* prefix; no new bare harness-* generation directive
+# (a) the §6.4 corrected references MUST read my-harness-, not moai-harness- or bare harness-
+grep -nE "my-harness-[a-z]" .claude/skills/moai/workflows/project/meta-harness.md
+# Expected: ≥1 match — corrected references carry the my-harness- prefix
+
+# (b) NO new bare harness-* generation directive (a "harness-" not preceded by "my-" or "moai-")
+#     in the generated-agent / skill emission contract sections.
+grep -nE "(generate|emit|create).*[^a-z-]harness-[a-z]" \
+  .claude/skills/moai/workflows/project/meta-harness.md \
+  .claude/skills/moai-meta-harness/SKILL.md \
+  | grep -vE "my-harness-|moai-harness-"
+# Expected: no output — the AC FAILs (and the EX-1 boundary is crossed) if a bare harness-* rename appears
 ```
+This phrasing makes it impossible to read the AC as endorsing the migration: PASS requires `my-harness-`
+equality (check a) AND the absence of any bare `harness-*` generation directive (check b).
 
 ## F. Definition of Done
 
-- [ ] All Blocking ACs (AC-HAW-001..014 + AC-HAW-PROC-1..2) verified green.
+- [ ] All Blocking ACs (AC-HAW-001..015 + AC-HAW-PROC-1..2) verified green.
 - [ ] `InjectMarker` and `ScaffoldHarnessDir` both have a live (non-test) call path OR a documented
       orchestrated path; the dead-code recurrence is guarded by the smoke gate.
 - [ ] `project/meta-harness.md` Phase 7 (5-Layer Activation) body present (was absent).

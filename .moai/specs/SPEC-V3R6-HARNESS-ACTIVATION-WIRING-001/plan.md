@@ -108,18 +108,27 @@ golangci-lint run --timeout=2m
   generated `.claude/agents/harness/*.md` agents declare `skills:` frontmatter preload of their companion
   `my-harness-*` skill (REQ-HAW-008) and a non-empty trigger-shaped description (REQ-HAW-009).
 - Fix the `moai-harness-<domain>-patterns` prefix reference in `project/meta-harness.md` §6.4 Expected
-  Outputs to the protected `my-harness-*` prefix (D-2) — this is a within-scope correction of an emission
-  contract, NOT the EX-1 rename.
+  Outputs (D-2 constraint) — this is a within-scope correction of an emission contract, NOT the EX-1 rename.
+  **Disambiguation (EX-1 boundary — the correction target is `my-harness-*`, NOT `harness-*`)**: the §6.4
+  reference is corrected to the code-side **`my-harness-*` prefix that the Go code + generator actually use
+  today** (the prefix `doctor_harness.go checkLayer1Triggers` matches and that
+  `SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001` protects). It is NOT renamed to the bare `harness-*` prefix;
+  `meta-harness SKILL.md:168` documents the doctrine(`harness-*`)-vs-code(`my-harness-*`) drift and warns
+  that `harness-*` generation has no protection yet, so this SPEC deliberately stays on the code-side
+  `my-harness-*` per EX-1. Advancing to `harness-*` is the future `SPEC-V3R6-HARNESS-NAMESPACE-V2-001`
+  (planned), explicitly OUT OF SCOPE here.
 - `make build`, sync.
 
 ### M5 — Phase-6 smoke gate (TDD, Go)
 - RED: add `doctor_harness_test.go` cases asserting the smoke gate fails when (a) `main.md` absent
   (REQ-HAW-010), (b) CLAUDE.md markers absent/unpaired (REQ-HAW-011), (c) a generated agent has empty
   `description` (REQ-HAW-012), (d) a generated agent's `skills:` preload references a non-existent skill
-  dir (REQ-HAW-013).
+  dir (REQ-HAW-013), (e) a generated agent OMITS the `skills:` key entirely (REQ-HAW-013b / AC-HAW-015 —
+  runtime enforcement of REQ-HAW-008's emission contract, distinct from the dangling case (d)).
 - GREEN: extend `runHarnessCheck` (or add a `checkLayer6SmokeGate` / agent-frontmatter check) in
   `doctor_harness.go`, preserving L1-L5 semantics (REQ-HAW-014). The L3 (marker) + L5 (`main.md`) checks
-  already cover REQ-HAW-010/011 partially; add the agent-description + dangling-skill checks.
+  already cover REQ-HAW-010/011 partially; add the agent-description + missing-`skills:` + dangling-skill
+  checks.
 - REFACTOR: dedupe with the existing layer-check helpers.
 - Full `go test ./...` to catch cascades.
 
