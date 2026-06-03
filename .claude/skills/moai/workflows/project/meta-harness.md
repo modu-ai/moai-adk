@@ -304,3 +304,83 @@ If `Skill("moai-meta-harness")` returns an error or partial output:
 1. Call `CleanupOnFailure(tracker, err)` — removes all tracked partial files.
 2. Surface the error to the user with a clear message.
 3. Do NOT proceed to Phase 7 (5-Layer Activation).
+
+## Phase 7: 5-Layer Activation
+
+Purpose: a generated harness only auto-triggers when its activation chain is
+installed. Phase 6 emits the agents, skills, and `.moai/harness/` files; Phase 7
+**wires the auto-trigger chain** so the generated harness actually loads when the
+user works. Without Phase 7 the generated artifacts are silent waste — the
+interview answers are captured and the domain agents emitted, yet nothing loads.
+
+[HARD] Phase 7 runs ONLY after Phase 6 generation completes successfully (all
+generated agents + skills + `.moai/harness/` files written). If Phase 6 failed
+or ran `CleanupOnFailure`, Phase 7 MUST NOT run.
+
+### 7.1 The Five Activation Layers
+
+The generated harness activates through five layers. Phase 6 satisfies L1, L2,
+L4, L5; Phase 7 installs the L3 marker and ensures the L5 `main.md` entry point
+exists, then verifies all five with the smoke gate (7.3):
+
+| Layer | Mechanism | Owner |
+|-------|-----------|-------|
+| L1 | `my-harness-*` skill frontmatter triggers (paths / keywords / agents / phases) | Phase 6 (generation) |
+| L2 | `.moai/config/sections/workflow.yaml` `harness:` section | Phase 6 (generation) |
+| L3 | `CLAUDE.md` `<!-- moai:harness-start -->` ~ `<!-- moai:harness-end -->` marker block | **Phase 7 (install)** |
+| L4 | `.claude/skills/moai/workflows/{plan,run,sync,design}.md` static `@.moai/harness/` import line | Phase 6 (already present in workflow files) |
+| L5 | `.moai/harness/main.md` task-shape router (the CLAUDE.md @import entry point) | **Phase 7 (install ensures present)** |
+
+### 7.2 Install Invocation (orchestrator instruction)
+
+The orchestrator runs the harness activation wiring by invoking the
+`moai harness install` CLI surface with the generating SPEC ID and the project
+domain. The command (a) scaffolds `.moai/harness/` so `main.md` exists (L5
+entry point), and (b) injects the CLAUDE.md routing marker block (L3). It is
+idempotent — re-running replaces the existing block rather than appending a
+duplicate.
+
+```bash
+moai harness install --spec-id <SPEC-PROJ-INIT-NNN> --domain <domain>
+# add --design-extension when Q13 == "Advanced (full custom)"
+```
+
+The command takes positional flag inputs and never invokes `AskUserQuestion`
+(subagent boundary). On a CLAUDE.md write failure (file absent / read-only) it
+returns a structured error and does NOT report success — surface that error to
+the user.
+
+### 7.3 Phase-6 Post-Generation Smoke Gate
+
+After the install runs, the orchestrator runs the post-generation smoke gate by
+invoking the extended `doctor harness` 5-layer diagnosis:
+
+```bash
+moai doctor harness   # (or: moai doctor, which includes the Harness 5-Layer check)
+```
+
+The gate FAILs (non-OK status) when a generated harness is structurally
+incomplete — covering:
+
+- `.moai/harness/main.md` absent (L5 entry point missing).
+- CLAUDE.md does not contain exactly one paired
+  `<!-- moai:harness-start -->` / `<!-- moai:harness-end -->` block (L3 marker).
+- a generated `.claude/agents/harness/*.md` agent has an empty `description`.
+- a generated agent's `skills:` preload references a `my-harness-*` skill
+  directory that does not exist on disk (dangling skill reference).
+- a generated agent OMITS the `skills:` frontmatter key entirely (the runtime
+  enforcement of the `skills:` preload emission contract — a `skills:`-less agent
+  would otherwise pass silently and reproduce the auto-discovery failure mode
+  this phase exists to close).
+
+When the gate FAILs, surface the failing layers to the user — a structurally
+incomplete harness must be regenerated or repaired before it can auto-trigger.
+
+### 7.4 Retrofit Note (existing incomplete harnesses)
+
+A harness generated **before** this activation wiring existed has its agents and
+skills but lacks the CLAUDE.md marker (L3) and may lack `main.md` (L5), so it
+never auto-triggers. To retrofit such a project, re-run the harness generation
+flow (re-run `/moai project` Phase 5-7) OR run `moai harness install --spec-id
+<SPEC-ID> --domain <domain>` directly against the project root. The install is
+idempotent, so running it on an already-wired harness is safe.

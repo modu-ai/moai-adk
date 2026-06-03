@@ -40,6 +40,11 @@ var v3r5RequiredHarnessVerbs = map[string]bool{
 	"mute-list": true,
 	"unmute":    true,
 	"verify":    true,
+	// SPEC-V3R6-HARNESS-PROPOSAL-GEN-001 proposal-generation verb.
+	"propose": true,
+	// SPEC-V3R6-HARNESS-ACTIVATION-WIRING-001 activation-wiring verb:
+	// `moai harness install` wires InjectMarker + ScaffoldHarnessDir.
+	"install": true,
 }
 
 // TestHarnessV3R5VerbSurface asserts that the `moai harness` command tree exposes

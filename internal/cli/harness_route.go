@@ -109,6 +109,13 @@ satisfies AC-HRA-009 (6+ verb surface).`,
 	// (TestPropose_NoAskUserQuestion) can scan a contained directory.
 	cmd.AddCommand(harnesscli.NewProposeCmd())
 
+	// SPEC-V3R6-HARNESS-ACTIVATION-WIRING-001: `moai harness install` is the
+	// live call path that wires the previously-orphaned InjectMarker (layer3)
+	// + ScaffoldHarnessDir (layer5) installers so a generated harness actually
+	// auto-triggers. The factory lives in the same internal/cli/harness/
+	// package, sharing the TestPropose_NoAskUserQuestion boundary guard.
+	cmd.AddCommand(harnesscli.NewInstallCmd())
+
 	return cmd
 }
 
