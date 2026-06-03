@@ -22,7 +22,7 @@
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-**mx_commit_sha**: (placeholder — backfilled in follow-up chore commit)
+**mx_commit_sha**: ae017a3d1
 
 **era**: V3R6
 
