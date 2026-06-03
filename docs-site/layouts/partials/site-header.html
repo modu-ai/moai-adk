@@ -5,27 +5,27 @@
       <span class="cw-brand-ver">v{{ site.Params.version }}</span>
     </a>
     <div class="cw-nav-search">
-      <button type="button" class="cw-search-input" data-search-trigger aria-label="문서 검색 (⌘K)">
+      <button type="button" class="cw-search-input" data-search-trigger aria-label="{{ i18n "search_aria" }}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3" stroke-linecap="round"/></svg>
-        <span>문서 검색</span>
+        <span>{{ i18n "search_label" }}</span>
         <kbd>⌘K</kbd>
       </button>
     </div>
     <div class="cw-nav-actions">
       {{- /* 언어 선택 — 추후 사용 예정, 현재는 숨김. DOM 보존하여 차후 재활성화 시 CSS 한 줄만 풀면 됨 */ -}}
-      <div class="cw-lang-switch" role="tablist" aria-label="언어" hidden style="display:none">
+      <div class="cw-lang-switch" role="tablist" aria-label="{{ i18n "lang_aria" }}" hidden style="display:none">
         <button class="active" type="button">KO</button>
         <button type="button">EN</button>
         <button type="button">JA</button>
         <button type="button">ZH</button>
       </div>
       {{- if default true .Site.Params.geekdocDarkModeToggle }}
-      <span id="gdoc-color-theme" class="cw-theme-toggle" tabindex="0" role="button" aria-pressed="false" aria-label="다크 모드 전환">
+      <span id="gdoc-color-theme" class="cw-theme-toggle" tabindex="0" role="button" aria-pressed="false" aria-label="{{ i18n "darkmode_aria" }}">
         <svg class="gdoc-icon gdoc_brightness_dark" width="18" height="18"><use xlink:href="#gdoc_brightness_dark"></use></svg>
         <svg class="gdoc-icon gdoc_brightness_light" width="18" height="18"><use xlink:href="#gdoc_brightness_light"></use></svg>
       </span>
       {{- end }}
-      <a class="cw-gh-stars" href="https://github.com/modu-ai/moai-adk" target="_blank" rel="noopener noreferrer" aria-label="GitHub 저장소 (modu-ai/moai-adk) 새 창으로 열기">
+      <a class="cw-gh-stars" href="https://github.com/modu-ai/moai-adk" target="_blank" rel="noopener noreferrer" aria-label="{{ i18n "github_aria" }}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.5-1.4-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.7.3 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg>
         <span>Star</span>
         <span class="cw-gh-count" data-gh-stars>—</span>
@@ -37,14 +37,14 @@
 {{- /* 검색 모달 ⌘K / Ctrl+K */ -}}
 <div class="cw-search-modal" data-search-modal hidden>
   <div class="cw-search-modal__backdrop" data-search-close></div>
-  <div class="cw-search-modal__panel" role="dialog" aria-modal="true" aria-label="문서 검색">
+  <div class="cw-search-modal__panel" role="dialog" aria-modal="true" aria-label="{{ i18n "search_label" }}">
     <div class="cw-search-modal__head">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3" stroke-linecap="round"/></svg>
-      <input type="search" class="cw-search-modal__input" placeholder="문서·플러그인·스킬 검색..." data-search-input autocomplete="off" />
+      <input type="search" class="cw-search-modal__input" placeholder="{{ i18n "search_placeholder" }}" data-search-input autocomplete="off" />
       <kbd class="cw-search-modal__kbd" data-search-close>ESC</kbd>
     </div>
     <div class="cw-search-modal__body" data-search-results>
-      <div class="cw-search-modal__hint">검색어를 입력하세요. 최소 2자 이상.</div>
+      <div class="cw-search-modal__hint">{{ i18n "search_hint" }}</div>
     </div>
   </div>
 </div>
@@ -79,7 +79,7 @@
   let index = null;
   const loadIndex = () => {
     if (index) return Promise.resolve(index);
-    return fetch('/search.json').then(r => r.ok ? r.json() : []).then(d => { index = d; return d; }).catch(() => { index = []; return []; });
+    return fetch('{{ "/search.json" | relLangURL }}').then(r => r.ok ? r.json() : []).then(d => { index = d; return d; }).catch(() => { index = []; return []; });
   };
 
   const open = () => {
@@ -92,7 +92,7 @@
     modal.hidden = true;
     document.body.style.overflow = '';
     input.value = '';
-    results.innerHTML = '<div class="cw-search-modal__hint">검색어를 입력하세요. 최소 2자 이상.</div>';
+    results.innerHTML = '<div class="cw-search-modal__hint">{{ i18n "search_hint" }}</div>';
   };
 
   // trigger button
@@ -116,7 +116,7 @@
     return escapeHtml(text).replace(re, '<mark>$1</mark>');
   };
   const render = (q, hits) => {
-    if (!hits.length) { results.innerHTML = '<div class="cw-search-modal__hint">검색 결과 없음.</div>'; return; }
+    if (!hits.length) { results.innerHTML = '<div class="cw-search-modal__hint">{{ i18n "search_no_results" }}</div>'; return; }
     results.innerHTML = '<ul class="cw-search-modal__list">' + hits.slice(0, 30).map(h => `
       <li><a href="${escapeHtml(h.href)}">
         <div class="title">${highlight(h.title || '', q)}</div>
@@ -127,7 +127,7 @@
   };
   const search = (q) => {
     if (!index || !q || q.length < 2) {
-      results.innerHTML = '<div class="cw-search-modal__hint">검색어를 입력하세요. 최소 2자 이상.</div>';
+      results.innerHTML = '<div class="cw-search-modal__hint">{{ i18n "search_hint" }}</div>';
       return;
     }
     const ql = q.toLowerCase();

@@ -5,7 +5,7 @@
 {{- $rawType := default "info" (.Get "type") -}}
 {{- $type := $rawType -}}
 {{- if eq $rawType "error" -}}{{- $type = "danger" -}}{{- end -}}
-{{- $title := default ($type | title) (.Get "title") -}}
+{{- $title := default (default ($type | title) (i18n (printf "callout_%s" $type))) (.Get "title") -}}
 
 <blockquote class="gdoc-hint {{ $type | lower }}">
   <div class="gdoc-hint__title flex gap-8 align-center">

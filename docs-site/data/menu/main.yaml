@@ -44,9 +44,9 @@ main:
         ref: /getting-started/installation
       - name:
           ko: Windows 사용 가이드
-          en: Windows 사용 가이드
-          ja: Windows 사용 가이드
-          zh: Windows 사용 가이드
+          en: Windows Guide
+          ja: Windows ガイド
+          zh: Windows 指南
         ref: /getting-started/windows-guide
       - name:
           ko: 초기 설정
@@ -68,9 +68,9 @@ main:
         ref: /getting-started/update
       - name:
           ko: 프로필 관리
-          en: 프로필 관리
-          ja: 프로필 관리
-          zh: 프로필 관리
+          en: Profile Management
+          ja: プロファイル管理
+          zh: 配置文件管理
         ref: /getting-started/profile
       - name:
           ko: CLI 레퍼런스
@@ -102,15 +102,15 @@ main:
         ref: /core-concepts/what-is-moai-adk
       - name:
           ko: 하네스 엔지니어링
-          en: 하네스 엔지니어링
-          ja: 하네스 엔지니어링
-          zh: 하네스 엔지니어링
+          en: Harness Engineering
+          ja: ハーネスエンジニアリング
+          zh: Harness 工程
         ref: /core-concepts/harness-engineering
       - name:
           ko: Constitution 시스템
-          en: Constitution 시스템
-          ja: Constitution 시스템
-          zh: Constitution 시스템
+          en: Constitution System
+          ja: Constitution システム
+          zh: Constitution 系统
         ref: /core-concepts/constitution
       - name:
           ko: SPEC 기반 개발
@@ -130,12 +130,40 @@ main:
           ja: TRUST 5 品質フレームワーク
           zh: TRUST 5 质量框架
         ref: /core-concepts/trust-5
+
+  - name:
+      ko: Claude Code 가이드
+      en: Claude Code Guide
+      ja: Claude Code ガイド
+      zh: Claude Code 指南
+    ref: /claude-code
+    icon: star
+    defaultOpen: false
+    sub:
       - name:
-          ko: MoAI Memory
-          en: MoAI Memory
-          ja: MoAI Memory
-          zh: MoAI 记忆系统
-        ref: /core-concepts/moai-memory
+          ko: 기초 — Claude Code 이해
+          en: Foundations
+          ja: 基礎
+          zh: 基础
+        ref: /claude-code/foundations
+      - name:
+          ko: 컨텍스트와 메모리
+          en: Context & Memory
+          ja: コンテキストとメモリ
+          zh: 上下文与记忆
+        ref: /claude-code/context-memory
+      - name:
+          ko: 확장 — 스킬·훅·MCP·플러그인
+          en: Extensibility
+          ja: 拡張
+          zh: 扩展
+        ref: /claude-code/extensibility
+      - name:
+          ko: 에이전트와 자동화
+          en: Agents & Automation
+          ja: エージェントと自動化
+          zh: 代理与自动化
+        ref: /claude-code/agentic
 
   - name:
       ko: 워크플로우 명령어
@@ -382,9 +410,9 @@ main:
     sub:
       - name:
           ko: 자율 CI/CD 가이드
-          en: 자율 CI/CD 가이드
-          ja: 자율 CI/CD 가이드
-          zh: 자율 CI/CD 가이드
+          en: Autonomous CI/CD Guide
+          ja: 自律 CI/CD ガイド
+          zh: 自主 CI/CD 指南
         ref: /guides/ci-autonomy
       - name:
           ko: Multi-LLM CI 가이드
@@ -474,9 +502,9 @@ main:
         ref: /advanced/security-notes
       - name:
           ko: 하네스 프로필과 평가 시스템
-          en: 하네스 프로필과 평가 시스템
-          ja: 하네스 프로필과 평가 시스템
-          zh: 하네스 프로필과 평가 시스템
+          en: Harness Profiles & Evaluation
+          ja: ハーネスプロファイルと評価システム
+          zh: Harness 配置与评估系统
         ref: /advanced/harness-profiles
       - name:
           ko: Statusline 시스템 — 3-line 레이아웃 완전 가이드
@@ -486,9 +514,9 @@ main:
         ref: /advanced/statusline
       - name:
           ko: 카탈로그 시스템
-          en: 카탈로그 시스템
-          ja: 카탈로그 시스템
-          zh: 카탈로그 시스템
+          en: Catalog System
+          ja: カタログシステム
+          zh: 目录系统
         ref: /advanced/catalog-system
       - name:
           ko: CLAUDE.md 가이드

@@ -329,6 +329,33 @@ footer.foot{background:var(--ink-warm);color:var(--cream);text-align:center;padd
 footer.foot .title{font-size:clamp(20px,2.4vw,38px);font-weight:700;letter-spacing:.04em;color:#F1EDDE;margin-bottom:clamp(18px,2vw,32px)}
 footer.foot .meta{font-family:var(--mono);font-weight:700;font-size:clamp(13px,1.5vw,22px);letter-spacing:.08em;color:var(--mute-2);line-height:1.8}
 
+/* ─── TABLE OF CONTENTS (목차) ──────────────────────── */
+.toc-pre{border:2px solid var(--rule-light);border-radius:2px;margin-bottom:clamp(36px,4.5vw,64px)}
+.toc-pre li{list-style:none;font-size:clamp(15px,1.7vw,22px);font-weight:500;color:var(--sub);padding:clamp(14px,1.5vw,22px) clamp(20px,2.5vw,36px);border-top:1px solid var(--rule-light)}
+.toc-pre li:first-child{border-top:0}
+.toc-pre li b{color:var(--accent);font-weight:700;font-family:var(--mono);font-size:.8em;letter-spacing:.08em;margin-right:12px}
+.toc-part{font-family:var(--mono);font-weight:700;font-size:clamp(13px,1.5vw,20px);letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin:clamp(44px,5.5vw,80px) 0 clamp(8px,1vw,16px)}
+.toc-part:first-of-type{margin-top:0}
+.toc-part .ko{display:block;font-family:var(--ko);font-weight:700;font-size:clamp(22px,2.8vw,40px);letter-spacing:-.02em;text-transform:none;color:var(--ink-dark);margin-top:8px}
+.toc-group{border-top:2px solid var(--ink)}
+.toc-ch{border-top:1px solid var(--rule-light)}
+.toc-ch:first-child{border-top:0}
+.toc-ch>summary{cursor:pointer;list-style:none;display:grid;grid-template-columns:auto 1fr auto;gap:clamp(12px,1.6vw,26px);align-items:center;padding:clamp(18px,2.1vw,32px) clamp(2px,.8vw,10px);font-size:clamp(17px,2vw,28px);font-weight:700;letter-spacing:-.015em;color:var(--ink-dark)}
+.toc-ch>summary::-webkit-details-marker{display:none}
+.toc-ch>summary:hover,.toc-ch[open]>summary{color:var(--accent)}
+.toc-ch .chno{font-family:var(--mono);font-weight:700;font-size:clamp(12px,1.4vw,18px);letter-spacing:.1em;color:var(--accent);white-space:nowrap}
+.toc-ch .caret{font-family:var(--mono);font-weight:700;font-size:clamp(20px,2.2vw,32px);color:var(--mute);transition:transform .25s}
+.toc-ch[open] .caret{transform:rotate(45deg)}
+.toc-body{padding:clamp(4px,1vw,12px) clamp(2px,1vw,12px) clamp(28px,3vw,46px) clamp(16px,3vw,52px)}
+.toc-sec{margin-top:clamp(20px,2.3vw,34px)}
+.toc-sec:first-child{margin-top:0}
+.toc-sec .st{font-size:clamp(16px,1.85vw,25px);font-weight:700;color:var(--brown);letter-spacing:-.01em;margin-bottom:clamp(8px,1vw,14px)}
+.toc-sub{list-style:none;display:flex;flex-wrap:wrap;gap:clamp(5px,.7vw,10px) clamp(12px,1.6vw,26px)}
+.toc-sub li{font-size:clamp(13px,1.45vw,18px);line-height:1.45;color:var(--sub);position:relative;padding-left:13px}
+.toc-sub li::before{content:"·";position:absolute;left:0;color:var(--accent);font-weight:700}
+.toc-tail{margin-top:clamp(34px,4vw,60px);border-top:2px solid var(--ink);display:flex;flex-wrap:wrap;gap:clamp(10px,1.5vw,22px);padding-top:clamp(22px,2.5vw,36px)}
+.toc-tail span{font-family:var(--mono);font-weight:600;font-size:clamp(12px,1.3vw,17px);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);border:1.5px solid var(--rule);border-radius:999px;padding:clamp(7px,.9vw,11px) clamp(14px,1.6vw,24px)}
+
 /* ─── tiny utilities ────────────────────────────────── */
 .spacer{height:clamp(24px,3vw,48px)}
 ul,ol{padding:0;margin:0}
@@ -456,6 +483,136 @@ ul,ol{padding:0;margin:0}
     </article>
 
     <p class="how-closing">이론서가 아닙니다. 488쪽을 따라가면,<span class="em">'나만의 가상 개발팀'이 손 안에 들어옵니다.</span></p>
+  </div>
+</section>
+
+<!-- ─── 목차 · TABLE OF CONTENTS ──────────────────────── -->
+<section class="section paper-2" data-screen-label="목차">
+  <div class="wrap">
+    <div class="eyebrow">목차 · Table of Contents</div>
+    <h2 class="h-section">전체 목차,<br>10개 장 + 부록.</h2>
+    <p class="lede" style="margin-bottom:clamp(40px,5vw,80px);max-width:880px">PART 1 클로드 코드 마스터(7개 장) · PART 2 MoAI-ADK 실전(3개 장) · APPENDIX A.<br>각 챕터를 누르면 세부 절과 소항목이 펼쳐집니다.</p>
+
+    <ul class="toc-pre">
+      <li>추천인의 글</li>
+      <li>저자와의 인터뷰</li>
+      <li>이 책의 구성</li>
+    </ul>
+
+    <div class="toc-part">PART 1<span class="ko">클로드 코드 마스터</span></div>
+    <div class="toc-group">
+      <details class="toc-ch">
+        <summary><span class="chno">CH 01</span><span>클로드 코드 시작하기</span><span class="caret" aria-hidden="true">+</span></summary>
+        <div class="toc-body">
+          <div class="toc-sec"><div class="st">1-1 클로드 코드와 에이전틱 코딩</div><ul class="toc-sub"><li>앤트로픽과 에이전틱 AI의 부상</li><li>에이전틱 코딩이란</li><li>에이전틱 루프: 클로드 코드의 동작 원리</li><li>터미널에서 시작하는 AI 코딩</li><li>컨텍스트 윈도우와 20만 토큰 컨텍스트의 의미</li><li>컨텍스트 윈도우 관리 전략</li><li>다섯 가지 접근 영역과 핵심 기능</li><li>엔터프라이즈 환경에서의 클로드 코드</li></ul></div>
+          <div class="toc-sec"><div class="st">1-2 클로드 코드 설치</div><ul class="toc-sub"><li>운영체제별 설치 방법</li><li>인증 설정</li><li>버전 관리와 업데이트 전략</li></ul></div>
+          <div class="toc-sec"><div class="st">1-3 클로드 코드 CLI 기초</div><ul class="toc-sub"><li>대화형 모드와 비대화형 모드</li><li>다양한 실행 플래그</li><li>시스템 상태 진단과 문제 해결</li><li>체크포인트와 되감기 시스템</li></ul></div>
+          <div class="toc-sec"><div class="st">1-4 프로젝트로 특징 이해하기</div><ul class="toc-sub"><li>프로젝트 컨텍스트의 이해</li><li>간단한 프로그램 작성</li><li>파일 읽기와 쓰기 패턴</li><li>깃 통합</li><li>효과적인 작업 관리</li><li>마무리</li></ul></div>
+        </div>
+      </details>
+      <details class="toc-ch">
+        <summary><span class="chno">CH 02</span><span>워크플로와 설정</span><span class="caret" aria-hidden="true">+</span></summary>
+        <div class="toc-body">
+          <div class="toc-sec"><div class="st">2-1 기본 작업 방식</div><ul class="toc-sub"><li>탐색-계획-구현-커밋 워크플로</li><li>탐색과 분석</li><li>점진적 개발 전략</li><li>깃 통합 워크플로</li><li>비대화형 모드에서의 세션 재개</li><li>파이프와 클로드</li></ul></div>
+          <div class="toc-sec"><div class="st">2-2 설정 관리</div><ul class="toc-sub"><li>settings.json 설정과 우선순위</li><li>기본 설정 옵션</li><li>프로젝트별 설정 전략</li><li>환경 변수 관리</li><li>팀 표준 설정 구축</li><li>민감한 파일 보호</li><li>도구별 설정</li><li>클로드 코드의 다섯 가지 확장 도구 비교</li></ul></div>
+          <div class="toc-sec"><div class="st">2-3 IAM 권한 관리</div><ul class="toc-sub"><li>IAM 개념</li><li>파일 및 명령 권한 설정</li><li>도구별 권한 체계</li><li>안전한 실행 환경 구축</li><li>권한 문제 해결</li><li>보안 유의 사항</li><li>권한 설정 실무 예시</li><li>데이터 사용 정책</li><li>데이터 보존 기간</li><li>원격 분석과 비활성화 옵션</li></ul></div>
+          <div class="toc-sec"><div class="st">2-4 모델 구성과 API 최적화</div><ul class="toc-sub"><li>모델 별칭 시스템 이해하기</li><li>모델 설정 방법의 우선순위</li><li>환경 변수를 통한 모델 별칭 커스터마이징</li><li>프롬프트 캐싱 이해와 최적화</li><li>모델 선택 전략</li></ul></div>
+        </div>
+      </details>
+      <details class="toc-ch">
+        <summary><span class="chno">CH 03</span><span>에이전트 스킬</span><span class="caret" aria-hidden="true">+</span></summary>
+        <div class="toc-body">
+          <div class="toc-sec"><div class="st">3-1 클로드 스킬의 개념과 구조</div><ul class="toc-sub"><li>컨텍스트 윈도우는 공용 자산이다</li><li>스킬의 유형</li><li>SKILL.md 파일 구조</li><li>세 단계 점진적 작동 방식</li><li>스킬 컨텍스트 비용</li><li>도구 접근 권한 제한</li></ul></div>
+          <div class="toc-sec"><div class="st">3-2 스킬 사용과 개발</div><ul class="toc-sub"><li>스킬 목록과 스킬 조합</li><li>커스텀 스킬 개발</li><li>스킬에서 환각 방지 지침 작성</li><li>코드 실행 통합</li><li>테스트와 검증 방법</li></ul></div>
+          <div class="toc-sec"><div class="st">3-3 스킬 고급 사용과 최적화</div><ul class="toc-sub"><li>동적 스킬 로딩 패턴</li><li>스킬 성능 최적화</li><li>스킬 버전 관리</li><li>팀 스킬 개발</li><li>디버깅 기법</li><li>재사용 가능한 스킬 패턴</li><li>스킬 문서화 유의 사항</li><li>스킬의 격리 실행: context:fork 메커니즘</li></ul></div>
+        </div>
+      </details>
+      <details class="toc-ch">
+        <summary><span class="chno">CH 04</span><span>서브에이전트</span><span class="caret" aria-hidden="true">+</span></summary>
+        <div class="toc-body">
+          <div class="toc-sec"><div class="st">4-1 서브에이전트의 개념과 아키텍처</div><ul class="toc-sub"><li>에이전트 위임 패턴: 오케스트레이터-워커</li><li>단일 책임 원칙과 서브에이전트</li><li>컨텍스트 엔지니어링 원칙</li><li>에이전트 체인과 병렬 실행</li><li>언제 서브에이전트를 사용하는가</li></ul></div>
+          <div class="toc-sec"><div class="st">4-2 서브에이전트 사용하기</div><ul class="toc-sub"><li>사용 가능한 서브에이전트 목록</li><li>에이전트 호출 문법</li><li>에이전트 결과 통합</li><li>작업 재개 기능 활용</li><li>에러 처리 및 복구</li><li>서브에이전트 성능 측정</li></ul></div>
+          <div class="toc-sec"><div class="st">4-3 커스텀 서브에이전트 개발과 스킬 주입</div><ul class="toc-sub"><li>서브에이전트 정의 파일 구조</li><li>YAML 프론트매터 완전 가이드</li><li>프롬프트 작성 가이드</li><li>에이전트 테스트와 최적화</li><li>스킬 주입 예제</li></ul></div>
+          <div class="toc-sec"><div class="st">4-4 에이전트 팀</div><ul class="toc-sub"><li>에이전트 팀의 핵심 개념</li><li>팀 생성과 생애 주기 관리</li><li>컨텍스트와 권한</li><li>메시지 전달 시스템</li><li>태스크 조정 시스템</li><li>파일 소유권 전략</li><li>서브에이전트와 에이전트 팀</li></ul></div>
+          <div class="toc-sec"><div class="st">4-5 CLI 기반 동적 에이전트 활용</div><ul class="toc-sub"><li>--agent 플래그: 기존 에이전트 직접 실행</li><li>에이전트 해석 과정</li><li>CLI 에이전트와 에이전트 팀의 관계</li></ul></div>
+        </div>
+      </details>
+      <details class="toc-ch">
+        <summary><span class="chno">CH 05</span><span>출력 인터페이스</span><span class="caret" aria-hidden="true">+</span></summary>
+        <div class="toc-body">
+          <div class="toc-sec"><div class="st">5-1 출력 스타일 커스터마이징</div><ul class="toc-sub"><li>출력 스타일의 핵심 개념</li><li>내장 출력 스타일 살펴보기</li><li>출력 스타일 변경 방법</li><li>커스텀 출력 스타일 생성하기</li><li>관련 기능과의 비교</li><li>팀 표준 출력 스타일 구축</li><li>스타일 검증과 다국어 출력</li><li>출력 스타일에서 환각 방지 지침</li></ul></div>
+          <div class="toc-sec"><div class="st">5-2 상태 표시줄</div><ul class="toc-sub"><li>상태 표시줄 설정 방법</li><li>상태 표시줄 스크립트 작동 원리</li><li>Bash로 작성한 여러 가지 상태 표시줄 스크립트</li><li>파이썬과 Node.js로 작성한 상태 표시줄 스크립트</li><li>헬퍼 함수를 활용한 모듈화와 ANSI 코드</li><li>성능 최적화 전략</li><li>문제 해결</li></ul></div>
+          <div class="toc-sec"><div class="st">5-3 대화형 모드 활용</div><ul class="toc-sub"><li>고급 제어 기능</li><li>단축키 빠른 참조</li></ul></div>
+        </div>
+      </details>
+      <details class="toc-ch">
+        <summary><span class="chno">CH 06</span><span>메모리와 대화 세션 관리</span><span class="caret" aria-hidden="true">+</span></summary>
+        <div class="toc-body">
+          <div class="toc-sec"><div class="st">6-1 메모리 시스템 이해하기</div><ul class="toc-sub"><li>네 가지 계층적 메모리</li><li>자동 메모리</li><li>CLAUDE.md 가져오기와 조건부 로딩</li><li>메모리 시스템을 자유자재로</li><li>메모리 최적화와 장기 작업 관리</li><li>모듈형 룰 시스템</li><li>사용자 수준 룰과 고급 기능</li></ul></div>
+          <div class="toc-sec"><div class="st">6-2 체크포인팅과 복구 시스템</div><ul class="toc-sub"><li>/rewind 화면과 되감기 사용법</li><li>체크포인팅의 제한 사항과 대응 전략</li><li>체크포인팅과 깃</li><li>다중 체크포인트와 스마트 복구</li><li>실험 주도 개발을 위한 체크포인팅 워크플로</li></ul></div>
+          <div class="toc-sec"><div class="st">6-3 세션 관리 전략</div><ul class="toc-sub"><li>컨텍스트 윈도우 최적화와 세션 복구</li><li>다중 세션 관리</li><li>세션 데이터 보관</li><li>협업에서의 세션 관리</li><li>장기 프로젝트에서의 세션 전략</li></ul></div>
+        </div>
+      </details>
+      <details class="toc-ch">
+        <summary><span class="chno">CH 07</span><span>자동화</span><span class="caret" aria-hidden="true">+</span></summary>
+        <div class="toc-body">
+          <div class="toc-sec"><div class="st">7-1 비대화형 모드와 스크립트 자동화</div><ul class="toc-sub"><li>주요 플래그</li><li>프로그래밍 활용</li><li>비대화형 모드 사용 시 고려사항</li></ul></div>
+          <div class="toc-sec"><div class="st">7-2 훅 시스템</div><ul class="toc-sub"><li>훅 이벤트</li><li>종료 코드와 결정 제어 체계</li><li>훅 구성 파일과 우선순위</li><li>매처 패턴 이해하기</li><li>프롬프트 기반 훅과 에이전트 기반 훅</li><li>비동기 훅</li><li>프론트매터 훅과 에이전트 범위 훅</li><li>실용적인 훅 예제</li><li>훅 실행의 특성과 디버깅</li><li>체크포인팅 보완을 위한 훅 활용</li><li>HTTP 훅</li></ul></div>
+          <div class="toc-sec"><div class="st">7-3 MCP 통합으로 외부 세계와의 연결 확장</div><ul class="toc-sub"><li>MCP 전송 방식</li><li>주요 MCP 서버 활용 사례</li><li>MCP 서버 설정과 구현 방법</li><li>훅과 MCP의 연동 전략</li><li>유의 사항</li></ul></div>
+          <div class="toc-sec"><div class="st">7-4 플러그인 시스템 이해하기</div><ul class="toc-sub"><li>플러그인 구조</li><li>컴포넌트 유형</li><li>플러그인과 프로젝트 설정의 관계</li><li>플러그인 설치 범위</li><li>LSP 서버 지원</li><li>앤트로픽 공식 마켓플레이스</li><li>플러그인 설치·활성화·비활성화·제거</li><li>팀 플러그인 워크플로와 자동 설치</li><li>실전 플러그인, 코드 품질 도구</li><li>로컬 테스트 환경 설정과 개발 워크플로</li><li>플러그인 캐싱</li><li>플러그인 배포와 마켓플레이스 게시</li></ul></div>
+        </div>
+      </details>
+    </div>
+
+    <div class="toc-part">PART 2<span class="ko">MoAI-ADK와 실전 에이전틱 코딩</span></div>
+    <div class="toc-group">
+      <details class="toc-ch">
+        <summary><span class="chno">CH 08</span><span>클로드 코드와 MoAI-ADK</span><span class="caret" aria-hidden="true">+</span></summary>
+        <div class="toc-body">
+          <div class="toc-sec"><div class="st">8-1 하네스 엔지니어링과 MoAI-ADK</div><ul class="toc-sub"><li>에이전트 하네스, MoAI-ADK</li><li>하네스 엔지니어링</li><li>MoAI-ADK가 해결하는 문제</li><li>MoAI-ADK 실행 엔진</li></ul></div>
+          <div class="toc-sec"><div class="st">8-2 설치와 초기 설정</div><ul class="toc-sub"><li>설치 방법</li><li>프로젝트 초기화와 설정</li><li>환경 진단</li><li>업데이트</li></ul></div>
+          <div class="toc-sec"><div class="st">8-3 아키텍처</div><ul class="toc-sub"><li>4계층 구조</li><li>MoAI의 지침, CLAUDE.md</li><li>Rules 시스템</li><li>settings.json: 네 단계 스코프 시스템</li><li>.mcp.json: MCP 서버 구성</li><li>응답 스타일 시스템</li></ul></div>
+          <div class="toc-sec"><div class="st">8-4 개발 방법론, TDD와 DDD</div><ul class="toc-sub"><li>SPEC과 EARS 형식</li><li>DDD</li><li>이진 방법론</li></ul></div>
+          <div class="toc-sec"><div class="st">8-5 TRUST-5 품질 프레임워크</div><ul class="toc-sub"><li>다섯 가지 원칙</li><li>LSP 품질 게이트</li><li>Loop Engine: 자율 품질 루프</li><li>TRUST-5와 LSP 매핑</li><li>품질 리포트 생성</li></ul></div>
+          <div class="toc-sec"><div class="st">8-6 에이전트 생태계</div><ul class="toc-sub"><li>Manager 에이전트 그룹</li><li>Expert 에이전트 그룹</li><li>Builder 에이전트 그룹</li><li>에이전트 선택 의사결정 트리</li><li>에이전트 정의 파일 구조</li></ul></div>
+        </div>
+      </details>
+      <details class="toc-ch">
+        <summary><span class="chno">CH 09</span><span>MoAI-ADK 워크플로</span><span class="caret" aria-hidden="true">+</span></summary>
+        <div class="toc-body">
+          <div class="toc-sec"><div class="st">들어가며 · 프로젝트 문서 생성</div><ul class="toc-sub"><li>/moai project: 프로젝트 문서 생성</li><li>신규 프로젝트 시작하기</li><li>기존 프로젝트에 도입하기</li></ul></div>
+          <div class="toc-sec"><div class="st">9-1 plan-run-sync 핵심 워크플로</div><ul class="toc-sub"><li>/moai plan: 명세서 생성</li><li>/moai run: TDD/DDD 구현</li><li>/moai sync: 코드, SPEC, 프로젝트 문서 동기화</li><li>/moai: 자율 자동화 모드</li><li>단계 전환 조건</li></ul></div>
+          <div class="toc-sec"><div class="st">9-2 서브에이전트 심층 활용</div><ul class="toc-sub"><li>Agent 도구의 기본 사용법</li><li>에이전트 호출 패턴</li><li>병렬 실행 전략</li><li>에이전트 간 통신과 컨텍스트 격리</li><li>에이전트 재개</li><li>실전 오케스트레이션 예시</li></ul></div>
+          <div class="toc-sec"><div class="st">9-3 에이전트 팀, 팀 기반 병렬 개발</div><ul class="toc-sub"><li>에이전트 팀 활성화</li><li>실행 모드와 팀 모드의 조합</li><li>디스플레이 모드와 환경 요구 사항</li><li>팀 생성과 구성</li><li>팀 커뮤니케이션</li><li>plan 단계 팀 워크플로</li><li>run 단계 팀 워크플로</li><li>서브에이전트와 에이전트 팀 비교</li></ul></div>
+          <div class="toc-sec"><div class="st">9-4 스킬 생태계와 점진적 공개</div><ul class="toc-sub"><li>스킬 분류 체계</li><li>YAML 프론트매터 스키마</li><li>점진적 공개와 토큰</li><li>트리거 시스템: 자동 로딩의 방식</li><li>슬래시 명령어 연동</li><li>스킬과 에이전트 연동</li></ul></div>
+          <div class="toc-sec"><div class="st">9-5 빌더 에이전트와 스킬 만들기</div><ul class="toc-sub"><li>builder-agent: 커스텀 에이전트 생성</li><li>builder-skill: 커스텀 스킬 생성</li><li>도구 권한 설계 원칙</li><li>실전: 보안 검사 에이전트 만들기</li></ul></div>
+          <div class="toc-sec"><div class="st">9-6 훅 시스템과 MCP 통합</div><ul class="toc-sub"><li>MoAI-ADK의 훅 이벤트 체계</li><li>MCP 통합</li><li>훅과 MCP의 시너지</li></ul></div>
+          <div class="toc-sec"><div class="st">9-7 깃 작업 트리: 병렬 SPEC 개발</div><ul class="toc-sub"><li>MoAI-ADK의 작업 트리 통합</li><li>작업 트리 하위 명령어</li><li>병렬 SPEC 개발 패턴</li><li>작업 트리 복구와 정리</li></ul></div>
+          <div class="toc-sec"><div class="st">9-8 슬래시 명령어와 CLI 유틸리티</div><ul class="toc-sub"><li>슬래시 명령어</li><li>CLI 유틸리티 명령어</li><li>moai statusline: 상태 표시줄 설정</li></ul></div>
+        </div>
+      </details>
+      <details class="toc-ch">
+        <summary><span class="chno">CH 10</span><span>에이전틱 코딩 실습: 스네이크 게임 만들기</span><span class="caret" aria-hidden="true">+</span></summary>
+        <div class="toc-body">
+          <div class="toc-sec"><div class="st">STEP 1 초기화 · 프로젝트 초기화와 문서 생성</div><ul class="toc-sub"><li>게임 개발 준비</li><li>moai init으로 프로젝트 시작</li><li>moai project로 프로젝트 문서 생성</li><li>생성한 프로젝트 문서 확인</li><li>클로드 코드의 프로젝트 컨텍스트 인식</li><li>HTML5 Canvas와 게임 루프 패턴</li><li>다음 단계 미리보기</li></ul></div>
+          <div class="toc-sec"><div class="st">STEP 2 plan · 스펙 문서로 게임 규칙 정의하기</div><ul class="toc-sub"><li>클로드에 게임 규칙 설명하기</li><li>스펙 문서 생성</li><li>구현 계획: 마일스톤과 파일 매핑</li><li>수용 테스트 시나리오</li><li>단일 SPEC과 모듈형 SPEC</li><li>컨텍스트 윈도우 관리</li></ul></div>
+          <div class="toc-sec"><div class="st">STEP 3 run · TDD 방식으로 모던 스네이크 게임 구현하기</div><ul class="toc-sub"><li>클로드에 구현 요청하기</li><li>전체 구현 결과 요약</li></ul></div>
+          <div class="toc-sec"><div class="st">STEP 4 sync · 문서화와 완료</div><ul class="toc-sub"><li>Phase 1: 분석 및 계획 수립</li><li>Phase 2: 문서 동기화</li><li>Phase 3: 깃 커밋 생성</li><li>Phase 4: 완료 요약</li><li>버그 수정: /moai fix와 /moai loop</li><li>워크플로 전체 복습</li><li>실습을 마치며</li></ul></div>
+        </div>
+      </details>
+    </div>
+
+    <div class="toc-part">APPENDIX A<span class="ko">개발자를 위한 실전 팁</span></div>
+    <ul class="toc-pre">
+      <li><b>A-1</b>클로드 코드 개발자의 실전 노하우</li>
+      <li><b>A-2</b>에이전틱 코딩을 위한 SaaS/BaaS 서비스 가이드</li>
+      <li><b>A-3</b>MCP와 CLI 도구 선택 전략</li>
+      <li><b>A-4</b>바이브 디자인 Pencil MCP 설치와 활용</li>
+      <li><b>A-5</b>클로드 코드에서 GLM-5 사용</li>
+      <li><b>A-6</b>매니지드 에이전트</li>
+    </ul>
+
+    <div class="toc-tail"><span>에필로그</span><span>찾아보기</span></div>
   </div>
 </section>
 

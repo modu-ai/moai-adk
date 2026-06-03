@@ -713,4 +713,4 @@ MoAI-ADKの全体像を理解したら、次は各コアコンセプトを詳し
 - [SPECベース開発](/core-concepts/spec-based-dev) -- 要件をどのように文書として定義するかを学びます
 - [ドメイン駆動開発](/core-concepts/ddd) -- 既存コードを安全に改善する方法を学びます
 - [TRUST 5品質](/core-concepts/trust-5) -- コード品質を自動的に検証する方法を学びます
-- [MoAI Memory](/core-concepts/moai-memory) -- セッション間でコンテキストがどのように保存されるかを学びます
+- [MoAI Memory](/claude-code/context-memory/memory) -- セッション間でコンテキストがどのように保存されるかを学びます

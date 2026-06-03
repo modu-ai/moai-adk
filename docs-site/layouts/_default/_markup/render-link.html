@@ -1,0 +1,53 @@
+{{- /* Custom markdown link render hook — geekdoc output preserved + i18n path resolution.
+       Resolution order for internal links:
+         1. .Page.GetPage  → canonical language-prefixed RelPermalink (fixes both the missing
+            /{lang} prefix AND wrong relative path-math from leaf pages, .md stripped).
+         2. fallback heuristic → relLangURL on root-absolute links Hugo could not resolve.
+       External (http/https/mailto/tel/protocol-relative), anchors, already-/{lang}-prefixed,
+       and static-root links (/book, /og.png …) pass through untouched. */ -}}
+{{- $raw := or (hasPrefix .Text "<img") (hasPrefix .Text "<figure") -}}
+{{- $code := hasPrefix .Text "<code" -}}
+{{- $dest := .Destination -}}
+{{- $external := or (hasPrefix $dest "http://") (hasPrefix $dest "https://") (hasPrefix $dest "mailto:") (hasPrefix $dest "tel:") (hasPrefix $dest "//") -}}
+{{- $href := $dest -}}
+{{- if not $external -}}
+  {{- $anchor := "" -}}
+  {{- $path := $dest -}}
+  {{- if strings.Contains $path "#" -}}
+    {{- $parts := split $path "#" -}}
+    {{- $path = index $parts 0 -}}
+    {{- $anchor = printf "#%s" (delimit (after 1 $parts) "#") -}}
+  {{- end -}}
+  {{- $path = strings.TrimSuffix ".md" $path -}}
+  {{- $resolved := "" -}}
+  {{- if and $path (not (hasPrefix $path "/book")) -}}
+    {{- with .Page.GetPage $path -}}{{- $resolved = .RelPermalink -}}{{- end -}}
+  {{- end -}}
+  {{- if $resolved -}}
+    {{- $href = printf "%s%s" (strings.TrimSuffix "/" $resolved) $anchor -}}
+  {{- else -}}
+    {{- $u := $path -}}
+    {{- if and (hasPrefix $u "/") (ne $u "/") -}}
+      {{- $seg := index (split (strings.TrimPrefix "/" $u) "/") 0 -}}
+      {{- $isLang := in (slice "ko" "en" "ja" "zh") $seg -}}
+      {{- $isStatic := or (hasPrefix $u "/book") (strings.Contains $seg ".") -}}
+      {{- if and (not $isLang) (not $isStatic) -}}
+        {{- $u = relLangURL $u -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $href = printf "%s%s" $u $anchor -}}
+  {{- end -}}
+{{- end -}}
+<a
+  class="gdoc-markdown__link{{ if $raw -}}
+    --raw
+  {{- else if $code -}}
+    --code
+  {{- end }}"
+  href="{{ $href | safeURL }}"
+  {{- with .Title }}{{ printf "title=\"%s\"" . | safeHTMLAttr }}{{- end }}
+  {{- if $external }} rel="noopener"{{- end }}
+>
+  {{- .Text | safeHTML -}}
+</a>
+{{- /* Drop trailing newlines */ -}}

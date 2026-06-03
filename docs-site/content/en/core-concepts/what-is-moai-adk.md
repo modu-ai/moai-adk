@@ -694,4 +694,4 @@ Now that you understand the big picture of MoAI-ADK, it's time to learn each cor
 - [SPEC-Based Development](/core-concepts/spec-based-dev) -- Learn how to define requirements as documents
 - [Domain-Driven Development](/core-concepts/ddd) -- Learn how to safely improve existing code
 - [TRUST 5 Quality](/core-concepts/trust-5) -- Learn how to automatically validate code quality
-- [MoAI Memory](/core-concepts/moai-memory) -- Learn how context is preserved across sessions
+- [MoAI Memory](/claude-code/context-memory/memory) -- Learn how context is preserved across sessions

@@ -1,0 +1,9 @@
+{{- /* menu/name — resolve a multilingual name map to the current language.
+       Input (.) is either a map {ko:.., en:.., ja:.., zh:..} or a plain string.
+       Fallback chain: current lang → en → ko → ja → zh. Single trailing return. */ -}}
+{{- $n := . -}}
+{{- $out := $n -}}
+{{- if reflect.IsMap $n -}}
+{{- $out = or (index $n site.Language.Lang) (index $n "en") (index $n "ko") (index $n "ja") (index $n "zh") -}}
+{{- end -}}
+{{- return $out -}}

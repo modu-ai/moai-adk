@@ -709,4 +709,4 @@ MoAI-ADK의 전체 그림을 이해했다면, 이제 각 핵심 개념을 자세
 - [SPEC 기반 개발](/core-concepts/spec-based-dev) -- 요구사항을 어떻게 문서로 정의하는지 배웁니다
 - [도메인 주도 개발](/core-concepts/ddd) -- 기존 코드를 안전하게 개선하는 방법을 배웁니다
 - [TRUST 5 품질](/core-concepts/trust-5) -- 코드 품질을 자동으로 검증하는 방법을 배웁니다
-- [MoAI Memory](/core-concepts/moai-memory) -- 세션 간 컨텍스트가 어떻게 보존되는지 배웁니다
+- [MoAI Memory](/claude-code/context-memory/memory) -- 세션 간 컨텍스트가 어떻게 보존되는지 배웁니다

@@ -31,7 +31,7 @@
 
 ---
 
-> 📚 **[공식 문서](https://adk.mo.ai.kr)** | **[Discord 커뮤니티](https://discord.gg/Z7E7Mdc5aN)**
+> 📚 **[공식 문서](https://adk.mo.ai.kr)** | 📖 **[책: 클로드 코드로 시작하는 실전 에이전틱 코딩](https://adk.mo.ai.kr/book)** | **[Discord 커뮤니티](https://discord.gg/Z7E7Mdc5aN)**
 
 ---
 
@@ -320,7 +320,7 @@ graph LR
     MG --> MG1["spec · ddd · tdd · docs<br/>quality · project · strategy · git"]
     EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring"]
     BL --> BL1["agent · skill · plugin"]
-    EV --> EV1["evaluator-active · plan-auditor"]
+    EV --> EV1["sync-auditor · plan-auditor"]
     AG --> AG1["planner · copywriter · designer<br/>builder · evaluator · learner"]
 
     style M fill:#FF6B35,color:#fff
@@ -338,7 +338,7 @@ graph LR
 | **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | 워크플로우 조율, SPEC 생성, 품질 관리 |
 | **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | 도메인 전문 구현, 분석, 최적화 |
 | **Builder** | 3 | agent, skill, plugin | 새로운 MoAI 컴포넌트 생성 |
-| **Evaluator** | 2 | evaluator-active, plan-auditor | 독립적 품질 평가, 계획 단계 문서 감사 |
+| **Evaluator** | 2 | sync-auditor, plan-auditor | 독립적 품질 평가, 계획 단계 문서 감사 |
 | **Agency** | 6 | planner, copywriter, designer, builder, evaluator, learner | 크리에이티브 프로덕션 파이프라인 |
 
 **총 27개 에이전트**
@@ -975,7 +975,7 @@ flowchart TB
 | **품질 보장** | manager-quality 1회 검증 | **GAN Loop** (Builder↔Evaluator, 최대 5라운드) |
 | **자기 학습** | 없음 | **Learner**가 패턴 감지 → 스킬 진화 제안 |
 | **브랜드** | 없음 | 브랜드 컨텍스트가 헌법적 제약으로 적용 |
-| **구현** | 20개 에이전트 (manager/expert/builder) | 4개 스킬 (copywriting, brand-design, design-import, gan-loop) + evaluator-active |
+| **구현** | 20개 에이전트 (manager/expert/builder) | 4개 스킬 (copywriting, brand-design, design-import, gan-loop) + sync-auditor |
 
 **어떤 것을 사용해야 할까?**
 - REST API, CLI 도구, 라이브러리를 만든다면 → `/moai`
@@ -994,8 +994,8 @@ flowchart TB
 2. **BRIEF 생성** — Manager-spec이 요청을 포괄적인 프로젝트 브리프로 확장
 3. **카피 + 디자인** — moai-domain-copywriting이 브랜드 기반 마케팅 카피 작성; moai-domain-brand-design이 토큰 기반 디자인 시스템 생성 (Path B). 대안 Path A: moai-workflow-design-import가 Claude Design 핸드오프 번들 파싱
 4. **코드 구현** — expert-frontend이 TDD로 프로덕션 코드 구현 (기본: Next.js + Tailwind)
-5. **품질 보증** — evaluator-active가 Playwright 테스트, Lighthouse 감사, 4차원 스코어링 실행
-6. **GAN Loop** — 품질 미달 시 expert-frontend와 evaluator-active가 moai-workflow-gan-loop 거쳐 반복 (최대 5라운드)
+5. **품질 보증** — sync-auditor가 Playwright 테스트, Lighthouse 감사, 4차원 스코어링 실행
+6. **GAN Loop** — 품질 미달 시 expert-frontend와 sync-auditor가 moai-workflow-gan-loop 거쳐 반복 (최대 5라운드)
 7. **자기학습** — (선택) Learner가 세션의 패턴을 감지하고 스킬 개선을 제안
 
 **소요 시간**: 완전한 랜딩 페이지 기준 15-45분, 완전 자율.
@@ -1024,7 +1024,7 @@ flowchart LR
 | **moai-domain-brand-design** | 완전한 디자인 시스템 생성 — 컬러 토큰, 타이포그래피 스케일, 간격, 컴포넌트 스펙 (Path B) |
 | **moai-workflow-design-import** | Claude Design 핸드오프 번들(ZIP/HTML) 파싱으로 디자인 토큰과 컴포넌트 추출 (Path A) |
 | **expert-frontend** | TDD(RED-GREEN-REFACTOR)로 프로덕션 코드 구현. 기본 스택: Next.js, TypeScript, Tailwind, shadcn/ui |
-| **evaluator-active** | Playwright 시각 테스트 + Lighthouse 감사. 4차원 스코어링: 디자인 품질(30%), 독창성(25%), 완성도(25%), 기능성(20%) |
+| **sync-auditor** | Playwright 시각 테스트 + Lighthouse 감사. 4차원 스코어링: 디자인 품질(30%), 독창성(25%), 완성도(25%), 기능성(20%) |
 | **moai-workflow-gan-loop** | GAN Loop 반복 관리: Builder-Evaluator 간 Sprint Contract 협상, 구현, 스코어링, 정체 감지 |
 
 ### GAN Loop: 적대적 품질 보증

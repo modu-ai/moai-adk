@@ -4,6 +4,9 @@
 "core-concepts":
   title: "Core Concepts"
   weight: 20
+"claude-code":
+  title: "Claude Code Guide"
+  weight: 25
 "workflow-commands":
   title: "Workflow Commands"
   weight: 30

@@ -4,6 +4,9 @@
 "core-concepts":
   title: "核心概念"
   weight: 20
+"claude-code":
+  title: "Claude Code 指南"
+  weight: 25
 "workflow-commands":
   title: "工作流命令"
   weight: 30

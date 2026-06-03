@@ -1,0 +1,9 @@
+{{- /* menu/href — resolve a menu item's ref to a language-prefixed href.
+       Input (.) is a menu item dict with .ref and optional .external.
+       external:true → root-absolute ref as-is (e.g. /book/ static page).
+       internal      → language-prefixed via relLangURL. Single trailing return. */ -}}
+{{- $h := .ref -}}
+{{- if not .external -}}
+{{- $h = relLangURL .ref -}}
+{{- end -}}
+{{- return $h -}}

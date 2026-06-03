@@ -57,9 +57,10 @@
           {{- $flat := slice -}}
           {{- range hugo.Data.menu.main.main -}}
             {{- range .sub -}}
-              {{- if .ref -}}
-                {{- $refKey := printf "%s/" (trim .ref "/") -}}
-                {{- $flat = $flat | append (dict "name" .name "ref" .ref "key" $refKey) -}}
+              {{- if and .ref (not .external) -}}
+                {{- $rhref := partial "menu/href" . -}}
+                {{- $refKey := printf "%s/" (trim $rhref "/") -}}
+                {{- $flat = $flat | append (dict "name" (partial "menu/name" .name) "ref" $rhref "key" $refKey) -}}
               {{- end -}}
             {{- end -}}
           {{- end -}}
@@ -111,35 +112,10 @@
           {{- end -}}
         </div>
 
-        {{- /* 우측 TOC rail (디자인 240px) */ -}}
-        {{- if eq .Kind "home" -}}
-        <aside class="cw-toc" aria-label="이 페이지에서">
-          <h6>이 페이지에서</h6>
-          <ul>
-            <li><a href="#quickstart" class="active" data-toc>5분 빠른 시작</a></li>
-            <li><a href="#plugins-grid" data-toc>분야별 플러그인</a></li>
-            <li><a href="#cookbook-tracks" data-toc>실전 트랙</a></li>
-            <li><a href="#release-summary" data-toc>최근 릴리스</a></li>
-          </ul>
-        </aside>
-        <script>
-        // 간단한 scroll spy — 가장 가까운 헤딩에 active 부여
-        (function(){
-          const links = document.querySelectorAll('.cw-toc a[data-toc]');
-          if (!links.length) return;
-          const sections = Array.from(links).map(a => document.getElementById(a.hash.slice(1))).filter(Boolean);
-          if (!sections.length) return;
-          const setActive = () => {
-            const y = window.scrollY + 120;
-            let i = 0;
-            for (let k = 0; k < sections.length; k++) if (sections[k].offsetTop <= y) i = k;
-            links.forEach((a, k) => a.classList.toggle('active', k === i));
-          };
-          window.addEventListener('scroll', setActive, { passive: true });
-          setActive();
-        })();
-        </script>
-        {{- else if .TableOfContents -}}
+        {{- /* 우측 TOC rail (디자인 240px) — 모든 페이지에서 실제 헤딩 기반 동적 생성
+               (home 포함). 과거 home 하드코딩 앵커(#quickstart 등)는 현재 홈 헤딩과
+               불일치하여 죽은 링크였으므로 제거하고 .TableOfContents로 통일. */ -}}
+        {{- if .TableOfContents -}}
         {{- $hasHeadings := gt (len (findRE "<h[23]" .Content)) 0 -}}
         {{- if $hasHeadings -}}
         <aside class="cw-toc" aria-label="이 페이지에서">
