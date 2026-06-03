@@ -58,7 +58,7 @@ Route request based on command type:
 
 Execute using explicit agent invocation:
 
-- "Use the expert-backend subagent to develop the API"
+- "Use the manager-develop subagent to implement the API (cycle_type=tdd, domain context: backend)"
 - "Use the manager-develop subagent to implement with DDD approach (cycle_type=ddd)"
 - "Use the Explore subagent to analyze the codebase structure"
 
@@ -154,12 +154,12 @@ For detailed workflow specifications, see .claude/rules/moai/workflow/spec-workf
 
 ### Agent Chain for SPEC Execution
 
-- Phase 1: manager-spec → understand requirements
-- Phase 2: manager-strategy → create system design
-- Phase 3: expert-backend → implement core features
-- Phase 4: expert-frontend → create user interface
-- Phase 5: manager-quality → ensure quality standards
-- Phase 6: manager-docs → create documentation
+- Phase 1 (plan-phase): manager-spec → SPEC artifacts (spec/plan/acceptance/research/design)
+- Phase 2 (plan audit gate): plan-auditor → independent skeptical audit, bias prevention, GEARS compliance verification
+- Phase 3 (run-phase): manager-develop → implementation (cycle_type ∈ {ddd, tdd, autofix}); for domain-specific work (backend/frontend/security/etc.) the orchestrator spawns `Agent(general-purpose)` with domain whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C migration table
+- Phase 4 (sync-phase): manager-docs → CHANGELOG/README/docs + frontmatter status transitions (in-progress → implemented)
+- Phase 5 (sync audit gate): sync-auditor → independent 4-dimension quality scoring (Functionality/Security/Craft/Consistency)
+- Phase 6 (optional, Tier L OR explicit `--pr`): manager-git → branch creation + `gh pr create` + Late-Branch closure per Tier-based PR Routing
 
 ### MX Tag Integration
 
@@ -380,10 +380,10 @@ For anti-hallucination policy, see .claude/rules/moai/core/moai-constitution.md
 
 ### Error Recovery
 
-- Agent execution errors: Use manager-quality subagent
-- Token limit errors: Execute /clear, then guide user to resume
-- Permission errors: Review settings.json manually
-- Integration errors: Use expert-devops subagent
+- Agent execution errors: Consult `.claude/rules/moai/workflow/archived-agent-rejection.md` §C migration table; orchestrator emits `ARCHIVED_AGENT_REJECTED` when an archived agent is referenced; for diagnostic work spawn `Agent(general-purpose)` with diagnostic scope OR `Agent(Explore)` for read-only investigation
+- Token limit errors: Execute /clear, then guide user to resume via paste-ready resume message per `.claude/rules/moai/workflow/session-handoff.md`
+- Permission errors: Review settings.json manually (project + user scope)
+- Integration / DevOps errors: spawn `Agent(general-purpose)` with infrastructure/CI domain context per `archived-agent-rejection.md` §C migration table (formerly handled by an archived domain-expert agent)
 - MoAI-ADK errors: Suggest /moai feedback
 
 ### Resumable Agents
@@ -458,7 +458,7 @@ MoAI supports optional Agent Teams mode for parallel phase execution.
 
 ### Activation
 
-- Claude Code v2.1.50 or later
+- Claude Code v2.1.32 or later
 - Set `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
 - Set `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml`
 
@@ -528,7 +528,7 @@ For the full primitive-selection guide (sub-agents vs Agent Teams vs workflows),
 
 ## 16. Context Search Protocol
 
-> Canonical rule: see `.claude/rules/moai/workflow/context-window-management.md` for context window thresholds (1M = 75%, 200K = 90%) and `.claude/rules/moai/workflow/session-handoff.md` for paste-ready resume message format.
+> Canonical rule: see `.claude/rules/moai/workflow/context-window-management.md` for context window thresholds (1M = 50%, 200K = 90%) and `.claude/rules/moai/workflow/session-handoff.md` for paste-ready resume message format.
 
 MoAI searches previous Claude Code sessions when context is needed to continue work on existing tasks or discussions.
 
@@ -616,14 +616,19 @@ Large PDFs (>10 pages) return a lightweight reference when @-mentioned. Always s
 
 ---
 
-Version: 14.1.0 (Workflow Audit 2026-05-16 — Bundle B/G/H/I integration)
-Last Updated: 2026-05-17
+Version: 14.2.0 (Anthropic 2026 Alignment + Archived-Agent Reference Cleanup)
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 
+Changes in v14.2.0 (from v14.1.0):
+- §5 Agent Chain for SPEC Execution: legacy chain → Anthropic 2026 model (manager-spec → plan-auditor → manager-develop → manager-docs/sync-auditor → optional manager-git PR routing)
+- §2 Phase 3 Execute example: archived domain-expert example → retained `manager-develop` invocation example
+- §11 Error Handling: archived domain-expert references → cross-reference to `.claude/rules/moai/workflow/archived-agent-rejection.md` migration table
+- Aligned with the canonical MoAI agent catalog policy (17→8 catalog consolidation)
+
 Changes in v14.1.0 (from v14.0.0):
 - §11 Error Handling: canonical rule citation 추가 (manager-quality / expert-devops)
-- §13 Progressive Disclosure System: canonical rule citation 추가 (`.claude/rules/moai/workflow/progressive-disclosure.md`)
+- §13 Progressive Disclosure System: canonical rule citation 추가 (`.claude/rules/moai/development/skill-authoring.md`)
 - §16 Context Search Protocol: canonical rule citation 추가 (`.claude/rules/moai/workflow/context-window-management.md`)
 - Note: §4 Agent Catalog의 `cycle` 제거는 별도 PR에서 처리됨
 
