@@ -11,6 +11,7 @@ phase: "patch-release"
 module: "go.mod"
 lifecycle: spec-anchored
 tags: "security, dependencies, toolchain, govulncheck"
+tier: S
 ---
 
 # SPEC-GO-TOOLCHAIN-SEC-001 — Go toolchain security bump
@@ -20,6 +21,7 @@ tags: "security, dependencies, toolchain, govulncheck"
 | Date | Version | Author | Change |
 |------|---------|--------|--------|
 | 2026-06-03 | 0.1.0 | manager-spec | Initial plan-phase authoring (Tier S minimal). status: draft. |
+| 2026-06-03 | 0.1.0 | manager-spec | plan-patch D1/D2/D3: AC-GTS-005 (REQ-GTS-006 traceability), AC-GTS-006 (toolchain pre-check gate, gates AC-GTS-001), `tier: S` frontmatter. status: draft. |
 
 ## A. Context and Problem Statement
 
@@ -86,14 +88,19 @@ REQ-GTS-006 (Capability gate): **Where** an explicit `toolchain` directive is ad
 
 ## D. Acceptance Criteria Summary
 
-The full AC matrix lives in `acceptance.md`. The four anchor criteria:
+The full AC matrix lives in `acceptance.md` (6 ACs). The anchor criteria:
 
 - AC-GTS-001 — `govulncheck ./...` reports 0 affecting vulnerabilities (19 → 0).
+  Precondition: AC-GTS-006 (toolchain pre-check gate) MUST PASS first.
 - AC-GTS-002 — `go build ./...` and `go test ./...` pass under the bumped toolchain.
 - AC-GTS-003 — `go.mod` `go` directive reflects the bumped version; the chosen CI-pin
   strategy is applied consistently across all 9 workflow steps.
 - AC-GTS-004 — `git diff go.mod` shows ONLY the `go`/`toolchain` directive changed; no
   `require` block line is modified (scope-discipline guard).
+- AC-GTS-005 — REQ-GTS-006 traceability: if a `toolchain` directive is present, its
+  version equals the `go` directive version (`awk` equality guard).
+- AC-GTS-006 — toolchain pre-check gate: effective `go version` ≥ go1.26.4; gates
+  AC-GTS-001 evidence acceptance (false-PASS guard, promoted from EC-1).
 
 ## E. Exclusions (What NOT to Build)
 
