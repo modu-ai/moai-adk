@@ -22,12 +22,15 @@ User-facing documentation may use multiple languages:
 
 ## File Size Limits
 
-CLAUDE.md must not exceed 40,000 characters.
+CLAUDE.md should stay under 40,000 characters. This is a MoAI CI-enforceable heuristic; the official Claude Code spec instead targets "under 200 lines per CLAUDE.md" and loads the file in full regardless of length. Any project-local instruction file that also loads in full at every session launch follows the same size discipline.
 
-When approaching limit:
-- Move detailed content to .claude/rules/moai/
-- Use @import references
-- Keep only core identity and hard rules in CLAUDE.md
+When approaching the limit, reduce launch-time context (priority order):
+- Move detailed content to path-scoped rules (.claude/rules/ with `paths:` frontmatter) so it loads only when matching files are touched
+- Move stable doctrine to .moai/docs/ and reference it with a plain prose pointer ("See: .moai/docs/<file>.md")
+- Trim content not needed in every session
+- Keep only core identity and hard rules inline
+
+Note: `@import` (`@path/to/file`) does NOT reduce context — imported files are expanded and loaded in full at launch (see `.claude/skills/moai-foundation-cc/reference/claude-code-memory-official.md`). Use it for organization, never for size reduction.
 
 ## Content Restrictions
 

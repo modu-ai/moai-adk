@@ -137,7 +137,9 @@ When 10 or more stale files are detected simultaneously, a single aggregated war
 
 ### Audit Warnings
 
-The PostToolUse hook audits memory files on Write/Edit operations and emits non-blocking warnings to stderr for:
+The PostToolUse hook audits memory files on Write/Edit operations within `.claude/agent-memory/<agent-name>/` and emits non-blocking warnings to stderr. The hook is scoped to agent-memory files only — it does NOT observe the auto-memory index at `~/.claude/projects/<hash>/memory/MEMORY.md`, which Claude Code writes through its native subsystem rather than the Write/Edit tools the hook sees.
+
+Wired codes (emitted by the PostToolUse hook today):
 
 | Code | Condition |
 |------|-----------|
@@ -145,6 +147,11 @@ The PostToolUse hook audits memory files on Write/Edit operations and emits non-
 | `MEMORY_MISSING_FRONTMATTER` | File missing `name` or `description` |
 | `MEMORY_BODY_STRUCTURE_MISSING` | feedback/project file missing **Why:** or **How to apply:** |
 | `MEMORY_EXCLUDED_CATEGORY` | Body matches an excluded-category keyword pattern |
+
+Available checks, NOT yet wired into the PostToolUse hook — the index-overflow and duplicate-description checks exist in the codebase but currently have no production caller, so do NOT rely on these firing automatically (run them manually or wait for a future SPEC to wire them in):
+
+| Code | Condition |
+|------|-----------|
 | `MEMORY_INDEX_OVERFLOW` | MEMORY.md exceeds 200 lines |
 | `MEMORY_DUPLICATE` | Two files share the same description |
 
