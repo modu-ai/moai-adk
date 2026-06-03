@@ -99,3 +99,16 @@ m1_to_mN_commit_strategy: single-commit   # Tier S — M1 RED + M2 GREEN + M3 RE
 - **Input parameters**: tier=S, scope=6 files, domain count=1 (Go source — internal/hook + internal/cli 동일 hook-registry 도메인), file language mix=100% Go, concurrency benefit=LOW (coding-heavy), Agent Teams prereqs=미충족.
 - **Decision**: sub-agent (Mode 5)
 - **Justification**: 단일 도메인 6-파일 coding-heavy 작업으로 Finding A4(coding-task parallelism caveat)에 따라 sequential sub-agent가 기본값이다. Tier S이므로 minimal delegation form 적용, Mode 3/4/6 진입 조건(다중 도메인·고볼륨 mechanical) 미충족.
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-06-03
+sync_commit_sha: PLACEHOLDER_SYNC
+sync_status: implemented
+changelog_entry: added           # CHANGELOG.md [Unreleased] ### Added — 1 entry
+readme_touched: false            # internal hook registry — no user-facing README surface
+docs_site_touched: false         # internal Go change — no docs-site page
+status_transition: in-progress -> implemented
+authored_by: orchestrator-direct # Tier S small-scope sync (L_orchestrator_direct_sync_tier_s); Authored-By-Agent trailer omitted → ownership lint silent SKIP
+```

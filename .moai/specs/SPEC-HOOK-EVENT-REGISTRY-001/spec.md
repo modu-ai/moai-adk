@@ -1,8 +1,8 @@
 ---
 id: SPEC-HOOK-EVENT-REGISTRY-001
 title: "Hook 이벤트 레지스트리에 3개 공식 observe-only 이벤트 추가 (PostToolBatch / UserPromptExpansion / MessageDisplay)"
-version: "0.1.2"
-status: in-progress
+version: "0.2.0"
+status: implemented
 created: 2026-06-03
 updated: 2026-06-03
 author: manager-spec
