@@ -111,6 +111,7 @@ Rules:
 - Use WebFetch to verify URLs from WebSearch results
 - Mark unverified information as uncertain
 - Include Sources section when WebSearch is used
+- Under a GLM backend (`moai glm` / `moai cg` GLM panes), URL verification uses `mcp__web_reader__webReader` and search uses `mcp__web_search_prime__webSearchPrime` instead of the built-in `WebFetch` / `WebSearch` (see `.claude/rules/moai/core/glm-web-tooling.md`)
 
 ## Tool Selection Priority
 

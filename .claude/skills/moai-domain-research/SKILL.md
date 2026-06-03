@@ -213,6 +213,12 @@ Sequential calls (one tool per turn) violate REQ-BRAIN-003 and should be avoided
 
 ---
 
+## GLM-Backend Note
+
+When the session runs on the GLM backend (`moai glm` / `moai cg` GLM panes), `WebSearch` and `WebFetch` route to the z.ai MCP tools (`mcp__web_search_prime__webSearchPrime` / `mcp__web_reader__webReader`) instead of the built-in tools — see `.claude/rules/moai/core/glm-web-tooling.md` for the HARD routing table.
+
+---
+
 ## Works Well With
 
 - `moai-domain-ideation`: Research findings feed into Phase 4 Converge context for more grounded Lean Canvas

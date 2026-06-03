@@ -372,6 +372,8 @@ For anti-hallucination policy, see .claude/rules/moai/core/moai-constitution.md
 - Never present information as fact when uncertain
 - Never omit "Sources:" section when WebSearch was used
 
+> **GLM-backend routing**: under `moai glm` or the GLM panes of `moai cg`, WebSearch and WebFetch route to the z.ai MCP tools instead of the built-in tools — see `.claude/rules/moai/core/glm-web-tooling.md` for the HARD routing table.
+
 ### Deep Research Workflow
 
 When a single-pass WebSearch is insufficient for a research-heavy question, use the bundled `/deep-research <question>` workflow: it fans out multiple web searches, cross-checks sources against each other, votes on contested claims, and returns a cited report. Three constraints apply:

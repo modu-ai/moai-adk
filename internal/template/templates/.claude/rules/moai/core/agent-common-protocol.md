@@ -130,6 +130,8 @@ When Context7 MCP is unavailable:
 4. Deliver established best practice patterns based on industry experience
 5. Continue work — architecture/analysis quality must not depend on MCP availability
 
+GLM-backend routing: when the session runs on the GLM backend (`moai glm` or the GLM teammate panes of `moai cg`), web search / web fetch / image read route to the z.ai MCP tools instead of the built-in `WebSearch` / `WebFetch` / `Read`. See `.claude/rules/moai/core/glm-web-tooling.md` for the HARD routing table.
+
 ## CLAUDE.md Reference
 
 Agents follow MoAI's core execution directives defined in CLAUDE.md. Since CLAUDE.md is automatically loaded as project instructions, agents do not need to restate its rules. Key applicable principles:
