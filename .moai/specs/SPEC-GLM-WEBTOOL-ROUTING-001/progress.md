@@ -114,7 +114,7 @@ sync_rationale: >
 ## §E.5 Mx-phase Audit-Ready Signal
 
 ```yaml
-mx_commit_sha: (this commit — backfilled by follow-up)
+mx_commit_sha: 510957f63
 status_transition: "implemented → completed"
 four_phase_close: true
 close_subject_full_id: SPEC-GLM-WEBTOOL-ROUTING-001
