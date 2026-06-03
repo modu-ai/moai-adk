@@ -41,3 +41,53 @@ Tier **M** — multi-file cross-asset change (page.html.tmpl + new i18n.js + app
 
 plan_complete_at: 2026-06-03
 plan_status: audit-ready
+
+---
+
+## §E — Phase 0.95 Mode Selection (orchestrator-logged per REQ-ATR-008)
+
+**Decision: sub-agent (Mode 5)** — coding-heavy single-package `internal/web`; sequential manager-develop (cycle_type=tdd) per milestone M1-M4.
+
+### Input parameters
+- **tier**: M
+- **scope (file count)**: ~7-8 files (page.html.tmpl, i18n.js NEW, app.js, console.css, fonts/ CJK subset NEW, assets.go, restyle_test.go) — all within `internal/web/`
+- **domain count**: 1 (single package `internal/web`; template + client assets + Go test, not cross-domain)
+- **file language mix**: HTML template + JS + CSS + woff2 binary + minimal Go (test + go:embed) — coding-heavy, NOT research-heavy
+- **concurrency benefit**: LOW (tightly-coupled single-package edits; Finding A4 caveat)
+- **Agent Teams prereqs (REQ-ATR-013)**: harness thorough? NO (default) · workflow.team.enabled? NO · CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1? NO → gate fails
+
+### Mode evaluation
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| 1 trivial | no | multi-file semantic change (new i18n surface + font pipeline) |
+| 2 background | no | run-phase writes files (CONST-V3R2-020 forbids background Write/Edit) |
+| 3 agent-team | no | REQ-ATR-013 capability gate fails (all 3 unset) + single domain |
+| 4 parallel | no | coding-heavy + single domain (Finding A4 — parallel multi-spawn is research-heavy multi-domain) |
+| 5 sub-agent | **YES** | coding-heavy default; sequential manager-develop (tdd) per milestone M1-M4 |
+| 6 workflow | no | not ≥30-file mechanical-uniform transform; semantic new-code work |
+
+### Justification
+Coding-heavy, single-package (`internal/web`) cross-asset implementation with tightly-coupled milestones (font → dictionary → langpick server-contract gate → test reconciliation). Per Anthropic Finding A4 ("most coding tasks involve fewer truly parallelizable tasks than research"), the sequential sub-agent path is the correct default. Agent Teams (Mode 3) capability gate fails on all three REQ-ATR-013 conditions. A single `manager-develop` spawn (cycle_type=tdd) handles M1-M4 with RED-GREEN-REFACTOR; the M3 server-contract gate (langpick must not leak into POST) is the critical milestone. Matches cohort precedent (004 = Mode 5 sub-agent manager-develop tdd).
+
+### Gate provenance
+- **GATE-2**: PASSED (user approved run-phase entry via AskUserQuestion; score-independent per REQ-ATR-015)
+- **Phase 0.5 (Plan Audit Gate)**: satisfied in-session — plan-auditor iter-1 PASS-WITH-DEBT 0.84 (Tier M threshold 0.80) + D1/D2/D3 resolved + orchestrator independent verification 7/7; no re-execution (audit fresh + debt cleared)
+
+mode_selection: sub-agent
+
+---
+
+## Run-phase Evidence (manager-develop, cycle_type=tdd, Mode 5)
+
+- **run_commit_shas** (cherry-picked onto docs/glm-webtool-routing-m1-m5; L1 worktree auto-materialized base 398f882f5, conflict-free cherry-pick per L_l1_worktree_cherrypick; worktree-origin a19ad50ab..8d9cfdf1b):
+  - M1 `a569058fa` — CJK woff2 subset font layer (offline-safe foundation)
+  - M2 `66bb5c167` — i18n dictionary + data-i18n wiring (chrome-translation layer)
+  - M3 `aca719270` — appbar langpick + client apply/persist (server-contract gate)
+  - M4 `5657e403d` — 004 TestAppbarRendered guard inversion + a11y + closure
+  - reconcile (this) — spec.md draft→in-progress + run evidence + mapsloop cleanup
+- **AC matrix**: 13/13 AC PASS (acceptance.md SSOT). 3 must-pass verified: AC-WC5-008a (interface≠content — POST byte-identical), AC-WC5-010a (validate.go byte-unchanged), AC-WC5-011 (offline / CDN-free).
+- **orchestrator independent verification (Trust-but-verify) 7/7 PASS**: cross-platform build host+windows exit 0; closure gate go test ./internal/web/... ./internal/cli/... ./internal/config/... ok; offline grep (served assets 0 external URL); rv.=0; `git diff --exit-code internal/web/validate.go`=0; langpick (`uiLangSelect`, no `name=`, L59) outside `<form>` (L106); data-i18n=36 (≥25 floor); locales=4; Noto CJK 6 subset ~235KB + OFL.
+- **E7 — measured shipped-dictionary CJK glyph count: 279** (197 CJK ideographs + 44 katakana + 29 hiragana + 9 CJK punctuation; SC+JP subsets each cmap=279 — 100% coverage, 0 over-coverage). Supersedes the §1.5 provisional ~284-287 estimate (auditor D2: design-file count was tokenizer-dependent).
+- **Font deliverable** (plan §F Option c): Noto Sans CJK SC (zh) + JP (ja), 3 weights each (Regular/Medium/Bold), 279-glyph pyftsubset (same toolchain as 004), ~235KB total, OFL-1.1 (OFL-NotoSansCJK.txt). Pretendard ko/Latin (004) preserved; CJK activated via `html[lang="ja|zh"]` font-stack override (en/ko stay Pretendard).
+
+run_status: implementation-complete (sync pending)

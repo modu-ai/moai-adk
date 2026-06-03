@@ -2,6 +2,7 @@ package web
 
 import (
 	"io/fs"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -462,9 +463,7 @@ func TestInterfaceLanguageDoesNotAlterPOST(t *testing.T) {
 	// (it never should — the langpick has no name=), bindForm must IGNORE it:
 	// the bound preferences must be byte-identical.
 	withRogue := url.Values{}
-	for k, v := range baseForm {
-		withRogue[k] = v
-	}
+	maps.Copy(withRogue, baseForm)
 	withRogue["moai-console-lang"] = []string{"ja"}
 	withRogue["uiLangSelect"] = []string{"zh"}
 	got2 := bind(withRogue)
