@@ -85,7 +85,7 @@ spec_lint_blocker: "RESOLVED — orchestrator-direct added '### §D.1 Out of Sco
 ## §E.4 — Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_commit_sha: "(placeholder — backfill after sync commit lands)"
+sync_commit_sha: "3ec0c808f"
 sync_status: implemented
 sync_phase_summary: "Manager-docs SPEC-AUTONOMY-RUN-GOAL-001 sync-phase: (1) Updated spec.md frontmatter status in-progress→implemented + date refresh (2026-06-03). (2) Added progress.md §E.4 sync-audit-ready section. (3) Generated CHANGELOG.md entry under [Unreleased] section documenting 3 deliverables (D1 Mode 6 catalog, D2 run.md autonomy section, D3 GATE-2 regression guard) + template mirror + 13/13 AC PASS. (4) NO push — orchestrator handles multi-session coordination."
 ac_verification: "13 ACs in acceptance.md verified by grep. Sync commit adds no new implementation; deliverables all PASS via run-phase evidence."
