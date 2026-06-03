@@ -111,12 +111,12 @@ AC-GDU-002 debt ACCEPTED (user GATE decision): x/net/x/tools/x/mod stay at tidy-
 
 ```yaml
 mx_complete_at: 2026-06-03
-mx_commit_sha: (backfilled next commit)
+mx_commit_sha: 02cae0502
 four_phase_close:
   plan: "6f03c73cf + 82acda9bb (plan-patch D1-D5, plan-auditor 0.83 PASS-WITH-DEBT)"
   run: 250c93d32   # absorbed onto origin/main by parallel GLM-WEBTOOL push (L52 race)
   sync: 42ed49357
-  mx: (this commit)
+  mx: 02cae0502
 final_status: completed
 ac_pass_count: 9   # AC-GDU-002 PASS-WITH-DEBT via EC-1 tidy carve-out
 ac_fail_count: 0
