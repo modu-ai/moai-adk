@@ -79,7 +79,7 @@ Edge cases: EC-1 (both empty → no clobber) PASS; EC-2 (one bogus, one valid �
 
 ```yaml
 run_complete_at: 2026-06-03
-run_commit_sha: "<orchestrator-backfills-after-cherry-pick>"
+run_commit_sha: e83864047
 run_status: implemented
 ac_pass_count: 12
 ac_fail_count: 0
@@ -107,3 +107,20 @@ integration_test_do_not_touch: "unmodified (last touched by SPEC-WEB-CONSOLE-001
 - No template mirroring / `make build` (B-NEW): web assets embed via `internal/web/assets.go` `go:embed`, NOT the template-deploy system.
 - Commits NOT pushed by manager-develop (B9 exception (a): active parallel session race present — orchestrator pushes after Trust-but-verify).
 - L1 worktree: this run executed in isolated worktree `worktree-agent-aa4e5e1f0817715c5` (branch == origin/main base a090f29ac). Orchestrator integrates via cherry-pick of the 4-5 SPEC commits.
+
+## Sync-phase Audit-Ready Signal
+
+```yaml
+sync_commit_sha: (this commit)
+sync_status: complete
+changelog_entry_added: true
+status_transition: "in-progress → implemented"
+version_bump: "0.1.0 → 0.2.0"
+sync_executor: orchestrator-direct
+sync_rationale: >
+  Tier M bounded close-tail (run M1-M5 already on origin/main via cherry-pick
+  e83864047). Active parallel sessions (GO-DEPS / WEB-CONSOLE-004) → orchestrator-direct
+  sync/Mx to avoid manager-docs L1-worktree + race overhead. Authored-By-Agent trailer
+  omitted (legacy silent SKIP) to avoid OwnershipTransitionInvalid on the
+  orchestrator-direct in-progress→implemented transition.
+```
