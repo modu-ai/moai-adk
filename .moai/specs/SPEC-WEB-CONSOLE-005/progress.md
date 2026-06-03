@@ -91,3 +91,15 @@ mode_selection: sub-agent
 - **Font deliverable** (plan §F Option c): Noto Sans CJK SC (zh) + JP (ja), 3 weights each (Regular/Medium/Bold), 279-glyph pyftsubset (same toolchain as 004), ~235KB total, OFL-1.1 (OFL-NotoSansCJK.txt). Pretendard ko/Latin (004) preserved; CJK activated via `html[lang="ja|zh"]` font-stack override (en/ko stay Pretendard).
 
 run_status: implementation-complete (sync pending)
+
+---
+
+## §E.2 — Sync-phase Audit-Ready Signal
+
+- **CHANGELOG**: 1 entry added under [Unreleased] §Added (SPEC-WEB-CONSOLE-005; B12 dedup verified `grep -c 'SPEC-WEB-CONSOLE-005' CHANGELOG.md`=0 pre-write).
+- **status transition**: in-progress → implemented; version 0.1.0 → 0.2.0.
+- **deliverable scope**: CHANGELOG.md + spec.md frontmatter + progress.md (orchestrator-direct sync — manager-docs spawn avoided per L_orchestrator_direct_sync_tier_m: active parallel session race + bounded internal scope; specific-path add, 0 parallel-session contamination).
+- **README / docs-site**: N/A (internal `moai web` console feature; no public API or docs-site surface change).
+
+sync_commit_sha: (this commit — backfilled in Mx)
+sync_status: implemented
