@@ -120,12 +120,12 @@ subagent_boundary_C_HRA_008: "n/a — orchestrator-direct doc edit, 0 AskUserQue
 
 ```yaml
 mx_complete_at: 2026-06-03
-mx_commit_sha: (backfilled next commit)
+mx_commit_sha: 5d237137d
 four_phase_close:
   plan: "c5bd27fcf + 06c666a50 (plan-patch D1/D2/D3, plan-auditor 0.88 PASS-WITH-DEBT)"
   run: 36c190fd0
   sync: c1fd3d585
-  mx: (this commit)
+  mx: 5d237137d
 final_status: completed
 ac_pass_count: 6
 ac_fail_count: 0
