@@ -40,7 +40,6 @@ Claude Code v2.1.119에서 `.mcp.json`의 MCP 서버 항목에 `"alwaysLoad": tr
 
 MoAI-ADK 기본 설정:
 - `context7`: `"alwaysLoad": true` — 매 세션 문서 조회가 빈번하므로 즉시 로드
-- `moai-lsp`: `alwaysLoad` 미설정 — 프로젝트에 따라 LSP가 필요 없는 경우도 있으므로 지연 로드 유지
 
 ```json
 {
@@ -85,7 +84,7 @@ Example `.mcp.json` configuration:
 }
 ```
 
-**MCP `alwaysLoad` field (v2.1.121+)**: Setting `alwaysLoad: true` on a server entry forces its tool schemas to load at session start, bypassing tool-search auto-mode deferral. MoAI-ADK sets this for `context7` to ensure Context7 documentation lookup is available immediately without ToolSearch preload. `moai-lsp` does NOT use `alwaysLoad` to avoid startup latency on projects that do not use it.
+**MCP `alwaysLoad` field (v2.1.121+)**: Setting `alwaysLoad: true` on a server entry forces its tool schemas to load at session start, bypassing tool-search auto-mode deferral. MoAI-ADK sets this for `context7` to ensure Context7 documentation lookup is available immediately without ToolSearch preload.
 
 **Claude Code v2.1.119-121 Hook Changes**:
 

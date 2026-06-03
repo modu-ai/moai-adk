@@ -694,29 +694,6 @@ func TestMCPTemplateSequentialThinkingRetired(t *testing.T) {
 	}
 }
 
-// TestMCPTemplateAlwaysLoadAbsentOnMoaiLSP verifies that the moai-lsp server
-// entry does NOT have alwaysLoad set to true (REQ-004).
-func TestMCPTemplateAlwaysLoadAbsentOnMoaiLSP(t *testing.T) {
-	ctx := testContext("darwin")
-	output := renderTemplate(t, ".mcp.json.tmpl", ctx)
-
-	var config map[string]any
-	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &config); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	servers, ok := config["mcpServers"].(map[string]any)
-	if !ok {
-		t.Fatal("missing mcpServers")
-	}
-	server, ok := servers["moai-lsp"].(map[string]any)
-	if !ok {
-		t.Fatal("missing moai-lsp server entry")
-	}
-	if val, exists := server["alwaysLoad"]; exists && val == true {
-		t.Error("moai-lsp: alwaysLoad must not be true; it was explicitly excluded from REQ-004")
-	}
-}
-
 // TestMCPTemplateExistingFieldsPreserved verifies that adding alwaysLoad does
 // not disturb existing fields in any server entry (REQ-005).
 func TestMCPTemplateExistingFieldsPreserved(t *testing.T) {
@@ -746,21 +723,6 @@ func TestMCPTemplateExistingFieldsPreserved(t *testing.T) {
 
 	// sequential-thinking retired per SPEC-V3R6-SEQ-THINKING-RETIRE-001;
 	// no longer present in the rendered template.
-
-	// moai-lsp must still have command, args, and timeout
-	lsp, ok := servers["moai-lsp"].(map[string]any)
-	if !ok {
-		t.Fatal("missing moai-lsp")
-	}
-	if lsp["command"] == nil {
-		t.Error("moai-lsp: command field missing")
-	}
-	if lsp["args"] == nil {
-		t.Error("moai-lsp: args field missing")
-	}
-	if lsp["timeout"] == nil {
-		t.Error("moai-lsp: timeout field missing")
-	}
 }
 
 // --- BuildSmartPATH and PathContainsDir tests ---
