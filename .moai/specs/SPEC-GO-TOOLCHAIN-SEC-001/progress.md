@@ -1,6 +1,6 @@
 # Progress — SPEC-GO-TOOLCHAIN-SEC-001
 
-## Status: implemented (sync-phase)
+## Status: completed (4-phase close)
 
 Tier S (minimal). Hybrid Trunk 1-person OSS → main-direct, no PR.
 
@@ -10,8 +10,8 @@ Tier S (minimal). Hybrid Trunk 1-person OSS → main-direct, no PR.
 |-------|--------|-------|--------|
 | Plan | done | manager-spec | c5bd27fcf + 06c666a50 |
 | Run (M1–M3) | done | manager-develop | 36c190fd0 |
-| Sync (M4) | done | orchestrator (manager-docs trailer) | (sync commit) |
-| Mx (close) | pending | orchestrator | — |
+| Sync (M4) | done | orchestrator (manager-docs trailer) | c1fd3d585 |
+| Mx (close) | done | orchestrator | (this commit) |
 
 ## Plan-phase notes
 
@@ -109,9 +109,26 @@ Orchestrator-direct sync (Tier S, manager-docs trailer) per L_orchestrator_direc
 
 ```yaml
 sync_complete_at: 2026-06-03
-sync_commit_sha: (backfilled in Mx commit)
+sync_commit_sha: c1fd3d585
 sync_status: implemented
 changelog_entry: "### Security — SPEC-GO-TOOLCHAIN-SEC-001 (1 entry under [Unreleased])"
 readme_docs_site_touched: false   # no user-facing change; internal toolchain/CI only
 subagent_boundary_C_HRA_008: "n/a — orchestrator-direct doc edit, 0 AskUserQuestion in scope files"
+```
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+```yaml
+mx_complete_at: 2026-06-03
+mx_commit_sha: (backfilled next commit)
+four_phase_close:
+  plan: "c5bd27fcf + 06c666a50 (plan-patch D1/D2/D3, plan-auditor 0.88 PASS-WITH-DEBT)"
+  run: 36c190fd0
+  sync: c1fd3d585
+  mx: (this commit)
+final_status: completed
+ac_pass_count: 6
+ac_fail_count: 0
+govulncheck_affecting_final: 0   # 19 stdlib affecting → 0 (independently re-verified in main checkout under go1.26.4)
+orchestrator_independent_verify: "6/6 AC re-run in main checkout post ff-merge; go build exit0; full go test FAIL=3 all pre-existing (hook ~5s timing flaky pass-on-retry + einstein.md drift, toolchain-orthogonal)"
 ```
