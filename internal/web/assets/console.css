@@ -51,6 +51,59 @@
   src: url("/static/fonts/Pretendard-Black.subset.woff2") format("woff2");
 }
 
+/* ── Noto Sans CJK (self-hosted woff2 subset — ja/zh interface glyphs) ──
+   SPEC-WEB-CONSOLE-005. Pretendard(004) 는 Latin + Hangul 만 커버하므로,
+   인터페이스 언어를 ja/zh 로 전환하면 번역된 chrome 의 ja
+   히라가나/가타카나/칸지 + zh 간체 한자에 글리프 커버리지가 없다. 아래 두
+   face 는 SHIPPED 사전(internal/web/assets/i18n.js)의 ja+zh 글리프 집합만
+   subset 한다(pyftsubset 으로 ~279 글리프 — weight 당 수십 KB, 멀티-MB 풀
+   CJK 폰트 아님). SC(zh) + JP(ja) 를 분리해 지역별 정확한 글리프 모양을
+   제공하며, 아래 <html lang> 로 활성화한다 — en/ko 는 계속 Pretendard 로
+   resolve 되어 회귀가 없다. src 는 /static/fonts/* 상대 경로 — 네트워크
+   fetch 0(REQ-WC5-006/011). Noto Sans CJK 는 OFL-1.1(OFL-NotoSansCJK.txt 동봉). */
+@font-face {
+  font-family: "Noto Sans CJK SC";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("/static/fonts/NotoSansCJKsc-Regular.subset.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Noto Sans CJK SC";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("/static/fonts/NotoSansCJKsc-Medium.subset.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Noto Sans CJK SC";
+  font-weight: 600 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("/static/fonts/NotoSansCJKsc-Bold.subset.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Noto Sans CJK JP";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("/static/fonts/NotoSansCJKjp-Regular.subset.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Noto Sans CJK JP";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("/static/fonts/NotoSansCJKjp-Medium.subset.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Noto Sans CJK JP";
+  font-weight: 600 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("/static/fonts/NotoSansCJKjp-Bold.subset.woff2") format("woff2");
+}
+
 :root {
   /* ── Brand Color (Notion 가이드라인 명시 3색 — 변경 금지) ── */
   --color-primary: #144a46;          /* 어두운 청록 — CTA, 타이틀, 아이콘 */
@@ -223,6 +276,15 @@ body {
 
 /* technical identifiers everywhere read as code */
 .mono { font-family: var(--font-mono); letter-spacing: 0; }
+
+/* ── CJK interface-language font activation (REQ-WC5-007) ──
+   인터페이스 언어를 ja/zh 로 전환하면 app.js 가 <html lang> 을 갱신한다.
+   그 시점에 본 셀렉터가 해당 지역 Noto Sans CJK subset 을 --font-sans 스택의
+   Pretendard 뒤에 끼워넣어, Pretendard 가 커버하지 못하는 ja/zh 글리프만 CJK
+   subset 으로 fall-through 한다(en/ko 글리프는 계속 Pretendard 로 resolve →
+   회귀 없음). <html lang="en|ko"> 일 때는 Pretendard 스택 그대로다. */
+html[lang="ja"] body { font-family: "Pretendard", "Noto Sans CJK JP", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 
 /* ============================================================
    App bar (sticky brand strip) — REQ-WC4-004
