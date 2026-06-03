@@ -449,7 +449,6 @@
     "pr": "🗿 MoAI <email@mo.ai.kr>"
   },
   "enableAllProjectMcpServers": true,
-  "respectGitignore": true,
-  "teammateMode": "tmux"
+  "respectGitignore": true
   
 }
