@@ -70,7 +70,7 @@ readme_docs_site_scope: "n/a — moai web undocumented in README/docs-site (0 re
 
 ```yaml
 mx_complete_at: 2026-06-03
-mx_commit_sha: "<pending — orchestrator backfills after Mx close commit>"
+mx_commit_sha: "7778f6586"
 mx_status: completed
 four_phase_close: "plan (fad1be853) → run (3a050ba51, M1) → sync (76ad74f8e) → Mx (this transition)"
 lifecycle_transition: "implemented → completed"
