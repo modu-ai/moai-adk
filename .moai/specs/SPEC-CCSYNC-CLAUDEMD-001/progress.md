@@ -42,8 +42,8 @@ No new HARD clauses introduced. Documentation-only changes preserve all existing
 
 ```yaml
 sync_phase_ready: true
-sync_complete_at: "2026-06-03T"  # backfilled on commit
-sync_commit_sha: ""  # backfilled on commit: git rev-parse HEAD
+sync_complete_at: "2026-06-03T14:47:30Z"
+sync_commit_sha: "da2fbcedf423d4a1dd597ab7eabad34186f36de8"
 sync_status: ready
 blocking_ac_count: 17
 passing_ac_count: 17
