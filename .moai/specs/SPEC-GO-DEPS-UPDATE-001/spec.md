@@ -1,7 +1,7 @@
 ---
 id: SPEC-GO-DEPS-UPDATE-001
 title: "Go third-party dependency maintenance update (patch + golang.org/x/* minor; 0 major bumps)"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-06-03
 updated: 2026-06-03
@@ -21,6 +21,7 @@ tier: S
 | Date | Version | Author | Change |
 |------|---------|--------|--------|
 | 2026-06-03 | 0.1.0 | manager-spec | Initial plan-phase authoring (Tier S minimal). status: draft. Phase 1 (patch) + Phase 2 (golang.org/x/* minor). Phase 3 (charmbracelet/x/*) explicitly excluded. |
+| 2026-06-03 | 0.1.1 | manager-spec | plan-patch (plan-auditor PASS-WITH-DEBT 0.83, 5 defects). D1: AC-GDU-001 `grep -E` `\|`→bare `\|` (escaped pipe was literal, never matched). D2: gorilla/websocket rationale corrected (transitive via powernap→jsonrpc2 LSP, not net/http stdlib). D3: charmbracelet/x/* exclusion clarified as ALL modules (listed = update-available subset). D4: regression grep `^(FAIL\|--- FAIL)`→`^FAIL\|--- FAIL:` to catch indented sub-test failures. D5: REQ-GDU-007 orphan resolved — AC-GDU-007 now dedicated to the `.go`-edit gate; scope-guard split into AC-GDU-008, no-new-dep into AC-GDU-009 (8→9 ACs). |
 
 ## A. Context and Problem Statement
 
@@ -108,7 +109,7 @@ is touched (scope-discipline guard).
 
 ## E. Acceptance Criteria Summary
 
-The full AC matrix lives in `acceptance.md` (8 ACs). The anchor criteria:
+The full AC matrix lives in `acceptance.md` (9 ACs). The anchor criteria:
 
 - AC-GDU-001 — Phase 1 applied: `go get -u=patch ./...` ran; powernap v0.1.6 +
   validator/v10 v10.30.3 + go-runewidth v0.0.24 present in `go.mod`.
@@ -121,10 +122,14 @@ The full AC matrix lives in `acceptance.md` (8 ACs). The anchor criteria:
 - AC-GDU-005 — `go test ./...` passes with no NEW regressions; the §E.1 known failures are
   excluded.
 - AC-GDU-006 — `govulncheck ./...` affecting third-party count stays 0.
-- AC-GDU-007 — scope guard: `git diff --name-only` shows only `go.mod` + `go.sum` (any
-  `.go` edit, expected none, must be noted in progress.md per REQ-GDU-007).
-- AC-GDU-008 — no new dependency added: the `require` block gains no module that was not
-  already present (transitive churn from tidy is allowed; net-new direct imports are not).
+- AC-GDU-007 — `.go`-edit capability gate (REQ-GDU-007): IF any `.go` file appears in
+  `git diff --name-only`, THEN `progress.md` records that file + the API-change reason;
+  expected outcome is go.mod/go.sum-only with no `.go` edit.
+- AC-GDU-008 — scope guard (REQ-GDU-008): `git diff --name-only` shows only `go.mod` +
+  `go.sum` (plus any `.go` edit already accounted for by AC-GDU-007).
+- AC-GDU-009 — no new dependency added (REQ-GDU-008): the `require` block gains no module
+  that was not already present (transitive churn from tidy is allowed; net-new direct
+  imports are not).
 
 ### E.1 Known pre-existing non-regression failures (excluded from the AC-GDU-005 gate)
 
@@ -140,8 +145,11 @@ A tester MUST NOT mistake them for update-induced breakage:
 
 ### Out of Scope — Phase 3 charmbracelet/x/* indirect bumps (deferred)
 
-- **`charmbracelet/x/*` indirect bumps** (conpty / xpty / errors / exp / golden) are
-  **DEFERRED**, NOT in scope. Rationale: the parent charmbracelet **direct** dependencies
+- **`charmbracelet/x/*` indirect bumps** are **DEFERRED**, NOT in scope. This exclusion
+  covers **ALL** transitively-pinned `charmbracelet/x/*` modules; the
+  currently-update-available subset is (conpty / xpty / errors / exp / golden), but the
+  exclusion is not limited to that subset (the others remain out of scope too).
+  Rationale: the parent charmbracelet **direct** dependencies
   (bubbletea / bubbles / huh / lipgloss / colorprofile) are already at their latest
   versions and pin these `charmbracelet/x/*` indirect versions transitively.
   Force-bumping the indirect `charmbracelet/x/*` modules ahead of the parents risks
@@ -152,9 +160,12 @@ A tester MUST NOT mistake them for update-induced breakage:
 
 ### Out of Scope — other deliberate exclusions
 
-- **`gorilla/websocket`** — a pure transitive dependency with **zero direct import** in
-  this repository (the web console uses the `net/http` stdlib, not gorilla). No reason to
-  touch it; skip.
+- **`gorilla/websocket`** — a **pure transitive** dependency, **not directly imported by
+  our code**. Provenance (`go mod why github.com/gorilla/websocket`):
+  `internal/lsp/transport → charmbracelet/x/powernap → sourcegraph/jsonrpc2 →
+  gorilla/websocket` (the LSP transport pulls it in via powernap). It is parent-driven —
+  its version is pinned by the `charmbracelet/x/powernap` parent and must be bumped by a
+  future powernap update, not independently force-bumped here. Skip.
 - **Any major-version (vN+1) upgrade** — none is available anyway, and a major bump would
   carry API-breaking risk that is out of scope for a maintenance update.
 - **New dependencies** — no new module is added to the `require` block. This SPEC only

@@ -15,7 +15,8 @@
   go-runewidth v0.0.24 + patch-level transitive.
 - **Phase 2 (x/* minor)**: `golang.org/x/sys@v0.45.0` (direct) + indirect x/crypto v0.52,
   x/net v0.55, x/tools v0.45, x/mod v0.36.
-- **Phase 3 EXCLUDED**: charmbracelet/x/* indirect (conpty/xpty/errors/exp/golden) deferred —
+- **Phase 3 EXCLUDED**: ALL charmbracelet/x/* indirect modules deferred (update-available
+  subset = conpty/xpty/errors/exp/golden; exclusion covers the full set, not just these) —
   parents (bubbletea/huh/...) already latest and pin these; force-bump risks pin skew.
 - **0 major bumps available** → no API-breaking risk → no `.go` source change expected.
 
