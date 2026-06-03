@@ -25,7 +25,7 @@ Examples Cover: Domain experts, tool specialists, process orchestrators, quality
 ---
 name: code-backend
 description: Use PROACTIVELY for backend architecture, API design, server implementation, database integration, or microservices architecture. Called from /moai:1-plan architecture design and task delegation workflows.
-tools: Read, Write, Edit, Bash, WebFetch, Grep, Glob, MultiEdit, TodoWrite, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Bash, WebFetch, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 skills: moai-domain-backend, moai-essentials-perf, moai-context7-integration
 ---
@@ -193,7 +193,7 @@ database_selection:
 ---
 name: code-frontend
 description: Use PROACTIVELY for frontend UI development, React/Vue/Angular components, responsive design, user experience optimization, or web application architecture. Called from /moai:2-run implementation and task delegation workflows.
-tools: Read, Write, Edit, Grep, Glob, MultiEdit, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 skills: moai-domain-frontend, moai-cc-configuration, moai-context7-integration, moai-ui-ux-expert
 ---
@@ -434,7 +434,7 @@ module.exports = {
 ---
 name: format-expert
 description: Use PROACTIVELY for code formatting, style consistency, linting configuration, and automated code quality improvements. Called from /moai:2-run quality gates and task delegation workflows.
-tools: Read, Write, Edit, Bash, Grep, Glob, MultiEdit
+tools: Read, Write, Edit, Bash, Grep, Glob
 model: haiku
 skills: moai-code-quality, moai-cc-configuration
 ---
@@ -931,7 +931,7 @@ class DebuggingKnowledgeBase:
 ---
 name: workflow-ddd
 description: Execute ANALYZE-PRESERVE-IMPROVE DDD cycle for implementing features with behavior preservation and comprehensive test coverage. Called from /moai:2-run SPEC implementation and task delegation workflows.
-tools: Read, Write, Edit, Bash, Grep, Glob, MultiEdit, TodoWrite
+tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet
 model: sonnet
 skills: moai-domain-testing, moai-foundation-quality, moai-core-spec-authoring
 ---

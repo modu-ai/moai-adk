@@ -151,7 +151,7 @@ tools: Read, Write, mcp__context7__resolve-library-id, mcp__context7__get-librar
 tools: [Read, Write, Bash]
 
 # WRONG: Overly permissive
-tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch, MultiEdit, TodoWrite, AskUserQuestion
+tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch, TaskCreate, TaskUpdate, TaskList, TaskGet, AskUserQuestion
 ```
 
 #### `model` (String)
@@ -387,7 +387,7 @@ Examples: `workflow-ddd`, `agent-factory`, `skill-factory`
 ---
 name: workflow-ddd
 description: Execute ANALYZE-PRESERVE-IMPROVE DDD cycle for implementing features with behavior preservation. Called from /moai:2-run SPEC implementation and task delegation workflows.
-tools: Read, Write, Edit, Bash, Grep, Glob, MultiEdit, TodoWrite
+tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet
 model: sonnet
 skills: moai-domain-testing, moai-foundation-quality
 ---
@@ -845,7 +845,6 @@ Tool Permission Security:
 - Bash tool: Restrict to essential system operations only
 - WebFetch tool: Validate URLs and implement content sanitization
 - Write/Edit tools: Implement path validation and content restrictions
-- MultiEdit tool: Use with caution and implement proper validation
 ```
 
 ### 2. Data Protection
@@ -889,7 +888,7 @@ Multi-capability Design:
 ---
 name: full-stack-developer
 description: Use PROACTIVELY for complete application development including frontend, backend, database, and deployment. Called from /moai:2-run comprehensive implementation and task delegation workflows.
-tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch, MultiEdit, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: sonnet
 skills: moai-domain-backend, moai-domain-frontend, moai-domain-database, moai-devops-expert, moai-security-expert
 ---

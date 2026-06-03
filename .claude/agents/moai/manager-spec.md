@@ -10,7 +10,7 @@ description: |
   JA: SPEC, 要件, 仕様書, EARS, GEARS, 受入基準, ユーザーストーリー, アーキテクチャ, システム設計
   ZH: SPEC, 需求, 规格书, EARS, GEARS, 验收标准, 用户故事, 架构, 系统设计
   NOT for: run-phase code implementation (manager-develop), testing execution, deployment, code review, documentation sync (manager-docs)
-tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate, TaskList, TaskGet, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 effort: xhigh
 permissionMode: bypassPermissions
@@ -127,7 +127,7 @@ OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager
 
 ### Step 4: Create SPEC Documents
 
-[HARD] Use MultiEdit for simultaneous 3-file creation (60% faster than sequential):
+[HARD] Make parallel `Edit`/`Write` calls in a single turn for simultaneous 3-file creation (faster than sequential):
 
 **spec.md**: YAML frontmatter (12 canonical fields, see schema below), HISTORY section, EARS requirements, exclusions.
 
@@ -137,7 +137,7 @@ OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager
 
 #### [HARD] SPEC ID Pre-Write Self-Check Protocol
 
-[HARD] Before invoking `Write` or `MultiEdit` for any new SPEC document containing a SPEC ID in its YAML frontmatter, the agent MUST execute a regex match decomposition self-check and print the result to its response body. The canonical SPEC ID regex literal is `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$` (verbatim from `internal/spec/lint.go:573`). Run this self-check before every SPEC Write; skipping it has historically caused SPEC ID drift.
+[HARD] Before invoking `Write` or `Edit` for any new SPEC document containing a SPEC ID in its YAML frontmatter, the agent MUST execute a regex match decomposition self-check and print the result to its response body. The canonical SPEC ID regex literal is `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$` (verbatim from `internal/spec/lint.go:573`). Run this self-check before every SPEC Write; skipping it has historically caused SPEC ID drift.
 
 Self-check protocol (4 steps, performed in the agent turn BEFORE any filesystem write):
 
@@ -150,7 +150,7 @@ Self-check protocol (4 steps, performed in the agent turn BEFORE any filesystem 
    ```
 
    The literal markers `decomposition` / `segment match trace` + `→ PASS|FAIL` are mandatory — they enable downstream grep verification (`grep -E "decomposition|segment match trace|→ PASS"`).
-4. **Halt or proceed**: if any segment FAILS, the agent MUST halt the Write call and return a structured blocker report to the orchestrator naming the offending segment and proposing the canonical correction. If all segments PASS, proceed to Step 5 frontmatter schema validation, then Write/MultiEdit.
+4. **Halt or proceed**: if any segment FAILS, the agent MUST halt the Write call and return a structured blocker report to the orchestrator naming the offending segment and proposing the canonical correction. If all segments PASS, proceed to Step 5 frontmatter schema validation, then Write/Edit.
 
 [HARD] AC sub-ID convention (DO NOT confuse with SPEC ID):
 
@@ -204,7 +204,7 @@ Optional fields (include when applicable):
 - `labels` → must be `tags`
 - `spec_id` → must be `id`
 
-Pre-write validation (you MUST verify before calling Write/MultiEdit):
+Pre-write validation (you MUST verify before calling Write/Edit):
 1. All 12 canonical fields present
 2. `id` matches the canonical regex `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$` (multi-segment; digit-only end anchor — verified via the SPEC ID Pre-Write Self-Check Protocol above)
 3. `status` is one of the 8 enum values (draft|planned|in-progress|implemented|completed|superseded|archived|rejected)

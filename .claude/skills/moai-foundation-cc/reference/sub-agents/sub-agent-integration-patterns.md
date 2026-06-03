@@ -765,7 +765,7 @@ Composite Agent Pattern:
 ---
 name: full-stack-specialist
 description: Combine frontend, backend, database, and DevOps expertise for end-to-end application development. Use PROACTIVELY for complete application development requiring multiple domain expertise.
-tools: Read, Write, Edit, Bash, Grep, Glob, Agent, MultiEdit, WebFetch
+tools: Read, Write, Edit, Bash, Grep, Glob, Agent, WebFetch
 model: sonnet
 skills: moai-domain-backend, moai-domain-frontend, moai-domain-database, moai-devops-expert
 ---

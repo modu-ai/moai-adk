@@ -141,7 +141,7 @@ allowed-tools: Read, Grep, Glob, WebFetch
 allowed-tools: [Read, Grep, Glob]
 
 # WRONG: Overly permissive
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch, MultiEdit
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch
 ```
 
 #### `version` (String)

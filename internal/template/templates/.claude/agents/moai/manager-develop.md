@@ -18,7 +18,7 @@ description: |
   ZH (TDD): TDD, 测试驱动开发, 红绿重构, 测试优先, 新功能, 规格测试, 绿地项目
   ZH (autofix): 自动修复, 自动修补, lint修复, 错误修复, 流水线修复
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md / design.md / research.md — manager-spec only per Status Transition Ownership Matrix), security audits, performance optimization, deployment (use expert-devops via builder-harness fallback if needed)
-tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 effort: xhigh
 permissionMode: bypassPermissions
@@ -36,13 +36,13 @@ skills:
   - moai-workflow-worktree
 hooks:
   PreToolUse:
-    - matcher: "Write|Edit|MultiEdit"
+    - matcher: "Write|Edit"
       hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" develop-pre-implementation"
           timeout: 5
   PostToolUse:
-    - matcher: "Write|Edit|MultiEdit"
+    - matcher: "Write|Edit"
       hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" develop-post-implementation"
@@ -190,7 +190,7 @@ For each transformation:
 For each test case:
 1. **Write Specification Test**: Descriptive name, Arrange-Act-Assert pattern
 2. **Verify Test Fails**: Run test, confirm RED state
-3. **Record**: Update TodoWrite with test case status
+3. **Record**: Update task status via TaskUpdate with the test case state
 
 **STEP 2.5: LSP Baseline Capture**
 - Capture LSP diagnostics (errors, warnings, type errors, lint errors)
@@ -202,7 +202,7 @@ For each failing test:
 2. **LSP Verification**: Check for regression from baseline
 3. **Verify Test Passes**: Run immediately
 4. **Check Completion**: LSP errors == 0, all tests pass
-5. **Record Progress**: Update coverage and TodoWrite
+5. **Record Progress**: Update coverage and task status via TaskUpdate
 
 **STEP 4: REFACTOR Phase**
 For each improvement:

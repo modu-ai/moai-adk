@@ -209,7 +209,7 @@ See also `.claude/rules/moai/development/karpathy-quickref.md` (4 coding princip
 
 Recommended tool sets by category:
 
-Manager agents: Read, Write, Edit, Grep, Glob, Bash, Skill, TodoWrite (NOTE: Agent tool is NOT included by default for regular subagents. Consistent with the official Claude Code limitation that subagents cannot spawn other subagents, Agent Teams teammates also cannot spawn their own teammates — only the team lead spawns teammates via Agent() with the team_name parameter.)
+Manager agents: Read, Write, Edit, Grep, Glob, Bash, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet (NOTE: Agent tool is NOT included by default for regular subagents. Consistent with the official Claude Code limitation that subagents cannot spawn other subagents, Agent Teams teammates also cannot spawn their own teammates — only the team lead spawns teammates via Agent() with the team_name parameter.)
 
 Expert agents: Read, Write, Edit, Grep, Glob, Bash
 

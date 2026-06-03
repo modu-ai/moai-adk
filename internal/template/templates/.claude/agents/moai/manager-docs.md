@@ -10,7 +10,7 @@ description: |
   JA: ドキュメント, README, APIドキュメント, Nextra, マークダウン, 技術文書, プロジェクト初期化, プロダクト文書, 構造文書
   ZH: 文档, README, API文档, Nextra, markdown, 技术写作, 项目初始化, 产品文档, 结构文档
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md body — manager-spec only per Status Transition Ownership Matrix; manager-docs limited to frontmatter `status` + `updated` field transitions only), code implementation, testing, git branch management, security audits
-tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
 effort: medium
 permissionMode: bypassPermissions
