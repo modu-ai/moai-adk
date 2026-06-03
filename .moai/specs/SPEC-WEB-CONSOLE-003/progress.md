@@ -60,27 +60,50 @@ plan_status: audit-ready
 
 | AC | REQ | Status | Verification command | Actual output |
 |----|-----|--------|----------------------|---------------|
-| AC-WC3-001a | REQ-WC3-001 | (pending run completion) | `go test ./internal/web/ -run TestValidateProjectConfig` | — |
-| AC-WC3-001b | REQ-WC3-001/005 | (pending) | web handler round-trip + quality.yaml re-read | — |
-| AC-WC3-002a | REQ-WC3-002 | (pending) | validator + IsValidConvention | — |
-| AC-WC3-002b | REQ-WC3-002/005 | (pending) | web handler round-trip + git-convention.yaml re-read | — |
-| AC-WC3-003 | REQ-WC3-003 | (pending) | template render test (Project fieldset, no type=text) | — |
-| AC-WC3-004 | REQ-WC3-004 | (pending) | handleIndex read seam pre-select + read-fail inline error | — |
-| AC-WC3-005 | REQ-WC3-005/007 | (pending) | app seam grep + empty-keeps-existing + no-marshal grep | — |
-| AC-WC3-006a | REQ-WC3-006 | (pending) | TestGetProfileText_AllLanguages + construction grep | — |
-| AC-WC3-006b | REQ-WC3-006 | (pending) | TUI save → quality.yaml/git-convention.yaml NOT preferences.yaml | — |
-| AC-WC3-007 | REQ-WC3-007 | (pending) | section-isolation test (workflow/harness/git-strategy/llm unchanged) | — |
-| AC-WC3-008 | REQ-WC3-008 | (pending) | 001/002 suite + integration_test DO_NOT_TOUCH sentinels | — |
-| AC-WC3-009 | all | (pending) | `go test ./internal/web/... ./internal/cli/... ./internal/config/...` | — |
+| AC-WC3-001a | REQ-WC3-001 | PASS | `go test ./internal/web/ -run 'TestSaveRejectsBogusDevelopmentMode\|TestValidateProjectConfig'` | ok internal/web (bogus dev → 400 + field error + no write) |
+| AC-WC3-001b | REQ-WC3-001/005 | PASS | `go test ./internal/web/ -run TestSaveValidProjectConfigPersists` | ok (ddd → 200, write seam receives ddd) |
+| AC-WC3-002a | REQ-WC3-002 | PASS | `go test ./internal/web/ -run TestSaveRejectsBogusConvention` + `go test ./internal/config/ -run TestIsValidConvention` | ok both (gitflow → 400 + git_convention error + no write; IsValidConvention 100% cov) |
+| AC-WC3-002b | REQ-WC3-002/005 | PASS | `go test ./internal/web/ -run TestSaveValidProjectConfigPersists` | ok (angular → 200, write seam receives angular) |
+| AC-WC3-003 | REQ-WC3-003 | PASS | `go test ./internal/web/ -run TestProjectFieldsetRendersSelects` | ok (`<legend>Project</legend>` + 2 `<select>`, no type=text, 7 canonical opts + 2× "(project default)") |
+| AC-WC3-004 | REQ-WC3-004 | PASS | `go test ./internal/web/ -run 'TestProjectSelectsPreselectCurrentValues\|TestProjectReadSeamFailureRendersInlineError'` | ok (ddd/karma pre-selected; read-fail → ≥400 inline error, no panic) |
+| AC-WC3-005 | REQ-WC3-005/007 | PASS | `go test ./internal/web/ -run 'TestDefaultAppHasProjectConfigSeams\|TestWriteProjectConfig\|TestSaveEmptyProjectConfigPasses'` + no-marshal grep | ok (2 seams non-nil; empty keeps existing; `grep yaml.Marshal\|os.WriteFile internal/web/*.go` non-test = 0) |
+| AC-WC3-006a | REQ-WC3-006 | PASS | `go test ./internal/cli/ -run 'TestGetProfileText_AllLanguages\|TestProfileSetupConstructsProjectSelects'` | ok (7 labels × 4 locales non-empty; both selects bound + 7 canonical opt values present) |
+| AC-WC3-006b | REQ-WC3-006 | PASS | `go test ./internal/cli/ -run TestPersistProjectConfig` | ok (quality.yaml=ddd + git-convention.yaml=angular; preferences.yaml has neither key) |
+| AC-WC3-007 | REQ-WC3-007 | PASS | `go test ./internal/web/ -run TestWriteProjectConfigSectionIsolation` | ok (workflow/harness/git-strategy byte-identical; llm no backend switch; test_coverage_target=85 preserved) |
+| AC-WC3-008 | REQ-WC3-008 | PASS | `go test ./internal/web/ -run 'TestGoldenPath\|TestHostCheck\|TestSaveScopeBoundary'` | ok (loopback/no-auth/Host-check/DO_NOT_TOUCH sentinels green; integration_test.go unmodified) |
+| AC-WC3-009 | all | PASS | `go test ./internal/web/... ./internal/cli/... ./internal/config/...` | exit 0 (all packages ok) |
+
+Edge cases: EC-1 (both empty → no clobber) PASS; EC-2 (one bogus, one valid → atomic reject, neither persisted) PASS `TestSaveEC2AtomicReject`; EC-3 (`custom` enum accepted) PASS `TestValidateProjectConfig`; EC-4 (uppercase TDD/Angular non-canonical) PASS; EC-5 (absent config → LoadRaw defaults, no panic) PASS `TestReadProjectConfig_AbsentFiles` + `absent config creates section`; EC-6 (whitespace value non-canonical) PASS.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-06-03
-run_commit_sha: "<orchestrator-backfills>"
-run_status: in-progress
-ac_pass_count: 0
+run_commit_sha: "<orchestrator-backfills-after-cherry-pick>"
+run_status: implemented
+ac_pass_count: 12
 ac_fail_count: 0
-status_transition: "draft → in-progress (M1 commit, manager-develop)"
-m1_to_mN_commit_strategy: "M1 predicate + frontmatter transition; M2-M5 incremental commits per milestone"
+preserve_list_post_run_count: 5
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  native: "go build ./... exit 0"
+  windows: "GOOS=windows GOARCH=amd64 go build ./... exit 0"
+coverage:
+  internal_web: "90.9%"
+  internal_cli: "71.5% (package-level; new SPEC fns readCurrentProjectConfig 80%, persistProjectConfig 81%)"
+  internal_config: "77.7% (package-level; new SPEC fns IsValidConvention 100%, ValidConventions 100%)"
+  new_spec_code: "M1 predicates 100%, validateProjectConfig 100%, projectView 100%, developmentModesFromModels 100%, read/write seams 80-81% (error branches need fault injection)"
+subagent_boundary_c_hra_008: "0 matches (AskUserQuestion in new internal/web + internal/cli files)"
+no_direct_marshal_guard: "0 matches (yaml.Marshal/os.WriteFile of config section in internal/web non-test)"
+status_transition: "draft → in-progress (M1 commit 3294eb5b3, manager-develop); run-phase complete (implemented) on M-final"
+m1_to_mN_commit_strategy: "M1 3294eb5b3 (predicate + frontmatter transition) → M2 d3b40997b (validator+seams) → M3 162889960 (handler+widget) → M4 e861790ce (TUI parity) → M5 (scope test + progress)"
+total_run_phase_files: 15
+integration_test_do_not_touch: "unmodified (last touched by SPEC-WEB-CONSOLE-001 b1ab60454)"
 ```
+
+## §E.4 Notes for sync-phase (manager-docs)
+
+- Implementation matches plan.md §F M1-M5 exactly. No scope expansion. `llm.mode`/`llm.default_model` NARROWED OUT (not implemented, per spec.md §1).
+- No template mirroring / `make build` (B-NEW): web assets embed via `internal/web/assets.go` `go:embed`, NOT the template-deploy system.
+- Commits NOT pushed by manager-develop (B9 exception (a): active parallel session race present — orchestrator pushes after Trust-but-verify).
+- L1 worktree: this run executed in isolated worktree `worktree-agent-aa4e5e1f0817715c5` (branch == origin/main base a090f29ac). Orchestrator integrates via cherry-pick of the 4-5 SPEC commits.
