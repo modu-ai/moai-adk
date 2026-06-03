@@ -20,6 +20,22 @@
 plan_complete_at: 2026-06-03
 plan_status: audit-ready
 
+## Phase 0.95 Mode Selection (orchestrator)
+
+GATE-2: PASSED (user approved run-phase entry, 2026-06-03).
+
+### Input parameters
+
+- tier: M
+- scope (file count): ~10-15 (page.html.tmpl + console.css token/component layer + Pretendard woff2 subset + inline SVG icons + app.js + handlers.go [BindAddr field] + app.go + assets.go [go:embed] + tests)
+- domain count: 1 (internal/web product code — template + CSS + static assets + Go view-model field + tests)
+- concurrency benefit: LOW (coding-heavy, single-package, sequential milestone dependency M1->M2->M3/M4->M5)
+- Agent Teams prereqs: not all met (single-domain; team session overhead exceeds benefit)
+
+### Decision: sub-agent
+
+Mode 5 (sub-agent sequential). Coding-heavy single-domain work per Finding A4 (most coding tasks involve fewer truly parallelizable subtasks than research). The milestones carry a hard dependency chain — M2 (server-contract preservation gate) gates M3/M4/M5 — so sequential execution is required, not parallel fan-out. cycle_type=tdd per development_mode. Modes 1/2/3/4/6 not selected (not trivial; run-phase writes files so not background; single-domain so not agent-team/parallel; not >=30-file mechanical-uniform so not workflow).
+
 ## Run Phase
 
 - status transition: draft -> in-progress (M1 commit)
@@ -57,7 +73,7 @@ plan_status: audit-ready
 
 ```yaml
 run_complete_at: 2026-06-03
-run_commit_sha: <backfill-after-cherry-pick>
+run_commit_sha: 40a0c303e
 run_status: implemented
 cycle_type: tdd
 ac_pass_count: 13
