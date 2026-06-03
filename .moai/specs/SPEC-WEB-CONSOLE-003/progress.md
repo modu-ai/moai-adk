@@ -111,7 +111,7 @@ integration_test_do_not_touch: "unmodified (last touched by SPEC-WEB-CONSOLE-001
 ## Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_commit_sha: (this commit)
+sync_commit_sha: d2db9701d
 sync_status: complete
 changelog_entry_added: true
 status_transition: "in-progress → implemented"
@@ -123,4 +123,18 @@ sync_rationale: >
   sync/Mx to avoid manager-docs L1-worktree + race overhead. Authored-By-Agent trailer
   omitted (legacy silent SKIP) to avoid OwnershipTransitionInvalid on the
   orchestrator-direct in-progress→implemented transition.
+```
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+```yaml
+mx_commit_sha: (this commit — backfilled by follow-up)
+status_transition: "implemented → completed"
+four_phase_close: true
+close_subject_full_id: SPEC-WEB-CONSOLE-003
+mx_executor: orchestrator-direct
+audit_ready: true
+notes: >
+  4-phase close (plan a090f29ac / run 7a5b1698c..e83864047 / sync d2db9701d / Mx this).
+  Era H-4 (§E.2 + §E.5 + sync_commit_sha + mx_commit_sha) → V3R6 modern, drift-aligned.
 ```

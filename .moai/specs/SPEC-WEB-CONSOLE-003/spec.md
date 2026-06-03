@@ -2,7 +2,7 @@
 id: SPEC-WEB-CONSOLE-003
 title: "Web Console — Flat Project-Config Parity (development_mode + git_convention.convention)"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-06-03
 updated: 2026-06-03
 author: manager-spec
