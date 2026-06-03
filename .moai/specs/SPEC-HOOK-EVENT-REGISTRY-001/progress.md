@@ -79,7 +79,7 @@ $ GOOS=windows GOARCH=amd64 go build ./internal/hook/... ./internal/cli/... → 
 
 ```yaml
 run_complete_at: 2026-06-03
-run_commit_sha: <backfill-after-commit>
+run_commit_sha: 52b6f9a8b
 run_status: implemented
 ac_pass_count: 28
 ac_fail_count: 0
