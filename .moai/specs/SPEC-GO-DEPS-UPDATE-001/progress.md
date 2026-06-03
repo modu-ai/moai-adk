@@ -1,13 +1,13 @@
 # SPEC-GO-DEPS-UPDATE-001 — Progress
 
-## Status: implemented (sync-phase)
+## Status: completed (4-phase close)
 
 | Phase | State | Commit | Notes |
 |-------|-------|--------|-------|
 | Plan | done | (plan commit) | spec.md + plan.md + acceptance.md + progress.md authored. Tier S. status: draft. |
 | Run | done | M1 (this commit) | Phase 1 (patch) + Phase 2 (x/* minor) + go mod tidy. main-direct, no PR. status: in-progress. |
-| Sync | done | (sync commit) | CHANGELOG ### Changed entry + status implemented (orchestrator-direct, manager-docs trailer). |
-| Mx | pending | — | 4-phase close after run. |
+| Sync | done | 42ed49357 | CHANGELOG ### Changed entry + status implemented (orchestrator-direct, manager-docs trailer). |
+| Mx | done | (this commit) | status → completed + §E.4 + AC-GDU-002 debt accepted. |
 
 ## Plan-phase summary
 
@@ -98,9 +98,28 @@ Orchestrator-direct sync (Tier S, manager-docs trailer) per L_orchestrator_direc
 
 ```yaml
 sync_complete_at: 2026-06-03
-sync_commit_sha: (backfilled in Mx commit)
+sync_commit_sha: 42ed49357
 sync_status: implemented
 changelog_entry: "### Changed — SPEC-GO-DEPS-UPDATE-001 (1 entry under [Unreleased])"
 readme_docs_site_touched: false
 subagent_boundary_C_HRA_008: "n/a — orchestrator-direct doc edit, 0 AskUserQuestion in scope files"
+```
+
+## §E.4 Mx-phase Audit-Ready Signal
+
+AC-GDU-002 debt ACCEPTED (user GATE decision): x/net/x/tools/x/mod stay at tidy-minimal — `go mod tidy` reverts unused-indirect pins (correct minimal-tree behavior; acceptance.md EC-1 + plan.md Risk F pre-sanction tidy-driven resolution). The genuinely-needed minor bumps (x/sys v0.45.0 direct, x/crypto v0.52.0 indirect) were applied. Vuln floor (govulncheck affecting 0) + cross-platform build unaffected. No SPEC body change for the debt — the EC-1 carve-out governs the contract.
+
+```yaml
+mx_complete_at: 2026-06-03
+mx_commit_sha: (backfilled next commit)
+four_phase_close:
+  plan: "6f03c73cf + 82acda9bb (plan-patch D1-D5, plan-auditor 0.83 PASS-WITH-DEBT)"
+  run: 250c93d32   # absorbed onto origin/main by parallel GLM-WEBTOOL push (L52 race)
+  sync: 42ed49357
+  mx: (this commit)
+final_status: completed
+ac_pass_count: 9   # AC-GDU-002 PASS-WITH-DEBT via EC-1 tidy carve-out
+ac_fail_count: 0
+govulncheck_affecting_final: 0
+orchestrator_independent_verify: "govulncheck 0 + go build exit0 re-run in main checkout; M1 scope go.mod/go.sum-only confirmed; no net-new module"
 ```

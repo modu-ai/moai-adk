@@ -2,7 +2,7 @@
 id: SPEC-GO-DEPS-UPDATE-001
 title: "Go third-party dependency maintenance update (patch + golang.org/x/* minor; 0 major bumps)"
 version: "0.1.1"
-status: implemented
+status: completed
 created: 2026-06-03
 updated: 2026-06-03
 author: manager-spec
@@ -12,6 +12,7 @@ module: "go.mod"
 lifecycle: spec-anchored
 tags: "dependencies, maintenance, go-modules, latest-ness"
 tier: S
+era: V3R6
 ---
 
 # SPEC-GO-DEPS-UPDATE-001 — Go third-party dependency maintenance update
