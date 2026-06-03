@@ -2,7 +2,7 @@
 id: SPEC-CCSYNC-CLAUDEMD-001
 title: "Claude Code instruction-layer doc sync (CLAUDE.md + rules templates)"
 version: "0.1.1"
-status: implemented
+status: completed
 created: 2026-06-02
 updated: 2026-06-03
 author: manager-spec

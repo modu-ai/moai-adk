@@ -52,6 +52,18 @@ passing_ac_count: 17
 
 ---
 
+## §E.5 Mx-phase Audit-Ready Signal
+
+```yaml
+mx_phase_ready: true
+mx_complete_at: "2026-06-03T15:30:00Z"
+mx_commit_sha: "MX_PLACEHOLDER"
+mx_status: ready
+four_phase_close: true
+```
+
+---
+
 Version: 0.1.0
-Status: in-progress (awaiting sync commit)
+Status: completed (4-phase close)
 Linked spec: `.moai/specs/SPEC-CCSYNC-TOOLCAT-001/spec.md`
