@@ -104,11 +104,23 @@ m1_to_mN_commit_strategy: single-commit   # Tier S — M1 RED + M2 GREEN + M3 RE
 
 ```yaml
 sync_complete_at: 2026-06-03
-sync_commit_sha: PLACEHOLDER_SYNC
+sync_commit_sha: 6e0ab95b7
 sync_status: implemented
 changelog_entry: added           # CHANGELOG.md [Unreleased] ### Added — 1 entry
 readme_touched: false            # internal hook registry — no user-facing README surface
 docs_site_touched: false         # internal Go change — no docs-site page
 status_transition: in-progress -> implemented
 authored_by: orchestrator-direct # Tier S small-scope sync (L_orchestrator_direct_sync_tier_s); Authored-By-Agent trailer omitted → ownership lint silent SKIP
+```
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+```yaml
+mx_complete_at: 2026-06-03
+mx_commit_sha: PLACEHOLDER_MX
+mx_status: completed
+status_transition: implemented -> completed
+four_phase_close: true            # plan + run + sync + Mx 모두 완료
+authored_by: orchestrator-direct  # implemented->completed: matrix permits manager-docs OR orchestrator (Mx chore)
+close_subject_full_id: true       # close commit subject가 full SPEC-ID 명명 (DRIFT-LEGACY-CONVENTION full-ID mandate)
 ```
