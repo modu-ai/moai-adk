@@ -96,7 +96,7 @@ preserve_list_post_run_count: 0
 ## Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_commit_sha: (this commit)
+sync_commit_sha: 35bec9fe6
 sync_status: complete
 changelog_entry_added: true
 status_transition: "in-progress → implemented"
@@ -109,4 +109,18 @@ sync_rationale: >
   cherry-pick + race overhead for a 3-file doc sync. Authored-By-Agent trailer
   intentionally omitted (legacy-commit silent SKIP) to avoid an
   OwnershipTransitionInvalid finding on the orchestrator-direct in-progress→implemented transition.
+```
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+```yaml
+mx_commit_sha: (this commit — backfilled by follow-up)
+status_transition: "implemented → completed"
+four_phase_close: true
+close_subject_full_id: SPEC-GLM-WEBTOOL-ROUTING-001
+mx_executor: orchestrator-direct
+audit_ready: true
+notes: >
+  4-phase close (plan 695ec6968 / run a8c680890+4cafc293a+330722801 / sync 35bec9fe6 / Mx this).
+  Era H-4 (§E.2 + §E.5 markers + sync_commit_sha + mx_commit_sha present) → V3R6 modern, drift-aligned.
 ```
