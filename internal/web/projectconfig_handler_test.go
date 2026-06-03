@@ -62,9 +62,14 @@ func TestProjectFieldsetRendersSelects(t *testing.T) {
 		t.Fatalf("GET / status = %d, want 200", status)
 	}
 
-	// A "Project" fieldset legend must exist.
-	if !strings.Contains(body, "<legend>Project</legend>") {
-		t.Error("rendered page missing <legend>Project</legend> fieldset")
+	// A "Project" section legend must exist (SPEC-WEB-CONSOLE-004 restyle: the
+	// bare <legend>Project</legend> became a .section__legend with an icon span;
+	// the Project label text + a <fieldset class="section"> are preserved).
+	if !strings.Contains(body, ">Project</span>") {
+		t.Error("rendered page missing the Project section legend")
+	}
+	if !strings.Contains(body, `<fieldset class="section">`) {
+		t.Error("rendered page missing the <fieldset class=\"section\"> wrapper")
 	}
 
 	// Both fields render as <select name="..."> — never <input type="text" name="...">.

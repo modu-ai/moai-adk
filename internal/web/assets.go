@@ -6,15 +6,21 @@ import (
 	"io/fs"
 )
 
-// assetsFS bundles the Console's static assets (CSS, JS) and the HTML page
-// template into the binary (REQ-WC-005). No separate JS runtime, build
-// toolchain, or network fetch of frontend dependencies is required.
+// assetsFS bundles the Console's static assets (the 모두의AI design-system
+// console CSS, the self-hosted Pretendard woff2 subset + its OFL-1.1 license,
+// the progressive-enhancement JS) and the HTML page template into the binary
+// (REQ-WC-005, REQ-WC4-012). No separate JS runtime, build toolchain, icon CDN,
+// or network fetch of frontend dependencies is required — fonts and icons are
+// served offline from this embed, preserving the loopback-only zero-network
+// invariant.
 //
-//go:embed assets/style.css assets/app.js assets/page.html.tmpl
+//go:embed assets/console.css assets/app.js assets/page.html.tmpl assets/fonts
 var assetsFS embed.FS
 
-// staticFS exposes the CSS/JS assets under their bare filenames so the
-// /static/ handler can serve assets/style.css as /static/style.css.
+// staticFS exposes the CSS/JS/font assets under their bare paths so the
+// /static/ handler can serve assets/console.css as /static/console.css and
+// assets/fonts/Pretendard-Regular.subset.woff2 as
+// /static/fonts/Pretendard-Regular.subset.woff2.
 func staticFS() fs.FS {
 	sub, err := fs.Sub(assetsFS, "assets")
 	if err != nil {

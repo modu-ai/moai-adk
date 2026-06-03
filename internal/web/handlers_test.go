@@ -33,7 +33,8 @@ func TestStaticAssetsServedFromEmbed(t *testing.T) {
 		wantSubstr  string
 		wantCTParts []string
 	}{
-		{"/static/style.css", "--bg", []string{"text/css"}},
+		// SPEC-WEB-CONSOLE-004: style.css → console.css (모두의AI token + component layer).
+		{"/static/console.css", "--color-primary", []string{"text/css"}},
 		{"/static/app.js", "MoAI Web Console", []string{"javascript"}},
 	}
 	for _, c := range cases {
@@ -90,9 +91,10 @@ func TestIndexRendersPopulatedForm(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		`value="Goos"`,             // UserName populated
-		`<form method="POST"`,      // editable form present
-		"catppuccin-latte",         // theme option
+		`value="Goos"`,     // UserName populated
+		`method="POST"`,    // editable POST form present (restyle adds class="form")
+		`action="/save`,    // form posts to the save handler
+		"catppuccin-latte", // theme option
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("rendered form missing %q", want)
@@ -122,8 +124,8 @@ func TestIndexNeutralDefaultsForZeroValueProfile(t *testing.T) {
 		t.Fatalf("GET / on zero-value profile status = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, `<form method="POST"`) {
-		t.Error("zero-value profile did not render a form (page may be blank)")
+	if !strings.Contains(body, `method="POST"`) {
+		t.Error("zero-value profile did not render a POST form (page may be blank)")
 	}
 	// The unset language option must be the selected default.
 	if !strings.Contains(body, `<option value="" selected>(unset)</option>`) {
@@ -381,10 +383,10 @@ func TestSaveCustomSegmentsRoundTrip(t *testing.T) {
 	h := a.routes()
 
 	form := url.Values{
-		"__profile":         {"default"},
-		"permission_mode":   {"acceptEdits"},
-		"statusline_preset": {"custom"},
-		"segment_model":     {"1"},
+		"__profile":          {"default"},
+		"permission_mode":    {"acceptEdits"},
+		"statusline_preset":  {"custom"},
+		"segment_model":      {"1"},
 		"segment_git_branch": {"1"},
 		// other segments unchecked → recorded as false
 	}

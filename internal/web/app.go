@@ -17,6 +17,12 @@ type app struct {
 	cfg  Config
 	tmpl *template.Template
 
+	// bindAddr returns the real bound loopback address (127.0.0.1:<port>) for
+	// the appbar loopback indicator (REQ-WC4-005). NewServer wires it to the
+	// server's listener accessor; when nil (bare app in a unit test) the view
+	// falls back to a configured-port display so the render is never blank.
+	bindAddr func() string
+
 	// Injectable seams over internal/profile — default to the real functions.
 	readPreferences  func(name string) (profile.ProfilePreferences, error)
 	writePreferences func(name string, prefs profile.ProfilePreferences) error

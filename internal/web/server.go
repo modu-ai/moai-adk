@@ -98,11 +98,31 @@ func NewServer(cfg Config) (*Server, error) {
 	if cfg.ProjectRoot == "" {
 		return nil, errors.New("web: ProjectRoot is required")
 	}
-	app := newApp(cfg)
-	return &Server{
+	a := newApp(cfg)
+	srv := &Server{
 		cfg:     cfg,
-		handler: app.routes(),
-	}, nil
+		handler: a.routes(),
+	}
+	// REQ-WC4-005: wire the loopback-indicator address accessor. The app renders
+	// {{.BindAddr}} from this closure at request time, so once the listener is
+	// bound (including a random :0 test port) the indicator shows the real
+	// 127.0.0.1:<port> address rather than a hardcoded placeholder.
+	a.bindAddr = srv.displayBindAddr
+	return srv, nil
+}
+
+// displayBindAddr returns the address the loopback indicator should show. After
+// the listener is bound it returns the real 127.0.0.1:<port>; before bind (or
+// when Port is 0 and no listener exists yet) it falls back to the configured
+// loopback host + port so the GET / render is never blank (REQ-WC4-005).
+func (s *Server) displayBindAddr() string {
+	if addr := s.listenerAddr(); addr != "" {
+		return addr
+	}
+	if s.cfg.Port > 0 {
+		return fmt.Sprintf("%s:%d", loopbackHost, s.cfg.Port)
+	}
+	return loopbackHost
 }
 
 // Handler returns the fully-wired HTTP handler (with Host-check middleware).

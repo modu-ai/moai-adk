@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 
 	"github.com/modu-ai/moai-adk/internal/profile"
@@ -40,6 +41,12 @@ type pageView struct {
 	Banner     string
 	BannerKind string
 
+	// BindAddr is the real bound loopback address (e.g. "127.0.0.1:3041") shown
+	// in the appbar loopback indicator (REQ-WC4-005). It is server-sourced from
+	// the listener — NEVER a hardcoded port — so a console started on a
+	// non-default port renders its real address.
+	BindAddr string
+
 	// FieldErrors maps form field name → per-field validation message.
 	FieldErrors map[string]string
 }
@@ -63,8 +70,24 @@ func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pag
 		AllSegments:       allSegments,
 		DevelopmentModes:  developmentModeCanonical,
 		Conventions:       conventionCanonical,
+		BindAddr:          a.resolveBindAddr(),
 		FieldErrors:       map[string]string{},
 	}
+}
+
+// resolveBindAddr returns the loopback-indicator address (REQ-WC4-005). It uses
+// the server-wired bindAddr accessor when present (the real 127.0.0.1:<port>),
+// otherwise falls back to the configured port — never a hardcoded placeholder.
+func (a *app) resolveBindAddr() string {
+	if a.bindAddr != nil {
+		if addr := a.bindAddr(); addr != "" {
+			return addr
+		}
+	}
+	if a.cfg.Port > 0 {
+		return fmt.Sprintf("%s:%d", loopbackHost, a.cfg.Port)
+	}
+	return loopbackHost
 }
 
 // render executes the page template into a buffer first, so a template error

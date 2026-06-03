@@ -227,8 +227,8 @@ func TestGoldenPath_EmptyStateNeutralDefaults(t *testing.T) {
 	if strings.TrimSpace(body) == "" {
 		t.Fatal("empty-state GET / produced a blank page")
 	}
-	if !strings.Contains(body, `<form method="POST"`) {
-		t.Error("empty-state did not render a form")
+	if !strings.Contains(body, `method="POST"`) {
+		t.Error("empty-state did not render a POST form")
 	}
 }
 
