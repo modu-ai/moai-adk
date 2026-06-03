@@ -113,7 +113,7 @@ matching to free-text group labels with an explicit sibling enumeration); (iii) 
 
 ```yaml
 run_complete_at: 2026-06-03
-run_commit_sha: "<M5 commit — backfill after commit>"
+run_commit_sha: "d00061a25"
 run_status: implemented
 ac_pass_count: 12
 ac_fail_count: 0
@@ -123,9 +123,28 @@ cross_platform_build:
   darwin: pass
   windows: pass  # GOOS=windows GOARCH=amd64 go build ./internal/spec/... exit 0
 total_run_phase_files: 7  # drift.go, transitions.go, +4 new/edited _test.go, 2 doctrine + 1 template mirror
-m1_to_mN_commit_strategy: "per-milestone main-direct (M1 bd7b6bcc4, M2 4b301e0ab, M3 c64b050f7, M4 527c7d53c, M5 this)"
+m1_to_mN_commit_strategy: "per-milestone main-direct (M1 bd7b6bcc4, M2 4b301e0ab, M3 c64b050f7, M4 527c7d53c, M5 d00061a25)"
 drift_count_before: 54
 drift_count_after: 8
 audit_parity: byte-identical
 coverage_internal_spec: 87.6%
+```
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-06-03
+sync_commit_sha: "(this commit)"
+sync_status: implemented
+spec_frontmatter_transitions:
+  - field: status
+    old_value: in-progress
+    new_value: implemented
+  - field: updated
+    old_value: 2026-06-03
+    new_value: 2026-06-03
+changelog_entry_position: "[Unreleased]/Fixed section"
+progress_sections_updated:
+  - "§E.3 Run-phase Audit-Ready Signal (§E.4 added for sync)"
+  - "§E.4 Sync-phase Audit-Ready Signal (NEW)"
 ```

@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001
 title: "moai spec drift — comprehensive false-positive elimination + era/grandfather alignment + close-subject doctrine"
 version: "0.1.1"
-status: in-progress
+status: implemented
 created: 2026-06-03
 updated: 2026-06-03
 author: manager-spec
