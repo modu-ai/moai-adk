@@ -25,11 +25,13 @@ The run-phase scope is doctrine/rules editing (`orchestration-mode-selection.md`
 
 | Milestone | Status | Commit |
 |-----------|--------|--------|
-| M1 — D1 Mode 6 catalog addition | completed | (M1 commit) |
-| M2 — D2 run.md `/goal ac_converge` autonomy section | completed | (M2 commit) |
-| M3 — D3 GATE-2 preservation regression guard | completed | (M3 commit) |
-| M4 — Template mirror + make build | completed | (M4 commit) |
-| M5 — Verification + spec-lint | completed | (M5 commit) |
+| M1 — D1 Mode 6 catalog addition | completed | `948d704f6` (cherry-picked onto main) |
+| M2 — D2 run.md `/goal ac_converge` autonomy section | completed | `36642c6c6` |
+| M3 — D3 GATE-2 preservation regression guard | completed | `1aa4a927e` |
+| M4 — Template mirror + make build | completed | `3c9af0bc1` |
+| M5 — Verification + AC-004 awk fix + MissingExclusions H3 | completed | (orchestrator close commit — backfill) |
+
+> Integration note: run-phase ran in an L1 worktree (`worktree-agent-aaacf3a2141bb6e93`); a parallel session committed `SPEC-CCSYNC-DYNWF-001` to main meanwhile (disjoint). M1-M4 were cherry-picked onto the diverged main (linear, no conflict); the original worktree backfill commit `31f231474` was dropped (SHAs changed on cherry-pick).
 
 ## §E.2 — Run-phase Evidence (AC PASS/FAIL matrix)
 
@@ -63,10 +65,11 @@ The run-phase scope is doctrine/rules editing (`orchestration-mode-selection.md`
 
 ```yaml
 run_complete_at: 2026-06-03
-run_commit_sha: "<backfill after M5 commit>"
-run_status: implemented-pending-spec-lint
+run_commit_sha: "<backfill after orchestrator close commit>"
+run_status: implemented
 ac_pass_count: 13
 ac_fail_count: 0
+ac004_note: "AC-004 awk verification command corrected (first-GATE-2 guard `if(!g)g=NR`). Semantic invariant holds: first GATE-2 marker (run.md:115) precedes first /goal token (run.md:117), confirmed independently by Go test TestGate2PreservedBeforeGoal + corrected awk. The original last-GATE-2 awk false-failed on the §19.1 cross-reference at run.md:172."
 preserve_list_post_run_count: 5
 l44_pre_commit_fetch: "0 0 (clean, isolated worktree)"
 l44_post_push_fetch: "n/a (NO push — orchestrator handles push decision)"
@@ -76,5 +79,5 @@ cross_platform_build:
   windows_amd64: exit-0
 total_run_phase_files: 5
 m1_to_mN_commit_strategy: "per-milestone commits M1-M5; status draft→in-progress on M1; NO push"
-spec_lint_blocker: "MissingExclusions ERROR on spec.md §D — requires '### Out of Scope' H3 sub-heading with list item; spec.md body content owned by manager-spec (manager-develop forbidden from spec body edits). Blocker surfaced to orchestrator for manager-spec re-delegation."
+spec_lint_blocker: "RESOLVED — orchestrator-direct added '### §D.1 Out of Scope (Exclusions — What NOT to Build)' H3 to spec.md §D (manager-spec rate-limited post-patch; surgical lint-satisfying heading + AC-004 awk bugfix, no scope/requirement change). OutOfScopeRule now satisfied (H3 'out of scope' infix + EX-1..EX-8 list items)."
 ```

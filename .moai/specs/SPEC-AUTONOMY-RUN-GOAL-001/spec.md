@@ -86,6 +86,8 @@ This SPEC delivers EXACTLY three deliverables. It is doctrine/rules-focused with
 
 [HARD] This SPEC explicitly does NOT deliver the following. Each is owned by a sibling roadmap SPEC or is deliberately out of scope.
 
+### §D.1 Out of Scope (Exclusions — What NOT to Build)
+
 - **EX-1 — `workflow.yaml` autonomy-profile schema (Go nested struct + accessors)**: owned by `SPEC-AUTONOMY-CONFIG` (strategy §8 / §9 Priority-Med). This SPEC references the `run` profile's `goal_condition_template: "ac_converge"` and `max_turns: 20` as design intent only; it does NOT implement the `internal/config` struct.
 - **EX-2 — Workflow script pattern catalog (5 patterns)**: owned by `SPEC-AUTONOMY-WORKFLOW-PATTERNS` (strategy §6 / §9 Priority-Med). This SPEC describes only the single run-phase mechanical-migration fan-out shape conceptually; it does NOT register the full pattern catalog in `dynamic-workflows.md`.
 - **EX-3 — Full `/goal` condition template registry (all subcommands)**: owned by `SPEC-AUTONOMY-GOAL-CONDITIONS` (strategy §5 / §9 Priority-High sibling). This SPEC wires only the `run` condition (`ac_converge`); it does NOT register plan/sync/loop/coverage/review/mx/clean conditions.

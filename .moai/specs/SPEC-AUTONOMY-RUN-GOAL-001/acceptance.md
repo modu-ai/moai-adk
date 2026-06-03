@@ -60,8 +60,9 @@ grep -niE 'Mode 6.*before GATE-2|launch.*before GATE-2' .claude/rules/moai/workf
 **Then** the section states the `ac_converge` goal is set ONLY after GATE-2 approval is obtained, AND the GATE-2 `AskUserQuestion` reference textually precedes the first `/goal` token in the file.
 **Verify**:
 ```bash
-# GATE-2 AskUserQuestion marker byte-offset precedes first /goal token
-awk '/GATE-2/{g=NR} /\/goal/{if(!gl)gl=NR} END{print "gate2_line="g" goal_line="gl; exit !(g>0 && gl>0 && g<gl)}' .claude/skills/moai/workflows/run.md
+# FIRST GATE-2 marker line precedes FIRST /goal token (first-match guard on both — the
+# GATE-2 human-gate ordering anchor; later §19.1 cross-reference GATE-2 mentions are not the anchor)
+awk '/GATE-2/{if(!g)g=NR} /\/goal/{if(!gl)gl=NR} END{print "gate2_line="g" goal_line="gl; exit !(g>0 && gl>0 && g<gl)}' .claude/skills/moai/workflows/run.md
 ```
 
 ### AC-ARG-005 — `ac_converge` predicates are transcript-measurable (no file-path predicate)
