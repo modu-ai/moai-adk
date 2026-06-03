@@ -39,8 +39,51 @@ plan_commit_sha: (this commit)
 - `doctor harness` L3 (marker) + L5 (`main.md`) checks already exist — smoke gate reuses them
 - B3 (empty agent descriptions) REFUTED per diagnosis — codified as REQ-HAW-009 for the gate to assert
 
+## §E — Phase 0.95 Mode Selection
+
+**Input parameters**
+- tier: M (300-1000 LOC, 5-15 files)
+- scope (file count): ~8-10 (2 Go source + 2 Go test + 2 template skill/workflow + 2 mirror sync)
+- domain count: 2 — Go source code (`internal/cli/`, `internal/harness/`) + orchestration skill/workflow markdown (`.claude/skills/...`)
+- file language mix: Go-dominant (the load-bearing wiring + smoke gate + TDD tests are Go); markdown is additive skill/workflow body
+- concurrency benefit: LOW — coding-heavy, single coherent wiring chain (CLI command → InjectMarker/ScaffoldHarnessDir caller → smoke gate); milestones are sequential-dependent (M3 CLI before M4 router before M5 gate)
+- Agent Teams prereqs status: not evaluated (single-domain coding work does not meet ≥3-domain gate)
+
+**Mode evaluation**
+
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| 1 trivial | not selected | Multi-file semantic change (new CLI command + smoke gate + tests) |
+| 2 background | not selected | Write/Edit operations required (CONST-V3R2-020 forbids background writes) |
+| 3 agent-team | not selected | Not multi-domain (≥3); Agent Teams capability gate not met |
+| 4 parallel | not selected | Coding-heavy work — Finding A4 caveat (coding tasks have few parallelizable subtasks) |
+| 5 sub-agent | **selected** | Default fallback for coding-heavy work; sequential milestone execution (M1→M6) with inter-milestone dependency |
+| 6 workflow | not selected | Not ≥30-file mechanical-uniform transform; this is semantic new-code Go wiring |
+
+**Decision: sub-agent**
+
+**Justification**: This is coding-heavy Go work — the orphaned-installer wiring, the `moai harness install` CLI command, and the TDD smoke-gate extension form a single coherent dependency chain (the CLI command calls `InjectMarker`/`ScaffoldHarnessDir`; the smoke gate must follow the router restructure). Per Anthropic Finding A4, coding tasks involve fewer truly parallelizable subtasks than research, so the sequential sub-agent path (Mode 5) is the correct default. Mode 6 (workflow) is explicitly rejected: this is not a ≥30-file uniform mechanical transform but a small set of semantic new-code edits with inter-file dependency. Modes 3/4 are rejected because the scope is single-domain (Go + companion markdown) and below the multi-domain parallelism gate.
+
 ## §E.2 Run-phase Evidence
-_(populated by manager-develop at run-phase)_
+
+### M1 — RED baseline (ground truth captured 2026-06-03)
+
+The four wiring breaks asserted as failing pre-conditions at run-phase start:
+
+| Ground-truth assertion | Command | Result (RED) |
+|------------------------|---------|--------------|
+| `InjectMarker` orphaned | `grep -rn "InjectMarker(" --include="*.go" internal/ \| grep -v "_test.go" \| grep -v "func InjectMarker"` | **0 callers** (orphaned) |
+| `ScaffoldHarnessDir` orphaned | `grep -rn "ScaffoldHarnessDir(" --include="*.go" internal/ \| grep -v "_test.go" \| grep -v "func ScaffoldHarnessDir"` | **0 callers** (orphaned) |
+| CLAUDE.md markers absent | `grep -c "moai:harness-start" CLAUDE.md` | **0 markers** |
+| Phase 7 body absent | `grep -n "Phase 7\|5-Layer Activation" project/meta-harness.md` | file ends at Phase 6.5 (only a forward reference at L306) |
+
+Pre-flight baseline (Section C):
+- `go build ./...` → exit 0
+- `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
+- `golangci-lint run ./internal/cli/... ./internal/harness/...` → 0 issues (clean baseline)
+- existing `TestRunHarnessCheck*` / `TestInjectMarker*` / `TestScaffold*` → all PASS (L1-L5 + installers unit-tested but unwired)
+
+_(M2-M6 evidence populated below as milestones complete)_
 
 ## §E.3 Run-phase Audit-Ready Signal
 _(populated by manager-develop at run-phase)_

@@ -2,7 +2,7 @@
 id: SPEC-V3R6-HARNESS-ACTIVATION-WIRING-001
 title: "Harness Activation Wiring — 생성된 하네스 자동 트리거 배선 복원"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-03
 updated: 2026-06-03
 author: manager-spec
