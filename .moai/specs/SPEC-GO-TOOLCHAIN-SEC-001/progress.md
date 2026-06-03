@@ -9,7 +9,7 @@ Tier S (minimal). Hybrid Trunk 1-person OSS → main-direct, no PR.
 | Phase | Status | Owner | Commit |
 |-------|--------|-------|--------|
 | Plan | done | manager-spec | c5bd27fcf + 06c666a50 |
-| Run (M1–M3) | done | manager-develop | (this M1 run-phase commit) |
+| Run (M1–M3) | done | manager-develop | 36c190fd0 |
 | Sync (M4) | pending | manager-docs | — |
 | Mx (close) | pending | orchestrator/manager-docs | — |
 
@@ -88,7 +88,7 @@ assumption is empirically false on go1.26.x. Resolution confined to the SPEC's d
 
 ```yaml
 run_complete_at: 2026-06-03
-run_commit_sha: (this M1 run-phase commit — backfilled post-commit)
+run_commit_sha: 36c190fd0
 run_status: implemented
 ac_pass_count: 6
 ac_fail_count: 0
