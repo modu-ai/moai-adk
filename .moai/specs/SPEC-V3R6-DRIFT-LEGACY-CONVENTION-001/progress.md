@@ -148,3 +148,28 @@ progress_sections_updated:
   - "§E.3 Run-phase Audit-Ready Signal (§E.4 added for sync)"
   - "§E.4 Sync-phase Audit-Ready Signal (NEW)"
 ```
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+```yaml
+mx_complete_at: 2026-06-03
+mx_commit_sha: "(this commit)"
+mx_status: completed
+spec_frontmatter_transitions:
+  - field: status
+    old_value: implemented
+    new_value: completed
+  - field: version
+    old_value: "0.1.1"
+    new_value: "0.2.0"
+four_phase_close:
+  plan_artifacts: "authored by manager-spec (uncommitted in main), committed within run M1 d8d2d8d9c"
+  run: "d8d2d8d9c (M1), 2fb2a5156 (M2), 7493472e0 (M3), 041e6fefb (M4), d00061a25 (M5)"
+  sync: eae3cdad9
+  backfill: 211d79936
+  mx: "(this commit)"
+ac_final: "12/12 PASS"
+drift_outcome: "54 → 8 (4 false-positive mechanisms ①②③④ resolved; 8 genuine-⑤ residual handed off to follow-up SPEC)"
+einstein_md_failure: "pre-existing uncommitted template drift (last touched 3d588317e, out of scope; not introduced by this SPEC)"
+close_subject_doctrine_dogfood: "this close commit uses the full SPEC-ID per REQ-DLC-011 — the close-subject full-ID mandate this SPEC shipped"
+```
