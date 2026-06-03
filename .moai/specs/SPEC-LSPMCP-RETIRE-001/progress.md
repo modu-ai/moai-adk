@@ -55,3 +55,14 @@ AC PASS/FAIL matrix (10/10 PASS):
 - **Dangling reference check**: `grep internal/mcp|moai mcp lsp|mcpCmd|mcpLSPCmd internal/ cmd/` → zero
 
 Status: run-phase complete (`status: in-progress`). Next: sync-phase (in-progress → implemented + CHANGELOG + sync-auditor).
+
+## §E.3 Sync-phase Audit-Ready Signal
+
+- **sync_commit_sha**: `e3869dce0` (spec.md + CHANGELOG.md + progress.md synced; pushed to origin/main)
+- **Frontmatter transition**: `in-progress → implemented` (spec.md status field + updated date refreshed to 2026-06-03)
+- **CHANGELOG entry**: Added under `### Removed` section. 10 ACs summarized (AC-LSMCP-001..010 all PASS). Rationale documented: moai-lsp was a dormant proof-of-concept bridge; native `internal/lsp/` supersedes; zero user-facing features lost.
+- **User-facing docs impact**: Zero. No docs-site references to moai-lsp (verified pre-sync). No README.md changes needed (feature list and version unchanged). No Breaking Changes block required (internal prototype retirement only).
+- **Plan-auditor verdict**: PASS 0.93 from run-phase stands (no scope changes in sync)
+- **Sync-auditor**: Pending (orchestrator responsibility, not sync-phase)
+
+Status: sync-phase complete (all 10/10 AC PASS). Sync commit ready for Mx-phase audit-ready signal.

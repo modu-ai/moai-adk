@@ -2,7 +2,7 @@
 id: SPEC-LSPMCP-RETIRE-001
 title: "Retire dormant moai-lsp MCP bridge"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-06-03
 updated: 2026-06-03
 author: manager-spec
