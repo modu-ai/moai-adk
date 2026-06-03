@@ -137,7 +137,7 @@ package_coverage_internal_web: "90.5%"
 ## Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_commit_sha: (this commit)
+sync_commit_sha: 52200a8c2
 sync_status: complete
 changelog_entry_added: true
 status_transition: "in-progress → implemented"
@@ -148,4 +148,19 @@ sync_rationale: >
   Mother SPEC of the web-console-v3 cohort. Run (single cohesive M1) already on
   origin/main; close-tail only. Orchestrator-direct sync/Mx (active parallel sessions;
   Authored-By-Agent trailer omitted = legacy silent SKIP to avoid OwnershipTransitionInvalid).
+```
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+```yaml
+mx_commit_sha: (this commit — backfilled by follow-up)
+status_transition: "implemented → completed"
+four_phase_close: true
+close_subject_full_id: SPEC-WEB-CONSOLE-001
+mx_executor: orchestrator-direct
+audit_ready: true
+notes: >
+  4-phase close (plan 8ab1afc5d / run b1ab60454 / sync 52200a8c2 / Mx this).
+  Era H-4 (§E.2 + §E.5 + sync_commit_sha + mx_commit_sha) → V3R6 modern, drift-aligned.
+  Mother SPEC closed; cohort children 002 completed, 003 completed, 004 draft (independent SPECs).
 ```

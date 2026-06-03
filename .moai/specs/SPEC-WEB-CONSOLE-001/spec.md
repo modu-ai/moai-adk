@@ -2,7 +2,7 @@
 id: SPEC-WEB-CONSOLE-001
 title: "MoAI Web Console — Browser-based Settings CRUD"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-06-03
 updated: 2026-06-03
 author: manager-spec
