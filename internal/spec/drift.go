@@ -60,6 +60,43 @@ func DetectDrift(baseDir string) (*DriftReport, error) {
 			continue
 		}
 
+		// (③) terminal-state authority — superseded/archived/rejected frontmatter는
+		// 어떤 git commit convention으로도 positive infer할 수 없으므로 frontmatter가
+		// authoritative다. audit.go checkV3R6Drift의 terminal early-return과 정합.
+		// D3 record-emission contract: record를 Drifted:false로 PRESERVE (drop 금지) —
+		// Records[] 소비자(M5 residual classifier)가 전체 SPEC corpus를 관측하도록 한다.
+		// @MX:NOTE: [AUTO] terminal frontmatter는 git 추론보다 우선한다.
+		// @MX:REASON: SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001 mechanism ③ —
+		//   terminal state는 commit convention으로 positive infer 불가 (audit.go와 동일 정책).
+		if isTerminalStatus(frontmatterStatus) {
+			records = append(records, DriftRecord{
+				SPECID:            specID,
+				FrontmatterStatus: frontmatterStatus,
+				GitImpliedStatus:  "terminal-exempt",
+				Drifted:           false,
+			})
+			continue
+		}
+
+		// (④) era/grandfather alignment — grandfather-protected era (EraFinal==true:
+		// V2.x/V3R2-R4/V3R5)는 drift 보고에서 제외한다. era.go의 LoadEraSignalsFromDir +
+		// ClassifyEra를 READ-ONLY로 재사용하여 moai spec audit과 동일한 grandfather 정책을
+		// 적용한다. D3 record-emission contract: record를 Drifted:false로 PRESERVE (drop 금지).
+		// @MX:NOTE: [AUTO] grandfather era는 drift 면제 — audit.go grandfather 정책과 정합.
+		// @MX:REASON: SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001 mechanism ④ —
+		//   ClassifyEra의 H-1..H-4 progress.md 신호 체인에 의존 (standalone created-date 비교 금지, AP-3).
+		if signals, sigErr := LoadEraSignalsFromDir(specDir); sigErr == nil {
+			if era, _ := ClassifyEra(signals); era.EraFinal() {
+				records = append(records, DriftRecord{
+					SPECID:            specID,
+					FrontmatterStatus: frontmatterStatus,
+					GitImpliedStatus:  "era-exempt",
+					Drifted:           false,
+				})
+				continue
+			}
+		}
+
 		// Get git-implied status
 		gitStatus, err := getGitImpliedStatus(specID)
 		if err != nil {
@@ -256,6 +293,22 @@ var specIDScopedChorePattern = regexp.MustCompile(`^chore\(spec-[a-z0-9-]+-[0-9]
 // isSPECIDScopedChore는 (소문자) title이 SPEC-ID-scoped chore prefix인지 검사한다.
 func isSPECIDScopedChore(lowerTitle string) bool {
 	return specIDScopedChorePattern.MatchString(lowerTitle)
+}
+
+// isTerminalStatus는 frontmatter status가 terminal lifecycle state인지 검사한다.
+// terminal state (superseded/archived/rejected)는 어떤 git commit convention으로도
+// positive infer할 수 없으므로 frontmatter가 authoritative다 (mechanism ③).
+// audit.go checkV3R6Drift의 terminal early-return과 동일한 enum을 사용한다.
+//
+// @MX:NOTE: [AUTO] terminal status enum — audit.go의 terminal early-return과 정합.
+// @MX:REASON: SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001 — terminal frontmatter authority (③).
+func isTerminalStatus(status string) bool {
+	switch status {
+	case "superseded", "archived", "rejected":
+		return true
+	default:
+		return false
+	}
 }
 
 // DriftCount is a convenience function that returns only the drift count
