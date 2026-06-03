@@ -986,4 +986,21 @@ moai constitution list --format json
   anchor: "#worktree-anchored-resume-pattern"
   clause: "When SPEC was initialized via L3 /moai plan --worktree, the resume message MUST include Block 0 (cwd anchoring) prepended before the standard 6-block structure"
   canary_gate: false
+
+# --- glm-web-tooling.md (2 entries: V3R5-040 mandate + V3R5-041 prohibition) ---
+- id: CONST-V3R5-040
+  zone: Frozen
+  zone_class: frozen-safety
+  file: .claude/rules/moai/core/glm-web-tooling.md
+  anchor: "#hard-routing-table"
+  clause: "While a session is GLM-backed, MoAI agents and the orchestrator SHALL route web search to mcp__web_search_prime__webSearchPrime, web fetch to mcp__web_reader__webReader, and image reading to a mcp__zai-mcp-server__* vision tool instead of the built-in WebSearch / WebFetch / Read-on-image"
+  canary_gate: true
+
+- id: CONST-V3R5-041
+  zone: Frozen
+  zone_class: frozen-safety
+  file: .claude/rules/moai/core/glm-web-tooling.md
+  anchor: "#hard-routing-table"
+  clause: "While a session is GLM-backed, MoAI agents and the orchestrator SHALL NOT invoke the built-in WebSearch or WebFetch, nor Read on an image file, because those route through the 529-prone api.z.ai/api/anthropic gateway and the base64->422 image path; the moai cg leader pane (Claude backend) is exempt"
+  canary_gate: true
 ```

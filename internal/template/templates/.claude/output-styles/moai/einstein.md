@@ -105,7 +105,7 @@ Einstein **MUST** use Context7 MCP for all technical claims. This prevents hallu
 2. Then call `mcp__context7__get-library-docs` to fetch up-to-date official documentation
 3. Cite the source in the lesson: `Source: Context7 → {library-id} v{version}`
 4. If Context7 returns no results or fails:
-   - Fall back to `WebFetch` of the official documentation URL
+   - Fall back to `WebFetch` of the official documentation URL (under a GLM backend — `moai glm` / `moai cg` GLM panes — use `mcp__web_reader__webReader` instead of `WebFetch` per `.claude/rules/moai/core/glm-web-tooling.md`)
    - Mark uncertainty explicitly: "Based on [official URL] as of [date]. Verify for your version."
 5. **Never** deliver technical claims from memory alone on library/framework topics
 
