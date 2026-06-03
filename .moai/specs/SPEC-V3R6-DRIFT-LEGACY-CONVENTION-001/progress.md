@@ -25,11 +25,11 @@
 
 | Milestone | Status | Commit | Notes |
 |-----------|--------|--------|-------|
-| M1 — era exemption + terminal authority (drift.go) | done | bd7b6bcc4 | DetectDrift ③+④; D3 record-emission contract |
-| M2 — stale sync→completed rule correction (transitions.go) | done | 4b301e0ab | 4-phase model: sync = implemented |
-| M3 — combined-scope secondary prefix-grep fallback (drift.go) | done | c64b050f7 | 3-gate LSGF-001-safe; live CCSYNC CLAUDEMD+TOOLCAT resolved |
-| M4 — close-subject full-ID doctrine amendment + mirror | done | 527c7d53c | lifecycle-sync-gate.md + spec-frontmatter-schema.md + template mirror (§25 C2 generalized) |
-| M5 — verification gate + genuine-⑤ residual classification | done | (this commit) | drift 54→8; audit byte-identical; 12/12 AC PASS; residual classified (5a/5b/5c handoff) |
+| M1 — era exemption + terminal authority (drift.go) | done | d8d2d8d9c | DetectDrift ③+④; D3 record-emission contract |
+| M2 — stale sync→completed rule correction (transitions.go) | done | 2fb2a5156 | 4-phase model: sync = implemented |
+| M3 — combined-scope secondary prefix-grep fallback (drift.go) | done | 7493472e0 | 3-gate LSGF-001-safe; live CCSYNC CLAUDEMD+TOOLCAT resolved |
+| M4 — close-subject full-ID doctrine amendment + mirror | done | 041e6fefb | lifecycle-sync-gate.md + spec-frontmatter-schema.md + template mirror (§25 C2 generalized) |
+| M5 — verification gate + genuine-⑤ residual classification | done | d00061a25 | drift 54→8; audit byte-identical; 12/12 AC PASS; residual classified (5a/5b/5c handoff) |
 
 ## §E.2 Run-phase Evidence
 
@@ -123,7 +123,7 @@ cross_platform_build:
   darwin: pass
   windows: pass  # GOOS=windows GOARCH=amd64 go build ./internal/spec/... exit 0
 total_run_phase_files: 7  # drift.go, transitions.go, +4 new/edited _test.go, 2 doctrine + 1 template mirror
-m1_to_mN_commit_strategy: "per-milestone main-direct (M1 bd7b6bcc4, M2 4b301e0ab, M3 c64b050f7, M4 527c7d53c, M5 d00061a25)"
+m1_to_mN_commit_strategy: "per-milestone via L1 worktree → cherry-picked to branch (M1 d8d2d8d9c, M2 2fb2a5156, M3 7493472e0, M4 041e6fefb, M5 d00061a25)"
 drift_count_before: 54
 drift_count_after: 8
 audit_parity: byte-identical
@@ -134,7 +134,7 @@ coverage_internal_spec: 87.6%
 
 ```yaml
 sync_complete_at: 2026-06-03
-sync_commit_sha: "(this commit)"
+sync_commit_sha: "eae3cdad9"
 sync_status: implemented
 spec_frontmatter_transitions:
   - field: status
