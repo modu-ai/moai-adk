@@ -15,6 +15,7 @@ phase: "v3.0.0 - Consolidation"
 module: "web"
 lifecycle: completed
 tags: "legacy"
+superseded_by: SPEC-WEB-CONSOLE-001
 ---
 
 ## HISTORY
