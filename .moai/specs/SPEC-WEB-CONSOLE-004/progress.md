@@ -91,3 +91,15 @@ new_warnings_or_lints_introduced: false
 total_run_phase_files: 15
 m1_to_mN_commit_strategy: "single feature-branch commit (M1-M5 holistic, worktree -> cherry-pick)"
 ```
+
+### §E.4 — Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-06-03
+sync_commit_sha: <backfill-after-sync-commit>
+status_transition: in-progress -> implemented
+version_bump: 0.1.0 -> 0.2.0
+changelog_entry: "Added — SPEC-WEB-CONSOLE-004 (web-console-v3 cohort, Tier M)"
+readme_change: none (internal moai web console; no README web-console reference — doc-seam)
+sync_method: orchestrator-direct (active parallel-session race + bounded internal/web scope; manager-docs broad-add contamination + worktree cherry-pick overhead avoidance per L_orchestrator_direct_sync_tier_m)
+```
