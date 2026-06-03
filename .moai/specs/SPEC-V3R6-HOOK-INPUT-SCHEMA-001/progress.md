@@ -45,7 +45,7 @@ Per plan §E D2 guidance, no BLOCKER is warranted — the empty/blank/whitespace
 
 ```yaml
 run_complete_at: 2026-06-03
-run_commit_sha: <worktree commit — see report; orchestrator backfills cherry-picked SHA>
+run_commit_sha: "27745a7fa"   # cherry-picked from worktree 0258f4f6c onto docs/glm-webtool-routing-m1-m5
 run_status: implemented
 ac_pass_count: 4          # AC-1, AC-2, AC-3, AC-4 — all 4 mandatory AC PASS
 ac_fail_count: 0
