@@ -40,7 +40,7 @@ m1_to_mN_commit_strategy: single M1 commit (Tier S doc-only — all 4 seams + mi
 ## Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_commit_sha: (this commit)
+sync_commit_sha: 3b9efffec
 sync_status: complete
 changelog_entry_added: true
 status_transition: "in-progress → implemented"
@@ -53,4 +53,19 @@ recovery_note: >
   because the CHANGELOG diverged (GLM-WEBTOOL / WEB-CONSOLE-003 / WEB-CONSOLE-001 entries
   added since the orphan); the CHANGELOG entry text is reproduced faithfully from b431254fe.
   Authored-By-Agent trailer omitted (legacy silent SKIP) to avoid OwnershipTransitionInvalid.
+```
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+```yaml
+mx_commit_sha: (this commit — backfilled by follow-up)
+status_transition: "implemented → completed"
+four_phase_close: true
+close_subject_full_id: SPEC-CCSYNC-DYNWF-001
+mx_executor: orchestrator-direct
+audit_ready: true
+notes: >
+  4-phase close (plan 75b732f7c / run c16fe5174 / sync 3b9efffec / Mx this).
+  Era H-4 (§E.2 + §E.5 + sync_commit_sha + mx_commit_sha) → V3R6 modern, drift-aligned.
+  Supersedes the orphaned close chain b431254fe/21ac357c1/3139817d8 (un-pushed, unreachable).
 ```
