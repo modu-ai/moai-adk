@@ -34,7 +34,8 @@
 
 ```yaml
 run_complete_at: 2026-06-03
-run_commit_sha: "25dd5d6fe4211612f852e89bf5091299d4f7b791"
+run_commit_sha: "3a050ba51"
+run_commit_sha_note: "reconciled to integrated branch SHA (L_manager_docs_stale_worktree_sha); pre-integration L1 worktree SHA was 25dd5d6fe4211612f852e89bf5091299d4f7b791"
 run_status: implemented
 ac_pass_count: 9
 ac_fail_count: 0
@@ -59,8 +60,21 @@ coverage_internal_web: "90.8%"
 
 ```yaml
 sync_complete_at: 2026-06-03
-sync_commit_sha: "<pending — orchestrator backfills after commit>"
+sync_commit_sha: "76ad74f8e"
 sync_status: implemented
 doc_deliverables: "CHANGELOG.md [Unreleased] entry (Changed: port 3041 supersede + Added: validation parity + widget select-ification + TUI model_policy select); spec.md frontmatter in-progress→implemented"
 readme_docs_site_scope: "n/a — moai web undocumented in README/docs-site (0 refs verified); web i18n/webfont deferred to cohort S3"
 ```
+
+## §E.6 Mx-phase Audit-Ready Signal
+
+```yaml
+mx_complete_at: 2026-06-03
+mx_commit_sha: "<pending — orchestrator backfills after Mx close commit>"
+mx_status: completed
+four_phase_close: "plan (fad1be853) → run (3a050ba51, M1) → sync (76ad74f8e) → Mx (this transition)"
+lifecycle_transition: "implemented → completed"
+mx_tag_scope: "MX:NOTE present at internal/web model_policy bindForm/persist path per plan.md M5 (REQ-WC2-007 profile-only by design)"
+cohort_position: "S1 of web-console-v3 cohort closed; S2 (8 missing v3 settings) / S3 (web i18n + webfont) / S4 (dead-config audit) remain"
+```
+

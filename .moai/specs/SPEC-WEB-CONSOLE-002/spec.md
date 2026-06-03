@@ -2,7 +2,7 @@
 id: SPEC-WEB-CONSOLE-002
 title: "Web Console — Port 3041 Default + Web↔TUI Validation Parity"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-06-03
 updated: 2026-06-03
 author: manager-spec
