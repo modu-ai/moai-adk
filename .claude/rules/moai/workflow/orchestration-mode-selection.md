@@ -1,22 +1,24 @@
 ---
-description: "Phase 0.95 Mode Selection — 5-mode autonomous decision tree for the MoAI orchestrator (trivial / background / agent-team / parallel / sub-agent). Read at every /moai run entry."
+description: "Phase 0.95 Mode Selection — 6-mode autonomous decision tree for the MoAI orchestrator (trivial / background / agent-team / parallel / sub-agent / workflow). Read at every /moai run entry."
 paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/workflows/plan.md,.claude/rules/moai/workflow/spec-workflow.md"
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   status: "active"
-  updated: "2026-05-25"
-  tags: "orchestration, mode-selection, agent-teams, phase-0.95, anthropic-2026-alignment"
+  updated: "2026-06-03"
+  tags: "orchestration, mode-selection, agent-teams, workflow, phase-0.95, anthropic-2026-alignment"
 ---
 
 # Orchestration Mode Selection — Phase 0.95
 
-Canonical 5-mode autonomous decision tree for the MoAI orchestrator. Activated at Phase 0.95 (after Phase 0.5 plan-auditor verdict, before Phase 1 implementation) per REQ-ATR-008 + REQ-ATR-013 + REQ-ATR-017 of SPEC-V3R6-AGENT-TEAM-REBUILD-001. The decision is autonomous (no `AskUserQuestion` round); the chosen mode and the selection rationale are logged to `progress.md § Mode Selection`.
+Canonical 6-mode autonomous decision tree for the MoAI orchestrator. Activated at Phase 0.95 (after Phase 0.5 plan-auditor verdict, before Phase 1 implementation) per REQ-ATR-008 + REQ-ATR-013 + REQ-ATR-017 of SPEC-V3R6-AGENT-TEAM-REBUILD-001. The decision is autonomous (no `AskUserQuestion` round); the chosen mode and the selection rationale are logged to `progress.md § Mode Selection`.
 
-> Cross-reference: `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/design.md` §B.4 documents the design-level decision tree; this rule file is the canonical runtime SSOT for the orchestrator's mode-selection behavior. `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification covers the `--mode` flag matrix (autopilot / loop / team / pipeline) which interacts with — but is separate from — the 5-mode catalog below.
+[ZONE:Frozen] [HARD] All Phase 0.95 execution modes are strictly downstream of GATE-2 (the plan→run HUMAN GATE). The orchestrator reaches Phase 0.95 ONLY after GATE-2 user approval has already been obtained. Mode selection — including Mode 6 (workflow) — is never a substitute for GATE-2 and never a path that crosses the plan→run boundary ahead of the human gate. GATE-2 is mandatory and score-independent (plan-auditor PASS or score ≥ 0.90 never auto-bypasses it; skip-eligibility applies only to Phase 0.5 verdict re-execution, not to GATE-2) per CLAUDE.local.md §19.1 / REQ-ATR-015.
+
+> Cross-reference: `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/design.md` §B.4 documents the design-level decision tree; this rule file is the canonical runtime SSOT for the orchestrator's mode-selection behavior. `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification covers the `--mode` flag matrix (autopilot / loop / team / pipeline) which interacts with — but is separate from — the 6-mode catalog below. The run-phase `/goal ac_converge` autonomy wiring point lives in `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy (/goal ac_converge); `.claude/rules/moai/workflow/dynamic-workflows.md` is the source for the Workflow (Mode 6) primitive (16-concurrent / 1000-total cap) and the named-script-API prohibition.
 
 ---
 
-## §A — Mode Catalog (5 modes)
+## §A — Mode Catalog (6 modes)
 
 The orchestrator selects exactly one of the following modes per Phase 0.95 invocation.
 
@@ -27,8 +29,9 @@ The orchestrator selects exactly one of the following modes per Phase 0.95 invoc
 | 3 | `agent-team` | 3-5 dynamic teammates | `TeamCreate(...)` + `Agent(subagent_type: "general-purpose", team_name: ..., name: ...)` × N | Multi-domain (≥3 domains OR ≥10 files) research-heavy work AND all REQ-ATR-013 capability-gate prerequisites met |
 | 4 | `parallel` | 3-5 concurrent sub-agents (single message, multiple `Agent()` calls) | Multiple `Agent()` invocations in one assistant turn | Multi-domain research that does NOT meet Agent Teams prerequisites; or any case where Agent Teams session overhead exceeds benefit |
 | 5 | `sub-agent` | 1 sequential sub-agent per milestone | Sequential `Agent(...)` spawns, one milestone at a time | Coding-heavy work (Finding A4 caveat), or any case where the simpler mode suffices |
+| 6 | `workflow` | Up to 16 concurrent workflow agents (1000-total per-run backstop, per `dynamic-workflows.md`) | Orchestrator-launched Workflow fan-out (a script the runtime executes to coordinate agents — NOT a subagent spawning subagents) | Genuinely-parallel, high-volume **mechanical** transformation (≥ ~30 files AND a single uniform transform rule AND no inter-file dependency) — call-site rename, import-path bulk change, signature-stable edits. Coding-heavy / multi-domain / new-code work stays Mode 5 (Finding A4). |
 
-Mode 5 is the **default fallback** when no other mode's selection criteria are unambiguously met.
+Mode 5 is the **default fallback** when no other mode's selection criteria are unambiguously met. Mode 6 (`workflow`) is the narrow high-volume-mechanical exception, selectable ONLY after GATE-2 has passed (see §C.3).
 
 ---
 
@@ -60,8 +63,17 @@ START (Phase 0.95 Mode Selection)
   │   ├── YES → Mode 4: PARALLEL (3-5 concurrent Agent() in single message)
   │   └── NO  → continue
   │
+  ├── Is the task ≥ ~30 files AND mechanical (one uniform transform rule)
+  │   AND genuinely parallel — no inter-file dependency
+  │   AND GATE-2 already passed AND all preferences already collected
+  │   AND Workflows available (not disabled, runtime version ≥ v2.1.154)?
+  │   ├── YES → Mode 6: WORKFLOW (orchestrator-launched fan-out, scaling NOT nesting)
+  │   └── NO  → continue
+  │
   └── Default → Mode 5: SUB-AGENT (single Agent() sequential spawn per milestone)
 ```
+
+Mode 6 is checked AFTER Mode 4 and BEFORE the Mode 5 default fallback. Coding-heavy or multi-domain or new-code work that reaches this branch falls through to Mode 5 — Mode 6 admits ONLY the genuinely-parallel high-volume mechanical case (Finding A4: most coding tasks involve fewer truly parallelizable tasks than research, so the sequential sub-agent path is the safe default for coding work).
 
 ### §B.1 Input parameters
 
@@ -81,6 +93,9 @@ Phase 0.95 boundary cases (scope at threshold ±1, ambiguous domain count, etc.)
 - At threshold ±1 (9 vs 10 files; 2 vs 3 domains): default to the **simpler** mode (sub-agent over agent-team; sequential over parallel)
 - **Coding-heavy + multi-domain**: prefer Mode 5 over Mode 4 (Finding A4 — coding-task parallelism caveat)
 - **Markdown-heavy + multi-domain + research-heavy**: prefer Mode 4 (parallel multi-spawn)
+- **Mode 6 soft `~30`-file boundary**: the `≥ ~30 files` Mode 6 entry threshold is tilde-prefixed (soft). At the boundary (exactly 30 files), the "default to the simpler mode" rule resolves toward Mode 5 — the tilde avoids a hard cliff and keeps even large work on the safer sequential path unless the transformation is genuinely mechanical-uniform.
+- **Mode 6 vs Mode 5 (transformation kind)**: even at high file counts, if the work is semantic / new-code / multi-rule, prefer Mode 5; Mode 6 admits ONLY a single uniform mechanical transform rule with no inter-file dependency.
+- **Workflows disabled or unavailable**: when `CLAUDE_CODE_DISABLE_WORKFLOWS=1` is set OR the runtime version is below v2.1.154, Mode 6 is not selectable and the task falls through to Mode 5 (cannot assume Workflow availability).
 - **Tier L + markdown / shell-script-only scope**: Mode 5 with Tier L Section A-E delegation template (per `.claude/rules/moai/development/manager-develop-prompt-template.md` § Applicability)
 - **Tier S + minimal scope**: Mode 5 with the minimal delegation form (~500-800 tokens, Section B may be filtered)
 
@@ -110,6 +125,30 @@ Mode 4 is preferred via the unified compound clause:
 
 The 3-5 ceiling applies equally to Mode 3 (agent-team teammates) and Mode 4 (concurrent `Agent()` spawn calls). Exceeding the ceiling regresses to coordination overhead and contradicts Anthropic's published guidance.
 
+### §C.3 Mode 6 (Workflow) capability gate
+
+Mode 6 (`workflow`) is candidate ONLY when ALL of the following preconditions hold. The orchestrator MUST verify each before launching a Workflow:
+
+| Precondition | Why it is required |
+|--------------|---------------------|
+| GATE-2 already passed | Workflow agents cannot prompt the user mid-run (no mid-run user input). Therefore the one decision that MUST involve the user — the plan→run human gate — MUST already be cleared. A Mode 6 launch before GATE-2 passes is prohibited (§E anti-pattern). |
+| All preferences collected | All user preferences (Tier, mode preference, PR strategy, etc.) MUST be drained at GATE-2 before launch, because the asymmetric boundary forbids both Workflow agents and `/goal`-turn agents from prompting the user (C2 / agent-common-protocol.md § User Interaction Boundary). |
+| Scope ≥ ~30 files, mechanical, genuinely parallel | The Workflow primitive earns its overhead only on genuinely-parallel high-volume mechanical work; coding-heavy / multi-domain work stays Mode 5 (Finding A4 caveat). |
+| Workflows available | `CLAUDE_CODE_DISABLE_WORKFLOWS` is not set AND runtime version ≥ v2.1.154; otherwise fall through to Mode 5. |
+| Selection logged | The Mode 6 selection AND a confirmation that GATE-2 already passed AND that all preferences were collected MUST be recorded in `progress.md § Mode Selection` before the Workflow launches (§D). |
+
+#### Mode 6 is scaling, not nesting (Finding A1)
+
+The Workflow is launched by the **orchestrator** (main session) as a scaling primitive. The Workflow script coordinates agents and keeps intermediate results in script variables; it returns only the final synthesis to the session context. This is NOT a subagent spawning a subagent — the flat hierarchy is preserved (C3 / Finding A1: "Subagents cannot spawn other subagents"). The concurrency model (16 concurrent / 1000-total backstop) is the published cap of the Workflow primitive cited from `dynamic-workflows.md`, NOT a MoAI-invented API.
+
+#### No named-script Workflow API
+
+The official Claude Code documentation does not document a typed named-script Workflow API. This rule describes only the conceptual *coordinate-agents → intermediate results in script variables → final synthesis* model. No named Workflow-script function signatures — an `agent`-function, a `parallel`-function, a `pipeline`-function, or a `phase`-function — are asserted anywhere (§E anti-pattern; the asserted-API prohibition).
+
+#### Mode 6 / `/goal` agents return blocker reports, never prompt the user
+
+When a Mode 6 Workflow agent or a `/goal`-turn agent lacks a required input, that agent returns a structured blocker report; the orchestrator runs an `AskUserQuestion` round and re-delegates with the answers injected. Agents never prompt the user directly — this is the asymmetric orchestrator-subagent boundary (C2 / C3, `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary). The run-phase `/goal ac_converge` wiring point and its semantic-failure escalation live in `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy (/goal ac_converge).
+
 ---
 
 ## §D — Logging Contract (progress.md § Mode Selection)
@@ -121,9 +160,10 @@ Per REQ-ATR-008, the orchestrator MUST record its mode-selection decision in `.m
 The Mode Selection section MUST include:
 
 1. **Input parameters block** — values for tier, scope, domain count, file language mix, concurrency benefit, Agent Teams prereqs status
-2. **Mode evaluation table** — for each of the 5 modes, a row stating "selected" or "not selected" and a one-line rationale
-3. **Decision** — the chosen mode (one of: `trivial`, `background`, `agent-team`, `parallel`, `sub-agent`) on a single line for grep-friendly verification
+2. **Mode evaluation table** — for each of the 6 modes, a row stating "selected" or "not selected" and a one-line rationale
+3. **Decision** — the chosen mode (one of: `trivial`, `background`, `agent-team`, `parallel`, `sub-agent`, `workflow`) on a single line for grep-friendly verification
 4. **Justification** — a short paragraph (2-5 sentences) explaining why the chosen mode is preferable to alternatives, citing the relevant Anthropic finding(s) when applicable
+5. **Mode 6 confirmation (when `workflow` is selected)** — an explicit line confirming GATE-2 already passed AND all preferences were collected before the Workflow launches (§C.3 logging precondition)
 
 ### §D.2 Token requirement (AC-ATR-008 grep verification)
 
@@ -149,6 +189,10 @@ The following patterns violate the orchestration mode selection contract:
 - **Spawning Mode 3 (Agent Teams) when prereqs not met** — produces runtime `MODE_TEAM_UNAVAILABLE` sentinel; orchestrator MUST verify all three capability-gate conditions in §C.1 before selecting Mode 3
 - **Spawning > 5 concurrent agents in Mode 3 or Mode 4** — exceeds Anthropic-recommended 3-5 ceiling and incurs coordination overhead
 - **Selecting Mode 4 (Parallel) for coding-heavy work** — violates Finding A4 caveat; Mode 5 (Sub-Agent sequential) is the correct default for coding tasks
+- **Selecting Mode 6 (Workflow) for coding-heavy / multi-domain / new-code work** — violates Finding A4 caveat; Mode 6 admits ONLY genuinely-parallel high-volume mechanical work (one uniform transform rule, no inter-file dependency). Coding-heavy work belongs to Mode 5
+- **Launching a Mode 6 Workflow before GATE-2 has passed** — violates C1; the orchestrator MUST NOT launch the Workflow before GATE-2 user approval and MUST return control to the GATE-2 `AskUserQuestion` gate. Mode 6 is strictly downstream of GATE-2
+- **Asserting a typed/named Workflow script API** — a named `agent`-function, `parallel`-function, `pipeline`-function, or `phase`-function signature is NOT documented by Claude Code; describe the conceptual coordinate-agents → script-variable results → final-synthesis model instead (the named-script-API prohibition)
+- **Selecting Mode 6 without recording the GATE-2-passed + preferences-collected confirmation in `progress.md`** — the §C.3 / §D.1 #5 logging precondition makes the autonomy decision auditable; skipping it leaves the Workflow launch unverifiable post-hoc
 - **Skipping the progress.md logging step** — fails AC-ATR-008 verification; the decision is no longer auditable post-hoc
 - **Re-spawning the same mode for multiple consecutive milestones in Mode 5 without re-evaluating** — acceptable practice for a single SPEC, but when run-phase scope changes mid-flight (e.g., milestone scope-up via blocker report), the orchestrator SHOULD re-run Phase 0.95
 - **Substituting an `AskUserQuestion` round for the autonomous decision** — Phase 0.95 is autonomous by contract; user intervention belongs to Phase 0.5 verdict review (when verdict is FAIL or INCONCLUSIVE) or GATE-2 (plan-to-implement HUMAN GATE), not Phase 0.95
@@ -160,14 +204,29 @@ The following patterns violate the orchestration mode selection contract:
 - `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification — `--mode` flag matrix and Mode Dispatch sentinels (`MODE_UNKNOWN`, `MODE_TEAM_UNAVAILABLE`, `MODE_PIPELINE_ONLY_UTILITY`, `MODE_FLAG_IGNORED_FOR_UTILITY`)
 - `.claude/rules/moai/workflow/spec-workflow.md` § Phase 0.5 Plan Audit Gate — runs before Phase 0.95 and may produce `BYPASSED` / `INCONCLUSIVE` / `FAIL` verdicts that affect Phase 0.95 inputs
 - `.claude/rules/moai/development/manager-develop-prompt-template.md` § Applicability — Tier S/M/L delegation template selection (interacts with Mode 5 sub-agent spawn prompts)
-- `.claude/rules/moai/workflow/archived-agent-rejection.md` — sibling rule documenting the orchestrator's rejection behavior when a paste-ready resume references an archived agent (independent of mode selection)
+- `.claude/rules/moai/workflow/archived-agent-rejection.md` — sibling rule documenting the orchestrator's rejection behavior when a paste-ready resume references an archived-agent name (independent of mode selection)
 - `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/design.md` §B.4 — design-time decision tree from which this rule was derived
 - `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/spec.md` §B.1 Findings A1-A6 — Anthropic 2026 verbatim citations grounding the Mode 3 ceiling (Finding A1) and Mode 4-vs-Mode-5 coding-task caveat (Finding A4)
+- `.claude/rules/moai/workflow/dynamic-workflows.md` — the Workflow (Mode 6) primitive: 16-concurrent / 1000-total cap, no-mid-run-user-input semantics, GATE-2-is-unaffected note, and the absence of a documented named-script API
+- `.claude/rules/moai/workflow/goal-directive.md` — `/goal` autonomous-continuation semantics (the run-phase `ac_converge` condition wiring lives in `run.md` § Run-phase Autonomy (/goal ac_converge))
+- `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy (/goal ac_converge) — co-located GATE-2 ordering reference + `/goal ac_converge` set
+- CLAUDE.local.md §19.1 / REQ-ATR-015 — GATE-2 mandatory restoration (score-independent human gate; the constitutional anchor for Mode 6 being strictly downstream of GATE-2)
 - Anthropic Agent Teams documentation — *"Start with 3-5 teammates for most workflows."*
 - Anthropic multi-agent research engineering note — *"most coding tasks involve fewer truly parallelizable tasks than research, and LLM agents are not yet great at coordinating and delegating to other agents in real time."*
 
 ---
 
-Version: 1.0.0
-Origin: SPEC-V3R6-AGENT-TEAM-REBUILD-001 (M5)
+## §G — Two-Axis Confusion Warning (Mode 6 wiring author)
+
+[ZONE:Frozen] [HARD] "Mode 6 (workflow)" added here is appended to ONE specific list: the **Phase 0.95 execution-mode catalog** in this file (`trivial` / `background` / `agent-team` / `parallel` / `sub-agent` → + `workflow`). This is a DIFFERENT axis from the `run.md` `--mode` **dispatch axis** (`autopilot` / `loop` / `team` / `pipeline`) documented in `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification and the `run.md` Mode Dispatch table. Both happen to be short lists, which is the confusion trap.
+
+- **Execution-mode catalog** (Phase 0.95, where Mode 6 lands): governs HOW the orchestrator spawns — concurrency + spawn surface (direct / background `Agent` / `TeamCreate` / parallel `Agent()` / sequential `Agent()` / **Workflow fan-out**).
+- **`--mode` dispatch axis** (CLI flag, NOT touched here): governs WHICH `/moai run` workflow variant runs — `autopilot` vs `loop` (Ralph) vs `team` vs the rejected `pipeline`.
+
+[ZONE:Frozen] [HARD] Mode 6 (`workflow`) is added ONLY to the execution-mode catalog. It is NOT a new `--mode` dispatch value; no `--mode workflow` flag is introduced; the `run.md` Mode Dispatch sentinel set (`MODE_UNKNOWN` / `MODE_TEAM_UNAVAILABLE` / `MODE_PIPELINE_ONLY_UTILITY`) is unchanged. The header cross-reference above already notes the two axes "interact with — but are separate from" each other; this separation is preserved.
+
+---
+
+Version: 1.1.0
+Origin: SPEC-V3R6-AGENT-TEAM-REBUILD-001 (M5); Mode 6 (workflow) added by SPEC-AUTONOMY-RUN-GOAL-001 (D1)
 Status: Active — applies to all `/moai run` Phase 0.95 invocations

@@ -1,0 +1,80 @@
+# Progress — SPEC-AUTONOMY-RUN-GOAL-001
+
+> Run-phase progress tracking. Plan-phase artifacts committed at `ef9a619ad`.
+
+## §A — Phase 0.5: Plan Audit Gate
+
+- **plan-auditor iter-1**: PASS-WITH-DEBT, score **0.82** (Tier M threshold 0.80 — PASS).
+- **Defects**: D1 (BLOCKING-class implementability: run.md/EX-5 file-target mismatch), D2/D3 (SHOULD-FIX), D4/D5/D6 (MINOR).
+- **Patch**: all 6 defects resolved (manager-spec patch, orchestrator-direct grep-verified).
+- **Skip policy**: score 0.82 < 0.90 → not skip-eligible; gate executed (iter-1 + verified patch).
+
+## §B — GATE-2 (plan→run HUMAN GATE)
+
+- **User approval**: GRANTED (AskUserQuestion). Score-independent per the GATE-2 mandatory-restoration policy.
+
+## §C — Phase 0.95 Mode Selection
+
+### Decision: sub-agent
+
+### Justification
+
+The run-phase scope is doctrine/rules editing (`orchestration-mode-selection.md` Mode 6 catalog addition + `run.md` autonomy section) plus a small Go regression test and a template mirror. Milestones carry a strict sequential dependency: M3's GATE-2 guard asserts markers that M2 introduces, and M4's template mirror depends on M1+M2 being final. This is coding/doctrine work with LOW concurrency benefit (Anthropic's coding-task parallelism caveat), so Mode 5 (sequential sub-agent per milestone) is correct over Mode 4 (parallel). cycle_type=tdd: the M3 GATE-2 regression guard was written test-first (RED), then the doctrine edits made it pass (GREEN).
+
+## §D — Run-phase Milestones
+
+| Milestone | Status | Commit |
+|-----------|--------|--------|
+| M1 — D1 Mode 6 catalog addition | completed | (M1 commit) |
+| M2 — D2 run.md `/goal ac_converge` autonomy section | completed | (M2 commit) |
+| M3 — D3 GATE-2 preservation regression guard | completed | (M3 commit) |
+| M4 — Template mirror + make build | completed | (M4 commit) |
+| M5 — Verification + spec-lint | completed | (M5 commit) |
+
+## §E.2 — Run-phase Evidence (AC PASS/FAIL matrix)
+
+| AC | REQ | Status | Verification | Actual Output |
+|----|-----|--------|--------------|---------------|
+| AC-ARG-001 | REQ-ARG-001 | PASS | `grep -cE '^\| 6 \| \`workflow\`'` + `grep -cE '^\| [1-5] \|'` | row6=1, rows1-5=5 |
+| AC-ARG-002 | REQ-ARG-002,-003 | PASS | `grep -niE 'mode 6\|workflow.*(30 files\|mechanical\|genuinely parallel)'` + Finding A4 grep | ≥1 entry conditions; Finding-A4/coding-heavy-Mode-5 count 11 |
+| AC-ARG-003 | REQ-ARG-004,-005 | PASS | `grep -niE 'GATE-2.*pass\|preferences.*collect\|progress.md.*Mode Selection'` + anti-pattern | ≥1; before-GATE-2 anti-pattern count 2 |
+| AC-ARG-004 | REQ-ARG-006 | PASS | `awk` GATE-2 line before first /goal line in run.md | gate2_line=115 < goal_line=117 |
+| AC-ARG-005 | REQ-ARG-007 | PASS | transcript-measurable grep (8 hits) + negative file-read grep (no match) | PASS-no-file-read-predicate |
+| AC-ARG-006 | REQ-ARG-008 | PASS | `grep -ciE 'max 20 turns'` | 1 |
+| AC-ARG-007 | REQ-ARG-009,-010 | PASS | semantic-failure escape grep (4) + non-substitution grep (1) | both ≥1 |
+| AC-ARG-008a | REQ-ARG-011 | PASS | `go test -run TestGate2PreservedBeforeGoal` | ok (PASS) |
+| AC-ARG-008b | REQ-ARG-012,-013 | PASS | score-independence grep (2) + §19.1/REQ-ATR-015 grep (2) | both ≥1 |
+| AC-ARG-009 | REQ-ARG-014 | PASS | negative named-script-API grep (no match) + coordinate-agents (7) + 6 safety concepts present | PASS-no-asserted-api |
+| AC-ARG-010 | REQ-ARG-015 | PASS (non-blocking) | blocker-report/never-prompt grep on both files | ≥1 each |
+| AC-ARG-011 | REQ-ARG-016 | PASS | `make build` exit 0 + `TestRuleTemplateMirror`/`TestTemplateNeutralityAudit` | ok |
+| AC-ARG-012 | EX-1..EX-8 | PASS | no internal/config autonomy struct/yaml leak; dynamic-workflows.md untouched; ac_converge present | PASS-no-config-leak; no diff; ac_converge=5 |
+
+### Invariants
+
+| Invariant | Status | Evidence |
+|-----------|--------|----------|
+| Modes 1-5 preserved (REQ-ARG-001) | PASS | rows1-5 grep == 5 |
+| No named-script Workflow API asserted (EX-6) | PASS | `! grep -nE '\b(agent\|parallel\|pipeline\|phase)\s*\('` on source + mirror = no match |
+| Cross-platform build (B1) | PASS | `go build ./...` exit 0 + `GOOS=windows GOARCH=amd64 go build ./...` exit 0 |
+| Subagent boundary — no literal AskUserQuestion() call in rule/skill bodies (B11) | PASS | `! grep -nE 'AskUserQuestion\s*\('` on all 4 .claude/ + template files = no match |
+| Template mirror internal-content-neutral (§25 / B-template) | PASS | `TestTemplateNeutralityAudit` + `TestTemplateNoInternalContentLeak` green in isolation |
+
+## §E.3 — Run-phase Audit-Ready Signal
+
+```yaml
+run_complete_at: 2026-06-03
+run_commit_sha: "<backfill after M5 commit>"
+run_status: implemented-pending-spec-lint
+ac_pass_count: 13
+ac_fail_count: 0
+preserve_list_post_run_count: 5
+l44_pre_commit_fetch: "0 0 (clean, isolated worktree)"
+l44_post_push_fetch: "n/a (NO push — orchestrator handles push decision)"
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  linux_darwin: exit-0
+  windows_amd64: exit-0
+total_run_phase_files: 5
+m1_to_mN_commit_strategy: "per-milestone commits M1-M5; status draft→in-progress on M1; NO push"
+spec_lint_blocker: "MissingExclusions ERROR on spec.md §D — requires '### Out of Scope' H3 sub-heading with list item; spec.md body content owned by manager-spec (manager-develop forbidden from spec body edits). Blocker surfaced to orchestrator for manager-spec re-delegation."
+```
