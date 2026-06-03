@@ -1,8 +1,8 @@
 ---
 id: SPEC-GLM-WEBTOOL-ROUTING-001
 title: "GLM-backend web search / web fetch / image read routing to z.ai MCP servers"
-version: "0.1.0"
-status: in-progress
+version: "0.2.0"
+status: implemented
 created: 2026-06-03
 updated: 2026-06-03
 author: manager-spec

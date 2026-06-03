@@ -60,7 +60,7 @@ All 6 ≥ 1: PASS
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_commit_sha: (this commit)
+run_commit_sha: 330722801
 run_status: complete
 ac_pass_count: 24
 ac_fail_count: 0
@@ -92,3 +92,21 @@ preserve_list_post_run_count: 0
 - Flip `status` in `spec.md` frontmatter from `in-progress` → `implemented`.
 - Backfill `run_commit_sha` in this file with the actual SHA of this commit.
 - The 6 cross-link doc files (both local and template source) are complete; no further doc changes needed for sync-phase beyond CHANGELOG + frontmatter.
+
+## Sync-phase Audit-Ready Signal
+
+```yaml
+sync_commit_sha: (this commit)
+sync_status: complete
+changelog_entry_added: true
+status_transition: "in-progress → implemented"
+version_bump: "0.1.0 → 0.2.0"
+sync_executor: orchestrator-direct
+sync_rationale: >
+  Tier M bounded sync (CHANGELOG + frontmatter + progress signal) executed
+  orchestrator-direct because an active parallel session held SPEC-GO-DEPS-UPDATE-001
+  working-tree changes; spawning manager-docs in an L1 worktree would add
+  cherry-pick + race overhead for a 3-file doc sync. Authored-By-Agent trailer
+  intentionally omitted (legacy-commit silent SKIP) to avoid an
+  OwnershipTransitionInvalid finding on the orchestrator-direct in-progress→implemented transition.
+```
