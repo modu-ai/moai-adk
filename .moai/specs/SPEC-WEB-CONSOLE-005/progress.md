@@ -113,6 +113,6 @@ sync_status: implemented
 - **lifecycle SHAs**: plan `1f47127df` · run `a569058fa..5657e403d` (cherry-picked) + reconcile `e404e8452` · sync `e648efd69` · Mx (this commit — backfilled).
 - **4-phase lifecycle signal**: plan_status audit-ready + §E.2 sync_commit_sha + §E.5 mx_commit_sha (V3R6 era H-4 modern-standard complete).
 
-mx_commit_sha: (this commit — backfilled)
+mx_commit_sha: 01392c48d
 mx_status: completed
 4_phase_close: complete
