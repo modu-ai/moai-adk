@@ -58,7 +58,7 @@ recovery_note: >
 ## §E.5 Mx-phase Audit-Ready Signal
 
 ```yaml
-mx_commit_sha: (this commit — backfilled by follow-up)
+mx_commit_sha: fdcdaedcc
 status_transition: "implemented → completed"
 four_phase_close: true
 close_subject_full_id: SPEC-CCSYNC-DYNWF-001
