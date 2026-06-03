@@ -22,6 +22,14 @@ type app struct {
 	writePreferences func(name string, prefs profile.ProfilePreferences) error
 	syncToProject    func(projectRoot string, prefs profile.ProfilePreferences) error
 	listProfiles     func() []profile.ProfileEntry
+
+	// Injectable seams over the project-config write path (SPEC-WEB-CONSOLE-003).
+	// development_mode + git_convention.convention live in project config
+	// (quality.yaml / git-convention.yaml), NOT the profile store, so they have
+	// their own read/write seams over the config manager. Tests inject failures
+	// here without touching the real filesystem (REQ-WC3-004/005).
+	readProjectConfig  func(projectRoot string) (devMode, convention string, err error)
+	writeProjectConfig func(projectRoot, devMode, convention string) error
 }
 
 // newApp builds an app from cfg, wiring the default internal/profile functions.
@@ -30,12 +38,14 @@ type app struct {
 func newApp(cfg Config) *app {
 	tmpl, _ := pageTemplate() // parse error surfaced at render time
 	return &app{
-		cfg:              cfg,
-		tmpl:             tmpl,
-		readPreferences:  profile.ReadPreferences,
-		writePreferences: profile.WritePreferences,
-		syncToProject:    profile.SyncToProjectConfig,
-		listProfiles:     profile.List,
+		cfg:                cfg,
+		tmpl:               tmpl,
+		readPreferences:    profile.ReadPreferences,
+		writePreferences:   profile.WritePreferences,
+		syncToProject:      profile.SyncToProjectConfig,
+		listProfiles:       profile.List,
+		readProjectConfig:  readProjectConfig,
+		writeProjectConfig: writeProjectConfig,
 	}
 }
 

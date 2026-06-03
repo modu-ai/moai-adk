@@ -3,8 +3,10 @@ package web
 import (
 	"errors"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
+	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
 // errDictKey is returned by the template "dict" helper when a non-string key is
@@ -115,6 +117,32 @@ func validatePrefs(p profile.ProfilePreferences) map[string]string {
 	}
 	if p.StatuslineTheme != "" && !inList(statuslineThemeCanonical, p.StatuslineTheme) {
 		errs["statusline_theme"] = "unrecognized statusline theme: " + p.StatuslineTheme
+	}
+
+	return errs
+}
+
+// validateProjectConfig validates the two flat project-config enum fields
+// (development_mode + git_convention.convention) submitted via the Console.
+// It returns a map of field name → error message for every field that fails;
+// an empty map means all values are valid (REQ-WC3-001/002).
+//
+// It is a SEPARATE validator from validatePrefs because those values are NOT
+// ProfilePreferences fields — they live in project config (quality.yaml /
+// git-convention.yaml), not the profile store. It reuses the canonical predicates
+// (models.DevelopmentMode.IsValid + config.IsValidConvention) rather than a
+// parallel rule set (REQ-WC3-001/002 anti-pattern E.5.1). Empty values are always
+// allowed (they mean "keep project default") — mirroring writeProjectConfig which
+// only overwrites non-empty values. Matching is exact (no lowercase normalization),
+// so "TDD" / "Angular" / a whitespace value is non-canonical (EC-4, EC-6).
+func validateProjectConfig(devMode, convention string) map[string]string {
+	errs := make(map[string]string)
+
+	if devMode != "" && !models.DevelopmentMode(devMode).IsValid() {
+		errs["development_mode"] = "unrecognized development mode: " + devMode
+	}
+	if convention != "" && !config.IsValidConvention(convention) {
+		errs["git_convention"] = "unrecognized git convention: " + convention
 	}
 
 	return errs
