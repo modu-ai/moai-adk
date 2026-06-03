@@ -26,6 +26,16 @@ type pageView struct {
 	StatuslineThemes  []string
 	AllSegments       []string
 
+	// Project-config selects (SPEC-WEB-CONSOLE-003). Option lists + the current
+	// persisted/submitted values for the two flat project-config enum fields.
+	// Current values come from the read seam (quality.yaml / git-convention.yaml)
+	// on GET, or are echoed back from the submitted form on a rejected POST —
+	// NOT from the profile store, which has no slot for them.
+	DevelopmentModes   []string
+	Conventions        []string
+	CurDevelopmentMode string
+	CurConvention      string
+
 	// Banner is an optional status/error message; BannerKind is "ok" or "error".
 	Banner     string
 	BannerKind string
@@ -51,6 +61,8 @@ func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pag
 		StatuslinePresets: statuslinePresetCanonical,
 		StatuslineThemes:  statuslineThemeCanonical,
 		AllSegments:       allSegments,
+		DevelopmentModes:  developmentModeCanonical,
+		Conventions:       conventionCanonical,
 		FieldErrors:       map[string]string{},
 	}
 }
@@ -90,7 +102,21 @@ func (a *app) handleIndex(w http.ResponseWriter, r *http.Request) {
 			"could not read preferences for profile "+selected+": "+err.Error())
 		return
 	}
-	a.render(w, http.StatusOK, a.newPageView(prefs, selected))
+
+	// REQ-WC3-004: read the current project-config values (development_mode /
+	// git_convention) from quality.yaml / git-convention.yaml via the read seam.
+	// A read failure surfaces a readable inline error (never blank, never panic).
+	devMode, convention, err := a.readProjectConfig(a.cfg.ProjectRoot)
+	if err != nil {
+		a.renderError(w, http.StatusInternalServerError,
+			"could not read project config: "+err.Error())
+		return
+	}
+
+	view := a.newPageView(prefs, selected)
+	view.CurDevelopmentMode = devMode
+	view.CurConvention = convention
+	a.render(w, http.StatusOK, view)
 }
 
 // handleSave serves POST /save — the WRITE handler (REQ-WC-007, REQ-WC-008,
@@ -101,10 +127,13 @@ func (a *app) handleIndex(w http.ResponseWriter, r *http.Request) {
 // unchanged.
 //
 // @MX:WARN: [AUTO] 이 함수는 디스크의 사용자/프로젝트 설정을 변경하는 유일한 코드 경로다(쓰기 위험 구역).
-// @MX:REASON: [AUTO] 영속화는 반드시 WritePreferences(프로필 스토어) + SyncToProjectConfig(user/language/statusline.yaml)
-// 를 통해서만 수행한다 — 웹 레이어에서 YAML을 직접 marshal/write 하는 것은 금지된 안티패턴(REQ-WC-007). scope는
-// 프로필 preferences + user/language/statusline 로 한정되며 quality/workflow/harness/git-strategy 등 다른 섹션은
-// 절대 건드리지 않는다(REQ-WC-012). 검증 실패 시 영속 상태를 변경하지 않고 폼을 per-field 에러와 함께 재렌더한다(REQ-WC-008).
+// @MX:REASON: [AUTO] 영속화는 반드시 두 경계를 통해서만 수행한다 — (1) WritePreferences(프로필 스토어) +
+// SyncToProjectConfig(user/language/statusline.yaml), (2) writeProjectConfig(config-manager로 quality.development_mode +
+// git_convention.convention만, SPEC-WEB-CONSOLE-003). 웹 레이어에서 YAML을 직접 marshal/write 하는 것은 금지된
+// 안티패턴(REQ-WC-007/REQ-WC3-008). project-config scope는 quality(development_mode) + git_convention(convention)
+// 두 필드로 엄격히 한정되며 workflow/harness/git-strategy/llm은 절대 건드리지 않는다(REQ-WC-012/REQ-WC3-007).
+// 두 검증기(validatePrefs + validateProjectConfig)를 모두 실행하고 FieldErrors를 병합한 뒤 하나라도 실패하면 영속 상태를
+// 변경하지 않고 폼을 per-field 에러와 함께 재렌더한다 — atomic reject(REQ-WC-008/REQ-WC3-001/002, EC-2).
 func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -122,10 +151,20 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 
 	prefs := bindForm(r)
 
-	// REQ-WC-008: validate via existing predicates only. On failure, reject the
-	// mutation, leave state unchanged, re-render with per-field errors.
-	if fieldErrs := validatePrefs(prefs); len(fieldErrs) > 0 {
-		view := a.newPageView(prefs, selected)
+	// REQ-WC3-005: bind the two project-config fields (NOT into ProfilePreferences —
+	// they are project config, not profile).
+	devMode := r.PostFormValue("development_mode")
+	convention := r.PostFormValue("git_convention")
+
+	// REQ-WC-008 / REQ-WC3-001/002: run BOTH validators and merge their FieldErrors.
+	// Any failure → atomic reject (EC-2): leave ALL persisted state unchanged and
+	// re-render with per-field errors.
+	fieldErrs := validatePrefs(prefs)
+	for k, v := range validateProjectConfig(devMode, convention) {
+		fieldErrs[k] = v
+	}
+	if len(fieldErrs) > 0 {
+		view := a.projectView(prefs, selected, devMode, convention)
 		view.FieldErrors = fieldErrs
 		view.Banner = "Validation failed — no changes were saved."
 		view.BannerKind = "error"
@@ -133,9 +172,9 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// REQ-WC-007: persist ONLY through the existing profile/sync functions.
+	// REQ-WC-007: persist profile fields ONLY through the existing profile/sync functions.
 	if err := a.writePreferences(selected, prefs); err != nil {
-		a.renderErrorPage(w, prefs, selected, "could not save profile preferences: "+err.Error())
+		a.renderErrorPage(w, prefs, selected, devMode, convention, "could not save profile preferences: "+err.Error())
 		return
 	}
 	if err := a.syncToProject(a.cfg.ProjectRoot, prefs); err != nil {
@@ -143,22 +182,40 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		// WritePreferences surfaces a readable error rather than a silent
 		// partial-state. The profile store was written; the project config was
 		// not — the message says so explicitly.
-		a.renderErrorPage(w, prefs, selected,
+		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but project config sync failed: "+err.Error())
 		return
 	}
 
-	view := a.newPageView(prefs, selected)
+	// REQ-WC3-005: persist the two project-config fields via the dedicated write
+	// seam (config-manager only; empty values keep existing).
+	if err := a.writeProjectConfig(a.cfg.ProjectRoot, devMode, convention); err != nil {
+		a.renderErrorPage(w, prefs, selected, devMode, convention,
+			"profile preferences saved, but project config write failed: "+err.Error())
+		return
+	}
+
+	view := a.projectView(prefs, selected, devMode, convention)
 	view.Banner = "Settings saved."
 	view.BannerKind = "ok"
 	a.render(w, http.StatusOK, view)
 }
 
+// projectView builds a page view-model with the two project-config current
+// values echoed back (used on POST so a rejected save keeps the submitted
+// project-config selections visible, mirroring the profile fields).
+func (a *app) projectView(prefs profile.ProfilePreferences, selected, devMode, convention string) pageView {
+	view := a.newPageView(prefs, selected)
+	view.CurDevelopmentMode = devMode
+	view.CurConvention = convention
+	return view
+}
+
 // renderErrorPage re-renders the form with a persistence-error banner while
 // keeping the submitted values visible (REQ-WC-010 — readable inline error,
-// never blank).
-func (a *app) renderErrorPage(w http.ResponseWriter, prefs profile.ProfilePreferences, selected, msg string) {
-	view := a.newPageView(prefs, selected)
+// never blank), including the two project-config selections.
+func (a *app) renderErrorPage(w http.ResponseWriter, prefs profile.ProfilePreferences, selected, devMode, convention, msg string) {
+	view := a.projectView(prefs, selected, devMode, convention)
 	view.Banner = msg
 	view.BannerKind = "error"
 	a.render(w, http.StatusInternalServerError, view)

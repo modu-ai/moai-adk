@@ -102,6 +102,12 @@
         </div>
       </fieldset>
 
+      <fieldset>
+        <legend>Project</legend>
+        {{template "optSelect" dict "Name" "development_mode" "Label" "Development mode" "Value" .CurDevelopmentMode "Empty" "(project default)" "Errors" .FieldErrors "Options" .DevelopmentModes}}
+        {{template "optSelect" dict "Name" "git_convention" "Label" "Git convention" "Value" .CurConvention "Empty" "(project default)" "Errors" .FieldErrors "Options" .Conventions}}
+      </fieldset>
+
       <div class="actions">
         <button type="submit">Save settings</button>
       </div>

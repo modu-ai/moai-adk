@@ -46,6 +46,30 @@ var statuslineThemeCanonical = []string{"catppuccin-mocha", "catppuccin-latte"}
 // statuslinePresetCanonical mirrors internal/cli/profile_setup.go statuslinePresetCanonical.
 var statuslinePresetCanonical = []string{"full", "compact", "minimal", "custom"}
 
+// developmentModeCanonical is the stable-order option list for the project
+// development_mode <select> (SPEC-WEB-CONSOLE-003). Sourced from the canonical
+// pkg/models predicate (models.ValidDevelopmentModes) so it never drifts from the
+// validator — option order is fixed here for deterministic rendering.
+var developmentModeCanonical = developmentModesFromModels()
+
+// conventionCanonical is the stable-order option list for the project
+// git_convention <select>. Sourced from the canonical internal/config predicate
+// (config.ValidConventions, which returns map-order); the order is fixed here to
+// match the pkg/models GitConventionConfig.Convention oneof SSOT for deterministic
+// rendering.
+var conventionCanonical = []string{"auto", "conventional-commits", "angular", "karma", "custom"}
+
+// developmentModesFromModels converts models.ValidDevelopmentModes() (typed) into
+// a []string for the view-model option list, preserving the canonical order.
+func developmentModesFromModels() []string {
+	modes := models.ValidDevelopmentModes()
+	out := make([]string, 0, len(modes))
+	for _, m := range modes {
+		out = append(out, string(m))
+	}
+	return out
+}
+
 // allSegments mirrors internal/cli/profile_setup.go statuslineAllSegments — the
 // 15 canonical segment keys offered when the preset is "custom".
 var allSegments = []string{
