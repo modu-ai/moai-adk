@@ -11,6 +11,7 @@ phase: "v3.0.0"
 module: "internal/cli, .claude/rules/moai/core"
 lifecycle: spec-anchored
 tags: "glm, mcp, websearch, webfetch, vision, routing, doctrine"
+tier: M
 related_specs: [SPEC-GLM-MCP-001]
 ---
 
@@ -21,6 +22,7 @@ related_specs: [SPEC-GLM-MCP-001]
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-06-03 | manager-spec | Initial plan-phase authoring. Extends SPEC-GLM-MCP-001 (which introduced `moai glm tools enable`). Adds routing doctrine + corrects the registration machinery so the three official z.ai servers are registered separately. |
+| 0.1.0 | 2026-06-03 | manager-spec | plan-audit D1-D4 debt remediation (no version bump — plan-phase clarifications): D1 added `tier: M` frontmatter (pins 0.80 Tier-M PASS threshold); D2 tightened AC-GWR-022 + Scenario 7 + plan.md §C/§E to require package-level `go test ./internal/template/` (both `TestTemplateNeutralityAudit` C1/C2 AND `TestTemplateNoInternalContentLeak` C3/C7) — the narrow `-run TestTemplateNeutralityAudit` defers internal date/SHA scanning to the sibling leak test; D4 committed REQ-GWR-A1 doctrine path to `.claude/rules/moai/core/glm-web-tooling.md` (removed "suggested" hedge to match AC-GWR-001). |
 
 ## A. Background / Problem
 
@@ -51,7 +53,7 @@ This SPEC EXTENDS `SPEC-GLM-MCP-001`, which introduced the `moai glm tools enabl
 
 ### REQ-GWR-A — Routing doctrine (NEW canonical rule file)
 
-- **REQ-GWR-A1 (Ubiquitous)**: The doctrine rule file SHALL exist at a canonical core-rule path (suggested `.claude/rules/moai/core/glm-web-tooling.md`) and SHALL be the single source of truth for GLM-backend web-tooling routing.
+- **REQ-GWR-A1 (Ubiquitous)**: The doctrine rule file SHALL exist at the canonical core-rule path `.claude/rules/moai/core/glm-web-tooling.md` (decided — not a suggestion) and SHALL be the single source of truth for GLM-backend web-tooling routing.
 - **REQ-GWR-A2 (Ubiquitous)**: The doctrine SHALL define the GLM-backend detection signal: a session is GLM-backed when `ANTHROPIC_BASE_URL` contains `api.z.ai`; and SHALL distinguish `moai glm` (whole session GLM) from `moai cg` (leader = Claude, teammate panes = GLM).
 - **REQ-GWR-A3 (While, HARD)**: While a session is GLM-backed, MoAI agents and the orchestrator SHALL route web search to `mcp__web_search_prime__webSearchPrime`, web fetch to `mcp__web_reader__webReader`, and image reading to a `mcp__zai-mcp-server__*` vision tool (default `image_analysis`), instead of the built-in `WebSearch` / `WebFetch` / `Read`-on-image.
 - **REQ-GWR-A4 (While, HARD — prohibition)**: While a session is GLM-backed, MoAI agents and the orchestrator SHALL NOT invoke the built-in `WebSearch` or `WebFetch`, nor `Read` on an image file, because those route through the 529-prone `api.z.ai/api/anthropic` gateway and the base64→422 image path.

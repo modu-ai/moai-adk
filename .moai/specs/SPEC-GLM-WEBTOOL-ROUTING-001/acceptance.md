@@ -27,7 +27,7 @@ All criteria are independently verifiable via grep (doctrine clauses), `go test`
 | AC-GWR-019 | D1 | MUST | dev `.mcp.json` has three separate z.ai server entries + corrected `$comment` |
 | AC-GWR-020 | D2 | MUST | dev `.mcp.json` `zai-mcp-server` env contains `Z_AI_API_KEY` |
 | AC-GWR-021 | E1 | MUST | every edited mirrored file is in sync (source ↔ template) |
-| AC-GWR-022 | E2/E3 | MUST | `go test ./internal/template/ -run TestTemplateNeutralityAudit` green; no internal SPEC ID/date/SHA in template files |
+| AC-GWR-022 | E2/E3 | MUST | Package-level `go test ./internal/template/` green — covering BOTH `TestTemplateNeutralityAudit` (C1 `/Users/` paths + C2 `V3R[0-9]` sigils) AND `TestTemplateNoInternalContentLeak` (C3 internal dates + C7 commit SHAs, which `TestTemplateNeutralityAudit` explicitly DEFERS to the sibling test); no internal SPEC ID/date/SHA leaked into any template file |
 | AC-GWR-023 | F1 | SHOULD | `zone-registry.md` has new `CONST-V3R5-040..` entries for the HARD clauses |
 | AC-GWR-024 | (whole) | MUST | `go test ./...` green + `golangci-lint run` clean post-change |
 
@@ -78,7 +78,7 @@ All criteria are independently verifiable via grep (doctrine clauses), `go test`
 - **Given** the doctrine + cross-links are mirrored into `internal/template/templates/.claude/...`
 - **When** the neutrality CI test runs
 - **Then** it passes — no `SPEC-GLM-WEBTOOL-ROUTING-001`, no internal date, no commit SHA leaked into any template file
-- **Verify**: `go test ./internal/template/ -run TestTemplateNeutralityAudit -count=1` green.
+- **Verify**: package-level `go test ./internal/template/ -count=1` green — this runs BOTH `TestTemplateNeutralityAudit` (C1/C2) AND `TestTemplateNoInternalContentLeak` (C3 internal dates + C7 commit SHAs). Running only `-run TestTemplateNeutralityAudit` is INSUFFICIENT: it explicitly defers C3/C7 to the sibling leak test, so a leaked SPEC ID / date / SHA would pass the narrow run yet fail CI.
 
 ## D.2 Edge cases
 

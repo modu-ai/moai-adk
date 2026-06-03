@@ -19,7 +19,7 @@ The work is sequenced so the doctrine (the WHAT/WHY) lands first, the registrati
 - [ ] `.claude/rules/moai/core/glm-web-tooling.md` does NOT yet exist (NEW file).
 - [ ] zone-registry highest is `CONST-V3R5-039`; new entries begin at `CONST-V3R5-040`.
 - [ ] All six cross-link target files + their template mirrors exist (verified in plan-phase).
-- [ ] Neutrality test `go test ./internal/template/ -run TestTemplateNeutralityAudit` is green on the pre-change commit.
+- [ ] Package-level neutrality `go test ./internal/template/` is green on the pre-change commit (covers BOTH `TestTemplateNeutralityAudit` C1/C2 AND `TestTemplateNoInternalContentLeak` C3/C7 — the narrow `-run TestTemplateNeutralityAudit` form alone does NOT cover internal dates/SHAs).
 
 ## D. Constraints
 
@@ -32,7 +32,7 @@ The work is sequenced so the doctrine (the WHAT/WHY) lands first, the registrati
 ## E. Self-Verification (manager-develop SHALL run at each milestone)
 
 - After M2 (glm_tools refactor): `go test ./internal/cli/ -run TestGLM -count=1` green; per-tool registration asserted.
-- After M4 (template mirror): `go test ./internal/template/ -run TestTemplateNeutralityAudit -count=1` green; `make build` succeeds; embedded.go regenerated.
+- After M4 (template mirror): package-level `go test ./internal/template/ -count=1` green — runs BOTH `TestTemplateNeutralityAudit` (C1/C2) AND `TestTemplateNoInternalContentLeak` (C3 internal dates + C7 commit SHAs, which `TestTemplateNeutralityAudit` explicitly defers to the sibling test). Running only `-run TestTemplateNeutralityAudit` is INSUFFICIENT for the no-internal-ID/date/SHA guarantee. `make build` succeeds; embedded.go regenerated.
 - Doctrine grep: each of the six cross-link files contains a pointer string to `glm-web-tooling.md`.
 - Routing table grep: `glm-web-tooling.md` contains `mcp__web_search_prime__webSearchPrime`, `mcp__web_reader__webReader`, `mcp__zai-mcp-server__image_analysis`.
 
