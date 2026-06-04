@@ -34,34 +34,6 @@ To add FluentValidation and MediatR, run dotnet add package FluentValidation.Asp
 
 ---
 
-## Module Index
-
-This skill uses progressive disclosure with specialized modules for deep coverage:
-
-### Language Features
-
-- [C# 12 Features](modules/csharp12-features.md) - Primary constructors, collection expressions, type aliases, default lambdas
-
-### Web Development
-
-- [ASP.NET Core 8](modules/aspnet-core.md) - Minimal API, Controllers, Middleware, Authentication
-- [Blazor Components](modules/blazor-components.md) - Server, WASM, InteractiveServer, Components
-
-### Data Access
-
-- [Entity Framework Core 8](modules/efcore-patterns.md) - DbContext, Repository pattern, Migrations, Query optimization
-
-### Architecture Patterns
-
-- [CQRS and Validation](modules/cqrs-validation.md) - MediatR CQRS, FluentValidation, Handler patterns
-
-### Reference Materials
-
-- [API Reference](reference.md) - Complete API reference, Context7 library mappings
-- [Code Examples](examples.md) - Production-ready examples, testing templates
-
----
-
 ## Implementation Quick Start
 
 ### Project Structure (Clean Architecture)
