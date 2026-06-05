@@ -183,10 +183,14 @@ func TestI18nDictionaryEmbedded(t *testing.T) {
 		t.Error("/static/i18n.js served body missing window.MOAI_I18N")
 	}
 
-	// The page links the dictionary script before app.js.
-	tmplSrc := readEmbeddedAsset(t, "page.html.tmpl")
-	if !strings.Contains(tmplSrc, `src="/static/i18n.js"`) {
-		t.Error("page.html.tmpl does not load /static/i18n.js")
+	// SPEC-WEB-CONSOLE-006 Class C mechanism retarget (spec.md §2.1.1 #9 / §D.3):
+	// the prior version grepped the page.html.tmpl SOURCE for `src="/static/i18n.js"`.
+	// The template source is deleted; the page-links-the-dictionary intent is
+	// retargeted to the RENDERED BODY (the Templ root emits the
+	// <script src="/static/i18n.js"> tag).
+	body := renderIndexBody(t, profile.ProfilePreferences{})
+	if !strings.Contains(body, `src="/static/i18n.js"`) {
+		t.Error("rendered page does not load /static/i18n.js")
 	}
 }
 
@@ -333,14 +337,21 @@ var langpickClassRe = regexp.MustCompile(`class="[^"]*\blangpick\b[^"]*"`)
 // attribute and is not inside <form>; interface language persists only in
 // localStorage; no server config field for the interface language exists.
 func TestLangpickNotFormField(t *testing.T) {
-	tmplSrc := readEmbeddedAsset(t, "page.html.tmpl")
+	// SPEC-WEB-CONSOLE-006 Class C mechanism retarget (spec.md §2.1.1 #10 / §D.3):
+	// the prior version grepped the page.html.tmpl SOURCE for the langpick <select>
+	// opening tag, its name=-absence, and its position before <form. The template
+	// source is deleted; this server-contract intent (the langpick is NOT a form
+	// field — it carries no name= and sits outside <form>) is retargeted to the
+	// RENDERED BODY. The handlers.go no-leak grep is preserved (handlers.go is a
+	// live source file, not the deleted template).
+	body := renderIndexBody(t, profile.ProfilePreferences{})
 
 	// Locate the langpick <select ...> opening tag (anchored on its unique
 	// id="uiLangSelect") and assert it carries NO name= attribute.
 	pickRe := regexp.MustCompile(`<select[^>]*id="uiLangSelect"[^>]*>`)
-	tag := pickRe.FindString(tmplSrc)
+	tag := pickRe.FindString(body)
 	if tag == "" {
-		t.Fatal("could not find the langpick <select> opening tag")
+		t.Fatal("could not find the langpick <select> opening tag in the rendered body")
 	}
 	if strings.Contains(tag, "name=") {
 		t.Errorf("langpick <select> carries a name= attribute (must NOT be a form field): %q", tag)
@@ -349,13 +360,13 @@ func TestLangpickNotFormField(t *testing.T) {
 	// The langpick markup must sit before the settings form's opening <form ...>
 	// tag (it lives in the appbar, outside the form). Match "<form " (trailing
 	// space) to hit the real tag, not a prose mention of the word "form".
-	pickIdx := strings.Index(tmplSrc, "uiLangSelect")
-	formIdx := strings.Index(tmplSrc, "<form ")
+	pickIdx := strings.Index(body, "uiLangSelect")
+	formIdx := strings.Index(body, "<form ")
 	if pickIdx < 0 || formIdx < 0 {
-		t.Fatal("could not locate the langpick and the <form ...> tag")
+		t.Fatal("could not locate the langpick and the <form ...> tag in the rendered body")
 	}
 	if pickIdx > formIdx {
-		t.Error("langpick is positioned after the <form ...> tag in the template (must be outside the form)")
+		t.Error("langpick is positioned after the <form ...> tag in the rendered body (must be outside the form)")
 	}
 
 	// No interface-language config field leaked into the server handler.
@@ -392,18 +403,22 @@ func TestLangpickJSWiring(t *testing.T) {
 // values, and a FOUC-style early lang apply / DOMContentLoaded apply exists.
 func TestI18nLoadDefault(t *testing.T) {
 	js := readEmbeddedAsset(t, "app.js")
-	tmplSrc := readEmbeddedAsset(t, "page.html.tmpl")
+	// SPEC-WEB-CONSOLE-006 Class C mechanism retarget (spec.md §2.1.1 #11 / §D.3):
+	// the prior version grepped the page.html.tmpl SOURCE for the FOUC <head>
+	// `localStorage.getItem("moai-console-lang")` snippet. The template source is
+	// deleted; the <head> FOUC snippet now renders in the BODY (the Templ root emits
+	// the inline <script> via templ.Raw(foucScript)), so the <head>-read assertions
+	// are retargeted to the rendered body.
+	body := renderIndexBody(t, profile.ProfilePreferences{})
 
 	// The load path must read the persisted moai-console-lang value via
 	// localStorage.getItem. The read happens in app.js (via the LANG_KEY constant
-	// = "moai-console-lang") AND/OR in the <head> FOUC snippet (literal). Accept
-	// either: assert a getItem read that targets moai-console-lang somewhere on
-	// the load path.
+	// = "moai-console-lang") AND/OR in the rendered <head> FOUC snippet (literal).
 	jsReadsLang := strings.Contains(js, "localStorage.getItem(LANG_KEY)") ||
 		strings.Contains(js, `localStorage.getItem("moai-console-lang"`)
-	headReadsLang := strings.Contains(tmplSrc, `localStorage.getItem("moai-console-lang"`)
+	headReadsLang := strings.Contains(body, `localStorage.getItem("moai-console-lang"`)
 	if !jsReadsLang && !headReadsLang {
-		t.Error("neither app.js nor the <head> snippet reads the persisted moai-console-lang on load")
+		t.Error("neither app.js nor the rendered <head> snippet reads the persisted moai-console-lang on load")
 	}
 	// app.js must reference the LANG_KEY value (the localStorage key).
 	if !strings.Contains(js, "moai-console-lang") {
@@ -415,10 +430,10 @@ func TestI18nLoadDefault(t *testing.T) {
 	}
 	// FOUC-style early <head> lang application mirroring the theme pattern, OR a
 	// DOMContentLoaded applyI18n — assert at least the persisted-locale early apply.
-	headApply := strings.Contains(tmplSrc, "moai-console-lang")
+	headApply := strings.Contains(body, "moai-console-lang")
 	domApply := strings.Contains(js, "applyI18n")
 	if !headApply && !domApply {
-		t.Error("no load-time interface-language apply (neither a <head> snippet nor a DOMContentLoaded applyI18n)")
+		t.Error("no load-time interface-language apply (neither a rendered <head> snippet nor a DOMContentLoaded applyI18n)")
 	}
 }
 
@@ -494,7 +509,6 @@ func TestInterfaceLanguageDoesNotAlterPOST(t *testing.T) {
 // unchanged is asserted by a sibling git diff at run-phase end).
 func TestServerContractPreserved(t *testing.T) {
 	body := renderIndexBody(t, profile.ProfilePreferences{})
-	tmplSrc := readEmbeddedAsset(t, "page.html.tmpl")
 
 	for _, name := range []string{
 		"user_name", "conversation_lang", "git_commit_lang", "code_comment_lang",
@@ -506,25 +520,42 @@ func TestServerContractPreserved(t *testing.T) {
 			t.Errorf("server-contract field name=%q missing (i18n must not drop it)", name)
 		}
 	}
-	// {{range}}-driven option lists preserved.
-	if !strings.Contains(tmplSrc, "{{range .AllSegments}}") {
-		t.Error("statusline segments no longer {{range .AllSegments}}-driven")
+
+	// SPEC-WEB-CONSOLE-006 Class C mechanism retarget (spec.md §2.1.1 #12 / §D.3):
+	// the prior version grepped the page.html.tmpl SOURCE for `{{range .AllSegments}}`
+	// / `{{range .LangOptions}}` / `{{with index .FieldErrors}}` and called
+	// pageTemplate().Lookup("langSelect"/"optSelect"). The template source + symbol
+	// are deleted; the server-render contract (option lists are server-rendered, not
+	// hardcoded; field errors are server-side rendered; the langSelect/optSelect
+	// helpers are present) is retargeted to the RENDERED BODY:
+
+	// All 15 server-rendered segment_<key> checkboxes present (a hardcoded block
+	// would not produce every canonical key — proves view.AllSegments drives them).
+	for _, key := range allSegments {
+		if !strings.Contains(body, `name="segment_`+key+`"`) {
+			t.Errorf("statusline segment segment_%s missing (no longer server-rendered from view.AllSegments)", key)
+		}
 	}
-	if !strings.Contains(tmplSrc, "{{range .LangOptions}}") &&
-		!strings.Contains(tmplSrc, "{{range .Options}}") {
-		t.Error("language options no longer server-rendered via {{range}}")
+	// Language options are server-rendered: all four canonical langOptions render.
+	for _, lang := range langOptions {
+		if !strings.Contains(body, `<option value="`+lang+`"`) {
+			t.Errorf("language option %q not server-rendered (option list no longer view-driven)", lang)
+		}
 	}
-	// .FieldErrors server-side render preserved.
-	if !strings.Contains(tmplSrc, "{{with index .FieldErrors") {
-		t.Error("server-side .FieldErrors render block removed")
+	// .FieldErrors are server-side rendered: an errored render carries the per-field
+	// error span (the Templ equivalent of the {{with index .FieldErrors}} block).
+	errored := renderErroredBody(t)
+	if !strings.Contains(errored, `class="field-error"`) {
+		t.Error("server-side field-error render removed (the {{with index .FieldErrors}} equivalent)")
 	}
-	// Helper define blocks preserved.
-	tmpl, err := pageTemplate()
-	if err != nil {
-		t.Fatalf("pageTemplate: %v", err)
+	// The langSelect/optSelect helpers are present (retargeted from the pageTemplate()
+	// Lookup): the language select carries select--lang, the opt selects the plain
+	// select chrome.
+	if !strings.Contains(body, `class="select select--lang"`) {
+		t.Error("langSelect helper chrome (select--lang) removed")
 	}
-	if tmpl.Lookup("langSelect") == nil || tmpl.Lookup("optSelect") == nil {
-		t.Error("langSelect/optSelect helper define blocks removed")
+	if !strings.Contains(body, `class="select"`) {
+		t.Error("optSelect helper chrome (plain select) removed")
 	}
 }
 

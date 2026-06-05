@@ -149,8 +149,15 @@ func TestFontServedFromStatic(t *testing.T) {
 // --- M2: layout + component port (server-contract preservation gate) ---
 
 // TestComponentChromePresent verifies AC-WC4-003: the 모두의AI component chrome
-// markers render, and the langSelect/optSelect define blocks are still present
-// and used (structure preserved).
+// markers render, and the langSelect/optSelect helpers still produce their
+// select chrome (structure preserved).
+//
+// SPEC-WEB-CONSOLE-006 Class C mechanism retarget (spec.md §2.1.1 #2 / §D.3): the
+// prior version additionally called pageTemplate().Lookup("langSelect"/"optSelect")
+// to assert the html/template {{define}} blocks survived. pageTemplate() is
+// retired and the helpers are now typed Templ components; the structure-preserved
+// intent is retargeted to the RENDERED BODY — the langSelect helper still emits
+// `select select--lang` and the optSelect helper still emits the plain `select`.
 func TestComponentChromePresent(t *testing.T) {
 	body := renderIndexBody(t, profile.ProfilePreferences{UserName: "jline"})
 
@@ -169,20 +176,13 @@ func TestComponentChromePresent(t *testing.T) {
 		}
 	}
 
-	// langSelect + optSelect define blocks are still present in the template AND
-	// still produce the lang/opt select chrome in the render.
-	tmpl, err := pageTemplate()
-	if err != nil {
-		t.Fatalf("pageTemplate: %v", err)
-	}
-	if tmpl.Lookup("langSelect") == nil {
-		t.Error("langSelect define block missing (helper structure must be preserved)")
-	}
-	if tmpl.Lookup("optSelect") == nil {
-		t.Error("optSelect define block missing (helper structure must be preserved)")
-	}
+	// The langSelect/optSelect helpers still produce the lang/opt select chrome in
+	// the render (retargeted from the retired pageTemplate() Lookup check).
 	if !strings.Contains(body, `class="select select--lang"`) {
 		t.Error("langSelect helper did not render the language select chrome")
+	}
+	if !strings.Contains(body, `class="select"`) {
+		t.Error("optSelect helper did not render the plain select chrome")
 	}
 }
 
@@ -251,14 +251,16 @@ func TestLoopbackIndicatorShowsRealBindAddr(t *testing.T) {
 		t.Errorf("loopback indicator did not show the injected bind address 127.0.0.1:7777:\n%s", body)
 	}
 
-	// The TEMPLATE source must not hardcode 127.0.0.1:3041 — the address is
-	// always view-model-sourced (regression guard).
-	tmplSrc := readEmbeddedAsset(t, "page.html.tmpl")
-	if strings.Contains(tmplSrc, "127.0.0.1:3041") {
-		t.Error("page.html.tmpl hardcodes 127.0.0.1:3041 — the bind address must come from {{.BindAddr}}")
-	}
-	if !strings.Contains(tmplSrc, "{{.BindAddr}}") {
-		t.Error("page.html.tmpl does not render {{.BindAddr}} for the loopback indicator")
+	// SPEC-WEB-CONSOLE-006 Class C mechanism retarget (spec.md §2.1.1 #3 / §D.3):
+	// the prior version grepped the page.html.tmpl SOURCE for a hardcoded
+	// 127.0.0.1:3041 and for the {{.BindAddr}} directive. The template source is
+	// deleted; the regression intent (the address is view-model-sourced, never a
+	// hardcoded default port) is retargeted to the RENDERED BODY — the rendered
+	// page shows the injected 127.0.0.1:7777 (asserted above) and must NOT contain
+	// the default 127.0.0.1:3041, which would only appear if the port were
+	// hardcoded rather than sourced from view.BindAddr.
+	if strings.Contains(body, "127.0.0.1:3041") {
+		t.Errorf("rendered body contains the default 127.0.0.1:3041 — the bind address must come from view.BindAddr, not a hardcoded port:\n%s", body)
 	}
 }
 
@@ -268,7 +270,6 @@ func TestLoopbackIndicatorShowsRealBindAddr(t *testing.T) {
 // statusline segment key (structural pattern, not a 3-key enumeration).
 func TestNoNonCanonicalOptions(t *testing.T) {
 	body := renderIndexBody(t, profile.ProfilePreferences{})
-	tmplSrc := readEmbeddedAsset(t, "page.html.tmpl")
 
 	// (1) No non-canonical language options.
 	for _, forbidden := range []string{`value="es"`, `value="fr"`, `value="de"`} {
@@ -289,21 +290,22 @@ func TestNoNonCanonicalOptions(t *testing.T) {
 		t.Errorf("rendered form contains a kebab-cased statusline segment key (matched %q): design keys must be dropped",
 			kebabSeg.FindString(body))
 	}
-	if kebabSeg.MatchString(tmplSrc) {
-		t.Errorf("page.html.tmpl contains a kebab-cased statusline segment key (matched %q)",
-			kebabSeg.FindString(tmplSrc))
-	}
 
-	// (4) Positive: the 15 canonical snake_case segment keys still render via {{range}}.
+	// (4) Positive: the 15 canonical snake_case segment keys still render.
 	for _, key := range allSegments {
 		if !strings.Contains(body, "segment_"+key) {
 			t.Errorf("canonical segment key segment_%s missing from rendered form", key)
 		}
 	}
-	// (5) The template still drives segments through {{range .AllSegments}} (not hardcoded).
-	if !strings.Contains(tmplSrc, "{{range .AllSegments}}") {
-		t.Error("statusline segments are no longer {{range .AllSegments}}-driven (server-render contract broken)")
-	}
+	// (5) SPEC-WEB-CONSOLE-006 Class C mechanism retarget (spec.md §2.1.1 #4 / §D.3):
+	// the prior version grepped the page.html.tmpl SOURCE for the kebab pattern and
+	// for the literal `{{range .AllSegments}}` directive (proof the segments are
+	// server-rendered, not hardcoded). The template source is deleted; the
+	// server-render intent is retargeted to the RENDERED BODY — all 15 canonical
+	// keys render (asserted in (4), which a hardcoded-3-key block would fail), and
+	// the kebab guard runs against the rendered body (asserted in (3)). The
+	// segments are still driven by `for _, s := range view.AllSegments` in the Templ
+	// fieldsetStatusline component.
 }
 
 // TestNameAttributesPreserved verifies AC-WC4-009a: every canonical form field
@@ -329,7 +331,7 @@ func TestNameAttributesPreserved(t *testing.T) {
 		}
 	}
 
-	// Form contract: method/action + hidden __profile + server-side .FieldErrors block.
+	// Form contract: method/action + hidden __profile + server-side field-error block.
 	if !strings.Contains(body, `method="POST"`) || !strings.Contains(body, `action="/save`) {
 		t.Error("form method/action contract broken")
 	}
@@ -337,10 +339,15 @@ func TestNameAttributesPreserved(t *testing.T) {
 		t.Error("hidden __profile input missing")
 	}
 
-	// .FieldErrors server-side render block present in the template source.
-	tmplSrc := readEmbeddedAsset(t, "page.html.tmpl")
-	if !strings.Contains(tmplSrc, `{{with index .FieldErrors`) {
-		t.Error("server-side .FieldErrors render block missing from template")
+	// SPEC-WEB-CONSOLE-006 Class C mechanism retarget (spec.md §2.1.1 #5 / §D.3):
+	// the prior version grepped the page.html.tmpl SOURCE for the `{{with index
+	// .FieldErrors}}` server-side render block. The template source is deleted; the
+	// server-rendered-field-error intent is retargeted to a RENDERED ERRORED BODY —
+	// an invalid submission re-renders the form with a per-field `field-error` span
+	// (the Templ equivalent of the {{with index .FieldErrors}} block).
+	errored := renderErroredBody(t)
+	if !strings.Contains(errored, `class="field-error"`) {
+		t.Errorf("errored render missing the server-rendered per-field error span:\n%s", errored)
 	}
 }
 
@@ -414,7 +421,7 @@ func TestBannerKindMapping(t *testing.T) {
 // only (no server theme field).
 func TestDarkModeAndThemeToggle(t *testing.T) {
 	css := readEmbeddedAsset(t, "console.css")
-	tmplSrc := readEmbeddedAsset(t, "page.html.tmpl")
+	body := renderIndexBody(t, profile.ProfilePreferences{})
 	js := readEmbeddedAsset(t, "app.js")
 
 	if !strings.Contains(css, `[data-theme="dark"]`) {
@@ -423,12 +430,17 @@ func TestDarkModeAndThemeToggle(t *testing.T) {
 	if !strings.Contains(css, "prefers-reduced-motion") {
 		t.Error("token CSS missing prefers-reduced-motion guard")
 	}
-	if !strings.Contains(tmplSrc, `id="themeToggle"`) {
-		t.Error("theme-toggle element missing from template")
+	// SPEC-WEB-CONSOLE-006 Class C mechanism retarget (spec.md §2.1.1 #6 / §D.3):
+	// the prior version grepped the page.html.tmpl SOURCE for id="themeToggle" + the
+	// FOUC `moai-console-theme` / `data-theme` <head> snippet. The template source is
+	// deleted; both render in the BODY (the appbar emits the themeToggle button and
+	// the <html data-theme> + <head> FOUC <script> render), so the assertions are
+	// retargeted to the rendered body.
+	if !strings.Contains(body, `id="themeToggle"`) {
+		t.Error("theme-toggle element missing from rendered page")
 	}
-	// FOUC-prevention inline <head> snippet applies persisted theme before paint.
-	if !strings.Contains(tmplSrc, "moai-console-theme") || !strings.Contains(tmplSrc, "data-theme") {
-		t.Error("FOUC-prevention inline theme init missing from <head>")
+	if !strings.Contains(body, "moai-console-theme") || !strings.Contains(body, "data-theme") {
+		t.Error("FOUC-prevention inline theme init missing from rendered <head>")
 	}
 	// Client-side persistence in app.js, no server round-trip.
 	if !strings.Contains(js, "localStorage") || !strings.Contains(js, "moai-console-theme") {
@@ -446,18 +458,21 @@ func TestDarkModeAndThemeToggle(t *testing.T) {
 // lucide CDN <script>, no data-lucide runtime markup, no icon-library runtime JS.
 func TestInlineSVGIconsNoCDN(t *testing.T) {
 	body := renderIndexBody(t, profile.ProfilePreferences{})
-	tmplSrc := readEmbeddedAsset(t, "page.html.tmpl")
 
 	// Inline SVGs render (the appbar brand badge + the icon subset).
 	if strings.Count(body, "<svg") < 5 {
 		t.Errorf("expected several inline <svg> icons, found %d", strings.Count(body, "<svg"))
 	}
 
-	// No CDN / runtime icon library.
+	// SPEC-WEB-CONSOLE-006 Class C mechanism retarget (spec.md §2.1.1 #7 / §D.3):
+	// the prior version also grepped the page.html.tmpl SOURCE for icon CDN markers.
+	// The template source is deleted; the no-CDN icon invariant is asserted against
+	// the RENDERED BODY (the icons are inline <svg> emitted by the Templ icon helper,
+	// so any CDN reference would appear in the body).
 	for _, forbidden := range []string{
 		"unpkg.com", "lucide@", "data-lucide", "lucide.min.js", "cdn.jsdelivr",
 	} {
-		if strings.Contains(tmplSrc, forbidden) || strings.Contains(body, forbidden) {
+		if strings.Contains(body, forbidden) {
 			t.Errorf("icon CDN / runtime reference %q present (offline icon invariant broken)", forbidden)
 		}
 	}
@@ -470,7 +485,7 @@ func TestInlineSVGIconsNoCDN(t *testing.T) {
 // (aria-label on theme toggle, aria-invalid on errored fields).
 func TestAccessibilityCues(t *testing.T) {
 	css := readEmbeddedAsset(t, "console.css")
-	tmplSrc := readEmbeddedAsset(t, "page.html.tmpl")
+	body := renderIndexBody(t, profile.ProfilePreferences{})
 
 	if !strings.Contains(css, "focus-visible") {
 		t.Error("CSS missing a :focus-visible outline rule")
@@ -478,25 +493,28 @@ func TestAccessibilityCues(t *testing.T) {
 	if !strings.Contains(css, "prefers-reduced-motion") {
 		t.Error("CSS missing prefers-reduced-motion guard")
 	}
-	// Theme toggle + icon-only control carries aria-label.
-	if !strings.Contains(tmplSrc, `id="themeToggle"`) || !strings.Contains(tmplSrc, "aria-label=") {
+	// SPEC-WEB-CONSOLE-006 Class C mechanism retarget (spec.md §2.1.1 #8 / §D.3):
+	// the prior version grepped the page.html.tmpl SOURCE for id="themeToggle" +
+	// aria-label + class="field-error" + has-error. The template source is deleted;
+	// these render in the BODY — the appbar emits the themeToggle button with its
+	// aria-label, and an errored render carries the field-error / has-error cues.
+	if !strings.Contains(body, `id="themeToggle"`) || !strings.Contains(body, "aria-label=") {
 		t.Error("theme toggle / icon-only control missing aria-label")
 	}
-	// Error cue is non-color: the field-error span carries an icon (alert-circle)
-	// plus the message text, and the field gets a has-error border class.
-	if !strings.Contains(tmplSrc, `class="field-error"`) {
+	// Error cue is non-color: an errored render carries the field-error icon+text
+	// span and the has-error border class.
+	errored := renderErroredBody(t)
+	if !strings.Contains(errored, `class="field-error"`) {
 		t.Error("non-color error cue (.field-error icon+text span) missing")
 	}
-	if !strings.Contains(tmplSrc, "has-error") {
+	if !strings.Contains(errored, "has-error") {
 		t.Error("error border cue (.has-error) missing")
 	}
-
 	// An errored field renders aria-invalid + aria-describedby association.
-	body := renderErroredBody(t)
-	if !strings.Contains(body, `aria-invalid="true"`) {
+	if !strings.Contains(errored, `aria-invalid="true"`) {
 		t.Error("errored field missing aria-invalid")
 	}
-	if !strings.Contains(body, "aria-describedby=") {
+	if !strings.Contains(errored, "aria-describedby=") {
 		t.Error("errored field missing aria-describedby association")
 	}
 }

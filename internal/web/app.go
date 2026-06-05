@@ -13,9 +13,12 @@ import (
 // app holds the Console's request-handling dependencies. Profile read/write and
 // project-config sync are delegated to package-level function variables so tests
 // can inject failures (REQ-WC-010) without touching the real filesystem.
+//
+// The page is rendered by the compiled-in Templ root component page(view)
+// (SPEC-WEB-CONSOLE-006); the html/template a.tmpl field was retired together
+// with the html/template renderer, so there is no runtime-parsed template handle.
 type app struct {
-	cfg  Config
-	tmpl *template.Template
+	cfg Config
 
 	// bindAddr returns the real bound loopback address (127.0.0.1:<port>) for
 	// the appbar loopback indicator (REQ-WC4-005). NewServer wires it to the
@@ -39,13 +42,11 @@ type app struct {
 }
 
 // newApp builds an app from cfg, wiring the default internal/profile functions.
-// If template parsing fails the error is deferred to first render (handlers
-// surface it as a readable inline error per REQ-WC-010).
+// The page is rendered by the compiled-in Templ root component (no runtime
+// template parse), so newApp no longer carries a template-parse step.
 func newApp(cfg Config) *app {
-	tmpl, _ := pageTemplate() // parse error surfaced at render time
 	return &app{
 		cfg:                cfg,
-		tmpl:               tmpl,
 		readPreferences:    profile.ReadPreferences,
 		writePreferences:   profile.WritePreferences,
 		syncToProject:      profile.SyncToProjectConfig,

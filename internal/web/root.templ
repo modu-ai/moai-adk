@@ -1,0 +1,184 @@
+package web
+
+// page is the Templ root component for the Console (SPEC-WEB-CONSOLE-006). It
+// ports the <html> shell + FOUC <head> script + appbar + 5 fieldsets + actions
+// from the retired page.html.tmpl 1:1, preserving the exact markup contract so
+// the characterization gate stays green (spec.md §2). The view-model pageView is
+// the typed input; handlers.go:render() renders this into a buffer first (the
+// REQ-WC6-018 error discipline).
+
+// foucHeadScript is the FOUC-prevention <head> snippet (page.html.tmpl ~8-28),
+// emitted as a complete <script>...</script> element via templ.Raw. It applies
+// the persisted theme + interface language before first paint. It is a fixed
+// compile-time constant — no user data flows into it — so emitting it via
+// templ.Raw carries no injection surface (REQ-WC6-017).
+//
+// The whole <script> element (tags + body) is rendered via templ.Raw at the head
+// level rather than placing @templ.Raw INSIDE a <script> element, because Templ
+// treats the contents of a <script> element as literal (un-evaluated) script text
+// — a nested @templ.Raw there would render the directive literally.
+const foucHeadScript = `<script>
+    // FOUC-prevention: apply the persisted theme + interface language before
+    // first paint (REQ-WC4-006 / REQ-WC5-005). Client-side only — no server
+    // round-trip, no theme/language persistence field. Setting <html lang>
+    // early activates the CJK @font-face stack for ja/zh before paint so the
+    // first render already uses the brand webfont (no system-ui flash).
+    (function () {
+      try {
+        var t = localStorage.getItem("moai-console-theme");
+        if (t === "dark" || t === "light") {
+          document.documentElement.setAttribute("data-theme", t);
+        }
+      } catch (e) { /* localStorage unavailable — keep the default light theme */ }
+      try {
+        var l = localStorage.getItem("moai-console-lang");
+        if (l === "en" || l === "ko" || l === "ja" || l === "zh") {
+          document.documentElement.setAttribute("lang", l);
+        }
+      } catch (e) { /* localStorage unavailable — keep the default en interface */ }
+    })();
+  </script>`
+
+// brandBadgeSVG is the 모두의AI brand badge — a fixed inline SVG distinct from the
+// lucide icon subset (page.html.tmpl ~36-44). Compile-time constant; templ.Raw safe.
+const brandBadgeSVG = `<svg width="21" height="27" viewBox="0 0 40 50" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M8 40 L32 40 L34 50 L6 50 Z" fill="#fff"/>
+          <path d="M12 4 L28 4 L31 16 L30.5 34 L25 42 L15 42 L9.5 34 L9 16 Z" fill="#fff"/>
+          <path d="M9 16 L31 16 L30.6 21 L9.4 21 Z" fill="#0c3a37"/>
+          <path d="M12.5 22 L18 22 L17.4 27 L13.1 27 Z" fill="#0a2825"/>
+          <path d="M22 22 L27.5 22 L26.9 27 L22.6 27 Z" fill="#0a2825"/>
+          <path d="M18.7 20.5 L21.3 20.5 L23 33 L17 33 Z" fill="#1d6b62"/>
+          <path d="M15.5 35 L24.5 35 L24 38.5 L16 38.5 Z" fill="#0a2825"/>
+        </svg>`
+
+// saveAction builds the form action target, appending ?profile=<selected> when a
+// profile is selected (mirrors `/save{{if .SelectedProfile}}?profile=...{{end}}`).
+func saveAction(selected string) string {
+	if selected != "" {
+		return "/save?profile=" + selected
+	}
+	return "/save"
+}
+
+// bannerClass maps the server-set BannerKind to the success/error chrome class
+// (page.html.tmpl ~97). "error" -> banner--error; anything else -> banner--success.
+func bannerClass(kind string) string {
+	if kind == "error" {
+		return "banner banner--error"
+	}
+	return "banner banner--success"
+}
+
+templ page(view pageView) {
+	<!DOCTYPE html>
+	<html lang="en" data-theme="light">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>MoAI Web Console</title>
+			<link rel="stylesheet" href="/static/console.css"/>
+			@templ.Raw(foucHeadScript)
+		</head>
+		<body>
+			@appbar(view)
+			<main class="page">
+				<div class="pagehead">
+					<h1>MoAI <span class="accent">Web Console</span></h1>
+					<p class="pagehead__sub" data-i18n="app.subtitle">Edit profile preferences &amp; project settings (loopback only — local machine)</p>
+				</div>
+				if view.ShowProfileSwitch {
+					@profileSwitch(view)
+				}
+				if view.Banner != "" {
+					@banner(view)
+				}
+				<form class="form" method="POST" action={ templ.SafeURL(saveAction(view.SelectedProfile)) }>
+					<input type="hidden" name="__profile" value={ view.SelectedProfile }/>
+					@fieldsetIdentity(view)
+					@fieldsetLanguage(view)
+					@fieldsetLaunch(view)
+					@fieldsetStatusline(view)
+					@fieldsetProject(view)
+					<div class="actions">
+						<button class="btn btn--primary" type="submit">@icon("save")<span data-i18n="actions.save">Save settings</span></button>
+						<span class="actions__meta" data-i18n="actions.meta">writes to ~/.moai profile &amp; project config</span>
+					</div>
+				</form>
+			</main>
+			<script src="/static/i18n.js"></script>
+			<script src="/static/app.js"></script>
+		</body>
+	</html>
+}
+
+// appbar ports the brand strip (page.html.tmpl ~33-70): brand badge SVG +
+// 모두의AI + loopback{ view.BindAddr } + langpick(uiLangSelect, NO name=, OUTSIDE
+// form) + themeToggle.
+templ appbar(view pageView) {
+	<header class="appbar">
+		<span class="brand" aria-label="모두의AI — MoAI">
+			<span class="brand__badge">
+				@templ.Raw(brandBadgeSVG)
+			</span>
+			<span class="brand__name">모두의AI</span>
+		</span>
+		<span class="appbar__divider"></span>
+		<span class="loopback"><span class="loopback__dot"></span>{ view.BindAddr }</span>
+		<span class="appbar__spacer"></span>
+		<span class="select-wrap langpick-wrap">
+			<select class="select langpick" id="uiLangSelect" aria-label="Interface language" title="Interface language">
+				<option value="en">English</option>
+				<option value="ko">한국어</option>
+				<option value="ja">日本語</option>
+				<option value="zh">中文</option>
+			</select>
+		</span>
+		<button class="iconbtn" id="themeToggle" type="button" aria-label="Toggle light / dark theme" title="Toggle theme">
+			@icon("sun")
+			@icon("moon")
+		</button>
+	</header>
+}
+
+// profileSwitch ports the {{if .ShowProfileSwitch}} block (page.html.tmpl ~81-93).
+templ profileSwitch(view pageView) {
+	<div class="profilebar">
+		<label class="profilebar__label" for="__profile_select" data-i18n="profile.label">Profile:</label>
+		<span class="select-wrap">
+			<select class="select" name="__profile_select" id="__profile_select" aria-label="Active profile">
+				for _, p := range view.Profiles {
+					if p.Name == view.SelectedProfile {
+						if p.Current {
+							<option value={ p.Name } selected>{ p.Name } (current)</option>
+						} else {
+							<option value={ p.Name } selected>{ p.Name }</option>
+						}
+					} else {
+						if p.Current {
+							<option value={ p.Name }>{ p.Name } (current)</option>
+						} else {
+							<option value={ p.Name }>{ p.Name }</option>
+						}
+					}
+				}
+			</select>
+		</span>
+		<span class="profilebar__meta">selected: <strong>{ view.SelectedProfile }</strong></span>
+	</div>
+}
+
+// banner ports the {{if .Banner}} server-rendered status block (page.html.tmpl ~96-103).
+templ banner(view pageView) {
+	<div class={ bannerClass(view.BannerKind) } role="status" aria-live="polite">
+		<span class="banner__icon">
+			if view.BannerKind == "error" {
+				@icon("alert-circle")
+			} else {
+				@icon("check-circle")
+			}
+		</span>
+		<div class="banner__body">
+			<p class="banner__text">{ view.Banner }</p>
+		</div>
+	</div>
+}

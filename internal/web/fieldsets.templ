@@ -1,0 +1,226 @@
+package web
+
+// The 5 fieldsets ported 1:1 from page.html.tmpl (~109-260). Each is a typed
+// Templ component taking the pageView; field-for-field identical name=/id=/option
+// markup (REQ-WC6-003). The Language fieldset reuses langSelect; Launch/Project
+// reuse optSelect; permission_mode + the three statusline selects are rendered
+// inline (they carry select-specific empty-option semantics the helpers do not).
+
+// fieldsetIdentity ports the Identity fieldset (user_name text input, ~109-128).
+templ fieldsetIdentity(view pageView) {
+	<fieldset class="section">
+		<div class="section__head">
+			<div class="section__head-row">
+				<legend class="section__legend"><span class="section__ico">@icon("user-round")</span><span data-i18n="sec.identity.title">Identity</span></legend>
+				<span class="section__count" data-i18n="count.identity">1 field</span>
+			</div>
+			<p class="section__desc" data-i18n="sec.identity.desc">Who you are in commits and sessions.</p>
+		</div>
+		<div class="section__body">
+			<div class="grid grid--1">
+				<div class={ "field", templ.KV("has-error", hasFieldError(view.FieldErrors, "user_name")) }>
+					<span class="field__label"><span class="field__title" data-i18n="f.user_name.title">Display name</span><code class="field__key">user_name</code></span>
+					<span class="field__desc" data-i18n="f.user_name.desc">The name shown in commits and session headers.</span>
+					if hasFieldError(view.FieldErrors, "user_name") {
+						<input class="input" type="text" id="user_name" name="user_name" value={ view.Prefs.UserName } placeholder="e.g. jline" autocomplete="off" aria-invalid="true" aria-describedby="err_user_name"/>
+						<span class="field-error" id="err_user_name">@icon("alert-circle")<span>{ fieldErrorMsg(view.FieldErrors, "user_name") }</span></span>
+					} else {
+						<input class="input" type="text" id="user_name" name="user_name" value={ view.Prefs.UserName } placeholder="e.g. jline" autocomplete="off"/>
+					}
+				</div>
+			</div>
+		</div>
+	</fieldset>
+}
+
+// fieldsetLanguage ports the Language fieldset (4x langSelect, ~130-147).
+templ fieldsetLanguage(view pageView) {
+	<fieldset class="section">
+		<div class="section__head">
+			<div class="section__head-row">
+				<legend class="section__legend"><span class="section__ico">@icon("languages")</span><span data-i18n="sec.language.title">Language</span></legend>
+				<span class="section__count" data-i18n="count.language">4 fields</span>
+			</div>
+			<p class="section__desc" data-i18n="sec.language.desc">Languages used across conversation, commits, comments, and docs.</p>
+		</div>
+		<div class="section__body">
+			<div class="grid">
+				@langSelect(langSelectArgs{Name: "conversation_lang", Title: "Conversation language", Key: "conversation_lang", Desc: "Language the assistant replies in during chat.", Value: view.Prefs.ConversationLang, Options: view.LangOptions, Errors: view.FieldErrors})
+				@langSelect(langSelectArgs{Name: "git_commit_lang", Title: "Commit message language", Key: "git_commit_lang", Desc: "Language used when writing git commit messages.", Value: view.Prefs.GitCommitLang, Options: view.LangOptions, Errors: view.FieldErrors})
+				@langSelect(langSelectArgs{Name: "code_comment_lang", Title: "Code comment language", Key: "code_comment_lang", Desc: "Language for comments written into your code.", Value: view.Prefs.CodeCommentLang, Options: view.LangOptions, Errors: view.FieldErrors})
+				@langSelect(langSelectArgs{Name: "doc_lang", Title: "Documentation language", Key: "doc_lang", Desc: "Language for generated docs and READMEs.", Value: view.Prefs.DocLang, Options: view.LangOptions, Errors: view.FieldErrors})
+			</div>
+		</div>
+	</fieldset>
+}
+
+// fieldsetLaunch ports the Launch fieldset (~149-177): an inline permission_mode
+// select (with the "(project default)" empty-option-when-blank logic) + 3x
+// optSelect (model_policy / model / effort_level).
+templ fieldsetLaunch(view pageView) {
+	<fieldset class="section">
+		<div class="section__head">
+			<div class="section__head-row">
+				<legend class="section__legend"><span class="section__ico">@icon("rocket")</span><span data-i18n="sec.launch.title">Launch</span></legend>
+				<span class="section__count" data-i18n="count.launch">4 fields</span>
+			</div>
+			<p class="section__desc" data-i18n="sec.launch.desc">How sessions start — permissions, model, and reasoning effort.</p>
+		</div>
+		<div class="section__body">
+			<div class="grid">
+				<div class={ "field", templ.KV("has-error", hasFieldError(view.FieldErrors, "permission_mode")) }>
+					<span class="field__label"><span class="field__title" data-i18n="f.permission_mode.title">Permission mode</span><code class="field__key">permission_mode</code></span>
+					<span class="field__desc" data-i18n="f.permission_mode.desc">How much the agent may do before asking you.</span>
+					<span class="select-wrap">
+						<select
+							class="select"
+							id="permission_mode"
+							name="permission_mode"
+							if hasFieldError(view.FieldErrors, "permission_mode") {
+								aria-invalid="true"
+								aria-describedby="err_permission_mode"
+							}
+						>
+							for _, m := range view.PermissionModes {
+								@permissionOption(m, view.Prefs.PermissionMode)
+							}
+						</select>
+					</span>
+					if msg := fieldErrorMsg(view.FieldErrors, "permission_mode"); msg != "" {
+						<span class="field-error" id="err_permission_mode">@icon("alert-circle")<span>{ msg }</span></span>
+					}
+				</div>
+				@optSelect(optSelectArgs{Name: "model_policy", Title: "Model policy", Key: "model_policy", Desc: "Quality vs. speed bias when a model is auto-selected.", Value: view.Prefs.ModelPolicy, Empty: "(unset)", Options: view.ModelPolicies, Errors: view.FieldErrors})
+				@optSelect(optSelectArgs{Name: "model", Title: "Model", Key: "model", Desc: "The specific model to run, including 1M-context variants.", Value: view.Prefs.Model, Empty: "(project default)", Options: view.ModelOptions, Errors: view.FieldErrors})
+				@optSelect(optSelectArgs{Name: "effort_level", Title: "Effort level", Key: "effort_level", Desc: "How much reasoning effort the model spends per task.", Value: view.Prefs.EffortLevel, Empty: "(runtime default)", Options: view.EffortLevels, Errors: view.FieldErrors})
+			</div>
+		</div>
+	</fieldset>
+}
+
+// permissionOption ports the permission_mode option rendering: an empty value
+// renders "(project default)", otherwise the value itself; the current value is
+// marked selected (page.html.tmpl ~165-167).
+templ permissionOption(value, current string) {
+	if value == current {
+		if value == "" {
+			<option value="" selected>(project default)</option>
+		} else {
+			<option value={ value } selected>{ value }</option>
+		}
+	} else {
+		if value == "" {
+			<option value="">(project default)</option>
+		} else {
+			<option value={ value }>{ value }</option>
+		}
+	}
+}
+
+// fieldsetStatusline ports the Statusline fieldset (~179-243): inline statusline
+// mode/preset/theme selects (plain {{.}} options, no empty option) + the 15
+// segment_<key> checkboxes driven by view.AllSegments.
+templ fieldsetStatusline(view pageView) {
+	<fieldset class="section">
+		<div class="section__head">
+			<div class="section__head-row">
+				<legend class="section__legend"><span class="section__ico">@icon("panel-bottom")</span><span data-i18n="sec.statusline.title">Statusline</span></legend>
+				<span class="section__count" data-i18n="count.statusline">3 fields · segments</span>
+			</div>
+			<p class="section__desc" data-i18n="sec.statusline.desc">The status bar shown at the bottom of your terminal.</p>
+		</div>
+		<div class="section__body">
+			<div class="grid">
+				@statuslineSelect("statusline_mode", "Statusline mode", "Overall density of the status bar.", view.StatuslineModes, view.Prefs.StatuslineMode, "", view.FieldErrors)
+				@statuslineSelect("statusline_preset", "Statusline preset", "A predefined segment set. Choose “custom” to pick your own.", view.StatuslinePresets, view.Prefs.StatuslinePreset, "", view.FieldErrors)
+				@statuslineSelect("statusline_theme", "Statusline theme", "Color theme for the status bar.", view.StatuslineThemes, view.Prefs.StatuslineTheme, "col-span-2", view.FieldErrors)
+			</div>
+			<div class="segments" id="custom-segments">
+				<div class="segments__head">
+					<span class="segments__title" data-i18n="seg.title">Custom segments</span>
+					<span class="segments__note" data-i18n="seg.note">Choose exactly which pieces of information appear.</span>
+				</div>
+				<div class="segments__grid">
+					for _, s := range view.AllSegments {
+						@segmentCheckbox(s, view.Prefs.StatuslineSegments[s])
+					}
+				</div>
+			</div>
+		</div>
+	</fieldset>
+}
+
+// statuslineSelect ports the statusline mode/preset/theme inline selects. They
+// share the f.<name>.title/.desc label chrome and a plain {{.}} option list with
+// NO empty option (page.html.tmpl ~190-225). extraFieldClass carries the optional
+// col-span-2 modifier the theme field uses.
+templ statuslineSelect(name, title, desc string, options []string, current, extraFieldClass string, errs map[string]string) {
+	<div class={ "field", templ.KV(extraFieldClass, extraFieldClass != ""), templ.KV("has-error", hasFieldError(errs, name)) }>
+		<span class="field__label"><span class="field__title" data-i18n={ "f." + name + ".title" }>{ title }</span><code class="field__key">{ name }</code></span>
+		<span class="field__desc" data-i18n={ "f." + name + ".desc" }>{ desc }</span>
+		if name == "statusline_theme" {
+			<span class="select-wrap" style="max-width:340px">
+				@statuslineSelectInner(name, options, current, hasFieldError(errs, name))
+			</span>
+		} else {
+			<span class="select-wrap">
+				@statuslineSelectInner(name, options, current, hasFieldError(errs, name))
+			</span>
+		}
+		if msg := fieldErrorMsg(errs, name); msg != "" {
+			<span class="field-error" id={ "err_" + name }>@icon("alert-circle")<span>{ msg }</span></span>
+		}
+	</div>
+}
+
+// statuslineSelectInner renders the <select> + plain option list (no empty option).
+templ statuslineSelectInner(name string, options []string, current string, errored bool) {
+	<select
+		class="select"
+		id={ name }
+		name={ name }
+		if errored {
+			aria-invalid="true"
+			aria-describedby={ "err_" + name }
+		}
+	>
+		for _, o := range options {
+			if o == current {
+				<option value={ o } selected>{ o }</option>
+			} else {
+				<option value={ o }>{ o }</option>
+			}
+		}
+	</select>
+}
+
+// segmentCheckbox ports the segment_<key> checkbox (page.html.tmpl ~237-239).
+templ segmentCheckbox(key string, checked bool) {
+	<label class="seg">
+		if checked {
+			<input type="checkbox" name={ "segment_" + key } value="1" checked/>
+		} else {
+			<input type="checkbox" name={ "segment_" + key } value="1"/>
+		}
+		<span class="seg__box"><span class="seg__tick">@icon("check")</span><span class="seg__name">{ key }</span></span>
+	</label>
+}
+
+// fieldsetProject ports the Project fieldset (2x optSelect, ~245-260).
+templ fieldsetProject(view pageView) {
+	<fieldset class="section">
+		<div class="section__head">
+			<div class="section__head-row">
+				<legend class="section__legend"><span class="section__ico">@icon("folder-git")</span><span data-i18n="sec.project.title">Project</span></legend>
+				<span class="section__count" data-i18n="count.project">2 fields</span>
+			</div>
+			<p class="section__desc" data-i18n="sec.project.desc">Project-level development and git conventions.</p>
+		</div>
+		<div class="section__body">
+			<div class="grid">
+				@optSelect(optSelectArgs{Name: "development_mode", Title: "Development mode", Key: "development_mode", Desc: "Default workflow — domain-driven (DDD) or test-driven (TDD).", Value: view.CurDevelopmentMode, Empty: "(project default)", Options: view.DevelopmentModes, Errors: view.FieldErrors})
+				@optSelect(optSelectArgs{Name: "git_convention", Title: "Git convention", Key: "git_convention", Desc: "Commit message convention enforced in this project.", Value: view.CurConvention, Empty: "(project default)", Options: view.Conventions, Errors: view.FieldErrors})
+			</div>
+		</div>
+	</fieldset>
+}

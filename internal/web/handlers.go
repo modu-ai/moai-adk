@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 
@@ -9,7 +10,9 @@ import (
 	"github.com/modu-ai/moai-adk/internal/template"
 )
 
-// pageView is the html/template view-model for the Console page.
+// pageView is the typed view-model for the Console page. It is the input to the
+// Templ root component page(view) (SPEC-WEB-CONSOLE-006 — migrated from the
+// retired html/template renderer; the field set is unchanged).
 type pageView struct {
 	Prefs             profile.ProfilePreferences
 	SelectedProfile   string
@@ -90,16 +93,14 @@ func (a *app) resolveBindAddr() string {
 	return loopbackHost
 }
 
-// render executes the page template into a buffer first, so a template error
-// surfaces as a readable inline error (REQ-WC-010) rather than a half-written
-// 200 response.
+// render renders the Templ root component into a buffer first, so a render error
+// surfaces as a readable inline error (REQ-WC-010 / REQ-WC6-018) rather than a
+// half-written 200 response. The migration (SPEC-WEB-CONSOLE-006) replaced the
+// html/template a.tmpl.Execute path with the compiled-in page(view) Templ
+// component; the render-into-buffer-first error discipline is preserved.
 func (a *app) render(w http.ResponseWriter, status int, view pageView) {
-	if a.tmpl == nil {
-		a.renderError(w, http.StatusInternalServerError, "internal error: page template unavailable")
-		return
-	}
 	var buf bytes.Buffer
-	if err := a.tmpl.Execute(&buf, view); err != nil {
+	if err := page(view).Render(context.Background(), &buf); err != nil {
 		a.renderError(w, http.StatusInternalServerError, "internal error: render failed: "+err.Error())
 		return
 	}

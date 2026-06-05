@@ -70,18 +70,37 @@ func TestHandleSave_MethodNotAllowed(t *testing.T) {
 	}
 }
 
-// TestRender_NilTemplateSurfacesError verifies the render path surfaces a
-// readable error when the template failed to parse (REQ-WC-010).
-func TestRender_NilTemplateSurfacesError(t *testing.T) {
+// TestRenderProducesCompletePage verifies the render path writes a complete,
+// non-blank HTML page with the requested status (REQ-WC-010 / REQ-WC6-018 render
+// discipline). SPEC-WEB-CONSOLE-006 Class C mechanism retarget (§D.3): the prior
+// TestRender_NilTemplateSurfacesError set the retired a.tmpl field to nil to
+// exercise the "template unavailable" guard; that html/template parse-failure
+// state no longer exists (the Templ root component is compiled in, not parsed at
+// runtime). The render-failure-to-readable-500 INTENT is preserved by the Class B
+// read-seam error tests (TestIndexReadErrorRendersInlineError +
+// TestProjectReadSeamFailureRendersInlineError, unmodified); this retarget asserts
+// the positive render path: render() emits a complete <html> document at the
+// requested status.
+func TestRenderProducesCompletePage(t *testing.T) {
 	a := newTestApp(t)
-	a.tmpl = nil // simulate a template parse failure
 	rec := httptest.NewRecorder()
 	a.render(rec, http.StatusOK, a.newPageView(profile.ProfilePreferences{}, "default"))
-	if rec.Code != http.StatusInternalServerError {
-		t.Errorf("nil-template render status = %d, want 500", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("render status = %d, want 200", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "template unavailable") {
-		t.Errorf("nil-template render did not surface a readable error:\n%s", rec.Body.String())
+	body := rec.Body.String()
+	if strings.TrimSpace(body) == "" {
+		t.Fatal("render produced a blank page")
+	}
+	// Templ normalizes the doctype to lowercase (<!doctype html>); match
+	// case-insensitively so the assertion is robust to that normalization.
+	if !strings.Contains(strings.ToLower(body), "<!doctype html>") {
+		t.Errorf("render output missing the doctype (incomplete page):\n%s", body)
+	}
+	for _, want := range []string{"<html", "</html>", `method="POST"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("render output missing %q (incomplete page):\n%s", want, body)
+		}
 	}
 }
 
@@ -118,20 +137,15 @@ func TestValidatePrefs_AllValidEmpty(t *testing.T) {
 	}
 }
 
-// TestPageTemplateParses verifies the embedded page template parses cleanly,
-// exercising the funcmap construction (including the dict helper registration).
-func TestPageTemplateParses(t *testing.T) {
-	tmpl, err := pageTemplate()
-	if err != nil {
-		t.Fatalf("pageTemplate: %v", err)
-	}
-	if tmpl == nil {
-		t.Fatal("pageTemplate returned nil template")
-	}
-	if tmpl.Lookup("langSelect") == nil {
-		t.Error("nested langSelect template not defined")
-	}
-}
+// TestPageTemplateParses was a pure symbol-existence test for the retired
+// html/template pageTemplate() parse entry + its dict-FuncMap "langSelect" nested
+// template. SPEC-WEB-CONSOLE-006 deliberately removed pageTemplate() (the page is
+// rendered by the compiled-in Templ root component page(view), with no runtime
+// template parse). Per spec.md §2.1.1 #1 + the §4 E.5.8 Class C carve-out, this
+// symbol-existence test for a deliberately-removed internal symbol is RETIRED —
+// there is no observable behavior it asserts that survives the migration. The
+// Templ render path is covered by TestRenderProducesCompletePage (this file) and
+// the rendered-body Class A markup tests. §D.3 ledger: retired (not retargeted).
 
 // TestIsLoopbackHost covers the host-classification branches directly.
 func TestIsLoopbackHost(t *testing.T) {
