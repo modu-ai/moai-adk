@@ -180,7 +180,7 @@ deferred_to: SPEC-WEB-CONSOLE-007   # section-scoped partial-swap + nested confi
 ```yaml
 sync_complete_at: 2026-06-05
 sync_status: implemented
-sync_commit_sha: "(this sync commit — backfilled at Mx)"
+sync_commit_sha: "4cfac1c54"
 changelog_entry: "[Unreleased] § Changed — SPEC-WEB-CONSOLE-006 (HTMX + Templ rendering migration)"
 version_bump: "0.1.0 -> 0.2.0"
 status_transition: "in-progress -> implemented"
@@ -190,4 +190,24 @@ deliverables:
   - CHANGELOG.md             # [Unreleased] § Changed entry
   - spec.md                  # frontmatter version 0.2.0 + status implemented
   - progress.md              # this §E.4 sync signal
+```
+
+## Mx-phase
+
+### §E.5 Mx-phase Audit-Ready Signal
+
+```yaml
+mx_complete_at: 2026-06-05
+mx_status: completed
+mx_commit_sha: "(this Mx commit — backfilled)"
+status_transition: "implemented -> completed"
+four_phase_close: true
+phase_commits:
+  plan: b85049d4a            # plan artifacts on origin/main (absorbed via #1057 race — L52; orphaned dup 20dea0aa7 on fix/issue-1055-hardcoded-korean)
+  run:  8baa2fc07            # M1-M6 (e6f08160b..8baa2fc07, FF-integrated from L1 worktree)
+  sync: 4cfac1c54
+  mx:   "(this commit)"
+mx_tag_status: "no new @MX tag targets — rendering migration; validate.go byte-unchanged; existing @MX:NOTE/@MX:WARN in handlers.go/app.go preserved"
+independent_verification: "orchestrator re-ran build (host+windows exit 0) + go test internal/web/config/cli + -race + offline grep + templ drift-guard — all PASS; validate.go + 7 Class B test files byte-unchanged confirmed via git diff"
+deferred_to: SPEC-WEB-CONSOLE-007   # S2b — nested config-section editing (006 component tree + HTMX foundation = enabler)
 ```

@@ -2,7 +2,7 @@
 id: SPEC-WEB-CONSOLE-006
 title: "Web Console — HTMX + Templ rendering migration (port-first, behavior-preserving / DDD characterization)"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-06-04
 updated: 2026-06-05
 author: Goos
