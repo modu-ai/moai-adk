@@ -172,3 +172,22 @@ new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues on internal/web
 new_build_dependency: github.com/a-h/templ v0.3.1020 (runtime) + cmd/templ tool (codegen)
 deferred_to: SPEC-WEB-CONSOLE-007   # section-scoped partial-swap + nested config-section editing
 ```
+
+## Sync-phase
+
+### §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-06-05
+sync_status: implemented
+sync_commit_sha: "(this sync commit — backfilled at Mx)"
+changelog_entry: "[Unreleased] § Changed — SPEC-WEB-CONSOLE-006 (HTMX + Templ rendering migration)"
+version_bump: "0.1.0 -> 0.2.0"
+status_transition: "in-progress -> implemented"
+readme_changed: false        # internal rendering migration, zero user-facing change
+docs_site_changed: false     # internal, no user-doc surface
+deliverables:
+  - CHANGELOG.md             # [Unreleased] § Changed entry
+  - spec.md                  # frontmatter version 0.2.0 + status implemented
+  - progress.md              # this §E.4 sync signal
+```
