@@ -153,9 +153,10 @@ func TestFontServedFromStatic(t *testing.T) {
 // select chrome (structure preserved).
 //
 // SPEC-WEB-CONSOLE-006 Class C mechanism retarget (spec.md §2.1.1 #2 / §D.3): the
-// prior version additionally called pageTemplate().Lookup("langSelect"/"optSelect")
-// to assert the html/template {{define}} blocks survived. pageTemplate() is
-// retired and the helpers are now typed Templ components; the structure-preserved
+// prior version additionally called the retired pageTemplate parse entry's Lookup
+// for the langSelect / optSelect define blocks to assert the html/template
+// {{define}} blocks survived. That parse entry is retired and the helpers are now
+// typed Templ components; the structure-preserved
 // intent is retargeted to the RENDERED BODY — the langSelect helper still emits
 // `select select--lang` and the optSelect helper still emits the plain `select`.
 func TestComponentChromePresent(t *testing.T) {
@@ -177,7 +178,7 @@ func TestComponentChromePresent(t *testing.T) {
 	}
 
 	// The langSelect/optSelect helpers still produce the lang/opt select chrome in
-	// the render (retargeted from the retired pageTemplate() Lookup check).
+	// the render (retargeted from the retired pageTemplate parse-entry Lookup check).
 	if !strings.Contains(body, `class="select select--lang"`) {
 		t.Error("langSelect helper did not render the language select chrome")
 	}

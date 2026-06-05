@@ -138,8 +138,9 @@ func TestValidatePrefs_AllValidEmpty(t *testing.T) {
 }
 
 // TestPageTemplateParses was a pure symbol-existence test for the retired
-// html/template pageTemplate() parse entry + its dict-FuncMap "langSelect" nested
-// template. SPEC-WEB-CONSOLE-006 deliberately removed pageTemplate() (the page is
+// html/template parse entry + its dict-FuncMap "langSelect" nested template
+// (the pageTemplate function). SPEC-WEB-CONSOLE-006 deliberately removed that
+// parse entry (the page is
 // rendered by the compiled-in Templ root component page(view), with no runtime
 // template parse). Per spec.md §2.1.1 #1 + the §4 E.5.8 Class C carve-out, this
 // symbol-existence test for a deliberately-removed internal symbol is RETIRED —

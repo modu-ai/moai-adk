@@ -523,9 +523,10 @@ func TestServerContractPreserved(t *testing.T) {
 
 	// SPEC-WEB-CONSOLE-006 Class C mechanism retarget (spec.md §2.1.1 #12 / §D.3):
 	// the prior version grepped the page.html.tmpl SOURCE for `{{range .AllSegments}}`
-	// / `{{range .LangOptions}}` / `{{with index .FieldErrors}}` and called
-	// pageTemplate().Lookup("langSelect"/"optSelect"). The template source + symbol
-	// are deleted; the server-render contract (option lists are server-rendered, not
+	// / `{{range .LangOptions}}` / `{{with index .FieldErrors}}` and called the
+	// retired pageTemplate parse entry's Lookup for langSelect / optSelect. The
+	// template source + symbol are deleted; the server-render contract (option lists
+	// are server-rendered, not
 	// hardcoded; field errors are server-side rendered; the langSelect/optSelect
 	// helpers are present) is retargeted to the RENDERED BODY:
 
@@ -548,9 +549,9 @@ func TestServerContractPreserved(t *testing.T) {
 	if !strings.Contains(errored, `class="field-error"`) {
 		t.Error("server-side field-error render removed (the {{with index .FieldErrors}} equivalent)")
 	}
-	// The langSelect/optSelect helpers are present (retargeted from the pageTemplate()
-	// Lookup): the language select carries select--lang, the opt selects the plain
-	// select chrome.
+	// The langSelect/optSelect helpers are present (retargeted from the retired
+	// pageTemplate parse-entry Lookup): the language select carries select--lang, the
+	// opt selects the plain select chrome.
 	if !strings.Contains(body, `class="select select--lang"`) {
 		t.Error("langSelect helper chrome (select--lang) removed")
 	}
