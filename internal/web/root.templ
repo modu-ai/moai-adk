@@ -92,7 +92,15 @@ templ page(view pageView) {
 				if view.Banner != "" {
 					@banner(view)
 				}
-				<form class="form" method="POST" action={ templ.SafeURL(saveAction(view.SelectedProfile)) }>
+				// HTMX foundation (REQ-WC6-015): hx-boost is progressive enhancement
+				// only — with htmx loaded the submit becomes an AJAX full-page swap, and
+				// with JS/htmx disabled the form degrades to the existing full-page POST
+				// round-trip. The server response shape is the SAME full HTML page in both
+				// cases (REQ-WC6-014). NO section-scoped partial-swap attribute and NO
+				// /save fragment response are introduced here — those are deferred to
+				// SPEC-WEB-CONSOLE-007 (E.3). (This is a Templ Go-comment, NOT an HTML
+				// comment, so it is not emitted into the rendered page.)
+				<form class="form" method="POST" action={ templ.SafeURL(saveAction(view.SelectedProfile)) } hx-boost="true">
 					<input type="hidden" name="__profile" value={ view.SelectedProfile }/>
 					@fieldsetIdentity(view)
 					@fieldsetLanguage(view)
@@ -106,6 +114,7 @@ templ page(view pageView) {
 				</form>
 			</main>
 			<script src="/static/i18n.js"></script>
+			<script src="/static/htmx.min.js"></script>
 			<script src="/static/app.js"></script>
 		</body>
 	</html>

@@ -17,10 +17,11 @@ import (
 //
 // SPEC-WEB-CONSOLE-006: page.html.tmpl was dropped from this embed — the page is
 // now rendered by the compiled-in Templ root component page(view) (the generated
-// *_templ.go is compiled Go, NOT an embedded data asset). htmx.min.js is added at
-// M4 for the HTMX foundation.
+// *_templ.go is compiled Go, NOT an embedded data asset). htmx.min.js (the
+// self-hosted HTMX foundation, REQ-WC6-006/015) is added here and served at
+// /static/htmx.min.js with zero CDN, preserving the offline invariant.
 //
-//go:embed assets/console.css assets/app.js assets/i18n.js assets/fonts
+//go:embed assets/console.css assets/app.js assets/i18n.js assets/htmx.min.js assets/fonts
 var assetsFS embed.FS
 
 // errDictKey was the error sentinel for the retired html/template "dict" FuncMap
