@@ -17,7 +17,7 @@ Rules:
 - [ZONE:Frozen] [HARD] AskUserQuestion is a deferred tool — invoke `ToolSearch(query: "select:AskUserQuestion")` immediately before each AskUserQuestion call
 - Collect all user preferences before delegating to subagents
 - When context is insufficient, conduct a Socratic interview via AskUserQuestion rounds (see CLAUDE.md Section 7 Rule 5 + Section 8)
-- First option in every AskUserQuestion MUST be the recommended choice, marked "(권장)" or "(Recommended)"
+- First option in every AskUserQuestion MUST be the recommended choice, marked "(Recommended)"
 - Every option MUST include a detailed description explaining implications
 - Canonical reference: `.claude/rules/moai/core/askuser-protocol.md`
 

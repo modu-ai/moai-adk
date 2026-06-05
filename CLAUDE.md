@@ -310,7 +310,7 @@ Tools that are not installed are skipped gracefully. Projects with no recognized
 Key rules (full detail in `.claude/rules/moai/core/askuser-protocol.md`):
 - Subagents MUST NOT prompt users — return blocker reports to orchestrator instead
 - Socratic interview: max 4 questions per round, max 4 options per question, in user's conversation_language
-- First option MUST be recommended choice marked "(권장)" / "(Recommended)"
+- First option MUST be recommended choice marked "(Recommended)"
 - Anti-patterns: prose questions ending with "?", markdown-only option lists, silent wait for input
 - Pre-response self-check: every "?" in response MUST pair with AskUserQuestion call
 
@@ -642,8 +642,8 @@ Changes in v14.2.0 (from v14.1.0):
 - Aligned with SPEC-V3R6-AGENT-TEAM-REBUILD-001 (17→8 catalog consolidation, M3 archive 2026-05-25)
 
 Changes in v14.1.0 (from v14.0.0):
-- §13 Progressive Disclosure System: canonical rule citation 추가 (`.claude/rules/moai/development/skill-authoring.md`)
-- §16 Context Search Protocol: canonical rule citation 추가 (`.claude/rules/moai/workflow/context-window-management.md`)
-- Note: §4 Agent Catalog의 `cycle` 제거는 별도 PR (Bundle C / PR #958)에서 처리됨
+- §13 Progressive Disclosure System: canonical rule citation added (`.claude/rules/moai/development/skill-authoring.md`)
+- §16 Context Search Protocol: canonical rule citation added (`.claude/rules/moai/workflow/context-window-management.md`)
+- Note: §4 Agent Catalog `cycle` removal is handled in a separate PR (Bundle C / PR #958)
 
 For detailed patterns on plugins, sandboxing, headless mode, and version management, see Skill("moai-foundation-cc").
