@@ -94,7 +94,15 @@ Example `.mcp.json` configuration:
 | v2.1.119 | `claude --print` mode honors agent `tools:` / `disallowedTools:` frontmatter | CG Mode regression risk — verify `disallowedTools` in agent frontmatter is intentional |
 | v2.1.121 | PostToolUse `hookSpecificOutput.updatedToolOutput` extended from MCP-only to all tools | `MOAI_HOOK_OUTPUT_TRANSFORM=1` env var activates output transform scaffold |
 
-**Claude Code `agent` settings field (v2.1.157+)**: The top-level `agent` key in `settings.json` (string; User/Project/Local scope — not Managed; example `"code-reviewer"`) runs the main thread as a named subagent and sets the default agent for sessions dispatched from `claude agents`, applying that subagent's system prompt, tool restrictions, and model. MoAI-ADK does NOT set this key in `settings.json.tmpl` by default — the retained agent catalog is invoked via explicit delegation, not a session-wide default agent. Reference: https://code.claude.com/docs/en/settings.
+**Settings intentionally unset by MoAI-ADK**: Several Claude Code settings exist that MoAI-ADK deliberately does NOT set in `settings.json.tmpl`. Their absence is by design — a future template audit should treat it as intentional, not a gap:
+
+| Setting | Version | Scope | Why MoAI leaves it unset |
+|---------|---------|-------|--------------------------|
+| `agent` | v2.1.157+ | User/Project/Local (not Managed) | The top-level `agent` key (example `"code-reviewer"`) runs the main thread as a named subagent and sets the default agent for sessions dispatched from `claude agents`, applying that subagent's system prompt, tool restrictions, and model. MoAI invokes its retained agent catalog via explicit delegation, not a session-wide default agent (orchestrator-is-main-thread model). |
+| `requiredMinimumVersion` | v2.1.163+ | Managed | Hard version-gate — Claude Code refuses to start when its version is below the floor. An org/admin decision, parallel to the `disableWorkflows` stance. Distinct from the older advisory `minimumVersion`. |
+| `requiredMaximumVersion` | v2.1.163+ | Managed | Hard version-ceiling — refuses to start above the cap. Likewise an org/admin decision. |
+
+Reference: https://code.claude.com/docs/en/settings.
 
 **Context7 Usage** - For up-to-date library documentation:
 
