@@ -8,6 +8,9 @@ log() { printf '[ci-mirror][go] %s\n' "$1" >&2; }
 REPO_ROOT="${REPO_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 cd "$REPO_ROOT"
 
+log "step 0/5: templ generate (pure-Go codegen; *_templ.go must exist before build/test)"
+go run github.com/a-h/templ/cmd/templ generate -path ./internal/web || exit 3
+
 log "step 1/5: go vet"
 go vet ./... || exit 2
 

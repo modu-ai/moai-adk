@@ -13,11 +13,14 @@ LOCAL_RELEASE_DIR ?= $(HOME)/.moai/releases
 PLATFORM := $(shell go env GOOS)-$(shell go env GOARCH)
 RELEASE_BINARY := moai-$(VERSION)-$(PLATFORM)
 
-.PHONY: all build test lint fix clean install generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify preflight lint-fast test-race-short
+.PHONY: all build test lint fix clean install generate templ-generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify preflight lint-fast test-race-short
 
 all: lint test build ## Run lint, test, and build
 
-build: ## Build the binary
+templ-generate: ## Generate *_templ.go from *.templ sources (pure-Go codegen, no Node)
+	go run github.com/a-h/templ/cmd/templ generate -path ./internal/web
+
+build: templ-generate ## Build the binary
 	@go run ./internal/template/scripts/gen-catalog-hashes.go --all
 	go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/moai
 
@@ -34,10 +37,10 @@ release-local: build ## Create a local release for development updates
 install: ## Install the binary
 	go install $(LDFLAGS) ./cmd/moai
 
-test: ## Run tests with race detection
+test: templ-generate ## Run tests with race detection
 	go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
-test-verbose: ## Run tests with verbose output
+test-verbose: templ-generate ## Run tests with verbose output
 	go test -race -v -coverprofile=coverage.out -covermode=atomic ./...
 
 coverage: test ## Show test coverage report
