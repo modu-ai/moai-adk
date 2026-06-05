@@ -32,9 +32,9 @@ depends_on: [SPEC-WEB-CONSOLE-006]
 
 ### A.1 Config 모델 (검증 anchor)
 - `quality` → `QualityConfig` (pkg/models/config.go:49), nested: `DDDSettings`/`TDDSettings`/`CoverageExemptions`/`TestQuality`/`LSPQualityGates`/`Principles` 등.
-  - 검증기 `validateQualityConfig` (internal/config/validation.go:95-127): `test_coverage_target` 0-100, `tdd_settings.min_coverage_per_commit` 0-100, `coverage_exemptions.max_exempt_percentage` 0-100.
+  - 검증기 `validateQualityConfig` (internal/config/validation.go:96-127): `test_coverage_target` 0-100, `tdd_settings.min_coverage_per_commit` 0-100, `coverage_exemptions.max_exempt_percentage` 0-100.
 - `git_convention` → `GitConventionConfig` (pkg/models/config.go:206), nested: `AutoDetectionConfig`/`ConventionValidationConfig`/`FormattingConfig`/`CustomConventionConfig`.
-  - 검증기 `validateGitConventionConfig` (validation.go:162-212): `convention` enum, `auto_detection.sample_size` ≥ 0, `auto_detection.confidence_threshold` [0.0,1.0], `validation.max_length` ≥ 0, `convention=="custom"`일 때 `custom.pattern` required.
+  - 검증기 `validateGitConventionConfig` (validation.go:163-212): `convention` enum, `auto_detection.sample_size` ≥ 0, `auto_detection.confidence_threshold` [0.0,1.0], `validation.max_length` ≥ 0, `convention=="custom"`일 때 `custom.pattern` required.
 
 ### A.2 Web foundation (internal/web — 006 산출물)
 - **STATIC Templ 섹션 레지스트리**: 5 fieldset이 root.templ:105-109에서 수동으로 합성됨(`@fieldsetIdentity`/`Language`/`Launch`/`Statusline`/`Project`). 동적 레지스트리 없음 — 신규 필드 그룹 = root.templ에 추가/확장되는 Templ 컴포넌트.
@@ -54,7 +54,7 @@ SPEC-WEB-CONSOLE-001..005(v3 코호트: i18n/restyle/scalar-config) → 006(HTMX
 |---|-----------|---------------------|
 | HARD-1 | REQ-WC-012 boundary UNCHANGED: 콘솔은 workflow/harness/git-strategy/llm 또는 quality+git_convention(+기존 프로필 섹션) 외 어떤 섹션도 쓰지 않는다. | handlers.go:156-159 |
 | HARD-2 | 006 scope-boundary sentinel(integration_test.go:197-205)이 **무수정 GREEN** 유지. workflow/harness/git-strategy가 byte-identical(`DO_NOT_TOUCH`)임을 단언. 만약 설계가 이 테스트 변경을 강제하면 → STOP, blocker(= 008 스코프 침범). | integration_test.go:197-205 |
-| HARD-3 | Server-canonical 검증: 신규 필드는 `validateQualityConfig`/`validateGitConventionConfig` 확장(+`validateProjectConfig` 배선)으로 server-side 검증. internal/web 패키지 내 직접 YAML marshal 금지. 옵션은 server-rendered `name=`. 에러는 `FieldErrors`. | validation.go:95-212, validate.go:162-173 |
+| HARD-3 | Server-canonical 검증: 신규 필드는 `validateQualityConfig`/`validateGitConventionConfig` 확장(+`validateProjectConfig` 배선)으로 server-side 검증. internal/web 패키지 내 직접 YAML marshal 금지. 옵션은 server-rendered `name=`. 에러는 `FieldErrors`. | validation.go:96-212, validate.go:162-173 |
 | HARD-4 | NESTED 섹션 격리: quality/git_convention의 한 nested 필드를 쓸 때 **그 섹션의 다른 모든 nested 필드가 byte-identical 보존**(load-modify-write, 폼에서 섹션 전체 교체 금지). sibling nested 필드 생존을 증명하는 테스트 필수. | manager.go:138-196, projectconfig.go:37-70 |
 | HARD-5 | EC-1(empty=보존) + EC-2(atomic reject)를 신규 nested 필드에 확장. | projectconfig.go:46,55 / handlers.go:190 |
 | HARD-6 | Offline zero-network 보존; 신규 CDN/외부 asset 없음. | assets.go //go:embed |

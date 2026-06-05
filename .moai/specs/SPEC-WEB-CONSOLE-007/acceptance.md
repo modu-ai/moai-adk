@@ -37,6 +37,7 @@
 
 - **AC-WC7-005** (REQ-WC7-002, HARD-3) — quality nested 검증이 기존 `validateQualityConfig` 규칙(0-100)을 재사용(신규 규칙 0개). export seam 단위 테스트 GREEN.
   ```bash
+  grep -rq 'func TestValidateQuality' internal/config/ && \
   go test ./internal/config/ -run 'TestValidateQuality' -count=1
   ```
   단언: `test_coverage_target=150` → "must be between 0 and 100"(기존 메시지 재사용), `tdd_settings.min_coverage_per_commit=-5` → 동일 규칙.
@@ -101,7 +102,7 @@
 
 - **AC-WC7-015** (REQ-WC7-003, HARD-3) — web 레이어 직접 YAML write 금지(grep cleanliness).
   ```bash
-  test "$(grep -cE 'yaml\.Marshal|os\.WriteFile' internal/web/projectconfig.go internal/web/handlers.go)" -eq 0
+  test "$(grep -rnE 'yaml\.Marshal\(|os\.WriteFile\(' internal/web/projectconfig.go internal/web/handlers.go | grep -vE ':[0-9]+:[[:space:]]*//' | wc -l | tr -d ' ')" -eq 0
   ```
 
 ### HARD-1 / HARD-2 boundary 무수정 (Class B — 무수정 sentinel)
@@ -128,7 +129,7 @@
 - **AC-WC7-019** (REQ-WC7-009) — hx-boost full-page swap 유지(partial-swap fragment 미도입): `/save` 응답이 full HTML page(`<!DOCTYPE html>`).
   ```bash
   go test ./internal/web/ -run 'TestSave.*FullPage|TestHtmx.*FullPage' -count=1 && \
-  test "$(grep -cE 'hx-target|hx-swap=' internal/web/root.templ internal/web/fieldsets.templ internal/web/page.templ)" -eq 0
+  test "$(grep -rcE 'hx-target|hx-swap=' internal/web/root.templ internal/web/fieldsets.templ internal/web/page.templ | awk -F: '{s+=$2} END{print s+0}')" -eq 0
   ```
 
 ### 전체 회귀 (Class B)
