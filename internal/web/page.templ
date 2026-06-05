@@ -1,12 +1,127 @@
 package web
 
-// scaffold is a minimal skeleton component used at M1 to prove the templ
-// codegen toolchain produces a compiling *_templ.go alongside the still-live
-// html/template render path. It is replaced by the real page(view) root at M3.
-templ scaffold() {
-	<!DOCTYPE html>
-	<html>
-		<head><title>MoAI Web Console</title></head>
-		<body></body>
-	</html>
+// Templ component tree for the Console page (SPEC-WEB-CONSOLE-006). Ported 1:1
+// from the retired internal/web/assets/page.html.tmpl (html/template) so the
+// emitted markup contract — CSS class names, data-i18n / data-theme attributes,
+// name= POST attributes, id= values, inline-SVG icons, and {{range}}->for
+// option-list semantics — is byte-comparable and the characterization gate
+// (spec.md §2: Class B server-contract unmodified, Class A markup parity) stays
+// green. The view-model handlers.go:pageView is the typed root input.
+//
+// Templ contextual auto-escaping replaces html/template's escaping: { expr } is
+// HTML-escaped by default. templ.Raw is reserved EXCLUSIVELY for the inline SVG
+// icon markup (REQ-WC6-017) — never for a user-controlled value.
+
+// optSelectArgs replaces the retired html/template `dict` FuncMap for the
+// optSelect helper: a renamed field is now a compile error instead of a
+// render-time <no value>. (design.md §A.1)
+type optSelectArgs struct {
+	Name, Title, Key, Desc, Value, Empty string
+	Options                              []string
+	Errors                               map[string]string
+}
+
+// langSelectArgs is the typed argument set for the langSelect helper (the
+// language selects fix their empty option to "(unset)" and add the select--lang
+// modifier class).
+type langSelectArgs struct {
+	Name, Title, Key, Desc, Value string
+	Options                       []string
+	Errors                        map[string]string
+}
+
+// fieldErrorMsg returns the per-field validation message for name (empty when
+// the field has no error). Mirrors the html/template `index .Errors .Name`.
+func fieldErrorMsg(errs map[string]string, name string) string {
+	if errs == nil {
+		return ""
+	}
+	return errs[name]
+}
+
+// hasFieldError reports whether name carries a validation error.
+func hasFieldError(errs map[string]string, name string) bool {
+	return fieldErrorMsg(errs, name) != ""
+}
+
+// langSelect ports {{define "langSelect"}} (page.html.tmpl ~274-288). Emits the
+// field chrome + a `select select--lang` with the fixed `(unset)` empty option.
+templ langSelect(a langSelectArgs) {
+	<div class={ "field", templ.KV("has-error", hasFieldError(a.Errors, a.Name)) }>
+		<span class="field__label"><span class="field__title" data-i18n={ "f." + a.Name + ".title" }>{ a.Title }</span><code class="field__key">{ a.Key }</code></span>
+		<span class="field__desc" data-i18n={ "f." + a.Name + ".desc" }>{ a.Desc }</span>
+		<span class="select-wrap">
+			<select
+				class="select select--lang"
+				id={ a.Name }
+				name={ a.Name }
+				if hasFieldError(a.Errors, a.Name) {
+					aria-invalid="true"
+				}
+			>
+				@langOptionTags(a.Value, a.Options)
+			</select>
+		</span>
+		if msg := fieldErrorMsg(a.Errors, a.Name); msg != "" {
+			<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
+		}
+	</div>
+}
+
+// langOptionTags emits the `(unset)` empty option followed by the canonical
+// option list, marking the current value selected.
+templ langOptionTags(value string, options []string) {
+	if value == "" {
+		<option value="" selected>(unset)</option>
+	} else {
+		<option value="">(unset)</option>
+	}
+	for _, o := range options {
+		if o == value {
+			<option value={ o } selected>{ o }</option>
+		} else {
+			<option value={ o }>{ o }</option>
+		}
+	}
+}
+
+// optSelect ports {{define "optSelect"}} (page.html.tmpl ~290-304). Emits the
+// field chrome + a `select` with a caller-supplied `.Empty` empty option label.
+templ optSelect(a optSelectArgs) {
+	<div class={ "field", templ.KV("has-error", hasFieldError(a.Errors, a.Name)) }>
+		<span class="field__label"><span class="field__title" data-i18n={ "f." + a.Name + ".title" }>{ a.Title }</span><code class="field__key">{ a.Key }</code></span>
+		<span class="field__desc" data-i18n={ "f." + a.Name + ".desc" }>{ a.Desc }</span>
+		<span class="select-wrap">
+			<select
+				class="select"
+				id={ a.Name }
+				name={ a.Name }
+				if hasFieldError(a.Errors, a.Name) {
+					aria-invalid="true"
+				}
+			>
+				@optOptionTags(a.Value, a.Empty, a.Options)
+			</select>
+		</span>
+		if msg := fieldErrorMsg(a.Errors, a.Name); msg != "" {
+			<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
+		}
+	</div>
+}
+
+// optOptionTags emits the caller-labelled empty option followed by the canonical
+// option list, marking the current value selected.
+templ optOptionTags(value, empty string, options []string) {
+	if value == "" {
+		<option value="" selected>{ empty }</option>
+	} else {
+		<option value="">{ empty }</option>
+	}
+	for _, o := range options {
+		if o == value {
+			<option value={ o } selected>{ o }</option>
+		} else {
+			<option value={ o }>{ o }</option>
+		}
+	}
 }
