@@ -199,7 +199,7 @@ deliverables:
 ```yaml
 mx_complete_at: 2026-06-05
 mx_status: completed
-mx_commit_sha: "(this Mx commit — backfilled)"
+mx_commit_sha: "c76bfbec9"
 status_transition: "implemented -> completed"
 four_phase_close: true
 phase_commits:
