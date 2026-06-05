@@ -68,4 +68,107 @@ decomposition: SPEC ✓ | WEB ✓ | CONSOLE ✓ | 006 ✓ → PASS
 
 ## Run-phase
 
-_(empty — manager-develop fills §E.2 run-phase evidence: per-AC PASS matrix, D3 decision confirmation, any §2.2 Class-A markup-parity justifications, HTMX-depth confirmation.)_
+### §E.2 Run-phase Evidence — per-AC PASS/FAIL matrix
+
+cycle_type: ddd (ANALYZE-PRESERVE-IMPROVE / characterization). Migration is behavior-preserving by construction: the Class B server-contract suite stayed green WITHOUT test-file modification; Class A markup tests stayed green via exact-markup parity; the §2.1.1 Class C source-coupled tests were retargeted (11) / retired (1) per AC-WC6-019.
+
+| AC | REQ | Status | Verification command | Actual output |
+|----|-----|--------|----------------------|---------------|
+| AC-WC6-001a | WC6-001 | PASS | `git diff --stat <Class B §2.1 files>` (vs base b85049d4a) | empty — 7 Class B test files (handlers_test.go, integration_test.go, validate_test.go, projectconfig_test.go, projectconfig_scope_test.go, projectconfig_handler_test.go, server_test.go) ZERO-diff |
+| AC-WC6-001b | WC6-001 | PASS (n/a) | blocker-report discipline | no Class B assertion required modification — no halt was needed |
+| AC-WC6-002a | WC6-002 | PASS | `go test ./internal/web/...` | ok — all Class A markup tests green against the Templ render |
+| AC-WC6-002b | WC6-002 | PASS | §D.3 ledger (below) | 1 markup-parity relaxation justified (`<!doctype html>` case + the §D.3 Class C ledger); no Class A test deleted |
+| AC-WC6-003 | WC6-003 | PASS | `TestNameAttributesPreserved` + `TestProjectFieldsetRendersSelects` | green — 5 fieldsets field-for-field; every `name=`/`id=`/option preserved; zero field/section added |
+| AC-WC6-004 | WC6-004 | PASS | `git diff --exit-code internal/web/validate.go` (vs base) | exit 0 — validate.go BYTE-UNCHANGED across the whole migration |
+| AC-WC6-005 | WC6-005 | PASS | `TestSaveValidRoundTrip` + `TestSaveScopeBoundary` | green — persistence only via seams; `app` seams unchanged; no direct YAML marshal in render path |
+| AC-WC6-006 | WC6-006 | PASS | offline grep on served assets | 0 external `https://` font/style/script URL in console.css/app.js/i18n.js/htmx.min.js; htmx self-hosted |
+| AC-WC6-007 | WC6-007 | PASS | `git diff internal/web/app.go` (host-check) + `TestHostCheck*` (3) | host-check / isLoopbackHost / loopback bind byte-unchanged; 3 host-check tests green |
+| AC-WC6-008 | WC6-008 | PASS | `TestGoldenPath_ReadWriteRoundTrip` + `TestWriteProjectConfigSectionIsolation` | green — DO_NOT_TOUCH sentinels (workflow/harness/git-strategy) intact; profile-vs-project scope preserved |
+| AC-WC6-009 | WC6-009 | PASS | `grep a-h/templ go.mod`; `templ generate` | `github.com/a-h/templ v0.3.1020` (direct) + `tool github.com/a-h/templ/cmd/templ`; generate exit 0 |
+| AC-WC6-010 | WC6-010 | PASS | `grep go:generate internal/web/templ.go`; Makefile | `//go:generate go run github.com/a-h/templ/cmd/templ generate`; Makefile `templ-generate` target wired into build/test; idempotent (regen `updates=0`) |
+| AC-WC6-011 | WC6-011 | PASS | `grep go:embed internal/web/assets.go`; ci-mirror + ci.yml | embed = `console.css app.js i18n.js htmx.min.js fonts` (page.html.tmpl dropped, htmx added); ci-mirror go.sh + ci.yml drift-guard wired |
+| AC-WC6-012 | WC6-012 | PASS | `go build ./...` + `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 each — generated Go platform-neutral |
+| AC-WC6-013 | WC6-013 | PASS | closure gate: `templ generate` + `go test ./internal/web/... ./internal/config/... ./internal/cli/...` | exit 0 |
+| AC-WC6-014 | WC6-014 | PASS | `TestSaveValidRoundTrip` (`Settings saved` banner) + `TestGoldenPath_ReadWriteRoundTrip` + `TestSaveEC2AtomicReject` (unmodified) | green — POST /save returns the same full-page response shape (Templ-rendered); no fragment/partial-swap |
+| AC-WC6-015 | WC6-015 | PASS | `TestHtmxEmbeddedAndServed` + `TestHtmxLinkedBeforeAppJS` + `TestHtmxFoundationNoPartialSwap` (additive) | green — htmx.min.js embedded+served+linked-before-app.js; form `hx-boost="true"` only; no `hx-target`/`hx-swap`/section-nav/`/save` fragment |
+| AC-WC6-016 | WC6-016 | PASS | `TestDarkModeAndThemeToggle` + `TestInterfaceLanguageDoesNotAlterPOST` + `TestLangpickNotFormField` | green — theme/langpick/segment stay vanilla JS (localStorage); langpick non-submitting (no `name=`, outside `<form>`); `app.js`/`i18n.js` preserved |
+| AC-WC6-017 | WC6-017 | PASS | code-review: `templ.Raw` call sites | `templ.Raw` only on the inline SVG icon set (`iconSVG` closed switch) + the FOUC `<head>` script + the brand badge SVG — all fixed compile-time constants; NO user value emitted as raw HTML |
+| AC-WC6-018 | WC6-018 | PASS | `TestIndexReadErrorRendersInlineError` + `TestProjectReadSeamFailureRendersInlineError` (unmodified) + `TestRenderProducesCompletePage` | green — render-into-buffer-first; render failure → readable inline 500 |
+| AC-WC6-019 | WC6-001 | PASS | `grep -c 'readEmbeddedAsset(t, "page.html.tmpl")\|pageTemplate()' internal/web/*_test.go` = 0 | 0 — no test reads the deleted source / calls the retired symbol; §D.3 ledger has 12 retarget entries + 1 retirement |
+
+MUST-PASS closure-blocking ACs (AC-WC6-001a / 004 / 006 / 012 / 013 / 014 + build-wiring 009 / 010 / 011): ALL PASS.
+
+### §E.2.1 Class C source-coupled (Class C) ledger (§D.3) — 12 retargets + 1 retirement
+
+spec.md §2.1.1 enumerates 12 source-coupled tests. All 12 + a 13th discovered during run-phase (`TestRender_NilTemplateSurfacesError`, which set the now-removed `a.tmpl` field) were handled. 11 of the §2.1.1 twelve were RETARGETED to the rendered HTTP body / Templ render path; the pure symbol-existence `TestPageTemplateParses` (§2.1.1 #1) was RETIRED per the E.5.8 carve-out; the 13th (`TestRender_NilTemplateSurfacesError`) was retargeted to `TestRenderProducesCompletePage`.
+
+| # | Test (file) | §2.1.1 | Original mechanism | Retarget / retirement |
+|---|-------------|--------|--------------------|------------------------|
+| 1 | `TestPageTemplateParses` (coverage_test.go) | #1 | called `pageTemplate()` (symbol-existence) | **RETIRED** (E.5.8 carve-out) — body replaced by a doc comment; the Templ render path is covered by `TestRenderProducesCompletePage` + the rendered-body Class A tests |
+| 2 | `TestComponentChromePresent` (restyle_test.go) | #2 | `pageTemplate().Lookup` for langSelect/optSelect | retargeted to the rendered body: `select select--lang` + plain `select` chrome render |
+| 3 | `TestLoopbackIndicatorShowsRealBindAddr` (restyle_test.go) | #3 | read template source for `{{.BindAddr}}` / no-`127.0.0.1:3041` | retargeted to the rendered body: injected `127.0.0.1:7777` shows; body must NOT contain the default `127.0.0.1:3041` |
+| 4 | `TestNoNonCanonicalOptions` (restyle_test.go) | #4 | read template source for kebab-segment + `{{range .AllSegments}}` | retargeted to the rendered body: kebab guard + all 15 canonical keys render (proves server-render) |
+| 5 | `TestNameAttributesPreserved` (restyle_test.go) | #5 | read template source for `{{with index .FieldErrors}}` | retargeted to the rendered errored body: the per-field `field-error` span renders |
+| 6 | `TestDarkModeAndThemeToggle` (restyle_test.go) | #6 | read template source for FOUC `<head>` + `id="themeToggle"` | retargeted to the rendered body (the FOUC `<head>` script + appbar render the markers) |
+| 7 | `TestInlineSVGIconsNoCDN` (restyle_test.go) | #7 | read template source for no-CDN icon markers | retargeted to the rendered body (icons are inline `<svg>` from the Templ icon helper) |
+| 8 | `TestAccessibilityCues` (restyle_test.go) | #8 | read template source for `field-error`/`has-error`/themeToggle/aria-label | retargeted to the rendered body + errored body |
+| 9 | `TestI18nDictionaryEmbedded` (i18n_test.go) | #9 | read template source for `src="/static/i18n.js"` | retargeted to the rendered body (the `<script src="/static/i18n.js">` tag) |
+| 10 | `TestLangpickNotFormField` (i18n_test.go) | #10 | read template source for the `uiLangSelect` tag + name=-absence + form ordering | retargeted to the rendered body (langpick has no `name=`, precedes `<form `); the handlers.go no-leak grep preserved |
+| 11 | `TestI18nLoadDefault` (i18n_test.go) | #11 | read template source for the FOUC `<head>` lang snippet | retargeted to the rendered body (the FOUC `<head>` script renders) |
+| 12 | `TestServerContractPreserved` (i18n_test.go) | #12 | read template source for `{{range}}`/`{{with}}` + `pageTemplate().Lookup` | retargeted to the rendered body (15 segments + 4 lang options + errored field-error span + select chrome) |
+| 13 | `TestRender_NilTemplateSurfacesError` (coverage_test.go) | NEW (a.tmpl field) | set the removed `a.tmpl` field to nil to exercise the "template unavailable" guard | retargeted → renamed `TestRenderProducesCompletePage` (asserts render() emits a complete `<html>` doc at the requested status); the render-failure→500 intent is covered by the unmodified Class B read-seam error tests |
+
+### §E.2.2 Class A markup-parity justification ledger (§D.3)
+
+Only ONE Class A markup-parity relaxation was needed (all other Class A tests passed via exact-markup parity with zero relaxation):
+
+| Test | Original assertion | Why exact parity infeasible | Semantic relaxation applied |
+|------|--------------------|-----------------------------|-----------------------------|
+| `TestRenderProducesCompletePage` (NEW, this SPEC's own additive test — not a pre-existing Class A test) | would assert `<!DOCTYPE html>` (uppercase, the page.html.tmpl line 1 form) | Templ normalizes the doctype to lowercase `<!doctype html>` (browsers treat both identically; no pre-existing Class A/B test asserts on the casing) | the new test matches the doctype case-insensitively |
+
+No PRE-EXISTING Class A test required any relaxation — every pre-existing Class A markup assertion (class names, `data-i18n`, `name=`/`id=`, inline SVG, option-list semantics) passed via exact-markup parity. The doctype-case nuance only affected this SPEC's own additive smoke test.
+
+### §E.2.3 Plan-phase decision confirmations
+
+- **D3 (commit generated `*_templ.go`) — CONFIRMED**: the generated `page_templ.go` / `root_templ.go` / `fieldsets_templ.go` / `icons_templ.go` are committed as source artifacts (preserves bare-clone `go build`); a CI drift-guard (`templ generate` + `git diff --exit-code`) is wired in `.github/workflows/ci.yml` lint job + `scripts/ci-mirror/lib/go.sh`. Drift-guard verified clean (regen `updates=0`).
+- **HTMX-depth (§1.5) — CONFIRMED**: 006 landed the Templ render migration + the HTMX *foundation* (embed `htmx.min.js` + link before app.js + `hx-boost="true"` progressive enhancement) while keeping POST /save observably FULL-PAGE (REQ-WC6-014). No section-scoped partial-swap (`hx-target`/`hx-swap`/section-nav/`/save` fragment) — deferred to 007 (E.3). Vanilla theme/i18n/segment stay vanilla.
+- **Scope fence (E.1) — CONFIRMED**: 006 ports the 5 fieldsets 1:1; ZERO new config section, ZERO settings.json field, ZERO observable behavior change.
+- **errDictKey keep-alive (NEW run-phase decision)**: `errDictKey` (declared in the byte-unchanged validate.go, line 12-14) became unused when the dict FuncMap helper was retired. validate.go MUST stay byte-unchanged (AC-WC6-004), so the dead sentinel cannot be deleted from there. A documented blank reference `var _ = errDictKey` was added in assets.go (where the dict helper lived) to satisfy the `unused` linter without modifying the byte-unchanged validator file. This honors the literal AC-WC6-004 byte-unchanged constraint.
+
+### §E.2.4 Coverage note
+
+- Hand-written code coverage: **90.9%** (= baseline at b85049d4a — the html/template renderer was at 90.9%; the Templ migration preserves it exactly: handlers.go 88-100%, app.go 100%, validate.go 100%).
+- Total coverage incl. generated `*_templ.go`: **71.6%**. The drop is a CODEGEN-DILUTION artifact only — the generated Templ files (which did NOT exist at baseline; the page was an html/template data asset, not Go statements) add many Templ-runtime error-path branches (`if ..._CtxErr != nil`, buffer-write errors) that tests do not exercise. This is a known Templ characteristic, NOT a test-quality regression. The hand-written-code coverage that the tests target is at baseline (90.9%).
+
+### §E.3 Run-phase Audit-Ready Signal
+
+```yaml
+run_complete_at: 2026-06-05
+run_status: implemented
+run_commit_strategy: M1-M5 per-milestone Conventional Commits on feat/SPEC-WEB-CONSOLE-006 worktree (orchestrator integrates to main)
+run_commits:
+  M1: e6f08160b  # Templ scaffolding + build wiring (draft -> in-progress)
+  M2: 3cb883c60  # port langSelect/optSelect/icon helpers
+  M3: 7f6e44529  # port chrome + 5 fieldsets + render swap + Class C retargets
+  M4: 177724798  # HTMX foundation (embed + link + hx-boost)
+  M5: 75135479b  # reconcile characterization gate + AC-WC6-019 grep cleanliness
+  M6: (this progress.md commit)
+ac_pass_count: 20            # all 19 AC-WC6 (AC-WC6-001a..019, counting 001a/001b/002a/002b) PASS
+ac_fail_count: 0
+class_b_test_files_modified: 0   # 7 Class B test files zero-diff (behavior preserved)
+validate_go_byte_unchanged: true
+class_c_retargeted: 11
+class_c_retired: 1               # TestPageTemplateParses (E.5.8 carve-out)
+class_c_extra_retargeted: 1      # TestRender_NilTemplateSurfacesError (13th, a.tmpl field) -> TestRenderProducesCompletePage
+source_coupled_grep_count: 0     # AC-WC6-019
+templ_codegen_drift_guard: clean
+offline_external_url_count: 0    # served assets: console.css/app.js/i18n.js/htmx.min.js + rendered page
+hand_written_coverage: "90.9%"   # = baseline
+total_coverage_incl_generated: "71.6%"   # codegen dilution only
+cross_platform_build:
+  host: exit 0
+  windows_amd64: exit 0
+new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues on internal/web
+new_build_dependency: github.com/a-h/templ v0.3.1020 (runtime) + cmd/templ tool (codegen)
+deferred_to: SPEC-WEB-CONSOLE-007   # section-scoped partial-swap + nested config-section editing
+```
