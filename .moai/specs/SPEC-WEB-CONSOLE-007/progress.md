@@ -21,7 +21,7 @@ deferred_to: SPEC-WEB-CONSOLE-008   # workflow/git-strategy/harness/llm nested e
 - **HARD invariants**: 8개 (spec.md §B). HARD-2(006 sentinel 무수정) + HARD-4(nested isolation 증명) 핵심.
 - **Deferred → 008** (spec.md §F): workflow/git-strategy/harness/llm nested 편집(boundary lift + 신규 validator + sentinel retarget), partial-swap fragment, 동적 섹션 레지스트리.
 - **SPEC ID self-check**: decomposition: SPEC ✓ | WEB ✓ | CONSOLE ✓ | 007 ✓ → PASS (canonical regex `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$`).
-- **Plan-phase commit**: 3e05b957b
+- **Plan-phase commit**: 926816abe
 
 ## §F.2 Plan Audit Gate
 - (pending — plan-auditor 독립 감사 대기)
