@@ -1,5 +1,5 @@
 ---
-paths: "**/.claude/skills/**"
+paths: "**/.claude/skills/**/SKILL.md"
 ---
 
 # Skill Authoring
