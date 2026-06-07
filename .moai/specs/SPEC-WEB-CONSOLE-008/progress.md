@@ -139,7 +139,7 @@ independent_verification: orchestrator Trust-but-verify 7/7 (V1-V7) + precise V2
 
 ```yaml
 mx_complete_at: 2026-06-07
-mx_commit_sha: pending   # backfilled in the final backfill commit (chicken-egg: Mx commit's own SHA)
+mx_commit_sha: 45fdd9a5b   # Mx close commit (implemented -> completed, orchestrator-direct canonical owner)
 mx_status: completed     # spec.md frontmatter implemented -> completed (4-phase close)
 four_phase_close: plan(808bc3fb0) + run(M1-M9 1b37dc2fa..dec809a91) + sync + Mx
 drift_expected: completed/completed aligned   # era H-4 V3R6 (progress.md §E.2 + sync_commit_sha + §E.5 + mx_commit_sha)
