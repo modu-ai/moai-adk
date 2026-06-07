@@ -2,7 +2,7 @@
 id: SPEC-WEB-CONSOLE-008
 title: "statusline config redesign — remove config theater, wire live levers, fix drift (honest hybrid)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-07
 updated: 2026-06-07
 author: Goos Kim

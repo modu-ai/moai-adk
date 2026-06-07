@@ -1,18 +1,14 @@
 statusline:
-  # Display mode: default (3-line), full (5-line)
-  mode: "default"
-
   # Preset name: full, compact, minimal, custom
+  # Write-time shorthand: a non-custom preset expands into a full 15-key
+  # segments map at save. At runtime the segments map wins; preset is not
+  # re-read once segments exist.
   preset: "full"
 
-  # Theme name: default, catppuccin-mocha, catppuccin-latte
-  theme: "default"
+  # Theme — exactly 2 themes exist: catppuccin-mocha (seeded) | catppuccin-latte
+  theme: "catppuccin-mocha"
 
-  # Statusline refresh interval in seconds (Claude Code 2.1.97+, REQ-CC297-002)
-  # 0 means no periodic refresh (only refresh on events)
-  refresh_interval: 10
-
-  # Individual segment toggles (only used when preset is "custom")
+  # Individual segment toggles — the only runtime lever.
   # All 15 segments default-on; graceful no-output handles inactive states.
   segments:
     # Line 1: model + version + session metadata
@@ -31,10 +27,10 @@ statusline:
     git_status: true
     git_branch: true
     worktree: true
-    # Task segment (REQ-V3 Cycle 5 Phase 4) — active SPEC workflow info.
-    # Renders as "📋 [<command> <SPEC-ID>-<stage>]" only when
+    # Task segment — active SPEC workflow info. Renders as
+    # "📋 [<command> <SPEC-ID>-<stage>]" only when
     # ~/.moai/state/last-session-state.json `active_task` is set.
     task: true
-    # PR segment (Claude Code v2.1.145+, REQ-SLV-012 default-on as of v2.20.0-rc1).
-    # Renders as "#<number> ⌥<review_state>" only when stdin JSON includes pr.* object.
+    # PR segment — renders as "#<number> ⌥<review_state>" only when stdin
+    # JSON includes a pr.* object.
     pr: true
