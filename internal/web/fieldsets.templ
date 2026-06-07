@@ -206,13 +206,17 @@ templ segmentCheckbox(key string, checked bool) {
 	</label>
 }
 
-// fieldsetProject ports the Project fieldset (2x optSelect, ~245-260).
+// fieldsetProject ports the Project fieldset and extends it with the curated
+// nested config fields (SPEC-WEB-CONSOLE-007 §F). The two existing optSelect
+// scalars (development_mode / git_convention) are unchanged; the 6 nested fields
+// are grouped into a Quality sub-group + a Git-convention sub-group so the markup
+// stays scannable. The section count data-i18n updates to "8 fields".
 templ fieldsetProject(view pageView) {
 	<fieldset class="section">
 		<div class="section__head">
 			<div class="section__head-row">
 				<legend class="section__legend"><span class="section__ico">@icon("folder-git")</span><span data-i18n="sec.project.title">Project</span></legend>
-				<span class="section__count" data-i18n="count.project">2 fields</span>
+				<span class="section__count" data-i18n="count.project">8 fields</span>
 			</div>
 			<p class="section__desc" data-i18n="sec.project.desc">Project-level development and git conventions.</p>
 		</div>
@@ -220,7 +224,30 @@ templ fieldsetProject(view pageView) {
 			<div class="grid">
 				@optSelect(optSelectArgs{Name: "development_mode", Title: "Development mode", Key: "development_mode", Desc: "Default workflow — domain-driven (DDD) or test-driven (TDD).", Value: view.CurDevelopmentMode, Empty: "(project default)", Options: view.DevelopmentModes, Errors: view.FieldErrors})
 				@optSelect(optSelectArgs{Name: "git_convention", Title: "Git convention", Key: "git_convention", Desc: "Commit message convention enforced in this project.", Value: view.CurConvention, Empty: "(project default)", Options: view.Conventions, Errors: view.FieldErrors})
+				@numberField(numberFieldArgs{Name: "quality.test_coverage_target", Title: "Test coverage target", Key: "quality.test_coverage_target", Desc: "Minimum overall test coverage percentage (0-100).", Value: view.CurTestCoverageTarget, Min: "0", Max: "100", Step: "1", Errors: view.FieldErrors})
+				@toggle(toggleArgs{Name: "quality.enforce_quality", Title: "Enforce quality gate", Key: "quality.enforce_quality", Desc: "Block on TRUST 5 quality-gate failures.", Checked: view.CurEnforceQuality, Errors: view.FieldErrors})
+				@numberField(numberFieldArgs{Name: "quality.tdd_settings.min_coverage_per_commit", Title: "Min coverage per commit", Key: "quality.tdd_settings.min_coverage_per_commit", Desc: "Minimum coverage required per commit in TDD mode (0-100).", Value: view.CurMinCoveragePerCommit, Min: "0", Max: "100", Step: "1", Errors: view.FieldErrors})
+				@numberField(numberFieldArgs{Name: "git_convention.auto_detection.confidence_threshold", Title: "Detection confidence threshold", Key: "git_convention.auto_detection.confidence_threshold", Desc: "Confidence required to auto-detect a convention (0.0-1.0).", Value: view.CurConfidenceThreshold, Min: "0", Max: "1", Step: "0.01", Errors: view.FieldErrors})
+				@toggle(toggleArgs{Name: "git_convention.auto_detection.enabled", Title: "Auto-detect convention", Key: "git_convention.auto_detection.enabled", Desc: "Auto-detect the commit convention from history.", Checked: view.CurAutoDetectionEnabled, Errors: view.FieldErrors})
+				@projectTextField(view, "git_convention.custom.pattern", "Custom convention pattern", "Regex pattern, required when git convention is 'custom'.", view.CurCustomPattern)
 			</div>
 		</div>
 	</fieldset>
+}
+
+// projectTextField renders a project-config string field as a text <input> reusing
+// the fieldsetIdentity text-input chrome (SPEC-WEB-CONSOLE-007 §F). Used for
+// git_convention.custom.pattern, which is a free-form regex string (not an enum,
+// number, or bool).
+templ projectTextField(view pageView, name, title, desc, value string) {
+	<div class={ "field", templ.KV("has-error", hasFieldError(view.FieldErrors, name)) }>
+		<span class="field__label"><span class="field__title" data-i18n={ "f." + name + ".title" }>{ title }</span><code class="field__key">{ name }</code></span>
+		<span class="field__desc" data-i18n={ "f." + name + ".desc" }>{ desc }</span>
+		if hasFieldError(view.FieldErrors, name) {
+			<input class="input" type="text" id={ name } name={ name } value={ value } autocomplete="off" aria-invalid="true" aria-describedby={ "err_" + name }/>
+			<span class="field-error" id={ "err_" + name }>@icon("alert-circle")<span>{ fieldErrorMsg(view.FieldErrors, name) }</span></span>
+		} else {
+			<input class="input" type="text" id={ name } name={ name } value={ value } autocomplete="off"/>
+		}
+	</div>
 }

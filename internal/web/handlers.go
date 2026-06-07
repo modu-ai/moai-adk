@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -39,6 +40,17 @@ type pageView struct {
 	Conventions        []string
 	CurDevelopmentMode string
 	CurConvention      string
+
+	// Curated nested project-config current values (SPEC-WEB-CONSOLE-007 §E).
+	// Echoed on GET from the nested read seam (readProjectNestedConfig), or from the
+	// submitted form on a rejected POST. Int/float are pre-formatted strings for the
+	// numberField value= attribute; the two bools drive the toggle checked state.
+	CurTestCoverageTarget   string
+	CurEnforceQuality       bool
+	CurMinCoveragePerCommit string
+	CurConfidenceThreshold  string
+	CurAutoDetectionEnabled bool
+	CurCustomPattern        string
 
 	// Banner is an optional status/error message; BannerKind is "ok" or "error".
 	Banner     string
@@ -137,10 +149,60 @@ func (a *app) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// REQ-WC7-010: read the current curated nested values (quality + git_convention)
+	// from the nested read seam for GET echo-back. A read failure surfaces a readable
+	// inline error (never blank, never panic) — same discipline as the scalar seam.
+	nested, err := a.readProjectNestedConfig(a.cfg.ProjectRoot)
+	if err != nil {
+		a.renderError(w, http.StatusInternalServerError,
+			"could not read project nested config: "+err.Error())
+		return
+	}
+
 	view := a.newPageView(prefs, selected)
 	view.CurDevelopmentMode = devMode
 	view.CurConvention = convention
+	applyNestedCurrent(&view, nested)
 	a.render(w, http.StatusOK, view)
+}
+
+// applyNestedCurrent copies the persisted nested current values onto the view-model
+// (SPEC-WEB-CONSOLE-007 §E). Used on GET (from the read seam) so the numberField /
+// toggle widgets render populated from disk.
+func applyNestedCurrent(view *pageView, nested projectNestedCurrent) {
+	view.CurTestCoverageTarget = nested.CoverageTarget
+	view.CurEnforceQuality = nested.EnforceQuality
+	view.CurMinCoveragePerCommit = nested.MinCoverage
+	view.CurConfidenceThreshold = nested.ConfidenceThreshold
+	view.CurAutoDetectionEnabled = nested.AutoDetectionEnabled
+	view.CurCustomPattern = nested.CustomPattern
+}
+
+// applyNestedForm echoes the submitted nested form values back onto the view-model
+// (SPEC-WEB-CONSOLE-007 §E). Used on a rejected POST so the widgets keep the
+// submitted values visible alongside the per-field errors. A field that was not
+// submitted (its *Set flag is false) falls back to its persisted current value so
+// the rendered form is never blank for an unedited field.
+func applyNestedForm(view *pageView, nested projectNestedCurrent, form projectNestedForm) {
+	applyNestedCurrent(view, nested)
+	if form.CoverageTargetSet {
+		view.CurTestCoverageTarget = strconv.Itoa(form.CoverageTarget)
+	}
+	if form.EnforceQualitySet {
+		view.CurEnforceQuality = form.EnforceQuality
+	}
+	if form.MinCoverageSet {
+		view.CurMinCoveragePerCommit = strconv.Itoa(form.MinCoverage)
+	}
+	if form.ConfidenceSet {
+		view.CurConfidenceThreshold = strconv.FormatFloat(form.Confidence, 'f', -1, 64)
+	}
+	if form.AutoEnabledSet {
+		view.CurAutoDetectionEnabled = form.AutoEnabled
+	}
+	if form.CustomPatternSet {
+		view.CurCustomPattern = form.CustomPattern
+	}
 }
 
 // handleSave serves POST /save — the WRITE handler (REQ-WC-007, REQ-WC-008,
@@ -180,15 +242,22 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	devMode := r.PostFormValue("development_mode")
 	convention := r.PostFormValue("git_convention")
 
-	// REQ-WC-008 / REQ-WC3-001/002: run BOTH validators and merge their FieldErrors.
-	// Any failure → atomic reject (EC-2): leave ALL persisted state unchanged and
-	// re-render with per-field errors.
+	// REQ-WC7-005/006: parse the 6 curated nested fields (dot-path PostFormValue +
+	// *Set flags + bool companion). Distinct from the two scalars above.
+	nestedForm := parseProjectNestedForm(r)
+
+	// REQ-WC-008 / REQ-WC3-001/002 / REQ-WC7-007: run ALL THREE validators and merge
+	// their FieldErrors. Any failure → atomic reject (EC-2): leave ALL persisted
+	// state unchanged and re-render with per-field errors.
 	fieldErrs := validatePrefs(prefs)
 	for k, v := range validateProjectConfig(devMode, convention) {
 		fieldErrs[k] = v
 	}
+	for k, v := range validateProjectNestedConfig(convention, nestedForm) {
+		fieldErrs[k] = v
+	}
 	if len(fieldErrs) > 0 {
-		view := a.projectView(prefs, selected, devMode, convention)
+		view := a.rejectedProjectView(prefs, selected, devMode, convention, nestedForm)
 		view.FieldErrors = fieldErrs
 		view.Banner = "Validation failed — no changes were saved."
 		view.BannerKind = "error"
@@ -211,7 +280,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// REQ-WC3-005: persist the two project-config fields via the dedicated write
+	// REQ-WC3-005: persist the two project-config scalars via the dedicated write
 	// seam (config-manager only; empty values keep existing).
 	if err := a.writeProjectConfig(a.cfg.ProjectRoot, devMode, convention); err != nil {
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
@@ -219,10 +288,43 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	view := a.projectView(prefs, selected, devMode, convention)
+	// REQ-WC7-005: persist the 6 curated nested fields via the load-modify-write
+	// seam (HARD-4 nested isolation; runs after the scalar write so both converge on
+	// the same on-disk sections).
+	if err := a.writeProjectNestedConfig(a.cfg.ProjectRoot, nestedForm); err != nil {
+		a.renderErrorPage(w, prefs, selected, devMode, convention,
+			"profile preferences saved, but project nested config write failed: "+err.Error())
+		return
+	}
+
+	view := a.successProjectView(prefs, selected, devMode, convention)
 	view.Banner = "Settings saved."
 	view.BannerKind = "ok"
 	a.render(w, http.StatusOK, view)
+}
+
+// successProjectView builds the post-save view-model with the two scalars echoed
+// and the persisted nested current values re-read from disk so the saved nested
+// fields render their new values. A read failure degrades gracefully to the
+// scalar-only view (the save itself already succeeded).
+func (a *app) successProjectView(prefs profile.ProfilePreferences, selected, devMode, convention string) pageView {
+	view := a.projectView(prefs, selected, devMode, convention)
+	if nested, err := a.readProjectNestedConfig(a.cfg.ProjectRoot); err == nil {
+		applyNestedCurrent(&view, nested)
+	}
+	return view
+}
+
+// rejectedProjectView builds the validation-failure view-model: scalar fields
+// echoed + the submitted nested form values echoed (falling back to persisted
+// current values for unedited fields) so the form keeps every submitted value
+// visible alongside the per-field errors (EC-2 re-render). A nested read failure
+// degrades to echoing only the submitted form deltas.
+func (a *app) rejectedProjectView(prefs profile.ProfilePreferences, selected, devMode, convention string, form projectNestedForm) pageView {
+	view := a.projectView(prefs, selected, devMode, convention)
+	nested, _ := a.readProjectNestedConfig(a.cfg.ProjectRoot)
+	applyNestedForm(&view, nested, form)
+	return view
 }
 
 // projectView builds a page view-model with the two project-config current

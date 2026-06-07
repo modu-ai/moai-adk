@@ -49,3 +49,12 @@ GATE-2 승인 후 manager-develop cycle_type=tdd (Mode 5 sub-agent sequential M1
   - `ValidateQualitySection(*models.QualityConfig)` + `ValidateGitConventionSection(*models.GitConventionConfig)` thin exported wrapper를 validation.go에 추가 — 기존 unexported `validateQualityConfig`/`validateGitConventionConfig`로 verbatim forward(`return validateQualityConfig(q)`). IsValidConvention/ValidConventions가 convention SSOT를 export하는 패턴과 동형. **신규 validator 함수 0개**(AC-WC7-004 invariant 유지: `grep -cE 'func validate(Workflow|GitStrategy|Harness|Llm)Config'` == 0).
   - 단위 테스트 2종 validation_test.go에 추가: `TestValidateQualitySection`(in-range pass / test_coverage_target=150 → 기존 "must be between 0 and 100" 메시지 재사용 / min_coverage_per_commit=-5 동일) + `TestValidateGitConventionSection`(custom+빈 pattern → 기존 "pattern is required..." / confidence_threshold=1.5 → 기존 "must be between 0.0 and 1.0"). RED→GREEN 명시 실행 확인(B-D2).
   - AC-WC7-004 PASS(0), AC-WC7-005 PASS, AC-WC7-006 PASS. 전체 config suite GREEN.
+  - commit 924438a94.
+
+- **M3 — 폼 파싱 + view-model 확장 + fieldsetProject 렌더 (RED→GREEN)**
+  - `projectNestedForm` 구조체 + `parseProjectNestedForm(r)` 추가(projectconfig.go): dot-path PostFormValue 6필드 명시 파싱(reflection path-walker 금지), `*Set` 플래그(EC-1 empty=미제출), bool hidden companion(`__present`)으로 "false 변경" vs "보존" 구분, `ParseErrs` 타입변환 가드(EC-4류).
+  - `readProjectNestedConfig`(신규 read seam, GET echo-back, 기존 readProjectConfig 무변경) + `projectNestedCurrent` 추가. pageView에 Cur* nested 필드 6개 추가. app.go에 readProjectNestedConfig/writeProjectNestedConfig 주입 seam 추가 + newApp 배선.
+  - handleSave 배선: parseProjectNestedForm + validateProjectNestedConfig(3번째 validator, merge) + writeProjectNestedConfig(scalar write 후). applyNestedCurrent/applyNestedForm(rejected echo-back) + successProjectView/rejectedProjectView 헬퍼.
+  - fieldsetProject 확장(fieldsets.templ): 6 nested 위젯(numberField×3, toggle×2 with companion, projectTextField×1) 추가, `count.project` 2→8. root.templ 합성 라인 무변경(fieldsetProject 내부만).
+  - **i18n 12키(6필드×title/desc) 4-locale(en/ko/ja/zh) + count.project 8 갱신** — TestDataI18nKeysSubsetOfDictionary gate가 per-milestone GREEN 요구하여 M6의 i18n 작업을 M3로 당겨 흡수.
+  - 테스트: `TestParseProjectNestedForm`(5 sub: all-set/empty EC-1/companion-false/int-guard/float-guard) + `TestProjectFieldsetRendersNestedWidgets`(6위젯 렌더 + checked/unchecked 단언). RED→GREEN 명시 실행. 전체 web suite GREEN(i18n parity 포함).

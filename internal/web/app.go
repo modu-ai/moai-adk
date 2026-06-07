@@ -39,6 +39,13 @@ type app struct {
 	// here without touching the real filesystem (REQ-WC3-004/005).
 	readProjectConfig  func(projectRoot string) (devMode, convention string, err error)
 	writeProjectConfig func(projectRoot, devMode, convention string) error
+
+	// Injectable seams over the curated nested project-config path
+	// (SPEC-WEB-CONSOLE-007). Separate from the 2-scalar seams above so the
+	// existing readProjectConfig/writeProjectConfig contract is byte-unchanged.
+	// Tests inject failures here without touching the real filesystem.
+	readProjectNestedConfig  func(projectRoot string) (projectNestedCurrent, error)
+	writeProjectNestedConfig func(projectRoot string, form projectNestedForm) error
 }
 
 // newApp builds an app from cfg, wiring the default internal/profile functions.
@@ -53,6 +60,9 @@ func newApp(cfg Config) *app {
 		listProfiles:       profile.List,
 		readProjectConfig:  readProjectConfig,
 		writeProjectConfig: writeProjectConfig,
+
+		readProjectNestedConfig:  readProjectNestedConfig,
+		writeProjectNestedConfig: writeProjectNestedConfig,
 	}
 }
 

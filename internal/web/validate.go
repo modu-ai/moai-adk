@@ -171,3 +171,60 @@ func validateProjectConfig(devMode, convention string) map[string]string {
 
 	return errs
 }
+
+// validateProjectNestedConfig validates the 6 curated nested project-config fields
+// (SPEC-WEB-CONSOLE-007 §B). It returns a map of dot-path field name → error
+// message; an empty map means all submitted nested values are valid.
+//
+// It is SEPARATE from validateProjectConfig (the 2-scalar validator) and reuses the
+// config-package export seam (config.ValidateQualitySection /
+// config.ValidateGitConventionSection) rather than authoring a parallel rule-set —
+// CRITICAL SCOPE CONSTRAINT, REQ-WC7-002/008. The flow is: surface form
+// type-conversion guard errors first (ParseErrs, EC-4-style), then build the two
+// section structs from the *submitted* nested deltas (only set fields are applied)
+// and run them through the export seam. For the custom-required cross-field rule
+// the submitted git_convention scalar is threaded in so the seam can decide whether
+// custom.pattern is required. The validator never writes — handleSave runs the
+// write seams only after this returns an empty map (EC-2 atomic reject).
+func validateProjectNestedConfig(convention string, form projectNestedForm) map[string]string {
+	errs := make(map[string]string)
+
+	// Type-conversion guards (EC-4-style): a present-but-non-numeric value.
+	for k, v := range form.ParseErrs {
+		errs[k] = v
+	}
+
+	// Build the quality section struct from the submitted nested deltas and run the
+	// export seam (reuses the existing 0-100 range rules — no new rule).
+	if form.touchesQuality() {
+		q := &models.QualityConfig{}
+		if form.CoverageTargetSet {
+			q.TestCoverageTarget = form.CoverageTarget
+		}
+		if form.MinCoverageSet {
+			q.TDDSettings.MinCoveragePerCommit = form.MinCoverage
+		}
+		for _, e := range config.ValidateQualitySection(q) {
+			errs[e.Field] = e.Message
+		}
+	}
+
+	// Build the git_convention section struct. The submitted convention scalar is
+	// threaded in so the export seam's custom-required cross-field rule
+	// (convention=="custom" && custom.pattern=="") can fire. confidence_threshold
+	// uses the existing [0.0,1.0] range rule.
+	if form.touchesGitConvention() || convention == "custom" {
+		gc := &models.GitConventionConfig{Convention: convention}
+		if form.ConfidenceSet {
+			gc.AutoDetection.ConfidenceThreshold = form.Confidence
+		}
+		if form.CustomPatternSet {
+			gc.Custom.Pattern = form.CustomPattern
+		}
+		for _, e := range config.ValidateGitConventionSection(gc) {
+			errs[e.Field] = e.Message
+		}
+	}
+
+	return errs
+}
