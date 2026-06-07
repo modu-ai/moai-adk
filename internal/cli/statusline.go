@@ -46,15 +46,6 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 	// Load full statusline config from statusline.yaml
 	statuslineCfg := loadStatuslineFileConfig(projectRoot)
 
-	// Determine display mode: env var > config > default
-	mode := statusline.StatuslineMode(os.Getenv(config.EnvStatuslineMode))
-	if mode == "" && statuslineCfg != nil && statuslineCfg.Mode != "" {
-		mode = statusline.StatuslineMode(statuslineCfg.Mode)
-	}
-	if mode == "" {
-		mode = statusline.ModeDefault
-	}
-
 	var segmentConfig map[string]bool
 	var themeName string
 	if statuslineCfg != nil {
@@ -67,9 +58,12 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 		themeName = statuslineCfg.Theme
 	}
 
-	// Build statusline options - git and version are auto-detected
+	// Build statusline options - git and version are auto-detected.
+	// Mode is fixed to ModeDefault: the `mode:` config surface was removed
+	// (SLR-1 — mode=full was inert), but the Builder Config Mode field is
+	// preserved as part of the Builder API (HARD-1) and fed ModeDefault.
 	opts := statusline.Options{
-		Mode:          mode,
+		Mode:          statusline.ModeDefault,
 		NoColor:       os.Getenv("NO_COLOR") != "" || os.Getenv(config.EnvNoColor) != "",
 		RootDir:       projectRoot,
 		SegmentConfig: segmentConfig,
@@ -123,9 +117,10 @@ func renderSimpleFallback() string {
 	return "moai"
 }
 
-// statuslineFileConfig holds all statusline configuration read from YAML.
+// statuslineFileConfig holds all statusline configuration read from YAML. It
+// mirrors the canonical models.StatuslineConfig shape {Preset, Theme, Segments}
+// — the `mode:` YAML surface was removed (SLM-1/SLR-2) because it was inert.
 type statuslineFileConfig struct {
-	Mode     string
 	Preset   string
 	Theme    string
 	Segments map[string]bool
@@ -148,7 +143,6 @@ func loadStatuslineFileConfig(projectRoot string) *statuslineFileConfig {
 
 	var raw struct {
 		Statusline struct {
-			Mode     string          `yaml:"mode"`
 			Preset   string          `yaml:"preset"`
 			Theme    string          `yaml:"theme"`
 			Segments map[string]bool `yaml:"segments"`
@@ -160,7 +154,6 @@ func loadStatuslineFileConfig(projectRoot string) *statuslineFileConfig {
 	}
 
 	return &statuslineFileConfig{
-		Mode:     raw.Statusline.Mode,
 		Preset:   raw.Statusline.Preset,
 		Theme:    raw.Statusline.Theme,
 		Segments: raw.Statusline.Segments,

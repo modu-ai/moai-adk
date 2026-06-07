@@ -194,7 +194,6 @@ func TestSyncToProjectConfig_NoConfigDir(t *testing.T) {
 // statuslineFileWrapper is a local test helper for reading statusline.yaml
 type statuslineFileWrapper struct {
 	Statusline struct {
-		Mode     string          `yaml:"mode"`
 		Preset   string          `yaml:"preset"`
 		Segments map[string]bool `yaml:"segments"`
 		Theme    string          `yaml:"theme"`
@@ -355,72 +354,12 @@ func TestSyncToProjectConfig_StatuslinePreservesExistingConfig(t *testing.T) {
 	}
 }
 
-func TestSyncToProjectConfig_StatuslineMode(t *testing.T) {
-	projectRoot := t.TempDir()
-	setupProjectConfig(t, projectRoot)
-
-	prefs := ProfilePreferences{
-		StatuslineMode:   "verbose",
-		StatuslinePreset: "full",
-	}
-
-	if err := SyncToProjectConfig(projectRoot, prefs); err != nil {
-		t.Fatalf("SyncToProjectConfig: %v", err)
-	}
-
-	data, err := os.ReadFile(filepath.Join(projectRoot, ".moai", "config", "sections", "statusline.yaml"))
-	if err != nil {
-		t.Fatalf("read statusline.yaml: %v", err)
-	}
-
-	var wrapper statuslineFileWrapper
-	if err := yaml.Unmarshal(data, &wrapper); err != nil {
-		t.Fatalf("unmarshal statusline.yaml: %v", err)
-	}
-	if wrapper.Statusline.Mode != "verbose" {
-		t.Errorf("mode = %q, want %q", wrapper.Statusline.Mode, "verbose")
-	}
-	if wrapper.Statusline.Preset != "full" {
-		t.Errorf("preset = %q, want %q", wrapper.Statusline.Preset, "full")
-	}
-}
-
-func TestSyncToProjectConfig_StatuslineModeOnlyDoesNotResetPreset(t *testing.T) {
-	projectRoot := t.TempDir()
-	setupProjectConfig(t, projectRoot)
-
-	// Write existing statusline.yaml with a preset
-	sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
-	existingYAML := "statusline:\n  preset: compact\n  theme: default\n"
-	if err := os.WriteFile(filepath.Join(sectionsDir, "statusline.yaml"), []byte(existingYAML), 0o644); err != nil {
-		t.Fatalf("write statusline.yaml: %v", err)
-	}
-
-	// Only update mode — preset should be preserved
-	prefs := ProfilePreferences{
-		StatuslineMode: "minimal",
-	}
-
-	if err := SyncToProjectConfig(projectRoot, prefs); err != nil {
-		t.Fatalf("SyncToProjectConfig: %v", err)
-	}
-
-	data, err := os.ReadFile(filepath.Join(sectionsDir, "statusline.yaml"))
-	if err != nil {
-		t.Fatalf("read statusline.yaml: %v", err)
-	}
-
-	var wrapper statuslineFileWrapper
-	if err := yaml.Unmarshal(data, &wrapper); err != nil {
-		t.Fatalf("unmarshal statusline.yaml: %v", err)
-	}
-	if wrapper.Statusline.Mode != "minimal" {
-		t.Errorf("mode = %q, want %q", wrapper.Statusline.Mode, "minimal")
-	}
-	if wrapper.Statusline.Preset != "compact" {
-		t.Errorf("preset = %q, want %q (should be preserved)", wrapper.Statusline.Preset, "compact")
-	}
-}
+// Mode-write tests removed (SPEC-WEB-CONSOLE-008 M3): the `mode:` YAML surface
+// was removed from statusline.yaml, so SyncToProjectConfig no longer writes a
+// statusline mode. Class C source-coupled — the asserted behavior no longer
+// exists. Preset preservation on a non-preset save is covered by the
+// segment/theme preservation tests above and the web theme-only round-trip
+// (integration_test.go:124-165).
 
 func TestSyncToProjectConfig_NoStatuslinePrefs(t *testing.T) {
 	projectRoot := t.TempDir()
