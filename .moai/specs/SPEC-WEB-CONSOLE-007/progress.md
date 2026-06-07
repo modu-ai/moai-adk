@@ -43,3 +43,9 @@ GATE-2 승인 후 manager-develop cycle_type=tdd (Mode 5 sub-agent sequential M1
   - Class A markup-parity 테스트 2종 templ_helpers_test.go에 추가: `TestToggleHelperMarkupParity`(clean/checked/errored 3-render, hidden companion 단언, checked 음성 단언) + `TestNumberFieldHelperMarkupParity`(clean/errored, min/max/step/aria-invalid 단언). RED→GREEN 확인(`--- PASS` 명시 실행, B-D2 완화).
   - `templ generate` (internal/web CWD에서 실행 — 커밋된 bare-filename FileName 형식 일치) → page_templ.go 재생성. fieldsets_templ.go/root_templ.go 무변경.
   - AC-WC7-001 PASS, AC-WC7-002 PASS, AC-WC7-003 drift-free(idempotent regen). 전체 web suite GREEN, host build exit 0.
+  - commit 8e555211f.
+
+- **M2 — config 검증 export seam (신규 규칙 0개)**
+  - `ValidateQualitySection(*models.QualityConfig)` + `ValidateGitConventionSection(*models.GitConventionConfig)` thin exported wrapper를 validation.go에 추가 — 기존 unexported `validateQualityConfig`/`validateGitConventionConfig`로 verbatim forward(`return validateQualityConfig(q)`). IsValidConvention/ValidConventions가 convention SSOT를 export하는 패턴과 동형. **신규 validator 함수 0개**(AC-WC7-004 invariant 유지: `grep -cE 'func validate(Workflow|GitStrategy|Harness|Llm)Config'` == 0).
+  - 단위 테스트 2종 validation_test.go에 추가: `TestValidateQualitySection`(in-range pass / test_coverage_target=150 → 기존 "must be between 0 and 100" 메시지 재사용 / min_coverage_per_commit=-5 동일) + `TestValidateGitConventionSection`(custom+빈 pattern → 기존 "pattern is required..." / confidence_threshold=1.5 → 기존 "must be between 0.0 and 1.0"). RED→GREEN 명시 실행 확인(B-D2).
+  - AC-WC7-004 PASS(0), AC-WC7-005 PASS, AC-WC7-006 PASS. 전체 config suite GREEN.

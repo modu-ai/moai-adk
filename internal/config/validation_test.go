@@ -583,6 +583,93 @@ func TestValidateGitConventionDynamicTokens(t *testing.T) {
 	}
 }
 
+// findFieldMessage returns the Message of the first ValidationError whose Field
+// matches, or "" when no such error exists.
+func findFieldMessage(errs []ValidationError, field string) string {
+	for _, e := range errs {
+		if e.Field == field {
+			return e.Message
+		}
+	}
+	return ""
+}
+
+// TestValidateQualitySection covers SPEC-WEB-CONSOLE-007 AC-WC7-005: the exported
+// ValidateQualitySection seam reuses the EXACT existing quality value-range rules
+// (test_coverage_target / tdd_settings.min_coverage_per_commit 0-100) with the
+// existing "must be between 0 and 100" message — proving the seam forwards to
+// validateQualityConfig and adds no new rule (REQ-WC7-002, CRITICAL SCOPE CONSTRAINT).
+func TestValidateQualitySection(t *testing.T) {
+	t.Parallel()
+
+	t.Run("valid in-range passes", func(t *testing.T) {
+		t.Parallel()
+		q := &models.QualityConfig{TestCoverageTarget: 85}
+		q.TDDSettings.MinCoveragePerCommit = 80
+		if errs := ValidateQualitySection(q); len(errs) != 0 {
+			t.Errorf("in-range quality should pass, got %v", errs)
+		}
+	})
+
+	t.Run("test_coverage_target out of range reuses existing message", func(t *testing.T) {
+		t.Parallel()
+		q := &models.QualityConfig{TestCoverageTarget: 150}
+		msg := findFieldMessage(ValidateQualitySection(q), "quality.test_coverage_target")
+		if msg != "must be between 0 and 100" {
+			t.Errorf("test_coverage_target=150 message = %q, want existing %q", msg, "must be between 0 and 100")
+		}
+	})
+
+	t.Run("tdd_settings.min_coverage_per_commit negative reuses existing message", func(t *testing.T) {
+		t.Parallel()
+		q := &models.QualityConfig{}
+		q.TDDSettings.MinCoveragePerCommit = -5
+		msg := findFieldMessage(ValidateQualitySection(q), "quality.tdd_settings.min_coverage_per_commit")
+		if msg != "must be between 0 and 100" {
+			t.Errorf("min_coverage_per_commit=-5 message = %q, want existing %q", msg, "must be between 0 and 100")
+		}
+	})
+}
+
+// TestValidateGitConventionSection covers SPEC-WEB-CONSOLE-007 AC-WC7-006: the
+// exported ValidateGitConventionSection seam reuses the EXACT existing
+// git-convention rules (custom-required + confidence_threshold [0.0,1.0]) with the
+// existing messages — proving the seam forwards to validateGitConventionConfig and
+// adds no new rule (REQ-WC7-008, CRITICAL SCOPE CONSTRAINT).
+func TestValidateGitConventionSection(t *testing.T) {
+	t.Parallel()
+
+	t.Run("custom without pattern reuses existing message", func(t *testing.T) {
+		t.Parallel()
+		gc := &models.GitConventionConfig{Convention: "custom"}
+		gc.Custom.Pattern = ""
+		msg := findFieldMessage(ValidateGitConventionSection(gc), "git_convention.custom.pattern")
+		if msg != "pattern is required when convention is 'custom'" {
+			t.Errorf("custom-required message = %q, want existing rule message", msg)
+		}
+	})
+
+	t.Run("confidence_threshold out of range reuses existing message", func(t *testing.T) {
+		t.Parallel()
+		gc := &models.GitConventionConfig{}
+		gc.AutoDetection.ConfidenceThreshold = 1.5
+		msg := findFieldMessage(ValidateGitConventionSection(gc), "git_convention.auto_detection.confidence_threshold")
+		if msg != "must be between 0.0 and 1.0" {
+			t.Errorf("confidence_threshold=1.5 message = %q, want existing %q", msg, "must be between 0.0 and 1.0")
+		}
+	})
+
+	t.Run("valid custom with pattern passes", func(t *testing.T) {
+		t.Parallel()
+		gc := &models.GitConventionConfig{Convention: "custom"}
+		gc.Custom.Pattern = "^feat: .+"
+		gc.AutoDetection.ConfidenceThreshold = 0.75
+		if errs := ValidateGitConventionSection(gc); len(errs) != 0 {
+			t.Errorf("valid custom should pass, got %v", errs)
+		}
+	})
+}
+
 func TestDevelopmentModeStrings(t *testing.T) {
 	t.Parallel()
 

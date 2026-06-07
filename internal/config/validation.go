@@ -126,6 +126,29 @@ func validateQualityConfig(q *models.QualityConfig) []ValidationError {
 	return errs
 }
 
+// ValidateQualitySection is a thin exported seam over the existing unexported
+// validateQualityConfig (SPEC-WEB-CONSOLE-007 §B.1 export seam). It exists ONLY
+// so out-of-package callers (internal/web project-config write path) can reuse the
+// SAME quality value-range rules (test_coverage_target / tdd_settings.min_coverage_per_commit
+// / coverage_exemptions.max_exempt_percentage 0-100) rather than authoring a parallel
+// rule-set. It adds NO new rule and is NOT a new validator function — it forwards
+// verbatim to validateQualityConfig, mirroring how IsValidConvention/ValidConventions
+// already export the convention SSOT (CRITICAL SCOPE CONSTRAINT, REQ-WC7-002).
+func ValidateQualitySection(q *models.QualityConfig) []ValidationError {
+	return validateQualityConfig(q)
+}
+
+// ValidateGitConventionSection is a thin exported seam over the existing
+// unexported validateGitConventionConfig (SPEC-WEB-CONSOLE-007 §B.1 export seam).
+// Same rationale as ValidateQualitySection: out-of-package callers reuse the SAME
+// git-convention rules (convention enum / auto_detection.sample_size>=0 /
+// auto_detection.confidence_threshold [0.0,1.0] / validation.max_length>=0 /
+// custom.pattern required when convention=="custom") with NO new rule. It forwards
+// verbatim to validateGitConventionConfig (CRITICAL SCOPE CONSTRAINT, REQ-WC7-002).
+func ValidateGitConventionSection(gc *models.GitConventionConfig) []ValidationError {
+	return validateGitConventionConfig(gc)
+}
+
 // validGitConventionNames lists recognized convention names.
 var validGitConventionNames = map[string]bool{
 	"auto":                 true,
