@@ -174,3 +174,18 @@ integration: "L1 worktree (agent-ae1fb1c0fe675fe86, branch wt-spec007-run, runti
 push: HEAD:main FF (Hybrid Trunk Tier M main-direct, user-approved post-sync)
 next: SPEC-WEB-CONSOLE-008 (workflow/git-strategy/harness/llm nested editing — boundary lift + new validators + sentinel retarget)
 ```
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+```yaml
+mx_complete_at: 2026-06-07
+plan_commit_sha: 926816abe        # plan-phase artifacts (Tier M Section A-E)
+run_commit_sha: 5b05a74cf         # M6 final (integrated via SHA-preserving FF; +backfill a1dd9aa00, +ModeSelection e42ed9a53)
+sync_commit_sha: 21da6a4ea        # docs(...): sync-phase artifacts (status in-progress→implemented)
+mx_commit_sha: PENDING-BACKFILL
+four_phase_close: true            # plan + run + sync + Mx
+final_status: completed
+origin_main_at_sync: 21da6a4ea    # 5714bae97..21da6a4ea pushed HEAD:main FF (13 commits, post-push divergence 0 0)
+close_subject_full_id: true       # chore(SPEC-WEB-CONSOLE-007): ... (full SPEC-ID per DRIFT-LEGACY-CONVENTION close-subject mandate)
+lifecycle: "SPEC-WEB-CONSOLE-007 closed — web-console-v4 cohort S2b. 006 (enabler) → 007 (this) → 008 (next; deferred scope: workflow/git-strategy/harness/llm nested editing)."
+```
