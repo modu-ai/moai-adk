@@ -82,21 +82,23 @@
 
 - **AC-WC9-011** (REQ-WC9-006, GCM-1/GCM-2/GCR-1) — 템플릿 `git-convention.yaml`이 nested shape + `max_length`=100; flat 키 부재.
   ```bash
-  grep -qE '^[[:space:]]*auto_detection:' internal/template/templates/.moai/config/sections/git-convention.yaml && \
-  grep -qE '^[[:space:]]*validation:' internal/template/templates/.moai/config/sections/git-convention.yaml && \
-  test "$(grep -cE '^[[:space:]]*(auto_detect|enforce_on_push):[[:space:]]' internal/template/templates/.moai/config/sections/git-convention.yaml)" -eq 0 && \
-  test "$(grep -cE '^[[:space:]]*max_length:[[:space:]]*72' internal/template/templates/.moai/config/sections/git-convention.yaml)" -eq 0
+  T=internal/template/templates/.moai/config/sections/git-convention.yaml
+  grep -qE '^[[:space:]]*auto_detection:' "$T" && \
+  grep -qE '^[[:space:]]*validation:' "$T" && \
+  grep -qE '^[[:space:]]*(confidence_threshold|fallback):' "$T" && \
+  test "$(grep -cE '^[[:space:]]*auto_detect:[[:space:]]' "$T")" -eq 0 && \
+  test "$(grep -cE 'max_length:[[:space:]]*72([^0-9]|$)' "$T")" -eq 0
   ```
-  단언: nested `auto_detection:`/`validation:` 존재; flat top-level `auto_detect:`/`enforce_on_push:` 부재(nested로 이동); `max_length: 72` 부재(100으로 표준화). (`enforce_on_push`는 `validation:` 하위로만 존재해야 하므로 top-level grep으로 flat 부재 확인.)
+  단언: nested 마커 `auto_detection:`/`validation:`/(`confidence_threshold`|`fallback`) 존재; flat 전용 키 `auto_detect:` 부재(→`auto_detection:`로 치환); `max_length: 72` 부재(100 표준화). (D1-fix: `enforce_on_push`/`max_length`는 nested `validation:` 하위로 **보존**되므로 indent-agnostic grep으로 flat 부재를 검증하면 보존분과 충돌 false-fail → flat-전용 식별자 `auto_detect:`[singular]와 wrong-value `72`로 전환을 검증; indent-위치 grep 회피.)
 
 - **AC-WC9-012** (REQ-WC9-001, GCM-7/GCW-6/GCR-6/GCR-8) — 템플릿·local YAML에 `formatting.*`/`validation.enabled`/`validation.enforce_on_commit`/`custom.*` 부재.
   ```bash
+  # formatting/custom 블록 마커 부재 (indent-agnostic — 고유 블록 키)
   for f in internal/template/templates/.moai/config/sections/git-convention.yaml .moai/config/sections/git-convention.yaml; do \
-    test "$(grep -cE '^[[:space:]]*(formatting|custom):' "$f")" -eq 0 && \
-    test "$(grep -cE '^[[:space:]]*(enabled|enforce_on_commit):' "$f")" -eq 0 || exit 1; \
+    test "$(grep -cE '^[[:space:]]*(formatting|custom):' "$f")" -eq 0 || exit 1; \
   done
   ```
-  단언: 두 YAML 모두 formatting/custom 블록 0 + validation.{enabled,enforce_on_commit} 0. (`auto_detection.enabled`는 `enabled:` 매칭되나 `^[[:space:]]*enabled:`이 nested indent로 잡힘 — 주의: auto_detection.enabled는 유지 대상이므로 이 grep은 false-fail 위험. **D-fix 적용 → 아래 정밀 버전**.)
+  단언: 두 YAML 모두 formatting/custom 블록 0. (D2-fix: validation.{enabled,enforce_on_commit} 부재 + auto_detection.enabled **보존**은 `enabled:` indent 모호성으로 grep 불가 → 아래 struct-load 단언으로 검증; brittle `(enabled|enforce_on_commit)` grep 삭제.)
   ```bash
   # D-fix 정밀 버전: validation 블록의 enabled/enforce_on_commit만 검증(auto_detection.enabled는 보존)
   go test ./internal/config/ -run 'TestGitConventionYAMLLoad|TestLoadGitConvention' -count=1
