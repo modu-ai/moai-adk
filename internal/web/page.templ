@@ -30,6 +30,27 @@ type langSelectArgs struct {
 	Errors                        map[string]string
 }
 
+// toggleArgs is the typed argument set for the toggle helper — a boolean nested
+// config field rendered as a checkbox inside the standard field chrome
+// (SPEC-WEB-CONSOLE-007 §D). The hidden companion input (name+"__present")
+// disambiguates "unchecked" from "not submitted" so the write seam can apply the
+// EC-1 empty=preserve rule to a bool (design.md §D.2).
+type toggleArgs struct {
+	Name, Title, Key, Desc string
+	Checked                bool
+	Errors                 map[string]string
+}
+
+// numberFieldArgs is the typed argument set for the numberField helper — an
+// int/float nested config field rendered as <input type="number"> inside the
+// standard field chrome (SPEC-WEB-CONSOLE-007 §D). Min/Max/Step are client
+// hints only; server-canonical validation is authoritative (HARD-3).
+type numberFieldArgs struct {
+	Name, Title, Key, Desc, Value string
+	Min, Max, Step                string
+	Errors                        map[string]string
+}
+
 // fieldErrorMsg returns the per-field validation message for name (empty when
 // the field has no error). Mirrors the html/template `index .Errors .Name`.
 func fieldErrorMsg(errs map[string]string, name string) string {
@@ -124,4 +145,49 @@ templ optOptionTags(value, empty string, options []string) {
 			<option value={ o }>{ o }</option>
 		}
 	}
+}
+
+// toggle renders a boolean nested config field as a checkbox (SPEC-WEB-CONSOLE-007
+// §D). Reuses the optSelect field chrome (field/field__label/field__title
+// data-i18n/field__key/field__desc/has-error/field-error span) + the
+// segmentCheckbox checkbox pattern (name= value="1" checked). A hidden companion
+// input (<input type="hidden" name= value="1">) is always emitted so the server
+// can tell "unchecked" (companion present, checkbox absent → false) from "not
+// submitted" (companion absent → preserve, EC-1 bool, design.md §D.2).
+templ toggle(a toggleArgs) {
+	<div class={ "field", templ.KV("has-error", hasFieldError(a.Errors, a.Name)) }>
+		<span class="field__label"><span class="field__title" data-i18n={ "f." + a.Name + ".title" }>{ a.Title }</span><code class="field__key">{ a.Key }</code></span>
+		<span class="field__desc" data-i18n={ "f." + a.Name + ".desc" }>{ a.Desc }</span>
+		<label class="seg">
+			<input type="hidden" name={ a.Name + "__present" } value="1"/>
+			if a.Checked {
+				<input type="checkbox" id={ a.Name } name={ a.Name } value="1" checked/>
+			} else {
+				<input type="checkbox" id={ a.Name } name={ a.Name } value="1"/>
+			}
+			<span class="seg__box"><span class="seg__tick">@icon("check")</span></span>
+		</label>
+		if msg := fieldErrorMsg(a.Errors, a.Name); msg != "" {
+			<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
+		}
+	</div>
+}
+
+// numberField renders an int/float nested config field as <input type="number">
+// (SPEC-WEB-CONSOLE-007 §D). Reuses the field chrome + the fieldsetIdentity text
+// input pattern (class="input"). Min/Max/Step are client hints only — the
+// server-canonical validator is authoritative (HARD-3): a value submitted past
+// the browser hint is still rejected server-side. Errored render adds
+// aria-invalid + an aria-describedby field-error span.
+templ numberField(a numberFieldArgs) {
+	<div class={ "field", templ.KV("has-error", hasFieldError(a.Errors, a.Name)) }>
+		<span class="field__label"><span class="field__title" data-i18n={ "f." + a.Name + ".title" }>{ a.Title }</span><code class="field__key">{ a.Key }</code></span>
+		<span class="field__desc" data-i18n={ "f." + a.Name + ".desc" }>{ a.Desc }</span>
+		if hasFieldError(a.Errors, a.Name) {
+			<input class="input" type="number" id={ a.Name } name={ a.Name } value={ a.Value } min={ a.Min } max={ a.Max } step={ a.Step } aria-invalid="true" aria-describedby={ "err_" + a.Name }/>
+			<span class="field-error" id={ "err_" + a.Name }>@icon("alert-circle")<span>{ fieldErrorMsg(a.Errors, a.Name) }</span></span>
+		} else {
+			<input class="input" type="number" id={ a.Name } name={ a.Name } value={ a.Value } min={ a.Min } max={ a.Max } step={ a.Step }/>
+		}
+	</div>
 }

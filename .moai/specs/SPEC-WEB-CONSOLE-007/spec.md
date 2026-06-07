@@ -2,9 +2,9 @@
 id: SPEC-WEB-CONSOLE-007
 title: "moai web console nested config editing — quality + git_convention (S2b, scoped)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-07
 author: Goos Kim
 priority: P1
 phase: "v0.2.0"

@@ -33,4 +33,13 @@ deferred_to: SPEC-WEB-CONSOLE-008   # workflow/git-strategy/harness/llm nested e
 - **Verdict**: PASS-WITH-DEBT 0.84 → GATE-2 진입 (0.84 < 0.90 → 비-skip이나 PASS 임계 0.80 초과).
 
 ## §E.1 Run-phase
-- (pending — GATE-2 사용자 승인 후 manager-develop cycle_type=tdd, Mode 5 sub-agent sequential M1-M6)
+
+GATE-2 승인 후 manager-develop cycle_type=tdd (Mode 5 sub-agent sequential M1-M6). 베이스 HEAD 076fb44b6 (plan-audit D1 패치 commit). spec.md status draft→in-progress 전환은 M1 커밋에서 수행(소유권 전환).
+
+### Run-phase milestones (manager-develop appends below)
+
+- **M1 — 신규 Templ 위젯 (toggle + numberField) + Class A markup-parity (RED→GREEN)**
+  - 신규 위젯 2종 page.templ에 추가: `toggle`(bool checkbox + hidden companion `__present` for EC-1 bool semantics) + `numberField`(int/float `<input type="number">`, min/max/step client-hint). 각각 optSelect field chrome + segmentCheckbox/fieldsetIdentity input 패턴 재사용.
+  - Class A markup-parity 테스트 2종 templ_helpers_test.go에 추가: `TestToggleHelperMarkupParity`(clean/checked/errored 3-render, hidden companion 단언, checked 음성 단언) + `TestNumberFieldHelperMarkupParity`(clean/errored, min/max/step/aria-invalid 단언). RED→GREEN 확인(`--- PASS` 명시 실행, B-D2 완화).
+  - `templ generate` (internal/web CWD에서 실행 — 커밋된 bare-filename FileName 형식 일치) → page_templ.go 재생성. fieldsets_templ.go/root_templ.go 무변경.
+  - AC-WC7-001 PASS, AC-WC7-002 PASS, AC-WC7-003 drift-free(idempotent regen). 전체 web suite GREEN, host build exit 0.
