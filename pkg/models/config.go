@@ -204,51 +204,26 @@ type StatuslineConfig struct {
 
 // GitConventionConfig represents commit message convention settings.
 type GitConventionConfig struct {
-	// Convention name: auto, conventional-commits, angular, karma, custom
-	Convention string `yaml:"convention" validate:"omitempty,oneof=auto conventional-commits angular karma custom"`
+	// Convention name: auto, conventional-commits, angular, karma
+	Convention string `yaml:"convention" validate:"omitempty,oneof=auto conventional-commits angular karma"`
 
 	// AutoDetection settings for convention discovery
 	AutoDetection AutoDetectionConfig `yaml:"auto_detection"`
 
 	// Validation settings for commit message checking
 	Validation ConventionValidationConfig `yaml:"validation"`
-
-	// Formatting settings for error display
-	Formatting FormattingConfig `yaml:"formatting"`
-
-	// Custom holds a user-defined convention configuration.
-	Custom CustomConventionConfig `yaml:"custom"`
 }
 
 // AutoDetectionConfig configures convention auto-detection behavior.
 type AutoDetectionConfig struct {
 	Enabled             bool    `yaml:"enabled"`
-	SampleSize          int     `yaml:"sample_size"`
-	ConfidenceThreshold float64 `yaml:"confidence_threshold"`
-	Fallback            string  `yaml:"fallback"`
+	SampleSize          int     `yaml:"sample_size" validate:"omitempty,min=0"`
+	ConfidenceThreshold float64 `yaml:"confidence_threshold" validate:"omitempty,min=0,max=1"`
+	Fallback            string  `yaml:"fallback" validate:"omitempty,oneof=conventional-commits angular karma"`
 }
 
 // ConventionValidationConfig configures when and how validation is enforced.
 type ConventionValidationConfig struct {
-	Enabled         bool `yaml:"enabled"`
-	EnforceOnCommit bool `yaml:"enforce_on_commit"`
-	EnforceOnPush   bool `yaml:"enforce_on_push"`
-	MaxLength       int  `yaml:"max_length"`
-}
-
-// FormattingConfig configures error message formatting.
-type FormattingConfig struct {
-	ShowExamples    bool `yaml:"show_examples"`
-	ShowSuggestions bool `yaml:"show_suggestions"`
-	Verbose         bool `yaml:"verbose"`
-}
-
-// CustomConventionConfig holds a user-defined commit convention definition.
-type CustomConventionConfig struct {
-	Name      string   `yaml:"name"`
-	Pattern   string   `yaml:"pattern"`
-	Types     []string `yaml:"types"`
-	Scopes    []string `yaml:"scopes"`
-	MaxLength int      `yaml:"max_length"`
-	Examples  []string `yaml:"examples"`
+	EnforceOnPush bool `yaml:"enforce_on_push"`
+	MaxLength     int  `yaml:"max_length" validate:"omitempty,min=0"`
 }
