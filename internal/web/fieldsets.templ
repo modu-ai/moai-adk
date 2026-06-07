@@ -135,14 +135,17 @@ templ fieldsetStatusline(view pageView) {
 				@statuslineSelect("statusline_preset", "Statusline preset", "A predefined segment set. Choose “custom” to pick your own.", view.StatuslinePresets, view.Prefs.StatuslinePreset, "", view.FieldErrors)
 				@statuslineSelect("statusline_theme", "Statusline theme", "Color theme for the status bar.", view.StatuslineThemes, view.Prefs.StatuslineTheme, "col-span-2", view.FieldErrors)
 			</div>
-			<div class="segments" id="custom-segments">
+			<div
+				class={ "segments", templ.KV("segments--disabled", view.Prefs.StatuslinePreset != "custom") }
+				id="custom-segments"
+			>
 				<div class="segments__head">
 					<span class="segments__title" data-i18n="seg.title">Custom segments</span>
 					<span class="segments__note" data-i18n="seg.note">Choose exactly which pieces of information appear.</span>
 				</div>
 				<div class="segments__grid">
 					for _, s := range view.AllSegments {
-						@segmentCheckbox(s, view.Prefs.StatuslineSegments[s])
+						@segmentCheckbox(s, view.Prefs.StatuslineSegments[s], view.Prefs.StatuslinePreset == "custom")
 					}
 				</div>
 			</div>
@@ -194,13 +197,25 @@ templ statuslineSelectInner(name string, options []string, current string, error
 	</select>
 }
 
-// segmentCheckbox ports the segment_<key> checkbox (page.html.tmpl ~237-239).
-templ segmentCheckbox(key string, checked bool) {
+// segmentCheckbox renders the segment_<key> checkbox. The checkbox is editable
+// only when the preset is "custom"; for a non-custom preset (full/compact/
+// minimal) the server expands the preset into the segments map (SLR-3), so the
+// checkboxes are rendered display-only via the disabled attribute and reflect
+// the persisted state without accepting edits (REQ-WC8-010).
+templ segmentCheckbox(key string, checked, editable bool) {
 	<label class="seg">
-		if checked {
-			<input type="checkbox" name={ "segment_" + key } value="1" checked/>
+		if editable {
+			if checked {
+				<input type="checkbox" name={ "segment_" + key } value="1" checked/>
+			} else {
+				<input type="checkbox" name={ "segment_" + key } value="1"/>
+			}
 		} else {
-			<input type="checkbox" name={ "segment_" + key } value="1"/>
+			if checked {
+				<input type="checkbox" name={ "segment_" + key } value="1" checked disabled/>
+			} else {
+				<input type="checkbox" name={ "segment_" + key } value="1" disabled/>
+			}
 		}
 		<span class="seg__box"><span class="seg__tick">@icon("check")</span><span class="seg__name">{ key }</span></span>
 	</label>

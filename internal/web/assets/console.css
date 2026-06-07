@@ -531,6 +531,13 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 .seg input:checked + .seg__box .seg__name { color: var(--fg-1); font-weight: 600; }
 .seg input:focus-visible + .seg__box { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 
+/* Display-only segments: when the preset is not "custom" the server expands the
+   preset into the segments map (SLR-3), so the checkboxes are disabled and shown
+   dimmed to signal the preset governs them. */
+.segments--disabled { opacity: 0.6; }
+.segments--disabled .seg__box { cursor: not-allowed; }
+.segments--disabled .seg__box:hover { border-color: var(--border-1); }
+
 /* ============================================================
    Actions
    ============================================================ */
