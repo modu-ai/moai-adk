@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/pkg/models"
 	"gopkg.in/yaml.v3"
 )
 
@@ -22,7 +23,10 @@ type symmetryTestCase struct {
 	yamlTopKey    string // top-level YAML key (e.g., "constitution", "context_search")
 }
 
-// symmetryCases lists the 4 new MIG-003 sections.
+// symmetryCases lists the 4 MIG-003 sections plus StatuslineConfig
+// (SPEC-WEB-CONSOLE-008 SLM-4 — added after the struct dropped Mode and the
+// template dropped mode:/refresh_interval:, so struct↔YAML are now symmetric on
+// {preset, segments, theme}).
 // REQ-MIG003-016, AC-MIG003-14
 var symmetryCases = []symmetryTestCase{
 	{
@@ -44,6 +48,11 @@ var symmetryCases = []symmetryTestCase{
 		structType:   reflect.TypeOf(DesignConfig{}),
 		templateYAML: "design.yaml",
 		yamlTopKey:   "design",
+	},
+	{
+		structType:   reflect.TypeOf(models.StatuslineConfig{}),
+		templateYAML: "statusline.yaml",
+		yamlTopKey:   "statusline",
 	},
 }
 
@@ -175,4 +184,21 @@ func TestStructYAMLSymmetry_Design(t *testing.T) {
 	yamlPath := filepath.Join(repoRoot, "internal", "template", "templates",
 		".moai", "config", "sections", "design.yaml")
 	checkSymmetry(t, symmetryCases[3], yamlPath)
+}
+
+// TestStructYAMLSymmetry_Statusline verifies models.StatuslineConfig ↔ YAML
+// bijection (SPEC-WEB-CONSOLE-008 SLM-4). The struct is {Preset, Segments, Theme}
+// and the template statusline.yaml has exactly preset/segments/theme top-level
+// keys (mode: and refresh_interval: were removed in M1/M3), so the top-level
+// key sets are symmetric.
+func TestStructYAMLSymmetry_Statusline(t *testing.T) {
+	t.Parallel()
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
+	yamlPath := filepath.Join(repoRoot, "internal", "template", "templates",
+		".moai", "config", "sections", "statusline.yaml")
+	checkSymmetry(t, symmetryCases[4], yamlPath)
 }
