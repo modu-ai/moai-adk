@@ -317,8 +317,11 @@ const (
 	// REQ-SLV-016: PR segment (Claude Code 2.1.145+)
 	SegmentPR = "pr" // Active GitHub PR indicator (number + review_state)
 
-	// REQ-SSE-001/002: workspace.repo segment (Claude Code 2.1.145+)
-	SegmentRepo = "repo" // GitHub repo identity owner/name indicator
+	// workspace.repo segment (Claude Code 2.1.145+). SegmentRepo is the 16th
+	// segment constant and is intentionally excluded from the 15-key statusline
+	// config schema (the config segments map covers exactly the 15 in
+	// CanonicalSegments); it is a render-time constant, not a configurable toggle.
+	SegmentRepo = "repo" // GitHub repo identity indicator — intentionally outside the config schema (SLM-7)
 
 	// NOTE: SegmentLongContext removed per user explicit request (layout v3 CH1).
 	// StdinData.ExceedsLong + StatusData.ExceedsLongTokens fields preserved

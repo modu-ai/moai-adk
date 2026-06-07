@@ -47,7 +47,9 @@ type Options struct {
 	// If empty, os.UserHomeDir() is used.
 	HomeDir string
 
-	// ThemeName selects the rendering theme: "default", "minimal", "nerd".
+	// ThemeName selects the rendering theme. Exactly two themes exist:
+	// "catppuccin-mocha" and "catppuccin-latte". An empty or unrecognized value
+	// is coerced to catppuccin-mocha by the theme layer.
 	ThemeName string
 
 	// Mode sets the initial display mode.
