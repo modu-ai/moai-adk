@@ -145,3 +145,32 @@ new_validator_functions: 0   # AC-WC7-004 CRITICAL SCOPE CONSTRAINT
 006_sentinel_byte_identical: true   # integration_test.go:197-205 무수정
 coverage_baseline_correction: "spec.md 90.9%는 재현불가 stale; ground-truth base 076fb44b6 = 71.6%(격리 worktree 실측), HEAD = 72.5%(+0.9%)"
 ```
+
+## §F.3 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-06-07
+sync_method: orchestrator-direct   # bounded Tier M internal console feature; web-console cohort 004/005/006 pattern (L_orchestrator_direct_sync_tier_m); Authored-By-Agent trailer omitted → OwnershipTransitionRule silent SKIP
+sync_status: implemented
+deliverables:
+  - CHANGELOG.md   # [Unreleased] ### Added — SPEC-WEB-CONSOLE-007 entry (B12 dedup verified 0)
+  - spec.md        # frontmatter status in-progress→implemented + version 0.1.0→0.2.0
+  - progress.md    # this §F.3
+docs_site: not-required   # internal moai-web console feature, no dedicated docs-site page (006 precedent)
+readme: not-required
+orchestrator_independent_verification:   # Trust-but-verify batch in main checkout, post FF-merge
+  full_suite: pass          # internal/web + internal/config + pkg/models all ok
+  head_coverage: 72.5%      # = base 71.6% +0.9% (independently re-measured at 076fb44b6)
+  ac_pass: 20/20            # MUST-PASS 13/13 spot-checked --- PASS via D2-guard (=== RUN confirmed)
+  new_validator: 0
+  006_sentinel_diff: 0      # git diff 076fb44b6 HEAD -- integration_test.go empty (byte-identical)
+  subagent_boundary: 0
+  yaml_marshal_web: 0
+  cdn_refs: 0
+  templ_drift: clean        # templ generate (from internal/web) + git diff --exit-code clean
+  cross_platform_build: "host+windows exit 0"
+  golangci_lint: "0 issues"
+integration: "L1 worktree (agent-ae1fb1c0fe675fe86, branch wt-spec007-run, runtime-autonomous) → FF-merge into feat/SPEC-WEB-CONSOLE-007 (base 076fb44b6 == wt base → SHA-preserving FF). L_l1_worktree_cherrypick/FF pattern."
+push: HEAD:main FF (Hybrid Trunk Tier M main-direct, user-approved post-sync)
+next: SPEC-WEB-CONSOLE-008 (workflow/git-strategy/harness/llm nested editing — boundary lift + new validators + sentinel retarget)
+```
