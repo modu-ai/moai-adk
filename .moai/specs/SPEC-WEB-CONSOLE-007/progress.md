@@ -122,7 +122,7 @@ GATE-2 승인 후 manager-develop cycle_type=tdd (Mode 5 sub-agent sequential M1
 
 ```yaml
 run_complete_at: 2026-06-07
-run_commit_sha: <M6-this-commit>   # M1 8e555211f / M2 924438a94 / M3 01c9a1c5a / M4 08561f8c5 / M5 bfbafe4d2 / M6 (this)
+run_commit_sha: 5b05a74cf   # M1 8e555211f / M2 924438a94 / M3 01c9a1c5a / M4 08561f8c5 / M5 bfbafe4d2 / M6 5b05a74cf (final)
 run_status: implemented
 ac_pass_count: 20
 ac_fail_count: 0
