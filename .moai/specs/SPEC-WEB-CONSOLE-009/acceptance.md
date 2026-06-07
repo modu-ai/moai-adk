@@ -34,10 +34,10 @@
 - **AC-WC9-004** (REQ-WC9-003, GCW-1/GCR-2) — validator map + web slice + CLI wizard에 `custom` 부재(4-site lockstep #2/#3/#4) + custom-required block 제거.
   ```bash
   test "$(grep -E '"custom"' internal/config/validation.go | grep -vE '^[[:space:]]*//' | wc -l | tr -d ' ')" -eq 0 && \
-  test "$(grep -E '"custom"' internal/web/validate.go | grep -vE '^[[:space:]]*//' | wc -l | tr -d ' ')" -eq 0 && \
+  test "$(grep -E 'conventionCanonical' internal/web/validate.go | grep -vE '^[[:space:]]*//' | grep -c '"custom"')" -eq 0 && \
   test "$(grep -E 'NewOption\("custom"' internal/cli/profile_setup.go | wc -l | tr -d ' ')" -eq 0
   ```
-  단언: validator map / web `conventionCanonical` / CLI wizard 옵션에서 `custom` 0(comment 제외). custom-required block(`pattern is required when convention is 'custom'`) 부재는 AC-WC9-009 validator 테스트로 보강.
+  단언: validator map / web `conventionCanonical` / CLI wizard 옵션에서 `custom` 0(comment 제외). custom-required block(`pattern is required when convention is 'custom'`) 부재는 AC-WC9-009 validator 테스트로 보강. (audit-2 fix: web clause를 `conventionCanonical` slice로 한정 — `statuslinePresetCanonical`(validate.go:44)의 `"custom"`은 statusline preset(HARD-2 보호, M3 생존)이라 file-wide grep 시 제거 후에도 count=1 false-fail.)
 
 - **AC-WC9-005** (REQ-WC9-004, GCR-4) — dead `LoadFromConfig` + custom 테스트 refs 부재(production caller 0이었음).
   ```bash
@@ -149,9 +149,9 @@
 
 - **AC-WC9-018** (REQ-WC9-014, HARD-4) — **GCR-5 wiring 무변경**: .git_hooks/pre-push / hook_install.go prePushHookContent / git-strategy.yaml hooks.pre_push 변경 0.
   ```bash
-  test "$(git diff origin/main -- .git_hooks/pre-push internal/cli/hook_install.go internal/template/templates/.moai/config/sections/git-strategy.yaml | grep -cE '^[+-][^+-]')" -eq 0
+  test "$(git diff origin/main -- .git_hooks/pre-push internal/cli/hook_install.go .moai/config/sections/git-strategy.yaml | grep -cE '^[+-][^+-]')" -eq 0
   ```
-  단언: GCR-5 deferred 경계의 세 파일에 diff 0줄(§F 침범 0). [MUST remain green]
+  단언: GCR-5 deferred 경계의 세 파일에 diff 0줄(§F 침범 0). [MUST remain green] (audit-2 fix: 세 번째 경로를 실 tracked `.moai/config/sections/git-strategy.yaml`로 교정 — `internal/template/templates/.moai/config/sections/git-strategy.yaml`는 untracked/부재라 git diff vacuous no-op이었음.)
 
 - **AC-WC9-019** (REQ-WC9-017, HARD-7/HARD-5) — `validation.enforce_on_push` + `isEnforceOnPushEnabled()` read 경로 보존.
   ```bash
@@ -165,10 +165,10 @@
 
 - **AC-WC9-020** (REQ-WC9-015, HARD-3) — **006 scope-boundary sentinel(integration_test.go:191-205) 무수정 GREEN**: workflow/harness/git-strategy `DO_NOT_TOUCH` byte-identical.
   ```bash
-  go test ./internal/web/ -run 'TestRealServerRoundTrip' -count=1 && \
+  go test ./internal/web/ -run 'TestGoldenPath_ReadWriteRoundTrip' -count=1 && \
   git diff origin/main -- internal/web/integration_test.go | grep -E '^\+' | grep -icE 'workflow|harness|git-strategy|DO_NOT_TOUCH' | grep -qx 0
   ```
-  단언: sentinel 로직 라인(191-205) 무수정; 추가 라인에 workflow/harness/git-strategy 변경 0. (git_convention round-trip 테스트 갱신은 sentinel 라인이 아니므로 허용.) [MUST remain green]
+  단언: sentinel 로직 라인(191-205) 무수정; 추가 라인에 workflow/harness/git-strategy 변경 0. (git_convention round-trip 테스트 갱신은 sentinel 라인이 아니므로 허용.) [MUST remain green] (audit-2 fix: 테스트 이름을 실재 `TestGoldenPath_ReadWriteRoundTrip`(integration_test.go:91, sentinel 191-205 소유)로 교정 — `TestRealServerRoundTrip`는 부재라 "[no tests to run]" exit 0 vacuous PASS였음.)
 
 ### offline / HTMX 계약 + 회귀 가드 (Class B)
 
