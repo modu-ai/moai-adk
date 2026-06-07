@@ -58,3 +58,13 @@ GATE-2 승인 후 manager-develop cycle_type=tdd (Mode 5 sub-agent sequential M1
   - fieldsetProject 확장(fieldsets.templ): 6 nested 위젯(numberField×3, toggle×2 with companion, projectTextField×1) 추가, `count.project` 2→8. root.templ 합성 라인 무변경(fieldsetProject 내부만).
   - **i18n 12키(6필드×title/desc) 4-locale(en/ko/ja/zh) + count.project 8 갱신** — TestDataI18nKeysSubsetOfDictionary gate가 per-milestone GREEN 요구하여 M6의 i18n 작업을 M3로 당겨 흡수.
   - 테스트: `TestParseProjectNestedForm`(5 sub: all-set/empty EC-1/companion-false/int-guard/float-guard) + `TestProjectFieldsetRendersNestedWidgets`(6위젯 렌더 + checked/unchecked 단언). RED→GREEN 명시 실행. 전체 web suite GREEN(i18n parity 포함).
+  - commit 01c9a1c5a.
+
+- **M4 — write-seam round-trip + nested isolation 증명 + EC-1/EC-2 + server reject (RED→GREEN)**
+  - `writeProjectNestedConfig`(projectconfig.go, M3에서 함께 작성됨): load-modify-write — LoadRaw 전체 섹션 구조체 복사(`q := cfg.Quality` / `gc := cfg.GitConvention`) 후 `*Set` 게이트로 타깃 nested 필드만 변경 → SetSection → Save. nested-of-nested(TDDSettings/AutoDetection) sibling 라이드. scalar write 후 실행(2 LoadRaw cycle, 둘 다 동일 on-disk 섹션에 수렴).
+  - 신규 테스트 파일 projectnested_test.go(10 함수, 실 seam + 실 프로젝트 root, seedNestedProject가 편집대상+비-편집 sibling nested 필드 시드):
+    - `TestProjectNestedRoundTrip`(AC-007), `TestProjectNestedSiblingPreserved`(AC-008 — coverage_exemptions.max_exempt_percentage=42 / tdd_settings.test_first_required / lsp_quality_gates.enabled / min_coverage_per_commit 4 sibling 보존), `TestProjectNestedGitConventionSiblingPreserved`(AC-009 — formatting.verbose / validation.max_length / auto_detection.enabled 보존).
+    - `TestProjectNestedEmptyPreserves`(AC-010 EC-1), `TestProjectNestedToggleEC1`(AC-011a — companion 없음=보존), `TestProjectNestedToggleUnchecked`(AC-011b — companion+미체크=false).
+    - `TestProjectNestedAtomicReject`(AC-012 — valid+invalid 동시 → 400, 둘 다 무write), `TestProjectNestedOutOfRangeReject`(AC-013 — 150 → 400 + 기존 메시지 + write 0), `TestProjectNestedCustomPatternRequired`(AC-014 — convention=custom+빈 pattern → 400 + 기존 custom-required + write 0), `TestSaveNestedFullPage`(AC-019 — hx-boost full-page swap, partial fragment 미도입).
+  - **Class A 마크업 디테일 2건 test-fix**(코드 아님): Templ `<!doctype html>` 소문자 정규화(coverage_test.go convention `strings.ToLower`) + 메시지 내 apostrophe HTML-escape(`'`→`&#39;`)로 인한 exact-string 단언 조정. 10/10 GREEN.
+  - AC-WC7-007/008/009/010/011a/011b/012/013/014/019 PASS. full web+config+models suite GREEN.
