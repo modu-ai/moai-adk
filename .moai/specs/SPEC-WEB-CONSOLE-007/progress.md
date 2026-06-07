@@ -68,3 +68,16 @@ GATE-2 승인 후 manager-develop cycle_type=tdd (Mode 5 sub-agent sequential M1
     - `TestProjectNestedAtomicReject`(AC-012 — valid+invalid 동시 → 400, 둘 다 무write), `TestProjectNestedOutOfRangeReject`(AC-013 — 150 → 400 + 기존 메시지 + write 0), `TestProjectNestedCustomPatternRequired`(AC-014 — convention=custom+빈 pattern → 400 + 기존 custom-required + write 0), `TestSaveNestedFullPage`(AC-019 — hx-boost full-page swap, partial fragment 미도입).
   - **Class A 마크업 디테일 2건 test-fix**(코드 아님): Templ `<!doctype html>` 소문자 정규화(coverage_test.go convention `strings.ToLower`) + 메시지 내 apostrophe HTML-escape(`'`→`&#39;`)로 인한 exact-string 단언 조정. 10/10 GREEN.
   - AC-WC7-007/008/009/010/011a/011b/012/013/014/019 PASS. full web+config+models suite GREEN.
+  - commit 08561f8c5.
+
+- **M5 — 통합 + 회귀 가드 + 커버리지 강화 (boundary verification + REFACTOR 검토)**
+  - **HARD-2 sentinel 무수정 확인**: `git diff 076fb44b6 -- internal/web/integration_test.go` 빈 결과(byte-identical). 006 scope-boundary 테스트(TestScopeBoundary/TestPersistence/TestGolden) 무수정 GREEN. AC-WC7-016/017 PASS.
+  - **AC-WC7-015**: web 레이어 직접 YAML write 0 (`yaml.Marshal|os.WriteFile` in projectconfig.go/handlers.go == 0).
+  - **AC-WC7-018**: offline zero-network — CDN ref 0 (templ + assets css/js).
+  - **AC-WC7-019 (2nd)**: hx-target/hx-swap 0 (partial-swap fragment 미도입, hx-boost full-page 유지).
+  - **AC-WC7-004**: new-validator 0 (불변).
+  - **AC-WC7-003**: templ generate idempotent drift-free CLEAN.
+  - **AC-WC7-020 커버리지 ground-truth 정정**: spec.md "90.9% baseline"은 **재현 불가 stale 값**. 격리 worktree로 base 076fb44b6 실측 → **71.6%**(reproducible). 내 HEAD = **72.5%**(+0.9%). AC-020 의도("하락 없음") 충족. (L_glyph_count_provisional 류 — 문서화 baseline이 provisional, ground-truth는 71.6%.)
+  - 커버리지 강화 테스트 projectnested_error_test.go(5 함수): git_convention nested round-trip(write seam git_convention 브랜치) + rejected echo-back(applyNestedForm 전 *Set 브랜치) + nested write-failure 핸들러 에러 경로 + nested read-failure inline 에러 + readProjectNestedConfig EC-5 defaults.
+  - **REFACTOR 검토**: 두 write seam(writeProjectConfig/writeProjectNestedConfig)의 load-modify-write 공유 헬퍼 추출은 plan.md §I anti-over-engineering 경고 대상(서로 다른 필드셋, 마진 이익) → scope discipline으로 분리 유지.
+  - golangci-lint(web+config) 0 issues. cross-platform build host+windows exit 0.
