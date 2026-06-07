@@ -36,6 +36,12 @@ deferred_to: SPEC-WEB-CONSOLE-008   # workflow/git-strategy/harness/llm nested e
 
 GATE-2 승인 후 manager-develop cycle_type=tdd (Mode 5 sub-agent sequential M1-M6). 베이스 HEAD 076fb44b6 (plan-audit D1 패치 commit). spec.md status draft→in-progress 전환은 M1 커밋에서 수행(소유권 전환).
 
+### Phase 0.95 Mode Selection (orchestrator autonomous)
+- **Decision: sub-agent** (Mode 5, sequential single-spawn manager-develop cycle_type=tdd, M1-M6).
+- **Input**: tier=M, scope≈12 files (internal/web + thin internal/config export seam), domain=1, concurrency-benefit=LOW (coding-heavy, Finding A4), Agent-Teams-prereqs=not-met (harness standard).
+- **Evaluation**: Mode 1 trivial=no · Mode 2 background=no(writes) · Mode 3 agent-team=no(prereq unmet + single-domain) · Mode 4 parallel=no(coding-heavy single-domain, Finding A4) · Mode 6 workflow=no(<30 files, semantic TDD non-mechanical).
+- **Justification**: coding-heavy single-package TDD → Finding A4 sequential sub-agent default. No Round split (Tier M <30 tasks). GATE-2 user-approved this session.
+
 ### Run-phase milestones (manager-develop appends below)
 
 - **M1 — 신규 Templ 위젯 (toggle + numberField) + Class A markup-parity (RED→GREEN)**
