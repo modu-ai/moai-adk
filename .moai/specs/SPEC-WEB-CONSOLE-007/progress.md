@@ -81,3 +81,61 @@ GATE-2 승인 후 manager-develop cycle_type=tdd (Mode 5 sub-agent sequential M1
   - 커버리지 강화 테스트 projectnested_error_test.go(5 함수): git_convention nested round-trip(write seam git_convention 브랜치) + rejected echo-back(applyNestedForm 전 *Set 브랜치) + nested write-failure 핸들러 에러 경로 + nested read-failure inline 에러 + readProjectNestedConfig EC-5 defaults.
   - **REFACTOR 검토**: 두 write seam(writeProjectConfig/writeProjectNestedConfig)의 load-modify-write 공유 헬퍼 추출은 plan.md §I anti-over-engineering 경고 대상(서로 다른 필드셋, 마진 이익) → scope discipline으로 분리 유지.
   - golangci-lint(web+config) 0 issues. cross-platform build host+windows exit 0.
+  - commit bfbafe4d2.
+
+- **M6 — i18n 4-locale parity + Project fieldset 카운트 + offline 재확인 + 최종 검증 배치**
+  - **i18n 작업은 M3에서 흡수됨**(TestDataI18nKeysSubsetOfDictionary gate per-milestone GREEN 요구). M6는 parity 확인 + 최종 검증 전담.
+  - i18n 4-locale parity 확인: 신규 12키 전부 4 occurrences(en/ko/ja/zh 1회씩). count.project "8 fields"/"8개 항목"/"8 項目"/"8 项" 4-locale 갱신.
+  - offline 0-network 재확인: htmx.min.js + self-host font(go:embed) 무변경, 신규 CDN 0.
+  - 최종 검증 배치: AC-WC7-001..020 전부 PASS(MUST-PASS 13개 + SHOULD-PASS 7개), full go test ./... (SPEC-007 scope packages web/config/models 전부 GREEN), golangci-lint full 0 issues, host+windows build exit 0, templ idempotent drift-free.
+  - **무관 pre-existing flaky**: internal/hook TestHookWrapper_{MoaiBinaryFallback,ValidJSON}가 full-suite 5s-timeout 병렬 부하에서 간헐 FAIL → 격리 재실행 PASS(0.39s/0.54s). internal/hook은 SPEC-007 무수정(git diff 076fb44b6..HEAD --stat 무관). prior-cohort CI-FLAKY-STABILIZE 패턴.
+
+## §E.2 Run-phase Evidence (AC PASS/FAIL matrix)
+
+| AC | MUST-PASS | Status | Verification | Actual |
+|----|-----------|--------|--------------|--------|
+| AC-WC7-001 | | PASS | TestToggleHelperMarkupParity | --- PASS |
+| AC-WC7-002 | | PASS | TestNumberFieldHelperMarkupParity | --- PASS |
+| AC-WC7-003 | ✓ | PASS | templ generate && git diff --exit-code | CLEAN (idempotent) |
+| AC-WC7-004 | ✓ | PASS | grep -cE 'func validate(Workflow\|GitStrategy\|Harness\|Llm)Config' | 0 |
+| AC-WC7-005 | ✓ | PASS | TestValidateQualitySection | --- PASS (기존 메시지 재사용) |
+| AC-WC7-006 | ✓ | PASS | TestValidateGitConventionSection | --- PASS (기존 메시지 재사용) |
+| AC-WC7-007 | ✓ | PASS | TestProjectNestedRoundTrip | --- PASS (target=85 영속) |
+| AC-WC7-008 | ✓ | PASS | TestProjectNestedSiblingPreserved | --- PASS (4 sibling 보존) |
+| AC-WC7-009 | | PASS | TestProjectNestedGitConventionSiblingPreserved | --- PASS (3 sibling 보존) |
+| AC-WC7-010 | | PASS | TestProjectNestedEmptyPreserves | --- PASS (empty=70 보존) |
+| AC-WC7-011a | | PASS | TestProjectNestedToggleEC1 | --- PASS (companion 없음=보존) |
+| AC-WC7-011b | | PASS | TestProjectNestedToggleUnchecked | --- PASS (companion+미체크=false) |
+| AC-WC7-012 | ✓ | PASS | TestProjectNestedAtomicReject | --- PASS (400, 둘 다 무write) |
+| AC-WC7-013 | ✓ | PASS | TestProjectNestedOutOfRangeReject | --- PASS (150→400 + write 0) |
+| AC-WC7-014 | ✓ | PASS | TestProjectNestedCustomPatternRequired | --- PASS (custom 빈 pattern→400) |
+| AC-WC7-015 | ✓ | PASS | grep yaml.Marshal\|os.WriteFile in web | 0 |
+| AC-WC7-016 | ✓ | PASS | TestSaveScopeBoundary (006 sentinel 무수정) | --- PASS |
+| AC-WC7-017 | ✓ | PASS | git diff 076fb44b6 -- integration_test.go (workflow/harness/git-strategy 추가 라인) | 0 |
+| AC-WC7-018 | | PASS | grep CDN refs in templ+assets | 0 |
+| AC-WC7-019 | | PASS | TestSaveNestedFullPage + grep hx-target/hx-swap | --- PASS + 0 |
+| AC-WC7-020 | ✓ | PASS | full suite GREEN + coverage | web/config/models ok; cov 72.5% (base 71.6% +0.9%) |
+
+**MUST-PASS 13/13 GREEN. SHOULD-PASS 7/7 GREEN. 총 20/20 PASS.**
+
+## §E.3 Run-phase Audit-Ready Signal
+
+```yaml
+run_complete_at: 2026-06-07
+run_commit_sha: <M6-this-commit>   # M1 8e555211f / M2 924438a94 / M3 01c9a1c5a / M4 08561f8c5 / M5 bfbafe4d2 / M6 (this)
+run_status: implemented
+ac_pass_count: 20
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # PRESERVE 외 변경 0 (006 sentinel byte-identical, integration_test.go 무수정)
+l44_pre_commit_fetch: n/a          # 격리 worktree(wt-spec007-run), 단일 세션, orchestrator가 push 전 fetch 수행
+l44_post_push_fetch: n/a           # DO NOT PUSH (orchestrator 검증 게이트 후 push)
+new_warnings_or_lints_introduced: 0   # golangci-lint full 0 issues
+cross_platform_build:
+  host: pass        # go build ./... exit 0
+  windows: pass     # GOOS=windows GOARCH=amd64 go build ./... exit 0
+total_run_phase_files: 12   # page.templ page_templ.go templ_helpers_test.go validation.go validation_test.go projectconfig.go handlers.go validate.go app.go fieldsets.templ fieldsets_templ.go i18n.js + 2 신규 테스트(projectnested_parse_test.go projectnested_test.go projectnested_error_test.go) + spec.md/progress.md
+m1_to_mN_commit_strategy: "M1-M6 milestone별 분리 commit, Authored-By-Agent: manager-develop trailer, draft→in-progress (M1) 소유권 전환, NOT pushed (orchestrator push gate)"
+new_validator_functions: 0   # AC-WC7-004 CRITICAL SCOPE CONSTRAINT
+006_sentinel_byte_identical: true   # integration_test.go:197-205 무수정
+coverage_baseline_correction: "spec.md 90.9%는 재현불가 stale; ground-truth base 076fb44b6 = 71.6%(격리 worktree 실측), HEAD = 72.5%(+0.9%)"
+```
