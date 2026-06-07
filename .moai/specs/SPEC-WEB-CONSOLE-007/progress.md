@@ -24,7 +24,13 @@ deferred_to: SPEC-WEB-CONSOLE-008   # workflow/git-strategy/harness/llm nested e
 - **Plan-phase commit**: 926816abe
 
 ## §F.2 Plan Audit Gate
-- (pending — plan-auditor 독립 감사 대기)
+- **iter-1 (plan-phase)**: PASS-WITH-DEBT 0.83 (Tier M 임계 0.80) + D1-D4 패치(02441d3db: AC grep idioms + citation off-by-one).
+- **iter-2 (run-phase Phase 0.5 재실행, cache MISS)**: PASS-WITH-DEBT, aggregate **0.84** (+0.01 monotonic, no regression). MP-1..4 전부 PASS/N-A.
+- **D1 (BLOCKING) RESOLVED**: §F "Exclusions" h2 → `moai spec lint --strict` MissingExclusions ERROR (live 검증). Fix: `### §F.1 Out of Scope` h3 sub-section 추가 + numbered→dash 변환 (orchestrator-direct 기계적 패치, L_orchestrator_direct_plan_patch). 검증: 007 MissingExclusions 0 (repo-wide 19 debt 중 007 제외 확인).
+- **D2 (SHOULD-FIX) accepted-debt + mitigation**: 10 AC `go test -run 'PATTERN'` false-GREEN 위험(no-match→exit 0). AC-020 full-suite가 최종 backstop. 추가 완화: manager-develop 위임에 RED-verification discipline 주입(test EXISTS + FAIL 확인, bare exit 0 금지) + orchestrator post-impl 검증도 grep-guarded.
+- **D3 (SHOULD-FIX) + D4-D6 (MINOR)**: accepted debt — review-1.md 참조. D4(validator citation 96/163) HOLD 확인.
+- **Report**: .moai/reports/plan-audit/SPEC-WEB-CONSOLE-007-review-1.md
+- **Verdict**: PASS-WITH-DEBT 0.84 → GATE-2 진입 (0.84 < 0.90 → 비-skip이나 PASS 임계 0.80 초과).
 
 ## §E.1 Run-phase
-- (pending — GATE-2 사용자 승인 후 manager-develop cycle_type=tdd)
+- (pending — GATE-2 사용자 승인 후 manager-develop cycle_type=tdd, Mode 5 sub-agent sequential M1-M6)
