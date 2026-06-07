@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/pkg/models"
 	"gopkg.in/yaml.v3"
 )
@@ -144,19 +145,33 @@ func syncStatusline(projectRoot string, prefs ProfilePreferences) error {
 	return nil
 }
 
-// defaultStatuslineSegments returns the default segment map with all segments enabled.
+// defaultStatuslineSegments returns the canonical 15-key segment map with every
+// segment enabled — equivalent to the "full" preset (SLM-5 fix). The keys are
+// sourced from the statusline.Segment* constants (the same SSOT the CLI's
+// presetToSegments uses) so the seed never drifts from the canonical schema.
+// SegmentRepo is intentionally excluded — it is the 16th constant, outside the
+// 15-key statusline schema (SLM-7).
 func defaultStatuslineSegments() map[string]bool {
-	return map[string]bool{
-		"model":          true,
-		"context":        true,
-		"output_style":   true,
-		"directory":      true,
-		"git_status":     true,
-		"claude_version": true,
-		"moai_version":   true,
-		"git_branch":     true,
-		"session_time":   true,
-		"usage_5h":       true,
-		"usage_7d":       true,
+	keys := []string{
+		statusline.SegmentModel,
+		statusline.SegmentContext,
+		statusline.SegmentOutputStyle,
+		statusline.SegmentClaudeVersion,
+		statusline.SegmentMoaiVersion,
+		statusline.SegmentSessionTime,
+		statusline.SegmentEffortThinking,
+		statusline.SegmentUsage5H,
+		statusline.SegmentUsage7D,
+		statusline.SegmentDirectory,
+		statusline.SegmentGitStatus,
+		statusline.SegmentGitBranch,
+		statusline.SegmentWorktree,
+		statusline.SegmentTask,
+		statusline.SegmentPR,
 	}
+	segments := make(map[string]bool, len(keys))
+	for _, k := range keys {
+		segments[k] = true
+	}
+	return segments
 }
