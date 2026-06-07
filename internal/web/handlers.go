@@ -26,7 +26,6 @@ type pageView struct {
 	EffortLevels      []string
 	ModelPolicies     []string
 	PermissionModes   []string
-	StatuslineModes   []string
 	StatuslinePresets []string
 	StatuslineThemes  []string
 	AllSegments       []string
@@ -79,7 +78,6 @@ func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pag
 		EffortLevels:      effortLevelCanonical,
 		ModelPolicies:     template.ValidModelPolicies(),
 		PermissionModes:   profile.ValidPermissionModes,
-		StatuslineModes:   statuslineModeCanonical,
 		StatuslinePresets: statuslinePresetCanonical,
 		StatuslineThemes:  statuslineThemeCanonical,
 		AllSegments:       allSegments,
@@ -362,7 +360,6 @@ func bindForm(r *http.Request) profile.ProfilePreferences {
 		Model:            r.PostFormValue("model"),
 		EffortLevel:      r.PostFormValue("effort_level"),
 		PermissionMode:   r.PostFormValue("permission_mode"),
-		StatuslineMode:   r.PostFormValue("statusline_mode"),
 		StatuslinePreset: r.PostFormValue("statusline_preset"),
 		StatuslineTheme:  r.PostFormValue("statusline_theme"),
 	}

@@ -37,9 +37,6 @@ var modelCanonical = []string{"opus", "opus[1m]", "sonnet", "sonnet[1m]", "haiku
 // is allowed by the empty-allowed guard and is not listed here.
 var effortLevelCanonical = []string{"low", "medium", "high", "xhigh", "max"}
 
-// statuslineModeCanonical mirrors internal/cli/profile_setup.go statuslineModeCanonical.
-var statuslineModeCanonical = []string{"default", "full"}
-
 // statuslineThemeCanonical mirrors internal/cli/profile_setup.go statuslineThemeCanonical.
 var statuslineThemeCanonical = []string{"catppuccin-mocha", "catppuccin-latte"}
 
@@ -132,10 +129,8 @@ func validatePrefs(p profile.ProfilePreferences) map[string]string {
 		errs["model_policy"] = "unrecognized model policy: " + p.ModelPolicy
 	}
 
-	// Statusline mode / preset / theme: empty allowed, otherwise canonical.
-	if p.StatuslineMode != "" && !inList(statuslineModeCanonical, p.StatuslineMode) {
-		errs["statusline_mode"] = "unrecognized statusline mode: " + p.StatuslineMode
-	}
+	// Statusline preset / theme: empty allowed, otherwise canonical. (The
+	// statusline_mode control was removed — SLR-1 — so no mode validation.)
 	if p.StatuslinePreset != "" && !inList(statuslinePresetCanonical, p.StatuslinePreset) {
 		errs["statusline_preset"] = "unrecognized statusline preset: " + p.StatuslinePreset
 	}

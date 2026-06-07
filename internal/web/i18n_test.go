@@ -454,7 +454,6 @@ func TestInterfaceLanguageDoesNotAlterPOST(t *testing.T) {
 		"permission_mode":   {"acceptEdits"},
 		"model":             {"sonnet"},
 		"effort_level":      {"high"},
-		"statusline_mode":   {"default"},
 		"statusline_preset": {"full"},
 		"statusline_theme":  {"catppuccin-mocha"},
 		"development_mode":  {"tdd"},
@@ -513,7 +512,7 @@ func TestServerContractPreserved(t *testing.T) {
 	for _, name := range []string{
 		"user_name", "conversation_lang", "git_commit_lang", "code_comment_lang",
 		"doc_lang", "permission_mode", "model_policy", "model", "effort_level",
-		"statusline_mode", "statusline_preset", "statusline_theme",
+		"statusline_preset", "statusline_theme",
 		"development_mode", "git_convention", "__profile",
 	} {
 		if !strings.Contains(body, `name="`+name+`"`) {

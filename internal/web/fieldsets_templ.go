@@ -428,9 +428,10 @@ func permissionOption(value, current string) templ.Component {
 	})
 }
 
-// fieldsetStatusline ports the Statusline fieldset (~179-243): inline statusline
-// mode/preset/theme selects (plain {{.}} options, no empty option) + the 15
-// segment_<key> checkboxes driven by view.AllSegments.
+// fieldsetStatusline renders the Statusline fieldset: inline statusline
+// preset/theme selects (plain {{.}} options, no empty option) + the 15
+// segment_<key> checkboxes driven by view.AllSegments. The statusline_mode
+// select was removed (SLR-1 — mode=full was inert), leaving 2 select fields.
 func fieldsetStatusline(view pageView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -460,11 +461,7 @@ func fieldsetStatusline(view pageView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</span><span data-i18n=\"sec.statusline.title\">Statusline</span></legend> <span class=\"section__count\" data-i18n=\"count.statusline\">3 fields · segments</span></div><p class=\"section__desc\" data-i18n=\"sec.statusline.desc\">The status bar shown at the bottom of your terminal.</p></div><div class=\"section__body\"><div class=\"grid\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = statuslineSelect("statusline_mode", "Statusline mode", "Overall density of the status bar.", view.StatuslineModes, view.Prefs.StatuslineMode, "", view.FieldErrors).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</span><span data-i18n=\"sec.statusline.title\">Statusline</span></legend> <span class=\"section__count\" data-i18n=\"count.statusline\">2 fields · segments</span></div><p class=\"section__desc\" data-i18n=\"sec.statusline.desc\">The status bar shown at the bottom of your terminal.</p></div><div class=\"section__body\"><div class=\"grid\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

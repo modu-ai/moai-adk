@@ -105,7 +105,8 @@ func TestRenderProducesCompletePage(t *testing.T) {
 }
 
 // TestValidatePrefs_AllInvalidFields exercises every validation branch:
-// invalid permission mode, all four languages, and all three statusline fields.
+// invalid permission mode, all four languages, and the two statusline fields
+// (statusline_mode was removed — SLR-1).
 func TestValidatePrefs_AllInvalidFields(t *testing.T) {
 	errs := validatePrefs(profile.ProfilePreferences{
 		PermissionMode:   "nope",
@@ -113,13 +114,12 @@ func TestValidatePrefs_AllInvalidFields(t *testing.T) {
 		GitCommitLang:    "yy",
 		CodeCommentLang:  "zz",
 		DocLang:          "qq",
-		StatuslineMode:   "weird",
 		StatuslinePreset: "weird",
 		StatuslineTheme:  "weird",
 	})
 	for _, field := range []string{
 		"permission_mode", "conversation_lang", "git_commit_lang",
-		"code_comment_lang", "doc_lang", "statusline_mode",
+		"code_comment_lang", "doc_lang",
 		"statusline_preset", "statusline_theme",
 	} {
 		if _, ok := errs[field]; !ok {
