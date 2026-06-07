@@ -126,7 +126,7 @@ m1_to_mN_commit_strategy: per-milestone   # M1..M9 each a separate feat(SPEC-WEB
 
 ```yaml
 sync_complete_at: 2026-06-07
-sync_commit_sha: pending   # backfilled in Mx commit (orchestrator-direct sync, trailer omitted = OwnershipTransitionRule silent SKIP per cohort 006/007 pattern)
+sync_commit_sha: 591a310de   # orchestrator-direct sync (trailer omitted = OwnershipTransitionRule silent SKIP per cohort 006/007 pattern)
 sync_status: implemented   # spec.md frontmatter in-progress -> implemented
 deliverables:
   - CHANGELOG.md   # [Unreleased] ### Changed: SPEC-WEB-CONSOLE-008 entry (no duplicate — prior match was 007's forward-reference)
