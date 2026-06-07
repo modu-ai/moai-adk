@@ -182,7 +182,7 @@ mx_complete_at: 2026-06-07
 plan_commit_sha: 926816abe        # plan-phase artifacts (Tier M Section A-E)
 run_commit_sha: 5b05a74cf         # M6 final (integrated via SHA-preserving FF; +backfill a1dd9aa00, +ModeSelection e42ed9a53)
 sync_commit_sha: 21da6a4ea        # docs(...): sync-phase artifacts (status in-progress→implemented)
-mx_commit_sha: PENDING-BACKFILL
+mx_commit_sha: 040cbe1c5
 four_phase_close: true            # plan + run + sync + Mx
 final_status: completed
 origin_main_at_sync: 21da6a4ea    # 5714bae97..21da6a4ea pushed HEAD:main FF (13 commits, post-push divergence 0 0)
