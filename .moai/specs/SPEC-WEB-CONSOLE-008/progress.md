@@ -121,3 +121,29 @@ cross_platform_build:
 total_run_phase_files: 22   # 11 production (cli/profile/statusline x3 / template yaml / web x3 / preset.go new) + generated _templ.go x1 + test files + progress.md
 m1_to_mN_commit_strategy: per-milestone   # M1..M9 each a separate feat(SPEC-WEB-CONSOLE-008): M{N} commit with Authored-By-Agent: manager-develop trailer; M1 flipped status draft->in-progress
 ```
+
+## §E.4 — Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-06-07
+sync_commit_sha: pending   # backfilled in Mx commit (orchestrator-direct sync, trailer omitted = OwnershipTransitionRule silent SKIP per cohort 006/007 pattern)
+sync_status: implemented   # spec.md frontmatter in-progress -> implemented
+deliverables:
+  - CHANGELOG.md   # [Unreleased] ### Changed: SPEC-WEB-CONSOLE-008 entry (no duplicate — prior match was 007's forward-reference)
+  - .moai/specs/SPEC-WEB-CONSOLE-008/spec.md   # status implemented
+readme_docs_site: not-applicable   # internal config redesign; no user-facing API surface beyond the moai web console UI
+independent_verification: orchestrator Trust-but-verify 7/7 (V1-V7) + precise V2/V6 false-positive clearance + full focused suite GREEN + cross-platform exit 0
+```
+
+## §E.5 — Mx-phase Audit-Ready Signal
+
+```yaml
+mx_complete_at: 2026-06-07
+mx_commit_sha: pending   # backfilled in the final backfill commit (chicken-egg: Mx commit's own SHA)
+mx_status: completed     # spec.md frontmatter implemented -> completed (4-phase close)
+four_phase_close: plan(808bc3fb0) + run(M1-M9 1b37dc2fa..dec809a91) + sync + Mx
+drift_expected: completed/completed aligned   # era H-4 V3R6 (progress.md §E.2 + sync_commit_sha + §E.5 + mx_commit_sha)
+followups:
+  - SPEC-WEB-CONSOLE-009   # git_convention redesign (25 deferred defects)
+  - GCR-5 dormant-engine wiring   # maintainer-decision (pre-push hook never invokes moai hook pre-push) — separate follow-up
+```
