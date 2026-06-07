@@ -159,22 +159,3 @@ func loadStatuslineFileConfig(projectRoot string) *statuslineFileConfig {
 		Segments: raw.Statusline.Segments,
 	}
 }
-
-// loadSegmentConfig reads statusline segment configuration from
-// .moai/config/sections/statusline.yaml and returns a map of segment keys
-// to their enabled state. Returns nil if the file is missing, unreadable,
-// unparseable, or has no segments defined (backward-compatible: all enabled).
-func loadSegmentConfig(projectRoot string) map[string]bool {
-	cfg := loadStatuslineFileConfig(projectRoot)
-	if cfg == nil {
-		return nil
-	}
-	if cfg.Segments != nil {
-		return cfg.Segments
-	}
-	// "full" and empty presets mean all segments enabled (nil = backward compatible)
-	if cfg.Preset == "" || cfg.Preset == "full" {
-		return nil
-	}
-	return presetToSegments(cfg.Preset, nil)
-}

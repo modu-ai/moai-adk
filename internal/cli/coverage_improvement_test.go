@@ -1285,64 +1285,8 @@ func TestEscapeDotenvValue(t *testing.T) {
 
 // TestStatusIcon removed - exists in doctor_test.go
 
-// =============================================================================
-// loadSegmentConfig — statusline.go:94
-// =============================================================================
-
-func TestLoadSegmentConfig_EmptyRoot(t *testing.T) {
-	result := loadSegmentConfig("")
-	if result != nil {
-		t.Error("should return nil for empty root")
-	}
-}
-
-func TestLoadSegmentConfig_NoFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	result := loadSegmentConfig(tmpDir)
-	if result != nil {
-		t.Error("should return nil when file doesn't exist")
-	}
-}
-
-func TestLoadSegmentConfig_ValidFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, ".moai", "config", "sections", "statusline.yaml")
-	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	content := "statusline:\n  segments:\n    git: true\n    version: false\n"
-	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	result := loadSegmentConfig(tmpDir)
-	if result == nil {
-		t.Fatal("should return non-nil for valid config")
-	}
-	if !result["git"] {
-		t.Error("git segment should be true")
-	}
-	if result["version"] {
-		t.Error("version segment should be false")
-	}
-}
-
-func TestLoadSegmentConfig_MalformedYAML(t *testing.T) {
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, ".moai", "config", "sections", "statusline.yaml")
-	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(configPath, []byte("{{invalid yaml"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	result := loadSegmentConfig(tmpDir)
-	if result != nil {
-		t.Error("should return nil for malformed YAML")
-	}
-}
+// loadSegmentConfig tests removed (SPEC-WEB-CONSOLE-008 M5): the dead
+// loadSegmentConfig production function had zero callers and was deleted (SLR-7).
 
 // =============================================================================
 // injectGLMEnv — glm.go:602 (previously 86.4%)
