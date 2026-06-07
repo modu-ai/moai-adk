@@ -2519,66 +2519,17 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 	return nil
 }
 
-// allStatuslineSegments lists all supported statusline segment names in display order.
-// Includes segments added across Claude Code v2.1.97/122/145 + REQ-V3 Cycle 5 (task).
-// PR/Task were previously opt-in (REQ-SLV-012); promoted to default-on as part of the
-// statusline preset baseline alignment — graceful no-output handles inactive states.
-var allStatuslineSegments = []string{
-	statusline.SegmentModel, statusline.SegmentContext, statusline.SegmentOutputStyle, statusline.SegmentDirectory,
-	statusline.SegmentGitStatus, statusline.SegmentClaudeVersion, statusline.SegmentMoaiVersion, statusline.SegmentGitBranch,
-	statusline.SegmentSessionTime, statusline.SegmentUsage5H, statusline.SegmentUsage7D,
-	statusline.SegmentTask, statusline.SegmentWorktree, statusline.SegmentEffortThinking,
-	statusline.SegmentPR,
-}
+// allStatuslineSegments lists all supported statusline segment names in display
+// order. Aliases the canonical SSOT (statusline.CanonicalSegments) so the CLI
+// and the profile write path share one segment key set (SLR-3 / SLM-5).
+var allStatuslineSegments = statusline.CanonicalSegments
 
-// presetToSegments converts a statusline preset name and optional custom segment map
-// into a full segment-to-enabled map. Unknown presets fall back to "full" (all enabled).
+// presetToSegments converts a statusline preset name and optional custom segment
+// map into a full segment-to-enabled map. Thin delegation to the canonical SSOT
+// statusline.PresetToSegments so preset expansion logic lives in exactly one
+// place (the CLI render path and the profile write path share it).
 func presetToSegments(preset string, custom map[string]bool) map[string]bool {
-	segments := make(map[string]bool, len(allStatuslineSegments))
-
-	switch preset {
-	case "compact":
-		// Compact: essentials + workflow context (task + PR for SPEC visibility)
-		compactEnabled := map[string]bool{
-			statusline.SegmentModel: true, statusline.SegmentContext: true,
-			statusline.SegmentGitStatus: true, statusline.SegmentGitBranch: true,
-			statusline.SegmentTask: true, statusline.SegmentPR: true,
-		}
-		for _, seg := range allStatuslineSegments {
-			segments[seg] = compactEnabled[seg]
-		}
-	case "minimal":
-		// Minimal: model + context only (no workflow context)
-		minimalEnabled := map[string]bool{
-			statusline.SegmentModel: true, statusline.SegmentContext: true,
-		}
-		for _, seg := range allStatuslineSegments {
-			segments[seg] = minimalEnabled[seg]
-		}
-	case "custom":
-		if custom == nil {
-			// No custom selections provided, default all to true
-			for _, seg := range allStatuslineSegments {
-				segments[seg] = true
-			}
-		} else {
-			for _, seg := range allStatuslineSegments {
-				val, exists := custom[seg]
-				if exists {
-					segments[seg] = val
-				} else {
-					segments[seg] = true // Default missing segments to enabled
-				}
-			}
-		}
-	default:
-		// "full" and any unknown preset: all segments enabled
-		for _, seg := range allStatuslineSegments {
-			segments[seg] = true
-		}
-	}
-
-	return segments
+	return statusline.PresetToSegments(preset, custom)
 }
 
 // settingsLocalEnv represents the structure of .claude/settings.local.json.

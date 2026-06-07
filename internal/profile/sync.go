@@ -125,8 +125,21 @@ func syncStatusline(projectRoot string, prefs ProfilePreferences) error {
 	if prefs.StatuslineTheme != "" {
 		current.Statusline.Theme = prefs.StatuslineTheme
 	}
-	if prefs.StatuslineSegments != nil {
+
+	// Preset write-effective (SLR-3): make a non-custom preset selection actually
+	// take effect by expanding it into a full 15-key segments map at save time —
+	// the runtime reads the segments map, not the preset, so without this a
+	// non-custom preset silently no-ops. An explicit segment map (custom preset,
+	// StatuslineSegments != nil) wins and is persisted verbatim (HARD-6). When the
+	// preset is NOT submitted (StatuslinePreset == ""), existing segments are
+	// preserved untouched (HARD-7 — theme-only / segment-only saves). Runtime
+	// precedence (segments map wins over preset) is unchanged — this governs only
+	// the WRITE-time materialization.
+	switch {
+	case prefs.StatuslineSegments != nil:
 		current.Statusline.Segments = prefs.StatuslineSegments
+	case prefs.StatuslinePreset != "" && prefs.StatuslinePreset != "custom":
+		current.Statusline.Segments = statusline.PresetToSegments(prefs.StatuslinePreset, nil)
 	}
 
 	// Write statusline.yaml
