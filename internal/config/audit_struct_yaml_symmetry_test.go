@@ -24,10 +24,11 @@ type symmetryTestCase struct {
 }
 
 // symmetryCases lists the 4 MIG-003 sections plus StatuslineConfig
-// (SPEC-WEB-CONSOLE-008 SLM-4 — added after the struct dropped Mode and the
-// template dropped mode:/refresh_interval:, so struct↔YAML are now symmetric on
-// {preset, segments, theme}).
-// REQ-MIG003-016, AC-MIG003-14
+// (SPEC-WEB-CONSOLE-008 SLM-4) and GitConventionConfig (SPEC-WEB-CONSOLE-009
+// GCM-3 — added LAST, after the struct trim dropped Custom/Formatting/
+// validation.{enabled,enforce_on_commit} and the template was rewritten flat→nested,
+// so struct↔YAML are now symmetric on {convention, auto_detection, validation}).
+// REQ-MIG003-016, AC-MIG003-14, REQ-WC9-007
 var symmetryCases = []symmetryTestCase{
 	{
 		structType:   reflect.TypeOf(ConstitutionConfig{}),
@@ -53,6 +54,11 @@ var symmetryCases = []symmetryTestCase{
 		structType:   reflect.TypeOf(models.StatuslineConfig{}),
 		templateYAML: "statusline.yaml",
 		yamlTopKey:   "statusline",
+	},
+	{
+		structType:   reflect.TypeOf(models.GitConventionConfig{}),
+		templateYAML: "git-convention.yaml",
+		yamlTopKey:   "git_convention",
 	},
 }
 
@@ -201,4 +207,21 @@ func TestStructYAMLSymmetry_Statusline(t *testing.T) {
 	yamlPath := filepath.Join(repoRoot, "internal", "template", "templates",
 		".moai", "config", "sections", "statusline.yaml")
 	checkSymmetry(t, symmetryCases[4], yamlPath)
+}
+
+// TestStructYAMLSymmetry_GitConvention verifies models.GitConventionConfig ↔ YAML
+// bijection (SPEC-WEB-CONSOLE-009 GCM-3). The trimmed struct is {Convention,
+// AutoDetection, Validation} and the rewritten template git-convention.yaml has
+// exactly convention/auto_detection/validation top-level keys (custom: and
+// formatting: were removed in M1/M4), so the top-level key sets are symmetric.
+func TestStructYAMLSymmetry_GitConvention(t *testing.T) {
+	t.Parallel()
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
+	yamlPath := filepath.Join(repoRoot, "internal", "template", "templates",
+		".moai", "config", "sections", "git-convention.yaml")
+	checkSymmetry(t, symmetryCases[5], yamlPath)
 }
