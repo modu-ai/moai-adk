@@ -116,7 +116,7 @@ m1_to_mN_commit_strategy: single-cohesive   # Tier S, all milestones in one M1 c
 
 ```yaml
 mx_complete_at: 2026-06-08
-mx_commit_sha: <backfill — populated by the follow-up backfill commit>
+mx_commit_sha: 250cd774f
 spec_status: completed
 four_phase_close: true
 ac_pass_count: 9
