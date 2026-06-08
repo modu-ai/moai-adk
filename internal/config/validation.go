@@ -155,11 +155,10 @@ var validGitConventionNames = map[string]bool{
 	"conventional-commits": true,
 	"angular":              true,
 	"karma":                true,
-	"custom":               true,
 }
 
-// IsValidConvention reports whether name is one of the 5 canonical git
-// convention names (auto, conventional-commits, angular, karma, custom).
+// IsValidConvention reports whether name is one of the 4 canonical git
+// convention names (auto, conventional-commits, angular, karma).
 // It reuses the validGitConventionNames map — the single source of truth that
 // mirrors the pkg/models GitConventionConfig.Convention `oneof` validate tag —
 // so callers in other packages (internal/web, internal/cli) validate against
@@ -170,7 +169,7 @@ func IsValidConvention(name string) bool {
 	return validGitConventionNames[name]
 }
 
-// ValidConventions returns the 5 canonical git convention names as a slice,
+// ValidConventions returns the 4 canonical git convention names as a slice,
 // for populating UI option lists (web <select>, TUI huh.Select). Order is not
 // guaranteed (sourced from a map) — callers that need stable ordering must
 // sort the result.
@@ -189,7 +188,7 @@ func validateGitConventionConfig(gc *models.GitConventionConfig) []ValidationErr
 	if gc.Convention != "" && !validGitConventionNames[gc.Convention] {
 		errs = append(errs, ValidationError{
 			Field:   "git_convention.convention",
-			Message: "must be one of: auto, conventional-commits, angular, karma, custom",
+			Message: "must be one of: auto, conventional-commits, angular, karma",
 			Value:   gc.Convention,
 			Wrapped: ErrInvalidConfig,
 		})
@@ -218,15 +217,6 @@ func validateGitConventionConfig(gc *models.GitConventionConfig) []ValidationErr
 			Field:   "git_convention.validation.max_length",
 			Message: "must be non-negative",
 			Value:   gc.Validation.MaxLength,
-			Wrapped: ErrInvalidConfig,
-		})
-	}
-
-	// When convention is "custom", pattern is required.
-	if gc.Convention == "custom" && gc.Custom.Pattern == "" {
-		errs = append(errs, ValidationError{
-			Field:   "git_convention.custom.pattern",
-			Message: "pattern is required when convention is 'custom'",
 			Wrapped: ErrInvalidConfig,
 		})
 	}
@@ -293,8 +283,6 @@ func validateDynamicTokens(cfg *Config) []ValidationError {
 	// Git convention section
 	errs = append(errs, checkStringField("git_convention.convention", cfg.GitConvention.Convention)...)
 	errs = append(errs, checkStringField("git_convention.auto_detection.fallback", cfg.GitConvention.AutoDetection.Fallback)...)
-	errs = append(errs, checkStringField("git_convention.custom.name", cfg.GitConvention.Custom.Name)...)
-	errs = append(errs, checkStringField("git_convention.custom.pattern", cfg.GitConvention.Custom.Pattern)...)
 
 	// LLM section
 	errs = append(errs, checkStringField("llm.default_model", cfg.LLM.DefaultModel)...)

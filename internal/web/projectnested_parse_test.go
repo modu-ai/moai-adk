@@ -39,7 +39,9 @@ func TestParseProjectNestedForm(t *testing.T) {
 		form.Set("git_convention.auto_detection.confidence_threshold", "0.75")
 		form.Set("git_convention.auto_detection.enabled__present", "1")
 		form.Set("git_convention.auto_detection.enabled", "1")
-		form.Set("git_convention.custom.pattern", "^feat: .+")
+		form.Set("git_convention.auto_detection.sample_size", "150")
+		form.Set("git_convention.validation.enforce_on_push__present", "1")
+		form.Set("git_convention.validation.enforce_on_push", "1")
 
 		f := parseProjectNestedForm(postFormRequest(t, form))
 
@@ -58,8 +60,11 @@ func TestParseProjectNestedForm(t *testing.T) {
 		if !f.AutoEnabledSet || !f.AutoEnabled {
 			t.Errorf("AutoEnabled = %v set=%v, want true true", f.AutoEnabled, f.AutoEnabledSet)
 		}
-		if !f.CustomPatternSet || f.CustomPattern != "^feat: .+" {
-			t.Errorf("CustomPattern = %q set=%v, want pattern true", f.CustomPattern, f.CustomPatternSet)
+		if !f.SampleSizeSet || f.SampleSize != 150 {
+			t.Errorf("SampleSize = %d set=%v, want 150 true", f.SampleSize, f.SampleSizeSet)
+		}
+		if !f.EnforceOnPushSet || !f.EnforceOnPush {
+			t.Errorf("EnforceOnPush = %v set=%v, want true true", f.EnforceOnPush, f.EnforceOnPushSet)
 		}
 		if len(f.ParseErrs) != 0 {
 			t.Errorf("ParseErrs = %v, want empty", f.ParseErrs)
@@ -69,10 +74,10 @@ func TestParseProjectNestedForm(t *testing.T) {
 	t.Run("empty submission leaves *Set false (EC-1)", func(t *testing.T) {
 		t.Parallel()
 		f := parseProjectNestedForm(postFormRequest(t, url.Values{}))
-		if f.CoverageTargetSet || f.MinCoverageSet || f.ConfidenceSet || f.CustomPatternSet {
-			t.Errorf("empty form should leave all numeric/string *Set false, got %+v", f)
+		if f.CoverageTargetSet || f.MinCoverageSet || f.ConfidenceSet || f.SampleSizeSet {
+			t.Errorf("empty form should leave all numeric *Set false, got %+v", f)
 		}
-		if f.EnforceQualitySet || f.AutoEnabledSet {
+		if f.EnforceQualitySet || f.AutoEnabledSet || f.EnforceOnPushSet {
 			t.Errorf("empty form (no companion) should leave bool *Set false, got %+v", f)
 		}
 		if f.touchesQuality() || f.touchesGitConvention() {
@@ -123,23 +128,25 @@ func TestParseProjectNestedForm(t *testing.T) {
 	})
 }
 
-// TestProjectFieldsetRendersNestedWidgets covers SPEC-WEB-CONSOLE-007 M3 fieldset
-// extension (REQ-WC7-004/010): the Project fieldset renders the 6 nested widgets —
-// two numberFields (coverage targets), two toggles (enforce/auto-detect with hidden
-// companions), one number (confidence), one text (custom pattern) — populated from
-// the view-model current values.
+// TestProjectFieldsetRendersNestedWidgets covers the Project fieldset extension
+// (REQ-WC7-004/010 + REQ-WC9-010): the fieldset renders the curated nested widgets —
+// numberFields (coverage targets, confidence, sample_size), toggles (enforce_quality
+// / auto-detect / enforce_on_push with hidden companions) — populated from the
+// view-model current values. The custom.pattern widget is removed (REQ-WC9-010).
 func TestProjectFieldsetRendersNestedWidgets(t *testing.T) {
 	t.Parallel()
 	view := pageView{
 		FieldErrors:             map[string]string{},
 		DevelopmentModes:        developmentModeCanonical,
 		Conventions:             conventionCanonical,
+		CurConvention:           "auto",
 		CurTestCoverageTarget:   "85",
 		CurEnforceQuality:       true,
 		CurMinCoveragePerCommit: "80",
 		CurConfidenceThreshold:  "0.75",
 		CurAutoDetectionEnabled: false,
-		CurCustomPattern:        "^feat: .+",
+		CurSampleSize:           "150",
+		CurEnforceOnPush:        true,
 	}
 	body := renderTempl(t, fieldsetProject(view))
 
@@ -151,14 +158,17 @@ func TestProjectFieldsetRendersNestedWidgets(t *testing.T) {
 		`value="80"`,
 		`name="git_convention.auto_detection.confidence_threshold"`,
 		`step="0.01"`,
+		// new sample_size number field.
+		`name="git_convention.auto_detection.sample_size"`,
+		`value="150"`,
 		// toggles with hidden companions.
 		`name="quality.enforce_quality__present"`,
 		`name="quality.enforce_quality"`,
 		`name="git_convention.auto_detection.enabled__present"`,
 		`name="git_convention.auto_detection.enabled"`,
-		// custom pattern text field.
-		`name="git_convention.custom.pattern"`,
-		`value="^feat: .+"`,
+		// new enforce_on_push toggle.
+		`name="git_convention.validation.enforce_on_push__present"`,
+		`name="git_convention.validation.enforce_on_push"`,
 		// updated section count.
 		`data-i18n="count.project"`,
 	} {

@@ -222,47 +222,52 @@ templ segmentCheckbox(key string, checked, editable bool) {
 }
 
 // fieldsetProject ports the Project fieldset and extends it with the curated
-// nested config fields (SPEC-WEB-CONSOLE-007 §F). The two existing optSelect
-// scalars (development_mode / git_convention) are unchanged; the 6 nested fields
-// are grouped into a Quality sub-group + a Git-convention sub-group so the markup
-// stays scannable. The section count data-i18n updates to "8 fields".
+// nested config fields (REQ-WC9-010). The two optSelect scalars (development_mode /
+// git_convention) keep their shape; the git_convention nested fields model the live
+// levers only — confidence_threshold, the auto-detect toggle, sample_size, and the
+// enforce_on_push gate. The custom.pattern widget is removed (the custom engine is
+// gone). The three auto-detection sub-fields carry a client de-emphasis hint when
+// the selected convention is not "auto" (REQ-WC9-012; no server cross-field logic).
+// The section count data-i18n reads "9 fields".
 templ fieldsetProject(view pageView) {
 	<fieldset class="section">
 		<div class="section__head">
 			<div class="section__head-row">
 				<legend class="section__legend"><span class="section__ico">@icon("folder-git")</span><span data-i18n="sec.project.title">Project</span></legend>
-				<span class="section__count" data-i18n="count.project">8 fields</span>
+				<span class="section__count" data-i18n="count.project">9 fields</span>
 			</div>
 			<p class="section__desc" data-i18n="sec.project.desc">Project-level development and git conventions.</p>
 		</div>
 		<div class="section__body">
-			<div class="grid">
+			<div class="grid" data-convention={ view.CurConvention }>
 				@optSelect(optSelectArgs{Name: "development_mode", Title: "Development mode", Key: "development_mode", Desc: "Default workflow — domain-driven (DDD) or test-driven (TDD).", Value: view.CurDevelopmentMode, Empty: "(project default)", Options: view.DevelopmentModes, Errors: view.FieldErrors})
-				@optSelect(optSelectArgs{Name: "git_convention", Title: "Git convention", Key: "git_convention", Desc: "Commit message convention enforced in this project.", Value: view.CurConvention, Empty: "(project default)", Options: view.Conventions, Errors: view.FieldErrors})
+				@optSelect(optSelectArgs{Name: "git_convention", Title: "Git convention", Key: "git_convention", Desc: "Commit message convention enforced in this project.", Value: view.CurConvention, Empty: "(unchanged)", Options: view.Conventions, Errors: view.FieldErrors})
 				@numberField(numberFieldArgs{Name: "quality.test_coverage_target", Title: "Test coverage target", Key: "quality.test_coverage_target", Desc: "Minimum overall test coverage percentage (0-100).", Value: view.CurTestCoverageTarget, Min: "0", Max: "100", Step: "1", Errors: view.FieldErrors})
 				@toggle(toggleArgs{Name: "quality.enforce_quality", Title: "Enforce quality gate", Key: "quality.enforce_quality", Desc: "Block on TRUST 5 quality-gate failures.", Checked: view.CurEnforceQuality, Errors: view.FieldErrors})
 				@numberField(numberFieldArgs{Name: "quality.tdd_settings.min_coverage_per_commit", Title: "Min coverage per commit", Key: "quality.tdd_settings.min_coverage_per_commit", Desc: "Minimum coverage required per commit in TDD mode (0-100).", Value: view.CurMinCoveragePerCommit, Min: "0", Max: "100", Step: "1", Errors: view.FieldErrors})
-				@numberField(numberFieldArgs{Name: "git_convention.auto_detection.confidence_threshold", Title: "Detection confidence threshold", Key: "git_convention.auto_detection.confidence_threshold", Desc: "Confidence required to auto-detect a convention (0.0-1.0).", Value: view.CurConfidenceThreshold, Min: "0", Max: "1", Step: "0.01", Errors: view.FieldErrors})
-				@toggle(toggleArgs{Name: "git_convention.auto_detection.enabled", Title: "Auto-detect convention", Key: "git_convention.auto_detection.enabled", Desc: "Auto-detect the commit convention from history.", Checked: view.CurAutoDetectionEnabled, Errors: view.FieldErrors})
-				@projectTextField(view, "git_convention.custom.pattern", "Custom convention pattern", "Regex pattern, required when git convention is 'custom'.", view.CurCustomPattern)
+				@detectionField(view.CurConvention, numberField(numberFieldArgs{Name: "git_convention.auto_detection.confidence_threshold", Title: "Detection confidence threshold", Key: "git_convention.auto_detection.confidence_threshold", Desc: "Confidence required to auto-detect a convention (0.0-1.0).", Value: view.CurConfidenceThreshold, Min: "0", Max: "1", Step: "0.01", Errors: view.FieldErrors}))
+				@detectionField(view.CurConvention, numberField(numberFieldArgs{Name: "git_convention.auto_detection.sample_size", Title: "Detection sample size", Key: "git_convention.auto_detection.sample_size", Desc: "Number of recent commits analyzed during auto-detection.", Value: view.CurSampleSize, Min: "0", Step: "1", Errors: view.FieldErrors}))
+				@detectionField(view.CurConvention, toggle(toggleArgs{Name: "git_convention.auto_detection.enabled", Title: "Auto-detect convention", Key: "git_convention.auto_detection.enabled", Desc: "Auto-detect the commit convention from history.", Checked: view.CurAutoDetectionEnabled, Errors: view.FieldErrors}))
+				@toggle(toggleArgs{Name: "git_convention.validation.enforce_on_push", Title: "Enforce on push", Key: "git_convention.validation.enforce_on_push", Desc: "Reject a push when a commit message violates the convention.", Checked: view.CurEnforceOnPush, Errors: view.FieldErrors})
 			</div>
 		</div>
 	</fieldset>
 }
 
-// projectTextField renders a project-config string field as a text <input> reusing
-// the fieldsetIdentity text-input chrome (SPEC-WEB-CONSOLE-007 §F). Used for
-// git_convention.custom.pattern, which is a free-form regex string (not an enum,
-// number, or bool).
-templ projectTextField(view pageView, name, title, desc, value string) {
-	<div class={ "field", templ.KV("has-error", hasFieldError(view.FieldErrors, name)) }>
-		<span class="field__label"><span class="field__title" data-i18n={ "f." + name + ".title" }>{ title }</span><code class="field__key">{ name }</code></span>
-		<span class="field__desc" data-i18n={ "f." + name + ".desc" }>{ desc }</span>
-		if hasFieldError(view.FieldErrors, name) {
-			<input class="input" type="text" id={ name } name={ name } value={ value } autocomplete="off" aria-invalid="true" aria-describedby={ "err_" + name }/>
-			<span class="field-error" id={ "err_" + name }>@icon("alert-circle")<span>{ fieldErrorMsg(view.FieldErrors, name) }</span></span>
-		} else {
-			<input class="input" type="text" id={ name } name={ name } value={ value } autocomplete="off"/>
-		}
-	</div>
+// detectionField wraps an auto-detection sub-field widget in a div that carries a
+// de-emphasis class when the selected convention is not "auto" (REQ-WC9-012). This
+// is a CLIENT hint only — the server applies no cross-field logic and the wrapped
+// widget stays fully submittable. When convention is "auto" (or unset → preserve)
+// the sub-field renders active; otherwise it renders greyed via the
+// detection-subfield--inactive modifier.
+templ detectionField(convention string, widget templ.Component) {
+	if convention == "auto" || convention == "" {
+		<div class="detection-subfield">
+			@widget
+		</div>
+	} else {
+		<div class="detection-subfield detection-subfield--inactive" aria-disabled="true">
+			@widget
+		</div>
+	}
 }

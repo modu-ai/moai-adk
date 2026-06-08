@@ -593,30 +593,13 @@ func TestNewDefaultGitConventionConfig(t *testing.T) {
 			cfg.AutoDetection.Fallback, DefaultGitConventionFallback)
 	}
 
-	// Validation
-	if !cfg.Validation.Enabled {
-		t.Error("Validation.Enabled: expected true")
-	}
-	if cfg.Validation.EnforceOnCommit {
-		t.Error("Validation.EnforceOnCommit: expected false")
-	}
+	// Validation (trimmed to the live levers: EnforceOnPush + MaxLength)
 	if cfg.Validation.EnforceOnPush {
 		t.Error("Validation.EnforceOnPush: expected false")
 	}
 	if cfg.Validation.MaxLength != DefaultGitConventionMaxLength {
 		t.Errorf("Validation.MaxLength: got %d, want %d",
 			cfg.Validation.MaxLength, DefaultGitConventionMaxLength)
-	}
-
-	// Formatting
-	if !cfg.Formatting.ShowExamples {
-		t.Error("Formatting.ShowExamples: expected true")
-	}
-	if !cfg.Formatting.ShowSuggestions {
-		t.Error("Formatting.ShowSuggestions: expected true")
-	}
-	if cfg.Formatting.Verbose {
-		t.Error("Formatting.Verbose: expected false")
 	}
 }
 

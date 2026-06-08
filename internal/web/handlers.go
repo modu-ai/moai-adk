@@ -49,7 +49,8 @@ type pageView struct {
 	CurMinCoveragePerCommit string
 	CurConfidenceThreshold  string
 	CurAutoDetectionEnabled bool
-	CurCustomPattern        string
+	CurSampleSize           string
+	CurEnforceOnPush        bool
 
 	// Banner is an optional status/error message; BannerKind is "ok" or "error".
 	Banner     string
@@ -173,7 +174,8 @@ func applyNestedCurrent(view *pageView, nested projectNestedCurrent) {
 	view.CurMinCoveragePerCommit = nested.MinCoverage
 	view.CurConfidenceThreshold = nested.ConfidenceThreshold
 	view.CurAutoDetectionEnabled = nested.AutoDetectionEnabled
-	view.CurCustomPattern = nested.CustomPattern
+	view.CurSampleSize = nested.SampleSize
+	view.CurEnforceOnPush = nested.EnforceOnPush
 }
 
 // applyNestedForm echoes the submitted nested form values back onto the view-model
@@ -198,8 +200,11 @@ func applyNestedForm(view *pageView, nested projectNestedCurrent, form projectNe
 	if form.AutoEnabledSet {
 		view.CurAutoDetectionEnabled = form.AutoEnabled
 	}
-	if form.CustomPatternSet {
-		view.CurCustomPattern = form.CustomPattern
+	if form.SampleSizeSet {
+		view.CurSampleSize = strconv.Itoa(form.SampleSize)
+	}
+	if form.EnforceOnPushSet {
+		view.CurEnforceOnPush = form.EnforceOnPush
 	}
 }
 

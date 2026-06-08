@@ -79,8 +79,10 @@ window.MOAI_I18N = {
     "f.git_convention.auto_detection.confidence_threshold.desc": "Confidence required to auto-detect a convention (0.0-1.0).",
     "f.git_convention.auto_detection.enabled.title": "Auto-detect convention",
     "f.git_convention.auto_detection.enabled.desc": "Auto-detect the commit convention from history.",
-    "f.git_convention.custom.pattern.title": "Custom convention pattern",
-    "f.git_convention.custom.pattern.desc": "Regex pattern, required when git convention is 'custom'.",
+    "f.git_convention.auto_detection.sample_size.title": "Detection sample size",
+    "f.git_convention.auto_detection.sample_size.desc": "Number of recent commits analyzed during auto-detection.",
+    "f.git_convention.validation.enforce_on_push.title": "Enforce on push",
+    "f.git_convention.validation.enforce_on_push.desc": "Reject a push when a commit message violates the convention.",
 
     "lang.aria": "Interface language",
     "theme.aria": "Toggle light / dark theme"
@@ -148,8 +150,10 @@ window.MOAI_I18N = {
     "f.git_convention.auto_detection.confidence_threshold.desc": "규칙 자동 감지에 필요한 신뢰도(0.0-1.0)입니다.",
     "f.git_convention.auto_detection.enabled.title": "규칙 자동 감지",
     "f.git_convention.auto_detection.enabled.desc": "커밋 히스토리에서 커밋 규칙을 자동 감지합니다.",
-    "f.git_convention.custom.pattern.title": "사용자 정의 규칙 패턴",
-    "f.git_convention.custom.pattern.desc": "git 규칙이 'custom'일 때 필요한 정규식 패턴입니다.",
+    "f.git_convention.auto_detection.sample_size.title": "감지 샘플 크기",
+    "f.git_convention.auto_detection.sample_size.desc": "자동 감지 시 분석할 최근 커밋 수입니다.",
+    "f.git_convention.validation.enforce_on_push.title": "푸시 시 강제",
+    "f.git_convention.validation.enforce_on_push.desc": "커밋 메시지가 규칙을 위반하면 푸시를 거부합니다.",
 
     "lang.aria": "인터페이스 언어",
     "theme.aria": "라이트 / 다크 테마 전환"
@@ -217,8 +221,10 @@ window.MOAI_I18N = {
     "f.git_convention.auto_detection.confidence_threshold.desc": "規約を自動検出するために必要な信頼度（0.0-1.0）です。",
     "f.git_convention.auto_detection.enabled.title": "規約を自動検出",
     "f.git_convention.auto_detection.enabled.desc": "コミット履歴からコミット規約を自動検出します。",
-    "f.git_convention.custom.pattern.title": "カスタム規約パターン",
-    "f.git_convention.custom.pattern.desc": "git 規約が 'custom' のときに必要な正規表現パターンです。",
+    "f.git_convention.auto_detection.sample_size.title": "検出サンプルサイズ",
+    "f.git_convention.auto_detection.sample_size.desc": "自動検出時に解析する直近のコミット数です。",
+    "f.git_convention.validation.enforce_on_push.title": "プッシュ時に強制",
+    "f.git_convention.validation.enforce_on_push.desc": "コミットメッセージが規約に違反した場合にプッシュを拒否します。",
 
     "lang.aria": "インターフェース言語",
     "theme.aria": "ライト / ダークテーマ切替"
@@ -286,8 +292,10 @@ window.MOAI_I18N = {
     "f.git_convention.auto_detection.confidence_threshold.desc": "自动检测约定所需的置信度（0.0-1.0）。",
     "f.git_convention.auto_detection.enabled.title": "自动检测约定",
     "f.git_convention.auto_detection.enabled.desc": "从提交历史自动检测提交约定。",
-    "f.git_convention.custom.pattern.title": "自定义约定模式",
-    "f.git_convention.custom.pattern.desc": "当 git 约定为 'custom' 时所需的正则表达式模式。",
+    "f.git_convention.auto_detection.sample_size.title": "检测样本大小",
+    "f.git_convention.auto_detection.sample_size.desc": "自动检测时分析的最近提交数量。",
+    "f.git_convention.validation.enforce_on_push.title": "推送时强制",
+    "f.git_convention.validation.enforce_on_push.desc": "当提交信息违反约定时拒绝推送。",
 
     "lang.aria": "界面语言",
     "theme.aria": "切换浅色 / 深色主题"

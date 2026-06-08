@@ -8,9 +8,10 @@ import (
 )
 
 // TestProjectNestedGitConventionRoundTrip exercises the git_convention nested write
-// branch end-to-end (confidence + enabled toggle + custom.pattern) so
+// branch end-to-end (confidence + enabled toggle + sample_size + enforce_on_push) so
 // writeProjectNestedConfig's git_convention path is covered, alongside the quality
-// path. Complements TestProjectNestedSiblingPreserved (quality branch).
+// path. Complements TestProjectNestedSiblingPreserved (quality branch). The custom
+// engine is removed (REQ-WC9-010), so the live levers are exercised instead.
 func TestProjectNestedGitConventionRoundTrip(t *testing.T) {
 	t.Parallel()
 	root := seedNestedProject(t)
@@ -19,7 +20,9 @@ func TestProjectNestedGitConventionRoundTrip(t *testing.T) {
 	form := nestedSaveForm(map[string]string{
 		"git_convention.auto_detection.confidence_threshold": "0.88",
 		"git_convention.auto_detection.enabled__present":     "1", // companion + checkbox absent → false
-		"git_convention.custom.pattern":                      "^chore: .+",
+		"git_convention.auto_detection.sample_size":          "200",
+		"git_convention.validation.enforce_on_push__present":  "1",
+		"git_convention.validation.enforce_on_push":           "1",
 	})
 	rec := servePost(t, a.routes(), "/save", form)
 	if rec.Code != http.StatusOK {
@@ -32,21 +35,24 @@ func TestProjectNestedGitConventionRoundTrip(t *testing.T) {
 	if cfg.GitConvention.AutoDetection.Enabled {
 		t.Error("auto_detection.enabled = true, want false (companion + unchecked)")
 	}
-	if cfg.GitConvention.Custom.Pattern != "^chore: .+" {
-		t.Errorf("custom.pattern = %q, want ^chore: .+", cfg.GitConvention.Custom.Pattern)
+	if cfg.GitConvention.AutoDetection.SampleSize != 200 {
+		t.Errorf("sample_size = %d, want 200", cfg.GitConvention.AutoDetection.SampleSize)
+	}
+	if !cfg.GitConvention.Validation.EnforceOnPush {
+		t.Error("validation.enforce_on_push = false, want true (companion + checkbox)")
 	}
 }
 
 // TestProjectNestedRejectEchoesSubmittedValues covers the rejected-POST echo-back
 // path (applyNestedForm): when one field is invalid, the re-rendered form keeps ALL
-// submitted nested values visible (numbers, the custom pattern, the toggle states)
+// submitted nested values visible (numbers, sample_size, the toggle states)
 // alongside the per-field error. Exercises every applyNestedForm *Set branch.
 func TestProjectNestedRejectEchoesSubmittedValues(t *testing.T) {
 	t.Parallel()
 	root := seedNestedProject(t)
 	a := realApp(t, root)
 
-	// Submit all 6 nested fields, with min_coverage_per_commit invalid (200) to force reject.
+	// Submit the nested fields, with min_coverage_per_commit invalid (200) to force reject.
 	form := nestedSaveForm(map[string]string{
 		"quality.test_coverage_target":                       "95",
 		"quality.enforce_quality__present":                   "1",
@@ -55,7 +61,7 @@ func TestProjectNestedRejectEchoesSubmittedValues(t *testing.T) {
 		"git_convention.auto_detection.confidence_threshold": "0.33",
 		"git_convention.auto_detection.enabled__present":     "1",
 		"git_convention.auto_detection.enabled":              "1",
-		"git_convention.custom.pattern":                      "^docs: .+",
+		"git_convention.auto_detection.sample_size":          "175",
 	})
 	rec := servePost(t, a.routes(), "/save", form)
 	if rec.Code != http.StatusBadRequest {
@@ -64,10 +70,10 @@ func TestProjectNestedRejectEchoesSubmittedValues(t *testing.T) {
 	body := rec.Body.String()
 	// The valid submitted values must be echoed back into the widgets.
 	for _, want := range []string{
-		`value="95"`,        // coverage echoed
-		`value="0.33"`,      // confidence echoed
-		`value="^docs: .+"`, // custom pattern echoed
-		`value="200"`,       // the invalid value is also echoed (so the user sees what they typed)
+		`value="95"`,   // coverage echoed
+		`value="0.33"`, // confidence echoed
+		`value="175"`,  // sample_size echoed
+		`value="200"`,  // the invalid value is also echoed (so the user sees what they typed)
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("rejected re-render missing echoed value %q", want)

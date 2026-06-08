@@ -84,20 +84,34 @@ func TestProjectFieldsetRendersSelects(t *testing.T) {
 		}
 	}
 
-	// Canonical options present (value attributes).
+	// Canonical options present (value attributes). The `custom` engine is removed
+	// (REQ-WC9-003), so git_convention exposes only the 4-value enum.
 	wantOpts := []string{
 		`value="ddd"`, `value="tdd"`, // development_mode
-		`value="auto"`, `value="conventional-commits"`, `value="angular"`, `value="karma"`, `value="custom"`, // git_convention
+		`value="auto"`, `value="conventional-commits"`, `value="angular"`, `value="karma"`, // git_convention (4-value)
 	}
 	for _, opt := range wantOpts {
 		if !strings.Contains(body, opt) {
 			t.Errorf("rendered page missing canonical option %s", opt)
 		}
 	}
-	// Empty "(project default)" option present for both selects (at least 2 occurrences).
-	if strings.Count(body, `(project default)`) < 2 {
-		t.Errorf("expected an empty (project default) option for each project select, got %d occurrences",
-			strings.Count(body, `(project default)`))
+	// `custom` must NOT be offered as a git_convention option (engine removed).
+	// NOTE: the statusline preset select legitimately offers value="custom"
+	// (HARD-2, out of scope), so a file-wide Contains would false-match. Scope the
+	// assertion to the git_convention <select> region only.
+	gcSelectRe := regexp.MustCompile(`(?s)<select[^>]*id="git_convention".*?</select>`)
+	if gcSel := gcSelectRe.FindString(body); gcSel == "" {
+		t.Error("git_convention <select> not found in rendered page")
+	} else if strings.Contains(gcSel, `value="custom"`) {
+		t.Error("git_convention select must not offer the removed custom option")
+	}
+	// development_mode keeps the "(project default)" empty option; git_convention's
+	// empty option now reads "(unchanged)" (REQ-WC9-013).
+	if !strings.Contains(body, `(project default)`) {
+		t.Error("development_mode select missing its empty (project default) option")
+	}
+	if !strings.Contains(body, `(unchanged)`) {
+		t.Error("git_convention select missing its empty (unchanged) option")
 	}
 }
 

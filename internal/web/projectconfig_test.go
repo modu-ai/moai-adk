@@ -64,7 +64,7 @@ func TestValidateProjectConfig(t *testing.T) {
 		{"dev tdd, conv auto", "tdd", "auto", nil},
 		{"conv conventional-commits", "", "conventional-commits", nil},
 		{"conv karma", "", "karma", nil},
-		{"conv custom enum allowed", "", "custom", nil},
+		{"conv custom rejected (engine removed)", "", "custom", []string{"git_convention"}},
 		{"bogus dev only", "xyz", "angular", []string{"development_mode"}},
 		{"bogus conv only", "ddd", "gitflow", []string{"git_convention"}},
 		{"both bogus", "xyz", "gitflow", []string{"development_mode", "git_convention"}},

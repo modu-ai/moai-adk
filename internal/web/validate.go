@@ -54,7 +54,7 @@ var developmentModeCanonical = developmentModesFromModels()
 // (config.ValidConventions, which returns map-order); the order is fixed here to
 // match the pkg/models GitConventionConfig.Convention oneof SSOT for deterministic
 // rendering.
-var conventionCanonical = []string{"auto", "conventional-commits", "angular", "karma", "custom"}
+var conventionCanonical = []string{"auto", "conventional-commits", "angular", "karma"}
 
 // developmentModesFromModels converts models.ValidDevelopmentModes() (typed) into
 // a []string for the view-model option list, preserving the canonical order.
@@ -204,17 +204,18 @@ func validateProjectNestedConfig(convention string, form projectNestedForm) map[
 		}
 	}
 
-	// Build the git_convention section struct. The submitted convention scalar is
-	// threaded in so the export seam's custom-required cross-field rule
-	// (convention=="custom" && custom.pattern=="") can fire. confidence_threshold
-	// uses the existing [0.0,1.0] range rule.
-	if form.touchesGitConvention() || convention == "custom" {
+	// Build the git_convention section struct from the submitted nested deltas and
+	// run the export seam (reuses the existing confidence_threshold [0.0,1.0] +
+	// sample_size>=0 range rules — no new rule). The `custom` engine has been
+	// removed, so the convention scalar is validated against the 4-value enum via
+	// the seam; there is no custom-required cross-field rule.
+	if form.touchesGitConvention() || convention != "" {
 		gc := &models.GitConventionConfig{Convention: convention}
 		if form.ConfidenceSet {
 			gc.AutoDetection.ConfidenceThreshold = form.Confidence
 		}
-		if form.CustomPatternSet {
-			gc.Custom.Pattern = form.CustomPattern
+		if form.SampleSizeSet {
+			gc.AutoDetection.SampleSize = form.SampleSize
 		}
 		for _, e := range config.ValidateGitConventionSection(gc) {
 			errs[e.Field] = e.Message

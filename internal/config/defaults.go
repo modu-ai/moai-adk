@@ -464,15 +464,8 @@ func NewDefaultGitConventionConfig() models.GitConventionConfig {
 			Fallback:            DefaultGitConventionFallback,
 		},
 		Validation: models.ConventionValidationConfig{
-			Enabled:         true,
-			EnforceOnCommit: false,
-			EnforceOnPush:   false,
-			MaxLength:       DefaultGitConventionMaxLength,
-		},
-		Formatting: models.FormattingConfig{
-			ShowExamples:    true,
-			ShowSuggestions: true,
-			Verbose:         false,
+			EnforceOnPush: false,
+			MaxLength:     DefaultGitConventionMaxLength,
 		},
 	}
 }

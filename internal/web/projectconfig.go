@@ -39,8 +39,11 @@ type projectNestedForm struct {
 	AutoEnabled    bool
 	AutoEnabledSet bool // companion __present seen
 
-	CustomPattern    string
-	CustomPatternSet bool
+	SampleSize    int
+	SampleSizeSet bool
+
+	EnforceOnPush    bool
+	EnforceOnPushSet bool // companion __present seen
 
 	// ParseErrs maps the dot-path field name → a type-conversion guard message.
 	ParseErrs map[string]string
@@ -53,7 +56,7 @@ func (f projectNestedForm) touchesQuality() bool {
 
 // touchesGitConvention reports whether the form carries any git_convention nested field.
 func (f projectNestedForm) touchesGitConvention() bool {
-	return f.ConfidenceSet || f.AutoEnabledSet || f.CustomPatternSet
+	return f.ConfidenceSet || f.AutoEnabledSet || f.SampleSizeSet || f.EnforceOnPushSet
 }
 
 // parseProjectNestedForm reads the 6 curated nested fields from the POST form via
@@ -105,9 +108,19 @@ func parseProjectNestedForm(r *http.Request) projectNestedForm {
 		f.AutoEnabled = r.PostFormValue("git_convention.auto_detection.enabled") != ""
 	}
 
-	// git_convention.custom.pattern (string)
-	if raw := r.PostFormValue("git_convention.custom.pattern"); raw != "" {
-		f.CustomPattern, f.CustomPatternSet = raw, true
+	// git_convention.auto_detection.sample_size (int)
+	if raw := r.PostFormValue("git_convention.auto_detection.sample_size"); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil {
+			f.SampleSize, f.SampleSizeSet = n, true
+		} else {
+			f.ParseErrs["git_convention.auto_detection.sample_size"] = "must be an integer"
+		}
+	}
+
+	// git_convention.validation.enforce_on_push (bool via hidden companion)
+	if r.PostFormValue("git_convention.validation.enforce_on_push__present") != "" {
+		f.EnforceOnPushSet = true
+		f.EnforceOnPush = r.PostFormValue("git_convention.validation.enforce_on_push") != ""
 	}
 
 	return f
@@ -134,17 +147,18 @@ func readProjectConfig(projectRoot string) (devMode, convention string, err erro
 	return string(cfg.Quality.DevelopmentMode), cfg.GitConvention.Convention, nil
 }
 
-// projectNestedCurrent carries the persisted current values of the 6 curated
-// nested fields for GET echo-back (SPEC-WEB-CONSOLE-007 §E REQ-WC7-010). Int/float
+// projectNestedCurrent carries the persisted current values of the curated
+// nested fields for GET echo-back (REQ-WC7-010 + REQ-WC9-010). Int/float
 // are pre-formatted to strings for the numberField widget value= attribute; the
-// two bools drive the toggle checked state.
+// bools drive the toggle checked state.
 type projectNestedCurrent struct {
-	CoverageTarget      string
-	EnforceQuality      bool
-	MinCoverage         string
-	ConfidenceThreshold string
+	CoverageTarget       string
+	EnforceQuality       bool
+	MinCoverage          string
+	ConfidenceThreshold  string
 	AutoDetectionEnabled bool
-	CustomPattern       string
+	SampleSize           string
+	EnforceOnPush        bool
 }
 
 // readProjectNestedConfig is the read seam for the 6 curated nested fields
@@ -165,7 +179,8 @@ func readProjectNestedConfig(projectRoot string) (projectNestedCurrent, error) {
 		MinCoverage:          strconv.Itoa(cfg.Quality.TDDSettings.MinCoveragePerCommit),
 		ConfidenceThreshold:  strconv.FormatFloat(cfg.GitConvention.AutoDetection.ConfidenceThreshold, 'f', -1, 64),
 		AutoDetectionEnabled: cfg.GitConvention.AutoDetection.Enabled,
-		CustomPattern:        cfg.GitConvention.Custom.Pattern,
+		SampleSize:           strconv.Itoa(cfg.GitConvention.AutoDetection.SampleSize),
+		EnforceOnPush:        cfg.GitConvention.Validation.EnforceOnPush,
 	}, nil
 }
 
@@ -251,15 +266,18 @@ func writeProjectNestedConfig(projectRoot string, form projectNestedForm) error 
 	}
 
 	if form.touchesGitConvention() {
-		gc := cfg.GitConvention // whole-struct copy: AutoDetection/Validation/Formatting/Custom all ride through
+		gc := cfg.GitConvention // whole-struct copy: AutoDetection/Validation sub-structs all ride through
 		if form.ConfidenceSet {
 			gc.AutoDetection.ConfidenceThreshold = form.Confidence
 		}
 		if form.AutoEnabledSet {
 			gc.AutoDetection.Enabled = form.AutoEnabled
 		}
-		if form.CustomPatternSet {
-			gc.Custom.Pattern = form.CustomPattern
+		if form.SampleSizeSet {
+			gc.AutoDetection.SampleSize = form.SampleSize
+		}
+		if form.EnforceOnPushSet {
+			gc.Validation.EnforceOnPush = form.EnforceOnPush
 		}
 		if err := mgr.SetSection("git_convention", gc); err != nil {
 			return fmt.Errorf("set git_convention section: %w", err)

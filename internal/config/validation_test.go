@@ -476,7 +476,7 @@ func TestValidateGitConventionName(t *testing.T) {
 		{"conventional-commits is valid", "conventional-commits", false},
 		{"angular is valid", "angular", false},
 		{"karma is valid", "karma", false},
-		{"custom is valid", "custom", false},
+		{"custom is invalid (engine removed)", "custom", true},
 		{"empty is valid (defaults applied)", "", false},
 		{"invalid convention", "gitmoji", true},
 		{"uppercase is invalid", "AUTO", true},
@@ -488,10 +488,6 @@ func TestValidateGitConventionName(t *testing.T) {
 
 			cfg := NewDefaultConfig()
 			cfg.GitConvention.Convention = tt.conv
-			// When convention is "custom", pattern is required.
-			if tt.conv == "custom" {
-				cfg.GitConvention.Custom.Pattern = `^.+$`
-			}
 			loaded := map[string]bool{}
 
 			err := Validate(cfg, loaded)
@@ -534,36 +530,6 @@ func TestValidateGitConventionSampleSize(t *testing.T) {
 				t.Errorf("expected no error for SampleSize %d, got: %v", tt.value, err)
 			}
 		})
-	}
-}
-
-func TestValidateGitConventionCustomRequiresPattern(t *testing.T) {
-	t.Parallel()
-
-	cfg := NewDefaultConfig()
-	cfg.GitConvention.Convention = "custom"
-	cfg.GitConvention.Custom.Pattern = "" // missing pattern
-	loaded := map[string]bool{}
-
-	err := Validate(cfg, loaded)
-	if err == nil {
-		t.Fatal("expected error for custom convention without pattern")
-	}
-
-	var ve *ValidationErrors
-	if !errors.As(err, &ve) {
-		t.Fatalf("expected *ValidationErrors, got %T", err)
-	}
-
-	found := false
-	for _, e := range ve.Errors {
-		if e.Field == "git_convention.custom.pattern" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("expected validation error for field git_convention.custom.pattern")
 	}
 }
 
@@ -631,21 +597,20 @@ func TestValidateQualitySection(t *testing.T) {
 	})
 }
 
-// TestValidateGitConventionSection covers SPEC-WEB-CONSOLE-007 AC-WC7-006: the
-// exported ValidateGitConventionSection seam reuses the EXACT existing
-// git-convention rules (custom-required + confidence_threshold [0.0,1.0]) with the
-// existing messages — proving the seam forwards to validateGitConventionConfig and
-// adds no new rule (REQ-WC7-008, CRITICAL SCOPE CONSTRAINT).
+// TestValidateGitConventionSection covers the exported ValidateGitConventionSection
+// seam: it reuses the EXACT existing git-convention rules (convention 4-value enum +
+// confidence_threshold [0.0,1.0]) with the existing messages — proving the seam
+// forwards to validateGitConventionConfig and adds no new rule (REQ-WC7-008 CRITICAL
+// SCOPE CONSTRAINT, REQ-WC9-003 custom removal).
 func TestValidateGitConventionSection(t *testing.T) {
 	t.Parallel()
 
-	t.Run("custom without pattern reuses existing message", func(t *testing.T) {
+	t.Run("custom convention is rejected (engine removed)", func(t *testing.T) {
 		t.Parallel()
 		gc := &models.GitConventionConfig{Convention: "custom"}
-		gc.Custom.Pattern = ""
-		msg := findFieldMessage(ValidateGitConventionSection(gc), "git_convention.custom.pattern")
-		if msg != "pattern is required when convention is 'custom'" {
-			t.Errorf("custom-required message = %q, want existing rule message", msg)
+		msg := findFieldMessage(ValidateGitConventionSection(gc), "git_convention.convention")
+		if msg != "must be one of: auto, conventional-commits, angular, karma" {
+			t.Errorf("custom convention message = %q, want enum message", msg)
 		}
 	})
 
@@ -659,13 +624,12 @@ func TestValidateGitConventionSection(t *testing.T) {
 		}
 	})
 
-	t.Run("valid custom with pattern passes", func(t *testing.T) {
+	t.Run("valid 4-value convention passes", func(t *testing.T) {
 		t.Parallel()
-		gc := &models.GitConventionConfig{Convention: "custom"}
-		gc.Custom.Pattern = "^feat: .+"
+		gc := &models.GitConventionConfig{Convention: "angular"}
 		gc.AutoDetection.ConfidenceThreshold = 0.75
 		if errs := ValidateGitConventionSection(gc); len(errs) != 0 {
-			t.Errorf("valid custom should pass, got %v", errs)
+			t.Errorf("valid convention should pass, got %v", errs)
 		}
 	})
 }

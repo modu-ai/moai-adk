@@ -39,17 +39,17 @@ func seedNestedProject(t *testing.T) string {
 			"  lsp_quality_gates:\n" +
 			"    enabled: true\n",
 		// git_convention: editable nested (convention / auto_detection.confidence_threshold /
-		// auto_detection.enabled / custom.pattern) + NON-editable siblings
-		// (formatting.verbose, validation.max_length).
+		// auto_detection.enabled / auto_detection.sample_size / validation.enforce_on_push)
+		// + NON-editable sibling (validation.max_length) that must survive a single-field write.
 		"git-convention.yaml": "git_convention:\n" +
 			"  convention: angular\n" +
 			"  auto_detection:\n" +
 			"    enabled: true\n" +
 			"    confidence_threshold: 0.5\n" +
+			"    sample_size: 100\n" +
 			"  validation:\n" +
-			"    max_length: 72\n" +
-			"  formatting:\n" +
-			"    verbose: true\n",
+			"    enforce_on_push: false\n" +
+			"    max_length: 80\n",
 		// Out-of-scope sentinels (HARD-1/HARD-2 — must round-trip unchanged).
 		"workflow.yaml":     "workflow:\n  sentinel: DO_NOT_TOUCH\n",
 		"harness.yaml":      "harness:\n  sentinel: DO_NOT_TOUCH\n",
@@ -147,9 +147,10 @@ func TestProjectNestedSiblingPreserved(t *testing.T) {
 	}
 }
 
-// TestProjectNestedGitConventionSiblingPreserved covers AC-WC7-009 (REQ-WC7-005,
-// HARD-4): writing ONLY git_convention.auto_detection.confidence_threshold leaves
-// formatting.verbose + validation.max_length byte-identical.
+// TestProjectNestedGitConventionSiblingPreserved covers AC-WC7-009 + AC-WC9-015
+// (REQ-WC7-005, HARD-4): writing ONLY git_convention.auto_detection.confidence_threshold
+// leaves the retained siblings (validation.max_length, auto_detection.enabled/sample_size)
+// byte-identical.
 func TestProjectNestedGitConventionSiblingPreserved(t *testing.T) {
 	t.Parallel()
 	root := seedNestedProject(t)
@@ -164,15 +165,15 @@ func TestProjectNestedGitConventionSiblingPreserved(t *testing.T) {
 	if cfg.GitConvention.AutoDetection.ConfidenceThreshold != 0.9 {
 		t.Errorf("target confidence_threshold = %v, want 0.9", cfg.GitConvention.AutoDetection.ConfidenceThreshold)
 	}
-	if !cfg.GitConvention.Formatting.Verbose {
-		t.Error("SIBLING formatting.verbose = false, want true (preserved)")
+	if cfg.GitConvention.Validation.MaxLength != 80 {
+		t.Errorf("SIBLING validation.max_length = %d, want 80 (preserved)", cfg.GitConvention.Validation.MaxLength)
 	}
-	if cfg.GitConvention.Validation.MaxLength != 72 {
-		t.Errorf("SIBLING validation.max_length = %d, want 72 (preserved)", cfg.GitConvention.Validation.MaxLength)
-	}
-	// The unedited auto_detection.enabled (sibling within AutoDetection) preserved.
+	// The unedited auto_detection siblings (enabled, sample_size) preserved.
 	if !cfg.GitConvention.AutoDetection.Enabled {
 		t.Error("SIBLING auto_detection.enabled = false, want true (preserved)")
+	}
+	if cfg.GitConvention.AutoDetection.SampleSize != 100 {
+		t.Errorf("SIBLING auto_detection.sample_size = %d, want 100 (preserved)", cfg.GitConvention.AutoDetection.SampleSize)
 	}
 }
 
@@ -290,33 +291,29 @@ func TestProjectNestedOutOfRangeReject(t *testing.T) {
 	}
 }
 
-// TestProjectNestedCustomPatternRequired covers AC-WC7-014 (REQ-WC7-008, HARD-3):
-// git_convention.convention=custom + empty custom.pattern → 400, FieldErrors for
-// git_convention.custom.pattern, write 0.
-func TestProjectNestedCustomPatternRequired(t *testing.T) {
+// TestProjectNestedCustomConventionRejected covers AC-WC9-009 (REQ-WC9-003): the
+// `custom` engine is removed, so submitting git_convention=custom is rejected at the
+// 4-value enum validator (no custom.pattern concept) → 400, FieldErrors for
+// git_convention, write 0 (atomic reject leaves the persisted convention angular).
+func TestProjectNestedCustomConventionRejected(t *testing.T) {
 	t.Parallel()
 	root := seedNestedProject(t)
 	a := realApp(t, root)
 
-	// Set convention=custom (scalar) with NO custom.pattern submitted → required error.
+	// Set convention=custom (scalar) → enum-rejected (custom engine removed).
 	form := nestedSaveForm(map[string]string{"git_convention": "custom"})
 	rec := servePost(t, a.routes(), "/save", form)
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("custom-required status = %d, want 400; body: %s", rec.Code, rec.Body.String())
+		t.Fatalf("custom-rejected status = %d, want 400; body: %s", rec.Code, rec.Body.String())
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, "git_convention.custom.pattern") {
-		t.Error("response missing the custom.pattern field error")
-	}
-	// Templ HTML-escapes the apostrophe in 'custom' → &#39;, so assert the
-	// unambiguous reused-message prefix (the apostrophe form is incidental).
-	if !strings.Contains(body, "pattern is required when convention is") {
-		t.Error("response missing the reused custom-required message")
+	if !strings.Contains(body, "unrecognized git convention") {
+		t.Error("response missing the enum-reject message for convention=custom")
 	}
 	cfg := loadRawCfg(t, root)
 	// convention scalar must NOT be persisted (atomic reject leaves angular).
 	if cfg.GitConvention.Convention != "angular" {
-		t.Errorf("custom-required reject leaked convention = %q, want angular (no write)", cfg.GitConvention.Convention)
+		t.Errorf("custom-rejected leaked convention = %q, want angular (no write)", cfg.GitConvention.Convention)
 	}
 }
 

@@ -6,21 +6,19 @@ import (
 )
 
 // TestIsValidConvention verifies the exported convention predicate accepts each
-// of the 5 canonical values and rejects out-of-list values.
-// SPEC-WEB-CONSOLE-003 M1 (REQ-WC3-002): exposes the previously-unexported
-// validGitConventionNames map as a reusable predicate for the web/CLI layers,
-// avoiding a parallel/invented rule-set.
+// of the 4 canonical values and rejects out-of-list values. The `custom` engine
+// was removed (REQ-WC9-003), so `custom` is now rejected.
 func TestIsValidConvention(t *testing.T) {
 	t.Parallel()
 
-	canonical := []string{"auto", "conventional-commits", "angular", "karma", "custom"}
+	canonical := []string{"auto", "conventional-commits", "angular", "karma"}
 	for _, name := range canonical {
 		if !IsValidConvention(name) {
 			t.Errorf("IsValidConvention(%q) = false, want true (canonical value)", name)
 		}
 	}
 
-	bogus := []string{"gitflow", "xyz", "Conventional-Commits", "AUTO", " auto", "auto ", ""}
+	bogus := []string{"custom", "gitflow", "xyz", "Conventional-Commits", "AUTO", " auto", "auto ", ""}
 	for _, name := range bogus {
 		if IsValidConvention(name) {
 			t.Errorf("IsValidConvention(%q) = true, want false (non-canonical)", name)
@@ -28,13 +26,13 @@ func TestIsValidConvention(t *testing.T) {
 	}
 }
 
-// TestValidConventions verifies the exported list helper returns exactly the 5
-// canonical convention names (order-independent).
+// TestValidConventions verifies the exported list helper returns exactly the 4
+// canonical convention names (order-independent). `custom` was removed (REQ-WC9-003).
 func TestValidConventions(t *testing.T) {
 	t.Parallel()
 
 	got := ValidConventions()
-	want := []string{"angular", "auto", "conventional-commits", "custom", "karma"}
+	want := []string{"angular", "auto", "conventional-commits", "karma"}
 
 	gotSorted := append([]string(nil), got...)
 	sort.Strings(gotSorted)

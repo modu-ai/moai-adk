@@ -508,7 +508,6 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 					huh.NewOption("conventional-commits", "conventional-commits"),
 					huh.NewOption("angular", "angular"),
 					huh.NewOption("karma", "karma"),
-					huh.NewOption("custom", "custom"),
 				).
 				Value(&gitConvention),
 		).Title(t.DevelopmentModeTitle),
