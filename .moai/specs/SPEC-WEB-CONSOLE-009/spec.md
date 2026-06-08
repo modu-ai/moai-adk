@@ -1,8 +1,8 @@
 ---
 id: SPEC-WEB-CONSOLE-009
 title: "git_convention config redesign — drop custom engine, wire auto-detection + max_length, fix flat→nested schema (honest hybrid)"
-version: "0.1.0"
-status: in-progress
+version: "0.2.0"
+status: implemented
 created: 2026-06-07
 updated: 2026-06-08
 author: Goos Kim
