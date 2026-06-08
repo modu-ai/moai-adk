@@ -137,7 +137,7 @@ ground_truth_finding: git_strategy section not loaded by loader.go — wiring co
 
 ```yaml
 sync_complete_at: 2026-06-08
-sync_commit_sha: <pending-backfill-at-Mx>
+sync_commit_sha: 4e14233c2
 sync_status: audit-ready
 changelog_entry: added (### Added, immediately after SPEC-PREPUSH-WIRING-001)
 spec_status_transition: in-progress -> implemented
@@ -149,4 +149,14 @@ ground_truth_carryover: git_strategy section loader-unwired (3rd dead-config) ->
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-(populated at 4-phase close)
+```yaml
+mx_complete_at: 2026-06-08
+mx_commit_sha: <pending-backfill>
+mx_status: audit-ready
+spec_status_transition: implemented -> completed
+four_phase_close: "plan ec011109b -> run 093e14922 (evidence 60b0676db) -> sync 4e14233c2 -> Mx <this commit>"
+ac_final: 13/13 PASS
+plan_audit: "iter-1 0.84 PASS-WITH-DEBT -> iter-2 0.89 PASS (Tier S threshold 0.80, monotonic +0.05)"
+mx_tags: none added (Tier S bounded; the 2-helper seam has no high-fan-in / danger-zone target)
+followup_spec: SPEC-PREPUSH-LOADER-WIRING-001 (wire git_strategy section into loader.go - 3rd dead-config)
+```
