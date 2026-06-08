@@ -8,8 +8,8 @@
 | plan-audit (Phase 0.5 re-exec) | PASS-WITH-DEBT 0.87 (Tier L thresh 0.85, MP-1..4 PASS) | report: .moai/reports/plan-audit/SPEC-WEB-CONSOLE-009-2026-06-08.md | 2026-06-08 |
 | GATE-2 | APPROVED (run-phase entry + main-direct integration) | — | 2026-06-08 |
 | run | done | b50d80ac3 (M1-M8, 5 commits) | 2026-06-08 |
-| sync | pending | — | — |
-| Mx | pending | — | — |
+| sync | done | 790bc777e | 2026-06-08 |
+| Mx | done | (this Mx-phase close commit) | 2026-06-08 |
 
 ## §B. Phase 0.95 Mode Selection
 
@@ -75,6 +75,13 @@ M2/M3/M7 grouped: M1 struct trim cascaded compile failures across config/web/cli
 
 ## §E. Audit-Ready Signal
 
+### §E.2 Sync-phase Audit-Ready Signal
 - run-phase: COMPLETE (b50d80ac3). 26/26 AC GREEN, all 4 must-remain-green gates intact, all HARD-1..10 satisfied.
-- sync_commit_sha: _(populated at sync)_
-- mx_commit_sha: _(populated at Mx close)_
+- sync_commit_sha: `790bc777e`
+- sync deliverables: CHANGELOG.md [Unreleased] §Changed entry + spec.md status in-progress→implemented v0.2.0. No README / docs-site change (internal config redesign, no public API surface).
+
+### §E.5 Mx-phase Audit-Ready Signal
+- full repo `go test ./...` 0 FAIL; cross-platform host + GOOS=windows exit 0; golangci-lint 0 issues; `templ generate` drift-free.
+- 4-phase lifecycle: plan (9968e7e71 / 9c20c1e43 / ca9da63e8) → run (b50d80ac3) → sync (790bc777e) → Mx (this close commit).
+- status implemented→completed.
+- mx_commit_sha: _(backfilled post-close)_
