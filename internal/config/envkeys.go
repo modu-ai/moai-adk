@@ -49,6 +49,12 @@ const (
 	// EnvEnforceOnPush overrides the pre-push convention enforcement flag.
 	EnvEnforceOnPush = "MOAI_ENFORCE_ON_PUSH"
 
+	// EnvPrePushMode overrides the per-mode pre-push severity dial
+	// (skip / warn / enforce). It sits BELOW the enforce_on_push gate: setting
+	// this value does NOT enable enforcement; the gate remains governed solely
+	// by EnvEnforceOnPush / git_convention.validation.enforce_on_push.
+	EnvPrePushMode = "MOAI_PRE_PUSH"
+
 	// EnvUpdateSource overrides the update source ("github" or "local").
 	EnvUpdateSource = "MOAI_UPDATE_SOURCE"
 
