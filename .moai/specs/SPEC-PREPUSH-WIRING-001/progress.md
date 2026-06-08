@@ -106,4 +106,19 @@ m1_to_mN_commit_strategy: single-cohesive   # Tier S, all milestones in one M1 c
 
 ### §E.5 Mx-phase Audit-Ready Signal
 
-_Not yet entered — populated at Mx-phase close (status implemented → completed)._
+- **Phase**: Mx (orchestrator-direct 4-phase close; `Authored-By-Agent` omitted → silent SKIP).
+- **Status transition**: implemented → completed (spec.md frontmatter status + updated).
+- **4-phase lifecycle**: plan `b100e7818` → run `154cf9231` (+ backfill `7affe1fd0`, AC-005 fix
+  `31359fb5b`) → sync `8ff297455` → Mx (this commit).
+- **Final verification**: 9/9 AC PASS · full suite (`internal/cli` + `internal/template`) green ·
+  golangci-lint 0 · Go engine `hook_pre_push.go` 0-diff · 3-way hook mirror byte-identical ·
+  `enforce_on_push` template default `false` preserved (opt-in, backward-compatible no-op).
+
+```yaml
+mx_complete_at: 2026-06-08
+mx_commit_sha: <backfill — populated by the follow-up backfill commit>
+spec_status: completed
+four_phase_close: true
+ac_pass_count: 9
+ac_fail_count: 0
+```
