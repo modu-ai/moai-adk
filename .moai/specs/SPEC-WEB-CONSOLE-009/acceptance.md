@@ -62,9 +62,10 @@
 
 - **AC-WC9-008** (REQ-WC9-008, GCM-4/5/6, GCR-3) — **Fix A**: `LoadConvention`이 `AutoDetectionConfig`를 honor(enabled gate / sample_size→Detect / confidence_threshold gate / configured fallback).
   ```bash
-  go test ./internal/git/convention/ -run 'TestLoadConvention.*AutoDetect|TestLoadConvention.*SampleSize|TestLoadConvention.*Confidence|TestLoadConvention.*Fallback' -count=1
+  go test ./internal/git/convention/ -run 'TestManager_LoadConvention_Auto' -v -count=1 2>&1 | grep -qE '^--- PASS: TestManager_LoadConvention_AutoDetectDisabled' && \
+  go test ./internal/git/convention/ -run 'TestManager_LoadConvention_Auto(SampleSize|ConfidenceFallback|FallbackConfigured)' -count=1
   ```
-  단언: `enabled=false`면 Detect 미호출; `sample_size`가 Detect에 전달(100 하드코딩 아님); confidence < threshold면 fallback; fallback이 configured 값. 유일 production caller(hook_pre_push.go:54) 새 시그니처로 컴파일.
+  단언: `enabled=false`면 Detect 미호출; `sample_size`가 Detect에 전달(100 하드코딩 아님); confidence < threshold면 fallback; fallback이 configured 값. 유일 production caller(hook_pre_push.go:54) 새 시그니처로 컴파일. (audit-3 fix: test 패턴을 실재 `TestManager_LoadConvention_Auto*`로 교정 — 기존 `TestLoadConvention.*`는 `Manager_` infix 미스매치로 "[no tests to run]" vacuous PASS였음(D3 동류). `-v | grep -q '^--- PASS:'`로 non-vacuous 보강.)
 
 - **AC-WC9-009** (REQ-WC9-003, GCR-2) — validator가 `custom`을 거부 + custom-required block 부재.
   ```bash
