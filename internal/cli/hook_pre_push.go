@@ -48,12 +48,15 @@ func runPrePush(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Load convention configuration.
+	// Load convention configuration, honoring the auto-detection knobs (Fix A)
+	// and forwarding the configured max_length (Fix B).
 	convName := resolveConventionName()
+	opts, maxLength := resolveAutoDetectOptions()
 	mgr := convention.NewManager(repoPath)
-	if err := mgr.LoadConvention(convName); err != nil {
+	if err := mgr.LoadConvention(convName, opts); err != nil {
 		return fmt.Errorf("pre-push: load convention: %w", err)
 	}
+	mgr.SetMaxLength(maxLength)
 
 	// Read commit messages from stdin (one per line).
 	input, err := readStdinLines()
@@ -114,6 +117,36 @@ func resolveConventionName() string {
 	}
 
 	return "auto"
+}
+
+// resolveAutoDetectOptions builds the convention.AutoDetectOptions (Fix A) and the
+// forwarded max_length (Fix B) from the loaded git_convention config. When config
+// is unavailable it returns the compiled-in defaults (auto-detection enabled,
+// sample_size 100, threshold 0.5, fallback conventional-commits, max_length 100) so
+// the pre-push path behaves identically to the prior hardcoded behavior.
+func resolveAutoDetectOptions() (convention.AutoDetectOptions, int) {
+	opts := convention.AutoDetectOptions{
+		Enabled:             true,
+		SampleSize:          config.DefaultGitConventionSampleSize,
+		ConfidenceThreshold: config.DefaultGitConventionConfidenceThreshold,
+		Fallback:            config.DefaultGitConventionFallback,
+	}
+	maxLength := config.DefaultGitConventionMaxLength
+
+	if deps != nil && deps.Config != nil {
+		if cfg := deps.Config.Get(); cfg != nil {
+			ad := cfg.GitConvention.AutoDetection
+			opts = convention.AutoDetectOptions{
+				Enabled:             ad.Enabled,
+				SampleSize:          ad.SampleSize,
+				ConfidenceThreshold: ad.ConfidenceThreshold,
+				Fallback:            ad.Fallback,
+			}
+			maxLength = cfg.GitConvention.Validation.MaxLength
+		}
+	}
+
+	return opts, maxLength
 }
 
 // isEnforceOnPushEnabled checks whether convention enforcement is enabled.
