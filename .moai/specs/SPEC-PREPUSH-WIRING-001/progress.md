@@ -88,6 +88,22 @@ total_run_phase_files: 6
 m1_to_mN_commit_strategy: single-cohesive   # Tier S, all milestones in one M1 commit (draft→in-progress)
 ```
 
-## §E.4 / §E.5 (sync / Mx phases)
+## §E.4 Sync-phase Audit-Ready Signal
 
-_Not yet entered — populated by manager-docs (sync) and orchestrator/manager-docs (Mx)._
+- **Phase**: sync (orchestrator-direct — bounded Tier S internal-mechanism SPEC; manager-docs
+  B12 CHANGELOG-hallucination / amend-chicken-egg risk avoided since orchestrator read all
+  implementation files directly; `Authored-By-Agent` trailer omitted → OwnershipTransitionRule
+  silent SKIP per L_orchestrator_direct_sync).
+- **Status transition**: in-progress → implemented (spec.md frontmatter status + updated).
+- **CHANGELOG**: 1 entry added under `[Unreleased] ### Added` (B12 dedup: `grep -c` was 0
+  before insert). README / docs-site: not applicable (internal git-hook wiring, no documented
+  user-facing API surface changed; behavior is opt-in via existing `enforce_on_push`).
+- **Independent verification (orchestrator 7-item batch on integrated feat tree)**:
+  byte-parity test PASS · root `diff` byte-identical · full suite (`internal/cli` +
+  `internal/template`) green · golangci-lint 0 · Go engine 0-diff · enforce_on_push false ·
+  windows cross-build exit 0. AC-005 while-read grep idiom corrected (read -r tolerance,
+  commit 31359fb5b) — implementation was correct, AC idiom was the false-negative.
+
+### §E.5 Mx-phase Audit-Ready Signal
+
+_Not yet entered — populated at Mx-phase close (status implemented → completed)._
