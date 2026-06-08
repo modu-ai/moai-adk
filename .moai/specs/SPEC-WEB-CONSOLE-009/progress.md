@@ -9,7 +9,7 @@
 | GATE-2 | APPROVED (run-phase entry + main-direct integration) | — | 2026-06-08 |
 | run | done | b50d80ac3 (M1-M8, 5 commits) | 2026-06-08 |
 | sync | done | 790bc777e | 2026-06-08 |
-| Mx | done | (this Mx-phase close commit) | 2026-06-08 |
+| Mx | done | dcc409aba | 2026-06-08 |
 
 ## §B. Phase 0.95 Mode Selection
 
@@ -84,4 +84,4 @@ M2/M3/M7 grouped: M1 struct trim cascaded compile failures across config/web/cli
 - full repo `go test ./...` 0 FAIL; cross-platform host + GOOS=windows exit 0; golangci-lint 0 issues; `templ generate` drift-free.
 - 4-phase lifecycle: plan (9968e7e71 / 9c20c1e43 / ca9da63e8) → run (b50d80ac3) → sync (790bc777e) → Mx (this close commit).
 - status implemented→completed.
-- mx_commit_sha: _(backfilled post-close)_
+- mx_commit_sha: `dcc409aba`
