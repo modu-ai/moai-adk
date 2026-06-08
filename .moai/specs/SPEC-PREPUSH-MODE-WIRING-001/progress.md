@@ -135,7 +135,17 @@ ground_truth_finding: git_strategy section not loaded by loader.go — wiring co
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-(populated by manager-docs)
+```yaml
+sync_complete_at: 2026-06-08
+sync_commit_sha: <pending-backfill-at-Mx>
+sync_status: audit-ready
+changelog_entry: added (### Added, immediately after SPEC-PREPUSH-WIRING-001)
+spec_status_transition: in-progress -> implemented
+version_bump: 0.1.0 -> 0.2.0
+readme_change: none (internal CLI behavior; git_strategy YAML not yet loader-wired -> advertising would mislead)
+sync_method: orchestrator-direct (Tier S bounded + active-race avoidance; in-progress->implemented Authored-By-Agent trailer omitted -> OwnershipTransitionRule silent SKIP)
+ground_truth_carryover: git_strategy section loader-unwired (3rd dead-config) -> recommended follow-up SPEC-PREPUSH-LOADER-WIRING-001
+```
 
 ## §E.5 Mx-phase Audit-Ready Signal
 

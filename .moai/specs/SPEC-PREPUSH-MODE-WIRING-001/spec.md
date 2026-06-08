@@ -1,8 +1,8 @@
 ---
 id: SPEC-PREPUSH-MODE-WIRING-001
 title: "Wire dormant git_strategy.<mode>.hooks.pre_push severity into the pre-push runtime"
-version: "0.1.0"
-status: in-progress
+version: "0.2.0"
+status: implemented
 created: 2026-06-08
 updated: 2026-06-08
 author: GOOS
