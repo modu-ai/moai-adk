@@ -100,9 +100,12 @@ grep -nE "git log .*(--format=%s|--pretty=format:%s|--format='%s')" \
 **Then** a `while read` ref-update loop reading the four git-supplied fields is present.
 
 ```bash
-grep -nE 'while[[:space:]]+read[[:space:]]+[a-z_]+[[:space:]]+[a-z_]+[[:space:]]+[a-z_]+[[:space:]]+[a-z_]+' \
+grep -nE 'while[[:space:]]+read[[:space:]]+(-r[[:space:]]+)?[a-z_]+[[:space:]]+[a-z_]+[[:space:]]+[a-z_]+[[:space:]]+[a-z_]+' \
   internal/template/templates/.git_hooks/pre-push
-# Expected: 1 match (the `while read local_ref local_oid remote_ref remote_oid` loop).
+# Expected: 1 match (the `while read -r local_ref local_oid remote_ref remote_oid` loop).
+# The optional `(-r[[:space:]]+)?` group tolerates the shellcheck-recommended `read -r` flag;
+# without it the regex false-negatives on the correct `read -r ...` idiom (found at run-phase
+# independent verification — the implementation correctly uses `read -r`).
 ```
 
 ---
