@@ -9,6 +9,11 @@ if [ "${SKIP_MOAI_PREPUSH:-0}" = "1" ]; then
     exit 0
 fi
 
+# Capture git's ref-update stdin once, before any later step consumes it. git
+# passes lines of "<local ref> <local oid> <remote ref> <remote oid>"; cat exits
+# 0 on empty input, so this is safe under "set -eu".
+REFS="$(cat)"
+
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 LOG_DIR="$REPO_ROOT/.moai/logs"
 LOG_FILE="$LOG_DIR/prepush-bypass.log"
@@ -36,6 +41,31 @@ if [ "$OUTCOME" = "fail" ]; then
     printf '[pre-push] Hint: make fmt && make lint && make test\n' >&2
     printf '[pre-push] Override (logged on next invocation): SKIP_MOAI_PREPUSH=1 git push\n' >&2
     exit "$EXIT_CODE"
+fi
+
+# Commit-message convention validation. Runs only after ci-local passes (the
+# fail branch above exits first). Skipped when moai is not on PATH so projects
+# without moai installed are unaffected. The convention engine self-gates on its
+# own enforce_on_push config, so this is a no-op unless enforcement is enabled.
+if command -v moai >/dev/null 2>&1; then
+    ZERO="0000000000000000000000000000000000000000"
+    SUBJECTS="$(
+        printf '%s\n' "$REFS" | while read -r local_ref local_oid remote_ref remote_oid; do
+            [ -z "$local_oid" ] && continue
+            if [ "$local_oid" = "$ZERO" ]; then
+                # Branch deletion: nothing is being pushed for this ref.
+                continue
+            elif [ "$remote_oid" = "$ZERO" ]; then
+                # New remote ref: enumerate commits not already on any remote.
+                git log --format=%s "$local_oid" --not --remotes
+            else
+                git log --format=%s "$remote_oid".."$local_oid"
+            fi
+        done
+    )"
+    if [ -n "$SUBJECTS" ]; then
+        printf '%s\n' "$SUBJECTS" | moai hook pre-push
+    fi
 fi
 
 exit 0

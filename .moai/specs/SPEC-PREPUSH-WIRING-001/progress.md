@@ -1,6 +1,6 @@
 # Progress — SPEC-PREPUSH-WIRING-001
 
-**Tier**: S (minimal) · **cycle_type**: tdd · **status**: draft
+**Tier**: S (minimal) · **cycle_type**: tdd · **status**: in-progress
 
 ## §F.1 Plan-phase Audit-Ready Signal
 
@@ -34,11 +34,60 @@
 
 | Milestone | Status | Notes |
 |-----------|--------|-------|
-| M1 (RED) | pending | Extend `TestInstallPrePushHook_FreshRepo` wantStrings + placement RED test |
-| M2 (GREEN — template) | pending | Append gated convention block (Template-First) |
-| M3 (GREEN — mirrors) | pending | Mirror constant + root copy; `make build` |
-| M4 (REFACTOR + verify) | pending | §E self-verification gate full pass |
+| M1 (RED) | completed | Extended `TestInstallPrePushHook_FreshRepo` wantStrings (+ `moai hook pre-push`) and added `TestPrePushHookConventionBlockPlacement`; both confirmed RED before the block existed |
+| M2 (GREEN — template) | completed | Appended gated convention block to the distributed template (Template-First); stdin captured top, translation loop after ci-local fail-check, `command -v moai` guard |
+| M3 (GREEN — mirrors) | completed | Mirrored byte-identical into `prePushHookContent` constant + root `.git_hooks/pre-push`; `make build` succeeded (go:embed all:templates — no hand-edited generated artifact) |
+| M4 (REFACTOR + verify) | completed | §E self-verification gate full pass; no Go engine change |
 
-## §F.2 / §E.* (run / sync / Mx phases)
+## §F.2 Run-phase Audit-Ready Signal
 
-_Not yet entered — populated by manager-develop (run) and manager-docs (sync/Mx)._
+- **Phase**: run
+- **Authored-By-Agent**: manager-develop
+- **cycle_type**: tdd (RED-GREEN-REFACTOR)
+- **Status transition**: draft → in-progress (M1 commit; spec.md + progress.md frontmatter only)
+- **Files modified (run-phase scope)**:
+  - `internal/template/templates/.git_hooks/pre-push` (template — convention block appended)
+  - `internal/cli/hook_install.go` (`prePushHookContent` constant — byte-identical mirror)
+  - `.git_hooks/pre-push` (root dev-repo copy — byte-identical mirror)
+  - `internal/cli/hook_install_test.go` (RED test: wantStrings + placement test)
+  - `.moai/specs/SPEC-PREPUSH-WIRING-001/{spec.md,progress.md}` (frontmatter status + this signal)
+- **Go engine UNCHANGED**: `internal/cli/hook_pre_push.go` not modified (verified — `runPrePush`, `isEnforceOnPushEnabled`, `readStdinLines`, `resolveAutoDetectOptions` all intact).
+- **enforce_on_push template default**: stays `false` (out of scope — not flipped).
+
+### §E.2 Run-phase Evidence
+
+| AC | Status | Verification | Actual |
+|----|--------|--------------|--------|
+| AC-PPW-001 | PASS | `grep 'moai hook pre-push' tpl \| grep -v '#'` + ci-local grep | invocation line 67; `make -C "$REPO_ROOT" -s ci-local` line 24 retained |
+| AC-PPW-002 | PASS | invocation-line < final-exit-line | invocation(67) < final exit(71) |
+| AC-PPW-003 | PASS | `grep 'command -v moai'` | guard at line 50 |
+| AC-PPW-004 | PASS | enforce_on_push false + `func isEnforceOnPushEnabled` present | git-convention.yaml:23 false; hook_pre_push.go:154 intact |
+| AC-PPW-005 | PASS | `git log --format=%s` + 4-field `while read` | git-log lines 60/62; while-read line 53 |
+| AC-PPW-006 | PASS | zero-SHA sentinel + `--not --remotes` | ZERO line 51; `--not --remotes` line 60 |
+| AC-PPW-007 | PASS | zero-SHA sentinel + `continue` | continue lines 54/57 (Tier S presence-level debt per plan-auditor iter-1 D2) |
+| AC-PPW-008 | PASS | stdin-capture-line < ci-local-line | capture(15) < ci-local(24) |
+| AC-PPW-009 | PASS | byte-parity test + root diff + install test + build+suite | `TestPrePushTemplateMatchesConstant` ok; ROOT_BYTE_IDENTICAL; `TestInstallPrePushHook_FreshRepo` + `TestPrePushHookConventionBlockPlacement` PASS; build+suite green |
+
+### §E.3 Run-phase Audit-Ready Signal
+
+```yaml
+run_complete_at: 2026-06-08
+run_commit_sha: <backfill-pending>
+run_status: audit-ready
+ac_pass_count: 9
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # runPrePush Go engine + enforce_on_push default untouched
+new_warnings_or_lints_introduced: 0   # golangci-lint ./internal/cli/... → 0 issues
+cross_platform_build:
+  host: exit 0
+  windows: exit 0   # GOOS=windows GOARCH=amd64 go build ./...
+byte_parity:
+  template_constant: PASS   # TestPrePushTemplateMatchesConstant
+  root_template: PASS       # diff empty
+total_run_phase_files: 6
+m1_to_mN_commit_strategy: single-cohesive   # Tier S, all milestones in one M1 commit (draft→in-progress)
+```
+
+## §E.4 / §E.5 (sync / Mx phases)
+
+_Not yet entered — populated by manager-docs (sync) and orchestrator/manager-docs (Mx)._

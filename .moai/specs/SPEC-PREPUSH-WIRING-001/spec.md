@@ -2,7 +2,7 @@
 id: SPEC-PREPUSH-WIRING-001
 title: "Wire dormant pre-push convention engine into the distributed git hook"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-08
 updated: 2026-06-08
 author: GOOS

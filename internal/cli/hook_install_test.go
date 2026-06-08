@@ -45,11 +45,37 @@ func TestInstallPrePushHook_FreshRepo(t *testing.T) {
 	wantStrings := []string{
 		moaiPrePushMarker,
 		"ci-local",
+		// Wired convention engine invocation (SPEC-PREPUSH-WIRING-001).
+		"moai hook pre-push",
 	}
 	for _, want := range wantStrings {
 		if !strings.Contains(string(content), want) {
 			t.Errorf("hook content missing %q\ncontent:\n%s", want, content)
 		}
+	}
+}
+
+// TestPrePushHookConventionBlockPlacement verifies the wired convention block
+// invokes `moai hook pre-push` BEFORE the final `exit 0` (not dead code after
+// it) and is guarded by `command -v moai` (SPEC-PREPUSH-WIRING-001, REQ-PPW-002/003).
+func TestPrePushHookConventionBlockPlacement(t *testing.T) {
+	invIdx := strings.Index(prePushHookContent, "moai hook pre-push")
+	if invIdx < 0 {
+		t.Fatalf("prePushHookContent missing 'moai hook pre-push' invocation")
+	}
+
+	// The final `exit 0` is the last line; locate it via the line-anchored form.
+	finIdx := strings.LastIndex(prePushHookContent, "\nexit 0\n")
+	if finIdx < 0 {
+		t.Fatalf("prePushHookContent missing final 'exit 0'")
+	}
+
+	if invIdx >= finIdx {
+		t.Errorf("convention invocation (idx %d) must appear before final exit 0 (idx %d); appending after exit 0 is dead code", invIdx, finIdx)
+	}
+
+	if !strings.Contains(prePushHookContent, "command -v moai") {
+		t.Errorf("convention block must be guarded by 'command -v moai' for non-moai project neutrality")
 	}
 }
 
