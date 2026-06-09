@@ -69,10 +69,10 @@ chain_status: PREPUSH dead-config chain 3/3 closed end-to-end
 
 ```yaml
 mx_complete_at: 2026-06-10
-mx_commit_sha: <pending-backfill>
+mx_commit_sha: 5c0757649
 mx_status: audit-ready
 spec_status_transition: implemented -> completed
-four_phase_close: "plan d033e1686 -> run 7ca0b078d (evidence a79c94f79) -> sync cd35b45ab -> Mx <this commit>"
+four_phase_close: "plan d033e1686 -> run 7ca0b078d (evidence a79c94f79) -> sync cd35b45ab -> Mx 5c0757649"
 ac_final: 8/8 PASS + 2 edge cases
 plan_audit: "iter-1 0.88 PASS -> iter-2 0.92 PASS (Tier S threshold 0.80, monotonic +0.04)"
 mx_tags: none added (Tier S bounded; loader mirror has no high-fan-in / danger-zone target)
