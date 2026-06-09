@@ -55,6 +55,9 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load git convention section
 	l.loadGitConventionSection(sectionsDir, cfg)
 
+	// Load git strategy section
+	l.loadGitStrategySection(sectionsDir, cfg)
+
 	// Load LLM section
 	l.loadLLMSection(sectionsDir, cfg)
 
@@ -157,6 +160,22 @@ func (l *Loader) loadGitConventionSection(dir string, cfg *Config) {
 	if loaded {
 		cfg.GitConvention = wrapper.GitConvention
 		l.loadedSections["git_convention"] = true
+	}
+}
+
+// loadGitStrategySection loads the git strategy configuration from git-strategy.yaml.
+// The wrapper is seeded with the populated defaults (cfg.GitStrategy) so that yaml
+// keys omitted by the user retain their compiled defaults (partial-override contract).
+func (l *Loader) loadGitStrategySection(dir string, cfg *Config) {
+	wrapper := &gitStrategyFileWrapper{GitStrategy: cfg.GitStrategy}
+	loaded, err := loadYAMLFile(dir, "git-strategy.yaml", wrapper)
+	if err != nil {
+		slog.Warn("failed to load git strategy config, using defaults", "error", err)
+		return
+	}
+	if loaded {
+		cfg.GitStrategy = wrapper.GitStrategy
+		l.loadedSections["git_strategy"] = true
 	}
 }
 

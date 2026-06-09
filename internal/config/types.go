@@ -1073,6 +1073,13 @@ type gitConventionFileWrapper struct {
 	GitConvention models.GitConventionConfig `yaml:"git_convention"`
 }
 
+// gitStrategyFileWrapper handles the git-strategy.yaml section file. The wrapped
+// type is the local-package GitStrategyConfig (NOT models.*), matching the
+// Config.GitStrategy field binding.
+type gitStrategyFileWrapper struct {
+	GitStrategy GitStrategyConfig `yaml:"git_strategy"`
+}
+
 // llmFileWrapper handles the llm.yaml section file.
 type llmFileWrapper struct {
 	LLM LLMConfig `yaml:"llm"`
