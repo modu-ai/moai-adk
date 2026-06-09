@@ -9,8 +9,8 @@
 |-------|--------|-----------|-------|
 | Plan  | complete | d033e1686 | spec.md + plan.md + acceptance.md + progress.md authored |
 | Run   | complete | 7ca0b078d | M1 wrapper → M2 loader+wired call → M3 tests → M4 full-suite reconcile (L1 worktree cherry-pick) |
-| Sync  | complete | _(this commit)_ | CHANGELOG ### Added + status → implemented + v0.2.0 |
-| Mx    | pending  | _(pending)_ | status → completed + 4-phase close |
+| Sync  | complete | cd35b45ab | CHANGELOG ### Added + status → implemented + v0.2.0 |
+| Mx    | complete | _(this commit)_ | status → completed + 4-phase close |
 
 ## Milestone Status (run-phase)
 
@@ -55,7 +55,7 @@ d3_regression: no genuine regression (no existing test routes git-strategy.yaml 
 
 ```yaml
 sync_complete_at: 2026-06-10
-sync_commit_sha: <pending-backfill-at-Mx>
+sync_commit_sha: cd35b45ab
 sync_status: audit-ready
 changelog_entry: added (### Added, after SPEC-PREPUSH-MODE-WIRING-001)
 spec_status_transition: in-progress -> implemented
@@ -67,9 +67,17 @@ chain_status: PREPUSH dead-config chain 3/3 closed end-to-end
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_(populated at Mx-phase close)_
-
-- mx_commit_sha: _(pending)_
+```yaml
+mx_complete_at: 2026-06-10
+mx_commit_sha: <pending-backfill>
+mx_status: audit-ready
+spec_status_transition: implemented -> completed
+four_phase_close: "plan d033e1686 -> run 7ca0b078d (evidence a79c94f79) -> sync cd35b45ab -> Mx <this commit>"
+ac_final: 8/8 PASS + 2 edge cases
+plan_audit: "iter-1 0.88 PASS -> iter-2 0.92 PASS (Tier S threshold 0.80, monotonic +0.04)"
+mx_tags: none added (Tier S bounded; loader mirror has no high-fan-in / danger-zone target)
+chain_terminal: PREPUSH dead-config chain 3/3 closed end-to-end (WIRING-001 / MODE-WIRING-001 / LOADER-WIRING-001)
+```
 
 ## Notes / Open Questions
 

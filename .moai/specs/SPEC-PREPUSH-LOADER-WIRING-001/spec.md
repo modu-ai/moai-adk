@@ -2,7 +2,7 @@
 id: SPEC-PREPUSH-LOADER-WIRING-001
 title: "Wire git_strategy config section into the loader chain (READ path)"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-06-08
 updated: 2026-06-10
 author: manager-spec
