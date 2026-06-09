@@ -9,7 +9,7 @@
 |-------|--------|-----------|-------|
 | Plan  | complete | d033e1686 | spec.md + plan.md + acceptance.md + progress.md authored |
 | Run   | complete | 7ca0b078d | M1 wrapper → M2 loader+wired call → M3 tests → M4 full-suite reconcile (L1 worktree cherry-pick) |
-| Sync  | pending  | _(pending)_ | CHANGELOG + status → implemented |
+| Sync  | complete | _(this commit)_ | CHANGELOG ### Added + status → implemented + v0.2.0 |
 | Mx    | pending  | _(pending)_ | status → completed + 4-phase close |
 
 ## Milestone Status (run-phase)
@@ -53,9 +53,17 @@ d3_regression: no genuine regression (no existing test routes git-strategy.yaml 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_(populated by manager-docs at sync-phase completion)_
-
-- sync_commit_sha: _(pending)_
+```yaml
+sync_complete_at: 2026-06-10
+sync_commit_sha: <pending-backfill-at-Mx>
+sync_status: audit-ready
+changelog_entry: added (### Added, after SPEC-PREPUSH-MODE-WIRING-001)
+spec_status_transition: in-progress -> implemented
+version_bump: 0.1.0 -> 0.2.0
+readme_change: none (internal config-loader wiring; no new user-facing API surface)
+sync_method: orchestrator-direct (Tier S bounded; in-progress->implemented Authored-By-Agent trailer omitted -> OwnershipTransitionRule silent SKIP)
+chain_status: PREPUSH dead-config chain 3/3 closed end-to-end
+```
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
