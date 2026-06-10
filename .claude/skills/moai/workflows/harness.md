@@ -133,7 +133,7 @@ Before executing any verb, verify:
 
 Operations:
 
-0. **Invoke classifier** (SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001): run `moai hook harness-classify 2>&1` and capture stderr + exit code:
+0. **Invoke classifier** (per the harness classifier wiring policy): run `moai hook harness-classify 2>&1` and capture stderr + exit code:
    - On exit 0 (success): render the classifier summary line (e.g., `harness-classify: N patterns → M promotions written`) above the tier distribution table.
    - On exit 1 (classifier error): render an error annotation block (`> ⚠ classifier error: <stderr>`) above the tier distribution table, then CONTINUE rendering the remaining sections (fail-open per REQ-HCW-003 — do NOT abort the status command).
    - The classifier is gated by `learning.enabled` in `.moai/config/sections/harness.yaml`; when disabled, it is a complete no-op (REQ-HCW-004) and tier-promotions.jsonl is left untouched.

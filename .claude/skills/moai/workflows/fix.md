@@ -317,5 +317,5 @@ Workflow audit 2026-05-16 (F-005) 정적 routing 명시:
 ---
 
 Version: 2.3.0
-Updated: 2026-05-22 (consolidated CI watch + autofix references to moai-workflow-ci-loop per SPEC-V3R6-SKILL-CONSOLIDATE-001).
+Updated: consolidated CI watch + autofix references to moai-workflow-ci-loop per the skill consolidation policy.
 Previous: 2.2.0 (2026-03-02) — added 16-language LSP/linter tables and structured error output normalization for language-agnostic fix agents.

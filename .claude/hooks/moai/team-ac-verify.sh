@@ -1,9 +1,7 @@
 #!/bin/bash
 # Hook: team-ac-verify
-# Purpose: Team-mode AC verification (TaskCompleted event); dormant by default per REQ-ATR-013 capability gate
+# Purpose: Team-mode AC verification (TaskCompleted event); dormant by default unless team mode is enabled
 # Trigger: TaskCompleted event when team.enabled: true in workflow.yaml
-# Origin: SPEC-V3R6-AGENT-TEAM-REBUILD-001 M4 (2026-05-25)
-# REQs: REQ-ATR-013 (capability gate); REQ-ATR-009 (hook architecture)
 #
 # Dormant behavior: this hook exits 0 immediately unless workflow.yaml declares
 # team.enabled: true. This avoids overhead in solo-mode sessions.
@@ -23,7 +21,7 @@ if [ "$1" = "--skip-hook" ]; then
     exit 0
 fi
 
-# Dormant capability gate (REQ-ATR-013)
+# Dormant capability gate (team-mode opt-in)
 WORKFLOW_CONFIG="${CLAUDE_PROJECT_DIR:-$PWD}/.moai/config/sections/workflow.yaml"
 if [ ! -f "$WORKFLOW_CONFIG" ]; then
     echo "{\"hook\":\"team-ac-verify\",\"decision\":\"dormant\",\"reason\":\"workflow.yaml absent\"}"
@@ -64,7 +62,7 @@ if [ -z "$TASK_AC_REF" ]; then
     exit 0
 fi
 
-# Try to verify AC: expect format like "SPEC-V3R6-FOO-001#AC-FOO-003"
+# Try to verify AC: expect format like "SPEC-XXX-001#AC-FOO-003"
 # This is a stub for future expansion; full AC verification would parse acceptance.md
 # and run the AC's evidence command. For M4 baseline, log the reference and allow.
 mkdir -p "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs"

@@ -292,7 +292,7 @@ This section is the **single source of truth** for Stage 1 Clarify trigger condi
 
 ```
 Trigger detected
-  → Step 1: ToolSearch(query: "select:AskUserQuestion")   [REQ-AUE-002]
+  → Step 1: ToolSearch(query: "select:AskUserQuestion")   [deferred tool preload]
   → Step 2: Compose AskUserQuestion round (≤4 Q, ≤4 options, (권장) first, conversation_language)
   → Step 3: Send AskUserQuestion, collect responses
   → Step 4: Assess intent clarity (100% required)

@@ -173,7 +173,7 @@ See [CI/CD integration patterns (GitHub Actions + Docker)](references/integratio
 Status: Production Ready
 Last Updated: 2026-05-23
 Maintained by: MoAI-ADK Development Workflow Team
-Version: 2.4.0 (SPEC-V3R6-SKILL-COMPRESS-001 body compression)
+Version: 2.4.0 (skill body compression pass)
 
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations

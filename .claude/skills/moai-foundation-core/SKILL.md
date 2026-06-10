@@ -245,7 +245,7 @@ Tools: AskUserQuestion for direct user interaction and clarification needs.
 
 Commands: /moai:1-plan for SPEC-First Phase 1, /moai:2-run for DDD Phase 2, /moai:3-sync for Documentation Phase 3, /moai:9-feedback for continuous improvement, /clear for token management.
 
-Foundation Modules (Extended Documentation): modules/agents-reference.md for the 8-agent retained catalog (7 MoAI-custom + 1 Anthropic built-in `Explore` per SPEC-V3R6-AGENT-TEAM-REBUILD-001), modules/commands-reference.md for 6 core commands workflow, modules/execution-rules.md for security, Git strategy, and compliance. For migration of references to the 12 archived agents (`manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, and the 6 `expert-*` agents), see `.claude/rules/moai/workflow/archived-agent-rejection.md`.
+Foundation Modules (Extended Documentation): modules/agents-reference.md for the 8-agent retained catalog (7 MoAI-custom + 1 Anthropic built-in `Explore`), modules/commands-reference.md for 6 core commands workflow, modules/execution-rules.md for security, Git strategy, and compliance. For migration of references to the 12 archived agents (`manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, and the 6 `expert-*` agents), see `.claude/rules/moai/workflow/archived-agent-rejection.md`.
 
 ---
 

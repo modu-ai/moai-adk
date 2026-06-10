@@ -55,7 +55,7 @@ Plausible failure modes to check in every SPEC:
 
 ### M3: Rubric Anchoring
 
-For EARS/GEARS format compliance, anchor your judgment against these concrete examples. GEARS is the current notation; EARS legacy patterns remain valid during the 6-month backward-compatibility window per SPEC-V3R6-GEARS-MIGRATION-001 v0.2.0 (PR #1046, commit 134a43fac, 2026-05-22) — through 2026-11-22.
+For EARS/GEARS format compliance, anchor your judgment against these concrete examples. GEARS is the current notation; EARS legacy patterns remain valid during the 6-month backward-compatibility window per the canonical GEARS migration policy — through 2026-11-22.
 
 **Score 1.0** — All ACs match exactly one of the five GEARS patterns (or their legacy EARS equivalents). The generalized `<subject>` MAY be any noun (system, component, service, agent, function, artifact) — substitution applies to all patterns:
 
@@ -63,7 +63,7 @@ For EARS/GEARS format compliance, anchor your judgment against these concrete ex
 - Event-driven: "When [trigger], the <subject> shall [response]"
 - State-driven: "While [condition], the <subject> shall [response]"
 - Where (capability-gate / feature flag / static config): "Where [capability exists], the <subject> shall [response]" — GEARS reframes `Where` as capability gate / feature flag / static config; NOT "feature option" (legacy EARS Optional usage)
-- Unwanted: "The <subject> shall not [action]" — GEARS canonical negative form; legacy `If [undesired condition], then the [system] shall [response]` retained with `[DEPRECATED — use shall not, see SPEC-V3R6-GEARS-MIGRATION-001]` annotation
+- Unwanted: "The <subject> shall not [action]" — GEARS canonical negative form; legacy `If [undesired condition], then the [system] shall [response]` retained with `[DEPRECATED — use shall not, per the canonical GEARS migration policy]` annotation
 
 Note: GEARS compound clause `[Where ...][While ...][When ...] The <subject> shall <behavior>` (any subset of the three modifiers chained) is PASS-equivalent at Score 1.0.
 
@@ -74,7 +74,7 @@ Note: GEARS compound clause `[Where ...][While ...][When ...] The <subject> shal
 **Score 0.25** — Fewer than a quarter of ACs use EARS/GEARS patterns; most are free-form text, user stories, or test cases presented as requirements.
 
 See [GEARS notation](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation) — 4-locale canonical guide.
-Lint behavior canonicalized in SPEC-V3R6-GEARS-MIGRATION-001 v0.2.0 (PR #1046, commit 134a43fac, 2026-05-22). 6-month backward-compat window active through 2026-11-22.
+Lint behavior canonicalized per the GEARS migration policy. 6-month backward-compat window active through 2026-11-22.
 
 For Clarity anchoring:
 
@@ -130,7 +130,7 @@ Four criteria cannot be compensated by high scores in other dimensions. ANY sing
 
 **(MP-1) REQ Number Consistency**: REQ numbers must be sequential (REQ-001, REQ-002, ... REQ-N) with no gaps, no duplicates, and consistent zero-padding. Even one gap or duplicate = FAIL.
 
-**(MP-2) EARS/GEARS Format Compliance**: Every acceptance criterion must match one of the five GEARS patterns (or their legacy EARS equivalents) listed in M3. Informal language, Given/When/Then test scenarios mislabeled as EARS/GEARS, or mixed informal/formal within a single criterion = FAIL. Backward compatibility: SPECs authored before SPEC-V3R6-GEARS-MIGRATION-001 v0.2.0 (predecessor migration) using EARS legacy notation remain valid for 6 months from v3.0.0 release; new SPECs SHOULD use GEARS canonical form.
+**(MP-2) EARS/GEARS Format Compliance**: Every acceptance criterion must match one of the five GEARS patterns (or their legacy EARS equivalents) listed in M3. Informal language, Given/When/Then test scenarios mislabeled as EARS/GEARS, or mixed informal/formal within a single criterion = FAIL. Backward compatibility: SPECs authored before the canonical GEARS migration policy (predecessor migration) using EARS legacy notation remain valid for 6 months from v3.0.0 release; new SPECs SHOULD use GEARS canonical form.
 
 **(MP-3) YAML Frontmatter Validity**: Required fields must all be present with correct types. Required fields are: id (string), version (string), status (string), created_at (ISO date string), priority (string), labels (array or string). Any missing required field = FAIL. Type mismatch = FAIL.
 
@@ -151,7 +151,7 @@ Document this second-pass result in the report under "Chain-of-Verification Pass
 
 ## Verification Execution Mandate
 
-[ZONE:Evolvable] [HARD] All read-only verification commands invoked during audit MUST follow this tool-selection + batching priority order. Origin: SPEC-V3R6-CLI-AUDIT-001 plan-auditor audit (2026-05-23) consumed 53 tool calls × ~5s avg = 4m57s wall-time; this mandate targets ~1m30s (65-70% reduction) via Grep/Glob native preference + multi-tool batching.
+[ZONE:Evolvable] [HARD] All read-only verification commands invoked during audit MUST follow this tool-selection + batching priority order. Origin: an earlier plan-auditor latency meta-analysis showed 53 tool calls × ~5s avg = 4m57s wall-time; this mandate targets ~1m30s (65-70% reduction) via Grep/Glob native preference + multi-tool batching.
 
 ### Tool Selection Priority
 
@@ -232,7 +232,7 @@ For pure markdown audit (spec/plan/acceptance), Grep tool with regex is faster +
 
 - `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution (HARD multi-tool batching obligation + 7-item canonical example)
 - `.claude/rules/moai/workflow/verification-batch-pattern.md` (Verification Class Taxonomy + grouping heuristic)
-- SPEC-V3R6-CLI-AUDIT-001 plan-auditor audit (2026-05-23) — origin meta-analysis
+- The canonical plan-auditor latency meta-analysis — origin reference
 
 ---
 

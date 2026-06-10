@@ -2,8 +2,8 @@
 
 ## SPEC Reference
 
-SPEC-AGENCY-ABSORB-001: REQ-ROUTE-001 through REQ-ROUTE-008, REQ-FALLBACK-001 through REQ-FALLBACK-003, REQ-BRIEF-001 through REQ-BRIEF-003, REQ-DETECT-003
-SPEC-V3R3-DESIGN-PIPELINE-001: REQ-DPL-005, REQ-DPL-008 (Phase 2 — Workflow Routing)
+Design-system absorption policy: REQ-ROUTE-001 through REQ-ROUTE-008, REQ-FALLBACK-001 through REQ-FALLBACK-003, REQ-BRIEF-001 through REQ-BRIEF-003, REQ-DETECT-003
+Design pipeline canonical policy: REQ-DPL-005, REQ-DPL-008 (Phase 2 — Workflow Routing)
 
 ---
 
@@ -43,7 +43,7 @@ Before presenting the route selection, perform these checks in order:
 
 ### Check 1: Existing legacy `.agency/` detection (REQ-DETECT-003)
 
-If the legacy `.agency/` directory exists (v2.x layout, retired; see [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md)) AND `.moai/project/brand/` does not exist:
+If the legacy `.agency/` directory exists (v2.x layout, retired per the design-system absorption policy) AND `.moai/project/brand/` does not exist:
 - Output warning before route selection: "Legacy v2.x agency data detected — run `moai migrate agency` to migrate your brand context first."
 - Include `moai migrate agency --dry-run` as the preview command.
 - Continue to route selection (do not block).

@@ -184,8 +184,9 @@ work in the orchestrator's main turn.
 - Test/CI fixtures that must observe state immediately: use synchronous
   `gh pr checks` without `--watch`.
 
-Cross-reference: AC-WO-006 (SPEC-V3R5-WORKFLOW-OPT-001) verifies this section
-contains both `gh pr checks --watch` and `run_in_background: true` literals.
+Cross-reference: the canonical CI-watch acceptance criterion (recorded in
+the predecessor workflow optimization rule) verifies this section contains
+both `gh pr checks --watch` and `run_in_background: true` literals.
 
 ---
 

@@ -33,11 +33,11 @@ triggers:
 
 이 파일은 `/moai run` 진입점 라우터입니다. 각 Phase는 on-demand로 해당 sub-skill을 `Read`하여 로드합니다.
 
-## Phase Owners (per SPEC-V3R6-AGENT-TEAM-REBUILD-001)
+## Phase Owners (per the canonical agent catalog policy)
 
-Phase Owners: `manager-develop` (run-phase implementation — single-spawn per Anthropic 2026 Finding A4 "most coding tasks involve fewer truly parallelizable tasks than research"; `cycle_type` ∈ `{tdd, ddd, autofix}` per REQ-ATR-012) + `manager-git` (Tier L PR creation OR `--pr` flag per REQ-ATR-020) + `Explore` (read-only investigation when scope discovery needed).
+Phase Owners: `manager-develop` (run-phase implementation — single-spawn per Anthropic's coding-task parallelism caveat "most coding tasks involve fewer truly parallelizable tasks than research"; `cycle_type` ∈ `{tdd, ddd, autofix}` per the canonical cycle-type contract) + `manager-git` (Tier L PR creation OR `--pr` flag per the canonical Tier-based PR routing policy) + `Explore` (read-only investigation when scope discovery needed).
 
-Phase 0.95 Mode Selection (NEW — REQ-ATR-008): orchestrator autonomous 5-mode decision (autopilot / loop / team / pipeline / background) is logged at `.moai/specs/SPEC-{ID}/progress.md` § Phase 0.95 Mode Selection. Phase 0.95 SHOULD be invoked before any manager-develop spawn for SPECs sized ≥ Tier M.
+Phase 0.95 Mode Selection: orchestrator autonomous 5-mode decision (autopilot / loop / team / pipeline / background) is logged at `.moai/specs/SPEC-{ID}/progress.md` § Phase 0.95 Mode Selection. Phase 0.95 SHOULD be invoked before any manager-develop spawn for SPECs sized ≥ Tier M.
 
 `cycle_type=autofix` mode: `/moai fix` workflow integration delegates to manager-develop with the utility-class pipeline 3-phase contract (localize → repair → validate per `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification) and the max-3-iteration contract per `.claude/rules/moai/workflow/ci-autofix-protocol.md`.
 
@@ -120,9 +120,9 @@ This section wires the run-phase autonomy mechanisms — the GATE-2 human-gate o
 
 ### 1. GATE-2 ordering (the human gate comes first)
 
-[HARD] Before any run-phase autonomy (a `/goal` set, a Mode 6 Workflow launch, or any autonomous loop), the orchestrator MUST have already obtained explicit GATE-2 approval. GATE-2 is the plan→run HUMAN GATE: a mandatory orchestrator-issued `AskUserQuestion` round ("run-phase 진입 / 추가 검토 / 중단", first option marked "(권장)") presented after Phase 0.5 (Plan Audit Gate) and before Phase 0.95 (Mode Selection). The orchestrator emits this gate; it is never embedded inside a subagent body (subagents cannot prompt the user — the asymmetric boundary in `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary).
+[HARD] Before any run-phase autonomy (a `/goal` set, a Mode 6 Workflow launch, or any autonomous loop), the orchestrator MUST have already obtained explicit GATE-2 approval. GATE-2 is the plan→run HUMAN GATE: a mandatory orchestrator-issued `AskUserQuestion` round (run-phase entry / further review / abort, first option marked "(Recommended)") presented after Phase 0.5 (Plan Audit Gate) and before Phase 0.95 (Mode Selection). The orchestrator emits this gate; it is never embedded inside a subagent body (subagents cannot prompt the user — the asymmetric boundary in `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary).
 
-[HARD] GATE-2 is **score-independent**: the orchestrator emits the GATE-2 `AskUserQuestion` gate **regardless of the plan-auditor score**, including the ≥ 0.90 skip-eligible case. Skip-eligibility (score ≥ 0.90 autonomous bypass) applies ONLY to Phase 0.5 plan-auditor verdict re-execution — NOT to GATE-2. A high plan-auditor score never authorizes skipping the GATE-2 human gate. This is the GATE-2 mandatory-restoration invariant per CLAUDE.local.md §19.1 / REQ-ATR-015.
+[HARD] GATE-2 is **score-independent**: the orchestrator emits the GATE-2 `AskUserQuestion` gate **regardless of the plan-auditor score**, including the high skip-eligible case. Skip-eligibility (a high autonomous-bypass score) applies ONLY to Phase 0.5 plan-auditor verdict re-execution — NOT to GATE-2. A high plan-auditor score never authorizes skipping the GATE-2 human gate. This is the GATE-2 mandatory-restoration invariant per the GATE-2 mandatory-restoration policy.
 
 Because GATE-2 also drains all user preferences (Tier, mode preference, PR strategy), the orchestrator collects every preference at this gate BEFORE launching any autonomy — `/goal`-turn agents and Mode 6 Workflow agents cannot prompt the user mid-run, so the one decision that must involve the user is taken here.
 
@@ -150,7 +150,7 @@ The reference to `acceptance.md` in the condition is the NAMING of where the AC 
 
 ### 4. Semantic-failure escalation (HARD)
 
-When a semantic failure — a data race, a deadlock, a panic, or a test assertion failure — is surfaced during the autonomous loop, the orchestrator MUST clear the `/goal` and escalate via `AskUserQuestion` rather than auto-fixing the semantic failure (aligns with the semantic-failure-handling rule, CONST-V3R5-010). Semantic failures require human approval; the autonomous loop is for convergence on mechanical / test PASS evidence, not for fixing race conditions silently.
+When a semantic failure — a data race, a deadlock, a panic, or a test assertion failure — is surfaced during the autonomous loop, the orchestrator MUST clear the `/goal` and escalate via `AskUserQuestion` rather than auto-fixing the semantic failure (aligns with the semantic-failure-handling rule). Semantic failures require human approval; the autonomous loop is for convergence on mechanical / test PASS evidence, not for fixing race conditions silently.
 
 ### 5. Non-substitution clause (HARD)
 
@@ -169,4 +169,4 @@ When the runtime does not support `/goal` (version below v2.1.139, or hooks disa
 - `.claude/rules/moai/workflow/goal-directive.md` — `/goal` semantics (the evaluator judges the transcript only — it neither runs tools nor opens any path; the `max N turns` bound; clear-on-`/clear`).
 - `.claude/rules/moai/workflow/orchestration-mode-selection.md` § C.3 — Mode 6 (Workflow) capability gate (GATE-2-passed + preferences-collected preconditions; scaling-not-nesting; the named-script-API prohibition).
 - `.claude/rules/moai/workflow/dynamic-workflows.md` — the Workflow primitive (no mid-run user input; GATE-2 unaffected).
-- CLAUDE.local.md §19.1 / REQ-ATR-015 — GATE-2 mandatory restoration (the score-independent human gate this section preserves).
+- the GATE-2 mandatory-restoration policy — the score-independent human gate this section preserves.

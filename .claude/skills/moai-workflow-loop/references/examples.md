@@ -393,7 +393,7 @@ ralph:
 {
   "tool_name": "Write",
   "tool_input": {
-    "file_path": "/Users/project/src/auth.py",
+    "file_path": "$HOME/project/src/auth.py",
     "content": "def authenticate(user: str, password: str):\n    return True"
   },
   "tool_output": "File written successfully"
@@ -507,9 +507,10 @@ The same diagnostic collection, classification, and fix patterns apply
 uniformly regardless of language. These three samples were chosen for
 their concise demonstration of common LSP diagnostic categories: type
 errors (Sample 1), deprecated imports (Sample 2), and unused variables
-(Sample 3). Per `.claude/rules/moai/development/coding-standards.md` § Language Policy (16-language neutrality contract),
-no language receives priority over another; for the complete
-language-to-server mapping table, see `references/reference.md`.
+(Sample 3). Per `.claude/rules/moai/development/coding-standards.md`
+§ Language Policy (16-language neutrality contract), no language receives
+priority over another; for the complete language-to-server mapping table,
+see `references/reference.md`.
 
 ### Sample 1: Type Error (illustrated with Python + Pyright)
 

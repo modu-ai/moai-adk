@@ -463,7 +463,7 @@ Workflow audit 2026-05-16 (F-005) 정적 routing 명시:
 
 Version: 3.8.0
 Updated: 2026-05-17
-Changes: Added test scenarios (3.7.0) + Related Skills section (3.8.0) + consolidated moai-workflow-ci-watch reference to moai-workflow-ci-loop per SPEC-V3R6-SKILL-CONSOLIDATE-001 (3.9.0).
+Changes: Added test scenarios (3.7.0) + Related Skills section (3.8.0) + consolidated moai-workflow-ci-watch reference to moai-workflow-ci-loop per the skill consolidation policy (3.9.0).
 
 ---
 

@@ -142,7 +142,7 @@ is missing.
   patterns (research, implementation, review, design, debug).
 - `.claude/rules/moai/workflow/worktree-integration.md` — `isolation: worktree`
   rules for write-heavy roles.
-- SPEC-V3R5-WORKFLOW-OPT-001 acceptance.md AC-WO-009 (role_profiles 7-key check).
+- The canonical workflow-optimization acceptance criterion for the role_profiles 7-key check.
 
 ---
 

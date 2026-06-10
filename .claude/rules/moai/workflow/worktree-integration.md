@@ -289,8 +289,8 @@ When `isolation: "worktree"` is set, Claude Code:
 3. The agent constructs absolute paths from its own CWD
 
 ```
-Main repo:  /Users/user/project/src/auth/handler.go
-Worktree:   /Users/user/project/.claude/worktrees/abc123/src/auth/handler.go
+Main repo:  $HOME/project/src/auth/handler.go
+Worktree:   $HOME/project/.claude/worktrees/abc123/src/auth/handler.go
 ```
 
 Both share the same project structure. `src/auth/handler.go` resolves correctly in either context.
@@ -299,10 +299,10 @@ Both share the same project structure. `src/auth/handler.go` resolves correctly 
 
 ```
 # WRONG: Absolute path in prompt bypasses worktree
-"Read /Users/user/project/src/auth/handler.go and fix the bug"
+"Read $HOME/project/src/auth/handler.go and fix the bug"
 
 # WRONG: cd to main project in Bash command
-"Run: cd /Users/user/project && go test ./..."
+"Run: cd $HOME/project && go test ./..."
 
 # CORRECT: Relative path — agent resolves from its own CWD
 "The bug is in src/auth/handler.go. Read the file and fix it."

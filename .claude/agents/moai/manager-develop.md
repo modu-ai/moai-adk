@@ -2,7 +2,7 @@
 name: manager-develop
 description: |
   Unified implementation specialist (run-phase: implementation file authoring + owns progress.md §Run-phase Evidence/Audit-Ready Signal + draft → in-progress transition). See §SPEC Artifact Ownership for artifact-level boundaries.
-  Supports three cycle_type modes: `tdd` (RED-GREEN-REFACTOR — default for new feature work), `ddd` (ANALYZE-PRESERVE-IMPROVE — legacy refactoring with characterization tests), and `autofix` (localize → repair → validate — invoked from the /moai fix pipeline workflow per REQ-ATR-012; routed via the `--mode` flag or pipeline class dispatch).
+  Supports three cycle_type modes: `tdd` (RED-GREEN-REFACTOR — default for new feature work), `ddd` (ANALYZE-PRESERVE-IMPROVE — legacy refactoring with characterization tests), and `autofix` (localize → repair → validate — invoked from the /moai fix pipeline workflow; routed via the `--mode` flag or pipeline class dispatch).
   Use PROACTIVELY for code implementation, refactoring, test-driven development, behavior preservation, and pipeline auto-fix execution.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN (DDD): DDD, refactoring, legacy code, behavior preservation, characterization test, domain-driven refactoring
@@ -85,7 +85,7 @@ This agent consolidates the previously separate `manager-ddd` and `manager-tdd` 
 
 ## cycle_type=autofix Mode (CI auto-fix loop)
 
-Per SPEC-V3R6-AGENT-TEAM-REBUILD-001 REQ-ATR-012, the `manager-develop` agent supports a third `cycle_type=autofix` mode for the CI auto-fix loop invoked from the `/moai fix` pipeline workflow.
+Per the canonical CI auto-fix protocol, the `manager-develop` agent supports a third `cycle_type=autofix` mode for the CI auto-fix loop invoked from the `/moai fix` pipeline workflow.
 
 **Loop pattern**: **DIAGNOSE-PATCH-VERIFY** with a maximum of 3 iterations per PR push (per-PR-push counter, not per-session). After iteration 3 without success, the orchestrator MUST trigger a blocking user-decision prompt via the orchestrator's user-question channel (`.claude/rules/moai/core/askuser-protocol.md`; no auto-resume timeout per CONST-V3R5-006).
 
@@ -276,7 +276,7 @@ Status values follow the canonical 8-value enum: draft, planned, in-progress, im
 
 ## SPEC Artifact Ownership
 
-Per SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001 (Audit Tier 2 F1 resolution), this agent owns the following SPEC artifact boundaries. The full schema-level transition matrix lives in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix.
+This agent owns the following SPEC artifact boundaries per the canonical agent responsibility realignment policy. The full schema-level transition matrix lives in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix.
 
 ### Artifacts owned (authoring)
 

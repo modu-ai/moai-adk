@@ -95,7 +95,7 @@ For detailed design rules, see .claude/rules/moai/design/constitution.md
 
 ## 4. Agent Catalog
 
-Per SPEC-V3R6-AGENT-TEAM-REBUILD-001 (Anthropic 2026 alignment, 2026-05-25), the MoAI agent catalog consists of exactly **8 retained agents** (7 MoAI-custom + 1 Anthropic built-in). The previous 17-agent enumeration was consolidated to align with Anthropic best practices: "Subagents cannot spawn other subagents" (claude.com/docs/en/sub-agents), "Start with 3-5 teammates for most workflows" (claude.com/docs/en/agent-teams), and "Define a custom subagent when you keep spawning the same kind of worker" (claude.com/docs/en/best-practices). Twelve phantom and domain-expert agents were archived (see Archive cross-reference below).
+The MoAI agent catalog consists of exactly **8 retained agents** (7 MoAI-custom + 1 Anthropic built-in `Explore`). The catalog is aligned with Anthropic's published best practices: "Subagents cannot spawn other subagents" (claude.com/docs/en/sub-agents), "Start with 3-5 teammates for most workflows" (claude.com/docs/en/agent-teams), and "Define a custom subagent when you keep spawning the same kind of worker" (claude.com/docs/en/best-practices).
 
 ### Selection Decision Tree
 
@@ -119,14 +119,14 @@ Per SPEC-V3R6-AGENT-TEAM-REBUILD-001 (Anthropic 2026 alignment, 2026-05-25), the
 | `manager-git` | core/manager | PR creation per Tier-based routing + Late-Branch closure | `.claude/agents/moai/manager-git.md` |
 | `plan-auditor` | meta/evaluator | Independent plan-phase audit, bias prevention, GEARS compliance | `.claude/agents/moai/plan-auditor.md` |
 | `sync-auditor` | meta/evaluator | Independent skeptical quality assessment, 4-dimension scoring | `.claude/agents/moai/sync-auditor.md` |
-| `builder-harness` | builder | Dynamic project-specific harness specialist generation | `.claude/agents/moai/builder-harness.md` |
+| `builder-harness` | builder | Dynamic project-specific harness specialist generation | `.claude/agents/builder/builder-harness.md` |
 | `Explore` | Anthropic built-in | Read-only codebase exploration (no MoAI file — invoked directly) | claude.com/docs/en/sub-agents |
 
-### Archive Cross-Reference (12 phantom/domain-expert agents archived 2026-05-25)
+### Archived Agents (legacy references rejected at spawn)
 
-Twelve agents previously listed in this catalog (`manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, `expert-backend`, `expert-frontend`, `expert-security`, `expert-devops`, `expert-performance`, `expert-refactoring`) were archived per SPEC-V3R6-AGENT-TEAM-REBUILD-001 M3 milestone. Archive count: **11 actual archived** (preserved at `.moai/backups/agent-archive-2026-05-25/` with `core/`, `meta/`, `expert/` substructure and per-agent README) **+ 1 originally absent** (`researcher.md` — never present as a MoAI file in this repo; archive variance documented in progress.md).
+The following agent names are **archived** and MUST NOT be spawned: `manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, `expert-backend`, `expert-frontend`, `expert-security`, `expert-devops`, `expert-performance`, `expert-refactoring`.
 
-When a paste-ready resume message or `Agent()` invocation references one of these 12 archived agents, the orchestrator MUST reject the spawn and consult the migration table at `.claude/rules/moai/workflow/archived-agent-rejection.md`. The retained-agent replacement pattern for each archived agent (per-spawn `Agent(general-purpose)` with domain-specific instructions, or routing to one of the 8 retained agents above) is documented there.
+When a paste-ready resume message or `Agent()` invocation references one of these archived agents, the orchestrator MUST reject the spawn and consult the migration table at `.claude/rules/moai/workflow/archived-agent-rejection.md`. The retained-agent replacement pattern (per-spawn `Agent(general-purpose)` with domain-specific instructions, or routing to one of the 8 retained agents above) is documented there.
 
 Note on `claude-code-guide`: the archived entry refers to the former MoAI-custom agent file of that name. It is distinct from the official Claude Code built-in helper agent that is also named `claude-code-guide` and ships with the runtime — that built-in is a separate, valid agent and invoking it does NOT trigger archived-agent rejection. The rejection binds only the MoAI-custom file.
 
@@ -154,14 +154,14 @@ MoAI uses DDD and TDD as its development methodologies, selected via quality.yam
 
 For detailed workflow specifications, see .claude/rules/moai/workflow/spec-workflow.md
 
-### Agent Chain for SPEC Execution (Anthropic 2026 Aligned, post-SPEC-V3R6-AGENT-TEAM-REBUILD-001)
+### Agent Chain for SPEC Execution
 
-- Phase 1 (plan-phase): manager-spec → SPEC artifacts (spec/plan/acceptance/research/design — absorbed planning/strategy role per Audit 3 Finding A1)
+- Phase 1 (plan-phase): manager-spec → SPEC artifacts (spec/plan/acceptance/research/design)
 - Phase 2 (plan audit gate): plan-auditor → independent skeptical audit, bias prevention, GEARS compliance verification
 - Phase 3 (run-phase): manager-develop → implementation (cycle_type ∈ {ddd, tdd, autofix}); for domain-specific work (backend/frontend/security/etc.) the orchestrator spawns `Agent(general-purpose)` with domain whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C migration table
 - Phase 4 (sync-phase): manager-docs → CHANGELOG/README/docs + frontmatter status transitions (in-progress → implemented)
 - Phase 5 (sync audit gate): sync-auditor → independent 4-dimension quality scoring (Functionality/Security/Craft/Consistency)
-- Phase 6 (optional, Tier L OR explicit `--pr`): manager-git → branch creation + `gh pr create` + Late-Branch closure per CLAUDE.local.md §23.9 Tier-based PR Routing
+- Phase 6 (optional, Tier L OR explicit `--pr`): manager-git → branch creation + `gh pr create` + Late-Branch closure per Tier-based PR Routing
 
 ### MX Tag Integration
 
@@ -338,7 +338,7 @@ MoAI-ADK uses Claude Code's official rules system at `.claude/rules/moai/`:
 - **Language rules**: Path-specific rules for 16 programming languages
 - **Design rules**: Design system constitution (.claude/rules/moai/design/constitution.md)
 
-### Design System Configuration (absorbed from the retired v2.x design domain — see [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md))
+### Design System Configuration (absorbed from agency per the design-system absorption policy)
 
 - `.moai/config/sections/design.yaml`: Design pipeline settings, GAN loop parameters, sprint contract, evolution thresholds
 - `.moai/project/brand/`: Brand voice (brand-voice.md), visual identity (visual-identity.md), target audience (target-audience.md)
@@ -347,7 +347,7 @@ MoAI-ADK uses Claude Code's official rules system at `.claude/rules/moai/`:
 - `.moai/config/sections/harness.yaml`: Quality depth routing (minimal/standard/thorough)
 - `.moai/config/evaluator-profiles/`: Evaluator scoring profiles (default, strict, lenient, frontend)
 
-Legacy v2.x data directories are archived via the `moai migrate agency` command (see [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md)).
+Legacy .agency/ directories are archived via `moai migrate agency` command.
 
 ### Language Rules
 
@@ -395,7 +395,7 @@ When a single-pass WebSearch is insufficient for a research-heavy question, use 
 - Agent execution errors: Consult `.claude/rules/moai/workflow/archived-agent-rejection.md` §C migration table; orchestrator emits `ARCHIVED_AGENT_REJECTED` when an archived agent is referenced; for diagnostic work spawn `Agent(general-purpose)` with diagnostic scope OR `Agent(Explore)` for read-only investigation
 - Token limit errors: Execute /clear, then guide user to resume via paste-ready resume message per `.claude/rules/moai/workflow/session-handoff.md`
 - Permission errors: Review settings.json manually (project + user scope)
-- Integration / DevOps errors: spawn `Agent(general-purpose)` with infrastructure/CI domain context per `archived-agent-rejection.md` §C migration table (formerly handled by archived `expert-devops`)
+- Integration / DevOps errors: spawn `Agent(general-purpose)` with infrastructure/CI domain context per `archived-agent-rejection.md` §C migration table (formerly handled by an archived domain-expert agent)
 - MoAI-ADK errors: Suggest /moai feedback
 
 ### Resumable Agents
@@ -415,8 +415,6 @@ MoAI-ADK integrates multiple MCP servers for specialized capabilities:
 - **Context7**: Up-to-date library documentation lookup via resolve-library-id and get-library-docs.
 - **claude-in-chrome**: Browser automation for web-based tasks.
 - **Dynamic Workflows / ultracode**: `/effort ultracode` combines xhigh effort with automatic workflow orchestration — a script the runtime executes to fan out across dozens-to-hundreds of subagents (Claude Code v2.1.154+). See .claude/rules/moai/workflow/dynamic-workflows.md.
-
-> Sequential Thinking MCP retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001. The `ultrathink` keyword (Adaptive Thinking on Opus 4.7+) is the canonical deep-reasoning path. Users who require Sequential Thinking for personal workflow may install it independently via `~/.claude/settings.json` (user-local scope); the project namespace remains clean.
 
 For MCP configuration and usage patterns, see .claude/rules/moai/core/settings-management.md.
 
@@ -630,20 +628,20 @@ Large PDFs (>10 pages) return a lightweight reference when @-mentioned. Always s
 
 ---
 
-Version: 14.2.0 (Anthropic 2026 Alignment + Archived-Agent Reference Cleanup 2026-05-25)
-Last Updated: 2026-05-25
+Version: 14.2.0 (Anthropic 2026 Alignment + Archived-Agent Reference Cleanup)
 Language: English
 Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 
 Changes in v14.2.0 (from v14.1.0):
-- §5 Agent Chain for SPEC Execution: 6-phase legacy chain → 4-phase Anthropic 2026 model (manager-spec → plan-auditor → manager-develop → manager-docs/sync-auditor → optional manager-git PR routing)
-- §2 Phase 3 Execute example: archived `expert-backend` → retained `manager-develop` invocation example
-- §11 Error Handling: archived `manager-quality` / `expert-devops` references → cross-reference to `.claude/rules/moai/workflow/archived-agent-rejection.md` migration table
-- Aligned with SPEC-V3R6-AGENT-TEAM-REBUILD-001 (17→8 catalog consolidation, M3 archive 2026-05-25)
+- §5 Agent Chain for SPEC Execution: legacy chain → Anthropic 2026 model (manager-spec → plan-auditor → manager-develop → manager-docs/sync-auditor → optional manager-git PR routing)
+- §2 Phase 3 Execute example: archived domain-expert example → retained `manager-develop` invocation example
+- §11 Error Handling: archived domain-expert references → cross-reference to `.claude/rules/moai/workflow/archived-agent-rejection.md` migration table
+- Aligned with the canonical MoAI agent catalog policy (17→8 catalog consolidation)
 
 Changes in v14.1.0 (from v14.0.0):
+- §11 Error Handling: canonical rule citation added (manager-quality / expert-devops)
 - §13 Progressive Disclosure System: canonical rule citation added (`.claude/rules/moai/development/skill-authoring.md`)
 - §16 Context Search Protocol: canonical rule citation added (`.claude/rules/moai/workflow/context-window-management.md`)
-- Note: §4 Agent Catalog `cycle` removal is handled in a separate PR (Bundle C / PR #958)
+- Note: §4 Agent Catalog `cycle` removal is handled in a separate PR
 
 For detailed patterns on plugins, sandboxing, headless mode, and version management, see Skill("moai-foundation-cc").

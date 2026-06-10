@@ -2,7 +2,7 @@
 name: manager-git
 description: |
   Git workflow specialist. Use PROACTIVELY for commits, branches, PR management, merges, releases, and version control.
-  Invocation gate: invoked for Tier L SPEC PR creation OR explicit `--pr` flag per REQ-ATR-020. Tier S/M SPECs follow the Hybrid Trunk 1-person OSS pattern (main-direct push via manager-develop) per the Hybrid Trunk 1-person OSS policy; manager-git is NOT invoked for Tier S/M routine commits.
+  Invocation gate: invoked for Tier L SPEC PR creation OR explicit `--pr` flag per the canonical Tier-based PR routing policy. Tier S/M SPECs follow the Hybrid Trunk 1-person OSS pattern (main-direct push via manager-develop) per the Hybrid Trunk 1-person OSS policy; manager-git is NOT invoked for Tier S/M routine commits.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN: git, commit, push, branch, PR, merge, release, rebase, tag, conventional commit
   KO: git, 커밋, 푸시, 브랜치, PR, 머지, 릴리즈, 리베이스, 태그

@@ -203,7 +203,7 @@ Generic **Pipeline** pattern. Sequential stages with each agent's output feeding
 
 ## Per-Spawn Domain Specialization
 
-Per SPEC-V3R6-AGENT-TEAM-REBUILD-001 Finding A5 (Anthropic 2026 alignment), domain expertise is canonically delivered through **per-spawn parameter injection**, not through static agent definition files. This replaces the 6 archived `expert-*` agents (backend, frontend, security, devops, performance, refactoring) that were retired on 2026-05-25 because they failed Anthropic's "Define a custom subagent when you keep spawning the same kind of worker with the same instructions" criterion (0 invocations across the recent 4-SPEC cohort).
+Per Anthropic best-practices alignment, domain expertise is canonically delivered through **per-spawn parameter injection**, not through static agent definition files. This replaces the 6 archived `expert-*` agents (backend, frontend, security, devops, performance, refactoring) that were retired during the catalog consolidation because they failed Anthropic's "Define a custom subagent when you keep spawning the same kind of worker with the same instructions" criterion.
 
 ### Canonical Spawn Pattern
 
@@ -239,7 +239,7 @@ See `.claude/rules/moai/development/agent-authoring.md` § Static Agent File vs 
 
 ## Read-only Investigation — Explore Canonical Agent
 
-Per Finding A1 (Anthropic ships exactly 3 built-in subagents: Explore, Plan, general-purpose), the Anthropic built-in `Explore` agent is the canonical read-only investigation surface for the MoAI orchestrator. This replaces the archived `claude-code-guide` and `researcher` custom agents (both retired on 2026-05-25 for 0-invocation phantom-agent failure).
+Per Anthropic's published guidance (Claude Code ships exactly 3 built-in subagents: Explore, Plan, general-purpose), the Anthropic built-in `Explore` agent is the canonical read-only investigation surface for the MoAI orchestrator. This replaces the archived `claude-code-guide` and `researcher` custom agents (both retired during catalog consolidation for 0-invocation phantom-agent failure).
 
 ### Canonical Spawn Pattern
 
@@ -266,8 +266,8 @@ Agent(subagent_type: "Explore", prompt: "<investigation task description>")
 
 ## Deprecated: Hierarchical Manager Chain Pattern
 
-The `manager-strategy → manager-develop` hierarchical chain pattern (previously documented as a viable Pattern 6 Hierarchical Delegation variant for MoAI workflows) is **deprecated** as of SPEC-V3R6-AGENT-TEAM-REBUILD-001. Anthropic Sub-agents documentation states verbatim: *"Subagents cannot spawn other subagents. If your workflow requires nested delegation, use Skills or chain subagents from the main conversation."* The MoAI `manager-strategy → manager-develop` chain is therefore architecturally impossible to execute at runtime — the chain pattern was a documentation fiction rather than a runtime reality.
+The `manager-strategy → manager-develop` hierarchical chain pattern (previously documented as a viable Pattern 6 Hierarchical Delegation variant for MoAI workflows) is **deprecated** under the current agent catalog policy. Anthropic Sub-agents documentation states verbatim: *"Subagents cannot spawn other subagents. If your workflow requires nested delegation, use Skills or chain subagents from the main conversation."* The MoAI `manager-strategy → manager-develop` chain is therefore architecturally impossible to execute at runtime — the chain pattern was a documentation fiction rather than a runtime reality.
 
-All multi-agent coordination MUST happen at the **orchestrator (L1) level** in the main conversation. The 8-agent retention graph (see `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/design.md` §B.1) respects this constraint: all retained sub-agents are leaves of the L1 orchestrator, never branches that recurse into further sub-agent spawns.
+All multi-agent coordination MUST happen at the **orchestrator (L1) level** in the main conversation. The retained agent catalog respects this constraint: all retained sub-agents are leaves of the L1 orchestrator, never branches that recurse into further sub-agent spawns.
 
 For migration from `manager-strategy` references in existing code, paste-ready resumes, or documentation, see `.claude/rules/moai/workflow/archived-agent-rejection.md` § Migration Table — the canonical replacement for the planning role absorbed by `manager-strategy` is `manager-spec` (planning IS strategy per Anthropic 4-phase Step 2).

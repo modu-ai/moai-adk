@@ -136,7 +136,8 @@ Language-to-LSP Mapping (all 16 MoAI-supported languages, alphabetical):
 
 Note: The canonical language name for Dart/Flutter ecosystem is "Flutter",
 matching `.claude/skills/moai/workflows/sync.md` Phase 0.6.1. Per
-`.claude/rules/moai/development/coding-standards.md` § Language Policy (16-language neutrality contract), all 16 languages are treated as equal
+`.claude/rules/moai/development/coding-standards.md` § Language Policy
+(16-language neutrality contract), all 16 languages are treated as equal
 first-class citizens; the user's project marker files determine which
 server(s) actually spawn at runtime.
 

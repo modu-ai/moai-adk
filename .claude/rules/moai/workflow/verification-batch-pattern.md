@@ -51,12 +51,12 @@ Groups A-D issue as one parallel batch. Group E joins when benchmark is in AC.
 
 ## Correct Pattern (Reference)
 
-The orchestrator's response contains multiple Bash tool calls within a single assistant turn. The canonical 7-item example lives in `.claude/rules/moai/core/agent-common-protocol.md` §Parallel Execution (satisfies AC-WO-007).
+The orchestrator's response contains multiple Bash tool calls within a single assistant turn. The canonical 7-item example lives in `.claude/rules/moai/core/agent-common-protocol.md` §Parallel Execution (satisfies the canonical verification-batch acceptance criterion).
 
 ## Cross-references
 
 - `.claude/rules/moai/core/agent-common-protocol.md` §Parallel Execution (HARD batching obligation + 7-item canonical example).
-- SPEC-V3R5-WORKFLOW-OPT-001 AC-WO-007.
+- The canonical workflow-optimization acceptance criterion for the verification batch pattern.
 - W3 HARNESS-AUTONOMY-001 meta-analysis (`feedback_w3_metaanalysis_lessons.md`).
 
 ---
