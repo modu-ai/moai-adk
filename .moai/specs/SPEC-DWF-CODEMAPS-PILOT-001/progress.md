@@ -93,6 +93,6 @@ Ship the *pattern* (M5(b) catalog entry) + the *validated script* (M5(a)), but s
 
 - plan_commit_sha: `c706c3c66` (plan-phase artifacts + audit remediation D1/D2/D3/D6)
 - run_sync_commit_sha: `5c1b24ec4` (run verdict + M5(a) script + M5(b) pattern catalog; sync folded in — Tier S exploratory pilot, M5(b) pattern catalog IS the sync deliverable)
-- mx_commit_sha: (backfill after close commit)
+- mx_commit_sha: `90a3caca6`
 - status transition: implemented → completed
 - deliverable disposition: M5(a) `.claude/workflows/codemaps-extract.js` + M5(b) dynamic-workflows.md § Pattern Catalog retained (scoped as high-count augmentation per §E.3 caveats; M5(a) auto-registered as a saved workflow command)
