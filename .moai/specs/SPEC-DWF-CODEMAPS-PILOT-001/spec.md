@@ -2,7 +2,7 @@
 id: SPEC-DWF-CODEMAPS-PILOT-001
 title: "Dynamic-Workflow Pilot: Read-Only Per-Package Codemaps Extraction Fan-Out"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-06-05
 updated: 2026-06-11
 author: GOOS

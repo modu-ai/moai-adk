@@ -79,6 +79,28 @@ While a workflow run is active, the `/workflows` TUI lets you manage it: list ac
 
 Workflows can be turned off per-user (`/config` Dynamic workflows toggle, `"disableWorkflows": true` in `~/.claude/settings.json`, or `CLAUDE_CODE_DISABLE_WORKFLOWS=1`) or org-wide via the `workflowKeywordTriggerEnabled` managed setting (v2.1.157+; org admins set it to `false` to disable the keyword trigger fleet-wide). When disabled, the bundled workflow commands are unavailable, the `ultracode` trigger keyword no longer triggers a run, and `ultracode` is removed from the `/effort` menu. (`ultracode` is the current trigger keyword as of v2.1.160; `workflow` was the pre-v2.1.160 keyword — a plain natural-language request still routes to a workflow run on both versions.) MoAI does not enable or disable workflows in the deployed template — the decision is left to the user/org.
 
+## Pattern Catalog
+
+Validated patterns from MoAI dynamic-workflow pilots — each entry records the pattern shape, the primitive mechanics, and the falsification verdict that justified (or scoped) it.
+
+### Per-Package Codemaps Extraction Fan-Out
+
+**Pattern**: one read-only agent per source package extracts that package's dependency graph + public surface + an architectural synthesis; results aggregate in script variables; only the final synthesis returns to the session.
+
+**Primitive mechanics**:
+- The script fans out N read-only agents — a parallel call maps the package list to one agent per package, each typed read-only (Explore). The script array holds the intermediate results, so the session context stays small.
+- Determinism: the package list is injected via the `args` global; the script body reads no wall-clock and draws no random value; any timestamp is stamped after the run returns (keeps the resume cache valid).
+- Read-only is enforced by the Explore agent type. A forced output schema is omitted to avoid rate-limit brittleness — agents return markdown, and the orchestrator parses it and applies a synthesis-vs-restatement reduction test.
+
+**Falsification verdict — value proven, with three scoping caveats**:
+1. **Augmentation, not extraction.** Dependency-graph + public-surface extraction is mechanically complete from `go list -deps -json` + `go doc`; the per-package LLM synthesis adds zero to extraction. Its surviving value is architecture-REVIEW insight (coupling risk, latent contracts, layering judgments, negative-space gaps) layered on top of the deterministic baseline.
+2. **Not primitive-specific.** An identical synthesis is obtainable from a sequential sub-agent or a single Explore agent; the fan-out's only marginal benefit is parallel wall-clock speed.
+3. **High-count justification only.** The fan-out earns its token cost ONLY at high package count (near the full codebase) where parallel speed offsets per-agent cost; at small scale a single sub-agent is cheaper.
+
+**When to use**: high-count codebase codemaps where architecture INSIGHT beyond mechanical extraction is wanted AND parallel speed matters. **When NOT to use**: pure dependency-graph / public-surface extraction (use the deterministic `go list -deps -json` + `go doc` path), or small scale (use a single sub-agent).
+
+**Artifact**: the validated script lives in the local, user-owned `.claude/workflows/` directory (not template-managed, per the statement above).
+
 ## Cross-references
 
 - https://code.claude.com/docs/en/workflows — canonical Claude Code workflows documentation
