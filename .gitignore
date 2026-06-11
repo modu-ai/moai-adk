@@ -114,9 +114,17 @@ logs/
 # Backups
 # ===========================================
 .moai-backups/
+.moai/backups/
 *.backup/
 *-backup/
 *_backup_*/
+
+# ===========================================
+# Cross-tool artifacts (Codex CLI — local-only, not distributed)
+# ===========================================
+.codex/
+.agents/
+AGENTS.md
 
 # ===========================================
 # Secrets and Credentials (CRITICAL)
