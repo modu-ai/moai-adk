@@ -12,9 +12,12 @@
 //	ac_converge set) and any Mode-6 launch reference. This proves /goal and
 //	Mode-6 launch cannot cross the plan->run boundary ahead of the human gate.
 //
-//	Check B (score-independence + cross-reference): the body states GATE-2 is
-//	emitted regardless of plan-auditor score (incl. >= 0.90 skip-eligible) AND
-//	contains a doctrine cross-reference token (§19.1 and/or REQ-ATR-015).
+//	Check B (score-independence): the body states GATE-2 is emitted regardless
+//	of plan-auditor score (incl. >= 0.90 skip-eligible). A doctrine cross-reference
+//	token is intentionally NOT required — §19.1 / REQ-ATR-015 are maintainer-internal
+//	identifiers (CLAUDE.local.md section / internal REQ) whose presence in this
+//	distributed skill body would breach the template neutrality contract. The
+//	score-independence statement is the substantive GATE-2-restoration guarantee.
 //
 // The test is intentionally lightweight (string/offset assertions only — no
 // orchestration simulation, no syscalls) so it builds and runs identically on
@@ -126,9 +129,9 @@ func TestGate2PreservedBeforeGoal(t *testing.T) {
 			"skip-eligible)", runSkillRelPath)
 	}
 
-	// Doctrine cross-reference: at least one of §19.1 / REQ-ATR-015 must be present.
-	if !strings.Contains(body, "§19.1") && !strings.Contains(body, "REQ-ATR-015") {
-		t.Errorf("GATE2_PRESERVATION_VIOLATION: run skill body %s lacks a doctrine "+
-			"cross-reference to §19.1 / REQ-ATR-015 (GATE-2 mandatory restoration)", runSkillRelPath)
-	}
+	// NOTE: A doctrine cross-reference to §19.1 / REQ-ATR-015 is intentionally NOT
+	// asserted. Those are maintainer-internal identifiers; requiring them in a
+	// distributed skill body would force a template neutrality-contract breach
+	// (internal SPEC-section / REQ token leakage). The score-independence statement
+	// above is the substantive, neutrality-safe GATE-2-restoration guarantee.
 }

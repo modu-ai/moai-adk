@@ -44,11 +44,12 @@ var DefaultDangerCategories = map[string][]string{
 	},
 }
 
-// LoadDangerConfig reads mx.yaml from projectRoot and returns the DangerCategoryConfig.
+// LoadDangerConfig reads .moai/config/sections/mx.yaml under projectRoot and returns the DangerCategoryConfig.
+// The file is deployed to the config sections directory (see mx-tag-protocol.md), not the project root.
 // When mx.yaml is absent, it returns an empty DangerCategoryConfig{} (callers fall back to DefaultDangerCategories).
 // When mx.yaml is present but malformed, it logs a warning and returns an empty DangerCategoryConfig{}.
 func LoadDangerConfig(projectRoot string) (DangerCategoryConfig, error) {
-	mxPath := filepath.Join(projectRoot, "mx.yaml")
+	mxPath := filepath.Join(projectRoot, ".moai", "config", "sections", "mx.yaml")
 	data, err := os.ReadFile(mxPath)
 	if os.IsNotExist(err) {
 		// File absent — normal; return an empty config so callers fall back to DefaultDangerCategories

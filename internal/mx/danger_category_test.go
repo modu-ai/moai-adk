@@ -172,7 +172,13 @@ func TestLoadDangerConfig_UserCustomCategories(t *testing.T) {
     - "unwrap()"
     - "panic()"
 `
-	if err := os.WriteFile(filepath.Join(tempDir, "mx.yaml"), []byte(mxYAML), 0o600); err != nil {
+	// mx.yaml is deployed to .moai/config/sections/mx.yaml (see mx-tag-protocol.md),
+	// NOT the project root. LoadDangerConfig must read it from that canonical location.
+	sectionsDir := filepath.Join(tempDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatalf("sections 디렉터리 생성 실패: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sectionsDir, "mx.yaml"), []byte(mxYAML), 0o600); err != nil {
 		t.Fatalf("mx.yaml 작성 실패: %v", err)
 	}
 
