@@ -97,6 +97,8 @@ For detailed design rules, see .claude/rules/moai/design/constitution.md
 
 The MoAI agent catalog consists of exactly **8 retained agents** (7 MoAI-custom + 1 Anthropic built-in `Explore`). The catalog is aligned with Anthropic's published best practices: "Subagents cannot spawn other subagents" (claude.com/docs/en/sub-agents), "Start with 3-5 teammates for most workflows" (claude.com/docs/en/agent-teams), and "Define a custom subagent when you keep spawning the same kind of worker" (claude.com/docs/en/best-practices).
 
+> **Watch (Claude Code 2.1.172)**: A subagent can now *opt into* spawning its own subagents (up to 5 levels deep) by declaring an explicit `Agent(agent_type)` allowlist in its frontmatter. This capability is **disabled by default** — without that opt-in the no-nesting behavior is unchanged, so the 8-agent consolidation rationale stands. The official sub-agents documentation still states the default constraint verbatim. Defer any nested-delegation adoption (and the corresponding revision of `.claude/rules/moai/workflow/archived-agent-rejection.md`) until the canonical opt-in frontmatter schema is officially published.
+
 ### Selection Decision Tree
 
 1. Read-only codebase exploration? Use the `Explore` subagent (Anthropic built-in)

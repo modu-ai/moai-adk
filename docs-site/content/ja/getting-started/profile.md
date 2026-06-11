@@ -84,7 +84,7 @@ moai cg -p team          # team 프로필로 CG 모드 실행
 프로필 설정 시 1M 컨텍스트 윈도우를 지원하는 모델을 선택할 수 있습니다.
 
 **지원 모델:**
-- `claude-opus-4-6[1m]` - Opus 4.6 (1M context)
+- `claude-opus-4-8[1m]` - Opus 4.8 (1M context)
 - `claude-sonnet-4-6[1m]` - Sonnet 4.6 (1M context)
 
 설정 위자드에서 "Model Settings" 단계에서 선택하거나, 프로필 설정 파일을 직접 수정합니다.
