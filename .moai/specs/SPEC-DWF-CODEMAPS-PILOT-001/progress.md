@@ -86,3 +86,13 @@ Ship the *pattern* (M5(b) catalog entry) + the *validated script* (M5(a)), but s
 | AC-DCP-010 (grep verified) | PASS | `grep -r "codemaps-extract\|codemaps-pilot" internal/template/templates/` → nothing |
 
 **MUST-PASS gate**: AC-DCP-002/003/004/006/008/009 all PASS. A value-proven verdict with evidence satisfies the verdict gate. Run is a **PASS**.
+
+## §E.5 — Mx-phase Audit-Ready Signal
+
+4-phase lifecycle close. All milestones M1-M6 complete; 10/10 AC PASS; MUST-PASS gate satisfied. Verdict: value proven (REQ-DCP-004) with three scoping caveats (§E.3). Race-absorbed cleanly onto parallel session `59c8c48f6` (cc-sync 2.1.172); regression 0; 2.1.172 determinism Note preserved.
+
+- plan_commit_sha: `c706c3c66` (plan-phase artifacts + audit remediation D1/D2/D3/D6)
+- run_sync_commit_sha: `5c1b24ec4` (run verdict + M5(a) script + M5(b) pattern catalog; sync folded in — Tier S exploratory pilot, M5(b) pattern catalog IS the sync deliverable)
+- mx_commit_sha: (backfill after close commit)
+- status transition: implemented → completed
+- deliverable disposition: M5(a) `.claude/workflows/codemaps-extract.js` + M5(b) dynamic-workflows.md § Pattern Catalog retained (scoped as high-count augmentation per §E.3 caveats; M5(a) auto-registered as a saved workflow command)
