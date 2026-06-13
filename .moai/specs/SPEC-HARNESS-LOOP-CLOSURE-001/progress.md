@@ -151,7 +151,7 @@ specs_artifacts_modified:
 
 ```yaml
 mx_complete_at: 2026-06-14
-mx_commit_sha: <backfill — set to the Mx close commit SHA>
+mx_commit_sha: 212b31ae4
 mx_status: completed
 four_phase_close: true
 lifecycle: "plan → run → sync → Mx (4-phase complete)"
