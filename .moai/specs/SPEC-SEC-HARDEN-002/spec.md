@@ -38,7 +38,7 @@ This SPEC closes both. The motivation for bundling them into one Tier-M SPEC is 
 
 | Milestone | Finding | Package | File:Line (verified) | Severity | Class |
 |-----------|---------|---------|----------------------|----------|-------|
-| M1 | (helper) | internal/cli | new helper modeled on `update_archive.go:99-122` `validateSkillID` | — | enabler — unified `validateSpecID` |
+| M1 | (helper) | internal/cli/specid (NEW leaf package) | exported `ValidateSpecID` in new leaf package `internal/cli/specid`, modeled on `update_archive.go:99-122` `validateSkillID` | — | enabler — unified exported `ValidateSpecID` (leaf package breaks the `cli`↔`cli/worktree` import cycle) |
 | M2a | A-F1 | internal/cli/worktree | `new.go:108` (`specID := args[0]`) → `new.go:141` (`filepath.Join(homeDir, ".moai", "worktrees", projectName, specID)` + `os.MkdirAll`/`Add`) | HIGH | SECURITY — path traversal (CWE-22) |
 | M2b | A-F3 | internal/core/git | `worktree.go:46` + `worktree.go:52` (git `worktree add` argv accepts `-`-leading operands) | MEDIUM | SECURITY — argv option smuggling (CWE-88) |
 | M3 | A-F4 | internal/cli | `spec_view.go:30` (`args[0]`)→`:49` join; `spec_status.go:52` (`args[0]`)→`:77` join; `spec_close.go:98` (`args[0]`) → guard at CLI boundary, deeper transitive join sink at `internal/spec/closer.go:173` | LOW | SECURITY — read-path traversal (CWE-22, constrained to spec.md-named files) |

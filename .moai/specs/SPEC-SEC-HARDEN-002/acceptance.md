@@ -6,38 +6,40 @@ Legend: **RED** = must FAIL on pre-fix code (defect present). **GREEN** = must P
 
 ---
 
-## M1 — `validateSpecID` sanitizer helper
+## M1 — `ValidateSpecID` sanitizer helper (leaf package `internal/cli/specid`)
+
+> **Import-cycle resolution (run-phase amendment, 2026-06-14)**: The canonical helper is the EXPORTED `ValidateSpecID` in the NEW leaf package `internal/cli/specid` (package `specid`), NOT an unexported `validateSpecID` in package `cli`. Rationale: `internal/cli` already imports `internal/cli/worktree`, so `internal/cli/worktree` cannot import `internal/cli` (import cycle) — a package-`cli` helper is unreachable from `worktree/new.go` (M2a). The leaf package `internal/cli/specid` is importable by BOTH `internal/cli` (M3 call sites) AND `internal/cli/worktree` (M2a call site), and imports neither → no cycle. The validation logic (`..` / path-separator / absolute-path rejection) is defined exactly once, in the leaf package.
 
 ### AC-SEC2-M1-001 — Rejects `..` traversal
-- **Given** the shared `validateSpecID` helper exists
+- **Given** the shared `specid.ValidateSpecID` helper exists in the leaf package `internal/cli/specid`
 - **When** it is called with `"../../../../tmp/evil"`
 - **Then** it returns a non-nil structured validation error (does not return nil/accept).
-- **RED (pre-fix)**: helper does not exist → test references undefined symbol → RED.
-- **GREEN verify**: `go test -run 'TestValidateSpecID' ./internal/cli` → `PASS`
-- **grep**: `grep -n 'func validateSpecID' internal/cli/*.go` → exactly 1 match (single shared helper).
+- **RED (pre-fix)**: helper does not exist in the leaf package → test references undefined symbol → RED.
+- **GREEN verify**: `go test -run 'TestValidateSpecID' ./internal/cli/specid` → `PASS`
 
 ### AC-SEC2-M1-002 — Accepts legitimate canonical SPEC-ID
 - **Given** the helper exists
 - **When** it is called with `"SPEC-SEC-HARDEN-002"`
 - **Then** it returns nil (accepts).
-- **NO-REG verify**: `go test -run 'TestValidateSpecID' ./internal/cli` includes a legitimate-ID sub-case asserting `err == nil`.
+- **NO-REG verify**: `go test -run 'TestValidateSpecID' ./internal/cli/specid` includes a legitimate-ID sub-case asserting `err == nil`.
 
 ### AC-SEC2-M1-003 — Rejects path separators
 - **Given** the helper exists
 - **When** it is called with `"foo/bar"` (and `"foo\\bar"`)
 - **Then** it returns a non-nil error for each.
-- **GREEN verify**: `go test -run 'TestValidateSpecID' ./internal/cli` → `PASS` (sub-cases for `/` and `\`).
+- **GREEN verify**: `go test -run 'TestValidateSpecID' ./internal/cli/specid` → `PASS` (sub-cases for `/` and `\`).
 
-### AC-SEC2-M1-004 — Single source of sanitization (one shared helper invoked at every call site)
+### AC-SEC2-M1-004 — Single canonical impl in a leaf package, invoked (exported) at every call site
 - **Given** the M2 and M3 call sites apply sanitization
-- **Then** exactly ONE `validateSpecID` helper is defined, and it is invoked (positively) at every guarded call site.
-- **Positive grep — helper defined exactly once**: `grep -rc 'func validateSpecID' internal/cli/` → sums to `1` (single shared definition).
-- **Positive grep — helper invoked at all FOUR call sites** (M2 worktree-new + M3's three spec subcommands): each of the following returns ≥ 1 match:
-  - `grep -n 'validateSpecID(' internal/cli/worktree/new.go`
-  - `grep -n 'validateSpecID(' internal/cli/spec_view.go`
-  - `grep -n 'validateSpecID(' internal/cli/spec_status.go`
-  - `grep -n 'validateSpecID(' internal/cli/spec_close.go`
-- This is a robust positive assertion (the desired post-fix state — helper present + invoked) rather than a fragile absence-of-pattern check.
+- **Then** the validation logic is defined exactly ONCE in the leaf package `internal/cli/specid`, and the EXPORTED `ValidateSpecID` is invoked at every guarded call site (no per-call-site bespoke re-implementation — REQ-SEC2-M1-004 intent preserved).
+- **Positive grep — single canonical definition (recursive over the leaf package)**: `grep -rc 'func ValidateSpecID' internal/cli/specid/` → exactly `1`. (Recursive over the leaf package, NOT a non-recursive `internal/cli/*.go` glob — the helper no longer lives in the `cli` package root.)
+- **Positive grep — exported helper invoked at all FOUR call sites** (M2a worktree-new + M3's three spec subcommands): each of the following returns ≥ 1 match (adjust the import-alias prefix to whatever alias the implementation uses; the assertion is "the exported leaf-package helper is invoked at this site"):
+  - `grep -n 'specid.ValidateSpecID(' internal/cli/worktree/new.go`
+  - `grep -n 'specid.ValidateSpecID(' internal/cli/spec_view.go`
+  - `grep -n 'specid.ValidateSpecID(' internal/cli/spec_status.go`
+  - `grep -n 'specid.ValidateSpecID(' internal/cli/spec_close.go`
+- **No bespoke re-implementation elsewhere**: `grep -rc 'func ValidateSpecID\|func validateSpecID' internal/cli/` → `1` (the leaf-package definition is the only one; no duplicate in the `cli` package root or `worktree`).
+- This is a robust positive assertion (the desired post-fix state — single leaf-package helper present + invoked at all 4 sites) and is now SATISFIABLE under Go's import rules (the prior package-`cli` definition pin contradicted the package-`worktree` call requirement via an import cycle).
 
 ---
 
@@ -78,18 +80,18 @@ Legend: **RED** = must FAIL on pre-fix code (defect present). **GREEN** = must P
 ### AC-SEC2-M3-001 — `spec view` rejects traversal SPEC-ID before read-path construction
 - **Given** `viewAcceptanceCriteria` (CLI handler `spec_view.go:30` `specID := args[0]` → join at `spec_view.go:49`)
 - **When** invoked as `moai spec view '../../../../etc'`
-- **Then** it rejects the input via `validateSpecID` at the `args[0]` boundary BEFORE `filepath.Join(projectRoot, ".moai", "specs", specID)`, so no file outside `.moai/specs/` is read.
+- **Then** it rejects the input via `specid.ValidateSpecID` at the `args[0]` boundary BEFORE `filepath.Join(projectRoot, ".moai", "specs", specID)`, so no file outside `.moai/specs/` is read.
 - **RED command (pre-fix)**: `moai spec view '../../../../etc'` currently joins to a path outside `.moai/specs/` and stats/reads `spec.md` there.
 - **GREEN verify**: `go test -run 'TestSpecView.*Traversal|TestViewAcceptanceCriteria.*Traversal' ./internal/cli` → `PASS`.
 
 ### AC-SEC2-M3-002 — All THREE positional-SPEC-ID spec subcommands guarded at the CLI boundary
 - **Given** exactly three spec subcommands accept a positional SPEC-ID: `spec view` (`spec_view.go:30`), `spec status` (`spec_status.go:52`), `spec close` (`spec_close.go:98`). `spec drift` is EXCLUDED — it has no positional SPEC-ID (RunE/PostRunE only, repo-wide drift command).
-- **Then** each of the three applies the `validateSpecID` guard at its CLI `args[0]` boundary. For `spec close`, the guard is at the CLI handler (`spec_close.go:98`, before `spec.Close(specID, opts)`); the path-join sink is the deeper transitive `internal/spec/closer.go:173`, which is NOT modified — guarding at the CLI boundary stops the traversal before it reaches that sink.
+- **Then** each of the three applies the `specid.ValidateSpecID` guard at its CLI `args[0]` boundary. For `spec close`, the guard is at the CLI handler (`spec_close.go:98`, before `spec.Close(specID, opts)`); the path-join sink is the deeper transitive `internal/spec/closer.go:173`, which is NOT modified — guarding at the CLI boundary stops the traversal before it reaches that sink.
 - **Positive grep — guard invoked in each of the THREE handlers** (each returns ≥ 1 match):
-  - `grep -n 'validateSpecID(' internal/cli/spec_view.go`
-  - `grep -n 'validateSpecID(' internal/cli/spec_status.go`
-  - `grep -n 'validateSpecID(' internal/cli/spec_close.go`
-- **Exclusion assertion — `spec_drift.go` is NOT guarded and NOT modified**: `grep -c 'validateSpecID' internal/cli/spec_drift.go` → `0` (no positional SPEC-ID to guard).
+  - `grep -n 'specid.ValidateSpecID(' internal/cli/spec_view.go`
+  - `grep -n 'specid.ValidateSpecID(' internal/cli/spec_status.go`
+  - `grep -n 'specid.ValidateSpecID(' internal/cli/spec_close.go`
+- **Exclusion assertion — `spec_drift.go` is NOT guarded and NOT modified**: `grep -c 'ValidateSpecID' internal/cli/spec_drift.go` → `0` (no positional SPEC-ID to guard).
 - **Exclusion assertion — `closer.go` not touched**: `git diff --name-only` does NOT list `internal/spec/closer.go`.
 
 ### AC-SEC2-M3-003 — Legitimate SPEC-ID resolves unchanged (NO-REG)
@@ -143,6 +145,6 @@ Legend: **RED** = must FAIL on pre-fix code (defect present). **GREEN** = must P
 - Cross-platform: `go build ./...` AND `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
 - Subagent boundary: `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli internal/cli/worktree internal/permission internal/core/git | grep -v "_test.go" | grep -v "^[^:]*:[0-9]*:[ \t]*//"` → 0 matches.
 - Lint: `golangci-lint run --timeout=2m` → no NEW issues vs baseline.
-- Coverage: new `validateSpecID` helper ≥ 85%; touched packages no regression.
+- Coverage: new `internal/cli/specid` leaf package (`ValidateSpecID`) ≥ 85%; touched packages no regression.
 - Reproduction-first proof: each milestone's RED test is demonstrably present and FAILED on the pre-fix tree (captured in run-phase evidence).
 - Scope discipline: `git diff --name-only` touches ONLY M1-M4 files + this SPEC's artifacts; PRESERVE list untouched. M3 touches exactly THREE CLI files (`spec_view.go`, `spec_status.go`, `spec_close.go`) — NOT `spec_drift.go` and NOT `internal/spec/closer.go`.
