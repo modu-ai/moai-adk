@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -138,6 +139,32 @@ func (h *fileChangedHandler) runMXScan(ctx context.Context, input *HookInput) {
 	default:
 	}
 
+	// SPEC-SEC-HARDEN-003 C-F1 봉쇄 (additive guard): hook stdin JSON에서 온
+	// input.FilePath / input.CWD는 공격자 영향이 가능하므로, 스캔·사이드카 쓰기
+	// 전에 해소된 프로젝트 루트 내부로 봉쇄한다. 위반 시 fail-closed(로그 후
+	// early return) — 비동기 side-effect 실패는 hook 응답에 전파되지 않는다
+	// (REQ-SEC3-004 / REQ-HAE-005 보존; main handler는 고정 빈 payload 반환).
+	//
+	// 루트 해소는 중앙화된 resolveProjectRootFromInputOrEnv만 사용한다(B7 canonical;
+	// env 인라인 조회 금지, NFR-SEC3-002).
+	root := resolveProjectRootFromInputOrEnv(input, "runMXScan")
+	if root == "" {
+		// 루트를 해소할 수 없으면 봉쇄 불가 → 사이드카 작업 스킵(fail-closed).
+		slog.Warn("file_changed async: project root unresolved, skipping MX scan",
+			"path", input.FilePath,
+		)
+		return
+	}
+
+	// REQ-SEC3-002: input.FilePath가 해소된 루트를 탈출하면 스캔 없이 거부한다.
+	if !pathContainedIn(root, input.FilePath) {
+		slog.Warn("file_changed async: FilePath escapes project root, skipping MX scan (containment)",
+			"path", input.FilePath,
+			"project_root", root,
+		)
+		return
+	}
+
 	// Scan file for MX tags.
 	scanner := mx.NewScanner()
 	tags, err := scanner.ScanFile(input.FilePath)
@@ -151,16 +178,24 @@ func (h *fileChangedHandler) runMXScan(ctx context.Context, input *HookInput) {
 
 	// Compare with existing sidecar tags and update index.
 	// This tracks MX tag deltas across file edits for monitoring and validation.
-	projectDir := input.CWD
-	if projectDir != "" {
-		stateDir := filepath.Join(projectDir, ".moai", "state")
-		manager := mx.NewManager(stateDir)
-		if _, uerr := manager.UpdateFile(input.FilePath, tags); uerr != nil {
-			slog.Warn("failed to update MX sidecar",
-				"path", input.FilePath,
-				"error", uerr,
-			)
-		}
+	//
+	// REQ-SEC3-003: 사이드카 stateDir은 raw input.CWD가 아니라 해소된 루트에서
+	// 유도하며, 그 대상이 루트를 탈출하지 않음을 쓰기 전에 봉쇄 검증한다.
+	stateDir := filepath.Join(root, ".moai", "state")
+	if !pathContainedIn(root, stateDir) {
+		slog.Warn("file_changed async: sidecar stateDir escapes project root, skipping sidecar update (containment)",
+			"path", input.FilePath,
+			"state_dir", stateDir,
+			"project_root", root,
+		)
+		return
+	}
+	manager := mx.NewManager(stateDir)
+	if _, uerr := manager.UpdateFile(input.FilePath, tags); uerr != nil {
+		slog.Warn("failed to update MX sidecar",
+			"path", input.FilePath,
+			"error", uerr,
+		)
 	}
 
 	// Format summary message and log for observability.
@@ -192,4 +227,32 @@ func (h *fileChangedHandler) formatTagDelta(filePath string, tags []mx.Tag) stri
 	}
 
 	return "MX tag delta on " + sb.String()
+}
+
+// pathContainedIn reports whether target resolves to a path inside root
+// (root itself counts as contained). It is the C-F1 root-relative containment
+// guard for SPEC-SEC-HARDEN-003: both paths are made absolute and cleaned, then
+// filepath.Rel is used to detect a `..` escape. Cross-platform via filepath
+// (NFR-SEC3-005). Fail-closed: any resolution error returns false (NFR-SEC3-004).
+func pathContainedIn(root, target string) bool {
+	if root == "" || target == "" {
+		return false
+	}
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return false
+	}
+	absTarget, err := filepath.Abs(target)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(absRoot, absTarget)
+	if err != nil {
+		return false
+	}
+	// rel == "." means target == root; a leading ".." (or bare "..") escapes root.
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return false
+	}
+	return true
 }
