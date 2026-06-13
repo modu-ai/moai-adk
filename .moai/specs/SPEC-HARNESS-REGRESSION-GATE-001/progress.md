@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-REGRESSION-GATE-001
 title: "Progress — Harness M2-lite 비회귀 게이트"
 version: "0.1.1"
-status: in-progress
+status: implemented
 created: 2026-06-14
 updated: 2026-06-14
 author: manager-develop
@@ -43,51 +43,61 @@ tags: "harness, regression-gate, progress"
 
 ## §E.2 Run-phase Evidence
 
-### AC PASS/FAIL Matrix (populated at run completion)
+### AC PASS/FAIL Matrix (run completion — all 13 PASS)
 
 | AC | Status | Actual Output |
 |----|--------|---------------|
-| AC-RG-001 | (pending) | |
-| AC-RG-002 | (pending) | |
-| AC-RG-003 | (pending) | |
-| AC-RG-004 | (pending) | |
-| AC-RG-005 | (pending) | |
-| AC-RG-006 | (pending) | |
-| AC-RG-007 | (pending) | |
-| AC-RG-008 | (pending) | |
-| AC-RG-009 | (pending) | |
-| AC-RG-010 | (pending) | |
-| AC-RG-011 | (pending) | |
-| AC-RG-012 | (pending) | |
-| AC-RG-013 | (pending) | |
+| AC-RG-001 | PASS | `--- PASS` (measure parsers) + import-cycle CLEAN (no lsp/gopls/harness/loop dep) |
+| AC-RG-002 | PASS | `--- PASS` (loop delegates; existing feedback/parse/collect tests GREEN) |
+| AC-RG-003 | PASS | `--- PASS` TestBaselineStore_AbsentFile$ + TestBaselineStore_AtomicRoundTrip$ (no leftover .tmp) |
+| AC-RG-004 | PASS | `--- PASS` Error$ + DistinctFromPending$; both error types coexist in source |
+| AC-RG-005 | PASS | `--- PASS` TestApply_Regression_NonRegressing_Keeps$ (baseline updated, approved lineage) |
+| AC-RG-006 | PASS | `--- PASS` Blocks_RollsBack$ + AppendsBlockedLineage$ (rollback byte-identical + regression-blocked entry) |
+| AC-RG-007 | PASS | `--- PASS` TestSubagentBoundary_NoAskUserQuestion$ |
+| AC-RG-008 | PASS | `--- PASS` SafetyArchitecture + SentinelCatalog + safety TestIsFrozen + tier ok; FROZEN git-diff empty |
+| AC-RG-009 | PASS | grep: `typically Δ=0`/`always-pass` + `measurement-infrastructure scaffold` + `defense-in-depth` all present in spec.md |
+| AC-RG-010 | PASS | grep `auto_apply: false` present in harness.yaml (unchanged) |
+| AC-RG-011 | PASS | `--- PASS` TestCollector_AssemblesTriple$ |
+| AC-RG-012 | PASS | `--- PASS` TestApply_Regression_ForbiddenFilesUntouched$ (usage-log/observations/tier-promotions unmodified) |
+| AC-RG-013 | PASS | `--- PASS` TestApply_Regression_MeasurementError_FailsClosed$ (fail-closed roll back, no baseline update) |
 
 ### Milestone commit log
 
 | Milestone | Status | Commit |
 |-----------|--------|--------|
-| M1 (extract parsers → internal/measure) | done | (this commit) |
-| M2 (loop delegates to measure) | done | (this commit) |
-| M3 (MetricTriple + ApplyRegressionError + baseline store) | pending | |
-| M4 (in-Apply gate wiring) | pending | |
-| M5 (FROZEN preservation + quality gate) | pending | |
+| M1+M2 (extract parsers → internal/measure + loop delegates) | done | `a384ce79c` |
+| M3 (MetricTriple + ApplyRegressionError + baseline store) | done | `855a8b418` |
+| M4 (in-Apply gate wiring + production seam) | done | `e202df00c` |
+| M5 (FROZEN preservation + quality gate) | done | (this commit) |
+
+### Quality gate (M5)
+
+- `go test ./internal/harness/... ./internal/loop/... ./internal/measure/...` → all GREEN
+- `go test ./...` → GREEN (note: `internal/hook/wrapper_test.go` is pre-existing flaky under full-parallel contention — 5s mock-binary subprocess timeout; passes in isolation and on re-run; OUTSIDE this SPEC's scope, never touched)
+- `go list -deps internal/measure` → no `internal/(lsp|gopls|harness|loop)` (import-cycle proof)
+- DO-NOT-MODIFY files → zero git diff
+- `golangci-lint run --timeout=2m ./internal/harness/... ./internal/measure/... ./internal/loop/...` → 0 issues
+- Coverage: `internal/measure` 98.0% (≥85%), `internal/harness` 86.1% (no-regression)
+- C-HRA-008 boundary → GREEN (no AskUserQuestion in internal/harness non-test source)
+- Cross-platform: `go build ./...` + `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
 
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_complete_at: (pending)
-run_commit_sha: (pending — backfill)
-run_status: in-progress
-ac_pass_count: 0
+run_complete_at: 2026-06-14
+run_commit_sha: (pending — backfill after M5 commit lands)
+run_status: implemented
+ac_pass_count: 13
 ac_fail_count: 0
 preserve_list_post_run_count: 0
-l44_pre_commit_fetch: (pending)
+l44_pre_commit_fetch: done (origin/main divergence 1 3 — parallel SEC-HARDEN-003 sync, disjoint scope; orchestrator owns rebase+push)
 l44_post_push_fetch: (orchestrator-owned)
 new_warnings_or_lints_introduced: 0
 cross_platform_build:
   host: pass
   windows_amd64: pass
 total_run_phase_files: 8
-m1_to_mN_commit_strategy: per-milestone scoped commits, Authored-By-Agent trailer
+m1_to_mN_commit_strategy: per-milestone scoped commits, Authored-By-Agent trailer (a384ce79c, 855a8b418, e202df00c, M5)
 ```
