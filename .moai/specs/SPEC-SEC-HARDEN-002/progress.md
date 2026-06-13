@@ -159,3 +159,19 @@ sync_status: ready
 Sync-phase completion: spec.md frontmatter status → `implemented`, updated → `2026-06-14`.
 CHANGELOG.md entry recorded: M1-M4 milestones, 15/15 AC, plan-auditor 0.83→0.91, coverage 90.2%/88.1%, D3 deferred.
 Notable incidents (recorded): (1) import-cycle AC contradiction both plan-auditor + run-gate missed, resolved leaf-package relocation; (2) M2a polymorphic-arg regression post-push, fixed forward 5c6085b55.
+
+---
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+```yaml
+spec_id: SPEC-SEC-HARDEN-002
+mx_commit_sha: _pending_backfill_
+mx_complete_at: 2026-06-14T00:00:00Z
+mx_status: complete
+lifecycle_status: completed
+four_phase_close: plan + run + sync + mx
+```
+
+Mx-phase 4-phase close: status implemented to completed. SPEC-SEC-HARDEN-002 lifecycle complete (era V3R6, H-4: E.2 + E.5 + both commit_sha present).
+Security cluster closed: M1 leaf-package ValidateSpecID enabler, M2a HIGH worktree path-traversal guard (CWE-22), M2b argv `--` separator (CWE-88), M3 spec read-path guard at 3 CLI handlers, M4 redirect-operator hardening (resolves SEC-HARDEN-001 deferred D2). 15/15 AC PASS, coverage permission 90.2% / core-git 88.1%, plan-auditor 0.91. D3 IFS word-split remains deferred (spec F.1, requires mvdan.cc/sh parser). Sync-phase re-committed under corrected scope (orchestrator recovery of manager-docs git-add-all violation + parallel-session race absorption on base 8746b4a05).
