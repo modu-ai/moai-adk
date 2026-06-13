@@ -10,56 +10,10 @@ import (
 	"github.com/modu-ai/moai-adk/internal/lsp/gopls"
 )
 
-// TestParseIntFromString covers parseIntFromString / mustParseInt / mustParseIntErr.
-func TestParseIntFromString(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		input   string
-		want    int
-		wantErr bool
-	}{
-		{"0", 0, false},
-		{"1", 1, false},
-		{"42", 42, false},
-		{"100", 100, false},
-		{"", 0, false}, // empty string: no digit chars, loop skips, returns 0
-		{"abc", 0, true},
-		{"1a", 0, true},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.input, func(t *testing.T) {
-			t.Parallel()
-			got, err := parseIntFromString(tt.input)
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("parseIntFromString(%q) = %d, want error", tt.input, got)
-				}
-				return
-			}
-			if err != nil {
-				t.Errorf("parseIntFromString(%q) unexpected error: %v", tt.input, err)
-			}
-			if got != tt.want {
-				t.Errorf("parseIntFromString(%q) = %d, want %d", tt.input, got, tt.want)
-			}
-		})
-	}
-}
-
-// TestMustParseInt covers mustParseInt for valid inputs.
-func TestMustParseInt(t *testing.T) {
-	t.Parallel()
-
-	if got := mustParseInt("7"); got != 7 {
-		t.Errorf("mustParseInt(\"7\") = %d, want 7", got)
-	}
-	if got := mustParseInt("abc"); got != 0 {
-		t.Errorf("mustParseInt(\"abc\") = %d, want 0 (error case)", got)
-	}
-}
+// NOTE: TestParseIntFromString / TestMustParseInt moved to internal/measure/measure_test.go
+// when the parsers + transitive helpers (parseIntFromString / mustParseInt / mustParseIntErr)
+// were extracted to the internal/measure leaf package (SPEC-HARNESS-REGRESSION-GATE-001 M1/M2).
+// The loop package now delegates parsing to internal/measure; the helpers no longer live here.
 
 // TestFilterGoOnlyDiagnostics covers filterGoOnlyDiagnostics edge cases.
 func TestFilterGoOnlyDiagnostics(t *testing.T) {
