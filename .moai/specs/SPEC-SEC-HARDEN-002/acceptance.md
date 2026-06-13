@@ -33,12 +33,12 @@ Legend: **RED** = must FAIL on pre-fix code (defect present). **GREEN** = must P
 - **Given** the M2 and M3 call sites apply sanitization
 - **Then** the validation logic is defined exactly ONCE in the leaf package `internal/cli/specid`, and the EXPORTED `ValidateSpecID` is invoked at every guarded call site (no per-call-site bespoke re-implementation — REQ-SEC2-M1-004 intent preserved).
 - **Positive grep — single canonical definition (recursive over the leaf package)**: `grep -rc 'func ValidateSpecID' internal/cli/specid/` → exactly `1`. (Recursive over the leaf package, NOT a non-recursive `internal/cli/*.go` glob — the helper no longer lives in the `cli` package root.)
-- **Positive grep — exported helper invoked at all FOUR call sites** (M2a worktree-new + M3's three spec subcommands): each of the following returns ≥ 1 match (adjust the import-alias prefix to whatever alias the implementation uses; the assertion is "the exported leaf-package helper is invoked at this site"):
-  - `grep -n 'specid.ValidateSpecID(' internal/cli/worktree/new.go`
+- **Positive grep — exported leaf-package helper invoked at all FOUR call sites** (M2a worktree-new + M3's three spec subcommands): each returns ≥ 1 match. NOTE: the three spec subcommands take a flat SPEC-ID and use the strict `ValidateSpecID`; `worktree new` takes a polymorphic SPEC-ID-or-branch-name arg (where "/" is legitimate, e.g. "fix/something") and uses the traversal-only `ValidateNoTraversal` (rejects ".." + absolute paths, allows "/"). Both helpers live in the same leaf package `internal/cli/specid`:
+  - `grep -n 'specid.ValidateNoTraversal(' internal/cli/worktree/new.go`
   - `grep -n 'specid.ValidateSpecID(' internal/cli/spec_view.go`
   - `grep -n 'specid.ValidateSpecID(' internal/cli/spec_status.go`
   - `grep -n 'specid.ValidateSpecID(' internal/cli/spec_close.go`
-- **No bespoke re-implementation elsewhere**: `grep -rc 'func ValidateSpecID\|func validateSpecID' internal/cli/` → `1` (the leaf-package definition is the only one; no duplicate in the `cli` package root or `worktree`).
+- **No bespoke re-implementation elsewhere**: the only path-validation helpers are the two leaf-package functions `ValidateSpecID` (strict flat-ID) and `ValidateNoTraversal` (traversal-only for the polymorphic worktree arg), both defined exactly once in `internal/cli/specid`. `grep -rc 'func ValidateSpecID\|func validateSpecID' internal/cli/` → `1` (no duplicate strict helper; no bespoke inline `..`/separator checks at the call sites).
 - This is a robust positive assertion (the desired post-fix state — single leaf-package helper present + invoked at all 4 sites) and is now SATISFIABLE under Go's import rules (the prior package-`cli` definition pin contradicted the package-`worktree` call requirement via an import cycle).
 
 ---
@@ -52,11 +52,11 @@ Legend: **RED** = must FAIL on pre-fix code (defect present). **GREEN** = must P
 - **RED command (pre-fix, demonstrates defect — DO NOT run against a real homedir without isolation; use the test harness)**: `moai worktree new '../../../../tmp/evil'` currently runs `filepath.Join(homeDir, ".moai", "worktrees", projectName, "../../../../tmp/evil")` + `os.MkdirAll`/`Add` → creates a worktree dir OUTSIDE the root.
 - **GREEN verify**: `go test -run 'TestRunNew.*Traversal' ./internal/cli/worktree` → `PASS` (asserts rejection + no out-of-root dir via injected `userHomeDirFunc`/`getProjectNameFunc` pointing at `t.TempDir()`).
 
-### AC-SEC2-M2-002 — Legitimate SPEC-ID still constructs the canonical worktree path (NO-REG)
-- **Given** the guarded `worktree new`
-- **When** invoked with a legitimate `SPEC-SEC-HARDEN-002`-style ID
-- **Then** it constructs `~/.moai/worktrees/<project>/<SPEC-ID>` and proceeds unchanged.
-- **NO-REG verify**: `go test ./internal/cli/worktree/...` → `ok` (existing worktree-new tests stay green).
+### AC-SEC2-M2-002 — Legitimate SPEC-ID AND branch-name args still work (NO-REG)
+- **Given** the guarded `worktree new` (polymorphic arg: SPEC-ID or branch name)
+- **When** invoked with a legitimate `SPEC-SEC-HARDEN-002`-style ID OR a branch name containing "/" (e.g. `fix/something`)
+- **Then** the `ValidateNoTraversal` guard allows both ("/" is legitimate for branch names; only ".." and absolute paths are rejected) and the command proceeds unchanged — it MUST NOT reject branch names with "/".
+- **NO-REG verify**: `go test ./internal/cli/worktree/...` → `ok` (existing worktree-new tests incl. `TestRunNew_DefaultPath/branch_with_slash_uses_global_path` stay green).
 
 ### AC-SEC2-M2-003 — git worktree-add argv uses `--` before user-derived operands
 - **Given** the git `worktree add` argv assembly (worktree.go:46 + 52)

@@ -107,9 +107,11 @@ origin/main is safer because it always reflects the latest merged state.`,
 func runNew(cmd *cobra.Command, args []string) error {
 	out := cmd.OutOrStdout()
 	specID := args[0]
-	// SPEC-SEC-HARDEN-002 M2a (A-F1): CLI args[0] 경계에서 path-traversal SPEC-ID를
+	// SPEC-SEC-HARDEN-002 M2a (A-F1): CLI args[0] 경계에서 path-traversal을
 	// filepath.Join/os.MkdirAll/WorktreeProvider.Add 도달 전에 거부한다 (HIGH).
-	if err := specid.ValidateSpecID(specID); err != nil {
+	// worktree new는 SPEC-ID 또는 브랜치명(예: "fix/something" — "/" 정상)을 모두
+	// 받으므로 "/"는 허용하고 ".."/절대경로(봉쇄 탈출)만 거부하는 ValidateNoTraversal 사용.
+	if err := specid.ValidateNoTraversal(specID); err != nil {
 		return err
 	}
 	branchName := resolveSpecBranch(specID)
