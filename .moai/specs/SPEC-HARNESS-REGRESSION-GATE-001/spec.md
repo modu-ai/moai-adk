@@ -199,8 +199,8 @@ This section uses h3 (`###`) sub-headings with dash-bullet items per `moai spec 
 | `internal/harness/types.go` | 399 (`LineageEntry`, `Decision` free string) | Carries `"regression-blocked"` decision value | REFERENCE (reuse, no schema change) |
 | `internal/loop/go_feedback.go` | 166 (`parseGoTestJSON`), 188 (`parseCoverageFile`), 227 (`countNonEmptyLines`) | Parsers to extract → `internal/measure`; then delegate | EDIT (delegate to leaf package) |
 | `internal/loop/state.go` | 112 (`Feedback` struct) | `TestsPassed`/`Coverage`/`LintErrors` fields | REFERENCE (no schema change) |
-| `internal/harness/frozen_guard.go` | 18-22, 28-31 | allowedPrefixes / frozenPrefixes | **DO-NOT-MODIFY** |
-| `internal/harness/safety/frozen_guard.go` | 14-23 | frozenPrefixes | **DO-NOT-MODIFY** |
+| `internal/harness/frozen_guard.go` | 18-22, 27-31 | allowedPrefixes / frozenPrefixes | **DO-NOT-MODIFY** |
+| `internal/harness/safety/frozen_guard.go` | 18-23 | frozenPrefixes | **DO-NOT-MODIFY** |
 | `internal/harness/tier/tier.go` | 50 | tierThresholds [1,3,5,10] | **DO-NOT-MODIFY** |
 | `internal/harness/scorer.go` | 13-24, 50 | 4 dimensions + DefaultMustPassDimensions | **DO-NOT-MODIFY** |
 | `.moai/config/sections/harness.yaml` | 116 | `auto_apply: false` | **DO-NOT-MODIFY** |
