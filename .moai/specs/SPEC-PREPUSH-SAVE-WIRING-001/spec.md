@@ -2,9 +2,9 @@
 id: SPEC-PREPUSH-SAVE-WIRING-001
 title: "Wire git_strategy config section into the Save() WRITE path (READ/WRITE symmetry)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-11
-updated: 2026-06-11
+updated: 2026-06-13
 author: manager-spec
 priority: P1
 phase: "v3.0.0"
