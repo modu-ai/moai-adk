@@ -2,9 +2,9 @@
 id: SPEC-SEC-HARDEN-002
 title: "CLI SPEC-ID/path sanitizer + permission redirect-operator hardening (SEC-HARDEN-001 fast-follow)"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-06-13
-updated: 2026-06-13
+updated: 2026-06-14
 author: manager-spec
 priority: P1
 phase: "v3.0.0"

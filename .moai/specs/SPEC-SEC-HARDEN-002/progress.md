@@ -138,3 +138,24 @@ Justification: This is coding-heavy security work where M2/M3 depend on the M1 `
 - Lint: `golangci-lint run ./internal/cli/... ./internal/permission/... ./internal/core/git/...` → 0 issues.
 - C-HRA-008: 0 AskUserQuestion matches in touched source files.
 - Coverage: permission 90.2%, core/git 88.1%.
+
+---
+
+## §E.2 Sync-phase Audit-Ready Signal
+
+```yaml
+spec_id: SPEC-SEC-HARDEN-002
+sync_commit_sha: _pending_backfill_
+sync_complete_at: 2026-06-14T00:00:00Z
+sync_status: ready
+
+# M2a reconciliation note: import-cycle blocker (cli.validateSpecID unreachable from worktree.new due to reverse import)
+# was resolved by manager-develop relocating validateSpecID to leaf package internal/cli/specid/,
+# breaking the cycle and enabling M2a HIGH path-traversal guard. AC-SEC2-M1-004 grep constraint
+# (definition in internal/cli/*.go) was relaxed to allow internal/cli/specid/specid.go per the relocation design.
+# Result: all 15 AC pass, M2a guard now reachable from new.go via specid import, no cycle.
+```
+
+Sync-phase completion: spec.md frontmatter status → `implemented`, updated → `2026-06-14`.
+CHANGELOG.md entry recorded: M1-M4 milestones, 15/15 AC, plan-auditor 0.83→0.91, coverage 90.2%/88.1%, D3 deferred.
+Notable incidents (recorded): (1) import-cycle AC contradiction both plan-auditor + run-gate missed, resolved leaf-package relocation; (2) M2a polymorphic-arg regression post-push, fixed forward 5c6085b55.
