@@ -730,6 +730,89 @@ func TestValidate_OneofViolation(t *testing.T) {
 	}
 }
 
+// TestValidateGitStrategyMergeMethod covers AC-MMC-005 (invalid value rejected with
+// field path) and AC-MMC-006 (empty value passes, fail-safe to default). It mirrors
+// the validateGitConventionConfig enum-rejection structure, NOT the checkStringField
+// token tests — checkStringField only flags unexpanded tokens, not enum membership.
+func TestValidateGitStrategyMergeMethod(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		method  string
+		wantErr bool
+	}{
+		{"squash is valid", "squash", false},
+		{"merge is valid", "merge", false},
+		{"rebase is valid", "rebase", false},
+		{"empty is valid (defaults applied)", "", false}, // AC-MMC-006
+		{"rocket is invalid", "rocket", true},            // AC-MMC-005
+		{"uppercase Squash is invalid", "Squash", true},  // EC-3 case sensitivity
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := NewDefaultConfig()
+			cfg.GitStrategy.Team.MergeMethod = tt.method
+			loaded := map[string]bool{}
+
+			err := Validate(cfg, loaded)
+			if tt.wantErr && err == nil {
+				t.Errorf("Validate() expected error for merge_method %q, got nil", tt.method)
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("Validate() expected no error for merge_method %q, got: %v", tt.method, err)
+			}
+		})
+	}
+}
+
+// TestValidateGitStrategyMergeMethod_FieldPath proves AC-MMC-005: the error names
+// the offending mode-specific field path AND carries the rejected value.
+func TestValidateGitStrategyMergeMethod_FieldPath(t *testing.T) {
+	t.Parallel()
+
+	cfg := NewDefaultConfig()
+	cfg.GitStrategy.Team.MergeMethod = "rocket"
+
+	errs := validateGitStrategyMergeMethod(cfg)
+	msg := findFieldMessage(errs, "git_strategy.team.merge_method")
+	if msg != "must be one of: squash, merge, rebase" {
+		t.Errorf("team.merge_method=rocket message = %q, want enum message", msg)
+	}
+	// The rejected value is surfaced on the ValidationError.
+	var found bool
+	for _, e := range errs {
+		if e.Field == "git_strategy.team.merge_method" && e.Value == "rocket" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected a ValidationError carrying the rejected value %q, got %+v", "rocket", errs)
+	}
+}
+
+// TestIsValidMergeMethod covers the exported helper SSOT reused by other packages.
+func TestIsValidMergeMethod(t *testing.T) {
+	t.Parallel()
+
+	for _, m := range []string{"squash", "merge", "rebase"} {
+		if !IsValidMergeMethod(m) {
+			t.Errorf("IsValidMergeMethod(%q) = false, want true", m)
+		}
+	}
+	for _, m := range []string{"", "rocket", "Squash"} {
+		if IsValidMergeMethod(m) {
+			t.Errorf("IsValidMergeMethod(%q) = true, want false", m)
+		}
+	}
+	if got := len(ValidMergeMethods()); got != 3 {
+		t.Errorf("ValidMergeMethods() length = %d, want 3", got)
+	}
+}
+
 // containsSubstring is a test helper that checks if s contains substr.
 func containsSubstring(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))

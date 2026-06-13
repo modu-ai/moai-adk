@@ -15,6 +15,7 @@ git_strategy:
     github_integration: false
     auto_checkpoint: disabled
     push_to_remote: false
+    merge_method: squash       # PR merge method: squash, merge, rebase
 
     # Branch creation policy
     branch_creation:
@@ -47,6 +48,7 @@ git_strategy:
     push_to_remote: true
     branch_prefix: "feature/SPEC-"
     main_branch: main
+    merge_method: squash       # PR merge method: squash, merge, rebase
 
     # Branch creation policy
     branch_creation:
@@ -85,6 +87,7 @@ git_strategy:
     draft_pr: true
     required_reviews: 1
     branch_protection: true
+    merge_method: squash       # PR merge method: squash, merge, rebase
 
     # Branch creation policy
     branch_creation:

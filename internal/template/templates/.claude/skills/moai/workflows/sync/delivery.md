@@ -310,7 +310,7 @@ Auto-merge trigger conditions:
 When auto-merge is triggered:
 1. Verify all CI/CD checks pass (gh pr checks)
 2. Verify zero merge conflicts (gh pr view --json mergeable)
-3. If all checks pass: Execute `gh pr merge --squash --delete-branch`
+3. If all checks pass: Resolve the merge method from the active mode's `git_strategy.<mode>.merge_method` config value (`squash` | `merge` | `rebase`; default `squash`), then execute `gh pr merge --<merge_method> --delete-branch`. When `merge_method` resolves to `squash` (the default), this is `gh pr merge --squash --delete-branch`.
 4. If checks fail: Report error with recovery command, do NOT merge
 
 ##### Flag Behavior
@@ -322,7 +322,7 @@ When auto-merge is triggered:
 
 1. Check CI/CD status via `gh pr checks --watch` (wait for completion)
 2. Check merge conflicts via `gh pr view --json mergeable`
-3. If passing and mergeable: Execute `gh pr merge --squash --delete-branch`
+3. If passing and mergeable: Resolve the merge method from the active mode's `git_strategy.<mode>.merge_method` config value (default `squash`), then execute `gh pr merge --<merge_method> --delete-branch` (the squash default renders `gh pr merge --squash --delete-branch`)
 4. Checkout target branch, fetch latest
 5. Verify local is synchronized with remote
 

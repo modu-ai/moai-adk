@@ -285,6 +285,18 @@ func TestNewDefaultGitStrategyConfig(t *testing.T) {
 	if !cfg.Personal.PushToRemote {
 		t.Error("Personal.PushToRemote: expected true")
 	}
+
+	// AC-MMC-001 — merge_method defaults to "squash" in all 3 mode profiles
+	// (REQ-MMC-001/002), preserving current behavior when the field is absent.
+	if cfg.Manual.MergeMethod != "squash" {
+		t.Errorf("Manual.MergeMethod: got %q, want %q", cfg.Manual.MergeMethod, "squash")
+	}
+	if cfg.Personal.MergeMethod != "squash" {
+		t.Errorf("Personal.MergeMethod: got %q, want %q", cfg.Personal.MergeMethod, "squash")
+	}
+	if cfg.Team.MergeMethod != "squash" {
+		t.Errorf("Team.MergeMethod: got %q, want %q", cfg.Team.MergeMethod, "squash")
+	}
 }
 
 func TestNewDefaultSystemConfig(t *testing.T) {

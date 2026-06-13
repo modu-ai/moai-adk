@@ -41,7 +41,7 @@ catalog:
             - name: moai-ref-git-workflow
               tier: core
               path: templates/.claude/skills/moai-ref-git-workflow/
-              hash: e26a6c132e1b623383d00af6aa78e4a2e9c473425f924980143835283628ccd3
+              hash: aecb53b2694522ec8b923e2e42d34450bad11501c61196a75d9d6e49879b1d44
               version: 1.0.0
             - name: moai-ref-testing-pyramid
               tier: core
@@ -117,7 +117,7 @@ catalog:
             - name: manager-git
               tier: core
               path: templates/.claude/agents/moai/manager-git.md
-              hash: 43b8c24c9ef5a512ba9fee8c535fe0da89d9e463a0aa1dba6330fececc597e77
+              hash: 6c6c41ee15ef2bb0766483e68ea38ad1e409b6830cae517256ce9d6ed14c4346
               version: 1.0.0
             - name: manager-spec
               tier: core

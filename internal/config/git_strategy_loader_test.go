@@ -250,3 +250,81 @@ func TestLoader_GitStrategy_InvalidYAML_LoadResilientFlagUnset(t *testing.T) {
 		t.Errorf("LoadedSections()[\"git_strategy\"]: got true, want false (parse failed)")
 	}
 }
+
+// AC-MMC-002 — git-strategy.yaml present but omits merge_method → compiled default
+// "squash" retained (REQ-MMC-003). Mirrors the partial-override contract proved by
+// TestLoader_GitStrategy_Absent_KeepsDefaultsAndFlagUnset for the new field.
+func TestLoader_GitStrategy_MergeMethod_Absent_KeepsDefault(t *testing.T) {
+	t.Parallel()
+
+	// team: block present, but merge_method omitted.
+	const fixture = `git_strategy:
+  mode: team
+  team:
+    hooks:
+      pre_push: enforce
+`
+	moaiDir := writeGitStrategyFixture(t, fixture)
+
+	loader := NewLoader()
+	cfg, err := loader.Load(moaiDir)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+
+	if got := cfg.GitStrategy.Team.MergeMethod; got != "squash" {
+		t.Errorf("GitStrategy.Team.MergeMethod: got %q, want compiled default %q (not empty)", got, "squash")
+	}
+}
+
+// AC-MMC-003 — git-strategy.yaml sets merge_method → file value populated, NOT the
+// compiled default (REQ-MMC-004). Mirrors TestLoader_GitStrategy_Present_LoadsValuesAndFlagsSection.
+func TestLoader_GitStrategy_MergeMethod_Present_LoadsFileValue(t *testing.T) {
+	t.Parallel()
+
+	const fixture = `git_strategy:
+  mode: team
+  team:
+    merge_method: merge
+`
+	moaiDir := writeGitStrategyFixture(t, fixture)
+
+	loader := NewLoader()
+	cfg, err := loader.Load(moaiDir)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+
+	if got := cfg.GitStrategy.Team.MergeMethod; got != "merge" {
+		t.Errorf("GitStrategy.Team.MergeMethod: got %q, want %q (file value, not compiled default)", got, "merge")
+	}
+}
+
+// AC-MMC-004 — partial merge_method override: one mode set, siblings keep default
+// (REQ-MMC-003/004). Mirrors TestLoader_GitStrategy_Partial_OverridesSpecifiedKeepsDefaults.
+func TestLoader_GitStrategy_MergeMethod_Partial_KeepsSiblingDefaults(t *testing.T) {
+	t.Parallel()
+
+	const fixture = `git_strategy:
+  mode: team
+  team:
+    merge_method: rebase
+`
+	moaiDir := writeGitStrategyFixture(t, fixture)
+
+	loader := NewLoader()
+	cfg, err := loader.Load(moaiDir)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+
+	if got := cfg.GitStrategy.Team.MergeMethod; got != "rebase" {
+		t.Errorf("GitStrategy.Team.MergeMethod: got %q, want %q (file override)", got, "rebase")
+	}
+	if got := cfg.GitStrategy.Manual.MergeMethod; got != "squash" {
+		t.Errorf("GitStrategy.Manual.MergeMethod: got %q, want compiled default %q (not overridden)", got, "squash")
+	}
+	if got := cfg.GitStrategy.Personal.MergeMethod; got != "squash" {
+		t.Errorf("GitStrategy.Personal.MergeMethod: got %q, want compiled default %q (not overridden)", got, "squash")
+	}
+}

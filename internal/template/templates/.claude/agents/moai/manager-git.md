@@ -131,12 +131,13 @@ git commit -m "🟢 GREEN: ..."
 git commit -m "♻ REFACTOR: ..."
 ```
 
-Phase C — At PR time: late switch + push + squash merge:
+Phase C — At PR time: late switch + push + merge (method from config):
 ```bash
 git switch -c feat/SPEC-XXX
 git push -u origin feat/SPEC-XXX
 gh pr create --base main --title "..." --body "..."
-# CI passes → admin-squash-merge OR normal squash merge
+# CI passes → merge with the active mode's git_strategy.<mode>.merge_method
+# (squash | merge | rebase; default squash). The squash default renders as below:
 gh pr merge <PR> --squash --delete-branch
 ```
 
@@ -173,7 +174,7 @@ SPEC Git Workflow options (from git-strategy.yaml):
 - [HARD] PR required for all changes, no direct commits to main
 - [HARD] Minimum 1 reviewer approval before merge
 - [HARD] Author cannot merge own PR
-- Auto-merge: `gh pr merge --squash --delete-branch` (only with --auto-merge flag)
+- Auto-merge: resolve the active mode's `git_strategy.<mode>.merge_method` (squash | merge | rebase; default squash), then `gh pr merge --<merge_method> --delete-branch` (the squash default renders `gh pr merge --squash --delete-branch`; only with --auto-merge flag)
 
 Feature workflow: Create branch → DDD/TDD commits → Push → Mark PR ready → CI/CD → Review → Squash merge → Cleanup
 
@@ -201,7 +202,7 @@ Execute only with `--auto-merge` flag AND all approvals obtained:
 1. Push to remote
 2. `gh pr ready`
 3. `gh pr checks --watch`
-4. `gh pr merge --squash --delete-branch`
+4. Resolve the active mode's `git_strategy.<mode>.merge_method` (squash | merge | rebase; default squash), then `gh pr merge --<merge_method> --delete-branch` (the squash default renders `gh pr merge --squash --delete-branch`)
 5. Checkout main, pull, delete local branch
 
 ## Context Propagation

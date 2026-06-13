@@ -115,6 +115,13 @@ type ModeProfile struct {
 	RequiredReviews  int    `yaml:"required_reviews"`  // team mode only
 	BranchProtection bool   `yaml:"branch_protection"` // team mode only
 
+	// MergeMethod selects the PR merge method for this mode.
+	// One of "squash", "merge", "rebase". Empty unmarshals to the Go zero value
+	// and is treated as the compiled default "squash" (fail-safe to current
+	// behavior). Consumed by the sync agent's `gh pr merge` method selection,
+	// not by Go runtime code (mirrors the HooksConfig forward-compat style).
+	MergeMethod string `yaml:"merge_method"`
+
 	// Nested sub-structs.
 	Automation     AutomationConfig     `yaml:"automation"`
 	BranchCreation BranchCreationConfig `yaml:"branch_creation"`
@@ -415,7 +422,9 @@ type RoleProfile struct {
 //
 // @MX:ANCHOR: [AUTO] SecuritySandbox is the config schema for all sandbox knobs
 // @MX:REASON: Fan_in >= 3: loaded by config/loader.go, consumed by sandbox/launcher.go,
-//             displayed by doctor_sandbox.go, tested by config/types_test.go
+//
+//	displayed by doctor_sandbox.go, tested by config/types_test.go
+//
 // @MX:SPEC: SPEC-V3R2-RT-003 REQ-008/020/030/031
 type SecuritySandbox struct {
 	// Required: when true, agents with sandbox: none fail to spawn unless they provide
@@ -762,9 +771,9 @@ type ReviewChecklistItem struct {
 
 // ModelUpgradeTrigger holds the model upgrade review trigger settings.
 type ModelUpgradeTrigger struct {
-	OnModelChange     bool   `yaml:"on_model_change"`
-	ManualCommand     string `yaml:"manual_command,omitempty"`
-	ReviewIntervalDays int   `yaml:"review_interval_days"`
+	OnModelChange      bool   `yaml:"on_model_change"`
+	ManualCommand      string `yaml:"manual_command,omitempty"`
+	ReviewIntervalDays int    `yaml:"review_interval_days"`
 }
 
 // ModelUpgradeOutput holds the model upgrade review output settings.
@@ -809,13 +818,13 @@ type EvaluatorConfig struct {
 // Hot path: SPEC-V3R2-EXT-004 framework optional hook for forbidden-library policy enforcement.
 // ForbiddenPatterns is exposed as the "ForbiddenLibraries" list per REQ-MIG003-009.
 type ConstitutionConfig struct {
-	ApprovedFrameworks []string                   `yaml:"approved_frameworks"`
-	ApprovedLanguages  []string                   `yaml:"approved_languages"`
-	Architecture       ConstitutionArchitecture   `yaml:"architecture"`
-	ForbiddenPatterns  []string                   `yaml:"forbidden_patterns"`
-	NamingConventions  ConstitutionNaming         `yaml:"naming_conventions"`
-	Performance        ConstitutionPerformance    `yaml:"performance"`
-	Security           ConstitutionSecurity       `yaml:"security"`
+	ApprovedFrameworks []string                 `yaml:"approved_frameworks"`
+	ApprovedLanguages  []string                 `yaml:"approved_languages"`
+	Architecture       ConstitutionArchitecture `yaml:"architecture"`
+	ForbiddenPatterns  []string                 `yaml:"forbidden_patterns"`
+	NamingConventions  ConstitutionNaming       `yaml:"naming_conventions"`
+	Performance        ConstitutionPerformance  `yaml:"performance"`
+	Security           ConstitutionSecurity     `yaml:"security"`
 }
 
 // ConstitutionArchitecture holds architecture constraint fields.
@@ -833,8 +842,8 @@ type ConstitutionNaming struct {
 
 // ConstitutionPerformance holds performance threshold fields.
 type ConstitutionPerformance struct {
-	MaxMemoryMB        *int `yaml:"max_memory_mb"`
-	MaxResponseTimeMS  *int `yaml:"max_response_time_ms"`
+	MaxMemoryMB       *int `yaml:"max_memory_mb"`
+	MaxResponseTimeMS *int `yaml:"max_response_time_ms"`
 }
 
 // ConstitutionSecurity holds security policy fields.
@@ -866,8 +875,8 @@ type ContextAutoDetect struct {
 
 // ContextMemoryIntegration holds memory integration settings.
 type ContextMemoryIntegration struct {
-	Enabled          bool `yaml:"enabled"`
-	IncludeInContext bool `yaml:"include_in_context"`
+	Enabled            bool `yaml:"enabled"`
+	IncludeInContext   bool `yaml:"include_in_context"`
 	PriorityOverSearch bool `yaml:"priority_over_search"`
 }
 
@@ -899,16 +908,16 @@ type ContextTokenBudget struct {
 // Hot path: SPEC-V3R2-WF-003 discovery mode consumes clarity_threshold, plan.max_rounds,
 // plan.questions_per_round, and skip_conditions to control Socratic interview behavior.
 type InterviewConfig struct {
-	ClarityThreshold int            `yaml:"clarity_threshold"`
-	Enabled          bool           `yaml:"enabled"`
-	Plan             InterviewMode  `yaml:"plan"`
-	Project          InterviewMode  `yaml:"project"`
-	SkipConditions   []string       `yaml:"skip_conditions"`
+	ClarityThreshold int           `yaml:"clarity_threshold"`
+	Enabled          bool          `yaml:"enabled"`
+	Plan             InterviewMode `yaml:"plan"`
+	Project          InterviewMode `yaml:"project"`
+	SkipConditions   []string      `yaml:"skip_conditions"`
 }
 
 // InterviewMode holds per-mode interview settings.
 type InterviewMode struct {
-	MaxRounds        int `yaml:"max_rounds"`
+	MaxRounds         int `yaml:"max_rounds"`
 	QuestionsPerRound int `yaml:"questions_per_round"`
 }
 
@@ -920,25 +929,25 @@ type InterviewMode struct {
 // gan_loop.sprint_contract.enabled, and adaptation.iteration_limits.
 // Note: adaptation.iteration_limits is the Go field for spec.md's conceptual "phase_weights" (REQ-MIG003-014 OQ4).
 type DesignConfig struct {
-	Adaptation      DesignAdaptation   `yaml:"adaptation"`
-	BrandContext    DesignBrandContext  `yaml:"brand_context"`
-	ClaudeDesign    DesignClaudeDesign  `yaml:"claude_design"`
+	Adaptation       DesignAdaptation   `yaml:"adaptation"`
+	BrandContext     DesignBrandContext `yaml:"brand_context"`
+	ClaudeDesign     DesignClaudeDesign `yaml:"claude_design"`
 	DefaultFramework string             `yaml:"default_framework"`
-	DesignDocs      DesignDocs         `yaml:"design_docs"`
-	Enabled         bool               `yaml:"enabled"`
-	Evaluator       DesignEvaluator    `yaml:"evaluator"`
-	Evolution       DesignEvolution    `yaml:"evolution"`
-	Figma           DesignFigma        `yaml:"figma"`
-	GanLoop         DesignGanLoop      `yaml:"gan_loop"`
-	Version         string             `yaml:"version"`
+	DesignDocs       DesignDocs         `yaml:"design_docs"`
+	Enabled          bool               `yaml:"enabled"`
+	Evaluator        DesignEvaluator    `yaml:"evaluator"`
+	Evolution        DesignEvolution    `yaml:"evolution"`
+	Figma            DesignFigma        `yaml:"figma"`
+	GanLoop          DesignGanLoop      `yaml:"gan_loop"`
+	Version          string             `yaml:"version"`
 }
 
 // DesignAdaptation holds pipeline adaptation settings.
 type DesignAdaptation struct {
-	ConfidenceThreshold       float64                   `yaml:"confidence_threshold"`
-	Enabled                   bool                      `yaml:"enabled"`
-	IterationLimits            DesignIterationLimits    `yaml:"iteration_limits"`
-	MinProjectsForAdaptation  int                       `yaml:"min_projects_for_adaptation"`
+	ConfidenceThreshold      float64               `yaml:"confidence_threshold"`
+	Enabled                  bool                  `yaml:"enabled"`
+	IterationLimits          DesignIterationLimits `yaml:"iteration_limits"`
+	MinProjectsForAdaptation int                   `yaml:"min_projects_for_adaptation"`
 }
 
 // DesignIterationLimits holds per-role iteration limit settings.
@@ -950,7 +959,7 @@ type DesignIterationLimits struct {
 
 // DesignBrandContext holds brand context directory settings.
 type DesignBrandContext struct {
-	Dir                string `yaml:"dir"`
+	Dir                 string `yaml:"dir"`
 	InterviewOnFirstRun bool   `yaml:"interview_on_first_run"`
 }
 
@@ -978,13 +987,13 @@ type DesignEvaluator struct {
 
 // DesignEvolution holds evolution and self-learning settings.
 type DesignEvolution struct {
-	ArchiveAfterEvolve      bool                       `yaml:"archive_after_evolve"`
-	AutoEvolveThreshold     int                        `yaml:"auto_evolve_threshold"`
-	CooldownHours           int                        `yaml:"cooldown_hours"`
-	GraduationCriteria      DesignGraduationCriteria   `yaml:"graduation_criteria"`
-	MaxActiveLearnings      int                        `yaml:"max_active_learnings"`
-	MaxEvolutionRatePerWeek int                        `yaml:"max_evolution_rate_per_week"`
-	RequireApproval         bool                       `yaml:"require_approval"`
+	ArchiveAfterEvolve      bool                     `yaml:"archive_after_evolve"`
+	AutoEvolveThreshold     int                      `yaml:"auto_evolve_threshold"`
+	CooldownHours           int                      `yaml:"cooldown_hours"`
+	GraduationCriteria      DesignGraduationCriteria `yaml:"graduation_criteria"`
+	MaxActiveLearnings      int                      `yaml:"max_active_learnings"`
+	MaxEvolutionRatePerWeek int                      `yaml:"max_evolution_rate_per_week"`
+	RequireApproval         bool                     `yaml:"require_approval"`
 }
 
 // DesignGraduationCriteria holds graduation thresholds for learnings.
@@ -1004,21 +1013,21 @@ type DesignFigma struct {
 // PassThreshold is validated against the FROZEN floor 0.60 by LoadDesignConfig.
 // REQ-MIG003-014, OQ2 decision: enforce floor in loader.
 type DesignGanLoop struct {
-	EscalationAfter     int                  `yaml:"escalation_after"`
-	ImprovementThreshold float64             `yaml:"improvement_threshold"`
-	MaxIterations       int                  `yaml:"max_iterations"`
-	PassThreshold       float64              `yaml:"pass_threshold"`
-	SprintContract      DesignSprintContract `yaml:"sprint_contract"`
-	StrictMode          bool                 `yaml:"strict_mode"`
+	EscalationAfter      int                  `yaml:"escalation_after"`
+	ImprovementThreshold float64              `yaml:"improvement_threshold"`
+	MaxIterations        int                  `yaml:"max_iterations"`
+	PassThreshold        float64              `yaml:"pass_threshold"`
+	SprintContract       DesignSprintContract `yaml:"sprint_contract"`
+	StrictMode           bool                 `yaml:"strict_mode"`
 }
 
 // DesignSprintContract holds sprint contract configuration.
 type DesignSprintContract struct {
-	ArtifactDir             string   `yaml:"artifact_dir"`
-	Enabled                 bool     `yaml:"enabled"`
-	MaxNegotiationRounds    int      `yaml:"max_negotiation_rounds"`
-	OptionalHarnessLevels   []string `yaml:"optional_harness_levels"`
-	RequiredHarnessLevels   []string `yaml:"required_harness_levels"`
+	ArtifactDir           string   `yaml:"artifact_dir"`
+	Enabled               bool     `yaml:"enabled"`
+	MaxNegotiationRounds  int      `yaml:"max_negotiation_rounds"`
+	OptionalHarnessLevels []string `yaml:"optional_harness_levels"`
+	RequiredHarnessLevels []string `yaml:"required_harness_levels"`
 }
 
 // harnessFileWrapper is the wrapper used for unmarshaling the harness.yaml file.

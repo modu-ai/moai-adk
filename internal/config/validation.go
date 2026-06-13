@@ -49,6 +49,9 @@ func Validate(cfg *Config, loadedSections map[string]bool) error {
 	// Check git convention config
 	errs = append(errs, validateGitConventionConfig(&cfg.GitConvention)...)
 
+	// Check git strategy merge_method enum (per-mode profile)
+	errs = append(errs, validateGitStrategyMergeMethod(cfg)...)
+
 	// Check for unexpanded dynamic tokens
 	errs = append(errs, validateDynamicTokens(cfg)...)
 
@@ -219,6 +222,65 @@ func validateGitConventionConfig(gc *models.GitConventionConfig) []ValidationErr
 			Value:   gc.Validation.MaxLength,
 			Wrapped: ErrInvalidConfig,
 		})
+	}
+
+	return errs
+}
+
+// validMergeMethods lists the recognized PR merge method names. It is the single
+// source of truth for the git_strategy.<mode>.merge_method enum, mirroring how
+// validGitConventionNames is the SSOT for the convention enum.
+var validMergeMethods = map[string]bool{
+	"squash": true,
+	"merge":  true,
+	"rebase": true,
+}
+
+// IsValidMergeMethod reports whether name is one of the 3 canonical PR merge
+// method names (squash, merge, rebase). It reuses the validMergeMethods map so
+// callers in other packages (internal/web, internal/cli) validate against the
+// same canonical set rather than authoring a parallel rule-set. The empty string
+// is NOT a member here; callers that treat empty as "keep compiled default" must
+// guard for empty before calling.
+func IsValidMergeMethod(name string) bool {
+	return validMergeMethods[name]
+}
+
+// ValidMergeMethods returns the 3 canonical merge method names as a slice, for
+// populating UI option lists (web <select>, TUI huh.Select). Order is not
+// guaranteed (sourced from a map) — callers that need stable ordering must sort.
+func ValidMergeMethods() []string {
+	names := make([]string, 0, len(validMergeMethods))
+	for name := range validMergeMethods {
+		names = append(names, name)
+	}
+	return names
+}
+
+// validateGitStrategyMergeMethod checks the merge_method enum for all 3 mode
+// profiles. An empty value is treated as the compiled default ("squash") and is
+// not an error (fail-safe to current behavior) — identical to how
+// validateGitConventionConfig guards gc.Convention != "".
+func validateGitStrategyMergeMethod(cfg *Config) []ValidationError {
+	var errs []ValidationError
+
+	modes := []struct {
+		field   string
+		profile *ModeProfile
+	}{
+		{"git_strategy.manual.merge_method", &cfg.GitStrategy.Manual},
+		{"git_strategy.personal.merge_method", &cfg.GitStrategy.Personal},
+		{"git_strategy.team.merge_method", &cfg.GitStrategy.Team},
+	}
+	for _, m := range modes {
+		if m.profile.MergeMethod != "" && !validMergeMethods[m.profile.MergeMethod] {
+			errs = append(errs, ValidationError{
+				Field:   m.field,
+				Message: "must be one of: squash, merge, rebase",
+				Value:   m.profile.MergeMethod,
+				Wrapped: ErrInvalidConfig,
+			})
+		}
 	}
 
 	return errs
