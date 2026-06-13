@@ -10,7 +10,7 @@
 
 - plan_commit_sha: `65e51b2c5` (plan-phase artifacts, Tier S 2-file)
 - run_commit_sha: `33215af27` (M1 git_strategy Save WRITE leg, draft→in-progress, Authored-By-Agent: manager-develop)
-- sync_commit_sha: (backfill after sync commit)
+- sync_commit_sha: `c2ba3e863`
 - RED-GREEN-REFACTOR: round-trip test RED (Save dropped git-strategy → reload recovered defaults) → GREEN (1 `saveSection` block at manager.go:191) → REFACTOR (5 existing legs byte-untouched, no duplication)
 
 ## §E.3 — Acceptance Criteria
@@ -29,6 +29,6 @@ Coverage internal/config 77.9% (no regression). Cross-platform darwin/windows am
 
 4-phase lifecycle close. PREPUSH dead-config chain terminal SPEC complete — `SetSection("git_strategy") → Save() → Reload()` round-trip now symmetric (the asymmetry LOADER-WIRING-001 AC-PLW-008 deferred is closed). **Latent infrastructure**: no production caller mutates `cfg.GitStrategy` then saves yet; this pre-stages the future web-console git_strategy editor export seam (separate SPEC), not live dead code.
 
-- mx_commit_sha: (backfill after close commit)
+- mx_commit_sha: `d4a7297f5`
 - status transition: in-progress → implemented → completed
 - PREPUSH chain: WIRING (engine) → MODE (mode reader) → LOADER (READ leg) → **SAVE (WRITE leg)** — chain terminal, READ/WRITE symmetric.
