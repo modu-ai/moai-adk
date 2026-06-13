@@ -44,7 +44,7 @@
 
 ```yaml
 run_complete_at: 2026-06-13
-run_commit_sha: <BACKFILL — M1 commit on worktree branch>
+run_commit_sha: "f8872e2be0396f8b5dd36dc0931aed39e18bf304"
 run_status: green
 ac_pass_count: 5
 ac_fail_count: 0
