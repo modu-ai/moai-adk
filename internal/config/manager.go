@@ -32,6 +32,14 @@ type ConfigManager struct {
 	loader         *Loader
 	callbacks      []func(Config)
 	loadedSections map[string]bool
+	// dirtySections tracks sections that were explicitly modified via SetSection
+	// since the last Load/LoadRaw. Save() consults this set to decide whether to
+	// rewrite section files whose YAML wrappers cannot guarantee a lossless
+	// round-trip (e.g. git-strategy.yaml, whose unknown fields are silently
+	// dropped by yaml.Unmarshal and would otherwise be expanded into the full
+	// default tree on Save()). See TestWriteProjectConfigSectionIsolation
+	// (internal/web) for the cross-package isolation contract.
+	dirtySections map[string]bool
 }
 
 // NewConfigManager creates a new ConfigManager instance in uninitialized state.
@@ -64,6 +72,7 @@ func (m *ConfigManager) Load(projectRoot string) (*Config, error) {
 
 	// Track which sections were loaded from files
 	m.loadedSections = m.loader.LoadedSections()
+	m.dirtySections = make(map[string]bool)
 
 	// Apply environment variable overrides (higher priority than files)
 	applyEnvOverrides(cfg)
@@ -98,6 +107,7 @@ func (m *ConfigManager) LoadRaw(projectRoot string) (*Config, error) {
 	}
 
 	m.loadedSections = m.loader.LoadedSections()
+	m.dirtySections = make(map[string]bool)
 	applyEnvOverrides(cfg)
 
 	m.config = cfg
@@ -135,6 +145,10 @@ func (m *ConfigManager) GetSection(name string) (any, error) {
 // Returns ErrNotInitialized if Load() has not been called.
 // Returns ErrSectionNotFound if the section name is invalid.
 // Returns ErrSectionTypeMismatch if the value type does not match.
+//
+// On success the section is marked dirty; Save() consults that flag for
+// sections whose YAML wrappers do not guarantee a lossless round-trip
+// (e.g. git_strategy) to decide whether to rewrite the file.
 func (m *ConfigManager) SetSection(name string, value any) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -143,7 +157,14 @@ func (m *ConfigManager) SetSection(name string, value any) error {
 		return ErrNotInitialized
 	}
 
-	return m.setSectionLocked(name, value)
+	if err := m.setSectionLocked(name, value); err != nil {
+		return err
+	}
+	if m.dirtySections == nil {
+		m.dirtySections = make(map[string]bool)
+	}
+	m.dirtySections[name] = true
+	return nil
 }
 
 // @MX:ANCHOR: [AUTO] Save is the config persistence path — atomic multi-section write to disk
@@ -187,9 +208,33 @@ func (m *ConfigManager) Save() error {
 		return fmt.Errorf("save git convention config: %w", err)
 	}
 
-	// Save git strategy section
-	if err := saveSection(sectionsDir, "git-strategy.yaml", gitStrategyFileWrapper{GitStrategy: m.config.GitStrategy}); err != nil {
-		return fmt.Errorf("save git strategy config: %w", err)
+	// Save git strategy section under the section-isolation gate.
+	//
+	// Rationale: git-strategy.yaml may legitimately carry keys that are not
+	// part of GitStrategyConfig's compiled schema (sentinel markers, fields
+	// added to the template before the Go schema catches up, etc.).
+	// yaml.Unmarshal drops unknown keys silently, so a naive round-trip
+	// (LoadRaw → Marshal → atomicWrite) expands the file into the full
+	// default tree and erases the unknown content. Scoped callers —
+	// writeProjectConfig in internal/web, profile sync, etc. — that only
+	// touch sibling sections (quality / git_convention / language / ...)
+	// MUST NOT silently rewrite git-strategy.yaml.
+	//
+	// Gate semantics:
+	//   - WRITE when git_strategy was modified via SetSection (dirty bit).
+	//     Required by SPEC-PREPUSH-SAVE-WIRING-001 round-trip contract
+	//     (TestConfigManagerSaveGitStrategyRoundTrip).
+	//   - WRITE when no git-strategy.yaml was loaded from disk (file absent).
+	//     Required by SPEC-PREPUSH-SAVE-WIRING-001 init contract
+	//     (TestConfigManagerSaveCreatesGitStrategyFile).
+	//   - SKIP  when git-strategy.yaml was loaded AND was not modified.
+	//     Required by SPEC-WEB-CONSOLE-003 M5 section-isolation contract
+	//     (TestWriteProjectConfigSectionIsolation in internal/web, and
+	//     TestSaveGitStrategyIsolation_PreservesUnknownFields below).
+	if m.dirtySections["git_strategy"] || !m.loadedSections["git_strategy"] {
+		if err := saveSection(sectionsDir, "git-strategy.yaml", gitStrategyFileWrapper{GitStrategy: m.config.GitStrategy}); err != nil {
+			return fmt.Errorf("save git strategy config: %w", err)
+		}
 	}
 
 	// Save LLM section
@@ -221,6 +266,7 @@ func (m *ConfigManager) Reload() error {
 	}
 
 	m.loadedSections = m.loader.LoadedSections()
+	m.dirtySections = make(map[string]bool)
 	applyEnvOverrides(cfg)
 
 	if err := Validate(cfg, m.loadedSections); err != nil {
