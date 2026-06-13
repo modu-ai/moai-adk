@@ -372,6 +372,176 @@ func TestRestoreMoaiConfigLegacy_EmptyBackup(t *testing.T) {
 	}
 }
 
+// --- SPEC-SEC-HARDEN-003 C-F2: 백업 복원 심볼릭 링크/traversal 봉쇄 (M2) ---
+
+// TestRestoreMoaiConfigLegacy_SkipsSymlinkEntry — AC-SEC3-004a (reproduction).
+// backupDir 안에 backupDir 밖을 가리키는 심볼릭 링크 백업 엔트리가 있으면,
+// restoreMoaiConfigLegacy는 그 링크를 따라 os.ReadFile 하지 않고 스킵해야 한다.
+//
+// RED(fix 전): 링크를 따라 secret 내용을 읽어 configDir에 복원함(CWE-61).
+// GREEN(fix 후): os.Lstat로 심볼릭 링크 검출 → os.ReadFile 없이 스킵(REQ-SEC3-005).
+func TestRestoreMoaiConfigLegacy_SkipsSymlinkEntry(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	configDir := filepath.Join(tmpDir, defs.MoAIDir, defs.ConfigSubdir)
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// backupDir 밖에 공격자 secret 파일.
+	secretDir := t.TempDir()
+	secretFile := filepath.Join(secretDir, "secret.yaml")
+	if err := os.WriteFile(secretFile, []byte("secret:\n  token: LEAKED\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// backupDir 안의 심볼릭 링크 엔트리가 그 secret을 가리킨다.
+	backupDir := filepath.Join(tmpDir, "backup-legacy")
+	if err := os.MkdirAll(backupDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	linkEntry := filepath.Join(backupDir, "leak.yaml")
+	if err := os.Symlink(secretFile, linkEntry); err != nil {
+		t.Skipf("symlink unsupported on this platform: %v", err)
+	}
+
+	if err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
+		t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
+	}
+
+	// 봉쇄가 동작하면 링크 추종으로 secret이 configDir에 복원되지 않는다.
+	restored := filepath.Join(configDir, "leak.yaml")
+	if data, err := os.ReadFile(restored); err == nil {
+		t.Errorf("AC-SEC3-004a: symlink entry was followed — secret content restored: %q", string(data))
+	}
+}
+
+// TestRestoreMoaiConfigLegacy_RejectsTraversalTarget — AC-SEC3-004b (reproduction).
+// configDir 안 targetPath가 configDir 밖을 가리키는 기존 심볼릭 링크일 때,
+// 복원 쓰기가 그 링크를 따라 configDir를 탈출하면 안 된다.
+//
+// RED(fix 전): os.WriteFile(targetPath, ...)가 링크를 따라 configDir 밖에 쓴다(CWE-22).
+// GREEN(fix 후): target 봉쇄 검증으로 거부, configDir 밖 파일이 변경되지 않는다(REQ-SEC3-007).
+func TestRestoreMoaiConfigLegacy_RejectsTraversalTarget(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	configDir := filepath.Join(tmpDir, defs.MoAIDir, defs.ConfigSubdir)
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// configDir 밖의 외부 victim 파일.
+	outsideDir := t.TempDir()
+	victim := filepath.Join(outsideDir, "victim.yaml")
+	if err := os.WriteFile(victim, []byte("victim:\n  original: true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// configDir 안 target 위치를 외부 victim을 가리키는 심볼릭 링크로 만든다.
+	targetLink := filepath.Join(configDir, "evil.yaml")
+	if err := os.Symlink(victim, targetLink); err != nil {
+		t.Skipf("symlink unsupported on this platform: %v", err)
+	}
+
+	// 백업에 같은 이름의 정규 파일 → 복원 시 targetLink를 따라 victim에 쓰려 함.
+	backupDir := filepath.Join(tmpDir, "backup-legacy")
+	if err := os.MkdirAll(backupDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(backupDir, "evil.yaml"), []byte("evil:\n  injected: true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
+		t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
+	}
+
+	// 봉쇄가 동작하면 configDir 밖 victim이 injected 내용으로 덮어써지지 않는다.
+	data, err := os.ReadFile(victim)
+	if err != nil {
+		t.Fatalf("read victim: %v", err)
+	}
+	if strings.Contains(string(data), "injected") {
+		t.Errorf("AC-SEC3-004b: write escaped configDir via symlink target — victim overwritten: %q", string(data))
+	}
+}
+
+// TestRestoreMoaiConfig_SkipsSymlinkEntry — AC-SEC3-004c (reproduction, sibling).
+// 모던 sections 복원 경로(restoreMoaiConfig)도 동일 심볼릭 링크 클래스를 가지므로,
+// sectionsBackupDir 안의 심볼릭 링크 엔트리를 따라 읽지 않고 스킵해야 한다(in-scope sibling).
+//
+// RED(fix 전): 모던 walk 콜백이 링크를 따라 secret을 읽어 복원함.
+// GREEN(fix 후): os.Lstat로 검출 → 스킵(REQ-SEC3-006).
+func TestRestoreMoaiConfig_SkipsSymlinkEntry(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	configDir := filepath.Join(tmpDir, defs.MoAIDir, defs.ConfigSubdir)
+	sectionsDir := filepath.Join(configDir, "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// 모던 백업은 sections/ 하위 .yaml만 처리하므로 .yaml 확장자 심볼릭 링크 사용.
+	secretDir := t.TempDir()
+	secretFile := filepath.Join(secretDir, "secret.yaml")
+	if err := os.WriteFile(secretFile, []byte("secret:\n  token: LEAKED\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	backupDir := filepath.Join(tmpDir, "backup")
+	backupSectionsDir := filepath.Join(backupDir, "sections")
+	if err := os.MkdirAll(backupSectionsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	linkEntry := filepath.Join(backupSectionsDir, "leak.yaml")
+	if err := os.Symlink(secretFile, linkEntry); err != nil {
+		t.Skipf("symlink unsupported on this platform: %v", err)
+	}
+
+	if err := restoreMoaiConfig(tmpDir, backupDir); err != nil {
+		t.Fatalf("restoreMoaiConfig failed: %v", err)
+	}
+
+	// 봉쇄가 동작하면 모던 경로에서도 링크 추종 복원이 발생하지 않는다.
+	restored := filepath.Join(sectionsDir, "leak.yaml")
+	if data, err := os.ReadFile(restored); err == nil {
+		t.Errorf("AC-SEC3-004c: modern walk followed symlink — secret content restored: %q", string(data))
+	}
+}
+
+// TestRestoreMoaiConfigLegacy_AllowsRegularInConfigFile — AC-SEC3-006 (no-regression).
+// 정규 파일(심볼릭 링크 아님) + configDir 내부 target은 기존 머지·복원 동작을
+// 변경 없이 수행한다(봉쇄가 정상 복원을 막지 않음, REQ-SEC3-008).
+func TestRestoreMoaiConfigLegacy_AllowsRegularInConfigFile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	configDir := filepath.Join(tmpDir, defs.MoAIDir, defs.ConfigSubdir)
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	backupDir := filepath.Join(tmpDir, "backup-legacy")
+	if err := os.MkdirAll(backupDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(backupDir, "custom.yaml"), []byte("custom:\n  key: regular-value\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
+		t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
+	}
+
+	// 정규 파일은 configDir에 정상 복원되어야 한다.
+	data, err := os.ReadFile(filepath.Join(configDir, "custom.yaml"))
+	if err != nil {
+		t.Fatalf("AC-SEC3-006: regular file should be restored, read failed: %v", err)
+	}
+	if !strings.Contains(string(data), "regular-value") {
+		t.Errorf("AC-SEC3-006: regular file content should be preserved, got:\n%s", string(data))
+	}
+}
+
 // --- restoreMoaiConfig (3-way merge path) tests ---
 
 func TestRestoreMoaiConfig_FallsBackToLegacyWhenNoSections(t *testing.T) {

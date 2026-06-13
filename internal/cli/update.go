@@ -1969,6 +1969,13 @@ func restoreMoaiConfig(projectRoot, backupDir string) error {
 			return nil
 		}
 
+		// SPEC-SEC-HARDEN-003 C-F2 봉쇄 (in-scope sibling, REQ-SEC3-006): 심볼릭 링크
+		// 백업 엔트리는 os.ReadFile로 따라가지 않고 스킵한다(CWE-61 fail-closed).
+		if isSymlinkEntry(backupPath) {
+			_, _ = fmt.Fprintf(os.Stderr, "Warning: skipping symlink backup entry %s (containment)\n", backupPath)
+			return nil
+		}
+
 		// Skip non-YAML files (e.g., backup_metadata.json)
 		if filepath.Ext(backupPath) != ".yaml" && filepath.Ext(backupPath) != ".yml" {
 			return nil
@@ -1980,6 +1987,13 @@ func restoreMoaiConfig(projectRoot, backupDir string) error {
 		}
 
 		targetPath := filepath.Join(configDir, "sections", relPath)
+
+		// SPEC-SEC-HARDEN-003 C-F2 봉쇄 (REQ-SEC3-007): 쓰기 대상이 configDir를
+		// 탈출(filepath.Rel `..`)하거나 심볼릭 링크로 configDir 밖을 가리키면 거부한다.
+		if !restoreTargetContained(configDir, targetPath) {
+			_, _ = fmt.Fprintf(os.Stderr, "Warning: skipping restore target %s escaping config dir (containment)\n", targetPath)
+			return nil
+		}
 
 		// Read backup (old user) data
 		oldData, err := os.ReadFile(backupPath)
@@ -2046,6 +2060,13 @@ func restoreMoaiConfigLegacy(projectRoot, backupDir, configDir string) error {
 			return nil
 		}
 
+		// SPEC-SEC-HARDEN-003 C-F2 봉쇄 (REQ-SEC3-005): 심볼릭 링크 백업 엔트리는
+		// os.ReadFile로 따라가지 않고 스킵한다(CWE-61 fail-closed).
+		if isSymlinkEntry(backupPath) {
+			_, _ = fmt.Fprintf(os.Stderr, "Warning: skipping symlink backup entry %s (containment)\n", backupPath)
+			return nil
+		}
+
 		relPath, err := filepath.Rel(backupDir, backupPath)
 		if err != nil {
 			return err
@@ -2058,6 +2079,13 @@ func restoreMoaiConfigLegacy(projectRoot, backupDir, configDir string) error {
 		}
 
 		targetPath := filepath.Join(configDir, relPath)
+
+		// SPEC-SEC-HARDEN-003 C-F2 봉쇄 (REQ-SEC3-007): 쓰기 대상이 configDir를
+		// 탈출(filepath.Rel `..`)하거나 심볼릭 링크로 configDir 밖을 가리키면 거부한다.
+		if !restoreTargetContained(configDir, targetPath) {
+			_, _ = fmt.Fprintf(os.Stderr, "Warning: skipping restore target %s escaping config dir (containment)\n", targetPath)
+			return nil
+		}
 
 		backupData, err := os.ReadFile(backupPath)
 		if err != nil {
@@ -2087,6 +2115,54 @@ func restoreMoaiConfigLegacy(projectRoot, backupDir, configDir string) error {
 
 		return os.WriteFile(targetPath, merged, defs.FilePerm)
 	})
+}
+
+// isSymlinkEntry reports whether path is a symbolic link (via os.Lstat, which
+// does NOT follow the link). C-F2 backup-entry symlink guard for
+// SPEC-SEC-HARDEN-003 (REQ-SEC3-005/006). Fail-closed: a stat error other than
+// not-exist is treated as a symlink (reject) so a racing replacement cannot
+// slip a link past the guard; a clean not-exist returns false (regular walk).
+func isSymlinkEntry(path string) bool {
+	info, err := os.Lstat(path)
+	if err != nil {
+		// Not-exist is benign (nothing to follow); any other error → fail-closed.
+		return !os.IsNotExist(err)
+	}
+	return info.Mode()&os.ModeSymlink != 0
+}
+
+// restoreTargetContained reports whether targetPath is a safe write destination
+// inside configDir. C-F2 traversal guard for SPEC-SEC-HARDEN-003 (REQ-SEC3-007):
+// it rejects (1) a target whose cleaned relative path escapes configDir
+// (filepath.Rel yields a `..` prefix or an outside-absolute path) and (2) a
+// target that already exists as a symlink (which os.WriteFile would follow out
+// of configDir). Cross-platform via filepath (NFR-SEC3-005); fail-closed on any
+// resolution error (NFR-SEC3-004). configDir itself counts as contained.
+func restoreTargetContained(configDir, targetPath string) bool {
+	if configDir == "" || targetPath == "" {
+		return false
+	}
+	absConfig, err := filepath.Abs(configDir)
+	if err != nil {
+		return false
+	}
+	absTarget, err := filepath.Abs(targetPath)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(absConfig, absTarget)
+	if err != nil {
+		return false
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return false
+	}
+	// Reject an existing symlink at the target path: os.WriteFile follows it and
+	// can escape configDir even when the literal path looks contained.
+	if isSymlinkEntry(absTarget) {
+		return false
+	}
+	return true
 }
 
 // mergeYAML3Way performs a 3-way merge of YAML documents.
