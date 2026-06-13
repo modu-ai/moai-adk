@@ -32,6 +32,15 @@ type ConfigManager struct {
 	loader         *Loader
 	callbacks      []func(Config)
 	loadedSections map[string]bool
+	// gitStrategyDirty는 마지막 전체-설정 교체(Load/LoadRaw/Reload) 또는 성공한
+	// Save() 이후 git_strategy 섹션이 SetSection으로 수정되었는지를 추적한다.
+	// Save()는 이 플래그가 true이거나 git-strategy.yaml 파일이 아직 없는 경우(greenfield
+	// 생성)에만 해당 파일을 다시 쓴다. SPEC-PREPUSH-SAVE-WIRING-001 M1에서 회귀한 섹션
+	// 격리를 복원한다: 무관한 범위 한정 쓰기(예: internal/web writeProjectConfig)가
+	// 로더의 partial-override가 모델링하지 않는 디스크상의 git-strategy.yaml 내용을
+	// 덮어쓰지 않도록 한다. m.mu 잠금 하에서만 변경된다.
+	// 참조: SPEC-GITSTRATEGY-SAVE-ISOLATION-001.
+	gitStrategyDirty bool
 }
 
 // NewConfigManager creates a new ConfigManager instance in uninitialized state.
@@ -76,6 +85,7 @@ func (m *ConfigManager) Load(projectRoot string) (*Config, error) {
 	m.config = cfg
 	m.root = projectRoot
 	m.state = stateInitialized
+	m.gitStrategyDirty = false // 전체-설정 교체: 이전 dirty 상태 초기화
 
 	return cfg, nil
 }
@@ -103,6 +113,7 @@ func (m *ConfigManager) LoadRaw(projectRoot string) (*Config, error) {
 	m.config = cfg
 	m.root = projectRoot
 	m.state = stateInitialized
+	m.gitStrategyDirty = false // 전체-설정 교체: 이전 dirty 상태 초기화
 
 	return cfg, nil
 }
@@ -187,15 +198,31 @@ func (m *ConfigManager) Save() error {
 		return fmt.Errorf("save git convention config: %w", err)
 	}
 
-	// Save git strategy section
-	if err := saveSection(sectionsDir, "git-strategy.yaml", gitStrategyFileWrapper{GitStrategy: m.config.GitStrategy}); err != nil {
-		return fmt.Errorf("save git strategy config: %w", err)
+	// Save git strategy section — 섹션 격리(SPEC-GITSTRATEGY-SAVE-ISOLATION-001).
+	// git-strategy.yaml은 (a) git_strategy 섹션이 이번 세션에 SetSection으로 수정되었거나
+	// (b) 파일이 아직 디스크에 없는 경우(greenfield 생성)에만 다시 쓴다. 그 외에는 기존
+	// git-strategy.yaml(센티넬·사용자 콘텐츠)을 byte-단위로 보존한다. 이는 로더의
+	// partial-override가 모델링하지 않는 키를 컴파일 기본 트리로 확장해 덮어쓰던 회귀를
+	// 방지한다(REQ-GSI-001/002). dirty 플래그가 수정 신호, 파일 부재가 생성 신호다.
+	gitStrategyPath := filepath.Join(sectionsDir, "git-strategy.yaml")
+	gitStrategyAbsent := false
+	if _, statErr := os.Stat(gitStrategyPath); os.IsNotExist(statErr) {
+		gitStrategyAbsent = true
+	}
+	if m.gitStrategyDirty || gitStrategyAbsent {
+		if err := saveSection(sectionsDir, "git-strategy.yaml", gitStrategyFileWrapper{GitStrategy: m.config.GitStrategy}); err != nil {
+			return fmt.Errorf("save git strategy config: %w", err)
+		}
 	}
 
 	// Save LLM section
 	if err := saveSection(sectionsDir, "llm.yaml", llmFileWrapper{LLM: m.config.LLM}); err != nil {
 		return fmt.Errorf("save LLM config: %w", err)
 	}
+
+	// 성공적인 Save() 이후 dirty 플래그 초기화(EC-3): 이후 SetSection(git_strategy) 없이
+	// 다시 Save()하면 git-strategy.yaml을 재작성하지 않는다.
+	m.gitStrategyDirty = false
 
 	return nil
 }
@@ -228,6 +255,7 @@ func (m *ConfigManager) Reload() error {
 	}
 
 	m.config = cfg
+	m.gitStrategyDirty = false // 전체-설정 교체: 이전 dirty 상태 초기화
 
 	// Notify registered callbacks
 	for _, cb := range m.callbacks {
@@ -315,6 +343,9 @@ func (m *ConfigManager) setSectionLocked(name string, value any) error {
 			return fmt.Errorf("%w: expected GitStrategyConfig for section %q", ErrSectionTypeMismatch, name)
 		}
 		m.config.GitStrategy = v
+		// git_strategy 섹션이 명시적으로 수정되었음을 표시한다. Save()는 이 플래그를
+		// 보고 git-strategy.yaml 재작성 여부를 결정한다 (REQ-GSI-003 set→save→reload).
+		m.gitStrategyDirty = true
 	case "git_convention":
 		v, ok := value.(models.GitConventionConfig)
 		if !ok {
