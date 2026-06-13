@@ -145,7 +145,7 @@ Justification: This is coding-heavy security work where M2/M3 depend on the M1 `
 
 ```yaml
 spec_id: SPEC-SEC-HARDEN-002
-sync_commit_sha: _pending_backfill_
+sync_commit_sha: cb06f3ee719ab60c8c4a0976a79c148ba8a62403
 sync_complete_at: 2026-06-14T00:00:00Z
 sync_status: ready
 
