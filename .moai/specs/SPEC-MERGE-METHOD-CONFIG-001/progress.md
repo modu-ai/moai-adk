@@ -45,7 +45,7 @@ total_run_phase_files: 14
 
 ```yaml
 sync_complete_at: 2026-06-13
-sync_commit_sha: "(backfilled below)"
+sync_commit_sha: "69825289f"
 sync_status: green
 status_transition: in-progress → implemented
 changelog_entry: added              # CHANGELOG.md [Unreleased] § Changed
@@ -56,7 +56,7 @@ spec_lint_fix: "§E.1 Out of Scope h3 added — MissingExclusions resolved (orch
 
 ```yaml
 mx_complete_at: 2026-06-13
-mx_commit_sha: "(backfilled below)"
+mx_commit_sha: "badaf5943"
 status_transition: implemented → completed
 four_phase_close: true             # plan + run + sync + Mx
 github_issue: 1061                  # configurable merge method
