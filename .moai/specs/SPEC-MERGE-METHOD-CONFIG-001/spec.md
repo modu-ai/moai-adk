@@ -11,6 +11,7 @@ phase: "v0.2.0"
 module: "internal/config, internal/template/templates/.claude"
 lifecycle: spec-anchored
 tags: "config, git-strategy, merge-method, dead-config, github-issue-1061"
+tier: M
 issue_number: 1061
 ---
 
@@ -100,6 +101,16 @@ This SPEC is structurally adjacent to the completed PREPUSH dead-config wiring l
 The proposed reconciliation is **non-destructive**: the default stays `squash`, and the FROZEN rationale (one squash commit per phase → clean, revertable SPEC history) remains the documented recommendation. The amendment changes the lifecycle table cell from the literal `squash` to "configured `merge_method` (default `squash`)". This is a widening, not a removal — the FROZEN invariant's intent (predictable default) is preserved while removing the contradiction with the gitflow ref-doc and the unused abstraction.
 
 [HARD] This FROZEN-zone edit MUST NOT be implemented without explicit GATE-2 human approval. The plan-auditor and the orchestrator's GATE-2 gate are the control points. If the maintainer decides squash MUST remain a non-negotiable invariant, the alternative resolution is: keep the FROZEN rule as-is, scope this SPEC down to config + abstraction wiring for the gitflow `release/*` exception only, OR reject the SPEC and instead remove the misleading unused abstraction. This decision is surfaced to the orchestrator for GATE-2.
+
+#### C.1.1 Why all 3 lifecycle rows are widened (not just the sync row)
+
+Issue #1061 is reported against the sync phase only (`/moai sync` Step 3.4). However, the FROZEN lifecycle table fixes "squash" for all THREE phase rows (plan/feat/sync), and this SPEC widens all three. This is deliberate, for two reasons:
+
+1. **The merge sites are generic, not sync-exclusive.** The hardcoded `gh pr merge --squash` lives in `manager-git.md` (3 sites: `:140`, `:176`, `:204`), which is the single agent that performs PR merges for ALL phases — plan PRs, run/feat PRs, and sync PRs alike. There is no phase-specific merge codepath. Wiring `merge_method` into `manager-git` necessarily affects every phase's merge, so leaving the plan/feat rows reading a hardcoded `squash` while the sync row reads "configured" would create a table that contradicts the actual (now uniform) behavior.
+
+2. **A per-phase split would be incoherent.** The `merge_method` config field is per-MODE (manual/personal/team), not per-PHASE. There is no config surface for "squash plan PRs but merge sync PRs". Widening only the sync row would imply a per-phase override that this SPEC does not deliver (and that is explicitly excluded — see EX-2 deferral of per-branch-type overrides). Widening all three rows uniformly is the only formulation consistent with the per-mode config model.
+
+The default stays `squash` for all three rows, so the FROZEN invariant's intent (clean per-phase SPEC history by default) is preserved uniformly. The widening removes the literal-vs-configurable contradiction across the whole table, not just the one cell the issue happened to name.
 
 ### C.2 Consumer is agent prose, not Go runtime
 

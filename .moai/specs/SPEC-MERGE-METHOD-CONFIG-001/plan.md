@@ -11,7 +11,7 @@ This plan adds a per-mode `merge_method` config field (default `squash`, preserv
 ## §B. Known Issues / Constraints discovered during planning
 
 1. **FROZEN-zone edit** — `spec-workflow.md` lifecycle table is `[ZONE:Frozen] [HARD]`. The amendment is non-destructive (default stays squash) but still requires explicit GATE-2 acknowledgment. This is the single highest-risk item; surfaced prominently to the orchestrator. (spec.md §C.1)
-2. **SSOT mirror parity** — `spec-workflow.md` exists in both `.claude/rules/.../` and `internal/template/templates/.claude/rules/.../`. `embedded_mirror_test.go` enforces byte-identity; BOTH copies MUST be edited in the same commit. (internal/template/CLAUDE.md § Mirror parity checks)
+2. **SSOT mirror parity** — `spec-workflow.md` exists in both `.claude/rules/.../` and `internal/template/templates/.claude/rules/.../`. Byte-identity is enforced by `TestRuleTemplateMirrorDrift` (`internal/template/rule_template_mirror_test.go:99`), which iterates `workflowOptMirroredPaths` — and `spec-workflow.md` is already a member of that allowlist (confirmed: rule_template_mirror_test.go:155 comment). BOTH copies MUST be edited in the same commit. (internal/template/CLAUDE.md § Mirror parity checks names the suite `embedded_mirror_test.go`; the actual `go test -run` target for spec-workflow.md drift is `TestRuleTemplateMirrorDrift`.)
 3. **Consumer is agent prose** — the `gh pr merge` consumer is the sync agent, not Go code. REQ-MMC-007/008/009 are verified by grep/structural assertions on rendered templates, not Go behavior tests. (spec.md §C.2)
 4. **Template neutrality** — all `internal/template/templates/` edits go through CI guard `template-neutrality-check.yaml`; no SPEC IDs/dates/SHAs in template content. (CLAUDE.local.md §15/§25)
 5. **`make build` required** — template source changes must be followed by `make build` to regenerate `go:embed` assets (or confirm `go:embed all:templates` makes regeneration unnecessary — verify at run-phase per recent embedded.go retirement noted in memory).
@@ -65,9 +65,16 @@ Tier M, sequential. Run-phase only (post-GATE-2).
 - Tests: extend `git_strategy_loader_test.go` with: (a) file omits `merge_method` → default `squash` retained; (b) file sets `merge_method: merge` → file value populated; (c) partial override (one mode set, siblings keep default).
 
 ### M3 — Validation enum (internal/config)
-- Add `merge_method` enum validation (`{squash, merge, rebase}`) in validation.go, alongside the existing `git_strategy.<mode>.hooks.*` checks. Empty → treated as default (no error).
+- [CORRECTED per plan-audit D2] Add `merge_method` enum validation (`{squash, merge, rebase}`) following the `validateGitConventionConfig` ENUM pattern (`internal/config/validation.go:185-225`), NOT the `checkStringField` pattern.
+  - **Why not `checkStringField`**: `checkStringField` (validation.go:296) only checks for non-empty + unexpanded-token presence — it does NOT validate enum membership. The existing `git_strategy.<mode>.hooks.*` checks (validation.go:263-281) route through `checkStringField` and therefore do NOT reject out-of-set values. Mirroring those checks would leave AC-MMC-005 unsatisfiable: an invalid `merge_method: rocket` would silently pass. (This is exactly the dead-validation trap the audit D2 caught.)
+  - **Correct pattern** (`validateGitConventionConfig`, validation.go:185-225): the function builds a canonical-value set (`validGitConventionNames`) and guards `if v != "" && !validSet[v] { append ValidationError{Field, Message, Value, Wrapped: ErrInvalidConfig} }`. Mirror this for `merge_method`:
+    - Define a package-level `validMergeMethods = map[string]bool{"squash": true, "merge": true, "rebase": true}` set (mirroring `validGitConventionNames`).
+    - Per mode profile: `if mp.MergeMethod != "" && !validMergeMethods[mp.MergeMethod] { append ValidationError{Field: "git_strategy.<mode>.merge_method", Message: "must be one of: squash, merge, rebase", Value: mp.MergeMethod, Wrapped: ErrInvalidConfig} }`.
+    - The `mp.MergeMethod != ""` guard implements REQ-MMC-006 (empty → treated as default, no error) — identical to how `validateGitConventionConfig` guards `gc.Convention != ""`.
+  - Optionally expose an `IsValidMergeMethod(name string) bool` + `ValidMergeMethods() []string` helper pair mirroring `IsValidConvention`/`ValidConventions` (validation.go:168-182) so `internal/web` / `internal/cli` can reuse the same canonical set instead of authoring a parallel rule-set.
+  - Add a `validateGitStrategyMergeMethod(cfg *Config)` helper (or fold the per-mode checks into the existing git-strategy validation block) that checks all 3 mode profiles (`Manual` / `Personal` / `Team`).
 - Covers: REQ-MMC-005, REQ-MMC-006.
-- Tests: validation test for invalid value (error names field path) + empty value (no error).
+- Tests: mirror the `validateGitConventionConfig` test structure (enum-rejection test), NOT the `checkStringField` token tests: (a) invalid value asserts an error naming `git_strategy.<mode>.merge_method` AND rejects the value; (b) empty value asserts NO error (REQ-MMC-006); (c) each valid value (`squash`/`merge`/`rebase`) asserts no error.
 
 ### M4 — Template config key (internal/template/templates)
 - Add `merge_method: squash` under each mode's profile in `git-strategy.yaml.tmpl` (manual/personal/team), with a neutral inline comment (`# squash, merge, rebase`).
@@ -85,7 +92,7 @@ Tier M, sequential. Run-phase only (post-GATE-2).
 - `spec-workflow.md` lifecycle table: change the `Merge`/`PR strategy` column from literal `squash` to "configured `merge_method` (default `squash`)" for all 3 phase rows, preserving the FROZEN rationale prose.
 - Edit BOTH `.claude/rules/.../spec-workflow.md` AND `internal/template/templates/.claude/rules/.../spec-workflow.md` in the same commit (mirror parity).
 - Covers: REQ-MMC-010, REQ-MMC-011.
-- Verify: `embedded_mirror_test.go` passes (byte-identity); FROZEN rationale text still present.
+- Verify: `go test ./internal/template/... -run TestRuleTemplateMirrorDrift` passes (byte-identity; spec-workflow.md is in `workflowOptMirroredPaths`); FROZEN rationale text still present.
 - [HARD] This milestone is the FROZEN-zone edit — it proceeds ONLY after GATE-2 approval already obtained at run-phase entry.
 
 ## §G. Anti-Patterns to avoid
@@ -93,7 +100,7 @@ Tier M, sequential. Run-phase only (post-GATE-2).
 - AP-1: Changing the default to `merge` (PRMerger's default) — violates EX-4; default MUST stay `squash`.
 - AP-2: Wiring PRMerger to a real caller "while we're here" — out of scope (EX-1, scope discipline).
 - AP-3: Adding per-branch-type overrides — out of scope (EX-2).
-- AP-4: Editing only one copy of the mirrored `spec-workflow.md` — breaks `embedded_mirror_test.go`.
+- AP-4: Editing only one copy of the mirrored `spec-workflow.md` — breaks `TestRuleTemplateMirrorDrift` (RULE_TEMPLATE_MIRROR_DRIFT sentinel).
 - AP-5: Leaking SPEC ID / date / SHA into template content — fails neutrality CI guard.
 - AP-6: Removing the FROZEN squash rationale instead of widening it (EX-7).
 - AP-7: Asserting REQ-MMC-007/008/009 via Go behavior tests — those are prose requirements verified by grep/structural assertion (spec.md §C.2).
