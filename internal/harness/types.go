@@ -384,3 +384,35 @@ type OversightProposal struct {
 	// Context is additional context for the user to make a decision.
 	Context string `json:"context"`
 }
+
+// ─────────────────────────────────────────────
+// M6 Auditable Lineage Logging (SPEC-HARNESS-LOOP-CLOSURE-001)
+// ─────────────────────────────────────────────
+
+// LineageEntry는 manifest.jsonl에 append되는 단일 apply 전환 기록이다 (M6 auditable lineage).
+// 매 apply 전환마다 정확히 하나의 entry가 기록된다 (accept 시 1개, reject 시 1개).
+// rejected candidate도 기록되지만 active harness는 변경하지 않는다 (REQ-HLC-004).
+// optional 필드는 omitempty를 사용해 기존 reader와 향후 schema 추가에 backward-compatible하다.
+//
+// @MX:ANCHOR: [AUTO] LineageEntry는 lineage writer/loader와 Apply 통합의 공유 record 타입.
+// @MX:REASON: [AUTO] fan_in >= 3: lineage.go(WriteLineageEntry/LoadManifest), applier.go(Apply), lineage_test.go
+type LineageEntry struct {
+	// ProposalID는 이 전환을 발생시킨 proposal의 ID.
+	ProposalID string `json:"proposal_id"`
+
+	// TargetPath는 전환 대상 파일 경로.
+	TargetPath string `json:"target_path"`
+
+	// AppliedSurface는 accept 시 변경된 frontmatter 필드 키 (예: "description").
+	// reject 시 비어 있다 (omitempty).
+	AppliedSurface string `json:"applied_surface,omitempty"`
+
+	// Decision은 전환 결정이다: "approved" | "rejected".
+	Decision string `json:"decision"`
+
+	// Timestamp는 전환 기록 시각 (UTC).
+	Timestamp time.Time `json:"timestamp"`
+
+	// Reason은 전환 사유 (reject 시 거부 layer의 사유, approve 시 승인 설명).
+	Reason string `json:"reason,omitempty"`
+}

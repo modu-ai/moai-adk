@@ -31,6 +31,14 @@ type Applier struct {
 	// Default value is enableTriggerInjectionWrites (package-level flag).
 	// Can be set to true in tests via newApplierWithWritesEnabled().
 	allowWrites bool
+
+	// manifestPath is the M6 auditable lineage manifest path (REQ-HLC-001/002).
+	// When non-empty, Apply() appends a LineageEntry on the approved/rejected transition.
+	// When empty (the NewApplier() default), Apply() skips the lineage write — preserving
+	// the pre-lineage Apply behavior for callers that do not opt into lineage logging.
+	// The path is injectable so tests can point it at t.TempDir(); the production caller
+	// passes <learning-history-dir>/manifest.jsonl.
+	manifestPath string
 }
 
 // NewApplier creates a default Applier.
@@ -43,6 +51,12 @@ func NewApplier() *Applier {
 // Test-only function.
 func newApplierWithWritesEnabled() *Applier {
 	return &Applier{allowWrites: true}
+}
+
+// newApplierWithManifest creates an Applier wired to write M6 lineage entries to manifestPath.
+// Test-only constructor: lets lineage tests inject a t.TempDir() manifest path.
+func newApplierWithManifest(manifestPath string) *Applier {
+	return &Applier{allowWrites: enableTriggerInjectionWrites, manifestPath: manifestPath}
 }
 
 // EnrichDescription adds heuristicNote to SKILL.md description field.
@@ -183,11 +197,20 @@ func (a *Applier) Apply(proposal Proposal, evaluator SafetyEvaluator, snapshotBa
 
 	switch decision.Kind {
 	case DecisionRejected:
+		// [HARD] M6 auditable lineage (REQ-HLC-004/008): record the rejected transition
+		// BEFORE returning, capturing the rejecting layer's reason. The active harness is
+		// left unchanged (no snapshot, no SKILL.md write). The lineage write is an
+		// after-effect record; a lineage write error is wrapped but the rejection still
+		// stands (the rejection is the primary effect).
+		if lerr := a.writeLineage(proposal, "rejected", "", rejectReason(decision)); lerr != nil {
+			return fmt.Errorf("applier: proposal rejected (L%d, rejected); lineage write failed: %w", decision.RejectedBy, lerr)
+		}
 		return fmt.Errorf("applier: proposal rejected (L%d, rejected)", decision.RejectedBy)
 
 	case DecisionPendingApproval:
 		// [HARD] subagent must not call AskUserQuestion directly.
 		// Return payload to orchestrator to delegate user approval.
+		// Pending is NOT a transition — no lineage entry is written (REQ-HLC-005).
 		return &ApplyPendingError{OversightPayload: decision.OversightProposal}
 
 	case DecisionApproved:
@@ -203,14 +226,52 @@ func (a *Applier) Apply(proposal Proposal, evaluator SafetyEvaluator, snapshotBa
 	// ── Step 3: Actual File Modification ───────────────────────────────────────────────
 	switch proposal.FieldKey {
 	case "description":
-		return a.EnrichDescription(proposal.TargetPath, proposal.NewValue)
+		if err := a.EnrichDescription(proposal.TargetPath, proposal.NewValue); err != nil {
+			return err
+		}
 	case "triggers":
 		// Perform InjectTrigger with write-enabled Applier
 		w := newApplierWithWritesEnabled()
-		return w.InjectTrigger(proposal.TargetPath, proposal.NewValue)
+		if err := w.InjectTrigger(proposal.TargetPath, proposal.NewValue); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("applier: unsupported fieldKey %q", proposal.FieldKey)
 	}
+
+	// ── Step 4: M6 auditable lineage (REQ-HLC-003): record the approved transition AFTER
+	// the SKILL.md modification succeeds. applied_surface is the modified frontmatter field
+	// key. A lineage write error is surfaced to the caller, but the file write (the primary
+	// effect) has already happened.
+	if lerr := a.writeLineage(proposal, "approved", proposal.FieldKey, "approved transition: "+proposal.FieldKey+" enriched"); lerr != nil {
+		return fmt.Errorf("applier: file modified but lineage write failed: %w", lerr)
+	}
+	return nil
+}
+
+// writeLineage appends one M6 LineageEntry to the Applier's manifest path.
+// When manifestPath is empty (the NewApplier() default), the lineage write is skipped
+// (no-op) so callers that did not opt into lineage logging keep the pre-lineage behavior.
+func (a *Applier) writeLineage(proposal Proposal, decision, appliedSurface, reason string) error {
+	if a.manifestPath == "" {
+		return nil
+	}
+	return WriteLineageEntry(a.manifestPath, LineageEntry{
+		ProposalID:     proposal.ID,
+		TargetPath:     proposal.TargetPath,
+		AppliedSurface: appliedSurface,
+		Decision:       decision,
+		Reason:         reason,
+	})
+}
+
+// rejectReason derives a non-empty reason string from a rejection Decision.
+// It prefers the layer-supplied Reason; if absent, it synthesizes one from RejectedBy.
+func rejectReason(decision Decision) string {
+	if decision.Reason != "" {
+		return decision.Reason
+	}
+	return fmt.Sprintf("rejected by safety layer L%d", decision.RejectedBy)
 }
 
 // createSnapshot backs up current content of proposal.TargetPath to snapshotBase/<ISO-DATE>/.
