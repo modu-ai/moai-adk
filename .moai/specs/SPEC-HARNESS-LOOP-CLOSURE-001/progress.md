@@ -139,10 +139,22 @@ m1_to_mN_commit_strategy: single-commit (Tier S, all M1-M4 in one feat commit)
 
 ```yaml
 sync_complete_at: 2026-06-14
-sync_commit_sha: <backfill at git commit — canonical sync-phase sha>
+sync_commit_sha: c43ebc019
 sync_status: implemented
 docs_updated: [CHANGELOG.md]
 specs_artifacts_modified:
   - "spec.md": "status in-progress → implemented"
   - "progress.md": "backfilled run_commit_sha + sync-phase evidence"
+```
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+```yaml
+mx_complete_at: 2026-06-14
+mx_commit_sha: <backfill — set to the Mx close commit SHA>
+mx_status: completed
+four_phase_close: true
+lifecycle: "plan → run → sync → Mx (4-phase complete)"
+run_commit_sha: 3829f3a26
+sync_commit_sha: c43ebc019
 ```
