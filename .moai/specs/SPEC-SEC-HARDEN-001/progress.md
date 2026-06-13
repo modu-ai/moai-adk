@@ -134,3 +134,20 @@ new_warnings_or_lints_introduced: 0
 ### Pre-existing failure (out of scope — blocker report to orchestrator)
 
 `internal/web` has 2 pre-existing test failures (`TestGoldenPath_ReadWriteRoundTrip`, `TestWriteProjectConfigSectionIsolation` / `projectconfig_scope_test.go:49`) that FAIL identically at the clean worktree base `0ef553617` with NO SEC-HARDEN changes (verified via a detached scratch worktree at the base commit). Root cause: the most recent base commit (SPEC-PREPUSH-SAVE-WIRING-001, `0ef553617`) wired `git_strategy` into the config `Save()` WRITE path, which now writes `git-strategy.yaml`, breaking the web sentinel tests that assert it is never touched. `internal/web` does NOT import any of the 5 SEC-HARDEN packages (`go list -deps` confirmed), so SEC-HARDEN cannot have caused it. This is explicitly OUT of SEC-HARDEN scope (§F.1 "config Save / SetSection persistence gap" deferred MEDIUM; §F.3 packages incl. web not reviewed) — NOT fixed here, reported as a blocker.
+
+---
+
+## §E.4 — Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-06-13
+sync_status: implemented
+sync_commit_sha: <pending-backfill>
+changelog_entry: added
+ac_pass_count: 27
+ac_observational_count: 1
+readme_updated: false
+docs_site_updated: false
+```
+
+**Rationale**: 5 HIGH security/concurrency defects fixed entirely within internal packages with no user-facing CLI/API/config change. The 1 additive `tmux.SessionManager.InjectSensitiveEnv(ctx, key, value) error` interface method is internal to the `internal/tmux` package (not exported, not part of public API surface). README and docs-site 4-locale do not require updates (internal hardening, not a user-facing feature announcement). CHANGELOG entry added to `[Unreleased] ### Security` subsection per the SSOT at `.moai/specs/SPEC-SEC-HARDEN-001/acceptance.md` AC count 27 automated + 1 observational = 28 total.
