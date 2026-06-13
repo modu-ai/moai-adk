@@ -56,6 +56,17 @@ type SessionManager interface {
 
 	// ClearEnv removes environment variables from the current tmux session.
 	ClearEnv(ctx context.Context, vars []string) error
+
+	// InjectSensitiveEnv sets a single credential-bearing environment variable in
+	// the current tmux session without exposing its value through process argv.
+	// Required so callers holding the SessionManager interface (not the concrete
+	// *DefaultSessionManager) can route credentials such as ANTHROPIC_AUTH_TOKEN
+	// through the argv-safe channel instead of `tmux set-environment <k> <v>`
+	// (CWE-214). *DefaultSessionManager already implements this method.
+	//
+	// SPEC-SEC-HARDEN-001 §M3 / §F.5 narrow carve-out (the only additive interface
+	// method permitted; no other SessionManager method may change).
+	InjectSensitiveEnv(ctx context.Context, key, value string) error
 }
 
 // DefaultSessionManager implements SessionManager using tmux commands.

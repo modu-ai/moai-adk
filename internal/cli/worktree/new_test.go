@@ -858,3 +858,11 @@ func (m *mockSessionManager) InjectEnv(_ context.Context, _ map[string]string) e
 func (m *mockSessionManager) ClearEnv(_ context.Context, _ []string) error {
 	return nil
 }
+
+// InjectSensitiveEnv satisfies the tmux.SessionManager interface extension added
+// by SPEC-SEC-HARDEN-001 §M3. This mock is a no-op double for the worktree `new`
+// tests; the M3 leak behavior is exercised by the recording fake in
+// tmux_integration_sec_harden_test.go.
+func (m *mockSessionManager) InjectSensitiveEnv(_ context.Context, _, _ string) error {
+	return nil
+}

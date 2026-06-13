@@ -32,6 +32,13 @@ type CircuitBreaker struct {
 	lastFailureTime time.Time
 	lastStateChange time.Time
 
+	// halfOpenInFlight guards the half-open single-trial invariant: while the
+	// circuit is half-open, at most one trial request may execute fn(); all other
+	// concurrent callers are rejected with ErrCircuitOpen until the trial resolves.
+	// Guarded by cb.mu. Cleared on every Call resolution and on Reset.
+	// SPEC-SEC-HARDEN-001 §M5 REQ-SEC-M5-001/002.
+	halfOpenInFlight bool
+
 	// Metrics tracked atomically
 	totalCalls    atomic.Int64
 	successCount  atomic.Int64
@@ -69,21 +76,37 @@ func (cb *CircuitBreaker) Call(ctx context.Context, fn func() error) error {
 
 	cb.totalCalls.Add(1)
 
-	// Check and potentially update state
+	// Check and potentially update state, and atomically claim the half-open trial
+	// permit under the same lock so exactly one caller proceeds while half-open.
 	cb.mu.Lock()
 	state := cb.checkState()
-	cb.mu.Unlock()
-
 	if state == StateOpen {
+		cb.mu.Unlock()
 		cb.rejectedCount.Add(1)
 		return ErrCircuitOpen
 	}
+	if state == StateHalfOpen {
+		// SPEC-SEC-HARDEN-001 §M5: admit at most one in-flight half-open trial.
+		if cb.halfOpenInFlight {
+			cb.mu.Unlock()
+			cb.rejectedCount.Add(1)
+			return ErrCircuitOpen
+		}
+		cb.halfOpenInFlight = true
+	}
+	cb.mu.Unlock()
 
-	// Execute the function
+	// Execute the function (lock-free, preserving the existing non-blocking model).
 	err := fn()
 
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
+
+	// Release the half-open trial permit on every resolution path (success or
+	// failure). The subsequent recordSuccess/recordFailure transitions out of
+	// half-open; clearing here also covers the case where the breaker is still
+	// half-open after this call (no transition fired).
+	cb.halfOpenInFlight = false
 
 	if err != nil {
 		cb.recordFailure()
@@ -114,7 +137,12 @@ func (cb *CircuitBreaker) Reset() {
 	cb.failureCount = 0
 	cb.lastFailureTime = time.Time{}
 	cb.lastStateChange = time.Now()
+	// Clear any leftover half-open trial permit on reset (SPEC-SEC-HARDEN-001 §M5).
+	cb.halfOpenInFlight = false
 
+	// NOTE: Reset's OnStateChange is invoked SYNCHRONOUSLY by design (distinct from
+	// the asynchronous transitionTo goroutine). AC-SEC-M5-006 requires this path
+	// unchanged, so M5 leaves it as-is (no recover wrapper, no async dispatch).
 	if oldState != StateClosed && cb.config.OnStateChange != nil {
 		cb.config.OnStateChange(oldState, StateClosed)
 	}
@@ -190,9 +218,16 @@ func (cb *CircuitBreaker) transitionTo(newState CircuitState) {
 	cb.lastStateChange = time.Now()
 
 	if cb.config.OnStateChange != nil {
-		// @MX:WARN: [AUTO] OnStateChange callback invoked as goroutine while mutex is held by caller; panic in callback is unrecovered
-		// @MX:REASON: [AUTO] The goroutine escapes the mutex scope held by transitionTo's callers; if OnStateChange panics, there is no recover() wrapper, which crashes the process; context cancellation is also not propagated
-		// Call asynchronously to avoid blocking
-		go cb.config.OnStateChange(oldState, newState)
+		// @MX:NOTE: [AUTO] OnStateChange callback invoked as a goroutine while the mutex is held by the caller; the goroutine body recovers from panics so a panicking callback no longer crashes the process (SPEC-SEC-HARDEN-001 §M5)
+		// Call asynchronously to avoid blocking. The recover wrapper ensures a
+		// panic inside the user-supplied callback is contained within this
+		// goroutine and does not propagate to the Go runtime (which would abort
+		// the host process). Context cancellation is intentionally not propagated
+		// here (out of M5 scope; preserved existing dispatch shape).
+		onStateChange := cb.config.OnStateChange
+		go func() {
+			defer func() { _ = recover() }()
+			onStateChange(oldState, newState)
+		}()
 	}
 }

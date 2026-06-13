@@ -2,7 +2,7 @@
 id: SPEC-SEC-HARDEN-001
 title: "Security & Concurrency Hardening (full-codebase review HIGH findings)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-13
 updated: 2026-06-13
 author: GOOS행님

@@ -125,7 +125,15 @@ func (r *PermissionRule) Matches(tool, input string) bool {
 	// Check if input matches the argument pattern
 	// For patterns like "go test:*", check if input starts with "go test:"
 	if prefix, ok := strings.CutSuffix(argPattern, ":*"); ok {
-		return strings.HasPrefix(input, prefix)
+		if !strings.HasPrefix(input, prefix) {
+			return false
+		}
+		// SECURITY (SPEC-SEC-HARDEN-001 M1): a ":*" prefix rule must not be a
+		// command-chain bypass. If the remainder past the matched prefix carries
+		// an unquoted shell command separator, the chained command rides in on an
+		// allowed prefix — so report no match and let the input fall through to the
+		// normal ask/deny path instead of being silently allowed.
+		return !hasUnquotedShellSeparator(input[len(prefix):])
 	}
 
 	// For patterns like "/tmp/*", check if input starts with "/tmp/"
@@ -140,6 +148,45 @@ func (r *PermissionRule) Matches(tool, input string) bool {
 
 	// Exact match
 	return input == argPattern
+}
+
+// hasUnquotedShellSeparator reports whether s contains a shell command separator
+// (`;`, `&&`, `||`, `|`, `$(`, backtick, or newline) outside of a single- or
+// double-quoted segment. It is a deliberately lightweight lexical scan, NOT a full
+// POSIX shell parser (here-docs, escaped quotes, `$'...'`, process substitution are
+// out of scope per SPEC-SEC-HARDEN-001 §F.4). The scan errs toward reporting a
+// separator when ambiguous, which is the security-safe direction for an allow-rule
+// matcher: a borderline input fails to match the prefix rule and falls through to
+// the normal ask/deny path rather than being silently allowed.
+//
+// @MX:NOTE: [AUTO] SPEC-SEC-HARDEN-001 M1 — quote-aware shell-separator scan guards the ":*" prefix branch against command-chain bypass.
+func hasUnquotedShellSeparator(s string) bool {
+	var inSingle, inDouble bool
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch {
+		case inSingle:
+			if c == '\'' {
+				inSingle = false
+			}
+		case inDouble:
+			if c == '"' {
+				inDouble = false
+			}
+		case c == '\'':
+			inSingle = true
+		case c == '"':
+			inDouble = true
+		case c == ';' || c == '|' || c == '&' || c == '`' || c == '\n':
+			// Single-char separators (and the first char of `&&` / `||`):
+			// any unquoted occurrence is a command-chain boundary.
+			return true
+		case c == '$' && i+1 < len(s) && s[i+1] == '(':
+			// Command substitution `$(...)`.
+			return true
+		}
+	}
+	return false
 }
 
 // String returns a string representation of the rule for debugging.

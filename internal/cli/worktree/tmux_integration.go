@@ -74,8 +74,21 @@ func CreateTmuxSession(ctx context.Context, cfg *TmuxSessionConfig, tmuxMgr tmux
 		return fmt.Errorf("create tmux session: %w", err)
 	}
 
-	// R5.2-5.3: Inject environment variables in GLM/CG mode
+	// R5.2-5.3: Inject environment variables in GLM/CG mode.
+	//
+	// SPEC-SEC-HARDEN-001 §M3 (CWE-214): route ANTHROPIC_AUTH_TOKEN through the
+	// argv-safe sensitive channel and bulk-inject only the remaining non-sensitive
+	// vars. Mirrors the canonical glm.go:389-408 fix (SPEC-V3R5-SECURITY-CRIT-001
+	// P0-2). On sensitive-injection failure we MUST NOT fall back to argv (that
+	// would re-leak the token), so the error is returned and the bulk InjectEnv is
+	// never reached for the token.
 	if cfg.ActiveMode == "glm" || cfg.ActiveMode == "cg" {
+		if token := cfg.GLMEnvVars[config.EnvAnthropicAuthToken]; token != "" {
+			if err := tmuxMgr.InjectSensitiveEnv(ctx, config.EnvAnthropicAuthToken, token); err != nil {
+				return fmt.Errorf("inject sensitive tmux env: %w", err)
+			}
+			delete(cfg.GLMEnvVars, config.EnvAnthropicAuthToken)
+		}
 		if len(cfg.GLMEnvVars) > 0 {
 			if err := tmuxMgr.InjectEnv(ctx, cfg.GLMEnvVars); err != nil {
 				return fmt.Errorf("inject GLM env: %w", err)

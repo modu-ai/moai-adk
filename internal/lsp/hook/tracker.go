@@ -67,9 +67,16 @@ func (t *regressionTracker) SaveBaseline(filePath string, diagnostics []Diagnost
 }
 
 // GetBaseline retrieves the baseline for a file.
+//
+// SPEC-SEC-HARDEN-001 §M4: this method acquires the WRITE lock (not RLock) because
+// loadBaselineLocked lazily assigns the shared t.baseline field on first access. Under
+// a read lock, two concurrent callers entering with t.baseline == nil would both write
+// (and read) t.baseline — a data race the race detector flags. loadBaselineLocked
+// early-returns when t.baseline != nil, so a second concurrent caller's load is a cheap
+// no-op under the write lock. The observable return contract is unchanged.
 func (t *regressionTracker) GetBaseline(filePath string) (*FileBaseline, error) {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
 	if err := t.loadBaselineLocked(); err != nil {
 		return nil, &ErrBaselineNotFound{FilePath: filePath}
