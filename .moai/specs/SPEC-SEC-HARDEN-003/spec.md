@@ -2,7 +2,7 @@
 id: SPEC-SEC-HARDEN-003
 title: "SEC-HARDEN §F.3 fast-follow — 비격리 경로 봉쇄 (MX 사이드카 + 레거시 백업 복원)"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-06-14
 updated: 2026-06-14
 author: GOOS
