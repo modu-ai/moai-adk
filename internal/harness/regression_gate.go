@@ -15,6 +15,7 @@
 package harness
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -241,6 +242,13 @@ func (m *goMeasurer) Measure(projectRoot string) (MetricTriple, error) {
 	if len(testOut) == 0 {
 		// No JSON produced — the build did not even reach the test runner.
 		return MetricTriple{}, fmt.Errorf("measure: go test produced no output (build error): %w", measurementExecErr(testErr))
+	}
+
+	// A build failure (go test -json emits "Action":"build-fail") means the suite
+	// could not even compile — that is a measurement-exec failure, NOT a red suite
+	// with a valid count. Fail closed per REQ-RG-014.
+	if bytes.Contains(testOut, []byte(`"Action":"build-fail"`)) {
+		return MetricTriple{}, fmt.Errorf("measure: go test build failure (fail-closed): %w", measurementExecErr(testErr))
 	}
 
 	passed, _ := measure.ParseGoTestJSON(testOut)

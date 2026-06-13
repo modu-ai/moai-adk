@@ -812,6 +812,334 @@ func writeSkillFixture(t *testing.T, content string) string {
 	return skillPath
 }
 
+// ─────────────────────────────────────────────
+// M4 — in-Apply non-regression gate tests
+// SPEC-HARNESS-REGRESSION-GATE-001 REQ-RG-007/008/009/010/014
+// ─────────────────────────────────────────────
+
+// seqMeasurer is a Measurer that returns a scripted sequence of triples (one per
+// call). The first call is the baseline measure, the second the candidate measure.
+// When an entry's err is non-nil, that call returns the measurement-exec error
+// (drives the fail-closed path, REQ-RG-014).
+type seqMeasurer struct {
+	calls []measureCall
+	idx   int
+}
+
+type measureCall struct {
+	triple MetricTriple
+	err    error
+}
+
+func (m *seqMeasurer) Measure(projectRoot string) (MetricTriple, error) {
+	if m.idx >= len(m.calls) {
+		return MetricTriple{}, nil
+	}
+	c := m.calls[m.idx]
+	m.idx++
+	return c.triple, c.err
+}
+
+// newGateApplier builds an Applier wired with a manifest, an injected baseline
+// store, and an injected measurer — the in-Apply gate is active only when both
+// the measurer and the baseline store are non-nil.
+func newGateApplier(manifestPath, baselinePath string, m Measurer) *Applier {
+	a := newApplierWithManifest(manifestPath)
+	a.measurer = m
+	a.baselineStore = NewBaselineStore(baselinePath)
+	return a
+}
+
+// seedBaseline writes a baseline file so the gate treats the next Apply as a
+// subsequent run (hasPriorBaseline=true) — enabling the regression block path.
+// Without a seed, the first gated Apply adopts the candidate without blocking
+// (REQ-RG-005 first-run no-block).
+func seedBaseline(t *testing.T, baselinePath string, triple MetricTriple) {
+	t.Helper()
+	if err := NewBaselineStore(baselinePath).Save(triple); err != nil {
+		t.Fatalf("seed baseline: %v", err)
+	}
+}
+
+// TestApply_Regression_NonRegressing_Keeps verifies a non-regressing Apply
+// (Δ ≥ 0 for all dimensions) keeps the change, updates the baseline store, and
+// writes the existing M6 "approved" lineage entry (REQ-RG-007, REQ-RG-009).
+func TestApply_Regression_NonRegressing_Keeps(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	skillPath := writeLineageFixture(t)
+	snapshotBase := filepath.Join(dir, "snapshots")
+	manifestPath := filepath.Join(dir, "learning-history", "manifest.jsonl")
+	baselinePath := filepath.Join(dir, "harness", "measurements-baseline.yaml")
+
+	// baseline then candidate, both equal (Δ=0 — markdown-only typical case).
+	m := &seqMeasurer{calls: []measureCall{
+		{triple: MetricTriple{TestsPassed: 100, Coverage: 87.0, LintCount: 0}},
+		{triple: MetricTriple{TestsPassed: 100, Coverage: 87.0, LintCount: 0}},
+	}}
+	a := newGateApplier(manifestPath, baselinePath, m)
+
+	proposal := Proposal{
+		ID:               "nonreg-001",
+		TargetPath:       skillPath,
+		FieldKey:         "description",
+		NewValue:         "harness frequently triggered",
+		PatternKey:       "moai_subcommand:/moai plan:ctx001",
+		Tier:             TierAutoUpdate,
+		ObservationCount: 10,
+	}
+
+	if err := a.Apply(proposal, approvedEvaluator(), snapshotBase, []Session{}); err != nil {
+		t.Fatalf("Apply (non-regressing) must succeed: %v", err)
+	}
+
+	// Baseline store updated to candidate.
+	got, present, err := a.baselineStore.Load()
+	if err != nil {
+		t.Fatalf("baseline Load: %v", err)
+	}
+	if !present {
+		t.Error("baseline store not written after non-regressing apply")
+	}
+	if got != (MetricTriple{TestsPassed: 100, Coverage: 87.0, LintCount: 0}) {
+		t.Errorf("baseline = %+v, want candidate triple", got)
+	}
+
+	// Lineage entry is "approved" (M6 path preserved).
+	entries, lerr := LoadManifest(manifestPath)
+	if lerr != nil {
+		t.Fatalf("LoadManifest: %v", lerr)
+	}
+	if len(entries) != 1 || entries[0].Decision != "approved" {
+		t.Errorf("lineage entries = %+v, want one approved entry", entries)
+	}
+}
+
+// TestApply_Regression_Blocks_RollsBack verifies a regressing Apply rolls the
+// file back to its original bytes and returns ApplyRegressionError (REQ-RG-008).
+func TestApply_Regression_Blocks_RollsBack(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	skillPath := writeLineageFixture(t)
+	originalContent, _ := os.ReadFile(skillPath)
+	snapshotBase := filepath.Join(dir, "snapshots")
+	manifestPath := filepath.Join(dir, "learning-history", "manifest.jsonl")
+	baselinePath := filepath.Join(dir, "harness", "measurements-baseline.yaml")
+
+	// Seed a prior baseline so the gate enables the block path (not first-run).
+	seedBaseline(t, baselinePath, MetricTriple{TestsPassed: 100, Coverage: 87.0, LintCount: 0})
+	// baseline measure good, candidate measure regressed (coverage dropped + lint up).
+	m := &seqMeasurer{calls: []measureCall{
+		{triple: MetricTriple{TestsPassed: 100, Coverage: 87.0, LintCount: 0}},
+		{triple: MetricTriple{TestsPassed: 100, Coverage: 80.0, LintCount: 3}},
+	}}
+	a := newGateApplier(manifestPath, baselinePath, m)
+
+	proposal := Proposal{
+		ID:               "reg-block-001",
+		TargetPath:       skillPath,
+		FieldKey:         "description",
+		NewValue:         "harness frequently triggered",
+		PatternKey:       "moai_subcommand:/moai plan:ctx001",
+		Tier:             TierAutoUpdate,
+		ObservationCount: 10,
+	}
+
+	err := a.Apply(proposal, approvedEvaluator(), snapshotBase, []Session{})
+	if err == nil {
+		t.Fatal("regressing apply must return an error")
+	}
+	var regErr *ApplyRegressionError
+	if !asRegressionError(err, &regErr) {
+		t.Fatalf("error type = %T, want *ApplyRegressionError", err)
+	}
+	if len(regErr.Regressed) == 0 {
+		t.Error("ApplyRegressionError.Regressed must list the regressed dimensions")
+	}
+
+	// File rolled back to original bytes.
+	after, _ := os.ReadFile(skillPath)
+	if !bytes.Equal(originalContent, after) {
+		t.Errorf("file not rolled back:\n got: %q\nwant: %q", after, originalContent)
+	}
+
+	// Baseline store NOT updated on a blocked apply — it still holds the seeded triple.
+	stored, present, _ := a.baselineStore.Load()
+	if !present {
+		t.Fatal("seeded baseline unexpectedly removed")
+	}
+	if stored != (MetricTriple{TestsPassed: 100, Coverage: 87.0, LintCount: 0}) {
+		t.Errorf("baseline store must NOT be updated on a blocked apply; got %+v", stored)
+	}
+}
+
+// TestApply_Regression_AppendsBlockedLineage verifies a blocked apply appends a
+// "regression-blocked" lineage entry carrying the regressed-dimension summary
+// (REQ-RG-010).
+func TestApply_Regression_AppendsBlockedLineage(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	skillPath := writeLineageFixture(t)
+	snapshotBase := filepath.Join(dir, "snapshots")
+	manifestPath := filepath.Join(dir, "learning-history", "manifest.jsonl")
+	baselinePath := filepath.Join(dir, "harness", "measurements-baseline.yaml")
+
+	seedBaseline(t, baselinePath, MetricTriple{TestsPassed: 100, Coverage: 87.0, LintCount: 0})
+	m := &seqMeasurer{calls: []measureCall{
+		{triple: MetricTriple{TestsPassed: 100, Coverage: 87.0, LintCount: 0}},
+		{triple: MetricTriple{TestsPassed: 95, Coverage: 87.0, LintCount: 0}}, // tests dropped
+	}}
+	a := newGateApplier(manifestPath, baselinePath, m)
+
+	proposal := Proposal{
+		ID:               "reg-lineage-001",
+		TargetPath:       skillPath,
+		FieldKey:         "description",
+		NewValue:         "harness frequently triggered",
+		PatternKey:       "moai_subcommand:/moai plan:ctx001",
+		Tier:             TierAutoUpdate,
+		ObservationCount: 10,
+	}
+
+	_ = a.Apply(proposal, approvedEvaluator(), snapshotBase, []Session{})
+
+	entries, err := LoadManifest(manifestPath)
+	if err != nil {
+		t.Fatalf("LoadManifest: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("lineage len = %d, want 1", len(entries))
+	}
+	e := entries[0]
+	if e.Decision != "regression-blocked" {
+		t.Errorf("Decision = %q, want regression-blocked", e.Decision)
+	}
+	if !strings.Contains(e.Reason, "tests_passed") {
+		t.Errorf("Reason = %q, want it to summarize regressed dimension tests_passed", e.Reason)
+	}
+}
+
+// TestApply_Regression_MeasurementError_FailsClosed verifies that a measurement
+// step that cannot execute (stubbed exec error) causes a fail-closed wrapped
+// error and does NOT keep the change (REQ-RG-014).
+func TestApply_Regression_MeasurementError_FailsClosed(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	skillPath := writeLineageFixture(t)
+	originalContent, _ := os.ReadFile(skillPath)
+	snapshotBase := filepath.Join(dir, "snapshots")
+	manifestPath := filepath.Join(dir, "learning-history", "manifest.jsonl")
+	baselinePath := filepath.Join(dir, "harness", "measurements-baseline.yaml")
+
+	// First measure (baseline) good, candidate measure errors (build broke).
+	m := &seqMeasurer{calls: []measureCall{
+		{triple: MetricTriple{TestsPassed: 100, Coverage: 87.0, LintCount: 0}},
+		{err: errMeasureExec},
+	}}
+	a := newGateApplier(manifestPath, baselinePath, m)
+
+	proposal := Proposal{
+		ID:               "reg-failclosed-001",
+		TargetPath:       skillPath,
+		FieldKey:         "description",
+		NewValue:         "harness frequently triggered",
+		PatternKey:       "moai_subcommand:/moai plan:ctx001",
+		Tier:             TierAutoUpdate,
+		ObservationCount: 10,
+	}
+
+	err := a.Apply(proposal, approvedEvaluator(), snapshotBase, []Session{})
+	if err == nil {
+		t.Fatal("measurement exec error must fail closed (return an error)")
+	}
+	// Must NOT be kept: file rolled back AND baseline not updated.
+	after, _ := os.ReadFile(skillPath)
+	if !bytes.Equal(originalContent, after) {
+		t.Error("fail-closed must roll the change back")
+	}
+	_, present, _ := a.baselineStore.Load()
+	if present {
+		t.Error("fail-closed must NOT update the baseline store")
+	}
+}
+
+// TestApply_Regression_ForbiddenFilesUntouched verifies the gate does not create
+// or modify the forbidden runtime files (REQ-RG-006, C11).
+func TestApply_Regression_ForbiddenFilesUntouched(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	skillPath := writeLineageFixture(t)
+	snapshotBase := filepath.Join(dir, "snapshots")
+	manifestPath := filepath.Join(dir, "learning-history", "manifest.jsonl")
+	baselinePath := filepath.Join(dir, "harness", "measurements-baseline.yaml")
+
+	harnessDir := filepath.Join(dir, "harness")
+	if err := os.MkdirAll(harnessDir, 0o755); err != nil {
+		t.Fatalf("mkdir harness: %v", err)
+	}
+	forbidden := map[string]string{
+		"usage-log.jsonl":       `{"x":1}`,
+		"observations.yaml":     "obs: 1\n",
+		"tier-promotions.jsonl": `{"p":1}`,
+	}
+	for name, content := range forbidden {
+		if err := os.WriteFile(filepath.Join(harnessDir, name), []byte(content), 0o644); err != nil {
+			t.Fatalf("seed %s: %v", name, err)
+		}
+	}
+
+	m := &seqMeasurer{calls: []measureCall{
+		{triple: MetricTriple{TestsPassed: 100, Coverage: 87.0, LintCount: 0}},
+		{triple: MetricTriple{TestsPassed: 100, Coverage: 87.0, LintCount: 0}},
+	}}
+	a := newGateApplier(manifestPath, baselinePath, m)
+
+	proposal := Proposal{
+		ID:               "reg-forbidden-001",
+		TargetPath:       skillPath,
+		FieldKey:         "description",
+		NewValue:         "harness frequently triggered",
+		PatternKey:       "moai_subcommand:/moai plan:ctx001",
+		Tier:             TierAutoUpdate,
+		ObservationCount: 10,
+	}
+
+	if err := a.Apply(proposal, approvedEvaluator(), snapshotBase, []Session{}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+
+	for name, want := range forbidden {
+		got, _ := os.ReadFile(filepath.Join(harnessDir, name))
+		if string(got) != want {
+			t.Errorf("forbidden file %s was modified: got %q, want %q", name, got, want)
+		}
+	}
+}
+
+// asRegressionError reports whether err is *ApplyRegressionError.
+func asRegressionError(err error, target **ApplyRegressionError) bool {
+	if err == nil {
+		return false
+	}
+	if re, ok := err.(*ApplyRegressionError); ok {
+		*target = re
+		return true
+	}
+	return false
+}
+
+// errMeasureExec is a sentinel measurement-exec error for the fail-closed test.
+var errMeasureExec = &measureExecError{}
+
+type measureExecError struct{}
+
+func (e *measureExecError) Error() string { return "measure: simulated build error" }
+
 // extractBody extracts the body of a SKILL.md after the frontmatter (---...---).
 func extractBody(content string) string {
 	// Frontmatter spans from the first --- to the second ---

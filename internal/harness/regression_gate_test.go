@@ -180,3 +180,52 @@ type stubMeasurer struct {
 func (s stubMeasurer) Measure(projectRoot string) (MetricTriple, error) {
 	return s.triple, s.err
 }
+
+// TestNewApplierWithRegressionGate_WiresProductionMeasurer verifies the exported
+// production constructor wires the goMeasurer + BaselineStore so the gate is active
+// (gateActive() == true). It does NOT run the real go test/go vet — it only asserts
+// the wiring, exercising newGoMeasurer / goMeasurer construction.
+func TestNewApplierWithRegressionGate_WiresProductionMeasurer(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	manifestPath := filepath.Join(dir, "manifest.jsonl")
+	baselinePath := filepath.Join(dir, "measurements-baseline.yaml")
+
+	a := NewApplierWithRegressionGate(manifestPath, baselinePath)
+	if !a.gateActive() {
+		t.Fatal("NewApplierWithRegressionGate must produce a gate-active Applier")
+	}
+	if _, ok := a.measurer.(*goMeasurer); !ok {
+		t.Errorf("measurer = %T, want *goMeasurer (production)", a.measurer)
+	}
+	if a.baselineStore == nil {
+		t.Error("baselineStore must be wired")
+	}
+}
+
+// TestGoMeasurer_BuildError_FailsClosed verifies the production goMeasurer returns
+// a wrapped error (fail-closed, REQ-RG-014) when go test produces no output — a
+// build error — exercising the measurementExecErr normalization path. The fixture
+// is a project dir with an unbuildable Go file so `go test ./...` emits no JSON.
+func TestGoMeasurer_BuildError_FailsClosed(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	// A go.mod so `go test ./...` runs inside an isolated module, plus a broken file.
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module brokenmod\n\ngo 1.23\n"), 0o644); err != nil {
+		t.Fatalf("write go.mod: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "broken.go"), []byte("package brokenmod\nthis is not valid go\n"), 0o644); err != nil {
+		t.Fatalf("write broken.go: %v", err)
+	}
+
+	m := newGoMeasurer()
+	_, err := m.Measure(dir)
+	if err == nil {
+		t.Fatal("goMeasurer.Measure on an unbuildable module must fail closed (return error)")
+	}
+	if !strings.Contains(err.Error(), "measure:") {
+		t.Errorf("error = %q, want a wrapped measure error", err)
+	}
+}

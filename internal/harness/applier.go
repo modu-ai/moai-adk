@@ -39,12 +39,44 @@ type Applier struct {
 	// The path is injectable so tests can point it at t.TempDir(); the production caller
 	// passes <learning-history-dir>/manifest.jsonl.
 	manifestPath string
+
+	// measurer + baselineStore wire the M2-lite in-Apply non-regression gate
+	// (SPEC-HARNESS-REGRESSION-GATE-001). The gate is ACTIVE only when BOTH are
+	// non-nil. When either is nil (the NewApplier() / newApplierWithManifest()
+	// defaults), Apply() skips the gate entirely — preserving the pre-gate Apply
+	// behavior for callers that do not opt into the regression gate. Both are
+	// injectable so tests inject a stub measurer + a t.TempDir() baseline path.
+	//
+	// HONEST FRAMING: for the current markdown-only write surface the measured
+	// delta is typically Δ=0 (the gate is always-pass); the gate's value is a
+	// measurement scaffold + a dormant defense-in-depth net (see regression_gate.go).
+	measurer      Measurer
+	baselineStore *BaselineStore
 }
 
 // NewApplier creates a default Applier.
 // Actual file writes in InjectTrigger follow package-level flag (enableTriggerInjectionWrites).
 func NewApplier() *Applier {
 	return &Applier{allowWrites: enableTriggerInjectionWrites}
+}
+
+// NewApplierWithRegressionGate creates an Applier with the M2-lite in-Apply
+// non-regression gate wired to production primitives (SPEC-HARNESS-REGRESSION-GATE-001):
+// the real goMeasurer (runs `go test` / `go vet` via internal/measure) and a
+// BaselineStore at baselinePath, plus the M6 lineage manifest at manifestPath.
+//
+// This is the production seam the harness apply CLI opts into when it wants the
+// gate active. It is exported (not test-only) because the gate's primary present-day
+// value is being an infrastructure seam (§A.2 honest framing). When the harness
+// write surface is markdown-only the measured delta is typically Δ=0 (always-pass),
+// so wiring the gate is a no-op safety net under the current narrow FROZEN allowlist.
+func NewApplierWithRegressionGate(manifestPath, baselinePath string) *Applier {
+	return &Applier{
+		allowWrites:   enableTriggerInjectionWrites,
+		manifestPath:  manifestPath,
+		measurer:      newGoMeasurer(),
+		baselineStore: NewBaselineStore(baselinePath),
+	}
 }
 
 // newApplierWithWritesEnabled creates an Applier with InjectTrigger actual writes enabled.
@@ -218,25 +250,25 @@ func (a *Applier) Apply(proposal Proposal, evaluator SafetyEvaluator, snapshotBa
 	}
 
 	// ── Step 2: Create Snapshot (before write) ───────────────────────────────
-	// [HARD] Abort write on snapshot failure.
-	if err := a.createSnapshot(proposal, snapshotBase); err != nil {
+	// [HARD] Abort write on snapshot failure. snapshotDir is captured so the
+	// in-Apply regression gate (DD-2) can roll back via RestoreSnapshot.
+	snapshotDir, err := a.createSnapshot(proposal, snapshotBase)
+	if err != nil {
 		return fmt.Errorf("applier: snapshot creation failed — abort write: %w", err)
 	}
 
+	// ── M2-lite in-Apply non-regression gate (SPEC-HARNESS-REGRESSION-GATE-001) ──
+	// When the gate is active (measurer + baselineStore both injected) it wraps the
+	// file modification with a measure→apply→measure→compare→keep-or-rollback flow
+	// (DD-2). When inactive (NewApplier default), the straight-line modify+lineage
+	// path below runs unchanged, preserving pre-gate Apply behavior.
+	if a.gateActive() {
+		return a.applyWithRegressionGate(proposal, snapshotDir)
+	}
+
 	// ── Step 3: Actual File Modification ───────────────────────────────────────────────
-	switch proposal.FieldKey {
-	case "description":
-		if err := a.EnrichDescription(proposal.TargetPath, proposal.NewValue); err != nil {
-			return err
-		}
-	case "triggers":
-		// Perform InjectTrigger with write-enabled Applier
-		w := newApplierWithWritesEnabled()
-		if err := w.InjectTrigger(proposal.TargetPath, proposal.NewValue); err != nil {
-			return err
-		}
-	default:
-		return fmt.Errorf("applier: unsupported fieldKey %q", proposal.FieldKey)
+	if err := a.applyFileModification(proposal); err != nil {
+		return err
 	}
 
 	// ── Step 4: M6 auditable lineage (REQ-HLC-003): record the approved transition AFTER
@@ -265,6 +297,139 @@ func (a *Applier) writeLineage(proposal Proposal, decision, appliedSurface, reas
 	})
 }
 
+// applyFileModification performs the actual SKILL.md frontmatter modification for
+// an approved proposal (description enrichment or trigger injection). Extracted from
+// Apply so the in-Apply regression gate can reuse the exact same write path.
+func (a *Applier) applyFileModification(proposal Proposal) error {
+	switch proposal.FieldKey {
+	case "description":
+		if err := a.EnrichDescription(proposal.TargetPath, proposal.NewValue); err != nil {
+			return err
+		}
+	case "triggers":
+		// Perform InjectTrigger with write-enabled Applier
+		w := newApplierWithWritesEnabled()
+		if err := w.InjectTrigger(proposal.TargetPath, proposal.NewValue); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("applier: unsupported fieldKey %q", proposal.FieldKey)
+	}
+	return nil
+}
+
+// gateActive reports whether the M2-lite in-Apply non-regression gate is wired.
+// The gate runs only when BOTH the measurer and the baseline store are injected.
+func (a *Applier) gateActive() bool {
+	return a.measurer != nil && a.baselineStore != nil
+}
+
+// applyWithRegressionGate runs the M2-lite non-regression gate around the file
+// modification (SPEC-HARNESS-REGRESSION-GATE-001, DD-2 ordering). The snapshot has
+// already been created (snapshotDir captured by the caller). Order:
+//
+//	(1) measure baseline   — BEFORE apply (reflects pre-apply project state)
+//	(2) apply modification  — the SKILL.md frontmatter write
+//	(3) measure candidate   — AFTER apply
+//	(4) compare deltas
+//	(5) Δ ≥ 0 for all  → keep + update baseline + M6 "approved" lineage
+//	    any regression → RestoreSnapshot rollback + "regression-blocked" lineage
+//	                     + return ApplyRegressionError
+//
+// Fail-closed (REQ-RG-014): when either measurement cannot execute (build error,
+// exec failure, timeout), the change is NOT kept — the snapshot is restored (if
+// already applied) and a wrapped measurement error is returned.
+//
+// HONEST FRAMING: for the current markdown-only write surface baseline == candidate
+// (Δ=0), so this path keeps the change every time. The genuine value is the
+// measurement scaffold + the dormant defense-in-depth rollback (see §A.2 / DD-7).
+func (a *Applier) applyWithRegressionGate(proposal Proposal, snapshotDir string) error {
+	projectRoot := measurementRoot(snapshotDir)
+
+	// firstRun is signalled by the ABSENCE of the baseline store file (REQ-RG-005):
+	// on the very first gated Apply there is no prior baseline to regress against, so
+	// the candidate is adopted as the new baseline and the Apply is NOT blocked.
+	// The store-presence gate is read BEFORE the apply so a measurement-exec failure
+	// during baseline measurement still fails closed (the file modification has not
+	// happened yet, so no rollback is needed).
+	_, hasPriorBaseline, lerr := a.baselineStore.Load()
+	if lerr != nil {
+		return fmt.Errorf("applier: regression gate baseline store read failed (fail-closed): %w", lerr)
+	}
+
+	// (1) baseline measure — BEFORE snapshot/apply (reflects pre-apply project state).
+	// Fail-closed if it cannot execute (build error / exec failure / timeout).
+	baseline, err := a.measurer.Measure(projectRoot)
+	if err != nil {
+		return fmt.Errorf("applier: regression gate baseline measurement failed (fail-closed): %w", err)
+	}
+
+	// (2)/(3) apply the file modification (snapshot already taken by the caller).
+	if err := a.applyFileModification(proposal); err != nil {
+		return err
+	}
+
+	// (4) candidate measure — AFTER apply. Fail-closed: roll back if it cannot execute.
+	candidate, err := a.measurer.Measure(projectRoot)
+	if err != nil {
+		if rerr := RestoreSnapshot(snapshotDir); rerr != nil {
+			return fmt.Errorf("applier: regression gate candidate measurement failed (fail-closed); rollback also failed: %w (rollback: %v)", err, rerr)
+		}
+		return fmt.Errorf("applier: regression gate candidate measurement failed (fail-closed), change rolled back: %w", err)
+	}
+
+	// (5) compare. First run (no prior baseline file) adopts the candidate without
+	// blocking (REQ-RG-005); subsequent runs block on any regressed dimension.
+	if hasPriorBaseline {
+		if regressed := baseline.Regressions(candidate); len(regressed) > 0 {
+			// (6a) Regression: roll back, audit, and return the typed error.
+			summary := regressionSummary(baseline, candidate, regressed)
+			if rerr := RestoreSnapshot(snapshotDir); rerr != nil {
+				return fmt.Errorf("applier: non-regression gate blocked but rollback failed: %w", rerr)
+			}
+			if wlerr := a.writeLineage(proposal, "regression-blocked", "", summary); wlerr != nil {
+				// Mirror existing writeLineage error semantics: the rollback + block are
+				// the primary effects; a failed audit append is wrapped, not suppressed.
+				return fmt.Errorf("applier: non-regression gate blocked (rolled back); lineage write failed: %w", wlerr)
+			}
+			return &ApplyRegressionError{Baseline: baseline, Candidate: candidate, Regressed: regressed}
+		}
+	}
+
+	// (6b) Non-regressing (or first run): keep, update baseline, write M6 "approved" lineage.
+	if serr := a.baselineStore.Save(candidate); serr != nil {
+		return fmt.Errorf("applier: file modified but baseline store update failed: %w", serr)
+	}
+	if wlerr := a.writeLineage(proposal, "approved", proposal.FieldKey, "approved transition: "+proposal.FieldKey+" enriched"); wlerr != nil {
+		return fmt.Errorf("applier: file modified but lineage write failed: %w", wlerr)
+	}
+	return nil
+}
+
+// measurementRoot derives the project root for measurement from the snapshot dir.
+// snapshotDir is <snapshotBase>/<ISO-DATE>/; the regression coverage profile is
+// written under <root>/.moai/harness/. The production caller passes a snapshotBase
+// inside the project tree, so the project root is the snapshotBase's grandparent.
+// Tests inject a stub measurer that ignores this argument.
+func measurementRoot(snapshotDir string) string {
+	// <root>/.moai/harness/learning-history/snapshots/<ISO-DATE>
+	//   → walk up to <root>. We only need a writable dir for the cover profile;
+	//     for the stub measurer the value is unused, so the snapshot's base dir
+	//     (its parent) is a safe, always-present default.
+	return filepath.Dir(snapshotDir)
+}
+
+// regressionSummary formats a human-readable regressed-dimension summary for the
+// "regression-blocked" lineage Reason field (REQ-RG-010).
+func regressionSummary(baseline, candidate MetricTriple, regressed []string) string {
+	return fmt.Sprintf(
+		"regression-blocked (regressed: %v); baseline{tests=%d cov=%.2f lint=%d} candidate{tests=%d cov=%.2f lint=%d}",
+		regressed,
+		baseline.TestsPassed, baseline.Coverage, baseline.LintCount,
+		candidate.TestsPassed, candidate.Coverage, candidate.LintCount,
+	)
+}
+
 // rejectReason derives a non-empty reason string from a rejection Decision.
 // It prefers the layer-supplied Reason; if absent, it synthesizes one from RejectedBy.
 func rejectReason(decision Decision) string {
@@ -275,21 +440,23 @@ func rejectReason(decision Decision) string {
 }
 
 // createSnapshot backs up current content of proposal.TargetPath to snapshotBase/<ISO-DATE>/.
-// Creates manifest.json then performs file copy.
-func (a *Applier) createSnapshot(proposal Proposal, snapshotBase string) error {
+// Creates manifest.json then performs file copy. Returns the dated snapshotDir so the
+// in-Apply regression gate can pass it to RestoreSnapshot for rollback (DD-2). An error
+// returns an empty snapshotDir.
+func (a *Applier) createSnapshot(proposal Proposal, snapshotBase string) (string, error) {
 	// Generate ISO-DATE format directory name (date + nano collision prevention)
 	now := time.Now().UTC()
 	dirName := now.Format("2006-01-02T15-04-05.000000000Z")
 	snapshotDir := filepath.Join(snapshotBase, dirName)
 
 	if err := os.MkdirAll(snapshotDir, 0o755); err != nil {
-		return fmt.Errorf("createSnapshot: directory creation failed %s: %w", snapshotDir, err)
+		return "", fmt.Errorf("createSnapshot: directory creation failed %s: %w", snapshotDir, err)
 	}
 
 	// Read original file
 	originalData, err := os.ReadFile(proposal.TargetPath)
 	if err != nil {
-		return fmt.Errorf("createSnapshot: original file read failed %s: %w", proposal.TargetPath, err)
+		return "", fmt.Errorf("createSnapshot: original file read failed %s: %w", proposal.TargetPath, err)
 	}
 
 	// Backup filename: use original filename as-is
@@ -297,7 +464,7 @@ func (a *Applier) createSnapshot(proposal Proposal, snapshotBase string) error {
 	backupPath := filepath.Join(snapshotDir, backupName)
 
 	if err := os.WriteFile(backupPath, originalData, 0o644); err != nil {
-		return fmt.Errorf("createSnapshot: backup file write failed %s: %w", backupPath, err)
+		return "", fmt.Errorf("createSnapshot: backup file write failed %s: %w", backupPath, err)
 	}
 
 	// Create manifest.json
@@ -314,15 +481,15 @@ func (a *Applier) createSnapshot(proposal Proposal, snapshotBase string) error {
 
 	manifestData, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
-		return fmt.Errorf("createSnapshot: manifest serialization failed: %w", err)
+		return "", fmt.Errorf("createSnapshot: manifest serialization failed: %w", err)
 	}
 
 	manifestPath := filepath.Join(snapshotDir, "manifest.json")
 	if err := os.WriteFile(manifestPath, manifestData, 0o644); err != nil {
-		return fmt.Errorf("createSnapshot: manifest write failed: %w", err)
+		return "", fmt.Errorf("createSnapshot: manifest write failed: %w", err)
 	}
 
-	return nil
+	return snapshotDir, nil
 }
 
 // RestoreSnapshot reads manifest.json from snapshotDir and restores original files.
