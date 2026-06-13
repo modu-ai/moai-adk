@@ -166,7 +166,7 @@ Notable incidents (recorded): (1) import-cycle AC contradiction both plan-audito
 
 ```yaml
 spec_id: SPEC-SEC-HARDEN-002
-mx_commit_sha: _pending_backfill_
+mx_commit_sha: 0ffc723d27e91d462652b01ebc86c7dd4019932f
 mx_complete_at: 2026-06-14T00:00:00Z
 mx_status: complete
 lifecycle_status: completed
