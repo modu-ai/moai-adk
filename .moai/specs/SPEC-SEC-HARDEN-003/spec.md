@@ -48,7 +48,7 @@ tags: "security, path-traversal, symlink, containment, hardening, sec-harden"
 
 - L2041 `filepath.Walk(backupDir, ...)` — 백업 트리 순회.
 - L2062 `backupData, err := os.ReadFile(backupPath)` — 읽기 시 심볼릭 링크를 따라감.
-- L2060 `targetPath := filepath.Join(configDir, relPath)` + L2072 / L2082 / L2085 `os.WriteFile(targetPath, ...)` — 쓰기 시 심볼릭 링크를 따라감.
+- L2060 `targetPath := filepath.Join(configDir, relPath)` + L2072 / L2085 / L2088 `os.WriteFile(targetPath, ...)` — 쓰기 시 심볼릭 링크를 따라감(L2082는 `mergeYAMLDeep`로 쓰기 아님).
 
 조작된 백업 디렉터리에 심볼릭 링크가 있거나 `configDir` 안 `targetPath`에 기존 심볼릭 링크가 있으면, 복원이 링크를 따라 임의 파일 읽기 증폭(CWE-61) 또는 `configDir`를 탈출하는 `relPath`/target 심볼릭 링크 경유 임의 쓰기(CWE-22)를 유발한다.
 

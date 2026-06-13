@@ -10,7 +10,7 @@
 | AC-SEC3-001a | C-F1 | reproduction | REQ-SEC3-001/002 | `TestRunMXScan_RejectsUncontainedFilePath` |
 | AC-SEC3-001b | C-F1 | reproduction | REQ-SEC3-003 | `TestRunMXScan_RejectsUncontainedSidecarCWD` |
 | AC-SEC3-002 | C-F1 | containment | REQ-SEC3-001/002/003/004 | (위 두 테스트의 post-fix GREEN + payload 검증) |
-| AC-SEC3-003 | C-F1 | no-regression | REQ-SEC3-008(유사)/계약 | `TestRunMXScan_AllowsInProjectPath` |
+| AC-SEC3-003 | C-F1 | no-regression | REQ-SEC3-004(계약 보존) | `TestRunMXScan_AllowsInProjectPath` |
 | AC-SEC3-004a | C-F2 | reproduction | REQ-SEC3-005 | `TestRestoreMoaiConfigLegacy_SkipsSymlinkEntry` |
 | AC-SEC3-004b | C-F2 | reproduction | REQ-SEC3-007 | `TestRestoreMoaiConfigLegacy_RejectsTraversalTarget` |
 | AC-SEC3-004c | C-F2 | reproduction (sibling) | REQ-SEC3-006 | `TestRestoreMoaiConfig_SkipsSymlinkEntry` |
