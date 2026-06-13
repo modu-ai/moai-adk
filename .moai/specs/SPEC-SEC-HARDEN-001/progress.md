@@ -142,7 +142,7 @@ new_warnings_or_lints_introduced: 0
 ```yaml
 sync_complete_at: 2026-06-13
 sync_status: implemented
-sync_commit_sha: <pending-backfill>
+sync_commit_sha: c14fea54b
 changelog_entry: added
 ac_pass_count: 27
 ac_observational_count: 1
@@ -151,3 +151,41 @@ docs_site_updated: false
 ```
 
 **Rationale**: 5 HIGH security/concurrency defects fixed entirely within internal packages with no user-facing CLI/API/config change. The 1 additive `tmux.SessionManager.InjectSensitiveEnv(ctx, key, value) error` interface method is internal to the `internal/tmux` package (not exported, not part of public API surface). README and docs-site 4-locale do not require updates (internal hardening, not a user-facing feature announcement). CHANGELOG entry added to `[Unreleased] ### Security` subsection per the SSOT at `.moai/specs/SPEC-SEC-HARDEN-001/acceptance.md` AC count 27 automated + 1 observational = 28 total.
+
+---
+
+## §E.5 — Mx-phase Audit-Ready Signal
+
+```yaml
+mx_complete_at: 2026-06-13
+mx_status: completed
+sync_commit_sha: c14fea54b           # backfilled into §E.4
+mx_commit_sha: <pending-backfill>    # this close commit's SHA (filled by the follow-up backfill commit)
+d1_remediation_commit: f25772d1c     # sync-auditor D1 fix (M1 unterminated-quote containment)
+run_commit_sha: 0bd21134d            # squashed M1-M5 run feat commit on main
+sync_audit_verdict: "PASS-WITH-DEBT 0.79 (Func 0.92 / Security 0.70→clean-after-D1 / Craft 0.86 / Consistency 0.93)"
+sync_audit_report: .moai/reports/sync-audit/SPEC-SEC-HARDEN-001-2026-06-13.md
+ac_final: 28                         # 27 automated + 1 observational (SSOT acceptance.md)
+four_phase_close: true               # run (0bd21134d) + sync (c14fea54b) + D1 fix (f25772d1c) + Mx close
+```
+
+### sync-auditor outcome (Phase 5)
+
+sync-auditor (Tier L 4-dimension skeptical post-implementation audit) returned **PASS-WITH-DEBT 0.79**. M2/M3/M4/M5 were independently re-derived and verified leak/race/bypass-free (M3 credential path traced end-to-end: token never reaches argv on any branch incl. the wrapped error). One demonstrated residual bypass on M1 was found and FIXED:
+
+- **D1 (FIXED — `f25772d1c`)**: unterminated-quote bypass. `Resolve("Bash", "go test \"; rm -rf /")` resolved to **allow** pre-fix because the quote-aware scan entered quoted state and never exited, swallowing the `;` — contradicting design.md §M1's stated "err toward denying when ambiguous" invariant. Fix: `hasUnquotedShellSeparator` returns `true` (deny) when the scan terminates with an open quote (`inSingle || inDouble`). RED test `TestMatches_UnterminatedQuoteBypass` (8 sub-cases) added, RED→GREEN confirmed; balanced-quote NO-REG (AC-SEC-M1-004) preserved. M1 Security dimension now invariant-conformant.
+
+### Known limitations (documented for fast-follow — outside M1 REQ-SEC-M1-002 closed separator set)
+
+- **D2 (MEDIUM, deferred)**: shell redirects `>`/`>>`/`<` are not in the M1 separator set; `go test > /etc/cron.d/payload` resolves to allow. Real escalation vector, outside the original closed AC contract — fast-follow.
+- **D3 (MEDIUM, deferred)**: `${IFS}` word-split (`go test ${IFS}curl${IFS}evil`) cannot be caught by lexical separator scanning (no separator char present); requires shell-aware parsing. Documented limitation.
+- **D4 (LOW)**: `tmux_integration.go` mutates the caller's `cfg.GLMEnvVars` via `delete()` — benign now, latent surprise on map reuse.
+- Fast-follow scope: §F.3 unreviewed `cli` / `template` re-sweep + D2/D3 lexical-scan hardening → separate SPEC.
+
+### §E.3 internal/web blocker — RESOLVED out-of-band
+
+The §E.3 pre-existing-failure blocker (`internal/web` 2 sentinel test failures introduced by SPEC-PREPUSH-SAVE-WIRING-001's `git_strategy` Save wiring at base `0ef553617`, tracked as issue #1064) was resolved by the parallel session's **SPEC-GITSTRATEGY-SAVE-ISOLATION-001** (sync commit `f046287c4`, ref #1064). Verified on the combined tree: `go test ./internal/web/...` → ok. Not a SEC-HARDEN deliverable; recorded for closure completeness.
+
+### Multi-session race note (L52 race-absorbed → reconciled)
+
+During this Mx-phase, a parallel session completed the full SPEC-GITSTRATEGY-SAVE-ISOLATION-001 lifecycle (plan→sync→Mx→backfill) based on the D1 fix `f25772d1c`. The momentary divergence (origin/main D1 fix vs local main GITSTRATEGY plan, merge-base `c14fea54b`) was scope-disjoint (`internal/permission` vs `.moai/specs` + `internal/web`) and reconciled to a clean linear local-ahead state; both SPECs pushed together per user decision. Combined-tree integrity verified (whole-tree build exit 0, SEC-HARDEN 5 packages green, D1 8-case adversarial deny, internal/web ok).
