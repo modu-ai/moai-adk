@@ -74,7 +74,7 @@ exclusions_honored:
 
 ```yaml
 sync_complete_at: 2026-06-13
-sync_commit_sha: "(backfilled below)"
+sync_commit_sha: "f046287c4"
 sync_status: green
 status_transition: in-progress → implemented
 changelog_entry: added           # CHANGELOG.md [Unreleased] § Fixed
@@ -85,7 +85,7 @@ plan_audit_verdict: PASS-WITH-DEBT 0.86   # Tier S threshold 0.80
 
 ```yaml
 mx_complete_at: 2026-06-13
-mx_commit_sha: "(backfilled below)"
+mx_commit_sha: "c45e18f98"
 status_transition: implemented → completed
 four_phase_close: true            # plan + run + sync + Mx
 github_issue: 1064                 # closed by this fix
