@@ -160,7 +160,7 @@ docs_site_updated: false
 mx_complete_at: 2026-06-13
 mx_status: completed
 sync_commit_sha: c14fea54b           # backfilled into §E.4
-mx_commit_sha: <pending-backfill>    # this close commit's SHA (filled by the follow-up backfill commit)
+mx_commit_sha: 07167855a             # this close commit's SHA
 d1_remediation_commit: f25772d1c     # sync-auditor D1 fix (M1 unterminated-quote containment)
 run_commit_sha: 0bd21134d            # squashed M1-M5 run feat commit on main
 sync_audit_verdict: "PASS-WITH-DEBT 0.79 (Func 0.92 / Security 0.70→clean-after-D1 / Craft 0.86 / Consistency 0.93)"
