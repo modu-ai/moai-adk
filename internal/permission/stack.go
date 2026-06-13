@@ -159,7 +159,16 @@ func (r *PermissionRule) Matches(tool, input string) bool {
 // matcher: a borderline input fails to match the prefix rule and falls through to
 // the normal ask/deny path rather than being silently allowed.
 //
-// @MX:NOTE: [AUTO] SPEC-SEC-HARDEN-001 M1 — quote-aware shell-separator scan guards the ":*" prefix branch against command-chain bypass.
+// SECURITY (SPEC-SEC-HARDEN-001 M1 D1): an UNTERMINATED quote — the scan reaching
+// end-of-string while still inside a single- or double-quoted segment — is itself
+// ambiguous. Without this guard a trailing open quote swallows every following
+// separator (e.g. `go test "; rm -rf /` treats the `;` as quoted), re-opening the
+// command-chain bypass M1 set out to close. Per the §M1 "err toward denying when
+// ambiguous" invariant, treat an unterminated quote as a separator so the ":*"
+// guard denies. The §F.4 carve-out covers *escaped* quotes (`\"`), NOT *unterminated*
+// ones — those are in-scope for D1.
+//
+// @MX:NOTE: [AUTO] SPEC-SEC-HARDEN-001 M1 — quote-aware shell-separator scan guards the ":*" prefix branch against command-chain bypass; unterminated quote (D1) is treated as ambiguous → deny.
 func hasUnquotedShellSeparator(s string) bool {
 	var inSingle, inDouble bool
 	for i := 0; i < len(s); i++ {
@@ -186,7 +195,9 @@ func hasUnquotedShellSeparator(s string) bool {
 			return true
 		}
 	}
-	return false
+	// D1 containment: an unterminated quote at end-of-string is ambiguous —
+	// any separator inside it was silently swallowed, so deny by reporting true.
+	return inSingle || inDouble
 }
 
 // String returns a string representation of the rule for debugging.

