@@ -32,8 +32,8 @@ func TestLoadGLMConfig_FallbackDefaults(t *testing.T) {
 	if cfg.Models.Medium != "glm-4.7" {
 		t.Errorf("Models.Medium = %q, want %q", cfg.Models.Medium, "glm-4.7")
 	}
-	if cfg.Models.High != "glm-5.1" {
-		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "glm-5.1")
+	if cfg.Models.High != "glm-5.2[1m]" {
+		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "glm-5.2[1m]")
 	}
 	if cfg.EnvVar != "GLM_API_KEY" {
 		t.Errorf("EnvVar = %q, want %q", cfg.EnvVar, "GLM_API_KEY")

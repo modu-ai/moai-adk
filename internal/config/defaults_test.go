@@ -337,6 +337,72 @@ func TestNewDefaultLLMConfig(t *testing.T) {
 	}
 }
 
+// TestNewDefaultLLMConfig_GLMTierMapping verifies the GLM model tier mapping.
+// The High slot (Opus equivalent) and the legacy Opus field both map to
+// glm-5.2[1m] for full 1M context activation; Medium/Low and the legacy
+// Sonnet/Haiku fields remain unchanged on their existing GLM models.
+func TestNewDefaultLLMConfig_GLMTierMapping(t *testing.T) {
+	t.Parallel()
+
+	cfg := NewDefaultLLMConfig()
+
+	if cfg.GLM.Models.High != "glm-5.2[1m]" {
+		t.Errorf("GLM.Models.High: got %q, want %q", cfg.GLM.Models.High, "glm-5.2[1m]")
+	}
+	if cfg.GLM.Models.Opus != "glm-5.2[1m]" {
+		t.Errorf("GLM.Models.Opus: got %q, want %q", cfg.GLM.Models.Opus, "glm-5.2[1m]")
+	}
+	// Medium/Low and legacy Sonnet/Haiku remain unchanged.
+	if cfg.GLM.Models.Medium != "glm-4.7" {
+		t.Errorf("GLM.Models.Medium: got %q, want %q (unchanged)", cfg.GLM.Models.Medium, "glm-4.7")
+	}
+	if cfg.GLM.Models.Low != "glm-4.5-air" {
+		t.Errorf("GLM.Models.Low: got %q, want %q (unchanged)", cfg.GLM.Models.Low, "glm-4.5-air")
+	}
+	if cfg.GLM.Models.Sonnet != "glm-4.7" {
+		t.Errorf("GLM.Models.Sonnet: got %q, want %q (unchanged)", cfg.GLM.Models.Sonnet, "glm-4.7")
+	}
+	if cfg.GLM.Models.Haiku != "glm-4.5-air" {
+		t.Errorf("GLM.Models.Haiku: got %q, want %q (unchanged)", cfg.GLM.Models.Haiku, "glm-4.5-air")
+	}
+}
+
+// TestDefaultGLMConstants verifies the GLM model tier constants and the
+// 1M context token constant used by the AUTO_COMPACT_WINDOW wiring.
+func TestDefaultGLMConstants(t *testing.T) {
+	t.Parallel()
+
+	if DefaultGLMHigh != "glm-5.2[1m]" {
+		t.Errorf("DefaultGLMHigh: got %q, want %q", DefaultGLMHigh, "glm-5.2[1m]")
+	}
+	if DefaultGLMOpus != "glm-5.2[1m]" {
+		t.Errorf("DefaultGLMOpus: got %q, want %q", DefaultGLMOpus, "glm-5.2[1m]")
+	}
+	if DefaultGLMMedium != "glm-4.7" {
+		t.Errorf("DefaultGLMMedium: got %q, want %q (unchanged)", DefaultGLMMedium, "glm-4.7")
+	}
+	if DefaultGLMLow != "glm-4.5-air" {
+		t.Errorf("DefaultGLMLow: got %q, want %q (unchanged)", DefaultGLMLow, "glm-4.5-air")
+	}
+	// glm-5.1 preserved as a still-available model (not orphaned).
+	if DefaultGLM51 != "glm-5.1" {
+		t.Errorf("DefaultGLM51: got %q, want %q", DefaultGLM51, "glm-5.1")
+	}
+	if Default1MContextTokens != 1_000_000 {
+		t.Errorf("Default1MContextTokens: got %d, want %d", Default1MContextTokens, 1_000_000)
+	}
+}
+
+// TestEnvClaudeCodeAutoCompactWindow verifies the env var constant value.
+func TestEnvClaudeCodeAutoCompactWindow(t *testing.T) {
+	t.Parallel()
+
+	if EnvClaudeCodeAutoCompactWindow != "CLAUDE_CODE_AUTO_COMPACT_WINDOW" {
+		t.Errorf("EnvClaudeCodeAutoCompactWindow: got %q, want %q",
+			EnvClaudeCodeAutoCompactWindow, "CLAUDE_CODE_AUTO_COMPACT_WINDOW")
+	}
+}
+
 func TestNewDefaultPricingConfig(t *testing.T) {
 	t.Parallel()
 

@@ -224,8 +224,8 @@ func TestSaveLLMSection_PopulatesDefaultGLMModels(t *testing.T) {
 	content := string(data)
 
 	// Verify that default values were populated, not empty strings
-	if !strings.Contains(content, "glm-5.1") {
-		t.Errorf("llm.yaml should contain glm-5.1 as default high model, got:\n%s", content)
+	if !strings.Contains(content, "glm-5.2[1m]") {
+		t.Errorf("llm.yaml should contain glm-5.2[1m] as default high model, got:\n%s", content)
 	}
 	if !strings.Contains(content, "glm-4.7") {
 		t.Errorf("llm.yaml should contain glm-4.7 as default medium model, got:\n%s", content)
@@ -308,11 +308,11 @@ func TestSaveLLMSection_PreservesCustomGLMModels(t *testing.T) {
 	// Verify defaults are NOT present when custom values are used
 	// Note: Legacy fields (opus, sonnet, haiku) are separate from primary fields
 	// (high, medium, low) and are populated with defaults unless explicitly set
-	if strings.Contains(content, "opus: glm-5.1") && strings.Contains(content, "high: custom-glm-opus") {
+	if strings.Contains(content, "opus: glm-5.2[1m]") && strings.Contains(content, "high: custom-glm-opus") {
 		// This is acceptable - high field has custom value, opus field has default
 		// User can override opus separately if needed
-	} else if strings.Contains(content, "high: glm-5.1") {
-		t.Errorf("llm.yaml should NOT contain default glm-5.1 in high field when custom model is set, got:\n%s", content)
+	} else if strings.Contains(content, "high: glm-5.2[1m]") {
+		t.Errorf("llm.yaml should NOT contain default glm-5.2[1m] in high field when custom model is set, got:\n%s", content)
 	}
 	if strings.Contains(content, "https://api.z.ai/api/anthropic") {
 		t.Errorf("llm.yaml should NOT contain default base URL when custom URL is set, got:\n%s", content)

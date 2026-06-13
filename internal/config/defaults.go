@@ -40,17 +40,25 @@ const (
 	DefaultGLMEnvVar  = "GLM_API_KEY"
 	DefaultGLMBaseURL = "https://api.z.ai/api/anthropic"
 	// GLM model tiers
-	DefaultGLMHigh   = "glm-5.1"
+	// High maps to glm-5.2 with the [1m] suffix, which activates Claude Code's
+	// 1M context mode (the suffix is parsed and stripped by Claude Code before
+	// the upstream API call; z.ai never sees it).
+	DefaultGLMHigh   = "glm-5.2[1m]"
 	DefaultGLMMedium = "glm-4.7"
 	DefaultGLMLow    = "glm-4.5-air"
 	// Additional GLM models (available but not default-mapped)
 	DefaultGLM45     = "glm-4.5"
 	DefaultGLM46     = "glm-4.6"
+	DefaultGLM51     = "glm-5.1"
 	DefaultGLM5Turbo = "glm-5-turbo"
 	// Legacy GLM model names (map to tiers)
 	DefaultGLMHaiku  = "glm-4.5-air"
 	DefaultGLMSonnet = "glm-4.7"
-	DefaultGLMOpus   = "glm-5.1"
+	DefaultGLMOpus   = "glm-5.2[1m]"
+	// Default1MContextTokens is the token count for Claude Code's 1M context
+	// mode. Used to populate CLAUDE_CODE_AUTO_COMPACT_WINDOW when the High slot
+	// model carries the [1m] suffix.
+	Default1MContextTokens = 1_000_000
 	// Default performance tier
 	DefaultPerformanceTier = "medium"
 

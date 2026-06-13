@@ -88,6 +88,12 @@ const (
 	// EnvClaudeAutoCompactPct overrides the auto-compact percentage threshold.
 	EnvClaudeAutoCompactPct = "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE"
 
+	// EnvClaudeCodeAutoCompactWindow sets the auto-compact threshold window in
+	// tokens (integer). Set to the full 1M context size when a [1m]-suffixed
+	// model activates Claude Code's 1M context mode, so auto-compact scales to
+	// the enlarged window rather than the default ceiling.
+	EnvClaudeCodeAutoCompactWindow = "CLAUDE_CODE_AUTO_COMPACT_WINDOW"
+
 	// EnvClaudeCodeEffortLevel sets the session effort level for Claude Code.
 	// Valid values: "low", "medium", "high", "xhigh", "max".
 	// "xhigh" and "max" are supported on Opus 4.7+.

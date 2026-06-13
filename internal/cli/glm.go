@@ -2,7 +2,7 @@ package cli
 
 // @MX:NOTE: [AUTO] GLM command launches Claude Code with GLM backend via Z.AI proxy
 // @MX:NOTE: [AUTO] Requires 'moai glm setup <key>' to save API key to ~/.moai/.env.glm
-// @MX:NOTE: [AUTO] Main session uses GLM: 128K/200K/204K context windows per model tier
+// @MX:NOTE: [AUTO] Main session uses GLM: 128K/200K/1M context windows per model tier (high=glm-5.2[1m])
 // @MX:NOTE: [AUTO] M6-S2 DDD: renderSuccessCard used in enableTeamMode (L285, L325); WARNING block on stderr is plain fmt by design (non-TTY safe)
 
 import (
@@ -49,7 +49,7 @@ Use 'moai cc --permission-mode auto' or 'moai cg --permission-mode auto' instead
 Note: Z.AI enforces low concurrency limits (paid tiers observe 1-3 in-flight
 requests). Multi-agent workflows that exceed this limit can surface as opaque
 errors (sometimes misreported by clients as "context window limit"). The GLM
-models themselves have ample context (glm-5.1 ~204K, glm-4.7 ~202K). For more
+models themselves have ample context (glm-5.2[1m] 1M, glm-4.7 ~202K). For more
 stable parallel execution with MoAI Agent Teams, prefer 'moai cg' (hybrid mode).
 
 Examples:
@@ -152,7 +152,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// Z.AI concurrency limits (1-3 in-flight requests per paid tier) are sometimes
 	// misreported by Claude Code as "context window limit".
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "WARNING: moai glm uses GLM models for the MAIN SESSION. Known limitations:")
-	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Main session context window: 128K (glm-4.5-air), 202K (glm-4.7), 204K (glm-5.1)")
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Main session context window: 128K (glm-4.5-air), 202K (glm-4.7), 1M (glm-5.2[1m])")
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Z.AI concurrency is limited (1-3 in-flight requests per paid tier)")
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "If you want Claude as leader and GLM for teammates, use 'moai cg' instead.")
 
@@ -172,6 +172,18 @@ func containsPermissionMode(args []string, mode string) bool {
 	return false
 }
 
+// glmAutoCompactWindow returns the CLAUDE_CODE_AUTO_COMPACT_WINDOW value and a
+// flag indicating whether it should be injected. The window is only set when
+// the High slot model carries the [1m] suffix, which activates Claude Code's
+// 1M context mode — auto-compact must then scale to the enlarged window. The
+// suffix match is case-insensitive so a [1M]-cased model id resolves too.
+func glmAutoCompactWindow(highModel string) (string, bool) {
+	if strings.Contains(strings.ToLower(highModel), "[1m]") {
+		return strconv.Itoa(config.Default1MContextTokens), true
+	}
+	return "", false
+}
+
 // setGLMEnv sets GLM environment variables in the current process.
 // @MX:WARN: [AUTO] Global environment variable mutation without rollback mechanism
 // @MX:REASON: Process-level state mutation affects all subsequent goroutines; no cleanup on error
@@ -181,6 +193,11 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 	_ = os.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", glmConfig.Models.High)     //nolint:errcheck
 	_ = os.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", glmConfig.Models.Medium) //nolint:errcheck
 	_ = os.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", glmConfig.Models.Low)     //nolint:errcheck
+	// 1M context activation: when the High slot uses a [1m]-suffixed model,
+	// scale the auto-compact window to the full 1M context.
+	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
+		_ = os.Setenv(config.EnvClaudeCodeAutoCompactWindow, window) //nolint:errcheck
+	}
 	// Z.AI proxy compatibility: strip Anthropic beta headers
 	_ = os.Setenv("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "1")   //nolint:errcheck
 	_ = os.Setenv("API_TIMEOUT_MS", "3000000")                     //nolint:errcheck
@@ -335,12 +352,12 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 			"Config saved to: .moai/config/sections/llm.yaml",
 			"",
 			"Role model mapping (dynamic teams):",
-			"  - lead: glm-5.1",
+			"  - lead: glm-5.2[1m]",
 			"  - researcher/reviewer: glm-4.7-flash (read-only roles)",
-			"  - analyst/architect: glm-5.1 (planning roles)",
+			"  - analyst/architect: glm-5.2[1m] (planning roles)",
 			"  - implementer/tester/designer: glm-4.7 (write roles)",
 			"",
-			"Available models: glm-5.1, glm-4.7, glm-4.6, glm-4.5, glm-4.5-air",
+			"Available models: glm-5.2, glm-5.1, glm-4.7, glm-4.6, glm-4.5, glm-4.5-air",
 			"",
 			"Next steps:",
 			"  1. Ensure you're in a tmux session (tmux new -s moai)",
@@ -384,6 +401,12 @@ func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 	// statusline gauge reflects GLM limits, not Claude's Opus slot 1M nominal.
 	if size := statusline.ResolveGLMContextWindow(glmConfig.Models.High); size > 0 {
 		vars[config.EnvStatuslineContextSize] = strconv.Itoa(size)
+	}
+
+	// 1M context activation: scale auto-compact window when the High slot uses
+	// a [1m]-suffixed model.
+	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
+		vars[config.EnvClaudeCodeAutoCompactWindow] = window
 	}
 
 	// SPEC-V3R5-SECURITY-CRIT-001 P0-2 (CWE-214): route ANTHROPIC_AUTH_TOKEN
@@ -438,6 +461,9 @@ func clearTmuxSessionEnv() error {
 		"DISABLE_PROMPT_CACHING",
 		// Issue #742: clear GLM context-size hint when leaving GLM mode
 		config.EnvStatuslineContextSize,
+		// Clear 1M auto-compact window when leaving GLM mode (Claude slot scales
+		// auto-compact itself).
+		config.EnvClaudeCodeAutoCompactWindow,
 	}
 
 	mgr := tmux.NewSessionManager()
@@ -579,6 +605,13 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 	} else {
 		// Clean up stale value from a prior session that resolved a known model.
 		delete(settings.Env, config.EnvStatuslineContextSize)
+	}
+	// 1M context activation: scale auto-compact window when the High slot uses
+	// a [1m]-suffixed model; otherwise clean up any stale value.
+	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
+		settings.Env[config.EnvClaudeCodeAutoCompactWindow] = window
+	} else {
+		delete(settings.Env, config.EnvClaudeCodeAutoCompactWindow)
 	}
 
 	// Force tmux display mode: GLM team mode uses tmux for env var inheritance.
@@ -840,7 +873,7 @@ func getGLMAPIKey(envVar string) string {
 
 // buildGLMEnvVars constructs the environment variable map for GLM mode.
 func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]string {
-	return map[string]string{
+	vars := map[string]string{
 		"ANTHROPIC_AUTH_TOKEN":           apiKey,
 		"ANTHROPIC_BASE_URL":             glmConfig.BaseURL,
 		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.High,
@@ -851,6 +884,12 @@ func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]str
 		"API_TIMEOUT_MS":                           "3000000",
 		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 	}
+	// 1M context activation: scale auto-compact window when the High slot uses
+	// a [1m]-suffixed model.
+	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
+		vars[config.EnvClaudeCodeAutoCompactWindow] = window
+	}
+	return vars
 }
 
 // injectGLMEnv adds GLM environment variables to settings.local.json.
@@ -894,6 +933,13 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 	settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
 	settings.Env["API_TIMEOUT_MS"] = "3000000"
 	settings.Env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = "1"
+	// 1M context activation: scale auto-compact window when the High slot uses
+	// a [1m]-suffixed model; otherwise clean up any stale value.
+	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
+		settings.Env[config.EnvClaudeCodeAutoCompactWindow] = window
+	} else {
+		delete(settings.Env, config.EnvClaudeCodeAutoCompactWindow)
+	}
 
 	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
 		return fmt.Errorf("create directory: %w", err)

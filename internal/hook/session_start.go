@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -301,6 +302,12 @@ func ensureGLMCredentials(projectDir string) string {
 	// Ensure compatibility flags are set
 	if settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] == "" {
 		settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
+	}
+	// 1M context activation: when the High (Opus) slot model carries the [1m]
+	// suffix, scale the auto-compact window to the full 1M context.
+	if strings.Contains(strings.ToLower(settings.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"]), "[1m]") &&
+		settings.Env[config.EnvClaudeCodeAutoCompactWindow] == "" {
+		settings.Env[config.EnvClaudeCodeAutoCompactWindow] = strconv.Itoa(config.Default1MContextTokens)
 	}
 
 	// Re-read original file to preserve all fields (not just env)

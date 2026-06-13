@@ -465,6 +465,8 @@ func TestResolveGLMContextWindow(t *testing.T) {
 			model    string
 			wantSize int
 		}{
+			{"glm-5.2 1M context", "glm-5.2", 1_000_000},
+			{"glm-5.2[1m] suffix resolves via substring match", "glm-5.2[1m]", 1_000_000},
 			{"glm-5.1 substring match (longest wins)", "glm-5.1", 200_000},
 			{"glm-4.5-air longest match wins over glm-4.5", "glm-4.5-air", 128_000},
 			{"glm-4.5 fallback when no -air suffix", "glm-4.5", 128_000},
@@ -473,6 +475,7 @@ func TestResolveGLMContextWindow(t *testing.T) {
 			{"claude prefix returns 0 (not GLM)", "claude-sonnet-4.6", 0},
 			{"unknown model returns 0", "completely-unknown", 0},
 			{"case insensitive", "GLM-5.1", 200_000},
+			{"case insensitive glm-5.2[1m]", "GLM-5.2[1M]", 1_000_000},
 			{"trims whitespace", "  glm-5.1  ", 200_000},
 		}
 
