@@ -67,6 +67,12 @@ Examples:
 
 // updateSpecStatus updates the status of a SPEC document
 func updateSpecStatus(cmd *cobra.Command, specID, newStatus string, dryRun bool) error {
+	// SPEC-SEC-HARDEN-002 M3: reject path-traversal SPEC-ID at the CLI boundary
+	// BEFORE constructing the .moai/specs/<SPEC-ID> read-path (CWE-22).
+	if err := validateSpecID(specID); err != nil {
+		return err
+	}
+
 	// Find project root
 	projectRoot, err := findProjectRootFn()
 	if err != nil {

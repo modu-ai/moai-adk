@@ -141,6 +141,78 @@ func TestMatches_UnterminatedQuoteBypass(t *testing.T) {
 	}
 }
 
+// SPEC-SEC-HARDEN-002 §M4 — Permission `:*` prefix-match 셸 redirect-operator
+// escalation (SEC-HARDEN-001 D2 deferred MEDIUM).
+//
+// 결함: M1 의 unquoted-separator 집합(`;`/`&&`/`||`/`|`/`$(`/backtick/newline)에
+// 셸 redirect 연산자(`>`/`>>`/`<`/`2>`)가 빠져 있어, allow-list 된 read/test 명령
+// (`go test`)이 임의 파일 쓰기 primitive 로 둔갑한다. 예: `go test > /etc/cron.d/payload`
+// 는 prefix 룰로 ALLOW 된다.
+//
+// 픽스: hasUnquotedShellSeparator 의 unquoted-separator `case` 에 `>` 와 `<` 를
+// 추가한다(additive only, 동일 quote-aware 의미). `2>` 같은 digit-prefixed 형식도
+// 그 `>` 가 unquoted 이므로 검출된다. `&>`/`>&`/`2>&1` 은 기존 `&` 브랜치로
+// 보수적으로 deny 유지(특례 추가 금지).
+//
+// reproduction-first: TestMatches_RedirectOperatorDenied (RED, 픽스 전 ALLOW),
+// TestMatches_QuotedRedirectAllowed (NO-REG, quoted redirect 는 ALLOW 유지).
+
+// TestMatches_RedirectOperatorDenied 은 AC-SEC2-M4-001 (RED→GREEN) 이다.
+// `:*` prefix 룰 remainder 에 unquoted redirect 연산자가 있으면 비매칭(deny)되어야
+// 한다. 픽스 전: 이 케이스들이 ALLOW(true) → 이 테스트가 FAIL 함으로 RED 입증.
+func TestMatches_RedirectOperatorDenied(t *testing.T) {
+	t.Parallel()
+
+	rule := PermissionRule{Pattern: "Bash(go test:*)"}
+
+	tests := []struct {
+		name  string
+		input string
+	}{
+		// AC-SEC2-M4-001 canonical RED 케이스 (픽스 전 ALLOW → 픽스 후 deny).
+		{"stdout truncate redirect", "go test > /etc/cron.d/payload"},
+		{"stdout append redirect", "go test >> ~/.bashrc"},
+		{"stderr fd redirect", "go test 2> /tmp/x"},
+		{"stdin redirect", "go test < /etc/shadow"},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			if got := rule.Matches("Bash", tt.input); got != false {
+				t.Errorf("Matches(%q) = %v, want false (unquoted redirect operator must deny)", tt.input, got)
+			}
+		})
+	}
+}
+
+// TestMatches_QuotedRedirectAllowed 은 AC-SEC2-M4-003 (NO-REG) 이다.
+// quoted 세그먼트 안의 `>`/`<` 는 command boundary 가 아니므로 prefix 룰이 여전히
+// 매칭(ALLOW)되어야 한다(false-reject 금지). 픽스 전후 모두 GREEN.
+func TestMatches_QuotedRedirectAllowed(t *testing.T) {
+	t.Parallel()
+
+	rule := PermissionRule{Pattern: "Bash(go test:*)"}
+
+	tests := []struct {
+		name  string
+		input string
+	}{
+		// AC-SEC2-M4-003 NO-REG 케이스 (STAY ALLOW).
+		{"single-quoted greater-than", "go test -run 'TestGreater>'"},
+		{"double-quoted greater-than", `go test "a > b"`},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			if got := rule.Matches("Bash", tt.input); got != true {
+				t.Errorf("Matches(%q) = %v, want true (quoted redirect char must NOT deny)", tt.input, got)
+			}
+		})
+	}
+}
+
 // TestMatches_OtherBranchesUnchanged 은 AC-SEC-M1-005 (NO-REG) 다.
 // 픽스는 `:*` 브랜치만 건드린다 — `/*`, `*.`, exact-match 브랜치는 동작 불변.
 func TestMatches_OtherBranchesUnchanged(t *testing.T) {

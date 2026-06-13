@@ -105,3 +105,36 @@ Justification: This is coding-heavy security work where M2/M3 depend on the M1 `
 - GREEN: added `internal/cli/validate_spec_id.go` (single shared helper, modeled on validateSkillID). `go test -run 'TestValidateSpecID' ./internal/cli` → `ok`.
 - AC-SEC2-M1-001/002/003/004: PASS. `grep -rc 'func validateSpecID' internal/cli/` → `validate_spec_id.go:1` (exactly one definition).
 - status transition: draft → in-progress (this M1 commit).
+
+### M2b — git worktree-add `--` argv separator (A-F3, MEDIUM)
+
+- RED: `go test -run 'TestBuildWorktreeAddArgs' ./internal/core/git` → `undefined: buildWorktreeAddArgs` → build failed. Confirmed.
+- GREEN: extracted pure `buildWorktreeAddArgs(branchExists, path, branch)` helper in `internal/core/git/worktree.go`; inserts `--` before user-derived operands (`worktree add -- <path> <branch>` / `worktree add -b <branch> -- <path>`). `Add` refactored to call it. Tests pass; full `internal/core/git` suite green (real `TestWorktreeAdd_*` integration tests prove behavior preservation).
+- AC-SEC2-M2-003: PASS. `grep -n '"--"' internal/core/git/worktree.go` → 2 matches.
+
+### M3 — spec view/status/close read-path traversal guard (A-F4, LOW)
+
+- RED: `go test -run 'TestSpec(View|Status|Close)_TraversalRejected' ./internal/cli` → all 3 FAIL (traversal `../../../../etc` resolved to out-of-`.moai/specs/` paths / passed to spec.Close). Confirmed defect.
+- GREEN: `validateSpecID(specID)` applied at the CLI `args[0]` boundary of EXACTLY THREE handlers — `viewAcceptanceCriteria` (spec_view.go), `updateSpecStatus` (spec_status.go), spec close RunE (spec_close.go, before `spec.Close`). All 3 + NO-REG test pass.
+- AC-SEC2-M3-002: PASS. guard grep = 1 each in the 3 files; `spec_drift.go` = 0 (excluded); `closer.go` NOT in `git diff --name-only` (unmodified).
+- Bonus evidence: post-fix M3 close test no longer leaks `internal/cli/etc.lock` (pre-fix RED run created it because `spec.Close` reached the lock-creation sink; post-fix guard rejects before that sink).
+
+### M4 — permission redirect-operator scanner extension (D2, MEDIUM)
+
+- RED: `go test -run 'TestMatches.*Redirect' ./internal/permission` → 4 FAIL (`go test > /etc/cron.d/payload`, `>> ~/.bashrc`, `2> /tmp/x`, `< /etc/shadow` all resolved to ALLOW=true). Confirmed write-primitive escalation.
+- GREEN: added `>` and `<` to the unquoted-separator `case` in `hasUnquotedShellSeparator` (stack.go:189), additive only. D1 unterminated-quote guard (`return inSingle || inDouble`) preserved verbatim. Full `internal/permission` suite green (D1 8-case + QuotedRedirect NO-REG + existing separator suite all pass).
+- AC-SEC2-M4-001/002/003/004: PASS. `grep "c == '>'"` + `grep "c == '<'"` → present; `grep 'return inSingle || inDouble'` → 1 (D1 guard preserved); `&>`/`>&`/`2>&1` stay denied via existing `&` branch.
+
+### M2a — worktree-new path traversal guard (A-F1, HIGH) — BLOCKED (cross-package import cycle)
+
+- RED tests written + confirmed (traversal `../../../../tmp/evil` creates worktree dir OUTSIDE root; `--path ../../etc/evil` accepted). Reverted from commit pending AC resolution.
+- BLOCKER: `validateSpecID` is defined in package `cli` per AC-SEC2-M1-004 line-17 grep (`grep -n 'func validateSpecID' internal/cli/*.go` → exactly 1, non-recursive glob pins definition to `internal/cli/*.go`). But `new.go` is in package `worktree`, and `internal/cli` ALREADY imports `internal/cli/worktree` — so `worktree` CANNOT import `cli` (import cycle). The AC's line-36 grep (`validateSpecID(` called in `internal/cli/worktree/new.go`) + line-17 grep (definition in `internal/cli/*.go`) are mutually exclusive under Go import rules.
+- Resolution requires a manager-spec AC amendment (e.g., relocate the shared helper to a leaf package both import, OR scope the line-17 grep to allow `internal/cli/worktree/`). manager-develop returns a blocker report rather than editing acceptance.md (owned by manager-spec) or shipping a design that fails a literal AC grep.
+
+### NO-REG / cross-platform / lint / boundary (post-M2b/M3/M4)
+
+- Full suite (touched packages): `cli` (minus 3 pre-existing `TestDoctor_*` golden failures — confirmed pre-existing on baseline `192bd5f81` with changes stashed; environmental `.claude/hooks/` golden mismatch, unrelated to this SPEC), `cli/worktree`, `cli/harness`, `cli/pr`, `cli/wizard`, `permission`, `core/git` all green.
+- Cross-platform: `go build ./...` exit 0 + `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+- Lint: `golangci-lint run ./internal/cli/... ./internal/permission/... ./internal/core/git/...` → 0 issues.
+- C-HRA-008: 0 AskUserQuestion matches in touched source files.
+- Coverage: permission 90.2%, core/git 88.1%.

@@ -186,9 +186,16 @@ func hasUnquotedShellSeparator(s string) bool {
 			inSingle = true
 		case c == '"':
 			inDouble = true
-		case c == ';' || c == '|' || c == '&' || c == '`' || c == '\n':
+		case c == ';' || c == '|' || c == '&' || c == '`' || c == '\n' || c == '>' || c == '<':
 			// Single-char separators (and the first char of `&&` / `||`):
 			// any unquoted occurrence is a command-chain boundary.
+			//
+			// SECURITY (SPEC-SEC-HARDEN-002 M4): `>` / `<` are shell redirect
+			// operators. Without them an allow-listed read/test command becomes
+			// an arbitrary-file-write primitive (e.g. `go test > /etc/cron.d/payload`
+			// resolves to ALLOW). The digit-prefixed form `2>` is also caught
+			// because its `>` is unquoted. `&>` / `>&` / `2>&1` stay conservatively
+			// denied via the `&` case above (no special-casing — errs safe).
 			return true
 		case c == '$' && i+1 < len(s) && s[i+1] == '(':
 			// Command substitution `$(...)`.

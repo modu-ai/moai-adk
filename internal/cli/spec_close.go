@@ -99,6 +99,13 @@ Exit codes:
 			if specID == "" {
 				return fmt.Errorf("SPEC-ID is required")
 			}
+			// SPEC-SEC-HARDEN-002 M3: reject path-traversal SPEC-ID at the CLI
+			// boundary BEFORE calling spec.Close. The transitive path-join sink
+			// lives at internal/spec/closer.go (NOT modified) — guarding here
+			// stops the traversal before it reaches that sink (CWE-22).
+			if err := validateSpecID(specID); err != nil {
+				return err
+			}
 
 			opts := spec.CloseOptions{
 				BaseDir:      baseDir,

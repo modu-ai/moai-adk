@@ -39,6 +39,12 @@ moai spec view SPEC-SPC-001 --shape-trace`,
 
 // viewAcceptanceCriteria reads Acceptance Criteria from SPEC document and outputs in tree structure.
 func viewAcceptanceCriteria(cmd *cobra.Command, specID string, shapeTrace bool) error {
+	// SPEC-SEC-HARDEN-002 M3: reject path-traversal SPEC-ID at the CLI boundary
+	// BEFORE constructing the .moai/specs/<SPEC-ID> read-path (CWE-22).
+	if err := validateSpecID(specID); err != nil {
+		return err
+	}
+
 	// find project root
 	projectRoot, err := findProjectRootFn()
 	if err != nil {

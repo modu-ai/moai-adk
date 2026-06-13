@@ -42,21 +42,34 @@ func (w *worktreeManager) Add(path, branch string) error {
 	defer cancel()
 
 	// Check if the branch already exists.
-	if branchExists(ctx, w.root, branch) {
-		_, err := execGit(ctx, w.root, "worktree", "add", path, branch)
-		if err != nil {
+	exists := branchExists(ctx, w.root, branch)
+	args := buildWorktreeAddArgs(exists, path, branch)
+	if _, err := execGit(ctx, w.root, args...); err != nil {
+		if exists {
 			return fmt.Errorf("add worktree for existing branch %q: %w", branch, err)
 		}
-	} else {
-		// Create a new branch with -b.
-		_, err := execGit(ctx, w.root, "worktree", "add", "-b", branch, path)
-		if err != nil {
-			return fmt.Errorf("add worktree with new branch %q: %w", branch, err)
-		}
+		return fmt.Errorf("add worktree with new branch %q: %w", branch, err)
 	}
 
 	w.logger.Debug("worktree added", "path", path, "branch", branch)
 	return nil
+}
+
+// buildWorktreeAddArgs는 `git worktree add` argv를 조립한다. SPEC-SEC-HARDEN-002
+// M2b: 사용자 유래 operand(worktree path, branch) 앞에 `--` end-of-options
+// 구분자를 삽입해, `-`로 시작하는 operand가 git 옵션으로 해석되는 argv option
+// smuggling(CWE-88)을 차단한다. `-b <branch>`는 git 옵션 쌍이므로 `--` 앞에 둔다.
+//
+//   - 기존 브랜치: worktree add -- <path> <branch>
+//   - 신규 브랜치: worktree add -b <branch> -- <path>
+//
+// @MX:NOTE: [AUTO] SPEC-SEC-HARDEN-002 M2b — argv `--` 구분자로 worktree-add operand option smuggling 차단. 정상 path/branch 동작 보존.
+func buildWorktreeAddArgs(branchExists bool, path, branch string) []string {
+	if branchExists {
+		return []string{"worktree", "add", "--", path, branch}
+	}
+	// 신규 브랜치: -b <branch>는 옵션 쌍 → `--` 이전에 유지하고 path만 positional로.
+	return []string{"worktree", "add", "-b", branch, "--", path}
 }
 
 // List returns all active worktrees including the main worktree.
