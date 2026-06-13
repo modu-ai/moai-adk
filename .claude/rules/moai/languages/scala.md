@@ -31,23 +31,15 @@ Key Ecosystem Libraries:
 
 ---
 
-## Module Index
+## Coverage Areas
 
-This skill uses progressive disclosure with specialized modules:
+This guide is self-contained. Use the sections below as the primary reference for:
 
-### Core Language
-
-- [functional-programming.md](modules/functional-programming.md) - Scala 3.4 features: Given/Using, Type Classes, Enums, Opaque Types, Extension Methods
-
-### Effect Systems
-
-- [cats-effect.md](modules/cats-effect.md) - Cats Effect 3.5: IO monad, Resources, Fibers, FS2 Streaming
-- [zio-patterns.md](modules/zio-patterns.md) - ZIO 2.1: Effects, Layers, ZIO Streams, Error handling
-
-### Frameworks
-
-- [akka-actors.md](modules/akka-actors.md) - Akka Typed Actors 2.9: Actors, Streams, Clustering patterns
-- [spark-data.md](modules/spark-data.md) - Apache Spark 3.5: DataFrame API, SQL, Structured Streaming
+- Scala 3.4 functional programming: Given/Using, type classes, enums, opaque types, extension methods
+- Cats Effect 3.5 effect system: IO monad, resources, fibers, FS2 streaming
+- ZIO 2.1: effects, layers, ZIO streams, error handling
+- Akka Typed Actors 2.9: actors, streams, clustering patterns
+- Apache Spark 3.5: DataFrame API, SQL, structured streaming
 
 ---
 
@@ -136,10 +128,7 @@ Effect System Issues:
 ---
 
 
-For comprehensive reference materials:
-
-- [reference.md](reference.md) - Complete Scala 3.4 coverage, Context7 mappings, performance
-- [examples.md](examples.md) - Production-ready code: Http4s, Akka, Spark patterns
+For comprehensive reference materials, use the Coverage Areas and Context7 Integration sections above together with the testing reference; this guide is self-contained for Http4s, Akka, and Spark patterns.
 
 ---
 

@@ -122,12 +122,15 @@ Exposed: Ensure all DB operations run within transaction context. Be aware of la
 
 ---
 
-## Advanced Documentation
+## Coverage Areas
 
-For comprehensive reference materials:
+This guide is self-contained. Use the sections above as the primary reference for:
 
-- [reference.md](reference.md) - Complete ecosystem, Context7 mappings, testing patterns, performance
-- [examples.md](examples.md) - Production-ready code examples, Ktor, Compose, Android patterns
+- Kotlin 2.0 language features, Ktor 3.0 server development, and Exposed SQL framework patterns
+- Spring Boot with Kotlin application structure
+- Compose Multiplatform UI patterns
+- Testing with MockK and Gradle build configuration
+- Production-ready Ktor, Compose, and Android patterns
 
 ---
 

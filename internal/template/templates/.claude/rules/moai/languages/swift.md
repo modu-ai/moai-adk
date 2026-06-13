@@ -41,11 +41,11 @@ Basic SwiftUI View: Define struct conforming to View. Declare @State private var
 
 Basic Actor for Thread Safety: Define actor type with private dictionary for cache. Create get function returning optional Data for key lookup. Create set function taking key and data parameters for cache storage.
 
-## Module Index
+## Coverage Areas
+
+This guide is self-contained. Use the sections below as the primary reference for:
 
 ### Swift 6 Features
-
-[modules/swift6-features.md](modules/swift6-features.md)
 
 - Typed throws for precise error handling
 - Complete concurrency checking
@@ -54,8 +54,6 @@ Basic Actor for Thread Safety: Define actor type with private dictionary for cac
 
 ### SwiftUI Patterns
 
-[modules/swiftui-patterns.md](modules/swiftui-patterns.md)
-
 - @Observable macro and state management
 - NavigationStack and navigation patterns
 - View lifecycle and .task modifier
@@ -63,16 +61,12 @@ Basic Actor for Thread Safety: Define actor type with private dictionary for cac
 
 ### Swift Concurrency
 
-[modules/concurrency.md](modules/concurrency.md)
-
 - async/await fundamentals
 - Actor isolation and @MainActor
 - TaskGroup for parallel execution
 - Custom executors and structured concurrency
 
 ### Combine Framework
-
-[modules/combine-reactive.md](modules/combine-reactive.md)
 
 - Publishers and Subscribers
 - Operators and transformations
@@ -110,5 +104,4 @@ Async Test with MainActor: Apply @MainActor attribute to test class extending XC
 
 ## Resources
 
-- [reference.md](reference.md) - Architecture patterns, network layer, SwiftData
-- [examples.md](examples.md) - Production-ready code examples
+For architecture patterns, network-layer design, SwiftData, and production-ready code examples, use the Coverage Areas and Context7 Library Mappings sections above; this guide is self-contained.

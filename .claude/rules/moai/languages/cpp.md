@@ -78,9 +78,7 @@ For comprehensive coverage including:
 - Production patterns (dependency injection, factories)
 - Extended testing with Google Test and Catch2
 
-See:
-
-- [Advanced Patterns](modules/advanced-patterns.md) - Complete advanced patterns guide
+Apply the Quick Patterns and feature sections above together with the Context7 library mappings for these advanced topics; this guide is self-contained.
 
 ---
 

@@ -86,7 +86,7 @@ For comprehensive coverage including:
 - Engineering best practices and coding guidelines
 - Async patterns and concurrency
 
-See: [reference/engineering.md](reference/engineering.md) for ownership and traits, [reference/performance.md](reference/performance.md) for optimization, [reference/guidelines.md](reference/guidelines.md) for coding standards
+Apply the sections above together with the Context7 library mappings for these advanced topics (ownership and traits, optimization, coding standards); this guide is self-contained.
 
 ### Performance Optimization
 

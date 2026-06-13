@@ -55,7 +55,7 @@ Adaptive Layouts: Create StatelessWidget with required parameters for child, des
 
 Widget Test Example: In test main function, create ProviderContainer with overrides for mock providers. Use tester.pumpWidget with UncontrolledProviderScope wrapping MaterialApp with the widget under test. Assert initial loading state with find.byType. Call tester.pumpAndSettle to wait for async operations. Assert final state with find.text.
 
-For comprehensive testing patterns, see [examples.md](examples.md).
+For comprehensive testing patterns, use the testing example above together with the Context7 library mappings; this guide is self-contained.
 
 ## Advanced Patterns
 
@@ -70,7 +70,7 @@ For comprehensive coverage including:
 - FFI and platform-specific plugins
 - Performance optimization and profiling
 
-See: [reference/adaptive.md](reference/adaptive.md) for responsive layouts, [reference/animations.md](reference/animations.md) for animation patterns, [reference/expert.md](reference/expert.md) for expert-level development
+Apply the Riverpod, go_router, platform-channel, and widget pattern sections above together with the Context7 library mappings for these advanced topics (responsive layouts, animation patterns, expert-level development); this guide is self-contained.
 
 ## Context7 Library Mappings
 

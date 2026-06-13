@@ -72,9 +72,7 @@ For comprehensive coverage including:
 - Security best practices
 - CI/CD integration patterns
 
-See:
-
-- [Advanced Patterns](modules/advanced-patterns.md) - Complete advanced patterns guide
+Apply the Quick Patterns and framework sections above together with the Context7 library mappings for these advanced topics; this guide is self-contained.
 
 ---
 
