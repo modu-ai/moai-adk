@@ -69,3 +69,24 @@ exclusions_honored:
 ### Full-suite note
 
 `go test ./...` exits 0. The first verbose run surfaced 2 transient FAILs in `internal/hook` (`TestHookWrapper_ValidJSON`, `TestHookWrapper_MoaiBinaryFallback`, both `signal: killed` 5s subprocess timeout under parallel load) — these are pre-existing flaky tests, contain ZERO references to config/git_strategy, are outside this SPEC's scope, and PASS when run in isolation (`ok ... 0.631s`). Not a regression from this change.
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-06-13
+sync_commit_sha: "(backfilled below)"
+sync_status: green
+status_transition: in-progress → implemented
+changelog_entry: added           # CHANGELOG.md [Unreleased] § Fixed
+plan_audit_verdict: PASS-WITH-DEBT 0.86   # Tier S threshold 0.80
+```
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+```yaml
+mx_complete_at: 2026-06-13
+mx_commit_sha: "(backfilled below)"
+status_transition: implemented → completed
+four_phase_close: true            # plan + run + sync + Mx
+github_issue: 1064                 # closed by this fix
+```
