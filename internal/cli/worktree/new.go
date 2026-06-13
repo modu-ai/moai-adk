@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/bodp"
+	"github.com/modu-ai/moai-adk/internal/cli/specid"
 	"github.com/modu-ai/moai-adk/internal/tmux"
 )
 
@@ -106,6 +107,11 @@ origin/main is safer because it always reflects the latest merged state.`,
 func runNew(cmd *cobra.Command, args []string) error {
 	out := cmd.OutOrStdout()
 	specID := args[0]
+	// SPEC-SEC-HARDEN-002 M2a (A-F1): CLI args[0] 경계에서 path-traversal SPEC-ID를
+	// filepath.Join/os.MkdirAll/WorktreeProvider.Add 도달 전에 거부한다 (HIGH).
+	if err := specid.ValidateSpecID(specID); err != nil {
+		return err
+	}
 	branchName := resolveSpecBranch(specID)
 
 	if WorktreeProvider == nil {

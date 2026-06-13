@@ -38,6 +38,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/cli/specid"
 	"github.com/modu-ai/moai-adk/internal/spec"
 )
 
@@ -103,7 +104,7 @@ Exit codes:
 			// boundary BEFORE calling spec.Close. The transitive path-join sink
 			// lives at internal/spec/closer.go (NOT modified) — guarding here
 			// stops the traversal before it reaches that sink (CWE-22).
-			if err := validateSpecID(specID); err != nil {
+			if err := specid.ValidateSpecID(specID); err != nil {
 				return err
 			}
 

@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/cli/specid"
 	"github.com/modu-ai/moai-adk/internal/spec"
 	"github.com/spf13/cobra"
 )
@@ -69,7 +70,7 @@ Examples:
 func updateSpecStatus(cmd *cobra.Command, specID, newStatus string, dryRun bool) error {
 	// SPEC-SEC-HARDEN-002 M3: reject path-traversal SPEC-ID at the CLI boundary
 	// BEFORE constructing the .moai/specs/<SPEC-ID> read-path (CWE-22).
-	if err := validateSpecID(specID); err != nil {
+	if err := specid.ValidateSpecID(specID); err != nil {
 		return err
 	}
 
