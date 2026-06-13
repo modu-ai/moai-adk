@@ -118,7 +118,7 @@ Protected runtime artifacts (`usage-log.jsonl`, `tier-promotions.jsonl`, `.moai/
 
 ```yaml
 run_complete_at: 2026-06-14
-run_commit_sha: <backfill — set to the M1 run-phase commit SHA>
+run_commit_sha: 3829f3a26
 run_status: implemented
 ac_pass_count: 8
 ac_fail_count: 0
@@ -133,4 +133,16 @@ template_neutrality: clean
 protected_artifacts_unchanged: true
 total_run_phase_files: 6
 m1_to_mN_commit_strategy: single-commit (Tier S, all M1-M4 in one feat commit)
+```
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-06-14
+sync_commit_sha: <backfill at git commit — canonical sync-phase sha>
+sync_status: implemented
+docs_updated: [CHANGELOG.md]
+specs_artifacts_modified:
+  - "spec.md": "status in-progress → implemented"
+  - "progress.md": "backfilled run_commit_sha + sync-phase evidence"
 ```
