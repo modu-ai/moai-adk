@@ -2,7 +2,7 @@
 id: SPEC-MERGE-METHOD-CONFIG-001
 title: "Configurable sync-phase PR merge method (squash/merge/rebase)"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-06-13
 updated: 2026-06-13
 author: manager-spec
@@ -134,7 +134,9 @@ The issue's strongest case (release branches should preserve history) implies a 
 
 See `acceptance.md` for the full Given-When-Then matrix and grep-verifiable assertions.
 
-## Exclusions (What NOT to Build)
+## E. Exclusions (What NOT to Build)
+
+### E.1 Out of Scope
 
 - **EX-1**: Connecting the `internal/github` `PRMerger`/`PRMerge` abstraction to a real production caller (new CLI subcommand or hook). The minimal scope is config-field-to-template-prose; the Go merge-path wiring is a candidate FOLLOW-UP SPEC. (See C.3.)
 - **EX-2**: Per-branch-type merge-method overrides for gitflow (e.g., `release/* → merge`, `hotfix/* → merge`). This SPEC delivers a single per-mode `merge_method` field only. Per-branch-type overrides are a candidate FOLLOW-UP. (See C.4.)
