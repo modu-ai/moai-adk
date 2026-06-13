@@ -2,7 +2,7 @@
 id: SPEC-GITSTRATEGY-SAVE-ISOLATION-001
 title: "Restore git_strategy section isolation in ConfigManager.Save() (regression from SAVE-WIRING M1)"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-06-13
 updated: 2026-06-13
 author: manager-spec
