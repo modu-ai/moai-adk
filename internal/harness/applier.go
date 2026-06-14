@@ -6,6 +6,7 @@ package harness
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -445,10 +446,15 @@ func (a *Applier) applyWithRegressionGate(proposal Proposal, snapshotDir string)
 			// (NEW — additive, after the decision) emit the rolled-back outcome record.
 			// The rollback + block decision is already fixed above; an emit error is
 			// wrapped like the lineage-write error and never flips the verdict (REQ-OC-007).
+			// On an emit error the typed *ApplyRegressionError signal is PRESERVED via
+			// errors.Join (REQ-ERRJOIN-001/002): the joined value's Unwrap() []error is
+			// walked by errors.As so the regression signal survives, while the
+			// outcome-record error remains reachable via errors.Is/unwrap.
+			regErr := &ApplyRegressionError{Baseline: baseline, Candidate: candidate, Regressed: regressed}
 			if oerr := a.recordOutcome("rolled-back", "regression-blocked", baseline, candidate, regressed, proposal.ID); oerr != nil {
-				return fmt.Errorf("applier: non-regression gate blocked (rolled back); outcome record failed: %w", oerr)
+				return errors.Join(regErr, oerr)
 			}
-			return &ApplyRegressionError{Baseline: baseline, Candidate: candidate, Regressed: regressed}
+			return regErr
 		}
 	}
 

@@ -7,6 +7,7 @@ package harness
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -972,6 +973,91 @@ func TestApply_Regression_Blocks_RollsBack(t *testing.T) {
 	}
 	if stored != (MetricTriple{TestsPassed: 100, Coverage: 87.0, LintCount: 0}) {
 		t.Errorf("baseline store must NOT be updated on a blocked apply; got %+v", stored)
+	}
+}
+
+// TestApply_Outcome_RolledBack_RecordError verifies the F2 contract
+// (SPEC-HARNESS-OUTCOME-ERRJOIN-001): when the in-Apply regression gate reaches
+// the rolled-back branch AND the additive outcome-record write itself fails, the
+// returned error MUST still carry the typed *ApplyRegressionError signal (so a
+// caller's errors.As(err, &*ApplyRegressionError) keeps working) AND the
+// outcome-record error MUST also be reachable.
+//
+// The deliberately-failing observer is wired with a logPath whose PARENT is an
+// EXISTING REGULAR FILE, so os.MkdirAll(filepath.Dir(logPath)) inside
+// RecordExtendedEvent fails ("observer: 디렉토리 생성 실패 …") and recordOutcome
+// returns a non-nil error — driving the rolled-back branch's error-compose path.
+func TestApply_Outcome_RolledBack_RecordError(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	skillPath := writeLineageFixture(t)
+	originalContent, _ := os.ReadFile(skillPath)
+	snapshotBase := filepath.Join(dir, "snapshots")
+	manifestPath := filepath.Join(dir, "learning-history", "manifest.jsonl")
+	baselinePath := filepath.Join(dir, "harness", "measurements-baseline.yaml")
+
+	// Wire a deliberately-failing observer: logPath's parent is an EXISTING
+	// REGULAR FILE, so os.MkdirAll(filepath.Dir(logPath)) fails inside
+	// RecordExtendedEvent and recordOutcome returns a non-nil error.
+	regularFile := filepath.Join(dir, "not-a-dir")
+	if err := os.WriteFile(regularFile, []byte("x"), 0o644); err != nil {
+		t.Fatalf("seed regular file: %v", err)
+	}
+	logPath := filepath.Join(regularFile, "usage-log.jsonl") // parent is a regular file
+	failingObserver := NewObserver(logPath)
+
+	// Seed a prior baseline so the gate enables the block path (not first-run),
+	// and script a regressed candidate (coverage drop + lint up) to reach the
+	// rolled-back branch — same setup as TestApply_Regression_Blocks_RollsBack.
+	seedBaseline(t, baselinePath, MetricTriple{TestsPassed: 100, Coverage: 87.0, LintCount: 0})
+	m := &seqMeasurer{calls: []measureCall{
+		{triple: MetricTriple{TestsPassed: 100, Coverage: 87.0, LintCount: 0}},
+		{triple: MetricTriple{TestsPassed: 100, Coverage: 80.0, LintCount: 3}},
+	}}
+	a := newGateApplier(manifestPath, baselinePath, m).WithOutcomeObserver(failingObserver)
+
+	proposal := Proposal{
+		ID:               "errjoin-rollback-001",
+		TargetPath:       skillPath,
+		FieldKey:         "description",
+		NewValue:         "harness frequently triggered",
+		PatternKey:       "moai_subcommand:/moai plan:ctx001",
+		Tier:             TierAutoUpdate,
+		ObservationCount: 10,
+	}
+
+	err := a.Apply(proposal, approvedEvaluator(), snapshotBase, []Session{})
+	if err == nil {
+		t.Fatal("rolled-back apply with a failing outcome-record write must return an error")
+	}
+
+	// (a) The target file is rolled back to its original bytes — the rollback +
+	//     block decision is unaffected by the outcome-record write failure.
+	after, _ := os.ReadFile(skillPath)
+	if !bytes.Equal(originalContent, after) {
+		t.Errorf("file not rolled back:\n got: %q\nwant: %q", after, originalContent)
+	}
+
+	// (b) F2 contract: errors.As MUST reach the typed *ApplyRegressionError. This
+	//     assertion is RED before the fix (the pre-fix branch returns only the
+	//     fmt.Errorf wrapper whose single unwrap target is the observer error) and
+	//     GREEN after errors.Join(regErr, oerr). NOTE: errors.As is used directly
+	//     — NOT the asRegressionError helper, whose direct type assertion an
+	//     errors.Join value correctly fails.
+	var regErr *ApplyRegressionError
+	if !errors.As(err, &regErr) {
+		t.Fatalf("errors.As must reach *ApplyRegressionError on the joined error; got %T: %v", err, err)
+	}
+	if len(regErr.Regressed) == 0 {
+		t.Error("ApplyRegressionError.Regressed must list the regressed dimensions")
+	}
+
+	// (c) The outcome-record error MUST also be reachable — neither signal is
+	//     suppressed. The observer's os.MkdirAll failure surfaces as the
+	//     "디렉토리 생성 실패" / "observer:" substring.
+	if !strings.Contains(err.Error(), "디렉토리 생성 실패") && !strings.Contains(err.Error(), "observer:") {
+		t.Errorf("outcome-record error must remain reachable; got: %v", err)
 	}
 }
 

@@ -2,9 +2,9 @@
 id: SPEC-HARNESS-OUTCOME-ERRJOIN-001
 title: "Apply rolled-back branch errors.Join — preserve typed ApplyRegressionError signal"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-14
-updated: 2026-06-14
+updated: 2026-06-15
 author: manager-spec
 priority: P2
 phase: "v3.0.0"

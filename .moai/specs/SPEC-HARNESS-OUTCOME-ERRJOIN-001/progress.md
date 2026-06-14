@@ -30,9 +30,44 @@ plan-auditor PASS 0.91 ≥ 0.90 → skip-eligible. If no plan-PR commit lands af
 
 Out of scope: observer/gate ACTIVATION. Rationale — `Applier.Apply()` (safety→snapshot→regression-gate→outcome-capture→lineage) has ZERO production callers; `moai harness apply` (`runHarnessApply`) only surfaces a pending-proposal JSON payload to the orchestrator; production apply is performed by the skill-workflow Edit path (`.claude/skills/moai/workflows/harness.md`), bypassing the Go pipeline. `NewApplierWithRegressionGate()` / `WithOutcomeObserver()` also have 0 production callers. Activation is blocked on a dual-apply-path architecture decision (whether the Go pipeline becomes canonical) → deferred to a dedicated future SPEC. User decision A (F2-only) selected over activation options B/C/D.
 
+## §E.0 Phase 0.95 Mode Selection
+
+- Decision: sub-agent
+- Rationale: Tier S, 2 files, single-domain Go coding-heavy fix (one applier.go branch + one regression test) — per orchestration-mode-selection.md Mode 5 default; Anthropic coding-task parallelism caveat favors sequential sub-agent over parallel/team modes.
+- GATE-2: user-approved (run-phase entry). Phase 0.5 SKIPPED (plan-auditor PASS 0.91 ≥ 0.90, skip-eligible; only post-verdict deltas were D1/D2 MINOR remediations + plan_commit_sha backfill, no new scope).
+
 ## §E.1 Run-phase Evidence (manager-develop, cycle_type=tdd)
 
-(pending — RED first: `TestApply_Outcome_RolledBack_RecordError` asserts `errors.As(err, &*ApplyRegressionError)` fails pre-fix; GREEN: `errors.Join(regErr, oerr)` at the rolled-back branch)
+- cycle_type: tdd · RED→GREEN single cycle · run_commit_sha: (filled below)
+
+### RED→GREEN evidence
+
+- **RED** (new test pre-fix): `go test ./internal/harness/ -run TestApply_Outcome_RolledBack_RecordError`
+  → `--- FAIL`: `errors.As must reach *ApplyRegressionError on the joined error; got *fmt.wrapError: applier: non-regression gate blocked (rolled back); outcome record failed: observer: 디렉토리 생성 실패 …: not a directory`. Assertion (b) `errors.As(err, &*ApplyRegressionError)` was FALSE pre-fix — the F2 defect reproduced (the bare `fmt.Errorf` wrapper's only unwrap target is the observer error).
+- **GREEN** (post-fix): rolled-back branch now returns `errors.Join(regErr, oerr)` (applier.go); the same test PASSES + all 5 existing `TestApply_Regression_*` remain GREEN. `errors.As` reaches the typed signal; the observer error (`디렉토리 생성 실패`) stays reachable; file rolled back to original bytes.
+
+### AC Binary PASS/FAIL Matrix (acceptance.md §D.2 SSOT)
+
+| AC ID | Severity | Status | Verification | Actual |
+|-------|----------|--------|--------------|--------|
+| AC-ERRJOIN-001 | MUST-PASS | PASS | new test `errors.As(err,&regErr)` TRUE | rolled-back + failing observer → `errors.As` TRUE, `regErr.Regressed` non-empty |
+| AC-ERRJOIN-002 | MUST-PASS | PASS | outcome-record error reachable | `err.Error()` contains `디렉토리 생성 실패` |
+| AC-ERRJOIN-003 | MUST-PASS | PASS | `TestApply_Regression_Blocks_RollsBack` GREEN | recordOutcome-SUCCESS path still bare `*ApplyRegressionError` |
+| AC-ERRJOIN-004 | MUST-PASS | PASS | `grep 'file modified but outcome record failed'` | applier.go:474 present (kept branch byte-frozen) |
+| AC-ERRJOIN-005 | MUST-PASS | PASS | `TestApply_Regression_*` 5/5 GREEN | rollback + `regression-blocked` lineage unaffected |
+| AC-ERRJOIN-006 | MUST-PASS | PASS | `git diff --name-only` + frozen-sibling `git diff --stat` | only applier.go + applier_test.go; regression_gate/outcome/observer/measure.go empty diff |
+| AC-ERRJOIN-007 | MUST-PASS | PASS | `go test ./...` exit 0 (96 pkg ok); `go vet ./...` 0; coverage | harness 87.3%→87.5% (no regression) |
+| AC-ERRJOIN-008 | SHOULD | PASS | `grep 'errors.Join'` + `grep '"errors"'` | applier.go:455 `errors.Join`; applier.go:9 `"errors"` |
+
+### Verification command outputs
+
+- `go test ./internal/harness/... -run 'TestApply_Outcome_RolledBack_RecordError|TestApply_Regression'` → all PASS (6 tests)
+- `go test ./...` → exit 0, 96 packages ok (one transient `internal/hook/wrapper_test.go` flake on first run — `moai`-binary PATH race, out of scope, passes on re-run + on clean baseline; NOT a regression)
+- `go vet ./...` → exit 0 · `go test -cover ./internal/harness/` → 87.5% (baseline 87.3%)
+- `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
+- `git diff --name-only` → `internal/harness/applier.go`, `internal/harness/applier_test.go` (exactly 2)
+- frozen-sibling `git diff --stat -- regression_gate.go outcome.go observer.go ../measure/measure.go` → empty
+- run_commit_sha: (filled below)
 
 ## §E.2 Sync-phase Audit-Ready Signal (manager-docs)
 
