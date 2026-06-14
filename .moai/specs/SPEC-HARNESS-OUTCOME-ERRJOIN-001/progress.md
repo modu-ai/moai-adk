@@ -75,7 +75,7 @@ sync_commit_sha: 150d2745b
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-mx_commit_sha: (backfill)
+mx_commit_sha: eb1699050
 
 ## §F Sync Audit (sync-auditor)
 
