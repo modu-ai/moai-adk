@@ -71,8 +71,24 @@ Out of scope: observer/gate ACTIVATION. Rationale — `Applier.Apply()` (safety�
 
 ## §E.2 Sync-phase Audit-Ready Signal (manager-docs)
 
-sync_commit_sha: (backfill)
+sync_commit_sha: 150d2745b
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-mx_commit_sha: (pending)
+mx_commit_sha: (backfill)
+
+## §F Sync Audit (sync-auditor)
+
+- verdict: PASS · overall 0.97 (harmonic mean, weighted)
+- dimensions: Functionality 1.00 (MUST-PASS) / Security 1.00 / Craft 0.90 / Consistency 1.00 (MUST-PASS)
+- RED genuineness: sync-auditor reconstructed the pre-fix branch in a scratch probe → `errors.As`=false (FAIL) pre-fix, true post-fix — defect real, test non-tautological
+- adversarial bypass hunt (SEC-HARDEN-001 D1 lesson applied): extra `%w` re-wrap / Join-order / typed-nil — all defended, no demonstrated bypass
+- D2 LOW (non-gating, NOT actioned): AC-002 partly relies on a Korean message substring (`디렉토리 생성 실패`); recommendation = export an observer sentinel for `errors.Is`-based assertion. Deferred — `observer.go` is a FROZEN sibling of this SPEC; actioning it would expand scope. Future-improvement candidate.
+- report: `.moai/reports/sync-audit/SPEC-HARNESS-OUTCOME-ERRJOIN-001-2026-06-15.md` (gitignored, local)
+
+## §G 4-Phase Close
+
+- plan: `5d25a5dcd` (+ backfill `cc40fd876`) · run: `5674734be` · sync: `150d2745b` · Mx: (this commit)
+- lifecycle: draft → in-progress → implemented → completed
+- 8/8 AC PASS · plan-auditor 0.91 · sync-auditor 0.97 · coverage 87.5% · frozen siblings (regression_gate/outcome/observer/measure.go) byte-unchanged
+- activation deferred to a future SPEC (dual-apply-path architecture decision; §D rationale)
