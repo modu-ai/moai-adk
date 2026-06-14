@@ -69,7 +69,7 @@ ac_pass_count: 10
 ac_fail_count: 0
 preserve_list_post_run_count: 0
 l44_pre_commit_fetch: "0 1 (plan-patch local-ahead, expected)"
-l44_post_push_fetch: <backfill on push>
+l44_post_push_fetch: "0 0 (synced post-push, 45251ddef durable on origin)"
 new_warnings_or_lints_introduced: 0
 cross_platform_build:
   host: exit 0
@@ -92,7 +92,7 @@ file_changed.go(runMXScan)와 무관. baseline에서 동일 관측됨 — 본 SP
 ## §F.3 Sync-phase
 
 - **Owner**: manager-docs (`in-progress → implemented` 전이)
-- **sync_commit_sha**: (backfill post-commit)
+- **sync_commit_sha**: 45251ddef
 - **Deliverables**:
   - spec.md frontmatter: `status: in-progress → implemented`, `updated: 2026-06-14` (no change needed, already current).
   - progress.md: run_commit_sha 2b9b791a4 backfill + §E.4 Sync-phase Audit-Ready Signal 추가.
@@ -105,7 +105,7 @@ file_changed.go(runMXScan)와 무관. baseline에서 동일 관측됨 — 본 SP
 
 ```yaml
 sync_complete_at: 2026-06-14T08:00:00Z
-sync_commit_sha: <backfill-post-commit>
+sync_commit_sha: 45251ddef
 sync_status: audit-ready
 b12_self_test_a: "grep -c 'SEC-HARDEN-003' CHANGELOG.md → 0 before emit (confirmed)"
 b12_self_test_b: "grep -cE '^\\| \\*\\*AC-SEC3' acceptance.md → 10 AC rows (confirmed)"
@@ -121,4 +121,22 @@ canary_compliance_check:
 
 ## §F.5 Mx-phase
 
-(미착수 — `implemented → completed` 4-phase close)
+- **Owner**: orchestrator-direct (`implemented → completed` 전이, Mx chore commit)
+- **sync-auditor verdict**: **PASS-WITH-DEBT** — 4차원 Functionality 92 / Security 80 [MUST-PASS 통과] / Craft 90 / Consistency 95. 문서화된 위협모델(leaf symlink entry/target, raw-CWD sidecar escape, FilePath traversal) 완전 봉쇄 + 표준 우회 전부 차단(독립 재현, 비공허 RUN 확인). report: `.moai/reports/sync-audit/SPEC-SEC-HARDEN-003-2026-06-14.md`.
+- **Deferred to SEC-HARDEN-004 (fast-follow 후보, 사용자 A안 결정 2026-06-14)** — sync-auditor 적대적 재현으로 발견한 2건 SHOULD-FIX HIGH (인접 공격 클래스, 본 SPEC 위협모델 밖):
+  - **F1** `internal/cli/update.go` — 심볼릭 링크 **중간 디렉터리** 쓰기 탈출. `isSymlinkEntry`가 leaf만 검사 → 기존 `configDir/linkdir → /outside` + relPath `linkdir/evil.yaml`이 symlink 디렉터리를 관통해 `/outside` 쓰기(재현). 도달성 제약: configDir에 기존 symlink dir 필요(백업 self-plant 불가). Fix 방향: `filepath.EvalSymlinks` parent-chain 재검사.
+  - **F2** `internal/hook/file_changed.go` — root 내부 symlink **읽기 증폭**. lexical `pathContainedIn` 통과 후 `ScanFile`/`os.ReadFile`가 root 밖 가리키는 symlink 추종(재현). 영향 제약: `@MX:` 태그 텍스트만 in-root 사이드카로 누출, out-of-root 쓰기 없음. Fix 방향: `EvalSymlinks` scan-target 해소 또는 `os.Lstat`-skip(C-F2 posture 일치).
+  - MINOR 2건(TOCTOU 비실용적 / C-F1 fail-closed 동작변경)은 조치 불요.
+- **4-phase close lineage**: plan `83c1d46b8`(+patch `5bdc95bfd`) → run M1 `743ad1cc4` / M2 `2b9b791a4` → sync `45251ddef` → Mx `<this commit>`.
+
+### §E.5 Mx-phase Audit-Ready Signal
+
+```yaml
+mx_complete_at: 2026-06-14T08:30:00Z
+mx_commit_sha: <backfill-post-commit>
+mx_status: audit-ready
+sync_auditor_verdict: "PASS-WITH-DEBT (Func 92 / Sec 80 MUST-PASS / Craft 90 / Consist 95)"
+deferred_findings_count: 2  # F1 symlink-parent-dir write, F2 symlink-in-root read → SEC-HARDEN-004 후보
+lifecycle_close: "implemented → completed (4-phase: plan/run/sync/Mx)"
+era: V3R6  # H-4 (§E.2 + §E.5 markers + run/sync/mx commit_sha populated)
+```
