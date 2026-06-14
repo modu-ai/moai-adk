@@ -2147,6 +2147,13 @@ func isSymlinkEntry(path string) bool {
 // configDir via the symlinked parent (CWE-22). This guard is shared by both the
 // modern walk (restoreMoaiConfig) and the legacy walk (restoreMoaiConfigLegacy),
 // so the single addition closes both paths at once.
+//
+// TOCTOU note (SPEC-SEC-HARDEN-005 §F.3, OPT-SEC5-001 — non-gating): containment
+// is checked at decision time; a concurrent adversarial process could in
+// principle race the check against the subsequent os.WriteFile/os.MkdirAll write
+// (check-vs-use window). This TOCTOU window is out of scope under the offline
+// single-process threat model — `moai update` is a single process on the user's
+// own machine — per SEC-HARDEN-003/004 §F.1 precedent. No code-behavior change.
 func restoreTargetContained(configDir, targetPath string) bool {
 	if configDir == "" || targetPath == "" {
 		return false
@@ -2213,6 +2220,13 @@ func restoreTargetContained(configDir, targetPath string) bool {
 //     allow (the entire parent chain is fresh and in-config).
 //   - any EvalSymlinks error other than os.IsNotExist → fail-closed (reject); a
 //     coarse "any error → allow" would RE-OPEN the hole.
+//
+// TOCTOU note (SPEC-SEC-HARDEN-005 §F.3, OPT-SEC5-001 — non-gating): the parent
+// chain is resolved at decision time; a concurrent adversarial process could in
+// principle swap an ancestor between this check and the subsequent write
+// (check-vs-use window). This TOCTOU window is out of scope under the offline
+// single-process threat model per SEC-HARDEN-003/004 §F.1 precedent. No
+// code-behavior change.
 func parentChainContained(absConfig, absTarget string) bool {
 	// Normalize the configDir base. EvalSymlinks requires the path to exist; if
 	// it does not yet exist (or fails for a non-not-exist reason), fall back to

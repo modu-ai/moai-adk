@@ -221,8 +221,9 @@ func hasUnquotedShellSeparator(s string) bool {
 // `${IFS}`/`$IFS`-driven word-split, a multi-statement program, or a command
 // chain that the lexical hasUnquotedShellSeparator scan cannot see. It is the
 // shell-aware companion guard for the ":*" prefix branch (SPEC-SEC-HARDEN-005
-// §F.1) and uses the mvdan.cc/sh/v3/syntax parser rather than a "$"-blacklist
-// heuristic (a blacklist would false-deny legitimate `$HOME`/`${HOME}`/`TestX$`).
+// §F.1) and uses the mvdan.cc/sh/v3/syntax parser rather than a "$"-pattern
+// deny-list heuristic (a deny-list would false-deny legitimate
+// `$HOME`/`${HOME}`/`TestX$`; REQ-SEC5-003 prohibits shipping one).
 //
 // The full input is parsed (not just the prefix remainder) so the parser sees a
 // syntactically complete program — the allow-listed prefix is the head of the

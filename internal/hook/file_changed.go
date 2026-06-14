@@ -127,6 +127,14 @@ func (h *fileChangedHandler) Handle(_ context.Context, input *HookInput) (*HookO
 //
 // Errors are logged and swallowed — async side-effects never propagate
 // failure to the main handler response (REQ-HAE-005 design intent).
+//
+// TOCTOU note (SPEC-SEC-HARDEN-005 §F.3, OPT-SEC5-001 — non-gating): the scan
+// resolves the project root and then reads the changed file / writes its sidecar;
+// a concurrent adversarial process could in principle race a path swap between
+// resolution and the subsequent read/write (check-vs-use window). This TOCTOU
+// window is out of scope under the offline single-process threat model (the hook
+// runs as a single process on the user's own machine) per SEC-HARDEN-003/004
+// §F.1 precedent. No code-behavior change.
 func (h *fileChangedHandler) runMXScan(ctx context.Context, input *HookInput) {
 	// Respect deadline cancellation defensively.
 	select {

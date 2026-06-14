@@ -133,3 +133,73 @@ func TestMatches_MalformedShellFailClosed(t *testing.T) {
 		})
 	}
 }
+
+// TestIsTrailingDollarLiteral 은 trailing-`$` special-case 판정을 직접 고정한다
+// (REQ-SEC5-006 경계, design D.1.4). lone trailing `$`(Go regex anchor)는 true,
+// genuine `$(`/`${` 확장을 동반하면 false(fail-closed deny 유지).
+func TestIsTrailingDollarLiteral(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		s    string
+		want bool
+	}{
+		{"trailing dollar anchor", "go test TestX$", true},
+		{"trailing dollar with spaces", "go test TestX$  ", true},
+		{"quoted regex anchor trailing dollar", "go test -run 'TestX$'", false}, // no trailing $ after quote
+		{"no trailing dollar", "go test ./...", false},
+		{"unterminated param expansion", "go test ${IFS", false},
+		{"unterminated command substitution", "go test $(echo", false},
+		{"dollar mid-string only", "go test $HOME/x", false},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := isTrailingDollarLiteral(tt.s); got != tt.want {
+				t.Errorf("isTrailingDollarLiteral(%q) = %v, want %v", tt.s, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestMatches_IFSParserEdgeCases 은 AC-SEC5-001/002 의 shell-aware 파서 분기 보강
+// 테이블이다. 다중 명령 / command·process substitution / subshell / quoted-IFS
+// 경계를 각각 고정하여 hasIFSWordSplit 의 DENY/ALLOW 결정을 검증한다.
+func TestMatches_IFSParserEdgeCases(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input string
+		match bool // expected Matches() result
+	}{
+		// 다중 statement (`;` 로 분리) → len(Stmts)!=1 → DENY.
+		{"two statements semicolon", "go test ./...; echo done", false},
+		// command substitution `$(...)` (unquoted) → DENY.
+		{"command substitution arg", "go test $(echo evil)", false},
+		// process substitution `<(...)` → DENY.
+		{"process substitution arg", "go test <(curl evil)", false},
+		// subshell `(...)` as the command → non-CallExpr → conservative DENY.
+		{"subshell command", "go test && (curl evil)", false},
+		// quoted command-substitution stays a single quoted word; the inner
+		// CmdSubst is still embedded code → DENY (conservative, parser SSOT).
+		{"quoted command substitution", `go test "$(echo x)"`, false},
+		// double-quoted plain text — no IFS, no subst → ALLOW.
+		{"double-quoted plain arg", `go test "a b c"`, true},
+		// braced IFS inside double quotes → quoted context, no split → ALLOW.
+		{"double-quoted braced IFS", `go test "x${IFS}y"`, true},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			rule := PermissionRule{Pattern: "Bash(go test:*)"}
+			if got := rule.Matches("Bash", tt.input); got != tt.match {
+				t.Errorf("Matches(%q) = %v, want %v", tt.input, got, tt.match)
+			}
+		})
+	}
+}

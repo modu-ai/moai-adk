@@ -108,3 +108,85 @@ func TestEnsureUpdate_AcceptsCanonicalHTTPSUpdateURL(t *testing.T) {
 		t.Error("EnsureUpdate must construct an UpdateChecker for an allowed source")
 	}
 }
+
+// TestEnsureUpdate_LocalSourceAcceptsRealDir 은 AC-SEC5-009 의 정상 통과 경계다.
+// MOAI_UPDATE_SOURCE=local + 실제 로컬 디렉터리 경로(MOAI_RELEASES_DIR)는 거부되지
+// 않고 local checker 가 정상 구성되어야 한다(REQ-SEC5-009 over-deny 회귀 방지).
+func TestEnsureUpdate_LocalSourceAcceptsRealDir(t *testing.T) {
+	t.Setenv(config.EnvUpdateSource, "local")
+	t.Setenv(config.EnvReleasesDir, t.TempDir())
+
+	d := &Dependencies{}
+	err := d.EnsureUpdate()
+	if err != nil {
+		t.Fatalf("EnsureUpdate(local, real dir) must succeed, got: %v", err)
+	}
+	if d.UpdateChecker == nil {
+		t.Error("EnsureUpdate must construct a local UpdateChecker for a real releases dir")
+	}
+}
+
+// TestValidateUpdateURL 은 validateUpdateURL 의 scheme/host allowlist 결정을 직접
+// 고정한다(REQ-SEC5-007/008). 단위 수준 verification.
+func TestValidateUpdateURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		raw     string
+		wantErr bool
+	}{
+		{"canonical https api.github.com", "https://api.github.com/repos/x/releases", false},
+		{"https latest endpoint", "https://api.github.com/repos/modu-ai/moai-adk/releases/latest", false},
+		{"http scheme rejected", "http://api.github.com/x", true},
+		{"file scheme rejected", "file:///etc/passwd", true},
+		{"ftp scheme rejected", "ftp://api.github.com/x", true},
+		{"disallowed host rejected", "https://evil.example/x", true},
+		{"github.com root host rejected", "https://github.com/x", true},
+		{"empty string rejected (no https scheme)", "", true},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := validateUpdateURL(tt.raw)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateUpdateURL(%q) err=%v, wantErr=%v", tt.raw, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// TestIsLocalPath 은 isLocalPath 의 로컬-경로 vs URL 판정을 직접 고정한다
+// (REQ-SEC5-009). Windows drive letter / file scheme 경계 포함.
+func TestIsLocalPath(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		s    string
+		want bool
+	}{
+		{"empty is local", "", true},
+		{"absolute unix path", "/home/x/releases", true},
+		{"relative path", "./releases", true},
+		{"bare name", "releases", true},
+		{"windows drive letter", `C:\Users\x\releases`, true},
+		{"macos temp path", "/var/folders/abc/releases", true},
+		{"https url is not local", "https://evil.example/r", false},
+		{"http url is not local", "http://evil/r", false},
+		{"file url is not local", "file:///etc/x", false},
+		{"ftp url is not local", "ftp://x/r", false},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := isLocalPath(tt.s); got != tt.want {
+				t.Errorf("isLocalPath(%q) = %v, want %v", tt.s, got, tt.want)
+			}
+		})
+	}
+}

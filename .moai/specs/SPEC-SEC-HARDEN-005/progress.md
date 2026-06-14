@@ -34,10 +34,10 @@
 
 | Milestone | 설명 | 상태 | commit SHA |
 |-----------|------|------|------------|
-| M1 | mvdan.cc/sh dep + §F.1 ${IFS} RED + legit baseline 고정 | pending | — |
-| M2 | §F.1 GREEN — hasIFSWordSplit 헬퍼 + Matches 배선 | pending | — |
-| M3 | §F.2 RED+GREEN — update env-trust allowlist | pending | — |
-| M4 | §F.3 OPTIONAL godoc + 전체 검증 batch | pending | — |
+| M1 | mvdan.cc/sh dep + §F.1 ${IFS} RED + legit baseline 고정 | done | 9648c7721 |
+| M2 | §F.1 GREEN — hasIFSWordSplit 헬퍼 + Matches 배선 | done | bf5e2ee75 |
+| M3 | §F.2 RED+GREEN — update env-trust allowlist | done | 8914af483 |
+| M4 | §F.3 OPTIONAL godoc + 전체 검증 batch | done | (M-final, 본 progress.md update 포함 commit) |
 
 ## §D — Phase 0.5 SKIP Rationale (placeholder)
 
@@ -55,10 +55,56 @@
 - plan_commit_sha: 328ff95e3
 
 ### §E.2 Run-phase Evidence
-- _(manager-develop append — REQ-ARR-002)_
+
+> manager-develop append (REQ-ARR-002). cycle_type=tdd (RED-GREEN-REFACTOR), Mode 5 (sequential sub-agent). L1 worktree(`worktree-agent-a5ef445596698bdf0`) 작업, 통합·push는 orchestrator(B9 예외a).
+
+**AC PASS/FAIL Matrix (13 gating AC + 1 OPTIONAL)**
+
+| AC | 유형 | Status | Verification Command | Actual Output |
+|----|------|--------|----------------------|---------------|
+| AC-SEC5-001 | 재현 | PASS | `go test -run 'TestMatches_IFSWordSplit_Reproduction$' ./internal/permission/` | `ok` (픽스 후 `${IFS}curl${IFS}evil`→false; 픽스 전 동일 테스트 FAIL 입증) |
+| AC-SEC5-002 | 재현 | PASS | `go test -run 'TestMatches_IFSVariants$' ./internal/permission/` | `ok` (`${IFS}`/`$IFS/`/다중삽입 전부 false) |
+| AC-SEC5-003 | 회귀 | PASS | `go test -run 'TestMatches_SeparatorVariants$' ./internal/permission/` | `ok` (separator DENY 스위트 green 유지) |
+| AC-SEC5-004 | 회귀 | PASS | `go test -run 'TestMatches_PrefixChainBypass_Reproduction$' ./internal/permission/` | `ok` (SEC-HARDEN-001 M1 chain bypass DENY 유지) |
+| AC-SEC5-005 | 회귀 | PASS | `go test -run 'TestMatches_IFSLegitNotRejected$' ./internal/permission/` | `ok` (9-sample legit set ALLOW 유지, `TestX$` trailing-`$` 포함) |
+| AC-SEC5-006 | fail-closed | PASS | `go test -run 'TestMatches_MalformedShellFailClosed$' ./internal/permission/` | `ok` (malformed shell→false/DENY) |
+| AC-SEC5-007 | 의존성 | PASS | `grep -E '^[[:space:]]*mvdan\.cc/sh/v3 ' go.mod` + `grep -c blacklist internal/permission/stack.go` | `mvdan.cc/sh/v3 v3.13.1` (1 match, direct require) + blacklist count `0` |
+| AC-SEC5-008 | 재현 | PASS | `go test -run 'TestEnsureUpdate_RejectsNonHTTPSUpdateURL$' ./internal/cli/` | `ok` (non-https→fail-closed; 픽스 전 FAIL) |
+| AC-SEC5-009 | 재현 | PASS | `go test -run 'TestEnsureUpdate_RejectsDisallowedHost$' ./internal/cli/` | `ok` (allowlist 외 host→fail-closed) |
+| AC-SEC5-010 | 재현 | PASS | `go test -run 'TestEnsureUpdate_RejectsURLShapedReleasesDir$' ./internal/cli/` | `ok` (URL-shaped releases dir→fail-closed) |
+| AC-SEC5-011 | 회귀 | PASS | `go test -run 'TestEnsureUpdate_DefaultPathNoRegression$' ./internal/cli/` | `ok` (env 미설정→api.github.com checker 정상 구성) |
+| AC-SEC5-012 | 범위 | PASS | (1) `grep -nE '"https"' internal/cli/deps.go` (2) `grep -c 'EnvUpdateSource\|EnvUpdateURL\|EnvReleasesDir' internal/cli/deps.go` | (1) `allowedUpdateScheme = "https"` (deps.go:49) (2) `5` (3종 env만, 확장 없음) |
+| AC-SEC5-013 | NFR | PASS | 4-command batch (build linux+win / full test / C-HRA-008 grep / lint) | linux=0, win=0, full test ok(all pkg), C-HRA-008 grep 0 매치, lint 0 issues |
+| OPT-SEC5-001 | OPTIONAL | DONE (비게이트) | `grep -c 'TOCTOU\|check-vs-use' internal/cli/update.go internal/hook/file_changed.go` | update.go=4, file_changed.go=2 (godoc-only, 코드 동작 변경 0) |
+
+**Cross-platform build (E2)**: `go build ./...` exit 0 + `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (mvdan.cc/sh/v3/syntax는 pure-Go, NFR-SEC5-002).
+
+**Coverage no-regression (E3, NFR-SEC5-003)**: `internal/permission` 88.0%→**89.5%** (개선), `internal/cli` 71.8% (baseline 동등). 신규 함수 전부 커버(hasIFSWordSplit/isTrailingDollarLiteral/commandHasUnquotedIFSOrSubst/wordPartsHaveUnquotedIFSOrSubst + validateUpdateURL/isLocalPath).
+
+**C-HRA-008 (E4)**: `grep -rn 'AskUserQuestion\|mcp__askuser' internal/permission/stack.go internal/cli/deps.go | grep -v '_test.go' | grep -v "^[^:]*:[0-9]*:[ \t]*//"` → 0 매치.
+
+**Lint (E5)**: `golangci-lint run --timeout=2m ./internal/permission/... ./internal/cli/...` → 0 issues (NEW 0).
+
+**Dependency (E7)**: `mvdan.cc/sh/v3 v3.13.1` 직접 require, `go mod tidy` clean, `go mod graph | grep mvdan` 최소(`go-quicktest/qt`만 transitive). `syntax` subpackage만 import(interp/expand 미사용).
+
+**PRESERVE 불변 확인**: `hasUnquotedShellSeparator` 본체 + 모든 separator/redirect/unterminated-quote DENY 거동 불변(SEC-HARDEN-001 M1 + 002 M4 스위트 green). `restoreTargetContained`/`parentChainContained`/`runMXScan` 코드 동작 불변(godoc note만).
+
+**Existing test 정정 (in-scope, 거동 변경 mandated by REQ-SEC5-007/008)**: `TestEnsureUpdate_CustomURL`(misc_coverage_test.go)가 취약 동작(`api.example.com` 임의 host 통과)을 encode → canonical `api.github.com`으로 정정. off-allowlist host 거부는 신규 `TestEnsureUpdate_RejectsDisallowedHost`가 커버.
 
 ### §E.3 Run-phase Audit-Ready Signal
-- _(manager-develop append)_
+- run_complete_at: 2026-06-14
+- run_commit_sha: (M-final commit — 본 progress.md update 포함; M1 9648c7721 / M2 bf5e2ee75 / M3 8914af483 / M4 본 commit)
+- run_status: implemented (13/13 AC PASS + OPTIONAL DONE)
+- ac_pass_count: 13
+- ac_fail_count: 0
+- preserve_list_post_run_count: 3 (hasUnquotedShellSeparator 거동 + restoreTargetContained/parentChainContained/runMXScan 코드 동작 — 전부 불변)
+- l44_pre_commit_fetch: orchestrator 책임 (L1 worktree 통합·push 시 pre-spawn fetch)
+- l44_post_push_fetch: orchestrator 책임
+- new_warnings_or_lints_introduced: 0
+- cross_platform_build.linux: exit 0
+- cross_platform_build.windows: exit 0
+- total_run_phase_files: 7 (stack.go, stack_ifs_sec_harden_test.go, deps.go, deps_env_trust_test.go, misc_coverage_test.go, update.go, file_changed.go) + go.mod/go.sum + progress.md
+- m1_to_mN_commit_strategy: M1(dep+RED) → M2(§F.1 GREEN) → M3(§F.2 RED+GREEN) → M4(OPTIONAL godoc + full verification + evidence). M별 분리 commit, L1 worktree 작업 후 orchestrator 통합·push.
 
 ### §E.4 Sync-phase Audit-Ready Signal
 - _(manager-docs append — REQ-ARR-003)_
