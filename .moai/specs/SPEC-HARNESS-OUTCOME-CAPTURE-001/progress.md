@@ -196,7 +196,7 @@ This enabler (observer OUTCOME capture) is the FIRST sub-item of P2. Downstream 
 ### Commit metadata
 
 ```
-mx_commit_sha: (to be recorded after `git commit`)
+mx_commit_sha: a823b2c57
 mx_complete_at: 2026-06-14T00:00:00Z
 mx_status: completed
 ```
