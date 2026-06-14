@@ -60,6 +60,17 @@
 - full_test_suite: `go test ./...` — 0 FAIL (E6 pre-push 검증; SEC-HARDEN-002 L_push_before_full_test_regression 준수)
 - F2 root normalization 정정: EvalSymlinks resolve-recheck 비교 base(root)도 EvalSymlinks 정규화 — macOS /var→/private/var false escape로 AllowsInProjectPath/SideEffectsCompleted 1차 RED 발생 → 정규화 추가로 GREEN (M1 F1 watch-item-2 동일 정규화 요구가 F2에도 적용됨)
 
+### E.3 Sync-phase Audit-Ready Signal
+
+- sync_complete_at: 2026-06-14
+- sync_authored_by: manager-docs
+- sync_status: complete
+- status_transition: in-progress → implemented
+- ac_count: 10 (acceptance.md SSOT)
+- changelog_section: Security
+- sync_commit_sha: (to-backfill by orchestrator)
+- files_in_commit: CHANGELOG.md, spec.md (frontmatter), progress.md (this section)
+
 ### E.5 Mx-phase Audit-Ready Signal
 
 (Mx-phase에서 기록)
