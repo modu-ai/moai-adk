@@ -2,7 +2,7 @@
 id: SPEC-SEC-HARDEN-005
 title: "SEC-HARDEN §F residual containment — ${IFS} shell-aware word-split + update env-trust allowlist"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-06-14
 updated: 2026-06-15
 author: manager-spec
