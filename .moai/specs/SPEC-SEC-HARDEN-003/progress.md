@@ -133,7 +133,7 @@ canary_compliance_check:
 
 ```yaml
 mx_complete_at: 2026-06-14T08:30:00Z
-mx_commit_sha: <backfill-post-commit>
+mx_commit_sha: 83a1dda72
 mx_status: audit-ready
 sync_auditor_verdict: "PASS-WITH-DEBT (Func 92 / Sec 80 MUST-PASS / Craft 90 / Consist 95)"
 deferred_findings_count: 2  # F1 symlink-parent-dir write, F2 symlink-in-root read → SEC-HARDEN-004 후보
