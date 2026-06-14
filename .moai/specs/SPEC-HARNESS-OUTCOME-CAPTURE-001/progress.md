@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-OUTCOME-CAPTURE-001
 title: "Progress — Harness Apply outcome capture"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-06-14
 updated: 2026-06-14
 author: manager-spec
@@ -135,3 +135,40 @@ Phase5 analysis (clustering / canary-effectiveness — out of scope). The captur
 write of an already-decided outcome; it does NOT alter any Apply decision, does NOT "improve" the
 harness, and does NOT "prevent" a regression. Non-interference is proven with the observer ACTIVE
 (AC-OC-006), not merely against the bare P1 Applier.
+
+## §E.3 Sync-phase Audit-Ready Signal
+
+Sync-phase documentation (CHANGELOG.md + README assessment + frontmatter transitions + this section) completed by manager-docs.
+
+### Deliverables summary
+
+| Artifact | Change | Status |
+|----------|--------|--------|
+| CHANGELOG.md | Added `SPEC-HARNESS-OUTCOME-CAPTURE-001` entry (350+ words) under `## [Unreleased]` → `### Added` with honest framing (capture+persist enabler, Δ≈0, downstream Phase5 consumers, 12/12 AC PASS, 87.8% coverage, lineage.go 0-diff, C-HRA-008 clean, plan-auditor PASS 0.91) | ✅ DONE |
+| README.md | Assessment: NO change required (internal feature, no user-facing surface) | ✅ DONE |
+| spec.md frontmatter | status: `in-progress` → `implemented` | ✅ DONE |
+| plan.md frontmatter | status: `in-progress` → `implemented` | ✅ DONE |
+| acceptance.md frontmatter | status: `in-progress` → `implemented` | ✅ DONE |
+| progress.md frontmatter | status: `in-progress` → `implemented` | ✅ DONE |
+
+### B12 CHANGELOG discipline self-tests (pre-commit)
+
+| Test | Command | Expected | Actual | Result |
+|------|---------|----------|--------|--------|
+| Pre-emission duplicate check | `grep -c 'SPEC-HARNESS-OUTCOME-CAPTURE-001' CHANGELOG.md` | Count ≥ 1 (exactly 1 for first entry) | 1 | ✅ PASS |
+| AC count match | AC rows in acceptance.md (`grep -cE '^\| \*\*AC-OC-' acceptance.md`) should equal CHANGELOG narrative | 12 ACs in narrative text | 12 | ✅ PASS |
+| File path verification | `ls` for CHANGELOG.md + 4 SPEC files | All exist | All exist | ✅ PASS |
+
+### Sync commit metadata (pending)
+
+```
+Subject: docs(SPEC-HARNESS-OUTCOME-CAPTURE-001): sync-phase artifacts
+Scope: CHANGELOG.md, spec.md, plan.md, acceptance.md, progress.md (frontmatter status transitions + this section)
+Trailers:
+  Authored-By-Agent: manager-docs
+  🗿 MoAI <email@mo.ai.kr>
+```
+
+sync_commit_sha: (to be recorded after `git commit`)
+sync_complete_at: 2026-06-14T00:00:00Z
+sync_status: ready

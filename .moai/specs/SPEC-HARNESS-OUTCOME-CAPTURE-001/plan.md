@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-OUTCOME-CAPTURE-001
 title: "Implementation Plan — Harness Apply outcome capture"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-06-14
 updated: 2026-06-14
 author: manager-spec
