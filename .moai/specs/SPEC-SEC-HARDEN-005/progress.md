@@ -116,7 +116,15 @@
 - m1_to_mN_commit_strategy: M1(dep+RED) → M2(§F.1 GREEN) → M3(§F.2 RED+GREEN) → M4(OPTIONAL godoc + full verification + evidence). M별 분리 commit, L1 worktree 작업 후 orchestrator 통합·push.
 
 ### §E.4 Sync-phase Audit-Ready Signal
-- _(manager-docs append — REQ-ARR-003)_
+- sync_complete_at: 2026-06-15
+- sync_commit_sha: (본 progress.md update 포함 commit — orchestrator backfill)
+- sync_status: implemented
+- frontmatter_transition: in-progress → implemented (spec.md)
+- changelog_updated: true (### Security 섹션 1 항목)
+- readme_updated: false (내부 권한/cli 봉쇄 — 사용자-facing 표면 변경 없음, README 갱신 불필요)
+- docs_site_updated: false (docs-site는 사용자 가이드 — 내부 permission/cli 보안 봉쇄는 무관)
+- sync_scope_files: 3 (CHANGELOG.md, spec.md frontmatter, progress.md §E.4)
+- preserve_unrelated_uncommitted: 6 M files (settings-management workstream) + 7 untracked — NOT absorbed (explicit-path discipline)
 
 ### §E.5 Mx-phase Audit-Ready Signal
 - _(manager-docs OR orchestrator append)_
