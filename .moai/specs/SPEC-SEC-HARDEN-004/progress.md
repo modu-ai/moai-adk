@@ -29,7 +29,36 @@
 
 ### E.2 Run-phase Evidence
 
-(manager-develop가 run-phase에서 기록 — 본 섹션은 plan-phase에서 비워둠)
+- run_complete_at: 2026-06-14
+- run_authored_by: manager-develop
+- run_status: PASS (10/10 AC)
+- cycle_type: tdd (reproduction-first)
+- baseline_sha (AC-008 diff scope): 9c3a736c4089775af85f8c4fec337781365b279c
+- M1 commit: restoreTargetContained parent-chain symlink containment (F1) — status draft → in-progress
+- M2 commit: runMXScan symlink-in-root scan-target containment (F2)
+- total_run_phase_files: 4 (internal/cli/update.go, internal/cli/update_fileops_test.go, internal/hook/file_changed.go, internal/hook/file_changed_test.go) + spec.md frontmatter (status transition)
+- m1_to_mN_commit_strategy: M1 → M2 separate commits, push after M3 final verify (Hybrid Trunk main 직진)
+
+#### AC PASS/FAIL Matrix
+
+| AC | Severity | Status | Verification | Actual |
+|----|----------|--------|--------------|--------|
+| AC-SEC4-001 | MUST-PASS | PASS | `go test -run TestRestoreMoaiConfig_RejectsSymlinkedParentDir$ ./internal/cli/ -v` | === RUN + --- PASS (modern_walk + legacy_walk), outside/evil.yaml 미생성 |
+| AC-SEC4-002 | MUST-PASS | PASS | `grep -nE 'restoreTargetContained\(configDir, targetPath\)' update.go` | 2 매치 (L1993 모던 + L2085 레거시); 공유 헬퍼 1곳 수정으로 양 walk 동시 봉쇄 |
+| AC-SEC4-003 | regression | PASS | `go test -run 'TestRestoreMoaiConfig_LegacyBackup\|...3WayMerge\|...SkipsNonYAML' ./internal/cli/` | ok — leaf 가드 + 복원 동작 회귀 없음 |
+| AC-SEC4-004 | MUST-PASS | PASS | `go test -run TestRunMXScan_RejectsSymlinkInRootEscapingTarget$ ./internal/hook/ -v` | === RUN + --- PASS, secret MX-tag 사이드카 미기록 |
+| AC-SEC4-005 | MUST-PASS | PASS | `go test -run 'TestFileChanged_AsyncReturn_Under100ms\|TestFileChanged_SideEffectsCompleted' ./internal/hook/` | ok — 빈 payload + async 계약 회귀 없음 |
+| AC-SEC4-006 | regression | PASS | `go test -run 'TestRunMXScan_RejectsUncontainedFilePath\|...SidecarCWD\|...AllowsInProjectPath' ./internal/hook/` | ok — lexical/re-root 가드 회귀 없음 |
+| AC-SEC4-007 | MUST-PASS | PASS | `grep -rnE 'internal/cli/specid' internal/hook/` | 0 매치 (specid import 없음) |
+| AC-SEC4-008 | MUST-PASS | PASS | `git diff --name-only 9c3a736c4 -- 'internal/**/*.go' \| grep -vE '_test'` | 정확히 2 (update.go + file_changed.go), 신규 source 0 |
+| AC-SEC4-009 | MUST-PASS | PASS | `GOOS=windows GOARCH=amd64 go build ./internal/cli/... ./internal/hook/...` | exit 0 |
+| AC-SEC4-010 | regression | PASS | `go test -cover ./internal/cli/ ./internal/hook/` | cli 71.7% (== baseline), hook 81.5% (== baseline) — 회귀 없음 |
+
+- cross_platform_build: go build ./... exit 0 + windows scoped build exit 0
+- new_warnings_or_lints_introduced: 0 (golangci-lint full = 0 issues)
+- c_hra_008_grep (2-file scoped per plan-audit D2): 0 매치
+- full_test_suite: `go test ./...` — 0 FAIL (E6 pre-push 검증; SEC-HARDEN-002 L_push_before_full_test_regression 준수)
+- F2 root normalization 정정: EvalSymlinks resolve-recheck 비교 base(root)도 EvalSymlinks 정규화 — macOS /var→/private/var false escape로 AllowsInProjectPath/SideEffectsCompleted 1차 RED 발생 → 정규화 추가로 GREEN (M1 F1 watch-item-2 동일 정규화 요구가 F2에도 적용됨)
 
 ### E.5 Mx-phase Audit-Ready Signal
 
