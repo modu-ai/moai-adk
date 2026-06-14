@@ -634,11 +634,105 @@ func TestRestoreMoaiConfig_RejectsSymlinkedParentDir(t *testing.T) {
 	})
 }
 
+// TestRestoreMoaiConfig_RejectsDeepNonexistentUnderSymlinkedParent —
+// AC-SEC4-001 deep variant (SEC-HARDEN-004 fast-follow, sync-auditor SHOULD-FIX).
+//
+// 결함(fix 전): configDir/sections/linkdir → outside가 사전 존재하고, 백업이
+//   sections/linkdir/sub/evil.yaml relPath를 산출하면(sub는 아직 미존재),
+//   parentChainContained가 filepath.Dir(target)=.../linkdir/sub를 EvalSymlinks하다
+//   os.IsNotExist를 만나 blanket-allow(return true)한다. 그러나 한 단계 얕은
+//   component linkdir 자체가 outside를 가리키는 symlink이므로, 이어지는
+//   os.MkdirAll(filepath.Dir(target))가 linkdir를 통과해 outside/sub를 만들고
+//   os.WriteFile가 outside/sub/evil.yaml로 탈출한다(CWE-22, §B.1 CLOSED 위반).
+//
+// fix 후: deepest-existing-ancestor walk가 가장 깊은 *존재* 조상(=linkdir)을
+//   EvalSymlinks로 해소→outside→configDir 미봉쇄→reject → outside 파일 미생성.
+func TestRestoreMoaiConfig_RejectsDeepNonexistentUnderSymlinkedParent(t *testing.T) {
+	t.Run("modern_walk", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		configDir := filepath.Join(tmpDir, defs.MoAIDir, defs.ConfigSubdir)
+		sectionsDir := filepath.Join(configDir, "sections")
+		if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		// configDir 밖 outside 디렉터리(쓰기 탈출 목적지).
+		outsideDir := t.TempDir()
+
+		// configDir/sections 안에 outside를 가리키는 symlinked 디렉터리를 사전 생성.
+		// 핵심: linkdir는 *존재*하지만 그 아래 sub는 아직 없다(deep variant).
+		linkParent := filepath.Join(sectionsDir, "linkdir")
+		if err := os.Symlink(outsideDir, linkParent); err != nil {
+			t.Skipf("symlink unsupported on this platform: %v", err)
+		}
+
+		// 백업은 sections/linkdir/sub/evil.yaml relPath를 산출 → leaf의 parent(sub)는 미존재.
+		backupDir := filepath.Join(tmpDir, "backup")
+		backupSectionsDir := filepath.Join(backupDir, "sections", "linkdir", "sub")
+		if err := os.MkdirAll(backupSectionsDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(backupSectionsDir, "evil.yaml"), []byte("evil:\n  injected: true\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := restoreMoaiConfig(tmpDir, backupDir); err != nil {
+			t.Fatalf("restoreMoaiConfig failed: %v", err)
+		}
+
+		// 봉쇄가 동작하면 symlinked ancestor(linkdir)를 따라 outside/sub/evil.yaml이 생성되지 않는다.
+		escaped := filepath.Join(outsideDir, "sub", "evil.yaml")
+		if _, err := os.Stat(escaped); err == nil {
+			t.Errorf("AC-SEC4-001 deep (modern): write escaped configDir via deep-nonexistent path under symlinked ancestor — %s should NOT exist", escaped)
+		}
+	})
+
+	t.Run("legacy_walk", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		configDir := filepath.Join(tmpDir, defs.MoAIDir, defs.ConfigSubdir)
+		if err := os.MkdirAll(configDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		// configDir 밖 outside 디렉터리.
+		outsideDir := t.TempDir()
+
+		// configDir 안에 outside를 가리키는 symlinked 디렉터리를 사전 생성(존재).
+		linkParent := filepath.Join(configDir, "linkdir")
+		if err := os.Symlink(outsideDir, linkParent); err != nil {
+			t.Skipf("symlink unsupported on this platform: %v", err)
+		}
+
+		// 레거시 백업(root level)은 linkdir/sub/evil.yaml relPath를 산출(sub 미존재).
+		backupDir := filepath.Join(tmpDir, "backup-legacy")
+		backupLinkDir := filepath.Join(backupDir, "linkdir", "sub")
+		if err := os.MkdirAll(backupLinkDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(backupLinkDir, "evil.yaml"), []byte("evil:\n  injected: true\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
+			t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
+		}
+
+		escaped := filepath.Join(outsideDir, "sub", "evil.yaml")
+		if _, err := os.Stat(escaped); err == nil {
+			t.Errorf("AC-SEC4-001 deep (legacy): write escaped configDir via deep-nonexistent path under symlinked ancestor — %s should NOT exist", escaped)
+		}
+	})
+}
+
 // TestRestoreTargetContained_ParentChainBranches — AC-SEC4-001 / watch-item 3.
-// restoreTargetContained의 parent-chain 봉쇄 두 분기를 직접 검증한다:
+// restoreTargetContained의 parent-chain 봉쇄 분기를 직접 검증한다:
 //   (a) parent가 symlink로 configDir 밖을 가리키면 → reject (false)
 //   (b) parent가 아직 존재하지 않으면(첫 복원, 아직 symlink 없음) → allow (true)
-// coarse "any error → pass"가 (a)를 RE-OPEN하지 않음을 보장한다.
+//   (c) [deep] 가장 깊은 *존재* 조상이 symlink로 밖을 가리키면 → reject (false)
+//   (d) [deep] 가장 깊은 *존재* 조상이 in-config 실 디렉터리면(하위만 미존재) → allow (true)
+// coarse "any error → pass"가 (a)/(c)를 RE-OPEN하지 않음을 보장한다.
 func TestRestoreTargetContained_ParentChainBranches(t *testing.T) {
 	t.Run("parent_exists_as_symlink_rejects", func(t *testing.T) {
 		tmpDir := t.TempDir()
@@ -680,6 +774,45 @@ func TestRestoreTargetContained_ParentChainBranches(t *testing.T) {
 		target := filepath.Join(realParent, "user.yaml")
 		if !restoreTargetContained(configDir, target) {
 			t.Errorf("watch-item 3: real in-config parent must be allowed (true)")
+		}
+	})
+
+	t.Run("deep_nonexistent_under_symlinked_ancestor_rejects", func(t *testing.T) {
+		// (c) leaf의 직접 parent(sub)는 미존재이나, 한 단계 얕은 *존재* 조상(linkdir)이
+		// symlink로 configDir 밖을 가리킨다. deepest-existing-ancestor walk가 linkdir를
+		// 해소→outside→미봉쇄→reject 해야 한다(os.IsNotExist blanket-allow 회귀 방지).
+		tmpDir := t.TempDir()
+		configDir := filepath.Join(tmpDir, defs.MoAIDir, defs.ConfigSubdir)
+		sectionsDir := filepath.Join(configDir, "sections")
+		if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		outsideDir := t.TempDir()
+		linkParent := filepath.Join(sectionsDir, "linkdir")
+		if err := os.Symlink(outsideDir, linkParent); err != nil {
+			t.Skipf("symlink unsupported on this platform: %v", err)
+		}
+		// linkdir는 존재하지만 sub는 미존재 → filepath.Dir(target)=.../linkdir/sub는 not-exist.
+		target := filepath.Join(configDir, "sections", "linkdir", "sub", "evil.yaml")
+		if restoreTargetContained(configDir, target) {
+			t.Errorf("watch-item 3 (c): deep-nonexistent target under symlinked existing ancestor must be rejected (false)")
+		}
+	})
+
+	t.Run("deep_nonexistent_under_real_ancestor_allows", func(t *testing.T) {
+		// (d) 정상 deep 첫-복원: 가장 깊은 *존재* 조상(sections)이 in-config 실 디렉터리이고
+		// 그 아래 newsub/leaf는 모두 미존재. os.MkdirAll이 실 디렉터리만 새로 만들므로
+		// (따라갈 symlink 없음) allow(true) 해야 한다(과대-거부 방지).
+		tmpDir := t.TempDir()
+		configDir := filepath.Join(tmpDir, defs.MoAIDir, defs.ConfigSubdir)
+		realAncestor := filepath.Join(configDir, "sections")
+		if err := os.MkdirAll(realAncestor, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		// sections는 존재, 그 아래 newsub/deep는 미존재.
+		target := filepath.Join(realAncestor, "newsub", "deep", "fresh.yaml")
+		if !restoreTargetContained(configDir, target) {
+			t.Errorf("watch-item 3 (d): deep-nonexistent target under real in-config ancestor must be allowed (true)")
 		}
 	})
 }

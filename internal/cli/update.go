@@ -2182,17 +2182,37 @@ func restoreTargetContained(configDir, targetPath string) bool {
 // once its symbolic links are resolved, stays inside absConfig. F1 guard for
 // SPEC-SEC-HARDEN-004 (REQ-SEC4-001). Both paths are absolute and cleaned.
 //
-// Strategy (REQ-SEC4-003 + run-phase watch-item 3): the configDir base is itself
-// normalized with EvalSymlinks before the containment compare, so a legitimately
-// symlinked configDir base does NOT yield a false ".." rejection. The parent
-// directory is then resolved with EvalSymlinks:
-//   - resolution succeeds → require the resolved parent to be inside the
-//     normalized configDir (reject on escape; this is the F1 close).
-//   - resolution fails with an os.IsNotExist-class error → the parent does not
-//     exist yet (first restore; no symlink can be in place), so the lexical leaf
-//     guard already applied is sufficient → allow.
-//   - resolution fails with ANY OTHER error → fail-closed (reject); a coarse
-//     "any error → allow" would RE-OPEN the hole.
+// Strategy (REQ-SEC4-003 + run-phase watch-item 3 + SEC-HARDEN-004 deep-variant
+// fast-follow): the configDir base is itself normalized with EvalSymlinks before
+// the containment compare, so a legitimately symlinked configDir base does NOT
+// yield a false ".." rejection.
+//
+// The parent chain is then resolved with a DEEPEST-EXISTING-ANCESTOR walk rather
+// than a single EvalSymlinks(filepath.Dir): walk UP from filepath.Dir(absTarget)
+// until a component that EXISTS is found, then EvalSymlinks that deepest-existing
+// ancestor and require it to stay inside the normalized configDir.
+//
+// Why the walk (and why a single-shot EvalSymlinks(filepath.Dir) was wrong):
+// when the leaf's immediate parent does not exist yet, EvalSymlinks fails with
+// os.IsNotExist — but a symlink CAN still be in place at a SHALLOWER component.
+// For a deep target like configDir/sections/linkdir/sub/evil.yaml where linkdir
+// is an existing symlink to /outside but sub does not exist, the old "not-exist
+// parent → no symlink can be in place → allow" reasoning was false: the restore
+// loop's os.MkdirAll(filepath.Dir(target)) creates /outside/sub THROUGH linkdir
+// and os.WriteFile escapes to /outside/sub/evil.yaml. The walk catches this by
+// resolving linkdir (the deepest existing ancestor) and rejecting its escape.
+//
+// Resolution outcomes:
+//   - deepest-existing-ancestor resolves inside configDir → allow. The
+//     not-yet-existing components below it are created by os.MkdirAll as REAL
+//     dirs (no symlink to follow), so a legit deep first-restore is permitted.
+//   - deepest-existing-ancestor resolves OUTSIDE configDir (an existing ancestor
+//     is a symlink escape) → reject. This is the F1 close, now covering the deep
+//     variant.
+//   - the walk reaches configDir itself (the floor) and configDir is contained →
+//     allow (the entire parent chain is fresh and in-config).
+//   - any EvalSymlinks error other than os.IsNotExist → fail-closed (reject); a
+//     coarse "any error → allow" would RE-OPEN the hole.
 func parentChainContained(absConfig, absTarget string) bool {
 	// Normalize the configDir base. EvalSymlinks requires the path to exist; if
 	// it does not yet exist (or fails for a non-not-exist reason), fall back to
@@ -2207,26 +2227,57 @@ func parentChainContained(absConfig, absTarget string) bool {
 		return false
 	}
 
-	parent := filepath.Dir(absTarget)
-	resolvedParent, err := filepath.EvalSymlinks(parent)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// Parent does not exist yet (first restore) — no symlink in place,
-			// lexical guard suffices. Allow.
+	// Deepest-existing-ancestor walk: start at the leaf's parent and climb until
+	// a component exists (EvalSymlinks succeeds). configDir is the FLOOR — never
+	// inspect an ancestor at or above it. The caller (restoreTargetContained) has
+	// already established lexically that absTarget is inside absConfig, so the
+	// parent chain from absTarget up to absConfig is in-config; only the part of
+	// that chain BELOW configDir can host an attacker-planted symlink escape.
+	// Climbing to-or-above configDir would compare a fresh, not-yet-created
+	// in-config chain against the (possibly non-existent) configDir base and
+	// produce a false ".." rejection — the floor check prevents that.
+	ancestor := filepath.Dir(absTarget)
+	for {
+		// Floor check: if ancestor is no longer strictly below absConfig (it has
+		// reached configDir itself or climbed above it), the chain below configDir
+		// is entirely fresh / in-config — no symlink to follow → allow.
+		floorRel, floorErr := filepath.Rel(absConfig, ancestor)
+		if floorErr != nil {
+			return false
+		}
+		if floorRel == "." || floorRel == ".." || strings.HasPrefix(floorRel, ".."+string(os.PathSeparator)) {
+			// "." → ancestor == configDir; ".."/"../…" → above configDir.
 			return true
 		}
-		// Any other resolution error → fail-closed.
-		return false
-	}
 
-	rel, err := filepath.Rel(normConfig, resolvedParent)
-	if err != nil {
-		return false
+		resolved, err := filepath.EvalSymlinks(ancestor)
+		if err == nil {
+			// Found the deepest existing ancestor strictly below configDir.
+			// Require its resolved form to stay inside the normalized configDir.
+			rel, relErr := filepath.Rel(normConfig, resolved)
+			if relErr != nil {
+				return false
+			}
+			if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+				return false
+			}
+			return true
+		}
+		if !os.IsNotExist(err) {
+			// Any other resolution error → fail-closed.
+			return false
+		}
+
+		// ancestor does not exist yet — climb one level toward configDir.
+		parent := filepath.Dir(ancestor)
+		if parent == ancestor {
+			// Reached the filesystem root without finding an existing ancestor
+			// (filepath.Dir of root returns root). No symlink can be in place on
+			// a fully non-existent chain → allow.
+			return true
+		}
+		ancestor = parent
 	}
-	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-		return false
-	}
-	return true
 }
 
 // mergeYAML3Way performs a 3-way merge of YAML documents.
