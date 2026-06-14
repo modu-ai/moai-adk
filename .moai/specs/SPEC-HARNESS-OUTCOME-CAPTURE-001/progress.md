@@ -68,6 +68,15 @@ plan_status: audit-ready
 
 ---
 
+## §E.1 — Phase 0.95 Mode Selection
+
+(orchestrator-autonomous; recorded for the run-phase `Agent()` spawn per `.claude/rules/moai/workflow/orchestration-mode-selection.md` §D. GATE-2 cleared; Phase 0.5 plan-auditor iter-2 PASS 0.92.)
+
+- **Input parameters**: tier M · scope ~4 files · domain count 1 (`internal/harness` Go only) · file mix 100% Go · concurrency benefit LOW (coding-heavy single-domain) · Agent Teams prereqs N/A.
+- **Mode evaluation**: trivial=no (multi-file semantic) · background=no (writes files) · agent-team=no (<3 domains, coding-heavy) · parallel=no (coding-task parallelism caveat) · **sub-agent=YES** · workflow=no (not ≥30 files / not a single uniform mechanical transform).
+- **Decision**: sub-agent (Mode 5).
+- **Justification**: coding-heavy Go run-phase, single domain, Tier M ~4 files. Per Anthropic's coding-task parallelism caveat ("most coding tasks involve fewer truly parallelizable tasks than research"), sequential sub-agent is the safe default — one `manager-develop` (cycle_type=tdd) executed M1→M4 RED-GREEN-REFACTOR. Mode 6 rejected (not high-volume mechanical). GATE-2 cleared before this decision.
+
 ## §E.2 Run-phase Evidence
 
 Run-phase implemented by manager-develop (cycle_type=tdd, RED-GREEN-REFACTOR). 5 modified/new
