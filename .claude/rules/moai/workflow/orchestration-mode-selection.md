@@ -11,7 +11,7 @@ metadata:
 
 Canonical 6-mode autonomous decision tree for the MoAI orchestrator. Activated at Phase 0.95 (after Phase 0.5 plan-auditor verdict, before Phase 1 implementation). The decision is autonomous (no `AskUserQuestion` round); the chosen mode and the selection rationale are logged to `progress.md § Mode Selection`.
 
-[ZONE:Frozen] [HARD] All Phase 0.95 execution modes are strictly downstream of GATE-2 (the plan→run HUMAN GATE). The orchestrator reaches Phase 0.95 ONLY after GATE-2 user approval has already been obtained. Mode selection — including Mode 6 (workflow) — is never a substitute for GATE-2 and never a path that crosses the plan→run boundary ahead of the human gate. GATE-2 is mandatory and score-independent (a plan-auditor PASS or a high skip-eligible score never auto-bypasses it; skip-eligibility applies only to Phase 0.5 verdict re-execution, not to GATE-2) per the GATE-2 mandatory-restoration policy.
+[ZONE:Frozen] [HARD] All Phase 0.95 execution modes are strictly downstream of Implementation Kickoff Approval (renamed from GATE-2) (the plan→run HUMAN GATE). The orchestrator reaches Phase 0.95 ONLY after Implementation Kickoff Approval user approval has already been obtained. Mode selection — including Mode 6 (workflow) — is never a substitute for Implementation Kickoff Approval and never a path that crosses the plan→run boundary ahead of the human gate. Implementation Kickoff Approval is mandatory and score-independent (a plan-auditor PASS or a high skip-eligible score never auto-bypasses it; skip-eligibility applies only to Phase 0.5 verdict re-execution, not to Implementation Kickoff Approval) per the Implementation Kickoff Approval mandatory-restoration policy.
 
 > Cross-reference: `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification covers the `--mode` flag matrix (autopilot / loop / team / pipeline) which interacts with — but is separate from — the 6-mode catalog below. The run-phase `/goal ac_converge` autonomy wiring point lives in `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy (/goal ac_converge); `.claude/rules/moai/workflow/dynamic-workflows.md` is the source for the Workflow (Mode 6) primitive (16-concurrent / 1000-total cap) and the named-script-API prohibition.
 
@@ -30,7 +30,7 @@ The orchestrator selects exactly one of the following modes per Phase 0.95 invoc
 | 5 | `sub-agent` | 1 sequential sub-agent per milestone | Sequential `Agent(...)` spawns, one milestone at a time | Coding-heavy work (per Anthropic's coding-task parallelism caveat), or any case where the simpler mode suffices |
 | 6 | `workflow` | Up to 16 concurrent workflow agents (1000-total per-run backstop, per `dynamic-workflows.md`) | Orchestrator-launched Workflow fan-out (a script the runtime executes to coordinate agents — NOT a subagent spawning subagents) | Genuinely-parallel, high-volume **mechanical** transformation (≥ ~30 files AND a single uniform transform rule AND no inter-file dependency) — call-site rename, import-path bulk change, signature-stable edits. Coding-heavy / multi-domain / new-code work stays Mode 5 (per Anthropic's coding-task parallelism caveat). |
 
-Mode 5 is the **default fallback** when no other mode's selection criteria are unambiguously met. Mode 6 (`workflow`) is the narrow high-volume-mechanical exception, selectable ONLY after GATE-2 has passed (see §C.3).
+Mode 5 is the **default fallback** when no other mode's selection criteria are unambiguously met. Mode 6 (`workflow`) is the narrow high-volume-mechanical exception, selectable ONLY after Implementation Kickoff Approval has passed (see §C.3).
 
 ---
 
@@ -64,7 +64,7 @@ START (Phase 0.95 Mode Selection)
   │
   ├── Is the task ≥ ~30 files AND mechanical (one uniform transform rule)
   │   AND genuinely parallel — no inter-file dependency
-  │   AND GATE-2 already passed AND all preferences already collected
+  │   AND Implementation Kickoff Approval already passed AND all preferences already collected
   │   AND Workflows available (not disabled, runtime version ≥ v2.1.154)?
   │   ├── YES → Mode 6: WORKFLOW (orchestrator-launched fan-out, scaling NOT nesting)
   │   └── NO  → continue
@@ -130,11 +130,11 @@ Mode 6 (`workflow`) is candidate ONLY when ALL of the following preconditions ho
 
 | Precondition | Why it is required |
 |--------------|---------------------|
-| GATE-2 already passed | Workflow agents cannot prompt the user mid-run (no mid-run user input). Therefore the one decision that MUST involve the user — the plan→run human gate — MUST already be cleared. A Mode 6 launch before GATE-2 passes is prohibited (§E anti-pattern). |
-| All preferences collected | All user preferences (Tier, mode preference, PR strategy, etc.) MUST be drained at GATE-2 before launch, because the asymmetric boundary forbids both Workflow agents and `/goal`-turn agents from prompting the user (agent-common-protocol.md § User Interaction Boundary). |
+| Implementation Kickoff Approval already passed | Workflow agents cannot prompt the user mid-run (no mid-run user input). Therefore the one decision that MUST involve the user — the plan→run human gate — MUST already be cleared. A Mode 6 launch before Implementation Kickoff Approval passes is prohibited (§E anti-pattern). |
+| All preferences collected | All user preferences (Tier, mode preference, PR strategy, etc.) MUST be drained at Implementation Kickoff Approval before launch, because the asymmetric boundary forbids both Workflow agents and `/goal`-turn agents from prompting the user (agent-common-protocol.md § User Interaction Boundary). |
 | Scope ≥ ~30 files, mechanical, genuinely parallel | The Workflow primitive earns its overhead only on genuinely-parallel high-volume mechanical work; coding-heavy / multi-domain work stays Mode 5 (Anthropic's coding-task parallelism caveat). |
 | Workflows available | `CLAUDE_CODE_DISABLE_WORKFLOWS` is not set AND runtime version ≥ v2.1.154; otherwise fall through to Mode 5. |
-| Selection logged | The Mode 6 selection AND a confirmation that GATE-2 already passed AND that all preferences were collected MUST be recorded in `progress.md § Mode Selection` before the Workflow launches (§D). |
+| Selection logged | The Mode 6 selection AND a confirmation that Implementation Kickoff Approval already passed AND that all preferences were collected MUST be recorded in `progress.md § Mode Selection` before the Workflow launches (§D). |
 
 #### Mode 6 is scaling, not nesting
 
@@ -162,7 +162,7 @@ The Mode Selection section MUST include:
 2. **Mode evaluation table** — for each of the 6 modes, a row stating "selected" or "not selected" and a one-line rationale
 3. **Decision** — the chosen mode (one of: `trivial`, `background`, `agent-team`, `parallel`, `sub-agent`, `workflow`) on a single line for grep-friendly verification
 4. **Justification** — a short paragraph (2-5 sentences) explaining why the chosen mode is preferable to alternatives, citing the relevant Anthropic finding(s) when applicable
-5. **Mode 6 confirmation (when `workflow` is selected)** — an explicit line confirming GATE-2 already passed AND all preferences were collected before the Workflow launches (§C.3 logging precondition)
+5. **Mode 6 confirmation (when `workflow` is selected)** — an explicit line confirming Implementation Kickoff Approval already passed AND all preferences were collected before the Workflow launches (§C.3 logging precondition)
 
 ### §D.2 Token requirement (grep verification)
 
@@ -189,12 +189,12 @@ The following patterns violate the orchestration mode selection contract:
 - **Spawning > 5 concurrent agents in Mode 3 or Mode 4** — exceeds Anthropic-recommended 3-5 ceiling and incurs coordination overhead
 - **Selecting Mode 4 (Parallel) for coding-heavy work** — violates Anthropic's coding-task parallelism caveat; Mode 5 (Sub-Agent sequential) is the correct default for coding tasks
 - **Selecting Mode 6 (Workflow) for coding-heavy / multi-domain / new-code work** — violates Anthropic's coding-task parallelism caveat; Mode 6 admits ONLY genuinely-parallel high-volume mechanical work (one uniform transform rule, no inter-file dependency). Coding-heavy work belongs to Mode 5
-- **Launching a Mode 6 Workflow before GATE-2 has passed** — violates the GATE-2 mandatory-restoration policy; the orchestrator MUST NOT launch the Workflow before GATE-2 user approval and MUST return control to the GATE-2 `AskUserQuestion` gate. Mode 6 is strictly downstream of GATE-2
+- **Launching a Mode 6 Workflow before Implementation Kickoff Approval has passed** — violates the Implementation Kickoff Approval mandatory-restoration policy; the orchestrator MUST NOT launch the Workflow before Implementation Kickoff Approval user approval and MUST return control to the Implementation Kickoff Approval `AskUserQuestion` gate. Mode 6 is strictly downstream of Implementation Kickoff Approval
 - **Asserting a typed/named Workflow script API** — a named `agent`-function, `parallel`-function, `pipeline`-function, or `phase`-function signature is NOT documented by Claude Code; describe the conceptual coordinate-agents → script-variable results → final-synthesis model instead (the named-script-API prohibition)
-- **Selecting Mode 6 without recording the GATE-2-passed + preferences-collected confirmation in `progress.md`** — the §C.3 / §D.1 #5 logging precondition makes the autonomy decision auditable; skipping it leaves the Workflow launch unverifiable post-hoc
+- **Selecting Mode 6 without recording the Implementation Kickoff Approval-passed + preferences-collected confirmation in `progress.md`** — the §C.3 / §D.1 #5 logging precondition makes the autonomy decision auditable; skipping it leaves the Workflow launch unverifiable post-hoc
 - **Skipping the progress.md logging step** — fails the canonical mode-logging acceptance criterion; the decision is no longer auditable post-hoc
 - **Re-spawning the same mode for multiple consecutive milestones in Mode 5 without re-evaluating** — acceptable practice for a single SPEC, but when run-phase scope changes mid-flight (e.g., milestone scope-up via blocker report), the orchestrator SHOULD re-run Phase 0.95
-- **Substituting an `AskUserQuestion` round for the autonomous decision** — Phase 0.95 is autonomous by contract; user intervention belongs to Phase 0.5 verdict review (when verdict is FAIL or INCONCLUSIVE) or GATE-2 (plan-to-implement HUMAN GATE), not Phase 0.95
+- **Substituting an `AskUserQuestion` round for the autonomous decision** — Phase 0.95 is autonomous by contract; user intervention belongs to Phase 0.5 verdict review (when verdict is FAIL or INCONCLUSIVE) or Implementation Kickoff Approval (plan-to-implement HUMAN GATE), not Phase 0.95
 
 ---
 
@@ -204,9 +204,9 @@ The following patterns violate the orchestration mode selection contract:
 - `.claude/rules/moai/workflow/spec-workflow.md` § Phase 0.5 Plan Audit Gate — runs before Phase 0.95 and may produce `BYPASSED` / `INCONCLUSIVE` / `FAIL` verdicts that affect Phase 0.95 inputs
 - `.claude/rules/moai/development/manager-develop-prompt-template.md` § Applicability — Tier S/M/L delegation template selection (interacts with Mode 5 sub-agent spawn prompts)
 - `.claude/rules/moai/workflow/archived-agent-rejection.md` — sibling rule documenting the orchestrator's rejection behavior when a paste-ready resume references an archived-agent name (independent of mode selection)
-- `.claude/rules/moai/workflow/dynamic-workflows.md` — the Workflow (Mode 6) primitive: 16-concurrent / 1000-total cap, no-mid-run-user-input semantics, GATE-2-is-unaffected note, and the absence of a documented named-script API
+- `.claude/rules/moai/workflow/dynamic-workflows.md` — the Workflow (Mode 6) primitive: 16-concurrent / 1000-total cap, no-mid-run-user-input semantics, Implementation Kickoff Approval-is-unaffected note, and the absence of a documented named-script API
 - `.claude/rules/moai/workflow/goal-directive.md` — `/goal` autonomous-continuation semantics (the run-phase `ac_converge` condition wiring lives in `run.md` § Run-phase Autonomy (/goal ac_converge))
-- `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy (/goal ac_converge) — co-located GATE-2 ordering reference + `/goal ac_converge` set
+- `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy (/goal ac_converge) — co-located Implementation Kickoff Approval ordering reference + `/goal ac_converge` set
 - The canonical agent catalog design — design-time decision tree from which this rule was derived
 - Anthropic Sub-agents and Agent Teams documentation — verbatim citations grounding the Mode 3 ceiling and Mode 4-vs-Mode-5 coding-task caveat
 - Anthropic Agent Teams documentation — *"Start with 3-5 teammates for most workflows."*

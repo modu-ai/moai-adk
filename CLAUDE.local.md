@@ -699,23 +699,23 @@ See: `.moai/docs/git-workflow-doctrine.md`
 - CLAUDE.md §8 User Interaction Architecture
 - `.claude/skills/moai/SKILL.md` § Red Flags + Verification
 
-### §19.1 GATE-2 Mandatory Restoration (REQ-ATR-015 — SPEC-V3R6-AGENT-TEAM-REBUILD-001)
+### §19.1 구현 착수 승인 (renamed from GATE-2) Mandatory Restoration (REQ-ATR-015 — SPEC-V3R6-AGENT-TEAM-REBUILD-001)
 
-[HARD] **GATE-2 (plan-to-implement HUMAN GATE)는 자율 bypass 대상이 아니다.** Plan-phase 산출물이 audit-ready 상태로 PASS 되었더라도, run-phase 진입 직전 orchestrator는 자율 흐름을 중단하고 사용자에게 명시적 진행 승인을 `AskUserQuestion`으로 받아야 한다. 이는 Anthropic Claude Code의 Ctrl+G plan editor mandate (plan-to-implement 경계에서 사용자 개입 의무)와 정합한다.
+[HARD] **구현 착수 승인 (plan-to-implement HUMAN GATE)는 자율 bypass 대상이 아니다.** Plan-phase 산출물이 audit-ready 상태로 PASS 되었더라도, run-phase 진입 직전 orchestrator는 자율 흐름을 중단하고 사용자에게 명시적 진행 승인을 `AskUserQuestion`으로 받아야 한다. 이는 Anthropic Claude Code의 Ctrl+G plan editor mandate (plan-to-implement 경계에서 사용자 개입 의무)와 정합한다.
 
-**skip-eligible 0.90 autonomous bypass 정책의 적용 범위**: `skip-eligible` (score ≥ 0.90) autonomous bypass는 **Phase 0.5 plan-auditor verdict 재실행에만** 적용된다 — CONST-V3R5-026 + `.claude/rules/moai/workflow/spec-workflow.md` § Plan Audit Gate skip policy 참조. **GATE-2 (plan-to-implement HUMAN GATE)에는 적용되지 않는다**. Phase 0.5 SKIP과 GATE-2 SKIP은 서로 다른 결정 — Phase 0.5는 plan-auditor의 verdict 재실행 여부 (자동화 가능), GATE-2는 사용자가 run-phase 진입을 승인할지 여부 (사용자 결정 필수).
+**skip-eligible 0.90 autonomous bypass 정책의 적용 범위**: `skip-eligible` (score ≥ 0.90) autonomous bypass는 **Phase 0.5 plan-auditor verdict 재실행에만** 적용된다 — CONST-V3R5-026 + `.claude/rules/moai/workflow/spec-workflow.md` § Plan Audit Gate skip policy 참조. **구현 착수 승인 (plan-to-implement HUMAN GATE)에는 적용되지 않는다**. Phase 0.5 SKIP과 구현 착수 승인 SKIP은 서로 다른 결정 — Phase 0.5는 plan-auditor의 verdict 재실행 여부 (자동화 가능), 구현 착수 승인은 사용자가 run-phase 진입을 승인할지 여부 (사용자 결정 필수).
 
-**오케스트레이터 의무 (GATE-2 entry)**:
+**오케스트레이터 의무 (구현 착수 승인 entry)**:
 1. Plan-phase 산출물 + plan-auditor verdict 요약을 사용자에게 prose로 제시
 2. `ToolSearch(query: "select:AskUserQuestion")` preload
 3. `AskUserQuestion` 으로 "run-phase 진입 / 추가 검토 / 중단" 3-option 제시 (첫 옵션 "(권장)" 라벨)
 4. 사용자 응답 수신 후 run-phase 진입 (또는 중단)
 
-**위반 anti-pattern**: Phase 0.5 verdict가 PASS skip-eligible (≥ 0.90)이라는 이유만으로 사용자 승인 없이 `/moai run`을 자율 시작하는 행위. GATE-2는 plan-auditor 점수와 무관한 별도 사용자 의지 확인 절차다.
+**위반 anti-pattern**: Phase 0.5 verdict가 PASS skip-eligible (≥ 0.90)이라는 이유만으로 사용자 승인 없이 `/moai run`을 자율 시작하는 행위. 구현 착수 승인은 plan-auditor 점수와 무관한 별도 사용자 의지 확인 절차다.
 
 상위 SPEC 참조:
-- `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/spec.md` REQ-ATR-015 (GATE-2 restoration)
-- `.claude/rules/moai/workflow/orchestration-mode-selection.md` §E (GATE-2 vs Phase 0.5 vs Phase 0.95 boundary)
+- `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/spec.md` REQ-ATR-015 (구현 착수 승인 restoration)
+- `.claude/rules/moai/workflow/orchestration-mode-selection.md` §E (구현 착수 승인 vs Phase 0.5 vs Phase 0.95 boundary)
 
 ---
 

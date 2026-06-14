@@ -122,7 +122,7 @@ MoAI-ADK 在工作流层面将上述最佳实践制度化。如果说 Claude Cod
 | 提供验证手段（测试·自检） | TRUST 5 质量门禁与 SPEC 验收标准强制执行合格／不合格 |
 | 用子智能体委派隔离作业 | manager-spec / manager-develop / manager-docs 等分阶段专属子智能体 |
 | 以全新上下文进行对抗式审查 | plan-auditor（计划审计）+ evaluator-active（4 维质量评估） |
-| 难以撤销的作业需确认 | GATE-2（计划→实现的用户批准门禁）与基于 Tier 的 PR 路由 |
+| 难以撤销的作业需确认 | Implementation Kickoff Approval（计划→实现的用户批准门禁）与基于 Tier 的 PR 路由 |
 
 详情请参阅下面链接的文档。MoAI-ADK 特有的 SPEC 撰写规则与质量标准在相应文档中定义，因此这里只总结契合点。
 

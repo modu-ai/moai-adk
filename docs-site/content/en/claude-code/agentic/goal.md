@@ -115,7 +115,7 @@ The key differences are as follows.
 ## Operating Notes for MoAI-ADK
 
 - `/goal` only removes the per-turn STOP prompt; it does not exempt the orchestrator's obligation to ask actual user-facing decisions via `AskUserQuestion`.
-- Even with an active goal, you cannot automatically bypass GATE-2 (the user-approval gate) for the transition from the plan phase to the run phase. If entering the run phase requires user approval, you must still ask first.
+- Even with an active goal, you cannot automatically bypass Implementation Kickoff Approval (the user-approval gate) for the transition from the plan phase to the run phase. If entering the run phase requires user approval, you must still ask first.
 - A goal only decides whether to continue; it does not pre-approve hard-to-reverse actions such as force-pushing or dropping a table.
 
 ## Requirements

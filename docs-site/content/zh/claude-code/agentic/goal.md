@@ -115,7 +115,7 @@ claude -p "/goal CHANGELOG.md has an entry for every PR merged this week"
 ## MoAI-ADK 运行注意事项
 
 - `/goal` 只是移除每一轮的 STOP 提示，并不免除编排器通过 `AskUserQuestion` 向用户征询实际决策的义务。
-- 即使存在激活的目标，也无法自动绕过从 plan 阶段进入 run 阶段的 GATE-2（用户批准门）。如果进入 run 阶段需要用户批准，仍须先行征询。
+- 即使存在激活的目标，也无法自动绕过从 plan 阶段进入 run 阶段的 Implementation Kickoff Approval（用户批准门）。如果进入 run 阶段需要用户批准，仍须先行征询。
 - 目标只决定是否继续推进，并不会预先批准强制推送或删除数据表之类难以撤销的操作。
 
 ## 要求

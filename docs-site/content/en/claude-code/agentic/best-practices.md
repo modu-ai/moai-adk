@@ -122,7 +122,7 @@ MoAI-ADK institutionalizes the best practices above at the workflow level. Where
 | Provide verification tools (tests, self-checks) | TRUST 5 quality gates and SPEC acceptance criteria enforce pass/fail |
 | Delegate isolated work to subagents | Per-stage dedicated subagents like manager-spec / manager-develop / manager-docs |
 | Adversarial review with fresh context | plan-auditor (plan audit) + evaluator-active (4-dimension quality evaluation) |
-| Confirm hard-to-reverse work | GATE-2 (the plan-to-implement user approval gate) and Tier-based PR routing |
+| Confirm hard-to-reverse work | Implementation Kickoff Approval (the plan-to-implement user approval gate) and Tier-based PR routing |
 
 For details, see the linked documents below. MoAI-ADK's own SPEC authoring rules and quality criteria are defined in those documents, so here we only summarize the points of alignment.
 
