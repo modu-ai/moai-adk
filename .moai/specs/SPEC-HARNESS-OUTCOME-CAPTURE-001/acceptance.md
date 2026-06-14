@@ -104,12 +104,16 @@ echo "AC-OC-005 PASS"
 
 ### AC-OC-006 — Apply contract unchanged + readers tolerate the new event (REQ-OC-006, REQ-OC-009, C10)
 
-- **Given** the outcome capture wired into `applyWithRegressionGate`,
-- **When** the P1 regression-gate keep/rollback tests run AND a usage-log containing `apply_outcome` events is fed to the existing reader (`AggregatePatterns` / retention),
-- **Then** the P1 keep/rollback contract tests stay GREEN (decision/error/baseline-store/lineage unchanged) AND the existing reader processes the log without error (unknown event type + new omitempty fields tolerated).
+- **Given** the outcome capture wired into `applyWithRegressionGate` with an outcome observer **INJECTED** (the observer-active seam — non-interference must be proven with capture ACTIVE, not only against the bare P1 Applier),
+- **When** the observer-active keep/rollback tests (`TestApply_Outcome_Kept` / `TestApply_Outcome_RolledBack`, which inject an observer) run AND the P1 regression-gate keep/rollback contract tests run (regression backstop) AND a usage-log containing `apply_outcome` events is fed to the existing reader (`AggregatePatterns` / retention),
+- **Then** the observer-active tests assert the returned decision/error MATCH the P1 keep/rollback contract (non-interference proven with capture active) AND the P1 contract tests stay GREEN (decision/error/baseline-store/lineage unchanged) AND the existing reader processes the log without error (unknown event type + new omitempty fields tolerated).
 
 ```bash
-# P1 contract preserved (the outcome emit must not break keep/rollback)
+# Non-interference proven with the observer ACTIVE (load-bearing — not just the green-by-default P1 tests)
+OUT0=$(go test -run 'TestApply_Outcome_Kept$|TestApply_Outcome_RolledBack$' -v ./internal/harness/ 2>&1)
+echo "$OUT0" | grep -q -- '--- PASS' || { echo "FAIL: observer-active non-interference no PASS"; exit 1; }
+echo "$OUT0" | grep -q 'no tests to run' && { echo "FAIL: observer-active non-interference vacuous"; exit 1; }
+# P1 contract preserved (regression backstop — the outcome emit must not break keep/rollback)
 OUT1=$(go test -run 'TestApply_Regression_NonRegressing_Keeps$|TestApply_Regression_Blocks_RollsBack$' -v ./internal/harness/ 2>&1)
 echo "$OUT1" | grep -q -- '--- PASS' || { echo "FAIL: P1 contract regressed"; exit 1; }
 echo "$OUT1" | grep -q 'no tests to run' && { echo "FAIL: P1 contract vacuous"; exit 1; }

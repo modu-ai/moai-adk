@@ -118,7 +118,7 @@ The roadmap framing referred to "lineage_id" as a reuse target. Ground-truth (ve
 
 **REQ-OC-006** (Ubiquitous): The outcome capture shall NOT alter the regression gate's keep/rollback decision, the returned error (`nil` | `*ApplyRegressionError`), the baseline-store update, or the M6 lineage write. The capture is an additive observer write composed from values the gate already computed.
 
-**REQ-OC-007** (Event-detected): When the `RecordOutcome` observer write fails (file I/O error), the Apply path shall NOT change its keep/rollback outcome — the recording error shall be surfaced/wrapped consistently with the existing additive-write error semantics (the lineage-write error pattern), never converting a kept Apply into a failed one nor a rolled-back Apply into a kept one.
+**REQ-OC-007** (Event-driven): When the `RecordOutcome` observer write fails (file I/O error), the Apply path shall NOT change its keep/rollback outcome — the recording error shall be surfaced/wrapped consistently with the existing additive-write error semantics (the lineage-write error pattern), never converting a kept Apply into a failed one nor a rolled-back Apply into a kept one.
 
 **REQ-OC-008** (Optional / capability gate): Where the regression gate is inactive (the `NewApplier()` default with no measurer/baseline store — the straight-line markdown modify path), the Apply path may still record an outcome with verdict `kept` and a zero/empty delta, OR omit the outcome record; the chosen behavior shall be documented in plan.md DD-4 and bound by an acceptance criterion. (The capture mechanism MUST be correct in the gate-active path regardless; the gate-inactive path behavior is a documented design choice, not left ambiguous.)
 
