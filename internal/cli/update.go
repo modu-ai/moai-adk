@@ -2138,6 +2138,15 @@ func isSymlinkEntry(path string) bool {
 // target that already exists as a symlink (which os.WriteFile would follow out
 // of configDir). Cross-platform via filepath (NFR-SEC3-005); fail-closed on any
 // resolution error (NFR-SEC3-004). configDir itself counts as contained.
+//
+// SPEC-SEC-HARDEN-004 F1 (REQ-SEC4-001/002/003): additionally resolves the
+// targetPath PARENT chain with filepath.EvalSymlinks and re-checks that the
+// resolved parent stays inside configDir. The leaf guards above only inspect the
+// leaf, so a pre-existing symlinked intermediate directory
+// (configDir/linkdir → /outside) would let os.MkdirAll/os.WriteFile escape
+// configDir via the symlinked parent (CWE-22). This guard is shared by both the
+// modern walk (restoreMoaiConfig) and the legacy walk (restoreMoaiConfigLegacy),
+// so the single addition closes both paths at once.
 func restoreTargetContained(configDir, targetPath string) bool {
 	if configDir == "" || targetPath == "" {
 		return false
@@ -2160,6 +2169,61 @@ func restoreTargetContained(configDir, targetPath string) bool {
 	// Reject an existing symlink at the target path: os.WriteFile follows it and
 	// can escape configDir even when the literal path looks contained.
 	if isSymlinkEntry(absTarget) {
+		return false
+	}
+	// SPEC-SEC-HARDEN-004 F1: parent-chain symlink containment.
+	if !parentChainContained(absConfig, absTarget) {
+		return false
+	}
+	return true
+}
+
+// parentChainContained reports whether the parent directory chain of absTarget,
+// once its symbolic links are resolved, stays inside absConfig. F1 guard for
+// SPEC-SEC-HARDEN-004 (REQ-SEC4-001). Both paths are absolute and cleaned.
+//
+// Strategy (REQ-SEC4-003 + run-phase watch-item 3): the configDir base is itself
+// normalized with EvalSymlinks before the containment compare, so a legitimately
+// symlinked configDir base does NOT yield a false ".." rejection. The parent
+// directory is then resolved with EvalSymlinks:
+//   - resolution succeeds → require the resolved parent to be inside the
+//     normalized configDir (reject on escape; this is the F1 close).
+//   - resolution fails with an os.IsNotExist-class error → the parent does not
+//     exist yet (first restore; no symlink can be in place), so the lexical leaf
+//     guard already applied is sufficient → allow.
+//   - resolution fails with ANY OTHER error → fail-closed (reject); a coarse
+//     "any error → allow" would RE-OPEN the hole.
+func parentChainContained(absConfig, absTarget string) bool {
+	// Normalize the configDir base. EvalSymlinks requires the path to exist; if
+	// it does not yet exist (or fails for a non-not-exist reason), fall back to
+	// the unresolved absConfig — the leaf/lexical guards still apply, and a
+	// not-yet-existing configDir cannot host a symlinked parent.
+	normConfig := absConfig
+	if resolved, err := filepath.EvalSymlinks(absConfig); err == nil {
+		normConfig = resolved
+	} else if !os.IsNotExist(err) {
+		// configDir present but unresolvable for a non-not-exist reason →
+		// fail-closed.
+		return false
+	}
+
+	parent := filepath.Dir(absTarget)
+	resolvedParent, err := filepath.EvalSymlinks(parent)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Parent does not exist yet (first restore) — no symlink in place,
+			// lexical guard suffices. Allow.
+			return true
+		}
+		// Any other resolution error → fail-closed.
+		return false
+	}
+
+	rel, err := filepath.Rel(normConfig, resolvedParent)
+	if err != nil {
+		return false
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
 		return false
 	}
 	return true
