@@ -43,7 +43,7 @@
 | **AC-SEC5-004** | 회귀 | REQ-SEC5-005 | `go test -run 'TestMatches_PrefixChainBypass_Reproduction$' -v ./internal/permission/` | `--- PASS` (SEC-HARDEN-001 M1 chain bypass DENY 유지) |
 | **AC-SEC5-005** | 회귀 | REQ-SEC5-006 | `go test -run 'TestMatches_IFSLegitNotRejected$' -v ./internal/permission/` | `--- PASS` (`$HOME`/`${HOME}`/`TestX$`/quoted `${IFS}` 등 9-sample legit set ALLOW 유지). **경계 케이스 `TestX$`(trailing-`$`)는 REQ-SEC5-004(parse-fail→DENY)와 REQ-SEC5-006(legit→ALLOW)의 충돌점 — 반드시 ALLOW여야 한다. 테스트 케이스에 `go test TestX$`를 명시 포함하여 over-deny 회귀를 포착한다(파서가 trailing-`$`를 parse-error로 보면 fail-closed가 DENY로 만들어 REQ-006 위반 → design D.1.4 trailing-`$` special-case ALLOW 결정으로 봉쇄).** |
 | **AC-SEC5-006** | fail-closed | REQ-SEC5-004 | `go test -run 'TestMatches_MalformedShellFailClosed$' -v ./internal/permission/` | `--- PASS` (파싱 불가 입력 → false/DENY, allow 아님) |
-| **AC-SEC5-007** | 의존성 | REQ-SEC5-003 | `grep -E '^\smvdan\.cc/sh/v3 ' go.mod` | 1 match (직접 require 존재) — 그리고 `grep -c 'blacklist' internal/permission/stack.go` → 0 ($-blacklist 부재) |
+| **AC-SEC5-007** | 의존성 | REQ-SEC5-003 | `grep -E '^[[:space:]]*mvdan\.cc/sh/v3 ' go.mod` | 1 match (직접 require 존재) — 그리고 `grep -c 'blacklist' internal/permission/stack.go` → 0 ($-blacklist 부재) |
 
 ### §F.2 — update env-trust allowlist (REQ-SEC5-007..011)
 

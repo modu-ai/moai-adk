@@ -44,6 +44,15 @@
 - plan-auditor verdict: PASS-WITH-DEBT 0.86 (Clarity 0.90 / Completeness 0.92 / Testability 0.74 / Traceability 1.00; MP-1..MP-4 PASS). 보고서: `.moai/reports/plan-audit/SPEC-SEC-HARDEN-005-2026-06-14.md`. 결함 D1 BLOCKING(C-HRA-008 grep idiom 불능) + D2 SHOULD-FIX(TestX$ trailing-`$` 경계 미고정) + D3/D4 MINOR 전부 orchestrator-direct 정정 (D1 canonical 필터 0 반환 + spec-lint clean 독립 검증).
 - SKIP 적용 여부: **NOT skip-eligible (0.86 < 0.90)** → run-phase `/moai run` Phase 0.5 plan-auditor 재실행 필수.
 - GATE-2 (plan→run HUMAN GATE): score 무관 — 사용자 명시 승인 필수(skip-eligible 0.90 autonomous bypass는 Phase 0.5 verdict 재실행에만 적용, GATE-2에는 미적용).
+- **GATE-2 결과 (2026-06-14, run-phase 진입 세션)**: 사용자 명시 승인 → run-phase 진입 (AskUserQuestion "run-phase 진입 (권장)").
+- **Phase 0.5 재감사 결과 (run-phase /moai run)**: plan-auditor 재실행 → **PASS 0.92** (0.86→0.92; Clarity 0.92 / Completeness 0.92 / Testability 0.88 / Traceability 1.00; MP-1..MP-4 PASS). D1/D2/D3/D4 정정 전부 landed 독립 확인 (canonical 필터 0 live-verified, 코드 앵커 전부 존재, 11 REQ↔13 AC 양방향 완전). R1 MINOR(비차단): AC-SEC5-007 grep `^\s`(GNU-specific)→`^[[:space:]]*` orchestrator-direct polish 적용. 0.92 ≥ 0.90 → 향후 Phase 0.5 skip-eligible.
+
+## §D.2 — Phase 0.95 Mode Selection
+
+- **Input parameters**: tier M / scope ~5-8 files (stack.go, deps.go, +tests, go.mod/go.sum, optional const + godoc) / domain count 2 (internal/permission, internal/cli) / file language mix 100% Go / concurrency benefit LOW (coding-heavy, dependent milestones M1→M2/M3) / Agent Teams prereqs NOT all met (standard harness).
+- **Mode evaluation**: Mode 1 trivial=not selected (multi-file semantic) / Mode 2 background=not selected (writes code) / Mode 3 agent-team=not selected (2 domains <3, prereqs unmet) / Mode 4 parallel=not selected (coding-heavy per Anthropic caveat) / Mode 6 workflow=not selected (~8 files, coding-heavy, not mechanical-uniform) / **Mode 5 sub-agent=SELECTED**.
+- **Decision: sub-agent (Mode 5)**
+- **Justification**: Coding-heavy Go work with dependent milestones (M1 mvdan.cc/sh dep → M2 §F.1 GREEN; M1 dep → M3 §F.2). Anthropic coding-task parallelism caveat → sequential sub-agent is the safe default. Single manager-develop(cycle_type=tdd) spawn executed M1-M4 sequentially. GATE-2 already approved (above); Mode selection is strictly downstream. 실제 실행: manager-develop이 runtime 자율 L1 worktree(`worktree-agent-a5ef445596698bdf0`)에서 작업, orchestrator가 FF 통합·push (B9 예외a).
 
 ## §E — Audit-Ready Signals (4-phase, append-only)
 
