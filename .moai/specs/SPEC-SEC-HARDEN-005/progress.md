@@ -128,7 +128,7 @@
 
 ### §E.5 Mx-phase Audit-Ready Signal
 - mx_complete_at: 2026-06-15
-- mx_commit_sha: (orchestrator backfill — close commit 다음 backfill commit, 2-commit canonical)
+- mx_commit_sha: b69f72dad
 - mx_status: completed
 - frontmatter_transition: implemented → completed (spec.md)
 - sync_auditor_verdict: PASS-WITH-DEBT 0.90 (harmonic mean; Functionality 1.00 / Security 1.00 MUST-PASS 통과 / Craft 0.75 / Consistency 1.00). report: `.moai/reports/sync-audit/SPEC-SEC-HARDEN-005-2026-06-15.md`
