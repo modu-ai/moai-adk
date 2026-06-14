@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"mvdan.cc/sh/v3/syntax"
+
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
@@ -133,7 +135,15 @@ func (r *PermissionRule) Matches(tool, input string) bool {
 		// an unquoted shell command separator, the chained command rides in on an
 		// allowed prefix — so report no match and let the input fall through to the
 		// normal ask/deny path instead of being silently allowed.
-		return !hasUnquotedShellSeparator(input[len(prefix):])
+		//
+		// SECURITY (SPEC-SEC-HARDEN-005 §F.1): the lexical scan above cannot see a
+		// `${IFS}`/`$IFS` word-split bypass, because those parameter expansions hold
+		// no literal separator character yet split the command at shell-expansion
+		// time. A shell-aware parser layer (hasIFSWordSplit) closes that hole. Both
+		// guards must pass — lexical first (cheap fast path), parser second — for the
+		// prefix rule to match. Either guard reporting danger denies (fall-through).
+		rem := input[len(prefix):]
+		return !hasUnquotedShellSeparator(rem) && !hasIFSWordSplit(input)
 	}
 
 	// For patterns like "/tmp/*", check if input starts with "/tmp/"
@@ -205,6 +215,124 @@ func hasUnquotedShellSeparator(s string) bool {
 	// D1 containment: an unterminated quote at end-of-string is ambiguous —
 	// any separator inside it was silently swallowed, so deny by reporting true.
 	return inSingle || inDouble
+}
+
+// hasIFSWordSplit reports whether the candidate command string introduces a
+// `${IFS}`/`$IFS`-driven word-split, a multi-statement program, or a command
+// chain that the lexical hasUnquotedShellSeparator scan cannot see. It is the
+// shell-aware companion guard for the ":*" prefix branch (SPEC-SEC-HARDEN-005
+// §F.1) and uses the mvdan.cc/sh/v3/syntax parser rather than a "$"-blacklist
+// heuristic (a blacklist would false-deny legitimate `$HOME`/`${HOME}`/`TestX$`).
+//
+// The full input is parsed (not just the prefix remainder) so the parser sees a
+// syntactically complete program — the allow-listed prefix is the head of the
+// first command's words. Reporting true means "word-split risk present → deny";
+// the caller denies (prefix non-match) when either guard reports true.
+//
+// SECURITY: this guard fails CLOSED. A genuine parse error (malformed shell:
+// unterminated quote, unbalanced "${"/"$(") reports true so the input falls
+// through to the ask/deny path rather than being silently allowed. The single
+// carve-out is a lone trailing literal "$" (e.g. `go test TestX$`), which is a
+// legitimate Go test-name regex anchor and MUST stay ALLOW (REQ-SEC5-006 takes
+// precedence over the generic fail-closed default; see SPEC-SEC-HARDEN-005
+// design D.1.4). On the mvdan parser this trailing "$" parses cleanly, but the
+// special-case is retained as a defensive guard against parser-version drift.
+//
+// The parser instance is allocated per call: syntax.Parser is stateful and not
+// concurrent-safe, while Matches is a permission-resolver hot path that may be
+// invoked concurrently, so a shared package-level parser would race.
+//
+// @MX:NOTE: [AUTO] SPEC-SEC-HARDEN-005 §F.1 — shell-aware ${IFS} word-split guard; fail-closed on parse error except lone trailing literal "$" (Go regex anchor) which stays ALLOW per REQ-SEC5-006.
+func hasIFSWordSplit(input string) bool {
+	parser := syntax.NewParser(syntax.Variant(syntax.LangBash))
+	file, err := parser.Parse(strings.NewReader(input), "")
+	if err != nil {
+		// REQ-SEC5-004 fail-closed: malformed shell → deny. Exception: a lone
+		// trailing literal "$" is a Go test-name regex anchor, not a word-split
+		// vector, and MUST stay ALLOW (REQ-SEC5-006 precedence).
+		return !isTrailingDollarLiteral(input)
+	}
+
+	// A program that parses into anything other than exactly one statement is a
+	// multi-command sequence (`a; b`, newline-separated, background `&`) — deny.
+	if len(file.Stmts) != 1 {
+		return true
+	}
+
+	// A binary command (`&&` / `||` / `|` / `|&`) is a command chain — deny.
+	// The lexical scan already catches most of these; the parser is the precise
+	// SSOT and also covers forms the lexer might miss.
+	if _, isBinary := file.Stmts[0].Cmd.(*syntax.BinaryCmd); isBinary {
+		return true
+	}
+
+	// Walk the single statement's command looking for, in an UNQUOTED context:
+	//   - a parameter expansion referencing IFS (`${IFS}` / `$IFS`) → word-split
+	//   - a command substitution (`$(...)`) or process substitution → command embed
+	// Quoted occurrences (`"${IFS}"`, `'${IFS}'`) do not word-split and stay ALLOW.
+	return commandHasUnquotedIFSOrSubst(file.Stmts[0].Cmd)
+}
+
+// isTrailingDollarLiteral reports whether s ends with a literal "$" that is a
+// trailing regex anchor rather than the start of a parameter expansion — e.g.
+// `go test TestX$` or `go test -run 'TestX$'`. Used only on the parser-error
+// fail-closed path to preserve the REQ-SEC5-006 ALLOW boundary for the lone
+// trailing "$" case (SPEC-SEC-HARDEN-005 design D.1.4).
+func isTrailingDollarLiteral(s string) bool {
+	trimmed := strings.TrimRight(s, " \t")
+	if !strings.HasSuffix(trimmed, "$") {
+		return false
+	}
+	// A "$(" or "${" elsewhere indicates a genuine (and here unterminated)
+	// expansion, not a benign trailing anchor — keep the fail-closed deny.
+	if strings.Contains(trimmed, "$(") || strings.Contains(trimmed, "${") {
+		return false
+	}
+	return true
+}
+
+// commandHasUnquotedIFSOrSubst walks a single command's word parts and reports
+// whether any UNQUOTED context contains a parameter expansion referencing IFS or
+// a command/process substitution. Quoted contexts (single/double quotes) are not
+// word-split sites for IFS and are skipped for the IFS rule.
+func commandHasUnquotedIFSOrSubst(cmd syntax.Command) bool {
+	call, ok := cmd.(*syntax.CallExpr)
+	if !ok {
+		// Non-CallExpr single commands (subshell, block, if, etc.) are not plain
+		// allow-listed prefix commands — treat conservatively as deny.
+		return true
+	}
+	for _, word := range call.Args {
+		if wordPartsHaveUnquotedIFSOrSubst(word.Parts, false) {
+			return true
+		}
+	}
+	return false
+}
+
+// wordPartsHaveUnquotedIFSOrSubst recursively inspects word parts. The quoted
+// flag tracks whether the current parts are nested inside a single- or
+// double-quoted segment (in which an IFS parameter expansion does not split).
+func wordPartsHaveUnquotedIFSOrSubst(parts []syntax.WordPart, quoted bool) bool {
+	for _, part := range parts {
+		switch p := part.(type) {
+		case *syntax.ParamExp:
+			if !quoted && p.Param != nil && p.Param.Value == "IFS" {
+				return true
+			}
+		case *syntax.CmdSubst:
+			// `$(...)` / `` `...` `` — command embedded regardless of quoting.
+			return true
+		case *syntax.ProcSubst:
+			// `<(...)` / `>(...)` — process substitution.
+			return true
+		case *syntax.DblQuoted:
+			if wordPartsHaveUnquotedIFSOrSubst(p.Parts, true) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // String returns a string representation of the rule for debugging.
@@ -335,7 +463,7 @@ func IsWriteOperation(tool, input string) bool {
 		// Refined prefix-based matcher (prevents partial-substring false positives).
 		prefixPatterns := []string{
 			"rm ", "rmdir ",
-			"mv ",        // mv (duplicate entry removed).
+			"mv ", // mv (duplicate entry removed).
 			"cp ", "copy ",
 			"mkdir ", "mktemp ",
 			"touch ",

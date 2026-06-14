@@ -46,7 +46,10 @@ func TestMatches_IFSVariants(t *testing.T) {
 		input string
 	}{
 		{"braced IFS prefix", "go test ${IFS}curl${IFS}evil"},
-		{"short IFS form", "go test $IFS" + "curl"},
+		// `$IFS` short form must be delimited by a non-identifier char to reference
+		// IFS; `$IFScurl` would name a *different* variable `IFScurl` (greedy ident
+		// match) and is intentionally NOT an IFS split, so we use `$IFS/...`.
+		{"short IFS form", "go test $IFS/curl"},
 		{"short IFS with separator arg", "go test $IFS-rf$IFS/"},
 		{"single braced IFS mid-arg", "go test x${IFS}y"},
 		{"trailing braced IFS then command", "go test ./...${IFS}curl${IFS}evil"},
