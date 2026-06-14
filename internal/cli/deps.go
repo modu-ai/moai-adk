@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,6 +33,25 @@ const (
 	githubReleasesURL = "https://api.github.com/repos/modu-ai/moai-adk/releases"
 	// githubLatestReleaseURL is the GitHub API endpoint for the latest moai-adk release.
 	githubLatestReleaseURL = githubReleasesURL + "/latest"
+)
+
+// SPEC-SEC-HARDEN-005 §F.2 — update source env-trust allowlist constants.
+//
+// An attacker who can set MOAI_UPDATE_URL / MOAI_RELEASES_DIR (a poisoned shell
+// profile, a compromised CI environment) could otherwise point the binary's
+// self-update at an adversarial host and download a malicious binary (RCE path).
+// The allowlist below constrains an env-provided remote update URL to the
+// canonical GitHub releases host; a disallowed scheme or host is rejected
+// fail-closed before any update checker is constructed.
+const (
+	// allowedUpdateScheme is the only URL scheme accepted for a remote update
+	// source (REQ-SEC5-008). Plain http / file / ftp are rejected.
+	allowedUpdateScheme = "https"
+	// allowedUpdateHost is the canonical GitHub releases host — the host of
+	// githubReleasesURL (REQ-SEC5-010). The default (no env override) update path
+	// uses the compiled githubReleasesURL/githubLatestReleaseURL constants, which
+	// share this host, so it is unaffected by the env-trust validation.
+	allowedUpdateHost = "api.github.com"
 )
 
 // Dependencies holds all domain-level services used by CLI commands.
@@ -266,9 +286,16 @@ func (d *Dependencies) EnsureUpdate() error {
 	}
 
 	if updateSource == "local" {
-		// Local file-based updates
+		// Local file-based updates.
+		releasesDir := os.Getenv(config.EnvReleasesDir)
+		// SECURITY (SPEC-SEC-HARDEN-005 §F.2): a local releases dir must be a real
+		// filesystem path, not a URL. A URL-shaped value is rejected fail-closed
+		// (REQ-SEC5-009) before any local checker is constructed.
+		if !isLocalPath(releasesDir) {
+			return fmt.Errorf("%s must be a local filesystem path, not a URL: %q", config.EnvReleasesDir, releasesDir)
+		}
 		localConfig := update.LocalConfig{
-			ReleasesDir:    os.Getenv(config.EnvReleasesDir),
+			ReleasesDir:    releasesDir,
 			CurrentVersion: currentVersion,
 		}
 		d.UpdateChecker = update.NewLocalChecker(localConfig)
@@ -283,6 +310,16 @@ func (d *Dependencies) EnsureUpdate() error {
 
 	// Remote GitHub updates
 	apiURL := os.Getenv(config.EnvUpdateURL)
+	if apiURL != "" {
+		// SECURITY (SPEC-SEC-HARDEN-005 §F.2): an env-provided update URL is
+		// untrusted. Validate its scheme and host against the allowlist before
+		// constructing a remote checker; a disallowed source is rejected
+		// fail-closed (REQ-SEC5-007/008) so no checker points at it. The default
+		// path below (apiURL == "") uses trusted compiled constants and is exempt.
+		if err := validateUpdateURL(apiURL); err != nil {
+			return fmt.Errorf("%s rejected: %w", config.EnvUpdateURL, err)
+		}
+	}
 	if apiURL == "" {
 		// Check if this is a development or pre-release version
 		isDevVersion := currentVersion == "dev" ||
@@ -306,6 +343,46 @@ func (d *Dependencies) EnsureUpdate() error {
 	d.UpdateOrch = update.NewOrchestrator(currentVersion, d.UpdateChecker, updater, rollback)
 
 	return nil
+}
+
+// validateUpdateURL validates an env-provided remote update URL (MOAI_UPDATE_URL)
+// against the scheme + host allowlist (SPEC-SEC-HARDEN-005 §F.2). It fails closed:
+// a parse failure, a non-https scheme, or a host outside the allowlist all return
+// a non-nil error so EnsureUpdate rejects the source without constructing a
+// checker pointed at it (REQ-SEC5-007/008).
+func validateUpdateURL(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("not a valid URL: %w", err)
+	}
+	if u.Scheme != allowedUpdateScheme {
+		return fmt.Errorf("scheme %q not allowed (must be %q)", u.Scheme, allowedUpdateScheme)
+	}
+	if u.Hostname() != allowedUpdateHost {
+		return fmt.Errorf("host %q not on allowlist (allowed: %q)", u.Hostname(), allowedUpdateHost)
+	}
+	return nil
+}
+
+// isLocalPath reports whether s is a local filesystem path rather than a URL.
+// It is used to reject a URL-shaped MOAI_RELEASES_DIR (SPEC-SEC-HARDEN-005 §F.2,
+// REQ-SEC5-009): a value that parses to a URL with a scheme (http/https/file/...)
+// is treated as a URL and rejected. An empty string and a plain path
+// (no scheme) are accepted as local. Conservative: any parsed scheme rejects.
+func isLocalPath(s string) bool {
+	if s == "" {
+		return true
+	}
+	u, err := url.Parse(s)
+	if err != nil {
+		// Unparseable as URL → treat as a (possibly unusual) local path; the
+		// downstream local checker validates existence.
+		return true
+	}
+	// A non-empty scheme (https, http, file, ftp, ...) marks a URL, not a local
+	// path. Windows drive letters ("C:\\...") parse with a single-letter scheme;
+	// allow those through by requiring a multi-character scheme to reject.
+	return len(u.Scheme) < 2
 }
 
 // buildAutoUpdateFunc creates the callback that performs binary self-update.

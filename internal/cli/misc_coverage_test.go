@@ -1034,7 +1034,11 @@ func TestEnsureUpdate_LocalSource(t *testing.T) {
 
 func TestEnsureUpdate_CustomURL(t *testing.T) {
 	t.Setenv("MOAI_UPDATE_SOURCE", "")
-	t.Setenv("MOAI_UPDATE_URL", "https://api.example.com/releases")
+	// SPEC-SEC-HARDEN-005 §F.2: a custom MOAI_UPDATE_URL must pass the scheme+host
+	// allowlist (https + api.github.com). The previous fixture used an arbitrary
+	// host (api.example.com) which is now correctly rejected; rejection of an
+	// off-allowlist host is covered by TestEnsureUpdate_RejectsDisallowedHost.
+	t.Setenv("MOAI_UPDATE_URL", "https://api.github.com/repos/modu-ai/moai-adk/releases")
 
 	d := &Dependencies{}
 	err := d.EnsureUpdate()
