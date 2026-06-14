@@ -2,7 +2,7 @@
 id: SPEC-SEC-HARDEN-004
 title: "SEC-HARDEN §F.3 fast-follow — symlink parent-chain write escape + root symlink read amplification containment"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-06-14
 updated: 2026-06-14
 author: GOOS행님

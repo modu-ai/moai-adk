@@ -68,12 +68,31 @@
 - status_transition: in-progress → implemented
 - ac_count: 10 (acceptance.md SSOT)
 - changelog_section: Security
-- sync_commit_sha: (to-backfill by orchestrator)
+- sync_commit_sha: ddce7fcf41e5a4b2941c4ebad7cc20fcb4b90de5
 - files_in_commit: CHANGELOG.md, spec.md (frontmatter), progress.md (this section)
+
+### E.4 Sync-Audit + Post-Audit Fix Record
+
+- sync_auditor_verdict: PASS-WITH-DEBT (조화평균 ≈ 0.78; Func 75 / Sec 70 MUST-PASS 통과 / Craft 78 / Consist 92)
+- sync_auditor_central_finding: F2 (CWE-61) genuinely CLOSED; F1 (CWE-22) leaf-form CLOSED이나 deep-nonexistent-under-symlinked-parent same-class escape 잔존 → §B.1 class-level CLOSED 과장 (SHOULD-FIX HIGH confidence, end-to-end 재현)
+- user_decision: 즉시 수정 (이 SPEC 내; SEC-HARDEN-001 D1 선례 — SPEC self-claim 위반=즉시수정, L_sync_auditor_scope_finding_vs_false_pass)
+- fix_commit: 44f1f83f5 — fix(SPEC-SEC-HARDEN-004): F1 deep-nonexistent-under-symlinked-parent 봉쇄 (deepest-existing-ancestor walk)
+- fix_approach: parentChainContained os.IsNotExist 분기 → deepest-existing-ancestor walk (configDir floor 포함). deep-under-symlink reject + legit deep first-restore allow. godoc L2191-2214 정정.
+- fix_verification (orchestrator 독립): TestRestoreMoaiConfig_RejectsDeepNonexistentUnderSymlinkedParent (modern+legacy) RED→GREEN + TestRestoreTargetContained_ParentChainBranches 5 branch 전부 PASS + 회귀 0 (leaf/F2/SEC-HARDEN-003 leaf/legacy NewFile floor) + full go test ./... 0 FAIL + cross-platform build exit 0
+- closure_status: F1 §B.1 class CLOSED 이제 정확 (leaf + deep 양쪽 봉쇄). 잔여 deferred: TOCTOU(offline 수용) / §F.1 ${IFS} / §F.2 env-trust (별도 SPEC)
+- sync_audit_report: .moai/reports/sync-audit/SPEC-SEC-HARDEN-004-2026-06-14.md (gitignored local)
 
 ### E.5 Mx-phase Audit-Ready Signal
 
-(Mx-phase에서 기록)
+- mx_complete_at: 2026-06-14
+- mx_authored_by: orchestrator-direct
+- status_transition: implemented → completed
+- era: V3R6 (H-4: §E.3 sync_commit_sha + §E.5 mx_commit_sha 양쪽 present)
+- four_phase_close: plan(d954f3fb0) → run(M1 6fd63365b / M2 675ce46e8 / M3 ea9b42085) → sync(ddce7fcf4) → post-audit-fix(44f1f83f5) → Mx(this commit)
+- sync_commit_sha: ddce7fcf41e5a4b2941c4ebad7cc20fcb4b90de5
+- mx_commit_sha: (to-backfill by orchestrator)
+- final_ac: 10/10 + deep-variant reproduction (post-audit) PASS
+- sync_auditor: PASS-WITH-DEBT → SHOULD-FIX 해소 후 clean
 
 ### E.1.1 Plan Audit Record (Phase 2.3)
 
