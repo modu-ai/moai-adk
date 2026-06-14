@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-OUTCOME-CAPTURE-001
 title: "Progress — Harness Apply outcome capture"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-06-14
 updated: 2026-06-14
 author: manager-spec
@@ -169,6 +169,36 @@ Trailers:
   🗿 MoAI <email@mo.ai.kr>
 ```
 
-sync_commit_sha: (to be recorded after `git commit`)
+sync_commit_sha: 7c75af251
 sync_complete_at: 2026-06-14T00:00:00Z
 sync_status: ready
+
+---
+
+## §E.4 Mx-phase Audit-Ready Signal
+
+4-phase lifecycle close (plan → run → sync → Mx). Status `implemented` → `completed`.
+
+### sync-auditor verdict (Phase 5 quality gate)
+
+- **PASS-WITH-DEBT 0.86** (Tier M threshold 0.80). 4 must-pass all PASS (Functionality 1.00 / Security 1.00 / Craft 0.75 / Consistency 0.75). Report: `.moai/reports/sync-audit/SPEC-HARNESS-OUTCOME-CAPTURE-001-2026-06-14.md`.
+- **F1 (MINOR, resolved)**: CHANGELOG coverage label corrected 87.8% → 87.3% package (orch-direct).
+- **F3/F4 (informational)**: OQ2 omitempty zero-drop documented (EC-1); `WithOutcomeObserver` setter 0% cov negligible.
+
+### Known debt carried to P2 activation SPEC
+
+- **F2 (SHOULD-FIX, deferred per user decision + sync-auditor recommendation)**: in `applier.go` `applyWithRegressionGate` rolled-back branch, an `outcomeObserver` write failure returns a wrapped `error` before the typed `*ApplyRegressionError`, which would mask the typed error from `errors.As`. **Currently unreachable** — `WithOutcomeObserver` AND `NewApplierWithRegressionGate` both have zero production callers (dormant scaffold). The kept-path equivalent IS tested (`TestApply_Outcome_RecordError_DoesNotFlipVerdict`); the rolled-back path is not. **P2 activation requirement**: when wiring the observer into production, return `*ApplyRegressionError` as the primary error (via `errors.Join` / typed-wrap) in the rolled-back + failing-observer case, and add `TestApply_Outcome_RolledBack_RecordError`.
+
+### Roadmap position (Self-Harness P2/Phase5)
+
+This enabler (observer OUTCOME capture) is the FIRST sub-item of P2. Downstream consumers remain separate future SPECs: D1 failure-signature clustering (C5) · D3 held-out split validation (C7) · D4 scorer-loop wiring. D2 (LLM proposer / K-candidate, C6) permanently DROPPED.
+
+### Commit metadata
+
+```
+mx_commit_sha: (to be recorded after `git commit`)
+mx_complete_at: 2026-06-14T00:00:00Z
+mx_status: completed
+```
+
+4-phase close lineage: plan `d59969efe` + `2cb5e3297` / run `7bd2300cd` + `f7fb94082` / sync `7c75af251` + `f3923bec6` / Mx (this commit + backfill)

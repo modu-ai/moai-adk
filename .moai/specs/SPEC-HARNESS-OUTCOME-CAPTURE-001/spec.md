@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-OUTCOME-CAPTURE-001
 title: "Harness Apply outcome capture (observer OUTCOME enabler)"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-06-14
 updated: 2026-06-14
 author: manager-spec
