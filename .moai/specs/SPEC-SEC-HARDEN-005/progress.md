@@ -52,7 +52,7 @@
 ### §E.1 Plan-phase Audit-Ready Signal
 - plan_complete_at: 2026-06-14
 - plan_status: audit-ready
-- plan_commit_sha: _(backfill — plan-phase commit 직후 기록)_
+- plan_commit_sha: 328ff95e3
 
 ### §E.2 Run-phase Evidence
 - _(manager-develop append — REQ-ARR-002)_
