@@ -75,12 +75,14 @@ func TestEventTypeValues(t *testing.T) {
 	}
 }
 
-// TestLogSchemaVersion verifies the constant value is "v1".
+// TestLogSchemaVersion verifies the constant value is "v2".
+// Bumped "v1" → "v2" by SPEC-HARNESS-OUTCOME-CAPTURE-001 (REQ-OC-010) to mark the
+// additive apply_outcome event type + its omitempty Event fields.
 func TestLogSchemaVersion(t *testing.T) {
 	t.Parallel()
 
-	if LogSchemaVersion != "v1" {
-		t.Errorf("LogSchemaVersion: want %q got %q", "v1", LogSchemaVersion)
+	if LogSchemaVersion != "v2" {
+		t.Errorf("LogSchemaVersion: want %q got %q", "v2", LogSchemaVersion)
 	}
 }
 

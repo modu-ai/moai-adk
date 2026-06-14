@@ -8,7 +8,12 @@ import "time"
 
 // LogSchemaVersion is the schema version of JSONL log files.
 // Increment this version for future schema changes to track backward compatibility.
-const LogSchemaVersion = "v1"
+//
+// Bumped "v1" → "v2" by SPEC-HARNESS-OUTCOME-CAPTURE-001 (REQ-OC-010) to mark the
+// additive apply_outcome event type + its omitempty Event fields. The bump is a
+// marker only — existing readers tolerate the additive omitempty fields and the
+// new event type without change (REQ-OC-009).
+const LogSchemaVersion = "v2"
 
 // EventType is an enum representing observable event kinds.
 // REQ-HL-001: Records /moai subcommand, agent invocation, SPEC-ID reference, /moai feedback events.
@@ -40,6 +45,13 @@ const (
 
 	// EventTypeUserPrompt represents Claude Code UserPromptSubmit hook (user prompt submitted).
 	EventTypeUserPrompt EventType = "user_prompt"
+
+	// EventTypeApplyOutcome represents a completed harness Apply outcome record
+	// (SPEC-HARNESS-OUTCOME-CAPTURE-001 REQ-OC-004). It is additive — it does not
+	// redefine, reorder, or remove any existing EventType constant (C8). The event
+	// carries the regression-gate verdict + project-health delta + proposal_id
+	// correlation key in the additive omitempty Outcome* fields below.
+	EventTypeApplyOutcome EventType = "apply_outcome"
 )
 
 // Event is the single JSONL line schema for usage-log.jsonl file.
@@ -117,6 +129,42 @@ type Event struct {
 	// (UserPromptSubmit only, opt-in Strategy C/Full, omitempty).
 	// AC-HRN-OBS-008.b: JSON field name MUST be `prompt_content` (not `prompt_full`).
 	PromptContent string `json:"prompt_content,omitempty"`
+
+	// ── ApplyOutcome event optional fields (SPEC-HARNESS-OUTCOME-CAPTURE-001) ──
+	// These fields are additive omitempty only and are set ONLY on apply_outcome
+	// events (REQ-OC-004, C9). They carry the regression-gate verdict, the
+	// project-health delta (baseline + candidate triples + regressed dimensions),
+	// and the proposal_id correlation key reused from the lineage record (DD-3).
+	// The verdict (OutcomeVerdict) is the load-bearing signal — the int/float64
+	// triple fields omitempty-drop genuine zeros (a kept Δ=0 outcome is still
+	// identifiable by OutcomeVerdict == "kept" with the triple fields absent).
+
+	// OutcomeVerdict is the Apply verdict: "kept" | "rolled-back" (apply_outcome only).
+	OutcomeVerdict string `json:"outcome_verdict,omitempty"`
+
+	// OutcomeDecision is the transition decision: "approved" | "regression-blocked"
+	// (apply_outcome only).
+	OutcomeDecision string `json:"outcome_decision,omitempty"`
+
+	// OutcomeProposalID is the lineage correlation key reused from the lineage
+	// record (Proposal.ID — DD-3) (apply_outcome only).
+	OutcomeProposalID string `json:"outcome_proposal_id,omitempty"`
+
+	// OutcomeBaseTests / OutcomeBaseCoverage / OutcomeBaseLint are the baseline
+	// MetricTriple measured BEFORE the apply (apply_outcome only, omitempty).
+	OutcomeBaseTests    int     `json:"outcome_baseline_tests,omitempty"`
+	OutcomeBaseCoverage float64 `json:"outcome_baseline_coverage,omitempty"`
+	OutcomeBaseLint     int     `json:"outcome_baseline_lint,omitempty"`
+
+	// OutcomeCandTests / OutcomeCandCoverage / OutcomeCandLint are the candidate
+	// MetricTriple measured AFTER the apply (apply_outcome only, omitempty).
+	OutcomeCandTests    int     `json:"outcome_candidate_tests,omitempty"`
+	OutcomeCandCoverage float64 `json:"outcome_candidate_coverage,omitempty"`
+	OutcomeCandLint     int     `json:"outcome_candidate_lint,omitempty"`
+
+	// OutcomeRegressed is the list of regressed dimensions (e.g. ["coverage"])
+	// (apply_outcome rolled-back case only, omitempty).
+	OutcomeRegressed []string `json:"outcome_regressed,omitempty"`
 }
 
 // ─────────────────────────────────────────────

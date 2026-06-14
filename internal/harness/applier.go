@@ -52,6 +52,16 @@ type Applier struct {
 	// measurement scaffold + a dormant defense-in-depth net (see regression_gate.go).
 	measurer      Measurer
 	baselineStore *BaselineStore
+
+	// outcomeObserver wires the additive Apply-OUTCOME capture
+	// (SPEC-HARNESS-OUTCOME-CAPTURE-001). When non-nil AND the regression gate is
+	// active, applyWithRegressionGate emits one apply_outcome observer record at
+	// each terminal branch AFTER the gate has decided (DD-2). When nil,
+	// recordOutcome is a safe no-op — preserving callers that do not opt into
+	// outcome capture (mirrors the manifestPath == "" → skip pattern). The capture
+	// is purely additive; it never alters the gate's keep/rollback decision, the
+	// returned error, the baseline-store update, or the lineage write (C10).
+	outcomeObserver *Observer
 }
 
 // NewApplier creates a default Applier.
@@ -77,6 +87,20 @@ func NewApplierWithRegressionGate(manifestPath, baselinePath string) *Applier {
 		measurer:      newGoMeasurer(),
 		baselineStore: NewBaselineStore(baselinePath),
 	}
+}
+
+// WithOutcomeObserver wires an outcome observer so the gate-active Apply path
+// emits an apply_outcome record at each terminal branch (SPEC-HARNESS-OUTCOME-CAPTURE-001).
+// It returns the receiver for fluent production wiring:
+//
+//	a := NewApplierWithRegressionGate(manifestPath, baselinePath).
+//	        WithOutcomeObserver(NewObserver(usageLogPath))
+//
+// A nil observer leaves the capture disabled (recordOutcome is a no-op). The
+// capture is additive and never alters the gate's keep/rollback decision (C10).
+func (a *Applier) WithOutcomeObserver(obs *Observer) *Applier {
+	a.outcomeObserver = obs
+	return a
 }
 
 // newApplierWithWritesEnabled creates an Applier with InjectTrigger actual writes enabled.
@@ -297,6 +321,32 @@ func (a *Applier) writeLineage(proposal Proposal, decision, appliedSurface, reas
 	})
 }
 
+// recordOutcome emits one additive apply_outcome observer record composed from the
+// values the regression gate already produced (verdict + baseline/candidate triples
+// + regressed dimensions + proposal_id + decision). When no outcome observer is
+// wired (the gate-active-but-no-observer case, or the gate-inactive default), it is
+// a safe no-op — mirroring the manifestPath == "" → skip pattern for lineage
+// (SPEC-HARNESS-OUTCOME-CAPTURE-001 REQ-OC-008, DD-4).
+//
+// The emit is purely additive: the caller invokes it AFTER the gate has decided, so
+// the keep/rollback decision and the returned error are already fixed. An emit error
+// is surfaced to the caller (REQ-OC-007) but the caller wraps it consistently with
+// writeLineage's "primary effect already happened" semantics — it never flips the
+// verdict.
+func (a *Applier) recordOutcome(verdict, decision string, baseline, candidate MetricTriple, regressed []string, proposalID string) error {
+	if a.outcomeObserver == nil {
+		return nil
+	}
+	return a.outcomeObserver.RecordOutcome(OutcomeRecord{
+		Verdict:    verdict,
+		Decision:   decision,
+		ProposalID: proposalID,
+		Baseline:   baseline,
+		Candidate:  candidate,
+		Regressed:  regressed,
+	})
+}
+
 // applyFileModification performs the actual SKILL.md frontmatter modification for
 // an approved proposal (description enrichment or trigger injection). Extracted from
 // Apply so the in-Apply regression gate can reuse the exact same write path.
@@ -392,6 +442,12 @@ func (a *Applier) applyWithRegressionGate(proposal Proposal, snapshotDir string)
 				// the primary effects; a failed audit append is wrapped, not suppressed.
 				return fmt.Errorf("applier: non-regression gate blocked (rolled back); lineage write failed: %w", wlerr)
 			}
+			// (NEW — additive, after the decision) emit the rolled-back outcome record.
+			// The rollback + block decision is already fixed above; an emit error is
+			// wrapped like the lineage-write error and never flips the verdict (REQ-OC-007).
+			if oerr := a.recordOutcome("rolled-back", "regression-blocked", baseline, candidate, regressed, proposal.ID); oerr != nil {
+				return fmt.Errorf("applier: non-regression gate blocked (rolled back); outcome record failed: %w", oerr)
+			}
 			return &ApplyRegressionError{Baseline: baseline, Candidate: candidate, Regressed: regressed}
 		}
 	}
@@ -402,6 +458,14 @@ func (a *Applier) applyWithRegressionGate(proposal Proposal, snapshotDir string)
 	}
 	if wlerr := a.writeLineage(proposal, "approved", proposal.FieldKey, "approved transition: "+proposal.FieldKey+" enriched"); wlerr != nil {
 		return fmt.Errorf("applier: file modified but lineage write failed: %w", wlerr)
+	}
+	// (NEW — additive, after the decision) emit the kept outcome record. The keep
+	// decision (file modified + baseline saved + lineage written) is already fixed
+	// above; an emit error is wrapped like the lineage-write error and never undoes
+	// the kept change nor flips the verdict (REQ-OC-007). regressed is nil on a kept
+	// outcome.
+	if oerr := a.recordOutcome("kept", "approved", baseline, candidate, nil, proposal.ID); oerr != nil {
+		return fmt.Errorf("applier: file modified but outcome record failed: %w", oerr)
 	}
 	return nil
 }

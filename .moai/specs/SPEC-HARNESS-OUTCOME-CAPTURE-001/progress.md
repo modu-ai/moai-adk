@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-OUTCOME-CAPTURE-001
 title: "Progress — Harness Apply outcome capture"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-14
 updated: 2026-06-14
 author: manager-spec
@@ -65,3 +65,64 @@ era: V3R6
 
 plan_complete_at: 2026-06-14T00:00:00Z
 plan_status: audit-ready
+
+---
+
+## §E.2 Run-phase Evidence
+
+Run-phase implemented by manager-develop (cycle_type=tdd, RED-GREEN-REFACTOR). 5 modified/new
+files: `internal/harness/types.go` (additive: EventTypeApplyOutcome const + 10 omitempty Outcome*
+fields + LogSchemaVersion "v1"→"v2"), `internal/harness/outcome.go` (NEW: OutcomeRecord +
+RecordOutcome), `internal/harness/applier.go` (composition seam: outcomeObserver field +
+WithOutcomeObserver setter + recordOutcome nil-safe helper + emit at both terminal branches of
+applyWithRegressionGate), `internal/harness/outcome_test.go` (NEW: 12 outcome tests),
+`internal/harness/observer_test.go` (additive: TestLogSchemaVersion v1→v2 assertion update — the
+SSOT schema-version test, an in-scope consequence of the REQ-OC-010 bump).
+
+### AC PASS/FAIL matrix (acceptance.md SSOT — 12 ACs)
+
+| AC | REQ | Status | Verification command | Actual output |
+|----|-----|--------|----------------------|---------------|
+| AC-OC-001 | REQ-OC-001/004, C8/C9 | PASS | `go test -run 'TestApplyOutcomeEvent_RoundTrip$\|TestApplyOutcomeEvent_OmitemptyOnOtherEvents$'` + const greps | both tests `--- PASS`; EventTypeApplyOutcome="apply_outcome" present; EventTypeMoaiSubcommand untouched |
+| AC-OC-002 | REQ-OC-010 | PASS | `grep LogSchemaVersion="v2"` + `go test -run TestApplyOutcomeEvent_SchemaVersionV2$` | LogSchemaVersion="v2"; recorded event carries schema_version "v2" |
+| AC-OC-003 | REQ-OC-003, DD-6 | PASS | `go test -run 'TestRecordOutcome_AppendsOneLine$\|TestRecordOutcome_AutoCreatesDir$'` | one apply_outcome line appended; parent dir auto-created |
+| AC-OC-004 | REQ-OC-002/005 | PASS | `go test -run TestApply_Outcome_Kept$` | gate returns nil (non-interference); one apply_outcome event verdict="kept" decision="approved" proposal_id match |
+| AC-OC-005 | REQ-OC-002/005 | PASS | `go test -run TestApply_Outcome_RolledBack$` | gate returns *ApplyRegressionError (unchanged), file rolled back; one apply_outcome event verdict="rolled-back" decision="regression-blocked" + regressed list |
+| AC-OC-006 | REQ-OC-006/009, C10 | PASS | observer-active Kept/RolledBack + P1 `TestApply_Regression_NonRegressing_Keeps$`/`TestApply_Regression_Blocks_RollsBack$` + `TestApplyOutcome_ReaderTolerance$` | non-interference proven with observer ACTIVE; P1 contract GREEN; AggregatePatterns tolerates apply_outcome events |
+| AC-OC-007 | REQ-OC-008, DD-4/DD-2 | PASS | `go test -run 'TestApply_Outcome_GateInactive_NoEmit$\|TestApply_Outcome_NilObserver_NoOp$'` | gate-inactive path emits no apply_outcome event; nil observer = safe no-op |
+| AC-OC-008 | REQ-OC-007 | PASS | `go test -run TestApply_Outcome_RecordError_DoesNotFlipVerdict$` | kept change NOT undone; wrapped error surfaced; not an ApplyRegressionError |
+| AC-OC-009 | REQ-OC-006, C11, DD-3 | PASS | `grep lineage_id` (none) + `git diff --stat lineage.go` (empty) + `go test -run TestApply_Outcome_ProposalIDMatchesLineage$` | no lineage_id field; lineage.go zero diff; outcome_proposal_id == lineage proposal_id |
+| AC-OC-010 | REQ-OC-011, C7 | PASS | `go test -run TestSubagentBoundary_NoAskUserQuestion$` + C-HRA-008 grep | no AskUserQuestion/mcp__askuser in harness/hook Go source (CLEAN) |
+| AC-OC-011 | REQ-OC-012, C1-C6 | PASS | FROZEN preservation tests + `git diff --stat` on DO-NOT-MODIFY files + auto_apply grep | preservation tests GREEN; frozen_guard×2/tier/scorer/harness.yaml zero diff; auto_apply: false |
+| AC-OC-012 | REQ-OC-013, C12 | PASS | spec.md framing greps (capture+persist / Δ=0 / downstream) + no-overclaim scan | all framing tokens present; no "this spec/enabler improves/prevents" overclaim |
+
+### Cross-platform + quality gates
+
+| Gate | Result |
+|------|--------|
+| `go build ./...` | exit 0 |
+| `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 |
+| `go test ./internal/harness/...` | all packages `ok` (incl. P1 regression-gate preservation) |
+| Coverage `internal/harness` | 87.3% (package), 87.8% total — ≥ 85% target, ≥ baseline |
+| Coverage `internal/measure` | 98.0% (unchanged — leaf still untouched, no new imports) |
+| `golangci-lint run ./internal/harness/...` | 0 issues (no NEW lint) |
+| C-HRA-008 boundary grep | 0 matches (CLEAN) |
+| lineage.go git diff | empty (C11 — lineage schema not extended) |
+| FROZEN files git diff | empty (frozen_guard×2 / tier / scorer / harness.yaml) |
+
+### Scope discipline (B10)
+
+Modified/new files limited to the declared scope:
+`internal/harness/{types.go, outcome.go (new), applier.go, outcome_test.go (new), observer_test.go}`
++ this SPEC's 4 plan-phase artifacts (status draft→in-progress + this §E.2 evidence). The 13 unrelated
+pre-existing working-tree entries (settings.json, deployer.go, web-console-handoff/, other SPEC dirs)
+were NOT touched.
+
+### Honest framing reaffirmed (DD-5 / REQ-OC-013)
+
+This SPEC delivers capture + persist ONLY. The captured delta is typically Δ=0 for the current
+markdown-only harness write surface; the value is making the Apply outcome OBSERVABLE for downstream
+Phase5 analysis (clustering / canary-effectiveness — out of scope). The capture is a passive observer
+write of an already-decided outcome; it does NOT alter any Apply decision, does NOT "improve" the
+harness, and does NOT "prevent" a regression. Non-interference is proven with the observer ACTIVE
+(AC-OC-006), not merely against the bare P1 Applier.
