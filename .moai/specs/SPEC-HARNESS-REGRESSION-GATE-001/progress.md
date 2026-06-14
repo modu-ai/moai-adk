@@ -68,7 +68,7 @@ tags: "harness, regression-gate, progress"
 | M1+M2 (extract parsers → internal/measure + loop delegates) | done | `a384ce79c` |
 | M3 (MetricTriple + ApplyRegressionError + baseline store) | done | `855a8b418` |
 | M4 (in-Apply gate wiring + production seam) | done | `e202df00c` |
-| M5 (FROZEN preservation + quality gate) | done | (this commit) |
+| M5 (FROZEN preservation + quality gate) | done | `4863466f7` |
 
 ### Quality gate (M5)
 
@@ -87,7 +87,7 @@ tags: "harness, regression-gate, progress"
 
 ```yaml
 run_complete_at: 2026-06-14
-run_commit_sha: (pending — backfill after M5 commit lands)
+run_commit_sha: 4863466f7
 run_status: implemented
 ac_pass_count: 13
 ac_fail_count: 0
@@ -99,5 +99,36 @@ cross_platform_build:
   host: pass
   windows_amd64: pass
 total_run_phase_files: 8
-m1_to_mN_commit_strategy: per-milestone scoped commits, Authored-By-Agent trailer (a384ce79c, 855a8b418, e202df00c, M5)
+m1_to_mN_commit_strategy: per-milestone scoped commits, Authored-By-Agent trailer (a384ce79c, 855a8b418, e202df00c, 4863466f7)
+```
+
+---
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_commit_sha: (this commit)
+sync_phase_artifacts: 3 files (CHANGELOG.md + spec.md frontmatter + progress.md §E.2/§E.4/§E.5)
+sync_status: completed
+status_transition: in-progress → implemented
+changelog_entry_position: [Unreleased] → Added section (second entry)
+frontmatter_status_transitions: updated (status field only)
+sync_phase_verification:
+  changelog_entry_grep: SPEC-HARNESS-REGRESSION-GATE-001 (0 pre-existing duplicates confirmed)
+  ac_count_match: 13 ACs from acceptance.md (matches CHANGELOG disclosure count)
+  file_path_verification: CHANGELOG.md, spec.md, progress.md all exist
+  git_status_clean: 3 files modified only (no collateral changes)
+  build_pre_sync: success (run-phase pushed cleanly; no additional build needed)
+```
+
+---
+
+## §E.5 Mx-phase Completion Signal
+
+```yaml
+mx_phase_status: (deferred to orchestrator post-sync-merge)
+mx_commit_sha: (backfill on orchestrator 4-phase close)
+mx_audit_ready: ready (spec.md status: implemented, progress.md §E.2/§E.4/§E.5 complete, CHANGELOG entry signed)
+final_status_target: implemented → completed
+final_phase_marker: "chore(SPEC-HARNESS-REGRESSION-GATE-001): Mx-phase audit-ready signal + 4-phase close"
 ```
