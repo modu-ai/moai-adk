@@ -38,7 +38,7 @@ Out of scope: observer/gate ACTIVATION. Rationale — `Applier.Apply()` (safety�
 
 ## §E.1 Run-phase Evidence (manager-develop, cycle_type=tdd)
 
-- cycle_type: tdd · RED→GREEN single cycle · run_commit_sha: (filled below)
+- cycle_type: tdd · RED→GREEN single cycle · run_commit_sha: 5674734be
 
 ### RED→GREEN evidence
 
@@ -67,11 +67,11 @@ Out of scope: observer/gate ACTIVATION. Rationale — `Applier.Apply()` (safety�
 - `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
 - `git diff --name-only` → `internal/harness/applier.go`, `internal/harness/applier_test.go` (exactly 2)
 - frozen-sibling `git diff --stat -- regression_gate.go outcome.go observer.go ../measure/measure.go` → empty
-- run_commit_sha: (filled below)
+- run_commit_sha: 5674734be
 
 ## §E.2 Sync-phase Audit-Ready Signal (manager-docs)
 
-sync_commit_sha: (pending)
+sync_commit_sha: (backfill)
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
