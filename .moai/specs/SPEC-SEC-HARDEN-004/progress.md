@@ -90,7 +90,7 @@
 - era: V3R6 (H-4: §E.3 sync_commit_sha + §E.5 mx_commit_sha 양쪽 present)
 - four_phase_close: plan(d954f3fb0) → run(M1 6fd63365b / M2 675ce46e8 / M3 ea9b42085) → sync(ddce7fcf4) → post-audit-fix(44f1f83f5) → Mx(this commit)
 - sync_commit_sha: ddce7fcf41e5a4b2941c4ebad7cc20fcb4b90de5
-- mx_commit_sha: (to-backfill by orchestrator)
+- mx_commit_sha: 88837b605d9e55b16b1e7cf78e2b3da9a0371096
 - final_ac: 10/10 + deep-variant reproduction (post-audit) PASS
 - sync_auditor: PASS-WITH-DEBT → SHOULD-FIX 해소 후 clean
 
