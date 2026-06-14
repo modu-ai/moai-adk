@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -379,6 +380,66 @@ func TestRunMXScan_AllowsInProjectPath(t *testing.T) {
 	stateDir := filepath.Join(projectRoot, ".moai", "state")
 	if _, err := os.Stat(stateDir); err != nil {
 		t.Errorf("AC-SEC3-003: in-project path should update sidecar — %s missing: %v", stateDir, err)
+	}
+}
+
+// TestRunMXScan_RejectsSymlinkInRootEscapingTarget — AC-SEC4-004 (reproduction F2).
+// project root 안에 lexically 존재하지만 root 밖 secret을 가리키는 symlink
+// (root/innocent.go → outside/secret.go)가 있을 때, runMXScan은 EvalSymlinks로
+// 실경로를 해소해 root 탈출을 검출하고 ScanFile 없이 early return 해야 한다.
+//
+// RED(fix 전): lexical pathContainedIn은 통과(contained=true) → ScanFile이
+//   os.ReadFile로 링크를 따라 secret의 MX-tag를 읽어 root 내 .moai/state 사이드카에
+//   기록함(CWE-61 읽기 증폭).
+// GREEN(fix 후): EvalSymlinks 해소 결과가 root 밖 → slog.Warn + early return →
+//   사이드카에 secret MX-tag 미기록.
+func TestRunMXScan_RejectsSymlinkInRootEscapingTarget(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir() // root A — input.CWD
+	outsideDir := t.TempDir()  // dir B — 루트 밖 secret 위치
+
+	// 루트 밖에 고유한 MX 태그를 가진 secret .go 파일.
+	const secretTag = "sec4-004-secret-tag"
+	secretFile := filepath.Join(outsideDir, "secret.go")
+	if err := os.WriteFile(secretFile, []byte("// @MX:NOTE: "+secretTag+"\npackage secret\n"), 0644); err != nil {
+		t.Fatalf("write secret file: %v", err)
+	}
+
+	// root 안에 secret을 가리키는 symlink — lexical pathContainedIn은 통과한다.
+	innocentLink := filepath.Join(projectRoot, "innocent.go")
+	if err := os.Symlink(secretFile, innocentLink); err != nil {
+		t.Skipf("symlink unsupported on this platform: %v", err)
+	}
+
+	h := NewFileChangedHandler().(*fileChangedHandler)
+	input := &HookInput{
+		SessionID:     "sec4-004",
+		FilePath:      innocentLink, // root 안 symlink (lexically contained)
+		ChangeType:    "modified",
+		HookEventName: "FileChanged",
+		CWD:           projectRoot,
+	}
+
+	// 직접 호출(동기) — 봉쇄 동작을 결정적으로 관측.
+	h.runMXScan(context.Background(), input)
+
+	// 봉쇄가 동작하면 secret의 MX-tag가 root 내 사이드카에 기록되지 않는다.
+	// (사이드카 자체 미생성, 또는 생성되더라도 secret 태그 부재)
+	stateDir := filepath.Join(projectRoot, ".moai", "state")
+	if entries, err := os.ReadDir(stateDir); err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			data, rerr := os.ReadFile(filepath.Join(stateDir, e.Name()))
+			if rerr != nil {
+				continue
+			}
+			if strings.Contains(string(data), secretTag) {
+				t.Errorf("AC-SEC4-004: symlink followed — secret MX-tag %q leaked into sidecar %s", secretTag, e.Name())
+			}
+		}
 	}
 }
 

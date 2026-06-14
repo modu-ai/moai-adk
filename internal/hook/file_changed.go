@@ -165,6 +165,41 @@ func (h *fileChangedHandler) runMXScan(ctx context.Context, input *HookInput) {
 		return
 	}
 
+	// SPEC-SEC-HARDEN-004 F2 (REQ-SEC4-004): lexical pathContainedIn은 symlink를
+	// 따라가지 않으므로, root 안에 lexically 존재하지만 root 밖을 가리키는 symlink
+	// (root/innocent.go → /secret/secret.go)가 위 가드를 통과한다. ScanFile은
+	// os.ReadFile로 링크를 추종하므로 root 밖 내용(MX-tag 텍스트)을 읽어 사이드카에
+	// 기록할 수 있다(CWE-61 읽기 증폭). 이를 봉쇄하기 위해 EvalSymlinks로 실경로를
+	// 해소해 root 봉쇄를 재검사한다(resolve-recheck; symlink-skip이 아님 — 정상
+	// in-root symlink 스캔은 보존). EvalSymlinks error(not-exist 포함)는 스캔 대상이
+	// 없거나 해소 불가이므로 fail-closed early return(NFR-SEC4-004).
+	//
+	// 비교 base(root)도 EvalSymlinks로 정규화한다: root가 symlinked 경로(예: macOS
+	// /var → /private/var)면 leaf만 해소한 resolvedPath와 정규화 안 된 root를
+	// 비교 시 false escape가 발생한다(M1 F1 watch-item-2와 동일 정규화 요구).
+	// root 해소 실패 시(존재하지 않는 등)는 원래 root로 폴백한다 — 정규화는
+	// best-effort이며 실패해도 leaf 해소 + lexical 비교가 그대로 적용된다.
+	resolvedPath, rerr := filepath.EvalSymlinks(input.FilePath)
+	if rerr != nil {
+		slog.Warn("file_changed async: FilePath unresolvable, skipping MX scan (containment)",
+			"path", input.FilePath,
+			"error", rerr,
+		)
+		return
+	}
+	normRoot := root
+	if resolvedRoot, err := filepath.EvalSymlinks(root); err == nil {
+		normRoot = resolvedRoot
+	}
+	if !pathContainedIn(normRoot, resolvedPath) {
+		slog.Warn("file_changed async: FilePath symlink escapes project root, skipping MX scan (containment)",
+			"path", input.FilePath,
+			"resolved", resolvedPath,
+			"project_root", normRoot,
+		)
+		return
+	}
+
 	// Scan file for MX tags.
 	scanner := mx.NewScanner()
 	tags, err := scanner.ScanFile(input.FilePath)
