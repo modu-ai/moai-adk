@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-REGRESSION-GATE-001
 title: "Harness M2-lite 비회귀 게이트 (measurement scaffold + defense-in-depth)"
 version: "0.1.1"
-status: implemented
+status: completed
 created: 2026-06-14
 updated: 2026-06-14
 author: manager-spec

@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-REGRESSION-GATE-001
 title: "Progress — Harness M2-lite 비회귀 게이트"
 version: "0.1.1"
-status: implemented
+status: completed
 created: 2026-06-14
 updated: 2026-06-14
 author: manager-develop
@@ -107,7 +107,7 @@ m1_to_mN_commit_strategy: per-milestone scoped commits, Authored-By-Agent traile
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_commit_sha: (this commit)
+sync_commit_sha: dcd5c2a3b
 sync_phase_artifacts: 3 files (CHANGELOG.md + spec.md frontmatter + progress.md §E.2/§E.4/§E.5)
 sync_status: completed
 status_transition: in-progress → implemented
@@ -126,9 +126,9 @@ sync_phase_verification:
 ## §E.5 Mx-phase Completion Signal
 
 ```yaml
-mx_phase_status: (deferred to orchestrator post-sync-merge)
-mx_commit_sha: (backfill on orchestrator 4-phase close)
-mx_audit_ready: ready (spec.md status: implemented, progress.md §E.2/§E.4/§E.5 complete, CHANGELOG entry signed)
-final_status_target: implemented → completed
+mx_phase_status: completed (orchestrator-direct 4-phase close)
+mx_commit_sha: (backfill — this Mx commit's own SHA, next chore commit)
+mx_audit_ready: close-confirmed (spec.md status: completed, progress.md §E.2/§E.4/§E.5 complete, CHANGELOG entry signed, run+sync pushed to origin/main)
+status_transition: implemented → completed
 final_phase_marker: "chore(SPEC-HARNESS-REGRESSION-GATE-001): Mx-phase audit-ready signal + 4-phase close"
 ```
