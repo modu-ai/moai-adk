@@ -127,7 +127,7 @@ sync_phase_verification:
 
 ```yaml
 mx_phase_status: completed (orchestrator-direct 4-phase close)
-mx_commit_sha: (backfill — this Mx commit's own SHA, next chore commit)
+mx_commit_sha: 0ef92581d
 mx_audit_ready: close-confirmed (spec.md status: completed, progress.md §E.2/§E.4/§E.5 complete, CHANGELOG entry signed, run+sync pushed to origin/main)
 status_transition: implemented → completed
 final_phase_marker: "chore(SPEC-HARNESS-REGRESSION-GATE-001): Mx-phase audit-ready signal + 4-phase close"
