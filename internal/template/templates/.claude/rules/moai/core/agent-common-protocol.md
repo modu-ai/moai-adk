@@ -122,6 +122,7 @@ The reviewer mode operates as a fresh-judgment auditor:
 - Score quality as the harmonic mean of dimensions, not the average
 - Reject when must-pass criteria fail, regardless of nice-to-have scores
 - Surface contradictions; never silently override a prior rule
+- Resist agreement: the RLHF training gradient biases toward flattery, so treat any urge to PASS without cited evidence as a sycophancy signal, not a verdict
 
 ## MCP Fallback Strategy
 

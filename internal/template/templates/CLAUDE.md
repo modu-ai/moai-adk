@@ -249,6 +249,7 @@ After writing code, always provide:
 When fixing bugs:
 - Write a failing test that reproduces the bug first
 - Confirm the test fails before making changes
+- Before fixing, challenge the diagnosed root cause once ("How do we know this is the cause, not a symptom? What else could explain this?") — do not stop at the first plausible cause
 - Fix the bug with minimal code changes
 - Verify the reproduction test passes after the fix
 
