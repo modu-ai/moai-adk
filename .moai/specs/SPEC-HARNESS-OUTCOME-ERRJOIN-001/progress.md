@@ -7,7 +7,7 @@
 - tier: S
 - plan_complete_at: 2026-06-14T14:48:23Z
 - plan_status: audit-ready
-- plan_commit_sha: (backfill)
+- plan_commit_sha: 5d25a5dcd
 - artifacts: spec.md + plan.md + acceptance.md + progress.md
 - spec-lint: strict mode, 0 findings, 0 warnings
 - scope: `internal/harness/applier.go` (errors.Join at rolled-back branch ~L448-451 + `"errors"` import) + `internal/harness/applier_test.go` (new `TestApply_Outcome_RolledBack_RecordError`); kept branch (~L462-470) byte-frozen
