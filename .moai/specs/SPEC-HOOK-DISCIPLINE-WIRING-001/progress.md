@@ -135,7 +135,7 @@ Both carry `Authored-By-Agent: manager-develop` + `🗿 MoAI` trailers. Push to 
 |-------|-------|
 | Mx completion | 2026-06-15 (orchestrator-direct) |
 | Status transition | implemented → completed |
-| mx_commit_sha | `(this commit — backfilled in the follow-up commit)` |
+| mx_commit_sha | `90acb250e` (Mx close commit: status implemented→completed + §E.5; SHA backfilled orchestrator-direct in the follow-up commit) |
 | 4-phase ledger | plan (existing draft 2026-06-11) → run (6028c4419/4a3f41dec/091fd126b) → sync (2570ff2c9/76c0a96b0) → Mx (this close) |
 | Carried debt status | D1 resolved (invocation-site inspection), D2 resolved (exit-2 dormant behind MOAI_SYNC_GATE_BLOCKING), D3 resolved (tier: M added) |
 | Deferred scope | exit-2 blocking activation = explicit follow-up SPEC (warn-first only this SPEC, per §Exclusions item 1) |
