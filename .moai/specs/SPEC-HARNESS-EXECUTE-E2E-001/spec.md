@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-EXECUTE-E2E-001
 title: "Harness execute regression-gate가 잘못된 측정 root(snapshot base)를 사용해 항상 fail-close하는 production 결함 수정 + e2e 재현 테스트"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-06-15
 updated: 2026-06-15
 author: manager-spec

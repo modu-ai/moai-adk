@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-EXECUTE-E2E-001
 title: "Harness execute 텔레메트리 e2e 재현 + measurementRoot 버그 수정 — 진행 추적"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-06-15
 updated: 2026-06-15
 author: orchestrator
@@ -70,7 +70,7 @@ tier: M
 
 ## §E.2 Sync-phase Audit-Ready Signal
 
-- **sync_commit_sha**: (this commit)
+- **sync_commit_sha**: 615333607 (CHANGELOG 정정 후속 `34b9a41da`)
 - **sync_deliverables**: 완료
   - CHANGELOG.md [Unreleased] ### Fixed 진입점에 SPEC-HARNESS-EXECUTE-E2E-001 엔트리 추가 (9/9 AC + 4 파일 변경 + 커버리지 비회귀 + FROZEN diff 0)
   - spec.md frontmatter status: draft → implemented (2026-06-15)
@@ -78,3 +78,20 @@ tier: M
 - **Trust-but-verify 13/13** (파일 경로 ls 검증 + CHANGELOG 내용 검증 + AC 카운트 일치 + SPEC ID 중복 grep 0 + sync 범위 메인 트리 정확)
 - **무관 파일 미흡수**: .claude/settings.json / internal/template/* / .moai/specs/SPEC-COMPLETION-MARKER-RETIRE-001/ 등 병렬 세션 scope 무변경
 - **run 완료 후 다음 action**: Mx phase 4-phase close (orchestrator 조율, main에 push하기 전 all-green 재확인)
+
+## §E.3 Lifecycle Status
+
+- **status**: completed
+- **era**: V3R6 (H-4)
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+- **mx_commit_sha**: (this commit)
+- **mx_deliverables**: 완료
+  - @MX 코드 주석 검토: 신규 `WithProjectRoot` (fan_in=1 < 3 → @MX:ANCHOR 불요), `measurementProjectRoot` (internal helper), `measurementRoot` godoc 정정 완료. 신규 @MX 태그 불필요 (작은 bug-fix, 기존 godoc 충분).
+  - sync-auditor PASS (harmonic 0.951, Functionality 96 / Security 98 MUST-PASS, 0 BLOCKING / 0 SHOULD-FIX / 1 MINOR non-gating).
+  - spec.md status: implemented → completed (4-phase close).
+- **4-phase 완결**: plan (`2239087a4`) + run (M1 `304ef8805` / M2 `aafd4a3f8` / M3 `5e50f478b`) + sync (`615333607` + CHANGELOG 정정 `34b9a41da`) + Mx (this commit).
+- **security 입증**: sync-auditor가 fix가 fail-close 안전성을 약화시키지 않음을 2-재현(reverted-fix RED 시그니처 + genuine syntax-error fail-close)으로 독립 입증.
+sync_commit_sha: 34b9a41dae6fb8b57bedf7909254f73eaa9fe66c
+mx_commit_sha: (this commit)
