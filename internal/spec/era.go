@@ -30,7 +30,10 @@ const (
 	EraV2x Era = "V2.x"
 	// EraV3R2R4 — early-V3 SPECs with progress.md but no §E.* markers (H-2)
 	EraV3R2R4 Era = "V3R2-R4"
-	// EraV3R5 — V3R5 SPECs with §E.2 sync but missing sync_commit_sha (H-3)
+	// EraV3R5 — V3R5 SPECs that have the §E.2 run-evidence start marker but are
+	// missing sync_commit_sha (H-3). Classification is string-presence-based: the
+	// var name hasSyncSection is a misnomer — §E.2 marks the §E-section progress
+	// structure START (run-evidence), not the sync phase (sync lives at §E.4).
 	EraV3R5 Era = "V3R5"
 	// EraV3R6 — V3R6 SPECs with full §E.2 + §E.5 + both *_commit_sha fields (H-4)
 	EraV3R6 Era = "V3R6"
@@ -88,10 +91,14 @@ type EraSignals struct {
 //	H-override: FrontmatterEra non-empty + valid → returned verbatim
 //	H-1:        ProgressMDExists == false → V2.x
 //	H-2:        progress.md present but no §E.{2,3,4,5} markers → V3R2-R4
-//	H-3:        §E.2 present but sync_commit_sha empty/missing → V3R5
+//	H-3:        §E.2 run-evidence start marker present but sync_commit_sha empty/missing → V3R5
 //	H-4:        §E.2 + §E.5 present AND sync_commit_sha + mx_commit_sha non-empty → V3R6
 //	H-5:        H-4 ambiguous + (phase ~ v3.0|v3R6 OR created >= 2026-04-01) → V3R6
 //	H-6:        no heuristic matched → unclassified
+//
+// Detection is string-presence-based (hasProgressMarker): hasSyncSection /
+// hasMxSection are misnomers — §E.2 is the §E-section run-evidence start marker
+// and §E.5 is the Mx-completion marker; the sync phase lives at §E.4.
 func ClassifyEra(signals EraSignals) (Era, string) {
 	// H-override: explicit frontmatter `era:` field wins
 	if signals.FrontmatterEra != "" {
@@ -117,7 +124,9 @@ func ClassifyEra(signals EraSignals) (Era, string) {
 		return EraV3R2R4, "H-2 (progress.md without §E.* markers)"
 	}
 
-	// H-3: §E.2 present but sync_commit_sha empty/missing → V3R5
+	// H-3: §E.2 run-evidence start marker present but sync_commit_sha empty/missing → V3R5
+	// (hasSyncSection tests literal §E.2 string presence — the run-evidence start
+	// marker — not the sync phase, which lives at §E.4.)
 	if hasSyncSection && syncSHA == "" {
 		return EraV3R5, "H-3 (§E.2 present, sync_commit_sha missing)"
 	}
