@@ -5,9 +5,39 @@ package hook
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
 
 	"github.com/modu-ai/moai-adk/internal/telemetry"
 )
+
+// runEvidenceGate 는 이미 적재 가능한 세션 원장을 읽어 "성공 주장 + 관측된 이진
+// 증거 없음" 조합을 advisory 로 표면화한다. Stop 이벤트를 절대 차단하지 않으며
+// (fail-open, REQ-SEG-005), 모든 출력은 stderr 로 간다 (REQ-SEG-006). error 는
+// swallow 한다 (pruning/reflection 과 동일한 best-effort).
+//
+// telemetry.LoadBySession 만 호출한다 — 새 I/O / network / test 재실행 없음
+// (REQ-SEG-008, ≤5s). AskUserQuestion / mcp__askuser 미호출 (REQ-SEG-007, C-HRA-008).
+//
+// 현재 텔레메트리 스트림에 대해 knowingly-dormant 다: 유일한 production writer
+// logSkillUsage 가 Outcome=unknown / Phase="none" 를 하드코딩하므로 본 게이트는
+// 현재 발화하지 않는다. 가치는 후속 SPEC-STOP-EVIDENCE-WRITER-001 에 blocked (spec.md §A.3).
+func runEvidenceGate(projectRoot, sessionID string) {
+	if projectRoot == "" {
+		return // 기존 pruning/reflection 과 동일 가드
+	}
+	records, err := telemetry.LoadBySession(projectRoot, sessionID) // REUSE — REQ-SEG-001
+	if err != nil || len(records) == 0 {
+		return // 평가할 것 없음; fail-open
+	}
+	finding := evaluateEvidence(buildSessionLedger(records))
+	if finding == nil {
+		return
+	}
+	// advisory: slog.Warn (stderr 라우팅) + human-readable 한 줄. stdout 미접촉.
+	slog.Warn("evidence-gate: unbacked success claim", finding.slogArgs()...)
+	fmt.Fprintln(os.Stderr, finding.HumanReadable())
+}
 
 // @MX:ANCHOR: [AUTO] 세션 원장 판단 로직의 단일 진입점 — runEvidenceGate 와 단위 테스트가 호출
 // @MX:REASON: [AUTO] fan_in>=3 (buildSessionLedger → inferPathKind → evaluateEvidence), 게이트 정확성의 핵심
