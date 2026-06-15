@@ -63,7 +63,7 @@ plan_auditor_verdict: <pending — plan audit gate>
 
 ```yaml
 run_complete_at: 2026-06-16
-run_commit_sha: <pending — backfilled after M-final commit>
+run_commit_sha: 195b61e9b   # M3 (final run-phase milestone); M1 0ce8f1f77 / M2 41ff7209a
 run_status: implemented
 ac_pass_count: 13           # AC-PMC-001..012 + AC-PMC-004b, all PASS
 ac_fail_count: 0
