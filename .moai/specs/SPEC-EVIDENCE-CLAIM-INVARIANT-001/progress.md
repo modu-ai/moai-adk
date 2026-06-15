@@ -50,7 +50,71 @@ falsifiability_post_fix: "testability debt addressed — all 7 AC now executable
 
 ## §F.2 Run-phase Evidence
 
-(run-phase에서 manager-develop가 채움)
+> Structured per the 5-section evidence-bearing format that this SPEC codifies (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) — the run-phase self-report obeys the invariant it implements.
+
+### Claim (주장)
+
+run-phase delivers M1 (local doctrine rule) + M2 (template mirror); all 7 inline AC (AC-ECI-001..007) PASS via the §3.2 C1-C7 executable verification commands; mirror neutrality = 0 internal leaks; cross-ref count = 6 (≥4); CI guard `TestTemplateNeutralityAudit` PASS. status draft→in-progress (M1 commit).
+
+### Evidence (증거 — actual command + verbatim output)
+
+AC binary matrix (each row's verification command run verbatim from spec.md §3.2; outputs observed in this run):
+
+| AC | Status | Verification Command (§3.2) | Actual Output (verbatim) |
+|----|--------|-----------------------------|--------------------------|
+| AC-ECI-001 | PASS | `test -f .claude/rules/moai/core/verification-claim-integrity.md && echo C1-PASS` | `C1-PASS` |
+| AC-ECI-002 | PASS | `test -f internal/template/templates/.claude/rules/moai/core/verification-claim-integrity.md && echo C2-PASS` | `C2-PASS` |
+| AC-ECI-003 | PASS | C3 — `grep -q 'unobserved' && grep -q 'Evidence absent' && grep -q 'output-styles/moai/moai.md' && grep -qE 'manager-develop.*§E\|E1[^0-9].*E7'` | `C3-PASS` |
+| AC-ECI-004 | PASS | C4 — `for s in '주장' '증거' 'baseline 귀속' '미검증' '잔여 위험'; do grep -q "$s" \|\| echo FAIL; done` | (no FAIL line — all 5 sections present) `C4-DONE` |
+| AC-ECI-005 | PASS | C5 — `grep -qE 'baseline' && grep -qE '귀속\|attribution' && grep -qE '측정\|measured'` | `C5-PASS` |
+| AC-ECI-006 | PASS | C6 — `grep -nE 'SPEC-[A-Z]\|feedback_\|/Users/\|CLAUDE\.local\|[0-9a-f]{7,40} commit' "$MIRROR" \|\| echo C6-PASS-0-leaks` | `C6-PASS-0-leaks` (real-alternation grep on mirror, 0 matches) |
+| AC-ECI-007 | PASS | C7 — `test "$(grep -cE 'agent-common-protocol\.md\|moai-constitution\.md\|manager-develop-prompt-template\.md\|verification-batch-pattern\.md\|output-styles/moai/moai\.md' "$RULE")" -ge 4` | `C7 count: 6` → `C7-PASS` |
+
+Extended mirror neutrality sweep (full plan §D.1 forbidden catalogue, all `grep -c` on the mirror, all expect 0):
+```
+internal SPEC IDs (SPEC-[A-Z]):        0
+REQ/AC tokens (REQ-|AC-[A-Z]):         0
+IMP-NN roadmap refs (IMP-[0-9]):       0
+internal dates (2026-NN-NN):           0
+commit-SHA-like hex (\b[0-9a-f]{7,40}\b): 0
+feedback_/L_ memory refs:              0
+CLAUDE.local refs:                     0
+/Users/ paths:                         0
+fable-ish provenance:                  0
+```
+
+CI guard:
+```
+$ go test ./internal/template/ -run 'TestTemplateNeutralityAudit|InternalContentLeak|TestInternalContent' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/template	0.831s
+```
+
+### Baseline-attribution (baseline 귀속)
+
+- All AC verification commands measured against the worktree tree at HEAD `d9cb89bd4` (worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/agent-a87f6a659bb36dc7e`; `git rev-parse HEAD` observed before edits). The 2 new files are the only run-phase additions.
+- Pre-write baseline: both target files confirmed absent (`LOCAL ABSENT` / `MIRROR ABSENT`) and both target dirs present (`core/ EXISTS` / `template core/ EXISTS`) before Write.
+- Cross-ref target existence verified before authoring §4 (all 5 cited files `EXISTS`); cross-ref anchors verified present (Skeptical Evaluation Stance @113, Verify-Don't-Assume @262, Section E @167, Verification Matrix @368 / Completion Report @574).
+- Pre-spawn sync: `git fetch origin main` + `git rev-list --count --left-right origin/main...HEAD` → `0 0` (synced).
+- CI guard figure `0.831s` is this-run output of the `go test` invocation above (not carried over).
+
+### Gaps (미검증 — what was NOT observed)
+
+- Full `go test ./...` suite NOT run — run-phase added 2 markdown files only, no Go code; only the targeted template-neutrality CI guard was exercised (the relevant guard for the mirror file).
+- `golangci-lint` / `go vet` NOT run — no Go source changed (plan §C: Go build unnecessary for markdown-only deliverable).
+- `make build` NOT run — deliberately skipped per orchestrator constraint (`//go:embed all:templates` is compile-time; new markdown mirror needs no `embedded.go` regeneration for the AC, and skipping avoids entanglement with the parallel template workstream). embedded.go regeneration was therefore NOT verified — out of scope for AC-ECI-001..007.
+- Cross-platform build (`GOOS=windows`) NOT run — no Go code.
+- Coverage NOT measured — no Go code touched.
+- M3 cross-ref pointer into existing files (output-styles/moai.md / manager-develop-prompt-template.md) NOT added — AC-ECI-007 is satisfied solely by the new rule→existing direction (per plan §F M3, the reverse pointer is SHOULD, not MUST; and the parallel-workstream constraint forbids touching shared files).
+
+### Residual-risk (잔여 위험)
+
+- AC-ECI-006 (mirror neutrality) is enforced both by the §3.2 C6 grep AND the `TestTemplateNeutralityAudit` CI guard; if the guard's pattern set diverges from C6, a future leak class could pass one but fail the other. Current run: both PASS, 0 leaks.
+- The doctrine is policy-layer only (no runtime detector) — by design (spec.md §X.1). Enforcement of the invariant on live actor reports depends on actors reading the rule; no mechanical gate added in this SPEC.
+- Commit + push performed against shared APFS tree with a known parallel workstream (uncommitted M files in shared dirs); staged ONLY the 4 explicit-path files. Push divergence re-checked at push time (see commit/push block below).
+
+### Commit + Push (Hybrid Trunk, draft→in-progress transition)
+
+(filled in the commit step below — commit SHA + post-push `git rev-list --count --left-right origin/main...HEAD` divergence)
 
 ## §F.3 Sync-phase Audit-Ready Signal
 
