@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	harnesscli "github.com/modu-ai/moai-adk/internal/cli/harness"
 	"github.com/modu-ai/moai-adk/internal/harness"
 )
 
@@ -201,25 +202,60 @@ func countProposals(dir string) int {
 // ─────────────────────────────────────────────
 
 func newHarnessApplyCmd() *cobra.Command {
-	return &cobra.Command{
+	var (
+		execute bool
+		id      string
+	)
+	cmd := &cobra.Command{
 		Use:   "apply",
-		Short: "Return next pending proposal to orchestrator",
+		Short: "Return next pending proposal to orchestrator (or --execute the Go apply path)",
 		Long: `Load the oldest pending proposal and
-output JSON payload to stdout.
+output JSON payload to stdout (default, payload-only).
+
+With --execute --id <id>, delegate file application to the opt-in Go execute
+path (Applier.Apply()) — see 'moai harness execute'. Without --execute, the
+existing payload-only behavior is preserved byte-unchanged.
 
 [HARD] command does not directly call AskUserQuestion.
 orchestrator (moai-harness-learner skill) receives payload and
 present to user via AskUserQuestion.`,
-		RunE: runHarnessApply,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runHarnessApply(cmd, args, execute, id)
+		},
 	}
+	// --execute delegates to the Go execute path; --id selects the proposal to apply.
+	cmd.Flags().BoolVar(&execute, "execute", false,
+		"Delegate file application to the Go execute path (opt-in; requires --id)")
+	cmd.Flags().StringVar(&id, "id", "",
+		"Proposal ID to apply via the Go execute path (used with --execute)")
+	return cmd
 }
 
 // runHarnessApply execute apply verb.
-// [HARD] Subagent boundary: return only payload, do not call AskUserQuestion
-func runHarnessApply(cmd *cobra.Command, _ []string) error {
+// [HARD] Subagent boundary: return only payload, do not call AskUserQuestion.
+//
+// When execute is true, delegate to the Go execute path (harnesscli.RunExecute) —
+// the apply verb's --execute UX is a thin one-line delegation; all logic lives in
+// the boundary-guarded internal/cli/harness/execute.go. When execute is false, the
+// existing payload-only behavior runs byte-unchanged (REQ-AEX-003, C4).
+func runHarnessApply(cmd *cobra.Command, _ []string, execute bool, id string) error {
 	root, err := resolveProjectRoot(cmd)
 	if err != nil {
 		return err
+	}
+
+	// --execute UX delegation (REQ-AEX-003): hand off to the Go execute path. The
+	// delegation carries no logic here, so the boundary-guard coverage gap (harness.go
+	// is package cli, outside the guarded directory) is safe — the real logic is in
+	// the guarded internal/cli/harness/ package.
+	if execute {
+		execErr := harnesscli.RunExecute(harnesscli.ExecuteOptions{ID: id, ProjectRoot: root})
+		if execErr != nil {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness apply --execute: %s\n", execErr.Error())
+			return execErr
+		}
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "harness apply --execute: proposal %s applied via Go pipeline\n", id)
+		return nil
 	}
 
 	proposalDir := filepath.Join(root, harnessDefaultProposalDir)

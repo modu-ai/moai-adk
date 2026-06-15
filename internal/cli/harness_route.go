@@ -116,6 +116,14 @@ satisfies AC-HRA-009 (6+ verb surface).`,
 	// package, sharing the TestPropose_NoAskUserQuestion boundary guard.
 	cmd.AddCommand(harnesscli.NewInstallCmd())
 
+	// SPEC-HARNESS-APPLY-EXECUTE-001: `moai harness execute` is the opt-in Go
+	// apply path — the FIRST production caller of Applier.Apply(), activating the
+	// dormant regression-gate + outcome-capture pipeline so the first apply-outcome
+	// telemetry is generated. The factory lives in the same internal/cli/harness/
+	// package, sharing the TestPropose_NoAskUserQuestion boundary guard. The `apply
+	// --execute` UX delegates to this same RunExecute (see newHarnessApplyCmd).
+	cmd.AddCommand(harnesscli.NewExecuteCmd())
+
 	return cmd
 }
 
