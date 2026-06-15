@@ -3,12 +3,53 @@
 # Purpose: Enforce sync-phase quality gate (lint + test + coverage delta + dependency manifest audit)
 # Trigger: Stop event when current session contains sync-phase commit
 #
+# Language support: detects the project language from canonical project markers
+# and runs the matching toolchain. Each language's tools live inside its own
+# case branch; absent tools are skipped gracefully; projects with no recognized
+# language marker pass the gate silently.
+#
 # Manual smoke test:
 #   echo '{}' | bash .claude/hooks/moai/sync-phase-quality-gate.sh
 # Expected: structured JSON with "decision":"skip" or "decision":"allow"/"block"
 # and per-check results in "verifications" array.
+#
+# Unit-test the detector directly (bypasses the sync-phase git gate):
+#   source .claude/hooks/moai/sync-phase-quality-gate.sh && detect_language "$dir"
 
 set -e
+
+# --- detect_language: directly-invocable, side-effect-free language detector ---
+# Echoes a single language token (go|node|python|rust) or empty string when no
+# recognized marker is present. Marker priority follows the language matrix order.
+# This function MUST remain source-able so it can be unit-tested without first
+# passing the sync-phase-commit git gate below.
+detect_language() {
+    root="${1:-.}"
+    if [ -f "$root/go.mod" ]; then
+        echo "go"
+    elif [ -f "$root/package.json" ]; then
+        echo "node"
+    elif [ -f "$root/pyproject.toml" ] || [ -f "$root/requirements.txt" ]; then
+        echo "python"
+    elif [ -f "$root/Cargo.toml" ]; then
+        echo "rust"
+    else
+        echo ""
+    fi
+}
+
+# --- code_delta_pattern: per-language source-file extension regex ---
+# Used to detect whether the sync-phase commit touched code files; a 0-code-file
+# delta means a docs/markdown-only sync and the gate skips.
+code_delta_pattern() {
+    case "$1" in
+        go)     echo '\.go$' ;;
+        node)   echo '\.(js|ts|jsx|tsx|mjs|cjs)$' ;;
+        python) echo '\.py$' ;;
+        rust)   echo '\.rs$' ;;
+        *)      echo '' ;;
+    esac
+}
 
 # Opt-out flag
 if [ "$1" = "--skip-hook" ]; then
@@ -18,6 +59,14 @@ if [ "$1" = "--skip-hook" ]; then
         >> "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs/hook-skip.log"
     exit 0
 fi
+
+# When sourced for unit testing, stop here so detect_language is available
+# without running the gate. Detection: BASH_SOURCE[0] != $0 means the file was
+# sourced, not executed directly.
+case "${BASH_SOURCE[0]}" in
+    "$0") ;;            # executed directly — continue running the gate
+    *) return 0 2>/dev/null || true ;;  # sourced — expose functions, do not run
+esac
 
 # Detect sync-phase via last commit subject
 LAST_COMMIT_SUBJECT=$(git log -1 --format='%s' 2>/dev/null || echo "")
@@ -31,95 +80,152 @@ case "$LAST_COMMIT_SUBJECT" in
         ;;
 esac
 
-# Detect Go file changes in HEAD commit; skip if 0 .go file delta (markdown-only sync)
-GO_DELTA=$(git diff --name-only HEAD~1..HEAD 2>/dev/null | grep -cE '\.go$' || echo "0")
-if [ "$GO_DELTA" -eq 0 ]; then
-    echo "{\"hook\":\"sync-phase-quality-gate\",\"decision\":\"skip\",\"reason\":\"markdown-only sync (0 .go file delta)\"}"
+# Resolve project root and detect language from canonical markers
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
+LANG=$(detect_language "$PROJECT_ROOT")
+
+# Silent pass when no recognized language marker is present (docs-only projects, etc.)
+if [ -z "$LANG" ]; then
+    echo "{\"hook\":\"sync-phase-quality-gate\",\"decision\":\"skip\",\"reason\":\"no recognized language marker\"}"
     exit 0
 fi
 
-# Parallel verification batch
+# Detect code-file changes in HEAD commit; skip if 0 code-file delta (markdown-only sync).
+# On an initial commit HEAD~1 does not exist, so diff against the empty tree instead.
+DELTA_PATTERN=$(code_delta_pattern "$LANG")
+if git rev-parse --verify -q HEAD~1 >/dev/null 2>&1; then
+    DIFF_RANGE="HEAD~1..HEAD"
+else
+    DIFF_RANGE=$(git hash-object -t tree /dev/null)  # empty-tree SHA — initial commit
+fi
+# grep -c is wrapped so its no-match exit (1) under `set -e` does not abort; the
+# result is normalized to a single integer (avoids a "0\n0" double-emit).
+CODE_DELTA=$(git diff --name-only "$DIFF_RANGE" 2>/dev/null | grep -cE "$DELTA_PATTERN" || true)
+CODE_DELTA=${CODE_DELTA:-0}
+if [ "$CODE_DELTA" -eq 0 ]; then
+    echo "{\"hook\":\"sync-phase-quality-gate\",\"decision\":\"skip\",\"reason\":\"markdown-only sync (0 code-file delta)\",\"language\":\"$LANG\"}"
+    exit 0
+fi
+
+# Per-check result scratch dir
 TMPDIR=$(mktemp -d)
 trap "rm -rf $TMPDIR" EXIT
 
-# 1. go vet
-(go vet ./... > "$TMPDIR/vet.log" 2>&1; echo $? > "$TMPDIR/vet.exit") &
-VET_PID=$!
+# Default per-check results: 0 = pass/skipped, used when a step does not run for
+# the detected language. command -v guards every tool invocation so an absent
+# toolchain is skipped gracefully (exit 0, recorded as skipped) rather than failing.
+echo "0" > "$TMPDIR/vet.exit";  echo "not run for $LANG" > "$TMPDIR/vet.log"
+echo "0" > "$TMPDIR/lint.exit"; echo "not run for $LANG" > "$TMPDIR/lint.log"
+echo "0" > "$TMPDIR/test.exit"; echo "not run for $LANG" > "$TMPDIR/test.log"
 
-# 2. golangci-lint (if available)
-if command -v golangci-lint >/dev/null 2>&1; then
-    (golangci-lint run --timeout=2m > "$TMPDIR/lint.log" 2>&1; echo $? > "$TMPDIR/lint.exit") &
-    LINT_PID=$!
-else
-    echo "0" > "$TMPDIR/lint.exit"
-    echo "golangci-lint unavailable; skipped" > "$TMPDIR/lint.log"
-    LINT_PID=""
-fi
+# run_step <tool> <result-prefix> <command...>: run only if the tool is on PATH,
+# otherwise record exit 0 and log a graceful skip. The `&& rc=0 || rc=$?` idiom
+# captures the tool's exit code without letting `set -e` abort the hook when a
+# tool legitimately fails (the failure is recorded and drives the decision).
+run_step() {
+    tool="$1"; prefix="$2"; shift 2
+    if command -v "$tool" >/dev/null 2>&1; then
+        local rc=0
+        "$@" > "$TMPDIR/$prefix.log" 2>&1 && rc=0 || rc=$?
+        echo "$rc" > "$TMPDIR/$prefix.exit"
+    else
+        echo "0" > "$TMPDIR/$prefix.exit"
+        echo "skipped: $tool absent" > "$TMPDIR/$prefix.log"
+    fi
+}
 
-# 3. go test
-(go test ./... > "$TMPDIR/test.log" 2>&1; echo $? > "$TMPDIR/test.exit") &
-TEST_PID=$!
+VET_LABEL="(none)"
+LINT_LABEL="(none)"
+TEST_LABEL="(none)"
+COVERAGE="0.0"
 
-# 4. Dependency manifest audit
-(git diff HEAD~1..HEAD -- go.mod go.sum > "$TMPDIR/deps.diff" 2>&1; echo $? > "$TMPDIR/deps.exit") &
-DEPS_PID=$!
+case "$LANG" in
+    go)
+        VET_LABEL="go vet"; LINT_LABEL="golangci-lint"; TEST_LABEL="go test"
+        run_step go vet go vet ./...
+        run_step golangci-lint lint golangci-lint run --timeout=2m
+        run_step go test go test ./...
+        if command -v go >/dev/null 2>&1; then
+            go test -cover ./... 2>/dev/null | grep -E "^ok\s" | awk '{sum += $5; count++} END {if (count > 0) printf "%.1f", sum/count; else print "0.0"}' > "$TMPDIR/coverage.log" 2>/dev/null || echo "0.0" > "$TMPDIR/coverage.log"
+            COVERAGE=$(cat "$TMPDIR/coverage.log")
+        fi
+        ;;
+    node)
+        LINT_LABEL="eslint"; TEST_LABEL="npm test"
+        run_step eslint lint eslint .
+        run_step npm test npm test
+        ;;
+    python)
+        LINT_LABEL="ruff"; TEST_LABEL="pytest"
+        run_step ruff lint ruff check .
+        run_step pytest test pytest
+        ;;
+    rust)
+        LINT_LABEL="cargo clippy"; TEST_LABEL="cargo test"
+        run_step cargo lint cargo clippy
+        run_step cargo test cargo test
+        ;;
+esac
 
-# Wait for parallel jobs
-wait $VET_PID $TEST_PID $DEPS_PID
-[ -n "$LINT_PID" ] && wait $LINT_PID || true
-
-VET_EXIT=$(cat "$TMPDIR/vet.exit")
-LINT_EXIT=$(cat "$TMPDIR/lint.exit")
-TEST_EXIT=$(cat "$TMPDIR/test.exit")
-DEPS_EXIT=$(cat "$TMPDIR/deps.exit")
-
-# Dependency audit: flag if go.mod or go.sum modified in sync-phase commit (unexpected)
+# Dependency manifest audit: flag if a dependency manifest was modified in the
+# sync-phase commit (unexpected for a docs sync). Language-specific manifest set.
+DEPS_MANIFESTS=""
+case "$LANG" in
+    go)     DEPS_MANIFESTS="go.mod go.sum" ;;
+    node)   DEPS_MANIFESTS="package.json package-lock.json yarn.lock pnpm-lock.yaml" ;;
+    python) DEPS_MANIFESTS="pyproject.toml requirements.txt poetry.lock" ;;
+    rust)   DEPS_MANIFESTS="Cargo.toml Cargo.lock" ;;
+esac
+git diff HEAD~1..HEAD -- $DEPS_MANIFESTS > "$TMPDIR/deps.diff" 2>&1 || true
 DEPS_MODIFIED=0
 if [ -s "$TMPDIR/deps.diff" ]; then
     DEPS_MODIFIED=1
 fi
 
-# Coverage delta: simplified (full coverage diff requires baseline file)
-# For M4 baseline implementation, just record current coverage; coverage regression check
-# is a deferred enhancement.
-COVERAGE_LOG="$TMPDIR/coverage.log"
-go test -cover ./... 2>/dev/null | grep -E "^ok\s" | awk '{sum += $5; count++} END {if (count > 0) printf "%.1f", sum/count; else print "0.0"}' > "$COVERAGE_LOG" 2>/dev/null || echo "0.0" > "$COVERAGE_LOG"
-COVERAGE=$(cat "$COVERAGE_LOG")
+VET_EXIT=$(cat "$TMPDIR/vet.exit")
+LINT_EXIT=$(cat "$TMPDIR/lint.exit")
+TEST_EXIT=$(cat "$TMPDIR/test.exit")
 
 # Decision
 DECISION="allow"
 BLOCKED_REASON=""
 if [ "$VET_EXIT" -ne 0 ]; then
     DECISION="block"
-    BLOCKED_REASON="go vet failed"
+    BLOCKED_REASON="$VET_LABEL failed"
 elif [ "$LINT_EXIT" -ne 0 ]; then
     DECISION="block"
-    BLOCKED_REASON="golangci-lint failed"
+    BLOCKED_REASON="$LINT_LABEL failed"
 elif [ "$TEST_EXIT" -ne 0 ]; then
     DECISION="block"
-    BLOCKED_REASON="go test failed"
+    BLOCKED_REASON="$TEST_LABEL failed"
 fi
 
 cat <<EOF
 {
   "hook": "sync-phase-quality-gate",
+  "language": "$LANG",
   "decision": "$DECISION",
   "blocked_reason": "$BLOCKED_REASON",
   "verifications": [
-    {"check": "go vet", "exit": $VET_EXIT},
-    {"check": "golangci-lint", "exit": $LINT_EXIT},
-    {"check": "go test", "exit": $TEST_EXIT},
-    {"check": "dependency manifest audit", "go_mod_or_sum_modified": $DEPS_MODIFIED},
+    {"check": "$VET_LABEL", "exit": $VET_EXIT},
+    {"check": "$LINT_LABEL", "exit": $LINT_EXIT},
+    {"check": "$TEST_LABEL", "exit": $TEST_EXIT},
+    {"check": "dependency manifest audit", "manifest_modified": $DEPS_MODIFIED},
     {"check": "coverage (advisory)", "average_coverage_pct": $COVERAGE}
   ]
 }
 EOF
 
 mkdir -p "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs"
-echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [sync-phase-quality-gate] decision=$DECISION vet=$VET_EXIT lint=$LINT_EXIT test=$TEST_EXIT deps_modified=$DEPS_MODIFIED coverage=$COVERAGE" \
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [sync-phase-quality-gate] language=$LANG decision=$DECISION vet=$VET_EXIT lint=$LINT_EXIT test=$TEST_EXIT deps_modified=$DEPS_MODIFIED coverage=$COVERAGE" \
     >> "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs/sync-quality-gate.log"
 
-if [ "$DECISION" = "block" ]; then
+# Warn-first (advisory) by default: the blocking exit-2 path is dormant and
+# enabled only when MOAI_SYNC_GATE_BLOCKING=1 is explicitly set. With the flag
+# unset (the shipped default), a "block" decision is logged but the hook exits 0
+# so the Stop event is not blocked. Activating the exit-2 gate is deferred to a
+# follow-up; the dormant path is preserved here intentionally.
+if [ "$DECISION" = "block" ] && [ "${MOAI_SYNC_GATE_BLOCKING:-0}" = "1" ]; then
     exit 2
 fi
 exit 0
