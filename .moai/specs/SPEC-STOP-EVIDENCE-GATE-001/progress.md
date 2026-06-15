@@ -89,9 +89,9 @@ dependency chain. Mode 5 sequential sub-agent is the Anthropic-recommended defau
 
 ## §E.2 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: (this commit)
+sync_commit_sha: 25cddcebb
 
-## §E.2 Run-phase Evidence
+## §E.3 Run-phase Evidence
 
 | AC | REQ | Status | Verification Command | Actual Output |
 |----|-----|--------|----------------------|---------------|
