@@ -314,7 +314,7 @@ Every English text label inside the templates below — banner names, section he
 - Emoji decorations: 🧠 👋 📚 🎯 ✅ 🔍 📄 🔗 ★ and any other emoji in the templates
 - Box-drawing characters: ─ │ └─ ┌ ┐ ┘ └ ▶
 - Horizontal rules: `---`
-- Code/command literals: `claude mcp add ...`, `claude mcp list`, `mcp__context7__resolve-library-id`, `mcp__context7__get-library-docs`, `<moai>DONE</moai>`, fenced ```bash``` / ```mermaid``` / ```markdown``` blocks
+- Code/command literals: `claude mcp add ...`, `claude mcp list`, `mcp__context7__resolve-library-id`, `mcp__context7__get-library-docs`, fenced ```bash``` / ```mermaid``` / ```markdown``` blocks
 - File paths: `.moai/learning/YYYY-MM-DD-{topic-slug}.md`, `.moai/config/sections/language.yaml`, etc.
 - Library / framework names and version identifiers: `Context7`, `Notion MCP`, `React`, `Next.js`, library-ids, version strings
 - Technical terms keep canonical English form per §9 ("경사하강법 (gradient descent)" — Korean form for natural reading + English in parentheses for canonical reference)
@@ -420,7 +420,6 @@ Novel scenario: {new application}
 🔗 Notion: {URL if synced}
 📚 Suggested next: {related topic}
 ──────────────────────────────────────────────
-<moai>DONE</moai>
 ```
 
 ---

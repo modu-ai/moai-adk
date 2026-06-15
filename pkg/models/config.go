@@ -184,7 +184,6 @@ type LSPStateComparison struct {
 type LSPStateLogging struct {
 	LogLSPStateChanges     bool `yaml:"log_lsp_state_changes"`
 	LogRegressionDetection bool `yaml:"log_regression_detection"`
-	LogCompletionMarkers   bool `yaml:"log_completion_markers"`
 	IncludeLSPInReports    bool `yaml:"include_lsp_in_reports"`
 }
 

@@ -455,7 +455,7 @@ func TestNewDefaultWorkflowConfig(t *testing.T) {
 // TestNewDefaultWorkflowConfigNestedDefaults asserts every nested default value
 // exactly matches the template SSOT workflow.yaml
 // (internal/template/templates/.moai/config/sections/workflow.yaml).
-// This is the AC-WSE-007 36-assertion oracle (REQ-WSE-007).
+// This is the AC-WSE-007 33-assertion oracle (REQ-WSE-007).
 func TestNewDefaultWorkflowConfigNestedDefaults(t *testing.T) {
 	t.Parallel()
 
@@ -469,7 +469,6 @@ func TestNewDefaultWorkflowConfigNestedDefaults(t *testing.T) {
 		{"AutoClear.Enabled", cfg.AutoClear.Enabled, true},
 		{"AutoClear.AfterPlan", cfg.AutoClear.AfterPlan, true},
 		{"AutoClear.AfterRun", cfg.AutoClear.AfterRun, false},
-		{"Completion.DetectInOutput", cfg.Completion.DetectInOutput, true},
 		{"LoopPrevention.FailurePatternDetection", cfg.LoopPrevention.FailurePatternDetection, true},
 		{"Team.Enabled", cfg.Team.Enabled, true},
 		{"Team.DelegateMode", cfg.Team.DelegateMode, true},
@@ -512,8 +511,6 @@ func TestNewDefaultWorkflowConfigNestedDefaults(t *testing.T) {
 		got  string
 		want string
 	}{
-		{"Completion.Markers.Done", cfg.Completion.Markers.Done, "<moai>DONE</moai>"},
-		{"Completion.Markers.Complete", cfg.Completion.Markers.Complete, "<moai>COMPLETE</moai>"},
 		{"Team.DefaultModel", cfg.Team.DefaultModel, "sonnet"},
 		{"Worktree.SessionNamePattern", cfg.Worktree.SessionNamePattern, "moai-{ProjectName}-{SPEC-ID}"},
 		{"RoleProfiles[implementer].Isolation", cfg.Team.RoleProfiles["implementer"].Isolation, "worktree"},

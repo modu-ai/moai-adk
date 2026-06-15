@@ -331,7 +331,7 @@ Skip Phase 7 if `--dry` or `--report-only` flag was set.
 
 ### Phase 8 — Completion
 
-Emit: `<moai>DONE</moai>`
+State that the release-update workflow is complete.
 
 Print to user (Korean if conversation_language=ko):
 ```

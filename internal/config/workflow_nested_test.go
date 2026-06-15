@@ -59,12 +59,6 @@ func TestWorkflowYAMLUnmarshalProductionFixture(t *testing.T) {
 	if got := wf.AutoClear.TokenThreshold; got != 150000 {
 		t.Errorf("AutoClear.TokenThreshold: got %d, want 150000", got)
 	}
-	if got := wf.Completion.Markers.Done; got != "<moai>DONE</moai>" {
-		t.Errorf("Completion.Markers.Done: got %q, want %q", got, "<moai>DONE</moai>")
-	}
-	if got := wf.Completion.Markers.Complete; got != "<moai>COMPLETE</moai>" {
-		t.Errorf("Completion.Markers.Complete: got %q, want %q", got, "<moai>COMPLETE</moai>")
-	}
 	if got := wf.TokenBudget.Plan; got != 30000 {
 		t.Errorf("TokenBudget.Plan: got %d, want 30000", got)
 	}

@@ -77,7 +77,7 @@ flowchart TD
     Fix --> Verify["Phase 5: Verify<br/>Check fix results"]
     Verify --> Check{Completion<br/>conditions met?}
     Check -->|No| Diag
-    Check -->|Yes| Done["Output completion marker"]
+    Check -->|Yes| Done["State that the loop is complete"]
 ```
 
 ### Phase 1: Parallel Diagnosis

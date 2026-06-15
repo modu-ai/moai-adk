@@ -277,12 +277,6 @@ Output:
 - CHANGELOG entry
 - Pull request
 
-## Completion Markers
-
-AI uses markers to signal task completion:
-- `<moai>DONE</moai>` - Task complete
-- `<moai>COMPLETE</moai>` - Full completion
-
 ## Context Management
 
 /clear Strategy:

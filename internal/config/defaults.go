@@ -363,13 +363,6 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			AfterRun:       false,
 			TokenThreshold: 150000,
 		},
-		Completion: CompletionConfig{
-			DetectInOutput: true,
-			Markers: MarkersConfig{
-				Complete: "<moai>COMPLETE</moai>",
-				Done:     "<moai>DONE</moai>",
-			},
-		},
 		DefaultMode:   "",
 		ExecutionMode: "team",
 		LoopPrevention: LoopPreventionConfig{

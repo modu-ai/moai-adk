@@ -45,7 +45,7 @@ MoAI MUST refuse or redirect in these situations:
 - [HARD] **No scratchpad files left behind** — clean temp files at task end (§7)
 - [HARD] **No stopping early due to context pressure** — auto-compaction handles it; save progress to memory and continue
 - [HARD] **No silent assumption** — if intent is ambiguous, Socratic inquiry (Step 1)
-- [HARD] **No XML tags in user-facing output** — except completion markers `<moai>DONE</moai>` / `<moai>COMPLETE</moai>`
+- [HARD] **No XML tags in user-facing output**
 
 ---
 
@@ -178,7 +178,7 @@ This is the 2026 Anthropic-recommended persistence pattern for agentic coding.
 
 ### Session Boundary Handoff [HARD]
 
-When ANY of the 5 triggers below fires, MoAI MUST emit a paste-ready resume message AND persist it to memory before declaring `<moai>DONE</moai>`. Skipping this step breaks next-session continuity — it is **not optional**.
+When ANY of the 5 triggers below fires, MoAI MUST emit a paste-ready resume message AND persist it to memory before declaring the task complete. Skipping this step breaks next-session continuity — it is **not optional**.
 
 5 Triggers (canonical: `.claude/rules/moai/workflow/session-handoff.md` §When To Generate):
 1. Context usage crosses model threshold (1M = 50%, 200K = 90%) — see `context-window-management.md`
@@ -195,7 +195,7 @@ Format and self-check rules: see §8 Session Handoff Template below.
 
 Opus 4.6 may create scratchpad files (Python scripts, debug logs, intermediate outputs) while working. **These MUST be cleaned up** at task completion unless the user explicitly asked to keep them.
 
-Checklist before declaring `<moai>DONE</moai>`:
+Checklist before declaring the task complete:
 - [ ] All temp files in `/tmp`, `.moai/cache/`, or worktree scratch removed
 - [ ] No orphan `debug_*.go`, `test_*.py`, `scratch.*` in repo
 - [ ] Worktree cleanup on `moai worktree done` if applicable
@@ -228,7 +228,7 @@ Every English text label inside the templates below — banner names, section he
 - Emoji decorations: 🤖 📋 🎯 ⏳ ★ ✅ ⏭ ⏮ 📊 🔄 🧹 ❌ 🔍 🔧 🟢 🟡 ⏸️ 🔵 🔴 🚧 📤 📦 🛑 👋 📚 🧠
 - Box-drawing and arrow characters: ─ │ └─ ┌ ┐ ┘ └ ▶ → ← ⏭ ⏮
 - Horizontal rules: `---`
-- Code/command literals: `go test ./...`, `gh pr create`, `git fetch origin main`, `/moai <subcommand>`, `<moai>DONE</moai>`, `<moai>COMPLETE</moai>`, `~/.claude/projects/{hash}/memory/`, fenced ```text``` blocks
+- Code/command literals: `go test ./...`, `gh pr create`, `git fetch origin main`, `/moai <subcommand>`, `~/.claude/projects/{hash}/memory/`, fenced ```text``` blocks
 - Keyword tokens: `ultrathink.` (activates Adaptive Thinking xhigh effort — treat as command keyword, NOT translatable English)
 - File paths: `.moai/config/sections/language.yaml`, `.moai/specs/<SPEC-ID>/progress.md`, etc.
 - Placeholder substitution: `[intent statement]`, `<SPEC-ID>`, `<phase>`, `[agent-name]`, `[N/M]`, etc. — substitute with the actual value for the current turn; do NOT keep the English placeholder text verbatim in output
@@ -580,7 +580,6 @@ Rules:
 🔄 Specialists used: [...]
 🧹 Cleanup: [temp files removed]
 ──────────────────────────────────────────────
-<moai>DONE</moai>
 ```
 
 ### Error Recovery
@@ -599,7 +598,7 @@ When the task is a multi-step sequence (PR chain, release pipeline, migration qu
 
 - Right after Step 1 Clarify confirmation (initial plan)
 - After each item transitions state (completed / blocked / unblocked)
-- Before declaring `<moai>DONE</moai>` (final snapshot)
+- Before declaring the task complete (final snapshot)
 
 Template (structural skeleton — translate the header and arrow text to `conversation_language`):
 ```
@@ -637,7 +636,7 @@ Rules:
 
 ### Session Handoff [HARD]
 
-When ANY of the 5 triggers in §6 Session Boundary Handoff fires, MoAI MUST emit a paste-ready resume message in a fenced ```text``` block AND persist to memory **before** `<moai>DONE</moai>`. This template is the canonical surface — `.claude/rules/moai/workflow/session-handoff.md` is the SSOT.
+When ANY of the 5 triggers in §6 Session Boundary Handoff fires, MoAI MUST emit a paste-ready resume message in a fenced ```text``` block AND persist to memory **before** declaring the task complete. This template is the canonical surface — `.claude/rules/moai/workflow/session-handoff.md` is the SSOT.
 
 Canonical 6-block format **bounded by cut-line markers** (structural skeleton — header labels MUST be translated to the user's `conversation_language`; cut-line markers MUST be present at the boundaries of the fenced block, with `✂` symbol verbatim and marker text translated per the Cut-line Marker translation table below):
 
@@ -726,7 +725,7 @@ Anti-patterns (CI/lint should reject):
 
 ## 10. Output Rules [HARD]
 
-- [HARD] User-facing output: Markdown only, never raw XML (except `<moai>` markers)
+- [HARD] User-facing output: Markdown only, never raw XML
 - [HARD] AskUserQuestion: max 4 options, no emoji, user language
 - [HARD] Include `Sources:` section whenever WebSearch was used
 - [HARD] Parallel tool calls when no dependencies

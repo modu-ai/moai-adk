@@ -9,11 +9,6 @@ workflow:
         after_run: false
         enabled: true
         token_threshold: 150000
-    completion:
-        detect_in_output: true
-        markers:
-            complete: <moai>COMPLETE</moai>
-            done: <moai>DONE</moai>
     execution_mode: team
     loop_prevention:
         failure_pattern_detection: true

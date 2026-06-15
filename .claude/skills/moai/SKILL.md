@@ -63,7 +63,7 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **project** (aliases: init): Project documentation generation
 - **feedback** (aliases: fb, bug, issue): GitHub issue creation
 - **fix**: Auto-fix errors in a single pass
-- **loop**: Iterative auto-fix until completion marker detected
+- **loop**: Iterative auto-fix until completion conditions are satisfied
 - **mx**: MX tag scan and annotation for codebase
 - **review** (aliases: code-review): Code review with security and MX tag compliance
 - **clean** (aliases: dead-code): Identify and safely remove dead code
@@ -150,7 +150,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/fix.md
 
 ### loop - Iterative Auto-Fix
 
-Purpose: Repeatedly fix issues until completion marker detected or max iterations reached.
+Purpose: Repeatedly fix issues until completion conditions are satisfied or max iterations reached.
 Agents: manager-quality (diagnostic-mode), expert-backend, expert-frontend, manager-develop
 Flags: --max N, --auto-fix, --seq
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/loop.md
@@ -319,8 +319,8 @@ Update task status using TaskUpdate as work progresses (pending to in_progress t
 Step 8 - Present Results:
 Display results to the user in their conversation_language using Markdown format.
 
-Step 9 - Add Completion Marker:
-When all workflow phases complete successfully, add the appropriate completion marker (`<moai>DONE</moai>` or `<moai>COMPLETE</moai>`).
+Step 9 - Declare Completion:
+When all workflow phases complete successfully, state that the workflow is complete in the Completion Report (banner / prose) so the result is unambiguous.
 
 Step 10 - Guide Next Steps:
 Use AskUserQuestion to present the user with logical next actions based on the completed workflow.

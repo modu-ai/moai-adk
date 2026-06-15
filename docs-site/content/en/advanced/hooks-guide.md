@@ -498,7 +498,7 @@ Controls Ralph Engine feedback loop.
 - LSP warning count
 - Test pass status
 - Coverage target (default 85%)
-- Completion markers (`<moai>DONE</moai>`, `<moai>COMPLETE</moai>`) detection
+- Completion-sentence detection (natural-language loop-exit signal)
 
 **State File:** `.moai/cache/.moai_loop_state.json`
 

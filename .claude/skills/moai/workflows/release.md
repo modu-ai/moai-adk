@@ -727,8 +727,6 @@ Updating version files...
 ### Links
 - GitHub Release: https://github.com/modu-ai/moai-adk/releases/tag/v2.1.0
 - Release Assets: darwin-arm64, darwin-amd64, linux-arm64, linux-amd64, windows-amd64
-
-<moai>DONE</moai>
 ```
 
 ---
