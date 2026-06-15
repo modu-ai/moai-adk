@@ -135,6 +135,24 @@ OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager
 
 **acceptance.md**: Given-When-Then scenarios (minimum 2), edge cases, quality gate criteria, Definition of Done.
 
+**progress.md**: Canonical §E section skeleton (placeholder headings only — see § progress.md §E Skeleton Generation below).
+
+#### [HARD] progress.md §E Skeleton Generation
+
+[HARD] When creating the plan-phase artifact set, emit a `progress.md` file carrying the canonical `§E` section skeleton with all five placeholder headings, in this exact order:
+
+1. `## §E.1 Plan-phase Audit-Ready Signal`
+2. `## §E.2 Run-phase Evidence`
+3. `## §E.3 Run-phase Audit-Ready Signal`
+4. `## §E.4 Sync-phase Audit-Ready Signal`
+5. `## §E.5 Mx-phase Audit-Ready Signal`
+
+Why these markers: the era-classification engine (`internal/spec/era.go` `hasAnyProgressMarker`) greps for the literal `§E.2`/`§E.3`/`§E.4`/`§E.5` substrings — NOT `§E.1` — so emitting the literal `§E.2`-`§E.5` headings at plan-phase is what prevents the SPEC from drifting into ad-hoc `§F.*` markers that the engine misclassifies (an H-2 era misclassification). The `§E.1` heading is emitted for human/audit readability. The `§E.2` heading specifically is the §E-section run-evidence start marker, not the sync phase (which lives at `§E.4`).
+
+Keep the skeleton minimal: each section is a heading plus a one-line placeholder note (e.g. `_<pending run-phase>_`). Emit NO populated evidence tables, commit SHAs, or audit-ready YAML blocks at plan-phase.
+
+[HARD] The skeleton emission is **placeholder headings only**. This instruction does NOT authorize this agent to populate `§E.2`-`§E.5` evidence content at plan-phase: `§E.2`/`§E.3` content belongs to manager-develop (run-phase) and `§E.4`/`§E.5` content belongs to manager-docs (sync/Mx-phase) per the existing Forbidden-modifications matrix below. This agent populates only `§E.1` (the plan-phase audit-ready signal) and leaves `§E.2`-`§E.5` as empty placeholder headings.
+
 #### [HARD] SPEC ID Pre-Write Self-Check Protocol
 
 [HARD] Before invoking `Write` or `Edit` for any new SPEC document containing a SPEC ID in its YAML frontmatter, the agent MUST execute a regex match decomposition self-check and print the result to its response body. The canonical SPEC ID regex literal is `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$` (verbatim from `internal/spec/lint.go:573`). Run this self-check before every SPEC Write; skipping it has historically caused SPEC ID drift.
