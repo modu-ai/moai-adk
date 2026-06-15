@@ -78,10 +78,17 @@ zero_new_production_code: true   # CON-PMC-002: only era.go comment text changed
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-> Owner: manager-docs. Placeholder at plan-phase — populated during sync-phase
-> (sync_complete_at, sync_commit_sha, sync_status, changelog_entry_position, frontmatter_status_transitions, etc.).
-
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-06-16
+sync_commit_sha: "(this commit — backfilled post-commit; unobserved at write-time per verification-claim-integrity)"
+sync_status: implemented
+changelog_entry_position: "[Unreleased] ### Added (top)"
+frontmatter_status_transitions:
+  spec.md: "in-progress → implemented"
+  note: "plan.md / acceptance.md / progress.md carry NO frontmatter status field — status lives in spec.md only (verified: grep -cE '^status:' → spec 1, plan/acceptance/progress 0)"
+docs_site_impact: "none — internal dev-convention canonicalization (progress.md §E marker semantics + manager-spec skeleton); no user-facing surface affected"
+readme_impact: "none — same rationale"
+```
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
