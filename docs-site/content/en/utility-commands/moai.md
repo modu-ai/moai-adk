@@ -189,7 +189,7 @@ flowchart TD
     R --> S["Call manager-docs<br/>Generate documents"]
     S --> T{"--pr?"}
     T -->|Yes| U["Create PR"]
-    T -->|No| V["Completion marker"]
+    T -->|No| V["Completion signal"]
     U --> V
 ```
 

@@ -82,7 +82,7 @@ flowchart TD
     Fix --> Verify["5단계: 검증<br/>수정 결과 확인"]
     Verify --> Check{완료 조건<br/>충족?}
     Check -->|아니오| Diag
-    Check -->|예| Done["완료 마커 출력"]
+    Check -->|예| Done["루프 완료 명시"]
 ```
 
 ### 1단계: 병렬 진단

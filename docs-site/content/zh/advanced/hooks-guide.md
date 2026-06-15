@@ -498,7 +498,7 @@ ralph:
 - LSP 警告数
 - 测试通过情况
 - 覆盖率目标 (默认 85%)
-- 完成标记 (`<moai>DONE</moai>`, `<moai>COMPLETE</moai>`) 检测
+- 完成语句检测 (自然语言循环退出信号)
 
 **状态文件:** `.moai/cache/.moai_loop_state.json`
 

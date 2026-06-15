@@ -428,7 +428,7 @@ flowchart TD
 
 ```bash
 /moai fix       # 单次: 扫描 → 分类 → 修复 → 验证
-/moai loop      # 反复修复: 循环直到检测到完成标记（最多100次）
+/moai loop      # 反复修复: 循环直到满足完成条件（最多100次）
 ```
 
 **Ralph Engine工作方式:**

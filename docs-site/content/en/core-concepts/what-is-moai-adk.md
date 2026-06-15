@@ -411,7 +411,7 @@ An autonomous error-fixing engine that combines LSP diagnostics with AST-grep:
 
 ```bash
 /moai fix       # Single pass: scan → classify → fix → verify
-/moai loop      # Iterative fix: repeat until completion marker detected (max 100)
+/moai loop      # Iterative fix: repeat until completion conditions are satisfied (max 100)
 ```
 
 **How Ralph Engine works:**

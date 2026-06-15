@@ -498,7 +498,7 @@ Ralph Engine フィードバックループを制御します。
 - LSP 警告数
 - テスト通過有無
 - カバレッジ目標 (デフォルト 85%)
-- 完了マーカー (`<moai>DONE</moai>`, `<moai>COMPLETE</moai>`) 検出
+- 完了文の検出 (自然言語ループ終了シグナル)
 
 **状態ファイル:** `.moai/cache/.moai_loop_state.json`
 

@@ -285,7 +285,7 @@ You can select your preferred language in the installation wizard or change it d
 
 MoAI-ADK provides autonomous workflows through Ralph-Loop Style LSP integration:
 
-- **LSP-based completion marker auto-detection**: Automatically detects when work is complete
+- **LSP-based completion auto-detection**: Automatically detects when work is complete
 - **Real-time regression detection**: Catches errors before they become problems
 - **Auto-completion trigger**: Automatically completes when 0 errors, 0 type errors, 85% coverage achieved
 

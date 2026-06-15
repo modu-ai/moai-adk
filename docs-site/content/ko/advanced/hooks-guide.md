@@ -534,7 +534,7 @@ Ralph Engine 피드백 루프를 제어합니다.
 - LSP 경고 수
 - 테스트 통과 여부
 - 커버리지 목표 (기본 85%)
-- 완료 마커 (`<moai>DONE</moai>`, `<moai>COMPLETE</moai>`) 감지
+- 완료 문장 감지 (자연어 루프 종료 신호)
 
 **상태 파일:** `.moai/cache/.moai_loop_state.json`
 
