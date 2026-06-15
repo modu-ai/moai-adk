@@ -96,7 +96,7 @@ no_docs_site_update: "This SPEC is internal doctrine/workflow (rules + test) —
 
 ```yaml
 mx_complete_at: 2026-06-15
-mx_commit_sha: (this commit)
+mx_commit_sha: 551247f546dd311afaa90d1f0d9ab8b408ca21b5
 mx_status: completed
 frontmatter_transition: "implemented → completed (spec.md)"
 four_phase_complete: "plan(ef9a619ad) → run(M1 948d704f6 / M2 36642c6c6 / M3 1aa4a927e / M4 3c9af0bc1 / M5 13fd09a11) → sync(3ec0c808f) → Mx(this close commit)"
