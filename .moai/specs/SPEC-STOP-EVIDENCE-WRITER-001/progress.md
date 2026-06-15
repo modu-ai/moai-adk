@@ -49,11 +49,7 @@ Unlike GATE-001 (which was honestly a dormant scaffold), THIS SPEC's deliverable
 |-------|-------|
 | sync_complete_at | 2026-06-16 |
 | sync_status | audit-ready |
-| sync_commit_sha | <pending — orchestrator backfills post-push> |
-
-## §E.3 Mx-phase Audit-Ready Signal
-
-[Awaiting orchestrator Mx-phase completion]
+| sync_commit_sha | 8a0abae3d |
 
 ## §F Next step
 
@@ -124,10 +120,6 @@ Unlike GATE-001 (which was honestly a dormant scaffold), THIS SPEC's deliverable
 run_commit_sha: dd901cdca (M1-M6 single TDD pass: feat(SPEC-STOP-EVIDENCE-WRITER-001): M1-M6 record-time evidence writer activates Stop gate)
 
 status transition: draft → in-progress (this run-phase commit; Authored-By-Agent: manager-develop)
-
-## §E.2 Sync-phase Audit-Ready Signal
-
-sync_commit_sha: <pending — sync-phase will backfill>
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
