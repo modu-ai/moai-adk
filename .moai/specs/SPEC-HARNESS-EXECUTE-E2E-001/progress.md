@@ -86,7 +86,7 @@ tier: M
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-- **mx_commit_sha**: (this commit)
+- **mx_commit_sha**: 55c23b8de (close commit)
 - **mx_deliverables**: 완료
   - @MX 코드 주석 검토: 신규 `WithProjectRoot` (fan_in=1 < 3 → @MX:ANCHOR 불요), `measurementProjectRoot` (internal helper), `measurementRoot` godoc 정정 완료. 신규 @MX 태그 불필요 (작은 bug-fix, 기존 godoc 충분).
   - sync-auditor PASS (harmonic 0.951, Functionality 96 / Security 98 MUST-PASS, 0 BLOCKING / 0 SHOULD-FIX / 1 MINOR non-gating).
@@ -94,4 +94,4 @@ tier: M
 - **4-phase 완결**: plan (`2239087a4`) + run (M1 `304ef8805` / M2 `aafd4a3f8` / M3 `5e50f478b`) + sync (`615333607` + CHANGELOG 정정 `34b9a41da`) + Mx (this commit).
 - **security 입증**: sync-auditor가 fix가 fail-close 안전성을 약화시키지 않음을 2-재현(reverted-fix RED 시그니처 + genuine syntax-error fail-close)으로 독립 입증.
 sync_commit_sha: 34b9a41dae6fb8b57bedf7909254f73eaa9fe66c
-mx_commit_sha: (this commit)
+mx_commit_sha: 55c23b8defea16dafab0133bee0001723fecbf19
