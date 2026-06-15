@@ -2,7 +2,7 @@
 id: SPEC-STOP-EVIDENCE-WRITER-001
 title: "Record-time Evidence Writer — Activates the Stop Evidence Gate in Production"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-06-16
 updated: 2026-06-16
 author: GOOS행님
