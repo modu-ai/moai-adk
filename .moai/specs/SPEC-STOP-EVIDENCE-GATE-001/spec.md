@@ -2,7 +2,7 @@
 id: SPEC-STOP-EVIDENCE-GATE-001
 title: "Stop-hook Verification-Evidence Completion Gate + Session Ledger Reader (advisory, warn-first)"
 version: "0.1.1"
-status: implemented
+status: completed
 created: 2026-06-15
 updated: 2026-06-15
 author: GOOS행님

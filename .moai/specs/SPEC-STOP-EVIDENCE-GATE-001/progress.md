@@ -121,6 +121,12 @@ sync_commit_sha: 25cddcebb
 | M1 | `e1dabf661` | UsageRecord 이진 증거/path-kind omitempty 확장 (draft → in-progress) |
 | M2 | `ac028f37c` | 세션 원장 리더 + path-kind 분류 + 증거 평가기 |
 | M3 | `36a9bc8a5` | stop.go 게이트 삽입 (behavior-preserving additive) |
-| M4 | `(this commit)` | 통합 검증 + progress.md §E run-phase evidence |
+| M4 | `f600b9d53` | 통합 검증 + progress.md §E run-phase evidence |
 
 post_tool_metrics.go NOT modified (writer wiring = successor SPEC scope). 변경 파일 7개 전부 SPEC scope 내.
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+mx_commit_sha: (this commit)
+
+4-phase 완결: plan(`3eda7f5de`) → run M1-M4(`e1dabf661`..`f600b9d53`) → sync(`25cddcebb`) + doc-fix(`c58c947be`) → Mx close. status: implemented → completed. plan-auditor iter-2 PASS 0.91 · sync-auditor PASS (Func96/Sec98 MUST-PASS) · 11/11 AC PASS · 신규코드 100% cov · C-HRA-008 clean. knowingly-dormant scaffold — gate VALUE blocked on 후속 `SPEC-STOP-EVIDENCE-WRITER-001`.
