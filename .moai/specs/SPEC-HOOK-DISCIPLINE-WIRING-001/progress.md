@@ -117,3 +117,14 @@ Run-phase commits (Hybrid Trunk Tier M, main 직진):
 - `4a3f41dec` — M2 wire discipline hooks into settings + status draft→in-progress + progress.md §D
 
 Both carry `Authored-By-Agent: manager-develop` + `🗿 MoAI` trailers. Push to origin/main: see final agent report (pushed after this progress.md amendment commit).
+
+## §E.2 Sync-phase Audit-Ready Signal
+
+| Field | Value |
+|-------|-------|
+| Sync completion | 2026-06-15 (orchestrator-direct manager-docs) |
+| sync_commit_sha | `091fd126b` (M3 backfill commit, spec→implemented + progress.md §E.2) |
+| Self-test phase | B12 pre-emit: grep -c 'SPEC-HOOK-DISCIPLINE-WIRING-001' CHANGELOG.md = 0 (pre-check), AC count match 9/9 PASS, file path exists verify all 3 ✓ |
+| CHANGELOG AC count | 9 (AC-HDW-001..009 MUST-PASS, 0 SHOULD-FIX deferred) |
+| Mirror parity | CHANGELOG + spec.md + progress.md all staged (no git add -A) |
+| Status | Sync-phase artifacts complete: CHANGELOG entry Added, spec.md status in-progress→implemented, progress.md §E.2 appended |
