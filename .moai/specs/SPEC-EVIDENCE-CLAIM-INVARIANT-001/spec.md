@@ -2,7 +2,7 @@
 id: SPEC-EVIDENCE-CLAIM-INVARIANT-001
 title: "검증 주장 무결성 doctrine — no unobserved-verification-claim invariant + baseline 귀속 + 5-섹션 증거 리포트 포맷"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-06-15
 updated: 2026-06-15
 author: GOOS행님

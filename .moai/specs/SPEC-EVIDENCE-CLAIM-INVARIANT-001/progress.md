@@ -122,7 +122,22 @@ ok  	github.com/modu-ai/moai-adk/internal/template	0.831s
 
 ## §F.3 Sync-phase Audit-Ready Signal
 
-(sync-phase에서 manager-docs가 채움)
+```yaml
+sync_complete_at: 2026-06-15
+sync_commit_sha: "<pending-orchestrator-backfill>"
+sync_status: artifacts-ready
+sync_artifacts:
+  - spec.md frontmatter status: in-progress → implemented + updated: 2026-06-15
+  - CHANGELOG.md [Unreleased] Added entry with AC count verification (7/7 PASS)
+  - progress.md this file — §F.3 signal (sync-phase audit-ready)
+verification:
+  B12_pre_check: "grep -c SPEC-EVIDENCE-CLAIM-INVARIANT-001 CHANGELOG.md → 1 (PASS, new entry)"
+  changelog_entry_verified: "CHANGELOG.md line count + entry position + SPEC-ID anchor present"
+  spec_frontmatter_updated: "status: implemented, updated: 2026-06-15 (by manager-docs)"
+  artifact_files_staged: "CHANGELOG.md + spec.md + progress.md (explicit paths, no git add -A)"
+  push_precondition: "git fetch origin main && git rev-list --count --left-right origin/main...HEAD → 0 0"
+comment: "No Go code modified; CHANGELOG + SPEC frontmatter + progress.md only. Minimal-weight sync commit per Tier S. AC-ECI-001..007 remain PASS (no deletions, mirror remains neutral)."
+```
 
 ## §F.4 Mx-phase Audit-Ready Signal
 
