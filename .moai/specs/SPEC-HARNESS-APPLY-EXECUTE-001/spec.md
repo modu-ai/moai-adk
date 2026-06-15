@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-APPLY-EXECUTE-001
 title: "Harness Apply 실행 동사 — Applier.Apply() 첫 프로덕션 caller로 P2 observer/gate 활성화"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-15
 updated: 2026-06-15
 author: manager-spec
