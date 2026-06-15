@@ -76,6 +76,15 @@
             "timeout": 10,
             "type": "command",
             "async": true
+          },
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/status-transition-ownership.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/status-transition-ownership.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command"
           }
         ],
         "matcher": "Write|Edit"
@@ -91,6 +100,15 @@
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\"",
 {{- end}}
             "timeout": 5,
+            "type": "command"
+          },
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/sync-phase-quality-gate.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/sync-phase-quality-gate.sh\"",
+{{- end}}
+            "timeout": 10,
             "type": "command"
           }{{ if .HookOptIn.Enabled }},
           {
