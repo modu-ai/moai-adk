@@ -14,7 +14,26 @@ type UsageRecord struct {
 	Phase       string    `json:"phase"` // plan|run|sync|none
 	DurationMs  int64     `json:"duration_ms"`
 	Outcome     string    `json:"outcome"` // success|partial|error|unknown
+
+	// --- 신규 (SPEC-STOP-EVIDENCE-GATE-001, omitempty, backward-compatible) ---
+	// 이 세 필드는 기존 JSONL 레코드에는 부재하므로 omitempty 로 추가한다.
+	// 기존 레코드 디코드 시 zero-value(false/false/"")가 되며, REQ-SEG-010 에 따라
+	// "evidence not observable"(검증 실패 아님)로 해석된다.
+	//
+	// record-time 채움(populate)은 본 SPEC scope 밖이다 — 후속 writer SPEC
+	// SPEC-STOP-EVIDENCE-WRITER-001 이 code-change 세션에 set 한다(spec.md §A.4).
+	IsTestPass bool   `json:"is_test_pass,omitempty"` // 이진 증거: test-pass 관측됨
+	IsTestFail bool   `json:"is_test_fail,omitempty"` // 이진 증거: test-fail 관측됨
+	PathKind   string `json:"path_kind,omitempty"`    // "docs-only" | "code-change" (빈 값 = 추론)
 }
+
+// Path-kind 버킷 상수 (design.md §2.2 taxonomy; CLAUDE.local §14 하드코딩 금지).
+// 세션 원장 리더가 분류하는 고정 taxonomy. unknown 은 추론 불가 시 fallback.
+const (
+	PathKindDocsOnly   = "docs-only"
+	PathKindCodeChange = "code-change"
+	PathKindUnknown    = "unknown"
+)
 
 // Constants for trigger types.
 const (
