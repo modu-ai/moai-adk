@@ -123,7 +123,7 @@ Both carry `Authored-By-Agent: manager-develop` + `🗿 MoAI` trailers. Push to 
 | Field | Value |
 |-------|-------|
 | Sync completion | 2026-06-15 (orchestrator-direct manager-docs) |
-| sync_commit_sha | `091fd126b` (M3 backfill commit, spec→implemented + progress.md §E.2) |
+| sync_commit_sha | `2570ff2c9` (sync-phase commit: CHANGELOG entry + spec.md status→implemented + progress.md §E.2; SHA backfilled orchestrator-direct, correcting an initial mis-reference to the prior-HEAD run-phase commit 091fd126b) |
 | Self-test phase | B12 pre-emit: grep -c 'SPEC-HOOK-DISCIPLINE-WIRING-001' CHANGELOG.md = 0 (pre-check), AC count match 9/9 PASS, file path exists verify all 3 ✓ |
 | CHANGELOG AC count | 9 (AC-HDW-001..009 MUST-PASS, 0 SHOULD-FIX deferred) |
 | Mirror parity | CHANGELOG + spec.md + progress.md all staged (no git add -A) |
