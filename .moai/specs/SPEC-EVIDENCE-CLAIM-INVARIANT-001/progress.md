@@ -114,7 +114,11 @@ ok  	github.com/modu-ai/moai-adk/internal/template	0.831s
 
 ### Commit + Push (Hybrid Trunk, draft→in-progress transition)
 
-(filled in the commit step below — commit SHA + post-push `git rev-list --count --left-right origin/main...HEAD` divergence)
+- run_commit_sha: `6039e2fcd91ea4dc82854cd814453edc434c054c` (M1-M3, 4 files: 2 new doctrine + spec.md status + this progress.md)
+- pre-push divergence (before push): `0 1` (origin/main NOT ahead; my branch 1 clean linear commit ahead of `d9cb89bd4` == origin/main; no race)
+- push result: `d9cb89bd4..6039e2fcd  HEAD -> main` (exit 0; pre-push hook warn-only, NOT --no-verify; remote bypass log = Hybrid Trunk main-direct policy, CI 4 checks triggered)
+- post-push divergence: `0 0` (origin/main HEAD == `6039e2fcd`)
+- Authored-By-Agent: manager-develop (commit trailer, draft→in-progress canonical owner per Status Transition Ownership Matrix)
 
 ## §F.3 Sync-phase Audit-Ready Signal
 
