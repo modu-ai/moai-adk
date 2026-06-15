@@ -94,12 +94,12 @@ readme_impact: "none — same rationale"
 
 ```yaml
 mx_complete_at: 2026-06-16
-mx_commit_sha: "(this commit — backfilled post-commit; unobserved at write-time)"
+mx_commit_sha: "2c590e0ee"
 status_transition: "implemented → completed"
 four_phase_close:
   plan: "plan-auditor PASS 0.91 (iter-3, monotonic 0.84→0.86→0.91, skip-eligible)"
   run: "ee4295707 (M1-M4, 13/13 AC, era.go comment-only, L1 worktree FF 통합)"
   sync: "0ee01403b (status→implemented + §E.4 + CHANGELOG; orchestrator-direct fallback — manager-docs thrashing)"
-  mx: "(this commit — implemented→completed close)"
+  mx: "2c590e0ee (implemented→completed close)"
 era_self_classification: "V3R6 (H-4: §E.2 Run Evidence + §E.5 Mx present + sync_commit_sha + mx_commit_sha non-empty) — dogfoods convention B"
 ```
