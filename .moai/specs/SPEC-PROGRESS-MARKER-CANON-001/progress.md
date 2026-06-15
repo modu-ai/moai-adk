@@ -80,7 +80,7 @@ zero_new_production_code: true   # CON-PMC-002: only era.go comment text changed
 
 ```yaml
 sync_complete_at: 2026-06-16
-sync_commit_sha: "(this commit — backfilled post-commit; unobserved at write-time per verification-claim-integrity)"
+sync_commit_sha: "0ee01403b"
 sync_status: implemented
 changelog_entry_position: "[Unreleased] ### Added (top)"
 frontmatter_status_transitions:
@@ -92,7 +92,14 @@ readme_impact: "none — same rationale"
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-> Owner: manager-docs / orchestrator. Placeholder at plan-phase — populated at Mx-phase
-> close (mx_commit_sha, 4-phase close signal).
-
-_<pending Mx-phase>_
+```yaml
+mx_complete_at: 2026-06-16
+mx_commit_sha: "(this commit — backfilled post-commit; unobserved at write-time)"
+status_transition: "implemented → completed"
+four_phase_close:
+  plan: "plan-auditor PASS 0.91 (iter-3, monotonic 0.84→0.86→0.91, skip-eligible)"
+  run: "ee4295707 (M1-M4, 13/13 AC, era.go comment-only, L1 worktree FF 통합)"
+  sync: "0ee01403b (status→implemented + §E.4 + CHANGELOG; orchestrator-direct fallback — manager-docs thrashing)"
+  mx: "(this commit — implemented→completed close)"
+era_self_classification: "V3R6 (H-4: §E.2 Run Evidence + §E.5 Mx present + sync_commit_sha + mx_commit_sha non-empty) — dogfoods convention B"
+```

@@ -2,7 +2,7 @@
 id: SPEC-PROGRESS-MARKER-CANON-001
 title: "Canonicalize progress.md §E section markers (convention B) + era.go comment correction"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-06-16
 updated: 2026-06-16
 author: manager-spec
