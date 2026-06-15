@@ -62,10 +62,33 @@ Andrej Karpathy's coding principles are shared publicly as educational material.
 
 ---
 
+## im-not-ai (Humanize KR) — Korean AI-Tell Taxonomy
+
+The following reference material is derived from the im-not-ai (Humanize KR) open-source skill:
+
+**Source Repository**: https://github.com/epoko77-ai/im-not-ai
+**License**: MIT License — Copyright (c) 2026 epoko77-ai
+
+### Imported Components
+
+The Korean AI-tell taxonomy (imported 2026-06-15) is incorporated into the `moai-domain-humanize` skill:
+
+1. 10-category (A–J) Korean AI-tell detection taxonomy → `.claude/skills/moai-domain-humanize/modules/korean.md`
+2. S1/S2/S3 severity model, A–D quality grades, and 30%/50% over-editing guardrails → shared across `.claude/skills/moai-domain-humanize/` (SKILL.md + all four language modules)
+
+The English, Japanese, and Chinese modules of the same skill are independently web-researched catalogues modeled on this architecture, not ports of the source.
+
+### Attribution
+
+The im-not-ai skill is shared publicly under the MIT License. MoAI-ADK has ported the Korean taxonomy structure and adapted it for MoAI skill conventions and progressive-disclosure layout while preserving the original technical content. The MIT copyright notice is retained per the license terms.
+
+---
+
 **Import Date (harness)**: 2026-04-26
 **Import Date (Karpathy)**: 2026-04-28
+**Import Date (im-not-ai)**: 2026-06-15
 **MoAI-ADK License**: MIT
-**Combined Compatibility**: Apache 2.0 imports distributed under MIT with Apache attribution preserved.
+**Combined Compatibility**: Apache 2.0 imports distributed under MIT with both Apache and MIT attributions preserved.
 
 ---
 

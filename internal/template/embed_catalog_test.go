@@ -33,7 +33,8 @@ func TestLoadEmbeddedCatalog_Success(t *testing.T) {
 	// per Anthropic 2026 alignment (12 phantom/domain-expert agents archived). Catalog
 	// purged + skill cleanup reducing total to 38.
 	// REQ-TST-011: count constant updated to current retained catalog reality.
-	const wantTotal = 38
+	// moai-domain-humanize skill added (design optional-pack), net +1 = 39.
+	const wantTotal = 39
 	all := cat.AllEntries()
 	if len(all) != wantTotal {
 		t.Errorf("LoadEmbeddedCatalog() AllEntries() = %d, want %d", len(all), wantTotal)

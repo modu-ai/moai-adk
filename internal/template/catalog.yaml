@@ -176,6 +176,11 @@ catalog:
                   path: templates/.claude/skills/moai-domain-copywriting/
                   hash: bbfbf7abeb10ae008e801d2dcdde3c1357e976768759dde468b9ab3cc65ca77d
                   version: 1.0.0
+                - name: moai-domain-humanize
+                  tier: optional-pack:design
+                  path: templates/.claude/skills/moai-domain-humanize/
+                  hash: 30746b1e5411b01aa9825db12d8980396324d2d2a1e5c192d6553ecbaf5e8f3a
+                  version: 1.0.0
                 - name: moai-domain-design-handoff
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-domain-design-handoff/

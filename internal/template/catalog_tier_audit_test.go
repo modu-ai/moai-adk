@@ -138,7 +138,9 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// retired from template (moai-harness-cli-template, moai-harness-patterns are
 	// project-specific artifacts, not framework builders), net -2 = 31. Only the
 	// builders moai-meta-harness + moai-harness-learner remain in template.
-	const expectedSkillCount = 31
+	// moai-domain-humanize added (AI text humanization / 윤문 for KR/EN/JA/ZH,
+	// design optional-pack, Korean module ported from im-not-ai), net +1 = 32.
+	const expectedSkillCount = 32
 	if len(diskSkills) != expectedSkillCount {
 		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
 	}

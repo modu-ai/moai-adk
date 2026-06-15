@@ -42,7 +42,8 @@ func TestLoadCatalog(t *testing.T) {
 	// (HARNESS-TEMPLATE-CLEANUP removed user-area harness skills), reducing total to 38.
 	// REQ-TST-011: count constant updated to current retained catalog reality.
 	all := cat.AllEntries()
-	const expectedTotal = 38
+	// moai-domain-humanize skill added (design optional-pack), net +1 = 39.
+	const expectedTotal = 39
 	if len(all) != expectedTotal {
 		t.Errorf("AllEntries() returned %d entries, want %d", len(all), expectedTotal)
 	}
