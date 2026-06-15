@@ -43,11 +43,23 @@ Doctrine served: `.claude/rules/moai/core/verification-claim-integrity.md` (no-u
 
 Unlike GATE-001 (which was honestly a dormant scaffold), THIS SPEC's deliverable IS the production firing. `L_plan_auditor_value_realization_unfalsifiable` is satisfied by AC-SEW-009: the end-to-end test builds a session from the writer's own records, reads them through the unmodified gate chain, and asserts the gate fires (code-change + test-fail) and does not fire (test-pass). The production caller is the live `postToolHandler.Handle` PostToolUse path — no separate opt-in flag gates activation. If the writer were a no-op, AC-SEW-009 would fail.
 
-## §E Next step
+## §E.2 Sync-phase Audit-Ready Signal
 
-- Plan audit gate (Phase 0.5): plan-auditor (Tier M PASS threshold 0.80).
-- Then Implementation Kickoff Approval (user approval) → /moai run SPEC-STOP-EVIDENCE-WRITER-001 (cycle_type=tdd, M1-M6).
-- run-phase completion (M1-M6). Then /moai sync SPEC-STOP-EVIDENCE-WRITER-001.
+| Field | Value |
+|-------|-------|
+| sync_complete_at | 2026-06-16 |
+| sync_status | audit-ready |
+| sync_commit_sha | <pending — orchestrator backfills post-push> |
+
+## §E.3 Mx-phase Audit-Ready Signal
+
+[Awaiting orchestrator Mx-phase completion]
+
+## §F Next step
+
+- Orchestrator: push sync commit.
+- Then orchestrator-direct Mx (2-commit pattern: close + backfill).
+- Closure: implemented → completed (sync_commit_sha + mx_commit_sha backfilled).
 
 ## §E.0 Run-phase Entry — Phase 0.5 + Phase 0.95 (orchestrator)
 
