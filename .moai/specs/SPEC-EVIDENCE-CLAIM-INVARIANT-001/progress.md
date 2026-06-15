@@ -143,7 +143,7 @@ comment: "No Go code modified; CHANGELOG + SPEC frontmatter + progress.md only. 
 
 ```yaml
 mx_complete_at: 2026-06-15
-mx_commit_sha: "<pending-orchestrator-backfill>"
+mx_commit_sha: "5c2c80043fbccee3327002c1440c65c14e67d2a8"
 status_transition: "implemented → completed (4-phase close)"
 four_phase_summary:
   plan: "61d838840 (artifacts) + dfbb99ffd (plan-audit D1-D3 remediation)"
