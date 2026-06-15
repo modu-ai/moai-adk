@@ -127,6 +127,6 @@ post_tool_metrics.go NOT modified (writer wiring = successor SPEC scope). 변경
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-mx_commit_sha: (this commit)
+mx_commit_sha: 59561c92d
 
 4-phase 완결: plan(`3eda7f5de`) → run M1-M4(`e1dabf661`..`f600b9d53`) → sync(`25cddcebb`) + doc-fix(`c58c947be`) → Mx close. status: implemented → completed. plan-auditor iter-2 PASS 0.91 · sync-auditor PASS (Func96/Sec98 MUST-PASS) · 11/11 AC PASS · 신규코드 100% cov · C-HRA-008 clean. knowingly-dormant scaffold — gate VALUE blocked on 후속 `SPEC-STOP-EVIDENCE-WRITER-001`.
