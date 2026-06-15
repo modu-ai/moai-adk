@@ -179,7 +179,7 @@ catalog:
                 - name: moai-domain-humanize
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-domain-humanize/
-                  hash: 30746b1e5411b01aa9825db12d8980396324d2d2a1e5c192d6553ecbaf5e8f3a
+                  hash: 070d0bbee8ee3d01727a32b3f56272b09d8fcc6290eda668912180acd3621043
                   version: 1.0.0
                 - name: moai-domain-design-handoff
                   tier: optional-pack:design
