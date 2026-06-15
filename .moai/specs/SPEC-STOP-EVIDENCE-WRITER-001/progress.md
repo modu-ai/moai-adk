@@ -136,4 +136,4 @@ status transition: draft → in-progress (this run-phase commit; Authored-By-Age
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-mx_commit_sha: (this commit — orchestrator backfills actual SHA in follow-up)
+mx_commit_sha: 5be036722
