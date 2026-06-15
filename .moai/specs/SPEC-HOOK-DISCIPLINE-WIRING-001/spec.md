@@ -2,7 +2,7 @@
 id: SPEC-HOOK-DISCIPLINE-WIRING-001
 title: "Discipline Hook Wiring — Phase-2 Realization (status-transition + sync-gate, warn-first)"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-06-11
 updated: 2026-06-15
 author: manager-spec

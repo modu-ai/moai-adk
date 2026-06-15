@@ -128,3 +128,15 @@ Both carry `Authored-By-Agent: manager-develop` + `🗿 MoAI` trailers. Push to 
 | CHANGELOG AC count | 9 (AC-HDW-001..009 MUST-PASS, 0 SHOULD-FIX deferred) |
 | Mirror parity | CHANGELOG + spec.md + progress.md all staged (no git add -A) |
 | Status | Sync-phase artifacts complete: CHANGELOG entry Added, spec.md status in-progress→implemented, progress.md §E.2 appended |
+
+## §E.5 Mx-phase Audit-Ready Signal (4-phase close)
+
+| Field | Value |
+|-------|-------|
+| Mx completion | 2026-06-15 (orchestrator-direct) |
+| Status transition | implemented → completed |
+| mx_commit_sha | `(this commit — backfilled in the follow-up commit)` |
+| 4-phase ledger | plan (existing draft 2026-06-11) → run (6028c4419/4a3f41dec/091fd126b) → sync (2570ff2c9/76c0a96b0) → Mx (this close) |
+| Carried debt status | D1 resolved (invocation-site inspection), D2 resolved (exit-2 dormant behind MOAI_SYNC_GATE_BLOCKING), D3 resolved (tier: M added) |
+| Deferred scope | exit-2 blocking activation = explicit follow-up SPEC (warn-first only this SPEC, per §Exclusions item 1) |
+| Era | V3R6 (H-4: §E.2 + §E.5 + both commit_sha present) |
