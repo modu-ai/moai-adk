@@ -112,4 +112,8 @@ $ go test ./...   → exit 0, zero FAIL lines
 
 ### E8 — Commit + push
 
-_(populated after the run-phase commit + push to main)_
+Run-phase commits (Hybrid Trunk Tier M, main 직진):
+- `6028c4419` — M1 language-generalize sync-phase-quality-gate hook (both copies)
+- `4a3f41dec` — M2 wire discipline hooks into settings + status draft→in-progress + progress.md §D
+
+Both carry `Authored-By-Agent: manager-develop` + `🗿 MoAI` trailers. Push to origin/main: see final agent report (pushed after this progress.md amendment commit).
