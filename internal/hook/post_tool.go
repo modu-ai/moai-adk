@@ -221,6 +221,14 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		runMemoryAudit(input)
 	}
 
+	// Record evidence-bearing tool events for the Stop evidence gate
+	// (SPEC-STOP-EVIDENCE-WRITER-001). Bash test results + Edit/Write path-kind
+	// feed the session ledger that GATE-001's runEvidenceGate already consumes.
+	// Best-effort, additive — never blocks, never alters HookOutput.
+	if input.ToolName == "Bash" || input.ToolName == "Edit" || input.ToolName == "Write" {
+		logEvidence(input)
+	}
+
 	// REQ-CC2122-HOOK-001-001~004: duration_ms-based slow hook metrics recording (observation-only).
 	writeHookMetric(input, "handle-post-tool", "")
 
