@@ -43,7 +43,7 @@ This table is populated as each AC is verified during run-phase.
 ## §E.2 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_commit_sha: (pending — orchestrator will backfill after sync commit)
+sync_commit_sha: f684858a1
 sync_status: implemented
 ```
 
@@ -71,4 +71,17 @@ frozen_file_diff: 0                          # applier/pipeline/regression_gate/
 honest_framing: telemetry-only               # CHANGELOG/docs framing reserved for sync-phase; NO "prevents regressions" claim
 c_hra_008_boundary: clean                    # TestPropose_NoAskUserQuestion PASS (scans execute.go)
 real_go_test_recursion: none                 # T1 uses stubMeasurer; T2 uses stub SafetyEvaluator
+```
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+```yaml
+mx_commit_sha: (pending — backfill after Mx close commit)
+mx_status: completed
+mx_complete_at: 2026-06-15
+sync_auditor_verdict: PASS-WITH-DEBT       # Func 92 / Sec 90 (MUST-PASS 둘 다 통과) / Craft 78 / Consist 70
+sync_auditor_score: 0.818
+four_phase_close: plan b5e2ad673 / run 2dc365c35 / sync f684858a1 / mx (pending)
+d1_self_claim_fix: CHANGELOG 파일목록 정정 (applier.go 미수정 명시 + 경로/테스트 정정)  # sync-auditor D1 fix-now
+deferred_followups: 2                        # D2 e2e telemetry test + D3 package 90% coverage bar — 사용자 결정
 ```
