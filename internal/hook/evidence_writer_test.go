@@ -32,6 +32,32 @@ func TestClassifyTestCommand(t *testing.T) {
 		{"go_test_ambiguous", "go test ./...", nil, true, false, false},
 		{"go_test_pass_output", "go test ./internal/hook/", []byte("ok  \tgithub.com/x/y\t0.5s"), true, true, false},
 		{"go_test_fail_output", "go test ./internal/hook/", []byte("--- FAIL: TestX\nFAIL\tgithub.com/x/y\t0.5s"), true, false, true},
+		// D2 (sync-audit): the LIVE Claude Code Bash tool_response is a WRAPPED JSON
+		// object whose stdout string JSON-escapes the tab to the two-char "\t" — the
+		// raw-tab marker "ok  \t" then never matches the raw bytes, so a go-test PASS
+		// silently degrades to ambiguous. wantPass must be true after the shape-resilient
+		// JSON-decode fix (these failed before the fix: returned (true,false,false)).
+		{"go_test_pass_wrapped_json", "go test ./...", mustRaw(map[string]any{"stdout": "ok  \tgithub.com/modu-ai/moai-adk/internal/hook\t0.5s\n", "interrupted": false}), true, true, false},
+		{"go_test_fail_wrapped_json", "go test ./...", mustRaw(map[string]any{"stdout": "--- FAIL: TestX (0.00s)\nFAIL\tgithub.com/modu-ai/moai-adk/internal/hook\t0.5s\n", "interrupted": false}), true, false, true},
+		// wrapped exit_code (e.g. {"stdout":"...","exit_code":0}) — structured signal still wins.
+		{"go_test_pass_wrapped_exitcode", "go test ./...", mustRaw(map[string]any{"stdout": "ok  \tx\t0.1s\n", "exit_code": 0}), true, true, false},
+		{"go_test_fail_wrapped_exitcode", "go test ./...", mustRaw(map[string]any{"stdout": "FAIL\n", "exit_code": 1}), true, false, true},
+		// wrapped interrupted=true must be conservative (fail), regardless of stdout text.
+		{"go_test_wrapped_interrupted", "go test ./...", mustRaw(map[string]any{"stdout": "ok  \tx\t0.1s\n", "interrupted": true}), true, false, true},
+		// pytest wrapped — count-word marker survives in decoded stdout.
+		{"pytest_fail_wrapped_json", "pytest tests/", mustRaw(map[string]any{"stdout": "1 failed, 2 passed in 0.3s\n", "interrupted": false}), true, false, true},
+		{"pytest_pass_wrapped_json", "pytest tests/", mustRaw(map[string]any{"stdout": "3 passed in 0.3s\n", "interrupted": false}), true, true, false},
+		// cargo wrapped — precise marker survives in decoded stdout.
+		{"cargo_pass_wrapped_json", "cargo test", mustRaw(map[string]any{"stdout": "test result: ok. 5 passed; 0 failed\n", "interrupted": false}), true, true, false},
+		// go-test PASS reported on stderr (build-cache notices on stdout, result on stderr).
+		{"go_test_pass_wrapped_stderr", "go test ./...", mustRaw(map[string]any{"stdout": "", "stderr": "ok  \tx\t0.1s\n", "interrupted": false}), true, true, false},
+		// nested exit_code (e.g. {"result":{"exit_code":0}}) — structured signal found 1-depth deep.
+		{"go_test_pass_nested_exitcode", "go test ./...", mustRaw(map[string]any{"result": map[string]any{"exit_code": 0}}), true, true, false},
+		{"go_test_fail_nested_exitcode", "go test ./...", mustRaw(map[string]any{"result": map[string]any{"exit_code": 2}}), true, false, true},
+		// unknown text key (not in textKeys) — second loop in decodeToolResponse still extracts it.
+		{"go_test_pass_unknown_textkey", "go test ./...", mustRaw(map[string]any{"log": "ok  \tx\t0.1s\n"}), true, true, false},
+		// wrapped object with no usable text (empty stdout, no marker) → ambiguous (no signal).
+		{"go_test_wrapped_empty_text", "go test ./...", mustRaw(map[string]any{"stdout": "", "interrupted": false}), true, false, false},
 		{"go_test_run_flag", "go test -run TestX ./pkg", []byte(`{"exit_code":0}`), true, true, false},
 		// pytest
 		{"pytest_pass", "pytest", []byte(`{"exit_code":0}`), true, true, false},
@@ -137,6 +163,15 @@ func fileInput(tool, sessionID, filePath string) *HookInput {
 func mustJSON(s string) string {
 	b, _ := json.Marshal(s)
 	return string(b)
+}
+
+// mustRaw marshals v to JSON bytes — used to build a realistic WRAPPED Bash
+// tool_response (e.g. {"stdout":"...\nok  \t...\n","interrupted":false}) where
+// the encoder JSON-escapes the embedded tab to the two-char sequence "\t",
+// exactly as the live Claude Code Bash hook delivers it (D2 sync-audit fix).
+func mustRaw(v any) []byte {
+	b, _ := json.Marshal(v)
+	return b
 }
 
 func TestBuildEvidenceRecord(t *testing.T) {
@@ -434,6 +469,11 @@ func TestHandle_PreservesExistingObservers(t *testing.T) {
 // The only delta between the two cases is IsTestPass (false→true). If the
 // writer were a no-op (records never written, or evidence fields never set),
 // the positive subtest would not produce a finding and this AC would FAIL.
+//
+// (D2 sync-audit) The Bash tool_response fixtures use the REALISTIC WRAPPED JSON
+// shape the live Claude Code Bash hook delivers ({"stdout":"...ok  \t...","interrupted":false}
+// for PASS, "...--- FAIL..." for FAIL) — not the idealized {"exit_code":N} — so
+// the activation proof "fires on real evidence," not just idealized plumbing.
 func TestEvidenceGate_ActivatesInProduction(t *testing.T) {
 	// persist stores a buildEvidenceRecord result into the temp store.
 	persist := func(t *testing.T, root string, in *HookInput) {
@@ -456,7 +496,9 @@ func TestEvidenceGate_ActivatesInProduction(t *testing.T) {
 		// (1) Edit .go → {Outcome=success, PathKind=code-change}
 		persist(t, root, fileInput("Edit", sess, "internal/hook/post_tool.go"))
 		// (2) Bash go test FAIL → {Outcome=error, IsTestFail=true}
-		persist(t, root, bashInput(sess, "go test ./...", []byte(`{"exit_code":1}`)))
+		//     realistic wrapped tool_response (D2): --- FAIL inside escaped stdout.
+		persist(t, root, bashInput(sess, "go test ./...",
+			mustRaw(map[string]any{"stdout": "--- FAIL: TestX (0.00s)\nFAIL\tgithub.com/modu-ai/moai-adk/internal/hook\t0.5s\n", "interrupted": false})))
 
 		recs, err := telemetry.LoadBySession(root, sess)
 		if err != nil {
@@ -480,7 +522,10 @@ func TestEvidenceGate_ActivatesInProduction(t *testing.T) {
 		// (1) Edit .go → {Outcome=success, PathKind=code-change}
 		persist(t, root, fileInput("Edit", sess, "internal/hook/post_tool.go"))
 		// (2) Bash go test PASS → {Outcome=success, IsTestPass=true}  ← only delta
-		persist(t, root, bashInput(sess, "go test ./...", []byte(`{"exit_code":0}`)))
+		//     realistic wrapped tool_response (D2): escaped-tab "ok  \t" inside stdout —
+		//     this is precisely the shape that silently degraded to ambiguous before the fix.
+		persist(t, root, bashInput(sess, "go test ./...",
+			mustRaw(map[string]any{"stdout": "ok  \tgithub.com/modu-ai/moai-adk/internal/hook\t0.5s\n", "interrupted": false})))
 
 		recs, _ := telemetry.LoadBySession(root, sess)
 		finding := evaluateEvidence(buildSessionLedger(recs))

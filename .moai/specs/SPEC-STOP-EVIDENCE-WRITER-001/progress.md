@@ -87,6 +87,19 @@ Unlike GATE-001 (which was honestly a dormant scaffold), THIS SPEC's deliverable
 | AC-SEW-009 | PASS | `go test ./internal/hook/ -run TestEvidenceGate_ActivatesInProduction -count=1` | ok; FALSIFIABLE ACTIVATION — code-change+test-fail→non-nil Finding(path-kind=code-change), code-change+test-pass→nil; IsTestPass flip is only delta; records built by SPEC's own buildEvidenceRecord+RecordSkillUsage, read through UNCHANGED GATE-001 chain |
 | AC-SEW-010 | PASS | `go test ./internal/hook/ -run 'TestHandle_PreservesExistingObservers\|TestLogEvidence_NeverBlocks\|TestLogEvidence_SessionID\|TestLogEvidence_FailOpen' -count=1` + `grep -cE 'http\.\|net\.Dial\|exec\.Command\|os/exec' internal/hook/evidence_writer.go`=0 | Skill record preserved + HookOutput unchanged + fail-open + SessionID propagated + 0 network/subprocess |
 
+### D2 sync-audit follow-up fix (post-sync, status unchanged: implemented)
+
+sync-auditor confirmed D2 (MEDIUM, confidence HIGH): `deriveFromOutputText` matched go-test markers containing RAW TAB bytes (`ok  \t`, `FAIL\t`) against the RAW BYTES of `input.ToolResponse`. The LIVE Claude Code Bash `tool_response` is a WRAPPED JSON object (`{"stdout":"...\nok  \tpkg\t0.5s\n","interrupted":false}`); JSON-encoding escapes the embedded tab to the two-char `\t`, so the raw-tab PASS marker never matched and a go-test PASS silently degraded to ambiguous. Asymmetric: `--- FAIL` (no tab) still matched, so FAIL was caught but PASS was lost. Root cause: the live wrapped shape was never empirically grounded — existing fixtures used idealized top-level `{"exit_code":N}`.
+
+Fix (shape-resilient, confined to `evidence_writer.go` + its test): `deriveFromOutputText` now JSON-decodes a wrapped object via new `decodeToolResponse` and matches markers against the DECODED text (real tab/newline) from the candidate text-key family (`stdout`/`stderr`/`output`/`content`/`result` + any other top-level string field); plain-text responses preserve the raw-byte path. `deriveFromExitCode` gains nested `exit_code` extraction (`nestedExitCode`, 1-depth) and keeps the conservative `interrupted:true`→fail handling. AC-SEW-009 (`TestEvidenceGate_ActivatesInProduction`) updated to drive PASS/FAIL through realistic wrapped-JSON `tool_response` so the activation proof fires on production-shaped evidence.
+
+- RED proof: wrapped-JSON go-test PASS returned ambiguous `(true,false,false)` before fix (`isPass = false, want true`); wrapped FAIL already matched (asymmetric).
+- GREEN: `go test ./internal/hook/ -run 'TestClassifyTestCommand|TestEvidenceGate_ActivatesInProduction|TestBuildEvidenceRecord' -count=1` → ok (50 subtests; new wrapped + nested + unknown-textkey cases + old idealized cases all pass).
+- Full suite `go test ./...` → exit 0 (96 ok packages, 0 FAIL); `go vet ./...` exit 0; `golangci-lint run ./internal/hook/...` 0 issues; cross-build linux+windows exit 0; `-race ./internal/hook/` ok.
+- Coverage of changed funcs: `classifyTestCommand`/`decodeToolResponse`/`isTextKey`/`deriveFromExitCode`/`nestedExitCode` 100%, `deriveFromOutputText` 93.8%; pkg 82.7%.
+- PRESERVE (GATE-001 read-side) diff EMPTY: `session_ledger.go` / `stop.go` / `telemetry/types.go` / `telemetry/recorder.go` UNCHANGED. C-HRA-008 0 matches.
+- Commit: `fix(SPEC-STOP-EVIDENCE-WRITER-001): D2 shape-resilient tool_response parse (sync-audit)` (Authored-By-Agent: manager-develop). No lifecycle transition — status stays `implemented`.
+
 ### E2 cross-platform build
 
 - `go build ./...` → exit 0

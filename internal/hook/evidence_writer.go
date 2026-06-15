@@ -96,21 +96,78 @@ type exitCodeSignal struct {
 	Interrupted *bool `json:"interrupted"`
 }
 
+// textKeys 는 wrapped Bash tool_response 객체에서 출력 텍스트를 담을 수 있는
+// 후보 top-level 문자열 키 집합이다 (D2: live Bash tool_response shape).
+// 단일 정확 키에 베팅하지 않고 family 전체를 본다 (REQ-SEW-007 resilience).
+var textKeys = []string{"stdout", "stderr", "output", "content", "result"}
+
+// decodeToolResponse 는 tool_response 바이트를 (텍스트, 객체-여부) 로 정규화한다.
+// (D2 sync-audit) live Claude Code Bash tool_response 는 WRAPPED JSON 객체이며
+// (예: {"stdout":"...\nok  \t...\n","interrupted":false}) JSON 인코딩이 stdout
+// 안의 tab 을 두-글자 "\t" 로 escape 한다. raw-tab 마커는 raw 바이트와 매칭하지
+// 못하므로, 객체로 디코드되면 후보 텍스트 키의 DECODED 값(실제 tab/newline)을
+// 연결해 반환한다. plain-text 응답(디코드 실패)이면 raw 바이트를 그대로 쓴다
+// (기존 동작 보존). 두 번째 반환값은 결과가 JSON 객체였는지를 나타낸다.
+func decodeToolResponse(result []byte) (text string, isObject bool) {
+	var obj map[string]any
+	if err := json.Unmarshal(result, &obj); err != nil {
+		return string(result), false // plain text — 기존 동작 보존.
+	}
+	var b strings.Builder
+	// 우선순위 키를 먼저 연결한다 (안정적 순서).
+	for _, k := range textKeys {
+		if s, ok := obj[k].(string); ok && s != "" {
+			b.WriteString(s)
+			b.WriteByte('\n')
+		}
+	}
+	// textKeys 에 없는 나머지 top-level 문자열 필드도 포함 (미지의 텍스트 키 대비).
+	for k, v := range obj {
+		if isTextKey(k) {
+			continue
+		}
+		if s, ok := v.(string); ok && s != "" {
+			b.WriteString(s)
+			b.WriteByte('\n')
+		}
+	}
+	return b.String(), true
+}
+
+// isTextKey 는 키가 이미 textKeys 우선순위 목록에 포함됐는지 판정한다.
+func isTextKey(k string) bool {
+	for _, tk := range textKeys {
+		if k == tk {
+			return true
+		}
+	}
+	return false
+}
+
 // deriveFromExitCode 는 구조화된 종료 신호로부터 pass/fail 을 도출한다.
-// ok=false 면 종료 신호가 없어 출력 텍스트 휴리스틱으로 넘어가야 한다.
+// top-level 및 흔한 nested 위치(예: {"result":{"exit_code":0}})의 exit_code 를
+// 본다. ok=false 면 종료 신호가 없어 출력 텍스트 휴리스틱으로 넘어가야 한다.
+// interrupted:true 는 clean exit 아님 = fail 로 보수적으로 처리한다.
 func deriveFromExitCode(result []byte) (pass, fail, ok bool) {
 	if len(result) == 0 {
 		return false, false, false
 	}
+	// (1) top-level 구조화 신호.
 	var sig exitCodeSignal
-	if err := json.Unmarshal(result, &sig); err != nil {
-		return false, false, false
+	if err := json.Unmarshal(result, &sig); err == nil {
+		if sig.Interrupted != nil && *sig.Interrupted {
+			return false, true, true // 중단 = clean exit 아님 = fail.
+		}
+		if sig.ExitCode != nil {
+			if *sig.ExitCode == 0 {
+				return true, false, true
+			}
+			return false, true, true
+		}
 	}
-	if sig.Interrupted != nil && *sig.Interrupted {
-		return false, true, true // 중단 = clean exit 아님 = fail.
-	}
-	if sig.ExitCode != nil {
-		if *sig.ExitCode == 0 {
+	// (2) nested 위치의 exit_code (예: {"result":{"exit_code":0}}).
+	if code, found := nestedExitCode(result); found {
+		if code == 0 {
 			return true, false, true
 		}
 		return false, true, true
@@ -118,14 +175,38 @@ func deriveFromExitCode(result []byte) (pass, fail, ok bool) {
 	return false, false, false
 }
 
+// nestedExitCode 는 흔한 nested 위치에서 exit_code 정수를 찾는다.
+// top-level 객체의 1-depth 자식 객체만 본다 (무한 재귀 회피, ≤5s 보장).
+func nestedExitCode(result []byte) (code int, found bool) {
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(result, &obj); err != nil {
+		return 0, false
+	}
+	for _, raw := range obj {
+		var child struct {
+			ExitCode *int `json:"exit_code"`
+		}
+		if err := json.Unmarshal(raw, &child); err == nil && child.ExitCode != nil {
+			return *child.ExitCode, true
+		}
+	}
+	return 0, false
+}
+
 // deriveFromOutputText 는 테스트 러너 출력 텍스트로부터 pass/fail 을 도출한다
 // (exit-code 신호 부재 시 fallback). fail 마커를 pass 마커보다 우선한다 (보수적).
 // ok=false 면 인식 가능한 마커가 없어 어느 플래그도 set 하지 않아야 한다.
+//
+// (D2 sync-audit) wrapped JSON 객체면 DECODED 텍스트(실제 tab/newline)에 대해
+// 마커를 매칭하고, plain text 면 raw 바이트에 매칭한다 (decodeToolResponse).
 func deriveFromOutputText(result []byte) (pass, fail, ok bool) {
 	if len(result) == 0 {
 		return false, false, false
 	}
-	text := string(result)
+	text, _ := decodeToolResponse(result)
+	if text == "" {
+		return false, false, false
+	}
 
 	// (a) 정밀 마커 우선 — go/cargo 의 명시적 결과 라인은 상호배타적이라 신뢰도가 높다.
 	//     pass 출력이 "0 failed" 같은 카운트 문구를 포함할 수 있으므로 정밀 마커를
