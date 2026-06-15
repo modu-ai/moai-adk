@@ -52,6 +52,50 @@ type ExecuteOptions struct {
 	ProjectRoot string
 }
 
+// executePaths는 execute verb가 project root로부터 resolve한 canonical harness
+// 경로 집합이다 (REQ-AEX-009, design.md §B Wiring Recipe). 테스트가 production
+// 경로 구성을 non-vacuous하게 관측할 수 있도록 노출된 seam이다.
+type executePaths struct {
+	proposalDir  string
+	snapshotBase string
+	manifestPath string
+	baselinePath string
+	usageLogPath string
+	violationLog string
+	rateLimitPath string
+}
+
+// resolveExecutePaths는 project root를 기준으로 7개 harness 경로를 canonical하게
+// resolve한다 (AC-AEX-009). 절대경로 규칙은 호출부(RunExecute)가 filepath.Abs로
+// root를 절대화한 뒤 이 함수를 호출하는 것으로 보장된다.
+func resolveExecutePaths(root string) executePaths {
+	return executePaths{
+		proposalDir:   filepath.Join(root, execProposalDirRel),
+		snapshotBase:  filepath.Join(root, execSnapshotBaseRel),
+		manifestPath:  filepath.Join(root, execManifestRel),
+		baselinePath:  filepath.Join(root, execBaselineRel),
+		usageLogPath:  filepath.Join(root, execUsageLogRel),
+		violationLog:  filepath.Join(root, execViolationLogRel),
+		rateLimitPath: filepath.Join(root, execRateLimitRel),
+	}
+}
+
+// buildExecutePipelineConfig는 execute verb가 safety.NewPipeline에 전달하는
+// PipelineConfig 값을 구성한다 (REQ-AEX-005). AutoApply: true가 이 값에 박혀
+// 있음을 테스트가 직접 관측하여 autoApply contract production 배선을 non-vacuous하게
+// 검증한다 (AC-AEX-007). PipelineConfig 필드는 exported이므로 cross-package에서
+// 값 확인이 가능하다.
+//
+// @MX:NOTE: [AUTO] AutoApply: true는 in-memory PipelineConfig 값일 뿐 harness.yaml
+// 디스크 값(auto_apply: false)을 변경하지 않는다 (spec.md §B.2 FROZEN 불변식, C1).
+func buildExecutePipelineConfig(paths executePaths) safety.PipelineConfig {
+	return safety.PipelineConfig{
+		ViolationLogPath: paths.violationLog,
+		RateLimitPath:    paths.rateLimitPath,
+		AutoApply:        true,
+	}
+}
+
 // RunExecute는 execute verb의 프로덕션 진입점이다 — `Applier.Apply()`의 첫 프로덕션
 // caller. production safety Pipeline(AutoApply=true) + regression-gate Applier +
 // outcome Observer를 구성한 뒤 injectable한 runExecuteWith로 위임한다 (design.md §F.1
@@ -86,26 +130,17 @@ func RunExecute(opts ExecuteOptions) error {
 	normalized.ProjectRoot = root
 
 	// canonical 경로 resolve (REQ-AEX-009, design.md §B Wiring Recipe).
-	snapshotBase := filepath.Join(root, execSnapshotBaseRel)
-	manifestPath := filepath.Join(root, execManifestRel)
-	baselinePath := filepath.Join(root, execBaselineRel)
-	usageLogPath := filepath.Join(root, execUsageLogRel)
-	violationLog := filepath.Join(root, execViolationLogRel)
-	rateLimitPath := filepath.Join(root, execRateLimitRel)
+	paths := resolveExecutePaths(root)
 
 	// autoApply contract: AutoApply=true (in-memory ONLY — harness.yaml 디스크 불변).
 	// L1~L4 강제, L5 auto-approve (REQ-AEX-005).
-	pipeline := safety.NewPipeline(safety.PipelineConfig{
-		ViolationLogPath: violationLog,
-		RateLimitPath:    rateLimitPath,
-		AutoApply:        true,
-	})
+	pipeline := safety.NewPipeline(buildExecutePipelineConfig(paths))
 
 	// regression gate + outcome observer 배선 (REQ-AEX-008).
-	applier := harness.NewApplierWithRegressionGate(manifestPath, baselinePath).
-		WithOutcomeObserver(harness.NewObserver(usageLogPath))
+	applier := harness.NewApplierWithRegressionGate(paths.manifestPath, paths.baselinePath).
+		WithOutcomeObserver(harness.NewObserver(paths.usageLogPath))
 
-	return runExecuteWithBase(normalized, pipeline, applier, snapshotBase)
+	return runExecuteWithBase(normalized, pipeline, applier, paths.snapshotBase)
 }
 
 // runExecuteWith는 design.md §F.1 T2 테스트 seam이다 — production이 아닌 stub

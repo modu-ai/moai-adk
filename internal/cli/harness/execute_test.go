@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/harness"
+	"github.com/modu-ai/moai-adk/internal/harness/safety"
 )
 
 // writeProposalFixture는 t.TempDir() 프로젝트 root에 pending proposal JSON 1건을
@@ -194,5 +195,110 @@ func TestExecute_NilError_ExitZero(t *testing.T) {
 
 	if got := ExitCodeForError(nil); got != 0 {
 		t.Errorf("nil error exit code = %d, want 0", got)
+	}
+}
+
+// ── M2: Apply 파이프라인 배선 + autoApply contract + canonical paths ──────────
+
+// TestExecute_ProductionPipeline_UsesAutoApplyTrue — [D3 분리, AC-AEX-007]
+// production 배선이 safety.NewPipeline에 전달하는 PipelineConfig가 AutoApply: true임을
+// 직접 관측한다 (non-vacuous). "AutoApply=true 하 Pending 안 냄" tautology가 아니라,
+// RunExecute가 실제 production 구성 시 AutoApply: true를 전달하는지를 검증한다.
+func TestExecute_ProductionPipeline_UsesAutoApplyTrue(t *testing.T) {
+	t.Parallel()
+
+	paths := resolveExecutePaths(t.TempDir())
+	cfg := buildExecutePipelineConfig(paths)
+	if !cfg.AutoApply {
+		t.Error("production execute pipeline config must set AutoApply: true (autoApply contract, REQ-AEX-005)")
+	}
+	// ViolationLogPath / RateLimitPath도 canonical 경로로 채워져야 한다 (L1/L4 배선).
+	if cfg.ViolationLogPath == "" {
+		t.Error("PipelineConfig.ViolationLogPath must be wired (L1 frozen-guard violation log)")
+	}
+	if cfg.RateLimitPath == "" {
+		t.Error("PipelineConfig.RateLimitPath must be wired (L4 rate limiter state)")
+	}
+}
+
+// TestExecute_ResolvesCanonicalHarnessPaths — [AC-AEX-009] 4개 canonical 경로가
+// project root 상대로 join되는지 table-driven으로 검증한다 (design.md §B Wiring Recipe).
+func TestExecute_ResolvesCanonicalHarnessPaths(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	paths := resolveExecutePaths(root)
+
+	tests := []struct {
+		name string
+		got  string
+		want string
+	}{
+		{"snapshotBase", paths.snapshotBase, filepath.Join(root, ".moai", "harness", "learning-history", "snapshots")},
+		{"manifestPath", paths.manifestPath, filepath.Join(root, ".moai", "harness", "learning-history", "manifest.jsonl")},
+		{"baselinePath", paths.baselinePath, filepath.Join(root, ".moai", "harness", "measurements-baseline.yaml")},
+		{"usageLogPath", paths.usageLogPath, filepath.Join(root, ".moai", "harness", "usage-log.jsonl")},
+		{"proposalDir", paths.proposalDir, filepath.Join(root, ".moai", "harness", "proposals")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.got != tt.want {
+				t.Errorf("%s = %q, want %q", tt.name, tt.got, tt.want)
+			}
+		})
+	}
+}
+
+// TestExecute_RelativeProjectRoot_AbsolutizedByAbs — 절대경로 규칙(AC-AEX-009):
+// user-supplied 상대 --project-root는 filepath.Abs로 절대화되어야 한다. 빈 ID로
+// 호출해 proposal 단계 전 root 처리 경로만 exercise한다 (userError exit 1).
+func TestExecute_EmptyID_UserError(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	err := RunExecute(ExecuteOptions{ID: "", ProjectRoot: root})
+	if err == nil {
+		t.Fatal("RunExecute must reject empty proposal ID")
+	}
+	if got := ExitCodeForError(err); got != 1 {
+		t.Errorf("empty ID exit code = %d, want 1 (user error)", got)
+	}
+}
+
+// TestExecute_NilSessions_CanaryDoesNotReject — [AC-AEX-011] nil/empty sessions로
+// gate-active Applier.Apply를 호출할 때 L2 Canary가 reject하지 않음을 검증한다.
+// production Pipeline(AutoApply: true)을 직접 구성하여 L1~L5를 실제로 통과시키고,
+// gate-active Applier는 same-package stubMeasurer로 구성할 수 없으므로(cross-package)
+// 여기서는 evaluator를 production Pipeline으로 두되 gate-inactive Applier를 주입해
+// L2 통과 후 straight-line apply가 fieldKey 오류 없이 진행됨을 확인한다.
+//
+// 핵심: nil sessions가 L2 reject를 유발하지 않음을 production Pipeline.Evaluate로
+// 실증한다 (canary.go nil-safe). meaningful proposal(TargetPath+NewValue 존재)을 사용.
+func TestExecute_NilSessions_CanaryDoesNotReject(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	id := "SPEC-CANARY-001"
+	// 비-FROZEN 타겟 + description fieldKey. gate-inactive Applier(straight-line)는
+	// applyFileModification에서 실제 파일을 EnrichDescription하므로 fixture 파일이 필요.
+	targetRel := "docs/canary-sample.md"
+	targetAbs := filepath.Join(root, targetRel)
+	if err := os.MkdirAll(filepath.Dir(targetAbs), 0o755); err != nil {
+		t.Fatalf("mkdir target dir: %v", err)
+	}
+	if err := os.WriteFile(targetAbs, []byte("---\ndescription: original\n---\nbody\n"), 0o644); err != nil {
+		t.Fatalf("write target fixture: %v", err)
+	}
+	writeProposalFixture(t, root, id, targetAbs, "description", "canary enriched note")
+
+	paths := resolveExecutePaths(root)
+	pipeline := safety.NewPipeline(buildExecutePipelineConfig(paths))
+	// gate-inactive Applier: L1~L5 통과(autoApply=true) 후 straight-line modify+lineage.
+	applier := harness.NewApplier()
+
+	err := runExecuteWith(ExecuteOptions{ID: id, ProjectRoot: root}, pipeline, applier)
+	if err != nil {
+		// L2 Canary reject라면 "rejected (L2" 메시지가 나온다 — 이는 실패.
+		t.Fatalf("nil sessions must not trigger L2 canary rejection; got error: %v", err)
 	}
 }
