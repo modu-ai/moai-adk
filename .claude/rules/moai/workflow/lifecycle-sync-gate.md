@@ -294,7 +294,10 @@ tags: "example, demo"
 **`progress.md`** (excerpt):
 ```yaml
 # ...
-## §E.2 Sync-phase Audit-Ready Signal
+## §E.2 Run-phase Evidence
+# (run-evidence start marker — the literal §E.2 heading is what hasAnyProgressMarker detects)
+# ...
+## §E.4 Sync-phase Audit-Ready Signal
 sync_commit_sha: "a1b2c3d4e5f6"
 # ...
 ## §E.5 Mx-phase Audit-Ready Signal
@@ -308,8 +311,8 @@ mx_commit_sha: "f6e5d4c3b2a1"
 3. H-override: skipped (field absent).
 4. `ProgressMDExists = true` (H-1 does not fire).
 5. `hasAnyProgressMarker()` returns `true` (`§E.2` present) (H-2 does not fire).
-6. `hasSyncSection = true` (`§E.2` marker present).
-7. `syncSHA = "a1b2c3d4e5f6"` (non-empty).
+6. `hasSyncSection = true` (`§E.2` marker present — note: `hasSyncSection` is a misnomer; it tests the literal `§E.2` run-evidence start marker, not the sync phase, which lives at `§E.4`).
+7. `syncSHA = "a1b2c3d4e5f6"` (non-empty — field extracted from the `§E.4 Sync-phase Audit-Ready Signal` section).
 8. `hasMxSection = true` (`§E.5` marker present).
 9. `mxSHA = "f6e5d4c3b2a1"` (non-empty).
 10. H-3 check: `hasSyncSection && syncSHA == ""` → **false** (H-3 does not fire).
