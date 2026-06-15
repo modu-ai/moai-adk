@@ -124,7 +124,7 @@ ok  	github.com/modu-ai/moai-adk/internal/template	0.831s
 
 ```yaml
 sync_complete_at: 2026-06-15
-sync_commit_sha: "<pending-orchestrator-backfill>"
+sync_commit_sha: "cbb4fe39b74f58483ecebad258294afc812390ad"
 sync_status: artifacts-ready
 sync_artifacts:
   - spec.md frontmatter status: in-progress → implemented + updated: 2026-06-15
