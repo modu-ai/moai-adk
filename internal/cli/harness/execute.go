@@ -137,8 +137,13 @@ func RunExecute(opts ExecuteOptions) error {
 	pipeline := safety.NewPipeline(buildExecutePipelineConfig(paths))
 
 	// regression gate + outcome observer 배선 (REQ-AEX-008).
+	// .WithProjectRoot(root)로 측정 root를 실제 project root로 배선한다
+	// (SPEC-HARNESS-EXECUTE-E2E-001): root는 이미 위에서 filepath.Abs로 절대화됨.
+	// 이 배선이 없으면 gate가 measurementRoot(snapshotDir)=snapshot base를 측정하여
+	// testable Go 패키지 없는 디렉터리에서 fail-close → telemetry 0건.
 	applier := harness.NewApplierWithRegressionGate(paths.manifestPath, paths.baselinePath).
-		WithOutcomeObserver(harness.NewObserver(paths.usageLogPath))
+		WithOutcomeObserver(harness.NewObserver(paths.usageLogPath)).
+		WithProjectRoot(root)
 
 	return runExecuteWithBase(normalized, pipeline, applier, paths.snapshotBase)
 }

@@ -63,6 +63,19 @@ type Applier struct {
 	// is purely additive; it never alters the gate's keep/rollback decision, the
 	// returned error, the baseline-store update, or the lineage write (C10).
 	outcomeObserver *Observer
+
+	// projectRoot, when non-empty, is the directory the regression gate measures
+	// project-health in (SPEC-HARNESS-EXECUTE-E2E-001). It is wired via
+	// WithProjectRoot. When empty, the gate falls back to measurementRoot(snapshotDir)
+	// — the pre-existing derivation — so callers that do not opt in (every existing
+	// gate-active test injects a stub measurer that ignores the root) are byte-unaffected.
+	//
+	// Why this exists: measurementRoot(snapshotDir) returns the snapshot BASE dir, NOT
+	// the project root. The gate-active production path (RunExecute) must measure the
+	// real project root so `go test ./...` runs against the project's testable packages
+	// instead of an empty snapshot base (which always fails closed). The CLI threads the
+	// already-absolutized project root here.
+	projectRoot string
 }
 
 // NewApplier creates a default Applier.
@@ -101,6 +114,28 @@ func NewApplierWithRegressionGate(manifestPath, baselinePath string) *Applier {
 // capture is additive and never alters the gate's keep/rollback decision (C10).
 func (a *Applier) WithOutcomeObserver(obs *Observer) *Applier {
 	a.outcomeObserver = obs
+	return a
+}
+
+// WithProjectRoot wires the directory the gate-active Apply path measures
+// project-health in (SPEC-HARNESS-EXECUTE-E2E-001). It returns the receiver for
+// fluent production wiring:
+//
+//	a := NewApplierWithRegressionGate(manifestPath, baselinePath).
+//	        WithOutcomeObserver(NewObserver(usageLogPath)).
+//	        WithProjectRoot(absoluteProjectRoot)
+//
+// When set, applyWithRegressionGate passes root to the measurer instead of the
+// snapshot-base derivation from measurementRoot(snapshotDir). When unset (empty),
+// the measurer receives the pre-existing measurementRoot(snapshotDir) fallback, so
+// existing gate callers and tests are byte-unaffected.
+//
+// Why this exists: measurementRoot returns the snapshot BASE dir, which has no
+// testable Go packages — so the real goMeasurer always fails closed there
+// (`go test ./...` build-fails or emits no output). Threading the real project root
+// lets the gate measure against the project's packages.
+func (a *Applier) WithProjectRoot(root string) *Applier {
+	a.projectRoot = root
 	return a
 }
 
@@ -395,7 +430,7 @@ func (a *Applier) gateActive() bool {
 // (Δ=0), so this path keeps the change every time. The genuine value is the
 // measurement scaffold + the dormant defense-in-depth rollback (see §A.2 / DD-7).
 func (a *Applier) applyWithRegressionGate(proposal Proposal, snapshotDir string) error {
-	projectRoot := measurementRoot(snapshotDir)
+	projectRoot := a.measurementProjectRoot(snapshotDir)
 
 	// firstRun is signalled by the ABSENCE of the baseline store file (REQ-RG-005):
 	// on the very first gated Apply there is no prior baseline to regress against, so
@@ -476,16 +511,33 @@ func (a *Applier) applyWithRegressionGate(proposal Proposal, snapshotDir string)
 	return nil
 }
 
-// measurementRoot derives the project root for measurement from the snapshot dir.
-// snapshotDir is <snapshotBase>/<ISO-DATE>/; the regression coverage profile is
-// written under <root>/.moai/harness/. The production caller passes a snapshotBase
-// inside the project tree, so the project root is the snapshotBase's grandparent.
-// Tests inject a stub measurer that ignores this argument.
+// measurementProjectRoot returns the directory the regression gate measures
+// project-health in (SPEC-HARNESS-EXECUTE-E2E-001). When WithProjectRoot wired an
+// explicit project root, that root is returned so the measurer runs against the
+// project's testable packages. When unset, it falls back to measurementRoot — the
+// pre-existing snapshot-base derivation — preserving existing gate callers/tests
+// byte-for-byte (every existing gate-active test injects a stub measurer that
+// ignores the root, so the fallback value is immaterial to them).
+func (a *Applier) measurementProjectRoot(snapshotDir string) string {
+	if a.projectRoot != "" {
+		return a.projectRoot
+	}
+	return measurementRoot(snapshotDir)
+}
+
+// measurementRoot returns the snapshot BASE directory derived from snapshotDir
+// (its parent). snapshotDir is <snapshotBase>/<ISO-DATE>/, so filepath.Dir yields
+// <snapshotBase> = <root>/.moai/harness/learning-history/snapshots.
+//
+// NOTE (intent vs behavior): this is NOT the project root — the snapshot base sits
+// four levels below the project root and contains no testable Go packages, so the
+// real goMeasurer always fails closed there. It is retained only as the legacy
+// fallback for the WithProjectRoot-unset path, where every caller injects a stub
+// measurer that ignores the root argument (so the returned value is immaterial).
+// Gate-active production callers MUST wire a real project root via WithProjectRoot
+// (see measurementProjectRoot and applyWithRegressionGate); the corrected wiring is
+// SPEC-HARNESS-EXECUTE-E2E-001.
 func measurementRoot(snapshotDir string) string {
-	// <root>/.moai/harness/learning-history/snapshots/<ISO-DATE>
-	//   → walk up to <root>. We only need a writable dir for the cover profile;
-	//     for the stub measurer the value is unused, so the snapshot's base dir
-	//     (its parent) is a safe, always-present default.
 	return filepath.Dir(snapshotDir)
 }
 
