@@ -141,4 +141,16 @@ comment: "No Go code modified; CHANGELOG + SPEC frontmatter + progress.md only. 
 
 ## §F.4 Mx-phase Audit-Ready Signal
 
-(Mx-phase에서 채움 — mx_commit_sha 등)
+```yaml
+mx_complete_at: 2026-06-15
+mx_commit_sha: "<pending-orchestrator-backfill>"
+status_transition: "implemented → completed (4-phase close)"
+four_phase_summary:
+  plan: "61d838840 (artifacts) + dfbb99ffd (plan-audit D1-D3 remediation)"
+  plan_audit: "plan-auditor iter-1 PASS-WITH-DEBT 0.84 (Tier S thresh 0.75, +0.09); D1-D3 orchestrator-direct remediated, falsifiability 부채 해소"
+  run: "6039e2fcd (M1-M3 doctrine rule + mirror) + 6a38b1ca2 (§F.2 backfill); C1-C7 7/7 독립 검증, neutrality CI PASS"
+  sync: "cbb4fe39b (status→implemented + CHANGELOG) + 07517c151 (§F.3 sync_commit_sha backfill)"
+sync_auditor: "SKIPPED — Tier S pure-doctrine (markdown only, no code/security surface); 7 AC 전부 grep/파일-존재 독립 검증(C1-C7) + TestTemplateNeutralityAudit PASS; 세션 전반 Trust-but-verify rigor가 dog-fooding 역할 수행"
+deliverable: ".claude/rules/moai/core/verification-claim-integrity.md + template mirror (internal-neutral, 0 leaks)"
+defect_class_addressed: "L_manager_docs_false_backfill_report — 본 세션 재발 0 (manager-docs가 정직한 sync_commit_sha placeholder 사용)"
+```
