@@ -64,3 +64,59 @@ Behavior preservation (critical): REQ-SEG-009 (StopHookActive guard / 90d·30d p
 - amend-1 완료 (5 defects 해소, artifact editing only, Tier M 불변, no code). spec-lint clean 재확인.
 - Plan audit gate (Phase 0.5) re-audit: plan-auditor iter-2 (Tier M PASS threshold 0.80) — D1-D5 해소 검증.
 - 이후 Implementation Kickoff Approval (사용자 승인) → /moai run SPEC-STOP-EVIDENCE-GATE-001 (cycle_type=tdd).
+- run-phase 완료 (M1-M4). 다음 = /moai sync SPEC-STOP-EVIDENCE-GATE-001.
+
+## §E — Phase 0.95 Mode Selection
+
+**Decision: sub-agent** (Mode 5, sequential — coding-heavy single-domain).
+
+| Field | Value |
+|-------|-------|
+| tier | M |
+| scope (files) | 6 (types.go + types_test.go + session_ledger.go + session_ledger_test.go + stop.go + stop_evidence_gate_test.go) |
+| domain count | 2 (internal/telemetry, internal/hook) — single coding-domain |
+| file language mix | 100% Go |
+| concurrency benefit | LOW (coding-heavy, sequential milestone dependency M1→M2→M3) |
+
+Mode evaluation: trivial=no (multi-file semantic change); background=no (Write 작업); agent-team=no
+(prereqs 미충족 + <3 domains); parallel=no (coding-heavy per Anthropic coding-task parallelism caveat);
+**sub-agent=selected** (default fallback for coding-heavy single-domain work, sequential milestone
+dependency); workflow=no (semantic new-code, not mechanical-uniform high-volume).
+
+Justification: coding-heavy single-domain work with strict M1(schema)→M2(reader)→M3(gate wiring)
+dependency chain. Mode 5 sequential sub-agent is the Anthropic-recommended default for coding tasks
+(coding-task parallelism caveat). No parallel/team benefit — milestones are inherently sequential.
+
+## §E.2 Run-phase Evidence
+
+| AC | REQ | Status | Verification Command | Actual Output |
+|----|-----|--------|----------------------|---------------|
+| AC-SEG-001 | REQ-SEG-001 | PASS | `grep -c 'func buildSessionLedger' session_ledger.go` + `grep -cE 'os\.Create\|os\.OpenFile\|os\.WriteFile\|os\.MkdirAll' session_ledger.go` | buildSessionLedger=1, file-write=0; param `[]telemetry.UsageRecord`; LoadBySession reused |
+| AC-SEG-002 | REQ-SEG-002 | PASS | `go test -run TestEvaluateEvidence -v` | binary-flip pair: `code_change_success_no_pass_binary_present→finding` + `success_test_pass_observed→nil` (only IsTestPass false→true flips verdict, Outcome=success held constant) |
+| AC-SEG-003 | REQ-SEG-003 | PASS | `go test -run 'TestEvaluateEvidence\|TestInferPathKind' -v` | `docs_only_success_no_test_pass→nil` + `phase_sync→docs-only` PASS |
+| AC-SEG-004 | REQ-SEG-004 | PASS | `go test -run 'TestEvaluateEvidence\|TestFindingHumanReadable' -v` | `code_change_success_no_pass_binary_present→finding` PASS; HumanReadable names path-kind + success count |
+| AC-SEG-005 | REQ-SEG-005 | PASS | `go test -run TestStopEvidenceGate_FailOpen -v` | 4 case (finding present/absent, StopHookActive, empty) 모두 `&HookOutput{}` allow + nil err |
+| AC-SEG-006 | REQ-SEG-006 | PASS | `grep -cE 'os\.Stdout' session_ledger.go` + `TestStopEvidenceGate_StdoutContractUnchanged` | stdout-write=0; advisory→stderr/slog; HookOutput Decision/Reason 빈값 |
+| AC-SEG-007 | REQ-SEG-007 | PASS | `grep -rn 'AskUserQuestion\|mcp__askuser' internal/hook/ \| grep -v _test.go \| grep -v comment` | exit 1 (no match = pass) |
+| AC-SEG-008 | REQ-SEG-008,010 | PASS | reader heavy-op grep + gate-body awk heavy-op grep + `TestStopEvidenceGate_LegacyFixtureNotFalseFlagged` | reader heavy-op=0; gate body heavy-op=0 + LoadBySession=1 (only data acquisition); legacy record runtime fixture → no finding |
+| AC-SEG-009 | REQ-SEG-009 | PASS | `grep -c StopHookActive\|PruneOldFiles\|AnalyzeSessionAndLog\|minToolInvocationsForReflection stop.go` + `TestStopEvidenceGate_StopHookActiveSkipsGate` | StopHookActive=2, PruneOldFiles=2, AnalyzeSessionAndLog=1, minTool=3; stderr-capture proves gate not reached under StopHookActive=true |
+| AC-SEG-010 | REQ-SEG-010 | PASS | `go test -run 'TestUsageRecordBackwardCompat\|TestUsageRecordOmitempty' -v` + `grep -c omitempty types.go` | legacy decode → zero-value; zero-value marshal omits 3 keys; omitempty=5 (≥3) |
+| AC-SEG-011 | REQ-SEG-011 | PASS | `go test -run TestInferPathKind -v` | explicit_pathkind_wins→code-change, phase_sync→docs-only, phase_run→code-change, ambiguous→unknown; unknown_pathkind→nil_finding |
+| (REQ-SEG-012) | REQ-SEG-012 | PASS (doc) | spec.md §A.3/§A.4 dormant-scaffold framing + AC-SEG-008 legacy/dormant fixture | dormant scaffold framing 보존; successor=SPEC-STOP-EVIDENCE-WRITER-001 named |
+
+**New-code coverage**: session_ledger.go 전 함수 100% (runEvidenceGate/buildSessionLedger/inferPathKind/evaluateEvidence/HumanReadable/slogArgs); stop.go Handle 88.9% (게이트 라인 covered, 미커버는 pre-existing 반성학습 분기). Package aggregate: hook 81.8% (baseline 81.5%), telemetry 75.9% (무회귀).
+
+**Cross-platform build**: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+
+**Verification**: `go test ./...` GREEN (전체 회귀 0); `go vet` clean; `golangci-lint run` 0 issues; C-HRA-008 0 매치.
+
+## §E.8 Run-phase commit SHAs
+
+| Milestone | Commit | Subject |
+|-----------|--------|---------|
+| M1 | `e1dabf661` | UsageRecord 이진 증거/path-kind omitempty 확장 (draft → in-progress) |
+| M2 | `ac028f37c` | 세션 원장 리더 + path-kind 분류 + 증거 평가기 |
+| M3 | `36a9bc8a5` | stop.go 게이트 삽입 (behavior-preserving additive) |
+| M4 | `(this commit)` | 통합 검증 + progress.md §E run-phase evidence |
+
+post_tool_metrics.go NOT modified (writer wiring = successor SPEC scope). 변경 파일 7개 전부 SPEC scope 내.
