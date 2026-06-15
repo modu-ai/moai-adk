@@ -16,6 +16,8 @@ tier: M
 
 # SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001 — workflow.yaml ↔ Go struct 정합
 
+> **부분 supersession (2026-06-15)**: 본 SPEC의 `workflow.completion.markers` 표면(AC-WSE-003 / AC-WSE-007 마커 oracle 단언)은 `SPEC-COMPLETION-MARKER-RETIRE-001`에 의해 은퇴되었습니다(marker 표면 한정 부분 supersession). 해당 marker oracle 단언은 제거되었고(존재 → 부재 반전), `completion:` 블록은 Go struct / YAML 양쪽에서 삭제되었습니다. 본 SPEC의 나머지 disposition matrix 표면은 영향받지 않습니다.
+
 ## HISTORY
 
 | Version | Date | Author | Notes |

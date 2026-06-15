@@ -51,7 +51,7 @@ For phase overview, token budgets, and phase transitions, see: .claude/rules/moa
 ## Configuration Files
 
 - quality.yaml: TRUST 5 quality thresholds AND development_mode routing
-- workflow.yaml: Execution mode, team settings, loop prevention, completion markers
+- workflow.yaml: Execution mode, team settings, loop prevention
 
 ## Development Mode Routing (CRITICAL)
 
@@ -160,8 +160,8 @@ Loop behavior (when --loop flag or workflow.yaml loop_prevention settings enable
   - Execute diagnostics (parallel by default)
   - Delegate fix to appropriate expert agent
   - Verify fix results
-  - Check for completion marker
-  - If marker found: Break loop
+  - Check whether completion conditions are satisfied
+  - If satisfied: Break loop
 
 ## Phase 3: Documentation Sync
 
@@ -170,7 +170,7 @@ Loop behavior (when --loop flag or workflow.yaml loop_prevention settings enable
 - Detect SPEC-implementation divergence and update SPEC documents accordingly
 - Conditionally update project documents (.moai/project/) when structural changes detected
 - Respect SPEC lifecycle level for update strategy (spec-first, spec-anchored, spec-as-source)
-- Add completion marker on success
+- Signal completion in the Completion Report on success
 
 ## Team Mode
 
@@ -239,7 +239,7 @@ Mode selection:
    - sub-agent: manager-develop (cycle_type=ddd or tdd, per quality.yaml development_mode)
    - Harness level determines phase skipping and evaluator involvement
 14. **Phase 3 (Sync)**: Always manager-docs sub-agent (sync phase never uses team mode)
-15. Terminate with completion marker
+15. Terminate with the Completion Report completion signal
 
 ---
 

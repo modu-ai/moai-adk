@@ -514,7 +514,7 @@ Performs quality verification followed by documentation synchronization, Git com
 > /moai:alfred "feature description"
 ```
 
-User presents the goal and AI autonomously performs exploration, planning, implementation, and verification. Analyzes codebase through parallel exploration and self-corrects issues through autonomous loops. Automatically terminates when completion marker (`<moai>DONE</moai>`) is detected, so developer only needs to verify final result.
+User presents the goal and AI autonomously performs exploration, planning, implementation, and verification. Analyzes codebase through parallel exploration and self-corrects issues through autonomous loops. Automatically terminates when all completion conditions are satisfied, so developer only needs to verify final result.
 
 **Single Execution**:
 
@@ -553,14 +553,14 @@ User presents the goal and AI autonomously performs exploration, planning, imple
 > /moai:loop
 ```
 
-AI autonomously diagnoses and fixes LSP errors, test failures, and coverage deficiencies. Parallel diagnosis executes LSP, AST-grep, Tests, and Coverage simultaneously, resolving issues 3-4x faster. Runs autonomously until completion marker is detected or max iterations reached.
+AI autonomously diagnoses and fixes LSP errors, test failures, and coverage deficiencies. Parallel diagnosis executes LSP, AST-grep, Tests, and Coverage simultaneously, resolving issues 3-4x faster. Runs autonomously until all completion conditions are satisfied or max iterations reached.
 
 **Autonomous Loop Flow**:
 
 ```text
 Parallel diagnosis → TODO creation → Fix execution → Verification → Repeat
     ↓
-Completion marker detected → <moai>DONE</moai>
+All completion conditions satisfied → exit loop
 ```
 
 **Options**:
@@ -731,7 +731,7 @@ Safely cancels running autonomous loop and saves all progress state as snapshot.
 
 ## 4. 🤖 All is Well - Agentic Autonomous Automation
 
-**The most powerful feature of MoAI-ADK**: AI autonomously explores, plans, implements, and verifies until the completion marker is detected.
+**The most powerful feature of MoAI-ADK**: AI autonomously explores, plans, implements, and verifies until all completion conditions are satisfied.
 
 ### Core Concept
 
@@ -742,7 +742,7 @@ AI: Explore → Plan → Implement → Verify → Repeat
   ↓
 AI: All issues resolved
   ↓
-AI: <moai>DONE</moai>  ← Completion Marker
+AI: "All completion conditions satisfied"  ← Completion signal
 ```
 
 ### Three-Command Hierarchy
@@ -752,8 +752,8 @@ MoAI-ADK provides three levels of autonomous automation:
 | Command | Scope | Iteration | Purpose |
 |---------|-------|-----------|---------|
 | `/moai:fix` | Code fixes only | 1 time | Single scan + auto-fix |
-| `/moai:loop` | Code fixes | Until marker/max | Autonomous iterative fixing |
-| `/moai:alfred` | Full dev cycle | Until marker/max | Goal → SPEC → Implement → Docs |
+| `/moai:loop` | Code fixes | Until complete/max | Autonomous iterative fixing |
+| `/moai:alfred` | Full dev cycle | Until complete/max | Goal → SPEC → Implement → Docs |
 
 ### Command Chain Relationship
 
@@ -768,20 +768,17 @@ MoAI-ADK provides three levels of autonomous automation:
      └── Phase 3: Documentation
 ```
 
-### Completion Markers
+### Completion Signal
 
-AI uses completion markers to signal task completion:
+AI signals task completion in natural language within the Completion Report:
 
 ```markdown
 ## Task Complete
 
-All implementations done, tests passing, docs updated. <moai>DONE</moai>
+All implementations done, tests passing, docs updated.
 ```
 
-**Supported Markers**:
-- `<moai>DONE</moai>` - Task complete
-- `<moai>COMPLETE</moai>` - Full completion
-- `<moai:done />` - XML format
+When all completion conditions are satisfied, the autonomous loop exits and the Completion Report is surfaced for the developer to verify.
 
 ### Auto-Fix Levels
 
@@ -807,7 +804,7 @@ All implementations done, tests passing, docs updated. <moai>DONE</moai>
 
 ### Why "All is Well"?
 
-The name reflects the philosophy: **set the goal and trust the AI**. MoAI-ADK's agentic automation handles the entire development cycle autonomously. When you see `<moai>DONE</moai>`, all is truly well.
+The name reflects the philosophy: **set the goal and trust the AI**. MoAI-ADK's agentic automation handles the entire development cycle autonomously. When the AI reports all completion conditions satisfied, all is truly well.
 
 ---
 
