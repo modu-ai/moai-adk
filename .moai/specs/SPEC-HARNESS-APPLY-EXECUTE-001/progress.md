@@ -76,7 +76,7 @@ real_go_test_recursion: none                 # T1 uses stubMeasurer; T2 uses stu
 ## §E.5 Mx-phase Audit-Ready Signal
 
 ```yaml
-mx_commit_sha: (pending — backfill after Mx close commit)
+mx_commit_sha: 869203ae0
 mx_status: completed
 mx_complete_at: 2026-06-15
 sync_auditor_verdict: PASS-WITH-DEBT       # Func 92 / Sec 90 (MUST-PASS 둘 다 통과) / Craft 78 / Consist 70
