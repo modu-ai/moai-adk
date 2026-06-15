@@ -87,6 +87,10 @@ Justification: coding-heavy single-domain work with strict M1(schema)→M2(reade
 dependency chain. Mode 5 sequential sub-agent is the Anthropic-recommended default for coding tasks
 (coding-task parallelism caveat). No parallel/team benefit — milestones are inherently sequential.
 
+## §E.2 Sync-phase Audit-Ready Signal
+
+sync_commit_sha: (this commit)
+
 ## §E.2 Run-phase Evidence
 
 | AC | REQ | Status | Verification Command | Actual Output |
