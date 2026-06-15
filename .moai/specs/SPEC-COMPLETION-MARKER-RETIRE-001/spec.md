@@ -2,7 +2,7 @@
 id: SPEC-COMPLETION-MARKER-RETIRE-001
 title: "Completion-Marker Feature + Dormant Persistent-Mode Subsystem Retirement"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-06-11
 updated: 2026-06-15
 author: manager-spec
