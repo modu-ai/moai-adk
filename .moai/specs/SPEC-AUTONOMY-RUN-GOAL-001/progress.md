@@ -91,3 +91,16 @@ sync_phase_summary: "Manager-docs SPEC-AUTONOMY-RUN-GOAL-001 sync-phase: (1) Upd
 ac_verification: "13 ACs in acceptance.md verified by grep. Sync commit adds no new implementation; deliverables all PASS via run-phase evidence."
 no_docs_site_update: "This SPEC is internal doctrine/workflow (rules + test) — no user-facing feature. docs-site updates deferred to product feature SPEC."
 ```
+
+## §E.5 — Mx-phase Audit-Ready Signal
+
+```yaml
+mx_complete_at: 2026-06-15
+mx_commit_sha: (this commit)
+mx_status: completed
+frontmatter_transition: "implemented → completed (spec.md)"
+four_phase_complete: "plan(ef9a619ad) → run(M1 948d704f6 / M2 36642c6c6 / M3 1aa4a927e / M4 3c9af0bc1 / M5 13fd09a11) → sync(3ec0c808f) → Mx(this close commit)"
+era: "V3R6 (H-4: §E.2 sync_commit_sha 3ec0c808f + §E.5 mx_commit_sha both present after this close)"
+ac_final: "13/13 PASS (acceptance.md SSOT; re-verified at sync-phase 2026-06-03, no run-phase delta since)"
+retroactive_close_note: "SPEC reached sync-complete 2026-06-03 (sync_commit_sha 3ec0c808f, 13/13 AC PASS per §E.4 + acceptance.md SSOT) but the §E.5 Mx signal was not emitted at sync time, leaving status=implemented. Backfilled 2026-06-15 via `moai spec close --backfill-only` after a lifecycle-drift audit flagged a Y_N_N_Y MUST-FIX (§E.2 present / §E.5 absent). No code change — this is a doctrine/workflow SPEC (rules + regression guard); deliverables verified by pre-existing run-phase evidence with zero implementation delta since sync, so no new sync-auditor pass is required."
+```
