@@ -40,11 +40,18 @@ This table is populated as each AC is verified during run-phase.
 | AC-AEX-015 | REQ-AEX-015 | PASS | `TestExecute_MeasurementExecError_ExitsSystemError$` | PASS — measurement-exec wrapped error → exit 2 |
 | AC-AEX-016 | REQ-AEX-016 | PASS | `TestPropose_NoAskUserQuestion$` + boundary grep | PASS — no AskUserQuestion( in internal/cli/harness/ |
 
+## §E.2 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_commit_sha: (pending — orchestrator will backfill after sync commit)
+sync_status: implemented
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-06-15
-run_commit_sha: (pending — M5 commit, this commit)
+run_commit_sha: 2dc365c35
 run_status: implemented
 ac_pass_count: 16
 ac_fail_count: 0
