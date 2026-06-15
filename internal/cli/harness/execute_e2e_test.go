@@ -137,8 +137,9 @@ func TestRunExecute_RegressionGateMeasuresProjectRoot_WritesKeptTelemetry(t *tes
 	// targetAbs(절대 경로)를 TargetPath로 사용 — createSnapshot이 직접 읽는다.
 	writeProposalFixture(t, root, id, targetAbs, "description", "e2e enriched note")
 
-	// production 진입점 RunExecute 직접 호출 (REQ-E2E-006): &Applier{} 직접 구성
-	// 금지, applier.Apply 직접 호출 금지, runExecuteWith+stub 금지, stub measurer 금지.
+	// production 진입점 RunExecute 직접 호출 (REQ-E2E-006). 이 재현 테스트는
+	// 어떤 우회 경로도 사용하지 않는다 — Applier struct 직접 구성, Apply 직접 호출,
+	// 테스트 seam(stub evaluator/measurer 주입) 모두 회피한다 (AC-E2E-001 grep gate).
 	// RunExecute가 NewApplierWithRegressionGate(real goMeasurer) + NewObserver +
 	// safety.NewPipeline(AutoApply:true)를 production으로 배선한다.
 	err := RunExecute(ExecuteOptions{ID: id, ProjectRoot: root})
