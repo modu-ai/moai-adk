@@ -8,11 +8,15 @@
 package harness
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/harness"
 	"github.com/modu-ai/moai-adk/internal/harness/safety"
@@ -262,6 +266,198 @@ func TestExecute_EmptyID_UserError(t *testing.T) {
 	}
 	if got := ExitCodeForError(err); got != 1 {
 		t.Errorf("empty ID exit code = %d, want 1 (user error)", got)
+	}
+}
+
+// TestNewExecuteCmd_FlagWiring — NewExecuteCmd 팩토리가 --id(required) + --project-root
+// flag을 노출하고 Use="execute"임을 검증한다 (verb-shape, AC-AEX-001 보조).
+func TestNewExecuteCmd_FlagWiring(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewExecuteCmd()
+	if cmd.Use != "execute" {
+		t.Errorf("cmd.Use = %q, want \"execute\"", cmd.Use)
+	}
+	if cmd.Flags().Lookup("id") == nil {
+		t.Error("execute cmd must expose --id flag")
+	}
+	if cmd.Flags().Lookup("project-root") == nil {
+		t.Error("execute cmd must expose --project-root flag")
+	}
+	// --id는 required로 표시되어야 한다.
+	idFlag := cmd.Flags().Lookup("id")
+	if idFlag == nil || idFlag.Annotations[cobraRequiredAnnotation] == nil {
+		t.Error("execute cmd --id flag must be marked required")
+	}
+}
+
+// cobraRequiredAnnotation은 cobra가 MarkFlagRequired 시 부여하는 annotation key다.
+const cobraRequiredAnnotation = "cobra_annotation_bash_completion_one_required_flag"
+
+// TestExecute_DiagnosticForError_Branches — diagnosticForError가 에러 타입별로
+// 올바른 진단 메시지를 구성함을 검증한다 (design.md §E 메시지 열).
+func TestExecute_DiagnosticForError_Branches(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		err      error
+		contains string
+	}{
+		{"pending invariant", &harness.ApplyPendingError{}, "INVARIANT VIOLATION"},
+		{"regression", &harness.ApplyRegressionError{Regressed: []string{"coverage"}}, "regression gate rolled back"},
+		{"generic", errors.New("some system failure"), "some system failure"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := diagnosticForError(tt.err)
+			if !strings.Contains(got, tt.contains) {
+				t.Errorf("diagnosticForError = %q, want substring %q", got, tt.contains)
+			}
+		})
+	}
+}
+
+// TestExecute_UserError_Message — userError.Error()가 메시지를 그대로 반환함을 검증.
+func TestExecute_UserError_Message(t *testing.T) {
+	t.Parallel()
+
+	e := &userError{msg: "harness execute: proposal not found: X"}
+	if e.Error() != "harness execute: proposal not found: X" {
+		t.Errorf("userError.Error() = %q", e.Error())
+	}
+}
+
+// TestExecute_MalformedProposalJSON_UserError — loadProposalByID가 깨진 JSON에
+// 대해 parse-error user error(exit 1)를 반환함을 검증한다 (loadProposalByID 분기).
+func TestExecute_MalformedProposalJSON_UserError(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	id := "SPEC-MALFORMED-001"
+	propDir := filepath.Join(root, ".moai", "harness", "proposals")
+	if err := os.MkdirAll(propDir, 0o755); err != nil {
+		t.Fatalf("mkdir proposals: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(propDir, id+".json"), []byte("{ not valid json"), 0o644); err != nil {
+		t.Fatalf("write malformed proposal: %v", err)
+	}
+
+	err := RunExecute(ExecuteOptions{ID: id, ProjectRoot: root})
+	if err == nil {
+		t.Fatal("RunExecute must return an error for malformed proposal JSON")
+	}
+	if got := ExitCodeForError(err); got != 1 {
+		t.Errorf("malformed proposal exit code = %d, want 1 (user error); err=%v", got, err)
+	}
+	if !strings.Contains(err.Error(), "parse proposal") {
+		t.Errorf("error must indicate a parse failure; got: %v", err)
+	}
+}
+
+// TestExecute_ProposalPathIsDirectory_UserError — proposal 경로가 디렉터리일 때
+// loadProposalByID의 non-IsNotExist read-error 분기(user error, exit 1)를 검증한다.
+func TestExecute_ProposalPathIsDirectory_UserError(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	id := "SPEC-ISDIR-001"
+	propDir := filepath.Join(root, ".moai", "harness", "proposals")
+	// proposal 파일 경로 위치에 디렉터리를 만든다 → os.ReadFile은 IsNotExist가 아닌
+	// "is a directory" 에러를 반환한다.
+	if err := os.MkdirAll(filepath.Join(propDir, id+".json"), 0o755); err != nil {
+		t.Fatalf("mkdir proposal-as-dir: %v", err)
+	}
+
+	err := RunExecute(ExecuteOptions{ID: id, ProjectRoot: root})
+	if err == nil {
+		t.Fatal("RunExecute must return an error when proposal path is a directory")
+	}
+	if got := ExitCodeForError(err); got != 1 {
+		t.Errorf("proposal-is-dir exit code = %d, want 1 (user error); err=%v", got, err)
+	}
+}
+
+// TestExecute_RunExecuteWith_EmptyRoot — runExecuteWith가 빈 ProjectRoot에서
+// os.Getwd()로 fallback함을 검증한다 (runExecuteWith empty-root 분기). cwd에
+// proposal이 없으므로 loader 단계에서 user error로 반환된다.
+func TestExecute_RunExecuteWith_EmptyRoot(t *testing.T) {
+	t.Parallel()
+
+	eval := stubEvaluator{decision: harness.Decision{Kind: harness.DecisionApproved}}
+	err := runExecuteWith(ExecuteOptions{ID: "SPEC-RXW-EMPTY-001"}, eval, newGateInactiveApplier())
+	if err == nil {
+		t.Fatal("runExecuteWith with empty ProjectRoot + missing proposal must return an error")
+	}
+	if got := ExitCodeForError(err); got != 1 {
+		t.Errorf("empty-root runExecuteWith exit code = %d, want 1 (user error)", got)
+	}
+}
+
+// TestExecute_EmptyProjectRoot_UsesCwd — ProjectRoot 미지정 시 현재 디렉터리로
+// fallback함을 검증한다 (RunExecute empty-root 분기). cwd에 proposal이 없으므로
+// loader 단계에서 user error(exit 1)로 반환되어 cwd fallback 경로를 exercise한다.
+func TestExecute_EmptyProjectRoot_UsesCwd(t *testing.T) {
+	t.Parallel()
+
+	// 현재 cwd(테스트 패키지 디렉터리)에는 .moai/harness/proposals/<id>.json이 없다.
+	err := RunExecute(ExecuteOptions{ID: "SPEC-CWD-FALLBACK-001"})
+	if err == nil {
+		t.Fatal("RunExecute with empty ProjectRoot + missing proposal must return an error")
+	}
+	if got := ExitCodeForError(err); got != 1 {
+		t.Errorf("empty-root missing-proposal exit code = %d, want 1", got)
+	}
+}
+
+// TestRunExecuteCommand_ErrorEmitsDiagnostic — runExecuteCommand가 실패 시 stderr로
+// 진단 메시지를 emit하고 에러를 반환함을 검증한다 (RunE 본문 분해 함수, os.Exit 미호출).
+func TestRunExecuteCommand_ErrorEmitsDiagnostic(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	var outBuf, errBuf bytes.Buffer
+	cmd := NewExecuteCmd()
+	cmd.SetOut(&outBuf)
+	cmd.SetErr(&errBuf)
+
+	err := runExecuteCommand(cmd, "SPEC-NONE-001", root)
+	if err == nil {
+		t.Fatal("runExecuteCommand must return an error for a missing proposal")
+	}
+	if !strings.Contains(errBuf.String(), "harness execute") {
+		t.Errorf("runExecuteCommand must emit a stderr diagnostic; got: %q", errBuf.String())
+	}
+	if got := ExitCodeForError(err); got != 1 {
+		t.Errorf("missing proposal via runExecuteCommand exit code = %d, want 1", got)
+	}
+}
+
+// TestRunExecuteCommand_EmptyProjectRoot_InheritsFromParent — runExecuteCommand가
+// 빈 projectRoot에서 부모 persistent flag(--project-root)를 상속함을 검증한다.
+// 부모 flag을 t.TempDir()로 세팅하고, 해당 root에 proposal이 없으므로 user error로
+// 반환되어 상속 분기(projectRoot == "" → InheritedFlags lookup)를 exercise한다.
+func TestRunExecuteCommand_EmptyProjectRoot_InheritsFromParent(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	// 부모 command에 persistent --project-root flag을 세팅한다 (router 구조 모사).
+	parent := &cobra.Command{Use: "harness"}
+	parent.PersistentFlags().String("project-root", root, "")
+	child := NewExecuteCmd()
+	parent.AddCommand(child)
+
+	var errBuf bytes.Buffer
+	child.SetErr(&errBuf)
+	child.SetOut(&bytes.Buffer{})
+
+	// projectRoot=""로 호출 → InheritedFlags()에서 부모 값(root) 상속.
+	err := runExecuteCommand(child, "SPEC-INHERIT-001", "")
+	if err == nil {
+		t.Fatal("runExecuteCommand must return error (missing proposal in inherited root)")
+	}
+	if got := ExitCodeForError(err); got != 1 {
+		t.Errorf("inherited-root missing-proposal exit code = %d, want 1", got)
 	}
 }
 

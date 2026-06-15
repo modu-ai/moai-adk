@@ -320,23 +320,13 @@ Examples:
   moai harness execute --id SPEC-PROJ-001
   moai harness execute --id SPEC-X --project-root /path/to/proj`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			// --project-root 미지정 시 부모(persistent flag)에서 상속 시도.
-			if projectRoot == "" {
-				if f := cmd.InheritedFlags().Lookup("project-root"); f != nil {
-					projectRoot = f.Value.String()
-				}
-			}
-			err := RunExecute(ExecuteOptions{ID: id, ProjectRoot: projectRoot})
+			err := runExecuteCommand(cmd, id, projectRoot)
 			if err != nil {
-				// exit code 분류 + 진단 메시지를 stderr로 emit.
-				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness execute: %s\n", diagnosticForError(err))
+				// exit code 분류 + 진단 메시지는 runExecuteCommand가 이미 stderr로 emit.
 				cmd.SilenceUsage = true
 				cmd.SilenceErrors = true
 				os.Exit(ExitCodeForError(err))
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(),
-				"harness execute: proposal %s applied; apply-outcome telemetry recorded to %s\n",
-				id, execUsageLogRel)
 			return nil
 		},
 	}
@@ -351,4 +341,25 @@ Examples:
 	}
 
 	return cmd
+}
+
+// runExecuteCommand는 NewExecuteCmd의 RunE 본문을 테스트 가능하게 분해한 함수다.
+// os.Exit를 직접 호출하지 않고 에러를 반환하여(success → nil), RunE가 exit code
+// 분류만 담당한다. 성공 시 telemetry 기록 알림을 stdout으로, 실패 시 진단 메시지를
+// stderr로 emit한다 (exit code는 호출부 RunE가 ExitCodeForError로 결정).
+func runExecuteCommand(cmd *cobra.Command, id, projectRoot string) error {
+	// --project-root 미지정 시 부모(persistent flag)에서 상속 시도.
+	if projectRoot == "" {
+		if f := cmd.InheritedFlags().Lookup("project-root"); f != nil {
+			projectRoot = f.Value.String()
+		}
+	}
+	if err := RunExecute(ExecuteOptions{ID: id, ProjectRoot: projectRoot}); err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness execute: %s\n", diagnosticForError(err))
+		return err
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(),
+		"harness execute: proposal %s applied; apply-outcome telemetry recorded to %s\n",
+		id, execUsageLogRel)
+	return nil
 }
