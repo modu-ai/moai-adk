@@ -2,9 +2,9 @@
 id: SPEC-CC2178-DOCS-ALIGN-001
 title: "CC 2.1.169→2.1.178 Tier 1 docs-only 기능 — 규칙·docs-site 4-locale 정합화"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-06-16
-updated: 2026-06-16
+updated: 2026-06-17
 author: GOOS
 priority: P2
 phase: "v3.0.0"
