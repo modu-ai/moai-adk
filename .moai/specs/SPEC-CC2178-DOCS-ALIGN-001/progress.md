@@ -123,7 +123,7 @@ COMPLETE. 9 files changed (1 mirror-direct session-handoff.md + 8 docs-site 4-lo
 ## §E.5 Mx-phase Audit-Ready Signal
 
 - **mx_complete_at**: 2026-06-17
-- **mx_commit_sha**: "(this commit)" — backfilled post-commit
+- **mx_commit_sha**: be0eafe03
 - **final_status**: completed
 - **4-phase close**: plan (`8b5d5d49d`) + run (M1 `25796ea9b` / M2 `b38a28c78` / M3 `679c1c72b` / run-progress `827228819`) + sync (`12b81b0d6` + backfill `eb7d6038f`) + Mx (this commit) — all phases complete
 - **era_classification**: V3R6 (H-4: §E.2 run-evidence + §E.5 Mx + `sync_commit_sha` + `mx_commit_sha` all present)
