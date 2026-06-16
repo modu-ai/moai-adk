@@ -3,6 +3,9 @@ package cli
 // @MX:NOTE: [AUTO] M6-S5 DDD: cobra SetHelpFunc wrapping — rootCmd help output migrated to
 // tui.Section (4 groups) + tui.HelpBar. Replaces cobra's default string-interpolation template.
 // Design source: screens.jsx::ScreenHelp, plan.md §7.2.
+// @MX:NOTE: Help strings are English-only per language-neutrality policy (CLAUDE.local.md §15/§14).
+// The 16-language neutrality applies to the distributed templates; the CLI itself ships a single
+// English help surface. screens.jsx design source (Korean) is pending sync to English — tracked separately.
 
 import (
 	"fmt"
@@ -26,40 +29,40 @@ type helpGroup struct {
 func rootHelpGroups() []helpGroup {
 	return []helpGroup{
 		{
-			title: "프로젝트",
+			title: "Project",
 			rows: [][2]string{
-				{"moai init", "새 프로젝트 부트스트랩 (위저드)"},
-				{"moai doctor", "환경 · 의존성 · 설정 진단"},
-				{"moai status", "현재 프로젝트 요약"},
-				{"moai update", "MoAI-ADK 자체 업데이트"},
-				{"moai version", "버전 정보"},
+				{"moai init", "Bootstrap a new project (wizard)"},
+				{"moai doctor", "Diagnose environment · dependencies · settings"},
+				{"moai status", "Summarize the current project"},
+				{"moai update", "Update MoAI-ADK itself"},
+				{"moai version", "Version info"},
 			},
 		},
 		{
-			title: "런처",
+			title: "Launchers",
 			rows: [][2]string{
-				{"moai cc", "Claude Code 실행 (브릿지 포함)"},
-				{"moai cg", "Claude + GLM 하이브리드 모드"},
-				{"moai glm", "GLM 백엔드로 Claude Code 실행"},
-				{"moai web", "브라우저 기반 설정 콘솔 실행"},
-				{"moai statusline", "tmux/vim용 상태줄 출력"},
+				{"moai cc", "Run Claude Code (with bridge)"},
+				{"moai cg", "Claude + GLM hybrid mode"},
+				{"moai glm", "Run Claude Code with GLM backend"},
+				{"moai web", "Launch browser-based settings console"},
+				{"moai statusline", "Emit status line for tmux/vim"},
 			},
 		},
 		{
-			title: "자율 개발",
+			title: "Autonomous Development",
 			rows: [][2]string{
-				{"moai loop", "Spec→Plan→Impl→Sync 루프"},
-				{"moai spec", "스펙 카드 관리"},
-				{"moai worktree", "워크트리 격리 작업"},
-				{"moai brain", "아이데이션 워크플로우"},
+				{"moai loop", "Spec→Plan→Impl→Sync loop"},
+				{"moai spec", "Manage spec cards"},
+				{"moai worktree", "Isolated worktree work"},
+				{"moai brain", "Ideation workflow"},
 			},
 		},
 		{
-			title: "거버넌스",
+			title: "Governance",
 			rows: [][2]string{
-				{"moai constitution", "CX 7원칙 검사"},
-				{"moai mx", "MX 앵커 · 그래프"},
-				{"moai telemetry", "사용 통계 (옵트인)"},
+				{"moai constitution", "Check the CX 7 principles"},
+				{"moai mx", "MX anchors · graph"},
+				{"moai telemetry", "Usage stats (opt-in)"},
 			},
 		},
 	}
@@ -103,7 +106,7 @@ func renderRootHelpTUI(cmd *cobra.Command) {
 	descStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(th.Dim))
 	accentStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(th.Fg)).Bold(true)
 
-	_, _ = fmt.Fprintln(out, accentStyle.Render("moai-adk")+" "+descStyle.Render("· 모두의 Agentic Development Kit · 모듈식 명령 모음"))
+	_, _ = fmt.Fprintln(out, accentStyle.Render("moai-adk")+" "+descStyle.Render("· Modu-AI's Agentic Development Kit · modular command collection"))
 	_, _ = fmt.Fprintln(out)
 
 	// Determine max command column width for alignment.
@@ -132,15 +135,15 @@ func renderRootHelpTUI(cmd *cobra.Command) {
 
 	// Usage hint
 	usageStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(th.Dim))
-	_, _ = fmt.Fprintln(out, usageStyle.Render(`Use "moai <명령> --help" for more information about a command.`))
+	_, _ = fmt.Fprintln(out, usageStyle.Render(`Use "moai <command> --help" for more information about a command.`))
 	_, _ = fmt.Fprintln(out)
 
 	// HelpBar footer — keyboard hints matching ScreenHelp design.
 	bar := tui.HelpBar([]tui.KeyHint{
-		{Key: "↑↓", Label: "스크롤"},
-		{Key: "/", Label: "검색"},
-		{Key: "q", Label: "닫기"},
-		{Key: "enter", Label: "선택"},
+		{Key: "↑↓", Label: "scroll"},
+		{Key: "/", Label: "search"},
+		{Key: "q", Label: "close"},
+		{Key: "enter", Label: "select"},
 	}, &th)
 	if bar != "" {
 		_, _ = fmt.Fprintln(out, bar)
