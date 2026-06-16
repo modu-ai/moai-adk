@@ -1,7 +1,7 @@
 // MoAI Web Console — minimal vanilla-JS progressive enhancement.
 //
 // The form works without JavaScript (plain HTML <form> POST round-trip). This
-// script only adds four conveniences:
+// script only adds five conveniences:
 //   1. Toggle the custom-segments group based on the selected statusline preset.
 //   2. Auto-submit the profile selector so switching profiles reloads the form.
 //   3. Light/dark theme toggle persisted client-side in localStorage
@@ -14,6 +14,11 @@
 //      localStorage("moai-console-lang") — it is NOT a form field, submits
 //      nothing, and never touches a server-validated content-language setting.
 //      Interface language ≠ content language (the cohort core invariant).
+//   5. In-page server shutdown button (#serverShutdown). A confirm dialog →
+//      same-origin POST /__shutdown__ → the server reuses its existing
+//      signal.NotifyContext drain path (no parallel shutdown). The page shows a
+//      "shutting down" overlay and disables interactive controls; a fetch
+//      rejection (connection reset mid-drain) is treated as expected success.
 //
 // No build toolchain, no framework, no network fetch of dependencies (REQ-WC-005).
 // FOUC is prevented by an inline <head> snippet that applies the persisted theme
@@ -66,6 +71,96 @@
     btn.addEventListener("click", function () {
       applyTheme(currentTheme() === "dark" ? "light" : "dark");
     });
+  }
+
+  // ── Server shutdown button (in-page graceful stop) ──
+
+  // i18n key for the confirm-dialog text. Looks up the active interface locale's
+  // string from window.MOAI_I18N; falls back to an English sentence when the
+  // dictionary or key is unavailable so the dialog is never blank.
+  function shutdownConfirmText() {
+    var locale = readPersistedLang();
+    var dict = (window.MOAI_I18N && window.MOAI_I18N[locale]) || null;
+    if (dict) {
+      var s = dict["appbar.shutdown.confirm"];
+      if (typeof s === "string" && s.length > 0) {
+        return s;
+      }
+    }
+    return "Shut down the server? The console will stop and this tab will go offline.";
+  }
+
+  // wireShutdownButton wires the in-page power button: confirm → POST /__shutdown__
+  // → show a "shutting down" overlay and disable the form/buttons. The fetch is a
+  // plain same-origin POST (REQ-WC-005 — no external fetch). The server responds
+  // 200 then triggers its existing signal/drain path in a goroutine; the page may
+  // lose connectivity mid-drain, so a fetch rejection is treated as success too.
+  function wireShutdownButton() {
+    var btn = document.getElementById("serverShutdown");
+    if (!btn) {
+      return;
+    }
+    btn.addEventListener("click", function () {
+      if (!window.confirm(shutdownConfirmText())) {
+        return;
+      }
+      // Disable further clicks immediately (idempotent on the server side via the
+      // signal.NotifyContext cancel, but this avoids duplicate dialogs).
+      btn.disabled = true;
+      showShutdownOverlay();
+      disableInteractiveControls();
+
+      fetch("/__shutdown__", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" }
+      }).then(
+        function () {
+          /* server acknowledged; it is now draining. Overlay already shown. */
+        },
+        function () {
+          /* Connection reset / closed mid-drain is expected — the server is
+             shutting down. The overlay stays; the tab is going offline. */
+        }
+      );
+    });
+  }
+
+  // showShutdownOverlay surfaces a full-page "shutting down" notice so the user
+  // understands the tab is going offline. Uses minimal inline DOM (no framework).
+  function showShutdownOverlay() {
+    if (document.getElementById("moai-shutdown-overlay")) {
+      return;
+    }
+    var overlay = document.createElement("div");
+    overlay.id = "moai-shutdown-overlay";
+    overlay.setAttribute("role", "status");
+    overlay.setAttribute("aria-live", "polite");
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.display = "flex";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+    overlay.style.background = "rgba(0,0,0,0.55)";
+    overlay.style.color = "#fff";
+    overlay.style.fontFamily = "system-ui, sans-serif";
+    overlay.style.fontSize = "1.1rem";
+    overlay.style.zIndex = "9999";
+    overlay.textContent = "Server is shutting down…";
+    document.body.appendChild(overlay);
+  }
+
+  // disableInteractiveControls disables the form submit and all appbar buttons so
+  // a half-drained page cannot initiate further writes.
+  function disableInteractiveControls() {
+    var form = document.querySelector("form.form");
+    if (form) {
+      form.style.pointerEvents = "none";
+      form.style.opacity = "0.5";
+    }
+    var btns = document.querySelectorAll(".appbar .iconbtn, .actions .btn");
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].disabled = true;
+    }
   }
 
   // ── Interface i18n (REQ-WC5-004/005) ──
@@ -142,5 +237,6 @@
     wireProfileSwitch();
     wireThemeToggle();
     wireLangpick();
+    wireShutdownButton();
   });
 })();

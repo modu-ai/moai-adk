@@ -381,3 +381,36 @@ func bindForm(r *http.Request) profile.ProfilePreferences {
 
 	return prefs
 }
+
+// handleShutdown serves POST /__shutdown__ — 페이지 내 종료 버튼이 호출하는 루트다.
+// GET 등 non-POST 는 handleSave 와 동일하게 405 Method Not Allowed 로 거부한다.
+// 응답을 먼저 200 + 최소 HTML 로 작성한 뒤(triggerShutdown 이 곧바로 drain 을
+// 시작하면 이 응답 자체가 drain 중 유실될 수 있으므로), 그 다음 고루틴에서
+// triggerShutdown seam 을 호출한다.
+//
+// @MX:NOTE: [AUTO] triggerShutdown 은 반드시 고루틴으로 호출해야 한다 — 동기 호출 시
+// httpSrv.Shutdown() 이 이 핸들러의 반환을 대기하며 교착(dead lock) 한다. 고루틴이
+// 기존 signal.NotifyContext cancel 경로를 트리거하면 핸들러는 정상적으로 반환하고,
+// ListenAndServe 의 select 가 이미 존재하는 drain 로직(shutdownDrain 5초)을 실행한다.
+// 새 종료 경로를 만들지 않고 기존 drain 경로를 재사용한다 — REQ-WC-003(5초 drain)
+// invariant 가 그대로 보존된다.
+func (a *app) handleShutdown(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// 응답 먼저 작성 — renderError 의 최소 HTML 패턴을 재사용하되 neutral/success
+	// 배너 색상을 사용한다. triggerShutdown 호출 전에 클라이언트에 답을 보낸다.
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = fmt.Fprintf(w,
+		`<!DOCTYPE html><html><head><meta charset="utf-8"><title>MoAI Web Console</title></head>`+
+			`<body><h1>MoAI Web Console</h1><div class="banner banner--success">`+
+			`Console is shutting down. You can close this tab.</div></body></html>`)
+
+	// nil 체크 — 단위 테스트의 bare app 은 seam 이 wire 되지 않을 수 있다.
+	if a.triggerShutdown != nil {
+		go a.triggerShutdown()
+	}
+}

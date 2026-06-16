@@ -85,7 +85,8 @@ window.MOAI_I18N = {
     "f.git_convention.validation.enforce_on_push.desc": "Reject a push when a commit message violates the convention.",
 
     "lang.aria": "Interface language",
-    "theme.aria": "Toggle light / dark theme"
+    "theme.aria": "Toggle light / dark theme",
+    "appbar.shutdown.confirm": "Shut down the server? The console will stop and this tab will go offline."
   },
 
   ko: {
@@ -156,7 +157,8 @@ window.MOAI_I18N = {
     "f.git_convention.validation.enforce_on_push.desc": "커밋 메시지가 규칙을 위반하면 푸시를 거부합니다.",
 
     "lang.aria": "인터페이스 언어",
-    "theme.aria": "라이트 / 다크 테마 전환"
+    "theme.aria": "라이트 / 다크 테마 전환",
+    "appbar.shutdown.confirm": "서버를 종료하시겠습니까? 콘솔이 중지되며 이 탭은 오프라인됩니다."
   },
 
   ja: {
@@ -227,7 +229,8 @@ window.MOAI_I18N = {
     "f.git_convention.validation.enforce_on_push.desc": "コミットメッセージが規約に違反した場合にプッシュを拒否します。",
 
     "lang.aria": "インターフェース言語",
-    "theme.aria": "ライト / ダークテーマ切替"
+    "theme.aria": "ライト / ダークテーマ切替",
+    "appbar.shutdown.confirm": "サーバーをシャットダウンしますか？コンソールが停止し、このタブはオフラインになります。"
   },
 
   zh: {
@@ -298,6 +301,7 @@ window.MOAI_I18N = {
     "f.git_convention.validation.enforce_on_push.desc": "当提交信息违反约定时拒绝推送。",
 
     "lang.aria": "界面语言",
-    "theme.aria": "切换浅色 / 深色主题"
+    "theme.aria": "切换浅色 / 深色主题",
+    "appbar.shutdown.confirm": "要关闭服务器吗？控制台将停止，此标签页将离线。"
   }
 };

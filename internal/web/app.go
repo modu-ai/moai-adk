@@ -46,6 +46,13 @@ type app struct {
 	// Tests inject failures here without touching the real filesystem.
 	readProjectNestedConfig  func(projectRoot string) (projectNestedCurrent, error)
 	writeProjectNestedConfig func(projectRoot string, form projectNestedForm) error
+
+	// triggerShutdown is 페이지 내 서버 종료 버튼(/__shutdown__)이 호출하는
+	// injectable seam 이다. openBrowser 와 동일한 패턴이지만 app 에 두는 이유는 —
+	// Config 가 값 전달이라 server 와 handler 가 하나의 closure 를 공유해야
+	// 하기 때문이다. ListenAndServe 가 signal.NotifyContext 의 cancel 함수(stop)로
+	// wire 한다; nil 이면(단위 테스트의 bare app) handleShutdown 은 호출을 건너뛴다.
+	triggerShutdown func()
 }
 
 // newApp builds an app from cfg, wiring the default internal/profile functions.
@@ -72,6 +79,10 @@ func (a *app) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", a.handleIndex)
 	mux.HandleFunc("/save", a.handleSave)
+	// /__shutdown__ 은 페이지 내 종료 버튼이 POST 하는 루트다. hostCheckMiddleware
+	// 가 이미 전체 mux 를 감싸 non-loopback Host 의 POST 를 403 차단하므로 추가
+	// CSRF/토큰 인프라 없이 loopback-only 단일 경계로 보호된다(@MX:NOTE app.go 참조).
+	mux.HandleFunc("/__shutdown__", a.handleShutdown)
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS()))))
 	return hostCheckMiddleware(mux)
 }

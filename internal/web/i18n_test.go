@@ -392,9 +392,27 @@ func TestLangpickJSWiring(t *testing.T) {
 	if !strings.Contains(js, "uiLangSelect") {
 		t.Error("app.js does not wire the uiLangSelect change listener")
 	}
-	// The interface-language path must not submit the form or fetch.
-	if strings.Contains(js, "fetch(") {
-		t.Error("app.js contains a fetch( call — the langpick must not perform a network request")
+	// The interface-language (langpick) path must not submit the form or perform a
+	// network request. The langpick's change handler only applies + persists the
+	// locale client-side. A fetch may exist elsewhere in app.js (e.g. the in-page
+	// server shutdown button POSTs to /__shutdown__), so the check is scoped to the
+	// wireLangpick function body rather than the whole file.
+	langpickStart := strings.Index(js, "function wireLangpick")
+	if langpickStart < 0 {
+		t.Fatal("app.js does not define wireLangpick")
+	}
+	searchFrom := langpickStart + len("function wireLangpick")
+	nextFn := strings.Index(js[searchFrom:], "\n  function ")
+	langpickEnd := len(js)
+	if nextFn >= 0 {
+		langpickEnd = searchFrom + nextFn
+	}
+	langpickBody := js[langpickStart:langpickEnd]
+	if strings.Contains(langpickBody, "fetch(") {
+		t.Error("the langpick change handler contains a fetch( call — the interface-language path must not perform a network request")
+	}
+	if strings.Contains(langpickBody, "submit(") {
+		t.Error("the langpick change handler contains a submit( call — the interface-language path must not submit the form")
 	}
 }
 
