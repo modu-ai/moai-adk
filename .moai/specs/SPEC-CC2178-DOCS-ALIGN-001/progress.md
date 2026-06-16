@@ -122,4 +122,12 @@ COMPLETE. 9 files changed (1 mirror-direct session-handoff.md + 8 docs-site 4-lo
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending Mx-phase>_
+- **mx_complete_at**: 2026-06-17
+- **mx_commit_sha**: "(this commit)" — backfilled post-commit
+- **final_status**: completed
+- **4-phase close**: plan (`8b5d5d49d`) + run (M1 `25796ea9b` / M2 `b38a28c78` / M3 `679c1c72b` / run-progress `827228819`) + sync (`12b81b0d6` + backfill `eb7d6038f`) + Mx (this commit) — all phases complete
+- **era_classification**: V3R6 (H-4: §E.2 run-evidence + §E.5 Mx + `sync_commit_sha` + `mx_commit_sha` all present)
+- **ac_final**: 10/10 PASS (5 MUST: AC-DA-001/002/008/009/010 + 5 SHOULD: AC-DA-003/004/005/006/007); spec-lint 0 findings
+- **closure**: SPEC-CC2178-DOCS-ALIGN-001 docs-only alignment complete — CC 2.1.169→2.1.178 Tier 1 items documented across rules source+mirror + docs-site 4-locale (ko/en/ja/zh), ZERO Go code
+- **deferred** (separate future SPECs, out of scope per spec.md §E): EFFORT-MAP-RETIREMENT / TASK-TRIAGE / vff prose-discipline
+- **mx_executed_by**: orchestrator-direct (manager-docs spawn context-window-blocked; Mx chore close is canonical- owner-valid for orchestrator per ownership matrix)
