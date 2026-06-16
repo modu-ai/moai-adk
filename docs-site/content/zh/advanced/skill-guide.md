@@ -335,6 +335,20 @@ flowchart TD
     IMPL --> RESULT["类型安全的<br>全栈应用"]
 ```
 
+## 技能范围与发现 (Skill Scope and Discovery)
+
+### 嵌套 `.claude/skills` 加载
+
+Claude Code 不仅在项目根目录发现 `.claude/skills/`，还在嵌套子目录中发现它（parent-walk 遍历），因此 monorepo 可以将包级本地技能放在每个包自己的 `.claude/skills/` 目录中。当你在包含自己 `.claude/skills/` 的嵌套目录中工作时，该嵌套目录中的技能会在该子树工作期间与根级技能一起加载。
+
+### 名称冲突时的 closest-wins
+
+当相同的技能名称沿嵌套链出现在多个 `.claude/skills/` 目录中时，**closest-directory-wins**（最近目录优先）规则解决冲突：离当前工作目录最近的 `.claude/skills/` 遮蔽更上层树中的那个。这与嵌套 `.claude/` 目录下已适用于代理、工作流和 output-styles 的优先级一致 — 最内层的 `.claude/` 获胜。有意覆盖根技能的包级本地技能必须保持相同名称；重命名会创建第二个技能而非覆盖。
+
+### `disableBundledSkills` 开关
+
+`disableBundledSkills` (settings.json 布尔值，或其环境变量形式) 从发现中隐藏 Claude Code 捆绑技能和工作流 — 例如 `/deep-research`、内置斜杠命令技能 — 仅保留 enterprise + personal + project + plugin 技能可见。在提供经过策划的、无捆绑的 skill 表面时使用。MoAI-ADK 不会从其自身的生成器发出此开关；它在此作为可用选项进行文档化。配套的 `--safe-mode` 启动标志文档化于 [Settings JSON 指南](/zh/advanced/settings-json#disablebundledskills)。
+
 ## 相关文档
 
 - [代理指南](/advanced/agent-guide) - 使用技能的代理体系

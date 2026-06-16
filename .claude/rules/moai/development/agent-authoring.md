@@ -190,9 +190,15 @@ Requires: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
 - `model`: One of: `inherit`, `opus`, `sonnet`, `haiku`. Never use `glm`, `high`, `medium`, `low`.
 - `permissionMode`: One of the official enum values: `default`, `acceptEdits`, `auto`, `dontAsk`, `bypassPermissions`, `plan`. (`delegate` is NOT part of the official enum — it is a MoAI experimental extension for team-lead coordination agents; see § Permission Modes.)
 
-### managed-settings precedence
+#### `disallowedTools` MCP server-level enforcement
+
+When `disallowedTools` references an MCP tool (e.g. `mcp__context7__*`, `mcp__web_search_prime__webSearchPrime`), the restriction is enforced at the MCP server level: the tool's specs are not exposed to the agent at all, so the agent cannot invoke it even indirectly. This is stricter than the plain tool-deny behavior for built-in tools. Author agents with this in mind — a `disallowedTools` entry on an MCP tool is a hard gate, not a soft prompt.
+
+### managed-settings precedence + nested closest-wins
 
 Org-wide managed settings can define agents at the highest precedence level (priority 1). A project-local `.claude/agents/` definition with the same name is overridden by the managed-settings agent — managed (enterprise) agents win over project and personal agents.
+
+When the same agent name appears in more than one `.claude/agents/` directory along a nested chain (project root vs a nested subdirectory's own `.claude/agents/`), the **closest-directory-wins** rule resolves the collision: the `.claude/agents/` nearest to the current working directory shadows the one further up the tree. This is the same closest-wins precedence that applies to skills, workflows, and output-styles under nested `.claude/` directories — the innermost `.claude/` wins. Managed (enterprise) settings remain priority 1 regardless of nesting depth.
 
 ## Rules
 

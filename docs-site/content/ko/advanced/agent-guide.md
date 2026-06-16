@@ -395,6 +395,10 @@ workflow:
 
 각 역할은 도메인별 지침이 주입된 `Agent(subagent_type: "general-purpose")`로 생성됩니다.
 
+## 중첩 `.claude/` 선행 규칙
+
+중첩 체인을 따라 둘 이상의 `.claude/agents/` 디렉터리에 같은 에이전트 이름이 나타나면 (프로젝트 루트 vs 중첩 하위 디렉터리 자체의 `.claude/agents/`), **closest-directory-wins**(가장 가까운 디렉터리 우선) 규칙이 충돌을 해결합니다: 현재 작업 디렉터리에 가장 가까운 `.claude/agents/`가 더 위쪽 트리의 것을 가립니다(shadow). 이는 중첩 `.claude/` 디렉터리 하위에서 스킬, 워크플로우, output-styles에 이미 적용되는 선행 규칙과 동일합니다 — 가장 안쪽의 `.claude/`가 이깁니다. 관리(enterprise) 설정은 중첩 깊이와 무관하게 우선순위 1로 유지됩니다.
+
 ## 관련 문서
 
 - [스킬 가이드](/advanced/skill-guide) - 에이전트가 활용하는 스킬 체계

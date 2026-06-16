@@ -19,7 +19,28 @@
 
 ## §C — Mode Selection (Phase 0.95, populated at run-phase entry)
 
-_<pending run-phase>_
+**Input parameters**:
+- tier: S (docs-only, 3 milestones, ZERO Go code)
+- scope (file count): 6 rules files (template source + mirror) + 7 docs-site pages × 4 locales = ~34 markdown files
+- domain count: 2 (rules markdown + docs-site markdown; both are the same "markdown docs" domain)
+- file language mix: 100% markdown (0% Go, 0% shell)
+- concurrency benefit: LOW — sequential docs edits within each milestone; no inter-file parallelism benefit (Anthropic coding-task parallelism caveat: most docs tasks involve fewer truly parallelizable subtasks)
+- Agent Teams prereqs: N/A (harness level not thorough for this Tier S docs-only SPEC)
+
+**Mode evaluation table**:
+
+| Mode | Selected? | Rationale |
+|------|-----------|-----------|
+| 1 trivial | NO | Not a typo/single-line — 9 features across ~34 files |
+| 2 background | NO | Docs edits require Write operations; background agents auto-deny Write/Edit |
+| 3 agent-team | NO | domain count = 2 (< 3 threshold); Tier S docs-only; Agent Teams prereqs not met |
+| 4 parallel | NO | Not research-heavy; docs edits are sequential within milestone; concurrency benefit LOW |
+| 5 sub-agent | NO (but this IS the effective mode) | Sequential milestone-by-milestone execution by manager-develop directly — Mode 5 semantics (one milestone at a time) |
+| 6 workflow | NO | Not mechanical-uniform high-volume; docs edits are semantic per-feature; coding-heavy/docs-heavy new-content work stays Mode 5 |
+
+**Decision**: sub-agent (Mode 5 semantics — sequential milestone execution)
+
+**Justification**: Tier S docs-only SPEC with 2 domains (rules + docs-site, both markdown) and LOW concurrency benefit. Per Anthropic's coding-task parallelism caveat (orchestration-mode-selection.md §B: "most coding tasks involve fewer truly parallelizable tasks than research"), the sequential milestone-by-milestone path is the safe default. The orchestrator delegates once to manager-develop which executes M1 → M2 → M3 sequentially with per-milestone commits. No fan-out benefit: each milestone's docs edits are independent of the others but all flow through the same agent, and parallelizing across 4 locales of the same page would risk 4-locale parity drift (AC-DA-009 MUST gate).
 
 ## §D — Milestone Progress
 

@@ -343,6 +343,20 @@ flowchart TD
     IMPL --> RESULT["Type-safe<br>full-stack app"]
 ```
 
+## Skill Scope and Discovery
+
+### Nested `.claude/skills` loading
+
+Claude Code discovers `.claude/skills/` not only at the project root but also in nested subdirectories (parent-walk), so a monorepo can place package-local skills in each package's own `.claude/skills/` directory. When you are working inside a nested directory that contains its own `.claude/skills/`, the skills in that nested directory are loaded alongside the root-level skills for the duration of the work in that subtree.
+
+### Closest-wins on name collision
+
+When the same skill name appears in more than one `.claude/skills/` directory along the nested chain, the **closest-directory-wins** rule resolves the collision: the `.claude/skills/` nearest to the current working directory shadows the one further up the tree. This mirrors the precedence that already applies to agents, workflows, and output-styles under nested `.claude/` directories — the innermost `.claude/` wins. A package-local skill that intentionally overrides a root skill MUST keep the same name; renaming it would create a second skill rather than an override.
+
+### `disableBundledSkills` toggle
+
+`disableBundledSkills` (settings.json boolean, or its environment-variable form) hides the Claude Code bundled skills and workflows — e.g. `/deep-research`, built-in slash-command skills — from discovery, leaving only enterprise + personal + project + plugin skills visible. Use it when shipping a curated, bundle-free skill surface. MoAI-ADK does not emit this toggle from its own generators; it is documented here as an available option. The companion `--safe-mode` launch flag is documented in [Settings JSON Guide](/advanced/settings-json#disablebundledskills).
+
 ## Related Documentation
 
 - [Agent Guide](/advanced/agent-guide) - Agent system that uses skills

@@ -357,9 +357,21 @@ Claude 可以访问的额外工作目录。
 }
 ```
 
+### disableBundledSkills
+
+`disableBundledSkills` (布尔值，或其环境变量形式) 从发现中隐藏 Claude Code 捆绑 skills 和工作流 — 例如 `/deep-research`、内置斜杠命令 skills — 仅保留 enterprise + personal + project + plugin skills 可见。设为 `true` 以提供经过策划的、无捆绑的 skill 表面。
+
+```json
+{
+  "disableBundledSkills": true
+}
+```
+
+`--safe-mode` CLI 标志在启动时而非通过设置应用相同的运行时效果 — 适用于锁定环境或调试某个行为是否源自捆绑 skill。MoAI-ADK 不会自动发出 `disableBundledSkills` 或传递 `--safe-mode`；两者均在此作为可用选项进行文档化。
+
 ## 权限规则语法 (Permission Rule Syntax)
 
-权限规则遵循 `Tool` 或 `Tool(specifier)` 格式。
+权限规则遵循 `Tool` 或 `Tool(specifier)` 格式。参数范围通配符形式 `Tool(param:value)` 也受支持 — 例如 `WebFetch(domain:example.com)` 仅允许对该域的 WebFetch，`Bash(cmd:git status)` 匹配 `git status` 命令，值内部的 `*` 通配符可扩大匹配范围 (`WebFetch(domain:*.example.com)`、`Bash(cmd:git *)`)。此参数范围形式比普通 `Tool(specifier)` 形式提供更细粒度的控制。MoAI-ADK 目前不从其自身的设置生成器发出参数范围规则；该语法在此作为面向需要参数级权限控制的项目的可用选项进行文档化。
 
 ### 规则评估顺序
 

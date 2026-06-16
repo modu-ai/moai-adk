@@ -258,7 +258,15 @@ Skills can exist at multiple levels. When the same name exists across levels, hi
 
 ### Discovery (nested / monorepo / --add-dir)
 
-Project skill discovery walks the directory tree: Claude Code finds `.claude/skills/` not only at the project root but also in nested subdirectories (parent-walk), so a monorepo can place package-local skills in each package's own `.claude/skills/` directory. Directories added at launch via the `--add-dir` flag are an exception — their skills are NOT auto-loaded for skill discovery (use `permissions.additionalDirectories` in settings.json when an added directory's skills should participate in discovery rather than `--add-dir`, which grants file access only).
+Project skill discovery walks the directory tree: Claude Code finds `.claude/skills/` not only at the project root but also in nested subdirectories (parent-walk), so a monorepo can place package-local skills in each package's own `.claude/skills/` directory. When you are working inside a nested directory that contains its own `.claude/skills/`, the skills in that nested directory are loaded alongside the root-level skills for the duration of the work in that subtree. Directories added at launch via the `--add-dir` flag are an exception — their skills are NOT auto-loaded for skill discovery (use `permissions.additionalDirectories` in settings.json when an added directory's skills should participate in discovery rather than `--add-dir`, which grants file access only).
+
+### Closest-wins on name collision (nested `.claude/`)
+
+When the same skill name appears in more than one `.claude/skills/` directory along the nested chain, the **closest-directory-wins** rule resolves the collision: the `.claude/skills/` nearest to the current working directory shadows the one further up the tree. This mirrors the precedence that already applies to agents, workflows, and output-styles under nested `.claude/` directories — the innermost `.claude/` wins. Authoring implication: a package-local skill that intentionally overrides a root skill MUST keep the same name; renaming it would create a second skill rather than an override.
+
+### `disableBundledSkills` toggle
+
+`disableBundledSkills` (settings.json boolean, or its environment-variable form) hides the Claude Code bundled skills and workflows — e.g. `/deep-research`, built-in slash-command skills — from discovery, leaving only enterprise + personal + project + plugin skills visible. Use it when shipping a curated, bundle-free skill surface. MoAI-ADK does not emit this toggle from its own generators; it is documented here as an available option. See `.claude/rules/moai/core/settings-management.md` § Claude Code Settings for the companion `--safe-mode` launch flag.
 
 ## Best Practices
 

@@ -394,6 +394,10 @@ workflow:
 
 每个角色生成一个 `Agent(subagent_type: "general-purpose")`,在生成时注入特定领域指令。
 
+## 嵌套 `.claude/` 优先级
+
+当相同的代理名称沿嵌套链出现在多个 `.claude/agents/` 目录中时（项目根目录 vs 嵌套子目录自己的 `.claude/agents/`），**closest-directory-wins**（最近目录优先）规则解决冲突：离当前工作目录最近的 `.claude/agents/` 遮蔽更上层树中的那个。这与嵌套 `.claude/` 目录下已适用于技能、工作流和 output-styles 的优先级一致 — 最内层的 `.claude/` 获胜。管理（enterprise）设置无论嵌套深度如何都保持优先级 1。
+
 ## 相关文档
 
 - [技能指南](/advanced/skill-guide) - 代理使用的技能系统

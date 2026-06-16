@@ -16,6 +16,8 @@ Claude Code and MoAI configuration management rules.
 - hooks: Hook script definitions
 - permissions: Access control
 - statusLine: Statusline configuration
+- disableBundledSkills: Hide bundled skills/workflows (e.g. `/deep-research`) from discovery. Set `true` to suppress the Claude Code bundled skill catalog so only project + user skills remain visible. An equivalent environment variable form is also supported. MoAI-ADK does not emit this toggle — it is documented here as a Claude Code option that exists for projects that want to ship a curated, bundle-free skill surface.
+- `--safe-mode` CLI flag: Launch Claude Code with bundled skills and workflows disabled (equivalent runtime effect to `disableBundledSkills: true`, but applied at launch time rather than via settings). Useful for locked-down environments or when debugging whether a behavior originates from a bundled skill. MoAI-ADK does not pass this flag automatically; it is documented as an available launch option.
 
 ### MCP Configuration
 
@@ -250,6 +252,29 @@ Tool permissions in settings.json:
 - Bash: Shell command execution
 - Agent: Sub-agent delegation
 - AskUserQuestion: User interaction
+
+### Permission Rule Syntax
+
+Claude Code permission rules support two forms:
+
+- `Tool(specifier)` — scope a tool by a specifier (e.g. `Bash(npm test:)` allows only `npm test` Bash commands; `Read(//tmp/**)` allows reads under `/tmp`).
+- `Tool(param:value)` — param-scoped wildcard (e.g. `WebFetch(domain:example.com)` allows WebFetch only against that domain; `Bash(cmd:git status)` matches the `git status` command). The `*` wildcard is accepted inside the value to broaden a match (`WebFetch(domain:*.example.com)`, `Bash(cmd:git *)`).
+
+Both forms compose with `allow` / `deny` / `ask` in `permissions`. MoAI-ADK does not currently emit param-scoped rules from its own settings generators; the `Tool(param:value)` syntax is documented here as an available option for projects that need fine-grained, parameter-level permission control beyond the plain `Tool(specifier)` form.
+
+Example:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm test:)",
+      "Bash(cmd:git status)",
+      "WebFetch(domain:*.moai.kr)"
+    ]
+  }
+}
+```
 
 ## Quality Configuration
 

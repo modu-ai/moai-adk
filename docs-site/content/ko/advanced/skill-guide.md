@@ -369,6 +369,20 @@ flowchart TD
     IMPL --> RESULT["타입 안전한<br>풀스택 앱"]
 ```
 
+## 스킬 범위와 디스커버리 (Skill Scope and Discovery)
+
+### 중첩 `.claude/skills` 로딩
+
+Claude Code는 프로젝트 루트뿐만 아니라 중첩된 하위 디렉터리(parent-walk)에서도 `.claude/skills/`를 발견합니다. 따라서 모노레포는 각 패키지 자체의 `.claude/skills/` 디렉터리에 패키지 로컬 스킬을 배치할 수 있습니다. 자체 `.claude/skills/`를 포함하는 중첩 디렉터리 내부에서 작업할 때, 해당 중첩 디렉터리의 스킬은 해당 하위 트리에서 작업하는 동안 루트 수준 스킬과 함께 로드됩니다.
+
+### 이름 충돌 시 closest-wins
+
+중첩 체인을 따라 둘 이상의 `.claude/skills/` 디렉터리에 같은 스킬 이름이 나타나면, **closest-directory-wins**(가장 가까운 디렉터리 우선) 규칙이 충돌을 해결합니다: 현재 작업 디렉터리에 가장 가까운 `.claude/skills/`가 더 위쪽 트리의 것을 가립니다(shadow). 이는 중첩 `.claude/` 디렉터리 하위에서 에이전트, 워크플로우, output-styles에 이미 적용되는 선행 규칙과 동일합니다 — 가장 안쪽의 `.claude/`가 이깁니다. 루트 스킬을 의도적으로 재정의하는 패키지 로컬 스킬은 같은 이름을 유지해야 합니다. 이름을 바꾸면 재정의가 아닌 두 번째 스킬이 생성됩니다.
+
+### `disableBundledSkills` 토글
+
+`disableBundledSkills` (settings.json 불리언, 또는 환경변수 형태)는 Claude Code 번들 skills 및 워크플로우 — 예: `/deep-research`, 내장 슬래시 명령 skills — 를 discovery에서 숨기고 enterprise + personal + project + plugin skills만 보이게 합니다. 선별된 번들 없는 skill 표면을 제공할 때 사용하세요. MoAI-ADK는 이 토글을 자체 생성기에서 생성하지 않습니다. 사용 가능한 옵션으로 이곳에 문서화됩니다. 동반되는 `--safe-mode` 런칭 플래그는 [Settings JSON 가이드](/ko/advanced/settings-json#disablebundledskills)에 문서화되어 있습니다.
+
 ## 관련 문서
 
 - [에이전트 가이드](/advanced/agent-guide) - 스킬을 활용하는 에이전트 체계

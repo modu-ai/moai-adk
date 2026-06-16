@@ -362,6 +362,20 @@ flowchart TD
     IMPL --> RESULT["タイプセーフな<br/>フルスタックアプリ"]
 ```
 
+## スキルスコープとディスカバリー (Skill Scope and Discovery)
+
+### ネストされた `.claude/skills` のロード
+
+Claude Code はプロジェクトルートだけでなく、ネストされたサブディレクトリ (parent-walk) にも `.claude/skills/` を発見します。そのためモノレポでは、各パッケージ独自の `.claude/skills/` ディレクトリにパッケージローカルのスキルを配置できます。独自の `.claude/skills/` を含むネストされたディレクトリ内で作業する場合、そのネストされたディレクトリのスキルは、そのサブツリーでの作業中、ルートレベルのスキルと併せてロードされます。
+
+### 名前衝突時の closest-wins
+
+ネストチェーンに沿って複数の `.claude/skills/` ディレクトリに同じスキル名が現れる場合、**closest-directory-wins** (最も近いディレクトリ優先) ルールが衝突を解決します: 現在の作業ディレクトリに最も近い `.claude/skills/` が、ツリーの上位にあるものをシャドウします。これは、ネストされた `.claude/` ディレクトリ配下でエージェント、ワークフロー、output-styles に既に適用されている優先順位と同じです — 最も内側の `.claude/` が勝ちます。ルートスキルを意図的にオーバーライドするパッケージローカルスキルは、同じ名前を保持する必要があります。名前を変更すると、オーバーライドではなく 2 番目のスキルが作成されます。
+
+### `disableBundledSkills` トグル
+
+`disableBundledSkills` (settings.json ブール値、または環境変数形式) は Claude Code バンドル skills およびワークフロー — 例: `/deep-research`、組み込みスラッシュコマンド skills — を discovery から隠し、enterprise + personal + project + plugin skills のみを表示します。キュレーションされたバンドルフリーの skill サーフェスを提供する際に使用してください。MoAI-ADK はこのトグルを独自のジェネレータから送出しません。利用可能なオプションとしてここに文書化されます。同伴する `--safe-mode` 起動フラグは [Settings JSON ガイド](/ja/advanced/settings-json#disablebundledskills) に文書化されています。
+
 ## 関連ドキュメント
 
 - [エージェントガイド](/advanced/agent-guide) - スキルを活用するエージェント体系

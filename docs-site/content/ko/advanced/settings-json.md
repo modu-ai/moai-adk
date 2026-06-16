@@ -357,9 +357,21 @@ Claude가 접근할 수 있는 추가 작업 디렉토리입니다.
 }
 ```
 
+### disableBundledSkills
+
+`disableBundledSkills` (불리언, 또는 환경변수 형태)는 Claude Code 번들 skills 및 워크플로우 — 예: `/deep-research`, 내장 슬래시 명령 skills — 를 discovery에서 숨기고 enterprise + personal + project + plugin skills만 보이게 합니다. `true`로 설정하여 선별된 번들 없는 skill 표면을 제공합니다.
+
+```json
+{
+  "disableBundledSkills": true
+}
+```
+
+`--safe-mode` CLI 플래그는 settings가 아닌 런칭 시점에 동일한 런타임 효과를 적용합니다 — 잠긴 환경이나 어떤 동작이 번들 skill에서 기원했는지 디버깅할 때 유용합니다. MoAI-ADK는 `disableBundledSkills`를 생성하거나 `--safe-mode`를 자동으로 전달하지 않습니다. 둘 다 사용 가능한 옵션으로 이곳에 문서화됩니다.
+
 ## 권한 규칙 구문 (Permission Rule Syntax)
 
-권한 규칙은 `Tool` 또는 `Tool(specifier)` 형식을 따릅니다.
+권한 규칙은 `Tool` 또는 `Tool(specifier)` 형식을 따릅니다. 매개변수 범위 와일드카드 형식인 `Tool(param:value)`도 지원됩니다 — 예: `WebFetch(domain:example.com)`은 해당 도메인에 대한 WebFetch만 허용, `Bash(cmd:git status)`는 `git status` 명령에 매칭, 값 내부의 `*` 와일드카드로 매칭 범위를 넓힐 수 있습니다 (`WebFetch(domain:*.example.com)`, `Bash(cmd:git *)`). 이 매개변수 범위 형식은 일반 `Tool(specifier)` 형식보다 더 세밀한 제어를 제공합니다. MoAI-ADK는 현재 자체 설정 생성기에서 매개변수 범위 규칙을 생성하지 않습니다. 이 구문은 매개변수 수준의 권한 제어가 필요한 프로젝트를 위한 사용 가능한 옵션으로 문서화됩니다.
 
 ### 규칙 평가 순서
 
