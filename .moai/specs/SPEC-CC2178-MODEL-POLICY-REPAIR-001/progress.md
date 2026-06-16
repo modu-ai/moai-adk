@@ -117,7 +117,39 @@ m1_to_mN_commit_strategy: 5 separate milestone commits (M1 research, M2 phantom-
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-06-16
+sync_commit_sha: (this commit)   # orchestrator-direct backfill after commit lands
+sync_status: complete
+sync_performer: orchestrator-direct   # delegation exception: manager-docs spawn context-limit 2x fail, user-approved Option A
+frontmatter_transition: in-progress → implemented
+deliverables:
+  - CHANGELOG.md entry (SPEC-CC2178 3-axis repair, 4 defects D1-D4, M1-M6+M2.1)
+  - spec.md frontmatter status: in-progress → implemented (manager-docs canonical owner; performed orchestrator-direct per delegation exception)
+  - progress.md §E.4 (this section)
+docs_surface_skipped: README/docs-site   # settings keys are template-managed, not user-editable; no documented surface to update
+```
+
+### Sync-phase verification (5-section format per verification-claim-integrity.md)
+
+**Claim**: sync-phase doc deliverables (CHANGELOG + frontmatter transition + §E.4) written accurately against the committed run-phase diff; no fabricated SHAs/scores/file-lists; working-tree scope discipline upheld (0 unrelated workstream absorption).
+
+**Evidence** (verbatim observations 2026-06-16):
+- `git show --stat 32e951d81 755c5ac49 b83da250e b0ddc7637 2509871bd 8da927d2d 1aaa9202f` → 7 run commits, file-change scope matches CHANGELOG entry (model_policy.go, model_policy_test.go, cycle_type.go, cycle_type_test.go, quality.yaml, settings.json.tmpl, settings_test.go, model-policy.md + mirror, research.md, progress.md, spec.md frontmatter).
+- `sed -n '14,117p' progress.md` (§E.2/§E.3) → ac_pass_count 14, ac_fail_count 0, 2 pre-existing unrelated failures documented.
+- `git status --porcelain` (pre-sync) → only sync-edited files staged (CHANGELOG.md, spec.md, progress.md); 5 unrelated untracked items left untouched.
+
+**Baseline-attribution**: CHANGELOG claims (file lists, AC counts, commit subjects, plan-auditor score 0.84) measured against the committed tree at HEAD `b83da250e` and the §E.2/§E.3 run-phase evidence — not carry-over from unrelated SPECs.
+
+**Gaps** (what was NOT observed):
+- `go test ./...` + `go vet ./...` not re-run in this sync pass (doc-only commit, no Go code changed since M2.1; run-phase §E.3 already recorded `go test ./internal/config/ ./internal/template/` green + golangci-lint 0 against HEAD). The 2 pre-existing failures (`internal/statusline`, `internal/cli`) are unchanged.
+- README/docs-site 4-locale not updated (settings keys undocumented in user-facing docs; no surface to edit — justified, not a gap-in-coverage).
+- sync_commit_sha is the literal `(this commit)` placeholder — orchestrator backfills the real SHA after this commit lands (standard 2-commit backfill pattern).
+- `Authored-By-Agent` trailer on the sync commit will be `orchestrator-direct` (not `manager-docs`) — honest signal that the `in-progress → implemented` transition was performed orchestrator-direct per the delegation exception. This may emit an `OwnershipTransitionInvalid` INFO/WARNING in `moai spec lint` (canonical owner is manager-docs); the deviation is intentional and user-approved, recorded here for the Mx-phase auditor.
+
+**Residual-risk**:
+- The orchestrator-direct transition bypasses the manager-docs specialist's doc-craft judgment; the CHANGELOG entry was written by the orchestrator following the observed entry pattern. A sync-auditor pass should verify CHANGELOG accuracy against the diff (the entry cites no numbers not already in §E.2/§E.3 or the commit subjects).
+- If the sync-phase quality-gate Stop hook (`sync-phase-quality-gate.sh`) is active, it will run lint+test+coverage-delta on this commit; doc-only changes should pass, but the 2 pre-existing test failures may surface as gate noise (they are unrelated and pre-existing).
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
