@@ -44,6 +44,11 @@ var workflowOptMirroredPaths = []string{
 	".claude/rules/moai/core/hooks-system.md",
 	// Layer E — Phase Transitions skip policy
 	".claude/rules/moai/workflow/spec-workflow.md",
+	// SPEC-SESSION-HANDOFF-ALIGN-001 — session-handoff.md mirror parity (REQ-SHA-007).
+	// Both trees are byte-identical post-neutralization (Diet/V0/`/cd` blocks ported +
+	// internal SPEC-IDs stripped per CLAUDE.local.md §25). Enrolled here so future
+	// single-tree edits on this always-loaded canonical rule are caught at CI.
+	".claude/rules/moai/workflow/session-handoff.md",
 	// Layer G — evaluator profile D7/D8 weight registration
 	".moai/config/evaluator-profiles/default.md",
 	".moai/config/evaluator-profiles/frontend.md",

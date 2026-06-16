@@ -124,6 +124,80 @@ At session end, the orchestrator displays: (1) the message in a fenced ```text``
 - Cut-line markers absent — user cannot identify exact copy boundary in long terminal scrollback.
 - Cut-line markers translated `✂` symbol or `─` decorator — only the marker text translates; the symbols are preserved verbatim.
 
+## Worktree-Anchored Resume Pattern
+
+[ZONE:Evolvable] [HARD] When the SPEC was initialized via L3 `/moai plan --worktree` (creating an L2 SPEC worktree at `~/.moai/worktrees/<project>/<spec-or-name>/`), the resume message MUST include **Block 0 (cwd anchoring)** prepended before the standard 6-block structure. Without Block 0, the next session starts in main project cwd by default, breaking L2 SPEC worktree isolation expectations.
+
+> Per user policy 2026-05-17 (`feedback_worktree_autonomous` memory): L3 `--worktree` is **user opt-in** only. For SPECs initialized without `--worktree` (the default as of 2026-05-17), the standard 6-block structure suffices — Block 0 is NOT required.
+
+### Why Block 0 (L3 `--worktree` opt-in only)
+
+With L3 `--worktree`, SPEC artifacts and L1 isolation base live in a different cwd. Pasting resume into a main-cwd session causes: L1 base divergence (lessons #13), Bash commands targeting main project (lessons #12), build/test from the wrong tree. Block 0 forces a new terminal session **inside** the L2 worktree before any action.
+
+### Block 0 Format
+
+Block 0 is **prepended** before Block 1:
+
+```
+[New Terminal — START IN WORKTREE]
+$ cd <worktree-absolute-path>
+$ <launcher>     # Choose one: moai cc | moai glm | claude
+   └─ Claude Code session starts here (cwd = worktree)
+```
+
+### `/cd` cache-preserving alternative (CC 2.1.169+)
+
+The new-terminal Block 0 above is a cold-start path: it opens a fresh Claude Code session inside the L2 worktree, which re-reads skills/rules from scratch. Claude Code 2.1.169+ ships a `/cd` command that changes the session's working directory **while preserving the prompt cache** — so the in-flight reasoning context survives the cwd switch instead of being rebuilt. For an L2 worktree resume where you want to keep the current session's accumulated context (rather than cold-starting), `/cd <worktree-absolute-path>` is a cache-preserving complement to the new-terminal Block 0. This note does NOT replace Block 0 — the new-terminal path remains the default for clean isolation; `/cd` is the lower-friction option when cache preservation matters more than a fresh tree.
+
+[ZONE:Evolvable] [HARD] Block 0 MUST surface the 3 primary launchers verbatim so the user can choose without consulting external docs:
+
+1. `moai cc` — Claude Code leader with MoAI orchestration (default for normal SPEC work; supports `-p <name>` profile flag)
+2. `moai glm` — cost-optimized GLM-only worker mode (no Claude Code leader, lower token cost)
+3. `claude` — native Claude Code without MoAI wrapper (minimal fallback)
+
+Advanced launchers (use only when user explicitly requests, NOT auto-surfaced in Block 0):
+- `moai cc --bypass` — sandboxed-only execution (testing scenarios)
+- `moai cg` — Claude leader + GLM teammates parallel mode (requires `tmux new-session -s <name>` first; pair with `--team`)
+
+### Updated Block 4 (Preconditions)
+
+When Block 0 is present, the **first precondition (0)** verifies compliance:
+
+```
+0) git rev-parse --show-toplevel → <worktree-path> (★ critical pre-check)
+```
+
+If verification 0) fails, stop and instruct the user to restart inside the worktree.
+
+### Single-Session vs Multi-Session Decision
+
+Block 0 is REQUIRED only with L3 `--worktree`. For `--branch` (or no flag — 2026-05-17 default), standard 6-block suffices because main session cwd already follows the branch.
+
+[ZONE:Evolvable] [HARD] If L3 `--worktree` was used and the user is NOT comfortable with multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See lessons #14 for the single-session vs multi-session decision rationale.
+
+### Example with Block 0 (Illustrative)
+
+```
+✂──── 여기부터 복사 ────✂
+
+[New Terminal — START IN WORKTREE]
+$ cd ~/.moai/worktrees/<project>/SPEC-MYPROJ-001
+$ moai cc        # 또는 moai glm | claude (3가지 launcher 중 선택; 본 예시는 moai cc)
+
+ultrathink. SPEC-MYPROJ-001 Wave N 진입.
+applied lessons: project_myproj_prev_wave_complete, lessons #12 #13 #14.
+
+전제 검증:
+0) git rev-parse --show-toplevel → ~/.moai/worktrees/<project>/SPEC-MYPROJ-001 (★ critical)
+1) gh pr view <PR-number> → MERGED
+
+실행: /moai run SPEC-MYPROJ-001 --team
+
+후속: Round N+1 (single-SPEC SSE split context) 또는 Sprint N+1 (multi-SPEC cohort context)
+
+✂──── 여기까지 복사 ────✂
+```
+
 ## Diet Constraints
 
 [ZONE:Evolvable] [HARD] paste-ready resume message는 "next session minimum executable context"이다 — audit trail, history record, ceremonial commitment record가 아니다. 차수 누적 retry 진행 시 본문에 history/lesson/directive escalation prose를 append-only로 누적하는 것은 empirical 입증된 anti-pattern이다.
@@ -220,80 +294,6 @@ Cross-line provenance: retained in lesson memory; this section codifies the doct
 - **AP-V-002**: V0 FAIL 후 "사용자 약속 누적 미이행 N회" 본문 추적 → 죄책감 부담만 부과 + 실질 행동 변화 0 + paste-ready 비대화 → 도구화 anti-pattern
 - **AP-V-003**: V0 FAIL 시 AskUserQuestion에 강행 옵션 (option D "override + spawn") 제시 → doctrine 위반
 - **AP-V-004**: V0-b 측정에 `lsof +D "$PWD" | grep -iE 'claude'` 사용 → 파일명에 'claude' 포함된 콘텐츠(claude-*.md 등)까지 매칭하는 false-positive 결함이 있다. COMMAND 컬럼 프로세스 필터 `lsof -a -c claude +D "$PWD"` 필수 — genuine claude race signal만 카운트해야 abort 의무가 정확히 발동한다
-
-## Worktree-Anchored Resume Pattern
-
-[ZONE:Evolvable] [HARD] When the SPEC was initialized via L3 `/moai plan --worktree` (creating an L2 SPEC worktree at `~/.moai/worktrees/<project>/<spec-or-name>/`), the resume message MUST include **Block 0 (cwd anchoring)** prepended before the standard 6-block structure. Without Block 0, the next session starts in main project cwd by default, breaking L2 SPEC worktree isolation expectations.
-
-> Per user policy 2026-05-17 (`feedback_worktree_autonomous` memory): L3 `--worktree` is **user opt-in** only. For SPECs initialized without `--worktree` (the default as of 2026-05-17), the standard 6-block structure suffices — Block 0 is NOT required.
-
-### Why Block 0 (L3 `--worktree` opt-in only)
-
-With L3 `--worktree`, SPEC artifacts and L1 isolation base live in a different cwd. Pasting resume into a main-cwd session causes: L1 base divergence (lessons #13), Bash commands targeting main project (lessons #12), build/test from the wrong tree. Block 0 forces a new terminal session **inside** the L2 worktree before any action.
-
-### Block 0 Format
-
-Block 0 is **prepended** before Block 1:
-
-```
-[New Terminal — START IN WORKTREE]
-$ cd <worktree-absolute-path>
-$ <launcher>     # Choose one: moai cc | moai glm | claude
-   └─ Claude Code session starts here (cwd = worktree)
-```
-
-### `/cd` cache-preserving alternative (CC 2.1.169+)
-
-The new-terminal Block 0 above is a cold-start path: it opens a fresh Claude Code session inside the L2 worktree, which re-reads skills/rules from scratch. Claude Code 2.1.169+ ships a `/cd` command that changes the session's working directory **while preserving the prompt cache** — so the in-flight reasoning context survives the cwd switch instead of being rebuilt. For an L2 worktree resume where you want to keep the current session's accumulated context (rather than cold-starting), `/cd <worktree-absolute-path>` is a cache-preserving complement to the new-terminal Block 0. This note does NOT replace Block 0 — the new-terminal path remains the default for clean isolation; `/cd` is the lower-friction option when cache preservation matters more than a fresh tree.
-
-[ZONE:Evolvable] [HARD] Block 0 MUST surface the 3 primary launchers verbatim so the user can choose without consulting external docs:
-
-1. `moai cc` — Claude Code leader with MoAI orchestration (default for normal SPEC work; supports `-p <name>` profile flag)
-2. `moai glm` — cost-optimized GLM-only worker mode (no Claude Code leader, lower token cost)
-3. `claude` — native Claude Code without MoAI wrapper (minimal fallback)
-
-Advanced launchers (use only when user explicitly requests, NOT auto-surfaced in Block 0):
-- `moai cc --bypass` — sandboxed-only execution (testing scenarios)
-- `moai cg` — Claude leader + GLM teammates parallel mode (requires `tmux new-session -s <name>` first; pair with `--team`)
-
-### Updated Block 4 (Preconditions)
-
-When Block 0 is present, the **first precondition (0)** verifies compliance:
-
-```
-0) git rev-parse --show-toplevel → <worktree-path> (★ critical pre-check)
-```
-
-If verification 0) fails, stop and instruct the user to restart inside the worktree.
-
-### Single-Session vs Multi-Session Decision
-
-Block 0 is REQUIRED only with L3 `--worktree`. For `--branch` (or no flag — 2026-05-17 default), standard 6-block suffices because main session cwd already follows the branch.
-
-[ZONE:Evolvable] [HARD] If L3 `--worktree` was used and the user is NOT comfortable with multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See lessons #14 for the single-session vs multi-session decision rationale.
-
-### Example with Block 0 (Illustrative)
-
-```
-✂──── 여기부터 복사 ────✂
-
-[New Terminal — START IN WORKTREE]
-$ cd ~/.moai/worktrees/<project>/SPEC-MYPROJ-001
-$ moai cc        # 또는 moai glm | claude (3가지 launcher 중 선택; 본 예시는 moai cc)
-
-ultrathink. SPEC-MYPROJ-001 Wave N 진입.
-applied lessons: project_myproj_prev_wave_complete, lessons #12 #13 #14.
-
-전제 검증:
-0) git rev-parse --show-toplevel → ~/.moai/worktrees/<project>/SPEC-MYPROJ-001 (★ critical)
-1) gh pr view <PR-number> → MERGED
-
-실행: /moai run SPEC-MYPROJ-001 --team
-
-후속: Round N+1 (single-SPEC SSE split context) 또는 Sprint N+1 (multi-SPEC cohort context)
-
-✂──── 여기까지 복사 ────✂
-```
 
 ## Cross-references
 
