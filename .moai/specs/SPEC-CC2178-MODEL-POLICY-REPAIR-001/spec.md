@@ -1,7 +1,7 @@
 ---
 id: SPEC-CC2178-MODEL-POLICY-REPAIR-001
 title: "CC 2.1.178 Model-Policy Repair: 3-Axis Cost Routing Alignment + Phantom-Map Cleanup"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-06-16
 updated: 2026-06-16
@@ -27,7 +27,7 @@ Independent ground-truth verification against the current tree (2026-06-16) surf
 - **D1 — `agentModelMap` severely stale** (`internal/template/model_policy.go:193-216`): 18 entries, only 3 match the current 8-agent retained catalog. 15 entries reference archived phantom agents (`manager-quality`, `manager-project`, `manager-strategy`, 7 `expert-*`, `builder-skill`, `builder-plugin`) that MUST NOT be spawned per SPEC-V3R6-AGENT-TEAM-REBUILD-001 (17→8 consolidation, 2026-05-25). The 2 current retained agents `manager-develop` and `builder-harness` are MISSING (exist only as legacy `manager-ddd`/`manager-tdd`/`builder-agent` names). `GetAgentModel` returns `""` for unknown agents (`model_policy.go:221-222`), so missing entries are silent no-ops — but the phantom entries are dead weight documenting a model-policy intent that no longer matches reality.
 - **D2 — `agentEffortMap` stale** (`internal/template/model_policy.go:72-79`): 6 entries, 3 are archived phantoms (`manager-strategy`, `expert-security`, `expert-refactoring`). Missing current retained `manager-develop`, `builder-harness`.
 - **D3 — CC 2.1.175 cost lever absent** (verified 0 occurrences): `availableModels` / `enforceAvailableModels` appear NOWHERE in `internal/template/templates/.claude/settings.json.tmpl` or `internal/config/`. The Default-model cost lever is completely unwired.
-- **D4 — cycle_type globally fixed, not harness/Tier-linked** (`.moai/config/sections/quality.yaml`): `development_mode: tdd` + `enforce_quality: true` are flat globals. cycle_type is NOT routed by harness depth (minimal/standard/thorough) or SPEC Tier, despite the research doc's 3-axis model requiring it. The harness `skip_phases` array (`harness.yaml:37-45`) already encodes phase-skipping per level but does not feed `development_mode`.
+- **D4 — cycle_type globally fixed, not harness/Tier-linked** (`.moai/config/sections/quality.yaml`): the globals `development_mode: tdd` and `enforce_quality: true` are nested under the top-level `constitution:` key in `quality.yaml` (verified 2026-06-16 — NOT flat top-level globals as an earlier draft of this SPEC asserted; the nesting matters because M3 must read the struct field `cfg.Quality.DevelopmentMode` via the existing reader at `internal/config/manager.go:394` which reads `MOAI_DEVELOPMENT_MODE` env, and via the `constitution` section in the parsed config). cycle_type is NOT routed by harness depth (minimal/standard/thorough) or SPEC Tier, despite the research doc's 3-axis model requiring it. The harness Complexity Estimator (`internal/harness/router/router.go:104-108`) resolves a `Level` from SPEC frontmatter `harness_level` but does NOT emit a cycle_type — there is currently no symbol anywhere in `internal/` that maps harness level → cycle_type (verified: `grep -rn "resolveCycleType\|ResolveCycleType" internal/` returns 0 matches). The harness `skip_phases` array (`harness.yaml:37-45`) encodes phase-skipping per level but does not feed `development_mode`.
 
 **Constraint to re-verify (research task, not assumption)**: `model-policy.md` § Inherit-by-Default (L30-50) currently treats `#45847` as an active constraint with NO mention of CC≥2.1.174 normalization relaxation. The research doc's `last_analyzed=2.1.163`; this SPEC advances to 2.1.178, so the `[1m]` constraint MUST be re-checked against the newer runtime before finalizing whether per-agent pinning can be partially re-enabled.
 
@@ -39,7 +39,7 @@ Independent ground-truth verification against the current tree (2026-06-16) surf
 2. **Cycle_type axis (gap)** — route `quality.yaml development_mode` by harness/Tier instead of a flat global `tdd`. Backward-compatible (existing `tdd` projects must not break).
 3. **Effort axis (already wired)** — tune the expensive-bias default only. Do NOT re-architect.
 4. **Phantom-map cleanup** — remove 15 archived entries from `agentModelMap` (D1) and 3 from `agentEffortMap` (D2); add missing `manager-develop` + `builder-harness`.
-5. **`agentEffortMap` redundancy decision** — determine whether the map is still needed (modern agents declare `effort:` in frontmatter → `ApplyEffortPolicy` may be redundant). If redundant, retire cleanly; if kept, prune to the retained set.
+5. **`agentEffortMap` phantom pruning + deferral-record** (D5 iter-2 split) — prune the 3 archived phantom keys, sync map values to match agent files (plan-auditor/sync-auditor → `xhigh`), add missing retained agents (manager-develop/builder-harness). Full retirement of the map + `ApplyEffortPolicy` is UNSAFE (2 production callers at `initializer.go:181` + `update.go:2661`) and is DEFERRED to a follow-up SPEC; this SPEC records the deferral rationale only.
 6. **`[1m]` re-verification** — research task to re-check `#45847` against CC 2.1.178 before finalizing the per-agent pinning policy.
 7. **Task-triage decision** — decide whether the per-task triage signal (failure-cost × visual-verifiability) is in-scope or deferred; if in-scope, define the signal concretely.
 
@@ -87,30 +87,63 @@ Independent ground-truth verification against the current tree (2026-06-16) surf
 
 ### §C.3 Phantom-Map Cleanup (D1, D2)
 
+> **Canonical phantom-key enumeration (single source of truth — referenced by REQ-MPR-008, AC-MPR-007, acceptance §D.3, and plan.md §B.1)**: `agentModelMap` (`internal/template/model_policy.go:193-216`) currently has **19 entries** (verified by `awk` extraction on 2026-06-16; both the iter-1 SPEC and the plan-auditor iter-1 report undercounted as 18 — this iter-2 correction is the authoritative count). Exactly 3 are retained-correct (`manager-spec`, `manager-docs`, `manager-git`). The remaining **16 keys MUST ALL be removed** — they comprise 13 archived phantom agents, 2 legacy rename-aliases of `manager-develop` (`manager-ddd`, `manager-tdd`), and 1 legacy rename-alias of `builder-harness` (`builder-agent`) plus its 2 archived builder siblings (`builder-skill`, `builder-plugin`). The legacy aliases MUST be removed (not retained as aliases) because the retained canonical names `manager-develop` and `builder-harness` are added back separately by REQ-MPR-009; keeping the aliases alongside the canonical names would duplicate the entries.
+>
+> The 16 keys to remove (verbatim, cross-checked against `model_policy.go:193-216` on 2026-06-16):
+>
+> | # | Key | Category | Reason |
+> |---|-----|----------|--------|
+> | 1 | `manager-ddd` | legacy alias | pre-rename name of `manager-develop`; superseded by REQ-MPR-009 |
+> | 2 | `manager-tdd` | legacy alias | pre-rename name of `manager-develop`; superseded by REQ-MPR-009 |
+> | 3 | `manager-quality` | archived phantom | archived by SPEC-V3R6-AGENT-TEAM-REBUILD-001 |
+> | 4 | `manager-project` | archived phantom | archived by SPEC-V3R6-AGENT-TEAM-REBUILD-001 |
+> | 5 | `manager-strategy` | archived phantom | archived by SPEC-V3R6-AGENT-TEAM-REBUILD-001 |
+> | 6 | `expert-backend` | archived phantom | archived (8 `expert-*` agents consolidated) |
+> | 7 | `expert-frontend` | archived phantom | archived |
+> | 8 | `expert-security` | archived phantom | archived |
+> | 9 | `expert-devops` | archived phantom | archived |
+> | 10 | `expert-performance` | archived phantom | archived |
+> | 11 | `expert-debug` | archived phantom | archived |
+> | 12 | `expert-testing` | archived phantom | archived |
+> | 13 | `expert-refactoring` | archived phantom | archived |
+> | 14 | `builder-agent` | legacy alias | pre-rename name of `builder-harness`; superseded by REQ-MPR-009 |
+> | 15 | `builder-skill` | archived phantom | archived builder variant |
+> | 16 | `builder-plugin` | archived phantom | archived builder variant |
+>
+> Post-cleanup target: 5 entries — `manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `builder-harness`.
+
 > **REQ-MPR-008** (Unwanted, MUST)
-> The `agentModelMap` (`internal/template/model_policy.go:193`) shall not contain any entry whose key is an archived phantom agent (`manager-quality`, `manager-project`, `manager-strategy`, `expert-backend`, `expert-frontend`, `expert-security`, `expert-devops`, `expert-performance`, `expert-debug`, `expert-testing`, `expert-refactoring`, `builder-skill`, `builder-plugin`) so that the map documents only the retained 8-agent catalog.
+> The `agentModelMap` (`internal/template/model_policy.go:193`) shall not contain ANY of the 16 canonical phantom keys enumerated in the table above (13 archived phantoms + 2 `manager-develop` legacy aliases + 1 `builder-harness` legacy alias + 2 archived builder siblings) so that the map documents only the retained 8-agent catalog — ALL 16 keys must be removed, not a subset.
 
 > **REQ-MPR-009** (Event-driven, MUST)
-> When `GetAgentModel` is called with `manager-develop` or `builder-harness`, the function shall return a non-empty model tuple so that the 2 missing retained agents are covered by the model policy.
+> When `GetAgentModel` is called with `manager-develop` or `builder-harness`, the function shall return a non-empty model tuple so that the 2 missing retained agents are covered by the model policy. The model tuples are chosen to be consistent with this SPEC's central thesis (route cost to Default=Sonnet): **`manager-develop` = `{sonnet, sonnet, haiku}`** and **`builder-harness` = `{sonnet, sonnet, haiku}`** — i.e. the most-frequently-spawned run-phase agents follow Default-Sonnet at the High policy, NOT Opus (see plan.md §F.2 for the design rationale and the rejected Option-C alternative of `{opus, sonnet, haiku}` which would contradict the cost-routing thesis). The iter-1 SPEC derived these from retired legacy aliases (`manager-ddd`/`manager-tdd` = `{opus, sonnet, sonnet}`) — that derivation is REJECTED in iter-2 because it would pin the busiest agent to Opus, undermining the 3-axis cost-routing goal (D6 remediation).
 
 > **REQ-MPR-010** (Unwanted, MUST)
-> The `agentEffortMap` (`internal/template/model_policy.go:72`) shall not contain any entry whose key is an archived phantom agent (`manager-strategy`, `expert-security`, `expert-refactoring`) so that the effort map documents only the retained catalog.
+> The `agentEffortMap` (`internal/template/model_policy.go:72`) shall not contain any entry whose key is an archived phantom agent (`manager-strategy`, `expert-security`, `expert-refactoring` — the same 3 phantom keys as REQ-MPR-011a) so that the effort map documents only the retained catalog. (Note: this REQ is the pruning mandate; REQ-MPR-011a adds the broader reconciliation including value-sync and missing-agent addition.)
 
-### §C.4 Effort Map Redundancy Decision
+### §C.4 Effort-Map Phantom Pruning (SAFE, in-scope) vs. Full Retirement (UNSAFE, deferred)
 
-> **REQ-MPR-011** (Ubiquitous, MUST)
-> The SPEC shall, in its plan-phase research, determine whether `agentEffortMap` + `ApplyEffortPolicy` is redundant given that modern agents declare `effort:` directly in frontmatter, and record the decision (retire vs. prune-and-keep) with the test consequences documented.
+> **Factual correction to iter-1 premise (D5 remediation)**: the iter-1 SPEC premised REQ-MPR-011/012 on "modern agents declare `effort:` directly → `agentEffortMap` + `ApplyEffortPolicy` is redundant → retire it". Independent ground-truth verification (2026-06-16) shows this premise is **FACTUALLY INVERTED**. `ApplyEffortPolicy` (`model_policy.go:134-180`) has **2 production callers**: `internal/core/project/initializer.go:181` and `internal/cli/update.go:2661`. Its job is to INJECT `effort:` into freshly-deployed agent files that lack it (`if effortLineRegex.Match(content) { continue }` — only injects when absent). The hand-authored `effort:` values in current agent files EXIST BECAUSE the map (or its predecessor) injected them on a prior `moai init`/`moai update`. Retiring the map means new `moai init` deployments get NO effort injection for reasoning agents = behavior regression. Therefore the iter-2 SPEC SPLITS the two concerns:
+>
+> - **(a) Prune phantom keys from `agentEffortMap`** — SAFE, in-scope (REQ-MPR-011a). Remove `manager-strategy`, `expert-security`, `expert-refactoring` (archived phantoms). Reconcile map↔file divergence: the map says `plan-auditor: high` / `sync-auditor: high` but the agent files say `effort: xhigh` (hand-authored override won on a prior deploy). The map MUST be synced to `xhigh` for both so future deployments inject the correct value. Add the missing retained agents `manager-develop` (effort `xhigh` per file) and `builder-harness` (effort `high` per file) to the map.
+> - **(b) Retire `agentEffortMap` + `ApplyEffortPolicy` entirely** — UNSAFE given the 2 production callers. Downgraded to **analysis-only observation; full retirement deferred to a follow-up SPEC** (e.g., `SPEC-CC2178-EFFORT-MAP-RETIREMENT-001`) that first migrates the 2 callers (`initializer.go:181`, `update.go:2661`) to an alternative effort-injection path. REQ-MPR-012 is correspondingly downgraded from SHOULD-retire to "record the deferral rationale".
 
-> **REQ-MPR-012** (Capability gate, SHOULD)
-> Where the research concludes `agentEffortMap` is redundant, the SPEC shall retire it cleanly (remove the map, `GetAgentEffort`, `ApplyEffortPolicy`, and their tests) rather than leaving dead code, provided no non-test caller depends on the public API.
+> **REQ-MPR-011** (Ubiquitous, MUST) — renamed **REQ-MPR-011a (prune phantoms, SAFE)** in iter-2
+> The SPEC shall prune the 3 archived phantom keys (`manager-strategy`, `expert-security`, `expert-refactoring`) from `agentEffortMap`, sync the map values for `plan-auditor` and `sync-auditor` from `high` to `xhigh` (matching the hand-authored agent files), and add the missing retained agents `manager-develop` (effort `xhigh`) and `builder-harness` (effort `high`) to the map so that the map is internally consistent with the deployed agent files and the retained 8-agent catalog.
+
+> **REQ-MPR-011b** (Unwanted, MUST) — **map↔file divergence reconciliation**
+> The `agentEffortMap` shall not contain entries whose value contradicts the hand-authored `effort:` field in the corresponding agent file for retained agents (e.g., the map MUST NOT say `plan-auditor: high` while `.claude/agents/meta/plan-auditor.md` says `effort: xhigh`) so that a fresh `moai init` deployment injects the same effort value the maintainer hand-authored. The reconciliation direction is map-←-file (the file is the authoritative human intent; the map is the deployment injector).
+
+> **REQ-MPR-012** (Ubiquitous, SHOULD) — **downgraded in iter-2 from "retire the map" to "record deferral"**
+> The SPEC shall, in its plan-phase research, record the deferral rationale for NOT retiring `agentEffortMap` + `ApplyEffortPolicy`: (1) the 2 production callers (`initializer.go:181`, `update.go:2661`) that would need migration, (2) the regression risk (new deployments lose effort injection), and (3) the follow-up SPEC candidate name (`SPEC-CC2178-EFFORT-MAP-RETIREMENT-001`). Full retirement is out-of-scope for THIS SPEC.
 
 ### §C.5 [1m] Constraint Re-Verification
 
 > **REQ-MPR-013** (Ubiquitous, MUST)
 > The SPEC shall include a research task that re-verifies the `#45847` `[1m]` entitlement-inheritance constraint against the CC 2.1.178 runtime (fetching the actual upstream issue state and CHANGELOG at 2.1.178) before the plan-phase is marked audit-ready, and record the verdict (still-active / relaxed / partially-relaxed) in the plan-phase research notes.
 
-> **REQ-MPR-014** (State-driven, MUST)
-> While the `[1m]` re-verification verdict is "still-active" (constraint unchanged at 2.1.178), the SPEC shall scope per-agent pinning as permanently out-of-scope (EX-01) and rely exclusively on the Default-model lever (REQ-MPR-001..003).
+> **REQ-MPR-014** (State-driven, MUST) — **rewritten in iter-2 to add new information beyond EX-01 (D10 remediation); the iter-1 version was tautological with EX-01**
+> While the `[1m]` re-verification verdict is "still-active" (constraint unchanged at 2.1.178), the SPEC shall scope per-agent pinning as out-of-scope AND record the specific relaxation conditions that WOULD re-enable per-agent pinning in a follow-up SPEC (REQ-MPR-015): namely (a) the `availableModels`/`enforceAvailableModels` settings fields are confirmed to allow per-agent `model:` overrides that escape the allowlist without breaking `[1m]` inheritance at CC 2.1.178+, AND (b) a caller-migration path exists for any agent whose pinned model differs from Default. This adds testable substance beyond the bare EX-01 exclusion: a reviewer can verify the recorded relaxation conditions are concrete and falsifiable, not a restatement of "per-agent pins are forbidden".
 
 > **REQ-MPR-015** (Event-driven, SHOULD)
 > When the `[1m]` re-verification verdict is "relaxed" or "partially-relaxed", the SPEC shall record the relaxation scope as a follow-up SPEC candidate (not an in-scope expansion of this SPEC) so that this SPEC remains deliverable without scope creep.
@@ -132,17 +165,18 @@ Independent ground-truth verification against the current tree (2026-06-16) surf
 
 - **AC-MPR-001** (MUST): `settings.json.tmpl` contains `availableModels` with the 3 aliases.
 - **AC-MPR-002** (MUST): `settings.json.tmpl` contains `enforceAvailableModels: true`.
-- **AC-MPR-003** (MUST): Deployed settings Default model is `sonnet`.
-- **AC-MPR-004** (MUST): Harness `minimal` resolves to a lightweight cycle_type (not full-TDD).
-- **AC-MPR-005** (MUST): Harness `thorough` resolves to full TDD.
-- **AC-MPR-006** (MUST): Explicit `quality.yaml development_mode: tdd` pin is preserved (backward-compat).
-- **AC-MPR-007** (MUST): `agentModelMap` has 0 archived-phantom keys (grep-count = 0).
-- **AC-MPR-008** (MUST): `GetAgentModel("manager-develop")` and `GetAgentModel("builder-harness")` return non-empty.
+- **AC-MPR-003** (MUST): Deployed settings Default model is `sonnet`. **Verification command is CONDITIONAL — pinned at M1** once REQ-MPR-013 confirms the exact CC 2.1.178 Default-resolution JSON key (post-2.1.175 the settings file carries `model`, `availableModels`, and possibly other model-named keys, so a naive `grep '"model"'` matches multiple lines). The M1 research note MUST record the confirmed key and the exact grep command.
+- **AC-MPR-004** (MUST): Harness `minimal` resolves to a lightweight cycle_type (not full-TDD), verified via the `ResolveCycleType` symbol contract defined in plan.md §F.3 M3.
+- **AC-MPR-005** (MUST): Harness `thorough` resolves to full TDD, verified via `ResolveCycleType`.
+- **AC-MPR-006** (MUST): Explicit `quality.yaml constitution.development_mode: tdd` pin is preserved (backward-compat).
+- **AC-MPR-007** (MUST): `agentModelMap` has 0 of the 16 canonical phantom keys (grep-count = 0) — see the canonical enumeration table in §C.3.
+- **AC-MPR-008** (MUST): `GetAgentModel("manager-develop")` and `GetAgentModel("builder-harness")` return non-empty (tuples `{sonnet, sonnet, haiku}` per REQ-MPR-009 iter-2 decision).
 - **AC-MPR-009** (MUST): `agentEffortMap` has 0 archived-phantom keys.
-- **AC-MPR-010** (MUST): Effort-map redundancy decision is recorded (retire vs. prune-and-keep) with test-consequence documentation.
+- **AC-MPR-010** (MUST): Effort-map phantom pruning + map↔file reconciliation is applied (REQ-MPR-011a/011b); full-retirement deferral rationale is recorded (REQ-MPR-012 downgraded).
 - **AC-MPR-011** (MUST): `[1m]` re-verification verdict is recorded (still-active / relaxed / partially-relaxed) with upstream evidence.
 - **AC-MPR-012** (SHOULD): Task-triage in-scope/deferred decision is recorded with rationale; if in-scope, the triage signal is defined concretely.
-- **AC-MPR-013** (SHOULD): `moai spec lint SPEC-CC2178-MODEL-POLICY-REPAIR-001` exits 0.
+- **AC-MPR-013** (SHOULD): `moai spec lint .moai/specs/SPEC-CC2178-MODEL-POLICY-REPAIR-001/spec.md` exits 0 with no MUST-FIX findings (path-prefixed invocation — the bare-ID form `moai spec lint SPEC-CC2178-MODEL-POLICY-REPAIR-001` ParseFails per D3 verification on 2026-06-16).
+- **AC-MPR-014** (MUST, NEW in iter-2 — D7 remediation): Harness `standard` resolves to `tdd` (the current default), verified via `ResolveCycleType("standard") == "tdd"`. Binds the previously-orphaned REQ-MPR-007.
 
 ## §E. Constraints
 
@@ -177,3 +211,4 @@ Independent ground-truth verification against the current tree (2026-06-16) surf
 
 - 2026-06-16: plan-phase artifacts authored by manager-spec (spec.md, plan.md, acceptance.md). Initial `status: draft`. Based on `.moai/research/cc-update-2.1.163-to-2.1.178.md` + independent ground-truth verification of D1-D4 against the current tree.
 - 2026-06-16: SPEC ID canonicalized from orchestrator-proposed `SPEC-CC2178-MODEL-POLICY-REPAIR` (no numeric suffix) to `SPEC-CC2178-MODEL-POLICY-REPAIR-001` (appended `-001`) to satisfy the canonical regex `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$`. See plan.md §B.7 for the decomposition trace.
+- 2026-06-16: **iter-2 plan-audit remediation (D1-D10)**. plan-auditor iter-1 returned FAIL 0.66 (threshold 0.80). This iter-2 revision resolves all 3 BLOCKING defects (D1 `resolveCycleType` non-existent symbol → `ResolveCycleType` contract defined in plan.md M3; D2 phantom-key enumeration unified to 16 canonical keys across REQ/AC/§D.3/plan §B.1; D3 lint command pinned to path-prefixed form) and all 4 SHOULD-FIX defects (D4 AC-MPR-003 made conditional pending M1 key-confirmation; D5 effort-map retirement premise FACTUALLY INVERTED — `ApplyEffortPolicy` has 2 production callers, full retirement deferred, only phantom-pruning is in-scope; D6 `manager-develop` model tuple resolved to `{sonnet, sonnet, haiku}` to align with Default-Sonnet thesis; D7 AC-MPR-014 added for orphaned REQ-MPR-007). Plus 3 MINOR defects (D8 file count 10→15, D9 estimator file named, D10 REQ-MPR-014 rewritten to add relaxation-condition substance). Auditor prose-precision note applied: §A D4 corrected to reflect `development_mode`/`enforce_quality` are nested under `constitution:` not flat globals. No scope expansion (Tier M retained; auditor confirmed no forced split). Commit `1f6b59a47` left unamended; this iter-2 is a NEW commit.
