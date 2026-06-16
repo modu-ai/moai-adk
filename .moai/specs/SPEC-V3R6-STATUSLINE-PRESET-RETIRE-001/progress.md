@@ -368,9 +368,28 @@ battery + build/test/race evidence above. 3 SHOULD ACs:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs populates this section. Records the
-sync commit SHA, CHANGELOG entry, README update (if any), and the
-frontmatter status transition (in-progress → implemented).>_
+**Status**: audit-ready. The `in-progress → implemented` frontmatter transition and all sync-phase deliverables below were performed by the orchestrator via **orchestrator-direct sync fallback** — the `manager-docs` spawn failed with a context-limit error (recurring pattern, identical fallback as `SPEC-V3R6-SESSION-HANDOFF-SSOT-ALIGN-001` and `SPEC-CC2178-DOCS-ALIGN-001`).
+
+**Sync deliverables**:
+- `spec.md` frontmatter `status`: `in-progress` → `implemented` (`updated: 2026-06-17`).
+- `CHANGELOG.md` `[Unreleased] → ### Removed`: entry appended documenting the 3-axis retire (28 ACs: 25 MUST PASS + 3 SHOULD).
+- `README.md` + `README.ko.md`: statusline FAQ preset example updated — the `preset: default  # or full` YAML line was removed and the trailing Note was rewritten to announce the `preset` shorthand retirement + legacy-key silent-ignore behavior.
+- `docs-site/content/{en,ko,ja,zh}/advanced/statusline.md`: already cleaned in run-phase (D7, AC-SPR-018) — no further sync action.
+
+- sync_commit_sha: `(this commit)` — to be backfilled with the actual SHA after push. Recorded non-bold per `feedback_era_commit_sha_field_format` (bold commit SHAs cause V3R6→V3R5 era misclassification in the audit engine).
+
+**Commit subject**: `docs(SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001): sync-phase artifacts`
+
+**Verification (sync-phase — docs/frontmatter-only, no Go code change so build/test unaffected)**:
+- `grep -c 'STATUSLINE-PRESET-RETIRE-001' CHANGELOG.md` → 1 (pre-sync was 0).
+- `grep '^status:' …/spec.md` → `status: implemented`.
+- README en/ko statusline YAML example: no `preset:` line remains.
+
+**Residual (out of AC scope, honestly reported — not claimed as verified)**:
+- `docs-site/content/{en,ko,ja,zh}/getting-started/faq.md` still describe the 4 display presets + a `preset: compact` YAML example. AC-SPR-018's verification command targets `advanced/statusline.md` only, so this is **NOT an AC violation** — but it is stale user-facing documentation. Follow-up cleanup recommended (separate tiny SPEC or chore commit).
+- AC-SPR-023 (`preset.go` → `segments.go` rename) DEFERRED per run-phase decision (non-blocking SHOULD, minimizes git churn).
+- 6 pre-existing `internal/statusline` `memory_test.go` failures (PRESERVE scope, baseline-documented, not caused by this SPEC).
+- docs-site i18n check: 62 pre-existing errors (`multi-llm/model-policy.md`), unrelated to this SPEC.
 
 ---
 

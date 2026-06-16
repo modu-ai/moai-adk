@@ -1266,7 +1266,6 @@ Edit `.moai/config/sections/statusline.yaml` directly:
 
 ```yaml
 statusline:
-  preset: default  # or full
   segments:
     model: true
     context: true
@@ -1280,7 +1279,7 @@ statusline:
     git_branch: true
 ```
 
-> **Note**: As of v2.7.8, segment preset selection has been removed from the `moai init`/`moai update` wizard. Configure segments directly in the YAML file above.
+> **Note**: The `preset` shorthand (`full`/`compact`/`minimal`) has been retired — configure the segment map directly above. A legacy `preset:` key in an existing config is silently ignored by the loader. Segment selection was already removed from the `moai init`/`moai update` wizard as of v2.7.8.
 
 ---
 
