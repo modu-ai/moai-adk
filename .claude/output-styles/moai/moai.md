@@ -649,6 +649,7 @@ Canonical 6-block format **bounded by cut-line markers** (structural skeleton �
 ✂──── 여기부터 복사 ────✂
 
 ultrathink. <SPEC-ID or Sprint N> <phase> entering.
+# /effort ultracode   ← emit ONLY when the next SPEC's plan declares workflow fan-out (dynamic Workflow or Agent Teams); omit otherwise (ultracode is NOT restored by ultrathink.).
 applied lessons: <memory-file-1>, <memory-file-2>, ..., lessons #N
 source_session_id: <orchestrator-uuid-from-current-turn>
 
@@ -685,6 +686,7 @@ Header translation table (translate per `conversation_language` setting in `.moa
 
 Pre-emit self-check (session-handoff template completeness) — MUST verify all 9 before printing:
 - [ ] Block 1 starts with `ultrathink.` (activates Adaptive Thinking xhigh effort in next session)
+- [ ] **Block 1 `/effort ultracode` re-set line (purpose-conditional)**: emit the `/effort ultracode` line immediately after `ultrathink.` ONLY when the next SPEC's plan declares workflow fan-out (dynamic Workflow or Agent Teams); omit otherwise. ultracode is NOT restored by `ultrathink.` (per `session-handoff.md` §Field-by-Field Specification Block 1 + `dynamic-workflows.md`). Default on ambiguity: omit.
 - [ ] Block 2 lists ≥1 memory file from `~/.claude/projects/{hash}/memory/` (most recent project memory + relevant lessons)
 - [ ] Block 2 includes `source_session_id: <UUID>` line carrying current orchestrator turn's session_id (per the multi-session coordination policy Layer 2 — enables race attribution across multi-session work)
 - [ ] Block 4 has ≤4 numbered preconditions, each independently verifiable (`git`/`gh`/file existence command)
@@ -714,6 +716,7 @@ Anti-patterns (CI/lint should reject):
 - Hardcoded language-specific headers in instruction body (use the translation table above)
 - Cut-line markers absent — user cannot identify exact copy boundary in long terminal scrollback
 - Cut-line `✂` symbol or `─` decorator translated/substituted — only the marker text translates; symbols are preserved verbatim across all locales
+- Omitting the `/effort ultracode` re-set line when the next SPEC's plan declares workflow fan-out (dynamic Workflow or Agent Teams) — the resumed session silently drops to non-ultracode effort and loses auto-orchestration (ultracode is NOT restored by `ultrathink.` per `dynamic-workflows.md`)
 
 ---
 
