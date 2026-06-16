@@ -184,7 +184,7 @@ At session end, the orchestrator displays: (1) the message in a fenced ```text``
 
 ## V0 Abort Gate Doctrine
 
-[ZONE:Evolvable] [HARD] paste-ready Block 4 V0 precondition은 **lsof + cwd 교차 검증**을 사용한다. `ps aux` raw count는 environmental baseline noise이며 단독 V0 검증으로 사용 시 multi-session 환경에서 STRICT ≤2 위반이 13회+ 연속 누적되는 false-positive를 발생시킨다 (cross-line empirical 입증).
+[ZONE:Evolvable] [HARD] paste-ready Block 4 V0 precondition은 **lsof + cwd 교차 검증**을 사용한다. `ps aux` raw count는 environmental baseline noise이며 단독 V0 검증으로 사용 시 multi-session 환경에서 STRICT ≤2 위반이 13회+ 연속 누적되는 false-positive를 발생시킨다 (empirical 입증).
 
 ### V0 검증 명령 (canonical)
 
@@ -194,7 +194,7 @@ ps aux | grep -iE '\bclaude\b' | grep -v -E 'plugin|Helper|Application|antigravi
 
 # V0-b: critical blocking — 본 WT 내부에 file handle 보유한 claude *프로세스* 수
 # 주의: `grep -iE 'claude'` 단독은 파일명에 'claude' 포함된 콘텐츠(claude-*.md 등)까지 매칭하는
-#       false-positive 결함이 있다 (Hugo docs 서버 PID 1개 → 8 entry 오탐, cross-line 입증).
+#       false-positive 결함이 있다.
 #       반드시 COMMAND 컬럼으로 claude *프로세스*만 필터한다 (`lsof -a -c claude`).
 lsof -a -c claude +D "$PWD" 2>/dev/null | awk 'NR>1' | wc -l   # STRICT 0
 
@@ -212,18 +212,14 @@ V0-b ≥ 1 OR V0-c ≥ 3 시 (다른 precondition V1/V2/V3 PASS 여부 무관):
 
 ### Cross-pollination 이력
 
-- **Line C** (LIFECYCLE-SYNC-GATE-001) 9차 — first introduction
-- **Line C** 10차 — ground-truth signal first emergence (lsof=8 + cwd=10 cwd-co-located active sessions 캡처)
-- **Line A** (SESSION-AUTO-RESUME-001) 13차 — cross-line introduction
-- **Line B** (HARNESS-NAMESPACE Phase 1B) 14차 — cross-line introduction
-- 본 § V0 Abort Gate Doctrine 공식 codification 이후 모든 line은 본 section reference만 사용 (paste-ready 본문 history embed 금지)
+Cross-line provenance: retained in lesson memory; this section codifies the doctrine. (The iteration history that originally surfaced the V0 false-abort hazard is preserved in lesson memory, not in this rule body — per AP-D-002, history belongs in lessons, not in paste-ready-adjacent prose.)
 
 ### Anti-pattern
 
 - **AP-V-001**: `ps aux` raw count `≤ 2 STRICT`을 단독 V0 검증으로 사용 → environmental baseline noise (multi-session normal state에서 16-19 sessions은 정상)
 - **AP-V-002**: V0 FAIL 후 "사용자 약속 누적 미이행 N회" 본문 추적 → 죄책감 부담만 부과 + 실질 행동 변화 0 + paste-ready 비대화 → 도구화 anti-pattern
 - **AP-V-003**: V0 FAIL 시 AskUserQuestion에 강행 옵션 (option D "override + spawn") 제시 → doctrine 위반
-- **AP-V-004**: V0-b 측정에 `lsof +D "$PWD" | grep -iE 'claude'` 사용 → 파일명에 'claude' 포함된 콘텐츠(`claude-md-guide.md`·`claude-design-handoff.md` 등)까지 매칭하는 false-positive (Hugo docs 서버 PID 1개가 8 entry로 오탐 → LIFECYCLE-SYNC-GATE-001 M4 1·2차에서 동일 false abort 유발). COMMAND 컬럼 프로세스 필터 `lsof -a -c claude +D "$PWD"` 필수 — genuine claude race signal만 카운트해야 abort 의무가 정확히 발동한다
+- **AP-V-004**: V0-b 측정에 `lsof +D "$PWD" | grep -iE 'claude'` 사용 → 파일명에 'claude' 포함된 콘텐츠(claude-*.md 등)까지 매칭하는 false-positive 결함이 있다. COMMAND 컬럼 프로세스 필터 `lsof -a -c claude +D "$PWD"` 필수 — genuine claude race signal만 카운트해야 abort 의무가 정확히 발동한다
 
 ## Worktree-Anchored Resume Pattern
 
