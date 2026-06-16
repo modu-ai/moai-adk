@@ -14,7 +14,7 @@ Long workflows (multi-SPEC waves, multi-milestone implementation) accumulate con
 
 | # | Trigger | Detection |
 |---|---------|-----------|
-| 1 | Context usage crosses model-specific threshold (cumulative input+output) | **1M context model (Opus 4.7): 50%** (~500,000 tokens). **200K context model (Sonnet/Opus standard, Haiku): 90%** (~180,000 tokens). Heuristic per `.claude/rules/moai/workflow/context-window-management.md` §Detection Heuristics. |
+| 1 | Context usage crosses model-specific threshold (cumulative input+output) | Model-specific percentage threshold (1M-context models vs 200K-context models) — see `.claude/rules/moai/workflow/context-window-management.md` § Context Window Targets for the per-model-class threshold table (the authoritative SSOT for the numeric thresholds; this file carries no inline model-class numbers to avoid label drift). |
 | 2 | SPEC phase completion (plan/run/sync) within a multi-SPEC workflow | Phase boundary in `.claude/rules/moai/workflow/spec-workflow.md` §Phase Transitions (after plan/run/sync phase finishes within a multi-SPEC SPEC ID series) |
 | 3 | User explicitly requests session end ("세션 종료", "이번 세션 마무리", "next session") | Intent detection in user message |
 | 4 | PR creation success when more SPECs remain in the current wave | After `gh pr create` success + memory indicates >0 pending SPECs |
@@ -24,12 +24,12 @@ When NONE apply (single-turn, trivial task, read-only query), emit a brief compl
 
 ## Canonical Format (Verbatim Spec)
 
-[ZONE:Evolvable] [HARD] Resume message MUST follow this exact 6-block structure, **bounded by cut-line markers** (`✂──── 여기부터 복사 ────✂` top, `✂──── 여기까지 복사 ────✂` bottom). Cut-line markers sit **inside** the fenced text block alongside the content so they are copied verbatim with the message; this provides the user an unambiguous copy boundary in long terminal scrollback:
+[ZONE:Evolvable] [HARD] Resume message MUST follow this exact 6-block structure, **bounded by cut-line markers** (see § Cut-line Marker Specification below for the literal marker format, Unicode-preservation rules, and locale translation contract). Cut-line markers sit **inside** the fenced text block alongside the content so they are copied verbatim with the message; this provides the user an unambiguous copy boundary in long terminal scrollback:
 
 ```
 ✂──── 여기부터 복사 ────✂
 
-ultrathink. <SPEC-ID> <phase> 진입.
+ultrathink. <SPEC-ID> <phase> <entering verb>.
 applied lessons: <memory-file-1>, <memory-file-2>, ...
 
 전제 검증:
@@ -55,12 +55,19 @@ N) <verifiable precondition N>
 
 ### Localization Table
 
-| Marker | English | Korean (canonical) | Japanese | Chinese |
-|--------|---------|--------------------|----------|---------|
-| Top text | `Copy from here` | `여기부터 복사` | `ここからコピー` | `从这里复制` |
-| Bottom text | `Copy to here` | `여기까지 복사` | `ここまでコピー` | `到这里复制` |
+The cut-line marker text AND the 6-block skeleton verbs/headers translate per `conversation_language`. This table is the SSOT for the locale renderings (the canonical skeleton uses the `<entering verb>` / `<header>` placeholders; concrete locale renderings live here). Cross-verified for consistency with `.claude/output-styles/moai/moai.md §8` (the canonical render surface).
 
-Read `conversation_language` from `.moai/config/sections/language.yaml` at render time; substitute the localized text between the `✂────` decorators while keeping `✂` and `─` characters verbatim.
+| Element | English | Korean (canonical) | Japanese | Chinese |
+|---------|---------|--------------------|----------|---------|
+| Cut-line top text | `Copy from here` | `여기부터 복사` | `ここからコピー` | `从这里复制` |
+| Cut-line bottom text | `Copy to here` | `여기까지 복사` | `ここまでコピー` | `到这里复制` |
+| Block 1 entering verb | `entering` | `진입` | `開始` | `进入` |
+| Block 3 Preconditions header | `Preconditions:` | `전제 검증:` | `前提条件:` | `前提条件:` |
+| Block 5 Run header | `Run:` | `실행:` | `実行:` | `执行:` |
+| Block 6 After-merge header (PR workflow) | `After merge:` | `머지 후:` | `マージ後:` | `合并后:` |
+| Block 6 Follow-up header (trunk no-PR) | `Follow-up:` | `후속:` | `後続:` | `后续:` |
+
+Read `conversation_language` from `.moai/config/sections/language.yaml` at render time; substitute the localized text between the `✂────` decorators (cut-line markers) while keeping `✂` and `─` characters verbatim, and substitute the locale rendering for each Block 1/3/5/6 placeholder when emitting the paste-ready message.
 
 ### Field-by-Field Specification
 
@@ -110,9 +117,11 @@ This ensures the message survives `/clear` and is discoverable at the start of t
 
 ## Output Surface (User-Facing)
 
-At session end, the orchestrator displays: (1) the message in a fenced ```text``` block **bounded by cut-line markers** (`✂──── 여기부터 복사 ────✂` top + `✂──── 여기까지 복사 ────✂` bottom, with marker text translated per `conversation_language` and `✂` symbol preserved verbatim) for verbatim paste, (2) the memory file path, (3) a one-sentence summary of what next session continues.
+At session end, the orchestrator displays: (1) the message in a fenced ```text``` block **bounded by cut-line markers** (per § Cut-line Marker Specification — marker text translated per `conversation_language`, `✂`/`─` symbols preserved verbatim) for verbatim paste, (2) the memory file path, (3) a one-sentence summary of what next session continues.
 
 ## Anti-Patterns
+
+> See also: § Diet Constraints / Anti-pattern catalogue (paste-ready budget violations AP-D-001..005) and § V0 Abort Gate Doctrine / Anti-pattern (abort-gate violations AP-V-001..004). This list covers general resume-hygiene patterns; the Diet and V0 lists cover their respective specialized domains.
 
 - Free-form prose handoff — no executable context.
 - Resume without preconditions — next session cannot detect state drift.
@@ -121,8 +130,8 @@ At session end, the orchestrator displays: (1) the message in a fenced ```text``
 - Duplicate memory entries without `[SUPERSEDED by ...]` markers — index pollution.
 - Resume Block 2 missing `source_session_id: <UUID>` **AND missing the environment fallback pattern** (`<not-available — environment-fallback, ...>`) — the canonical multi-session coordination policy cannot correlate the resume back to its originating session for race attribution. The environment fallback pattern itself is NOT an anti-pattern; only the complete absence of both UUID and fallback pattern is the violation.
 - Forcing the format on trivial tasks — memory noise.
-- Cut-line markers absent — user cannot identify exact copy boundary in long terminal scrollback.
-- Cut-line markers translated `✂` symbol or `─` decorator — only the marker text translates; the symbols are preserved verbatim.
+- Cut-line markers absent — user cannot identify exact copy boundary in long terminal scrollback (see § Cut-line Marker Specification for the literal format).
+- Cut-line markers with translated `✂` symbol or `─` decorator — contrary to § Cut-line Marker Specification (only the marker text translates; the symbols are preserved verbatim).
 
 ## Worktree-Anchored Resume Pattern
 
@@ -233,6 +242,8 @@ applied lessons: project_myproj_prev_wave_complete, lessons #12 #13 #14.
 
 ### Anti-pattern catalogue
 
+> See also: § Anti-Patterns (general resume hygiene) and § V0 Abort Gate Doctrine / Anti-pattern (abort-gate violations AP-V-001..004). This catalogue covers paste-ready budget violations (AP-D-001..005).
+
 - **AP-D-001**: Block 2 lessons 5+ references → 4 이하로 trim, 나머지는 memory file body로 이관
 - **AP-D-002**: precondition 본문 prose (history/lesson narrative/누적 패턴) → 1줄 verifiable command + STRICT criterion만 남기기
 - **AP-D-003**: Block 5 sub-step nesting (Phase 0 + Phase 0.5 + Phase 1B 같은 multi-phase 11-substep) → single primary action으로 압축, sub-detail은 SPEC artifacts에
@@ -290,6 +301,8 @@ Cross-line provenance: retained in lesson memory; this section codifies the doct
 
 ### Anti-pattern
 
+> See also: § Anti-Patterns (general resume hygiene) and § Diet Constraints / Anti-pattern catalogue (paste-ready budget violations AP-D-001..005). This catalogue covers abort-gate violations (AP-V-001..004).
+
 - **AP-V-001**: `ps aux` raw count `≤ 2 STRICT`을 단독 V0 검증으로 사용 → environmental baseline noise (multi-session normal state에서 16-19 sessions은 정상)
 - **AP-V-002**: V0 FAIL 후 "사용자 약속 누적 미이행 N회" 본문 추적 → 죄책감 부담만 부과 + 실질 행동 변화 0 + paste-ready 비대화 → 도구화 anti-pattern
 - **AP-V-003**: V0 FAIL 시 AskUserQuestion에 강행 옵션 (option D "override + spawn") 제시 → doctrine 위반
@@ -297,8 +310,9 @@ Cross-line provenance: retained in lesson memory; this section codifies the doct
 
 ## Cross-references
 
-- `.claude/rules/moai/workflow/context-window-management.md` — threshold (1M = 50%, 200K = 90%) for `/clear` and Trigger #1; same table.
+- `.claude/rules/moai/workflow/context-window-management.md` § Context Window Targets — the per-model-class threshold SSOT for `/clear` and Trigger #1 (this file carries no inline model-class numbers to avoid label drift).
 - `.claude/output-styles/moai/moai.md` §6 (Persistence & Context Awareness)
+- `.claude/output-styles/moai/moai.md` §8 (Response Templates → Session Handoff) — the canonical render surface for the 6-block template + pre-emit self-check; this file is the SSOT, moai.md §8 is the render surface (bidirectional link).
 - `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol — auto-memory + `[SUPERSEDED by ...]` convention
 - CLAUDE.md §11 (Error Handling) — token-limit recovery
 - `feedback_large_spec_wave_split.md` (auto-memory) — wave-split rationale
