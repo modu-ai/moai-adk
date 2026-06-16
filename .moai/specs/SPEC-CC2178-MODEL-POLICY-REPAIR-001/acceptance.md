@@ -246,6 +246,55 @@ go test ./internal/config/... -run TestResolveCycleType -v
 
 ---
 
+### AC-MPR-015 (MUST, NEW in iter-3 — D11 remediation) — Dead domain-walker fixed to target `.claude/agents/moai/`
+
+**Given** the file `internal/template/model_policy.go` after M2,
+**When** a reviewer greps the `domains` slice in both `ApplyEffortPolicy` (L137) and `ApplyModelPolicy` (L246),
+**Then** the slice contains `"moai"` and does NOT contain any of the four dead directories (`"core"`, `"expert"`, `"meta"`, `"harness"`).
+
+> **D11 remediation (iter-3)**: both `ApplyEffortPolicy` (L137) and `ApplyModelPolicy` (L246) currently hardcode `domains := []string{"core", "expert", "meta", "harness"}` — subdirectories that DO NOT EXIST on disk (all agents live in `.claude/agents/moai/` post-AGENT-FOLDER-SPLIT revert). The walker reads 4 non-existent dirs, `os.IsNotExist` → `continue` silently, and injects NOTHING today. This makes REQ-MPR-008/009 (model-map cleanup) + REQ-MPR-011a/011b (effort-map prune + reconcile) currently have zero production effect. REQ-MPR-019 fixes the walker to `[]string{"moai"}` at both sites so the map cleanup reaches the real layout and takes live effect on the next `moai init`/`moai update`.
+
+**Verification command** (canonical — asserts both sites fixed):
+```bash
+# Asserts "moai" present at both L137 (ApplyEffortPolicy) and L246 (ApplyModelPolicy),
+# AND the four dead dirs absent from the domains slice.
+grep -n 'domains := \[\]string{' internal/template/model_policy.go
+# Expected: exactly 2 matches, both showing []string{"moai"} (no core/expert/meta/harness).
+grep -cE 'domains := \[\]string\{"(core|expert|meta|harness)' internal/template/model_policy.go
+# Expected: 0 (the dead-dirs slice form is gone).
+```
+
+**Additional test verification**:
+```bash
+go test ./internal/template/... -run TestApplyEffortPolicy_WalkerTargetsMoai -v
+go test ./internal/template/... -run TestApplyModelPolicy_WalkerTargetsMoai -v
+# Expected: both PASS (the walker reads .claude/agents/moai/ and reaches the retained 7 agent files).
+```
+
+**REQ binding**: REQ-MPR-019 (iter-3 NEW).
+
+---
+
+### AC-MPR-016 (SHOULD, NEW in iter-3 — D13 remediation) — `model-policy.md` documents effort-axis harness-link + SPEC non-alteration
+
+**Given** the file `.claude/rules/moai/development/model-policy.md` (+ template mirror) after M5,
+**When** a reviewer reads the effort-axis section,
+**Then** the doctrine (a) documents that the `effort:` axis is already harness-linked (effort values are injected by `ApplyEffortPolicy` and correlate with harness reasoning depth), AND (b) explicitly notes that THIS SPEC does not alter the effort mechanism (only the map contents per REQ-MPR-011a/011b and the walker-target per REQ-MPR-019; full retirement is deferred per REQ-MPR-012).
+
+> **D13 remediation (iter-3)**: REQ-MPR-018 (effort-axis doc tuning, SHOULD) had NO acceptance criterion in iter-2 (`grep "REQ-MPR-018" acceptance.md` → 0 matches; the §D.2 traceability matrix omitted it). This AC binds REQ-MPR-018 so the effort-axis documentation REQ is traced. Severity SHOULD (non-blocking — documentation-only REQ; may defer with rationale).
+
+**Verification command**:
+```bash
+grep -c 'effort.*harness-linked\|harness.*effort' .claude/rules/moai/development/model-policy.md
+# Expected: ≥1 (the doctrine documents the effort↔harness link).
+grep -c 'this SPEC does not alter' .claude/rules/moai/development/model-policy.md
+# Expected: ≥1 (the doctrine notes the SPEC non-alteration).
+```
+
+**REQ binding**: REQ-MPR-018 (iter-3 bound). **Non-blocking**: documentation-only SHOULD; may defer with rationale.
+
+---
+
 ## §D.1 Severity Breakdown
 
 | AC | Severity | Blocking? |
@@ -264,8 +313,10 @@ go test ./internal/config/... -run TestResolveCycleType -v
 | AC-MPR-012 | SHOULD | No (defer with rationale) |
 | AC-MPR-013 | SHOULD | No (warnings acceptable) |
 | AC-MPR-014 | MUST (NEW iter-2) | Yes (binds orphaned REQ-MPR-007) |
+| AC-MPR-015 | MUST (NEW iter-3) | Yes (D11 walker-target fix, binds REQ-MPR-019) |
+| AC-MPR-016 | SHOULD (NEW iter-3) | No (documentation-only; defer with rationale) |
 
-**Total (iter-2)**: 12 MUST + 2 SHOULD = 14 ACs (iter-1 had 13; AC-MPR-014 added).
+**Total (iter-3)**: 13 MUST + 3 SHOULD = 16 ACs (iter-2 had 14; iter-3 added AC-MPR-015 walker-target + AC-MPR-016 REQ-MPR-018 binding).
 
 ## §D.2 Traceability Matrix
 
@@ -282,9 +333,11 @@ go test ./internal/config/... -run TestResolveCycleType -v
 | REQ-MPR-009 (manager-develop/builder-harness, iter-2 tuples) | AC-MPR-008 | M2 |
 | REQ-MPR-010 (agentEffortMap no phantoms) | AC-MPR-009 | M2 |
 | REQ-MPR-011a/011b (prune + reconcile, iter-2) | AC-MPR-010 | M2 |
-| REQ-MPR-012 (retirement deferral, iter-2 downgraded) | AC-MPR-010 | M1 |
-| REQ-MPR-013/014/015 ([1m] verdict + relaxation conditions) | AC-MPR-011 | M1, M5 |
+| REQ-MPR-012 (retirement deferral, iter-2 downgraded; iter-3 rationale re-grounded) | AC-MPR-010 | M1 |
+| REQ-MPR-013/014/015 ([1m] verdict + relaxation conditions; iter-3 REQ-MPR-013 timing reworded to "before run-phase M4 GREEN") | AC-MPR-011 | M1, M5 |
 | REQ-MPR-016/017 (task-triage decision) | AC-MPR-012 | M1 |
+| **REQ-MPR-018 (effort-axis doc tuning, iter-3 bound)** | **AC-MPR-016 (NEW iter-3)** | **M5** |
+| **REQ-MPR-019 (dead-walker fix, iter-3 NEW)** | **AC-MPR-015 (NEW iter-3)** | **M2** |
 | (spec lint, path-prefixed iter-2) | AC-MPR-013 | M6 |
 
 ## §D.3 Indirect Verification (Trust-but-verify batch, run at M6)
@@ -304,13 +357,13 @@ The following read-only verifications run in parallel at M6 to independently con
 
 A SPEC is close-eligible when ALL of the following hold:
 
-1. All 12 MUST ACs PASS with observed evidence (iter-2: 12 MUST, up from iter-1's 11 — AC-MPR-014 added; per verification-claim-integrity.md §1.1).
-2. The 2 SHOULD ACs either PASS or have documented deferral rationale.
+1. All 13 MUST ACs PASS with observed evidence (iter-3: 13 MUST, up from iter-2's 12 — AC-MPR-015 walker-target added; per verification-claim-integrity.md §1.1).
+2. The 3 SHOULD ACs either PASS or have documented deferral rationale.
 3. `moai spec lint .moai/specs/SPEC-CC2178-MODEL-POLICY-REPAIR-001/spec.md` exits 0 (path-prefixed — D3).
 4. `go test ./...` exits 0 (0 regressions).
 5. The plan-auditor verdict is ≥ 0.80 (Tier M threshold) AND the Implementation Kickoff Approval was obtained before run-phase (§I of plan.md).
 6. The sync-auditor verdict is PASS or PASS-WITH-DEBT (if sync-phase runs).
-7. No uncommitted working-tree files from the unrelated parallel workstream (AG-03 — 15 files: 10 modified + 5 untracked) were absorbed into this SPEC's commits.
+7. No uncommitted working-tree files from the unrelated parallel workstream (AG-03 — the count shifts across iterations; see plan.md §B.6 for the current enumeration) were absorbed into this SPEC's commits.
 
 ## §D.5 Forward-Looking Checks (post-close)
 
@@ -324,7 +377,7 @@ A SPEC is close-eligible when ALL of the following hold:
 - **EC-01**: What if M1 `[1m]` re-verification cannot fetch upstream issues (network-restricted environment)? → Record the fetch failure in the research note, default to "still-active" (conservative — preserves EX-01), and note that the re-verification is incomplete. AC-MPR-011 PASSES with the documented limitation.
 - **EC-02**: What if the CC 2.1.178 Default-model field is NOT `model:` but a new key (e.g., `defaultModel`)? → M1 confirms the exact key; M4 uses the confirmed key; AC-MPR-003 verification command is updated to grep the confirmed key.
 - **EC-03**: What if M3 reveals the cycle_type routing requires touching >3 files (Split Trigger fires)? → The cycle_type axis splits into `SPEC-CC2178-CYCLE-TYPE-ROUTING-001`; THIS SPEC's AC-MPR-004/005/006 transfer to the follow-up; this SPEC closes on the model + cleanup axes only, with a documented scope-reduction note in §H.
-- **EC-04 (iter-2 D5 RESOLVED)**: `ApplyEffortPolicy` HAS 2 non-test production callers (`initializer.go:181`, `update.go:2661`) — verified at plan-phase, NOT a hypothetical. The decision is therefore PRUNE-AND-KEEP (remove phantom keys + reconcile map↔file divergence, keep the mechanism). Full retirement is DEFERRED to `SPEC-CC2178-EFFORT-MAP-RETIREMENT-001` (caller migration required first). AC-MPR-009/010 follow the prune path only.
+- **EC-04 (iter-3 D11 RE-GROUNDED; iter-2 D5 premise corrected)**: `ApplyEffortPolicy` HAS 2 non-test production callers (`initializer.go:181`, `update.go:2661`) AND `ApplyModelPolicy` HAS 2 non-test production callers (`initializer.go:176`, `update.go:2656`) — both verified at plan-phase, NOT hypothetical. The iter-2 rationale ("retiring loses live injection = regression") was re-grounded in iter-3: the walker is CURRENTLY A NO-OP. Both functions hardcode `domains := []string{"core", "expert", "meta", "harness"}` (L137, L246) — subdirectories that DO NOT EXIST on disk (agents live in `.claude/agents/moai/` post-AGENT-FOLDER-SPLIT revert). The walker reads 4 non-existent dirs, `os.IsNotExist` → `continue`, and injects NOTHING today. The decision is therefore: (1) PRUNE-AND-RECONCILE the maps (REQ-MPR-011a/011b), (2) FIX THE WALKER to target `moai/` so the map cleanup takes live effect (REQ-MPR-019 / AC-MPR-015 — iter-3 absorbed), (3) DEFER full retirement of the map + `ApplyEffortPolicy` to `SPEC-CC2178-EFFORT-MAP-RETIREMENT-001` (caller migration required first). AC-MPR-009/010 follow the prune path; AC-MPR-015 verifies the walker fix.
 
 ## §D.7 Quality Gate Criteria
 

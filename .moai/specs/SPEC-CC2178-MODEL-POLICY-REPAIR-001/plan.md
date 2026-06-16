@@ -45,11 +45,11 @@ File: `internal/template/model_policy.go:72-79`.
 
 **Archived phantom entries (REMOVE — REQ-MPR-010/011a)**: `manager-strategy`, `expert-security`, `expert-refactoring`.
 
-**Map↔file divergence (RECONCILE — REQ-MPR-011b)** — verified by `grep '^effort:' .claude/agents/{meta,moai,builder}/*.md` on 2026-06-16:
-- Map says `plan-auditor: high`; file `.claude/agents/meta/plan-auditor.md:13` says `effort: xhigh`. → sync map to `xhigh`.
-- Map says `sync-auditor: high`; file `.claude/agents/meta/sync-auditor.md:15` says `effort: xhigh`. → sync map to `xhigh`.
-- `manager-develop` is MISSING from the map; file `.claude/agents/moai/manager-develop.md:23` says `effort: xhigh`. → add to map as `xhigh`.
-- `builder-harness` is MISSING from the map; file `.claude/agents/builder/builder-harness.md:13` says `effort: high`. → add to map as `high`.
+**Map↔file divergence (RECONCILE — REQ-MPR-011b)** — verified by `grep '^effort:' .claude/agents/moai/*.md` on 2026-06-16 (the `meta/` and `builder/` subdirectories DO NOT EXIST — agents were re-consolidated to `.claude/agents/moai/` post-AGENT-FOLDER-SPLIT revert; iter-3 D12 path correction):
+- Map says `plan-auditor: high`; file `.claude/agents/moai/plan-auditor.md` says `effort: xhigh`. → sync map to `xhigh`.
+- Map says `sync-auditor: high`; file `.claude/agents/moai/sync-auditor.md` says `effort: xhigh`. → sync map to `xhigh`.
+- `manager-develop` is MISSING from the map; file `.claude/agents/moai/manager-develop.md` says `effort: xhigh`. → add to map as `xhigh`.
+- `builder-harness` is MISSING from the map; file `.claude/agents/moai/builder-harness.md` says `effort: high`. → add to map as `high`.
 
 **Post-reconciliation target (5 entries)**: `manager-spec` (xhigh), `plan-auditor` (xhigh), `sync-auditor` (xhigh), `manager-develop` (xhigh), `builder-harness` (high).
 
@@ -57,18 +57,28 @@ File: `internal/template/model_policy.go:72-79`.
 
 Verified: `grep -rn "availableModels\|enforceAvailableModels" internal/template/templates/ internal/config/` returns 0 matches. The `settings.json.tmpl` currently has no Default-model constraint field. The research doc identifies these fields as the `[1m]`-safe lever (they constrain Default-model resolution at the settings level, not per-agent).
 
-### §B.4 D4 + Effort-Map Decision (iter-2 corrected — retirement premise INVERTED)
+### §B.4 D4 + Effort-Map Decision + Dead-Walker Correction (iter-3 re-grounded)
 
 - **D4 (cycle_type)**: `quality.yaml` has `development_mode: tdd` + `enforce_quality: true` **nested under the top-level `constitution:` key** (verified 2026-06-16 — NOT flat globals; the iter-1 "flat globals" wording was imprecise per the plan-auditor prose-precision note). The harness Complexity Estimator (`internal/harness/router/router.go:104-108`) resolves a harness `Level` from SPEC frontmatter `harness_level` but does NOT emit a cycle_type. The cycle_type axis gap is that harness depth does not influence cycle_type. **There is currently no symbol in `internal/` that maps harness level → cycle_type** (verified: `grep -rn "resolveCycleType\|ResolveCycleType" internal/` returns 0 matches). The M3 milestone (§F.3) defines and authors this NEW symbol.
-- **Effort-map decision (iter-2 INVERSION)**: the iter-1 premise "modern agents declare `effort:` directly → map is redundant → retire it" is **FACTUALLY INVERTED**. `ApplyEffortPolicy` (`model_policy.go:134-180`) has **2 production callers** (`initializer.go:181`, `update.go:2661`) that INJECT `effort:` into freshly-deployed agent files lacking it. The hand-authored `effort:` values in current agent files EXIST BECAUSE the map injected them on a prior deploy. Retiring the map = new `moai init` deployments lose effort injection = behavior regression. Iter-2 scope: **prune phantoms + reconcile map↔file divergence (SAFE, in-scope)**; **full retirement DEFERRED** to `SPEC-CC2178-EFFORT-MAP-RETIREMENT-001` (caller migration required first).
+- **Effort-map decision (iter-3 re-grounded per D11)**: `ApplyEffortPolicy` (`model_policy.go:134-180`) HAS **2 production callers** (`initializer.go:181`, `update.go:2661`) AND `ApplyModelPolicy` (`model_policy.go:240+`) HAS **2 production callers** (`initializer.go:176`, `update.go:2656`). The iter-2 premise — "retiring the map loses live effort injection = regression" — was re-grounded in iter-3: the walker is CURRENTLY A NO-OP. Both functions hardcode `domains := []string{"core", "expert", "meta", "harness"}` (L137, L246), but those subdirectories DO NOT EXIST on disk (verified: `find .claude/agents -type d` returns only `moai/` and `local/`). The walker reads 4 non-existent dirs, `os.IsNotExist` → `continue` silently for each, and injects NOTHING today. Therefore REQ-MPR-008/009 (model-map cleanup) + REQ-MPR-011a/011b (effort-map prune + reconcile) currently have zero production effect. **iter-3 ABSORBS the walker-target fix as REQ-MPR-019 (MUST)** — correcting `domains` to `[]string{"moai"}` at both L137 and L246 restores live injection so the map cleanup actually takes effect. Full retirement of `agentEffortMap` + `ApplyEffortPolicy` (migrating the 2 callers to an alternative path) remains DEFERRED to `SPEC-CC2178-EFFORT-MAP-RETIREMENT-001`.
 
 ### §B.5 `[1m]` re-verification target (M1)
 
 `model-policy.md` L30-50 cites `#45847`, `#51060`, `#36670` as the constraint basis, `last_analyzed=2.1.163` (research doc). The re-verification fetches the current state of these issues + the CC 2.1.178 CHANGELOG to determine whether the `[1m]` entitlement inheritance behavior changed. Verdict recorded in M1 research notes.
 
-### §B.6 Uncommitted working-tree files (OUT OF SCOPE — AG-03)
+### §B.6 Uncommitted working-tree files (OUT OF SCOPE — AG-03) + SPEC target-file enumeration (iter-3 updated)
 
-The working tree has **15 files** (10 modified + 5 untracked) belonging to an unrelated parallel workstream (verified by `git status --porcelain | wc -l` on 2026-06-16; the iter-1 count of "10" was stale — it counted only modified files, omitting the 5 untracked: `.moai/design/web-console-handoff/`, `.moai/docs/harness-delivery-strategy.md`, `.moai/reports/sync-audit/`, `.moai/reports/worktree-rescue-a7b51612/`, `.moai/reports/worktree-rescue-acc7a3a9b/`). This SPEC MUST NOT absorb them. The plan-phase touches ONLY `.moai/specs/SPEC-CC2178-MODEL-POLICY-REPAIR-001/`.
+**Unrelated parallel-workstream files (DO NOT ABSORB)**: the working tree currently carries a parallel workstream (settings-management, hooks, sync-phase-quality-gate, llm.yaml, etc. — verified by `git status --porcelain` on 2026-06-16 iter-3). The exact count shifts across iterations as that workstream progresses; the rule is unchanged from AG-03: this SPEC MUST NOT absorb any of those files. The plan-phase touches ONLY `.moai/specs/SPEC-CC2178-MODEL-POLICY-REPAIR-001/`.
+
+**SPEC OWN run-phase target files (iter-3 enumeration — M2/M3/M4/M5)**:
+- **M2 modified**: `internal/template/model_policy.go` (agentModelMap L193-216 + agentEffortMap L72-79 + **walker domains L137, L246 — iter-3 REQ-MPR-019**), `internal/template/model_policy_test.go` (characterization + reconciliation coverage).
+- **M2 NEW untracked (iter-3 added)**: `internal/template/model_policy_walker_test.go` — dedicated walker-target test asserting `domains` contains `"moai"` and the walker reads `.claude/agents/moai/` (AC-MPR-015 verification).
+- **M3 NEW untracked**: `internal/config/cycle_type.go`, `internal/config/cycle_type_test.go` (the `ResolveCycleType` symbol — D1 remediation).
+- **M3 modified**: `.moai/config/sections/quality.yaml` (documentation section), `internal/harness/router/router.go` (1 call-site wire near L104-108).
+- **M4 modified**: `internal/template/templates/.claude/settings.json.tmpl` (D3 fields), `internal/template/settings_test.go` (render test), `internal/template/embedded.go` (regenerated by `make build` — DO NOT hand-edit).
+- **M5 modified**: `.claude/rules/moai/development/model-policy.md` (+ template mirror — `[1m]` verdict + Default-model doctrine).
+
+**iter-3 delta vs iter-2**: +1 NEW untracked file (`model_policy_walker_test.go`) for REQ-MPR-019 walker-target verification. The `model_policy.go` modification was already in iter-2's M2 scope; iter-3 adds 2 more modified lines (L137, L246 `domains` slice) to that same file.
 
 ### §B.7 SPEC ID canonicalization trace
 
@@ -96,7 +106,7 @@ Canonicalized to `SPEC-CC2178-MODEL-POLICY-REPAIR-001` (appended `-001`). Regex:
 2. `[1m]` entitlement boundary (no per-agent pins).
 3. Backward compatibility (existing `tdd` projects).
 4. 8-agent catalog alignment.
-5. Scope discipline (15 working-tree files — 10 modified + 5 untracked — out-of-scope per AG-03; iter-2 corrected count).
+5. Scope discipline (unrelated parallel-workstream working-tree files out-of-scope per AG-03; see §B.6 for the current enumeration — the count shifts across iterations as the parallel workstream progresses).
 6. Language policy (`documentation: ko`; REQ tokens English).
 7. Mirror parity (`model-policy.md` + template mirror edited together).
 
@@ -104,7 +114,7 @@ Canonicalized to `SPEC-CC2178-MODEL-POLICY-REPAIR-001` (appended `-001`). Regex:
 
 ### §E.1 Plan-phase Audit-Ready Signal
 
-- **Artifact set**: spec.md (12-field frontmatter, `era: V3R6`, version 0.2.0 iter-2), plan.md (this file), acceptance.md (14 ACs — iter-2 added AC-MPR-014).
+- **Artifact set**: spec.md (12-field frontmatter, `era: V3R6`, version 0.3.0 iter-3), plan.md (this file), acceptance.md (16 ACs — iter-3 added AC-MPR-015 walker-target + AC-MPR-016 REQ-MPR-018 binding).
 - **SPEC ID regex**: `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$` → PASS (decomposition in §B.7).
 - **Frontmatter schema**: all 12 canonical fields present; `status: draft`; `era: V3R6` explicit (H-override suppresses `EraAutoDetected` INFO).
 - **GEARS compliance**: REQs use Ubiquitous / Event-driven (When) / State-driven (While) / Capability gate (Where) / Unwanted (shall not) — 0 residual `IF/THEN`.
@@ -149,24 +159,30 @@ _<pending mx-phase>_
 
 **File targets**: research note (inline or `.moai/specs/SPEC-CC2178-MODEL-POLICY-REPAIR-001/research.md`).
 
-### §F.2 M2 — Phantom-map cleanup (D1) + effort-map prune-and-reconcile (D2)
+### §F.2 M2 — Phantom-map cleanup (D1) + effort-map prune-and-reconcile (D2) + dead-walker fix (D11)
 
 **cycle_type**: `tdd` (Go code change in `internal/template/`).
 
-**RED first**: write characterization tests asserting (a) the **16** canonical phantom keys are absent from `agentModelMap` (see spec.md §C.3 table — iter-2 corrected from the iter-1 "15"), (b) `GetAgentModel("manager-develop")` and `GetAgentModel("builder-harness")` return `{sonnet, sonnet, haiku}` (iter-2 tuple decision per D6), (c) the 3 phantom keys are absent from `agentEffortMap`, (d) `agentEffortMap` values for `plan-auditor`/`sync-auditor` are `xhigh` (map↔file reconciliation per REQ-MPR-011b).
+> **iter-3 addition (D11 / REQ-MPR-019)**: M2 now ALSO fixes the dead domain-walker in `model_policy.go`. Both `ApplyEffortPolicy` (L137) and `ApplyModelPolicy` (L246) currently hardcode `domains := []string{"core", "expert", "meta", "harness"}` — subdirectories that do not exist on disk (agents live in `.claude/agents/moai/`). The walker is a no-op today, defeating the map cleanup. M2 corrects `domains` to `[]string{"moai"}` at BOTH sites so the map cleanup takes live effect.
+
+**RED first**: write characterization tests asserting (a) the **16** canonical phantom keys are absent from `agentModelMap` (see spec.md §C.3 table — iter-2 corrected from the iter-1 "15"), (b) `GetAgentModel("manager-develop")` and `GetAgentModel("builder-harness")` return `{sonnet, sonnet, haiku}` (iter-2 tuple decision per D6), (c) the 3 phantom keys are absent from `agentEffortMap`, (d) `agentEffortMap` values for `plan-auditor`/`sync-auditor` are `xhigh` (map↔file reconciliation per REQ-MPR-011b), **(e) iter-3 NEW**: the `domains` slice in both `ApplyEffortPolicy` and `ApplyModelPolicy` contains `"moai"` and does NOT contain any of `"core"`/`"expert"`/`"meta"`/`"harness"` (AC-MPR-015).
 
 **GREEN**:
 - `agentModelMap` (L193-216): remove the 16 canonical phantom keys; add `manager-develop: {sonnet, sonnet, haiku}` and `builder-harness: {sonnet, sonnet, haiku}` (iter-2 tuples — NOT the iter-1 `{opus, sonnet, sonnet}` derived from retired aliases; D6 rationale: the busiest run-phase agents follow Default-Sonnet, not Opus).
 - `agentEffortMap` (L72-79): remove the 3 phantom keys (`manager-strategy`, `expert-security`, `expert-refactoring`); sync `plan-auditor` and `sync-auditor` from `high` to `xhigh`; add `manager-develop: xhigh` and `builder-harness: high`. Do NOT retire the map (D5 inversion — `ApplyEffortPolicy` has 2 production callers; retirement is deferred).
+- **Walker fix (iter-3 REQ-MPR-019)**: change `domains := []string{"core", "expert", "meta", "harness"}` → `domains := []string{"moai"}` at BOTH L137 (ApplyEffortPolicy) AND L246 (ApplyModelPolicy). Both share the same bug; both MUST be fixed together so the map cleanup reaches the real `.claude/agents/moai/` layout.
 
-**REFACTOR**: update the docstrings at L66-71 and L191-192 to reflect the retained 5-entry catalog.
+**REFACTOR**: update the docstrings at L66-71 and L191-192 to reflect the retained 5-entry catalog; update the docstrings/comments near L137 and L246 to document that the walker targets `.claude/agents/moai/` (the consolidated layout post-AGENT-FOLDER-SPLIT revert).
 
 **File:line targets**:
 - `internal/template/model_policy.go:193-216` (agentModelMap).
 - `internal/template/model_policy.go:72-79` (agentEffortMap — prune + reconcile only, NO retirement).
-- `internal/template/model_policy_test.go` (characterization + new coverage for the reconciliation).
+- `internal/template/model_policy.go:137` (ApplyEffortPolicy `domains` — iter-3 REQ-MPR-019).
+- `internal/template/model_policy.go:246` (ApplyModelPolicy `domains` — iter-3 REQ-MPR-019).
+- `internal/template/model_policy_test.go` (characterization + reconciliation coverage).
+- `internal/template/model_policy_walker_test.go` (NEW iter-3 — dedicated walker-target test for AC-MPR-015).
 
-**AC bindings**: AC-MPR-007, AC-MPR-008, AC-MPR-009, AC-MPR-010.
+**AC bindings**: AC-MPR-007, AC-MPR-008, AC-MPR-009, AC-MPR-010, **AC-MPR-015 (NEW iter-3)**.
 
 ### §F.3 M3 — Cycle_type harness routing (D4) + `ResolveCycleType` function contract (D1 remediation)
 
@@ -289,7 +305,8 @@ The iter-1 plan (§F.2) derived `manager-develop` from retired `manager-ddd`/`ma
 - **AP-MPR-002**: Breaking backward-compat by overriding an explicit `quality.yaml development_mode: tdd` pin with a harness-derived cycle_type. Mitigation: REQ-MPR-006 + AC-MPR-006.
 - **AP-MPR-003**: Editing `embedded.go` directly instead of `templates/` + `make build`. Mitigation: M4 Template-First discipline.
 - **AP-MPR-004**: Absorbing the 10 uncommitted working-tree files into this SPEC's commits. Mitigation: AG-03 scope discipline; commit ONLY the SPEC directory + the explicitly-targeted source files.
-- **AP-MPR-005**: Retiring `agentEffortMap` + `ApplyEffortPolicy` without migrating the 2 production callers (`initializer.go:181`, `update.go:2661`). **iter-2 correction**: the iter-1 plan framed this as "grep for callers first" — but the caller-grep has already been performed at plan-phase (D5 verification) and BOTH callers exist. Retirement is therefore DEFERRED, not pending-grep. This SPEC prunes phantoms + reconciles map↔file divergence only. Full retirement belongs to `SPEC-CC2178-EFFORT-MAP-RETIREMENT-001`.
+- **AP-MPR-005**: Retiring `agentEffortMap` + `ApplyEffortPolicy` without migrating the 2 production callers (`initializer.go:181`, `update.go:2661`). **iter-3 correction**: the iter-1 plan framed this as "grep for callers first"; iter-2 found BOTH callers exist (DEFERRED, not pending-grep); iter-3 further found the walker is a no-op (D11), so the deferral rationale is caller-migration effort, NOT preserving live injection. This SPEC prunes phantoms + reconciles map↔file divergence + FIXES THE WALKER (REQ-MPR-019) only. Full retirement belongs to `SPEC-CC2178-EFFORT-MAP-RETIREMENT-001`.
+- **AP-MPR-009** (NEW iter-3, D11): Forgetting that the walker-target fix (REQ-MPR-019) MUST land alongside the map cleanup — without the walker fix, REQ-MPR-008/009/011a/011b have zero production effect because the walker never reads `.claude/agents/moai/`. Mitigation: AC-MPR-015 verifies the `domains` slice targets `moai/` at both L137 and L246.
 - **AP-MPR-006**: Using `IF/THEN` in new REQs (GEARS lint warning). Mitigation: all REQs use `When`/`While`/`Where`/`shall not`.
 - **AP-MPR-007** (NEW iter-2): Asserting `resolveCycleType` (lowercase) in ACs when the agreed symbol is `ResolveCycleType` (exported, `internal/config` package) per §F.3.1 contract. Mitigation: AC-MPR-004/005/006/014 reference `ResolveCycleType` with the exact signature from §F.3.1.
 - **AP-MPR-008** (NEW iter-2, D6): Deriving `manager-develop`'s model tuple from the retired `manager-ddd`/`manager-tdd` aliases (`{opus, sonnet, sonnet}`). This pins the most-frequently-spawned agent to Opus at High policy, contradicting the SPEC's Default-Sonnet thesis. Mitigation: REQ-MPR-009 iter-2 sets `{sonnet, sonnet, haiku}` with explicit rationale.
@@ -297,6 +314,7 @@ The iter-1 plan (§F.2) derived `manager-develop` from retired `manager-ddd`/`ma
 ## §H. Cross-References
 
 - `internal/template/model_policy.go:72-79,193-216` — D1/D2 defect sites.
+- `internal/template/model_policy.go:137` (ApplyEffortPolicy `domains`), `:246` (ApplyModelPolicy `domains`) — **D11 dead-walker defect sites (iter-3 REQ-MPR-019)**. Both hardcode the dead `{core,expert,meta,harness}` layout; fixed to `[]string{"moai"}` at M2.
 - `internal/template/templates/.claude/settings.json.tmpl` — D3 target.
 - `.moai/config/sections/quality.yaml:1-2` — D4 defect site.
 - `.moai/config/sections/harness.yaml:32-75` — harness levels + skip_phases (M3 integration point).
