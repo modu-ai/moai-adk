@@ -7,8 +7,8 @@
 
 | Phase | Status | Owner | Commit SHA |
 |-------|--------|-------|------------|
-| Plan (spec + plan + acceptance + research + design) | READY-iter2 (re-audit pending after D1-D7 remediation) | manager-spec | _(pending plan-phase commit — iter-2 remediation 2026-06-17)_ |
-| Run (M1-M6) | NOT STARTED | manager-develop | — |
+| Plan (spec + plan + acceptance + research + design) | COMPLETE (iter-2 PASS-WITH-DEBT 0.84, Implementation Kickoff Approval obtained) | manager-spec | _(plan-phase artifacts tracked from M1 commit)_ |
+| Run (M1-M6) | COMPLETE (audit-ready, 17/17 AC PASS) | manager-develop | `18ca4a6c9` (M1) .. `59c366a68` (M5) + run-phase-close (§E.2/§E.3) |
 | Sync (CHANGELOG + frontmatter → implemented) | NOT STARTED | manager-docs | — |
 | Mx (§E.5 + → completed) | NOT STARTED | manager-docs OR orchestrator-direct | — |
 
@@ -49,11 +49,111 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — manager-develop populates with verbatim command + output for each M1-M6 verification>_
+Run-phase commits (manager-develop, M1-M6, branch `worktree-agent-a350b7a40faaf39c6`):
+
+| Milestone | Commit SHA | Subject |
+|-----------|------------|---------|
+| M1 | `18ca4a6c9` | feat(SPEC-SESSION-HANDOFF-ALIGN-001): M1 coverage audit + 3 SPEC-ID realignment |
+| M2 | `464da9717` | feat(SPEC-SESSION-HANDOFF-ALIGN-001): M2 Diet Constraints neutralized port (both trees) |
+| M3 | `8a5ee5ffa` | feat(SPEC-SESSION-HANDOFF-ALIGN-001): M3 V0 Abort Gate neutralized port + Cross-pollination collapse |
+| M4 | `b98533532` | feat(SPEC-SESSION-HANDOFF-ALIGN-001): M4 mirror enrollment + /cd port + local restructure |
+| M5 | `59c366a68` | feat(SPEC-SESSION-HANDOFF-ALIGN-001): M5 i18n + dedup consolidation (both trees) |
+
+### D8 accurate line number (iter-2 audit residual, noted here per run-phase instructions)
+
+The iter-2 audit (D8 MINOR) observed that REQ-SHA-011 / spec.md §A / design.md §C.1 cite the LOCAL skeleton-verb line as `L183`, but the actual LOCAL 3rd `진입` line was `L288` pre-M5 (the LOCAL file was 105 lines longer than TEMPLATE pre-restructure due to the mid-file Diet+V0 blocks, shifting the worktree-Example `진입` from TEMPLATE L183 to LOCAL L288). Per the run-phase instructions, spec.md REQ-SHA-011 body was NOT edited (manager-spec owns spec.md body; D8 is non-blocking cosmetic). Post-M5, both trees are byte-identical (324 lines) and the canonical-skeleton `진입` is replaced by `<entering verb>`; the 2 remaining `진입` instances are in Example blocks (ko-default illustrative renderings) at L92 and L196 (both trees, post-restructure parity). The line-number citation drift is now moot — the content edit landed correctly in both trees regardless of the stale citation.
+
+### AC PASS/FAIL matrix (M6 Trust-but-verify, observed 2026-06-17)
+
+| AC | Status | Verification Command | Observed Output |
+|----|--------|---------------------|-----------------|
+| AC-SHA-001 (Diet core ships to TEMPLATE) | PASS | `grep -c 'AP-D-00[1-5]'` + budgets + Pre-emit on TEMPLATE | AP-D ×5, Block 2/4/5/6 budgets, Pre-emit 8-items all present |
+| AC-SHA-002 (Diet neutrality) | PASS | `grep -cE 'SPEC-V3R[0-9]-[A-Z]\|LIFECYCLE-SYNC-GATE\|HARNESS-NAMESPACE\|SESSION-AUTO-RESUME'` on TEMPLATE | 0 matches; `TestTemplateNoInternalContentLeak` PASS |
+| AC-SHA-003 (V0 core ships to TEMPLATE) | PASS | `grep -c 'lsof -a -c claude'` + STRICT + AP-V on TEMPLATE | lsof ×4, STRICT ×3, AP-V-001..004 ×4 |
+| AC-SHA-004 (V0 dev-incident provenance dropped) | PASS | `grep -nE 'Hugo docs\|claude-md-guide\|claude-design-handoff\|M4 1·2차\|LIFECYCLE-SYNC-GATE-001 M4'` on TEMPLATE V0 | 0 matches on dev-incident tokens (heading `### Cross-pollination 이력` retained as benign neutral subsection title) |
+| AC-SHA-005 (3 stale SPEC-ID lines realigned) | PASS | `grep -nE 'SPEC-V3R6-MULTI-SESSION-COORD-001\|REQ-COORD-009'` on LOCAL + TEMPLATE | LOCAL 0, TEMPLATE 0 |
+| AC-SHA-006a (Diet+V0+/cd section-body content parity) | PASS | `diff` of each section body LOCAL vs TEMPLATE | Diet 57 lines identical, V0 38 lines identical, /cd identical (both trees byte-identical post-M4) |
+| AC-SHA-006b (post-restructure whole-file byte-parity) | PASS | `diff LOCAL TEMPLATE \| wc -l` + `cmp` | `0` + `cmp: identical` |
+| AC-SHA-007 (mirror enrollment + GREEN + drift probe) | PASS | `go test -run TestRuleTemplateMirrorDrift/session-handoff`; drift probe | subtest PASS; injected drift → `RULE_TEMPLATE_MIRROR_DRIFT` FAIL; revert → PASS |
+| AC-SHA-008 (18-file coverage audit table) | PASS | research.md §A.0 verbatim audit output (plan-phase) | 18 LOCAL / 17 TEMPLATE / session-handoff major-drift / lifecycle-sync-gate template-missing — all present |
+| AC-SHA-009 (cut-line marker SSOT de-dup) | PASS | `grep -n '✂──── 여기부터'` on both | Literal appears only in § Cut-line Marker Specification (L49) + fenced Examples (L30/L90/L196); intro/Output/Anti-Patterns use pointers |
+| AC-SHA-010 (4-locale header table) | PASS | Localization Table row count | 7 locale rows (2 cut-line + 5 block headers) × 4 locales |
+| AC-SHA-011 (skeleton verb placeholder) | PASS | `sed -n '29,45p' \| grep -c '진입'` on both | 0 in canonical skeleton (both trees); `<entering verb>` placeholder present |
+| AC-SHA-012 (Trigger #1 model-label drift) | PASS | `sed -n '17p'` + `grep 'Opus 4\.7\|Opus 4\.8'` on Trigger #1 row | Trigger #1 row → cwm.md § Context Window Targets pointer, 0 inline model numbers |
+| AC-SHA-013 (anti-pattern cross-links) | PASS | `grep -c 'See also:'` | 3 cross-link pointers (general + AP-D + AP-V) |
+| AC-SHA-014 (Cross-pollination collapse) | PASS | `grep -cE 'Line C.*9차\|Line C.*10차\|Line A.*13차\|Line B.*14차'` on both | LOCAL 0, TEMPLATE 0; 1-line lesson reference present in both |
+| AC-SHA-015 (moai.md §8 forward-link) | PASS | `grep -c 'moai.md.*§8'` in Cross-references | 1 forward-link entry (bidirectional link closed) |
+| AC-SHA-016 (local reader-flow restored) | PASS | `grep -n '^## '` on LOCAL | Order: Anti-Patterns → Worktree-Anchored → Diet → V0 → Cross-references (target met) |
+
+### Trust-but-verify batch (M6, single-turn parallel, observed 2026-06-17)
+
+```
+$ go test ./internal/template/... -count=1
+ok  	github.com/modu-ai/moai-adk/internal/template	0.798s
+?   	github.com/modu-ai/moai-adk/internal/template/scripts	[no test files]
+
+$ go vet ./...
+(exit 0, clean)
+
+$ diff .claude/rules/moai/workflow/session-handoff.md internal/template/templates/.claude/rules/moai/workflow/session-handoff.md | wc -l
+0
+$ cmp .claude/rules/moai/workflow/session-handoff.md internal/template/templates/.claude/rules/moai/workflow/session-handoff.md && echo identical
+identical
+
+$ grep -cE 'SPEC-V3R6-MULTI-SESSION-COORD-001|REQ-COORD-009|LIFECYCLE-SYNC-GATE|HARNESS-NAMESPACE|SESSION-AUTO-RESUME' internal/template/templates/.claude/rules/moai/workflow/session-handoff.md
+0
+$ grep -nE 'SPEC-V3R[0-9]-[A-Z]|REQ-(ATR|WO|COORD|UNP|LNC|TII)-[0-9]{3}|Hugo docs|claude-md-guide|claude-design-handoff|cross-line (empirical )?입증|line [ABC] [0-9]+차' internal/template/templates/.claude/rules/moai/workflow/session-handoff.md
+(exit 1 = no matches = clean)
+
+$ sed -n '29,45p' .claude/rules/moai/workflow/session-handoff.md | grep -c '진입'
+0
+$ sed -n '29,45p' internal/template/templates/.claude/rules/moai/workflow/session-handoff.md | grep -c '진입'
+0
+
+$ wc -l .claude/rules/moai/workflow/session-handoff.md internal/template/templates/.claude/rules/moai/workflow/session-handoff.md
+     324 .claude/rules/moai/workflow/session-handoff.md
+     324 internal/template/templates/.claude/rules/moai/workflow/session-handoff.md
+     648 total
+
+$ grep -cE 'Line C.*9차|Line C.*10차|Line A.*13차|Line B.*14차' .claude/rules/moai/workflow/session-handoff.md
+0
+$ grep -cE 'Line C.*9차|Line C.*10차|Line A.*13차|Line B.*14차' internal/template/templates/.claude/rules/moai/workflow/session-handoff.md
+0
+
+$ go test ./internal/template/... -run TestRuleTemplateMirrorDrift -count=1
+ok  	github.com/modu-ai/moai-adk/internal/template	0.213s
+```
+
+### Net content delta collapse
+
+Pre-SPEC baseline: LOCAL 314 lines / TEMPLATE 209 lines / 111 change-line diff / 117 raw-diff lines / 105-line net content delta.
+Post-M5: LOCAL 324 lines / TEMPLATE 324 lines / 0 diff lines / byte-identical.
+The 105-line net LOCAL↔TEMPLATE content delta is collapsed to zero on canonical + neutralized-appendix content. A user running `moai init` / `moai update` now receives the Diet Constraints budgets, AP-D catalogue, Pre-emit self-check, V0 Abort Gate canonical commands, AP-V catalogue, and the /cd cache-preserving alternative — doctrine previously trapped local-only.
+
+### Residual-risk / Gaps
+
+- **Gap-1**: The Block 1 Field-by-Field spec (L74) retains an `Opus 4.7+` reference for the Adaptive Thinking capability note. This is NOT a threshold label (it describes which models support Adaptive Thinking), is consistent with `prompting-best-practices.md` and `moai-constitution.md`, and is out of REQ-SHA-012 scope (constraint #3 forbids canonical FORMAT edits beyond the 4 explicit realignments). Non-blocking.
+- **Gap-2**: The 18-file workflow/ coverage audit (AC-SHA-008) is satisfied by research.md §A.0 (plan-phase). The FL-1 deferral (bulk-enroll the 16 in-sync siblings) remains a follow-up SPEC, out of scope here.
+- **Gap-3**: `lifecycle-sync-gate.md` template-missing (EXCL-006) deferred to a follow-up SPEC. This SPEC depends on it for V3R6 era doctrine but does NOT port it.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — manager-develop populates on M6 completion>_
+**Run-phase status**: audit-ready (M1-M6 complete, all 17 AC rows PASS, Trust-but-verify batch GREEN).
+
+**Run-phase commit range**: `18ca4a6c9` (M1) .. `59c366a68` (M5), branch `worktree-agent-a350b7a40faaf39c6`.
+
+**run_complete_at**: 2026-06-17
+**run_commit_sha**: `59c366a68` (M5 final — M6 is verification-only, no new content commit; the §E.2/§E.3 evidence lands in this progress.md edit which will be committed as the run-phase-close commit).
+**run_status**: audit-ready
+**ac_pass_count**: 17 (13 MUST + 4 SHOULD; AC-SHA-006a/006b both counted as they share REQ-SHA-006)
+**ac_fail_count**: 0
+**preserve_list_post_run_count**: 0 (no PRESERVE-list files modified)
+**l44_pre_commit_fetch**: not applicable (L1 worktree autonomous; orchestrator reconciles via FF)
+**l44_post_push_fetch**: pending push (orchestrator handles worktree → main FF integration)
+**new_warnings_or_lints_introduced**: 0 (go vet clean, TestTemplateNoInternalContentLeak PASS, mirror test GREEN)
+**cross_platform_build**: not applicable (doctrine/documentation SPEC; no production Go code changed; single test-file allowlist append compiles on darwin/amd64)
+**total_run_phase_files**: 3 (`.claude/rules/moai/workflow/session-handoff.md` LOCAL + TEMPLATE mirror + `internal/template/rule_template_mirror_test.go`) + 6 SPEC artifacts (spec/plan/acceptance/research/design/progress) tracked from plan-phase
+**m1_to_mN_commit_strategy**: 5 milestone commits (M1-M5), one per milestone, each with `Authored-By-Agent: manager-develop` trailer; M6 is verification-only (§E.2/§E.3 evidence in this progress.md edit committed as run-phase-close)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
