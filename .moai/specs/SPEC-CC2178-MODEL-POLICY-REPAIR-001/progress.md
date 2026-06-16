@@ -153,4 +153,32 @@ docs_surface_skipped: README/docs-site   # settings keys are template-managed, n
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending mx-phase>_
+```yaml
+mx_complete_at: 2026-06-16
+mx_commit_sha: (this commit)   # orchestrator-direct backfill after Mx commit lands
+frontmatter_transition: implemented → completed
+mx_performer: orchestrator-direct   # canonical owner allows manager-docs OR orchestrator (Mx chore)
+4_phase_close: complete   # plan (b957...) + run (b83da250e final) + sync (b43f45df0) + Mx (this)
+era_classification: V3R6 (H-4: §E.2 + §E.5 present + both commit_sha non-empty)
+```
+
+### Mx-phase verification (5-section format per verification-claim-integrity.md)
+
+**Claim**: 4-phase SPEC lifecycle (plan → run → sync → Mx) is fully closed; frontmatter status `implemented → completed` transition performed by canonical-permitted owner (orchestrator); all milestone commit SHAs traceable; era classification resolves to V3R6 (subject to drift detection, not grandfather-protected).
+
+**Evidence** (verbatim observations 2026-06-16):
+- `git log --oneline` shows the full chain: plan-phase iter-3 (`1dd629a2c`) → run M1-M6+M2.1 (`b83da250e` final) → sync (`b43f45df0`) → sync backfill (`f26410445`) → this Mx commit.
+- `grep '^status:' spec.md` (post-edit) → `status: completed`.
+- progress.md §E.1/§E.3/§E.4 all carry audit-ready signals with real commit SHAs; §E.5 (this section) closes the set.
+
+**Baseline-attribution**: measured against the tree at the Mx commit HEAD in this run (2026-06-16). The 4-phase commit chain is the actual `git log` output, not a carry-over from a prior SPEC.
+
+**Gaps** (what was NOT observed):
+- **sync-auditor independent 4-dimension scoring was NOT run.** manager-docs spawn failed 2x (parent context window limit, GLM backend); the same constraint makes sync-auditor spawn high-risk. The user approved skipping sync-auditor and proceeding orchestrator-direct to Mx close. The sync-phase §E.4 carries a self-verification 5-section report instead of an independent auditor verdict — this is a weaker assurance and should be noted: the SPEC closed without an independent skeptical pass.
+- mx_commit_sha is the literal `(this commit)` placeholder — orchestrator backfills the real SHA after this commit lands.
+- `moai spec audit` drift detection not re-run post-Mx (the era classification V3R6 is asserted from the H-4 heuristic, not confirmed by the audit binary in this turn).
+- `go test ./...` full suite not re-run at Mx (doc-only Mx commit; run-phase §E.3 already recorded the 2 pre-existing unrelated failures; no Go code touched since sync).
+
+**Residual-risk**:
+- **Missing independent sync-auditor pass** is the primary residual risk. The CHANGELOG entry, frontmatter transition, and §E.4/§E.5 were authored orchestrator-direct (delegation exception, user-approved). A future session or audit may want to run `sync-auditor` retroactively against `b43f45df0..f26410445` to validate CHANGELOG accuracy vs the run-phase diff.
+- The `Authored-By-Agent: orchestrator-direct` trailer on the sync/Mx commits records that both the `in-progress → implemented` and `implemented → completed` transitions were performed orchestrator-direct. The `in-progress → implemented` transition's canonical owner is manager-docs; orchestrator-direct is an honest deviation (user-approved, context-limit driven) and may surface as `OwnershipTransitionInvalid` in `moai spec lint`. The `implemented → completed` transition permits orchestrator as canonical owner, so no deviation there.
