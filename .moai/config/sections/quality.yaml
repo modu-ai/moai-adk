@@ -3,6 +3,16 @@ constitution:
     enforce_quality: true
     test_coverage_target: 85
     coverage_threshold: 0
+    # cycle_type_routing documents the harness-level -> cycle_type dispatch table.
+    # The Go resolver internal/config.ResolveCycleType (SPEC-CC2178-MODEL-POLICY-REPAIR-001 M3)
+    # is the SSOT; this section is human-readable documentation. The explicit
+    # development_mode pin above (tdd) is preserved per AG-01 backward-compat —
+    # ResolveCycleType returns it verbatim when non-empty, regardless of harness level.
+    cycle_type_routing:
+        minimal: ddd    # lightweight: characterization-test-first DDD without full TDD overhead
+        standard: tdd   # default unchanged — full RED-GREEN-REFACTOR
+        thorough: tdd   # critical features retain full TDD discipline
+        fallback: tdd   # unknown/empty harness level — never returns empty
     ddd_settings:
         require_existing_tests: true
         characterization_tests: true
