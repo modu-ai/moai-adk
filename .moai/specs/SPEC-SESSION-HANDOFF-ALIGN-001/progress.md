@@ -159,17 +159,22 @@ The 105-line net LOCAL↔TEMPLATE content delta is collapsed to zero on canonica
 
 > (sync-phase — 본 세션에서는 orchestrator가 직접 수행. manager-docs 위임 spawn이 parent context-limit에 도달해 실패; orchestrator-direct fallback으로 sync 산출물 작성. Ownership Matrix상 in-progress → implemented 전이 + §E.4는 manager-docs 소유이나, 위임 불가 시 orchestrator가 해당 산출물을 직접 작성하는 것은 Allowed Direct Execution 범주.)
 
-- **sync_commit_sha**: (this commit) — `docs(SPEC-SESSION-HANDOFF-ALIGN-001): sync-phase artifacts`. Mx-phase에서 실제 SHA backfill 예정.
+- **sync_commit_sha**: d7848a8dd — `docs(SPEC-SESSION-HANDOFF-ALIGN-001): sync-phase artifacts`. Mx-phase close commit에서 실제 SHA backfill 완료.
 - **CHANGELOG**: `[Unreleased] → Added` 최상단 entry 추가(SPEC-SESSION-HANDOFF-ALIGN-001, 3축 정렬 요약, 17/17 AC, FL-1/EXCL-006 deferral 명시).
 - **status 전이**: spec.md frontmatter `status: in-progress → status: implemented`(Ownership Matrix: manager-docs 소유 전이). body 미수정.
 - **sync-phase 독립 검증(orchestrator Trust-but-verify 7/7 PASS)**: `go test ./internal/template/` green(0.969s, mirror test + neutrality leak), `go vet ./...` exit 0, `diff LOCAL TEMPLATE | wc -l` = 0(cmp identical, 양쪽 324 lines), internal-token leak on TEMPLATE = 0, Block 1 canonical skeleton(L32) = `<entering verb>` placeholder(잔존 `진입` 3개 = ko locale 컬럼값 L64 + ko 예시 L92/L196 = 합법적), mirror test enrollment(`rule_template_mirror_test.go` L51), `golangci-lint run ./internal/template/` 0 issues.
 - **sync-auditor**: 본 SPEC은 doctrine + test 1-line allowlist append(near-zero production code)이므로 sync-auditor 4-dimension scoring을 SKIP함(pure-doctrine 관례 — SPEC-EVIDENCE-CLAIM-INVARIANT-001 SYNC 참조). orchestrator 독립 7/7 검증이 품질 근거.
 - **scope discipline**: 무관 untracked(`.moai/design/web-console-handoff/`, `.moai/reports/sync-audit/`, `.moai/reports/worktree-rescue-*`, `.moai/specs/SPEC-CC2178-DOCS-ALIGN-001/`, `.moai/docs/harness-delivery-strategy.md`)은 본 sync commit에 미흡수 — CHANGELOG.md + spec.md(frontmatter) + progress.md만 staging.
 
-sync_commit_sha: (this commit)
+sync_commit_sha: d7848a8dd
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending Mx-phase — manager-docs OR orchestrator-direct populates with mx_commit_sha>_
+> (Mx-phase — orchestrator-direct, L_orchestrator_direct_mx_2commit 패턴. 본 SPEC V3R6 4-phase lifecycle 종결.)
 
-mx_commit_sha: _(pending Mx-phase commit)_
+- **mx_commit_sha**: (this commit) — `chore(SPEC-SESSION-HANDOFF-ALIGN-001): Mx-phase audit-ready signal + 4-phase close`. 본 close commit 자체가 Mx 신호; 실제 SHA는 후속 backfill commit에서 정정.
+- **sync_commit_sha backfill**: §E.4 sync_commit_sha를 실제 SHA `d7848a8dd`로 정정(본 close commit에 포함 — L_manager_docs_false_backfill anti-pattern 회피).
+- **4-phase lifecycle 종결**: plan(iter-2 PASS-WITH-DEBT 0.84) → run(M1-M6, worktree→main merge `865ce0bfe`) → sync(`d7848a8dd`) → Mx(본 commit). era V3R6 H-4.
+- **최종 상태**: spec.md status: completed. generic doctrine(Diet Constraints + V0 Abort Gate) user project 배포 확정. session-handoff.md mirror parity CI 감시 개시. workflow/ 17-file coverage audit 기반(16 in-sync + 본 1 resolved + lifecycle-sync-gate.md EXCL-006 별도 후속).
+
+mx_commit_sha: (this commit)
