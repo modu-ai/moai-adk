@@ -84,3 +84,14 @@ total_run_phase_files: 5
 ### m1_to_mN_commit_strategy
 
 Single run-phase commit (M1–M5 batched — independent content edits M1–M4 + mechanism M5 applied last). Tier S doc-convention SPEC; no per-milestone commit fragmentation needed. Frontmatter `draft → in-progress` transition lands on this same commit (manager-develop M1 ownership).
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+sync_complete_at: 2026-06-17
+sync_commit_sha: "(this commit)"
+sync_status: implemented
+frontmatter_transition: "in-progress → implemented (owned by manager-docs; executed orchestrator-direct — manager-docs spawn hit subagent context-window limit, fallback per track-1 precedent + CLAUDE.local.md §16)"
+changelog_entry_count: 1 (SPEC-V3R6-SESSION-HANDOFF-SSOT-ALIGN-001 under [Unreleased] > Added; grep -c = 1, B12 duplicate-guard PASS)
+ac_count_changelog: 7 (6 MUST + 1 SHOULD — matches acceptance.md SSOT)
+spec_lint_post_sync: "0 error 0 warning expected (StatusGitConsistency warning resolved by the in-progress → implemented flip)"
+byte_parity_unchanged: "session-handoff 28381B + moai 53021B, both trees (sync-phase did NOT touch doctrine files)"
