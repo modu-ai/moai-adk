@@ -64,18 +64,24 @@ const (
 )
 
 // agentEffortMap specifies explicit effort overrides for reasoning-heavy agents.
-// Only the 6 Opus 4.7 reasoning agents have entries.
-// The remaining 22 agents return "" (empty string) so the Opus 4.7 runtime
-// default (xhigh) applies without any explicit override injection.
+//
+// SPEC-CC2178-MODEL-POLICY-REPAIR-001 M2: the map was reconciled against the
+// 8-agent retained catalog. The 3 archived phantom keys (manager-strategy,
+// expert-security, expert-refactoring) were removed; plan-auditor and
+// sync-auditor were synced from "high" to "xhigh" to match their hand-authored
+// agent files (map←file reconciliation per REQ-MPR-011b); manager-develop
+// (xhigh) and builder-harness (high) were added as the missing retained
+// agents. ApplyEffortPolicy + GetAgentEffort are NOT retired — they have 2
+// production callers (initializer.go, update.go); full retirement is deferred
+// to SPEC-CC2178-EFFORT-MAP-RETIREMENT-001 (see research.md §3).
 //
 // Key: agent name, Value: effort level string
 var agentEffortMap = map[string]string{
-	"manager-spec":       EffortLevelXHigh,
-	"manager-strategy":   EffortLevelXHigh,
-	"plan-auditor":       EffortLevelHigh,
-	"sync-auditor":   EffortLevelHigh,
-	"expert-security":    EffortLevelHigh,
-	"expert-refactoring": EffortLevelHigh,
+	"manager-spec":    EffortLevelXHigh,
+	"plan-auditor":    EffortLevelXHigh, // REQ-MPR-011b: synced from high → xhigh (matches agent file)
+	"sync-auditor":    EffortLevelXHigh, // REQ-MPR-011b: synced from high → xhigh (matches agent file)
+	"manager-develop": EffortLevelXHigh, // REQ-MPR-011a: added retained agent (matches agent file)
+	"builder-harness": EffortLevelHigh,  // REQ-MPR-011a: added retained agent (matches agent file)
 }
 
 // GetAgentEffort returns the effort level override for the given agent.
@@ -190,29 +196,26 @@ func ApplyEffortPolicy(projectRoot string, mgr manifest.Manager) error {
 
 // agentModelMap defines the model assignment for each agent under each policy.
 // Key: agent name, Value: [high_model, medium_model, low_model]
+//
+// SPEC-CC2178-MODEL-POLICY-REPAIR-001 M2: the map was cleaned against the
+// 8-agent retained catalog. The 16 canonical phantom keys (13 archived agents
+// + manager-ddd/manager-tdd legacy aliases of manager-develop + builder-agent
+// legacy alias of builder-harness + builder-skill/builder-plugin archived
+// builder variants) were removed. manager-develop and builder-harness were
+// added back under their canonical names with the iter-2 tuple {sonnet,
+// sonnet, haiku} — aligning with the SPEC's Default-Sonnet cost-routing
+// thesis (D6 rationale: pinning the busiest run-phase agent to Opus would
+// contradict the thesis). The 3 meta/evaluator agents (plan-auditor,
+// sync-auditor) and Explore are intentionally NOT in the map — they use
+// model: inherit per model-policy.md § Inherit-by-Default.
 var agentModelMap = map[string][3]string{
-	// Manager Agents
-	"manager-spec":     {"opus", "opus", "sonnet"},
-	"manager-ddd":      {"opus", "sonnet", "sonnet"},
-	"manager-tdd":      {"opus", "sonnet", "sonnet"},
-	"manager-docs":     {"sonnet", "haiku", "haiku"},
-	"manager-quality":  {"haiku", "haiku", "haiku"},
-	"manager-project":  {"opus", "sonnet", "haiku"},
-	"manager-strategy": {"opus", "opus", "sonnet"},
-	"manager-git":      {"haiku", "haiku", "haiku"},
-	// Expert Agents
-	"expert-backend":     {"opus", "sonnet", "sonnet"},
-	"expert-frontend":    {"opus", "sonnet", "sonnet"},
-	"expert-security":    {"opus", "opus", "sonnet"},
-	"expert-devops":      {"opus", "sonnet", "haiku"},
-	"expert-performance": {"opus", "sonnet", "haiku"},
-	"expert-debug":       {"opus", "sonnet", "sonnet"},
-	"expert-testing":     {"opus", "sonnet", "haiku"},
-	"expert-refactoring": {"opus", "sonnet", "sonnet"},
-	// Builder Agents
-	"builder-agent":  {"opus", "sonnet", "haiku"},
-	"builder-skill":  {"opus", "sonnet", "haiku"},
-	"builder-plugin": {"opus", "sonnet", "haiku"},
+	// Retained Manager Agents (5 entries total)
+	"manager-spec":    {"opus", "opus", "sonnet"},
+	"manager-develop": {"sonnet", "sonnet", "haiku"}, // REQ-MPR-009 iter-2 tuple (D6: Default-Sonnet-aligned)
+	"manager-docs":    {"sonnet", "haiku", "haiku"},
+	"manager-git":     {"haiku", "haiku", "haiku"},
+	// Retained Builder Agent
+	"builder-harness": {"sonnet", "sonnet", "haiku"}, // REQ-MPR-009 iter-2 tuple (D6: Default-Sonnet-aligned)
 }
 
 // GetAgentModel returns the model string for a given agent under the specified policy.
