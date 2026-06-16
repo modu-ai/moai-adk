@@ -110,7 +110,7 @@ COMPLETE. 9 files changed (1 mirror-direct session-handoff.md + 8 docs-site 4-lo
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - **sync_complete_at**: 2026-06-17
-- **sync_commit_sha**: "(this commit)" — backfilled post-commit
+- **sync_commit_sha**: 12b81b0d6
 - **sync_status**: audit-ready
 - **changelog_entry_added**: true (CHANGELOG.md `[Unreleased]` → `### Added`; B12 duplicate pre-check `grep -c 'SPEC-CC2178-DOCS-ALIGN-001' CHANGELOG.md` = 0 before add)
 - **status_transition**: in-progress → implemented (manager-docs owned per Status Transition Ownership Matrix; executed orchestrator-direct — see verification_basis)
