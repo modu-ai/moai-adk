@@ -99,7 +99,7 @@ byte_parity_unchanged: "session-handoff 28381B + moai 53021B, both trees (sync-p
 ## §E.5 Mx-phase Audit-Ready Signal
 
 mx_complete_at: 2026-06-17
-mx_commit_sha: "(this commit)"
+mx_commit_sha: "6280851ad4bbc8071225d7070b78eb675edc0fdf"
 mx_status: completed
 frontmatter_final_transition: "implemented → completed (orchestrator-direct 4-phase close)"
 4_phase_close: "plan(manager-spec) + run(manager-develop) + sync(orchestrator-direct fallback) + mx(orchestrator-direct) — all 4 phases complete"
