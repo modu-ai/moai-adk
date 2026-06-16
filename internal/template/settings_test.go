@@ -285,6 +285,71 @@ func TestSettingsTemplateNewFields(t *testing.T) {
 	}
 }
 
+// === SPEC-CC2178-MODEL-POLICY-REPAIR-001 M4 (RED tests for Default-model lever) ===
+//
+// These tests assert the CC 2.1.175 Default-model cost lever is wired in the
+// settings.json template: availableModels (allowlist), enforceAvailableModels
+// (enforce flag), and model (Default = sonnet). They FAIL until the template
+// gains the 3 sibling keys (TDD RED phase).
+//
+// AC bindings: AC-MPR-001 (availableModels with 3 aliases), AC-MPR-002
+// (enforceAvailableModels: true), AC-MPR-003 (Default model = sonnet).
+func TestSettingsTemplateDefaultModelLever(t *testing.T) {
+	ctx := testContext("darwin")
+	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
+
+	var settings map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+
+	// AC-MPR-003: Default model is sonnet (the [1m]-safe cost-routing lever).
+	model, ok := settings["model"]
+	if !ok {
+		t.Fatal(`missing top-level "model" key (AC-MPR-003: Default model must be set to sonnet)`)
+	}
+	if model != "sonnet" {
+		t.Errorf(`model = %v, want "sonnet" (AC-MPR-003: Default-Sonnet cost-routing thesis)`, model)
+	}
+
+	// AC-MPR-002: enforceAvailableModels: true (the allowlist constrains Default resolution).
+	enforce, ok := settings["enforceAvailableModels"]
+	if !ok {
+		t.Fatal(`missing "enforceAvailableModels" key (AC-MPR-002)`)
+	}
+	if enforce != true {
+		t.Errorf(`enforceAvailableModels = %v, want true (AC-MPR-002)`, enforce)
+	}
+
+	// AC-MPR-001: availableModels lists exactly the 3 CC aliases (sonnet, opus, haiku).
+	avail, ok := settings["availableModels"]
+	if !ok {
+		t.Fatal(`missing "availableModels" key (AC-MPR-001)`)
+	}
+	arr, ok := avail.([]any)
+	if !ok {
+		t.Fatalf(`availableModels is %T, want a JSON array`, avail)
+	}
+	wantSet := map[string]bool{"sonnet": true, "opus": true, "haiku": true}
+	gotSet := make(map[string]bool)
+	for _, v := range arr {
+		s, ok := v.(string)
+		if !ok {
+			t.Errorf("availableModels entry %v is %T, want string", v, v)
+			continue
+		}
+		gotSet[s] = true
+	}
+	for want := range wantSet {
+		if !gotSet[want] {
+			t.Errorf("availableModels missing %q; got %v", want, gotSet)
+		}
+	}
+	if len(arr) != 3 {
+		t.Errorf("availableModels has %d entries, want exactly 3 (sonnet, opus, haiku); got %v", len(arr), arr)
+	}
+}
+
 func TestSettingsTemplateAllHookEvents(t *testing.T) {
 	t.Parallel()
 
