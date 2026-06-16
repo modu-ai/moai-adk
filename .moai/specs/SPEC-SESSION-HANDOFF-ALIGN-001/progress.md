@@ -172,9 +172,9 @@ sync_commit_sha: d7848a8dd
 
 > (Mx-phase — orchestrator-direct, L_orchestrator_direct_mx_2commit 패턴. 본 SPEC V3R6 4-phase lifecycle 종결.)
 
-- **mx_commit_sha**: (this commit) — `chore(SPEC-SESSION-HANDOFF-ALIGN-001): Mx-phase audit-ready signal + 4-phase close`. 본 close commit 자체가 Mx 신호; 실제 SHA는 후속 backfill commit에서 정정.
+- **mx_commit_sha**: 65902742f — `chore(SPEC-SESSION-HANDOFF-ALIGN-001): Mx-phase audit-ready signal + 4-phase close`. 실제 SHA backfill 완료.
 - **sync_commit_sha backfill**: §E.4 sync_commit_sha를 실제 SHA `d7848a8dd`로 정정(본 close commit에 포함 — L_manager_docs_false_backfill anti-pattern 회피).
 - **4-phase lifecycle 종결**: plan(iter-2 PASS-WITH-DEBT 0.84) → run(M1-M6, worktree→main merge `865ce0bfe`) → sync(`d7848a8dd`) → Mx(본 commit). era V3R6 H-4.
 - **최종 상태**: spec.md status: completed. generic doctrine(Diet Constraints + V0 Abort Gate) user project 배포 확정. session-handoff.md mirror parity CI 감시 개시. workflow/ 17-file coverage audit 기반(16 in-sync + 본 1 resolved + lifecycle-sync-gate.md EXCL-006 별도 후속).
 
-mx_commit_sha: (this commit)
+mx_commit_sha: 65902742f
