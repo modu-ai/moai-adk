@@ -555,6 +555,10 @@ $ gh pr view 42
 
 `/moai sync` 仅负责**记录已完成实现的代码**。`/moai` 自动执行**整个工作流**，从 SPEC 创建到实现和文档。
 
+## `/cd` 缓存保留恢复 (CC 2.1.169+)
+
+跨目录边界恢复多阶段工作流时（例如在 run 和 sync 之间进入 L2 worktree），Claude Code 2.1.169+ 提供了 `/cd <path>` — 一个在 **保留提示缓存的同时** 切换会话工作目录的命令，使累积的推理上下文在 cwd 更改时得以保留而非重建。这是相对于打开新终端的缓存保留替代方案：`/cd` 保留上下文，新终端冷启动。在希望保留 run 阶段上下文并进入 L2 worktree 进行 sync 阶段时，`/cd <worktree-path>` 是更低摩擦的路径。切换如何反映在 `cwd` 字段请参阅 [Statusline 指南](/zh/advanced/statusline)。
+
 ## 相关文档
 
 - [/moai run](/workflow-commands/moai-run) - 上一阶段: DDD 实现

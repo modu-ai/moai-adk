@@ -360,6 +360,10 @@ NOW=$(date +%s)
 echo '{"session_id":"test","model":{"display_name":"Opus 4.7"},"workspace":{"repo":{"host":"github.com","owner":"modu-ai","name":"moai-adk"}},"version":"2.1.146","output_style":{"name":"MoAI"},"context_window":{"used_percentage":62,"context_window_size":1000000},"exceeds_200k_tokens":true,"effort":{"level":"xhigh"},"thinking":{"enabled":true},"rate_limits":{"five_hour":{"used_percentage":56,"resets_at":'$((NOW + 2820))'},"seven_day":{"used_percentage":13,"resets_at":'$((NOW + 518400))'}},"cost":{"total_duration_ms":17520000},"pr":{"number":1234,"url":"https://github.com/modu-ai/moai-adk/pull/1234","review_state":"approved"}}' | moai statusline
 ```
 
+## `/cd` キャッシュ保持ディレクトリ切り替え (CC 2.1.169+)
+
+Claude Code 2.1.169+ は、セッションの作業ディレクトリを **プロンプトキャッシュを保持したまま** 変更する `/cd <path>` コマンドを提供します — statusline の `cwd` フィールドは新しいディレクトリを反映するように更新されますが、進行中の推論コンテキストは再構築されません。これは新しいターミナルセッションを開くことに対するキャッシュ保持の代替です: `/cd` は蓄積されたコンテキストを保持し、新しいターミナルは最初からコールドスタートします。statusline がコンテキスト損失なく離れたい `cwd` を表示する場合 (例: セッション中の L2 worktree への切り替え)、`/cd` が低摩擦なパスです。resume パターンの統合は [セッションハンドオフ](/ja/workflow-commands/moai-sync) を参照してください。
+
 ## 関連ドキュメント
 
 - [Settings JSON](/advanced/settings-json) — Claude Code `statusLine` フィールド設定

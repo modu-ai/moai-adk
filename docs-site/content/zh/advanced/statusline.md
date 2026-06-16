@@ -360,6 +360,10 @@ NOW=$(date +%s)
 echo '{"session_id":"test","model":{"display_name":"Opus 4.7"},"workspace":{"repo":{"host":"github.com","owner":"modu-ai","name":"moai-adk"}},"version":"2.1.146","output_style":{"name":"MoAI"},"context_window":{"used_percentage":62,"context_window_size":1000000},"exceeds_200k_tokens":true,"effort":{"level":"xhigh"},"thinking":{"enabled":true},"rate_limits":{"five_hour":{"used_percentage":56,"resets_at":'$((NOW + 2820))'},"seven_day":{"used_percentage":13,"resets_at":'$((NOW + 518400))'}},"cost":{"total_duration_ms":17520000},"pr":{"number":1234,"url":"https://github.com/modu-ai/moai-adk/pull/1234","review_state":"approved"}}' | moai statusline
 ```
 
+## `/cd` 缓存保留目录切换 (CC 2.1.169+)
+
+Claude Code 2.1.169+ 提供了 `/cd <path>` 命令，可在 **保留提示缓存的同时** 更改会话的工作目录 — statusline 的 `cwd` 字段更新以反映新目录，但进行中的推理上下文不会重建。这是相对于打开新终端会话的缓存保留替代方案：`/cd` 保留累积的上下文，而新终端从零开始冷启动。当 statusline 显示您想在不丢失上下文的情况下离开的 `cwd` 时（例如会话中切换到 L2 worktree），`/cd` 是更低摩擦的路径。恢复模式集成请参阅 [会话交接](/zh/workflow-commands/moai-sync)。
+
 ## 相关文档
 
 - [Settings JSON](/advanced/settings-json) — Claude Code `statusLine` 字段配置

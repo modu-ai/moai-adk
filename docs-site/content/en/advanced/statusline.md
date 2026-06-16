@@ -360,6 +360,10 @@ NOW=$(date +%s)
 echo '{"session_id":"test","model":{"display_name":"Opus 4.7"},"workspace":{"repo":{"host":"github.com","owner":"modu-ai","name":"moai-adk"}},"version":"2.1.146","output_style":{"name":"MoAI"},"context_window":{"used_percentage":62,"context_window_size":1000000},"exceeds_200k_tokens":true,"effort":{"level":"xhigh"},"thinking":{"enabled":true},"rate_limits":{"five_hour":{"used_percentage":56,"resets_at":'$((NOW + 2820))'},"seven_day":{"used_percentage":13,"resets_at":'$((NOW + 518400))'}},"cost":{"total_duration_ms":17520000},"pr":{"number":1234,"url":"https://github.com/modu-ai/moai-adk/pull/1234","review_state":"approved"}}' | moai statusline
 ```
 
+## `/cd` Cache-Preserving Directory Switch (CC 2.1.169+)
+
+Claude Code 2.1.169+ ships a `/cd <path>` command that changes the session's working directory **while preserving the prompt cache** — the statusline's `cwd` field updates to reflect the new directory, but the in-flight reasoning context is not rebuilt. This is the cache-preserving complement to opening a new terminal session: `/cd` keeps the accumulated context, while a new terminal cold-starts from scratch. When the statusline shows a `cwd` you want to leave without losing context (e.g. switching into an L2 worktree mid-session), `/cd` is the lower-friction path. See [Session Handoff](/workflow-commands/moai-sync) for the resume-pattern integration.
+
 ## Related Documentation
 
 - [Settings JSON](/advanced/settings-json) — Claude Code `statusLine` field configuration
