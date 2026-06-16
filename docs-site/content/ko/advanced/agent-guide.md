@@ -395,6 +395,10 @@ workflow:
 
 각 역할은 도메인별 지침이 주입된 `Agent(subagent_type: "general-purpose")`로 생성됩니다.
 
+## `disallowedTools` MCP 서버 수준 강제
+
+에이전트의 `disallowedTools` frontmatter 필드가 MCP 도구를 참조할 때 (예: `mcp__context7__*`, `mcp__web_search_prime__webSearchPrime`), 제한은 MCP 서버 수준에서 강제됩니다 (CC 2.1.178+): 도구의 specs가 에이전트에게 전혀 노출되지 않으므로, 에이전트는 간접적으로도 호출할 수 없습니다. 이는 내장 도구에 대한 일반 도구 거부 동작보다 더 엄격합니다 — MCP 도구에 대한 `disallowedTools` 항목은 hard gate이지 soft prompt가 아닙니다. MCP 도구 접근 범위를 지정할 때 이 점을 염두에 두고 에이전트를 작성하세요.
+
 ## 중첩 `.claude/` 선행 규칙
 
 중첩 체인을 따라 둘 이상의 `.claude/agents/` 디렉터리에 같은 에이전트 이름이 나타나면 (프로젝트 루트 vs 중첩 하위 디렉터리 자체의 `.claude/agents/`), **closest-directory-wins**(가장 가까운 디렉터리 우선) 규칙이 충돌을 해결합니다: 현재 작업 디렉터리에 가장 가까운 `.claude/agents/`가 더 위쪽 트리의 것을 가립니다(shadow). 이는 중첩 `.claude/` 디렉터리 하위에서 스킬, 워크플로우, output-styles에 이미 적용되는 선행 규칙과 동일합니다 — 가장 안쪽의 `.claude/`가 이깁니다. 관리(enterprise) 설정은 중첩 깊이와 무관하게 우선순위 1로 유지됩니다.

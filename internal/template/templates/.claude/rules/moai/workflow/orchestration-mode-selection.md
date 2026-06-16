@@ -85,6 +85,10 @@ The orchestrator collects the following signals before traversing the decision t
 - **concurrency benefit**: HIGH for research-heavy work (parallel reads, independent perspectives); LOW for coding-heavy work (Anthropic's coding-task parallelism caveat — most coding tasks involve fewer truly parallelizable tasks than research)
 - **Agent Teams prereqs status**: each of the three Agent Teams capability-gate conditions individually verified
 
+### §B.1b Auto-mode pre-launch classifier (CC 2.1.178+)
+
+When Claude Code runs in **auto mode** (per-tool auto-approval, paired with `/goal` for unattended loops), a pre-launch classifier evaluates each subagent spawn before it is dispatched — the classifier gates whether a spawn proceeds without a per-tool approval prompt. This is a platform-level mechanism that runs ahead of the Phase 0.95 mode-selection logic documented here; Phase 0.95 selects which mode the orchestrator uses to structure work, while the auto-mode classifier gates the per-spawn approval surface underneath that choice. The two are complementary: `/goal` (see `.claude/rules/moai/workflow/goal-directive.md`) removes per-turn STOP prompts, auto mode removes per-tool approval prompts, and Phase 0.95 mode selection decides HOW the orchestrator fans out. An active auto-mode classifier does NOT relax Implementation Kickoff Approval (the plan-to-implement human gate) — the human gate is decided before any run-phase work begins, and the classifier only governs per-spawn approval latency within an already-approved run.
+
 ### §B.2 Tie-breaker rules (boundary cases)
 
 Phase 0.95 boundary cases (scope at threshold ±1, ambiguous domain count, etc.) follow these defaults:

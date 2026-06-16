@@ -40,6 +40,7 @@ Claude Code supports **10 event types**.
 | `Setup` | Start with `--init`, `--init-only`, `--maintenance` flags | Initial setup, environment checks |
 | `SessionStart` | When session starts | Project info display, environment initialization |
 | `SessionEnd` | When session ends | Cleanup, context storage |
+| `PostSession` | After a session ends (self-hosted runner, CC 2.1.169+) | Post-session cleanup/telemetry; fires once the session is fully torn down, later than `SessionEnd`. MoAI-ADK does not wire this hook today — documented as an available option for self-hosted deployments. |
 | `PreCompact` | Before context compact (`/clear` etc) | Backup important context |
 | `PreToolUse` | Before tool use | Security validation, block dangerous commands |
 | **`PermissionRequest`** | When permission dialog shown | Auto allow/deny decisions |

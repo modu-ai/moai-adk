@@ -40,6 +40,7 @@ Claude Code 支持 **10 种事件类型**。
 | `Setup` | 使用 `--init`,`--init-only`,`--maintenance` 标志启动时 | 初始设置、环境检查 |
 | `SessionStart` | 会话开始时 | 显示项目信息、环境初始化 |
 | `SessionEnd` | 会话结束时 | 清理工作、上下文保存 |
+| `PostSession` | 会话结束后 (self-hosted runner，CC 2.1.169+) | 会话后清理/遥测；在会话完全拆除后触发，晚于 `SessionEnd`。MoAI-ADK 目前不接入此钩子 — 作为面向 self-hosted 部署的可用选项进行文档化。 |
 | `PreCompact` | 上下文压缩前 (`/clear` 等) | 备份重要上下文 |
 | `PreToolUse` | 工具使用前 | 安全验证、拦截危险命令 |
 | **`PermissionRequest`** | 显示权限对话框时 | 自动允许/拒绝决定 |

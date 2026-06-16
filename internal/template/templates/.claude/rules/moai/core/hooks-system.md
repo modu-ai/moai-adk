@@ -18,6 +18,7 @@ Active settings.json keys: 22. RETIRE-OBS-ONLY (Go-only, opt-in via system.yaml)
 |-------|---------|-----------|-------------|
 | SessionStart | Source | No | Runs when a new session begins. Matchers: startup, resume, clear, compact |
 | SessionEnd | Reason | No | Runs when session terminates. Matchers: clear, resume, logout, prompt_input_exit |
+| PostSession | No | No | Runs after a session ends (self-hosted runner lifecycle event, CC 2.1.169+). Fires once the session is fully torn down, later than SessionEnd. MoAI-ADK does not wire this hook today; documented as an available option for self-hosted deployments that need post-session cleanup/telemetry. |
 | PreToolUse | Tool name | Yes | Runs before a tool executes |
 | PostToolUse | Tool name | No | Runs after a tool completes successfully |
 | PostToolUseFailure | Tool name | No | Runs after a tool execution fails |

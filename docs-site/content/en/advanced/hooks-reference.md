@@ -28,6 +28,7 @@ As of MoAI-ADK v2.10.1, Claude Code's hook system supports **29 event types**, *
 |-------|-------------|---------|
 | `SessionStart` | Session started | — |
 | `SessionEnd` | Session ended | — |
+| `PostSession` | Runs after a session ends (self-hosted runner lifecycle event, CC 2.1.169+). Fires once the session is fully torn down, later than `SessionEnd`. MoAI-ADK does not wire this hook today; documented as an available option for self-hosted deployments that need post-session cleanup/telemetry. | — |
 | `Stop` | Agent stopped | — |
 | `SubagentStop` | Sub-agent stopped | — |
 | `SubagentStart` | Sub-agent started | — |

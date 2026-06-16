@@ -40,6 +40,7 @@ Claude Code는 **10가지 이벤트 유형**을 지원합니다.
 | `Setup` | `--init`, `--init-only`, `--maintenance` 플래그로 시작 시 | 초기 설정, 환경 점검 |
 | `SessionStart` | 세션이 시작될 때 | 프로젝트 정보 표시, 환경 초기화 |
 | `SessionEnd` | 세션이 종료될 때 | 정리 작업, 컨텍스트 저장 |
+| `PostSession` | 세션 종료 후 (self-hosted runner, CC 2.1.169+) | 세션 후 정리/텔레메트리; 세션이 완전히 해제된 후, `SessionEnd`보다 늦게 발화합니다. MoAI-ADK는 현재 이 훅을 wiring하지 않습니다 — self-hosted 배포를 위한 사용 가능한 옵션으로 문서화됩니다. |
 | `PreCompact` | 컨텍스트 압축 전 (`/clear` 등) | 중요 컨텍스트 백업 |
 | `PreToolUse` | 도구 사용 전 | 보안 검증, 위험 명령 차단 |
 | **`PermissionRequest`** | 권한 대화상자 표시 시 | 자동 허용/거부 결정 |
