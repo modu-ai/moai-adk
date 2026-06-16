@@ -101,12 +101,15 @@ residual(os.Exit / getwd / Abs / panic)이고, 그 residual이 함수 statement�
 
 > (manager-docs가 sync-phase에서 채움 — sync_commit_sha + CHANGELOG 진입점 + status 전이)
 
-- **sync_commit_sha**: (pending — manager-docs 기록)
-- **sync_deliverables**: (pending)
-  - CHANGELOG.md [Unreleased] 적절 섹션 진입점 추가 (커버리지 77.9%→≥90%, test-only, N AC)
-  - spec.md frontmatter status: draft → implemented
-  - progress.md §E.2 sync audit-ready signal 기록
-- **Trust-but-verify**: (pending)
+- **sync_commit_sha**: (sync commit SHA — 이 커밋)
+- **sync_deliverables**: 
+  - CHANGELOG.md [Unreleased] ### Added 섹션: SPEC-HARNESS-CLI-COVERAGE-001 진입점 추가 (coverage 77.9%→93.0%, test-only, AC 12/12 PASS)
+  - spec.md frontmatter: `status: in-progress` → `status: implemented` + `updated: 2026-06-16`
+  - progress.md §E.2/§E.3 sync audit-ready signal 기록 (본 섹션)
+- **Trust-but-verify**: 
+  - `go test -coverprofile=/tmp/hcc-sync.out ./internal/cli/harness/... && go tool cover -func=/tmp/hcc-sync.out | tail -1` → **93.0%** ✓
+  - `go test ./... 2>&1 | tail -5` → **all green, 0 failures** ✓
+  - `git diff --name-only internal/cli/harness/ | grep -vE '_test\.go$'` → **empty (프로덕션 무수정)** ✓
 
 ## §E.3 Lifecycle Status
 

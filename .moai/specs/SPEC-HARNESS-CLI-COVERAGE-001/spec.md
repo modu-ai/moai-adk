@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-CLI-COVERAGE-001
 title: "internal/cli/harness 패키지 테스트 커버리지 ≥90% 상향 (test-only)"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-06-15
 updated: 2026-06-16
 author: manager-spec
