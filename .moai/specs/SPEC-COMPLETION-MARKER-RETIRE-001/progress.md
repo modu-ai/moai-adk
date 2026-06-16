@@ -26,3 +26,18 @@ sync_phase_summary: |
   Lint: golangci-lint 0
   Primary gate AC-CMR-004 exhaustive zero-residual production grep clean
 ```
+
+### §E.5 Mx-phase Audit-Ready Signal
+
+```yaml
+mx_commit_sha: "(this commit)"
+mx_complete_at: "2026-06-16"
+mx_phase_summary: |
+  orchestrator-direct Mx-phase close:
+  - spec.md frontmatter status: implemented → completed
+  - progress.md §E.5 mx signal created (this section)
+  - 4-phase lifecycle 종결: plan bf01fed74 → run f449aa0e5 → sync 84e026ed8 → Mx
+
+  @MX tag: retirement SPEC (코드/설정 제거 전용) — 신규 @MX tag 대상 없음 (surgical removal, §E plan.md §E Technical Approach).
+  Era: V3R6 (frontmatter era: V3R6 H-override; §E.2 + §E.5 both present → H-4 confirmed).
+```
