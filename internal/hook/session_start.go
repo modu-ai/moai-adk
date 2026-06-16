@@ -67,6 +67,20 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		h.runMultiSessionProtocol(input, data)
 	}
 
+	// SPEC-V3R6-SESSION-ID-ATTRIBUTION-REPAIR-001 REQ-WPR-003: when the
+	// multi-session protocol is bypassed because input.SessionID is empty,
+	// emit a non-blocking stderr warning so the orchestrator can observe
+	// that the registry write path was skipped. This is a leading cause of
+	// the K6 "empty registry" defect (research.md §D.1): some Claude Code
+	// activation paths emit an empty session_id, the L66 gate bypasses
+	// Register, and the orchestrator later finds the registry empty. The
+	// warning is observation-only — the hook still returns allow (non-blocking).
+	if input.SessionID == "" {
+		_, _ = fmt.Fprint(os.Stderr,
+			"warning: SessionStart received empty session_id; multi-session registry write bypassed "+
+				"(source_session_id attribution will fall back to the environment-fallback pattern)\n")
+	}
+
 	// Load project information from config if available
 	cfg := h.getConfig()
 	if cfg != nil {
@@ -215,7 +229,44 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		return &HookOutput{}, nil
 	}
 
-	return &HookOutput{Data: jsonData}, nil
+	// SPEC-V3R6-SESSION-ID-ATTRIBUTION-REPAIR-001 M3 (REQ-RDP-004/005):
+	// inject this orchestrator's own UUID via hookSpecificOutput.AdditionalContext
+	// so the Claude Code runtime surfaces it at session start, AND write a
+	// side-channel file (.moai/state/current-session-id.txt) so `moai session
+	// current` can resolve the UUID post-compaction (the additionalContext is
+	// lost after /clear; the side-channel file persists).
+	//
+	// The injection is STRICTLY ADDITIVE (REQ-RDP-005): existing behavior
+	// (Register → Purge → Query → stderr surface → data map) is unchanged.
+	// The AdditionalContext is the serialized field per Claude Code SessionStart
+	// stdout contract (hooks-system.md § Hook Event stdin/stdout Reference);
+	// the existing `Data` field carries `json:"-"` and is internal-only
+	// (research.md §D.0 — structural root cause of the attribution dead feature).
+	//
+	// Gated on input.SessionID != "" (research.md §D.0/D.1 P1-outcome
+	// implication): an empty UUID is never injected or written.
+	out := &HookOutput{Data: jsonData}
+	if input.SessionID != "" && input.ProjectDir != "" {
+		out.HookSpecificOutput = &HookSpecificOutput{
+			HookEventName: string(EventSessionStart),
+			AdditionalContext: fmt.Sprintf(
+				"moai session attribution: source_session_id=%s\n"+
+					"Use 'moai session current' to re-read this UUID after /clear or compaction.\n"+
+					"If unavailable, emit the canonical fallback via 'moai session current --show-fallback'.",
+				input.SessionID,
+			),
+		}
+		// Side-channel file write (best-effort, non-blocking).
+		sidecar := filepath.Join(input.ProjectDir, session.CurrentSideChannelFile)
+		if writeErr := os.WriteFile(sidecar, []byte(input.SessionID), 0o600); writeErr != nil {
+			slog.Warn("session start: failed to write current-session-id side-channel file (non-blocking)",
+				"path", sidecar,
+				"error", writeErr.Error(),
+			)
+		}
+	}
+
+	return out, nil
 }
 
 // getConfig safely retrieves the configuration, returning nil if unavailable.

@@ -94,9 +94,20 @@ func TestSessionStartHandler_Handle(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("got nil output")
-			} else if got.HookSpecificOutput != nil {
-				// SessionStart does NOT use hookSpecificOutput per Claude Code protocol
-				t.Errorf("HookSpecificOutput should be nil for SessionStart, got %+v", got.HookSpecificOutput)
+			}
+			// SPEC-V3R6-SESSION-ID-ATTRIBUTION-REPAIR-001 M3 (REQ-RDP-004):
+			// SessionStart now legitimately uses hookSpecificOutput.AdditionalContext
+			// to surface this orchestrator's own UUID to the Claude Code runtime
+			// (the documented SessionStart stdout contract per hooks-system.md
+			// § Hook Event stdin/stdout Reference). The injection is gated on
+			// SessionID != "" AND ProjectDir != "". When either is empty,
+			// HookSpecificOutput remains nil (no UUID to inject).
+			if tt.input.SessionID != "" && tt.input.ProjectDir != "" {
+				if got.HookSpecificOutput == nil || got.HookSpecificOutput.AdditionalContext == "" {
+					t.Errorf("REQ-RDP-004: HookSpecificOutput.AdditionalContext should be set when SessionID+ProjectDir non-empty")
+				}
+			} else if got.HookSpecificOutput != nil && got.HookSpecificOutput.AdditionalContext != "" {
+				t.Errorf("AdditionalContext should NOT be injected when SessionID or ProjectDir is empty, got %+v", got.HookSpecificOutput)
 			}
 
 			if len(tt.wantDataKeys) > 0 && got.Data != nil {
