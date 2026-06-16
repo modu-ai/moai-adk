@@ -77,39 +77,47 @@ workflow:
                     - quality-reviewer
                     - ux-reviewer
         require_plan_approval: true
+        # effort: declarative metadata consumed by orchestrator/workflow-script authors; no Go code reads this field (per SPEC-V3R6-WORKFLOW-EFFORT-MAP-001 REQ-WEM-006).
         role_profiles:
             analyst:
                 description: Requirements analysis and validation
+                effort: medium
                 isolation: none
                 mode: plan
                 model: sonnet
             architect:
                 description: Solution design and architecture decisions (deep reasoning)
+                effort: xhigh
                 isolation: none
                 mode: plan
                 model: opus
             designer:
                 description: UI/UX design with MCP design tools
+                effort: medium
                 isolation: worktree
                 mode: acceptEdits
                 model: sonnet
             implementer:
                 description: Code implementation (backend, frontend, full-stack)
+                effort: xhigh
                 isolation: worktree
                 mode: acceptEdits
                 model: sonnet
             researcher:
                 description: Read-only codebase exploration and analysis (speed-critical)
+                effort: low
                 isolation: none
                 mode: plan
                 model: haiku
             reviewer:
                 description: Code review and quality validation (context-aware analysis)
+                effort: high
                 isolation: none
                 mode: plan
                 model: sonnet
             tester:
                 description: Test creation and coverage validation
+                effort: medium
                 isolation: worktree
                 mode: acceptEdits
                 model: sonnet
