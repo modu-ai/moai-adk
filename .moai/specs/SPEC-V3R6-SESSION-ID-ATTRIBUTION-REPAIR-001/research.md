@@ -217,12 +217,13 @@ FormatStderrReminder — confirmed (comment block L420-423, function L424-448).
 There are **4 distinct `source_session_id` placeholder variants on the
 canonical doctrine surfaces** (rules tree + output-styles render surface +
 their template mirrors), of which **1 is the canonical fallback** and **3 are
-non-canonical**. A broader sweep that also includes `.moai/docs/` and
-auto-memory `~/.claude/projects/.../memory/` finds 14 distinct strings total,
+non-canonical**. A broader sweep that also includes auto-memory
+`~/.claude/projects/.../memory/` finds 14 distinct strings total,
 but only the 4 doctrine-surface variants are in scope for the M4+M5
 canonicalization remediation; the remaining 10 live in historical append-only
-memory entries (excluded per spec.md §G) and `.moai/docs/` documentation
-prose (not doctrine SSOT).
+memory entries (excluded per spec.md §G). Note (D8 correction): `.moai/docs/`
+contributes 0 variants — all 10 extras are in auto-memory; the prior prose
+over-attributed `.moai/docs/`.
 
 ### Evidence
 
@@ -273,11 +274,12 @@ internal/template/templates/.claude/rules/moai/workflow/session-handoff.md:96:(m
 ```
 
 **Broader-context sweep (NOT in M4+M5 scope — recorded for drift-detector
-calibration only):** extending the same grep to include `.moai/docs/` and
-auto-memory yields **14 distinct strings total**. The 10 extra strings
-(beyond the 4 doctrine-surface variants above) live exclusively in
-`.moai/docs/` prose and `~/.claude/projects/.../memory/*.md` historical
-entries. These are NOT canonical doctrine surfaces and are excluded from
+calibration only):** extending the same grep to include auto-memory yields
+**14 distinct strings total**. The 10 extra strings (beyond the 4
+doctrine-surface variants above) live exclusively in
+`~/.claude/projects/.../memory/*.md` historical entries (D8 correction:
+`.moai/docs/` contributes 0 — the prior prose over-attributed it).
+These are NOT canonical doctrine surfaces and are excluded from
 M4+M5 remediation scope (spec.md §G excludes backfilling historical
 append-only entries). The 10 extras are:
 

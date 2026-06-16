@@ -650,7 +650,7 @@ Canonical 6-block format **bounded by cut-line markers** (structural skeleton �
 
 ultrathink. <SPEC-ID or Sprint N> <phase> entering.
 applied lessons: <memory-file-1>, <memory-file-2>, ..., lessons #N
-source_session_id: <orchestrator-uuid-from-current-turn>
+source_session_id: <UUID from moai session current>
 
 <Preconditions header>:
 1) <verifiable command> → <expected outcome>
@@ -686,7 +686,7 @@ Header translation table (translate per `conversation_language` setting in `.moa
 Pre-emit self-check (session-handoff template completeness) — MUST verify all 9 before printing:
 - [ ] Block 1 starts with `ultrathink.` (activates Adaptive Thinking xhigh effort in next session)
 - [ ] Block 2 lists ≥1 memory file from `~/.claude/projects/{hash}/memory/` (most recent project memory + relevant lessons)
-- [ ] Block 2 includes `source_session_id: <UUID>` line carrying current orchestrator turn's session_id (per the multi-session coordination policy Layer 2 — enables race attribution across multi-session work)
+- [ ] Block 2 includes `source_session_id: <UUID from moai session current>` line carrying current orchestrator turn's session_id (per the multi-session coordination policy Layer 2 — enables race attribution across multi-session work)
 - [ ] Block 4 has ≤4 numbered preconditions, each independently verifiable (`git`/`gh`/file existence command)
 - [ ] Block 5 is a single primary action (typically `/moai <subcommand>` or single command line)
 - [ ] L3 worktree case: Block 0 `[New Terminal — START IN WORKTREE] $ cd <abs-path> $ <launcher>` prepended (Block 0 MUST surface 3 launchers verbatim: `moai cc` | `moai glm` | `claude` — per `session-handoff.md` §Worktree-Anchored Resume Pattern) + precondition 0) `git rev-parse --show-toplevel → <worktree-path>` added
