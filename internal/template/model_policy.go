@@ -138,9 +138,9 @@ func insertEffortInFrontmatter(content []byte, effortLevel string) []byte {
 // @MX:ANCHOR: [AUTO] ApplyEffortPolicy — called from initializer and update paths; mirrors ApplyModelPolicy contract
 // @MX:REASON: [AUTO] fan_in >= 2 (initializer.go + update.go); public API boundary for effort wiring
 func ApplyEffortPolicy(projectRoot string, mgr manifest.Manager) error {
-	// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: agents are split into 4 domain subfolders.
-	// Iterate over each domain subfolder; absent folders are silently skipped (REQ-AFS-001).
-	domains := []string{"core", "expert", "meta", "harness"}
+	// Agents are consolidated under .claude/agents/moai/ (the SPEC-V3R6-AGENT-FOLDER-SPLIT-001
+	// 4-subfolder split was reverted). Iterate the single consolidated directory.
+	domains := []string{"moai"}
 	for _, domain := range domains {
 		agentsDir := filepath.Join(projectRoot, ".claude", "agents", domain)
 		entries, err := os.ReadDir(agentsDir)
@@ -244,9 +244,9 @@ var modelLineRegex = regexp.MustCompile(`(?m)^model:\s*\S+`)
 // under the given project root based on the specified model policy.
 // It also updates the manifest hashes for patched files.
 func ApplyModelPolicy(projectRoot string, policy ModelPolicy, mgr manifest.Manager) error {
-	// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: agents are split into 4 domain subfolders.
-	// Iterate over each domain subfolder; absent folders are silently skipped (REQ-AFS-001).
-	domains := []string{"core", "expert", "meta", "harness"}
+	// Agents are consolidated under .claude/agents/moai/ (the SPEC-V3R6-AGENT-FOLDER-SPLIT-001
+	// 4-subfolder split was reverted). Iterate the single consolidated directory.
+	domains := []string{"moai"}
 	for _, domain := range domains {
 		agentsDir := filepath.Join(projectRoot, ".claude", "agents", domain)
 		entries, err := os.ReadDir(agentsDir)

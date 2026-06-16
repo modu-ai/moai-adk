@@ -102,7 +102,7 @@ func TestApplyModelPolicy(t *testing.T) {
 	t.Run("applies_policy_to_agent_files", func(t *testing.T) {
 		root := t.TempDir()
 		// SPEC-CC2178-MODEL-POLICY-REPAIR-001 M2: manager-develop lives in core/ and is in the retained map.
-		agentsDir := filepath.Join(root, ".claude", "agents", "core")
+		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
 		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
 			t.Fatalf("MkdirAll error: %v", err)
 		}
@@ -171,7 +171,7 @@ model: opus
 	t.Run("skips_non_md_files", func(t *testing.T) {
 		root := t.TempDir()
 		// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: any domain folder works for non-.md exclusion test.
-		agentsDir := filepath.Join(root, ".claude", "agents", "core")
+		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
 		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
 			t.Fatalf("MkdirAll error: %v", err)
 		}
@@ -199,7 +199,7 @@ model: opus
 	t.Run("skips_directories", func(t *testing.T) {
 		root := t.TempDir()
 		// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: any domain folder works for directory-skip test.
-		agentsDir := filepath.Join(root, ".claude", "agents", "core")
+		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
 		subDir := filepath.Join(agentsDir, "subdir.md")
 		if err := os.MkdirAll(subDir, 0o755); err != nil {
 			t.Fatalf("MkdirAll error: %v", err)
@@ -223,7 +223,7 @@ model: opus
 	t.Run("skips_unknown_agents", func(t *testing.T) {
 		root := t.TempDir()
 		// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: unknown agent placed in core/ for walker discovery.
-		agentsDir := filepath.Join(root, ".claude", "agents", "core")
+		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
 		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
 			t.Fatalf("MkdirAll error: %v", err)
 		}
@@ -265,7 +265,7 @@ model: opus
 	t.Run("skips_unchanged_content", func(t *testing.T) {
 		root := t.TempDir()
 		// SPEC-CC2178-MODEL-POLICY-REPAIR-001 M2: manager-spec lives in core/ and is in the retained map.
-		agentsDir := filepath.Join(root, ".claude", "agents", "core")
+		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
 		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
 			t.Fatalf("MkdirAll error: %v", err)
 		}
@@ -584,7 +584,7 @@ func TestApplyEffortPolicy(t *testing.T) {
 	t.Run("injects_effort_for_reasoning_agent", func(t *testing.T) {
 		root := t.TempDir()
 		// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: manager-* agents live in core/.
-		agentsDir := filepath.Join(root, ".claude", "agents", "core")
+		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
 		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
 			t.Fatalf("MkdirAll error: %v", err)
 		}
@@ -630,7 +630,7 @@ permissionMode: bypassPermissions
 	t.Run("preserves_existing_effort_value", func(t *testing.T) {
 		root := t.TempDir()
 		// SPEC-CC2178-MODEL-POLICY-REPAIR-001 M2: plan-auditor lives in meta/ and is in the retained effort map (xhigh).
-		agentsDir := filepath.Join(root, ".claude", "agents", "meta")
+		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
 		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
 			t.Fatalf("MkdirAll error: %v", err)
 		}
@@ -672,7 +672,7 @@ effort: max
 	t.Run("no_op_for_agent_not_in_effort_map", func(t *testing.T) {
 		root := t.TempDir()
 		// SPEC-CC2178-MODEL-POLICY-REPAIR-001 M2: manager-docs lives in core/ and is NOT in the effort map.
-		agentsDir := filepath.Join(root, ".claude", "agents", "core")
+		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
 		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
 			t.Fatalf("MkdirAll error: %v", err)
 		}
@@ -730,7 +730,7 @@ model: haiku
 	t.Run("no_frontmatter_not_modified", func(t *testing.T) {
 		root := t.TempDir()
 		// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: manager-* agents live in core/.
-		agentsDir := filepath.Join(root, ".claude", "agents", "core")
+		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
 		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
 			t.Fatalf("MkdirAll error: %v", err)
 		}
@@ -766,7 +766,7 @@ model: haiku
 	t.Run("manifest_tracked_after_injection", func(t *testing.T) {
 		root := t.TempDir()
 		// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: plan-auditor lives in meta/.
-		agentsDir := filepath.Join(root, ".claude", "agents", "meta")
+		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
 		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
 			t.Fatalf("MkdirAll error: %v", err)
 		}
@@ -795,7 +795,7 @@ model: opus
 		}
 
 		// Manifest entry must be updated for the injected file
-		relPath := filepath.Join(".claude", "agents", "meta", "plan-auditor.md")
+		relPath := filepath.Join(".claude", "agents", "moai", "plan-auditor.md")
 		entry, found := mgr.GetEntry(relPath)
 		if !found {
 			t.Errorf("manifest entry not found for %q after injection", relPath)
