@@ -635,7 +635,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/session-handoff.md
   anchor: "#when-to-generate-5-triggers"
-  clause: "[HARD] The orchestrator MUST emit a paste-ready resume message when ANY of the 5 trigger conditions activate (model-specific context threshold — 1M context model 50% / 200K context model 90% — / SPEC phase complete / user session-end request / PR creation success with pending SPECs / multi-milestone checkpoint)"
+  clause: "[HARD] The orchestrator MUST emit a paste-ready resume message when ANY of the 5 trigger conditions activate (model-specific context threshold per context-window-management.md § Context Window Targets / SPEC phase complete / user session-end request / PR creation success with pending SPECs / multi-milestone checkpoint)"
   canary_gate: false
 
 - id: CONST-V3R2-151
