@@ -101,7 +101,7 @@ residual(os.Exit / getwd / Abs / panic)이고, 그 residual이 함수 statement�
 
 > (manager-docs가 sync-phase에서 채움 — sync_commit_sha + CHANGELOG 진입점 + status 전이)
 
-- **sync_commit_sha**: (sync commit SHA — 이 커밋)
+- **sync_commit_sha**: 8232e7edc (docs: sync-phase artifacts, in-progress → implemented)
 - **sync_deliverables**: 
   - CHANGELOG.md [Unreleased] ### Added 섹션: SPEC-HARNESS-CLI-COVERAGE-001 진입점 추가 (coverage 77.9%→93.0%, test-only, AC 12/12 PASS)
   - spec.md frontmatter: `status: in-progress` → `status: implemented` + `updated: 2026-06-16`
