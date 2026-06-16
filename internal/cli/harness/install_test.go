@@ -129,6 +129,38 @@ func TestRunInstall_EmptySpecID(t *testing.T) {
 	}
 }
 
+// TestRunInstall_EmptyProjectRoot verifies REQ-HCC-013: RunInstall with an empty
+// ProjectRoot returns the empty-root error (install.go:61-63) before touching the
+// filesystem. This closes the RunInstall empty-root guard branch.
+func TestRunInstall_EmptyProjectRoot(t *testing.T) {
+	err := RunInstall(InstallOptions{ProjectRoot: "", SpecID: "SPEC-A", Domain: "d1"})
+	if err == nil {
+		t.Fatal("RunInstall must return an error for an empty project root")
+	}
+	if !strings.Contains(err.Error(), "empty project root") {
+		t.Errorf("error should mention empty project root, got: %v", err)
+	}
+}
+
+// TestRunInstall_ScaffoldFails_PreexistingFile verifies REQ-HCC-014: when the
+// .moai/harness directory path collides with a pre-existing regular file,
+// ScaffoldHarnessDir's MkdirAll fails and RunInstall surfaces the wrapped error
+// (install.go:74-76). The wrapped-error prefix is asserted rather than the OS
+// message body (EC-2 — message text varies by platform).
+func TestRunInstall_ScaffoldFails_PreexistingFile(t *testing.T) {
+	root := t.TempDir()
+	// Create .moai/harness as a regular FILE so MkdirAll on that path fails.
+	writeHarnessFile(t, filepath.Join(root, ".moai", "harness"), "not a directory\n")
+
+	err := RunInstall(InstallOptions{ProjectRoot: root, SpecID: "SPEC-A", Domain: "d1"})
+	if err == nil {
+		t.Fatal("RunInstall must return an error when .moai/harness is a regular file")
+	}
+	if !strings.Contains(err.Error(), "scaffold .moai/harness") {
+		t.Errorf("error should carry the scaffold wrapping prefix, got: %v", err)
+	}
+}
+
 // TestNewInstallCmd_FlagsRegistered verifies the cobra factory wires the
 // required flags (--spec-id, --domain, --project-root).
 func TestNewInstallCmd_FlagsRegistered(t *testing.T) {
