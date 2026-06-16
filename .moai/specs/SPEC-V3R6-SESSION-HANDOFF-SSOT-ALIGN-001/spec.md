@@ -2,7 +2,7 @@
 id: SPEC-V3R6-SESSION-HANDOFF-SSOT-ALIGN-001
 title: "session-handoff.md (SSOT) ↔ moai.md §8 (render surface) drift unification"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-06-17
 updated: 2026-06-17
 author: manager-spec

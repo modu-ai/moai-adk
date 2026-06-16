@@ -88,10 +88,22 @@ Single run-phase commit (M1–M5 batched — independent content edits M1–M4 +
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-06-17
-sync_commit_sha: "(this commit)"
+sync_commit_sha: "ba653e76dd1daa1b75408c1608498879e62a592f"
 sync_status: implemented
 frontmatter_transition: "in-progress → implemented (owned by manager-docs; executed orchestrator-direct — manager-docs spawn hit subagent context-window limit, fallback per track-1 precedent + CLAUDE.local.md §16)"
 changelog_entry_count: 1 (SPEC-V3R6-SESSION-HANDOFF-SSOT-ALIGN-001 under [Unreleased] > Added; grep -c = 1, B12 duplicate-guard PASS)
 ac_count_changelog: 7 (6 MUST + 1 SHOULD — matches acceptance.md SSOT)
 spec_lint_post_sync: "0 error 0 warning expected (StatusGitConsistency warning resolved by the in-progress → implemented flip)"
 byte_parity_unchanged: "session-handoff 28381B + moai 53021B, both trees (sync-phase did NOT touch doctrine files)"
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+mx_complete_at: 2026-06-17
+mx_commit_sha: "(this commit)"
+mx_status: completed
+frontmatter_final_transition: "implemented → completed (orchestrator-direct 4-phase close)"
+4_phase_close: "plan(manager-spec) + run(manager-develop) + sync(orchestrator-direct fallback) + mx(orchestrator-direct) — all 4 phases complete"
+lifecycle_era_classification: "V3R6 H-4 (§E.2 run + §E.5 mx + sync_commit_sha + mx_commit_sha all present)"
+defer_followups:
+  - "Go lint rule for mechanical SSOT↔render drift detection → 별도 code SPEC (new-code=0 constraint deferred it)"
+  - "track 3 D4 source_session_id 91% fallback dead-feature → SPEC-V3R6-SESSION-ID-ATTRIBUTION-REPAIR-001"
