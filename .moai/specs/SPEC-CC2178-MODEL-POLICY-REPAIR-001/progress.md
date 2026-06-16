@@ -155,7 +155,7 @@ docs_surface_skipped: README/docs-site   # settings keys are template-managed, n
 
 ```yaml
 mx_complete_at: 2026-06-16
-mx_commit_sha: (this commit)   # orchestrator-direct backfill after Mx commit lands
+mx_commit_sha: 6e29c95cb   # orchestrator-direct backfill (Mx commit 6e29c95cb)
 frontmatter_transition: implemented → completed
 mx_performer: orchestrator-direct   # canonical owner allows manager-docs OR orchestrator (Mx chore)
 4_phase_close: complete   # plan (b957...) + run (b83da250e final) + sync (b43f45df0) + Mx (this)
