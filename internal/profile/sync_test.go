@@ -191,10 +191,13 @@ func TestSyncToProjectConfig_NoConfigDir(t *testing.T) {
 	_ = err
 }
 
-// statuslineFileWrapper is a local test helper for reading statusline.yaml
+// statuslineFileWrapper is a local test helper for reading statusline.yaml.
+// The Preset field was removed from the written statusline.yaml by
+// SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001; a legacy preset: key in an existing
+// file is silently dropped on the next write (the in-memory statuslineData
+// struct has no Preset field).
 type statuslineFileWrapper struct {
 	Statusline struct {
-		Preset   string          `yaml:"preset"`
 		Segments map[string]bool `yaml:"segments"`
 		Theme    string          `yaml:"theme"`
 	} `yaml:"statusline"`
@@ -205,8 +208,7 @@ func TestSyncToProjectConfig_StatuslineTheme(t *testing.T) {
 	setupProjectConfig(t, projectRoot)
 
 	prefs := ProfilePreferences{
-		StatuslineTheme:  "catppuccin-mocha",
-		StatuslinePreset: "full",
+		StatuslineTheme: "catppuccin-mocha",
 	}
 
 	if err := SyncToProjectConfig(projectRoot, prefs); err != nil {
@@ -226,16 +228,14 @@ func TestSyncToProjectConfig_StatuslineTheme(t *testing.T) {
 	if wrapper.Statusline.Theme != "catppuccin-mocha" {
 		t.Errorf("theme = %q, want %q", wrapper.Statusline.Theme, "catppuccin-mocha")
 	}
-	if wrapper.Statusline.Preset != "full" {
-		t.Errorf("preset = %q, want %q", wrapper.Statusline.Preset, "full")
-	}
 }
 
 func TestSyncToProjectConfig_StatuslineDefaultsWhenAbsent(t *testing.T) {
 	projectRoot := t.TempDir()
 	setupProjectConfig(t, projectRoot)
 
-	// Provide only theme - preset and segments should get defaults when file absent
+	// Provide only theme - segments should get the all-enabled default when the
+	// file is absent (REQ-SPR-009: no preset participates in defaulting).
 	prefs := ProfilePreferences{
 		StatuslineTheme: "catppuccin-latte",
 	}
@@ -258,11 +258,7 @@ func TestSyncToProjectConfig_StatuslineDefaultsWhenAbsent(t *testing.T) {
 	if wrapper.Statusline.Theme != "catppuccin-latte" {
 		t.Errorf("theme = %q, want %q", wrapper.Statusline.Theme, "catppuccin-latte")
 	}
-	// Preset defaults to "full" when absent
-	if wrapper.Statusline.Preset != "full" {
-		t.Errorf("preset = %q, want %q", wrapper.Statusline.Preset, "full")
-	}
-	// Segments should all be enabled
+	// Segments should all be enabled (default path is all-15-enabled; no preset)
 	for _, seg := range []string{"model", "context", "output_style", "directory", "git_status", "claude_version", "moai_version", "git_branch"} {
 		if !wrapper.Statusline.Segments[seg] {
 			t.Errorf("segment %q should be enabled by default", seg)
@@ -275,7 +271,6 @@ func TestSyncToProjectConfig_StatuslineSegments(t *testing.T) {
 	setupProjectConfig(t, projectRoot)
 
 	prefs := ProfilePreferences{
-		StatuslinePreset: "custom",
 		StatuslineSegments: map[string]bool{
 			"model":   true,
 			"context": true,
@@ -296,9 +291,6 @@ func TestSyncToProjectConfig_StatuslineSegments(t *testing.T) {
 	if err := yaml.Unmarshal(data, &wrapper); err != nil {
 		t.Fatalf("unmarshal statusline.yaml: %v", err)
 	}
-	if wrapper.Statusline.Preset != "custom" {
-		t.Errorf("preset = %q, want %q", wrapper.Statusline.Preset, "custom")
-	}
 	if !wrapper.Statusline.Segments["model"] {
 		t.Error("segments[model] should be true")
 	}
@@ -311,14 +303,15 @@ func TestSyncToProjectConfig_StatuslinePreservesExistingConfig(t *testing.T) {
 	projectRoot := t.TempDir()
 	setupProjectConfig(t, projectRoot)
 
-	// Write an existing statusline.yaml
+	// Write an existing statusline.yaml (carries a legacy preset: key which the
+	// loader silently ignores; the segments block is the source of truth).
 	sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
 	existingYAML := "statusline:\n  preset: compact\n  theme: default\n  segments:\n    model: true\n    context: false\n"
 	if err := os.WriteFile(filepath.Join(sectionsDir, "statusline.yaml"), []byte(existingYAML), 0o644); err != nil {
 		t.Fatalf("write statusline.yaml: %v", err)
 	}
 
-	// Only update theme - preset and segments should be preserved
+	// Only update theme - segments should be preserved (REQ-SPR-008).
 	prefs := ProfilePreferences{
 		StatuslineTheme: "catppuccin-mocha",
 	}
@@ -341,11 +334,8 @@ func TestSyncToProjectConfig_StatuslinePreservesExistingConfig(t *testing.T) {
 	if wrapper.Statusline.Theme != "catppuccin-mocha" {
 		t.Errorf("theme = %q, want %q", wrapper.Statusline.Theme, "catppuccin-mocha")
 	}
-	// Preset preserved
-	if wrapper.Statusline.Preset != "compact" {
-		t.Errorf("preset = %q, want %q", wrapper.Statusline.Preset, "compact")
-	}
-	// Segments preserved
+	// Segments preserved (the legacy preset: key is dropped on re-write —
+	// statuslineData has no Preset field post-retire)
 	if !wrapper.Statusline.Segments["model"] {
 		t.Error("segments[model] should be preserved as true")
 	}

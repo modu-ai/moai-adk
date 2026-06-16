@@ -10,34 +10,23 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
-	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/pkg/models"
 	"github.com/spf13/cobra"
 )
 
-// statuslineModeCanonical holds the canonical values offered by the wizard — must stay in sync with the huh.NewOption block (~line 230).
-// KEEP IN SYNC with huh.NewOption block at ~line 230
-var statuslineModeCanonical = []string{defaultStatuslineMode, "full"}
-
-// KEEP IN SYNC with huh.NewOption block at ~line 240
+// statuslineThemeCanonical holds the canonical theme values offered by the
+// wizard — must stay in sync with the huh.NewOption block in the Display group.
+// The statuslineModeCanonical + statuslinePresetCanonical lists and their
+// helpers were removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 (runtime mode
+// was inert; named presets were redundant with the segment map).
+// KEEP IN SYNC with huh.NewOption block in the Display group.
 var statuslineThemeCanonical = []string{defaultStatuslineTheme, "catppuccin-latte"}
 
 // Wizard default constants.
 const (
-	defaultStatuslineMode  = "default"
 	defaultStatuslineTheme = "catppuccin-mocha"
 	defaultPermissionMode  = "acceptEdits"
 )
-
-// isCanonicalStatuslineMode reports whether s is a canonical value in the wizard option slice.
-func isCanonicalStatuslineMode(s string) bool {
-	for _, v := range statuslineModeCanonical {
-		if v == s {
-			return true
-		}
-	}
-	return false
-}
 
 // isCanonicalStatuslineTheme reports whether s is a canonical value in the wizard option slice.
 func isCanonicalStatuslineTheme(s string) bool {
@@ -47,25 +36,6 @@ func isCanonicalStatuslineTheme(s string) bool {
 		}
 	}
 	return false
-}
-
-// normalizeStatuslineModeRaw calls statusline.NormalizeMode to encapsulate string conversion noise.
-func normalizeStatuslineModeRaw(s string) string {
-	return string(statusline.NormalizeMode(statusline.StatuslineMode(s)))
-}
-
-// normalizeStatuslineMode returns a mode value compatible with wizard options.
-// Converts deprecated names from older statusline versions to v3 names,
-// and falls back to "default" for values not present in the option set.
-func normalizeStatuslineMode(mode string) string {
-	if mode == "" {
-		return defaultStatuslineMode
-	}
-	normalized := normalizeStatuslineModeRaw(mode)
-	if isCanonicalStatuslineMode(normalized) {
-		return normalized
-	}
-	return defaultStatuslineMode
 }
 
 // normalizeStatuslineTheme returns a theme name compatible with wizard options.
@@ -78,45 +48,15 @@ func normalizeStatuslineTheme(theme string) string {
 	return defaultStatuslineTheme
 }
 
-// statuslinePresetCanonical lists the four canonical preset names offered by the
-// wizard's Preset Select widget. Order matches the huh.NewOption block (~line 290-320).
-// SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001 REQ-SPW-001.
-var statuslinePresetCanonical = []string{"full", "compact", "minimal", "custom"}
-
 // statuslineAllSegments lists the 15 canonical segment keys that the MultiSelect
-// widget offers when preset == "custom". Order MUST match statusline.yaml segment
-// definitions and Segment* fields in profileSetupText (REQ-SPW-002, REQ-SPW-003).
+// widget offers. Order MUST match statusline.yaml segment definitions and
+// Segment* fields in profileSetupText. The segment step is now unconditional
+// (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 retired the preset==custom gate).
 var statuslineAllSegments = []string{
 	"claude_version", "context", "directory", "effort_thinking",
 	"git_branch", "git_status", "moai_version", "model",
 	"output_style", "pr", "session_time", "task",
 	"usage_5h", "usage_7d", "worktree",
-}
-
-// isCanonicalStatuslinePreset reports whether p is a known wizard preset value.
-func isCanonicalStatuslinePreset(p string) bool {
-	for _, v := range statuslinePresetCanonical {
-		if v == p {
-			return true
-		}
-	}
-	return false
-}
-
-// normalizeStatuslinePreset returns a wizard-compatible preset value.
-//
-// Behavior (SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001 REQ-SPW-004):
-//   - Empty string passes through unchanged (EC-SPW-003: syncStatusline preserves existing yaml).
-//   - Canonical values (full|compact|minimal|custom) pass through unchanged (EC-SPW-001).
-//   - Invalid values (legacy or typo) reset to "" so the Select widget falls back to default (EC-SPW-002).
-func normalizeStatuslinePreset(p string) string {
-	if p == "" {
-		return ""
-	}
-	if isCanonicalStatuslinePreset(p) {
-		return p
-	}
-	return ""
 }
 
 // @MX:NOTE: [AUTO] Wizard v3 migration — normalizes deprecated Claude model IDs to canonical aliases.
@@ -263,17 +203,16 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		permissionMode = defaultPermissionMode
 	}
 
-	// W-4: preserve raw values for migration banner output
-	rawStatuslineMode := existingPrefs.StatuslineMode
+	// W-4: preserve raw theme value for migration banner output. The mode /
+	// preset migration banners were removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001
+	// (runtime mode was inert; presets were retired alongside it).
 	rawStatuslineTheme := existingPrefs.StatuslineTheme
 
-	statuslineMode := normalizeStatuslineMode(existingPrefs.StatuslineMode)
 	statuslineTheme := normalizeStatuslineTheme(existingPrefs.StatuslineTheme)
-	statuslinePreset := normalizeStatuslinePreset(existingPrefs.StatuslinePreset)
 
-	// SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001 REQ-SPW-002 / plan-auditor S4:
-	// Extract enabled segment keys for MultiSelect default selection.
-	// When prefs.StatuslineSegments is nil (new user), default to all 15 segments enabled
+	// Extract enabled segment keys for MultiSelect default selection. The segment
+	// step is now unconditional (preset==custom gate removed). When
+	// prefs.StatuslineSegments is nil (new user), default to all 15 segments enabled
 	// (matching .moai/config/sections/statusline.yaml 15-segment baseline, NOT the
 	// 11-segment defaultStatuslineSegments() in internal/profile/sync.go which serves a
 	// different purpose: yaml fallback when statusline.yaml is absent).
@@ -333,10 +272,8 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), t.ConfiguringProfile+"\n\n", profileName)
 
-	// W-4: statusline mode/theme migration banner — print before displaying the form
-	if rawStatuslineMode != "" && rawStatuslineMode != statuslineMode {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), t.MigrationNoticeStatuslineMode+"\n", rawStatuslineMode, statuslineMode)
-	}
+	// W-4: statusline theme migration banner — print before displaying the form.
+	// The mode migration banner was removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001.
 	if rawStatuslineTheme != "" && rawStatuslineTheme != statuslineTheme {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), t.MigrationNoticeStatuslineTheme+"\n", rawStatuslineTheme, statuslineTheme)
 	}
@@ -424,29 +361,12 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Value(&permissionMode),
 		).Title(t.ModelSettingsTitle),
 
-		// Section 4: Display — mode, preset, theme
-		// KEEP IN SYNC with statuslineModeCanonical + statuslinePresetCanonical at top of file
+		// Section 4: Display — theme only. The mode + preset Selects were removed
+		// by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 (runtime mode was inert; named
+		// presets were redundant with the segment map). Segments are configured in
+		// the next unconditional section.
+		// KEEP IN SYNC with statuslineThemeCanonical at top of file.
 		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title(t.StatuslineModeTitle).
-				Description(t.StatuslineModeDesc).
-				Options(
-					huh.NewOption(t.ModeDefault, "default"),
-					huh.NewOption(t.ModeFull, "full"),
-				).
-				Value(&statuslineMode),
-			// SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001 REQ-SPW-001 — preset Select
-			huh.NewSelect[string]().
-				Title(t.StatuslinePresetTitle).
-				Description(t.StatuslinePresetDesc).
-				Options(
-					huh.NewOption(t.PresetFull, "full"),
-					huh.NewOption(t.PresetCompact, "compact"),
-					huh.NewOption(t.PresetMinimal, "minimal"),
-					huh.NewOption(t.PresetCustom, "custom"),
-				).
-				Value(&statuslinePreset),
-			// KEEP IN SYNC with statuslineThemeCanonical at top of file
 			huh.NewSelect[string]().
 				Title(t.StatuslineThemeTitle).
 				Description(t.StatuslineThemeDesc).
@@ -457,9 +377,9 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Value(&statuslineTheme),
 		).Title(t.DisplayTitle),
 
-		// Section 5: Segments (custom preset only) — SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001 REQ-SPW-002
-		// WithHideFunc gates display on statuslinePreset == "custom" (R-SPW-001 mitigation).
-		// 15 segments KEEP IN SYNC with statuslineAllSegments slice at top of file.
+		// Section 5: Segments — now unconditional (preset==custom gate removed by
+		// SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001). 15 segments KEEP IN SYNC with
+		// statuslineAllSegments slice at top of file.
 		huh.NewGroup(
 			huh.NewMultiSelect[string]().
 				Title(t.StatuslineSegmentsTitle).
@@ -482,9 +402,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 					huh.NewOption(t.SegmentWorktree, "worktree"),
 				).
 				Value(&statuslineSegmentsSelection),
-		).Title(t.StatuslineSegmentsTitle).WithHideFunc(func() bool {
-			return statuslinePreset != "custom"
-		}),
+		).Title(t.StatuslineSegmentsTitle),
 
 		// Section 6: Project config (development_mode + git_convention) — SPEC-WEB-CONSOLE-003.
 		// Parity with the web console "Project" fieldset. Persisted to project config
@@ -526,20 +444,15 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		permissionMode = ""
 	}
 
-	// SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001 REQ-SPW-002:
-	// Build segments map only when preset == "custom". For other presets the segments
-	// map is left nil so syncStatusline (internal/profile/sync.go:95-145) preserves the
-	// existing statusline.yaml segment values without unwanted overrides.
-	var statuslineSegmentsMap map[string]bool
-	if statuslinePreset == "custom" {
-		selected := make(map[string]bool, len(statuslineSegmentsSelection))
-		for _, key := range statuslineSegmentsSelection {
-			selected[key] = true
-		}
-		statuslineSegmentsMap = make(map[string]bool, len(statuslineAllSegments))
-		for _, key := range statuslineAllSegments {
-			statuslineSegmentsMap[key] = selected[key]
-		}
+	// Build the segments map unconditionally (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001
+	// retired the preset==custom gate). The wizard always emits a full 15-key map.
+	selected := make(map[string]bool, len(statuslineSegmentsSelection))
+	for _, key := range statuslineSegmentsSelection {
+		selected[key] = true
+	}
+	statuslineSegmentsMap := make(map[string]bool, len(statuslineAllSegments))
+	for _, key := range statuslineAllSegments {
+		statuslineSegmentsMap[key] = selected[key]
 	}
 
 	// Save preferences.
@@ -553,8 +466,6 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		ModelPolicy:        modelPolicy,
 		EffortLevel:        effortLevel,
 		PermissionMode:     permissionMode,
-		StatuslineMode:     statuslineMode,
-		StatuslinePreset:   statuslinePreset,
 		StatuslineSegments: statuslineSegmentsMap,
 		StatuslineTheme:    statuslineTheme,
 	}
@@ -598,12 +509,12 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 // printProfileSummary writes a multi-line summary of the applied settings to out.
 // When sync has been performed, the project-level YAML paths holding the values are also printed.
 func printProfileSummary(out io.Writer, t *profileSetupText, prefs *profile.ProfilePreferences, syncedProjectRoot string) {
-	// S-7: combine 7 fields into a single Fprintf call
+	// S-7: combine fields into a single Fprintf call. The SummaryStatuslineMode
+	// row was removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 (mode retired).
 	_, _ = fmt.Fprintf(out,
 		"%s\n"+
 			"  %s: %s\n"+
 			"  %s: %s / %s / %s / %s\n"+
-			"  %s: %s\n"+
 			"  %s: %s\n"+
 			"  %s: %s\n"+
 			"  %s: %s\n"+
@@ -617,9 +528,7 @@ func printProfileSummary(out io.Writer, t *profileSetupText, prefs *profile.Prof
 		valueOrDash(prefs.DocLang),
 		t.SummaryModel, valueOrDefault(prefs.Model, t.SummaryDefault),
 		t.SummaryEffort, valueOrDefault(prefs.EffortLevel, t.SummaryDefault),
-		// S-2: StatuslineMode/Theme are always non-empty after normalization, so valueOrDefault is unnecessary
 		t.SummaryPermission, valueOrDefault(prefs.PermissionMode, defaultPermissionMode),
-		t.SummaryStatuslineMode, prefs.StatuslineMode,
 		t.SummaryStatuslineTheme, prefs.StatuslineTheme,
 	)
 

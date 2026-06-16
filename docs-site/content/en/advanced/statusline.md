@@ -208,9 +208,7 @@ Segment activation is managed in `.moai/config/sections/statusline.yaml`:
 
 ```yaml
 statusline:
-  mode: default              # default | full
   theme: catppuccin-mocha    # color theme
-  preset: custom             # full | minimal | custom
   segments:
     # Line 1
     model: true

@@ -15,11 +15,13 @@ var errDictKey = errors.New("web: dict key must be a string")
 
 // Canonical value lists.
 //
-// @MX:NOTE: [AUTO] 이 목록들은 internal/cli/profile_setup.go 의 wizard SSOT(statuslineModeCanonical /
-// statuslineThemeCanonical / statuslinePresetCanonical / 언어 옵션)와 동일한 정규 값이다. wizard의 정규 리스트가
+// @MX:NOTE: [AUTO] 이 목록들은 internal/cli/profile_setup.go 의 wizard SSOT(언어 옵션 /
+// modelCanonical / effortLevelCanonical)와 동일한 정규 값이다. wizard의 정규 리스트가
 // 미노출(unexported, internal/cli 패키지 전용)이고 internal/cli → internal/web 단방향 의존이므로 역참조가 불가능하여
 // 같은 값을 여기서 재선언한다. permission mode 검증은 별도 규칙을 만들지 않고 profile.IsValidPermissionMode 를 그대로 재사용한다
 // (병렬 검증 규칙 셋 금지 — REQ-WC-008). wizard 정규 리스트 변경 시 본 목록도 함께 갱신해야 한다.
+// statuslineThemeCanonical / statuslinePresetCanonical / allSegments 는 SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001
+// 로 제거되었다 — 웹 콘솔의 statusline 패널 전체가 삭제되어 해당 정규 값/검증 규칙이 필요 없다.
 
 // langOptions are the four supported conversation/commit/comment/doc languages.
 // Mirrors the en/ko/ja/zh options offered by the profile wizard.
@@ -36,12 +38,6 @@ var modelCanonical = []string{"opus", "opus[1m]", "sonnet", "sonnet[1m]", "haiku
 // (internal/cli/profile_setup.go:316-322). The empty string ("runtime default")
 // is allowed by the empty-allowed guard and is not listed here.
 var effortLevelCanonical = []string{"low", "medium", "high", "xhigh", "max"}
-
-// statuslineThemeCanonical mirrors internal/cli/profile_setup.go statuslineThemeCanonical.
-var statuslineThemeCanonical = []string{"catppuccin-mocha", "catppuccin-latte"}
-
-// statuslinePresetCanonical mirrors internal/cli/profile_setup.go statuslinePresetCanonical.
-var statuslinePresetCanonical = []string{"full", "compact", "minimal", "custom"}
 
 // developmentModeCanonical is the stable-order option list for the project
 // development_mode <select> (SPEC-WEB-CONSOLE-003). Sourced from the canonical
@@ -67,14 +63,8 @@ func developmentModesFromModels() []string {
 	return out
 }
 
-// allSegments mirrors internal/cli/profile_setup.go statuslineAllSegments — the
-// 15 canonical segment keys offered when the preset is "custom".
-var allSegments = []string{
-	"claude_version", "context", "directory", "effort_thinking",
-	"git_branch", "git_status", "moai_version", "model",
-	"output_style", "pr", "session_time", "task",
-	"usage_5h", "usage_7d", "worktree",
-}
+// allSegments was removed (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001): the web
+// console statusline panel (including the segment checkbox grid) is gone.
 
 // inList reports whether v is a member of list.
 func inList(list []string, v string) bool {
@@ -129,14 +119,9 @@ func validatePrefs(p profile.ProfilePreferences) map[string]string {
 		errs["model_policy"] = "unrecognized model policy: " + p.ModelPolicy
 	}
 
-	// Statusline preset / theme: empty allowed, otherwise canonical. (The
-	// statusline_mode control was removed — SLR-1 — so no mode validation.)
-	if p.StatuslinePreset != "" && !inList(statuslinePresetCanonical, p.StatuslinePreset) {
-		errs["statusline_preset"] = "unrecognized statusline preset: " + p.StatuslinePreset
-	}
-	if p.StatuslineTheme != "" && !inList(statuslineThemeCanonical, p.StatuslineTheme) {
-		errs["statusline_theme"] = "unrecognized statusline theme: " + p.StatuslineTheme
-	}
+	// Statusline preset / theme validation removed (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001):
+	// the web console no longer binds statusline form values, so there is nothing
+	// to validate. The statusline config is managed via statusline.yaml / wizard.
 
 	return errs
 }

@@ -208,9 +208,7 @@ internal/statusline/renderer.go (3-line v3 レイアウト)
 
 ```yaml
 statusline:
-  mode: default              # default | full
   theme: catppuccin-mocha    # 色テーマ
-  preset: custom             # full | minimal | custom
   segments:
     # Line 1
     model: true

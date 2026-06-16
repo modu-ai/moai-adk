@@ -193,10 +193,10 @@ func TestStructYAMLSymmetry_Design(t *testing.T) {
 }
 
 // TestStructYAMLSymmetry_Statusline verifies models.StatuslineConfig ↔ YAML
-// bijection (SPEC-WEB-CONSOLE-008 SLM-4). The struct is {Preset, Segments, Theme}
-// and the template statusline.yaml has exactly preset/segments/theme top-level
-// keys (mode: and refresh_interval: were removed in M1/M3), so the top-level
-// key sets are symmetric.
+// bijection (SPEC-WEB-CONSOLE-008 SLM-4). The struct is {Segments, Theme}
+// (preset was removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001; mode was
+// already absent) and the template statusline.yaml has exactly segments/theme
+// top-level keys, so the top-level key sets are symmetric.
 func TestStructYAMLSymmetry_Statusline(t *testing.T) {
 	t.Parallel()
 	_, thisFile, _, ok := runtime.Caller(0)

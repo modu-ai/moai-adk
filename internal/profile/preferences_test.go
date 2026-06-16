@@ -75,7 +75,6 @@ func TestWriteAndReadPreferences(t *testing.T) {
 		DocLang:          "ko",
 		ModelPolicy:      "high",
 		Model:            "claude-opus-4-6",
-		StatuslinePreset: "compact",
 	}
 
 	if err := WritePreferences("myprofile", prefs); err != nil {
@@ -101,9 +100,6 @@ func TestWriteAndReadPreferences(t *testing.T) {
 	}
 	if got.Model != "claude-opus-4-6" {
 		t.Errorf("Model = %q, want %q", got.Model, "claude-opus-4-6")
-	}
-	if got.StatuslinePreset != "compact" {
-		t.Errorf("StatuslinePreset = %q, want %q", got.StatuslinePreset, "compact")
 	}
 }
 
@@ -174,7 +170,6 @@ func TestPreferences_StatuslineSegments(t *testing.T) {
 	BaseDirOverride = tmpDir
 
 	prefs := ProfilePreferences{
-		StatuslinePreset: "custom",
 		StatuslineSegments: map[string]bool{
 			"model":   true,
 			"context": true,
@@ -454,9 +449,8 @@ func TestPreferences_StatuslineThemePersistsWithOtherFields(t *testing.T) {
 	BaseDirOverride = tmpDir
 
 	prefs := ProfilePreferences{
-		UserName:         "testuser",
-		StatuslinePreset: "compact",
-		StatuslineTheme:  "catppuccin-mocha",
+		UserName:        "testuser",
+		StatuslineTheme: "catppuccin-mocha",
 	}
 
 	if err := WritePreferences("default", prefs); err != nil {
@@ -470,9 +464,6 @@ func TestPreferences_StatuslineThemePersistsWithOtherFields(t *testing.T) {
 
 	if got.UserName != "testuser" {
 		t.Errorf("UserName = %q, want %q", got.UserName, "testuser")
-	}
-	if got.StatuslinePreset != "compact" {
-		t.Errorf("StatuslinePreset = %q, want %q", got.StatuslinePreset, "compact")
 	}
 	if got.StatuslineTheme != "catppuccin-mocha" {
 		t.Errorf("StatuslineTheme = %q, want %q", got.StatuslineTheme, "catppuccin-mocha")

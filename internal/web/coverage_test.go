@@ -114,13 +114,13 @@ func TestValidatePrefs_AllInvalidFields(t *testing.T) {
 		GitCommitLang:    "yy",
 		CodeCommentLang:  "zz",
 		DocLang:          "qq",
-		StatuslinePreset: "weird",
-		StatuslineTheme:  "weird",
 	})
 	for _, field := range []string{
 		"permission_mode", "conversation_lang", "git_commit_lang",
 		"code_comment_lang", "doc_lang",
-		"statusline_preset", "statusline_theme",
+		// statusline_preset / statusline_theme validation removed
+		// (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001) — the web console no longer
+		// binds statusline form values.
 	} {
 		if _, ok := errs[field]; !ok {
 			t.Errorf("expected validation error for %q, got none", field)

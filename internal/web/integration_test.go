@@ -126,7 +126,8 @@ func TestGoldenPath_ReadWriteRoundTrip(t *testing.T) {
 		"user_name":         {"Goos"},
 		"conversation_lang": {"ko"}, // en → ko
 		"permission_mode":   {"acceptEdits"},
-		"statusline_theme":  {"catppuccin-latte"},
+		// statusline_theme form field removed (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001):
+		// the web console no longer binds statusline values.
 	}
 	resp = postForm(t, client, base+"/save", form, "127.0.0.1")
 	if resp.StatusCode != http.StatusOK {
@@ -142,9 +143,6 @@ func TestGoldenPath_ReadWriteRoundTrip(t *testing.T) {
 	if persisted.ConversationLang != "ko" {
 		t.Errorf("persisted ConversationLang = %q, want ko (round-trip failed)", persisted.ConversationLang)
 	}
-	if persisted.StatuslineTheme != "catppuccin-latte" {
-		t.Errorf("persisted StatuslineTheme = %q, want catppuccin-latte", persisted.StatuslineTheme)
-	}
 
 	// language.yaml reflects the change.
 	langData, err := os.ReadFile(filepath.Join(projectRoot, ".moai", "config", "sections", "language.yaml"))
@@ -155,14 +153,9 @@ func TestGoldenPath_ReadWriteRoundTrip(t *testing.T) {
 		t.Errorf("language.yaml not updated to ko:\n%s", langData)
 	}
 
-	// statusline.yaml created with the theme.
-	slData, err := os.ReadFile(filepath.Join(projectRoot, ".moai", "config", "sections", "statusline.yaml"))
-	if err != nil {
-		t.Fatalf("read statusline.yaml: %v", err)
-	}
-	if !strings.Contains(string(slData), "catppuccin-latte") {
-		t.Errorf("statusline.yaml not updated with theme:\n%s", slData)
-	}
+	// statusline.yaml theme round-trip block removed
+	// (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001): the web console no longer binds
+	// statusline_theme, so a profile save does not create/modify statusline.yaml.
 
 	// --- INVALID: POST an invalid permission mode → rejected, state unchanged (REQ-WC-008) ---
 	beforeLang := persisted.ConversationLang

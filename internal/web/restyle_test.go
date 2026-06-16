@@ -283,30 +283,10 @@ func TestNoNonCanonicalOptions(t *testing.T) {
 		t.Error("rendered form contains non-canonical model option haiku[1m]")
 	}
 
-	// (3) Structural kebab-segment-key guard (plan-audit D1): a statusline
-	// segment key of the kebab form segment_<a-z>+-<a-z> must NOT appear. This
-	// covers all 15 design segment keys structurally, not just 3 literals.
-	kebabSeg := regexp.MustCompile(`segment_[a-z]+-[a-z]`)
-	if kebabSeg.MatchString(body) {
-		t.Errorf("rendered form contains a kebab-cased statusline segment key (matched %q): design keys must be dropped",
-			kebabSeg.FindString(body))
-	}
-
-	// (4) Positive: the 15 canonical snake_case segment keys still render.
-	for _, key := range allSegments {
-		if !strings.Contains(body, "segment_"+key) {
-			t.Errorf("canonical segment key segment_%s missing from rendered form", key)
-		}
-	}
-	// (5) SPEC-WEB-CONSOLE-006 Class C mechanism retarget (spec.md §2.1.1 #4 / §D.3):
-	// the prior version grepped the page.html.tmpl SOURCE for the kebab pattern and
-	// for the literal `{{range .AllSegments}}` directive (proof the segments are
-	// server-rendered, not hardcoded). The template source is deleted; the
-	// server-render intent is retargeted to the RENDERED BODY — all 15 canonical
-	// keys render (asserted in (4), which a hardcoded-3-key block would fail), and
-	// the kebab guard runs against the rendered body (asserted in (3)). The
-	// segments are still driven by `for _, s := range view.AllSegments` in the Templ
-	// fieldsetStatusline component.
+	// (3)-(5) statusline segment-key guards removed
+	// (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001): the statusline panel (including
+	// the segment checkbox grid) is gone from the web console, so segment keys
+	// no longer render and the kebab/snake_case segment guards are moot.
 }
 
 // TestNameAttributesPreserved verifies AC-WC4-009a: every canonical form field
@@ -317,7 +297,8 @@ func TestNameAttributesPreserved(t *testing.T) {
 	wantNames := []string{
 		"user_name", "conversation_lang", "git_commit_lang", "code_comment_lang",
 		"doc_lang", "permission_mode", "model_policy", "model", "effort_level",
-		"statusline_preset", "statusline_theme",
+		// statusline_preset / statusline_theme removed
+		// (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001) — no statusline panel.
 		"development_mode", "git_convention", "__profile",
 	}
 	for _, name := range wantNames {
@@ -325,12 +306,8 @@ func TestNameAttributesPreserved(t *testing.T) {
 			t.Errorf("form field name=%q missing (POST attribute dropped)", name)
 		}
 	}
-	// All 15 segment_<key> name attributes present.
-	for _, key := range allSegments {
-		if !strings.Contains(body, `name="segment_`+key+`"`) {
-			t.Errorf("segment field name=\"segment_%s\" missing", key)
-		}
-	}
+	// segment_<key> name-attribute assertions removed
+	// (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001): the segment checkbox grid is gone.
 
 	// Form contract: method/action + hidden __profile + server-side field-error block.
 	if !strings.Contains(body, `method="POST"`) || !strings.Contains(body, `action="/save`) {

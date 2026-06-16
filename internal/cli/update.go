@@ -30,7 +30,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/runtime/gobin"
 	"github.com/modu-ai/moai-adk/internal/shell"
-	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -2724,18 +2723,9 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 	return nil
 }
 
-// allStatuslineSegments lists all supported statusline segment names in display
-// order. Aliases the canonical SSOT (statusline.CanonicalSegments) so the CLI
-// and the profile write path share one segment key set (SLR-3 / SLM-5).
-var allStatuslineSegments = statusline.CanonicalSegments
-
-// presetToSegments converts a statusline preset name and optional custom segment
-// map into a full segment-to-enabled map. Thin delegation to the canonical SSOT
-// statusline.PresetToSegments so preset expansion logic lives in exactly one
-// place (the CLI render path and the profile write path share it).
-func presetToSegments(preset string, custom map[string]bool) map[string]bool {
-	return statusline.PresetToSegments(preset, custom)
-}
+// allStatuslineSegments removed (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001): the
+// presetToSegments wrapper that consumed it was deleted, leaving this alias
+// unused. The canonical segment SSOT remains statusline.CanonicalSegments.
 
 // settingsLocalEnv represents the structure of .claude/settings.local.json.
 type settingsLocalEnv struct {

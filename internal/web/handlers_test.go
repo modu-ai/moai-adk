@@ -91,10 +91,11 @@ func TestIndexRendersPopulatedForm(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		`value="Goos"`,     // UserName populated
-		`method="POST"`,    // editable POST form present (restyle adds class="form")
-		`action="/save`,    // form posts to the save handler
-		"catppuccin-latte", // theme option
+		`value="Goos"`,  // UserName populated
+		`method="POST"`, // editable POST form present (restyle adds class="form")
+		`action="/save`, // form posts to the save handler
+		// "catppuccin-latte" theme-option assertion removed
+		// (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001): no statusline panel.
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("rendered form missing %q", want)
@@ -221,17 +222,16 @@ func TestIndexProfileQueryParamSelectsProfile(t *testing.T) {
 func TestSaveValidRoundTrip(t *testing.T) {
 	a := newTestApp(t)
 	var (
-		wroteName   string
-		wrotePrefs  profile.ProfilePreferences
-		syncedRoot  string
-		syncedPrefs profile.ProfilePreferences
+		wroteName  string
+		wrotePrefs profile.ProfilePreferences
+		syncedRoot string
 	)
 	a.writePreferences = func(name string, prefs profile.ProfilePreferences) error {
 		wroteName, wrotePrefs = name, prefs
 		return nil
 	}
-	a.syncToProject = func(root string, prefs profile.ProfilePreferences) error {
-		syncedRoot, syncedPrefs = root, prefs
+	a.syncToProject = func(root string, _ profile.ProfilePreferences) error {
+		syncedRoot = root
 		return nil
 	}
 	h := a.routes()
@@ -241,7 +241,6 @@ func TestSaveValidRoundTrip(t *testing.T) {
 		"user_name":         {"Goos"},
 		"conversation_lang": {"ko"},
 		"permission_mode":   {"acceptEdits"},
-		"statusline_theme":  {"catppuccin-latte"},
 	}
 	rec := servePost(t, h, "/save", form)
 	if rec.Code != http.StatusOK {
@@ -256,9 +255,9 @@ func TestSaveValidRoundTrip(t *testing.T) {
 	if syncedRoot != a.cfg.ProjectRoot {
 		t.Errorf("SyncToProjectConfig root = %q, want %q", syncedRoot, a.cfg.ProjectRoot)
 	}
-	if syncedPrefs.StatuslineTheme != "catppuccin-latte" {
-		t.Errorf("SyncToProjectConfig theme = %q, want catppuccin-latte", syncedPrefs.StatuslineTheme)
-	}
+	// statusline_theme form binding removed (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001):
+	// the web console no longer has a statusline panel, so the handler does not
+	// bind statusline form values.
 	if !strings.Contains(rec.Body.String(), "Settings saved") {
 		t.Error("success banner not rendered")
 	}
@@ -295,31 +294,9 @@ func TestSaveInvalidPermissionModeRejected(t *testing.T) {
 	}
 }
 
-// TestSaveInvalidThemeRejected verifies AC-WC-008: an unrecognized statusline
-// theme is rejected via the canonical list, state unchanged.
-func TestSaveInvalidThemeRejected(t *testing.T) {
-	a := newTestApp(t)
-	var wrote bool
-	a.writePreferences = func(string, profile.ProfilePreferences) error { wrote = true; return nil }
-	a.syncToProject = func(string, profile.ProfilePreferences) error { return nil }
-	h := a.routes()
-
-	form := url.Values{
-		"__profile":        {"default"},
-		"permission_mode":  {"acceptEdits"},
-		"statusline_theme": {"hot-pink-9000"},
-	}
-	rec := servePost(t, h, "/save", form)
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("invalid theme status = %d, want 400", rec.Code)
-	}
-	if wrote {
-		t.Error("WritePreferences called despite invalid theme")
-	}
-	if !strings.Contains(rec.Body.String(), "unrecognized statusline theme") {
-		t.Error("per-field theme error not rendered")
-	}
-}
+// TestSaveInvalidThemeRejected removed (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001):
+// statusline theme validation was deleted alongside the statusline panel — the
+// handler no longer binds statusline_theme, so there is nothing to reject.
 
 // TestSaveSyncFailureSurfacesReadableError verifies plan-auditor advisory D1: a
 // SyncToProjectConfig failure after a successful WritePreferences surfaces a
@@ -373,57 +350,10 @@ func TestSaveScopeBoundary(t *testing.T) {
 	}
 }
 
-// TestSaveCustomSegmentsRoundTrip verifies EC-4: custom-preset segment toggles
-// (map[string]bool) round-trip through the form without dropping keys.
-func TestSaveCustomSegmentsRoundTrip(t *testing.T) {
-	a := newTestApp(t)
-	var got profile.ProfilePreferences
-	a.writePreferences = func(_ string, prefs profile.ProfilePreferences) error { got = prefs; return nil }
-	a.syncToProject = func(string, profile.ProfilePreferences) error { return nil }
-	h := a.routes()
-
-	form := url.Values{
-		"__profile":          {"default"},
-		"permission_mode":    {"acceptEdits"},
-		"statusline_preset":  {"custom"},
-		"segment_model":      {"1"},
-		"segment_git_branch": {"1"},
-		// other segments unchecked → recorded as false
-	}
-	rec := servePost(t, h, "/save", form)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("custom segment save status = %d, want 200; body:\n%s", rec.Code, rec.Body.String())
-	}
-	if got.StatuslineSegments == nil {
-		t.Fatal("StatuslineSegments not bound for custom preset")
-	}
-	if !got.StatuslineSegments["model"] || !got.StatuslineSegments["git_branch"] {
-		t.Errorf("checked segments not true: %+v", got.StatuslineSegments)
-	}
-	if got.StatuslineSegments["pr"] {
-		t.Error("unchecked segment 'pr' should be false, not dropped or true")
-	}
-	if len(got.StatuslineSegments) != len(allSegments) {
-		t.Errorf("segment map has %d keys, want all %d", len(got.StatuslineSegments), len(allSegments))
-	}
-}
-
-// TestSaveNonCustomPresetLeavesSegmentsNil verifies EC-5: a non-custom preset
-// leaves StatuslineSegments nil so syncStatusline applies its defaults rather
-// than writing an empty map.
-func TestSaveNonCustomPresetLeavesSegmentsNil(t *testing.T) {
-	a := newTestApp(t)
-	var got profile.ProfilePreferences
-	a.writePreferences = func(_ string, prefs profile.ProfilePreferences) error { got = prefs; return nil }
-	a.syncToProject = func(string, profile.ProfilePreferences) error { return nil }
-	h := a.routes()
-
-	form := url.Values{"__profile": {"default"}, "permission_mode": {"acceptEdits"}, "statusline_preset": {"full"}}
-	servePost(t, h, "/save", form)
-	if got.StatuslineSegments != nil {
-		t.Errorf("non-custom preset bound segments = %+v, want nil", got.StatuslineSegments)
-	}
-}
+// TestSaveCustomSegmentsRoundTrip + TestSaveNonCustomPresetLeavesSegmentsNil
+// removed (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001): the web console statusline
+// panel is gone, so the handler no longer binds statusline_preset / segment_*
+// form values. Statusline config is managed via statusline.yaml / wizard.
 
 // --- Phase 6: Host-check middleware (AC-WC-009) ---
 

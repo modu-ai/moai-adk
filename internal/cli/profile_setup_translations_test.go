@@ -150,20 +150,19 @@ func TestGetProfileText_PermAutoRuntimeWarning(t *testing.T) {
 	}
 }
 
-// TestGetProfileText_MigrationNoticeFields W-4: verifies that MigrationNotice fields are populated
-// in all 4 languages and contain the %q format verb.
+// TestGetProfileText_MigrationNoticeFields W-4: verifies that the theme
+// MigrationNotice field is populated in all 4 languages and contains the %q
+// format verb. The mode migration notice was removed by
+// SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001.
 func TestGetProfileText_MigrationNoticeFields(t *testing.T) {
 	for _, lang := range []string{"en", "ko", "ja", "zh"} {
 		txt := getProfileText(lang)
-		if txt.MigrationNoticeStatuslineMode == "" {
-			t.Errorf("lang=%q: MigrationNoticeStatuslineMode is empty", lang)
-		}
 		if txt.MigrationNoticeStatuslineTheme == "" {
 			t.Errorf("lang=%q: MigrationNoticeStatuslineTheme is empty", lang)
 		}
 		// Must contain 2 %q format verbs (old value, new value)
-		if !containsStr(txt.MigrationNoticeStatuslineMode, "%q") {
-			t.Errorf("lang=%q: MigrationNoticeStatuslineMode %q should contain %%q format verb", lang, txt.MigrationNoticeStatuslineMode)
+		if !containsStr(txt.MigrationNoticeStatuslineTheme, "%q") {
+			t.Errorf("lang=%q: MigrationNoticeStatuslineTheme %q should contain %%q format verb", lang, txt.MigrationNoticeStatuslineTheme)
 		}
 	}
 }
@@ -224,8 +223,9 @@ func TestGetProfileText_EmptyString(t *testing.T) {
 // selector + 15 segment toggle labels added by
 // SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001 REQ-SPW-003.
 //
-// 4 locales × 23 keys (2 preset titles + 4 preset options + 2 segments
-// section titles + 15 segment labels) = 92 cells verified.
+// 4 locales × 17 keys (2 segments section titles + 15 segment labels) = 68
+// cells verified. The 6 preset-title/option cells were removed by
+// SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 (preset Select retired).
 func TestProfileSetupTranslations_PresetSegments(t *testing.T) {
 	langs := []string{"en", "ko", "ja", "zh"}
 	type cell struct {
@@ -233,12 +233,6 @@ func TestProfileSetupTranslations_PresetSegments(t *testing.T) {
 		value func(profileSetupText) string
 	}
 	cells := []cell{
-		{"StatuslinePresetTitle", func(p profileSetupText) string { return p.StatuslinePresetTitle }},
-		{"StatuslinePresetDesc", func(p profileSetupText) string { return p.StatuslinePresetDesc }},
-		{"PresetFull", func(p profileSetupText) string { return p.PresetFull }},
-		{"PresetCompact", func(p profileSetupText) string { return p.PresetCompact }},
-		{"PresetMinimal", func(p profileSetupText) string { return p.PresetMinimal }},
-		{"PresetCustom", func(p profileSetupText) string { return p.PresetCustom }},
 		{"StatuslineSegmentsTitle", func(p profileSetupText) string { return p.StatuslineSegmentsTitle }},
 		{"StatuslineSegmentsDesc", func(p profileSetupText) string { return p.StatuslineSegmentsDesc }},
 		{"SegmentClaudeVersion", func(p profileSetupText) string { return p.SegmentClaudeVersion }},

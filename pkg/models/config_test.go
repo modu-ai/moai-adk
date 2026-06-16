@@ -158,12 +158,8 @@ func TestTDDSettingsFields(t *testing.T) {
 
 func TestStatuslineConfigFields(t *testing.T) {
 	cfg := models.StatuslineConfig{
-		Preset:   "full",
 		Segments: map[string]bool{"model": true, "context": false},
 		Theme:    "catppuccin-mocha",
-	}
-	if cfg.Preset != "full" {
-		t.Errorf("Preset: got %q, want %q", cfg.Preset, "full")
 	}
 	if cfg.Theme != "catppuccin-mocha" {
 		t.Errorf("Theme: got %q, want %q", cfg.Theme, "catppuccin-mocha")
@@ -178,9 +174,6 @@ func TestStatuslineConfigFields(t *testing.T) {
 
 func TestStatuslineConfigZeroValue(t *testing.T) {
 	var cfg models.StatuslineConfig
-	if cfg.Preset != "" {
-		t.Errorf("zero-value Preset: got %q, want empty", cfg.Preset)
-	}
 	if cfg.Theme != "" {
 		t.Errorf("zero-value Theme: got %q, want empty", cfg.Theme)
 	}

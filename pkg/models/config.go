@@ -195,8 +195,11 @@ type FullQualityConfig struct {
 }
 
 // StatuslineConfig represents the statusline configuration section.
+// The preset field was retired (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001):
+// segments + theme are the only configuration levers now. A legacy `preset:`
+// key in statusline.yaml is silently ignored by the loader (unknown YAML keys
+// do not error).
 type StatuslineConfig struct {
-	Preset   string          `yaml:"preset"`
 	Segments map[string]bool `yaml:"segments"`
 	Theme    string          `yaml:"theme"`
 }

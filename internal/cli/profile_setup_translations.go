@@ -1,6 +1,12 @@
 package cli
 
 // profileSetupText holds all translatable strings for the profile setup wizard.
+//
+// The StatuslineModeTitle/Desc, ModeDefault/Compact/Full/Verbose/Minimal,
+// StatuslinePresetTitle/Desc, PresetFull/Compact/Minimal/Custom,
+// SummaryStatuslineMode, and MigrationNoticeStatuslineMode fields were removed
+// by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 (runtime mode was inert; named
+// presets were redundant with the segment map). Theme keys survive.
 type profileSetupText struct {
 	// Banner
 	ConfiguringProfile string
@@ -59,29 +65,12 @@ type profileSetupText struct {
 	PermBypass          string
 	PermDontAsk         string
 
-	// Section: Display
+	// Section: Display (theme only — mode + preset removed by
+	// SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001)
 	DisplayTitle string
-	// Statusline mode selector (layout style)
-	StatuslineModeTitle string
-	StatuslineModeDesc  string
-	// v3 mode labels (REQ-V3-MODE-003)
-	ModeDefault string // label for mode = "default"
-	ModeCompact string // label for mode = "compact"
-	ModeFull    string // label for mode = "full"
-	// Deprecated: v2 labels. Kept for backward compatibility.
-	ModeVerbose string // label for mode = "verbose" (deprecated)
-	ModeMinimal string // label for mode = "minimal" (deprecated)
 
-	// Statusline preset selector (SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001)
-	StatuslinePresetTitle string
-	StatuslinePresetDesc  string
-	PresetFull            string
-	PresetCompact         string
-	PresetMinimal         string
-	PresetCustom          string
-
-	// Statusline segments multi-select (SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001)
-	// Only shown when preset = "custom".
+	// Statusline segments multi-select — now unconditional (the preset==custom
+	// gate was removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001).
 	// Order matches statuslineAllSegments slice in profile_setup.go (15 segments).
 	StatuslineSegmentsTitle string
 	StatuslineSegmentsDesc  string
@@ -111,21 +100,21 @@ type profileSetupText struct {
 	SetupCancelled string
 	SavedProfile   string
 
-	// Final summary block (rendered after SavedProfile)
+	// Final summary block (rendered after SavedProfile). SummaryStatuslineMode
+	// was removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001.
 	SummaryHeader          string
 	SummaryUserName        string
 	SummaryLanguages       string
 	SummaryModel           string
 	SummaryEffort          string
 	SummaryPermission      string
-	SummaryStatuslineMode  string
 	SummaryStatuslineTheme string
 	SummaryDefault         string
 	SummarySyncedHeader    string
 	SummarySyncSkipped     string
 
-	// W-4: statusline migration banner (previous value → new value)
-	MigrationNoticeStatuslineMode  string
+	// W-4: statusline theme migration banner (previous value → new value). The
+	// mode migration banner was removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001.
 	MigrationNoticeStatuslineTheme string
 
 	// SPEC-WEB-CONSOLE-003: project-config selects (development_mode + git_convention).
@@ -191,21 +180,8 @@ var profileSetupTexts = map[string]profileSetupText{
 		PermBypass:              "Bypass permissions - Skip all checks (isolated environments only)",
 		PermDontAsk:             "Don't ask - Only pre-approved tools (CI/locked-down environments)",
 		DisplayTitle:            "Display",
-		StatuslineModeTitle:     "Statusline display mode",
-		StatuslineModeDesc:      "Controls the layout style of the statusline.",
-		ModeDefault:             "Default - 3-line: info, CW/5H/7D bars, dir+git",
-		ModeCompact:             "Compact - 2-line: model+CW bar, git status",
-		ModeFull:                "Full - 5-line: info, CW/5H/7D bars (40-block), dir+git",
-		ModeVerbose:             "Verbose - 3-line detailed view with cost tracking",
-		ModeMinimal:             "Minimal - Model and context only",
-		StatuslinePresetTitle:   "Statusline preset",
-		StatuslinePresetDesc:    "Choose a preset segment bundle. Select 'custom' to toggle individual segments below.",
-		PresetFull:              "full - Show all segments (full visibility)",
-		PresetCompact:           "compact - Essential segments only (minimal noise)",
-		PresetMinimal:           "minimal - Just model and context",
-		PresetCustom:            "custom - Pick individual segments below",
-		StatuslineSegmentsTitle: "Statusline segments (custom preset only)",
-		StatuslineSegmentsDesc:  "Toggle which segments appear. Applied only when preset = 'custom'.",
+		StatuslineSegmentsTitle: "Statusline segments",
+		StatuslineSegmentsDesc:  "Toggle which segments appear in the status bar.",
 		SegmentClaudeVersion:    "Claude version",
 		SegmentContext:          "Context usage",
 		SegmentDirectory:        "Current directory",
@@ -234,13 +210,11 @@ var profileSetupTexts = map[string]profileSetupText{
 		SummaryModel:           "Model",
 		SummaryEffort:          "Effort level",
 		SummaryPermission:      "Permission mode",
-		SummaryStatuslineMode:  "Statusline mode",
 		SummaryStatuslineTheme: "Statusline theme",
 		SummaryDefault:         "(runtime default)",
 		SummarySyncedHeader:    "Synced to project config:",
 		SummarySyncSkipped:     "No project-level sync (profile saved globally).",
 
-		MigrationNoticeStatuslineMode:  "Notice: your previous statusline mode %q was migrated to %q in v3.",
 		MigrationNoticeStatuslineTheme: "Notice: your previous statusline theme %q was migrated to %q in v3.",
 
 		DevelopmentModeTitle: "Development mode",
@@ -298,21 +272,8 @@ var profileSetupTexts = map[string]profileSetupText{
 		PermBypass:              "권한 건너뛰기 (bypassPermissions) - 모든 검사 생략 (격리된 환경 전용)",
 		PermDontAsk:             "묻지 않기 (dontAsk) - 사전 승인된 도구만 사용 (CI/잠금 환경)",
 		DisplayTitle:            "화면 표시",
-		StatuslineModeTitle:     "상태줄 표시 모드",
-		StatuslineModeDesc:      "상태줄의 레이아웃 스타일을 제어합니다.",
-		ModeDefault:             "Default - 3줄: 정보, CW/5H/7D 바, 디렉토리+git",
-		ModeCompact:             "Compact - 2줄: 모델+CW 바, git 상태",
-		ModeFull:                "Full - 5줄: 정보, CW/5H/7D 바(40블록), 디렉토리+git",
-		ModeVerbose:             "Verbose - 비용 추적이 포함된 3줄 상세 뷰",
-		ModeMinimal:             "Minimal - 모델과 컨텍스트만 표시",
-		StatuslinePresetTitle:   "상태줄 프리셋",
-		StatuslinePresetDesc:    "세그먼트 묶음 프리셋을 선택하세요. 'custom'을 선택하면 아래에서 개별 세그먼트를 토글할 수 있습니다.",
-		PresetFull:              "full - 모든 세그먼트 표시 (전체 가시성)",
-		PresetCompact:           "compact - 필수 세그먼트만 (최소 노이즈)",
-		PresetMinimal:           "minimal - 모델과 컨텍스트만",
-		PresetCustom:            "custom - 아래에서 개별 세그먼트를 선택",
-		StatuslineSegmentsTitle: "상태줄 세그먼트 (custom 프리셋 전용)",
-		StatuslineSegmentsDesc:  "표시할 세그먼트를 토글합니다. preset이 'custom'일 때만 적용됩니다.",
+		StatuslineSegmentsTitle: "상태줄 세그먼트",
+		StatuslineSegmentsDesc:  "상태 표시줄에 표시할 세그먼트를 선택하세요.",
 		SegmentClaudeVersion:    "Claude 버전",
 		SegmentContext:          "컨텍스트 사용량",
 		SegmentDirectory:        "현재 디렉토리",
@@ -341,13 +302,11 @@ var profileSetupTexts = map[string]profileSetupText{
 		SummaryModel:           "모델",
 		SummaryEffort:          "추론 강도",
 		SummaryPermission:      "권한 모드",
-		SummaryStatuslineMode:  "상태줄 모드",
 		SummaryStatuslineTheme: "상태줄 테마",
 		SummaryDefault:         "(런타임 기본값)",
 		SummarySyncedHeader:    "프로젝트 설정에 동기화됨:",
 		SummarySyncSkipped:     "프로젝트별 동기화 없음 (프로필만 저장됨).",
 
-		MigrationNoticeStatuslineMode:  "알림: 이전 statusline 모드 %q 가 v3에서 %q 로 마이그레이션되었습니다.",
 		MigrationNoticeStatuslineTheme: "알림: 이전 statusline 테마 %q 가 v3에서 %q 로 마이그레이션되었습니다.",
 
 		DevelopmentModeTitle: "개발 방법론",
@@ -405,21 +364,8 @@ var profileSetupTexts = map[string]profileSetupText{
 		PermBypass:              "権限スキップ (bypassPermissions) - 全チェックを省略（隔離環境専用）",
 		PermDontAsk:             "確認しない (dontAsk) - 事前承認済みツールのみ（CI/制限環境）",
 		DisplayTitle:            "表示設定",
-		StatuslineModeTitle:     "ステータスライン表示モード",
-		StatuslineModeDesc:      "ステータスラインのレイアウトスタイルを制御します。",
-		ModeDefault:             "Default - 3行: 情報、CW/5H/7Dバー、ディレクトリ+git",
-		ModeCompact:             "Compact - 2行: モデル+CWバー、gitステータス",
-		ModeFull:                "Full - 5行: 情報、CW/5H/7Dバー(40ブロック)、ディレクトリ+git",
-		ModeVerbose:             "Verbose - コスト追跡付きの3行詳細表示",
-		ModeMinimal:             "Minimal - モデルとコンテキストのみ",
-		StatuslinePresetTitle:   "ステータスラインプリセット",
-		StatuslinePresetDesc:    "セグメントバンドルプリセットを選択。'custom'を選ぶと下のセグメントを個別に切り替えられます。",
-		PresetFull:              "full - 全セグメント表示 (全可視性)",
-		PresetCompact:           "compact - 必須セグメントのみ (最小ノイズ)",
-		PresetMinimal:           "minimal - モデルとコンテキストのみ",
-		PresetCustom:            "custom - 下で個別セグメントを選択",
-		StatuslineSegmentsTitle: "ステータスラインセグメント (custom プリセット専用)",
-		StatuslineSegmentsDesc:  "表示するセグメントを切り替えます。preset = 'custom' の時のみ適用されます。",
+		StatuslineSegmentsTitle: "ステータスラインセグメント",
+		StatuslineSegmentsDesc:  "ステータスバーに表示するセグメントを選択してください。",
 		SegmentClaudeVersion:    "Claude バージョン",
 		SegmentContext:          "コンテキスト使用量",
 		SegmentDirectory:        "現在のディレクトリ",
@@ -448,13 +394,11 @@ var profileSetupTexts = map[string]profileSetupText{
 		SummaryModel:           "モデル",
 		SummaryEffort:          "推論レベル",
 		SummaryPermission:      "権限モード",
-		SummaryStatuslineMode:  "ステータスラインモード",
 		SummaryStatuslineTheme: "ステータスラインテーマ",
 		SummaryDefault:         "(ランタイムデフォルト)",
 		SummarySyncedHeader:    "プロジェクト設定に同期しました:",
 		SummarySyncSkipped:     "プロジェクト別同期なし (プロファイルのみ保存).",
 
-		MigrationNoticeStatuslineMode:  "お知らせ: 以前のステータスラインモード %q は v3 で %q に移行されました。",
 		MigrationNoticeStatuslineTheme: "お知らせ: 以前のステータスラインテーマ %q は v3 で %q に移行されました。",
 
 		DevelopmentModeTitle: "開発方法論",
@@ -512,21 +456,8 @@ var profileSetupTexts = map[string]profileSetupText{
 		PermBypass:              "跳过权限 (bypassPermissions) - 跳过所有检查（仅限隔离环境）",
 		PermDontAsk:             "不询问 (dontAsk) - 仅预批准工具（CI/锁定环境）",
 		DisplayTitle:            "显示设置",
-		StatuslineModeTitle:     "状态栏显示模式",
-		StatuslineModeDesc:      "控制状态栏的布局样式。",
-		ModeDefault:             "Default - 3行: 信息、CW/5H/7D栏、目录+git",
-		ModeCompact:             "Compact - 2行: 模型+CW栏、git状态",
-		ModeFull:                "Full - 5行: 信息、CW/5H/7D栏(40块)、目录+git",
-		ModeVerbose:             "Verbose - 含费用追踪的3行详细视图",
-		ModeMinimal:             "Minimal - 仅显示模型和上下文",
-		StatuslinePresetTitle:   "状态栏预设",
-		StatuslinePresetDesc:    "选择段位束预设。选择 'custom' 可在下方逐个切换段位。",
-		PresetFull:              "full - 显示所有段位 (完全可见)",
-		PresetCompact:           "compact - 仅必需段位 (最小噪声)",
-		PresetMinimal:           "minimal - 仅模型和上下文",
-		PresetCustom:            "custom - 在下方选择单独段位",
-		StatuslineSegmentsTitle: "状态栏段位 (仅 custom 预设)",
-		StatuslineSegmentsDesc:  "切换显示哪些段位。仅当 preset = 'custom' 时应用。",
+		StatuslineSegmentsTitle: "状态栏段位",
+		StatuslineSegmentsDesc:  "选择要在状态栏中显示的段位。",
 		SegmentClaudeVersion:    "Claude 版本",
 		SegmentContext:          "上下文使用量",
 		SegmentDirectory:        "当前目录",
@@ -555,13 +486,11 @@ var profileSetupTexts = map[string]profileSetupText{
 		SummaryModel:           "模型",
 		SummaryEffort:          "推理强度",
 		SummaryPermission:      "权限模式",
-		SummaryStatuslineMode:  "状态栏模式",
 		SummaryStatuslineTheme: "状态栏主题",
 		SummaryDefault:         "(运行时默认值)",
 		SummarySyncedHeader:    "已同步到项目配置:",
 		SummarySyncSkipped:     "未进行项目级同步 (仅保存全局配置文件).",
 
-		MigrationNoticeStatuslineMode:  "提示：您之前的状态栏模式 %q 已在 v3 中迁移为 %q。",
 		MigrationNoticeStatuslineTheme: "提示：您之前的状态栏主题 %q 已在 v3 中迁移为 %q。",
 
 		DevelopmentModeTitle: "开发方法论",

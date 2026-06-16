@@ -20,15 +20,14 @@ type pageView struct {
 	Profiles          []profile.ProfileEntry
 	ShowProfileSwitch bool
 
-	// Option lists for the form selects.
-	LangOptions       []string
-	ModelOptions      []string
-	EffortLevels      []string
-	ModelPolicies     []string
-	PermissionModes   []string
-	StatuslinePresets []string
-	StatuslineThemes  []string
-	AllSegments       []string
+	// Option lists for the form selects. StatuslinePresets / StatuslineThemes /
+	// AllSegments were removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 (the
+	// statusline panel is gone from the web console).
+	LangOptions     []string
+	ModelOptions    []string
+	EffortLevels    []string
+	ModelPolicies   []string
+	PermissionModes []string
 
 	// Project-config selects (SPEC-WEB-CONSOLE-003). Option lists + the current
 	// persisted/submitted values for the two flat project-config enum fields.
@@ -79,9 +78,6 @@ func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pag
 		EffortLevels:      effortLevelCanonical,
 		ModelPolicies:     template.ValidModelPolicies(),
 		PermissionModes:   profile.ValidPermissionModes,
-		StatuslinePresets: statuslinePresetCanonical,
-		StatuslineThemes:  statuslineThemeCanonical,
-		AllSegments:       allSegments,
 		DevelopmentModes:  developmentModeCanonical,
 		Conventions:       conventionCanonical,
 		BindAddr:          a.resolveBindAddr(),
@@ -365,18 +361,6 @@ func bindForm(r *http.Request) profile.ProfilePreferences {
 		Model:            r.PostFormValue("model"),
 		EffortLevel:      r.PostFormValue("effort_level"),
 		PermissionMode:   r.PostFormValue("permission_mode"),
-		StatuslinePreset: r.PostFormValue("statusline_preset"),
-		StatuslineTheme:  r.PostFormValue("statusline_theme"),
-	}
-
-	// Bind statusline segments only when the preset is custom — otherwise leave
-	// the map nil so syncStatusline keeps its existing/default segments (EC-5).
-	if prefs.StatuslinePreset == "custom" {
-		segs := make(map[string]bool, len(allSegments))
-		for _, key := range allSegments {
-			segs[key] = r.PostFormValue("segment_"+key) != ""
-		}
-		prefs.StatuslineSegments = segs
 	}
 
 	return prefs

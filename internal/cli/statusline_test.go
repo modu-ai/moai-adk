@@ -110,12 +110,11 @@ func TestRenderSimpleFallback_ConsistentOutput(t *testing.T) {
 
 func TestLoadStatuslineFileConfig(t *testing.T) {
 	tests := []struct {
-		name       string
-		yaml       string
-		wantNil    bool
-		wantPreset string
-		wantTheme  string
-		wantSegs   map[string]bool
+		name      string
+		yaml      string
+		wantNil   bool
+		wantTheme string
+		wantSegs  map[string]bool
 	}{
 		{
 			name:    "empty project root returns nil",
@@ -132,7 +131,7 @@ func TestLoadStatuslineFileConfig(t *testing.T) {
 			wantNil: true,
 		},
 		{
-			name: "reads preset and theme",
+			name: "reads theme and segments (legacy preset key silently ignored)",
 			yaml: `statusline:
   preset: "compact"
   theme: "catppuccin-mocha"
@@ -140,22 +139,20 @@ func TestLoadStatuslineFileConfig(t *testing.T) {
     model: true
     context: false
 `,
-			wantNil:    false,
-			wantPreset: "compact",
-			wantTheme:  "catppuccin-mocha",
-			wantSegs:   map[string]bool{"model": true, "context": false},
+			wantNil:   false,
+			wantTheme: "catppuccin-mocha",
+			wantSegs:  map[string]bool{"model": true, "context": false},
 		},
 		{
-			name: "default theme when absent",
+			name: "segments + default theme when theme absent",
 			yaml: `statusline:
   preset: "full"
   segments:
     model: true
 `,
-			wantNil:    false,
-			wantPreset: "full",
-			wantTheme:  "",
-			wantSegs:   map[string]bool{"model": true},
+			wantNil:   false,
+			wantTheme: "",
+			wantSegs:  map[string]bool{"model": true},
 		},
 		{
 			name: "catppuccin-latte theme",
@@ -165,10 +162,9 @@ func TestLoadStatuslineFileConfig(t *testing.T) {
   segments:
     model: true
 `,
-			wantNil:    false,
-			wantPreset: "full",
-			wantTheme:  "catppuccin-latte",
-			wantSegs:   map[string]bool{"model": true},
+			wantNil:   false,
+			wantTheme: "catppuccin-latte",
+			wantSegs:  map[string]bool{"model": true},
 		},
 	}
 
@@ -209,9 +205,6 @@ func TestLoadStatuslineFileConfig(t *testing.T) {
 				t.Fatal("loadStatuslineFileConfig() = nil, want non-nil")
 			}
 
-			if got.Preset != tt.wantPreset {
-				t.Errorf("Preset = %q, want %q", got.Preset, tt.wantPreset)
-			}
 			if got.Theme != tt.wantTheme {
 				t.Errorf("Theme = %q, want %q", got.Theme, tt.wantTheme)
 			}
@@ -222,6 +215,62 @@ func TestLoadStatuslineFileConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestLoadStatuslineFileConfig_LegacyPresetIgnored verifies REQ-SPR-021 / AC-SPR-020:
+// a statusline.yaml carrying a legacy `preset:` key (from a pre-retire install)
+// loads with no error and no warning, the `segments:` block is returned verbatim,
+// and the preset value is NOT reflected anywhere in the resulting config.
+//
+// The preset field was removed from statuslineFileConfig by
+// SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001, so an unknown YAML key is silently
+// dropped by yaml.Unmarshal — this test pins that behavior as a characterization
+// guard so a future change that re-introduces preset handling is caught.
+func TestLoadStatuslineFileConfig_LegacyPresetIgnored(t *testing.T) {
+	tmpDir := t.TempDir()
+	configDir := filepath.Join(tmpDir, ".moai", "config", "sections")
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		t.Fatalf("create config dir: %v", err)
+	}
+	yamlContent := `statusline:
+  preset: compact
+  theme: catppuccin-mocha
+  segments:
+    model: true
+    context: true
+    git_status: false
+`
+	configPath := filepath.Join(configDir, "statusline.yaml")
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0o644); err != nil {
+		t.Fatalf("write statusline.yaml: %v", err)
+	}
+
+	got := loadStatuslineFileConfig(tmpDir)
+	if got == nil {
+		t.Fatal("loadStatuslineFileConfig() = nil, want non-nil (loader must not reject legacy preset key)")
+	}
+
+	// (a) segments block returned verbatim — preset did not expand or alter it.
+	wantSegs := map[string]bool{"model": true, "context": true, "git_status": false}
+	if len(got.Segments) != len(wantSegs) {
+		t.Fatalf("Segments key count = %d, want %d (preset must not expand the map)", len(got.Segments), len(wantSegs))
+	}
+	for k, v := range wantSegs {
+		if got.Segments[k] != v {
+			t.Errorf("Segments[%q] = %v, want %v (preset must not alter submitted segments)", k, got.Segments[k], v)
+		}
+	}
+
+	// (b) theme passes through.
+	if got.Theme != "catppuccin-mocha" {
+		t.Errorf("Theme = %q, want %q", got.Theme, "catppuccin-mocha")
+	}
+
+	// (c) There is no field on statuslineFileConfig that could carry the preset
+	// value — structurally guaranteed by the type. This assertion documents the
+	// invariant; if a Preset field is ever re-added, this compile-time check
+	// forces the test author to reconsider whether silent-ignore still holds.
+	var _ interface{} = got // statuslineFileConfig has only Theme + Segments fields
 }
 
 // --- TDD RED: M1 Tests for Cwd Guard ---

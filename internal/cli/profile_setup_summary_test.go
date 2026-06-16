@@ -19,7 +19,6 @@ func makeTestPrefs() profile.ProfilePreferences {
 		Model:            "opus",
 		EffortLevel:      "high",
 		PermissionMode:   "auto",
-		StatuslineMode:   "default",
 		StatuslineTheme:  "catppuccin-mocha",
 	}
 }
@@ -39,14 +38,13 @@ func TestPrintProfileSummary_Synced(t *testing.T) {
 	if !strings.Contains(output, "Captured values:") {
 		t.Errorf("expected SummaryHeader 'Captured values:', got:\n%s", output)
 	}
-	// Verify 7 setting fields
+	// Verify 6 setting fields (mode removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001)
 	for _, want := range []string{
 		"User name",
 		"Languages",
 		"Model",
 		"Effort level",
 		"Permission mode",
-		"Statusline mode",
 		"Statusline theme",
 	} {
 		if !strings.Contains(output, want) {
@@ -107,7 +105,6 @@ func TestPrintProfileSummary_EmptyFields(t *testing.T) {
 		// UserName left empty
 		ConversationLang: "en",
 		// remaining language fields left empty
-		StatuslineMode:  "default",
 		StatuslineTheme: "catppuccin-mocha",
 	}
 	txt := getProfileText("en")
