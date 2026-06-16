@@ -403,7 +403,7 @@ battery + build/test/race evidence above. 3 SHOULD ACs:
 - **Sync** (`26aae676c` + `d38298d0a` backfill): CHANGELOG `[Unreleased] ### Removed` + README en/ko preset example + frontmatter `implemented` + §E.4 (orchestrator-direct sync fallback).
 - **Mx** (this commit): frontmatter `implemented → completed`; §E.5 populated; 4-phase close declared.
 
-- mx_commit_sha: `(this commit)` — backfilled after push. Non-bold per `feedback_era_commit_sha_field_format`.
+- mx_commit_sha: `b30b19634` — backfilled after push. Non-bold per `feedback_era_commit_sha_field_format`.
 
 **Commit subject**: `chore(SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001): Mx-phase audit-ready signal + 4-phase close`
 
