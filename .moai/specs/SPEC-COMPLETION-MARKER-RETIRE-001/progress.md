@@ -30,7 +30,7 @@ sync_phase_summary: |
 ### §E.5 Mx-phase Audit-Ready Signal
 
 ```yaml
-mx_commit_sha: "(this commit)"
+mx_commit_sha: "ae21e1ee6"
 mx_complete_at: "2026-06-16"
 mx_phase_summary: |
   orchestrator-direct Mx-phase close:
