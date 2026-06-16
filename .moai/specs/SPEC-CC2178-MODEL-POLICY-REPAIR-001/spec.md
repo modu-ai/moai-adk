@@ -2,7 +2,7 @@
 id: SPEC-CC2178-MODEL-POLICY-REPAIR-001
 title: "CC 2.1.178 Model-Policy Repair: 3-Axis Cost Routing Alignment + Phantom-Map Cleanup"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-06-16
 updated: 2026-06-16
 author: manager-spec
