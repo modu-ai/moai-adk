@@ -44,19 +44,21 @@
 
 ## §D — Milestone Progress
 
-_<pending run-phase>_
+- **M1** (permissions + skills discovery): COMPLETE — commit `25796ea9b`. REQ-DA-001~004 documented in rules source+mirror (settings-management.md, skill-authoring.md, agent-authoring.md) + docs-site 4-locale (settings-json.md, skill-guide.md, agent-guide.md).
+- **M2** (hooks + agent governance): COMPLETE — commit `b38a28c78`. REQ-DA-005~007 documented in rules source+mirror (hooks-system.md, orchestration-mode-selection.md; agent-authoring.md disallowedTools MCP added in M1) + docs-site 4-locale (hooks-reference.md, hooks-guide.md, agent-guide.md).
+- **M3** (session resume / `/cd`): COMPLETE — commit `679c1c72b`. REQ-DA-008 documented in session-handoff.md (mirror-direct) + docs-site 4-locale (statusline.md, moai-sync.md). Block 0 contract preserved; mirror-only doctrine (Diet Constraints/V0 Abort Gate, 6 internal SPEC ID refs) preserved.
 
 ### §D.1 M1 — permissions + skills discovery
 
-_<pending run-phase>_
+COMPLETE. 20 files changed (3 rules source + 3 mirror + 12 docs-site 4-locale + spec.md frontmatter + progress.md). All 4 REQ grep verifications PASS at ≥1 across source+mirror+4-locale. Template-first mirror parity achieved via source edit → make build → cp to mirror.
 
 ### §D.2 M2 — hooks + agent governance
 
-_<pending run-phase>_
+COMPLETE. 16 files changed (2 rules source + 2 mirror + 12 docs-site 4-locale). REQ-DA-005 post-session, REQ-DA-006 disallowedTools MCP enforcement, REQ-DA-007 auto-mode pre-launch classifier all documented. Accuracy-over-completeness: post-session notes MoAI-ADK does not wire this hook.
 
 ### §D.3 M3 — session resume / `/cd`
 
-_<pending run-phase>_
+COMPLETE. 9 files changed (1 mirror-direct session-handoff.md + 8 docs-site 4-locale). REQ-DA-008 `/cd` cache-preserving resume documented as complement to Block 0 new-terminal path (not replacement). session-handoff.md mirror-direct discipline per plan.md §E.4.1: source-first BYPASS, make build NOT run for this file.
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -73,16 +75,42 @@ _<pending run-phase>_
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+| AC | Status | Verification | Observed |
+|----|--------|--------------|----------|
+| AC-DA-001 (Tool(param:value) MUST) | PASS | grep "Tool(param:value)" rules source+mirror+4-locale settings-json.md | source=2 mirror=2 en=1 ko=1 ja=1 zh=1 (all ≥1) |
+| AC-DA-002 (closest-wins MUST) | PASS | grep -ciE "closest.wins\|closest-directory" skill-authoring+agent-authoring source + skill-guide+agent-guide 4-locale | source skill=2 agent=2; 4-locale skill-guide=2 agent-guide=1 (all ≥1) |
+| AC-DA-003 (nested .claude/skills SHOULD) | PASS | grep nested .claude/skills skill-authoring source + skill-guide 4-locale | source=2; en=3 ko=3 ja=3 zh=3 (all ≥1) |
+| AC-DA-004 (disableBundledSkills + safe-mode SHOULD) | PASS | grep disableBundledSkills + safe-mode settings-management+skill-authoring source + settings-json+skill-guide 4-locale | source d=2 s=1; 4-locale settings-json d=4 s=1 skill-guide d=2 s=1 (all ≥1) |
+| AC-DA-005 (post-session SHOULD) | PASS | grep post-session\|PostSession hooks-system source + hooks-reference+hooks-guide 4-locale | source=1; 4-locale hooks-reference=1 hooks-guide=1 (all ≥1) |
+| AC-DA-006 (disallowedTools MCP SHOULD) | PASS | grep disallowedTools.*MCP agent-authoring source + agent-guide 4-locale | source=2; 4-locale=2 (all ≥1) |
+| AC-DA-007 (pre-launch classifier SHOULD) | PASS | grep pre.launch.classifier\|auto.mode.*classifier orchestration-mode-selection source (rules-only) | source=2 (≥1) |
+| AC-DA-008 (/cd cache-preserving MUST) | PASS | grep /cd + cache-term session-handoff mirror + statusline+moai-sync 4-locale | mirror /cd-cache=2; 4-locale statusline /cd=2 cache-term≥4 moai-sync /cd=2 cache-term≥2 (all present) |
+| AC-DA-009 (4-locale parity MUST) | PASS | scripts/docs-i18n-check.sh errors in my pages | 0 of 62 baseline errors in my pages (baseline pre-existing zh H1/glossary gaps out of scope) |
+| AC-DA-010 (ZERO Go MUST) | PASS | git diff --name-only 8b5d5d49d HEAD \| grep '\.go$' | empty (0 Go files changed across M1+M2+M3) |
+
+**MUST count**: 5/5 PASS (AC-DA-001, 002, 008, 009, 010). **SHOULD count**: 5/5 PASS (AC-DA-003, 004, 005, 006, 007). **Total**: 10/10 PASS.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- **run_complete_at**: 2026-06-16
+- **run_commit_sha**: 679c1c72b (M3 final; M1=25796ea9b, M2=b38a28c78)
+- **run_status**: audit-ready
+- **ac_pass_count**: 10
+- **ac_fail_count**: 0
+- **preserve_list_post_run_count**: 0 (no PRESERVE-list files touched)
+- **l44_pre_commit_fetch**: not applicable (docs-only SPEC, no dependency manifest changes)
+- **l44_post_push_fetch**: pending push
+- **new_warnings_or_lints_introduced**: 0 (spec-lint StatusGitConsistency warning is pre-transition known warning — resolves at sync-phase `in-progress → implemented`)
+- **cross_platform_build**: n/a (ZERO Go code, no build artifact)
+- **total_run_phase_files**: 45 (20 M1 + 16 M2 + 9 M3)
+- **m1_to_mN_commit_strategy**: 3 separate milestone commits (M1 `25796ea9b`, M2 `b38a28c78`, M3 `679c1c72b`), each with Conventional Commits format + Authored-By-Agent: manager-develop trailer + 🗿 MoAI footer
+- **template_mirror_parity**: 5 source-first files PARITY ✓; session-handoff.md intentional-DIFFER maintained (doctrine markers=3 ≥3, internal SPEC ID refs=6 ≥6)
+- **neutrality_ci**: PASS (go test ./internal/template/... -run TestTemplateNeutralityAudit exit 0)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending run-phase>_
+_<pending sync-phase (manager-docs owned)>_
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending run-phase>_
+_<pending Mx-phase>_
