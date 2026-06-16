@@ -132,8 +132,8 @@ templ fieldsetStatusline(view pageView) {
 		</div>
 		<div class="section__body">
 			<div class="grid">
-				@statuslineSelect("statusline_preset", "Statusline preset", "A predefined segment set. Choose “custom” to pick your own.", view.StatuslinePresets, view.Prefs.StatuslinePreset, "", view.FieldErrors)
-				@statuslineSelect("statusline_theme", "Statusline theme", "Color theme for the status bar.", view.StatuslineThemes, view.Prefs.StatuslineTheme, "col-span-2", view.FieldErrors)
+				@statuslineSelect("statusline_preset", "Statusline preset", "A predefined segment set. Choose “custom” to pick your own.", view.StatuslinePresets, view.Prefs.StatuslinePreset, "", "(unchanged)", view.FieldErrors)
+				@statuslineSelect("statusline_theme", "Statusline theme", "Color theme for the status bar.", view.StatuslineThemes, view.Prefs.StatuslineTheme, "col-span-2", "", view.FieldErrors)
 			</div>
 			<div
 				class={ "segments", templ.KV("segments--disabled", view.Prefs.StatuslinePreset != "custom") }
@@ -154,20 +154,24 @@ templ fieldsetStatusline(view pageView) {
 }
 
 // statuslineSelect ports the statusline mode/preset/theme inline selects. They
-// share the f.<name>.title/.desc label chrome and a plain {{.}} option list with
-// NO empty option (page.html.tmpl ~190-225). extraFieldClass carries the optional
-// col-span-2 modifier the theme field uses.
-templ statuslineSelect(name, title, desc string, options []string, current, extraFieldClass string, errs map[string]string) {
+// share the f.<name>.title/.desc label chrome and a plain {{.}} option list
+// (page.html.tmpl ~190-225). extraFieldClass carries the optional col-span-2
+// modifier the theme field uses. empty 가 빈 문자열이 아니면 맨 앞에
+// value="" "(unchanged)" 옵션이 추가된다 — statusline_preset 만 빈 옵션을 가져
+// 사용자가 statusline 을 건드리지 않고 다른 필드만 저장할 수 있다(sync.go:71
+// 빈-skip 경로가 기존 statusline.yaml 을 보존, SLR-3 HARD-7). theme 는 빈 문자열을
+// 전달하여 기존 no-empty-option 동작을 유지한다.
+templ statuslineSelect(name, title, desc string, options []string, current, extraFieldClass, empty string, errs map[string]string) {
 	<div class={ "field", templ.KV(extraFieldClass, extraFieldClass != ""), templ.KV("has-error", hasFieldError(errs, name)) }>
 		<span class="field__label"><span class="field__title" data-i18n={ "f." + name + ".title" }>{ title }</span><code class="field__key">{ name }</code></span>
 		<span class="field__desc" data-i18n={ "f." + name + ".desc" }>{ desc }</span>
 		if name == "statusline_theme" {
 			<span class="select-wrap" style="max-width:340px">
-				@statuslineSelectInner(name, options, current, hasFieldError(errs, name))
+				@statuslineSelectInner(name, options, current, empty, hasFieldError(errs, name))
 			</span>
 		} else {
 			<span class="select-wrap">
-				@statuslineSelectInner(name, options, current, hasFieldError(errs, name))
+				@statuslineSelectInner(name, options, current, empty, hasFieldError(errs, name))
 			</span>
 		}
 		if msg := fieldErrorMsg(errs, name); msg != "" {
@@ -176,8 +180,11 @@ templ statuslineSelect(name, title, desc string, options []string, current, extr
 	</div>
 }
 
-// statuslineSelectInner renders the <select> + plain option list (no empty option).
-templ statuslineSelectInner(name string, options []string, current string, errored bool) {
+// statuslineSelectInner renders the <select> + plain option list. empty 가 빈
+// 문자열이 아니면 맨 앞에 value="" 옵션을 추가한다 — 라벨은 data-i18n="opt.unchanged"
+// 로 현지화되며(app.js applyI18n 이 치환), 빈 값 제출 시 sync.go:71 이 statusline
+// sync 를 건너뛰어 기존 statusline.yaml 이 보존된다.
+templ statuslineSelectInner(name string, options []string, current, empty string, errored bool) {
 	<select
 		class="select"
 		id={ name }
@@ -187,6 +194,13 @@ templ statuslineSelectInner(name string, options []string, current string, error
 			aria-describedby={ "err_" + name }
 		}
 	>
+		if empty != "" {
+			if current == "" {
+				<option value="" selected data-i18n="opt.unchanged">{ empty }</option>
+			} else {
+				<option value="" data-i18n="opt.unchanged">{ empty }</option>
+			}
+		}
 		for _, o := range options {
 			if o == current {
 				<option value={ o } selected>{ o }</option>

@@ -24,6 +24,16 @@
 // FOUC is prevented by an inline <head> snippet that applies the persisted theme
 // + interface language before first paint; this script wires the interactive
 // toggles and applies the active-locale translations on load.
+//
+// 초기화는 DOMContentLoaded 와 htmx:afterSettle 양쪽에서 모두 실행된다. 폼이
+// hx-boost="true" (root.templ) 라 POST /save 시 htmx 가 전체 body 를 AJAX 로
+// 교체(swap)하는데, 이때 document.readyState 가 이미 "complete" 이므로
+// DOMContentLoaded 가 재발생하지 않는다. afterSettle 없으면 swap 직후 새 body 의
+// [data-i18n] 요소에 한국어가 재적용되지 않고(영어 서버 기본이 잔류),
+// themeToggle/uiLangSelect 가 리스너를 잃어 토글·언어 변경이 먹통이 된다.
+// boost swap 은 body 전체 교체이므로 새 요소는 리스너가 없어 중복 등록 우려도 없다.
+// JS/htmx 가 비활성된 환경에서는 폼이 일반 POST(전체 새로고침)로 동작하므로
+// DOMContentLoaded 경로가 정상 작동한다(afterSettle 리스너는 htmx 로드 시에만 의미).
 (function () {
   "use strict";
 
@@ -211,6 +221,18 @@
     }
   }
 
+  // readPersistedTheme 는 readPersistedLang 의 테마 mirror 이다 — localStorage 에서
+  // THEME_KEY 를 읽어 "dark" 가 아니면 "light" 를 기본으로 반환한다. htmx boost
+  // swap 후 <head> 의 FOUC 스크립트가 새 body 에 도달하지 못할 수 있으므로,
+  // initConsole 이 매번 localStorage 에서 테마를 재적용하도록 돕는다.
+  function readPersistedTheme() {
+    try {
+      return localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light";
+    } catch (e) {
+      return "light";
+    }
+  }
+
   function wireLangpick() {
     var sel = document.getElementById("uiLangSelect");
     if (!sel) {
@@ -228,7 +250,12 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
+  // initConsole 는 모든 콘솔 초기화를 한 곳에서 수행한다 — DOMContentLoaded(첫
+  // 로드 / htmx 비활성 전체 새로고침) 와 htmx:afterSettle(boost body swap 직후)
+  // 양쪽에서 호출된다. boost swap 은 body 전체를 교체하므로 새 요소는 리스너가
+  // 없어 중복 등록 우려가 없다. persisted theme/i18n 을 매번 재적용하여 swap 후에도
+  // 한국어 인터페이스·선택 테마가 유지된다(파일 헤더 주석의 버그 A 수정 참조).
+  function initConsole() {
     syncSegmentsVisibility();
     var preset = document.querySelector('select[name="statusline_preset"]');
     if (preset) {
@@ -236,7 +263,17 @@
     }
     wireProfileSwitch();
     wireThemeToggle();
+    // swap 후 <head> FOUC 스크립트가 새 body 에 도달하지 못할 수 있으므로, persisted
+    // 테마를 localStorage 에서 직접 재적용한다(head 속성 의존 제거).
+    applyTheme(readPersistedTheme());
+    // wireLangpick 내부의 applyI18n(readPersistedLang()) 가 새 body 의 [data-i18n]
+    // 요소에 persisted 언어(예: 한국어)를 재적용한다.
     wireLangpick();
     wireShutdownButton();
-  });
+  }
+
+  document.addEventListener("DOMContentLoaded", initConsole);
+  // htmx boost 가 body 를 swap 한 직후 document 에서 발생한다. afterSettle 없으면
+  // swap 이후 DOMContentLoaded 가 재발생하지 않아 초기화가 누락된다.
+  document.addEventListener("htmx:afterSettle", initConsole);
 })();

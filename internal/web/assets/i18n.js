@@ -86,7 +86,8 @@ window.MOAI_I18N = {
 
     "lang.aria": "Interface language",
     "theme.aria": "Toggle light / dark theme",
-    "appbar.shutdown.confirm": "Shut down the server? The console will stop and this tab will go offline."
+    "appbar.shutdown.confirm": "Shut down the server? The console will stop and this tab will go offline.",
+    "opt.unchanged": "(unchanged)"
   },
 
   ko: {
@@ -158,7 +159,8 @@ window.MOAI_I18N = {
 
     "lang.aria": "인터페이스 언어",
     "theme.aria": "라이트 / 다크 테마 전환",
-    "appbar.shutdown.confirm": "서버를 종료하시겠습니까? 콘솔이 중지되며 이 탭은 오프라인됩니다."
+    "appbar.shutdown.confirm": "서버를 종료하시겠습니까? 콘솔이 중지되며 이 탭은 오프라인됩니다.",
+    "opt.unchanged": "(변경 안 함)"
   },
 
   ja: {
@@ -230,7 +232,8 @@ window.MOAI_I18N = {
 
     "lang.aria": "インターフェース言語",
     "theme.aria": "ライト / ダークテーマ切替",
-    "appbar.shutdown.confirm": "サーバーをシャットダウンしますか？コンソールが停止し、このタブはオフラインになります。"
+    "appbar.shutdown.confirm": "サーバーをシャットダウンしますか？コンソールが停止し、このタブはオフラインになります。",
+    "opt.unchanged": "(変更なし)"
   },
 
   zh: {
@@ -302,6 +305,7 @@ window.MOAI_I18N = {
 
     "lang.aria": "界面语言",
     "theme.aria": "切换浅色 / 深色主题",
-    "appbar.shutdown.confirm": "要关闭服务器吗？控制台将停止，此标签页将离线。"
+    "appbar.shutdown.confirm": "要关闭服务器吗？控制台将停止，此标签页将离线。",
+    "opt.unchanged": "(不变)"
   }
 };
