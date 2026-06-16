@@ -269,6 +269,8 @@ When `conversation_language: ko`, emitting raw English literals from the §8 tem
 
 Root cause of the defect: prior versions said "translate all text" but §8 templates contained literal English example labels; models anchored to the literal examples and rendered them verbatim. This Localization Contract makes the translation obligation explicit at the surface where templates appear. The catalogue above provides the ko canonical mapping for every label observed in production. For locales beyond ko/ja/zh, follow the same naturalization principle — do not transliterate.
 
+**Fallback rule for locales not in the table.** The catalogue above and the Cut-line Marker / Header translation tables further down render concrete text for en / ko / ja / zh only. When `conversation_language` is an ISO-639 code whose language column is NOT in these tables (e.g. `fr`, `de`, `es`, `pt`, `vi`), English is the canonical fallback skeleton and each label translates to that locale using the naturalization principle (idiomatic phrasing a native reader expects, never literal word-by-word transliteration). In other words: locales not in the table fall back to the English column for the structural skeleton, with the label text rendered in the configured ISO-639 language — ISO-639 not in the table ⇒ English-skeleton fallback, not English-output.
+
 **Banner body prose translation obligation (HARD — extends labels into full sentences):**
 
 The label-level catalogue above governs **field keys and headers** (e.g., `What:` / `Why:` / `Scope:` / `Findings:`). Banner body content also includes **prose sentences** — Discovery `Findings:` body content, Gate `Summary:` body content, Insight `Why:` body content, Race Absorbed / Cohort Stats / Sprint Status body content, `AskUserQuestion` `description` and `preview` fields, and step/round update prose in the response body. These prose sentences MUST also be rendered in the user's `conversation_language` with natural idiomatic phrasing. Raw English noun-phrases / verb-phrases embedded in otherwise-translated banners are a HARD violation.
@@ -309,7 +311,7 @@ English content permitted in user-facing prose (preserve verbatim — DO NOT tra
 
 이 catalogue는 ko canonical. ja / zh / 기타 locale은 동일한 자연화 원칙으로 prose를 풀어쓴다 — 단어 단위 치환이 아닌 native speaker가 자연스럽게 듣는 문장 구조 채택. transliteration (음역) 금지.
 
-**Pre-emit self-check (verify before printing any §8-derived block):**
+**Pre-emit self-check (localization render) — verify before printing any §8-derived block:**
 
 - [ ] Did I read `conversation_language` from `.moai/config/sections/language.yaml`?
 - [ ] Did I translate every English text label to `conversation_language` with natural idiomatic phrasing?
@@ -638,6 +640,9 @@ Rules:
 
 When ANY of the 5 triggers in §6 Session Boundary Handoff fires, MoAI MUST emit a paste-ready resume message in a fenced ```text``` block AND persist to memory **before** declaring the task complete. This template is the canonical surface — `.claude/rules/moai/workflow/session-handoff.md` is the SSOT.
 
+<!-- render-only, not canonical — canonical lives in .claude/rules/moai/workflow/session-handoff.md (SSOT). The blocks below are render-time skeletons the orchestrator reads at output time. If the SSOT and this surface diverge, the SSOT wins; update this surface to match. This is mitigation + visibility (surfaces drift to a reading editor), NOT mechanical prevention. -->
+**Drift-mitigation self-check sentinel (render surface → SSOT).** This §8 block is the render surface; `.claude/rules/moai/workflow/session-handoff.md` is the SSOT. Before committing any edit to the cut-line marker tables, the 6-block skeleton, the header translation tables, or the Pre-emit self-check labels in THIS block, verify the parity check against the SSOT: the SSOT Localization Table must carry the same locale column count (en / ko / ja / zh — 4 columns) as this block's translation tables, and the SSOT Pre-emit self-check labels must use the same concern-name qualifiers (`paste-ready budget` / `localization render` / `session-handoff template completeness`) as this block. If the two surfaces have diverged, the SSOT is canonical — update this render surface to match.
+
 Canonical 6-block format **bounded by cut-line markers** (structural skeleton — header labels MUST be translated to the user's `conversation_language`; cut-line markers MUST be present at the boundaries of the fenced block, with `✂` symbol verbatim and marker text translated per the Cut-line Marker translation table below):
 
 ```text
@@ -678,7 +683,7 @@ Header translation table (translate per `conversation_language` setting in `.moa
 | Block 6 Trunk-based (Follow-up) | `Follow-up:` | `후속:` | `後続:` | `后续:` |
 | Block 1 verb (entering) | `entering` | `진입` | `開始` | `进入` |
 
-Pre-emit self-check (MUST verify all 9 before printing):
+Pre-emit self-check (session-handoff template completeness) — MUST verify all 9 before printing:
 - [ ] Block 1 starts with `ultrathink.` (activates Adaptive Thinking xhigh effort in next session)
 - [ ] Block 2 lists ≥1 memory file from `~/.claude/projects/{hash}/memory/` (most recent project memory + relevant lessons)
 - [ ] Block 2 includes `source_session_id: <UUID>` line carrying current orchestrator turn's session_id (per the multi-session coordination policy Layer 2 — enables race attribution across multi-session work)

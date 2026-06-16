@@ -69,6 +69,8 @@ The cut-line marker text AND the 6-block skeleton verbs/headers translate per `c
 
 Read `conversation_language` from `.moai/config/sections/language.yaml` at render time; substitute the localized text between the `✂────` decorators (cut-line markers) while keeping `✂` and `─` characters verbatim, and substitute the locale rendering for each Block 1/3/5/6 placeholder when emitting the paste-ready message.
 
+**Fallback rule for locales not in the table.** The table above lists concrete renderings for en / ko / ja / zh only. When `conversation_language` is an ISO-639 code whose language column is NOT in this table (e.g. `fr`, `de`, `es`, `pt`, `vi`), English is the canonical fallback skeleton and each label translates to that locale using the naturalization principle (idiomatic phrasing a native reader expects, never literal word-by-word transliteration). In other words: locales not in the table fall back to the English column for the structural skeleton, with the label text rendered in the configured ISO-639 language — ISO-639 not in the table ⇒ English-skeleton fallback, not English-output.
+
 ### Field-by-Field Specification
 
 - **Block 1**: `ultrathink.` triggers Adaptive Thinking xhigh effort on Opus 4.7+ (next session lacks accumulated reasoning). `<phase>` ∈ `plan | run | sync | mx`.
@@ -90,7 +92,7 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
 ✂──── 여기부터 복사 ────✂
 
 ultrathink. SPEC-MYPROJ-001 implementation 진입.
-applied lessons: project_wave6_myproj001_plan_ready, lessons #9 wave-split.
+applied lessons: project_sprint6_myproj001_plan_ready, lessons #9 wave-split.
 source_session_id: <orchestrator-uuid-here>
 
 전제 검증:
@@ -108,7 +110,7 @@ source_session_id: <orchestrator-uuid-here>
 
 [ZONE:Evolvable] [HARD] When generating a resume message, the orchestrator MUST also:
 
-1. Save the message to a memory project entry. Filename pattern: `project_<wave>_<spec>_<status>.md` (e.g., `project_wave6_wf002_complete.md`).
+1. Save the message to a memory project entry. Filename pattern: `project_<sprint>_<spec>_<status>.md` (e.g., `project_sprint6_wf002_complete.md`). The `<sprint>` token reflects the multi-SPEC time-unit grouping per `.claude/rules/moai/development/sprint-round-naming.md` (the legacy `<wave>` token is retired per AP-SRN-004).
 2. Include the resume message verbatim in that file under a `## 다음 세션 시작점 (paste-ready resume message)` heading.
 3. Update `MEMORY.md` index with a one-line entry pointing to the new memory file.
 4. Mark superseded entries (if any) with `[SUPERSEDED by <new-file>]` prefix per Lessons Protocol in `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol.
@@ -123,6 +125,31 @@ At session end, the orchestrator displays: (1) the message in a fenced ```text``
 ## Anti-Patterns
 
 > See also: § Diet Constraints / Anti-pattern catalogue (paste-ready budget violations AP-D-001..005) and § V0 Abort Gate Doctrine / Anti-pattern (abort-gate violations AP-V-001..004). This list covers general resume-hygiene patterns; the Diet and V0 lists cover their respective specialized domains.
+
+### Anti-Pattern Index (consolidated)
+
+The table below is the single navigational index for every anti-pattern code defined in this file. Each row links forward to the detail section that carries the domain context; the index does NOT duplicate the prose. This is the canonical single-source entry point — when a code is referenced elsewhere, link to this index, not to the detail section directly.
+
+| Code | Concern | Detail section |
+|------|---------|----------------|
+| (general hygiene) | Free-form prose handoff — no executable context | § Anti-Patterns (general list below this index) |
+| (general hygiene) | Resume without preconditions — next session cannot detect state drift | § Anti-Patterns |
+| (general hygiene) | Resume without `ultrathink.` — fails to activate xhigh effort | § Anti-Patterns |
+| (general hygiene) | Resume saved only to chat, not auto-memory — lost across `/clear` | § Anti-Patterns |
+| (general hygiene) | Duplicate memory entries without `[SUPERSEDED by ...]` markers | § Anti-Patterns |
+| (general hygiene) | Resume Block 2 missing `source_session_id` AND the environment fallback | § Anti-Patterns |
+| (general hygiene) | Forcing the format on trivial tasks — memory noise | § Anti-Patterns |
+| (general hygiene) | Cut-line markers absent — user cannot identify copy boundary | § Anti-Patterns |
+| (general hygiene) | Cut-line markers with translated `✂` symbol or `─` decorator | § Anti-Patterns |
+| AP-D-001 | Block 2 lessons 5+ references | § Diet Constraints / Anti-pattern catalogue |
+| AP-D-002 | precondition body prose (history/lesson narrative) | § Diet Constraints / Anti-pattern catalogue |
+| AP-D-003 | Block 5 sub-step nesting (multi-phase 11-substep) | § Diet Constraints / Anti-pattern catalogue |
+| AP-D-004 | directive escalation embedded in body (N-th "stronger directive") | § Diet Constraints / Anti-pattern catalogue |
+| AP-D-005 | ceremonial reminder ("discipline 엄수", "정확 참조") in paste-ready | § Diet Constraints / Anti-pattern catalogue |
+| AP-V-001 | `ps aux` raw count `≤ 2 STRICT` as sole V0 verification | § V0 Abort Gate Doctrine / Anti-pattern |
+| AP-V-002 | V0 FAIL 후 "사용자 약속 누적 미이행 N회" body tracking | § V0 Abort Gate Doctrine / Anti-pattern |
+| AP-V-003 | V0 FAIL 시 AskUserQuestion 강행 옵션 (override + spawn) 제시 | § V0 Abort Gate Doctrine / Anti-pattern |
+| AP-V-004 | V0-b 측정에 `lsof +D "$PWD" | grep -iE 'claude'` 사용 (false-positive 결함) | § V0 Abort Gate Doctrine / Anti-pattern |
 
 - Free-form prose handoff — no executable context.
 - Resume without preconditions — next session cannot detect state drift.
@@ -195,7 +222,7 @@ $ cd ~/.moai/worktrees/<project>/SPEC-MYPROJ-001
 $ moai cc        # 또는 moai glm | claude (3가지 launcher 중 선택; 본 예시는 moai cc)
 
 ultrathink. SPEC-MYPROJ-001 Wave N 진입.
-applied lessons: project_myproj_prev_wave_complete, lessons #12 #13 #14.
+applied lessons: project_myproj_prev_sprint_complete, lessons #12 #13 #14.
 
 전제 검증:
 0) git rev-parse --show-toplevel → ~/.moai/worktrees/<project>/SPEC-MYPROJ-001 (★ critical)
@@ -251,7 +278,7 @@ applied lessons: project_myproj_prev_wave_complete, lessons #12 #13 #14.
 - **AP-D-004**: directive escalation 본문 임베드 (N차 "stronger directive", N+1차 "even-stronger directive", N+2차 "documentation-level codification entry-condition") → rule file로 codification, paste-ready는 reference만
 - **AP-D-005**: ceremonial reminder ("B8/B15 discipline 엄수", "manager-develop은 plan.md §F.3 line 130-143 정확 참조") → SPEC artifact 내부 보관, paste-ready는 trust delegation
 
-### Pre-emit self-check (8 items)
+### Pre-emit self-check (paste-ready budget) — 8 items
 
 - [ ] Block 2 ≤ 4 references
 - [ ] Block 2 각 reference 1줄 identifier (full history 금지)
@@ -310,6 +337,9 @@ Cross-line provenance: retained in lesson memory; this section codifies the doct
 - **AP-V-004**: V0-b 측정에 `lsof +D "$PWD" | grep -iE 'claude'` 사용 → 파일명에 'claude' 포함된 콘텐츠(claude-*.md 등)까지 매칭하는 false-positive 결함이 있다. COMMAND 컬럼 프로세스 필터 `lsof -a -c claude +D "$PWD"` 필수 — genuine claude race signal만 카운트해야 abort 의무가 정확히 발동한다
 
 ## Cross-references
+
+<!-- self-check sentinel — references the render surface's structural invariant by content, not line number, so it survives line drift. This is mitigation + visibility (it surfaces drift to a reading editor), NOT mechanical prevention. A future editor who changes one surface without reading the other surface's sentinel produces silent drift; the only mechanical catch is a deferred Go lint rule (see the session-handoff SSOT-align doctrine §F.6 follow-up). -->
+**Drift-mitigation self-check sentinel (SSOT → render surface).** This file is the SSOT; `.claude/output-styles/moai/moai.md §8` is the render surface. Before committing any edit to the Localization Table, the 6-block skeleton, the cut-line marker spec, or the Pre-emit self-check labels in THIS file, verify the parity check against the render surface: the moai.md §8 Localization Contract must carry the same locale column count (en / ko / ja / zh — 4 columns) as this file's Localization Table, and the moai.md §8 Pre-emit self-check labels must use the same concern-name qualifiers (`paste-ready budget` / `localization render` / `session-handoff template completeness`) as this file. If the two surfaces have diverged, this is the canonical surface — update the render surface to match.
 
 - `.claude/rules/moai/workflow/context-window-management.md` § Context Window Targets — the per-model-class threshold SSOT for `/clear` and Trigger #1 (this file carries no inline model-class numbers to avoid label drift).
 - `.claude/output-styles/moai/moai.md` §6 (Persistence & Context Awareness)
