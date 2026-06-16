@@ -126,7 +126,7 @@ At session end, the orchestrator displays: (1) the message in a fenced ```text``
 
 ## Diet Constraints
 
-[ZONE:Evolvable] [HARD] paste-ready resume message는 "next session minimum executable context"이다 — audit trail, history record, ceremonial commitment record가 아니다. 차수 누적 retry 진행 시 본문에 history/lesson/directive escalation prose를 append-only로 누적하는 것은 cross-line empirical 입증된 anti-pattern (LIFECYCLE-SYNC-GATE-001 line C 1~14차 + HARNESS-NAMESPACE Phase 1B line B 1~5차에서 동일 비대화 패턴 관측).
+[ZONE:Evolvable] [HARD] paste-ready resume message는 "next session minimum executable context"이다 — audit trail, history record, ceremonial commitment record가 아니다. 차수 누적 retry 진행 시 본문에 history/lesson/directive escalation prose를 append-only로 누적하는 것은 empirical 입증된 anti-pattern이다.
 
 ### Block 2 applied lessons 제약
 
@@ -180,7 +180,7 @@ At session end, the orchestrator displays: (1) the message in a fenced ```text``
 
 - 모든 신규 paste-ready resume message
 - 차수 누적 retry paste-ready (다이어트 vs 본문 누적 선택 → 다이어트 default)
-- Cross-line 일관 적용 (LIFECYCLE-SYNC-GATE / HARNESS-NAMESPACE / SESSION-AUTO-RESUME 등 모든 SPEC line)
+- Cross-line 일관 적용 (모든 SPEC line)
 
 ## V0 Abort Gate Doctrine
 

@@ -194,6 +194,64 @@ applied lessons: project_myproj_prev_wave_complete, lessons #12 #13 #14.
 ✂──── 여기까지 복사 ────✂
 ```
 
+## Diet Constraints
+
+[ZONE:Evolvable] [HARD] paste-ready resume message는 "next session minimum executable context"이다 — audit trail, history record, ceremonial commitment record가 아니다. 차수 누적 retry 진행 시 본문에 history/lesson/directive escalation prose를 append-only로 누적하는 것은 empirical 입증된 anti-pattern이다.
+
+### Block 2 applied lessons 제약
+
+- 최대 **4개 references** (memory file slug 또는 lesson identifier)
+- 각 reference는 **1줄 identifier** (예: `L52#33`, `L_NEW_V0_ABORT_GATE` — full prose history 금지)
+- 5개 이상은 anti-pattern → memory file body로 이관
+
+### Block 4 precondition 제약
+
+- 각 precondition **≤ 200 chars** target (실용적 가독성 한계)
+- Format: `N) <verifiable command> → <expected outcome>`
+- History tracking / lesson narrative / 누적 패턴 추적 prose 금지
+- Multi sub-command (V0a/V0b/V0c)는 단일 precondition으로 통합 가능, STRICT criterion만 1줄로
+
+### Block 5 실행 제약
+
+- **단일 primary action** (typically 1줄 command, 예: `/moai run SPEC-ID`)
+- Sub-detail (agent scope, AC bindings, file path line numbers)은 SPEC artifacts(plan.md / acceptance.md) 내부에 존재 — paste-ready inline 금지
+- Ceremonial reminder ("정확 참조", "discipline 엄수", "self-verify") 금지 — 이는 agent body 내부 책임
+
+### Block 6 후속 제약
+
+- **≤ 2줄** (next concrete SPEC ID 또는 next phase command)
+- Multi-step 후속 (M4→M5→M6→sync→Mx→close)는 SPEC plan.md milestone로 관리 — paste-ready inline 금지
+
+### Doctrine reference 패턴
+
+- N차 sustained 1st→2nd→3rd→4th→5th 같은 history는 lesson memory file에만 보관
+- paste-ready에서는 `per session-handoff.md § <Doctrine Section>` 1줄 reference만 사용
+
+### Anti-pattern catalogue
+
+- **AP-D-001**: Block 2 lessons 5+ references → 4 이하로 trim, 나머지는 memory file body로 이관
+- **AP-D-002**: precondition 본문 prose (history/lesson narrative/누적 패턴) → 1줄 verifiable command + STRICT criterion만 남기기
+- **AP-D-003**: Block 5 sub-step nesting (Phase 0 + Phase 0.5 + Phase 1B 같은 multi-phase 11-substep) → single primary action으로 압축, sub-detail은 SPEC artifacts에
+- **AP-D-004**: directive escalation 본문 임베드 (N차 "stronger directive", N+1차 "even-stronger directive", N+2차 "documentation-level codification entry-condition") → rule file로 codification, paste-ready는 reference만
+- **AP-D-005**: ceremonial reminder ("B8/B15 discipline 엄수", "manager-develop은 plan.md §F.3 line 130-143 정확 참조") → SPEC artifact 내부 보관, paste-ready는 trust delegation
+
+### Pre-emit self-check (8 items)
+
+- [ ] Block 2 ≤ 4 references
+- [ ] Block 2 각 reference 1줄 identifier (full history 금지)
+- [ ] Block 4 각 precondition ≤ 200 chars
+- [ ] Block 4 precondition prose에 history 임베드 없음
+- [ ] Block 5 single primary action (command + 1줄 context max)
+- [ ] Block 6 ≤ 2 lines
+- [ ] Doctrine history not embedded → rule file reference only
+- [ ] Ceremonial reminder 없음
+
+### 적용 범위
+
+- 모든 신규 paste-ready resume message
+- 차수 누적 retry paste-ready (다이어트 vs 본문 누적 선택 → 다이어트 default)
+- Cross-line 일관 적용 (모든 SPEC line)
+
 ## Cross-references
 
 - `.claude/rules/moai/workflow/context-window-management.md` — threshold (1M = 50%, 200K = 90%) for `/clear` and Trigger #1; same table.
