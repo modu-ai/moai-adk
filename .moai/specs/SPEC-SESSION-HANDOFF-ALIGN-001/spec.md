@@ -2,7 +2,7 @@
 id: SPEC-SESSION-HANDOFF-ALIGN-001
 title: "session-handoff.md template↔local drift closure + mirror-coverage gap + i18n/dedup debt"
 version: "0.2.0"
-status: in-progress
+status: implemented
 created: 2026-06-16
 updated: 2026-06-17
 author: manager-spec

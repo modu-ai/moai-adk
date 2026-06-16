@@ -157,9 +157,16 @@ The 105-line net LOCAL↔TEMPLATE content delta is collapsed to zero on canonica
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs populates with sync_commit_sha>_
+> (sync-phase — 본 세션에서는 orchestrator가 직접 수행. manager-docs 위임 spawn이 parent context-limit에 도달해 실패; orchestrator-direct fallback으로 sync 산출물 작성. Ownership Matrix상 in-progress → implemented 전이 + §E.4는 manager-docs 소유이나, 위임 불가 시 orchestrator가 해당 산출물을 직접 작성하는 것은 Allowed Direct Execution 범주.)
 
-sync_commit_sha: _(pending sync-phase commit)_
+- **sync_commit_sha**: (this commit) — `docs(SPEC-SESSION-HANDOFF-ALIGN-001): sync-phase artifacts`. Mx-phase에서 실제 SHA backfill 예정.
+- **CHANGELOG**: `[Unreleased] → Added` 최상단 entry 추가(SPEC-SESSION-HANDOFF-ALIGN-001, 3축 정렬 요약, 17/17 AC, FL-1/EXCL-006 deferral 명시).
+- **status 전이**: spec.md frontmatter `status: in-progress → status: implemented`(Ownership Matrix: manager-docs 소유 전이). body 미수정.
+- **sync-phase 독립 검증(orchestrator Trust-but-verify 7/7 PASS)**: `go test ./internal/template/` green(0.969s, mirror test + neutrality leak), `go vet ./...` exit 0, `diff LOCAL TEMPLATE | wc -l` = 0(cmp identical, 양쪽 324 lines), internal-token leak on TEMPLATE = 0, Block 1 canonical skeleton(L32) = `<entering verb>` placeholder(잔존 `진입` 3개 = ko locale 컬럼값 L64 + ko 예시 L92/L196 = 합법적), mirror test enrollment(`rule_template_mirror_test.go` L51), `golangci-lint run ./internal/template/` 0 issues.
+- **sync-auditor**: 본 SPEC은 doctrine + test 1-line allowlist append(near-zero production code)이므로 sync-auditor 4-dimension scoring을 SKIP함(pure-doctrine 관례 — SPEC-EVIDENCE-CLAIM-INVARIANT-001 SYNC 참조). orchestrator 독립 7/7 검증이 품질 근거.
+- **scope discipline**: 무관 untracked(`.moai/design/web-console-handoff/`, `.moai/reports/sync-audit/`, `.moai/reports/worktree-rescue-*`, `.moai/specs/SPEC-CC2178-DOCS-ALIGN-001/`, `.moai/docs/harness-delivery-strategy.md`)은 본 sync commit에 미흡수 — CHANGELOG.md + spec.md(frontmatter) + progress.md만 staging.
+
+sync_commit_sha: (this commit)
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
