@@ -10,8 +10,10 @@
 #
 # Manual smoke test:
 #   echo '{}' | bash .claude/hooks/moai/sync-phase-quality-gate.sh
-# Expected: structured JSON with "decision":"skip" or "decision":"allow"/"block"
-# and per-check results in "verifications" array.
+# Expected: empty stdout (silent pass) on skip/allow; on block, a Stop-schema JSON
+# {"decision":"block","reason":...,"systemMessage":...}. The verifications detail is
+# written to .moai/logs/sync-quality-gate.log, not stdout (Stop JSON-schema rejects
+# unknown fields and non-{approve,block} decision values).
 #
 # Unit-test the detector directly (bypasses the sync-phase git gate):
 #   source .claude/hooks/moai/sync-phase-quality-gate.sh && detect_language "$dir"
@@ -74,8 +76,9 @@ case "$LAST_COMMIT_SUBJECT" in
     *"docs("*"): sync-phase"*|*"chore("*"): sync-phase"*|*"docs: sync"*|*"chore: sync"*)
         ;;
     *)
-        # Not a sync-phase commit — skip
-        echo "{\"hook\":\"sync-phase-quality-gate\",\"decision\":\"skip\",\"reason\":\"not a sync-phase commit\",\"last_subject\":\"$LAST_COMMIT_SUBJECT\"}"
+        # Not a sync-phase commit — gate not applicable, silent pass.
+        # stdout intentionally empty: Stop decision must be "approve" | "block"
+        # (not "skip"); unknown fields also fail Claude Code JSON-schema validation.
         exit 0
         ;;
 esac
@@ -86,7 +89,7 @@ LANG=$(detect_language "$PROJECT_ROOT")
 
 # Silent pass when no recognized language marker is present (docs-only projects, etc.)
 if [ -z "$LANG" ]; then
-    echo "{\"hook\":\"sync-phase-quality-gate\",\"decision\":\"skip\",\"reason\":\"no recognized language marker\"}"
+    # stdout intentionally empty (Stop schema: decision must be approve|block, not "skip").
     exit 0
 fi
 
@@ -103,7 +106,7 @@ fi
 CODE_DELTA=$(git diff --name-only "$DIFF_RANGE" 2>/dev/null | grep -cE "$DELTA_PATTERN" || true)
 CODE_DELTA=${CODE_DELTA:-0}
 if [ "$CODE_DELTA" -eq 0 ]; then
-    echo "{\"hook\":\"sync-phase-quality-gate\",\"decision\":\"skip\",\"reason\":\"markdown-only sync (0 code-file delta)\",\"language\":\"$LANG\"}"
+    # stdout intentionally empty (Stop schema: decision must be approve|block, not "skip").
     exit 0
 fi
 
@@ -200,21 +203,17 @@ elif [ "$TEST_EXIT" -ne 0 ]; then
     BLOCKED_REASON="$TEST_LABEL failed"
 fi
 
-cat <<EOF
-{
-  "hook": "sync-phase-quality-gate",
-  "language": "$LANG",
-  "decision": "$DECISION",
-  "blocked_reason": "$BLOCKED_REASON",
-  "verifications": [
-    {"check": "$VET_LABEL", "exit": $VET_EXIT},
-    {"check": "$LINT_LABEL", "exit": $LINT_EXIT},
-    {"check": "$TEST_LABEL", "exit": $TEST_EXIT},
-    {"check": "dependency manifest audit", "manifest_modified": $DEPS_MODIFIED},
-    {"check": "coverage (advisory)", "average_coverage_pct": $COVERAGE}
-  ]
-}
-EOF
+# Emit Stop-schema-compliant JSON. The custom {hook,language,decision:skip/allow,
+# verifications} shape failed Claude Code JSON-schema validation on every Stop fire:
+# Stop accepts only "decision":"approve"|"block" (not "skip"/"allow") and rejects
+# unknown top-level fields. Per-check verifications detail is recorded in the audit
+# log below; stdout carries only schema-valid fields. On block, systemMessage surfaces
+# the failure to the user (advisory: non-blocking unless MOAI_SYNC_GATE_BLOCKING=1).
+# On allow, stdout is intentionally empty (silent pass; audit log records the detail).
+if [ "$DECISION" = "block" ]; then
+    printf '{"decision":"block","reason":"%s","systemMessage":"sync-phase quality gate BLOCKED: %s (vet=%s lint=%s test=%s deps_modified=%s coverage=%s%%). Detail: .moai/logs/sync-quality-gate.log"}\n' \
+        "$BLOCKED_REASON" "$BLOCKED_REASON" "$VET_EXIT" "$LINT_EXIT" "$TEST_EXIT" "$DEPS_MODIFIED" "$COVERAGE"
+fi
 
 mkdir -p "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs"
 echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [sync-phase-quality-gate] language=$LANG decision=$DECISION vet=$VET_EXIT lint=$LINT_EXIT test=$TEST_EXIT deps_modified=$DEPS_MODIFIED coverage=$COVERAGE" \
