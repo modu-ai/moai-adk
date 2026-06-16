@@ -50,6 +50,33 @@ Exceptions (do NOT migrate to inherit):
 - `model: haiku` agents (`manager-docs`, `manager-git`) — Haiku has no `[1m]` variant, so the bug does NOT apply. Speed-critical agents should remain on `haiku` for cost and latency.
 - Documentation/example YAML inside skill bodies (`.claude/skills/moai-foundation-cc/reference/**/*.md`) — these mirror official Claude Code documentation and MUST show all valid values (`sonnet`, `opus`, `haiku`, `inherit`) for educational purposes.
 
+## `[1m]` Constraint Re-Verification (CC 2.1.178)
+
+The `[1m]` entitlement-inheritance constraint was re-verified against CC 2.1.178 (2026-06-16, M1 research milestone). **Verdict: STILL-ACTIVE (conservative).** Per-agent `model:` pins remain forbidden regardless of this verdict (the re-verification SPEC records per-agent pinning as out-of-scope).
+
+Evidence fetched 2026-06-16 via the GitHub issue API + the canonical CC CHANGELOG:
+
+- Issue #45847 (skill with `model:` fails from `[1m]` parent): **closed** (2026-04-13), labeled `duplicate` — no explicit "fixed" resolution.
+- Issue #51060 (subagent `model: opus` spawn fails): **closed** (2026-05-26), labeled `bug, area:model, area:agents, stale` — no CHANGELOG entry fixes the spawn-time entitlement-inheritance root cause.
+- Issue #36670 (Team teammates don't inherit `[1m]` from leader): **OPEN** (updated 2026-06-02) — the Team-mode path is confirmed unfixed at CC 2.1.178.
+- CC 2.1.172 fixes ("1M context stuck session", "doubled `[1m]` suffix") address the *symptom* and *suffix normalization*, NOT the *spawn-time entitlement mismatch*. CC 2.1.173/2.1.174 are Fable-5-suffix and background-env-inheritance fixes — orthogonal.
+
+Because the Team-mode path (#36670) is open and no CHANGELOG resolves the single-spawn root cause, the constraint is treated as still-active. A follow-up SPEC (conditional) MAY re-enable per-agent pinning only when #36670 is closed-with-fixed AND a CHANGELOG confirms Team `[1m]` inheritance for explicit `model:` teammates.
+
+## Default-Model Cost Lever (CC 2.1.175)
+
+[ZONE:Evolvable] [HARD] The `[1m]`-safe cost lever is the **Default-model** routed via `availableModels` + `enforceAvailableModels`, NOT per-agent `model:` pins. The deployed `settings.json` template (`.claude/settings.json.tmpl`) sets:
+
+```json
+"model": "sonnet",
+"availableModels": ["sonnet", "opus", "haiku"],
+"enforceAvailableModels": true
+```
+
+Semantics (CC 2.1.175 CHANGELOG verbatim): _"Added `enforceAvailableModels` managed setting — when enabled, the `availableModels` allowlist also constrains the Default model (a Default that would resolve to a disallowed model now falls back to the first allowed model)"_. CC 2.1.176 further tightens enforcement: alias model picks can no longer be redirected to a blocked model via `ANTHROPIC_DEFAULT_*_MODEL` env vars.
+
+Why this is `[1m]`-safe: the lever operates on the **Default** model resolution at the settings level, not on per-agent explicit pins, so it does not trigger the spawn-time entitlement-inheritance failure (#45847/#51060/#36670). The cost-routing thesis (route the busy-agent cost through Sonnet, not Opus) flows through the Default; deep-reasoning exceptions use per-spawn `Agent(model: "opus")` only for the 5-10% of tasks where Opus wins (architecture, complex perf) — and even those inherit the parent `[1m]` entitlement because they are spawned without a frontmatter `model:` pin (the per-spawn `model` parameter is a runtime arg, distinct from the frontmatter field that triggers the bug).
+
 ## Model Policy Tiers
 
 Model policy is set via `moai init --model-policy <tier>`:
