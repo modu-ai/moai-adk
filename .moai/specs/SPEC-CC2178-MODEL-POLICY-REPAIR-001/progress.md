@@ -119,7 +119,7 @@ m1_to_mN_commit_strategy: 5 separate milestone commits (M1 research, M2 phantom-
 
 ```yaml
 sync_complete_at: 2026-06-16
-sync_commit_sha: (this commit)   # orchestrator-direct backfill after commit lands
+sync_commit_sha: b43f45df0   # orchestrator-direct backfill (sync commit b43f45df0)
 sync_status: complete
 sync_performer: orchestrator-direct   # delegation exception: manager-docs spawn context-limit 2x fail, user-approved Option A
 frontmatter_transition: in-progress → implemented
