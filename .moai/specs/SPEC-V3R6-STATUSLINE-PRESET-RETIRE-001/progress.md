@@ -395,9 +395,25 @@ battery + build/test/race evidence above. 3 SHOULD ACs:
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending Mx-phase — orchestrator-direct or manager-docs populates this
-section with the Mx commit SHA, 4-phase close confirmation, and final
-audit-ready YAML block.>_
+**Status**: audit-ready. 4-phase close complete (plan → run → sync → Mx). The `implemented → completed` frontmatter transition was performed by the orchestrator via orchestrator-direct Mx (the `manager-docs` spawn failed with context-limit — recurring fallback pattern).
+
+**4-phase close confirmation**:
+- **Plan**: spec/plan/acceptance authored; plan-auditor PASS-WITH-DEBT 0.86 iter-2; Implementation Kickoff Approval obtained.
+- **Run** (`017d0b310` + `6656bf78f`): M1 baseline + M2-M6 retire — 25 MUST ACs PASS; build green darwin/linux/windows; `go vet` clean; golangci-lint 0; race clean.
+- **Sync** (`26aae676c` + `d38298d0a` backfill): CHANGELOG `[Unreleased] ### Removed` + README en/ko preset example + frontmatter `implemented` + §E.4 (orchestrator-direct sync fallback).
+- **Mx** (this commit): frontmatter `implemented → completed`; §E.5 populated; 4-phase close declared.
+
+- mx_commit_sha: `(this commit)` — backfilled after push. Non-bold per `feedback_era_commit_sha_field_format`.
+
+**Commit subject**: `chore(SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001): Mx-phase audit-ready signal + 4-phase close`
+
+**Final AC tally**: 28 ACs — 25 MUST PASS + 3 SHOULD (AC-SPR-022 N/A; AC-SPR-023 deferred non-blocking `preset.go`→`segments.go` rename; AC-SPR-024 subsumed by MUST AC-SPR-026).
+
+**Residual (honestly reported, none blocking close)**:
+- AC-SPR-023 (`preset.go` → `segments.go` rename) deferred (non-blocking SHOULD).
+- `docs-site/content/{en,ko,ja,zh}/getting-started/faq.md` still describe the 4 presets — AC-SPR-018 verification targets `advanced/statusline.md` only (NOT an AC violation); follow-up cleanup recommended.
+- 6 pre-existing `internal/statusline` `memory_test.go` failures (PRESERVE scope, baseline).
+- docs-site i18n check: 62 pre-existing errors (`multi-llm/model-policy.md`), unrelated to this SPEC.
 
 ---
 
