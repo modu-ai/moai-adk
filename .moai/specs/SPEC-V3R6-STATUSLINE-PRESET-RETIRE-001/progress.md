@@ -376,7 +376,7 @@ battery + build/test/race evidence above. 3 SHOULD ACs:
 - `README.md` + `README.ko.md`: statusline FAQ preset example updated — the `preset: default  # or full` YAML line was removed and the trailing Note was rewritten to announce the `preset` shorthand retirement + legacy-key silent-ignore behavior.
 - `docs-site/content/{en,ko,ja,zh}/advanced/statusline.md`: already cleaned in run-phase (D7, AC-SPR-018) — no further sync action.
 
-- sync_commit_sha: `(this commit)` — to be backfilled with the actual SHA after push. Recorded non-bold per `feedback_era_commit_sha_field_format` (bold commit SHAs cause V3R6→V3R5 era misclassification in the audit engine).
+- sync_commit_sha: `26aae676c` — backfilled after push. Recorded non-bold per `feedback_era_commit_sha_field_format` (bold commit SHAs cause V3R6→V3R5 era misclassification in the audit engine).
 
 **Commit subject**: `docs(SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001): sync-phase artifacts`
 
