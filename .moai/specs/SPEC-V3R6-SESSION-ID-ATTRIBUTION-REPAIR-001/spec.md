@@ -2,7 +2,7 @@
 id: SPEC-V3R6-SESSION-ID-ATTRIBUTION-REPAIR-001
 title: "Session-ID attribution dead-feature repair (multi-session coordination Layer 2 race-attribution)"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-06-17
 updated: 2026-06-17
 author: manager-spec

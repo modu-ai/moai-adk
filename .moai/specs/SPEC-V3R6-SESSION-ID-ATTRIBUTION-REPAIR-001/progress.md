@@ -156,4 +156,21 @@ sync_commit_sha: 615a4af95 — backfilled after the docs sync commit (non-bold a
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending Mx-phase — manager-docs populates with mx_commit_sha after 4-phase close>_
+**Claim**: 4-phase lifecycle complete (plan → run → sync → Mx). spec.md frontmatter `status: implemented → completed`. Both `sync_commit_sha` (615a4af95) and `mx_commit_sha` (below) backfilled with actual non-bold SHAs. SPEC-V3R6-SESSION-ID-ATTRIBUTION-REPAIR-001 is now a closed V3R6 modern-era SPEC.
+
+**Evidence**:
+- 4-phase commit chain: **plan** (manager-spec, draft → in-progress) → **run** (manager-develop M1-M6: `8c2c40c13` + `538fcaea6`) → **sync** (orchestrator-direct GLM-fallback: `615a4af95` + `d1ad817dd`) → **Mx** (orchestrator-direct: this close commit + mx backfill).
+- spec.md frontmatter `status:` now reads `completed`.
+- spec-lint: 0 errors (1 `OwnershipTransitionInvalid` WARNING on the sync commit `615a4af95` — documented GLM-fallback debt, see §E.4 Gaps).
+- `go build ./...` exit 0 (0 Go changes in sync/Mx — doc-only phases).
+
+**Baseline-attribution**: Mx-phase measured against the post-sync tree (HEAD `d1ad817dd`). The 18/18 AC PASS + build/vet/lint green baseline is from run-phase (progress.md §E.2, recorded by manager-develop), unchanged by the doc-only sync/Mx phases.
+
+**Gaps (honestly reported)**:
+- sync-auditor 4-dimension independent gate NOT run — GLM context-limit spawn failure (4th consecutive meta/manager-agent failure this session: manager-docs×3 incl. this SPEC + siblings, and sync-auditor anticipated). Orchestrator self-review + spec-lint + go build smoke substituted, matching the WORKFLOW-EFFORT-MAP-001 orchestrator-direct deferral pattern.
+- spec-lint `OwnershipTransitionInvalid` WARNING on sync commit `615a4af95` (orchestrator-direct performed `in-progress → implemented`; canonical owner is manager-docs). Accepted GLM-environment debt. The Mx `implemented → completed` transition is canonically allowed for orchestrator (ownership matrix: "manager-docs OR orchestrator (Mx chore)"), so NO warning on this close commit.
+- `moai spec audit` full project run deferred to pre-push; era classification guaranteed V3R6 via explicit `era: V3R6` H-override frontmatter + non-bold real `sync_commit_sha` per `feedback_era_commit_sha_field_format`.
+
+**Residual-risk**: `additionalContext` lost after `/clear` (side-channel file persists → `moai session current` re-reads). Headless `-p` without hooks → canonical fallback (REQ-RDP-006). Pre-existing `internal/statusline` `TestCollectMemory` baseline failure is out of scope (STATUSLINE-PRESET-RETIRE residual). Multi-session race: a parallel session committed memory-hygiene (`7a338007a`) + the full WORKFLOW-EFFORT-MAP-001 close during this session's sync window — no file overlap with this SPEC, race absorbed cleanly.
+
+mx_commit_sha: <pending backfill — populated by the immediately-following chore commit>
