@@ -30,6 +30,7 @@ When NONE apply (single-turn, trivial task, read-only query), emit a brief compl
 ✂──── 여기부터 복사 ────✂
 
 ultrathink. <SPEC-ID> <phase> <entering verb>.
+# /effort ultracode   ← emit ONLY when the next SPEC's plan declares workflow fan-out (dynamic Workflow or Agent Teams); omit otherwise (per Field-by-Field Spec, Block 1).
 applied lessons: <memory-file-1>, <memory-file-2>, ...
 
 전제 검증:
@@ -74,6 +75,7 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
 ### Field-by-Field Specification
 
 - **Block 1**: `ultrathink.` triggers Adaptive Thinking xhigh effort on Opus 4.7+ (next session lacks accumulated reasoning). `<phase>` ∈ `plan | run | sync | mx`.
+  - **Purpose-conditional `/effort ultracode` re-set line** [HARD]: Block 1 also carries a purpose-conditional `/effort ultracode` re-set line, emitted ONLY when the next SPEC's plan declares workflow fan-out (dynamic Workflow or Agent Teams). The line sits immediately after `ultrathink.`. Per `.claude/rules/moai/workflow/dynamic-workflows.md`, ultracode is NOT restored by the `ultrathink.` opener — it must be explicitly re-issued after `/clear` when the resumed session needs auto-orchestration. When the next SPEC does NOT need workflow fan-out, the ultracode line is omitted (the `ultrathink.` opener alone suffices). Default on ambiguity: omit.
 - **Block 2**: `applied lessons:` — relevant memory files from `~/.claude/projects/{hash}/memory/`. MUST include the most recent relevant project memory + any relevant lessons. Block 2 MUST also include a `source_session_id: <UUID from moai session current>` line carrying the Claude Code session_id of the orchestrator turn that generated this resume message per the canonical multi-session coordination policy. The session_id is the same value emitted by `moai session list --json` and stored in `.moai/state/active-sessions.json` — readers can correlate the resume back to its originating session.
   - **Environment fallback** [HARD]: the primary UUID source is `moai session current`. If `moai session current` returns the canonical fallback (runtime did not expose session.id to the CLI subprocess), OR `moai session list --json` returns error (CLI not installed in PATH), OR `.moai/state/active-sessions.json` does not exist (the multi-session coordination layer not yet deployed in this project), the orchestrator MUST emit the recognized fallback pattern verbatim: `source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>`. This pattern is NOT an anti-pattern; it is the prescribed graceful degradation when the CLI/registry layer is absent or the runtime does not expose session.id. The next session, upon `/moai session register` activation, MAY backfill the UUID by appending a `[backfilled: <UUID>]` annotation to the memory file's Block 2 line.
 - **Block 3**: separator + `전제 검증:` (Korean) or `Preconditions:` (English).
@@ -160,6 +162,7 @@ The table below is the single navigational index for every anti-pattern code def
 - Forcing the format on trivial tasks — memory noise.
 - Cut-line markers absent — user cannot identify exact copy boundary in long terminal scrollback (see § Cut-line Marker Specification for the literal format).
 - Cut-line markers with translated `✂` symbol or `─` decorator — contrary to § Cut-line Marker Specification (only the marker text translates; the symbols are preserved verbatim).
+- Omitting the `/effort ultracode` re-set line when the next SPEC's plan declares workflow fan-out (dynamic Workflow or Agent Teams) — the resumed session silently drops to non-ultracode effort and loses auto-orchestration (ultracode is NOT restored by `ultrathink.` per `.claude/rules/moai/workflow/dynamic-workflows.md`).
 
 ## Worktree-Anchored Resume Pattern
 

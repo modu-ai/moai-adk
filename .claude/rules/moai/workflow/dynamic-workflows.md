@@ -75,6 +75,28 @@ While a workflow run is active, the `/workflows` TUI lets you manage it: list ac
 - **Saved workflows**: a run's script can be saved as a `/command` in `.claude/workflows/` (project, shared) or `~/.claude/workflows/` (personal). A project workflow with the same name wins over a personal one. A saved workflow accepts an `args` global input — the arguments string passed when the workflow command is invoked. MoAI does not ship any saved workflows by default; the user-owned `.claude/workflows/` directory is not template-managed.
 - **Plan / provider availability**: dynamic workflows require a paid plan and are available on the Claude API, Amazon Bedrock, Google Vertex AI, and Microsoft Foundry; on the Pro plan the feature is enabled via `/config`.
 
+## Purpose-driven model+effort selection
+
+The dynamic workflow `agent()` primitive accepts an opts object `{model, effort, agentType, isolation, phase, schema, label}` (per `https://code.claude.com/docs/en/workflows`). Omitting `model` inherits the main-loop model; omitting `effort` inherits the session effort. Because a paste-ready resume message's `ultrathink.` opener commonly leaves the session at `xhigh`, a workflow `agent()` call that omits `effort` silently runs every spawned agent at `xhigh` — including mechanical read-only extraction, which the official guidance recommends at `low`. That silent inheritance is a cost leak.
+
+[ZONE:Evolvable] [HARD] When a `.claude/workflows/*.js` script invokes `agent()`, the script author SHALL set `effort` explicitly per the purpose taxonomy below rather than inheriting the session default. Set `model` explicitly only when the purpose demands a specific tier (haiku for mechanical extraction; opus for deep architectural reasoning); otherwise omit it to inherit the main-loop model.
+
+The official effort levels are `low`, `medium`, `high` (default), `xhigh`, `max` (`https://platform.claude.com/docs/en/build-with-claude/effort`). The taxonomy below maps each workflow-agent purpose to a recommended `(model, effort)`.
+
+| Purpose | Example surfaces | Recommended model | Recommended effort | Official citation |
+|---------|------------------|-------------------|--------------------|-------------------|
+| **read-only-extract** | per-package dep-graph + public-surface extraction; mechanical AST/grep sweeps | haiku | **low** | "`low` — Simpler tasks that need the best speed and lowest costs, such as subagents" |
+| **mechanical-transform** | large migrations (call-site rename, API shape change); mechanical refactors | sonnet | **medium** | "`medium` — Balanced reasoning for general tasks" |
+| **synthesize** | architectural synthesis layered on deterministic extraction; multi-source research synthesis | sonnet | **high** | "`high` — Most tasks; good balance of quality and speed" |
+| **research** | cross-checked research with adversarial voting; deep single-topic investigation | sonnet or opus | **high** or **xhigh** | research effort should scale with claim density the research must adjudicate (project-internal heuristic, not a verbatim prescription) |
+| **verify-judge** | code review (security/perf/arch dimensions); independent plan/spec audit; quality scoring | sonnet or opus | **xhigh** | "minimum `high` for intelligence-sensitive work" |
+| **implement** | code generation (backend/frontend/full-stack); test writing | sonnet or opus | **xhigh** | "`xhigh` for coding/agentic work" |
+| **design-architecture** | solution architecture decisions; system design; deep reasoning over trade-offs | opus | **xhigh** | "`xhigh` for coding/agentic work" + "minimum `high` for intelligence-sensitive work" |
+
+**Reading order.** When a workflow agent serves multiple purposes, pick the highest-effort purpose in the table. When purpose is ambiguous, prefer the cheaper effort — the cost of over-efforting a read-only extraction is a silent token leak; the cost of under-efforting a verify-judge is a missed defect.
+
+**Worked example — codemaps-extract.js.** The bundled `.claude/workflows/codemaps-extract.js` fans out one `Explore` agent per source package for read-only dep-graph + public-surface extraction plus an architectural-synthesis layer. Each per-package `agent()` call carries `agentType: 'Explore'` and `effort: 'low'` — the read-only-extract purpose, per the official "`low` — such as subagents" guidance. The synthesis layer's architecture-insight value comes from the prompt, not from raising effort; raising effort on the extraction step would multiply token cost without improving the mechanical baseline (see the script's VERDICT SCOPING header). This is the canonical pattern for mechanical read-only fan-out.
+
 ## Disabling Workflows
 
 Workflows can be turned off per-user (`/config` Dynamic workflows toggle, `"disableWorkflows": true` in `~/.claude/settings.json`, or `CLAUDE_CODE_DISABLE_WORKFLOWS=1`) or org-wide via the `workflowKeywordTriggerEnabled` managed setting (v2.1.157+; org admins set it to `false` to disable the keyword trigger fleet-wide). When disabled, the bundled workflow commands are unavailable, the `ultracode` trigger keyword no longer triggers a run, and `ultracode` is removed from the `/effort` menu. (`ultracode` is the current trigger keyword as of v2.1.160; `workflow` was the pre-v2.1.160 keyword — a plain natural-language request still routes to a workflow run on both versions.) MoAI does not enable or disable workflows in the deployed template — the decision is left to the user/org.
