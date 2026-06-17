@@ -16,7 +16,7 @@ func mkSkillDir(t *testing.T, base, name string) {
 func TestDetectPrefixConflicts_ExactSuffix(t *testing.T) {
 	dir := t.TempDir()
 	mkSkillDir(t, dir, "moai-foundation-core")
-	mkSkillDir(t, dir, "my-harness-foundation-core")
+	mkSkillDir(t, dir, "harness-foundation-core")
 	conflicts, err := DetectPrefixConflicts(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -24,8 +24,8 @@ func TestDetectPrefixConflicts_ExactSuffix(t *testing.T) {
 	if len(conflicts) != 1 {
 		t.Fatalf("expected 1 conflict, got %d: %+v", len(conflicts), conflicts)
 	}
-	if conflicts[0].MyHarnessSkill != "my-harness-foundation-core" {
-		t.Errorf("wrong my-harness: %s", conflicts[0].MyHarnessSkill)
+	if conflicts[0].MyHarnessSkill != "harness-foundation-core" {
+		t.Errorf("wrong harness skill: %s", conflicts[0].MyHarnessSkill)
 	}
 	if conflicts[0].MoaiSkill != "moai-foundation-core" {
 		t.Errorf("wrong moai: %s", conflicts[0].MoaiSkill)
@@ -35,7 +35,7 @@ func TestDetectPrefixConflicts_ExactSuffix(t *testing.T) {
 func TestDetectPrefixConflicts_NoConflict(t *testing.T) {
 	dir := t.TempDir()
 	mkSkillDir(t, dir, "moai-foundation-core")
-	mkSkillDir(t, dir, "my-harness-ios-patterns")
+	mkSkillDir(t, dir, "harness-ios-patterns")
 	conflicts, err := DetectPrefixConflicts(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -48,7 +48,7 @@ func TestDetectPrefixConflicts_NoConflict(t *testing.T) {
 func TestDetectPrefixConflicts_CloseEditDistance(t *testing.T) {
 	dir := t.TempDir()
 	mkSkillDir(t, dir, "moai-workflow-tdd")
-	mkSkillDir(t, dir, "my-harness-workflow-tddd") // 1 char diff
+	mkSkillDir(t, dir, "harness-workflow-tddd") // 1 char diff
 	conflicts, err := DetectPrefixConflicts(dir)
 	if err != nil {
 		t.Fatal(err)

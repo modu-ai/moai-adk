@@ -43,7 +43,7 @@ func TestLineage_AppendOnly(t *testing.T) {
 
 	e1 := LineageEntry{
 		ProposalID:     "p-001",
-		TargetPath:     ".claude/skills/my-harness-a/SKILL.md",
+		TargetPath:     ".claude/skills/harness-a/SKILL.md",
 		AppliedSurface: "description",
 		Decision:       "approved",
 		Reason:         "first transition",
@@ -81,7 +81,7 @@ func TestLineage_AppendOnly(t *testing.T) {
 	if got[0].AppliedSurface != "description" {
 		t.Errorf("got[0].AppliedSurface = %q, want description", got[0].AppliedSurface)
 	}
-	if got[0].TargetPath != ".claude/skills/my-harness-a/SKILL.md" {
+	if got[0].TargetPath != ".claude/skills/harness-a/SKILL.md" {
 		t.Errorf("got[0].TargetPath = %q", got[0].TargetPath)
 	}
 	if got[0].Timestamp.IsZero() {
@@ -191,12 +191,12 @@ func TestApply_RejectedSynthesizedReason(t *testing.T) {
 // Apply()-lineage integration tests
 // ─────────────────────────────────────────────
 
-// writeLineageFixture writes the shared skillFixture to a my-harness-* SKILL.md
+// writeLineageFixture writes the shared skillFixture to a harness-* SKILL.md
 // under a temp dir and returns the skill path.
 func writeLineageFixture(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	skillDir := filepath.Join(dir, ".claude", "skills", "my-harness-x")
+	skillDir := filepath.Join(dir, ".claude", "skills", "harness-x")
 	if err := os.MkdirAll(skillDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll skillDir: %v", err)
 	}
@@ -396,7 +396,7 @@ func TestApply_PreservesFrontmatterBody(t *testing.T) {
 
 	// Non-description frontmatter fields preserved.
 	for _, mustKeep := range []string{
-		"name: my-harness-test",
+		"name: harness-test",
 		`keyword: "harness test"`,
 		`keyword: "test harness"`,
 		`version: "1.0.0"`,

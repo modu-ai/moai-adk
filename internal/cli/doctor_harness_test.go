@@ -31,9 +31,9 @@ func fullySetupHarnessLayout(t *testing.T) string {
 		writeFile(t, filepath.Join(harnessDir, f), "# "+f+"\n")
 	}
 
-	// L1: a my-harness-* skill with triggers
+	// L1: a harness-* skill with triggers
 	skillBody := `---
-name: my-harness-ios-patterns
+name: harness-ios-patterns
 description: foo
 triggers:
   paths: ["**/*.swift"]
@@ -44,7 +44,7 @@ triggers:
 
 # Body
 `
-	writeFile(t, filepath.Join(root, ".claude", "skills", "my-harness-ios-patterns", "SKILL.md"), skillBody)
+	writeFile(t, filepath.Join(root, ".claude", "skills", "harness-ios-patterns", "SKILL.md"), skillBody)
 
 	// L2: workflow.yaml with harness section
 	writeFile(t, filepath.Join(root, ".moai", "config", "sections", "workflow.yaml"),
@@ -129,8 +129,8 @@ func TestRunHarnessCheck_PrefixConflictAddsWarn(t *testing.T) {
 	root := fullySetupHarnessLayout(t)
 	// Create a conflict
 	writeFile(t, filepath.Join(root, ".claude", "skills", "moai-foundation-core", "SKILL.md"), "x")
-	writeFile(t, filepath.Join(root, ".claude", "skills", "my-harness-foundation-core", "SKILL.md"), `---
-name: my-harness-foundation-core
+	writeFile(t, filepath.Join(root, ".claude", "skills", "harness-foundation-core", "SKILL.md"), `---
+name: harness-foundation-core
 triggers:
   paths: []
   keywords: []
@@ -142,7 +142,7 @@ triggers:
 	if check.Status != CheckWarn {
 		t.Errorf("expected WARN with prefix conflict, got %v: %s", check.Status, check.Message)
 	}
-	if !strings.Contains(check.Detail, "my-harness-foundation-core") {
+	if !strings.Contains(check.Detail, "harness-foundation-core") {
 		t.Errorf("conflict detail missing: %s", check.Detail)
 	}
 }
@@ -184,9 +184,9 @@ func writeHarnessSkill(t *testing.T, root, name string) {
 // smoke gate (the all-pass fixture remains OK).
 func TestRunHarnessCheck_GoodAgentPasses(t *testing.T) {
 	root := fullySetupHarnessLayout(t)
-	writeHarnessSkill(t, root, "my-harness-ios-patterns")
+	writeHarnessSkill(t, root, "harness-ios-patterns")
 	writeHarnessAgent(t, root, "ios-architect",
-		"name: ios-architect\ndescription: iOS 도메인 아키텍처 설계 시 활성\nskills:\n  - my-harness-ios-patterns")
+		"name: ios-architect\ndescription: iOS 도메인 아키텍처 설계 시 활성\nskills:\n  - harness-ios-patterns")
 	check := runHarnessCheck(root)
 	if check.Status == CheckFail {
 		t.Errorf("good agent should not FAIL: msg=%s detail=%s", check.Message, check.Detail)
@@ -197,9 +197,9 @@ func TestRunHarnessCheck_GoodAgentPasses(t *testing.T) {
 // a generated agent with an empty description trips the smoke gate.
 func TestRunHarnessCheck_EmptyAgentDescription(t *testing.T) {
 	root := fullySetupHarnessLayout(t)
-	writeHarnessSkill(t, root, "my-harness-ios-patterns")
+	writeHarnessSkill(t, root, "harness-ios-patterns")
 	writeHarnessAgent(t, root, "ios-architect",
-		"name: ios-architect\ndescription:\nskills:\n  - my-harness-ios-patterns")
+		"name: ios-architect\ndescription:\nskills:\n  - harness-ios-patterns")
 	check := runHarnessCheck(root)
 	if check.Status != CheckFail {
 		t.Errorf("expected FAIL for empty description, got %v (%s)", check.Status, check.Detail)
@@ -231,26 +231,26 @@ func TestRunHarnessCheck_MissingSkillsKey(t *testing.T) {
 }
 
 // TestRunHarnessCheck_DanglingSkillReference verifies REQ-HAW-013 / AC-HAW-013:
-// a generated agent whose skills: entry points at a non-existent my-harness-*
+// a generated agent whose skills: entry points at a non-existent harness-*
 // directory trips the smoke gate.
 func TestRunHarnessCheck_DanglingSkillReference(t *testing.T) {
 	root := fullySetupHarnessLayout(t)
-	// References my-harness-nonexistent which has NO skill dir on disk
-	// (the fixture only creates my-harness-ios-patterns) → dangling.
+	// References harness-nonexistent which has NO skill dir on disk
+	// (the fixture only creates harness-ios-patterns) → dangling.
 	writeHarnessAgent(t, root, "ios-architect",
-		"name: ios-architect\ndescription: iOS 설계 시 활성\nskills:\n  - my-harness-nonexistent")
+		"name: ios-architect\ndescription: iOS 설계 시 활성\nskills:\n  - harness-nonexistent")
 	check := runHarnessCheck(root)
 	if check.Status != CheckFail {
 		t.Errorf("expected FAIL for dangling skill ref, got %v (%s)", check.Status, check.Detail)
 	}
-	if !strings.Contains(check.Detail, "my-harness-nonexistent") {
+	if !strings.Contains(check.Detail, "harness-nonexistent") {
 		t.Errorf("detail should name the dangling skill: %s", check.Detail)
 	}
 }
 
 // TestRunHarnessCheck_TemplateSkillNotDangling verifies EC-4: a generated agent
-// that references a template-distributed moai-* skill (not my-harness-*) is NOT
-// treated as dangling even if the dir is absent — only my-harness-* references
+// that references a template-distributed moai-* skill (not harness-*) is NOT
+// treated as dangling even if the dir is absent — only harness-* references
 // are resolved against disk.
 func TestRunHarnessCheck_TemplateSkillNotDangling(t *testing.T) {
 	root := fullySetupHarnessLayout(t)

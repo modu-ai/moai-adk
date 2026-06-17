@@ -6,18 +6,19 @@ import (
 	"testing"
 )
 
-// TestNamespaceLeakMyHarnessSkills enforces the user-owned namespace boundary
-// for skills. The my-harness-* prefix is reserved for user-generated artifacts
+// TestNamespaceLeakHarnessSkills enforces the user-owned namespace boundary
+// for skills. The harness-* prefix is reserved for user-generated artifacts
 // emitted by moai-meta-harness skill during /moai project Phase 5+.
 // These artifacts MUST NOT appear in the embedded template FS — leak indicates
 // either a misclassification or accidental commit of user-area files.
 //
-// Sentinel: NAMESPACE_LEAK_MY_HARNESS_SKILL
+// Sentinel: NAMESPACE_LEAK_HARNESS_SKILL
 // Policy: CLAUDE.local.md §24.1 + .claude/rules/moai/development/skill-authoring.md § Skills Namespace Policy
 // Origin: chore commit 4f1135684 (2026-05-23) — first enforcement after moai-adk-go
-// domain specialists were leaked into template as moai-harness-* (later corrected
-// to my-harness-* per user policy).
-func TestNamespaceLeakMyHarnessSkills(t *testing.T) {
+// domain specialists were leaked into template. Originally matched the legacy code-side prefix
+// (the legacy code-side prefix); renamed to harness-* per the namespace catch-up
+// (harness-* is the canonical doctrine-declared user-owned prefix).
+func TestNamespaceLeakHarnessSkills(t *testing.T) {
 	t.Parallel()
 
 	fsys, err := EmbeddedTemplates()
@@ -37,7 +38,7 @@ func TestNamespaceLeakMyHarnessSkills(t *testing.T) {
 		if len(parts) != 3 { // only top-level directories
 			return nil
 		}
-		if strings.HasPrefix(parts[2], "my-harness-") {
+		if strings.HasPrefix(parts[2], "harness-") {
 			leaked = append(leaked, path)
 		}
 		return nil
@@ -47,7 +48,7 @@ func TestNamespaceLeakMyHarnessSkills(t *testing.T) {
 	}
 
 	if len(leaked) > 0 {
-		t.Errorf("NAMESPACE_LEAK_MY_HARNESS_SKILL: my-harness-* skills MUST NOT be embedded in template (user-owned namespace).\nLeaked entries: %v\nRemediation: remove from internal/template/templates/.claude/skills/ and from catalog.yaml.\nPolicy SSOT: CLAUDE.local.md §24.1, .claude/rules/moai/development/skill-authoring.md § Skills Namespace Policy.", leaked)
+		t.Errorf("NAMESPACE_LEAK_HARNESS_SKILL: harness-* skills MUST NOT be embedded in template (user-owned namespace).\nLeaked entries: %v\nRemediation: remove from internal/template/templates/.claude/skills/ and from catalog.yaml.\nPolicy SSOT: CLAUDE.local.md §24.1, .claude/rules/moai/development/skill-authoring.md § Skills Namespace Policy.", leaked)
 	}
 }
 

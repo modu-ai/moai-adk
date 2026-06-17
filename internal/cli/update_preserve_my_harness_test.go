@@ -38,9 +38,9 @@ func TestIsUserAreaPath(t *testing.T) {
 		wantSkip bool
 	}{
 		// User customization area — must be preserved
-		{".claude/skills/my-harness-test-skill/SKILL.md", ".claude/skills/my-harness-test-skill/SKILL.md", true},
-		{".claude/skills/my-harness-foo/bar.md", ".claude/skills/my-harness-foo/bar.md", true},
-		{".claude/agents/my-harness/test-agent.md", ".claude/agents/my-harness/test-agent.md", true},
+		{".claude/skills/harness-test-skill/SKILL.md", ".claude/skills/harness-test-skill/SKILL.md", true},
+		{".claude/skills/harness-foo/bar.md", ".claude/skills/harness-foo/bar.md", true},
+		{".claude/agents/harness/test-agent.md", ".claude/agents/harness/test-agent.md", true},
 		// MoAI-managed — must NOT be skipped by user-area guard
 		{".claude/skills/moai-foundation-cc/SKILL.md", ".claude/skills/moai-foundation-cc/SKILL.md", false},
 		{".claude/skills/moai-meta-harness/SKILL.md", ".claude/skills/moai-meta-harness/SKILL.md", false},
@@ -63,10 +63,10 @@ func TestIsUserAreaPath(t *testing.T) {
 }
 
 // TestPreserveMyHarnessOnUpdate verifies that moai update does NOT overwrite or
-// delete files under .claude/skills/my-harness-* or .claude/agents/my-harness/.
+// delete files under .claude/skills/harness-* or .claude/agents/harness/.
 //
 // The test:
-//  1. Sets up a fixture project in t.TempDir() with a my-harness-test-skill dir.
+//  1. Sets up a fixture project in t.TempDir() with a harness-test-skill dir.
 //  2. Calls cleanMoaiManagedPaths (the stale-file removal step inside update).
 //  3. Asserts the user file is still present with identical content.
 func TestPreserveMyHarnessOnUpdate(t *testing.T) {
@@ -75,10 +75,10 @@ func TestPreserveMyHarnessOnUpdate(t *testing.T) {
 	// --- Setup fixture project ---
 	tmpDir := t.TempDir()
 
-	// my-harness skill file
-	harnessSkillDir := filepath.Join(tmpDir, ".claude", "skills", "my-harness-test-skill")
+	// harness skill file
+	harnessSkillDir := filepath.Join(tmpDir, ".claude", "skills", "harness-test-skill")
 	if err := os.MkdirAll(harnessSkillDir, 0o755); err != nil {
-		t.Fatalf("mkdir my-harness-test-skill: %v", err)
+		t.Fatalf("mkdir harness-test-skill: %v", err)
 	}
 	harnessSkillFile := filepath.Join(harnessSkillDir, "SKILL.md")
 	const skillContent = "test content — user harness skill"
@@ -86,10 +86,10 @@ func TestPreserveMyHarnessOnUpdate(t *testing.T) {
 		t.Fatalf("write SKILL.md: %v", err)
 	}
 
-	// my-harness agent file
-	harnessAgentDir := filepath.Join(tmpDir, ".claude", "agents", "my-harness")
+	// harness agent file
+	harnessAgentDir := filepath.Join(tmpDir, ".claude", "agents", "harness")
 	if err := os.MkdirAll(harnessAgentDir, 0o755); err != nil {
-		t.Fatalf("mkdir my-harness agents: %v", err)
+		t.Fatalf("mkdir harness agents: %v", err)
 	}
 	harnessAgentFile := filepath.Join(harnessAgentDir, "test-agent.md")
 	const agentContent = "test content — user harness agent"

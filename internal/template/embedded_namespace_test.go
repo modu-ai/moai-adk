@@ -21,7 +21,7 @@ import (
 //     canonical `moai-harness-*` allowlist {moai-harness-learner}. Any other
 //     `moai-harness-*` prefixed directory (e.g. moai-harness-cli-template,
 //     moai-harness-patterns) signals a §24 contract violation — those names
-//     must use the `my-harness-*` prefix and live in the user project, not
+//     must use the `harness-*` prefix and live in the user project, not
 //     in the template baseline.
 //
 // Sentinel on failure: HARNESS_NAMESPACE_LEAK

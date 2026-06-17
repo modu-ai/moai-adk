@@ -19,19 +19,19 @@ import (
 	"github.com/modu-ai/moai-adk/internal/design/dtcg"
 )
 
-// writeStubFigmaExtractorSkill creates a my-harness-figma-extractor/SKILL.md stub.
+// writeStubFigmaExtractorSkill creates a harness-figma-extractor/SKILL.md stub.
 // Simulates the frontmatter contract for files produced by meta-harness.
 func writeStubFigmaExtractorSkill(t *testing.T, skillsDir string) string {
 	t.Helper()
 
-	skillDir := filepath.Join(skillsDir, "my-harness-figma-extractor")
+	skillDir := filepath.Join(skillsDir, "harness-figma-extractor")
 	if err := os.MkdirAll(skillDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
 	// REQ-DPL-002: must include Figma file ID + page selectors + credential reference.
 	skillContent := `---
-name: my-harness-figma-extractor
+name: harness-figma-extractor
 description: Figma 디자인 추출기 — 프로젝트 전용 meta-harness 생성 스킬
 figma_file_id: "ABCDEF1234567890"
 figma_page_selectors:

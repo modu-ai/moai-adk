@@ -21,7 +21,7 @@ import (
 // skillFixture is the fixture content for SKILL.md tests.
 // Golden fixture for frontmatter preservation verification.
 const skillFixture = `---
-name: my-harness-test
+name: harness-test
 description: original description here
 triggers:
   - keyword: "harness test"
@@ -93,7 +93,7 @@ func TestEnrichDescription_PreservesAllOtherFrontmatterFields(t *testing.T) {
 	text := string(content)
 
 	// Verify other frontmatter fields are preserved
-	if !strings.Contains(text, "name: my-harness-test") {
+	if !strings.Contains(text, "name: harness-test") {
 		t.Error("name 필드 손실")
 	}
 	if !strings.Contains(text, `keyword: "harness test"`) {

@@ -29,8 +29,8 @@ func TestClassifySkill(t *testing.T) {
 			wantClass: "WARN",
 		},
 		{
-			name:      "user customization my-harness prefix returns INFO",
-			skillName: "my-harness-test",
+			name:      "user customization harness prefix returns INFO",
+			skillName: "harness-test",
 			wantClass: "INFO",
 		},
 		{

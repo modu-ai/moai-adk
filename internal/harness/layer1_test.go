@@ -20,7 +20,7 @@ func writeSkill(t *testing.T, dir, name, body string) string {
 func TestVerifyTriggers_AllKeysPresent(t *testing.T) {
 	dir := t.TempDir()
 	body := `---
-name: my-harness-ios-patterns
+name: harness-ios-patterns
 description: foo
 triggers:
   paths: ["**/*.swift"]
@@ -40,7 +40,7 @@ triggers:
 func TestVerifyTriggers_MissingOneKey(t *testing.T) {
 	dir := t.TempDir()
 	body := `---
-name: my-harness-foo
+name: harness-foo
 triggers:
   paths: ["**/*.swift"]
   keywords: ["ios"]
@@ -62,7 +62,7 @@ triggers:
 func TestVerifyTriggers_MissingTriggersSection(t *testing.T) {
 	dir := t.TempDir()
 	body := `---
-name: my-harness-foo
+name: harness-foo
 description: bar
 ---
 

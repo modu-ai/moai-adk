@@ -859,15 +859,15 @@ func TestIsUserOwnedNamespace(t *testing.T) {
 		rel  string
 		want bool
 	}{
-		// REQ-UNP-001: .claude/skills/my-harness-*
+		// REQ-UNP-001: .claude/skills/harness-*
 		{
-			name: "REQ-UNP-001 my-harness skill",
-			rel:  ".claude/skills/my-harness-test/SKILL.md",
+			name: "REQ-UNP-001 harness skill",
+			rel:  ".claude/skills/harness-test/SKILL.md",
 			want: true,
 		},
 		{
-			name: "REQ-UNP-001 my-harness skill root",
-			rel:  ".claude/skills/my-harness-foo",
+			name: "REQ-UNP-001 harness skill root",
+			rel:  ".claude/skills/harness-foo",
 			want: true,
 		},
 		// REQ-UNP-002: .claude/agents/harness/
@@ -998,10 +998,10 @@ func TestIsUserOwnedNamespace(t *testing.T) {
 func TestIsUserOwnedNamespace_AdditivityWithIsUserAreaPath(t *testing.T) {
 	// Paths that isUserAreaPath protects:
 	previouslyCovered := []string{
-		".claude/skills/my-harness-test/SKILL.md",
-		".claude/skills/my-harness-foo/file.md",
-		".claude/agents/my-harness",
-		".claude/agents/my-harness/teammate.md",
+		".claude/skills/harness-test/SKILL.md",
+		".claude/skills/harness-foo/file.md",
+		".claude/agents/harness",
+		".claude/agents/harness/teammate.md",
 	}
 
 	for _, path := range previouslyCovered {

@@ -140,7 +140,7 @@ func TestCmdApply_ReturnsPayloadJSON(t *testing.T) {
 
 	proposal := map[string]interface{}{
 		"id":                "prop-001",
-		"target_path":       ".claude/skills/my-harness-plan/SKILL.md",
+		"target_path":       ".claude/skills/harness-plan/SKILL.md",
 		"field_key":         "description",
 		"new_value":         "test heuristic",
 		"pattern_key":       "moai_subcommand:/moai plan:ctx001",

@@ -140,7 +140,7 @@ func TestCanaryVeto_SnapshotBeforeApply(t *testing.T) {
 func BenchmarkL1FrozenGuard(b *testing.B) {
 	proposal := harness.Proposal{
 		ID:         "bench-frozen",
-		TargetPath: ".claude/skills/moai-my-harness/SKILL.md",
+		TargetPath: ".claude/skills/moai-harness/SKILL.md",
 		FieldKey:   "description",
 		NewValue:   "new val",
 	}

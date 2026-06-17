@@ -24,7 +24,7 @@ func TestBuildPreserveInventory_FullCoverage(t *testing.T) {
 	root := t.TempDir()
 
 	// §24 user-owned namespace seeds
-	writeTestFile(t, root, ".claude/skills/my-harness-mytool/SKILL.md", "skill body\n")
+	writeTestFile(t, root, ".claude/skills/harness-mytool/SKILL.md", "skill body\n")
 	writeTestFile(t, root, ".claude/agents/harness/mytool-specialist.md", "harness agent\n")
 	writeTestFile(t, root, ".claude/agents/local/release-update-specialist.md", "local agent\n")
 	writeTestFile(t, root, ".moai/harness/main.md", "harness main\n")
@@ -50,7 +50,7 @@ func TestBuildPreserveInventory_FullCoverage(t *testing.T) {
 	}
 
 	expectedPresent := []string{
-		".claude/skills/my-harness-mytool/SKILL.md",
+		".claude/skills/harness-mytool/SKILL.md",
 		".claude/agents/harness/mytool-specialist.md",
 		".claude/agents/local/release-update-specialist.md",
 		".moai/harness/main.md",
@@ -174,7 +174,7 @@ func TestSnapshotAndMergeBack_RoundTrip(t *testing.T) {
 		".moai/specs/SPEC-A/spec.md":              "spec A content\n",
 		".moai/specs/SPEC-A/plan.md":              "plan A content\nmultiline\n",
 		".moai/project/product.md":                "product doc\n",
-		".claude/skills/my-harness-x/SKILL.md":    "skill body\n",
+		".claude/skills/harness-x/SKILL.md":    "skill body\n",
 		".claude/agents/harness/x-specialist.md":  "agent body\n",
 	}
 	for rel, content := range files {
