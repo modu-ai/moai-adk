@@ -137,7 +137,22 @@ ok  	github.com/modu-ai/moai-adk/internal/template
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs populates with sync_commit_sha after CHANGELOG/README/docs sync>_
+**Claim**: sync-phase complete. CHANGELOG `[Unreleased] → Added` entry emitted; frontmatter `status` transitioned `in-progress → implemented` on spec.md (canonical status bearer per STATUSLINE-PRESET-RETIRE / WORKFLOW-EFFORT-MAP precedent — only spec.md carries the lifecycle transition); D7 (spec.md §I AC-FBC-005 history note) + D8 (research.md §C `.moai/docs/` over-attribution) verified already-fixed during run-phase; docs-site 4-locale skipped (internal doctrine SPEC, no user-facing feature); README untouched (no user-facing surface changed).
+
+**Evidence**:
+- `grep -c 'SPEC-V3R6-SESSION-ID-ATTRIBUTION-REPAIR-001' CHANGELOG.md` was 1 prior (a cross-reference forward-ref inside the SESSION-HANDOFF-SSOT-ALIGN-001 entry, NOT a dedicated entry) → dedicated Added entry emitted, B12 no-duplicate satisfied.
+- spec.md frontmatter `status:` now reads `implemented` (single-artifact transition per precedent).
+- D7 confirmed: spec.md §I history note — "AC-FBC-005 added for REQ-FBC-004 traceability (AC-FBC-004 was already taken by template-mirror parity tracing to REQ-FBC-002)".
+- D8 confirmed: research.md §C — "`.moai/docs/` contributes 0 variants — all 10 extras are in auto-memory; the prior prose over-attributed `.moai/docs/`".
+- AC count 18 (15 MUST + 3 SHOULD) cross-checked against acceptance.md §B (SSOT), NOT progress.md.
+
+**Baseline-attribution**: measured against the run-phase HEAD `538fcaea6` (M4-M6) tree; sync edits applied on a clean origin-synced tree (HEAD `7a338007a` at sync time, a parallel session's memory-hygiene commit — no overlap with this SPEC's files). The 18/18 AC PASS figure is carried verbatim from progress.md §E.2 (run-phase evidence recorded by manager-develop against the M1-M6 tree), not re-measured in sync-phase (sync is doc-only, no code change).
+
+**Gaps**: sync-phase manager-docs spawn failed with `context window limit` (3rd GLM occurrence — also hit WORKFLOW-EFFORT-MAP-001 + SESSION-HANDOFF-SSOT-ALIGN-001 siblings) → orchestrator-direct fallback (`Authored-By-Agent: orchestrator-direct` trailer). This MAY emit an `OwnershipTransitionInvalid` lint Warning because the canonical owner of `in-progress → implemented` is manager-docs (per lifecycle-sync-gate.md ownership matrix) — accepted as documented GLM-environment debt, consistent with the two sibling SPECs' fallback. No independent sync-auditor 4-dimension run in this commit (downstream, separate gate).
+
+**Residual-risk**: `additionalContext` injection is lost after `/clear`/compaction (spec.md §F.2); the side-channel file `.moai/state/current-session-id.txt` persists so `moai session current` re-reads the UUID. Headless `-p` invocations without hooks bypass SessionStart → canonical fallback (REQ-RDP-006). Pre-existing `internal/statusline` `TestCollectMemory` baseline failure is out of scope (STATUSLINE-PRESET-RETIRE residual).
+
+sync_commit_sha: <pending backfill — populated by the immediately-following chore commit>
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
