@@ -16,7 +16,7 @@
 | Plan | complete | manager-spec |
 | Plan-audit | complete (PASS-WITH-DEBT 0.88 iter-2) | plan-auditor |
 | Run | complete (M1-M6) | manager-develop |
-| Sync | pending | manager-docs |
+| Sync | complete (orchestrator-direct) | manager-docs / orchestrator-direct |
 | Mx | pending | orchestrator-direct / manager-docs |
 
 ---
@@ -202,7 +202,28 @@ i18n_tool:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs가 채움>_
+**Sync-phase**: COMPLETE (orchestrator-direct — GLM manager-docs spawn context-limit fallback per `feedback_glm_orchestrator_direct_sync_mx`)
+**Status transition**: spec.md `in-progress → implemented` (manager-docs canonical owner; orchestrator-direct per GLM fallback)
+**CHANGELOG**: DOCSITE-001 entry added to `[Unreleased] > ### Added` (cohort order, after README-001 entry)
+**Docs surface**: docs-site content IS the documentation target of this SPEC — no separate README/codemaps sync needed (README-001 repo-root + CODEMAPS-V3-001 codemaps already closed)
+**Edit scope**: CHANGELOG.md + spec.md frontmatter + progress.md §A/§E.4
+**AC final**: 11/11 PASS (orchestrator-independent re-verification via acceptance.md digit-boundary per-locale greps)
+**sync-auditor**: GLM spawn context-limit expected → orchestrator self-review substitute (lint clean + 11/11 AC independent re-verify + scope discipline + race-absorbed clean)
+
+**Audit-ready YAML**:
+
+```yaml
+spec_id: SPEC-V3R6-DOCS-DOCSITE-001
+sync_phase: complete
+sync_owner: orchestrator-direct
+status_transition: in-progress -> implemented
+changelog_entry: present
+docs_surface: docs-site/content/{en,ko,ja,zh}
+ac_final: 11/11 PASS
+go_change: 0
+neutrality: clean
+sync_commit_sha: <pending backfill>
+```
 
 ---
 
