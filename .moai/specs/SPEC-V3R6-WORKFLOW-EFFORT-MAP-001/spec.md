@@ -2,7 +2,7 @@
 id: SPEC-V3R6-WORKFLOW-EFFORT-MAP-001
 title: "Purpose-driven model+effort selection for dynamic Workflow agent() calls, Agent Teams role_profiles, and session-handoff ultracode re-set"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-06-17
 updated: 2026-06-17
 author: manager-spec

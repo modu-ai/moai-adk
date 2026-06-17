@@ -107,4 +107,23 @@ m1_to_mN_commit_strategy: "per-milestone Conventional Commits with Authored-By-A
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending Mx-phase — populated by orchestrator-direct or manager-docs>_
+**Status**: audit-ready. 4-phase close complete (plan → run → sync → Mx). The `implemented → completed` frontmatter transition was performed by the orchestrator via orchestrator-direct Mx (the `manager-docs` spawn failed with context-limit — recurring fallback pattern).
+
+**4-phase close confirmation**:
+- **Plan**: spec/plan/acceptance authored; plan-auditor PASS-WITH-DEBT 0.84 iter-2; Implementation Kickoff Approval obtained.
+- **Run** (`d27e7ac54` M1 → `685a60751` M5, via L1 worktree `agent-a82c6d9e6f3a73c3b`): M1-M5 purpose→(model,effort) SSOT + role_profiles effort field + ultracode conditional — 13 MUST ACs PASS; mirror parity 0-diff (3 pairs); template-neutrality PASS; 0 Go changes (decision #1).
+- **Sync** (`4c14ba25c` + `e18a60433` backfill): CHANGELOG `[Unreleased] ### Added` + frontmatter `implemented` + §E.4 (orchestrator-direct sync fallback).
+- **Mx** (this commit): frontmatter `implemented → completed`; §E.5 populated; 4-phase close declared.
+
+- mx_commit_sha: _<pending — backfilled in next commit>_ — will hold the Mx close commit SHA. Non-bold per `feedback_era_commit_sha_field_format`.
+
+**Commit subject**: `chore(SPEC-V3R6-WORKFLOW-EFFORT-MAP-001): Mx-phase audit-ready signal + 4-phase close`
+
+**Final AC tally**: 13 ACs — all 13 MUST PASS (AC-WEM-001..012 incl. 009a/009b mirror parity); 0 SHOULD; 0 deferred.
+
+**Race-recovery integration note**: the run-phase commits were re-integrated onto current main via merge `e8f3e58dd` (EFFORT-MAP was marooned on `backup/wf-effort-map-001` after a parallel SESSION-ID-ATTRIBUTION session reset main to origin/main). The original 5 run-phase commits preserve the `Authored-By-Agent: manager-develop` trailer; the merge commit + sync/Mx commits carry the race-recovery provenance.
+
+**Residual (honestly reported, none blocking close)**:
+- D1-new/D2-new/D3-new residual debt from run-phase accepted (not fixed): D1-new git-diff PRIMARY for AC-WEM-006, D2-new dynamic-workflows.md ~28KB file size, D3-new iter/rev naming in plan history.
+- The `effort` YAML field runtime consumption remains declarative-only (LLM-behavior-verified, not code-path-verified) per acceptance.md §D.2. A future SPEC wiring the field into Go runtime enforcement MUST cite this SPEC as the declarative SSOT origin.
+- spec-lint / `moai spec audit` final verification deferred to the pre-push Trust-but-verify batch.
