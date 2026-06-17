@@ -152,7 +152,7 @@ ok  	github.com/modu-ai/moai-adk/internal/template
 
 **Residual-risk**: `additionalContext` injection is lost after `/clear`/compaction (spec.md §F.2); the side-channel file `.moai/state/current-session-id.txt` persists so `moai session current` re-reads the UUID. Headless `-p` invocations without hooks bypass SessionStart → canonical fallback (REQ-RDP-006). Pre-existing `internal/statusline` `TestCollectMemory` baseline failure is out of scope (STATUSLINE-PRESET-RETIRE residual).
 
-sync_commit_sha: <pending backfill — populated by the immediately-following chore commit>
+sync_commit_sha: 615a4af95 — backfilled after the docs sync commit (non-bold actual SHA per feedback_era_commit_sha_field_format; bold/placeholder would cause V3R6→V3R5 era misclassification).
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
