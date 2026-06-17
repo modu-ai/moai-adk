@@ -166,16 +166,16 @@ User-generated artifacts:
 - [HARD] `moai update` MUST NOT delete, modify, or sync `harness-*` skills or `.claude/agents/harness/*` files. Backup before update is mandatory.
 - [HARD] Template (`internal/template/templates/`) MUST NOT contain `harness-*` skills or `.claude/agents/harness/*-specialist.md` files. Leak detection triggers cleanup chore.
 - [HARD] `harness-*` (user-owned) vs `moai-harness-*` (template builder) substring 구분: prefix 매칭은 정확한 startsWith 비교를 사용 (`*harness-*` substring 패턴은 false positive 위험으로 금지).
-- [HARD] Doctrine-code drift (2026-05-26 ~ catch-up SPEC 완료 전): 본 namespace 정책은 `harness-*` declaration이지만 Go enforcement (update.go / prefix_conflict.go / test fixtures)는 `my-harness-*` 작동 유지. **새 `harness-*` prefix로 실제 generation 금지** — protection 없음. catch-up SPEC 완료 후 generator runtime behavior가 `harness-*`로 전환. SSOT 참조: the harness namespace separation policy (maintainer doctrine).
+- [HARD] Generator emits `harness-*` prefix ONLY (doctrine-code drift resolved by the namespace catch-up). Go enforcement (update.go / prefix_conflict.go / test fixtures) now recognizes `harness-*` as user-owned, with the legacy prefixed form retained during a backward-compat deprecation window. SSOT: the harness namespace separation policy (maintainer doctrine).
 
 ### Generated-Agent Self-Activation Contract
 
 [HARD] Each generated `.claude/agents/harness/<role>.md` agent MUST be emitted with both of the following frontmatter fields so the generated harness self-activates when the agent is delegated:
 
-- A `skills:` frontmatter entry preloading the agent's companion `my-harness-<domain>-*` skill (the code-side prefix the generator + Go enforcement use today). This makes the domain skill load deterministically when the agent runs, rather than relying on auto-discovery which fails silently when the companion skill is absent from the agent's context.
+- A `skills:` frontmatter entry preloading the agent's companion `harness-<domain>-*` skill. This makes the domain skill load deterministically when the agent runs, rather than relying on auto-discovery which fails silently when the companion skill is absent from the agent's context.
 - A non-empty, trigger-shaped `description` frontmatter field naming the domain + the observable task-shape, so the orchestrator's `.moai/harness/main.md` Task-Shape Routing table can dispatch to it.
 
-Both fields are enforced at runtime by the Phase-6 post-generation smoke gate (`moai doctor harness`, see the `project/meta-harness.md` workflow Phase 7.3): a generated agent with an empty `description`, a dangling `skills:` reference (pointing at a non-existent `my-harness-*` dir), or NO `skills:` key at all causes the gate to FAIL. A `skills:`-less agent must not pass silently — that is the auto-discovery failure mode this contract closes. Full emission template + example: `project/meta-harness.md` § 6.4.1.
+Both fields are enforced at runtime by the Phase-6 post-generation smoke gate (`moai doctor harness`, see the `project/meta-harness.md` workflow Phase 7.3): a generated agent with an empty `description`, a dangling `skills:` reference (pointing at a non-existent `harness-*` dir), or NO `skills:` key at all causes the gate to FAIL. A `skills:`-less agent must not pass silently — that is the auto-discovery failure mode this contract closes. Full emission template + example: `project/meta-harness.md` § 6.4.1.
 
 ### Storage Roots
 

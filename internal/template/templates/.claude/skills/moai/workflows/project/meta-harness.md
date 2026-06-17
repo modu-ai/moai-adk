@@ -288,19 +288,18 @@ in the **user area** (FROZEN guard pre-verified):
 |----------|------|----------|
 | Architect agent | `.claude/agents/harness/<domain>-architect.md` | Always |
 | Engineer agent | `.claude/agents/harness/<domain>-engineer.md` | Always |
-| Patterns skill | `.claude/skills/my-harness-<domain>-patterns/SKILL.md` | Always |
-| Best-practices skill | `.claude/skills/my-harness-<domain>-best-practices/SKILL.md` | Always |
+| Patterns skill | `.claude/skills/harness-<domain>-patterns/SKILL.md` | Always |
+| Best-practices skill | `.claude/skills/harness-<domain>-best-practices/SKILL.md` | Always |
 | Harness directory | `.moai/harness/` | Always |
 | Design extension | `.moai/harness/design-extension.md` | Q13 == Advanced only |
 
 > **Prefix note (code-side):** the companion skills are emitted under the
-> `my-harness-*` prefix — the prefix the Go code + generator actually use today
-> (the prefix `doctor harness` `checkLayer1Triggers` matches and that
-> `moai update` namespace protection preserves). The doctrine-vs-code prefix
-> drift (`harness-*` doctrine target vs `my-harness-*` code reality) is documented
-> in the `moai-meta-harness` skill body § Namespace Separation; advancing the
-> generator to the bare `harness-*` prefix is a separate, future concern and is
-> NOT performed here. References above read `my-harness-`, never a bare `harness-`.
+> `harness-*` prefix — the canonical user-owned namespace the doctrine
+> declares and that Go enforcement (`doctor harness` `checkLayer1Triggers`,
+> `moai update` namespace protection) now recognizes. The doctrine-vs-code
+> drift that previously existed was resolved by the namespace catch-up;
+> the legacy prefixed form is retained only as a backward-compat
+> recognition during a deprecation window. References above read `harness-*`.
 
 All write paths must pass `EnsureAllowed(path)` before the file is created.
 Any `FrozenViolationError` causes immediate abort + `CleanupOnFailure`.
@@ -312,7 +311,7 @@ the following frontmatter so the generated harness self-activates when the
 agent is delegated:
 
 - A `skills:` frontmatter entry that **preloads the agent's companion
-  `my-harness-*` skill**, so the domain skill loads deterministically when the
+  `harness-*` skill**, so the domain skill loads deterministically when the
   agent runs (rather than relying on auto-discovery, which fails silently when
   the companion skill is not in the agent's context). Example for a generated
   architect agent:
@@ -322,17 +321,17 @@ agent is delegated:
   name: <domain>-architect
   description: <non-empty trigger-shaped description — see below>
   skills:
-    - my-harness-<domain>-patterns
-    - my-harness-<domain>-best-practices
+        - harness-<domain>-patterns
+        - harness-<domain>-best-practices
   ---
   ```
 
   Concrete example for an `ios-mobile` project (the `<domain>` placeholder
   resolves to the project domain): the architect agent declares
-  `my-harness-ios-patterns` and `my-harness-ios-best-practices` under `skills:`,
-  matching the `.claude/skills/my-harness-ios-patterns/SKILL.md` and
-  `.claude/skills/my-harness-ios-best-practices/SKILL.md` directories emitted
-  by Phase 6 (the code-side `my-harness-*` prefix, never a bare `harness-*`).
+  `harness-ios-patterns` and `harness-ios-best-practices` under `skills:`,
+  matching the `.claude/skills/harness-ios-patterns/SKILL.md` and
+  `.claude/skills/harness-ios-best-practices/SKILL.md` directories emitted
+  by Phase 6 (the `harness-*` prefix).
 
 - A **non-empty, trigger-shaped `description`** frontmatter field naming the
   domain and the observable task-shape that should route to this agent (so the
@@ -340,7 +339,7 @@ agent is delegated:
 
 These two frontmatter fields are enforced at runtime by the Phase-6 smoke gate
 (Phase 7.3): a generated agent with an empty `description`, with a `skills:`
-entry pointing at a non-existent `my-harness-*` directory (dangling), or with
+entry pointing at a non-existent `harness-*` directory (dangling), or with
 NO `skills:` key at all causes the gate to FAIL. A `skills:`-less agent must
 not pass silently — that is the auto-discovery failure mode this contract closes.
 
@@ -372,7 +371,7 @@ exists, then verifies all five with the smoke gate (7.3):
 
 | Layer | Mechanism | Owner |
 |-------|-----------|-------|
-| L1 | `my-harness-*` skill frontmatter triggers (paths / keywords / agents / phases) | Phase 6 (generation) |
+| L1 | `harness-*` skill frontmatter triggers (paths / keywords / agents / phases) | Phase 6 (generation) |
 | L2 | `.moai/config/sections/workflow.yaml` `harness:` section | Phase 6 (generation) |
 | L3 | `CLAUDE.md` `<!-- moai:harness-start -->` ~ `<!-- moai:harness-end -->` marker block | **Phase 7 (install)** |
 | L4 | `.claude/skills/moai/workflows/{plan,run,sync,design}.md` static `@.moai/harness/` import line | Phase 6 (already present in workflow files) |
@@ -413,7 +412,7 @@ incomplete — covering:
 - CLAUDE.md does not contain exactly one paired
   `<!-- moai:harness-start -->` / `<!-- moai:harness-end -->` block (L3 marker).
 - a generated `.claude/agents/harness/*.md` agent has an empty `description`.
-- a generated agent's `skills:` preload references a `my-harness-*` skill
+- a generated agent's `skills:` preload references a `harness-*` skill
   directory that does not exist on disk (dangling skill reference).
 - a generated agent OMITS the `skills:` frontmatter key entirely (the runtime
   enforcement of the `skills:` preload emission contract — a `skills:`-less agent
