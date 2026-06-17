@@ -665,15 +665,17 @@ MoAI-ADK supports **z.ai GLM** as an alternative AI backend for Claude Code, ena
 |------|---------|
 | GLM Coding Plan | From **$10/month** ([z.ai](https://z.ai/subscribe?ic=1NDV03BGWU)) |
 | Compatibility | Works with Claude Code — no code changes needed |
-| Models | GLM-5.1, GLM-4.7, GLM-4.5-Air, and free models |
+| Models | glm-5.2[1m], glm-4.7, glm-4.5-air, and free models |
 
 **Default Model Mapping:**
 
 | Claude Tier | GLM Model | Input (per 1M tokens) | Output (per 1M tokens) |
 |-------------|-----------|----------------------|------------------------|
-| Opus | GLM-5.1 | $2.00 | $8.00 |
-| Sonnet | GLM-4.7 | $0.60 | $2.20 |
-| Haiku | GLM-4.5-Air | $0.20 | $1.10 |
+| Opus | glm-5.2[1m] | $2.00 | $8.00 |
+| Sonnet | glm-4.7 | $0.60 | $2.20 |
+| Haiku | glm-4.5-air | $0.20 | $1.10 |
+
+> The `[1m]` suffix on `glm-5.2[1m]` activates Claude Code's 1M-token context mode. Claude Code parses and strips the suffix before the upstream z.ai API call, so z.ai never sees it.
 
 > Free models also available: GLM-4.7-Flash, GLM-4.5-Flash. See [z.ai Pricing](https://docs.z.ai/guides/overview/pricing) for full details.
 
