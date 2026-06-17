@@ -4,6 +4,12 @@ description: >
   Canonical Claude Code authoring kit covering Skills, sub-agents, plugins, slash commands,
   hooks, memory, settings, sandboxing, headless mode, and advanced agent patterns.
   Use when creating Claude Code extensions or configuring Claude Code features.
+
+when_to_use: >
+  Use for Claude Code authoring and extension: Skills, sub-agents,
+  plugins, slash commands, hooks, memory, settings, sandboxing, headless
+  mode, orchestration, and delegation/agent-pattern authoring.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
@@ -22,18 +28,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["skill", "agent", "plugin", "slash command", "hook", "sandbox", "headless", "memory", "settings", "claude code", "sub-agent", "agent pattern", "orchestration", "delegation"]
-  agents:
-    - "builder-harness"
-    - "builder-harness"
-    - "builder-harness"
-  phases:
-    - "plan"
-    - "run"
-    - "sync"
 ---
 
 # Claude Code Authoring Kit

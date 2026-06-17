@@ -5,6 +5,13 @@ description: >
   skills they use. Adapts the revfactory/harness 7-Phase workflow to MoAI's agent
   ecosystem. Triggered by /moai project Socratic interview and produces dynamic
   harness-* skills + .claude/agents/harness/* + .moai/harness/* artifacts.
+
+when_to_use: >
+  Use for meta-harness work: designing project-specific agent teams and
+  generating the skills they use, adapting the revfactory/harness 7-Phase
+  workflow to MoAI's agent ecosystem, triggered by /moai project Socratic
+  interview.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code (v2.1.111+)
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash
@@ -24,12 +31,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["harness", "project-init", "meta-skill", "agent-team", "harness-evolve"]
-  agents: ["manager-spec", "manager-strategy", "sync-auditor"]
-  phases: ["plan", "run", "sync"]
 ---
 
 # moai-meta-harness

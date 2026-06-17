@@ -4,6 +4,13 @@ description: >
   Market and ecosystem research specialist for /moai brain Phase 3. Executes parallel
   WebSearch + Context7 queries, handles tool failures gracefully, and produces structured
   research.md artifacts with cited sources and research limitations.
+
+when_to_use: >
+  Use for /moai brain Phase 3 market and ecosystem research: parallel
+  WebSearch and Context7 queries, competitive-landscape analysis, source
+  citation, and structured research.md artifacts with graceful
+  tool-failure handling.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
@@ -22,12 +29,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["research", "market research", "ecosystem", "competitive landscape", "sources", "brain"]
-  agents: ["manager-brain"]
-  phases: ["brain"]
 ---
 
 <!-- Verifies REQ-BRAIN-003: Parallel WebSearch + Context7 in single message for Phase 3 -->

@@ -1,22 +1,10 @@
 ---
 name: moai-harness-learner
 description: Harness learning subsystem coordinator. Produces Tier 4 auto-update proposal payloads consumed by the orchestrator (which surfaces them via AskUserQuestion) and orchestrates Apply/Rollback flows. Triggers when harness learning proposals are pending or learning lifecycle management is needed.
-triggers:
-  - keyword: "harness apply"
-  - keyword: "harness proposal"
-  - keyword: "harness rollback"
-  - keyword: "harness status"
-  - keyword: "harness disable"
-  - keyword: "learning proposal"
-  - keyword: "tier 4"
-  - keyword: "auto update proposal"
-  - keyword: "harness 학습"
-  - keyword: "harness 상태"
-  - keyword: "harness 제안"
-  - keyword: "harness 롤백"
-  - keyword: "harness 비활성화"
-  - keyword: "학습 제안"
-  - keyword: "자동 업데이트"
+when_to_use: >
+  Use for harness learning lifecycle management: producing Tier 4 auto-update
+  proposal payloads for the orchestrator (surfaced via AskUserQuestion), and
+  coordinating Apply/Rollback flows when learning proposals are pending.
 allowed-tools: Bash,Read,Write,Edit
 user-invocable: false
 ---

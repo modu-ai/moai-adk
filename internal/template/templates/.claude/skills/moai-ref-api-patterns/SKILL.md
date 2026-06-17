@@ -6,6 +6,13 @@ description: >
   expertise with production-grade API patterns. Use when designing APIs, implementing
   endpoints, or reviewing backend code.
   NOT for: frontend development, DevOps, database schema design, security audits.
+
+when_to_use: >
+  Use for REST/GraphQL API design patterns: endpoint and route design,
+  handler structure, request/response conventions, error handling, and
+  input validation. Amplifies expert-backend expertise with
+  production-grade API patterns.
+
 user-invocable: false
 metadata:
   version: "1.0.0"
@@ -19,12 +26,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 3000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["api", "endpoint", "rest", "graphql", "route", "handler"]
-  agents: ["expert-backend"]
-  phases: ["run"]
 ---
 
 # API Patterns Reference

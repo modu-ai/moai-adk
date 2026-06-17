@@ -4,6 +4,12 @@ description: >
   SPEC workflow orchestration with EARS format requirements, acceptance criteria,
   and Plan-Run-Sync integration for MoAI-ADK development. Use when creating SPEC
   documents or defining acceptance criteria.
+
+when_to_use: >
+  Use for SPEC workflow orchestration: EARS-format requirements,
+  acceptance criteria, user stories, requirements gathering, planning, and
+  Plan-Run-Sync integration for MoAI-ADK development.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Bash(git:*), Bash(ls:*), Bash(wc:*), Bash(mkdir:*), Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
@@ -22,12 +28,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["SPEC", "requirement", "EARS", "acceptance criteria", "user story", "planning", "specification", "requirements gathering"]
-  phases: ["plan"]
-  agents: ["manager-spec", "manager-strategy", "Plan"]
 ---
 
 # SPEC Workflow Management

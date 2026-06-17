@@ -5,6 +5,13 @@ description: >
   reference. Agent-extending skill that amplifies manager-develop and manager-quality
   expertise with production-grade testing patterns.
   NOT for: production code implementation, architecture design, DevOps, security audits.
+
+when_to_use: >
+  Use for test-pyramid strategy reference: coverage targets,
+  unit/integration/e2e test patterns, and quality metrics. Amplifies
+  manager-develop and manager-quality expertise with production-grade
+  testing patterns.
+
 user-invocable: false
 metadata:
   version: "1.0.0"
@@ -18,12 +25,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 3000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["test", "coverage", "tdd", "unit test", "integration", "e2e"]
-  agents: ["manager-develop", "manager-quality"]
-  phases: ["run"]
 ---
 
 # Testing Pyramid Reference

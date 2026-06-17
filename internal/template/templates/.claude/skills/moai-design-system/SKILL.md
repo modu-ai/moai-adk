@@ -4,6 +4,14 @@ description: >
   Unified design system specialist integrating Intent-First design craft and UI/UX foundations
   (accessibility, design tokens, component architecture). Use when establishing design intent
   and building design systems.
+
+when_to_use: >
+  Use for design-system authoring and audits: Intent-First craft,
+  WCAG/ARIA accessibility, design tokens, theming and dark mode, component
+  libraries (shadcn, Radix UI, Storybook), Style Dictionary, icon sets
+  (Lucide, Iconify, Hugeicons), UX writing, and responsive UI
+  implementation.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
@@ -22,12 +30,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["intent-first", "design craft", "design direction", "design intent", "design critique", "craft review", "design memory", "design system", "design audit", "UI/UX", "accessibility", "WCAG", "ARIA", "design tokens", "component library", "theming", "dark mode", "shadcn", "Radix UI", "Storybook", "web copy", "ux writing", "headline", "cta copy", "landing page copy", "domain exploration", "system.md", "why before what", "design extract", "interface design", "anti-ai writing", "icon", "Style Dictionary", "Lucide", "Iconify", "Hugeicons", "responsive design", "user experience", "Anti-AI Slop", "AI slop prevention", "design context", "ui implementation", "responsive design"]
-  agents: ["expert-frontend", "team-designer"]
-  phases: ["plan", "run", "review"]
 ---
 
 # MoAI Design System Specialist

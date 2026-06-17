@@ -6,6 +6,13 @@ description: >
   (research, system, spec). Validates DTCG tokens, enforces brand-context constitutional
   priority. Use for /moai design workflow — NOT for general design system documentation
   (see moai-design-system).
+
+when_to_use: >
+  Use for the /moai design workflow: Path A Claude Design handoff-bundle
+  import (via Figma extractor when needed), design-brief context loading
+  from .moai/design/, DTCG token validation, and brand-context
+  constitutional priority.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash
@@ -22,11 +29,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 120
   level2_tokens: 5000
-
-triggers:
-  keywords: ["design import", "handoff bundle", "claude design", "bundle path", "design zip", "figma extractor", "path b1", "design context", "attach design", "design brief", ".moai/design"]
-  agents: ["expert-frontend"]
-  phases: ["design", "run"]
 ---
 
 # Design Workflow (`moai-workflow-design`)

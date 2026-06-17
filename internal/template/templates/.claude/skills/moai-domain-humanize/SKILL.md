@@ -6,6 +6,13 @@ description: >
   Japanese, and Chinese with a shared severity model (S1/S2/S3), quality grades
   (A/B/C/D), and 30%/50% over-editing guardrails. Use to make AI-generated text
   read as human-authored without changing what it says (de-ai, naturalness pass).
+
+when_to_use: >
+  Use for AI-text humanization and post-editing (윤문): detecting and
+  removing AI tells across Korean, English, Japanese, and Chinese,
+  applying the S1/S2/S3 severity model and quality grades while preserving
+  meaning, facts, and figures.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob
@@ -22,11 +29,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["humanize", "ai tell", "윤문", "de-ai", "naturalness", "ai 티 제거", "ai痕迹", "AI臭さ"]
-  phases: ["run"]
 ---
 
 # moai-domain-humanize

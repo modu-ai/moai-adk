@@ -4,6 +4,12 @@ description: >
   Git worktree management for parallel SPEC development with isolated workspaces,
   automatic branch registration, and seamless MoAI-ADK integration. Use when
   setting up parallel development environments.
+
+when_to_use: >
+  Use for git worktree management: parallel SPEC development with isolated
+  workspaces, automatic branch registration, branch isolation, and
+  seamless MoAI-ADK integration for multiple concurrent SPECs.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
@@ -21,12 +27,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["worktree", "git worktree", "parallel development", "isolated workspace", "multiple SPECs", "branch isolation", "feature branch"]
-  phases: ["plan", "run"]
-  agents: ["manager-git", "manager-spec", "manager-project"]
 ---
 
 # MoAI Worktree Management

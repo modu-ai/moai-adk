@@ -5,6 +5,13 @@ description: >
   SPEC-First DDD methodology, delegation patterns, progressive disclosure,
   agent catalog reference, and token budget management (absorbed from moai-foundation-context).
   Use when referencing TRUST 5 gates, SPEC workflow, or context window optimization.
+
+when_to_use: >
+  Use for MoAI-ADK foundations: the TRUST 5 quality framework, SPEC-First
+  DDD methodology, delegation patterns, progressive disclosure,
+  token/context-window budget management, GEARS/EARS formats, and session
+  handoff.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
@@ -23,22 +30,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["trust-5", "spec-first", "ddd", "delegation", "agent", "token", "progressive disclosure", "modular", "workflow", "orchestration", "quality gate", "spec", "gears", "ears format", "context window", "token budget", "token limit", "session state", "/clear", "context management", "multi-agent handoff", "session persistence", "context", "session", "budget", "optimization", "handoff", "state", "memory", "multi-agent"]
-  agents:
-    - "manager-spec"
-    - "manager-develop"
-    - "manager-docs"
-    - "manager-git"
-    - "plan-auditor"
-    - "sync-auditor"
-    - "builder-harness"
-  phases:
-    - "plan"
-    - "run"
-    - "sync"
 ---
 
 # MoAI Foundation Core

@@ -4,6 +4,12 @@ description: >
   Claude Design handoff package specialist for /moai brain Phase 7. Assembles 5-file
   handoff bundle (prompt/context/references/acceptance/checklist) for paste-ready
   claude.com Design session. Handles brand-absent fallback and section regeneration.
+
+when_to_use: >
+  Use for /moai brain Phase 7 design handoff: assembling the 5-file Claude
+  Design package (prompt, context, references, acceptance, checklist),
+  brand-voice context, and paste-ready claude.com session bundles.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob
@@ -22,12 +28,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["design handoff", "claude design", "prompt template", "brand voice", "handoff package", "brain"]
-  agents: ["manager-brain"]
-  phases: ["brain"]
 ---
 
 <!-- Verifies REQ-BRAIN-005: prompt.md is paste-ready (no MoAI tokens) -->

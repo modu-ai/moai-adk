@@ -5,6 +5,13 @@ description: >
   and HTTP security headers reference. Agent-extending skill that amplifies
   expert-security and expert-backend expertise with production-grade security patterns.
   NOT for: frontend UI, DevOps deployment, performance optimization, testing strategy.
+
+when_to_use: >
+  Use for security reference: OWASP Top 10 vulnerabilities (injection,
+  XSS, CSRF), authentication patterns, input validation, and HTTP security
+  headers. Amplifies expert-security and expert-backend expertise with
+  production-grade security patterns.
+
 user-invocable: false
 metadata:
   version: "1.0.0"
@@ -18,12 +25,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 3000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["owasp", "security", "vulnerability", "injection", "xss", "csrf", "auth"]
-  agents: ["expert-security", "expert-backend"]
-  phases: ["run"]
 ---
 
 # OWASP Security Checklist Reference

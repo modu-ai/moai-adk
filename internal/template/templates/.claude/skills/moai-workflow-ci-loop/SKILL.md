@@ -5,6 +5,13 @@ description: >
   classifies required vs auxiliary failures, attempts safe automated patches (max 3 iterations),
   and escalates semantic failures to the user. Use for CI loop workflow — NOT for general
   loop iteration patterns (see moai-workflow-loop).
+
+when_to_use: >
+  Use for the CI watch and auto-fix loop after /moai sync PR creation:
+  polling gh pr checks, classifying required vs auxiliary failures, safe
+  automated patch attempts (max 3 iterations), and escalation of semantic
+  failures.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Bash, Read
@@ -20,11 +27,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 120
   level2_tokens: 5000
-
-triggers:
-  keywords: ["/moai sync.*PR", "moai pr watch", "ci watch", "check.*status.*PR", "ci.*fail.*auto.*fix", "T3.*loop", "ci.*autofix"]
-  agents: ["manager-quality", "manager-git"]
-  phases: ["sync"]
 ---
 
 # CI Loop (`moai-workflow-ci-loop`)

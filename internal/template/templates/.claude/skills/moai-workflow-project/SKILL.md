@@ -4,6 +4,13 @@ description: >
   Integrated project management system covering documentation, language initialization,
   template optimization, docs generation, and JIT document loading. Absorbed from
   moai-workflow-templates, moai-docs-generation, and moai-workflow-jit-docs.
+
+when_to_use: >
+  Use for integrated project management: documentation scaffolding
+  (product/structure/tech.md), multilingual language initialization,
+  template and boilerplate optimization, docs generation (Sphinx, MkDocs,
+  TypeDoc, OpenAPI), and JIT document loading.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Bash(git:*), Bash(npm:*), Bash(npx:*), Bash(uv:*), Bash(pip:*), Bash(ls:*), Bash(mkdir:*), Grep, Glob, WebFetch, WebSearch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
@@ -23,12 +30,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["project setup", "initialization", "project initialization", "project configuration", "project documentation", "multilingual", "language initialization", "template", "boilerplate", "scaffolding", "code template", "feedback template", "docs", "documentation", "API reference", "docs generation", "Sphinx", "MkDocs", "TypeDoc", "OpenAPI", "jit docs", "just in time docs", "project template", "GitHub issue", "template optimization", "how to", "implement", "best practices", "technology guide", "framework documentation"]
-  phases: ["plan", "run", "sync"]
-  agents: ["manager-project", "manager-docs", "builder-harness", "manager-spec", "expert-backend", "expert-frontend"]
 ---
 
 # MoAI Workflow Project - Integrated Project Management System

@@ -5,6 +5,14 @@ description: >
   Deep Questioning), First Principles reasoning (absorbed from moai-foundation-philosopher),
   and Adaptive Thinking via the `ultrathink` keyword. Use for ideation, strategic
   analysis, architecture decisions, and deep reasoning on complex problems.
+
+when_to_use: >
+  Use for thinking and ideation: creative frameworks (critical evaluation,
+  diverge-converge), first-principles reasoning, five-whys root-cause
+  analysis, trade-off and architecture decisions,
+  technology/library/database selection, and Adaptive Thinking via the
+  ultrathink keyword.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Grep, Glob
@@ -23,19 +31,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["brainstorm", "ideation", "creative", "evaluate", "critical thinking", "diverge", "converge", "generate ideas", "explore options", "question", "deep analysis", "problem exploration", "solution space", "scoring", "clustering", "prioritize", "architecture decision", "technology selection", "trade-off", "first principles", "five whys", "assumption", "alternative", "cognitive bias", "root cause", "framework selection", "library selection", "database selection", "sequential thinking", "ultrathink", "breaking change", "strategic", "decision", "architecture", "analysis", "design thinking", "complex problem", "performance vs maintainability"]
-  agents:
-    - "manager-strategy"
-    - "manager-spec"
-    - "team-reader"
-    - "expert-backend"
-    - "expert-frontend"
-    - "expert-devops"
-  phases:
-    - "plan"
 ---
 
 # MoAI Foundation Thinking

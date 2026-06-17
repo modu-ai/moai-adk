@@ -5,6 +5,13 @@ description: >
   structure reference for frontend development. Agent-extending skill that amplifies
   expert-frontend expertise with production-grade React patterns.
   NOT for: backend API design, database modeling, DevOps, mobile apps.
+
+when_to_use: >
+  Use for React/Next.js component design patterns: state-management
+  strategies, hooks, component composition, and project structure.
+  Amplifies expert-frontend expertise with production-grade React
+  patterns.
+
 user-invocable: false
 metadata:
   version: "1.0.0"
@@ -18,12 +25,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 3000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["react", "component", "nextjs", "frontend", "ui", "state"]
-  agents: ["expert-frontend"]
-  phases: ["run"]
 ---
 
 # React Patterns Reference
