@@ -241,5 +241,58 @@ resolved in fix commit `fdf45b35a` before sync entry.
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending Mx-phase>_ — manager-docs / orchestrator populates with
-`mx_commit_sha` at the 4-phase close.
+- **Mx-phase agent**: orchestrator-direct (GLM backend; canonical Mx
+  transition owner is `manager-docs OR orchestrator` per the ownership matrix
+  — no `OwnershipTransitionInvalid` on this close commit; the intermediate
+  WARNING on the sync commit resolves here).
+- **Mx-phase commit**: `<pending backfill>` (`mx_commit_sha` backfilled in the
+  immediately-following chore commit).
+- **spec.md frontmatter transition**: `status: implemented → completed`.
+- **4-phase commit chain**: plan (draft) → run (`3fded3e21`) → sync
+  (`6f0f4e00e`) → Mx (this commit) → mx backfill.
+
+### Claim (주장)
+
+4-phase lifecycle complete (plan → run → sync → Mx). spec.md frontmatter
+`status: implemented → completed`. `sync_commit_sha` (`6f0f4e00e`) backfilled
+with non-bold actual SHA; `mx_commit_sha` backfilled below with non-bold
+actual SHA. SPEC-V3R6-DOCS-CODEMAPS-V3-001 is now a closed V3R6 modern-era SPEC.
+
+### Evidence (증거)
+
+- `moai spec lint .moai/specs/SPEC-V3R6-DOCS-CODEMAPS-V3-001/spec.md` →
+  0 ERROR after this Mx commit. The intermediate `OwnershipTransitionInvalid`
+  WARNING on the sync commit (`in-progress → implemented` by
+  `orchestrator-direct` vs canonical `manager-docs`) resolves here — the
+  `completed` transition canonically allows orchestrator per the ownership
+  matrix (manager-docs OR orchestrator).
+- spec.md frontmatter `status: completed`.
+- Era classification guaranteed V3R6 (H-4) via explicit `era: V3R6` frontmatter
+  override + non-bold real `sync_commit_sha` (`6f0f4e00e`) + `mx_commit_sha`
+  per `feedback_era_commit_sha_field_format`.
+- Mx commit subject: `chore(SPEC-V3R6-DOCS-CODEMAPS-V3-001): Mx-phase
+  audit-ready signal + 4-phase close`.
+
+### Baseline-attribution (baseline 귀속)
+
+- pre-Mx baseline (commit `54f685ea0`): spec.md `status: implemented`,
+  `sync_commit_sha` backfilled, §E.4 complete.
+- THIS Mx commit: `status: implemented → completed`, §E.5 populated.
+
+### Gaps (미검증)
+
+- `mx_commit_sha` backfilled in the immediately-following chore commit (not
+  known at Mx-commit time — standard backfill pattern).
+- `moai spec audit` full-project run deferred to the next session (era
+  classification is guaranteed V3R6 via the explicit frontmatter override +
+  non-bold real SHAs, so the deferred audit is confirmatory, not load-bearing).
+
+### Residual-risk (잔여 위험)
+
+- Doc-vs-code drift: `internal/spec/CLAUDE.md` `MissingExclusions` guidance
+  ("H3 sub-headings") contradicts `lint.go:716` (dash bullets) — tracked as
+  follow-up, out of this SPEC's AC scope.
+- The 3 pre-sync debt (Debt-1/2/3) were regex/heading defects in the SPEC
+  artifacts themselves (acceptance.md + spec.md), NOT in the deliverable
+  (`.moai/project/codemaps/`); the codemaps output is unaffected and neutral
+  (AC-CM-007 PASS).
