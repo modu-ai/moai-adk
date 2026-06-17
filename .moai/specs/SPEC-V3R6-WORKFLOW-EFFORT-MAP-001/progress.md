@@ -115,7 +115,7 @@ m1_to_mN_commit_strategy: "per-milestone Conventional Commits with Authored-By-A
 - **Sync** (`4c14ba25c` + `e18a60433` backfill): CHANGELOG `[Unreleased] ### Added` + frontmatter `implemented` + §E.4 (orchestrator-direct sync fallback).
 - **Mx** (this commit): frontmatter `implemented → completed`; §E.5 populated; 4-phase close declared.
 
-- mx_commit_sha: _<pending — backfilled in next commit>_ — will hold the Mx close commit SHA. Non-bold per `feedback_era_commit_sha_field_format`.
+- mx_commit_sha: 4ba3d621e — backfilled after the Mx close commit. Non-bold per `feedback_era_commit_sha_field_format`.
 
 **Commit subject**: `chore(SPEC-V3R6-WORKFLOW-EFFORT-MAP-001): Mx-phase audit-ready signal + 4-phase close`
 
