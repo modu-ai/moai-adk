@@ -4,23 +4,27 @@ Doctrine establishing the **"no unobserved-verification-claim" invariant** for a
 
 > The motivating defect class is general: an actor claiming a verification or completion it did not actually observe. A complementary runtime layer (advisory, warn-first, fail-open) may detect one shape of this violation; this doctrine codifies the policy norm that binds every actor regardless of whether such a runtime layer is present.
 
-## 1. The Invariant — no unobserved-verification-claim
+## 1. The Invariant — no unobserved-claim (verification OR defect)
 
-[ZONE:Evolvable] [HARD] No actor MUST assert a verification or completion it did not actually observe.
+[ZONE:Evolvable] [HARD] No actor MUST assert a verification, a completion, **OR a defect / debt / drift** it did not actually verify with the domain's mechanical tooling.
 
-> **Evidence absent ≠ evidence of success.**
+> **Evidence absent ≠ evidence of success — NOR of failure.**
 
 The absence of a failure signal is not, by itself, evidence that a check passed. A claim of "tests pass", "coverage met", "lint clean", or "remote in sync" is only valid when the actor actually ran the command and observed its output. An unran command, a skipped step, or a silent assumption is a gap — never a pass.
 
+Symmetrically, inferring a defect, a technical-debt item, a drift, or an anomalous state from text patterns, grep matches, or file absence alone — without running the domain's dedicated verification tool — is not evidence that the defect exists. A text-pattern inference is a hypothesis, never a verified defect. The invariant binds both directions: an actor may not claim success it did not observe, and may not claim a defect it did not verify with the appropriate tool.
+
 This is a policy-layer norm, not a mechanical guarantee. A complementary mechanical-detection layer may surface one shape of this violation at runtime, but the norm binds every actor independently of that layer.
 
-### 1.1 Binding scope — BOTH surfaces
+### 1.1 Binding scope — ALL THREE surfaces
 
-The invariant binds **both** of the following surfaces. Each is named explicitly so neither can claim exemption:
+The invariant binds **all three** of the following surfaces. Each is named explicitly so none can claim exemption:
 
 1. **Orchestrator self-report** — the orchestrator's own Completion Report and Verification Matrix banners, and its trust-but-verify batches, as defined in `.claude/output-styles/moai/moai.md` (Response Templates). When the orchestrator renders a Verification Matrix or Completion Report banner, every row it marks PASS MUST correspond to an actually-observed command output.
 
 2. **Manager-agent completion report** — the self-verification deliverables of `manager-develop` and `manager-docs`. When a manager agent reports an acceptance-criteria PASS/FAIL matrix, a build result, coverage, a boundary grep, lint status, or push state, each reported result MUST be the verbatim output of a command the agent actually ran — not a summary, not an assumption, not a carry-over from a prior unrelated run.
+
+3. **Defect / debt / drift identification claim** — any actor's assertion that a defect, technical-debt item, drift, or anomalous state EXISTS and warrants action. A claim that "module X is broken", "package Y has a coverage gap", or "N items are stale and need cleanup" is only valid when the actor ran the domain's dedicated verification tool (the project's audit / lint / type-check / coverage command) and observed its output. Inferring a defect from text patterns, grep matches, or file absence alone — without the dedicated tool — is an unobserved defect claim, and acting on it as if it were verified violates §2's attribution requirement. When a dedicated tool exists for a domain, text-only reasoning MUST NOT be the sole basis for a defect claim; the tool's output is the Evidence (§3.2).
 
 ## 2. Baseline-Integrity Attribution / baseline 무결성 귀속
 
@@ -69,7 +73,15 @@ This doctrine cross-references the following canonical surfaces. It does NOT cop
 - `.claude/rules/moai/workflow/verification-batch-pattern.md` — the orchestrator-side read-only verification batching pattern (the mechanism by which observed evidence is gathered efficiently).
 - `.claude/output-styles/moai/moai.md` — the Verification Matrix and Completion Report banners (the orchestrator self-report surface bound by §1.1).
 
+## 5. Worked Example — Defect-Claim Hazard
+
+A status report counted N items matching a text pattern (for example, a metadata field absent from N files) and inferred "these N items are debt requiring action" — then proposed batch-modifying all N.
+
+This was an unobserved defect claim: the domain had a dedicated verification tool, and it had not been run. The text pattern was compatible with two contradictory interpretations (items legitimately in a protected or legacy state versus items with a genuinely missing step); only the dedicated tool could disambiguate. When the tool was finally run, the inferred debt did not exist — the items were in their correct state — and had the batch modification proceeded, N items would have been touched for no reason.
+
+Lesson codified: **a defect claim is a hypothesis until the domain's tool confirms it.** Whenever a domain verification tool exists (an audit command, a type checker, a linter, a coverage tool), its output MUST precede any defect / debt / drift claim — §1.1 surface 3 + §2 attribution. Text-pattern matching alone produces a candidate defect, never a verified one.
+
 ---
 
-Version: 1.0.0
+Version: 1.1.0
 Classification: Canonical Reference (policy-layer codification) — do not duplicate cross-referenced content; cross-reference this file instead.
