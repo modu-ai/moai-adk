@@ -12,7 +12,6 @@ metadata:
   status: "active"
   updated: "2026-03-30"
   tags: "git, branch, commit, pr, workflow, reference"
-  agent: "manager-git"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:

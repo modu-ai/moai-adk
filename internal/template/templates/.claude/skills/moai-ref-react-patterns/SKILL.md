@@ -12,7 +12,6 @@ metadata:
   status: "active"
   updated: "2026-03-30"
   tags: "react, nextjs, component, patterns, frontend, reference"
-  agent: "expert-frontend"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:

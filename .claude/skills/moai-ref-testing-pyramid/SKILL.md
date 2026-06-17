@@ -12,7 +12,6 @@ metadata:
   status: "active"
   updated: "2026-03-30"
   tags: "testing, pyramid, coverage, tdd, patterns, reference"
-  agent: "manager-develop"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:

@@ -41,12 +41,12 @@ catalog:
             - name: moai-ref-git-workflow
               tier: core
               path: templates/.claude/skills/moai-ref-git-workflow/
-              hash: aecb53b2694522ec8b923e2e42d34450bad11501c61196a75d9d6e49879b1d44
+              hash: 47d77084799ebeb118318dc593c80ce3915487ee3798f52d461006d6d6514073
               version: 1.0.0
             - name: moai-ref-testing-pyramid
               tier: core
               path: templates/.claude/skills/moai-ref-testing-pyramid/
-              hash: b29c0b4d3d855ee6baaacf9b30ab3ef706d8eedb71392f1d9143440e18a9636e
+              hash: 5239e8ba1e546b7a391f21eab3bcc0dfe4db80ed215804909ccfcaeacd6bf685
               version: 1.0.0
             - name: moai-workflow-ci-loop
               tier: core
@@ -56,7 +56,7 @@ catalog:
             - name: moai-workflow-ddd
               tier: core
               path: templates/.claude/skills/moai-workflow-ddd/
-              hash: 6a5ca86a4774737e1031682301d95a5c4bfb54c8065f72daeb43284d14607d27
+              hash: 271dbaa966ae6b3d32fdd9579a5a8688cfa40ed86ea5484f5ab947e69aeb6895
               version: 1.0.0
             - name: moai-workflow-loop
               tier: core
@@ -71,17 +71,17 @@ catalog:
             - name: moai-workflow-spec
               tier: core
               path: templates/.claude/skills/moai-workflow-spec/
-              hash: b3fd54fe89eb8f5c7f001fd639c7fdc7fb5f234a6c3c9c9abfd8d76372c1b136
+              hash: bb7a9fc0d08894d1fc980b25670cda65bd0c19a6ccb4ccbe7d8509e0bcfe345e
               version: 1.0.0
             - name: moai-workflow-tdd
               tier: core
               path: templates/.claude/skills/moai-workflow-tdd/
-              hash: c0735a22128fd0f5d34b1eddd3bd66a4f9c934dc03209974f4d99439f59e5570
+              hash: 3f8508f6eaa6ad3b9e8c743f6b8ce16ace765c38ea56d8bc81b5c022a7a4a26c
               version: 1.0.0
             - name: moai-workflow-testing
               tier: core
               path: templates/.claude/skills/moai-workflow-testing/
-              hash: 12698228eca29f7386d46a2d9e8fccd0e1e6796397c76c3f11baea49fba5c6f4
+              hash: 83972092c2344dfb55ee40c020906619b4d6be32a066bb36bd88eabeef8aff35
               version: 1.0.0
             - name: moai-workflow-worktree
               tier: core
@@ -147,7 +147,7 @@ catalog:
                 - name: moai-ref-api-patterns
                   tier: optional-pack:backend
                   path: templates/.claude/skills/moai-ref-api-patterns/
-                  hash: 966174d691c7c05446066d3dcf60abeaa953b0a6d60cdd7011b9bf52711ca1b8
+                  hash: 735f3b1f0937252614847a8353ec7d5827be55b7d84059683da4e1d2362f2263
                   version: 1.0.0
             agents: []
         deployment:
@@ -205,7 +205,7 @@ catalog:
                 - name: moai-ref-owasp-checklist
                   tier: optional-pack:devops
                   path: templates/.claude/skills/moai-ref-owasp-checklist/
-                  hash: 99f97b4d75c70627a391a14302ec477ddb858201990492263d96b7cd06d09d10
+                  hash: bc0be740e8cd78d1e6fcc5b6505cff5b6517840ada780f311a49ab10f315d8a4
                   version: 1.0.0
             agents: []
         frontend:
@@ -220,7 +220,7 @@ catalog:
                 - name: moai-ref-react-patterns
                   tier: optional-pack:frontend
                   path: templates/.claude/skills/moai-ref-react-patterns/
-                  hash: c6ce63165897a16fe9ab7b98c7ce344bb260daea347b42979d81b8e5949dec6a
+                  hash: 0fc9cc0ef83b6218f54603d3d1bcff3725da2e14eac66bcd57a8cc6477189784
                   version: 1.0.0
             agents: []
         testing:

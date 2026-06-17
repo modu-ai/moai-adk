@@ -13,7 +13,6 @@ metadata:
   status: "active"
   updated: "2026-03-30"
   tags: "api, rest, graphql, patterns, backend, reference"
-  agent: "expert-backend"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:

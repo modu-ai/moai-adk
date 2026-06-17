@@ -16,8 +16,6 @@ metadata:
   modularized: "true"
   tags: "workflow, spec, ears, requirements, moai-adk, planning"
   author: "MoAI-ADK Team"
-  context: "fork"
-  agent: "Plan"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:

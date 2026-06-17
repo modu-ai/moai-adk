@@ -12,7 +12,6 @@ metadata:
   status: "active"
   updated: "2026-03-30"
   tags: "owasp, security, checklist, authentication, validation, reference"
-  agent: "expert-security"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:

@@ -16,8 +16,6 @@ metadata:
   modularized: "true"
   tags: "workflow, ddd, testing, debugging, performance, quality, review, pr-review"
   author: "MoAI-ADK Team"
-  context: "fork"
-  agent: "manager-develop"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
