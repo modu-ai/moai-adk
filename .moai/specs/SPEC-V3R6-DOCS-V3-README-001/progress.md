@@ -190,7 +190,7 @@ spec_lint_post_sync: "No findings"
 
 ```yaml
 mx_complete_at: 2026-06-17
-mx_commit_sha: <pending-backfill>
+mx_commit_sha: 3680e72465
 mx_status: complete
 final_status: completed  # implemented -> completed
 spec_lint_final: "No findings"
