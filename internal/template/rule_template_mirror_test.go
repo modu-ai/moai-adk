@@ -80,16 +80,20 @@ var workflowOptMirroredPaths = []string{
 var lateBranchMirroredPaths = []string{
 	// D2 — spec-assembly Phase 3 Late-branch pre-check + Phase 2.5 opt-in
 	".claude/skills/moai/workflows/plan/spec-assembly.md",
-	// D5 — SKILL.md --issue flag opt-in semantics
-	".claude/skills/moai/SKILL.md",
 	// (spec-workflow.md is already in workflowOptMirroredPaths above — Late-branch
 	// closure additions are part of the same file, mirror parity verified there.)
-	// per-file §25 sanitization targets — REMOVED from the byte-parity allowlist:
+	// per-file §21 dev-only / §25 sanitization targets — REMOVED from the byte-parity allowlist:
+	//   - .claude/skills/moai/SKILL.md: source retains the dev-only `release-update` command
+	//     entry + section (CLAUDE.local.md §21 — 97-series dev-only, NOT distributed to user
+	//     projects) while the template mirror is held free of it. byte-parity therefore cannot
+	//     hold; mirror cleanliness is covered by TestTemplateNoInternalContentLeak instead.
+	//     (Origin: M2 commit 73dbdb672 intentionally stripped the release-update route from the
+	//     template mirror per §21; this allowlist entry should have been removed at that time.)
 	//   - manager-spec.md: source retains the SPEC ID regex pedagogical example
 	//     (working copy) while the mirror is held sanitized for distribution.
 	//   - manager-git.md: source retains internal SPEC-ID/token content while the
 	//     mirror is held sanitized.
-	// byte-parity cannot hold for either; mirror cleanliness is covered by
+	// byte-parity cannot hold for any of these; mirror cleanliness is covered by
 	// TestTemplateNoInternalContentLeak (leak test) instead of byte-parity here.
 }
 
