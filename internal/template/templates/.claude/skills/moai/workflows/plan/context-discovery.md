@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-plan-context-discovery
 description: "Plan Phase 0/1A/0.3 — Brain proposal detection, project exploration, and clarity evaluation before deep research begins"
 user-invocable: false
 metadata:

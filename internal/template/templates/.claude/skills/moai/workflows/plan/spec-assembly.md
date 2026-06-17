@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-plan-spec-assembly
 description: "Plan Phase 1.5/2/2.3/2.5/3/3.5/3.6/DP2/DP3/DP3.5 — Pre-creation validation, SPEC document creation, independent review, GitHub Issue creation, Git environment setup, MX tag planning, quality gate, and execution mode selection"
 user-invocable: false
 metadata:

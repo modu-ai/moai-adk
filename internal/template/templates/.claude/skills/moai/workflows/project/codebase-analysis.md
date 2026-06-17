@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-project-codebase-analysis
 description: "Project Phase 1/1.5/2 — Codebase analysis via Explore subagent, 3-round deep interview for existing projects, and user confirmation"
 user-invocable: false
 metadata:

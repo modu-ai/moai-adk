@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-moai
 description: >
   Full autonomous plan-run-sync pipeline. Default workflow when no subcommand
   is specified. Handles parallel exploration, SPEC generation, DDD/TDD

@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-team-sync
 description: >
   Documents rationale for sync phase always using sub-agent mode.
   Documentation generation requires sequential consistency and single

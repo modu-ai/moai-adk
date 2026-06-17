@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-e2e
 description: >
   Create and run E2E tests using Agent Browser, Playwright CLI, or Claude in Chrome.
   Supports auto-detection and installation, user journey mapping, GIF recording,

@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-sync-doc-execution
 description: "Sync Phase 1~2 — Analysis and Planning (with HUMAN GATE 2: Documentation Scope) and Execute Document Synchronization."
 user-invocable: false
 metadata:

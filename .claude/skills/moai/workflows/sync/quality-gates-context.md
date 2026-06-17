@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-sync-quality-gates-context
 description: "Sync Phase 0 — Purpose/Scope/Input/Mode/Flags/Context Loading and Phase 0 Pre-Sync Quality Gate through Phase 0.1 Deployment Readiness Check. Contains HUMAN GATE 1 (Pre-Sync Quality)."
 user-invocable: false
 metadata:

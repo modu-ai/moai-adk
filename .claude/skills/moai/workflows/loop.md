@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-loop
 description: >
   Iterative autonomous fixing workflow that scans, fixes, verifies, and
   repeats until all issues are resolved or max iterations reached.

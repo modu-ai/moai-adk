@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-review
 description: >
   Multi-perspective code review with security, performance, quality, and UX analysis.
   Supports staged changes, branch comparison, and security-focused review.

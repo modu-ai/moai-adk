@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-run-task-decomposition
 description: "Run Phase 2~4 — DDD/TDD implementation cycles, quality validation, git operations, and completion guidance"
 user-invocable: false
 metadata:

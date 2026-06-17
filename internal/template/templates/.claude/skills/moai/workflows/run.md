@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-run
 description: >
   DDD/TDD implementation workflow for SPEC requirements. Second step
   of the Plan-Run-Sync workflow. Routes to manager-develop based

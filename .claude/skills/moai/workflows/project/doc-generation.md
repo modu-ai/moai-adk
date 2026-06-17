@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-project-doc-generation
 description: "Project Phase 3/3.1/3.3/3.5/3.7/4.1a/4 — Documentation generation, audit, codemaps, LSP check, dev mode config, DB detection, and completion"
 user-invocable: false
 metadata:

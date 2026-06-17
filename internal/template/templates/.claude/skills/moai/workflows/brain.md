@@ -4,7 +4,6 @@
 <!-- Verifies REQ-BRAIN-010: NO auto-execution of /moai project -->
 <!-- Verifies REQ-BRAIN-012: NO prose questions (AskUserQuestion only) -->
 ---
-name: moai-workflow-brain
 description: >
   Brain workflow orchestration: 7-phase idea-to-proposal pipeline with Claude Design
   handoff package. Use for /moai brain invocations — converts vague ideas into validated

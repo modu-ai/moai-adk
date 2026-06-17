@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-team-run
 description: >
   Implement SPEC requirements using team-based architecture with dynamic
   teammate generation. Teammates are spawned as general-purpose agents

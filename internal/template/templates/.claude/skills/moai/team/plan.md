@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-team-plan
 description: >
   Create SPEC documents through parallel team-based research and analysis.
   Spawns researcher, analyst, and architect teammates for multi-angle exploration.

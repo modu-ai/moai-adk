@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-run-mode-orchestration
 description: "Run Mode Routing — Execution mode gate integration, team mode routing, context propagation, completion criteria, test scenarios, and custom harness extension"
 user-invocable: false
 metadata:

@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-harness
 description: >
   V3R4 Self-Evolving Harness lifecycle workflow. Owns all lifecycle verbs
   (status, apply, rollback, disable) entirely within the moai skill body

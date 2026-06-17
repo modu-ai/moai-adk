@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-project
 description: >
   Generates project documentation from codebase analysis or user input.
   Creates product.md, structure.md, and tech.md in .moai/project/ directory,

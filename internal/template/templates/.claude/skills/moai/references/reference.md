@@ -1,5 +1,4 @@
 ---
-name: moai-reference
 description: >
   Common execution patterns, flag reference, legacy command mapping,
   and resume patterns used across all MoAI workflows. Provides context

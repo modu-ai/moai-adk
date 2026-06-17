@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-codemaps
 description: >
   Scan codebase and generate architecture documentation in .moai/project/codemaps/ directory.
   Creates module maps, dependency graphs, and entry point references.

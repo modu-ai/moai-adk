@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-plan-clarity-interview
 description: "Plan Phase 0.3.1/0.4/0.5/1.25/1B/DP1 — Deep interview loop, UltraThink activation, deep research, design direction, SPEC planning, and plan review annotation cycle"
 user-invocable: false
 metadata:

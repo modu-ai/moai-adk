@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-sync-quality-gates-quality
 description: "Sync Phase 0.5~0.7 — Quality Verification, Security Scan, MX Tag Validation, and Coverage Analysis with Test Generation."
 user-invocable: false
 metadata:

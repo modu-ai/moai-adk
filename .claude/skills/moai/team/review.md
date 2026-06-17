@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-team-review
 description: >
   Multi-perspective code review using parallel review teammates.
   Four reviewers analyze security, performance, quality, and UX simultaneously.

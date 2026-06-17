@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-mx
 description: >
   Scan codebase and add @MX code-level annotations for AI agent context.
   Implements 3-Pass scan with priority queue for efficient tag insertion.

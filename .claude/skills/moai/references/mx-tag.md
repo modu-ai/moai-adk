@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-mx-tag
 description: >
   @MX TAG annotation protocol reference for AI agent code context delivery.
   Provides detailed tag syntax grammar, fan-in analysis method, agent report

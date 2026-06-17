@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-security
 description: >
   Dedicated OWASP security audit with SQL injection, XSS, CSRF, secrets scan,
   authentication checks, and dependency vulnerability analysis. Deeper than

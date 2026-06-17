@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-feedback
 description: >
   Collects user feedback, bug reports, or feature suggestions and creates
   GitHub issues automatically via the manager-quality agent. Supports bug

@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-team-debug
 description: >
   Debug complex issues through parallel competing hypothesis investigation.
   Each teammate explores a different theory independently using haiku model.

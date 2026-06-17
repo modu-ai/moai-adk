@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-team
 description: >
   CG (Claude + GLM) hybrid mode for MoAI-ADK. Uses tmux pane-level environment
   isolation so the Leader session runs on Claude API while Agent Teams teammates

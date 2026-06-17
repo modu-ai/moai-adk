@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-fix
 description: >
   One-shot autonomous fix workflow with parallel scanning and classification.
   Finds LSP errors, linting issues, and type errors, classifies by severity,

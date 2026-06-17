@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-run-phase-execution
 description: "Run Phase 0.5~1.8 — Plan Audit Gate, environment assessment, JIT language detection, scale-based mode, analysis/planning, task decomposition, and development mode routing"
 user-invocable: false
 metadata:

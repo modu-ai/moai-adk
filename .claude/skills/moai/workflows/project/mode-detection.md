@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-project-mode-detection
 description: "Project Phase 0/0.3 — Mode flag compatibility, scope boundary, --from-brain flag, project type detection, and new project deep interview"
 user-invocable: false
 metadata:

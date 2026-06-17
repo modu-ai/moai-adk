@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-plan
 description: >
   Creates comprehensive SPEC documents using GEARS notation (EARS retained
   as legacy reference, 6-month backward-compat window) as the first step

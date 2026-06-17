@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-sync-delivery
 description: "Sync Phase 3~4 — Git Operations and Delivery (CI mirror, push/PR, auto-merge), Completion, Team Mode, Graceful Exit, Test Scenarios, and Custom Harness."
 user-invocable: false
 metadata:

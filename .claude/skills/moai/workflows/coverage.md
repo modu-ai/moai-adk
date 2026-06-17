@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-coverage
 description: >
   Analyze test coverage gaps and generate missing tests.
   Supports coverage target enforcement, file-specific analysis, and report-only mode.

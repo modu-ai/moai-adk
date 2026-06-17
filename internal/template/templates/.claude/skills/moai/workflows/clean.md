@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-clean
 description: >
   Identify and safely remove dead code with test verification.
   Uses static analysis, usage graph analysis, and safe removal with rollback.

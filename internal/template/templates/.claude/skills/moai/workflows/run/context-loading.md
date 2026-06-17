@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-run-context-loading
 description: "Run Phase 0 — Context loading, mode dispatch, harness level routing, and worktree path rules"
 user-invocable: false
 metadata:

@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-sync
 description: >
   Synchronizes documentation with code changes, verifies project quality,
   and finalizes pull requests. Third step of the Plan-Run-Sync workflow.

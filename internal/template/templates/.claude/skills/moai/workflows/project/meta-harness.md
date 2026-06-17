@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-project-meta-harness
 description: "Project Phase 5/6 — 16-question 4-round Socratic interview (AskUserQuestion) for harness activation and meta-harness invocation"
 user-invocable: false
 metadata:
