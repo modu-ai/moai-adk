@@ -172,7 +172,17 @@ m1_to_mN_commit_strategy: "6 commits (M1 03ff915ed + M2 3ed266f0f + M3 50f22e261
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-06-17
+sync_commit_sha: <pending-backfill>
+sync_status: complete
+changelog_entry: true  # CHANGELOG.md [Unreleased] -> Added
+frontmatter_status: implemented  # in-progress -> implemented
+readme_files_synced: 2  # README.md + README.ko.md
+en_ko_fact_parity: true  # 8 retained / glm-5.2[1m] / 17 commands
+sync_method: orchestrator-direct  # GLM manager-docs spawn context-limit fallback
+spec_lint_post_sync: "No findings"
+```
 
 ---
 

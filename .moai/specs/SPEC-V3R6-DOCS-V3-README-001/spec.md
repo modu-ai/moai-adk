@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DOCS-V3-README-001
 title: "README v3 rewrite — reconcile en/ko against docs-truth canonical facts"
 version: "0.2.1"
-status: in-progress
+status: implemented
 created: 2026-06-17
 updated: 2026-06-17
 author: manager-spec
