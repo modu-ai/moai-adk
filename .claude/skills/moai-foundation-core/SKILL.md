@@ -357,4 +357,4 @@ When delegating to a sub-agent near context ceiling:
 3. Sub-agent result contributes to parent context on return — factor this in
 4. If parent context > 120,000 tokens after return, save and /clear
 
-Full optimization patterns: [modules/token-budget-allocation.md](modules/token-budget-allocation.md)
+Full optimization patterns: [modules/token-optimization.md](modules/token-optimization.md)

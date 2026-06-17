@@ -73,8 +73,6 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **gate** (aliases: check, pre-commit): Lightweight pre-commit quality gate (lint+format+type-check+test)
 - **security** (aliases: audit, sec): Dedicated OWASP security audit with dependency scanning
 - **harness** (aliases: hrn, learn): V3R4 self-evolving harness lifecycle (status / apply / rollback &lt;date&gt; / disable) — slash-command-only surface; CLI verb path retired per SPEC-V3R4-HARNESS-001 (BC-V3R4-HARNESS-001-CLI-RETIREMENT)
-- **release-update** (aliases: cc-update, release-track) *(dev-only)*: CC upstream change tracker → update plan + docs-site 4-locale sync
-
 
 ### Priority 2: SPEC-ID Detection
 
@@ -234,15 +232,6 @@ Verbs: status (tier distribution + telemetry) | apply (next Tier-4 proposal → 
 Artifacts: `.moai/harness/usage-log.jsonl`, `.moai/harness/proposals/`, `.moai/harness/learning-history/snapshots/`, `.moai/harness/learning-history/applied/`, `.moai/harness/learning-history/frozen-guard-violations.jsonl`
 Authoritative SPEC: SPEC-V3R4-HARNESS-001 (supersedes V3R3-HARNESS-001, V3R3-HARNESS-LEARNING-001, V3R3-PROJECT-HARNESS-001)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness.md
-
-### release-update - CC Upstream Change Tracker *(dev-only)*
-
-Purpose: Track Claude Code release notes since last analyzed version, classify by impact tier, generate update plan, sync docs-site 4-locale + README, open PR.
-Agents: manager-docs (Phase 6 docs sync), manager-git (Phase 7 PR)
-Flags: --since vX.Y.Z, --dry, --report-only, --docs-only, --master-spec
-State: .moai/state/last-cc-version.json
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/release-update.md
-NOT distributed to user projects (dev-only; entry: .claude/commands/97-release-update.md)
 
 ---
 
