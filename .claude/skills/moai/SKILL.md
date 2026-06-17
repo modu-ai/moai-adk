@@ -115,14 +115,14 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md (team mod
 ### run - DDD/TDD Implementation
 
 Purpose: Implement SPEC requirements through configured development methodology.
-Agents: manager-strategy, manager-develop (cycle_type=ddd|tdd per quality.yaml), manager-quality, manager-git
+Agents: manager-develop (cycle_type=ddd|tdd per quality.yaml, primary), manager-git
 Flags: --resume SPEC-XXX, --team
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md (team mode: ${CLAUDE_SKILL_DIR}/team/run.md)
 
 ### sync - Documentation Sync and PR
 
 Purpose: Synchronize documentation with code changes and prepare pull requests.
-Agents: manager-docs (primary), manager-quality, manager-git
+Agents: manager-docs (primary), sync-auditor (quality gate), manager-git
 Modes: auto, force, status, project. Flags: --merge, --skip-mx
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/sync.md (team mode: ${CLAUDE_SKILL_DIR}/team/sync.md)
 
@@ -137,42 +137,42 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/gate.md
 ### security - OWASP Security Audit
 
 Purpose: Dedicated security audit with OWASP Top 10 analysis, dependency scanning, secrets detection, and data isolation checks.
-Agents: expert-security (primary)
+Agents: Agent(general-purpose) with security scope (per archived-agent-rejection §C)
 Flags: --full, --deps, --secrets, --file PATH, --branch BRANCH
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/security.md
 
 ### fix - Auto-Fix Errors
 
 Purpose: Autonomously detect and fix LSP errors, linting issues, and type errors.
-Agents: manager-quality (diagnostic-mode), expert-backend/expert-frontend (fixes)
+Agents: manager-develop (cycle_type=autofix), Agent(general-purpose) with domain whitelist (fixes)
 Flags: --dry, --sequential, --level N, --resume, --team
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/fix.md
 
 ### loop - Iterative Auto-Fix
 
 Purpose: Repeatedly fix issues until completion conditions are satisfied or max iterations reached.
-Agents: manager-quality (diagnostic-mode), expert-backend, expert-frontend, manager-develop
+Agents: manager-develop (cycle_type=autofix), Agent(general-purpose) with domain whitelist
 Flags: --max N, --auto-fix, --seq
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/loop.md
 
 ### mx - MX Tag Scan and Annotation
 
 Purpose: Scan codebase and add @MX code-level annotations for AI agent context.
-Agents: Explore (scan), expert-backend (annotation)
+Agents: Explore (scan), Agent(general-purpose) with backend scope (annotation)
 Flags: --all, --dry, --priority P1-P4, --force, --team
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/mx.md
 
 ### review - Code Review
 
 Purpose: Multi-perspective code review with security, performance, quality, and UX analysis.
-Agents: manager-quality (primary), expert-security
+Agents: sync-auditor (review), Agent(general-purpose) with security scope
 Flags: --staged, --branch, --security, --team
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/review.md (team mode: ${CLAUDE_SKILL_DIR}/team/review.md)
 
 ### clean - Dead Code Removal
 
 Purpose: Identify and safely remove unused code with test verification.
-Agents: expert-refactoring, manager-develop
+Agents: manager-develop, Agent(general-purpose) with refactoring scope
 Flags: --dry, --safe-only, --file PATH
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/clean.md
 
@@ -193,14 +193,14 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/coverage.md
 ### e2e - End-to-End Testing
 
 Purpose: Create and run E2E tests using Chrome, Playwright, or Agent Browser.
-Agents: manager-develop (cycle_type=tdd), expert-frontend
+Agents: manager-develop (cycle_type=tdd), Agent(general-purpose) with frontend scope
 Flags: --record, --url URL, --journey NAME
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/e2e.md
 
 ### design - Hybrid Design Workflow
 
 Purpose: Produce web/brand design artifacts via Claude Design import (path A) or code-based skill pipeline (path B). Integrates brand context from `.moai/project/brand/` and design briefs from `.moai/design/`.
-Agents: manager-spec (BRIEF), expert-frontend (implementation), sync-auditor (GAN loop scoring)
+Agents: manager-spec (BRIEF), Agent(general-purpose) with frontend scope (implementation), sync-auditor (GAN loop scoring)
 Skills: moai-domain-copywriting, moai-domain-brand-design, moai-workflow-design, moai-workflow-gan-loop
 Flags: --path A|B, --harness thorough|standard, --brief BRIEF-XXX
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/design.md
@@ -209,21 +209,21 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/design.md
 
 Purpose: Full autonomous research -> plan -> annotate -> run -> sync pipeline.
 Phases: Parallel Exploration (research.md) -> SPEC Generation -> Annotation Cycle -> Implementation -> Sync
-Agents: Explore, manager-spec, manager-develop, manager-quality, manager-docs, manager-git
+Agents: Explore, manager-spec, manager-develop, manager-docs, manager-git, sync-auditor (quality gate)
 Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo, --issue (opt-in; default skips GitHub Issue creation per SPEC-V3R5-LATE-BRANCH-001 REQ-LB-009)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/moai.md
 
 ### project - Project Documentation
 
 Purpose: Generate project documentation by analyzing the existing codebase.
-Agents: Explore, manager-docs, expert-devops (optional)
+Agents: Explore, manager-docs, Agent(general-purpose) with devops scope (optional)
 Output: product.md, structure.md, tech.md in .moai/project/
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/project.md
 
 ### feedback - GitHub Issue Creation
 
 Purpose: Collect user feedback and create GitHub issues.
-Agents: manager-quality
+Agents: orchestrator-direct (records feedback via gh CLI)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/feedback.md
 
 ### harness - V3R4 Self-Evolving Harness Lifecycle
