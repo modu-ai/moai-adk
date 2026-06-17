@@ -180,8 +180,64 @@
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_ — manager-docs populates with `sync_commit_sha`
-once the sync commit lands.
+- **Sync-phase agent**: orchestrator-direct (GLM backend; manager-docs spawn
+  context-limit risk per `feedback_glm_orchestrator_direct_sync_mx` — 4th
+  occurrence incl. WORKFLOW-EFFORT-MAP-001 / SESSION-HANDOFF-SSOT-ALIGN-001 /
+  SESSION-ID-ATTRIBUTION-REPAIR-001 siblings).
+- **Sync-phase commit**: `<pending backfill>` (`sync_commit_sha` backfilled in
+  the immediately-following chore commit).
+- **CHANGELOG emission**: `[Unreleased] ### Added` — SPEC-V3R6-DOCS-CODEMAPS-V3-001
+  entry (cohort-prerequisite framing + 4-milestone summary + 10-AC result +
+  3 pre-sync debt fix commit `fdf45b35a` + doc-vs-code drift note).
+- **spec.md frontmatter transition**: `status: in-progress → implemented`
+  (canonical status bearer — only spec.md carries the lifecycle transition per
+  STATUSLINE-PRESET-RETIRE / WORKFLOW-EFFORT-MAP precedent).
+- **docs-site 4-locale + README**: SKIPPED — internal architecture artifact
+  (`.moai/project/codemaps/` is a navigation aid, not a user-facing feature
+  surface); those surfaces belong to the README/DOCSITE cohort SPECs per
+  acceptance.md §D.5.
+
+### Claim (주장)
+
+Sync-phase complete: CHANGELOG entry emitted, spec.md status transitioned to
+`implemented`, §E.4 populated. The 3 pre-sync debt entries (Debt-1/2/3) were
+resolved in fix commit `fdf45b35a` before sync entry.
+
+### Evidence (증거)
+
+- `moai spec lint .moai/specs/SPEC-V3R6-DOCS-CODEMAPS-V3-001/spec.md` →
+  0 ERROR (MissingExclusions resolved by Debt-3); the single
+  `StatusGitConsistency` WARNING (status `in-progress` vs git-implied
+  `implemented`) resolves on THIS sync commit's status→implemented transition.
+- CHANGELOG presence: `grep -c 'CODEMAPS-V3-001' CHANGELOG.md` → ≥1 (new
+  `[Unreleased] ### Added` entry present).
+- sync commit subject: `docs(SPEC-V3R6-DOCS-CODEMAPS-V3-001): sync-phase
+  artifacts`.
+
+### Baseline-attribution (baseline 귀속)
+
+- pre-sync baseline (commit `fdf45b35a`): spec.md `status: in-progress`,
+  MissingExclusions = 0 (Debt-3 fixed), acceptance.md Debt-1/Debt-2 fixed.
+- THIS sync commit: status `in-progress → implemented`, CHANGELOG entry
+  added, §E.4 populated.
+
+### Gaps (미검증)
+
+- `sync_commit_sha` backfilled in the immediately-following chore commit
+  (not known at sync-commit time — standard backfill pattern per
+  WORKFLOW-EFFORT-MAP / SESSION-ID-ATTRIBUTION precedent).
+- plan-auditor verdict score is NOT re-cited here (plan-phase artifact; the
+  sync-phase does not re-run plan-auditor).
+
+### Residual-risk (잔여 위험)
+
+- `OwnershipTransitionInvalid` MAY emit intermediate on this sync commit
+  (`orchestrator-direct` trailer vs canonical owner `manager-docs`) — it
+  resolves on the Mx close commit (the `completed` transition canonically
+  allows orchestrator per the ownership matrix: manager-docs OR orchestrator).
+- doc-vs-code drift: `internal/spec/CLAUDE.md` `MissingExclusions` guidance
+  ("H3 sub-headings") contradicts lint.go:716 (dash bullets) — tracked as
+  follow-up, out of this SPEC's AC scope.
 
 ## §E.5 Mx-phase Audit-Ready Signal
 

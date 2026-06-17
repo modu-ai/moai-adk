@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DOCS-CODEMAPS-V3-001
 title: "v3.0 codemaps SSOT generation + docs-truth checklist for docs cohort"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-06-17
 updated: 2026-06-17
 author: GOOS행님
