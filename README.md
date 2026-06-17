@@ -300,25 +300,20 @@ graph LR
 
 Note: Dynamic team teammates (researcher, analyst, architect, implementer, tester, designer, reviewer) are spawned at runtime via role profiles, not as static agent definitions.
 
-### 47 Skills (Progressive Disclosure)
+### `/moai` Slash Commands (17)
 
-Managed through a 3-level progressive disclosure system for token efficiency:
+MoAI exposes **17 `/moai` slash commands** in `.claude/commands/moai/`, managed through a 3-level progressive disclosure system for token efficiency (skill metadata is always listed; bodies load on invocation; bundled references load on demand).
 
-| Category | Count | Examples |
-|----------|-------|----------|
-| **Foundation** | 6 | core, cc, philosopher, quality, context, thinking |
-| **Workflow** | 12 | spec, project, ddd, tdd, testing, worktree, loop, research, jit-docs... |
-| **Domain** | 4 | backend, frontend, database, uiux |
-| **Format** | 1 | data-formats |
-| **Platform** | 4 | auth, chrome-extension, database-cloud, deployment |
-| **Library** | 3 | shadcn, nextra, mermaid |
-| **Reference** | 5 | api-patterns, git-workflow, owasp, react-patterns, testing-pyramid |
-| **Tool** | 2 | ast-grep, svg |
-| **Design** | 2 | design-tools, design-craft |
-| **Framework** | 1 | electron |
-| **Design System** | 4 | moai-domain-copywriting, moai-domain-brand-design, moai-workflow-design-import, moai-workflow-gan-loop |
-| **Docs** | 1 | docs-generation |
-| **Language Rules** | 16 | Go, Python, TypeScript, Rust, Java... (path-based rules, not skills) |
+| Group | Commands |
+|-------|----------|
+| **Workflow** | `plan`, `run`, `sync`, `project` |
+| **Utility** | `fix`, `loop`, `clean`, `mx`, `codemaps`, `coverage`, `e2e` |
+| **Quality** | `review`, `gate` |
+| **Design** | `design` |
+| **Autonomy** | `brain`, `harness` |
+| **Feedback** | `feedback` |
+
+The full command set (17 total): `brain` · `clean` · `codemaps` · `coverage` · `design` · `e2e` · `feedback` · `fix` · `gate` · `harness` · `loop` · `mx` · `plan` · `project` · `review` · `run` · `sync`.
 
 ---
 
