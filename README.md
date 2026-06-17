@@ -289,13 +289,14 @@ graph LR
 
 | Category | Count | Agents | Role |
 |----------|-------|--------|------|
-| **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | Workflow coordination, SPEC creation, quality management |
-| **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | Domain-specific implementation, analysis, optimization |
-| **Builder** | 3 | agent, skill, plugin | Creating new MoAI components |
-| **Evaluator** | 2 | sync-auditor, plan-auditor | Independent quality assessment, plan-phase document audit |
-| **Design System** | 4 (+ evaluator) | moai-domain-copywriting, moai-domain-brand-design, moai-workflow-design-import, moai-workflow-gan-loop | Hybrid creative + code production |
+| **Manager** | 4 | manager-spec, manager-develop, manager-docs, manager-git | Plan-phase authoring, run-phase implementation, sync-phase docs, PR routing |
+| **Evaluator** | 2 | plan-auditor, sync-auditor | Independent plan-phase audit, sync-phase 4-dimension quality scoring |
+| **Builder** | 1 | builder-harness | Dynamic project-specific harness specialist generation |
+| **Anthropic built-in** | 1 | Explore | Read-only codebase exploration (invoked directly, no MoAI file) |
 
-**Total: 27 agents**
+**Total: 8 retained agents** (7 MoAI-custom + 1 Anthropic built-in `Explore`)
+
+12 legacy agent names (e.g. `manager-strategy`, `manager-quality`, `manager-project`, the 6 `expert-*` agents) are **archived** and MUST NOT be spawned. When a paste-ready resume or `Agent()` invocation references an archived name, the orchestrator rejects the spawn and consults the migration table at `.claude/rules/moai/workflow/archived-agent-rejection.md`.
 
 Note: Dynamic team teammates (researcher, analyst, architect, implementer, tester, designer, reviewer) are spawned at runtime via role profiles, not as static agent definitions.
 
@@ -323,7 +324,7 @@ Managed through a 3-level progressive disclosure system for token efficiency:
 
 ## Model Policy (Token Optimization)
 
-MoAI-ADK assigns optimal AI models to each of 24 agents based on your Claude Code subscription plan. This maximizes quality within your plan's rate limits.
+MoAI-ADK assigns optimal AI models to each of the 8 retained agents based on your Claude Code subscription plan. This maximizes quality within your plan's rate limits.
 
 | Policy | Plan | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku | Best For |
 |--------|------|------|--------|-------|----------|
@@ -335,48 +336,39 @@ MoAI-ADK assigns optimal AI models to each of 24 agents based on your Claude Cod
 
 ### Agent Model Assignment by Tier
 
+Only the 8 retained agents appear below. 12 legacy agent names are archived — for the migration table of `manager-strategy`, `manager-quality`, `manager-project`, the 6 `expert-*` agents, and others, see `.claude/rules/moai/workflow/archived-agent-rejection.md`.
+
 #### Manager Agents
 
 | Agent | High | Medium | Low |
 |-------|------|--------|-----|
 | manager-spec | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| manager-strategy | 🟣 opus | 🟣 opus | 🔵 sonnet |
 | manager-develop | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| manager-project | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 | manager-docs | 🔵 sonnet | 🟡 haiku | 🟡 haiku |
-| manager-quality | 🟡 haiku | 🟡 haiku | 🟡 haiku |
 | manager-git | 🟡 haiku | 🟡 haiku | 🟡 haiku |
 
-#### Expert Agents
+#### Evaluator Agents
 
 | Agent | High | Medium | Low |
 |-------|------|--------|-----|
-| expert-backend | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-frontend | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-security | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| expert-debug | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-refactoring | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-devops | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| expert-performance | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| expert-testing | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| plan-auditor | 🟣 opus | 🟣 opus | 🔵 sonnet |
+| sync-auditor | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
 
 #### Builder Agents
 
 | Agent | High | Medium | Low |
 |-------|------|--------|-----|
-| builder-agent | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| builder-skill | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| builder-plugin | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| builder-harness | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 
-#### Team Agents
+#### Anthropic Built-in
 
 | Agent | High | Medium | Low |
 |-------|------|--------|-----|
-| team-reader | 🔵 sonnet | 🔵 sonnet | 🔵 sonnet |
-| team-coder | 🔵 sonnet | 🔵 sonnet | 🔵 sonnet |
-| team-tester | 🔵 sonnet | 🔵 sonnet | 🔵 sonnet |
-| team-designer | 🔵 sonnet | 🔵 sonnet | 🔵 sonnet |
-| team-validator | 🟡 haiku | 🟡 haiku | 🟡 haiku |
+| Explore (Anthropic built-in) | (inherits session model — no MoAI model-policy assignment) | | |
+
+#### Team Role Profiles (dynamic, not static agents)
+
+Team role profiles (researcher, analyst, architect, implementer, tester, designer, reviewer) are spawned dynamically at runtime via `Agent(subagent_type: "general-purpose")` with model + isolation overrides from `workflow.yaml`. They are NOT static agent definitions and do not have fixed tier-mapping rows.
 
 ### Configuration
 
