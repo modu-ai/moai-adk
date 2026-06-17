@@ -25,7 +25,6 @@ triggers:
   keywords: ["/moai sync.*PR", "moai pr watch", "ci watch", "check.*status.*PR", "ci.*fail.*auto.*fix", "T3.*loop", "ci.*autofix"]
   agents: ["manager-quality", "manager-git"]
   phases: ["sync"]
-paths: ".claude/rules/moai/workflow/ci-watch-protocol.md,.claude/rules/moai/workflow/ci-autofix-protocol.md"
 ---
 
 # CI Loop (`moai-workflow-ci-loop`)
