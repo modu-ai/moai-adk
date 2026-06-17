@@ -51,7 +51,7 @@ across its real outputs per §B.1.1 decision (a).)
 test -s .moai/project/codemaps/overview.md
 test -s .moai/project/codemaps/modules.md
 # Each of the 10 capability layers must appear in AT LEAST ONE of the two files
-for layer in "CLI" "Lifecycle" "Harness" "Hook" "Template" "Quality" "GLM\|Multi-LLM\|multi-llm" "Web" "Governance" "Foundation"; do
+for layer in "CLI" "Lifecycle" "Harness" "Hook" "Template" "Quality" "GLM|Multi-LLM|multi-llm" "Web" "Governance" "Foundation"; do
   grep -qiE "${layer}" .moai/project/codemaps/overview.md \
     || grep -qiE "${layer}" .moai/project/codemaps/modules.md \
     || { echo "MISSING capability layer across overview.md + modules.md: ${layer}"; exit 1; }
@@ -301,7 +301,7 @@ selection rule) is covered.
 ```bash
 found=0
 for pkg in spec cli config statusline hook template harness session web; do
-  grep -qiE "(^|[^a-z])${pkg}(/|[^a-z]|$)" .moai/project/codemaps/modules.md && found=$((found + 1))
+  grep -qiE "\b${pkg}\b" .moai/project/codemaps/modules.md && found=$((found + 1))
 done
 test "${found}" -ge 9
 ```

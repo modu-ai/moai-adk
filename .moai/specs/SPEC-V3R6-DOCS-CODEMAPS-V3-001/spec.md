@@ -115,21 +115,13 @@ reference it instead of re-deriving facts from primary sources.
 
 ### §B.2 Out of Scope
 
-1. Rewriting README.* (later cohort SPEC: README).
-2. Rewriting docs-site pages (later cohort SPEC: DOCSITE).
-3. Closing test-coverage gaps surfaced by the cohort analysis (later
-   cohort SPEC: COVERAGE).
-4. i18n parity fixes across docs-site locales (later cohort SPEC: i18n).
-5. Any source-code change. `internal/`, `pkg/`, `cmd/` MUST remain
-   untouched — `.moai/project/codemaps/` is additive documentation
-   output.
-6. Formal publication / hosting of `.moai/project/codemaps/` on
-   docs-site (that is a decision for the DOCSITE SPEC; this SPEC only
-   produces the local artifact).
-7. Inventing a NEW `architecture.md` (or `codemaps-architecture.md`)
-   index file. The codemaps skill does not manage such a file;
-   capability-layer coverage is verified across the skill's real outputs
-   (`overview.md` + `modules.md`).
+- Rewriting README.* (later cohort SPEC: README).
+- Rewriting docs-site pages (later cohort SPEC: DOCSITE).
+- Closing test-coverage gaps surfaced by the cohort analysis (later cohort SPEC: COVERAGE).
+- i18n parity fixes across docs-site locales (later cohort SPEC: i18n).
+- Any source-code change. `internal/`, `pkg/`, `cmd/` MUST remain untouched — `.moai/project/codemaps/` is additive documentation output.
+- Formal publication / hosting of `.moai/project/codemaps/` on docs-site (that is a decision for the DOCSITE SPEC; this SPEC only produces the local artifact).
+- Inventing a NEW `architecture.md` (or `codemaps-architecture.md`) index file. The codemaps skill does not manage such a file; capability-layer coverage is verified across the skill's real outputs (`overview.md` + `modules.md`).
 
 ## §C. History
 
