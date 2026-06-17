@@ -83,7 +83,27 @@ m1_to_mN_commit_strategy: "per-milestone Conventional Commits with Authored-By-A
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs>_
+**Status**: audit-ready. The `in-progress → implemented` frontmatter transition and all sync-phase deliverables below were performed by the orchestrator via **orchestrator-direct sync fallback** — per the resume message's documented `manager-docs` GLM spawn context-limit failure (recurring pattern, identical fallback as SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 / SPEC-V3R6-SESSION-HANDOFF-SSOT-ALIGN-001).
+
+**Multi-session race recovery note**: the EFFORT-MAP run-phase (M1-M5, `685a60751`) was marooned on `backup/wf-effort-map-001` after a parallel session reset main to origin/main; sync-phase began with merge `e8f3e58dd` re-integrating the 5 run-phase commits onto current main. session-handoff.md ×2 conflict resolved by combining EFFORT-MAP M4 ultracode sub-bullet WITH SESSION-ID-ATTRIBUTION's refined Block 2 (`<UUID from moai session current>` + expanded Environment fallback); moai.md ×2 auto-merged. All 3 doctrine mirror pairs re-verified 0-diff post-merge.
+
+**Sync deliverables**:
+- `spec.md` frontmatter `status`: `in-progress` → `implemented` (`updated: 2026-06-17`).
+- `CHANGELOG.md` `[Unreleased] → ### Added`: entry appended documenting the 5-milestone purpose→(model,effort) SSOT + role_profiles effort field + ultracode conditional (13 ACs all MUST PASS).
+- README / docs-site: NO change (internal dev doctrine only — no user-facing surface touched).
+
+- sync_commit_sha: _<pending — backfilled in next commit>_ — will hold the docs commit SHA. Non-bold per `feedback_era_commit_sha_field_format` (bold SHAs cause V3R6→V3R5 era misclassification).
+
+**Commit subject**: `docs(SPEC-V3R6-WORKFLOW-EFFORT-MAP-001): sync-phase artifacts`
+
+**Verification (sync-phase — doctrine/YAML/JS/MD only, 0 Go code change so build/test unaffected)**:
+- `grep '^status:' …/spec.md` → `status: implemented`.
+- `grep -c 'WORKFLOW-EFFORT-MAP-001' CHANGELOG.md` → 1 (pre-sync was 0).
+- Mirror parity (3 pairs): dynamic-workflows.md / session-handoff.md / moai.md local↔template all 0-diff (re-verified post-merge).
+
+**Gaps (미검증, honestly reported — not claimed as verified)**: spec-lint / `moai spec audit` NOT run by this orchestrator-direct sync (deferred to final pre-push verify batch). template-neutrality CI (`internal_content_leak_test.go`) NOT run here (deferred to pre-push). No Go build/test executed (0 Go changes — decision #1).
+
+**Residual (out of AC scope, honestly reported)**: D1-new/D2-new/D3-new residual debt from run-phase accepted (not fixed). The `effort` YAML field runtime consumption remains declarative-only (LLM-behavior-verified, not code-path-verified) per acceptance.md §D.2.
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
