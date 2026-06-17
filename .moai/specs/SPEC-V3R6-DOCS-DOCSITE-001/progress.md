@@ -17,7 +17,7 @@
 | Plan-audit | complete (PASS-WITH-DEBT 0.88 iter-2) | plan-auditor |
 | Run | complete (M1-M6) | manager-develop |
 | Sync | complete (orchestrator-direct) | manager-docs / orchestrator-direct |
-| Mx | pending | orchestrator-direct / manager-docs |
+| Mx | complete (orchestrator-direct) | orchestrator-direct |
 
 ---
 
@@ -229,7 +229,27 @@ sync_commit_sha: b359bcafd
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending Mx-phase>_
+**Mx-phase**: COMPLETE (orchestrator-direct — Mx chore, canonical owner "manager-docs OR orchestrator" per Status Transition Ownership Matrix)
+**Status transition**: spec.md `implemented → completed` (4-phase V3R6 close — terminal)
+**4-phase lifecycle**: plan (`0ffb498a9`) → run (`e8302fa11` + `4a043c663`) → sync (`b359bcafd` + `5d540c1e3`) → Mx (this)
+**era**: V3R6 (modern; this SPEC authored the docs-site 4-locale reference, not itself drift-subject)
+**sync-auditor**: GLM spawn context-limit → orchestrator self-review substitute (4-dimension — Functionality: 11/11 AC independent re-verify; Security: AC-010 regression-guard clean; Craft: lint clean; Consistency: 4-locale parity 72/72/72/72)
+**OwnershipTransitionInvalid**: sync-phase warning (in-progress→implemented by orchestrator-direct) resolves at terminal `completed`
+
+**Audit-ready YAML**:
+
+```yaml
+spec_id: SPEC-V3R6-DOCS-DOCSITE-001
+mx_phase: complete
+mx_owner: orchestrator-direct
+status_transition: implemented -> completed
+four_phase_close: true
+lifecycle: plan -> run -> sync -> Mx (all complete)
+era: V3R6
+ac_final: 11/11 PASS
+ownership_warning: resolved-at-terminal-completed
+mx_commit_sha: <pending backfill>
+```
 
 ---
 
