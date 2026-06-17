@@ -173,4 +173,4 @@ sync_commit_sha: 615a4af95 — backfilled after the docs sync commit (non-bold a
 
 **Residual-risk**: `additionalContext` lost after `/clear` (side-channel file persists → `moai session current` re-reads). Headless `-p` without hooks → canonical fallback (REQ-RDP-006). Pre-existing `internal/statusline` `TestCollectMemory` baseline failure is out of scope (STATUSLINE-PRESET-RETIRE residual). Multi-session race: a parallel session committed memory-hygiene (`7a338007a`) + the full WORKFLOW-EFFORT-MAP-001 close during this session's sync window — no file overlap with this SPEC, race absorbed cleanly.
 
-mx_commit_sha: <pending backfill — populated by the immediately-following chore commit>
+mx_commit_sha: d7f45ca09 — backfilled after the Mx close commit (non-bold actual SHA per feedback_era_commit_sha_field_format).
