@@ -188,7 +188,24 @@ spec_lint_post_sync: "No findings"
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending Mx-phase>_
+```yaml
+mx_complete_at: 2026-06-17
+mx_commit_sha: <pending-backfill>
+mx_status: complete
+final_status: completed  # implemented -> completed
+spec_lint_final: "No findings"
+ac_final: "8/8 PASS"
+go_change_loc: 0
+harness_level_effective: standard
+mx_method: orchestrator-direct  # GLM sync-auditor spawn context-limit fallback
+self_assessment:
+  functionality: PASS  # 8/8 AC, README 7-axis reconciliation complete
+  security: N/A  # doc-only, no Go change, no input boundary
+  craft: PASS  # en/ko fact-for-fact parity, surgical edits, no over-engineering
+  consistency: PASS  # docs-truth baseline adhered, CODEMAPS cohort successor consistent
+era: V3R6
+four_phase_close: true  # plan + run + sync + Mx
+```
 
 ---
 
