@@ -184,8 +184,8 @@
   context-limit risk per `feedback_glm_orchestrator_direct_sync_mx` — 4th
   occurrence incl. WORKFLOW-EFFORT-MAP-001 / SESSION-HANDOFF-SSOT-ALIGN-001 /
   SESSION-ID-ATTRIBUTION-REPAIR-001 siblings).
-- **Sync-phase commit**: `<pending backfill>` (`sync_commit_sha` backfilled in
-  the immediately-following chore commit).
+- **Sync-phase commit**: 6f0f4e00e (sync-phase artifacts commit).
+- sync_commit_sha: 6f0f4e00e — backfilled after the sync commit (non-bold actual SHA per feedback_era_commit_sha_field_format; bold/placeholder would cause V3R6→V3R5 era misclassification).
 - **CHANGELOG emission**: `[Unreleased] ### Added` — SPEC-V3R6-DOCS-CODEMAPS-V3-001
   entry (cohort-prerequisite framing + 4-milestone summary + 10-AC result +
   3 pre-sync debt fix commit `fdf45b35a` + doc-vs-code drift note).
