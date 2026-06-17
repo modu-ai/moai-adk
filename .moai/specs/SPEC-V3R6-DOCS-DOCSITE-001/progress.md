@@ -248,7 +248,7 @@ lifecycle: plan -> run -> sync -> Mx (all complete)
 era: V3R6
 ac_final: 11/11 PASS
 ownership_warning: resolved-at-terminal-completed
-mx_commit_sha: <pending backfill>
+mx_commit_sha: 1a7765d00
 ```
 
 ---
