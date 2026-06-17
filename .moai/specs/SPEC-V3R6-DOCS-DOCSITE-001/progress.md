@@ -160,7 +160,7 @@ spec_id: SPEC-V3R6-DOCS-DOCSITE-001
 run_phase: complete
 run_iteration: 1
 run_complete_at: 2026-06-18
-run_commit_sha: "55f430c03 (pre-rebase; will backfill post-push with final pushed SHA)"
+run_commit_sha: "e8302fa11"
 run_status: audit-ready
 ac_pass_count: 11
 ac_fail_count: 0
