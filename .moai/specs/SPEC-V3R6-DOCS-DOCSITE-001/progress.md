@@ -222,7 +222,7 @@ docs_surface: docs-site/content/{en,ko,ja,zh}
 ac_final: 11/11 PASS
 go_change: 0
 neutrality: clean
-sync_commit_sha: <pending backfill>
+sync_commit_sha: b359bcafd
 ```
 
 ---
