@@ -174,7 +174,7 @@ m1_to_mN_commit_strategy: "6 commits (M1 03ff915ed + M2 3ed266f0f + M3 50f22e261
 
 ```yaml
 sync_complete_at: 2026-06-17
-sync_commit_sha: <pending-backfill>
+sync_commit_sha: 5d0055adb0
 sync_status: complete
 changelog_entry: true  # CHANGELOG.md [Unreleased] -> Added
 frontmatter_status: implemented  # in-progress -> implemented
