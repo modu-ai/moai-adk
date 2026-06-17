@@ -245,8 +245,8 @@ resolved in fix commit `fdf45b35a` before sync entry.
   transition owner is `manager-docs OR orchestrator` per the ownership matrix
   — no `OwnershipTransitionInvalid` on this close commit; the intermediate
   WARNING on the sync commit resolves here).
-- **Mx-phase commit**: `<pending backfill>` (`mx_commit_sha` backfilled in the
-  immediately-following chore commit).
+- **Mx-phase commit**: 1d24b8472 (Mx-phase audit-ready + 4-phase close commit).
+- mx_commit_sha: 1d24b8472 — backfilled after the Mx close commit (non-bold actual SHA per feedback_era_commit_sha_field_format).
 - **spec.md frontmatter transition**: `status: implemented → completed`.
 - **4-phase commit chain**: plan (draft) → run (`3fded3e21`) → sync
   (`6f0f4e00e`) → Mx (this commit) → mx backfill.
