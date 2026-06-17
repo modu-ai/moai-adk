@@ -15,8 +15,13 @@ import (
 // allowedPrefixes is the exhaustive list of path prefixes that
 // meta-harness output is permitted to write into. Any path starting
 // with one of these prefixes (after slash-normalisation) is ALLOWED.
+//
+// SPEC-V3R6-HARNESS-NAMESPACE-V2-001: both canonical harness-* and legacy
+// my-harness-* prefixes are allowed (REQ-HNS-005 backward-compat).
 var allowedPrefixes = []string{
+	".claude/agents/harness/",
 	".claude/agents/my-harness/",
+	".claude/skills/harness-",
 	".claude/skills/my-harness-",
 	".moai/harness/",
 }

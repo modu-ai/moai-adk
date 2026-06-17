@@ -1185,9 +1185,14 @@ func analyzeFiles(templates []string, projectRoot string) []merge.FileAnalysis {
 // isUserAreaPath returns true when the relative project path belongs to the
 // user customization area and must never be overwritten or deleted by moai update.
 //
-// Protected patterns (SPEC-V3R3-HARNESS-001 REQ-HARNESS-004):
-//   - .claude/skills/my-harness-*   (user harness skill directories)
-//   - .claude/agents/my-harness/    (user harness agent directory)
+// Protected patterns (SPEC-V3R3-HARNESS-001 REQ-HARNESS-004 + SPEC-V3R6-HARNESS-NAMESPACE-V2-001):
+//   - .claude/skills/harness-*       (user harness skill directories — canonical, doctrine §24.1)
+//   - .claude/skills/my-harness-*    (user harness skill directories — legacy, REQ-HNS-005 backward-compat)
+//   - .claude/agents/harness/        (user harness agent directory — canonical)
+//   - .claude/agents/my-harness/     (user harness agent directory — legacy, REQ-HNS-005 backward-compat)
+//
+// REQ-HNS-004: exact HasPrefix comparison (never Contains) so moai-harness-* is not misclassified.
+// REQ-HNS-005: legacy my-harness-* retained during the deprecation window (sunset = follow-up chore SPEC).
 //
 // This function is called by cleanMoaiManagedPaths before any remove operation
 // and by the template overlay write loop to skip user-owned paths.
@@ -1195,12 +1200,23 @@ func isUserAreaPath(rel string) bool {
 	// Normalize to forward slashes for consistent matching on all platforms.
 	norm := strings.ReplaceAll(rel, "\\", "/")
 
-	// .claude/skills/my-harness-* (any sub-path inside)
+	// .claude/skills/harness-* (canonical user-owned, any sub-path inside)
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-NAMESPACE-V2-001 M1 — canonical harness-* recognition.
+	if strings.HasPrefix(norm, ".claude/skills/harness-") {
+		return true
+	}
+
+	// .claude/skills/my-harness-* (legacy user-owned, REQ-HNS-005 backward-compat)
 	if strings.HasPrefix(norm, ".claude/skills/my-harness-") {
 		return true
 	}
 
-	// .claude/agents/my-harness/ (any sub-path inside)
+	// .claude/agents/harness/ (canonical user-owned, any sub-path inside)
+	if strings.HasPrefix(norm, ".claude/agents/harness/") || norm == ".claude/agents/harness" {
+		return true
+	}
+
+	// .claude/agents/my-harness/ (legacy user-owned, REQ-HNS-005 backward-compat)
 	if strings.HasPrefix(norm, ".claude/agents/my-harness/") || norm == ".claude/agents/my-harness" {
 		return true
 	}
@@ -1217,7 +1233,8 @@ func isUserAreaPath(rel string) bool {
 // authoritative user-owned check used by backup and sentinel logic.
 //
 // Protected patterns:
-//   - .claude/skills/my-harness-*    (REQ-UNP-001)
+//   - .claude/skills/harness-*       (REQ-HNS-001 canonical, doctrine §24.1)
+//   - .claude/skills/my-harness-*    (REQ-UNP-001 legacy, REQ-HNS-005 backward-compat)
 //   - .claude/agents/harness/        (REQ-UNP-002 — overrides isMoaiManaged classification)
 //   - .moai/harness/                  (REQ-UNP-003)
 //   - .claude/skills/<custom>/        when prefix != "moai-" and name != "moai" (REQ-UNP-009)
@@ -1232,7 +1249,13 @@ func isUserOwnedNamespace(rel string) bool {
 	// Normalize to forward slashes for consistent matching on all platforms (NFR-UNP-003).
 	norm := strings.ReplaceAll(rel, "\\", "/")
 
-	// REQ-UNP-001: user harness skills
+	// REQ-HNS-001: user harness skills (canonical harness-* prefix, doctrine §24.1)
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-NAMESPACE-V2-001 M1 — canonical harness-* recognition.
+	if strings.HasPrefix(norm, ".claude/skills/harness-") {
+		return true
+	}
+
+	// REQ-UNP-001 / REQ-HNS-005: legacy my-harness-* user harness skills (backward-compat)
 	if strings.HasPrefix(norm, ".claude/skills/my-harness-") {
 		return true
 	}
