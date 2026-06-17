@@ -213,7 +213,7 @@ MoAI-ADK implements the **Harness Engineering** paradigm — designing the envir
 | **Context Map** | Codebase architecture maps and documentation always available to agents | `/moai codemaps` |
 | **Session Persistence** | `progress.md` tracks completed phases across sessions; interrupted runs resume automatically | `/moai run SPEC-XXX` |
 | **Failing Checklist** | All acceptance criteria registered as pending tasks at run start; marked complete as implemented | `/moai run SPEC-XXX` |
-| **Language-Agnostic** | 18 languages supported: auto-detects language, selects correct LSP/linter/test/coverage tools | All workflows |
+| **Language-Agnostic** | 16 languages supported: auto-detects language, selects correct LSP/linter/test/coverage tools | All workflows |
 | **Garbage Collection** | Periodic scan and removal of dead code, AI Slop, and unused imports | `/moai clean` |
 | **Scaffolding First** | Empty file stubs created before implementation to prevent entropy | `/moai run SPEC-XXX` |
 

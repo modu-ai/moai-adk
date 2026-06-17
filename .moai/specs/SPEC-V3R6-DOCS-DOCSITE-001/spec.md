@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DOCS-DOCSITE-001
 title: "docs-site 4-locale content reconciliation against docs-truth canonical facts"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-06-17
 updated: 2026-06-17
 author: manager-spec
