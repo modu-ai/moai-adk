@@ -92,7 +92,7 @@ m1_to_mN_commit_strategy: "per-milestone Conventional Commits with Authored-By-A
 - `CHANGELOG.md` `[Unreleased] → ### Added`: entry appended documenting the 5-milestone purpose→(model,effort) SSOT + role_profiles effort field + ultracode conditional (13 ACs all MUST PASS).
 - README / docs-site: NO change (internal dev doctrine only — no user-facing surface touched).
 
-- sync_commit_sha: _<pending — backfilled in next commit>_ — will hold the docs commit SHA. Non-bold per `feedback_era_commit_sha_field_format` (bold SHAs cause V3R6→V3R5 era misclassification).
+- sync_commit_sha: 4c14ba25c — backfilled after the docs commit. Non-bold per `feedback_era_commit_sha_field_format` (bold SHAs cause V3R6→V3R5 era misclassification).
 
 **Commit subject**: `docs(SPEC-V3R6-WORKFLOW-EFFORT-MAP-001): sync-phase artifacts`
 
