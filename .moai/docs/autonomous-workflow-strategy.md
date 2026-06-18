@@ -119,7 +119,7 @@
 
 #### 그룹 A — plan (SPEC 기획)
 
-**현재 흐름**: manager-spec + Explore + manager-git 소유의 단일 phase 체인. Step 0 brain-proposal 스캔 → Phase 1A Explore 코드베이스 분석 → Phase 0.3 명료도 점수 → Phase 0.3.1 deep 인터뷰(1-5 라운드) → Phase 0.4 UltraThink → Phase 0.5 Explore research.md → Phase 1B GEARS planning → **DP1 HUMAN GATE**(Proceed/Annotate/Draft/Cancel) → Phase 1.6 Tier 판정 → Phase 2 spec/plan/acceptance 작성 → **Phase 2.3 plan-auditor adversarial audit + FAIL→revise 재시도(max 3)** → Phase 3 BODP 게이트 → Phase 3.6 SPEC 품질게이트 → DP2/3/3.5 실행모드 선택. **plan은 audit-ready 신호에서 종료하며 구현 착수 승인(run 진입)를 건너지 않는다.**
+**현재 흐름**: manager-spec + Explore + manager-git 소유의 단일 phase 체인. Step 0 brain-proposal 스캔 → Phase 1A Explore 코드베이스 분석 → Phase 0.3 명료도 점수 → Phase 0.3.1 deep 인터뷰(1-5 인터뷰 회차) → Phase 0.4 UltraThink → Phase 0.5 Explore research.md → Phase 1B GEARS planning → **DP1 HUMAN GATE**(Proceed/Annotate/Draft/Cancel) → Phase 1.6 Tier 판정 → Phase 2 spec/plan/acceptance 작성 → **Phase 2.3 plan-auditor adversarial audit + FAIL→revise 재시도(max 3)** → Phase 3 BODP 게이트 → Phase 3.6 SPEC 품질게이트 → DP2/3/3.5 실행모드 선택. **plan은 audit-ready 신호에서 종료하며 구현 착수 승인(run 진입)를 건너지 않는다.**
 
 **적용 엔진**: hybrid — Workflow(Phase 0.5 multi-angle 연구 + Phase 2.3 adversarial audit) + /goal(Phase 2.3 FAIL→revise 수렴 루프). `/moai loop`은 **미사용** — plan-phase는 명세 markdown만 생산하며 컴파일러/test 표면이 없다(Ralph Engine의 진단 대상이 run-phase에 있음).
 
@@ -436,7 +436,7 @@ return aggregate(outputs)
 
 **AskUserQuestion 채널 독점**: 자율 모드가 prose-prompting으로 질문 대체 불가. 매 호출 직전 `ToolSearch(query: "select:AskUserQuestion")` preload. 자율 흐름이 게이트로 재진입할 때마다 재-preload. AskUserQuestion이 자동 부착하는 "Other" 옵션으로 free-form 답변 지원(prose 질문 불요).
 
-**subagent-cannot-spawn-subagent (Finding A1)**: 오케스트레이터(main 세션)만 spawn. Workflow는 scaling이지 중첩 spawn이 아니다. Workflow agent도 사용자 prompt 불가(비대칭 boundary 상속) — 입력 부재 시 structured blocker report 반환, 오케스트레이터가 AskUserQuestion 라운드 후 fresh prompt로 재위임.
+**subagent-cannot-spawn-subagent (Finding A1)**: 오케스트레이터(main 세션)만 spawn. Workflow는 scaling이지 중첩 spawn이 아니다. Workflow agent도 사용자 prompt 불가(비대칭 boundary 상속) — 입력 부재 시 structured blocker report 반환, 오케스트레이터가 AskUserQuestion 인터뷰 회차 후 fresh prompt로 재위임.
 
 **background-write 금지**: `Agent(run_in_background:true)`는 Write/Edit 금지. read-only(research/analysis/review)만 background. 파일 수정은 `run_in_background:false` foreground 순차. (Workflow agent는 별개 primitive로 acceptEdits 쓰기 가능 — 이 금지는 background Agent에만.)
 
