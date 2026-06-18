@@ -158,7 +158,19 @@ m1_to_mN_commit_strategy: per-milestone separate commits (M1 frontmatter e38dd06
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Sync-phase executed on 2026-06-19 (Tier M, GLM orchestrator-direct fallback per `feedback_glm_orchestrator_direct_sync_mx`).
+
+**Files modified:**
+1. CHANGELOG.md — Added `[Unreleased]` entry with bullet header format
+2. spec.md frontmatter — Updated `status: in-progress → implemented`, `version: "0.1.0" → "0.2.0"`, `updated: "2026-06-18" → "2026-06-19"`
+
+**Sync-phase prose:**
+- §E.4 populated with sync-phase artifacts summary
+- CHANGELOG entry added for SPEC completion
+- spec.md frontmatter status transition (in-progress → implemented)
+- sync_commit_sha field left BLANK (to be populated in Commit 2)
+
+sync_commit_sha: ""  # To be populated in Commit 2 backfill
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
