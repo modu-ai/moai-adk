@@ -161,11 +161,6 @@ catalog:
             depends_on:
                 - frontend
             skills:
-                - name: moai-design-system
-                  tier: optional-pack:design
-                  path: templates/.claude/skills/moai-design-system/
-                  hash: dc4a1fc0853c0113277d92fd7e4bbad412f09c414f7c346fc4e581cf3944fd8d
-                  version: 1.0.0
                 - name: moai-domain-brand-design
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-domain-brand-design/
