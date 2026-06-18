@@ -26,7 +26,7 @@
 | M4 | `fba10bc1b` | test: M4 remove moai-design-system from frozen_guard_test fixtures | REQ-DSR-005 |
 | M5 | `9f886a533` | docs: M5 remove dangling moai-design-system pointer from workflow-design | REQ-DSR-006 |
 | M6 | `9624aae27` | docs: M6 remove moai-design-system from docs-site skill-guide (4-locale) | REQ-DSR-007 |
-| M7 | `3e7bb067c` | chore: M7 catalog hash regen + local mirror parity + test-count update | REQ-DSR-004 cascade, REQ-DSR-006 (local mirror), REQ-DSR-010 |
+| M7 | `f6c64d8e3` | chore: M7 catalog hash regen + local mirror parity + test-count update | REQ-DSR-004 cascade, REQ-DSR-006 (local mirror), REQ-DSR-010 |
 
 ### Run-phase branch / base
 
@@ -128,7 +128,7 @@ Baseline verification: `git worktree add /tmp/dsr-baseline-test fe80783be && go 
 
 ```yaml
 run_complete_at: "2026-06-19"
-run_commit_sha: "3e7bb067c"   # M7 final cascade commit (HEAD of run-phase)
+run_commit_sha: "f6c64d8e3"   # M7 final cascade commit (HEAD of run-phase)
 run_status: "run-complete"
 ac_pass_count: 10
 ac_fail_count: 0
@@ -153,7 +153,7 @@ m1_to_mN_commit_strategy: "M1-M6 discrete per-milestone commits + M7 cascade-fol
 | E3 | Coverage measurement | N/A | pure deletion SPEC — no new production code; coverage on touched packages already at baseline (cli ~85%+, dtcg ~85%+); no coverage regression vector for a retirement |
 | E4 | Subagent-boundary grep (C-HRA-008) | N/A | no subagent-domain code (internal/harness, internal/hook) touched; existing boundary preserved |
 | E5 | Lint status (NEW vs baseline) | PASS | `go vet ./...` exit 0; no NEW lint issues; 4 pre-existing test failures at baseline fe80783be are NOT this SPEC's regression |
-| E6 | Branch HEAD + push state | local-only | HEAD = `3e7bb067c`; NOT pushed (worktree isolation — orchestrator handles push/merge post-sync) |
+| E6 | Branch HEAD + push state | local-only | HEAD = `f6c64d8e3`; NOT pushed (worktree isolation — orchestrator handles push/merge post-sync) |
 | E7 | Blocker report | none | no blocker; the SPEC §B.1 item #7 local-mirror gap + plan.md §F.7 doctor-flag inaccuracy were resolved within scope (cascade) or flagged as non-blocking observations |
 
 ### Run-phase closure statement
@@ -165,7 +165,7 @@ The retirement is **run-complete**: all 10 MUST ACs PASS, the active-code zero-t
 
 ```yaml
 sync_complete_at: "2026-06-19"
-sync_commit_sha: "13dbd2978"
+sync_commit_sha: "bdd36caea"
 sync_status: "implemented"
 frontmatter_transition: "in-progress → implemented (this sync commit)"
 docs_touched: "progress.md §E.4; spec.md frontmatter status"
@@ -178,12 +178,12 @@ lsp_sync_gate: "met — spec-lint 0 errors; pre-existing full-suite failures (in
 
 ```yaml
 mx_complete_at: "2026-06-19"
-mx_commit_sha: "0b9e149bc"
+mx_commit_sha: "95a1d196c"
 mx_status: "completed"
 frontmatter_transition: "implemented → completed (this Mx commit)"
-sync_commit_sha: "13dbd2978"
-4_phase_close: "plan(base 0e9a1b851) + run(bb47cca49, M1-M7) + sync(13dbd2978) + Mx(0b9e149bc) — design-system retirement 완전 close (rebased onto origin/main d78ed9885 2026-06-19; plan-phase 3 commits skipped as cherry-equivalent already in origin)"
+sync_commit_sha: "bdd36caea"
+4_phase_close: "plan(base 0e9a1b851) + run(f6c64d8e3 M7-head; M1-M7 = 411dd00e1..18a756d6f) + sync(bdd36caea) + Mx(95a1d196c) + catalog-hash-fixup(2032b8823) — design-system retirement 완전 close (rebased onto origin/main 3772a3ea1 2026-06-19; plan-phase 3 commits skipped as cherry-equivalent already in origin; 2nd rebase absorbed LIFECYCLE-REDESIGN M6-M8 + RULES-CATALOG-SCRUB race)"
 ownership: "orchestrator-direct (GLM 1M backend fallback per feedback_glm_orchestrator_direct_sync_mx); Authored-By-Agent: manager-docs (implemented→completed per Ownership Matrix: manager-docs OR orchestrator)"
-ownership_transition_note: "in-progress→implemented (sync 13dbd2978, manager-docs trailer) + implemented→completed (Mx 0b9e149bc, manager-docs) — both transitions owned correctly, no OwnershipTransitionInvalid"
+ownership_transition_note: "in-progress→implemented (sync bdd36caea, manager-docs trailer) + implemented→completed (Mx 95a1d196c, manager-docs) — both transitions owned correctly, no OwnershipTransitionInvalid"
 lsp_mx_gate: "met — spec-lint 0 findings post-completion; moai-design-system fully retired (active-code zero per AC-DSR-009)"
 ```
