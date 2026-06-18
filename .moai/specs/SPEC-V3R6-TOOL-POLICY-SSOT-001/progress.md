@@ -24,8 +24,8 @@ era: V3R6
 ## §A. Phase Status
 
 - **Plan-phase**: COMPLETE (2026-06-18). 5 plan-phase artifacts authored (spec.md + plan.md + acceptance.md + research.md + design.md) + this progress.md §E skeleton.
-- **Run-phase**: NOT STARTED. Entry requires Implementation Kickoff Approval (CLAUDE.local.md §19.1).
-- **Sync-phase**: NOT STARTED.
+- **Run-phase**: COMPLETE (2026-06-18, commit `73336e296` — M1 schema+seed YAML + M2 codegen + M3 query + tests; single feat commit).
+- **Sync-phase**: COMPLETE (2026-06-19, orchestrator-direct).
 - **Mx-phase**: NOT STARTED.
 
 ---
@@ -164,16 +164,27 @@ Matches plan-phase measurement (research.md §C.1: allow=110/deny=60/ask=6). The
 - **§24.5 honest scope-narrowing**: this SPEC prevents YAML↔settings.json drift by construction (both generated surfaces derive from one YAML). It does NOT prevent the markdown-doctrine-vs-Go-code drift literally (§X.8) — generates neither markdown doctrine nor Go code. Scope is honestly bounded.
 - **spec-lint**: 0 errors, 1 warning (StatusGitConsistency — frontmatter `in-progress` vs git-implied `implemented`; this is the expected transient during the draft→in-progress transition; resolves once the run-phase commit lands).
 - **Ready for**: sync-phase (manager-docs) + Mx-phase close.
+- **run_commit_sha**: 73336e296c1291f50cab6fefe55bfe89a1e55254 (pushed to origin/main — M1 schema+seed YAML + M2 codegen + M3 query + tests; single run-phase feat commit; corrected from the pre-push worktree-local branch `worktree-agent-ad70a8d1f900d1f0c`).
 
 ---
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs populates with sync_commit_sha + sync artifacts>_
+- **sync_complete_at**: 2026-06-19
+- **sync_artifacts**: CHANGELOG.md `[Unreleased] → Added` entry; spec.md frontmatter `in-progress → implemented`.
+- **change_scope**: docs-only — no Go/template/YAML change.
+- **owner**: orchestrator-direct (GLM manager-docs spawn context-limit fallback per `feedback_glm_orchestrator_direct_sync_mx`).
+- **spec-lint**: 0 errors (StatusGitConsistency transient warning resolves on frontmatter landing).
 
-### (Migrated from §E.5)
+sync_commit_sha: _<pending sync-phase — backfilled in Mx commit>_
 
-_<pending Mx-phase — manager-docs/orchestrator populates with mx_commit_sha + 4-phase close>_
+---
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+_<pending Mx-phase — frontmatter `implemented → completed` + mx_commit_sha backfill>_
+
+mx_commit_sha: _<pending Mx-phase>_
 
 ---
 
