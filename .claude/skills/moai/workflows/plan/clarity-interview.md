@@ -48,11 +48,11 @@ For each round:
 ```
 # Interview: {SPEC Title}
 
-## Round 1: Scope
+## Interview Phase 1: Scope
 Question: {question asked}
 Answer: {user's answer}
 
-## Round 2: Constraints
+## Interview Phase 2: Constraints
 ...
 
 ## Clarity Score

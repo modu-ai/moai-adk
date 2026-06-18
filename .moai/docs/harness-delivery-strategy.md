@@ -190,7 +190,7 @@ Step 4 (agent 발견): 디스크립션 매칭 → INTACT(충실)
 
 ## 8. Context-Governance Axis — eager-vs-on-demand weight drift alarm
 
-> **도입 배경**: SPEC-V3R6-CONTEXT-GOV-AXIS-001 (Sprint 15 P2b, harness-books 적용 코호트).
+> **도입 배경**: SPEC-V3R6-CONTEXT-GOV-AXIS-001 (Epic 15 P2b, harness-books 적용 에픽).
 > **외부 근거**: book2 ch8.3 (signal dilution) + diag-05 (three context-governance paths).
 > **Tier-2 추가 신호**: 본 절은 기존 harness-learning Tier system (1-4)을 **변경하지 않고** Tier-2 제안으로 feed되는 **additive drift SIGNAL**이다 (REQ-CGA-006).
 

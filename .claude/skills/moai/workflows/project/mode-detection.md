@@ -117,7 +117,7 @@ Purpose: Replace the static four-question sequence with a structured deep interv
 
 **Interview Rounds (3 rounds maximum, configured in `.moai/config/sections/interview.yaml`):**
 
-**Round 1: Vision**
+**Interview Phase 1: Vision**
 
 Topic: What does this project do and who is it for?
 
@@ -127,17 +127,17 @@ Present via AskUserQuestion with exactly 4 options tailored to common project pa
 - Option 3: CLI tool or automation script: A command-line utility run by developers or operators. Best for build tools, deployment scripts, and developer utilities.
 - Option 4: Type your own answer: Enter a custom response if none of the above match your vision.
 
-**Round 2: Technology**
+**Interview Phase 2: Technology**
 
 Topic: What is the primary technology stack?
 
-Present via AskUserQuestion with exactly 4 options based on Round 1 answer context:
+Present via AskUserQuestion with exactly 4 options based on Interview Phase 1 answer context:
 - Option 1 (Recommended): TypeScript/JavaScript: Full-stack or frontend-heavy projects. Largest ecosystem. Works for React frontends, Node.js backends, Bun runtimes.
 - Option 2: Python: Backend APIs, AI/ML workloads, scripting. FastAPI, Django, or simple scripts.
 - Option 3: Go: High-performance microservices, CLI tools, cloud-native binaries. Simple deployment.
 - Option 4: Type your own answer: Enter a custom response to specify Rust, Java, Kotlin, Ruby, Swift, C#, or another stack.
 
-**Round 3: Scope**
+**Interview Phase 3: Scope**
 
 Topic: What are the key features and explicit boundaries?
 
@@ -152,15 +152,15 @@ Present via AskUserQuestion with exactly 4 options based on the vision and techn
 ```
 # Project Interview
 
-## Round 1: Vision
+## Interview Phase 1: Vision
 Question: {question asked}
 Answer: {user's answer}
 
-## Round 2: Technology
+## Interview Phase 2: Technology
 Question: {question asked}
 Answer: {user's answer}
 
-## Round 3: Scope
+## Interview Phase 3: Scope
 Question: {question asked}
 Answer: {user's answer}
 ```

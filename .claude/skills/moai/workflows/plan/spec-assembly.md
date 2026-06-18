@@ -71,6 +71,7 @@ File generation (all three files created simultaneously):
   - HISTORY section immediately after frontmatter
   - Complete GEARS structure with the 5 GEARS patterns (Ubiquitous, Event-driven `When`, State-driven `While`, Capability-gate `Where`, Event-detected unwanted — see `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format). EARS legacy form is accepted for pre-v3 SPECs until 2026-11-22 per the GEARS migration policy.
   - Content written in conversation_language
+  - **Epic reference (AC-LR-010)**: when the SPEC belongs to a multi-SPEC grouping, `plan.md §A Context` references the **Epic** (not the retired `Sprint`/`cohort`/`Wave` aliases) per `.claude/rules/moai/development/sprint-round-naming.md`. A standalone SPEC with no grouping is also valid.
 
 #### [HARD] Pre-Write Frontmatter Checklist
 

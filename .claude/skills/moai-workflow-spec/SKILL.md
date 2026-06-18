@@ -312,7 +312,7 @@ Integration Status: Complete - Plan-Run-Sync workflow with SDD 2025 features
 - Requirements use "should" where they mean "shall" (optional vs mandatory ambiguity)
 - SPEC-ID not registered in `.moai/specs/` directory
 
-Provenance (SPEC-ID / grouping-naming drift): AP-SRN-004 (legacy "Wave" naming retired for SPEC-grouping clarity) — recurred on 2026-05-25 in Sprint 10 paste-ready chore (commit 64310df3f).
+Provenance (SPEC-ID / grouping-naming drift): AP-SRN-004 (legacy "Wave" naming retired for SPEC-grouping clarity) — recurred on 2026-05-25 in Epic 10 paste-ready chore (commit 64310df3f; the historical pre-redesign label was the now-retired Sprint term, not the Epic taxonomy).
 
 <!-- moai:evolvable-end -->
 
