@@ -74,11 +74,37 @@ Plan-phase audit-ready: PASS-WITH-DEBT 0.87 (iter-2, Tier L thresh 0.85, +0.16 m
 - Scope safety: backup branch ref `backup/pre-m3-migration-*` created pre-migration. All 6 PRESERVE-list dirs (HARNESS-MOAI-NAMESPACE-001 + 5 RULES-*) untouched. No parallel-session in-flight work modified.
 - Tests: `TestMigrateProgressMD_FoldsE5IntoE4` + `_Idempotent`, `TestRunMigration_SkipsGrandfathered` (N4), `TestRunMigration_DryRun`. 0 new failures.
 
+### M4 — Axis A 6 드리프트 표면 rule 파일 "3-phase close" 스윕 (+ D4 reconciliation + D5 worked example)
+
+- Commit: `549249b22` (docs M4)
+- Files edited (3 of 6 had drift terms; other 3 — agent-patterns.md / archived-agent-rejection.md / spec-workflow.md — were already clean):
+  - `verification-claim-integrity.md` §5 Worked Example: "4-phase close" → "3-phase close (plan→run→sync)"; "Mx-phase close" historical-inference 맥락 명시화.
+  - `spec-frontmatter-schema.md` Status Transition Ownership Matrix: `implemented → completed` 전이를 sync commit으로 병합 (별도 Mx chore commit row 제거 — AC-LR-004). Close-subject mandate "3-phase close"로 갱신. D4 reconciliation note 추가 (DRIFT-LEGACY-CONVENTION-001 소유권 명시 + 레거시 "4-phase close" infix 매처 보존 per M2/REQ-LR-020/021).
+  - `lifecycle-sync-gate.md`: V3R6 era 정의 (4-phase → 3-phase), H-2/H-4 heuristic table (§E.4 술어), rationale string, close-subject mandate + D4 reconciliation note, `## §E.5 Mx-phase` worked example → 4-section layout (§E.1-§E.4) 갱신 (D5/AC-LR-013).
+- AC-LR-005 grep gate: `grep -l '4-phase close' <6 files>` → 0 matches in canonical usage (2 residual hits are both inside the D4 reconciliation note citing the legacy infix — intentional exception).
+- AC-LR-001 grep gate: `grep -r '4-phase\|Mx-phase' .claude/rules/moai/ | grep -v 'Legacy|deprecated|retired|alias'` → 0 canonical usage; residual hits are all retirement/reconciliation prose ("the former §E.5 Mx-phase section is retired", "NO §E.5 Mx-phase section", D4 reconciliation citing legacy infix) + Late-Branch "4-phase procedure (A→D)" (SPEC-V3R5-LATE-BRANCH-001, unrelated) + "Anthropic 4-phase Step 2" (verbatim Anthropic citation, unrelated).
+- Baseline grep counts (pre-M4 → post-M4): "4-phase close" in rules/moai = 5 → 0 canonical (2 reconciliation citations); "Mx-phase"/"§E.5" in 6 M4 files = 5 → 0 canonical (all retirement prose).
+
+### M5 — Axis A 8 표면 파일 (agents/hooks/output-styles/skills) 3-phase close + §E.4-only 반영
+
+- Commit: `0754536c7` (docs M5)
+- Files edited (6 with drift terms; manager-git.md + spec-assembly.md were already clean for lifecycle drift — their "4-phase" references are Late-Branch procedure, unrelated):
+  - `manager-spec.md`: progress.md skeleton 5→4 section (§E.1-§E.4; §E.5 Mx-phase retired) — AC-LR-002 (template emits exactly 4 §E sections, §E.5 count=0, §E.4 count=1). Forbidden-modifications 매트릭스 §E.5 제거.
+  - `manager-docs.md`: status transitions owned — `in-progress → implemented → completed` 단일 sync commit 병합 (AC-LR-004); MX Tag validation sync sub-step 명시 (AC-LR-006). Frontmatter description 갱신.
+  - `workflow-specialist.md`: description + Role + Domain Guidance "4-phase V3R6 close contract" → "3-phase V3R6 close contract"; §E.5/mx_commit_sha requirement retired.
+  - `harness-moaiadk-patterns/SKILL.md`: step 7 "Optional Mx + 4-phase close" → "3-phase close on the single sync commit".
+  - `moai.md`: Cohort Stats trigger "4-phase (plan+run+sync+mx)" → "3-phase (plan+run+sync)".
+  - `status-transition-ownership.sh`: Status Transition Ownership Matrix 주석 `completed`→sync-commit 병합 반영 (AC-LR-004; hook은 advisory exit 0 — 모든 전이 accept, 주석 정확성만 갱신).
+- AC-LR-006: manager-docs.md line 141 lists MX Tag validation as a sync sub-step (NOT a separate phase) — PASS.
+- M5 grep gate: `grep -rl '4-phase\|Mx-phase\|§E\.5' .claude/` (excluding worktrees/agent-memory/specs/reports) → 0 canonical usage; all residual hits are retirement/reconciliation prose + Late-Branch procedure + Anthropic verbatim citation (enumerated as intentional exceptions in E2).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-06-19T04:30:00Z
 run_commit_sha: 936d1fdbc
-run_status: audit-ready (M1-M3 PASS, M4-M8 deferred to separate delegations)
+run_status: audit-ready (M1-M5 PASS; M6-M8 Axis B Epic naming deferred to separate delegation)
+
+M4-M5 commit chain (this delegation, worktree-agent-ae39cb698447a2e48 @ origin/main 2f5260c58): 549249b22 (M4 6 rule files 3-phase close sweep + D4 reconciliation + D5 worked example) → 0754536c7 (M5 8 Axis A surface files 3-phase close + §E.4-only structure). Pre-push: `git rev-list --count --left-right origin/main...HEAD` = `0 0` (worktree synced to origin/main at delegation start; CONTEXT-GOV-AXIS-001 parallel session has 3 unpushed local commits on main checkout touching unrelated files — no file overlap with M4/M5 scope).
 
 M1-M3 commit chain (rebased SHAs after multi-session race resolution; pushed to origin/main `a964772fa..936d1fdbc`): f38917f81 (M1 era.go) → 1e4b851ce (M2 audit.go+transitions.go+tests) → 93e8b98ee (M3 migrate_3phase.go + 65 SPEC fold) → 936d1fdbc (M3 errcheck fix + §E.3 signal). Pre-rebase SHAs: abd832d9a / 5f5170fbd / 564ad5726 / a1e3b2a24.
 
