@@ -53,13 +53,33 @@ _<pending Mx-phase>_
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — populated by manager-develop>_
+| AC ID | Status | Verification Command | Actual Output |
+|-------|--------|---------------------|---------------|
+| AC-CGA-001 | PASS | `go test -run TestEstimateContextWeight_PopulatesFields ./internal/harness/` | `--- PASS: TestEstimateContextWeight_PopulatesFields (0.00s)` — eager weight populated + weight_unit="bytes" |
+| AC-CGA-002 | PASS | `go test -run TestParseOldLogLinesNoCrash ./internal/harness/ -v` | `--- PASS: TestParseOldLogLinesNoCrash` (4 subtests: legacy v1 user_prompt, v1 session_stop, v2 user_prompt, v2 subagent_stop — all parse, weight fields=sentinel 0/"") |
+| AC-CGA-003 | PASS | `go test -run 'TestEstimateContextWeight_FailOpenOnEmptyRoot|TestRecordExtendedEvent_V21SchemaStamp' ./internal/harness/` | Both PASS — fail-open leaves weight at sentinel; schema_version still stamped "v2.1" |
+| AC-CGA-004 | PASS | `grep -cE "Tier-2\|monotonic\|강등\|demote\|N = 3" .moai/docs/harness-delivery-strategy.md` | `4` (§8.2 monotonic gate + §8.3 N=3 named constant + §8.5 Tier-2) |
+| AC-CGA-005 | PASS | `grep -cE "book2 ch8\.3\|diag-05" .moai/docs/harness-delivery-strategy.md` | `6` (§8 header + §8.1 signal dilution quote + §8.2 symptom test + diag-05 three paths) |
+| AC-CGA-006 | PASS | `grep -cE "Tier system.*변경하지 않\|additive drift SIGNAL" .moai/docs/harness-delivery-strategy.md` | `2` (§8 header + §8.5 explicit "Tier 정의를 추가·삭제·renumber하지 않는다") |
+| AC-CGA-007 | PASS (1 warning) | `go run ./cmd/moai spec lint .moai/specs/SPEC-V3R6-CONTEXT-GOV-AXIS-001/spec.md` | `0 error(s), 1 warning(s)` — StatusGitConsistency warning (transient: frontmatter `in-progress` vs git-implied `implemented`; resolves at sync-phase, standard M1-commit artifact) |
 
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — populated by manager-develop>_
+- **run_complete_at**: 2026-06-18
+- **run_commit_sha**: d110657a1 (worktree `worktree-agent-ab6688d5da5ff061d`, not pushed — left local for orchestrator)
+- **run_status**: PASS-WITH-DEBT (7/7 AC PASS; 1 transient spec-lint warning; 4 pre-existing test failures in untouched packages — see Gaps)
+- **ac_pass_count**: 7
+- **ac_fail_count**: 0
+- **preserve_list_post_run_count**: 0 (no PRESERVE-list items carried into sync)
+- **l44_pre_commit_fetch**: not performed (worktree isolation; orchestrator owns pre-spawn sync)
+- **l44_post_push_fetch**: N/A (not pushed — left local per worktree contract)
+- **new_warnings_or_lints_introduced**: 0 NEW golangci-lint issues (`0 issues.` on touched packages); 1 transient spec-lint StatusGitConsistency warning (resolves at sync)
+- **cross_platform_build**: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./internal/harness/... ./internal/cli/...` exit 0
+- **coverage** (`go test -cover ./internal/harness/`): `internal/harness` 87.3% (≥85% threshold); sub-packages 86.5%-100%
+- **subagent_boundary** (C-HRA-008): 0 matches in touched Go source (`internal/harness/{types,observer,context_gov_test}.go` + `internal/cli/hook.go`); 1 pre-existing string-literal hit in untouched `proposalgen/scaffolder.go:111` (prompt template text, not a call)
+- **m1_to_mN_commit_strategy**: single commit `d110657a1` (M1+M2+M3 bundled — Tier M, Go change is the cohort's only substantial implementation)
 
 ---
 
