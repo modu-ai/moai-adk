@@ -2,7 +2,7 @@
 id: SPEC-V3R6-TOOL-POLICY-SSOT-001
 title: "Tool/Permission Policy SSOT — Research (scattered-policy inventory + book2 execpolicy survey)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-18
 updated: 2026-06-18
 author: manager-spec

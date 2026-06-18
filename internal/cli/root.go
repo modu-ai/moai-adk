@@ -102,4 +102,9 @@ func init() {
 	// The CI guard in harness_retirement_test.go allows 'route' and 'validate' verbs
 	// but continues to block the retired lifecycle verbs (status/apply/rollback/disable).
 	rootCmd.AddCommand(newHarnessRouterCmd())
+
+	// SPEC-V3R6-TOOL-POLICY-SSOT-001: register tool-policy subcommand
+	// (build + list). The YAML at .moai/config/sections/tool-policy.yaml is the
+	// SSOT from which the settings.json permissions block is generated.
+	rootCmd.AddCommand(newToolPolicyCmd())
 }
