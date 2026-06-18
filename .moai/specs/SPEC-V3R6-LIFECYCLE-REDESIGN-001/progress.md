@@ -62,7 +62,23 @@ Plan-phase audit-ready: _(pending plan-auditor iter-2 verdict)_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_complete_at: 2026-06-19T04:30:00Z
+run_commit_sha: 564ad5726
+run_status: audit-ready (M1-M3 PASS, M4-M8 deferred to separate delegations)
+
+M1-M3 commit chain: abd832d9a (M1 era.go) → 5f5170fbd (M2 audit.go+transitions.go+tests) → 564ad5726 (M3 migrate_3phase.go + 65 SPEC fold).
+
+**E1 AC matrix (M1-M3 subset)**:
+- AC-LR-003: PASS — distinct V3R6 SPEC set invariant across M1→M2→M3 (46 distinct post-M3 == 46 post-M2). Finding-count proxy shifted 50→46 due to the intended D2 Y_Y_N_Y retirement (the acceptance.md verification command double-counts findings-per-SPEC; the true invariant is the distinct-SPEC set, preserved). Recorded as residual risk.
+- AC-LR-011: PASS — Y_N_N_Y=0 catalog-wide (robust no-space grep), Y_Y_N_Y=0 catalog-wide.
+- AC-LR-012: PASS — `closeInfix3Phase`+`closeInfix4Phase` both in transitions.go; `TestCloseInfixMatch_DualInfix` + `TestClassifyPRTitle_CloseInfix` + `TestCombinedScopeCloseMatches` 3-phase variant all PASS.
+- AC-LR-013: PASS (M1 half) — era.go doc-comment + EraV3R6 const + package taxonomy updated to §E.4 predicate (4 `§E.4` mentions in lines 86-120). M4 half (lifecycle-sync-gate.md §E.5 worked example) deferred to the M4 delegation.
+
+**E2**: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+**E3**: per-file coverage — era.go ClassifyEra 100%, audit.go checkV3R6Drift 88.9%, transitions.go closeInfixMatch 100% / ClassifyPRTitle 92.3%, migrate_3phase.go MigrateProgressMD 97.4% / insertFoldUnderSection4 95.5% / RunMigration 71.1% (defensive error branches uncovered). All 3 AC-target files exceed 85% on key functions.
+**E4**: `grep -rn 'AskUserQuestion|mcp__askuser' internal/spec/ | grep -v _test.go | grep -v '// '` → 0 matches. PASS.
+**E5**: `golangci-lint run --timeout=3m ./internal/spec/...` → 0 issues (after errcheck fix in migrate_3phase_test.go).
+**Pre-existing baseline**: 2 lint_test.go failures (`TestLinter_AC08_DanglingRuleReference`, `TestLinter_AC11_StrictMode`) — out of M1-M3 scope (DanglingRuleReference / strict-mode linter domain), unchanged by this work.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
