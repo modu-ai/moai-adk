@@ -170,7 +170,7 @@ Sync-phase executed on 2026-06-19 (Tier M, GLM orchestrator-direct fallback per 
 - spec.md frontmatter status transition (in-progress → implemented)
 - sync_commit_sha field left BLANK (to be populated in Commit 2)
 
-sync_commit_sha: ""  # To be populated in Commit 2 backfill
+sync_commit_sha: "706de3799"  # Commit 1: sync-phase artifacts
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
