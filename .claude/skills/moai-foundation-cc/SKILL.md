@@ -266,6 +266,8 @@ Version History:
 - settings.json contains hardcoded absolute paths instead of $CLAUDE_PROJECT_DIR
 - Progressive disclosure disabled for a skill that exceeds 3000 tokens
 
+Provenance (frontmatter CSV-format drift): space-separated `allowed-tools` silently breaks tool permissions (CONST-V3R5-038) — observed recurrence, provenance pending in memory.
+
 <!-- moai:evolvable-end -->
 
 <!-- moai:evolvable-start id="verification" -->
@@ -280,3 +282,15 @@ Version History:
 - [ ] $CLAUDE_PROJECT_DIR used instead of absolute paths in hook commands
 
 <!-- moai:evolvable-end -->
+
+---
+
+## Decision Heuristics
+
+Fast defaults — always confirm against the cited body section for non-trivial decisions.
+
+- If a deferred tool (AskUserQuestion etc.) is needed, default to a `ToolSearch` preload first (<- §Documentation Index / sub-agents).
+- If declaring `allowed-tools`, default to a comma-separated string, never space-separated (<- §Red Flags).
+- If CLAUDE.md nears 40K chars, default to moving detail into path-scoped rules (<- §Verification).
+- If a hook is registered, default to also setting an explicit timeout (<- §Common Rationalizations).
+- If a skill exceeds ~3000 tokens, default to keeping progressive disclosure enabled (<- §Common Rationalizations).

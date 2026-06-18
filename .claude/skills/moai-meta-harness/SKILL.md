@@ -240,5 +240,17 @@ The following capabilities are explicitly NOT implemented by this skill:
 
 ---
 
+## Decision Heuristics
+
+Fast defaults — always confirm against the cited body section for non-trivial decisions.
+
+- If emitting a user-generated domain skill, default to the `harness-*` prefix, never `moai-*` (<- §Namespace Separation).
+- If `.moai/harness/main.md` is absent at `/moai project` Phase 5+, default to triggering generation (<- §Trigger Mechanics).
+- If a generated artifact needs validation, default to handing off to `sync-auditor` Sprint Contract (<- §7-Phase Workflow, Phase 6).
+- If user input is required by a generated subagent, default to a blocker report, never AskUserQuestion (<- §7-Phase Workflow, REQ-HRN-FND-015).
+- If `moai update` runs, default to preserving + backing up `harness-*` artifacts, never deleting (<- §Namespace Separation).
+
+---
+
 *Upstream: revfactory/harness (Apache-2.0) | MoAI adaptation: SPEC-V3R3-HARNESS-001*
 *See `.claude/rules/moai/NOTICE.md` for full Apache 2.0 attribution.*

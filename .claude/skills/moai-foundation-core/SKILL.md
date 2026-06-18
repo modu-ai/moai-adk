@@ -281,6 +281,8 @@ External Resources: reference.md
 - Agent selected without consulting the selection decision tree
 - Quality gate skipped with "will check later" comment
 
+Provenance: orchestrator-self-execution / delegation-bypass — observed recurrence, provenance pending in memory.
+
 <!-- moai:evolvable-end -->
 
 <!-- moai:evolvable-start id="verification" -->
@@ -349,3 +351,15 @@ When delegating to a sub-agent near context ceiling:
 4. If parent context > 120,000 tokens after return, save and /clear
 
 Full optimization patterns: [modules/token-optimization.md](modules/token-optimization.md)
+
+---
+
+## Decision Heuristics
+
+Fast defaults — always confirm against the cited body section for non-trivial decisions.
+
+- If the task is complex or domain-specific, default to delegating via `Agent()` rather than direct execution (<- §3 Delegation Patterns).
+- If a code change ships, default to validating all five dimensions before completion (<- §1 TRUST 5 Framework).
+- If a change has no SPEC, default to authoring one before implementing (<- §2 SPEC-First DDD).
+- If context nears the model threshold, default to persisting `progress.md` then `/clear` (<- §Token Budget / clear Strategy).
+- If a skill body would exceed 500 lines, default to splitting into modules (<- §5 Progressive Disclosure).

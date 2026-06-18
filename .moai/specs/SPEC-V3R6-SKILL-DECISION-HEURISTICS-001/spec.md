@@ -2,9 +2,9 @@
 id: SPEC-V3R6-SKILL-DECISION-HEURISTICS-001
 title: "Skill Decision Heuristics + Anti-Pattern Provenance Binding for 4 High-Traffic Skills"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-06-18
-updated: 2026-06-18
+updated: 2026-06-19
 author: manager-spec
 priority: P3
 phase: "v3.0.0"
