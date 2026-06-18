@@ -29,7 +29,10 @@
 
 ## §C. Sync-phase status
 
-_<pending sync-phase>_
+- **sync_complete_at**: 2026-06-19
+- **change_scope**: docs-only (CHANGELOG `[Unreleased] → Added` entry; spec.md frontmatter `in-progress → implemented`); no Go/template change.
+- **owner**: orchestrator-direct (GLM manager-docs spawn context-limit fallback per `feedback_glm_orchestrator_direct_sync_mx`).
+- **spec-lint**: 0 errors (StatusGitConsistency transient warning resolves on frontmatter landing).
 
 ---
 
@@ -68,7 +71,7 @@ _<pending Mx-phase>_
 ## §E.3 Run-phase Audit-Ready Signal
 
 - **run_complete_at**: 2026-06-18
-- **run_commit_sha**: d110657a1 (worktree `worktree-agent-ab6688d5da5ff061d`, not pushed — left local for orchestrator)
+- **run_commit_sha**: c0798e7a648ff0798dec9529489984e35ace96bf (pushed to origin/main — the M3 run-phase evidence commit; corrected from the pre-push worktree-local SHA `d110657a1`)
 - **run_status**: PASS-WITH-DEBT (7/7 AC PASS; 1 transient spec-lint warning; 4 pre-existing test failures in untouched packages — see Gaps)
 - **ac_pass_count**: 7
 - **ac_fail_count**: 0
@@ -85,13 +88,19 @@ _<pending Mx-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs; sync_commit_sha field below>_
+- **sync_complete_at**: 2026-06-19
+- **sync_artifacts**: CHANGELOG.md `[Unreleased] → Added` entry; spec.md frontmatter `in-progress → implemented`.
+- **change_scope**: docs-only — no Go/template change.
+- **owner**: orchestrator-direct (GLM manager-docs spawn context-limit fallback per `feedback_glm_orchestrator_direct_sync_mx`).
+- **spec-lint**: 0 errors (StatusGitConsistency transient warning resolves on frontmatter landing).
 
-sync_commit_sha: _<pending sync-phase>_
+sync_commit_sha: _<pending sync-phase — backfilled in Mx commit>_
 
-### (Migrated from §E.5)
+---
 
-_<pending Mx-phase — populated by manager-docs OR orchestrator-direct; mx_commit_sha field below>_
+## §E.5 Mx-phase Audit-Ready Signal
+
+_<pending Mx-phase — frontmatter `implemented → completed` + mx_commit_sha backfill>_
 
 mx_commit_sha: _<pending Mx-phase>_
 
