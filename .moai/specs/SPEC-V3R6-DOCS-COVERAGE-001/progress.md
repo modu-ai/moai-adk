@@ -138,7 +138,29 @@ None. No scope-expansion needed; no SPEC body modification required; no user dec
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-06-18
+sync_commit_sha: <to-be-filled-post-commit>
+sync_status: PASS
+changelog_entry: CHANGELOG.md [Unreleased] ### Added (COVERAGE-001)
+frontmatter_status: in-progress → implemented
+docs_truth_axis_add: deferred (acceptance §D.4 — separate follow-up, NOT in COVERAGE-001 scope)
+ac_total: 11
+ac_pass: 10
+ac_pass_with_debt: 1
+ac_fail: 0
+go_code_changes: 0
+neutrality: PASS (docs-site project-owned, not template-distributed)
+spec_lint: 0 findings (StatusGitConsistency resolved post 085e8ecc5)
+```
+
+### Sync-phase notes
+
+- CHANGELOG.md `[Unreleased] ### Added`: COVERAGE-001 entry (skill-count reconciliation + ko/ja structural rewrite + en/zh in-body cleanup).
+- frontmatter status `in-progress → implemented` (this sync commit).
+- docs-truth.md §6 "Skill Count (32)" axis addition is forward-looking (acceptance §D.4), deferred to a separate follow-up — explicitly out of COVERAGE-001 scope.
+- AC-001 PASS-WITH-DEBT documented (REQ-002 "31 specialized" sub-count overlap; baseline 40 stale totals eliminated, 4 legitimate sub-count residuals remain).
+- sync-phase orchestrator-direct (GLM manager-docs spawn context-limit fallback per `feedback_glm_orchestrator_direct_sync_mx`).
 
 ---
 
