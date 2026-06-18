@@ -2,7 +2,7 @@
 id: SPEC-V3R6-LIFECYCLE-REDESIGN-001
 title: "MoAI Lifecycle Redesign — 3-Phase Restoration + Epic-Based Naming"
 version: "0.2.0"
-status: draft
+status: completed
 created: 2026-06-18
 updated: 2026-06-19
 author: manager-spec

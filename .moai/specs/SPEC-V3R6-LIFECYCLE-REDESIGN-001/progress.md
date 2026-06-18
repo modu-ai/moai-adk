@@ -147,12 +147,12 @@ M1-M3 commit chain (rebased SHAs after multi-session race resolution; pushed to 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-06-19 (orchestrator-direct sync, GLM 1M — manager-docs spawn context-limit fallback per feedback_glm_orchestrator_direct_sync_mx)
+sync_commit_sha: _(pending backfill — this sync commit's SHA)_
+sync_status: audit-ready (3-phase close — the `completed` transition rides this sync commit per REQ-LR-008; NO separate Mx chore commit; progress.md §E structure is 4 sections per AC-LR-002)
 
-sync_commit_sha: _(pending sync-phase)_
+**13 ACs verified** (10 MUST-PASS + 3 SHOULD-PASS): AC-LR-001 (3-phase canonical) / 002 (4-section progress.md) / 003 (V3R6 distinct-set invariance) / 004 (completed-via-sync-commit) / 005 (6 drift rules "3-phase close") / 006 (MX Tag during sync) / 007 (Epic 4-term taxonomy) / 008 (T1-T4 0 residual) / 009 (Epic preserves Sprint semantics) / 010 (new-SPEC Epic ref) / 011 (§E.5 findings retired — Y_N_N_Y/Y_Y_N_Y/Y_Y_Y_Y all 0 catalog-wide) / 012 (close-infix dual + D4 reconciliation) / 013 (era.go doc-comment + lifecycle-sync-gate worked example).
 
-### (Migrated from §E.5)
+**Orchestrator trust-but-verify highlights**: (1) stale-binary hazard — `moai spec audit` reported Y_Y_N_Y=5/Y_Y_Y_Y_StatusDrift=3 from a pre-rebuild binary after M1-M3; `go install ./cmd/moai` rebuild → all three §E.5-keyed findings = 0 (AC-LR-011 PASS). Lesson codified: re-build the binary before trusting `moai spec audit` after any `internal/spec/` Go change. (2) Multi-session race absorbed across M1-M8 — a parallel RULES/ORCH-INTERRUPT/SKILL-DECISION/CONTEXT-GOV-AXIS cohort advanced shared-checkout main repeatedly; each absorbed via clean rebase (disjoint file scope) and, for M6-M8, an isolated worktree (`.claude/worktrees/lr-finish`, origin/main-based) to avoid stomping parallel-session in-flight work (60 modified + local-ahead-9 + 4 untracked SPEC on the shared checkout; preserved via `backup/orch-local-ahead9-040206`). (3) AC-LR-008 strict 0 — interview "라운드"→"인터뷰 회차" fix-up commit `b5a3956cb`.
 
-_<pending Mx-phase — NOTE: this section is slated for removal per REQ-LR-004 / REQ-LR-007 of this very SPEC. The redesign merges §E.5 into §E.4. This placeholder is retained for classification compatibility during the migration window (REQ-LR-006) and will be removed once the redesign's M3 backfill completes.>_
-
-mx_commit_sha: _(not applicable — this SPEC removes the Mx-phase concept)_
+mx_commit_sha: _(not applicable — this SPEC removes the Mx-phase concept; REQ-LR-004/007)_
