@@ -9,7 +9,7 @@ Claude Code hooks for extending functionality with custom scripts.
 ## Hook Events
 
 26 hook event types + 4 RETIRE-OBS-ONLY events = 30 total Go handlers (retired).
-**Note**: EventSetup retired (orphan constant, no handler implementation).
+**Note**: The moai-adk Go `EventSetup` constant is retired (orphan, no handler implementation); the upstream Claude Code `Setup` event remains a current, usable event.
 Active settings.json keys: 22. RETIRE-OBS-ONLY (Go-only, opt-in via system.yaml): 4. Total: 26 events.
 
 **Active events (22 in settings.json + 4 RETIRE-OBS-ONLY in Go = 26 events):**
@@ -59,7 +59,7 @@ Active settings.json keys: 22. RETIRE-OBS-ONLY (Go-only, opt-in via system.yaml)
 
 | Event | Status |
 |-------|--------|
-| Setup | REMOVED — EventSetup constant retired; `moai hook setup` subcommand removed. Was triggered via --init, --init-only, or --maintenance flags (v2.1.10+) but had no handler implementation. |
+| Setup | Upstream CC event is CURRENT (triggered via --init, --init-only, or --maintenance flags, v2.1.10+). Only moai-adk internals retired: the Go `EventSetup` constant (orphan, no handler implementation) and the `moai hook setup` subcommand. The upstream Claude Code `Setup` event still exists and remains usable. |
 
 ### Event Categories
 

@@ -8,23 +8,23 @@ paths: "**/*.cs,**/*.csproj,**/*.sln"
 ---
 
 
-# C# 12 / .NET 8 Development Specialist
+# C# 14 / .NET 10 (LTS) Development Specialist
 
 Modern C# development with ASP.NET Core, Entity Framework Core, Blazor, and enterprise patterns.
 
 
 Core Stack:
 
-- C# 12: Primary constructors, collection expressions, alias any type, default lambda parameters
-- .NET 8: Minimal APIs, Native AOT, improved performance, WebSockets
-- ASP.NET Core 8: Controllers, Endpoints, Middleware, Authentication
-- Entity Framework Core 8: DbContext, migrations, LINQ, query optimization
+- C# 14: Primary constructors, collection expressions, alias any type, default lambda parameters
+- .NET 10: Minimal APIs, Native AOT, improved performance, WebSockets
+- ASP.NET Core 10: Controllers, Endpoints, Middleware, Authentication
+- Entity Framework Core 10: DbContext, migrations, LINQ, query optimization
 - Blazor: Server/WASM components, InteractiveServer, InteractiveWebAssembly
 - Testing: xUnit, NUnit, FluentAssertions, Moq
 
 Quick Commands:
 
-To create a new .NET 8 Web API project, run dotnet new webapi with -n flag for project name and --framework net8.0.
+To create a new .NET 10 Web API project, run dotnet new webapi with -n flag for project name and --framework net10.0.
 
 To create a Blazor Web App, run dotnet new blazor with -n flag for project name and --interactivity Auto.
 
@@ -38,10 +38,10 @@ To add FluentValidation and MediatR, run dotnet add package FluentValidation.Asp
 
 This guide is self-contained. Use the sections below as the primary reference for:
 
-- C# 12 language features such as primary constructors, collection expressions, type aliases, and default lambda parameters
-- ASP.NET Core 8 application structure, Minimal APIs, controllers, middleware, and authentication
+- C# 14 language features such as primary constructors, collection expressions, type aliases, and default lambda parameters
+- ASP.NET Core 10 application structure, Minimal APIs, controllers, middleware, and authentication
 - Blazor Server / WebAssembly component patterns
-- Entity Framework Core 8 data-access and migration workflows
+- Entity Framework Core 10 data-access and migration workflows
 - CQRS + FluentValidation application patterns
 
 ---

@@ -98,7 +98,7 @@ Define rootCmd as cobra.Command with Use, Short fields. In init, add PersistentF
 
 - PGO Build: go build -pgo=cpu.prof
 - Object Pooling: sync.Pool with New function, Get/Put pattern
-- Container deployment: Multi-stage Dockerfile (golang:1.23-alpine → scratch), CGO_ENABLED=0, stripped binary (10-20MB)
+- Container deployment: Multi-stage Dockerfile (golang:1.26-alpine → scratch), CGO_ENABLED=0, stripped binary (10-20MB)
 
 ## Troubleshooting
 

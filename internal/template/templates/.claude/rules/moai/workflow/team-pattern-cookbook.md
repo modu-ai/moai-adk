@@ -91,17 +91,17 @@ Team Lead: "Synthesize these into: X is popular but has adoption risk, competito
 
 **Example Workflow**:
 ```
-Day 1:
+Phase 1:
   - Backend: Define API schema + endpoints
   - Frontend: Read schema, start building hooks
   - Tests: Write integration tests against API contract
 
-Day 2:
+Phase 2:
   - Backend: Implement API
   - Frontend: Implement UI with hooks
   - Tests: Run tests, report boundary issues
 
-Day 3:
+Phase 3:
   - Backend + Frontend: Sync on boundary defects, iterate
   - Tests: Verify fixes
 ```
@@ -305,8 +305,8 @@ If a teammate rejects shutdown (still working), Lead can:
 - Status that doesn't block anyone (save for final report)
 
 **Frequency**:
-- First day: High communication (establish coordination)
-- Middle days: Medium (share discoveries that affect others)
-- Final day: High (synthesis and shutdown)
+- Initial phase: High communication (establish coordination)
+- Middle phases: Medium (share discoveries that affect others)
+- Final phase: High (synthesis and shutdown)
 
 This cookbook provides practical patterns for the most common team scenarios in MoAI-ADK.

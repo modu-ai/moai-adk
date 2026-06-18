@@ -37,11 +37,11 @@ Standard MCP servers in MoAI-ADK:
 
 **`alwaysLoad` field (Claude Code v2.1.119+)**
 
-Claude Code v2.1.119에서 `.mcp.json`의 MCP 서버 항목에 `"alwaysLoad": true` 필드가 추가되었다.
-이 필드가 `true`로 설정된 서버의 툴 스키마는 세션 시작 시 즉시 로드된다(기존 지연 로드 방식 대비).
+Claude Code v2.1.119 added the `"alwaysLoad": true` field to MCP server entries in `.mcp.json`.
+When this field is set to `true`, the server's tool schema is loaded immediately at session start (instead of the deferred-load default).
 
-MoAI-ADK 기본 설정:
-- `context7`: `"alwaysLoad": true` — 매 세션 문서 조회가 빈번하므로 즉시 로드
+MoAI-ADK default configuration:
+- `context7`: `"alwaysLoad": true` — loaded eagerly because documentation lookups occur frequently every session
 
 ```json
 {

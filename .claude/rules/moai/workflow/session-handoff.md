@@ -74,7 +74,7 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
 
 ### Field-by-Field Specification
 
-- **Block 1**: `ultrathink.` triggers Adaptive Thinking xhigh effort on Opus 4.7+ (next session lacks accumulated reasoning). `<phase>` ∈ `plan | run | sync | mx`.
+- **Block 1**: `ultrathink.` sets `effort: xhigh` on Opus 4.7+ (next session lacks accumulated reasoning). Adaptive Thinking is a DISTINCT axis — the thinking mode, explicitly enabled via `thinking: {type: "adaptive"}` — not something `ultrathink` toggles. `<phase>` ∈ `plan | run | sync | mx`.
   - **Purpose-conditional `/effort ultracode` re-set line** [HARD]: Block 1 also carries a purpose-conditional `/effort ultracode` re-set line, emitted ONLY when the next SPEC's plan declares workflow fan-out (dynamic Workflow or Agent Teams). The line sits immediately after `ultrathink.`. Per `.claude/rules/moai/workflow/dynamic-workflows.md`, ultracode is NOT restored by the `ultrathink.` opener — it must be explicitly re-issued after `/clear` when the resumed session needs auto-orchestration. When the next SPEC does NOT need workflow fan-out, the ultracode line is omitted (the `ultrathink.` opener alone suffices). Default on ambiguity: omit.
 - **Block 2**: `applied lessons:` — relevant memory files from `~/.claude/projects/{hash}/memory/`. MUST include the most recent relevant project memory + any relevant lessons. Block 2 MUST also include a `source_session_id: <UUID from moai session current>` line carrying the Claude Code session_id of the orchestrator turn that generated this resume message per the canonical multi-session coordination policy. The session_id is the same value emitted by `moai session list --json` and stored in `.moai/state/active-sessions.json` — readers can correlate the resume back to its originating session.
   - **Environment fallback** [HARD]: the primary UUID source is `moai session current`. If `moai session current` returns the canonical fallback (runtime did not expose session.id to the CLI subprocess), OR `moai session list --json` returns error (CLI not installed in PATH), OR `.moai/state/active-sessions.json` does not exist (the multi-session coordination layer not yet deployed in this project), the orchestrator MUST emit the recognized fallback pattern verbatim: `source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>`. This pattern is NOT an anti-pattern; it is the prescribed graceful degradation when the CLI/registry layer is absent or the runtime does not expose session.id. The next session, upon `/moai session register` activation, MAY backfill the UUID by appending a `[backfilled: <UUID>]` annotation to the memory file's Block 2 line.
@@ -84,9 +84,9 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
 - **Block 6**: separator + `<workflow-context header>: <next-action-or-spec>` — RECOMMENDED for multi-SPEC waves or follow-up; **omit entirely** for single-SPEC close with no further actions queued.
   - **Header selection (workflow-context conditional)**:
     - **PR-based workflow** (feat/* → PR → merge): `머지 후:` (en `After merge:`)
-    - **Trunk-based no-PR** (e.g., 1-person OSS, all-tier main 직진 push, no merge step): `후속:` (en `Follow-up:`)
+    - **Trunk-based no-PR** (e.g., 1-person OSS, all-tier direct-to-main push, no merge step): `후속:` (en `Follow-up:`)
     - **Single-SPEC close** (no further SPEC/phase queued): omit Block 6 entirely
-  - **Single action principle**: `<next-action-or-spec>` MUST be one concrete SPEC ID, one command, or one phase transition — avoid vague "사이클 반복" / "iteration loop" phrasing that reads as infinite recursion.
+  - **Single action principle**: `<next-action-or-spec>` MUST be one concrete SPEC ID, one command, or one phase transition — avoid vague "cycle-repeat" / "iteration loop" phrasing that reads as infinite recursion.
 
 ### Example (Illustrative; substitute project-specific values when adapting)
 
@@ -147,11 +147,11 @@ The table below is the single navigational index for every anti-pattern code def
 | AP-D-002 | precondition body prose (history/lesson narrative) | § Diet Constraints / Anti-pattern catalogue |
 | AP-D-003 | Block 5 sub-step nesting (multi-phase 11-substep) | § Diet Constraints / Anti-pattern catalogue |
 | AP-D-004 | directive escalation embedded in body (N-th "stronger directive") | § Diet Constraints / Anti-pattern catalogue |
-| AP-D-005 | ceremonial reminder ("discipline 엄수", "정확 참조") in paste-ready | § Diet Constraints / Anti-pattern catalogue |
+| AP-D-005 | ceremonial reminder ("observe discipline", "exact reference") in paste-ready | § Diet Constraints / Anti-pattern catalogue |
 | AP-V-001 | `ps aux` raw count `≤ 2 STRICT` as sole V0 verification | § V0 Abort Gate Doctrine / Anti-pattern |
-| AP-V-002 | V0 FAIL 후 "사용자 약속 누적 미이행 N회" body tracking | § V0 Abort Gate Doctrine / Anti-pattern |
-| AP-V-003 | V0 FAIL 시 AskUserQuestion 강행 옵션 (override + spawn) 제시 | § V0 Abort Gate Doctrine / Anti-pattern |
-| AP-V-004 | V0-b 측정에 `lsof +D "$PWD" | grep -iE 'claude'` 사용 (false-positive 결함) | § V0 Abort Gate Doctrine / Anti-pattern |
+| AP-V-002 | "user promise accumulated non-fulfillment N times" body tracking after V0 FAIL | § V0 Abort Gate Doctrine / Anti-pattern |
+| AP-V-003 | offering a force-through option (override + spawn) in AskUserQuestion on V0 FAIL | § V0 Abort Gate Doctrine / Anti-pattern |
+| AP-V-004 | measuring V0-b with `lsof +D "$PWD" | grep -iE 'claude'` (false-positive defect) | § V0 Abort Gate Doctrine / Anti-pattern |
 
 - Free-form prose handoff — no executable context.
 - Resume without preconditions — next session cannot detect state drift.
@@ -240,93 +240,93 @@ applied lessons: project_myproj_prev_sprint_complete, lessons #12 #13 #14.
 
 ## Diet Constraints
 
-[ZONE:Evolvable] [HARD] paste-ready resume message는 "next session minimum executable context"이다 — audit trail, history record, ceremonial commitment record가 아니다. 차수 누적 retry 진행 시 본문에 history/lesson/directive escalation prose를 append-only로 누적하는 것은 empirical 입증된 anti-pattern이다.
+[ZONE:Evolvable] [HARD] A paste-ready resume message is "next session minimum executable context" — it is NOT an audit trail, history record, or ceremonial commitment record. Accumulating history/lesson/directive-escalation prose in the body via append-only across retry iterations is an empirically proven anti-pattern.
 
-### Block 2 applied lessons 제약
+### Block 2 applied-lessons constraint
 
-- 최대 **4개 references** (memory file slug 또는 lesson identifier)
-- 각 reference는 **1줄 identifier** (예: `L52#33`, `L_NEW_V0_ABORT_GATE` — full prose history 금지)
-- 5개 이상은 anti-pattern → memory file body로 이관
+- At most **4 references** (memory file slug or lesson identifier)
+- Each reference is a **single-line identifier** (e.g. `L52#33`, `L_NEW_V0_ABORT_GATE` — full prose history is prohibited)
+- Five or more is an anti-pattern → move the surplus into the memory file body
 
-### Block 4 precondition 제약
+### Block 4 precondition constraint
 
-- 각 precondition **≤ 200 chars** target (실용적 가독성 한계)
+- Each precondition targets **≤ 200 chars** (practical readability limit)
 - Format: `N) <verifiable command> → <expected outcome>`
-- History tracking / lesson narrative / 누적 패턴 추적 prose 금지
-- Multi sub-command (V0a/V0b/V0c)는 단일 precondition으로 통합 가능, STRICT criterion만 1줄로
+- History tracking / lesson narrative / cumulative-pattern prose is prohibited
+- Multi sub-command (V0a/V0b/V0c) may be folded into a single precondition, keeping only the STRICT criterion on one line
 
-### Block 5 실행 제약
+### Block 5 run constraint
 
-- **단일 primary action** (typically 1줄 command, 예: `/moai run SPEC-ID`)
-- Sub-detail (agent scope, AC bindings, file path line numbers)은 SPEC artifacts(plan.md / acceptance.md) 내부에 존재 — paste-ready inline 금지
-- Ceremonial reminder ("정확 참조", "discipline 엄수", "self-verify") 금지 — 이는 agent body 내부 책임
+- **Single primary action** (typically a one-line command, e.g. `/moai run SPEC-ID`)
+- Sub-detail (agent scope, AC bindings, file path line numbers) lives inside SPEC artifacts (plan.md / acceptance.md) — inline in the paste-ready is prohibited
+- Ceremonial reminders ("exact reference", "observe discipline", "self-verify") are prohibited — those belong inside the agent body
 
-### Block 6 후속 제약
+### Block 6 follow-up constraint
 
-- **≤ 2줄** (next concrete SPEC ID 또는 next phase command)
-- Multi-step 후속 (M4→M5→M6→sync→Mx→close)는 SPEC plan.md milestone로 관리 — paste-ready inline 금지
+- **≤ 2 lines** (next concrete SPEC ID or next phase command)
+- Multi-step follow-ups (M4→M5→M6→sync→Mx→close) are managed via the SPEC plan.md milestones — inline in the paste-ready is prohibited
 
-### Doctrine reference 패턴
+### Doctrine reference pattern
 
-- N차 sustained 1st→2nd→3rd→4th→5th 같은 history는 lesson memory file에만 보관
-- paste-ready에서는 `per session-handoff.md § <Doctrine Section>` 1줄 reference만 사용
+- N-th-iteration sustained 1st→2nd→3rd→4th→5th style history belongs ONLY in lesson memory files
+- In the paste-ready, use a single one-line reference: `per session-handoff.md § <Doctrine Section>`
 
 ### Anti-pattern catalogue
 
 > See also: § Anti-Patterns (general resume hygiene) and § V0 Abort Gate Doctrine / Anti-pattern (abort-gate violations AP-V-001..004). This catalogue covers paste-ready budget violations (AP-D-001..005).
 
-- **AP-D-001**: Block 2 lessons 5+ references → 4 이하로 trim, 나머지는 memory file body로 이관
-- **AP-D-002**: precondition 본문 prose (history/lesson narrative/누적 패턴) → 1줄 verifiable command + STRICT criterion만 남기기
-- **AP-D-003**: Block 5 sub-step nesting (Phase 0 + Phase 0.5 + Phase 1B 같은 multi-phase 11-substep) → single primary action으로 압축, sub-detail은 SPEC artifacts에
-- **AP-D-004**: directive escalation 본문 임베드 (N차 "stronger directive", N+1차 "even-stronger directive", N+2차 "documentation-level codification entry-condition") → rule file로 codification, paste-ready는 reference만
-- **AP-D-005**: ceremonial reminder ("B8/B15 discipline 엄수", "manager-develop은 plan.md §F.3 line 130-143 정확 참조") → SPEC artifact 내부 보관, paste-ready는 trust delegation
+- **AP-D-001**: Block 2 lessons 5+ references → trim to 4 or fewer, move the rest into the memory file body
+- **AP-D-002**: precondition body prose (history/lesson narrative/cumulative pattern) → keep only a one-line verifiable command + STRICT criterion
+- **AP-D-003**: Block 5 sub-step nesting (Phase 0 + Phase 0.5 + Phase 1B style multi-phase 11-substep) → compress into a single primary action; sub-detail belongs in SPEC artifacts
+- **AP-D-004**: directive escalation embedded in body (N-th "stronger directive", N+1-th "even-stronger directive", N+2-th "documentation-level codification entry-condition") → codify in a rule file; the paste-ready keeps only the reference
+- **AP-D-005**: ceremonial reminder ("B8/B15 observe discipline", "manager-develop must exactly reference plan.md §F.3 line 130-143") → keep inside SPEC artifacts; the paste-ready relies on trust delegation
 
 ### Pre-emit self-check (paste-ready budget) — 8 items
 
 - [ ] Block 2 ≤ 4 references
-- [ ] Block 2 각 reference 1줄 identifier (full history 금지)
-- [ ] Block 4 각 precondition ≤ 200 chars
-- [ ] Block 4 precondition prose에 history 임베드 없음
-- [ ] Block 5 single primary action (command + 1줄 context max)
+- [ ] Block 2 each reference is a single-line identifier (full history prohibited)
+- [ ] Block 4 each precondition ≤ 200 chars
+- [ ] Block 4 precondition prose has no embedded history
+- [ ] Block 5 single primary action (command + one-line context max)
 - [ ] Block 6 ≤ 2 lines
-- [ ] Doctrine history not embedded → rule file reference only
-- [ ] Ceremonial reminder 없음
+- [ ] Doctrine history not embedded → rule-file reference only
+- [ ] No ceremonial reminder
 
-### 적용 범위
+### Applicable scope
 
-- 모든 신규 paste-ready resume message
-- 차수 누적 retry paste-ready (다이어트 vs 본문 누적 선택 → 다이어트 default)
-- Cross-line 일관 적용 (모든 SPEC line)
+- All new paste-ready resume messages
+- Retry-iteration paste-ready messages (diet vs body-accumulation choice → diet is the default)
+- Applied consistently across the line (all SPEC lines)
 
 ## V0 Abort Gate Doctrine
 
-[ZONE:Evolvable] [HARD] paste-ready Block 4 V0 precondition은 **lsof + cwd 교차 검증**을 사용한다. `ps aux` raw count는 environmental baseline noise이며 단독 V0 검증으로 사용 시 multi-session 환경에서 STRICT ≤2 위반이 13회+ 연속 누적되는 false-positive를 발생시킨다 (empirical 입증).
+[ZONE:Evolvable] [HARD] The paste-ready Block 4 V0 precondition uses **lsof + cwd cross-validation**. A raw `ps aux` count is environmental baseline noise; used as the sole V0 check it produces false-positives where the STRICT ≤2 violation accumulates 13+ consecutive times in a multi-session environment (empirically proven).
 
-### V0 검증 명령 (canonical)
+### V0 verification commands (canonical)
 
 ```bash
-# V0-a: informational baseline (blocking 아님 — multi-session 정상 환경에서 16-19 expected)
+# V0-a: informational baseline (NOT blocking — 16-19 sessions are normal in a healthy multi-session env)
 ps aux | grep -iE '\bclaude\b' | grep -v -E 'plugin|Helper|Application|antigravity|grep' | wc -l
 
-# V0-b: critical blocking — 본 WT 내부에 file handle 보유한 claude *프로세스* 수
-# 주의: `grep -iE 'claude'` 단독은 파일명에 'claude' 포함된 콘텐츠(claude-*.md 등)까지 매칭하는
-#       false-positive 결함이 있다.
-#       반드시 COMMAND 컬럼으로 claude *프로세스*만 필터한다 (`lsof -a -c claude`).
+# V0-b: critical blocking — count of claude *processes* holding a file handle inside this WT
+# Note: bare `grep -iE 'claude'` has a false-positive defect — it also matches content whose
+#       filename contains 'claude' (claude-*.md etc.).
+#       Always filter by the COMMAND column to keep only claude *processes* (`lsof -a -c claude`).
 lsof -a -c claude +D "$PWD" 2>/dev/null | awk 'NR>1' | wc -l   # STRICT 0
 
-# V0-c: critical blocking — cwd가 본 WT인 active claude session 수 (본 세션 + parent process만)
-lsof -a -c claude -d cwd 2>/dev/null | awk 'NR>1 && $NF ~ /<본_WT_경로>/' | wc -l   # STRICT ≤2
+# V0-c: critical blocking — count of active claude sessions whose cwd is this WT (this session + parent process only)
+lsof -a -c claude -d cwd 2>/dev/null | awk 'NR>1 && $NF ~ /<this-WT-path>/' | wc -l   # STRICT ≤2
 ```
 
-### Abort 의무
+### Abort obligation
 
-V0-b ≥ 1 OR V0-c ≥ 3 시 (다른 precondition V1/V2/V3 PASS 여부 무관):
-- 다음 paste-ready 차수 산출 + memory write
-- **Spawn 금지** (manager-develop / manager-spec / manager-docs / 기타 implementation agents)
-- **AskUserQuestion 강행 옵션 제시 금지** (override option은 doctrine 위반)
-- 본 세션 종료
+When V0-b ≥ 1 OR V0-c ≥ 3 (regardless of whether the other preconditions V1/V2/V3 PASS):
+- Produce the next paste-ready iteration + write it to memory
+- **Spawn prohibited** (manager-develop / manager-spec / manager-docs / any other implementation agents)
+- **AskUserQuestion force-through options prohibited** (an override option violates the doctrine)
+- End this session
 
-### Cross-pollination 이력
+### Cross-pollination history
 
 Cross-line provenance: retained in lesson memory; this section codifies the doctrine. (The iteration history that originally surfaced the V0 false-abort hazard is preserved in lesson memory, not in this rule body — per AP-D-002, history belongs in lessons, not in paste-ready-adjacent prose.)
 
@@ -334,10 +334,10 @@ Cross-line provenance: retained in lesson memory; this section codifies the doct
 
 > See also: § Anti-Patterns (general resume hygiene) and § Diet Constraints / Anti-pattern catalogue (paste-ready budget violations AP-D-001..005). This catalogue covers abort-gate violations (AP-V-001..004).
 
-- **AP-V-001**: `ps aux` raw count `≤ 2 STRICT`을 단독 V0 검증으로 사용 → environmental baseline noise (multi-session normal state에서 16-19 sessions은 정상)
-- **AP-V-002**: V0 FAIL 후 "사용자 약속 누적 미이행 N회" 본문 추적 → 죄책감 부담만 부과 + 실질 행동 변화 0 + paste-ready 비대화 → 도구화 anti-pattern
-- **AP-V-003**: V0 FAIL 시 AskUserQuestion에 강행 옵션 (option D "override + spawn") 제시 → doctrine 위반
-- **AP-V-004**: V0-b 측정에 `lsof +D "$PWD" | grep -iE 'claude'` 사용 → 파일명에 'claude' 포함된 콘텐츠(claude-*.md 등)까지 매칭하는 false-positive 결함이 있다. COMMAND 컬럼 프로세스 필터 `lsof -a -c claude +D "$PWD"` 필수 — genuine claude race signal만 카운트해야 abort 의무가 정확히 발동한다
+- **AP-V-001**: using `ps aux` raw count `≤ 2 STRICT` as the sole V0 check → environmental baseline noise (16-19 sessions are normal in a healthy multi-session state)
+- **AP-V-002**: tracking "user promise accumulated non-fulfillment N times" in the body after a V0 FAIL → imposes only guilt, produces zero real behavior change, and bloats the paste-ready → instrumentalization anti-pattern
+- **AP-V-003**: offering a force-through option (option D "override + spawn") in AskUserQuestion on a V0 FAIL → doctrine violation
+- **AP-V-004**: measuring V0-b with `lsof +D "$PWD" | grep -iE 'claude'` → has a false-positive defect that also matches content whose filename contains 'claude' (claude-*.md etc.). The COMMAND-column process filter `lsof -a -c claude +D "$PWD"` is mandatory — only a genuine claude race signal may be counted so the abort obligation fires accurately
 
 ## Cross-references
 

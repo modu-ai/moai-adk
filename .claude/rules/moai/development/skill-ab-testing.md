@@ -207,14 +207,14 @@ For each skill iteration, document:
 ### Quality Metrics
 | Assertion | With-Skill | Baseline | Status |
 |-----------|-----------|----------|--------|
-| Output is valid code | 100% | 75% | ✅ PASS |
-| Includes all features | 100% | 50% | ✅ PASS |
-| Well-formatted | 100% | 60% | ✅ PASS |
-| **Average Score** | **100%** | **61.7%** | ✅ **+61.7%** |
+| Output is valid code | 100% | 75% | PASS |
+| Includes all features | 100% | 50% | PASS |
+| Well-formatted | 100% | 60% | PASS |
+| **Average Score** | **100%** | **61.7%** | **+61.7%** |
 
 ### Conclusion
-- Improvement target: ≥10% ✅ Met (8.5% token, +61.7% quality)
-- All assertions passing ✅
+- Improvement target: ≥10% — Met (8.5% token, +61.7% quality)
+- All assertions passing
 - Ready for release
 ```
 

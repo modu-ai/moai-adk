@@ -288,7 +288,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/core/moai-constitution.md
   anchor: "#opus-47-prompt-philosophy"
-  clause: "Principle 4 — Fewer subagents spawned by default: Opus 4.7 does not auto-spawn subagents."
+  clause: "Principle 4 — Fewer subagents spawned by default: Opus 4.7+ / 4.8 does not auto-spawn subagents."
   canary_gate: false
 
 - id: CONST-V3R2-029
@@ -296,7 +296,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/core/moai-constitution.md
   anchor: "#opus-47-prompt-philosophy"
-  clause: "Principle 5 — Fewer tool calls by default, more reasoning: Opus 4.7 prefers reasoning over tool invocation."
+  clause: "Principle 5 — Fewer tool calls by default, more reasoning: Opus 4.7+ / 4.8 prefers reasoning over tool invocation."
   canary_gate: false
 
 - id: CONST-V3R2-030

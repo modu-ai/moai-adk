@@ -8,13 +8,13 @@ paths: "**/*.kt,**/*.kts,**/build.gradle.kts"
 ---
 
 
-Kotlin 2.0+ Expert - K2 compiler, coroutines, Ktor, Compose Multiplatform with Context7 integration.
+Kotlin 2.2+ (current 2.4) Expert - K2 compiler, coroutines, Ktor, Compose Multiplatform with Context7 integration.
 
 
 Core Capabilities:
 
-- Kotlin 2.0: K2 compiler, coroutines, Flow, sealed classes, value classes
-- Ktor 3.0: Async HTTP server/client, WebSocket, JWT authentication
+- Kotlin 2.2+: K2 compiler, coroutines, Flow, sealed classes, value classes
+- Ktor 3.x (current 3.5): Async HTTP server/client, WebSocket, JWT authentication
 - Exposed 0.55: Kotlin SQL framework with coroutines support
 - Spring Boot (Kotlin): Kotlin-idiomatic Spring with WebFlux
 - Compose Multiplatform: Desktop, iOS, Web, Android UI
@@ -23,13 +23,13 @@ Core Capabilities:
 ---
 
 
-### Kotlin 2.0 Features
+### Kotlin 2.2+ Features
 
 Coroutines and Flow: Use coroutineScope with async for parallel operations. Create deferred values with async, then call await on each to get results. Combine results into data classes. For reactive streams, create flow blocks with emit calls inside while loops. Use delay for intervals and flowOn to specify dispatcher.
 
 Sealed Classes and Value Classes: Define sealed interface with generic type parameter. Create data class implementations for success and data object for stateless cases like Loading. Use @JvmInline annotation with value class wrapping a primitive. Add init blocks with require for validation.
 
-### Ktor 3.0 Server
+### Ktor 3.x Server
 
 Application Setup: Call embeddedServer with Netty, port, and host parameters. Inside the lambda, call configuration functions for Koin, security, routing, and content negotiation. Call start with wait equals true.
 
@@ -73,9 +73,9 @@ Use plugins block with kotlin("jvm") and kotlin("plugin.serialization") with ver
 
 Library mappings for latest documentation:
 
-- `/ktorio/ktor` - Ktor 3.0 server/client documentation
+- `/ktorio/ktor` - Ktor 3.x server/client documentation
 - `/jetbrains/exposed` - Exposed SQL framework
-- `/JetBrains/kotlin` - Kotlin 2.0 language reference
+- `/JetBrains/kotlin` - Kotlin 2.2+ language reference
 - `/Kotlin/kotlinx.coroutines` - Coroutines library
 - `/jetbrains/compose-multiplatform` - Compose Multiplatform
 - `/arrow-kt/arrow` - Arrow functional programming
@@ -126,7 +126,7 @@ Exposed: Ensure all DB operations run within transaction context. Be aware of la
 
 This guide is self-contained. Use the sections above as the primary reference for:
 
-- Kotlin 2.0 language features, Ktor 3.0 server development, and Exposed SQL framework patterns
+- Kotlin 2.2+ language features, Ktor 3.x server development, and Exposed SQL framework patterns
 - Spring Boot with Kotlin application structure
 - Compose Multiplatform UI patterns
 - Testing with MockK and Gradle build configuration

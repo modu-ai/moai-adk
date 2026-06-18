@@ -196,7 +196,7 @@ Stage 1 (Research):
 
 Stage 2 (Implementation Team):
 - TeamCreate with Backend, Frontend, Tester
-- Parallel development for 2 days
+- Parallel development across two phases
 - Integration testing
 
 Stage 3 (Review):

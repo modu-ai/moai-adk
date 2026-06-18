@@ -214,7 +214,7 @@ allowed-tools: "WebSearch,WebFetch,Bash,Read,Write,Edit,Grep,Glob"
 | Field | Required | Type | Notes |
 |-------|----------|------|-------|
 | `name` | Optional | string | Defaults to the skill directory name when omitted; recommended `moai-{category}-{name}` form for MoAI skills |
-| `description` | ✅ | string | Concise trigger summary; the official cap is 1,536 chars combined across `description` + `when_to_use` |
+| `description` | Required | string | Concise trigger summary; the official cap is 1,536 chars combined across `description` + `when_to_use` |
 | `paths` | Optional | string | Glob pattern CSV (no YAML array) |
 | `domains` | Optional | array | Topic categories for organization |
 | `model` | Optional | string | `"default"`, `"opus"`, `"sonnet"` |
