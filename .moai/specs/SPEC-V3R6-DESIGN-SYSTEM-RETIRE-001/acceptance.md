@@ -15,7 +15,7 @@
 | AC-DSR-004 | REQ-DSR-004 | MUST | Catalog entry block removed |
 | AC-DSR-005 | REQ-DSR-005 | MUST | Frozen-guard test fixtures updated (both sites) |
 | AC-DSR-006 | REQ-DSR-006 | MUST | Cross-skill reference parenthetical removed (surgical) |
-| AC-DSR-007 | REQ-DSR-007 | MUST | docs-site 4-locale parity (symmetric row removal + header treatment) |
+| AC-DSR-007 | REQ-DSR-007 | MUST | docs-site 4-locale parity (symmetric row removal + header treatment + global 32→31 count update) |
 | AC-DSR-008 | REQ-DSR-008 | MUST | Empty skill directories removed |
 | AC-DSR-009 | REQ-DSR-009 | MUST | Historical references preserved (no CHANGELOG/.moai archival edits) |
 | AC-DSR-010 | REQ-DSR-010 | MUST | Build + targeted tests + spec-lint green |
@@ -78,6 +78,27 @@ for loc in en ko ja zh; do
   grep -c "moai-design-system" docs-site/content/$loc/advanced/skill-guide.md
 done
 # Expected: 0 0 0 0 (four zeros)
+```
+
+**Global skill-count update (32 → 31) — 3 lines per locale, all 4 locales**:
+each locale's `skill-guide.md` carries THREE prose references to the global
+skill count, all of which MUST be decremented from 32 to 31 for internal
+consistency (else the doc claims 32 while enumerating 31):
+1. The "total of N skills" line (en:65 / ko:62 / ja:59 / zh:61) — both the
+   total count AND the "31 specialized" sub-count decrement (`31 → 30`).
+2. The "umbrella skill is included in the N total" line (en:125-equivalent /
+   ko:125 / ja:122 / zh:nearby) — the `32`/`N` total decrements to `31`.
+3. The "load all N skills = ~160,000 tokens" line (en:168 / ko:165 / ja:160 /
+   zh:161) — the `N` in "all N skills" decrements from 32 to 31 (the token
+   estimate stays approximate; the count reference is the load-bearing fix).
+
+Per-locale verification:
+```bash
+for loc in en ko ja zh; do
+  echo "=== $loc ==="
+  grep -nE "(32|31) (skills|스킬|スキル|个技能)" docs-site/content/$loc/advanced/skill-guide.md
+done
+# Expected: NO line references "32" as the current total — only "31"
 ```
 
 ### AC-DSR-008 — Empty skill directories removed

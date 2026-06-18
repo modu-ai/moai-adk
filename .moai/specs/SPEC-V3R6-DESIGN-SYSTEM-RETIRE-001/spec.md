@@ -103,8 +103,8 @@ authoritative retirement surface. Any file not listed here is Out of Scope
 | 2b | `.claude/skills/moai-design-system/` (directory) | local skill dir | empty after file deletion | `rmdir` (empty dir) |
 | 2c | `internal/template/templates/.claude/skills/moai-design-system/` (directory) | template skill dir | empty after file deletion | `rmdir` (empty dir) |
 | 3 | `internal/cli/doctor_skills.go` line 24 | Go allowlist | `"moai-design-system",` literal in static core-skill list (comment `// design (1)`) | Remove the literal AND the `// design (1)` comment line; the design category becomes empty |
-| 4 | `internal/cli/doctor_skills_test.go` lines 52-53 | Go test | test case `name: "valid static core skill moai-design-system returns PASS", skillName: "moai-design-system"` | Remove the 4-line test-case struct block (lines 51-54) |
-| 5 | `internal/template/catalog.yaml` lines 163-167 | catalog entry | 5-line block: `- name: moai-design-system / tier / path / hash / version` | Remove the 5-line block from the `design` pack |
+| 4 | `internal/cli/doctor_skills_test.go` lines 51-55 | Go test | test case `name: "valid static core skill moai-design-system returns PASS", skillName: "moai-design-system"` | Remove the 5-line test-case struct block (lines 51-55 inclusive: opening `{`@51, `name:`@52, `skillName:`@53, `wantClass:`@54, `},`@55) |
+| 5 | `internal/template/catalog.yaml` lines 164-168 | catalog entry | 5-line block: `- name: moai-design-system / tier / path / hash / version` | Remove the 5-line block from the `design` pack (the pack retains 6 robustly-populated entries — see research.md §R3.3) |
 | 6 | `internal/design/dtcg/frozen_guard_test.go` line 50 | Go frozen-path test | `".claude/skills/moai-design-system/SKILL.md",` literal in allowedPaths | Remove the literal from allowedPaths slice #1 |
 | 6b | `internal/design/dtcg/frozen_guard_test.go` line 104 | Go frozen-path test | `".claude/skills/moai-design-system/SKILL.md",` literal in allowedPaths slice #2 | Remove the literal from allowedPaths slice #2 |
 | 7 | `internal/template/templates/.claude/skills/moai-workflow-design/SKILL.md` line 8 | cross-skill reference | frontmatter description prose `"... (see moai-design-system)."` and/or body prose | Remove the parenthetical `(see moai-design-system)` from the description; leave the rest of the description intact |
@@ -141,6 +141,14 @@ sub-heading is an `### Out of Scope — <topic>` H3 per the
 - `.claude/worktrees/**` and `.moai/specs/SPEC-V3R6-DOCS-COVERAGE-001/research.md`
   (which lists `moai-design-system` in a doc-coverage inventory) — worktree
   copies and prior-SPEC research bodies are out of scope.
+- `docs/design/**` (incl. `docs/design/major-v3-master.md` lines 543 + 822,
+  which name `moai-design-system` as the design-cluster merge target and in
+  the v3.0.0 migration table) — the v3.0.0 master design doc is a
+  design-record-of-the-past authored 2026-04-23, the same immutability class
+  as `.moai/design/v3-redesign/**` (above). Without this exclusion, the §F
+  success-criterion grep (which scopes `.claude/`, `internal/**`, and
+  `docs-site/content/`) would technically PASS while leaving the
+  `docs/design/` historical reference live.
 
 ### Out of Scope — Surviving skill content migration
 
@@ -258,9 +266,9 @@ verification batch (`go build ./...`, `go test ./internal/cli/... ./internal/des
 - All 10 edit sites in §B.1 are applied.
 - `go build ./...` passes.
 - `go test ./internal/cli/... ./internal/design/dtcg/...` passes.
-- `grep -rn "moai-design-system" .claude/ internal/template/templates/ internal/cli/ internal/template/catalog.yaml internal/design/dtcg/ docs-site/content/` returns ZERO matches (active-code zero-tolerance; historical references in CHANGELOG/.moai/ excluded by design).
+- `grep -rn "moai-design-system" .claude/ internal/template/templates/ internal/cli/ internal/template/catalog.yaml internal/design/dtcg/ docs-site/content/` returns ZERO matches (active-code zero-tolerance; historical references in CHANGELOG/.moai/** AND `docs/design/**` excluded by design per §C — the grep scope is intentionally narrower than the full repo to respect archival immutability).
 - spec-lint on this SPEC returns 0 findings.
-- 4-locale docs-site parity verified (same row-removal + header-update treatment in en/ko/ja/zh).
+- 4-locale docs-site parity verified (same row-removal + header-update + global 32→31 count update in en/ko/ja/zh; no locale references `32` as the current total post-retirement).
 
 ## §G. Cross-References
 

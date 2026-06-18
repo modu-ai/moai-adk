@@ -97,16 +97,26 @@ Intended edit: remove lines 23-24 (the `// design (1)` comment AND the `"moai-de
 
 **File 2: `internal/cli/doctor_skills_test.go`**
 
-Current state (lines 51-54):
+Current state (lines 51-55 — a 5-line struct block including the opening `{`):
 ```go
-		{
-			name:      "valid static core skill moai-design-system returns PASS",
-			skillName: "moai-design-system",
-			wantClass: "PASS",
-		},
+		{                                          // line 51
+			name:      "valid static core skill moai-design-system returns PASS",  // line 52
+			skillName: "moai-design-system",        // line 53
+			wantClass: "PASS",                      // line 54
+		},                                         // line 55
 ```
 
-Intended edit: remove the entire 4-line test-case struct block (lines 51-54 inclusive).
+Intended edit: remove the entire 5-line test-case struct block (lines 51-55
+inclusive — opening brace at 51, closing `},` at 55).
+
+**Orphan-header note**: after removing lines 23-24 from `doctor_skills.go`
+(the `// design (1)` comment + the `"moai-design-system",` literal), the
+implementer MUST verify no trailing/leading blank-line artifact is left
+between the `// ref (5)` block and the `// FROZEN domain (2)` block. The Edit
+tool uses string-match (not line-jump), so the match is deterministic — but
+the implementer SHOULD visually confirm the result shows exactly one blank
+line (or zero) between the two blocks, matching the file's surrounding
+2-line-block style.
 
 **Commit**: `feat(SPEC-V3R6-DESIGN-SYSTEM-RETIRE-001): M2 remove moai-design-system from doctor_skills allowlist + test`.
 
@@ -120,16 +130,20 @@ Intended edit: remove the entire 4-line test-case struct block (lines 51-54 incl
 
 **File: `internal/template/catalog.yaml`**
 
-Current state (lines 163-167):
+Current state (lines 164-168):
 ```yaml
-                - name: moai-design-system
-                  tier: optional-pack:design
-                  path: templates/.claude/skills/moai-design-system/
-                  hash: dc4a1fc0853c0113277d92fd7e4bbad412f09c414f7c346fc4e581cf3944fd8d
-                  version: 1.0.0
+                - name: moai-design-system              # line 164
+                  tier: optional-pack:design            # line 165
+                  path: templates/.claude/skills/moai-design-system/  # line 166
+                  hash: dc4a1fc0853c0113277d92fd7e4bbad412f09c414f7c346fc4e581cf3944fd8d  # line 167
+                  version: 1.0.0                        # line 168
 ```
 
-Intended edit: remove the 5-line block. The `design` pack retains its other entries (e.g. `moai-domain-brand-design`).
+Intended edit: remove the 5-line block. The `design` pack retains its other
+**6 entries** (`moai-domain-brand-design`, `moai-domain-copywriting`,
+`moai-domain-humanize`, `moai-domain-design-handoff`, `moai-workflow-design`,
+`moai-workflow-gan-loop`) — see research.md §R3.3 for the verification-claim
+correction (the pack does NOT become empty or near-empty).
 
 **Commit**: `feat(SPEC-V3R6-DESIGN-SYSTEM-RETIRE-001): M3 remove moai-design-system from catalog.yaml design pack`.
 
@@ -199,6 +213,10 @@ Note: the period after `documentation` is preserved; only the parenthetical is r
 **Per-locale edit**:
 1. Remove the table row `| \`moai-design-system\` | <locale description> |`.
 2. Update the section header `### Design (Design System) - 1 skill` (EN; locale-equivalent in others) to reflect the removal. Preferred treatment: rewrite the count to `- 0 skills` OR remove the section entirely if it becomes an empty header with no rows.
+3. **Global skill-count update (32 → 31)**: each locale's `skill-guide.md` carries THREE prose references to the global skill count that MUST decrement from 32 to 31 (else the doc claims 32 while enumerating 31 — docs-truth drift):
+   - **Line A** — the "total of N skills" prose line (en:65 / ko:62 / ja:59 / zh:61). BOTH the total (`32 → 31`) AND the "N specialized" sub-count (`31 → 30`) decrement.
+   - **Line B** — the "`moai` umbrella is included in the N total" line (en:125-equiv / ko:125 / ja:122 / zh:nearby). The `32`/`N` total decrements to `31`.
+   - **Line C** — the "load all N skills = ~160,000 tokens" line (en:168 / ko:165 / ja:160 / zh:161). The `N` in "all N skills" decrements from 32 to 31 (the ~160,000 token estimate stays approximate — the count reference is the load-bearing fix).
 
 **Decision on header treatment**: prefer **removing the section entirely** (header + table + the now-empty body) across all 4 locales, because an empty "Design - 0 skills" section adds noise. BUT apply the SAME treatment in all 4 locales — do NOT remove in EN and keep-as-empty-header in KO. Consistency is the invariant (REQ-DSR-007).
 
@@ -206,9 +224,9 @@ If removing the section breaks a downstream doc-site build (e.g. a TOC anchor), 
 
 **Commit**: `docs(SPEC-V3R6-DESIGN-SYSTEM-RETIRE-001): M6 remove moai-design-system from docs-site skill-guide (4-locale)`.
 
-**REQs satisfied**: REQ-DSR-007 (4-locale parity).
+**REQs satisfied**: REQ-DSR-007 (4-locale parity — row removal + header treatment + global 32→31 count update).
 
-**Verification**: `grep -rn "moai-design-system" docs-site/content/` returns zero matches; docs-site 4-locale parity grep (per the docs-site i18n rules) shows symmetric row removal.
+**Verification**: `grep -rn "moai-design-system" docs-site/content/` returns zero matches; docs-site 4-locale parity grep (per the docs-site i18n rules) shows symmetric row removal; no locale's skill-guide.md references `32` as the current total (all four show `31`).
 
 ### §F.7 M7 — Final verification + empty-directory cleanup confirmation
 
@@ -225,7 +243,7 @@ go test ./internal/cli/... ./internal/design/dtcg/...
 # 3. Full test suite (catch cascading failures; distinguish pre-existing statusline failures)
 go test ./... 2>&1 | tee /tmp/dsr-final.txt
 
-# 4. Active-code zero-tolerance grep (historical references in CHANGELOG/.moai excluded by design)
+# 4. Active-code zero-tolerance grep (historical references in CHANGELOG/.moai/** AND docs/design/** excluded by design — see spec.md §C)
 grep -rn "moai-design-system" \
   .claude/ \
   internal/template/templates/ \
@@ -234,7 +252,7 @@ grep -rn "moai-design-system" \
   internal/design/dtcg/ \
   docs-site/content/ \
   2>/dev/null
-# Expected: zero matches
+# Expected: zero matches (grep scope intentionally excludes docs/design/** and .moai/** archival paths)
 
 # 5. spec-lint on this SPEC
 go run ./cmd/moai spec lint .moai/specs/SPEC-V3R6-DESIGN-SYSTEM-RETIRE-001/
@@ -268,7 +286,7 @@ go run ./cmd/moai doctor --skills 2>&1 | head -20
 
 - spec.md §B.1 (file-surface table — authoritative source for the edits above)
 - design.md §D2 (per-file treatment decision table)
-- research.md §R1-R3 (rationale evidence + residual risks)
+- research.md §R1-R3 (rationale evidence + residual risks; §R3.3 carries the catalog-pack 6-entry verification-claim correction)
 - CLAUDE.local.md §15 (template neutrality), §17 (docs-site i18n), §23 (git workflow), §24 (harness namespace), §25 (template internal-content isolation)
 - `SPEC-V3R6-OUTOFSCOPE-GUIDANCE-ALIGN-001` (OutOfScopeRule h3 convention)
 - `SPEC-V3R6-HARNESS-NAMESPACE-V2-001/progress.md` line 87 (scope-out provenance)

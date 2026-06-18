@@ -166,13 +166,30 @@ Claude Code would return "skill not found". No mitigation in this SPEC.
 The forward-link is a follow-up SPEC (not authored here) that would add a
 retired-skill redirect or a deprecation notice. Accepted as residual risk.
 
-### §R3.3 Residual risk: catalog pack becomes empty
+### §R3.3 Catalog pack retains 6 robustly-populated entries (no empty-pack risk)
 
-After removing the `moai-design-system` entry from catalog.yaml's `design`
-pack, the pack may become empty or near-empty (only
-`moai-domain-brand-design` would remain in the design pack). An empty pack
-is not a build-breaker (catalog.yaml tolerates empty skill lists), but it
-is a downstream catalog-reshuffling concern, explicitly Out of Scope (§C).
+**Correction (verification-claim-integrity):** an earlier draft of this
+section claimed the `design` pack "may become empty or near-empty (only
+`moai-domain-brand-design` would remain)". That claim was not verified
+against the tree. A direct Read of `internal/template/catalog.yaml` lines
+159-198 shows the `design` pack currently carries exactly **7 entries**:
+`moai-design-system`, `moai-domain-brand-design`, `moai-domain-copywriting`,
+`moai-domain-humanize`, `moai-domain-design-handoff`, `moai-workflow-design`,
+`moai-workflow-gan-loop`. After retiring `moai-design-system`, the pack
+**retains 6 entries**:
+
+1. `moai-domain-brand-design`
+2. `moai-domain-copywriting`
+3. `moai-domain-humanize`
+4. `moai-domain-design-handoff`
+5. `moai-workflow-design`
+6. `moai-workflow-gan-loop`
+
+The "empty / near-empty pack" residual risk is hereby **RETRACTED** — it is
+a non-risk. The pack stays robustly populated. The §C "Out of Scope —
+Catalog-pack reshuffling" exclusion still stands as a scope boundary (no
+reordering of the surviving 6 entries), but it no longer references an
+empty-pack concern.
 
 ## §R4. Provenance of the retirement decision
 
