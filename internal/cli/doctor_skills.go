@@ -20,8 +20,6 @@ var staticCoreAllowlist = []string{
 	// ref (5)
 	"moai-ref-api-patterns", "moai-ref-git-workflow", "moai-ref-owasp-checklist",
 	"moai-ref-react-patterns", "moai-ref-testing-pyramid",
-	// design (1)
-	"moai-design-system",
 	// FROZEN domain (2)
 	"moai-domain-brand-design", "moai-domain-copywriting",
 	// meta (1)
