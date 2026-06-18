@@ -95,7 +95,7 @@ run-phase memory가 forward-gap으로 분류했으나, `rule_template_mirror_tes
 ## §E.5 Mx-phase Audit-Ready Signal
 
 mx_complete_at: 2026-06-18
-mx_commit_sha: <pending — backfilled in follow-up commit (2-step)>
+mx_commit_sha: dd710a664
 mx_status: PASS (4-phase close — plan + run + sync + Mx)
 mx_owner: orchestrator-direct (GLM backend — manager-docs/sync-auditor spawn context-limit fallback per feedback_glm_orchestrator_direct_sync_mx)
 
