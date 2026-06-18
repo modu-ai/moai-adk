@@ -165,7 +165,7 @@ The retirement is **run-complete**: all 10 MUST ACs PASS, the active-code zero-t
 
 ```yaml
 sync_complete_at: "2026-06-19"
-sync_commit_sha: "<backfilled in Mx-phase commit>"
+sync_commit_sha: "1c67e85d3"
 sync_status: "implemented"
 frontmatter_transition: "in-progress → implemented (this sync commit)"
 docs_touched: "progress.md §E.4; spec.md frontmatter status"
@@ -176,4 +176,14 @@ lsp_sync_gate: "met — spec-lint 0 errors; pre-existing full-suite failures (in
 
 ### (Migrated from §E.5)
 
-_<pending Mx-phase>_
+```yaml
+mx_complete_at: "2026-06-19"
+mx_commit_sha: "<backfilled in backfill commit>"
+mx_status: "completed"
+frontmatter_transition: "implemented → completed (this Mx commit)"
+sync_commit_sha: "1c67e85d3"
+4_phase_close: "plan(base 0e9a1b851, iter 147c642ca→42be09abc→fe80783be) + run(46d937b53, M1-M7) + sync(1c67e85d3) + Mx(this commit) — design-system retirement 완전 close"
+ownership: "orchestrator-direct (GLM 1M backend fallback per feedback_glm_orchestrator_direct_sync_mx); Authored-By-Agent: manager-docs (implemented→completed per Ownership Matrix: manager-docs OR orchestrator)"
+ownership_transition_note: "in-progress→implemented (sync 1c67e85d3, manager-docs trailer) + implemented→completed (Mx, manager-docs) — both transitions owned correctly, no OwnershipTransitionInvalid"
+lsp_mx_gate: "met — spec-lint 0 findings post-completion; moai-design-system fully retired (active-code zero per AC-DSR-009)"
+```
