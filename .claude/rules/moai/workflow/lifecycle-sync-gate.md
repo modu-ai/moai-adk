@@ -215,18 +215,7 @@ Era classification modulates this enforcement as follows:
 
 ### Canonical ownership matrix (summary)
 
-The full matrix lives in `.claude/rules/moai/development/spec-frontmatter-schema.md`
-§ Status Transition Ownership Matrix. The relevant columns are reproduced here
-for reference:
-
-| Transition | Owning agent | Canonical commit subject pattern |
-|------------|--------------|----------------------------------|
-| `(none) → draft` | manager-spec | `feat(SPEC-{ID}): plan-phase artifacts` |
-| `draft → in-progress` | manager-develop (M1 commit) | `feat(SPEC-{ID}): M1 ...` or `fix(SPEC-{ID}): M1 ...` |
-| `in-progress → implemented → completed` | manager-docs (single sync commit — `completed` is merged into the sync commit, NOT a separate Mx chore) | `docs(SPEC-{ID}): sync-phase artifacts` (this same sync commit carries the `completed` transition + the 3-phase close) |
-| `* → superseded` | manager-spec (new superseding SPEC) | `feat(SPEC-{NEW-ID}): supersedes SPEC-{OLD-ID}` |
-| `* → archived` | manager-docs (administrative cleanup) | `chore(specs): archive SPEC-{ID}` |
-| `* → rejected` | orchestrator, recorded by manager-docs | `chore(SPEC-{ID}): rejected per <rationale>` |
+> Canonical: the full 7-row Status Transition Ownership Matrix (transition → owning agent → canonical commit subject pattern, including the `(none) → draft` / `draft → in-progress` / `in-progress → implemented → completed` / `* → superseded|archived|rejected` rows) lives in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix. This file owns only the era-modulation table above and the close-subject-full-ID one-liner below — both are lifecycle-gate-local deltas not present in the schema SSOT.
 
 ### Close-subject full-ID mandate
 
