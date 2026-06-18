@@ -64,7 +64,7 @@ Hybrid Trunk 1-person OSS (§23): the orchestrator's constraint was "Push to ori
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-06-18
-sync_commit_sha: <pending — backfilled in follow-up commit (2-step)>
+sync_commit_sha: 5cd436ea4
 sync_status: PASS-WITH-DEBT (namespace scope green; pre-existing out-of-scope statusline 1M-budget debt documented below)
 sync_owner: orchestrator-direct (GLM backend — manager-docs spawn context-limit fallback per feedback_glm_orchestrator_direct_sync_mx)
 
