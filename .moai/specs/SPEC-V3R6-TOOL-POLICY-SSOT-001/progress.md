@@ -187,7 +187,7 @@ sync_commit_sha: f746977cf6afe0fded07e7183c969b02d8928126
 - **@MX tags**: N/A (this SPEC's Go surface is the new `internal/config/toolpolicy/` pkg + `internal/cli/tool_policy.go` codegen/query — additive utilities, not high fan_in invariant contracts; no @MX:ANCHOR/@MX:WARN surface).
 - **4-phase close**: plan (plan-phase) → run (73336e296) → sync (f746977cf) → mx (this commit) — V3R6 era closed.
 
-mx_commit_sha: _<pending Mx-phase — backfilled in follow-up commit>_
+mx_commit_sha: 0dc6cc006087f54f20c642b801868adbc10d6eee
 
 ---
 
