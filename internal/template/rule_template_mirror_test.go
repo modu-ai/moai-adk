@@ -53,19 +53,21 @@ var workflowOptMirroredPaths = []string{
 	".moai/config/evaluator-profiles/default.md",
 	".moai/config/evaluator-profiles/frontend.md",
 	// per-file §25 sanitization targets — REMOVED from the byte-parity allowlist.
-	// The 6 source files below retain internal-development content (SPEC-IDs, REQ/AC
+	// The 5 source files below retain internal-development content (SPEC-IDs, REQ/AC
 	// tokens) in their .claude/ working copy, while their template mirrors are held
 	// sanitized for neutral distribution (CLAUDE.local.md §25). byte-parity therefore
 	// cannot hold for them; mirror cleanliness is enforced by
 	// TestTemplateNoInternalContentLeak instead of byte-identity here. Ground-truth at
-	// remediation time: drift∩leak = 8 files (not 1), so all leak-bearing drift files
+	// remediation time: drift∩leak = 7 files (not 1), so all leak-bearing drift files
 	// move to leak-test coverage:
 	//   - .claude/rules/moai/development/manager-develop-prompt-template.md (5 tokens)
 	//   - .claude/rules/moai/workflow/ci-watch-protocol.md (1 token)
 	//   - .claude/rules/moai/core/agent-common-protocol.md (17 tokens)
-	//   - .claude/rules/moai/workflow/agent-teams-pattern.md (1 token)
 	//   - .claude/rules/moai/workflow/verification-batch-pattern.md (2 tokens)
 	//   - .claude/agents/moai/plan-auditor.md (6 tokens)
+	//   (the former 5+1+1 Agent Teams pattern file was deleted per
+	//   SPEC-V3R6-RULES-SSOT-DEDUP-001 M6 — its content folded into
+	//   team-pattern-cookbook.md 6th pattern.)
 }
 
 // SPEC-V3R5-LATE-BRANCH-001 mirrored files. Each entry MUST have a byte-identical

@@ -111,7 +111,7 @@ The team spawn wrapper enforces these checks before creating a teammate:
 
 1. **Role validation**: Reject unknown role profiles with `ORC_UNKNOWN_ROLE_PROFILE`.
 2. **Worktree enforcement**: Reject write-heavy roles without `isolation: "worktree"` with `ORC_WORKTREE_REQUIRED`.
-3. **Roster limit**: Reject teams exceeding `workflow.yaml team.max_teammates` (default 10) with `ORC_TEAM_ROSTER_LIMIT`.
+3. **Roster limit**: Reject teams exceeding `workflow.yaml team.max_teammates` (default 10) with `ORC_TEAM_ROSTER_LIMIT`. Note: `max_teammates` (default 10) is the **hard mechanical reject ceiling**, not a target — the recommended starting team size is **3-5 teammates** per Anthropic guidance ("Start with 3-5 teammates for most workflows"). The 10 ceiling exists to block runaway rosters; teams should default toward the 3-5 recommended size and only grow toward the ceiling when a SPEC declares the parallel surface area to justify it (e.g. the 5+1+1 pattern in `team-pattern-cookbook.md`).
 4. **Static agent check**: CI fails with `ORC_STATIC_TEAM_AGENT_PROHIBITED` if any `team-*.md` file exists in `.claude/agents/{moai,harness}/`.
 
 ## Cross-References

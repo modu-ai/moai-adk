@@ -18,7 +18,7 @@
 // invariant. Touching this test signature affects the workflow.yaml schema contract.
 // @MX:REASON: Without this guard, accidental removal of role_profile_keys or
 // changes to the 7-key role_profiles map would silently break the 5+1+1 Agent
-// Teams composition documented in agent-teams-pattern.md.
+// Teams composition documented in team-pattern-cookbook.md (6th pattern).
 package config_test
 
 import (
@@ -42,7 +42,7 @@ var workflowYAMLPaths = []string{
 }
 
 // expectedRoleProfileKeys is the canonical list for the 5+1+1 Agent Teams pattern.
-// Modifying this list requires SPEC amendment per agent-teams-pattern.md.
+// Modifying this list requires SPEC amendment per team-pattern-cookbook.md (6th pattern).
 var expectedRoleProfileKeys = []string{"implementer", "reviewer", "tester"} // sorted
 
 // expectedRoleProfileNames is the canonical 7-key role_profiles map.

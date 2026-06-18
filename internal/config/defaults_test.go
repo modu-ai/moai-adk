@@ -524,7 +524,7 @@ func TestNewDefaultWorkflowConfigNestedDefaults(t *testing.T) {
 		}
 	}
 
-	// RoleProfileKeys default (3-element subset per agent-teams-pattern 5+1+1).
+	// RoleProfileKeys default (3-element subset per team-pattern-cookbook 5+1+1 6th pattern).
 	wantKeys := []string{"implementer", "tester", "reviewer"}
 	if len(cfg.Team.RoleProfileKeys) != len(wantKeys) {
 		t.Errorf("RoleProfileKeys: got %d keys, want %d", len(cfg.Team.RoleProfileKeys), len(wantKeys))
