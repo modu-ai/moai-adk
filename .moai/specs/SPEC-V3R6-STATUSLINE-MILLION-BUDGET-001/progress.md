@@ -2,7 +2,7 @@
 id: SPEC-V3R6-STATUSLINE-MILLION-BUDGET-001
 title: "Statusline memory_test AutoCompactScaling model-env isolation — progress"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-06-18
 updated: 2026-06-18
 author: manager-develop
@@ -91,7 +91,7 @@ Clean-env full suite (`env -u ANTHROPIC_DEFAULT_*`): `ok ... 3.861s` — ALL PAS
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - sync_status: audit-ready
-- sync_commit_sha: _(backfilled by follow-up chore commit)_
+- sync_commit_sha: a7737e9db
 - CHANGELOG.md `[Unreleased]` → `### Changed` entry added — AC-HNS-011 퇴차 명시 + baseline gap forward-gap(`BASELINE-ISOLATION-001`).
 - 사용자 가시 docs 변경 없음 (test-only; README/docs-site 영향 없음).
 - Frontmatter `in-progress → implemented` (spec.md/plan.md/progress.md).
@@ -99,7 +99,15 @@ Clean-env full suite (`env -u ANTHROPIC_DEFAULT_*`): `ok ... 3.861s` — ALL PAS
 - **D1 SHOULD-FIX (sibling-test line-citation drift) 후속 `BASELINE-ISOLATION-001` plan-phase로 이월** — moving-target rationale: 본 run-phase +19-line edit + 향후 baseline-isolation edit가 모두 `memory_test.go` 라인 번호를 shift시키므로, 모든 statusline test isolation 완료 후 1회 재측정이 효율적.
 
 ## §E.5 Mx-phase Audit-Ready Signal
-_<pending Mx-phase — manager-docs populates>_
+
+- mx_status: audit-ready
+- mx_commit_sha: _(backfilled by follow-up chore commit)_
+- **4-phase lifecycle complete**: plan (`aaf556119`) → run (`1ae603ff8`) → sync (`a7737e9db`) → Mx (this commit).
+- @MX scan: `isolateModelEnv` helper fan_in=1 (< 3 ANCHOR threshold) → 신규 @MX tag 불필요; 상세 doc-comment가 intent + SPEC 참조 전달 (NOTE 역할 충족). Production 코드 미변경이므로 @MX 대상 영역 없음.
+- Frontmatter `implemented → completed` (spec.md/plan.md/progress.md).
+- Mx orchestrator-direct (GLM; ownership matrix `implemented→completed` = manager-docs OR orchestrator 허용).
+- sync-auditor 4-dim 자체평가(GLM fallback): Functionality HIGH(5/5 AC PASS) / Security N/A(test-only) / Craft HIGH(최소 helper) / Consistency HIGH(컨벤션 준수).
+- **전방 forward-gaps (별도 SPEC)**: (1) `SPEC-V3R6-STATUSLINE-BASELINE-ISOLATION-001` — baseline `TestCollectMemory` 격리(동일 isolateModelEnv 1-liner); (2) lint-rule SPEC — `ClassifyPRTitle` feat→implemented plan-phase false positive (`StatusGitConsistency` WARNING 근원, `transitions.go:110` case 2).
 
 ## HISTORY
 

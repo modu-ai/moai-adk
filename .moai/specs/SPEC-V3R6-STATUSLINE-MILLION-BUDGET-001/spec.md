@@ -2,7 +2,7 @@
 id: SPEC-V3R6-STATUSLINE-MILLION-BUDGET-001
 title: "Statusline memory_test AutoCompactScaling model-env isolation"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-06-18
 updated: 2026-06-18
 author: manager-spec
