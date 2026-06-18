@@ -60,4 +60,4 @@ sync_commit_sha: "d5796c960df47f6e8836e4fc9dd487522e23b044"
 
 Mx-phase performed 2026-06-19. This SPEC is policy-layer only — no Go code changes. CHANGELOG.md entry documents all 7 sections of the runtime-recovery doctrine. Frontmatter status transition `implemented → completed` will be applied on Mx close commit. Mx commit SHA will be backfilled after commit creation.
 
-mx_commit_sha: ""
+mx_commit_sha: "f2907ba4cac690214e8bde09cd286c045198dd72"

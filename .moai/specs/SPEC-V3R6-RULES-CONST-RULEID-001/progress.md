@@ -102,7 +102,7 @@ ok      github.com/modu-ai/moai-adk/internal/constitution     0.396s   coverage:
 
 ```yaml
 run_complete_at: 2026-06-19T03:25:00+09:00
-run_commit_sha: "<M1 commit pending — specific-path commit, orchestrator-side>"
+run_commit_sha: "562c96622"
 run_status: implemented
 ac_pass_count: 6
 ac_fail_count: 0
