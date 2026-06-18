@@ -37,10 +37,14 @@ SPEC ID pre-write self-check: `decomposition: SPEC ✓ | V3R6 ✓ | HARNESS ✓ 
 - Highest V3R6 numeric at M3 start was none (first V3R6 entry → 001).
 
 **M4 — lint + grep reproducibility** (AC-RR-009, AC-RR-010):
-- `moai spec lint` clean (0 findings) — see §E self-verification E5.
+- `moai spec lint` — 0 errors, 1 WARNING (`StatusGitConsistency`); see §E.2 Residual-risk below for root-cause (transient branch-state artifact, resolves on push).
 - Recovery-ladder grep: each of `reactive-compact`, `death-spiral`, `withheld-recoverable`, `circuit-breaker` returns ≥1 hit in `.claude/rules/moai/` — see §E self-verification E7.
 
-No Go code added (AC-RR-009 Non-Goals boundary — `internal/recovery/` absent).
+No Go code added (AC-RR-009 Non-Goals boundary — `internal/recovery/` absent; zero `.go` files in the 3 run-phase commits).
+
+### Residual-risk
+
+- **RR-RESK-001 — `StatusGitConsistency` WARNING (transient, resolves on push)**: `moai spec lint` emits 1 WARNING: `frontmatter status 'in-progress' disagrees with git-implied status 'implemented'`. Root cause: `getGitImpliedStatus` (`internal/spec/drift.go:178`) queries the `main` branch's git log, not the worktree branch. On `main`, the only commit for this SPEC is the plan-phase `feat(SPEC-V3R6-HARNESS-RUNTIME-RECOVERY-001): plan-phase artifacts` (commit `78ea2b036`), which `ClassifyPRTitle` (`internal/spec/transitions.go:110`) maps via `transitionRules` entry `{"feat", {"run-complete", "implemented"}}` (line 35) to git-implied status `implemented`. The run-phase M1 commit (`feat(...): M1 ...`, which carries the canonical `draft → in-progress` transition) lives on the unpushed worktree branch `worktree-agent-aab91d4b0b39697c2` and is therefore invisible to the `main`-querying walker. The frontmatter status `in-progress` is correct for run-phase-in-flight (manager-develop owns this transition per the Status Transition Ownership Matrix). The warning resolves to agreement once the run-phase commits land on `main` (via sync-phase PR merge). Not a defect in the run-phase work; not a MUST-FIX (acceptance.md §D.6 accepts warnings with documented rationale). Verification: `git rev-list --count --left-right origin/main...HEAD` → `0 3` (local ahead by 3, clean).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
