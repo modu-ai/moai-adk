@@ -50,6 +50,17 @@ Exceptions (do NOT migrate to inherit):
 - `model: haiku` agents (`manager-docs`, `manager-git`) — Haiku has no `[1m]` variant, so the bug does NOT apply. Speed-critical agents should remain on `haiku` for cost and latency.
 - Documentation/example YAML inside skill bodies (`.claude/skills/moai-foundation-cc/reference/**/*.md`) — these mirror official Claude Code documentation and MUST show all valid values (`sonnet`, `opus`, `haiku`, `inherit`) for educational purposes.
 
+## Baseline-Refill Breaker (team sonnet — second failure mode)
+
+[ZONE:Evolvable] The `[1m]` entitlement bug in § Inherit-by-Default Convention is the *spawn-time* failure mode (a frontmatter `model: sonnet` pin → spawn fails with a 1M credit error). A **distinct second failure mode** affects team-mode teammates spawned via per-spawn `model: "sonnet"` override (`.claude/skills/moai/team/run.md`, `.moai/config/sections/workflow.yaml` role_profiles):
+
+| failure mode | trigger | symptom | mitigation |
+|--------------|---------|---------|------------|
+| `[1m]` credit-fail | frontmatter `model: sonnet` pin | spawn fails immediately (`Usage credits required for 1M`) | use `model: inherit` |
+| baseline-refill breaker | per-spawn `model: "sonnet"` in team mode | spawn succeeds, but the 200K window saturates under the heavy baseline → autocompact → rapid-refill → runtime circuit breaker → zero output | avoid large SPECs in team mode (see below) |
+
+The breaker mode is NOT reliably fixed by switching to `model: inherit`, because Team teammates do not inherit the leader's `[1m]` entitlement (Anthropic issue #36670, OPEN) — the teammate falls back to 200K and the breaker can recur. The robust mitigation is operational: for **large SPECs**, prefer a single `manager-develop` (`model: inherit`, 1M window) + Round split (`.claude/rules/moai/development/sprint-round-naming.md`) over team mode; reserve team mode for **small SPECs** where the 200K window has headroom. Cross-reference: `.claude/rules/moai/workflow/team-protocol.md` § Role Matrix Constraints; `.claude/skills/moai/team/run.md` § Baseline-Refill Breaker Hazard.
+
 ## `[1m]` Constraint Re-Verification (CC 2.1.178)
 
 The `[1m]` entitlement-inheritance constraint was re-verified against CC 2.1.178 (2026-06-16, M1 research milestone). **Verdict: STILL-ACTIVE (conservative).** Per-agent `model:` pins remain forbidden regardless of this verdict (the re-verification SPEC records per-agent pinning as out-of-scope).

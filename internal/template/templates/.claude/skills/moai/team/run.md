@@ -61,6 +61,14 @@ From `.moai/config/sections/workflow.yaml` → `team.role_profiles`:
 | designer | acceptEdits | sonnet | worktree | UI/UX with MCP design tools |
 | reviewer | plan | haiku | none | Code review, quality validation |
 
+### ⚠️ Baseline-Refill Breaker Hazard (team sonnet)
+
+[ZONE:Evolvable] [HARD] team-mode teammates default to `model: sonnet` (200K window). Under a heavy fixed baseline (CLAUDE.md + `.claude/rules/moai/**` system-reminder injection + agent definitions + delegation prompt), a 200K-window teammate can be near-saturated at spawn. A single autocompact then re-saturates the window within one turn (rapid-refill); repeated refills within a few turns trip the runtime circuit breaker, and the teammate produces **zero output**.
+
+Switching the role to `model: inherit` does NOT reliably fix this in team mode: Team teammates do not inherit the leader's `[1m]` entitlement (Anthropic issue #36670, OPEN) — the teammate falls back to 200K and the same breaker can recur.
+
+[HARD] Therefore, for **large SPECs** (30+ tasks, many files), prefer a **single `manager-develop` (`model: inherit`, 1M window) + Round split** (per `.claude/rules/moai/development/sprint-round-naming.md`) over team mode. Reserve team mode for **small SPECs** where the 200K window has headroom. See `.claude/rules/moai/development/model-policy.md` § Baseline-Refill Breaker for this failure mode vs the `[1m]` credit-fail mode.
+
 ## Mode Selection
 
 This workflow is loaded ONLY when team mode has been explicitly selected (via `--team` flag or auto-selection). Check `.moai/config/sections/llm.yaml` to determine WHICH team mode to use:
