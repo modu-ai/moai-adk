@@ -169,6 +169,46 @@ func TestRuleValidateV3R5ID(t *testing.T) {
 	}
 }
 
+// TestRuleValidateV3R6ID verifies that CONST-V3R6-NNN format IDs are valid.
+// V3R6 namespace support from SPEC-V3R6-RULES-CONST-RULEID-001 (ruleIDPattern broadened [25] -> [256]).
+func TestRuleValidateV3R6ID(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		id      string
+		wantErr bool
+	}{
+		{"v3r6-valid", "CONST-V3R6-001", false},
+		{"v3r6-valid-large", "CONST-V3R6-999", false},
+		// Regression guards (REQ-RCR-002 additive-only): these MUST stay green.
+		{"v3r2-regression", "CONST-V3R2-150", false},
+		{"v3r5-regression", "CONST-V3R5-039", false},
+		{"v3r3-still-invalid", "CONST-V3R3-001", true},
+		{"v3r4-still-invalid", "CONST-V3R4-001", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			r := constitution.Rule{
+				ID:     tt.id,
+				Zone:   constitution.ZoneFrozen,
+				File:   ".claude/rules/moai/workflow/runtime-recovery-doctrine.md",
+				Anchor: "#4-anti-death-spiral-hook-carve-out-documentation-only-policy",
+				Clause: "Recovery-Signal Carve-Out",
+			}
+			err := r.Validate()
+			if tt.wantErr && err == nil {
+				t.Errorf("ID %q: Validate() = nil, want error", tt.id)
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("ID %q: Validate() = %v, want nil", tt.id, err)
+			}
+		})
+	}
+}
+
 // TestRuleValidateEmptyClause verifies that Validate() returns an error for an empty Clause.
 func TestRuleValidateEmptyClause(t *testing.T) {
 	t.Parallel()
