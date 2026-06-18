@@ -317,7 +317,7 @@ The `moai worktree new <SPEC-ID> --team` flag launches a Claude or GLM session i
 
 ### HARD Rules
 
-[ZONE:Frozen] [HARD] CLI launch decisions MUST NOT invoke `AskUserQuestion`. All four launch patterns (P1 tmux+CG → moai glm, P2 tmux+CC → moai cc, P3 no-tmux → syscall.Exec, P4 no-flag → handoff) are selected deterministically from observable state (tmux session presence, `teammateMode`, GLM env vars). This satisfies the Branch Origin Decision Protocol per CONST-V3R5-030 (see `.claude/rules/moai/workflow/branch-origin-protocol.md` § HARD Rules).
+[ZONE:Frozen] [HARD] CLI launch decisions MUST NOT invoke `AskUserQuestion`. All four launch patterns (P1 tmux+CG → moai glm, P2 tmux+CC → moai cc, P3 no-tmux → syscall.Exec, P4 no-flag → handoff) are selected deterministically from observable state (tmux session presence, `teammateMode`, GLM env vars). This satisfies the Branch Origin Decision Protocol per CONST-V3R5-030 (see `.claude/rules/moai/development/branch-origin-protocol.md` § HARD Rules).
 
 Static guard: `internal/cli/worktree/new_test.go` `TestNew_NoAskUserQuestion` scans all team-launch sources for `AskUserQuestion` / `mcp__askuser` references.
 

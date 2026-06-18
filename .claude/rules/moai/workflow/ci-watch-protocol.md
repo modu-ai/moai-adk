@@ -97,7 +97,7 @@ The `(권장)` label MUST be on the first option per `.claude/rules/moai/core/as
 
 ## T3 Handoff Format
 
-On exit 2, stdout contains JSON (see `modules/trigger-handoff.md` in the skill):
+On exit 2, stdout contains JSON (see `.claude/skills/moai-workflow-ci-loop/SKILL.md` (the **Handoff schema on exit 2** marker)):
 
 ```json
 {

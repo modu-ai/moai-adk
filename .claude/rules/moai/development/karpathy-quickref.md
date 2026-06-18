@@ -44,7 +44,7 @@ Mapping Andrej Karpathy's 4 coding principles to MoAI's 6 Agent Core Behaviors w
 
 ## Cross-Reference
 
-For concrete wrong/right code examples, see skill: `moai-reference-anti-patterns`
+For concrete wrong/right code examples, see `.claude/skills/moai/references/anti-patterns.md`
 
 ---
 

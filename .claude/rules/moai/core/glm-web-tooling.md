@@ -30,9 +30,9 @@ Three launch modes must be distinguished:
 |--------------------------------------|-------------------------------|--------|-----------|
 | `WebSearch` | `mcp__web_search_prime__webSearchPrime` | `web_search_prime` | HTTP (remote, Bearer auth) |
 | `WebFetch` | `mcp__web_reader__webReader` | `web_reader` | HTTP (remote, Bearer auth) |
-| `Read` on an image file | `mcp__zai-mcp-server__image_analysis` (+ 7 sibling vision tools) | `zai-mcp-server` | stdio npx (local, GLM-4.6V) |
+| `Read` on an image file | `mcp__zai-mcp-server__analyze_image` (+ 7 sibling vision tools) | `zai-mcp-server` | stdio npx (local, GLM-4.6V) |
 
-[ZONE:Evolvable] [HARD] While a session is GLM-backed, MoAI agents and the orchestrator SHALL NOT invoke the built-in `WebSearch` or `WebFetch`, nor `Read` on an image file. They SHALL route web search to `mcp__web_search_prime__webSearchPrime`, web fetch to `mcp__web_reader__webReader`, and image reading to a `mcp__zai-mcp-server__*` vision tool (default `image_analysis`).
+[ZONE:Evolvable] [HARD] While a session is GLM-backed, MoAI agents and the orchestrator SHALL NOT invoke the built-in `WebSearch` or `WebFetch`, nor `Read` on an image file. They SHALL route web search to `mcp__web_search_prime__webSearchPrime`, web fetch to `mcp__web_reader__webReader`, and image reading to a `mcp__zai-mcp-server__*` vision tool (default `analyze_image`).
 
 ### cg-leader exception
 
@@ -47,7 +47,7 @@ The z.ai MCP tools are **deferred** (their schema is not loaded at session start
 ```
 ToolSearch(query: "select:mcp__web_search_prime__webSearchPrime")
 ToolSearch(query: "select:mcp__web_reader__webReader")
-ToolSearch(query: "select:mcp__zai-mcp-server__image_analysis")
+ToolSearch(query: "select:mcp__zai-mcp-server__analyze_image")
 ```
 
 Multiple tools may be selected in one call: `ToolSearch(query: "select:mcp__web_search_prime__webSearchPrime,mcp__web_reader__webReader")`.
@@ -62,14 +62,14 @@ The `zai-mcp-server` (GLM-4.6V) exposes eight vision tools — pick the most spe
 
 | Tool | Use for |
 |------|---------|
-| `image_analysis` | General image understanding (default) |
+| `analyze_image` | General image understanding (default) |
 | `extract_text_from_screenshot` | OCR / text extraction from a screenshot |
 | `diagnose_error_screenshot` | Reading an error message captured as a screenshot |
 | `understand_technical_diagram` | Architecture / flow / sequence diagrams |
 | `analyze_data_visualization` | Charts, graphs, dashboards |
 | `ui_to_artifact` | Converting a UI mockup into code/markup |
 | `ui_diff_check` | Comparing two UI states |
-| `video_analysis` | Understanding a video file |
+| `analyze_video` | Understanding a video file |
 
 ---
 

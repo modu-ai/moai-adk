@@ -105,7 +105,7 @@ Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` §
 - 무관 untracked files은 commit 포함 금지 (`git add` specific path만)
 
 **B9. Git Commit + Push 자체 수행 (Hybrid Trunk 1-person OSS)**
-- manager-develop은 본 SPEC scope 내 commit + push 자체 수행 권장 (main 직진 per .claude/rules/moai/workflow/git-workflow-doctrine.md Tier S/M)
+- manager-develop은 본 SPEC scope 내 commit + push 자체 수행 권장 (main 직진 per .moai/docs/git-workflow-doctrine.md Tier S/M)
 - Conventional Commits format 의무 (`feat(SPEC-...): M{N} <subject>`)
 - M별 분리 commit + 마지막 push 또는 M별 push 둘 다 허용
 - `--no-verify` 사용 절대 금지 (pre-commit hook warn-only는 정상)

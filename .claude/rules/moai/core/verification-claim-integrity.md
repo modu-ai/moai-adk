@@ -6,7 +6,7 @@ Doctrine establishing the **"no unobserved-verification-claim" invariant** for a
 
 ## 1. The Invariant — no unobserved-claim (verification OR defect)
 
-[ZONE:Evolvable] [HARD] No actor MUST assert a verification, a completion, **OR a defect / debt / drift** it did not actually verify with the domain's mechanical tooling.
+[ZONE:Evolvable] [HARD] An actor MUST NOT assert a verification, a completion, **OR a defect / debt / drift** it did not actually verify with the domain's mechanical tooling.
 
 > **Evidence absent ≠ evidence of success — NOR of failure.**
 
