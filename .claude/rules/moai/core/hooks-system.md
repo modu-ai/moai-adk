@@ -320,13 +320,14 @@ MoAI-ADK uses shorter independent timeout policies for operational efficiency:
 
 | Hook Type | MoAI Default | Max Value | Notes |
 |-----------|-------------|-----------|-------|
-| SessionStart, PreCompact, PreToolUse, PostToolUse | 5s | 600s | Fast lifecycle hooks |
+| SessionStart, PreCompact, PreToolUse | 5s | 600s | Synchronous fast lifecycle hooks (blocking default) |
+| PostToolUse | 10s + `async: true` | 600s | Exception: background LSP/AST/MX validation runs async (10s is a per-run background ceiling, not a blocking wait) |
 | PostCompact, PostToolUseFailure, Stop | 10s | 600s | Context/recovery hooks |
 | TeammateIdle, TaskCompleted | 10s | 600s | Agent lifecycle hooks |
 | UserPromptSubmit | 5s | 30s | Blocks user interaction; reduced max |
 | prompt, agent hooks | 30s-60s | 600s | Evaluation/verification hooks |
 
-These MoAI defaults (5s, 10s, 30s) are valid independent policies and do NOT violate the 600s upper bound. Customize the `timeout` field in hook definitions to adjust per-hook timing as needed.
+The **5s default applies to synchronous blocking hooks** (SessionStart, PreToolUse, etc.). **PostToolUse is the documented exception at 10s + `async: true`** because its LSP/AST/MX validations run in the background — this matches the JSON example below (`PostToolUse` block with `timeout: 10, async: true`). These MoAI defaults (5s, 10s, 30s) are valid independent policies and do NOT violate the 600s upper bound. Customize the `timeout` field in hook definitions to adjust per-hook timing as needed.
 
 ## Rules
 

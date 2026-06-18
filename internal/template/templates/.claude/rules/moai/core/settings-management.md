@@ -86,7 +86,7 @@ Example `.mcp.json` configuration:
 }
 ```
 
-**MCP `alwaysLoad` field (v2.1.121+)**: Setting `alwaysLoad: true` on a server entry forces its tool schemas to load at session start, bypassing tool-search auto-mode deferral. MoAI-ADK sets this for `context7` to ensure Context7 documentation lookup is available immediately without ToolSearch preload.
+**MCP `alwaysLoad` field** (introduced v2.1.119; the v2.1.121 change below is the separate `updatedToolOutput` extension, NOT a second introduction): Setting `alwaysLoad: true` on a server entry forces its tool schemas to load at session start, bypassing tool-search auto-mode deferral. MoAI-ADK sets this for `context7` to ensure Context7 documentation lookup is available immediately without ToolSearch preload.
 
 **Claude Code v2.1.119-121 Hook Changes**:
 
@@ -181,38 +181,9 @@ Loads the following 10 sections in fixed order. All return defaults on absent fi
 
 ## Hooks Configuration
 
-Hooks support environment variables and must be quoted to handle spaces:
+> Canonical: see `.claude/rules/moai/core/hooks-system.md` § Hook Configuration (the hook JSON config block + `$CLAUDE_PROJECT_DIR` path-quoting rule) and § Timeout Configuration (the per-hook timeout table, including the PostToolUse 10s+`async:true` exception vs the 5s synchronous-default). This file owns only the StatusLine-no-env-var delta (below).
 
-```json
-{
-  "hooks": {
-    "SessionStart": [{
-      "type": "command",
-      "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
-      "timeout": 5
-    }],
-    "PreToolUse": [{
-      "matcher": "Write|Edit|Bash",
-      "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
-      "timeout": 5
-    }]
-  }
-}
-```
-
-**Important**: Quote the entire path: `"\"$CLAUDE_PROJECT_DIR/path\""` not `"$CLAUDE_PROJECT_DIR/path"`
-
-Hook timeout unit is **seconds** (not milliseconds, despite some external docs). Default is 5s for most hooks. Recommended ceilings:
-
-| Hook | Recommended timeout | Rationale |
-|------|--------------------|-----------|
-| SessionStart | 30s | MCP server startup latency |
-| PreToolUse | 5s | Fast pre-flight checks only |
-| PostToolUse | **10s + `async: true`** (was 60s synchronous before v2.16.0) | LSP/AST/MX validations run in background; results delivered via systemMessage on next turn. 10s is the per-run upper bound, not a blocking wait |
-| Stop / SubagentStop | 5s | Lightweight teardown |
-| TeammateIdle / TaskCompleted | 10s | Quality validation may run lint/test |
-
-For very long validations (full test suites, deployments), prefer `"async": true` over high timeout — the hook runs in background and results arrive on the next turn (see hooks-system.md §Async Command Hooks).
+Hook timeout unit is **seconds** (not milliseconds). The canonical per-hook timeout policy lives in `hooks-system.md` § Timeout Configuration — the PostToolUse 10s+`async:true` exception (background LSP/AST/MX validation) and the 5s synchronous-default for SessionStart/PreToolUse are stated there. For very long validations, prefer `"async": true` over high timeout.
 
 ### Freeze Diagnosis Checklist
 
