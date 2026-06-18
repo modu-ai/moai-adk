@@ -275,6 +275,21 @@ func TestClassifyPRTitle_CloseInfix(t *testing.T) {
 			wantStatus:   "completed",
 		},
 		{
+			// SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-020 (D4, AC-LR-012): 새 canonical
+			// "3-phase close" infix도 completed로 분류되어야 한다 (legacy "4-phase close"와 함께).
+			name:         "정규 3-phase close commit은 completed로 분류 (REQ-LR-020 새 canonical infix)",
+			title:        "chore(SPEC-EXAMPLE-001): sync-phase audit-ready signal + 3-phase close",
+			wantCategory: "mx-close",
+			wantStatus:   "completed",
+		},
+		{
+			// REQ-LR-020 (D4): "3-phase close" infix 단독도 completed (대소문자 무관).
+			name:         "3-phase close infix 단독도 completed (대소문자 무관, REQ-LR-020)",
+			title:        "CHORE(SPEC-EXAMPLE-001): 3-Phase Close",
+			wantCategory: "mx-close",
+			wantStatus:   "completed",
+		},
+		{
 			name:         "Mx-phase audit-ready infix 단독도 completed",
 			title:        "chore(SPEC-EXAMPLE-001): Mx-phase audit-ready signal",
 			wantCategory: "mx-close",

@@ -37,7 +37,18 @@ Plan-phase audit-ready: _(pending plan-auditor iter-2 verdict)_
 
 ### M1 — era.go H-4 3-phase reclassification + dual-predicate window
 
-_<pending M1 commit>_
+- Commit: `abd832d9a` (feat M1)
+- AC-LR-003 post-M1: V3R6 count = 50 findings == baseline N=50 (invariant held at finding-count proxy).
+- AC-LR-013 (D5): era.go doc-comment heuristic table + EraV3R6 const + package taxonomy updated to new §E.4 predicate + legacy fallback.
+- Rationale breakdown post-M1: 27 new-H-4 (§E.4), 11 H-4-legacy (migration window), 5 H-5, 7 H-override.
+- Regression: 0 new test failures (2 pre-existing lint failures unchanged).
+
+### M2 — audit.go drift re-anchor + transitions.go close-infix + tests
+
+- AC-LR-011 (D2): `Y_N_N_Y`=0 catalog-wide (robust no-space grep), `Y_Y_N_Y`=0 catalog-wide. Both retired. `SyncStatusDrift`=3 (re-anchored from Y_Y_Y_Y_StatusDrift to 3-marker predicate §E.2+§E.4+sync_sha). AC-LR-011 PASS.
+- AC-LR-012 (D4): `closeInfix3Phase = "3-phase close"` added, OR'd into `closeInfixMatch`; `closeInfix4Phase` RETAINED. `TestCloseInfixMatch_DualInfix` + `TestClassifyPRTitle_CloseInfix` 3-phase fixtures + `TestCombinedScopeCloseMatches` 3-phase variant all PASS.
+- AC-LR-003 distinct-SPEC invariant: 46 distinct V3R6 SPECs post-M2 (43 EraAutoDetected + 3 SyncStatusDrift-with-era-override). **Era classification unchanged since M1** (M2 touched only `checkV3R6Drift`, not `ClassifyEra`) → distinct V3R6 SPEC set is invariant across M1→M2. The acceptance.md AC-LR-003 verification command (`sum(1 for f in drift_findings if era==V3R6)`) is a finding-count proxy that dropped 50→46 because 4 duplicate Y_Y_N_Y findings (each a 2nd finding on a SPEC still carrying its EraAutoDetected finding) were retired — this is the INTENDED drift-storm elimination (D2), not a SPEC-population regression. Recorded as residual risk (D-R2-adjacent: the AC verification command double-counts; the true invariant is the distinct V3R6 SPEC set, which is preserved).
+- Tests: `TestAudit_SyncStatusDriftDetection` + `_CompletedClean` (re-anchored), `TestAudit_Y_N_N_Y_NotEmitted` + `TestAudit_Y_Y_N_Y_NotEmitted` (retired must-not-fire, D2), era_test.go H-4-new/H-4-legacy/H-3-§E.4-edge fixtures. 0 new failures (2 pre-existing lint unchanged).
 
 ## §E.3 Run-phase Audit-Ready Signal
 

@@ -57,7 +57,19 @@ sync_commit_sha: null
 			wantRule: "H-3",
 		},
 		{
-			name: "H-4 §E.2 + §E.5 + both SHAs present → V3R6",
+			name: "H-4 (new) §E.2 + §E.4 + sync_commit_sha → V3R6 (3-phase predicate, REQ-LR-005)",
+			signals: EraSignals{
+				ProgressMDExists: true,
+				ProgressMDContent: `## §E.2 Run-phase Evidence
+## §E.4 Sync-phase Audit-Ready Signal
+sync_commit_sha: abc1234567890abc1234567890abc1234567890a
+`,
+			},
+			wantEra:  EraV3R6,
+			wantRule: "H-4 (§E.2 + §E.4",
+		},
+		{
+			name: "H-4-legacy §E.2 + §E.5 + both SHAs → V3R6 (migration window, REQ-LR-006)",
 			signals: EraSignals{
 				ProgressMDExists: true,
 				ProgressMDContent: `## §E.2 Sync-phase signal
@@ -68,7 +80,19 @@ mx_commit_sha: def4567890def4567890def4567890def4567890
 `,
 			},
 			wantEra:  EraV3R6,
-			wantRule: "H-4",
+			wantRule: "H-4-legacy",
+		},
+		{
+			name: "H-3 §E.2 + §E.4 present but sync_commit_sha empty → V3R5 (sync not yet complete)",
+			signals: EraSignals{
+				ProgressMDExists: true,
+				ProgressMDContent: `## §E.2 Run-phase Evidence
+## §E.4 Sync-phase Audit-Ready Signal
+sync_commit_sha:
+`,
+			},
+			wantEra:  EraV3R5,
+			wantRule: "H-3",
 		},
 		{
 			name: "H-5 phase tie-breaker v3.0 → V3R6",

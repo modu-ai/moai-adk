@@ -64,21 +64,30 @@ type transition struct {
 
 // 정규 close convention infix 리터럴 (모두 소문자 — ClassifyPRTitle/shouldSkipCommitTitle은
 // ToLower 후 비교한다). Status Transition Ownership Matrix의 close subject
-// `chore(SPEC-{ID}): Mx-phase audit-ready signal + 4-phase close`에서 verbatim 추출.
+// `chore(SPEC-{ID}): Mx-phase audit-ready signal + 3-phase close`에서 verbatim 추출.
+//
+// SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-020 (D4): close infix가 "4-phase close"에서
+// "3-phase close"로 개명되었다. closeInfix4Phase는 git history의 과거 close commit들이
+// "4-phase close"를 carry하므로 backward-compat를 위해 RETAIN된다 (drift walker가 과거
+// close를 여전히 인식해야 한다). closeInfix3Phase가 신규 close commit의 정규 infix다.
+// 두 infix 모두 closeInfixMatch에서 OR된다.
 //
 // @MX:NOTE: [AUTO] close-infix는 walker의 유일한 positive `completed` 신호다.
 // @MX:REASON: SPEC-V3R6-DRIFT-CONVENTION-ALIGN-001 — sync/feat에서 completed를 추론하면
 //
 //	genuine incomplete-close SPEC을 마스킹하므로 (AP-2) 금지.
 const (
-	closeInfix4Phase = "4-phase close"
+	closeInfix3Phase = "3-phase close" // new canonical infix (3-phase lifecycle, REQ-LR-020)
+	closeInfix4Phase = "4-phase close" // legacy infix retained for git-history close commits
 	closeInfixMx     = "mx-phase audit-ready"
 )
 
 // closeInfixMatch는 (이미 소문자화된) commit title이 정규 close convention infix를
-// 포함하는지 검사한다. drift walker와 classifier가 공유한다.
+// 포함하는지 검사한다. drift walker와 classifier가 공유한다. 신규 ("3-phase close")와
+// legacy ("4-phase close") infix 모두 인식한다 (REQ-LR-020/021, AC-LR-012).
 func closeInfixMatch(lowerTitle string) bool {
-	return strings.Contains(lowerTitle, closeInfix4Phase) ||
+	return strings.Contains(lowerTitle, closeInfix3Phase) ||
+		strings.Contains(lowerTitle, closeInfix4Phase) ||
 		strings.Contains(lowerTitle, closeInfixMx)
 }
 

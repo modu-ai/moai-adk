@@ -161,14 +161,17 @@ func TestAudit_JSONSchema(t *testing.T) {
 }
 
 // AC-LSG-009 — Y_Y_Y_Y_StatusDrift detection: V3R6 with all phase markers + SHAs but status != completed.
-func TestAudit_Y4StatusDriftDetection(t *testing.T) {
+// SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-019 — SyncStatusDrift (re-anchored from
+// Y_Y_Y_Y_StatusDrift): §E.2 + §E.4 + sync_commit_sha present (sync complete) but
+// spec.md status != completed. The new 3-marker predicate (4-section layout).
+func TestAudit_SyncStatusDriftDetection(t *testing.T) {
 	t.Parallel()
 
 	fixtures := []auditFixtureSpec{
 		{
 			id:         "SPEC-V3R6-DRIFT-001",
 			specMD:     makeSpecMD("SPEC-V3R6-DRIFT-001", "implemented", "V3R6", "2026-05-25"),
-			progressMD: "## §E.2 Sync\nsync_commit_sha: abc1234\n## §E.5 Mx\nmx_commit_sha: def5678\n",
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha: abc1234\n",
 		},
 	}
 
@@ -180,10 +183,10 @@ func TestAudit_Y4StatusDriftDetection(t *testing.T) {
 
 	found := false
 	for _, f := range result.DriftFindings {
-		if f.FindingType == FindingY_Y_Y_Y_StatusDrift {
+		if f.FindingType == FindingSyncStatusDrift {
 			found = true
 			if f.Severity != "MUST-FIX" {
-				t.Errorf("Y_Y_Y_Y_StatusDrift severity = %q, want MUST-FIX", f.Severity)
+				t.Errorf("SyncStatusDrift severity = %q, want MUST-FIX", f.Severity)
 			}
 			if !strings.Contains(f.Remediation, "moai spec close") {
 				t.Errorf("Remediation should reference moai spec close; got %q", f.Remediation)
@@ -194,19 +197,19 @@ func TestAudit_Y4StatusDriftDetection(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Error("Y_Y_Y_Y_StatusDrift finding not emitted for drift fixture")
+		t.Error("SyncStatusDrift finding not emitted for 4-section drift fixture (§E.2 + §E.4 + sync_sha, status != completed)")
 	}
 }
 
-// AC-LSG-009 — Y_N_N_Y drift: sync present, mx absent + status != completed.
-func TestAudit_Y_N_N_Y_DriftDetection(t *testing.T) {
+// REQ-LR-019 — completed SPEC with full 3-marker predicate: no drift finding (clean end state).
+func TestAudit_SyncStatusDrift_CompletedClean(t *testing.T) {
 	t.Parallel()
 
 	fixtures := []auditFixtureSpec{
 		{
-			id:         "SPEC-V3R6-Y_N_N_Y-001",
-			specMD:     makeSpecMD("SPEC-V3R6-Y_N_N_Y-001", "implemented", "V3R6", "2026-05-25"),
-			progressMD: "## §E.2 Sync\nsync_commit_sha: abc\n", // mx absent
+			id:         "SPEC-V3R6-CLEAN-001",
+			specMD:     makeSpecMD("SPEC-V3R6-CLEAN-001", "completed", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha: abc1234\n",
 		},
 	}
 	baseDir := buildAuditFixture(t, fixtures)
@@ -214,26 +217,47 @@ func TestAudit_Y_N_N_Y_DriftDetection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Audit() error = %v", err)
 	}
-	found := false
+	for _, f := range result.DriftFindings {
+		if f.FindingType == FindingSyncStatusDrift && f.SpecID == "SPEC-V3R6-CLEAN-001" {
+			t.Errorf("SyncStatusDrift must NOT fire for completed SPEC; got %+v", f)
+		}
+	}
+}
+
+// REQ-LR-019 (D2) — Y_N_N_Y is RETIRED. A 4-section V3R6 SPEC (§E.2 present,
+// §E.5 ABSENT, status=in-progress) must NOT emit a Y_N_N_Y finding. Under the old
+// code this was the catalog-wide false-positive storm the redesign eliminates.
+func TestAudit_Y_N_N_Y_NotEmitted(t *testing.T) {
+	t.Parallel()
+
+	fixtures := []auditFixtureSpec{
+		{
+			id:         "SPEC-V3R6-4SECTION-001",
+			specMD:     makeSpecMD("SPEC-V3R6-4SECTION-001", "in-progress", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha:\n", // §E.5 absent, sync_sha empty
+		},
+	}
+	baseDir := buildAuditFixture(t, fixtures)
+	result, err := Audit(AuditOptions{BaseDir: baseDir})
+	if err != nil {
+		t.Fatalf("Audit() error = %v", err)
+	}
 	for _, f := range result.DriftFindings {
 		if f.FindingType == FindingY_N_N_Y {
-			found = true
+			t.Errorf("Y_N_N_Y finding must NOT be emitted under the 3-phase lifecycle (retired per REQ-LR-019); got %+v", f)
 		}
-	}
-	if !found {
-		t.Error("Y_N_N_Y finding not emitted")
 	}
 }
 
-// AC-LSG-009 — Y_Y_N_Y drift: both sections present but mx_commit_sha missing.
-func TestAudit_Y_Y_N_Y_DriftDetection(t *testing.T) {
+// REQ-LR-019 (D2) — Y_Y_N_Y is RETIRED. mx_commit_sha is no longer a drift dimension.
+func TestAudit_Y_Y_N_Y_NotEmitted(t *testing.T) {
 	t.Parallel()
 
 	fixtures := []auditFixtureSpec{
 		{
-			id:         "SPEC-V3R6-Y_Y_N_Y-001",
-			specMD:     makeSpecMD("SPEC-V3R6-Y_Y_N_Y-001", "implemented", "V3R6", "2026-05-25"),
-			progressMD: "## §E.2 Sync\nsync_commit_sha: abc\n## §E.5 Mx\nmx_commit_sha:\n", // empty mx
+			id:         "SPEC-V3R6-LEGACYMX-001",
+			specMD:     makeSpecMD("SPEC-V3R6-LEGACYMX-001", "in-progress", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Sync\nsync_commit_sha: abc\n## §E.5 Mx\nmx_commit_sha:\n", // §E.5 present, mx empty
 		},
 	}
 	baseDir := buildAuditFixture(t, fixtures)
@@ -241,14 +265,10 @@ func TestAudit_Y_Y_N_Y_DriftDetection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Audit() error = %v", err)
 	}
-	found := false
 	for _, f := range result.DriftFindings {
 		if f.FindingType == FindingY_Y_N_Y {
-			found = true
+			t.Errorf("Y_Y_N_Y finding must NOT be emitted under the 3-phase lifecycle (retired per REQ-LR-019); got %+v", f)
 		}
-	}
-	if !found {
-		t.Error("Y_Y_N_Y finding not emitted")
 	}
 }
 

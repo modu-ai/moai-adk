@@ -45,23 +45,34 @@ type AuditResult struct {
 type DriftFinding struct {
 	SpecID      string         `json:"spec_id"`
 	Era         string         `json:"era"`
-	FindingType string         `json:"finding_type"` // Y_N_N_Y | Y_Y_N_Y | Y_Y_Y_Y_StatusDrift | EraAutoDetected
+	FindingType string         `json:"finding_type"` // SyncStatusDrift | EraAutoDetected | AuditError | ...
 	Severity    string         `json:"severity"`     // MUST-FIX | INFO
 	Remediation string         `json:"remediation,omitempty"`
 	Details     map[string]any `json:"details,omitempty"`
 }
 
 const (
-	// FindingY_N_N_Y indicates sync section present but mx absent + status drift.
-	FindingY_N_N_Y = "Y_N_N_Y"
-	// FindingY_Y_N_Y indicates §E.2 + §E.5 present but mx_commit_sha missing + status drift.
-	FindingY_Y_N_Y = "Y_Y_N_Y"
-	// FindingY_Y_Y_Y_StatusDrift indicates all 4 phase markers present + valid SHAs
-	// but spec.md status != completed (the modern-era violation pattern this SPEC fixes).
-	FindingY_Y_Y_Y_StatusDrift = "Y_Y_Y_Y_StatusDrift"
+	// FindingSyncStatusDrift is the single surviving V3R6 drift dimension under the
+	// 3-phase lifecycle (SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-019): §E.2 run-evidence
+	// + §E.4 sync marker + sync_commit_sha are all present (sync complete) but spec.md
+	// status != completed. Re-anchored from the legacy Y_Y_Y_Y_StatusDrift predicate
+	// (which keyed on §E.5 + mx_commit_sha) to the 3-marker predicate.
+	FindingSyncStatusDrift = "SyncStatusDrift"
 	// FindingEraAutoDetected is an INFO finding emitted when frontmatter `era:` field
 	// is absent and ClassifyEra inferred the era via heuristics (AC-LSG-013).
 	FindingEraAutoDetected = "EraAutoDetected"
+
+	// --- Deprecated aliases (backward compatibility for git-history JSON consumers) ---
+	// The three §E.5/mx_commit_sha-keyed findings below are RETIRED under the 3-phase
+	// lifecycle (REQ-LR-019). FindingY_Y_Y_Y_StatusDrift is kept as an alias of
+	// FindingSyncStatusDrift so older JSON readers still match; FindingY_N_N_Y and
+	// FindingY_Y_N_Y retain their string values for historical JSON compatibility but
+	// are NO LONGER EMITTED by checkV3R6Drift. See SPEC-V3R6-LIFECYCLE-REDESIGN-001
+	// design.md §B.4 for the retirement rationale (the 4-section end-state would
+	// otherwise trip Y_N_N_Y MUST-FIX on every non-completed V3R6 SPEC catalog-wide).
+	FindingY_Y_Y_Y_StatusDrift = "SyncStatusDrift" // alias of FindingSyncStatusDrift (retired predicate name)
+	FindingY_N_N_Y             = "Y_N_N_Y"         // retired — no longer emitted
+	FindingY_Y_N_Y             = "Y_Y_N_Y"         // retired — no longer emitted
 )
 
 // specStatusPattern extracts `status:` field from spec.md frontmatter.
@@ -214,11 +225,15 @@ func auditSpec(specDir, specID string, opts AuditOptions) ([]DriftFinding, Era, 
 	return findings, era, nil
 }
 
-// checkV3R6Drift performs the V3R6 cross-tab status drift detection per AC-LSG-009.
-// Detects three drift patterns:
-//   - Y_N_N_Y: spec.md status != completed AND sync present but mx absent
-//   - Y_Y_N_Y: §E.2 + §E.5 present but mx_commit_sha missing + status drift
-//   - Y_Y_Y_Y_StatusDrift: all phase markers + SHAs present but status != completed
+// checkV3R6Drift performs the V3R6 status-drift detection under the 3-phase
+// lifecycle (SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-019).
+//
+// The single surviving drift dimension is SyncStatusDrift: §E.2 run-evidence +
+// §E.4 sync marker + sync_commit_sha are all present (sync phase complete) but
+// spec.md status != completed. The two former §E.5/mx_commit_sha-keyed findings
+// (Y_N_N_Y, Y_Y_N_Y) are RETIRED — under the mandated 4-section end-state
+// (§E.5 absent), Y_N_N_Y would otherwise fire MUST-FIX on every non-completed
+// V3R6 SPEC catalog-wide (the D2 false-positive storm).
 //
 // Returns nil when no drift detected (clean V3R6 SPEC).
 func checkV3R6Drift(specDir, specID string, signals EraSignals) *DriftFinding {
@@ -234,10 +249,9 @@ func checkV3R6Drift(specDir, specID string, signals EraSignals) *DriftFinding {
 	}
 	specStatus := strings.TrimSpace(statusMatch[1])
 
-	hasSyncSection := hasProgressMarker(signals.ProgressMDContent, "§E.2")
-	hasMxSection := hasProgressMarker(signals.ProgressMDContent, "§E.5")
+	hasRunEvidence := hasProgressMarker(signals.ProgressMDContent, "§E.2")
+	hasSyncMarker := hasProgressMarker(signals.ProgressMDContent, "§E.4")
 	syncSHA := extractProgressField(signals.ProgressMDContent, "sync_commit_sha")
-	mxSHA := extractProgressField(signals.ProgressMDContent, "mx_commit_sha")
 
 	// If status is already completed, no drift.
 	if specStatus == "completed" {
@@ -248,50 +262,20 @@ func checkV3R6Drift(specDir, specID string, signals EraSignals) *DriftFinding {
 		return nil
 	}
 
-	// AC-LSG-009 — Y_Y_Y_Y_StatusDrift: all 4 phase markers + valid SHAs but status != completed.
-	if hasSyncSection && hasMxSection && syncSHA != "" && mxSHA != "" {
+	// SyncStatusDrift: §E.2 run-evidence + §E.4 sync marker + sync_commit_sha present
+	// (sync phase complete) but spec.md status != completed. This is the re-anchored
+	// successor to the legacy Y_Y_Y_Y_StatusDrift predicate (REQ-LR-019).
+	if hasRunEvidence && hasSyncMarker && syncSHA != "" {
 		return &DriftFinding{
 			SpecID:      specID,
 			Era:         string(EraV3R6),
-			FindingType: FindingY_Y_Y_Y_StatusDrift,
-			Severity:    "MUST-FIX",
-			Remediation: fmt.Sprintf("moai spec close %s --backfill-only", specID),
-			Details: map[string]any{
-				"spec_md_status":   specStatus,
-				"sync_commit_sha":  syncSHA,
-				"mx_commit_sha":    mxSHA,
-				"reason":           "all phase markers present + valid SHAs but status != completed",
-			},
-		}
-	}
-
-	// Y_Y_N_Y: §E.2 + §E.5 present but mx_commit_sha missing + status drift.
-	if hasSyncSection && hasMxSection && mxSHA == "" {
-		return &DriftFinding{
-			SpecID:      specID,
-			Era:         string(EraV3R6),
-			FindingType: FindingY_Y_N_Y,
+			FindingType: FindingSyncStatusDrift,
 			Severity:    "MUST-FIX",
 			Remediation: fmt.Sprintf("moai spec close %s --backfill-only", specID),
 			Details: map[string]any{
 				"spec_md_status":  specStatus,
 				"sync_commit_sha": syncSHA,
-				"reason":          "§E.5 section present but mx_commit_sha missing",
-			},
-		}
-	}
-
-	// Y_N_N_Y: sync section present but mx absent + status drift.
-	if hasSyncSection && !hasMxSection {
-		return &DriftFinding{
-			SpecID:      specID,
-			Era:         string(EraV3R6),
-			FindingType: FindingY_N_N_Y,
-			Severity:    "MUST-FIX",
-			Remediation: fmt.Sprintf("moai spec close %s --backfill-only", specID),
-			Details: map[string]any{
-				"spec_md_status": specStatus,
-				"reason":         "§E.2 sync section present but §E.5 Mx section absent",
+				"reason":          "§E.2 + §E.4 + sync_commit_sha present (sync complete) but status != completed",
 			},
 		}
 	}
