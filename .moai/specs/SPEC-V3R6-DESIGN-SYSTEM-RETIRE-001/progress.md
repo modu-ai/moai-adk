@@ -163,7 +163,16 @@ The retirement is **run-complete**: all 10 MUST ACs PASS, the active-code zero-t
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: "2026-06-19"
+sync_commit_sha: "<backfilled in Mx-phase commit>"
+sync_status: "implemented"
+frontmatter_transition: "in-progress → implemented (this sync commit)"
+docs_touched: "progress.md §E.4; spec.md frontmatter status"
+ownership: "orchestrator-direct (GLM 1M backend fallback per feedback_glm_orchestrator_direct_sync_mx — manager-docs spawn context-limit risk); Authored-By-Agent: manager-docs trailer (orchestrator acting in manager-docs role)"
+changelog: "deferred — design-system retirement CHANGELOG entry is a separate docs task outside this SPEC §E scope"
+lsp_sync_gate: "met — spec-lint 0 errors; pre-existing full-suite failures (internal/spec AC08/AC11, internal/statusline TestCollectMemory, internal/template OutputStylesParity) unchanged at baseline, none this SPEC regression"
+```
 
 ### (Migrated from §E.5)
 

@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DESIGN-SYSTEM-RETIRE-001
 title: "Retire the moai-design-system skill — full lifecycle removal"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-06-19
 updated: 2026-06-19
 author: manager-spec
