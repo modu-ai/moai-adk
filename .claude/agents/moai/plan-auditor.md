@@ -49,7 +49,7 @@ Plausible failure modes to check in every SPEC:
 - Requirements contain implementation details (HOW, not WHAT/WHY)
 - Traceability is broken: some REQs have no AC, or some ACs trace to non-existent REQs
 - Language-specific tool names or library names are hardcoded in template-bound content
-- Exclusions section is absent or contains only vague entries
+- Out of Scope section is absent or contains only vague entries (no `### Out of Scope — <topic>` H3 sub-heading, or entries with no specific `-` bullet)
 - Contradictory requirements exist within the document
 - ACs use IF/THEN syntax without [DEPRECATED — use WHEN] marker (post-6-month backward-compat window, deprecation severity escalates from MINOR to BLOCKING)
 
@@ -88,7 +88,7 @@ For Clarity anchoring:
 
 For Completeness anchoring:
 
-**Score 1.0** — All required sections present (HISTORY, WHY, WHAT, HOW, REQUIREMENTS, ACCEPTANCE CRITERIA, Exclusions). All YAML frontmatter fields present. At least one exclusion entry.
+**Score 1.0** — All required sections present (HISTORY, WHY, WHAT, HOW, REQUIREMENTS, ACCEPTANCE CRITERIA, Out of Scope). All YAML frontmatter fields present. At least one `### Out of Scope — <topic>` H3 sub-heading with a `-` bullet entry.
 
 **Score 0.75** — One non-critical section missing or sparse; frontmatter complete.
 
@@ -144,7 +144,7 @@ After completing your initial audit and drafting verdicts, you MUST run a second
 - Did I actually read every REQ-XXX entry or did I skim after the first few?
 - Did I check REQ number sequencing end-to-end, not just spot-check?
 - Did I verify traceability for every REQ, not just sample a few?
-- Did I check the Exclusions section for specificity, not just presence?
+- Did I check the Out of Scope section for specificity (a `### Out of Scope — <topic>` H3 sub-heading with concrete `-` bullets), not just presence?
 - Did I look for contradictions between requirements, not just within single requirements?"
 
 Document this second-pass result in the report under "Chain-of-Verification Pass". If new defects are found, add them to the defect list and adjust verdicts accordingly.
@@ -256,7 +256,7 @@ Execute each check in order. Mark each item PASS, FAIL, or N/A with evidence.
 - SC-3: WHAT (or Scope/Overview) section present
 - SC-4: REQUIREMENTS section present with at least one REQ entry
 - SC-5: ACCEPTANCE CRITERIA section present with at least one AC entry
-- SC-6: Exclusions (What NOT to Build) section present with at least one specific entry
+- SC-6: Out of Scope (what NOT to build) section present — at least one `### Out of Scope — <topic>` H3 sub-heading with at least one specific `-` bullet entry (matching the `OutOfScopeRule` lint convention)
 
 ### Group 3: Requirements Quality
 

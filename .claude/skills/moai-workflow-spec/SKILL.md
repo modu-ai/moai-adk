@@ -260,7 +260,9 @@ SPEC Characteristics: forward-looking (what WILL be built), actionable, testable
 | Meeting Notes | Records decisions made | `.moai/reports/meeting-{DATE}/` |
 | Retrospective | Analyzes past work | `.moai/reports/retro-{DATE}/` |
 
-### Exclusion Rules
+### Out of Scope Classification Rules
+
+These routing rules decide what is out of scope for a SPEC document (and where it belongs instead). When authoring a SPEC's own exclusions section, express each excluded item as a `### Out of Scope — <topic>` H3 sub-heading with `-` bullets so the section satisfies the `OutOfScopeRule` lint.
 
 [HARD] Reports analyze what EXISTS → `.moai/reports/`. SPECs define what will be BUILT → `.moai/specs/`.
 
@@ -321,6 +323,6 @@ Integration Status: Complete - Plan-Run-Sync workflow with SDD 2025 features
 - [ ] research.md exists when the SPEC touches existing code
 - [ ] Annotation cycle completed with explicit user approval marker
 - [ ] SPEC references existing SPEC-IDs it depends on or supersedes
-- [ ] Non-goals section present to prevent scope creep
+- [ ] Out of Scope section present to prevent scope creep — at least one `### Out of Scope — <topic>` H3 sub-heading with a `-` bullet entry (satisfies the `OutOfScopeRule` lint)
 
 <!-- moai:evolvable-end -->

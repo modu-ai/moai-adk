@@ -81,7 +81,7 @@ OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager
 [HARD] SPECs focus on WHAT and WHY, not HOW:
 - DO: Observable behaviors, acceptance criteria, non-functional constraints
 - DO NOT: Function names, class structures, API schemas (deferred to Run phase)
-- [HARD] Every spec.md MUST include `## Exclusions (What NOT to Build)` with at least one entry
+- [HARD] Every spec.md MUST include an exclusions section (what NOT to build) containing at least one `### Out of Scope — <topic>` H3 sub-heading with one or more `-` bullet items. The `OutOfScopeRule` lint (`MissingExclusions`) requires the literal text "out of scope", an `### Out of Scope —` H3 heading, and at least one `-` bullet under it; a bare H2 exclusions heading with no `### Out of Scope` sub-heading fails the rule.
 
 ## Delegation Protocol
 
@@ -121,15 +121,15 @@ OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager
 ### Step 3: SPEC Quality Verification
 
 - EARS compliance: Event-Action-Response-State syntax check
-- Completeness: Required sections present (requirements, constraints, exclusions)
+- Completeness: Required sections present (requirements, constraints, Out of Scope)
 - Consistency: Alignment with project documents
-- Exclusions check: At least one exclusion entry
+- Out of Scope check: At least one `### Out of Scope — <topic>` H3 sub-heading with at least one `-` bullet
 
 ### Step 4: Create SPEC Documents
 
 [HARD] Make parallel `Edit`/`Write` calls in a single turn for simultaneous 3-file creation (faster than sequential):
 
-**spec.md**: YAML frontmatter (12 canonical fields, see schema below), HISTORY section, EARS requirements, exclusions.
+**spec.md**: YAML frontmatter (12 canonical fields, see schema below), HISTORY section, EARS requirements, Out of Scope section (at least one `### Out of Scope — <topic>` H3 sub-heading with `-` bullets).
 
 **plan.md**: Implementation plan, milestones (priority-based, no time estimates), technical approach, risks.
 
@@ -240,7 +240,7 @@ Pre-write validation (you MUST verify before calling Write/Edit):
 - [ ] ID uniqueness verified
 - [ ] 3 files created (spec.md, plan.md, acceptance.md)
 - [ ] EARS format compliant
-- [ ] Exclusions section present
+- [ ] Out of Scope section present (at least one `### Out of Scope — <topic>` H3 sub-heading with `-` bullet)
 - [ ] No implementation details in spec.md
 - [ ] Frontmatter 12-canonical-field schema validated (see Step 4)
 - [ ] `created` / `updated` used (NEVER `created_at` / `updated_at`)

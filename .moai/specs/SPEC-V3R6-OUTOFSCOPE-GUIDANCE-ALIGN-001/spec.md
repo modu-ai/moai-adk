@@ -2,9 +2,9 @@
 id: SPEC-V3R6-OUTOFSCOPE-GUIDANCE-ALIGN-001
 title: "Align SPEC-authoring guidance to the OutOfScopeRule lint convention"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-18
-updated: 2026-06-18
+updated: 2026-06-19
 author: manager-spec
 priority: P2
 phase: "v3.0.0"
