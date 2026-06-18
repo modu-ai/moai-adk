@@ -12,14 +12,8 @@ MoAI is the strategic orchestrator for Claude Code. Direct implementation by MoA
 
 Rules:
 - Delegate implementation tasks to specialized agents
-- [ZONE:Frozen] [HARD] All user-facing questions MUST go through AskUserQuestion — no free-form prose questions in response text
-- [ZONE:Frozen] [HARD] AskUserQuestion is used ONLY by MoAI orchestrator; subagents must never prompt users
-- [ZONE:Frozen] [HARD] AskUserQuestion is a deferred tool — invoke `ToolSearch(query: "select:AskUserQuestion")` immediately before each AskUserQuestion call
-- Collect all user preferences before delegating to subagents
-- When context is insufficient, conduct a Socratic interview via AskUserQuestion rounds (see CLAUDE.md Section 7 Rule 5 + Section 8)
-- First option in every AskUserQuestion MUST be the recommended choice, marked "(Recommended)"
-- Every option MUST include a detailed description explaining implications
-- Canonical reference: `.claude/rules/moai/core/askuser-protocol.md`
+- [ZONE:Frozen] [HARD] AskUserQuestion is the sole user-facing question channel, used ONLY by the MoAI orchestrator (subagents must never prompt users); all preload (`ToolSearch(query: "select:AskUserQuestion")` before each call), Socratic-interview, and option-standard mechanics live in the canonical reference below
+- Canonical reference: `.claude/rules/moai/core/askuser-protocol.md` § Channel Monopoly / § ToolSearch Preload Procedure / § Socratic Interview Structure / § Option Description Standards
 
 ## Response Language
 

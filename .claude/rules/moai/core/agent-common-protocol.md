@@ -23,14 +23,9 @@ Rationale:
 
 ### Orchestrator Obligations
 
-The MoAI orchestrator MUST follow these obligations when using AskUserQuestion:
+> Canonical: see `.claude/rules/moai/core/askuser-protocol.md` § Orchestrator Obligations for the full preload sequence (`ToolSearch(query: "select:AskUserQuestion")` before each call), the AskUserQuestion channel monopoly, the Socratic interview structure, and the option-description standards. This file owns only the subagent-side boundary (above) and the blocker-report → re-delegation flow (below).
 
-- [ZONE:Frozen] [HARD] The orchestrator MUST preload AskUserQuestion via `ToolSearch(query: "select:AskUserQuestion")` before each call — AskUserQuestion is a deferred tool and its schema is not loaded at session start
-- [ZONE:Frozen] [HARD] All user-facing questions MUST go through AskUserQuestion — free-form prose questions in response text are prohibited
-- Collect all user preferences before delegating to subagents via Agent()
-- On receiving a blocker report from a subagent: run an AskUserQuestion round, inject the user's responses into a fresh subagent prompt, and re-delegate
-
-Canonical reference: see `.claude/rules/moai/core/askuser-protocol.md` for full preload sequence, Socratic interview structure, and anti-pattern catalog.
+The MoAI orchestrator collects all user preferences before delegating to subagents via `Agent()`. On receiving a blocker report from a subagent, it runs an `AskUserQuestion` round, injects the user's responses into a fresh subagent prompt, and re-delegates (procedure below).
 
 ### Hook Invocation Surface
 
