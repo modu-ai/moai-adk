@@ -51,7 +51,7 @@ Notes:
 
 ```yaml
 run_complete_at: 2026-06-19
-run_commit_sha: "<pending — commit to be created; orchestrator applies diff to shared main>"
+run_commit_sha: "3a744b3d4"
 run_status: complete
 ac_pass_count: 21
 ac_fail_count: 0
