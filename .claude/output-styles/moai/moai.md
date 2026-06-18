@@ -508,7 +508,7 @@ Rules:
 When a SPEC closes and contributes to a Tier S/M/L Epic statistic, render as Epic Stats banner. Memory pattern frequency: ~32 events (Tier S minimal Epic tracking).
 
 Triggers:
-- After 3-phase SPEC lifecycle close (plan + run + sync; the `completed` transition rides the sync commit per SPEC-V3R6-LIFECYCLE-REDESIGN-001 — MX Tag is a cross-cutting sync concern, not a separate phase)
+- After 3-phase SPEC lifecycle close (plan + run + sync; the `completed` transition rides the sync commit per the 3-phase close convention — MX Tag is a cross-cutting sync concern, not a separate phase)
 - After Epic close
 
 Template:
