@@ -10,8 +10,8 @@
 |---|---|---|---|
 | Plan | complete | manager-spec | _<plan-phase commit>_ |
 | Run | complete | manager-develop | e7a4d5a4f (FF-pushed to origin/main) |
-| Sync | complete | orchestrator-direct | b6b2243f9 |
-| Mx | complete | orchestrator-direct | a9f7adda9 |
+| Sync | complete | orchestrator-direct | e103d5b8e |
+| Mx | complete | orchestrator-direct | 80a13e191 |
 
 ---
 
@@ -136,7 +136,7 @@ template_mirror_followup: open  # FU-1 deferred per C-4 (plan.md §I)
 - **owner**: orchestrator-direct (GLM manager-docs spawn context-limit fallback per `feedback_glm_orchestrator_direct_sync_mx`).
 - **spec-lint**: 0 errors.
 
-sync_commit_sha: b6b2243f9
+sync_commit_sha: e103d5b8ee8e80c4a97389e1bc97fe2d01e4ffbb
 
 ---
 
@@ -145,9 +145,9 @@ sync_commit_sha: b6b2243f9
 - **mx_complete_at**: 2026-06-19
 - **frontmatter_transition**: `implemented → completed`.
 - **@MX tags**: N/A (additive markdown craft device — 4 SKILL.md `## Decision Heuristics` sections; no Go code, no high fan_in invariant surface).
-- **4-phase close**: plan (plan-phase) → run (e7a4d5a4f) → sync (b6b2243f9) → mx (this commit) — V3R6 era closed.
+- **4-phase close**: plan (plan-phase) → run (e7a4d5a4f) → sync (e103d5b8e) → mx (this commit) — V3R6 era closed.
 
-mx_commit_sha: a9f7adda90ed82396184fa5f3763431e5778b1d2
+mx_commit_sha: 80a13e191297cfbdb78129f7d09907809b2f3a5d
 
 ---
 
