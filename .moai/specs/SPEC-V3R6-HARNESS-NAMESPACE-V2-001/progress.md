@@ -94,4 +94,19 @@ run-phase memory가 forward-gap으로 분류했으나, `rule_template_mirror_tes
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending Mx-phase>_
+mx_complete_at: 2026-06-18
+mx_commit_sha: <pending — backfilled in follow-up commit (2-step)>
+mx_status: PASS (4-phase close — plan + run + sync + Mx)
+mx_owner: orchestrator-direct (GLM backend — manager-docs/sync-auditor spawn context-limit fallback per feedback_glm_orchestrator_direct_sync_mx)
+
+### 4-phase close summary
+- **plan**: PASS-WITH-DEBT 0.82 (manager-spec; D1/D3/D4 deferred to manager-spec re-delegation)
+- **run**: PASS-WITH-DEBT — 11/12 AC PASS + AC-HNS-011 PASS-WITH-DEBT (statusline 1M-budget pre-existing, bef24877d baseline)
+- **sync**: PASS (orchestrator-direct; frontmatter implemented + doctrine §24.5 RESOLVED + skill-authoring caveat 정정 + CHANGELOG; sync_commit_sha 5cd436ea4)
+- **Mx**: this signal — frontmatter completed + mx_commit_sha backfill
+
+### Era classification (V3R6 modern era)
+progress.md §E.2 marker + sync_commit_sha(5cd436ea4) + §E.5 marker + mx_commit_sha → era V3R6 (H-4: §E.2 + §E.5 + both commit_sha present). Modern era, drift-detection subject — this SPEC is drift-clean (12 AC verified, doctrine aligned).
+
+### Lifecycle complete
+SPEC-V3R6-HARNESS-NAMESPACE-V2-001 4-phase lifecycle complete (plan → run → sync → Mx). Supersedes SPEC-V3R6-HARNESS-MOAI-NAMESPACE-001 (status: superseded).
