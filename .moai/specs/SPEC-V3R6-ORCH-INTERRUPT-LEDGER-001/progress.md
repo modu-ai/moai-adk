@@ -90,11 +90,71 @@ Both returned zero hits at plan-time (2026-06-18). AC-LEDGER-005 re-runs the phr
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+**Populated by**: manager-develop (this delivery).
+**Phase**: run-phase (M1-M4 complete).
+**Worktree**: `worktree-agent-a21f0ab93a71e974a` (L1 isolation; orchestrator will fast-forward to main).
+
+### M1 — `agent-common-protocol.md` §Ledger Closure (commit d073227c2)
+
+- New `### Ledger Closure` subsection under `## User Interaction Boundary`, placed after `### Re-delegation Procedure` (sibling to `### Hook Invocation Surface`, collision-free per REQ-LEDGER-005).
+- Clause (a) REQ-LEDGER-001 — synthetic ledger-closing artifact on aborted `Agent()`.
+- Clause (b) REQ-LEDGER-002 — team-ac-verify.sh exit-2 `ledger_note` field.
+- Clause (c) REQ-LEDGER-003 — TeammateIdle exit-2 task closure.
+- Clause (d) REQ-LEDGER-006 — cross-references (book1 ch04, book1 ch07, session-handoff.md Block 3-4).
+- Frontmatter transition commit: `e38dd069f` (status draft → in-progress).
+
+### M2 — `team-ac-verify.sh` exit-2 reject path + `ledger_note` (commit bbcab97d1)
+
+- Added minimal reject path triggered by `--reject` test stub (exit 2 + JSON with `ledger_note` field).
+- Existing dormant/allow paths unchanged (exit 0, no `ledger_note`) — CON-1 exit-code semantics preserved.
+- Full AC-verification logic deferred to follow-up SPEC (§X.1) — the trigger is a minimal stub, honestly described.
+
+### M3 — `moai.md` §8 Error Recovery banner Interrupt Closure annotation (commit 3d027e36d)
+
+- Added 3-line `📎 Interrupt Closure` annotation below A/B/C/D options.
+- No structural rewrite of §8 (CON-2) — A/B/C/D options line preserved on a single line.
+
+### M4 — Lint + grep reproducibility + scope-boundary verification
+
+- **E5 spec lint**: 0 errors, 1 transient `StatusGitConsistency` warning (frontmatter `in-progress` vs git-implied `implemented` — resolves at sync-phase when manager-docs performs the transition; anticipated by progress.md §D.5).
+- **AC-LEDGER-005 grep reproducibility**: phrase-targeted post-edit grep = 9 hits (≥2); per-term `ledger`=12, `synthetic`=3, `dangling`=1. Plan-time baseline was 0; gap closed.
+- **AC-LEDGER-006 collision-free**: `### Ledger Closure` (L103), `### Hook Invocation Surface` (L35), `## User Interaction Boundary` (L5) — 3 distinct sibling sections; P0 Recovery-Signal Carve-Out (L65) is under Hook Invocation Surface, NOT under Ledger Closure.
+- **E4 subagent-boundary**: `grep 'AskUserQuestion' team-ac-verify.sh` = 0 matches (hook does not invoke AskUserQuestion).
+- **E2 build**: `go build ./...` exit 0 (no Go changes; sanity only). **E3 coverage**: N/A — no Go changes.
+
+### AC PASS/FAIL matrix (6 MUST-PASS ACs)
+
+| AC | Status | Evidence |
+|----|--------|----------|
+| AC-LEDGER-001 | PASS | `grep -c '### Ledger Closure' agent-common-protocol.md` = 1; corrected-range awk grep = 8 keyword hits (≥6). Note: the AC's literal awk range `/### Ledger Closure/,/^### [A-Z]/` has a defect (start pattern matches its own end pattern because "Ledger" matches `[A-Z]`), returning 0; the corrected range `/^## /` confirms content completeness. |
+| AC-LEDGER-002 | PASS | `grep 'ledger_note' team-ac-verify.sh` = 4 hits; `grep 'exit 2'` = 6 hits incl. L50; `bash -n` OK; dormant smoke = `"decision":"dormant"`; reject smoke = exit 2 + `ledger_note` field. |
+| AC-LEDGER-004 | PASS | `grep 'Interrupt Closure' moai.md` = 1 hit (L594); A/B/C/D preserved (L593); annotation = 3 lines (≤3 per CON-2). |
+| AC-LEDGER-005 | PASS | Phrase-targeted post-edit grep = 9 hits (≥2); `ledger`/`synthetic`/`dangling` all present in active doctrine. |
+| AC-LEDGER-006 | PASS | 3 distinct sibling sections; Ledger Closure NOT nested inside Hook Invocation Surface. |
+| AC-LEDGER-007 | PASS | book1 ch04 + ch07 both cited in §Ledger Closure (5 grep hits, ≥2). |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+**Populated by**: manager-develop (this delivery).
+**Phase**: run-phase close.
+
+```yaml
+run_complete_at: 2026-06-18
+run_commit_sha: 3d027e36d   # M3 (terminal run-phase commit; M1=e38dd069f frontmatter, M1-content=d073227c2, M2=bbcab97d1, M3=3d027e36d)
+run_status: audit-ready
+ac_pass_count: 6
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # no PRESERVE-list items touched outside SPEC scope
+l44_pre_commit_fetch: N/A         # worktree isolation; orchestrator performs pre-spawn sync check
+l44_post_push_fetch: N/A          # not pushed (left local for orchestrator fast-forward)
+new_warnings_or_lints_introduced: 0   # 1 transient StatusGitConsistency warning (pre-existing pattern, resolves at sync)
+cross_platform_build:
+  darwin: pass   # go build ./... exit 0 (no Go changes)
+  windows: N/A   # no Go changes; cross-platform build not applicable
+  linux: N/A
+total_run_phase_files: 3   # agent-common-protocol.md + team-ac-verify.sh + moai.md
+m1_to_mN_commit_strategy: per-milestone separate commits (M1 frontmatter e38dd069f → M1 content d073227c2 → M2 bbcab97d1 → M3 3d027e36d)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
