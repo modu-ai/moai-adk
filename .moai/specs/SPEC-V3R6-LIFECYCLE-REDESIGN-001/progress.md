@@ -98,6 +98,29 @@ Plan-phase audit-ready: PASS-WITH-DEBT 0.87 (iter-2, Tier L thresh 0.85, +0.16 m
 - AC-LR-006: manager-docs.md line 141 lists MX Tag validation as a sync sub-step (NOT a separate phase) — PASS.
 - M5 grep gate: `grep -rl '4-phase\|Mx-phase\|§E\.5' .claude/` (excluding worktrees/agent-memory/specs/reports) → 0 canonical usage; all residual hits are retirement/reconciliation prose + Late-Branch procedure + Anthropic verbatim citation (enumerated as intentional exceptions in E2).
 
+### M6 — Axis B SSOT rewrite: sprint-round-naming.md → Epic taxonomy
+
+- Commit: `cf0c3317f` (docs M6)
+- AC-LR-007 PASS: exactly 4 canonical terms (Epic / SPEC / Milestone / Constitution); AP-SRN-001..004 re-anchored to Epic taxonomy + AP-SRN-005 (cohort) added. Verified via `grep -cE '^\| \*\*(Epic|SPEC|Milestone|Constitution)\*\* \|'` = 4.
+- AC-LR-009 PASS: Epic definition = "A time-unit or thematic container for one or more SPECs, grouped by schedule, release, or theme (formerly `Sprint`)" — pure rename, semantics preserved.
+- Round (b) disambiguation (design.md §C.2): former within-SPEC `Round` (SSE-stall sub-division) folded into `Milestone`. Not a blocker — design.md §C.2 is unambiguous.
+- Legacy Aliases section added (Sprint/cohort/Round/Wave appear only there).
+
+### M7 — Axis B T1 migration (.claude/rules/moai/)
+
+- Commit: `317447e05` (docs M7)
+- Files edited (4 taxonomy-bearing): askuser-protocol.md (Sprint 8 → Epic 8 example; interview 'Round 1/2' → 'Turn 1/2' + disambiguation note), session-handoff.md (Wave/Sprint/Round → Epic/Milestone), orchestration-mode-selection.md + archived-agent-rejection.md (generic 'SPEC cohort' → 'SPEC group (Epic)' per AP-SRN-005).
+- AC-LR-008 T1 true-taxonomy residual: 0. Intentional exceptions (5 files, 17 hits) = ci-watch/worktree infra 'Wave 1/2/3/5' (zone-registry, manager-develop-prompt-template, ci-autofix-protocol, ci-watch-protocol, worktree-state-guard) — pipeline wave numbering owned by SPEC-V3R5-CI-AUTONOMY-001, NOT taxonomy; documented in sprint-round-naming.md AP-SRN-004 note.
+
+### M8 — Axis B T2-T4 migration (agents/output-styles/skills/docs)
+
+- Commit: `5a6983d08` (docs M8)
+- Files edited (8): output-styles/moai/moai.md (Cohort Stats → Epic Stats, Sprint Status → Epic Status, Sprint [N] token → Epic [N], full banner + localization table + self-check); moai-workflow-spec/SKILL.md (provenance 'Sprint 10' → Epic 10 + historical-label disambiguation); project/{meta-harness,mode-detection,codebase-analysis}.md + plan/clarity-interview.md (interview 'Round N' → 'Interview Phase N' — interview round is generic, NOT the retired taxonomy Round); plan/spec-assembly.md (AC-LR-010 Epic-reference note added); .moai/docs/harness-delivery-strategy.md (Sprint 15 → Epic 15); meta-harness Agile menu '스프린트' → 'iteration'.
+- AC-LR-008 T2-T4 true-taxonomy residual: 0. Intentional exceptions (documented): ci-watch infra 'Wave 1/2/3/7' (moai-domain-database, moai-workflow-ci-loop, git-workflow-doctrine); SQL 'cohort' analytics (db/queries.md signup cohort); generic 'docs cohort' (codemaps); Korean false-positives '그라운드트루스'(ground-truth substring) + '백그라운드'(background substring) + interview '라운드'(generic); Legacy Aliases quoted tokens in sprint-round-naming.md + spec-assembly.md AC-LR-010 note.
+- AC-LR-010 PASS: spec-assembly.md scaffolding references Epic (not Sprint) for grouped SPECs.
+- E3 PRESERVE: 13 files touched across M6-M8 — naming-migration only; no Axis-A lifecycle file re-touched, no Go code, no other SPEC, no memory (verified `git diff --name-only b262c6d16..HEAD`).
+- E2 collateral: `moai spec lint` 0 error (1 pre-existing StatusGitConsistency warning — status 'draft' vs git 'in-progress' — owned by manager-docs sync-phase, NOT introduced by M6-M8).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-06-19T04:30:00Z
