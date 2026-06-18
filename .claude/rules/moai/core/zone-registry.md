@@ -1003,4 +1003,17 @@ moai constitution list --format json
   anchor: "#hard-routing-table"
   clause: "While a session is GLM-backed, MoAI agents and the orchestrator SHALL NOT invoke the built-in WebSearch or WebFetch, nor Read on an image file, because those route through the 529-prone api.z.ai/api/anthropic gateway and the base64->422 image path; the moai cg leader pane (Claude backend) is exempt"
   canary_gate: true
+
+# ============================================================
+# CONST-V3R6-NNN: V3R6 modern-era parallel namespace
+# (first V3R6 entry: SPEC-V3R6-HARNESS-RUNTIME-RECOVERY-001 M3)
+# ============================================================
+# --- runtime-recovery-doctrine.md (1 entry: V3R6-001 anti-death-spiral) ---
+- id: CONST-V3R6-001
+  zone: Evolvable
+  zone_class: frozen-safety
+  file: .claude/rules/moai/workflow/runtime-recovery-doctrine.md
+  anchor: "#4-anti-death-spiral-hook-carve-out-documentation-only-policy"
+  clause: "Recovery-Signal Carve-Out: while a turn is itself a recovery signal (recovering from a compact, prompt_too_long, max_output_tokens, media_size, or compact-failure), Stop/PostToolUse hooks SHOULD exit 0 rather than exit 2, so that recovery turns are NOT placed into the error → stop-hook-blocks → retry → error death-spiral; documentation-only policy guidance (current hooks do not parse stopReason; mechanical enforcement deferred to future SPEC-V3R6-HOOK-RECOVERY-SIGNAL-001)"
+  canary_gate: true
 ```
