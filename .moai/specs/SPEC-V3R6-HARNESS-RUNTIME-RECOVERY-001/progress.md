@@ -54,10 +54,10 @@ Run-phase completed 2026-06-19 via 4 commits (M1-M4). Latest run commit: `dfef9d
 
 Sync-phase performed 2026-06-19. This SPEC is policy-layer only — no Go code changes. CHANGELOG.md entry added under `[Unreleased]` section documenting: (1) NEW `runtime-recovery-doctrine.md` file (7 sections: withheld-recoverable-error set, 4-rung cheapest-first ladder, 5 circuit-breaker invariants, Recovery-Signal Carve-Out, cross-references, agent obligation, anti-patterns); (2) `agent-common-protocol.md` §Hook Invocation Surface carve-out (documentation-only guidance mirroring doctrine §4); (3) `zone-registry.md` CONST-V3R6-001 entry (anti-death-spiral invariant naming); (4) lint + grep reproducibility verification. Frontmatter status transition `in-progress → implemented` will be applied on sync commit. Sync commit SHA will be backfilled after commit creation.
 
-sync_commit_sha: ""
+sync_commit_sha: "d5796c960df47f6e8836e4fc9dd487522e23b044"
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending Mx-phase>_
+Mx-phase performed 2026-06-19. This SPEC is policy-layer only — no Go code changes. CHANGELOG.md entry documents all 7 sections of the runtime-recovery doctrine. Frontmatter status transition `implemented → completed` will be applied on Mx close commit. Mx commit SHA will be backfilled after commit creation.
 
 mx_commit_sha: ""
