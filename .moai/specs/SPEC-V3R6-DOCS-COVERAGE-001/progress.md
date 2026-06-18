@@ -140,7 +140,7 @@ None. No scope-expansion needed; no SPEC body modification required; no user dec
 
 ```yaml
 sync_complete_at: 2026-06-18
-sync_commit_sha: <to-be-filled-post-commit>
+sync_commit_sha: 68b3926a7b932cbe2a470d753ed41298a5fedf32
 sync_status: PASS
 changelog_entry: CHANGELOG.md [Unreleased] ### Added (COVERAGE-001)
 frontmatter_status: in-progress → implemented
@@ -166,4 +166,16 @@ spec_lint: 0 findings (StatusGitConsistency resolved post 085e8ecc5)
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending Mx-phase>_
+```yaml
+mx_complete_at: 2026-06-18
+mx_commit_sha: <to-be-filled-post-commit>
+mx_status: PASS
+4_phase_close: plan(iter-2 PASS 0.88) + run(b35caaaf2, 11 AC) + sync(68b3926a7) + Mx(this)
+frontmatter_status: implemented → completed
+sprint: "Sprint 14 Docs-v3 cohort 4/5 closed"
+era_classification_target: V3R6 (H-4: §E.2 + §E.5 markers + both commit_sha present post-backfill)
+residual_debt:
+  - AC-001 PASS-WITH-DEBT (REQ-002 "31 specialized" sub-count overlap — functional intent met, mechanical grep cannot distinguish sub-count from stale total)
+  - docs-truth.md §6 "Skill Count (32)" axis (acceptance §D.4 forward-looking, separate follow-up — explicitly out of scope)
+  - D-new-2 MINOR (AC-006 ja regex `6つのカテゴリ` natural-form coverage)
+```
