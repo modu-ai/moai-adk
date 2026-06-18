@@ -2,7 +2,7 @@
 id: SPEC-V3R6-TOOL-POLICY-SSOT-001
 title: "Tool/Permission Policy Single Source of Truth (declarative YAML + codegen)"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-06-18
 updated: 2026-06-19
 author: manager-spec

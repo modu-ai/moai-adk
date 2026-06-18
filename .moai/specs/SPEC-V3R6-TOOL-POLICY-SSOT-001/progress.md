@@ -26,7 +26,7 @@ era: V3R6
 - **Plan-phase**: COMPLETE (2026-06-18). 5 plan-phase artifacts authored (spec.md + plan.md + acceptance.md + research.md + design.md) + this progress.md §E skeleton.
 - **Run-phase**: COMPLETE (2026-06-18, commit `73336e296` — M1 schema+seed YAML + M2 codegen + M3 query + tests; single feat commit).
 - **Sync-phase**: COMPLETE (2026-06-19, orchestrator-direct).
-- **Mx-phase**: NOT STARTED.
+- **Mx-phase**: COMPLETE (2026-06-19, orchestrator-direct — see §E.5).
 
 ---
 
@@ -176,15 +176,18 @@ Matches plan-phase measurement (research.md §C.1: allow=110/deny=60/ask=6). The
 - **owner**: orchestrator-direct (GLM manager-docs spawn context-limit fallback per `feedback_glm_orchestrator_direct_sync_mx`).
 - **spec-lint**: 0 errors (StatusGitConsistency transient warning resolves on frontmatter landing).
 
-sync_commit_sha: _<pending sync-phase — backfilled in Mx commit>_
+sync_commit_sha: f746977cf6afe0fded07e7183c969b02d8928126
 
 ---
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending Mx-phase — frontmatter `implemented → completed` + mx_commit_sha backfill>_
+- **mx_complete_at**: 2026-06-19
+- **frontmatter_transition**: `implemented → completed`.
+- **@MX tags**: N/A (this SPEC's Go surface is the new `internal/config/toolpolicy/` pkg + `internal/cli/tool_policy.go` codegen/query — additive utilities, not high fan_in invariant contracts; no @MX:ANCHOR/@MX:WARN surface).
+- **4-phase close**: plan (plan-phase) → run (73336e296) → sync (f746977cf) → mx (this commit) — V3R6 era closed.
 
-mx_commit_sha: _<pending Mx-phase>_
+mx_commit_sha: _<pending Mx-phase — backfilled in follow-up commit>_
 
 ---
 
