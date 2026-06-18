@@ -2,7 +2,7 @@
 id: SPEC-V3R6-HARNESS-NAMESPACE-V2-001
 title: "Harness namespace doctrine-code drift catch-up — acceptance criteria"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-06-18
 updated: 2026-06-18
 author: manager-spec

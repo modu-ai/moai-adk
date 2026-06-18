@@ -63,7 +63,34 @@ Hybrid Trunk 1-person OSS (§23): the orchestrator's constraint was "Push to ori
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase (manager-docs)>_
+sync_complete_at: 2026-06-18
+sync_commit_sha: <pending — backfilled in follow-up commit (2-step)>
+sync_status: PASS-WITH-DEBT (namespace scope green; pre-existing out-of-scope statusline 1M-budget debt documented below)
+sync_owner: orchestrator-direct (GLM backend — manager-docs spawn context-limit fallback per feedback_glm_orchestrator_direct_sync_mx)
+
+### Sync-phase deliverables
+- frontmatter status: in-progress → implemented (spec.md / plan.md / acceptance.md)
+- doctrine §24.5 "Phase 2 Drift Entry-Condition" → RESOLVED (`.moai/docs/harness-namespace-doctrine.md` line 59) — drift 노트 간략화, catch-up 완료 명시
+- skill-authoring.md § Skills Namespace Policy stale caveat 정정 (template + local mirror parity 유지) — "별도 catch-up SPEC에서 작동 전환" 조건부 제거, 영구 진리("Go enforcement `harness-*` 인식 + `my-harness-*` legacy dual-recognition")로 기재; CI guard sentinel을 `TestNamespaceLeakHarnessSkills`로 정정. template neutrality(§25) 준수 — SPEC ID 비노출
+- embedded.go + catalog.yaml regenerate (`make build`)
+- CHANGELOG `[Unreleased]` NAMESPACE-V2 entry 추가
+
+### verification-claim-integrity 독립 재검증 (sync-phase 진입 전 — carry-over 금지)
+progress.md §E.2 AC 매트릭스 claim을 도구로 독립 재검증:
+- `internal/template` test: design-system staged deletion 복구(stash 보존) 후 `ok 1.028s` PASS — AC-HNS-011 PASS-WITH-DEBT(statusline 1M pre-existing만) 회복 확인
+- `internal/statusline` package: 4 sub-test FAIL 확인 (pre-existing 1M-budget debt, bef24877d부터 — 본 SPEC regression 아님)
+- `golangci-lint run`: 0 issues
+- `go run ./cmd/moai spec lint`: ✓ No findings
+
+### Forward-gap (후속 chore SPEC 권장)
+1. **statusline 1M-budget test-vs-policy drift** (AC-HNS-011 PASS-WITH-DEBT): `internal/statusline/memory_test.go` hardcoded 200K TokenBudget expectation vs production 1M model-budget policy. 후보 SPEC-V3R6-STATUSLINE-1M-BUDGET-001. 본 SPEC regression 아님 (bef24877d부터 pre-existing).
+2. **design-system retirement staged deletion** (scope-out): `moai-design-system/SKILL.md` 2-file staged deletion을 stash@{0}로 보존 후 NAMESPACE-V2 sync 진행. design-system retirement 자체는 별개 SPEC에서 `git stash pop stash@{0}`로 재개. 본 SPEC과 무관.
+
+### D1/D3/D4 (plan-auditor V2 debt) — deferred to manager-spec
+plan-auditor V2 PASS-WITH-DEBT 0.82의 D1(framing)/D3(label)/D4(citation) debt는 sync-phase 정정 예정이었으나: (a) plan-audit report가 gitignored 로컬 아티팩트로 이 세션에 부재하여 정확한 SPEC body 위치 특정 불가, (b) D1/D3/D4 정정이 spec.md/plan.md/acceptance.md body에 해당할 경우 spec-frontmatter-schema.md Forbidden ownership crossings에 의해 manager-spec 영역이므로 orchestrator-direct sync 범위 밖. **후속 manager-spec re-delegation 또는 별개 chore SPEC에서 처리 권장.** 본 sync에서는 SPEC body를 수정하지 않음 (ownership crossing 회피).
+
+### forward-gap (b) template mirror moai/SKILL.md drift — non-issue 확인
+run-phase memory가 forward-gap으로 분류했으나, `rule_template_mirror_test.go` L86-91이 moai/SKILL.md를 byte-parity allowlist에서 REMOVED한 것을 독립 확인 — delta는 CLAUDE.local.md §21 dev-only release-update로 INTENTIONAL. cp source→mirror 불필요. non-issue (progress.md §E.2가 정확).
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
