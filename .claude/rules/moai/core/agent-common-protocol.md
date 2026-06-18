@@ -100,6 +100,23 @@ On receiving a blocker report, the orchestrator:
 3. Constructs a fresh subagent prompt with the user's answers injected
 4. Re-delegates to the subagent
 
+### Ledger Closure
+
+The **ledger-closure invariant** (externally grounded in `github.com/wquguru/harness-books` book1 ch04 "账本闭环" — "只要系统向外承诺了一段执行，就要在中断时把账补平": whenever the system has promised an execution externally, it must close the ledger on interrupt) states that an aborted `Agent()` delegation MUST NOT leave a **dangling tool_use** — an open promise with no matching result — in the orchestrator's own context. The persistence-layer analogue is `session-handoff.md` Block 3-4 preconditions (a `/clear` boundary re-establishes verifiable preconditions before continuing); this subsection codifies the in-session interrupt case (no `/clear`). This is the orchestration-layer analogue of the model-API rule that every `tool_use` receives a `tool_result`.
+
+[ZONE:Evolvable] [HARD] The orchestrator MUST close the ledger on any aborted delegation. Four clauses bind this obligation:
+
+- **(a) Synthetic result on aborted Agent() delegation (REQ-LEDGER-001).** When an `Agent()` delegation is aborted — user interrupt (Ctrl+C), parent-abort propagation (the orchestrator's own turn was aborted and the sub-agent was killed), or timeout (no return before a wall-clock or token-budget ceiling) — the orchestrator SHALL emit a **synthetic ledger-closing artifact** into its own context before issuing the next delegation. The artifact is a short prose summary (NOT a structured data record; no JSON schema, no `.moai/state/ledger.json`), naming what was delegated, that it did not return, and the abort reason if known. Its purpose is to close the open promise so the next turn does not proceed as if the delegation returned cleanly. This clause does NOT change the "Missing Inputs" blocker-report pattern above: a blocker report is a *return*, not an *abort*; REQ-LEDGER-001 covers only the case where no return is produced at all.
+- **(b) team-ac-verify.sh exit-2 `ledger_note` field (REQ-LEDGER-002).** When `.claude/hooks/moai/team-ac-verify.sh` rejects a `TaskCompleted` (exit 2), the hook's structured JSON output carries a `ledger_note` field with a short human-readable rejection reason. The orchestrator injects this `ledger_note` as the ledger-closing artifact for that task. (Exit-code semantics are unchanged — exit 2 still = reject; this clause only names the field the hook now emits. The reject-path trigger itself is a minimal stub; full AC-verification logic is out of scope and deferred to a follow-up SPEC.)
+- **(c) TeammateIdle exit-2 task closure (REQ-LEDGER-003).** When the TeammateIdle hook rejects a task's completion via exit-2 ("keep working"), the rejected task's TaskList entry MUST NOT be left in an open state without a reassignment owner. The orchestrator re-assigns the task (spawn a new teammate, re-delegate to the same teammate with a refined prompt, or close it as obsolete with a synthetic closing note). This binds the orchestrator's TaskList hygiene, not the hook's exit-2 emission. The parent-abort propagation that book1 ch07 names — cleanup handlers registered to avoid orphan tasks — is the source for this clause.
+- **(d) Cross-references (REQ-LEDGER-006).** This subsection cross-references three sources:
+  - **book1 ch04** (账本闭环 — the ledger-closure invariant named in the opening paragraph above).
+  - **book1 ch07** (parent-abort propagates to forked children; agents are observable lifecycle objects via SubagentStart/SubagentStop hooks, exit-code-2 stderr feedback).
+  - `.claude/rules/moai/workflow/session-handoff.md` Block 3-4 preconditions (the persistence-layer analogue of ledger closure across `/clear`).
+  - The ledger-closing artifact's truthfulness is bound by `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 1 (orchestrator self-report) — the artifact MUST be a real summary, not a fabricated "success".
+
+**Scope-boundary note.** This Ledger Closure subsection is distinct from the Hook Invocation Surface subsection above (owned by the sibling `SPEC-V3R6-HARNESS-RUNTIME-RECOVERY-001` Recovery-Signal Carve-Out). The two are siblings under the User Interaction Boundary H2; Ledger Closure is NOT nested inside Hook Invocation Surface. See SPEC-V3R6-ORCH-INTERRUPT-LEDGER-001 REQ-LEDGER-005 / AC-LEDGER-006 for the collision-free placement contract.
+
 ## Language Handling
 
 [ZONE:Evolvable] [HARD] All agents receive and respond in user's configured conversation_language.
