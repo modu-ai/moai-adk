@@ -2,7 +2,7 @@
 id: SPEC-V3R6-ORCH-INTERRUPT-LEDGER-001
 title: "Interrupt Ledger Closure — synthetic result for aborted Agent() delegations, team-ac-verify exit-2 ledger_note, and Error Recovery banner annotation"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-06-18
 updated: 2026-06-19
 author: manager-spec

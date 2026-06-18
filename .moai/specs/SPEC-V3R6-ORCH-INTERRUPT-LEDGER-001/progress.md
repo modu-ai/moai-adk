@@ -174,4 +174,21 @@ sync_commit_sha: "706de3799"  # Commit 1: sync-phase artifacts
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending Mx-phase>_
+Mx-phase executed on 2026-06-19 (Tier M, GLM orchestrator-direct fallback per `feedback_glm_orchestrator_direct_sync_mx`).
+
+**Mx-phase close (4-phase complete):**
+- SPEC-V3R6-ORCH-INTERRUPT-LEDGER-001 status: `in-progress → implemented → completed`
+- 18 ACs verified (13 MUST + 5 SHOULD PASS-WITH-DEBT)
+- No Go code changes (doctrine-only scope)
+- Cross-reference sibling: SPEC-V3R6-HARNESS-RUNTIME-RECOVERY-001 (both co-locate §Ledger Closure in `agent-common-protocol.md`)
+
+**E1-E7 Verification Summary:**
+- E1: AC Binary Matrix — 18/18 AC PASS (13 MUST + 5 SHOULD)
+- E2: Cross-platform build — N/A (no Go code)
+- E3: Coverage — N/A (no Go code)
+- E4: Subagent boundary grep — 0 AskUserQuestion matches in rule files
+- E5: Lint — 0 errors
+- E6: Push — N/A (push handled by orchestrator)
+- E7: Blocker — None
+
+mx_commit_sha: ""  # To be populated in Commit 4 backfill
