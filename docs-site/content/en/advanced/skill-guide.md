@@ -62,7 +62,7 @@ skills**: Applies MoAI-ADK's rules, patterns, and best practices to respond.
 
 ## Skill Categories
 
-MoAI-ADK has a total of **32 skills** — the `moai` umbrella router plus 31 specialized skills classified into 6 categories: Foundation, Workflow, Domain, Reference, Meta/Harness, and Design. Programming-language support is delivered through rules under `rules/moai/languages/`, not as separate skills.
+MoAI-ADK has a total of **31 skills** — the `moai` umbrella router plus 30 specialized skills classified into 6 categories: Foundation, Workflow, Domain, Reference, Meta/Harness, and Design. Programming-language support is delivered through rules under `rules/moai/languages/`, not as separate skills.
 
 ### Foundation (Core Philosophy) - 4 skills
 
@@ -119,13 +119,7 @@ MoAI-ADK has a total of **32 skills** — the `moai` umbrella router plus 31 spe
 | `moai-meta-harness`       | Dynamic project-specific agent team generation   |
 | `moai-harness-learner`    | Harness learning subsystem, auto-update proposals |
 
-### Design (Design System) - 1 skill
-
-| Skill Name             | Description                                            |
-| --------------------- | ------------------------------------------------------ |
-| `moai-design-system`   | Intent-first design, accessibility, design tokens     |
-
-> The `moai` umbrella skill (the unified `/moai` router) is counted in the total of 32 but is not a categorized capability skill — it dispatches the subcommands described in this guide.
+> The `moai` umbrella skill (the unified `/moai` router) is counted in the total of 31 but is not a categorized capability skill — it dispatches the subcommands described in this guide.
 
 ## Progressive Disclosure System
 
@@ -165,7 +159,7 @@ flowchart TD
 
 ### Token Savings
 
-- **Old method**: Load all 32 skills = ~160,000 tokens (impossible)
+- **Old method**: Load all 31 skills = ~160,000 tokens (impossible)
 - **Progressive disclosure**: Load only metadata = ~3,100 tokens (98% savings)
 - **On-demand load**: Only 2-3 skills needed for task = ~15,000 additional tokens
 
