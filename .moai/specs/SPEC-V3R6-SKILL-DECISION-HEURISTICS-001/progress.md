@@ -10,8 +10,8 @@
 |---|---|---|---|
 | Plan | complete | manager-spec | _<plan-phase commit>_ |
 | Run | complete | manager-develop | e7a4d5a4f (FF-pushed to origin/main) |
-| Sync | complete | orchestrator-direct | _<backfilled in Mx commit>_ |
-| Mx | not started | manager-docs / orchestrator | _<pending>_ |
+| Sync | complete | orchestrator-direct | b6b2243f9 |
+| Mx | complete | orchestrator-direct | _<this Mx commit>_ |
 
 ---
 
@@ -136,15 +136,18 @@ template_mirror_followup: open  # FU-1 deferred per C-4 (plan.md §I)
 - **owner**: orchestrator-direct (GLM manager-docs spawn context-limit fallback per `feedback_glm_orchestrator_direct_sync_mx`).
 - **spec-lint**: 0 errors.
 
-sync_commit_sha: _<pending sync-phase — backfilled in Mx commit>_
+sync_commit_sha: b6b2243f9
 
 ---
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending Mx-phase — frontmatter `implemented → completed` + mx_commit_sha backfill>_
+- **mx_complete_at**: 2026-06-19
+- **frontmatter_transition**: `implemented → completed`.
+- **@MX tags**: N/A (additive markdown craft device — 4 SKILL.md `## Decision Heuristics` sections; no Go code, no high fan_in invariant surface).
+- **4-phase close**: plan (plan-phase) → run (e7a4d5a4f) → sync (b6b2243f9) → mx (this commit) — V3R6 era closed.
 
-mx_commit_sha: _<pending Mx-phase>_
+mx_commit_sha: _<pending Mx-phase — backfilled in follow-up commit>_
 
 ---
 
