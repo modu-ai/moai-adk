@@ -11,7 +11,7 @@
 | Plan | complete | manager-spec | _<plan-phase commit>_ |
 | Run | complete | manager-develop | e7a4d5a4f (FF-pushed to origin/main) |
 | Sync | complete | orchestrator-direct | b6b2243f9 |
-| Mx | complete | orchestrator-direct | _<this Mx commit>_ |
+| Mx | complete | orchestrator-direct | a9f7adda9 |
 
 ---
 
@@ -147,7 +147,7 @@ sync_commit_sha: b6b2243f9
 - **@MX tags**: N/A (additive markdown craft device — 4 SKILL.md `## Decision Heuristics` sections; no Go code, no high fan_in invariant surface).
 - **4-phase close**: plan (plan-phase) → run (e7a4d5a4f) → sync (b6b2243f9) → mx (this commit) — V3R6 era closed.
 
-mx_commit_sha: _<pending Mx-phase — backfilled in follow-up commit>_
+mx_commit_sha: a9f7adda90ed82396184fa5f3763431e5778b1d2
 
 ---
 
