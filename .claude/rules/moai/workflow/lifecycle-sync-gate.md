@@ -25,7 +25,7 @@ clause (V2.x / V3R2-R4 / V3R5).
 | V2.x | Pre-2026-02 | No `progress.md`; SPEC implementation via direct commit |
 | V3R2-R4 | 2026-02 ~ 2026-03 | `progress.md` introduced; no `sync_commit_sha` |
 | V3R5 | 2026-03 ~ 2026-04 | Sync section emerges; `sync_commit_sha` not enforced |
-| V3R6 | 2026-04 ~ present | 4-phase modern standard (plan / run / sync / Mx); `sync_commit_sha` + `mx_commit_sha` required |
+| V3R6 | 2026-04 ~ present | 3-phase modern standard (plan / run / sync); `sync_commit_sha` required (the former `mx_commit_sha` / `§E.5 Mx-phase` signals were retired per SPEC-V3R6-LIFECYCLE-REDESIGN-001 — MX Tag is a cross-cutting sync concern, not a separate phase) |
 | unclassified | — | Auto-detection ambiguous; no heuristic matched (H-6 fallback) |
 
 ### Heuristic Detection Table
@@ -38,9 +38,9 @@ except for H-override which takes absolute precedence when the optional frontmat
 |--------------|------|--------------|
 | H-override | `spec.md` frontmatter `era:` field non-empty and valid → returned verbatim (no auto-detection) | (explicit override) |
 | H-1 | `.moai/specs/SPEC-*/progress.md` absent | V2.x |
-| H-2 | `progress.md` present, no `§E.2` / `§E.3` / `§E.4` / `§E.5` section markers | V3R2-R4 |
+| H-2 | `progress.md` present, no `§E.2` / `§E.3` / `§E.4` section markers | V3R2-R4 |
 | H-3 | `progress.md` `§E.2` present, `sync_commit_sha` field absent or null | V3R5 |
-| H-4 | `progress.md` `§E.2` present + `sync_commit_sha` SHA value + `§E.5` present + `mx_commit_sha` SHA value | V3R6 |
+| H-4 | `progress.md` `§E.2` present + `§E.4` present + `sync_commit_sha` SHA value (the new 3-phase predicate; per SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-005/006, a legacy-layout SPEC carrying the retired `§E.5 + mx_commit_sha` also classifies as V3R6 via a migration-window dual predicate) | V3R6 |
 | H-5 | H-4 ambiguous; `spec.md` frontmatter `phase:` field references `"v3.0"` or `"v3R6"` OR `created:` date >= 2026-04-01 (tie-breaker) | V3R6 |
 | H-6 | No heuristic matched | unclassified |
 
@@ -48,8 +48,7 @@ except for H-override which takes absolute precedence when the optional frontmat
 
 The classification logic is the authoritative implementation in
 `internal/spec/era.go` `ClassifyEra(EraSignals)`. The function returns both the
-classified era and a short rationale string (e.g., `"H-4 (§E.2 + §E.5 + both
-commit_sha present)"`). The rationale string is included in `EraAutoDetected`
+classified era and a short rationale string (e.g., `"H-4 (§E.2 + §E.4 + sync_commit_sha present)"` for the new 3-phase predicate). The rationale string is included in `EraAutoDetected`
 findings emitted by the audit engine.
 
 #### `EraSignals` structure
@@ -162,7 +161,7 @@ The `era:` field is useful in the following scenarios:
    as `unclassified` (H-6). Setting `era: V3R5` or `era: V3R6` resolves the
    ambiguity explicitly.
 2. **Historical SPECs with non-standard progress.md structure** — a SPEC that
-   does not follow the standard `§E.2`/`§E.5` section naming but is known to
+   does not follow the standard `§E.2`/`§E.4` section naming but is known to
    belong to a specific era can be pinned via the field.
 3. **Newly created SPECs before `progress.md` is populated** — at plan-phase
    creation, `progress.md` may be empty or minimal; setting `era: V3R6` avoids
@@ -224,15 +223,16 @@ for reference:
 |------------|--------------|----------------------------------|
 | `(none) → draft` | manager-spec | `feat(SPEC-{ID}): plan-phase artifacts` |
 | `draft → in-progress` | manager-develop (M1 commit) | `feat(SPEC-{ID}): M1 ...` or `fix(SPEC-{ID}): M1 ...` |
-| `in-progress → implemented` | manager-docs (sync commit) | `docs(SPEC-{ID}): sync-phase artifacts` |
-| `implemented → completed` | manager-docs OR orchestrator (Mx chore) | `chore(SPEC-{ID}): Mx-phase audit-ready signal + 4-phase close` |
+| `in-progress → implemented → completed` | manager-docs (single sync commit — `completed` is merged into the sync commit, NOT a separate Mx chore) | `docs(SPEC-{ID}): sync-phase artifacts` (this same sync commit carries the `completed` transition + the 3-phase close) |
 | `* → superseded` | manager-spec (new superseding SPEC) | `feat(SPEC-{NEW-ID}): supersedes SPEC-{OLD-ID}` |
 | `* → archived` | manager-docs (administrative cleanup) | `chore(specs): archive SPEC-{ID}` |
 | `* → rejected` | orchestrator, recorded by manager-docs | `chore(SPEC-{ID}): rejected per <rationale>` |
 
 ### Close-subject full-ID mandate
 
-Per SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001, every close commit (the `implemented → completed` transition above) MUST name exactly one individual full SPEC-ID in its subject scope — e.g. `chore(SPEC-CCSYNC-CLAUDEMD-001): … 4-phase close`. A **combined/abbreviated scope** that names only a shared prefix (e.g. `chore(SPEC-CCSYNC): … 4-phase close (CLAUDEMD + TOOLCAT)`) is **prohibited**: the drift detector's exact-token SPEC-ID extraction cannot map an abbreviated prefix to its sibling SPECs, so combined-scope close subjects regenerate lifecycle drift false-positives. When closing N sibling SPECs together, emit N separate close commits, one per full SPEC-ID — combined/abbreviated scope is disallowed in close subjects. The drift detector accommodates historical combined-scope closes via a secondary scope-prefix grep fallback (see `internal/spec/drift.go` `resolveCombinedScopeClose`), but this doctrine prevents recurrence in new closes.
+Per SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001, every close commit (the sync commit carrying the `implemented → completed` transition above) MUST name exactly one individual full SPEC-ID in its subject scope — e.g. `chore(SPEC-CCSYNC-CLAUDEMD-001): … 3-phase close`. A **combined/abbreviated scope** that names only a shared prefix (e.g. `chore(SPEC-CCSYNC): … 3-phase close (CLAUDEMD + TOOLCAT)`) is **prohibited**: the drift detector's exact-token SPEC-ID extraction cannot map an abbreviated prefix to its sibling SPECs, so combined-scope close subjects regenerate lifecycle drift false-positives. When closing N sibling SPECs together, emit N separate close commits, one per full SPEC-ID — combined/abbreviated scope is disallowed in close subjects. The drift detector accommodates historical combined-scope closes via a secondary scope-prefix grep fallback (see `internal/spec/drift.go` `resolveCombinedScopeClose`), but this doctrine prevents recurrence in new closes.
+
+> **D4 reconciliation note (SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-020/021)**: The close-subject convention (including the close infix literal) is owned by **SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001**. SPEC-V3R6-LIFECYCLE-REDESIGN-001 amends the close infix from the legacy `"4-phase close"` to the canonical `"3-phase close"` in this prose. The drift detector's close-infix matcher (`internal/spec/transitions.go` `closeInfixMatch`) has been extended (M2) to accept BOTH infixes — the legacy `"4-phase close"` is RETAINED in the matcher because historical close commits in git history carry it. A doc-only rename without the dual-infix matcher update was forbidden (it would silently break drift close-recognition). This note credits DRIFT-LEGACY-CONVENTION-001 as the convention owner; it does NOT silently override it.
 
 ### `Authored-By-Agent` trailer as the gating signal
 
@@ -291,17 +291,20 @@ tags: "example, demo"
 ---
 ```
 
-**`progress.md`** (excerpt):
+**`progress.md`** (excerpt — 4-section layout per SPEC-V3R6-LIFECYCLE-REDESIGN-001; NO `§E.5 Mx-phase` section):
 ```yaml
+# ...
+## §E.1 Plan-phase Audit-Ready Signal
 # ...
 ## §E.2 Run-phase Evidence
 # (run-evidence start marker — the literal §E.2 heading is what hasAnyProgressMarker detects)
 # ...
+## §E.3 Run-phase Audit-Ready Signal
+# ...
 ## §E.4 Sync-phase Audit-Ready Signal
 sync_commit_sha: "a1b2c3d4e5f6"
-# ...
-## §E.5 Mx-phase Audit-Ready Signal
-mx_commit_sha: "f6e5d4c3b2a1"
+# (§E.5 Mx-phase section is RETIRED — folded into §E.4 per SPEC-V3R6-LIFECYCLE-REDESIGN-001;
+#  MX Tag validation is a cross-cutting sync concern, not a separate phase.)
 ```
 
 ### Auto-detection trace
@@ -313,11 +316,9 @@ mx_commit_sha: "f6e5d4c3b2a1"
 5. `hasAnyProgressMarker()` returns `true` (`§E.2` present) (H-2 does not fire).
 6. `hasSyncSection = true` (`§E.2` marker present — note: `hasSyncSection` is a misnomer; it tests the literal `§E.2` run-evidence start marker, not the sync phase, which lives at `§E.4`).
 7. `syncSHA = "a1b2c3d4e5f6"` (non-empty — field extracted from the `§E.4 Sync-phase Audit-Ready Signal` section).
-8. `hasMxSection = true` (`§E.5` marker present).
-9. `mxSHA = "f6e5d4c3b2a1"` (non-empty).
-10. H-3 check: `hasSyncSection && syncSHA == ""` → **false** (H-3 does not fire).
-11. H-4 check: `hasSyncSection && hasMxSection && syncSHA != "" && mxSHA != ""` → **true**.
-12. `ClassifyEra()` returns `(EraV3R6, "H-4 (§E.2 + §E.5 + both commit_sha present)")`.
+8. H-3 check: `hasSyncSection && syncSHA == ""` → **false** (H-3 does not fire).
+9. H-4 check (new 3-phase predicate per REQ-LR-005): `hasSyncSection && hasMxSection4Phase && syncSHA != ""` where `hasMxSection4Phase` detects the `§E.4` sync marker → **true**. (Legacy-layout SPECs carrying the retired `§E.5 + mx_commit_sha` also match via the dual-predicate migration window REQ-LR-006.)
+10. `ClassifyEra()` returns `(EraV3R6, "H-4 (§E.2 + §E.4 + sync_commit_sha present)")`.
 
 ### Audit output (JSON excerpt)
 
@@ -337,7 +338,7 @@ When `moai spec audit --json` runs against the project, the output includes:
       "severity": "INFO",
       "remediation": "Add 'era: V3R6' to spec.md frontmatter to suppress this finding",
       "details": {
-        "heuristic_matched": "H-4 (§E.2 + §E.5 + both commit_sha present)"
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha present)"
       }
     }
   ]
@@ -360,7 +361,7 @@ func TestEraAutoDetection(t *testing.T) { ... }
 ```
 
 The test fixture uses a SPEC directory with a `progress.md` containing `§E.2` +
-`§E.5` markers and non-empty `sync_commit_sha` / `mx_commit_sha` values, and
+`§E.4` markers and a non-empty `sync_commit_sha` value (the 4-section layout), and
 asserts that the audit result carries `era: "V3R6"` AND an `EraAutoDetected`
 finding with a non-empty `details.heuristic_matched` field.
 

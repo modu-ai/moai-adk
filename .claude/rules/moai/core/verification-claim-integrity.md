@@ -75,9 +75,9 @@ This doctrine cross-references the following canonical surfaces. It does NOT cop
 
 ## 5. Worked Example — Defect-Claim Hazard (2026-06-17)
 
-A status report counted 29 SPECs with `status: implemented` and an absent `era:` frontmatter field. From frontmatter text alone, the reporter inferred "these 29 are V3R6 SPECs with a missing Mx-phase close — a close debt" and proposed batch-closing all 29.
+A status report counted 29 SPECs with `status: implemented` and an absent `era:` frontmatter field. From frontmatter text alone, the reporter inferred "these 29 are V3R6 SPECs with a missing close (the legacy 'Mx-phase close' inference — the reporter assumed a separate Mx-phase close commit was required)" and proposed batch-closing all 29.
 
-This was an unobserved defect claim. The reporter had NOT run the domain's dedicated verification tool. When `moai spec audit --json` was finally run, its mechanical era classification showed all 29 were grandfather era (`V3R2-R4` 28 + `V2.x` 1) — `era_final: true`, protected, not subject to V3R6 4-phase close — and MUST-FIX drift across the entire catalog was 0. The inferred "close debt" did not exist; had the batch-close proceeded, 29 grandfather-protected SPECs would have been touched for no reason.
+This was an unobserved defect claim. The reporter had NOT run the domain's dedicated verification tool. When `moai spec audit --json` was finally run, its mechanical era classification showed all 29 were grandfather era (`V3R2-R4` 28 + `V2.x` 1) — `era_final: true`, protected, not subject to V3R6 3-phase close (plan→run→sync) — and MUST-FIX drift across the entire catalog was 0. The inferred "close debt" did not exist; had the batch-close proceeded, 29 grandfather-protected SPECs would have been touched for no reason.
 
 Lesson codified: **a defect claim is a hypothesis until the domain's tool confirms it.** The `era:`-absent + `implemented` text pattern was compatible with two contradictory interpretations (grandfather legacy vs. modern close-debt); only the dedicated tool could disambiguate. Whenever a domain verification tool exists (`moai spec audit` for SPEC lifecycle, `go test -cover` for coverage gaps, `golangci-lint` for code defects), its output MUST precede any defect/debt/drift claim — §1.1 surface 3 + §2 attribution.
 

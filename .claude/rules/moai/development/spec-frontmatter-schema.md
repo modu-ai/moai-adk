@@ -67,15 +67,18 @@ Per the canonical agent-responsibility realignment policy (DRI ownership at agen
 |------------|--------------|----------------------------------|
 | `(none) → draft` | manager-spec | `feat(SPEC-{ID}): plan-phase artifacts ({tier} Section A-E, 4 artifacts)` |
 | `draft → in-progress` | manager-develop (on M1 commit start) | `fix(SPEC-{ID}): M1 ...` or `feat(SPEC-{ID}): M1 ...` — first run-phase commit |
-| `in-progress → implemented` | manager-docs (on sync commit) | `docs(SPEC-{ID}): sync-phase artifacts` or `chore(SPEC-{ID}): sync-phase artifacts` |
-| `implemented → completed` | manager-docs OR orchestrator (on Mx chore commit) | `chore(SPEC-{ID}): Mx-phase audit-ready signal + 4-phase close` |
+| `in-progress → implemented → completed` | manager-docs (on the single sync commit — the `completed` transition is merged into the sync commit, NOT a separate Mx chore commit) | `docs(SPEC-{ID}): sync-phase artifacts` or `chore(SPEC-{ID}): sync-phase artifacts` (this same sync commit carries the `completed` transition + the 3-phase close) |
 | `* → superseded` | manager-spec (when authoring the new superseding SPEC) | `feat(SPEC-{NEW-ID}): supersedes SPEC-{OLD-ID}` |
 | `* → archived` | manager-docs (administrative cleanup) | `chore(specs): archive SPEC-{ID}` |
 | `* → rejected` | orchestrator decision, recorded by manager-docs | `chore(SPEC-{ID}): rejected per <rationale>` |
 
+> **3-phase close (plan→run→sync)** — Per SPEC-V3R6-LIFECYCLE-REDESIGN-001, the MoAI lifecycle is exactly three phases (`plan`, `run`, `sync`); MX Tag is a cross-cutting concern validated during sync, NOT a separate fourth phase. The `completed` status transition rides the sync commit (manager-docs owns it); there is no separate "Mx chore commit". The progress.md §E structure is 4 sections (§E.1 Plan / §E.2 Run Evidence / §E.3 Run Audit-Ready / §E.4 Sync Audit-Ready) — the former `§E.5 Mx-phase` section is retired (folded into §E.4).
+
 ### Close-subject full-ID mandate
 
-Per the drift-detector close-subject convention, every close commit (the `implemented → completed` transition above) MUST name exactly one individual full SPEC-ID in its subject scope — e.g. `chore(SPEC-{DOMAIN}-{SUB}-001): … 4-phase close`. A **combined/abbreviated scope** that names only a shared prefix (e.g. `chore(SPEC-{DOMAIN}): … 4-phase close (SUB-A + SUB-B)`) is **prohibited**: the drift detector's exact-token SPEC-ID extraction cannot map an abbreviated prefix to its sibling SPECs, so combined-scope close subjects regenerate lifecycle drift false-positives. When closing N sibling SPECs together, emit N separate close commits, one per full SPEC-ID — combined/abbreviated scope is disallowed in close subjects.
+Per the drift-detector close-subject convention (owned by SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001), every close commit (the sync commit carrying the `implemented → completed` transition above) MUST name exactly one individual full SPEC-ID in its subject scope — e.g. `chore(SPEC-{DOMAIN}-{SUB}-001): … 3-phase close`. A **combined/abbreviated scope** that names only a shared prefix (e.g. `chore(SPEC-{DOMAIN}): … 3-phase close (SUB-A + SUB-B)`) is **prohibited**: the drift detector's exact-token SPEC-ID extraction cannot map an abbreviated prefix to its sibling SPECs, so combined-scope close subjects regenerate lifecycle drift false-positives. When closing N sibling SPECs together, emit N separate close commits, one per full SPEC-ID — combined/abbreviated scope is disallowed in close subjects.
+
+> **D4 reconciliation note (SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-020/021)**: The close-subject convention is owned by **SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001**. SPEC-V3R6-LIFECYCLE-REDESIGN-001 amends the close infix from the legacy `"4-phase close"` to the canonical `"3-phase close"` in this prose, and the drift detector's close-infix matcher (`internal/spec/transitions.go` `closeInfixMatch`) has been extended (M2) to accept BOTH infixes — the legacy `"4-phase close"` is RETAINED in the matcher because historical close commits in git history carry it. A doc-only rename without the dual-infix matcher update was forbidden (it would silently break drift close-recognition for all future closes). This note credits DRIFT-LEGACY-CONVENTION-001 as the convention owner; it does NOT silently override it.
 
 ### Forbidden ownership crossings
 
