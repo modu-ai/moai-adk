@@ -2,7 +2,7 @@
 id: SPEC-V3R6-HARNESS-RUNTIME-RECOVERY-001
 title: "Runtime Recovery Doctrine — withheld-recoverable errors, cheapest-first ladder, and anti-death-spiral hook carve-out"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-06-18
 updated: 2026-06-18
 author: manager-spec
