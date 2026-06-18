@@ -176,7 +176,7 @@ Matches plan-phase measurement (research.md §C.1: allow=110/deny=60/ask=6). The
 - **owner**: orchestrator-direct (GLM manager-docs spawn context-limit fallback per `feedback_glm_orchestrator_direct_sync_mx`).
 - **spec-lint**: 0 errors (StatusGitConsistency transient warning resolves on frontmatter landing).
 
-sync_commit_sha: f746977cf6afe0fded07e7183c969b02d8928126
+sync_commit_sha: 67d93144fab59383eac3c7d2e5e9a0d3e835afc2
 
 ---
 
@@ -185,9 +185,9 @@ sync_commit_sha: f746977cf6afe0fded07e7183c969b02d8928126
 - **mx_complete_at**: 2026-06-19
 - **frontmatter_transition**: `implemented → completed`.
 - **@MX tags**: N/A (this SPEC's Go surface is the new `internal/config/toolpolicy/` pkg + `internal/cli/tool_policy.go` codegen/query — additive utilities, not high fan_in invariant contracts; no @MX:ANCHOR/@MX:WARN surface).
-- **4-phase close**: plan (plan-phase) → run (73336e296) → sync (f746977cf) → mx (this commit) — V3R6 era closed.
+- **4-phase close**: plan (plan-phase) → run (73336e296) → sync (67d93144f) → mx (this commit) — V3R6 era closed.
 
-mx_commit_sha: 0dc6cc006087f54f20c642b801868adbc10d6eee
+mx_commit_sha: 1ab8713576cbe0a5a2081e9ef3356b25a939a282
 
 ---
 
