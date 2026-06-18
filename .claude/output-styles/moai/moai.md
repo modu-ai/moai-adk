@@ -591,6 +591,9 @@ Rules:
 🔍 [root cause if known]
 🔧 Recovery options via AskUserQuestion:
   A. Retry as-is  B. Alt approach  C. Pause  D. Abort+preserve
+📎 Interrupt Closure: if an Agent() delegation was aborted (not merely failed),
+   reference the synthetic ledger-closing artifact above before retrying —
+   do not proceed as if the delegation returned cleanly.
 ──────────────────────────────────────────────
 ```
 
