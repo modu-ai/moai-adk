@@ -23,6 +23,8 @@ When `manager-develop` reports completion, the orchestrator independently verifi
 
 All seven canonical batch items in agent-common-protocol §Parallel Execution are read-only batch-safe.
 
+> **Re-sync sentinel**: the verbatim 7-command batch lives in `agent-common-protocol.md` § Parallel Execution (the SSOT). If that 7-item list changes, re-sync this file's grouping rationale and the class taxonomy below to match. This file owns only the *why* (grouping rationale + class taxonomy + anti-patterns), not the *what* (the verbatim command list).
+
 ## When NOT to Batch
 
 - Explicit dependency (`make build` before tests that invoke its binary).
