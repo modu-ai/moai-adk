@@ -1,6 +1,6 @@
 ---
-description: "Zone Registry — MoAI-ADK HARD 조항 SSOT. rules/agents/skills/specs 디렉토리 수정 시에만 로드."
-paths: ".claude/**,.moai/specs/**,.claude/rules/**"
+description: "Zone Registry — MoAI-ADK HARD 조항 SSOT. rules/agents 디렉토리 수정 시에만 로드 (registry는 moai constitution CLI가 직접 읽으므로 SPEC authoring turn에는 컨텍스트 로드 불필요)."
+paths: ".claude/rules/**,.claude/agents/**"
 ---
 
 # Zone Registry
