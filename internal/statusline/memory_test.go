@@ -11,6 +11,7 @@ import (
 func TestCollectMemory(t *testing.T) {
 	// Disable auto-compact scaling for existing tests
 	t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "100")
+	isolateModelEnv(t) // neutralize ambient ANTHROPIC_DEFAULT_*_MODEL so the 200K baseline holds
 
 	tests := []struct {
 		name       string
