@@ -168,7 +168,7 @@ spec_lint: 0 findings (StatusGitConsistency resolved post 085e8ecc5)
 
 ```yaml
 mx_complete_at: 2026-06-18
-mx_commit_sha: <to-be-filled-post-commit>
+mx_commit_sha: 6544104b03040c6059bf75eab769c3b301e1e8a0
 mx_status: PASS
 4_phase_close: plan(iter-2 PASS 0.88) + run(b35caaaf2, 11 AC) + sync(68b3926a7) + Mx(this)
 frontmatter_status: implemented → completed
