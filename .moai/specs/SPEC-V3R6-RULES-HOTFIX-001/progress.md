@@ -37,7 +37,7 @@ Run-phase executed by `manager-develop` (worktree `agent-a489207659f3fb2ac`, bas
 - Run-phase complete: 6 defect groups (D1–D6) resolved across 14 files (7 deployed + 7 template mirror).
 - 9 ACs verified: AC-RHF-001..008 PASS, AC-RHF-009 PASS-WITH-DEBT (pre-existing out-of-scope failure, documented).
 - `moai spec lint` clean (0 findings).
-- run_commit_sha: <pending commit — backfill after M1 commit>
+- run_commit_sha: d7d48e648aa5d2d0572d03e4527480f6b8787016
 - Status: `in-progress`. Ready for sync-phase.
 
 ## §E.4 Sync-phase Audit-Ready Signal
