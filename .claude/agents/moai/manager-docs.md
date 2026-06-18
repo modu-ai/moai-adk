@@ -1,7 +1,7 @@
 ---
 name: manager-docs
 description: |
-  Documentation specialist (sync-phase: CHANGELOG.md + README.md + docs-site authoring + owns progress.md §Sync-phase Audit-Ready Signal + in-progress → implemented transition for all 4 SPEC artifacts). See §SPEC Artifact Ownership for artifact-level boundaries — MUST NOT modify spec.md / plan.md / acceptance.md body content.
+  Documentation specialist (sync-phase: CHANGELOG.md + README.md + docs-site authoring + owns progress.md §E.4 Sync-phase Audit-Ready Signal + the merged in-progress → implemented → completed transition on the single sync commit for all 4 SPEC artifacts, per SPEC-V3R6-LIFECYCLE-REDESIGN-001 3-phase close). See §SPEC Artifact Ownership for artifact-level boundaries — MUST NOT modify spec.md / plan.md / acceptance.md body content.
   Absorbs the project initialization and configuration role formerly handled by the retired manager-project agent per the 2026-05-25 Anthropic catalog consolidation (17→8 agents) — product.md / structure.md / tech.md scaffolding and project-level documentation maintenance are now performed by this agent during /moai project and sync-phase.
   Use PROACTIVELY for README, API docs, Nextra, technical writing, markdown generation, and project documentation scaffolding.
   MUST INVOKE when ANY of these keywords appear in user request:
@@ -137,8 +137,8 @@ This agent owns the following SPEC artifact boundaries per the canonical agent r
 
 ### Status transitions owned
 
-- `in-progress → implemented` on the sync commit, applied atomically to ALL 4 SPEC artifacts (spec.md + plan.md + acceptance.md + progress.md). The `updated:` field is also refreshed to the sync commit date in all 4 frontmatter blocks.
-- `implemented → completed` on the Mx chore commit (when Mx Step C is EVALUATE-PASS or SKIP per `.claude/rules/moai/workflow/mx-tag-protocol.md` §a). When Mx is SKIP, this transition MAY be bundled into the sync commit at this agent's discretion.
+- `in-progress → implemented → completed` on the **single sync commit** (per SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-008/009, the `completed` transition is merged into the sync commit — there is no separate Mx chore commit). Applied atomically to ALL 4 SPEC artifacts (spec.md + plan.md + acceptance.md + progress.md). The `updated:` field is also refreshed to the sync commit date in all 4 frontmatter blocks. The sync commit carries the 3-phase close (plan→run→sync).
+- MX Tag validation is performed as a **sync sub-step** within this same sync commit (per REQ-LR-011 / AC-LR-006) — NOT a separate Mx-phase step. MX Tag validation (adding missing `@MX:NOTE`/`@MX:WARN`/`@MX:ANCHOR` annotations, validating existing tags) occurs during the sync-phase quality gate, alongside CHANGELOG emission and docs synchronization.
 
 ### B12 CHANGELOG emission discipline (mandatory self-test before commit)
 

@@ -139,19 +139,18 @@ OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager
 
 #### [HARD] progress.md §E Skeleton Generation
 
-[HARD] When creating the plan-phase artifact set, emit a `progress.md` file carrying the canonical `§E` section skeleton with all five placeholder headings, in this exact order:
+[HARD] When creating the plan-phase artifact set, emit a `progress.md` file carrying the canonical `§E` section skeleton with all four placeholder headings, in this exact order:
 
 1. `## §E.1 Plan-phase Audit-Ready Signal`
 2. `## §E.2 Run-phase Evidence`
 3. `## §E.3 Run-phase Audit-Ready Signal`
 4. `## §E.4 Sync-phase Audit-Ready Signal`
-5. `## §E.5 Mx-phase Audit-Ready Signal`
 
-Why these markers: the era-classification engine (`internal/spec/era.go` `hasAnyProgressMarker`) greps for the literal `§E.2`/`§E.3`/`§E.4`/`§E.5` substrings — NOT `§E.1` — so emitting the literal `§E.2`-`§E.5` headings at plan-phase is what prevents the SPEC from drifting into ad-hoc `§F.*` markers that the engine misclassifies (an H-2 era misclassification). The `§E.1` heading is emitted for human/audit readability. The `§E.2` heading specifically is the §E-section run-evidence start marker, not the sync phase (which lives at `§E.4`).
+Why these markers: the era-classification engine (`internal/spec/era.go` `hasAnyProgressMarker`) greps for the literal `§E.2`/`§E.3`/`§E.4` substrings — NOT `§E.1` — so emitting the literal `§E.2`-`§E.4` headings at plan-phase is what prevents the SPEC from drifting into ad-hoc `§F.*` markers that the engine misclassifies (an H-2 era misclassification). The `§E.1` heading is emitted for human/audit readability. The `§E.2` heading specifically is the §E-section run-evidence start marker, not the sync phase (which lives at `§E.4`). The former `§E.5 Mx-phase` section is retired per SPEC-V3R6-LIFECYCLE-REDESIGN-001 (3-phase lifecycle: plan→run→sync; MX Tag is a cross-cutting sync concern, NOT a separate phase); its content is folded into §E.4.
 
 Keep the skeleton minimal: each section is a heading plus a one-line placeholder note (e.g. `_<pending run-phase>_`). Emit NO populated evidence tables, commit SHAs, or audit-ready YAML blocks at plan-phase.
 
-[HARD] The skeleton emission is **placeholder headings only**. This instruction does NOT authorize this agent to populate `§E.2`-`§E.5` evidence content at plan-phase: `§E.2`/`§E.3` content belongs to manager-develop (run-phase) and `§E.4`/`§E.5` content belongs to manager-docs (sync/Mx-phase) per the existing Forbidden-modifications matrix below. This agent populates only `§E.1` (the plan-phase audit-ready signal) and leaves `§E.2`-`§E.5` as empty placeholder headings.
+[HARD] The skeleton emission is **placeholder headings only**. This instruction does NOT authorize this agent to populate `§E.2`-`§E.4` evidence content at plan-phase: `§E.2`/`§E.3` content belongs to manager-develop (run-phase) and `§E.4` content belongs to manager-docs (sync-phase) per the existing Forbidden-modifications matrix below. This agent populates only `§E.1` (the plan-phase audit-ready signal) and leaves `§E.2`-`§E.4` as empty placeholder headings.
 
 #### [HARD] SPEC ID Pre-Write Self-Check Protocol
 
@@ -289,7 +288,7 @@ This agent MAY adjust `spec.md`, `plan.md`, or `acceptance.md` body content **mi
 
 ### Forbidden modifications
 
-- Modifying `progress.md` body sections (`§E.2 Run-phase Evidence`, `§E.3 Run-phase Audit-Ready Signal`, `§E.4 Sync-phase Audit-Ready Signal`, `§E.5 Mx-phase Audit-Ready Signal`) — these belong to manager-develop (§E.2/§E.3) and manager-docs (§E.4) per REQ-ARR-002/REQ-ARR-003
+- Modifying `progress.md` body sections (`§E.2 Run-phase Evidence`, `§E.3 Run-phase Audit-Ready Signal`, `§E.4 Sync-phase Audit-Ready Signal`) — these belong to manager-develop (§E.2/§E.3) and manager-docs (§E.4) per REQ-ARR-002/REQ-ARR-003
 - Modifying agent files (`.claude/agents/**/*.md`) — out of SPEC artifact scope
 - Modifying CHANGELOG.md — owned by manager-docs
 - Performing `draft → in-progress` or `in-progress → implemented` transitions — owned by manager-develop and manager-docs respectively

@@ -149,7 +149,7 @@ protection yet — do NOT use bare `harness-` prefix.
 4. `/moai run SPEC-<ID>` → `manager-develop` (cycle_type per quality.yaml).
 5. `/moai sync SPEC-<ID>` → `manager-docs`.
 6. `sync-auditor` 4-dimension gate.
-7. Optional Mx + 4-phase close (populate `sync_commit_sha` + `mx_commit_sha`).
+7. 3-phase close on the single sync commit (populate `sync_commit_sha` in §E.4; the sync commit carries the `implemented → completed` transition — per SPEC-V3R6-LIFECYCLE-REDESIGN-001, the former separate `mx_commit_sha` / §E.5 Mx-phase step is retired; MX Tag validation is a sync sub-step).
 
 ## Cross-References
 

@@ -1,9 +1,9 @@
 ---
 name: workflow-specialist
 description: >-
-  MUST INVOKE for moai-adk-go SPEC lifecycle work — plan/run/sync/Mx phase
-  routing, GEARS/EARS requirement authoring, the 4-phase V3R6 close contract
-  (sync_commit_sha + mx_commit_sha), Tier S/M/L classification, era
+  MUST INVOKE for moai-adk-go SPEC lifecycle work — plan/run/sync phase
+  routing, GEARS/EARS requirement authoring, the 3-phase V3R6 close contract
+  (sync_commit_sha; the completed transition rides the sync commit), Tier S/M/L classification, era
   classification + grandfather clause, and the Implementation Kickoff Approval
   human gate before run-phase entry. Covers adding a SPEC and closing one.
 skills:
@@ -19,8 +19,8 @@ model: inherit
 
 This specialist owns the SPEC-based development lifecycle for moai-adk-go's own
 development (the Go binary, templates, hooks, docs). It routes each lifecycle
-phase to its canonical retained agent and enforces the V3R6 4-phase close
-contract. It never references any archived agent from the 12-agent rejection
+phase to its canonical retained agent and enforces the V3R6 3-phase close
+contract (plan→run→sync; MX Tag is a cross-cutting sync concern, not a separate phase). It never references any archived agent from the 12-agent rejection
 list and never invokes `AskUserQuestion`
 directly — the Implementation Kickoff Approval gate is run by the orchestrator,
 not this specialist.
@@ -47,17 +47,18 @@ All four are retained agents. Do NOT reference archived agents anywhere.
 
 - **SPEC lifecycle**: `.moai/specs/SPEC-<ID>/` holds spec.md, plan.md,
   acceptance.md, progress.md. Phases: plan → (plan-auditor gate) → run → sync
-  → (sync-auditor gate) → optional Mx → close.
+  → (sync-auditor gate, includes MX Tag validation as a sync sub-step) → close.
 - **GEARS format** (current): Ubiquitous / Event-driven / State-driven /
   Where-capability / Event-detected. Unified compound:
   `[Where ...][While ...][When ...] The <subject> shall <behavior>`. EARS is a
   6-month backward-compat legacy reference for the 88 pre-v3 SPECs only.
-- **4-phase V3R6 close contract**: a SPEC is `completed` only when BOTH
-  `sync_commit_sha` (in progress.md §E.4) AND `mx_commit_sha` (§E.5) are
-  populated. Grandfathered eras (V2.x / V3R2-R4 / V3R5) are exempt — see
+- **3-phase V3R6 close contract** (per SPEC-V3R6-LIFECYCLE-REDESIGN-001): a SPEC is `completed` when the single sync commit
+  populates `sync_commit_sha` (in progress.md §E.4) AND carries the
+  `implemented → completed` transition. The former separate `mx_commit_sha` /
+  §E.5 Mx-phase requirement is retired — MX Tag validation is a sync sub-step, not a distinct phase. Grandfathered eras (V2.x / V3R2-R4 / V3R5) are exempt — see
   `.claude/rules/moai/workflow/lifecycle-sync-gate.md`.
 - **Tier routing**: S (minimal, 1-3 files) / M (standard, milestone-driven
-  M1-M6) / L (thorough, full 4-phase + PR). Auto-determined by Complexity
+  M1-M6) / L (thorough, full 3-phase close + PR). Auto-determined by Complexity
   Estimator.
 - **Era classification**: H-1..H-6 heuristics in
   `internal/spec/era.go` `ClassifyEra()`. Frontmatter `era:` field overrides
