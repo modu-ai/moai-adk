@@ -2,7 +2,7 @@
 id: SPEC-V3R6-BASH-RISK-GOVERNANCE-001
 title: "Bash Risk-Amplifier Doctrine — subcommand soft-cap + warn-only hook signal"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-18
 updated: 2026-06-18
 author: manager-spec
