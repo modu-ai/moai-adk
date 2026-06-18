@@ -43,7 +43,7 @@ MoAI-ADK의 스킬 시스템을 상세히 안내합니다.
 flowchart TD
     USER[사용자 요청] --> DETECT[키워드 감지]
     DETECT --> TRIGGER{트리거 매칭}
-    TRIGGER -->|Python 관련| PY["moai-lang-python<br>Python 전문 지식"]
+    TRIGGER -->|Python 관련| PY["moai-domain-backend<br>백엔드 전문 지식"]
     TRIGGER -->|React 관련| FE["moai-domain-frontend<br>프론트엔드 전문 지식"]
     TRIGGER -->|보안 관련| SEC["moai-foundation-core<br>TRUST 5 보안 원칙"]
     TRIGGER -->|DB 관련| DB["moai-domain-database<br>데이터베이스 전문 지식"]
@@ -59,99 +59,70 @@ flowchart TD
 
 ## 스킬 카테고리
 
-MoAI-ADK에는 총 **31개 스킬**이 6개 카테고리로 분류되어 있습니다. (프로그래밍 언어 지원은 `rules/moai/languages/` 아래의 규칙으로 제공되며 별도 스킬이 아닙니다.)
+MoAI-ADK에는 총 **32개 스킬**이 6개 카테고리로 분류되어 있습니다. `moai` umbrella 라우터 1개와 31개의 전문 스킬로 구성됩니다 (Foundation, Workflow, Domain, Reference, Meta/Harness, Design). 프로그래밍 언어 지원은 `rules/moai/languages/` 아래의 규칙으로 제공되며 별도 스킬이 아닙니다.
 
-### Foundation (핵심 철학) - 5개
+### Foundation (핵심 철학) - 4개
 
-| 스킬 이름                     | 설명                                             |
-| ----------------------------- | ------------------------------------------------ |
-| `moai-foundation-core`        | SPEC 기반 TDD/DDD, TRUST 5 프레임워크, 실행 규칙    |
-| `moai-foundation-claude`      | Claude Code 확장 패턴 (Skills, Agents, Hooks 등) |
-| `moai-foundation-philosopher` | 전략적 사고 프레임워크, 의사결정 분석            |
-| `moai-foundation-quality`     | 코드 품질 자동 검증, TRUST 5 밸리데이션          |
-| `moai-foundation-context`     | 토큰 예산 관리, 세션 상태 유지                   |
+| 스킬 이름                  | 설명                                                |
+| -------------------------- | --------------------------------------------------- |
+| `moai-foundation-core`     | SPEC 기반 TDD/DDD, TRUST 5 프레임워크, 실행 규칙    |
+| `moai-foundation-cc`       | Claude Code 확장 패턴 (Skills, Agents, Hooks)       |
+| `moai-foundation-thinking` | 구조화 사고, 아이디에이션, 제1원리 분석             |
+| `moai-foundation-quality`  | 코드 품질 자동 검증, TRUST 5 밸리데이션             |
 
-### Workflow (자동화 워크플로우) - 11개
+### Workflow (자동화 워크플로우) - 10개
 
-| 스킬 이름                 | 설명                                     |
-| ------------------------- | ---------------------------------------- |
-| `moai-workflow-spec`      | SPEC 문서 생성, EARS 형식, 요구사항 분석 |
-| `moai-workflow-project`   | 프로젝트 초기화, 문서 생성, 언어 설정    |
-| `moai-workflow-ddd`       | ANALYZE-PRESERVE-IMPROVE 사이클          |
-| `moai-workflow-tdd`       | RED-GREEN-REFACTOR 테스트 주도 개발        |
-| `moai-workflow-testing`   | 테스트 생성, 디버깅, 코드 리뷰 통합      |
-| `moai-workflow-worktree`  | Git worktree 기반 병렬 개발              |
-| `moai-workflow-thinking`  | Adaptive Thinking, UltraThink 모드     |
-| `moai-workflow-loop`      | Ralph Engine 자율 루프, LSP 연동         |
-| `moai-workflow-jit-docs`  | 필요 시점 문서 로딩, 지능형 검색         |
-| `moai-workflow-templates` | 코드 보일러플레이트, 프로젝트 템플릿     |
-| `moai-docs-generation`     | 기술 문서, API 문서, 사용 가이드 생성       |
+| 스킬 이름                | 설명                                          |
+| ------------------------ | --------------------------------------------- |
+| `moai-workflow-spec`     | SPEC 문서 생성, GEARS 형식, 요구사항 분석     |
+| `moai-workflow-project`  | 프로젝트 초기화, 문서 생성, 언어 설정         |
+| `moai-workflow-ddd`      | ANALYZE-PRESERVE-IMPROVE 사이클               |
+| `moai-workflow-tdd`      | RED-GREEN-REFACTOR 테스트 주도 개발           |
+| `moai-workflow-testing`  | 테스트 생성, 디버깅, 코드 리뷰 통합           |
+| `moai-workflow-worktree` | Git worktree 기반 병렬 개발                   |
+| `moai-workflow-loop`     | Ralph Engine 자율 루프, LSP 연동              |
+| `moai-workflow-ci-loop`  | CI 감시 및 자동 수정 루프 워크플로우          |
+| `moai-workflow-gan-loop` | Builder-Evaluator GAN 루프, 디자인 품질       |
+| `moai-workflow-design`   | 디자인 워크플로우, Claude Design 가져오기     |
 
-### Domain (도메인 전문성) - 4개
+### Domain (도메인 전문성) - 9개
 
-| 스킬 이름              | 설명                                             |
-| ---------------------- | ------------------------------------------------ |
-| `moai-domain-backend`  | API 설계, 마이크로서비스, 데이터베이스 통합      |
-| `moai-domain-frontend` | React 19, Next.js 16, Vue 3.5, 컴포넌트 아키텍처 |
-| `moai-domain-database` | PostgreSQL, MongoDB, Redis, 고급 데이터 패턴     |
-| `moai-domain-uiux`     | 디자인 시스템, 접근성, 테마 통합                 |
+| 스킬 이름                   | 설명                                             |
+| --------------------------- | ------------------------------------------------ |
+| `moai-domain-backend`       | API 설계, 마이크로서비스, 데이터베이스 통합      |
+| `moai-domain-frontend`      | React 19, Next.js 16, Vue 3.5, 컴포넌트 아키텍처 |
+| `moai-domain-database`      | PostgreSQL, MongoDB, Redis, 고급 데이터 패턴     |
+| `moai-domain-ideation`      | Lean Canvas, 제안 생성, 발산-수렴                |
+| `moai-domain-research`      | 시장 조사, 생태계 분석, WebSearch                |
+| `moai-domain-brand-design`  | 브랜드 정합 비주얼 디자인, 디자인 토큰           |
+| `moai-domain-design-handoff`| Claude Design 핸드오프 패키지                    |
+| `moai-domain-copywriting`   | 브랜드 정합 마케팅 카피, 안티-AI-slop            |
+| `moai-domain-humanize`      | AI 텍스트 휴머나이제이션, 윤문, 한국어 AI-tell 분류체계 |
 
-### Language (프로그래밍 언어) - 16개
+### Reference (모범 사례) - 5개
 
-| 스킬 이름              | 대상 언어                                 |
-| ---------------------- | ----------------------------------------- |
-| `moai-lang-python`     | Python 3.13+, FastAPI, Django             |
-| `moai-lang-typescript` | TypeScript 5.9+, React 19, Next.js 16     |
-| `moai-lang-javascript` | JavaScript ES2024+, Node.js 22, Bun, Deno |
-| `moai-lang-go`         | Go 1.23+, Fiber, Gin, GORM (통합)           |
-| `moai-lang-rust`       | Rust 1.92+, Axum, Tokio (통합)           |
-| `moai-lang-flutter`    | Flutter 3.24+, Dart 3.5+, Riverpod (통합)   |
-| `moai-lang-java`       | Java 21 LTS, Spring Boot 3.3              |
-| `moai-lang-cpp`        | C++23/C++20, CMake, RAII                  |
-| `moai-lang-ruby`       | Ruby 3.3+, Rails 7.2                      |
-| `moai-lang-php`        | PHP 8.3+, Laravel 11, Symfony 7           |
-| `moai-lang-kotlin`     | Kotlin 2.0+, Ktor, Compose Multiplatform  |
-| `moai-lang-csharp`     | C# 12, .NET 8, ASP.NET Core               |
-| `moai-lang-scala`      | Scala 3.4+, Akka, ZIO                     |
-| `moai-lang-elixir`     | Elixir 1.17+, Phoenix 1.7, LiveView       |
-| `moai-lang-swift`      | Swift 6+, SwiftUI, Combine                |
-| `moai-lang-r`          | R 4.4+, tidyverse, ggplot2, Shiny         |
+| 스킬 이름                  | 설명                                              |
+| -------------------------- | ------------------------------------------------- |
+| `moai-ref-api-patterns`    | REST/GraphQL API 설계 패턴, 에러 처리             |
+| `moai-ref-git-workflow`    | Git 워크플로우, 브랜치 전략, Conventional Commits |
+| `moai-ref-owasp-checklist` | OWASP Top 10 보안 패턴, 입력 검증                 |
+| `moai-ref-react-patterns`  | React/Next.js 컴포넌트 패턴, 상태 관리            |
+| `moai-ref-testing-pyramid` | 테스트 피라미드 전략, 커버리지 목표               |
 
-### Platform (클라우드/BaaS) - 4개
+### Meta/Harness (시스템 확장) - 2개
 
-| 스킬 이름                     | 대상 플랫폼                                  |
-| ----------------------------- | -------------------------------------------- |
-| `moai-platform-auth`        | Auth0, Clerk, Firebase-auth 통합 인증     |
-| `moai-platform-database-cloud` | Neon, Supabase, Firestore 통합 데이터베이스 |
-| `moai-platform-deployment`   | Vercel, Railway, Convex 통합 배포        |
+| 스킬 이름              | 설명                                        |
+| ---------------------- | ------------------------------------------- |
+| `moai-meta-harness`    | 프로젝트 특화 에이전트 팀 동적 생성         |
+| `moai-harness-learner` | Harness 학습 서브시스템, 자동 업데이트 제안 |
 
-### Library (특수 라이브러리) - 4개
+### Design (디자인 시스템) - 1개
 
-| 스킬 이름              | 설명                            |
-| ---------------------- | ------------------------------- |
-| `moai-library-shadcn`  | shadcn/ui 컴포넌트 구현 가이드  |
-| `moai-library-mermaid` | Mermaid 11.12 다이어그램 생성  |
-| `moai-library-nextra`  | Nextra 문서 사이트 프레임워크   |
-| `moai-formats-data`    | TOON 인코딩, JSON/YAML 최적화   |
+| 스킬 이름            | 설명                                          |
+| -------------------- | --------------------------------------------- |
+| `moai-design-system` | Intent-first 디자인, 접근성, 디자인 토큰      |
 
-### Tool (개발 도구) - 2개
-
-| 스킬 이름            | 설명                                 |
-| -------------------- | ------------------------------------ |
-| `moai-tool-ast-grep` | AST 기반 구조적 코드 검색, 보안 스캔 |
-| `moai-tool-svg`      | SVG 생성, 최적화, 아이콘 시스템      |
-
-### Framework (앱 프레임워크) - 1개
-
-| 스킬 이름                 | 설명                          |
-| ------------------------- | ----------------------------- |
-| `moai-framework-electron` | Electron 33+ 데스크톱 앱 개발 |
-
-### Design Tools (디자인 도구) - 1개
-
-| 스킬 이름                 | 설명                          |
-| ------------------------- | ----------------------------- |
-| `moai-design-tools` | Figma, Pencil 통합 디자인 도구  |
+> `moai` umbrella 스킬 (통합 `/moai` 라우터)은 총 32개에 포함되지만 분류된 기능 스킬은 아니며, 이 가이드에 설명된 서브커맨드를 디스패치합니다.
 
 ## 점진적 공개 시스템
 
@@ -191,7 +162,7 @@ flowchart TD
 
 ### 토큰 절약 효과
 
-- **기존 방식**: 31개 스킬 전체 로드 = 약 150,000 토큰 (불가능)
+- **기존 방식**: 32개 스킬 전체 로드 = 약 160,000 토큰 (불가능)
 - **점진적 공개**: 메타데이터만 로드 = 약 5,200 토큰 (97% 절약)
 - **필요 시 로드**: 작업에 필요한 2~3개 스킬만 = 약 15,000 토큰 추가
 
@@ -209,7 +180,7 @@ flowchart TD
     KW -->|"api, database"| SKILL1[moai-domain-backend]
     AG -->|"manager-develop"| SKILL1
     PH -->|"run 단계"| SKILL2[moai-workflow-ddd]
-    LN -->|"Python 파일"| SKILL3[moai-lang-python]
+    LN -->|"Python 파일"| SKILL3[moai-domain-backend]
 
     SKILL1 --> LOAD[스킬 로드 완료]
     SKILL2 --> LOAD
@@ -242,9 +213,9 @@ Claude Code 대화에서 직접 스킬을 호출할 수 있습니다.
 
 ```bash
 # Claude Code에서 스킬 호출
-> Skill("moai-lang-python")
 > Skill("moai-domain-backend")
-> Skill("moai-library-mermaid")
+> Skill("moai-domain-frontend")
+> Skill("moai-ref-api-patterns")
 ```
 
 ### 자동 로드
@@ -267,11 +238,11 @@ Claude Code 대화에서 직접 스킬을 호출할 수 있습니다.
 │   ├── examples.md             # 실전 예시
 │   └── reference.md            # 외부 참조 링크
 │
-├── moai-lang-python/           # Language 카테고리
+├── moai-domain-backend/        # Domain 카테고리
 │   ├── skill.md
 │   └── modules/
-│       ├── fastapi-patterns.md
-│       └── testing-pytest.md
+│       ├── api-patterns.md
+│       └── microservices.md
 │
 └── my-skills/                  # 사용자 커스텀 스킬 (업데이트 제외)
     └── my-custom-skill/
@@ -289,20 +260,19 @@ Claude Code 대화에서 직접 스킬을 호출할 수 있습니다.
 
 ```markdown
 ---
-name: moai-lang-python
+name: moai-domain-backend
 description: >
-  Python 3.13+ 개발 전문가. FastAPI, Django, pytest 패턴 제공. Python API, 웹
-  앱, 데이터 파이프라인 개발 시 사용.
+  백엔드 개발 전문가. API 설계, 마이크로서비스, 데이터베이스 통합 패턴 제공.
+  API, 웹 앱, 데이터 파이프라인 개발 시 사용.
 version: 3.0.0
-category: language
+category: domain
 status: active
 triggers:
-  keywords: ["python", "fastapi", "django", "pytest"]
-  languages: ["python"]
+  keywords: ["api", "database", "microservices", "authentication"]
 allowed-tools: ["Read", "Grep", "Glob", "Bash", "Context7 MCP"]
 ---
 
-# Python 개발 전문가
+# 백엔드 개발 전문가
 
 ## Quick Reference
 
@@ -332,12 +302,11 @@ allowed-tools: ["Read", "Grep", "Glob", "Bash", "Context7 MCP"]
 > FastAPI로 사용자 인증 API를 만들어줘
 
 # 2. MoAI-ADK가 자동으로 감지하는 키워드
-# "FastAPI" → moai-lang-python 트리거
+# "FastAPI" → moai-domain-backend 트리거 (Python 패턴은 rules/moai/languages/ 통해 제공)
 # "인증"    → moai-domain-backend 트리거
 # "API"     → moai-domain-backend 트리거
 
 # 3. 자동 로드되는 스킬
-# - moai-lang-python (Level 2): FastAPI 패턴, pytest 테스트
 # - moai-domain-backend (Level 2): API 설계 패턴, 인증 전략
 # - moai-foundation-core (Level 1): TRUST 5 품질 기준
 
@@ -356,9 +325,9 @@ allowed-tools: ["Read", "Grep", "Glob", "Bash", "Context7 MCP"]
 flowchart TD
     REQ["사용자: Supabase + Next.js로<br>풀스택 앱 만들어줘"] --> ANALYZE[요청 분석]
 
-    ANALYZE --> S1["moai-lang-typescript<br>TypeScript 패턴"]
-    ANALYZE --> S2["moai-domain-frontend<br>React/Next.js 패턴"]
-    ANALYZE --> S3["moai-platform-supabase<br>Supabase 통합 패턴"]
+    ANALYZE --> S1["moai-domain-frontend<br>React/Next.js 패턴"]
+    ANALYZE --> S2["moai-domain-backend<br>API 설계 패턴"]
+    ANALYZE --> S3["moai-domain-database<br>데이터베이스 통합"]
     ANALYZE --> S4["moai-foundation-core<br>TRUST 5 품질"]
 
     S1 --> IMPL[통합 구현]
@@ -391,6 +360,6 @@ Claude Code는 프로젝트 루트뿐만 아니라 중첩된 하위 디렉터리
 
 {{< callout type="info" >}}
   **팁**: 스킬을 잘 활용하는 핵심은 **적절한 키워드 사용**입니다. "Python으로
-  REST API 만들어줘"라고 요청하면 `moai-lang-python`과 `moai-domain-backend`
-  스킬이 자동으로 활성화되어 최적의 코드를 생성합니다.
+  REST API 만들어줘"라고 요청하면 `moai-domain-backend` 스킬이 자동으로 활성화되어
+  (Python 패턴은 `rules/moai/languages/`를 통해 제공) 최적의 코드를 생성합니다.
 {{< /callout >}}

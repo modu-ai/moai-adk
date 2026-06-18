@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK는 Claude Code를 위한 **고성능 AI 개발 환경**입니다. 8개의 전문 AI 에이전트와 31개의 스킬이 협력하여 품질 높은 코드를 생산합니다. 새 프로젝트와 기능 개발에는 TDD (기본값), 테스트 커버리지가 낮은 기존 프로젝트에는 DDD를 자동으로 적용하며, Sub-Agent와 Agent Teams 이중 실행 모드를 지원합니다.
+MoAI-ADK는 Claude Code를 위한 **고성능 AI 개발 환경**입니다. 8개의 전문 AI 에이전트와 32개의 스킬이 협력하여 품질 높은 코드를 생산합니다. 새 프로젝트와 기능 개발에는 TDD (기본값), 테스트 커버리지가 낮은 기존 프로젝트에는 DDD를 자동으로 적용하며, Sub-Agent와 Agent Teams 이중 실행 모드를 지원합니다.
 
 Go로 작성된 단일 바이너리 -- 의존성 없이 모든 플랫폼에서 즉시 실행됩니다.
 
@@ -45,7 +45,7 @@ Python 기반 MoAI-ADK (~73,000줄)를 Go로 완전히 재작성했습니다.
 
 - **34,220줄** Go 코드, **32개** 패키지
 - **85-100%** 테스트 커버리지
-- **8개** 전문 AI 에이전트 + **31개** 스킬
+- **8개** 전문 AI 에이전트 + **32개** 스킬
 - **16개** 프로그래밍 언어 지원
 - **16개** Claude Code Hook 이벤트
 
@@ -264,7 +264,7 @@ flowchart TD
     MoAI --> Explore
 ```
 
-### 31개 스킬 (Progressive Disclosure)
+### 32개 스킬 (Progressive Disclosure)
 
 3레벨 Progressive Disclosure 시스템으로 토큰 효율적으로 관리됩니다:
 
@@ -649,7 +649,7 @@ my-project/
 ├── CLAUDE.md                  # MoAI의 실행 지침서
 ├── .claude/
 │   ├── agents/moai/           # 7개 MoAI 커스텀 에이전트 정의 (+ Explore 빌트인)
-│   ├── skills/moai-*/         # 31개 스킬 모듈
+│   ├── skills/moai-*/         # 32개 스킬 모듈
 │   ├── hooks/moai/            # 자동화 훅 스크립트
 │   └── rules/moai/            # 코딩 규칙 및 표준
 └── .moai/

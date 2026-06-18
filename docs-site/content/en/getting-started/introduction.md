@@ -130,7 +130,7 @@ MoAI-ADK 2.5 is a complete rewrite of the Python Edition in Go for maximum perfo
 
 - **34,220 lines** of Go code, **32** packages
 - **85-100%** test coverage
-- **8** specialized AI agents + **31** skills
+- **8** specialized AI agents + **32** skills
 - **18** programming languages supported
 - **16** Claude Code hook events
 
@@ -153,14 +153,14 @@ MoAI-ADK delivers the following core values:
 - **SPEC-based TDD/DDD**: A structured methodology for documenting requirements and developing incrementally with TDD (default) or DDD for legacy code
 - **TRUST 5 Quality Framework**: Five principles ensuring testing, readability, unification, security, and traceability
 - **8 Specialized Agents**: An AI agent team specialized for each stage of development (7 MoAI-custom + Anthropic Explore)
-- **31 Skills**: An extensible skill library supporting diverse development scenarios
+- **32 Skills**: An extensible skill library supporting diverse development scenarios
 - **Multilingual Support**: Support for 4 languages: Korean, English, Japanese, and Chinese
 - **Adaptive Thinking**: Deep reasoning via `ultrathink` keyword on Opus 4.7+/4.8 and Sonnet 4.6
 - **Ralph-Style LSP Integration**: LSP-based autonomous workflow with real-time quality feedback
 
 ## Key Features
 
-MoAI-ADK provides 8 specialized AI agents and 31 skills to automate and optimize the entire development workflow.
+MoAI-ADK provides 8 specialized AI agents and 32 skills to automate and optimize the entire development workflow.
 
 ### Agent Categories
 

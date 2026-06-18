@@ -12,7 +12,7 @@ draft: false
 
 ## 什么是构建者代理?
 
-除了 MoAI-ADK 提供的 31 个内置技能和 8 个代理外,MoAI-ADK 还提供 1 个构建者代理供用户扩展系统。
+除了 MoAI-ADK 提供的 32 个内置技能和 8 个代理外,MoAI-ADK 还提供 1 个构建者代理供用户扩展系统。
 
 ```mermaid
 flowchart TD

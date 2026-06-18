@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK是为Claude Code打造的 **高性能AI开发环境**。8个专业AI Agent和31个技能协同工作，生产高质量代码。新项目和功能开发默认采用TDD，测试覆盖率低的现有项目自动采用DDD，同时支持Sub-Agent和Agent Teams双重执行模式。
+MoAI-ADK是为Claude Code打造的 **高性能AI开发环境**。8个专业AI Agent和32个技能协同工作，生产高质量代码。新项目和功能开发默认采用TDD，测试覆盖率低的现有项目自动采用DDD，同时支持Sub-Agent和Agent Teams双重执行模式。
 
 使用Go语言编写的单一二进制文件 -- 无依赖，在所有平台上即可运行。
 
@@ -45,7 +45,7 @@ MoAI-ADK是一个 **使Agent能够在Claude Code内通过交互进行Agent编码
 
 - **34,220行** Go代码，**32个** 包
 - **85-100%** 测试覆盖率
-- **8个** 专业AI Agent + **31个** 技能
+- **8个** 专业AI Agent + **32个** 技能
 - **18种** 编程语言支持
 - **16个** Claude Code Hook事件
 
@@ -264,7 +264,7 @@ flowchart TD
     MoAI --> Explore
 ```
 
-### 31个技能 (Progressive Disclosure)
+### 32个技能 (Progressive Disclosure)
 
 通过3级Progressive Disclosure系统实现token高效管理:
 
@@ -658,7 +658,7 @@ my-project/
 ├── CLAUDE.md                  # MoAI的执行指令书
 ├── .claude/
 │   ├── agents/moai/           # 7个MoAI自定义Agent定义（+ Explore内置）
-│   ├── skills/moai-*/         # 31个技能模块
+│   ├── skills/moai-*/         # 32个技能模块
 │   ├── hooks/moai/            # 自动化Hook脚本
 │   └── rules/moai/            # 编码规则和标准
 └── .moai/

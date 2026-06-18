@@ -62,7 +62,7 @@ skills**: Applies MoAI-ADK's rules, patterns, and best practices to respond.
 
 ## Skill Categories
 
-MoAI-ADK has a total of **31 skills** — the `moai` umbrella router plus 30 specialized skills classified into 6 categories: Foundation, Workflow, Domain, Reference, Meta/Harness, and Design. Programming-language support is delivered through rules under `rules/moai/languages/`, not as separate skills.
+MoAI-ADK has a total of **32 skills** — the `moai` umbrella router plus 31 specialized skills classified into 6 categories: Foundation, Workflow, Domain, Reference, Meta/Harness, and Design. Programming-language support is delivered through rules under `rules/moai/languages/`, not as separate skills.
 
 ### Foundation (Core Philosophy) - 4 skills
 
@@ -88,7 +88,7 @@ MoAI-ADK has a total of **31 skills** — the `moai` umbrella router plus 30 spe
 | `moai-workflow-gan-loop`  | Builder-Evaluator GAN loop for design quality   |
 | `moai-workflow-design`    | Design workflow, Claude Design import, brand context |
 
-### Domain (Domain Expertise) - 8 skills
+### Domain (Domain Expertise) - 9 skills
 
 | Skill Name                        | Description                                             |
 | --------------------------------- | ------------------------------------------------------- |
@@ -100,6 +100,7 @@ MoAI-ADK has a total of **31 skills** — the `moai` umbrella router plus 30 spe
 | `moai-domain-brand-design`        | Brand-aligned visual design, design tokens              |
 | `moai-domain-design-handoff`      | Claude Design handoff packages                          |
 | `moai-domain-copywriting`         | Brand-aligned marketing copy, anti-AI-slop              |
+| `moai-domain-humanize`            | AI-text humanization, post-editing, Korean AI-tell taxonomy |
 
 ### Reference (Best Practices) - 5 skills
 
@@ -124,7 +125,7 @@ MoAI-ADK has a total of **31 skills** — the `moai` umbrella router plus 30 spe
 | --------------------- | ------------------------------------------------------ |
 | `moai-design-system`   | Intent-first design, accessibility, design tokens     |
 
-> The `moai` umbrella skill (the unified `/moai` router) is counted in the total of 31 but is not a categorized capability skill — it dispatches the subcommands described in this guide.
+> The `moai` umbrella skill (the unified `/moai` router) is counted in the total of 32 but is not a categorized capability skill — it dispatches the subcommands described in this guide.
 
 ## Progressive Disclosure System
 
@@ -164,7 +165,7 @@ flowchart TD
 
 ### Token Savings
 
-- **Old method**: Load all 31 skills = ~155,000 tokens (impossible)
+- **Old method**: Load all 32 skills = ~160,000 tokens (impossible)
 - **Progressive disclosure**: Load only metadata = ~3,100 tokens (98% savings)
 - **On-demand load**: Only 2-3 skills needed for task = ~15,000 additional tokens
 
@@ -182,7 +183,7 @@ flowchart TD
     KW -->|"api, database"| SKILL1[moai-domain-backend]
     AG -->|"manager-develop"| SKILL1
     PH -->|"run phase"| SKILL2[moai-workflow-ddd]
-    LN -->|"Python file"| SKILL3[moai-lang-python]
+    LN -->|"Python file"| SKILL3[moai-domain-backend]
 
     SKILL1 --> LOAD[Skill Load Complete]
     SKILL2 --> LOAD
@@ -215,9 +216,9 @@ You can directly invoke skills in Claude Code conversations.
 
 ```bash
 # Invoke skills in Claude Code
-> Skill("moai-lang-python")
 > Skill("moai-domain-backend")
-> Skill("moai-library-mermaid")
+> Skill("moai-domain-frontend")
+> Skill("moai-ref-api-patterns")
 ```
 
 ### Auto Load
@@ -241,11 +242,11 @@ Skill files are located in the `.claude/skills/` directory.
 │   ├── examples.md             # Real-world examples
 │   └── reference.md            # External reference links
 │
-├── moai-lang-python/           # Language category
+├── moai-domain-backend/        # Domain category
 │   ├── skill.md
 │   └── modules/
-│       ├── fastapi-patterns.md
-│       └── testing-pytest.md
+│       ├── api-patterns.md
+│       └── microservices.md
 │
 └── my-skills/                  # User custom skills (excluded from updates)
     └── my-custom-skill/
@@ -263,20 +264,19 @@ Each skill's `skill.md` follows this structure.
 
 ```markdown
 ---
-name: moai-lang-python
+name: moai-domain-backend
 description: >
-  Python 3.13+ development expert. FastAPI, Django, pytest patterns provided.
-  Use for Python API, web app, data pipeline development.
+  Backend development expert. API design, microservices, database integration
+  patterns provided. Use for API, web app, data pipeline development.
 version: 3.0.0
-category: language
+category: domain
 status: active
 triggers:
-  keywords: ["python", "fastapi", "django", "pytest"]
-  languages: ["python"]
+  keywords: ["api", "database", "microservices", "authentication"]
 allowed-tools: ["Read", "Grep", "Glob", "Bash", "Context7 MCP"]
 ---
 
-# Python Development Expert
+# Backend Development Expert
 
 ## Quick Reference
 
@@ -306,12 +306,11 @@ Scenario where user is working on a Python FastAPI project.
 > Create a user authentication API with FastAPI
 
 # 2. Keywords automatically detected by MoAI-ADK
-# "FastAPI" → moai-lang-python trigger
+# "FastAPI" → moai-domain-backend trigger (Python patterns via rules/moai/languages/)
 # "authentication" → moai-domain-backend trigger
 # "API" → moai-domain-backend trigger
 
 # 3. Auto-loaded skills
-# - moai-lang-python (Level 2): FastAPI patterns, pytest tests
 # - moai-domain-backend (Level 2): API design patterns, auth strategy
 # - moai-foundation-core (Level 1): TRUST 5 quality standards
 
@@ -330,9 +329,9 @@ Process where multiple skills collaborate on a single task.
 flowchart TD
     REQ["User: Create full-stack app<br>with Supabase + Next.js"] --> ANALYZE[Request Analysis]
 
-    ANALYZE --> S1["moai-lang-typescript<br>TypeScript patterns"]
-    ANALYZE --> S2["moai-domain-frontend<br>React/Next.js patterns"]
-    ANALYZE --> S3["moai-platform-supabase<br>Supabase integration patterns"]
+    ANALYZE --> S1["moai-domain-frontend<br>React/Next.js patterns"]
+    ANALYZE --> S2["moai-domain-backend<br>API design patterns"]
+    ANALYZE --> S3["moai-domain-database<br>Database integration"]
     ANALYZE --> S4["moai-foundation-core<br>TRUST 5 quality"]
 
     S1 --> IMPL[Integrated Implementation]
@@ -366,5 +365,6 @@ When the same skill name appears in more than one `.claude/skills/` directory al
 {{< callout type="info" >}}
   **Tip**: The key to using skills effectively is **using appropriate keywords**.
   Requesting "Create a REST API with Python" will automatically activate the
-  `moai-lang-python` and `moai-domain-backend` skills to generate optimal code.
+  `moai-domain-backend` skill (Python patterns are provided via `rules/moai/languages/`)
+  to generate optimal code.
 {{< /callout >}}
