@@ -80,17 +80,24 @@ done
 # Expected: 0 0 0 0 (four zeros)
 ```
 
-**Global skill-count update (32 → 31) — 3 lines per locale, all 4 locales**:
-each locale's `skill-guide.md` carries THREE prose references to the global
-skill count, all of which MUST be decremented from 32 to 31 for internal
-consistency (else the doc claims 32 while enumerating 31):
-1. The "total of N skills" line (en:65 / ko:62 / ja:59 / zh:61) — both the
-   total count AND the "31 specialized" sub-count decrement (`31 → 30`).
+**Global skill-count update (32 → 31) — per-locale line-class coverage**:
+the count-referencing prose lives in THREE line-classes, but the line-classes
+are NOT all present in every locale. `en`/`ko`/`ja` each carry all THREE
+classes (total-of-N, umbrella-includes-N, load-all-N-tokens); `zh` carries
+only TWO (total-of-N, load-all-N-tokens — zh has no umbrella line). The AC
+applies per-locale to whichever of the three line-classes each locale
+actually carries; all referenced counts MUST be decremented from 32 to 31
+for internal consistency (else the doc claims 32 while enumerating 31):
+1. The "total of N skills" line (en:65 / ko:62 / ja:59 / zh:61) — present in
+   ALL FOUR locales; both the total count AND the "31 specialized" sub-count
+   decrement (`31 → 30`).
 2. The "umbrella skill is included in the N total" line (en:125-equivalent /
-   ko:125 / ja:122 / zh:nearby) — the `32`/`N` total decrements to `31`.
+   ko:125 / ja:122) — present in `en`/`ko`/`ja` ONLY (zh has no umbrella
+   line); the `32`/`N` total decrements to `31`.
 3. The "load all N skills = ~160,000 tokens" line (en:168 / ko:165 / ja:160 /
-   zh:161) — the `N` in "all N skills" decrements from 32 to 31 (the token
-   estimate stays approximate; the count reference is the load-bearing fix).
+   zh:161) — present in ALL FOUR locales; the `N` in "all N skills" decrements
+   from 32 to 31 (the token estimate stays approximate; the count reference
+   is the load-bearing fix).
 
 Per-locale verification:
 ```bash

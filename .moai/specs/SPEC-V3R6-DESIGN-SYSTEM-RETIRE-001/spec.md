@@ -174,9 +174,14 @@ sub-heading is an `### Out of Scope — <topic>` H3 per the
 ### Out of Scope — Catalog-pack reshuffling
 
 - Reorganizing the `design` pack in catalog.yaml beyond removing the single
-  `moai-design-system` entry. The pack may become empty or near-empty; that
-  is a downstream concern for a separate catalog-reorganization SPEC, not
-  this retirement.
+  `moai-design-system` entry. After this single removal, the `design` pack
+  retains **6 robustly-populated entries** (`moai-domain-brand-design`,
+  `moai-domain-copywriting`, `moai-domain-humanize`,
+  `moai-domain-design-handoff`, `moai-workflow-design`,
+  `moai-workflow-gan-loop` — see research.md §R3.3), so NO empty-pack risk
+  arises. Reordering those 6 surviving entries remains out of scope (a
+  downstream concern for a separate catalog-reorganization SPEC, not this
+  retirement).
 
 ## §D. Requirements (GEARS notation)
 
