@@ -29,11 +29,9 @@ DOCSITE-001은 6개 docs-truth 축을 이미 정합했다: (a) agent catalog 8-r
 
 ### 문제 정의
 
-docs-site 4개 로케일(en/ko/ja/zh)에 "31 skills" / "31개 스킬" / "31 スキル" / "31个技能" stale fact가 산재한다. 그러나 primary source(`.claude/skills/`)의 실제 canonical count는 **32**이다(moai umbrella router 1 + 31 specialized). 또한 en/ko/zh 3 로케일은 Domain 카테고리에서 `moai-domain-humanize` 스킬이 누락되어 specialized 합계가 30으로 표기되고, **ja 로케일은 v3 이전의 허구적 taxnomy(9 카테고리, 46+ 존재하지 않는 스킬명) 전체를 유지**하고 있어 단순 count patch가 아닌 구조적 재작성이 필요하다.
+docs-site 4개 로케일(en/ko/ja/zh)에 "31 skills" / "31개 스킬" / "31 スキル" / "31个技能" stale fact가 산재한다. 그러나 primary source(`.claude/skills/`)의 실제 canonical count는 **32**이다(moai umbrella router 1 + 31 specialized). 또한 en/ko/zh 3 로케일은 Domain 카테고리에서 `moai-domain-humanize` 스킬이 누락되어 specialized 합계가 30으로 표기되고, **ja 및 ko 로케일은 v3 이전의 허구적 taxonomy(각각 9 카테고리, 37개씩 존재하지 않는 스킬명, 총 74개) 전체를 유지**하고 있어 단순 count patch가 아닌 구조적 재작성이 필요하다. 추가로 **en 및 zh 로케일은 category header 구조는 6 canonical로 정확하지만, Mermaid 다이어그램·코드 예제·ASCII tree·자동 로드 시나리오 등 개념 설명 영역에 허구적 스킬명(en: 10개, zh: 11개, 총 21개)이 잔존**하여 본문 정제(in-body cleanup)가 필요하다. 4-locale 허구적 스킬명 총합은 95개(en:10 + ko:37 + ja:37 + zh:11)이다.
 
 상세 증거는 §C Background Research 및 research.md 참조.
-
-## §B. Requirements (GEARS)
 
 ### REQ-001 — Canonical skill count (Ubiquitous)
 
@@ -51,9 +49,11 @@ The docs-site **shall** express the count as "1 umbrella router + 31 specialized
 
 **While** a docs-site page states per-category sub-counts (e.g., "Domain (8)"), the docs-site **shall** ensure each sub-count matches the primary-source `find` output per category prefix: Foundation=4, Workflow=10, Domain=9, Reference=5, Meta/Harness=2, Design=1, summed to 31 specialized + 1 umbrella = 32 total.
 
-### REQ-005 — ja locale structural reconciliation (Event-detected)
+### REQ-005 — ja and ko locale structural reconciliation (Event-detected)
 
-**When** the ja locale `advanced/skill-guide.md` carries a pre-v3 fictional taxonomy (9 categories, nonexistent skill names such as `moai-lang-*`, `moai-platform-*`, `moai-foundation-philosopher`), the docs-site **shall** replace that taxonomy with the canonical 6-category / 32-skill structure matching en/ko/zh, eliminating all references to nonexistent skill names.
+> **iter-2 scope expansion (2026-06-18):** iter-1 scoped this REQ to ja only. Independent re-derivation confirmed ko `advanced/skill-guide.md` carries the identical pre-v3 fictional taxonomy (9 categories, 37 nonexistent skill-name references — same magnitude as ja's 37). Both locales require the same structural treatment. This REQ is expressed as a unified requirement covering both locales; AC-006 verifies both via a single per-locale loop.
+
+**When** the ja OR ko locale `advanced/skill-guide.md` carries a pre-v3 fictional taxonomy (9 categories, nonexistent skill names such as `moai-lang-*`, `moai-platform-*`, `moai-foundation-philosopher`, 37 references each), the docs-site **shall** replace that taxonomy with the canonical 6-category / 32-skill structure matching en/zh, eliminating all 37 references to nonexistent skill names per locale and introducing the 3 missing canonical categories (Reference, Meta/Harness, Design).
 
 ### REQ-006 — 4-locale parity invariant (Ubiquitous)
 
@@ -67,14 +67,20 @@ The docs-site **shall not** introduce invented CJK locale idioms for the skill-c
 
 **Where** a docs-site page carries a factual skill-count claim (number + skill-adjacent keyword), the docs-site **shall** be in the COVERAGE-001 edit surface. Pages that mention skills only in structural prose (navigation, breadcrumbs) without a numeric count are out of scope. The coverage map is enumerated in research.md § Coverage Map.
 
+### REQ-009 — en/zh in-body fictional-name elimination (Event-detected)
+
+> **iter-2 addition (2026-06-18):** independent grep found that en and zh `advanced/skill-guide.md` carry correct 6-canonical-category HEADERS but still reference nonexistent skill names (`moai-lang-*`, `moai-library-mermaid`, `moai-platform-supabase`) inside conceptual illustrations — Mermaid flowchart nodes, explicit-invocation code examples, ASCII directory trees, frontmatter examples, auto-load scenario comments, and closing callouts. These are not in the category-listing tables but still present fictional names as if they were shipped skills. This REQ closes that residual drift class. ko and ja are covered separately by REQ-005 (structural rewrite eliminates their 37 references each).
+
+**When** the en OR zh locale `advanced/skill-guide.md` references a nonexistent skill name (matching the fictional-name regex `moai-lang-|moai-platform-|moai-library-|moai-framework-|moai-foundation-claude|moai-foundation-philosopher|moai-foundation-context`), the docs-site **shall** replace each such reference with a real-skill equivalent (e.g., `moai-lang-python` → `moai-domain-backend` with a note that Python patterns ship via `rules/moai/languages/`) or rephrase the illustration to avoid naming a nonexistent skill, so that the fictional-name regex returns 0 matches per locale post-correction (en: 10→0, zh: 11→0).
+
 ## §C. Background Research (요약)
 
 상세 연구 결과는 `research.md` 참조. 핵심 발견:
 
 1. **Canonical count = 32** (`find internal/template/templates/.claude/skills -maxdepth 1 -mindepth 1 -type d | wc -l` → 32). Template source와 local `.claude/skills/` 모두 동일(단 local은 user-owned `my-harness-*` 2개 추가 포함 = 34이나 이는 template scope 밖).
-2. **en/ko/zh**: "31 = umbrella + 30" → "32 = umbrella + 31" 수정 + Domain 카테고리에 `moai-domain-humanize` 추가(8→9). 다른 5개 카테고리 sub-count는 정확.
-3. **ja**: `advanced/skill-guide.md` 전체가 v3 이전 허구 taxonomy (9 categories, 46+ nonexistent skills). 구조적 재작성 필요 — 다른 3 로케일과 동일한 6-category/32-skill 구조로 교체.
-4. **Facts-bearing pages**: 5 page-families × 4 locales. `humanize`는 4 로케일 전체에서 0회 언급(drift의 원천 중 하나).
+2. **en/zh**: "31 = umbrella + 30" → "32 = umbrella + 31" 수정 + Domain 카테고리에 `moai-domain-humanize` 추가(8→9). category header 구조는 6 canonical로 정확. 단, 개념 설명 영역(Mermaid·코드 예제·ASCII tree·자동 로드 시나리오)에 허구적 스킬명이 잔존(en: 10, zh: 11)하여 본문 정제 필요(REQ-009).
+3. **ja 및 ko**: `advanced/skill-guide.md` 전체가 v3 이전 허구 taxonomy (각 9 categories, 각 37 nonexistent skills = 총 74). 구조적 재작성 필요 — en/zh와 동일한 6-category/32-skill 구조로 교체(REQ-005). ko 발견은 iter-2 재도출로 확인(iter-1은 ja-only로 scope 오류).
+4. **Facts-bearing pages**: 5 page-families × 4 locales. `humanize`는 4 로케일 전체에서 0회 언급(drift의 원천 중 하나). 4-locale 허구적 스킬명 총합 = 95(en:10 + ko:37 + ja:37 + zh:11).
 
 ## §D. Constraints (제약사항)
 
@@ -109,16 +115,19 @@ The docs-site **shall not** introduce invented CJK locale idioms for the skill-c
 
 | Risk | Severity | Mitigation |
 |------|----------|------------|
-| ja locale 구조적 재작성 중 번역 품질 저하 | Medium | en/ko/zh의 6-category 구조를 template으로 사용; locale-native idiom만 사용; 기계 번역 금지(REQ-007) |
+| ja 및 ko locale 구조적 재작성 중 번역 품질 저하 | Medium | en/zh의 6-category 구조를 template으로 사용; locale-native idiom만 사용; 기계 번역 금지(REQ-007) |
+| ko structural divergence 누락 (iter-1이 ja-only로 scope 오류) | Medium | iter-2 재도출로 ko 37개 허구적 스킬명 확인; REQ-005가 ja+ko 통합, AC-006이 `for loc in ja ko` per-locale loop로 2회 검증 |
+| en/zh in-body 허구적 스킬명 잔존 (Mermaid·코드·tree·callout) | Medium | REQ-009가 fictional-name regex 0-match를 요구; AC-011이 `for loc in en zh` per-locale loop로 검증 |
 | `humanize` 추가 시 다른 카테고리 sub-count 연쇄 영향 | Low | Domain만 8→9 변경, 다른 5개 카테고리는 불변(REQ-004); 각 sub-count를 primary-source `find`로 재검증 |
-| 4-locale 동시 적용 누락 (특히 update.md는 en/zh에만 존재) | Medium | research.md Coverage Map이 page-family × locale matrix를 명시; AC에서 per-locale grep로 독립 검증 |
+| 4-locale 동시 적용 누락 (update.md statusline string은 en/zh에만 존재) | Low | research.md Coverage Map이 page-family × locale matrix를 명시; ko/ja `update.md`는 파일 존재하나 statusline string 무소유 — AC에서 per-locale grep로 독립 검증 |
 | user-owned harness skills를 count에 포함하는 실수 | Low | REQ-002가 template-shipped 32에 한정 명시; §E.4 Exclusions로 방어 |
 
 ## §H. Success Criteria (성공 기준)
 
 1. 4 로케일 모두에서 "31" skill-count claim이 "32"로 정정됨 (digit-boundary-anchored grep로 0残留 검증).
 2. en/ko/zh의 Domain 카테고리에 `moai-domain-humanize`가 포함되고 sub-count가 9로 정정됨.
-3. ja `advanced/skill-guide.md`의 허구 taxonomy가 제거되고 canonical 6-category/32-skill 구조로 교체됨.
-4. 4-locale parity: 각 locale에서 동일한 count(32)와 동일한 category 구조(6 categories)가 관측됨.
-5. `moai spec lint` 0 findings.
-6. primary-source `find` 출력이 research.md에 verbatim으로 기록되어 모든 count가 추적 가능함.
+3. ja 및 ko `advanced/skill-guide.md`의 허구 taxonomy가 제거되고 canonical 6-category/32-skill 구조로 교체됨 (각각 37개씩, 총 74개 허구적 스킬명 제거).
+4. en 및 zh `advanced/skill-guide.md`의 개념 설명 영역 허구적 스킬명이 제거됨 (en: 10, zh: 11, 총 21개; REQ-009).
+5. 4-locale parity: 각 locale에서 동일한 count(32)와 동일한 category 구조(6 categories)가 관측됨.
+6. `moai spec lint` 0 findings.
+7. primary-source `find` 출력이 research.md에 verbatim으로 기록되어 모든 count가 추적 가능함.

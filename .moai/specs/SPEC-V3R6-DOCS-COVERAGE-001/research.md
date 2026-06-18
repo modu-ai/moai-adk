@@ -146,7 +146,9 @@ Per applied lesson `feedback_digit_boundary_locale_grep_4parity`, each locale wa
 2. **Per-locale loop** (`for loc in en ko ja zh`) — NEVER globbed the total (`grep -r docs-site/content/`), because globbing masks per-locale drift.
 3. **Locale-native idiom filter** — each locale's skill-adjacent keyword was matched in its native script (en: "skill", ko: "스킬", ja: "スキル", zh: "技能"), never invented CJK.
 
-### §2.2 en locale (10 occurrences across 4 pages)
+### §2.2 en locale (10 count-claim occurrences + 10 in-body fictional-name residuals)
+
+**Count-claim inventory (10 occurrences across 4 pages):**
 
 | File | Line | Excerpt |
 |------|------|---------|
@@ -163,7 +165,47 @@ Per applied lesson `feedback_digit_boundary_locale_grep_4parity`, each locale wa
 | `core-concepts/what-is-moai-adk.md` | 267 | "### 31 Skills (Progressive Disclosure)" |
 | `core-concepts/what-is-moai-adk.md` | 652 | "skills/moai-*/ # 31 skill modules" |
 
-### §2.3 ko locale (10 occurrences across 4 pages)
+**In-body fictional-name residuals (10 matches — iter-2 additional finding):**
+
+The en `advanced/skill-guide.md` category STRUCTURE is correct (6 canonical headers), but the page body carries 10 references to nonexistent skill names (`moai-lang-*`, `moai-library-mermaid`, `moai-platform-supabase`) inside conceptual illustrations: Mermaid flowchart nodes (L185, L333, L335), explicit-invocation code examples (L218, L220), ASCII directory-tree illustrations (L244), skill-file-structure frontmatter example (L266), auto-load scenario comments (L309, L314), and a closing callout (L369). These are NOT in the category-listing tables (the en Domain/Foundation/Workflow tables list only real skills), but they still present fictional names as if they were shipped skills — a drift class covered by REQ-009 / AC-011.
+
+```bash
+$ grep -cE 'moai-lang-|moai-platform-|moai-library-|moai-framework-|moai-foundation-claude|moai-foundation-philosopher|moai-foundation-context' \
+    docs-site/content/en/advanced/skill-guide.md
+10
+```
+
+### §2.3 ko locale — STRUCTURAL DIVERGENCE (identical magnitude to ja)
+
+> **iter-2 correction (2026-06-18):** the iter-1 inventory below listed only 10 count-claim occurrences and treated ko as a count-patch target. Independent re-derivation via the fictional-name regex (the same regex applied to ja in §2.4) revealed ko `advanced/skill-guide.md` carries the **identical pre-v3 fictional taxonomy** as ja: 9 fictional categories, 37 nonexistent skill-name references, and 3 missing canonical categories (Reference, Meta/Harness, Design). The count-claim inventory is retained for completeness, but the load-bearing ko defect is structural, not numeric.
+
+**Mechanical re-derivation evidence:**
+
+```bash
+$ grep -cE 'moai-lang-|moai-platform-|moai-library-|moai-framework-|moai-foundation-claude|moai-foundation-philosopher|moai-foundation-context' \
+    docs-site/content/ko/advanced/skill-guide.md
+37
+
+$ grep -nE '^###' docs-site/content/ko/advanced/skill-guide.md | head -10
+64:### Foundation (핵심 철학) - 5개        ← wrong sub-count (actual 4) + lists nonexistent foundation-claude/philosopher/context
+74:### Workflow (자동화 워크플로우) - 11개  ← wrong sub-count (actual 10)
+90:### Domain (도메인 전문성) - 4개         ← wrong sub-count (actual 9) + missing humanize
+99:### Language (프로그래밍 언어) - 16개    ← FICTIONAL category (canonical delivery is rules/moai/languages/, not skills)
+120:### Platform (클라우드/BaaS) - 4개      ← FICTIONAL category
+128:### Library (특수 라이브러리) - 4개     ← FICTIONAL category
+137:### Tool (개발 도구) - 2개              ← FICTIONAL category
+144:### Framework (앱 프레임워크) - 1개     ← FICTIONAL category
+150:### Design Tools (디자인 도구) - 1개    ← FICTIONAL label (canonical is "Design", not "Design Tools")
+184:### 각 레벨의 역할                       (downstream — not a category header)
+
+$ grep -nE '^### (Reference|Meta/Harness|Design )' docs-site/content/ko/advanced/skill-guide.md
+150:### Design Tools (디자인 도구) - 1개
+# → Reference ABSENT, Meta/Harness ABSENT, Design present only as mis-labeled "Design Tools"
+```
+
+**ko fictional taxonomy (mirrors ja §2.4):** 9 categories (Foundation/Workflow/Domain/Language/Platform/Library/Tool/Framework/Design Tools), 37 nonexistent skill-name references (`moai-lang-*` 16, `moai-platform-*` 4, `moai-library-*` 4, `moai-framework-*` 1, `moai-foundation-claude/philosopher/context` 3, and others), and 3 missing canonical categories (Reference, Meta/Harness, and the correctly-labeled Design). The Domain section lists `moai-domain-uiux` (also nonexistent — the actual UI/design skills are `moai-domain-brand-design`, `moai-domain-design-handoff`, `moai-domain-copywriting`, `moai-domain-humanize`) and omits 5 real Domain skills including `moai-domain-humanize`.
+
+**ko count-claim inventory (retained for completeness):**
 
 | File | Line | Excerpt |
 |------|------|---------|
@@ -178,9 +220,9 @@ Per applied lesson `feedback_digit_boundary_locale_grep_4parity`, each locale wa
 | `core-concepts/what-is-moai-adk.md` | 267 | "### 31개 스킬 (Progressive Disclosure)" |
 | `core-concepts/what-is-moai-adk.md` | 652 | "skills/moai-*/ # 31개 스킬 모듈" |
 
-Note: ko locale has NO `getting-started/update.md` equivalent of the statusline string (en/zh only).
+Note: ko `getting-started/update.md` exists (see §3.1) but does NOT carry the `31 <skill-count>` statusline string — only en/zh `update.md` do. ko `update.md` requires no count correction in this page-family.
 
-### §2.4 ja locale (7 occurrences across 3 pages) — STRUCTURAL DIVERGENCE
+### §2.4 ja locale (7 count-claim occurrences + 37 in-body fictional-name residuals) — STRUCTURAL DIVERGENCE
 
 | File | Line | Excerpt |
 |------|------|---------|
@@ -207,7 +249,9 @@ This is the old pre-v3 MoAI-ADK skill structure that was never reconciled when t
 
 Note: ja locale `what-is-moai-adk.md` lines 7, 48, 652 do NOT carry the "31" claim (verified — the grep returned only line 267 for that file). This asymmetry is itself a parity issue to resolve.
 
-### §2.5 zh locale (10 occurrences across 4 pages)
+### §2.5 zh locale (10 count-claim occurrences + 11 in-body fictional-name residuals)
+
+**Count-claim inventory (10 occurrences across 4 pages):**
 
 | File | Line | Excerpt |
 |------|------|---------|
@@ -223,11 +267,45 @@ Note: ja locale `what-is-moai-adk.md` lines 7, 48, 652 do NOT carry the "31" cla
 | `core-concepts/what-is-moai-adk.md` | 267 | "### 31个技能 (Progressive Disclosure)" |
 | `core-concepts/what-is-moai-adk.md` | 661 | "skills/moai-*/ # 31个技能模块" |
 
-zh `skill-guide.md` line 61 carries the most detailed sub-count breakdown: "Foundation(4)、Workflow(10)、Domain(8)、Reference(5)、Meta-Harness(2)、Design(1)" — note Domain(8) is wrong (should be 9), and the sum 4+10+8+5+2+1 = 30 specialized (should be 31). This is the clearest single-line correction target.
+zh `skill-guide.md` line 61 carries the most detailed sub-count breakdown: "Foundation(4)、Workflow(10)、Domain(8)、Reference(5)、Meta-Harness(2)、Design(1)" — note Domain(8) is wrong (should be 9), and the sum 4+10+8+5+2+1 = 30 specialized (should be 31). This is the clearest single-line correction target and the mechanical anchor for AC-005.
+
+**In-body fictional-name residuals (11 matches — iter-2 additional finding):**
+
+The zh `advanced/skill-guide.md` category STRUCTURE is correct (6 canonical headers), but the page body carries 11 references to nonexistent skill names inside the same conceptual-illustration sites as en (Mermaid nodes L45/L178/L325/L327, explicit-invocation code L211/L213, ASCII tree L236, frontmatter example L258, auto-load comments L301/L306, closing callout L360). Same drift class as en — covered by REQ-009 / AC-011.
+
+```bash
+$ grep -cE 'moai-lang-|moai-platform-|moai-library-|moai-framework-|moai-foundation-claude|moai-foundation-philosopher|moai-foundation-context' \
+    docs-site/content/zh/advanced/skill-guide.md
+11
+```
+
+### §2.6 4-locale fictional-name inventory summary (iter-2 locale-complete)
+
+The fictional-name regex `moai-lang-|moai-platform-|moai-library-|moai-framework-|moai-foundation-claude|moai-foundation-philosopher|moai-foundation-context` was applied per-locale to `advanced/skill-guide.md` (the page-family that carries category structure). The inventory is locale-complete:
+
+| Locale | Fictional-name matches | Category structure | Drift class | Owning REQ/AC |
+|--------|------------------------|--------------------|-------------|---------------|
+| en | 10 | 6 canonical ✓ (correct headers) | in-body residual (Mermaid / code / tree / callout) | REQ-009 / AC-011 |
+| ko | 37 | 9 fictional categories ✗ | structural rewrite (full taxonomy replacement) | REQ-005 (ko scope) / AC-006 |
+| ja | 37 | 9 fictional categories ✗ | structural rewrite (full taxonomy replacement) | REQ-005 (ja scope) / AC-006 |
+| zh | 11 | 6 canonical ✓ (correct headers) | in-body residual (Mermaid / code / tree / callout) | REQ-009 / AC-011 |
+
+**Locale-complete total: 95 fictional-name matches across 4 locales.** The ko and ja structural rewrites (REQ-005, unified ja+ko scope) eliminate 37+37 = 74; the en/zh in-body cleanup (REQ-009) eliminates 10+11 = 21. AC-006 covers ko+ja (structural), AC-011 covers en+zh (in-body). No locale is left unaccounted for.
+
+```bash
+# Locale-complete inventory reproduction (per-locale, never glob)
+for loc in en ko ja zh; do
+  n=$(grep -cE 'moai-lang-|moai-platform-|moai-library-|moai-framework-|moai-foundation-claude|moai-foundation-philosopher|moai-foundation-context' "docs-site/content/$loc/advanced/skill-guide.md")
+  echo "$loc: $n"
+done
+# iter-2 baseline output (pre-run-phase):
+# en: 10
+# ko: 37
+# ja: 37
+# zh: 11
+```
 
 ---
-
-## §3. Coverage Map — Facts-Bearing Pages
 
 The edit surface is bounded by which pages carry factual skill-count claims. A page is "facts-bearing" if it contains a digit + skill-adjacent keyword (skill/스킬/スキル/技能). Pages mentioning skills only in structural prose (nav, breadcrumbs) without a numeric count are out of scope.
 
@@ -236,34 +314,42 @@ The edit surface is bounded by which pages carry factual skill-count claims. A p
 | Page-family | en | ko | ja | zh | Total |
 |-------------|----|----|----|----|-------|
 | `advanced/builder-agents.md` | ✓ (L15) | ✓ (L16) | ✓ (L17) | ✓ (L15) | 4 |
-| `advanced/skill-guide.md` | ✓ (L65,127,167) | ✓ (L62,194) | ✓ (L59,189) **+ structural rewrite** | ✓ (L61,160) | 4 (+ja rewrite) |
+| `advanced/skill-guide.md` | ✓ (L65,127,167) **+ in-body cleanup (10 fictional names)** | ✓ (L62,194) **+ structural rewrite (37 fictional names, 9→6 categories)** | ✓ (L59,189) **+ structural rewrite (37 fictional names, 9→6 categories)** | ✓ (L61,160) **+ in-body cleanup (11 fictional names)** | 4 (+ko rewrite, +ja rewrite) |
 | `getting-started/introduction.md` | ✓ (L133,156,163) | ✓ (L133,156,163) | ✓ (L133,156,163) | ✓ (L133,156,163) | 4 |
-| `getting-started/update.md` | ✓ (L396) | — (no statusline string) | — | ✓ (L396) | 2 |
+| `getting-started/update.md` | ✓ (L396, statusline string) | (file present, no statusline string — no count correction needed) | (file present, no statusline string — no count correction needed) | ✓ (L396, statusline string) | 2 |
 | `core-concepts/what-is-moai-adk.md` | ✓ (L7,48,267,652) | ✓ (L7,48,267,652) | ✓ (L267 only — asymmetric) | ✓ (L7,48,267,661) | 4 |
 
-**Total facts-bearing pages: 18** (en:5, ko:4, ja:4, zh:5). The `update.md` page-family is en/zh-only (ko/ja do not carry the statusline string). The ja `what-is-moai-adk.md` is asymmetric (only line 267, missing lines 7/48/652 equivalents — a parity gap to resolve during run-phase).
+**Total facts-bearing pages: 18** (en:5, ko:4, ja:4, zh:5). `update.md` exists in all 4 locales, but only en/zh `update.md` carry the `31 <skill-count>` statusline string; ko/ja `update.md` do not carry a skill-count claim and require no count correction in this page-family. The ko and ja `advanced/skill-guide.md` both require full structural rewrites (9 fictional categories → 6 canonical, 37 nonexistent skill names eliminated, Reference/Meta-Harness/Design introduced). The en and zh `advanced/skill-guide.md` have correct category structure but require in-body cleanup of residual fictional names (10 and 11 respectively). The ja `what-is-moai-adk.md` is asymmetric (only line 267, missing lines 7/48/652 equivalents — a parity gap to resolve during run-phase).
 
 ### §3.2 Page-family classification rationale
 
-- **`advanced/skill-guide.md`**: the primary skill-count authority page. Carries the most detailed breakdown (category sub-counts). ja version needs structural rewrite (§2.4).
+- **`advanced/skill-guide.md`**: the primary skill-count authority page. Carries the most detailed breakdown (category sub-counts). ko and ja versions need structural rewrite (§2.3, §2.4); en and zh versions need in-body cleanup of residual fictional names (§2.2, §2.5). All 4 locales need the Domain sub-count 8→9 and `humanize` addition.
 - **`advanced/builder-agents.md`**: references skill count as context for builder agents ("in addition to the N built-in skills"). Count correction only.
 - **`getting-started/introduction.md`**: high-level "8 agents + N skills" overview. Count correction only.
-- **`getting-started/update.md`**: statusline string literal in a code block. Count correction only. en/zh only.
+- **`getting-started/update.md`**: statusline string literal in a code block. `update.md` exists in all 4 locales; only en/zh carry the `31 <skill-count>` statusline string and need count correction. ko/ja `update.md` carry no skill-count claim and need no count correction.
 - **`core-concepts/what-is-moai-adk.md`**: conceptual overview + directory-tree ASCII art. Count correction in prose (L7,48,267) + tree comment (L652/661).
 
 ---
 
 ## §4. Category Structure Verification
 
-### §4.1 en/ko/zh category structure (6 categories — correct count, wrong sub-count for Domain)
+### §4.1 en/zh category structure (6 canonical categories — correct headers, wrong Domain sub-count, in-body fictional-name residuals)
 
-The en/ko/zh locales correctly identify **6 categories**: Foundation, Workflow, Domain, Reference, Meta/Harness, Design. The structure is right; only the Domain sub-count (8 → should be 9) and the total (31 → should be 32) are wrong.
+> **iter-2 correction (2026-06-18):** the iter-1 prose of this section claimed "en/ko/zh correctly identify 6 categories". That claim was **independently refuted**: ko does NOT have 6 canonical categories — ko has the same 9-fictional-category pre-v3 taxonomy as ja (see §2.3). The claim is true for en and zh only.
 
-### §4.2 ja category structure (9 categories — entirely fictional)
+The en and zh locales correctly identify **6 canonical category headers**: Foundation, Workflow, Domain, Reference, Meta/Harness, Design. The structure (category count + category names) is correct. Two defects remain for en/zh:
 
-The ja locale claims **9 categories** including 3 that do not exist in the current catalog: Language, Platform, Library, Framework, Design Tools. The actual structure is 6 categories (Foundation, Workflow, Domain, Reference, Meta/Harness, Design). Programming-language support is delivered via `rules/moai/languages/` (NOT separate skills), per the en docs line 65 verbatim: "Programming-language support is delivered through rules under `rules/moai/languages/`, not as separate skills."
+1. **Domain sub-count wrong (8 → should be 9)**: the Domain category lists 8 skills, missing `moai-domain-humanize`. Correcting this to 9 makes the specialized total 31 (was 30).
+2. **Total count wrong (31 → should be 32)**: every page carries "31 skills"; should be "32 skills" (umbrella router + 31 specialized).
+3. **In-body fictional-name residuals (en: 10, zh: 11)**: category LISTING TABLES are correct (only real skills listed), but conceptual illustrations elsewhere in `advanced/skill-guide.md` (Mermaid flowchart nodes, explicit-invocation code examples, ASCII directory trees, frontmatter example, auto-load scenario comments, closing callouts) reference `moai-lang-*` / `moai-library-*` / `moai-platform-*` as if they were shipped skills. These are covered by REQ-009 / AC-011.
 
-The ja locale's "Language (16)" category claiming `moai-lang-go`, `moai-lang-python`, etc. as skills is the most severe single-page drift in the docs-site.
+### §4.2 ko and ja category structure (9 fictional categories — entirely pre-v3 taxonomy, identical divergence)
+
+The ko and ja locales both claim **9 categories** including 5 that do not exist in the current catalog: Language, Platform, Library, Tool, Framework, plus a mis-labeled "Design Tools" (canonical is "Design"). The actual structure is 6 canonical categories (Foundation, Workflow, Domain, Reference, Meta/Harness, Design). Programming-language support is delivered via `rules/moai/languages/` (NOT separate skills), per the en docs line 65 verbatim: "Programming-language support is delivered through rules under `rules/moai/languages/`, not as separate skills."
+
+Both ko and ja `advanced/skill-guide.md` carry 37 nonexistent skill-name references each (74 combined) — `moai-lang-*`, `moai-platform-*`, `moai-library-*`, `moai-framework-*`, `moai-foundation-claude/philosopher/context`. The ko and ja "Language (16)" categories claiming `moai-lang-go`, `moai-lang-python`, etc. as skills are the most severe single-page drifts in the docs-site, tied in magnitude.
+
+Both ko and ja require full structural rewrites (REQ-005 unified ja+ko scope, AC-006): replace the 9-fictional-category taxonomy with the canonical 6-category / 32-skill structure, eliminate all 37 nonexistent references each, and introduce the 3 missing canonical categories (Reference, Meta/Harness, correctly-labeled Design).
 
 ---
 

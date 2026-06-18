@@ -7,25 +7,60 @@
 ## Plan-phase Status
 
 - **SPEC ID**: SPEC-V3R6-DOCS-COVERAGE-001
-- **Tier**: L (4-locale × multi-page-family + ja structural rewrite)
+- **Tier**: L (4-locale × multi-page-family + ja AND ko structural rewrite + en/zh in-body cleanup)
 - **Artifacts authored**: spec.md, plan.md, acceptance.md, research.md (5-artifact set; design.md omitted — no architectural decisions)
-- **Status**: draft (initial frontmatter, plan-phase)
+- **Status**: in-progress (run-phase complete @ b35caaaf2; iter-2 plan revision)
+- **Version**: 0.2.0 (iter-2 revision post plan-auditor iter-1 FAIL)
 - **Depends on**: SPEC-V3R6-DOCS-DOCSITE-001 (completed), SPEC-V3R6-DOCS-CODEMAPS-V3-001 (completed)
 
 ---
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-- **SPEC ID regex decomposition**: `SPEC ✓ | V3R6 ✓ | DOCS ✓ | COVERAGE ✓ | 001 ✓ → PASS`
-- **Frontmatter schema**: 12 canonical fields present; `era: V3R6` explicit (H-2 avoidance); `depends_on` set; snake_case aliases absent.
-- **GEARS compliance**: REQ-001~008 use Ubiquitous / Event-detected / State-driven / Capability gate / Unwanted patterns. No legacy IF/THEN modality.
-- **Exclusions**: §E lists 5 out-of-scope items (DOCSITE-001 6 axes / IA redesign / build config / user-owned harness skills / skill descriptions).
-- **AC matrix**: 10 ACs (9 MUST + 1 SHOULD), per-locale digit-boundary-anchored grep verification.
-- **Primary-source evidence**: research.md §1 carries verbatim `find`/`ls` output establishing canonical count = 32.
-- **Coverage map**: research.md §3 enumerates 18 facts-bearing pages across 4 locales (en:5, ko:4, ja:4, zh:5).
-- **spec-lint**: pending verification (see §E.2 note below — run-phase or plan-phase-final gate).
+### iter-1 audit verdict (2026-06-18)
 
-**Audit verdict**: plan-phase artifacts are audit-ready pending spec-lint confirmation.
+- **Verdict**: FAIL
+- **Score**: 0.62 (Tier L threshold 0.85)
+- **Report**: `.moai/reports/plan-audit/SPEC-V3R6-DOCS-COVERAGE-001-2026-06-18.md`
+- **Blocking defect**: D1 — ko locale has the SAME 9-category fictional taxonomy as ja, but iter-1 plan treated ko as structurally correct (count-patch only). research.md §4.1 falsely claimed "en/ko/zh correctly identify 6 categories" — true for en/zh, FALSE for ko.
+- **SHOULD-FIX defects**: D2 (AC-005 "manual arithmetic" → mechanical), D3 (`update.md` prose — file exists in all 4 locales, not en/zh-only).
+- **MINOR defects**: D4 (non-defect), D5 (AC-004 zh regex brittle), D6 (stale §E.1 — this update).
+
+### iter-2 revision scope (orchestrator-augmented)
+
+- **D1 [BLOCKING]**: REQ-005 → unified ja+ko scope; AC-006 → `for loc in ja ko` per-locale loop (4 sub-checks each); plan.md M2 → rewritten as ko structural rewrite (mirror of M3 ja); research.md §2.3 re-derived ko inventory (37 fictional names + 9 fictional categories + 3 missing canonical); §4.1 corrected; §3.1 coverage-map ko row updated.
+- **D2 [SHOULD-FIX]**: AC-005 "manual arithmetic verification" → mechanical find+grep assertion (per-category sub-count + Domain=9 invariant via AC-004).
+- **D3 [SHOULD-FIX]**: acceptance.md §D.2.1 + research.md §3.1/§3.2 reworded — `update.md` exists in all 4 locales; only en/zh carry the `31 <skill-count>` statusline string; ko/ja require no count correction.
+- **D5 [MINOR]**: AC-004 zh regex broadened from `Domain\(9\)` to `Domain.*9|9.*Domain`.
+- **Orchestrator additional finding (NOT flagged by auditor)**: en/zh `advanced/skill-guide.md` carry correct 6-canonical-category headers but 10/11 residual fictional-name matches inside conceptual illustrations (Mermaid nodes, code examples, ASCII trees, frontmatter examples, auto-load comments, callouts). Disposition: genuine drift → new REQ-009 + AC-011 added; new plan.md M4.5 milestone; research.md §2.2/§2.5/§2.6 carry locale-complete fictional-name inventory (en:10, ko:37, ja:37, zh:11 = 95 total).
+
+### iter-2 self-check
+
+- **SPEC ID regex decomposition**: `SPEC ✓ | V3R6 ✓ | DOCS ✓ | COVERAGE ✓ | 001 ✓ → PASS`
+- **Frontmatter schema**: 12 canonical fields present; `era: V3R6` explicit; `depends_on` set; snake_case aliases absent; `version` bumped to `0.2.0`.
+- **GEARS compliance**: REQ-001~009 use Ubiquitous / Event-detected / State-driven / Capability gate / Unwanted patterns. No legacy IF/THEN modality.
+- **AC matrix**: 11 ACs (10 MUST + 1 SHOULD), per-locale digit-boundary-anchored grep verification.
+- **Locale-complete fictional-name inventory**: research.md §2.6 — en:10, ko:37, ja:37, zh:11 (total 95); all 4 locales accounted for.
+- **REQ→AC→milestone traceability**: REQ-005 (ja+ko structural) → AC-006 → M2(ko)+M3(ja); REQ-009 (en/zh in-body) → AC-011 → M4.5; REQ-001..004/006/007/008 → AC-001..004/007/008/009 → M1/M4/M5.
+
+**Audit verdict**: iter-2 artifacts revised to address all iter-1 defects (D1 BLOCKING + D2/D3 SHOULD-FIX + D5 MINOR) plus the orchestrator-augmented en/zh in-body finding. plan-auditor iter-2 PASSED at 0.88.
+
+### iter-2 audit result (2026-06-18)
+
+- **Verdict**: PASS
+- **Score**: 0.88 (Tier L threshold 0.85; not skip-eligible, < 0.90)
+- **Dimensions**: Clarity 0.88 / Completeness 0.92 / Testability 0.85 / Traceability 0.95
+- **Blocking defects**: 0
+- **Non-blocking**: D-new-1 SHOULD-FIX (Meta header slash/hyphen normalization — AC-006/AC-007 regex expects `Meta/Harness` slash but plan M2/M3 prose + zh current header use `Meta-Harness` hyphen → AC-007 false-fail for zh); D-new-2 MINOR (AC-006 ja regex `6つのカテゴリ` natural-form coverage)
+- **Disposition**: D-new-1 accepted as debt per user §19.1 option 1 "run-phase 즉시 진입", delegated to manager-develop Section B normalization rule (use `Meta/Harness` slash form across all 4 locales). Run-phase applied the slash form; AC-007 verified 6/6 per locale on origin/main `b35caaaf2`.
+
+---
+
+## § Mode Selection (Phase 0.95)
+
+- **Decision**: Mode 5 (sub-agent, sequential)
+- **Justification**: Per Anthropic's coding-task parallelism caveat, this docs-reconciliation work is coding-heavy with locale-interdependent parity (REQ-006 requires single-commit-boundary 4-locale simultaneous application). Single sequential manager-develop, cycle_type=ddd adapted (no characterization tests, grep-based AC verification primary per `feedback_digit_boundary_locale_grep_4parity`). Mode 6 excluded: ~18 files < ~30 threshold AND transformation not mechanical-uniform.
+- **Implementation Kickoff Approval**: PASSED (user option 1 "run-phase 즉시 진입" 2026-06-18). D-new-1 accepted as debt → manager-develop Section B normalization rule.
 
 ---
 
