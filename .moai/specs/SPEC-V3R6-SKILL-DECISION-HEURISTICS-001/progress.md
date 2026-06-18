@@ -10,7 +10,7 @@
 |---|---|---|---|
 | Plan | complete | manager-spec | _<plan-phase commit>_ |
 | Run | complete | manager-develop | e7a4d5a4f (FF-pushed to origin/main) |
-| Sync | not started | manager-docs | _<pending>_ |
+| Sync | complete | orchestrator-direct | _<backfilled in Mx commit>_ |
 | Mx | not started | manager-docs / orchestrator | _<pending>_ |
 
 ---
@@ -130,11 +130,21 @@ template_mirror_followup: open  # FU-1 deferred per C-4 (plan.md §I)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- **sync_complete_at**: 2026-06-19
+- **sync_artifacts**: CHANGELOG.md `[Unreleased] → Added` entry; spec.md frontmatter `in-progress → implemented`.
+- **change_scope**: docs-only — no Go/template change. FU-1 template mirror remains deferred (C-4 scope protection; forward follow-up, not blocking close).
+- **owner**: orchestrator-direct (GLM manager-docs spawn context-limit fallback per `feedback_glm_orchestrator_direct_sync_mx`).
+- **spec-lint**: 0 errors.
 
-### (Migrated from §E.5)
+sync_commit_sha: _<pending sync-phase — backfilled in Mx commit>_
 
-_<pending Mx-phase>_
+---
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+_<pending Mx-phase — frontmatter `implemented → completed` + mx_commit_sha backfill>_
+
+mx_commit_sha: _<pending Mx-phase>_
 
 ---
 
