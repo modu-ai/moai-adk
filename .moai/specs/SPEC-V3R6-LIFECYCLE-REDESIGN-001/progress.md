@@ -23,7 +23,21 @@ tier: L
 
 Plan-phase revision: v0.2.0 (2026-06-19) — plan-audit iter-1 FAIL 0.71/0.85 → 7 defects fixed (D1 era mechanism / D2 Y_N_N_Y / D3 moving baseline / D4 close-infix reconciliation / D5 doc-comment+§E.5 scope / D6 file count / D7 §I summary). All ground-truth verified by direct source inspection.
 
-Plan-phase audit-ready: _(pending plan-auditor iter-2 verdict)_
+Plan-phase audit-ready: PASS-WITH-DEBT 0.87 (iter-2, Tier L thresh 0.85, +0.16 monotonic vs iter-1 FAIL 0.71). 7 defects fixed (D1 era mechanism / D2 Y_N_N_Y / D3 moving baseline / D4 close-infix / D5 doc-comment+§E.5 / D6 file count / D7 §I summary). Residual debt D-R1/D-R2/D-R3 carried as run-phase fix-up (non-blocking).
+
+## Mode Selection (Phase 0.95)
+
+**Decision**: `sub-agent` (Mode 5 — sequential `Agent()` spawn per milestone group).
+
+**Input parameters**: tier=L (~38 files: 8 Go `internal/spec/` + ~30 markdown); domains=2 (Go lifecycle engine; `.claude/` rule/skill corpus); language mix=Go(M1-M3)+markdown(M4-M8); concurrency benefit=LOW (coding-heavy, Anthropic coding-task parallelism caveat); Agent Teams prereqs NOT all met → Mode 3 unavailable.
+
+**Mode evaluation**: M1 trivial=no | M2 background=no(write) | M3 agent-team=not selected(prereqs) | M4 parallel=not selected(coding-heavy→caveat) | **M5 sub-agent=selected** | M6 workflow=not selected(semantic not mechanical-uniform).
+
+**Justification**: M1→M2→M3 sequential dependency (C1: migration window REQ-LR-006 ships with/before H-4 rewrite per C2; tests M2 depend on M1). Axis A (M4-M5) and Axis B (M6-M8) are disjoint after M2 (C3) but both coding/markdown-heavy semantic work. Implementation Kickoff Approval: obtained via user `/goal 이세션에서 모두 다 완료` directive (explicit run-phase entry authorization replacing §19.1 AskUserQuestion per goal-directive "do not pause to ask").
+
+**Boundary case**: Axis A/B disjoint-after-M2 could justify Mode 4 parallel, but §B.2 tie-breaker ("coding-heavy + multi-domain → Mode 5") resolves sequential. M4-M8 delegated as 2nd/3rd sequential spawn after M1-M3 verification.
+
+**Verification note (stale-binary hazard)**: orchestrator trust-but-verify of M1-M3 caught a stale `moai` binary — `moai spec audit` reported Y_Y_N_Y=5/Y_Y_Y_Y_StatusDrift=3 from the pre-rebuild binary even though audit.go:73-75 retires those predicates. `go install ./cmd/moai` rebuild → all three §E.5-keyed findings = 0 (AC-LR-011 PASS). Lesson: re-build the binary before trusting `moai spec audit` measurements after any `internal/spec/` Go change.
 
 ## §E.2 Run-phase Evidence
 
