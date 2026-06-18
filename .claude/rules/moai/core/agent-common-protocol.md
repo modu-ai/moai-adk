@@ -62,6 +62,20 @@ grep -rn 'AskUserQuestion\|mcp__askuser' .claude/hooks/moai/ \
 
 The `sync-phase-quality-gate.sh` row above describes the Stop hook in the sync-phase context, but the Stop hook is not exclusive to sync-commit completion. The Stop hook fires on every turn-end — not only when a task is complete — so a Stop hook must self-gate: it inspects the conversation/working-tree state and decides whether the turn is a genuine completion point before acting, otherwise exiting 0 to allow the turn to end without intervention. The Stop hook does NOT fire when the user interrupts the turn, so it cannot be relied on as a guaranteed end-of-work signal.
 
+#### Recovery-Signal Carve-Out
+
+**Recovery-Signal Carve-Out** — anti-death-spiral policy guidance for Stop/PostToolUse hooks. The canonical doctrine lives at `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` §4 (SSOT); this subsection is the render surface.
+
+[ZONE:Evolvable] **While** a turn's `stopReason` or surrounding context indicates the turn is itself a **recovery signal** — i.e., the turn is recovering from a sync failure, a compact, a `prompt_too_long` (PTL), a `max_output_tokens` exhaustion, or a `media_size` / `compact-failure` — Stop/PostToolUse hooks SHOULD exit 0 (allow the turn to end / the tool call to proceed) rather than exit 2 (block), so that recovery turns are NOT placed into the `error → stop-hook-blocks → retry → error` loop that book1 ch06 names the **death-spiral**.
+
+This carve-out is **policy guidance** (a SHOULD recommendation), NOT a mechanically-enforced gate:
+
+- The current `sync-phase-quality-gate.sh` (Stop) and `status-transition-ownership.sh` (PostToolUse) hooks receive PostToolUse/Stop JSON but do not parse a recovery signal from `stopReason` or turn context; they therefore cannot mechanically distinguish a recovery turn from a normal turn.
+- Mechanical enforcement of this carve-out is deferred to a future runtime-layer SPEC (forward-link: future `SPEC-V3R6-HOOK-RECOVERY-SIGNAL-001`) that would add `stopReason` parsing.
+- The carve-out does NOT weaken the hooks' gate function on non-recovery turns — the gates still exit 2 (block) on genuine gate failures during normal turns. The carve-out only says recovery turns SHOULD defer to the recovery.
+
+Determining "is this a recovery turn?" is the mechanical step the current hooks cannot take. See the SSOT doctrine (`runtime-recovery-doctrine.md` §4) for the full scope binding, the named-hook list (`sync-phase-quality-gate.sh`, `status-transition-ownership.sh`), and the reason this is documentation-only at this layer.
+
 ### Blocker Report Format
 
 When a subagent requires user input not provided in the spawn prompt, it MUST return a structured blocker report:
