@@ -98,7 +98,6 @@ Apply the Quick Patterns and feature sections above together with the Context7 l
 - `.claude/rules/moai/languages/rust.md` - Systems programming comparison and interop
 - `moai-domain-backend` - Backend service architecture
 - `moai-workflow-testing` - DDD and testing strategies
-- delegate to `manager-quality` agent for AI-powered debugging
 - `moai-foundation-quality` - TRUST 5 quality principles
 
 ---

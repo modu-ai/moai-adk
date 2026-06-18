@@ -1,6 +1,6 @@
 ---
 description: "Agent Teams Pattern — 5+1+1 team composition (5 implementer + 1 tester + 1 reviewer). team mode 설정/활성 시에만 로드."
-paths: ".moai/config/sections/workflow.yaml,.claude/agents/moai/manager-strategy.md,.claude/skills/moai/team/**"
+paths: ".moai/config/sections/workflow.yaml,.claude/skills/moai/team/**"
 ---
 
 # Agent Teams Pattern (Workflow Optimization Layer B)

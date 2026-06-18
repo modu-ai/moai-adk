@@ -558,7 +558,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#31-brand-context-constitutional-parent"
-  clause: "[HARD] expert-frontend MUST implement design tokens derived from brand context"
+  clause: "[HARD] expert-frontend MUST implement design tokens derived from brand context (archived name — resolves to Agent(general-purpose) with frontend whitelist per archived-agent-rejection.md §C; see design/constitution.md carve-out note)"
   canary_gate: true
 
 - id: CONST-V3R2-065

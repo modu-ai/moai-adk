@@ -217,7 +217,7 @@ After each methodology cycle, compare planned files against actual modifications
 
 ### Team Mode Methodology
 
-Each teammate applies the methodology within their file ownership scope. team-validator validates compliance. team-tester exclusively owns test files.
+Each teammate applies the methodology within its file ownership scope. Teammates are spawned dynamically via `Agent(subagent_type: "general-purpose")` with `role_profile` overrides — the reviewer role_profile validates compliance; the tester role_profile exclusively owns test files.
 
 ### MX Tag Integration
 
@@ -365,7 +365,7 @@ When team mode is enabled (workflow.team.enabled and AGENT_TEAMS env), phases ca
 | Phase | Sub-agent Mode | Team Mode | Condition |
 |-------|---------------|-----------|-----------|
 | Plan | manager-spec (single) | Dynamic teammates: researcher + analyst + architect (parallel, general-purpose) | Complexity >= threshold |
-| Run | manager-develop (sequential) | Dynamic teammates: backend-dev + frontend-dev + tester (parallel, general-purpose) | Domains >= 3 or files >= 10 |
+| Run | manager-develop (sequential) | Dynamic teammates: implementer + tester + reviewer role_profiles (parallel, spawned as general-purpose) | Domains >= 3 or files >= 10 |
 | Sync | manager-docs (single) | manager-docs (always sub-agent) | N/A |
 
 All teammates are spawned dynamically via `Agent(subagent_type: "general-purpose")` with runtime overrides from `workflow.yaml` role profiles. No static team agent definitions are used. See `.claude/skills/moai/team/run.md` for complete orchestration.

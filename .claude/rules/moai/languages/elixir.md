@@ -90,7 +90,6 @@ Apply the Quick Patterns and framework sections above together with the Context7
 - `moai-domain-backend` - REST API and microservices architecture
 - `moai-domain-database` - SQL patterns and query optimization
 - `moai-workflow-testing` - DDD and testing strategies
-- delegate to `manager-quality` agent for AI-powered debugging
 
 ---
 

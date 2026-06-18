@@ -80,7 +80,7 @@ the watch loop for the same PR.
 
 [ZONE:Frozen] [HARD] AskUserQuestion is the **exclusive user interaction channel** for the
 auto-fix loop. All user confirmations and escalations go through AskUserQuestion.
-The CLI, shell scripts, and `manager-quality` subagent MUST NOT call AskUserQuestion.
+The CLI, shell scripts, and any per-spawn `Agent(general-purpose)` diagnostic scoped to the loop MUST NOT call AskUserQuestion.
 
 [ZONE:Frozen] [HARD] The orchestrator MUST preload AskUserQuestion via
 `ToolSearch(query: "select:AskUserQuestion")` before every AskUserQuestion call.
@@ -98,14 +98,13 @@ Interaction surfaces:
 
 [ZONE:Frozen] [HARD] Semantic failures (data race, deadlock, panic, test assertion failure) MUST
 NOT be automatically patched. The orchestrator MUST immediately escalate via
-AskUserQuestion with the `manager-quality` diagnosis report.
+AskUserQuestion with the diagnosis report.
 
 Semantic classification is determined by `scripts/ci-autofix/classify.sh`:
 - `classification=semantic` → immediate escalation
 - `classification=unknown` → treated as semantic (conservative) → immediate escalation
 
-The `manager-quality` subagent in semantic mode returns diagnosis only (no patch field).
-The orchestrator presents the diagnosis to the user and waits for user decision.
+The diagnosis is produced by a per-spawn `Agent(general-purpose)` with a diagnostic scope (read-only investigation of the semantic failure), returning diagnosis only (no patch field). The orchestrator presents the diagnosis to the user and waits for user decision. Per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C, the archived `manager-quality` agent is replaced by this `Agent(general-purpose)` diagnostic scope; the sync-phase quality gate is mechanically enforced by the Stop hook `sync-phase-quality-gate.sh` (see `.claude/rules/moai/core/agent-common-protocol.md` § Hook Invocation Surface).
 
 ---
 
@@ -119,7 +118,7 @@ File patterns that MUST NOT be touched by auto-fix:
 - `**/credentials*`, `**/*_key.json`, `**/*secret*`
 - `.claude/settings.json`, `.claude/settings.local.json`
 
-If a patch proposed by `manager-quality` touches these files, the orchestrator MUST
+If a patch proposed by the diagnostic `Agent(general-purpose)` scope touches these files, the orchestrator MUST
 reject the patch and escalate to the user.
 
 ---

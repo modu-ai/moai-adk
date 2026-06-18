@@ -311,7 +311,7 @@ each, serial execution adds ~14 s of dead-time per run-phase completion.
 ### Pre-Spawn Sync Check (Multi-Session Race Mitigation)
 
 [ZONE:Evolvable] [HARD] Before spawning any implementation `Agent()`
-(manager-develop / manager-docs / expert-*) that will commit or modify
+(manager-develop / manager-docs / per-spawn `Agent(general-purpose)` with a domain whitelist) that will commit or modify
 shared working-tree files, the orchestrator MUST execute the following
 2-command parallel batch and surface any divergence to the user.
 
@@ -367,8 +367,7 @@ commit in the push range. Lesson L9 reinforced
 (parallel session race during long agent runs) + L44 NEW (pre-spawn fetch
 discipline).
 
-Exemption: read-only agents (`Explore`, `manager-quality` in diagnostic
-mode) do not require pre-spawn fetch — they cannot trigger race conflicts.
+Exemption: read-only agents (`Explore`, or a per-spawn `Agent(general-purpose)` scoped to read-only investigation) do not require pre-spawn fetch — they cannot trigger race conflicts.
 
 Cross-reference: `.moai/docs/generic-patterns-guide.md` § Multi-Session
 Race Mitigation Procedure (defense-in-depth policy at user-facing

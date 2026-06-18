@@ -48,12 +48,10 @@ Actions follow the naming pattern `{agent}-{phase}`:
 |-------|-----------|------------|-------------|
 | manager-develop | cycle-pre-transformation | cycle-post-transformation | cycle-completion |
 | manager-develop | develop-pre-implementation | develop-post-implementation | develop-completion |
-| expert-backend | backend-validation | backend-verification | - |
-| expert-frontend | frontend-validation | frontend-verification | - |
-| expert-devops | - | devops-verification | devops-completion |
-| manager-quality | - | quality-verification | quality-completion |
 | manager-spec | - | - | spec-completion |
 | manager-docs | - | docs-verification | docs-completion |
+
+Note: The archived `expert-backend` / `expert-frontend` / `expert-devops` / `manager-quality` rows that previously appeared here were removed during the catalog consolidation. Domain expertise formerly routed through those agents is now delivered via per-spawn `Agent(general-purpose)` per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C; quality-gate enforcement moved to the global Stop hook `sync-phase-quality-gate.sh` (see `.claude/rules/moai/core/agent-common-protocol.md` § Hook Invocation Surface).
 
 
 Note: Dynamic team teammates (spawned via `Agent(subagent_type: "general-purpose")`) do not use agent-scoped hooks. Quality enforcement for teammates uses global TeammateIdle and TaskCompleted hooks in settings.json.
@@ -64,7 +62,7 @@ Agent hooks are executed via `moai hook agent <action>`:
 
 ```bash
 moai hook agent ddd-pre-transformation
-moai hook agent backend-validation
+moai hook agent develop-pre-implementation
 ```
 
 stdin JSON structure:

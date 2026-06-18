@@ -128,7 +128,6 @@ See:
 - moai-domain-backend for REST API and web application architecture
 - moai-domain-database for SQL patterns and ActiveRecord optimization
 - moai-workflow-testing for DDD and testing strategies
-- delegate to `manager-quality` agent for AI-powered debugging
 - moai-foundation-quality for TRUST 5 quality principles
 
 ---

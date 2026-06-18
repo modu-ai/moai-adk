@@ -99,7 +99,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["example", "demo"]
-  agents: ["expert-backend"]
+  agents: ["manager-develop"]
   phases: ["run"]
 ---
 ```
@@ -170,7 +170,7 @@ Language Skills:
 ```yaml
 triggers:
   keywords: ["api", "database", "authentication"]
-  agents: ["manager-spec", "expert-backend"]
+  agents: ["manager-spec", "manager-develop"]
   phases: ["plan", "run"]
   languages: ["python", "typescript"]
 ```

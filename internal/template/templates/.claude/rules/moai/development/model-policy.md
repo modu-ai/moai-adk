@@ -90,13 +90,13 @@ Why this is `[1m]`-safe: the lever operates on the **Default** model resolution 
 
 ## Model Policy Tiers
 
-Model policy is set via `moai init --model-policy <tier>`:
+Model policy is set via `moai init --model-policy <tier>`. The tier columns reference **role profiles** (the `workflow.yaml` role_profile / domain-whitelist taxonomy), not static agent files. Under the 8-agent catalog consolidation, the retained MoAI-custom agents (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `sync-auditor`, `builder-harness`) all default to `model: inherit`; the tier governs which role_profile / domain scope is routed to Opus vs Sonnet vs Haiku when the orchestrator spawns `Agent(general-purpose)`.
 
-| Tier | Description | Opus Agents | Sonnet Agents | Haiku Agents |
-|------|-------------|-------------|---------------|--------------|
-| high | Maximum quality | spec, strategy, security | backend, frontend, ddd, tdd | quality, git, researcher |
-| medium | Balanced (default) | spec, strategy, security | backend, frontend, ddd, tdd | quality, git, researcher |
-| low | Cost optimized | None | spec, strategy, security | All others |
+| Tier | Description | Opus (deep reasoning) | Sonnet (implementation) | Haiku (mechanical / read-only) |
+|------|-------------|------------------------|--------------------------|--------------------------------|
+| high | Maximum quality | spec-planning, architecture, security-review | backend, frontend, ddd, tdd implementation | docs, git, read-only-investigation |
+| medium | Balanced (default) | spec-planning, architecture, security-review | backend, frontend, ddd, tdd implementation | docs, git, read-only-investigation |
+| low | Cost optimized | None | spec-planning, architecture, security-review | All other role profiles |
 
 ## CG Mode
 

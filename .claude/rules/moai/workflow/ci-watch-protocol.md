@@ -76,7 +76,7 @@ a remediation message. Run `moai github init` to restore the SSoT.
 |------|---------|-------------------|
 | 0 | All required checks passed | Present ready-to-merge AskUserQuestion |
 | 1 | Fatal error | Surface error + remediation to user |
-| 2 | Required check(s) failed | Parse JSON handoff → Wave 3 manager-quality |
+| 2 | Required check(s) failed | Parse JSON handoff → Wave 3 `Agent(general-purpose)` diagnostic scope (ci-autofix loop entry) |
 | 3 | 30-min timeout | Emit blocker → return control to user |
 
 ---
@@ -110,7 +110,7 @@ On exit 2, stdout contains JSON (see `.claude/skills/moai-workflow-ci-loop/SKILL
 ```
 
 [ZONE:Frozen] [HARD] Only required failures appear in `failedChecks`. Auxiliary failures are
-counted in `auxiliaryFailCount` but MUST NOT be passed to manager-quality as
+counted in `auxiliaryFailCount` but MUST NOT be passed to the diagnostic scope as
 blocking failures.
 
 ---

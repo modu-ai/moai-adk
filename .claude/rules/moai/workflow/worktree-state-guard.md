@@ -25,7 +25,7 @@ When L1 isolation is in use (Claude Code runtime materialized an L1 worktree), t
 
 - Modifies tracked files (any agent with `permissionMode: acceptEdits`)
 - Operates in team mode where parallel teammates are spawned with L1 isolation
-- Performs cross-file refactors (e.g., expert-refactoring, manager-develop)
+- Performs cross-file refactors (e.g., manager-develop, or a per-spawn `Agent(general-purpose)` refactoring specialist)
 - Has historically triggered L1 worktree regressions on this project
 
 Snapshots SHOULD be skipped for:
@@ -59,7 +59,7 @@ When `moai worktree verify` exits non-zero:
 |-----------|---------|--------------------|
 | 0 | Clean | Continue normally |
 | 1 | Divergence detected | Read the JSON report (stdout), then `AskUserQuestion(restore / accept / abort)` |
-| 2 | Suspect (empty worktreePath in agent response) | Warn the user, set push-block flag, optionally trigger claude-code-guide investigation |
+| 2 | Suspect (empty worktreePath in agent response) | Warn the user, set push-block flag, optionally trigger an `Agent(Explore)` read-only investigation |
 | 3 | Both divergence + suspect | Combine 1 + 2 escalation steps |
 
 [ZONE:Frozen] [HARD] AskUserQuestion is invoked by the **orchestrator only**. The Go CLI

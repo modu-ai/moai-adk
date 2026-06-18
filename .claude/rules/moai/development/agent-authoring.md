@@ -125,34 +125,27 @@ The `memory` field enables cross-session learning for agents. Three scope levels
 
 ## Agent Categories
 
-### Manager Agents (7)
+The MoAI agent catalog consists of exactly **8 retained agents** (7 MoAI-custom + 1 Anthropic built-in `Explore`). Previously-listed manager and expert agents beyond this set were archived during the catalog consolidation. Domain expertise formerly delivered by those static agents is now delivered through per-spawn `Agent(general-purpose)` parameter injection — see § Per-Spawn Domain Specialization below and `.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the full archived-name enumeration and migration table.
 
-Coordinate workflows and multi-step processes:
+### Retained MoAI-custom Agents (7)
 
-- manager-spec: SPEC document creation
-- manager-develop: Unified DDD/TDD implementation (cycle_type=ddd|tdd; consolidated from retired agents)
-- manager-docs: Documentation generation
-- manager-quality: Quality gates validation + diagnostic sub-mode (replaces expert-debug)
-- manager-project: Project configuration
-- manager-strategy: System design, architecture decisions
-- manager-git: Git operations, branching strategy
+Coordinate the SPEC plan/run/sync/audit lifecycle:
 
-### Expert Agents (6)
+- manager-spec: Plan-phase SPEC artifact authoring (spec/plan/acceptance/research/design)
+- manager-develop: Run-phase implementation (cycle_type=ddd|tdd|autofix)
+- manager-docs: Sync-phase documentation (CHANGELOG, README, frontmatter transitions)
+- manager-git: PR creation per Tier-based routing + Late-Branch closure
+- plan-auditor: Independent plan-phase audit, bias prevention, GEARS compliance
+- sync-auditor: Independent sync-phase quality 4-dimension scoring
+- builder-harness: Dynamic project-specific harness specialist generation (new agents, skills, plugins, commands, hooks, MCP/LSP servers)
 
-Domain-specific implementation:
+### Anthropic Built-in (1)
 
-- expert-backend: API and server development
-- expert-frontend: UI and client development
-- expert-security: Security analysis
-- expert-devops: CI/CD and infrastructure
-- expert-performance: Performance optimization and testing
-- expert-refactoring: Code refactoring
+- Explore: Read-only codebase exploration (not a MoAI file — invoked directly; see `.claude/rules/moai/development/agent-patterns.md` § Read-only Investigation — Explore Canonical Agent)
 
-### Builder Agents (1)
+### Per-Spawn Domain Specialization (replaces archived expert-* agents)
 
-Create new MoAI components:
-
-- builder-harness: New agents, skills, plugins, commands, hooks, MCP/LSP servers. Use `artifact_type=agent|skill|plugin|command|hook|mcp-server|lsp-server` to select the artifact category.
+Domain-specific implementation work (backend, frontend, security, devops, performance, refactoring) is delivered through per-spawn `Agent(general-purpose)` with a domain-specific tool whitelist and inline prompt, NOT through static agent files. See `.claude/rules/moai/development/agent-patterns.md` § Per-Spawn Domain Specialization for the canonical spawn pattern and per-domain tool whitelist recommendations. When a paste-ready resume or `Agent()` invocation references an archived `expert-*` name, the orchestrator rejects the spawn per `.claude/rules/moai/workflow/archived-agent-rejection.md` and consults the §C migration table for the retained-agent replacement pattern.
 
 ### Dynamic Team Generation (Experimental)
 
@@ -252,7 +245,7 @@ The Claude Code runtime enforces a hard ceiling on the Bash tool's `timeout` par
 
 Invoke agents via Agent tool:
 
-- "Use the expert-backend subagent to implement the API"
+- "Use the manager-develop subagent to implement the API (cycle_type=tdd, domain context: backend)"
 - Agent tool with subagent_type parameter
 
 For team mode invocation:

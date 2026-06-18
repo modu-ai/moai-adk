@@ -98,10 +98,10 @@ User Request
 
 **How to Spawn**:
 ```javascript
-// Sequential
-const resultA = Agent(prompt: "Analyze X", subagent_type: "analyzer")
-const resultB = Agent(prompt: `Design based on: ${resultA}`, subagent_type: "designer")
-const resultC = Agent(prompt: `Implement: ${resultB}`, subagent_type: "implementer")
+// Sequential — all teammates are general-purpose; the role is conveyed by the prompt (role_profile)
+const resultA = Agent(prompt: "Analyze X", subagent_type: "general-purpose")
+const resultB = Agent(prompt: `Design based on: ${resultA}`, subagent_type: "general-purpose")
+const resultC = Agent(prompt: `Implement: ${resultB}`, subagent_type: "general-purpose")
 
 // Consolidate
 MoAI: "Here are the results from the pipeline..."
@@ -169,10 +169,10 @@ const implementation = Agent(
   teamCreate: true
 )
 
-// Stage 3: Sequential review
+// Stage 3: Sequential review (general-purpose with reviewer role conveyed by prompt)
 const reviewed = Agent(
   prompt: `Review this implementation: ${implementation}`,
-  subagent_type: "reviewer"
+  subagent_type: "general-purpose"
 )
 
 // Consolidate

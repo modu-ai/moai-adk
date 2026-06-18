@@ -90,4 +90,3 @@ For async enumerable streaming, create async methods returning IAsyncEnumerable 
 - `moai-domain-backend` - API design, database integration patterns
 - `moai-workflow-testing` - Testing strategies and patterns
 - `moai-foundation-quality` - Code quality standards
-- delegate to `manager-quality` agent for AI-powered debugging
