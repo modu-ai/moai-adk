@@ -74,7 +74,7 @@
 ## §E.3 Run-phase Audit-Ready Signal
 
 - **run_complete_at**: 2026-06-18
-- **run_commit_sha**: c0798e7a648ff0798dec9529489984e35ace96bf (pushed to origin/main — the M3 run-phase evidence commit; corrected from the pre-push worktree-local SHA `d110657a1`)
+- **run_commit_sha**: 2b1fe1404f153f252bc82fe0cddee61a78691757 (M1+M2 Go schema v2→v2.1 + observer weight-recording + drift alarm — the substantive code+doctrine run commit) + c0798e7a648ff0798dec9529489984e35ace96bf (M3 progress evidence). Both pushed to origin/main. Corrected from the pre-push worktree-local SHA `d110657a1` (worktree intermediate; its content was re-applied as `2b1fe1404` on push — no data loss).
 - **run_status**: PASS-WITH-DEBT (7/7 AC PASS; 1 transient spec-lint warning; 4 pre-existing test failures in untouched packages — see Gaps)
 - **ac_pass_count**: 7
 - **ac_fail_count**: 0
@@ -85,7 +85,7 @@
 - **cross_platform_build**: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./internal/harness/... ./internal/cli/...` exit 0
 - **coverage** (`go test -cover ./internal/harness/`): `internal/harness` 87.3% (≥85% threshold); sub-packages 86.5%-100%
 - **subagent_boundary** (C-HRA-008): 0 matches in touched Go source (`internal/harness/{types,observer,context_gov_test}.go` + `internal/cli/hook.go`); 1 pre-existing string-literal hit in untouched `proposalgen/scaffolder.go:111` (prompt template text, not a call)
-- **m1_to_mN_commit_strategy**: single commit `d110657a1` (M1+M2+M3 bundled — Tier M, Go change is the cohort's only substantial implementation)
+- **m1_to_mN_commit_strategy**: 2 commits on origin/main — `2b1fe1404` (M1 schema+observer + M2 drift alarm, Go+doctrine) then `c0798e7a6` (M3 progress evidence). Worktree local `d110657a1` was the M1+M2 intermediate; re-applied as `2b1fe1404` on push (worktree isolation → main cherry-pick, content preserved).
 
 ---
 
