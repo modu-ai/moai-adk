@@ -88,14 +88,16 @@ When a Stage 1 Clarify trigger is satisfied (see §Ambiguity Triggers and Except
 6. **Termination condition**: Rounds continue until intent clarity reaches 100%; the interview MUST NOT end prematurely
 7. **Pre-execution confirmation**: After clarity is achieved, consolidate findings into a brief report and obtain **explicit final confirmation** via `AskUserQuestion` before irreversible actions
 
-### Round Structure Example
+### Interview-Round Structure Example
 
 ```
-Round 1: ToolSearch → AskUserQuestion (scope questions)
-Round 2: ToolSearch → AskUserQuestion (approach questions, built on Round 1 answers)
+Turn 1: ToolSearch → AskUserQuestion (scope questions)
+Turn 2: ToolSearch → AskUserQuestion (approach questions, built on Turn 1 answers)
 ...
-Final:   ToolSearch → AskUserQuestion (confirmation: "Proceed with this plan?")
+Final:  ToolSearch → AskUserQuestion (confirmation: "Proceed with this plan?")
 ```
+
+> **Note**: "Interview round" here denotes a turn of Socratic questioning (a generic English usage), NOT the retired SPEC taxonomy term `Round` (within-SPEC SSE-stall sub-division, now folded into `Milestone` per `.claude/rules/moai/development/sprint-round-naming.md`).
 
 ---
 
@@ -131,7 +133,7 @@ This field complements `description` — it does NOT replace it. `description` c
 
 Apply `preview` when options carry **structural or quantitative differences** that benefit from visual side-by-side comparison:
 
-- Sprint entry SPEC selection (Tier / Scope / Files / Risk comparison)
+- Epic entry SPEC selection (Tier / Scope / Files / Risk comparison)
 - Workflow branching decisions (cost / latency / risk trade-offs)
 - Migration strategy selection (rollback path / performance / scope deltas)
 - Architecture decision (component layout / dependency graph variants)
@@ -186,14 +188,14 @@ The bias prevention rule from §Option Description Standards applies equally to 
 ToolSearch(query: "select:AskUserQuestion")
 AskUserQuestion({
   questions: [{
-    question: "Sprint 8 entry SPEC를 선택해주세요.",
-    header: "Sprint 8",
+    question: "Epic 8 entry SPEC를 선택해주세요.",
+    header: "Epic 8",
     multiSelect: false,
     options: [
       {
         label: "SPEC-V3R6-SPEC-ID-VALIDATION-001 (권장)",
-        description: "manager-spec body에 SPEC ID regex pre-write self-check 추가. Sprint 7 TMC-001 plan-phase L51 도출 원천 해소.",
-        preview: "Tier:    S (minimal)\nScope:   manager-spec.md body + regex pre-write check\nFiles:   1-2 edit\nRisk:    Low — agent body 수정, 동작 변경 없음\nL51 origin: Sprint 7 TMC-001 plan-phase 도출"
+        description: "manager-spec body에 SPEC ID regex pre-write self-check 추가. Epic 7 TMC-001 plan-phase L51 도출 원천 해소.",
+        preview: "Tier:    S (minimal)\nScope:   manager-spec.md body + regex pre-write check\nFiles:   1-2 edit\nRisk:    Low — agent body 수정, 동작 변경 없음\nL51 origin: Epic 7 TMC-001 plan-phase 도출"
       },
       {
         label: "SPEC-V3R6-CATALOG-FRONTMATTER-AUDIT-001",

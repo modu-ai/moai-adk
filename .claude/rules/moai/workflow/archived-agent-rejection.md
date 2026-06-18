@@ -92,7 +92,7 @@ The following table is the canonical migration reference. Each row documents the
 
 ### §C.1 Why per-spawn prompt injection
 
-Anthropic's recommended pattern for domain expertise is per-spawn parameter injection rather than a static agent file. The 6 `expert-*` archives (#7-#12) all share the same root cause: 0 invocations across the recent 4-SPEC cohort, indicating that the "define when keep spawning the same kind of worker with the same instructions" criterion failed. Domain knowledge is therefore better surfaced in the active conversation context (the orchestrator composes the spawn prompt with domain-specific instructions tailored to the current task) than trapped inside individual agent definition files that are loaded only when explicitly invoked.
+Anthropic's recommended pattern for domain expertise is per-spawn parameter injection rather than a static agent file. The 6 `expert-*` archives (#7-#12) all share the same root cause: 0 invocations across the recent 4-SPEC Epic, indicating that the "define when keep spawning the same kind of worker with the same instructions" criterion failed. Domain knowledge is therefore better surfaced in the active conversation context (the orchestrator composes the spawn prompt with domain-specific instructions tailored to the current task) than trapped inside individual agent definition files that are loaded only when explicitly invoked.
 
 ### §C.2 Why hook-based enforcement
 

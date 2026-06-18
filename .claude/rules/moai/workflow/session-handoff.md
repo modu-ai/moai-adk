@@ -224,7 +224,7 @@ Block 0 is REQUIRED only with L3 `--worktree`. For `--branch` (or no flag — 20
 $ cd ~/.moai/worktrees/<project>/SPEC-MYPROJ-001
 $ moai cc        # 또는 moai glm | claude (3가지 launcher 중 선택; 본 예시는 moai cc)
 
-ultrathink. SPEC-MYPROJ-001 Wave N 진입.
+ultrathink. SPEC-MYPROJ-001 Epic N 진입.
 applied lessons: project_myproj_prev_sprint_complete, lessons #12 #13 #14.
 
 전제 검증:
@@ -233,7 +233,7 @@ applied lessons: project_myproj_prev_sprint_complete, lessons #12 #13 #14.
 
 실행: /moai run SPEC-MYPROJ-001 --team
 
-후속: Round N+1 (single-SPEC SSE split context) 또는 Sprint N+1 (multi-SPEC cohort context)
+후속: Milestone M<N+1> (single-SPEC next step) 또는 Epic N+1 (multi-SPEC next grouping)
 
 ✂──── 여기까지 복사 ────✂
 ```
