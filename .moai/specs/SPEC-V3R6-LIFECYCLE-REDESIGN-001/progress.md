@@ -148,7 +148,7 @@ M1-M3 commit chain (rebased SHAs after multi-session race resolution; pushed to 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-06-19 (orchestrator-direct sync, GLM 1M — manager-docs spawn context-limit fallback per feedback_glm_orchestrator_direct_sync_mx)
-sync_commit_sha: _(pending backfill — this sync commit's SHA)_
+sync_commit_sha: 5091acd61
 sync_status: audit-ready (3-phase close — the `completed` transition rides this sync commit per REQ-LR-008; NO separate Mx chore commit; progress.md §E structure is 4 sections per AC-LR-002)
 
 **13 ACs verified** (10 MUST-PASS + 3 SHOULD-PASS): AC-LR-001 (3-phase canonical) / 002 (4-section progress.md) / 003 (V3R6 distinct-set invariance) / 004 (completed-via-sync-commit) / 005 (6 drift rules "3-phase close") / 006 (MX Tag during sync) / 007 (Epic 4-term taxonomy) / 008 (T1-T4 0 residual) / 009 (Epic preserves Sprint semantics) / 010 (new-SPEC Epic ref) / 011 (§E.5 findings retired — Y_N_N_Y/Y_Y_N_Y/Y_Y_Y_Y all 0 catalog-wide) / 012 (close-infix dual + D4 reconciliation) / 013 (era.go doc-comment + lifecycle-sync-gate worked example).
