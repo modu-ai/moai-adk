@@ -275,8 +275,8 @@ manager-docs (sync/Mx) per the Forbidden-modifications matrix — NOT by manager
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-- CHANGELOG `[Unreleased]` entry added (root-cause split-SSOT alignment summary). Status transition `in-progress → implemented` (orchestrator-direct, isolated worktree on origin/main during a multi-session parallel race). sync_commit_sha: `<backfill §E.4>`.
+- CHANGELOG `[Unreleased]` entry added (root-cause split-SSOT alignment summary). Status transition `in-progress → implemented` (orchestrator-direct, isolated worktree on origin/main during a multi-session parallel race). sync_commit_sha: `6170d1074`.
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-- 4-phase close: status `implemented → completed`. Root-cause guidance drift resolved at source (`manager-spec.md` L84 + `plan-auditor.md` + `moai-workflow-spec/SKILL.md` + 3 template mirrors). No retroactive SPEC remediation (per §B.1 Out of Scope — Retroactive SPEC remediation). mx_commit_sha: `<backfill §E.5>`.
+- 4-phase close: status `implemented → completed`. Root-cause guidance drift resolved at source (`manager-spec.md` L84 + `plan-auditor.md` + `moai-workflow-spec/SKILL.md` + 3 template mirrors). No retroactive SPEC remediation (per §B.1 Out of Scope — Retroactive SPEC remediation). mx_commit_sha: `1f93172a2`.
