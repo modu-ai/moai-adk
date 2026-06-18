@@ -108,6 +108,6 @@ sync_commit_sha: f8a5ff144228b69a1dca82dfcc2faaa5a28c1008
 - **@MX tags**: N/A (observability + doctrine SPEC — no @MX:ANCHOR/@MX:WARN surface).
 - **4-phase close**: plan (plan-phase) → run (c0798e7a6) → sync (f8a5ff144) → mx (this commit) — V3R6 era closed.
 
-mx_commit_sha: _<pending Mx-phase — backfilled in follow-up commit>_
+mx_commit_sha: 4609a14b6e7a043f8c561e1ecad82cdd9fcc6661
 
 ---
