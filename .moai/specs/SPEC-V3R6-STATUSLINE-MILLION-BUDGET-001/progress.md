@@ -2,7 +2,7 @@
 id: SPEC-V3R6-STATUSLINE-MILLION-BUDGET-001
 title: "Statusline memory_test AutoCompactScaling model-env isolation — progress"
 version: "0.2.0"
-status: in-progress
+status: implemented
 created: 2026-06-18
 updated: 2026-06-18
 author: manager-develop
@@ -89,7 +89,14 @@ Clean-env full suite (`env -u ANTHROPIC_DEFAULT_*`): `ok ... 3.861s` — ALL PAS
 - D1 SHOULD-FIX (line-citation drift) sync-phase manager-spec re-delegation으로 이월.
 
 ## §E.4 Sync-phase Audit-Ready Signal
-_<pending sync-phase — manager-docs populates>_
+
+- sync_status: audit-ready
+- sync_commit_sha: _(backfilled by follow-up chore commit)_
+- CHANGELOG.md `[Unreleased]` → `### Changed` entry added — AC-HNS-011 퇴차 명시 + baseline gap forward-gap(`BASELINE-ISOLATION-001`).
+- 사용자 가시 docs 변경 없음 (test-only; README/docs-site 영향 없음).
+- Frontmatter `in-progress → implemented` (spec.md/plan.md/progress.md).
+- sync는 orchestrator-direct 수행 (GLM backend — manager-docs/sync-auditor spawn context-limit fallback per `feedback_glm_orchestrator_direct_sync_mx`).
+- **D1 SHOULD-FIX (sibling-test line-citation drift) 후속 `BASELINE-ISOLATION-001` plan-phase로 이월** — moving-target rationale: 본 run-phase +19-line edit + 향후 baseline-isolation edit가 모두 `memory_test.go` 라인 번호를 shift시키므로, 모든 statusline test isolation 완료 후 1회 재측정이 효율적.
 
 ## §E.5 Mx-phase Audit-Ready Signal
 _<pending Mx-phase — manager-docs populates>_
