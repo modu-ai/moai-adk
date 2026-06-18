@@ -101,7 +101,7 @@ Clean-env full suite (`env -u ANTHROPIC_DEFAULT_*`): `ok ... 3.861s` — ALL PAS
 ## §E.5 Mx-phase Audit-Ready Signal
 
 - mx_status: audit-ready
-- mx_commit_sha: _(backfilled by follow-up chore commit)_
+- mx_commit_sha: 130e3efd7
 - **4-phase lifecycle complete**: plan (`aaf556119`) → run (`1ae603ff8`) → sync (`a7737e9db`) → Mx (this commit).
 - @MX scan: `isolateModelEnv` helper fan_in=1 (< 3 ANCHOR threshold) → 신규 @MX tag 불필요; 상세 doc-comment가 intent + SPEC 참조 전달 (NOTE 역할 충족). Production 코드 미변경이므로 @MX 대상 영역 없음.
 - Frontmatter `implemented → completed` (spec.md/plan.md/progress.md).
