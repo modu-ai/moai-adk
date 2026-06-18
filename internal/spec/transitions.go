@@ -104,6 +104,19 @@ func isSyncPhaseDocs(lowerTitle string) bool {
 	return syncPhaseDocsPattern.MatchString(lowerTitle)
 }
 
+// planPhaseFeatPattern matches the canonical plan-phase commit subject
+// `feat(SPEC-XXX-NNN): ... plan-phase ...` (manager-spec plan-phase artifacts).
+// Without this, the generic `feat` prefix rule mis-classifies plan-phase commits
+// as run-complete/implemented, causing a false StatusGitConsistencyRule drift on
+// SPECs whose only commit so far is the plan-phase commit (frontmatter still draft).
+// @MX:NOTE: [AUTO] plan-phase feat → draft (plan-merge), not implemented
+// @MX:REASON: SPEC-V3R6-LINT-CLASSIFYPRTITLE-001 — plan-phase commit must not imply run completion
+var planPhaseFeatPattern = regexp.MustCompile(`^feat\(spec-[a-z0-9-]+-[0-9]+\):.*plan-phase`)
+
+func isPlanPhaseFeat(lowerTitle string) bool {
+	return planPhaseFeatPattern.MatchString(lowerTitle)
+}
+
 // ClassifyPRTitle analyzes a PR/commit title and returns the transition category and target status
 //
 // The function handles 7 main cases:
@@ -145,6 +158,12 @@ func ClassifyPRTitle(title string) (string, string, error) {
 	// @MX:REASON: SPEC-V3R6-DRIFT-CONVENTION-ALIGN-001 AC-DCA-008 — backfill skip 후 노출된 sync docs는 implemented여야 한다.
 	if isSyncPhaseDocs(lowerTitle) {
 		return "sync-merge", "implemented", nil
+	}
+
+	// plan-phase feat commit (feat(SPEC-{ID}): ... plan-phase ...) — manager-spec plan-phase.
+	// Generic `feat` → implemented would false-flag a SPEC whose only commit is plan-phase.
+	if isPlanPhaseFeat(lowerTitle) {
+		return "plan-merge", "draft", nil
 	}
 
 	// Check each prefix pattern in order (longer prefixes first)
