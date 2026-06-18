@@ -184,7 +184,7 @@ catalog:
                 - name: moai-workflow-design
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-workflow-design/
-                  hash: d6da117e2f3f109f5f004393550374fbdcf1aabf37ec50c3cee608751be42889
+                  hash: 31b9933616a9562a2f962069c908bd55585b1673d4cca3fbd51b5ccbe76a4a3c
                   version: 0.1.0
                 - name: moai-workflow-gan-loop
                   tier: optional-pack:design
