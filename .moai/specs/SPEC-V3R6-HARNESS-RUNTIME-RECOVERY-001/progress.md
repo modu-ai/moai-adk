@@ -48,11 +48,11 @@ No Go code added (AC-RR-009 Non-Goals boundary — `internal/recovery/` absent; 
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+Run-phase completed 2026-06-19 via 4 commits (M1-M4). Latest run commit: `dfef9ddb1` (M4 lint+grep evidence + Residual-risk documentation). All 11 ACs satisfied: 9 MUST (AC-RR-001..005, 007..009, 011) + 2 SHOULD (AC-RR-006, 010). No Go code added (policy-layer scope only). See §E.2 above for M1-M4 completion summary.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Sync-phase performed 2026-06-19. This SPEC is policy-layer only — no Go code changes. CHANGELOG.md entry added under `[Unreleased]` section documenting: (1) NEW `runtime-recovery-doctrine.md` file (7 sections: withheld-recoverable-error set, 4-rung cheapest-first ladder, 5 circuit-breaker invariants, Recovery-Signal Carve-Out, cross-references, agent obligation, anti-patterns); (2) `agent-common-protocol.md` §Hook Invocation Surface carve-out (documentation-only guidance mirroring doctrine §4); (3) `zone-registry.md` CONST-V3R6-001 entry (anti-death-spiral invariant naming); (4) lint + grep reproducibility verification. Frontmatter status transition `in-progress → implemented` will be applied on sync commit. Sync commit SHA will be backfilled after commit creation.
 
 sync_commit_sha: ""
 
