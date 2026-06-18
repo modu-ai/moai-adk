@@ -4,8 +4,7 @@ description: >
   Unified design workflow skill — handles Path A (Claude Design handoff bundle import,
   via Figma extractor when needed) and design-brief context loading from .moai/design/
   (research, system, spec). Validates DTCG tokens, enforces brand-context constitutional
-  priority. Use for /moai design workflow — NOT for general design system documentation
-  (see moai-design-system).
+  priority. Use for /moai design workflow — NOT for general design system documentation.
 
 when_to_use: >
   Use for the /moai design workflow: Path A Claude Design handoff-bundle
