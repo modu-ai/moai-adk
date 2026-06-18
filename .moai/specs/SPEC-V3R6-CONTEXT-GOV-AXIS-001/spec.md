@@ -2,7 +2,7 @@
 id: SPEC-V3R6-CONTEXT-GOV-AXIS-001
 title: "Context-Governance Axis — eager-vs-on-demand weight recording + drift alarm"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-06-18
 updated: 2026-06-19
 author: manager-spec

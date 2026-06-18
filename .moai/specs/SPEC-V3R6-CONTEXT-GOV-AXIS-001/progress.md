@@ -38,7 +38,10 @@
 
 ## §D. Mx-phase status
 
-_<pending Mx-phase>_
+- **mx_complete_at**: 2026-06-19
+- **frontmatter_transition**: `implemented → completed`.
+- **@MX tags**: N/A (this SPEC is observability + doctrine — no high fan_in function/danger zone code surface requiring @MX:ANCHOR/@MX:WARN annotation; the observer hook weight-recording is additive data capture, not an invariant contract).
+- **owner**: orchestrator-direct.
 
 ---
 
@@ -94,14 +97,17 @@ _<pending Mx-phase>_
 - **owner**: orchestrator-direct (GLM manager-docs spawn context-limit fallback per `feedback_glm_orchestrator_direct_sync_mx`).
 - **spec-lint**: 0 errors (StatusGitConsistency transient warning resolves on frontmatter landing).
 
-sync_commit_sha: _<pending sync-phase — backfilled in Mx commit>_
+sync_commit_sha: f8a5ff144228b69a1dca82dfcc2faaa5a28c1008
 
 ---
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending Mx-phase — frontmatter `implemented → completed` + mx_commit_sha backfill>_
+- **mx_complete_at**: 2026-06-19
+- **frontmatter_transition**: `implemented → completed`.
+- **@MX tags**: N/A (observability + doctrine SPEC — no @MX:ANCHOR/@MX:WARN surface).
+- **4-phase close**: plan (plan-phase) → run (c0798e7a6) → sync (f8a5ff144) → mx (this commit) — V3R6 era closed.
 
-mx_commit_sha: _<pending Mx-phase>_
+mx_commit_sha: _<pending Mx-phase — backfilled in follow-up commit>_
 
 ---
