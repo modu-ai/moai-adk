@@ -199,9 +199,8 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 		_ = os.Setenv(config.EnvClaudeCodeAutoCompactWindow, window) //nolint:errcheck
 	}
 	// Z.AI proxy compatibility: strip Anthropic beta headers
-	_ = os.Setenv("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "1")   //nolint:errcheck
-	_ = os.Setenv("API_TIMEOUT_MS", "3000000")                     //nolint:errcheck
-	_ = os.Setenv("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "1") //nolint:errcheck
+	_ = os.Setenv("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "1") //nolint:errcheck
+	_ = os.Setenv("API_TIMEOUT_MS", "3000000")                   //nolint:errcheck
 	// Z.AI MCP server (zai-mcp-server) reads this env for authentication.
 	_ = os.Setenv("Z_AI_API_KEY", apiKey) //nolint:errcheck
 }
@@ -392,9 +391,8 @@ func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
 		// Z.AI proxy compatibility: strip Anthropic beta headers
-		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":   "1",
-		"API_TIMEOUT_MS":                           "3000000",
-		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
+		"API_TIMEOUT_MS":                         "3000000",
 	}
 
 	// Issue #742: Map the High slot model to its real context window so
@@ -597,7 +595,6 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 	// Z.AI proxy compatibility: strip Anthropic beta headers
 	settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
 	settings.Env["API_TIMEOUT_MS"] = "3000000"
-	settings.Env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = "1"
 	// Issue #742: pre-compute statusline context size from the High slot
 	// (Opus equivalent) so SessionStart hook propagates it via tmux env.
 	if size := statusline.ResolveGLMContextWindow(glmConfig.Models.High); size > 0 {
@@ -880,9 +877,8 @@ func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]str
 		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
 		// Z.AI proxy compatibility
-		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":   "1",
-		"API_TIMEOUT_MS":                           "3000000",
-		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
+		"API_TIMEOUT_MS":                         "3000000",
 	}
 	// 1M context activation: scale auto-compact window when the High slot uses
 	// a [1m]-suffixed model.
@@ -932,7 +928,6 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 	// Z.AI proxy compatibility: strip Anthropic beta headers
 	settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
 	settings.Env["API_TIMEOUT_MS"] = "3000000"
-	settings.Env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = "1"
 	// 1M context activation: scale auto-compact window when the High slot uses
 	// a [1m]-suffixed model; otherwise clean up any stale value.
 	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
