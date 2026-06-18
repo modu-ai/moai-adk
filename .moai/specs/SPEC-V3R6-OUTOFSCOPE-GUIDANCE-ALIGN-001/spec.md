@@ -2,7 +2,7 @@
 id: SPEC-V3R6-OUTOFSCOPE-GUIDANCE-ALIGN-001
 title: "Align SPEC-authoring guidance to the OutOfScopeRule lint convention"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-06-18
 updated: 2026-06-19
 author: manager-spec
@@ -279,4 +279,4 @@ manager-docs (sync/Mx) per the Forbidden-modifications matrix — NOT by manager
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
-_<pending Mx-phase>_
+- 4-phase close: status `implemented → completed`. Root-cause guidance drift resolved at source (`manager-spec.md` L84 + `plan-auditor.md` + `moai-workflow-spec/SKILL.md` + 3 template mirrors). No retroactive SPEC remediation (per §B.1 Out of Scope — Retroactive SPEC remediation). mx_commit_sha: `<backfill §E.5>`.
