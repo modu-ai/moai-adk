@@ -191,4 +191,4 @@ Mx-phase executed on 2026-06-19 (Tier M, GLM orchestrator-direct fallback per `f
 - E6: Push — N/A (push handled by orchestrator)
 - E7: Blocker — None
 
-mx_commit_sha: ""  # To be populated in Commit 4 backfill
+mx_commit_sha: "809bec1a8"  # Commit 3: Mx-phase audit-ready signal + 4-phase close
