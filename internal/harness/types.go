@@ -13,7 +13,16 @@ import "time"
 // additive apply_outcome event type + its omitempty Event fields. The bump is a
 // marker only — existing readers tolerate the additive omitempty fields and the
 // new event type without change (REQ-OC-009).
-const LogSchemaVersion = "v2"
+//
+// Bumped "v2" → "v2.1" by SPEC-V3R6-CONTEXT-GOV-AXIS-001 (REQ-CGA-002) to mark
+// the additive eager-vs-on-demand context-weight fields (EagerContextWeight /
+// OnDemandContextWeight / WeightUnit). The bump lets a reader distinguish two
+// cases by branching on schema_version: (a) schema_version ∈ {"v1","v2"} → the
+// line predates this SPEC (weight fields never measured — legacy weight-absent);
+// (b) schema_version == "v2.1" with weight fields at sentinel (0/"") → the new
+// binary wrote the line but weight estimation was skipped (fail-open path).
+// NOT v1→v1.1: v2 is the already-current baseline; v1.1 would regress below it.
+const LogSchemaVersion = "v2.1"
 
 // EventType is an enum representing observable event kinds.
 // REQ-HL-001: Records /moai subcommand, agent invocation, SPEC-ID reference, /moai feedback events.
@@ -165,6 +174,33 @@ type Event struct {
 	// OutcomeRegressed is the list of regressed dimensions (e.g. ["coverage"])
 	// (apply_outcome rolled-back case only, omitempty).
 	OutcomeRegressed []string `json:"outcome_regressed,omitempty"`
+
+	// ── Context-Governance Axis weight fields (SPEC-V3R6-CONTEXT-GOV-AXIS-001) ──
+	// These fields are additive omitempty only and carry the eager-vs-on-demand
+	// context-weight split recorded per turn (REQ-CGA-001). They are populated by
+	// EstimateContextWeight before the Event is handed to RecordExtendedEvent;
+	// when estimation is skipped or errors, the fail-open path leaves them at the
+	// Go zero value (EagerContextWeight=0, OnDemandContextWeight=0, WeightUnit="")
+	// while schema_version is STILL stamped "v2.1" — so a reader can branch on
+	// schema_version to distinguish (a) pre-SPEC lines (v1/v2, weight-absent
+	// legacy) from (b) new-binary estimation-skipped (v2.1 + sentinel) per
+	// REQ-CGA-002. The omitempty drop of genuine 0/"" is acceptable: a kept
+	// weight of 0 (e.g. no skills invoked, EC-4) is still identifiable via
+	// schema_version == "v2.1" (the line was written by the new binary).
+
+	// EagerContextWeight is the estimated weight (tokens or bytes per WeightUnit)
+	// of eagerly-loaded context: CLAUDE.md + auto-loaded .claude/rules/moai/*.md
+	// + output-style moai.md + MEMORY.md index (omitempty; 0 on estimation skip).
+	EagerContextWeight int `json:"eager_context_weight,omitempty"`
+
+	// OnDemandContextWeight is the estimated weight (tokens or bytes per
+	// WeightUnit) of on-demand context invoked this turn (sum of invoked skill
+	// bodies). Zero is a valid value when no skills were invoked (EC-4).
+	OnDemandContextWeight int `json:"on_demand_context_weight,omitempty"`
+
+	// WeightUnit is the unit of the two weight fields: "tokens" or "bytes".
+	// Empty when estimation was skipped (fail-open sentinel).
+	WeightUnit string `json:"weight_unit,omitempty"`
 }
 
 // ─────────────────────────────────────────────

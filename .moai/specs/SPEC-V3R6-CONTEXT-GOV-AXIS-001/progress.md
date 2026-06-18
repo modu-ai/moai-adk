@@ -15,7 +15,15 @@
 
 ## §B. Run-phase status
 
-_<pending run-phase>_
+- **M1** (schema extension + observer weight-recording): DONE.
+  - `internal/harness/types.go:16` — `LogSchemaVersion` bumped `"v2"` → `"v2.1"`; Event struct extended with 3 additive omitempty weight fields (`EagerContextWeight`, `OnDemandContextWeight`, `WeightUnit`).
+  - `internal/harness/observer.go` — new `EstimateContextWeight(evt, projectRoot)` + `estimateEagerWeight` (fail-open, EC-1 skip-missing); constants `WeightUnitTokens`/`WeightUnitBytes`; eager sources list + rules glob.
+  - `internal/cli/hook.go` — all 4 `runHarnessObserve*` handlers wired (`harness.EstimateContextWeight(&evt, cwd)` before record); PostToolUse handler switched to `RecordExtendedEvent` for weight population.
+  - `internal/harness/context_gov_test.go` — new test file: schema-version bump, weight-field presence, legacy v1+v2 parse-no-crash (AC-CGA-002), fail-open (AC-CGA-003), EC-1 skip-missing, v2.1 sentinel stamp.
+  - Pre-existing tests updated: `observer_test.go` `TestLogSchemaVersion` + `outcome_test.go` `TestApplyOutcomeEvent_SchemaVersionV2` → assert `"v2.1"` (the bump).
+- **M2** (drift alarm doctrine): DONE.
+  - `.moai/docs/harness-delivery-strategy.md` — new §8 "Context-Governance Axis" inserted before `## Sources`; N=3 named constant (bounded [3,5]); book2 ch8.3 + diag-05 cited verbatim; Tier-2 additive signal documented (REQ-CGA-006).
+- **M3** (lint/clean + verification): IN PROGRESS — see §E.2/§E.3 below.
 
 ---
 

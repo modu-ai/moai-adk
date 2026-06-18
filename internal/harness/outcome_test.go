@@ -105,12 +105,14 @@ func TestApplyOutcomeEvent_OmitemptyOnOtherEvents(t *testing.T) {
 }
 
 // TestApplyOutcomeEvent_SchemaVersionV2 verifies a newly recorded event carries
-// schema_version "v2" via the observer default-fill path (AC-OC-002, REQ-OC-010).
+// the current schema_version via the observer default-fill path (AC-OC-002, REQ-OC-010).
+// The constant was bumped "v2" → "v2.1" by SPEC-V3R6-CONTEXT-GOV-AXIS-001 (REQ-CGA-002);
+// this test guards that the constant is stamped on recorded events regardless of its value.
 func TestApplyOutcomeEvent_SchemaVersionV2(t *testing.T) {
 	t.Parallel()
 
-	if LogSchemaVersion != "v2" {
-		t.Fatalf("LogSchemaVersion = %q, want v2", LogSchemaVersion)
+	if LogSchemaVersion != "v2.1" {
+		t.Fatalf("LogSchemaVersion = %q, want v2.1", LogSchemaVersion)
 	}
 
 	dir := t.TempDir()
@@ -125,8 +127,8 @@ func TestApplyOutcomeEvent_SchemaVersionV2(t *testing.T) {
 	if err := json.Unmarshal(line, &evt); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if evt.SchemaVersion != "v2" {
-		t.Errorf("recorded schema_version = %q, want v2", evt.SchemaVersion)
+	if evt.SchemaVersion != "v2.1" {
+		t.Errorf("recorded schema_version = %q, want v2.1", evt.SchemaVersion)
 	}
 }
 
