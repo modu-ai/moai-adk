@@ -2,7 +2,7 @@
 id: SPEC-V3R6-LIFECYCLE-REDESIGN-001
 progress_version: "0.2.0"
 spec_version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-06-18
 updated: 2026-06-19
 author: manager-spec
@@ -27,7 +27,17 @@ Plan-phase audit-ready: _(pending plan-auditor iter-2 verdict)_
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### Pre-flight (captured at M1 start, tree HEAD f2907ba4c)
+
+- **PF-1 (D3, baseline N)**: `moai spec audit --json` → total_specs=353, grandfathered=272, modern_era_clean=78, **V3R6 count N=50** (moving baseline; NOT a frozen literal — AC-LR-003 asserts invariance post-M1 == post-M3 == this N). Breakdown: Y_N_N_Y=0, Y_Y_N_Y=4, Y_Y_Y_Y_StatusDrift=3.
+- **PF-1b (D1, H-6 at-risk re-derivation)**: research.md §D.4 reproduction command → V3R6 total=50, **genuine H-6 at-risk=0** (empty set). Every current V3R6 SPEC is caught by H-5's `created >= 2026-04-01` / modern-`phase:` heuristic. REQ-LR-006 dual-predicate window is defense-in-depth + classification-rationale precision, not misclassification-prevention. **No blocker.**
+- **PF-2 (regression baseline)**: `go test ./internal/spec/...` → 2 PRE-EXISTING failures in `lint_test.go` (`TestLinter_AC08_DanglingRuleReference`, `TestLinter_AC11_StrictMode`) — both in the linter domain (DanglingRuleReference / strict-mode warning escalation), OUT of M1-M3 scope (era.go/audit.go/transitions.go). These are the regression baseline; M1-M3 must not introduce NEW failures and must not touch these.
+- **Build baseline**: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+- **Git**: branch=worktree-agent-a669304f677a4add1 (fast-forwarded to main HEAD f2907ba4c to acquire SPEC artifacts + current source); `internal/spec/` clean.
+
+### M1 — era.go H-4 3-phase reclassification + dual-predicate window
+
+_<pending M1 commit>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
