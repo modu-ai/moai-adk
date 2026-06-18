@@ -128,7 +128,7 @@ frontmatter_status_transitions:
   progress.md: draft → implemented                # ✓
 ```
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-05-24T02:18:09Z              # Mx scan execution timestamp (UTC)

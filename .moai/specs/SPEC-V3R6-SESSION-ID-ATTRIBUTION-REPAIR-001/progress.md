@@ -154,7 +154,7 @@ ok  	github.com/modu-ai/moai-adk/internal/template
 
 sync_commit_sha: 615a4af95 — backfilled after the docs sync commit (non-bold actual SHA per feedback_era_commit_sha_field_format; bold/placeholder would cause V3R6→V3R5 era misclassification).
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 **Claim**: 4-phase lifecycle complete (plan → run → sync → Mx). spec.md frontmatter `status: implemented → completed`. Both `sync_commit_sha` (615a4af95) and `mx_commit_sha` (below) backfilled with actual non-bold SHAs. SPEC-V3R6-SESSION-ID-ATTRIBUTION-REPAIR-001 is now a closed V3R6 modern-era SPEC.
 

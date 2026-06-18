@@ -106,7 +106,9 @@ sync_status: implemented
 
 ---
 
-## §E.5 — Mx-phase Audit-Ready Signal
+## §E.4 Audit-Ready Signal
+
+### (Migrated from §E.5)
 
 - **status transition**: implemented → completed (4-phase close — plan + run + sync + Mx all complete).
 - **cohort closure**: web-console-v3 (001 mother / 002 port+validation / 003 flat config / 004 visual restyle / 005 i18n+CJK font) **fully terminated** — 005 is the cohort terminator (S3).

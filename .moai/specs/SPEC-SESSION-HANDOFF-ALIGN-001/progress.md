@@ -168,7 +168,7 @@ The 105-line net LOCAL↔TEMPLATE content delta is collapsed to zero on canonica
 
 sync_commit_sha: d7848a8dd
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 > (Mx-phase — orchestrator-direct, L_orchestrator_direct_mx_2commit 패턴. 본 SPEC V3R6 4-phase lifecycle 종결.)
 

@@ -147,7 +147,7 @@ sync_method: orchestrator-direct (Tier S bounded + active-race avoidance; in-pro
 ground_truth_carryover: git_strategy section loader-unwired (3rd dead-config) -> recommended follow-up SPEC-PREPUSH-LOADER-WIRING-001
 ```
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-06-08

@@ -116,7 +116,9 @@ residual(os.Exit / getwd / Abs / panic)이고, 그 residual이 함수 statement�
 - **status**: draft → in-progress (M1 `354f763c3`) → implemented (sync `8232e7edc`) → **completed (Mx, 현재)**
 - **era**: V3R6 (H-5 tie-breaker: created 2026-06-15 ≥ 2026-04-01; H-4는 §E.2/§E.5 SHA 충족 후)
 
-## §E.5 Mx-phase Audit-Ready Signal
+## §E.4 Audit-Ready Signal
+
+### (Migrated from §E.5)
 
 > (manager-docs 또는 orchestrator가 Mx-phase 4-phase close에서 채움)
 

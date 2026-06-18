@@ -120,7 +120,7 @@ COMPLETE. 9 files changed (1 mirror-direct session-handoff.md + 8 docs-site 4-lo
 - **ac_count_source**: acceptance.md (SSOT) = 10 AC (5 MUST + 5 SHOULD), NOT progress.md
 - **verification_basis**: orchestrator-direct sync execution. manager-docs subagent spawn failed twice with `context window limit` (compact prompt also failed — the session's auto-loaded MoAI rules inflate the subagent system prompt past the window). Per established orchestrator-direct fallback (cf. L_orchestrator_direct_mx_2commit), Tier S docs-only mechanical sync executed directly with B12 discipline (CHANGELOG duplicate pre-check, acceptance.md-sourced AC count, ls path verification, SPEC-scoped ZERO-Go baseline attribution). sync-auditor not independently spawned for the same context-window reason; AC re-verification performed orchestrator-side via objective grep/file-existence checks (4-locale 24-file existence PASS, ZERO-Go scoped PASS, B12 duplicate 0).
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 - **mx_complete_at**: 2026-06-17
 - mx_commit_sha: be0eafe03

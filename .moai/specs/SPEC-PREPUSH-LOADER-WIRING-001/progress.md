@@ -65,7 +65,7 @@ sync_method: orchestrator-direct (Tier S bounded; in-progress->implemented Autho
 chain_status: PREPUSH dead-config chain 3/3 closed end-to-end
 ```
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-06-10

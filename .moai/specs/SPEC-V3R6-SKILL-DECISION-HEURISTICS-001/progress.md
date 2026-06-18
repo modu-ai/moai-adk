@@ -132,13 +132,12 @@ template_mirror_followup: open  # FU-1 deferred per C-4 (plan.md §I)
 
 _<pending sync-phase>_
 
----
-
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 _<pending Mx-phase>_
 
 ---
+
 
 Version: 0.2.0 (run-phase complete — M1/M2/M3, 8 AC PASS incl. 1 PASS-WITH-DEBT)
 Status: in-progress

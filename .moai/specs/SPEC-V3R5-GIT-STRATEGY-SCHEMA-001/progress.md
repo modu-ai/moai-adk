@@ -119,7 +119,9 @@ sync_deliverables:
 - CHANGELOG.md entry: [Unreleased] section, nested GitStrategyConfig schema alignment entry (9/9 AC PASS, 5 milestone commits, 7 files affected)
 - README.md: no update required (internal config struct — zero user-facing surface)
 
-## §E.5 Mx-phase Audit-Ready Signal
+## §E.4 Audit-Ready Signal
+
+### (Migrated from §E.5)
 
 mx_commit_sha: 2d64f3052
 mx_determination: SKIP-eligible candidate per SPEC-V3R6-LIFECYCLE-SYNC-GATE-001 MX-Step-C guideline — 5 implementation commits (M0-M5) contain pure struct hierarchy + test additions (declarative, zero goroutines, no fan_in ≥3 functions, no conditional routing per-entity). EVALUATE-PASS verdict by orchestrator judgment; optional Mx pass-through not mandatory. Final MX tag annotation performed via separate `/moai mx` utility if high-context-value tags are identified in post-run review.

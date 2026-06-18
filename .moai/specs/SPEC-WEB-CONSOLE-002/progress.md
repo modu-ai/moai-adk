@@ -56,7 +56,7 @@ coverage_internal_web: "90.8%"
 - **L1 worktree**: run-phase executed in Claude Code runtime L1 worktree at `.claude/worktrees/agent-a2644d34c55bcb8ec` (branch `worktree-agent-a2644d34c55bcb8ec`, base `ad974fe5b`). The SPEC plan-phase artifacts (`spec.md`/`plan.md`) were uncommitted working-tree files in the parent checkout; they were copied into the worktree for the unified M1 commit. Orchestrator must integrate the worktree commit into `docs/glm-webtool-routing-m1-m5` and reconcile the parent checkout's uncommitted SPEC artifacts.
 - **Pre-existing failures (out of scope, verified on baseline without WC2 changes)**: `internal/template` `TestOutputStylesTemplateLiveParity` (einstein.md drift — `M ...einstein.md` present in working tree at session start, parallel-session owned) + `internal/hook` `TestHookWrapper_ValidJSON`/`TestHookWrapper_MoaiBinaryFallback` (~5.01s timeout flaky under parallel-suite contention; pass in isolation). Neither involves the 8 WC2 scope files.
 
-## §E.5 Sync-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 sync_complete_at: 2026-06-03

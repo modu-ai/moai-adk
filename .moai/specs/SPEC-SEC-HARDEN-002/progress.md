@@ -162,7 +162,9 @@ Notable incidents (recorded): (1) import-cycle AC contradiction both plan-audito
 
 ---
 
-## §E.5 Mx-phase Audit-Ready Signal
+## §E.4 Audit-Ready Signal
+
+### (Migrated from §E.5)
 
 ```yaml
 spec_id: SPEC-SEC-HARDEN-002

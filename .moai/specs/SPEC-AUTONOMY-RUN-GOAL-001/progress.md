@@ -92,7 +92,7 @@ ac_verification: "13 ACs in acceptance.md verified by grep. Sync commit adds no 
 no_docs_site_update: "This SPEC is internal doctrine/workflow (rules + test) — no user-facing feature. docs-site updates deferred to product feature SPEC."
 ```
 
-## §E.5 — Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-06-15

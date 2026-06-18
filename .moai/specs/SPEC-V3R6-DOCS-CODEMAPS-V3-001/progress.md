@@ -239,7 +239,7 @@ resolved in fix commit `fdf45b35a` before sync entry.
   ("H3 sub-headings") contradicts lint.go:716 (dash bullets) — tracked as
   follow-up, out of this SPEC's AC scope.
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 - **Mx-phase agent**: orchestrator-direct (GLM backend; canonical Mx
   transition owner is `manager-docs OR orchestrator` per the ownership matrix

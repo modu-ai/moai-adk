@@ -225,9 +225,7 @@ neutrality: clean
 sync_commit_sha: b359bcafd
 ```
 
----
-
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 **Mx-phase**: COMPLETE (orchestrator-direct — Mx chore, canonical owner "manager-docs OR orchestrator" per Status Transition Ownership Matrix)
 **Status transition**: spec.md `implemented → completed` (4-phase V3R6 close — terminal)
@@ -252,6 +250,7 @@ mx_commit_sha: 1a7765d00
 ```
 
 ---
+
 
 ## §F. Next Actions
 

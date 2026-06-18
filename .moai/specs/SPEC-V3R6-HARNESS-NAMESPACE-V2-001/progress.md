@@ -92,7 +92,7 @@ plan-auditor V2 PASS-WITH-DEBT 0.82의 D1(framing)/D3(label)/D4(citation) debt�
 ### forward-gap (b) template mirror moai/SKILL.md drift — non-issue 확인
 run-phase memory가 forward-gap으로 분류했으나, `rule_template_mirror_test.go` L86-91이 moai/SKILL.md를 byte-parity allowlist에서 REMOVED한 것을 독립 확인 — delta는 CLAUDE.local.md §21 dev-only release-update로 INTENTIONAL. cp source→mirror 불필요. non-issue (progress.md §E.2가 정확).
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 mx_complete_at: 2026-06-18
 mx_commit_sha: dd710a664

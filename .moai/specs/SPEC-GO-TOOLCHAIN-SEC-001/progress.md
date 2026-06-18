@@ -116,7 +116,7 @@ readme_docs_site_touched: false   # no user-facing change; internal toolchain/CI
 subagent_boundary_C_HRA_008: "n/a — orchestrator-direct doc edit, 0 AskUserQuestion in scope files"
 ```
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-06-03

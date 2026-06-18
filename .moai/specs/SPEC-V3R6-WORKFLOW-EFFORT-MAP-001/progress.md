@@ -105,7 +105,7 @@ m1_to_mN_commit_strategy: "per-milestone Conventional Commits with Authored-By-A
 
 **Residual (out of AC scope, honestly reported)**: D1-new/D2-new/D3-new residual debt from run-phase accepted (not fixed). The `effort` YAML field runtime consumption remains declarative-only (LLM-behavior-verified, not code-path-verified) per acceptance.md §D.2.
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 **Status**: audit-ready. 4-phase close complete (plan → run → sync → Mx). The `implemented → completed` frontmatter transition was performed by the orchestrator via orchestrator-direct Mx (the `manager-docs` spawn failed with context-limit — recurring fallback pattern).
 

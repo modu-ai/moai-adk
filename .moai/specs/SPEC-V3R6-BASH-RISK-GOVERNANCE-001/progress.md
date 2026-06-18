@@ -20,7 +20,7 @@ _<pending sync-phase>_
 
 sync_commit_sha: _<pending sync-phase>_
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 _<pending Mx-phase>_
 

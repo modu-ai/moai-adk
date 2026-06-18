@@ -89,10 +89,10 @@ _<pending sync-phase — populated by manager-docs; sync_commit_sha field below>
 
 sync_commit_sha: _<pending sync-phase>_
 
----
-
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 _<pending Mx-phase — populated by manager-docs OR orchestrator-direct; mx_commit_sha field below>_
 
 mx_commit_sha: _<pending Mx-phase>_
+
+---

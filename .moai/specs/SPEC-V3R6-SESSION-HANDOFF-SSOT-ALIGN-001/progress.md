@@ -96,7 +96,7 @@ ac_count_changelog: 7 (6 MUST + 1 SHOULD — matches acceptance.md SSOT)
 spec_lint_post_sync: "0 error 0 warning expected (StatusGitConsistency warning resolved by the in-progress → implemented flip)"
 byte_parity_unchanged: "session-handoff 28381B + moai 53021B, both trees (sync-phase did NOT touch doctrine files)"
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 mx_complete_at: 2026-06-17
 mx_commit_sha: "6280851ad4bbc8071225d7070b78eb675edc0fdf"

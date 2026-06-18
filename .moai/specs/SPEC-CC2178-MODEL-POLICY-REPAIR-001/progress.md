@@ -151,7 +151,7 @@ docs_surface_skipped: README/docs-site   # settings keys are template-managed, n
 - The orchestrator-direct transition bypasses the manager-docs specialist's doc-craft judgment; the CHANGELOG entry was written by the orchestrator following the observed entry pattern. A sync-auditor pass should verify CHANGELOG accuracy against the diff (the entry cites no numbers not already in §E.2/§E.3 or the commit subjects).
 - If the sync-phase quality-gate Stop hook (`sync-phase-quality-gate.sh`) is active, it will run lint+test+coverage-delta on this commit; doc-only changes should pass, but the 2 pre-existing test failures may surface as gate noise (they are unrelated and pre-existing).
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-06-16

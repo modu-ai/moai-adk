@@ -162,9 +162,7 @@ spec_lint: 0 findings (StatusGitConsistency resolved post 085e8ecc5)
 - AC-001 PASS-WITH-DEBT documented (REQ-002 "31 specialized" sub-count overlap; baseline 40 stale totals eliminated, 4 legitimate sub-count residuals remain).
 - sync-phase orchestrator-direct (GLM manager-docs spawn context-limit fallback per `feedback_glm_orchestrator_direct_sync_mx`).
 
----
-
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-06-18
@@ -179,3 +177,5 @@ residual_debt:
   - docs-truth.md §6 "Skill Count (32)" axis (acceptance §D.4 forward-looking, separate follow-up — explicitly out of scope)
   - D-new-2 MINOR (AC-006 ja regex `6つのカテゴリ` natural-form coverage)
 ```
+
+---

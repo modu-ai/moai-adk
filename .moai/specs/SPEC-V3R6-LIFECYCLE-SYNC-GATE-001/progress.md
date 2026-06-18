@@ -775,7 +775,7 @@ m6_status: implemented (no-op regression dogfood: 5 SPECs × exit 0, 5 ≥ 5 ent
 | No CHANGELOG body edit | ✓ PASS | CHANGELOG prepend-only per A.5.3; no sync-phase body modifications |
 | Link integrity scan | ✓ PASS | Internal SPEC cross-refs (AGENT-RESPONSIBILITY-REALIGN-001, AGENT-TEAM-REBUILD-001, TEMPLATE-INTERNAL-ISOLATION-001, LIFECYCLE-SYNC-GATE-001 self-ref) verified in git history |
 
-## §E.5 Mx-phase audit-ready signal
+### (Migrated from §E.5)
 
 Mx-phase ownership: orchestrator-direct (post-sync). Manager-docs sync-phase does not populate this section; defer to Mx chore.
 

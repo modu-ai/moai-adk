@@ -175,7 +175,9 @@ push: HEAD:main FF (Hybrid Trunk Tier M main-direct, user-approved post-sync)
 next: SPEC-WEB-CONSOLE-008 (workflow/git-strategy/harness/llm nested editing — boundary lift + new validators + sentinel retarget)
 ```
 
-## §E.5 Mx-phase Audit-Ready Signal
+## §E.4 Audit-Ready Signal
+
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-06-07

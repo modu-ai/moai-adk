@@ -50,6 +50,16 @@ Plan-phase audit-ready: _(pending plan-auditor iter-2 verdict)_
 - AC-LR-003 distinct-SPEC invariant: 46 distinct V3R6 SPECs post-M2 (43 EraAutoDetected + 3 SyncStatusDrift-with-era-override). **Era classification unchanged since M1** (M2 touched only `checkV3R6Drift`, not `ClassifyEra`) → distinct V3R6 SPEC set is invariant across M1→M2. The acceptance.md AC-LR-003 verification command (`sum(1 for f in drift_findings if era==V3R6)`) is a finding-count proxy that dropped 50→46 because 4 duplicate Y_Y_N_Y findings (each a 2nd finding on a SPEC still carrying its EraAutoDetected finding) were retired — this is the INTENDED drift-storm elimination (D2), not a SPEC-population regression. Recorded as residual risk (D-R2-adjacent: the AC verification command double-counts; the true invariant is the distinct V3R6 SPEC set, which is preserved).
 - Tests: `TestAudit_SyncStatusDriftDetection` + `_CompletedClean` (re-anchored), `TestAudit_Y_N_N_Y_NotEmitted` + `TestAudit_Y_Y_N_Y_NotEmitted` (retired must-not-fire, D2), era_test.go H-4-new/H-4-legacy/H-3-§E.4-edge fixtures. 0 new failures (2 pre-existing lint unchanged).
 
+### M3 — migrate_3phase.go §E.5→§E.4 backfill migration
+
+- Commit: _(this M3 commit)_
+- REQ-LR-007: one-time backfill folds §E.5 Mx-phase content into §E.4 for modern-era V3R6 SPECs with the legacy 5-section layout. Grandfather-protected SPECs (268) SKIPPED (N4 / AP-LR-P-004).
+- Affected set: **65 SPECs folded** (plan-phase estimate ~11 was the classification-critical subset lacking §E.4; the full fold scope is all V3R6 SPECs carrying §E.5 — research.md §C.4 measured ~83 §E.5-bearing progress.md files, of which 65 are modern-era V3R6). 1 outlier (`SPEC-V3R6-MAIN-RED-REMEDIATION-001`) had a duplicate §E.5 section; the migrator was fixed to loop over all §E.5 occurrences and re-run (idempotent on the other 64). Post-fix: 0 residual `## §E.5` headings catalog-wide.
+- AC-LR-003 post-M3: distinct V3R6 SPECs = 46 == post-M2 (INVARIANT preserved across M1→M2→M3). Rationale shifted: 37 new-H-4 (up from 27), 1 H-4-legacy (down from 11), 5 H-5. The folded SPECs now classify via the new H-4 predicate (§E.4 carries the folded content + sync_commit_sha preserved).
+- Migration log: `.moai/state/lifecycle-redesign-migration.json` (gitignored local state per CLAUDE.local.md §2; records all 65 entries with spec_id/era/mx_commit_sha/migrated_at).
+- Scope safety: backup branch ref `backup/pre-m3-migration-*` created pre-migration. All 6 PRESERVE-list dirs (HARNESS-MOAI-NAMESPACE-001 + 5 RULES-*) untouched. No parallel-session in-flight work modified.
+- Tests: `TestMigrateProgressMD_FoldsE5IntoE4` + `_Idempotent`, `TestRunMigration_SkipsGrandfathered` (N4), `TestRunMigration_DryRun`. 0 new failures.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
@@ -60,7 +70,7 @@ _<pending sync-phase>_
 
 sync_commit_sha: _(pending sync-phase)_
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 _<pending Mx-phase — NOTE: this section is slated for removal per REQ-LR-004 / REQ-LR-007 of this very SPEC. The redesign merges §E.5 into §E.4. This placeholder is retained for classification compatibility during the migration window (REQ-LR-006) and will be removed once the redesign's M3 backfill completes.>_
 

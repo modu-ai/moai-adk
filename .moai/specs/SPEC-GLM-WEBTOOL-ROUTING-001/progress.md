@@ -93,6 +93,20 @@ preserve_list_post_run_count: 0
 - Backfill `run_commit_sha` in this file with the actual SHA of this commit.
 - The 6 cross-link doc files (both local and template source) are complete; no further doc changes needed for sync-phase beyond CHANGELOG + frontmatter.
 
+### (Migrated from §E.5)
+
+```yaml
+mx_commit_sha: 510957f63
+status_transition: "implemented → completed"
+four_phase_close: true
+close_subject_full_id: SPEC-GLM-WEBTOOL-ROUTING-001
+mx_executor: orchestrator-direct
+audit_ready: true
+notes: >
+  4-phase close (plan 695ec6968 / run a8c680890+4cafc293a+330722801 / sync 35bec9fe6 / Mx this).
+  Era H-4 (§E.2 + §E.5 markers + sync_commit_sha + mx_commit_sha present) → V3R6 modern, drift-aligned.
+```
+
 ## Sync-phase Audit-Ready Signal
 
 ```yaml
@@ -109,18 +123,4 @@ sync_rationale: >
   cherry-pick + race overhead for a 3-file doc sync. Authored-By-Agent trailer
   intentionally omitted (legacy-commit silent SKIP) to avoid an
   OwnershipTransitionInvalid finding on the orchestrator-direct in-progress→implemented transition.
-```
-
-## §E.5 Mx-phase Audit-Ready Signal
-
-```yaml
-mx_commit_sha: 510957f63
-status_transition: "implemented → completed"
-four_phase_close: true
-close_subject_full_id: SPEC-GLM-WEBTOOL-ROUTING-001
-mx_executor: orchestrator-direct
-audit_ready: true
-notes: >
-  4-phase close (plan 695ec6968 / run a8c680890+4cafc293a+330722801 / sync 35bec9fe6 / Mx this).
-  Era H-4 (§E.2 + §E.5 markers + sync_commit_sha + mx_commit_sha present) → V3R6 modern, drift-aligned.
 ```

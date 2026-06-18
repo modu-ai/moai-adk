@@ -108,6 +108,20 @@ integration_test_do_not_touch: "unmodified (last touched by SPEC-WEB-CONSOLE-001
 - Commits NOT pushed by manager-develop (B9 exception (a): active parallel session race present — orchestrator pushes after Trust-but-verify).
 - L1 worktree: this run executed in isolated worktree `worktree-agent-aa4e5e1f0817715c5` (branch == origin/main base a090f29ac). Orchestrator integrates via cherry-pick of the 4-5 SPEC commits.
 
+### (Migrated from §E.5)
+
+```yaml
+mx_commit_sha: dc1d82abd
+status_transition: "implemented → completed"
+four_phase_close: true
+close_subject_full_id: SPEC-WEB-CONSOLE-003
+mx_executor: orchestrator-direct
+audit_ready: true
+notes: >
+  4-phase close (plan a090f29ac / run 7a5b1698c..e83864047 / sync d2db9701d / Mx this).
+  Era H-4 (§E.2 + §E.5 + sync_commit_sha + mx_commit_sha) → V3R6 modern, drift-aligned.
+```
+
 ## Sync-phase Audit-Ready Signal
 
 ```yaml
@@ -123,18 +137,4 @@ sync_rationale: >
   sync/Mx to avoid manager-docs L1-worktree + race overhead. Authored-By-Agent trailer
   omitted (legacy silent SKIP) to avoid OwnershipTransitionInvalid on the
   orchestrator-direct in-progress→implemented transition.
-```
-
-## §E.5 Mx-phase Audit-Ready Signal
-
-```yaml
-mx_commit_sha: dc1d82abd
-status_transition: "implemented → completed"
-four_phase_close: true
-close_subject_full_id: SPEC-WEB-CONSOLE-003
-mx_executor: orchestrator-direct
-audit_ready: true
-notes: >
-  4-phase close (plan a090f29ac / run 7a5b1698c..e83864047 / sync d2db9701d / Mx this).
-  Era H-4 (§E.2 + §E.5 + sync_commit_sha + mx_commit_sha) → V3R6 modern, drift-aligned.
 ```

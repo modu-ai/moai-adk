@@ -113,7 +113,7 @@ status_transition: in-progress -> implemented
 authored_by: orchestrator-direct # Tier S small-scope sync (L_orchestrator_direct_sync_tier_s); Authored-By-Agent trailer omitted → ownership lint silent SKIP
 ```
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-06-03

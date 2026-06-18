@@ -73,10 +73,6 @@ Out of scope: observer/gate ACTIVATION. Rationale — `Applier.Apply()` (safety�
 
 sync_commit_sha: 150d2745b
 
-## §E.5 Mx-phase Audit-Ready Signal
-
-mx_commit_sha: eb1699050
-
 ## §F Sync Audit (sync-auditor)
 
 - verdict: PASS · overall 0.97 (harmonic mean, weighted)
@@ -92,3 +88,9 @@ mx_commit_sha: eb1699050
 - lifecycle: draft → in-progress → implemented → completed
 - 8/8 AC PASS · plan-auditor 0.91 · sync-auditor 0.97 · coverage 87.5% · frozen siblings (regression_gate/outcome/observer/measure.go) byte-unchanged
 - activation deferred to a future SPEC (dual-apply-path architecture decision; §D rationale)
+
+## §E.4 Audit-Ready Signal
+
+### (Migrated from §E.5)
+
+mx_commit_sha: eb1699050

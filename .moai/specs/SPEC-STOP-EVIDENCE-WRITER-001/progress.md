@@ -134,6 +134,8 @@ run_commit_sha: dd901cdca (M1-M6 single TDD pass: feat(SPEC-STOP-EVIDENCE-WRITER
 
 status transition: draft → in-progress (this run-phase commit; Authored-By-Agent: manager-develop)
 
-## §E.5 Mx-phase Audit-Ready Signal
+## §E.4 Audit-Ready Signal
+
+### (Migrated from §E.5)
 
 mx_commit_sha: 5be036722

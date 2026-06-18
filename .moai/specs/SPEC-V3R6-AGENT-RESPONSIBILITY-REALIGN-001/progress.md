@@ -159,7 +159,7 @@ canary_compliance_check:
     Policy is now binding on all downstream SPEC syncs (SIV-001 onwards).
 ```
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-05-24T21:25:00Z              # Mx Step C SKIP-judge performed by orchestrator post-sync (separate session from sync-phase, see multi_session_coordination_note)

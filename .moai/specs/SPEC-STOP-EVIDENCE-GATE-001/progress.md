@@ -125,7 +125,9 @@ sync_commit_sha: 25cddcebb
 
 post_tool_metrics.go NOT modified (writer wiring = successor SPEC scope). 변경 파일 7개 전부 SPEC scope 내.
 
-## §E.5 Mx-phase Audit-Ready Signal
+## §E.4 Audit-Ready Signal
+
+### (Migrated from §E.5)
 
 mx_commit_sha: 59561c92d
 

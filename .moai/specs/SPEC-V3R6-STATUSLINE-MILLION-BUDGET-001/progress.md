@@ -98,7 +98,7 @@ Clean-env full suite (`env -u ANTHROPIC_DEFAULT_*`): `ok ... 3.861s` — ALL PAS
 - sync는 orchestrator-direct 수행 (GLM backend — manager-docs/sync-auditor spawn context-limit fallback per `feedback_glm_orchestrator_direct_sync_mx`).
 - **D1 SHOULD-FIX (sibling-test line-citation drift) 후속 `BASELINE-ISOLATION-001` plan-phase로 이월** — moving-target rationale: 본 run-phase +19-line edit + 향후 baseline-isolation edit가 모두 `memory_test.go` 라인 번호를 shift시키므로, 모든 statusline test isolation 완료 후 1회 재측정이 효율적.
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 - mx_status: audit-ready
 - mx_commit_sha: 130e3efd7

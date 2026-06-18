@@ -113,7 +113,9 @@ m3_status: implemented
 ci_deferred: [AC-CFS-011, AC-CFS-012]
 ```
 
-## §E.5 Mx-phase Audit-Ready Signal
+## §E.4 Audit-Ready Signal
+
+### (Migrated from §E.5)
 
 Mx-phase ownership: orchestrator-direct (post-sync). Manager-docs sync-phase does not populate this section.
 

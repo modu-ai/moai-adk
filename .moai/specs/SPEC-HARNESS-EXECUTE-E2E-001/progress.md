@@ -84,7 +84,9 @@ tier: M
 - **status**: completed
 - **era**: V3R6 (H-4)
 
-## §E.5 Mx-phase Audit-Ready Signal
+## §E.4 Audit-Ready Signal
+
+### (Migrated from §E.5)
 
 - **mx_commit_sha**: 55c23b8de (close commit)
 - **mx_deliverables**: 완료

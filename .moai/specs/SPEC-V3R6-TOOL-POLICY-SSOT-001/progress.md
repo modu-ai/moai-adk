@@ -171,13 +171,12 @@ Matches plan-phase measurement (research.md §C.1: allow=110/deny=60/ask=6). The
 
 _<pending sync-phase — manager-docs populates with sync_commit_sha + sync artifacts>_
 
----
-
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 _<pending Mx-phase — manager-docs/orchestrator populates with mx_commit_sha + 4-phase close>_
 
 ---
+
 
 ## §F. Next Action
 

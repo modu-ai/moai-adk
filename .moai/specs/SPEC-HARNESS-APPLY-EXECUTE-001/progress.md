@@ -73,7 +73,9 @@ c_hra_008_boundary: clean                    # TestPropose_NoAskUserQuestion PAS
 real_go_test_recursion: none                 # T1 uses stubMeasurer; T2 uses stub SafetyEvaluator
 ```
 
-## §E.5 Mx-phase Audit-Ready Signal
+## §E.4 Audit-Ready Signal
+
+### (Migrated from §E.5)
 
 ```yaml
 mx_commit_sha: 869203ae0

@@ -172,7 +172,7 @@ Sync-phase executed on 2026-06-19 (Tier M, GLM orchestrator-direct fallback per 
 
 sync_commit_sha: "706de3799"  # Commit 1: sync-phase artifacts
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 Mx-phase executed on 2026-06-19 (Tier M, GLM orchestrator-direct fallback per `feedback_glm_orchestrator_direct_sync_mx`).
 

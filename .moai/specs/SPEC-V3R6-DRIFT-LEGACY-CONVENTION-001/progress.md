@@ -149,7 +149,7 @@ progress_sections_updated:
   - "§E.4 Sync-phase Audit-Ready Signal (NEW)"
 ```
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-06-03

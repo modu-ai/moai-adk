@@ -36,7 +36,15 @@
 | Secured | PASS — no auth/secrets/security-critical code touched |
 | Trackable | PASS — commits trace each milestone; ac.md traces reqs |
 
-## §E.5 — Mx-phase Audit-Ready Signal
+## §F — Sync Artifacts Generated
+
+- CHANGELOG.md entry (Fixed section): 2-flake summary with Tier S, 7/7 AC PASS, empirical 7/40 reproduction + adversarial root-cause, TEST-ARTIFACT classification
+- spec.md frontmatter: status in-progress → implemented, version 0.1.0 → 0.2.0, updated: 2026-06-01
+- progress.md (this file): created with sync_commit_sha placeholder for backfill
+
+## §E.4 Audit-Ready Signal
+
+### (Migrated from §E.5)
 
 ### mx_commit_sha
 
@@ -57,9 +65,3 @@
 - 7/7 AC PASS (run-phase), zero debt
 - Root cause: contention-driven TEST-ARTIFACT (empirical 7/40 reproduction + 3-skeptic adversarial workflow verification; production code correct)
 - Out of scope: 3rd residual flaky (`internal/hook/wrapper_test.go` TestHookWrapper_ValidJSON/MoaiBinaryFallback, same ~5.01s signature) — future STABILIZE-003 candidate
-
-## §F — Sync Artifacts Generated
-
-- CHANGELOG.md entry (Fixed section): 2-flake summary with Tier S, 7/7 AC PASS, empirical 7/40 reproduction + adversarial root-cause, TEST-ARTIFACT classification
-- spec.md frontmatter: status in-progress → implemented, version 0.1.0 → 0.2.0, updated: 2026-06-01
-- progress.md (this file): created with sync_commit_sha placeholder for backfill

@@ -84,11 +84,7 @@ d2_determination: "empty/blank stdin (NOT truncated) — handle-pre-tool.sh head
 sync_method: orchestrator-direct (Tier S, active parallel-session race — worktree/cherry-pick overhead avoided)
 ```
 
-## §G. Status Transition Note (orchestrator action)
-
-This is the M1 commit (`draft → in-progress`). The spec.md `status:` frontmatter transition `draft → in-progress` and `updated:` refresh MUST be applied by the orchestrator when reconciling, because `spec.md` is uncommitted in the shared checkout and absent from this isolated worktree (created from base `ad974fe5b` which predates the SPEC). The implementation source files + this progress.md are committed in the worktree for cherry-pick.
-
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-06-03
@@ -111,3 +107,7 @@ ac_final: "4/4 mandatory AC PASS"
 close_subject_doctrine_dogfood: "this close commit uses the full SPEC-ID per REQ-DLC-011"
 einstein_md_failure: "pre-existing uncommitted template drift (out of scope; not introduced by this SPEC)"
 ```
+
+## §G. Status Transition Note (orchestrator action)
+
+This is the M1 commit (`draft → in-progress`). The spec.md `status:` frontmatter transition `draft → in-progress` and `updated:` refresh MUST be applied by the orchestrator when reconciling, because `spec.md` is uncommitted in the shared checkout and absent from this isolated worktree (created from base `ad974fe5b` which predates the SPEC). The implementation source files + this progress.md are committed in the worktree for cherry-pick.

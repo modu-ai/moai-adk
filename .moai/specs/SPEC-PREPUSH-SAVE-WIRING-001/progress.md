@@ -25,7 +25,9 @@
 
 Coverage internal/config 77.9% (no regression). Cross-platform darwin/windows amd64 exit 0. golangci-lint 0. @MX:ANCHOR Save (fan_in=12) preserved — 1-block insertion, no restructure.
 
-## §E.5 — Mx-phase Audit-Ready Signal
+## §E.4 Audit-Ready Signal
+
+### (Migrated from §E.5)
 
 4-phase lifecycle close. PREPUSH dead-config chain terminal SPEC complete — `SetSection("git_strategy") → Save() → Reload()` round-trip now symmetric (the asymmetry LOADER-WIRING-001 AC-PLW-008 deferred is closed). **Latent infrastructure**: no production caller mutates `cfg.GitStrategy` then saves yet; this pre-stages the future web-console git_strategy editor export seam (separate SPEC), not live dead code.
 

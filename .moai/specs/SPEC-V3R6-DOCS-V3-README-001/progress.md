@@ -184,9 +184,7 @@ sync_method: orchestrator-direct  # GLM manager-docs spawn context-limit fallbac
 spec_lint_post_sync: "No findings"
 ```
 
----
-
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-06-17
@@ -208,6 +206,7 @@ four_phase_close: true  # plan + run + sync + Mx
 ```
 
 ---
+
 
 ## §F. Gaps (forward-looking findings, NOT blockers)
 

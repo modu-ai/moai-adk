@@ -90,7 +90,7 @@ docs_site_impact: "none — internal dev-convention canonicalization (progress.m
 readme_impact: "none — same rationale"
 ```
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-06-16

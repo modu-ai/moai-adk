@@ -52,7 +52,7 @@ changelog_entry: added              # CHANGELOG.md [Unreleased] § Changed
 spec_lint_fix: "§E.1 Out of Scope h3 added — MissingExclusions resolved (orch-direct, B6 idiom)"
 ```
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-06-13

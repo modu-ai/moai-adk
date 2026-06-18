@@ -391,9 +391,7 @@ battery + build/test/race evidence above. 3 SHOULD ACs:
 - 6 pre-existing `internal/statusline` `memory_test.go` failures (PRESERVE scope, baseline-documented, not caused by this SPEC).
 - docs-site i18n check: 62 pre-existing errors (`multi-llm/model-policy.md`), unrelated to this SPEC.
 
----
-
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 **Status**: audit-ready. 4-phase close complete (plan → run → sync → Mx). The `implemented → completed` frontmatter transition was performed by the orchestrator via orchestrator-direct Mx (the `manager-docs` spawn failed with context-limit — recurring fallback pattern).
 
@@ -416,6 +414,7 @@ battery + build/test/race evidence above. 3 SHOULD ACs:
 - docs-site i18n check: 62 pre-existing errors (`multi-llm/model-policy.md`), unrelated to this SPEC.
 
 ---
+
 
 ## §F. Cross-References
 
