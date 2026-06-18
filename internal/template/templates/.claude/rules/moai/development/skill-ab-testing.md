@@ -158,7 +158,7 @@ Set `max_iterations: 5` to prevent unbounded refinement. If quality target not m
 - [ ] All edge case prompts pass
 - [ ] Description accurately reflects trigger conditions
 - [ ] Body structure follows progressive disclosure (Quick / Implementation / Advanced if large)
-- [ ] Frontmatter complete (description, paths, metadata)
+- [ ] Frontmatter complete per `skill-authoring.md` § Field Reference (description, paths, metadata — schema SSOT)
 
 ---
 

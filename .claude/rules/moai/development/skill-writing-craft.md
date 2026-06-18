@@ -194,33 +194,7 @@ When body exceeds 500 lines, split into modules:
 
 ## Part 3: Frontmatter Schema
 
-Every skill MUST have complete frontmatter:
-
-```yaml
----
-name: "Display Name of Skill"
-description: "One-line description for context matching"
-paths: "**/*.tsx,**/__tests__/**"
-domains: ["frontend", "testing"]
-model: "default"
-effort: "high"
-tools: ["WebSearch", "WebFetch", "Bash", "Read", "Write", "Edit", "Grep", "Glob"]
-allowed-tools: "WebSearch,WebFetch,Bash,Read,Write,Edit,Grep,Glob"
----
-```
-
-### Field Reference
-
-| Field | Required | Type | Notes |
-|-------|----------|------|-------|
-| `name` | Optional | string | Defaults to the skill directory name when omitted; recommended `moai-{category}-{name}` form for MoAI skills |
-| `description` | Required | string | Concise trigger summary; the official cap is 1,536 chars combined across `description` + `when_to_use` |
-| `paths` | Optional | string | Glob pattern CSV (no YAML array) |
-| `domains` | Optional | array | Topic categories for organization |
-| `model` | Optional | string | `"default"`, `"opus"`, `"sonnet"` |
-| `effort` | Optional | string | `"low"`, `"medium"`, `"high"`, `"xhigh"` |
-| `tools` | Optional | array | Full tool array (if providing access) |
-| `allowed-tools` | Optional | string | CSV string of tool names |
+> Canonical: the skill frontmatter schema (field reference table, CSV-vs-YAML-array validation rules, and common frontmatter patterns) lives in `.claude/rules/moai/development/skill-authoring.md` § Field Reference / § Validation Rules. This file owns only the prose craft (Parts 1-2 above: description craft + body structure); it does not restate the schema table.
 
 ### Validation Rules
 
