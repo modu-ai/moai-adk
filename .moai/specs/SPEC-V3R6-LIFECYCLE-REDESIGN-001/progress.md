@@ -63,10 +63,12 @@ Plan-phase audit-ready: _(pending plan-auditor iter-2 verdict)_
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-06-19T04:30:00Z
-run_commit_sha: 564ad5726
+run_commit_sha: 936d1fdbc
 run_status: audit-ready (M1-M3 PASS, M4-M8 deferred to separate delegations)
 
-M1-M3 commit chain: abd832d9a (M1 era.go) → 5f5170fbd (M2 audit.go+transitions.go+tests) → 564ad5726 (M3 migrate_3phase.go + 65 SPEC fold).
+M1-M3 commit chain (rebased SHAs after multi-session race resolution; pushed to origin/main `a964772fa..936d1fdbc`): f38917f81 (M1 era.go) → 1e4b851ce (M2 audit.go+transitions.go+tests) → 93e8b98ee (M3 migrate_3phase.go + 65 SPEC fold) → 936d1fdbc (M3 errcheck fix + §E.3 signal). Pre-rebase SHAs: abd832d9a / 5f5170fbd / 564ad5726 / a1e3b2a24.
+
+**Multi-session race resolution (E6)**: A parallel session advanced local main from `f2907ba4c` (my worktree base) to `6eae1f97f` (9 commits: RULES-CONST-RULEID, RULES-HOTFIX, ORCH-INTERRUPT-LEDGER) during my M1-M3 work. Divergence was `9 4` (main 9 ahead, my worktree 4 ahead). Real file-overlap was only 2 progress.md files (HARNESS-RUNTIME-RECOVERY-001, ORCH-INTERRUPT-LEDGER-001 — both carry §E.5 that my M3 folded AND the parallel session backfilled). `git rebase 6eae1f97f` resolved cleanly (0 manual conflicts — git 3-way merge combined my §E.5→§E.4 fold with their mx_commit_sha backfill). Push `HEAD:main` fast-forwarded origin/main. The parallel session's Go engine did NOT include M1-M2 (their 9 commits are progress.md backfills + rule edits), so my M1-M3 Go engine + migration are net-new, not duplicate.
 
 **E1 AC matrix (M1-M3 subset)**:
 - AC-LR-003: PASS — distinct V3R6 SPEC set invariant across M1→M2→M3 (46 distinct post-M3 == 46 post-M2). Finding-count proxy shifted 50→46 due to the intended D2 Y_Y_N_Y retirement (the acceptance.md verification command double-counts findings-per-SPEC; the true invariant is the distinct-SPEC set, preserved). Recorded as residual risk.
