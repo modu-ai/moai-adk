@@ -97,7 +97,7 @@
 - **owner**: orchestrator-direct (GLM manager-docs spawn context-limit fallback per `feedback_glm_orchestrator_direct_sync_mx`).
 - **spec-lint**: 0 errors (StatusGitConsistency transient warning resolves on frontmatter landing).
 
-sync_commit_sha: f8a5ff144228b69a1dca82dfcc2faaa5a28c1008
+sync_commit_sha: 8ff8ae35171c3905ca0c095b6fff50920c4fcc3a
 
 ---
 
@@ -106,8 +106,8 @@ sync_commit_sha: f8a5ff144228b69a1dca82dfcc2faaa5a28c1008
 - **mx_complete_at**: 2026-06-19
 - **frontmatter_transition**: `implemented → completed`.
 - **@MX tags**: N/A (observability + doctrine SPEC — no @MX:ANCHOR/@MX:WARN surface).
-- **4-phase close**: plan (plan-phase) → run (c0798e7a6) → sync (f8a5ff144) → mx (this commit) — V3R6 era closed.
+- **4-phase close**: plan (plan-phase) → run (c0798e7a6) → sync (8ff8ae351) → mx (this commit) — V3R6 era closed.
 
-mx_commit_sha: 4609a14b6e7a043f8c561e1ecad82cdd9fcc6661
+mx_commit_sha: 12097a356989b119817c979cc471437b42c83fd6
 
 ---
