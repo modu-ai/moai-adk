@@ -67,7 +67,8 @@ agent. It never invokes `AskUserQuestion` directly.
   `internal/template/templates/**` carries no internal-dev content (SPEC IDs,
   REQ tokens, commit SHAs, macOS-bias paths). The pre-PR contributor checklist
   is in CLAUDE.local.md §2.1.
-- **`moai update` namespace protection**: `my-harness-*` skills, the
+- **`moai update` namespace protection**: `harness-*` skills (with the legacy
+  `my-harness-*` form retained during the deprecation window), the
   `.claude/agents/harness/` directory, and `.moai/harness/` are USER-OWNED.
   `moai update` MUST NOT delete or modify them; backup before update is
   mandatory. Never leak `harness-*` or `my-harness-*` content into

@@ -108,11 +108,12 @@ Two namespaces, enforced by `moai update`:
 | Namespace | Location | Owner | `moai update` behavior |
 |-----------|----------|-------|------------------------|
 | Template-managed | `internal/template/templates/**` → `.claude/agents/{core,expert,meta}/`, `moai-*` skills | MoAI-ADK distribution | Overwrites local on sync |
-| User-owned (this harness) | `.claude/agents/harness/`, `my-harness-*` skills, `.moai/harness/` | Project developer | NEVER deleted/modified; backup before update |
+| User-owned (this harness) | `.claude/agents/harness/`, `harness-*` skills, `.moai/harness/` | Project developer | NEVER deleted/modified; backup before update |
 
-The skill prefix is `my-harness-*` (Go enforcement today). The bare
-`harness-*` doctrine is deferred to a future catch-up SPEC and has NO
-protection yet — do NOT use bare `harness-` prefix.
+The canonical user-owned skill prefix is `harness-*` (recognized by Go
+enforcement after the namespace catch-up, SPEC-V3R6-HARNESS-NAMESPACE-V2-001).
+The legacy `my-harness-*` form is retained during a backward-compat
+deprecation window; new skills MUST use the bare `harness-*` prefix.
 
 ## Common Workflows
 
@@ -137,7 +138,7 @@ protection yet — do NOT use bare `harness-` prefix.
 1. Create `.claude/agents/harness/<role>-specialist.md` with `name`,
    trigger-shaped `description`, `skills:` array (companion skill), `tools:`
    (CSV string).
-2. Ensure the companion `my-harness-*` skill exists (else self-activation
+2. Ensure the companion `harness-*` skill exists (else self-activation
    smoke gate FAILs).
 
 ### Add a SPEC

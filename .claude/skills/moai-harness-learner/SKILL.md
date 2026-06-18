@@ -119,7 +119,7 @@ Comments and key ordering are preserved (YAML round-trip).
 
 ## Works Well With
 
-- `moai-meta-harness` — generates the `moai-harness-*` skills that are targets of auto-updates
+- `moai-meta-harness` — generates the `harness-*` skills that are targets of auto-updates
 - `moai-workflow-tdd` — TDD cycle generates events that feed into the observer
 - `moai-foundation-quality` — quality gates run after auto-updates to validate correctness
 
@@ -141,4 +141,4 @@ The 5-Layer Safety Pipeline (L1 Frozen Guard → L2 Canary Check → L3 Contradi
 - `.claude/rules/moai/**`
 - `.moai/project/brand/**`
 
-Only user-area skills (`.claude/skills/moai-harness-*/`) are valid auto-update targets.
+Only user-area skills (`.claude/skills/harness-*/`) are valid auto-update targets.

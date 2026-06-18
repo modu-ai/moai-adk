@@ -35,7 +35,7 @@ progressive_disclosure:
 
 # moai-meta-harness
 
-<!-- @MX:NOTE: [AUTO] V3R4 contract — this skill body is preserved unchanged per SPEC-V3R4-HARNESS-001 §10 exclusion #10 (text annotation only, no behavioral change). The meta-harness 7-Phase workflow that generates project-specific moai-harness-* skills and .claude/agents/harness/* definitions is governed by REQ-HRN-FND-015 (orchestrator-only AskUserQuestion contract) — any subagent generated under .claude/agents/harness/ MUST NOT invoke AskUserQuestion; if user input is required, the subagent returns a structured blocker report and the orchestrator runs the AskUser round. Cross-reference: .claude/rules/moai/core/agent-common-protocol.md § User Interaction Boundary. -->
+<!-- @MX:NOTE: [AUTO] V3R4 contract — this skill body is preserved unchanged per SPEC-V3R4-HARNESS-001 §10 exclusion #10 (text annotation only, no behavioral change). The meta-harness 7-Phase workflow that generates project-specific harness-* skills and .claude/agents/harness/* definitions is governed by REQ-HRN-FND-015 (orchestrator-only AskUserQuestion contract) — any subagent generated under .claude/agents/harness/ MUST NOT invoke AskUserQuestion; if user input is required, the subagent returns a structured blocker report and the orchestrator runs the AskUser round. Cross-reference: .claude/rules/moai/core/agent-common-protocol.md § User Interaction Boundary. -->
 
 <!-- ATTRIBUTION
 Original work: revfactory/harness (https://github.com/revfactory/harness)
@@ -46,7 +46,7 @@ NOTICE: This file contains modifications. See SPEC-V3R3-HARNESS-001 for derivati
 
 > **Apache 2.0 Attribution**: Adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache License 2.0). The 7-Phase workflow below is a MoAI adaptation of the upstream 6-Phase + Evolution Mechanism. See `.claude/rules/moai/NOTICE.md` for the full third-party notices and SPEC-V3R3-HARNESS-001 for derivation history.
 
-Meta-factory skill that architects and generates project-specific agent teams. Adapts the [revfactory/harness](https://github.com/revfactory/harness) 7-Phase workflow to MoAI's agent ecosystem. Produces `moai-harness-*` skills and agent definitions tailored to each project's domain.
+Meta-factory skill that architects and generates project-specific agent teams. Adapts the [revfactory/harness](https://github.com/revfactory/harness) 7-Phase workflow to MoAI's agent ecosystem. Produces `harness-*` skills and agent definitions tailored to each project's domain.
 
 **Upstream**: revfactory/harness (Apache-2.0) — "A meta-skill that designs domain-specific agent teams, defines specialized agents, and generates the skills they use." (2905 stars, 420 forks, created 2026-03-26)
 
@@ -125,7 +125,7 @@ After Phase 5 (Customization) emits new `harness-*` skills, this meta-harness au
 | Functionality | Agent definitions execute their stated purpose; skills have valid trigger conditions |
 | Security | No credentials in generated files; tool permissions follow least-privilege |
 | Craft | YAML frontmatter valid (CSV allowed-tools, quoted metadata); progressive disclosure configured |
-| Consistency | Domain alignment with `answers.yaml`; naming follows `moai-harness-*` convention |
+| Consistency | Domain alignment with `answers.yaml`; naming follows `harness-*` convention |
 
 **Scoring**:
 
@@ -226,7 +226,7 @@ The following capabilities are explicitly NOT implemented by this skill:
 - **5-layer integration mechanism** — owned by SPEC-V3R3-PROJECT-HARNESS-001. The integration with `/moai project` phases, hook installation, and CLAUDE.md marker management are all delegated to that SPEC.
 - **16-question Socratic interview** — owned by SPEC-V3R3-PROJECT-HARNESS-001. The `manager-spec` conducts the interview under that SPEC's control.
 - **Auto-evolution loop** — owned by SPEC-V3R3-HARNESS-LEARNING-001. The learning feedback mechanism (Phase 7) and delta capture are separate work items outside Wave A.
-- **Modification of `.claude/agents/{moai,harness}/` or static `moai-*` skills** — this meta-harness generates only `moai-harness-*` prefixed artifacts and has no write access to MoAI's own agent/skill directories.
+- **Modification of `.claude/agents/{moai,harness}/` or static `moai-*` skills** — this meta-harness generates only `harness-*` prefixed artifacts and has no write access to MoAI's own agent/skill directories.
 
 ---
 

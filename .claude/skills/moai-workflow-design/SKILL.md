@@ -111,8 +111,8 @@ created_at) + `tokens.json` (colors, typography, spacing, radii, shadows) + opti
 
 **Prerequisite**: SPEC-V3R3-HARNESS-001 `moai-meta-harness`. Path B1 does NOT ship a
 static Figma skill — it is generated dynamically. When user selects Path B1, invoke
-`moai-meta-harness` to generate `.claude/skills/moai-harness-figma-extractor/SKILL.md`
-(project-scoped and user-owned via `moai-harness-*` prefix — `moai update` never
+`moai-meta-harness` to generate `.claude/skills/harness-figma-extractor/SKILL.md`
+(project-scoped and user-owned via `harness-*` prefix — `moai update` never
 overwrites). Meta-harness Phase 5 (Customization) collects via Socratic interview:
 Figma file ID, page selectors mapping pages to token categories, credential reference
 (env var name like `FIGMA_TOKEN`; value NEVER stored in skill file). Generated extractor
