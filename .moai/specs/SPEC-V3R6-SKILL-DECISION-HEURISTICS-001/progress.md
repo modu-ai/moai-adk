@@ -9,7 +9,7 @@
 | Phase | Status | Owner | Commit |
 |---|---|---|---|
 | Plan | complete | manager-spec | _<plan-phase commit>_ |
-| Run | complete (this commit) | manager-develop | _<run commit — see §E.3>_ |
+| Run | complete | manager-develop | e7a4d5a4f (FF-pushed to origin/main) |
 | Sync | not started | manager-docs | _<pending>_ |
 | Mx | not started | manager-docs / orchestrator | _<pending>_ |
 
@@ -112,7 +112,7 @@ No fabricated dates/SPEC-IDs/SHAs. Pending-form is the only fallback used per C-
 
 ```yaml
 run_complete_at: 2026-06-19
-run_commit_sha: "<backfill — run-phase commit on worktree branch; orchestrator FF/rebase to main>"
+run_commit_sha: "e7a4d5a4fe13bff7179832b1925ed7b89d784f40"  # FF-pushed d78ed9885..e7a4d5a4f to origin/main
 run_status: implemented
 ac_pass_count: 8           # AC-SDH-001..004, 006, 007, 008 PASS + AC-SDH-005 PASS-WITH-DEBT
 ac_fail_count: 0
