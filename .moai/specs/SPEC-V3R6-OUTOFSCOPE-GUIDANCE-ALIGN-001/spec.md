@@ -2,7 +2,7 @@
 id: SPEC-V3R6-OUTOFSCOPE-GUIDANCE-ALIGN-001
 title: "Align SPEC-authoring guidance to the OutOfScopeRule lint convention"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-06-18
 updated: 2026-06-19
 author: manager-spec
@@ -267,15 +267,15 @@ manager-docs (sync/Mx) per the Forbidden-modifications matrix — NOT by manager
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+- M1-M5 implemented in commit `77b568d7f`. Three guidance source files aligned to the `### Out of Scope — <topic>` H3 convention: `manager-spec.md` (bullet mandate at L84 + completeness refs L124/126/132/243), `plan-auditor.md` (SC-6 + refs L52/91/147), `moai-workflow-spec/SKILL.md` (Exclusion Rules + checklist). Three template mirrors aligned + `make build` regenerated `catalog.yaml` (3 in-scope skill hashes). M5 CI re-drift guard `internal/template/outofscope_guidance_align_test.go` added.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- AC-OSG-001..007 all PASS (manager-develop self-verification + orchestrator independent verify). `go build ./...` exit 0; `go test ./internal/template/ -run TestOutOfScopeGuidanceAligned` PASS. Mirror parity confirmed (`diff` IDENTICAL ×3). run_commit_sha: `77b568d7f`.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- CHANGELOG `[Unreleased]` entry added (root-cause split-SSOT alignment summary). Status transition `in-progress → implemented` (orchestrator-direct, isolated worktree on origin/main during a multi-session parallel race). sync_commit_sha: `<backfill §E.4>`.
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
