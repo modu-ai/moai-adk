@@ -169,3 +169,78 @@ When the runtime does not support `/goal` (version below v2.1.139, or hooks disa
 - `.claude/rules/moai/workflow/orchestration-mode-selection.md` § C.3 — Mode 6 (Workflow) capability gate (Implementation Kickoff Approval-passed + preferences-collected preconditions; scaling-not-nesting; the named-script-API prohibition).
 - `.claude/rules/moai/workflow/dynamic-workflows.md` — the Workflow primitive (no mid-run user input; Implementation Kickoff Approval unaffected).
 - the Implementation Kickoff Approval mandatory-restoration policy — the score-independent human gate this section preserves.
+
+---
+
+## Recursive Self-Diagnosis Loop (bounded)
+
+This section wires the IGGDA Phase 2 bounded recursive self-diagnosis loop (D3) — the "self-audit" layer that handles MECHANICAL code failures fast during run-phase autonomy. It is the DIAGNOSE-PATCH-VERIFY pattern inherited from the `cycle_type=autofix` contract (see `.claude/rules/moai/development/manager-develop-prompt-template.md` § cycle_type Mode Reference), projected onto the run-phase autonomy loop. The loop is BOUNDED (max 3 iterations) and SEMANTIC-FAILURE-SAFE (data race / deadlock / panic / test assertion failure escalate immediately, NEVER auto-patched).
+
+### 1. Mechanical vs semantic failure classification
+
+[ZONE:Evolvable] [HARD] When a failure surfaces during the autonomous run-phase loop, the recursive self-diagnosis sub-agent MUST first classify it:
+
+| Failure type | Examples | Loop action |
+|--------------|----------|-------------|
+| **Mechanical** | lint rule violation, type error, build error, missing import, formatting drift, gofmt divergence | DIAGNOSE-PATCH-VERIFY (max 3 iterations) |
+| **Semantic** | data race, deadlock, panic, test assertion failure, concurrency hazard | IMMEDIATE escalate (NEVER auto-fix) |
+
+The classification is grounded in `run.md §4 Semantic-failure escalation (HARD)` (the existing run-phase autonomy section) + `ci-autofix-protocol.md` (the mechanical-autofix max-3 bound) + `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` §3 (the 5 circuit-breaker invariants). **Test assertion failures are SEMANTIC** — a failing assertion indicates a behavior contract was violated, not a mechanical error (REQ-IGGDA-016, AC-IGGDA-023). Mis-classifying a test assertion failure as mechanical and auto-patching it would mask the real behavior bug.
+
+### 2. The DIAGNOSE-PATCH-VERIFY pattern (mechanical failures only)
+
+For a MECHANICAL failure, the recursive self-diagnosis sub-agent executes one iteration:
+
+1. **DIAGNOSE** — read the failing output (lint message, build error, type error). Identify the root cause. Challenge the diagnosed root cause once ("How do we know this is the cause, not a symptom?") before patching — do NOT stop at the first plausible cause.
+2. **PATCH** — apply a minimal fix addressing the root cause WITHOUT expanding scope. The patch surface is the SPEC scope ONLY.
+3. **VERIFY** — re-run the failing check locally. On exit 0, advance. On still-failing, increment the iteration counter and repeat from DIAGNOSE.
+
+The sub-agent runs in FOREGROUND (`run_in_background: false`) — it patches code, so the background-write prohibition (`agent-common-protocol.md` § Background Agent Execution) binds.
+
+### 3. Max-3-iteration bound (HARD)
+
+[ZONE:Evolvable] [HARD] The loop attempts AT MOST 3 iterations. When iteration 3 completes without a VERIFY exit 0, the loop HALTS — iteration 4 is PROHIBITED. The orchestrator is signaled to run an `AskUserQuestion` escalation presenting the user with at least: (a) continue with manual investigation, (b) revert the offending change and re-plan, (c) abort with structured failure report. There is no auto-resume — the human MUST decide.
+
+The max-3 bound is inherited from two sources:
+- `.claude/rules/moai/workflow/ci-autofix-protocol.md` — the autofix loop's per-PR-push max-3-iteration contract.
+- `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` §3 invariant 1 — `MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES=3` (book1 ch06 §5). Three iterations is the empirically-validated threshold: a mechanical failure is either patched (iterations 1–2 typically succeed) or is actually semantic-misclassified (iteration 3 fails → escalate, and the human re-classifies). Raising the bound risks the death-spiral; lowering it under-fixes easily-patched mechanical failures.
+
+### 4. Semantic failures escalate IMMEDIATELY (HARD)
+
+[ZONE:Evolvable] [HARD] When the failure classifier determines the failure is SEMANTIC (data race, deadlock, panic, test assertion failure, concurrency hazard), the loop halts IMMEDIATELY — NO DIAGNOSE-PATCH-VERIFY attempt. The orchestrator is signaled to run an `AskUserQuestion` human escalation. Semantic failures are NEVER auto-patched. This inherits `run.md §4 Semantic-failure escalation (HARD)` and `ci-autofix-protocol.md` (CONST-V3R5-010 — semantic failures MUST NOT be auto-fixed without human approval).
+
+### 5. The 5 circuit-breaker invariants (runtime-recovery-doctrine §3 compliance)
+
+The loop complies with all 5 circuit-breaker invariants from `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` §3:
+
+1. **Max-3 same-rung failures → escalate rung**: the max-3-iteration bound IS this invariant's projection. After 3 failed iterations, the loop escalates (does NOT attempt a 4th).
+2. **`hasAttemptedReactiveCompact` no-self-loop**: within a single turn, the loop does NOT re-attempt the same DIAGNOSE-PATCH-VERIFY if it already failed this turn. Each iteration is a new turn.
+3. **Compact-can-PTL last-resort escape**: if the loop itself hits PTL (the recovery triggers the error it is recovering from), the loop falls to rung-4 abort + preserve (persist state to `progress.md`), NOT another patch.
+4. **Abort-closes-ledger**: on halt (iteration 3 OR semantic failure OR PTL), the loop persists its state to `progress.md §E Recursive Self-Diagnosis Log` before the session ends. An abort that leaves `progress.md` stale forces the next session to rediscover in-flight state — a silent restart disguised as a resume.
+5. **Narrative-consistency**: across compact/recovery boundaries, the loop's state is reported via the 5-Section Evidence-Bearing Report format (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk per `.claude/rules/moai/core/verification-claim-integrity.md` §3).
+
+### 6. Iteration logging contract
+
+[ZONE:Evolvable] [HARD] Each recursive self-diagnosis iteration MUST be appended to `.moai/specs/<SPEC-ID>/progress.md` under a `## §E Recursive Self-Diagnosis Log` section with: iteration number, failure classification (mechanical/semantic), root-cause summary, patch summary, VERIFY result, and (on halt) the escalation reason. This is the ledger the abort-closes-ledger invariant (§5 #4) persists. The log is grep-verifiable:
+
+```bash
+grep -A 10 "Recursive Self-Diagnosis Log" .moai/specs/<SPEC-ID>/progress.md
+```
+
+### 7. Forbidden-paths list (PATCH scope discipline)
+
+[ZONE:Evolvable] [HARD] The PATCH step MUST NOT modify:
+- `.env`, `.env.*`, credentials files, secrets
+- `scripts/ci-watch/run.sh` or any Wave 2 infrastructure scripts
+- Any file outside the SPEC's declared run-phase scope (plan.md §A EXTEND envelope)
+
+The patch surface is the SPEC scope ONLY. This inherits CONST-V3R5-011 + CONST-V3R5-013 (the autofix protected-files list) + `manager-develop-prompt-template.md` § cycle_type=autofix PATCH step. A PATCH that reaches outside the SPEC scope is a scope-discipline violation (agent-common-protocol.md § Agent Core Behaviors #5 Maintain Scope Discipline).
+
+### 8. Flat hierarchy (no agent spawns agent)
+
+The recursive self-diagnosis sub-agent is spawned BY THE ORCHESTRATOR (not by manager-develop — Anthropic Finding A1: "Subagents cannot spawn other subagents"). When the sub-agent needs to delegate (e.g., it hits a blocker requiring user input), it returns a structured blocker report; the orchestrator runs `AskUserQuestion` and re-delegates. The sub-agent NEVER calls `AskUserQuestion` directly (the asymmetric orchestrator-subagent boundary).
+
+### 9. Relationship to the IGGDA pipeline
+
+This loop is the Phase 2 "self-audit" layer of the IGGDA 4-phase pipeline (see `.claude/rules/moai/workflow/orchestration-mode-selection.md` §I). It is COMPLEMENTARY to — NOT a replacement for — the independent audits (plan-auditor Phase 1, sync-auditor Phase 3). Self-audit handles mechanical code failures fast (bounded loop, no human in the loop for easy cases); independent audit handles SPEC-quality assurance (fresh-context skeptical evaluation). See `orchestration-mode-selection.md` §J.3 for the disambiguation.
+
