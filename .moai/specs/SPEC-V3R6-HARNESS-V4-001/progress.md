@@ -118,6 +118,51 @@
 
 **Residual-risk note (verification-claim integrity)**: the M3 pre-task delegation prompt carried a residual-risk claim that `internal/spec/audit_test.go` has "2 pre-existing failures — TestSpecAudit_JSONSchema_DriftFindings + TestSpecAudit_StrictMode_ExitsNonZeroOnDrift". **This claim does NOT verify against the actual codebase**: those test function names do not exist in `audit_test.go` (the actual drift/strict/jsonschema test names are `TestAudit_JSONSchema`, `TestAudit_SyncStatusDriftDetection`, etc.), and `go test ./internal/spec/` exits 0 with `ok 5.191s`. Per `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 3 + §5, the unverified defect claim is NOT propagated as a residual risk; the observed baseline is recorded instead (spec package green, exit 0). M2 touched 0 Go files, so the spec package state is orthogonal to M2 regardless.
 
+### M3 — manifest.json schema + Runner primitive-mapping + Sprint Contract (AC-HV4-005a/b + 006a/b + 008a/b) DONE
+
+**Commit**: `5c3186e91` (`feat(SPEC-V3R6-HARNESS-V4-001): M3 manifest schema + Runner primitive-mapping + Sprint Contract`). M3 delivered a NEW self-contained Go package `internal/harness/v4manifest/` (8 files, 995 LOC) — deliberately separate from the existing learning-subsystem `internal/harness` (different manifest.jsonl lineage) and from `internal/manifest` (template-deployment manifest).
+
+| AC ID | Status | Verification Command | Actual Output |
+|-------|--------|---------------------|---------------|
+| AC-HV4-005a | PASS | `go test -run TestValidate_RequiresAllFiveSpecialistFields ./internal/harness/v4manifest/...` | `--- PASS: TestValidate_RequiresAllFiveSpecialistFields (0.00s)` — each specialist's 5 sub-fields (role/primitive/isolation/effort/model) enforced via `Validate()` |
+| AC-HV4-005b | PASS | `go test -run 'TestRunnerTemplate_DispatchesAllFivePrimitivesVerbatim\|TestRunnerTemplate_NoHeuristicReDerivation' ./internal/harness/v4manifest/...` | both PASS — Runner template `dispatchSpecialist` switch exhaustive over the 5 primitives; `NoHeuristicReDerivation` confirms no heuristic re-derivation path |
+| AC-HV4-006a | PASS | `go test -run 'TestValidate_AcceptsValidManifest\|TestValidate_RejectsEachMissingTopLevelField' ./internal/harness/v4manifest/...` | both PASS — all 8 top-level fields enforced; accepts valid manifest; rejects each-missing-field |
+| AC-HV4-006b | PASS | `go test -run TestRunnerTemplate_SingleConfigReadPath ./internal/harness/v4manifest/...` | `--- PASS: TestRunnerTemplate_SingleConfigReadPath (0.00s)` — exactly one config-read path (`readManifest()` reads `manifest.json`) |
+| AC-HV4-008a | PASS | `go test -run TestValidate_AcceptsValidManifest ./internal/harness/v4manifest/...` (sprint_contract non-empty dimensions + non-nil thresholds enforced by Validate) | PASS — `Validate()` enforces `sprint_contract.dimensions` non-empty + `thresholds` non-nil |
+| AC-HV4-008b | PASS | `go test -run 'TestDecideEvaluator_SkipsForSoloRangeTask\|TestDecideEvaluator_InvokesForComplexTask' ./internal/harness/v4manifest/...` | both PASS — `DecideEvaluator()` skips (within solo range) with rationale OR invokes (exceeds solo range) with dimensions echoed |
+
+**M3 test suite** (19 tests, all PASS):
+
+```
+TestRunnerTemplate_DispatchesAllFivePrimitivesVerbatim
+TestRunnerTemplate_NoHeuristicReDerivation
+TestRunnerTemplate_SingleConfigReadPath
+TestRunnerTemplate_DeterministicScriptBody
+TestRunnerTemplate_AppliesSprintContractConditionally
+TestRunnerTemplate_EmitsWorktreeCleanupDirective
+TestRunnerTemplate_TemplateNeutrality
+TestDecideEvaluator_SkipsForSoloRangeTask
+TestDecideEvaluator_InvokesForComplexTask
+TestDecideEvaluator_RationaleAlwaysNonEmpty
+TestValidate_AcceptsValidManifest
+TestValidate_RejectsEachMissingTopLevelField
+TestValidate_RejectsInvalidPrimitive
+TestValidate_RejectsInvalidIsolation
+TestValidate_RejectsInvalidEffort
+TestValidate_RejectsInvalidModel
+TestValidate_RejectsInvalidPattern
+TestValidate_RequiresAllFiveSpecialistFields
+TestValidate_AcceptsMultipleSpecialists
+```
+
+**Coverage**: `go test -cover ./internal/harness/v4manifest/...` → `coverage: 97.5% of statements` (≥85% threshold).
+
+**Runner-template Go-embed decision** (design §F + E8): the Runner template lives as a Go-embedded string `const RunnerTemplate` in `runner_template.go` (option a — co-located with the schema package), NOT as a file under `internal/template/templates/.claude/workflows/`. Rationale (recorded in the file's package doc): `.claude/workflows/` is NOT a template surface today (pre-flight confirmed: `find internal/template/templates/.claude/workflows` returns nothing), and a Go-embedded string keeps the template out of the user-owned `harness-*` namespace at rest. The emitted per-harness `harness-<name>-run.js` is user-owned per M1 §24.4; the TEMPLATE the Builder stamps from is moai-distributable Go source.
+
+**Determinism body clean** (C-HV4-003): `TestRunnerTemplate_DeterministicScriptBody` asserts the template body contains NO `Date.now()` or `Math.random()` calls — `Date`/`Math.random` appear ONLY in the Go doc comment (documenting the constraint), never in the JS script body. Resume-cache safe.
+
+**Template neutrality** (C-HV4-005): `TestRunnerTemplate_TemplateNeutrality` asserts zero SPEC-ID / REQ / AC / commit-SHA / archive-path markers in the template body — generic mechanism description only.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
