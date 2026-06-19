@@ -34,6 +34,33 @@
 
 ---
 
+## § Phase 0.95 Mode Selection
+
+**Decision**: `sub-agent` (Mode 5, sequential per milestone)
+
+**Input parameters**:
+- tier: L
+- scope: ~10-15 files (orchestration-mode-selection.md, run.md, iggda-phase-driver.sh NEW, regression test NEW, internal/spec/audit.go, internal/cli/spec_audit.go, template mirrors, docs)
+- domain count: ~5 (rules/markdown, shell hook, Go source, Go test, docs/drift)
+- file language mix: markdown + shell + Go (mixed)
+- concurrency benefit: LOW (coding-heavy, dependent milestone chain M1→M6)
+- Agent Teams prereqs: workflow.team.enabled=true + CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 (moot — coding-heavy overrides)
+
+**Mode evaluation**:
+
+| Mode | Selected? | Rationale |
+|------|-----------|-----------|
+| trivial (1) | NO | semantic changes, multiple files, FROZEN-amend |
+| background (2) | NO | Write tasks, not read-only |
+| agent-team (3) | NO | coding-heavy; Anthropic coding-task parallelism caveat |
+| parallel (4) | NO | coding-heavy, NOT research-heavy; dependent milestones |
+| workflow (6) | NO | semantic/new-code/multi-rule, NOT mechanical-uniform; coding-heavy |
+| sub-agent (5) | YES | default fallback; coding-heavy + dependent milestone chain |
+
+**Justification**: IGGDA M1-M6 are coding-heavy (Go source M5 + Go tests M4) + semantic rule edits (M1 FROZEN-amend in orchestration-mode-selection.md, M2 recursive loop in run.md) + new mechanisms (M3 Stop hook driver). Per Anthropic's coding-task parallelism caveat ("most coding tasks involve fewer truly parallelizable tasks than research"), sequential sub-agent is the correct default. Mode 6 workflow rejected — M1-M6 are semantic/new-code/multi-rule, not a single uniform mechanical transform. Milestones are dependent (M1 FROZEN-amend must land before M2 builds on the amended predicate; M5 `--filter-spec` flag is an M3 Stop-hook dependency). Implementation Kickoff Approval PASSED (Tier L explicit gate, user-approved 2026-06-19).
+
+---
+
 ## §E.2 Run-phase Evidence
 
 **Run-phase**: M1–M6 (manager-develop, cycle_type=ddd for rule amendments + cycle_type=tdd for M5 Go). 2026-06-19.
