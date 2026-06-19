@@ -2,7 +2,7 @@
 id: SPEC-V3R6-RULES-VERSION-FORMAT-001
 title: "Rules version-staleness corrections + format/consistency normalization"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-06-19
 updated: 2026-06-19
 author: manager-spec
