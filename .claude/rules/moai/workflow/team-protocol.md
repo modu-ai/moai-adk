@@ -103,7 +103,7 @@ The task ledger at `.moai/state/team/{team-id}/tasklist.md` follows the Magentic
 - `TaskList.Claim()` atomically reserves the lowest-ID unblocked task by appending a `CLAIMED by {teammate-id}` row.
 - Concurrent claims are serialized via filesystem lock on tasklist.md.
 - No teammate or team lead shall remove or reorder rows — corrections via new TaskUpdate rows.
-- On TeamDelete, the ledger is archived to `.moai/state/team-archive/{team-id}-{timestamp}/`.
+- On automatic team cleanup at session exit, the ledger is archived to `.moai/state/team-archive/{team-id}-{timestamp}/` (the explicit `TeamDelete` tool was removed in Claude Code v2.1.178 — cleanup is now automatic; `{team-id}` is the session-derived name `session-<first8>`).
 
 ## Spawn Wrapper Validation
 

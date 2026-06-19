@@ -444,7 +444,7 @@ graph TD
     B -->|"默认（自动）"| E["自动选择"]
 
     C --> F["顺序专家委托<br/>Task() → Expert Agent"]
-    D --> G["并行团队协作<br/>TeamCreate → SendMessage"]
+    D --> G["并行团队协作<br/>Agent(name=…) → SendMessage"]
     E -->|"高复杂度"| D
     E -->|"低复杂度"| C
 
@@ -467,7 +467,7 @@ MoAI-ADK 自动分析项目复杂度并选择最优执行模式：
 **Agent Teams 模式**采用并行团队开发：
 
 - 多个智能体同时工作，通过共享任务列表协作
-- 通过 `TeamCreate`、`SendMessage` 和 `TaskList` 实现实时协调
+- 通过 `Agent(name=…)`（隐式团队）、`SendMessage` 和 `TaskList` 实现实时协调
 - 最适合大规模功能开发和多领域任务
 
 ```bash

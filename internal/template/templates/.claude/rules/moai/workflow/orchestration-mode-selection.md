@@ -25,7 +25,7 @@ The orchestrator selects exactly one of the following modes per Phase 0.95 invoc
 |---|------|-------------|---------------|----------------|
 | 1 | `trivial` | None — direct execution by the orchestrator, no sub-agent spawn | n/a | Typo fix, single-line formatting, no semantic change |
 | 2 | `background` | 1 concurrent sub-agent | `Agent(run_in_background: true, ...)` | Read-only analysis that can complete asynchronously without blocking the conversation |
-| 3 | `agent-team` | 3-5 dynamic teammates | `TeamCreate(...)` + `Agent(subagent_type: "general-purpose", team_name: ..., name: ...)` × N | Multi-domain (≥3 domains OR ≥10 files) research-heavy work AND all Agent Teams capability-gate prerequisites met |
+| 3 | `agent-team` | 3-5 dynamic teammates | `Agent(subagent_type: "general-purpose", name: ...)` × N (implicit team forms on first spawn — no setup step; `team_name` accepted but ignored per Claude Code v2.1.178) | Multi-domain (≥3 domains OR ≥10 files) research-heavy work AND all Agent Teams capability-gate prerequisites met |
 | 4 | `parallel` | 3-5 concurrent sub-agents (single message, multiple `Agent()` calls) | Multiple `Agent()` invocations in one assistant turn | Multi-domain research that does NOT meet Agent Teams prerequisites; or any case where Agent Teams session overhead exceeds benefit |
 | 5 | `sub-agent` | 1 sequential sub-agent per milestone | Sequential `Agent(...)` spawns, one milestone at a time | Coding-heavy work (per Anthropic's coding-task parallelism caveat), or any case where the simpler mode suffices |
 | 6 | `workflow` | Up to 16 concurrent workflow agents (1000-total per-run backstop, per `dynamic-workflows.md`) | Orchestrator-launched Workflow fan-out (a script the runtime executes to coordinate agents — NOT a subagent spawning subagents) | Genuinely-parallel, high-volume **mechanical** transformation (≥ ~30 files AND a single uniform transform rule AND no inter-file dependency) — call-site rename, import-path bulk change, signature-stable edits. Coding-heavy / multi-domain / new-code work stays Mode 5 (per Anthropic's coding-task parallelism caveat). |
@@ -54,7 +54,7 @@ START (Phase 0.95 Mode Selection)
   │     • `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml`
   │     • environment variable `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
   │   AND is the scope multi-domain (≥3 domains OR ≥10 files)?
-  │   ├── YES → Mode 3: AGENT-TEAM (TeamCreate + dynamic teammate spawn)
+  │   ├── YES → Mode 3: AGENT-TEAM (implicit team — dynamic teammate spawn via Agent(name=...))
   │   └── NO  → continue
   │
   ├── Is the task multi-domain (≥3 domains) AND research-heavy
@@ -181,7 +181,7 @@ The grep count MUST be ≥ 1. In practice, naming the chosen mode anywhere withi
 
 ### §D.3 When to log a boundary case
 
-When the decision tree hit a boundary (e.g., scope = exactly 10 files, exactly 3 domains, harness = `standard` with team.enabled = true but env var unset), the orchestrator MUST additionally include a **Boundary Case** subsection documenting the tie-breaker rule that resolved the ambiguity. This enables retrospective analysis to recalibrate threshold values across SPEC cohorts.
+When the decision tree hit a boundary (e.g., scope = exactly 10 files, exactly 3 domains, harness = `standard` with team.enabled = true but env var unset), the orchestrator MUST additionally include a **Boundary Case** subsection documenting the tie-breaker rule that resolved the ambiguity. This enables retrospective analysis to recalibrate threshold values across SPEC groups (Epics).
 
 ---
 
@@ -222,7 +222,7 @@ The following patterns violate the orchestration mode selection contract:
 
 [ZONE:Frozen] [HARD] "Mode 6 (workflow)" added here is appended to ONE specific list: the **Phase 0.95 execution-mode catalog** in this file (`trivial` / `background` / `agent-team` / `parallel` / `sub-agent` → + `workflow`). This is a DIFFERENT axis from the `run.md` `--mode` **dispatch axis** (`autopilot` / `loop` / `team` / `pipeline`) documented in `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification and the `run.md` Mode Dispatch table. Both happen to be short lists, which is the confusion trap.
 
-- **Execution-mode catalog** (Phase 0.95, where Mode 6 lands): governs HOW the orchestrator spawns — concurrency + spawn surface (direct / background `Agent` / `TeamCreate` / parallel `Agent()` / sequential `Agent()` / **Workflow fan-out**).
+- **Execution-mode catalog** (Phase 0.95, where Mode 6 lands): governs HOW the orchestrator spawns — concurrency + spawn surface (direct / background `Agent` / implicit-team `Agent(name=...)` / parallel `Agent()` / sequential `Agent()` / **Workflow fan-out**).
 - **`--mode` dispatch axis** (CLI flag, NOT touched here): governs WHICH `/moai run` workflow variant runs — `autopilot` vs `loop` (Ralph) vs `team` vs the rejected `pipeline`.
 
 [ZONE:Frozen] [HARD] Mode 6 (`workflow`) is added ONLY to the execution-mode catalog. It is NOT a new `--mode` dispatch value; no `--mode workflow` flag is introduced; the `run.md` Mode Dispatch sentinel set (`MODE_UNKNOWN` / `MODE_TEAM_UNAVAILABLE` / `MODE_PIPELINE_ONLY_UTILITY`) is unchanged. The header cross-reference above already notes the two axes "interact with — but are separate from" each other; this separation is preserved.

@@ -37,7 +37,7 @@ Apply existing --team/--solo flag logic in Team Mode Routing below.
 When --team flag is provided or auto-selected, the run phase MUST switch to team orchestration:
 
 1. Verify prerequisites: workflow.team.enabled == true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var is set
-2. If prerequisites met: Read ${CLAUDE_SKILL_DIR}/team/run.md and execute the team workflow (TeamCreate with backend-dev + frontend-dev + tester + quality)
+2. If prerequisites met: Read ${CLAUDE_SKILL_DIR}/team/run.md and execute the team workflow (spawn backend-dev + frontend-dev + tester + quality via Agent(name=...) — the team forms implicitly on first spawn)
 3. If prerequisites NOT met: Warn user then fallback to standard sub-agent mode
 
 Team composition: backend-dev (inherit) + frontend-dev (inherit) + tester (inherit) + quality (inherit, read-only)

@@ -28,7 +28,7 @@ triggers:
 
 Purpose: Create comprehensive SPEC documents through parallel team-based research and analysis. Used when plan phase benefits from multi-angle exploration.
 
-Flow: TeamCreate -> Parallel Research -> Annotation Cycle -> SPEC Document -> Shutdown
+Flow: Spawn research teammates (implicit team) -> Parallel Research -> Annotation Cycle -> SPEC Document -> Shutdown
 
 ## Prerequisites
 
@@ -40,10 +40,7 @@ See .claude/rules/moai/workflow/spec-workflow.md for team mode prerequisites.
    - .moai/config/sections/workflow.yaml for team settings
    - .moai/config/sections/quality.yaml for development mode
 
-2. Create team:
-   ```
-   TeamCreate(team_name: "moai-plan-{feature-slug}")
-   ```
+2. The team forms implicitly on the first teammate spawn (one team per session, no setup step). Teams/tasks are stored under the session-derived name `session-<first8>`.
 
 3. Create shared task list:
    ```
@@ -55,12 +52,11 @@ See .claude/rules/moai/workflow/spec-workflow.md for team mode prerequisites.
 
 ## Phase 1: Spawn Research Team
 
-Spawn 3 teammates using the **team-reader** profile with role-specific prompts and model overrides. All spawns MUST use Agent() with `team_name` and `name` parameters. Launch all three in a single response for parallel execution:
+Spawn 3 teammates using the **team-reader** profile with role-specific prompts and model overrides. All spawns MUST use Agent() with the `name` parameter — the team forms implicitly on the first spawn (no setup step; the `team_name` parameter is accepted but ignored as of Claude Code v2.1.178). Launch all three in a single response for parallel execution:
 
 ```
 Agent(
   subagent_type: "team-reader",
-  team_name: "moai-plan-{feature-slug}",
   name: "researcher",
   model: "haiku",
   mode: "plan",
@@ -77,7 +73,6 @@ Agent(
 
 Agent(
   subagent_type: "team-reader",
-  team_name: "moai-plan-{feature-slug}",
   name: "analyst",
   model: "sonnet",
   mode: "plan",
@@ -91,7 +86,6 @@ Agent(
 
 Agent(
   subagent_type: "team-reader",
-  team_name: "moai-plan-{feature-slug}",
   name: "architect",
   model: "opus",
   mode: "plan",
@@ -214,7 +208,7 @@ AskUserQuestion with options:
    ```
    This safely removes GLM env vars while preserving ANTHROPIC_AUTH_TOKEN and other settings.
    Do NOT manually Read/Write settings.local.json — use the CLI command which handles JSON merging correctly.
-5. TeamDelete to clean up team resources
+5. Team cleanup is automatic on session exit (no explicit teardown call — the TeamDelete tool was removed in Claude Code v2.1.178)
 6. Log any unresponsive teammates for debugging
 7. Do NOT wait indefinitely for shutdown_response
 8. Execute /clear to free context for next phase

@@ -16,8 +16,17 @@ Claude Code and MoAI configuration management rules.
 - hooks: Hook script definitions
 - permissions: Access control
 - statusLine: Statusline configuration
+- attribution: Commit/PR attribution block. Sub-keys: `commit` (attribution text appended to git commits, including trailers; empty string hides attribution), `pr` (attribution text for PR bodies), and `sessionUrl` (Claude Code v2.1.183+; boolean, default `true`) which controls whether the claude.ai session link is appended to commits and PRs created from web or Remote Control sessions — set `false` to omit the Claude-Session trailer and PR-body link. The MoAI template pins `sessionUrl: false` so its own `🗿 MoAI` attribution trailers are not accompanied by a session link. The boolean type was confirmed against the bundled Claude Code v2.1.183 settings schema; verify the type against your own Claude Code instance before pinning a non-default value, since the published machine-readable schemastore entry may lag the release.
 - disableBundledSkills: Hide bundled skills/workflows (e.g. `/deep-research`) from discovery. Set `true` to suppress the Claude Code bundled skill catalog so only project + user skills remain visible. An equivalent environment variable form is also supported. MoAI-ADK does not emit this toggle — it is documented here as a Claude Code option that exists for projects that want to ship a curated, bundle-free skill surface.
 - `--safe-mode` CLI flag: Launch Claude Code with bundled skills and workflows disabled (equivalent runtime effect to `disableBundledSkills: true`, but applied at launch time rather than via settings). Useful for locked-down environments or when debugging whether a behavior originates from a bundled skill. MoAI-ADK does not pass this flag automatically; it is documented as an available launch option.
+
+#### `/config` command (Claude Code v2.1.178+)
+
+The genuine Claude Code `/config` slash command (distinct from MoAI's `.moai`-prefixed config filesystem paths) edits `settings.json` interactively or directly:
+
+- Direct-set form: `/config key=value` writes a single setting without opening the selector (e.g. `/config theme=dark`). `/config <key>=<value>` is the general syntax.
+- Help listing: `/config --help` lists the available shorthand keys the command accepts.
+- Toggle-key behavior (within the `/config` settings selector): Enter AND Space both change the currently-selected setting, and Esc now saves-and-closes the selector (it no longer reverts unsaved changes).
 
 ### MCP Configuration
 

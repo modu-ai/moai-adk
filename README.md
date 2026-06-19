@@ -395,7 +395,7 @@ graph TD
     B -->|"Default (Auto)"| E["Auto Selection"]
 
     C --> F["Sequential Expert Delegation<br/>Task() → Expert Agent"]
-    D --> G["Parallel Team Collaboration<br/>TeamCreate → SendMessage"]
+    D --> G["Parallel Team Collaboration<br/>Agent(name=…) → SendMessage"]
     E -->|"High Complexity"| D
     E -->|"Low Complexity"| C
 
@@ -418,7 +418,7 @@ MoAI-ADK automatically analyzes project complexity and selects the optimal execu
 **Agent Teams Mode** uses parallel team-based development:
 
 - Multiple agents work simultaneously, collaborating through a shared task list
-- Real-time coordination via `TeamCreate`, `SendMessage`, and `TaskList`
+- Real-time coordination via `Agent(name=…)` (implicit team), `SendMessage`, and `TaskList`
 - Best suited for large-scale feature development and multi-domain tasks
 
 ```bash

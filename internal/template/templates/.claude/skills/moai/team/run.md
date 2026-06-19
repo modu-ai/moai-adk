@@ -40,8 +40,7 @@ Teammates are spawned using the Agent tool with runtime overrides:
 | Parameter | Source | Purpose |
 |-----------|--------|---------|
 | subagent_type | Always "general-purpose" | Full tool access |
-| team_name | TeamCreate result | Team coordination |
-| name | Pattern role name | Addressable via SendMessage |
+| name | Pattern role name | Addressable via SendMessage; the team forms implicitly on first spawn (the `team_name` parameter is accepted but ignored as of Claude Code v2.1.178) |
 | model | workflow.yaml role_profiles | Cost optimization |
 | mode | workflow.yaml role_profiles | Permission control |
 | isolation | workflow.yaml role_profiles | File safety |
@@ -136,18 +135,18 @@ Source: SPEC-WF-AUDIT-GATE-001 REQ-WAG-005.
 
 **Team mode rules**:
 - Gate executes in the **main session (Leader)** only — not inside any teammate
-- Gate runs **before** any `TeamCreate`, `Agent(subagent_type: ...)`, or teammate spawn
+- Gate runs **before** any `Agent(subagent_type: ...)` teammate spawn (the implicit team forms on the first spawn — there is no separate team-creation step)
 - plan-auditor is invoked exactly once per `/moai run --team` call (no per-teammate duplication)
 - If cache HIT (24h valid PASS): skip plan-auditor invocation, log cache hit, proceed to Phase 2
-- Verdict=FAIL blocks Phase 2 entirely — no TeamCreate, no teammate spawn occurs
+- Verdict=FAIL blocks Phase 2 entirely — no teammate spawn occurs (and therefore no implicit team forms)
 - `--skip-audit` / `MOAI_SKIP_PLAN_AUDIT=1`: bypass applies equally in team mode
 
 **Implementation**: Follow the identical 5-step logic defined in `workflows/run.md` Phase 0.5:
 Step 1 (hash), Step 2 (24h cache), Step 3 (plan-auditor invocation), Step 4 (verdict routing),
 Step 5 (persist verdict + daily report). The only team-mode difference is enforcement point:
-verdict=PASS is required before the Phase 2 TeamCreate call below.
+verdict=PASS is required before the Phase 2 first teammate spawn below.
 
-Log pattern: `[plan-audit] team mode detected, gate applies before TeamCreate`
+Log pattern: `[plan-audit] team mode detected, gate applies before first teammate spawn`
 
 If FAIL (grace window expired): present options via AskUserQuestion before any team ops:
 - Option 1 (Recommended): Revise SPEC, then re-run `/moai run --team`
@@ -158,10 +157,7 @@ If FAIL (grace window expired): present options via AskUserQuestion before any t
 
 #### 2.1 Team Setup
 
-1. Create team:
-   ```
-   TeamCreate(team_name: "moai-run-SPEC-XXX")
-   ```
+1. The team forms implicitly on the first teammate spawn (one team per session, no setup step). Teams/tasks are stored under the session-derived name `session-<first8>`.
 
 2. Create shared task list with dependencies:
    ```
@@ -184,7 +180,6 @@ Spawn teammates using `Agent(subagent_type: "general-purpose")` with role profil
 ```
 Agent(
   subagent_type: "general-purpose",
-  team_name: "moai-run-SPEC-XXX",
   name: "backend-dev",
   model: "sonnet",
   mode: "acceptEdits",
@@ -209,7 +204,6 @@ Agent(
 
 Agent(
   subagent_type: "general-purpose",
-  team_name: "moai-run-SPEC-XXX",
   name: "frontend-dev",
   model: "sonnet",
   mode: "acceptEdits",
@@ -231,7 +225,6 @@ Agent(
 
 Agent(
   subagent_type: "general-purpose",
-  team_name: "moai-run-SPEC-XXX",
   name: "tester",
   model: "sonnet",
   mode: "acceptEdits",
@@ -314,7 +307,7 @@ Agent(
    moai cc
    ```
 
-4. TeamDelete to clean up team resources
+4. Team cleanup is automatic on session exit (no explicit teardown call — the TeamDelete tool was removed in Claude Code v2.1.178)
 
 ---
 
@@ -324,22 +317,19 @@ When `team_mode` is empty or `"agent-teams"` in llm.yaml, use parallel teammates
 
 ### Phase 0.5: Plan Audit Gate
 
-Same as CG Mode Phase 0.5 above — execute in main session before TeamCreate.
-Verdict=PASS required before `TeamCreate(team_name: "moai-run-SPEC-XXX")` is called.
+Same as CG Mode Phase 0.5 above — execute in main session before the first teammate spawn.
+Verdict=PASS required before the first `Agent(name: ...)` teammate spawn (which forms the implicit team) is called.
 
 Invokes plan-auditor subagent once in main session. INCONCLUSIVE verdict (timeout/malformed/error)
 falls back to AskUserQuestion (retry/proceed/abort) — never auto-PASS.
 Reports persist to `.moai/reports/plan-audit/<SPEC-ID>-<YYYY-MM-DD>.md`.
 `--skip-audit` / `MOAI_SKIP_PLAN_AUDIT=1` records BYPASSED verdict in the same report.
 
-Log pattern: `[plan-audit] team mode detected, gate applies before TeamCreate`
+Log pattern: `[plan-audit] team mode detected, gate applies before first teammate spawn`
 
 ### Phase 1: Team Setup
 
-1. Create team:
-   ```
-   TeamCreate(team_name: "moai-run-SPEC-XXX")
-   ```
+1. The team forms implicitly on the first teammate spawn (one team per session, no setup step). Teams/tasks are stored under the session-derived name `session-<first8>`.
 
 2. Create shared task list with dependencies (same as CG mode)
 
@@ -348,9 +338,9 @@ Log pattern: `[plan-audit] team mode detected, gate applies before TeamCreate`
 Spawn teammates with role profile overrides and worktree isolation:
 
 ```
-Agent(subagent_type: "general-purpose", team_name: "moai-run-SPEC-XXX", name: "backend-dev", model: "sonnet", mode: "acceptEdits", isolation: "worktree", prompt: "Backend role. File ownership: server-side code. ...")
-Agent(subagent_type: "general-purpose", team_name: "moai-run-SPEC-XXX", name: "frontend-dev", model: "sonnet", mode: "acceptEdits", isolation: "worktree", prompt: "Frontend role. File ownership: client-side code. ...")
-Agent(subagent_type: "general-purpose", team_name: "moai-run-SPEC-XXX", name: "tester", model: "sonnet", mode: "acceptEdits", isolation: "worktree", prompt: "Testing role. File ownership: test files exclusively. ...")
+Agent(subagent_type: "general-purpose", name: "backend-dev", model: "sonnet", mode: "acceptEdits", isolation: "worktree", prompt: "Backend role. File ownership: server-side code. ...")
+Agent(subagent_type: "general-purpose", name: "frontend-dev", model: "sonnet", mode: "acceptEdits", isolation: "worktree", prompt: "Frontend role. File ownership: client-side code. ...")
+Agent(subagent_type: "general-purpose", name: "tester", model: "sonnet", mode: "acceptEdits", isolation: "worktree", prompt: "Testing role. File ownership: test files exclusively. ...")
 ```
 
 [SHOULD] When spawning implementation teammates via `Agent(isolation: "worktree")`, Claude Code runtime decides whether to materialize an L1 worktree. MoAI orchestrator does NOT mandate isolation. Per user policy 2026-05-17 (`feedback_worktree_autonomous`), L2/L3 worktree usage is user opt-in. See `.claude/rules/moai/workflow/worktree-integration.md` § Terminology Glossary for L1/L2/L3 layer definitions.
@@ -374,7 +364,7 @@ When teammates submit plans, respond immediately with plan_approval_response.
 1. Quality validation via manager-quality subagent (or reviewer teammate)
 2. Shutdown all teammates via SendMessage shutdown_request
 3. Wait for shutdown_response from each
-4. TeamDelete to clean up resources
+4. Team cleanup is automatic on session exit (no explicit teardown call — the TeamDelete tool was removed in Claude Code v2.1.178)
 
 ---
 
@@ -394,7 +384,7 @@ When teammates submit plans, respond immediately with plan_approval_response.
 
 If team mode fails at any point:
 1. Log error details
-2. Clean up team (TeamDelete) if created
+2. Team cleanup is automatic on session exit (no explicit teardown call needed)
 3. Fall back to sub-agent mode (workflows/run.md)
 4. Continue from last successful phase
 

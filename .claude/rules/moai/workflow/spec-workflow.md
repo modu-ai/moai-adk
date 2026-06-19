@@ -371,7 +371,7 @@ When team mode is enabled (workflow.team.enabled and AGENT_TEAMS env), phases ca
 All teammates are spawned dynamically via `Agent(subagent_type: "general-purpose")` with runtime overrides from `workflow.yaml` role profiles. No static team agent definitions are used. See `.claude/skills/moai/team/run.md` for complete orchestration.
 
 ### Team Mode Plan Phase
-- TeamCreate for parallel research team
+- Spawn the parallel research teammates directly via Agent(name=...) — the team forms implicitly on first spawn (one team per session, no setup step)
 - Spawn general-purpose teammates with mode: "plan" (read-only)
 - researcher teammate produces research.md with deep codebase analysis
 - analyst teammate validates requirements against research findings
@@ -381,7 +381,7 @@ All teammates are spawned dynamically via `Agent(subagent_type: "general-purpose
 - Shutdown team, /clear before Run phase
 
 ### Team Mode Run Phase
-- TeamCreate for implementation team
+- Spawn the implementation teammates directly via Agent(name=...) — the team forms implicitly on first spawn (one team per session, no setup step)
 - Task decomposition with file ownership boundaries
 - [SHOULD] Implementation teammates (role_profiles: implementer, tester) may use L1 `isolation: "worktree"` for parallel file safety; Claude Code runtime decides per-call. Per user policy 2026-05-17, MoAI orchestrator does not mandate L1 isolation.
 - [SHOULD] Read-only teammates (role_profiles: reviewer) typically do not need L1 `isolation: "worktree"` — `mode: "plan"` is sufficient.
@@ -445,4 +445,4 @@ If team mode fails or prerequisites are not met:
 - Graceful fallback to sub-agent mode
 - Continue from last completed task
 - No data loss or state corruption
-- Trigger conditions: AGENT_TEAMS env not set, workflow.team.enabled false, TeamCreate failure, teammate spawn failure
+- Trigger conditions: AGENT_TEAMS env not set, workflow.team.enabled false, first teammate spawn failure (the implicit team forms on first spawn — there is no separate team-creation step to fail), subsequent teammate spawn failure

@@ -153,11 +153,11 @@ Domain-specific implementation work (backend, frontend, security, devops, perfor
 
 **Key distinction from regular subagents**:
 - Regular subagents: spawned from main conversation, return results, cannot communicate with each other
-- Dynamic teammates: spawned with `team_name` + `name` parameters, get Agent Teams tools (SendMessage, TaskList etc.) automatically injected by the framework
+- Dynamic teammates: spawned with the Agent tool's `name` parameter — the team forms implicitly on first spawn (one team per session, no setup step), and the teammate gets Agent Teams tools (SendMessage, TaskList etc.) automatically injected by the framework. The `team_name` parameter is accepted but ignored as of Claude Code v2.1.178.
 
 **Spawn pattern** (Agent Teams only):
 ```
-Agent(subagent_type: "general-purpose", team_name: "...", name: "researcher", model: "haiku", mode: "plan")
+Agent(subagent_type: "general-purpose", name: "researcher", model: "haiku", mode: "plan")
 ```
 
 Role profiles are defined in `.moai/config/sections/workflow.yaml` under `team.role_profiles`:
@@ -218,7 +218,7 @@ See also `.claude/rules/moai/development/karpathy-quickref.md` (4 coding princip
 
 Recommended tool sets by category:
 
-Manager agents: Read, Write, Edit, Grep, Glob, Bash, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet (NOTE: Agent tool is NOT included by default for regular subagents. Consistent with the official Claude Code limitation that subagents cannot spawn other subagents, Agent Teams teammates also cannot spawn their own teammates — only the team lead spawns teammates via Agent() with the team_name parameter.)
+Manager agents: Read, Write, Edit, Grep, Glob, Bash, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet (NOTE: Agent tool is NOT included by default for regular subagents. Consistent with the official Claude Code limitation that subagents cannot spawn other subagents, Agent Teams teammates also cannot spawn their own teammates — only the team lead spawns teammates via Agent() with the `name` parameter, into the session's implicit team.)
 
 Expert agents: Read, Write, Edit, Grep, Glob, Bash
 
@@ -249,10 +249,9 @@ Invoke agents via Agent tool:
 - Agent tool with subagent_type parameter
 
 For team mode invocation:
-- TeamCreate to initialize team structure
-- Agent() with team_name and name parameters to spawn teammates
+- Agent() with the `name` parameter to spawn teammates — the team forms implicitly on first spawn (one team per session, no setup step); the `team_name` parameter is accepted but ignored (Claude Code v2.1.178)
 - SendMessage for inter-teammate coordination
-- TeamDelete after all teammates shut down
+- Team cleanup is automatic on session exit; no explicit teardown call is needed
 - See team-plan.md and team-run.md for complete workflow examples
 
 ## Plugin Agent Limitations

@@ -441,7 +441,7 @@ graph TD
     B -->|"기본 (자동)"| E["자동 선택"]
 
     C --> F["순차적 전문가 위임<br/>Task() → Expert Agent"]
-    D --> G["병렬 팀 협업<br/>TeamCreate → SendMessage"]
+    D --> G["병렬 팀 협업<br/>Agent(name=…) → SendMessage"]
     E -->|"복잡도 높음"| D
     E -->|"복잡도 낮음"| C
 
@@ -464,7 +464,7 @@ MoAI-ADK는 프로젝트 복잡도를 자동으로 분석하여 최적의 실행
 **Agent Teams 모드**는 병렬 팀 기반 개발을 사용합니다:
 
 - 여러 에이전트가 동시에 작업하고 공유 작업 목록으로 협업
-- `TeamCreate`, `SendMessage`, `TaskList`를 통한 실시간 조율
+- `Agent(name=…)`(암묵적 팀), `SendMessage`, `TaskList`를 통한 실시간 조율
 - 대규모 기능 개발, 멀티 도메인 작업에 적합
 
 ```bash

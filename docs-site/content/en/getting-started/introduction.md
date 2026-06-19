@@ -208,7 +208,7 @@ flowchart TD
     E -->|"Otherwise"| C
 
     C --> F["Task → Expert Agent"]
-    D --> G["TeamCreate → SendMessage"]
+    D --> G["Agent(name=…) → SendMessage"]
 
     style C fill:#2196F3,color:#fff
     style D fill:#FF9800,color:#fff

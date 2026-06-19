@@ -192,6 +192,8 @@ CG mode is true if and only if all three conditions hold:
 
 If `teammateMode == "tmux"` but no GLM env vars are present (a drift case after credential rotation), the CLI emits a stderr warning per REQ-WTL-009 and falls back to P2 (Claude).
 
+> **Note — two distinct `teammateMode` fields.** The `teammateMode` in this detection logic is MoAI's own `.claude/settings.local.json` launcher-selection field (`"tmux"` / `"glm"` / `"claude"`). It is SEPARATE from the Claude Code runtime `teammateMode` setting, whose default changed from `auto` to `in-process` as of Claude Code v2.1.179 — with the in-process default, split panes no longer auto-open. As of Claude Code v2.1.181, an idle teammate's agent-panel row hides after 30 seconds and reappears on the next turn. The CC-runtime setting governs teammate display; MoAI's field selects the `--team` launcher. They share the name `teammateMode` but are different settings.
+
 Example Invocations:
 
 ```bash
