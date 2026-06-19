@@ -2,7 +2,7 @@
 id: SPEC-V3R6-HARNESS-V4-001
 title: "Harness v4: dynamic-workflow + conditional-worktree rebuild (absorb revfactory strengths, remove 7-Phase)"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-06-19
 updated: 2026-06-19
 author: manager-spec

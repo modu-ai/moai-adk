@@ -31,7 +31,7 @@
 
 | Milestone | Status | Commit SHA | Notes |
 |-----------|--------|------------|-------|
-| M1 — `/moai:harness` NL entry + §24 namespace extension | pending | — | entry point + namespace protection |
+| M1 — `/moai:harness` NL entry + §24 namespace extension | in-progress (partial) | <pending push> | namespace protection DONE; command authoring BLOCKED (see §E.2 blocker) |
 | M2 — Builder Workflow `harness-build.js` (4 phases) | pending | — | core dynamic-workflow |
 | M3 — manifest.json schema + Runner primitive-mapping | pending | — | manifest SSOT |
 | M4 — `/harness:<name>` + lifecycle + orphan prevention | pending | — | execution + lifecycle |
@@ -46,7 +46,23 @@ _<pending plan-auditor verdict — to be populated at plan-phase gate>_
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 partial — namespace protection (AC-HV4-010a/010b) DONE
+
+**Extended `isUserAreaPath` + `isUserOwnedNamespace`** in `internal/cli/update.go` to recognize `.claude/commands/harness/` and `.claude/workflows/harness-*.js` as user-owned surfaces.
+
+| AC ID | Status | Verification Command | Actual Output |
+|-------|--------|---------------------|---------------|
+| AC-HV4-010a | PASS | `go test -run TestIsUserOwnedNamespace_HarnessV4CommandsAndWorkflows ./internal/cli/` | `ok  github.com/modu-ai/moai-adk/internal/cli  0.552s` |
+| AC-HV4-010b | PASS | `go test -run TestIsUserAreaPath_HarnessV4CommandsAndWorkflows ./internal/cli/` | `ok  github.com/modu-ai/moai-adk/internal/cli  0.552s` |
+
+- **TDD**: RED-phase failing tests in `internal/cli/update_namespace_harness_v4_test.go` → GREEN-phase `HasPrefix` checks in `update.go` → all tests pass.
+- **Regression**: existing `TestIsUserOwnedNamespace_HarnessV2DualRecognition` + `TestIsUserAreaPath_HarnessV2Canonical` + `TestUpdate_PreserveHarnessV2Namespace` + `TestUpdate_AssertNoUserOwnedNamespaceTouch` all still PASS (BI-002 contract honored — no existing user-owned classification broken).
+- **Coverage**: `isUserAreaPath` 92.9%, `isUserOwnedNamespace` 96.7% (both ≥ 85% threshold).
+- **Doctrine**: `.moai/docs/harness-namespace-doctrine.md` §24.4 contract matrix extended with the two new user-owned rows.
+
+### M1 partial — `/moai:harness` NL-analysis command (AC-HV4-001a/001b) BLOCKED
+
+**Blocker**: the target path `internal/template/templates/.claude/commands/moai/harness.md` is currently occupied by the **legacy learning-subsystem router** (routes to `Skill("moai")` with the `harness status|apply|rollback|disable` subcommand). AC-HV4-013b (M6) owns converting this legacy path to a v4 redirect. Authoring the NEW NL-analysis command at this path in M1 would either (a) replace the legacy router prematurely (breaking the existing learning-subsystem commands before M6 builds the redirect), or (b) co-locate both paths in one file (ambiguous routing). This requires a user decision — see blocker report in the M1 completion message. AC-HV4-001a/001b remain **NOT-YET-VERIFIED** pending command authoring.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

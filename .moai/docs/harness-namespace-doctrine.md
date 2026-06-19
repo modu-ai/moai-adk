@@ -36,7 +36,7 @@
 
 ### §24.4 `moai update` 동작 Contract
 
-[HARD] `moai update`는 `.claude/skills/` + `.claude/agents/` 에 대해 다음 동작을 수행한다:
+[HARD] `moai update`는 `.claude/skills/` + `.claude/agents/` + `.claude/commands/` + `.claude/workflows/` 에 대해 다음 동작을 수행한다:
 
 | Namespace / Path | 동작 | 백업 정책 |
 |------------------|------|-----------|
@@ -44,6 +44,8 @@
 | **`.claude/skills/harness-*`** | **절대 삭제 금지 + 절대 modify 금지** | **백업 + 보존** (user-owned, Phase 2 SPEC catch-up 후 Go enforcement 작동) |
 | `.claude/agents/moai/` | 삭제 후 신규 설치 (overwrite) | 백업 불필요 — template-managed (FLAT layout per v.2.x baseline) |
 | **`.claude/agents/harness/`** | **절대 삭제 금지 + 절대 modify 금지** | **백업 + 보존** (user-owned) |
+| **`.claude/commands/harness/`** | **절대 삭제 금지 + 절대 modify 금지** (SPEC-V3R6-HARNESS-V4-001 M1) | **백업 + 보존** (user-owned — `/harness:<name>` command files) |
+| **`.claude/workflows/harness-*.js`** | **절대 삭제 금지 + 절대 modify 금지** (SPEC-V3R6-HARNESS-V4-001 M1) | **백업 + 보존** (user-owned — harness Runner Workflow scripts) |
 | 기타 사용자 직접 추가 자산 (`.claude/agents/<custom>.md`, `.claude/skills/<custom>/` 단 prefix가 `moai-` 시작 아닌 것) | 보존 | 백업 + 보존 |
 | `.moai/harness/` (main.md, interview-results.md, extensions) | 절대 삭제 금지 | 백업 + 보존 (user-owned) |
 

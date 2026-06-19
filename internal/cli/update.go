@@ -1221,6 +1221,18 @@ func isUserAreaPath(rel string) bool {
 		return true
 	}
 
+	// .claude/commands/harness/ (SPEC-V3R6-HARNESS-V4-001 M1 — user-generated /harness:<name> commands, AC-HV4-010a)
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness command subdirectory user-owned.
+	if strings.HasPrefix(norm, ".claude/commands/harness/") || norm == ".claude/commands/harness" {
+		return true
+	}
+
+	// .claude/workflows/harness-*.js (SPEC-V3R6-HARNESS-V4-001 M1 — user-generated Runner Workflows, AC-HV4-010b)
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness Runner Workflow user-owned.
+	if strings.HasPrefix(norm, ".claude/workflows/harness-") {
+		return true
+	}
+
 	return false
 }
 
@@ -1267,6 +1279,18 @@ func isUserOwnedNamespace(rel string) bool {
 
 	// REQ-UNP-003: harness extension directory
 	if norm == ".moai/harness" || strings.HasPrefix(norm, ".moai/harness/") {
+		return true
+	}
+
+	// SPEC-V3R6-HARNESS-V4-001 M1 (AC-HV4-010a): .claude/commands/harness/ user-generated /harness:<name> commands.
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness command subdirectory user-owned.
+	if norm == ".claude/commands/harness" || strings.HasPrefix(norm, ".claude/commands/harness/") {
+		return true
+	}
+
+	// SPEC-V3R6-HARNESS-V4-001 M1 (AC-HV4-010b): .claude/workflows/harness-*.js user-generated Runner Workflows.
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness Runner Workflow user-owned.
+	if strings.HasPrefix(norm, ".claude/workflows/harness-") {
 		return true
 	}
 
