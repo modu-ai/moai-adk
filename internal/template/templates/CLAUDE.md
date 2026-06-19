@@ -121,7 +121,7 @@ The MoAI agent catalog consists of exactly **8 retained agents** (7 MoAI-custom 
 | `manager-git` | core/manager | PR creation per Tier-based routing + Late-Branch closure | `.claude/agents/moai/manager-git.md` |
 | `plan-auditor` | meta/evaluator | Independent plan-phase audit, bias prevention, GEARS compliance | `.claude/agents/moai/plan-auditor.md` |
 | `sync-auditor` | meta/evaluator | Independent skeptical quality assessment, 4-dimension scoring | `.claude/agents/moai/sync-auditor.md` |
-| `builder-harness` | builder | Dynamic project-specific harness specialist generation | `.claude/agents/builder/builder-harness.md` |
+| `builder-harness` | builder | Dynamic project-specific harness specialist generation | `.claude/agents/moai/builder-harness.md` |
 | `Explore` | Anthropic built-in | Read-only codebase exploration (no MoAI file — invoked directly) | claude.com/docs/en/sub-agents |
 
 ### Archived Agents (legacy references rejected at spawn)
