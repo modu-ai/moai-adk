@@ -238,7 +238,7 @@ The patch surface is the SPEC scope ONLY. This inherits CONST-V3R5-011 + CONST-V
 
 ### 8. Flat hierarchy (no agent spawns agent)
 
-The recursive self-diagnosis sub-agent is spawned BY THE ORCHESTRATOR (not by manager-develop — Anthropic Finding A1: "Subagents cannot spawn other subagents"). When the sub-agent needs to delegate (e.g., it hits a blocker requiring user input), it returns a structured blocker report; the orchestrator runs `AskUserQuestion` and re-delegates. The sub-agent NEVER calls `AskUserQuestion` directly (the asymmetric orchestrator-subagent boundary).
+The recursive self-diagnosis sub-agent is spawned BY THE ORCHESTRATOR (not by manager-develop — per Anthropic's published sub-agent guidance, subagents cannot spawn other subagents). When the sub-agent needs to delegate (e.g., it hits a blocker requiring user input), it returns a structured blocker report; the orchestrator runs `AskUserQuestion` and re-delegates. The sub-agent NEVER calls `AskUserQuestion` directly (the asymmetric orchestrator-subagent boundary).
 
 ### 9. Relationship to the IGGDA pipeline
 
