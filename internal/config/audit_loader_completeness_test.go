@@ -33,9 +33,10 @@ var acknowledgedUnloadedSections = []string{
 // for the purposes of the completeness audit.
 // REQ-MIG003-013 (plan.md OQ1 decision: harness stays outside Loader.Load() by design).
 var acknowledgedDedicatedLoaders = []string{
-	"cache",   // dedicated: LoadCacheConfig (SPEC-V3R6-PROMPT-CACHE-001) — consumed by the SDK wrapper cache_control injector, not the aggregate Loader.Load chain
-	"harness", // dedicated: LoadHarnessConfig (HRN-001) — stricter FROZEN validation semantics
-	"runtime", // dedicated: LoadRuntime (internal/runtime/config.go) — separate package
+	"cache",       // dedicated: LoadCacheConfig (SPEC-V3R6-PROMPT-CACHE-001) — consumed by the SDK wrapper cache_control injector, not the aggregate Loader.Load chain
+	"harness",     // dedicated: LoadHarnessConfig (HRN-001) — stricter FROZEN validation semantics
+	"runtime",     // dedicated: LoadRuntime (internal/runtime/config.go) — separate package
+	"tool-policy", // dedicated: toolpolicy.Load / LoadFromProjectDir (internal/config/toolpolicy) — codegen SSOT, loaded outside Loader.Load chain
 }
 
 // fileNameToSectionKey maps YAML filename stems to their loadedSections key when

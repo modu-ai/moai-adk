@@ -210,11 +210,6 @@ func (s *Scanner) GetErrors() []string {
 	return s.errors
 }
 
-// HasErrors returns true if the scanner encountered any errors.
-func (s *Scanner) HasErrors() bool {
-	return len(s.errors) > 0
-}
-
 // extractTagContent extracts the @MX tag content from a line.
 // Returns the content after "@MX:" and true if successful.
 func extractTagContent(line, commentPrefix string) (string, bool) {

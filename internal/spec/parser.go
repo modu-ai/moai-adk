@@ -22,11 +22,6 @@ func ParseAcceptanceCriteria(markdown string, isFlatFormat bool) ([]Acceptance, 
 	return result.Criteria, append(result.Errors, result.Warnings...)
 }
 
-// ParseAcceptanceCriteriaTyped returns parsing results with Errors and Warnings separated
-func ParseAcceptanceCriteriaTyped(markdown string, isFlatFormat bool) *ParseResult {
-	return parseAcceptanceCriteriaInternal(markdown, isFlatFormat)
-}
-
 func parseAcceptanceCriteriaInternal(markdown string, isFlatFormat bool) *ParseResult {
 	result := &ParseResult{}
 
