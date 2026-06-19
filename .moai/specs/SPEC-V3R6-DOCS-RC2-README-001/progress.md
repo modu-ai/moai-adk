@@ -167,7 +167,7 @@ ac_fail_count: 0
 ac_pass_with_justification_count: 1
 preserve_list_post_run_count: 0
 l44_pre_commit_fetch: true
-l44_post_push_fetch: pending
+l44_post_push_fetch: true             # post-push divergence 0 6 (clean); branch pushed to origin
 new_warnings_or_lints_introduced: 0
 cross_platform_build:
   darwin: exit_0
