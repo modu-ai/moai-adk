@@ -460,3 +460,115 @@ func TestAudit_EmptyDriftFindingsSerialize(t *testing.T) {
 		t.Errorf("empty drift_findings should serialize as [], got: %s", jsonBytes)
 	}
 }
+
+// SPEC-V3R6-ORCH-IGGDA-001 M5 — FilterSpec restricts drift_findings to a single
+// named SPEC-ID. Additive to FilterEra: FilterEra restricts by era bucket,
+// FilterSpec restricts by exact SPEC-ID match. The two MAY compose (filter to
+// one SPEC within one era). When FilterSpec matches no SPEC, the result has
+// empty drift_findings (graceful, not an error).
+func TestAudit_FilterSpec(t *testing.T) {
+	t.Parallel()
+
+	fixtures := []auditFixtureSpec{
+		{
+			id:         "SPEC-V3R6-DRIFT-001",
+			specMD:     makeSpecMD("SPEC-V3R6-DRIFT-001", "implemented", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha: abc1234\n",
+		},
+		{
+			id:         "SPEC-V3R6-DRIFT-002",
+			specMD:     makeSpecMD("SPEC-V3R6-DRIFT-002", "implemented", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha: def5678\n",
+		},
+		{
+			// Grandfathered V3R2 SPEC — excluded from drift detection regardless of filter.
+			id:     "SPEC-V3R2-001",
+			specMD: makeSpecMD("SPEC-V3R2-001", "implemented", "", "2026-02-15"),
+		},
+	}
+	baseDir := buildAuditFixture(t, fixtures)
+
+	// Filter to SPEC-V3R6-DRIFT-001 only.
+	result, err := Audit(AuditOptions{BaseDir: baseDir, FilterSpec: "SPEC-V3R6-DRIFT-001"})
+	if err != nil {
+		t.Fatalf("Audit() error = %v", err)
+	}
+
+	// Every finding MUST belong to SPEC-V3R6-DRIFT-001 (no leakage from -002 or V3R2).
+	if len(result.DriftFindings) == 0 {
+		t.Fatal("FilterSpec=SPEC-V3R6-DRIFT-001 returned 0 findings; expected the drift finding for that SPEC")
+	}
+	for _, f := range result.DriftFindings {
+		if f.SpecID != "SPEC-V3R6-DRIFT-001" {
+			t.Errorf("FilterSpec leaked finding for SpecID=%q; want SPEC-V3R6-DRIFT-001 only", f.SpecID)
+		}
+	}
+
+	// The drift finding for SPEC-V3R6-DRIFT-001 MUST be present (SyncStatusDrift MUST-FIX).
+	found := false
+	for _, f := range result.DriftFindings {
+		if f.SpecID == "SPEC-V3R6-DRIFT-001" && f.FindingType == FindingSyncStatusDrift {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("FilterSpec=SPEC-V3R6-DRIFT-001 did not return the SyncStatusDrift finding for that SPEC")
+	}
+}
+
+// FilterSpec matching no SPEC returns empty drift_findings (graceful, not error).
+func TestAudit_FilterSpec_NoMatch(t *testing.T) {
+	t.Parallel()
+
+	fixtures := []auditFixtureSpec{
+		{
+			id:         "SPEC-V3R6-DRIFT-001",
+			specMD:     makeSpecMD("SPEC-V3R6-DRIFT-001", "implemented", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha: abc1234\n",
+		},
+	}
+	baseDir := buildAuditFixture(t, fixtures)
+
+	result, err := Audit(AuditOptions{BaseDir: baseDir, FilterSpec: "SPEC-NONEXISTENT-999"})
+	if err != nil {
+		t.Fatalf("Audit() error = %v", err)
+	}
+	if len(result.DriftFindings) != 0 {
+		t.Errorf("FilterSpec=SPEC-NONEXISTENT-999 should return 0 findings; got %d", len(result.DriftFindings))
+	}
+}
+
+// FilterSpec empty string = no filter (all SPECs audited). This is the backward-
+// compatible default — existing callers that omit FilterSpec see no behavior change.
+func TestAudit_FilterSpec_EmptyIsNoFilter(t *testing.T) {
+	t.Parallel()
+
+	fixtures := []auditFixtureSpec{
+		{
+			id:         "SPEC-V3R6-DRIFT-001",
+			specMD:     makeSpecMD("SPEC-V3R6-DRIFT-001", "implemented", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha: abc1234\n",
+		},
+		{
+			id:         "SPEC-V3R6-DRIFT-002",
+			specMD:     makeSpecMD("SPEC-V3R6-DRIFT-002", "implemented", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha: def5678\n",
+		},
+	}
+	baseDir := buildAuditFixture(t, fixtures)
+
+	result, err := Audit(AuditOptions{BaseDir: baseDir}) // FilterSpec empty
+	if err != nil {
+		t.Fatalf("Audit() error = %v", err)
+	}
+
+	// Both SPECs' findings present (no filter applied).
+	ids := map[string]bool{}
+	for _, f := range result.DriftFindings {
+		ids[f.SpecID] = true
+	}
+	if !ids["SPEC-V3R6-DRIFT-001"] || !ids["SPEC-V3R6-DRIFT-002"] {
+		t.Errorf("empty FilterSpec should return findings for both SPECs; got %v", ids)
+	}
+}
+

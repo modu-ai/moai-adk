@@ -25,6 +25,13 @@ type AuditOptions struct {
 	BaseDir string
 	// FilterEra restricts findings to a single era (e.g., "V3R6"). Empty → all eras.
 	FilterEra string
+	// FilterSpec restricts findings to a single SPEC-ID (exact match on the
+	// directory name under .moai/specs/, e.g., "SPEC-V3R6-ORCH-IGGDA-001").
+	// Empty → no SPEC-ID filter (all SPECs). Additive to FilterEra: the two MAY
+	// compose (filter to one SPEC within one era). When FilterSpec matches no
+	// SPEC, the result carries empty drift_findings (graceful, not an error).
+	// SPEC-V3R6-ORCH-IGGDA-001 M5.
+	FilterSpec string
 	// IncludeGrandfathered surfaces V2.x / V3R2-R4 / V3R5 SPECs in findings with
 	// severity: INFO (no drift; observational only).
 	IncludeGrandfathered bool
@@ -152,6 +159,12 @@ func Audit(opts AuditOptions) (*AuditResult, error) {
 
 		// Apply era filter
 		if opts.FilterEra != "" && string(classified) != opts.FilterEra {
+			continue
+		}
+
+		// Apply SPEC-ID filter (SPEC-V3R6-ORCH-IGGDA-001 M5). Additive to
+		// FilterEra — the two MAY compose. Empty FilterSpec = no filter.
+		if opts.FilterSpec != "" && specName != opts.FilterSpec {
 			continue
 		}
 

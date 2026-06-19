@@ -53,6 +53,7 @@ func newSpecAuditCmd() *cobra.Command {
 	var (
 		jsonOutput           bool
 		filterEra            string
+		filterSpec           string
 		includeGrandfathered bool
 		strict               bool
 		baseDir              string
@@ -98,6 +99,7 @@ Exit codes:
 			opts := spec.AuditOptions{
 				BaseDir:              baseDir,
 				FilterEra:            filterEra,
+				FilterSpec:           filterSpec,
 				IncludeGrandfathered: includeGrandfathered,
 				Strict:               strict,
 			}
@@ -116,6 +118,8 @@ Exit codes:
 		"Emit AuditResult as JSON on stdout (per AC-LSG-007 schema)")
 	cmd.Flags().StringVar(&filterEra, "filter-era", "",
 		"Restrict drift_findings to one era (V2.x / V3R2-R4 / V3R5 / V3R6 / unclassified)")
+	cmd.Flags().StringVar(&filterSpec, "filter-spec", "",
+		"Restrict drift_findings to one SPEC-ID (exact match, e.g. SPEC-V3R6-ORCH-IGGDA-001); empty = all SPECs")
 	cmd.Flags().BoolVar(&includeGrandfathered, "include-grandfathered", false,
 		"Surface pre-V3R6 SPECs as INFO findings (otherwise excluded)")
 	cmd.Flags().BoolVar(&strict, "strict", false,
