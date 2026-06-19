@@ -2,7 +2,7 @@
 id: SPEC-V3R6-RULES-HOTFIX-001
 title: "rules/ low-risk hotfix sweep — inverted tool names, inverted-logic clause, typo, broken cross-references"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-06-19
 updated: 2026-06-19
 author: manager-spec
