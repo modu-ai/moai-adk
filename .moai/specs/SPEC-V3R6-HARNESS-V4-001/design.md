@@ -6,7 +6,11 @@
 
 1. **Absorb strengths, remove the rest.** From revfactory/harness: keep domain-sentence → team-architecture, 6-pattern catalog, Progressive-Disclosure skill generation, Generator-Evaluator separation, A/B validation. Remove: static 7-Phase, Agent-Teams hard dependency, Skeleton↔Customization split, LEARNING separate phase, revfactory plugin assumptions, Socratic-only discovery.
 2. **Anthropic "simplest solution first"** (research.md §B). Every load-bearing component must justify its cost. Phase synthesis from task signals, NOT fixed pipeline. Evaluator conditional. Components removable as models improve.
-3. **Dynamic-workflow primitive** (research.md §C). The script holds the plan; main tree; conditional isolation. Up to 16 concurrent / 1000 total agents. Adversarial verification built-in. `/deep-research` is the canonical fan-out model.
+3. **Two execution axes — orchestrator-direct Builder + dynamic-workflow Runner** (research.md §C). The v4 design splits execution across two distinct primitives:
+   - **Builder = orchestrator-direct.** The orchestrator runs ANALYZE / PLAN / GENERATE / ACTIVATE as orchestrator-side logic using ordinary `Agent()` spawn. Intermediate results are held in the orchestrator's session context (the plan lives in Claude's context, NOT in a script). AskUserQuestion is available at stage boundaries (the PLAN→GENERATE approval gate is first-class because the orchestrator holds the boundary).
+   - **Runner = dynamic-workflow script.** The generated `harness-<name>-run.js` consumes `manifest.json` and dispatches specialists per their `primitive`. The script holds the plan; intermediate results live in script variables; up to 16 concurrent / 1000 total agents. The `codemaps-extract.js` precedent is the Runner's pattern. The Runner CANNOT call AskUserQuestion mid-run (all preferences must be drained before launch).
+
+   This split resolves the design self-contradiction where C-HV4-004 forbade mid-run AskUserQuestion but §D.2 required a PLAN→GENERATE approval gate: the gate now lives in the orchestrator-direct Builder (where AskUserQuestion is available), and the AskUserQuestion prohibition applies only inside the Runner script.
 4. **Generator-Evaluator separation** (research.md §B, Anthropic GAN). The self-evaluation bias is the core problem; separating generator from evaluator is the strongest lever. The evaluator earns its cost only when the task exceeds the model's solo range.
 5. **Conditional worktree isolation** (spec.md REQ-HV4-007, moai-adk §14 advisory). No mandatory top-level worktree. Sub-agent-granular `Agent(isolation:"worktree")` only for conflict-prone parallel generation or risky changes.
 
@@ -16,14 +20,14 @@ The v4 design splits harness creation/management from harness execution:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  CREATION & MANAGEMENT                                       │
-│  /moai:harness <NL request>  → Builder Workflow              │
+│  CREATION & MANAGEMENT (orchestrator-direct)                 │
+│  /moai:harness <NL request>  → Builder (orchestrator-direct) │
 │  /moai:harness list|edit|remove <name>  → lifecycle          │
 └──────────────────────────────┬──────────────────────────────┘
                                │ Builder GENERATE emits
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  EXECUTION                                                   │
+│  EXECUTION (dynamic-workflow)                                │
 │  /harness:<name>  → harness-<name>-run.js (Runner Workflow)  │
 │   ↑ thin wrapper command at .claude/commands/harness/<name>.md │
 └─────────────────────────────────────────────────────────────┘
@@ -37,7 +41,7 @@ User issues natural language: `/moai:harness build a harness for moai-adk CLI te
 2. **AskUserQuestion Socratic rounds** if clarity <100% (≤4 questions/round, `(Recommended)` first option). Repeat until 100%.
 3. **Derive harness `<name>`** from the confirmed intent (NOT user-supplied statically). E.g., "moai-adk CLI template development" → `moai-adk-dev` or `cli-template`.
 4. **Explicit approval gate** — orchestrator surfaces the derived name + extracted profile + planned approach; user approves via AskUserQuestion.
-5. **Delegate to Builder Workflow** `harness-build.js` (dynamic-workflow).
+5. **Enter Builder orchestrator-direct processing** — the orchestrator runs ANALYZE / PLAN / GENERATE / ACTIVATE directly (NOT a delegation to a JS script). Discovery hands off to the Builder phases within the orchestrator session; the PLAN→GENERATE approval gate fires at the stage boundary (AskUserQuestion, first-class because the orchestrator holds the boundary).
 
 This UPGRADES the existing `/moai:harness` command (which currently routes to the legacy 7-Phase `moai-meta-harness` skill). Per REQ-HV4-013, the legacy 7-Phase path becomes a redirect to v4.
 
@@ -103,13 +107,13 @@ The harness is **self-describing**: invoking `/harness:<name>` is equivalent to 
 - Each specialist's `isolation` MUST be `none` or `worktree`.
 - `patterns[]` entries MUST be from the 6-pattern catalog (no custom patterns).
 
-## §D. Builder Workflow (`harness-build.js`) — 4 Signal-Driven Phases
+## §D. Builder (orchestrator-direct) — 4 Signal-Driven Phases
 
-The Builder is a Claude Code dynamic-workflow script (script holds the plan). It has 4 phases; which phases run is synthesized from task signals (load-bearing minimum).
+The Builder is orchestrator-direct processing (NOT a dynamic-workflow script and NOT a separate agent). The orchestrator runs the 4 phases using ordinary `Agent()` spawn; intermediate results are held in the orchestrator's session context (the plan lives in Claude's context, NOT in a script). Which phases run is synthesized from task signals (load-bearing minimum). The AskUserQuestion boundary is first-class at Builder stage boundaries — the PLAN→GENERATE approval gate (§D.2) fires because the orchestrator holds the boundary directly.
 
-### §D.1 ANALYZE [fan-out: Explore ×N, read-only, main tree]
+### §D.1 ANALYZE [orchestrator parallel Agent(Explore) fan-out, read-only, main tree]
 
-**Primitive**: dynamic-workflow fan-out, `Agent(agentType: "Explore", effort: "low")` per source package/surface.
+**Primitive**: orchestrator-direct parallel `Agent()` fan-out — `Agent(agentType: "Explore", effort: "low")` per source package/surface (orchestration-mode Mode 4 parallel multi-spawn; see `.claude/rules/moai/workflow/orchestration-mode-selection.md` §B).
 **Isolation**: none (read-only).
 **Purpose** (per effort-map): read-only-extract.
 
@@ -119,11 +123,11 @@ Fan out N Explore sub-agents across the codebase + docs surfaces:
 - Existing `.claude/agents/harness/*` + `.claude/skills/harness-*/` + `.claude/commands/harness/*`.
 - SPEC history (`.moai/specs/SPEC-*-HARNESS-*/`).
 
-Aggregate in script variables (NOT Claude's context). Produce: domain profile + task-pattern inventory.
+Aggregate in the orchestrator's session context (the orchestrator receives each sub-agent's result and synthesizes). Produce: domain profile + task-pattern inventory.
 
-### §D.2 PLAN [sub-agent, opus xhigh, main tree]
+### §D.2 PLAN [orchestrator spawns single Agent(opus,xhigh), main tree; AskUserQuestion gate]
 
-**Primitive**: single sub-agent, `Agent(model: "opus", effort: "xhigh")`.
+**Primitive**: orchestrator-direct — the orchestrator spawns a single `Agent(model: "opus", effort: "xhigh")` sub-agent (orchestration-mode Mode 5 sequential single-spawn for the deep-reasoning step).
 **Isolation**: none.
 **Purpose**: design-architecture (per effort-map).
 
@@ -135,25 +139,25 @@ One opus xhigh sub-agent reasons over the ANALYZE aggregate and:
 - Drafts the Sprint Contract (graded dimensions + thresholds).
 - Emits a draft manifest.
 
-**User approval gate** (AskUserQuestion) BEFORE GENERATE — orchestrator surfaces the draft manifest + planned specialists + Sprint Contract; user approves or revises.
+**User approval gate** (AskUserQuestion) BEFORE GENERATE — the orchestrator surfaces the draft manifest + planned specialists + Sprint Contract; the user approves or revises. This gate is **first-class** because the orchestrator holds the PLAN→GENERATE boundary directly (the Builder is orchestrator-direct, so AskUserQuestion is available at this stage boundary — this is the self-contradiction resolution: the gate could NOT fire if the Builder were a dynamic-workflow script, but the orchestrator-direct Builder makes it reachable).
 
-### §D.3 GENERATE [dynamic-workflow fan-out; conditional `Agent(isolation:"worktree")`]
+### §D.3 GENERATE [orchestrator fan-out emits 5 artifact types; conditional `Agent(isolation:"worktree")`]
 
-**Primitive**: dynamic-workflow fan-out.
+**Primitive**: orchestrator-direct fan-out — the orchestrator spawns specialist `Agent()` calls (parallel where independent, sequential where dependent) that emit the 5 artifact types below.
 **Isolation**: conditional per-specialist (worktree for conflict-prone, none otherwise).
 
 Fan out specialist agents that emit:
-- `.claude/agents/harness/<name>-<role>-specialist.md` (specialist agent definitions).
-- `.claude/skills/harness-<name>-*/SKILL.md` (companion Progressive-Disclosure skills).
-- `.claude/workflows/harness-<name>-run.js` (the Runner Workflow).
-- `manifest.json` (final, validated against §C schema).
-- `.claude/commands/harness/<name>.md` (thin-wrapper entry command → dispatches to Runner).
+- `.claude/commands/harness/<name>.md` (thin-wrapper entry command → dispatchs to Runner).
+- `harness-<name>-run.js` (the Runner Workflow — a dynamic-workflow script, lives at `.claude/workflows/harness-<name>-run.js`).
+- `harness-<name>-*-specialist.md` (sub-agent definitions, live at `.claude/agents/harness/`).
+- `harness-<name>-*/SKILL.md` (companion Progressive-Disclosure skills, live at `.claude/skills/harness-<name>-*/`).
+- `manifest.json` (final, validated against §C schema — the SSOT consumed by the Runner).
 
-Conflict-prone parallel generation (≥2 specialists targeting overlapping paths) spawns `Agent(isolation:"worktree")` per the manifest's `isolation` declarations. Read-only or sequential generation runs main-tree.
+Conflict-prone parallel generation (≥2 specialists targeting overlapping paths) spawns `Agent(isolation:"worktree")` per the manifest's `isolation` declarations. Read-only or sequential generation runs main-tree. The GENERATE output contract (the 5 artifact types + their content contracts) is the handoff spec M3/M4 consume.
 
-### §D.4 ACTIVATE [sub-agent + `/goal`, main tree unless risky]
+### §D.4 ACTIVATE [orchestrator-direct dry-run + `/goal`, main tree unless risky]
 
-**Primitive**: sub-agent (dry-run) + `/goal` (autonomous convergence) + with/without A/B.
+**Primitive**: orchestrator-direct — dry-run sub-agent + `/goal` (autonomous convergence) + with/without A/B. The orchestrator drives this phase directly (it is NOT a dynamic-workflow script).
 **Isolation**: none (default) or worktree (if the sample task is risky).
 
 Run a sample task dry-run through the newly built harness. Use `/goal "<harness> completes task X at quality Y"` for autonomous convergence (per `.claude/rules/moai/workflow/goal-directive.md`). Run a with/without A/B (Anthropic skeptical evaluator). Pass → expose the harness via `/harness:<name>`. Fail → regress to GENERATE for refinement.
@@ -225,18 +229,18 @@ NO mandatory top-level worktree wraps the Builder or Runner. `Agent(isolation:"w
 
 ## §I. Namespace Policy Extension (§24 commands/ + workflows/)
 
-Extends the completed `SPEC-V3R6-HARNESS-NAMESPACE-V2-001` namespace protection to cover the 2 new user-owned surfaces introduced by v4:
+Extends the completed `SPEC-V3R6-HARNESS-NAMESPACE-V2-001` namespace protection to cover the 2 new user-owned surfaces introduced by v4. (After the orchestrator-direct pivot, `.claude/workflows/harness-*.js` protects the **Runner** `harness-<name>-run.js` files — there is no longer a Builder JS file in this namespace. The `.claude/commands/harness/` row protects the thin-wrapper entry commands emitted by GENERATE.)
 
 | Surface | Owner | `moai update` behavior |
 |---------|-------|------------------------|
 | `.claude/skills/harness-*/` | user-owned (existing, V2-001) | preserve (backup if needed) |
 | `.claude/agents/harness/` | user-owned (existing, V2-001) | preserve |
 | `.claude/commands/harness/` | **user-owned (NEW, this SPEC)** | **preserve** |
-| `.claude/workflows/harness-*.js` | **user-owned (NEW, this SPEC)** | **preserve** |
+| `.claude/workflows/harness-*.js` (Runner scripts `harness-<name>-run.js`) | **user-owned (NEW, this SPEC)** | **preserve** |
 | `.claude/skills/moai-harness-*/` | template-managed (builder) | sync (overwrite) |
 | `.claude/skills/moai-meta-harness/` | template-managed (builder, legacy redirect) | sync (overwrite) |
 
-The Go enforcement extends `isUserOwnedNamespace` / `isUserAreaPath` in `internal/cli/update*.go` to recognize the two new paths. Template-neutrality §25 (C-HV4-005) forbids leaking any `harness-*` / `commands/harness/` / `workflows/harness-*.js` into `internal/template/templates/`.
+The Go enforcement extends `isUserOwnedNamespace` / `isUserAreaPath` in `internal/cli/update*.go` to recognize the two new paths (M1 landed this at commit `823b20570` — `isUserAreaPath`/`isUserOwnedNamespace` now protect `.claude/commands/harness/` and `.claude/workflows/harness-*.js`). Template-neutrality §25 (C-HV4-005) forbids leaking any `harness-*` / `commands/harness/` / `workflows/harness-*.js` into `internal/template/templates/`.
 
 ## §J. Migration Path (M6)
 
@@ -259,12 +263,21 @@ The Go enforcement extends `isUserOwnedNamespace` / `isUserAreaPath` in `interna
 ### Alternative D — Implement learning-subsystem outer loop in this SPEC
 **Rejected**: out of scope (spec.md §B.2). The Meta-Harness outer-loop optimization (arxiv 2603.28052) is a separate concern. This SPEC declares learning as cross-cutting (Sprint Contract dimension); a follow-up SPEC owns the outer loop.
 
+### Alternative E — Builder as dynamic-workflow script `harness-build.js` (ORIGINAL v4 design, superseded mid-run-phase 2026-06-19)
+**Superseded**: the original v4 design (drafts 0.1.0 → 0.1.1) specified the Builder as a Claude Code dynamic-workflow script `harness-build.js`, parallel to the Runner `harness-<name>-run.js`. This was **pivoted away** at M1-complete (commit `db4adec39`) for three verified reasons:
+
+1. **design.md self-contradiction**: C-HV4-004 forbids mid-run AskUserQuestion inside a dynamic-workflow, but §D.2 requires a PLAN→GENERATE approval gate. These cannot coexist if the Builder is a dynamic-workflow (the gate could not fire inside the script). Orchestrator-direct Builder makes the approval gate first-class — the orchestrator calls AskUserQuestion directly at the stage boundary.
+2. **Namespace conflict disappears**: no `harness-build.js` / `moai-harness-build.js` file is needed, so the §24.1 builder=`moai-harness-*` (template-managed) vs `harness-*` (user-owned) classification tension that blocked M2 is moot.
+3. **Anthropic "simplest solution first" (C-HV4-001)**: the orchestrator already has Agent/Skill/AskUserQuestion; M1's `/moai:harness` NL entry already starts orchestrator-direct Discovery. Extending orchestrator-direct through ANALYZE/PLAN/GENERATE/ACTIVATE is the natural continuation — no need to jump into a workflow script and back.
+
+The Runner stays a dynamic-workflow script (user-confirmed 2026-06-19: "execution runs INSIDE the generated `/harness:<name>` command, which drives workflow + sub-agent + dynamic-workflow per the manifest"). The `codemaps-extract.js` precedent remains the Runner's pattern (§F).
+
 ## §L. Cross-References
 
 - `research.md` — revfactory 7-Phase analysis + Anthropic GAN guidance + verbatim source citations underpinning every design decision above.
 - `spec.md` §C — 13 REQs this design implements.
 - `acceptance.md` §D — ACs that verify each design element.
-- `.claude/workflows/codemaps-extract.js` — the canonical dynamic-workflow precedent (read-only fan-out pattern) that ANALYZE follows.
+- `.claude/workflows/codemaps-extract.js` — the canonical dynamic-workflow precedent (read-only fan-out pattern) that the **Runner** follows (§F). The Builder's ANALYZE phase is now orchestrator-direct parallel `Agent(Explore)` fan-out, not a dynamic-workflow script.
 - `.claude/rules/moai/workflow/dynamic-workflows.md` — primitive selection guide, determinism constraint, purpose-driven effort taxonomy.
 - `.claude/rules/moai/workflow/goal-directive.md` — `/goal` autonomous convergence (used in ACTIVATE).
 - `.claude/rules/moai/core/verification-claim-integrity.md` — 5-Section Evidence-Bearing Report Format (binds the dogfooding validation report).

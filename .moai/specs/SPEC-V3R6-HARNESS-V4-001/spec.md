@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-HARNESS-V4-001
-title: "Harness v4: dynamic-workflow + conditional-worktree rebuild (absorb revfactory strengths, remove 7-Phase)"
-version: "0.1.1"
+title: "Harness v4: orchestrator-direct Builder + dynamic-workflow Runner rebuild (absorb revfactory strengths, remove 7-Phase)"
+version: "0.2.0"
 status: in-progress
 created: 2026-06-19
 updated: 2026-06-19
@@ -12,7 +12,7 @@ module: "internal/harness, internal/cli, .claude/commands/harness, .claude/workf
 lifecycle: spec-anchored
 era: V3R6
 tier: L
-tags: "harness, dynamic-workflow, worktree, revfactory, meta-harness, namespace, sprint-contract, gan"
+tags: "harness, dynamic-workflow, orchestrator-direct, worktree, revfactory, meta-harness, namespace, sprint-contract, gan"
 depends_on:
   - SPEC-V3R6-HARNESS-NAMESPACE-V2-001
 related_specs:
@@ -43,10 +43,10 @@ The user's directive (verbatim, natural language): "moai-adk 개발을 위한 �
 
 ### §B.1 In Scope
 
-1. **Harness subsystem redesign** — entry commands, Builder dynamic-workflow, Runner dynamic-workflow, manifest schema, namespace policy, lifecycle, migration of the 4 existing specialists.
+1. **Harness subsystem redesign** — entry commands, Builder orchestrator-direct, Runner dynamic-workflow, manifest schema, namespace policy, lifecycle, migration of the 4 existing specialists.
 2. **`/moai:harness` NL-analysis entry** — Context-First Discovery on natural-language request; harness `<name>` derived, not statically supplied.
 3. **`/harness:<name>` execution command namespace** — one auto-generated command per harness (Claude Code subdirectory-command pattern `.claude/commands/harness/<name>.md`).
-4. **Builder Workflow `harness-build.js`** — 4 signal-driven phases (ANALYZE fan-out / PLAN sub-agent / GENERATE fan-out / ACTIVATE `/goal`+A/B); load-bearing minimum (phases skipped for simple tasks).
+4. **Builder (orchestrator-direct)** — 4 signal-driven phases (ANALYZE fan-out / PLAN sub-agent / GENERATE fan-out / ACTIVATE `/goal`+A/B); load-bearing minimum (phases skipped for simple tasks). The Builder runs as orchestrator-direct processing (NOT a separate JS script); intermediate results held in the orchestrator session context. The Runner stays a dynamic-workflow script (REQ-HV4-005/006, design §F).
 5. **6-pattern catalog** — Pipeline, Fan-out/Fan-in, Expert Pool, Producer-Reviewer, Supervisor, Hierarchical; selected/combined dynamically per task signals.
 6. **Execution-primitive mapping** — each specialist mapped to sub-agent / dynamic-workflow / worktree / `/goal` / adversarial-fan-out in `manifest.json`; consumed verbatim by Runner.
 7. **Conditional worktree isolation** — sub-agent-granular `Agent(isolation:"worktree")` only for conflict-prone parallel generation or risky changes; Builder/Runner otherwise main-tree.
@@ -91,9 +91,9 @@ The user's directive (verbatim, natural language): "moai-adk 개발을 위한 �
 
 **When** the Builder successfully completes the GENERATE phase, the command generator shall create a thin-wrapper command file at `.claude/commands/harness/<name>.md` that dispatches to that harness's Runner Workflow; the orchestrator shall expose the harness for execution via the `/harness:<name>` command; there shall be exactly one such command per harness, and the command namespace `.claude/commands/harness/` shall be the canonical location for all generated harness entry points.
 
-### REQ-HV4-003 — Builder as dynamic-workflow with signal-driven phases
+### REQ-HV4-003 — Builder as orchestrator-direct processing with signal-driven phases
 
-**Where** the Builder Workflow `harness-build.js` is invoked, it shall run as a Claude Code dynamic-workflow script (the script holds the plan, not Claude's context) with four phases — ANALYZE (Explore fan-out, read-only), PLAN (single opus xhigh sub-agent), GENERATE (dynamic-workflow fan-out with conditional worktree isolation), ACTIVATE (sample-task dry-run + `/goal` autonomous convergence + with/without A/B); the Builder shall synthesize which phases to run from task signals (load-bearing minimum), and **when** a task is simple enough to be within the model's solo range, the Builder shall skip ACTIVATE's A/B evaluation rather than always run it.
+**Where** the `/moai:harness <request>` creation flow is invoked, the Builder shall run as orchestrator-direct processing (orchestrator-side logic, NOT a separate dynamic-workflow script and NOT a separate agent) with four phases — ANALYZE (orchestrator parallel `Agent(agentType:"Explore", effort:"low")` fan-out, read-only), PLAN (orchestrator spawns a single `Agent(model:"opus", effort:"xhigh")` sub-agent), GENERATE (orchestrator fan-out emits the 5 artifact types with conditional worktree isolation), ACTIVATE (orchestrator-direct dry-run + `/goal` autonomous convergence + with/without A/B); the orchestrator holds intermediate results in its own session context (the plan lives in Claude's context, NOT in a script); the Builder shall synthesize which phases to run from task signals (load-bearing minimum), and **when** a task is simple enough to be within the model's solo range, the Builder shall skip ACTIVATE's A/B evaluation rather than always run it. The Runner (design §F) is a separate dynamic-workflow script and is covered by REQ-HV4-005/006, not by this requirement.
 
 ### REQ-HV4-004 — 6-pattern catalog dynamically selected
 
@@ -117,7 +117,7 @@ The manifest generator shall emit `manifest.json` with the canonical schema: `na
 
 ### REQ-HV4-009 — revfactory 7-Phase residuals removed
 
-The v4 harness artifacts (Builder Workflow, Runner Workflow, manifest schema, generated specialists, generated skills) shall NOT contain any static fixed 7-Phase pipeline, shall NOT hard-depend on Agent-Teams (3-5 cap) as the execution vehicle, shall NOT split generation into Skeleton and Customization phases, and shall NOT carry a LEARNING separate phase; learning shall be a cross-cutting concern folded into the Sprint Contract. (Acceptance: grep for "7-Phase", "Phase 7 LEARNING", "Skeleton", "Customization" in newly generated v4 artifacts returns zero matches.)
+The v4 harness artifacts (Builder orchestrator-direct logic, Runner Workflow, manifest schema, generated specialists, generated skills) shall NOT contain any static fixed 7-Phase pipeline, shall NOT hard-depend on Agent-Teams (3-5 cap) as the execution vehicle, shall NOT split generation into Skeleton and Customization phases, and shall NOT carry a LEARNING separate phase; learning shall be a cross-cutting concern folded into the Sprint Contract. (Acceptance: grep for "7-Phase", "Phase 7 LEARNING", "Skeleton", "Customization" in newly generated v4 artifacts returns zero matches.)
 
 ### REQ-HV4-010 — Namespace policy extension (commands/ + workflows/)
 
@@ -138,15 +138,15 @@ The migration shall port the 4 existing specialists (`cli-template-specialist`, 
 ## §D. Constraints
 
 - **C-HV4-001 (Anthropic "simplest solution first")**: Every load-bearing component in the Builder/Runner must justify its cost. As models improve, the v4 design must be amenable to removing components (context resets, sprint constructs, even the evaluator) one at a time and measuring — NOT treating any component as permanent.
-- **C-HV4-002 (Subagent spawning ceiling)**: The Builder and Runner are dynamic-workflow scripts (NOT agents); the sub-agents they spawn via `agent()` are leaf agents and MUST NOT themselves spawn sub-agents (Anthropic sub-agents cannot spawn other sub-agents). Hierarchical delegation is expressed at the manifest level (supervisor specialist dispatches worker specialists), NOT by recursive subagent spawning.
-- **C-HV4-003 (Dynamic-workflow determinism)**: The Builder Workflow and Runner Workflow script bodies MUST be deterministic — no `Date.now()` or `Math.random()` calls in the script body (resume caching keys on deterministic outputs). Timestamps and random values must be injected via script input arguments or stamped onto results after the run returns.
-- **C-HV4-004 (AskUserQuestion boundary)**: All Builder/Runner sub-agents are invoked via `agent()` inside a dynamic-workflow script and CANNOT prompt the user mid-run. The orchestrator MUST collect all user preferences (harness name confirmation, plan approval, A/B thresholds) via AskUserQuestion BEFORE the dynamic-workflow launches, or between workflow runs (stage boundaries).
+- **C-HV4-002 (Subagent spawning ceiling)**: The Runner is a dynamic-workflow script; the Builder is orchestrator-direct (orchestrator-side logic, not a separate agent or script). Sub-agents spawned by either the orchestrator (Builder phases) or the Runner (`agent()` calls) are leaf agents and MUST NOT themselves spawn sub-agents (Anthropic sub-agents cannot spawn other sub-agents). Hierarchical delegation is expressed at the manifest level (supervisor specialist dispatches worker specialists), NOT by recursive subagent spawning.
+- **C-HV4-003 (Dynamic-workflow determinism)**: The Runner Workflow script body MUST be deterministic — no `Date.now()` or `Math.random()` calls in the script body (resume caching keys on deterministic outputs). Timestamps and random values must be injected via script input arguments or stamped onto results after the run returns. The Builder is orchestrator-direct and follows normal orchestrator determinism discipline (no reliance on wall-clock/random for control flow); the determinism constraint on script bodies applies ONLY to the Runner.
+- **C-HV4-004 (AskUserQuestion boundary — Runner-only)**: Runner sub-agents are invoked via `agent()` inside a dynamic-workflow script and CANNOT prompt the user mid-run; the orchestrator-direct Builder phases CAN call AskUserQuestion at stage boundaries — in particular the PLAN→GENERATE approval gate (REQ-HV4-001 approval pattern extended to the build). The orchestrator MUST drain all preferences for a Runner invocation (harness name confirmation, plan approval, A/B thresholds) before that dynamic-workflow launches, OR collect them at Builder stage boundaries (which is first-class because the orchestrator holds the boundary).
 - **C-HV4-005 (Template neutrality §25)**: The v4 harness doctrine text embedded in `internal/template/templates/` MUST be generic (mechanism descriptions, public-source citations, permanent-rule citations) and MUST NOT leak internal-state markers (SPEC IDs, REQ tokens, audit citations, commit SHAs, archive paths).
 - **C-HV4-006 (Worktree L1 autonomy)**: Per moai-adk §14 advisory policy + the 2026-05-17 user opt-in policy, L1 `Agent(isolation:"worktree")` is runtime-autonomous — the orchestrator does NOT mandate worktree creation; worktree isolation is advisory and sub-agent-granular.
 
 ## §E. Non-Functional Requirements
 
-- **NFR-HV4-001 (Performance)**: The Builder Workflow (ANALYZE → GENERATE) shall complete within the Claude Code dynamic-workflow runtime budget (1000 agents total / 16 concurrent) and use parallel fan-out to minimize wall-clock time for multi-specialist generation.
+- **NFR-HV4-001 (Performance)**: The Builder's orchestrator-direct phases (ANALYZE → GENERATE) shall use parallel `Agent()` fan-out to minimize wall-clock time for multi-specialist generation. The Builder is NOT bound by the dynamic-workflow runtime budget (it uses ordinary `Agent()` spawn); the Runner IS bound by the dynamic-workflow runtime budget (1000 agents total / 16 concurrent) and that budget applies to Runner invocations only.
 - **NFR-HV4-002 (Observability)**: Every Builder/Runner phase shall emit a structured progress record (phase name, primitive used, specialist count, isolation decisions, Sprint Contract dimensions) into the manifest's run log section, so that a third party can audit which phases ran, which were skipped, and why.
 - **NFR-HV4-003 (Reversibility)**: `/moai:harness remove <name>` shall be a clean reverse of `/moai:harness <request>` — the harness can be removed without residue, and the legacy 7-Phase path remains accessible via git history for a deprecation window.
 - **NFR-HV4-004 (Honesty / verification-claim integrity)**: The dogfooding validation report shall follow the 5-Section Evidence-Bearing Report Format (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) per `.claude/rules/moai/core/verification-claim-integrity.md`. The +60% A/B claim shall be attributed to the exact command run and observed output; any unmeasured dimension shall be reported as a Gap, not a Claim.
@@ -161,7 +161,7 @@ The migration shall port the 4 existing specialists (`cli-template-specialist`, 
 
 ## §G. Risks
 
-- **R-HV4-001 (Dynamic-workflow runtime availability)**: Dynamic workflows require Claude Code v2.1.154+ and a paid plan. If the runtime is unavailable, the Builder must fall back to sequential sub-agent mode. Mitigation: design.md specifies the fallback path.
+- **R-HV4-001 (Dynamic-workflow runtime availability — Runner-only)**: Dynamic workflows require Claude Code v2.1.154+ and a paid plan. The Builder is orchestrator-direct and does NOT depend on the dynamic-workflow runtime (it uses ordinary `Agent()` spawn, available in all Claude Code versions). The Runner DOES depend on the dynamic-workflow runtime; if that runtime is unavailable for a Runner invocation, the Runner falls back to sequential sub-agent dispatch per manifest.primitive (the primitive mapping is preserved; only the `agent()`-inside-a-script dispatch path degrades to sequential `Agent()` calls). Mitigation: design.md §F specifies the Runner's fallback path.
 - **R-HV4-002 (Worktree cleanup)**: Conditional `Agent(isolation:"worktree")` spawns accumulate worktrees if cleanup fails. Mitigation: L1 worktree is runtime-autonomous-cleanup; the Runner emits a cleanup directive at end-of-run.
 - **R-HV4-003 (Sprint Contract over-engineering)**: The Sprint Contract can become a ceremonial artifact that adds cost without value for simple tasks. Mitigation: REQ-HV4-008 makes the evaluator conditional; the Sprint Contract is load-bearing only when the task exceeds the model's solo range.
 - **R-HV4-004 (Migration regression)**: Porting the 4 existing specialists to v4 manifest format could break the moai-adk Layer B specialist team. Mitigation: M6 milestone runs the existing Layer B regression suite as an AC.
@@ -170,7 +170,7 @@ The migration shall port the 4 existing specialists (`cli-template-specialist`, 
 
 - `research.md` — revfactory/harness 7-Phase analysis (verbatim strengths/removals), Anthropic harness-design GAN guidance, Claude Code dynamic-workflow spec, Sprint Contract pattern, Meta-Harness outer-loop forward-link.
 - `design.md` — v4 architecture: entry-point model, 4-phase Builder, Runner Workflow, manifest schema (full), worktree policy, revfactory 7-Phase → v4 mapping table.
-- `plan.md` — 6 milestones (M1 entry + namespace / M2 Builder Workflow / M3 manifest + Runner / M4 `/harness:<name>` + lifecycle / M5 conditional worktree / M6 migrate 4 specialists + legacy redirect).
+- `plan.md` — 6 milestones (M1 entry + namespace / M2 Builder orchestrator-direct logic + 6-pattern catalog + GENERATE output spec / M3 manifest + Runner / M4 `/harness:<name>` + lifecycle / M5 conditional worktree / M6 migrate 4 specialists + legacy redirect).
 - `acceptance.md` — AC-HV4-NNN acceptance criteria, one or more per REQ.
 - `progress.md` — §E skeleton (run-phase evidence placeholder).
 - `.moai/specs/SPEC-V3R6-HARNESS-NAMESPACE-V2-001/` — completed baseline; §24 namespace protection this SPEC extends.
@@ -182,5 +182,5 @@ The migration shall port the 4 existing specialists (`cli-template-specialist`, 
 
 ---
 
-Version: 0.1.0 (plan-phase draft)
+Version: 0.2.0 (run-phase, architecture pivot applied: Builder → orchestrator-direct; Runner stays dynamic-workflow)
 Classification: SPEC — feature to implement (forward-looking v4 harness redesign)

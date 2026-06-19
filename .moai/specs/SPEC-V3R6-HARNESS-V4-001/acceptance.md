@@ -10,7 +10,7 @@
 | AC-HV4-001b | REQ-HV4-001 | M1 | MUST-FIX | AskUserQuestion Socratic rounds when clarity <100%; name derived |
 | AC-HV4-002a | REQ-HV4-002 | M4 | MUST-FIX | `/harness:<name>` command auto-generated at GENERATE time |
 | AC-HV4-002b | REQ-HV4-002 | M4 | MUST-FIX | `/harness:<name>` invokes the harness's Runner Workflow |
-| AC-HV4-003a | REQ-HV4-003 | M2 | MUST-FIX | Builder runs 4 phases as dynamic-workflow |
+| AC-HV4-003a | REQ-HV4-003 | M2 | MUST-FIX | Builder runs 4 phases as orchestrator-direct (NOT a dynamic-workflow script) |
 | AC-HV4-003b | REQ-HV4-003 | M2 | MUST-FIX | ≥1 phase skipped under load-bearing-minimum (simple task) |
 | AC-HV4-004a | REQ-HV4-004 | M2 | MUST-FIX | ≥2 patterns chosen for ≥2 different domain requests |
 | AC-HV4-004b | REQ-HV4-004 | M2 | SHOULD-FIX | Patterns recorded in manifest.json |
@@ -59,11 +59,11 @@
 **Then** the harness's Runner Workflow `harness-<name>-run.js` is invoked (the Runner reads `manifest.json` and dispatches specialists per primitive).
 **Evidence**: Runner Workflow execution trace showing manifest read + specialist dispatch.
 
-### AC-HV4-003a — Builder runs 4 phases as dynamic-workflow (MUST-FIX, M2)
-**Given** the Builder Workflow `harness-build.js` is invoked.
+### AC-HV4-003a — Builder runs 4 phases as orchestrator-direct (MUST-FIX, M2)
+**Given** the `/moai:harness <request>` creation flow is invoked (Builder orchestrator-direct processing).
 **When** it runs end-to-end for a non-trivial domain request.
-**Then** all 4 phases execute: ANALYZE (Explore fan-out) → PLAN (opus xhigh sub-agent) → GENERATE (fan-out) → ACTIVATE (`/goal` + A/B), and the workflow script holds the plan (intermediate results in script variables, NOT Claude's context).
-**Evidence**: workflow run log shows all 4 phase records; script-body inspection confirms plan-in-script structure.
+**Then** all 4 phases execute as orchestrator-direct processing: ANALYZE (orchestrator parallel `Agent(Explore)` fan-out) → PLAN (orchestrator spawns single `Agent(opus,xhigh)`) → GENERATE (orchestrator fan-out emits the 5 artifact types) → ACTIVATE (orchestrator-direct dry-run + `/goal` + A/B). Intermediate results are held in the orchestrator's session context (the plan lives in Claude's context, NOT in a script). The orchestrator calls AskUserQuestion at the PLAN→GENERATE approval gate (the gate is first-class because the orchestrator holds the boundary). There is NO `harness-build.js` script — the Builder is orchestrator-side logic.
+**Evidence**: orchestrator run trace showing all 4 phase records held in session context (not script variables); the PLAN→GENERATE approval-gate AskUserQuestion call appears in the trace; `ls .claude/workflows/harness-build.js` returns "No such file" (the Builder JS file does not exist).
 
 ### AC-HV4-003b — ≥1 phase skipped under load-bearing-minimum (MUST-FIX, M2)
 **Given** a simple task that is within the model's solo reliable range (e.g., single-skill generation with no adversarial verification need).
@@ -132,7 +132,7 @@
 **Evidence**: run log records evaluator=skipped with rationale for a simple task; evaluator=invoked for a complex task.
 
 ### AC-HV4-009a — revfactory 7-Phase residual grep = 0 (MUST-FIX, M6)
-**Given** the v4 artifacts (Builder Workflow, Runner Workflow template, generated specialists, generated skills, manifest schema doc).
+**Given** the v4 artifacts (Builder orchestrator-direct logic, Runner Workflow template, generated specialists, generated skills, manifest schema doc).
 **When** `grep -rE '7-Phase|Phase 7 LEARNING|Skeleton|Customization'` runs over the newly generated v4 artifacts.
 **Then** the grep returns ZERO matches. (Legacy `moai-meta-harness` SKILL.md is excluded — it is the redirect source, not a v4 artifact.)
 **Evidence**: grep command output showing 0 matches, with the artifact path list enumerated.
@@ -193,7 +193,7 @@
 
 ## §D.2 Indirect Verification (where direct AC is impractical)
 
-- **Dynamic-workflow runtime availability** (R-HV4-001): the Builder is designed to fall back to sequential sub-agent mode if dynamic-workflow is unavailable. AC-HV4-003a assumes runtime availability; the fallback path is verified via a unit test that mocks the runtime as unavailable and asserts the fallback is triggered.
+- **Dynamic-workflow runtime availability** (R-HV4-001 — Runner-only after pivot): the Builder is orchestrator-direct and does NOT depend on the dynamic-workflow runtime (it uses ordinary `Agent()` spawn). The Runner DOES depend on the dynamic-workflow runtime; if unavailable for a Runner invocation, the Runner falls back to sequential sub-agent dispatch per manifest.primitive. AC-HV4-003a (Builder) needs NO runtime-availability fallback verification (the Builder is runtime-independent). The Runner's fallback path is verified via a unit test that mocks the dynamic-workflow runtime as unavailable and asserts the Runner falls back to sequential `Agent()` dispatch.
 - **Worktree L1 autonomous cleanup** (R-HV4-002): the Runner emits a cleanup directive at end-of-run, but L1 worktree cleanup is runtime-autonomous. AC-HV4-007b verifies worktree creation; cleanup is verified via `git worktree list` showing no accumulation across 3 consecutive runs.
 
 ## §D.3 Closure Gates (Definition of Done for this SPEC)

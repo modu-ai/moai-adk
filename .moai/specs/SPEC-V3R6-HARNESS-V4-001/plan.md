@@ -4,7 +4,7 @@
 
 ## §A. Context
 
-This SPEC rebuilds the moai-adk harness subsystem on Claude Code dynamic-workflow + conditional-worktree-isolation primitives, absorbing the strengths of `revfactory/harness`'s 7-Phase workflow and removing the rest. The rebuild is grounded in three prior completed baselines:
+This SPEC rebuilds the moai-adk harness subsystem on a split execution model — **orchestrator-direct Builder** (creation) + **dynamic-workflow Runner** (execution) + **conditional-worktree-isolation** primitives — absorbing the strengths of `revfactory/harness`'s 7-Phase workflow and removing the rest. The rebuild is grounded in three prior completed baselines:
 
 1. **SPEC-V3R6-HARNESS-NAMESPACE-V2-001** (completed) — resolved `my-harness-*` → `harness-*` namespace doctrine-code drift. §24 namespace protection currently covers `.claude/skills/harness-*/` and `.claude/agents/harness/` but NOT `.claude/commands/harness/` or `.claude/workflows/harness-*.js` — those are the NEW surfaces this SPEC introduces.
 2. **SPEC-V3R6-LIFECYCLE-REDESIGN-001** (plan-phase ready) — retired the separate Mx phase; 3-phase plan→run→sync is the modern lifecycle, MX Tag is cross-cutting.
@@ -21,7 +21,7 @@ This SPEC rebuilds the moai-adk harness subsystem on Claude Code dynamic-workflo
 
 - [ ] Verify Claude Code subdirectory-command resolution: does `.claude/commands/harness/dev.md` produce `/harness:dev`?
 - [ ] Verify `moai update` preserve logic surface: enumerate the Go functions that classify user-owned paths (`isUserOwnedNamespace`, `isUserAreaPath` in `internal/cli/update*.go`) and confirm `.claude/commands/harness/` + `.claude/workflows/harness-*.js` are NOT yet protected.
-- [ ] Verify dynamic-workflow runtime version requirement (Claude Code v2.1.154+) and document the fallback path if unavailable.
+- [ ] Verify dynamic-workflow runtime version requirement (Claude Code v2.1.154+) and document the Runner's fallback path if unavailable. (The Builder is orchestrator-direct and does NOT depend on this runtime; only the Runner does.)
 
 ## §D. Constraints (restated from spec.md §D)
 
@@ -38,7 +38,7 @@ Each milestone commit MUST carry the manager-develop §E self-verification matri
 
 Scope:
 - Extend `moai update` preserve logic to protect `.claude/commands/harness/` and `.claude/workflows/harness-*.js` as user-owned (extend `isUserOwnedNamespace` / `isUserAreaPath` in `internal/cli/update*.go`).
-- Author the `/moai:harness` NL-analysis entry: Context-First Discovery on natural-language request, harness `<name>` derivation (not user-supplied), explicit approval gate before Builder delegation.
+- Author the `/moai:harness` NL-analysis entry: Context-First Discovery on natural-language request, harness `<name>` derivation (not user-supplied), explicit approval gate before Builder phase entry (Discovery → ANALYZE handoff; M2 extends this through PLAN/GENERATE/ACTIVATE).
 - Update §24 doctrine text (`harness-namespace-doctrine.md`) to cover the two new user-owned surfaces.
 
 Deliverables:
@@ -48,22 +48,27 @@ Deliverables:
 
 AC bindings: AC-HV4-001a/b (NL analysis), AC-HV4-010a/b (namespace protection).
 
-### M2 — Builder Workflow `harness-build.js` (4 signal-driven phases)
-**Priority**: P0 (the core dynamic-workflow that generates harnesses).
+### M2 — Builder orchestrator-direct logic (4 phases) + 6-pattern catalog + GENERATE output spec
+**Priority**: P0 (the core creation logic that generates harnesses).
+
+> **Architecture pivot (2026-06-19, user-approved)**: the Builder is **orchestrator-direct processing**, NOT a dynamic-workflow script. The original M2 scope authored `.claude/workflows/harness-build.js` + `harness-patterns.js`; that scope is **superseded**. The Runner (`harness-<name>-run.js`) STAYS a dynamic-workflow script (design §F, M3 scope). The pivot rationale is recorded in design.md §K Alternative E.
 
 Scope:
-- Author `.claude/workflows/harness-build.js` as a deterministic dynamic-workflow script (script holds the plan).
-- ANALYZE phase: Explore fan-out (read-only, main tree) — codebase + docs + existing harness/* + SPEC history; produce domain profile + task-pattern inventory.
-- PLAN phase: single opus xhigh sub-agent — select/combine from 6 patterns, define specialist roles, map each to an execution primitive, decide per-specialist worktree isolation; produce draft manifest. User approval gate (AskUserQuestion) BEFORE GENERATE.
-- GENERATE phase: dynamic-workflow fan-out — specialist agents, companion skills, Runner Workflow script, manifest.json, AND the `/harness:<name>` command file.
-- ACTIVATE phase: sample-task dry-run + `/goal` autonomous convergence + with/without A/B; load-bearing minimum (ACTIVATE A/B skipped for simple tasks).
+- Document the orchestrator Builder logic in the `/moai:harness` skill surface — extend `harness-build-entry.md` Phase 4 forward-link to describe the orchestrator-direct GENERATE (the entry already runs Discovery orchestrator-direct per M1). The 4 phases are ANALYZE / PLAN / GENERATE / ACTIVATE, all orchestrator-side.
+- ANALYZE phase: orchestrator parallel `Agent(agentType:"Explore", effort:"low")` fan-out (read-only, main tree) — codebase + docs + existing harness/* + SPEC history; aggregate in orchestrator session context; produce domain profile + task-pattern inventory.
+- PLAN phase: orchestrator spawns single `Agent(model:"opus", effort:"xhigh")` — select/combine from 6 patterns, define specialist roles, map each to an execution primitive, decide per-specialist worktree isolation; produce draft manifest. **PLAN→GENERATE approval gate** (AskUserQuestion) — first-class because the orchestrator holds the boundary (this resolves the design self-contradiction that blocked the original Builder-as-workflow design).
+- GENERATE phase: orchestrator fan-out emits the 5 artifact types — `.claude/commands/harness/<name>.md` (thin wrapper) + `harness-<name>-run.js` (Runner, dynamic-workflow) + `harness-<name>-*-specialist.md` (sub-agents) + `harness-<name>-*/SKILL.md` (companion skills) + `manifest.json` (SSOT). Conditional `Agent(isolation:"worktree")` per specialist whose manifest declares isolation:worktree.
+- ACTIVATE phase: orchestrator-direct dry-run + `/goal` autonomous convergence + with/without A/B; load-bearing minimum (ACTIVATE A/B skipped for simple tasks).
+- The 6-pattern catalog is a documented reference in the skill body (Pipeline / Fan-out-Fan-in / Expert Pool / Producer-Reviewer / Supervisor / Hierarchical Delegation), NOT a JS module.
 
 Deliverables:
-- `.claude/workflows/harness-build.js` Builder Workflow script.
-- 6-pattern catalog module (`harness-patterns.js` or equivalent) referenced by PLAN.
-- PLAN-phase primitive-mapping logic (specialist → primitive).
+- `/moai:harness` skill body extension (or companion skill section) covering ANALYZE / PLAN / GENERATE / ACTIVATE orchestrator-direct logic.
+- 6-pattern catalog documented as a reference (NOT a `harness-patterns.js` module).
+- GENERATE output contract: the 5 artifact types + their content contracts (so M3/M4 know what to consume).
+- PLAN-phase primitive-mapping logic (specialist → primitive) as orchestrator-side reasoning, not script logic.
+- **NOT delivered**: `.claude/workflows/harness-build.js` (removed by pivot), `harness-patterns.js` (removed by pivot).
 
-AC bindings: AC-HV4-003a/b (4-phase Builder, ≥1 phase skipped under load-bearing-minimum), AC-HV4-004a/b (6-pattern dynamic selection ≥2 patterns for ≥2 different domain requests).
+AC bindings: AC-HV4-003a/b (4-phase Builder as orchestrator-direct, ≥1 phase skipped under load-bearing-minimum), AC-HV4-004a/b (6-pattern dynamic selection ≥2 patterns for ≥2 different domain requests).
 
 ### M3 — manifest.json schema + Runner primitive-mapping engine
 **Priority**: P0 (the Runner consumes the manifest verbatim).
