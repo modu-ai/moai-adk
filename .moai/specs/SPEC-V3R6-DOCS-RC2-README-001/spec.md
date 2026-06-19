@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-DOCS-RC2-README-001
 title: "v3.0.0-rc2 README + CHANGELOG factual-alignment (repo-root docs)"
-version: "0.2.0"
-status: draft
+version: "0.3.0"
+status: in-progress
 created: 2026-06-19
 updated: 2026-06-19
 author: manager-spec
@@ -30,7 +30,7 @@ related_specs:
 
 The repo-root user-facing docs (`README.md`, `README.ko.md`, `CHANGELOG.md`, and the `CLAUDE.md` §4 Agent Catalog) have drifted from the authoritative V3R6 ground truth across three surfaces:
 
-1. **Quantitative drift** — agent counts (24 / 26 / 38,700 LOC / 38 packages / 18 languages / 47–52 skills) contradict the current state (8 retained agents, ~193,616 Go LOC [LIVE 2026-06-19], 100 packages, 16 languages, 32 moai-* template-managed skills [excluding 2 `harness-moaiadk-*` user-owned], 17 commands).
+1. **Quantitative drift** — agent counts (24 / 26 / 38,700 LOC / 38 packages / 18 languages / 47–52 skills) contradict the current state (8 retained agents, 100K+ lines of Go [graceful-aging; precise figure not hardcoded], 100 packages, 16 languages, 31 moai-* template-managed skills [excluding 2 `harness-moaiadk-*` user-owned], 17 commands).
 2. **Catalog drift** — the AI Agent Orchestration Mermaid diagram and the Design System implementer table reference archived `expert-*` agents that were retired in `SPEC-V3R6-AGENT-TEAM-REBUILD-001`.
 3. **Version/lifecycle drift** — README.ko.md's "What's New" section is frozen at v2.17.0 (two major versions behind); CHANGELOG carries mis-labeled `[Unreleased] — v2.20.0-rc1` subsections; the 3-phase lifecycle (plan→run→sync, with the Mx-phase retired per `SPEC-V3R6-LIFECYCLE-REDESIGN-001`) is not surfaced.
 
@@ -65,8 +65,8 @@ The following values are the **authoritative baseline** for this SPEC. Every REQ
 | Agents (archived) | 12 | `.moai/backups/agent-archive-2026-05-25/` | NOT to be surfaced in catalog/Mermaid. |
 | builder-harness path | `.claude/agents/moai/builder-harness.md` | filesystem (verified) | The `.claude/agents/builder/` directory does NOT exist. |
 | Commands | 17 | `internal/cli` command registry | brain clean codemaps coverage design e2e feedback fix gate harness loop mx plan project review run sync. NO `/moai db` slash command exists. |
-| Skills | 32 (moai-* template-managed, excluding 2 `harness-moaiadk-*` user-owned) | `find .claude/skills -name SKILL.md -path "*moai*" \| grep -v "harness-moaiadk-" \| wc -l` → 32 | LIVE re-derive 2026-06-19: `*moai*` path match returns 34, of which 2 are `harness-moaiadk-best-practices` + `harness-moaiadk-patterns` (user-owned per `SPEC-V3R6-HARNESS-NAMESPACE-V2-001`). README surfaces the **32** template-managed count and MUST state the exclusion explicitly so the number is reproducible. |
-| Go LOC | ~193,616 (measured 2026-06-19) | `find . -name "*.go" -not -path "./vendor/*" -not -path "./internal/template/embedded.go" -not -name "*.pb.go" -not -name "zz_*.go" \| xargs wc -l \| tail -1` → 193,616 | Prefer graceful-aging phrasing ("100K+ lines"); do NOT hardcode the precise figure in README (LOC drifts — see §E.3). The ~198,945 figure cited in earlier drafts was unverifiable; LIVE re-measurement is 193,616. |
+| Skills | 31 (moai-* template-managed, excluding 2 `harness-moaiadk-*` user-owned) | `find .claude/skills -name SKILL.md -path "*moai*" \| grep -v "harness-moaiadk-" \| wc -l` → 31 | LIVE re-derive 2026-06-19 (iter-3): `*moai*` path match returns 33, of which 2 are `harness-moaiadk-best-practices` + `harness-moaiadk-patterns` (user-owned per `SPEC-V3R6-HARNESS-NAMESPACE-V2-001`). `moai-design-system` removed by `SPEC-V3R6-DESIGN-SYSTEM-RETIRE-001` (post-authoring), which is why the iter-1 count of 32 dropped to 31. README surfaces the **31** template-managed count and MUST state the exclusion explicitly so the number is reproducible. |
+| Go LOC | graceful-aging ("100K+ lines"; precise figure NOT hardcoded) | `find . -name "*.go" -not -path "./vendor/*" -not -path "./internal/template/embedded.go" -not -name "*.pb.go" -not -name "zz_*.go" \| xargs wc -l \| tail -1` returns an inflated count (iter-3 LIVE re-measurement 2026-06-19 = 191,248; the pipeline over-counts because the exclusion set is incomplete) | Prefer graceful-aging phrasing ("100K+ lines of Go across 100+ packages"); do NOT hardcode the precise figure in README (LOC drifts on every commit — see §E.3). Earlier drafts cited precise figures (~193,616 / ~198,945) that the §B pipeline cannot reproduce deterministically; iter-3 (D3) drops the precise LOC claim from the Ground Truth to align the anti-unobserved-claim SPEC's own §B with the no-unobserved-claim invariant (per `verification-claim-integrity.md` §2 attribution). |
 | Go packages | 100 | `go list ./...` count | Prefer "100+ packages" phrasing. |
 | Languages | 16 | `CLAUDE.local.md §15` + README L80/514 | go python typescript javascript rust java kotlin csharp ruby php elixir cpp scala r flutter swift |
 | GLM model | `glm-5.2[1m]` (high) | `internal/template/templates/.moai/config/sections/llm.yaml` (TEMPLATE SSOT) | Local llm.yaml is stale (glm-5.1); docs follow TEMPLATE SSOT. |
@@ -87,9 +87,9 @@ Every REQ below cites its drift evidence from this inventory. Line numbers are f
 
 | ID | File:line | Current (stale) | Target (authoritative) |
 |----|-----------|-----------------|------------------------|
-| DRIFT-EN-01 | `README.md:40` | "24 specialized AI agents and 52 skills" | 8 retained agents, 32 moai-* skills (excluding 2 `harness-moaiadk-*`) |
-| DRIFT-EN-02 | `README.md:62` | "38,700+ lines / 38 packages" | graceful-aging "100K+ lines / 100+ packages" (LIVE LOC ~193,616; do NOT hardcode the precise figure) |
-| DRIFT-EN-03 | `README.md:64` | "26 agents + 47 skills", "18 languages" | 8 agents, 32 skills, 16 languages |
+| DRIFT-EN-01 | `README.md:40` | "24 specialized AI agents and 52 skills" | 8 retained agents, 31 moai-* skills (excluding 2 `harness-moaiadk-*`) |
+| DRIFT-EN-02 | `README.md:62` | "38,700+ lines / 38 packages" | graceful-aging "100K+ lines / 100+ packages" (precise LOC NOT hardcoded; iter-3 §B pipeline over-counts, see §B Go LOC row) |
+| DRIFT-EN-03 | `README.md:64` | "26 agents + 47 skills", "18 languages" | 8 agents, 31 skills, 16 languages |
 | DRIFT-EN-04 | `README.md:262` | "delegates to 24 specialized agents" | "delegates to 8 retained agents" (NOTE: L297 already has a *different* "8 retained agents" token — the AC MUST anchor on L262 specifically, see D6 caveat above) |
 | DRIFT-EN-05 | `README.md:264-286` | AI Agent Orchestration Mermaid (fence L264, close L286) uses bare category labels `Manager (8)`, `Expert (8)`, `Builder (3)`, `Evaluator (2)`, `Design System (4+1)` + node body `backend · frontend · security · devops<br/>performance · debug · testing · refactoring` referencing archived `expert-*` agents | Rewrite to show only the 8 retained agents (manager-spec, manager-develop, manager-docs, manager-git, plan-auditor, sync-auditor, builder-harness, Explore); bare category labels + archived-agent node bodies absent |
 | DRIFT-EN-06 | `README.md:451-478` | Plan→Run→Sync pipeline (no lifecycle note) | Add 3-phase lifecycle note (Mx retired) |
@@ -101,7 +101,7 @@ Every REQ below cites its drift evidence from this inventory. Line numbers are f
 
 | ID | File:line | Current (stale) | Target |
 |----|-----------|-----------------|--------|
-| DRIFT-KO-01 | README.ko.md hero / Key Numbers equivalents | mirrors of DRIFT-EN-01..04 | 8 agents / 100K+ LOC / 16 langs / 32 skills |
+| DRIFT-KO-01 | README.ko.md hero / Key Numbers equivalents | mirrors of DRIFT-EN-01..04 | 8 agents / 100K+ LOC / 16 langs / 31 skills |
 | DRIFT-KO-02 | `README.ko.md:46-90` | "## v2.17.0의 새로운 기능" section | REWRITE to v3/V3R6 generation |
 | DRIFT-KO-03 | `README.ko.md:58` | "my-harness-*" namespace | "moai-* (template-managed) vs harness-* (user-owned)" |
 | DRIFT-KO-04 | README.ko.md Mermaid / Design System / `/moai db` equivalents | mirrors of DRIFT-EN-05,07,08 | mirror fixes |
@@ -126,15 +126,15 @@ Every REQ below cites its drift evidence from this inventory. Line numbers are f
 
 ### D.1 Agent-count reconciliation (EN)
 
-**REQ-EN-001** — The `README.md` hero line (DRIFT-EN-01, `README.md:40`) **shall** state the retained agent count as 8 (7 MoAI-custom at `.claude/agents/moai/` + 1 Anthropic built-in `Explore`) and the skill count as **32 moai-* template-managed skills** (explicitly excluding the 2 `harness-moaiadk-*` user-owned skills per `SPEC-V3R6-HARNESS-NAMESPACE-V2-001`). The bare phrase "32 skills" without the moai-* qualification is insufficient because `find .claude/skills -name SKILL.md -path "*moai*"` returns 34; the exclusion MUST be stated so the number is reproducible.
+**REQ-EN-001** — The `README.md` hero line (DRIFT-EN-01, `README.md:40`) **shall** state the retained agent count as 8 (7 MoAI-custom at `.claude/agents/moai/` + 1 Anthropic built-in `Explore`) and the skill count as **31 moai-* template-managed skills** (explicitly excluding the 2 `harness-moaiadk-*` user-owned skills per `SPEC-V3R6-HARNESS-NAMESPACE-V2-001`). The bare phrase "31 skills" without the moai-* qualification is insufficient because `find .claude/skills -name SKILL.md -path "*moai*"` returns 33; the exclusion MUST be stated so the number is reproducible.
 
-**REQ-EN-002** — The `README.md` Key Numbers block (DRIFT-EN-03, `README.md:64`) **shall** state 8 agents, 32 moai-* skills (with the harness-moaiadk-* exclusion noted per REQ-EN-001), and 16 languages; the previous "26 agents + 47 skills" and "18 languages" tokens **shall** be absent.
+**REQ-EN-002** — The `README.md` Key Numbers block (DRIFT-EN-03, `README.md:64`) **shall** state 8 agents, 31 moai-* skills (with the harness-moaiadk-* exclusion noted per REQ-EN-001), and 16 languages; the previous "26 agents + 47 skills" and "18 languages" tokens **shall** be absent.
 
 **REQ-EN-003** — The `README.md` delegation prose (DRIFT-EN-04, `README.md:262`) **shall** state "delegates to 8 retained agents" (or semantically equivalent). The "24 specialized agents" token at L262 **shall** be absent. **Because `README.md:297` already contains an unrelated "8 retained agents" token, the AC for this REQ MUST line-anchor on L262** (via `sed -n '262p' | grep`) — a whole-file `grep "8 retained"` would vacuously pass today (D6 caveat).
 
 ### D.2 Go-scale reconciliation (EN)
 
-**REQ-EN-004** — **Where** the `README.md` Key Numbers block cites Go scale (DRIFT-EN-02/03, `README.md:62-64`), the docs **shall** prefer graceful-aging phrasing ("100K+ lines of Go across 100+ packages") over a precise re-hardcode of the moment-in-time figure. The precise figure is **NOT** to be hardcoded: LIVE measurement 2026-06-19 is ~193,616 LOC (the earlier-draft ~198,945 was unverifiable), and LOC drifts on every commit.
+**REQ-EN-004** — **Where** the `README.md` Key Numbers block cites Go scale (DRIFT-EN-02/03, `README.md:62-64`), the docs **shall** prefer graceful-aging phrasing ("100K+ lines of Go across 100+ packages") over a precise re-hardcode of the moment-in-time figure. The precise figure is **NOT** to be hardcoded: the §B pipeline over-counts and is not deterministic (iter-3 LIVE 2026-06-19 = 191,248 via the spec's own pipeline; earlier drafts cited ~193,616 / ~198,945), and LOC drifts on every commit. Dropping the precise LOC claim aligns the anti-unobserved-claim SPEC's own §B with the no-unobserved-claim invariant.
 
 ### D.3 Language-count reconciliation (EN)
 
@@ -198,7 +198,7 @@ Every REQ below cites its drift evidence from this inventory. Line numbers are f
 
 - **E.1 Project-owned files**: `README.md`, `README.ko.md`, `CHANGELOG.md`, `CLAUDE.md` are project-owned (not template-managed), so the template-internal-content isolation doctrine (`.moai/docs/template-internal-isolation-doctrine.md` §25) does NOT bind these files. The docs MAY carry project-specific version/SPEC references.
 - **E.2 CLAUDE.md template counterpart**: `CLAUDE.md` has a template source at `internal/template/templates/CLAUDE.md`. If `CLAUDE.md` is edited (REQ-CLAUDE-001), the plan.md MUST flag whether the template source needs the same path fix. The plan-phase does NOT modify the template — that decision is deferred to run-phase (see plan.md §G).
-- **E.3 Graceful-aging preference**: Where a precise moment-in-time figure could be replaced by a range that ages better ("100K+ lines" vs "~198,945 lines"), the docs SHALL prefer the range. Rationale: the next drift sweep should not re-fire on every LOC delta.
+- **E.3 Graceful-aging preference**: Where a precise moment-in-time figure could be replaced by a range that ages better ("100K+ lines" vs a precise LOC count), the docs SHALL prefer the range. Rationale: the next drift sweep should not re-fire on every LOC delta, and the §B Go LOC pipeline cannot reproduce a deterministic precise figure (iter-3 D3 finding).
 - **E.4 No stable-version claim**: REQ-X-001 is a hard constraint. Asserting `v3.0.0 stable` while only the `rc2` tag exists is an unobserved-claim violation.
 - **E.5 Reproduction-first evidence**: Every drift claim in §C cites a `file:line`. Every AC in `acceptance.md` MUST be independently verifiable via grep (`grep -c <stale-token>` returns 0; `grep -c <new-value>` returns ≥1). **Line-anchor rule (D6)**: when a "new value" already exists elsewhere in the same file (e.g., `README.md:297` already says "8 retained agents"), a whole-file `grep` is vacuously satisfied — every such AC MUST either (a) line-anchor via `sed -n '<line>p' | grep` to the specific drift line, OR (b) carry a companion "stale token absent at <line>" AC. The acceptance.md suite has been audited (iter-1 fix) to line-anchor every "new value present" AC where the token pre-exists elsewhere.
 - **E.6 Language parity**: EN and KO README files MUST carry the same quantitative values. The KO file is NOT a translation of stale EN — both must reflect the §B baseline.
@@ -281,3 +281,4 @@ Every REQ below cites its drift evidence from this inventory. Line numbers are f
 
 - **2026-06-19** — SPEC created (plan-phase, status: draft). Source: read-only analysis + design pass that enumerated the §C drift inventory. Decomposition self-check: `SPEC ✓ | V3R6 ✓ | DOCS ✓ | RC2 ✓ | README ✓ | 001 ✓ → PASS`.
 - **2026-06-19 (iter-1 audit fix, v0.2.0)** — Independent plan-audit (iter-1 FAIL 0.74) re-derived all §B numbers LIVE and found 3 BLOCKING + 4 SHOULD-FIX defects. Fixes: D1 skills count 34→32 (exclude 2 `harness-moaiadk-*`, exclusion stated explicitly); D2 AC-EN-003b line-anchored on L262 (L297 already had "8 retained agents" → whole-file grep was vacuous); D3 AC-EN-006a re-anchored on the actual Mermaid bare labels `Manager (8)`/`Expert (8)`/`Builder (3)`/`Evaluator (2)`/`Design System (4+1)` inside L264-286 (the hyphenated `expert-(frontend|...)` form does not appear in the block); D4 v2.20.0-rc1 count corrected ×3→4 headings, AC-CL-002 scoped to `^##.*v2\.20\.0-rc1` heading-line removal; D5 Go LOC ~198,945→~193,616 (LIVE), precise figure dropped in favor of "100K+" graceful-aging phrasing; D6 line-anchor rule codified in §E.5 + §C.1 caveat; D7 AC-EN-010 pinned to concrete grep predicates (`explicitly illustrative|example only` ≥1 OR `Opus 4\.[78]|CC 2\.1\.17` ≥1). REQ-X-002 bans (HARNESS-NAMESPACE-V2 retained, HARNESS-MOAI-NAMESPACE superseded) confirmed intact.
+- **2026-06-19 (iter-3 plan-audit fix, v0.3.0)** — Independent plan-audit iter-2 re-audit scored FAIL 0.74 with 2 BLOCKING + 2 SHOULD-FIX defects. Fixes: **D1'** [BLOCKING] skills count 32→31 (LIVE re-derive 2026-06-19 = 31 template-managed / 33 total; root cause = `moai-design-system` removed by `SPEC-V3R6-DESIGN-SYSTEM-RETIRE-001` post-authoring → the iter-1 count of 32 became stale carry-over in §B Ground Truth, a `verification-claim-integrity.md` §2 attribution violation); all 9+ spec.md occurrences updated (§A.1, §B Skills row, §C.1 DRIFT-EN-01/03, §C.2 DRIFT-KO-01, REQ-EN-001/002). **D2'** [BLOCKING] AC-KO-001b language-count predicate line-anchored on `README.ko.md:111` (the iter-2 D6 discipline was applied to EN but missed on KO — L58/126/560/1215 carry the CORRECT `16개` token, so the KO whole-file grep was vacuously satisfied; the actual drift is `18개` at L111). **D3** [SHOULD-FIX] precise Go LOC figure dropped from §B Ground Truth (the §B pipeline over-counts non-deterministically; iter-3 LIVE = 191,248 via the spec's own pipeline, earlier drafts cited ~193,616 / ~198,945; the README prefers "100K+" graceful-aging phrasing per §E.3 anyway — so the unverifiable precise claim is removed from the anti-unobserved-claim SPEC's own §B). **D5** [SHOULD-FIX] AC-CL-001 internal contradiction resolved (the prior AC simultaneously required `grep → 0` and permitted `grep → ≥1`; split into two binary checks). plan.md + acceptance.md updated in lockstep. Frontmatter status unchanged (draft); version 0.2.0 → 0.3.0.

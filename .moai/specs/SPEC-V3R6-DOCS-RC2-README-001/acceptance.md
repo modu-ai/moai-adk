@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-DOCS-RC2-README-001
 title: "Acceptance Criteria — v3.0.0-rc2 README + CHANGELOG factual-alignment"
-version: "0.2.0"
-status: draft
+version: "0.3.0"
+status: in-progress
 created: 2026-06-19
 updated: 2026-06-19
 author: manager-spec
@@ -65,7 +65,7 @@ Each AC MUST be reported in the 5-Section Evidence-Bearing Report Format at run-
 | REQ-KO-001 | AC-KO-001a, AC-KO-001b | MUST-PASS | M3 |
 | REQ-KO-002 | AC-KO-002a, AC-KO-002b | MUST-PASS | M3 |
 | REQ-KO-003 | AC-KO-003 | MUST-PASS | M3 |
-| REQ-CL-001 | AC-CL-001 | MUST-PASS | M4 |
+| REQ-CL-001 | AC-CL-001a, AC-CL-001b | MUST-PASS | M4 |
 | REQ-CL-002 | AC-CL-002 | MUST-PASS | M4 |
 | REQ-CL-003 | AC-CL-003 | MUST-PASS | M4 |
 | REQ-CLAUDE-001 | AC-CLAUDE-001a, AC-CLAUDE-001b | MUST-PASS | M5 |
@@ -102,10 +102,10 @@ Each AC MUST be reported in the 5-Section Evidence-Bearing Report Format at run-
 
 #### AC-EN-002c — Key Numbers new values present (line-anchored on Key Numbers block)
 **Given** the Key Numbers block (`README.md:62-65` region — the `- **N** ...` bulleted list),
-**When** `sed -n '60,70p' README.md | grep -c "32"` is run (the skills count "32" appears in the Key Numbers block),
+**When** `sed -n '60,70p' README.md | grep -c "31"` is run (the skills count "31" appears in the Key Numbers block),
 **Then** the command MUST return `≥1`;
-**And when** `sed -n '60,70p' README.md | grep -c "moai-\*\|32 .*skills"` is run, the command MUST return `≥1` (the count is qualified as moai-* template-managed per REQ-EN-001; the harness-moaiadk-* exclusion is stated in adjacent prose or the §B reproduction note).
-> **Why line-anchored (iter-1 D6 fix)**: although "32 skills" does not pre-exist anywhere today, the agent count token "8" DOES pre-exist in the same block region; scoping to `sed -n '60,70p'` ensures the new value lands in the Key Numbers block specifically and the moai-* qualification is co-located.
+**And when** `sed -n '60,70p' README.md | grep -c "moai-\*\|31 .*skills"` is run, the command MUST return `≥1` (the count is qualified as moai-* template-managed per REQ-EN-001; the harness-moaiadk-* exclusion is stated in adjacent prose or the §B reproduction note).
+> **Why line-anchored (iter-1 D6 fix)**: although "31 skills" does not pre-exist anywhere today, the agent count token "8" DOES pre-exist in the same block region; scoping to `sed -n '60,70p'` ensures the new value lands in the Key Numbers block specifically and the moai-* qualification is co-located. (iter-3 D1' update: count is 31, not 32 — `moai-design-system` removed by DSR.)
 
 #### AC-EN-003a — Delegation prose stale absent
 **Given** the `README.md` delegation prose at DRIFT-EN-04,
@@ -186,13 +186,15 @@ Each AC MUST be reported in the 5-Section Evidence-Bearing Report Format at run-
 - `grep -c "expert-frontend" README.ko.md`
 - `grep -cE "^#+ .*/moai db" README.ko.md`
 
-#### AC-KO-001b — KO new tokens present (line-anchored; D6 fix)
+#### AC-KO-001b — KO new tokens present (line-anchored; iter-1 D6 + iter-3 D2' fix)
 **Given** the `README.ko.md` file,
 **When** the following commands are each run, each MUST return `≥1`:
-- `grep -cE "16개.*(언어|프로그래밍)|16 (programming )?languages" README.ko.md` — the corrected language count (LIVE 2026-06-19: KO file currently says `18개 프로그래밍 언어` at L111, so "16" does NOT pre-exist; this check is non-vacuous)
+- `sed -n '111p' README.ko.md | grep -c "16개"` — the corrected language count, line-anchored on L111 (the actual drift line; LIVE 2026-06-19: `README.ko.md:111` currently says `**18개** 프로그래밍 언어 지원`).
+- `sed -n '111p' README.ko.md | grep -c "18개"` — companion stale-absent check on the SAME line; this MUST return `0` (proves the drift line was actually touched).
 - `grep -c "moai hook db-schema-sync" README.ko.md` — the db pointer (does NOT pre-exist)
-- `grep -cE "32.*(moai-\*|skills|스킬)" README.ko.md` — the skills count with moai-* qualification (does NOT pre-exist in KO today)
-> **Why not `8 (retained )?agents` (iter-1 D6 fix)**: the KO file ALREADY contains `8개 retained 에이전트` at L40, L110, L308, L343, L368, L380 (6 places, verified LIVE 2026-06-19). The agent-count surface in KO is already correct — the actual KO staleness is the language count (18→16), the missing skills count, and the missing db-schema-sync pointer. Those three predicates are the non-vacuous checks. The KO-native phrasing (`8개`, `16개`, `언어`, `스킬`) is accepted per edge case E.3.
+- `grep -cE "31.*(moai-\*|skills|스킬)" README.ko.md` — the skills count with moai-* qualification (does NOT pre-exist in KO today; iter-3 D1' count = 31)
+> **Why line-anchored on L111 (iter-3 D2' fix — KO D6 parity)**: the iter-2 D6 discipline was applied to the EN README ACs but missed on the KO mirror. The KO file ALREADY contains the correct `16개` token at L58, L126, L560, L1215 (4 places, verified LIVE 2026-06-19 — language-agnostic table rows, NOT drift). A whole-file `grep -c "16개" README.ko.md` returns 4 today and would vacuously pass WITHOUT touching the L111 drift line (`**18개** 프로그래밍 언어 지원`). Anchoring the primary predicate on `sed -n '111p'` and the companion stale-absent check on the same line forces the actual drift line to change. (Run-phase line-shift handling: if earlier M3 edits shift L111, re-resolve via `grep -n "18개.*프로그래밍\|18개.*언어" README.ko.md` and anchor on whichever line that returns — the line-anchor contract is "the specific drift line", not "the literal plan-phase number".)
+> **Why not `8 (retained )?agents` (iter-1 D6 fix)**: the KO file ALREADY contains `8개 retained 에이전트` at L40, L110, L308, L343, L368, L380 (6 places, verified LIVE 2026-06-19). The agent-count surface in KO is already correct — the actual KO staleness is the language count (18→16), the missing skills count, and the missing db-schema-sync pointer. The KO-native phrasing (`8개`, `16개`, `언어`, `스킬`) is accepted per edge case E.3.
 
 #### AC-KO-002a — KO What's New v2.17.0 stale heading absent
 **Given** the `README.ko.md` What's New section at DRIFT-KO-02,
@@ -215,10 +217,15 @@ Each AC MUST be reported in the 5-Section Evidence-Bearing Report Format at run-
 
 ### §D.4 CHANGELOG.md (M4)
 
-#### AC-CL-001 — rc2 section promoted
+#### AC-CL-001a — rc2 section promoted (binary, iter-3 D5 split)
 **Given** the `CHANGELOG.md` top section,
-**When** `grep -cE "^## \[v3\.0\.0-rc2\]" CHANGELOG.md` is run, the command MUST return `≥1`;
-**And when** `grep -cE "^## \[Unreleased\]" CHANGELOG.md` is run, the command MUST return `0` for the rc2-cohort content (a fresh empty `## [Unreleased]` placeholder for future work is permissible; M6 MUST distinguish).
+**When** `grep -cE "^## \[v3\.0\.0-rc2\]" CHANGELOG.md` is run, the command MUST return `≥1`.
+
+#### AC-CL-001b — rc2 cohort NOT under Unreleased (binary, iter-3 D5 split)
+**Given** the `CHANGELOG.md` top section,
+**When** `grep -cE "^## \[Unreleased\]" CHANGELOG.md` is run, the command MUST return `0`.
+> A fresh empty `## [Unreleased]` placeholder for future work is permissible per edge case E.2; the run-phase M6 verification MUST distinguish "fresh empty placeholder" from "rc2 content still under Unreleased". If a fresh empty placeholder is intentionally retained, M6 records the justification and the AC is PASS-with-justification. The AC itself is binary (`grep → 0`); the "M6 MUST distinguish" prose is the evidence-capture obligation, not a self-contradictory `grep → ≥1` permission.
+> **iter-3 D5 rationale**: the prior single AC-CL-001 simultaneously required `grep -cE "^## \[v3\.0\.0-rc2\]" → ≥1` AND permitted `grep -cE "^## \[Unreleased\]" → ≥1` ("M6 MUST distinguish"), which is an internal contradiction. Split into two binary checks (AC-CL-001a promotes rc2; AC-CL-001b ensures rc2 content is not under Unreleased). No AC self-contradicts.
 
 #### AC-CL-002 — Mis-labeled HEADING lines cleaned (heading-anchored)
 **Given** the mis-labeled subsection headers at DRIFT-CL-02 (LIVE 2026-06-19: 4 heading lines at L378/L487/L507/L527),
@@ -298,7 +305,7 @@ A factual-alignment SPEC is uniquely vulnerable to **vacuously-satisfied ACs**: 
 | Token | Pre-existing correct location(s) | Drift line the AC must force |
 |-------|----------------------------------|------------------------------|
 | `8 retained agents` / `8 (retained )?agents` | README.md L297, L322, L334; README.ko.md L40/L110/L308/L343/L368/L380 (`8개 retained 에이전트`) | README.md L40 (hero), L262 (delegation prose), L64 (Key Numbers) |
-| `16 languages` | README.md L80, L514, L1168 (language-agnostic table rows) | README.md L64 (Key Numbers `18 languages`) |
+| `16 languages` / `16개` | README.md L80, L514, L1168 (language-agnostic table rows); README.ko.md L58, L126, L560, L1215 (language-agnostic table rows) | README.md L64 (Key Numbers `18 languages`); README.ko.md L111 (`**18개** 프로그래밍 언어 지원`) |
 | `manager-develop` | README.md (2 pre-existing mentions) | README.md L921/939/969 (Design System implementer table `expert-frontend`) |
 | `3-phase` / `plan→run→sync` | README.md (1 pre-existing mention) | README.md L451-478 (Plan→Run→Sync pipeline section, needs lifecycle note) |
 
