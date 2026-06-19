@@ -43,50 +43,39 @@ Go로 작성된 단일 바이너리 — 의존성 없이 모든 플랫폼에서 
 
 ---
 
-## v2.17.0의 새로운 기능
+## v3.0.0-rc2 (V3R6)의 새로운 기능
 
-MoAI-ADK v2.17.0 (V3R3 Phase C)은 프로젝트별 맞춤 AI 에이전트 생성을 위한 메타-하니스 스킬을 제공하며, 고정 스킬 카탈로그에서 동적 하니스 기반 아키텍처로 전환합니다.
+MoAI-ADK v3.0.0-rc2 (V3R6 세대)는 8-retained-agent 카탈로그, `glm-5.2[1m]` 모델, 3-phase 라이프사이클(plan→run→sync), CG 모드 기본값, 동적 워크플로우, `/effort ultracode`를 제공합니다.
 
 ### 주요 마일스톤
 
 | 버전 | 주요 기능 |
 |------|---------|
-| **v2.9.0** | Claude Code v2.1.89-90 원어민 스킬 통합 (Opus 4.6) |
-| **v2.10.x** | LSP 스위트 확장, SPEC-CC297-001 `permissionMode` 속성 지원, Opus 4.7 프리뷰 |
-| **v2.11.x** | 자기진화 시스템 통합, 다중 소스 문서 로딩, 강화된 메모리 관리 |
-| **v2.12.0** | **[SPEC-AGENCY-ABSORB-001]** /agency → /moai design 흡수, Opus 4.7 완전 지원, Adaptive Thinking 원어민 통합 |
-| **v2.17.0** | **[BC-V3R3-007]** 메타-하니스 스킬 (revfactory/harness Apache 2.0), 정적 스킬 16개 제거, namespace 분리 (moai-* / my-harness-*) |
+| **v2.17.0** | 메타-하니스 스킬 (revfactory/harness Apache 2.0), 정적 스킬 16개 제거, namespace 분리 (moai-* / harness-*) |
+| **v3.0.0-rc1** | 8 retained 에이전트 카탈로그 통합 (12 phantom/domain-expert 에이전트 아카이브), Anthropic 2026 정합 |
+| **v3.0.0-rc2** | 3-phase 라이프사이클(Mx 페이즈 retired), harness namespace V2, runtime recovery doctrine, orchestrator interrupt ledger, `glm-5.2[1m]`, 동적 워크플로우 + `/effort ultracode` |
 
 ### 주요 변경사항
 
-**디자인 시스템 흡수 (SPEC-AGENCY-ABSORB-001)**
+**8 retained 에이전트 카탈로그 (V3R6)**
 
-레거시 v2.x `/agency` 명령어가 `/moai design`에 완전히 통합되었습니다. 레거시 v2.x 프로젝트는 다음으로 자동 마이그레이션됩니다:
+에이전트 카탈로그가 17개에서 8개 retained 에이전트(7 MoAI-custom + 1 Anthropic built-in `Explore`)로 통합되었습니다: manager-spec, manager-develop, manager-docs, manager-git, plan-auditor, sync-auditor, builder-harness, Explore. 12개 phantom/domain-expert 에이전트는 아카이브되었습니다 (`SPEC-V3R6-AGENT-TEAM-REBUILD-001`).
 
-```bash
-moai migrate agency
-```
+**3-phase 라이프사이클 (plan → run → sync)**
 
-이점:
-- 이중 `/moai` + 레거시 명령어 대신 단일 통합 디자인 워크플로우
-- MoAI 코어와의 개선된 통합 (브랜드 컨텍스트, 품질 게이트, SPEC 기반 워크플로우)
-- 향상된 문서 [adk.mo.ai.kr](https://adk.mo.ai.kr) (한국어)
+MoAI 라이프사이큜 정확히 3개 페이즈로 구성됩니다 — plan, run, sync. 과거의 4번째 "Mx-phase"는 `SPEC-V3R6-LIFECYCLE-REDESIGN-001`에서 retired되었으며, MX Tag 검증은 별도 페이즈가 아닌 sync의 교차 관심사로 통합되었습니다.
 
-**Opus 4.7 원어민 지원**
+**GLM `glm-5.2[1m]` + CG 모드**
 
-MoAI-ADK는 이제 Claude Opus 4.7을 원어민 Adaptive Thinking으로 지원합니다:
+z.ai 최신 `glm-5.2[1m]` 모델(1M 컨텍스트)을 지원합니다. CG 모드(`moai cg`)는 Claude 리더 + GLM 팀원 토글로 구현 중심 작업에서 60-70% 비용 절감을 제공합니다.
 
-- 추론을 위한 자동 동적 토큰 할당 (고정 예산 없음)
-- 간결한 프롬프트 작성으로 더 빠른 추론
-- 복잡한 작업에서 더 나은 비용 효율성
+**동적 워크플로우 + `/effort ultracode`**
 
-**자기학습 및 메모리 진화**
+Claude Code v2.1.154+ 동적 워크플로우 프리미티브와 `/effort ultracode` 세션 모드가 통합되었습니다 (`SPEC-V3R6-WORKFLOW-EFFORT-MAP-001`). 대규모 병렬 팬아웃 작업에 사용합니다.
 
-v2.11+ 자기학습 시스템이 에이전트 학습과 통합됩니다:
+**Harness namespace V2**
 
-- 에이전트가 수정사항에서 자동으로 교훈 캡처
-- 메모리 시스템이 세션 간 지속 (`.claude/agent-memory/`)
-- 문서가 작업 컨텍스트에 따라 적시에 로드
+`moai-*` / `moai-harness-*` / `moai-meta-harness` = template-managed, `harness-*` = user-owned (`SPEC-V3R6-HARNESS-NAMESPACE-V2-001`). `moai update`가 user-owned harness 자산을 절대 삭제·수정하지 않습니다.
 
 ---
 
@@ -105,10 +94,10 @@ Python 기반 MoAI-ADK(~73,000줄)를 Go로 완전히 재작성했습니다.
 
 ### 핵심 수치
 
-- **38,700+줄** Go 코드, **38개** 패키지
+- **100K+줄** Go 코드, **100+개** 패키지
 - **85-100%** 테스트 커버리지
-- **8개** retained 에이전트 + **17개** `/moai` 명령
-- **18개** 프로그래밍 언어 지원
+- **8개** retained 에이전트 + **31개** `moai-*` 스킬 (template-managed; 2개 `harness-moaiadk-*` user-owned 제외)
+- **16개** 프로그래밍 언어 지원
 - **27개** Claude Code 훅 이벤트
 
 ---
@@ -311,24 +300,24 @@ MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 작성하
 graph LR
     U["👤 사용자 요청"] --> M["🗿 MoAI Orchestrator"]
 
-    M --> MG["📋 Manager (8)"]
-    M --> EX["⚡ Expert (8)"]
-    M --> BL["🔧 Builder (3)"]
-    M --> EV["🔍 Evaluator (2)"]
-    M --> AG["🎨 Agency (6)"]
-
-    MG --> MG1["spec · ddd · tdd · docs<br/>quality · project · strategy · git"]
-    EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring"]
-    BL --> BL1["agent · skill · plugin"]
-    EV --> EV1["sync-auditor · plan-auditor"]
-    AG --> AG1["planner · copywriter · designer<br/>builder · evaluator · learner"]
+    M --> MS["📋 manager-spec"]
+    M --> MD["🔨 manager-develop"]
+    M --> MDoc["📄 manager-docs"]
+    M --> MG["🌿 manager-git"]
+    M --> PA["🔍 plan-auditor"]
+    M --> SA["⚖️ sync-auditor"]
+    M --> BH["🔧 builder-harness"]
+    M --> EX["👁️ Explore (built-in)"]
 
     style M fill:#FF6B35,color:#fff
-    style MG fill:#4CAF50,color:#fff
-    style EX fill:#2196F3,color:#fff
-    style BL fill:#9C27B0,color:#fff
-    style EV fill:#FF5722,color:#fff
-    style AG fill:#FF9800,color:#fff
+    style MS fill:#4CAF50,color:#fff
+    style MD fill:#2196F3,color:#fff
+    style MDoc fill:#2196F3,color:#fff
+    style MG fill:#2196F3,color:#fff
+    style PA fill:#FF5722,color:#fff
+    style SA fill:#FF5722,color:#fff
+    style BH fill:#9C27B0,color:#fff
+    style EX fill:#607D8B,color:#fff
 ```
 
 ### 에이전트 카테고리
@@ -982,9 +971,9 @@ flowchart TB
 1. **클라이언트 인터뷰** — Manager-spec이 비즈니스, 브랜드, 기술 선호에 대한 9개 구조화된 질문 (설정 완료 시 생략)
 2. **BRIEF 생성** — Manager-spec이 요청을 포괄적인 프로젝트 브리프로 확장
 3. **카피 + 디자인** — moai-domain-copywriting이 브랜드 기반 마케팅 카피 작성; moai-domain-brand-design이 토큰 기반 디자인 시스템 생성 (Path B). 대안 Path A: moai-workflow-design-import가 Claude Design 핸드오프 번들 파싱
-4. **코드 구현** — expert-frontend이 TDD로 프로덕션 코드 구현 (기본: Next.js + Tailwind)
+4. **코드 구현** — manager-develop (cycle_type=tdd) 또는 harness 생성 프론트엔드 스페셜리스트가 TDD로 프로덕션 코드 구현 (기본: Next.js + Tailwind)
 5. **품질 보증** — sync-auditor가 Playwright 테스트, Lighthouse 감사, 4차원 스코어링 실행
-6. **GAN Loop** — 품질 미달 시 expert-frontend와 sync-auditor가 moai-workflow-gan-loop 거쳐 반복 (최대 5라운드)
+6. **GAN Loop** — 품질 미달 시 manager-develop (또는 harness 스페셜리스트)과 sync-auditor가 moai-workflow-gan-loop 거쳐 반복 (최대 5라운드)
 7. **자기학습** — (선택) Learner가 세션의 패턴을 감지하고 스킬 개선을 제안
 
 **소요 시간**: 완전한 랜딩 페이지 기준 15-45분, 완전 자율.
@@ -1012,7 +1001,7 @@ flowchart LR
 | **moai-domain-copywriting** | 구조화된 JSON으로 마케팅 카피 작성 — 헤드라인, 본문, CTA — 브랜드 보이스 규칙 적용 |
 | **moai-domain-brand-design** | 완전한 디자인 시스템 생성 — 컬러 토큰, 타이포그래피 스케일, 간격, 컴포넌트 스펙 (Path B) |
 | **moai-workflow-design-import** | Claude Design 핸드오프 번들(ZIP/HTML) 파싱으로 디자인 토큰과 컴포넌트 추출 (Path A) |
-| **expert-frontend** | TDD(RED-GREEN-REFACTOR)로 프로덕션 코드 구현. 기본 스택: Next.js, TypeScript, Tailwind, shadcn/ui |
+| **manager-develop** (cycle_type=tdd) | TDD(RED-GREEN-REFACTOR)로 프로덕션 코드 구현. 기본 스택: Next.js, TypeScript, Tailwind, shadcn/ui. 도메인 특화 작업은 harness 생성 프론트엔드 스페셜리스트(`SPEC-V3R6-HARNESS-NAMESPACE-V2-001`)가 대체 가능 |
 | **sync-auditor** | Playwright 시각 테스트 + Lighthouse 감사. 4차원 스코어링: 디자인 품질(30%), 독창성(25%), 완성도(25%), 기능성(20%) |
 | **moai-workflow-gan-loop** | GAN Loop 반복 관리: Builder-Evaluator 간 Sprint Contract 협상, 구현, 스코어링, 정체 감지 |
 
@@ -1155,107 +1144,8 @@ moai migrate agency
 
 ---
 
-## 데이터베이스 워크플로우: /moai db
+> **데이터베이스 스키마 도구**: 데이터베이스 스키마 동기화는 전용 슬래시 명령이 아니라 CLI 훅 `moai hook db-schema-sync`(CLI 레퍼런스 참조)로 처리됩니다.
 
-MoAI 프로젝트의 데이터베이스 메타데이터 관리 시스템입니다. 스키마 문서, 마이그레이션, ERD 다이어그램, 시드 데이터를 4개의 서브커맨드(init, refresh, verify, list)로 관리합니다.
-
-### 빠른 시작
-
-```bash
-# 데이터베이스 메타데이터 초기화 (대화형 인터뷰)
-/moai db init
-
-# 마이그레이션 재스캔 및 스키마 문서 업데이트
-/moai db refresh
-
-# schema.md와 마이그레이션 파일 간의 편차 확인
-/moai db verify
-
-# schema.md의 모든 테이블 표시
-/moai db list
-```
-
-### 서브커맨드
-
-| 커맨드 | 목적 | 사용 시점 |
-|--------|------|---------|
-| **init** | 데이터베이스 엔진, ORM, 다중 테넌트 전략, 마이그레이션 도구에 대한 대화형 설정. `.moai/project/db/`에 7개 파일 템플릿 세트를 스캐폴딩 | 새로운 프로젝트 초기화, 데이터베이스 작업 전 |
-| **refresh** | 마이그레이션 파일을 스캔하고 현재 마이그레이션 상태에서 `schema.md`, `erd.mmd` (Mermaid ERD), `migrations.md` 재생성 | 마이그레이션 추가/수정 후, 마일스톤 동기화 |
-| **verify** | 읽기 전용 편차 감지: `schema.md` 테이블 세트를 실제 마이그레이션 파일과 비교, 편차 발견 시 0이 아닌 값으로 종료 | PR 제출 전, CI/CD 파이프라인에서 |
-| **list** | 읽기 전용 테이블 나열: `schema.md`의 모든 테이블을 정렬된 Markdown 테이블 형식으로 표시 | 프로젝트 빠른 개요, 문서 검토 |
-
-### 디렉토리 구조
-
-`/moai db init`은 `.moai/project/db/`에 다음 구조를 생성합니다:
-
-```plaintext
-.moai/project/db/
-├── README.md              # 데이터베이스 개요 및 설정 지침
-├── schema.md              # 테이블 스키마 문서 (자동 생성)
-├── erd.mmd                # Mermaid 형식의 Entity-Relationship Diagram
-├── migrations.md          # 마이그레이션 이력 및 순서
-├── rls-policies.md        # 행 수준 보안 정책 (PostgreSQL)
-├── queries.md             # 중요한 쿼리 및 성능 노트
-└── seed-data.md           # 샘플 데이터 및 시딩 지침
-```
-
-### 지원 데이터베이스 기술
-
-6가지 마이그레이션 파일 패턴을 자동 감지 및 지원합니다:
-
-| 마이그레이션 유형 | 파일 패턴 | 예제 |
-|-----------------|----------|------|
-| **Prisma** | `prisma/migrations/*/migration.sql` | `20260401120000_add_users_table/migration.sql` |
-| **Alembic** | `alembic/versions/*.py` | `a1b2c3d4e5f6_add_users_table.py` |
-| **Rails** | `db/migrate/*.rb` | `20260401120000_add_users_table.rb` |
-| **Raw SQL** | `db/migrations/*.sql` | `001_add_users_table.sql` |
-| **Supabase** | `supabase/migrations/*.sql` | `20260401120000_initial_schema.sql` |
-| **일반** | `migrations/*.sql` 또는 `db/*.sql` | 커스텀 패턴 지원 |
-
-16개 프로그래밍 언어 생태계(Go, Python, TypeScript, Java 등)를 일반적인 패키지 경로를 통해 지원합니다.
-
-### 통합
-
-- **PostToolUse Hook**: 마이그레이션 파일 편집 시 `schema.md`, `erd.mmd`, `migrations.md` 자동 새로고침
-- **편차 감지**: 스키마 문서가 실제 마이그레이션과 동기화 상태를 유지하도록 방지
-- **Mermaid 다이어그램**: 문서 및 디자인 검토를 위해 ERD 다이어그램 자동 생성
-- **Phase 4.1a DB 감지**: `/moai project`는 감지된 데이터베이스 기술을 기반으로 `/moai db` 권장사항을 자동으로 표시
-
-### 설정
-
-데이터베이스 설정은 `.moai/config/sections/db.yaml`에 저장됩니다:
-
-```yaml
-db:
-  enabled: true
-  dir: ".moai/project/db"
-  auto_sync: true
-  migration_patterns:
-    - "prisma/migrations/*/migration.sql"
-    - "alembic/versions/*.py"
-    - "db/migrate/*.rb"
-  engine: ""  # init 인터뷰 중에 채워집니다
-  orm: ""     # init 인터뷰 중에 채워집니다
-  multi_tenant: false
-  migration_tool: ""
-```
-
-### 워크플로우 예제
-
-1. **새로운 프로젝트**: `/moai db init`을 실행하고 데이터베이스 설정에 대한 4개 질문에 답합니다
-2. **개발 중**: 평소대로 마이그레이션을 생성합니다; `/moai db`는 자동으로 문서를 동기화합니다
-3. **PR 전**: `/moai db verify`를 실행하여 스키마 편차를 확인합니다
-4. **검토**: PR에서 `.moai/project/db/erd.mmd`를 참조하여 스키마를 시각적으로 검토합니다
-
-### 사용 시점
-
-- **항상 활성화**: `moai init` 중에 데이터베이스가 있는 모든 프로젝트에서 활성화
-- **Init**: 새로운 프로젝트, 데이터베이스 아키텍처 변경
-- **Refresh**: 대규모 마이그레이션 작업 후, 주요 커밋 전
-- **Verify**: CI/CD 파이프라인의 일부, PR 전 검사
-- **List**: 빠른 참조, 문서 생성
-
----
 
 ## 자주 묻는 질문 (FAQ)
 
