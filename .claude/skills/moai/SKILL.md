@@ -73,8 +73,6 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **gate** (aliases: check, pre-commit): Lightweight pre-commit quality gate (lint+format+type-check+test)
 - **security** (aliases: audit, sec): Dedicated OWASP security audit with dependency scanning
 - **harness** (aliases: hrn, learn): V3R4 self-evolving harness lifecycle (status / apply / rollback &lt;date&gt; / disable) — slash-command-only surface; CLI verb path retired per SPEC-V3R4-HARNESS-001 (BC-V3R4-HARNESS-001-CLI-RETIREMENT)
-- **release-update** (aliases: cc-update, release-track) *(dev-only)*: CC upstream change tracker → update plan + docs-site 4-locale sync
-
 
 ### Priority 2: SPEC-ID Detection
 
@@ -244,19 +242,10 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness.md
 
 #### Branch B — harness build entry (natural-language request)
 
-Purpose: Turn a natural-language harness-creation request into a concrete harness via Context-First Discovery (extract domain / goal / constraints / scope), harness `<name>` derivation (the name is derived from the request — NOT statically supplied by the user), explicit orchestrator-issued approval, then delegation to the Builder Workflow. The orchestrator MUST conduct AskUserQuestion Socratic rounds (max 4 questions per round) when intent clarity is below 100%.
+Purpose: Turn a natural-language harness-creation request into a concrete harness via Context-First Discovery (extract domain / goal / constraints / scope), harness `<name>` derivation (the name is derived from the request — NOT statically supplied by the user), explicit orchestrator-issued approval, then transition into the orchestrator-direct Builder (4 signal-driven phases: ANALYZE / PLAN / GENERATE / ACTIVATE). The orchestrator MUST conduct AskUserQuestion Socratic rounds (max 4 questions per round) when intent clarity is below 100%.
 Skills: moai-meta-harness (project-specific harness generation, indirect)
-Forward-link: delegates to the Builder Workflow (`.claude/workflows/harness-build.js`, not yet implemented — the entry's job is NL analysis + name derivation + approval gate; the Builder itself is a follow-up milestone).
+Builder: orchestrator-direct processing (NOT a dynamic-workflow script) — the entry's Phases 0-3 hand off to `${CLAUDE_SKILL_DIR}/workflows/harness-builder.md` for the 4-phase creation logic. The orchestrator holds the PLAN→GENERATE AskUserQuestion approval gate directly.
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness-build-entry.md
-
-### release-update - CC Upstream Change Tracker *(dev-only)*
-
-Purpose: Track Claude Code release notes since last analyzed version, classify by impact tier, generate update plan, sync docs-site 4-locale + README, open PR.
-Agents: manager-docs (Phase 6 docs sync), manager-git (Phase 7 PR)
-Flags: --since vX.Y.Z, --dry, --report-only, --docs-only, --master-spec
-State: .moai/state/last-cc-version.json
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/release-update.md
-NOT distributed to user projects (dev-only; entry: .claude/commands/97-release-update.md)
 
 ---
 

@@ -242,9 +242,9 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness.md
 
 #### Branch B — harness build entry (natural-language request)
 
-Purpose: Turn a natural-language harness-creation request into a concrete harness via Context-First Discovery (extract domain / goal / constraints / scope), harness `<name>` derivation (the name is derived from the request — NOT statically supplied by the user), explicit orchestrator-issued approval, then delegation to the Builder Workflow. The orchestrator MUST conduct AskUserQuestion Socratic rounds (max 4 questions per round) when intent clarity is below 100%.
+Purpose: Turn a natural-language harness-creation request into a concrete harness via Context-First Discovery (extract domain / goal / constraints / scope), harness `<name>` derivation (the name is derived from the request — NOT statically supplied by the user), explicit orchestrator-issued approval, then transition into the orchestrator-direct Builder (4 signal-driven phases: ANALYZE / PLAN / GENERATE / ACTIVATE). The orchestrator MUST conduct AskUserQuestion Socratic rounds (max 4 questions per round) when intent clarity is below 100%.
 Skills: moai-meta-harness (project-specific harness generation, indirect)
-Forward-link: delegates to the Builder Workflow (`.claude/workflows/harness-build.js`, not yet implemented — the entry's job is NL analysis + name derivation + approval gate; the Builder itself is a follow-up milestone).
+Builder: orchestrator-direct processing (NOT a dynamic-workflow script) — the entry's Phases 0-3 hand off to `${CLAUDE_SKILL_DIR}/workflows/harness-builder.md` for the 4-phase creation logic. The orchestrator holds the PLAN→GENERATE AskUserQuestion approval gate directly.
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness-build-entry.md
 
 ---
