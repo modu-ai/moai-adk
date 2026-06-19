@@ -2,7 +2,7 @@
 id: SPEC-V3R6-RULES-CATALOG-SCRUB-001
 title: "Archived-agent catalog scrub across .claude/rules"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-06-19
 updated: 2026-06-19
 author: manager-spec
