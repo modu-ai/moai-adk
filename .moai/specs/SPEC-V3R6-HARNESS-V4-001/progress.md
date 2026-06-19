@@ -40,9 +40,20 @@
 
 ---
 
+## §E.0 Phase 0.95 Mode Selection
+
+- **Input parameters**: tier=L, scope≈15-20 files, domains=6 (CLI/template/commands/workflows/agents/doctrine), language mix=Go+markdown+shell+JSON, concurrency benefit=LOW (coding-heavy per Anthropic coding-task parallelism caveat), Agent Teams prereqs=N/A (coding-heavy)
+- **Decision**: `sub-agent` (Mode 5)
+- **Mode evaluation**: trivial✗ / background✗(writes) / agent-team✗(coding-heavy+prereqs) / parallel✗(sequential milestone deps) / **sub-agent✓** / workflow✗(not mechanical-uniform)
+- **Justification**: Tier L coding-heavy work. Per Anthropic's coding-task parallelism caveat, Mode 5 sequential per-milestone is the correct default. Milestones M1-M6 are sequentially ordered (M1 namespace protection unblocks M2-M6) — not genuinely parallel. Implementation Kickoff Approval obtained 2026-06-19.
+
 ## §E.1 Plan-phase Audit-Ready Signal
 
-_<pending plan-auditor verdict — to be populated at plan-phase gate>_
+- **plan-auditor iter 1/3 verdict**: PASS-WITH-DEBT 0.87 (Tier L threshold 0.85, +0.02 margin)
+- **Skip-eligible**: NO (score < 0.90)
+- **Must-pass**: 7/7 PASS (MP-1 REQ consistency / MP-2 GEARS+traceability / MP-3 frontmatter+lint / MP-4 absorb/remove mapping / MP-5 conditional-worktree / MP-6 namespace SSOT / MP-7 4-phase internal)
+- **Defects (live-verified 2026-06-19)**: D1 acceptance arithmetic(22→24), D2 DYNAMIC-WORKFLOWS-DOC reference, D3 LIFECYCLE-REDESIGN stale status — **all 3 confirmed RESOLVED on disk** (spec.md v0.1.1 post-audit update at 05:45; the 05:41 report was stale). D4/D5 NFR AC binding gap (MINOR) — deferred to sync-phase debt per plan-auditor recommendation.
+- **Report**: `.moai/reports/plan-audit/SPEC-V3R6-HARNESS-V4-001-review-1.md`
 
 ## §E.2 Run-phase Evidence
 
