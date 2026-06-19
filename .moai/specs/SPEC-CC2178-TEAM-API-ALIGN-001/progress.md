@@ -109,7 +109,9 @@ OQ-2 default applied per maintainer instruction: REWRITE `TeamCreate → SendMes
 
 ### Sync-phase completion (post-implementation)
 
-- **Sync commit SHA**: `4533fc093` (Authored-By-Agent: manager-docs)
+sync_commit_sha: 4533fc093
+
+- **Sync commit SHA**: `4533fc093` (Authored-By-Agent: manager-docs) — human-readable reference
 
 - Frontmatter transition applied: `in-progress → implemented → completed` (spec.md §A frontmatter `status:` field updated, `updated:` field refreshed to sync-phase date 2026-06-20).
 - CHANGELOG.md entry added to `[Unreleased]` section (18 ACs documented, run-phase REQ-GO-001 assessment recorded, OQ-1 resolved, 21 REQs total, 3-axis scope confirmed).
