@@ -572,3 +572,41 @@ func TestAudit_FilterSpec_EmptyIsNoFilter(t *testing.T) {
 	}
 }
 
+// FilterSpec must also gate the AuditError branch (per-spec errors). A SPEC
+// directory whose auditSpec returns an error (e.g., missing spec.md) MUST NOT
+// leak its AuditError finding past a FilterSpec that names a different SPEC.
+// Regression for the top-of-loop filter placement (M5 correction discovered
+// during M6 verification: the original lower placement leaked AuditError).
+func TestAudit_FilterSpec_GatesAuditError(t *testing.T) {
+	t.Parallel()
+
+	fixtures := []auditFixtureSpec{
+		{
+			id:         "SPEC-V3R6-DRIFT-001",
+			specMD:     makeSpecMD("SPEC-V3R6-DRIFT-001", "implemented", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha: abc1234\n",
+		},
+		{
+			// Directory-only entry — no spec.md. This produces an AuditError
+			// when audited. FilterSpec targeting the DRIFT-001 SPEC must NOT
+			// surface this AuditError.
+			id:        "SPEC-BROKEN-NOSPECMD-001",
+			specMD:    "", // empty = buildAuditFixture skips spec.md write
+			progressMD: "",
+		},
+	}
+	baseDir := buildAuditFixture(t, fixtures)
+
+	result, err := Audit(AuditOptions{BaseDir: baseDir, FilterSpec: "SPEC-V3R6-DRIFT-001"})
+	if err != nil {
+		t.Fatalf("Audit() error = %v", err)
+	}
+
+	for _, f := range result.DriftFindings {
+		if f.SpecID != "SPEC-V3R6-DRIFT-001" {
+			t.Errorf("FilterSpec leaked finding for SpecID=%q (e.g. AuditError from a directory-only entry); want SPEC-V3R6-DRIFT-001 only", f.SpecID)
+		}
+	}
+}
+
+

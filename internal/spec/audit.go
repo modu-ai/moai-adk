@@ -125,6 +125,15 @@ func Audit(opts AuditOptions) (*AuditResult, error) {
 	sort.Strings(specDirs)
 
 	for _, specName := range specDirs {
+		// Apply SPEC-ID filter (SPEC-V3R6-ORCH-IGGDA-001 M5) at the TOP of the
+		// loop — this gates the AuditError branch too (avoids leaking AuditError
+		// findings for specs outside the filter). Additive to FilterEra (applied
+		// below after classification, since era is only known post-auditSpec).
+		// Empty FilterSpec = no filter.
+		if opts.FilterSpec != "" && specName != opts.FilterSpec {
+			continue
+		}
+
 		specDir := filepath.Join(specsDir, specName)
 		findings, classified, err := auditSpec(specDir, specName, opts)
 		if err != nil {
@@ -157,14 +166,8 @@ func Audit(opts AuditOptions) (*AuditResult, error) {
 			}
 		}
 
-		// Apply era filter
+		// Apply era filter (SPEC-ID filter applied at top of loop — M5).
 		if opts.FilterEra != "" && string(classified) != opts.FilterEra {
-			continue
-		}
-
-		// Apply SPEC-ID filter (SPEC-V3R6-ORCH-IGGDA-001 M5). Additive to
-		// FilterEra — the two MAY compose. Empty FilterSpec = no filter.
-		if opts.FilterSpec != "" && specName != opts.FilterSpec {
 			continue
 		}
 
