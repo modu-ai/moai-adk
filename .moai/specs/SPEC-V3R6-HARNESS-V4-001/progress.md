@@ -194,6 +194,41 @@ TestValidate_AcceptsMultipleSpecialists
 
 **Residual-risk (verification-claim integrity)**: `moai spec audit --json --filter-spec=SPEC-V3R6-HARNESS-V4-001` post-M4 shows the SPEC stable PASS (no M4-related drift — the M4 commit carries the `manager-develop` ownership trailer for the in-progress status, which is the canonical owner per the Status Transition Ownership Matrix). M4-unrelated pre-existing findings (if any) are orthogonal to this milestone.
 
+### M5 — Conditional worktree-isolation sub-agent logic (AC-HV4-007a/b) DONE
+
+**Commit**: `e83a8cd96` (`feat(SPEC-V3R6-HARNESS-V4-001): M5 conditional worktree-isolation sub-agent logic`). M5 delivered NEW `internal/harness/v4manifest/isolation.go` (137 LOC) + `isolation_test.go` (191 LOC), and MODIFIED `internal/template/templates/.claude/skills/moai/workflows/harness-builder.md` (GENERATE conditional-spawn doc — the `isolation` field the PLAN phase populated via the helper now drives the orchestrator spawn form per-specialist).
+
+| AC ID | Status | Verification Command | Actual Output |
+|-------|--------|---------------------|---------------|
+| AC-HV4-007a | PASS | `go test -run 'TestDecideIsolation_ReadOnly|TestDecideIsolation_SequentialSinglePath|TestDecideIsolation_ParallelNoOverlap' ./internal/harness/v4manifest/...` | all PASS — `DecideIsolation` returns `none` for read-only / sequential-single-path / parallel-no-overlap (0 worktrees for non-conflict-prone dispatch) |
+| AC-HV4-007b | PASS | `go test -run 'TestDecideIsolation_ConflictProneOverlappingPaths|TestDecideIsolation_RiskyChange|TestEmitCleanupDirective' ./internal/harness/v4manifest/...` | all PASS — `DecideIsolation` returns `worktree` for conflict-prone overlapping paths + risky changes; `EmitCleanupDirective` fires ONLY when ≥1 specialist declared `isolation:worktree` (per-specialist, sub-agent-granular — NO mandatory top-level worktree) |
+
+**M5 test suite** (8 isolation tests, all PASS — subset of the 19-test v4manifest suite):
+
+```
+TestDecideIsolation_ReadOnlySpecialistReturnsNone
+TestDecideIsolation_ConflictProneOverlappingPathsReturnsWorktree
+TestDecideIsolation_SequentialSinglePathReturnsNone
+TestDecideIsolation_RiskyChangeReturnsWorktree
+TestDecideIsolation_ParallelNoOverlapReturnsNone
+TestDecideIsolation_RationaleAlwaysNonEmpty
+TestDecideIsolation_ReturnsOnlyNoneOrWorktree
+TestEmitCleanupDirective_FiresOnlyWhenWorktreeSpecialistPresent
+```
+
+**Coverage**: `go test -cover ./internal/harness/v4manifest/...` → `coverage: 98.3% of statements` (≥85% threshold).
+
+**Runner cleanup directive** (design §F + §G): the Runner template (`runner_template.go` L139-151) emits a worktree-cleanup directive at end-of-run ONLY when ≥1 specialist declared `isolation: "worktree"`. The directive is advisory — L1 worktree cleanup itself is runtime-autonomous per the L1 worktree autonomy policy (the Runner emits the directive; the Claude Code runtime performs `git worktree prune`). No mandatory top-level worktree wraps the Builder or Runner.
+
+**Determinism body clean** (C-HV4-003): the Runner template body contains NO `Date.now()` or `Math.random()` calls — the cleanup directive is a conditional `emitCleanupDirective("worktree-cleanup")` call, deterministic. Resume-cache safe (no wall-clock dependency introduced by M5).
+
+**harness-builder.md GENERATE doc** (M5.2): the GENERATE phase section now documents the conditional spawn form — `isolation: "worktree"` → `Agent(role, isolation:"worktree", ...)` per-specialist; `isolation: "none"` → ordinary `Agent(role, ...)`. The doc cross-references the `DecideIsolation` helper as the PLAN-phase decision input and the L1 worktree autonomy policy (orchestrator recommends; runtime materializes).
+
+**Constraints honored**:
+- C-HV4-005 (template neutrality): the harness-builder.md GENERATE doc carries ZERO SPEC-IDs / REQ tokens / AC tokens / commit SHAs (self-checked via `grep -nE 'SPEC-V3R6-HARNESS-V4-001|REQ-HV4-[0-9]+|AC-HV4-[0-9]+|e83a8cd96' internal/template/templates/.claude/skills/moai/workflows/harness-builder.md` → CLEAN).
+- Behavior preservation: M5 is purely additive — NEW `isolation.go` + `isolation_test.go` + GENERATE doc update; no existing M1-M4 code or tests modified.
+- Cross-platform build (B1): `go build ./...` exit 0 (no syscall packages; no build tags needed).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
