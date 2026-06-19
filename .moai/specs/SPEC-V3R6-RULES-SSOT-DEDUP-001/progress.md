@@ -77,7 +77,7 @@ Run-phase executed via manager-develop in an isolation worktree (Mode 5 sub-agen
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: <backfill pending — close commit SHA>
+sync_commit_sha: 12e6fdf18
 
 Sync-phase orchestrator-direct (GLM manager-docs spawn context-limit fallback per `feedback_glm_orchestrator_direct_sync_mx`). frontmatter status in-progress → completed rides this sync commit (3-phase close per SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-008 — `completed` transition merged into the sync commit, no separate Mx chore). §E.5 Mx-phase retired (folded into §E.4 per LIFECYCLE-REDESIGN). CHANGELOG entry added (Sprint 16 RULES cohort).
 
