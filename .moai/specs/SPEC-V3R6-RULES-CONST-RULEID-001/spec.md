@@ -2,7 +2,7 @@
 id: SPEC-V3R6-RULES-CONST-RULEID-001
 title: "Broaden constitution ruleIDPattern to accept the V3R6 namespace"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-06-19
 updated: 2026-06-19
 author: manager-spec
