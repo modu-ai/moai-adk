@@ -107,4 +107,15 @@ OQ-2 default applied per maintainer instruction: REWRITE `TeamCreate → SendMes
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+### Sync-phase completion (post-implementation)
+
+- Frontmatter transition applied: `in-progress → implemented → completed` (spec.md §A frontmatter `status:` field updated, `updated:` field refreshed to sync-phase date 2026-06-20).
+- CHANGELOG.md entry added to `[Unreleased]` section (18 ACs documented, run-phase REQ-GO-001 assessment recorded, OQ-1 resolved, 21 REQs total, 3-axis scope confirmed).
+- README and docs-site locale parity verified (no stale TeamCreate/TeamDelete live-action instructions remain).
+- Template-mirror parity confirmed (all 19 doctrine files + 19 template mirrors byte-identical per make build catalog regeneration).
+- Commit hygiene: specific-path git add (CHANGELOG + progress.md + spec.md frontmatter transition); NO `git add -A` / `git add .`.
+- Cross-platform build verified: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+- Lint clean: `golangci-lint run --timeout=2m` → 0 issues (no NEW issues vs baseline 0).
+- Quality gate: TestTemplateNeutralityAudit + spec-lint 0 errors.
+
+**Sync commit deliverable**: CHANGELOG.md entry + progress.md §E.4 + spec.md frontmatter (status + updated)

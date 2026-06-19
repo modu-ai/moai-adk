@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **[SPEC-CC2178-TEAM-API-ALIGN-001](/moai/specs/SPEC-CC2178-TEAM-API-ALIGN-001/spec.md)** (Tier M, v0.1.0)
+  - Team-API doctrine + CC v2.1.178 implicit-team API removal alignment
+  - Scope: 19 doctrine files + 19 template mirrors + 9 docs-site + 4 README + 1 settings.json.tmpl (52 total)
+  - 3 axes: T1-1 team-API doctrine restructure; T1-3 /config command alignment; D1 docs-site attribution sessionUrl
+  - Verification: cross-platform build (darwin+windows) ✓; lint 0; TestTemplateNeutralityAudit PASS; spec-lint clean
+  - Implementation: REQ-GO-001 assessment (4 Go refs comment-only); OQ-1 sessionUrl type CONFIRMED boolean
+  - ACs: 18/18 PASS (13 MUST + 5 SHOULD); REQs: 21 total
+  - Plan-auditor score: 0.89; Sync mode: orchestrator-direct
+  - 2026-06-19 run-phase + 2026-06-20 sync-phase (3-phase close completed)
+
+### Changed
+
 - **[SPEC-V3R6-RULES-VERSION-FORMAT-001](.moai/specs/SPEC-V3R6-RULES-VERSION-FORMAT-001/spec.md)** — Rules version-staleness corrections + format/consistency normalization (Tier M, run+sync 2026-06-19). Sprint 16 "rules-improvement" cohort, 4th/final SPEC. Two lanes: (1) stale version identities — model references (glm-5.1→glm-5.2, Opus 4.6→4.8 era), language toolchain version strings; (2) format/consistency — instruction-doc footers, instruction-language, emoji, time-estimation → phase/priority ordering, `ultrathink.` precision framing (Adaptive Thinking distinct axis), CC event `Setup` framing. 32 files (16 deployed + 16 template mirror), M1-M7 single-run-commit. 21 ACs PASS (AC-VFM-001..021). Go-test trio green (`TestRuleTemplateMirrorDrift|TestTemplateNoInternalContentLeak|TestTemplateNeutralityAudit`); doc-only (0 Go source change). session-handoff mirror naming residue (Epic/Milestone) synchronized. sync-phase orchestrator-direct (GLM per `feedback_glm_orchestrator_direct_sync_mx`).
 
 - **[SPEC-V3R6-RULES-CATALOG-SCRUB-001](.moai/specs/SPEC-V3R6-RULES-CATALOG-SCRUB-001/spec.md)** — Archived-agent catalog scrub across `.claude/rules/` (Tier M, run+sync 2026-06-19). Sprint 16 "rules-improvement" cohort. Removes live spawn-target / live-example / live-hook-action references to the 12 archived agents (post SPEC-V3R6-AGENT-TEAM-REBUILD-001 17→8 catalog consolidation) surviving in 25 rule files, while preserving the canonical enumeration lists in `archived-agent-rejection.md` + `NOTICE.md`. 46 files scrubbed (23 deployed + 23 template mirror); archived-agent live refs rewritten to `Agent(general-purpose)` specialist + role_profile form. 21 ACs PASS (AC-RCS-001..021). Worktree-isolated run; orchestrator cherry-pick to shared main. `moai spec lint` clean. sync-phase orchestrator-direct (GLM per `feedback_glm_orchestrator_direct_sync_mx`).
