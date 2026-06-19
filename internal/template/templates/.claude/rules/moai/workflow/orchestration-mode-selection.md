@@ -13,6 +13,8 @@ Canonical 6-mode autonomous decision tree for the MoAI orchestrator. Activated a
 
 [ZONE:Frozen] [HARD] All Phase 0.95 execution modes are strictly downstream of Implementation Kickoff Approval (renamed from GATE-2) (the plan→run HUMAN GATE). The orchestrator reaches Phase 0.95 ONLY after Implementation Kickoff Approval user approval has already been obtained. Mode selection — including Mode 6 (workflow) — is never a substitute for Implementation Kickoff Approval and never a path that crosses the plan→run boundary ahead of the human gate. Implementation Kickoff Approval is mandatory and score-independent (a plan-auditor PASS or a high skip-eligible score never auto-bypasses it; skip-eligibility applies only to Phase 0.5 verdict re-execution, not to Implementation Kickoff Approval) per the Implementation Kickoff Approval mandatory-restoration policy.
 
+> **Path B amendment (Intent-Gated Goal-Directed Autonomy — IGGDA)**: the Implementation Kickoff Approval gate above is AMENDED, not removed, by the safe-condition predicate documented in §H below. The `[ZONE:Frozen]` marker is PRESERVED as an audit trail; the amendment reduces the gate's per-run-blocking weight in safe domains (lightweight confirmation that auto-proceeds after a bounded timeout) while preserving the user's veto authority and forcing explicit-gate in dangerous domains. The marker is never removed; only the gate's weight is redistributed. The user-facing `AskUserQuestion` round is ALWAYS issued (auto-proceed does NOT skip it — the user retains veto). See §H for the 4-condition compound predicate, §I for the IGGDA 4-phase pipeline it governs, and §J for the independent-audit preservation invariants.
+
 > Cross-reference: `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification covers the `--mode` flag matrix (autopilot / loop / team / pipeline) which interacts with — but is separate from — the 6-mode catalog below. The run-phase `/goal ac_converge` autonomy wiring point lives in `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy (/goal ac_converge); `.claude/rules/moai/workflow/dynamic-workflows.md` is the source for the Workflow (Mode 6) primitive (16-concurrent / 1000-total cap) and the named-script-API prohibition.
 
 ---
@@ -229,6 +231,128 @@ The following patterns violate the orchestration mode selection contract:
 
 ---
 
-Version: 1.1.0
-Origin: canonical agent catalog policy; Mode 6 (workflow) added by the run-phase autonomy line
+## §H — IGGDA Safe-Condition Predicate (Path B Implementation Kickoff Amendment)
+
+Intent-Gated Goal-Directed Autonomy (IGGDA) AMENDS the Implementation Kickoff Approval gate from a per-run-blocking `AskUserQuestion` (Path A — what AUTONOMY-RUN-GOAL-001 preserved) into a **safe-condition predicate** with two branches. The gate is NOT removed; its weight is redistributed. The `[ZONE:Frozen]` marker on the header paragraph above is PRESERVED as the audit trail for the original invariant; the amendment below is the behavioral change.
+
+### §H.1 The compound predicate (4 conditions, all-must-hold for auto-proceed)
+
+[ZONE:Evolvable] [HARD] **Where** the Socratic interview has reached 100% intent clarity, **While** the plan-auditor has issued a PASS verdict, **When** the orchestrator reaches the plan→run boundary, the Implementation Kickoff Approval gate shall evaluate the following four-condition compound predicate:
+
+| # | Condition | FAIL verdict |
+|---|-----------|--------------|
+| (a) | **Intent clarity 100%** — the Socratic interview (multi-round, max 4 questions per round) is complete; every assumption surfaced; every ambiguity resolved per `.claude/rules/moai/core/askuser-protocol.md` § Socratic Interview Structure | return-to-Phase-0 (the interview must complete first) |
+| (b) | **plan-auditor PASS** — the independent plan-audit verdict (Phase 0.5) is PASS (NOT FAIL, NOT INCONCLUSIVE) | surface-to-user (the independent audit halt) |
+| (c) | **Tier S or Tier M** — the SPEC tier is S or M (NOT Tier L — Tier L is the complexity cutoff for "dangerous") | explicit-gate (mandatory blocking gate) |
+| (d) | **No dangerous keywords AND no destructive scope** — the SPEC scope contains none of the security / payment / critical keywords enumerated in §H.3 below AND the `--pr` flag is absent AND the scope is not marked destructive | explicit-gate (mandatory blocking gate) |
+
+The predicate is evaluated in order (a)→(b)→(c)→(d). The FIRST failing condition determines the verdict rationale (logged for audit), but the gate decision collapses to one of: **auto-proceed** (all 4 hold) / **explicit-gate** (c or d fails) / **return-to-Phase-0** (a fails) / **surface-to-user** (b fails).
+
+### §H.2 The two branches
+
+| Branch | Trigger | Behavior |
+|--------|---------|----------|
+| **Auto-proceed** | All 4 conditions hold | The `AskUserQuestion` round is STILL ISSUED (the user retains veto authority); the first option `(Recommended)` is auto-selected after a bounded timeout (default 30 seconds, configurable via `workflow.iggda.kickoff_timeout_seconds`). The gate is REDUCED to a lightweight confirmation, NOT removed. |
+| **Explicit-gate** | Condition (c) OR (d) fails | The `AskUserQuestion` round REMAINS mandatory and blocks until the user responds (no timeout, no auto-proceed). This is the Path A behavior preserved verbatim for dangerous domains. |
+
+**User veto is never overridden.** Even in the auto-proceed branch, the user CAN select "abort" or "further review" within the timeout window (AC-IGGDA-003). The predicate does NOT override user intent — it only reduces the latency of the gate in safe domains where the Socratic interview has already drained intent.
+
+### §H.3 The dangerous-domain keyword list (condition (d) determinator)
+
+The keyword list is enumerable at design time and extensible via rule-file edit (not code change). It is intentionally OVER-INCLUSIVE in the initial release — better to force explicit-gate on a false-positive than auto-proceed on a false-negative. The orchestrator matches keywords case-insensitively against the SPEC's title, scope summary, plan.md §A context, and acceptance.md.
+
+**Security domain** (any match → condition (d) FAILS):
+- `auth`, `authentication`, `authorization`, `acl`
+- `secret`, `credential`, `password`, `token`, `api_key`, `apikey`
+- `crypto`, `encryption`, `decrypt`, `hash`, `salt`
+- `session`, `cookie`, `jwt`, `oauth`, `saml`, `sso`
+- `injection`, `xss`, `csrf`, `sqli`, `rce`
+- `vulnerability`, `cve`, `owasp`
+
+**Payment domain** (any match → condition (d) FAILS):
+- `payment`, `billing`, `invoice`, `charge`
+- `stripe`, `paypal`, `portone`, `iamport`, `toss`, `kakopay`, `naverpay`
+- `card`, `pan`, `pci`, `dss`
+- `refund`, `settlement`
+
+**Critical infrastructure domain** (any match → condition (d) FAILS):
+- `production`, `prod`, `live`
+- `migration`, `rollback`, `drop_table`, `drop table`
+- `force_push`, `force-push`
+- `rm_rf`, `rm -rf`
+- `database`, `schema` (when paired with `drop` / `alter`)
+
+**Destructive scope markers** (any match → condition (d) FAILS):
+- `--pr` flag supplied by the user
+- SPEC scope marked destructive (PR creation / force-push / table-drop / external-post semantics)
+
+**Maintenance**: this list lives in this rule file and is extended via SPEC amendment. When a new dangerous domain is identified, add it here; no code change is required (the orchestrator reads the list from this rule at gate-evaluation time).
+
+### §H.4 Decision logging (auditable)
+
+[ZONE:Evolvable] [HARD] Every safe-condition predicate evaluation (either branch) MUST be logged to `.moai/specs/<SPEC-ID>/progress.md` under a `## §E IGGDA Kickoff Predicate` section with: condition (a) value, condition (b) value, condition (c) value, condition (d) value + any matched keyword, the final verdict (auto-proceed / explicit-gate / return-to-Phase-0 / surface-to-user), and a timestamp. This makes every auto-proceed post-hoc reviewable; a miscaptured intent that slipped through is detectable.
+
+### §H.5 Why this preserves the FROZEN-spirit (intent-verification-before-code)
+
+The original Implementation Kickoff Approval invariant protects **intent verification before code is written** — a plan-auditor PASS score is NOT sufficient evidence of intent fidelity. Path B preserves this protection because:
+
+1. **Condition (a) requires 100% Socratic clarity** — a multi-round interview (far more rigorous than a single plan→run boundary confirmation) IS intent verification, and is STRONGER than the single gate.
+2. **The `AskUserQuestion` round is STILL ISSUED in the auto-proceed branch** — the user sees the confirmation and CAN veto within the timeout window. The gate is REDUCED, not removed.
+3. **Dangerous domains are carved out** (conditions (c) + (d)) — where the stakes are high, the gate remains fully mandatory (explicit-gate branch).
+4. **The decision is auditable** (§H.4) — every auto-proceed is logged with all 4 conditions, so post-hoc verification is possible.
+
+The amendment moves the human checkpoint's WEIGHT from a per-run-blocking gate to an intent-collection-time gate (Phase 0 Socratic), EXCEPT in dangerous domains where the per-run-blocking gate remains.
+
+---
+
+## §I — IGGDA 4-Phase Pipeline (the autonomous plan→run→sync chain)
+
+IGGDA chains autonomy across all four phases of the pipeline. The user concentrates involvement in Phase 0 (Socratic intent collection); the rest is autonomous, with independent audits at Phase 1 and Phase 3 and a bounded recursive self-diagnosis loop at Phase 2.
+
+### §I.1 The four phases (in execution order)
+
+| Phase | Name | Autonomy | Human involvement |
+|-------|------|----------|-------------------|
+| **0** | **Intent** | Human-in-the-loop (Socratic) | Drains ALL preferences (Tier, mode, PR strategy, domain). ABSORBS the gating weight of Implementation Kickoff Approval under Path B (the human checkpoint moves HERE, except in dangerous domains where it remains at the plan→run boundary). |
+| **1** | **Plan** | Autonomous | manager-spec produces SPEC artifacts → plan-auditor INDEPENDENT audit (fresh context). PASS → auto-advance to Phase 2. FAIL/INCONCLUSIVE → halt, surface to user (REQ-IGGDA-023). |
+| **2** | **Run** | Autonomous + recursive self-diagnosis | manager-develop implements (DDD/TDD/autofix cycle_type). Bounded recursive self-diagnosis loop on mechanical failures (DIAGNOSE-PATCH-VERIFY, max 3 iterations). Semantic failures escalate immediately. All blocking ACs PASS + go test exit 0 + no out-of-scope modification → auto-advance to Phase 3. |
+| **3** | **Sync + final independent audit** | Autonomous | manager-docs: CHANGELOG/README/frontmatter transitions → sync-auditor INDEPENDENT 4-dimension score (fresh context) → `moai spec audit` deterministic final check (0 MUST-FIX required). sync-auditor ≥ threshold + 0 MUST-FIX + git clean → IGGDA-complete (`/goal` clears). |
+
+No phase is skipped except by graceful degradation (when `/goal` is unavailable per `.claude/rules/moai/workflow/goal-directive.md` — the pipeline degrades to per-turn progression rather than failing).
+
+### §I.2 Phase ordering invariant
+
+[ZONE:Evolvable] [HARD] The four phases execute in strict order: Phase 0 (Intent) → Phase 1 (Plan) → Phase 2 (Run) → Phase 3 (Sync + audit). Phase 0.5 (plan-audit) runs WITHIN Phase 1 (it is the Phase 1 exit gate, not a separate phase). The safe-condition predicate (§H) runs at the Phase 1 → Phase 2 boundary, AFTER Phase 0.5 PASS. The predicate does NOT substitute for Phase 0.5 — it is a downstream reduction of the Phase 1→2 gate weight, evaluated only after Phase 0.5 has already passed.
+
+### §I.3 The auto-advance mechanism (moai-aware Stop hook)
+
+The Stop hook driver at `.claude/hooks/moai/iggda-phase-driver.sh` fires at turn-end, reads `progress.md` + invokes `moai spec audit --json --filter-spec=<SPEC-ID>`, and emits a `/goal`-style auto-advance signal when the current phase's safe-transition predicate holds. The user does NOT author a `/goal` condition string; the goal is derived from Socratic intent and auto-converted to the phase-transition signal by the driver. See `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` §4 for the Recovery-Signal Carve-Out (the driver exits 0 on recovery turns, never blocking a recovery).
+
+---
+
+## §J — IGGDA Independent-Audit Preservation
+
+IGGDA's autonomous execution does NOT collapse the independent auditors (plan-auditor, sync-auditor) into the implementer. The independent-audit guarantee (bias prevention via fresh-context skeptical evaluation) is preserved verbatim.
+
+### §J.1 Fresh-context spawn (NOT continuation of implementer turn)
+
+[ZONE:Evolvable] [HARD] The plan-auditor (Phase 1) and sync-auditor (Phase 3) are spawned via `Agent(subagent_type: "plan-auditor")` and `Agent(subagent_type: "sync-auditor")` respectively, each in a FRESH isolated context. They are NOT continuations of the implementer's turn (manager-spec / manager-docs). The implementer's context carries the assumptions that produced the implementation; the auditor's fresh context catches what the implementer rationalized away. This is the "skeptical evaluation stance" in `.claude/rules/moai/core/agent-common-protocol.md` § Skeptical Evaluation Stance.
+
+### §J.2 FAIL/INCONCLUSIVE verdict halts auto-advance
+
+[ZONE:Evolvable] [HARD] When plan-auditor OR sync-auditor returns FAIL or INCONCLUSIVE, the Stop hook driver halts auto-advance (no transition to the next phase). The orchestrator surfaces the verdict to the user via `AskUserQuestion`. The FAIL/INCONCLUSIVE is a hard stop regardless of prior phase PASS — a Phase 1 PASS does not authorize proceeding past a Phase 3 sync-auditor FAIL.
+
+### §J.3 "Self-audit" vs "Independent audit" disambiguation
+
+The IGGDA documentation uses both terms; they are COMPLEMENTARY, NOT interchangeable:
+
+- **"Self-audit"** = the Phase 2 bounded recursive self-diagnosis loop (D3) performing first-party verification of MECHANICAL failures. It is a code-quality loop, NOT a SPEC-quality audit. No bias-prevention guarantee (it is the implementer checking their own mechanical work — acceptable for lint/type/import errors).
+- **"Independent audit"** = plan-auditor (Phase 1) + sync-auditor (Phase 3) in fresh contexts. These are the SPEC-quality audits with bias-prevention guarantees.
+
+IGGDA does NOT trade one for the other. Self-audit handles mechanical code failures fast (bounded loop, no human in the loop for easy cases); independent audit handles SPEC-quality assurance (human-grade skeptical evaluation in a fresh context).
+
+---
+
+Version: 1.2.0 (IGGDA: §H safe-condition predicate + §I 4-phase pipeline + §J independent-audit preservation added — Path B Implementation Kickoff Amendment)
+Origin: canonical agent catalog policy; Mode 6 (workflow) added by the run-phase autonomy line; §H/§I/§J added by IGGDA (Intent-Gated Goal-Directed Autonomy)
 Status: Active — applies to all `/moai run` Phase 0.95 invocations
