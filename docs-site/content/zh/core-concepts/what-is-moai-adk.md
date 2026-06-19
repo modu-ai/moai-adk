@@ -517,7 +517,7 @@ flowchart TD
     B -->|"默认 自动"| E["自动选择"]
 
     C --> F["顺序专家委派\nTask → Expert Agent"]
-    D --> G["并行团队协作\nTeamCreate → SendMessage"]
+    D --> G["并行团队协作\nAgent(name=…) → SendMessage"]
     E -->|"高复杂度"| D
     E -->|"低复杂度"| C
 
@@ -540,7 +540,7 @@ MoAI-ADK自动分析项目复杂度来选择最优执行模式:
 **Agent Teams模式** 使用并行团队协作开发:
 
 - 多个Agent同时工作，通过共享任务列表协作
-- 通过 `TeamCreate`、`SendMessage`、`TaskList` 进行实时协调
+- 通过 `Agent(name=…)`（隐式团队）、`SendMessage`、`TaskList` 进行实时协调
 - 适用于大规模功能开发、多域任务
 
 ```bash

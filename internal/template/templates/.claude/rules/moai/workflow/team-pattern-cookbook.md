@@ -54,7 +54,7 @@ Team Lead: "Synthesize these into: X is popular but has adoption risk, competito
 2. Team Lead assembles synthesis.md
 3. Team Lead sends synthesis to user
 4. Team sends shutdown_request approval to leader
-5. Leader runs TeamDelete
+5. Team cleanup is automatic on session exit (no explicit TeamDelete call — removed in Claude Code v2.1.178)
 
 ---
 
@@ -155,7 +155,7 @@ Consensus: Input validation in middleware (architecture clean, performance accep
 1. All reviewers complete review reports
 2. Team Lead synthesizes into single PR feedback
 3. Team applies feedback or marks as "reviewed with concerns"
-4. TeamDelete
+4. Team cleanup is automatic on session exit (no explicit TeamDelete call)
 
 ---
 
@@ -203,7 +203,7 @@ Product: "Meets requirements, approved"
 **Shutdown Sequence**:
 1. All three approve design
 2. Team produces final design.md with visual, UX, and product sections
-3. TeamDelete
+3. Team cleanup is automatic on session exit (no explicit TeamDelete call)
 
 ---
 
@@ -251,7 +251,7 @@ Fix: Increase timeout, verify test passes
 1. Root cause identified and documented
 2. Fix implemented and tested
 3. Verifier confirms bug no longer reproduces
-4. TeamDelete
+4. Team cleanup is automatic on session exit (no explicit TeamDelete call)
 
 ---
 
@@ -340,7 +340,7 @@ All teams follow this sequence:
 3. **Lead Initiates Shutdown**: Team Lead sends `shutdown_request` with request_id
 4. **Members Approve/Reject**: Each teammate responds with `shutdown_response { request_id, approve }`
 5. **Final Sync**: Lead synthesizes outputs into final artifact
-6. **TeamDelete**: Leader calls TeamDelete to clean up team
+6. **Automatic cleanup**: Team cleanup is automatic on session exit — no explicit TeamDelete call (the tool was removed in Claude Code v2.1.178)
 
 If a teammate rejects shutdown (still working), Lead can:
 - Extend deadline (send message, wait for completion)

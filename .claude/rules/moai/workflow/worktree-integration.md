@@ -315,6 +315,8 @@ Both share the same project structure. `src/auth/handler.go` resolves correctly 
 
 The `moai worktree new <SPEC-ID> --team` flag launches a Claude or GLM session inside the new worktree based on the current environment. See `.claude/skills/moai-workflow-worktree/SKILL.md` § `--team` Flag for the full P1-P4 decision matrix, detection logic, and example invocations.
 
+> **Two distinct `teammateMode` fields — do not conflate.** The `teammateMode` referenced in the §HARD Rules and P1-P4 detection below is MoAI's own `.claude/settings.local.json` launcher-selection field (values `"tmux"` / `"glm"` / `"claude"`), set by `moai cg` / `moai glm` / `moai cc`. This is SEPARATE from the Claude Code runtime `teammateMode` setting, whose default changed from `auto` to `in-process` as of Claude Code v2.1.179 — with the in-process default, split panes no longer auto-open. Additionally, as of Claude Code v2.1.181, an idle teammate's agent-panel row hides after 30 seconds and reappears on the next turn. These two CC-runtime behaviors govern how teammates are displayed; MoAI's launcher-selection `teammateMode` governs which launcher (`moai cg` / `moai glm` / `moai cc`) the `--team` flag invokes. Both fields happen to share the name `teammateMode`.
+
 ### HARD Rules
 
 [ZONE:Frozen] [HARD] CLI launch decisions MUST NOT invoke `AskUserQuestion`. All four launch patterns (P1 tmux+CG → moai glm, P2 tmux+CC → moai cc, P3 no-tmux → syscall.Exec, P4 no-flag → handoff) are selected deterministically from observable state (tmux session presence, `teammateMode`, GLM env vars). This satisfies the Branch Origin Decision Protocol per CONST-V3R5-030 (see `.claude/rules/moai/development/branch-origin-protocol.md` § HARD Rules).

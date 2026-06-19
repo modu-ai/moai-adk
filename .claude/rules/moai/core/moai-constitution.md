@@ -33,7 +33,7 @@ Rules:
 - Use sequential execution only when dependencies exist
 - Maximum 10 parallel agents for optimal throughput
 - For sub-agent mode: Launch multiple Agent() calls in a single message for parallel execution
-- For team mode: Use TeamCreate for persistent team coordination, SendMessage for inter-teammate communication
+- For team mode: spawn teammates directly with the Agent tool's `name` parameter (the team forms implicitly on first spawn — one team per session, no setup step); use SendMessage for inter-teammate communication
 - Team agents share TaskList for work coordination; sub-agents return results directly
 - Spawn multiple subagents in the same turn when fanning out across independent items or files; do not spawn a subagent for work completable directly in a single response
 - Three orchestration primitives exist — choose by who holds the plan: **sub-agents** (Claude orchestrates turn by turn, results land in Claude's context), **Agent Teams** (shared TaskList, start with 3-5 teammates), and **dynamic workflows** (a script orchestrates dozens-to-hundreds of agents, intermediate results stay in script variables). For coding-heavy work prefer sequential sub-agents; reserve workflow-scale fan-out for genuinely parallel high-volume tasks (codebase sweeps, large migrations, cross-checked research). See `.claude/rules/moai/workflow/dynamic-workflows.md`.

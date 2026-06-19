@@ -485,9 +485,9 @@ MoAI supports optional Agent Teams mode for parallel phase execution.
 
 ### Team APIs
 
-TeamCreate, SendMessage, TaskCreate/Update/List/Get, TeamDelete
+SendMessage, TaskCreate/Update/List/Get (teams are implicit — spawn teammates via `Agent(name=...)` and the team forms on the first spawn; cleanup is automatic on session exit).
 
-Call TeamDelete only after all teammates have shut down to release team resources.
+As of Claude Code v2.1.178 the `TeamCreate` and `TeamDelete` tools were removed: every session has one implicit team, teammates are spawned directly with the Agent tool's `name` parameter (no setup step), the `team_name` parameter is accepted but ignored, and team cleanup is automatic on session exit (no explicit teardown call). Teams/tasks are stored under the session-derived name `session-<first8>`; one team per session, no nested teams. The `team_name` field in the TaskCreated / TaskCompleted / TeammateIdle hook payloads carries the session-derived name and is deprecated.
 
 ### Team Hook Events
 

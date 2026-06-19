@@ -85,11 +85,10 @@ Use Cases:
 
 Implementation:
 
-- TeamCreate to initialize team structure with shared task list
-- Agent() with team_name and name parameters to spawn teammates
+- Agent() with the `name` parameter to spawn teammates — the team forms implicitly on first spawn (one team per session, no setup step); the `team_name` parameter is accepted but ignored (Claude Code v2.1.178)
 - SendMessage for inter-teammate coordination and idle handling
 - TaskList for self-coordinated work distribution
-- TeamDelete after all teammates shut down
+- Team cleanup is automatic on session exit; no explicit teardown call is needed
 
 ---
 

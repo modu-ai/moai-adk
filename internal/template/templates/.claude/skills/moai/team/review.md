@@ -28,7 +28,7 @@ triggers:
 
 Purpose: Review code changes from multiple perspectives simultaneously. Each reviewer focuses on a specific quality dimension.
 
-Flow: TeamCreate -> Perspective Assignment -> Parallel Review -> Report Consolidation
+Flow: Spawn review teammates (implicit team) -> Perspective Assignment -> Parallel Review -> Report Consolidation
 
 ## Prerequisites
 
@@ -39,10 +39,7 @@ Flow: TeamCreate -> Perspective Assignment -> Parallel Review -> Report Consolid
 ## Phase 0: Review Setup
 
 1. Identify the code changes to review (diff, PR, or file list)
-2. Create team:
-   ```
-   TeamCreate(team_name: "moai-review-{target}")
-   ```
+2. The team forms implicitly on the first teammate spawn (one team per session, no setup step). Teams/tasks are stored under the session-derived name `session-<first8>`.
 3. Create review tasks:
    ```
    TaskCreate: "Security review: OWASP compliance, input validation, auth" (no deps)
@@ -54,14 +51,13 @@ Flow: TeamCreate -> Perspective Assignment -> Parallel Review -> Report Consolid
 
 ## Phase 1: Spawn Review Team
 
-Use the review team pattern. All spawns MUST use Agent() with `team_name` and `name` parameters. Launch all four in a single response for parallel execution:
+Use the review team pattern. All spawns MUST use Agent() with the `name` parameter — the team forms implicitly on the first spawn (no setup step; the `team_name` parameter is accepted but ignored as of Claude Code v2.1.178). Launch all four in a single response for parallel execution:
 
 Each spawn prompt MUST include the following finding-stage instruction so every reviewer surfaces complete coverage: "At the finding stage, report every issue you find, including ones you are uncertain about or consider low-severity, each with a confidence level and an estimated severity. Do not filter for importance or confidence while finding — the verdict stage (must-pass thresholds + harmonic scoring) does the filtering downstream. The goal at this stage is coverage: surfacing a finding that later gets filtered out is preferable to silently dropping a real bug."
 
 ```
 Agent(
   subagent_type: "team-validator",
-  team_name: "moai-review-{target}",
   name: "security-reviewer",
   mode: "plan",
   prompt: "You are a security reviewer on team moai-review-{target}.
@@ -74,7 +70,6 @@ Agent(
 
 Agent(
   subagent_type: "team-validator",
-  team_name: "moai-review-{target}",
   name: "perf-reviewer",
   mode: "plan",
   prompt: "You are a performance reviewer on team moai-review-{target}.
@@ -87,7 +82,6 @@ Agent(
 
 Agent(
   subagent_type: "team-validator",
-  team_name: "moai-review-{target}",
   name: "quality-reviewer",
   mode: "plan",
   prompt: "You are a code quality reviewer on team moai-review-{target}.
@@ -100,7 +94,6 @@ Agent(
 
 Agent(
   subagent_type: "team-validator",
-  team_name: "moai-review-{target}",
   name: "ux-reviewer",
   mode: "plan",
   prompt: "You are a UX reviewer on team moai-review-{target}.
@@ -153,7 +146,7 @@ After all reviews complete:
    ```
    This safely removes GLM env vars while preserving ANTHROPIC_AUTH_TOKEN and other settings.
    Do NOT manually Read/Write settings.local.json — use the CLI command which handles JSON merging correctly.
-3. TeamDelete to clean up resources
+3. Team cleanup is automatic on session exit (no explicit teardown call — the TeamDelete tool was removed in Claude Code v2.1.178)
 4. Optionally create fix tasks for critical issues
 
 ## Fallback

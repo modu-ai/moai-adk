@@ -55,7 +55,7 @@ User runs: /moai --team "task"
     │   └── manager-spec creates SPEC
     │
     ├── PHASE 2: RUN (Agent Teams — teammates on GLM)
-    │   ├── TeamCreate → teammates spawn in new tmux panes
+    │   ├── Agent(name=...) → teammates spawn in new tmux panes (implicit team forms on first spawn)
     │   ├── New panes inherit GLM env from tmux session
     │   ├── Teammates run on Z.AI GLM API
     │   ├── File ownership prevents write conflicts

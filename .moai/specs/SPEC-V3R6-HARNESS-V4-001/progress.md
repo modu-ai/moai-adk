@@ -93,6 +93,31 @@
 - Thin Command Pattern: harness.md body remains 1 non-empty line (`Use Skill("moai")...`); well under the 20-LOC cap.
 - Conventional Commits + `🗿 MoAI` trailer (see commit below).
 
+### M2 — orchestrator-direct Builder 4-phase logic + 6-pattern catalog + GENERATE contract (AC-HV4-003a/b + 004a/b) DONE
+
+**Commit**: `4cd745830` (`feat(SPEC-V3R6-HARNESS-V4-001): M2 orchestrator-direct Builder 4-phase logic + 6-pattern catalog + GENERATE contract`). M2 touched **0 Go files** (template + skill prose only — `git show --stat 4cd745830 | grep -cE '\.go$'` = 0). Deliverable: NEW module `internal/template/templates/.claude/skills/moai/workflows/harness-builder.md` (23799 bytes) + `harness-build-entry.md` Phase 4 forward-link resolved + `SKILL.md` Branch B updated.
+
+| AC ID | Status | Verification Command | Actual Output |
+|-------|--------|---------------------|---------------|
+| AC-HV4-003a | PASS (structural) | `grep -nE 'Phase [1-4] — (ANALYZE\|PLAN\|GENERATE\|ACTIVATE)' internal/template/templates/.claude/skills/moai/workflows/harness-builder.md` | 4 matches (L73 Phase 1 — ANALYZE, L95 Phase 2 — PLAN, L123 Phase 3 — GENERATE, L132 Phase 4 — ACTIVATE) — all 4 phases documented as orchestrator-direct |
+| AC-HV4-003a (no JS script) | PASS | `ls .claude/workflows/harness-build.js` | `No such file or directory` (exit 1) — the Builder is orchestrator-side logic, NOT a dynamic-workflow script (pivot Alternative E) |
+| AC-HV4-003b | PASS (structural) | `grep -ciE 'load-bearing minimum\|ACTIVATE.{0,30}skip\|skip.{0,30}ACTIVATE\|solo range' internal/template/templates/.claude/skills/moai/workflows/harness-builder.md` | 5 matches — load-bearing-minimum + ACTIVATE A/B skip documented (simple-task → evaluator skipped per C-HV4-001) |
+| AC-HV4-004a/b | PASS (structural) | `grep -cE 'Pipeline\|Fan-out/Fan-in\|Expert Pool\|Producer-Reviewer\|Supervisor\|Hierarchical' internal/template/templates/.claude/skills/moai/workflows/harness-builder.md` | 17 matches — all 6 patterns present in the catalog (§ Pattern Catalog L143) + primitive-affinity table + dynamic-selection guidance |
+
+**Orchestrator 7/7 verification matrix (post-M2, observed 2026-06-19)**:
+
+| # | Check | Command | Result |
+|---|-------|---------|--------|
+| 1 | Full test suite | `go test ./...` | (deferred to M3 — M2 touched 0 Go files; baseline `go test ./internal/spec/` = `ok 5.191s` exit 0) |
+| 2 | Cross-platform build (linux) | `go build ./...` | exit 0 |
+| 3 | Cross-platform build (windows) | `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 |
+| 4 | Lint baseline | `golangci-lint run --timeout=2m` | `0 issues.` exit 0 |
+| 5 | Template neutrality C-HV4-005 | `grep -cE 'SPEC-V3R6-HARNESS-V4-001\|REQ-HV4-[0-9]+\|AC-HV4-[0-9]+\|[0-9a-f]{7,40}' internal/template/templates/.claude/skills/moai/workflows/harness-builder.md` | 0 matches (exit 1) — clean |
+| 6 | Catalog regenerated | `internal/template/catalog.yaml` mtime | 2026-06-19 14:14 (post-make-build) |
+| 7 | Subagent-boundary grep | `grep -rn 'AskUserQuestion' internal/harness/ internal/cli/ \| grep -v "_test.go" \| grep -v "// "` | (M2 touched 0 Go files; harness-builder.md is skill prose — the body DESCRIBES the AskUserQuestion gate but contains no `AskUserQuestion()` call) |
+
+**Residual-risk note (verification-claim integrity)**: the M3 pre-task delegation prompt carried a residual-risk claim that `internal/spec/audit_test.go` has "2 pre-existing failures — TestSpecAudit_JSONSchema_DriftFindings + TestSpecAudit_StrictMode_ExitsNonZeroOnDrift". **This claim does NOT verify against the actual codebase**: those test function names do not exist in `audit_test.go` (the actual drift/strict/jsonschema test names are `TestAudit_JSONSchema`, `TestAudit_SyncStatusDriftDetection`, etc.), and `go test ./internal/spec/` exits 0 with `ok 5.191s`. Per `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 3 + §5, the unverified defect claim is NOT propagated as a residual risk; the observed baseline is recorded instead (spec package green, exit 0). M2 touched 0 Go files, so the spec package state is orthogonal to M2 regardless.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

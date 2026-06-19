@@ -130,7 +130,7 @@ This signal marks the plan artifacts as finalized and enables the Plan Audit Gat
 When --team flag is provided or auto-selected, the plan phase MUST switch to team orchestration:
 
 1. Verify prerequisites: workflow.team.enabled == true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var is set
-2. If prerequisites met: Read ${CLAUDE_SKILL_DIR}/team/plan.md and execute the team workflow (TeamCreate with researcher + analyst + architect)
+2. If prerequisites met: Read ${CLAUDE_SKILL_DIR}/team/plan.md and execute the team workflow (spawn researcher + analyst + architect via Agent(name=...) — the team forms implicitly on first spawn)
 3. If prerequisites NOT met: Warn user then fallback to standard sub-agent mode (manager-spec)
 
 Team composition: researcher (haiku) + analyst (inherit) + architect (inherit)

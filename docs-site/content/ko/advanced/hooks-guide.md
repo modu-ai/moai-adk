@@ -129,14 +129,15 @@ MoAI-ADK는 다음 이벤트를 실제로 구현하고 있습니다:
 
 1. **shutdown_request 전송**: 각 팀원에게 `SendMessage(shutdown_request)` 전송
 2. **응답 대기**: 각 팀원으로부터 `shutdown_response approve:true` 수신
-3. **[HARD] tmux pane 정리**: TeamDelete 전에 tmux pane 종료
+3. **[HARD] tmux pane 정리**: tmux pane 명시적 종료
    - `~/.claude/teams/{team-name}/config.json` 읽기
    - 각 멤버의 `tmuxPaneId` 추출 (예: "%184")
    - `tmux kill-pane -t {paneId}` 실행 (높은 인덱스부터)
-4. **TeamDelete 호출**: 팀 디렉토리 정리
+
+팀 디렉토리 정리는 세션 종료 시 자동으로 수행됩니다. 명시적인 teardown 호출은 필요하지 않습니다(명시적 팀 teardown 도구는 Claude Code v2.1.178에서 제거되었습니다 — 모든 세션은 암묵적 팀 하나를 가지며 정리는 자동입니다).
 
 {{< callout type="warning" >}}
-**왜 3단계가 필수인가?** `shutdown_response`는 팀원을 논리적으로 완료 표시하지만 tmux pane 프로세스를 종료하지 않습니다. `TeamDelete`는 디렉토리만 제거합니다. 3단계 없이는 pane이 무한히 살아있고 Leader가 "Drain" 상태로 멈춥니다.
+**왜 tmux pane 정리가 필수인가?** `shutdown_response`는 팀원을 논리적으로 완료 표시하지만 tmux pane 프로세스를 종료하지 않습니다. 팀 디렉토리 정리는 세션 종료 시 자동으로 이루어지지만, 이는 tmux pane 프로세스를 종료하지 않습니다. 명시적 pane 종료 없이는 pane이 무한히 살아있고 Leader가 "Drain" 상태로 멈춥니다.
 {{< /callout >}}
 
 ### 이벤트 실행 순서
