@@ -226,7 +226,14 @@ Purpose: Collect user feedback and create GitHub issues.
 Agents: orchestrator-direct (records feedback via gh CLI)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/feedback.md
 
-### harness - V3R4 Self-Evolving Harness Lifecycle
+### harness - Harness Lifecycle + Natural-Language Build (argument-branching)
+
+This single `harness` subcommand dispatches to ONE of two workflows based on the FIRST token of `$ARGUMENTS` (argument-based routing — no second command is introduced). Apply the routing rule before any workflow-specific logic:
+
+- **Reserved verb** (`status` / `apply` / `rollback` / `disable`) → route to the existing **harness learning lifecycle** workflow (Branch A below). This path is unchanged.
+- **Anything else** (a natural-language harness-creation request, e.g. "build a harness for CLI template development") → route to the **harness build entry** workflow (Branch B below).
+
+#### Branch A — harness learning lifecycle (reserved verbs: status / apply / rollback / disable)
 
 Purpose: Surface the harness learning subsystem (observer, 4-tier proposal ladder, 5-layer safety pipeline) to the user via the slash command path. Owns all lifecycle verbs (status / apply / rollback / disable) entirely within the workflow body using file-system operations — no Go binary subcommand invoked. Tier-4 application is gated by orchestrator-issued AskUserQuestion per REQ-HRN-FND-004.
 Skills: moai-harness-learner (Tier-4 surfacing companion), moai-meta-harness (project-specific harness generation, indirect)
@@ -234,6 +241,13 @@ Verbs: status (tier distribution + telemetry) | apply (next Tier-4 proposal → 
 Artifacts: `.moai/harness/usage-log.jsonl`, `.moai/harness/proposals/`, `.moai/harness/learning-history/snapshots/`, `.moai/harness/learning-history/applied/`, `.moai/harness/learning-history/frozen-guard-violations.jsonl`
 Authoritative SPEC: SPEC-V3R4-HARNESS-001 (supersedes V3R3-HARNESS-001, V3R3-HARNESS-LEARNING-001, V3R3-PROJECT-HARNESS-001)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness.md
+
+#### Branch B — harness build entry (natural-language request)
+
+Purpose: Turn a natural-language harness-creation request into a concrete harness via Context-First Discovery (extract domain / goal / constraints / scope), harness `<name>` derivation (the name is derived from the request — NOT statically supplied by the user), explicit orchestrator-issued approval, then delegation to the Builder Workflow. The orchestrator MUST conduct AskUserQuestion Socratic rounds (max 4 questions per round) when intent clarity is below 100%.
+Skills: moai-meta-harness (project-specific harness generation, indirect)
+Forward-link: delegates to the Builder Workflow (`.claude/workflows/harness-build.js`, not yet implemented — the entry's job is NL analysis + name derivation + approval gate; the Builder itself is a follow-up milestone).
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness-build-entry.md
 
 ### release-update - CC Upstream Change Tracker *(dev-only)*
 

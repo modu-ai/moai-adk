@@ -1,6 +1,6 @@
 ---
-description: Manage harness learning subsystem (status/apply/rollback/disable) with 4-tier evolution + 5-layer safety
-argument-hint: "{status|apply|rollback <YYYY-MM-DD>|disable}"
+description: Manage harness learning subsystem (status/apply/rollback/disable) OR create a harness via natural-language analysis (Context-First Discovery + name derivation + approval gate)
+argument-hint: "{status|apply|rollback <YYYY-MM-DD>|disable|<natural-language request>}"
 allowed-tools: Skill
 ---
 
