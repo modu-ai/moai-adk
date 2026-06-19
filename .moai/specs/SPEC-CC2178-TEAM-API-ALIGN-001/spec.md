@@ -2,7 +2,7 @@
 id: SPEC-CC2178-TEAM-API-ALIGN-001
 title: "Align MoAI doctrine + templates + docs to Claude Code 2.1.178 implicit-team API"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-06-19
 updated: 2026-06-20
 author: manager-spec
