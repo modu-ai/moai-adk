@@ -2,9 +2,9 @@
 id: SPEC-V3R6-ORCH-IGGDA-001
 title: "Intent-Gated Goal-Directed Autonomy (IGGDA) — 4-phase plan→run→sync pipeline with safe-condition kickoff reduction, bounded recursive self-diagnosis, and moai-aware Stop-hook goal driver"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-06-19
-updated: 2026-06-19
+updated: 2026-06-20
 author: manager-spec
 priority: P1
 phase: "v3.0.0"

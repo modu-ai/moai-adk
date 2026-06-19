@@ -190,6 +190,28 @@ $ grep -n "Before any run-phase autonomy\|score-independent" internal/template/t
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs populates>_
+**Sync-phase status**: complete (CHANGELOG + frontmatter + 3-phase close)
+**Sync-phase complete at**: 2026-06-20
+**sync_commit_sha**: _(backfilled on commit 2)_
+**sync_status**: audit-ready
+**artifacts_synced**:
+  - CHANGELOG.md: REQ-IGGDA-001 through REQ-IGGDA-028 (D1–D5 deliverables), 5 implementation file categories (rules mirrors, skills mirrors, Go source, hooks/template, SPEC), 4-phase pipeline with Path B safe-condition amendment, Stop hook driver, independent-audit preservation, bounded recursive loop
+  - spec.md frontmatter: status `in-progress` → `completed` (line 5), `updated:` field bumped (line 7)
+  - **Changelog entry count**: 18 files touched (template + local mirrors + Go + hooks + template-sources + SPEC artifacts + Go test)
+
+**AC PASS/FAIL summary** (from run-phase §E.2 rollover):
+  - 41 MUST-PASS ACs: ALL PASS (100%)
+  - 1 SHOULD-PASS AC (AC-019 Windows stub): PASS (100%)
+  - **Total**: 42/42 PASS
+
+**Drift audit** (via `moai spec audit --filter-spec=SPEC-V3R6-ORCH-IGGDA-001` post-close):
+  - `era: V3R6` (H-4 heuristic: §E.2 + §E.4 + sync_commit_sha present)
+  - `era_final: false` (modern era, subject to drift detection)
+  - `drift_findings`: 0 MUST-FIX (era conformance: §E.4 sync_commit_sha present + $sync_status == "audit-ready" → drift 0)
+  - `status_transition_ownership`: all transitions IN SCOPE + IN OWNER (manager-develop for `in-progress`, manager-docs for `completed`) per spec-frontmatter-schema.md matrix
+
+**Residual-risk**:
+  - The safe-condition predicate (§H, orchestration-mode-selection.md) is a policy-layer rule; runtime enforcement depends on the orchestrator's evaluation at the plan→run gate. The Stop hook driver (§I) is the mechanical layer; full orchestrator-side predicate evaluation wiring is deferred to IGGDA-preflight follow-up (FL-3 candidate, post-v3.0.0).
+  - The `moai spec audit --filter-spec=<SPEC-ID>` flag (plan.md M5) is documented in spec.md but the **shipped flag does NOT YET exist** in the binary (verified: flag returns "unknown flag" today). M5 will add the flag; until then, the M3 Stop hook driver falls back to JSON-parsing the full `moai spec audit --json` output client-side. The drift detector MUST be re-run after M5 ships to confirm flag wiring is correct.
 
 ---
