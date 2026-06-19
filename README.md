@@ -269,24 +269,24 @@ MoAI is a **strategic orchestrator**. Rather than writing code directly, it dele
 graph LR
     U["👤 User Request"] --> M["🗿 MoAI Orchestrator"]
 
-    M --> MG["📋 Manager (8)"]
-    M --> EX["⚡ Expert (8)"]
-    M --> BL["🔧 Builder (3)"]
-    M --> EV["🔍 Evaluator (2)"]
-    M --> AG["🎨 Design System (4+1)"]
-
-    MG --> MG1["spec · ddd · tdd · docs<br/>quality · project · strategy · git"]
-    EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring"]
-    BL --> BL1["agent · skill · plugin"]
-    EV --> EV1["sync-auditor · plan-auditor"]
-    AG --> AG1["planner · copywriter · designer<br/>builder · evaluator · learner"]
+    M --> MS["📋 manager-spec"]
+    M --> MD["🔨 manager-develop"]
+    M --> MDoc["📄 manager-docs"]
+    M --> MG["🌿 manager-git"]
+    M --> PA["🔍 plan-auditor"]
+    M --> SA["⚖️ sync-auditor"]
+    M --> BH["🔧 builder-harness"]
+    M --> EX["👁️ Explore (built-in)"]
 
     style M fill:#FF6B35,color:#fff
-    style MG fill:#4CAF50,color:#fff
-    style EX fill:#2196F3,color:#fff
-    style BL fill:#9C27B0,color:#fff
-    style EV fill:#FF5722,color:#fff
-    style AG fill:#FF9800,color:#fff
+    style MS fill:#4CAF50,color:#fff
+    style MD fill:#2196F3,color:#fff
+    style MDoc fill:#2196F3,color:#fff
+    style MG fill:#2196F3,color:#fff
+    style PA fill:#FF5722,color:#fff
+    style SA fill:#FF5722,color:#fff
+    style BH fill:#9C27B0,color:#fff
+    style EX fill:#607D8B,color:#fff
 ```
 
 ### Agent Categories
@@ -480,6 +480,8 @@ graph TB
     style Run fill:#E8F5E9,stroke:#2E7D32
     style Sync fill:#FFF3E0,stroke:#E65100
 ```
+
+> **3-phase lifecycle (V3R6)**: MoAI's lifecycle is exactly three phases — plan → run → sync. The former fourth "Mx-phase" was retired per `SPEC-V3R6-LIFECYCLE-REDESIGN-001`; MX Tag validation is now a cross-cutting sync concern, not a separate phase. Dynamic workflows (`/effort ultracode`, Claude Code v2.1.154+) are available as an optional fan-out primitive within the run phase.
 
 #### Execution Mode Selection Gate
 
@@ -940,9 +942,9 @@ This single command triggers the **entire autonomous workflow**:
 1. **Client Interview** — Manager-spec asks 9 structured questions about your business, brand, and tech preferences (skipped if already configured)
 2. **BRIEF Generation** — Manager-spec expands your request into a comprehensive project brief
 3. **Copy + Design** — moai-domain-copywriting produces brand-aligned marketing copy; moai-domain-brand-design creates a full design system with tokens (Path B). Alternative Path A: moai-workflow-design-import parses Claude Design handoff bundles.
-4. **Code Implementation** — expert-frontend implements production code using TDD (Next.js + Tailwind by default)
+4. **Code Implementation** — manager-develop (cycle_type=tdd) or a harness-generated frontend specialist implements production code using TDD (Next.js + Tailwind by default)
 5. **Quality Assurance** — sync-auditor runs Playwright tests, Lighthouse audits, and 4-dimension scoring with Sprint Contract protocol
-6. **GAN Loop** — If quality fails, expert-frontend and sync-auditor iterate via moai-workflow-gan-loop (up to 5 rounds) until threshold is met
+6. **GAN Loop** — If quality fails, manager-develop (or the harness specialist) and sync-auditor iterate via moai-workflow-gan-loop (up to 5 rounds) until threshold is met
 7. **Self-Learning** — (Optional) Learner detects patterns from the session and proposes skill improvements
 
 **Typical duration**: 15-45 minutes for a complete landing page, fully autonomous.
@@ -970,7 +972,7 @@ flowchart LR
 | **moai-domain-copywriting** | Writes marketing copy as structured JSON — headlines, body, CTAs — following brand voice rules |
 | **moai-domain-brand-design** | Creates complete design system — color tokens, typography scale, spacing, component specs (Path B) |
 | **moai-workflow-design-import** | Parses Claude Design handoff bundles (ZIP/HTML) for design tokens and components (Path A) |
-| **expert-frontend** | Implements production code with TDD (RED-GREEN-REFACTOR). Default stack: Next.js, TypeScript, Tailwind, shadcn/ui |
+| **manager-develop** (cycle_type=tdd) | Implements production code with TDD (RED-GREEN-REFACTOR). Default stack: Next.js, TypeScript, Tailwind, shadcn/ui. A harness-generated frontend specialist (per `SPEC-V3R6-HARNESS-NAMESPACE-V2-001`) may substitute for domain-specific work. |
 | **sync-auditor** | Runs Playwright visual tests + Lighthouse audits. Scores 4 dimensions with Sprint Contract protocol and must-pass criteria validation |
 | **moai-workflow-gan-loop** | Manages GAN Loop iteration: Builder-Evaluator negotiates Sprint Contract, implements, scores, escalates on stagnation |
 
@@ -1112,105 +1114,7 @@ This command safely moves legacy `.agency/` data to `.moai/project/brand/` and `
 
 ---
 
-## Database Workflow: /moai db
-
-Database metadata management system for MoAI projects. Manages schema documentation, migrations, ERD diagrams, and seeds through four subcommands: init, refresh, verify, and list.
-
-### Quick Start
-
-```bash
-# Initialize database metadata (interactive interview)
-/moai db init
-
-# Rescan migrations and update schema documentation
-/moai db refresh
-
-# Check for drift between schema.md and migration files
-/moai db verify
-
-# Display all tables from schema.md
-/moai db list
-```
-
-### Subcommands
-
-| Command | Purpose | When to Use |
-|---------|---------|------------|
-| **init** | Interactive setup of database engine, ORM, multi-tenant strategy, and migration tool. Scaffolds `.moai/project/db/` with 7-file template set | New project initialization, before any database work |
-| **refresh** | Scans migration files and regenerates `schema.md`, `erd.mmd` (Mermaid ERD), and `migrations.md` from current migration state | After adding/modifying migrations, milestone sync |
-| **verify** | Read-only drift detection: compares `schema.md` table set against actual migration files, exits non-zero if drift detected | Before PR submission, in CI/CD pipelines |
-| **list** | Read-only table listing: displays all tables from `schema.md` in aligned Markdown table format | Quick project overview, documentation review |
-
-### Directory Structure
-
-`/moai db init` creates the following structure in `.moai/project/db/`:
-
-```plaintext
-.moai/project/db/
-├── README.md              # Database overview and setup instructions
-├── schema.md              # Table schema documentation (auto-generated)
-├── erd.mmd                # Entity-Relationship Diagram in Mermaid format
-├── migrations.md          # Migration history and sequencing
-├── rls-policies.md        # Row-level security policies (PostgreSQL)
-├── queries.md             # Important queries and performance notes
-└── seed-data.md           # Sample data and seeding instructions
-```
-
-### Supported Database Technologies
-
-Auto-detects and supports 6 migration file patterns:
-
-| Migration Type | File Pattern | Example |
-|---------------|-------------|---------|
-| **Prisma** | `prisma/migrations/*/migration.sql` | `20260401120000_add_users_table/migration.sql` |
-| **Alembic** | `alembic/versions/*.py` | `a1b2c3d4e5f6_add_users_table.py` |
-| **Rails** | `db/migrate/*.rb` | `20260401120000_add_users_table.rb` |
-| **Raw SQL** | `db/migrations/*.sql` | `001_add_users_table.sql` |
-| **Supabase** | `supabase/migrations/*.sql` | `20260401120000_initial_schema.sql` |
-| **Generic** | `migrations/*.sql` or `db/*.sql` | Custom patterns supported |
-
-Supports 16 programming language ecosystems (Go, Python, TypeScript, Java, etc.) through common package paths.
-
-### Integrations
-
-- **PostToolUse Hook**: Auto-refreshes `schema.md`, `erd.mmd`, `migrations.md` when migration files are edited
-- **Drift Detection**: Prevents schema documentation from drifting out of sync with actual migrations
-- **Mermaid Diagrams**: Generates ERD diagrams automatically for documentation and design reviews
-- **Phase 4.1a DB Detection**: `/moai project` automatically surfaces `/moai db` recommendations based on detected database technology
-
-### Configuration
-
-Database settings are stored in `.moai/config/sections/db.yaml`:
-
-```yaml
-db:
-  enabled: true
-  dir: ".moai/project/db"
-  auto_sync: true
-  migration_patterns:
-    - "prisma/migrations/*/migration.sql"
-    - "alembic/versions/*.py"
-    - "db/migrate/*.rb"
-  engine: ""  # Populated during init interview
-  orm: ""     # Populated during init interview
-  multi_tenant: false
-  migration_tool: ""
-```
-
-### Workflow Example
-
-1. **New Project**: Run `/moai db init`, answer 4 questions about your database setup
-2. **During Development**: Create migrations as usual; `/moai db` auto-syncs documentation
-3. **Before PR**: Run `/moai db verify` to check for schema drift
-4. **Review**: Reference `.moai/project/db/erd.mmd` in PRs for visual schema review
-
-### When to Use
-
-- **Always on**: Enable during `moai init` for any project with a database
-- **Init**: New projects, database architecture changes
-- **Refresh**: After significant migration work, before major commits
-- **Verify**: Part of CI/CD pipeline, pre-PR checks
-- **List**: Quick reference, documentation generation
+> **Database schema tooling**: database-schema synchronization is handled by the CLI hook `moai hook db-schema-sync` (see the CLI reference), not a dedicated slash command.
 
 ---
 
