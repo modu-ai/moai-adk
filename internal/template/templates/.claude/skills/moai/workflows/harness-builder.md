@@ -125,9 +125,18 @@ The gate presents, at minimum:
 **Primitive**: orchestrator-direct fan-out — the orchestrator spawns specialist `Agent()` calls (parallel where independent, sequential where dependent) that emit the 5 artifact types in § GENERATE Output Contract below.
 **Isolation**: conditional per-specialist — `worktree` for conflict-prone parallel generation, `none` otherwise.
 
-On Proceed, the orchestrator fans out specialist agents that emit the 5 artifacts. Conflict-prone parallel generation (≥2 specialists targeting overlapping paths) spawns `Agent(isolation:"worktree")` per the manifest's `isolation` declarations; read-only or sequential generation runs main-tree. There is NO mandatory top-level worktree wrapping the entire Builder.
+On Proceed, the orchestrator fans out specialist agents that emit the 5 artifacts. The spawn form is decided per-specialist by consulting each specialist's `isolation` field in the manifest (the field the PLAN phase populated via the isolation-decision helper):
 
-The GENERATE output contract (§ GENERATE Output Contract below) is the handoff spec M3 (manifest + Runner engine) and M4 (command generation + lifecycle) consume.
+- **`isolation: "worktree"`** → the orchestrator spawns `Agent(role, isolation:"worktree", ...)` for that specialist. This is the conflict-prone case: ≥2 specialists targeting overlapping paths, OR a specialist making a risky change (shared-infrastructure touch). The worktree isolates the blast radius so parallel writes do not collide.
+- **`isolation: "none"`** → the orchestrator spawns a plain `Agent(role, ...)` (main-tree). This is the read-only or sequential case: no write conflict is possible, so no worktree is created.
+
+The isolation-decision helper (`DecideIsolation` in the manifest Go package) codifies the rule the PLAN phase consults: read-only → `none`; risky change → `worktree`; parallel + overlapping paths → `worktree`; otherwise → `none`. The decision is **advisory**: per the L1 worktree autonomy policy, the orchestrator does NOT mandate worktree creation — `Agent(isolation:"worktree")` is runtime-autonomous, and the Claude Code runtime decides whether to materialize the worktree. The harness logic recommends; the runtime materializes.
+
+There is NO mandatory top-level worktree wrapping the entire Builder. Worktree isolation is sub-agent-granular and conditional per-specialist only. ANALYZE (read-only fan-out) always uses `isolation: "none"` — zero worktrees are created for read-only analysis.
+
+The Runner mirrors the same conditional on the execution side: at end-of-run it emits a worktree-cleanup directive ONLY when ≥1 specialist declared `isolation: "worktree"`. L1 worktree cleanup itself is runtime-autonomous; the Runner emits the directive, the runtime performs the cleanup.
+
+The GENERATE output contract (§ GENERATE Output Contract below) is the handoff spec the manifest schema + Runner engine + command generation + lifecycle consume.
 
 ### Phase 4 — ACTIVATE [orchestrator-direct dry-run + /goal; A/B optional]
 
