@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-DOCS-RC2-README-001
 title: "Implementation Plan — v3.0.0-rc2 README + CHANGELOG factual-alignment"
-version: "0.2.0"
-status: draft
+version: "0.3.0"
+status: in-progress
 created: 2026-06-19
 updated: 2026-06-19
 author: manager-spec
@@ -51,8 +51,8 @@ Run these read-only verifications to confirm the baseline before any edit:
 3. **Agent count baseline**: `ls .claude/agents/moai/*.md | wc -l` → must return 7 (the 7 MoAI-custom agents).
 4. **builder-harness path baseline**: `test -f .claude/agents/moai/builder-harness.md && echo OK` → must print OK; `test -d .claude/agents/builder && echo EXISTS || echo MISSING` → must print MISSING.
 5. **Stale-token presence baseline**: capture the pre-edit grep counts for every stale token in `spec.md` §C (these become the "before" snapshot for the §E self-verification).
-6. **Skills count baseline (iter-1 D1 fix)**: `find .claude/skills -name SKILL.md -path "*moai*" | wc -l` → returns 34; `find .claude/skills -name SKILL.md -path "*moai*" | grep -v "harness-moaiadk-" | wc -l` → returns **32**. The README surfaces the 32 count (moai-* template-managed, excluding 2 `harness-moaiadk-*` user-owned). Re-derive LIVE; do NOT trust the numbers in this plan.
-7. **Go LOC baseline (iter-1 D5 fix)**: `find . -name "*.go" -not -path "./vendor/*" -not -path "./internal/template/embedded.go" -not -name "*.pb.go" -not -name "zz_*.go" | xargs wc -l | tail -1` → ~193,616 (plan-phase measurement 2026-06-19). README MUST NOT hardcode the precise figure; use "100K+ lines" graceful-aging phrasing.
+6. **Skills count baseline (iter-3 D1' fix)**: `find .claude/skills -name SKILL.md -path "*moai*" | wc -l` → returns 33; `find .claude/skills -name SKILL.md -path "*moai*" | grep -v "harness-moaiadk-" | wc -l` → returns **31**. The README surfaces the 31 count (moai-* template-managed, excluding 2 `harness-moaiadk-*` user-owned). Root cause for the iter-1→iter-3 delta (32→31): `moai-design-system` skill was removed by `SPEC-V3R6-DESIGN-SYSTEM-RETIRE-001` after iter-1 authoring. Re-derive LIVE; do NOT trust the numbers in this plan.
+7. **Go LOC baseline (iter-3 D3 fix)**: the §B pipeline (`find . -name "*.go" -not -path "./vendor/*" -not -path "./internal/template/embedded.go" -not -name "*.pb.go" -not -name "zz_*.go" | xargs wc -l | tail -1`) over-counts non-deterministically (iter-3 LIVE 2026-06-19 = 191,248; earlier drafts cited ~193,616 / ~198,945). README MUST NOT hardcode any precise figure; use "100K+ lines" graceful-aging phrasing per spec.md §E.3.
 8. **CHANGELOG v2.20.0-rc1 baseline (iter-1 D4 fix)**: `grep -cE '^##.*v2\.20\.0-rc1' CHANGELOG.md` → returns **4** heading lines (L378/L487/L507/L527); `grep -c "v2.20.0-rc1" CHANGELOG.md` → returns 28 total (4 headings + 24 body). M4 consolidates the 4 HEADING lines; body prose inside consolidated content is acceptable.
 
 ---
@@ -77,9 +77,9 @@ Run these read-only verifications to confirm the baseline before any edit:
 **REQs covered**: REQ-EN-001, REQ-EN-002, REQ-EN-003, REQ-EN-004, REQ-EN-005, REQ-EN-010.
 
 **Edits**:
-- `README.md:40` hero line — replace "24 specialized AI agents and 52 skills" with "8 retained AI agents and 32 moai-* skills" (state the harness-moaiadk-* exclusion explicitly per REQ-EN-001; final wording at run-phase discretion but the 32 count MUST be qualified as moai-* template-managed and the harness-moaiadk-* exclusion noted).
-- `README.md:62` — replace "38,700+ lines / 38 packages" with graceful-aging phrasing "100K+ lines of Go across 100+ packages". Do NOT hardcode the precise LOC figure (~193,616 LIVE; drifts on every commit).
-- `README.md:64` Key Numbers — replace "26 agents + 47 skills" → "8 agents + 32 moai-* skills"; replace "18 languages" → "16 languages".
+- `README.md:40` hero line — replace "24 specialized AI agents and 52 skills" with "8 retained AI agents and 31 moai-* skills" (state the harness-moaiadk-* exclusion explicitly per REQ-EN-001; final wording at run-phase discretion but the 31 count MUST be qualified as moai-* template-managed and the harness-moaiadk-* exclusion noted).
+- `README.md:62` — replace "38,700+ lines / 38 packages" with graceful-aging phrasing "100K+ lines of Go across 100+ packages". Do NOT hardcode the precise LOC figure (the §B pipeline over-counts non-deterministically; iter-3 LIVE = 191,248; drifts on every commit).
+- `README.md:64` Key Numbers — replace "26 agents + 47 skills" → "8 agents + 31 moai-* skills"; replace "18 languages" → "16 languages".
 - `README.md:262` — replace "delegates to 24 specialized agents" → "delegates to 8 retained agents". (NOTE per D6: L297 already has a different "8 retained agents" token — the edit target is L262 specifically; the line-anchor AC verifies L262.)
 - `README.md:1235,1245,1281,1289` — refresh statusline FAQ illustrative versions to Opus 4.7+ / CC 2.1.17x+ OR mark explicitly illustrative. (Concrete AC predicate: `grep -cE "explicitly illustrative|example only" README.md` ≥1 OR `grep -cE "Opus 4\.[78]|CC 2\.1\.17" README.md` ≥1.)
 
@@ -259,3 +259,4 @@ This plan does NOT pre-decide; the run-phase agent surfaces the finding.
 - [x] No citation of superseded `SPEC-V3R6-HARNESS-MOAI-NAMESPACE-001` (REQ-X-002).
 - [x] Draft SPECs (RULES-*) not asserted as finalized (REQ-X-003).
 - [x] **iter-1 audit (2026-06-19, v0.2.0)**: all §B baseline numbers re-derived LIVE (skills 32 moai-* excl. 2 harness-moaiadk-*; LOC ~193,616; v2.20.0-rc1 = 4 headings; Mermaid bare labels `Manager (8)`/`Expert (8)`/`Builder (3)`/`Evaluator (2)`/`Design System (4+1)` confirmed at L264-286). Every "new value present" AC where the token pre-exists elsewhere is line-anchored (D2/D3/D6). AC-EN-010 carries a concrete grep predicate (D7). v2.20.0-rc1 AC scoped to heading-line form (D4). Go LOC figure dropped from README in favor of graceful-aging phrasing (D5).
+- [x] **iter-3 plan-audit fix (2026-06-19, v0.3.0)**: plan-auditor iter-2 re-audit FAIL 0.74 (2 BLOCKING + 2 SHOULD-FIX). D1' skills 32→31 LIVE (DSR rebase deleted `moai-design-system`). D2' AC-KO-001b line-anchored on `README.ko.md:111` (KO D6 discipline parity). D3 precise Go LOC dropped from §B (pipeline over-counts; 191,248 LIVE non-deterministic). D5 AC-CL-001 contradiction split into binary checks. plan.md §C.6/§C.7/M1 edits updated in lockstep.
