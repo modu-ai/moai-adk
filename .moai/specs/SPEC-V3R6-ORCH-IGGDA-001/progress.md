@@ -192,7 +192,7 @@ $ grep -n "Before any run-phase autonomy\|score-independent" internal/template/t
 
 **Sync-phase status**: complete (CHANGELOG + frontmatter + 3-phase close)
 **Sync-phase complete at**: 2026-06-20
-**sync_commit_sha**: _(backfilled on commit 2)_
+**sync_commit_sha**: `a11b3fadd29641698b676fa48ea816b1bd6b3502`
 **sync_status**: audit-ready
 **artifacts_synced**:
   - CHANGELOG.md: REQ-IGGDA-001 through REQ-IGGDA-028 (D1–D5 deliverables), 5 implementation file categories (rules mirrors, skills mirrors, Go source, hooks/template, SPEC), 4-phase pipeline with Path B safe-condition amendment, Stop hook driver, independent-audit preservation, bounded recursive loop
