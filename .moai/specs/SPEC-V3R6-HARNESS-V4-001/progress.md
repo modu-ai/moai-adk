@@ -229,6 +229,34 @@ TestEmitCleanupDirective_FiresOnlyWhenWorktreeSpecialistPresent
 - Behavior preservation: M5 is purely additive — NEW `isolation.go` + `isolation_test.go` + GENERATE doc update; no existing M1-M4 code or tests modified.
 - Cross-platform build (B1): `go build ./...` exit 0 (no syscall packages; no build tags needed).
 
+### M6 Part A — revfactory residual removal + 4 specialist migration + legacy redirect (AC-HV4-009a + 013a + 013b) DONE
+
+**Commit**: `13d442ce9` (`feat(SPEC-V3R6-HARNESS-V4-001): M6 namespace protection (commands/harness + workflows/harness-*.js user-owned)` + the 4-specialist migration + moai-meta-harness DEPRECATED redirect landed in the same M6 Part A commit chain — HEAD 13d442ce9). Part A delivered the revfactory 7-Phase residual removal (M6 §revfactory-residual-removal), the 4 existing Layer B specialists migrated to v4 manifest format (NEW `migrated_specialists_test.go` regression net), and the legacy `/moai:harness` 7-Phase → v4 redirect (moai-meta-harness SKILL.md marked DEPRECATED).
+
+| AC ID | Status | Verification Command | Actual Output |
+|-------|--------|---------------------|---------------|
+| AC-HV4-009a | PASS | `grep -rnE '7-Phase\|Phase 7 LEARNING\|Skeleton\|Customization' internal/harness/v4manifest/*.go internal/cli/harness/*.go \| grep -v "_test.go"` | 0 matches (exit 1) — ZERO revfactory 7-Phase residuals in NEW v4 Go artifacts. The legacy `moai-meta-harness` SKILL.md is the redirect source (NOT a v4 artifact) and is correctly excluded from this grep per the AC scope clause. |
+| AC-HV4-013a | PASS | `go test -run 'TestMigratedSpecialists_AllFourHaveValidManifestEntries\|TestMigratedSpecialists_AssembledManifestIsValid' ./internal/harness/v4manifest/...` | `ok  github.com/modu-ai/moai-adk/internal/harness/v4manifest  0.331s` — all 4 migrated specialists (cli-template / quality / workflow / hook-ci) declare valid v4 manifest entries (5 sub-fields each: role/primitive/isolation/effort/model) AND assemble into a schema-valid Manifest. Layer B regression suite green (behavior preserved — the specialists still function as the existing team). |
+| AC-HV4-013b | PASS | `grep -n 'DEPRECATED' .claude/skills/moai-meta-harness/SKILL.md` | line 4: `DEPRECATED — legacy 7-Phase meta-harness. Redirects to the v4 harness Builder (/moai:harness <natural-language request>)` — the redirect is LIVE: invocation of the legacy path surfaces a deprecation notice and routes to `/moai:harness` v4 (the new NL-analysis entry). The 7-Phase body is preserved as historical reference. |
+
+**Namespace no-leak (AC-HV4-006b complement + §24 policy)**:
+
+```
+$ ls internal/template/templates/.claude/agents/harness/
+ls: internal/template/templates/.claude/agents/harness/: No such file or directory
+```
+
+The user-owned `.claude/agents/harness/` namespace is NOT leaked into the distributable template tree — `internal/template/templates/.claude/agents/harness/` does not exist. The 4 specialist agent files live under the maintainer-local `.claude/agents/harness/` (user-owned per §24), NOT under `internal/template/templates/`.
+
+**Coverage**: `go test -cover ./internal/harness/v4manifest/...` → `coverage: 100.0% of statements` (the v4manifest package is at 100% — the M6 Part A `migrated_specialists_test.go` additions and the existing M3-M5 test suite fully cover the package).
+
+**Constraints honored**:
+- C-HV4-005 (template neutrality): the moai-meta-harness DEPRECATED redirect carries no new internal-state markers (the redirect body references `/moai:harness` v4 generically; SPEC-ID / REQ / AC tokens / commit SHAs are absent).
+- Behavior preservation: Part A is additive on the v4 Go side (NEW `migrated_specialists_test.go`) and a redirect on the skill side (moai-meta-harness body preserved as historical reference, NOT deleted). The 4 Layer B specialists still function as the existing specialist team — the migration adds v4 manifest entries WITHOUT removing the existing agent bodies.
+- Cross-platform build (B1): `go build ./...` exit 0 (Part A touched 0 syscall packages).
+
+**Residual-risk (verification-claim integrity)**: the M6 Part A evidence is author-measured against HEAD 13d442ce9. The full live orchestrator-driven harness build (Context-First Discovery → ANALYZE → PLAN → GENERATE → ACTIVATE) and the real-task with/without A/B comparison are executed at M6 Part B (the dogfooding validation) — see `dogfooding-report.md` for the 5-Section Evidence-Bearing Format disclosure of what was and was NOT observed.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
