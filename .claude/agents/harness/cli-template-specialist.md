@@ -16,6 +16,18 @@ model: inherit
 
 # CLI / Template Specialist (moai-adk-go)
 
+## v4 Manifest Entry
+
+<!-- @MX:NOTE: [AUTO] v4 manifest mapping (SPEC-V3R6-HARNESS-V4-001 REQ-HV4-013 / AC-HV4-013a). Declares the harness-v4 manifest fields for this specialist. The Runner consumes these verbatim per AC-HV4-005b (no heuristic re-derivation). Behavior is unchanged — this section ADDS the v4 mapping only; the frontmatter + Role/body below are preserved. -->
+
+| field | value | rationale |
+|-------|-------|-----------|
+| `role` | cli-template-specialist | CLI surface + go:embed template system ownership |
+| `primitive` | sub-agent | delegates to `manager-develop` via ordinary `Agent()` spawn (no worktree / dynamic-workflow / adversarial fan-out) |
+| `isolation` | none | single-path delegation; no conflict-prone parallel writes |
+| `effort` | high | intelligence-sensitive (template-neutrality + 16-language parity judgment) |
+| `model` | inherit | matches frontmatter `model: inherit` ([1m]-safe per model-policy.md) |
+
 ## Role
 
 This specialist owns the moai-adk-go CLI surface and the `go:embed` template

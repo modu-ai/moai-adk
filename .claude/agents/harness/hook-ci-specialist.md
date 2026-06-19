@@ -15,6 +15,18 @@ model: inherit
 
 # Hook / CI Specialist (moai-adk-go)
 
+## v4 Manifest Entry
+
+<!-- @MX:NOTE: [AUTO] v4 manifest mapping (SPEC-V3R6-HARNESS-V4-001 REQ-HV4-013 / AC-HV4-013a). Declares the harness-v4 manifest fields for this specialist. The Runner consumes these verbatim per AC-HV4-005b. Behavior is unchanged — this section ADDS the v4 mapping only; the frontmatter + Role/body below are preserved. -->
+
+| field | value | rationale |
+|-------|-------|-----------|
+| `role` | hook-ci-specialist | Claude Code hook scripts + settings.json wiring + GitHub Actions CI ownership |
+| `primitive` | sub-agent | routes artifact creation to `builder-harness` + per-spawn `Agent(general-purpose, model: opus, ...)` for DevOps/CI work via ordinary `Agent()` spawn |
+| `isolation` | none | sequential artifact creation; no conflict-prone parallel writes |
+| `effort` | high | intelligence-sensitive (hook event semantics, namespace-protection contract, template-neutrality CI guard judgment) |
+| `model` | inherit | matches frontmatter `model: inherit` ([1m]-safe per model-policy.md) |
+
 ## Role
 
 This specialist owns Claude Code hook scripts, settings.json hook wiring, and

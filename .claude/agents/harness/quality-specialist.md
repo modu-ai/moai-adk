@@ -15,6 +15,18 @@ model: inherit
 
 # Quality Specialist (moai-adk-go)
 
+## v4 Manifest Entry
+
+<!-- @MX:NOTE: [AUTO] v4 manifest mapping (SPEC-V3R6-HARNESS-V4-001 REQ-HV4-013 / AC-HV4-013a). Declares the harness-v4 manifest fields for this specialist. The Runner consumes these verbatim per AC-HV4-005b. Behavior is unchanged — this section ADDS the v4 mapping only; the frontmatter + Role/body below are preserved. -->
+
+| field | value | rationale |
+|-------|-------|-----------|
+| `role` | quality-specialist | TRUST 5 + Go toolchain quality-gate enforcement |
+| `primitive` | sub-agent | routes independent scoring to `sync-auditor` via ordinary `Agent()` spawn; mechanical gating via the Stop hook (not a spawned primitive) |
+| `isolation` | none | read-only verification batch + delegation; no parallel write conflicts |
+| `effort` | high | intelligence-sensitive (independent skeptical scoring, harmonic-mean dimension judgment) |
+| `model` | inherit | matches frontmatter `model: inherit` ([1m]-safe per model-policy.md) |
+
 ## Role
 
 This specialist owns quality-gate enforcement for the moai-adk-go Go binary and

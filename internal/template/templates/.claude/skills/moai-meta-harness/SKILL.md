@@ -1,30 +1,34 @@
 ---
 name: moai-meta-harness
 description: >
-  Meta-harness skill that designs project-specific agent teams and generates the
-  skills they use. Adapts the revfactory/harness 7-Phase workflow to MoAI's agent
-  ecosystem. Triggered by /moai project Socratic interview and produces dynamic
-  harness-* skills + .claude/agents/harness/* + .moai/harness/* artifacts.
+  DEPRECATED — legacy 7-Phase meta-harness. Redirects to the v4 harness Builder
+  (/moai:harness <natural-language request>) which replaces the static 7-Phase
+  workflow with an orchestrator-direct 4-phase Builder (ANALYZE / PLAN /
+  GENERATE / ACTIVATE) + a manifest-driven dynamic-workflow Runner. Retained as
+  the redirect source for backward-compat invocation paths; the 7-Phase body
+  below is preserved as historical reference, NOT for new harness creation.
 
 when_to_use: >
-  Use for meta-harness work: designing project-specific agent teams and
-  generating the skills they use, adapting the revfactory/harness 7-Phase
-  workflow to MoAI's agent ecosystem, triggered by /moai project Socratic
-  interview.
+  Use the v4 Builder instead: issue /moai:harness <natural-language request> to
+  enter Context-First Discovery (domain / goal / constraints / scope extraction)
+  then the orchestrator-direct Builder. This legacy skill fires ONLY on
+  backward-compat invocation paths that still reference the 7-Phase workflow; on
+  any such invocation it surfaces a deprecation notice and redirects to v4.
 
 license: Apache-2.0
 compatibility: Designed for Claude Code (v2.1.111+)
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash
 user-invocable: false
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   category: "meta"
-  status: "active"
-  updated: "2026-04-27"
+  status: "deprecated"
+  updated: "2026-06-20"
   modularized: "false"
-  tags: "meta-skill, harness, project-init, agent-team-architect, apache-2-0-attribution"
+  tags: "meta-skill, harness, deprecated, v4-redirect, agent-team-architect, apache-2-0-attribution"
   upstream_source: "revfactory/harness"
   generated_by: "moai-adk"
+  superseded_by: "/moai:harness v4 Builder"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -33,18 +37,77 @@ progressive_disclosure:
   level2_tokens: 5000
 ---
 
-# moai-meta-harness
+# moai-meta-harness (DEPRECATED — redirect to v4)
 
-<!-- @MX:NOTE: [AUTO] V3R4 contract — this skill body is preserved unchanged per SPEC-V3R4-HARNESS-001 §10 exclusion #10 (text annotation only, no behavioral change). The meta-harness 7-Phase workflow that generates project-specific harness-* skills and .claude/agents/harness/* definitions is governed by REQ-HRN-FND-015 (orchestrator-only AskUserQuestion contract) — any subagent generated under .claude/agents/harness/ MUST NOT invoke AskUserQuestion; if user input is required, the subagent returns a structured blocker report and the orchestrator runs the AskUser round. Cross-reference: .claude/rules/moai/core/agent-common-protocol.md § User Interaction Boundary. -->
+> **DEPRECATION NOTICE** — This legacy 7-Phase meta-harness is
+> **superseded by the v4 harness Builder** (`/moai:harness <natural-language
+> request>`). The v4 design replaces the static 7-Phase workflow with:
+>
+> - An **orchestrator-direct 4-phase Builder** (ANALYZE -> PLAN -> GENERATE ->
+>   ACTIVATE) that holds the plan in Claude's session context and can call
+>   AskUserQuestion at the PLAN->GENERATE approval gate (first-class boundary).
+> - A **manifest-driven dynamic-workflow Runner** (`harness-<name>-run.js`) that
+>   reads `manifest.json` and dispatches specialists per their declared
+>   `primitive` (sub-agent / dynamic-workflow / worktree / /goal /
+>   adversarial-fan-out) — no heuristic re-derivation.
+> - **Conditional sub-agent-granular worktree isolation** (no mandatory
+>   top-level worktree; worktree only for conflict-prone parallel generation).
+> - **Signal-driven phase synthesis** (not a fixed pipeline); the evaluator is
+>   conditional (skipped for tasks within the model's solo reliable range).
+>
+> **To create a new harness**: issue `/moai:harness <natural-language request>`
+> (e.g., `/moai:harness build a harness for my-project's API development`). The
+> orchestrator runs Context-First Discovery on the request, derives a harness
+> `<name>`, and enters the Builder. Do NOT use the 7-Phase workflow below for
+> new harness creation.
+>
+> **What is preserved here**: the 7-Phase body below is retained as the
+> **redirect source** for backward-compat — so existing invocation paths that
+> reference the legacy workflow land on a deprecation notice + redirect rather
+> than a dead link. The 7-Phase content is historical reference material, NOT
+> active workflow. The revfactory 7-Phase residual grep excludes this body
+> precisely because it IS the redirect source.
+
+<!-- @MX:NOTE: [AUTO] V3R4 contract SUPERSEDED — the original V3R4 contract preserved this skill body unchanged per SPEC-V3R4-HARNESS-001 §10 exclusion #10 (text annotation only, no behavioral change). That contract is hereby EXPLICITLY SUPERSEDED by the v4 harness redesign: the body is converted to a v4 redirect. Rationale for supersession: (1) the V3R4 contract protected against behavioral change, but v4 IS a deliberate behavioral change — the 7-Phase workflow is retired in favor of the orchestrator-direct Builder + manifest-driven Runner; (2) preserving the body unchanged would leave a dead-path 7-Phase workflow that contradicts the v4 design; (3) the AskUserQuestion-only contract (REQ-HRN-FND-015) is itself preserved verbatim under v4 — any generated subagent under .claude/agents/harness/ still MUST NOT invoke AskUserQuestion (this is reaffirmed, not weakened). The supersession is narrow: the 7-Phase workflow is retired; the AskUserQuestion boundary + namespace separation + Apache-2.0 attribution are all preserved. Cross-reference: the v4 design's Migration Path (revfactory 7-Phase -> v4 mapping) in the companion harness-builder.md workflow. -->
 
 <!-- ATTRIBUTION
 Original work: revfactory/harness (https://github.com/revfactory/harness)
 License: Apache License 2.0
 Adaptations: 7-Phase workflow integrated with MoAI agent ecosystem (manager-*, expert-*, sync-auditor)
-NOTICE: This file contains modifications. See SPEC-V3R3-HARNESS-001 for derivation history.
+NOTICE: This file contains modifications. See SPEC-V3R3-HARNESS-001 for derivation history. The 7-Phase workflow below is superseded by the v4 Builder; it is retained as the redirect source for backward-compat.
 -->
 
-> **Apache 2.0 Attribution**: Adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache License 2.0). The 7-Phase workflow below is a MoAI adaptation of the upstream 6-Phase + Evolution Mechanism. See `.claude/rules/moai/NOTICE.md` for the full third-party notices and SPEC-V3R3-HARNESS-001 for derivation history.
+> **Apache 2.0 Attribution**: Adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache License 2.0). The 7-Phase workflow below is a MoAI adaptation of the upstream 6-Phase + Evolution Mechanism. See `.claude/rules/moai/NOTICE.md` for the full third-party notices and SPEC-V3R3-HARNESS-001 for derivation history. **The v4 Builder (the replacement) is documented in `.claude/skills/moai/workflows/harness-builder.md`.**
+
+---
+
+## v4 Redirect (the active path)
+
+**New harness creation**: `/moai:harness <natural-language request>`
+
+This routes to the v4 Builder (orchestrator-direct). The Builder:
+
+1. **Context-First Discovery** on the request (extract domain / goal / constraints / scope).
+2. **AskUserQuestion Socratic rounds** if clarity <100%; **derives** harness `<name>` from confirmed intent.
+3. **Explicit approval gate** (AskUserQuestion, PLAN->GENERATE boundary).
+4. **ANALYZE / PLAN / GENERATE / ACTIVATE** as orchestrator-direct phases.
+5. Emits 5 artifact types: entry command, Runner Workflow, specialists, companion skills, `manifest.json`.
+
+**Harness lifecycle** (list / edit / remove): `/moai:harness list|edit|remove <name>`.
+
+**Harness execution**: `/harness:<name>` (auto-generated thin-wrapper command -> the harness's Runner Workflow).
+
+See `harness-builder.md` (companion workflow under `moai/workflows/`) for the full Builder contract and `.claude/rules/moai/workflow/dynamic-workflows.md` for the Runner's dynamic-workflow primitive.
+
+---
+
+## Legacy 7-Phase Body (HISTORICAL REFERENCE — redirect source, NOT active)
+
+> The content below this separator is the original 7-Phase workflow, preserved
+> verbatim as the redirect source. It is NOT the active harness-creation path.
+> New harness creation MUST use `/moai:harness <NL request>` (v4) above. The
+> revfactory 7-Phase residual grep excludes this body because it IS the legacy
+> source being redirected away from.
 
 Meta-factory skill that architects and generates project-specific agent teams. Adapts the [revfactory/harness](https://github.com/revfactory/harness) 7-Phase workflow to MoAI's agent ecosystem. Produces `harness-*` skills and agent definitions tailored to each project's domain.
 
@@ -240,5 +303,5 @@ The following capabilities are explicitly NOT implemented by this skill:
 
 ---
 
-*Upstream: revfactory/harness (Apache-2.0) | MoAI adaptation: SPEC-V3R3-HARNESS-001*
+*Upstream: revfactory/harness (Apache-2.0) | MoAI adaptation: SPEC-V3R3-HARNESS-001 | v4 supersession: the v4 harness Builder redesign*
 *See `.claude/rules/moai/NOTICE.md` for full Apache 2.0 attribution.*

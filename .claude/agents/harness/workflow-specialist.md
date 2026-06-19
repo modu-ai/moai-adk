@@ -15,6 +15,18 @@ model: inherit
 
 # Workflow Specialist (moai-adk-go)
 
+## v4 Manifest Entry
+
+<!-- @MX:NOTE: [AUTO] v4 manifest mapping (SPEC-V3R6-HARNESS-V4-001 REQ-HV4-013 / AC-HV4-013a). Declares the harness-v4 manifest fields for this specialist. The Runner consumes these verbatim per AC-HV4-005b. Behavior is unchanged — this section ADDS the v4 mapping only; the frontmatter + Role/body below are preserved. -->
+
+| field | value | rationale |
+|-------|-------|-----------|
+| `role` | workflow-specialist | SPEC plan/run/sync lifecycle + V3R6 3-phase close contract ownership |
+| `primitive` | sub-agent | routes each phase to its canonical retained agent (manager-spec / manager-develop / manager-docs / plan-auditor) via ordinary `Agent()` spawn |
+| `isolation` | none | sequential phase routing; no conflict-prone parallel writes |
+| `effort` | high | intelligence-sensitive (GEARS authoring, era classification, Implementation Kickoff Approval gate judgment) |
+| `model` | inherit | matches frontmatter `model: inherit` ([1m]-safe per model-policy.md) |
+
 ## Role
 
 This specialist owns the SPEC-based development lifecycle for moai-adk-go's own
