@@ -51,15 +51,35 @@ manager-develop (run-phase); §E.4/§E.5 by manager-docs (sync/Mx-phase).
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase executed via manager-develop in an isolation worktree (Mode 5 sub-agent, per § Mode Selection); orchestrator cherry-picked the 7 run commits to shared main (M3 + M8 verified no-ops — design premises disproven by live grep, verification-claim-integrity §1.1 surface 3):
+
+- `d581c7d0b` M1 — AskUserQuestion 4-way de-dup (agent-common-protocol + moai-constitution pointers; CLAUDE.md §8 out-of-scope forward-item)
+- `e93e99203` M2 — hooks config/timeout de-dup + contradiction reconcile (D7 BOTH surfaces L323 table + L244 JSON; D6 single alwaysLoad v2.1.119)
+- `a08e9aefc` M4 — verification-batch re-sync sentinel (D4 verified no-op: no 7-cmd block exists to remove)
+- `c10411102` M5 — Status Transition Ownership Matrix de-dup (lifecycle-sync-gate pointer; NO mirror RK-6)
+- `de15de6d9` M6 — team files 4→2 + DELETE `agent-teams-pattern.md` (both trees) + 4 inbound referrer rewrites (D8: internal/ BROADLY) + max_teammates 10 vs 3-5 reconcile
+- `6b073a4d8` M7 — skill 3-file SSOT boundary (writing-craft + ab-testing → skill-authoring pointers)
+- `b69761a8a` M_Z — zone-registry `paths:` narrowing (REQ-SSD-009 SHOULD partial; B4 CLI gate respected — full clause reduction deferred to SPEC-V3R6-CONST-VALIDATE-LABEL-001)
+- M3 (context-window 5-way) — verified no-op: copies already reduced to pointers in prior SPECs
+- M8 (agent 3-file) — verified no-op: boundary already clean
+
+29 files changed (deployed + template mirror pairs); 172 insertions / 564 deletions (net de-dup). PRESERVE clean — sibling SPEC artifacts (DOCS-RC2, HARNESS-MOAI-NAMESPACE) untouched.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0
+- Go-test trio green: `TestRuleTemplateMirrorDrift|TestTemplateNoInternalContentLeak|TestTemplateNeutralityAudit` ok (`internal/template`)
+- `moai spec lint`: 26 errors / 87 warnings — the +1 NEW was StatusGitConsistency on this SPEC (status draft vs git-implied, resolved by this sync-phase `completed` transition); de-dup NEW defects = 0; remainder pre-existing baseline
+- `moai constitution validate`: drift_count 77 → 77 (M_Z `paths:` narrowing introduced 0 NEW drift; AP-3 respected — no `clause:` blanked to a label)
+- 15 ACs (acceptance.md SSOT): AC-SSD-001..008, 010..012 PASS; AC-SSD-009 PASS-WITH-BLOCKER-NOTE (zone-registry full reduction deferred per B4)
+- 4 mirror classes verified per-file (design §4): hooks-system byte-parity (allowlist) / 13 byte-identical-by-discipline (explicit `diff -q`) / §25-sanitized (leak-test) / zone-registry §25-divergent (scoped `diff`) / lifecycle-sync-gate no-mirror
+- manager-develop self-claim "comment-only _test.go edits" independently verified (diff showed comment/list-comment only, no Go logic change; new-diagnostics `forvar`/`any` at lines 69/83/116/176 are pre-existing, not M6-touched lines 21/45/66)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_commit_sha: <backfill pending — close commit SHA>
+
+Sync-phase orchestrator-direct (GLM manager-docs spawn context-limit fallback per `feedback_glm_orchestrator_direct_sync_mx`). frontmatter status in-progress → completed rides this sync commit (3-phase close per SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-008 — `completed` transition merged into the sync commit, no separate Mx chore). §E.5 Mx-phase retired (folded into §E.4 per LIFECYCLE-REDESIGN). CHANGELOG entry added (Sprint 16 RULES cohort).
 
 ## §E.5 Mx-phase Audit-Ready Signal
 
