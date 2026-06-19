@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v3.0.0-rc2] — 2026-06-19
 
 ### Changed
 
@@ -259,7 +259,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased] — v3.0 Mega-Sprint: W0 Claude Refresh + W1 Constitution Dual + W2 Core Slim + W3 Harness Autonomy
+**v3.0 Mega-Sprint (pre-rc2 cohort): W0 Claude Refresh + W1 Constitution Dual + W2 Core Slim + W3 Harness Autonomy**
 
 ### Added
 
@@ -385,7 +385,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **output-style moai v5.1.0 → v5.2.0 — Session Handoff template surfaced** (commit `95e3ed247`): `.claude/output-styles/moai/moai.md` §6 "Session Boundary Handoff [HARD]" 5-trigger 추가 (canonical: `.claude/rules/moai/workflow/session-handoff.md` §When To Generate) + §8 Session Handoff [HARD] 6-block format + 5-item pre-emit self-check + auto-memory persistence contract + anti-pattern catalogue. Rationale: session-handoff.md [HARD] rule이 정의되어 있었으나 orchestrator output template에 verbatim format이 없어서 resume message가 self-discipline failure로 skipped 되는 사례 발생. output-style template에 surfacing하여 emit reliability 향상 (no code change required). SESSION-HANDOFF-AUTO-001 (Tier S, line 34/65)의 Go-level safeguard와 함께 dual-layer protection (output-style 자율 + hook 자동 persist). Byte-identical template mirror 동기화. 2 files +150/-4.
 
-## [Unreleased] — v2.20.0-rc1: 11 SPECs complete (RT-002 + RT-003 + RT-006 + CI-FASTTRACK-001 + WORKFLOW-SPLIT-001 + SPC-001 + WF-004 + ORC-002 + ORC-004 + HRN-001 + STATUSLINE-STDINFIELDS-001)
+**v2.20.0-rc1 cohort: 11 SPECs complete (RT-002 + RT-003 + RT-006 + CI-FASTTRACK-001 + WORKFLOW-SPLIT-001 + SPC-001 + WF-004 + ORC-002 + ORC-004 + HRN-001 + STATUSLINE-STDINFIELDS-001)**
 
 ### Added
 
@@ -494,7 +494,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - D10-D15 P2/P3 optional (review-bot env, deprecated CI, node version, etc.).
 - SPEC-WORKTREE-SKILLS-CLEANUP-001 (tentative): stale `[HARD] worktree` refs in `.claude/skills/moai/{workflows,team}/run.md` (AC-WTD-007 related).
 
-## [Unreleased] — v2.20.0-rc1 Doctrine: SPEC-WORKTREE-DOCS-001 Worktree Workflow Harmonization (L1/L2/L3 opt-in)
+**v2.20.0-rc1 Doctrine: SPEC-WORKTREE-DOCS-001 Worktree Workflow Harmonization (L1/L2/L3 opt-in)**
 
 ### Changed
 
@@ -514,7 +514,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **doctrine harmonization: worktree workflow rules downgraded to SHOULD tier + L1/L2/L3 terminology standardized** (SPEC-WORKTREE-DOCS-001): The 2026-05-17 user autonomous policy (`feedback_worktree_autonomous` memory) is permanently absorbed into 5 rule files. (a) `spec-workflow.md` Step 2/3 `[HARD] MUST create/reuse worktree` → `[SHOULD] L2 opt-in` (8 HARD → 3, -5 total); (b) `CLAUDE.md` §14 4 worktree `[HARD]` bullets → `[SHOULD]` advisory (Claude Code runtime decides L1 isolation per-call); (c) `worktree-integration.md` gains a 4-row Terminology Glossary distinguishing L1 (Claude Code Native), L2 (SPEC worktree), L3 (Plan worktree), and git worktree (low-level mechanism); (d) `worktree-state-guard.md` gains a Wave 5 primitive dormancy banner (orchestrator wiring deferred, manual invocation preserved); (e) `session-handoff.md` Block 0 conditional wording (only required when `--worktree` L3 opt-in). All 5 files cross-reference user policy 2026-05-17. New `scripts/audit-workflow-terminology.sh` (~41 LOC) auto-detects future terminology drift. Memory hierarchy: `feedback_worktree_never_use` (2026-05-15 perpetual-no-worktree policy) heading + MEMORY.md index marked `[SUPERSEDED]`, `feedback_worktree_autonomous` (pre-existing) compliance verified. This SPEC is documentation-only — 0 LOC Go code change, `go test ./...` exit 0. AC-WTD-001~009 all binary PASS (007 non-blocking, 2 stale `[HARD]` references in `.claude/skills/moai/{workflows,team}/run.md` surfaced as follow-up SPEC candidates). (PR #964 plan + #965 run + this sync, plan-in-main + main-checkout flow applied, L2/L3 worktree not used)
 
-## [Unreleased] — v2.20.0-rc1 Governance: SPEC-V3R4-HARNESS-NAMESPACE-001 Harness Namespace + Lifecycle Governance closeout
+**v2.20.0-rc1 Governance: SPEC-V3R4-HARNESS-NAMESPACE-001 Harness Namespace + Lifecycle Governance closeout**
 
 ### Changed
 
@@ -534,7 +534,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI shallow clone (HARNESS001Resolution test skip): SPEC-V3R4-CI-INFRA-FIX-001 (다음 SPEC) `fetch-depth: 0` 영구 fix 예정.
 - v2.20.0-rc1 release tagging: CI-INFRA-FIX-001 lifecycle COMPLETE 후 진입 가능.
 
-## [Unreleased] — v2.20.0-rc1 Governance: SPEC-V3R4-HARNESS-NAMESPACE-001 Harness Namespace + Lifecycle Governance closeout
+**v2.20.0-rc1 Governance: SPEC-V3R4-HARNESS-NAMESPACE-001 Harness Namespace + Lifecycle Governance closeout**
 
 ### Changed
 
