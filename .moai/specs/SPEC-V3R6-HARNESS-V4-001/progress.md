@@ -163,6 +163,37 @@ TestValidate_AcceptsMultipleSpecialists
 
 **Template neutrality** (C-HV4-005): `TestRunnerTemplate_TemplateNeutrality` asserts zero SPEC-ID / REQ / AC / commit-SHA / archive-path markers in the template body — generic mechanism description only.
 
+### M4 — `/harness:<name>` command generation + lifecycle + orphan prevention (AC-HV4-002a/b + 011a/b/c) DONE
+
+**Commit**: `a020bcee4` (`feat(SPEC-V3R6-HARNESS-V4-001): M4 /harness:<name> command generation + lifecycle + orphan prevention`). M4 delivered NEW `internal/harness/v4manifest/command_template.go` (CommandTemplate Go-embed — thin-wrapper command generator) + `internal/cli/harness/v4lifecycle.go` + `v4lifecycle_cmd.go` (list/edit/remove handlers wired into the CLI harness route), and MODIFIED `internal/cli/harness_route.go` (Branch A.1 lifecycle verbs) + `moai SKILL.md` Branch A.1 (list/edit/remove routing declared) + `catalog.yaml` (mechanical, hash update only).
+
+| AC ID | Status | Verification Command | Actual Output |
+|-------|--------|---------------------|---------------|
+| AC-HV4-002a | PASS | `go test -run 'TestGenerateCommand_ContainsHarnessName\|TestGenerateCommand_NameSubstitutedPerHarness' ./internal/harness/v4manifest/...` | both PASS — CommandTemplate emits `.claude/commands/harness/<name>.md` thin-wrapper dispatching to `harness-<name>-run.js` |
+| AC-HV4-002b | PASS | `go test -run 'TestGenerateCommand_ReferencesRunnerWorkflow' ./internal/harness/v4manifest/...` | PASS — thin-wrapper content references the Runner Workflow (the command invokes the harness's Runner which reads `manifest.json` + dispatches specialists per primitive) |
+| AC-HV4-011a | PASS | `go test -run 'TestListHarnesses_EnumeratesAllHarnesses\|TestListHarnesses_JoinsManifestDomain' ./internal/cli/harness/` | both PASS — `list` scans `.claude/commands/harness/*.md` and joins with each harness's `manifest.json` (name/domain/entry_command) |
+| AC-HV4-011b | PASS | `go test -run 'TestRemoveHarness_RemovesAllFiveArtifactTypes' ./internal/cli/harness/` | PASS — `remove <name>` deletes command + Runner Workflow + specialists + skills + manifest atomically (0 `dev` artifacts remain) |
+| AC-HV4-011c | PASS | `go test -run 'TestRemoveHarness_FailClosedOnMissingManifest' ./internal/cli/harness/` | PASS — `remove` on a harness whose manifest was manually deleted FAILS CLOSED (refuses to remove command alone, surfaces missing-manifest error, leaves filesystem unchanged) |
+
+**Deliverables (5 artifact types touched — all within SPEC scope §B.1)**:
+- NEW `internal/harness/v4manifest/command_template.go` + `command_template_test.go` — `CommandTemplate` Go-embed string (the template the Builder GENERATE phase stamps per-harness as `.claude/commands/harness/<name>.md`).
+- NEW `internal/cli/harness/v4lifecycle.go` + `v4lifecycle_cmd.go` + `v4lifecycle_test.go` — list / edit / remove handlers.
+- MODIFIED `internal/cli/harness_route.go` — Branch A.1 dispatcher recognizes list/edit/remove verbs and routes to v4lifecycle.
+- MODIFIED `moai SKILL.md` Branch A.1 (template + local mirror) — declares the list/edit/remove verbs for the `/moai:harness` command.
+- MODIFIED `catalog.yaml` (mechanical hash update from `make build`).
+
+**Constraints honored**:
+- C-HV4-005 (template neutrality): `CommandTemplate` body carries ZERO SPEC-IDs / REQ tokens / AC tokens / commit SHAs (self-checked via `grep -nE 'SPEC-V3R6-HARNESS-V4-001|REQ-HV4-[0-9]+|AC-HV4-[0-9]+|a020bcee4' internal/harness/v4manifest/command_template.go` → CLEAN). Generic mechanism description only.
+- Namespace no-leak (AC-HV4-006b complement): `find internal/template/templates/.claude/commands/harness internal/template/templates/.claude/workflows -name 'harness-*' 2>/dev/null` returns nothing — the user-owned `harness-*` namespace is NOT leaked into the template tree (the CommandTemplate + RunnerTemplate live as moai-distributable Go-embed strings, NOT as template files).
+- SKILL.md Branch A.1: list/edit/remove verbs added; learning-subsystem verbs preserved unchanged (scope discipline — Branch A description untouched).
+- Orphan prevention (AC-HV4-011c): fail-closed semantics — `remove` refuses partial state; missing-manifest error surfaced; filesystem left unchanged.
+
+**Coverage**: `go test -cover ./internal/harness/v4manifest/...` → `coverage: 97.8% of statements`; `go test -cover ./internal/cli/harness/...` → `coverage: 69.3% of statements` (Cobra-wrapper glue code at 0% unit coverage — `v4lifecycle_cmd.go` is thin cobra registration; the 69.3% covers the substantive `v4lifecycle.go` logic. Cobra-wrapper 0%-unit is the project convention per existing `harness_route.go` baseline).
+
+**Cross-platform build (B1)**: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (no syscall packages; no build tags needed).
+
+**Residual-risk (verification-claim integrity)**: `moai spec audit --json --filter-spec=SPEC-V3R6-HARNESS-V4-001` post-M4 shows the SPEC stable PASS (no M4-related drift — the M4 commit carries the `manager-develop` ownership trailer for the in-progress status, which is the canonical owner per the Status Transition Ownership Matrix). M4-unrelated pre-existing findings (if any) are orthogonal to this milestone.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
