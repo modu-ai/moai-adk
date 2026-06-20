@@ -94,7 +94,7 @@ Full archived-proper residual BOTH trees (skills+agents, excl rejection + dev-on
 
 ```yaml
 run_complete_at: 2026-06-20
-run_commit_sha: <M6-commit-placeholder; backfilled at commit>
+run_commit_sha: 4908558f3  # M6 final run-phase commit (per-milestone chain: 6d105b647 M1+M2, e16804a4f M3, f0f9e0318 M4+M5, 4908558f3 M6)
 run_status: implemented
 cycle_type: ddd
 milestones_complete: M1-M6 (6/6)
