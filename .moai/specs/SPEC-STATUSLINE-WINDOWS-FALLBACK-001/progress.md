@@ -42,14 +42,14 @@ cycle_type=tdd (RED→GREEN→REFACTOR). Reproduction-first per REQ-SWF-010 / CL
 
 ```yaml
 run_complete_at: 2026-06-20
-run_commit_sha: <backfill-after-commit>
+run_commit_sha: c4a42bc11
 run_status: implemented
 ac_pass_count: 12
 ac_fail_count: 0
 ac_pass_with_debt_count: 1   # AC-SWF-012 full-suite: 1 pre-existing unrelated FAIL (internal/skills LOC ceiling)
 preserve_list_post_run_count: 3   # gobin/resolver.go Detect, internal/shell/env.go, install.ps1 — all untouched
 l44_pre_commit_fetch: "origin/main 61db3aa96; rev-list 2 0 (origin ahead 2, non-overlapping SPEC-V3R6-HARNESS-V4-001 artifacts only); local HEAD base 94a468a2e"
-l44_post_push_fetch: <backfill-after-push>
+l44_post_push_fetch: "git fetch origin main; rev-list 0 0 (local == origin/main, synced post-push c4a42bc11)"
 new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues on affected packages (QF1001 introduced then fixed)
 cross_platform_build:
   darwin_amd64: pass
