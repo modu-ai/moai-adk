@@ -2,7 +2,7 @@
 id: SPEC-V3R6-WORKFLOW-AGENT-DOC-ALIGN-001
 title: "Workflow + Agent + Doc Consistency Cleanup (archived-agent purge, broken cross-refs, stale ground-truth)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-06-20
 updated: 2026-06-20
 author: manager-spec

@@ -123,4 +123,24 @@ m1_to_m6_commit_strategy: per-milestone specific-path commits (M1+M2 / M3 / M4+M
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_complete_at: 2026-06-20
+sync_commit_sha: <placeholder — backfilled after first sync commit>
+sync_status: completed
+b12_self_test_a: grep -c 'SPEC-V3R6-WORKFLOW-AGENT-DOC-ALIGN-001' CHANGELOG.md → 1 (no duplicate)
+b12_self_test_b: acceptance.md AC row count (should be 18) → 17 rows (AC-WADA-001 through AC-WADA-017)
+b12_self_test_c: file path verification — ls .moai/specs/SPEC-V3R6-WORKFLOW-AGENT-DOC-ALIGN-001/spec.md → exists ✓
+sync_evidence:
+  run_phase_commit_sha: 4908558f3
+  ac_pass_count: 17
+  archived_proper_residual_both_trees: 0
+  run_md_loc_final: 181
+  cross_platform_build: 'exit 0 (darwin + windows)'
+  go_test_full_suite: 'exit 0'
+  template_mirror_parity_test: PASS
+  template_neutrality_audit: PASS
+  sync_artifacts:
+    - spec.md frontmatter transition (in-progress → completed)
+    - progress.md §E.4 population (this block)
+    - CHANGELOG.md entry (added under [Unreleased] → Changed)
+```
