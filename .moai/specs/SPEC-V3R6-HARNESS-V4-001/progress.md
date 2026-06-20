@@ -323,7 +323,7 @@ The user-owned `.claude/agents/harness/` namespace is NOT leaked into the distri
 
 ### Sync Commit Details
 
-- **sync_commit_sha**: 6af0a63ee
+- **sync_commit_sha**: 4faddcac7 (origin/main actual sync commit; corrected — 6af0a63ee was a pre-rebase worktree SHA not present on origin, flagged by orchestrator verification)
 - **Commit subject**: `docs(SPEC-V3R6-HARNESS-V4-001): sync-phase artifacts + 3-phase close`
 - **Commit body**: CHANGELOG.md entry + README.md harness v4 section + spec.md frontmatter (status: completed, version: 0.3.0, updated: 2026-06-20) + progress.md §E.3/§E.4
 - **Conventional Commits format**: `docs(SPEC-V3R6-HARNESS-V4-001): <subject>`
