@@ -72,7 +72,7 @@ m1_to_mN_commit_strategy: single-commit (Tier M Hybrid Trunk, main direct push)
 
 ```yaml
 sync_complete_at: 2026-06-20
-sync_commit_sha: <to-be-backfilled>
+sync_commit_sha: 545ed6879
 sync_status: completed
 sync_phase_tasks:
   changelog_entry_added: true
