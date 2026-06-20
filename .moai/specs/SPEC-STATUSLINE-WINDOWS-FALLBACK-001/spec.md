@@ -1,8 +1,8 @@
 ---
 id: SPEC-STATUSLINE-WINDOWS-FALLBACK-001
 title: "Windows statusline phantom-path fallback repair"
-version: "0.1.0"
-status: implemented
+version: "0.2.0"
+status: completed
 created: 2026-06-20
 updated: 2026-06-21
 author: manager-spec
