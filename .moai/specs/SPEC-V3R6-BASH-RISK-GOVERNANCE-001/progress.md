@@ -66,7 +66,7 @@ files-synced:
   - handle-pre-tool.sh (warn-only hook signal)
   - spec.md (status: in-progress → completed, updated: 2026-06-20)
   - progress.md (this file)
-sync_commit_sha: _<pending — will be set after sync commit created>_
+sync_commit_sha: dc9edccce71a82335a481e4125bdbd01721daada
 
 ### (Migrated from §E.5)
 
