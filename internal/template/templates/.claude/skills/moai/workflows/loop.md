@@ -21,7 +21,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["loop", "iterate", "repeat", "until done", "keep fixing", "all errors"]
-  agents: ["manager-quality", "expert-backend", "expert-frontend", "manager-develop"]
+  agents: ["manager-develop"]
   phases: ["loop"]
 ---
 
@@ -116,12 +116,12 @@ Step 6 - Fix Execution:
 - [HARD] Before each fix: TaskUpdate to change item to in_progress
 - [HARD] Agent delegation mandate: ALL fix tasks MUST be delegated to specialized agents. NEVER execute fixes directly.
 
-Agent selection by issue type:
-- Type errors, logic bugs: manager-quality subagent
-- Import/module issues: expert-backend or expert-frontend subagent
+Agent selection by issue type (domain expertise injected per-spawn per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C):
+- Type errors, logic bugs: manager-develop subagent (or orchestrator verification batch)
+- Import/module issues: manager-develop (or per-spawn `Agent(general-purpose)` backend/frontend specialist)
 - Test failures: manager-develop subagent
-- Security issues: expert-security subagent
-- Performance issues: expert-performance subagent
+- Security issues: per-spawn `Agent(general-purpose)` security reviewer
+- Performance issues: per-spawn `Agent(general-purpose)` performance specialist
 
 Fix levels applied per --auto setting:
 - Level 1 (Immediate): No approval. Import sorting, whitespace

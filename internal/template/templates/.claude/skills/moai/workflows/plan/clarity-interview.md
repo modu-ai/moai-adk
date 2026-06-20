@@ -48,11 +48,11 @@ For each round:
 ```
 # Interview: {SPEC Title}
 
-## Round 1: Scope
+## Interview Phase 1: Scope
 Question: {question asked}
 Answer: {user's answer}
 
-## Round 2: Constraints
+## Interview Phase 2: Constraints
 ...
 
 ## Clarity Score
@@ -132,7 +132,7 @@ When to skip:
 - User explicitly requests "skip design" or uses --prototype flag
 - Backend-only, infrastructure, or documentation SPECs
 
-Agent: expert-frontend subagent (with moai-design-craft skill)
+Agent: per-spawn `Agent(general-purpose)` frontend specialist (with moai-design-craft skill; frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8)
 
 Tasks:
 1. Check if `.moai/design/system.md` exists and has content

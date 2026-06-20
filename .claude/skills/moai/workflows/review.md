@@ -21,7 +21,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["review", "code review", "security audit", "quality check", "code analysis"]
-  agents: ["manager-quality", "expert-security"]
+  agents: ["sync-auditor"]
   phases: ["review"]
 ---
 
@@ -57,11 +57,11 @@ Collect:
 
 ## Phase 2: Multi-Perspective Analysis
 
-[HARD] Delegate review to the manager-quality subagent with all perspectives.
+[HARD] Delegate review to the sync-auditor subagent with all perspectives (independent skeptical quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2).
 
 If --team flag: Route to ${CLAUDE_SKILL_DIR}/team/review.md for parallel multi-perspective review with 4 dedicated reviewers.
 
-If no --team flag (default single-agent mode): Delegate to manager-quality subagent with instructions to review from all 4 perspectives sequentially.
+If no --team flag (default single-agent mode): Delegate to the sync-auditor subagent with instructions to review from all 4 perspectives sequentially.
 
 At the finding stage, report every issue you find, including ones you are uncertain about or consider low-severity, each with a confidence level and an estimated severity. Do not filter for importance or confidence while finding — the verdict stage (must-pass thresholds + harmonic scoring) does the filtering downstream. The goal at this stage is coverage: surfacing a finding that later gets filtered out is preferable to silently dropping a real bug.
 
@@ -78,7 +78,7 @@ At the finding stage, report every issue you find, including ones you are uncert
 Enumerate project manifest files and run a vulnerability scan for each detected file:
 `go.mod`, `package.json`, `requirements.txt`, `Cargo.toml`, `pyproject.toml`, `Gemfile`, `composer.json`, `mix.exs`, `Package.swift`, `pubspec.yaml`.
 
-Auto-detect language from project markers; invoke `expert-security` with the detected manifest.
+Auto-detect language from project markers; run the dependency vulnerability scan via a per-spawn `Agent(general-purpose)` security reviewer (security whitelist + OWASP instructions per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 9) with the detected manifest.
 Full procedure: `${CLAUDE_SKILL_DIR}/workflows/security.md`.
 
 #### Secrets Scan (Full Git History)
@@ -210,7 +210,7 @@ When to run: --design or --critique flag is present, OR changed files include UI
 
 ### --design: Extract Design Patterns
 
-Agent: expert-frontend subagent (with moai-design-craft skill)
+Agent: per-spawn `Agent(general-purpose)` frontend specialist (with moai-design-craft skill; frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8)
 
 Tasks:
 1. Scan UI files for repeated patterns: spacing values, radius values, color tokens, button/card patterns, depth strategy (borders vs shadows)
@@ -223,7 +223,7 @@ Output: Design pattern report with deviation list (file:line references)
 
 ### --critique: Post-Build Craft Review
 
-Agent: expert-frontend subagent (with moai-design-craft skill)
+Agent: per-spawn `Agent(general-purpose)` frontend specialist (with moai-design-craft skill)
 
 Tasks:
 1. Read `.moai/design/system.md` for design direction context
@@ -241,18 +241,18 @@ Output: Craft critique report with severity-ranked findings and rebuild suggesti
 ## Agent Chain Summary
 
 - Phase 1: MoAI orchestrator (change identification via git)
-- Phase 2-3: manager-quality subagent (multi-perspective analysis) OR expert-security subagent (if --security)
+- Phase 2-3: sync-auditor subagent (multi-perspective analysis) OR a per-spawn `Agent(general-purpose)` security reviewer (if --security)
 - Phase 4-5: MoAI orchestrator (consolidation and user interaction)
-- Phase 4.5 (conditional): expert-frontend subagent (if --design or --critique)
+- Phase 4.5 (conditional): per-spawn `Agent(general-purpose)` frontend specialist (if --design or --critique)
 
 ## Execution Summary
 
 1. Parse arguments (extract flags: --staged, --branch, --security, --file, --design, --critique, --team)
 2. If --team: Route to ${CLAUDE_SKILL_DIR}/team/review.md workflow
 3. Identify code changes (git diff based on flags)
-4. Delegate multi-perspective review to manager-quality subagent
+4. Delegate multi-perspective review to the sync-auditor subagent
 5. Check @MX tag compliance for changed files
-6. If --design or --critique: Run design review phase 4.5 (expert-frontend with moai-design-craft)
+6. If --design or --critique: Run design review phase 4.5 (per-spawn `Agent(general-purpose)` frontend specialist with moai-design-craft)
 7. Consolidate findings by severity
 8. Present report with next step options
 

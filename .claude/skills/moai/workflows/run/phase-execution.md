@@ -219,10 +219,10 @@ Mode Selection Rules:
 
 | Request Pattern | Detection Criteria | Execution Mode | Agents |
 |----------------|-------------------|---------------|--------|
-| Bug fix / error fix | SPEC scope ≤ 3 files, single domain | **Fix Mode** | manager-quality + manager-develop |
-| Single endpoint / function | SPEC scope ≤ 5 files, single domain | **Focused Mode** | relevant expert + manager-develop |
-| Feature across 1 domain | SPEC scope 5-10 files, single domain | **Standard Mode** | manager-strategy + relevant expert + manager-quality |
-| Multi-domain feature | SPEC scope ≥ 10 files OR ≥ 3 domains | **Full Pipeline** | All agents (strategy + backend + frontend + testing + quality + docs) |
+| Bug fix / error fix | SPEC scope ≤ 3 files, single domain | **Fix Mode** | manager-develop + orchestrator verification batch (lint + test + coverage) |
+| Single endpoint / function | SPEC scope ≤ 5 files, single domain | **Focused Mode** | manager-develop (domain context injected per archived-agent-rejection.md §C) |
+| Feature across 1 domain | SPEC scope 5-10 files, single domain | **Standard Mode** | manager-spec (planning) + manager-develop + sync-auditor |
+| Multi-domain feature | SPEC scope ≥ 10 files OR ≥ 3 domains | **Full Pipeline** | manager-spec → manager-develop (per-spawn `Agent(general-purpose)` domain specialists) → sync-auditor → manager-docs |
 | Large cross-cutting change | complexity score ≥ 7 AND --team flag | **Team Mode** | 3-4 parallel teammates |
 
 Detection Steps:
@@ -236,11 +236,11 @@ This phase auto-selects and does NOT require user approval. The user can overrid
 
 ## Phase 1: Analysis and Planning
 
-Agent: manager-strategy subagent
+Agent: manager-spec subagent (planning IS strategy per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 1)
 
 Input: SPEC document content from the provided SPEC-ID. If research.md exists in the SPEC directory (.moai/specs/SPEC-{ID}/research.md), include it as additional context for deeper understanding of the codebase architecture, reference implementations, and identified risks.
 
-Tasks for manager-strategy:
+Tasks for manager-spec:
 
 - Read and fully analyze the SPEC document
 - Extract requirements and success criteria
@@ -251,7 +251,7 @@ Tasks for manager-strategy:
 
 Output: Execution plan containing plan_summary, requirements list, success_criteria, and effort_estimate.
 
-Implementation guard: [HARD] During Phase 1 (Analysis and Planning), the manager-strategy subagent MUST NOT write any implementation code. The explicit instruction "DO NOT implement any code — focus exclusively on analysis and planning" MUST be included in the agent prompt. This separation of thinking and execution prevents premature implementation and ensures the plan is reviewed before any code is written.
+Implementation guard: [HARD] During Phase 1 (Analysis and Planning), the manager-spec subagent MUST NOT write any implementation code. The explicit instruction "DO NOT implement any code — focus exclusively on analysis and planning" MUST be included in the agent prompt. This separation of thinking and execution prevents premature implementation and ensures the plan is reviewed before any code is written.
 
 ## Decision Point 1: Plan Approval
 
@@ -285,11 +285,11 @@ If user does not select "Proceed": Exit execution.
 
 ## Phase 1.5: Task Decomposition
 
-Agent: manager-strategy subagent (continuation)
+Agent: manager-spec subagent (continuation)
 
 Purpose: Decompose the approved execution plan into atomic, reviewable tasks following SDD 2025 standard.
 
-Tasks for manager-strategy:
+Tasks for manager-spec:
 
 - Decompose plan into atomic implementation tasks
 - Each task must be completable in a single DDD/TDD cycle

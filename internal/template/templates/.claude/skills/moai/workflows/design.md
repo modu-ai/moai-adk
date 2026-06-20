@@ -232,9 +232,9 @@ Step BC-3: Load code-based design skills:
 - Load `moai-domain-brand-design`
 - Load `moai-workflow-gan-loop`
 
-Step BC-4: Delegate to `expert-frontend`:
+Step BC-4: Delegate to a per-spawn `Agent(general-purpose)` frontend specialist (frontend whitelist + design-token instructions per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8; the design-pipeline ROLE formerly named `expert-frontend` per `.claude/rules/moai/design/constitution.md`):
 - Prompt includes: BRIEF, brand context summary, loaded skill references, `.moai/config/sections/design.yaml`.
-- `expert-frontend` generates copy (JSON) and design tokens concurrently.
+- The frontend specialist generates copy (JSON) and design tokens concurrently.
 
 Step BC-5: Proceed to Phase C (quality gate).
 

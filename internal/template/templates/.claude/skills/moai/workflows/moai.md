@@ -96,7 +96,7 @@ Agent 2 - Research (subagent_type Explore with WebSearch/WebFetch focus):
 - Reference implementations from open-source projects that align with project conventions
 - Documented design patterns relevant to the feature being implemented
 
-Agent 3 - Quality (subagent_type manager-quality):
+Agent 3 - Quality (subagent_type sync-auditor — independent quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2):
 - Current project quality assessment
 - Test coverage status, lint status, technical debt
 
@@ -146,13 +146,13 @@ This iterative refinement catches architectural misunderstandings before impleme
 - **development_mode: tdd** (default): Use `manager-develop` (RED-GREEN-REFACTOR)
 - **development_mode: ddd**: Use `manager-develop` (ANALYZE-PRESERVE-IMPROVE)
 
-Expert agent selection (for domain-specific work):
-- Backend logic: expert-backend subagent
-- Frontend components: expert-frontend subagent
+Domain-specialist selection (for domain-specific work) — per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C, domain expertise is injected at delegation time via a per-spawn `Agent(general-purpose)` with the domain whitelist + domain instructions, NOT a static expert agent file:
+- Backend logic: manager-develop (or per-spawn `Agent(general-purpose)` backend specialist)
+- Frontend components: manager-develop (or per-spawn `Agent(general-purpose)` frontend specialist)
 - Test creation: manager-develop subagent
-- Bug fixing: manager-quality subagent
-- Refactoring: expert-refactoring subagent
-- Security fixes: expert-security subagent
+- Bug fixing: manager-develop + orchestrator verification batch (lint + test + coverage)
+- Refactoring: manager-develop (cycle_type=ddd) or per-spawn `Agent(general-purpose)` refactoring specialist
+- Security fixes: per-spawn `Agent(general-purpose)` security reviewer (or Stop hook dependency-manifest audit)
 
 Loop behavior (when --loop flag or workflow.yaml loop_prevention settings enabled):
 - While issues exist AND iteration less than max:

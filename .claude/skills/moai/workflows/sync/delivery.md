@@ -179,7 +179,7 @@ CI Mirror: Skipped checks
 
 **Any check fails**: Present failure summary via AskUserQuestion:
 
-- Fix now — delegate to manager-quality subagent with failure details, then re-run CI mirror
+- Fix now — delegate to manager-develop subagent with failure details, then re-run CI mirror
 - Push anyway — proceed to Step 3.2 with warning embedded in PR description
 - Abort — exit sync workflow, preserve commit (allow local fix and re-run)
 

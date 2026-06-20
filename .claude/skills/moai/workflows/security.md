@@ -20,7 +20,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["security", "audit", "owasp", "vulnerability", "injection", "xss", "csrf", "secrets"]
-  agents: ["expert-security", "manager-quality"]
+  agents: []
   phases: ["security"]
 ---
 
@@ -66,7 +66,7 @@ Collect:
 
 ## Phase 2: OWASP Top 10 Analysis
 
-Agent: expert-security subagent
+Agent: per-spawn `Agent(general-purpose)` security reviewer (security whitelist + OWASP instructions per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 9)
 
 Analyze each OWASP category with language-specific patterns:
 
@@ -225,7 +225,7 @@ Analyze data access boundaries:
 
 Present via AskUserQuestion:
 
-- Auto-fix Critical Issues (Recommended): Delegate to expert-security subagent to fix critical and high findings. Re-run audit after fixes.
+- Auto-fix Critical Issues (Recommended): Delegate to a per-spawn `Agent(general-purpose)` security reviewer to fix critical and high findings. Re-run audit after fixes.
 - Create Fix Tasks: Generate TaskList items for each finding, prioritized by severity.
 - Export Report: Save to `.moai/reports/security-audit-{timestamp}.md`
 - Dismiss: Acknowledge findings without immediate action.

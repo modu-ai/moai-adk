@@ -183,7 +183,7 @@ Constraints:
 
 #### Step 2.3: Post-Sync Quality Verification
 
-Agent: manager-quality subagent
+Agent: sync-auditor subagent (independent quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2; OR orchestrator verification batch — lint + test + coverage)
 
 Verify synchronization quality against TRUST 5:
 

@@ -21,7 +21,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["mx", "annotation", "code context", "tag scan", "mx tag"]
-  agents: ["expert-backend", "expert-frontend"]
+  agents: ["manager-develop"]
   phases: ["mx", "sync"]
 ---
 # Workflow: MX Tag Scan and Annotation

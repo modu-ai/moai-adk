@@ -144,7 +144,7 @@ If LSP server is NOT installed, present AskUserQuestion:
 
 - Continue without LSP: Proceed to completion
 - Show installation instructions: Display setup guide for detected language
-- Auto-install now: Use expert-devops subagent to install (requires confirmation)
+- Auto-install now: Use a per-spawn `Agent(general-purpose)` devops specialist to install (requires confirmation; devops whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 10)
 
 ---
 
@@ -311,6 +311,6 @@ When `detected_db` is false, present the original three options unchanged:
 - Phase 3: manager-docs subagent (documentation generation)
 - Phase 3.1: plan-auditor subagent (independent document audit, conditional)
 - Phase 3.3: Explore + manager-docs subagents (codemaps generation via codemaps workflow)
-- Phase 3.5: expert-devops subagent (optional LSP installation)
+- Phase 3.5: per-spawn `Agent(general-purpose)` devops specialist (optional LSP installation)
 - Phase 3.7: MoAI orchestrator (automatic development_mode configuration, no user interaction)
 - Phase 4.1a: MoAI orchestrator (automatic DB detection via Grep/Glob, no user interaction)

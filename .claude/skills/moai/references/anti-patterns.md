@@ -9,9 +9,7 @@ triggers:
     - "scope"
     - "style drift"
   agents:
-    - "expert-backend"
-    - "expert-frontend"
-    - "manager-quality"
+    - "manager-develop"
     - "sync-auditor"
   phases:
     - "run"

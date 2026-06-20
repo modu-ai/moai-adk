@@ -22,7 +22,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["project", "init", "documentation", "setup", "initialize"]
-  agents: ["manager-project", "manager-docs", "Explore", "expert-devops"]
+  agents: ["manager-docs", "Explore"]
   phases: ["project"]
 ---
 

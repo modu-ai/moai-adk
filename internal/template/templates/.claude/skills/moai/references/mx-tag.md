@@ -2,7 +2,7 @@
 description: >
   @MX TAG annotation protocol reference for AI agent code context delivery.
   Provides detailed tag syntax grammar, fan-in analysis method, agent report
-  format, and edge case handling. Used by manager-develop and manager-quality agents.
+  format, and edge case handling. Used by manager-develop (run) and sync-auditor (sync validation) agents.
 user-invocable: false
 metadata:
   version: "2.5.0"
@@ -20,7 +20,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["mx", "tag", "annotation", "anchor", "invariant", "context"]
-  agents: ["manager-develop", "manager-quality"]
+  agents: ["manager-develop", "sync-auditor"]
   phases: ["run"]
 ---
 

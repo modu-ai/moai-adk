@@ -140,7 +140,7 @@ Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before th
 - Execute gate workflow equivalent: lint + format + type-check + test in parallel
 - Auto-fix any fixable issues (lint auto-fix, format auto-fix)
 - If unfixable errors remain: Present summary and offer options via AskUserQuestion
-  - Fix errors (Recommended): Delegate to manager-quality subagent for targeted fixes
+  - Fix errors (Recommended): Delegate to manager-develop subagent for targeted fixes
   - Skip gate: Proceed to Phase 0.1 (errors will be caught later but at higher cost)
   - Abort: Exit sync workflow
 
@@ -207,7 +207,7 @@ Purpose: Verify the implementation is deployment-ready before quality verificati
 - Run full test suite for detected project language
 - Verify all tests pass (zero failures required)
 - If tests fail: Present failure summary and offer options via AskUserQuestion
-  - Fix and retry (Recommended): Delegate to manager-quality subagent
+  - Fix and retry (Recommended): Delegate to manager-develop subagent
   - Continue anyway: Proceed with warning
   - Abort: Exit sync workflow
 

@@ -25,7 +25,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["brain", "idea", "ideation", "brain workflow"]
-  agents: ["manager-brain"]
+  agents: ["Explore", "manager-spec"]
   phases: ["brain"]
 ---
 

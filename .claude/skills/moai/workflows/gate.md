@@ -20,7 +20,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["gate", "check", "pre-commit", "lint", "format", "quality gate"]
-  agents: ["manager-quality"]
+  agents: []
   phases: ["gate"]
 ---
 
