@@ -2,9 +2,9 @@
 id: SPEC-STATUSLINE-WINDOWS-FALLBACK-001
 title: "Windows statusline phantom-path fallback repair"
 version: "0.1.0"
-status: completed
+status: implemented
 created: 2026-06-20
-updated: 2026-06-20
+updated: 2026-06-21
 author: manager-spec
 priority: P1
 phase: "v3.0.0"
@@ -54,7 +54,7 @@ All three layers were confirmed by reading source, not inferred:
 
 ### §A.4 Existing Test Supersession — REQ-V3R2-RT-007-003
 
-The existing test `internal/template/hardcoded_path_audit_test.go:27-31` `TestFallbackChainOrder` documents — per its `REQ-V3R2-RT-007-003` comment (line 28) — the current canonical fallback-chain order as `moai in PATH → $HOME/go/bin/moai → {{posixPath .GoBinPath}}/moai`. This SPEC's fix REMOVES the baked `{{posixPath .GoBinPath}}/moai` branch (REQ-SWF-004), which **supersedes the REQ-V3R2-RT-007-003 fallback-chain-order contract**. The run-phase MUST UPDATE `TestFallbackChainOrder` (and its `REQ-V3R2-RT-007-003` doc comment) to assert the NEW canonical chain order — it MUST NOT silently break the existing test. See REQ-SWF-011 + acceptance.md AC-SWF-013 for the new-order assertion. The two sibling tests in the same file (`TestNoHardcodedAbsolutePath_StatusLine` line 17, `TestNoHardcodedAbsolutePath_HookWrappers` line 10) remain valid and benefit from the fix (removing the baked path strengthens, not weakens, the no-hardcoded-path invariant).
+The pre-existing test `internal/template/hardcoded_path_audit_test.go:27-31` `TestFallbackChainOrder` was an **inert empty-body stub**: its body contained only a `// GREEN: ...` comment and zero assertions, so it trivially passed regardless of the template's actual output. Its doc comment (`REQ-V3R2-RT-007-003`, line 28) described the intended canonical order as `moai in PATH → $HOME/go/bin/moai → {{posixPath .GoBinPath}}/moai`, but the test never enforced it. This SPEC's fix REMOVES the baked `{{posixPath .GoBinPath}}/moai` branch (REQ-SWF-004), which **supersedes the REQ-V3R2-RT-007-003 fallback-chain-order contract**. The run-phase (commit `c4a42bc11`) converted the inert stub into a REAL assertion of the NEW canonical chain order — it now renders the template with a known context (`WithResolvedMoaiPath("/opt/moai/bin/moai")`) and asserts (a) a positive render-and-assert of the four-stage ascending index order (`command -v moai` → resolved-executable → `$HOME/go/bin/moai` → `$HOME/.local/bin/moai`) AND (b) a negative `must-be-gone` assertion that the rendered output no longer contains a `GoBinPath` token. The test MUST NOT be left as a doc-comment-only edit; see REQ-SWF-011 + acceptance.md AC-SWF-013 for the strengthened mechanical gate. The two sibling tests in the same file (`TestNoHardcodedAbsolutePath_StatusLine` line 17, `TestNoHardcodedAbsolutePath_HookWrappers` line 10) remain inert stubs that benefit from the fix in spirit but are not modified (removing the baked path strengthens, not weakens, the no-hardcoded-path invariant they assert in comment).
 
 ## §B. Stakeholders and Goals
 
@@ -79,9 +79,7 @@ The existing test `internal/template/hardcoded_path_audit_test.go:27-31` `TestFa
 
 - **REQ-SWF-005** (Capability gate): **Where** the resolved-executable `TemplateContext` field is empty (e.g. `os.Executable()` returned an error at init/update time), the renderer **shall** omit the resolved-executable branch from the generated script rather than emit an empty-valued `exec` line, and the wrapper **shall** fall through to the `$HOME`-relative branches.
 
-- **REQ-SWF-006** (Event-detected): **When** the generated `status_line.sh` is rendered, the rendering **shall** produce a script in which every `exec ... moai statusline` line is reached only after an existence guard or a PATH-resolved match — so a non-existent candidate path never causes a phantom `exec` attempt.
-
-- **REQ-SWF-011** (Ubiquitous): The fix **shall** UPDATE the existing `internal/template/hardcoded_path_audit_test.go` `TestFallbackChainOrder` test and its `REQ-V3R2-RT-007-003` doc comment to assert the NEW canonical fallback-chain order — `moai in PATH → resolved-executable (guarded, when present) → $HOME/go/bin/moai (guarded) → $HOME/.local/bin/moai (guarded)` — superseding the prior `PATH → $HOME/go/bin → {{posixPath .GoBinPath}}` order. The test **shall not** be left asserting the removed baked-`.GoBinPath` branch (which would silently fail at run-phase).
+- **REQ-SWF-006** (Event-driven): **When** the generated `status_line.sh` is rendered, the rendering **shall** produce a script in which every `exec ... moai statusline` line is reached only after an existence guard or a PATH-resolved match — so a non-existent candidate path never causes a phantom `exec` attempt.
 
 ### Non-Functional Requirements
 
@@ -94,6 +92,8 @@ The existing test `internal/template/hardcoded_path_audit_test.go:27-31` `TestFa
 ### Reproduction-First Requirement
 
 - **REQ-SWF-010** (Event-driven): **When** the fix is implemented, a failing reproduction test **shall** have been written and observed to fail FIRST (asserting the rendered `status_line.sh` contains an unvalidated phantom Go-bin path / lacks a guarded resolved-executable branch), then made to pass by the fix — per CLAUDE.md §7 Rule 4 and the issue maintainer's explicit request.
+
+- **REQ-SWF-011** (Ubiquitous): The fix **shall** UPDATE the existing `internal/template/hardcoded_path_audit_test.go` `TestFallbackChainOrder` test and its `REQ-V3R2-RT-007-003` doc comment to assert the NEW canonical fallback-chain order — `moai in PATH → resolved-executable (guarded, when present) → $HOME/go/bin/moai (guarded) → $HOME/.local/bin/moai (guarded)` — superseding the prior `PATH → $HOME/go/bin → {{posixPath .GoBinPath}}` order. The test **shall not** be left asserting the removed baked-`.GoBinPath` branch (which would silently fail at run-phase).
 
 ## §D. Constraints
 
@@ -119,7 +119,7 @@ This section enumerates what this SPEC explicitly does NOT build. Items below ar
 
 ### Out of Scope — gobin.Detect refactor
 
-- Adding `os.Stat` existence validation INSIDE `gobin.Detect` itself. The defect is fixed at the template-render boundary (Option A/B), NOT by changing the shared `gobin.Detect` contract. `gobin.Detect` has a second legitimate consumer (`internal/shell/env.go` `AddGoBinPath` for PATH construction) whose semantics must not change; altering `Detect` to return `""` for a non-existent dir would silently change that consumer's behavior and is therefore excluded.
+- Adding `os.Stat` existence validation INSIDE `gobin.Detect` itself. The defect is fixed at the template-render boundary (Option A/B), NOT by changing the shared `gobin.Detect` contract. The right reason to exclude is that the fix (Option A `os.Executable()` + Option B removing the baked branch) does not require touching `Detect` at all. (Earlier drafts named `internal/shell/env.go` `AddGoBinPath` as a second `gobin.Detect` consumer whose semantics would change; that is incorrect — `env.go` does NOT consume `gobin.Detect` output. Its `AddGoBinPath` is a boolean toggle that appends the hardcoded literal `"$HOME/go/bin"` via `AddPathEntry(config.ConfigFile, "$HOME/go/bin")`, referencing neither `Detect`, `GoBinPath`, nor any detected path.) The conclusion (do not refactor `Detect`) is unchanged; the rationale is corrected.
 - Changing the `gobin.Detect` fallback-chain order or removing any of its four stages.
 
 ### Out of Scope — installer (install.ps1) changes
@@ -129,7 +129,7 @@ This section enumerates what this SPEC explicitly does NOT build. Items below ar
 
 ### Out of Scope — PATH-construction call sites
 
-- Modifying `internal/shell/env.go` (`AddGoBinPath` PATH construction). This is a legitimate, unrelated use of `GoBinPath` (building the `PATH` env var for the shell), distinct from baking a fallback path into a generated shell script. It is explicitly preserved unchanged.
+- Modifying `internal/shell/env.go` (`AddGoBinPath`). This file does NOT consume `gobin.Detect` output; its `AddGoBinPath` is a boolean option that, when true, appends the hardcoded literal `"$HOME/go/bin"` via `AddPathEntry(config.ConfigFile, "$HOME/go/bin")`. It references neither the `GoBinPath` template variable nor any detected path, so it is unrelated to the statusline fallback baking concern and is explicitly preserved unchanged. (An earlier draft mischaracterized it as a `GoBinPath` consumer; that is corrected here.)
 
 ### Out of Scope — broader statusline behavior
 
