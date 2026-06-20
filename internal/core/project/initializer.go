@@ -282,6 +282,7 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 		template.WithOutputLanguages(opts.GitCommitLang, opts.CodeCommentLang, opts.DocLang),
 		template.WithPlatform(opts.Platform),
 		template.WithGoBinPath(goBinPath),
+		template.WithResolvedMoaiPath(resolveMoaiExecutable()),
 		template.WithHomeDir(homeDir),
 		template.WithSmartPATH(template.BuildSmartPATH()),
 		template.WithVersion(version.GetVersion()),
@@ -299,6 +300,19 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 // REQ-V3R2-RT-007-001: deduplicated via the gobin.Detect helper.
 func detectGoBinPath(homeDir string) string {
 	return gobin.Detect(homeDir)
+}
+
+// resolveMoaiExecutable returns the running binary's own resolved executable path
+// via os.Executable(), or "" when it errors. The running binary IS the installed
+// moai binary, so this resolves the installer location (e.g. on Windows) even when
+// that directory is not on PATH. An empty result leaves the resolved-executable
+// branch out of the rendered status_line.sh (graceful degradation).
+func resolveMoaiExecutable() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	return exe
 }
 
 // generateConfigsFallback creates config YAML files directly when no deployer is available.

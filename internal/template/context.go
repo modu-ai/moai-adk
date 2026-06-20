@@ -52,6 +52,14 @@ type TemplateContext struct {
 	HomeDir   string // User's home directory
 	SmartPATH string // Captured terminal PATH with essential dirs prepended
 
+	// ResolvedMoaiPath is the running binary's own resolved executable path,
+	// captured via os.Executable() at init/update time. It is the first
+	// fallback in status_line.sh after `command -v moai` and resolves the
+	// installed binary even when it is not on PATH (e.g. the Windows installer
+	// location). Empty when os.Executable() errored — the template omits the
+	// resolved-executable branch in that case (graceful degradation).
+	ResolvedMoaiPath string
+
 	// Model policy for agent model assignment
 	ModelPolicy string // "high", "medium", "low" (default: "high")
 
@@ -229,6 +237,15 @@ func WithGoBinPath(path string) ContextOption {
 func WithHomeDir(dir string) ContextOption {
 	return func(c *TemplateContext) {
 		c.HomeDir = dir
+	}
+}
+
+// WithResolvedMoaiPath sets the running binary's own resolved executable path
+// (typically captured via os.Executable() at init/update time). An empty path
+// leaves the resolved-executable branch out of the rendered status_line.sh.
+func WithResolvedMoaiPath(path string) ContextOption {
+	return func(c *TemplateContext) {
+		c.ResolvedMoaiPath = path
 	}
 }
 

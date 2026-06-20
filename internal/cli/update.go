@@ -648,6 +648,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				goBinPath := detectGoBinPathForUpdate(homeDir)
 				tmplCtx := template.NewTemplateContext(
 					template.WithGoBinPath(goBinPath),
+					template.WithResolvedMoaiPath(resolveMoaiExecutable()),
 					template.WithHomeDir(homeDir),
 					template.WithSmartPATH(template.BuildSmartPATH()),
 					template.WithPlatform(runtime.GOOS),
@@ -686,6 +687,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				goBinPath := detectGoBinPathForUpdate(homeDir)
 				tmplCtx := template.NewTemplateContext(
 					template.WithGoBinPath(goBinPath),
+					template.WithResolvedMoaiPath(resolveMoaiExecutable()),
 					template.WithHomeDir(homeDir),
 					template.WithSmartPATH(template.BuildSmartPATH()),
 					template.WithPlatform(runtime.GOOS),
@@ -3052,6 +3054,19 @@ func execCommand(name string, args ...string) (string, error) {
 // REQ-V3R2-RT-007-001: deduplicated via the gobin.Detect helper.
 func detectGoBinPathForUpdate(homeDir string) string {
 	return gobin.Detect(homeDir)
+}
+
+// resolveMoaiExecutable returns the running binary's own resolved executable path
+// via os.Executable(), or "" when it errors. The running binary IS the installed
+// moai binary, so this resolves the installer location (e.g. on Windows) even when
+// that directory is not on PATH. An empty result leaves the resolved-executable
+// branch out of the rendered status_line.sh (graceful degradation).
+func resolveMoaiExecutable() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	return exe
 }
 
 // readHookOptInEnabled reads the SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 master
