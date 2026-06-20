@@ -2,7 +2,7 @@
 id: SPEC-STATUSLINE-WINDOWS-FALLBACK-001
 title: "Windows statusline phantom-path fallback repair"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-06-20
 updated: 2026-06-20
 author: manager-spec
@@ -102,7 +102,7 @@ The existing test `internal/template/hardcoded_path_audit_test.go:27-31` `TestFa
 3. **Cross-platform**: `GOOS=windows GOARCH=amd64 go build ./...` must pass; the generated script uses POSIX forward-slash form.
 4. **16-language neutrality + internal-content isolation** (CLAUDE.local.md §15 / §25): no internal artifacts leak into `internal/template/templates/**`.
 5. **Coverage** (CLAUDE.local.md §6): critical packages (template, cli) target ≥90%; at minimum the changed statements must not lower the package baseline (template baseline measured at 84.6%, gobin at 70.0% — see plan.md §B). The SPEC does NOT claim the packages already meet 90%; it requires the change to add direct coverage of the new logic and not regress the baseline.
-6. **Scope discipline**: fix ONLY the statusline phantom-path defect. Do NOT refactor `gobin.Detect`'s unrelated PATH-building callers (`internal/shell/env.go` `AddGoBinPath` uses `GoBinPath` legitimately for PATH construction, a different concern from shell-script fallback baking).
+6. **Scope discipline**: fix ONLY the statusline phantom-path defect. Do NOT refactor `gobin.Detect`'s unrelated callers. Note: `internal/shell/env.go` does NOT consume `gobin.Detect` output — its `AddGoBinPath` is a boolean option that, when true, appends the hardcoded literal `"$HOME/go/bin"` via `AddPathEntry(config.ConfigFile, "$HOME/go/bin")`. It references neither `gobin.Detect`, the `GoBinPath` template variable, nor any detected path; it is therefore unaffected by this fix regardless. `gobin.Detect` is out of scope because the fix operates at the template-render boundary (Option A `os.Executable()` + Option B removing the baked branch) and does not require touching `Detect`.
 
 ## §E. Solution Direction (WHAT, not HOW)
 

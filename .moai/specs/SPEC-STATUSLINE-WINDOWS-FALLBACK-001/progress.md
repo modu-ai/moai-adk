@@ -70,4 +70,20 @@ m1_to_mN_commit_strategy: single-commit (Tier M Hybrid Trunk, main direct push)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-06-20
+sync_commit_sha: <to-be-backfilled>
+sync_status: completed
+sync_phase_tasks:
+  changelog_entry_added: true
+  frontmatter_status_transition: true
+  frontmatter_updated_field_refreshed: false    # already set to 2026-06-20
+  sync_commit_sha_backfill_required: true
+spec_status_post_close: completed
+verification_checks:
+  go_test_passed: true
+  golangci_lint_clean: true
+  spec_lint_clean: true
+  markdown_linting: true
+  template_neutrality: true
+```
