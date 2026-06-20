@@ -125,7 +125,7 @@ m1_to_m6_commit_strategy: per-milestone specific-path commits (M1+M2 / M3 / M4+M
 
 ```yaml
 sync_complete_at: 2026-06-20
-sync_commit_sha: <placeholder — backfilled after first sync commit>
+sync_commit_sha: 1e5f5d2f0
 sync_status: completed
 b12_self_test_a: grep -c 'SPEC-V3R6-WORKFLOW-AGENT-DOC-ALIGN-001' CHANGELOG.md → 1 (no duplicate)
 b12_self_test_b: acceptance.md AC row count (should be 18) → 17 rows (AC-WADA-001 through AC-WADA-017)
