@@ -59,9 +59,14 @@ m1_to_mN_commit_strategy: single M1+M2 combined commit (Tier S, 2-file scope) �
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
-
-sync_commit_sha: _<pending sync-phase>_
+sync_complete_at: 2026-06-20
+sync_status: completed (CHANGELOG + frontmatter transition complete)
+files-synced:
+  - coding-standards.md (§Bash Risk-Amplifier Doctrine)
+  - handle-pre-tool.sh (warn-only hook signal)
+  - spec.md (status: in-progress → completed, updated: 2026-06-20)
+  - progress.md (this file)
+sync_commit_sha: _<pending — will be set after sync commit created>_
 
 ### (Migrated from §E.5)
 
