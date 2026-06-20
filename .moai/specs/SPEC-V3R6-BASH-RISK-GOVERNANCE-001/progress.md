@@ -33,7 +33,7 @@ _Status: plan-phase artifacts authored (spec.md + plan.md + acceptance.md + prog
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-06-18
-run_commit_sha: _<pending — worktree-local commit; orchestrator fast-forwards to main>_
+run_commit_sha: b40721149
 run_status: implemented (6/6 AC PASS, awaiting sync-phase)
 ac_pass_count: 6
 ac_fail_count: 0
