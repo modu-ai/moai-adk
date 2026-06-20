@@ -80,8 +80,12 @@ MoAI-ADK implements the **Harness Engineering** paradigm — designing the envir
 | **Language-Agnostic** | 16 languages supported: auto-detects language, selects correct LSP/linter/test/coverage tools | All workflows |
 | **Garbage Collection** | Periodic scan and removal of dead code, AI Slop, and unused imports | `/moai clean` |
 | **Scaffolding First** | Empty file stubs created before implementation to prevent entropy | `/moai run SPEC-XXX` |
+| **Harness v4 Builder** | Orchestrator-direct harness build system with 4-phase workflow (ANALYZE → PLAN → GENERATE → ACTIVATE), manifest-driven Runner, and conditional worktree isolation | `/moai:harness <natural-language request>` |
+| **Harness Lifecycle** | List/edit/remove harness lifecycle commands (`/harness:<name>` list, edit, remove) | `/moai:harness status`, `/moai:harness edit <name>`, `/moai:harness remove <name>` |
 
 > "Human steers, agents execute." — The engineer's role shifts from writing code to designing the harness: SPECs, quality gates, and feedback loops.
+
+**Harness v4 Architecture**: See [SPEC-V3R6-HARNESS-V4-001](.moai/specs/SPEC-V3R6-HARNESS-V4-001/spec.md) and [`.claude/skills/moai/workflows/harness-builder.md`](.claude/skills/moai/workflows/harness-builder.md) for the orchestrator-direct Builder workflow, manifest.json schema, Runner primitive mapping, and conditional worktree isolation rules.
 
 ---
 

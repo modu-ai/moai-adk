@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R6-HARNESS-V4-001
 title: "Harness v4: orchestrator-direct Builder + dynamic-workflow Runner rebuild (absorb revfactory strengths, remove 7-Phase)"
-version: "0.2.0"
-status: in-progress
+version: "0.3.0"
+status: completed
 created: 2026-06-19
-updated: 2026-06-19
+updated: 2026-06-20
 author: manager-spec
 priority: P0
 phase: "v3.0.0"
