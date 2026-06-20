@@ -72,11 +72,15 @@ Full archived-proper residual BOTH trees (skills+agents, excl rejection + dev-on
 
 ### M4 — broken cross-refs + invalid dispatch
 
-_<pending>_
+- REQ-WADA-009: `team-reader`/`team-validator` invalid subagent_type → `general-purpose` (matching team/run.md pattern). plan.md (frontmatter + 3 subagent_type + intro prose + Version footer), review.md (frontmatter + 4 subagent_type), debug.md (3 prose "team-reader agent" labels), glm.md (CG model-mapping table rows team-reader/team-validator → canonical role_profiles). Both trees: **0** residual.
+- REQ-WADA-010: `## Terminology Glossary` (L1/L2/L3 layer definitions) ADDED to worktree-integration.md (rule file, both trees byte-identical via embedded_mirror_test). 2 cross-refs (spec-workflow.md:23, worktree-state-guard.md:19) + CLAUDE.md §14 now resolve.
+- REQ-WADA-008: `release-update` token **ABSENT** at run-phase → AC-WADA-008 vacuously satisfied (OQ-1 confirmed; no broken dispatch to fix).
 
 ### M5 — stale ground-truth
 
-_<pending>_
+- REQ-WADA-011: `team/glm.md` GLM model names `glm-5.1`/`glm-4.7`/`glm-4.5-air`/`glm-4.7-flashx` → `glm-5.2[1m]` (env-var table + CG model-mapping table). Both trees: stale=**0**, glm-5.2 present.
+- REQ-WADA-012: retired terms — `Round split` (team/run.md:69) → `Milestone split`; `sprint contract` (workflows/run.md:80) → `GAN-loop Sprint Contract Protocol` (proper-noun design term, not the retired Sprint grouping). Both trees: **0** residual.
+- REQ-WADA-013: SKILL.md body footer `Version: 2.6.0` / `Last Updated: 2026-02-25` → `2.7.0` / `2026-06-20`. Both trees: stale=**0**.
 
 ### M6 — run.md LOC trim + verification + template parity
 

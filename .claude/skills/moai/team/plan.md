@@ -21,7 +21,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["team plan", "parallel research", "team spec"]
-  agents: ["team-reader"]
+  agents: ["general-purpose"]
   phases: ["plan"]
 ---
 # Workflow: Team Plan - Agent Teams SPEC Creation
@@ -52,11 +52,11 @@ See .claude/rules/moai/workflow/spec-workflow.md for team mode prerequisites.
 
 ## Phase 1: Spawn Research Team
 
-Spawn 3 teammates using the **team-reader** profile with role-specific prompts and model overrides. All spawns MUST use Agent() with the `name` parameter — the team forms implicitly on the first spawn (no setup step; the `team_name` parameter is accepted but ignored as of Claude Code v2.1.178). Launch all three in a single response for parallel execution:
+Spawn 3 teammates using `subagent_type: "general-purpose"` with the read-only role_profiles (`researcher` / `analyst` / `architect`) applied via the `name` + `model` + `mode: "plan"` overrides. All spawns MUST use Agent() with the `name` parameter — the team forms implicitly on the first spawn (no setup step; the `team_name` parameter is accepted but ignored as of Claude Code v2.1.178). Launch all three in a single response for parallel execution:
 
 ```
 Agent(
-  subagent_type: "team-reader",
+  subagent_type: "general-purpose",
   name: "researcher",
   model: "haiku",
   mode: "plan",
@@ -72,7 +72,7 @@ Agent(
 )
 
 Agent(
-  subagent_type: "team-reader",
+  subagent_type: "general-purpose",
   name: "analyst",
   model: "sonnet",
   mode: "plan",
@@ -85,7 +85,7 @@ Agent(
 )
 
 Agent(
-  subagent_type: "team-reader",
+  subagent_type: "general-purpose",
   name: "architect",
   model: "opus",
   mode: "plan",
@@ -223,4 +223,4 @@ If team creation fails or AGENT_TEAMS not enabled:
 
 ---
 
-Version: 3.0.0 (Dynamic team-reader profiles + Annotation Cycle)
+Version: 3.0.0 (Dynamic general-purpose read-only role_profiles + Annotation Cycle)

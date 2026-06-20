@@ -35,6 +35,21 @@ MoAI-ADK supports two complementary worktree systems for isolated development:
 | **State Persistence** | None | SPEC state, progress tracking |
 | **Hook Support** | WorktreeCreate/WorktreeRemove hooks | WorktreeCreate/WorktreeRemove hooks |
 
+## Terminology Glossary
+
+This glossary is the canonical definition surface for the L1 / L2 / L3 worktree-layer terms used across the MoAI rule set. Other rules (`spec-workflow.md`, `worktree-state-guard.md`, `session-handoff.md`, and `CLAUDE.md` §14) cross-reference `§ Terminology Glossary` for these definitions.
+
+| Layer | Name | What it is | Path / Trigger | Lifetime | Owner |
+|-------|------|-----------|----------------|----------|-------|
+| **L1** | Claude-native ephemeral worktree | Session-scoped isolation materialized by the Claude Code runtime for a subagent spawned with `Agent(isolation: "worktree")` (or `claude --worktree`). The runtime decides whether to materialize it. | `.claude/worktrees/<auto-name>/` | Ephemeral — auto-cleaned on session end | Claude Code runtime (autonomous; MoAI orchestrator does not mandate it per 2026-05-17 policy) |
+| **L2** | MoAI persistent SPEC worktree | A persistent, SPEC-scoped working directory created by `moai worktree new SPEC-XXX`. Used for multi-session SPEC development (run + sync phases reuse the same L2 worktree). | `~/.moai/worktrees/<project>/<SPEC>/` | Persistent — disposed only via `moai worktree done SPEC-XXX` after both run + sync PRs merge | MoAI (user-managed via `moai worktree` CLI) |
+| **L3** | Worktree launch action (opt-in) | The user opt-in launch step that creates an L2 worktree, e.g. `/moai plan --worktree`. L3 is the *action*; L2 is the *artifact* it produces. Per the 2026-05-17 policy, L3 is opt-in; the default flow runs all phases on a `feat/SPEC-XXX` branch in the main checkout. | `/moai plan --worktree` (or `moai worktree new --worktree`) | n/a (an action, not a directory) | User (explicit opt-in) |
+
+Relationships:
+- An **L3** launch action (`--worktree`) creates an **L2** persistent SPEC worktree.
+- An **L1** ephemeral worktree is materialized autonomously by the Claude Code runtime for an isolated subagent; it is independent of L2/L3 and may occur inside either the main checkout or an L2 worktree.
+- When L3 was used, the paste-ready resume MUST anchor the next session inside the L2 worktree (Block 0) per `session-handoff.md` § Worktree-Anchored Resume Pattern.
+
 ## Claude Code 2.1.50+ Worktree Features
 
 ### `claude --worktree` (`-w`) Flag

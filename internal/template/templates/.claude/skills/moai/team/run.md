@@ -66,7 +66,7 @@ From `.moai/config/sections/workflow.yaml` → `team.role_profiles`:
 
 Switching the role to `model: inherit` does NOT reliably fix this in team mode: Team teammates do not inherit the leader's `[1m]` entitlement (Anthropic issue #36670, OPEN) — the teammate falls back to 200K and the same breaker can recur.
 
-[HARD] Therefore, for **large SPECs** (30+ tasks, many files), prefer a **single `manager-develop` (`model: inherit`, 1M window) + Round split** (per `.claude/rules/moai/development/sprint-round-naming.md`) over team mode. Reserve team mode for **small SPECs** where the 200K window has headroom. See `.claude/rules/moai/development/model-policy.md` § Baseline-Refill Breaker for this failure mode vs the `[1m]` credit-fail mode.
+[HARD] Therefore, for **large SPECs** (30+ tasks, many files), prefer a **single `manager-develop` (`model: inherit`, 1M window) + Milestone split** (per `.claude/rules/moai/development/sprint-round-naming.md`) over team mode. Reserve team mode for **small SPECs** where the 200K window has headroom. See `.claude/rules/moai/development/model-policy.md` § Baseline-Refill Breaker for this failure mode vs the `[1m]` credit-fail mode.
 
 ## Mode Selection
 

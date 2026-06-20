@@ -53,13 +53,13 @@ Flow: Spawn teammates (implicit team) -> Hypothesis Assignment -> Parallel Inves
 
 Use the investigation team pattern:
 
-Teammate 1 - hypothesis-1 (team-reader agent, haiku model):
+Teammate 1 - hypothesis-1 (general-purpose agent, haiku model):
 - Prompt: "Investigate whether the issue is caused by {hypothesis_1}. Look for evidence supporting or contradicting this theory. Report your findings with confidence level."
 
-Teammate 2 - hypothesis-2 (team-reader agent, haiku model):
+Teammate 2 - hypothesis-2 (general-purpose agent, haiku model):
 - Prompt: "Investigate whether the issue is caused by {hypothesis_2}. Look for evidence supporting or contradicting this theory. Report your findings with confidence level."
 
-Teammate 3 - hypothesis-3 (team-reader agent, haiku model):
+Teammate 3 - hypothesis-3 (general-purpose agent, haiku model):
 - Prompt: "Investigate whether the issue is caused by {hypothesis_3}. Look for evidence supporting or contradicting this theory. Report your findings with confidence level."
 
 ## Phase 2: Parallel Investigation

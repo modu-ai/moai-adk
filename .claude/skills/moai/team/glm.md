@@ -145,9 +145,9 @@ Detection steps:
 |----------|-------|---------|
 | ANTHROPIC_AUTH_TOKEN | GLM API key | Z.AI authentication |
 | ANTHROPIC_BASE_URL | https://api.z.ai/api/anthropic | Z.AI endpoint |
-| ANTHROPIC_DEFAULT_OPUS_MODEL | glm-5.1 | Opus model override |
-| ANTHROPIC_DEFAULT_SONNET_MODEL | glm-4.7 | Sonnet model override |
-| ANTHROPIC_DEFAULT_HAIKU_MODEL | glm-4.5-air | Haiku model override |
+| ANTHROPIC_DEFAULT_OPUS_MODEL | glm-5.2[1m] | Opus model override |
+| ANTHROPIC_DEFAULT_SONNET_MODEL | glm-5.2[1m] | Sonnet model override |
+| ANTHROPIC_DEFAULT_HAIKU_MODEL | glm-5.2[1m] | Haiku model override |
 
 These are set via `tmux set-environment` (session-level, not global).
 
@@ -162,14 +162,14 @@ CG mode uses standard Agent Teams with tmux display:
 
 Agent model mapping in CG mode:
 
-| Agent | Pane | API | Model |
-|-------|------|-----|-------|
+| Role profile (general-purpose teammate) | Pane | API | Model |
+|------------------------------------------|------|-----|-------|
 | Leader (MoAI) | Original | Claude | User's choice (Opus/Sonnet) |
-| team-coder | New pane | Z.AI | glm-5.1 / glm-4.7 |
-| team-tester | New pane | Z.AI | glm-5.1 / glm-4.7 |
-| team-designer | New pane | Z.AI | glm-5.1 / glm-4.7 |
-| team-reader | New pane | Z.AI | glm-4.7-flashx |
-| team-validator | New pane | Z.AI | glm-4.7-flashx |
+| implementer | New pane | Z.AI | glm-5.2[1m] |
+| tester | New pane | Z.AI | glm-5.2[1m] |
+| designer | New pane | Z.AI | glm-5.2[1m] |
+| researcher / analyst (read-only) | New pane | Z.AI | glm-5.2[1m] |
+| reviewer (read-only) | New pane | Z.AI | glm-5.2[1m] |
 
 ## Error Recovery
 

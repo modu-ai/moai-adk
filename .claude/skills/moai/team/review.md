@@ -21,7 +21,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["team review", "multi-perspective review", "parallel review"]
-  agents: ["team-validator"]
+  agents: ["general-purpose"]
   phases: ["review"]
 ---
 # Workflow: Team Review - Multi-Perspective Code Review
@@ -57,7 +57,7 @@ Each spawn prompt MUST include the following finding-stage instruction so every 
 
 ```
 Agent(
-  subagent_type: "team-validator",
+  subagent_type: "general-purpose",
   name: "security-reviewer",
   mode: "plan",
   prompt: "You are a security reviewer on team moai-review-{target}.
@@ -69,7 +69,7 @@ Agent(
 )
 
 Agent(
-  subagent_type: "team-validator",
+  subagent_type: "general-purpose",
   name: "perf-reviewer",
   mode: "plan",
   prompt: "You are a performance reviewer on team moai-review-{target}.
@@ -81,7 +81,7 @@ Agent(
 )
 
 Agent(
-  subagent_type: "team-validator",
+  subagent_type: "general-purpose",
   name: "quality-reviewer",
   mode: "plan",
   prompt: "You are a code quality reviewer on team moai-review-{target}.
@@ -93,7 +93,7 @@ Agent(
 )
 
 Agent(
-  subagent_type: "team-validator",
+  subagent_type: "general-purpose",
   name: "ux-reviewer",
   mode: "plan",
   prompt: "You are a UX reviewer on team moai-review-{target}.

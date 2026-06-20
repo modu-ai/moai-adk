@@ -339,5 +339,5 @@ Use AskUserQuestion to present the user with logical next actions based on the c
 
 ---
 
-Version: 2.6.0
-Last Updated: 2026-02-25
+Version: 2.7.0
+Last Updated: 2026-06-20
