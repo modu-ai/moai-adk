@@ -84,11 +84,42 @@ Full archived-proper residual BOTH trees (skills+agents, excl rejection + dev-on
 
 ### M6 — run.md LOC trim + verification + template parity
 
-_<pending>_
+- REQ-WADA-014: `workflows/run.md` trimmed **246 → 181 LOC** (both trees, under the 200 ceiling). Compressed the verbose Run-phase Autonomy §3-7 prose + the entire Recursive Self-Diagnosis Loop §1-9 into compact cross-reference + summary-contract tables. Entry-router routing logic PRESERVED: Phase Routing Table, Invocation Flow, On-Demand Sub-skill Loading, Mode dispatch list. Grep-anchored tokens PRESERVED + ordering invariant holds: `MODE_UNKNOWN` (agentless_audit), `## Run-phase Autonomy (/goal ac_converge)` heading (orchestration-mode-selection cross-refs), Implementation Kickoff Approval + AskUserQuestion BEFORE first `/goal` (kickoff-preservation test), `ac_converge`, score-independence (`regardless of` + `plan-auditor`).
+- REQ-WADA-015: `go test ./internal/skills/ -run TestEntryRouterLOCCeiling` → **PASS** (was the orphaned RED test; now GREEN).
+- Catalog hash regen (same-SPEC cascade): SKILL.md + 6 agent body edits invalidated `catalog.yaml` SHA256 hashes → regenerated via `gen-catalog-hashes.go --all` + `make build`. `TestManifestHashFormat` → PASS.
+- REQ-WADA-016: `TestTemplateMirrorParity` PASS; bidirectional changed-line grep = 0 both trees. The 3 baseline-diverged agent bodies (manager-spec/docs/git.md) verified via Step-2 union grep (archived-purge landed in both trees; whole-file divergence is the pre-existing §E.5/Mx lifecycle content, out of scope). `embedded_mirror_test` (rule-file byte parity for worktree-integration.md) PASS.
+- REQ-WADA-017: `TestTemplateNeutralityAudit` PASS — replacement text introduced no internal SPEC IDs / REQ tokens / audit citations / dates / SHAs into template (all §C references use the canonical rule path `archived-agent-rejection.md §C`, a permanent-rule citation, not an internal-dev token).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — owned by manager-develop>_
+```yaml
+run_complete_at: 2026-06-20
+run_commit_sha: <M6-commit-placeholder; backfilled at commit>
+run_status: implemented
+cycle_type: ddd
+milestones_complete: M1-M6 (6/6)
+ac_pass_count: 17  # AC-WADA-001..017 + 001a all MUST-FIX PASS; AC-WADA-008 vacuous (release-update absent)
+ac_fail_count: 0
+researcher_keep_count: 16  # baseline 14; +2 legitimate role_profile refs from team-reader→general-purpose reframe (≥14, no over-purge per AC-WADA-001a)
+archived_proper_residual_both_trees: 0
+team_reader_validator_residual_both_trees: 0
+run_md_loc: 181  # both trees, < 200 ceiling
+cross_platform_build:
+  linux_amd64: exit 0
+  windows_amd64: exit 0  # GOOS=windows GOARCH=amd64 go build ./...
+go_test_full_suite: exit 0  # internal/hook wrapper flakiness (signal:killed under parallel load) resolved on isolated retry; environmental, not SPEC-caused (0 Go files changed)
+new_warnings_or_lints_introduced: 0  # documentation/markdown-only SPEC; zero Go source touched
+total_run_phase_files: 56  # 27 live workflow/agent/team/rule + 27 template mirror + run.md trim both trees + catalog.yaml + spec.md + progress.md
+m1_to_m6_commit_strategy: per-milestone specific-path commits (M1+M2 / M3 / M4+M5 / M6); Authored-By-Agent trailer + Korean message + 🗿 MoAI footer
+```
+
+### §E.3 Verification-Claim Integrity (5-section evidence)
+
+- **Claim**: all MUST-FIX ACs PASS; archived-proper residual 0 both trees; run.md < 200; full suite exit 0.
+- **Evidence**: `grep -rnE "$ARCHIVED11" ... | grep -v archived-agent-rejection | grep -Ev '(release|github|release-update).md:' | grep -v comment-pointer` → empty both trees; `wc -l run.md` → 181/181; `go test ./internal/skills/` → ok; `go test ./internal/template/` → ok (incl. TestManifestHashFormat, TestTemplateMirrorParity, TestTemplateNeutralityAudit, kickoff-preservation, agentless-audit); `go build ./...` + `GOOS=windows go build ./...` → exit 0; `go test ./...` → exit 0.
+- **Baseline-attribution**: measured against worktree HEAD 94a468a2e (= origin/main at spawn, sync 0 0); researcher baseline 14 → 16 (increase, not over-purge).
+- **Gaps**: (1) `run_commit_sha` is a placeholder until the M6 commit lands (backfilled below). (2) The 3 baseline-diverged agent bodies' whole-file live↔template divergence was NOT reconciled (out of scope, owned by SPEC-V3R6-LIFECYCLE-REDESIGN-001) — only this SPEC's archived-purge edit was mirrored. (3) `internal/hook` 2 wrapper tests flaked once under full-suite parallel load (signal:killed at 5s); passed on isolated `-count=1` retry — environmental, not a SPEC regression.
+- **Residual-risk**: the `make build` regenerated the `moai` binary + catalog.yaml hashes; the binary is a build artifact (not committed). A future template edit to any of the 7 hashed agent/skill files will require the same `gen-catalog-hashes.go --all` regen cascade.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
