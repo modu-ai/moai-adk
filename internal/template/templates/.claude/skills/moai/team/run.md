@@ -277,7 +277,7 @@ Leader validates quality using Claude's analysis:
 
 1. Run language-appropriate quality gates (auto-detected)
 2. SPEC verification against acceptance criteria
-3. TRUST 5 validation via manager-quality subagent
+3. TRUST 5 validation via sync-auditor subagent (or orchestrator verification batch — lint + test + coverage; per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2)
 
 ### Phase 4: Sync and Cleanup (Leader on Claude)
 
@@ -361,7 +361,7 @@ When teammates submit plans, respond immediately with plan_approval_response.
 
 ### Phase 5: Quality and Shutdown
 
-1. Quality validation via manager-quality subagent (or reviewer teammate)
+1. Quality validation via sync-auditor subagent (or reviewer teammate)
 2. Shutdown all teammates via SendMessage shutdown_request
 3. Wait for shutdown_response from each
 4. Team cleanup is automatic on session exit (no explicit teardown call — the TeamDelete tool was removed in Claude Code v2.1.178)

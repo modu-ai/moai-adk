@@ -152,7 +152,7 @@ After all reviews complete:
 ## Fallback
 
 If team creation fails:
-- Fall back to manager-quality subagent for single-perspective review
+- Fall back to sync-auditor subagent for single-perspective review
 - Sequential review of security, performance, then quality
 
 ---

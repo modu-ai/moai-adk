@@ -73,8 +73,8 @@ IN SCOPE:
 - Artifact validation and testing
 
 OUT OF SCOPE:
-- Implementing actual business logic: Delegate to expert agents
-- Code implementation within artifacts: Delegate to expert-backend/expert-frontend
+- Implementing actual business logic: route to manager-develop or a per-spawn `Agent(general-purpose)` domain specialist
+- Code implementation within artifacts: route to manager-develop or a per-spawn `Agent(general-purpose)` backend/frontend specialist (archived-agent-rejection.md §C rows 7-8)
 - Running tests: Delegate to manager-develop with cycle_type=tdd
 
 ## Workflow
@@ -145,8 +145,8 @@ OUT OF SCOPE:
 
 ## Delegation Protocol
 
-- Complex backend/frontend implementation: Delegate to expert-backend/expert-frontend
-- Quality validation: Delegate to manager-quality
+- Complex backend/frontend implementation: route to manager-develop or a per-spawn `Agent(general-purpose)` backend/frontend specialist (archived-agent-rejection.md §C rows 7-8)
+- Quality validation: Delegate to sync-auditor (or orchestrator verification batch — archived-agent-rejection.md §C row 2)
 - Documentation research: Use Context7 MCP or WebSearch
 
 ## Deep Reasoning Escalation

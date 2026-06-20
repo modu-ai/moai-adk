@@ -62,7 +62,7 @@ User runs: /moai --team "task"
     │   └── Teammates complete tasks and report
     │
     ├── PHASE 3: QUALITY (Leader on Claude)
-    │   └── manager-quality validates TRUST 5
+    │   └── sync-auditor validates TRUST 5
     │
     └── PHASE 4: SYNC (Leader on Claude)
         └── Documentation and PR

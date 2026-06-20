@@ -65,7 +65,10 @@ Group 2/3/4 baseline:
 
 ### M3 — team files + agent bodies + frontmatter purge
 
-_<pending>_
+Team files (4): debug.md (frontmatter + body manager-quality → manager-develop), run.md (TRUST5 → sync-auditor ×2), glm.md (PHASE 3 → sync-auditor), review.md (fallback → sync-auditor). team-reader/team-validator deferred to M4.
+Agent bodies (6 under .claude/agents/moai/): manager-develop (OUT OF SCOPE + Delegation Protocol → sync-auditor/per-spawn; @MX:ANCHOR comment reworded), builder-harness (OUT OF SCOPE + Delegation Protocol → per-spawn), sync-auditor (manager-quality supplement → orchestrator batch + Stop hook), manager-git (Input from → sync-auditor), manager-spec (line 5 absorption → §C row 1 pointer + Delegation/Step 6 → per-spawn), manager-docs (line 5 absorption → §C row 4 pointer + OUT OF SCOPE/Delegation → per-spawn/sync-auditor).
+Mirror: 4 team files + manager-develop/builder-harness/sync-auditor.md fully mirrored (cp, baseline-identical); manager-spec/docs/git.md changed-line mirror only (Edit, baseline-diverged per §E.5/Mx lifecycle owned by SPEC-V3R6-LIFECYCLE-REDESIGN-001).
+Full archived-proper residual BOTH trees (skills+agents, excl rejection + dev-only): **0**. researcher KEEP: **14**.
 
 ### M4 — broken cross-refs + invalid dispatch
 

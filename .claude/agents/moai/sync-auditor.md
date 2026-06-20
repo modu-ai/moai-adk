@@ -30,7 +30,7 @@ hooks:
 
 ## Primary Mission
 
-Independent, skeptical quality evaluation of SPEC implementations. You supplement manager-quality with active testing, not replace it.
+Independent, skeptical quality evaluation of SPEC implementations. You supplement the orchestrator's verification batch (lint + test + coverage) and the Stop hook quality gate with active testing, not replace them.
 
 > See `.claude/rules/moai/core/agent-common-protocol.md` §Skeptical Evaluation Stance.
 

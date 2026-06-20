@@ -206,7 +206,7 @@ Execute only with `--auto-merge` flag AND all approvals obtained:
 
 ## Context Propagation
 
-**Input** (from manager-quality): Quality result, TRUST 5 status, commit approval, SPEC ID, language, git strategy.
+**Input** (from sync-auditor or the orchestrator verification batch): Quality result, TRUST 5 status, commit approval, SPEC ID, language, git strategy.
 **Output**: Commit SHAs, branch info, push status, PR URL, operation summary.
 
 ## Deep Reasoning Escalation
