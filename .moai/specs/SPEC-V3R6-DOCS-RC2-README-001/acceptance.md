@@ -102,10 +102,10 @@ Each AC MUST be reported in the 5-Section Evidence-Bearing Report Format at run-
 
 #### AC-EN-002c — Key Numbers new values present (line-anchored on Key Numbers block)
 **Given** the Key Numbers block (`README.md:62-65` region — the `- **N** ...` bulleted list),
-**When** `sed -n '60,70p' README.md | grep -c "31"` is run (the skills count "31" appears in the Key Numbers block),
+**When** `sed -n '60,70p' README.md | grep -c "30"` is run (the skills count "30" appears in the Key Numbers block),
 **Then** the command MUST return `≥1`;
-**And when** `sed -n '60,70p' README.md | grep -c "moai-\*\|31 .*skills"` is run, the command MUST return `≥1` (the count is qualified as moai-* template-managed per REQ-EN-001; the harness-moaiadk-* exclusion is stated in adjacent prose or the §B reproduction note).
-> **Why line-anchored (iter-1 D6 fix)**: although "31 skills" does not pre-exist anywhere today, the agent count token "8" DOES pre-exist in the same block region; scoping to `sed -n '60,70p'` ensures the new value lands in the Key Numbers block specifically and the moai-* qualification is co-located. (iter-3 D1' update: count is 31, not 32 — `moai-design-system` removed by DSR.)
+**And when** `sed -n '60,70p' README.md | grep -c "moai-\*\|30 .*skills"` is run, the command MUST return `≥1` (the count is qualified as moai-* template-managed per REQ-EN-001; the harness-moaiadk-* exclusion is stated in adjacent prose or the §B reproduction note).
+> **Why line-anchored (iter-1 D6 fix)**: although "30 skills" does not pre-exist anywhere today, the agent count token "8" DOES pre-exist in the same block region; scoping to `sed -n '60,70p'` ensures the new value lands in the Key Numbers block specifically and the moai-* qualification is co-located. (integration update 2026-06-22: count is 30 — was 31 at plan-phase base 9d9df059f; 1 moai-* skill removed during the 50-commit advance before rebase integration; re-verified LIVE `ls -d .claude/skills/moai-* | wc -l` = 30.)
 
 #### AC-EN-003a — Delegation prose stale absent
 **Given** the `README.md` delegation prose at DRIFT-EN-04,
@@ -192,7 +192,7 @@ Each AC MUST be reported in the 5-Section Evidence-Bearing Report Format at run-
 - `sed -n '111p' README.ko.md | grep -c "16개"` — the corrected language count, line-anchored on L111 (the actual drift line; LIVE 2026-06-19: `README.ko.md:111` currently says `**18개** 프로그래밍 언어 지원`).
 - `sed -n '111p' README.ko.md | grep -c "18개"` — companion stale-absent check on the SAME line; this MUST return `0` (proves the drift line was actually touched).
 - `grep -c "moai hook db-schema-sync" README.ko.md` — the db pointer (does NOT pre-exist)
-- `grep -cE "31.*(moai-\*|skills|스킬)" README.ko.md` — the skills count with moai-* qualification (does NOT pre-exist in KO today; iter-3 D1' count = 31)
+- `grep -cE "30.*(moai-\*|skills|스킬)" README.ko.md` — the skills count with moai-* qualification (does NOT pre-exist in KO today; integration update 2026-06-22 count = 30, was 31 at plan-phase base)
 > **Why line-anchored on L111 (iter-3 D2' fix — KO D6 parity)**: the iter-2 D6 discipline was applied to the EN README ACs but missed on the KO mirror. The KO file ALREADY contains the correct `16개` token at L58, L126, L560, L1215 (4 places, verified LIVE 2026-06-19 — language-agnostic table rows, NOT drift). A whole-file `grep -c "16개" README.ko.md` returns 4 today and would vacuously pass WITHOUT touching the L111 drift line (`**18개** 프로그래밍 언어 지원`). Anchoring the primary predicate on `sed -n '111p'` and the companion stale-absent check on the same line forces the actual drift line to change. (Run-phase line-shift handling: if earlier M3 edits shift L111, re-resolve via `grep -n "18개.*프로그래밍\|18개.*언어" README.ko.md` and anchor on whichever line that returns — the line-anchor contract is "the specific drift line", not "the literal plan-phase number".)
 > **Why not `8 (retained )?agents` (iter-1 D6 fix)**: the KO file ALREADY contains `8개 retained 에이전트` at L40, L110, L308, L343, L368, L380 (6 places, verified LIVE 2026-06-19). The agent-count surface in KO is already correct — the actual KO staleness is the language count (18→16), the missing skills count, and the missing db-schema-sync pointer. The KO-native phrasing (`8개`, `16개`, `언어`, `스킬`) is accepted per edge case E.3.
 

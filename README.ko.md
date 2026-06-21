@@ -96,7 +96,7 @@ Python 기반 MoAI-ADK(~73,000줄)를 Go로 완전히 재작성했습니다.
 
 - **100K+줄** Go 코드, **100+개** 패키지
 - **85-100%** 테스트 커버리지
-- **8개** retained 에이전트 + **31개** `moai-*` 스킬 (template-managed; 2개 `harness-moaiadk-*` user-owned 제외)
+- **8개** retained 에이전트 + **30개** `moai-*` 스킬 (template-managed; 2개 `harness-moaiadk-*` user-owned 제외)
 - **16개** 프로그래밍 언어 지원
 - **27개** Claude Code 훅 이벤트
 

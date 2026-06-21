@@ -112,7 +112,7 @@ Commit SHAs are post-rebase values (worktree rebased onto advanced origin/main b
 | AC-EN-001b | PASS | `sed -n '40p' README.md \| grep -cE "8 retained\|8 (AI )?agents"` | `1` |
 | AC-EN-002a | PASS | `grep -c "26 agents\|26\b.*specialized" README.md` | `0` |
 | AC-EN-002b | PASS | `grep -c "47 skills" README.md` | `0` |
-| AC-EN-002c | PASS | `sed -n '60,70p' README.md \| grep -c "31"` + moai-* qual | `1`, `1` |
+| AC-EN-002c | PASS | `sed -n '60,70p' README.md \| grep -c "30"` + moai-* qual | `1`, `1` |
 | AC-EN-003a | PASS | `grep -c "delegates to 24 specialized agents" README.md` | `0` |
 | AC-EN-003b | PASS | `sed -n '262p' README.md \| grep -cE "8 retained\|8 (AI )?agents"` | `1` |
 | AC-EN-004 | PASS | `grep -c "38,700" README.md` + `grep -cE "100K\+ lines"` | `0`, `1` |
@@ -125,7 +125,7 @@ Commit SHAs are post-rebase values (worktree rebased onto advanced origin/main b
 | AC-EN-009 | PASS | `sed -n '445,485p' \| grep -cE "3-phase\|..."` + SPEC citation | `1`, `1` |
 | AC-EN-010 | PASS | `grep -cE "Opus 4\.[78]\|CC 2\.1\.17"` (option a) | `2` |
 | AC-KO-001a | PASS | stale tokens each `grep -c` | all `0` |
-| AC-KO-001b | PASS | drift line re-resolved (gone) + `16개`/db-schema-sync/31-스킬 | `4`, `1`, `1` |
+| AC-KO-001b | PASS | drift line re-resolved (gone) + `16개`/db-schema-sync/30-스킬 | `4`, `1`, `1` |
 | AC-KO-002a | PASS | `grep -cE "^#+ .*v2\.17\.0"` | `0` |
 | AC-KO-002b | PASS | v3.0.0-rc2/V3R6/glm-5.2/8-agents/3-phase | `9`,`7`,`6`,`5` |
 | AC-KO-003 | PASS | `my-harness-` + canonical namespace predicate | `0`, `1` |
@@ -140,6 +140,8 @@ Commit SHAs are post-rebase values (worktree rebased onto advanced origin/main b
 | AC-X-003 | PASS (mooted) | RULES-SSOT-DEDUP-001 CHANGELOG entry | SPEC is `completed`; truthful phrasing correct (see §E.7) |
 
 **Summary**: 29 PASS + 1 PASS-WITH-JUSTIFICATION (AC-CL-001b blocker) + 0 FAIL.
+
+**Integration re-verification (2026-06-22)**: worktree rebased onto main (50-commit advance since base `9d9df059f`); all 30 ACs re-verified LIVE post-rebase. One stale value corrected: `moai-*` skills count **31 → 30** (1 moai-* skill removed during the 50-commit advance; re-verified `ls -d .claude/skills/moai-* | wc -l` = 30). Updated surfaces: README.md L40/L64, README.ko.md L99, acceptance.md AC-EN-002c + AC-KO-001b. All other ACs (agents 8 retained = 7 custom + Explore, version v3.0.0-rc2, builder-harness path, 16 languages, archived-mention context, Unreleased-30 justification) re-verified PASS unchanged.
 
 ### E2. Cross-platform build
 `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0. Zero Go source changed (docs-only).
