@@ -2,9 +2,9 @@
 id: SPEC-V3R6-DOCS-RC2-README-001
 title: "v3.0.0-rc2 README + CHANGELOG factual-alignment (repo-root docs)"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-06-19
-updated: 2026-06-19
+updated: 2026-06-22
 author: manager-spec
 priority: P1
 phase: "v3.0.0-rc2"

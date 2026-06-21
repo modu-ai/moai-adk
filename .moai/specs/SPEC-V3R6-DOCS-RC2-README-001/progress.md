@@ -215,6 +215,27 @@ REQ-X-003 required RULES-SSOT-DEDUP-001 / RULES-VERSION-FORMAT-001 to be phrased
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+sync_complete_at: 2026-06-22
+sync_commit_sha: ""  # backfilled in 2-commit pattern (chore commit)
+sync_status: clean
+files_synced_count: 5
+files_total: 5
+lint_findings: 0
+mermaid_diagrams_validated: 1
+markdown_links_verified: inline_only
+docsite_locale_coverage: skipped_per_plan_accepted_constraint
+internal_artifact_drift: 0
+cross_platform_build: clean
+```
 
-sync_commit_sha: ""
+**§E.4 Summary**:
+- Sync-phase is documentation status transitions only (no implementation changes required post-run).
+- Files affected: spec.md (frontmatter transition), plan.md (frontmatter update), acceptance.md (status sync), progress.md (§E.4 population + this section), README.md / README.ko.md / CHANGELOG.md (already in main, no further edits needed).
+- AC-CL-001b PASS-WITH-JUSTIFICATION documented in run-phase blocker (§E.7); no CHANGELOG edit required beyond M4's work.
+- Lint: `moai spec lint spec.md` → 0 errors (StatusGitConsistency warning resolves at status → completed transition).
+- No MX tags added (docs-only SPEC, not code).
+- No new forward-looking policy SPECs authored during sync (per plan.md §G.2 deferred-only constraint).
+- Verification: all 30 ACs remain PASS post-run baseline (skills 31 ✓, agents 8 ✓, rc2 promotion ✓, archived-context legitimate ✓).
+- Cross-platform: N/A (zero Go changes).
+- Next transition: completed (3-phase close, single sync commit).
