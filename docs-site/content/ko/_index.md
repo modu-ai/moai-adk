@@ -7,6 +7,8 @@ draft: false
 MoAI-ADK(Agentic Development Kit)는 Claude Code를 위한 전략적 오케스트레이션
 프레임워크입니다.
 
+> **현재 버전:** {{< version >}} (릴리스 후보 2) — 버전 정보는 `hugo.toml`의 `params.version` 단일 원천(SSOT)을 따릅니다.
+
 > 📖 **[클로드 코드로 시작하는 실전 에이전틱 코딩](/book)** — 바이브 코딩의 끝, 하네스 엔지니어링의 시작. MoAI-ADK 메인테이너가 직접 쓴 488쪽 실무 가이드(추천사 9인).
 
 ![MoAI-ADK](/og.jpg)

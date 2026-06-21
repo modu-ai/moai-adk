@@ -2,9 +2,9 @@
 id: SPEC-V3R6-DOCS-RC2-DOCSITE-001
 title: "v3.0.0-rc2 docs-site version SSOT + lifecycle/era + harness-namespace — acceptance criteria"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-06-19
-updated: 2026-06-19
+updated: 2026-06-22
 author: manager-spec
 priority: P1
 phase: "v3.0.0-rc2"
