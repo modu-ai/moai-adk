@@ -544,6 +544,58 @@ version: 1.0.0
   无需直接编写 EARS 格式。只需用自然语言向 `/moai plan` 发出请求，**manager-spec Agent 就会自动转换为 EARS 格式**。上表仅供理解转换方式参考。
 {{< /callout >}}
 
+## SPEC 生命周期与 Era 分类
+
+SPEC 不是写一次就结束的文档，而是遵循**计划(plan) → 实现(run) → 同步(sync)** 的生命周期。MoAI-ADK 会自动分类每个 SPEC 是在哪个时代(era)的规约下编写的，并仅对遵循现代规约的 SPEC 应用漂移(drift，偏离规约)检测。
+
+### 三阶段关闭(plan → run → sync)
+
+每个 V3R6 SPEC 都通过**三个阶段**完成。过去存在的第四个阶段(Mx-phase)已被**废弃** — MX 标签验证不是独立阶段，而是在 sync 阶段内处理的横切关注点(cross-cutting concern)。
+
+| 阶段 | 命令 | 作用 | 记录位置 |
+| --- | --- | --- | --- |
+| **plan** | `/moai plan` | 编写 SPEC 产物(spec/plan/acceptance) | `progress.md` §E.1 |
+| **run** | `/moai run` | 按方法论(DDD/TDD)实现 | `progress.md` §E.2 / §E.3 |
+| **sync** | `/moai sync` | 同步文档 + 完成提交 | `progress.md` §E.4 |
+
+sync 阶段完成后，该提交的 SHA 会作为 **`sync_commit_sha`** 字段记录在 `progress.md` 的 **`§E.4 Sync-phase Audit-Ready Signal`** 部分。该字段是否存在，是判断 SPEC 是否完全遵循现代规约(V3R6)的关键信号。
+
+{{< callout type="info" >}}
+  **Mx-phase 废弃：** 早期版本在 plan/run/sync 之后还有名为 `Mx-phase` 的第四个阶段以及 `mx_commit_sha` 字段。现已废弃并合并为三阶段模型。MX 代码注解(@MX 标签)管理现在在 sync 阶段内一并执行。
+{{< /callout >}}
+
+### 五种 Era 分类
+
+每个 SPEC 都会根据其编写时生效的规约，被分类到恰好一个 era 桶中。
+
+| Era | 时期 | 生命周期标准 |
+| --- | --- | --- |
+| **V2.x** | 2026-02 之前 | 无 `progress.md`；通过直接提交实现 |
+| **V3R2-R4** | 2026-02 ~ 2026-03 | 引入 `progress.md`；无 `sync_commit_sha` |
+| **V3R5** | 2026-03 ~ 2026-04 | 出现 sync 部分；不强制 `sync_commit_sha` |
+| **V3R6** | 2026-04 ~ 至今 | 三阶段现代标准(plan/run/sync)；必须 `sync_commit_sha` |
+| **unclassified** | — | 自动检测不明确(无任何启发式匹配) |
+
+era 分类通过自动检查 `spec.md` 前置元数据中的 `created:` 日期和 `progress.md` 的章节结构来确定。对于边界模糊的情况，可在前置元数据中添加诸如 `era: V3R6` 的显式字段来直接指定。
+
+### Grandfather 条款(grandfather clause)
+
+被分类为 **V2.x · V3R2-R4 · V3R5** 的 SPEC 受 **grandfather 条款保护**。这三个 era 在编写时的规约是合理的，因此不会追溯应用现代的 V3R6 规约。
+
+- grandfather SPEC 在审计结果中标记为 `era_final: true`。
+- 无论何种模式(章节缺失、提交 SHA 缺失等)，**都不会报告漂移问题**。
+- 将历史 SPEC 按现代规约批量规范化在运维上不可行，也没有实际价值。
+
+### 漂移检测仅限 V3R6
+
+生命周期漂移检测(`moai spec audit`)**仅适用于 V3R6 SPEC**。
+
+- 现代 era 的边界基准日为 **`2026-04-01`**。只有在该日期当天或之后编写且带有 V3R6 信号的 SPEC 才是漂移检测的对象。
+- 在内部，`IsModern()` 判定**仅在 V3R6 时返回 true**。
+- 换言之，grandfather era(V2.x/V3R2-R4/V3R5)始终被排除在漂移检测之外，绝不会被分类为缺陷。
+
+这一分类机制能在不对旧 SPEC 产生误报(false positive)的前提下，精确验证当前正在编写的 SPEC 的规约遵循情况。
+
 ## 相关文档
 
 - [什么是 MoAI-ADK？](/core-concepts/what-is-moai-adk) -- 了解 MoAI-ADK 的整体结构
