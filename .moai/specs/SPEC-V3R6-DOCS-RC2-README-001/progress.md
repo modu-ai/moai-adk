@@ -217,7 +217,7 @@ REQ-X-003 required RULES-SSOT-DEDUP-001 / RULES-VERSION-FORMAT-001 to be phrased
 
 ```yaml
 sync_complete_at: 2026-06-22
-sync_commit_sha: ""  # backfilled in 2-commit pattern (chore commit)
+sync_commit_sha: "5cc9114f6"
 sync_status: clean
 files_synced_count: 5
 files_total: 5
