@@ -84,14 +84,14 @@ not affect skill/agent catalog hashes).
 
 ```yaml
 run_complete_at: "2026-06-23"
-run_commit_sha: "<backfill — M-final commit>"
+run_commit_sha: "e84c05e6c8b71c701bdea259566fbbb35cd6fb15"
 run_status: implemented
 ac_pass_count: 6              # AC-GMA-002/003/004/005/007/008 mechanical PASS
 ac_deferred_manual_count: 2   # AC-GMA-001/006 live-GLM (orchestrator/user post-deploy)
 ac_fail_count: 0
 preserve_list_post_run_count: 0   # glm.go / launcher.go / settings.go / settings.local.json all unchanged
 l44_pre_commit_fetch: "0 0 (origin/main == HEAD at run start; no parallel-session race)"
-l44_post_push_fetch: "<backfill — post-push>"
+l44_post_push_fetch: "0 0 (HEAD == origin/main == e84c05e6c post-push; fully synced)"
 new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues (== baseline 0)
 cross_platform_build:
   native: pass
