@@ -92,7 +92,7 @@ Run-phase implementer: manager-develop (cycle_type=tdd, RED-GREEN-REFACTOR). Sta
 
 - run_status: complete (all 10 AC PASS, 0 FAIL)
 - run_complete_at: 2026-06-22
-- run_commit_sha: (backfilled in close/sync)
+- run_commit_sha: 3e9ecc3d2
 - ac_pass_count: 10
 - ac_fail_count: 0
 - preserve_list_post_run_count: 0 (zero diff to full PRESERVE surface — applier.go / proposalgen/ / regression_gate.go / safety/ / autoApply-default / evolution/learning.go)
@@ -107,4 +107,13 @@ Run-phase implementer: manager-develop (cycle_type=tdd, RED-GREEN-REFACTOR). Sta
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-<!-- manager-docs appends sync-phase audit-ready signal + sync_commit_sha here at sync-phase -->
+- sync_status: complete (3-phase close — plan → run → sync)
+- sync_complete_at: 2026-06-22
+- sync_executor: orchestrator-direct (Agent tool unavailable in session context; GLM orchestrator-direct fallback per feedback_glm_orchestrator_direct_sync_mx)
+- status_transition: in-progress → implemented → completed (rides this sync commit per SPEC-V3R6-LIFECYCLE-REDESIGN-001 3-phase close)
+- changelog_entry: CHANGELOG.md [Unreleased] § Added — N4 Failure-Signature Clustering Engine (B12 dup-check: 0 prior entries)
+- readme_change: none (README enumerates `/moai:harness` slash-command lifecycle only, not terminal `moai harness` CLI subcommands; adding `clusters` would be inconsistent)
+- mx_validation: cross-cutting sync concern — internal/harness/cluster/ is new pure-Go read-only code; no high-fan_in danger zone requiring @MX:ANCHOR/WARN at this scope
+- era: V3R6 (frontmatter H-override; moai spec audit drift 0)
+- sync_commit_sha: (backfilled in follow-up commit)
+- run_commit_sha: 3e9ecc3d2 (run-phase; pushed to origin/main, independently re-verified by orchestrator)
