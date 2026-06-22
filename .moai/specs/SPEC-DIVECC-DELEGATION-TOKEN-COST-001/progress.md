@@ -49,7 +49,7 @@ $ git status --porcelain                                  → only the 3 intende
 
 - **run_status**: complete (M1 + M2 done; M3 skipped per scope; M4 commit + push)
 - **run_complete_at**: 2026-06-22
-- **run_commit_sha**: 3a385d881
+- run_commit_sha: 3a385d881
 - **ac_pass_count**: 7 (AC-DTC-001..007 all PASS; AC-DTC-006 vacuously satisfied)
 - **ac_fail_count**: 0
 - **cross_platform_build**: N/A (doc-only; no Go source change — `go build ./...` exit 0 as a sanity check)
@@ -63,8 +63,8 @@ $ git status --porcelain                                  → only the 3 intende
 
 - **sync_status**: audit-ready
 - **sync_complete_at**: 2026-06-22
-- **sync_commit_sha**: 320898ffb
-- **documentation_update**: CHANGELOG entry (doctrine-only SPEC, no README impact)
+- sync_commit_sha: 320898ffb
+- **documentation_update**: no CHANGELOG (doctrine-only SPEC, no README/docs-site impact)
 - **frontmatter_transition**: in-progress → completed (status field updated in spec.md)
 - **changelog_drift**: 0 (doctrine-only, no user-facing features)
 - **artifacts_complete**: spec.md frontmatter updated + progress.md §E.3 run_commit_sha corrected + progress.md §E.4 populated
