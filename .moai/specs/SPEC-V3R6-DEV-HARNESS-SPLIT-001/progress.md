@@ -72,5 +72,5 @@ red_green_evidence: "RED: planted harness-release-update leak → FAIL (sentinel
 - 사용자-facing 문서 영향 없음 (dev-only 내부 도구).
 - 상태 전환: in-progress → completed (이 sync 커밋이 close 운반).
 - supersession: CONSOLIDATION-001은 completed 유지(unified-entry 결정만 reversal, specialist 본문 재사용).
-- sync_commit_sha: <pending-backfill>
+- sync_commit_sha: dc0ca37dc
 - era: V3R6 (H-4: §E.2 + §E.4 + sync_commit_sha).
