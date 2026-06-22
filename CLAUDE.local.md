@@ -123,10 +123,9 @@ See `.moai/docs/template-internal-isolation-doctrine.md` §25.3 for the full 5-i
 .claude/settings.json          # Rendered from .json.tmpl
 .claude/agent-memory/          # Per-project agent memory
 .claude/hooks/moai/handle-*.sh # Generated hook wrappers (not templates)
-.claude/commands/97-release-update.md            # Dev-only: CC upstream tracker (§21)
-.claude/commands/98-*.md       # Dev-only: maintainer commands — 98-github.md 등 (§21)
-.claude/commands/99-*.md       # Dev-only: future maintainer commands (§21 reserved)
-.claude/skills/moai/workflows/release-update.md  # Dev-only: release-update workflow body (§21)
+.claude/commands/harness/devkit*           # Dev-only: devkit maintainer harness entry + manifest (§21)
+.claude/workflows/harness-devkit-run.js    # Dev-only: devkit harness Runner (§21)
+.claude/agents/harness/harness-devkit-*    # Dev-only: devkit harness specialists (§21, user-owned per §24)
 CLAUDE.local.md                # This file
 .moai/state/last-cc-version.json # Dev-only: CC tracking state (§21)
 .moai/research/cc-update-*.md  # Dev-only: CC update reports (§21)
@@ -736,9 +735,9 @@ See: `.moai/docs/git-workflow-doctrine.md`
 
 ---
 
-## 21. Dev-Only Commands Isolation (97/98/99 Series)
+## 21. Dev-Only Commands Isolation (devkit Harness)
 
-`97-*`, `98-*`, `99-*` prefix 슬래시 커맨드 + 산출물은 로컬 moai-adk 개발 전용. `internal/template/templates/` 어디에도 흔적 금지. 배포 금지 파일 일람, 검증 체크리스트, 위반 시 영향, 신규 dev-only 워크플로우 추가 절차 등 전체 doctrine은 외부 파일 참조.
+devkit 메인테이너 하네스 (`/harness:devkit` 진입 + release-update/github/release 3 capability) + 산출물은 로컬 moai-adk 개발 전용. `internal/template/templates/` 어디에도 흔적 금지 (CI guard: `internal/template/devkit_namespace_test.go` `TestDevkitNamespaceNoLeak`, sentinel `DEVKIT_NAMESPACE_LEAK`). 구 `97-*`/`98-*`/`99-*` 번호 커맨드는 SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001 에서 단일 devkit 하네스로 통합·폐지됨. 배포 금지 파일 일람, 검증 체크리스트, 위반 시 영향, 신규 dev-only capability 추가 절차 등 전체 doctrine은 외부 파일 참조.
 
 See: `.moai/docs/dev-only-commands-isolation.md`
 
