@@ -1,215 +1,248 @@
-# Module Catalog
+# 패키지 모듈 상세 설명
 
-Detailed reference for all packages in moai-adk-go (v3.0.0-rc2), grouped by architectural layer. Deterministic facts (package existence, public symbols) come from `go list` + `go doc`; the "Architectural Insight" subsections carry judgment, clearly labeled per the insight-vs-extraction convention.
+> 이 문서는 `/moai codemaps --force`로 자동 생성된 패키지 목록입니다.
 
----
-
-## Layer 1: Entry Point
-
-### `cmd/moai/`
-
-**Public Surface**: `main.go` — composition root entry point that calls `cli.Execute()`.
-
-**Dependencies**: `internal/cli`.
+**모듈**: `github.com/modu-ai/moai-adk`  
+**Go 버전**: go 1.26.4
 
 ---
 
-## Layer 2: Presentation
+## 프레젠테이션 계층
 
-### `internal/cli/`
+### cmd/moai
+진입점: `main()` → `cli.Execute()`  
+의존성: `internal/cli`
 
-**Public Surface**: Cobra command tree spanning 40 files with 119 `rootCmd.AddCommand` calls. Human-facing terminal verbs (`init`, `doctor`, `update`, `version`, `cc`, `glm`, `cg`, `web`, `session`, `spec`, `harness`, `worktree`, `hook`, `agent`, `research`, `workflow`, `migrate`, `constitution`, `statusline`, `telemetry`, `profile`, `lsp`, `github`, `brain`, `loop`, `mx`, `clean`, `feedback`, `review`, `coverage`, `e2e`, `codemaps`, `design`, `project`, `plan`, `run`, `sync`). Composition Root in `deps.go` (`InitDependencies()`).
+### internal/cli (241파일)
+**역할**: Cobra 커맨드 트리, composition root  
+**팬-아웃**: ~48개 internal 패키지  
+**핵심**: `Execute()`, `InitDependencies()`, 50+ subcommand 라우팅
 
-**Dependencies**: nearly every `internal/*` package (it is the wiring layer).
+### internal/tui (32파일)
+**역할**: Bubbletea TUI 요소, 28개 색상 토큰  
+**기본**: Box, Pill, Table, Status, ProgressLine  
+**의존성**: lipgloss
 
-**Architectural Insight**: The CLI is intentionally the only place concrete types are instantiated. Every command accesses domain services through interfaces, which is what makes the 48-package codebase free of circular imports.
+### internal/statusline (32파일)
+**역할**: Claude Code 상태 렌더러, 3/5L 레이아웃  
+**기능**: GitDataProvider, UpdateProvider, UsageProvider  
+**의존성**: internal/core/git, internal/config
 
-### `internal/tui/`
+### internal/web (37파일)
+**역할**: loopback HTTP 콘솔, Templ + HTMX  
+**기능**: host-header validation, graceful shutdown (5s 드레인)  
+**의존성**: internal/profile, internal/config
 
-**Public Surface**: Bubbletea TUI components (statusline preview, interactive selectors, `moai --help` rendered groups).
-
-**Dependencies**: `bubbletea`, `bubbles`, `lipgloss`, `glamour`.
-
----
-
-## Layer 3: Interface / Protocol
-
-### `internal/hook/` (named capability-anchor)
-
-**Public Surface**: Handler registry + 130 hook source files covering 27 Claude Code event types (`SessionStart`, `Stop`, `PostToolUse`, `SubagentStop`, `TaskCompleted`, `UserPromptSubmit`, `PreCompact`, `PostCompact`, `Notification`, `WorktreeCreate`, `WorktreeRemove`, etc.). Public handler constructors (`NewSessionStartHandler`, …) registered in `internal/cli/deps.go`.
-
-**Dependencies**: `internal/config`, `internal/lsp`, `internal/update`, `internal/session`.
-
-**Architectural Insight**: Handlers follow a typed `Handler` interface contract; each event type maps to exactly one handler. The async-expand pattern debounces diff-aware reloads in a background goroutine with a 5-second deadline so the main handler returns within ≤100ms.
-
-### `internal/config/`
-
-**Public Surface**: YAML config loader + `MergedSettings` + the GLM tier-models constants table (`DefaultGLMBaseURL`, `DefaultGLMHigh`, `DefaultGLMMedium`, `DefaultGLMLow`, `DefaultGLMSonnet`, `DefaultGLMHaiku`, `DefaultGLMOpus`). Environment-key constants (`EnvConfigDir`, `EnvClaudeProjectDir`, `EnvAnthropicBaseURL`, …).
-
-**Dependencies**: `pkg/models`, `internal/defs`.
-
-### `internal/tmux/`
-
-**Public Surface**: Split-pane detector + session lifecycle helpers for `moai cg` (Claude leader + GLM teammates).
-
-**Dependencies**: `internal/shell`.
-
-### `internal/web/` (named capability-anchor)
-
-**Public Surface**: Loopback-only HTTP server (templ + HTMX) exposing browser-based editing of the named MoAI settings (profile preferences + `user.yaml` / `language.yaml` / `statusline.yaml` sections). Templ files: `root.templ`, `page.templ`, `fieldsets.templ`, `icons.templ`. Handlers in `handlers.go` + `projectconfig.go`.
-
-**Dependencies**: `internal/config`, `net/http`, `a-h/templ`.
-
-**Architectural Insight**: The Web Console is a thin browser equivalent of the terminal profile wizard — it reuses the same config-section validation, so the two surfaces cannot drift.
+### pkg/version
+**역할**: 빌드타임 버전 (ldflags 주입)  
+**팬-인 (High)**: 30+개 패키지
 
 ---
 
-## Layer 4: Lifecycle
+## 비즈니스/도메인 계층
 
-### `internal/spec/` (named capability-anchor)
+### pkg/models
+**역할**: 공유 config 타입 (매우 높은 팬-인)  
+**타입**: ProjectType, DevelopmentMode, ProjectConfig, LanguageConfig, QualityConfig  
+**팬-인 (Very High)**: 45+개 패키지
 
-**Public Surface**: `ValidStatuses` (8-value status enum), `FrontmatterSchemaRule` (12-field required schema), `ClassifyEra` (V2.x / V3R2-R4 / V3R5 / V3R6 / unclassified), `Audit` (drift detection engine), `Close` (atomic `moai spec close` transaction with precondition matrix + lock + dry-run), lint rules (`FrontmatterSchemaRule`, `OwnershipTransitionRule`, `StatusGitConsistencyRule`, …), `Acceptance` / `AuditResult` / `Era` types. Error sentinels: `ErrPreconditionMissing`, `ErrSpecCloseLockHeld`.
+### internal/foundation
+**역할**: 언어 레지스트리, TRUST 5, EARS  
+**기능**: `LanguageRegistry`, 16개 언어 지원  
+**팬-인 (High)**: 32+개 패키지
 
-**Dependencies**: `internal/git`, `internal/state`, `internal/manifest`, `gopkg.in/yaml.v3`.
+### internal/spec (41파일)
+**역할**: SPEC 라이프사이클 엔진  
+**핵심**: Linter (13+3 규칙), ClassifyEra(), Audit(), DetectDrift(), ClassifyPRTitle()
 
-**Architectural Insight**: This is the single source of truth for SPEC lifecycle facts (status enum, frontmatter schema, era classification). Every docs claim about "8 statuses" or "12 frontmatter fields" cites this package. The grandfather clause (`Era.IsModern() == true` only for V3R6) prevents retroactive drift findings on legacy SPECs.
+### internal/constitution (23파일)
+**역할**: 동결/진화 구역 모델, 5단계 병합 안전  
+**기능**: FrozenGuard, Canary, ContradictionDetector, RateLimiter, HumanOversight
 
-### `internal/state/`
+### internal/workflow
+**역할**: Plan-Run-Sync 워크트리 오케스트레이션  
+**기능**: `WorktreeOrchestrator`, `PhaseExecutor`, 품질 게이트
 
-**Public Surface**: Session checkpoint primitives (`state.go`, `store.go`, `lock.go`) + the multi-session coordination registry (`active-sessions.json`).
+### internal/loop (18파일)
+**역할**: 진단 피드백 루프 컨트롤러  
+**핵심**: `LoopController`, `DecisionEngine`, `GoFeedbackGenerator`
 
-**Dependencies**: `internal/session`.
+### internal/ralph
+**역할**: Ralph 의사결정 엔진  
+**기능**: `Decide()` (max_iter > perfect_gate > stagnation > human_review)
 
-### `internal/workflow/`
+### internal/harness (64파일)
+**역할**: 하네스 학습 서브시스템  
+**기능**: Observer, Learner (4-tier), Applier, 5단계 safety
 
-**Public Surface**: Phase-state machine for the plan→run→sync lifecycle.
+### internal/permission (18파일)
+**역할**: 8-tier 권한 스택  
+**모드**: default, acceptEdits, bypassPermissions, plan, bubble  
+**계층**: policy → project → user → team → builtin → systemDefault → hookOverride → deny
 
----
+### internal/evolution
+**역할**: 반사 학습 Write Phase  
+**기능**: LearningEntry (LEARN-YYYYMMDD-NNN), 졸업 신뢰도 (3→5→10)
 
-## Layer 5: Harness
+### internal/merge
+**역할**: 3-way 파일 병합 (ADR-008)  
+**전략**: LineMerge, YAMLDeep, JSONMerge, SectionMerge, EvolvableZoneMerge, Overwrite
 
-### `internal/harness/` (named capability-anchor)
+### internal/design
+**역할**: 디자인 시스템 도구  
+**기능**: DTCG 토큰 검증, Path A/B1/B2 선택, BrandConflictAnalyzer
 
-**Public Surface**: Frontmatter modification applier (`Apply`), cleanup tracker (`CleanupTracker`, `CleanupOnFailure`), frozen guard (`frozen_guard.go` prevents writes to moai-managed directories during meta-harness invocation), chaining-rules reader/writer, evaluator validation utilities.
+### internal/bodp
+**역할**: Branch Origin Decision Protocol  
+**기능**: 3-signal 검사 → 8-row 의사결정 매트릭스 → main/stacked/continue
 
-**Dependencies**: `internal/evaluator`, `internal/evolution`, `internal/measure`, `internal/astgrep`.
-
-**Architectural Insight**: The harness is a GAN (Generative Adversarial Network) loop applier — it enriches skill/agent frontmatter based on observed usage. The frozen guard is the safety boundary that keeps meta-harness output from clobbering hand-authored templates.
-
-### `internal/evaluator/`
-
-**Public Surface**: Prior-judgment leak detection for evaluator spawn prompts + 4-dimension quality scoring (Functionality / Security / Craft / Consistency).
-
-### `internal/evolution/` / `internal/measure/`
-
-**Public Surface**: 4-tier evolution proposals + measurement telemetry that feeds the harness learning subsystem.
-
----
-
-## Layer 6: Templates
-
-### `internal/template/` (named capability-anchor)
-
-**Public Surface**: Deployer + renderer + `embedded.go` (generated `go:embed` of `templates/` + `catalog.yaml`). Typed `Catalog` loader (`catalog_loader.go`). `TemplateContext` (`GoBinPath`, `HomeDir`).
-
-**Dependencies**: `pkg/models`, `internal/manifest`, `internal/merge`, `embed.FS`.
-
-**Architectural Insight**: The `go:embed` directive compiles the entire `.claude/` + `.moai/` template tree into the binary, which is why `moai init` is zero-dependency. The catalog (`catalog.yaml`) is the template-tracking manifest that `moai update` diffs against for 3-way merges.
-
-### `internal/manifest/`
-
-**Public Surface**: Tracks which template files were deployed and at which version.
-
-### `internal/merge/`
-
-**Public Surface**: 3-way file merge engine used by `moai update`.
-
-### `internal/migrate/` / `internal/migration/`
-
-**Public Surface**: `.agency/` → `.moai/` migration utilities + legacy-archive helpers.
+### internal/git
+**역할**: label → branch-prefix 컨벤션  
+**기능**: `DetectBranchPrefix()`, `FormatIssueBranch()`
 
 ---
 
-## Layer 7: Quality
+## 인프라 계층
 
-### `internal/lsp/`
+### internal/core/git
+**역할**: exec 기반 Git 추상화  
+**인터페이스**: Repository, BranchManager, WorktreeManager  
+**팬-인 (High)**: 35+개 패키지
 
-**Public Surface**: LSP diagnostics client with CLI fallbacks (`ruff`, `golangci-lint`, `eslint`, etc.) for the phase-specific quality gates.
+### internal/core/project
+**역할**: 프로젝트 루트 발견  
+**ANCHOR**: `FindProjectRoot()` — `.moai/` 발견 (everywhere)
 
-### `internal/loop/`
+### internal/core/quality
+**역할**: TRUST 5 gate enforcement  
+**기능**: phase-aware 임계값, DDD/TDD 변형
 
-**Public Surface**: Iterative fix loop (Ralph Engine) — LSP/AST-grep/test/coverage diagnostic cycle.
+### internal/runtime
+**역할**: 토큰 circuit-breaker, 예산 추적  
+**기능**: soft 75% / hard 90%, stall 감지, progress.md auto-save
 
-**Dependencies**: `internal/lsp`, `internal/resilience`, `internal/ralph`.
+### internal/template (75파일)
+**역할**: go:embed Template-First 시스템  
+**소스**: internal/template/templates/ (단일 진실 공급원)  
+**생성**: embedded.go (자동 생성, 편집 금지)  
+**기능**: Deployer (원자적), Renderer (strict mode), Manifest.Track()
 
-### `internal/resilience/`
+### internal/config (61파일)
+**역할**: 계층화 YAML config SSOT  
+**우선순위**: env > yaml > defaults  
+**팬-인 (Very High)**: 48+개 패키지
 
-**Public Surface**: Retry + recovery helpers used by the loop and harness subsystems.
+### internal/manifest
+**역할**: 파일 출처 3-way 추적  
+**기능**: 3중 해시 (template/deployed/current), 손상 복구
 
-### `internal/ralph/`
+### internal/defs
+**역할**: 디렉토리 레이아웃 상수  
+**기능**: `.moai/`, `.claude/` 구조, DeprecatedPaths
 
-**Public Surface**: Reporting primitives for the Ralph Engine.
+### internal/migration
+**역할**: 버전 기반 마이그레이션 실행기  
+**기능**: Apply, Status, Rollback, 멱등성
+
+### internal/migrate
+**역할**: 마이그레이션 중 hook 정리  
+**기능**: CleanupUserSettings, 아카이브 우선
+
+### internal/update
+**역할**: self-update  
+**기능**: Checker, Updater, Rollback, 체크섬 gate, 원자적 replace
+
+### internal/i18n
+**역할**: 다국어 GitHub 코멘트  
+**언어**: en, ko, ja, zh
+
+### internal/hook (143파일)
+**역할**: 컴파일된 훅 시스템  
+**이벤트**: 28+ (SessionStart, PostToolUse, Stop, etc)  
+**기능**: Registry.Dispatch(), exit 0/2, 순차 + short-circuit  
+**서브**: trace, memo, quality, security, mx, handoff, lifecycle, dbsync
+
+### internal/sandbox (19파일)
+**역할**: OS 샌드박스 (seatbelt, bubblewrap, docker)  
+**기능**: Launcher.Launch(), GenerateSBPL(), deny-by-default
+
+### internal/shell
+**역할**: shell 감지 및 config 변경  
+**기능**: Configurator, AddEnvVar, AddPathEntry (멱등성)
+
+### internal/astgrep (14파일)
+**역할**: ast-grep CLI 래퍼  
+**기능**: Scanner.Scan(), Finding 타입, SARIF
+
+### internal/lsp (12 sub-packages)
+**역할**: 다중언어 LSP 클라이언트  
+**sub**: core, aggregator, gopls, cache, config, hook, subprocess, transport
+
+### internal/mx (27파일)
+**역할**: @MX 태그 스캐너/리졸버  
+**기능**: Scanner, Resolver, FanInCounter, Sidecar JSON
+
+### internal/ciwatch
+**역할**: CI 체크 분류  
+**기능**: Classifier.IsRequired(), Handoff/WatchState
+
+### internal/resilience
+**역할**: circuit breaker FSM  
+**상태**: closed, open, half-open
+
+### internal/telemetry
+**역할**: 비동기 사용량 기록  
+**기능**: AsyncRecorder, bounded channel, 배치 disk I/O
+
+### internal/github (26파일)
+**역할**: gh CLI 통합  
+**기능**: GHClient 인터페이스, SpecLinker, SecretManager
+
+### internal/session (25파일)
+**역할**: 다중 세션 조율 레지스트리  
+**기능**: Registry, FileSessionStore, PhaseState, advisory lock
+
+### internal/state
+**역할**: prompt-cache 사용량 원격측정  
+**기능**: CacheUsageEntry JSONL, windowed 집계
+
+### internal/tmux (12파일)
+**역할**: tmux 감지, CG/GLM 모드  
+**기능**: IsCGMode(), SessionManager
+
+### internal/worktree
+**역할**: 작업 트리 상태 가드  
+**기능**: Capture(), Diff(), DivergenceLog
+
+### internal/profile
+**역할**: 사용자 프로필 관리  
+**기능**: ProfilePreferences, GetCurrentName(), Sync
+
+### internal/research
+**역할**: 연구/계측 서브시스템  
+**sub**: eval, experiment, safety, observe, dashboard
+
+### internal/measure
+**역할**: zero-dependency 리프 파서  
+**기능**: ParseGoTestJSON(), ParseCoverageFile(), CountNonEmptyLines()
 
 ---
 
-## Layer 8: Infrastructure
+## 테스트 전용 패키지 (런타임 카탈로그 제외)
 
-### `internal/statusline/` (named capability-anchor)
+다음 패키지는 테스트 전용이므로 runtime 모듈 카탈로그에서 제외됩니다:
 
-**Public Surface**: Status-line renderer for tmux/vim/zsh/bash. `CanonicalSegments` (`model`, `git`, `context`, `cost`, `version`, …), `ResolveGLMContextWindow`, `ShortenModelName`, `BuildGradientBar`, `BatteryIcon`, model cache read/write.
+- **internal/skills** — audit-only test fixture (LOC-ceiling / template-mirror-parity test suite, 프로덕션 코드 없음)
 
-**Dependencies**: `internal/config`, `internal/git`.
-
-### `internal/session/` (named capability-anchor)
-
-**Public Surface**: Multi-session coordination registry. `RegisterSession` / `DeregisterSession` / `Heartbeat` / `PurgeStale`, `Entry` struct, `BlockerReport` type, `Checkpoint` / `Clock` interfaces, `HydrateForPrompt`. Registry file: `.moai/state/active-sessions.json` (per-machine, gitignored, advisory not a strong lock).
-
-**Dependencies**: `internal/state`, `internal/config`.
-
-**Architectural Insight**: The registry is advisory — it does NOT enforce mutual exclusion. The orchestrator queries it pre-spawn and decides whether to proceed, defer, or escalate via `AskUserQuestion`. This is the defense against multi-session races on the shared working tree.
-
-### `internal/github/` / `internal/git/` / `internal/update/` / `internal/shell/`
-
-**Public Surface**: GitHub API client (`gh` wrapper), Git operations (3-interface segregation: `Repository` / `BranchManager` / `WorktreeManager`), version-check updater, environment detection.
+> `internal/evaluator`는 방치된 TDD RED 스캐폴드(SPEC-EVAL-001, sync-auditor 에이전트로 대체)로 SPEC-CLEANUP-EVALUATOR-001에서 제거되었습니다.
 
 ---
 
-## Layer 9: Governance
+## 검증
 
-### `internal/constitution/`
-
-**Public Surface**: `CONST-*` zone registry (Frozen / Evolvable HARD clauses) + `moai constitution list` engine.
-
-### `internal/mx/`
-
-**Public Surface**: `@MX` code annotation engine (`@MX:NOTE`, `@MX:WARN`, `@MX:ANCHOR`, `@MX:TODO`, `@MX:LEGACY`) + graph queries.
-
-### `internal/telemetry/` / `internal/permission/`
-
-**Public Surface**: Opt-in usage stats + permission policy primitives.
+**순환 의존성**: 0개 (검증됨)  
+**패키지 수**: 45 internal 디렉터리 = 44 runtime 패키지 + 1 test-only + 2 pkg + 1 cmd = 48개 (runtime만 카탈로그에 포함)
 
 ---
 
-## Layer 10: Foundation
-
-### `internal/foundation/` / `internal/defs/` / `internal/i18n/` / `internal/astgrep/` / `internal/sandbox/` / `internal/runtime/` / `internal/bodp/` / `internal/ciwatch/`
-
-**Public Surface**: Cross-cutting utilities — string helpers, constants (`defs`), internationalization (16-language), AST-grep wrapper, sandbox executor, runtime helpers, Branch Origin Decision Protocol (`bodp`), CI watch loop (`ciwatch`).
-
----
-
-## Layer 11: Public API
-
-### `pkg/models/` / `pkg/version/`
-
-**Public Surface**: `Config`, `Project`, `Language` types (`models`) + build-time version injection (`version` reads from git tags).
-
----
-
-## Cross-cutting Concerns
-
-- **No circular imports**: dependency flow is strictly presentation → interface → domain → infrastructure.
-- **Interface-first contracts**: every domain module exposes Go interfaces; concrete implementations are package-private.
-- **Embedded template filesystem**: the entire `.claude/` + `.moai/` template tree is compiled into the binary via `go:embed`.
-- **Tier-based PR routing**: Tier S/M work flows directly to `main` (Hybrid Trunk 1-person OSS); Tier L or explicit `--pr` opens a PR.
-- **Era-classified SPEC lifecycle**: V3R6 SPECs are subject to drift detection; V2.x / V3R2-R4 / V3R5 are grandfather-clause-protected.
+**생성**: `/moai codemaps --force`로 자동 생성
