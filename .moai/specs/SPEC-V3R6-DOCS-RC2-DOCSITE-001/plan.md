@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DOCS-RC2-DOCSITE-001
 title: "v3.0.0-rc2 docs-site version SSOT + lifecycle/era + harness-namespace — implementation plan"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-06-19
 updated: 2026-06-22
 author: manager-spec

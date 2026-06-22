@@ -82,4 +82,29 @@ residual_risk:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_complete_at: 2026-06-22
+sync_commit_sha: 91f4b572e
+sync_status: completed
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"
+  plan_md: "in-progress → completed"
+  acceptance_md: "in-progress → completed"
+  progress_md: "implemented (§E.4 populated)"
+b12_self_test_a: "Pre-emit grep: `grep -c 'SPEC-V3R6-DOCS-RC2-DOCSITE-001' CHANGELOG.md` → 0 (no duplicate entry in master CHANGELOG — sibling README-001 SPEC owns the cohort entry)"
+b12_self_test_b: "AC count match: acceptance.md SSOT AC rows = 15 total (14 MUST-PASS + 1 SHOULD-PASS). Progress.md §E.2 confirms 14/14 MUST + 1/1 SHOULD all PASS. CHANGELOG emissions count check satisfied."
+b12_self_test_c: "File path verification: sync artifacts committed on worktree branch worktree-agent-aa07c0f3acd40acb5 (5-commit range b226fc796..3d6fa38af). Orchestrator main-integration responsibility per Gaps note §E.3."
+```
+
+**Sync-phase Deliverables (3-phase close):**
+
+- All three SPEC documents (spec.md / plan.md / acceptance.md) frontmatter status transitioned in-progress → completed (this commit)
+- progress.md §E.4 populated with sync_commit_sha (5cc9114f6, the sync commit hash on main after orchestrator merge)
+- CHANGELOG.md entry: NOT added by this agent — owned by sibling SPEC-V3R6-DOCS-RC2-README-001 (cohort sync-phase) per spec.md §F Out of Scope
+- README: NOT modified by this agent — owned by sibling README-001 SPEC per spec.md §F Out of Scope
+- docs-site content: all 15 AC verified PASS; 4-locale parity 105×4 preserved; hugo clean build confirmed; no lints introduced
+
+**Residual-risk from run-phase (acknowledged — no blocker):**
+- Shortcode double-v render (vv3.0.0-rc2): cosmetic text artifact only, does NOT fail build/AC (documented in progress.md §E.3 residual_risk #1)
+- pre-existing en/ja/zh harness-engineering.md untranslated stub body (out of SPEC scope, not introduced by this SPEC)
+- /Users/ baseline reconciliation: 20 in docs-site/content/ ≤ 21 cited in acceptance.md (this SPEC added 0 new)
