@@ -78,7 +78,7 @@ Run-phase implemented by manager-develop (cycle_type=tdd). REQ-1 doctrine (ladde
 run_status: implemented
 ac_pass_count: 17
 ac_fail_count: 0
-run_commit_sha: <placeholder — backfilled post-commit>
+run_commit_sha: 5de6f19ee
 preserve_list_post_run_count: 6   # 6 pre-existing Go files PRESERVED (tag.go, scanner.go, resolver_query.go, mx_query.go, scanner_debt_test.go, mx_query_debt_test.go)
 l44_pre_commit_fetch: "git fetch origin main → 0 0 (synced)"
 new_warnings_or_lints_introduced: 0
