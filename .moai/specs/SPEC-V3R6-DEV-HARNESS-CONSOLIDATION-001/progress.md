@@ -38,5 +38,5 @@
 - 독립 품질 검증 (sync-auditor rate-limit → orchestrator-direct 대체): 8/8 AC PASS 재확인 + 포팅 충실도(release 956L→169L = 8-phase Enhanced GitHub Flow 전 구조 보존, verbose 예시 제거이지 단계 손실 아님) + doctrine staleness 0(skill-authoring.md migration table만) + Runner 정직 설계(release/github=specialist-held, Runner 미모델링).
 - 사용자-facing 문서 영향 없음 (dev-only 내부 도구 — CHANGELOG/README/docs-site 변경 0).
 - 상태 전환: in-progress → completed (이 sync 커밋이 close 운반).
-- sync_commit_sha: <pending-backfill>
+- sync_commit_sha: 4092e5b93
 - era: V3R6 (H-4: §E.2 + §E.4 + sync_commit_sha).
