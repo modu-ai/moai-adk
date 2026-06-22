@@ -2,7 +2,7 @@
 id: SPEC-DIVECC-EXTENSION-COST-LADDER-001
 title: "Extension-Mechanism Context-Cost Ladder (Hooks → Skills → Plugins → MCP)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-22
 updated: 2026-06-22
 author: manager-spec

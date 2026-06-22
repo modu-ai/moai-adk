@@ -299,3 +299,29 @@ For the canonical per-spawn `Agent(general-purpose, ...)` spawn pattern with per
 - **Embedding domain knowledge in agent body** — domain knowledge belongs in the active conversation context (per-spawn prompt) where the orchestrator can tailor it to the current task; embedding it in agent body traps it behind explicit invocation
 - **Re-introducing archived agent files** — the 12 agents archived offline during the catalog consolidation MUST NOT be reintroduced under `.claude/agents/` without a dedicated revival SPEC justifying the recurrence criterion; see `.claude/rules/moai/workflow/archived-agent-rejection.md` § Anti-Patterns
 - **Adding a new MoAI-custom agent without a SPEC** — the 8-agent retention ceiling is an architectural invariant; new agent additions must justify the "keep spawning the same worker" criterion via a SPEC that documents recurrence evidence
+
+## Extension-Mechanism Context-Cost Ladder
+
+Claude Code offers four mechanisms to extend a harness — Hooks, Skills, Plugins, and MCP servers. They do not cost the model's context window equally. Choosing among them is a **context-cost decision**, not only a capability decision: each mechanism injects a different amount of token-weight into the session, and the cheapest mechanism that meets the capability requirement should be preferred.
+
+### The four-tier cost ladder (paper claim)
+
+The four-tier classification below is the claim of the paper *"Dive into Claude Code"* (arXiv:2604.14228) about Claude Code's internals. It is recorded here as an external grounding for the decision criterion — NOT as a moai-adk measurement. As the paper observes, the mechanisms occupy distinct context-cost tiers:
+
+| Mechanism | Context cost (paper claim) | Why |
+|-----------|----------------------------|-----|
+| **Hooks** | **zero** | Shell scripts executed out-of-band by the runtime; they emit exit codes / structured JSON and never inject tokens into the model's context window. |
+| **Skills** | **low** | Progressive disclosure — metadata is listed at session start (~100 tokens), the body loads on invocation (~5K tokens), and bundled files load only on demand. See the cross-reference below for the within-skill cost axis. |
+| **Plugins** | **medium** | A plugin bundles agents, skills, commands, and hooks; loading a plugin's agents and skills adds their combined footprint to the session. |
+| **MCP** | **high** | Each MCP server's tool schemas are injected into context; a server exposing many tools is the densest per-capability context cost, mitigated only by deferred / `alwaysLoad` gating. |
+
+### Decision criterion
+
+Choosing an extension mechanism is a context-cost decision. Prefer the cheapest mechanism on the ladder that meets the capability requirement: reach for a Hook before a Skill, a Skill before a Plugin, and a Plugin before an MCP server, escalating only when the cheaper tier cannot deliver the needed capability. The natural pull toward the most *capable* mechanism (an MCP server, a plugin) silently inflates the per-session context budget when a *cheaper* mechanism (a hook, a skill) would have sufficed.
+
+### Parallel cost axes
+
+This mechanism→context-cost ladder is a *cross-mechanism* cost axis. It runs parallel to two other cost axes already documented in the rule tree, and the three together form a coherent cost-model layer for harness authoring:
+
+- the **within-skill** cost axis — `.claude/rules/moai/development/skill-authoring.md` § Progressive Disclosure (the 3-level metadata / body / bundled taxonomy that sets a Skill's "low" position on the ladder above);
+- the **per-spawn** cost axis — `.claude/rules/moai/workflow/dynamic-workflows.md` § Purpose-driven model+effort selection (the purpose→effort taxonomy, read-only-extract→low … implement→xhigh, governing the token cost of each agent spawn).
