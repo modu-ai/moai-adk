@@ -63,13 +63,13 @@ The breaker mode is NOT reliably fixed by switching to `model: inherit`, because
 
 ## `[1m]` Constraint Re-Verification (CC 2.1.178)
 
-The `[1m]` entitlement-inheritance constraint was re-verified against CC 2.1.178 (2026-06-16, M1 research milestone). **Verdict: STILL-ACTIVE (conservative).** Per-agent `model:` pins remain forbidden regardless of this verdict (the re-verification SPEC records per-agent pinning as out-of-scope).
+The `[1m]` entitlement-inheritance constraint was re-verified against CC 2.1.178. **Verdict: STILL-ACTIVE (conservative).** Per-agent `model:` pins remain forbidden regardless of this verdict (the re-verification records per-agent pinning as out-of-scope).
 
-Evidence fetched 2026-06-16 via the GitHub issue API + the canonical CC CHANGELOG:
+Evidence fetched via the GitHub issue API + the canonical CC CHANGELOG:
 
-- Issue #45847 (skill with `model:` fails from `[1m]` parent): **closed** (2026-04-13), labeled `duplicate` — no explicit "fixed" resolution.
-- Issue #51060 (subagent `model: opus` spawn fails): **closed** (2026-05-26), labeled `bug, area:model, area:agents, stale` — no CHANGELOG entry fixes the spawn-time entitlement-inheritance root cause.
-- Issue #36670 (Team teammates don't inherit `[1m]` from leader): **OPEN** (updated 2026-06-02) — the Team-mode path is confirmed unfixed at CC 2.1.178.
+- Issue #45847 (skill with `model:` fails from `[1m]` parent): **closed**, labeled `duplicate` — no explicit "fixed" resolution.
+- Issue #51060 (subagent `model: opus` spawn fails): **closed**, labeled `bug, area:model, area:agents, stale` — no CHANGELOG entry fixes the spawn-time entitlement-inheritance root cause.
+- Issue #36670 (Team teammates don't inherit `[1m]` from leader): **OPEN** — the Team-mode path is confirmed unfixed at CC 2.1.178.
 - CC 2.1.172 fixes ("1M context stuck session", "doubled `[1m]` suffix") address the *symptom* and *suffix normalization*, NOT the *spawn-time entitlement mismatch*. CC 2.1.173/2.1.174 are Fable-5-suffix and background-env-inheritance fixes — orthogonal.
 
 Because the Team-mode path (#36670) is open and no CHANGELOG resolves the single-spawn root cause, the constraint is treated as still-active. A follow-up SPEC (conditional) MAY re-enable per-agent pinning only when #36670 is closed-with-fixed AND a CHANGELOG confirms Team `[1m]` inheritance for explicit `model:` teammates.
@@ -87,6 +87,22 @@ Because the Team-mode path (#36670) is open and no CHANGELOG resolves the single
 Semantics (CC 2.1.175 CHANGELOG verbatim): _"Added `enforceAvailableModels` managed setting — when enabled, the `availableModels` allowlist also constrains the Default model (a Default that would resolve to a disallowed model now falls back to the first allowed model)"_. CC 2.1.176 further tightens enforcement: alias model picks can no longer be redirected to a blocked model via `ANTHROPIC_DEFAULT_*_MODEL` env vars.
 
 Why this is `[1m]`-safe: the lever operates on the **Default** model resolution at the settings level, not on per-agent explicit pins, so it does not trigger the spawn-time entitlement-inheritance failure (#45847/#51060/#36670). The cost-routing thesis (route the busy-agent cost through Sonnet, not Opus) flows through the Default; deep-reasoning exceptions use per-spawn `Agent(model: "opus")` only for the 5-10% of tasks where Opus wins (architecture, complex perf) — and even those inherit the parent `[1m]` entitlement because they are spawned without a frontmatter `model:` pin (the per-spawn `model` parameter is a runtime arg, distinct from the frontmatter field that triggers the bug).
+
+### GLM-mode reconciliation
+
+[ZONE:Evolvable] [HARD] The `enforceAvailableModels: true` cost lever above interacts with GLM mode. When GLM mode is active (`moai glm` whole-session, or the GLM teammate panes of `moai cg`), the GLM activation sets `ANTHROPIC_DEFAULT_OPUS_MODEL` to the configured GLM high model (default `glm-5.2[1m]`, surfaced in the model UI as the alias `opus[1m]`). CC 2.1.176 redirect-blocking semantics mean that an `ANTHROPIC_DEFAULT_*_MODEL` redirect to a model NOT in `availableModels` is blocked, and the active model silently falls back to the first allowed model (Sonnet). Before reconciliation, the allowlist was `["sonnet", "opus", "haiku"]` — which does NOT contain `opus[1m]`, so every GLM session fell back to Sonnet and the GLM cost-optimization purpose was defeated.
+
+The reconciliation EXPANDS the allowlist to include the `[1m]` canonical variants so the GLM redirect is admitted:
+
+```json
+"availableModels": ["sonnet", "opus", "haiku", "opus[1m]", "sonnet[1m]"]
+```
+
+The expansion is **allowlist-only**: the Default model stays `sonnet` and `enforceAvailableModels` stays `true`, both byte-unchanged. A non-GLM (Claude `moai cc` / plain Claude) session still resolves its Default to Sonnet and still has enforcement active — the only behavioral change is that a GLM high/opus redirect (`opus[1m]`) is no longer blocked, because it is now an allowed model.
+
+The added aliases (`opus[1m]`, `sonnet[1m]`) are both members of the canonical alias set `modelCanonical` (`internal/web/validate.go`: `["opus", "opus[1m]", "sonnet", "sonnet[1m]", "haiku", "opusplan"]`) — no non-canonical or raw GLM model id is introduced into the allowlist. The GLM model id itself (`glm-5.2[1m]`) is NOT added; only its UI-surface alias (`opus[1m]`) is.
+
+Scope note: this reconciliation is a **static template allowlist expansion** in `.claude/settings.json.tmpl`. It touches no Go runtime code (`glm.go` / `launcher.go` / `settings.go` unchanged) and writes nothing to `settings.local.json` — so the solo `moai glm` "settings.local.json clean" design (no GLM env leak to subsequent plain-`claude` invocations) is preserved.
 
 ## Model Policy Tiers
 

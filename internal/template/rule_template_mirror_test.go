@@ -49,6 +49,12 @@ var workflowOptMirroredPaths = []string{
 	// internal SPEC-IDs stripped per CLAUDE.local.md §25). Enrolled here so future
 	// single-tree edits on this always-loaded canonical rule are caught at CI.
 	".claude/rules/moai/workflow/session-handoff.md",
+	// model-policy.md mirror parity. The GLM-mode reconciliation subsection
+	// (availableModels [1m] expansion) is added to BOTH trees byte-identically;
+	// pre-existing internal dates were stripped from both per CLAUDE.local.md §25 so
+	// byte-parity holds and the template mirror is internal-content clean. Enrolled
+	// so future single-tree edits on this rule are caught at CI.
+	".claude/rules/moai/development/model-policy.md",
 	// Layer G — evaluator profile D7/D8 weight registration
 	".moai/config/evaluator-profiles/default.md",
 	".moai/config/evaluator-profiles/frontend.md",
