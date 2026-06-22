@@ -77,7 +77,7 @@ m1_to_mN_commit_strategy: single bundled commit (Tier M, Hybrid Trunk main-direc
 
 ```yaml
 sync_complete_at: 2026-06-22
-sync_commit_sha: <TBD-backfill>  # sync-phase 3-phase close commit SHA (backfilled post-commit)
+sync_commit_sha: be0cf8060  # sync-phase 3-phase close commit SHA (backfilled post-commit)
 sync_status: completed
 b12_self_test_a: grep -c 'SPEC-STEERING-ALIGN-CLAUDEMD-DIET-001' CHANGELOG.md  # result: 1 (single entry appended, no duplicate)
 b12_self_test_b: grep -cE '^\| \*\*AC-' acceptance.md | wc -c → 10 ACs in acceptance.md (SSOT) → 10 ACs in CHANGELOG entry count match → PASS
