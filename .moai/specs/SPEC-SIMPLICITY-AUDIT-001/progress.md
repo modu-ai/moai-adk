@@ -73,7 +73,7 @@ Tier: **S**. cycle_type=tdd. plan-auditor iter-1 PASS 0.89 (threshold 0.75); D1-
 ```yaml
 sync_complete_at: 2026-06-23
 sync_status: completed
-sync_commit_sha: <pending-backfill>
+sync_commit_sha: 551076897
 status_transition: "in-progress -> completed (V3R6 3-phase close)"
 lint_status: "spec-lint 0 findings"
 era: V3R6
