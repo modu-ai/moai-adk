@@ -87,4 +87,20 @@ coverage:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs>_
+```yaml
+sync_complete_at: 2026-06-23
+sync_commit_sha: (pending — to be backfilled after commit)
+sync_status: completed
+changelog_entry_added: true
+changelog_position: [Unreleased] section
+readme_status: no-update-needed
+docs_site_impact: none
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed"
+  updated_field_refreshed: true
+canary_compliance_check:
+  preserve_list_respected: true
+  allowed_paths_only: true
+  template_tree_untouched: true
+  subagent_boundary_clean: true
+```

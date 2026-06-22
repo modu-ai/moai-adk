@@ -2,7 +2,7 @@
 id: SPEC-WEB-CONSOLE-010
 title: "Web Console — Shared Field-Schema SSOT for moai web + moai profile setup"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-06-22
 updated: 2026-06-23
 author: manager-spec
