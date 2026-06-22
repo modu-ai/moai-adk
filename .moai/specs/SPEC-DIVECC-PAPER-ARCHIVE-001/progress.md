@@ -53,13 +53,13 @@ Run-phase가 정확히 2개 산출물을 생성했다 (+ spec.md frontmatter `dr
 
 ```yaml
 run_complete_at: 2026-06-22
-run_commit_sha: <backfill — populated after run commit>
+run_commit_sha: 8fb26977c9f077a5433f76305d51d3b2e0296108
 run_status: audit-ready
 ac_pass_count: 8
 ac_fail_count: 0
 preserve_list_post_run_count: 0   # 4 citation surface 본문 + precedent gears-paper-validation.md + 그 외 모두 PRESERVE
 l44_pre_commit_fetch: 0 0 (synced — pre-flight git rev-list left-right, no parallel race)
-l44_post_push_fetch: <backfill — populated after push>
+l44_post_push_fetch: origin/main == 8fb26977c (push fast-forward 8a253cbd2..8fb26977c, post-push fetch confirmed synced)
 new_warnings_or_lints_introduced: 0   # doc-only, no Go change
 cross_platform_build: n/a (no Go change — doc-only archival SPEC)
 total_run_phase_files: 4   # archive(NEW) + runtime-recovery-doctrine.md(1 line) + spec.md(frontmatter) + progress.md(§E.2/§E.3)
