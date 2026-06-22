@@ -58,7 +58,7 @@ Additional verification:
 
 - **sync_status**: audit-ready
 - **sync_complete_at**: 2026-06-22
-- **sync_commit_sha**: (to be backfilled after close commit)
+- **sync_commit_sha**: 4566511d3
 - **documentation_update**: CHANGELOG entry (doctrine-only SPEC, no README impact)
 - **frontmatter_transition**: in-progress → completed (status field updated in spec.md)
 - **changelog_drift**: 0 (doctrine-only, no user-facing features)
