@@ -95,4 +95,20 @@ residual_risk: "scripts/i18n-validator perf-budget test FAIL — out-of-scope, p
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs>_
+```yaml
+sync_status: completed
+sync_commit_sha: 5de6f19ee  # backfill will follow, see below
+sync_completeness: 100%
+sync_artifacts_touched:
+  - spec.md (frontmatter: status in-progress → completed + updated timestamp)
+  - CHANGELOG.md ([Unreleased] entry: 17 ACs + 2 REQs summary)
+mirror_parity:
+  - moai-constitution.md: live vs template PASS
+  - karpathy-quickref.md: live vs template PASS
+  - mx-tag-protocol.md: live vs template PASS
+  - mx-tag.md: live vs template PASS
+lint_status: PASS (StatusGitConsistency warning now resolved: status: completed)
+go_build: PASS (native + GOOS=windows GOARCH=amd64)
+go_test: PASS (14 test cases + 4 existing baselines unbroken)
+```
+

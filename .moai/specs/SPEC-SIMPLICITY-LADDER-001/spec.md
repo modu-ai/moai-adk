@@ -2,7 +2,7 @@
 id: SPEC-SIMPLICITY-LADDER-001
 title: "Simplicity Decision Ladder + @MX:DEBT Deferred-Simplification Tag"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-06-22
 updated: 2026-06-23
 author: manager-spec
