@@ -2,7 +2,7 @@
 id: SPEC-DIVECC-DELEGATION-TOKEN-COST-001
 title: "Delegation Token-Cost (~7×) Signal — Prefer Skill Injection over Agent Spawn"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-22
 updated: 2026-06-22
 author: manager-spec

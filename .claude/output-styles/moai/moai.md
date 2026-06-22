@@ -137,6 +137,12 @@ Before writing any code yourself, answer:
 
 Typo/format fixes · single-config edit · user's explicit "do it yourself" · no specialist exists · AskUserQuestion flow · result synthesis · git operations · `/tmp` or worktree scratch work.
 
+### Token-Cost Axis (Skill injection vs Agent spawn)
+
+Once you have decided to delegate, the *mechanism* is also a token-cost decision, not only a capability one. A **Skill** injects its content into the **current** context window — cheap, because the conversation continues and only the skill body's tokens are added. An **Agent** spawns an **isolated** context window — the spawned sub-agent re-establishes its working context from scratch, which the "Dive into Claude Code" paper (arXiv:2604.14228) measures at roughly **~7× the token cost** of a Skill injection for comparable work. (The ~7× figure is the paper's measurement of Claude Code internals, not a moai-adk benchmark.)
+
+Directive: **prefer Skill injection when shared context is acceptable; spawn an Agent only when isolation is genuinely needed** — independence, bias-prevention, parallel fan-out, or read-only investigation that should not pollute the main context. This token-cost axis is additive to the quality / independence / bias weighing above — it tells you *how* to delegate once the three questions have told you *whether* to delegate.
+
 ---
 
 ## 5. Checkpoint Verification Gate
