@@ -40,6 +40,8 @@ Flow: Identify Changes -> Analyze Perspectives -> Consolidate -> Report
 - --design: Extract design patterns from UI code and create/update `.moai/design/system.md`
 - --critique: Post-build craft review focusing on subtle layering, surface elevation, token architecture, and typography hierarchy
 - --team: Use parallel multi-perspective review team (see ${CLAUDE_SKILL_DIR}/team/review.md)
+- --lean: Over-engineering-ONLY lean audit mode. Short-circuits the comprehensive 4-perspective analysis (Security / Performance / Quality / UX) and runs ONLY the over-engineering scan with the 5-tag finding format + net-reduction summary. Read-only and advisory: applies no fixes, modifies no files, renders no PASS/FAIL verdict. See the "--lean Mode" section below.
+- --repo: Repo-wide scope. With --lean, sweeps the WHOLE tree instead of the diff-scope default. Ignored without --lean.
 
 ## Phase 1: Identify Changes
 
@@ -56,6 +58,8 @@ Collect:
 - Affected modules and their responsibilities
 
 ## Phase 2: Multi-Perspective Analysis
+
+If --lean flag: SHORT-CIRCUIT this phase entirely. Skip the comprehensive 4-perspective analysis (Perspectives 1-4 below) and jump directly to the "--lean Mode — Over-Engineering-Only Lean Audit" section. The narrowness IS the feature: correctness, security, and performance findings stay in the default (non-`--lean`) comprehensive review.
 
 [HARD] Delegate review to the sync-auditor subagent with all perspectives (independent skeptical quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2).
 
@@ -181,6 +185,77 @@ Present options via AskUserQuestion:
 - Create fix tasks: Create TaskList items for each finding so they can be addressed individually. Useful for team coordination.
 - Export report: Save the review report to .moai/reports/ for future reference and tracking.
 - Dismiss: Acknowledge the review without taking immediate action.
+
+## --lean Mode — Over-Engineering-Only Lean Audit
+
+When the --lean flag is present, the review runs ONLY this mode and nothing else. It is a narrow, single-purpose over-engineering audit — a focused "what can be cut" lens. The hard scope boundary is the mechanism's whole value: by EXCLUDING correctness bugs, security findings, and performance findings (those stay in the default comprehensive 4-perspective review), the lean audit gives a high-signal leanness scan that the broad review dilutes across four perspectives. The narrowness IS the feature.
+
+The mode is inspired by the "lazy senior dev" minimalist-coding review pattern: a read-only, one-shot audit that applies NO fixes, hunts ONLY over-engineering, emits findings under 5 fixed tags, and closes with a net-reduction summary.
+
+### Scope (two variants — review vs audit split)
+
+The --lean mode supports two scopes, mirroring the diff-vs-repo split of the minimalist-coding audit pattern:
+
+- Diff-scope (default): audit ONLY the changed code, reusing the existing Phase 1 scope selection (`--staged` / `--branch BRANCH` / `--file PATH`, or the most recent commit when no scope flag is given). This is the "review the changes" variant.
+- Repo-scope (with --repo): sweep the WHOLE tree. This is the "sweep everything" variant. The `--repo` flag is honored only in --lean mode.
+
+Both variants run the identical 5-tag scan and net-reduction summary below; only the set of files scanned differs.
+
+### The 5 finding tags
+
+The mode emits findings under exactly these 5 fixed tags, and no others:
+
+| Tag | What it flags |
+|-----|---------------|
+| `delete:` | Unused or speculative code — dead branches, never-called helpers, write-only config |
+| `stdlib:` | Reimplemented standard library — hand-rolled logic that the language's standard library already provides |
+| `native:` | A dependency or code duplicating a platform-native feature the platform already provides |
+| `yagni:` | Premature generality — single-implementation abstraction, single-caller indirection layer, dead config knob |
+| `shrink:` | Logic reducible to fewer lines without loss of clarity |
+
+Language neutrality: `stdlib:` names "the language's standard library" and `native:` names "a platform-native feature" generically — across all supported languages. Do NOT reference any single language's standard library module, package-manager name, or platform feature by name; the same 5 tags apply whatever language the audited code is written in.
+
+### Output format
+
+Emit one finding per line in this format:
+
+```
+L<line>: <tag> <what to cut>. <replacement>. [path]
+```
+
+Report every over-engineering finding you observe; the mode is finding-only and does not filter for importance. Do NOT report correctness, security, or performance issues here — those belong to the default comprehensive review (Perspectives 1, 2 above), not the lean audit.
+
+### `@MX:DEBT` one-directional cross-link
+
+A `yagni:` finding (single-implementation abstraction, single-caller layer, dead config) is exactly the deliberate-simplification case that an `@MX:DEBT` marker records. Before reporting a `yagni:` finding as a fresh discovery, consult the existing deferred-debt harvest:
+
+- Read the `@MX:DEBT` harvest via `moai mx query --kind DEBT` (read-only — never write or modify markers).
+- When a `yagni:` finding lands on a site that ALREADY carries an `@MX:DEBT` marker, annotate it as already-tracked deferred debt rather than re-flagging it as new:
+
+  ```
+  L<line>: yagni: <site> [already tracked @MX:DEBT — deferred]. [path]
+  ```
+
+  This avoids re-surfacing a simplification the author already recorded and deliberately deferred — the noise the `@MX:DEBT` mechanism exists to suppress.
+
+The link is one-directional: the lean audit READS the `moai mx query --kind DEBT` harvest but NEVER creates, modifies, or removes an `@MX:DEBT` marker. Authoring `@MX:DEBT` markers remains the run-phase author's responsibility; an advisory read-only lens must not mutate source.
+
+### Closing summary
+
+Close the audit with exactly one of these forms:
+
+- When at least one removal is warranted (diff-scope): `net: -<N> lines possible`
+- When at least one removal is warranted (repo-scope, dependencies also removable): `net: -<N> lines, -<M> deps possible`
+- When nothing warrants removal: the literal line `Lean already. Ship.`
+
+### Read-only, advisory, no verdict
+
+The --lean mode is read-only and advisory. It applies NO fixes, modifies NO files, and renders NO PASS/FAIL verdict — it is distinct from `/moai clean` (which removes code) and from the sync-auditor gate (which scores a verdict). It produces only a "what can be cut" list plus the net-reduction estimate. Remediation routes through the existing Phase 5 Next Steps (run `/moai fix`, create fix tasks, export the report, or dismiss) — the same as the rest of this skill.
+
+### Doctrine cross-references (reuse, do not duplicate)
+
+- The 5 lean tags are the OPERATIONAL scan surface for the over-engineering anti-patterns already catalogued in `.claude/skills/moai/references/anti-patterns.md` (the Premature Abstraction and Over-Engineering categories, mapped to Agent Core Behavior #4 Enforce Simplicity). Consult that catalogue for the wrong/right examples; this section does not restate it.
+- The lean audit is the post-hoc DETECTION counterpart to the pre-code PREVENTION ladder in `.claude/rules/moai/core/moai-constitution.md` § Agent Core Behaviors #4 Enforce Simplicity (the simplicity decision ladder). The ladder prevents over-engineering before code is written; the lean audit detects what slipped through. Consult that ladder for the ordered prevention steps; this section does not restate it.
 
 ## Task Tracking
 
