@@ -1,8 +1,8 @@
 ---
 id: SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001
 title: "dev-only 메인테이너 3-커맨드(97/98/99)를 단일 devkit 하네스로 통합"
-version: "0.2.0"
-status: in-progress
+version: "1.0.0"
+status: completed
 created: 2026-06-22
 updated: 2026-06-22
 author: manager-spec
