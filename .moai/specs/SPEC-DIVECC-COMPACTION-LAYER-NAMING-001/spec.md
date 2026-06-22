@@ -2,7 +2,7 @@
 id: SPEC-DIVECC-COMPACTION-LAYER-NAMING-001
 title: "5-Layer Compaction Naming Cross-Reference (Budget Reduction → Snip → Microcompact → Context Collapse → Auto-Compact)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-06-22
 updated: 2026-06-22
 author: manager-spec
