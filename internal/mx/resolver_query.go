@@ -124,6 +124,11 @@ type TagResult struct {
 	// DangerCategory is the danger category of WARN tags (WARN only).
 	DangerCategory string `json:"danger_category,omitempty"`
 
+	// RotRisk flags a DEBT tag whose @MX:UPGRADE trigger is absent (DEBT only).
+	// Value "no-trigger" means the simplification has no exit condition; empty
+	// string (omitted) means a trigger is present.
+	RotRisk string `json:"rotRisk,omitempty"`
+
 	// SpecAssociations is the list of SPEC IDs connected to the tag.
 	SpecAssociations []string `json:"spec_associations"`
 }
@@ -185,6 +190,7 @@ var validKinds = map[TagKind]bool{
 	MXAnchor: true,
 	MXTodo:   true,
 	MXLegacy: true,
+	MXDebt:   true,
 	"":       true, // string means all kinds
 }
 
@@ -312,7 +318,7 @@ func validateQuery(query Query) error {
 		return &InvalidQueryError{
 			Field:   "kind",
 			Value:   string(query.Kind),
-			Message: fmt.Sprintf("allowed values: note, warn, anchor, todo, legacy (actual: %s)", query.Kind),
+			Message: fmt.Sprintf("allowed values: note, warn, anchor, todo, legacy, debt (actual: %s)", query.Kind),
 		}
 	}
 
@@ -397,6 +403,7 @@ func applyFilters(tag Tag, query Query, dangerMatcher *DangerCategoryMatcher, sp
 		CreatedBy:        tag.CreatedBy,
 		LastSeenAt:       tag.LastSeenAt,
 		DangerCategory:   dangerCategory,
+		RotRisk:          tag.RotRisk,
 		SpecAssociations: specAssociations,
 	}, true
 }

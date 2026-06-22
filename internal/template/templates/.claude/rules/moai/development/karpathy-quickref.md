@@ -30,6 +30,8 @@ Mapping Andrej Karpathy's 4 coding principles to MoAI's 6 Agent Core Behaviors w
 - Are these abstractions earning their complexity?
 - Would a staff engineer say "why didn't you just..."?
 
+For the ordered dependency-avoidance decision ladder (stdlib → native platform feature → installed dependency → one line → minimum code, applied before writing code), see `.claude/rules/moai/core/moai-constitution.md` § Agent Core Behaviors #4 Enforce Simplicity. The ladder is the capability-source ordering axis that complements these LOC/abstraction checkpoint questions.
+
 ### Surgical Changes
 
 - Am I touching only what was asked?

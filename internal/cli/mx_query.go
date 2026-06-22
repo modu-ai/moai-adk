@@ -49,16 +49,16 @@ moai mx query --file-prefix internal/auth/ --format table`,
 			if kind != "" {
 				validKinds := map[string]bool{
 					"note": true, "warn": true, "anchor": true,
-					"todo": true, "legacy": true,
+					"todo": true, "legacy": true, "debt": true,
 					"NOTE": true, "WARN": true, "ANCHOR": true,
-					"TODO": true, "LEGACY": true,
+					"TODO": true, "LEGACY": true, "DEBT": true,
 				}
 				if !validKinds[kind] {
-					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "InvalidQuery: --kind value ' '%s' is invalid. Allowed values: note, warn, anchor, todo, legacy\n", kind)
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "InvalidQuery: --kind value ' '%s' is invalid. Allowed values: note, warn, anchor, todo, legacy, debt\n", kind)
 					return &mx.InvalidQueryError{
 						Field:   "kind",
 						Value:   kind,
-						Message: "Allowed values: note, warn, anchor, todo, legacy",
+						Message: "Allowed values: note, warn, anchor, todo, legacy, debt",
 					}
 				}
 			}
@@ -131,6 +131,8 @@ moai mx query --file-prefix internal/auth/ --format table`,
 					tagKind = mx.MXTodo
 				case "legacy", "LEGACY":
 					tagKind = mx.MXLegacy
+				case "debt", "DEBT":
+					tagKind = mx.MXDebt
 				}
 			}
 
@@ -186,7 +188,7 @@ moai mx query --file-prefix internal/auth/ --format table`,
 
 	// REQ-SPC-004-001 flag Register
 	cmd.Flags().StringVar(&specID, "spec", "", "SPEC ID filter (e.g.: SPEC-AUTH-001)")
-	cmd.Flags().StringVar(&kind, "kind", "", "TAG kind/type filter (note|warn|anchor|todo|legacy)")
+	cmd.Flags().StringVar(&kind, "kind", "", "TAG kind/type filter (note|warn|anchor|todo|legacy|debt)")
 	cmd.Flags().IntVar(&fanInMin, "fan-in-min", 0, "minimum fan-in count filter (ANCHOR only)")
 	cmd.Flags().StringVar(&danger, "danger", "", "danger category filter (WARN only)")
 	cmd.Flags().StringVar(&filePrefix, "file-prefix", "", "file path prefix filter")

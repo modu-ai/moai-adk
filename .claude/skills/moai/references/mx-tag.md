@@ -36,11 +36,11 @@ This file contains ONLY supplementary operational details not covered in the pro
 
 ```
 mx_tag       := comment_prefix SPACE "@MX:" tag_type ":" SPACE description NEWLINE sub_lines*
-tag_type     := "NOTE" | "WARN" | "ANCHOR" | "TODO"
+tag_type     := "NOTE" | "WARN" | "ANCHOR" | "TODO" | "DEBT"
 description  := [auto_prefix] free_text
 auto_prefix  := "[AUTO]" SPACE
 sub_lines    := comment_prefix SPACE "@MX:" sub_key ":" SPACE sub_value NEWLINE
-sub_key      := "SPEC" | "LEGACY" | "REASON" | "TEST" | "PRIORITY"
+sub_key      := "SPEC" | "LEGACY" | "REASON" | "TEST" | "PRIORITY" | "CEILING" | "UPGRADE"
 sub_value    := (SPEC: spec_id) | (LEGACY: "true") | (REASON: free_text) | (TEST: test_name) | (PRIORITY: priority_level)
 spec_id      := "SPEC-" UPPER+ "-" DIGIT{3}
 priority_level := "P1" | "P2" | "P3"

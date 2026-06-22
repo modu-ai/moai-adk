@@ -22,8 +22,9 @@ This rule applies to all agents working with source code in the supported progra
 - `@MX:WARN` -- Danger zone (requires @MX:REASON)
 - `@MX:ANCHOR` -- Invariant contract (requires @MX:REASON)
 - `@MX:TODO` -- Incomplete work
+- `@MX:DEBT` -- Deliberate, working simplification with a named ceiling and upgrade trigger
 
-**Sub-lines:** @MX:SPEC, @MX:LEGACY, @MX:REASON, @MX:TEST, @MX:PRIORITY
+**Sub-lines:** @MX:SPEC, @MX:LEGACY, @MX:REASON, @MX:TEST, @MX:PRIORITY, @MX:CEILING, @MX:UPGRADE
 
 ## When to Add Tags
 
@@ -48,12 +49,28 @@ This rule applies to all agents working with source code in the supported progra
 - SPEC requirement is not implemented
 - Error returned without handling
 
+**@MX:DEBT** -- Add when:
+- A deliberate, working simplification is chosen over a fuller implementation
+- The simplification is correct within a known limit (record the limit as `@MX:CEILING`)
+- The simplification has a known revisit trigger (record it as `@MX:UPGRADE`)
+
+A `@MX:DEBT` marker carries two sub-lines: `@MX:CEILING` (the named limit the simplification is valid up to) and `@MX:UPGRADE` (the trigger condition for revisiting it). The marker is an inline source comment, NOT a separate JSON ledger — it is harvested by grep or `moai mx query --kind DEBT`. Example:
+
+```
+// @MX:DEBT: in-memory map cache, no eviction
+// @MX:CEILING: < 10k entries
+// @MX:UPGRADE: switch to LRU when entry count exceeds 10k
+```
+
+A `@MX:DEBT` marker that lacks an `@MX:UPGRADE` sub-line has no exit condition and silently rots; `moai mx query --kind DEBT --json` flags it with `"rotRisk": "no-trigger"`. The `@MX:UPGRADE` absence is the rot signal; an absent `@MX:CEILING` is a quality note, not the rot gate.
+
 ## When to Update Tags
 
 - **ANCHOR**: Update when fan_in count changes or SPEC is updated
 - **NOTE**: Re-review when function signature changes
 - **WARN**: Remove when dangerous structure is improved
 - **TODO**: Remove when completed (GREEN/IMPROVE phase)
+- **DEBT**: Update when the ceiling or upgrade trigger changes; never auto-escalate
 
 ## When to Remove Tags
 
@@ -61,6 +78,7 @@ This rule applies to all agents working with source code in the supported progra
 - **WARN**: Remove when danger is eliminated
 - **NOTE**: Remove when code is deleted
 - **ANCHOR**: NEVER auto-delete; demote to NOTE via report
+- **DEBT**: Remove when the `@MX:UPGRADE` trigger fires and the simplification is replaced — NOT when other work completes
 
 ## Tag Lifecycle Rules
 
@@ -84,6 +102,14 @@ This rule applies to all agents working with source code in the supported progra
 - Created when context needed
 - Updated after signature changes
 - Obsolete when code deleted
+
+**DEBT:**
+- Created when a deliberate, working simplification is made (the code IS done and correct within its `@MX:CEILING`)
+- Persists across many GREEN phases until its `@MX:UPGRADE` trigger fires — this is by design
+- Resolved when the `@MX:UPGRADE` trigger fires, NOT when "work completes" (the work was never incomplete)
+- Does NOT auto-escalate to `@MX:WARN`: the `@MX:TODO` → `@MX:WARN` ">3 unresolved iterations" escalation rule does NOT apply to DEBT, because a long-lived DEBT is working as intended, not a stalled task. Auto-escalating it would generate false danger signals.
+
+`@MX:DEBT` is distinct from `@MX:TODO`: a TODO marks incomplete work resolved in the GREEN phase (the code is not yet done); a DEBT marks a complete, working simplification with a named ceiling and an upgrade trigger that may legitimately persist across many GREEN phases (the code IS done, but knowingly bounded).
 
 ## File Exclusion Rules
 
