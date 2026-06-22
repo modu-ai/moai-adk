@@ -58,7 +58,7 @@ Notes:
 
 ```yaml
 sync_complete_at: 2026-06-22
-sync_commit_sha: <backfill — emitted post-close-commit>
+sync_commit_sha: 6bc9cf028610629a42909bf453ef1a180129e3f4
 sync_status: completed
 final_status_transition: "in-progress → completed (merged on the single sync commit, V3R6 3-phase close)"
 docs_updated: "CHANGELOG skipped (internal .claude/rules/ loading optimization, not user-facing); README/docs-site N/A"
