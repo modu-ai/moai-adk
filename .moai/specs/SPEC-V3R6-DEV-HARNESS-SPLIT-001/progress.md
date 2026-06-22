@@ -44,7 +44,7 @@ _<plan-phase 완료. 다음: plan-auditor 감사 → 구현 착수 승인 → ru
 
 ```yaml
 run_complete_at: 2026-06-22
-run_commit_sha: <backfill-after-commit>
+run_commit_sha: de13ecc4c
 run_status: implemented
 ac_pass_count: 9
 ac_pass_with_debt_count: 1   # AC-DHS-005 (broad find3 pattern pre-existing false-match — not a SPLIT-001 leak)
