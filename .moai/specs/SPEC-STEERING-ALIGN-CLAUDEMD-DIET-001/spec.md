@@ -2,7 +2,7 @@
 id: SPEC-STEERING-ALIGN-CLAUDEMD-DIET-001
 title: "Steering-Align: CLAUDE.md always-loaded body diet (per-line-test deletion + rule-SSOT pointer-ization + changelog-footer removal + @import token-neutrality honesty)"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-06-22
 updated: 2026-06-22
 author: manager-spec

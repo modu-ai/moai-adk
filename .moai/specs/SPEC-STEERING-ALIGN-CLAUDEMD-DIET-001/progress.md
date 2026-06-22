@@ -75,4 +75,24 @@ m1_to_mN_commit_strategy: single bundled commit (Tier M, Hybrid Trunk main-direc
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_complete_at: 2026-06-22
+sync_commit_sha: <TBD-backfill>  # sync-phase 3-phase close commit SHA (backfilled post-commit)
+sync_status: completed
+b12_self_test_a: grep -c 'SPEC-STEERING-ALIGN-CLAUDEMD-DIET-001' CHANGELOG.md  # result: 1 (single entry appended, no duplicate)
+b12_self_test_b: grep -cE '^\| \*\*AC-' acceptance.md | wc -c → 10 ACs in acceptance.md (SSOT) → 10 ACs in CHANGELOG entry count match → PASS
+b12_self_test_c: file existence verification — ls .moai/specs/SPEC-STEERING-ALIGN-CLAUDEMD-DIET-001/spec.md internal/template/templates/CLAUDE.md CLAUDE.md → all exist
+changelog_entry_position: "## [Unreleased] / ### Changed" — prepended to existing epic entries
+frontmatter_status_transitions:
+  plan_phase: "spec.md status drafted 2026-06-22"
+  run_phase: "spec.md status in-progress at M1 (manager-develop implicit per run spawn)"
+  sync_phase: "spec.md status completed on sync commit (manager-docs 3-phase close)"
+canary_compliance_check:
+  tier: M → 4-artifact set (spec.md + plan.md + acceptance.md + progress.md) ✓
+  ac_matrix_body_update_prohibited: PASS (only spec.md frontmatter status + updated date changed; body untouched)
+  template_parity: byte-identical dual-tree (CLAUDE.md + internal/template/templates/CLAUDE.md) ✓
+  section_hierarchy_rule_compliance: spec.md has "## Out of Scope" h2 + "### Out of Scope —" h3 sub-section(s) ✓
+  cross_platform_artifact_gen: markdown-only diet → no platform-specific artifacts; template-first source ✓
+```
+
+---
