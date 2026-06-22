@@ -72,12 +72,12 @@ attribution injection, or any unrelated `internal/hook` code.
 
 ```yaml
 run_complete_at: 2026-06-23
-run_commit_sha: <backfill-after-commit>
+run_commit_sha: 17b7c5ba915fe6f6d5bd6a918a6b438f9e3344fd  # post-rebase onto origin/main ee53faf6f (pre-rebase 6f14a3ff0 rewritten by clean disjoint-scope rebase)
 run_status: implemented
 ac_pass_count: 17
 ac_fail_count: 0
 preserve_list_post_run_count: 0  # zero PRESERVE-list violations (rule body untouched, cg_detect.go untouched)
-l44_pre_commit_fetch: pending  # git fetch origin main executed immediately before commit (race mitigation)
+l44_pre_commit_fetch: "origin ahead 3 (SIMPLICITY-LADDER-001 x2 + DIVECC-INVENTORY-VIEW-001), disjoint scope → clean rebase onto ee53faf6f"
 l44_post_push_fetch: pending
 new_warnings_or_lints_introduced: 0  # golangci-lint "0 issues."
 cross_platform_build:
