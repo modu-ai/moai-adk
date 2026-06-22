@@ -81,7 +81,7 @@ The −3644B reduction (55306 → 51662, both trees identical) is attributable S
 ## §E.3 Run-phase Audit-Ready Signal
 
 - **run_complete_at**: 2026-06-23
-- **run_commit_sha**: `586d25974` (worktree branch `worktree-agent-a49e2b74dda4ec89d`; orchestrator reconciles to main + pushes per B9 push-override — parallel SPEC-DIVECC-INVENTORY-VIEW-001 session active)
+- **run_commit_sha**: `b500f5209` (on main post-reconcile; pre-rebase SHA 586d25974 superseded when the orchestrator rebased the 5-commit stack over parallel SPEC-SIMPLICITY-AUDIT-001 commits — disjoint file sets, clean rebase)
 - **run_status**: implemented (all 9 MUST-blocking ACs PASS; AC-OSS-001 behavioral-PASS per REQ-OSS-008)
 - **ac_pass_count**: 9
 - **ac_fail_count**: 0
@@ -100,7 +100,7 @@ The −3644B reduction (55306 → 51662, both trees identical) is attributable S
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - **sync_status**: audit-ready
-- **sync_commit_sha**: `ecc67a18c`
+- **sync_commit_sha**: `84196dcd7` (on main post-reconcile; pre-rebase SHA ecc67a18c superseded by the same rebase)
 - **status transition**: in-progress → completed (rides this sync commit per the 3-phase close; the manager-docs-owned transition was performed orchestrator-direct per the established Steering-Align sync pattern — manager-docs spawn avoided to bypass large-`moai.md` PTL risk, matching P2 CLAUDEMD-DIET-001 / P3 GUARDRAIL-HOOK-001)
 - **CHANGELOG**: entry added under [Unreleased] § Changed (mirrors the P2/P3 sibling style)
 - **diet result**: 782→756L / 55306→51662B per tree, byte-identical; AC-OSS-001 **behavioral-PASS** (756 > 630 ceiling, preservation-forced — ~60 of §8 Session-Handoff's 84 lines are render-SSOT and were KEPT, not over-cut; AP-OSS-003 avoided)
