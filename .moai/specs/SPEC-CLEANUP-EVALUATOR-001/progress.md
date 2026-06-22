@@ -32,7 +32,7 @@ section present (5 H3 sub-headings); Tier S justified. Grounding pre-verified.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: PENDING-BACKFILL
+sync_commit_sha: 7404d0f03fbe21112195948270b0470d0c87c5c5
 
 3-phase close (plan→run→sync): status in-progress→completed.
 - evaluator 제거 + codemaps 동기화 origin/main 반영 (run: f8c245e2f).
