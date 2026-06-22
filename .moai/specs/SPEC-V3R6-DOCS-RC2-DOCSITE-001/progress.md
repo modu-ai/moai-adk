@@ -84,7 +84,7 @@ residual_risk:
 
 ```yaml
 sync_complete_at: 2026-06-22
-sync_commit_sha: 91f4b572e
+sync_commit_sha: bc6585bc1
 sync_status: completed
 frontmatter_status_transitions:
   spec_md: "in-progress → completed"
@@ -99,7 +99,7 @@ b12_self_test_c: "File path verification: sync artifacts committed on worktree b
 **Sync-phase Deliverables (3-phase close):**
 
 - All three SPEC documents (spec.md / plan.md / acceptance.md) frontmatter status transitioned in-progress → completed (this commit)
-- progress.md §E.4 populated with sync_commit_sha (5cc9114f6, the sync commit hash on main after orchestrator merge)
+- progress.md §E.4 populated with sync_commit_sha (bc6585bc1, the on-main sync-phase + 3-phase close commit)
 - CHANGELOG.md entry: NOT added by this agent — owned by sibling SPEC-V3R6-DOCS-RC2-README-001 (cohort sync-phase) per spec.md §F Out of Scope
 - README: NOT modified by this agent — owned by sibling README-001 SPEC per spec.md §F Out of Scope
 - docs-site content: all 15 AC verified PASS; 4-locale parity 105×4 preserved; hugo clean build confirmed; no lints introduced
