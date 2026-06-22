@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -20,6 +19,18 @@ import (
 
 // unifiedLaunchFunc is the function used by unifiedLaunch. Override in tests.
 var unifiedLaunchFunc = unifiedLaunchDefault
+
+// newDetectorFn constructs the tmux detector used by applyCGMode. It is a
+// package-level seam so tests can inject a fake detector (e.g. to simulate the
+// REQ-CGH-008 tmux-present-but-unavailable state: InTmuxSession()==true while
+// IsAvailable()==false). Production code uses the real SystemDetector.
+var newDetectorFn = func() tmux.Detector { return tmux.NewDetector() }
+
+// injectTmuxSessionEnvFn is the seam applyCGMode uses to inject GLM credentials
+// into the tmux session env. It exists so the REQ-CGH-002 ordering invariant
+// (leader-cred strip BEFORE injection) can be tested by forcing an injection
+// failure. Production code uses the real injectTmuxSessionEnv.
+var injectTmuxSessionEnvFn = injectTmuxSessionEnv
 
 // unifiedLaunch delegates to unifiedLaunchFunc for testability.
 func unifiedLaunch(profileName, modeOverride string, extraArgs []string) error {
@@ -156,7 +167,7 @@ func applyCGMode(root, profileName string) error {
 	}
 
 	settingsPath := filepath.Join(root, defs.ClaudeDir, defs.SettingsLocalJSON)
-	detector := tmux.NewDetector()
+	detector := newDetectorFn()
 	inTmux := detector.InTmuxSession()
 
 	if !inTmux && os.Getenv(config.EnvTestMode) != "1" {
@@ -170,8 +181,33 @@ func applyCGMode(root, profileName string) error {
 			"Or use 'moai glm' for all-GLM mode (no tmux required)")
 	}
 
+	// REQ-CGH-008: in a tmux session, the tmux binary must actually be available.
+	// A tmux-present-but-binary-missing state (e.g. TMUX env inherited but tmux not
+	// on PATH) yields a clear "tmux not installed" error rather than the misleading
+	// "restart your tmux session" message emitted on injection failure below.
+	if inTmux && !detector.IsAvailable() {
+		return fmt.Errorf("tmux is not installed or not executable.\n\n" +
+			"CG mode injects GLM credentials into the tmux session env, which " +
+			"requires the tmux binary on PATH.\n\n" +
+			"Install tmux first:\n" +
+			"  macOS:  brew install tmux\n" +
+			"  Debian: sudo apt-get install tmux\n\n" +
+			"Then start a session and re-run:\n" +
+			"  tmux new -s moai\n" +
+			"  moai cg")
+	}
+
+	// REQ-CGH-002 + REQ-CGH-003: strip stale GLM credentials from the leader config
+	// AND set teammateMode=tmux in a SINGLE locked+atomic read-modify-write, BEFORE
+	// the failure-prone tmux injection below. This guarantees a tmux-injection
+	// failure cannot leave stale GLM credentials in the leader's env block, and no
+	// intermediate file state exists where teammateMode is absent.
+	if err := mutateSettingsLocal(settingsPath, stripGLMCredsAndSetTeammateMode); err != nil {
+		return fmt.Errorf("clean up GLM env for CG mode: %w", err)
+	}
+
 	if inTmux {
-		if err := injectTmuxSessionEnv(glmConfig, apiKey); err != nil {
+		if err := injectTmuxSessionEnvFn(glmConfig, apiKey); err != nil {
 			return fmt.Errorf("failed to inject GLM env into tmux session: %w\n"+
 				"CG mode relies on tmux session env for teammate isolation.\n"+
 				"Try restarting your tmux session", err)
@@ -188,14 +224,6 @@ func applyCGMode(root, profileName string) error {
 
 	if err := persistTeamMode(root, "cg"); err != nil {
 		return fmt.Errorf("persist team mode: %w", err)
-	}
-
-	if err := removeGLMEnv(settingsPath); err != nil {
-		return fmt.Errorf("clean up GLM env for CG mode: %w", err)
-	}
-
-	if err := ensureSettingsLocalJSON(settingsPath); err != nil {
-		return fmt.Errorf("ensure settings.local.json: %w", err)
 	}
 
 	fmt.Fprintln(os.Stderr, "CG mode: Lead (Claude) + Teammates (GLM)")
@@ -534,11 +562,12 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		}
 	}
 
-	// NOTE: syscall.Exec replaces the current process entirely.
-	// No defer() functions will execute after this point.
-	// Ensure all cleanup and setup is complete before calling.
+	// NOTE: On POSIX, execOrSpawnClaude replaces the current process entirely
+	// (syscall.Exec); no defer() functions run after that point. On Windows it
+	// spawns a child and exits with the child's code (syscall.Exec is POSIX-only
+	// — REQ-CGH-001). Ensure all cleanup and setup is complete before calling.
 	launchEnv := buildEnvForLaunch(prefs.EffortLevel, os.Environ())
-	return syscall.Exec(claudeBin, buildArgs(false), launchEnv)
+	return execOrSpawnClaude(claudeBin, buildArgs(false), launchEnv)
 }
 
 // --- Flag Parsing ---

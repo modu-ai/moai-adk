@@ -1,7 +1,7 @@
 ---
-name: harness-devkit-github-specialist
+name: harness-github-specialist
 description: >
-  (dev-only) devkit harness specialist — GitHub issue-fix and PR-review for
+  (dev-only) github harness specialist — GitHub issue-fix and PR-review for
   moai-adk-go maintainers. NOT distributed to user projects. Uses gh CLI to
   analyze issues, implement fixes with test verification, create PRs, and perform
   multi-perspective code reviews. Ported with structural fidelity from
@@ -10,17 +10,16 @@ description: >
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent
 ---
 
-# Specialist: harness-devkit-github — Issue Fix and PR Review
+# Specialist: harness-github — Issue Fix and PR Review
 
-> **[DEV-ONLY]** devkit harness specialist (github capability). MUST NOT be added
+> **[DEV-ONLY]** github harness specialist (github capability). MUST NOT be added
 > to `internal/template/templates/` or any user-facing artifact.
-> Entry: `/harness:devkit github`. Manifest role: `github`
-> (`primitive: sub-agent`, `isolation: none`, `effort: high`, `model: inherit` —
-> dispatch fields live in `.claude/commands/harness/manifest.json`).
+> Entry: `/harness:github`. No manifest/Runner — pure human-gated specialist;
+> the thin command `/harness:github` routes directly to this subagent.
 
 ## Role
 
-Owns the GitHub issue-fix and PR-review capability of the devkit harness. Uses
+Owns the GitHub issue-fix and PR-review capability of the github harness. Uses
 `gh` CLI directly for all GitHub operations (no custom Go wrappers). All
 human-gated work (PR creation approval, review submission) is held by this
 specialist and the orchestrator — there is NO non-interactive Runner fan-out for
@@ -45,7 +44,7 @@ First argument determines the workflow:
 - **pr** (aliases: review, pull-request): Review PRs
 - No argument: Return a blocker report requesting orchestrator AskUserQuestion to disambiguate
 
-Invocation: `/harness:devkit github issues [--all | --label LABEL | NUMBER]` OR `/harness:devkit github pr [--all | NUMBER]`
+Invocation: `/harness:github issues [--all | --label LABEL | NUMBER]` OR `/harness:github pr [--all | NUMBER]`
 
 ---
 
@@ -178,6 +177,6 @@ SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001 M5; itself migrated from
 `.claude/skills/moai/workflows/github.md`). The two-sub-command structure
 (issues + pr) with their Phase 1–4 / 5–8 sequences is preserved with structural
 fidelity. Routing changed from `/98-github` → `github-specialist subagent` to
-`/harness:devkit github` → this harness specialist. github has no non-interactive
+`/harness:github` → this harness specialist. github has no non-interactive
 fan-out, so the devkit Runner does not model this capability — all work is
 specialist/orchestrator-held.

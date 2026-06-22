@@ -383,7 +383,17 @@ func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 	if !tmux.NewDetector().InTmuxSession() {
 		return nil
 	}
+	return injectTmuxSessionEnvVia(tmux.NewSessionManager(), glmConfig, apiKey)
+}
 
+// buildTmuxInjectVars returns the GLM environment variable set that is injected
+// into the tmux session env for teammate isolation. Extracted as a pure helper
+// (no tmux side effects) so the credential-routing invariant and the
+// inject↔clear key-parity invariant (REQ-CGH-009) can be asserted directly.
+// ANTHROPIC_AUTH_TOKEN is included here as the teammate-facing GLM credential set;
+// the sensitive-channel routing (which deletes it from the bulk map) happens in
+// injectTmuxSessionEnvVia.
+func buildTmuxInjectVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]string {
 	vars := map[string]string{
 		"ANTHROPIC_AUTH_TOKEN":           apiKey,
 		"ANTHROPIC_BASE_URL":             glmConfig.BaseURL,
@@ -407,11 +417,20 @@ func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 		vars[config.EnvClaudeCodeAutoCompactWindow] = window
 	}
 
+	return vars
+}
+
+// injectTmuxSessionEnvVia performs the actual credential routing through the given
+// SessionManager. Split out from injectTmuxSessionEnv (which holds the
+// test-environment / in-tmux guards) so tests can exercise the production routing
+// path with a recording-fake SessionManager (REQ-CGH-009 Scenario 9a).
+func injectTmuxSessionEnvVia(mgr tmux.SessionManager, glmConfig *GLMConfigFromYAML, apiKey string) error {
+	vars := buildTmuxInjectVars(glmConfig, apiKey)
+
 	// SPEC-V3R5-SECURITY-CRIT-001 P0-2 (CWE-214): route ANTHROPIC_AUTH_TOKEN
 	// through the argv-safe sensitive injection channel. The remaining
 	// non-sensitive vars stay on the fast bulk path. On sensitive-injection
 	// failure we MUST NOT fall back to argv (would re-leak the token).
-	mgr := tmux.NewSessionManager()
 	ctx := context.Background()
 
 	const sensitiveKey = "ANTHROPIC_AUTH_TOKEN"
@@ -441,10 +460,21 @@ func clearTmuxSessionEnv() error {
 		return nil
 	}
 
-	// ANTHROPIC_AUTH_TOKEN intentionally excluded from this list:
-	// it may be an OAuth token that must survive mode switches.
-	// ANTHROPIC_BASE_URL serves as the GLM activation indicator.
-	vars := []string{
+	mgr := tmux.NewSessionManager()
+	_ = mgr.ClearEnv(context.Background(), buildTmuxClearVars()) //nolint:errcheck // best-effort cleanup
+	return nil
+}
+
+// buildTmuxClearVars returns the GLM environment variable keys removed from the
+// tmux session env when switching back to Claude mode (moai cc). Extracted as a
+// pure helper so the inject↔clear key-parity invariant (REQ-CGH-009) can be
+// asserted directly.
+//
+// ANTHROPIC_AUTH_TOKEN is intentionally excluded from this list: it may be an
+// OAuth token that must survive mode switches. ANTHROPIC_BASE_URL serves as the
+// GLM activation indicator — removing it is sufficient to deactivate GLM mode.
+func buildTmuxClearVars() []string {
+	return []string{
 		"ANTHROPIC_BASE_URL",
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",
@@ -463,10 +493,6 @@ func clearTmuxSessionEnv() error {
 		// auto-compact itself).
 		config.EnvClaudeCodeAutoCompactWindow,
 	}
-
-	mgr := tmux.NewSessionManager()
-	_ = mgr.ClearEnv(context.Background(), vars) //nolint:errcheck // best-effort cleanup
-	return nil
 }
 
 // persistTeamMode saves the team_mode value to .moai/config/sections/llm.yaml.

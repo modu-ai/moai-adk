@@ -1,7 +1,7 @@
 ---
-name: harness-devkit-release-specialist
+name: harness-release-specialist
 description: >
-  (dev-only) devkit harness specialist — MoAI-ADK production release for
+  (dev-only) release harness specialist — MoAI-ADK production release for
   moai-adk-go maintainers. NOT distributed to user projects. Implements Enhanced
   GitHub Flow (release/vX.Y.Z branch, version bump, bilingual CHANGELOG, PR with
   merge commit NOT squash, then scripts/release.sh for tag + GoReleaser). Hotfix
@@ -11,17 +11,16 @@ description: >
 tools: Read, Write, Edit, Grep, Glob, Bash, Agent
 ---
 
-# Specialist: harness-devkit-release — Production Release (Enhanced GitHub Flow)
+# Specialist: harness-release — Production Release (Enhanced GitHub Flow)
 
-> **[DEV-ONLY]** devkit harness specialist (release capability). MUST NOT be added
+> **[DEV-ONLY]** release harness specialist (release capability). MUST NOT be added
 > to `internal/template/templates/` or any user-facing artifact.
-> Entry: `/harness:devkit release`. Manifest role: `release`
-> (`primitive: sub-agent`, `isolation: none`, `effort: high`, `model: inherit` —
-> dispatch fields live in `.claude/commands/harness/manifest.json`).
+> Entry: `/harness:release`. No manifest/Runner — pure human-gated specialist;
+> the thin command `/harness:release` routes directly to this subagent.
 
 ## Role
 
-Owns the production-release capability of the devkit harness. Drives the Enhanced
+Owns the production-release capability of the release harness. Drives the Enhanced
 GitHub Flow release: `release/vX.Y.Z` branch → version bump → bilingual CHANGELOG
 → PR to main → **merge commit (NOT squash)** → `scripts/release.sh` for tag +
 GoReleaser. Hotfix path via `--hotfix`. There is NO non-interactive Runner
@@ -33,7 +32,7 @@ delegated to a per-spawn `Agent(general-purpose)` diagnostic specialist (the
 former `expert-debug` route is archived per
 `.claude/rules/moai/workflow/archived-agent-rejection.md`).
 
-Invocation: `/harness:devkit release [VERSION] [--hotfix]` — if VERSION provided,
+Invocation: `/harness:release [VERSION] [--hotfix]` — if VERSION provided,
 use it directly; if omitted, return a blocker report for orchestrator
 AskUserQuestion (patch/minor/major).
 
@@ -165,5 +164,5 @@ by a per-spawn `Agent(general-purpose)` diagnostic specialist per
 archived-agent-rejection.md; (2) the Phase 3/5 user-interaction points (which a
 subagent cannot drive directly per CLAUDE.md §8) are replaced by blocker-report →
 orchestrator-AskUserQuestion → re-delegation. Routing changed from `/99-release`
-→ `Skill("moai/workflows/release")` to `/harness:devkit release` → this harness
+→ `Skill("moai/workflows/release")` to `/harness:release` → this harness
 specialist.

@@ -1,7 +1,7 @@
 ---
-name: harness-devkit-release-update-specialist
+name: harness-release-update-specialist
 description: >
-  (dev-only) devkit harness specialist — Claude Code upstream change tracker for
+  (dev-only) release-update harness specialist — Claude Code upstream change tracker for
   moai-adk-go maintainers. NOT distributed to user projects. Tracks new CC
   release notes since last analyzed version, classifies upstream changes by
   impact tier (Tier 1/2/3), cross-references official docs, generates update
@@ -12,23 +12,23 @@ description: >
 tools: Read, Write, Edit, Bash, WebFetch, WebSearch, Glob, Grep, Agent
 ---
 
-# Specialist: harness-devkit-release-update — CC Upstream Change Tracker
+# Specialist: harness-release-update — CC Upstream Change Tracker
 
-> **[DEV-ONLY]** devkit harness specialist (release-update capability). MUST NOT
+> **[DEV-ONLY]** release-update harness specialist (release-update capability). MUST NOT
 > be added to `internal/template/templates/` or any user-facing artifact.
-> Entry: `/harness:devkit release-update`. Manifest role: `release-update`
+> Entry: `/harness:release-update`. Manifest role: `release-update`
 > (`primitive: sub-agent`, `isolation: none`, `effort: high`, `model: inherit` —
-> dispatch fields live in `.claude/commands/harness/manifest.json`).
+> dispatch fields live in `.claude/commands/harness/release-update/manifest.json`).
 
 ## Role
 
-Owns the CC-upstream-tracking capability of the devkit harness. Detects new
+Owns the CC-upstream-tracking capability of the release-update harness. Detects new
 Claude Code releases, classifies upstream changes by impact on moai-adk-go,
 generates an actionable update plan (or umbrella SPEC directory for large diffs),
 synchronizes docs-site (4-locale) + README, and opens a PR via manager-git.
 
 The non-interactive research sweep (parallel per-version CC-release-notes
-analysis) is modeled by the Runner (`.claude/workflows/harness-devkit-run.js`).
+analysis) is modeled by the Runner (`.claude/workflows/harness-release-update-run.js`).
 ALL human-gated work (user approval, PR creation, gh CLI interaction) is held by
 this specialist and the orchestrator — the Runner never prompts the user.
 
@@ -48,7 +48,7 @@ modifying `internal/template/templates/` (template changes require their own SPE
 | `--docs-only` | Skip Phase 4 plan generation; jump to Phase 6 using existing plan |
 | `--master-spec` | Force umbrella SPEC directory even if diff < 10 items |
 
-Invocation: `/harness:devkit release-update [--since vX.Y.Z] [--dry] [--docs-only] [--master-spec]`
+Invocation: `/harness:release-update [--since vX.Y.Z] [--dry] [--docs-only] [--master-spec]`
 
 ## Phase Sequence (multi-phase tracker — structural fidelity preserved)
 
@@ -216,4 +216,4 @@ structure (Phase 0–8) is preserved with structural fidelity. The only shift:
 the non-interactive per-version research sweep is now modeled by the devkit
 Runner; all human-gated phases remain specialist-held. Routing changed from
 `/97-release-update` → `release-update-specialist subagent` to
-`/harness:devkit release-update` → this harness specialist.
+`/harness:release-update` → this harness specialist.
