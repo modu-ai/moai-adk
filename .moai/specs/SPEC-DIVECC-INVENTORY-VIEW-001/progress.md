@@ -143,13 +143,13 @@ assumed — re-run in isolation confirmed PASS).
 
 ```yaml
 run_complete_at: 2026-06-23
-run_commit_sha: <BACKFILL-AFTER-COMMIT>
+run_commit_sha: be6bbc238cf97253d4ea756c3bd8de174daeb903
 run_status: implemented
 ac_pass_count: 10
 ac_fail_count: 0
 preserve_list_post_run_count: 4   # internal/session, internal/cli/worktree, internal/cli/harness, internal/core/git — all unchanged
-l44_pre_commit_fetch: "0 0 (synced with origin/main at run start)"
-l44_post_push_fetch: <BACKFILL-AFTER-PUSH>
+l44_pre_commit_fetch: "2 1 → rebased onto origin/main c463257b (disjoint: parallel SPEC touched only STEERING-ALIGN-GUARDRAIL-HOOK-001 + CHANGELOG.md, zero overlap) → 0 1 clean"
+l44_post_push_fetch: "0 0 (pushed to main, synced)"
 new_warnings_or_lints_introduced: 0
 cross_platform_build:
   native: exit 0
