@@ -40,4 +40,4 @@
 - independent_audit: 8/8 AC matrix is fully mechanical (grep / diff / go test) and was independently verified by the orchestrator with literal commands (observed evidence per verification-claim-integrity). sync-auditor 4-dimension scoring not spawned — matches the N2/N3 orchestrator-direct close pattern; optional, deferred.
 - mx_tag: N/A — doc-alignment SPEC; no @MX code-annotation targets in the markdown cross-references.
 - era: V3R6 (explicit frontmatter); expected drift 0.
-- sync_commit_sha: _<backfill>_
+- sync_commit_sha: 519a74bd1
