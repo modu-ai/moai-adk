@@ -54,13 +54,13 @@ Run-phase executed by manager-develop (cycle_type=ddd — documentation body die
 
 ```yaml
 run_complete_at: 2026-06-22
-run_commit_sha: <backfill-after-M5-commit>
+run_commit_sha: 8392c9d6c
 run_status: implemented
 ac_pass_count: 10          # 9 MUST + 1 SHOULD all PASS (AC-CMD-010 PASS via behavioral-anchor verification; line-count grep-semantics note documented)
 ac_fail_count: 0
 preserve_list_post_run_count: clean  # git status --porcelain shows ONLY the 2 CLAUDE.md trees + this SPEC's spec.md(status) + progress.md; no PRESERVE-list path touched
 l44_pre_commit_fetch: synced 0 0     # pre-spawn fetch returned 0 0 (orchestrator pre-flight); branch main == origin/main at run start
-l44_post_push_fetch: <backfill-after-M5-push>
+l44_post_push_fetch: synced 0 0      # post-push fetch returned 0 0; origin/main HEAD == 8392c9d6c
 new_warnings_or_lints_introduced: 0  # golangci-lint: 0 issues; go test ./internal/template/... green; markdown-only diet → 0 Go delta
 cross_platform_build:
   darwin: pass    # go build ./... exit 0
