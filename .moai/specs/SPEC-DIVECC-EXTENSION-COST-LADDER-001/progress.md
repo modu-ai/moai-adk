@@ -45,7 +45,7 @@ Additional verification:
 
 - **run_status**: audit-ready
 - **run_complete_at**: 2026-06-22
-- **run_commit_sha**: _<set on M4 commit — M1 ladder section + mirror + embedded.go regen>_
+- **run_commit_sha**: 40ceedb2c (M1 ladder section + template mirror; backfill commit follows)
 - **ac_pass_count**: 6
 - **ac_fail_count**: 0
 - **cycle_type**: tdd (doc-only; AC grep matrix + TestTemplateNeutralityAudit serve as the verification gate, no failing-test-first cycle)
