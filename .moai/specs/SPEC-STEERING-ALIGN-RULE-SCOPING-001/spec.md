@@ -1,8 +1,8 @@
 ---
 id: SPEC-STEERING-ALIGN-RULE-SCOPING-001
 title: "Steering-Align: path-scope file-touch-triggered always-loaded rules + exclude legal-attribution rule from always-load"
-version: "0.2.0"
-status: in-progress
+version: "0.3.0"
+status: completed
 created: 2026-06-22
 updated: 2026-06-22
 author: manager-spec
@@ -20,6 +20,7 @@ era: V3R6
 - 2026-06-22 — v0.1.0 — manager-spec — Plan-phase artifacts authored (Tier S, Section A-H, 4 artifacts). Entry SPEC of Epic Steering-Align. `status: draft`.
 - 2026-06-22 — v0.1.1 — manager-spec — iter-2 audit revision (plan-auditor PASS-WITH-DEBT 0.82, Tier S thresh 0.75). D1 (BLOCKING): corrected the false "both trees carry 15 always-loaded" premise — the TEMPLATE tree carries only **13** always-loaded (59 total), because `workflow/lifecycle-sync-gate.md` AND `workflow/runtime-recovery-doctrine.md` are LIVE-ONLY (deliberately not template-mirror-enrolled). Edit targets split into MIRRORED (3: hook-independence, prompting-best-practices, NOTICE) vs LIVE-ONLY (1: lifecycle-sync-gate). D2: added `tier: S` frontmatter. D4: parity AC rewritten to assert both files exist before diffing, scoped to MIRRORED targets only. D3: progress.md §E.1 AC summary now lists AC-SARS-007. D5: normalized Class-A globs to the `**/` precedent prefix. All re-verified by command in §F.1.
 - 2026-06-22 — v0.2.0 — manager-develop — Run-phase complete (cycle_type=tdd, command-based AC verification). M1-M5 done: 3 MIRRORED template edits + `make build` re-embed + 3 MIRRORED live edits (byte-identical parity) + 1 LIVE-ONLY edit (lifecycle-sync-gate). 8/8 AC PASS (LIVE 15→11, TEMPLATE 13→10, MIRRORED parity OK, frontmatter-only diff 28+/0-, NOTICE excluded+retained, byte-sum LIVE 211495→159761 / TEMPLATE 156308→128176, 0 Class-B/C scoped, lifecycle-sync-gate LIVE-ONLY confirmed). D6 fold-in added to §F.3. go build/go vet exit 0, internal/template test suite green (mirror-parity guard passing), spec-lint clean. `status: draft → in-progress`.
+- 2026-06-22 — v0.3.0 — orchestrator-direct (manager-docs spawn PTL fallback per the `feedback_glm_orchestrator_direct_sync_mx` pattern) — Sync-phase 3-phase close. `status: in-progress → completed` (merged transition on the single sync commit). progress.md §E.4 populated; sync_commit_sha backfilled. CHANGELOG entry intentionally skipped (internal `.claude/rules/` loading optimization — not a user-facing product feature; README/docs-site N/A). era V3R6, expected drift 0.
 
 ---
 

@@ -56,4 +56,19 @@ Notes:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_complete_at: 2026-06-22
+sync_commit_sha: <backfill — emitted post-close-commit>
+sync_status: completed
+final_status_transition: "in-progress → completed (merged on the single sync commit, V3R6 3-phase close)"
+docs_updated: "CHANGELOG skipped (internal .claude/rules/ loading optimization, not user-facing); README/docs-site N/A"
+performed_by: "orchestrator-direct (manager-docs spawn failed PTL — feedback_glm_orchestrator_direct_sync_mx fallback)"
+era: V3R6 (frontmatter H-override)
+expected_drift: "0 MUST-FIX (status completed + sync_commit_sha present + §E.2/§E.4 markers → H-4 V3R6)"
+ac_regression_post_sync: "frontmatter-only close; no rule re-edit; LIVE always-loaded count unchanged at 11"
+```
+
+Notes:
+- Close performed orchestrator-direct because `Agent(subagent_type: manager-docs)` returned `Prompt is too long` (PTL) after reading the 22KB+ SPEC artifacts — runtime-recovery-doctrine §1 withheld-recoverable error; recovered via the documented orchestrator-direct sync fallback rather than re-attempting the failed spawn (invariant 2: no same-rung re-attempt).
+- Close-subject full-ID convention honored: single full SPEC-ID in the sync commit scope.
+- Entry SPEC of Epic Steering-Align (1/5 closed). Remaining: CLAUDEMD-DIET / GUARDRAIL-HOOK / OUTPUT-STYLE-SLIM / LOCAL-DIET (future SPECs).
