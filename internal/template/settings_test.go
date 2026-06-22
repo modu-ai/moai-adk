@@ -285,15 +285,23 @@ func TestSettingsTemplateNewFields(t *testing.T) {
 	}
 }
 
-// === SPEC-CC2178-MODEL-POLICY-REPAIR-001 M4 (RED tests for Default-model lever) ===
+// === SPEC-CC2178-MODEL-POLICY-REPAIR-001 M4 + SPEC-GLM-MODEL-ALLOWLIST-001 M2 ===
 //
 // These tests assert the CC 2.1.175 Default-model cost lever is wired in the
 // settings.json template: availableModels (allowlist), enforceAvailableModels
-// (enforce flag), and model (Default = sonnet). They FAIL until the template
-// gains the 3 sibling keys (TDD RED phase).
+// (enforce flag), and model (Default = sonnet).
 //
-// AC bindings: AC-MPR-001 (availableModels with 3 aliases), AC-MPR-002
-// (enforceAvailableModels: true), AC-MPR-003 (Default model = sonnet).
+// SPEC-GLM-MODEL-ALLOWLIST-001 expands availableModels with the [1m] canonical
+// aliases (opus[1m], sonnet[1m]) so that a GLM ANTHROPIC_DEFAULT_OPUS_MODEL
+// redirect (surface alias opus[1m]) is not blocked by enforceAvailableModels:true
+// (CC 2.1.176 redirect-blocking semantics). The Default-model cost lever
+// (model: sonnet) and the enforcement flag (enforceAvailableModels: true) stay
+// byte-unchanged — the allowlist only EXPANDS to admit the [1m] variants.
+//
+// AC bindings: AC-MPR-003 / AC-GMA-002 (Default model = sonnet, invariant),
+// AC-MPR-002 / AC-GMA-002 (enforceAvailableModels: true, invariant),
+// AC-GMA-004 (availableModels includes the [1m] variants),
+// AC-GMA-007 (template lever regression test updated to expanded expectation).
 func TestSettingsTemplateDefaultModelLever(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
@@ -303,25 +311,28 @@ func TestSettingsTemplateDefaultModelLever(t *testing.T) {
 		t.Fatalf("Unmarshal error: %v", err)
 	}
 
-	// AC-MPR-003: Default model is sonnet (the [1m]-safe cost-routing lever).
+	// AC-MPR-003 / AC-GMA-002: Default model is sonnet (the [1m]-safe cost-routing
+	// lever). INVARIANT — the GLM allowlist expansion must NOT change the Default.
 	model, ok := settings["model"]
 	if !ok {
 		t.Fatal(`missing top-level "model" key (AC-MPR-003: Default model must be set to sonnet)`)
 	}
 	if model != "sonnet" {
-		t.Errorf(`model = %v, want "sonnet" (AC-MPR-003: Default-Sonnet cost-routing thesis)`, model)
+		t.Errorf(`model = %v, want "sonnet" (AC-MPR-003/AC-GMA-002: Default-Sonnet cost-routing thesis, invariant)`, model)
 	}
 
-	// AC-MPR-002: enforceAvailableModels: true (the allowlist constrains Default resolution).
+	// AC-MPR-002 / AC-GMA-002: enforceAvailableModels: true (the allowlist constrains
+	// Default resolution). INVARIANT — expansion admits [1m] without disabling enforcement.
 	enforce, ok := settings["enforceAvailableModels"]
 	if !ok {
 		t.Fatal(`missing "enforceAvailableModels" key (AC-MPR-002)`)
 	}
 	if enforce != true {
-		t.Errorf(`enforceAvailableModels = %v, want true (AC-MPR-002)`, enforce)
+		t.Errorf(`enforceAvailableModels = %v, want true (AC-MPR-002/AC-GMA-002: enforcement invariant)`, enforce)
 	}
 
-	// AC-MPR-001: availableModels lists exactly the 3 CC aliases (sonnet, opus, haiku).
+	// AC-MPR-001 / AC-GMA-004: availableModels lists the 3 base CC aliases PLUS the
+	// 2 [1m] canonical variants (opus[1m], sonnet[1m]) so the GLM redirect is admitted.
 	avail, ok := settings["availableModels"]
 	if !ok {
 		t.Fatal(`missing "availableModels" key (AC-MPR-001)`)
@@ -330,7 +341,16 @@ func TestSettingsTemplateDefaultModelLever(t *testing.T) {
 	if !ok {
 		t.Fatalf(`availableModels is %T, want a JSON array`, avail)
 	}
-	wantSet := map[string]bool{"sonnet": true, "opus": true, "haiku": true}
+	// AC-GMA-005: every entry must be a subset of modelCanonical
+	// (internal/web/validate.go modelCanonical = opus, opus[1m], sonnet, sonnet[1m],
+	// haiku, opusplan). The 5 expected entries below are all canonical aliases.
+	wantSet := map[string]bool{
+		"sonnet":     true,
+		"opus":       true,
+		"haiku":      true,
+		"opus[1m]":   true,
+		"sonnet[1m]": true,
+	}
 	gotSet := make(map[string]bool)
 	for _, v := range arr {
 		s, ok := v.(string)
@@ -342,11 +362,11 @@ func TestSettingsTemplateDefaultModelLever(t *testing.T) {
 	}
 	for want := range wantSet {
 		if !gotSet[want] {
-			t.Errorf("availableModels missing %q; got %v", want, gotSet)
+			t.Errorf("availableModels missing %q (AC-GMA-004: [1m] variants required); got %v", want, gotSet)
 		}
 	}
-	if len(arr) != 3 {
-		t.Errorf("availableModels has %d entries, want exactly 3 (sonnet, opus, haiku); got %v", len(arr), arr)
+	if len(arr) != len(wantSet) {
+		t.Errorf("availableModels has %d entries, want exactly %d (sonnet, opus, haiku, opus[1m], sonnet[1m]); got %v", len(arr), len(wantSet), arr)
 	}
 }
 
