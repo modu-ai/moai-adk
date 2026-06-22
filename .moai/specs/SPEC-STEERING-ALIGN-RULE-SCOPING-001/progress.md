@@ -34,7 +34,7 @@ Invariants: `go build ./...` exit 0; `go vet ./internal/template/...` exit 0; `g
 
 ```yaml
 run_complete_at: 2026-06-22
-run_commit_sha: <backfill — emitted post-commit>
+run_commit_sha: ec619b6ef749d06dcafd911ba117ff81079ac68c
 run_status: implemented
 ac_pass_count: 8
 ac_fail_count: 0
