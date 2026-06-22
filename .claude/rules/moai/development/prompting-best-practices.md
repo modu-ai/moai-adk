@@ -1,3 +1,7 @@
+---
+paths: "**/.claude/agents/**,**/.claude/skills/**"
+---
+
 # Prompting Best Practices (Claude Latest Models)
 
 Condensed reference of Anthropic's official prompt-engineering guidance for Claude's latest models (Opus 4.8 / 4.7, Sonnet 4.6, Haiku 4.5), applied to MoAI agent prompts, skill bodies, and orchestrator output. Complements the Karpathy quick-reference (`.claude/rules/moai/development/karpathy-quickref.md`) and skill-writing craft (`.claude/rules/moai/development/skill-writing-craft.md`); cross-referenced from `.claude/rules/moai/development/agent-authoring.md`.

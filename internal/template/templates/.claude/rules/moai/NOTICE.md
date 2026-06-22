@@ -1,3 +1,7 @@
+---
+paths: "**/NOTICE.md"
+---
+
 # MoAI-ADK Third-Party Notices
 
 This product includes software developed by revfactory/harness and redistributed under the Apache License 2.0.

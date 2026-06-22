@@ -1,3 +1,7 @@
+---
+paths: "**/internal/spec/**,**/.moai/specs/**"
+---
+
 # Lifecycle Sync Gate Protocol — SSOT
 
 > **Single Source of Truth** for the SPEC era classification heuristic table,

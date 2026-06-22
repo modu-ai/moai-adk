@@ -1,3 +1,7 @@
+---
+paths: "**/.claude/hooks/**"
+---
+
 # Hook Independence — Shared-Failure-Mode Catalogue + Authoring Checklist
 
 Doctrine for the MoAI hook layer (`.claude/hooks/moai/`). This rule names every
