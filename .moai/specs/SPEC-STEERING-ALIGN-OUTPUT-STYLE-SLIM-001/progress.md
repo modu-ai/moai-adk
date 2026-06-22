@@ -81,7 +81,7 @@ The −3644B reduction (55306 → 51662, both trees identical) is attributable S
 ## §E.3 Run-phase Audit-Ready Signal
 
 - **run_complete_at**: 2026-06-23
-- **run_commit_sha**: _<placeholder — backfilled after the run commit lands; orchestrator pushes per B9 push-override>_
+- **run_commit_sha**: `586d25974` (worktree branch `worktree-agent-a49e2b74dda4ec89d`; orchestrator reconciles to main + pushes per B9 push-override — parallel SPEC-DIVECC-INVENTORY-VIEW-001 session active)
 - **run_status**: implemented (all 9 MUST-blocking ACs PASS; AC-OSS-001 behavioral-PASS per REQ-OSS-008)
 - **ac_pass_count**: 9
 - **ac_fail_count**: 0
