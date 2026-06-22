@@ -2,7 +2,7 @@
 id: SPEC-DIVECC-INVENTORY-VIEW-001
 title: "Unified Agent/Harness Inventory View (moai inventory)"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-06-23
 updated: 2026-06-23
 author: manager-spec

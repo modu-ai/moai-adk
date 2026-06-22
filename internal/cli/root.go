@@ -107,4 +107,8 @@ func init() {
 	// (build + list). The YAML at .moai/config/sections/tool-policy.yaml is the
 	// SSOT from which the settings.json permissions block is generated.
 	rootCmd.AddCommand(newToolPolicyCmd())
+
+	// SPEC-DIVECC-INVENTORY-VIEW-001: register inventory subcommand — a
+	// read-only unified view composing sessions / worktrees / harnesses.
+	rootCmd.AddCommand(newInventoryCmd())
 }
