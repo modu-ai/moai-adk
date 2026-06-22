@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **[SPEC-DIVECC-HOOK-FAILURE-MODE-AUDIT-001](.moai/specs/SPEC-DIVECC-HOOK-FAILURE-MODE-AUDIT-001/spec.md)** — Hook Defense-in-Depth Shared-Failure-Mode Audit + Independence Rule (Tier M, v0.1.0). Entry SPEC (N1) of Epic Dive-into-CC dogfooding series (arXiv:2604.14228 reverse-engineering analysis applied to moai-adk's hook layer). Audit identifies 6 shared failure modes across the hook layer (A: moai-binary resolution chain, B: --skip-hook bypass, C-F: additional governance surfaces), classifies each as acceptable-by-design vs genuine-risk with cited grep/read evidence, and delivers a new rule `.claude/rules/moai/development/hook-independence.md` (catalogue + governance cross-tab + authoring checklist). No hook-script modifications (REQ-DIVECC-012 PASS). Positive signal: governance gates do NOT share mode A (moai-binary chain), establishing genuine depth over moai-wrapper layer. Template-first source creation + neutrality audit PASS. 6 ACs PASS (AC-DIVECC-001..006). Tier M: 4-artifact set (spec.md + plan.md + acceptance.md + research.md) + progress.md + hook-independence.md doctrine. plan-phase 2026-06-22 (manager-spec, audit delivered in research.md §A verbatim grep output). run-phase 2026-06-22 (manager-develop, doctrine authored in template+local copy; zero hook-script edits; TestTemplateNeutralityAudit + go build exit 0). sync-phase 2026-06-22 (manager-docs, 3-phase close).
+
 ## [v3.0.0-rc2] — 2026-06-19
 
 ### Added

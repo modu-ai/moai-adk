@@ -57,4 +57,9 @@ _Run-phase audit-ready signal recorded by manager-develop._
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs>_
+- Sync commit: CHANGELOG entry + spec.md status→completed + progress.md §E.4 populated (Tier M canonical form).
+- CHANGELOG: 1 entry appended under `[Unreleased]` section; no prior SPEC-DIVECC-HOOK-FAILURE-MODE-AUDIT-001 entry (B12 PASS-TEST 1 ✓).
+- hook-independence.md: doctrine delivered by manager-develop (template + local copy byte-identical; template-neutral; zero hook-script edits; AC-DIVECC-004 BINARY PASS ✓).
+- sync_commit_sha: `pending` (placeholder for backfill — populated in the second commit, per the 2-commit close pattern).
+
+_Sync-phase audit-ready signal recorded by manager-docs (orchestrator)._
