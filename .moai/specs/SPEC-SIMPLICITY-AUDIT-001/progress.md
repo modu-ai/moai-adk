@@ -51,7 +51,7 @@ Run-phase cycle: TDD (RED-GREEN-REFACTOR adapted for skill-prose). RED = the AC 
 
 ```yaml
 run_complete_at: 2026-06-23
-run_commit_sha: <placeholder — backfilled post-commit>
+run_commit_sha: 98d289f1f5a80aef2e199fa2b9bf9eb4a9252e05
 run_status: implemented
 ac_pass_count: 8
 ac_fail_count: 0
