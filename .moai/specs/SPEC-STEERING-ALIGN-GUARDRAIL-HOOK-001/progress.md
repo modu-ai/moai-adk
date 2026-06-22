@@ -91,7 +91,7 @@ m1_to_mN_commit_strategy: single-commit  # Tier M, one coherent feature — sing
 
 ```yaml
 sync_complete_at: 2026-06-23
-sync_commit_sha: PENDING_BACKFILL  # 3-phase close commit (in-progress → completed rides this commit); backfilled in the follow-up chore commit
+sync_commit_sha: e78dfb0edcdee64903ba4855d324758dc79963d9  # 3-phase close commit (in-progress → completed rides this commit)
 sync_status: completed
 era: V3R6
 changelog_entry: added  # CHANGELOG.md [Unreleased] ### Added
