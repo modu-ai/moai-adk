@@ -273,7 +273,7 @@ When `conversation_language: ko`, emitting raw English literals from the §8 tem
 | Step labels (Step 1-4) | `Step 1: Clarify` / `Step 2: Delegate` / `Step 3: Execute` / `Step 4: Verify` | `1단계: 명확화` / `2단계: 위임` / `3단계: 실행` / `4단계: 검증` |
 | Recovery options | `Retry as-is / Alt approach / Pause / Abort+preserve` | `현재대로 재시도 / 대안 접근 / 일시 중지 / 중단+보존` |
 
-Root cause of the defect: prior versions said "translate all text" but §8 templates contained literal English example labels; models anchored to the literal examples and rendered them verbatim. This Localization Contract makes the translation obligation explicit at the surface where templates appear. The catalogue above provides the ko canonical mapping for every label observed in production. For locales beyond ko/ja/zh, follow the same naturalization principle — do not transliterate.
+The catalogue above provides the ko canonical mapping for every label observed in production. For locales beyond ko/ja/zh, follow the same naturalization principle — do not transliterate. (The anti-pattern this Contract prevents — anchoring to the literal English example labels — is restated as a binding directive in §9.)
 
 **Fallback rule for locales not in the table.** The catalogue above and the Cut-line Marker / Header translation tables further down render concrete text for en / ko / ja / zh only. When `conversation_language` is an ISO-639 code whose language column is NOT in these tables (e.g. `fr`, `de`, `es`, `pt`, `vi`), English is the canonical fallback skeleton and each label translates to that locale using the naturalization principle (idiomatic phrasing a native reader expects, never literal word-by-word transliteration). In other words: locales not in the table fall back to the English column for the structural skeleton, with the label text rendered in the configured ISO-639 language — ISO-639 not in the table ⇒ English-skeleton fallback, not English-output.
 
@@ -674,7 +674,7 @@ N) <verifiable command> → <expected outcome>
 ✂──── 여기까지 복사 ────✂
 ```
 
-The `source_session_id` field is REQUIRED per the multi-session coordination policy (Layer 2 — session correlation). The orchestrator MUST populate `<orchestrator-uuid-from-current-turn>` with the Claude Code session_id of the current turn (the same UUID written to `.moai/state/active-sessions.json` by the SessionStart hook). The auto-memory `project_*.md` file MUST mirror this field in its prose body so that readers can correlate the resume back to its originating session. MEMORY.md index entries SHOULD include a `(session: <UUID-8-char-prefix>)` parenthetical annotation when the SPEC was worked across multiple sessions.
+The `source_session_id` field is REQUIRED (multi-session coordination Layer 2 — session correlation); populate it with the current turn's session_id, or the `<not-available — environment-fallback, ...>` fallback when unavailable, per `session-handoff.md` §Field-by-Field Specification Block 2.
 
 Cut-line Marker translation table (`✂` symbol U+2702 and `─` U+2500 preserved verbatim across all locales; only the text translates):
 
@@ -693,39 +693,13 @@ Header translation table (translate per `conversation_language` setting in `.moa
 | Block 6 Trunk-based (Follow-up) | `Follow-up:` | `후속:` | `後続:` | `后续:` |
 | Block 1 verb (entering) | `entering` | `진입` | `開始` | `进入` |
 
-Pre-emit self-check (session-handoff template completeness) — MUST verify all 9 before printing:
-- [ ] Block 1 starts with `ultrathink.` (activates Adaptive Thinking xhigh effort in next session)
-- [ ] **Block 1 `/effort ultracode` re-set line (purpose-conditional)**: emit the `/effort ultracode` line immediately after `ultrathink.` ONLY when the next SPEC's plan declares workflow fan-out (dynamic Workflow or Agent Teams); omit otherwise. ultracode is NOT restored by `ultrathink.` (per `session-handoff.md` §Field-by-Field Specification Block 1 + `dynamic-workflows.md`). Default on ambiguity: omit.
-- [ ] Block 2 lists ≥1 memory file from `~/.claude/projects/{hash}/memory/` (most recent project memory + relevant lessons)
-- [ ] Block 2 includes `source_session_id: <UUID from moai session current>` line carrying current orchestrator turn's session_id (per the multi-session coordination policy Layer 2 — enables race attribution across multi-session work)
-- [ ] Block 4 has ≤4 numbered preconditions, each independently verifiable (`git`/`gh`/file existence command)
-- [ ] Block 5 is a single primary action (typically `/moai <subcommand>` or single command line)
-- [ ] L3 worktree case: Block 0 `[New Terminal — START IN WORKTREE] $ cd <abs-path> $ <launcher>` prepended (Block 0 MUST surface 3 launchers verbatim: `moai cc` | `moai glm` | `claude` — per `session-handoff.md` §Worktree-Anchored Resume Pattern) + precondition 0) `git rev-parse --show-toplevel → <worktree-path>` added
-- [ ] **Cut-line markers present** — top `✂──── 여기부터 복사 ────✂` before Block 1 (or Block 0 if L3 worktree), bottom `✂──── 여기까지 복사 ────✂` after Block 6. `✂` symbol (U+2702) and `─` (U+2500) preserved verbatim; marker text translated per `conversation_language` (Cut-line Marker translation table above). One blank line separates each marker from adjacent block content.
-- [ ] **Block 6 workflow-context header**: PR-based(`머지 후:` / `After merge:`) vs Trunk-based(`후속:` / `Follow-up:`) vs single-SPEC close(omit) 중 적절 선택 — per session-handoff.md §Field-by-Field Specification Block 6 conditional rule. Trunk-based(no PR merge) 환경에서 `머지 후:` 사용은 의미적 거짓 (HARD violation).
-- [ ] **Block 2 source_session_id environment fallback**: `moai` CLI 부재 또는 `.moai/state/active-sessions.json` 미존재 시 verbatim 인식 fallback 사용 — `source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>`. fallback 패턴 자체는 anti-pattern 아님 (graceful degradation HARD).
+Before emitting, render-time obligations the orchestrator MUST satisfy — the full specifications live in the SSOT, NOT inline here:
 
-Auto-memory persistence (mandatory — without this, message is lost across `/clear`):
-- File path: `~/.claude/projects/{hash}/memory/project_<sprint>_<spec>_<status>.md`
-- Heading: translate `Next Session Entry Point (paste-ready resume message)` to `conversation_language` (Korean canonical: `다음 세션 시작점 (paste-ready resume message)`), then verbatim message in fenced block
-- MEMORY.md index updated with one-line entry under ~150 chars
-- Superseded entries marked `[SUPERSEDED by <new-file>]` per Lessons Protocol
+- **Pre-emit self-check (9 items)** — `session-handoff.md` §Pre-emit self-check (session-handoff template completeness). Covers: `ultrathink.` opener; purpose-conditional `/effort ultracode` re-set line (workflow-fan-out only); Block 2 ≥1 memory file + `source_session_id` (with the environment fallback above); Block 4 ≤4 verifiable preconditions; Block 5 single primary action; L3 worktree Block 0 (3 launchers + precondition 0); cut-line markers present (`✂`/`─` verbatim, text translated); Block 6 workflow-context header (`머지 후:` PR-based / `후속:` trunk-based / omit single-SPEC).
+- **Auto-memory persistence** (mandatory — survives `/clear`) — `session-handoff.md` §Auto-Memory Integration. Save the verbatim message to `project_<sprint>_<spec>_<status>.md`, update the MEMORY.md index, mark superseded entries.
+- **Output surface order + anti-patterns** — `session-handoff.md` §Output Surface (User-Facing) + §Anti-Patterns. Surface order: fenced ```text``` block (cut-line bounded) → memory file path → one-sentence next-session summary.
 
-Output surface order (verbatim user-facing display):
-1. Fenced ```text``` block **bounded by cut-line markers** (`✂──── 여기부터 복사 ────✂` top + `✂──── 여기까지 복사 ────✂` bottom, marker text translated per `conversation_language` while `✂` and `─` symbols stay verbatim) containing the 6-block (Block 0 if applicable) message
-2. Memory file path that received the verbatim copy
-3. One-sentence summary of what next session will continue
-
-Anti-patterns (CI/lint should reject):
-- Free-form prose handoff without 6-block structure
-- Missing `ultrathink.` opener
-- Preconditions that are not verifiable commands
-- Message saved only to chat, not auto-memory
-- Triggering on trivial single-turn tasks (memory noise)
-- Hardcoded language-specific headers in instruction body (use the translation table above)
-- Cut-line markers absent — user cannot identify exact copy boundary in long terminal scrollback
-- Cut-line `✂` symbol or `─` decorator translated/substituted — only the marker text translates; symbols are preserved verbatim across all locales
-- Omitting the `/effort ultracode` re-set line when the next SPEC's plan declares workflow fan-out (dynamic Workflow or Agent Teams) — the resumed session silently drops to non-ultracode effort and loses auto-orchestration (ultracode is NOT restored by `ultrathink.` per `dynamic-workflows.md`)
+> Canonical: see `.claude/rules/moai/workflow/session-handoff.md` for the full pre-emit self-check, auto-memory persistence procedure, output surface order, and anti-pattern catalogue. This §8 block carries the render skeleton + translation tables only.
 
 ---
 

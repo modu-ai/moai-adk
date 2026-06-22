@@ -2,7 +2,7 @@
 id: SPEC-STEERING-ALIGN-OUTPUT-STYLE-SLIM-001
 title: "Steering-Align: output-style moai.md always-loaded body diet (§8 Session-Handoff pointer-ization + Localization-Contract duplicate-prose deletion, MODERATE bound, render-SSOT preservation)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-23
 updated: 2026-06-23
 author: manager-spec
