@@ -2,7 +2,7 @@
 id: SPEC-CLEANUP-EVALUATOR-001
 title: "Remove orphaned internal/evaluator Go package (abandoned TDD RED scaffold)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-06-22
 updated: 2026-06-22
 author: Goos Kim

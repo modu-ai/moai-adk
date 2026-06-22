@@ -2,7 +2,7 @@
 id: SPEC-CLEANUP-EVALUATOR-001
 title: "Progress tracking — remove orphaned internal/evaluator package"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-06-22
 updated: 2026-06-22
 author: Goos Kim
@@ -32,4 +32,10 @@ section present (5 H3 sub-headings); Tier S justified. Grounding pre-verified.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_commit_sha: PENDING-BACKFILL
+
+3-phase close (plan→run→sync): status in-progress→completed.
+- evaluator 제거 + codemaps 동기화 origin/main 반영 (run: f8c245e2f).
+- 검증: go build/test/vet 통과, grep/go list 참조 0, plan-auditor PASS 0.91.
+- CHANGELOG: trivial test-stub 제거로 생략 (SPEC scope 외).
+- sync 수행: orchestrator-direct (manager-docs L1 격리 worktree 리스크 회피, close 시 OwnershipTransitionInvalid 자가 해소).
