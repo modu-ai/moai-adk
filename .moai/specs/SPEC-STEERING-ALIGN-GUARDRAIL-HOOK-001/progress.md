@@ -89,4 +89,16 @@ m1_to_mN_commit_strategy: single-commit  # Tier M, one coherent feature — sing
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_complete_at: 2026-06-23
+sync_commit_sha: PENDING_BACKFILL  # 3-phase close commit (in-progress → completed rides this commit); backfilled in the follow-up chore commit
+sync_status: completed
+era: V3R6
+changelog_entry: added  # CHANGELOG.md [Unreleased] ### Added
+readme_updated: false  # internal SessionStart hook + rule-residency change — no user-facing README surface
+docs_site_updated: false  # internal steering / token-budget concern — not a docs-site topic
+mx_tags_added: 0  # advisory low-fan-in hook; the rich Korean header doc-comments serve the @MX:NOTE context-delivery role — no high-fan-in ANCHOR/WARN warranted (no over-annotation)
+always_load_after: {live: 10, template: 9}  # independently re-verified post-removal (worktree origin HEAD)
+d9_governance: "depends_on linkage (run-phase) + §A REQ-SARS-010 reconciliation clause satisfy the partial-supersession; RULE-SCOPING-001 immutable completed body left untouched (documented debt, no sibling amendment)"
+orchestrator_direct: true  # sync-phase performed orchestrator-direct (manager-docs spawn hit session limit; established GLM/orchestrator-direct sync pattern)
+```

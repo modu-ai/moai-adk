@@ -2,7 +2,7 @@
 id: SPEC-STEERING-ALIGN-GUARDRAIL-HOOK-001
 title: "GLM web-tooling routing — env-deterministic guardrail hook + always-load removal"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-06-23
 updated: 2026-06-23
 author: manager-spec
@@ -13,6 +13,7 @@ lifecycle: spec-anchored
 tags: "steering, guardrail-hook, glm, always-load, token-budget"
 tier: M
 depends_on: [SPEC-STEERING-ALIGN-RULE-SCOPING-001]
+era: V3R6
 ---
 
 # SPEC-STEERING-ALIGN-GUARDRAIL-HOOK-001 — GLM web-tooling guardrail hook
