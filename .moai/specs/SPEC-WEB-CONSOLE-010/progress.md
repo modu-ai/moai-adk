@@ -89,7 +89,7 @@ coverage:
 
 ```yaml
 sync_complete_at: 2026-06-23
-sync_commit_sha: (pending — to be backfilled after commit)
+sync_commit_sha: 6f4e65d52
 sync_status: completed
 changelog_entry_added: true
 changelog_position: [Unreleased] section
