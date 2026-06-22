@@ -6,10 +6,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/pkg/models"
 	"github.com/spf13/cobra"
 )
@@ -140,6 +143,79 @@ func persistProjectConfig(projectRoot, devMode, convention string) error {
 	return nil
 }
 
+// nestedTUIInputs는 TUI 위저드가 7개 중첩 프로젝트-설정 필드에 대해 수집한
+// 원시(raw) 문자열/불리언 입력을 운반한다. int/float 필드는 huh.NewInput 로 받은
+// 문자열 그대로 운반되며 빈 문자열은 "미제출 = preserve"(REQ-WC10-012)를 의미한다.
+// 불리언 필드는 huh.NewConfirm 로 받은 값이며, 항상 제출되므로(*Submitted 플래그)
+// preserve 가 아닌 명시적 값으로 기록된다.
+type nestedTUIInputs struct {
+	CoverageTarget string // 빈 문자열 = preserve
+	MinCoverage    string // 빈 문자열 = preserve
+	Confidence     string // 빈 문자열 = preserve
+	SampleSize     string // 빈 문자열 = preserve
+
+	EnforceQuality    bool
+	EnforceQualitySet bool // confirm 위젯이 표시되었으면 true
+	AutoDetectionOn   bool
+	AutoDetectionSet  bool
+	EnforceOnPush     bool
+	EnforceOnPushSet  bool
+}
+
+// toSettingsNestedForm는 TUI raw 입력을 공유 영속화 seam 의 settings.NestedForm 으로
+// 변환한다. 빈 숫자 문자열은 *Set 을 끄고(empty=preserve), 파싱 실패도 *Set 을 끈다
+// (TUI 는 입력 단계에서 huh validation 으로 형식을 강제하므로 여기서는 보수적으로
+// preserve 처리). 불리언은 *Set 플래그가 켜진 경우에만 기록된다.
+func (in nestedTUIInputs) toSettingsNestedForm() settings.NestedForm {
+	var f settings.NestedForm
+	if v := strings.TrimSpace(in.CoverageTarget); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			f.CoverageTarget, f.CoverageTargetSet = n, true
+		}
+	}
+	if v := strings.TrimSpace(in.MinCoverage); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			f.MinCoverage, f.MinCoverageSet = n, true
+		}
+	}
+	if v := strings.TrimSpace(in.Confidence); v != "" {
+		if x, err := strconv.ParseFloat(v, 64); err == nil {
+			f.Confidence, f.ConfidenceSet = x, true
+		}
+	}
+	if v := strings.TrimSpace(in.SampleSize); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			f.SampleSize, f.SampleSizeSet = n, true
+		}
+	}
+	if in.EnforceQualitySet {
+		f.EnforceQuality, f.EnforceQualitySet = in.EnforceQuality, true
+	}
+	if in.AutoDetectionSet {
+		f.AutoEnabled, f.AutoEnabledSet = in.AutoDetectionOn, true
+	}
+	if in.EnforceOnPushSet {
+		f.EnforceOnPush, f.EnforceOnPushSet = in.EnforceOnPush, true
+	}
+	return f
+}
+
+// readCurrentNestedConfig는 TUI 위젯 초기화를 위해 7개 중첩 필드의 디스크 현재값을
+// 읽는다. 공유 read seam(settings.ReadProjectNestedConfig)에 위임하여 웹/TUI 가
+// 동일 경로를 쓴다(AP-2). config 디렉터리 부재 시 LoadRaw 기본값을 반환한다.
+func readCurrentNestedConfig(projectRoot string) (settings.NestedCurrent, error) {
+	return settings.ReadProjectNestedConfig(projectRoot)
+}
+
+// persistProjectNestedConfig는 TUI 의 7개 중첩 필드 저장 경로다. 공유 write seam
+// (settings.WriteProjectNestedConfig)에 위임하여 웹 콘솔과 동일한 nested write 경로를
+// 구동한다(REQ-WC10-011, AP-2 — 병렬 YAML writer 금지). 빈/미제출 필드는
+// empty=preserve(REQ-WC10-012). 이 함수는 form.Run() 밖에서 단위 테스트 가능하도록
+// 분리된 seam 이다(persistProjectConfig 와 동일 패턴).
+func persistProjectNestedConfig(projectRoot string, in nestedTUIInputs) error {
+	return settings.WriteProjectNestedConfig(projectRoot, in.toSettingsNestedForm())
+}
+
 var profileSetupCmd = &cobra.Command{
 	Use:   "setup [name]",
 	Short: "Interactive setup wizard for profile preferences",
@@ -233,10 +309,34 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 	// not ProfilePreferences fields. Outside a MoAI project (no .moai dir) the
 	// selects default to empty "(project default)" and the save is a no-op.
 	var developmentMode, gitConvention string
+	// SPEC-WEB-CONSOLE-010 (M3): the 7 nested project-config fields the TUI gained
+	// for parity with the web console. Int/float widgets bind to string vars
+	// (empty = preserve); bool widgets bind to bool vars (always submitted via the
+	// confirm widget → *Set true). Initialized from the shared nested read seam.
+	var (
+		nestedCoverageTarget string
+		nestedMinCoverage    string
+		nestedConfidence     string
+		nestedSampleSize     string
+		nestedEnforceQuality bool
+		nestedAutoDetection  bool
+		nestedEnforceOnPush  bool
+	)
+	insideMoaiProject := false
 	if cwd, err := os.Getwd(); err == nil {
 		if info, statErr := os.Stat(filepath.Join(cwd, ".moai")); statErr == nil && info.IsDir() {
+			insideMoaiProject = true
 			if dm, gc, readErr := readCurrentProjectConfig(cwd); readErr == nil {
 				developmentMode, gitConvention = dm, gc
+			}
+			if cur, readErr := readCurrentNestedConfig(cwd); readErr == nil {
+				nestedCoverageTarget = cur.CoverageTarget
+				nestedMinCoverage = cur.MinCoverage
+				nestedConfidence = cur.ConfidenceThreshold
+				nestedSampleSize = cur.SampleSize
+				nestedEnforceQuality = cur.EnforceQuality
+				nestedAutoDetection = cur.AutoDetectionEnabled
+				nestedEnforceOnPush = cur.EnforceOnPush
 			}
 		}
 	}
@@ -306,13 +406,18 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Value(&docLang),
 		).Title(t.LanguagesTitle),
 
-		// Section 3: Model settings (model override + policy + permission mode)
+		// Section 3: Model settings (model override + policy + permission mode).
+		// SPEC-WEB-CONSOLE-010 (M3/M5): the empty-option labels are single-sourced
+		// from the settings schema (settings.EmptyLabelFor) so both surfaces render
+		// the IDENTICAL canonical label per field, resolving the 4 documented drifts
+		// (model / effort / language / git_convention). The verbose option labels
+		// (t.ModelOpus, ...) stay localized; only the empty-option label is unified.
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title(t.ModelOverrideTitle).
 				Description(t.ModelOverrideDesc).
 				Options(
-					huh.NewOption(t.ModelDefault, ""),
+					huh.NewOption(settings.EmptyLabelFor("model"), ""),
 					huh.NewOption(t.ModelOpus, "opus"),
 					huh.NewOption(t.ModelOpus1M, "opus[1m]"),
 					huh.NewOption(t.ModelSonnet, "sonnet"),
@@ -323,12 +428,12 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Value(&model),
 			// SPEC-WEB-CONSOLE-002 REQ-WC2-006: model_policy select — parity with
 			// the web console. Options mirror template.ValidModelPolicies() plus an
-			// empty "(project default)" option (reusing the ModelDefault label).
+			// empty option whose label is single-sourced from the schema.
 			huh.NewSelect[string]().
 				Title(t.ModelPolicyTitle).
 				Description(t.ModelPolicyDesc).
 				Options(
-					huh.NewOption(t.ModelDefault, ""),
+					huh.NewOption(settings.EmptyLabelFor("model_policy"), ""),
 					huh.NewOption(t.ModelPolicyHigh, "high"),
 					huh.NewOption(t.ModelPolicyMedium, "medium"),
 					huh.NewOption(t.ModelPolicyLow, "low"),
@@ -338,7 +443,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Title(t.EffortLevelTitle).
 				Description(t.EffortLevelDesc).
 				Options(
-					huh.NewOption(t.EffortLevelDefault, ""),
+					huh.NewOption(settings.EmptyLabelFor("effort_level"), ""),
 					huh.NewOption(t.EffortLevelLow, "low"),
 					huh.NewOption(t.EffortLevelMedium, "medium"),
 					huh.NewOption(t.EffortLevelHigh, "high"),
@@ -404,15 +509,19 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Value(&statuslineSegmentsSelection),
 		).Title(t.StatuslineSegmentsTitle),
 
-		// Section 6: Project config (development_mode + git_convention) — SPEC-WEB-CONSOLE-003.
-		// Parity with the web console "Project" fieldset. Persisted to project config
-		// (quality.yaml / git-convention.yaml), NOT the profile store.
+		// Section 6: Project config — SPEC-WEB-CONSOLE-003 (2 scalars) +
+		// SPEC-WEB-CONSOLE-010 M3 (7 nested fields). Parity with the web console
+		// "Project" fieldset. Persisted to project config (quality.yaml /
+		// git-convention.yaml) via the SHARED nested write seam, NOT the profile store.
+		// Empty-option labels for the two selects are single-sourced from the schema
+		// (REQ-WC10-013). The 7 nested fields use NewInput (int/float, empty=preserve)
+		// and NewConfirm (bool, always submitted).
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title(t.DevelopmentModeTitle).
 				Description(t.DevelopmentModeDesc).
 				Options(
-					huh.NewOption(t.ProjectDefaultOption, ""),
+					huh.NewOption(settings.EmptyLabelFor("development_mode"), ""),
 					huh.NewOption(t.DevelopmentModeDDD, "ddd"),
 					huh.NewOption(t.DevelopmentModeTDD, "tdd"),
 				).
@@ -421,7 +530,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Title(t.GitConventionTitle).
 				Description(t.GitConventionDesc).
 				Options(
-					huh.NewOption(t.ProjectDefaultOption, ""),
+					huh.NewOption(settings.EmptyLabelFor("git_convention"), ""),
 					huh.NewOption("auto", "auto"),
 					huh.NewOption("conventional-commits", "conventional-commits"),
 					huh.NewOption("angular", "angular"),
@@ -429,6 +538,47 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				).
 				Value(&gitConvention),
 		).Title(t.DevelopmentModeTitle),
+
+		// Section 7: nested quality fields (SPEC-WEB-CONSOLE-010 M3). NewInput for the
+		// two numeric fields (empty = preserve); NewConfirm for the bool gate.
+		huh.NewGroup(
+			huh.NewInput().
+				Title(t.QualityCoverageTargetTitle).
+				Description(t.QualityCoverageTargetDesc).
+				Validate(validateOptionalInt0to100).
+				Value(&nestedCoverageTarget),
+			huh.NewInput().
+				Title(t.QualityMinCoverageTitle).
+				Description(t.QualityMinCoverageDesc).
+				Validate(validateOptionalInt0to100).
+				Value(&nestedMinCoverage),
+			huh.NewConfirm().
+				Title(t.QualityEnforceQualityTitle).
+				Description(t.QualityEnforceQualityDesc).
+				Value(&nestedEnforceQuality),
+		).Title(t.QualityCoverageTargetTitle),
+
+		// Section 8: nested git-convention auto-detection fields (SPEC-WEB-CONSOLE-010 M3).
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title(t.GitAutoEnabledTitle).
+				Description(t.GitAutoEnabledDesc).
+				Value(&nestedAutoDetection),
+			huh.NewInput().
+				Title(t.GitConfidenceTitle).
+				Description(t.GitConfidenceDesc).
+				Validate(validateOptionalFloat0to1).
+				Value(&nestedConfidence),
+			huh.NewInput().
+				Title(t.GitSampleSizeTitle).
+				Description(t.GitSampleSizeDesc).
+				Validate(validateOptionalNonNegativeInt).
+				Value(&nestedSampleSize),
+			huh.NewConfirm().
+				Title(t.GitEnforceOnPushTitle).
+				Description(t.GitEnforceOnPushDesc).
+				Value(&nestedEnforceOnPush),
+		).Title(t.GitAutoEnabledTitle),
 	)
 
 	if err := form.Run(); err != nil {
@@ -494,6 +644,25 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 			if err := persistProjectConfig(cwd, developmentMode, gitConvention); err != nil {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: failed to persist project config: %v\n", err)
 			}
+			// SPEC-WEB-CONSOLE-010 M3: persist the 7 nested project-config fields via
+			// the SHARED nested write seam (settings.WriteProjectNestedConfig). The
+			// numeric inputs carry empty=preserve; the bool confirms were displayed in
+			// this run, so their *Set flags are true (explicit value, not preserve).
+			nestedInputs := nestedTUIInputs{
+				CoverageTarget:    nestedCoverageTarget,
+				MinCoverage:       nestedMinCoverage,
+				Confidence:        nestedConfidence,
+				SampleSize:        nestedSampleSize,
+				EnforceQuality:    nestedEnforceQuality,
+				EnforceQualitySet: insideMoaiProject,
+				AutoDetectionOn:   nestedAutoDetection,
+				AutoDetectionSet:  insideMoaiProject,
+				EnforceOnPush:     nestedEnforceOnPush,
+				EnforceOnPushSet:  insideMoaiProject,
+			}
+			if err := persistProjectNestedConfig(cwd, nestedInputs); err != nil {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: failed to persist project nested config: %v\n", err)
+			}
 		}
 	}
 
@@ -558,4 +727,55 @@ func valueOrDefault(v, fallback string) string {
 		return fallback
 	}
 	return v
+}
+
+// validateOptionalInt0to100는 빈 문자열(=preserve)을 허용하고, 비어있지 않으면
+// 0-100 정수만 통과시킨다(test_coverage_target / min_coverage_per_commit 위젯).
+func validateOptionalInt0to100(s string) error {
+	v := strings.TrimSpace(s)
+	if v == "" {
+		return nil // 빈 값 = preserve (REQ-WC10-012)
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return fmt.Errorf("must be an integer between 0 and 100")
+	}
+	if n < 0 || n > 100 {
+		return fmt.Errorf("must be between 0 and 100")
+	}
+	return nil
+}
+
+// validateOptionalNonNegativeInt는 빈 문자열을 허용하고, 비어있지 않으면 0 이상의
+// 정수만 통과시킨다(auto_detection.sample_size 위젯).
+func validateOptionalNonNegativeInt(s string) error {
+	v := strings.TrimSpace(s)
+	if v == "" {
+		return nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return fmt.Errorf("must be a non-negative integer")
+	}
+	if n < 0 {
+		return fmt.Errorf("must be a non-negative integer")
+	}
+	return nil
+}
+
+// validateOptionalFloat0to1는 빈 문자열을 허용하고, 비어있지 않으면 [0.0, 1.0]
+// 실수만 통과시킨다(auto_detection.confidence_threshold 위젯).
+func validateOptionalFloat0to1(s string) error {
+	v := strings.TrimSpace(s)
+	if v == "" {
+		return nil
+	}
+	x, err := strconv.ParseFloat(v, 64)
+	if err != nil {
+		return fmt.Errorf("must be a number between 0.0 and 1.0")
+	}
+	if x < 0 || x > 1 {
+		return fmt.Errorf("must be between 0.0 and 1.0")
+	}
+	return nil
 }

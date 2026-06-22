@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
@@ -57,6 +58,29 @@ func (f projectNestedForm) touchesQuality() bool {
 // touchesGitConvention reports whether the form carries any git_convention nested field.
 func (f projectNestedForm) touchesGitConvention() bool {
 	return f.ConfidenceSet || f.AutoEnabledSet || f.SampleSizeSet || f.EnforceOnPushSet
+}
+
+// toSettingsForm converts the web-side projectNestedForm (which additionally
+// carries the HTTP-parse-error map) into the neutral settings.NestedForm consumed
+// by the shared persistence seam (SPEC-WEB-CONSOLE-010 M2). ParseErrs stays in
+// internal/web — the shared seam never sees HTTP-parse errors.
+func (f projectNestedForm) toSettingsForm() settings.NestedForm {
+	return settings.NestedForm{
+		CoverageTarget:    f.CoverageTarget,
+		CoverageTargetSet: f.CoverageTargetSet,
+		EnforceQuality:    f.EnforceQuality,
+		EnforceQualitySet: f.EnforceQualitySet,
+		MinCoverage:       f.MinCoverage,
+		MinCoverageSet:    f.MinCoverageSet,
+		Confidence:        f.Confidence,
+		ConfidenceSet:     f.ConfidenceSet,
+		AutoEnabled:       f.AutoEnabled,
+		AutoEnabledSet:    f.AutoEnabledSet,
+		SampleSize:        f.SampleSize,
+		SampleSizeSet:     f.SampleSizeSet,
+		EnforceOnPush:     f.EnforceOnPush,
+		EnforceOnPushSet:  f.EnforceOnPushSet,
+	}
 }
 
 // parseProjectNestedForm reads the 6 curated nested fields from the POST form via
@@ -161,26 +185,25 @@ type projectNestedCurrent struct {
 	EnforceOnPush        bool
 }
 
-// readProjectNestedConfig is the read seam for the 6 curated nested fields
-// (REQ-WC7-010). It loads via the config manager (LoadRaw — same write-intent path
-// as readProjectConfig) and returns the persisted nested values for GET echo-back.
-// An absent config dir yields the LoadRaw compiled-in defaults (EC-5), never a
-// panic. It is SEPARATE from readProjectConfig so that the existing 2-scalar read
-// seam (and its tests) is left byte-unchanged.
+// readProjectNestedConfig is the read seam for the 7 curated nested fields
+// (REQ-WC7-010). SPEC-WEB-CONSOLE-010 M2: the load-modify-write seam was relocated
+// to the neutral internal/settings package so both the web console and the TUI
+// wizard share ONE persistence path (AP-2 — no parallel writer). This web wrapper
+// delegates to settings.ReadProjectNestedConfig and re-shapes the result into the
+// web-local projectNestedCurrent view-model type.
 func readProjectNestedConfig(projectRoot string) (projectNestedCurrent, error) {
-	mgr := config.NewConfigManager()
-	cfg, err := mgr.LoadRaw(projectRoot)
+	cur, err := settings.ReadProjectNestedConfig(projectRoot)
 	if err != nil {
-		return projectNestedCurrent{}, fmt.Errorf("read project nested config: %w", err)
+		return projectNestedCurrent{}, err
 	}
 	return projectNestedCurrent{
-		CoverageTarget:       strconv.Itoa(cfg.Quality.TestCoverageTarget),
-		EnforceQuality:       cfg.Quality.EnforceQuality,
-		MinCoverage:          strconv.Itoa(cfg.Quality.TDDSettings.MinCoveragePerCommit),
-		ConfidenceThreshold:  strconv.FormatFloat(cfg.GitConvention.AutoDetection.ConfidenceThreshold, 'f', -1, 64),
-		AutoDetectionEnabled: cfg.GitConvention.AutoDetection.Enabled,
-		SampleSize:           strconv.Itoa(cfg.GitConvention.AutoDetection.SampleSize),
-		EnforceOnPush:        cfg.GitConvention.Validation.EnforceOnPush,
+		CoverageTarget:       cur.CoverageTarget,
+		EnforceQuality:       cur.EnforceQuality,
+		MinCoverage:          cur.MinCoverage,
+		ConfidenceThreshold:  cur.ConfidenceThreshold,
+		AutoDetectionEnabled: cur.AutoDetectionEnabled,
+		SampleSize:           cur.SampleSize,
+		EnforceOnPush:        cur.EnforceOnPush,
 	}, nil
 }
 
@@ -225,70 +248,23 @@ func writeProjectConfig(projectRoot, devMode, convention string) error {
 	return nil
 }
 
-// writeProjectNestedConfig is the load-modify-write seam for the 6 curated nested
-// fields (SPEC-WEB-CONSOLE-007 §D, HARD-4). It is SEPARATE from writeProjectConfig
-// so the existing 2-scalar write contract (and its tests) is byte-unchanged.
+// writeProjectNestedConfig is the load-modify-write seam for the 7 curated nested
+// fields (SPEC-WEB-CONSOLE-007 §D, HARD-4). SPEC-WEB-CONSOLE-010 M2: the seam body
+// was relocated to the neutral internal/settings package (settings.WriteProjectNestedConfig)
+// so the web console and the TUI wizard drive ONE shared write path (AP-2 — no
+// parallel writer). This web wrapper converts the HTTP-parsed projectNestedForm into
+// the neutral settings.NestedForm and delegates.
 //
-// HARD-4 nested isolation crux: SetSection replaces the WHOLE section struct and
-// Save() serializes the whole struct (manager.go), so the seam copies the ENTIRE
-// section struct returned by LoadRaw (q := cfg.Quality / gc := cfg.GitConvention)
-// and mutates ONLY the targeted nested field(s). Every sibling nested field rides
-// through from LoadRaw byte-identical. Each *Set flag gates a per-field mutation so
-// an unsubmitted field (EC-1) is left at its persisted value.
+// HARD-4 nested isolation crux (preserved in settings.WriteProjectNestedConfig):
+// SetSection replaces the WHOLE section struct and Save() serializes the whole
+// struct, so the seam copies the ENTIRE section struct returned by LoadRaw and
+// mutates ONLY the targeted nested field(s); every sibling nested field rides
+// through byte-identical. Each *Set flag gates a per-field mutation so an
+// unsubmitted field (EC-1) is left at its persisted value.
 //
-// This runs AFTER the existing writeProjectConfig in handleSave, so its LoadRaw
-// re-reads the scalar values that call already persisted — both writes converge on
-// the same on-disk sections without clobbering each other.
+// This runs AFTER the existing writeProjectConfig in handleSave, so the shared
+// seam's LoadRaw re-reads the scalar values that call already persisted — both
+// writes converge on the same on-disk sections without clobbering each other.
 func writeProjectNestedConfig(projectRoot string, form projectNestedForm) error {
-	mgr := config.NewConfigManager()
-	cfg, err := mgr.LoadRaw(projectRoot)
-	if err != nil {
-		return fmt.Errorf("load project config: %w", err)
-	}
-
-	changed := false
-
-	if form.touchesQuality() {
-		q := cfg.Quality // whole-struct copy: DDD/TDD/Coverage/LSP/... all ride through
-		if form.CoverageTargetSet {
-			q.TestCoverageTarget = form.CoverageTarget
-		}
-		if form.EnforceQualitySet {
-			q.EnforceQuality = form.EnforceQuality
-		}
-		if form.MinCoverageSet {
-			q.TDDSettings.MinCoveragePerCommit = form.MinCoverage // nested-of-nested: TDDSettings rides through, one field set
-		}
-		if err := mgr.SetSection("quality", q); err != nil {
-			return fmt.Errorf("set quality section: %w", err)
-		}
-		changed = true
-	}
-
-	if form.touchesGitConvention() {
-		gc := cfg.GitConvention // whole-struct copy: AutoDetection/Validation sub-structs all ride through
-		if form.ConfidenceSet {
-			gc.AutoDetection.ConfidenceThreshold = form.Confidence
-		}
-		if form.AutoEnabledSet {
-			gc.AutoDetection.Enabled = form.AutoEnabled
-		}
-		if form.SampleSizeSet {
-			gc.AutoDetection.SampleSize = form.SampleSize
-		}
-		if form.EnforceOnPushSet {
-			gc.Validation.EnforceOnPush = form.EnforceOnPush
-		}
-		if err := mgr.SetSection("git_convention", gc); err != nil {
-			return fmt.Errorf("set git_convention section: %w", err)
-		}
-		changed = true
-	}
-
-	if changed {
-		if err := mgr.Save(); err != nil {
-			return fmt.Errorf("save project config: %w", err)
-		}
-	}
-	return nil
+	return settings.WriteProjectNestedConfig(projectRoot, form.toSettingsForm())
 }

@@ -8,8 +8,19 @@ import (
 	"strconv"
 
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
+
+// statuslineThemeOptionList returns the canonical statusline theme option values
+// from the shared settings schema (SPEC-WEB-CONSOLE-010 — re-added Statusline
+// section). No preset option is included (REQ-WC10-010).
+func statuslineThemeOptionList() []string {
+	if f, ok := settings.Field("statusline_theme"); ok {
+		return f.SelectOptions()
+	}
+	return nil
+}
 
 // pageView is the typed view-model for the Console page. It is the input to the
 // Templ root component page(view) (SPEC-WEB-CONSOLE-006 — migrated from the
@@ -20,14 +31,17 @@ type pageView struct {
 	Profiles          []profile.ProfileEntry
 	ShowProfileSwitch bool
 
-	// Option lists for the form selects. StatuslinePresets / StatuslineThemes /
-	// AllSegments were removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 (the
-	// statusline panel is gone from the web console).
+	// Option lists for the form selects. SPEC-WEB-CONSOLE-010 re-added the
+	// Statusline section (theme + 15 segments, NO preset): StatuslineThemes is the
+	// theme option list and StatuslineSegs is the 15 canonical segment keys, both
+	// schema-sourced. The retired `preset` selector is NOT reintroduced (REQ-WC10-010).
 	LangOptions     []string
 	ModelOptions    []string
 	EffortLevels    []string
 	ModelPolicies   []string
 	PermissionModes []string
+	StatuslineThemes []string
+	StatuslineSegs   []string // 15 canonical segment keys (schema-sourced)
 
 	// Project-config selects (SPEC-WEB-CONSOLE-003). Option lists + the current
 	// persisted/submitted values for the two flat project-config enum fields.
@@ -66,6 +80,9 @@ type pageView struct {
 }
 
 // newPageView assembles a view-model with the canonical option lists populated.
+// SPEC-WEB-CONSOLE-010: all option lists derive from the shared settings schema
+// (no hand-mirrored re-declarations). The statusline fields (theme + 15 segment
+// keys) are also schema-sourced for the re-added Statusline section (REQ-WC10-009).
 func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pageView {
 	profiles := a.listProfiles()
 	return pageView{
@@ -73,13 +90,15 @@ func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pag
 		SelectedProfile:   selected,
 		Profiles:          profiles,
 		ShowProfileSwitch: len(profiles) > 1, // REQ-WC-011: omit UI when only default
-		LangOptions:       langOptions,
-		ModelOptions:      modelCanonical,
-		EffortLevels:      effortLevelCanonical,
+		LangOptions:       langOptionList(),
+		ModelOptions:      modelOptionList(),
+		EffortLevels:      effortOptionList(),
 		ModelPolicies:     template.ValidModelPolicies(),
 		PermissionModes:   profile.ValidPermissionModes,
-		DevelopmentModes:  developmentModeCanonical,
-		Conventions:       conventionCanonical,
+		DevelopmentModes:  developmentModeOptionList(),
+		Conventions:       conventionOptionList(),
+		StatuslineThemes:  statuslineThemeOptionList(),
+		StatuslineSegs:    settings.StatuslineSegmentKeys(),
 		BindAddr:          a.resolveBindAddr(),
 		FieldErrors:       map[string]string{},
 	}
@@ -346,10 +365,15 @@ func (a *app) renderErrorPage(w http.ResponseWriter, prefs profile.ProfilePrefer
 	a.render(w, http.StatusInternalServerError, view)
 }
 
-// bindForm maps submitted form values onto a ProfilePreferences. Segment
-// checkboxes (segment_<key>) populate StatuslineSegments; absent checkboxes are
-// recorded as false so custom-preset toggles round-trip without dropping keys
-// (EC-4).
+// bindForm maps submitted form values onto a ProfilePreferences.
+// SPEC-WEB-CONSOLE-010 re-added the Statusline section: the theme value and the 15
+// segment toggles are bound here. A segment toggle is a checkbox named seg_<key>
+// with a hidden companion seg_<key>__present (the same disambiguation pattern as the
+// nested-config bool toggles). When ANY segment companion is present, the full
+// 15-key StatuslineSegments map is populated (unchecked → false) so the segment map
+// round-trips without dropping keys; when NO segment companion is present, the map is
+// left nil so syncStatusline preserves the on-disk segments (theme-only / no-change
+// save). The retired `preset` field is NOT bound (REQ-WC10-010).
 func bindForm(r *http.Request) profile.ProfilePreferences {
 	prefs := profile.ProfilePreferences{
 		UserName:         r.PostFormValue("user_name"),
@@ -361,6 +385,24 @@ func bindForm(r *http.Request) profile.ProfilePreferences {
 		Model:            r.PostFormValue("model"),
 		EffortLevel:      r.PostFormValue("effort_level"),
 		PermissionMode:   r.PostFormValue("permission_mode"),
+		StatuslineTheme:  r.PostFormValue("statusline_theme"),
+	}
+
+	// Statusline segments: detect submission via any seg_<key>__present companion.
+	segs := settings.StatuslineSegmentKeys()
+	submitted := false
+	for _, key := range segs {
+		if r.PostFormValue("seg_"+key+"__present") != "" {
+			submitted = true
+			break
+		}
+	}
+	if submitted {
+		segMap := make(map[string]bool, len(segs))
+		for _, key := range segs {
+			segMap[key] = r.PostFormValue("seg_"+key) != ""
+		}
+		prefs.StatuslineSegments = segMap
 	}
 
 	return prefs

@@ -129,6 +129,27 @@ type profileSetupText struct {
 	// ProjectDefaultOption labels the empty "(project default)" option shared by
 	// both project-config selects.
 	ProjectDefaultOption string
+
+	// SPEC-WEB-CONSOLE-010 (M3): the 7 nested project-config fields the TUI gained
+	// for parity with the web console. These persist to quality.yaml /
+	// git-convention.yaml via the shared nested write seam (settings.WriteProjectNestedConfig),
+	// NOT the profile store. Each field has a title + desc. The web side already
+	// carries the matching f.quality.* / f.git_convention.* dotted keys in i18n.js;
+	// the schemaKeyToTUIField bridge maps each schema dotted key to these struct fields.
+	QualityCoverageTargetTitle string
+	QualityCoverageTargetDesc  string
+	QualityEnforceQualityTitle string
+	QualityEnforceQualityDesc  string
+	QualityMinCoverageTitle    string
+	QualityMinCoverageDesc     string
+	GitAutoEnabledTitle        string
+	GitAutoEnabledDesc         string
+	GitConfidenceTitle         string
+	GitConfidenceDesc          string
+	GitSampleSizeTitle         string
+	GitSampleSizeDesc          string
+	GitEnforceOnPushTitle      string
+	GitEnforceOnPushDesc       string
 }
 
 // profileSetupTexts maps language code to translated UI strings.
@@ -224,6 +245,21 @@ var profileSetupTexts = map[string]profileSetupText{
 		GitConventionTitle:   "Git commit convention",
 		GitConventionDesc:    "Commit message convention written to git-convention.yaml. Empty keeps the project default.",
 		ProjectDefaultOption: "(project default)",
+
+		QualityCoverageTargetTitle: "Test coverage target",
+		QualityCoverageTargetDesc:  "Minimum overall test coverage percentage (0-100). Empty keeps the project default.",
+		QualityEnforceQualityTitle: "Enforce quality gate",
+		QualityEnforceQualityDesc:  "Block on TRUST 5 quality-gate failures.",
+		QualityMinCoverageTitle:    "Min coverage per commit",
+		QualityMinCoverageDesc:     "Minimum coverage required per commit in TDD mode (0-100). Empty keeps the project default.",
+		GitAutoEnabledTitle:        "Auto-detect convention",
+		GitAutoEnabledDesc:         "Auto-detect the commit convention from history.",
+		GitConfidenceTitle:         "Detection confidence threshold",
+		GitConfidenceDesc:          "Confidence required to auto-detect a convention (0.0-1.0). Empty keeps the project default.",
+		GitSampleSizeTitle:         "Detection sample size",
+		GitSampleSizeDesc:          "Number of recent commits analyzed during auto-detection. Empty keeps the project default.",
+		GitEnforceOnPushTitle:      "Enforce on push",
+		GitEnforceOnPushDesc:       "Reject a push when a commit message violates the convention.",
 	},
 	"ko": {
 		ConfiguringProfile:      "프로필 '%s' 설정",
@@ -316,6 +352,21 @@ var profileSetupTexts = map[string]profileSetupText{
 		GitConventionTitle:   "Git 커밋 컨벤션",
 		GitConventionDesc:    "git-convention.yaml에 기록되는 커밋 메시지 컨벤션. 비워두면 프로젝트 기본값을 유지합니다.",
 		ProjectDefaultOption: "(프로젝트 기본값)",
+
+		QualityCoverageTargetTitle: "테스트 커버리지 목표",
+		QualityCoverageTargetDesc:  "전체 테스트 커버리지 최소 비율(0-100)입니다. 비워두면 프로젝트 기본값을 유지합니다.",
+		QualityEnforceQualityTitle: "품질 게이트 강제",
+		QualityEnforceQualityDesc:  "TRUST 5 품질 게이트 실패 시 차단합니다.",
+		QualityMinCoverageTitle:    "커밋당 최소 커버리지",
+		QualityMinCoverageDesc:     "TDD 모드에서 커밋마다 요구되는 최소 커버리지(0-100)입니다. 비워두면 프로젝트 기본값을 유지합니다.",
+		GitAutoEnabledTitle:        "규칙 자동 감지",
+		GitAutoEnabledDesc:         "커밋 히스토리에서 커밋 규칙을 자동 감지합니다.",
+		GitConfidenceTitle:         "감지 신뢰도 임계값",
+		GitConfidenceDesc:          "규칙 자동 감지에 필요한 신뢰도(0.0-1.0)입니다. 비워두면 프로젝트 기본값을 유지합니다.",
+		GitSampleSizeTitle:         "감지 샘플 크기",
+		GitSampleSizeDesc:          "자동 감지 시 분석할 최근 커밋 수입니다. 비워두면 프로젝트 기본값을 유지합니다.",
+		GitEnforceOnPushTitle:      "푸시 시 강제",
+		GitEnforceOnPushDesc:       "커밋 메시지가 규칙을 위반하면 푸시를 거부합니다.",
 	},
 	"ja": {
 		ConfiguringProfile:      "プロファイル '%s' を設定",
@@ -408,6 +459,21 @@ var profileSetupTexts = map[string]profileSetupText{
 		GitConventionTitle:   "Git コミット規約",
 		GitConventionDesc:    "git-convention.yaml に記録されるコミットメッセージ規約。空欄の場合はプロジェクトのデフォルトを維持します。",
 		ProjectDefaultOption: "(プロジェクトのデフォルト)",
+
+		QualityCoverageTargetTitle: "テストカバレッジ目標",
+		QualityCoverageTargetDesc:  "全体のテストカバレッジ最小割合（0-100）です。空欄の場合はプロジェクトのデフォルトを維持します。",
+		QualityEnforceQualityTitle: "品質ゲートを強制",
+		QualityEnforceQualityDesc:  "TRUST 5 品質ゲート失敗時にブロックします。",
+		QualityMinCoverageTitle:    "コミットごとの最小カバレッジ",
+		QualityMinCoverageDesc:     "TDD モードでコミットごとに必要な最小カバレッジ（0-100）です。空欄の場合はプロジェクトのデフォルトを維持します。",
+		GitAutoEnabledTitle:        "規約を自動検出",
+		GitAutoEnabledDesc:         "コミット履歴からコミット規約を自動検出します。",
+		GitConfidenceTitle:         "検出信頼度しきい値",
+		GitConfidenceDesc:          "規約を自動検出するために必要な信頼度（0.0-1.0）です。空欄の場合はプロジェクトのデフォルトを維持します。",
+		GitSampleSizeTitle:         "検出サンプルサイズ",
+		GitSampleSizeDesc:          "自動検出時に解析する直近のコミット数です。空欄の場合はプロジェクトのデフォルトを維持します。",
+		GitEnforceOnPushTitle:      "プッシュ時に強制",
+		GitEnforceOnPushDesc:       "コミットメッセージが規約に違反した場合にプッシュを拒否します。",
 	},
 	"zh": {
 		ConfiguringProfile:      "配置文件 '%s' 设置",
@@ -500,6 +566,21 @@ var profileSetupTexts = map[string]profileSetupText{
 		GitConventionTitle:   "Git 提交规范",
 		GitConventionDesc:    "写入 git-convention.yaml 的提交信息规范。留空则保留项目默认值。",
 		ProjectDefaultOption: "(项目默认值)",
+
+		QualityCoverageTargetTitle: "测试覆盖率目标",
+		QualityCoverageTargetDesc:  "整体测试覆盖率最低百分比（0-100）。留空则保留项目默认值。",
+		QualityEnforceQualityTitle: "强制质量门禁",
+		QualityEnforceQualityDesc:  "TRUST 5 质量门禁失败时阻止。",
+		QualityMinCoverageTitle:    "每次提交最低覆盖率",
+		QualityMinCoverageDesc:     "TDD 模式下每次提交所需的最低覆盖率（0-100）。留空则保留项目默认值。",
+		GitAutoEnabledTitle:        "自动检测约定",
+		GitAutoEnabledDesc:         "从提交历史自动检测提交约定。",
+		GitConfidenceTitle:         "检测置信度阈值",
+		GitConfidenceDesc:          "自动检测约定所需的置信度（0.0-1.0）。留空则保留项目默认值。",
+		GitSampleSizeTitle:         "检测样本大小",
+		GitSampleSizeDesc:          "自动检测时分析的最近提交数量。留空则保留项目默认值。",
+		GitEnforceOnPushTitle:      "推送时强制",
+		GitEnforceOnPushDesc:       "当提交信息违反约定时拒绝推送。",
 	},
 }
 

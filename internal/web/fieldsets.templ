@@ -1,10 +1,13 @@
 package web
 
-// The 5 fieldsets ported 1:1 from page.html.tmpl (~109-260). Each is a typed
-// Templ component taking the pageView; field-for-field identical name=/id=/option
-// markup (REQ-WC6-003). The Language fieldset reuses langSelect; Launch/Project
-// reuse optSelect; permission_mode + the three statusline selects are rendered
-// inline (they carry select-specific empty-option semantics the helpers do not).
+import "github.com/modu-ai/moai-adk/internal/settings"
+
+// The fieldsets are typed Templ components taking the pageView; the Language
+// fieldset reuses langSelect; Launch/Project reuse optSelect; permission_mode is
+// rendered inline. SPEC-WEB-CONSOLE-010 re-added fieldsetStatusline (theme + 15
+// segments, NO preset) and single-sourced every empty-option label from the
+// settings schema (settings.EmptyLabelFor) so the web and TUI render identical
+// canonical labels per field.
 
 // fieldsetIdentity ports the Identity fieldset (user_name text input, ~109-128).
 templ fieldsetIdentity(view pageView) {
@@ -90,9 +93,9 @@ templ fieldsetLaunch(view pageView) {
 						<span class="field-error" id="err_permission_mode">@icon("alert-circle")<span>{ msg }</span></span>
 					}
 				</div>
-				@optSelect(optSelectArgs{Name: "model_policy", Title: "Model policy", Key: "model_policy", Desc: "Quality vs. speed bias when a model is auto-selected.", Value: view.Prefs.ModelPolicy, Empty: "(unset)", Options: view.ModelPolicies, Errors: view.FieldErrors})
-				@optSelect(optSelectArgs{Name: "model", Title: "Model", Key: "model", Desc: "The specific model to run, including 1M-context variants.", Value: view.Prefs.Model, Empty: "(project default)", Options: view.ModelOptions, Errors: view.FieldErrors})
-				@optSelect(optSelectArgs{Name: "effort_level", Title: "Effort level", Key: "effort_level", Desc: "How much reasoning effort the model spends per task.", Value: view.Prefs.EffortLevel, Empty: "(runtime default)", Options: view.EffortLevels, Errors: view.FieldErrors})
+				@optSelect(optSelectArgs{Name: "model_policy", Title: "Model policy", Key: "model_policy", Desc: "Quality vs. speed bias when a model is auto-selected.", Value: view.Prefs.ModelPolicy, Empty: settings.EmptyLabelFor("model_policy"), Options: view.ModelPolicies, Errors: view.FieldErrors})
+				@optSelect(optSelectArgs{Name: "model", Title: "Model", Key: "model", Desc: "The specific model to run, including 1M-context variants.", Value: view.Prefs.Model, Empty: settings.EmptyLabelFor("model"), Options: view.ModelOptions, Errors: view.FieldErrors})
+				@optSelect(optSelectArgs{Name: "effort_level", Title: "Effort level", Key: "effort_level", Desc: "How much reasoning effort the model spends per task.", Value: view.Prefs.EffortLevel, Empty: settings.EmptyLabelFor("effort_level"), Options: view.EffortLevels, Errors: view.FieldErrors})
 			</div>
 		</div>
 	</fieldset>
@@ -117,12 +120,80 @@ templ permissionOption(value, current string) {
 	}
 }
 
-// fieldsetStatusline + its statuslineSelect / statuslineSelectInner /
-// segmentCheckbox helpers were removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001:
-// the entire statusline configuration panel (preset select + theme select +
-// segment checkbox grid) is gone from the web console. Users reconfigure the
-// statusline via statusline.yaml or the wizard. The theme field plumbing
-// remains valid at the config layer but no longer has a web UI affordance.
+// fieldsetStatusline re-adds the Statusline section to the web console
+// (SPEC-WEB-CONSOLE-010 REQ-WC10-009): a theme <select> + 15 segment toggles
+// sourced from the shared schema. The retired statusline `preset` selector is NOT
+// reintroduced (REQ-WC10-010) — there is no preset form control, option list, or
+// validation rule. The segment toggles reuse the segmentToggle helper (checkbox +
+// hidden __present companion) so the segment map round-trips with the
+// empty=preserve semantic at the config layer (syncStatusline).
+templ fieldsetStatusline(view pageView) {
+	<fieldset class="section">
+		<div class="section__head">
+			<div class="section__head-row">
+				<legend class="section__legend"><span class="section__ico">@icon("panel-bottom")</span><span data-i18n="sec.statusline.title">Statusline</span></legend>
+				<span class="section__count" data-i18n="count.statusline">16 fields</span>
+			</div>
+			<p class="section__desc" data-i18n="sec.statusline.desc">The status bar shown at the bottom of your terminal.</p>
+		</div>
+		<div class="section__body">
+			<div class="grid grid--1">
+				<div class={ "field", templ.KV("has-error", hasFieldError(view.FieldErrors, "statusline_theme")) }>
+					<span class="field__label"><span class="field__title" data-i18n="f.statusline_theme.title">Statusline theme</span><code class="field__key">statusline_theme</code></span>
+					<span class="field__desc" data-i18n="f.statusline_theme.desc">Color theme for the status bar.</span>
+					<span class="select-wrap">
+						<select
+							class="select"
+							id="statusline_theme"
+							name="statusline_theme"
+							if hasFieldError(view.FieldErrors, "statusline_theme") {
+								aria-invalid="true"
+							}
+						>
+							for _, theme := range view.StatuslineThemes {
+								if theme == view.Prefs.StatuslineTheme {
+									<option value={ theme } selected>{ theme }</option>
+								} else {
+									<option value={ theme }>{ theme }</option>
+								}
+							}
+						</select>
+					</span>
+					if msg := fieldErrorMsg(view.FieldErrors, "statusline_theme"); msg != "" {
+						<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
+					}
+				</div>
+			</div>
+			<div class="grid">
+				for _, seg := range view.StatuslineSegs {
+					@segmentToggle(seg, view.Prefs.StatuslineSegments[seg])
+				}
+			</div>
+		</div>
+	</fieldset>
+}
+
+// segmentToggle renders one statusline segment as a checkbox toggle
+// (SPEC-WEB-CONSOLE-010). The control name is seg_<key> with a hidden companion
+// seg_<key>__present so the server can distinguish "unchecked" (companion present,
+// checkbox absent → false) from "section not submitted" (companion absent →
+// preserve). The data-i18n key is seg.<key> — the 15 per-segment labels authored in
+// i18n.js. The segment KEY is shown as a code chip so the row is identifiable even
+// before i18n applies. NO preset control is rendered (REQ-WC10-010).
+templ segmentToggle(seg string, checked bool) {
+	<div class="field">
+		<span class="field__label"><span class="field__title" data-i18n={ "seg." + seg }>{ seg }</span><code class="field__key">{ seg }</code></span>
+		<label class="seg">
+			<input type="hidden" name={ "seg_" + seg + "__present" } value="1"/>
+			if checked {
+				<input type="checkbox" id={ "seg_" + seg } name={ "seg_" + seg } value="1" checked/>
+			} else {
+				<input type="checkbox" id={ "seg_" + seg } name={ "seg_" + seg } value="1"/>
+			}
+			<span class="seg__box"><span class="seg__tick">@icon("check")</span></span>
+		</label>
+	</div>
+}
 
 // fieldsetProject ports the Project fieldset and extends it with the curated
 // nested config fields (REQ-WC9-010). The two optSelect scalars (development_mode /
@@ -143,8 +214,8 @@ templ fieldsetProject(view pageView) {
 		</div>
 		<div class="section__body">
 			<div class="grid" data-convention={ view.CurConvention }>
-				@optSelect(optSelectArgs{Name: "development_mode", Title: "Development mode", Key: "development_mode", Desc: "Default workflow — domain-driven (DDD) or test-driven (TDD).", Value: view.CurDevelopmentMode, Empty: "(project default)", Options: view.DevelopmentModes, Errors: view.FieldErrors})
-				@optSelect(optSelectArgs{Name: "git_convention", Title: "Git convention", Key: "git_convention", Desc: "Commit message convention enforced in this project.", Value: view.CurConvention, Empty: "(unchanged)", Options: view.Conventions, Errors: view.FieldErrors})
+				@optSelect(optSelectArgs{Name: "development_mode", Title: "Development mode", Key: "development_mode", Desc: "Default workflow — domain-driven (DDD) or test-driven (TDD).", Value: view.CurDevelopmentMode, Empty: settings.EmptyLabelFor("development_mode"), Options: view.DevelopmentModes, Errors: view.FieldErrors})
+				@optSelect(optSelectArgs{Name: "git_convention", Title: "Git convention", Key: "git_convention", Desc: "Commit message convention enforced in this project.", Value: view.CurConvention, Empty: settings.EmptyLabelFor("git_convention"), Options: view.Conventions, Errors: view.FieldErrors})
 				@numberField(numberFieldArgs{Name: "quality.test_coverage_target", Title: "Test coverage target", Key: "quality.test_coverage_target", Desc: "Minimum overall test coverage percentage (0-100).", Value: view.CurTestCoverageTarget, Min: "0", Max: "100", Step: "1", Errors: view.FieldErrors})
 				@toggle(toggleArgs{Name: "quality.enforce_quality", Title: "Enforce quality gate", Key: "quality.enforce_quality", Desc: "Block on TRUST 5 quality-gate failures.", Checked: view.CurEnforceQuality, Errors: view.FieldErrors})
 				@numberField(numberFieldArgs{Name: "quality.tdd_settings.min_coverage_per_commit", Title: "Min coverage per commit", Key: "quality.tdd_settings.min_coverage_per_commit", Desc: "Minimum coverage required per commit in TDD mode (0-100).", Value: view.CurMinCoveragePerCommit, Min: "0", Max: "100", Step: "1", Errors: view.FieldErrors})

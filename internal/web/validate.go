@@ -5,6 +5,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/pkg/models"
 )
@@ -13,58 +14,37 @@ import (
 // supplied. Defined here so assets.go stays focused on embedding.
 var errDictKey = errors.New("web: dict key must be a string")
 
-// Canonical value lists.
+// Canonical value lists — SINGLE-SOURCED from the settings schema.
 //
-// @MX:NOTE: [AUTO] 이 목록들은 internal/cli/profile_setup.go 의 wizard SSOT(언어 옵션 /
-// modelCanonical / effortLevelCanonical)와 동일한 정규 값이다. wizard의 정규 리스트가
-// 미노출(unexported, internal/cli 패키지 전용)이고 internal/cli → internal/web 단방향 의존이므로 역참조가 불가능하여
-// 같은 값을 여기서 재선언한다. permission mode 검증은 별도 규칙을 만들지 않고 profile.IsValidPermissionMode 를 그대로 재사용한다
-// (병렬 검증 규칙 셋 금지 — REQ-WC-008). wizard 정규 리스트 변경 시 본 목록도 함께 갱신해야 한다.
-// statuslineThemeCanonical / statuslinePresetCanonical / allSegments 는 SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001
-// 로 제거되었다 — 웹 콘솔의 statusline 패널 전체가 삭제되어 해당 정규 값/검증 규칙이 필요 없다.
+// @MX:NOTE: [AUTO] SPEC-WEB-CONSOLE-010: 기존에 손수-미러되던 5개 정규 목록
+// (langOptions / modelCanonical / effortLevelCanonical / developmentModeCanonical /
+// conventionCanonical)은 모두 제거되고 중립 internal/settings 스키마에서 파생된다.
+// internal/cli → internal/web 단방향 의존 때문에 wizard 정규 리스트를 역참조할 수 없어
+// 손수 재선언했던 드리프트 원천이 제3 중립 패키지(internal/settings)로 단일화되었다.
+// 두 표면(웹/TUI)이 모두 internal/settings 를 import 하므로 더 이상 손수 동기화가 필요 없다.
+// permission mode 검증은 profile.IsValidPermissionMode 를 그대로 재사용한다(REQ-WC-008).
 
-// langOptions are the four supported conversation/commit/comment/doc languages.
-// Mirrors the en/ko/ja/zh options offered by the profile wizard.
-var langOptions = []string{"en", "ko", "ja", "zh"}
+// langOptionList returns the four supported conversation/commit/comment/doc
+// languages from the schema (REQ-WC10-004). No standalone re-declaration.
+func langOptionList() []string { return settings.LanguageOptionValues() }
 
-// modelCanonical mirrors the wizard SSOT model Select option set
-// (internal/cli/profile_setup.go:303-310). The empty string ("project default")
-// is allowed by validatePrefs' empty-allowed guard and is not listed here.
-// Mirrored (not imported) because the wizard option strings are unexported and
-// internal/cli → internal/web is the only legal import direction.
-var modelCanonical = []string{"opus", "opus[1m]", "sonnet", "sonnet[1m]", "haiku", "opusplan"}
+// modelOptionList returns the canonical model option set from the schema
+// (REQ-WC10-004). The empty string ("project default") is allowed by validatePrefs'
+// empty-allowed guard and is not listed here.
+func modelOptionList() []string { return settings.ModelOptionValues() }
 
-// effortLevelCanonical mirrors the wizard SSOT effort Select option set
-// (internal/cli/profile_setup.go:316-322). The empty string ("runtime default")
-// is allowed by the empty-allowed guard and is not listed here.
-var effortLevelCanonical = []string{"low", "medium", "high", "xhigh", "max"}
+// effortOptionList returns the canonical effort level option set from the schema
+// (REQ-WC10-004). The empty string ("runtime default") is allowed by the
+// empty-allowed guard and is not listed here.
+func effortOptionList() []string { return settings.EffortOptionValues() }
 
-// developmentModeCanonical is the stable-order option list for the project
-// development_mode <select> (SPEC-WEB-CONSOLE-003). Sourced from the canonical
-// pkg/models predicate (models.ValidDevelopmentModes) so it never drifts from the
-// validator — option order is fixed here for deterministic rendering.
-var developmentModeCanonical = developmentModesFromModels()
+// developmentModeOptionList returns the canonical development_mode option list from
+// the schema (REQ-WC10-004).
+func developmentModeOptionList() []string { return settings.DevelopmentModeOptionValues() }
 
-// conventionCanonical is the stable-order option list for the project
-// git_convention <select>. Sourced from the canonical internal/config predicate
-// (config.ValidConventions, which returns map-order); the order is fixed here to
-// match the pkg/models GitConventionConfig.Convention oneof SSOT for deterministic
-// rendering.
-var conventionCanonical = []string{"auto", "conventional-commits", "angular", "karma"}
-
-// developmentModesFromModels converts models.ValidDevelopmentModes() (typed) into
-// a []string for the view-model option list, preserving the canonical order.
-func developmentModesFromModels() []string {
-	modes := models.ValidDevelopmentModes()
-	out := make([]string, 0, len(modes))
-	for _, m := range modes {
-		out = append(out, string(m))
-	}
-	return out
-}
-
-// allSegments was removed (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001): the web
-// console statusline panel (including the segment checkbox grid) is gone.
+// conventionOptionList returns the canonical git_convention option list from the
+// schema (REQ-WC10-004).
+func conventionOptionList() []string { return settings.ConventionOptionValues() }
 
 // inList reports whether v is a member of list.
 func inList(list []string, v string) bool {
@@ -100,28 +80,37 @@ func validatePrefs(p profile.ProfilePreferences) map[string]string {
 		"code_comment_lang": p.CodeCommentLang,
 		"doc_lang":          p.DocLang,
 	} {
-		if val != "" && !inList(langOptions, val) {
+		if val != "" && !inList(langOptionList(), val) {
 			errs[field] = "unrecognized language: " + val
 		}
 	}
 
 	// Model / effort_level / model_policy: empty allowed, otherwise canonical.
-	// REQ-WC2-002/003/004 — web↔TUI validation parity. model + effort_level reuse
-	// the mirrored wizard lists; model_policy wires in the existing exported
-	// predicate template.IsValidModelPolicy (no mirror — it is importable).
-	if p.Model != "" && !inList(modelCanonical, p.Model) {
+	// REQ-WC2-002/003/004 — web↔TUI validation parity. SPEC-WEB-CONSOLE-010: model +
+	// effort_level now derive from the shared settings schema (no hand-mirrored list);
+	// model_policy continues to reuse the exported predicate template.IsValidModelPolicy.
+	if p.Model != "" && !inList(modelOptionList(), p.Model) {
 		errs["model"] = "unrecognized model: " + p.Model
 	}
-	if p.EffortLevel != "" && !inList(effortLevelCanonical, p.EffortLevel) {
+	if p.EffortLevel != "" && !inList(effortOptionList(), p.EffortLevel) {
 		errs["effort_level"] = "unrecognized effort level: " + p.EffortLevel
 	}
 	if p.ModelPolicy != "" && !template.IsValidModelPolicy(p.ModelPolicy) {
 		errs["model_policy"] = "unrecognized model policy: " + p.ModelPolicy
 	}
 
-	// Statusline preset / theme validation removed (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001):
-	// the web console no longer binds statusline form values, so there is nothing
-	// to validate. The statusline config is managed via statusline.yaml / wizard.
+	// Statusline theme: SPEC-WEB-CONSOLE-010 re-added the Statusline section. Empty
+	// allowed (theme-only-unset save), otherwise must be a canonical theme value
+	// from the shared schema. The retired `preset` field is NOT validated
+	// (REQ-WC10-010 — no preset control exists). Segment values are booleans bound
+	// in bindForm and carry no enum to validate.
+	if p.StatuslineTheme != "" {
+		if f, ok := settings.Field("statusline_theme"); ok {
+			if !inList(f.SelectOptions(), p.StatuslineTheme) {
+				errs["statusline_theme"] = "unrecognized statusline theme: " + p.StatuslineTheme
+			}
+		}
+	}
 
 	return errs
 }

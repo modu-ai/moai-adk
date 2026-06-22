@@ -552,8 +552,9 @@ func TestServerContractPreserved(t *testing.T) {
 	// (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001): the statusline panel (including
 	// the segment checkbox grid) is gone from the web console.
 
-	// Language options are server-rendered: all four canonical langOptions render.
-	for _, lang := range langOptions {
+	// Language options are server-rendered: all four canonical languages render.
+	// SPEC-WEB-CONSOLE-010: the list is schema-sourced via langOptionList().
+	for _, lang := range langOptionList() {
 		if !strings.Contains(body, `<option value="`+lang+`"`) {
 			t.Errorf("language option %q not server-rendered (option list no longer view-driven)", lang)
 		}
