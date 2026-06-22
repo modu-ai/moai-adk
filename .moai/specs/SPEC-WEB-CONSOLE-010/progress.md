@@ -65,7 +65,7 @@ Lifecycle tracking for the 3-phase plan → run → sync flow. §E carries the a
 
 ```yaml
 run_complete_at: 2026-06-23
-run_commit_sha: <backfill-after-commit>
+run_commit_sha: 16329f3b168177be4ef0a3a505aba6bb79ee4d6a
 run_status: implemented
 ac_pass_count: 21          # AC-WC10-001..021 (AC-009 PASS-WITH-DEBT on web nominal -0.4%)
 ac_fail_count: 0
