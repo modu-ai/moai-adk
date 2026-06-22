@@ -97,7 +97,7 @@ residual_risk: "scripts/i18n-validator perf-budget test FAIL — out-of-scope, p
 
 ```yaml
 sync_status: completed
-sync_commit_sha: 5de6f19ee  # backfill will follow, see below
+sync_commit_sha: 8594d05f9
 sync_completeness: 100%
 sync_artifacts_touched:
   - spec.md (frontmatter: status in-progress → completed + updated timestamp)
