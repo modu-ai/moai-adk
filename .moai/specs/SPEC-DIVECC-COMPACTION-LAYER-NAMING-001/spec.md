@@ -132,8 +132,9 @@ Three files total:
 **AC-CLN-001 — Five layer names present verbatim** (binds REQ-CLN-001)
 - GIVEN the run-phase edits to the two target files
 - WHEN `grep -F -e "Budget Reduction" -e "Snip" -e "Microcompact" -e "Context Collapse" -e "Auto-Compact" <file>` is run on the added cross-reference region
-- THEN all five literal layer names appear in the added cross-reference of `context-window-management.md` (and at least the capitalized name set appears in the `runtime-recovery-doctrine.md` mapping).
-- Verification (CWM): `for n in "Budget Reduction" "Snip" "Microcompact" "Context Collapse" "Auto-Compact"; do grep -qF "$n" .claude/rules/moai/workflow/context-window-management.md || echo "MISSING: $n"; done` → no output.
+- THEN all five literal layer names appear in the added cross-reference of `context-window-management.md` AND the same five capitalized layer names appear in the `runtime-recovery-doctrine.md` mapping (both arms binary-gated by a dedicated for-loop).
+- Verification (CWM arm): `for n in "Budget Reduction" "Snip" "Microcompact" "Context Collapse" "Auto-Compact"; do grep -qF "$n" .claude/rules/moai/workflow/context-window-management.md || echo "MISSING: $n"; done` → no output.
+- Verification (rrd arm): `for n in "Budget Reduction" "Snip" "Microcompact" "Context Collapse" "Auto-Compact"; do grep -qF "$n" .claude/rules/moai/workflow/runtime-recovery-doctrine.md || echo "MISSING: $n"; done` → no output. (Mirrors the CWM arm so the runtime-recovery-doctrine.md capitalized-name mapping is also binary-gated, not asserted by prose alone.)
 
 **AC-CLN-002 — Paper citation present** (binds REQ-CLN-002)
 - GIVEN the added cross-reference(s)
@@ -144,8 +145,9 @@ Three files total:
 **AC-CLN-003 — Consume-not-implement framing present** (binds REQ-CLN-003, REQ-CLN-008)
 - GIVEN the added cross-reference(s)
 - WHEN the added prose is read
-- THEN it explicitly frames the five layers as Claude Code's graduated-compaction layers that moai-adk **consumes** (NOT implements). A literal "consume"/"consumes" (and the explicit not-implement disclaimer) appears near the five-layer naming in `context-window-management.md`.
-- Verification: `grep -niE "consume|does not implement|not implement|Claude Code('s)? (graduated[- ])?compaction" .claude/rules/moai/workflow/context-window-management.md` returns ≥ 1 match in the added region.
+- THEN it explicitly frames the five layers as Claude Code's graduated-compaction layers that moai-adk **consumes** (NOT implements), with the consume / not-implement language **co-located with a layer name** (`Budget Reduction` or the phrase `graduated-compaction`).
+- Verification (non-vacuous co-location anchor): `grep -niE 'consume[sd]?.{0,80}(Budget Reduction|graduated[- ]compaction)|(Budget Reduction|graduated[- ]compaction).{0,80}(consume[sd]?|does not implement|not implement)' .claude/rules/moai/workflow/context-window-management.md` returns ≥ 1 match in the added region.
+- Non-vacuity note: this anchor pattern was confirmed to return **0 matches** against the current (pre-edit) `context-window-management.md` (whose only pre-existing `consume` token — `Trigger #1 consumes the model-specific threshold table` on line 73 — is NOT co-located with any layer name), so the AC can pass ONLY after the run-phase adds the framed cross-reference. The whole-file `grep "consume"` of the prior AC version was vacuous because line 73 already matched it pre-edit; this co-location anchor (mirroring the contrastive pattern of AC-CLN-007) re-anchors the AC onto the SPEC's central consume-not-implement hazard.
 
 **AC-CLN-004 — CWM local ↔ mirror byte-identical** (binds REQ-CLN-004)
 - GIVEN `context-window-management.md` was edited locally
@@ -158,6 +160,7 @@ Three files total:
 - WHEN the neutrality gate runs
 - THEN the mirrored file contains no forbidden internal-content class (no internal `SPEC-DIVECC` token, no internal date, no commit SHA, no internal-only path) — the five layer names + public paper citation + consume framing are all acceptable content class.
 - Verification: `go test ./internal/template/... -run 'TestTemplateNeutralityAudit|TestTemplateNoInternalContentLeak'` passes (run-phase gate) AND `grep -E "SPEC-DIVECC|2026-06-22" internal/template/templates/.claude/rules/moai/workflow/context-window-management.md` returns NO match.
+- Coverage note: the `go test` arm is the **authoritative** neutrality gate — it covers the full forbidden-content class set REQ-CLN-005 enumerates (internal `SPEC-DIVECC` ID, internal date, **commit SHA, internal-only path**). The inline `grep -E "SPEC-DIVECC|2026-06-22"` arm is an **illustrative spot-check** of only 2 of those 4 classes (it omits the commit-SHA and internal-only-path classes); it is a convenience signal, NOT the SSOT. When the inline grep and the `go test` arm disagree, the `go test` arm wins.
 
 **AC-CLN-006 — book1 named principles preserved verbatim (additive-only proof)** (binds REQ-CLN-007)
 - GIVEN the `runtime-recovery-doctrine.md` edit
