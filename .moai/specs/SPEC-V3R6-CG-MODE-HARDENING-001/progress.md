@@ -24,7 +24,7 @@ _Run-phase (§E.2/§E.3) and sync-phase (§E.4) sections below are placeholder h
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-- **run_commit_sha**: `<RUN_SHA_BACKFILL>`
+- **run_commit_sha**: `23901497a` (코드 실제 안착 commit — 병렬 `SPEC-V3R6-DEV-HARNESS-SPLIT-001` 세션이 working tree에 staged된 cg 코드 11파일을 흡수한 shared-main orphan race; `git diff HEAD 4e12f9ea0` = 0 으로 byte-identical 검증, origin push 확인. lifecycle status `draft→in-progress` 전환은 `8e78530bb`)
 - **AC 결과**: 10/10 PASS, 0 discrepancies (orchestrator 독립 재검증 V1-V7 매트릭스)
 - **sibling 보존**: SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001 `IsCGMode` 테스트 green (layered-OR 2번째 disjunct + 워닝 문자열 리터럴 `"GLM env vars are absent"` 보존, REQ-WTL-009 reconcile)
 - **반증 처리**: "leader process-env pollution" 가설 §H 제외 — `applyCGMode`가 `setGLMEnv()` 미호출 직접 확인
