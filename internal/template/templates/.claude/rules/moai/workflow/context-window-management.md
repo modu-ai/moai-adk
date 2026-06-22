@@ -6,6 +6,18 @@ Long-horizon session continuity guidance for both users and the MoAI orchestrato
 
 Anthropic SSE streams stall (`stream_idle_partial`) near the context window ceiling — intermittent but predictable above the model-specific threshold. Reference: 2026-04-25 incident (`feedback_large_spec_wave_split.md`).
 
+## Claude Code's Graduated-Compaction Layers (consumed, not implemented)
+
+Before the context window reaches the ceiling, the Claude Code runtime applies a **graduated-compaction** mechanism — five escalating layers that progressively reduce the live input before each model call, in escalation order:
+
+```
+Budget Reduction → Snip → Microcompact → Context Collapse → Auto-Compact
+```
+
+These five layer names are recorded here as a provenance cross-reference, sourced from the public paper "Dive into Claude Code: The Design Space of Today's and Future AI Agent Systems" (arXiv:2604.14228; companion repository github.com/VILA-Lab/Dive-into-Claude-Code).
+
+The orchestrator CONSUMES Claude Code's graduated-compaction layers; it does NOT implement them. Budget Reduction, Snip, Microcompact, Context Collapse, and Auto-Compact are Claude Code runtime internals — the harness sits ON TOP of Claude Code and cannot modify the native compaction loop. The `/clear` discipline and the model-specific thresholds below are the orchestrator-side behaviors that interact with the runtime's graduated compaction; they are not a reimplementation of it. The vocabulary is recorded so the `/clear` thresholds can name the runtime mechanism they sit atop.
+
 ## Context Window Targets
 
 [ZONE:Evolvable] [HARD] Operational threshold is **model-specific** (revised 2026-05-09). Larger windows tolerate higher percentage utilization before stall risk dominates; smaller windows hit the operational ceiling later in percentage terms but with less absolute headroom:

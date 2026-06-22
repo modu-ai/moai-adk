@@ -21,6 +21,8 @@ This set is grounded in book1 ch03's framing of the `queryLoop()`'s first duty �
 
 The withheld property is normative, not mechanical: the moai-adk agent's obligation is to recognize these signals and apply the ladder, not to intercept them at a platform layer (that interception lives inside Claude Code and is out of moai-adk's reach per the policy-layer constraint above).
 
+**Convergent second source (graduated-compaction naming).** The book1 input-governance sequence above (`memory prefetch → snip → microcompact → context-collapse → autocompact`) is independently corroborated by a **convergent second source**: the public paper "Dive into Claude Code: The Design Space of Today's and Future AI Agent Systems" (arXiv:2604.14228; companion repository github.com/VILA-Lab/Dive-into-Claude-Code) names the same graduated-compaction concept as five escalating layers — `Budget Reduction → Snip → Microcompact → Context Collapse → Auto-Compact`. The two sources map onto each other: book1's `snip → microcompact → context-collapse → autocompact` align with the paper's `Snip → Microcompact → Context Collapse → Auto-Compact`, and the paper's leading `Budget Reduction` layer corresponds to the budget-reduction step book1 folds into its `memory prefetch` input-governance preamble. moai-adk CONSUMES this Claude Code graduated compaction; it does NOT implement it (the interception lives inside Claude Code's `queryLoop()`, out of moai-adk's reach per the policy-layer constraint above). Recording the paper's exact layer names is provenance enrichment — it adds a second citation for the same concept and changes no behavior.
+
 ---
 
 ## §2. The 4-Rung Cheapest-First Recovery Ladder

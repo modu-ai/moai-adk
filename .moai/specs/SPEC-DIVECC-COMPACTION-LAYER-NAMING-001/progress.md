@@ -19,11 +19,17 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+- **run_complete_at**: 2026-06-22
+- **files changed (3)**: `.claude/rules/moai/workflow/context-window-management.md` (new "Claude Code's Graduated-Compaction Layers" section, +1252 bytes), `internal/template/templates/.claude/rules/moai/workflow/context-window-management.md` (mirror — byte-identical edit), `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` (additive §1 "Convergent second source" paragraph; no mirror).
+- **recovery note**: the first manager-develop spawn (agentId a64875e7e7cf685c2) aborted mid-run on a server-side rate-limit after editing the two CWM files (uncommitted, isolated in an L1 worktree). Orchestrator-direct recovery (manager-develop spawn-failure fallback) salvaged the verified CWM edits into main, completed the rrd edit, and verified the full AC matrix. Authored-By-Agent: orchestrator-direct.
+- **run_commit_sha**: _<backfill>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- **run_status**: audit-ready
+- **AC matrix (8/8 PASS)**: AC-CLN-001 (5 layer names in CWM + rrd for-loop, no MISSING), AC-CLN-002 (paper cited in both files), AC-CLN-003 (consume co-location anchor count=2, ≥1), AC-CLN-004 (CWM local↔mirror `diff` exit 0), AC-CLN-005 (`go test ./internal/template/... -run 'TestTemplateNeutralityAudit|TestTemplateNoInternalContentLeak'` ok + spot-check no `SPEC-DIVECC`/date in mirror), AC-CLN-006 (7 AP-RR-004 terms preserved), AC-CLN-007 (convergent-second-source note count=1), AC-CLN-008 (rrd mirror absent).
+- **build**: `go build ./...` exit 0.
+- **plan-audit debt**: D1 (AC-CLN-003 vacuity) resolved at plan-phase commit e42cc66a6 (non-vacuous co-location anchor); D2/D3 also applied.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
