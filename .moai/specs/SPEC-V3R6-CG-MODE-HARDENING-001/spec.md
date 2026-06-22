@@ -2,7 +2,7 @@
 id: SPEC-V3R6-CG-MODE-HARDENING-001
 title: "moai cg (Claude+GLM) launch-mode hardening and detector SSOT"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-06-22
 updated: 2026-06-22
 author: manager-spec

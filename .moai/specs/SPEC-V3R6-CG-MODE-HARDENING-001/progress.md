@@ -32,4 +32,12 @@ _Run-phase (§E.2/§E.3) and sync-phase (§E.4) sections below are placeholder h
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+- **sync_commit_sha**: `<pending backfill — this commit>`
+- **CHANGELOG entry**: Added to `[Unreleased]` section on 2026-06-22; entry count = 1 (verified `grep -c 'CG-MODE-HARDENING'` = 1)
+- **File path verification**: All 7 production + 4 test files confirmed via `ls` (see §E.2)
+- **AC count reconciliation**: 10 AC PASS entries (acceptance.md line count = 10, matching CHANGELOG narrative)
+- **Status transition**: spec.md frontmatter `status: in-progress → implemented → completed` atomically in this sync commit
+- **Frontmatter updated**: `updated:` field refreshed to 2026-06-22
+- **Quality validation**: sync-auditor independent 4-dimension scoring (Functionality/Security/Craft/Consistency) — baseline expected ≥ 0.88 per run-phase audit signal
+- **Deterministic close check**: `moai spec audit --json --filter-spec=SPEC-V3R6-CG-MODE-HARDENING-001` post-merge expected drift 0, era V3R6
+- **Close-subject format**: `chore(SPEC-V3R6-CG-MODE-HARDENING-001): sync-phase artifacts + 3-phase close` (full SPEC-ID mandate satisfied)
