@@ -1,3 +1,8 @@
+---
+description: "GLM-backend web-tooling routing SSOT. Delivered on-demand by the GLM guardrail hook (SessionStart) when a GLM backend is detected; loaded into context here only when this rule file is edited."
+paths: "**/glm-web-tooling.md"
+---
+
 # GLM-Backend Web Tooling Routing — Canonical Rule
 
 This file is the **single source of truth** for how MoAI agents and the orchestrator perform web search, web fetch, and image reading when the session runs on the GLM backend (`moai glm`) or the GLM teammate panes of `moai cg`.

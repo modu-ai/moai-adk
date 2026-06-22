@@ -266,6 +266,26 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
+	// SPEC-STEERING-ALIGN-GUARDRAIL-HOOK-001: GLM 가드레일 리마인더 주입.
+	// GLM 백엔드 세션(PROCESS env ANTHROPIC_BASE_URL이 z.ai 포함)일 때만 z.ai MCP
+	// 라우팅 요약을 AdditionalContext에 추가한다. 비-GLM 세션은 빈 문자열을
+	// 받으므로 아무것도 주입되지 않는다 (REQ-GH-002/003). cg-leader pane은 PROCESS
+	// env에 z.ai가 없으므로 자동 carve-out된다 (REQ-GH-005/006). 검출은 절대
+	// 블로킹하지 않는다 (REQ-GH-012). always-load에서 제거된 glm-web-tooling.md
+	// 규칙을 on-demand로 대체 전달한다.
+	if reminder := glmGuardrailReminder(); reminder != "" {
+		if out.HookSpecificOutput == nil {
+			out.HookSpecificOutput = &HookSpecificOutput{
+				HookEventName: string(EventSessionStart),
+			}
+		}
+		if out.HookSpecificOutput.AdditionalContext == "" {
+			out.HookSpecificOutput.AdditionalContext = reminder
+		} else {
+			out.HookSpecificOutput.AdditionalContext += "\n\n" + reminder
+		}
+	}
+
 	return out, nil
 }
 
