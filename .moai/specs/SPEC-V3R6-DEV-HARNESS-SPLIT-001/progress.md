@@ -65,4 +65,12 @@ red_green_evidence: "RED: planted harness-release-update leak → FAIL (sentinel
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs>_
+- 3-phase close: plan(`a3e113eed`) → run(`de13ecc4c`+`844d9032e`) → sync(이 커밋).
+- 독립 품질 검증 (orchestrator-direct, sync-auditor 생략 — Tier S rename 재구조화): 10/10 AC PASS 재확인(ff 후 실제 트리에서) + cross-platform build OK + go test ./internal/template/... GREEN(split_namespace_test rename + RED→GREEN) + stale `devkit` 토큰 0(CI guard/doctrine 5surface) + 템플릿 누출 0.
+- run-phase incident 2건 복구 검증: agents/moai 7개 retained agent 온전(rm -rf 복구), shared checkout clean(git mv 오실행 revert).
+- ambient 런타임 확인: `harness:release-update`/`github`/`release` 3개 스킬 라이브 등록, `harness:devkit` 제거됨.
+- 사용자-facing 문서 영향 없음 (dev-only 내부 도구).
+- 상태 전환: in-progress → completed (이 sync 커밋이 close 운반).
+- supersession: CONSOLIDATION-001은 completed 유지(unified-entry 결정만 reversal, specialist 본문 재사용).
+- sync_commit_sha: <pending-backfill>
+- era: V3R6 (H-4: §E.2 + §E.4 + sync_commit_sha).
