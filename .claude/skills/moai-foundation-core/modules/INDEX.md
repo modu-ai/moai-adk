@@ -140,7 +140,7 @@ Quick Access:
 - /moai:2-run (DDD implementation)
 - /moai:3-sync (Documentation)
 - /moai:9-feedback (Improvement)
-- /harness:devkit release (Deployment — dev-only maintainer harness)
+- /harness:release (Deployment — dev-only maintainer harness)
 
 Use Cases:
 - Command workflow execution

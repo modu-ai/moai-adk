@@ -238,7 +238,7 @@ Previous /moai:X-Y command format mapped to new /moai subcommand format:
 - /moai:e2e maps to /moai e2e
 - /moai:mx maps to /moai mx
 
-Note: /harness:devkit release (the dev-only maintainer release capability) is a separate local-only harness command, not part of the /moai skill.
+Note: /harness:release (the dev-only maintainer release capability) is a separate local-only harness command, not part of the /moai skill.
 
 ---
 

@@ -123,9 +123,10 @@ See `.moai/docs/template-internal-isolation-doctrine.md` §25.3 for the full 5-i
 .claude/settings.json          # Rendered from .json.tmpl
 .claude/agent-memory/          # Per-project agent memory
 .claude/hooks/moai/handle-*.sh # Generated hook wrappers (not templates)
-.claude/commands/harness/devkit*           # Dev-only: devkit maintainer harness entry + manifest (§21)
-.claude/workflows/harness-devkit-run.js    # Dev-only: devkit harness Runner (§21)
-.claude/agents/harness/harness-devkit-*    # Dev-only: devkit harness specialists (§21, user-owned per §24)
+.claude/commands/harness/{release-update,github,release}*  # Dev-only: split maintainer harness entries (§21)
+.claude/commands/harness/release-update/manifest.json      # Dev-only: release-update harness manifest (§21)
+.claude/workflows/harness-release-update-run.js            # Dev-only: release-update harness Runner (§21)
+.claude/agents/harness/harness-{release-update,github,release}-specialist.md  # Dev-only: split harness specialists (§21, user-owned per §24)
 CLAUDE.local.md                # This file
 .moai/state/last-cc-version.json # Dev-only: CC tracking state (§21)
 .moai/research/cc-update-*.md  # Dev-only: CC update reports (§21)
@@ -735,9 +736,9 @@ See: `.moai/docs/git-workflow-doctrine.md`
 
 ---
 
-## 21. Dev-Only Commands Isolation (devkit Harness)
+## 21. Dev-Only Commands Isolation (Split Harnesses)
 
-devkit 메인테이너 하네스 (`/harness:devkit` 진입 + release-update/github/release 3 capability) + 산출물은 로컬 moai-adk 개발 전용. `internal/template/templates/` 어디에도 흔적 금지 (CI guard: `internal/template/devkit_namespace_test.go` `TestDevkitNamespaceNoLeak`, sentinel `DEVKIT_NAMESPACE_LEAK`). 구 `97-*`/`98-*`/`99-*` 번호 커맨드는 SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001 에서 단일 devkit 하네스로 통합·폐지됨. 배포 금지 파일 일람, 검증 체크리스트, 위반 시 영향, 신규 dev-only capability 추가 절차 등 전체 doctrine은 외부 파일 참조.
+3개 split 메인테이너 하네스 (`/harness:release-update`, `/harness:github`, `/harness:release`) + 산출물은 로컬 moai-adk 개발 전용. `internal/template/templates/` 어디에도 흔적 금지 (CI guard: `internal/template/split_namespace_test.go` `TestSplitHarnessNamespaceNoLeak`, sentinel `SPLIT_HARNESS_NAMESPACE_LEAK`). 구 `97-*`/`98-*`/`99-*` 번호 커맨드는 한때 단일 unified 하네스로 통합되었다가 SPEC-V3R6-DEV-HARNESS-SPLIT-001 에서 3개 독립 하네스로 분리됨 (release-update 만 Runner+manifest 보유; github/release 는 thin command → specialist 직접). 배포 금지 파일 일람, 검증 체크리스트, 위반 시 영향, 신규 dev-only capability 추가 절차 등 전체 doctrine은 외부 파일 참조.
 
 See: `.moai/docs/dev-only-commands-isolation.md`
 

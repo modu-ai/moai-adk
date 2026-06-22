@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DEV-HARNESS-SPLIT-001
 title: "devkit 단일 진입을 3개 독립 harness 커맨드로 분리"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-22
 updated: 2026-06-22
 author: manager-spec

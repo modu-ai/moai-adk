@@ -328,17 +328,17 @@ per-language guidance, and `.claude/rules/moai/development/coding-standards.md`
 | `moai-harness-*` | **하네스 builder/lifecycle** (현재 `moai-meta-harness` + `moai-harness-learner`만 해당) | template | **삭제 후 신규 설치** (overwrite) |
 | **`harness-*`** | **사용자 생성** — `moai-meta-harness`가 `/moai project` Phase 5+ 인터뷰 후 generate | user project | **절대 삭제/modify 금지 + 백업 보존** (Go enforcement `harness-*` 인식 + `my-harness-*` legacy dual-recognition) |
 
-### Deprecated Skill Slots (consolidated into the `devkit` harness)
+### Deprecated Skill Slots (split into three independent harnesses)
 
-The following dev-only skill slots were retired and their workflows consolidated into the single `devkit` dev-maintainer harness under the user-owned harness namespace (`.claude/agents/harness/harness-devkit-*-specialist.md` + `.claude/commands/harness/devkit.md` + `.claude/workflows/harness-devkit-run.js`; see agent-authoring.md § Agent Directory Convention). The single entry command `/harness:devkit` dispatches by sub-command to the matching specialist. The earlier intermediate migration into `.claude/agents/local/*-specialist.md` (with `/97-release-update`, `/98-github` thin wrappers) and the standalone `/99-release` command were all removed in the consolidation.
+The following dev-only skill slots were retired and their workflows live as three INDEPENDENT dev-maintainer harnesses under the user-owned harness namespace (`.claude/agents/harness/harness-{release-update,github,release}-specialist.md` + `.claude/commands/harness/{release-update,github,release}.md`; only release-update carries a Runner + `.claude/commands/harness/release-update/manifest.json`; see agent-authoring.md § Agent Directory Convention). Each thin command routes directly to its matching specialist. These three workflows were first consolidated into a single unified entry by SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001, then split into three independent harnesses by SPEC-V3R6-DEV-HARNESS-SPLIT-001 (which reverses the unified-entry decision). The earlier intermediate migration into `.claude/agents/local/*-specialist.md` (with `/97-release-update`, `/98-github` thin wrappers) and the standalone `/99-release` command were all removed during the consolidation step.
 
-| Retired Skill / Command | Consolidation Target | Entry Point |
+| Retired Skill / Command | Current Target | Entry Point |
 |---------------|------------------|-------------|
-| `.claude/skills/moai/workflows/release-update.md` (97 series) | `.claude/agents/harness/harness-devkit-release-update-specialist.md` | `/harness:devkit release-update` |
-| `.claude/skills/moai/workflows/github.md` (98 series) | `.claude/agents/harness/harness-devkit-github-specialist.md` | `/harness:devkit github` |
-| `.claude/skills/moai/workflows/release.md` (99 series) | `.claude/agents/harness/harness-devkit-release-specialist.md` | `/harness:devkit release` |
+| `.claude/skills/moai/workflows/release-update.md` (97 series) | `.claude/agents/harness/harness-release-update-specialist.md` | `/harness:release-update` |
+| `.claude/skills/moai/workflows/github.md` (98 series) | `.claude/agents/harness/harness-github-specialist.md` | `/harness:github` |
+| `.claude/skills/moai/workflows/release.md` (99 series) | `.claude/agents/harness/harness-release-specialist.md` | `/harness:release` |
 
-The consolidation preserves the structural fidelity of each workflow body while collapsing three numeric entry points into one harness. Routing shifted from `Skill("moai/workflows/<name>")` / `Use the <name>-specialist subagent` to `/harness:devkit <capability>` dispatch. The harness artifacts live in the user-owned namespace (`moai update` preserves them); they are dev-only and never distributed to user projects.
+Each split harness preserves the structural fidelity of its workflow body. Routing shifted from `Skill("moai/workflows/<name>")` / `Use the <name>-specialist subagent` to `/harness:<name>` direct dispatch. The harness artifacts live in the user-owned namespace (`moai update` preserves them); they are dev-only and never distributed to user projects.
 
 ### Rules
 
