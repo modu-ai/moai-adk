@@ -100,7 +100,7 @@ The −3644B reduction (55306 → 51662, both trees identical) is attributable S
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - **sync_status**: audit-ready
-- **sync_commit_sha**: `<pending — backfilled in the 2nd sync commit>`
+- **sync_commit_sha**: `ecc67a18c`
 - **status transition**: in-progress → completed (rides this sync commit per the 3-phase close; the manager-docs-owned transition was performed orchestrator-direct per the established Steering-Align sync pattern — manager-docs spawn avoided to bypass large-`moai.md` PTL risk, matching P2 CLAUDEMD-DIET-001 / P3 GUARDRAIL-HOOK-001)
 - **CHANGELOG**: entry added under [Unreleased] § Changed (mirrors the P2/P3 sibling style)
 - **diet result**: 782→756L / 55306→51662B per tree, byte-identical; AC-OSS-001 **behavioral-PASS** (756 > 630 ceiling, preservation-forced — ~60 of §8 Session-Handoff's 84 lines are render-SSOT and were KEPT, not over-cut; AP-OSS-003 avoided)
