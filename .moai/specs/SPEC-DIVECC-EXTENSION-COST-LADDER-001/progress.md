@@ -56,4 +56,11 @@ Additional verification:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- **sync_status**: audit-ready
+- **sync_complete_at**: 2026-06-22
+- **sync_commit_sha**: (to be backfilled after close commit)
+- **documentation_update**: CHANGELOG entry (doctrine-only SPEC, no README impact)
+- **frontmatter_transition**: in-progress → completed (status field updated in spec.md)
+- **changelog_drift**: 0 (doctrine-only, no user-facing features)
+- **artifacts_complete**: spec.md frontmatter updated + progress.md §E.4 populated
+- **migration_complete**: no migration required (plan-anchor close)
