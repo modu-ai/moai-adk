@@ -1,3 +1,14 @@
+---
+id: SPEC-V3R6-CG-MODE-HARDENING-001
+artifact: progress
+version: "0.1.0"
+created: 2026-06-22
+updated: 2026-06-22
+author: orchestrator
+run_commit_sha: "23901497a"
+sync_commit_sha: "47368ca0d"
+---
+
 # Progress — SPEC-V3R6-CG-MODE-HARDENING-001
 
 ## §E.1 Plan-phase Audit-Ready Signal
@@ -32,7 +43,6 @@ _Run-phase (§E.2/§E.3) and sync-phase (§E.4) sections below are placeholder h
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-- **sync_commit_sha**: `47368ca0d` (backfilled post-commit)
 - **CHANGELOG entry**: Added to `[Unreleased]` section on 2026-06-22; entry count = 1 (verified `grep -c 'CG-MODE-HARDENING'` = 1)
 - **File path verification**: All 7 production + 4 test files confirmed via `ls` (see §E.2)
 - **AC count reconciliation**: 10 AC PASS entries (acceptance.md line count = 10, matching CHANGELOG narrative)
