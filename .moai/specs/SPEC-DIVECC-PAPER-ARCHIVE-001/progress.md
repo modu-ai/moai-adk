@@ -73,7 +73,7 @@ arxiv_re_verification_performed: false
 
 ```yaml
 sync_complete_at: 2026-06-22
-sync_commit_sha: <pending-backfill>
+sync_commit_sha: e1f0ea6cf02175fd50053f2d8bda71d0b948363d
 sync_status: complete
 status_transition: "in-progress → completed (3-phase close; implemented folded into the sync commit per SPEC-V3R6-LIFECYCLE-REDESIGN-001)"
 changelog_entry: n/a   # 내부 dev-local doc archival — .moai/research/ 는 user-facing 아님 (scope discipline)
