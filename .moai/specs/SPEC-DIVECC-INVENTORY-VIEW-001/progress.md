@@ -164,6 +164,6 @@ m1_to_mN_commit_strategy: "single run-phase commit (M1-M5 squashed — Tier M si
 
 ```yaml
 # (sync-phase — orchestrator-direct 3-phase close)
-sync_commit_sha: <PENDING-SYNC>
+sync_commit_sha: 8a5b449619fe3c391f350996bbb0f557a3e40ebf
 sync_status: complete
 ```
