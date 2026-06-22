@@ -22,7 +22,7 @@
 - **run_complete_at**: 2026-06-22
 - **files changed (3)**: `.claude/rules/moai/workflow/context-window-management.md` (new "Claude Code's Graduated-Compaction Layers" section, +1252 bytes), `internal/template/templates/.claude/rules/moai/workflow/context-window-management.md` (mirror — byte-identical edit), `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` (additive §1 "Convergent second source" paragraph; no mirror).
 - **recovery note**: the first manager-develop spawn (agentId a64875e7e7cf685c2) aborted mid-run on a server-side rate-limit after editing the two CWM files (uncommitted, isolated in an L1 worktree). Orchestrator-direct recovery (manager-develop spawn-failure fallback) salvaged the verified CWM edits into main, completed the rrd edit, and verified the full AC matrix. Authored-By-Agent: orchestrator-direct.
-- **run_commit_sha**: _<backfill>_
+- **run_commit_sha**: b5c8c4a69
 
 ## §E.3 Run-phase Audit-Ready Signal
 
