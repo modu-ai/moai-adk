@@ -45,7 +45,7 @@ Additional verification:
 
 - **run_status**: audit-ready
 - **run_complete_at**: 2026-06-22
-- **run_commit_sha**: 40ceedb2c (M1 ladder section + template mirror; backfill commit follows)
+- run_commit_sha: 40ceedb2c (M1 ladder section + template mirror; backfill commit follows)
 - **ac_pass_count**: 6
 - **ac_fail_count**: 0
 - **cycle_type**: tdd (doc-only; AC grep matrix + TestTemplateNeutralityAudit serve as the verification gate, no failing-test-first cycle)
@@ -58,8 +58,8 @@ Additional verification:
 
 - **sync_status**: audit-ready
 - **sync_complete_at**: 2026-06-22
-- **sync_commit_sha**: 4566511d3
-- **documentation_update**: CHANGELOG entry (doctrine-only SPEC, no README impact)
+- sync_commit_sha: 4566511d3
+- **documentation_update**: no CHANGELOG (doctrine-only SPEC, no README/docs-site impact)
 - **frontmatter_transition**: in-progress → completed (status field updated in spec.md)
 - **changelog_drift**: 0 (doctrine-only, no user-facing features)
 - **artifacts_complete**: spec.md frontmatter updated + progress.md §E.4 populated
