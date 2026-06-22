@@ -97,6 +97,8 @@ satisfies AC-HRA-009 (6+ verb surface).`,
 
 	// V3R5 lifecycle verbs (un-retired per plan.md §6.4).
 	cmd.AddCommand(newHarnessStatusCmd())
+	// Failure-signature clustering read surface (SPEC-DIVECC-OBSERVABILITY-LOOP-001).
+	cmd.AddCommand(newHarnessClustersCmd())
 	cmd.AddCommand(newHarnessApplyCmd())
 	cmd.AddCommand(newHarnessRollbackCmd())
 	cmd.AddCommand(newHarnessDisableCmd())
