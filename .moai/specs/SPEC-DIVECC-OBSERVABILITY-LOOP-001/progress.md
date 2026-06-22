@@ -115,5 +115,5 @@ Run-phase implementer: manager-develop (cycle_type=tdd, RED-GREEN-REFACTOR). Sta
 - readme_change: none (README enumerates `/moai:harness` slash-command lifecycle only, not terminal `moai harness` CLI subcommands; adding `clusters` would be inconsistent)
 - mx_validation: cross-cutting sync concern — internal/harness/cluster/ is new pure-Go read-only code; no high-fan_in danger zone requiring @MX:ANCHOR/WARN at this scope
 - era: V3R6 (frontmatter H-override; moai spec audit drift 0)
-- sync_commit_sha: (backfilled in follow-up commit)
+- sync_commit_sha: 22108ecca
 - run_commit_sha: 3e9ecc3d2 (run-phase; pushed to origin/main, independently re-verified by orchestrator)
