@@ -2,7 +2,7 @@
 id: SPEC-DIVECC-PAPER-ARCHIVE-001
 title: "VILA-Lab \"Dive into Claude Code\" 논문 아카이브 (CC v2.1.88 internals 권위 참조 + 분산 인용 통합)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-06-22
 updated: 2026-06-22
 author: manager-spec

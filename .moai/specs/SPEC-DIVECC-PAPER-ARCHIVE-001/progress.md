@@ -71,4 +71,15 @@ arxiv_re_verification_performed: false
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-06-22
+sync_commit_sha: <pending-backfill>
+sync_status: complete
+status_transition: "in-progress → completed (3-phase close; implemented folded into the sync commit per SPEC-V3R6-LIFECYCLE-REDESIGN-001)"
+changelog_entry: n/a   # 내부 dev-local doc archival — .moai/research/ 는 user-facing 아님 (scope discipline)
+sync_auditor: skipped   # Tier S minimal harness — 8 mechanical AC를 2중 검증 (manager-develop §E + orchestrator origin/main 독립검증)
+authored_by_agent: orchestrator-direct   # established DIVECC sync 패턴 (N2/N3/N5 동일); GLM/trivial Tier S 경로
+```
+
+- **sync-phase observations**: orchestrator-direct sync close (Tier S trivial doc-archival; sync-auditor 별도 spawn 생략 — minimal harness 기준 + AC 2중 검증 완료). status `in-progress → completed` (3-phase close convention: implemented 중간 상태를 sync commit에 fold). era V3R6 drift 0 은 `moai spec audit` 로 close 후 확인.
+- **2-commit 패턴**: (1) 본 sync close commit (status→completed + §E.4 작성), (2) backfill commit (sync_commit_sha를 commit 1 SHA로 채움). N5 (519a74bd1 → 8a253cbd2) 동일 패턴.
