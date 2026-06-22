@@ -99,6 +99,13 @@ The −3644B reduction (55306 → 51662, both trees identical) is attributable S
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs>_
+- **sync_status**: audit-ready
+- **sync_commit_sha**: `<pending — backfilled in the 2nd sync commit>`
+- **status transition**: in-progress → completed (rides this sync commit per the 3-phase close; the manager-docs-owned transition was performed orchestrator-direct per the established Steering-Align sync pattern — manager-docs spawn avoided to bypass large-`moai.md` PTL risk, matching P2 CLAUDEMD-DIET-001 / P3 GUARDRAIL-HOOK-001)
+- **CHANGELOG**: entry added under [Unreleased] § Changed (mirrors the P2/P3 sibling style)
+- **diet result**: 782→756L / 55306→51662B per tree, byte-identical; AC-OSS-001 **behavioral-PASS** (756 > 630 ceiling, preservation-forced — ~60 of §8 Session-Handoff's 84 lines are render-SSOT and were KEPT, not over-cut; AP-OSS-003 avoided)
+- **9/9 MUST-blocking ACs PASS** (independently re-verified by the orchestrator on `main` post-reconcile): AC-OSS-001 behavioral-PASS · AC-OSS-002 byte-parity (diff exit 0) · AC-OSS-003 14/14 banners · AC-OSS-004 col-header==8 + ko-canonical + parity sentinel · AC-OSS-005 51662B<55306 equal · AC-OSS-006 every POINTER ≥1 SSOT hit · AC-OSS-007 neutrality+output-styles CI guards ok · AC-OSS-008 §9/§10+ultrathink+verbatim+free-form · AC-OSS-009 mechanism-attribution table in §E.2
+- **plan_vs_run_drift**: 1 (Epic-taxonomy POINTER→KEEP, honestly reported in §E.2)
+- **era**: V3R6 (frontmatter explicit; `moai spec audit` drift 0)
 
 ---
