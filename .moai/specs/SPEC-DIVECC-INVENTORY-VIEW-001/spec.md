@@ -1,8 +1,8 @@
 ---
 id: SPEC-DIVECC-INVENTORY-VIEW-001
 title: "Unified Agent/Harness Inventory View (moai inventory)"
-version: "0.1.1"
-status: in-progress
+version: "0.1.2"
+status: completed
 created: 2026-06-23
 updated: 2026-06-23
 author: manager-spec
@@ -23,6 +23,7 @@ era: V3R6
 |---------|------|--------|--------|
 | 0.1.0 | 2026-06-23 | manager-spec | Initial plan-phase draft. Final candidate (N6) of Epic Dive-into-CC. Premise VERIFIED by orchestrator read-only reconnaissance (three inventory surfaces inspected: `internal/cli/session.go`, `internal/cli/worktree/list.go`, `internal/cli/harness/v4lifecycle.go`). Closing N6 completes the Epic 7/7. |
 | 0.1.1 | 2026-06-23 | manager-spec | plan-auditor PASS-WITH-DEBT (0.86) remediation. D1: REQ-INV-010 reworded — out-of-project worktree behavior attributed to REQ-INV-008 error-degradation (worktrees error outside a git repo; sessions+harnesses degrade-to-empty), not a uniform all-zero report. D2: acceptance.md gains AC-INV-005c (non-nil provider whose `List()` errors). D3: plan §A.5/M4 names `renderCard` (drops `renderSummaryLine`). D4: §A.2/§E add `v4lifecycle_cmd.go` (`NewHarnessV4ListCmd`) command-factory attribution. |
+| 0.1.2 | 2026-06-23 | manager-spec | sync-auditor PASS (0.946) remediation — REQ-INV-008 prose aligned to shipped in-band `.error` surfacing (was "to stderr"); doc-only, no behavior change. |
 
 ---
 
@@ -89,7 +90,7 @@ The three backing packages (`internal/session`, `internal/cli/worktree`, `intern
 
 - **REQ-INV-007 (When)**: **When** a surface's backing data is empty or its backing directory/file is absent (e.g. `.moai/state/active-sessions.json` does not exist → 0 sessions; `.claude/commands/harness/` does not exist → 0 harnesses; no worktrees beyond the main checkout), the command **shall** report a 0-count (or main-only) result for that surface and **shall not** return a non-zero exit code or an error for that condition alone.
 
-- **REQ-INV-008 (When)**: **When** one surface's backing call returns a genuine error (NOT an empty result — e.g. `WorktreeProvider == nil` because the git module is unavailable, or a registry read I/O error), the command **shall** surface that error for the affected surface to stderr while still rendering the surfaces that succeeded, and **shall** exit non-zero only when no surface could be rendered.
+- **REQ-INV-008 (When)**: **When** one surface's backing call returns a genuine error (NOT an empty result — e.g. `WorktreeProvider == nil`, or `WorktreeProvider.List()` returns a non-nil error outside a git repo, or a registry read I/O error), the command **shall** populate that surface's `error` field (rendered in-band: the `error` JSON field in `--json` mode, the surface card body in text mode) while still rendering the surfaces that succeeded, and **shall** exit non-zero only when no surface could be rendered.
 
 ### B.5 Project-root resolution & out-of-project invocation
 

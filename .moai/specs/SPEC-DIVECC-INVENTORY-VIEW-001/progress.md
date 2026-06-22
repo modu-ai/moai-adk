@@ -163,7 +163,7 @@ m1_to_mN_commit_strategy: "single run-phase commit (M1-M5 squashed — Tier M si
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-# (sync-phase — owned by manager-docs; populated at /moai sync)
+# (sync-phase — orchestrator-direct 3-phase close)
 sync_commit_sha: <PENDING-SYNC>
-sync_status: pending
+sync_status: complete
 ```

@@ -640,6 +640,7 @@ All hook events follow the Claude Code hooks protocol with JSON stdin/stdout com
 | `moai init` | Interactive project setup (auto-detects language/framework/methodology) |
 | `moai doctor` | System health diagnosis and environment verification |
 | `moai status` | Project status summary including Git branch, quality metrics, etc. |
+| `moai inventory` | Unified read-only inventory of active sessions, worktrees, and harnesses (add `--json` for structured output) |
 | `moai update` | Update to the latest version (with automatic rollback support) |
 | `moai update --check` | Check for updates without installing |
 | `moai update --project` | Sync project templates only |
