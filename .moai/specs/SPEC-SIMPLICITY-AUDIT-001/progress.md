@@ -70,4 +70,13 @@ Tier: **S**. cycle_type=tdd. plan-auditor iter-1 PASS 0.89 (threshold 0.75); D1-
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-06-23
+sync_status: completed
+sync_commit_sha: <pending-backfill>
+status_transition: "in-progress -> completed (V3R6 3-phase close)"
+lint_status: "spec-lint 0 findings"
+era: V3R6
+drift: "0 MUST-FIX"
+sync_method: "orchestrator-direct (isolated worktree from origin/main)"
+```

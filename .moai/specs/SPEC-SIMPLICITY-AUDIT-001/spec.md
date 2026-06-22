@@ -2,7 +2,7 @@
 id: SPEC-SIMPLICITY-AUDIT-001
 title: "Over-Engineering-Only Lean Audit (/moai review --lean mode)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-06-23
 updated: 2026-06-23
 author: manager-spec
