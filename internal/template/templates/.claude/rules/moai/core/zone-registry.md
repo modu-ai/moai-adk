@@ -221,7 +221,7 @@ moai constitution list --format json
   zone_class: frozen-safety
   file: CLAUDE.md
   anchor: "#14-parallel-execution-safeguards"
-  clause: "Background subagents (run_in_background: true) auto-deny Write/Edit operations. Use run_in_background: false for agents that modify files."
+  clause: "As of CC v2.1.186 background subagents (run_in_background: true) surface permission prompts in the main session rather than auto-denying; MoAI keeps run_in_background: false for agents that modify files as a conservative default."
   canary_gate: false
 
 - id: CONST-V3R2-021

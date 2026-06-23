@@ -2,7 +2,7 @@
 id: SPEC-CC2186-BG-PERMISSION-RATIONALE-001
 title: "Background subagent permission rationale alignment (CC 2.1.186)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-23
 updated: 2026-06-23
 author: manager-spec

@@ -286,7 +286,7 @@ For core parallel execution principles, see .claude/rules/moai/core/moai-constit
 - **Loop Prevention**: Maximum 3 retries per operation with failure pattern detection and user intervention
 - **Platform Compatibility**: Always prefer Edit tool over sed/awk
 - **Team File Ownership**: In team mode, each teammate owns specific file patterns to prevent write conflicts
-- **Background Agent Write Restriction**: [ZONE:Frozen] [HARD] Background subagents (`run_in_background: true`) auto-deny Write/Edit operations. Use `run_in_background: false` for agents that modify files. Read-only agents (research, analysis) can safely run in background.
+- **Background Agent Write Restriction**: [ZONE:Frozen] [HARD] As of Claude Code v2.1.186, when a background subagent (`run_in_background: true`) reaches a tool call needing permission, the prompt surfaces in the main session (naming the asking subagent; Esc denies just that one call). MoAI nonetheless keeps `run_in_background: false` for agents that modify files as a conservative default — each background write would otherwise raise a main-session prompt that interrupts the leader's flow and undercuts the parallelism benefit of backgrounding. Read-only agents (research, analysis) can safely run in background.
 
 ### Worktree Isolation Rules (Advisory — 2026-05-17 Policy)
 

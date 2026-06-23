@@ -156,7 +156,7 @@ Architecture:
 
 [ZONE:Frozen] [HARD] Background subagents (`run_in_background: true`) MUST NOT perform Write/Edit operations.
 
-Background agents auto-deny all non-pre-approved permission prompts because they cannot interact with the user. Even with `mode: "bypassPermissions"`, the background execution context does not fully inherit the parent session's permission allowlist.
+As of Claude Code v2.1.186, when a background subagent reaches a tool call that needs permission, the prompt surfaces in the main session and names the asking subagent (Esc denies just that one call). Before v2.1.186, background subagents auto-denied any prompting tool call — the prior basis for this rule. MoAI nonetheless keeps `run_in_background: false` for write tasks as a conservative default: in standard permission mode each background write raises a main-session permission prompt that interrupts the leader's flow and undercuts the parallelism benefit of backgrounding, whereas foreground execution keeps write-permission flow deterministic. Read-only tasks (research, analysis, review) remain safe and efficient in the background.
 
 Rules for agent spawning:
 - **Read-only tasks** (research, analysis, review): `run_in_background: true` is safe
