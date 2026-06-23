@@ -200,7 +200,7 @@ State files: `.moai/state/last-session-state.json`. Generated docs: `.moai/docs/
 
 ### SPEC Metadata Schema
 
-Canonical 12 required fields (enforced by `internal/spec/lint.go` `FrontmatterSchemaRule`): id, title, version, status, created, updated, author, priority, phase, module, lifecycle, tags.
+Canonical 12 required fields (enforced by the SPEC frontmatter lint rule): id, title, version, status, created, updated, author, priority, phase, module, lifecycle, tags.
 
 Status enum (8 values): draft → planned → in-progress → implemented → completed | superseded | archived | rejected.
 

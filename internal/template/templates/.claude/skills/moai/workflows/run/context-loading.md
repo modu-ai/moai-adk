@@ -39,9 +39,9 @@ Per SPEC-V3R2-WF-003, `/moai run` participates in the `--mode` axis with 4 valid
 ### Mode Values
 
 - **`autopilot` (default for harness `minimal` / `standard`)**: Single-lead orchestration via Phase 0.95 Scale-Based Mode Selection (Fix / Focused / Standard / Full Pipeline) → Phase 2A/2B per `quality.yaml development_mode`. Behaves as today's default `/moai run` invocation.
-- **`loop`**: Delegate to `Skill("moai-workflow-loop")` with the SPEC-ID and remaining args. Bypasses Phase 2A/2B and enters the Ralph engine per-iteration cycle (see `loop.md` Steps 1-9). Per REQ-WF003-004, `/moai loop SPEC-XXX` is an alias resolving to `/moai run --mode loop SPEC-XXX` with identical behavior.
+- **`loop`**: Delegate to `Skill("moai-workflow-loop")` with the SPEC-ID and remaining args. Bypasses Phase 2A/2B and enters the Ralph engine per-iteration cycle (see `loop.md` Steps 1-9). `/moai loop SPEC-XXX` is an alias resolving to `/moai run --mode loop SPEC-XXX` with identical behavior.
 - **`team` (default for harness `thorough` AND prerequisites met)**: Routes to existing Team Mode Routing (Phase 0.95 row 5 + the Team Mode Routing section). Requires `workflow.team.enabled: true` AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env var.
-- **`pipeline`**: REJECTED on `/moai run`. Pipeline mode is reserved for utility subcommands (`fix`, `coverage`, `mx`, `codemaps`, `clean`) per SPEC-V3R2-WF-004. Passing `--mode pipeline` here triggers `MODE_PIPELINE_ONLY_UTILITY` (preserved from the WF-004 baseline; REQ-WF003-016 ↔ REQ-WF004-014 byte-identical).
+- **`pipeline`**: REJECTED on `/moai run`. Pipeline mode is reserved for utility subcommands (`fix`, `coverage`, `mx`, `codemaps`, `clean`). Passing `--mode pipeline` here triggers `MODE_PIPELINE_ONLY_UTILITY` (the same error key the utility subcommands share).
 
 ### Mode Resolver
 
@@ -75,15 +75,15 @@ dispatch(mode)
 | `minimal` | (any) | `autopilot` |
 | `standard` | (any) | `autopilot` |
 | `thorough` | satisfied | `team` |
-| `thorough` | not satisfied | `autopilot` (downgraded with `[mode-auto-downgrade]` info log; REQ-WF003-012) |
+| `thorough` | not satisfied | `autopilot` (downgraded with `[mode-auto-downgrade]` info log) |
 
 ### Sentinel Error Keys
 
-This skill emits the following sentinel error keys when mode dispatch fails. CI guards in `internal/template/agentless_audit_test.go` enforce each literal sentinel remains present in this skill body.
+This skill emits the following sentinel error keys when mode dispatch fails. A CI audit verifies each literal sentinel remains present in this skill body.
 
-- **`MODE_UNKNOWN`** (REQ-WF003-010, owned by SPEC-V3R2-WF-003): Emitted when `--mode <value>` is supplied but `<value>` is not in the 4-value valid set `{autopilot, loop, team, pipeline}`. The error message MUST enumerate the 4 valid values to guide the user.
-- **`MODE_TEAM_UNAVAILABLE`** (REQ-WF003-011, owned by SPEC-V3R2-WF-003): Emitted when an EXPLICIT `--mode team` request cannot be honored because either `workflow.team.enabled: false` in workflow.yaml OR the `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` env var is unset. The error message MUST suggest `--mode autopilot` as the supported fallback. Note: when `team` is auto-selected by harness (not explicit CLI), the system silently downgrades to `autopilot` with an info log instead of raising this error (REQ-WF003-012).
-- **`MODE_PIPELINE_ONLY_UTILITY`** (REQ-WF003-016 ↔ REQ-WF004-014, shared with SPEC-V3R2-WF-004): Preserved from the WF-004 baseline. Emitted when `--mode pipeline` is passed to this multi-agent subcommand. The error message MUST point the user to the utility subcommand set `{fix, coverage, mx, codemaps, clean}`.
+- **`MODE_UNKNOWN`**: Emitted when `--mode <value>` is supplied but `<value>` is not in the 4-value valid set `{autopilot, loop, team, pipeline}`. The error message MUST enumerate the 4 valid values to guide the user.
+- **`MODE_TEAM_UNAVAILABLE`**: Emitted when an EXPLICIT `--mode team` request cannot be honored because either `workflow.team.enabled: false` in workflow.yaml OR the `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` env var is unset. The error message MUST suggest `--mode autopilot` as the supported fallback. Note: when `team` is auto-selected by harness (not explicit CLI), the system silently downgrades to `autopilot` with an info log instead of raising this error.
+- **`MODE_PIPELINE_ONLY_UTILITY`**: Preserved from the utility-subcommand baseline. Emitted when `--mode pipeline` is passed to this multi-agent subcommand. The error message MUST point the user to the utility subcommand set `{fix, coverage, mx, codemaps, clean}`.
 
 See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the cross-skill mode dispatch contract.
 

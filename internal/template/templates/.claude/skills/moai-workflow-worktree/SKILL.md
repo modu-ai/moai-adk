@@ -234,7 +234,7 @@ Failure Modes:
 - Worktree creation failure — no launch is attempted and no registry entry is written.
 - Windows — `--team` automatically routes to a stub that notes tmux is unsupported on Windows, then falls back to P4 handoff guidance.
 
-Detailed Reference: the canonical worktree team-launch contract requirements; implementation files `internal/cli/worktree/team_launch.go`, `team_launch_posix.go`, `team_launch_windows.go`, `swarm_registry.go`, `handoff_guidance.go`.
+Detailed Reference: the canonical worktree team-launch contract — the team-launch entry point, its POSIX and Windows variants, the swarm-registry writer, and the handoff-guidance generator.
 
 ---
 

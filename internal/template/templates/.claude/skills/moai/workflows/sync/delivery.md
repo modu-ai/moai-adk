@@ -131,15 +131,17 @@ go test -race -coverprofile=coverage.out -covermode=atomic ./...
 # Check 3: golangci-lint (mirrors CI lint job)
 # Auto-detect if golangci-lint is available
 which golangci-lint && golangci-lint run --timeout=5m \
-  || echo "SKIP: golangci-lint not installed (run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6)"
+  || echo "SKIP: golangci-lint not installed (install via your project's pinned version)"
 
 # Check 4: Cross-compile all CI targets (mirrors CI build job)
-# Run all 5 targets in parallel — CGO_ENABLED=0 for all
-GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-amd64     ./cmd/moai/ &
-GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-arm64     ./cmd/moai/ &
-GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-amd64    ./cmd/moai/ &
-GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-arm64    ./cmd/moai/ &
-GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-windows-amd64.exe ./cmd/moai/ &
+# Replace <your-module> with your main package path (e.g. ./cmd/<your-binary>/).
+# Replicate whatever GOOS/GOARCH targets your CI build matrix declares; the
+# example below shows the common 5-target matrix — run them in parallel, CGO_ENABLED=0 for all.
+GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-amd64     ./<your-module>/ &
+GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-arm64     ./<your-module>/ &
+GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-amd64    ./<your-module>/ &
+GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-arm64    ./<your-module>/ &
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-windows-amd64.exe ./<your-module>/ &
 wait
 ```
 
@@ -170,7 +172,7 @@ Always report what was skipped and why:
 ```
 CI Mirror: Skipped checks
 - test (windows-latest): Cannot run Windows tests locally — will be verified by remote CI
-- lint: golangci-lint not installed — install with: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+- lint: golangci-lint not installed — install via your project's pinned version
 ```
 
 ##### Step 3.1.5.4: Evaluate Results

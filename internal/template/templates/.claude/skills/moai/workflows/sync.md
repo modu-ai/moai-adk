@@ -112,4 +112,4 @@ Read .claude/skills/moai/workflows/sync/delivery.md
 
 ## Sentinel Error Keys
 
-CI guards in `internal/template/agentless_audit_test.go` enforce the literal `MODE_PIPELINE_ONLY_UTILITY` sentinel remains present in this skill body (REQ-WF003-016 ↔ REQ-WF004-014, shared with `design.md`). Passing `--mode pipeline` to `/moai sync` is rejected because sync is a Multi-Agent subcommand; pipeline mode is reserved for utility subcommands per SPEC-V3R2-WF-004.
+A CI audit verifies the literal `MODE_PIPELINE_ONLY_UTILITY` sentinel remains present in this skill body (shared with `design.md`). Passing `--mode pipeline` to `/moai sync` is rejected because sync is a Multi-Agent subcommand; pipeline mode is reserved for utility subcommands.
