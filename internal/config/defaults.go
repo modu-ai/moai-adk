@@ -40,10 +40,13 @@ const (
 	DefaultGLMEnvVar  = "GLM_API_KEY"
 	DefaultGLMBaseURL = "https://api.z.ai/api/anthropic"
 	// GLM model tiers
-	// High maps to glm-5.2 with the [1m] suffix, which activates Claude Code's
-	// 1M context mode (the suffix is parsed and stripped by Claude Code before
-	// the upstream API call; z.ai never sees it).
-	DefaultGLMHigh   = "glm-5.2[1m]"
+	// High maps to glm-5.2 — the model id z.ai accepts. The [1m] suffix was
+	// previously appended to activate Claude Code's 1M context mode, but Claude
+	// Code forwards the suffix verbatim to the z.ai endpoint, which rejects it as
+	// an unknown model — so the suffix is NOT used. The 1M auto-compact window is
+	// now driven by the High slot model's resolved context window (see
+	// glmAutoCompactWindow), not by a model-id suffix.
+	DefaultGLMHigh   = "glm-5.2"
 	DefaultGLMMedium = "glm-4.7"
 	DefaultGLMLow    = "glm-4.5-air"
 	// Additional GLM models (available but not default-mapped)
@@ -54,10 +57,10 @@ const (
 	// Legacy GLM model names (map to tiers)
 	DefaultGLMHaiku  = "glm-4.5-air"
 	DefaultGLMSonnet = "glm-4.7"
-	DefaultGLMOpus   = "glm-5.2[1m]"
+	DefaultGLMOpus   = "glm-5.2"
 	// Default1MContextTokens is the token count for Claude Code's 1M context
 	// mode. Used to populate CLAUDE_CODE_AUTO_COMPACT_WINDOW when the High slot
-	// model carries the [1m] suffix.
+	// model resolves to the 1M context tier.
 	Default1MContextTokens = 1_000_000
 	// Default performance tier
 	DefaultPerformanceTier = "medium"

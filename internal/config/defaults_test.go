@@ -339,18 +339,19 @@ func TestNewDefaultLLMConfig(t *testing.T) {
 
 // TestNewDefaultLLMConfig_GLMTierMapping verifies the GLM model tier mapping.
 // The High slot (Opus equivalent) and the legacy Opus field both map to
-// glm-5.2[1m] for full 1M context activation; Medium/Low and the legacy
+// glm-5.2 (the z.ai-accepted id); 1M context activation is driven by the
+// resolved context window, not a model-id suffix. Medium/Low and the legacy
 // Sonnet/Haiku fields remain unchanged on their existing GLM models.
 func TestNewDefaultLLMConfig_GLMTierMapping(t *testing.T) {
 	t.Parallel()
 
 	cfg := NewDefaultLLMConfig()
 
-	if cfg.GLM.Models.High != "glm-5.2[1m]" {
-		t.Errorf("GLM.Models.High: got %q, want %q", cfg.GLM.Models.High, "glm-5.2[1m]")
+	if cfg.GLM.Models.High != "glm-5.2" {
+		t.Errorf("GLM.Models.High: got %q, want %q", cfg.GLM.Models.High, "glm-5.2")
 	}
-	if cfg.GLM.Models.Opus != "glm-5.2[1m]" {
-		t.Errorf("GLM.Models.Opus: got %q, want %q", cfg.GLM.Models.Opus, "glm-5.2[1m]")
+	if cfg.GLM.Models.Opus != "glm-5.2" {
+		t.Errorf("GLM.Models.Opus: got %q, want %q", cfg.GLM.Models.Opus, "glm-5.2")
 	}
 	// Medium/Low and legacy Sonnet/Haiku remain unchanged.
 	if cfg.GLM.Models.Medium != "glm-4.7" {
@@ -372,11 +373,11 @@ func TestNewDefaultLLMConfig_GLMTierMapping(t *testing.T) {
 func TestDefaultGLMConstants(t *testing.T) {
 	t.Parallel()
 
-	if DefaultGLMHigh != "glm-5.2[1m]" {
-		t.Errorf("DefaultGLMHigh: got %q, want %q", DefaultGLMHigh, "glm-5.2[1m]")
+	if DefaultGLMHigh != "glm-5.2" {
+		t.Errorf("DefaultGLMHigh: got %q, want %q", DefaultGLMHigh, "glm-5.2")
 	}
-	if DefaultGLMOpus != "glm-5.2[1m]" {
-		t.Errorf("DefaultGLMOpus: got %q, want %q", DefaultGLMOpus, "glm-5.2[1m]")
+	if DefaultGLMOpus != "glm-5.2" {
+		t.Errorf("DefaultGLMOpus: got %q, want %q", DefaultGLMOpus, "glm-5.2")
 	}
 	if DefaultGLMMedium != "glm-4.7" {
 		t.Errorf("DefaultGLMMedium: got %q, want %q (unchanged)", DefaultGLMMedium, "glm-4.7")

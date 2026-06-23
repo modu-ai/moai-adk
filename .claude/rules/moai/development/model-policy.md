@@ -90,7 +90,7 @@ Why this is `[1m]`-safe: the lever operates on the **Default** model resolution 
 
 ### GLM-mode reconciliation
 
-[ZONE:Evolvable] [HARD] The `enforceAvailableModels: true` cost lever above interacts with GLM mode. When GLM mode is active (`moai glm` whole-session, or the GLM teammate panes of `moai cg`), the GLM activation sets `ANTHROPIC_DEFAULT_OPUS_MODEL` to the configured GLM high model (default `glm-5.2[1m]`, surfaced in the model UI as the alias `opus[1m]`). CC 2.1.176 redirect-blocking semantics mean that an `ANTHROPIC_DEFAULT_*_MODEL` redirect to a model NOT in `availableModels` is blocked, and the active model silently falls back to the first allowed model (Sonnet). Before reconciliation, the allowlist was `["sonnet", "opus", "haiku"]` — which does NOT contain `opus[1m]`, so every GLM session fell back to Sonnet and the GLM cost-optimization purpose was defeated.
+[ZONE:Evolvable] [HARD] The `enforceAvailableModels: true` cost lever above interacts with GLM mode. When GLM mode is active (`moai glm` whole-session, or the GLM teammate panes of `moai cg`), the GLM activation sets `ANTHROPIC_DEFAULT_OPUS_MODEL` to the configured GLM high model (default `glm-5.2`), surfaced in the model UI as the Opus-slot alias. CC 2.1.176 redirect-blocking semantics mean that an `ANTHROPIC_DEFAULT_*_MODEL` redirect to a model NOT in `availableModels` is blocked, and the active model silently falls back to the first allowed model (Sonnet). Before reconciliation, the allowlist was `["sonnet", "opus", "haiku"]` — which does NOT contain the Opus-slot `[1m]` alias variant, so every GLM session fell back to Sonnet and the GLM cost-optimization purpose was defeated.
 
 The reconciliation EXPANDS the allowlist to include the `[1m]` canonical variants so the GLM redirect is admitted:
 
@@ -100,7 +100,7 @@ The reconciliation EXPANDS the allowlist to include the `[1m]` canonical variant
 
 The expansion is **allowlist-only**: the Default model stays `sonnet` and `enforceAvailableModels` stays `true`, both byte-unchanged. A non-GLM (Claude `moai cc` / plain Claude) session still resolves its Default to Sonnet and still has enforcement active — the only behavioral change is that a GLM high/opus redirect (`opus[1m]`) is no longer blocked, because it is now an allowed model.
 
-The added aliases (`opus[1m]`, `sonnet[1m]`) are both members of the canonical alias set `modelCanonical` (`internal/web/validate.go`: `["opus", "opus[1m]", "sonnet", "sonnet[1m]", "haiku", "opusplan"]`) — no non-canonical or raw GLM model id is introduced into the allowlist. The GLM model id itself (`glm-5.2[1m]`) is NOT added; only its UI-surface alias (`opus[1m]`) is.
+The added aliases (`opus[1m]`, `sonnet[1m]`) are both members of the canonical alias set `modelCanonical` (`internal/web/validate.go`: `["opus", "opus[1m]", "sonnet", "sonnet[1m]", "haiku", "opusplan"]`) — no non-canonical or raw GLM model id is introduced into the allowlist. The GLM model id itself (`glm-5.2`) is NOT added; only its UI-surface alias (`opus[1m]`) is.
 
 Scope note: this reconciliation is a **static template allowlist expansion** in `.claude/settings.json.tmpl`. It touches no Go runtime code (`glm.go` / `launcher.go` / `settings.go` unchanged) and writes nothing to `settings.local.json` — so the solo `moai glm` "settings.local.json clean" design (no GLM env leak to subsequent plain-`claude` invocations) is preserved.
 
