@@ -64,7 +64,64 @@ decomposition: SPEC ✓ | V3R6 ✓ | SEC ✓ | SKILL ✓ | INTEGRATION ✓ | 001
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — `moai-ref-llm-security` skill (2026-06-24)
+
+**Milestone scope**: authored the first of three defensive-cybersecurity reference skills — `moai-ref-llm-security` (AI/LLM defensive security). Local copy + template mirror byte-identical. spec.md frontmatter `status: draft → in-progress` on this commit. Establishes the `moai-ref-*` structural pattern for M2/M3.
+
+**Files touched (M1 scope only)**:
+- `.claude/skills/moai-ref-llm-security/SKILL.md` (NEW, 289 lines)
+- `internal/template/templates/.claude/skills/moai-ref-llm-security/SKILL.md` (NEW, byte-identical mirror)
+- `internal/template/catalog.yaml` (registered new skill under `optional-pack:devops`; regen via `make build`)
+- `internal/template/catalog_tier_audit_test.go` (`expectedSkillCount` 31 → 32)
+- `internal/template/catalog_loader_test.go` (`expectedTotal` 38 → 39)
+- `internal/template/embed_catalog_test.go` (`wantTotal` 38 → 39)
+- `.moai/specs/SPEC-V3R6-SEC-SKILL-INTEGRATION-001/spec.md` (frontmatter `status` → `in-progress` ONLY)
+- `.moai/specs/SPEC-V3R6-SEC-SKILL-INTEGRATION-001/progress.md` (this §E.2 evidence)
+
+> **Catalog registration note (in-scope cascade)**: the CI guard `TestAllSkillsInCatalog` (sentinel `CATALOG_ENTRY_MISSING`) requires every `.claude/skills/<name>/` directory on disk to be registered in `internal/template/catalog.yaml`. Registering the new skill (+ updating the 3 count constants) is the same-SPEC deployment cascade that makes M1 deployable via `moai init` / `moai update`. This is the catalog-hash-regen cascade pattern (L46-attributable to this SPEC's scope envelope).
+
+**E1 — AC PASS/FAIL Matrix (M1 ACs)**:
+
+| AC | Subject | Status | Evidence command | Actual output |
+|----|---------|--------|------------------|---------------|
+| AC-SI-001 | Skill 1 frontmatter shape | PASS | `python3 yaml-parse SKILL.md` | `name: moai-ref-llm-security`, `user-invocable: False`, metadata keys `[category, status, tags, updated, version]` all-string=True, `progressive_disclosure.enabled: True` |
+| AC-SI-002 | LLM defensive topic coverage | PASS | body scan + section grep | prompt-injection defense ✓; OWASP LLM Top 10 all 10 (LLM01-10) ✓ (≥5 req); MCP/agentic tool-call hardening ✓; training-data poisoning detection ✓; model-output validation/guardrails ✓; MITRE ATLAS 4 T-IDs (AML.T0051/T0020/T0053/T0054/T0057) ✓ (≥3 req, all defensive-correlation); NIST AI RMF GOVERN/MAP/MEASURE/MANAGE ✓ |
+| AC-SI-012 | Template-mirror parity | PASS | `diff local template` + `diff -r` | empty (byte-identical, dir-level) |
+| AC-SI-013 | desc + when_to_use ≤1536 each | PASS | `python3 len() on de-folded scalar` | description: 710 chars; when_to_use: 424 chars (both ≤1536) |
+| AC-SI-014 | Skill size ≤500 lines | PASS | `wc -l SKILL.md` | 289 (≤500; llm-security is not the 400-line-split skill) |
+| AC-SI-016 | 3 evolvable blocks present | PASS | `grep -c moai:evolvable-start` | 3 (ids: rationalizations, red-flags, verification) |
+
+**Topic-coverage table (AC-SI-002 detail — defensive topic → body section)**:
+
+| Defensive topic | Body section | Framing |
+|-----------------|--------------|---------|
+| Prompt-injection defense | `## Prompt-Injection Defense` (direct + indirect) | defense/detect/prevent |
+| OWASP LLM Top 10 (≥5/10) | `## OWASP LLM Top 10 — Defensive Mapping` (all 10) | defensive check + hardening control |
+| MCP/agentic tool-call hardening | `## MCP / Agentic Tool-Call Hardening` | least-privilege + output validation |
+| Training-data poisoning detection | `## Training-Data and Model Poisoning Detection` | provenance/canary/lineage |
+| Model-output validation | `## Model-Output Validation and Guardrails` | schema/filtering/encoding |
+| MITRE ATLAS (≥3 T-IDs, defensive) | `## MITRE ATLAS — Defensive Correlation` | technique → counter-control |
+| NIST AI RMF | `## NIST AI RMF — Governance Mapping` | GOVERN/MAP/MEASURE/MANAGE |
+
+**E-REAUTHOR (independence note, 3-passage)**: skill body was authored fresh from public primary sources (OWASP LLM Top 10 2025, MITRE ATLAS, NIST AI RMF 1.0) — concept-level only, no verbatim upstream copy. Sample passages: (1) "an LLM does not distinguish 'data' from 'instructions' the way a parser does" — original framing of the trust-boundary concept; (2) "an output-only guardrail misses injection that has already changed the model's plan" — original guardrail-placement argument; (3) "treat every tool result as untrusted input on its way back into the model" — original re-validation framing. No standard tool-invocation syntax was even required (no CLI examples in this skill). Independence confirmed.
+
+**E-DUALUSE** (`grep -niE 'mimikatz|kerberoast|ntlm.relay|cobalt strike|sliver|mythic|metasploit|pass-the-hash|pass-the-ticket|lsass.dump|credential dump|c2 framework|command and control|red team|pen test|penetration test|bloodhound|rubeus|impacket|evil-winrm|responder|seatbelt|sharpersist|certipy' SKILL.md`): **0 matches** (exit 1). Cleanest possible — zero offensive keywords. All attack-vector mentions (prompt injection, jailbreak, poisoning) appear strictly in detect/prevent/defend framing.
+
+**E-LANGNEUTRAL** (`grep -niE 'pip install|npm install|go get|cargo add' SKILL.md`): **0 matches** (exit 1). No package-manager references at all; tools named ecosystem-neutrally ("LLM guardrail framework", "schema validator"). AC-SI-010 (≥3-ecosystem rule) vacuously satisfied — no package-manager-specific reference exists in the body.
+
+**E-NOATTRIB** (`grep -rniE 'mukul975|anthropic-cybersecurity|agentskills\.io' <local> <template>` + `based on|adapted from|inspired by|github\.com/mukul`): **0 matches** (exit 1) across both distributed paths. No upstream attribution anywhere.
+
+**E2 — build/parity**: `make build` exit 0 (catalog regenerated, hash `0d8ec550...` for new skill); `diff local template` empty; `go test ./internal/template/...` → `ok` (all guards pass including `TestAllSkillsInCatalog`, `internal_content_leak_test.go`, `template_neutrality_audit_test.go`).
+
+**E5 — lint**: `golangci-lint run --timeout=2m` → `0 issues` (no Go logic change; count-constant + catalog edits only). `moai spec lint spec.md` → `0 error(s), 1 warning(s)` — the lone warning is the pre-existing `OwnershipTransitionInvalid` on the plan-phase `(none)→draft` transition (orchestrator-direct committed the plan artifacts), unchanged from baseline, NOT introduced by M1.
+
+**E6 — template-neutrality** (`grep -niE 'SPEC-V3R6|REQ-SI-|AC-SI-|Finding [A-Z][0-9]' SKILL.md`): **0 matches** (exit 1). No internal SPEC/REQ/AC tokens, dates, or SHAs in the distributed skill body. macOS-bias absolute path grep + date/SHA body grep also 0.
+
+**E-CONTAIN** (AC-SI-018, `grep -rniE 'mukul975|anthropic-cybersecurity' internal/template/templates/ internal/template/embed.go internal/template/embed_catalog.go`): **0 matches** (exit 1). research.md never reaches the embed-source paths — containment holds structurally (`.moai/specs/` is outside the `//go:embed all:templates` subtree).
+
+**Full-suite note**: `go test ./...` showed 2 transient FAILs in `internal/hook` (`TestHookWrapper_ValidJSON`, `TestHookWrapper_MoaiBinaryFallback`) with `signal: killed`. Confirmed NOT a regression — `internal/hook` is unmodified by M1, and both tests PASS in isolation (`go test -count=1 ./internal/hook/` → `ok 1.5s`). The full-suite failures are parallel-load subprocess-spawn timeouts in the worktree sandbox, unrelated to this SPEC's markdown + catalog changes.
+
+**Residual risk (M1)**: E-REAUTHOR is a 3-passage sampling floor (debt D1 — raise to ≥10 passages OR mechanical full-sentence grep deferred to M4). E-DUALUSE syntactic grep cannot catch a novel-phrasing re-framed offense (debt D5/D6 — M4 human verdict is the final gate). Both deferred to M4 cross-skill review per plan.md §F.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

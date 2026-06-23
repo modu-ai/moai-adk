@@ -2,7 +2,7 @@
 id: SPEC-V3R6-SEC-SKILL-INTEGRATION-001
 title: "Defensive cybersecurity practitioner reference skills (independent re-authorship)"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-06-24
 updated: 2026-06-24
 author: manager-spec
