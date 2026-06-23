@@ -3,7 +3,7 @@ description: 'Detects the primary programming language from repository files'
 outputs:
   language:
     description: 'Detected language (go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift)'
-    value: ${{ steps.detect.outputs.language }}}
+    value: ${{ steps.detect.outputs.language }}
 
 runs:
   using: 'composite'
@@ -17,7 +17,12 @@ runs:
         # identical broken-pipe failure under set -o pipefail. find -print -quit
         # eliminates the pipe entirely — single command, no early-terminating
         # downstream consumer.
-        LANG_FILE=$(find . \( -name "*.go" -o -name "*.py" -o -name "*.ts" -o -name "*.js" \) \
+        LANG_FILE=$(find . \( \
+            -name "*.go" -o -name "*.py" -o -name "*.ts" -o -name "*.js" \
+            -o -name "*.rs" -o -name "*.java" -o -name "*.kt" -o -name "*.cs" \
+            -o -name "*.rb" -o -name "*.php" -o -name "*.ex" -o -name "*.cpp" \
+            -o -name "*.scala" -o -name "*.r" -o -name "*.dart" -o -name "*.swift" \
+          \) \
           -not -path './node_modules/*' \
           -not -path './vendor/*' \
           -not -path './.git/*' \
@@ -39,6 +44,7 @@ runs:
           cpp) echo "language=cpp" >> $GITHUB_OUTPUT ;;
           scala) echo "language=scala" >> $GITHUB_OUTPUT ;;
           r) echo "language=r" >> $GITHUB_OUTPUT ;;
+          dart) echo "language=flutter" >> $GITHUB_OUTPUT ;;
           flutter) echo "language=flutter" >> $GITHUB_OUTPUT ;;
           swift) echo "language=swift" >> $GITHUB_OUTPUT ;;
           *) echo "language=unknown" >> $GITHUB_OUTPUT ;;

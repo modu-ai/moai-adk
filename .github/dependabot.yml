@@ -12,8 +12,6 @@ updates:
       - "go"
     commit-message:
       prefix: "chore(deps)"
-    reviewers:
-      - "goos"
     groups:
       gomod-minor-patch:
         patterns:

@@ -1,7 +1,8 @@
 name: Claude Code
 
 on:
-  # Issues only: PR lifecycle events (opened, ready_for_review, reopened) are handled in claude-code-review.yml
+  # Issues only. (PR lifecycle auto-review via claude-code-review.yml was removed 2026-06-24;
+  # Claude CLI is not pre-installed on runners, so that workflow was a permanent no-op.)
   issue_comment:
     types: [created]
   issues:
