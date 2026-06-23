@@ -177,6 +177,6 @@ reconcile: manager-develop 격리 worktree(agent-a2146fbd8081ad291) → shared c
 - AC tally: 10/10 PASS (9 MUST + 1 SHOULD)
 - Sync scope: documentation only (frontmatter transitions + CHANGELOG + progress.md §E.4)
 - Verification: no code changes (all implementation in run-phase)
-- sync_commit_sha: _<pending — orchestrator backfill>_
+- sync_commit_sha: d41c4c50f0256975b01b42acc8173fa2cb40c4f2
 - Sync-phase 3-phase close: spec.md `in-progress → completed` + plan.md `draft → completed` + acceptance.md `draft → completed` + progress.md §E.4 populated + CHANGELOG entry + era field added (V3R6) to all 3 artifacts
-- Status: audit-ready, awaiting sync commit creation
+- Status: 3-phase close complete — synced to main (sync commit d41c4c50f)
