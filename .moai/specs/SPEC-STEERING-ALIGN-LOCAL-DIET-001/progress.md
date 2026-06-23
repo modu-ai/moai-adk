@@ -63,7 +63,7 @@ All M1 gates PASS → no blocker; both candidates applied as planned.
 
 ```yaml
 run_complete_at: 2026-06-23
-run_commit_sha: <backfill-after-commit>   # run-phase commit SHA; backfilled ON-HEAD after the worktree→main FF reconcile (pre-verified the commit lands at HEAD)
+run_commit_sha: 51b4c495e   # run-phase commit SHA (worktree branch worktree-agent-a3ae5d03198bb58eb; FF-reconciles onto main — SHA stable through FF). If orchestrator rebases the worktree branch onto an advanced main, re-backfill the post-rebase SHA ON-HEAD.
 run_status: PASS
 ac_pass_count: 7        # 6 MUST-BLOCKING + 1 SHOULD all PASS
 ac_fail_count: 0
