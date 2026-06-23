@@ -145,9 +145,9 @@ Detection steps:
 |----------|-------|---------|
 | ANTHROPIC_AUTH_TOKEN | GLM API key | Z.AI authentication |
 | ANTHROPIC_BASE_URL | https://api.z.ai/api/anthropic | Z.AI endpoint |
-| ANTHROPIC_DEFAULT_OPUS_MODEL | glm-5.2[1m] | Opus model override |
-| ANTHROPIC_DEFAULT_SONNET_MODEL | glm-5.2[1m] | Sonnet model override |
-| ANTHROPIC_DEFAULT_HAIKU_MODEL | glm-5.2[1m] | Haiku model override |
+| ANTHROPIC_DEFAULT_OPUS_MODEL | glm-5.2 | Opus model override |
+| ANTHROPIC_DEFAULT_SONNET_MODEL | glm-5.2 | Sonnet model override |
+| ANTHROPIC_DEFAULT_HAIKU_MODEL | glm-5.2 | Haiku model override |
 
 These are set via `tmux set-environment` (session-level, not global).
 
@@ -165,11 +165,11 @@ Agent model mapping in CG mode:
 | Role profile (general-purpose teammate) | Pane | API | Model |
 |------------------------------------------|------|-----|-------|
 | Leader (MoAI) | Original | Claude | User's choice (Opus/Sonnet) |
-| implementer | New pane | Z.AI | glm-5.2[1m] |
-| tester | New pane | Z.AI | glm-5.2[1m] |
-| designer | New pane | Z.AI | glm-5.2[1m] |
-| researcher / analyst (read-only) | New pane | Z.AI | glm-5.2[1m] |
-| reviewer (read-only) | New pane | Z.AI | glm-5.2[1m] |
+| implementer | New pane | Z.AI | glm-5.2 |
+| tester | New pane | Z.AI | glm-5.2 |
+| designer | New pane | Z.AI | glm-5.2 |
+| researcher / analyst (read-only) | New pane | Z.AI | glm-5.2 |
+| reviewer (read-only) | New pane | Z.AI | glm-5.2 |
 
 ## Error Recovery
 

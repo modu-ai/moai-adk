@@ -304,7 +304,7 @@ func TestApplyCGMode_CredentialRoutingInvariant(t *testing.T) {
 	}
 
 	glmConfig := &GLMConfigFromYAML{BaseURL: "https://api.z.ai/api/anthropic"}
-	glmConfig.Models.High = "glm-5.2[1m]"
+	glmConfig.Models.High = "glm-5.2"
 	glmConfig.Models.Medium = "glm-4.7"
 	glmConfig.Models.Low = "glm-4.5-air"
 
@@ -319,7 +319,7 @@ func TestApplyCGMode_CredentialRoutingInvariant(t *testing.T) {
 	if rec.bulk["ANTHROPIC_BASE_URL"] != "https://api.z.ai/api/anthropic" {
 		t.Errorf("teammate ANTHROPIC_BASE_URL must be injected, got bulk: %v", rec.bulk)
 	}
-	if rec.bulk["ANTHROPIC_DEFAULT_OPUS_MODEL"] != "glm-5.2[1m]" {
+	if rec.bulk["ANTHROPIC_DEFAULT_OPUS_MODEL"] != "glm-5.2" {
 		t.Errorf("teammate High-slot model must be injected, got bulk: %v", rec.bulk)
 	}
 	if _, ok := rec.bulk["ANTHROPIC_AUTH_TOKEN"]; ok {
@@ -332,8 +332,12 @@ func TestApplyCGMode_CredentialRoutingInvariant(t *testing.T) {
 // intentionally-retained ANTHROPIC_AUTH_TOKEN (an OAuth token that must survive
 // mode switches, documented in buildTmuxClearVars).
 func TestTmuxEnv_InjectClearParity(t *testing.T) {
+	// Clean cwd so the built-in glmContextWindows table (not a stray project
+	// llm.yaml) is consulted when glm-5.2 resolves to the 1M tier.
+	t.Chdir(t.TempDir())
+
 	glmConfig := &GLMConfigFromYAML{BaseURL: "https://api.z.ai/api/anthropic"}
-	glmConfig.Models.High = "glm-5.2[1m]" // triggers the auto-compact-window var
+	glmConfig.Models.High = "glm-5.2" // resolves to the 1M tier → triggers the auto-compact-window var
 	glmConfig.Models.Medium = "glm-4.7"
 	glmConfig.Models.Low = "glm-4.5-air"
 
