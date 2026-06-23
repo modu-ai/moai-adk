@@ -777,7 +777,8 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
 }
 .gdoc-markdown .code-card pre {
   margin: 0;
-  padding: 14px 18px;
+  /* geekdoc/chroma 기본 padding:0 을 이기기 위해 !important (단일행 코드 여백 확보) */
+  padding: 15px 18px !important;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -816,7 +817,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   user-select: none;
 }
 .gdoc-markdown .code-card .chroma .lntd:first-child pre {
-  padding: 14px 10px 14px 16px;
+  padding: 15px 12px 15px 16px !important;
   background: rgba(0,0,0,0.18);
   border-right: 1px solid rgba(255,255,255,0.05);
   color: rgba(255,255,255,0.24);
@@ -824,7 +825,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
 }
 .gdoc-markdown .code-card .chroma .lnt,
 .gdoc-markdown .code-card .chroma .ln { color: rgba(255,255,255,0.24); }
-.gdoc-markdown .code-card .chroma .lntd:last-child pre { padding-left: 16px; }
+.gdoc-markdown .code-card .chroma .lntd:last-child pre { padding: 15px 18px 15px 16px !important; }
 .gdoc-markdown .code-card .chroma .hl { background: rgba(204,120,92,0.14); display: block; }
 
 /* ── 신택스 토큰 색 — 디자인 .tk-* 팔레트(Claude Warm Editorial) 정합 ──
@@ -1416,20 +1417,53 @@ main a:hover {
 }
 .cw-header-nav a.cw-nav-ext { color: var(--fg-3); }
 
-/* ── Footer partial layout ── */
+/* ── Footer ── 디자인 정합: geekdoc 기본 다크틸 배경을 라이트 캔버스로 오버라이드 */
+.gdoc-footer.cw-footer,
+footer.cw-footer {
+  background: var(--color-bg) !important;
+  color: var(--fg-3) !important;
+  border-top: 1px solid var(--border-2);
+  margin-top: 0;
+}
 .cw-footer-inner {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 1em 1.5rem;
+  padding: 20px 24px;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
+  align-items: center;
   gap: 8px;
 }
 .cw-footer-meta {
   color: var(--fg-3);
-  font-size: 0.85em;
+  font-size: 13px;
+  letter-spacing: -0.01em;
 }
+.cw-footer-meta a,
+.cw-footer a {
+  color: var(--fg-2);
+  text-decoration: none;
+  transition: color 120ms;
+}
+.cw-footer-meta a:hover,
+.cw-footer a:hover { color: var(--color-primary); }
+
+/* ── 인라인 아이콘 (icon shortcode) — 장식 이모지 대체 ── */
+.cw-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  flex: none;
+}
+.cw-icon--ok { color: var(--color-success); }
+.cw-icon--warn { color: var(--color-warning); }
+.cw-icon--danger { color: var(--color-danger); }
+.cw-icon--primary { color: var(--color-primary); }
+.cw-icon--muted { color: var(--fg-3); }
+.gdoc-markdown .li-icon,
+.gdoc-markdown li > .cw-icon:first-child { margin-right: 6px; }
 
 /* ── Custom: Hero section ── */
 .cw-hero {
