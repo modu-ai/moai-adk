@@ -2,7 +2,7 @@
 name: Feature Request
 about: Suggest an idea for MoAI-ADK
 title: "[Feature] "
-labels: enhancement
+labels: ["type:feature"]
 assignees: ''
 ---
 

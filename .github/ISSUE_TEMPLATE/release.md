@@ -20,14 +20,14 @@ assignees: []
 - [ ] SPEC-XXX-001: ...
 - [ ] SPEC-XXX-002: ...
 
-## Pre-Release Checklist (CLAUDE.local.md §18.8)
+## Pre-Release Checklist (.moai/docs/git-workflow-doctrine.md §18.8)
 
 ### Code Quality
 - [ ] 모든 SPEC 구현 완료 (`status: implemented` 로 전환)
 - [ ] 51/51 (또는 전체) ACs PASS
 - [ ] `go test -race ./...` PASS (ubuntu/macos/windows CI)
 - [ ] `golangci-lint run ./...` 0 issues
-- [ ] `manager-quality` review 통과 (TRUST 5 ≥ 4/5)
+- [ ] `sync-auditor` review 통과 (4-dimension scoring ≥ 0.85: Functionality/Security/Craft/Consistency)
 
 ### Documentation
 - [ ] `CHANGELOG.md` 에 `## [X.Y.Z] - YYYY-MM-DD` 섹션 추가 (영문 + 한국어)
@@ -89,4 +89,4 @@ git checkout main && git pull origin main
 
 ---
 
-**Reference**: CLAUDE.local.md §18 Enhanced GitHub Flow
+**Reference**: `.moai/docs/git-workflow-doctrine.md` (Enhanced GitHub Flow, §18 전체)

@@ -1,36 +1,60 @@
 # Path-based label rules for actions/labeler
 # Used by .github/workflows/community.yml
+#
+# Wave-3 convergence: rules remapped from superseded bare labels (go, tests,
+# docs, ci, config, templates, hooks) onto the Enhanced GitHub Flow 3-axis
+# scheme (.moai/docs/git-workflow-doctrine.md §18.6). The prior bare-label
+# targets no longer exist in labels.yml, so the labeler action would no-op them.
+# Reference for the 3-axis taxonomy: .github/labels.yml
 
-go:
+# Go CLI source — area:cli (covers cmd/, internal/cli/, and all *.go)
+"area:cli":
   - changed-files:
-      - any-glob-to-any-file: "**/*.go"
+      - any-glob-to-any-file:
+          - "**/*.go"
+          - "cmd/**"
+          - "internal/cli/**"
 
-tests:
+# Go *_test.go files additionally carry type:test
+"type:test":
   - changed-files:
       - any-glob-to-any-file: "**/*_test.go"
 
-docs:
-  - changed-files:
-      - any-glob-to-any-file:
-          - "*.md"
-          - "docs/**"
-
-ci:
-  - changed-files:
-      - any-glob-to-any-file: ".github/**"
-
-config:
-  - changed-files:
-      - any-glob-to-any-file:
-          - ".moai/**"
-          - ".claude/**"
-
-templates:
+# Project template tree (go:embed source) — area:templates
+"area:templates":
   - changed-files:
       - any-glob-to-any-file: "internal/template/**"
 
-hooks:
+# Hook system — area:hooks
+"area:hooks":
   - changed-files:
       - any-glob-to-any-file:
           - "internal/hook/**"
           - ".claude/hooks/**"
+
+# Configuration files (.moai/, .claude/) — area:config
+"area:config":
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".moai/config/**"
+          - ".claude/rules/**"
+          - ".claude/agents/**"
+          - ".claude/skills/**"
+          - ".claude/settings.json"
+
+# CI/CD infrastructure (.github/) — area:ci + type:ci
+"area:ci":
+  - changed-files:
+      - any-glob-to-any-file: ".github/**"
+
+"type:ci":
+  - changed-files:
+      - any-glob-to-any-file: ".github/workflows/**"
+
+# Documentation — type:docs (covers root *.md and docs-site)
+"type:docs":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "*.md"
+          - "docs/**"
+          - "docs-site/**"
