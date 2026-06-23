@@ -14,9 +14,9 @@ Per SPEC-V3R2-WF-003, `/moai design` participates in the `--mode` axis with 4 va
 ### Mode Values
 
 - **`autopilot` (default)**: Path B — code-based brand design. Sequential pipeline of `moai-domain-copywriting` + `moai-domain-brand-design` + `moai-workflow-gan-loop`. When `--mode autopilot` is supplied explicitly, Phase 1 path-selection AskUserQuestion is skipped and Phase B-Common begins immediately. (Default invocations without `--mode` retain the AskUserQuestion path selection so users can still choose Path A / B1 / B2.)
-- **`import`**: Path A — Claude Design handoff bundle parsing. Invokes `moai-workflow-design` (Part 1 — Path A) per Phase A Steps A1-A5 only; skips Phase 1 path selection AND Phase B-Common copy + brand authoring (REQ-WF003-013).
-- **`team`**: Path B-Common with **parallel** execution. Spawns `moai-domain-copywriting` and `moai-domain-brand-design` as concurrent teammates (role_profile `designer` per `workflow.yaml`); both feed `moai-workflow-gan-loop` for evaluation per the GAN Loop contract (REQ-WF003-009). Requires the same team prerequisites as `/moai run --mode team`: `workflow.team.enabled: true` AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`.
-- **`pipeline`**: REJECTED on `/moai design`. Pipeline mode is reserved for utility subcommands per SPEC-V3R2-WF-004. Passing `--mode pipeline` here triggers `MODE_PIPELINE_ONLY_UTILITY` (preserved from the WF-004 baseline; REQ-WF003-016 ↔ REQ-WF004-014 byte-identical).
+- **`import`**: Path A — Claude Design handoff bundle parsing. Invokes `moai-workflow-design` (Part 1 — Path A) per Phase A Steps A1-A5 only; skips Phase 1 path selection AND Phase B-Common copy + brand authoring.
+- **`team`**: Path B-Common with **parallel** execution. Spawns `moai-domain-copywriting` and `moai-domain-brand-design` as concurrent teammates (role_profile `designer` per `workflow.yaml`); both feed `moai-workflow-gan-loop` for evaluation per the GAN Loop contract. Requires the same team prerequisites as `/moai run --mode team`: `workflow.team.enabled: true` AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`.
+- **`pipeline`**: REJECTED on `/moai design`. Pipeline mode is reserved for utility subcommands. Passing `--mode pipeline` here triggers `MODE_PIPELINE_ONLY_UTILITY` (the same error key the utility subcommands share).
 
 ### Path B1 (Figma) — Not in `--mode` Axis
 
@@ -24,14 +24,14 @@ Per `research.md` §2.2.3, Path B1 (figma-extractor) is deliberately NOT exposed
 
 ### Sentinel Error Keys
 
-This skill emits the same sentinel error keys as `/moai run` for consistency. CI guards in `internal/template/agentless_audit_test.go` enforce the literal `MODE_UNKNOWN` sentinel remains present in this skill body.
+This skill emits the same sentinel error keys as `/moai run` for consistency. A CI audit verifies the literal `MODE_UNKNOWN` sentinel remains present in this skill body.
 
-- **`MODE_UNKNOWN`** (REQ-WF003-010, owned by SPEC-V3R2-WF-003): Emitted when `--mode <value>` is supplied but `<value>` is not in the design 4-value valid set `{autopilot, import, team, pipeline}`. The error message MUST enumerate the 4 valid values.
-- **`MODE_PIPELINE_ONLY_UTILITY`** (REQ-WF003-016 ↔ REQ-WF004-014, shared with SPEC-V3R2-WF-004): Preserved from the WF-004 baseline. Emitted when `--mode pipeline` is passed.
+- **`MODE_UNKNOWN`**: Emitted when `--mode <value>` is supplied but `<value>` is not in the design 4-value valid set `{autopilot, import, team, pipeline}`. The error message MUST enumerate the 4 valid values.
+- **`MODE_PIPELINE_ONLY_UTILITY`**: Preserved from the utility-subcommand baseline. Emitted when `--mode pipeline` is passed (pipeline mode is reserved for utility subcommands).
 
 ### Cross-Reference
 
-Mode precedence (CLI `--mode` > `workflow.default_mode` config > harness auto), harness-based default selection, the silent downgrade behavior for auto-resolved `team` (REQ-WF003-012), and the `MODE_TEAM_UNAVAILABLE` sentinel for explicit `--mode team` requests are documented in `.claude/skills/moai/workflows/run.md` § Mode Dispatch (Multi-Mode Router). The same rules apply to `/moai design`. Refer to that section for the resolver pseudocode and team prerequisite check; do not duplicate.
+Mode precedence (CLI `--mode` > `workflow.default_mode` config > harness auto), harness-based default selection, the silent downgrade behavior for auto-resolved `team`, and the `MODE_TEAM_UNAVAILABLE` sentinel for explicit `--mode team` requests are documented in `.claude/skills/moai/workflows/run.md` § Mode Dispatch (Multi-Mode Router). The same rules apply to `/moai design`. Refer to that section for the resolver pseudocode and team prerequisite check; do not duplicate.
 
 See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the cross-skill mode dispatch contract.
 

@@ -96,8 +96,8 @@ prohibited — they block the orchestrator's main session.
 
 **Handoff schema on exit 2** — JSON with stable fields: `prNumber`, `branch`,
 `failedChecks[]` (each entry `{name, runId, logUrl}`), `auxiliaryFailCount`,
-`totalRequired`. Field stability: `name`, `runId`, `logUrl` are Wave 3 contract — do not
-rename. Schema source: `internal/ciwatch/handoff.go::Handoff`.
+`totalRequired`. Field stability: `name`, `runId`, `logUrl` are stable contract — do not
+rename. Schema source: the CI-watch handoff struct.
 
 ### Phase 2 — Auto-Fix Loop
 
@@ -147,9 +147,9 @@ If `manager-quality` proposes a patch touching any of these, reject and escalate
 
 ### Go Helpers and Shell Scripts
 
-Go: `internal/ciwatch/{classifier,handoff,state}.go` (classify required-vs-auxiliary,
-handoff JSON schema, watch state file); `internal/cli/pr/watch.go`
-(`EmitReadyToMergeReport`, `EmitFailureHandoff`). Shell: `scripts/ci-watch/run.sh` (main
+Go helpers: the CI-watch classifier (required-vs-auxiliary), the handoff JSON-schema
+struct, the watch state file, and the PR-watch report emitters (`EmitReadyToMergeReport`,
+`EmitFailureHandoff`). Shell: `scripts/ci-watch/run.sh` (main
 loop, mock via `MOAI_CIWATCH_GH`); `scripts/ci-watch/lib/classify.sh` (yq + grep
 fallback); `scripts/ci-autofix/log-fetch.sh` (failure log + PR diff);
 `scripts/ci-autofix/classify.sh` (mechanical vs semantic).

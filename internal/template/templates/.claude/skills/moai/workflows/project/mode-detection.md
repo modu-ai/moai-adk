@@ -18,7 +18,7 @@ Per SPEC-V3R2-WF-003 REQ-WF003-005 and SPEC-V3R2-WF-004:
 - Any `--mode` value supplied to `/moai project` is silently ignored. The project workflow
   proceeds with its default behavior.
 - The `pipeline` value is the only special case: passing `--mode pipeline` triggers
-  `MODE_PIPELINE_ONLY_UTILITY` (the same error key shared with WF-004 REQ-WF004-014).
+  `MODE_PIPELINE_ONLY_UTILITY` (the same error key the utility subcommands share).
 
 See [Subcommand Classification matrix](../../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the
 full subcommand × mode matrix.

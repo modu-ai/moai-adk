@@ -26,12 +26,12 @@ triggers:
   phases: ["harness"]
 ---
 
-<!-- @MX:NOTE: [AUTO] V3R4 contract — workflow body owns the lifecycle entirely via file-system operations. No `moai harness` CLI subcommand is invoked. The Go file `internal/cli/harness.go` is retained only as a deprecation marker awaiting downstream physical removal per SPEC-V3R4-HARNESS-001 (BC-V3R4-HARNESS-001-CLI-RETIREMENT). -->
-<!-- @MX:REASON: [AUTO] V3R3-era workflow body shelled out to `moai harness <verb>` cobra subcommand. V3R4 retires that CLI verb path (REQ-HRN-FND-001, REQ-HRN-FND-002) and consolidates all lifecycle execution into the slash command + workflow body surface (REQ-HRN-FND-003). -->
+<!-- @MX:NOTE: [AUTO] Contract — the workflow body owns the lifecycle entirely via file-system operations. No `moai harness` CLI subcommand is invoked. -->
+<!-- @MX:REASON: [AUTO] An earlier workflow body shelled out to a `moai harness <verb>` cobra subcommand. That CLI verb path is retired; all lifecycle execution is consolidated into the slash command + workflow body surface. -->
 
-# Workflow: harness — V3R4 Self-Evolving Harness Lifecycle
+# Workflow: harness — Self-Evolving Harness Lifecycle
 
-Purpose: Surface the harness learning subsystem (observer, 4-tier proposal ladder, 5-layer safety pipeline) to the user. This workflow IS the implementation — every verb (`status`, `apply`, `rollback`, `disable`) is executed by file-system reads and writes inside this workflow body. No Go binary subcommand is invoked. The Go CLI factory in `internal/cli/harness.go` remains in the tree as a deprecation marker only; it is never registered into the cobra command tree (REQ-HRN-FND-001, REQ-HRN-FND-002).
+Purpose: Surface the harness learning subsystem (observer, 4-tier proposal ladder, 5-layer safety pipeline) to the user. This workflow IS the implementation — every verb (`status`, `apply`, `rollback`, `disable`) is executed by file-system reads and writes inside this workflow body. No Go binary subcommand is invoked; the harness CLI verb path is retired and is never registered into the cobra command tree.
 
 ## Authoritative Sources
 

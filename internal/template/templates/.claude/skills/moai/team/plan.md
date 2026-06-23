@@ -152,7 +152,7 @@ After all research tasks complete and annotation cycle is approved:
 
 #### [HARD] Pre-Write Frontmatter Checklist
 
-[HARD] Before manager-spec calls Write/MultiEdit for spec.md, it MUST validate the frontmatter contains ALL 12 required fields AND rejects snake_case legacy aliases. This checklist prevents dual-schema drift between the plan workflow and `internal/spec/lint.go` `FrontmatterSchemaRule`. SSOT: `.claude/rules/moai/development/spec-frontmatter-schema.md`.
+[HARD] Before manager-spec calls Write/MultiEdit for spec.md, it MUST validate the frontmatter contains ALL 12 required fields AND rejects snake_case legacy aliases. This checklist prevents dual-schema drift between the plan workflow and the SPEC frontmatter lint rule. SSOT: `.claude/rules/moai/development/spec-frontmatter-schema.md`.
 
 Required 12 fields (canonical order):
 - [ ] `id: SPEC-{DOMAIN}-{NUM}` — matches `^SPEC-[A-Z][A-Z0-9]+-[0-9]{3}$`

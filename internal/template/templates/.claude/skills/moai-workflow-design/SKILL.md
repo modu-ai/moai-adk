@@ -214,7 +214,7 @@ priority + reserved paths).
 - [ ] Budget truncation appends `> truncated: <filename> at char_offset=N`
 - [ ] All-`_TBD_` case emits header + log only
 - [ ] DTCG validation runs on Path A and Path B1 outputs
-- [ ] `internal/design/dtcg/frozen_guard_test.go` references this skill name
+- [ ] the DTCG frozen-guard CI test references this skill name
 
 REQ coverage: REQ-DPL-001..003, REQ-SKILL-007..015 (Path A); REQ-1..16 (context).
 

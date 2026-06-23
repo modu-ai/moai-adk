@@ -31,17 +31,17 @@ Purpose: Iterative autonomous fixing until all issues resolved. AI scans, fixes,
 
 Flow: Check Completion -> Memory Check -> Diagnose -> Fix -> Verify -> Repeat
 
-<!-- @MX:NOTE - REQ-WF003-004 alias relationship: /moai loop and /moai run --mode loop are equivalent. Alias enforced by TestLoopAliasCrossReference audit. -->
+<!-- @MX:NOTE - alias relationship: /moai loop and /moai run --mode loop are equivalent. The alias is enforced by a CI audit that checks the cross-reference text is present. -->
 
-## Invocation Routes (SPEC-V3R2-WF-003)
+## Invocation Routes
 
 This skill is invocable via two equivalent routes:
 - Direct: `/moai loop $ARGUMENTS` — historical entry point, preserved as thin wrapper.
-- Via run dispatch: `/moai run --mode loop` — per SPEC-V3R2-WF-003 REQ-WF003-004, the
-  `/moai run` skill delegates to this skill (e.g., `/moai run SPEC-XXX --mode loop`) when supplied.
+- Via run dispatch: `/moai run --mode loop` — the `/moai run` skill delegates to this skill
+  (e.g., `/moai run SPEC-XXX --mode loop`) when supplied.
 
-Both routes invoke this skill body unchanged. Behavioral equivalence is enforced by the audit
-test `TestLoopAliasCrossReference` in `internal/template/agentless_audit_test.go`.
+Both routes invoke this skill body unchanged. Behavioral equivalence is enforced by a CI audit
+that verifies this skill documents the `/moai run --mode loop` cross-reference.
 
 See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent + mode-axis contract.
 

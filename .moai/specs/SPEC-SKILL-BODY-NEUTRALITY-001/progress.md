@@ -64,7 +64,23 @@ Structural unit tests at M1 (all PASS — they validate the guard structure, not
 - `TestSkillBodyLeakClassRecurrenceBackstop` PASS
 - `TestC7PackageRestriction` PASS
 
-(M2-M6 evidence appended as milestones complete.)
+### M2 — Part A CLASS1 + CLASS2 build/Go-path purge (workflow skills) — COMPLETE
+
+CLASS1 (REQ-SBN-001/002/003): rewrote the `agentless_audit_test.go` prose in all 6 files (`loop.md`, `design.md`, `run.md`, `sync.md`, `plan.md`, `run/context-loading.md`). Kept every sentinel keyword VALUE; dropped the test-file name + REQ tokens. The `TestLoopAliasCrossReference` audit still finds the literal `/moai run --mode loop` cross-reference (preserved in loop.md).
+- AC-SBN-001: `grep -rln 'agentless_audit_test' $SK/` → **0** (PASS).
+- AC-SBN-002: sentinels retained — `MODE_UNKNOWN` 3 files, `MODE_PIPELINE_ONLY_UTILITY` 7, `MODE_FLAG_IGNORED_FOR_UTILITY` 5, `MODE_TEAM_UNAVAILABLE` 3. Sentinel tests `go test ./internal/template/ -run 'Sentinel|AgentlessControlFlow|LoopAlias'` → **ok** (PASS).
+- AC-SBN-003: no line with a `MODE_*` sentinel AND a `REQ-WF` token → **0** (PASS).
+
+CLASS2 release build (REQ-SBN-004, `sync/delivery.md`): generic-ized the 5-platform `GOOS=... ./cmd/moai/` block to a `<your-module>` placeholder pattern; dropped the pinned `golangci-lint@v2.1.6` version (both occurrences).
+- AC-SBN-004(a) `GOOS=...cmd/moai/` → 0; (b) `golangci-lint.*@v2.1.6` → 0; (c) `<your-binary>|<your-module>|<target>` → 6 (PASS).
+
+CLASS2 Go-impl paths in workflow skills (REQ-SBN-005): generic-ized `internal/spec/lint.go FrontmatterSchemaRule` → "the SPEC frontmatter lint rule" (`plan/spec-assembly.md`, `team/plan.md`); `internal/cli/harness.go` → "the harness CLI verb path" (`harness.md`); `internal/hook/dbsync/db_schema_sync.go` + `internal/cli/hook.go` → "the DB-schema-sync hook handler" (`sync/quality-gates-context.md`). The 6 non-workflow Go-paths are deferred to M3.
+
+Local mirror synced byte-identical for all 12 edited files (REQ-SBN-011 / AC-SBN-011 verified via `diff`). `make build` → exit 0 (catalog.yaml unchanged — workflow sub-files do not feed the SKILL.md-level catalog hash).
+
+### M3 — Part A CLASS2 Go-path purge (non-workflow skills) — COMPLETE
+
+(appended below as M3-M6 complete.)
 
 ## §E.3 Run-phase Audit-Ready Signal
 

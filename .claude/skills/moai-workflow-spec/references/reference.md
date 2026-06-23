@@ -8,7 +8,7 @@ This document provides comprehensive reference information for SPEC workflow man
 
 ## GEARS Migration (current notation)
 
-GEARS (Generalized EARS) is the canonical SPEC authoring notation as of v3.0.0. The lint engine (`internal/spec/lint.go` `EARSModalityRule`) emits a `LegacyEARSKeyword` warning when residual `IF/THEN` modality appears in NEW SPECs. The 88 existing SPECs are valid for 6 months from v3.0.0 release per the backward-compatibility window.
+GEARS (Generalized EARS) is the canonical SPEC authoring notation as of v3.0.0. The SPEC lint engine emits a `LegacyEARSKeyword` warning when residual `IF/THEN` modality appears in NEW SPECs. Existing SPECs remain valid for 6 months from the v3.0.0 release per the backward-compatibility window.
 
 GEARS-to-EARS pattern mapping (cross-link to canonical guide in SKILL.md "GEARS Format" section):
 

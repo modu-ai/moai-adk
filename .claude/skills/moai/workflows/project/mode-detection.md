@@ -18,7 +18,7 @@ Per SPEC-V3R2-WF-003 REQ-WF003-005 and SPEC-V3R2-WF-004:
 - Any `--mode` value supplied to `/moai project` is silently ignored. The project workflow
   proceeds with its default behavior.
 - The `pipeline` value is the only special case: passing `--mode pipeline` triggers
-  `MODE_PIPELINE_ONLY_UTILITY` (the same error key shared with WF-004 REQ-WF004-014).
+  `MODE_PIPELINE_ONLY_UTILITY` (the same error key the utility subcommands share).
 
 See [Subcommand Classification matrix](../../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the
 full subcommand × mode matrix.
@@ -117,7 +117,7 @@ Purpose: Replace the static four-question sequence with a structured deep interv
 
 **Interview Rounds (3 rounds maximum, configured in `.moai/config/sections/interview.yaml`):**
 
-**Interview Phase 1: Vision**
+**Round 1: Vision**
 
 Topic: What does this project do and who is it for?
 
@@ -127,17 +127,17 @@ Present via AskUserQuestion with exactly 4 options tailored to common project pa
 - Option 3: CLI tool or automation script: A command-line utility run by developers or operators. Best for build tools, deployment scripts, and developer utilities.
 - Option 4: Type your own answer: Enter a custom response if none of the above match your vision.
 
-**Interview Phase 2: Technology**
+**Round 2: Technology**
 
 Topic: What is the primary technology stack?
 
-Present via AskUserQuestion with exactly 4 options based on Interview Phase 1 answer context:
+Present via AskUserQuestion with exactly 4 options based on Round 1 answer context:
 - Option 1 (Recommended): TypeScript/JavaScript: Full-stack or frontend-heavy projects. Largest ecosystem. Works for React frontends, Node.js backends, Bun runtimes.
 - Option 2: Python: Backend APIs, AI/ML workloads, scripting. FastAPI, Django, or simple scripts.
 - Option 3: Go: High-performance microservices, CLI tools, cloud-native binaries. Simple deployment.
 - Option 4: Type your own answer: Enter a custom response to specify Rust, Java, Kotlin, Ruby, Swift, C#, or another stack.
 
-**Interview Phase 3: Scope**
+**Round 3: Scope**
 
 Topic: What are the key features and explicit boundaries?
 
@@ -152,15 +152,15 @@ Present via AskUserQuestion with exactly 4 options based on the vision and techn
 ```
 # Project Interview
 
-## Interview Phase 1: Vision
+## Round 1: Vision
 Question: {question asked}
 Answer: {user's answer}
 
-## Interview Phase 2: Technology
+## Round 2: Technology
 Question: {question asked}
 Answer: {user's answer}
 
-## Interview Phase 3: Scope
+## Round 3: Scope
 Question: {question asked}
 Answer: {user's answer}
 ```
