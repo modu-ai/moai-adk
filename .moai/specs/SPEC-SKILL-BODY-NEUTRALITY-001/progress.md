@@ -108,7 +108,7 @@ Generic-ized the 6 remaining real Go-impl paths in `moai-workflow-spec/SKILL.md`
 
 ```yaml
 run_complete_at: 2026-06-23
-run_commit_sha: <backfill — M4-M6 commit SHA>
+run_commit_sha: bc350cf04
 run_status: implemented
 ac_pass_count: 20
 ac_fail_count: 0
@@ -144,3 +144,17 @@ m1_to_mN_commit_strategy: M1 (42499880a) / M2-M3 (f36eec41b) / M4-M6 (this commi
 | AC-SBN-018 | PASS | `TestLeakClassReqTokenPartition` + NoDateSha | PASS |
 | AC-SBN-019 | PASS | 4-locale annotation=0; adk URL=3 files | PASS |
 | AC-SBN-020 | PASS | `TestC7PackageRestriction` | PASS |
+
+## §E.5 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-06-23
+sync_commit_sha: <backfill — sync commit SHA>
+sync_status: completed
+changelog_entry: added (Unreleased / Changed)
+mirror_byte_identical: true (50 files; foundation-cc/core diff = pre-existing drift, out of scope)
+guard_green: true (TestTemplateNoInternalContentLeak PASS, ok 0.863s)
+leak_classes_zero: { agentless: 0, spec_v3r: 0, req_token: 0, go_path: 0, four_locale: 0 }
+keep_list_preserved: { spec_auth_001: 14, adk_url: 3, go_install_moai: 2 }
+three_phase_close: true (in-progress -> completed merged into this sync commit)
+```
