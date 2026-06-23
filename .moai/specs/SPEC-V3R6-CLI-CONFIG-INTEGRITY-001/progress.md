@@ -58,8 +58,30 @@
 
 **행위 변경**: wizard picker value가 short alias(`"opus"`)에서 canonical id(`"claude-opus-4-7"`)로 변경 — profile.Model 필드가 구조체 doc comment(`// e.g. "claude-opus-4-6", "claude-opus-4-7"`)와 정합. `expandModelString`은 이미-canonical 값에 idempotent(pass-through). 기존 사용자 prefs.yaml의 short-alias/full-id 값은 `normalizeModel`(wizard init) + `expandModelString`(launcher) 양쪽에서 모두 정상 처리되어 backward-compat 유지.
 
-### M3 — F3 acceptEdits 투명성 (D4 pin 대상)
-_<pending>_
+### M3 — F3 acceptEdits 투명성 (D4 pin 해소, 2026-06-24, manager-develop cycle_type=tdd)
+
+**변경 파일** (3, +86/-1):
+- `internal/cli/profile_setup.go` — `acceptEditsConfirmationLine` 상수 + `emitAcceptEditsConfirmation(out io.Writer)` 헬퍼 신규; `runProfileSetup` 정규화 블록(`if permissionMode == defaultPermissionMode`)에서 헬퍼 호출 추가
+- `internal/cli/launcher.go:646-661` — `syncPermissionModeToSettingsLocal` 함수 주석에 REQ-CCI-006 / REQ-CCI-007 cross-ref 추가 (정규화가 의도적이며 사용자에게 공개됨을 명시)
+- `internal/cli/profile_setup_acceptEdits_test.go` — 신규 테스트 2종 (anchor 단언 + 단일 라인 출력 단언)
+
+**RED → GREEN**: `TestEmitAcceptEditsConfirmationAnchor` / `TestAcceptEditsConfirmationEmittedOnce` 에서 `undefined: emitAcceptEditsConfirmation` 컴파일 실패(RED) → 상수 + 헬퍼 구현 후 PASS(GREEN).
+
+**AC**: AC-CCI-006 PASS (MUST), AC-CCI-007 PASS (SHOULD)
+
+**D4 pin 해소 (plan-auditor review-2 defect)**: AC-CCI-006 acceptance.md body의 weasel phrase ("wizard 실행 출력 검사")를 deterministic stdout anchor 단언으로 전환. 선택된 anchor string:
+
+```
+Note: "acceptEdits" is the project default, so no settings.local.json defaultMode override will be written.
+```
+
+anchor 토큰 3종 (`acceptEdits` / `project default` / `settings.local.json`)은 grep-stable하며 `TestEmitAcceptEditsConfirmationAnchor`가 binary-testable하게 단언. acceptance.md body 정리는 sync-phase manager-spec/manager-docs pass로 이관 (본 run-phase는 body 수정 금지 — Ownership Transition Matrix 준수).
+
+**행위 변경**: 빈문자열 정규화 로직 자체는 불변 (option a). option (b) 값 보존은 spec.md §E P2-1 명시적 Out of Scope. 유일한 행위 추가 = 정규화 직후 stdout 확인 라인 출력.
+
+**Print site**: `runProfileSetup` 내 정규화 블록 바로 직후 (`emitAcceptEditsConfirmation(cmd.OutOrStdout())`). 사용자는 "Saved profile..." 라인보다 먼저 확인 라인을 봄.
+
+**주석 cross-ref 위치**: `launcher.go:659` (`(REQ-CCI-006 / REQ-CCI-007 — the normalization is intentional, and it is` 라인). `grep -n 'REQ-CCI-006' internal/cli/launcher.go` → 1 match.
 
 ### M4 — P0-4 db.yaml _TBD_ (D5 처리 대상)
 _<pending>_
