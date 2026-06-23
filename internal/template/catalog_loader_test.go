@@ -46,8 +46,9 @@ func TestLoadCatalog(t *testing.T) {
 	// SPEC-V3R6-SEC-SKILL-INTEGRATION-001 (2026-06-24): moai-ref-llm-security
 	// added (optional-pack:devops), net +1 = 39. moai-ref-supply-chain added
 	// (second defensive-cybersecurity reference skill, optional-pack:devops),
-	// net +1 = 40.
-	const expectedTotal = 40
+	// net +1 = 40. moai-ref-secops added (third defensive-cybersecurity
+	// reference skill, optional-pack:devops), net +1 = 41.
+	const expectedTotal = 41
 	if len(all) != expectedTotal {
 		t.Errorf("AllEntries() returned %d entries, want %d", len(all), expectedTotal)
 	}

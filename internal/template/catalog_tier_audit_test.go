@@ -145,7 +145,9 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// (LLM/AI security; registered under optional-pack:devops alongside
 	// moai-ref-owasp-checklist), net +1 = 32. moai-ref-supply-chain added as
 	// the second (supply-chain security; same optional-pack:devops), net +1 = 33.
-	const expectedSkillCount = 33
+	// moai-ref-secops added as the third (DevSecOps/container/API operational
+	// security; same optional-pack:devops), net +1 = 34.
+	const expectedSkillCount = 34
 	if len(diskSkills) != expectedSkillCount {
 		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
 	}

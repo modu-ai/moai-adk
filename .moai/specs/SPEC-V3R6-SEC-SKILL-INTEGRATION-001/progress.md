@@ -180,6 +180,77 @@ decomposition: SPEC ✓ | V3R6 ✓ | SEC ✓ | SKILL ✓ | INTEGRATION ✓ | 001
 
 **Residual risk (M2)**: E-REAUTHOR remains a 3-passage sampling floor (debt D1 — M4 raises to ≥10 passages OR mechanical full-sentence grep). E-DUALUSE syntactic grep cannot catch a novel-phrasing re-framed offense (debt D5/D6 — M4 human verdict is the final gate). The SLSA "4 levels" reconciliation (spec/AC wording vs SLSA v1.0 Build track L0-L3) was resolved by presenting the canonical v1.0 Build track (4 graduated levels L0-L3) with a parenthetical noting v0.x used L1-L4 — accurate AND satisfies the "4 levels" AC requirement. Both grep-limit debts deferred to M4 cross-skill review per plan.md §F.
 
+### M3 — `moai-ref-secops` skill (2026-06-24)
+
+**Milestone scope**: authored the third and largest of the three defensive-cybersecurity reference skills — `moai-ref-secops` (DevSecOps + Container + API operational security). Per AC-SI-014, the body exceeded the natural single-file size for three sub-domains, so it was authored as the **split structure**: a ~150-line SKILL.md overview + 3 module files (`modules/devsecops.md`, `modules/container.md`, `modules/api-ops.md`). Local copies + template mirrors byte-identical. spec.md frontmatter NOT touched (already `in-progress` from M1). M3 commits in the worktree only — NOT pushed (orchestrator integrates + verifies + pushes per delegation Section D COMMIT-ONLY constraint, the highest-risk-milestone pre-push verification change).
+
+**Files touched (M3 scope only)**:
+- `.claude/skills/moai-ref-secops/SKILL.md` (NEW, 159 lines — split overview ≤400 HARD gate)
+- `.claude/skills/moai-ref-secops/modules/devsecops.md` (NEW, 155 lines)
+- `.claude/skills/moai-ref-secops/modules/container.md` (NEW, 167 lines)
+- `.claude/skills/moai-ref-secops/modules/api-ops.md` (NEW, 128 lines)
+- `internal/template/templates/.claude/skills/moai-ref-secops/SKILL.md` + `modules/{devsecops,container,api-ops}.md` (NEW, byte-identical mirrors)
+- `internal/template/catalog.yaml` (registered new skill under `optional-pack:devops`; hash `0853012f...` regen via `make build`)
+- `internal/template/catalog_tier_audit_test.go` (`expectedSkillCount` 33 → 34)
+- `internal/template/catalog_loader_test.go` (`expectedTotal` 40 → 41)
+- `internal/template/embed_catalog_test.go` (`wantTotal` 40 → 41)
+- `.moai/specs/SPEC-V3R6-SEC-SKILL-INTEGRATION-001/progress.md` (this §E.2 M3 evidence)
+
+> **Catalog registration note (in-scope cascade)**: same as M1/M2 — the `TestAllSkillsInCatalog` guard (sentinel `CATALOG_ENTRY_MISSING`) requires every on-disk skill dir to be registered in `catalog.yaml`. Registering the skill + bumping the 3 count constants is the same-SPEC deployment cascade (L46-attributable to this SPEC's scope envelope). `make build` runs `gen-catalog-hashes.go --all` which also regenerated other catalog hashes (e.g. `moai-ref-git-workflow`) — that is the `--all` regen cascade, not an out-of-scope edit.
+
+**E1 — AC PASS/FAIL Matrix (M3 ACs)**:
+
+| AC | Subject | Status | Evidence command | Actual output |
+|----|---------|--------|------------------|---------------|
+| AC-SI-005 | Skill 3 frontmatter shape | PASS | `python3 yaml-parse SKILL.md` | `name: moai-ref-secops`, `user-invocable: False`, metadata keys `[category, status, tags, updated, version]` all-string=True, `progressive_disclosure.enabled: True`, `## NOT for` line present in description |
+| AC-SI-006 | SecOps 3 sub-domain coverage | PASS | body+module section scan | DevSecOps (CI/CD hardening + secret scanning + IaC scanning + SAST/DAST) ✓ in modules/devsecops.md; Container (image scanning + K8s RBAC + container-escape defense [seccomp/AppArmor/read-only-root/non-root] + runtime detection [Falco-rule shape]) ✓ in modules/container.md; API operational (OWASP API Top 10 operational [BOLA/broken-auth detection + rate-limit enforcement + server-side authz] + WAF tuning + GraphQL/REST depth/complexity limiting) ✓ in modules/api-ops.md |
+| AC-SI-012 | Template-mirror parity (SKILL.md + 3 modules) | PASS | `diff -r .claude/skills/moai-ref-secops internal/template/templates/.claude/skills/moai-ref-secops` | empty (byte-identical, dir-level, exit 0) |
+| AC-SI-013 | desc + when_to_use ≤1536 each | PASS | `python3 len() on de-folded scalar` | description: 898 chars; when_to_use: 541 chars (both ≤1536) |
+| AC-SI-014 | HARD 400-line split threshold | PASS | `wc -l` + cross-ref grep | SKILL.md = 159 (≤400 HARD gate; split structure applied); 3 modules: devsecops 155, container 167, api-ops 128; SKILL.md links all 3 modules (`modules/devsecops.md` 2×, `modules/container.md` 4×, `modules/api-ops.md` 3× — each ≥1) |
+| AC-SI-016 | 3 evolvable blocks present (SKILL.md) | PASS | `grep -c moai:evolvable-start SKILL.md` | 3 (ids: rationalizations, red-flags, verification) |
+| AC-SI-019 | Operational API focus + owasp-checklist cross-ref | PASS | body+module scan | SKILL.md `## Distinction from moai-ref-owasp-checklist` section + modules/api-ops.md `## Operational vs Dev-Time (the split)` table emphasize RUNTIME concerns (BOLA detection in production, rate-limit enforcement at gateway, WAF tuning, server-side authz, GraphQL/REST limiting); both cross-reference `moai-ref-owasp-checklist` for dev-time patterns and explicitly state "does not duplicate them" |
+| AC-SI-015 | Cross-references to existing moai-ref skills | PASS | `grep moai-ref-owasp-checklist\|moai-ref-supply-chain\|moai-ref-llm-security\|moai-ref-api-patterns` | SKILL.md `## Cross-References` links all 4 sibling moai-ref skills; api-ops.md cross-refs owasp-checklist (dev-time), devsecops.md + container.md cross-ref supply-chain (artifact provenance/signing) |
+
+**AC-SI-006 topic-coverage table (3 sub-domain → module → defensive framing)**:
+
+| Sub-domain | Module section | Defensive framing |
+|------------|----------------|-------------------|
+| DevSecOps — CI/CD hardening | devsecops.md `## CI/CD Pipeline Hardening` + `## Pipeline secret hygiene` | pin actions, least-priv tokens, ephemeral runners, signed artifacts, secret scoping/redaction |
+| DevSecOps — secret scanning | devsecops.md `## Secret Scanning` | pre-commit + CI scan, full-history, rotate-on-detection |
+| DevSecOps — IaC scanning | devsecops.md `## IaC Misconfiguration Detection` (misconfig classes + scan-before-apply) | Terraform/CloudFormation misconfig detection, fail-closed, drift detection |
+| DevSecOps — SAST/DAST | devsecops.md `## SAST / DAST Integration` | static-on-PR + dynamic-on-staging, finding-vs-filtering separation |
+| Container — image scanning | container.md `## Image Scanning` + admission control | layer scan, minimal base, no embedded secrets, sign+verify at admission |
+| Container — K8s RBAC | container.md `## Kubernetes RBAC Hardening` + ServiceAccount token hygiene | least-priv Roles, no cluster-admin SA, namespace-scoped, audit |
+| Container — escape defense | container.md `## Container-Escape Defense` (hardening table: non-root/read-only/drop-caps/seccomp/AppArmor/no-privileged/no-host-mounts) + hardened-pod baseline | misconfig → detect → prevent framing; no exploitation steps |
+| Container — runtime detection | container.md `## Runtime Threat Detection` (Falco-rule shape, concept not vendor) | detection-rule shape transfers to any engine; alert→route→respond |
+| API operational — OWASP API Top 10 | api-ops.md `## OWASP API Top 10 — Operational Defense` (API1-API10 detect+enforce) + BOLA priority control | server-side ownership check on every request; production detection |
+| API operational — WAF tuning | api-ops.md `## WAF Rule Tuning` | detection→enforce mode, narrow FP tuning, rule-shape not vendor |
+| API operational — GraphQL/REST limiting | api-ops.md `## GraphQL / REST Depth and Complexity Limiting` | depth/complexity/cost limits, persisted-query allowlist, introspection-off |
+
+**E-DUALUSE** (`grep -niE '<AC-SI-009 expanded offensive keyword list>' SKILL.md modules/`): **5 matches, ALL defensive `responder` noun** (exit 0 due to the English word "responder" = alert-recipient, NOT the offensive tool "Responder"). Per-match verdict:
+- SKILL.md:154 `Runtime-detection rules **alert** on container-escape and credential-access behavior; **alerts route to a responder**` → defensive-framing-acceptable (within `alert` verb).
+- container.md:120-121 `process behavior matching credential-dumping patterns — the rule **detects** the behavior so a responder is **alerted**; the rule is the **defense**, not an [instruction]` → defensive-framing-acceptable (explicit detect/defense framing; next sentence states it is NOT an instruction).
+- container.md:124 `a possible command-and-control or exfiltration **signal** that the rule **flags** for **investigation**` → defensive-framing-acceptable (flags/investigation verbs).
+- container.md:131 `a detection with no responder is noise; **route alerts** to an [on-call]` → defensive-framing-acceptable (route alerts).
+- container.md:134 / container.md:167 `... an untuned ruleset trains responders to ignore it` / `**alerts routed to a responder**` → defensive-framing-acceptable.
+- NO step-by-step exploitation procedure anywhere; NO offensive-tool usage (no Mimikatz/Kerberoast/Metasploit/etc. usage); `command-and-control` + `credential-dumping` appear ONLY as detection-rule descriptions (REQ-SI-007 misconfig→detect→prevent framing). MITRE ATT&CK technique IDs (T1610/T1611/T1613/T1609/T1525 container, T1190/T1499/T1078 API, T1195/T1552/T1078 pipeline) cited for defensive correlation only — each table states "how to detect and defend, never how to execute" (REQ-SI-008 satisfied; no technique-ID + attack-recipe combination).
+
+**E-LANGNEUTRAL** (`grep -niE 'pip install|npm install|go get|cargo add' SKILL.md modules/`): **0 matches** (exit 1, sole-pattern check). All tools named at category level ("the standard SAST tool", "the standard IaC scanner", "the standard container image scanner", "the standard runtime-detection engine", "the standard admission-control policy engine"). De-facto cross-ecosystem standards (Falco-rule shape, OWASP CRS-derived WAF, CIS-Benchmark-derived IaC rules) framed as category/concept per REQ-SI-013 carve-out — exempt from the ≥3-ecosystem rule (these are NOT package-manager references). AC-SI-010 (≥3-ecosystem) vacuously satisfied — no package-manager-specific reference exists.
+
+**E-NOATTRIB** (`grep -rniE 'mukul975|anthropic-cybersecurity|agentskills\.io|based on|adapted from|inspired by|github\.com/mukul' <local> <template>` over SKILL.md + 3 modules): **0 matches** (exit 1) across both distributed paths. No upstream attribution anywhere.
+
+**E-REAUTHOR (independence note, 3-passage)**: skill body + modules authored fresh from public primary sources (OWASP API Security Top 10, MITRE ATT&CK Containers/Enterprise matrices, CIS Benchmarks [Docker/Kubernetes], NSA K8s hardening guide, CISA CI/CD security guide, OWASP CRS) — concept-level only, no verbatim upstream copy. Sample passages: (1) "each operational layer is a boundary where an attacker who has reached it can move to the next" — original framing of the assume-breach-by-layer concept; (2) "the isolation between a container and its host is configuration, not a hard boundary — a misconfigured container weakens it" — original container-trust-boundary framing; (3) "the client is never a trust boundary; every operational API defense — BOLA in particular — requires server-side object-ownership checks on every request" — original BOLA-operational-defense framing. No CLI examples requiring standard tool-invocation syntax in this skill. Independence confirmed. Spot-check vs MITRE/OWASP canonical sources (Section C step 5): OWASP API Top 10 2023 (API1 BOLA / API4 Unrestricted Resource Consumption / API5 Broken Function Level Authorization) and MITRE ATT&CK Containers matrix (T1610 Deploy Container / T1611 Escape to Host / T1613 Container and Resource Discovery) verified accurate against canonical numbering.
+
+**E2 — build/parity**: `make build` exit 0 (catalog regenerated via `gen-catalog-hashes.go --all`, hash `0853012f7d1a07ae2b71212ae53e427700bf07fdfd3ce29d8b58441ebc5a4a28` for the new skill; binary built); `diff -r` empty (byte-identical SKILL.md + all 3 modules); `go test ./internal/template/...` → `ok 1.124s` (all guards pass: `TestAllSkillsInCatalog` skill-count 34, `TestLoadCatalog`/`TestLoadEmbeddedCatalog_Success` total 41, `internal_content_leak_test.go`, neutrality audit).
+
+**E5 — lint**: `golangci-lint run --timeout=2m` → `0 issues` (no Go logic change; count-constant + catalog edits only). `moai spec lint spec.md` → `0 error(s), 1 warning(s)` — the lone `StatusGitConsistency` warning ('in-progress' disagrees with git-implied 'implemented') is the known mid-run false-positive (the SPEC is genuinely in-progress; git-implied 'implemented' reflects merged M1/M2 commits). Noted, NOT fixed (per delegation Section E E5 instruction).
+
+**E6 — template-neutrality §25** (`grep -niE 'SPEC-V3R6|REQ-SI-|AC-SI-|Finding [A-Z][0-9]|/Users/|202[0-9]-[0-9]{2}-[0-9]{2}' SKILL.md modules/` excluding frontmatter `updated:`): **0 matches** (exit 1) over both local + mirror. No internal SPEC/REQ/AC tokens, audit citations, internal dates, commit SHAs, or macOS-bias paths in any distributed file.
+
+**E-CONTAIN** (AC-SI-018, `grep -rniE 'mukul975|anthropic-cybersecurity' internal/template/templates/ internal/template/embed.go internal/template/embed_catalog.go`): **0 matches** (exit 1). research.md never reaches the embed-source paths — containment holds (unchanged from M1/M2; M3 added no embed-source content naming the upstream).
+
+**Residual risk (M3)**: E-REAUTHOR remains a 3-passage sampling floor across all three skills (debt D1 — M4 raises to ≥10 passages/skill OR mechanical full-sentence grep vs upstream). E-DUALUSE syntactic grep cannot catch a novel-phrasing re-framed offense, particularly higher-risk in secops (container-escape, RBAC misconfig, BOLA inherently name attack vectors) — the M4 human verdict is the final gate (debt D5/D6); M3 mitigated this by rigorous REQ-SI-007 framing (every escape/RBAC/BOLA topic = misconfig→detect→prevent, zero exploitation steps). All three grep-limit debts deferred to M4 cross-skill review per plan.md §F. COMMIT-ONLY: M3 committed in worktree, NOT pushed — orchestrator performs pre-push integration + verification.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

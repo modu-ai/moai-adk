@@ -37,8 +37,9 @@ func TestLoadEmbeddedCatalog_Success(t *testing.T) {
 	// SPEC-V3R6-SEC-SKILL-INTEGRATION-001 (2026-06-24): moai-ref-llm-security
 	// added (optional-pack:devops), net +1 = 39. moai-ref-supply-chain added
 	// (second defensive-cybersecurity reference skill, optional-pack:devops),
-	// net +1 = 40.
-	const wantTotal = 40
+	// net +1 = 40. moai-ref-secops added (third defensive-cybersecurity
+	// reference skill, optional-pack:devops), net +1 = 41.
+	const wantTotal = 41
 	all := cat.AllEntries()
 	if len(all) != wantTotal {
 		t.Errorf("LoadEmbeddedCatalog() AllEntries() = %d, want %d", len(all), wantTotal)

@@ -212,6 +212,11 @@ catalog:
                   path: templates/.claude/skills/moai-ref-supply-chain/
                   hash: fd443095ecc0600b8e8d7c91562fd4c3e68c12c7cd269b03ba91aabe4cd80f16
                   version: 1.0.0
+                - name: moai-ref-secops
+                  tier: optional-pack:devops
+                  path: templates/.claude/skills/moai-ref-secops/
+                  hash: 0853012f7d1a07ae2b71212ae53e427700bf07fdfd3ce29d8b58441ebc5a4a28
+                  version: 1.0.0
             agents: []
         frontend:
             description: Frontend development with React, Next.js, Vue, and modern UI patterns
