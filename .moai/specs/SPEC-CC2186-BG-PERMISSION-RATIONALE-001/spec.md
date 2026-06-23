@@ -1,8 +1,8 @@
 ---
 id: SPEC-CC2186-BG-PERMISSION-RATIONALE-001
 title: "Background subagent permission rationale alignment (CC 2.1.186)"
-version: "0.1.0"
-status: in-progress
+version: "0.2.0"
+status: completed
 created: 2026-06-23
 updated: 2026-06-23
 author: manager-spec
@@ -12,6 +12,7 @@ module: ".claude/rules/moai/core + CLAUDE.md + internal/template/templates mirro
 lifecycle: spec-anchored
 tags: "doctrine, cc-alignment, background-subagent, permission, rationale-correction, mirror-parity"
 tier: M
+era: V3R6
 ---
 
 # SPEC-CC2186-BG-PERMISSION-RATIONALE-001 — Background subagent permission rationale alignment (CC 2.1.186)
@@ -21,6 +22,7 @@ tier: M
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-06-23 | manager-spec | Initial plan-phase artifact creation (draft). Single verified upstream-alignment drift surfaced by the release-update harness (Claude Code 2.1.186). Sibling pattern: SPEC-CC2178-TEAM-API-ALIGN-001 (completed). |
+| 0.2.0 | 2026-06-23 | orchestrator-direct | Sync-phase REQ/AC alignment: REQ-BGR-004 + AC-BGR-004 inverted from "retain allowlist-non-inheritance sentence" to "drop the refuted claim" — the run-phase doc re-confirmation (REQ-BGR-008) showed `bypassPermissions`/`acceptEdits` DO propagate to subagents, so the plan-phase assumption was factually wrong. §B updated (one surviving justification). Implements the maintainer's confirmed "rationale correction, conclusion retained" decision; the [HARD] write restriction is unchanged. |
 
 ## §A. Context
 
@@ -43,10 +45,13 @@ This is the maintainer's explicit choice (recorded in the spawn directive): **ra
 
 ## §B. The corrected rationale (target intent)
 
-The corrected rationale must convey two surviving justifications for retaining `run_in_background: false` for write/Edit tasks, even though the platform no longer auto-denies:
+> **Sync-phase amendment (2026-06-23)**: this section originally listed *two* surviving justifications. Run-phase re-confirmation against the official sub-agents doc (per REQ-BGR-008) REFUTED the first one (allowlist non-inheritance) — see the run-phase finding note below. Only the flow-interruption justification survives; REQ-BGR-004 + AC-BGR-004 are amended to match.
 
-1. **Allowlist non-inheritance (survives verbatim)**: even with `mode: "bypassPermissions"`, the background execution context still does not fully inherit the parent session's permission allowlist. This sentence is already present in the doctrine and is RETAINED as part of the corrected rationale — it was never dependent on the auto-deny mechanism.
-2. **Flow-interruption / predictability (new survivor)**: surfacing a permission prompt in the main session for *each* background write interrupts the leader's flow — defeating the purpose of background (parallel) execution. MoAI therefore retains the conservative `run_in_background: false` for writes by policy.
+The corrected rationale must convey the surviving justification for retaining `run_in_background: false` for write/Edit tasks, even though the platform no longer auto-denies:
+
+1. **Flow-interruption / predictability (the surviving basis)**: surfacing a permission prompt in the main session for *each* background write interrupts the leader's flow — defeating the purpose of background (parallel) execution. MoAI therefore retains the conservative `run_in_background: false` for writes by policy.
+
+> **Run-phase finding — allowlist-non-inheritance claim REFUTED (not retained)**: the plan-phase draft assumed a second surviving justification — that the background execution context "does not fully inherit the parent session's permission allowlist" even under `bypassPermissions`. At run time, re-confirmation against the official sub-agents doc (`code.claude.com/docs/en/sub-agents`, per REQ-BGR-008) showed the OPPOSITE: `bypassPermissions`/`acceptEdits` DO propagate to subagents. The allowlist-non-inheritance claim is therefore factually wrong and was DROPPED from the corrected rationale; the [HARD] conclusion rests solely on the flow-interruption / conservative-policy basis above. This is a verified upstream-fact correction, not a relaxation of the [HARD] write restriction.
 
 Read-only tasks (research, analysis, review) remain safe in background — unchanged.
 
@@ -66,9 +71,11 @@ The corrected doctrine **shall** replace the outdated "auto-deny" mechanism desc
 
 The corrected doctrine **shall** retain, in every corrected surface, the [HARD] behavioral conclusion that background subagents MUST NOT perform Write/Edit and that write tasks use `run_in_background: false`. The correction targets rationale wording only; it **shall not** weaken or relax the restriction.
 
-### REQ-BGR-004 — Allowlist-non-inheritance retention (ubiquitous, survivor)
+### REQ-BGR-004 — Allowlist-non-inheritance claim removal (ubiquitous, refuted-claim drop)
 
-The corrected agent-common-protocol rationale **shall** retain the surviving justification that the background execution context does not fully inherit the parent session's permission allowlist (even under `bypassPermissions`).
+The corrected agent-common-protocol rationale **shall not** assert that the background execution context "does not fully inherit the parent session's permission allowlist". Run-phase re-confirmation against the official sub-agents doc (`code.claude.com/docs/en/sub-agents`, per REQ-BGR-008) refuted that claim — `bypassPermissions`/`acceptEdits` DO propagate to subagents. The retained [HARD] conclusion **shall** rest on the flow-interruption / conservative-policy basis instead (per §B).
+
+> **Amendment provenance**: REQ-BGR-004 originally required *retaining* the allowlist-non-inheritance sentence (the plan-phase assumption). The run-phase doc re-confirmation (REQ-BGR-008) refuted that assumption, so M1 deliberately DROPPED the sentence and disclosed the deviation. This sync-phase amendment aligns the requirement with the verified upstream fact (the maintainer's confirmed "rationale correction, conclusion retained" decision); it does not change the implemented doctrine.
 
 ### REQ-BGR-005 — Mirror parity (ubiquitous)
 
@@ -91,7 +98,7 @@ The corrected agent-common-protocol rationale **shall** retain the surviving jus
 | Locus | Live path | Mirror path | Drift element |
 |-------|-----------|-------------|---------------|
 | 1 — CLAUDE.md §14 | `CLAUDE.md` L289 | `internal/template/templates/CLAUDE.md` L289 | "auto-deny" descriptor (directive retained) |
-| 2 — agent-common-protocol § Background Agent Execution | `.claude/rules/moai/core/agent-common-protocol.md` L190 | `internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md` L159 | "because they cannot interact with the user" clause (primary drift); allowlist sentence retained |
+| 2 — agent-common-protocol § Background Agent Execution | `.claude/rules/moai/core/agent-common-protocol.md` L190 | `internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md` L159 | "because they cannot interact with the user" clause (primary drift); allowlist-non-inheritance sentence DROPPED (refuted by official sub-agents doc — amended REQ-BGR-004) |
 | 3 — zone-registry CONST-V3R2-020 | `.claude/rules/moai/core/zone-registry.md` L224 | `internal/template/templates/.claude/rules/moai/core/zone-registry.md` (CONST-V3R2-020 clause) | "auto-deny Write/Edit operations" verbatim clause |
 
 > Line numbers are confirmed as of plan-phase (2026-06-23). manager-develop should grep at run time rather than trust line numbers, since intervening edits may shift them.

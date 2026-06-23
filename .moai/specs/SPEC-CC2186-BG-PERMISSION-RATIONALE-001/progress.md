@@ -98,4 +98,41 @@ embedded_go_note: "no generated embedded.go artifact — internal/template/embed
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_complete_at: 2026-06-23
+sync_commit_sha: <pending-backfill>   # backfilled in the 2nd close commit (orchestrator-direct sync 2-commit pattern)
+sync_status: completed
+ac_pass_count_post_sync: 10           # AC-BGR-001..010 ALL PASS after the AC-BGR-004 amendment
+ac_disclosed_deviation_post_sync: 0   # the run-phase AC-BGR-004 deviation is RESOLVED by the sync-phase REQ/AC amendment (v0.2.0)
+new_warnings_or_lints_introduced: 0   # doc-prose only; zero Go files changed in sync-phase
+docs_site_readme_impact: "none — corrected surfaces are internal doctrine (CLAUDE.md §14, agent-common-protocol, zone-registry); no user-facing README/docs-site change"
+mx_tags: "n/a — doc-prose correction; no @MX code annotations in scope (zero Go files changed)"
+frontmatter_transition: "in-progress → completed (3-phase close; the completed transition rides this sync commit)"
+era: V3R6                             # explicit override added to spec.md frontmatter (suppresses EraAutoDetected INFO)
+```
+
+### AC-BGR-004 deviation resolution (sync-phase)
+
+Run-phase recorded AC-BGR-004 as a **disclosed deviation** (§E.2 / §E.3): the allowlist-non-inheritance
+sentence was dropped because the official sub-agents doc refuted it (`bypassPermissions`/`acceptEdits`
+DO propagate to subagents, per the M1 doc re-confirmation), yet the plan-phase REQ-BGR-004 + AC-BGR-004
+still *required retaining* it. The deviation was correct but left the SPEC body misaligned with reality.
+
+Sync-phase amended **REQ-BGR-004 + AC-BGR-004** (spec.md / acceptance.md → v0.2.0) to require the claim's
+**ABSENCE** (`grep 'does not fully inherit the parent session'` == 0 in live + mirror), plus §B (one
+surviving justification: flow-interruption). The implementation already matches the amended AC, so:
+
+- **AC-BGR-004: PASS** (verified: live + mirror both report `0`).
+- **Post-sync AC tally: 10/10 PASS, 0 disclosed deviation.**
+- The maintainer's confirmed "rationale correction, conclusion retained" (Option A) decision is now
+  fully encoded in the SPEC body; the [HARD] write restriction is unchanged.
+
+### Sync-phase scope discipline
+
+This sync commit touches ONLY:
+- `.moai/specs/SPEC-CC2186-BG-PERMISSION-RATIONALE-001/{spec.md, acceptance.md, progress.md}` (REQ/AC amendment + this signal + frontmatter transition)
+- `CHANGELOG.md` (Changed entry)
+
+No doctrine surface (CLAUDE.md, agent-common-protocol, zone-registry, template mirrors) is modified in
+sync-phase — the run-phase already corrected them and they remain byte-identical (AC-BGR-005 parity
+preserved). Zero Go files changed; `go build` / `go test` unaffected.

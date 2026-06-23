@@ -9,7 +9,7 @@
 | AC-BGR-001 | REQ-BGR-001 | grep | "cannot interact with the user" removed from agent-common-protocol § Background Agent Execution (live + mirror) |
 | AC-BGR-002 | REQ-BGR-002 | grep | "auto-deny" descriptor corrected in CLAUDE.md §14 + zone-registry CONST-V3R2-020 (live + mirror) |
 | AC-BGR-003 | REQ-BGR-003 | grep | `run_in_background: false` directive still present in all corrected surfaces (conclusion retained) |
-| AC-BGR-004 | REQ-BGR-004 | grep | allowlist-non-inheritance sentence retained in agent-common-protocol (live + mirror) |
+| AC-BGR-004 | REQ-BGR-004 | grep | allowlist-non-inheritance claim ABSENT from agent-common-protocol (live + mirror) — refuted by official sub-agents doc, dropped per run-phase finding (amended) |
 | AC-BGR-005 | REQ-BGR-005 | diff | per-locus DIRECT live-vs-mirror corrected-region diff exits 0 for all 3 loci (see §D.1 — no Go test backs these paths; see D2 note) |
 | AC-BGR-006 | REQ-BGR-006 | test | `TestTemplateNeutralityAudit` + `TestTemplateNoInternalContentLeak` pass (no internal-content leak in template prose) |
 | AC-BGR-007 | REQ-BGR-007 | build | `embedded.go` regenerated via `make build`; reflects corrected mirror; `go build ./...` succeeds |
@@ -51,13 +51,16 @@ grep -rn 'run_in_background: false\|MUST NOT perform Write/Edit\|MUST NOT.*Write
 #           still present in each corrected surface — the restriction is NOT relaxed
 ```
 
-### AC-BGR-004 — allowlist survivor retained (STRICT >= 1)
+### AC-BGR-004 — allowlist-non-inheritance claim removed (STRICT == 0)
 
 ```bash
 grep -rc 'does not fully inherit the parent session' \
   .claude/rules/moai/core/agent-common-protocol.md \
   internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md
-# Expected: both files report >= 1 (the allowlist-non-inheritance justification survives)
+# Expected: both files report 0 — the allowlist-non-inheritance claim was refuted by the
+# official sub-agents doc (bypassPermissions/acceptEdits DO propagate to subagents, per REQ-BGR-008)
+# and DROPPED from the corrected rationale. The [HARD] conclusion rests on the flow-interruption /
+# conservative-policy basis instead. (Amended from the plan-phase ">= 1 retained" expectation.)
 ```
 
 ### AC-BGR-005 — live/mirror parity (DIRECT per-locus corrected-region diff)
@@ -131,7 +134,7 @@ go test ./...                                 # full suite green (AC-BGR-010)
 - [ ] Primary drift clause ("cannot interact with the user") == 0 across both agent-common-protocol copies
 - [ ] "auto-deny" descriptor corrected in CLAUDE.md §14 + CONST-V3R2-020 (both trees)
 - [ ] `run_in_background: false` conclusion retained in every corrected surface (restriction NOT relaxed)
-- [ ] allowlist-non-inheritance survivor retained
+- [x] allowlist-non-inheritance claim removed (refuted by official sub-agents doc per REQ-BGR-008; [HARD] conclusion rests on flow-interruption basis)
 - [ ] CONST-V3R2-044 unchanged (scope discipline verified)
 - [ ] live == mirror for each locus (byte-identical prose)
 - [ ] `make build` run; `embedded.go` reflects corrected mirror; `go build ./...` + `go test ./...` green
