@@ -2,7 +2,7 @@
 id: SPEC-V3R6-SEC-SKILL-INTEGRATION-001
 title: "Defensive cybersecurity practitioner reference skills (independent re-authorship)"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-06-24
 updated: 2026-06-24
 author: manager-spec
@@ -11,6 +11,7 @@ phase: "v3.0.0"
 module: ".claude/skills/moai-ref-llm-security, .claude/skills/moai-ref-supply-chain, .claude/skills/moai-ref-secops"
 lifecycle: spec-anchored
 tier: "L"
+era: V3R6
 tags: "security, skills, defensive-cybersecurity, reference-skills, re-authorship, supply-chain, llm-security, devsecops, container-security, api-security"
 ---
 

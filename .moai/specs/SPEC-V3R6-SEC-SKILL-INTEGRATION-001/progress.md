@@ -282,4 +282,13 @@ Run-phase complete (M1-M4). All three skills authored, mirrored byte-identically
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+**Sync-phase (orchestrator-direct, 2026-06-24) — 3-phase close**
+
+- **CHANGELOG**: `[Unreleased] ### Added` entry added for the 3 skills (no duplicate — `grep -c 'SEC-SKILL-INTEGRATION' CHANGELOG.md` was 0 pre-write).
+- **README**: no change — `README.md` / `README.ko.md` do not list the `moai-ref-*` skill catalog (`grep -c 'moai-ref-' README*.md` = 0); nothing to update.
+- **Frontmatter**: `status: in-progress → completed` + `era: V3R6` added (3-phase close — the `completed` transition rides this sync commit per the Status Transition Ownership Matrix; era pinned to suppress EraAutoDetected + lock V3R6 modern-era classification).
+- **AC-SI-017 (closure gate)**: PASS — the single sync commit names exactly one full SPEC-ID (`chore(SPEC-V3R6-SEC-SKILL-INTEGRATION-001): sync-phase artifacts`), no combined/abbreviated scope (drift-detector close-subject full-ID mandate).
+- **Run-phase recap**: M1 `de5552759` (llm-security) · M2 `17397715d` (supply-chain) · M3 `6253045e6` (secops) · M4 `1c81c6d39` (holistic review) — all on origin/main.
+- **Verification (orchestrator re-observed on integrated tree)**: 3 skills byte-identical mirror parity; E-DUALUSE 0 hard offensive tools; E-NOATTRIB 0; §25 neutrality 0; E-CONTAIN 0; `go test ./internal/template/...` ok; `moai spec lint` 0-error.
+
+sync_commit_sha: _BACKFILL_PENDING_
