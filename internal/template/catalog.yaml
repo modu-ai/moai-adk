@@ -207,6 +207,11 @@ catalog:
                   path: templates/.claude/skills/moai-ref-llm-security/
                   hash: 0d8ec550434e60de3cb44228e4a2d5370ab4556c3d9590ab2c4827f4a1379ccd
                   version: 1.0.0
+                - name: moai-ref-supply-chain
+                  tier: optional-pack:devops
+                  path: templates/.claude/skills/moai-ref-supply-chain/
+                  hash: fd443095ecc0600b8e8d7c91562fd4c3e68c12c7cd269b03ba91aabe4cd80f16
+                  version: 1.0.0
             agents: []
         frontend:
             description: Frontend development with React, Next.js, Vue, and modern UI patterns

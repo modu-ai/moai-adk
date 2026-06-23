@@ -143,8 +143,9 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// SPEC-V3R6-SEC-SKILL-INTEGRATION-001 (2026-06-24): moai-ref-llm-security
 	// added as the first of three defensive-cybersecurity reference skills
 	// (LLM/AI security; registered under optional-pack:devops alongside
-	// moai-ref-owasp-checklist), net +1 = 32.
-	const expectedSkillCount = 32
+	// moai-ref-owasp-checklist), net +1 = 32. moai-ref-supply-chain added as
+	// the second (supply-chain security; same optional-pack:devops), net +1 = 33.
+	const expectedSkillCount = 33
 	if len(diskSkills) != expectedSkillCount {
 		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
 	}

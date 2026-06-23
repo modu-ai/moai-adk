@@ -123,6 +123,63 @@ decomposition: SPEC ✓ | V3R6 ✓ | SEC ✓ | SKILL ✓ | INTEGRATION ✓ | 001
 
 **Residual risk (M1)**: E-REAUTHOR is a 3-passage sampling floor (debt D1 — raise to ≥10 passages OR mechanical full-sentence grep deferred to M4). E-DUALUSE syntactic grep cannot catch a novel-phrasing re-framed offense (debt D5/D6 — M4 human verdict is the final gate). Both deferred to M4 cross-skill review per plan.md §F.
 
+### M2 — `moai-ref-supply-chain` skill (2026-06-24)
+
+**Milestone scope**: authored the second of three defensive-cybersecurity reference skills — `moai-ref-supply-chain` (software supply-chain defensive security). Local copy + template mirror byte-identical. Matches the M1 `moai-ref-*` structural pattern (frontmatter shape, threat→defense tables, verification section, 3 evolvable blocks, `## NOT for` description line). spec.md frontmatter NOT touched (already `in-progress` from M1).
+
+**Files touched (M2 scope only)**:
+- `.claude/skills/moai-ref-supply-chain/SKILL.md` (NEW, 345 lines)
+- `internal/template/templates/.claude/skills/moai-ref-supply-chain/SKILL.md` (NEW, byte-identical mirror)
+- `internal/template/catalog.yaml` (registered new skill under `optional-pack:devops`; hash `fd443095...` regen via `make build`)
+- `internal/template/catalog_tier_audit_test.go` (`expectedSkillCount` 32 → 33)
+- `internal/template/catalog_loader_test.go` (`expectedTotal` 39 → 40)
+- `internal/template/embed_catalog_test.go` (`wantTotal` 39 → 40)
+- `.moai/specs/SPEC-V3R6-SEC-SKILL-INTEGRATION-001/progress.md` (this §E.2 M2 evidence)
+
+> **Catalog registration note (in-scope cascade)**: same as M1 — the `TestAllSkillsInCatalog` guard (sentinel `CATALOG_ENTRY_MISSING`) requires every on-disk skill dir to be registered in `catalog.yaml`. Registering the skill + bumping the 3 count constants is the same-SPEC deployment cascade (L46-attributable to this SPEC's scope envelope), making M2 deployable via `moai init` / `moai update`.
+
+**E1 — AC PASS/FAIL Matrix (M2 ACs)**:
+
+| AC | Subject | Status | Evidence command | Actual output |
+|----|---------|--------|------------------|---------------|
+| AC-SI-003 | Skill 2 frontmatter shape | PASS | `python3 yaml-parse SKILL.md` | `name: moai-ref-supply-chain`, `user-invocable: False`, metadata keys `[category, status, tags, updated, version]` all-string=True, `progressive_disclosure.enabled: True`, `## NOT for` line present in description |
+| AC-SI-004 | Supply-chain defensive topic coverage | PASS | body scan + section grep | all 8 required topics present (see topic table below) |
+| AC-SI-012 | Template-mirror parity | PASS | `diff local template` | empty (byte-identical, exit 0) |
+| AC-SI-013 | desc + when_to_use ≤1536 each | PASS | `python3 len() on de-folded scalar` | description: 763 chars; when_to_use: 480 chars (both ≤1536) |
+| AC-SI-014 | Skill size ≤500 lines | PASS | `wc -l SKILL.md` | 345 (≤500; supply-chain is not the 400-line-split skill) |
+| AC-SI-016 | 3 evolvable blocks present | PASS | `grep -c moai:evolvable-start` | 3 (ids: rationalizations, red-flags, verification) |
+
+**Topic-coverage table (AC-SI-004 detail — supply-chain defensive topic → body section)**:
+
+| Defensive topic | Body section | Framing |
+|-----------------|--------------|---------|
+| SBOM generation/verification (SPDX/CycloneDX) | `## SBOM — Generation and Verification` (format table + NTIA min-elements + gen/verify practice) | generate-at-build + signed-attestation + diff |
+| Dependency-confusion defense | `## Dependency-Confusion Defense` (namespace/source-pin/hash/routing) | prevent substitution; explicitly NOT how-to-attack |
+| Malicious-package triage playbook | `## Malicious-Package Triage Playbook` (signals table + 5-step response) | quarantine → verify → inventory → report → record |
+| SLSA provenance (4 levels) | `## SLSA Provenance Levels` (Build L0-L3 table) | require-minimum-level for consumed artifacts |
+| Sigstore/cosign signing | `## Sigstore / cosign Signing and Verification` (keyless model + verify-at-boundary) | verify-at-install + pin-identity (de-facto-standard framing) |
+| Package-registry hardening | `## Package-Registry Hardening` (2FA/signing/mirror-pin/scoped-tokens/immutable) | publish + mirror hardening controls |
+| Typosquatting defense | `## Typosquatting Defense` (allowlist/similarity-detect/namespace-reg/pin) | name-allowlist + hash-pin combo |
+| Transitive-dependency auditing | `## Transitive-Dependency Auditing` (audit dimensions + ecosystem-neutral) | full-closure vuln/license/depth audit |
+
+**E-REAUTHOR (independence note, 3-passage)**: skill body authored fresh from public primary sources (SLSA spec slsa.dev, Sigstore/CNCF docs, OWASP supply-chain, SPDX/CycloneDX specs, NTIA minimum elements, Alex Birsan 2021 dependency-confusion disclosure) — concept-level only, no verbatim upstream copy. Sample passages: (1) "each hand-off in the chain is a boundary where a component can be substituted or tampered" — original framing of the supply-chain trust-boundary concept; (2) "Trust is established by verification, not by familiarity" — original provenance-by-default argument; (3) "an SBOM missing dependency relationships is an inventory, not a graph" — original SBOM-completeness framing. The lone standard tool-invocation syntax (`cosign verify --certificate-identity <expected> ...`) is functional, not expressive (AC-SI-007 EC4 exempt). Independence confirmed.
+
+**E-DUALUSE** (`grep -niE 'mimikatz|kerberoast|ntlm.relay|cobalt strike|sliver|mythic|metasploit|pass-the-hash|pass-the-ticket|lsass.dump|credential dump|c2 framework|command and control|red team|pen test|penetration test|bloodhound|rubeus|impacket|evil-winrm|responder|seatbelt|sharpersist|certipy' SKILL.md`): **0 matches** (exit 1). Zero offensive keywords. The dependency-confusion / malicious-package / typosquatting sections name the attack vectors strictly in prevent/detect/triage framing (e.g., dependency-confusion section explicitly states "it describes how to prevent the substitution, not how to perform it").
+
+**E-LANGNEUTRAL** (`grep -niE 'pip install|npm install|go get|cargo add' SKILL.md`): **0 matches** (exit 1, sole-pattern check). AC-SI-010 positive multi-ecosystem balance VERIFIED — the two sections that name ecosystem-specific tools each name ≥3 ecosystems in the same section: (a) Dependency-Confusion lockfile paragraph names `pip` AND `npm` AND `cargo` (3 ecosystems); (b) Transitive-Dependency auditing names `pip-audit` (Python) AND `npm audit` (Node.js) AND `cargo audit` (Rust) AND `govulncheck` (Go) AND `bundler-audit` (Ruby) (5 ecosystems). De-facto cross-ecosystem standards (syft/SBOM, cosign/Sigstore, SLSA) framed as "the standard `<category>` tool" per REQ-SI-013 carve-out — exempt from the ≥3-ecosystem rule.
+
+**E-NOATTRIB** (`grep -rniE 'mukul975|anthropic-cybersecurity|agentskills\.io' <local> <template>`): **0 matches** (exit 1) across both distributed paths. No upstream attribution anywhere.
+
+**E2 — build/parity**: `make build` exit 0 (catalog regenerated via `gen-catalog-hashes.go --all`, hash `fd443095ecc0600b8e8d7c91562fd4c3e68c12c7cd269b03ba91aabe4cd80f16` for the new skill); `diff local template` empty (byte-identical); `go test ./internal/template/...` → `ok 1.130s` (all guards pass: `TestAllSkillsInCatalog` skill-count 33, `TestLoadCatalog`/`TestLoadEmbeddedCatalog_Success` total 40, `internal_content_leak_test.go`, neutrality audit).
+
+**E5 — lint**: `golangci-lint run --timeout=2m` → `0 issues` (no Go logic change; count-constant + catalog edits only). `moai spec lint spec.md` → `0 error(s), 1 warning(s)` — the lone `StatusGitConsistency` warning ('in-progress' disagrees with git-implied 'implemented') is a known mid-run false-positive (the SPEC is genuinely in-progress; git-implied 'implemented' reflects merged M1 commit). Noted, NOT fixed (per delegation Section E E5 instruction).
+
+**E6 — template-neutrality** (`grep -niE 'SPEC-V3R6|REQ-SI-|AC-SI-|Finding [A-Z][0-9]' SKILL.md`): **0 matches** (exit 1). No internal SPEC/REQ/AC tokens, dates, or SHAs in the distributed skill body.
+
+**E-CONTAIN** (AC-SI-018, `grep -rniE 'mukul975|anthropic-cybersecurity' internal/template/templates/ internal/template/embed.go internal/template/embed_catalog.go`): **0 matches** (exit 1). research.md never reaches the embed-source paths — containment holds (unchanged from M1; M2 added no embed-source content naming the upstream).
+
+**Residual risk (M2)**: E-REAUTHOR remains a 3-passage sampling floor (debt D1 — M4 raises to ≥10 passages OR mechanical full-sentence grep). E-DUALUSE syntactic grep cannot catch a novel-phrasing re-framed offense (debt D5/D6 — M4 human verdict is the final gate). The SLSA "4 levels" reconciliation (spec/AC wording vs SLSA v1.0 Build track L0-L3) was resolved by presenting the canonical v1.0 Build track (4 graduated levels L0-L3) with a parenthetical noting v0.x used L1-L4 — accurate AND satisfies the "4 levels" AC requirement. Both grep-limit debts deferred to M4 cross-skill review per plan.md §F.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
