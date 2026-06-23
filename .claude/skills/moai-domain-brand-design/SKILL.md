@@ -253,5 +253,5 @@ Generated design must meet:
 ---
 
 Source: Absorbed from the retired v2.x `*-design-system` capability v1.0.0 (per the design-system absorption policy) on 2026-04-20.
-REQ coverage: REQ-SKILL-004, REQ-SKILL-005, REQ-SKILL-006, REQ-FALLBACK-003
+REQ coverage: (internal provenance omitted)
 Version: 1.0.0

@@ -26,11 +26,13 @@ on:
     paths:
       - 'internal/template/templates/**'
       - 'internal/template/template_neutrality_audit_test.go'
+      - 'internal/template/internal_content_leak_test.go'
   push:
     branches: [main]
     paths:
       - 'internal/template/templates/**'
       - 'internal/template/template_neutrality_audit_test.go'
+      - 'internal/template/internal_content_leak_test.go'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -56,3 +58,13 @@ jobs:
         run: |
           go test ./internal/template/... \
             -run 'TestTemplateNeutralityAudit' -v
+
+      - name: Run TestTemplateNoInternalContentLeak (isolated)
+        # SPEC-SKILL-BODY-NEUTRALITY-001 Part B: the skill-body internal-content
+        # leak guard runs in CI so the purged leak classes (CI-test path, Go-impl
+        # path, broadened SPEC-ID, REQ-token) cannot silently re-accumulate. The
+        # path filter above already covers internal/template/templates/.claude/skills/**
+        # via the internal/template/templates/** glob.
+        run: |
+          go test ./internal/template/... \
+            -run 'TestTemplateNoInternalContentLeak' -v

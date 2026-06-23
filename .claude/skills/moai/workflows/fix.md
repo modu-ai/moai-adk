@@ -44,9 +44,9 @@ Flow: Parallel Scan -> Classify -> Fix -> Verify -> Report
 
 ## Pipeline Contract (Agentless Classification)
 
-<!-- @MX:NOTE - Agentless classification per SPEC-V3R2-WF-004; localize→repair→validate contract. See spec-workflow.md#subcommand-classification. -->
+<!-- @MX:NOTE - Agentless fixed-pipeline classification; localize→repair→validate contract. See spec-workflow.md#subcommand-classification. -->
 
-This subcommand is classified as **Agentless fixed-pipeline** per SPEC-V3R2-WF-004.
+This subcommand is classified as **Agentless fixed-pipeline**.
 It executes a deterministic 3-phase contract: **localize → repair → validate**.
 
 - **Phase mapping**: localize ← Phase 1+2+2.5; repair ← Phase 3; validate ← Phase 4

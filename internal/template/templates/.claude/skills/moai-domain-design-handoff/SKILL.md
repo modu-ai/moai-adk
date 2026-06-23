@@ -30,9 +30,9 @@ progressive_disclosure:
   level2_tokens: 5000
 ---
 
-<!-- Verifies REQ-BRAIN-005: prompt.md is paste-ready (no MoAI tokens) -->
-<!-- Verifies REQ-BRAIN-006: Brand voice integrated when present; graceful default when absent -->
-<!-- Verifies REQ-BRAIN-009: Phase 7 exit AskUserQuestion with 3 options -->
+<!-- Verifies: prompt.md is paste-ready (no MoAI tokens) -->
+<!-- Verifies: Brand voice integrated when present; graceful default when absent -->
+<!-- Verifies: Phase 7 exit AskUserQuestion with 3 options -->
 
 <!-- @MX:ANCHOR: [AUTO] 5-section prompt.md template structure — canonical definition -->
 <!-- @MX:REASON: Consumed by every brain workflow Phase 7 execution (high fan_in). Structural changes affect user trust — prompt.md is pasted directly into external claude.com Design session. -->
@@ -58,7 +58,7 @@ Key guarantees:
 - [HARD] `prompt.md` contains NO MoAI-specific tokens (no `SPEC-`, `.moai/`, `manager-`, `IDEA-`)
 - [HARD] Brand voice integrated when `.moai/project/brand/brand-voice.md` exists
 - [HARD] Brand-absent fallback: `Brand Voice (default — please customize)` placeholder section
-- [HARD] Phase 7 exits with AskUserQuestion offering 3 options (a/b/c per REQ-BRAIN-009)
+- [HARD] Phase 7 exits with AskUserQuestion offering 3 options (a/b/c per the relevant requirement)
 - [HARD] All 5 files produced regardless of brand context availability
 
 ---
@@ -132,7 +132,7 @@ See [supporting files templates](references/supporting-files.md) for verbatim re
 
 ---
 
-## Phase 7 Exit: AskUserQuestion (REQ-BRAIN-009)
+## Phase 7 Exit: AskUserQuestion
 
 After all 5 files are written, the workflow MUST invoke AskUserQuestion (with ToolSearch preload) presenting 3 options:
 

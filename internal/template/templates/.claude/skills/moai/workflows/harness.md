@@ -35,7 +35,7 @@ Purpose: Surface the harness learning subsystem (observer, 4-tier proposal ladde
 
 ## Authoritative Sources
 
-- SPEC (active): `SPEC-V3R4-HARNESS-001` (foundation, supersedes the three V3R3 harness SPECs)
+- SPEC (active): `the harness foundation policy` (foundation, supersedes the three V3R3 harness SPECs)
 - Constitution: `.claude/rules/moai/design/constitution.md` §5 (5-Layer Safety) and §2 (Frozen/Evolvable zones)
 - AskUserQuestion contract: `.claude/rules/moai/core/askuser-protocol.md` (canonical reference)
 - Agent boundary: `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary
@@ -134,8 +134,8 @@ Operations:
 
 0. **Invoke classifier** (per the harness classifier wiring policy): run `moai hook harness-classify 2>&1` and capture stderr + exit code:
    - On exit 0 (success): render the classifier summary line (e.g., `harness-classify: N patterns → M promotions written`) above the tier distribution table.
-   - On exit 1 (classifier error): render an error annotation block (`> ⚠ classifier error: <stderr>`) above the tier distribution table, then CONTINUE rendering the remaining sections (fail-open per REQ-HCW-003 — do NOT abort the status command).
-   - The classifier is gated by `learning.enabled` in `.moai/config/sections/harness.yaml`; when disabled, it is a complete no-op (REQ-HCW-004) and tier-promotions.jsonl is left untouched.
+   - On exit 1 (classifier error): render an error annotation block (`> ⚠ classifier error: <stderr>`) above the tier distribution table, then CONTINUE rendering the remaining sections (fail-open per the relevant requirement — do NOT abort the status command).
+   - The classifier is gated by `learning.enabled` in `.moai/config/sections/harness.yaml`; when disabled, it is a complete no-op and tier-promotions.jsonl is left untouched.
 1. Read `.moai/harness/usage-log.jsonl` (line-count via `wc -l` or progressive Read).
 2. Read `.moai/harness/learning-history/tier-promotions.jsonl` (group by tier: observation / heuristic / rule / auto_update).
 3. Read `.moai/harness/learning-history/applied/` directory listing for Tier-4 application count within the last 7 days (REQ-HRN-FND-016 telemetry).
@@ -180,10 +180,10 @@ Operations:
    - `.claude/rules/moai/`
    - `.moai/project/brand/`
    If any prefix matches, append a JSONL entry to `.moai/harness/learning-history/frozen-guard-violations.jsonl` with at minimum: ISO-8601 timestamp, the attempted target path, the proposal id (as calling subject), and a rejection rationale (REQ-HRN-FND-006, REQ-HRN-FND-014). Then move the proposal to `.moai/harness/learning-history/rejected/` and stop. Do NOT raise an error to the user; the rejection is silent except for the audit log.
-4. **Layer 3 (Contradiction Detector) pre-screen**: Out of scope for the V3R4 foundation SPEC. Downstream `SPEC-V3R4-HARNESS-005` introduces principle-based scoring; this workflow body documents the contract assertion (REQ-HRN-FND-017) and treats Layer 3 as a no-op pass-through for the foundation release.
+4. **Layer 3 (Contradiction Detector) pre-screen**: Out of scope for the V3R4 foundation SPEC. Downstream `the harness lifecycle policy` introduces principle-based scoring; this workflow body documents the contract assertion (REQ-HRN-FND-017) and treats Layer 3 as a no-op pass-through for the foundation release.
 5. **Tier-4 Application Gate**: `ToolSearch(query: "select:AskUserQuestion")` → `AskUserQuestion` with the canonical four-option pattern from the section above. The first option `Apply (권장)` MUST carry the `(권장)` / `(Recommended)` suffix per `.claude/rules/moai/core/askuser-protocol.md` § Option Description Standards.
 6. **On `Apply` selection**:
-   - **Layer 2 (Canary Check)**: Out of scope for the V3R4 foundation SPEC. Downstream `SPEC-V3R4-HARNESS-006` introduces multi-objective scoring with score-drop check; the workflow body treats Layer 2 as a no-op pass-through for the foundation release. The constitution §5 L2 layer remains documented as the binding contract.
+   - **Layer 2 (Canary Check)**: Out of scope for the V3R4 foundation SPEC. Downstream `the harness lifecycle policy` introduces multi-objective scoring with score-drop check; the workflow body treats Layer 2 as a no-op pass-through for the foundation release. The constitution §5 L2 layer remains documented as the binding contract.
    - **Create snapshot** (REQ-HRN-FND-007): Create directory `.moai/harness/learning-history/snapshots/<ISO-DATE>/` (ISO-8601 timestamp). For each file the proposal will touch, Read the current contents, compute a content hash, and Write a byte-identical copy into the snapshot directory. Write `manifest.json` recording absolute target paths and content hashes. The snapshot MUST be complete before any modification of the target file.
    - **Apply the change**: Read the proposal's `new_value`, perform the field replacement on `target_path` (typically a frontmatter `description` or `triggers` edit on a `harness-*` skill body). Use the `Edit` tool with exact `old_string` / `new_string` match.
    - **Move the proposal**: Move the proposal file from `.moai/harness/proposals/` to `.moai/harness/learning-history/applied/`. Append an `applied_at` ISO-8601 timestamp and the snapshot directory path to the JSON payload.
@@ -250,12 +250,12 @@ After any successful verb execution, render a one-paragraph summary in the user'
 
 ## Cross-references
 
-- SPEC (active): `.moai/specs/SPEC-V3R4-HARNESS-001/spec.md` (REQ-HRN-FND-001 ~ REQ-HRN-FND-018)
+- SPEC (active): `.moai/specs/the harness foundation policy/spec.md` (REQ-HRN-FND-001 ~ REQ-HRN-FND-018)
 - SPEC (superseded by V3R4-001; preserved as historical reference):
-  - `.moai/specs/SPEC-V3R3-HARNESS-LEARNING-001/spec.md` (REQ-HL-001 ~ REQ-HL-012 — 4-tier ladder preserved)
-  - `.moai/specs/SPEC-V3R3-HARNESS-001/spec.md` (Meta-harness skill + generated artifacts)
-  - `.moai/specs/SPEC-V3R3-PROJECT-HARNESS-001/spec.md` (16Q socratic interview + 5-Layer wiring)
-- Skill: `.claude/skills/moai-harness-learner/SKILL.md` (Tier-4 surfacing companion — text-annotated only per SPEC-V3R4-HARNESS-001 §10 exclusion #10)
+  - `.moai/specs/the harness-learning policy/spec.md` (the relevant requirements — 4-tier ladder preserved)
+  - `.moai/specs/the harness policy/spec.md` (Meta-harness skill + generated artifacts)
+  - `.moai/specs/the project-harness generation policy/spec.md` (16Q socratic interview + 5-Layer wiring)
+- Skill: `.claude/skills/moai-harness-learner/SKILL.md` (Tier-4 surfacing companion — text-annotated only per the harness foundation policy §10 exclusion #10)
 - Skill: `.claude/skills/moai-meta-harness/SKILL.md` (project-specific harness generation — text-annotated only)
 - README: `.moai/harness/README.md` (subsystem overview)
 - Attribution: `.claude/rules/moai/NOTICE.md` (Apache-2.0 attribution to revfactory/harness)

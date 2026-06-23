@@ -6,13 +6,13 @@ metadata:
   phase: "Phase Step 0 / Phase 1A / Phase 0.3: Context Discovery and Clarity Evaluation"
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 
 ## Brain Context Auto-Detection
 
-<!-- Verifies REQ-BRAIN-004: SPEC Decomposition Candidates surfaced to user via AskUserQuestion -->
-<!-- Verifies REQ-BRAIN-007: /moai plan detects proposal.md and presents SPEC candidates -->
+<!-- Verifies: SPEC Decomposition Candidates surfaced to user via AskUserQuestion -->
+<!-- Verifies: /moai plan detects proposal.md and presents SPEC candidates -->
 
 When `/moai plan` is invoked (with or without arguments), perform this pre-execution check:
 

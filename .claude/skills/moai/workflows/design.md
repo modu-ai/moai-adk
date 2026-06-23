@@ -2,14 +2,14 @@
 
 ## SPEC Reference
 
-Design-system absorption policy: REQ-ROUTE-001 through REQ-ROUTE-008, REQ-FALLBACK-001 through REQ-FALLBACK-003, REQ-BRIEF-001 through REQ-BRIEF-003, REQ-DETECT-003
-Design pipeline canonical policy: REQ-DPL-005, REQ-DPL-008 (Phase 2 — Workflow Routing)
+Design-system absorption policy: route selection, fallback handling, brief authoring, and legacy-agency detection.
+Design pipeline canonical policy: path-selection idempotency and the Phase 2 workflow-routing contract.
 
 ---
 
 ## Mode Dispatch (Multi-Mode Router)
 
-Per SPEC-V3R2-WF-003, `/moai design` participates in the `--mode` axis with 4 valid values: `autopilot`, `import`, `team`, `pipeline`. Each value selects a distinct execution path. Note that the design value set differs from `/moai run` (uses `import` instead of `loop`), but the precedence rules and sentinel keys are identical.
+`/moai design` participates in the `--mode` axis with 4 valid values: `autopilot`, `import`, `team`, `pipeline`. Each value selects a distinct execution path. Note that the design value set differs from `/moai run` (uses `import` instead of `loop`), but the precedence rules and sentinel keys are identical.
 
 ### Mode Values
 
@@ -41,14 +41,14 @@ See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.m
 
 Before presenting the route selection, perform these checks in order:
 
-### Check 1: Existing legacy `.agency/` detection (REQ-DETECT-003)
+### Check 1: Existing legacy `.agency/` detection
 
 If the legacy `.agency/` directory exists (v2.x layout, retired per the design-system absorption policy) AND `.moai/project/brand/` does not exist:
 - Output warning before route selection: "Legacy v2.x agency data detected — run `moai migrate agency` to migrate your brand context first."
 - Include `moai migrate agency --dry-run` as the preview command.
 - Continue to route selection (do not block).
 
-### Check 2: Brand context existence (REQ-ROUTE-001)
+### Check 2: Brand context existence
 
 Check whether `.moai/project/brand/` contains the three brand files:
 - `brand-voice.md`
@@ -65,7 +65,7 @@ If partial brand context exists (some files present, some missing):
 - Output "Incomplete brand context: missing `<filenames>`."
 - Offer to complete only the missing files via targeted interview.
 
-### Check 3: Brand Context Loader (REQ-DPL-008)
+### Check 3: Brand Context Loader
 
 After brand files are confirmed present, load and cache brand context:
 1. Read `.moai/project/brand/brand-voice.md` → cache as `brand_voice`
@@ -77,7 +77,7 @@ After brand files are confirmed present, load and cache brand context:
 - If mismatch detected: output warning "Brand conflict detected: token values differ from visual-identity.md. Brand context takes precedence." and list conflicting keys.
 - Proceed regardless — brand values are authoritative; downstream agents must use `brand_voice`/`visual_identity` over stale tokens.
 
-### Check 4: Previous Path Selection (REQ-DPL-005 — idempotency)
+### Check 4: Previous Path Selection (idempotency)
 
 If `.moai/design/path-selection.json` exists (written by `internal/design/pipeline`):
 - Surface previous selection via AskUserQuestion:
@@ -88,7 +88,7 @@ If `.moai/design/path-selection.json` exists (written by `internal/design/pipeli
 
 ---
 
-## Phase 1: Route Selection (REQ-ROUTE-002, REQ-ROUTE-003, REQ-ROUTE-006, REQ-DPL-005)
+## Phase 1: Route Selection
 
 Use AskUserQuestion to present the three design paths.
 
@@ -104,7 +104,7 @@ Option 2: Path B1 (Figma)
 - Requirements: Figma API token in environment or `.moai/config/sections/design.yaml`
 - Output: Extracted design tokens and component specs from Figma file
 
-**Subscription override** (REQ-ROUTE-006): When `subscription.tier: "pro-or-below"` in user.yaml or user states no Claude Design access:
+**Subscription override**: When `subscription.tier: "pro-or-below"` in user.yaml or user states no Claude Design access:
 - Swap Option 1 ↔ Option 2 (B1 becomes recommended).
 - Add to Path A description: "Requires Claude.ai Pro or higher subscription."
 
@@ -115,13 +115,13 @@ Option 2: Path B1 (Figma)
 - `ts`: current UTC timestamp
 - `session_id`: `${CLAUDE_SESSION_ID}`
 
-**No-response handling** (REQ-ROUTE-007): Re-present up to 3 times. After 3 failures, output "Selection not confirmed. Resume with `/moai design` when ready." and stop.
+**No-response handling**: Re-present up to 3 times. After 3 failures, output "Selection not confirmed. Resume with `/moai design` when ready." and stop.
 
 ---
 
 ## Brain Handoff Bundle Auto-Detection
 
-<!-- Verifies REQ-BRAIN-005: brain output (claude-design-handoff/) consumed by /moai design --path A -->
+<!-- Verifies: brain output (claude-design-handoff/) consumed by /moai design --path A -->
 
 When `/moai design --path A` is invoked WITHOUT a `--bundle` argument:
 
@@ -161,7 +161,7 @@ AskUserQuestion({
 
 ---
 
-## Phase A: Claude Design Import Path (REQ-ROUTE-004)
+## Phase A: Claude Design Import Path
 
 When Path A (Claude Design) is selected:
 
@@ -191,7 +191,7 @@ Step A5: On import failure:
 
 ---
 
-## Phase B1: Figma Extractor Path (REQ-DPL-005)
+## Phase B1: Figma Extractor Path
 
 When Path B1 (Figma) is selected:
 
@@ -221,7 +221,7 @@ Step BC-1: Load design context:
 - Receive consolidated context block (token-capped per REQ-5 algorithm).
 - Prepend context block to downstream subagent prompts.
 
-Step BC-2: Generate BRIEF (REQ-BRIEF-001, REQ-BRIEF-002, REQ-BRIEF-003):
+Step BC-2: Generate BRIEF:
 - Invoke `manager-spec` in BRIEF generation mode.
 - Required BRIEF sections: `## Goal`, `## Audience`, `## Brand`
 - Auto-inject brand content from brand files if Brand section is empty.
@@ -240,7 +240,7 @@ Step BC-5: Proceed to Phase C (quality gate).
 
 ---
 
-## Phase C: Quality Gate (REQ-ROUTE-008)
+## Phase C: Quality Gate
 
 After Path A or B1/B2 produces design artifacts:
 
@@ -264,7 +264,7 @@ Step C4: Optional E2E testing (when Playwright or claude-in-chrome MCP available
 
 ---
 
-## BRIEF Section Requirements (REQ-BRIEF-001)
+## BRIEF Section Requirements
 
 When `manager-spec` generates the BRIEF document for a design task, it must include:
 

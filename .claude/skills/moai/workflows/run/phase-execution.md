@@ -14,7 +14,7 @@ All phases execute sequentially. Each phase receives outputs from all previous p
 
 **Purpose**: Mandatory independent audit of plan artifacts before any implementation begins.
 Prevents unreviewed, incomplete, or non-compliant SPEC documents from entering Phase 1.
-Source: SPEC-WF-AUDIT-GATE-001 (REQ-WAG-001 ~ REQ-WAG-007).
+Source: the plan audit gate contract.
 
 **Scope**: Every `/moai run <SPEC-ID>` invocation. Never skipped — not even in `minimal` harness.
 
@@ -141,14 +141,14 @@ When the user passes `--skip-audit` flag OR sets `MOAI_SKIP_PLAN_AUDIT=1` env va
 
 ### When Plan-Auditor Fails or Times Out
 
-Plan-auditor failure cases classified as INCONCLUSIVE (REQ-WAG-007):
+Plan-auditor failure cases classified as INCONCLUSIVE:
 
 | Failure Case | Classification | Notes |
 |-------------|----------------|-------|
 | Timeout (> 60s) | INCONCLUSIVE | Retry up to 3 times total |
 | Malformed output / missing verdict field | INCONCLUSIVE | Log raw output for debugging |
 | panic / unhandled exception | INCONCLUSIVE | Capture stack trace if available |
-| Filesystem write failure (report directory) | INCONCLUSIVE | Falls back to AC-WAG-10 handling |
+| Filesystem write failure (report directory) | INCONCLUSIVE | Falls back to the inconclusive-verdict handling |
 
 [HARD] INCONCLUSIVE is never equivalent to PASS. Automatic pass-through on failure is prohibited.
 
@@ -180,7 +180,7 @@ Progress update: Append to `.moai/specs/SPEC-{ID}/progress.md`:
 - Phase 0.6 complete: memory_guard={enabled|disabled}, available_mb={N}, strategy={full|module|changed}
 ```
 
-<!-- @MX:WARN: [AUTO] Future PRs may be tempted to revert to moai-lang-* skill references here. The current rule-path mapping (post-SPEC-V3R2-WF-005) MUST remain pointing to .claude/rules/moai/languages/<name>.md. Frontmatter `related-skills:` regressions fail TestRelatedSkillsNoLangReference (DEAD_LANG_FRONTMATTER_REFERENCE); body-prose regressions fail TestSkillBodyNoLangReference (DEAD_LANG_SKILL_REFERENCE). -->
+<!-- @MX:WARN: [AUTO] Future PRs may be tempted to revert to moai-lang-* skill references here. The current rule-path mapping (post-the language-as-rules policy) MUST remain pointing to .claude/rules/moai/languages/<name>.md. Frontmatter `related-skills:` regressions fail TestRelatedSkillsNoLangReference (DEAD_LANG_FRONTMATTER_REFERENCE); body-prose regressions fail TestSkillBodyNoLangReference (DEAD_LANG_SKILL_REFERENCE). -->
 <!-- @MX:REASON: High-traffic section — language detection mapping is frequently referenced by agent authors who may inadvertently reintroduce moai-lang-* skill IDs. -->
 ## Phase 0.9: JIT Language Skill Detection
 

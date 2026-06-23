@@ -17,7 +17,7 @@ Selection guidance for Phase 3 (Synthesis):
 
 ## Phase 1 — Discovery
 
-`manager-spec` conducts a 16-question Socratic interview (owned by SPEC-V3R3-PROJECT-HARNESS-001). The interview surfaces:
+`manager-spec` conducts a 16-question Socratic interview (owned by the project-harness generation policy). The interview surfaces:
 
 - Project domain (e.g., fintech, e-commerce, IoT)
 - Primary languages and frameworks
@@ -78,4 +78,4 @@ Pass threshold: 0.75 (configurable via `design.yaml pass_threshold`; FROZEN floo
 
 ## Phase 7 — Iteration
 
-Owned by SPEC-V3R3-HARNESS-LEARNING-001. Out of scope for this skill. The evolution mechanism captures scoring deltas from Phase 6 and feeds them back to Phase 4/5 on next harness run.
+Owned by the harness-learning policy. Out of scope for this skill. The evolution mechanism captures scoring deltas from Phase 6 and feeds them back to Phase 4/5 on next harness run.

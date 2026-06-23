@@ -238,8 +238,6 @@ Previous /moai:X-Y command format mapped to new /moai subcommand format:
 - /moai:e2e maps to /moai e2e
 - /moai:mx maps to /moai mx
 
-Note: /moai:99-release is a separate local-only command, not part of the /moai skill.
-
 ---
 
 Version: 2.5.0

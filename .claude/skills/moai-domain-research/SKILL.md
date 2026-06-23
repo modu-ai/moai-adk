@@ -31,7 +31,7 @@ progressive_disclosure:
   level2_tokens: 5000
 ---
 
-<!-- Verifies REQ-BRAIN-003: Parallel WebSearch + Context7 in single message for Phase 3 -->
+<!-- Verifies: Parallel WebSearch + Context7 in single message for Phase 3 -->
 
 # Research Domain Specialist
 
@@ -41,9 +41,9 @@ Parallel research executor for the brain workflow's Phase 3. Issues WebSearch an
 
 Core responsibilities:
 - Execute WebSearch + Context7 in parallel (single message, multiple tool calls)
-- Handle tool failures gracefully (REQ-BRAIN-003: partial-result tolerance)
+- Handle tool failures gracefully (partial-result tolerance)
 - Produce `research.md` with cited sources and explicit Research Limitations section
-- Stay language/technology neutral (REQ-BRAIN-008)
+- Stay language/technology neutral
 
 Key guarantees:
 - [HARD] Tool calls are issued in parallel (single Claude message), not sequentially
@@ -210,7 +210,7 @@ Turn N (assistant):
   <tool_use id="a3">mcp__context7__resolve-library-id("library")</tool_use>
 ```
 
-Sequential calls (one tool per turn) violate REQ-BRAIN-003 and should be avoided.
+Sequential calls (one tool per turn) violate the parallel-tool-call requirement and should be avoided.
 
 ---
 

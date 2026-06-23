@@ -72,7 +72,7 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **e2e** (aliases: e2e-test): Create and run E2E tests
 - **gate** (aliases: check, pre-commit): Lightweight pre-commit quality gate (lint+format+type-check+test)
 - **security** (aliases: audit, sec): Dedicated OWASP security audit with dependency scanning
-- **harness** (aliases: hrn, learn): V3R4 self-evolving harness lifecycle (status / apply / rollback &lt;date&gt; / disable) — slash-command-only surface; CLI verb path retired per SPEC-V3R4-HARNESS-001 (BC-V3R4-HARNESS-001-CLI-RETIREMENT)
+- **harness** (aliases: hrn, learn): V3R4 self-evolving harness lifecycle (status / apply / rollback &lt;date&gt; / disable) — slash-command-only surface; CLI verb path retired per the harness foundation policy (BC-V3R4-HARNESS-001-CLI-RETIREMENT)
 
 ### Priority 2: SPEC-ID Detection
 
@@ -107,7 +107,7 @@ If the intent is clearly a development task with no specific routing signal, def
 Purpose: Create comprehensive specification documents using EARS format with Research-Plan-Annotate cycle.
 Phases: Deep Research (research.md) -> SPEC Planning -> Annotation Cycle (1-6 iterations) -> SPEC Creation
 Agents: manager-spec (primary), Explore (research), manager-git (conditional)
-Flags: --worktree, --branch, --resume SPEC-XXX, --team, --issue (opt-in; default skips GitHub Issue creation per SPEC-V3R5-LATE-BRANCH-001 REQ-LB-009)
+Flags: --worktree, --branch, --resume SPEC-XXX, --team, --issue (opt-in; default skips GitHub Issue creation per the late-branch opt-in policy)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md (team mode: ${CLAUDE_SKILL_DIR}/team/plan.md)
 
 ### run - DDD/TDD Implementation
@@ -208,7 +208,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/design.md
 Purpose: Full autonomous research -> plan -> annotate -> run -> sync pipeline.
 Phases: Parallel Exploration (research.md) -> SPEC Generation -> Annotation Cycle -> Implementation -> Sync
 Agents: Explore, manager-spec, manager-develop, manager-docs, manager-git, sync-auditor (quality gate)
-Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo, --issue (opt-in; default skips GitHub Issue creation per SPEC-V3R5-LATE-BRANCH-001 REQ-LB-009)
+Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo, --issue (opt-in; default skips GitHub Issue creation per the late-branch opt-in policy)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/moai.md
 
 ### project - Project Documentation
@@ -238,7 +238,7 @@ Purpose: Surface the harness learning subsystem (observer, 4-tier proposal ladde
 Skills: moai-harness-learner (Tier-4 surfacing companion), moai-meta-harness (project-specific harness generation, indirect)
 Verbs: status (tier distribution + telemetry) | apply (next Tier-4 proposal → AskUserQuestion → 5-layer pipeline → snapshot + write) | rollback &lt;YYYY-MM-DD&gt; (restore snapshot) | disable (set learning.enabled: false)
 Artifacts: `.moai/harness/usage-log.jsonl`, `.moai/harness/proposals/`, `.moai/harness/learning-history/snapshots/`, `.moai/harness/learning-history/applied/`, `.moai/harness/learning-history/frozen-guard-violations.jsonl`
-Authoritative SPEC: SPEC-V3R4-HARNESS-001 (supersedes V3R3-HARNESS-001, V3R3-HARNESS-LEARNING-001, V3R3-PROJECT-HARNESS-001)
+Authoritative SPEC: the harness foundation policy (supersedes V3R3-HARNESS-001, V3R3-HARNESS-LEARNING-001, V3R3-PROJECT-HARNESS-001)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness.md
 
 #### Branch A.1 — harness-v4 lifecycle (reserved verbs: list / edit / remove)

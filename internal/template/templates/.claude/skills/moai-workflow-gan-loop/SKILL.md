@@ -281,5 +281,5 @@ When testing tools are unavailable, fall back to static code analysis only, and 
 ---
 
 Source: Absorbed from the retired v2.x design constitution per the design constitution absorption policy (Section 11 GAN Loop Contract, Section 12 Evaluator Leniency Prevention).
-REQ coverage: REQ-SKILL-011, REQ-SKILL-012, REQ-SKILL-012a, REQ-SKILL-013, REQ-SKILL-014, REQ-CONST-004
+REQ coverage: (internal provenance omitted)
 Version: 1.0.0

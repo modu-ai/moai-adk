@@ -60,7 +60,7 @@ GEARS Five Patterns (current notation):
 
 Unified compound clause: `**Where** <precondition> **While** <state> **When** <event> the <subject> shall <behavior>` — any subset of the three modifiers may chain.
 
-See [GEARS notation reference](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation) — 4-locale (en / ko / ja / zh).
+See [GEARS notation reference](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation).
 
 > **IF/THEN deprecated callout**: Authoring guidance previously used `IF <condition> THEN <action>` to describe state-conditioned behavior. In GEARS that intent is expressed as `When <condition-detected>` (event-detected form). The lint engine emits a `LegacyEARSKeyword` warning (non-strict) or error (`moai spec lint --strict`) on residual `IF/THEN` in new SPECs. The 6-month backward-compatibility window remains active for legacy SPECs.
 
@@ -141,7 +141,7 @@ WHY: Constitution prevents architectural drift and ensures maintainability.
 
 GEARS (Generalized EARS) is the canonical SPEC notation as of v3.0.0. It preserves Ubiquitous / `When` (event-driven) / `While` (state-driven) and reframes `Where` as a capability gate. The legacy `IF/THEN` modality is replaced by `When <event-detected>`.
 
-GEARS notation is exhaustively described in [docs-site GEARS notation reference](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation) (4-locale: en / ko / ja / zh) and the canonical GEARS migration policy record.
+GEARS notation is exhaustively described in [docs-site GEARS notation reference](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation) and the canonical GEARS migration policy record.
 
 Compound clause example (with non-"the system" subject):
 

@@ -198,7 +198,7 @@ Last Updated: 2026-03-28
 ## Refactor Notes
 
 **R4 audit verdict** (2026-04-23): REFACTOR — router-only skill pointing to moai-ref-react-patterns and moai-library-nextra
-**SPEC**: SPEC-V3R2-WF-001 §6.2 line 262
+**SPEC**: (internal provenance omitted)
 **Refactor scope** (deferred to future sub-SPEC):
 - Reduce body to routing/delegation content pointing at moai-ref-react-patterns and moai-library-nextra
 - Extract framework-specific deep-dives into Level-3 modules
