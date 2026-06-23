@@ -32,6 +32,21 @@ const (
 	defaultPermissionMode  = "acceptEdits"
 )
 
+// acceptEditsConfirmationLine is the deterministic confirmation emitted by the
+// wizard when the user selects "acceptEdits" as permissionMode. REQ-CCI-006
+// requires the wizard to surface the empty-string normalization so the user
+// does not perceive the selection as a silent no-op. The anchor tokens
+// ("acceptEdits", "project default", "settings.local.json") are grep-stable
+// and asserted by TestEmitAcceptEditsConfirmationAnchor (AC-CCI-006).
+const acceptEditsConfirmationLine = "Note: \"acceptEdits\" is the project default, so no settings.local.json defaultMode override will be written."
+
+// emitAcceptEditsConfirmation writes the acceptEdits confirmation line to out.
+// Called from runProfileSetup immediately after the acceptEdits→"" normalization
+// so the user sees why nothing was persisted to settings.local.json.
+func emitAcceptEditsConfirmation(out io.Writer) {
+	_, _ = fmt.Fprintln(out, acceptEditsConfirmationLine)
+}
+
 // isCanonicalStatuslineTheme reports whether s is a canonical value in the wizard option slice.
 func isCanonicalStatuslineTheme(s string) bool {
 	for _, v := range statuslineThemeCanonical {
@@ -614,9 +629,13 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("wizard error: %w", err)
 	}
 
-	// Normalize permission mode: "acceptEdits" is the project default, so store empty string to avoid an unnecessary override.
+	// Normalize permission mode: "acceptEdits" is the project default, so store
+	// empty string to avoid an unnecessary override. The normalization is NOT
+	// silent — emitAcceptEditsConfirmation surfaces it to the user so the
+	// selection is not perceived as a no-op (REQ-CCI-006).
 	if permissionMode == defaultPermissionMode {
 		permissionMode = ""
+		emitAcceptEditsConfirmation(cmd.OutOrStdout())
 	}
 
 	// Build the segments map unconditionally (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001

@@ -651,6 +651,13 @@ func readSettingsLocalForLaunch() map[string]string {
 // it sets permissions.defaultMode in settings.local.json.
 // When permissionMode is empty or "acceptEdits" (matching the project default),
 // it removes the defaultMode override so settings.json default applies.
+//
+// The empty-string normalization for "acceptEdits" is intentional AND surfaced
+// to the user: runProfileSetup emits an explicit confirmation line
+// (acceptEditsConfirmationLine) so the user does not perceive the selection as
+// a silent no-op. See profile_setup.go runProfileSetup normalization block
+// (REQ-CCI-006 / REQ-CCI-007 — the normalization is intentional, and it is
+// disclosed to the user via the wizard confirmation, not silently applied).
 func syncPermissionModeToSettingsLocal(settingsPath string, permissionMode string) error {
 	var settings SettingsLocal
 
