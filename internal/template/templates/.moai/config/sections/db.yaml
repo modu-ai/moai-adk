@@ -31,14 +31,14 @@ db:
     - "supabase/migrations/**/*.sql"
     - "sql/migrations/**/*.sql"
 
-  # [System] Primary database engine (set during /moai db init interview)
-  engine: "_TBD_"
+  # [System] Primary database engine (empty until /moai db init interview fills it)
+  engine: ""
 
-  # [Interview] ORM/ODM (set during /moai db init interview)
-  orm: "_TBD_"
+  # [Interview] ORM/ODM (empty until /moai db init interview fills it)
+  orm: ""
 
   # [Interview] Multi-tenant strategy (set during /moai db init interview)
   multi_tenant: "none"
 
-  # [Interview] Migration tool (set during /moai db init interview)
-  migration_tool: "_TBD_"
+  # [Interview] Migration tool (empty until /moai db init interview fills it)
+  migration_tool: ""
