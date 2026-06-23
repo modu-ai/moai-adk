@@ -1,8 +1,8 @@
 ---
 id: SPEC-STEERING-ALIGN-LOCAL-DIET-001
 title: "Steering-Align: CLAUDE.local.md always-loaded body conservative diet (verified external-SSOT pointer-ization + stale cross-ref correction, §19.1 HUMAN GATE preserved)"
-version: "0.1.0"
-status: in-progress
+version: "1.0.0"
+status: completed
 created: 2026-06-23
 updated: 2026-06-23
 author: manager-spec
@@ -18,6 +18,7 @@ era: V3R6
 ## HISTORY
 
 - 2026-06-23 — v0.1.0 — manager-spec — Plan-phase artifacts authored (Tier S, Section A-H, 4 artifacts: spec.md + plan.md + acceptance.md + progress.md skeleton). FINAL SPEC (P6, 5 of 5) in Epic Steering-Align. Applies the same per-line-test diet doctrine validated by P2 CLAUDEMD-DIET-001 (COMPLETED) and P5 OUTPUT-STYLE-SLIM-001 (COMPLETED, origin ed8172482) to the maintainer-local always-loaded `CLAUDE.local.md` body. Diet bound is **CONSERVATIVE** (user-confirmed): pointer-ize ONLY verified external-SSOT duplication; preserve ALL dev-local-unique operational knowledge; the §19.1 구현 착수 승인 [HARD] HUMAN GATE body is KEPT (user decision). `status: draft`.
+- 2026-06-23 — v1.0.0 — orchestrator-direct — Sync-phase 3-phase close. Run-phase diet applied (51b4c495e: `CLAUDE.local.md` 806→796L net −10L, 7/7 AC PASS, §19.1 [HARD] HUMAN GATE body 보존, dev-local 고유지식 전량 보존). plan-auditor iter-2 PASS 0.89 (D1-D4 전부 해소). `status: in-progress → completed`. **Epic Steering-Align 5/5 (P6, FINAL) — Epic 완결.** era V3R6 (H-override). sync orchestrator-direct (P5 OUTPUT-STYLE-SLIM 동일 패턴, Tier S 경량).
 
 ---
 

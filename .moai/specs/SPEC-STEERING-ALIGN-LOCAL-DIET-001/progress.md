@@ -88,4 +88,17 @@ diet_result:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — sync_commit_sha + sync-phase audit-ready signal populated by manager-docs; the sync close commit's diff contains the SPEC artifacts AND `CLAUDE.local.md` (git-tracked — standard P2/P5 close, plan.md §F.1)>_
+```yaml
+sync_complete_at: 2026-06-23
+sync_commit_sha: <SYNC_SHA_PLACEHOLDER>   # backfilled ON-HEAD after the 3-phase close commit (2-commit sync+backfill pattern)
+sync_status: PASS
+sync_executed_by: orchestrator-direct   # P5 OUTPUT-STYLE-SLIM 동일 패턴 (feedback_glm_orchestrator_direct_sync_mx); Tier S 경량 sync; manager-docs PTL/세션-한도 회피
+final_status: completed
+era: V3R6   # H-override (frontmatter era:V3R6); drift 0
+changelog_entry: N/A   # CLAUDE.local.md는 dev-local maintainer-only 파일 — 사용자 배포 대상 아님 (§15/§25 neutrality 비대상); 사용자 CHANGELOG entry 불필요
+docs_site: N/A   # dev-local 내부 변경 — 4-locale docs-site 무관
+readme: N/A   # dev-local 내부 변경 — README 무관
+sync_auditor: skipped   # Tier S minimal harness; plan-auditor iter-2 0.89 + orchestrator 8/8 trust-but-verify + run 7/7 AC 확보 (independent audit 충분)
+three_phase_close: "plan (plan-auditor iter-2 PASS 0.89, D1-D4 해소) → run (51b4c495e, 7/7 AC PASS, 806→796L) → sync (this close commit, status in-progress → completed)"
+epic: "Steering-Align 5/5 (P6, FINAL) — Epic 완결"
+```
