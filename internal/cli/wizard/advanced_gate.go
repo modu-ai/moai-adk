@@ -15,6 +15,8 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // AdvancedGate holds the readiness results for Phase 2 question groups.
@@ -140,11 +142,11 @@ func Phase2Questions(gate AdvancedGate) []Question {
 			Title:       "Default Agent Teams model (Phase 2 — stub)",
 			Description: "Requires SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001 run-phase completion.",
 			Options: []Option{
-				{Label: "sonnet (Recommended)", Value: "sonnet"},
-				{Label: "opus", Value: "opus"},
-				{Label: "haiku", Value: "haiku"},
+				{Label: "sonnet (Recommended)", Value: template.ModelAliasCanonicalID("sonnet")},
+				{Label: "opus", Value: template.ModelAliasCanonicalID("opus")},
+				{Label: "haiku", Value: template.ModelAliasCanonicalID("haiku")},
 			},
-			Default:  "sonnet",
+			Default:  template.ModelAliasCanonicalID("sonnet"),
 			Required: false,
 			Condition: func(r *WizardResult) bool {
 				return r.AdvancedMode && gate.P4Ready

@@ -43,6 +43,91 @@ func IsValidModelPolicy(s string) bool {
 // Used by launcher.go to route the new model and by profile translations.
 const ModelIDOpus47 = "claude-opus-4-7"
 
+// ModelAliasTable is the single source of truth mapping short model aliases
+// (the user-facing wizard picker values) to their canonical Claude Code model
+// ids. Add a new row whenever a new alias is introduced; every call site that
+// needs the alias→id resolution MUST read from this table rather than
+// hard-coding a literal, so the mapping stays in one place.
+//
+// The forward direction (alias → canonical id) is used by expandModelString in
+// launcher.go. The reverse direction (canonical id → alias) is performed by
+// ModelAliasFromCanonicalID, which consults ModelAliasTable for the current id
+// and ModelDeprecatedCanonicalIDs for superseded ids that still appear in
+// historical prefs files.
+//
+// opusplan is a Claude Code native routing alias (Opus for planning, Sonnet for
+// coding) with no standalone full-id form; it maps to itself so the table is
+// total over the wizard picker surface.
+//
+// @MX:ANCHOR: [AUTO] ModelAliasTable — single SSOT for alias↔canonical-id mapping
+// @MX:REASON: [AUTO] fan_in >= 3 (launcher.go expandModelString + profile_setup.go normalizeModel + settings/schema.go modelOptions); hardcoding-prevention per CLAUDE.local.md §14
+var ModelAliasTable = map[string]string{
+	"opus":     ModelIDOpus47,
+	"sonnet":   "claude-sonnet-4-6",
+	"haiku":    "claude-haiku-4-5",
+	"opusplan": "opusplan", // CC-native routing alias, no full-id expansion
+}
+
+// ModelDeprecatedCanonicalIDs maps superseded canonical model ids to their
+// short alias, so wizard migration can normalize historical prefs values that
+// predate the current canonical id. A new row is added whenever a model is
+// bumped to a newer version (e.g. claude-opus-4-6 → claude-opus-4-7); the old
+// id stays here so existing prefs files keep resolving to the right alias.
+//
+// This is the reverse-companion of ModelAliasTable. The current canonical id
+// lives ONLY in ModelAliasTable; deprecated predecessors live ONLY here, so
+// there is exactly one home for each id and no duplication.
+var ModelDeprecatedCanonicalIDs = map[string]string{
+	"claude-opus-4-6": "opus",
+}
+
+// ModelAliasCanonicalID returns the canonical Claude Code model id for the
+// given short alias. It is the programmatic accessor for ModelAliasTable so
+// callers do not reach into the map literal directly. When the alias is absent
+// from the table the input is returned unchanged (callers may then treat it as
+// an already-canonical id or an unknown value).
+func ModelAliasCanonicalID(alias string) string {
+	if id, ok := ModelAliasTable[alias]; ok {
+		return id
+	}
+	return alias
+}
+
+// ModelAliasFromCanonicalID returns the short alias for a canonical model id,
+// performing the reverse lookup of ModelAliasTable. It also consults
+// ModelDeprecatedCanonicalIDs so historical prefs values carrying superseded
+// ids still resolve to the correct alias. Used by wizard migration paths that
+// must normalize deprecated full-id prefs values back to the user-facing alias
+// surface. When the id is absent from both tables the input is returned
+// unchanged (caller decides how to handle unknown ids).
+func ModelAliasFromCanonicalID(canonicalID string) string {
+	for alias, id := range ModelAliasTable {
+		if id == canonicalID {
+			return alias
+		}
+	}
+	if alias, ok := ModelDeprecatedCanonicalIDs[canonicalID]; ok {
+		return alias
+	}
+	return canonicalID
+}
+
+// ModelAliasPickerValues returns the ordered list of short aliases presented to
+// users in the profile wizard model picker. The list is the user-facing surface
+// that the wizard, the settings schema, and the advanced wizard gate all
+// consume, so they stay in sync by reading from here rather than re-declaring
+// the literal array. The [1m] variants are listed alongside the base alias
+// because the [1m] suffix is a Claude Code native context-window modifier, not
+// a separate model.
+func ModelAliasPickerValues() []string {
+	return []string{
+		"opus", "opus[1m]",
+		"sonnet", "sonnet[1m]",
+		"haiku",
+		"opusplan",
+	}
+}
+
 // Effort level constants for the 5-tier effort system.
 // These are separate from ModelPolicy (3-tier). ModelPolicy selects the model;
 // effort levels control reasoning depth within a model session.

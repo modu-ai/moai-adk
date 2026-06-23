@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // TestCleanupMoaiWorktrees_GlobalPath verifies that cleanupMoaiWorktrees
@@ -584,22 +586,35 @@ func TestContainsPermissionMode(t *testing.T) {
 }
 
 func TestExpandModelString(t *testing.T) {
+	// The test exercises the central ModelAliasTable via expandModelString.
+	// Short aliases (opus/sonnet/haiku) MUST resolve to their canonical CC ids;
+	// the [1m] suffix MUST be preserved across resolution; full ids and unknown
+	// values pass through unchanged. opusplan is a CC-native routing alias with
+	// no full-id expansion, so it resolves to itself.
 	tests := []struct {
 		name  string
 		model string
 		want  string
 	}{
 		{"empty string", "", ""},
-		{"standard opus", "claude-opus-4-6", "claude-opus-4-6"},
-		{"opus 1m", "claude-opus-4-6[1m]", "claude-opus-4-6[1m]"},
-		{"opus 4.7 direct", "claude-opus-4-7", "claude-opus-4-7"},
-		{"standard sonnet", "claude-sonnet-4-6", "claude-sonnet-4-6"},
-		{"sonnet 1m", "claude-sonnet-4-6[1m]", "claude-sonnet-4-6[1m]"},
-		{"opus alias 1m", "opus[1m]", "opus[1m]"},
-		{"sonnet alias 1m", "sonnet[1m]", "sonnet[1m]"},
-		{"haiku", "claude-haiku-4-5-20251001", "claude-haiku-4-5-20251001"},
-		{"opusplan", "opusplan", "opusplan"},
-		{"arbitrary model", "some-model", "some-model"},
+		// Short alias → canonical id resolution (forward map via central table)
+		{"opus alias resolves", "opus", template.ModelIDOpus47},
+		{"sonnet alias resolves", "sonnet", template.ModelAliasCanonicalID("sonnet")},
+		{"haiku alias resolves", "haiku", template.ModelAliasCanonicalID("haiku")},
+		// [1m] suffix preserved across resolution
+		{"opus alias 1m resolves", "opus[1m]", template.ModelIDOpus47 + "[1m]"},
+		{"sonnet alias 1m resolves", "sonnet[1m]", template.ModelAliasCanonicalID("sonnet") + "[1m]"},
+		// opusplan is its own canonical form (CC-native routing alias, no full-id)
+		{"opusplan resolves to self", "opusplan", "opusplan"},
+		// Full canonical ids pass through unchanged
+		{"full opus 4-7 passthrough", "claude-opus-4-7", "claude-opus-4-7"},
+		{"full opus 4-6 passthrough", "claude-opus-4-6", "claude-opus-4-6"},
+		{"full sonnet passthrough", "claude-sonnet-4-6", "claude-sonnet-4-6"},
+		{"full haiku passthrough", "claude-haiku-4-5", "claude-haiku-4-5"},
+		{"full opus 1m passthrough", "claude-opus-4-6[1m]", "claude-opus-4-6[1m]"},
+		// Unknown values pass through unchanged
+		{"arbitrary model passthrough", "some-model", "some-model"},
+		{"arbitrary 1m passthrough", "future-model[1m]", "future-model[1m]"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

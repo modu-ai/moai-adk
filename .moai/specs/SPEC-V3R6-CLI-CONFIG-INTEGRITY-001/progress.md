@@ -31,8 +31,32 @@
 
 **AC**: AC-CCI-001 PASS, AC-CCI-002 PASS
 
-### M2 — F2 model alias central table
-_<pending>_
+### M2 — F2 model alias central table (2026-06-24, manager-develop cycle_type=tdd)
+
+**변경 파일** (6, +196/-43):
+- `internal/template/model_policy.go` — `ModelAliasTable` (alias→canonical-id SSOT), `ModelDeprecatedCanonicalIDs` (superseded-id reverse map), `ModelAliasCanonicalID()` / `ModelAliasFromCanonicalID()` / `ModelAliasPickerValues()` accessors 신규
+- `internal/cli/launcher.go:704-706` — `expandModelString` no-op → 테이블 참조 해석 구현 + `splitModelSuffix` 헬퍼
+- `internal/cli/profile_setup.go:67-87` — `normalizeModel` switch → `ModelAliasFromCanonicalID` 역방향 참조 + `ModelAliasPickerValues` 정방향 검증; wizard picker literals(:446-451) → `ModelAliasCanonicalID` 참조
+- `internal/cli/wizard/advanced_gate.go:143-149` — `Value:`/`Default:` literals → `ModelAliasCanonicalID` 참조
+- `internal/settings/schema.go:140` — `modelOptions()` literal array → `ModelAliasPickerValues()` 참조
+- `internal/cli/launcher_test.go:586-612` — `TestExpandModelString` no-op 단언 → canonical-id 해석 table-driven 단언 (RED→GREEN)
+
+**RED → GREEN**: `TestExpandModelString`에서 `undefined: template.ModelAliasCanonicalID` 컴파일 실패(RED) → 테이블 + 접근자 구현 후 PASS(GREEN). `TestNormalizeModel_Deprecated` 3건 FAIL(`claude-opus-4-6` 역매핑 누락) → `ModelDeprecatedCanonicalIDs` 추가 후 PASS.
+
+**AC**: AC-CCI-003 PASS, AC-CCI-004 PASS, AC-CCI-005 PASS, AC-CCI-010 PASS
+
+**AC-003 검증** (`grep -rnE '"(opus|sonnet|haiku|opusplan)(\[1m\])?"' internal/cli/ internal/settings/`): pre-refactor 50건 → post-refactor 비-테스트·비-주석·비-접근자 standalone literal 0건 (잔여 매칭은 전부 `template.ModelAliasCanonicalID("opus")` 형태의 접근자 인자 또는 주석 예시 — 전부 중앙 테이블 SSOT로 귀속)
+
+**AC-010 검증** (동일 pattern + `internal/template/`): Go-source 매칭은 전부 `model_policy.go` 내 SSOT 정의(`ModelAliasTable`, `ModelDeprecatedCanonicalIDs`, `ModelAliasPickerValues`) 또는 기존 `agentModelMap`(본 SPEC 범위 외, SPEC-CC2178-MODEL-POLICY-REPAIR-001 소유). `internal/template/templates/` 콘텐츠 파일(`.md`/`.yaml`/`.json.tmpl`)의 매칭은 user-facing 문서/설정으로 프로그래밍 scatter가 아님. 신규 scattered literal 도입 0건.
+
+**Canonical id 매핑** (ModelAliasTable):
+- `opus` → `claude-opus-4-7` (`ModelIDOpus47` const)
+- `sonnet` → `claude-sonnet-4-6`
+- `haiku` → `claude-haiku-4-5`
+- `opusplan` → `opusplan` (CC-native routing alias, full-id 형태 없음 — 자기 자신으로 매핑)
+- `[1m]` 접미사: 해석 후 canonical id에 보존 (예: `opus[1m]` → `claude-opus-4-7[1m]`)
+
+**행위 변경**: wizard picker value가 short alias(`"opus"`)에서 canonical id(`"claude-opus-4-7"`)로 변경 — profile.Model 필드가 구조체 doc comment(`// e.g. "claude-opus-4-6", "claude-opus-4-7"`)와 정합. `expandModelString`은 이미-canonical 값에 idempotent(pass-through). 기존 사용자 prefs.yaml의 short-alias/full-id 값은 `normalizeModel`(wizard init) + `expandModelString`(launcher) 양쪽에서 모두 정상 처리되어 backward-compat 유지.
 
 ### M3 — F3 acceptEdits 투명성 (D4 pin 대상)
 _<pending>_

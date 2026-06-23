@@ -12,6 +12,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tmux"
 )
 
@@ -698,11 +699,36 @@ func syncPermissionModeToSettingsLocal(settingsPath string, permissionMode strin
 }
 
 // expandModelString normalizes moai-specific model strings into valid Claude
-// Code --model values. The "[1m]" suffix is passed through as-is because
-// Claude Code natively supports it (e.g. "opus[1m]", "claude-opus-4-6[1m]")
-// to enable the 1M token context window.
+// Code --model values. Short aliases (opus, sonnet, haiku, opusplan) are
+// resolved to their canonical Claude Code model id via the central
+// template.ModelAliasTable; the "[1m]" suffix is preserved across resolution
+// because Claude Code natively supports it (e.g. "opus[1m]",
+// "claude-opus-4-7[1m]") to enable the 1M token context window. Values that
+// are already canonical ids or are unknown pass through unchanged.
 func expandModelString(model string) string {
-	return model
+	if model == "" {
+		return model
+	}
+	base, suffix := splitModelSuffix(model)
+	resolved, ok := template.ModelAliasTable[base]
+	if !ok {
+		return model // already canonical or unknown — pass through unchanged
+	}
+	if suffix == "" {
+		return resolved
+	}
+	return resolved + suffix
+}
+
+// splitModelSuffix separates a model string into its base alias/id and the
+// optional "[1m]" context-window suffix. The suffix is recognized only when it
+// appears as a literal trailing token; mid-string occurrences are left intact.
+func splitModelSuffix(model string) (base, suffix string) {
+	const marker = "[1m]"
+	if strings.HasSuffix(model, marker) {
+		return model[:len(model)-len(marker)], marker
+	}
+	return model, ""
 }
 
 // buildEnvForLaunch returns an environment slice with CLAUDE_CODE_EFFORT_LEVEL

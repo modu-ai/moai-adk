@@ -135,10 +135,10 @@ func languageOptions() []OptionDef {
 }
 
 // modelOptions는 정규 모델 옵션 목록을 반환한다. internal/web/validate.go 의
-// 손수-미러된 modelCanonical 을 대체하는 단일 원천이다(REQ-WC10-004).
+// 손수-미거울된 modelCanonical 을 대체하는 단일 원천이다(REQ-WC10-004). 별칭
+// 목록 자체는 template.ModelAliasPickerValues() 단일 SSOT에서 파생한다.
 func modelOptions() []OptionDef {
-	values := []string{"opus", "opus[1m]", "sonnet", "sonnet[1m]", "haiku", "opusplan"}
-	return optionDefsFromValues("f.model.opt.", values)
+	return optionDefsFromValues("f.model.opt.", template.ModelAliasPickerValues())
 }
 
 // effortOptions는 정규 effort level 옵션 목록을 반환한다(REQ-WC10-004).

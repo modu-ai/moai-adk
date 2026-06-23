@@ -13,6 +13,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
+	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/pkg/models"
 	"github.com/spf13/cobra"
 )
@@ -64,26 +65,50 @@ var statuslineAllSegments = []string{
 
 // @MX:NOTE: [AUTO] Wizard v3 migration — normalizes deprecated Claude model IDs to canonical aliases.
 // @MX:REASON: Prevents silent loss of existing prefs values in huh.Select bindings after the "claude-opus-4-7" option was removed from the previous wizard.
+//
+// The alias↔canonical-id mapping is owned by template.ModelAliasTable (single
+// SSOT). This function performs the reverse direction (full-id → short alias)
+// via template.ModelAliasFromCanonicalID, so adding a new model only requires
+// one new row in ModelAliasTable rather than touching this switch too.
 func normalizeModel(m string) string {
-	switch m {
-	// canonical aliases pass through unchanged
-	case "", "opus", "opus[1m]", "sonnet", "sonnet[1m]", "haiku", "opusplan":
+	// Empty and canonical aliases pass through unchanged.
+	if m == "" {
 		return m
-	// deprecated full-ID → canonical alias
-	case "claude-opus-4-7", "claude-opus-4-6":
-		return "opus"
-	case "claude-opus-4-7[1m]", "claude-opus-4-6[1m]", "claude-opus-4-6 1M":
-		return "opus[1m]"
-	case "claude-sonnet-4-6":
-		return "sonnet"
-	case "claude-sonnet-4-6[1m]", "claude-sonnet-4-6 1M":
-		return "sonnet[1m]"
-	case "claude-haiku-4-5":
-		return "haiku"
-	default:
-		// Unknown values are reset to the runtime default.
+	}
+	for _, alias := range template.ModelAliasPickerValues() {
+		if m == alias {
+			return m
+		}
+	}
+	// Split the [1m] suffix so the reverse lookup can match the base id.
+	base, suffix := splitModelSuffix(m)
+	alias := template.ModelAliasFromCanonicalID(base)
+	if alias == base {
+		// base is not a known canonical id either — the legacy " 1M" suffix
+		// variant is the only remaining deprecated form to handle.
+		return normalizeModelLegacy1M(m)
+	}
+	if suffix == "" {
+		return alias
+	}
+	return alias + suffix
+}
+
+// normalizeModelLegacy1M handles the deprecated " <version> 1M" suffix form
+// (e.g. "claude-opus-4-6 1M") that predates the "[1m]" convention. It maps
+// those legacy strings to the current alias + "[1m]" form via the central
+// table's reverse lookup. Unknown legacy forms reset to the runtime default.
+func normalizeModelLegacy1M(m string) string {
+	const legacy1MSuffix = " 1M"
+	if !strings.HasSuffix(m, legacy1MSuffix) {
 		return ""
 	}
+	base := strings.TrimSuffix(m, legacy1MSuffix)
+	alias := template.ModelAliasFromCanonicalID(base)
+	if alias == base {
+		return ""
+	}
+	return alias + "[1m]"
 }
 
 // readCurrentProjectConfig reads the current development_mode + git_convention
@@ -418,12 +443,12 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Description(t.ModelOverrideDesc).
 				Options(
 					huh.NewOption(settings.EmptyLabelFor("model"), ""),
-					huh.NewOption(t.ModelOpus, "opus"),
-					huh.NewOption(t.ModelOpus1M, "opus[1m]"),
-					huh.NewOption(t.ModelSonnet, "sonnet"),
-					huh.NewOption(t.ModelSonnet1M, "sonnet[1m]"),
-					huh.NewOption(t.ModelHaiku, "haiku"),
-					huh.NewOption(t.ModelOpusPlan, "opusplan"),
+					huh.NewOption(t.ModelOpus, template.ModelAliasCanonicalID("opus")),
+					huh.NewOption(t.ModelOpus1M, template.ModelAliasCanonicalID("opus")+"[1m]"),
+					huh.NewOption(t.ModelSonnet, template.ModelAliasCanonicalID("sonnet")),
+					huh.NewOption(t.ModelSonnet1M, template.ModelAliasCanonicalID("sonnet")+"[1m]"),
+					huh.NewOption(t.ModelHaiku, template.ModelAliasCanonicalID("haiku")),
+					huh.NewOption(t.ModelOpusPlan, template.ModelAliasCanonicalID("opusplan")),
 				).
 				Value(&model),
 			// SPEC-WEB-CONSOLE-002 REQ-WC2-006: model_policy select — parity with
