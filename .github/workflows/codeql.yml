@@ -13,6 +13,12 @@ concurrency:
   group: codeql-${{ github.ref }}
   cancel-in-progress: true
 
+# Least-privilege baseline. The analyze job overrides this with
+# security-events: write (required to upload CodeQL results). The detect and
+# analyze-skip-marker jobs only need contents: read.
+permissions:
+  contents: read
+
 jobs:
   # ---------------------------------------------------------------------------
   # Detect: paths-filter to classify PR diff as docs-only or go-code
@@ -22,6 +28,7 @@ jobs:
   detect:
     name: Detect (paths-filter)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     # Only needed for PR context; push/schedule bypass via analyze job conditions
     outputs:
       go_code: ${{ steps.f.outputs.go_code }}
@@ -75,6 +82,8 @@ jobs:
       matrix:
         language: [go]
 
+    timeout-minutes: 30
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -111,6 +120,7 @@ jobs:
   analyze-skip-marker:
     name: Analyze (Go)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: detect
     # EC-1 mutual exclusivity guard: mixed PR (docs + Go code) runs real analyze only, NOT skip-marker.
     if: needs.detect.outputs.docs_only == 'true' && needs.detect.outputs.go_code != 'true' && github.event_name == 'pull_request'

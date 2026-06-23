@@ -19,6 +19,11 @@ concurrency:
   group: release-pr-${{ github.ref }}
   cancel-in-progress: false
 
+# Least-privilege: this workflow runs the Go test matrix and does not exercise
+# any GITHUB_TOKEN write surface (no artifact upload, no PR mutation).
+permissions:
+  contents: read
+
 jobs:
   # ---------------------------------------------------------------------------
   # Detect: only proceed if this is a release/* branch PR or workflow_dispatch
@@ -26,6 +31,7 @@ jobs:
   detect-release:
     name: Detect Release PR
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     if: startsWith(github.head_ref, 'release/') || github.event_name == 'workflow_dispatch'
     outputs:
       proceed: ${{ steps.gate.outputs.proceed }}
@@ -41,6 +47,7 @@ jobs:
     name: Release Verify (${{ matrix.os }})
     needs: detect-release
     if: needs.detect-release.outputs.proceed == 'true'
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -77,6 +84,7 @@ jobs:
     needs: full-matrix-test
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Verify all OS passed
         run: |

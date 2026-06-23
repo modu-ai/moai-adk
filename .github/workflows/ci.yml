@@ -19,6 +19,13 @@ on:
   pull_request:
     branches: [main]  # main으로 향하는 모든 PR에서 CI 실행
 
+# Least-privilege baseline. Job-level overrides (none needed here — this
+# workflow only reads + uploads coverage to Codecov). Codecov upload does
+# not require a write scope on GITHUB_TOKEN; the codecov-action uses its
+# own CODECOV_TOKEN. Artifact upload (upload-artifact) needs no extra scope.
+permissions:
+  contents: read
+
 # Cancel in-progress runs for the same branch
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -32,6 +39,7 @@ jobs:
   detect:
     name: Detect (paths-filter)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       go_code: ${{ steps.f.outputs.go_code }}
       docs_only: ${{ steps.f.outputs.docs_only }}
@@ -70,6 +78,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: detect
     if: needs.detect.outputs.go_code == 'true'
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -142,6 +151,7 @@ jobs:
     name: Test (${{ matrix.os }})
     runs-on: ubuntu-latest
     needs: detect
+    timeout-minutes: 5
     # EC-1 mutual exclusivity guard: mixed PR (docs + Go code) runs real test only, NOT skip-marker.
     # Without this guard, both jobs would emit Test (X) check-runs on mixed PRs, wasting compute.
     if: needs.detect.outputs.docs_only == 'true' && needs.detect.outputs.go_code != 'true'
@@ -162,6 +172,7 @@ jobs:
     name: Integration Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     needs: test
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -192,6 +203,7 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout code
@@ -232,6 +244,7 @@ jobs:
   build:
     name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -287,6 +300,7 @@ jobs:
   constitution-check:
     name: Constitution Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     continue-on-error: true
 
     steps:

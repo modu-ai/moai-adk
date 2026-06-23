@@ -21,12 +21,17 @@ jobs:
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) &&
        (github.event.issue.author_association == 'OWNER' || github.event.issue.author_association == 'MEMBER' || github.event.issue.author_association == 'COLLABORATOR'))
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       issues: read
-      # C2 Fix: id-token: write is required by claude-code-action for OIDC-based
-      # authentication to Anthropic's API when using OAuth tokens.
-      id-token: write
+      # C2 audit (Wave 2): id-token: write was previously granted on the claim
+      # that claude-code-action needs OIDC for Anthropic API auth. Verified the
+      # action authenticates via the claude_code_oauth_token secret (bearer/OAuth
+      # token) directly — no aws-actions/configure-aws-credentials or
+      # google-github-actions/auth OIDC exchange step exists in this workflow.
+      # Per least-privilege, id-token: write is REMOVED. If a future change
+      # introduces a cloud-provider OIDC exchange, re-add it at that point.
     steps:
       - name: Checkout repository
         # C1 Fix: Pinned to commit SHA to prevent supply chain attacks via floating tags.
