@@ -90,7 +90,7 @@ diet_result:
 
 ```yaml
 sync_complete_at: 2026-06-23
-sync_commit_sha: <SYNC_SHA_PLACEHOLDER>   # backfilled ON-HEAD after the 3-phase close commit (2-commit sync+backfill pattern)
+sync_commit_sha: 590f23d3f   # 3-phase close commit (ON-HEAD backfill, 2-commit sync+backfill pattern)
 sync_status: PASS
 sync_executed_by: orchestrator-direct   # P5 OUTPUT-STYLE-SLIM 동일 패턴 (feedback_glm_orchestrator_direct_sync_mx); Tier S 경량 sync; manager-docs PTL/세션-한도 회피
 final_status: completed
