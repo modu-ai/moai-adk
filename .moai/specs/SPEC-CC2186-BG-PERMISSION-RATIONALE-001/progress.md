@@ -79,7 +79,7 @@ SPEC artifact dir. No GLM files, no Go code, no unrelated paths touched. CONST-V
 
 ```yaml
 run_complete_at: 2026-06-23
-run_commit_sha: <backfill — see post-commit note>
+run_commit_sha: 73bb6916c
 run_status: implemented
 ac_pass_count: 9            # AC-BGR-001,002,003,005,006,007,008,009,010
 ac_fail_count: 0
