@@ -877,8 +877,12 @@ func gitPorcelain(t *testing.T, dir string) string {
 }
 
 // gitPorcelainExcludingState returns porcelain output with the runtime-managed
-// .moai/state/ entries filtered out (the per-SPEC close lock dir lands there and
-// is gitignored in real projects).
+// .moai/state/ and .moai/logs/ entries filtered out. The per-SPEC close lock dir
+// lands in .moai/state/, and the lifecycle-close audit log (NFR-LSG-004) lands in
+// .moai/logs/; both are gitignored in real projects per CLAUDE.local.md §2. CI
+// runners lack the ~/.gitignore_global *.log pattern that hides .moai/logs/ on
+// dev machines, so the carve-out must be explicit (otherwise the clean-tree
+// assertion after a close commit fails on CI).
 func gitPorcelainExcludingState(t *testing.T, dir string) string {
 	t.Helper()
 	var kept []string
@@ -887,6 +891,9 @@ func gitPorcelainExcludingState(t *testing.T, dir string) string {
 			continue
 		}
 		if strings.Contains(line, ".moai/state/") {
+			continue
+		}
+		if strings.Contains(line, ".moai/logs/") {
 			continue
 		}
 		kept = append(kept, line)
