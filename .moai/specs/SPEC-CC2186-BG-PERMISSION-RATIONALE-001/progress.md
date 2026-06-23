@@ -86,7 +86,7 @@ ac_fail_count: 0
 ac_disclosed_deviation: 1   # AC-BGR-004 intentionally not met (allowlist sentence dropped per orchestrator CRITICAL FINDING; official doc contradicts the claim)
 preserve_list_post_run_count: "CONST-V3R2-044 unchanged (1 each tree); [HARD] rule unchanged; '3-phase close' mirror drift untouched"
 l44_pre_commit_fetch: "git fetch origin main → 0 0 (worktree HEAD == origin/main, clean)"
-l44_post_push_fetch: <backfill post-push>
+l44_post_push_fetch: "git fetch origin main + git rev-list --count --left-right origin/main...HEAD → 0 0 (synced after FF push 60f50edf8..0424baa37); origin/main drift-removed (0) + CONST-V3R2-044 preserved (1) verified via git show origin/main"
 new_warnings_or_lints_introduced: 0   # doc-prose only; zero Go files changed
 cross_platform_build:
   host_go_build: exit 0
