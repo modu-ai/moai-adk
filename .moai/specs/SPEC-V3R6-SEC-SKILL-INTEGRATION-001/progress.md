@@ -291,4 +291,4 @@ Run-phase complete (M1-M4). All three skills authored, mirrored byte-identically
 - **Run-phase recap**: M1 `de5552759` (llm-security) · M2 `17397715d` (supply-chain) · M3 `6253045e6` (secops) · M4 `1c81c6d39` (holistic review) — all on origin/main.
 - **Verification (orchestrator re-observed on integrated tree)**: 3 skills byte-identical mirror parity; E-DUALUSE 0 hard offensive tools; E-NOATTRIB 0; §25 neutrality 0; E-CONTAIN 0; `go test ./internal/template/...` ok; `moai spec lint` 0-error.
 
-sync_commit_sha: _BACKFILL_PENDING_
+sync_commit_sha: 5711d4ff86ab1656ca1eac11c8065f99e768df8e
