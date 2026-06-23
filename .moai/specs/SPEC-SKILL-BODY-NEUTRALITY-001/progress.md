@@ -149,7 +149,7 @@ m1_to_mN_commit_strategy: M1 (42499880a) / M2-M3 (f36eec41b) / M4-M6 (this commi
 
 ```yaml
 sync_complete_at: 2026-06-23
-sync_commit_sha: <backfill — sync commit SHA>
+sync_commit_sha: 2e7925e3b
 sync_status: completed
 changelog_entry: added (Unreleased / Changed)
 mirror_byte_identical: true (50 files; foundation-cc/core diff = pre-existing drift, out of scope)
