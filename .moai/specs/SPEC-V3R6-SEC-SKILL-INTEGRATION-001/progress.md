@@ -41,6 +41,27 @@ decomposition: SPEC ✓ | V3R6 ✓ | SEC ✓ | SKILL ✓ | INTEGRATION ✓ | 001
 
 **Ready for**: plan-auditor Phase 2 re-review (iter-2) → Implementation Kickoff Approval (plan-to-implement human gate) → manager-develop run-phase M1. NOT proceeding to run-phase autonomously (per the Implementation Kickoff Approval mandatory-restoration policy).
 
+## §F — Phase 0.95 Mode Selection (orchestrator)
+
+**Input parameters**:
+- Tier: L (PASS threshold 0.85; plan-auditor iter-2 PASS-WITH-DEBT 0.86, monotonic ↑ vs iter-1 0.82)
+- Scope: 3 SKILL.md (local) + 3 template mirrors + possible `moai-ref-secops/modules/` ≈ 6-9 files, markdown-only
+- Domain count: 1 (defensive-security reference-skill authoring)
+- File language mix: 100% markdown
+- Concurrency benefit: LOW (content authoring is coding-heavy per Anthropic coding-task parallelism caveat; re-authorship integrity + cross-skill style consistency favor sequential)
+
+**Mode evaluation**:
+- Mode 1 trivial — not selected (multi-file semantic authoring)
+- Mode 2 background — not selected (Write-heavy, foreground required)
+- Mode 3 agent-team — not selected (single domain; prereqs not targeted)
+- Mode 4 parallel — not selected (content authoring is coding-heavy; cross-skill consistency needs sequential)
+- Mode 5 sub-agent — **SELECTED** (sequential per milestone)
+- Mode 6 workflow — not selected (not a ≥30-file mechanical-uniform transform)
+
+**Decision**: sub-agent (Mode 5) — sequential manager-develop per milestone (M1 → M2 → M3 → M4); M5 = manager-docs sync.
+
+**Justification**: Per Anthropic's coding-task parallelism caveat, content/coding-heavy work defaults to sequential sub-agents. M1 (`moai-ref-llm-security`) is delegated first to establish the `moai-ref-*` structural pattern + the re-authorship discipline; a checkpoint gate after M1 validates AC-SI-001/002 + E-DUALUSE/E-NOATTRIB/E-LANGNEUTRAL before the pattern propagates to M2/M3. Implementation Kickoff Approval PASSED (user-approved 2026-06-24; explicit-gate branch — Tier L + security domain per IGGDA §H conditions (c)/(d)).
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
