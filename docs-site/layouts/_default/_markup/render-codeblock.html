@@ -1,0 +1,23 @@
+{{- /* macOS 스타일 코드 카드 render hook — Claude Warm Editorial 디자인 정합.
+       다크 카드 + 트래픽 라이트 + 파일명 + 언어 pill + 복사 버튼 + (멀티라인 시) 줄번호.
+       mermaid는 별도 훅(render-codeblock-mermaid.html)이 처리하므로 여기로 오지 않음. */ -}}
+{{- $lang := strings.ToLower (.Type | default "") -}}
+{{- $code := trim .Inner "\n\r" -}}
+{{- $filename := "" -}}{{- with .Attributes.filename }}{{ $filename = . }}{{ end -}}
+{{- $langLabel := cond (eq $lang "") "text" $lang -}}
+{{- $lineCount := len (split $code "\n") -}}
+{{- $opts := "noClasses=false,tabWidth=2" -}}
+{{- if gt $lineCount 1 -}}{{- $opts = "noClasses=false,tabWidth=2,lineNos=true,lineNumbersInTable=true" -}}{{- end -}}
+<div class="code-card" data-lang="{{ $langLabel }}">
+  <div class="code-chrome">
+    <div class="traffic"><span class="red"></span><span class="yellow"></span><span class="green"></span></div>
+    <div class="code-title">{{ with $filename }}<span class="fname">{{ . }}</span>{{ end }}<span class="lang">{{ $langLabel }}</span></div>
+    <div class="code-tools">
+      <button type="button" class="copy-btn" data-copy data-label-copy="{{ i18n "code_copy" }}" data-label-copied="{{ i18n "code_copied" }}" aria-label="{{ i18n "code_copy" }}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span class="copy-label">{{ i18n "code_copy" }}</span>
+      </button>
+    </div>
+  </div>
+  {{ highlight $code $lang $opts }}
+</div>

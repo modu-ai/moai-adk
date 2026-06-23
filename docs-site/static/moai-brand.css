@@ -294,6 +294,30 @@ h1, h2, h3, h4, h5, h6 {
 h1 { letter-spacing: -0.05em; font-weight: 800; }
 h2 { letter-spacing: -0.04em; }
 
+/* ── H2 섹션 번호 배지 (디자인 .h2 .num 정합) ──
+   article.gdoc-markdown 단위로 counter 리셋, 본문 h2마다 01·02·03 코랄 pill 부여.
+   nested markdown(탭/힌트)은 div.gdoc-markdown--nested 라 리셋 영향 없음. */
+article.gdoc-markdown { counter-reset: doc-h2; }
+.gdoc-markdown h2 { scroll-margin-top: 80px; }
+.gdoc-markdown h2::before {
+  counter-increment: doc-h2;
+  content: counter(doc-h2, decimal-leading-zero);
+  display: inline-block;
+  margin-right: 12px;
+  font-family: var(--font-mono);
+  font-size: 0.46em;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-primary);
+  background: rgba(204, 120, 92, 0.08);
+  padding: 5px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  position: relative;
+  top: -0.18em;
+}
+
 /* ── Links ── */
 a {
   color: var(--color-primary);
@@ -727,63 +751,137 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
 .highlight pre::-webkit-scrollbar-thumb:hover,
 .cw-code__body::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.32); }
 
-/* ── 일반 코드블록 (체인 다이어그램·shell 명령 등) — 회색 톤 박스 ── */
-.gdoc-markdown .highlight {
+/* ── macOS 코드 카드 (render-codeblock.html) — 다크 카드 + 트래픽라이트 + 줄번호 ──
+   모든 fenced code block을 .code-card 로 감싸 디자인 정합. .code-chrome/.traffic/
+   .code-title/.lang/.copy-btn 크롬은 moai-design.css 가 스타일링.
+   본문은 Hugo highlight(.highlight>.chroma) — noClasses=true 인라인 신택스 색을
+   보존하기 위해 pre color 에 !important 를 쓰지 않는다. */
+.gdoc-markdown .code-card {
   position: relative;
-  margin: 20px 0;
-  border-radius: 14px;
-  background: var(--neutral-50);
-  border: 1px solid var(--border-1);
+  margin: 22px 0;
+  border-radius: 12px;
+  background: #181715;
+  box-shadow: var(--shadow-md);
+  border: 1px solid rgba(255,255,255,0.06);
   overflow: hidden;
 }
-.gdoc-markdown .highlight pre {
-  margin: 0 !important;
-  padding: 16px 20px 18px !important;
+.gdoc-markdown .code-card .highlight,
+.gdoc-markdown .code-card .chroma {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
   background: transparent !important;
-  color: var(--fg-1) !important;
-  font-family: var(--font-mono) !important;
-  font-size: 13px !important;
-  line-height: 1.6 !important;
-  overflow-x: auto;
-  border-radius: 0 !important;
+  overflow: hidden;
 }
-.gdoc-markdown .highlight code {
-  background: transparent !important;
-  color: inherit !important;
-  border: 0 !important;
-  padding: 0 !important;
-  font-size: inherit !important;
+.gdoc-markdown .code-card pre {
+  margin: 0;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  color: #faf9f5;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-x: auto;
+}
+.gdoc-markdown .code-card code {
+  background: transparent;
+  color: inherit;
+  border: 0;
+  padding: 0;
+  font-size: inherit;
+  font-family: var(--font-mono);
   white-space: pre;
 }
-[data-theme="dark"] .gdoc-markdown .highlight {
-  background: rgba(255,255,255,0.03);
-  border-color: rgba(255,255,255,0.08);
-}
-[data-theme="dark"] .gdoc-markdown .highlight pre { color: var(--fg-1) !important; }
-
-/* ── Cowork 지시 코드블록 (`>` 시작) — macOS chrome + 검정 ── */
-/* JS가 첫 줄 `>` 검사 후 .cw-instruction 클래스 부여 */
-.gdoc-markdown .highlight.cw-instruction {
-  background: #252320;
-  border-color: rgba(255,255,255,0.06);
-  box-shadow: 0 1px 3px rgba(20,18,16,0.08);
-}
-.gdoc-markdown .highlight.cw-instruction::before {
-  content: "";
+/* 줄번호 테이블 (lineNumbersInTable=true) */
+.gdoc-markdown .code-card .chroma .lntable {
   display: block;
-  height: 36px;
-  background:
-    radial-gradient(circle at 18px 18px, #ff5f57 0, #ff5f57 6px, transparent 6.5px),
-    radial-gradient(circle at 38px 18px, #febc2e 0, #febc2e 6px, transparent 6.5px),
-    radial-gradient(circle at 58px 18px, #28c840 0, #28c840 6px, transparent 6.5px),
-    linear-gradient(to bottom, rgba(255,255,255,0.04), transparent);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-collapse: collapse;
+  overflow-x: auto;
+  background: transparent !important;
 }
-.gdoc-markdown .highlight.cw-instruction pre {
-  color: #faf9f5 !important;
-  padding: 18px 22px 22px !important;
+.gdoc-markdown .code-card .chroma .lntable td { padding: 0; border: 0; vertical-align: top; }
+.gdoc-markdown .code-card .chroma .lntable tr:hover td { background: transparent; }
+.gdoc-markdown .code-card .chroma .lntd { background: transparent; }
+.gdoc-markdown .code-card .chroma .lntd:first-child {
+  width: 1%;
+  white-space: nowrap;
+  user-select: none;
 }
-[data-theme="dark"] .gdoc-markdown .highlight.cw-instruction { background: #181715; }
+.gdoc-markdown .code-card .chroma .lntd:first-child pre {
+  padding: 14px 10px 14px 16px;
+  background: rgba(0,0,0,0.18);
+  border-right: 1px solid rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.24);
+  text-align: right;
+}
+.gdoc-markdown .code-card .chroma .lnt,
+.gdoc-markdown .code-card .chroma .ln { color: rgba(255,255,255,0.24); }
+.gdoc-markdown .code-card .chroma .lntd:last-child pre { padding-left: 16px; }
+.gdoc-markdown .code-card .chroma .hl { background: rgba(204,120,92,0.14); display: block; }
+
+/* ── 신택스 토큰 색 — 디자인 .tk-* 팔레트(Claude Warm Editorial) 정합 ──
+   .code-card 내부 Chroma 클래스에만 스코프. 다크 카드 위 가독성 + 코랄 키워드. */
+.gdoc-markdown .code-card .chroma { color: #faf9f5; }
+.gdoc-markdown .code-card .chroma .c,
+.gdoc-markdown .code-card .chroma .ch,
+.gdoc-markdown .code-card .chroma .cm,
+.gdoc-markdown .code-card .chroma .c1,
+.gdoc-markdown .code-card .chroma .cs,
+.gdoc-markdown .code-card .chroma .cp,
+.gdoc-markdown .code-card .chroma .cpf { color: #8a847a !important; font-style: italic; }
+.gdoc-markdown .code-card .chroma .k,
+.gdoc-markdown .code-card .chroma .kc,
+.gdoc-markdown .code-card .chroma .kd,
+.gdoc-markdown .code-card .chroma .kn,
+.gdoc-markdown .code-card .chroma .kp,
+.gdoc-markdown .code-card .chroma .kr,
+.gdoc-markdown .code-card .chroma .kt { color: #e0997f !important; }
+.gdoc-markdown .code-card .chroma .s,
+.gdoc-markdown .code-card .chroma .sa,
+.gdoc-markdown .code-card .chroma .sb,
+.gdoc-markdown .code-card .chroma .sc,
+.gdoc-markdown .code-card .chroma .dl,
+.gdoc-markdown .code-card .chroma .sd,
+.gdoc-markdown .code-card .chroma .s2,
+.gdoc-markdown .code-card .chroma .se,
+.gdoc-markdown .code-card .chroma .sh,
+.gdoc-markdown .code-card .chroma .si,
+.gdoc-markdown .code-card .chroma .sx,
+.gdoc-markdown .code-card .chroma .sr,
+.gdoc-markdown .code-card .chroma .s1,
+.gdoc-markdown .code-card .chroma .ss { color: #c4dca4 !important; }
+.gdoc-markdown .code-card .chroma .m,
+.gdoc-markdown .code-card .chroma .mb,
+.gdoc-markdown .code-card .chroma .mf,
+.gdoc-markdown .code-card .chroma .mh,
+.gdoc-markdown .code-card .chroma .mi,
+.gdoc-markdown .code-card .chroma .il,
+.gdoc-markdown .code-card .chroma .mo,
+.gdoc-markdown .code-card .chroma .nb,
+.gdoc-markdown .code-card .chroma .bp { color: #f0c987 !important; }
+.gdoc-markdown .code-card .chroma .nf,
+.gdoc-markdown .code-card .chroma .fm,
+.gdoc-markdown .code-card .chroma .nt { color: #e0997f !important; }
+.gdoc-markdown .code-card .chroma .o,
+.gdoc-markdown .code-card .chroma .ow { color: #ecc3b2 !important; }
+.gdoc-markdown .code-card .chroma .p,
+.gdoc-markdown .code-card .chroma .nx,
+.gdoc-markdown .code-card .chroma .n,
+.gdoc-markdown .code-card .chroma .na,
+.gdoc-markdown .code-card .chroma .nl,
+.gdoc-markdown .code-card .chroma .nv,
+.gdoc-markdown .code-card .chroma .nd { color: #faf9f5 !important; }
+.gdoc-markdown .code-card .chroma .gd { color: #c64545 !important; }
+.gdoc-markdown .code-card .chroma .gi { color: #5db872 !important; }
+.gdoc-markdown .code-card .chroma .err { color: #faf9f5 !important; background: transparent !important; }
 
 /* ── inline code — 페이지 배경과 명확히 구분되도록 더 진한 배경 + 청록 글자 ── */
 .gdoc-markdown :not(pre) > code,
@@ -1105,7 +1203,11 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   padding: 3px;
   margin-right: 4px;
 }
-.cw-lang-switch button {
+.cw-lang-switch button,
+.cw-lang-switch a,
+.cw-lang-switch .cw-lang-btn {
+  display: inline-flex;
+  align-items: center;
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
@@ -1116,16 +1218,19 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   color: var(--fg-3);
   border-radius: 999px;
   cursor: pointer;
+  text-decoration: none;
   transition: background-color 120ms, color 120ms;
 }
-.cw-lang-switch button:hover { color: var(--fg-1); }
-.cw-lang-switch button.active {
+.cw-lang-switch button:hover,
+.cw-lang-switch a:hover,
+.cw-lang-switch .cw-lang-btn:hover { color: var(--fg-1); text-decoration: none; }
+.cw-lang-switch button.active,
+.cw-lang-switch a.active,
+.cw-lang-switch .cw-lang-btn.active {
   background: var(--color-primary);
   color: #fff;
   box-shadow: var(--shadow-xs);
 }
-[data-theme="dark"] .cw-lang-switch { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.10); }
-[data-theme="dark"] .cw-lang-switch button.active { background: #cc785c; color: #fff; }
 
 .cw-gh-stars {
   display: inline-flex;

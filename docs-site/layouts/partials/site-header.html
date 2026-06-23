@@ -12,12 +12,22 @@
       </button>
     </div>
     <div class="cw-nav-actions">
-      {{- /* 언어 선택 — 추후 사용 예정, 현재는 숨김. DOM 보존하여 차후 재활성화 시 CSS 한 줄만 풀면 됨 */ -}}
-      <div class="cw-lang-switch" role="tablist" aria-label="{{ i18n "lang_aria" }}" hidden style="display:none">
-        <button class="active" type="button">KO</button>
-        <button type="button">EN</button>
-        <button type="button">JA</button>
-        <button type="button">ZH</button>
+      {{- /* 언어 선택 — KO/EN/JA/CN 4-locale. 현재 페이지의 번역본으로 링크, 없으면 해당 언어 홈으로 fallback */ -}}
+      {{- $page := .Root -}}
+      {{- $labels := dict "ko" "KO" "en" "EN" "ja" "JA" "zh" "CN" -}}
+      <div class="cw-lang-switch" role="tablist" aria-label="{{ i18n "lang_aria" }}">
+        {{- range hugo.Sites -}}
+          {{- $l := .Language -}}
+          {{- $href := printf "/%s/" $l.Lang | relURL -}}
+          {{- with $page -}}
+            {{- range .AllTranslations -}}
+              {{- if eq .Language.Lang $l.Lang -}}{{- $href = .RelPermalink -}}{{- end -}}
+            {{- end -}}
+          {{- end -}}
+          {{- $label := index $labels $l.Lang | default (upper $l.Lang) -}}
+          {{- $isActive := and $page (eq $page.Language.Lang $l.Lang) -}}
+          <a class="cw-lang-btn{{ if $isActive }} active{{ end }}" href="{{ $href }}" hreflang="{{ $l.Lang }}"{{ if $isActive }} aria-current="page"{{ end }}>{{ $label }}</a>
+        {{- end -}}
       </div>
       {{- if default true .Site.Params.geekdocDarkModeToggle }}
       <span id="gdoc-color-theme" class="cw-theme-toggle" tabindex="0" role="button" aria-pressed="false" aria-label="{{ i18n "darkmode_aria" }}">

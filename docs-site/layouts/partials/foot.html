@@ -80,11 +80,14 @@
       // 이미 로드 중 — onload 콜백 대기 (다른 script 태그가 이미 추가됨)
       return;
     }
+    {{- /* geekdoc 내장 번들은 window.mermaid 를 노출하지 않아 코랄 themeVariables 가
+           적용되지 않음(기본 라벤더로 자체 렌더). window.mermaid 를 노출하는 CDN UMD
+           빌드를 로드해야 아래 runMermaid 의 coral theme:'base' init 이 동작한다. */ -}}
     var s = document.createElement('script');
-    s.src = '{{ index (index hugo.Data.assets "mermaid.js") "src" | relURL }}';
+    s.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
     s.setAttribute('data-mermaid-bundle', '1');
     s.onload = runMermaid;
-    s.onerror = function() { console.error('[mermaid] bundle load failed'); };
+    s.onerror = function() { console.error('[mermaid] CDN load failed'); };
     document.head.appendChild(s);
   }
 
