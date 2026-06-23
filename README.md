@@ -376,10 +376,14 @@ Team role profiles (researcher, analyst, architect, implementer, tester, designe
 moai init my-project          # Interactive wizard includes model policy selection
 
 # Reconfigure existing project
-moai update                   # Interactive prompts for each configuration step
+moai update -c                # Re-run the init wizard (no template sync)
 ```
 
-During `moai update`, you'll be asked:
+> **`moai update` vs `moai update -c`**: bare `moai update` syncs templates via 3-way merge;
+> `moai update -c` (`--config`) re-runs the init wizard to edit project configuration and
+> does NOT synchronize templates.
+
+During `moai update -c`, you'll be asked:
 - **Reset model policy?** (y/n) - Re-run model policy configuration wizard
 - **Update GLM settings?** (y/n) - Configure GLM environment variables in settings.local.json
 
@@ -642,6 +646,7 @@ All hook events follow the Claude Code hooks protocol with JSON stdin/stdout com
 | `moai status` | Project status summary including Git branch, quality metrics, etc. |
 | `moai inventory` | Unified read-only inventory of active sessions, worktrees, and harnesses (add `--json` for structured output) |
 | `moai update` | Update to the latest version (with automatic rollback support) |
+| `moai update -c` | Re-run the init wizard to edit project configuration (no template sync) |
 | `moai update --check` | Check for updates without installing |
 | `moai update --project` | Sync project templates only |
 | `moai worktree new <name>` | Create a new Git worktree (parallel branch development). Add `--tmux` to auto-create a tmux session in the worktree |

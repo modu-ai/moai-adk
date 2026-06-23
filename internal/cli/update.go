@@ -85,7 +85,7 @@ func init() {
 
 	updateCmd.Flags().Bool("check", false, "Check if a newer binary version is available (informational)")
 	updateCmd.Flags().Bool("shell-env", false, "Configure shell environment variables for Claude Code")
-	updateCmd.Flags().BoolP("config", "c", false, "Edit project configuration (same as init wizard)")
+	updateCmd.Flags().BoolP("config", "c", false, "Re-run the init wizard to edit project configuration (no template sync; bare 'moai update' syncs templates)")
 	updateCmd.Flags().Bool("force", false, "Force update: bypass version-match skip, force backup+merge, and overwrite archive drift (backed up to .moai/archive/skills/v2.16-drift-<UTC-timestamp>/)")
 	updateCmd.Flags().Bool("yes", false, "Auto-confirm all prompts (CI/CD mode)")
 	updateCmd.Flags().Bool("templates-only", false, "Skip binary update, sync templates only")
@@ -106,9 +106,20 @@ func init() {
 // templates with the project directory. If a newer binary is installed,
 // the process re-execs itself so the latest templates are used.
 //
+// Reconfigure vs template sync (SPEC-V3R6-CLI-CONFIG-INTEGRITY-001 REQ-CCI-001/002):
+//
+//	`moai update` (bare)    → binary update + template sync (3-way merge).
+//	`moai update -c`        → short-circuits to runInitWizard(cmd, true) and
+//	                          performs NO template sync. It re-runs the init
+//	                          wizard to edit project configuration (model
+//	                          policy, dev mode, git strategy, credentials).
+//	                          See the `if editConfig { ... }` block in this
+//	                          function for the short-circuit.
+//
 // Flags:
 //
-//	-c, --config: Edit project configuration (same as init wizard)
+//	-c, --config: Re-run the init wizard to edit project configuration; does NOT
+//	              synchronize templates (use bare `moai update` for that).
 //	--check: Check if a newer binary version is available (informational)
 //	--force: Force update with these effects (SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001):
 //	  * bypass version-match skip-sync branch (template sync always runs)

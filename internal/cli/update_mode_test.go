@@ -37,6 +37,40 @@ func TestUpdateCmd_ConfigFlagExists(t *testing.T) {
 	}
 }
 
+// TestUpdateCmd_ConfigFlagHelpDisambiguatesReconfigure (AC-CCI-001) verifies the
+// -c/--config flag help string unambiguously distinguishes the reconfigure
+// wizard from the bare `moai update` template sync. Users historically assumed
+// `moai update -c` syncs .moai/config from templates; in reality it
+// short-circuits to runInitWizard(cmd, true) (update.go:166-170) and performs
+// NO template sync. The help string MUST surface both the "init wizard" /
+// "reconfigure" intent AND an explicit "no template sync" / "does not
+// synchronize templates" cue so the distinction is visible in `--help` output.
+func TestUpdateCmd_ConfigFlagHelpDisambiguatesReconfigure(t *testing.T) {
+	flag := updateCmd.Flags().Lookup("config")
+	if flag == nil {
+		t.Fatal("update command should have --config flag")
+	}
+	help := flag.Usage
+	helpLower := strings.ToLower(help)
+
+	// Cue 1: must reference the init wizard / reconfigure intent.
+	reconfigureCue := strings.Contains(helpLower, "wizard") ||
+		strings.Contains(helpLower, "reconfigure") ||
+		strings.Contains(helpLower, "init")
+	if !reconfigureCue {
+		t.Errorf("config flag help %q must reference the init wizard / reconfigure intent", help)
+	}
+
+	// Cue 2: must explicitly state template sync is NOT performed by -c.
+	noSyncCue := strings.Contains(helpLower, "no template") ||
+		strings.Contains(helpLower, "does not sync") ||
+		strings.Contains(helpLower, "does not synchronize") ||
+		strings.Contains(helpLower, "skips template")
+	if !noSyncCue {
+		t.Errorf("config flag help %q must explicitly state that template sync is not performed (AC-CCI-001)", help)
+	}
+}
+
 // TestUpdateCmd_TemplatesOnlyAndBinaryMutuallyExclusive tests flag exclusivity
 func TestUpdateCmd_TemplatesOnlyAndBinaryMutuallyExclusive(t *testing.T) {
 	// Create a temp project with .moai/

@@ -2,7 +2,7 @@
 id: SPEC-V3R6-CLI-CONFIG-INTEGRITY-001
 title: "CLI config-system integrity / mental-model alignment (P0 fixes)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-23
 updated: 2026-06-24
 author: manager-spec
