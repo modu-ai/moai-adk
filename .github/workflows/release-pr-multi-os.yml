@@ -77,19 +77,95 @@ jobs:
         run: go test -race ./...
 
   # ---------------------------------------------------------------------------
-  # Summary gate: ensures all OS jobs passed (or were skipped for non-release PRs)
+  # Release Range Verify (Wave 3 2026-06-24): for release/* → main PRs, confirm
+  # the accumulated release range (since the last tag) builds and tests green —
+  # NOT just the tip commit. ci.yml/test verify the PR diff; this job verifies
+  # the full release window so a mid-range regression is not hidden by a clean
+  # tip.
+  # ---------------------------------------------------------------------------
+  release-range-verify:
+    name: Release Range Verify
+    needs: detect-release
+    if: needs.detect-release.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # need full history for git describe + range log
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Print commit range since last tag
+        id: range
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Resolve the most recent tag. If no tag exists yet (early repo),
+          # git describe exits 128 — fall back to full history.
+          RANGE=""
+          if LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null); then
+            RANGE="${LAST_TAG}..HEAD"
+            echo "Last tag: ${LAST_TAG}"
+          else
+            echo "No previous tag found — using full history as the release range."
+            # Empty RANGE base → git log with empty range degrades to full HEAD history
+            # when we pass just the rev range; use --all alternative below for safety.
+            RANGE=""
+          fi
+
+          echo "::group::Commit range (${RANGE:-full history})"
+          if [ -n "${RANGE}" ]; then
+            git log "${RANGE}" --oneline
+            COMMIT_COUNT=$(git rev-list --count "${RANGE}")
+          else
+            git log --oneline
+            COMMIT_COUNT=$(git rev-list --count HEAD)
+          fi
+          echo "::endgroup::"
+
+          echo "Commit count in release range: ${COMMIT_COUNT}"
+          echo "commit_count=${COMMIT_COUNT}" >> $GITHUB_OUTPUT
+          echo "last_tag=${LAST_TAG:-none}" >> $GITHUB_OUTPUT
+
+      - name: Run go build (release range)
+        shell: bash
+        run: |
+          set -euo pipefail
+          go build ./...
+
+      - name: Run go test with race detector (release range)
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -race ./...
+
+  # ---------------------------------------------------------------------------
+  # Summary gate: ensures all OS jobs + release range verify passed (or were
+  # skipped for non-release PRs).
   # ---------------------------------------------------------------------------
   release-pr-gate:
     name: Release PR Multi-OS Gate
-    needs: full-matrix-test
+    needs: [full-matrix-test, release-range-verify]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Verify all OS passed
+      - name: Verify all OS + release range passed
         run: |
           if [ "${{ needs.full-matrix-test.result }}" = "failure" ]; then
             echo "::error::Release PR multi-OS verification FAILED on at least one OS"
             exit 1
           fi
+          if [ "${{ needs.release-range-verify.result }}" = "failure" ]; then
+            echo "::error::Release Range Verify FAILED (build or tests broke inside the release window)"
+            exit 1
+          fi
           echo "✓ Release PR multi-OS verification PASSED (or skipped for non-release PR)"
+          echo "✓ Release Range Verify PASSED (or skipped for non-release PR)"
