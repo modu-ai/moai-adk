@@ -103,4 +103,4 @@ harness:
 - [하네스 엔지니어링](/ko/core-concepts/harness-engineering) — 하네스 개념 개요
 - [TRUST 5 품질](/ko/core-concepts/trust-5) — 5가지 품질 기준
 - [Constitution 시스템](/ko/core-concepts/constitution) — FROZEN/Evolvable 규칙
-- [GAN Loop](/ko/design/gan-loop) — 디자인 품질 검증 반복
+- GAN Loop — 디자인 품질 검증 반복 (GAN Loop는 adversarial 평가자-판별자 루프로 품질 개선을 위한 반복 검증 패턴입니다)

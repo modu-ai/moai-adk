@@ -3,8 +3,8 @@ name: moai
 description: >
   MoAI unified orchestrator for autonomous development. Routes natural
   language or subcommands (brain, plan, run, sync, design, project, fix,
-  loop, mx, feedback, review, clean, codemaps, coverage, e2e, harness) to
-  specialized agents.
+  loop, mx, feedback, review, clean, codemaps, coverage, e2e, gate,
+  security, harness) to specialized agents.
 allowed-tools: Agent, AskUserQuestion, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
 argument-hint: "[subcommand] [args] | \"natural language task\""
 ---
@@ -101,6 +101,14 @@ If the intent is clearly a development task with no specific routing signal, def
 ---
 
 ## Workflow Quick Reference
+
+### brain - Pre-Spec Ideation (7-Phase)
+
+Purpose: Convert vague ideas into validated product proposals with a Claude Design handoff package. Pre-spec ideation workflow — runs BEFORE `/moai project` and `/moai plan`. Produces IDEA-NNN artifacts under `.moai/brain/` and a SPEC decomposition candidate list.
+Phases: Discovery (Socratic clarity) -> Diverge -> Research -> Converge (Lean Canvas) -> Critical Evaluation -> Proposal (SPEC decomposition) -> Claude Design Handoff
+Skills: moai-domain-ideation, moai-domain-research, moai-domain-design-handoff, moai-foundation-thinking (deep-questioning, diverge-converge, critical-evaluation, first-principles)
+Artifacts: `.moai/brain/IDEA-NNN/{research.md, ideation.md, proposal.md}` + 5-file Claude Design handoff package
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/brain.md
 
 ### plan - SPEC Document Creation
 

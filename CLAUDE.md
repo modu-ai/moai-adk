@@ -42,9 +42,9 @@ Core Skills (load when needed): `Skill("moai-foundation-cc")` (orchestration pat
 
 ### Phase 2: Route
 
-- **Workflow Subcommands**: /moai project, /moai plan, /moai run, /moai sync
+- **Workflow Subcommands**: /moai project, /moai plan, /moai run, /moai sync, /moai design, /moai brain, /moai harness
 - **Utility Subcommands**: /moai (default), /moai fix, /moai loop, /moai clean, /moai mx
-- **Quality Subcommands**: /moai review, /moai coverage, /moai e2e, /moai codemaps
+- **Quality Subcommands**: /moai review, /moai coverage, /moai e2e, /moai codemaps, /moai gate, /moai security
 - **Feedback Subcommand**: /moai feedback
 - **Direct Agent Requests**: Immediate delegation when user explicitly requests an agent
 
@@ -69,7 +69,7 @@ Execute using explicit agent invocation:
 
 Single entry point for all MoAI development workflows.
 
-Subcommands: plan, run, sync, design, db, project, fix, loop, mx, feedback, review, clean, codemaps, coverage, e2e
+Subcommands: plan, run, sync, design, brain, project, fix, loop, mx, feedback, review, clean, codemaps, coverage, e2e, gate, security, harness
 Default (natural language): Routes to autonomous workflow (plan -> run -> sync pipeline)
 
 ### Unified Skill: /moai design

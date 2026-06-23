@@ -4,11 +4,11 @@ weight: 30
 draft: false
 ---
 
-MoAI-ADK の 4 つのワークフローコマンドで体系的な開発サイクルを完了します。
+MoAI-ADK のワークフローコマンドで体系的な開発サイクルを完了します。
 
 ## 開発サイクルの概要
 
-MoAI-ADK は **4 段階ワークフローコマンド**を通じて、プロジェクト初期化からデプロイ準備までの全プロセスをサポートします。各コマンドは専門化された AI エージェントが担当し、順番に実行することで一貫して高品質なソフトウェアを作成できます。
+MoAI-ADK は **ワークフローコマンド**を通じて、プロジェクト初期化からデプロイ準備までの全プロセスをサポートします。各コマンドは専門化された AI エージェントが担当し、順番に実行することで一貫して高品質なソフトウェアを作成できます。
 
 ```mermaid
 flowchart TD
@@ -17,6 +17,7 @@ flowchart TD
     D --> E["/moai sync<br/>文書同期と PR"]
     E -.-> B
     D -.-> B
+    F["/moai harness<br/>ハーネス学習システム"] -.-> D
 ```
 
 ## コマンド概要
@@ -25,11 +26,14 @@ flowchart TD
 |---------|---------|-------------------|-------------|------|
 | [`/moai project`](./moai-project) | フェーズ 0 | manager-docs | - | プロジェクト文書の自動生成 |
 | [`/moai plan`](./moai-plan) | フェーズ 1 | manager-spec | 30K | SPEC 文書作成 |
-| [`/moai run`](./moai-run) | フェーズ 2 | manager-develop / manager-develop | 180K | DDD / TDD 方式で実装 |
+| [`/moai run`](./moai-run) | フェーズ 2 | manager-develop | 180K | DDD / TDD 方式で実装 |
 | [`/moai sync`](./moai-sync) | フェーズ 3 | manager-docs | 40K | 文書同期と PR 作成 |
+| [`/moai harness`](./moai-harness) | 補助 | builder-harness | - | ハーネス学習ライフサイクル管理 |
 
 {{< callout type="info" >}}
 初めてご利用の場合は `/moai project` から始めてください。プロジェクト文書が必要なため、以降のフェーズで AI がプロジェクトを正確に理解して作業できます。
+
+`/moai harness` はハーネス学習サブシステム管理用の補助コマンドです — CLAUDE.md の変更をモニターし、ティアベースの自動更新を提案します。
 {{< /callout >}}
 
 ## クイックスタート
@@ -48,6 +52,10 @@ flowchart TD
 
 # フェーズ 3: 文書同期と PR
 > /moai sync SPEC-AUTH-001
+
+# 補助: ハーネス学習管理 (オプション)
+> /moai harness status
+> /moai harness apply
 ```
 
 ## 関連ドキュメント
@@ -55,4 +63,5 @@ flowchart TD
 - [SPEC ベース開発](/core-concepts/spec-based-dev) - SPEC と EARS 形式の詳細説明
 - [DDD 方法論](/core-concepts/ddd) - ANALYZE-PRESERVE-IMPROVE サイクルの詳細説明
 - [TRUST 5 品質システム](/core-concepts/trust-5) - 品質ゲートの詳細説明
+- [ハーネスエンジニアリング](/core-concepts/harness-engineering) - ハーネス学習サブシステムの概要
 - [クイックスタート](/getting-started/quickstart) - 最初から最後までのチュートリアル
