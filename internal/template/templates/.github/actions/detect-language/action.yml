@@ -1,0 +1,51 @@
+name: 'Detect Programming Language'
+description: 'Detects the primary programming language from repository files'
+outputs:
+  language:
+    description: 'Detected language (go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift)'
+    value: ${{ steps.detect.outputs.language }}
+
+runs:
+  using: 'composite'
+  steps:
+    - id: detect
+      shell: bash
+      run: |
+        # Detect the first source file in the repo and map its extension to a
+        # canonical language name. `find -print -quit` returns after the first
+        # match (single process, no pipe), so there is no downstream consumer
+        # to close stdin early on — this avoids the broken-pipe failure that
+        # `head -1` or `awk 'NR==1{print;exit}'` would produce under
+        # `set -o pipefail`.
+        LANG_FILE=$(find . \( \
+            -name "*.go" -o -name "*.py" -o -name "*.ts" -o -name "*.js" \
+            -o -name "*.rs" -o -name "*.java" -o -name "*.kt" -o -name "*.cs" \
+            -o -name "*.rb" -o -name "*.php" -o -name "*.ex" -o -name "*.cpp" \
+            -o -name "*.scala" -o -name "*.r" -o -name "*.dart" -o -name "*.swift" \
+          \) \
+          -not -path './node_modules/*' \
+          -not -path './vendor/*' \
+          -not -path './.git/*' \
+          -print -quit 2>/dev/null)
+        LANG_COUNT="${LANG_FILE##*.}"
+
+        case "$LANG_COUNT" in
+          go) echo "language=go" >> $GITHUB_OUTPUT ;;
+          py) echo "language=python" >> $GITHUB_OUTPUT ;;
+          ts) echo "language=typescript" >> $GITHUB_OUTPUT ;;
+          js) echo "language=javascript" >> $GITHUB_OUTPUT ;;
+          rs) echo "language=rust" >> $GITHUB_OUTPUT ;;
+          java) echo "language=java" >> $GITHUB_OUTPUT ;;
+          kt) echo "language=kotlin" >> $GITHUB_OUTPUT ;;
+          cs) echo "language=csharp" >> $GITHUB_OUTPUT ;;
+          rb) echo "language=ruby" >> $GITHUB_OUTPUT ;;
+          php) echo "language=php" >> $GITHUB_OUTPUT ;;
+          ex) echo "language=elixir" >> $GITHUB_OUTPUT ;;
+          cpp) echo "language=cpp" >> $GITHUB_OUTPUT ;;
+          scala) echo "language=scala" >> $GITHUB_OUTPUT ;;
+          r) echo "language=r" >> $GITHUB_OUTPUT ;;
+          dart) echo "language=flutter" >> $GITHUB_OUTPUT ;;
+          flutter) echo "language=flutter" >> $GITHUB_OUTPUT ;;
+          swift) echo "language=swift" >> $GITHUB_OUTPUT ;;
+          *) echo "language=unknown" >> $GITHUB_OUTPUT ;;
+        esac
