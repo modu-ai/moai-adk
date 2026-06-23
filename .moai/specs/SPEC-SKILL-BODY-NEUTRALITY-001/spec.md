@@ -2,9 +2,9 @@
 id: SPEC-SKILL-BODY-NEUTRALITY-001
 title: "Skill-Body Neutrality — purge moai-adk local-dev traces from deployed skills + extend neutrality CI guard"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-06-04
-updated: 2026-06-04
+updated: 2026-06-23
 author: manager-spec
 priority: P1
 phase: "v3.0.0"
