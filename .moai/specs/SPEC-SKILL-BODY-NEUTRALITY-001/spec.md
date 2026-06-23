@@ -12,6 +12,7 @@ module: "internal/template/templates/.claude/skills"
 lifecycle: spec-anchored
 tags: "template-system, neutrality, skills, ci-guard, distribution"
 tier: M
+era: V3R6
 related_specs: [SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001, SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001]
 ---
 
