@@ -171,4 +171,12 @@ reconcile: manager-develop 격리 worktree(agent-a2146fbd8081ad291) → shared c
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync>_
+- SPEC ID: SPEC-V3R6-CLI-CONFIG-INTEGRITY-001
+- Tier: M (standard)
+- Era: V3R6
+- AC tally: 10/10 PASS (9 MUST + 1 SHOULD)
+- Sync scope: documentation only (frontmatter transitions + CHANGELOG + progress.md §E.4)
+- Verification: no code changes (all implementation in run-phase)
+- sync_commit_sha: _<pending — orchestrator backfill>_
+- Sync-phase 3-phase close: spec.md `in-progress → completed` + plan.md `draft → completed` + acceptance.md `draft → completed` + progress.md §E.4 populated + CHANGELOG entry + era field added (V3R6) to all 3 artifacts
+- Status: audit-ready, awaiting sync commit creation
