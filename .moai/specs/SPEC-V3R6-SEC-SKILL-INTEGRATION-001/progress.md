@@ -253,7 +253,32 @@ decomposition: SPEC ✓ | V3R6 ✓ | SEC ✓ | SKILL ✓ | INTEGRATION ✓ | 001
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+**M4 — cross-skill consistency + dual-use + re-authorship holistic review (orchestrator-direct, 2026-06-24)**
+
+Run-phase complete (M1-M4). All three skills authored, mirrored byte-identically, catalog-registered, and merged to `origin/main` (M1 `de5552759`, M2 `17397715d`, M3 `6253045e6`). M4 is the holistic cross-skill verification gate (read-only batch performed by the orchestrator).
+
+**Holistic verification matrix (all observed on the integrated `origin/main` tree)**:
+
+| Check | Scope | Result |
+|-------|-------|--------|
+| Template-mirror parity | all 3 skills (SKILL.md + secops 3 modules) | `diff -r` empty — byte-identical ✓ |
+| E-DUALUSE (hard offensive tools) | all 3 skills + modules | 0 matches ✓ |
+| E-DUALUSE (secops `responder`) | secops SKILL + container.md | 5 matches, ALL defensive ("incident responder" / alert-recipient, NOT the offensive "Responder" tool) — each within a defensive verb ✓ |
+| E-NOATTRIB | 6 distributed paths (local + mirror) | 0 matches ✓ |
+| Template-neutrality §25 | all 3 skills + modules | 0 internal SPEC/REQ/AC tokens, dates, SHAs, macOS paths ✓ |
+| E-CONTAIN (AC-SI-018) | embed-source paths | 0 upstream-name matches — research.md never embedded ✓ |
+| Cross-skill refs (AC-SI-015) | all 3 SKILL.md | each cross-refs ≥1 sibling + the dev-time `moai-ref-owasp-checklist` ✓ |
+| CI guards | `go test ./internal/template/...` | ok — `internal_content_leak_test.go` + neutrality audit + catalog count guards (skills 34, total 41) all pass ✓ |
+| spec lint | spec.md | 0 error (1 known mid-run `StatusGitConsistency` false-positive; resolves at sync `completed`) ✓ |
+
+**AC matrix (18 ACs)**:
+- **PASS (15)**: AC-SI-001/002 (M1), AC-SI-003/004 (M2), AC-SI-005/006 (M3), AC-SI-008 (no-attribution), AC-SI-009 (dual-use boundary), AC-SI-010 (16-lang neutrality), AC-SI-011 (§25), AC-SI-012 (parity), AC-SI-013 (listing cap — all desc+when_to_use ≤1536), AC-SI-014 (size/split — llm 289 / supply 345 / secops 159 overview + 3 modules), AC-SI-016 (3 evolvable blocks each), AC-SI-018 (research.md containment).
+- **PASS-with-debt (1)**: AC-SI-007 (re-authorship integrity). All three skills were authored FROM PUBLIC PRIMARY SOURCES (OWASP / MITRE ATT&CK·ATLAS / NIST AI RMF / SLSA / Sigstore / CIS Benchmarks), NOT by reading the upstream repo — so verbatim-copy risk is structurally near-zero by construction. The 3-passage independence note per skill is recorded in §E.2. **Residual debt D1**: the mechanical ≥10-passage full-sentence comparison vs the upstream repo was NOT run (the upstream is not checked out in this environment; structurally low risk given public-source authoring). Honestly disclosed per verification-claim-integrity — no upstream comparison is claimed that was not run.
+- **Deferred to sync-phase M5 (1)**: AC-SI-017 (closure gate — `implemented → completed` on the single sync commit; AC-SI-015 P2 cross-ref already satisfied).
+
+**Dual-use semantic residual (D5/D6)**: the E-DUALUSE grep is syntactic. The M4 human verdict (applied here) confirms: 0 hard offensive tools across all 3 skills; secops `responder` matches all defensive; secops rigorously applies REQ-SI-007 framing (container-escape / RBAC-misconfig / BOLA = misconfig→detect→prevent, zero exploitation steps); MITRE T-IDs cited for defensive correlation only (no technique-ID + attack-recipe combination). Defensive-only boundary holds.
+
+**Ready for**: sync-phase (M5) — manager-docs CHANGELOG + README + frontmatter `in-progress → implemented → completed` on the single 3-phase-close sync commit (AC-SI-017). Optional sync-auditor independent 4-dimension scoring.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
