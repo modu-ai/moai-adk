@@ -100,7 +100,7 @@ embedded_go_note: "no generated embedded.go artifact — internal/template/embed
 
 ```yaml
 sync_complete_at: 2026-06-23
-sync_commit_sha: <pending-backfill>   # backfilled in the 2nd close commit (orchestrator-direct sync 2-commit pattern)
+sync_commit_sha: 3d94ae271            # sync commit (REQ/AC amend + status completed + CHANGELOG); backfilled by the 2nd close commit (orchestrator-direct 2-commit pattern)
 sync_status: completed
 ac_pass_count_post_sync: 10           # AC-BGR-001..010 ALL PASS after the AC-BGR-004 amendment
 ac_disclosed_deviation_post_sync: 0   # the run-phase AC-BGR-004 deviation is RESOLVED by the sync-phase REQ/AC amendment (v0.2.0)
