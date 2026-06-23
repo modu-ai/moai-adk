@@ -6,29 +6,29 @@ metadata:
   phase: "Phase 5/6: Socratic Interview and meta-harness Invocation"
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 
 ## Phase 5: Socratic Interview (Harness Activation)
 
 Purpose: Conduct a 16-question / 4-round Socratic interview using `AskUserQuestion` to gather
 project context required by `moai-meta-harness`. Answers are accumulated in an in-memory buffer
-(no disk I/O) until Interview Phase 4 Q16 final confirmation (REQ-PH-001, REQ-PH-002, REQ-PH-010).
+(no disk I/O) until Round 4 Q16 final confirmation.
 
 [HARD] Each round is exactly one `AskUserQuestion` call with up to 4 questions (C-PH-003).
 [HARD] Each question's first option MUST be marked "(권장)" with a detailed description (C-PH-003).
 [HARD] All question text and option labels MUST be in conversation_language (default: ko) (C-PH-004).
-[HARD] No disk I/O until Interview Phase 4 Q16 "Confirm" answer is received (REQ-PH-010).
+[HARD] No disk I/O until Round 4 Q16 "Confirm" answer is received.
 
 In-Memory Buffer Protocol:
 - Maintain all 16 answers in memory across the 4 `AskUserQuestion` calls.
 - On "Confirm" (Q16): call `Buffer.Commit()`, then proceed to write `.moai/harness/interview-results.md`.
-- On "Restart" (Q16): clear the buffer and restart from Interview Phase 1.
+- On "Restart" (Q16): clear the buffer and restart from Round 1.
 - On "Abort" (Q16): call `Buffer.Abort()` — clears all answers, writes zero bytes to disk, and exits Phase 5.
 
 ---
 
-### Interview Phase 1: Q1–Q4 (도메인 / 기술스택 / 규모 / 팀구성)
+### Round 1: Q1–Q4 (도메인 / 기술스택 / 규모 / 팀구성)
 
 Present via `AskUserQuestion` — 4 questions, each with 4 options:
 
@@ -74,7 +74,7 @@ Present via `AskUserQuestion` — 4 questions, each with 4 options:
 
 ---
 
-### Interview Phase 2: Q5–Q8 (방법론 / 디자인툴 / UI복잡도 / 디자인시스템)
+### Round 2: Q5–Q8 (방법론 / 디자인툴 / UI복잡도 / 디자인시스템)
 
 Present via `AskUserQuestion` — 4 questions, each with 4 options:
 
@@ -85,7 +85,7 @@ Present via `AskUserQuestion` — 4 questions, each with 4 options:
 옵션:
 - (권장) TDD (테스트 주도 개발): 테스트 먼저 작성 후 구현. RED-GREEN-REFACTOR 사이클. 새 기능 개발에 최적.
 - DDD (도메인 주도 개발): 기존 코드베이스 리팩토링. ANALYZE-PRESERVE-IMPROVE 사이클. 레거시 코드에 최적.
-- Agile / Scrum: iteration 기반 반복 개발. 백로그 관리, 데일리 스탠드업, iteration 리뷰.
+- Agile / Scrum: 스프린트 기반 반복 개발. 백로그 관리, 데일리 스탠드업, 스프린트 리뷰.
 - 기타 (Kanban / Waterfall / Ad-hoc): 위 방법론에 해당하지 않는 경우 직접 기술.
 
 **Q6 — 디자인툴 (Design Tool)**
@@ -120,7 +120,7 @@ Present via `AskUserQuestion` — 4 questions, each with 4 options:
 
 ---
 
-### Interview Phase 3: Q9–Q12 (보안 / 성능 / 배포 / 외부통합)
+### Round 3: Q9–Q12 (보안 / 성능 / 배포 / 외부통합)
 
 Present via `AskUserQuestion` — 4 questions, each with 4 options:
 
@@ -166,7 +166,7 @@ Present via `AskUserQuestion` — 4 questions, each with 4 options:
 
 ---
 
-### Interview Phase 4: Q13–Q16 (customization 범위 / 특수제약 / 우선순위 / 최종확인)
+### Round 4: Q13–Q16 (customization 범위 / 특수제약 / 우선순위 / 최종확인)
 
 Present via `AskUserQuestion` — 4 questions, each with 4 options:
 
@@ -178,7 +178,7 @@ Present via `AskUserQuestion` — 4 questions, each with 4 options:
 - (권장) 표준 (Standard): 도메인 특화 에이전트 2개 + 스킬 2개. 대부분의 프로젝트에 충분. moai-meta-harness가 답변 기반으로 최적 구성 자동 생성.
 - 경량 (Minimal): 도메인 특화 스킬 1개만. 가장 빠른 setup. MVP 또는 소규모 프로젝트에 적합.
 - 심화 (Thorough): 에이전트 3개 이상 + 스킬 3개 이상 + design-extension 포함. 복잡한 도메인에 최적.
-- 전체 커스텀 (Advanced / full custom): 모든 요소를 완전 커스텀. design-extension.md 추가 생성 (REQ-PH-012). 고급 사용자용.
+- 전체 커스텀 (Advanced / full custom): 모든 요소를 완전 커스텀. design-extension.md 추가 생성. 고급 사용자용.
 
 **Q14 — 특수제약 (Special Constraints)**
 
@@ -206,13 +206,13 @@ Present via `AskUserQuestion` — 4 questions, each with 4 options:
 
 옵션:
 - (권장) Confirm — 생성 진행: 모든 답변을 확인했습니다. `.moai/harness/interview-results.md`에 결과를 기록하고 Phase 6 (meta-harness 호출)으로 진행합니다.
-- Restart — 처음부터 다시: Interview Phase 1부터 인터뷰를 다시 시작합니다. 이전 답변은 모두 초기화됩니다.
-- Abort — 취소: 인터뷰를 중단합니다. 어떠한 파일도 생성되지 않습니다 (REQ-PH-010).
+- Restart — 처음부터 다시: Round 1부터 인터뷰를 다시 시작합니다. 이전 답변은 모두 초기화됩니다.
+- Abort — 취소: 인터뷰를 중단합니다. 어떠한 파일도 생성되지 않습니다.
 
 **Q16 Branch Logic:**
 - "Confirm" → `Buffer.Commit()` 호출 → `.moai/harness/interview-results.md` 작성 → Phase 6 (meta-harness)으로 진행.
-- "Restart" → `Buffer.Abort()` 후 `NewBuffer()` → Interview Phase 1부터 재시작.
-- "Abort" → `Buffer.Abort()` 호출 → 디스크에 0 파일 작성 → Phase 5 종료 (zero disk writes, REQ-PH-010).
+- "Restart" → `Buffer.Abort()` 후 `NewBuffer()` → Round 1부터 재시작.
+- "Abort" → `Buffer.Abort()` 호출 → 디스크에 0 파일 작성 → Phase 5 종료 (zero disk writes).
 
 ---
 
@@ -220,18 +220,18 @@ Present via `AskUserQuestion` — 4 questions, each with 4 options:
 
 Purpose: Call `Skill("moai-meta-harness")` with the 16 answers collected in Phase 5,
 generating project-specific dynamic harness artifacts in the user area
-(REQ-PH-004, T-P2-01).
+(internal provenance omitted).
 
 [HARD] This phase MUST run the FROZEN guard (`EnsureAllowed`) as the **first check**
 before any write attempt. Paths in `.claude/agents/{moai,harness}/`, `.claude/skills/moai-*/`,
 or `.claude/rules/moai/` are permanently FROZEN and must be rejected immediately.
 
 [HARD] If meta-harness generation fails mid-way, `CleanupOnFailure` MUST remove all
-partial artifacts written so far (REQ-PH-010).
+partial artifacts written so far.
 
 ### 6.1 Pre-Condition
 
-- Phase 5 Interview Phase 4 Q16 answer is "Confirm" → `Buffer.Commit()` has been called.
+- Phase 5 Round 4 Q16 answer is "Confirm" → `Buffer.Commit()` has been called.
 - `.moai/harness/interview-results.md` has been written by `WriteResultsToFile`.
 
 ### 6.2 Answer-to-Context Schema
@@ -242,25 +242,25 @@ Convert the 16 in-memory answers to a structured prompt context before invoking
 ```yaml
 # Answer-to-context schema (YAML form)
 context:
-  # Interview Phase 1 — Domain & Technology
+  # Round 1 — Domain & Technology
   domain:            # Q01 answer text (e.g., "모바일 (iOS)")
   tech_stack:        # Q02 answer text (e.g., "Swift + SwiftUI")
   project_scale:     # Q03 answer text (e.g., "MVP (1-3 모듈, 단기)")
   team_composition:  # Q04 answer text (e.g., "솔로 개발자")
 
-  # Interview Phase 2 — Methodology & Design
+  # Round 2 — Methodology & Design
   methodology:       # Q05 answer text (e.g., "TDD")
   design_tool:       # Q06 answer text (e.g., "Figma")
   ui_complexity:     # Q07 answer text (e.g., "표준 (목록 + 폼 + 네비게이션)")
   design_system:     # Q08 answer text (e.g., "커스텀 DTCG 토큰")
 
-  # Interview Phase 3 — Security, Performance, Deployment
+  # Round 3 — Security, Performance, Deployment
   security:          # Q09 answer text (e.g., "강화 보안 (OAuth + Keychain / Secure Enclave)")
   performance:       # Q10 answer text (e.g., "일반 UI 반응성 (60fps, <200ms)")
   deployment:        # Q11 answer text (e.g., "앱 스토어 (App Store / Google Play)")
   integrations:      # Q12 answer text (e.g., "플랫폼 API (HealthKit / Maps / Push)")
 
-  # Interview Phase 4 — Customization & Final Confirmation
+  # Round 4 — Customization & Final Confirmation
   customization_scope: # Q13 answer text (e.g., "표준 (Standard)")
   special_constraints: # Q14 answer text (e.g., "최소 OS 버전 (iOS 17+ / Android 12+ 등)")
   harness_level:       # Q15 answer text (e.g., "standard")

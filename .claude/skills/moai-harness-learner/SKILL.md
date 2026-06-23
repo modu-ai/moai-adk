@@ -11,10 +11,10 @@ user-invocable: false
 
 # moai-harness-learner
 
-<!-- @MX:NOTE: [AUTO] V3R4 contract — this skill body is preserved unchanged per SPEC-V3R4-HARNESS-001 §10 exclusion #10 (text annotation only, no behavioral change). The 4-tier observation/heuristic/rule/auto_update ladder defined here is preserved verbatim under REQ-HRN-FND-011. The orchestrator-only AskUserQuestion contract is asserted by REQ-HRN-FND-015 (cross-reference: .claude/rules/moai/core/agent-common-protocol.md § User Interaction Boundary). The downstream replacement of the frequency-count classifier with an embedding-cluster algorithm is deferred to SPEC-V3R4-HARNESS-003. -->
+<!-- @MX:NOTE: [AUTO] V3R4 contract — this skill body is preserved unchanged per the harness foundation policy §10 exclusion #10 (text annotation only, no behavioral change). The 4-tier observation/heuristic/rule/auto_update ladder defined here is preserved verbatim under REQ-HRN-FND-011. The orchestrator-only AskUserQuestion contract is asserted by REQ-HRN-FND-015 (cross-reference: .claude/rules/moai/core/agent-common-protocol.md § User Interaction Boundary). The downstream replacement of the frequency-count classifier with an embedding-cluster algorithm is deferred to the harness classifier-upgrade policy. -->
 
-Coordinator skill for the Harness Learning Subsystem (SPEC-V3R3-HARNESS-LEARNING-001, superseded by SPEC-V3R4-HARNESS-001 as the active V3R4 foundation; this V3R3 SPEC's 4-tier ladder is preserved unchanged).
-Produces Tier 4 auto-update proposal payloads consumed by the MoAI orchestrator; the orchestrator surfaces them to the user via AskUserQuestion and orchestrates Apply/Rollback flows. Canonical contract: `.claude/rules/moai/core/askuser-protocol.md § Orchestrator-Subagent Boundary` (CONST-V3R5-001/002/003).
+Coordinator skill for the Harness Learning Subsystem (the harness-learning policy, superseded by the harness foundation policy as the active V3R4 foundation; this V3R3 SPEC's 4-tier ladder is preserved unchanged).
+Produces Tier 4 auto-update proposal payloads consumed by the MoAI orchestrator; the orchestrator surfaces them to the user via AskUserQuestion and orchestrates Apply/Rollback flows. Canonical contract: `.claude/rules/moai/core/askuser-protocol.md § Orchestrator-Subagent Boundary` (the constitutional rule/002/003).
 
 ## Quick Reference
 
@@ -69,7 +69,7 @@ The command outputs a JSON block with:
 
 [HARD] This skill produces a structured payload representing the Tier 4 auto-update proposal; the MoAI orchestrator surfaces it via `AskUserQuestion`. Canonical contract: `.claude/rules/moai/core/askuser-protocol.md § Orchestrator-Subagent Boundary`.
 
-**Payload schema** (REQ-HLF-002):
+**Payload schema**:
 
 - `proposal_id` — proposal identifier
 - `target_path` — file to be modified

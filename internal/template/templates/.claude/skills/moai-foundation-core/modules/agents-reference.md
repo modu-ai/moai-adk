@@ -270,7 +270,7 @@ The following skills are organized for token efficiency and domain specializatio
 | Workflow | moai-workflow-spec, moai-workflow-project, moai-workflow-testing, moai-workflow-jit-docs | Workflow automation and testing |
 | Domain | moai-domain-backend, moai-domain-frontend, moai-domain-database, moai-domain-uiux | Domain expertise patterns |
 
-Language Rules Selection Guide (auto-loaded via paths frontmatter, per SPEC-V3R2-WF-005):
+Language Rules Selection Guide (auto-loaded via paths frontmatter, per the language-as-rules policy):
 
 | Language Rule | Coverage | Auto-loads When |
 |---------------|----------|-----------------|
@@ -286,7 +286,7 @@ Platform Skills Selection Guide:
 |----------------|-----------|----------|
 | moai-platform-database | Supabase, Neon, Convex, Firestore | Database platform integration |
 
-Note: Language guidance lives in rules (`.claude/rules/moai/languages/*.md`), not skills. These rules auto-load via paths frontmatter when project files match. See SPEC-V3R2-WF-005 for the canonical decision.
+Note: Language guidance lives in rules (`.claude/rules/moai/languages/*.md`), not skills. These rules auto-load via paths frontmatter when project files match. See the language-as-rules policy for the canonical decision.
 
 ---
 

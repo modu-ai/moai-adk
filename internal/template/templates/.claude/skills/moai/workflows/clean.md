@@ -41,9 +41,9 @@ Flow: Static Analysis -> Usage Graph -> Classification -> Safe Removal -> Test V
 
 ## Pipeline Contract (Agentless Classification)
 
-<!-- @MX:NOTE - Agentless classification per SPEC-V3R2-WF-004; localize→repair→validate contract. See spec-workflow.md#subcommand-classification. -->
+<!-- @MX:NOTE - Agentless fixed-pipeline classification; localize→repair→validate contract. See spec-workflow.md#subcommand-classification. -->
 
-This subcommand is classified as **Agentless fixed-pipeline** per SPEC-V3R2-WF-004.
+This subcommand is classified as **Agentless fixed-pipeline**.
 It executes a deterministic 3-phase contract: **localize → repair → validate**.
 
 - **Phase mapping**: localize ← Phase 1+2; repair ← Phase 4; validate ← Phase 5+5.5
@@ -145,7 +145,7 @@ If --dry flag: Display analysis results and exit without removing anything.
 
 ## Phase 4: Safe Removal
 
-<!-- @MX:WARN @MX:REASON - Phase 4 delegates to a per-spawn general-purpose refactoring specialist for the *executor* role. Do NOT extend this delegation to choose between Phase 4 and Phase 5; that would violate REQ-WF004-004. -->
+<!-- @MX:WARN @MX:REASON - Phase 4 delegates to a per-spawn general-purpose refactoring specialist for the *executor* role. Do NOT extend this delegation to choose between Phase 4 and Phase 5; that would violate the agentless-pipeline contract. -->
 
 [HARD] Delegate removal to a per-spawn `Agent(general-purpose)` refactoring specialist.
 

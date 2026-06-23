@@ -121,4 +121,4 @@ This is intentionally approximate. AST-level precision is not required for taggi
 ---
 
 Version: 2.5.0
-Source: SPEC-MX-001
+Source: the MX tag protocol

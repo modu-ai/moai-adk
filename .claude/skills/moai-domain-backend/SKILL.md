@@ -189,7 +189,7 @@ Maintained by: MoAI-ADK Backend Team
 ## Refactor Notes
 
 **R4 audit verdict** (2026-04-23): REFACTOR — narrow to "API design decision matrix" focused content
-**SPEC**: SPEC-V3R2-WF-001 §6.2 line 261
+**SPEC**: (internal provenance omitted)
 **Refactor scope** (deferred to future sub-SPEC):
 - Narrow body to API design decision matrix (REST vs GraphQL vs tRPC vs gRPC)
 - Extract language-specific implementation details into Level-3 modules

@@ -172,7 +172,7 @@ Detailed Reference: Refer to Integration Patterns Module at modules/integration-
 
 Purpose: Launch a Claude or GLM session inside a freshly created worktree based on the current environment (no user prompt).
 
-The `--team` flag on `moai worktree new <SPEC-ID>` decides which launch pattern to apply from observable state only. The decision is fully deterministic per BODP (see CONST-V3R5-030 / `.claude/rules/moai/workflow/branch-origin-protocol.md`). The CLI never invokes AskUserQuestion — all four launch patterns are selected from environment signals.
+The `--team` flag on `moai worktree new <SPEC-ID>` decides which launch pattern to apply from observable state only. The decision is fully deterministic per BODP (see the constitutional rule / `.claude/rules/moai/workflow/branch-origin-protocol.md`). The CLI never invokes AskUserQuestion — all four launch patterns are selected from environment signals.
 
 Decision Matrix (4 Canonical Patterns):
 
@@ -190,7 +190,7 @@ CG mode is true if and only if all three conditions hold:
 - `.claude/settings.local.json` `teammateMode` equals `"tmux"`
 - The current tmux session env contains either `ANTHROPIC_AUTH_TOKEN` OR `ANTHROPIC_BASE_URL` that includes `z.ai`
 
-If `teammateMode == "tmux"` but no GLM env vars are present (a drift case after credential rotation), the CLI emits a stderr warning per REQ-WTL-009 and falls back to P2 (Claude).
+If `teammateMode == "tmux"` but no GLM env vars are present (a drift case after credential rotation), the CLI emits a stderr warning per the relevant requirement and falls back to P2 (Claude).
 
 > **Note — two distinct `teammateMode` fields.** The `teammateMode` in this detection logic is MoAI's own `.claude/settings.local.json` launcher-selection field (`"tmux"` / `"glm"` / `"claude"`). It is SEPARATE from the Claude Code runtime `teammateMode` setting, whose default changed from `auto` to `in-process` as of Claude Code v2.1.179 — with the in-process default, split panes no longer auto-open. As of Claude Code v2.1.181, an idle teammate's agent-panel row hides after 30 seconds and reappears on the next turn. The CC-runtime setting governs teammate display; MoAI's field selects the `--team` launcher. They share the name `teammateMode` but are different settings.
 

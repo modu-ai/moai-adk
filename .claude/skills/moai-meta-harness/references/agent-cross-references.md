@@ -27,7 +27,7 @@ This skill orchestrates but does NOT replace existing agents. All agents referen
 
 ## Workflow Managers
 
-- `manager-develop` (`cycle_type=ddd` or `cycle_type=tdd` per `.moai/config/sections/quality.yaml` `development_mode`) — DDD or TDD-flavored harness workflow templates (SPEC-V3R3-RETIRED-DDD-001 M3 consolidated the prior DDD and TDD specialist managers into the unified `manager-develop` agent with cycle-type dispatch)
+- `manager-develop` (`cycle_type=ddd` or `cycle_type=tdd` per `.moai/config/sections/quality.yaml` `development_mode`) — DDD or TDD-flavored harness workflow templates (the retired-DDD policy M3 consolidated the prior DDD and TDD specialist managers into the unified `manager-develop` agent with cycle-type dispatch)
 - `manager-quality` — Quality gate configuration in generated harnesses
 - `manager-docs` — Documentation generation patterns
 - `manager-git` — Git workflow patterns for generated harnesses

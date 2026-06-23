@@ -6,7 +6,7 @@ metadata:
   phase: "Phase 0: Context Loading and Mode Dispatch"
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 <!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai run Phase <N> <enter|exit> -->
 
@@ -32,9 +32,9 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 
 ## Mode Dispatch (Multi-Mode Router)
 
-<!-- @MX:NOTE - Multi-Mode Router per SPEC-V3R2-WF-003 REQ-WF003-001..018; --mode {autopilot,loop,team,pipeline} dispatch with harness-based default. See spec-workflow.md#mode-dispatch-cross-reference. -->
+<!-- @MX:NOTE - Multi-Mode Router per the mode-dispatch policy; --mode {autopilot,loop,team,pipeline} dispatch with harness-based default. See spec-workflow.md#mode-dispatch-cross-reference. -->
 
-Per SPEC-V3R2-WF-003, `/moai run` participates in the `--mode` axis with 4 valid values: `autopilot`, `loop`, `team`, `pipeline`. Each value selects a distinct execution style.
+`/moai run` participates in the `--mode` axis with 4 valid values: `autopilot`, `loop`, `team`, `pipeline`. Each value selects a distinct execution style.
 
 ### Mode Values
 
@@ -45,7 +45,7 @@ Per SPEC-V3R2-WF-003, `/moai run` participates in the `--mode` axis with 4 valid
 
 ### Mode Resolver
 
-Precedence order (REQ-WF003-018, hard-coded):
+Precedence order (hard-coded):
 
 1. CLI flag `--mode <value>` — highest priority. Wins regardless of config / harness.
 2. Config field `workflow.default_mode` in `.moai/config/sections/workflow.yaml` — used when CLI flag is absent.
@@ -53,7 +53,7 @@ Precedence order (REQ-WF003-018, hard-coded):
 
 Pseudocode:
 
-<!-- @MX:WARN - Mode resolver validation sensitive to new mode value additions. REQ-WF003-018 lock-in. @MX:REASON - Expanding the mode set without updating validation set breaks runtime error path. -->
+<!-- @MX:WARN - Mode resolver validation sensitive to new mode value additions. Mode-set lock-in. @MX:REASON - Expanding the mode set without updating validation set breaks runtime error path. -->
 ```
 mode = cli_mode_flag or config.workflow.default_mode or harness_auto_select(harness_level)
 if mode not in {autopilot, loop, team, pipeline}:
@@ -64,11 +64,11 @@ if mode == team and not (workflow.team.enabled and CLAUDE_CODE_EXPERIMENTAL_AGEN
     if cli_mode_flag == team:                      # explicit request
         emit MODE_TEAM_UNAVAILABLE suggesting --mode autopilot; abort
     else:                                          # harness auto-selected team
-        log [mode-auto-downgrade] info; mode = autopilot  # silent downgrade per REQ-WF003-012
+        log [mode-auto-downgrade] info; mode = autopilot  # silent downgrade per the relevant requirement
 dispatch(mode)
 ```
 
-### Harness-Based Default Selection (REQ-WF003-002, REQ-WF003-003)
+### Harness-Based Default Selection
 
 | Harness level | Team prerequisites | Default mode |
 |---------------|--------------------|--------------|
@@ -140,7 +140,7 @@ Before execution, load these essential files:
 
 Pre-execution commands: git status, git branch, git log, git diff.
 
-### Lessons Loading (REQ-SLQG-013)
+### Lessons Loading
 
 Before spawning implementation agents, load relevant lessons from auto-memory:
 

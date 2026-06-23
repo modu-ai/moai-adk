@@ -8,7 +8,7 @@ Parent: [spec-first-ddd.md](spec-first-ddd.md)
 
 > **DEPRECATED in v3.0.0**: This document describes legacy EARS notation.
 >
-> For NEW SPECs, use GEARS notation per the [docs-site GEARS migration guide](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation) (4-locale: en / ko / ja / zh).
+> For NEW SPECs, use GEARS notation per the [docs-site GEARS migration guide](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation).
 >
 > Backward-compatibility for legacy EARS REQs is supported for 6 months from v3.0.0 release. The lint engine emits a `LegacyEARSKeyword` warning on residual `IF/THEN` modality in NEW SPECs per the canonical GEARS migration policy.
 >

@@ -1,6 +1,6 @@
 # Phase 3b — HRN-003 Hierarchical Scoring
 
-When `harness.yaml` sets `evaluator_mode: hierarchical` (SPEC-V3R2-HRN-003), the Sprint Contract evaluation uses 4-dimension × sub-criteria hierarchical scoring instead of flat 0-100 integers.
+When `harness.yaml` sets `evaluator_mode: hierarchical` (the hierarchical-scoring policy), the Sprint Contract evaluation uses 4-dimension × sub-criteria hierarchical scoring instead of flat 0-100 integers.
 
 ## Flat Mode vs Hierarchical Mode
 

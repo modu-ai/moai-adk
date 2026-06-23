@@ -209,5 +209,5 @@ When testimonials or case study data are available in brand context:
 ---
 
 Source: Absorbed from the retired v2.x `*-copywriting` capability v3.2.0 per the copywriting absorption policy.
-REQ coverage: REQ-SKILL-001, REQ-SKILL-002, REQ-SKILL-003
+REQ coverage: (internal provenance omitted)
 Version: 1.0.0

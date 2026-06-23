@@ -68,16 +68,16 @@ progressive_disclosure:
 > active workflow. The revfactory 7-Phase residual grep excludes this body
 > precisely because it IS the redirect source.
 
-<!-- @MX:NOTE: [AUTO] V3R4 contract SUPERSEDED — the original V3R4 contract preserved this skill body unchanged per SPEC-V3R4-HARNESS-001 §10 exclusion #10 (text annotation only, no behavioral change). That contract is hereby EXPLICITLY SUPERSEDED by the v4 harness redesign: the body is converted to a v4 redirect. Rationale for supersession: (1) the V3R4 contract protected against behavioral change, but v4 IS a deliberate behavioral change — the 7-Phase workflow is retired in favor of the orchestrator-direct Builder + manifest-driven Runner; (2) preserving the body unchanged would leave a dead-path 7-Phase workflow that contradicts the v4 design; (3) the AskUserQuestion-only contract (REQ-HRN-FND-015) is itself preserved verbatim under v4 — any generated subagent under .claude/agents/harness/ still MUST NOT invoke AskUserQuestion (this is reaffirmed, not weakened). The supersession is narrow: the 7-Phase workflow is retired; the AskUserQuestion boundary + namespace separation + Apache-2.0 attribution are all preserved. Cross-reference: the v4 design's Migration Path (revfactory 7-Phase -> v4 mapping) in the companion harness-builder.md workflow. -->
+<!-- @MX:NOTE: [AUTO] V3R4 contract SUPERSEDED — the original V3R4 contract preserved this skill body unchanged per the harness foundation policy §10 exclusion #10 (text annotation only, no behavioral change). That contract is hereby EXPLICITLY SUPERSEDED by the v4 harness redesign: the body is converted to a v4 redirect. Rationale for supersession: (1) the V3R4 contract protected against behavioral change, but v4 IS a deliberate behavioral change — the 7-Phase workflow is retired in favor of the orchestrator-direct Builder + manifest-driven Runner; (2) preserving the body unchanged would leave a dead-path 7-Phase workflow that contradicts the v4 design; (3) the AskUserQuestion-only contract (REQ-HRN-FND-015) is itself preserved verbatim under v4 — any generated subagent under .claude/agents/harness/ still MUST NOT invoke AskUserQuestion (this is reaffirmed, not weakened). The supersession is narrow: the 7-Phase workflow is retired; the AskUserQuestion boundary + namespace separation + Apache-2.0 attribution are all preserved. Cross-reference: the v4 design's Migration Path (revfactory 7-Phase -> v4 mapping) in the companion harness-builder.md workflow. -->
 
 <!-- ATTRIBUTION
 Original work: revfactory/harness (https://github.com/revfactory/harness)
 License: Apache License 2.0
 Adaptations: 7-Phase workflow integrated with MoAI agent ecosystem (manager-*, expert-*, sync-auditor)
-NOTICE: This file contains modifications. See SPEC-V3R3-HARNESS-001 for derivation history. The 7-Phase workflow below is superseded by the v4 Builder; it is retained as the redirect source for backward-compat.
+NOTICE: This file contains modifications. See the harness policy for derivation history. The 7-Phase workflow below is superseded by the v4 Builder; it is retained as the redirect source for backward-compat.
 -->
 
-> **Apache 2.0 Attribution**: Adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache License 2.0). The 7-Phase workflow below is a MoAI adaptation of the upstream 6-Phase + Evolution Mechanism. See `.claude/rules/moai/NOTICE.md` for the full third-party notices and SPEC-V3R3-HARNESS-001 for derivation history. **The v4 Builder (the replacement) is documented in `.claude/skills/moai/workflows/harness-builder.md`.**
+> **Apache 2.0 Attribution**: Adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache License 2.0). The 7-Phase workflow below is a MoAI adaptation of the upstream 6-Phase + Evolution Mechanism. See `.claude/rules/moai/NOTICE.md` for the full third-party notices and the harness policy for derivation history. **The v4 Builder (the replacement) is documented in `.claude/skills/moai/workflows/harness-builder.md`.**
 
 ---
 
@@ -122,7 +122,7 @@ Meta-factory skill that architects and generates project-specific agent teams. A
 ### When to Use
 
 - `/moai project` Phase 5+ runs and detects an absent `.moai/harness/main.md`
-- CLAUDE.md contains `<!-- moai:harness-start -->` markers (installed by SPEC-V3R3-PROJECT-HARNESS-001, not this skill)
+- CLAUDE.md contains `<!-- moai:harness-start -->` markers (installed by the project-harness generation policy, not this skill)
 - User explicitly requests harness generation for their project domain
 
 ### Key Outputs
@@ -161,13 +161,13 @@ Each MoAI phase maps to upstream revfactory/harness phases (ref: https://github.
 
 ### Phase Summaries
 
-- Phase 1 (Discovery): `manager-spec` conducts 16-question Socratic interview (owned by SPEC-V3R3-PROJECT-HARNESS-001). Output: `.moai/harness/answers.yaml`
+- Phase 1 (Discovery): `manager-spec` conducts 16-question Socratic interview (owned by the project-harness generation policy). Output: `.moai/harness/answers.yaml`
 - Phase 2 (Analysis): `manager-spec` + `manager-strategy` scan repo (file structure, existing agents/skills, dependency files, test coverage)
 - Phase 3 (Synthesis): `manager-spec` produces SPEC with EARS requirements selecting one of 6 architectural patterns, defining agent roles, skill categories, acceptance criteria
 - Phase 4 (Skeleton): This skill generates harness skeleton — main.md, agents.md, skills.md extensions, agent definition stubs
 - Phase 5 (Customization): This skill fills the skeleton with domain-specific content referencing existing MoAI agents (manager-*, expert-*, builder-harness, sync-auditor)
 - Phase 6 (Evaluation): `sync-auditor` runs Sprint Contract protocol (design constitution §11.5) — 4 dimensions, pass threshold 0.75 (FROZEN floor 0.60)
-- Phase 7 (Iteration): Owned by SPEC-V3R3-HARNESS-LEARNING-001 (out of scope for this skill)
+- Phase 7 (Iteration): Owned by the harness-learning policy (out of scope for this skill)
 
 See [Phase 1-7 detailed walkthrough + agent involvement](references/seven-phase-workflow.md) for full per-phase activity, inputs, outputs, and cross-reference notes.
 
@@ -198,7 +198,7 @@ After Phase 5 (Customization) emits new `harness-*` skills, this meta-harness au
 
 For Phase 3b — HRN-003 Hierarchical Scoring (when `harness.yaml` sets `evaluator_mode: hierarchical`), see [HRN-003 hierarchical scoring detail](references/hrn-003-hierarchical-scoring.md).
 
-**Design Target Reference**: The +60% effectiveness figure from Hwang (2026) — 49.5 → 79.3 in a 15-run A/B study (author-measured, third-party replications pending) — is the design intent for this validation hook. REQ-HARNESS-009 explicitly states this REQ does not require runtime measurement.
+**Design Target Reference**: The +60% effectiveness figure from Hwang (2026) — 49.5 → 79.3 in a 15-run A/B study (author-measured, third-party replications pending) — is the design intent for this validation hook. The governing requirement explicitly states this does not require runtime measurement.
 
 ---
 
@@ -229,7 +229,7 @@ User-generated artifacts:
 - [HARD] `moai update` MUST NOT delete, modify, or sync `harness-*` skills or `.claude/agents/harness/*` files. Backup before update is mandatory.
 - [HARD] Template (`internal/template/templates/`) MUST NOT contain `harness-*` skills or `.claude/agents/harness/*-specialist.md` files. Leak detection triggers cleanup chore.
 - [HARD] `harness-*` (user-owned) vs `moai-harness-*` (template builder) substring 구분: prefix 매칭은 정확한 startsWith 비교를 사용 (`*harness-*` substring 패턴은 false positive 위험으로 금지).
-- [HARD] Generator emits `harness-*` prefix ONLY (doctrine-code drift resolved by the namespace catch-up). Go enforcement (update.go / prefix_conflict.go / test fixtures) now recognizes `harness-*` as user-owned, with the legacy prefixed form retained during a backward-compat deprecation window. SSOT: the harness namespace separation policy (maintainer doctrine).
+- [HARD] Generator emits `harness-*` prefix ONLY. The build enforcement recognizes `harness-*` as user-owned, with the legacy prefixed form retained during a backward-compat deprecation window. SSOT: the harness namespace separation policy.
 
 ### Generated-Agent Self-Activation Contract
 
@@ -245,7 +245,7 @@ Both fields are enforced at runtime by the Phase-6 post-generation smoke gate (`
 | Namespace / Path | Location | Source | `moai update` 동작 |
 |------------------|----------|--------|---------------------|
 | `moai-*` skills (incl. `moai-harness-*` builders) | `.claude/skills/moai-*/` | template | 삭제 후 신규 설치 (overwrite) |
-| **`harness-*` skills** | `.claude/skills/harness-*/` | **user project (this meta-harness emits — intent declaration, actual emission deferred to catch-up SPEC)** | **절대 삭제/modify 금지 + 백업 보존** |
+| **`harness-*` skills** | `.claude/skills/harness-*/` | **user project (this meta-harness emits — intent declaration)** | **절대 삭제/modify 금지 + 백업 보존** |
 | MoAI agents (retained 7, FLAT) | `.claude/agents/moai/` | template | 삭제 후 신규 설치 (overwrite) |
 | **Generated harness agents** | `.claude/agents/harness/` | **user project (this meta-harness emits)** | **절대 삭제/modify 금지 + 백업 보존** |
 | Harness config | `.moai/harness/` | user project | 절대 삭제 금지 + 백업 보존 |
@@ -263,7 +263,7 @@ Both fields are enforced at runtime by the Phase-6 post-generation smoke gate (`
 **Auto-load Conditions**:
 
 1. `/moai project` Phase 5+ runs and `.moai/harness/main.md` is absent
-2. CLAUDE.md contains `<!-- moai:harness-start -->` markers. These markers are installed by SPEC-V3R3-PROJECT-HARNESS-001 during project initialization; this skill does not install them.
+2. CLAUDE.md contains `<!-- moai:harness-start -->` markers. These markers are installed by the project-harness generation policy during project initialization; this skill does not install them.
 
 **Frontmatter Triggers**:
 
@@ -275,7 +275,7 @@ This skill loads when any of the following match:
 
 **Deferred Execution Contract**:
 
-This skill provides the workflow recipe and agent cross-references. It does NOT execute `/moai project` Phase 5+ logic — that invocation is owned by SPEC-V3R3-PROJECT-HARNESS-001. The separation is intentional:
+This skill provides the workflow recipe and agent cross-references. It does NOT execute `/moai project` Phase 5+ logic — that invocation is owned by the project-harness generation policy. The separation is intentional:
 
 - This skill = capability (what to do and how)
 - PROJECT-HARNESS-001 = invocation wiring (when to do it)
@@ -286,9 +286,9 @@ This skill provides the workflow recipe and agent cross-references. It does NOT 
 
 The following capabilities are explicitly NOT implemented by this skill:
 
-- **5-layer integration mechanism** — owned by SPEC-V3R3-PROJECT-HARNESS-001. The integration with `/moai project` phases, hook installation, and CLAUDE.md marker management are all delegated to that SPEC.
-- **16-question Socratic interview** — owned by SPEC-V3R3-PROJECT-HARNESS-001. The `manager-spec` conducts the interview under that SPEC's control.
-- **Auto-evolution loop** — owned by SPEC-V3R3-HARNESS-LEARNING-001. The learning feedback mechanism (Phase 7) and delta capture are separate work items outside Wave A.
+- **5-layer integration mechanism** — owned by the project-harness generation policy. The integration with `/moai project` phases, hook installation, and CLAUDE.md marker management are all delegated to that SPEC.
+- **16-question Socratic interview** — owned by the project-harness generation policy. The `manager-spec` conducts the interview under that SPEC's control.
+- **Auto-evolution loop** — owned by the harness-learning policy. The learning feedback mechanism (Phase 7) and delta capture are separate work items outside Wave A.
 - **Modification of `.claude/agents/{moai,harness}/` or static `moai-*` skills** — this meta-harness generates only `harness-*` prefixed artifacts and has no write access to MoAI's own agent/skill directories.
 
 ---
@@ -303,5 +303,5 @@ The following capabilities are explicitly NOT implemented by this skill:
 
 ---
 
-*Upstream: revfactory/harness (Apache-2.0) | MoAI adaptation: SPEC-V3R3-HARNESS-001 | v4 supersession: the v4 harness Builder redesign*
+*Upstream: revfactory/harness (Apache-2.0) | MoAI adaptation: the harness policy | v4 supersession: the v4 harness Builder redesign*
 *See `.claude/rules/moai/NOTICE.md` for full Apache 2.0 attribution.*

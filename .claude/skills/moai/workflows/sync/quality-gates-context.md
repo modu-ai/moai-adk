@@ -6,7 +6,7 @@ metadata:
   phase: "Phase 0: Pre-Sync Context and Deployment Readiness"
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 <!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
 
@@ -31,10 +31,10 @@ Synchronize documentation with code changes, verify project quality, and finaliz
 
 ## Mode Flag Compatibility
 
-Per SPEC-V3R2-WF-003 REQ-WF003-005 and SPEC-V3R2-WF-004:
+Per the subcommand-classification contract:
 
 - This subcommand is multi-agent (open-ended) but does NOT participate in the
-  `--mode {autopilot|loop|team}` axis defined in SPEC-V3R2-WF-003.
+  `--mode {autopilot|loop|team}` axis.
 - Any `--mode` value supplied to `/moai sync` is silently ignored. The sync workflow
   proceeds with its default behavior.
 - The `pipeline` value is the only special case: passing `--mode pipeline` triggers

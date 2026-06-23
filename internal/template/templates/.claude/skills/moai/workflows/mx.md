@@ -59,9 +59,9 @@ For tag types, lifecycle rules, mandatory fields, and per-file limits, see: .cla
 
 ## Pipeline Contract (Agentless Classification)
 
-<!-- @MX:NOTE - Agentless classification per SPEC-V3R2-WF-004; localize→repair→validate contract. See spec-workflow.md#subcommand-classification. -->
+<!-- @MX:NOTE - Agentless fixed-pipeline classification; localize→repair→validate contract. See spec-workflow.md#subcommand-classification. -->
 
-This subcommand is classified as **Agentless fixed-pipeline** per SPEC-V3R2-WF-004.
+This subcommand is classified as **Agentless fixed-pipeline**.
 It executes a deterministic 3-phase contract: **localize → repair → validate**.
 
 - **Phase mapping**: localize ← Pass 1+2; repair ← Pass 3; validate ← post-edit MX scan
@@ -238,4 +238,4 @@ During DDD ANALYZE phase:
 
 Version: 2.5.0
 Last Updated: 2026-02-22
-Source: SPEC-MX-001
+Source: the MX tag protocol

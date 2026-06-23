@@ -131,7 +131,7 @@ The Leader creates the SPEC document using Claude's reasoning capabilities.
 ### Phase 0.5: Plan Audit Gate
 
 **Purpose**: Mandatory independent audit of plan artifacts before any teammate is spawned.
-Source: SPEC-WF-AUDIT-GATE-001 REQ-WAG-005.
+Source: the plan audit gate contract.
 
 **Team mode rules**:
 - Gate executes in the **main session (Leader)** only — not inside any teammate

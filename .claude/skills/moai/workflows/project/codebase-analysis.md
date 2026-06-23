@@ -6,7 +6,7 @@ metadata:
   phase: "Phase 1/1.5/2: Codebase Analysis and User Confirmation"
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 
 ## Phase 1: Codebase Analysis (Existing Projects Only)
@@ -47,7 +47,7 @@ Purpose: After codebase analysis, gather user intent and context that cannot be 
 
 **Interview Rounds (3 rounds maximum, configured in `.moai/config/sections/interview.yaml`):**
 
-**Interview Phase 1: Ownership and Purpose**
+**Round 1: Ownership and Purpose**
 
 Topic: Who maintains this project and what is the primary goal going forward?
 
@@ -57,7 +57,7 @@ Present via AskUserQuestion with exactly 4 options based on Phase 1 detected pro
 - Option 3: System being refactored or migrated: Major structural changes are planned and documentation should reflect the target state.
 - Option 4: Type your own answer: Enter a custom response to describe the ownership context.
 
-**Interview Phase 2: Constraints and Non-Goals**
+**Round 2: Constraints and Non-Goals**
 
 Topic: What are the known constraints, technical debts, or things this project intentionally does NOT do?
 
@@ -67,7 +67,7 @@ Present via AskUserQuestion with exactly 4 options informed by Phase 1 analysis 
 - Option 3: Security or compliance constraints exist: Specific security requirements or compliance rules affect the architecture.
 - Option 4: Type your own answer: Describe the specific constraints or non-goals for this project.
 
-**Interview Phase 3: Documentation Priority**
+**Round 3: Documentation Priority**
 
 Topic: What is the most important aspect to capture accurately in the documentation?
 
@@ -82,15 +82,15 @@ Present via AskUserQuestion with exactly 4 options:
 ```
 # Project Interview
 
-## Interview Phase 1: Ownership and Purpose
+## Round 1: Ownership and Purpose
 Question: {question asked}
 Answer: {user's answer}
 
-## Interview Phase 2: Constraints and Non-Goals
+## Round 2: Constraints and Non-Goals
 Question: {question asked}
 Answer: {user's answer}
 
-## Interview Phase 3: Documentation Priority
+## Round 3: Documentation Priority
 Question: {question asked}
 Answer: {user's answer}
 ```

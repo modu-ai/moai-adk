@@ -30,9 +30,9 @@ progressive_disclosure:
   level2_tokens: 5000
 ---
 
-<!-- Verifies REQ-BRAIN-004: proposal.md contains SPEC Decomposition Candidates section with 2-10 entries -->
-<!-- Verifies REQ-BRAIN-011: NO tech-stack assumptions in proposal.md -->
-<!-- Verifies REQ-BRAIN-008: 16-language neutrality enforced at ideation layer -->
+<!-- Verifies: proposal.md contains SPEC Decomposition Candidates section with 2-10 entries -->
+<!-- Verifies: NO tech-stack assumptions in proposal.md -->
+<!-- Verifies: 16-language neutrality enforced at ideation layer -->
 
 <!-- @MX:ANCHOR: [AUTO] SPEC Decomposition Candidates grammar — canonical definition -->
 <!-- @MX:REASON: Consumed by /moai plan --from-brain (high fan_in). Grammar MUST remain stable across brain workflow versions. -->

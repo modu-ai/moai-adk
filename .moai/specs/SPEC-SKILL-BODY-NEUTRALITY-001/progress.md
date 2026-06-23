@@ -80,15 +80,67 @@ Local mirror synced byte-identical for all 12 edited files (REQ-SBN-011 / AC-SBN
 
 ### M3 — Part A CLASS2 Go-path purge (non-workflow skills) — COMPLETE
 
-(appended below as M3-M6 complete.)
+Generic-ized the 6 remaining real Go-impl paths in `moai-workflow-spec/SKILL.md` + `references/reference.md` (`internal/spec/lint.go` → the SPEC frontmatter lint rule), `moai-workflow-worktree/SKILL.md` (`internal/cli/worktree/team_launch.go` → the team-launch entry point), `moai-workflow-ci-loop/SKILL.md` (`internal/ciwatch/*.go`, `internal/cli/pr/watch.go` → the CI-watch helpers), `moai-workflow-design/SKILL.md` (`internal/design/dtcg/frozen_guard_test.go` → the DTCG frozen-guard CI test). AC-SBN-005 → 0. Mirror synced. (M2 and M3 committed together as f36eec41b.)
+
+### M4 — Part A CLASS3 purge: internal SPEC IDs + REQ tokens + 4-locale — COMPLETE
+
+- 4-locale (REQ-SBN-019): dropped the maintainer-facing "4-locale" annotation at all 4 §B.5 sites (`spec-ears-format.md`, `moai-workflow-spec/SKILL.md` ×2, `references/reference.md`), keeping the `adk.mo.ai.kr` URL. AC-SBN-019(a)=0, (b)=3 files preserved.
+- SPEC-V3R IDs (REQ-SBN-006): generic-ized all `SPEC-V3R[0-9]-*` / `CONST-V3R[0-9]-*` + named `SPEC-WF-AUDIT-GATE-001` / `SPEC-MX-001` to plain-language policy descriptions (e.g. `SPEC-V3R5-LATE-BRANCH-001` → "the late-branch opt-in policy", `SPEC-WF-AUDIT-GATE-001` → "the plan audit gate contract", `SPEC-MX-001` → "the MX tag protocol", harness SPEC IDs → "the harness foundation/learning/lifecycle policy"). AC-SBN-006(a)=0, (b)=0. Placeholders preserved (SPEC-AUTH-001 ×14).
+- REQ/AC tokens (REQ-SBN-007): generic-ized all `REQ-<PREFIX>-NNN` / `REQ-WF<NNN>-NNN` / `AC-<PREFIX>-NNN` in prose (parenthetical citations removed, range citations → "the relevant requirements", `Verifies REQ-X:` comments → `Verifies:`, `REQ coverage:` footers → "(internal provenance omitted)"). AC-SBN-007=0.
+- Recovered one perl byte-mode UTF-8 corruption: a `($1)` note-preservation substitution mangled an em-dash in `design.md:80` (`(— idempotency)` → `(idempotency)`); the file was re-validated as clean UTF-8 and the residual `## SPEC Reference` block REQ tokens (lines 5-6, 124) were then fixed with surgical Edits. All 50 edited template files verified valid UTF-8.
+
+### M5 — Part A CLASS4 purge: dev-only self-ref + maintainer doctrine — COMPLETE
+
+- Dev-only `99-release` (REQ-SBN-008): removed the `/moai:99-release` row from `moai-foundation-core/modules/INDEX.md` and the `/moai:99-release` note line from `moai/references/reference.md` (the 2 baseline hits on current tree — the plan's claimed 6 was 640-commit-stale; `commands-reference.md` already carried none, and `97-release-update` / "NOT distributed" were already 0). AC-SBN-008: all 3 greps → 0.
+- Maintainer doctrine (REQ-SBN-009): replaced the "catch-up SPEC" + "maintainer doctrine" + "doctrine-code drift" residue in `moai-meta-harness/SKILL.md` (lines 232, 248) with a generic namespace-separation statement. AC-SBN-009(a)=0, 2026-05-26=0, (b) `harness-*`/namespace policy still present (21 matches). The earlier `moai-meta-harness/SKILL.md:168` doctrine date the stale plan cited was already absent (640-commit drift).
+- `team/glm.md` deferred-site note: this file carries 0 leaks of any class on the current tree and was never modified by this run (the GLM WIP lives only in the main checkout, not in this worktree), so it is NOT a deferred site — no purge needed and no clobber risk.
+
+### M6 — Part B GREEN + finalize — COMPLETE
+
+- AC-SBN-016 [MUST-PASS]: `go test ./internal/template/ -run '^TestTemplateNoInternalContentLeak$'` → **ok** (GREEN). Full leak re-scan: C1(agentless)=0, C1b(SPEC-V3R)=0, C7(Go-path)=0, S3(REQ/AC)=0, 4-locale=0.
+- AC-SBN-017 recurrence backstop: `TestSkillBodyLeakClassRecurrenceBackstop` PASS (each new class fires on a re-leak, not on a clean replacement).
+- AC-SBN-018 partition guards: `TestLeakClassReqTokenPartition` + `TestLeakClassNoDateShaInDefaultTier` PASS.
+- AC-SBN-020 C7 restriction: `TestC7PackageRestriction` PASS.
+- CI wiring: `.github/workflows/template-neutrality-check.yaml` path filter already covers `internal/template/templates/.claude/skills/**` (via the `internal/template/templates/**` glob); added a `Run TestTemplateNoInternalContentLeak (isolated)` step + the leak-test file to the path-trigger list so the guard runs in CI.
+- Full verification batch: `go test ./internal/template/...` → ok; `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0; `go vet ./internal/template/...` → exit 0; `make build` → exit 0. Mirror byte-identical for all 50 edited files (AC-SBN-011).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_complete_at: PENDING
-run_commit_sha: PENDING
-run_status: in-progress
-ac_pass_count: PENDING
-ac_fail_count: PENDING
+run_complete_at: 2026-06-23
+run_commit_sha: <backfill — M4-M6 commit SHA>
+run_status: implemented
+ac_pass_count: 20
+ac_fail_count: 0
 m1_red_evidence: captured (185 occurrences, C6=6 files, C1b=101, C7=12, S3=131)
+m6_green_evidence: TestTemplateNoInternalContentLeak PASS; all leak classes 0
+cross_platform_build: { host: exit-0, windows_amd64: exit-0 }
+new_warnings_or_lints_introduced: false
+total_run_phase_files: 52 (50 skill template files + 50 mirror files share content; leak test + CI workflow + progress.md)
+m1_to_mN_commit_strategy: M1 (42499880a) / M2-M3 (f36eec41b) / M4-M6 (this commit)
 ```
+
+## §E.4 per-AC PASS evidence matrix
+
+| AC | Status | Verification | Result |
+|----|--------|--------------|--------|
+| AC-SBN-001 | PASS | `grep -rln agentless_audit_test $SK/` | 0 files |
+| AC-SBN-002 [MUST-PASS] | PASS | `go test -run 'Sentinel\|AgentlessControlFlow\|LoopAlias'` | ok; sentinels retained |
+| AC-SBN-003 | PASS | `grep MODE_* lines with REQ-WF` | 0 |
+| AC-SBN-004 | PASS | GOOS+cmd/moai=0; golangci@v2.1.6=0; placeholder=6 | PASS |
+| AC-SBN-005 | PASS | `grep internal/(spec\|cli\|hook\|ciwatch\|design)/...go` | 0 |
+| AC-SBN-006 | PASS | SPEC-V3R/CONST=0; named IDs=0 | PASS |
+| AC-SBN-007 | PASS | `grep REQ/AC tokens` | 0 |
+| AC-SBN-008 | PASS | 99-release=0; 97-release-update=0; NOT-distributed=0 | PASS |
+| AC-SBN-009 | PASS | doctrine=0; 2026-05-26=0; namespace present=21 | PASS |
+| AC-SBN-010 | PASS | SPEC-AUTH-001=14; illustrative paths present | preserved |
+| AC-SBN-011 | PASS | `diff` template vs mirror, 50 files | byte-identical |
+| AC-SBN-012 (RED) | PASS | M1 RED: test FAILED, C6≥6 files | 185 occurrences |
+| AC-SBN-013 | PASS | C7 class pkg-restricted in test file | present |
+| AC-SBN-014 | PASS | C1b matches V3R[0-9] in test file | present |
+| AC-SBN-015 | PASS | allowlist + GREEN despite placeholders present | PASS |
+| AC-SBN-016 [MUST-PASS] | PASS | `go test -run TestTemplateNoInternalContentLeak` | ok (GREEN) |
+| AC-SBN-017 | PASS | `TestSkillBodyLeakClassRecurrenceBackstop` | PASS |
+| AC-SBN-018 | PASS | `TestLeakClassReqTokenPartition` + NoDateSha | PASS |
+| AC-SBN-019 | PASS | 4-locale annotation=0; adk URL=3 files | PASS |
+| AC-SBN-020 | PASS | `TestC7PackageRestriction` | PASS |

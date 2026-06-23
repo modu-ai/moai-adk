@@ -6,7 +6,7 @@ metadata:
   phase: "Phase 3/3.1/3.3/3.5/3.7/4.1a/4: Documentation Generation and Completion"
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 
 ## Phase 3: Documentation Generation

@@ -6,7 +6,7 @@ metadata:
   phase: "Phase 0.3.1 through Decision Point 1: Clarity Interview, Research, and Plan Review"
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 
 ### Phase 0.3.1: Deep Interview Loop (Conditional)

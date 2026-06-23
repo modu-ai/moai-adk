@@ -6,15 +6,15 @@ metadata:
   phase: "Phase 0/0.3: Mode Detection and New Project Interview"
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 
 ## Mode Flag Compatibility
 
-Per SPEC-V3R2-WF-003 REQ-WF003-005 and SPEC-V3R2-WF-004:
+Per the subcommand-classification contract:
 
 - This subcommand is multi-agent (open-ended) but does NOT participate in the
-  `--mode {autopilot|loop|team}` axis defined in SPEC-V3R2-WF-003.
+  `--mode {autopilot|loop|team}` axis.
 - Any `--mode` value supplied to `/moai project` is silently ignored. The project workflow
   proceeds with its default behavior.
 - The `pipeline` value is the only special case: passing `--mode pipeline` triggers
@@ -58,7 +58,7 @@ Enforcement layers (defense in depth):
 
 ## Flag: --from-brain IDEA-NNN
 
-<!-- Verifies REQ-BRAIN-007: /moai project --from-brain consumes proposal.md -->
+<!-- Verifies: /moai project --from-brain consumes proposal.md -->
 
 When invoked as `/moai project --from-brain IDEA-NNN`:
 
