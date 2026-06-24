@@ -2,7 +2,7 @@
 id: SPEC-V3R6-ASKUSER-DECISION-MEMORY-001
 title: "AskUserQuestion 의사결정 메모리 — 캡처·추론·적응형 추천 배치 (Standard tier)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-06-24
 updated: 2026-06-24
 author: manager-spec
