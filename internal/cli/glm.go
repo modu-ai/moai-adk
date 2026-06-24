@@ -768,40 +768,57 @@ func resolveGLMModels(models config.GLMModels) (high, medium, low string) {
 }
 
 // loadGLMConfig reads GLM configuration from llm.yaml.
+//
+// The GLM command path (runGLM → unifiedLaunch → applyGLMMode) does not call
+// deps.Config.Load(), so deps.Config.Get() returns nil at runtime. Reading the
+// project's llm.yaml directly from disk (via loadLLMSectionOnly) ensures the
+// user's configured models are honored regardless of whether deps.Config has
+// been loaded — and independently of whether base_url is explicitly set. This
+// is the fix for issue #1065 (user models silently ignored). When the in-memory
+// config is already populated (e.g. deps.Config.Load was called elsewhere), it
+// is preferred to avoid a redundant disk read.
 func loadGLMConfig(root string) (*GLMConfigFromYAML, error) {
-	if deps != nil && deps.Config != nil {
-		cfg := deps.Config.Get()
-		if cfg != nil && cfg.LLM.GLM.BaseURL != "" {
-			high, medium, low := resolveGLMModels(cfg.LLM.GLM.Models)
-			return &GLMConfigFromYAML{
-				BaseURL: cfg.LLM.GLM.BaseURL,
-				Models: struct {
-					High   string
-					Medium string
-					Low    string
-				}{
-					High:   high,
-					Medium: medium,
-					Low:    low,
-				},
-				EnvVar: cfg.LLM.GLMEnvVar,
-			}, nil
+	defaults := config.NewDefaultLLMConfig()
+
+	llm := defaults
+	switch {
+	case deps != nil && deps.Config != nil && deps.Config.Get() != nil:
+		// In-memory config is populated; use it.
+		llm = deps.Config.Get().LLM
+	default:
+		// Fall back to reading llm.yaml directly from the project root. This is
+		// the live runtime path for the glm command, where deps.Config is unloaded.
+		sectionsDir := filepath.Join(filepath.Clean(root), defs.MoAIDir, defs.SectionsSubdir)
+		diskLLM, err := loadLLMSectionOnly(sectionsDir)
+		if err != nil {
+			return nil, fmt.Errorf("load GLM config from llm.yaml: %w", err)
 		}
+		llm = diskLLM
 	}
 
-	defaults := config.NewDefaultLLMConfig()
+	baseURL := llm.GLM.BaseURL
+	if baseURL == "" {
+		baseURL = defaults.GLM.BaseURL
+	}
+
+	envVar := llm.GLMEnvVar
+	if envVar == "" {
+		envVar = defaults.GLMEnvVar
+	}
+
+	high, medium, low := resolveGLMModels(llm.GLM.Models)
 	return &GLMConfigFromYAML{
-		BaseURL: defaults.GLM.BaseURL,
+		BaseURL: baseURL,
 		Models: struct {
 			High   string
 			Medium string
 			Low    string
 		}{
-			High:   defaults.GLM.Models.High,
-			Medium: defaults.GLM.Models.Medium,
-			Low:    defaults.GLM.Models.Low,
+			High:   high,
+			Medium: medium,
+			Low:    low,
 		},
-		EnvVar: defaults.GLMEnvVar,
+		EnvVar: envVar,
 	}, nil
 }
 

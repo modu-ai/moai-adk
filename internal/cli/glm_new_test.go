@@ -73,6 +73,139 @@ func TestLoadGLMConfig_DepsWithEmptyBaseURL(t *testing.T) {
 	}
 }
 
+// writeProjectLLMYAML writes an llm.yaml at the given project root's
+// .moai/config/sections/ directory and returns the project root path.
+func writeProjectLLMYAML(t *testing.T, llmYAML string) string {
+	t.Helper()
+	root := t.TempDir()
+	sectionsDir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatalf("create sections dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sectionsDir, "llm.yaml"), []byte(llmYAML), 0o644); err != nil {
+		t.Fatalf("write llm.yaml: %v", err)
+	}
+	return root
+}
+
+// TestLoadGLMConfig_ReadsDiskModelsWhenConfigUnloaded reproduces issue #1065:
+// at runtime the GLM command path (runGLM → unifiedLaunch → applyGLMMode →
+// loadGLMConfig) never calls deps.Config.Load(), so deps.Config.Get() returns
+// nil and the user's llm.yaml models were silently ignored in favor of
+// hardcoded defaults. loadGLMConfig MUST read llm.yaml from the project root
+// (its root parameter) so user-configured models take effect.
+func TestLoadGLMConfig_ReadsDiskModelsWhenConfigUnloaded(t *testing.T) {
+	// Custom models, NO base_url set (the issue #1065 scenario): base_url
+	// should default but models must still be honored.
+	root := writeProjectLLMYAML(t, `
+llm:
+  glm:
+    models:
+      high: "glm-PROBE-HIGH"
+      medium: "glm-PROBE-MEDIUM"
+      low: "glm-PROBE-LOW"
+`)
+
+	// Realistic runtime state: ConfigManager constructed but never Load()ed,
+	// so Get() returns nil (exactly what happens for the glm command).
+	origDeps := deps
+	deps = &Dependencies{Config: config.NewConfigManager()}
+	defer func() { deps = origDeps }()
+
+	cfg, err := loadGLMConfig(root)
+	if err != nil {
+		t.Fatalf("loadGLMConfig should not error, got: %v", err)
+	}
+	if cfg.Models.High != "glm-PROBE-HIGH" {
+		t.Errorf("Models.High = %q, want %q (user llm.yaml ignored — issue #1065)", cfg.Models.High, "glm-PROBE-HIGH")
+	}
+	if cfg.Models.Medium != "glm-PROBE-MEDIUM" {
+		t.Errorf("Models.Medium = %q, want %q (user llm.yaml ignored)", cfg.Models.Medium, "glm-PROBE-MEDIUM")
+	}
+	if cfg.Models.Low != "glm-PROBE-LOW" {
+		t.Errorf("Models.Low = %q, want %q (user llm.yaml ignored)", cfg.Models.Low, "glm-PROBE-LOW")
+	}
+	// base_url was omitted in llm.yaml, so the default must fill in.
+	if cfg.BaseURL != "https://api.z.ai/api/anthropic" {
+		t.Errorf("BaseURL = %q, want default fill-in when omitted", cfg.BaseURL)
+	}
+}
+
+// TestLoadGLMConfig_ReadsDiskModelsWithNilDeps verifies model resolution from
+// disk even when deps itself is nil (no dependencies wired at all).
+func TestLoadGLMConfig_ReadsDiskModelsWithNilDeps(t *testing.T) {
+	root := writeProjectLLMYAML(t, `
+llm:
+  glm:
+    models:
+      high: "glm-PROBE-HIGH"
+`)
+
+	origDeps := deps
+	deps = nil
+	defer func() { deps = origDeps }()
+
+	cfg, err := loadGLMConfig(root)
+	if err != nil {
+		t.Fatalf("loadGLMConfig should not error, got: %v", err)
+	}
+	if cfg.Models.High != "glm-PROBE-HIGH" {
+		t.Errorf("Models.High = %q, want %q (disk models ignored with nil deps)", cfg.Models.High, "glm-PROBE-HIGH")
+	}
+	// medium/low omitted → defaults fill in.
+	if cfg.Models.Medium != "glm-4.7" {
+		t.Errorf("Models.Medium = %q, want default %q", cfg.Models.Medium, "glm-4.7")
+	}
+}
+
+// TestLoadGLMConfig_DiskBaseURLHonored verifies an explicit base_url in
+// llm.yaml is honored when present (not overwritten by the default).
+func TestLoadGLMConfig_DiskBaseURLHonored(t *testing.T) {
+	root := writeProjectLLMYAML(t, `
+llm:
+  glm:
+    base_url: "https://custom.example.test/anthropic"
+    models:
+      high: "glm-PROBE-HIGH"
+`)
+
+	origDeps := deps
+	deps = nil
+	defer func() { deps = origDeps }()
+
+	cfg, err := loadGLMConfig(root)
+	if err != nil {
+		t.Fatalf("loadGLMConfig should not error, got: %v", err)
+	}
+	if cfg.BaseURL != "https://custom.example.test/anthropic" {
+		t.Errorf("BaseURL = %q, want explicit disk value", cfg.BaseURL)
+	}
+	if cfg.Models.High != "glm-PROBE-HIGH" {
+		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "glm-PROBE-HIGH")
+	}
+}
+
+// TestLoadGLMConfig_AbsentLLMYAMLFallsToDefaults verifies that a project root
+// with no llm.yaml falls back to system defaults without error.
+func TestLoadGLMConfig_AbsentLLMYAMLFallsToDefaults(t *testing.T) {
+	root := t.TempDir() // no .moai/config/sections/llm.yaml
+
+	origDeps := deps
+	deps = nil
+	defer func() { deps = origDeps }()
+
+	cfg, err := loadGLMConfig(root)
+	if err != nil {
+		t.Fatalf("loadGLMConfig should not error on absent llm.yaml, got: %v", err)
+	}
+	if cfg.Models.High != "glm-5.2" {
+		t.Errorf("Models.High = %q, want default %q", cfg.Models.High, "glm-5.2")
+	}
+	if cfg.BaseURL != "https://api.z.ai/api/anthropic" {
+		t.Errorf("BaseURL = %q, want default", cfg.BaseURL)
+	}
+}
+
 // --- Tests for injectGLMEnv ---
 
 func TestInjectGLMEnv_Success(t *testing.T) {
