@@ -198,8 +198,8 @@ func TestLoadGLMConfig_AbsentLLMYAMLFallsToDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loadGLMConfig should not error on absent llm.yaml, got: %v", err)
 	}
-	if cfg.Models.High != "glm-5.2[1m]" {
-		t.Errorf("Models.High = %q, want default %q", cfg.Models.High, "glm-5.2[1m]")
+	if cfg.Models.High != "glm-5.2" {
+		t.Errorf("Models.High = %q, want default %q", cfg.Models.High, "glm-5.2")
 	}
 	if cfg.BaseURL != "https://api.z.ai/api/anthropic" {
 		t.Errorf("BaseURL = %q, want default", cfg.BaseURL)
