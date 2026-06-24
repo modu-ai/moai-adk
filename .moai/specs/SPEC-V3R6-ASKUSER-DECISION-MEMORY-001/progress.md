@@ -77,7 +77,7 @@ ok  	github.com/modu-ai/moai-adk/internal/cli/preference	1.515s
 **Subagent boundary grep** (C-HRA-008):
 - `grep -rn 'AskUserQuestion' internal/cli/preference/ | grep -v _test.go | grep -v "// "` → 0 matches
 
-**commit SHA**: M1 커밋 후 이 섹션에 백fill
+**commit SHA**: `6a42cde91` (M1 preference memory layer — 본 커밋)
 
 ---
 
