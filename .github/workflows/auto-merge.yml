@@ -49,7 +49,7 @@ jobs:
           exit 0
 
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Check all required CI checks passed
         id: checks

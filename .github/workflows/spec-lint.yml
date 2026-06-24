@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 10
     steps:
       # Version alignment with ci.yml: actions/checkout@v5, actions/setup-go@v6.
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod

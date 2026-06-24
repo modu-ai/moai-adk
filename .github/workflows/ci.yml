@@ -44,7 +44,7 @@ jobs:
       go_code: ${{ steps.f.outputs.go_code }}
       docs_only: ${{ steps.f.outputs.docs_only }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: f
         with:
@@ -86,7 +86,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0  # SPEC-V3R4-CI-INFRA-FIX-001 D-3 (C-Scope-1): drift walker test 가 full git history 필요
 
@@ -180,7 +180,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0  # SPEC-V3R4-CI-INFRA-FIX-001 D-3 (C-Scope-1): drift walker test 가 full git history 필요
 
@@ -207,7 +207,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0  # SPEC-V3R4-CI-INFRA-FIX-001 D-3 (C-Scope-1): drift walker test 가 full git history 필요
 
@@ -262,7 +262,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0  # SPEC-V3R4-CI-INFRA-FIX-001 D-3 (C-Scope-1): drift walker test 가 full git history 필요
 
@@ -305,7 +305,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0  # SPEC-V3R4-CI-INFRA-FIX-001 D-3 (C-Scope-1): drift walker test 가 full git history 필요
 
