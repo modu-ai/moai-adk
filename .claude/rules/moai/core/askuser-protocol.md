@@ -123,6 +123,63 @@ Each option description MUST include:
 
 ---
 
+## Recommendation Placement Principles
+
+> 본 규칙은 SPEC-V3R6-ASKUSER-DECISION-MEMORY-001에서 정의됨. recommendation 배치(발화 시점 / 질문 순서 / 추천 옵션 근거 / 전제조건 서술 / 적응형 강도)의 정책 SSOT.
+
+AskUserQuestion의 `(권장)` 라벨은 **사용자가 통계적으로 다수 선택한 합리적 기본값**(선호 메모리에서 관측)에 근거해야 하며, 단순히 시스템이 밀고 싶은 정책 기본값이어서는 안 된다. 본 절은 추천 배치 5원칙을 정의한다.
+
+### 1. 발화 시점 — 정보이익 정렬 (Fisher 정보 I=p(1−p))
+
+**Where** 오케스트레이터가 다가오는 결정에 대해 불확실성 p를 추정하고, **When** p ≈ 0.5 (Fisher 정보 I=p(1−p) 최대, 결정 경계)이면, 오케스트레이터는 해당 질문을 AskUserQuestion으로 발화해야 한다. **While** p가 0 또는 1에 가까우면(거의 확정), 오케스트레이터는 통계적 다수 옵션으로 자동 처리하고 질문을 생략한다.
+
+- p 추정(초기 휴리스틱): 동일 도메인의 관측된 다수 선택 비율. cold-start(관측 < N)는 p ≈ 0.5로 취급해 발화.
+- 근거: just-in-time 결정경계 질문 원칙 (Murphy "Probabilistic Machine Learning" Ch.3 — Fisher 정보 I=p(1−p)는 p=0.5에서 최대).
+- 관측 증거(AC-ADM-005): 결정 로그에 추정 p값 + 발화/생략 결정 기록; p≈0.5 결정 발화율 100%, p>0.8 결정 생략율 ≥ 임계값.
+
+### 2. 질문 순서 — 정보이익 내림차순
+
+**Where** 하나의 AskUserQuestion 호출에 여러 질문이 배치되면, 오케스트레이터는 각 질문의 추정 정보이익을 내림차순으로 정렬한다 (가장 높은 정보이익 질문이 첫 번째).
+
+- 근거: 높은 정보이익 질문을 먼저 배치하면 사용자가 낮은 가치 질문을 만나기 전에 핵심 의사결정을 완료할 수 있다.
+- 관측 증거(AC-ADM-006): AskUserQuestion 호출의 questions 배열 순서 = 추정 정보이익 내림차순; 로그에 순서 결정 근거.
+
+### 3. 추천 옵션 — 통계적 다수 합리적 기본값 (cold-start 공개 의무)
+
+**The recommended option**(첫 옵션, `(권장)` 라벨)은 선호 메모리에서 관측된 **통계적 다수 합리적 기본값**이어야 한다. 시스템이 밀고 싶은 정책 기본값이 아니어야 한다.
+
+**Where** 충분한 관측이 존재하지 않으면(cold-start, 관측 < N), 오케스트레이터는 기존 정적 기본값으로 폴백하고 옵션 description에 **"based on static default, N observations needed for personalization"** (또는 동등한 `conversation_language` 자연어 표현)을 공개해야 한다.
+
+- 근거: 기본값 효과(d≈0.55)는 합리적 기본값에서 성립; 시스템 밀어넣기는 자율성 침식 위험. cold-start 공개는 미관측 추천 금지(verification-claim-integrity §1.1 surface 3)를 만족한다.
+- 관측 증거(AC-ADM-007): 추천 배치 로그에 "recommended=<majority_observed>, basis=<N_observations>, not system_default"; cold-start 시 description에 "based on static default, N observations needed for personalization" 포함.
+
+### 4. 전제조건 서술 — 추천 성립 조건 명시
+
+**추천 옵션의 `description`**은 추천이 성립하는 전제조건을 서술해야 한다. 사용자가 전제 위반 시 추천을 즉시 거부할 수 있도록.
+
+- 형식 권장: `"Recommended when <precondition>"` (en) 또는 동등한 `conversation_language` 표현 — 전제 위반 시 거부가 자명한(trivial) 형태.
+- 근거: 투명성 + 쉬운 opt-out 번들. 전제가 서술되지 않은 추천은 기형적 설계이다.
+- 관측 증거(AC-ADM-008): 각 추천 옵션 description에 "Recommended when <precondition>" 또는 동등 문구 포함; 전제 서술 누락 시 감사 실패.
+
+### 5. 적응형 추천 강도 — 숙련도 기반 자동 분기
+
+**Where** 오케스트레이터가 고숙련도(전문가)를 추정하면(세션 카운트 ≥ 임계값 / 의사결정 일관성 / 명시적 자가 평가 중 ≥1), 오케스트레이터는 **약 추천 강도**(info-centric, 자율성 우선 — `(권장)` 라벨 override 없이 inferred preference를 공개만)를 적용한다.
+
+**Where** 저숙련도(일반 사용자)로 추정되면, 오케스트레이터는 **강 추천 강도**(기본값-like — `(권장)` 라벨 + 투명한 이유)를 적용한다.
+
+- cold-start 보호: 숙련도 추정이 불가능한 초기(세션 카운트 < 임계값)는 neutral 강도로 처리 (inferred preference 기반 `(권장)` 배치 없음).
+- 근거: 전문가에게 강 추천은 info-centric 작업에서 자율성 침식; 일반 사용자에게 약 추천은 결정 피로 가중. 자동 분기가 양쪽을 모두 만족한다.
+- 관측 증거(AC-ADM-017): 숙련도 추정 로그; 전문가 세션에서 `(권장)` override 0건; 일반 사용자 세션에서 `(권장)` + reason 포함.
+- 숙련도 추정 세부는 design.md §A.4.
+
+### Cross-reference
+
+- 발화 시점/질문 순서의 정보이익 근거: design.md §B.2 (상충 증거 양면 문서화).
+- 통계적 다수 추천의 자율성 버퍼: 본 절 §3 + §5 (적응형 강도) + 회복 제어 토글 (요구사항 소관, 본 절 범위 외).
+- 전제조건 서술과 투명성: `verification-claim-integrity.md §1.1 surface 3` (관측되지 않은 추론 주장 금지).
+
+---
+
 ## Preview Field Standards
 
 The `preview` field on each `AskUserQuestion` option renders a multi-line content block in a monospace box alongside the option list. When ANY option in a question has a `preview`, the Claude Code TUI auto-switches to side-by-side layout (vertical option list on the left, focused option's preview on the right).

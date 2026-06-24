@@ -79,6 +79,29 @@ ok  	github.com/modu-ai/moai-adk/internal/cli/preference	1.515s
 
 **commit SHA**: `6a42cde91` (M1 preference memory layer — 본 커밋)
 
+### M2 — askuser-protocol.md + moai.md 추천 배치 원칙 (policy-doc authoring)
+
+**범위**: REQ-ADM-005~008, 017 (C2 추천 배치 규칙). 본 M2는 policy-document authoring 마일스톤 (Go 코드 아님). 4개 target file에 신규 "Recommendation Placement Principles" / "AskUserQuestion Recommendation Placement" 섹션 추가:
+
+**산출물 (4 파일)**:
+- `.claude/rules/moai/core/askuser-protocol.md` (LIVE) — `## Recommendation Placement Principles` 신규 § 추가 (Option Description Standards 뒤, Preview Field Standards 앞). 5원칙 (발화 시점 Fisher 정보 / 질문 순서 정보이익 내림차순 / 통계적 다수 합리적 기본값 + cold-start 공개 / 전제조건 서술 / 적응형 강도) + AC-ADM-005~008,017 관측 증거 명시 + 내부 SPEC-ID 교차 참조.
+- `internal/template/templates/.claude/rules/moai/core/askuser-protocol.md` (TEMPLATE) — 동일 5원칙 neutral form (내부 SPEC-ID/REQ/AC 토큰 0).
+- `.claude/output-styles/moai/moai.md` (LIVE) — `### AskUserQuestion Recommendation Placement` 신규 서브섹션 추가 (Localization Contract Pre-emit self-check 뒤, Task Start 배너 앞). 5원칙 렌더 규칙 + cold-start 공개문/전제조건 서술의 conversation_language 번역 의무.
+- `internal/template/templates/.claude/output-styles/moai/moai.md` (TEMPLATE) — 동일 렌더 규칙 neutral form. **moai.md는 LIVE=TEMPLATE byte-identical** (REQ-WF006-003 parity test `TestOutputStylesTemplateLiveParity` PASS — design.md §D.1 cross-ref 허용이 있으나 parity test가 byte-identity를 요구하므로 양쪽 동일 내용으로 작성).
+
+**template-neutrality (AC-ADM-NFR-006 S1 Blocker)**: 신규 추가 섹션에서 `SPEC-V3R6|REQ-ADM|AC-ADM|2026-06-24|[0-9a-f]{40}|.moai/(specs|reports)` grep 0건 (새 섹션만 추출 후 grep — 기존 pre-existing 3 매치는 Preview Field Worked Example 옵션 라벨로 M2 범위外 PRESERVE).
+
+**CI guard**:
+- `TestTemplateNoInternalContentLeak` PASS (template neutral)
+- `TestOutputStylesTemplateLiveParity` PASS (moai.md live=template byte-identical)
+- `TestRuleTemplateMirrorDrift` PASS (askuser-protocol.md는 byte-parity allowlist에 없음 — leak-test coverage 범주; moai.md는 parity allowlist에 있음 — byte-identical)
+- `TestLanguageNeutrality` PASS
+- `go build ./...` exit 0 + `GOOS=windows GOARCH=amd64 go build ./...` exit 0
+
+**N/A — policy-document milestone**: 본 M2는 Go 코드가 아닌 policy-doc authoring이므로 E3 (coverage)는 N/A. AC의 "관측 증거" 조항은 policy 문서 내에 원칙이 서술되어 있는지 (grep 가능한 문구 존재)로 검증.
+
+**commit SHA**: _(아래 E6에서 commit 후 backfill)_
+
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
@@ -92,6 +115,19 @@ ok  	github.com/modu-ai/moai-adk/internal/cli/preference	1.515s
 | AC-ADM-003 (7-필드 스키마 + 누락 필드 거부) | PASS | `go test -run TestEntry_SevenFieldsPresent ./internal/cli/preference/... && go test -run TestEntry_Validate_RejectsMissingFields ./internal/cli/preference/...` | 2 PASS (8 subtests — missing fact/source_citation/valid_time/last_used/domain/decision_key + invalid scope/confidence 각각 거부) |
 | AC-ADM-004 (3-tier cascade — core hit 시 recall/archival 미접근 + recall hit after core miss) | PASS | `go test -run TestCascade_CoreHitSkipsRecallAndArchival ./internal/cli/preference/... && go test -run TestCascade_RecallHitAfterCoreMiss ./internal/cli/preference/...` | 2 PASS (TierCore / TierRecall 반환 검증) |
 | AC-ADM-NFR-002 (core ≤4KB 강제 + 초과 시 recall 강등) | PASS | `go test -run TestCoreSizeEnforcement_DemotesOnOverflow ./internal/cli/preference/...` | `--- PASS: TestCoreSizeEnforcement_DemotesOnOverflow (0.03s)` — 20 entries upsert 후 core.yaml ≤4096 bytes + 강등 엔트리 cascade 회수 |
+
+### M2 AC PASS 매트릭스 (policy-doc authoring — REQ-ADM-005~008, 017, NFR-006)
+
+본 M2는 policy-document authoring 마일스톤이므로 "관측 증거" 조항은 policy 문서 내에 원칙이 서술되어 있는지 (문구 grep)로 검증한다.
+
+| AC | Status | 검증 (policy 문서 내 원칙 서술 위치) | 관측 증거 |
+|----|--------|--------------------------------------|-----------|
+| AC-ADM-005 (정보이익 정렬 발화 — p≈0.5 발화 / p≈0,1 자동 처리+생략) | PASS | `.claude/rules/moai/core/askuser-protocol.md § Recommendation Placement Principles` 원칙 1 (Fisher 정보 I=p(1−p) p=0.5 최대) + moai.md 렌더 규칙 1 | LIVE + TEMPLATE 양쪽에 "p ≈ 0.5 (Fisher 정보 I=p(1−p) 최대, 결정 경계)이면 ... 발화", "p가 0 또는 1에 가까우면(거의 확정) ... 자동 처리하고 질문을 생략" 서술 존재 |
+| AC-ADM-006 (질문 순서 — 정보이익 내림차순) | PASS | askuser-protocol.md 원칙 2 + moai.md 렌더 규칙 2 | "각 질문의 추정 정보이익을 내림차순으로 정렬한다 (가장 높은 정보이익 질문이 첫 번째)" 서술 존재 |
+| AC-ADM-007 (통계적 다수 합리적 기본값 + cold-start 공개) [S1 Blocker] | PASS | askuser-protocol.md 원칙 3 + moai.md 렌더 규칙 3 | "(권장) 라벨은 ... 관측된 통계적 다수 합리적 기본값 ... 시스템이 밀고 싶은 정책 기본값이 아니어야 한다" + "based on static default, N observations needed for personalization" 공개 의무 서술 존재 |
+| AC-ADM-008 (전제조건 서술) | PASS | askuser-protocol.md 원칙 4 + moai.md 렌더 규칙 4 | "추천 옵션의 description은 추천이 성립하는 전제조건을 서술해야 한다" + "Recommended when <precondition>" 형식 권장 서술 존재 |
+| AC-ADM-017 (적응형 추천 강도 — 숙련도 기반 자동 분기) | PASS | askuser-protocol.md 원칙 5 + moai.md 렌더 규칙 5 | "고숙련도(전문가) ... 약 추천 강도(info-centric ... (권장) 라벨 override 없이 inferred preference를 공개만)" / "저숙련도(일반 사용자) ... 강 추천 강도 ... (권장) 라벨 + 투명한 이유" + cold-start neutral 강도 서술 존재 |
+| AC-ADM-NFR-006 (template 중립성 — 내부 토큰 0) [S1 Blocker] | PASS | `grep -rE 'SPEC-V3R6|REQ-ADM|AC-ADM|2026-06-24|[0-9a-f]{40}|\.moai/(specs|reports)'` on template copies | 신규 추가 섹션에서 0건 (새 섹션만 awk 추출 후 grep exit=1). 기존 pre-existing 3 매치 (Preview Worked Example 라벨)는 M2 범위外 PRESERVE. `TestTemplateNoInternalContentLeak` PASS |
 
 **atomic upsert (SIGKILL 방어, AC-ADM-001 edge case)**: `TestUpsert_AtomicWriteSurvivesPartialState` — recall.jsonl write 후 임시 파일 잔류 0건 검증 PASS.
 

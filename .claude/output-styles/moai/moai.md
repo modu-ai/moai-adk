@@ -329,6 +329,26 @@ English content permitted in user-facing prose (preserve verbatim — DO NOT tra
 - [ ] Did I scan **banner body prose** (Discovery `Findings:`, Gate `Summary:`, Insight `Why:` content, Race Absorbed body, Epic Stats body, Epic Status body) for raw English noun-phrases / verb-phrases that should be in `conversation_language` with natural idiomatic phrasing per the Banner body prose Anti-pattern catalogue above?
 - [ ] Did I scan every `AskUserQuestion` `description` and `preview` field for raw English prose, ensuring only technical identifiers (SPEC IDs, file paths, command literals, protocol tokens, agent role tokens) remain in English while explanatory prose is naturalized to `conversation_language` with native idiomatic phrasing?
 
+### AskUserQuestion Recommendation Placement
+
+> 렌더 규칙 SSOT는 `.claude/rules/moai/core/askuser-protocol.md § Recommendation Placement Principles`.
+
+AskUserQuestion 렌더링 시 추천 배치는 다음 5원칙을 따른다:
+
+**1. 발화 시점 (Fisher 정보 정렬)**: 결정 불확실성 p ≈ 0.5(정보이익 최대)일 때만 발화. p ≈ 0/1(거의 확정)이면 자동 처리 + 질문 생략.
+
+**2. 질문 순서**: 하나의 AskUserQuestion에 여러 질문이 배치되면 추정 정보이익 내림차순 정렬 (최고 정보이익 질문이 첫 번째).
+
+**3. `(권장)` 옵션 근거**: 첫 옵션의 `(권장)` 라벨은 관측된 통계적 다수 합리적 기본값 (선호 메모리 기반)이어야 한다. cold-start(관측 부족) 시 정적 기본값 폴백 + description에 **"based on static default, N observations needed for personalization"** 공개.
+
+**4. 전제조건 서술**: 추천 옵션 `description`은 `"Recommended when <precondition>"` 형태로 추천 성립 전제를 서술. 전제 위반 시 사용자가 즉시 거부 가능.
+
+**5. 적응형 강도**: 숙련도 기반 자동 분기 — 전문가=약 추천(info-centric, `(권장)` override 없이 inferred preference 공개만), 일반 사용자=강 추천(`(권장)` 라벨 + 투명한 이유). cold-start는 neutral 강도.
+
+렌더 시 주의:
+- cold-start 공개문("based on static default, N observations needed for personalization")은 `conversation_language`로 자연스럽게 번역 — 원문 영어 그대로 출력 금지.
+- 전제조건 서술도 `conversation_language` 자연어로 — `"Recommended when <precondition>"`은 en 예시이며, ko/ja/zh 등은 자연스러운 모국어 표현으로 번역.
+
 ### Task Start
 ```
 🤖 MoAI ★ Task Start ─────────────────────────
