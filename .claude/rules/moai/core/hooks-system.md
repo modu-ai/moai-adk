@@ -280,7 +280,7 @@ Hooks support `$CLAUDE_PROJECT_DIR` and `$HOME` environment variables:
 - Correct: `"\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/hook.sh\""`
 - Wrong: `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/hook.sh"`
 
-For StatusLine path configuration, see @settings-management.md (StatusLine does NOT support environment variables).
+For StatusLine path configuration, see @settings-management.md (StatusLine supports the built-in `$CLAUDE_PROJECT_DIR` token, same as hooks).
 
 ## Hook Wrappers
 

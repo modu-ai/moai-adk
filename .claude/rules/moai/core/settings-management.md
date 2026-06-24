@@ -211,18 +211,18 @@ Healthy result: under 100ms. Persistent slowness → check LSP / disk I/O / MX v
 
 ## StatusLine Configuration
 
-StatusLine does NOT support environment variables. Use relative paths from project root:
+The statusLine command runs with the same environment variables as hooks, including the Claude Code built-in `$CLAUDE_PROJECT_DIR`. Anchor paths to it so they resolve regardless of the current working directory (e.g. after `/cd` changes cwd away from the project root):
 
 ```json
 {
   "statusLine": {
     "type": "command",
-    "command": ".moai/status_line.sh"
+    "command": "$CLAUDE_PROJECT_DIR/.moai/status_line.sh"
   }
 }
 ```
 
-Reference: GitHub Issue #7925 - statusline does not expand environment variables.
+Note: GitHub Issue #7925 ("statusline does not expand environment variables") refers to generic shell env-var interpolation and user-defined `env` values, NOT the Claude Code built-in `CLAUDE_PROJECT_DIR` token. The built-in token is exported into the command's environment before it shells out. Reference: https://code.claude.com/docs/en/statusline ("The status line command runs with the same environment variables as hooks, including `CLAUDE_PROJECT_DIR`.").
 
 ## Permission Management
 

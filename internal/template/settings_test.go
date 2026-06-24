@@ -201,8 +201,11 @@ func TestSettingsTemplateStatusLine(t *testing.T) {
 	if sl["type"] != "command" {
 		t.Errorf("statusLine.type = %v, want %q", sl["type"], "command")
 	}
-	if sl["command"] != ".moai/status_line.sh" {
-		t.Errorf("statusLine.command = %v, want %q", sl["command"], ".moai/status_line.sh")
+	// $CLAUDE_PROJECT_DIR is a Claude Code built-in token available to the
+	// statusLine command at runtime (same env vars as hooks). Anchoring the
+	// path to it makes statusLine resolve regardless of cwd (e.g. after /cd).
+	if sl["command"] != "$CLAUDE_PROJECT_DIR/.moai/status_line.sh" {
+		t.Errorf("statusLine.command = %v, want %q", sl["command"], "$CLAUDE_PROJECT_DIR/.moai/status_line.sh")
 	}
 }
 
