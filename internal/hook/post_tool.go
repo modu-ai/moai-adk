@@ -229,6 +229,17 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		logEvidence(input)
 	}
 
+	// Capture AskUserQuestion user decisions into the preference memory layer
+	// (SPEC-V3R6-ASKUSER-DECISION-MEMORY-001 M3, REQ-ADM-009/010/018). The
+	// subpipeline is strictly advisory and fail-open — it never blocks and
+	// logs warnings on every error path. Mutually exclusive with the
+	// Write|Edit branches owned by status-transition-ownership.sh (design.md
+	// §C.3 cohabitation). See user_decision_capture.go for the doctrine-honest
+	// Recovery-Signal Carve-Out documentation (REQ-ADM-010 SHOULD).
+	if input.ToolName == askUserQuestionTool {
+		captureUserDecision(input)
+	}
+
 	// REQ-CC2122-HOOK-001-001~004: duration_ms-based slow hook metrics recording (observation-only).
 	writeHookMetric(input, "handle-post-tool", "")
 
