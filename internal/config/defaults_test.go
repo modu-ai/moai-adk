@@ -339,18 +339,19 @@ func TestNewDefaultLLMConfig(t *testing.T) {
 
 // TestNewDefaultLLMConfig_GLMTierMapping verifies the GLM model tier mapping.
 // The High slot (Opus equivalent) and the legacy Opus field both map to
-// glm-5.2[1m] for full 1M context activation; Medium/Low and the legacy
+// glm-5.2 (the z.ai-accepted id); 1M context activation is driven by the
+// resolved context window, not a model-id suffix. Medium/Low and the legacy
 // Sonnet/Haiku fields remain unchanged on their existing GLM models.
 func TestNewDefaultLLMConfig_GLMTierMapping(t *testing.T) {
 	t.Parallel()
 
 	cfg := NewDefaultLLMConfig()
 
-	if cfg.GLM.Models.High != "glm-5.2[1m]" {
-		t.Errorf("GLM.Models.High: got %q, want %q", cfg.GLM.Models.High, "glm-5.2[1m]")
+	if cfg.GLM.Models.High != "glm-5.2" {
+		t.Errorf("GLM.Models.High: got %q, want %q", cfg.GLM.Models.High, "glm-5.2")
 	}
-	if cfg.GLM.Models.Opus != "glm-5.2[1m]" {
-		t.Errorf("GLM.Models.Opus: got %q, want %q", cfg.GLM.Models.Opus, "glm-5.2[1m]")
+	if cfg.GLM.Models.Opus != "glm-5.2" {
+		t.Errorf("GLM.Models.Opus: got %q, want %q", cfg.GLM.Models.Opus, "glm-5.2")
 	}
 	// Medium/Low and legacy Sonnet/Haiku remain unchanged.
 	if cfg.GLM.Models.Medium != "glm-4.7" {
@@ -372,11 +373,11 @@ func TestNewDefaultLLMConfig_GLMTierMapping(t *testing.T) {
 func TestDefaultGLMConstants(t *testing.T) {
 	t.Parallel()
 
-	if DefaultGLMHigh != "glm-5.2[1m]" {
-		t.Errorf("DefaultGLMHigh: got %q, want %q", DefaultGLMHigh, "glm-5.2[1m]")
+	if DefaultGLMHigh != "glm-5.2" {
+		t.Errorf("DefaultGLMHigh: got %q, want %q", DefaultGLMHigh, "glm-5.2")
 	}
-	if DefaultGLMOpus != "glm-5.2[1m]" {
-		t.Errorf("DefaultGLMOpus: got %q, want %q", DefaultGLMOpus, "glm-5.2[1m]")
+	if DefaultGLMOpus != "glm-5.2" {
+		t.Errorf("DefaultGLMOpus: got %q, want %q", DefaultGLMOpus, "glm-5.2")
 	}
 	if DefaultGLMMedium != "glm-4.7" {
 		t.Errorf("DefaultGLMMedium: got %q, want %q (unchanged)", DefaultGLMMedium, "glm-4.7")
@@ -455,7 +456,7 @@ func TestNewDefaultWorkflowConfig(t *testing.T) {
 // TestNewDefaultWorkflowConfigNestedDefaults asserts every nested default value
 // exactly matches the template SSOT workflow.yaml
 // (internal/template/templates/.moai/config/sections/workflow.yaml).
-// This is the AC-WSE-007 36-assertion oracle (REQ-WSE-007).
+// This is the AC-WSE-007 33-assertion oracle (REQ-WSE-007).
 func TestNewDefaultWorkflowConfigNestedDefaults(t *testing.T) {
 	t.Parallel()
 
@@ -469,7 +470,6 @@ func TestNewDefaultWorkflowConfigNestedDefaults(t *testing.T) {
 		{"AutoClear.Enabled", cfg.AutoClear.Enabled, true},
 		{"AutoClear.AfterPlan", cfg.AutoClear.AfterPlan, true},
 		{"AutoClear.AfterRun", cfg.AutoClear.AfterRun, false},
-		{"Completion.DetectInOutput", cfg.Completion.DetectInOutput, true},
 		{"LoopPrevention.FailurePatternDetection", cfg.LoopPrevention.FailurePatternDetection, true},
 		{"Team.Enabled", cfg.Team.Enabled, true},
 		{"Team.DelegateMode", cfg.Team.DelegateMode, true},
@@ -512,8 +512,6 @@ func TestNewDefaultWorkflowConfigNestedDefaults(t *testing.T) {
 		got  string
 		want string
 	}{
-		{"Completion.Markers.Done", cfg.Completion.Markers.Done, "<moai>DONE</moai>"},
-		{"Completion.Markers.Complete", cfg.Completion.Markers.Complete, "<moai>COMPLETE</moai>"},
 		{"Team.DefaultModel", cfg.Team.DefaultModel, "sonnet"},
 		{"Worktree.SessionNamePattern", cfg.Worktree.SessionNamePattern, "moai-{ProjectName}-{SPEC-ID}"},
 		{"RoleProfiles[implementer].Isolation", cfg.Team.RoleProfiles["implementer"].Isolation, "worktree"},
@@ -527,7 +525,7 @@ func TestNewDefaultWorkflowConfigNestedDefaults(t *testing.T) {
 		}
 	}
 
-	// RoleProfileKeys default (3-element subset per agent-teams-pattern 5+1+1).
+	// RoleProfileKeys default (3-element subset per team-pattern-cookbook 5+1+1 6th pattern).
 	wantKeys := []string{"implementer", "tester", "reviewer"}
 	if len(cfg.Team.RoleProfileKeys) != len(wantKeys) {
 		t.Errorf("RoleProfileKeys: got %d keys, want %d", len(cfg.Team.RoleProfileKeys), len(wantKeys))

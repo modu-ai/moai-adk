@@ -1,9 +1,8 @@
 ---
-name: moai-workflow-mx-tag
 description: >
   @MX TAG annotation protocol reference for AI agent code context delivery.
   Provides detailed tag syntax grammar, fan-in analysis method, agent report
-  format, and edge case handling. Used by manager-develop and manager-quality agents.
+  format, and edge case handling. Used by manager-develop (run) and sync-auditor (sync validation) agents.
 user-invocable: false
 metadata:
   version: "2.5.0"
@@ -21,7 +20,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["mx", "tag", "annotation", "anchor", "invariant", "context"]
-  agents: ["manager-develop", "manager-quality"]
+  agents: ["manager-develop", "sync-auditor"]
   phases: ["run"]
 ---
 
@@ -37,11 +36,11 @@ This file contains ONLY supplementary operational details not covered in the pro
 
 ```
 mx_tag       := comment_prefix SPACE "@MX:" tag_type ":" SPACE description NEWLINE sub_lines*
-tag_type     := "NOTE" | "WARN" | "ANCHOR" | "TODO"
+tag_type     := "NOTE" | "WARN" | "ANCHOR" | "TODO" | "DEBT"
 description  := [auto_prefix] free_text
 auto_prefix  := "[AUTO]" SPACE
 sub_lines    := comment_prefix SPACE "@MX:" sub_key ":" SPACE sub_value NEWLINE
-sub_key      := "SPEC" | "LEGACY" | "REASON" | "TEST" | "PRIORITY"
+sub_key      := "SPEC" | "LEGACY" | "REASON" | "TEST" | "PRIORITY" | "CEILING" | "UPGRADE"
 sub_value    := (SPEC: spec_id) | (LEGACY: "true") | (REASON: free_text) | (TEST: test_name) | (PRIORITY: priority_level)
 spec_id      := "SPEC-" UPPER+ "-" DIGIT{3}
 priority_level := "P1" | "P2" | "P3"
@@ -122,4 +121,4 @@ This is intentionally approximate. AST-level precision is not required for taggi
 ---
 
 Version: 2.5.0
-Source: SPEC-MX-001
+Source: the MX tag protocol

@@ -53,6 +53,17 @@ func init() {
 
 // runCG enables Claude + GLM hybrid mode and launches Claude Code.
 func runCG(cmd *cobra.Command, args []string) error {
+	// With DisableFlagParsing, cobra forwards --help/-h to RunE verbatim.
+	// Serve help before the tmux precondition check (parity with runCC).
+	for _, arg := range args {
+		if arg == "--help" || arg == "-h" {
+			return cmd.Help()
+		}
+		if arg == "--" {
+			break
+		}
+	}
+
 	profileName, filteredArgs, err := parseProfileFlag(args)
 	if err != nil {
 		return err

@@ -44,7 +44,7 @@ func snapshotDir(t *testing.T, root string) map[string]string {
 // simulateMoaiUpdate represents the conservative path-prefix exclusion that
 // moai update is expected to honor: it only touches files under
 // .claude/skills/moai/, .claude/agents/{core,expert,meta,harness}/, .claude/rules/moai/. It MUST NOT
-// touch .moai/harness/, .claude/agents/my-harness/, .claude/skills/my-harness-*/
+// touch .moai/harness/, .claude/agents/harness/, .claude/skills/harness-*/
 // (REQ-PH-009 enforcement under test).
 func simulateMoaiUpdate(t *testing.T, projectRoot string) {
 	t.Helper()
@@ -67,8 +67,8 @@ func TestMoaiUpdate_PreservesUserArea(t *testing.T) {
 	}{
 		{".moai/harness/run-extension.md", "# user-customized chain\n## Chain Rules\nfoo: bar\n"},
 		{".moai/harness/main.md", "# main user content\n"},
-		{".claude/agents/my-harness/ios-architect.md", "# ios architect agent\n"},
-		{".claude/skills/my-harness-ios-patterns/SKILL.md", "# user skill\n"},
+		{".claude/agents/harness/ios-architect.md", "# ios architect agent\n"},
+		{".claude/skills/harness-ios-patterns/SKILL.md", "# user skill\n"},
 	}
 	for _, ua := range userAreas {
 		full := filepath.Join(root, ua.path)
@@ -83,8 +83,8 @@ func TestMoaiUpdate_PreservesUserArea(t *testing.T) {
 	// Snapshot user-area directories before
 	userPaths := []string{
 		filepath.Join(root, ".moai", "harness"),
-		filepath.Join(root, ".claude", "agents", "my-harness"),
-		filepath.Join(root, ".claude", "skills", "my-harness-ios-patterns"),
+		filepath.Join(root, ".claude", "agents", "harness"),
+		filepath.Join(root, ".claude", "skills", "harness-ios-patterns"),
 	}
 	preSnapshots := make([]map[string]string, len(userPaths))
 	for i, p := range userPaths {

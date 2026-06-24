@@ -4,6 +4,12 @@ description: >
   SPEC workflow orchestration with EARS format requirements, acceptance criteria,
   and Plan-Run-Sync integration for MoAI-ADK development. Use when creating SPEC
   documents or defining acceptance criteria.
+
+when_to_use: >
+  Use for SPEC workflow orchestration: EARS-format requirements,
+  acceptance criteria, user stories, requirements gathering, planning, and
+  Plan-Run-Sync integration for MoAI-ADK development.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Bash(git:*), Bash(ls:*), Bash(wc:*), Bash(mkdir:*), Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
@@ -16,20 +22,12 @@ metadata:
   modularized: "true"
   tags: "workflow, spec, ears, requirements, moai-adk, planning"
   author: "MoAI-ADK Team"
-  context: "fork"
-  agent: "Plan"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["SPEC", "requirement", "EARS", "acceptance criteria", "user story", "planning", "specification", "requirements gathering"]
-  phases: ["plan"]
-  agents: ["manager-spec", "manager-strategy", "Plan"]
 ---
 
 # SPEC Workflow Management
@@ -62,7 +60,7 @@ GEARS Five Patterns (current notation):
 
 Unified compound clause: `**Where** <precondition> **While** <state> **When** <event> the <subject> shall <behavior>` — any subset of the three modifiers may chain.
 
-See [GEARS notation reference](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation) — 4-locale (en / ko / ja / zh).
+See [GEARS notation reference](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation).
 
 > **IF/THEN deprecated callout**: Authoring guidance previously used `IF <condition> THEN <action>` to describe state-conditioned behavior. In GEARS that intent is expressed as `When <condition-detected>` (event-detected form). The lint engine emits a `LegacyEARSKeyword` warning (non-strict) or error (`moai spec lint --strict`) on residual `IF/THEN` in new SPECs. The 6-month backward-compatibility window remains active for legacy SPECs.
 
@@ -143,7 +141,7 @@ WHY: Constitution prevents architectural drift and ensures maintainability.
 
 GEARS (Generalized EARS) is the canonical SPEC notation as of v3.0.0. It preserves Ubiquitous / `When` (event-driven) / `While` (state-driven) and reframes `Where` as a capability gate. The legacy `IF/THEN` modality is replaced by `When <event-detected>`.
 
-GEARS notation is exhaustively described in [docs-site GEARS notation reference](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation) (4-locale: en / ko / ja / zh) and the canonical GEARS migration policy record.
+GEARS notation is exhaustively described in [docs-site GEARS notation reference](https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation) and the canonical GEARS migration policy record.
 
 Compound clause example (with non-"the system" subject):
 
@@ -202,7 +200,7 @@ State files: `.moai/state/last-session-state.json`. Generated docs: `.moai/docs/
 
 ### SPEC Metadata Schema
 
-Canonical 12 required fields (enforced by `internal/spec/lint.go` `FrontmatterSchemaRule`): id, title, version, status, created, updated, author, priority, phase, module, lifecycle, tags.
+Canonical 12 required fields (enforced by the SPEC frontmatter lint rule): id, title, version, status, created, updated, author, priority, phase, module, lifecycle, tags.
 
 Status enum (8 values): draft → planned → in-progress → implemented → completed | superseded | archived | rejected.
 
@@ -262,7 +260,9 @@ SPEC Characteristics: forward-looking (what WILL be built), actionable, testable
 | Meeting Notes | Records decisions made | `.moai/reports/meeting-{DATE}/` |
 | Retrospective | Analyzes past work | `.moai/reports/retro-{DATE}/` |
 
-### Exclusion Rules
+### Out of Scope Classification Rules
+
+These routing rules decide what is out of scope for a SPEC document (and where it belongs instead). When authoring a SPEC's own exclusions section, express each excluded item as a `### Out of Scope — <topic>` H3 sub-heading with `-` bullets so the section satisfies the `OutOfScopeRule` lint.
 
 [HARD] Reports analyze what EXISTS → `.moai/reports/`. SPECs define what will be BUILT → `.moai/specs/`.
 
@@ -323,6 +323,6 @@ Integration Status: Complete - Plan-Run-Sync workflow with SDD 2025 features
 - [ ] research.md exists when the SPEC touches existing code
 - [ ] Annotation cycle completed with explicit user approval marker
 - [ ] SPEC references existing SPEC-IDs it depends on or supersedes
-- [ ] Non-goals section present to prevent scope creep
+- [ ] Out of Scope section present to prevent scope creep — at least one `### Out of Scope — <topic>` H3 sub-heading with a `-` bullet entry (satisfies the `OutOfScopeRule` lint)
 
 <!-- moai:evolvable-end -->

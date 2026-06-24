@@ -47,7 +47,7 @@ jobs:
   parity:
     name: Validate 4-locale parity
     runs-on: ubuntu-latest
-    continue-on-error: true
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -74,6 +74,10 @@ jobs:
 
       - name: Run docs i18n check (warn-only during rollout)
         id: check
+        # Strict mode (workflow_dispatch with strict=true) MUST block the job.
+        # Warn-only mode (PR/push during Phase 1 rollout) continues on error so
+        # the existing baseline drift does not block routine work.
+        continue-on-error: ${{ steps.mode.outputs.strict != 'true' }}
         run: |
           set +e
           if [[ "${{ steps.mode.outputs.strict }}" == "true" ]]; then
@@ -97,11 +101,17 @@ jobs:
       - name: Comment PR summary
         if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
+        env:
+          ERRORS: ${{ steps.counts.outputs.errors }}
+          WARNINGS: ${{ steps.counts.outputs.warnings }}
+          STRICT: ${{ steps.mode.outputs.strict }}
         with:
           script: |
-            const errors = ${{ steps.counts.outputs.errors || 0 }};
-            const warnings = ${{ steps.counts.outputs.warnings || 0 }};
-            const strict = '${{ steps.mode.outputs.strict }}' === 'true';
+            // Values arrive via env (process.env.*) — never inline-interpolate
+            // step outputs directly into a script body (script-injection).
+            const errors = Number(process.env.ERRORS || 0);
+            const warnings = Number(process.env.WARNINGS || 0);
+            const strict = process.env.STRICT === 'true';
             const fs = require('fs');
             let output = '';
             try { output = fs.readFileSync('check-output.txt', 'utf8'); } catch (e) { output = '(no output)'; }
@@ -117,24 +127,30 @@ jobs:
 
             const mode = strict ? '**strict**' : '**warn-only** (Phase 1 rollout)';
             const status = errors === 0 ? '✅ Pass' : (strict ? '❌ Fail' : '⚠️ Drift (non-blocking)');
-            const body = `### docs i18n parity — ${status}
-
-Mode: ${mode} · Errors: ${errors} · Warnings: ${warnings}
-
-${detailBlock}
-
-<details><summary>How to run locally</summary>
-
-\`\`\`bash
-# warn-only (shows drift, exits 0)
-DOCS_I18N_STRICT=0 scripts/docs-i18n-check.sh
-
-# strict (exits 1 on any error — CI mode)
-scripts/docs-i18n-check.sh
-\`\`\`
-
-See \`CLAUDE.local.md §17.3\` and \`SPEC-DOCS-SITE-001\` AC-G3-03 for the parity contract.
-</details>`;
+            // Build the body by array join so no template-literal line starts
+            // with `${...}` at column 0 (actionlint's YAML parser mis-reads a
+            // colon-separated or ${}-leading line inside the script scalar).
+            const summaryLine = `**${mode}** — ${errors} error(s) · ${warnings} warning(s)`;
+            const body = [
+              `### docs i18n parity — ${status}`,
+              ``,
+              summaryLine,
+              ``,
+              detailBlock,
+              ``,
+              `<details><summary>How to run locally</summary>`,
+              ``,
+              '```bash',
+              '# warn-only (shows drift, exits 0)',
+              'DOCS_I18N_STRICT=0 scripts/docs-i18n-check.sh',
+              '',
+              '# strict (exits 1 on any error — CI mode)',
+              'scripts/docs-i18n-check.sh',
+              '```',
+              ``,
+              'See `CLAUDE.local.md §17.3` and `SPEC-DOCS-SITE-001` AC-G3-03 for the parity contract.',
+              `</details>`,
+            ].join('\n');
 
             const marker = '<!-- docs-i18n-check:comment -->';
             const prefixed = marker + '\n' + body;

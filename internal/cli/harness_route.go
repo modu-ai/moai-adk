@@ -78,6 +78,11 @@ Proposal-management verbs (SPEC-V3R5-HARNESS-AUTONOMY-001 §6, new in M4):
   unmute     Remove a category from the mute list
   verify     Verify harness determinism (W4 placeholder)
 
+Harness-v4 lifecycle verbs (SPEC-V3R6-HARNESS-V4-001 M4):
+  list       List all v4 harnesses (name + domain + entry command)
+  edit       Show paths to edit a v4 harness manifest + specialists
+  remove     Atomically remove a v4 harness (command + workflow + specialists + skills + manifest)
+
 Note: SPEC-V3R5-HARNESS-AUTONOMY-001 supersedes the lifecycle CLI retirement
 that was previously declared by SPEC-V3R4-HARNESS-001. The unified Cobra tree
 satisfies AC-HRA-009 (6+ verb surface).`,
@@ -92,6 +97,8 @@ satisfies AC-HRA-009 (6+ verb surface).`,
 
 	// V3R5 lifecycle verbs (un-retired per plan.md §6.4).
 	cmd.AddCommand(newHarnessStatusCmd())
+	// Failure-signature clustering read surface (SPEC-DIVECC-OBSERVABILITY-LOOP-001).
+	cmd.AddCommand(newHarnessClustersCmd())
 	cmd.AddCommand(newHarnessApplyCmd())
 	cmd.AddCommand(newHarnessRollbackCmd())
 	cmd.AddCommand(newHarnessDisableCmd())
@@ -115,6 +122,22 @@ satisfies AC-HRA-009 (6+ verb surface).`,
 	// auto-triggers. The factory lives in the same internal/cli/harness/
 	// package, sharing the TestPropose_NoAskUserQuestion boundary guard.
 	cmd.AddCommand(harnesscli.NewInstallCmd())
+
+	// SPEC-HARNESS-APPLY-EXECUTE-001: `moai harness execute` is the opt-in Go
+	// apply path — the FIRST production caller of Applier.Apply(), activating the
+	// dormant regression-gate + outcome-capture pipeline so the first apply-outcome
+	// telemetry is generated. The factory lives in the same internal/cli/harness/
+	// package, sharing the TestPropose_NoAskUserQuestion boundary guard. The `apply
+	// --execute` UX delegates to this same RunExecute (see newHarnessApplyCmd).
+	cmd.AddCommand(harnesscli.NewExecuteCmd())
+
+	// SPEC-V3R6-HARNESS-V4-001 M4: v4 harness lifecycle verbs (list/edit/remove).
+	// These enumerate / edit / atomically-remove harness-v4 entries under
+	// .claude/commands/harness/. They share the same boundary-guarded package
+	// (TestPropose_NoAskUserQuestion scans this directory).
+	cmd.AddCommand(harnesscli.NewHarnessV4ListCmd())
+	cmd.AddCommand(harnesscli.NewHarnessV4EditCmd())
+	cmd.AddCommand(harnesscli.NewHarnessV4RemoveCmd())
 
 	return cmd
 }

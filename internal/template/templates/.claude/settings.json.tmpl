@@ -76,6 +76,15 @@
             "timeout": 10,
             "type": "command",
             "async": true
+          },
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/status-transition-ownership.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/status-transition-ownership.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command"
           }
         ],
         "matcher": "Write|Edit"
@@ -92,12 +101,30 @@
 {{- end}}
             "timeout": 5,
             "type": "command"
+          },
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/sync-phase-quality-gate.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/sync-phase-quality-gate.sh\"",
+{{- end}}
+            "timeout": 10,
+            "type": "command"
           }{{ if .HookOptIn.Enabled }},
           {
 {{- if eq .Platform "windows"}}
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-stop.sh\"",
 {{- else}}
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-stop.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command"
+          }{{ end }}{{ if .HookOptIn.Enabled }},
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-iggda-phase-driver.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-iggda-phase-driver.sh\"",
 {{- end}}
             "timeout": 5,
             "type": "command"
@@ -347,6 +374,9 @@
   "skillListingBudgetFraction": 0.02,
   "showThinkingSummaries": false,
   "cleanupPeriodDays": 30,
+  "model": "sonnet",
+  "availableModels": ["sonnet", "opus", "haiku", "opus[1m]", "sonnet[1m]", "glm-5.2", "glm-5.1", "glm-4.7", "glm-4.6", "glm-4.5", "glm-4.5-air"],
+  "enforceAvailableModels": true,
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS": "64000",
@@ -551,7 +581,8 @@
   },
   "attribution": {
     "commit": "\ud83d\uddff MoAI <email@mo.ai.kr>",
-    "pr": "\ud83d\uddff MoAI <email@mo.ai.kr>"
+    "pr": "\ud83d\uddff MoAI <email@mo.ai.kr>",
+    "sessionUrl": false
   },
   "enableAllProjectMcpServers": false,
   "enabledMcpjsonServers": [

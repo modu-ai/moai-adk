@@ -47,8 +47,8 @@ func TestIsFrozen_UserPaths(t *testing.T) {
 		name string
 		path string
 	}{
-		{"my-harness agent", ".claude/agents/my-harness/agent.md"},
-		{"my-harness skill", ".claude/skills/my-harness-plugin/SKILL.md"},
+		{"harness agent", ".claude/agents/harness/agent.md"},
+		{"harness skill", ".claude/skills/harness-plugin/SKILL.md"},
 		{"harness state", ".moai/harness/usage-log.jsonl"},
 		{"harness history", ".moai/harness/learning-history/frozen-guard-violations.jsonl"},
 		{"project non-brand", ".moai/project/specs/SPEC-001.md"},

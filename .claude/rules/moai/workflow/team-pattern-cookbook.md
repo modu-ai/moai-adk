@@ -54,7 +54,7 @@ Team Lead: "Synthesize these into: X is popular but has adoption risk, competito
 2. Team Lead assembles synthesis.md
 3. Team Lead sends synthesis to user
 4. Team sends shutdown_request approval to leader
-5. Leader runs TeamDelete
+5. Team cleanup is automatic on session exit (no explicit TeamDelete call — removed in Claude Code v2.1.178)
 
 ---
 
@@ -91,17 +91,17 @@ Team Lead: "Synthesize these into: X is popular but has adoption risk, competito
 
 **Example Workflow**:
 ```
-Day 1:
+Phase 1:
   - Backend: Define API schema + endpoints
   - Frontend: Read schema, start building hooks
   - Tests: Write integration tests against API contract
 
-Day 2:
+Phase 2:
   - Backend: Implement API
   - Frontend: Implement UI with hooks
   - Tests: Run tests, report boundary issues
 
-Day 3:
+Phase 3:
   - Backend + Frontend: Sync on boundary defects, iterate
   - Tests: Verify fixes
 ```
@@ -155,7 +155,7 @@ Consensus: Input validation in middleware (architecture clean, performance accep
 1. All reviewers complete review reports
 2. Team Lead synthesizes into single PR feedback
 3. Team applies feedback or marks as "reviewed with concerns"
-4. TeamDelete
+4. Team cleanup is automatic on session exit (no explicit TeamDelete call)
 
 ---
 
@@ -203,7 +203,7 @@ Product: "Meets requirements, approved"
 **Shutdown Sequence**:
 1. All three approve design
 2. Team produces final design.md with visual, UX, and product sections
-3. TeamDelete
+3. Team cleanup is automatic on session exit (no explicit TeamDelete call)
 
 ---
 
@@ -251,7 +251,68 @@ Fix: Increase timeout, verify test passes
 1. Root cause identified and documented
 2. Fix implemented and tested
 3. Verifier confirms bug no longer reproduces
-4. TeamDelete
+4. Team cleanup is automatic on session exit (no explicit TeamDelete call)
+
+---
+
+## Implementation Team (5+1+1)
+
+A 5-implementer + 1-tester + 1-reviewer composition (total 7 teammates) for SPECs that declare sufficient parallel implementation surface area. Complements the generic Implementation Team above with a higher-throughput variant.
+
+### When to Spawn a 5+1+1 Team
+
+The orchestrator SHOULD spawn a 5-implementer + 1-tester + 1-reviewer team when ALL of the following hold:
+
+1. `team.enabled: true` in workflow.yaml AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env.
+2. The SPEC declares at least 5 implementation packages with independent file ownership (no overlapping write surfaces).
+3. The SPEC's harness level is `standard` or `thorough` (not `minimal` — minimal harness defaults to single-agent autopilot).
+4. Wall-time budget allows parallel execution (Agent Teams have higher token cost and coordination overhead than solo mode).
+
+When any condition fails, fall back to solo mode (single `manager-develop` invocation per package).
+
+### Composition Reference
+
+| Role | Count | Mode | Model | Isolation | Purpose |
+|------|------:|------|-------|-----------|---------|
+| implementer | 5 | acceptEdits | sonnet | worktree | One per independent package |
+| tester | 1 | acceptEdits | sonnet | worktree | Cross-package test coverage |
+| reviewer | 1 | plan | sonnet | none | Read-only quality validation |
+
+Role profile definitions live in `workflow.yaml` `team.role_profiles`. The 7-teammate composition is a usage pattern; the role definitions themselves are shared with other team patterns.
+
+### File Ownership Map (Example)
+
+For a SPEC with 5 implementation packages:
+
+```
+implementer-1 → internal/pkg_a/**        (own *.go files, no tests)
+implementer-2 → internal/pkg_b/**        (own *.go files, no tests)
+implementer-3 → internal/pkg_c/**        (own *.go files, no tests)
+implementer-4 → internal/pkg_d/**        (own *.go files, no tests)
+implementer-5 → internal/pkg_e/**        (own *.go files, no tests)
+tester        → internal/{pkg_a,..,pkg_e}/**_test.go  (own all test files)
+reviewer      → (read-only)                              (cross-cuts all)
+```
+
+The `tester` role owns all `*_test.go` files to prevent write conflicts between implementer and tester on the same test file. Implementer-N produces the API; tester writes the test against the API.
+
+### Spawn Order
+
+```
+Phase 1: Spawn reviewer (read-only, no isolation overhead)
+Phase 2: Spawn 5 implementers in parallel (5 Agent() calls in one orchestrator turn)
+Phase 3: Spawn tester after first implementer commits its package (tester needs API surface)
+```
+
+Spawning all 7 simultaneously is acceptable when the API surface is defined upfront in the SPEC.
+
+### Communication Protocol (5+1+1 specific)
+
+Follow the canonical team-protocol.md mailbox v2 envelope. Specific to the 5+1+1 pattern:
+
+- Implementers communicate directly with each other when one package's API affects another (`task_handoff` or `message` with target peer name).
+- Tester listens for `task_handoff` from any implementer signaling "API ready for test against my package."
+- Reviewer receives a `message` from the team lead when the implementer/tester pair completes; reviewer then runs read-only validation and sends results back.
 
 ---
 
@@ -279,7 +340,7 @@ All teams follow this sequence:
 3. **Lead Initiates Shutdown**: Team Lead sends `shutdown_request` with request_id
 4. **Members Approve/Reject**: Each teammate responds with `shutdown_response { request_id, approve }`
 5. **Final Sync**: Lead synthesizes outputs into final artifact
-6. **TeamDelete**: Leader calls TeamDelete to clean up team
+6. **Automatic cleanup**: Team cleanup is automatic on session exit — no explicit TeamDelete call (the tool was removed in Claude Code v2.1.178)
 
 If a teammate rejects shutdown (still working), Lead can:
 - Extend deadline (send message, wait for completion)
@@ -305,8 +366,8 @@ If a teammate rejects shutdown (still working), Lead can:
 - Status that doesn't block anyone (save for final report)
 
 **Frequency**:
-- First day: High communication (establish coordination)
-- Middle days: Medium (share discoveries that affect others)
-- Final day: High (synthesis and shutdown)
+- Initial phase: High communication (establish coordination)
+- Middle phases: Medium (share discoveries that affect others)
+- Final phase: High (synthesis and shutdown)
 
 This cookbook provides practical patterns for the most common team scenarios in MoAI-ADK.

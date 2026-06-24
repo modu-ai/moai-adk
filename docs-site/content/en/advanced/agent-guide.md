@@ -371,6 +371,14 @@ workflow:
 
 Each role spawns an `Agent(subagent_type: "general-purpose")` with domain-specific instructions injected at spawn time.
 
+## `disallowedTools` MCP Server-Level Enforcement
+
+When an agent's `disallowedTools` frontmatter field references an MCP tool (e.g. `mcp__context7__*`, `mcp__web_search_prime__webSearchPrime`), the restriction is enforced at the MCP server level (CC 2.1.178+): the tool's specs are not exposed to the agent at all, so the agent cannot invoke it even indirectly. This is stricter than the plain tool-deny behavior for built-in tools — a `disallowedTools` entry on an MCP tool is a hard gate, not a soft prompt. Author agents with this in mind when scoping MCP tool access.
+
+## Nested `.claude/` Precedence
+
+When the same agent name appears in more than one `.claude/agents/` directory along a nested chain (project root vs a nested subdirectory's own `.claude/agents/`), the **closest-directory-wins** rule resolves the collision: the `.claude/agents/` nearest to the current working directory shadows the one further up the tree. This is the same closest-wins precedence that applies to skills, workflows, and output-styles under nested `.claude/` directories — the innermost `.claude/` wins. Managed (enterprise) settings remain priority 1 regardless of nesting depth.
+
 ## Related Documents
 
 - [Skill Guide](/advanced/skill-guide) - Skill system used by agents

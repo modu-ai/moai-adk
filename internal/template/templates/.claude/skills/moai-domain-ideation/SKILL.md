@@ -4,6 +4,12 @@ description: >
   Ideation domain specialist: Lean Canvas assembly, SPEC decomposition list extraction,
   and Diverge-Converge pipeline for product proposal generation. Use during /moai brain
   Phase 2 (Diverge), Phase 4 (Converge), and Phase 6 (Proposal).
+
+when_to_use: >
+  Use during /moai brain ideation: Lean Canvas assembly, SPEC
+  decomposition-list extraction, diverge/converge brainstorming, proposal
+  generation, and structured idea exploration.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob
@@ -22,17 +28,11 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["ideation", "lean canvas", "diverge", "converge", "brainstorm", "proposal", "decomposition", "brain"]
-  agents: ["manager-brain"]
-  phases: ["brain"]
 ---
 
-<!-- Verifies REQ-BRAIN-004: proposal.md contains SPEC Decomposition Candidates section with 2-10 entries -->
-<!-- Verifies REQ-BRAIN-011: NO tech-stack assumptions in proposal.md -->
-<!-- Verifies REQ-BRAIN-008: 16-language neutrality enforced at ideation layer -->
+<!-- Verifies: proposal.md contains SPEC Decomposition Candidates section with 2-10 entries -->
+<!-- Verifies: NO tech-stack assumptions in proposal.md -->
+<!-- Verifies: 16-language neutrality enforced at ideation layer -->
 
 <!-- @MX:ANCHOR: [AUTO] SPEC Decomposition Candidates grammar — canonical definition -->
 <!-- @MX:REASON: Consumed by /moai plan --from-brain (high fan_in). Grammar MUST remain stable across brain workflow versions. -->

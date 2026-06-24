@@ -4,7 +4,7 @@
 // SPEC-V3R3-DESIGN-PIPELINE-001 Phase 4 (T4-04).
 //
 // Verification:
-// 1. my-harness-pencil-mcp/SKILL.md stub frontmatter (.pen paths + MCP endpoint).
+// 1. harness-pencil-mcp/SKILL.md stub frontmatter (.pen paths + MCP endpoint).
 // 2. The generated tokens.json passes DTCG validation.
 // 3. "B2" is recorded in path-selection.json.
 // 4. No reference to moai-workflow-pencil-integration (the file is removed in Phase 5 T5-03).
@@ -22,19 +22,19 @@ import (
 	"github.com/modu-ai/moai-adk/internal/design/dtcg"
 )
 
-// writeStubPencilMCPSkill creates a my-harness-pencil-mcp/SKILL.md stub.
+// writeStubPencilMCPSkill creates a harness-pencil-mcp/SKILL.md stub.
 // REQ-DPL-003: includes .pen file paths + Pencil MCP server endpoint.
 func writeStubPencilMCPSkill(t *testing.T, skillsDir string) string {
 	t.Helper()
 
-	skillDir := filepath.Join(skillsDir, "my-harness-pencil-mcp")
+	skillDir := filepath.Join(skillsDir, "harness-pencil-mcp")
 	if err := os.MkdirAll(skillDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
 	// REQ-DPL-003: must include .pen file paths + MCP server endpoint.
 	skillContent := `---
-name: my-harness-pencil-mcp
+name: harness-pencil-mcp
 description: Pencil MCP 통합 스킬 — 프로젝트 전용 meta-harness 생성 스킬
 pen_file_paths:
   - "designs/main.pen"
@@ -172,10 +172,10 @@ func TestPathB2_LegacyPencilIntegrationAbsent(t *testing.T) {
 
 	// Only the Path B2 stub must exist.
 	writeStubPencilMCPSkill(t, skillsDir)
-	pencilMCPPath := filepath.Join(skillsDir, "my-harness-pencil-mcp", "SKILL.md")
+	pencilMCPPath := filepath.Join(skillsDir, "harness-pencil-mcp", "SKILL.md")
 	if _, err := os.Stat(pencilMCPPath); os.IsNotExist(err) {
-		t.Error("my-harness-pencil-mcp/SKILL.md stub이 없음")
+		t.Error("harness-pencil-mcp/SKILL.md stub이 없음")
 	}
 
-	t.Log("검증 완료: stub 환경에 moai-workflow-pencil-integration 없음, my-harness-pencil-mcp 존재")
+	t.Log("검증 완료: stub 환경에 moai-workflow-pencil-integration 없음, harness-pencil-mcp 존재")
 }

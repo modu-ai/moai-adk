@@ -29,7 +29,7 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 	var statuses []string
 	var failures []string
 
-	// L1: my-harness-* skills have triggers section.
+	// L1: harness-* skills have triggers section.
 	skillsDir := filepath.Join(projectRoot, ".claude", "skills")
 	l1, l1Detail := checkLayer1Triggers(skillsDir)
 	statuses = append(statuses, "L1:"+l1)
@@ -69,7 +69,7 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 	// L6 (SPEC-V3R6-HARNESS-ACTIVATION-WIRING-001 smoke gate): generated-agent
 	// frontmatter self-activation checks (REQ-HAW-012/013/013b). Iterates
 	// .claude/agents/harness/*.md and FAILs on an empty description, a missing
-	// skills: key, or a dangling my-harness-* skills: reference. No-op when no
+	// skills: key, or a dangling harness-* skills: reference. No-op when no
 	// generated agents exist. Reuses skillsDir (resolved above) for reference
 	// resolution. Preserves L1-L5 semantics (AC-HAW-014) — additive layer only.
 	agentsDir := filepath.Join(projectRoot, ".claude", "agents", "harness")
@@ -107,7 +107,7 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 	return check
 }
 
-// checkLayer1Triggers verifies that every my-harness-*/SKILL.md has the
+// checkLayer1Triggers verifies that every harness-*/SKILL.md has the
 // required triggers frontmatter section.
 func checkLayer1Triggers(skillsDir string) (string, string) {
 	entries, err := os.ReadDir(skillsDir)
@@ -119,7 +119,9 @@ func checkLayer1Triggers(skillsDir string) (string, string) {
 	}
 	var problems []string
 	for _, e := range entries {
-		if !e.IsDir() || !strings.HasPrefix(e.Name(), "my-harness-") {
+		// SPEC-V3R6-HARNESS-NAMESPACE-V2-001: recognize both harness-* (canonical)
+		// and my-harness-* (legacy, REQ-HNS-005 backward-compat).
+		if !e.IsDir() || (!strings.HasPrefix(e.Name(), "harness-") && !strings.HasPrefix(e.Name(), "my-harness-")) {
 			continue
 		}
 		skillPath := filepath.Join(skillsDir, e.Name(), "SKILL.md")
@@ -224,7 +226,7 @@ func checkLayer5Files(harnessDir string) (string, string) {
 //   - REQ-HAW-013b: the `skills:` frontmatter key is present (a `skills:`-less
 //     agent would otherwise pass silently and reproduce the auto-discovery
 //     failure mode the SPEC exists to close).
-//   - REQ-HAW-013: each `skills:` entry that names a `my-harness-*` skill
+//   - REQ-HAW-013: each `skills:` entry that names a `harness-*` skill
 //     resolves to an existing .claude/skills/<name>/ directory (dangling
 //     references FAIL). Template-distributed `moai-*` references are NOT
 //     resolved against disk and are never dangling (EC-4).
@@ -265,10 +267,12 @@ func checkLayer6AgentActivation(agentsDir, skillsDir string) (string, string) {
 			continue
 		}
 
-		// REQ-HAW-013: my-harness-* references must resolve on disk (EC-4:
+		// REQ-HAW-013: harness-* references must resolve on disk (EC-4:
 		// moai-* template skills are not resolved here).
+		// SPEC-V3R6-HARNESS-NAMESPACE-V2-001: recognize both harness-* (canonical)
+		// and my-harness-* (legacy, REQ-HNS-005 backward-compat).
 		for _, ref := range skillRefs {
-			if !strings.HasPrefix(ref, "my-harness-") {
+			if !strings.HasPrefix(ref, "harness-") && !strings.HasPrefix(ref, "my-harness-") {
 				continue
 			}
 			if _, err := os.Stat(filepath.Join(skillsDir, ref)); err != nil {

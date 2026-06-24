@@ -6,9 +6,20 @@
 # Dormant behavior: this hook exits 0 immediately unless workflow.yaml declares
 # team.enabled: true. This avoids overhead in solo-mode sessions.
 #
+# Reject path (--reject stub): emits exit 2 with a ledger_note JSON field.
+# This is the REQ-LEDGER-002 reject path (SPEC-V3R6-ORCH-INTERRUPT-LEDGER-001).
+# The trigger is a MINIMAL STUB (--reject test flag) — full AC-verification logic
+# (parsing acceptance.md, running evidence commands, emitting exit 2 on AC failure)
+# is explicitly OUT OF SCOPE and deferred to a follow-up SPEC. Exit-code semantics
+# are unchanged: exit 2 still = reject completion (CON-1).
+#
 # Manual smoke test:
 #   echo '{"task":{"metadata":{}}}' | bash .claude/hooks/moai/team-ac-verify.sh
 # Expected: {"hook":"team-ac-verify","decision":"dormant",...} when team mode disabled.
+#
+# Reject-path smoke test:
+#   bash .claude/hooks/moai/team-ac-verify.sh --reject
+# Expected: exit 2 + JSON with "decision":"reject" and a "ledger_note" field.
 
 set -e
 
@@ -19,6 +30,24 @@ if [ "$1" = "--skip-hook" ]; then
     echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [team-ac-verify] skipped via --skip-hook" \
         >> "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs/hook-skip.log"
     exit 0
+fi
+
+# REQ-LEDGER-002 reject-path stub (SPEC-V3R6-ORCH-INTERRUPT-LEDGER-001).
+# Minimal trigger: explicit --reject test flag. The orchestrator injects the
+# emitted ledger_note as the ledger-closing artifact for the rejected task.
+# Full AC-verification logic (parse acceptance.md, run evidence commands) is
+# deferred to a follow-up SPEC — see spec.md §X.1.
+if [ "$1" = "--reject" ]; then
+    LEDGER_NOTE="task rejected via --reject stub: AC verification not yet implemented (deferred to follow-up SPEC-V3R6-TEAM-AC-VERIFY-FULL-001)"
+    cat <<EOF
+{
+  "hook": "team-ac-verify",
+  "decision": "reject",
+  "ledger_note": "$LEDGER_NOTE",
+  "reason": "reject path triggered by --reject stub (REQ-LEDGER-002)"
+}
+EOF
+    exit 2
 fi
 
 # Dormant capability gate (team-mode opt-in)

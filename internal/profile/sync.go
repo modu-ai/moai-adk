@@ -68,7 +68,7 @@ func SyncToProjectConfig(projectRoot string, prefs ProfilePreferences) error {
 	}
 
 	// Sync statusline section (written directly to avoid config manager dependency)
-	if prefs.StatuslinePreset != "" || prefs.StatuslineTheme != "" || prefs.StatuslineSegments != nil {
+	if prefs.StatuslineTheme != "" || prefs.StatuslineSegments != nil {
 		if err := syncStatusline(projectRoot, prefs); err != nil {
 			return fmt.Errorf("sync statusline: %w", err)
 		}
@@ -78,10 +78,12 @@ func SyncToProjectConfig(projectRoot string, prefs ProfilePreferences) error {
 }
 
 // statuslineData is the internal YAML structure for statusline.yaml. It mirrors
-// the canonical models.StatuslineConfig shape {Preset, Segments, Theme} — the
-// `mode:` YAML surface was removed (SLM-1/SLM-2/SLR-2) because it was inert.
+// the canonical models.StatuslineConfig shape {Segments, Theme}. The `mode:`
+// surface was removed (SLM-1/SLM-2/SLR-2 — inert) and the `preset:` surface was
+// retired (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001). A legacy `preset:` key in
+// an existing statusline.yaml is silently ignored (unknown YAML keys do not
+// error on unmarshal).
 type statuslineData struct {
-	Preset   string          `yaml:"preset,omitempty"`
 	Segments map[string]bool `yaml:"segments,omitempty"`
 	Theme    string          `yaml:"theme,omitempty"`
 }
@@ -91,9 +93,13 @@ type statuslineFileWrap struct {
 	Statusline statuslineData `yaml:"statusline"`
 }
 
-// syncStatusline writes StatuslinePreset, StatuslineSegments, and StatuslineTheme
-// to .moai/config/sections/statusline.yaml. When the file is absent, all segments
-// default to enabled and preset defaults to "full" (REQ-SLE-022).
+// syncStatusline writes StatuslineSegments and StatuslineTheme to
+// .moai/config/sections/statusline.yaml (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001
+// retired the preset shorthand — segments + theme are the only levers now).
+// When the file is absent, all segments default to enabled (REQ-SLE-022).
+// Submitted segments (prefs.StatuslineSegments != nil) are persisted verbatim;
+// when not submitted, existing on-disk segments are preserved untouched so
+// theme-only saves do not clobber a user's segment map.
 func syncStatusline(projectRoot string, prefs ProfilePreferences) error {
 	sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
 	statuslineFile := filepath.Join(sectionsDir, "statusline.yaml")
@@ -110,36 +116,20 @@ func syncStatusline(projectRoot string, prefs ProfilePreferences) error {
 		}
 	}
 
-	// Apply defaults when statusline.yaml was absent (REQ-SLE-022)
-	if current.Statusline.Preset == "" {
-		current.Statusline.Preset = "full"
-	}
+	// Apply default segments when statusline.yaml was absent (REQ-SLE-022 /
+	// REQ-SPR-009): the only default path is all-15-enabled; no preset
+	// participates in defaulting.
 	if current.Statusline.Segments == nil {
 		current.Statusline.Segments = defaultStatuslineSegments()
 	}
 
-	// Merge preferences (non-empty values override existing config)
-	if prefs.StatuslinePreset != "" {
-		current.Statusline.Preset = prefs.StatuslinePreset
+	// Submitted segments win verbatim (REQ-SPR-008). When not submitted, existing
+	// on-disk segments are preserved untouched (theme-only / segment-only saves).
+	if prefs.StatuslineSegments != nil {
+		current.Statusline.Segments = prefs.StatuslineSegments
 	}
 	if prefs.StatuslineTheme != "" {
 		current.Statusline.Theme = prefs.StatuslineTheme
-	}
-
-	// Preset write-effective (SLR-3): make a non-custom preset selection actually
-	// take effect by expanding it into a full 15-key segments map at save time —
-	// the runtime reads the segments map, not the preset, so without this a
-	// non-custom preset silently no-ops. An explicit segment map (custom preset,
-	// StatuslineSegments != nil) wins and is persisted verbatim (HARD-6). When the
-	// preset is NOT submitted (StatuslinePreset == ""), existing segments are
-	// preserved untouched (HARD-7 — theme-only / segment-only saves). Runtime
-	// precedence (segments map wins over preset) is unchanged — this governs only
-	// the WRITE-time materialization.
-	switch {
-	case prefs.StatuslineSegments != nil:
-		current.Statusline.Segments = prefs.StatuslineSegments
-	case prefs.StatuslinePreset != "" && prefs.StatuslinePreset != "custom":
-		current.Statusline.Segments = statusline.PresetToSegments(prefs.StatuslinePreset, nil)
 	}
 
 	// Write statusline.yaml

@@ -2,6 +2,7 @@ package mx
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,6 +17,28 @@ type Scanner struct {
 	anchorIDs      map[string]string // AnchorID -> file:line (for duplicate detection)
 	warnings       []string          // Scanner warnings
 	errors         []string          // Scanner errors
+}
+
+// errSubLineKind is the sentinel returned by parseTag when the parsed kind is a
+// recognized sub-line (e.g. CEILING, UPGRADE, REASON) rather than a standalone
+// tag. The per-line loop checks for this sentinel and skips the line WITHOUT
+// appending to s.errors, so a sub-line does not regenerate an "unknown tag kind"
+// parse error.
+var errSubLineKind = errors.New("recognized sub-line, not a standalone tag")
+
+// recognizedSubLineKinds is the set of @MX sub-line keys that parseTag skips
+// (returning errSubLineKind) instead of erroring with "unknown tag kind".
+//
+// LEGACY is DELIBERATELY EXCLUDED: it is also a real standalone tag kind
+// (MXLegacy, tag.go), so including it here would make parseTag silently drop a
+// standalone "// @MX:LEGACY:" comment as a sub-line sentinel — a regression.
+var recognizedSubLineKinds = map[string]bool{
+	"CEILING":  true,
+	"UPGRADE":  true,
+	"REASON":   true,
+	"SPEC":     true,
+	"TEST":     true,
+	"PRIORITY": true,
 }
 
 // NewScanner creates a new tag scanner.
@@ -53,6 +76,7 @@ func (s *Scanner) ScanFile(filePath string) ([]Tag, error) {
 	lineNum := 0
 
 	var pendingWarnTag *Tag // Track WARN tag that needs REASON
+	pendingDebtIdx := -1    // Index in tags of a DEBT tag awaiting an @MX:UPGRADE sub-line
 
 	for scanner.Scan() {
 		lineNum++
@@ -79,6 +103,41 @@ func (s *Scanner) ScanFile(filePath string) ([]Tag, error) {
 		// Parse the tag
 		tag, err := s.parseTag(filePath, lineNum, tagContent)
 		if err != nil {
+			// A recognized sub-line (CEILING/UPGRADE/REASON/...) is not a tag.
+			// Skip it WITHOUT recording a parse error, but still pair an
+			// @MX:REASON with a pending WARN/ANCHOR, and resolve a pending
+			// DEBT's rot-risk when @MX:UPGRADE appears.
+			if errors.Is(err, errSubLineKind) {
+				upperLine := strings.ToUpper(line)
+				if pendingDebtIdx >= 0 && strings.Contains(upperLine, "@MX:UPGRADE") {
+					// DEBT has an upgrade trigger — it does not rot.
+					tags[pendingDebtIdx].RotRisk = ""
+					pendingDebtIdx = -1
+				}
+				if strings.Contains(upperLine, "@MX:REASON") {
+					// A pending WARN pairs its REASON only within 3 lines;
+					// a too-late REASON leaves the WARN unpaired (warned at EOF).
+					if pendingWarnTag != nil && lineNum > pendingWarnTag.Line+3 {
+						s.warnings = append(s.warnings,
+							fmt.Sprintf("MissingReasonForWarn: %s:%d - WARN tag without REASON within 3 lines",
+								pendingWarnTag.File, pendingWarnTag.Line))
+						pendingWarnTag = nil
+					}
+					if reason := extractReason(line); reason != "" {
+						if pendingWarnTag != nil {
+							pendingWarnTag.Reason = reason
+							tags = append(tags, *pendingWarnTag)
+							pendingWarnTag = nil
+						} else if len(tags) > 0 {
+							lastIdx := len(tags) - 1
+							if tags[lastIdx].Kind == MXWarn || tags[lastIdx].Kind == MXAnchor {
+								tags[lastIdx].Reason = reason
+							}
+						}
+					}
+				}
+				continue
+			}
 			s.errors = append(s.errors, fmt.Sprintf("parse error at %s:%d: %v", filePath, lineNum, err))
 			continue
 		}
@@ -131,9 +190,20 @@ func (s *Scanner) ScanFile(filePath string) ([]Tag, error) {
 
 		// Add tag to results (WARN tags without reason are not added yet)
 		if tag.Kind != MXWarn {
-			tags = append(tags, tag)
+			if tag.Kind == MXDebt {
+				// DEBT rots unless a following @MX:UPGRADE sub-line clears it.
+				// Set the pessimistic default now; the sentinel path resolves it.
+				tag.RotRisk = "no-trigger"
+				tags = append(tags, tag)
+				pendingDebtIdx = len(tags) - 1
+			} else {
+				// A non-DEBT tag ends any prior DEBT's sub-line window.
+				pendingDebtIdx = -1
+				tags = append(tags, tag)
+			}
 		} else if pendingWarnTag == nil {
 			// WARN tag with reason already added
+			pendingDebtIdx = -1
 			tags = append(tags, tag)
 		}
 	}
@@ -210,11 +280,6 @@ func (s *Scanner) GetErrors() []string {
 	return s.errors
 }
 
-// HasErrors returns true if the scanner encountered any errors.
-func (s *Scanner) HasErrors() bool {
-	return len(s.errors) > 0
-}
-
 // extractTagContent extracts the @MX tag content from a line.
 // Returns the content after "@MX:" and true if successful.
 func extractTagContent(line, commentPrefix string) (string, bool) {
@@ -245,11 +310,21 @@ func (s *Scanner) parseTag(filePath string, lineNum int, content string) (Tag, e
 	}
 
 	kindStr := strings.TrimSpace(parts[0])
-	kind := TagKind(strings.ToUpper(kindStr))
+	upper := strings.ToUpper(kindStr)
+	kind := TagKind(upper)
+
+	// Recognized sub-line kinds (CEILING/UPGRADE/REASON/SPEC/TEST/PRIORITY) are
+	// NOT standalone tags. Consult the set BEFORE the validity switch so they
+	// return the errSubLineKind sentinel instead of an "unknown tag kind" error.
+	// LEGACY is excluded from the set (it is a real tag kind), so it falls
+	// through to the validity switch below and is scanned as a tag.
+	if recognizedSubLineKinds[upper] {
+		return Tag{}, errSubLineKind
+	}
 
 	// Validate kind
 	switch kind {
-	case MXNote, MXWarn, MXAnchor, MXTodo, MXLegacy:
+	case MXNote, MXWarn, MXAnchor, MXTodo, MXLegacy, MXDebt:
 		// Valid kind
 	default:
 		return Tag{}, fmt.Errorf("unknown tag kind: %s", kindStr)

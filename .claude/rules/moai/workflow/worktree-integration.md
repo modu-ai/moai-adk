@@ -35,6 +35,21 @@ MoAI-ADK supports two complementary worktree systems for isolated development:
 | **State Persistence** | None | SPEC state, progress tracking |
 | **Hook Support** | WorktreeCreate/WorktreeRemove hooks | WorktreeCreate/WorktreeRemove hooks |
 
+## Terminology Glossary
+
+This glossary is the canonical definition surface for the L1 / L2 / L3 worktree-layer terms used across the MoAI rule set. Other rules (`spec-workflow.md`, `worktree-state-guard.md`, `session-handoff.md`, and `CLAUDE.md` §14) cross-reference `§ Terminology Glossary` for these definitions.
+
+| Layer | Name | What it is | Path / Trigger | Lifetime | Owner |
+|-------|------|-----------|----------------|----------|-------|
+| **L1** | Claude-native ephemeral worktree | Session-scoped isolation materialized by the Claude Code runtime for a subagent spawned with `Agent(isolation: "worktree")` (or `claude --worktree`). The runtime decides whether to materialize it. | `.claude/worktrees/<auto-name>/` | Ephemeral — auto-cleaned on session end | Claude Code runtime (autonomous; MoAI orchestrator does not mandate it per 2026-05-17 policy) |
+| **L2** | MoAI persistent SPEC worktree | A persistent, SPEC-scoped working directory created by `moai worktree new SPEC-XXX`. Used for multi-session SPEC development (run + sync phases reuse the same L2 worktree). | `~/.moai/worktrees/<project>/<SPEC>/` | Persistent — disposed only via `moai worktree done SPEC-XXX` after both run + sync PRs merge | MoAI (user-managed via `moai worktree` CLI) |
+| **L3** | Worktree launch action (opt-in) | The user opt-in launch step that creates an L2 worktree, e.g. `/moai plan --worktree`. L3 is the *action*; L2 is the *artifact* it produces. Per the 2026-05-17 policy, L3 is opt-in; the default flow runs all phases on a `feat/SPEC-XXX` branch in the main checkout. | `/moai plan --worktree` (or `moai worktree new --worktree`) | n/a (an action, not a directory) | User (explicit opt-in) |
+
+Relationships:
+- An **L3** launch action (`--worktree`) creates an **L2** persistent SPEC worktree.
+- An **L1** ephemeral worktree is materialized autonomously by the Claude Code runtime for an isolated subagent; it is independent of L2/L3 and may occur inside either the main checkout or an L2 worktree.
+- When L3 was used, the paste-ready resume MUST anchor the next session inside the L2 worktree (Block 0) per `session-handoff.md` § Worktree-Anchored Resume Pattern.
+
 ## Claude Code 2.1.50+ Worktree Features
 
 ### `claude --worktree` (`-w`) Flag
@@ -164,7 +179,7 @@ Is this a one-shot sub-agent task?
 
 - [ZONE:Evolvable] [HARD] Implementation teammates in team mode (role_profiles: implementer, tester, designer) MUST use `isolation: "worktree"` when spawned via Agent()
 - [ZONE:Evolvable] [HARD] Read-only teammates (role_profiles: researcher, analyst, reviewer) MUST NOT use `isolation: "worktree"` — their `mode: "plan"` already prevents writes
-- [ZONE:Evolvable] [HARD] One-shot sub-agents that write files across 3 or more paths per invocation MUST use `isolation: "worktree"`. This includes write-heavy agents such as manager-develop, expert-backend, expert-frontend, expert-refactoring, researcher, and team-mode role profiles implementer, tester, designer.
+- [ZONE:Evolvable] [HARD] One-shot sub-agents that write files across 3 or more paths per invocation MUST use `isolation: "worktree"`. This includes write-heavy retained agents (manager-develop), per-spawn `Agent(general-purpose)` specialists with a write-heavy domain whitelist (e.g. backend / frontend / devops / refactoring), and team-mode role profiles (implementer, tester, designer).
 <!-- @MX:ANCHOR: WorktreeMUSTRule — invariant contract; all write-heavy agents MUST declare isolation:worktree; enforced by LR-05 lint rule -->
 <!-- @MX:REASON: MUST level required to eliminate silent file-write conflict failure mode in parallel Agent() execution. -->
 - [ZONE:Evolvable] [HARD] GitHub workflow agents (fixer agents in /moai github issues) MUST use `isolation: "worktree"` for branch isolation
@@ -250,7 +265,7 @@ Claude Code v2.1.49+ defines `WorktreeCreate` / `WorktreeRemove` hooks that **re
 
 The stdin JSON for both events includes `worktree_path` (Claude Code's proposed path), `name`, `cwd`, `session_id`, `transcript_path`, `hook_event_name`.
 
-**MoAI-ADK does NOT register these hooks by default.** Claude Code's default git worktree handling is sufficient for our agent isolation use case (5 agents declare `isolation: worktree`: manager-develop, expert-frontend, expert-backend, expert-refactoring, researcher). Registering observer-only hooks here would replace the default behavior with non-functional stubs and produce `"WorktreeCreate hook returned a path that is not a directory: {}"` because an empty JSON object cannot be parsed as a path.
+**MoAI-ADK does NOT register these hooks by default.** Claude Code's default git worktree handling is sufficient for our agent isolation use case — write-heavy work is declared `isolation: worktree` by the retained `manager-develop` agent, by per-spawn `Agent(general-purpose)` specialists with a write-heavy domain whitelist, and by team-mode role profiles (implementer, tester, designer) per the Worktree Selection Rules above. Registering observer-only hooks here would replace the default behavior with non-functional stubs and produce `"WorktreeCreate hook returned a path that is not a directory: {}"` because an empty JSON object cannot be parsed as a path.
 
 If a future use case requires custom worktree creation (e.g., non-git VCS, shared-file symlinks, per-worktree database setup), implement an active creator hook that:
 
@@ -315,9 +330,11 @@ Both share the same project structure. `src/auth/handler.go` resolves correctly 
 
 The `moai worktree new <SPEC-ID> --team` flag launches a Claude or GLM session inside the new worktree based on the current environment. See `.claude/skills/moai-workflow-worktree/SKILL.md` § `--team` Flag for the full P1-P4 decision matrix, detection logic, and example invocations.
 
+> **Two distinct `teammateMode` fields — do not conflate.** The `teammateMode` referenced in the §HARD Rules and P1-P4 detection below is MoAI's own `.claude/settings.local.json` launcher-selection field (values `"tmux"` / `"glm"` / `"claude"`), set by `moai cg` / `moai glm` / `moai cc`. This is SEPARATE from the Claude Code runtime `teammateMode` setting, whose default changed from `auto` to `in-process` as of Claude Code v2.1.179 — with the in-process default, split panes no longer auto-open. Additionally, as of Claude Code v2.1.181, an idle teammate's agent-panel row hides after 30 seconds and reappears on the next turn. These two CC-runtime behaviors govern how teammates are displayed; MoAI's launcher-selection `teammateMode` governs which launcher (`moai cg` / `moai glm` / `moai cc`) the `--team` flag invokes. Both fields happen to share the name `teammateMode`.
+
 ### HARD Rules
 
-[ZONE:Frozen] [HARD] CLI launch decisions MUST NOT invoke `AskUserQuestion`. All four launch patterns (P1 tmux+CG → moai glm, P2 tmux+CC → moai cc, P3 no-tmux → syscall.Exec, P4 no-flag → handoff) are selected deterministically from observable state (tmux session presence, `teammateMode`, GLM env vars). This satisfies the Branch Origin Decision Protocol per CONST-V3R5-030 (see `.claude/rules/moai/workflow/branch-origin-protocol.md` § HARD Rules).
+[ZONE:Frozen] [HARD] CLI launch decisions MUST NOT invoke `AskUserQuestion`. All four launch patterns (P1 tmux+CG → moai glm, P2 tmux+CC → moai cc, P3 no-tmux → syscall.Exec, P4 no-flag → handoff) are selected deterministically from observable state (tmux session presence, `teammateMode`, GLM env vars). This satisfies the Branch Origin Decision Protocol per CONST-V3R5-030 (see `.claude/rules/moai/development/branch-origin-protocol.md` § HARD Rules).
 
 Static guard: `internal/cli/worktree/new_test.go` `TestNew_NoAskUserQuestion` scans all team-launch sources for `AskUserQuestion` / `mcp__askuser` references.
 
@@ -379,46 +396,7 @@ The 7-field schema (`spec_id`, `worktree_path`, `branch`, `pane_id`, `mode`, `cr
 
 ## Team Protocol
 
-Shared protocol for all MoAI Agent Teams teammates. Supplements role-specific instructions.
-
-### Team Discovery
-- Read `~/.claude/teams/{team-name}/config.json` to discover teammates
-- Always refer to teammates by their `name` field when using SendMessage
-
-### Communication
-- Use direct messages (type: "message") by default
-- NEVER broadcast unless a critical blocking issue affects ALL teammates
-- Send findings and results to the team lead via SendMessage when complete
-- Report blockers to the team lead immediately
-- Update task status via TaskUpdate
-
-### Task Management
-After completing each task:
-- Mark task as completed via TaskUpdate (MANDATORY - prevents infinite waiting)
-- Check TaskList for available unblocked tasks
-- Claim the next available unblocked task (prefer lowest ID first) or wait for team lead instructions
-
-### Error Recovery
-- If you encounter an error, do NOT stop working. Try an alternative approach first
-- If the error persists after 3 attempts, report it to the team lead via SendMessage with the error details, file path, and what you tried
-- Continue with remaining tasks even if one task fails
-- If blocked by another teammate's work, report the blocker and move to the next unblocked task
-
-### Shutdown Handling
-When you receive a shutdown_request JSON message:
-- If all work is complete: SendMessage(type: "shutdown_response", request_id: "<from message>", approve: true)
-- If work is in progress: SendMessage(type: "shutdown_response", request_id: "<from message>", approve: false, content: "Still working on [task]")
-
-### Idle States
-- Going idle is NORMAL - it means you are waiting for input from the team lead
-- After completing work, you will go idle while waiting for the next assignment
-- The team lead will either send new work or a shutdown request
-- NEVER assume work is done until you receive shutdown_request from the lead
-
-### Context Isolation
-- You do NOT have access to the team lead's conversation history
-- All necessary context must come from your spawn prompt or teammate messages
-- If context is insufficient, ask the team lead for clarification via SendMessage
+> Canonical: the shared Agent Teams teammate protocol (team discovery, communication, task management, error recovery, shutdown handling, idle states, context isolation) lives in `.claude/rules/moai/workflow/team-protocol.md`. This file cross-references it for worktree-isolation context only; it does not restate the teammate protocol mechanics.
 
 ---
 

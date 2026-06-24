@@ -859,15 +859,15 @@ func TestIsUserOwnedNamespace(t *testing.T) {
 		rel  string
 		want bool
 	}{
-		// REQ-UNP-001: .claude/skills/my-harness-*
+		// REQ-UNP-001: .claude/skills/harness-*
 		{
-			name: "REQ-UNP-001 my-harness skill",
-			rel:  ".claude/skills/my-harness-test/SKILL.md",
+			name: "REQ-UNP-001 harness skill",
+			rel:  ".claude/skills/harness-test/SKILL.md",
 			want: true,
 		},
 		{
-			name: "REQ-UNP-001 my-harness skill root",
-			rel:  ".claude/skills/my-harness-foo",
+			name: "REQ-UNP-001 harness skill root",
+			rel:  ".claude/skills/harness-foo",
 			want: true,
 		},
 		// REQ-UNP-002: .claude/agents/harness/
@@ -998,10 +998,10 @@ func TestIsUserOwnedNamespace(t *testing.T) {
 func TestIsUserOwnedNamespace_AdditivityWithIsUserAreaPath(t *testing.T) {
 	// Paths that isUserAreaPath protects:
 	previouslyCovered := []string{
-		".claude/skills/my-harness-test/SKILL.md",
-		".claude/skills/my-harness-foo/file.md",
-		".claude/agents/my-harness",
-		".claude/agents/my-harness/teammate.md",
+		".claude/skills/harness-test/SKILL.md",
+		".claude/skills/harness-foo/file.md",
+		".claude/agents/harness",
+		".claude/agents/harness/teammate.md",
 	}
 
 	for _, path := range previouslyCovered {
@@ -2716,82 +2716,9 @@ func TestMigrateLegacyMemoryDir(t *testing.T) {
 	}
 }
 
-// --- TDD RED: Statusline wizard config tests ---
-
-func TestPresetToSegments(t *testing.T) {
-	allSegments := []string{"model", "context", "output_style", "directory", "git_status", "claude_version", "moai_version", "git_branch"}
-
-	tests := []struct {
-		name      string
-		preset    string
-		custom    map[string]bool
-		wantTrue  []string // segments that should be true
-		wantFalse []string // segments that should be false
-	}{
-		{
-			name:     "full preset enables all segments",
-			preset:   "full",
-			wantTrue: allSegments,
-		},
-		{
-			name:      "compact preset enables subset",
-			preset:    "compact",
-			wantTrue:  []string{"model", "context", "git_status", "git_branch"},
-			wantFalse: []string{"output_style", "directory", "claude_version", "moai_version"},
-		},
-		{
-			name:      "minimal preset enables model and context only",
-			preset:    "minimal",
-			wantTrue:  []string{"model", "context"},
-			wantFalse: []string{"output_style", "directory", "git_status", "claude_version", "moai_version", "git_branch"},
-		},
-		{
-			name:   "custom preset uses provided map",
-			preset: "custom",
-			custom: map[string]bool{
-				"model":      true,
-				"context":    false,
-				"git_branch": true,
-			},
-			wantTrue:  []string{"model", "git_branch"},
-			wantFalse: []string{"context"},
-		},
-		{
-			name:     "unknown preset falls back to full",
-			preset:   "unknown",
-			wantTrue: allSegments,
-		},
-		{
-			name:     "empty preset falls back to full",
-			preset:   "",
-			wantTrue: allSegments,
-		},
-		{
-			name:     "custom with nil map defaults all to true",
-			preset:   "custom",
-			custom:   nil,
-			wantTrue: allSegments,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := presetToSegments(tt.preset, tt.custom)
-
-			for _, seg := range tt.wantTrue {
-				if !result[seg] {
-					t.Errorf("segment %q should be true for preset %q", seg, tt.preset)
-				}
-			}
-
-			for _, seg := range tt.wantFalse {
-				if result[seg] {
-					t.Errorf("segment %q should be false for preset %q", seg, tt.preset)
-				}
-			}
-		})
-	}
-}
+// TestPresetToSegments removed (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001): the
+// lowercase presetToSegments wrapper was deleted from update.go alongside the
+// capital statusline.PresetToSegments function. Named presets no longer exist.
 
 func TestMergeGitignoreFile_PreservesUserPatterns(t *testing.T) {
 	tmpDir := t.TempDir()

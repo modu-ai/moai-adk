@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-gate
 description: >
   Lightweight pre-commit quality gate running lint, format, type-check, and tests
   in parallel. Fast validation (<30s) without full code review or coverage analysis.
@@ -21,7 +20,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["gate", "check", "pre-commit", "lint", "format", "quality gate"]
-  agents: ["manager-quality"]
+  agents: []
   phases: ["gate"]
 ---
 

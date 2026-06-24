@@ -25,20 +25,23 @@ func TestProjectOptionListsMatchCanonical(t *testing.T) {
 	for _, m := range models.ValidDevelopmentModes() {
 		wantDev = append(wantDev, string(m))
 	}
-	gotDev := append([]string(nil), developmentModeCanonical...)
+	// SPEC-WEB-CONSOLE-010: the web list is now schema-sourced via
+	// developmentModeOptionList() (settings.DevelopmentModeOptionValues).
+	gotDev := append([]string(nil), developmentModeOptionList()...)
 	sort.Strings(wantDev)
 	sort.Strings(gotDev)
 	if strings.Join(gotDev, ",") != strings.Join(wantDev, ",") {
-		t.Errorf("developmentModeCanonical set = %v, want %v (drift from models.ValidDevelopmentModes)", gotDev, wantDev)
+		t.Errorf("developmentModeOptionList set = %v, want %v (drift from models.ValidDevelopmentModes)", gotDev, wantDev)
 	}
 
 	// git_convention: web list must equal config.ValidConventions().
+	// SPEC-WEB-CONSOLE-010: schema-sourced via conventionOptionList().
 	wantConv := append([]string(nil), config.ValidConventions()...)
-	gotConv := append([]string(nil), conventionCanonical...)
+	gotConv := append([]string(nil), conventionOptionList()...)
 	sort.Strings(wantConv)
 	sort.Strings(gotConv)
 	if strings.Join(gotConv, ",") != strings.Join(wantConv, ",") {
-		t.Errorf("conventionCanonical set = %v, want %v (drift from config.ValidConventions)", gotConv, wantConv)
+		t.Errorf("conventionOptionList set = %v, want %v (drift from config.ValidConventions)", gotConv, wantConv)
 	}
 }
 
@@ -105,13 +108,12 @@ func TestProjectFieldsetRendersSelects(t *testing.T) {
 	} else if strings.Contains(gcSel, `value="custom"`) {
 		t.Error("git_convention select must not offer the removed custom option")
 	}
-	// development_mode keeps the "(project default)" empty option; git_convention's
-	// empty option now reads "(unchanged)" (REQ-WC9-013).
+	// SPEC-WEB-CONSOLE-010 AC-WC10-014: both development_mode and git_convention now
+	// single-source their empty-option label from the settings schema, which is
+	// "(project default)" for both — resolving the documented git_convention
+	// "(unchanged)" vs schema drift. Both selects render the canonical label.
 	if !strings.Contains(body, `(project default)`) {
-		t.Error("development_mode select missing its empty (project default) option")
-	}
-	if !strings.Contains(body, `(unchanged)`) {
-		t.Error("git_convention select missing its empty (unchanged) option")
+		t.Error("development_mode / git_convention select missing the canonical (project default) empty option")
 	}
 }
 

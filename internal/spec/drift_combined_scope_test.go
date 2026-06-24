@@ -47,6 +47,14 @@ func TestCombinedScopeCloseMatches(t *testing.T) {
 			want:    true,
 		},
 		{
+			// SPEC-V3R6-LIFECYCLE-REDESIGN-001 AC-LR-012 (REQ-LR-020, D4): 새 canonical
+			// "3-phase close" infix로도 combined-scope close가 인식되어야 한다.
+			name:    "FOO matches (FOO + BAR) combined close with 3-phase close infix (REQ-LR-020)",
+			subject: "chore(SPEC-ABC): sync-phase audit-ready signal + 3-phase close (FOO + BAR)",
+			specID:  "SPEC-ABC-FOO-001",
+			want:    true,
+		},
+		{
 			name:    "BAR matches (FOO + BAR) combined close",
 			subject: "chore(SPEC-ABC): Mx-phase audit-ready signal + 4-phase close (FOO + BAR)",
 			specID:  "SPEC-ABC-BAR-001",

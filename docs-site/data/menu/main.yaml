@@ -181,18 +181,6 @@ main:
           zh: /moai project
         ref: /workflow-commands/moai-project
       - name:
-          ko: /moai brain
-          en: /moai brain
-          ja: /moai brain
-          zh: /moai brain
-        ref: /workflow-commands/moai-brain
-      - name:
-          ko: /moai design
-          en: /moai design
-          ja: /moai design
-          zh: /moai design
-        ref: /workflow-commands/moai-design
-      - name:
           ko: /moai plan
           en: /moai plan
           ja: /moai plan
@@ -302,46 +290,6 @@ main:
           ja: /moai codemaps
           zh: /moai codemaps
         ref: /quality-commands/moai-codemaps
-
-  - name:
-      ko: 디자인 시스템
-      en: Design System
-      ja: デザインシステム
-      zh: 设计系统
-    ref: /design
-    icon: palette
-    defaultOpen: true
-    sub:
-      - name:
-          ko: 시작하기
-          en: Getting Started
-          ja: はじめに
-          zh: 入门指南
-        ref: /design/getting-started
-      - name:
-          ko: Claude Design 핸드오프
-          en: Claude Design Handoff
-          ja: Claude Designハンドオフ
-          zh: Claude Design交接
-        ref: /design/claude-design-handoff
-      - name:
-          ko: 코드 기반 경로
-          en: Code-Based Path
-          ja: コードベースパス
-          zh: 代码路径
-        ref: /design/code-based-path
-      - name:
-          ko: GAN Loop
-          en: GAN Loop
-          ja: GAN Loop
-          zh: GAN Loop
-        ref: /design/gan-loop
-      - name:
-          ko: 마이그레이션 가이드
-          en: Migration Guide
-          ja: 移行ガイド
-          zh: 迁移指南
-        ref: /design/migration-guide
 
   - name:
       ko: 데이터베이스 스키마 관리

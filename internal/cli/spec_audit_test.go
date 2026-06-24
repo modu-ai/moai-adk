@@ -22,7 +22,8 @@ import (
 )
 
 // fixtureV3R6CleanSpec writes a SPEC fixture classified as V3R6 with no drift:
-// status: completed, §E.2 + §E.5 sections + valid SHAs all present.
+// status: completed, §E.2 + §E.4 sections + sync_commit_sha present (3-phase
+// layout per SPEC-V3R6-LIFECYCLE-REDESIGN-001; §E.5 Mx-phase retired).
 func fixtureV3R6CleanSpec(t *testing.T, baseDir, specID string) {
 	t.Helper()
 	specDir := filepath.Join(baseDir, ".moai", "specs", specID)
@@ -56,25 +57,21 @@ artifact: progress
 status: completed
 ---
 
-## §E.2 Sync-phase Audit-Ready Signal
+## §E.2 Run-phase Evidence
+
+## §E.4 Sync-phase Audit-Ready Signal
 
 sync_commit_sha: abc1234567890
-
-## §E.3 Run-phase Status
-
-status: completed
-
-## §E.5 Mx-phase Audit-Ready Signal
-
-mx_commit_sha: def1234567890
 `
 	if err := os.WriteFile(filepath.Join(specDir, "progress.md"), []byte(progressMD), 0o644); err != nil {
 		t.Fatalf("write progress.md: %v", err)
 	}
 }
 
-// fixtureV3R6DriftSpec writes a SPEC at the Y_Y_Y_Y_StatusDrift fixture state:
-// §E.2 + §E.5 + SHAs all present, but spec.md status = implemented (drift).
+// fixtureV3R6DriftSpec writes a SPEC at the SyncStatusDrift fixture state:
+// §E.2 run-evidence + §E.4 sync marker + sync_commit_sha present (sync complete),
+// but spec.md status = implemented (not completed) → MUST-FIX drift
+// (SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-019).
 func fixtureV3R6DriftSpec(t *testing.T, baseDir, specID string) {
 	t.Helper()
 	specDir := filepath.Join(baseDir, ".moai", "specs", specID)
@@ -108,13 +105,11 @@ artifact: progress
 status: in-progress
 ---
 
-## §E.2 Sync-phase Audit-Ready Signal
+## §E.2 Run-phase Evidence
+
+## §E.4 Sync-phase Audit-Ready Signal
 
 sync_commit_sha: abc1234567890
-
-## §E.5 Mx-phase Audit-Ready Signal
-
-mx_commit_sha: def1234567890
 `
 	if err := os.WriteFile(filepath.Join(specDir, "progress.md"), []byte(progressMD), 0o644); err != nil {
 		t.Fatalf("write progress.md: %v", err)
@@ -216,7 +211,7 @@ func TestSpecAudit_JSONSchema_DriftFindings(t *testing.T) {
 
 	var found bool
 	for _, f := range got.DriftFindings {
-		if f.FindingType == "Y_Y_Y_Y_StatusDrift" && f.Severity == "MUST-FIX" {
+		if f.FindingType == "SyncStatusDrift" && f.Severity == "MUST-FIX" {
 			found = true
 			if !strings.Contains(f.Remediation, "moai spec close") {
 				t.Errorf("remediation should reference `moai spec close`; got %q", f.Remediation)
@@ -224,7 +219,7 @@ func TestSpecAudit_JSONSchema_DriftFindings(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Errorf("expected drift_findings to contain Y_Y_Y_Y_StatusDrift MUST-FIX entry; got %+v", got.DriftFindings)
+		t.Errorf("expected drift_findings to contain SyncStatusDrift MUST-FIX entry; got %+v", got.DriftFindings)
 	}
 }
 

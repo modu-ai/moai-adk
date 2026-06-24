@@ -1,0 +1,1422 @@
+# ==============================================================================
+# tool-policy.yaml — Tool/Permission Policy Single Source of Truth (SSOT)
+# SPEC-V3R6-TOOL-POLICY-SSOT-001
+# ==============================================================================
+# This YAML is the single declarative source from which the .claude/settings.json
+# permissions block (enforcement surface) AND this header comment (audit surface)
+# are both generated. Editing a rule here + running `moai tool-policy build`
+# propagates the change to both surfaces in one pass — structurally preventing
+# YAML↔settings.json drift.
+#
+# Drift-class analogy: .moai/docs/harness-namespace-doctrine.md §24.5 (two
+# independently-maintained surfaces diverging — the doctrine/enforcement drift
+# that characterized the harness namespace incident). This SSOT prevents the
+# ANALOGOUS drift class on the surfaces it generates (YAML↔settings.json). It
+# does NOT prevent the markdown-doctrine-vs-Go-code drift literally (§X.8) —
+# this file generates neither markdown doctrine nor Go enforcement source.
+#
+# Pattern origin: book2 ch4.3-4.4 (execpolicy — contractor with a compliance
+# office), appendix B.3 (assert approval policy independently evaluable, not
+# buried in code if/else).
+#
+# Schema origin: book1 ch08 6-field approval template made machine-readable:
+#   tool + args_pattern → action    | risk_tier → risk      | owner_agent → requestor
+#   decision → approval             | audit → impact + rationale
+#
+# Entry schema (REQ-TPS-002):
+#   tool (string, required)         — Tool name (Bash, Write, WebSearch, mcp__* )
+#   args_pattern (string, required) — glob/regex ("git push:*", "*", or "" for tool-level)
+#   risk_tier (enum, required)      — read | write | irreversible
+#   decision (enum, required)       — allow | deny | ask
+#   owner_agent (string, required)  — agent role owning this rule
+#   audit (string, required)        — human-readable rationale
+#   source (string, optional)       — where the entry was extracted from
+#   env_gate (object, optional)     — environment condition (GLM-backend rules)
+#
+# Query surface: `moai tool-policy list [--risk-tier|--decision|--tool FILTER]`.
+# This query loads the YAML directly with its OWN schema — it is DISJOINT from
+# the constitution Rule schema ({id,zone,zone_class,file,anchor,clause,
+# canary_gate}) and does NOT wrap `moai constitution list` (REQ-TPS-006 / D9).
+#
+# Cross-references:
+#   - .moai/docs/harness-namespace-doctrine.md §24.5 (drift-class analogy)
+#   - .claude/rules/moai/core/zone-registry.md (declarative-policy-with-query PATTERN model)
+#   - book2 ch4.3-4.4, appendix B.3 (execpolicy pattern origin)
+#   - .claude/rules/moai/core/glm-web-tooling.md (GLM env_gate source, L25-35)
+#   - .claude/rules/moai/core/agent-common-protocol.md L162 (background-write deny source)
+#   - .claude/hooks/moai/status-transition-ownership.sh L48-69 (status-transition comment block)
+# ==============================================================================
+
+metadata:
+  version: "1.0.0"
+  generated_into:
+    - ".claude/settings.json#permissions"
+    - "internal/template/templates/.claude/settings.json.tmpl#permissions"
+  cross_refs:
+    - ".moai/docs/harness-namespace-doctrine.md#§24.5"
+    - ".claude/rules/moai/core/zone-registry.md"
+    - "book2 ch4.3-4.4, appendix B.3"
+
+# -----------------------------------------------------------------------------
+# §D.1 Irreversible-tier (highest risk — written down first per book2 ch8.4)
+# Force-push, rm -rf on system paths, disk-format, database-drop. These are
+# the highest-blast-radius rules; book2 ch8.4 directs they be seeded first.
+# Source: .claude/settings.json permissions.deny (destructive subset).
+# -----------------------------------------------------------------------------
+entries:
+
+  # --- §D.1a Force-push (history-rewriting) ---
+  - tool: "Bash"
+    args_pattern: "git push --force:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "force-push rewrites shared history; destructive"
+    source: ".claude/settings.json#permissions.deny (git push --force:*)"
+  - tool: "Bash"
+    args_pattern: "git push -f:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "force-push (short flag) rewrites shared history; destructive"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "git push --force-with-lease:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "force-with-lease still rewrites history; destructive despite lease safety"
+    source: ".claude/settings.json#permissions.deny"
+
+  # --- §D.1b Filesystem-destroying (rm -rf on system roots) ---
+  - tool: "Bash"
+    args_pattern: "rm -rf /:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "destructive filesystem wipe (unix root)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "rm -rf /*:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "destructive filesystem wipe (unix root glob)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "rm -rf ~:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "destructive filesystem wipe (home directory)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "rm -rf ~/*:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "destructive filesystem wipe (home contents)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "rm -rf C\\:/:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "destructive filesystem wipe (Windows drive root)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "rm -rf C\\:/*:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "destructive filesystem wipe (Windows drive root glob)"
+    source: ".claude/settings.json#permissions.deny"
+
+  # --- §D.1c Windows-specific destructive ---
+  - tool: "Bash"
+    args_pattern: "del /S /Q C\\:/:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "Windows recursive delete (drive root)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "rmdir /S /Q C\\:/:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "Windows rmdir recursive (drive root)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "Remove-Item -Recurse -Force C\\:/:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell recursive remove (drive root)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "Clear-Disk:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell disk wipe"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "Format-Volume:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell volume format (data loss)"
+    source: ".claude/settings.json#permissions.deny"
+
+  # --- §D.1d Git history destroy + reset ---
+  - tool: "Bash"
+    args_pattern: "git reset --hard:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "hard reset discards uncommitted work"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "git clean -fd:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "clean -fd removes untracked files and directories"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "git clean -fdx:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "clean -fdx removes untracked + ignored (build artifacts, .env)"
+    source: ".claude/settings.json#permissions.deny"
+
+  # --- §D.1e Disk format + system power ---
+  - tool: "Bash"
+    args_pattern: "format:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "disk format (data loss)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "chmod -R 777:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "world-writable recursive chmod (security breakdown)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "chmod 777:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "world-writable chmod (security breakdown)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "dd:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "raw disk write (data destruction)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "mkfs:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "filesystem creation (overwrites existing data)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "fdisk:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "partition table manipulation (data loss)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "reboot:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "system reboot (disrupts running work)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "shutdown:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "system shutdown (disrupts running work)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "init:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "init (runlevel change / poweroff)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "systemctl:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "systemd service control (service disruption)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "kill -9:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "SIGKILL (uncatchable termination)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "killall:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "kill by name (bulk termination)"
+    source: ".claude/settings.json#permissions.deny"
+
+  # --- §D.1f Database-destroying ---
+  - tool: "Bash"
+    args_pattern: "DROP DATABASE:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "SQL DROP DATABASE (data loss)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "DROP TABLE:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "SQL DROP TABLE (data loss)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "TRUNCATE:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "SQL TRUNCATE (data loss)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "DELETE FROM:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "SQL DELETE FROM (bulk data removal)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "mongo:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "mongo shell (uncontrolled DB access)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "mongosh:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "mongosh shell (uncontrolled DB access)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "redis-cli FLUSHALL:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "Redis FLUSHALL (cache wipe)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "redis-cli FLUSHDB:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "Redis FLUSHDB (current DB wipe)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "psql -c DROP:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PostgreSQL DROP via psql (data loss)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "mysql -e DROP:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "MySQL DROP via mysql (data loss)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Bash"
+    args_pattern: "git rebase -i:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "interactive rebase rewrites history (destructive on shared branches)"
+    source: ".claude/settings.json#permissions.deny"
+
+  # --- §D.1g Secret-path deny (Read/Write/Edit/Grep/Glob on secrets + credentials) ---
+  - tool: "Read"
+    args_pattern: "./secrets/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "secret leakage prevention (project secrets dir)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Read"
+    args_pattern: "~/.ssh/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "SSH private key protection"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Read"
+    args_pattern: "~/.aws/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "AWS credentials protection"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Read"
+    args_pattern: "~/.config/gcloud/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "GCP credentials protection"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Write"
+    args_pattern: "./secrets/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "secret dir write protection (tamper prevention)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Write"
+    args_pattern: "~/.ssh/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "SSH key tamper protection"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Write"
+    args_pattern: "~/.aws/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "AWS credentials tamper protection"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Write"
+    args_pattern: "~/.config/gcloud/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "GCP credentials tamper protection"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Edit"
+    args_pattern: "./secrets/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "secret dir edit protection (tamper prevention)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Edit"
+    args_pattern: "~/.ssh/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "SSH key edit protection"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Edit"
+    args_pattern: "~/.aws/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "AWS credentials edit protection"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Edit"
+    args_pattern: "~/.config/gcloud/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "GCP credentials edit protection"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Grep"
+    args_pattern: "./secrets/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "secret content grep protection (leakage via search)"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Grep"
+    args_pattern: "~/.ssh/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "SSH key grep protection"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Grep"
+    args_pattern: "~/.aws/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "AWS credentials grep protection"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Grep"
+    args_pattern: "~/.config/gcloud/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "GCP credentials grep protection"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Glob"
+    args_pattern: "./secrets/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "secret dir enumeration protection"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Glob"
+    args_pattern: "~/.ssh/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "SSH key enumeration protection"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Glob"
+    args_pattern: "~/.aws/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "AWS credentials enumeration protection"
+    source: ".claude/settings.json#permissions.deny"
+  - tool: "Glob"
+    args_pattern: "~/.config/gcloud/**"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "GCP credentials enumeration protection"
+    source: ".claude/settings.json#permissions.deny"
+
+  # -------------------------------------------------------------------------
+  # §D.2 Write-tier (filesystem-mutating; current behavior preserved)
+  # Source: .claude/settings.json#permissions.allow (write/mutating subset).
+  # -------------------------------------------------------------------------
+
+  - tool: "Write"
+    args_pattern: ""
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "file write (foreground); background-write deny is separate (see §D.2-bg)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Edit"
+    args_pattern: ""
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "file edit (foreground)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "MultiEdit"
+    args_pattern: ""
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "multi-file edit (foreground)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "NotebookEdit"
+    args_pattern: ""
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "Jupyter notebook edit"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "TodoWrite"
+    args_pattern: ""
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "todo list write (task tracking)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git commit:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git commit (local history mutation)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git push:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git push to origin (shared history publication)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git add:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git add (stage changes)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git stash:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git stash (local working-tree save)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git merge:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git merge (branch integration)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git revert:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git revert (safe history-preserving undo)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git checkout:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git checkout (branch/file switch)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git switch:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git switch (branch switch)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git pull:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git pull (fetch + merge)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git fetch:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git fetch (remote ref sync)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git branch:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git branch (branch management)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git tag:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git tag (release marking)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git config:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git config (repo settings)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "cp:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "file copy"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "mv:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "file move"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "mkdir:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "directory creation"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "touch:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "file touch (create/update mtime)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "rsync:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "rsync (file synchronization)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "gh issue:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "GitHub issue management"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "gh pr:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "GitHub PR management"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "make:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "make (build target execution)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "ast-grep:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "ast-grep (structural code search/rewrite)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "sg:*"
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "sg (ast-grep alias)"
+    source: ".claude/settings.json#permissions.allow"
+
+  # --- §D.2-bg Background-agent write deny (AC-TPS-012) ---
+  # Documented prose in agent-common-protocol.md L162, BACKED BY Claude Code
+  # runtime auto-deny (background subagents auto-deny non-pre-approved
+  # permission prompts). This YAML entry makes the existing policy
+  # machine-readable/auditable as a data object (book2 appendix B.3). It does
+  # NOT create a NEW enforcement point — enforcement already exists at the
+  # Claude Code runtime layer.
+  - tool: "Write"
+    args_pattern: ""
+    risk_tier: write
+    decision: deny
+    owner_agent: orchestrator
+    audit: "mirrored from agent-common-protocol.md L162; runtime auto-deny already enforces; YAML entry makes policy machine-readable/auditable (background subagent context — not emitted as a static specifier because the codegen cannot express the run_in_background condition; documented here as audit-only)"
+    source: ".claude/rules/moai/core/agent-common-protocol.md L162"
+    env_gate:
+      base_url_contains: ""
+      exception_when: "run_in_background:true"
+
+  # --- §D.2-st SPEC status-transition writes (mirrored, audit-only) ---
+  # Source (b): .claude/hooks/moai/status-transition-ownership.sh L48-69 is a
+  # COMMENT BLOCK (NOT executable shell policy — verified research.md §C.2
+  # iter-2). The hook's only branches are a FILE_PATH filter (L30-37) and a
+  # Write|Edit filter (L40-46). The Ownership Matrix is ALSO documented in
+  # .claude/rules/moai/development/spec-frontmatter-schema.md as a markdown
+  # table (the SSOT). Migration target (REQ-TPS-008b): record the Matrix
+  # machine-readably in the YAML; the comment block + markdown table remain
+  # as cross-referenced doctrine. The entries below carry env_gate so the
+  # codegen does NOT emit them as static specifiers (they are owner-gated,
+  # not blanket allow/deny).
+  - tool: "Write"
+    args_pattern: ".moai/specs/SPEC-*/{spec,plan,acceptance}.md"
+    risk_tier: write
+    decision: allow
+    owner_agent: manager-develop
+    audit: "mirrored from spec-frontmatter-schema.md Ownership Matrix + status-transition-ownership.sh L48-69 comment block; manager-develop owns draft→in-progress (M1 commit) and may modify these 3 artifacts' frontmatter (status+updated only); body content modifications forbidden (blocker-report required)"
+    source: ".claude/rules/moai/development/spec-frontmatter-schema.md#Status Transition Ownership Matrix"
+    env_gate:
+      base_url_contains: ""
+      exception_when: "owner_agent_match:manager-develop|manager-spec"
+
+  # -------------------------------------------------------------------------
+  # §D.3 Environment-gated (GLM backend — WebSearch/WebFetch/Read-image)
+  # Source (c): .claude/rules/moai/core/glm-web-tooling.md L25-35 PROHIBIT table.
+  # env_gate carries base_url_contains=api.z.ai + exception_when=cg_leader.
+  # Codegen behavior: these entries are audit-only (design.md §C.4) — emitted
+  # as documentation, NOT as static denies, because a static deny would
+  # over-block the cg-leader exception.
+  # -------------------------------------------------------------------------
+  - tool: "WebSearch"
+    args_pattern: "*"
+    risk_tier: read
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PROHIBIT under GLM backend; routes through 529-prone api.z.ai/api/anthropic gateway; replacement mcp__web_search_prime__webSearchPrime"
+    source: ".claude/rules/moai/core/glm-web-tooling.md L25-35"
+    env_gate:
+      base_url_contains: "api.z.ai"
+      exception_when: "cg_leader"
+  - tool: "WebFetch"
+    args_pattern: "*"
+    risk_tier: read
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PROHIBIT under GLM backend; replacement mcp__web_reader__webReader"
+    source: ".claude/rules/moai/core/glm-web-tooling.md L25-35"
+    env_gate:
+      base_url_contains: "api.z.ai"
+      exception_when: "cg_leader"
+  - tool: "Read"
+    args_pattern: "*.png|*.jpg|*.jpeg|*.gif|*.webp|*.bmp"
+    risk_tier: read
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PROHIBIT under GLM backend (Read-on-image); triggers base64→422 failure path; replacement mcp__zai-mcp-server__image_analysis"
+    source: ".claude/rules/moai/core/glm-web-tooling.md L25-35"
+    env_gate:
+      base_url_contains: "api.z.ai"
+      exception_when: "cg_leader"
+
+  # -------------------------------------------------------------------------
+  # §D.4 Ask-tier (operations requiring user confirmation)
+  # Source: .claude/settings.json#permissions.ask (6 entries).
+  # -------------------------------------------------------------------------
+  - tool: "Bash"
+    args_pattern: "rm:*"
+    risk_tier: write
+    decision: ask
+    owner_agent: orchestrator
+    audit: "rm requires confirmation (destructive potential)"
+    source: ".claude/settings.json#permissions.ask"
+  - tool: "Bash"
+    args_pattern: "sudo:*"
+    risk_tier: write
+    decision: ask
+    owner_agent: orchestrator
+    audit: "sudo requires confirmation (privilege escalation)"
+    source: ".claude/settings.json#permissions.ask"
+  - tool: "Bash"
+    args_pattern: "chmod:*"
+    risk_tier: write
+    decision: ask
+    owner_agent: orchestrator
+    audit: "chmod requires confirmation (permission change)"
+    source: ".claude/settings.json#permissions.ask"
+  - tool: "Bash"
+    args_pattern: "chown:*"
+    risk_tier: write
+    decision: ask
+    owner_agent: orchestrator
+    audit: "chown requires confirmation (ownership change)"
+    source: ".claude/settings.json#permissions.ask"
+  - tool: "Read"
+    args_pattern: "./.env"
+    risk_tier: read
+    decision: ask
+    owner_agent: orchestrator
+    audit: ".env read requires confirmation (secret exposure)"
+    source: ".claude/settings.json#permissions.ask"
+  - tool: "Read"
+    args_pattern: "./.env.*"
+    risk_tier: read
+    decision: ask
+    owner_agent: orchestrator
+    audit: ".env.* read requires confirmation (secret exposure)"
+    source: ".claude/settings.json#permissions.ask"
+
+  # -------------------------------------------------------------------------
+  # §D.5 Read-tier (bulk of current allow list — read-only operations)
+  # Source: .claude/settings.json#permissions.allow (read-only subset).
+  # Ordered by category: MoAI tools, MCP tools, git-read, file-read, system-read.
+  # -------------------------------------------------------------------------
+
+  # --- §D.5a MoAI / Claude Code built-in tools (read/control) ---
+  - tool: "Read"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "file read (read-only)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Glob"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "file glob discovery (read-only)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Grep"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "content search (read-only)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "AskUserQuestion"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "user interaction (orchestrator-only per AskUserQuestion monopoly)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Skill"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "skill invocation (read-only discovery + body load)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Agent"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "subagent delegation (orchestrator-spawned)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "TaskCreate"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "task creation (coordination)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "TaskGet"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "task read (coordination)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "TaskList"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "task list (coordination)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "TaskUpdate"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "task update (coordination)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "BashOutput"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "background shell output read"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "KillShell"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "background shell termination"
+    source: ".claude/settings.json#permissions.allow"
+
+  # --- §D.5b MCP tools (read-only docs lookup) ---
+  - tool: "mcp__context7__get-library-docs"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "Context7 library docs lookup"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "mcp__context7__resolve-library-id"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "Context7 library ID resolution"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "WebFetch"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "URL fetch (Claude backend default; GLM backend denies via §D.3 env_gate)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "WebSearch"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "web search (Claude backend default; GLM backend denies via §D.3 env_gate)"
+    source: ".claude/settings.json#permissions.allow"
+
+  # --- §D.5c Git read operations ---
+  - tool: "Bash"
+    args_pattern: "git status:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git status (read-only)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git log:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git log (read-only history)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git diff:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git diff (read-only)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git show:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git show (read-only object display)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git blame:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git blame (read-only attribution)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "git remote:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "git remote (read-only remote list)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "gh repo view:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "GitHub repo view (read-only)"
+    source: ".claude/settings.json#permissions.allow"
+
+  # --- §D.5d File / system read utilities ---
+  - tool: "Bash"
+    args_pattern: "ls:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "directory listing"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "cat:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "file cat (read-only)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "less:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "pager (read-only)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "head:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "file head (read-only)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "tail:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "file tail (read-only)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "find:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "find (read-only discovery)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "tree:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "tree (read-only structure)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "pwd:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "pwd (read-only)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "wc:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "word count (read-only)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "diff:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "diff (read-only comparison)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "comm:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "comm (read-only set comparison)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "sort:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "sort (read-only with stdout-only use)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "uniq:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "uniq (read-only dedup)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "cut:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "cut (read-only field extraction)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "awk:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "awk (read-only text processing)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "sed:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "sed (read-only with stdout-only use; in-place -i use is caller's responsibility)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "basename:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "basename (read-only)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "dirname:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "dirname (read-only)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "realpath:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "realpath (read-only resolution)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "readlink:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "readlink (read-only symlink resolution)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "grep:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "grep (read-only content search)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "rg:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "ripgrep (read-only content search)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "curl:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "curl (network read; write side-effects are caller's responsibility)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "jq:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "jq (read-only JSON query)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "yq:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "yq (read-only YAML query)"
+    source: ".claude/settings.json#permissions.allow"
+
+  # --- §D.5e Language toolchains (read + build/test invocation) ---
+  - tool: "Bash"
+    args_pattern: "python:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "python interpreter"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "python3:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "python3 interpreter"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "node*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "node.js runtime"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "npm*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "npm package manager"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "npx*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "npx package runner"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "bun*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "bun runtime"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "pnpm*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "pnpm package manager"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "yarn*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "yarn package manager"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "uv*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "uv Python package manager"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "pip*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "pip package manager"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "pip3:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "pip3 package manager"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "black:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "black formatter"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "ruff:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "ruff linter/formatter"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "pylint:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "pylint linter"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "flake8:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "flake8 linter"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "mypy:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "mypy type checker"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "eslint:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "eslint linter"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "prettier:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "prettier formatter"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "pytest:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "pytest test runner"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "coverage:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "coverage.py measurement"
+    source: ".claude/settings.json#permissions.allow"
+
+  # --- §D.5f Shell builtins + system inspection (read-only) ---
+  - tool: "Bash"
+    args_pattern: "echo:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "echo (stdout-only)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "printf:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "printf (stdout-only)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "test:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "test (condition check)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "true:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "true (no-op success)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "false:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "false (no-op failure)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "which:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "which (command resolution)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "type:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "type (command type query)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "man:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "man (manual page read)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "pydoc:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "pydoc (Python doc read)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "lsof:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "lsof (open-file inspection)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "time:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "time (command timing)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "xargs:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "xargs (argument pipeline)"
+    source: ".claude/settings.json#permissions.allow"
+
+  # --- §D.5g MoAI-ADK own binaries ---
+  - tool: "Bash"
+    args_pattern: "moai-adk:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "moai-adk binary (dev alias)"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "Bash"
+    args_pattern: "moai:*"
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "moai CLI"
+    source: ".claude/settings.json#permissions.allow"

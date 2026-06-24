@@ -613,6 +613,10 @@ PR 머지 성공 후 자동 정리를 수행합니다.
 클린업 실패는 머지 결과에 영향을 주지 않습니다. 실패 시: `moai worktree done SPEC-{ID}`로 수동 정리하세요.
 {{< /callout >}}
 
+## `/cd` 캐시 보존 재개 (CC 2.1.169+)
+
+디렉터리 경계를 가로질러 다단계 워크플로우를 재개할 때 (예: run과 sync 사이에 L2 worktree 진입), Claude Code 2.1.169+는 `/cd <path>`를 제공합니다 — 세션의 작업 디렉터리를 **프롬프트 캐시를 보존하면서** 전환하는 명령으로, 누적된 추론 컨텍스트가 cwd 변경 시 재구축되는 대신 유지됩니다. 이는 새 터미널을 여는 것에 대한 캐시 보존 대안입니다: `/cd`는 컨텍스트를 유지하고, 새 터미널은 cold-start합니다. run-phase 컨텍스트를 유지하며 L2 worktree로 sync-phase에 진입할 때, `/cd <worktree-path>`가 마찰이 적은 경로입니다. 전환이 `cwd` 필드에 반영되는 방식은 [Statusline 가이드](/ko/advanced/statusline)를 참조하세요.
+
 ## 관련 문서
 
 - [/moai run](/workflow-commands/moai-run) - 이전 단계: DDD 구현

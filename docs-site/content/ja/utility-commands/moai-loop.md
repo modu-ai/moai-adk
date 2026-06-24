@@ -77,7 +77,7 @@ flowchart TD
     Fix --> Verify["フェーズ 5: 検証<br/>修正結果を確認"]
     Verify --> Check{完了<br/>条件を満たした?}
     Check -->|いいえ| Diag
-    Check -->|はい| Done["完了マーカーを出力"]
+    Check -->|はい| Done["ループ完了を明示"]
 ```
 
 ### フェーズ 1: 並列診断

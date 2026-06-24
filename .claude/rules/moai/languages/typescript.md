@@ -123,7 +123,6 @@ For TypeScript documentation, use microsoft/TypeScript with decorators satisfies
 - moai-library-shadcn for component library integration
 - moai-workflow-testing for testing strategies and patterns
 - moai-foundation-quality for code quality standards
-- delegate to `manager-quality` agent for AI-powered debugging
 
 ---
 

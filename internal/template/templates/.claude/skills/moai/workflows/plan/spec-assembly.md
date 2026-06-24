@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-plan-spec-assembly
 description: "Plan Phase 1.5/2/2.3/2.5/3/3.5/3.6/DP2/DP3/DP3.5 — Pre-creation validation, SPEC document creation, independent review, GitHub Issue creation, Git environment setup, MX tag planning, quality gate, and execution mode selection"
 user-invocable: false
 metadata:
@@ -7,7 +6,7 @@ metadata:
   phase: "Phase 1.5 through Decision Point 3.5: SPEC Assembly, Review, and Environment Setup"
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 
 ### Phase 1.5: Pre-Creation Validation Gate
@@ -29,7 +28,7 @@ Composite domain rules: Maximum 2 domains recommended, maximum 3 allowed.
 
 ### Phase 1.6: Tier Judgment Socratic Question (LEAN Workflow)
 
-[ZONE:Evolvable] [HARD] Before artifact creation begins, the orchestrator MUST present a Tier judgment AskUserQuestion to classify the SPEC's complexity tier (S, M, or L). This drives the artifact set, the manager-develop delegation prompt template applicability, and the plan-auditor PASS threshold. Origin: SPEC-V3R5-WORKFLOW-LEAN-001.
+[ZONE:Evolvable] [HARD] Before artifact creation begins, the orchestrator MUST present a Tier judgment AskUserQuestion to classify the SPEC's complexity tier (S, M, or L). This drives the artifact set, the manager-develop delegation prompt template applicability, and the plan-auditor PASS threshold. Origin: the LEAN-tier workflow policy.
 
 Skip condition: when the user explicitly provided the tier in the original request (e.g., "Tier S", "small SPEC, Tier S"), the orchestrator MAY skip the question and record the user-provided tier directly.
 
@@ -72,10 +71,11 @@ File generation (all three files created simultaneously):
   - HISTORY section immediately after frontmatter
   - Complete GEARS structure with the 5 GEARS patterns (Ubiquitous, Event-driven `When`, State-driven `While`, Capability-gate `Where`, Event-detected unwanted — see `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format). EARS legacy form is accepted for pre-v3 SPECs until 2026-11-22 per the GEARS migration policy.
   - Content written in conversation_language
+  - **Epic reference**: when the SPEC belongs to a multi-SPEC grouping, `plan.md §A Context` references the **Epic** (not the retired `Sprint`/`cohort`/`Wave` aliases) per `.claude/rules/moai/development/sprint-round-naming.md`. A standalone SPEC with no grouping is also valid.
 
 #### [HARD] Pre-Write Frontmatter Checklist
 
-[HARD] Before manager-spec calls Write/MultiEdit for spec.md, it MUST validate the frontmatter contains ALL 12 required fields AND rejects snake_case legacy aliases. This checklist prevents dual-schema drift between the plan workflow and `internal/spec/lint.go` `FrontmatterSchemaRule`. SSOT: `.claude/rules/moai/development/spec-frontmatter-schema.md`.
+[HARD] Before manager-spec calls Write/MultiEdit for spec.md, it MUST validate the frontmatter contains ALL 12 required fields AND rejects snake_case legacy aliases. This checklist prevents dual-schema drift between the plan workflow and the SPEC frontmatter lint rule. SSOT: `.claude/rules/moai/development/spec-frontmatter-schema.md`.
 
 Required 12 fields (canonical order):
 - [ ] `id: SPEC-{DOMAIN}-{NUM}` — matches `^SPEC-[A-Z][A-Z0-9]+-[0-9]{3}$`
@@ -222,7 +222,7 @@ For `thorough` harness with `cross_validate_with_evaluator_active: true`: after 
 
 Purpose: Create a GitHub Issue linked to the SPEC document for bidirectional traceability between planning artifacts and issue tracker.
 
-[HARD] Per REQ-LB-009 (SPEC-V3R5-LATE-BRANCH-001), this phase MUST default to a silent skip. The flag semantics are now opt-in: `--issue` activates creation; the absence of `--issue` skips the entire phase. The legacy `--no-issue` opt-out is no longer required because skipping is the default. SPEC frontmatter MUST NOT carry an `issue_number` field for new SPECs (D2 — `issue_number` field-removal prospective only; existing SPECs retain the field per EXCL-LB-008).
+[HARD] Per the late-branch opt-in policy, this phase MUST default to a silent skip. The flag semantics are now opt-in: `--issue` activates creation; the absence of `--issue` skips the entire phase. The legacy `--no-issue` opt-out is no longer required because skipping is the default. SPEC frontmatter MUST NOT carry an `issue_number` field for new SPECs (D2 — `issue_number` field-removal prospective only; existing SPECs retain the field per EXCL-LB-008).
 
 Execution conditions (ALL must hold):
 - `--issue` flag IS set (explicit opt-in)
@@ -238,7 +238,7 @@ Skip conditions (any triggers a silent skip with no warning):
 
 Agent: manager-git subagent
 
-[HARD] Gate: only proceed when the `--issue` flag is set (REQ-LB-009). The `gh issue create` invocation below is the ONLY occurrence in this workflow and MUST be guarded by the explicit `--issue` opt-in. Default invocation of `/moai plan` (no `--issue`) silently skips Step 2.5.1/2.5.2/2.5.3.
+[HARD] Gate: only proceed when the `--issue` flag is set. The `gh issue create` invocation below is the ONLY occurrence in this workflow and MUST be guarded by the explicit `--issue` opt-in. Default invocation of `/moai plan` (no `--issue`) silently skips Step 2.5.1/2.5.2/2.5.3.
 
 Create a GitHub Issue from SPEC metadata (only executed when `--issue` flag is set):
 
@@ -297,11 +297,11 @@ Execution conditions: Phase 2 completed successfully AND one of the following:
 
 Skipped when: develop_direct workflow, no flags and user chooses "Use current branch".
 
-#### Late-branch Pre-check [HARD] (SPEC-V3R5-LATE-BRANCH-001 REQ-LB-001/REQ-LB-004)
+#### Late-branch Pre-check [HARD] (the late-branch opt-in policy)
 
 Before evaluating any of the paths below (Worktree / Branch / Current Branch), the orchestrator MUST read `team.branch_creation.auto_enabled` from `.moai/config/sections/git-strategy.yaml`.
 
-- When `auto_enabled == false`: SKIP branch creation entirely. Cwd remains on the current branch (typically `main` — the default for Step 1 per SPEC Phase Discipline). SPEC files are committed to the current branch via the standard commit pipeline. Phase 3.5 mode-selection display MUST surface "Late-branch (main commit + late switch)" as the active mode to communicate the deferred-branch state to the user. Phase 3.0 BODP Gate STILL runs (with EntryPoint = `EntryPlanLateBranch`) — Late-branch does NOT bypass BODP, it only defers branch creation to Phase C (manual `git switch -c feat/SPEC-*` at PR time). Per REQ-LB-007, no automated `git push origin main` is performed during this phase even if `team.automation.auto_push == true`.
+- When `auto_enabled == false`: SKIP branch creation entirely. Cwd remains on the current branch (typically `main` — the default for Step 1 per SPEC Phase Discipline). SPEC files are committed to the current branch via the standard commit pipeline. Phase 3.5 mode-selection display MUST surface "Late-branch (main commit + late switch)" as the active mode to communicate the deferred-branch state to the user. Phase 3.0 BODP Gate STILL runs (with EntryPoint = `EntryPlanLateBranch`) — Late-branch does NOT bypass BODP, it only defers branch creation to Phase C (manual `git switch -c feat/SPEC-*` at PR time). Per the late-branch opt-in policy, no automated `git push origin main` is performed during this phase even if `team.automation.auto_push == true`.
 
 - When `auto_enabled == true`: continue to the Worktree/Branch/Current Branch path evaluation below (existing behavior, unchanged).
 
@@ -309,7 +309,7 @@ Reference: see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pa
 
 #### Phase 3.0: BODP Gate (공통)
 
-Both Worktree Path and Branch Path execute this gate immediately before delegating worktree/branch creation. Source: SPEC-V3R3-CI-AUTONOMY-001 W7-T02.
+Both Worktree Path and Branch Path execute this gate immediately before delegating worktree/branch creation. Source: the CI-autonomy policy W7-T02.
 
 Steps:
 
@@ -517,7 +517,7 @@ All of the following must be verified:
   - plan_status: audit-ready
   ```
   This signal indicates plan artifacts (spec.md, plan.md, acceptance.md, tasks.md) are finalized
-  and ready for Plan Audit Gate validation at `/moai run` Phase 0.5 (SPEC-WF-AUDIT-GATE-001).
+  and ready for Plan Audit Gate validation at `/moai run` Phase 0.5.
 
 ---
 

@@ -357,9 +357,21 @@ Prevents `bypassPermissions` mode from being enabled. Disables the `--dangerousl
 }
 ```
 
+### disableBundledSkills
+
+`disableBundledSkills` (boolean, or its environment-variable form) hides the Claude Code bundled skills and workflows — e.g. `/deep-research`, built-in slash-command skills — from discovery, leaving only enterprise + personal + project + plugin skills visible. Set `true` to ship a curated, bundle-free skill surface.
+
+```json
+{
+  "disableBundledSkills": true
+}
+```
+
+The `--safe-mode` CLI flag applies the same runtime effect at launch time rather than via settings — useful for locked-down environments or when debugging whether a behavior originates from a bundled skill. MoAI-ADK does not emit `disableBundledSkills` or pass `--safe-mode` automatically; both are documented here as available options.
+
 ## Permission Rule Syntax
 
-Permission rules follow the format `Tool` or `Tool(specifier)`.
+Permission rules follow the format `Tool` or `Tool(specifier)`. A param-scoped wildcard form `Tool(param:value)` is also supported — e.g. `WebFetch(domain:example.com)` allows WebFetch only against that domain, `Bash(cmd:git status)` matches the `git status` command, and the `*` wildcard broadens a match inside the value (`WebFetch(domain:*.example.com)`, `Bash(cmd:git *)`). This param-scoped form gives finer-grained control than the plain `Tool(specifier)` form. MoAI-ADK does not currently emit param-scoped rules from its own settings generators; the syntax is documented here as an available option for projects that need parameter-level permission control.
 
 ### Rule Evaluation Order
 

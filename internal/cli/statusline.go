@@ -49,12 +49,10 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 	var segmentConfig map[string]bool
 	var themeName string
 	if statuslineCfg != nil {
-		// Custom preset stores explicit segment map; named presets derive their segment config.
-		if statuslineCfg.Segments != nil {
-			segmentConfig = statuslineCfg.Segments
-		} else if statuslineCfg.Preset != "" && statuslineCfg.Preset != "full" {
-			segmentConfig = presetToSegments(statuslineCfg.Preset, nil)
-		}
+		// Segments map is the only statusline configuration lever besides theme
+		// (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 retired the preset shorthand).
+		// When segments is absent the Builder falls back to all-enabled.
+		segmentConfig = statuslineCfg.Segments
 		themeName = statuslineCfg.Theme
 	}
 
@@ -118,10 +116,12 @@ func renderSimpleFallback() string {
 }
 
 // statuslineFileConfig holds all statusline configuration read from YAML. It
-// mirrors the canonical models.StatuslineConfig shape {Preset, Theme, Segments}
-// — the `mode:` YAML surface was removed (SLM-1/SLR-2) because it was inert.
+// mirrors the canonical models.StatuslineConfig shape {Theme, Segments}. The
+// `mode:` surface was removed (SLM-1/SLR-2 — inert) and the `preset:` surface
+// was retired (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001). A legacy `preset:` key
+// in an existing statusline.yaml is silently ignored (unknown YAML keys do not
+// error on unmarshal).
 type statuslineFileConfig struct {
-	Preset   string
 	Theme    string
 	Segments map[string]bool
 }
@@ -143,7 +143,6 @@ func loadStatuslineFileConfig(projectRoot string) *statuslineFileConfig {
 
 	var raw struct {
 		Statusline struct {
-			Preset   string          `yaml:"preset"`
 			Theme    string          `yaml:"theme"`
 			Segments map[string]bool `yaml:"segments"`
 		} `yaml:"statusline"`
@@ -154,7 +153,6 @@ func loadStatuslineFileConfig(projectRoot string) *statuslineFileConfig {
 	}
 
 	return &statuslineFileConfig{
-		Preset:   raw.Statusline.Preset,
 		Theme:    raw.Statusline.Theme,
 		Segments: raw.Statusline.Segments,
 	}

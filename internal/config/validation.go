@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"reflect"
 	"regexp"
 	"strings"
@@ -55,8 +56,45 @@ func Validate(cfg *Config, loadedSections map[string]bool) error {
 	// Check for unexpanded dynamic tokens
 	errs = append(errs, validateDynamicTokens(cfg)...)
 
+	// Check the GLM base_url is a safe, well-formed https endpoint (REQ-CGH-007).
+	errs = append(errs, validateGLMBaseURL(cfg.LLM.GLM.BaseURL)...)
+
 	if len(errs) > 0 {
 		return &ValidationErrors{Errors: errs}
+	}
+	return nil
+}
+
+// validateGLMBaseURL validates the GLM base_url before its credentials are routed
+// to it (REQ-CGH-007, SECURITY). An empty value is acceptable — the loader falls
+// back to DefaultGLMBaseURL (EC-5). A non-empty value MUST be a well-formed URL
+// with the https scheme AND a non-empty host. The constraint is "well-formed https
+// + a real host" (R5: not "z.ai-only", so legitimate self-hosted GLM proxies pass)
+// — it guards against silently routing ANTHROPIC_AUTH_TOKEN to a non-TLS or
+// malformed/hostless endpoint. The canonical DefaultGLMBaseURL always passes.
+func validateGLMBaseURL(baseURL string) []ValidationError {
+	if baseURL == "" {
+		return nil // falls back to DefaultGLMBaseURL on load (EC-5)
+	}
+
+	reject := func(reason string) []ValidationError {
+		return []ValidationError{{
+			Field:   "llm.glm.base_url",
+			Message: reason + "; expected a well-formed https:// URL (e.g. " + DefaultGLMBaseURL + ")",
+			Value:   baseURL,
+			Wrapped: ErrInvalidConfig,
+		}}
+	}
+
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return reject("malformed URL")
+	}
+	if u.Scheme != "https" {
+		return reject("scheme must be https (credentials must not be routed over a non-TLS or non-http URL)")
+	}
+	if u.Host == "" {
+		return reject("URL has no host")
 	}
 	return nil
 }

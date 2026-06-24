@@ -8,8 +8,19 @@ import (
 	"strconv"
 
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
+
+// statuslineThemeOptionList returns the canonical statusline theme option values
+// from the shared settings schema (SPEC-WEB-CONSOLE-010 — re-added Statusline
+// section). No preset option is included (REQ-WC10-010).
+func statuslineThemeOptionList() []string {
+	if f, ok := settings.Field("statusline_theme"); ok {
+		return f.SelectOptions()
+	}
+	return nil
+}
 
 // pageView is the typed view-model for the Console page. It is the input to the
 // Templ root component page(view) (SPEC-WEB-CONSOLE-006 — migrated from the
@@ -20,15 +31,17 @@ type pageView struct {
 	Profiles          []profile.ProfileEntry
 	ShowProfileSwitch bool
 
-	// Option lists for the form selects.
-	LangOptions       []string
-	ModelOptions      []string
-	EffortLevels      []string
-	ModelPolicies     []string
-	PermissionModes   []string
-	StatuslinePresets []string
-	StatuslineThemes  []string
-	AllSegments       []string
+	// Option lists for the form selects. SPEC-WEB-CONSOLE-010 re-added the
+	// Statusline section (theme + 15 segments, NO preset): StatuslineThemes is the
+	// theme option list and StatuslineSegs is the 15 canonical segment keys, both
+	// schema-sourced. The retired `preset` selector is NOT reintroduced (REQ-WC10-010).
+	LangOptions     []string
+	ModelOptions    []string
+	EffortLevels    []string
+	ModelPolicies   []string
+	PermissionModes []string
+	StatuslineThemes []string
+	StatuslineSegs   []string // 15 canonical segment keys (schema-sourced)
 
 	// Project-config selects (SPEC-WEB-CONSOLE-003). Option lists + the current
 	// persisted/submitted values for the two flat project-config enum fields.
@@ -67,6 +80,9 @@ type pageView struct {
 }
 
 // newPageView assembles a view-model with the canonical option lists populated.
+// SPEC-WEB-CONSOLE-010: all option lists derive from the shared settings schema
+// (no hand-mirrored re-declarations). The statusline fields (theme + 15 segment
+// keys) are also schema-sourced for the re-added Statusline section (REQ-WC10-009).
 func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pageView {
 	profiles := a.listProfiles()
 	return pageView{
@@ -74,16 +90,15 @@ func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pag
 		SelectedProfile:   selected,
 		Profiles:          profiles,
 		ShowProfileSwitch: len(profiles) > 1, // REQ-WC-011: omit UI when only default
-		LangOptions:       langOptions,
-		ModelOptions:      modelCanonical,
-		EffortLevels:      effortLevelCanonical,
+		LangOptions:       langOptionList(),
+		ModelOptions:      modelOptionList(),
+		EffortLevels:      effortOptionList(),
 		ModelPolicies:     template.ValidModelPolicies(),
 		PermissionModes:   profile.ValidPermissionModes,
-		StatuslinePresets: statuslinePresetCanonical,
-		StatuslineThemes:  statuslineThemeCanonical,
-		AllSegments:       allSegments,
-		DevelopmentModes:  developmentModeCanonical,
-		Conventions:       conventionCanonical,
+		DevelopmentModes:  developmentModeOptionList(),
+		Conventions:       conventionOptionList(),
+		StatuslineThemes:  statuslineThemeOptionList(),
+		StatuslineSegs:    settings.StatuslineSegmentKeys(),
 		BindAddr:          a.resolveBindAddr(),
 		FieldErrors:       map[string]string{},
 	}
@@ -350,10 +365,15 @@ func (a *app) renderErrorPage(w http.ResponseWriter, prefs profile.ProfilePrefer
 	a.render(w, http.StatusInternalServerError, view)
 }
 
-// bindForm maps submitted form values onto a ProfilePreferences. Segment
-// checkboxes (segment_<key>) populate StatuslineSegments; absent checkboxes are
-// recorded as false so custom-preset toggles round-trip without dropping keys
-// (EC-4).
+// bindForm maps submitted form values onto a ProfilePreferences.
+// SPEC-WEB-CONSOLE-010 re-added the Statusline section: the theme value and the 15
+// segment toggles are bound here. A segment toggle is a checkbox named seg_<key>
+// with a hidden companion seg_<key>__present (the same disambiguation pattern as the
+// nested-config bool toggles). When ANY segment companion is present, the full
+// 15-key StatuslineSegments map is populated (unchecked → false) so the segment map
+// round-trips without dropping keys; when NO segment companion is present, the map is
+// left nil so syncStatusline preserves the on-disk segments (theme-only / no-change
+// save). The retired `preset` field is NOT bound (REQ-WC10-010).
 func bindForm(r *http.Request) profile.ProfilePreferences {
 	prefs := profile.ProfilePreferences{
 		UserName:         r.PostFormValue("user_name"),
@@ -365,19 +385,58 @@ func bindForm(r *http.Request) profile.ProfilePreferences {
 		Model:            r.PostFormValue("model"),
 		EffortLevel:      r.PostFormValue("effort_level"),
 		PermissionMode:   r.PostFormValue("permission_mode"),
-		StatuslinePreset: r.PostFormValue("statusline_preset"),
 		StatuslineTheme:  r.PostFormValue("statusline_theme"),
 	}
 
-	// Bind statusline segments only when the preset is custom — otherwise leave
-	// the map nil so syncStatusline keeps its existing/default segments (EC-5).
-	if prefs.StatuslinePreset == "custom" {
-		segs := make(map[string]bool, len(allSegments))
-		for _, key := range allSegments {
-			segs[key] = r.PostFormValue("segment_"+key) != ""
+	// Statusline segments: detect submission via any seg_<key>__present companion.
+	segs := settings.StatuslineSegmentKeys()
+	submitted := false
+	for _, key := range segs {
+		if r.PostFormValue("seg_"+key+"__present") != "" {
+			submitted = true
+			break
 		}
-		prefs.StatuslineSegments = segs
+	}
+	if submitted {
+		segMap := make(map[string]bool, len(segs))
+		for _, key := range segs {
+			segMap[key] = r.PostFormValue("seg_"+key) != ""
+		}
+		prefs.StatuslineSegments = segMap
 	}
 
 	return prefs
+}
+
+// handleShutdown serves POST /__shutdown__ — 페이지 내 종료 버튼이 호출하는 루트다.
+// GET 등 non-POST 는 handleSave 와 동일하게 405 Method Not Allowed 로 거부한다.
+// 응답을 먼저 200 + 최소 HTML 로 작성한 뒤(triggerShutdown 이 곧바로 drain 을
+// 시작하면 이 응답 자체가 drain 중 유실될 수 있으므로), 그 다음 고루틴에서
+// triggerShutdown seam 을 호출한다.
+//
+// @MX:NOTE: [AUTO] triggerShutdown 은 반드시 고루틴으로 호출해야 한다 — 동기 호출 시
+// httpSrv.Shutdown() 이 이 핸들러의 반환을 대기하며 교착(dead lock) 한다. 고루틴이
+// 기존 signal.NotifyContext cancel 경로를 트리거하면 핸들러는 정상적으로 반환하고,
+// ListenAndServe 의 select 가 이미 존재하는 drain 로직(shutdownDrain 5초)을 실행한다.
+// 새 종료 경로를 만들지 않고 기존 drain 경로를 재사용한다 — REQ-WC-003(5초 drain)
+// invariant 가 그대로 보존된다.
+func (a *app) handleShutdown(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// 응답 먼저 작성 — renderError 의 최소 HTML 패턴을 재사용하되 neutral/success
+	// 배너 색상을 사용한다. triggerShutdown 호출 전에 클라이언트에 답을 보낸다.
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = fmt.Fprintf(w,
+		`<!DOCTYPE html><html><head><meta charset="utf-8"><title>MoAI Web Console</title></head>`+
+			`<body><h1>MoAI Web Console</h1><div class="banner banner--success">`+
+			`Console is shutting down. You can close this tab.</div></body></html>`)
+
+	// nil 체크 — 단위 테스트의 bare app 은 seam 이 wire 되지 않을 수 있다.
+	if a.triggerShutdown != nil {
+		go a.triggerShutdown()
+	}
 }

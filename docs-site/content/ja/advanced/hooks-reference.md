@@ -28,6 +28,7 @@ MoAI-ADK v2.10.1現在、Claude Codeのフックシステムは **29個のイベ
 |--------|------|------|
 | `SessionStart` | 세션 시작 | — |
 | `SessionEnd` | 세션 종료 | — |
+| `PostSession` | セッション終了後に実行 (self-hosted runner ライフサイクルイベント、CC 2.1.169+)。セッションが完全に破棄された後、`SessionEnd` よりも遅く発火します。MoAI-ADK は現在このフックをワイヤリングしません。セッション後のクリーンアップ/テレメトリが必要な self-hosted デプロイ向けの利用可能なオプションとして文書化されます。 | — |
 | `Stop` | 에이전트 정지 | — |
 | `SubagentStop` | 서브에이전트 정지 | — |
 | `SubagentStart` | 서브에이전트 시작 | — |

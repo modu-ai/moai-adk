@@ -24,8 +24,8 @@ func TestUpdateWorkflowYAML_InjectsHarness(t *testing.T) {
     enabled: true
 `
 	path := writeYAML(t, dir, "workflow.yaml", src)
-	agents := []AgentRef{{Name: "ios-architect", Path: ".claude/agents/my-harness/ios-architect.md", InvokeIn: []string{"plan", "run"}}}
-	skills := []SkillRef{{Name: "ios-patterns", Path: ".claude/skills/my-harness-ios-patterns/SKILL.md", TriggersIn: []string{"plan", "run"}}}
+	agents := []AgentRef{{Name: "ios-architect", Path: ".claude/agents/harness/ios-architect.md", InvokeIn: []string{"plan", "run"}}}
+	skills := []SkillRef{{Name: "ios-patterns", Path: ".claude/skills/harness-ios-patterns/SKILL.md", TriggersIn: []string{"plan", "run"}}}
 	chains := []ChainRule{{Phase: "run", BeforeSpecialist: "ios-architect", AfterSpecialist: "swiftui-engineer"}}
 
 	if err := UpdateWorkflowYAML(path, "ios-mobile", "SPEC-PROJ-INIT-001", agents, skills, chains); err != nil {

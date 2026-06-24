@@ -10,7 +10,7 @@
 
 ## Type of Change
 
-<!-- Select ONE primary type — see CLAUDE.local.md §18.6 for label 3축 체계 -->
+<!-- Select ONE primary type — see .moai/docs/git-workflow-doctrine.md §18.6 for label 3축 체계 -->
 
 - [ ] `type:feature` — New capability (non-breaking)
 - [ ] `type:fix` — Bug fix (non-breaking)
@@ -22,7 +22,7 @@
 - [ ] `type:test` — Test additions or improvements
 - [ ] **Breaking change** — Public API change (requires major version bump)
 
-## Merge Strategy (CLAUDE.local.md §18.3)
+## Merge Strategy (.moai/docs/git-workflow-doctrine.md §18.3)
 
 <!-- Reviewer: use the correct `gh pr merge` flag -->
 
@@ -60,7 +60,7 @@
 - [ ] 이해하기 어려운 부분에 주석 추가
 - [ ] 필요 시 문서 업데이트 (README, CHANGELOG, docs-site)
 - [ ] Secrets/credentials 포함 없음
-- [ ] Branch 명명 규칙 준수 (§18.2)
+- [ ] Branch 명명 규칙 준수 (git-workflow-doctrine.md §18.2)
 
 ## Related Issues
 

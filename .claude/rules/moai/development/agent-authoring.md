@@ -80,7 +80,7 @@ All agent definitions use YAML frontmatter. The following fields are available:
 
 **isolation**: Controls agent execution isolation. When set to "worktree", the agent runs in an isolated git worktree, preventing conflicts with the main working directory. Available since Claude Code v2.1.49.
 
-**effort**: Overrides session effort level for this agent. Valid values: `low`, `medium`, `high`, `xhigh`, `max`. The `xhigh` and `max` values require Opus 4.7 or later. On Opus 4.6, the highest supported effort level is `high`.
+**effort**: Overrides session effort level for this agent. Valid values: `low`, `medium`, `high`, `xhigh`, `max`. The `xhigh` and `max` values require Opus 4.7 or later (current substrate: Opus 4.7+ / 4.8). On Opus 4.6, the highest supported effort level is `high`.
 
 **color**: Display color for the agent in the task list and transcript UI. Valid values: `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink`, `cyan`.
 
@@ -125,34 +125,27 @@ The `memory` field enables cross-session learning for agents. Three scope levels
 
 ## Agent Categories
 
-### Manager Agents (7)
+The MoAI agent catalog consists of exactly **8 retained agents** (7 MoAI-custom + 1 Anthropic built-in `Explore`). Previously-listed manager and expert agents beyond this set were archived during the catalog consolidation. Domain expertise formerly delivered by those static agents is now delivered through per-spawn `Agent(general-purpose)` parameter injection — see § Per-Spawn Domain Specialization below and `.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the full archived-name enumeration and migration table.
 
-Coordinate workflows and multi-step processes:
+### Retained MoAI-custom Agents (7)
 
-- manager-spec: SPEC document creation
-- manager-develop: Unified DDD/TDD implementation (cycle_type=ddd|tdd; consolidated from retired agents)
-- manager-docs: Documentation generation
-- manager-quality: Quality gates validation + diagnostic sub-mode (replaces expert-debug)
-- manager-project: Project configuration
-- manager-strategy: System design, architecture decisions
-- manager-git: Git operations, branching strategy
+Coordinate the SPEC plan/run/sync/audit lifecycle:
 
-### Expert Agents (6)
+- manager-spec: Plan-phase SPEC artifact authoring (spec/plan/acceptance/research/design)
+- manager-develop: Run-phase implementation (cycle_type=ddd|tdd|autofix)
+- manager-docs: Sync-phase documentation (CHANGELOG, README, frontmatter transitions)
+- manager-git: PR creation per Tier-based routing + Late-Branch closure
+- plan-auditor: Independent plan-phase audit, bias prevention, GEARS compliance
+- sync-auditor: Independent sync-phase quality 4-dimension scoring
+- builder-harness: Dynamic project-specific harness specialist generation (new agents, skills, plugins, commands, hooks, MCP/LSP servers)
 
-Domain-specific implementation:
+### Anthropic Built-in (1)
 
-- expert-backend: API and server development
-- expert-frontend: UI and client development
-- expert-security: Security analysis
-- expert-devops: CI/CD and infrastructure
-- expert-performance: Performance optimization and testing
-- expert-refactoring: Code refactoring
+- Explore: Read-only codebase exploration (not a MoAI file — invoked directly; see `.claude/rules/moai/development/agent-patterns.md` § Read-only Investigation — Explore Canonical Agent)
 
-### Builder Agents (1)
+### Per-Spawn Domain Specialization (replaces archived expert-* agents)
 
-Create new MoAI components:
-
-- builder-harness: New agents, skills, plugins, commands, hooks, MCP/LSP servers. Use `artifact_type=agent|skill|plugin|command|hook|mcp-server|lsp-server` to select the artifact category.
+Domain-specific implementation work (backend, frontend, security, devops, performance, refactoring) is delivered through per-spawn `Agent(general-purpose)` with a domain-specific tool whitelist and inline prompt, NOT through static agent files. See `.claude/rules/moai/development/agent-patterns.md` § Per-Spawn Domain Specialization for the canonical spawn pattern and per-domain tool whitelist recommendations. When a paste-ready resume or `Agent()` invocation references an archived `expert-*` name, the orchestrator rejects the spawn per `.claude/rules/moai/workflow/archived-agent-rejection.md` and consults the §C migration table for the retained-agent replacement pattern.
 
 ### Dynamic Team Generation (Experimental)
 
@@ -160,11 +153,11 @@ Create new MoAI components:
 
 **Key distinction from regular subagents**:
 - Regular subagents: spawned from main conversation, return results, cannot communicate with each other
-- Dynamic teammates: spawned with `team_name` + `name` parameters, get Agent Teams tools (SendMessage, TaskList etc.) automatically injected by the framework
+- Dynamic teammates: spawned with the Agent tool's `name` parameter — the team forms implicitly on first spawn (one team per session, no setup step), and the teammate gets Agent Teams tools (SendMessage, TaskList etc.) automatically injected by the framework. The `team_name` parameter is accepted but ignored as of Claude Code v2.1.178.
 
 **Spawn pattern** (Agent Teams only):
 ```
-Agent(subagent_type: "general-purpose", team_name: "...", name: "researcher", model: "haiku", mode: "plan")
+Agent(subagent_type: "general-purpose", name: "researcher", model: "haiku", mode: "plan")
 ```
 
 Role profiles are defined in `.moai/config/sections/workflow.yaml` under `team.role_profiles`:
@@ -190,9 +183,15 @@ Requires: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
 - `model`: One of: `inherit`, `opus`, `sonnet`, `haiku`. Never use `glm`, `high`, `medium`, `low`.
 - `permissionMode`: One of the official enum values: `default`, `acceptEdits`, `auto`, `dontAsk`, `bypassPermissions`, `plan`. (`delegate` is NOT part of the official enum — it is a MoAI experimental extension for team-lead coordination agents; see § Permission Modes.)
 
-### managed-settings precedence
+#### `disallowedTools` MCP server-level enforcement
+
+When `disallowedTools` references an MCP tool (e.g. `mcp__context7__*`, `mcp__web_search_prime__webSearchPrime`), the restriction is enforced at the MCP server level: the tool's specs are not exposed to the agent at all, so the agent cannot invoke it even indirectly. This is stricter than the plain tool-deny behavior for built-in tools. Author agents with this in mind — a `disallowedTools` entry on an MCP tool is a hard gate, not a soft prompt.
+
+### managed-settings precedence + nested closest-wins
 
 Org-wide managed settings can define agents at the highest precedence level (priority 1). A project-local `.claude/agents/` definition with the same name is overridden by the managed-settings agent — managed (enterprise) agents win over project and personal agents.
+
+When the same agent name appears in more than one `.claude/agents/` directory along a nested chain (project root vs a nested subdirectory's own `.claude/agents/`), the **closest-directory-wins** rule resolves the collision: the `.claude/agents/` nearest to the current working directory shadows the one further up the tree. This is the same closest-wins precedence that applies to skills, workflows, and output-styles under nested `.claude/` directories — the innermost `.claude/` wins. Managed (enterprise) settings remain priority 1 regardless of nesting depth.
 
 ## Rules
 
@@ -219,7 +218,7 @@ See also `.claude/rules/moai/development/karpathy-quickref.md` (4 coding princip
 
 Recommended tool sets by category:
 
-Manager agents: Read, Write, Edit, Grep, Glob, Bash, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet (NOTE: Agent tool is NOT included by default for regular subagents. Consistent with the official Claude Code limitation that subagents cannot spawn other subagents, Agent Teams teammates also cannot spawn their own teammates — only the team lead spawns teammates via Agent() with the team_name parameter.)
+Manager agents: Read, Write, Edit, Grep, Glob, Bash, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet (NOTE: Agent tool is NOT included by default for regular subagents. Consistent with the official Claude Code limitation that subagents cannot spawn other subagents, Agent Teams teammates also cannot spawn their own teammates — only the team lead spawns teammates via Agent() with the `name` parameter, into the session's implicit team.)
 
 Expert agents: Read, Write, Edit, Grep, Glob, Bash
 
@@ -246,14 +245,13 @@ The Claude Code runtime enforces a hard ceiling on the Bash tool's `timeout` par
 
 Invoke agents via Agent tool:
 
-- "Use the expert-backend subagent to implement the API"
+- "Use the manager-develop subagent to implement the API (cycle_type=tdd, domain context: backend)"
 - Agent tool with subagent_type parameter
 
 For team mode invocation:
-- TeamCreate to initialize team structure
-- Agent() with team_name and name parameters to spawn teammates
+- Agent() with the `name` parameter to spawn teammates — the team forms implicitly on first spawn (one team per session, no setup step); the `team_name` parameter is accepted but ignored (Claude Code v2.1.178)
 - SendMessage for inter-teammate coordination
-- TeamDelete after all teammates shut down
+- Team cleanup is automatic on session exit; no explicit teardown call is needed
 - See team-plan.md and team-run.md for complete workflow examples
 
 ## Plugin Agent Limitations
@@ -301,3 +299,29 @@ For the canonical per-spawn `Agent(general-purpose, ...)` spawn pattern with per
 - **Embedding domain knowledge in agent body** — domain knowledge belongs in the active conversation context (per-spawn prompt) where the orchestrator can tailor it to the current task; embedding it in agent body traps it behind explicit invocation
 - **Re-introducing archived agent files** — the 12 agents archived offline during the catalog consolidation MUST NOT be reintroduced under `.claude/agents/` without a dedicated revival SPEC justifying the recurrence criterion; see `.claude/rules/moai/workflow/archived-agent-rejection.md` § Anti-Patterns
 - **Adding a new MoAI-custom agent without a SPEC** — the 8-agent retention ceiling is an architectural invariant; new agent additions must justify the "keep spawning the same worker" criterion via a SPEC that documents recurrence evidence
+
+## Extension-Mechanism Context-Cost Ladder
+
+Claude Code offers four mechanisms to extend a harness — Hooks, Skills, Plugins, and MCP servers. They do not cost the model's context window equally. Choosing among them is a **context-cost decision**, not only a capability decision: each mechanism injects a different amount of token-weight into the session, and the cheapest mechanism that meets the capability requirement should be preferred.
+
+### The four-tier cost ladder (paper claim)
+
+The four-tier classification below is the claim of the paper *"Dive into Claude Code"* (arXiv:2604.14228) about Claude Code's internals. It is recorded here as an external grounding for the decision criterion — NOT as a moai-adk measurement. As the paper observes, the mechanisms occupy distinct context-cost tiers:
+
+| Mechanism | Context cost (paper claim) | Why |
+|-----------|----------------------------|-----|
+| **Hooks** | **zero** | Shell scripts executed out-of-band by the runtime; they emit exit codes / structured JSON and never inject tokens into the model's context window. |
+| **Skills** | **low** | Progressive disclosure — metadata is listed at session start (~100 tokens), the body loads on invocation (~5K tokens), and bundled files load only on demand. See the cross-reference below for the within-skill cost axis. |
+| **Plugins** | **medium** | A plugin bundles agents, skills, commands, and hooks; loading a plugin's agents and skills adds their combined footprint to the session. |
+| **MCP** | **high** | Each MCP server's tool schemas are injected into context; a server exposing many tools is the densest per-capability context cost, mitigated only by deferred / `alwaysLoad` gating. |
+
+### Decision criterion
+
+Choosing an extension mechanism is a context-cost decision. Prefer the cheapest mechanism on the ladder that meets the capability requirement: reach for a Hook before a Skill, a Skill before a Plugin, and a Plugin before an MCP server, escalating only when the cheaper tier cannot deliver the needed capability. The natural pull toward the most *capable* mechanism (an MCP server, a plugin) silently inflates the per-session context budget when a *cheaper* mechanism (a hook, a skill) would have sufficed.
+
+### Parallel cost axes
+
+This mechanism→context-cost ladder is a *cross-mechanism* cost axis. It runs parallel to two other cost axes already documented in the rule tree, and the three together form a coherent cost-model layer for harness authoring:
+
+- the **within-skill** cost axis — `.claude/rules/moai/development/skill-authoring.md` § Progressive Disclosure (the 3-level metadata / body / bundled taxonomy that sets a Skill's "low" position on the ladder above);
+- the **per-spawn** cost axis — `.claude/rules/moai/workflow/dynamic-workflows.md` § Purpose-driven model+effort selection (the purpose→effort taxonomy, read-only-extract→low … implement→xhigh, governing the token cost of each agent spawn).

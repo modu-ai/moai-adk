@@ -2,7 +2,6 @@
 package workflow
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -232,53 +231,4 @@ func (v *Validator) ValidateAllTemplates(templateDir string) ([]*ValidationResul
 	}
 
 	return results, nil
-}
-
-// ValidateWorkflowSyntax validates workflow YAML syntax
-func ValidateWorkflowSyntax(content []byte) error {
-	var node yaml.Node
-	if err := yaml.Unmarshal(content, &node); err != nil {
-		return fmt.Errorf("YAML syntax error: %w", err)
-	}
-
-	// default structure validation (name, on, jobs fields)
-	if node.Kind != yaml.DocumentNode {
-		return fmt.Errorf("not a valid YAML document")
-	}
-
-	return nil
-}
-
-func ParseWorkflowTemplate(templatePath string) (map[string]interface{}, error) {
-	content, err := os.ReadFile(templatePath)
-	if err != nil {
-		return nil, fmt.Errorf("template file read failure: %w", err)
-	}
-
-	var workflow map[string]interface{}
-	if err := yaml.Unmarshal(content, &workflow); err != nil {
-		return nil, fmt.Errorf("YAML parsing failure: %w", err)
-	}
-
-	return workflow, nil
-}
-
-// ScanForActions extracts all GitHub Actions used in workflow
-func ScanForActions(workflowContent string) []string {
-	var actions []string
-	scanner := bufio.NewScanner(strings.NewReader(workflowContent))
-
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, "uses:") {
-			// uses: actions/checkout@v4 -> actions/checkout@v4
-			parts := strings.SplitN(line, "uses:", 2)
-			if len(parts) == 2 {
-				actionRef := strings.TrimSpace(parts[1])
-				actions = append(actions, actionRef)
-			}
-		}
-	}
-
-	return actions
 }

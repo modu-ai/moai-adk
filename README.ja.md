@@ -444,7 +444,7 @@ graph TD
     B -->|"デフォルト（自動）"| E["自動選択"]
 
     C --> F["順次的な専門家委任<br/>Task() → Expert Agent"]
-    D --> G["並列チーム協業<br/>TeamCreate → SendMessage"]
+    D --> G["並列チーム協業<br/>Agent(name=…) → SendMessage"]
     E -->|"複雑度高"| D
     E -->|"複雑度低"| C
 
@@ -467,7 +467,7 @@ MoAI-ADKはプロジェクトの複雑度を自動分析し、最適な実行モ
 **Agent Teamsモード**は並列チームベースの開発を使用します：
 
 - 複数のエージェントが同時に作業し、共有タスクリストで協業
-- `TeamCreate`、`SendMessage`、`TaskList` によるリアルタイム調整
+- `Agent(name=…)`（暗黙的チーム）、`SendMessage`、`TaskList` によるリアルタイム調整
 - 大規模な機能開発やマルチドメインタスクに最適
 
 ```bash

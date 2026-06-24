@@ -7,6 +7,7 @@ package cli
 // profile extraction, flag pass-through, and error propagation.
 
 import (
+	"bytes"
 	"errors"
 	"slices"
 	"strings"
@@ -146,5 +147,37 @@ func TestCharacterize_CG_LaunchErrorPropagated(t *testing.T) {
 	err := runCG(cgCmd, []string{})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected sentinel error to propagate, got: %v", err)
+	}
+}
+
+// TestCharacterize_CG_HelpFlag verifies that -h / --help flags are intercepted
+// by runCG before profile parsing and the tmux precondition check, returning
+// nil without invoking unifiedLaunch. Mirrors TestCharacterize_CC_HelpFlag.
+// Regression guard for the cg --help exit-1 fix (help must short-circuit before
+// the tmux precondition error).
+func TestCharacterize_CG_HelpFlag(t *testing.T) {
+	for _, flag := range []string{"--help", "-h"} {
+		t.Run(flag, func(t *testing.T) {
+			buf := new(bytes.Buffer)
+			cgCmd.SetOut(buf)
+			cgCmd.SetErr(buf)
+
+			// runCG returns nil after printing help; unifiedLaunchFunc must NOT be called.
+			origLaunch := unifiedLaunchFunc
+			defer func() { unifiedLaunchFunc = origLaunch }()
+			called := false
+			unifiedLaunchFunc = func(_ string, _ string, _ []string) error {
+				called = true
+				return nil
+			}
+
+			err := runCG(cgCmd, []string{flag})
+			if err != nil {
+				t.Errorf("runCG(%s) should not error, got: %v", flag, err)
+			}
+			if called {
+				t.Errorf("unifiedLaunchFunc must not be called when %s is present", flag)
+			}
+		})
 	}
 }

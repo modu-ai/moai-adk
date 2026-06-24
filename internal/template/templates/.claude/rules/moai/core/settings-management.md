@@ -16,6 +16,17 @@ Claude Code and MoAI configuration management rules.
 - hooks: Hook script definitions
 - permissions: Access control
 - statusLine: Statusline configuration
+- attribution: Commit/PR attribution block. Sub-keys: `commit` (attribution text appended to git commits, including trailers; empty string hides attribution), `pr` (attribution text for PR bodies), and `sessionUrl` (Claude Code v2.1.183+; boolean, default `true`) which controls whether the claude.ai session link is appended to commits and PRs created from web or Remote Control sessions — set `false` to omit the Claude-Session trailer and PR-body link. The MoAI template pins `sessionUrl: false` so its own `🗿 MoAI` attribution trailers are not accompanied by a session link. The boolean type was confirmed against the bundled Claude Code v2.1.183 settings schema; verify the type against your own Claude Code instance before pinning a non-default value, since the published machine-readable schemastore entry may lag the release.
+- disableBundledSkills: Hide bundled skills/workflows (e.g. `/deep-research`) from discovery. Set `true` to suppress the Claude Code bundled skill catalog so only project + user skills remain visible. An equivalent environment variable form is also supported. MoAI-ADK does not emit this toggle — it is documented here as a Claude Code option that exists for projects that want to ship a curated, bundle-free skill surface.
+- `--safe-mode` CLI flag: Launch Claude Code with bundled skills and workflows disabled (equivalent runtime effect to `disableBundledSkills: true`, but applied at launch time rather than via settings). Useful for locked-down environments or when debugging whether a behavior originates from a bundled skill. MoAI-ADK does not pass this flag automatically; it is documented as an available launch option.
+
+#### `/config` command (Claude Code v2.1.178+)
+
+The genuine Claude Code `/config` slash command (distinct from MoAI's `.moai`-prefixed config filesystem paths) edits `settings.json` interactively or directly:
+
+- Direct-set form: `/config key=value` writes a single setting without opening the selector (e.g. `/config theme=dark`). `/config <key>=<value>` is the general syntax.
+- Help listing: `/config --help` lists the available shorthand keys the command accepts.
+- Toggle-key behavior (within the `/config` settings selector): Enter AND Space both change the currently-selected setting, and Esc now saves-and-closes the selector (it no longer reverts unsaved changes).
 
 ### MCP Configuration
 
@@ -27,7 +38,7 @@ Claude Code and MoAI configuration management rules.
 Standard MCP servers in MoAI-ADK:
 
 - context7: Library documentation lookup
-- pencil: .pen file design editing. Used by expert-frontend (sub-agent mode) and team-designer (team mode).
+- pencil: .pen file design editing. Used by a per-spawn `Agent(general-purpose)` frontend specialist (sub-agent mode) and the designer role_profile (team mode).
 - claude-in-chrome: Browser automation
 - z.ai MCP servers (optional, GLM backend): three separate servers registered via `moai glm tools enable [vision|websearch|webreader|all]` — `zai-mcp-server` (npx stdio, GLM-4.6V vision tools), `web_search_prime` (HTTP, `webSearchPrime`), `web_reader` (HTTP, `webReader`). Under `moai glm` / `moai cg` GLM panes these replace the built-in `WebSearch` / `WebFetch` / `Read`-on-image per `.claude/rules/moai/core/glm-web-tooling.md`.
 
@@ -35,11 +46,11 @@ Standard MCP servers in MoAI-ADK:
 
 **`alwaysLoad` field (Claude Code v2.1.119+)**
 
-Claude Code v2.1.119에서 `.mcp.json`의 MCP 서버 항목에 `"alwaysLoad": true` 필드가 추가되었다.
-이 필드가 `true`로 설정된 서버의 툴 스키마는 세션 시작 시 즉시 로드된다(기존 지연 로드 방식 대비).
+Claude Code v2.1.119 added the `"alwaysLoad": true` field to MCP server entries in `.mcp.json`.
+When this field is set to `true`, the server's tool schema is loaded immediately at session start (instead of the deferred-load default).
 
-MoAI-ADK 기본 설정:
-- `context7`: `"alwaysLoad": true` — 매 세션 문서 조회가 빈번하므로 즉시 로드
+MoAI-ADK default configuration:
+- `context7`: `"alwaysLoad": true` — loaded eagerly because documentation lookups occur frequently every session
 
 ```json
 {
@@ -84,7 +95,7 @@ Example `.mcp.json` configuration:
 }
 ```
 
-**MCP `alwaysLoad` field (v2.1.121+)**: Setting `alwaysLoad: true` on a server entry forces its tool schemas to load at session start, bypassing tool-search auto-mode deferral. MoAI-ADK sets this for `context7` to ensure Context7 documentation lookup is available immediately without ToolSearch preload.
+**MCP `alwaysLoad` field** (introduced v2.1.119; the v2.1.121 change below is the separate `updatedToolOutput` extension, NOT a second introduction): Setting `alwaysLoad: true` on a server entry forces its tool schemas to load at session start, bypassing tool-search auto-mode deferral. MoAI-ADK sets this for `context7` to ensure Context7 documentation lookup is available immediately without ToolSearch preload.
 
 **Claude Code v2.1.119-121 Hook Changes**:
 
@@ -179,38 +190,9 @@ Loads the following 10 sections in fixed order. All return defaults on absent fi
 
 ## Hooks Configuration
 
-Hooks support environment variables and must be quoted to handle spaces:
+> Canonical: see `.claude/rules/moai/core/hooks-system.md` § Hook Configuration (the hook JSON config block + `$CLAUDE_PROJECT_DIR` path-quoting rule) and § Timeout Configuration (the per-hook timeout table, including the PostToolUse 10s+`async:true` exception vs the 5s synchronous-default). This file owns only the StatusLine-no-env-var delta (below).
 
-```json
-{
-  "hooks": {
-    "SessionStart": [{
-      "type": "command",
-      "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
-      "timeout": 5
-    }],
-    "PreToolUse": [{
-      "matcher": "Write|Edit|Bash",
-      "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
-      "timeout": 5
-    }]
-  }
-}
-```
-
-**Important**: Quote the entire path: `"\"$CLAUDE_PROJECT_DIR/path\""` not `"$CLAUDE_PROJECT_DIR/path"`
-
-Hook timeout unit is **seconds** (not milliseconds, despite some external docs). Default is 5s for most hooks. Recommended ceilings:
-
-| Hook | Recommended timeout | Rationale |
-|------|--------------------|-----------|
-| SessionStart | 30s | MCP server startup latency |
-| PreToolUse | 5s | Fast pre-flight checks only |
-| PostToolUse | **10s + `async: true`** (was 60s synchronous before v2.16.0) | LSP/AST/MX validations run in background; results delivered via systemMessage on next turn. 10s is the per-run upper bound, not a blocking wait |
-| Stop / SubagentStop | 5s | Lightweight teardown |
-| TeammateIdle / TaskCompleted | 10s | Quality validation may run lint/test |
-
-For very long validations (full test suites, deployments), prefer `"async": true` over high timeout — the hook runs in background and results arrive on the next turn (see hooks-system.md §Async Command Hooks).
+Hook timeout unit is **seconds** (not milliseconds). The canonical per-hook timeout policy lives in `hooks-system.md` § Timeout Configuration — the PostToolUse 10s+`async:true` exception (background LSP/AST/MX validation) and the 5s synchronous-default for SessionStart/PreToolUse are stated there. For very long validations, prefer `"async": true` over high timeout.
 
 ### Freeze Diagnosis Checklist
 
@@ -250,6 +232,29 @@ Tool permissions in settings.json:
 - Bash: Shell command execution
 - Agent: Sub-agent delegation
 - AskUserQuestion: User interaction
+
+### Permission Rule Syntax
+
+Claude Code permission rules support two forms:
+
+- `Tool(specifier)` — scope a tool by a specifier (e.g. `Bash(npm test:)` allows only `npm test` Bash commands; `Read(//tmp/**)` allows reads under `/tmp`).
+- `Tool(param:value)` — param-scoped wildcard (e.g. `WebFetch(domain:example.com)` allows WebFetch only against that domain; `Bash(cmd:git status)` matches the `git status` command). The `*` wildcard is accepted inside the value to broaden a match (`WebFetch(domain:*.example.com)`, `Bash(cmd:git *)`).
+
+Both forms compose with `allow` / `deny` / `ask` in `permissions`. MoAI-ADK does not currently emit param-scoped rules from its own settings generators; the `Tool(param:value)` syntax is documented here as an available option for projects that need fine-grained, parameter-level permission control beyond the plain `Tool(specifier)` form.
+
+Example:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm test:)",
+      "Bash(cmd:git status)",
+      "WebFetch(domain:*.moai.kr)"
+    ]
+  }
+}
+```
 
 ## Quality Configuration
 

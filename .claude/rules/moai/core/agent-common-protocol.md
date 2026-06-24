@@ -23,14 +23,9 @@ Rationale:
 
 ### Orchestrator Obligations
 
-The MoAI orchestrator MUST follow these obligations when using AskUserQuestion:
+> Canonical: see `.claude/rules/moai/core/askuser-protocol.md` § Orchestrator Obligations for the full preload sequence (`ToolSearch(query: "select:AskUserQuestion")` before each call), the AskUserQuestion channel monopoly, the Socratic interview structure, and the option-description standards. This file owns only the subagent-side boundary (above) and the blocker-report → re-delegation flow (below).
 
-- [ZONE:Frozen] [HARD] The orchestrator MUST preload AskUserQuestion via `ToolSearch(query: "select:AskUserQuestion")` before each call — AskUserQuestion is a deferred tool and its schema is not loaded at session start
-- [ZONE:Frozen] [HARD] All user-facing questions MUST go through AskUserQuestion — free-form prose questions in response text are prohibited
-- Collect all user preferences before delegating to subagents via Agent()
-- On receiving a blocker report from a subagent: run an AskUserQuestion round, inject the user's responses into a fresh subagent prompt, and re-delegate
-
-Canonical reference: see `.claude/rules/moai/core/askuser-protocol.md` for full preload sequence, Socratic interview structure, and anti-pattern catalog.
+The MoAI orchestrator collects all user preferences before delegating to subagents via `Agent()`. On receiving a blocker report from a subagent, it runs an `AskUserQuestion` round, injects the user's responses into a fresh subagent prompt, and re-delegates (procedure below).
 
 ### Hook Invocation Surface
 
@@ -62,6 +57,20 @@ grep -rn 'AskUserQuestion\|mcp__askuser' .claude/hooks/moai/ \
 
 The `sync-phase-quality-gate.sh` row above describes the Stop hook in the sync-phase context, but the Stop hook is not exclusive to sync-commit completion. The Stop hook fires on every turn-end — not only when a task is complete — so a Stop hook must self-gate: it inspects the conversation/working-tree state and decides whether the turn is a genuine completion point before acting, otherwise exiting 0 to allow the turn to end without intervention. The Stop hook does NOT fire when the user interrupts the turn, so it cannot be relied on as a guaranteed end-of-work signal.
 
+#### Recovery-Signal Carve-Out
+
+**Recovery-Signal Carve-Out** — anti-death-spiral policy guidance for Stop/PostToolUse hooks. The canonical doctrine lives at `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` §4 (SSOT); this subsection is the render surface.
+
+[ZONE:Evolvable] **While** a turn's `stopReason` or surrounding context indicates the turn is itself a **recovery signal** — i.e., the turn is recovering from a sync failure, a compact, a `prompt_too_long` (PTL), a `max_output_tokens` exhaustion, or a `media_size` / `compact-failure` — Stop/PostToolUse hooks SHOULD exit 0 (allow the turn to end / the tool call to proceed) rather than exit 2 (block), so that recovery turns are NOT placed into the `error → stop-hook-blocks → retry → error` loop that book1 ch06 names the **death-spiral**.
+
+This carve-out is **policy guidance** (a SHOULD recommendation), NOT a mechanically-enforced gate:
+
+- The current `sync-phase-quality-gate.sh` (Stop) and `status-transition-ownership.sh` (PostToolUse) hooks receive PostToolUse/Stop JSON but do not parse a recovery signal from `stopReason` or turn context; they therefore cannot mechanically distinguish a recovery turn from a normal turn.
+- Mechanical enforcement of this carve-out is deferred to a future runtime-layer SPEC (forward-link: future `SPEC-V3R6-HOOK-RECOVERY-SIGNAL-001`) that would add `stopReason` parsing.
+- The carve-out does NOT weaken the hooks' gate function on non-recovery turns — the gates still exit 2 (block) on genuine gate failures during normal turns. The carve-out only says recovery turns SHOULD defer to the recovery.
+
+Determining "is this a recovery turn?" is the mechanical step the current hooks cannot take. See the SSOT doctrine (`runtime-recovery-doctrine.md` §4) for the full scope binding, the named-hook list (`sync-phase-quality-gate.sh`, `status-transition-ownership.sh`), and the reason this is documentation-only at this layer.
+
 ### Blocker Report Format
 
 When a subagent requires user input not provided in the spawn prompt, it MUST return a structured blocker report:
@@ -85,6 +94,23 @@ On receiving a blocker report, the orchestrator:
 2. Runs an AskUserQuestion round to collect the missing inputs from the user
 3. Constructs a fresh subagent prompt with the user's answers injected
 4. Re-delegates to the subagent
+
+### Ledger Closure
+
+The **ledger-closure invariant** (externally grounded in `github.com/wquguru/harness-books` book1 ch04 "账本闭环" — "只要系统向外承诺了一段执行，就要在中断时把账补平": whenever the system has promised an execution externally, it must close the ledger on interrupt) states that an aborted `Agent()` delegation MUST NOT leave a **dangling tool_use** — an open promise with no matching result — in the orchestrator's own context. The persistence-layer analogue is `session-handoff.md` Block 3-4 preconditions (a `/clear` boundary re-establishes verifiable preconditions before continuing); this subsection codifies the in-session interrupt case (no `/clear`). This is the orchestration-layer analogue of the model-API rule that every `tool_use` receives a `tool_result`.
+
+[ZONE:Evolvable] [HARD] The orchestrator MUST close the ledger on any aborted delegation. Four clauses bind this obligation:
+
+- **(a) Synthetic result on aborted Agent() delegation (REQ-LEDGER-001).** When an `Agent()` delegation is aborted — user interrupt (Ctrl+C), parent-abort propagation (the orchestrator's own turn was aborted and the sub-agent was killed), or timeout (no return before a wall-clock or token-budget ceiling) — the orchestrator SHALL emit a **synthetic ledger-closing artifact** into its own context before issuing the next delegation. The artifact is a short prose summary (NOT a structured data record; no JSON schema, no `.moai/state/ledger.json`), naming what was delegated, that it did not return, and the abort reason if known. Its purpose is to close the open promise so the next turn does not proceed as if the delegation returned cleanly. This clause does NOT change the "Missing Inputs" blocker-report pattern above: a blocker report is a *return*, not an *abort*; REQ-LEDGER-001 covers only the case where no return is produced at all.
+- **(b) team-ac-verify.sh exit-2 `ledger_note` field (REQ-LEDGER-002).** When `.claude/hooks/moai/team-ac-verify.sh` rejects a `TaskCompleted` (exit 2), the hook's structured JSON output carries a `ledger_note` field with a short human-readable rejection reason. The orchestrator injects this `ledger_note` as the ledger-closing artifact for that task. (Exit-code semantics are unchanged — exit 2 still = reject; this clause only names the field the hook now emits. The reject-path trigger itself is a minimal stub; full AC-verification logic is out of scope and deferred to a follow-up SPEC.)
+- **(c) TeammateIdle exit-2 task closure (REQ-LEDGER-003).** When the TeammateIdle hook rejects a task's completion via exit-2 ("keep working"), the rejected task's TaskList entry MUST NOT be left in an open state without a reassignment owner. The orchestrator re-assigns the task (spawn a new teammate, re-delegate to the same teammate with a refined prompt, or close it as obsolete with a synthetic closing note). This binds the orchestrator's TaskList hygiene, not the hook's exit-2 emission. The parent-abort propagation that book1 ch07 names — cleanup handlers registered to avoid orphan tasks — is the source for this clause.
+- **(d) Cross-references (REQ-LEDGER-006).** This subsection cross-references three sources:
+  - **book1 ch04** (账本闭环 — the ledger-closure invariant named in the opening paragraph above).
+  - **book1 ch07** (parent-abort propagates to forked children; agents are observable lifecycle objects via SubagentStart/SubagentStop hooks, exit-code-2 stderr feedback).
+  - `.claude/rules/moai/workflow/session-handoff.md` Block 3-4 preconditions (the persistence-layer analogue of ledger closure across `/clear`).
+  - The ledger-closing artifact's truthfulness is bound by `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 1 (orchestrator self-report) — the artifact MUST be a real summary, not a fabricated "success".
+
+**Scope-boundary note.** This Ledger Closure subsection is distinct from the Hook Invocation Surface subsection above (owned by the sibling `SPEC-V3R6-HARNESS-RUNTIME-RECOVERY-001` Recovery-Signal Carve-Out). The two are siblings under the User Interaction Boundary H2; Ledger Closure is NOT nested inside Hook Invocation Surface. See SPEC-V3R6-ORCH-INTERRUPT-LEDGER-001 REQ-LEDGER-005 / AC-LEDGER-006 for the collision-free placement contract.
 
 ## Language Handling
 
@@ -161,7 +187,7 @@ Architecture:
 
 [ZONE:Frozen] [HARD] Background subagents (`run_in_background: true`) MUST NOT perform Write/Edit operations.
 
-Background agents auto-deny all non-pre-approved permission prompts because they cannot interact with the user. Even with `mode: "bypassPermissions"`, the background execution context does not fully inherit the parent session's permission allowlist.
+As of Claude Code v2.1.186, when a background subagent reaches a tool call that needs permission, the prompt surfaces in the main session and names the asking subagent (Esc denies just that one call). Before v2.1.186, background subagents auto-denied any prompting tool call — the prior basis for this rule. MoAI nonetheless keeps `run_in_background: false` for write tasks as a conservative default: in standard permission mode each background write raises a main-session permission prompt that interrupts the leader's flow and undercuts the parallelism benefit of backgrounding, whereas foreground execution keeps write-permission flow deterministic. Read-only tasks (research, analysis, review) remain safe and efficient in the background.
 
 Rules for agent spawning:
 - **Read-only tasks** (research, analysis, review): `run_in_background: true` is safe
@@ -311,7 +337,7 @@ each, serial execution adds ~14 s of dead-time per run-phase completion.
 ### Pre-Spawn Sync Check (Multi-Session Race Mitigation)
 
 [ZONE:Evolvable] [HARD] Before spawning any implementation `Agent()`
-(manager-develop / manager-docs / expert-*) that will commit or modify
+(manager-develop / manager-docs / per-spawn `Agent(general-purpose)` with a domain whitelist) that will commit or modify
 shared working-tree files, the orchestrator MUST execute the following
 2-command parallel batch and surface any divergence to the user.
 
@@ -367,8 +393,7 @@ commit in the push range. Lesson L9 reinforced
 (parallel session race during long agent runs) + L44 NEW (pre-spawn fetch
 discipline).
 
-Exemption: read-only agents (`Explore`, `manager-quality` in diagnostic
-mode) do not require pre-spawn fetch — they cannot trigger race conflicts.
+Exemption: read-only agents (`Explore`, or a per-spawn `Agent(general-purpose)` scoped to read-only investigation) do not require pre-spawn fetch — they cannot trigger race conflicts.
 
 Cross-reference: `.moai/docs/generic-patterns-guide.md` § Multi-Session
 Race Mitigation Procedure (defense-in-depth policy at user-facing

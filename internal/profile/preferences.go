@@ -41,10 +41,12 @@ type ProfilePreferences struct {
 	// to PermissionMode="bypassPermissions" automatically.
 	Bypass bool `yaml:"bypass,omitempty"`
 
-	// Display settings
-	StatuslineMode     string          `yaml:"statusline_mode,omitempty"`     // "default", "full"
-	StatuslinePreset   string          `yaml:"statusline_preset,omitempty"`   // "full", "compact", "minimal", "custom"
-	StatuslineSegments map[string]bool `yaml:"statusline_segments,omitempty"` // segment toggles for custom preset
+	// Display settings. StatuslineMode and StatuslinePreset were retired by
+	// SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 (runtime mode was already inert;
+	// named presets were redundant with the segment map). Legacy YAML keys
+	// statusline_mode / statusline_preset in an existing preferences.yaml are
+	// silently ignored (unknown YAML keys do not error on unmarshal).
+	StatuslineSegments map[string]bool `yaml:"statusline_segments,omitempty"` // segment toggles
 	StatuslineTheme    string          `yaml:"statusline_theme,omitempty"`    // "default", "catppuccin-mocha", "catppuccin-latte"
 }
 

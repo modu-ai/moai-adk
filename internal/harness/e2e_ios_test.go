@@ -74,11 +74,11 @@ func TestE2E_iOS_FullScenario(t *testing.T) {
 	}
 
 	// Step 3: Mock meta-harness output paths (Wave 2)
-	mhAgents := filepath.Join(root, ".claude", "agents", "my-harness")
+	mhAgents := filepath.Join(root, ".claude", "agents", "harness")
 	mhSkills := filepath.Join(root, ".claude", "skills")
 	for _, dir := range []string{mhAgents,
-		filepath.Join(mhSkills, "my-harness-ios-patterns"),
-		filepath.Join(mhSkills, "my-harness-swiftui-best-practices")} {
+		filepath.Join(mhSkills, "harness-ios-patterns"),
+		filepath.Join(mhSkills, "harness-swiftui-best-practices")} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -96,8 +96,8 @@ func TestE2E_iOS_FullScenario(t *testing.T) {
 		Chains: []ChainEntry{{
 			Phase:        "run",
 			When:         map[string]string{"agent": "manager-tdd"},
-			InsertBefore: []string{"my-harness/ios-architect"},
-			InsertAfter:  []string{"my-harness/swiftui-engineer"},
+			InsertBefore: []string{"harness/ios-architect"},
+			InsertAfter:  []string{"harness/swiftui-engineer"},
 		}},
 	}
 	if err := WriteChainingRules(filepath.Join(root, ".moai", "harness", "chaining-rules.yaml"), chainRules); err != nil {

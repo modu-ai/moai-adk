@@ -94,18 +94,6 @@ func buildCompactSections(input *HookInput, projectDir string) []memo.Section {
 		})
 	}
 
-	// P1: persistent mode status (read from .moai/state/persistent-mode.json).
-	if projectDir != "" {
-		if modeContent := readPersistentMode(projectDir); modeContent != "" {
-			sections = append(sections, memo.Section{
-				Priority: memo.P1Required,
-				Title:    "Execution Mode",
-				Content:  modeContent,
-				Budget:   200,
-			})
-		}
-	}
-
 	// P2: active worktrees (read from .moai/state/worktrees.json).
 	if projectDir != "" {
 		if wtContent := readWorktrees(projectDir); wtContent != "" {
@@ -137,25 +125,6 @@ func buildP1Content(input *HookInput) string {
 		content += "event: " + input.HookEventName + "\n"
 	}
 	return content
-}
-
-// readPersistentMode reads .moai/state/persistent-mode.json and returns
-// a human-readable summary, or empty string if the file does not exist.
-func readPersistentMode(projectDir string) string {
-	path := filepath.Join(projectDir, ".moai", "state", "persistent-mode.json")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return ""
-	}
-	var m map[string]any
-	if err := json.Unmarshal(data, &m); err != nil {
-		return string(data)
-	}
-	out, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
-		return string(data)
-	}
-	return string(out)
 }
 
 // readWorktrees reads .moai/state/worktrees.json and returns a human-readable

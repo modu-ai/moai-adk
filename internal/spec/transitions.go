@@ -64,21 +64,30 @@ type transition struct {
 
 // 정규 close convention infix 리터럴 (모두 소문자 — ClassifyPRTitle/shouldSkipCommitTitle은
 // ToLower 후 비교한다). Status Transition Ownership Matrix의 close subject
-// `chore(SPEC-{ID}): Mx-phase audit-ready signal + 4-phase close`에서 verbatim 추출.
+// `chore(SPEC-{ID}): Mx-phase audit-ready signal + 3-phase close`에서 verbatim 추출.
+//
+// SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-020 (D4): close infix가 "4-phase close"에서
+// "3-phase close"로 개명되었다. closeInfix4Phase는 git history의 과거 close commit들이
+// "4-phase close"를 carry하므로 backward-compat를 위해 RETAIN된다 (drift walker가 과거
+// close를 여전히 인식해야 한다). closeInfix3Phase가 신규 close commit의 정규 infix다.
+// 두 infix 모두 closeInfixMatch에서 OR된다.
 //
 // @MX:NOTE: [AUTO] close-infix는 walker의 유일한 positive `completed` 신호다.
 // @MX:REASON: SPEC-V3R6-DRIFT-CONVENTION-ALIGN-001 — sync/feat에서 completed를 추론하면
 //
 //	genuine incomplete-close SPEC을 마스킹하므로 (AP-2) 금지.
 const (
-	closeInfix4Phase = "4-phase close"
+	closeInfix3Phase = "3-phase close" // new canonical infix (3-phase lifecycle, REQ-LR-020)
+	closeInfix4Phase = "4-phase close" // legacy infix retained for git-history close commits
 	closeInfixMx     = "mx-phase audit-ready"
 )
 
 // closeInfixMatch는 (이미 소문자화된) commit title이 정규 close convention infix를
-// 포함하는지 검사한다. drift walker와 classifier가 공유한다.
+// 포함하는지 검사한다. drift walker와 classifier가 공유한다. 신규 ("3-phase close")와
+// legacy ("4-phase close") infix 모두 인식한다 (REQ-LR-020/021, AC-LR-012).
 func closeInfixMatch(lowerTitle string) bool {
-	return strings.Contains(lowerTitle, closeInfix4Phase) ||
+	return strings.Contains(lowerTitle, closeInfix3Phase) ||
+		strings.Contains(lowerTitle, closeInfix4Phase) ||
 		strings.Contains(lowerTitle, closeInfixMx)
 }
 
@@ -93,6 +102,19 @@ var syncPhaseDocsPattern = regexp.MustCompile(`^docs\(spec-[a-z0-9-]+-[0-9]+\):.
 // isSyncPhaseDocs는 (소문자) title이 정규 sync-phase docs commit인지 검사한다.
 func isSyncPhaseDocs(lowerTitle string) bool {
 	return syncPhaseDocsPattern.MatchString(lowerTitle)
+}
+
+// planPhaseFeatPattern matches the canonical plan-phase commit subject
+// `feat(SPEC-XXX-NNN): ... plan-phase ...` (manager-spec plan-phase artifacts).
+// Without this, the generic `feat` prefix rule mis-classifies plan-phase commits
+// as run-complete/implemented, causing a false StatusGitConsistencyRule drift on
+// SPECs whose only commit so far is the plan-phase commit (frontmatter still draft).
+// @MX:NOTE: [AUTO] plan-phase feat → draft (plan-merge), not implemented
+// @MX:REASON: SPEC-V3R6-LINT-CLASSIFYPRTITLE-001 — plan-phase commit must not imply run completion
+var planPhaseFeatPattern = regexp.MustCompile(`^feat\(spec-[a-z0-9-]+-[0-9]+\):.*plan-phase`)
+
+func isPlanPhaseFeat(lowerTitle string) bool {
+	return planPhaseFeatPattern.MatchString(lowerTitle)
 }
 
 // ClassifyPRTitle analyzes a PR/commit title and returns the transition category and target status
@@ -136,6 +158,12 @@ func ClassifyPRTitle(title string) (string, string, error) {
 	// @MX:REASON: SPEC-V3R6-DRIFT-CONVENTION-ALIGN-001 AC-DCA-008 — backfill skip 후 노출된 sync docs는 implemented여야 한다.
 	if isSyncPhaseDocs(lowerTitle) {
 		return "sync-merge", "implemented", nil
+	}
+
+	// plan-phase feat commit (feat(SPEC-{ID}): ... plan-phase ...) — manager-spec plan-phase.
+	// Generic `feat` → implemented would false-flag a SPEC whose only commit is plan-phase.
+	if isPlanPhaseFeat(lowerTitle) {
+		return "plan-merge", "draft", nil
 	}
 
 	// Check each prefix pattern in order (longer prefixes first)

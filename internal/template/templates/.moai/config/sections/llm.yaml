@@ -22,7 +22,7 @@ llm:
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
-      high: "glm-5.2[1m]"     # Complex reasoning (the [1m] suffix activates Claude Code 1M context mode)
+      high: "glm-5.2"         # Complex reasoning (the z.ai-accepted id; 1M auto-compact is driven by the resolved context window, not a model-id suffix)
       medium: "glm-4.7"       # Balanced performance
       low: "glm-4.5-air"      # Lightweight tasks (Z.ai official default)
 
@@ -31,10 +31,10 @@ llm:
     # Claude slot (Opus=1M, Sonnet/Haiku=200K) regardless of provider, so
     # the statusline over-reports headroom in GLM mode.
     #
-    # Values are in tokens. Substring match: "glm-5.2" matches "glm-5.2[1m]".
+    # Values are in tokens. Substring match: "glm-5.2" matches the high-slot id directly.
     # Set MOAI_STATUSLINE_CONTEXT_SIZE env for a one-shot override instead.
     # Reference (Z.AI official docs):
-    #   glm-5.2[1m] : 1000000 context / 131072 max output
+    #   glm-5.2     : 1000000 context / 131072 max output
     #   glm-4.7     : 202752 context (per OpenRouter mirror)
     #   glm-4.5-air : 128000 context
     # context_windows:

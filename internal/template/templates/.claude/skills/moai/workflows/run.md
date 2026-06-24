@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-run
 description: >
   DDD/TDD implementation workflow for SPEC requirements. Second step
   of the Plan-Run-Sync workflow. Routes to manager-develop based
@@ -25,7 +24,7 @@ triggers:
   phases: ["run"]
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 <!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai run Phase <N> <enter|exit> -->
 
@@ -78,7 +77,7 @@ Phase 0.95 Mode Selection: orchestrator autonomous 5-mode decision (autopilot / 
 - `team`: Agent Teams 모드 (requires prerequisites)
 - `pipeline`: REJECTED — `MODE_PIPELINE_ONLY_UTILITY` 오류 반환
 
-**Harness levels**: `minimal` → skip optional phases | `standard` → all phases | `thorough` → sprint contract + sync-auditor
+**Harness levels**: `minimal` → skip optional phases | `standard` → all phases | `thorough` → GAN-loop Sprint Contract Protocol + sync-auditor
 
 **Phase 0.5 (Plan Audit Gate)**: 모든 harness level에서 SKIP 불가. SPEC plan 아티팩트 독립 감사 필수.
 
@@ -110,25 +109,25 @@ Read .claude/skills/moai/workflows/run/mode-orchestration.md
 
 ## Sentinel Error Keys
 
-CI guards in `internal/template/agentless_audit_test.go` enforce the literal `MODE_UNKNOWN` sentinel remains present in this skill body (REQ-WF003-010, shared with `design.md`). `MODE_UNKNOWN` is emitted when `--mode <value>` is supplied to `/moai run` but `<value>` is not in the valid set `{autopilot, loop, team, pipeline}` (note: pipeline is itself rejected with the separate `MODE_PIPELINE_ONLY_UTILITY` sentinel — see line 71). The complementary `MODE_PIPELINE_ONLY_UTILITY` and `MODE_TEAM_UNAVAILABLE` sentinels are documented in this skill body and in `design.md`.
+A CI audit verifies the literal `MODE_UNKNOWN` sentinel remains present in this skill body (shared with `design.md`). `MODE_UNKNOWN` is emitted when `--mode <value>` is supplied to `/moai run` but `<value>` is not in the valid set `{autopilot, loop, team, pipeline}` (note: pipeline is itself rejected with the separate `MODE_PIPELINE_ONLY_UTILITY` sentinel — see line 71). The complementary `MODE_PIPELINE_ONLY_UTILITY` and `MODE_TEAM_UNAVAILABLE` sentinels are documented in this skill body and in `design.md`.
 
-Ordering invariant (read before the autonomy section below): the GATE-2 `AskUserQuestion` human gate is always cleared FIRST; any run-phase autonomy set is downstream of it. The next section documents that ordering and the autonomy condition together.
+Ordering invariant (read before the autonomy section below): the Implementation Kickoff Approval `AskUserQuestion` human gate is always cleared FIRST; any run-phase autonomy set is downstream of it. The next section documents that ordering and the autonomy condition together.
 
 ## Run-phase Autonomy (/goal ac_converge)
 
-This section wires the run-phase autonomy mechanisms — the GATE-2 human-gate ordering reference and the `ac_converge` `/goal` condition — into a single co-located place. The two parts are ORDERED: the GATE-2 `AskUserQuestion` human gate is described FIRST (it must be cleared before any autonomy begins), then the `/goal ac_converge` set (entered only after GATE-2 approval).
+This section wires the run-phase autonomy mechanisms — the Implementation Kickoff Approval human-gate ordering reference and the `ac_converge` `/goal` condition — into a single co-located place. The two parts are ORDERED: the Implementation Kickoff Approval `AskUserQuestion` human gate is described FIRST (it must be cleared before any autonomy begins), then the `/goal ac_converge` set (entered only after Implementation Kickoff Approval approval).
 
-### 1. GATE-2 ordering (the human gate comes first)
+### 1. Implementation Kickoff Approval ordering (the human gate comes first)
 
-[HARD] Before any run-phase autonomy (a `/goal` set, a Mode 6 Workflow launch, or any autonomous loop), the orchestrator MUST have already obtained explicit GATE-2 approval. GATE-2 is the plan→run HUMAN GATE: a mandatory orchestrator-issued `AskUserQuestion` round (run-phase entry / further review / abort, first option marked "(Recommended)") presented after Phase 0.5 (Plan Audit Gate) and before Phase 0.95 (Mode Selection). The orchestrator emits this gate; it is never embedded inside a subagent body (subagents cannot prompt the user — the asymmetric boundary in `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary).
+[HARD] Before any run-phase autonomy (a `/goal` set, a Mode 6 Workflow launch, or any autonomous loop), the orchestrator MUST have already obtained explicit Implementation Kickoff Approval approval. Implementation Kickoff Approval is the plan→run HUMAN GATE: a mandatory orchestrator-issued `AskUserQuestion` round (run-phase entry / further review / abort, first option marked "(Recommended)") presented after Phase 0.5 (Plan Audit Gate) and before Phase 0.95 (Mode Selection). The orchestrator emits this gate; it is never embedded inside a subagent body (subagents cannot prompt the user — the asymmetric boundary in `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary).
 
-[HARD] GATE-2 is **score-independent**: the orchestrator emits the GATE-2 `AskUserQuestion` gate **regardless of the plan-auditor score**, including the high skip-eligible case. Skip-eligibility (a high autonomous-bypass score) applies ONLY to Phase 0.5 plan-auditor verdict re-execution — NOT to GATE-2. A high plan-auditor score never authorizes skipping the GATE-2 human gate. This is the GATE-2 mandatory-restoration invariant per the GATE-2 mandatory-restoration policy.
+[HARD] Implementation Kickoff Approval is **score-independent**: the orchestrator emits the Implementation Kickoff Approval `AskUserQuestion` gate **regardless of the plan-auditor score**, including the high skip-eligible case. Skip-eligibility (a high autonomous-bypass score) applies ONLY to Phase 0.5 plan-auditor verdict re-execution — NOT to Implementation Kickoff Approval. A high plan-auditor score never authorizes skipping the Implementation Kickoff Approval human gate. This is the Implementation Kickoff Approval mandatory-restoration invariant per the Implementation Kickoff Approval mandatory-restoration policy.
 
-Because GATE-2 also drains all user preferences (Tier, mode preference, PR strategy), the orchestrator collects every preference at this gate BEFORE launching any autonomy — `/goal`-turn agents and Mode 6 Workflow agents cannot prompt the user mid-run, so the one decision that must involve the user is taken here.
+Because Implementation Kickoff Approval also drains all user preferences (Tier, mode preference, PR strategy), the orchestrator collects every preference at this gate BEFORE launching any autonomy — `/goal`-turn agents and Mode 6 Workflow agents cannot prompt the user mid-run, so the one decision that must involve the user is taken here.
 
-### 2. The `ac_converge` `/goal` condition (set only after GATE-2 approval)
+### 2. The `ac_converge` `/goal` condition (set only after Implementation Kickoff Approval approval)
 
-ONLY after GATE-2 approval is obtained, the orchestrator MAY set the `ac_converge` `/goal` to grant phase-internal autonomy (it removes per-turn STOP prompts so the run-phase loop continues until convergence). The condition is hard-coded inline (no registry dependency) and is transcript-measurable — every predicate references a line the orchestrator surfaces in the conversation, never a file the `/goal` evaluator would have to read:
+ONLY after Implementation Kickoff Approval approval is obtained, the orchestrator MAY set the `ac_converge` `/goal` to grant phase-internal autonomy (it removes per-turn STOP prompts so the run-phase loop continues until convergence). The condition is hard-coded inline (no registry dependency) and is transcript-measurable — every predicate references a line the orchestrator surfaces in the conversation, never a file the `/goal` evaluator would have to read:
 
 ```text
 Every blocking acceptance criterion in
@@ -140,33 +139,43 @@ hold. Max 20 turns.
 On any semantic failure (data race, deadlock, panic, test assertion
 failure), clear this goal and escalate via AskUserQuestion — do NOT
 auto-fix semantic failures.
-[PRECONDITION: GATE-2 user approval already obtained; this goal does
- NOT substitute for or bypass GATE-2.]
+[PRECONDITION: Implementation Kickoff Approval user approval already obtained; this goal does
+ NOT substitute for or bypass Implementation Kickoff Approval.]
 ```
 
-### 3. Transcript-measurability (the evaluator judges only surfaced lines)
+### 3. Autonomy invariants (cite, do not restate — full doctrine in canonical rules)
 
-The reference to `acceptance.md` in the condition is the NAMING of where the AC list lives — it is NOT an instruction for the evaluator to open that path. The measured predicate is "PASS evidence **surfaced in the conversation**". The Haiku evaluator judges only what the orchestrator has surfaced into the transcript; the orchestrator is responsible for surfacing each per-AC PASS line, the `go test ./...` exit code (exit 0), and the `git status` output. No predicate is a file-path read.
+The following HARD invariants govern the `ac_converge` loop. Each is the canonical rule's render surface here; the rule is the SSOT.
 
-### 4. Semantic-failure escalation (HARD)
-
-When a semantic failure — a data race, a deadlock, a panic, or a test assertion failure — is surfaced during the autonomous loop, the orchestrator MUST clear the `/goal` and escalate via `AskUserQuestion` rather than auto-fixing the semantic failure (aligns with the semantic-failure-handling rule). Semantic failures require human approval; the autonomous loop is for convergence on mechanical / test PASS evidence, not for fixing race conditions silently.
-
-### 5. Non-substitution clause (HARD)
-
-While the `ac_converge` goal is active, the orchestrator MUST NOT treat the goal as authorization to bypass GATE-2, create a PR, or perform any destructive operation. Those remain explicit, separately-surfaced gates: GATE-2 was already cleared before the goal was set; PR creation and any destructive operation are surfaced for explicit decision after convergence. The `/goal` removes per-turn STOP prompts — it does not pre-approve hard-to-reverse or shared-system actions, and the goal never substitutes for the human gate.
-
-### 6. Blocker reports, never user prompts (asymmetric boundary)
-
-A `/goal`-turn agent or a Mode 6 Workflow agent that lacks a required input returns a structured blocker report; the orchestrator runs an `AskUserQuestion` round and re-delegates with the answers injected. Agents never prompt the user directly. This is the asymmetric orchestrator-subagent boundary per `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary.
-
-### 7. Graceful degradation when `/goal` is unavailable
-
-When the runtime does not support `/goal` (version below v2.1.139, or hooks disabled via `disableAllHooks` / `allowManagedHooksOnly`), run-phase autonomy degrades gracefully: the orchestrator proceeds with the standard manual run-phase flow (per-turn progression, no autonomous loop) rather than failing. The version preflight + capability gate implementation is deferred to the autonomy-config follow-up; this section documents the degradation contract.
+- **Transcript-measurability**: the `acceptance.md` reference NAMES where the AC list lives — it is NOT a path the `/goal` evaluator opens. The Haiku evaluator judges only what the orchestrator SURFACES into the transcript (per-AC PASS line, `go test ./...` exit 0, `git status`).
+- **Semantic-failure escalation (HARD)**: on a data race / deadlock / panic / test assertion failure surfaced during the loop, clear the `/goal` and escalate via `AskUserQuestion` — NEVER auto-fix a semantic failure (per `ci-autofix-protocol.md` semantic-failure-handling).
+- **Non-substitution (HARD)**: the goal removes per-turn STOP prompts only. It does NOT authorize bypassing Implementation Kickoff Approval (already cleared), PR creation, or any destructive operation — those remain separately-surfaced explicit gates.
+- **Blocker reports, never user prompts**: a `/goal`-turn or Mode 6 Workflow agent lacking input returns a structured blocker report; the orchestrator runs `AskUserQuestion` and re-delegates (asymmetric boundary per `agent-common-protocol.md` § User Interaction Boundary).
+- **Graceful degradation**: when `/goal` is unavailable (runtime < v2.1.139, or hooks disabled), run-phase autonomy degrades to the standard manual per-turn flow rather than failing.
 
 ### Cross-references (cite, do not restate)
 
-- `.claude/rules/moai/workflow/goal-directive.md` — `/goal` semantics (the evaluator judges the transcript only — it neither runs tools nor opens any path; the `max N turns` bound; clear-on-`/clear`).
-- `.claude/rules/moai/workflow/orchestration-mode-selection.md` § C.3 — Mode 6 (Workflow) capability gate (GATE-2-passed + preferences-collected preconditions; scaling-not-nesting; the named-script-API prohibition).
-- `.claude/rules/moai/workflow/dynamic-workflows.md` — the Workflow primitive (no mid-run user input; GATE-2 unaffected).
-- the GATE-2 mandatory-restoration policy — the score-independent human gate this section preserves.
+- `.claude/rules/moai/workflow/goal-directive.md` — `/goal` semantics (transcript-only evaluation; `max N turns` bound; clear-on-`/clear`).
+- `.claude/rules/moai/workflow/orchestration-mode-selection.md` § C.3 — Mode 6 (Workflow) capability gate (Implementation Kickoff Approval-passed + preferences-collected; scaling-not-nesting; named-script-API prohibition) + §I IGGDA 4-phase pipeline + §J.3 self-audit-vs-independent-audit disambiguation.
+- `.claude/rules/moai/workflow/dynamic-workflows.md` — the Workflow primitive (no mid-run user input; Implementation Kickoff Approval unaffected).
+- `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` §3 — the 5 circuit-breaker invariants the bounded self-diagnosis loop (below) complies with.
+- `.claude/rules/moai/workflow/ci-autofix-protocol.md` + `.claude/rules/moai/development/manager-develop-prompt-template.md` § cycle_type Mode Reference — the DIAGNOSE-PATCH-VERIFY max-3 mechanical-autofix contract the loop inherits.
+
+---
+
+## Recursive Self-Diagnosis Loop (bounded — DIAGNOSE-PATCH-VERIFY)
+
+The IGGDA Phase 2 bounded self-diagnosis loop handles MECHANICAL run-phase failures fast (DIAGNOSE-PATCH-VERIFY, max 3 iterations) and escalates SEMANTIC failures immediately. It is the run-phase projection of the `cycle_type=autofix` DIAGNOSE-PATCH-VERIFY contract; the canonical doctrine lives in the cross-referenced rules above. Summary contract:
+
+| Item | Contract | Canonical SSOT |
+|------|----------|----------------|
+| Classification | Mechanical (lint / type / build / import / format) → DIAGNOSE-PATCH-VERIFY; Semantic (data race / deadlock / panic / **test assertion failure**) → IMMEDIATE escalate | `runtime-recovery-doctrine.md` §3 + `ci-autofix-protocol.md` |
+| Iteration bound | [HARD] max 3 iterations; iteration 4 PROHIBITED; on iteration-3 fail the orchestrator runs an `AskUserQuestion` escalation (continue / revert+re-plan / abort) with no auto-resume | `ci-autofix-protocol.md` max-3 + `runtime-recovery-doctrine.md` §3 invariant 1 |
+| Semantic safety | [HARD] semantic failures NEVER auto-patched (the constitutional rule) | `ci-autofix-protocol.md` |
+| PATCH scope | [HARD] SPEC scope ONLY; MUST NOT touch `.env*` / credentials / `scripts/ci-watch/run.sh` / files outside plan.md §A EXTEND envelope (the constitutional rule/013) | `manager-develop-prompt-template.md` § cycle_type=autofix |
+| Foreground | sub-agent runs `run_in_background: false` (it patches code; background-write prohibition binds) | `agent-common-protocol.md` § Background Agent Execution |
+| Flat hierarchy | spawned BY THE ORCHESTRATOR (not manager-develop — subagents cannot spawn subagents); blocker reports never direct user prompts | `agent-common-protocol.md` § User Interaction Boundary |
+| Ledger | [HARD] each iteration appended to `progress.md` `## §E Recursive Self-Diagnosis Log` (iteration #, classification, root-cause, patch, VERIFY result, escalation reason); grep-verifiable via `grep -A 10 "Recursive Self-Diagnosis Log" .moai/specs/<SPEC-ID>/progress.md` | `runtime-recovery-doctrine.md` §3 invariant 4 (abort-closes-ledger) |
+
+This loop is COMPLEMENTARY to the independent audits (plan-auditor Phase 1, sync-auditor Phase 3) — self-audit handles mechanical failures fast; independent audit handles SPEC-quality assurance. See `orchestration-mode-selection.md` §J.3.
+

@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-project-codebase-analysis
 description: "Project Phase 1/1.5/2 — Codebase analysis via Explore subagent, 3-round deep interview for existing projects, and user confirmation"
 user-invocable: false
 metadata:
@@ -7,7 +6,7 @@ metadata:
   phase: "Phase 1/1.5/2: Codebase Analysis and User Confirmation"
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 
 ## Phase 1: Codebase Analysis (Existing Projects Only)

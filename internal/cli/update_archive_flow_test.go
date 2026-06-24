@@ -1,9 +1,9 @@
 // SPEC-V3R3-HARNESS-001 / T-M4-02
 // Integration tests for the archiveLegacySkills function.
 // When archiveLegacySkills is invoked on a project containing the 16 legacy
-// skills plus a user my-harness skill plus moai-meta-harness:
+// skills plus a user harness skill plus moai-meta-harness:
 //   - the 16 legacy skills must be archived
-//   - my-harness-* skills must not be touched
+//   - harness-* skills must not be touched
 //   - the output format must be verified
 
 package cli
@@ -28,7 +28,7 @@ func TestArchiveLegacySkills_Integration(t *testing.T) {
 	}
 
 	// Create a user-customized skill (must be preserved)
-	makeSkillDir(t, root, "my-harness-test", "# user custom skill")
+	makeSkillDir(t, root, "harness-test", "# user custom skill")
 
 	// moai-meta-harness (core skill, must not be touched)
 	makeSkillDir(t, root, "moai-meta-harness", "# meta harness")
@@ -53,10 +53,10 @@ func TestArchiveLegacySkills_Integration(t *testing.T) {
 		}
 	}
 
-	// Verify the my-harness-test skill is NOT archived
-	userArchive := filepath.Join(root, ".moai", "archive", "skills", archiveVersion, "my-harness-test")
+	// Verify the harness-test skill is NOT archived
+	userArchive := filepath.Join(root, ".moai", "archive", "skills", archiveVersion, "harness-test")
 	if _, statErr := os.Stat(userArchive); statErr == nil {
-		t.Error("my-harness-test should NOT be archived (user customization)")
+		t.Error("harness-test should NOT be archived (user customization)")
 	}
 
 	// moai-meta-harness must not be archived either

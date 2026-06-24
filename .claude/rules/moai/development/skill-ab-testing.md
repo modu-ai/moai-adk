@@ -158,7 +158,7 @@ Set `max_iterations: 5` to prevent unbounded refinement. If quality target not m
 - [ ] All edge case prompts pass
 - [ ] Description accurately reflects trigger conditions
 - [ ] Body structure follows progressive disclosure (Quick / Implementation / Advanced if large)
-- [ ] Frontmatter complete (description, paths, metadata)
+- [ ] Frontmatter complete per `skill-authoring.md` § Field Reference (description, paths, metadata — schema SSOT)
 
 ---
 
@@ -207,14 +207,14 @@ For each skill iteration, document:
 ### Quality Metrics
 | Assertion | With-Skill | Baseline | Status |
 |-----------|-----------|----------|--------|
-| Output is valid code | 100% | 75% | ✅ PASS |
-| Includes all features | 100% | 50% | ✅ PASS |
-| Well-formatted | 100% | 60% | ✅ PASS |
-| **Average Score** | **100%** | **61.7%** | ✅ **+61.7%** |
+| Output is valid code | 100% | 75% | PASS |
+| Includes all features | 100% | 50% | PASS |
+| Well-formatted | 100% | 60% | PASS |
+| **Average Score** | **100%** | **61.7%** | **+61.7%** |
 
 ### Conclusion
-- Improvement target: ≥10% ✅ Met (8.5% token, +61.7% quality)
-- All assertions passing ✅
+- Improvement target: ≥10% — Met (8.5% token, +61.7% quality)
+- All assertions passing
 - Ready for release
 ```
 

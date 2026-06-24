@@ -36,7 +36,7 @@
 
 ### §24.4 `moai update` 동작 Contract
 
-[HARD] `moai update`는 `.claude/skills/` + `.claude/agents/` 에 대해 다음 동작을 수행한다:
+[HARD] `moai update`는 `.claude/skills/` + `.claude/agents/` + `.claude/commands/` + `.claude/workflows/` 에 대해 다음 동작을 수행한다:
 
 | Namespace / Path | 동작 | 백업 정책 |
 |------------------|------|-----------|
@@ -44,6 +44,8 @@
 | **`.claude/skills/harness-*`** | **절대 삭제 금지 + 절대 modify 금지** | **백업 + 보존** (user-owned, Phase 2 SPEC catch-up 후 Go enforcement 작동) |
 | `.claude/agents/moai/` | 삭제 후 신규 설치 (overwrite) | 백업 불필요 — template-managed (FLAT layout per v.2.x baseline) |
 | **`.claude/agents/harness/`** | **절대 삭제 금지 + 절대 modify 금지** | **백업 + 보존** (user-owned) |
+| **`.claude/commands/harness/`** | **절대 삭제 금지 + 절대 modify 금지** (SPEC-V3R6-HARNESS-V4-001 M1) | **백업 + 보존** (user-owned — `/harness:<name>` command files) |
+| **`.claude/workflows/harness-*.js`** | **절대 삭제 금지 + 절대 modify 금지** (SPEC-V3R6-HARNESS-V4-001 M1) | **백업 + 보존** (user-owned — harness Runner Workflow scripts) |
 | 기타 사용자 직접 추가 자산 (`.claude/agents/<custom>.md`, `.claude/skills/<custom>/` 단 prefix가 `moai-` 시작 아닌 것) | 보존 | 백업 + 보존 |
 | `.moai/harness/` (main.md, interview-results.md, extensions) | 절대 삭제 금지 | 백업 + 보존 (user-owned) |
 
@@ -56,17 +58,7 @@
 
 [HARD] Go 구현 (`internal/cli/update.go`, `internal/cli/update_archive.go`)이 본 contract를 정확히 준수하는지는 SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001 (별도 작성 예정)에서 검증한다. 현재 본 contract는 정책 명문화이며, 코드 구현 검증은 후속 작업.
 
-### §24.5 Phase 2 Drift Entry-Condition (2026-05-26 ~ Phase 2 SPEC 완료 전)
+### §24.5 Phase 2 Drift — RESOLVED (2026-06-18, SPEC-V3R6-HARNESS-NAMESPACE-V2-001)
 
-[HARD] 본 doctrine은 2026-05-26 chore commit으로 `harness-*` prefix를 user-owned namespace로 선언했으나, Go code (`internal/cli/update.go`, `internal/cli/update_archive.go`, `internal/cli/update_preserve_inventory.go`, `internal/harness/prefix_conflict.go`, test fixtures ~39 files)는 여전히 `my-harness-*` enforce 중이다. 이는 **의도된 doctrine-code drift**이며, 별개 SPEC (가칭 `SPEC-V3R6-HARNESS-NAMESPACE-V2-001`, Tier M, 39 Go files + 30+ tests scope)에서 catch-up 한다.
-
-drift 운영 원칙 (Phase 2 SPEC 완료 전):
-
-- [HARD] 새 `harness-*` prefix로 **실제 skill generate 금지** — Go code가 protection 안 하므로 `moai update` 시 삭제 위험. 사용자 데이터 손실 critical.
-- [HARD] `moai-meta-harness` actual emission은 **잠정 `my-harness-*` prefix 유지** — generator runtime behavior는 Phase 2 SPEC 완료 후 `harness-*`로 전환. 본 Phase 1 변경은 declarative intent만.
-- [HARD] 본 doctrine 변경은 **intent declaration only**, runtime behavior 변경 아님. `moai update`, `moai-meta-harness` Phase 4/5 generation, `internal/harness/prefix_conflict.go` 모든 enforcement layer는 `my-harness-*` 그대로 작동.
-- [HARD] CI test `TestNamespaceLeakMyHarnessSkills` (`internal/template/namespace_protection_audit_test.go`)는 Phase 2 SPEC 진행 시 `harness-*` 패턴으로 갱신 — 현재 prefix `my-harness-` substring hardcoded는 본 Phase 1과 무관하게 작동 유지.
-- [SHOULD] Phase 2 SPEC entry-condition: `harness-*` 패턴으로 Go enforcement + test fixture + `moai-meta-harness` runtime behavior 전환 + substring conflict 검증 (`harness-*` vs `moai-harness-*` 정확 분리) 모두 atomic하게.
-
-본 §24.5 노트는 Phase 2 SPEC sync-phase 종료 시 제거 (drift 해소 완료 후).
+`harness-*` user-owned namespace의 Go enforcement + test fixture + `moai-meta-harness` generator emission + CI sentinel + `my-harness-*` legacy backward-compat(dual-recognition deprecation window)가 모두 atomic하게 `harness-*`로 전환 완료되었다. 이전 Phase 2 drift entry-condition 노트는 해소되어 간략화됨. `harness-*` vs `moai-harness-*` substring 분리는 `strings.HasPrefix` exact match로 정확히 유지된다.
 

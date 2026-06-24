@@ -150,7 +150,10 @@ func TestProfileSetupConstructsProjectSelects(t *testing.T) {
 		}
 	}
 	// The canonical convention values must appear as huh.NewOption values.
-	for _, v := range []string{`"ddd"`, `"tdd"`, `"auto"`, `"conventional-commits"`, `"angular"`, `"karma"`, `"custom"`} {
+	// ("custom" was removed — the custom git-convention engine was retired, and
+	// the "custom" statusline preset option that previously satisfied this grep
+	// was removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001.)
+	for _, v := range []string{`"ddd"`, `"tdd"`, `"auto"`, `"conventional-commits"`, `"angular"`, `"karma"`} {
 		if !strings.Contains(src, v) {
 			t.Errorf("profile_setup.go missing canonical option value %s", v)
 		}

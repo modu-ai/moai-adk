@@ -1,5 +1,4 @@
 ---
-name: moai-reference
 description: >
   Common execution patterns, flag reference, legacy command mapping,
   and resume patterns used across all MoAI workflows. Provides context
@@ -22,7 +21,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["reference", "pattern", "flag", "config", "resume", "legacy", "mapping"]
-  agents: ["manager-spec", "manager-develop", "manager-docs", "manager-quality", "manager-git"]
+  agents: ["manager-spec", "manager-develop", "manager-docs", "manager-git"]
   phases: ["plan", "run", "sync"]
 ---
 
@@ -32,7 +31,6 @@ Common patterns, flag reference, and legacy command mapping used across all MoAI
 
 For configuration file paths, see: CLAUDE.md Section 9
 For error handling delegation, see: CLAUDE.md Section 11
-For completion markers, see: .claude/rules/moai/core/moai-constitution.md
 For development mode details, see: .claude/rules/moai/workflow/spec-workflow.md (Run Phase section)
 
 ---
@@ -87,11 +85,10 @@ Use Cases:
 
 Implementation:
 
-- TeamCreate to initialize team structure with shared task list
-- Agent() with team_name and name parameters to spawn teammates
+- Agent() with the `name` parameter to spawn teammates — the team forms implicitly on first spawn (one team per session, no setup step); the `team_name` parameter is accepted but ignored (Claude Code v2.1.178)
 - SendMessage for inter-teammate coordination and idle handling
 - TaskList for self-coordinated work distribution
-- TeamDelete after all teammates shut down
+- Team cleanup is automatic on session exit; no explicit teardown call is needed
 
 ---
 
@@ -240,8 +237,6 @@ Previous /moai:X-Y command format mapped to new /moai subcommand format:
 - /moai:coverage maps to /moai coverage
 - /moai:e2e maps to /moai e2e
 - /moai:mx maps to /moai mx
-
-Note: /moai:99-release is a separate local-only command, not part of the /moai skill.
 
 ---
 

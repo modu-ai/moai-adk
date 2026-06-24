@@ -1,326 +1,260 @@
-# Data Flow
+# 주요 데이터 흐름
 
-Key data paths through moai-adk-go for the five most important operations.
+> 이 문서는 `/moai codemaps --force`로 자동 생성된 데이터 흐름 설명입니다.
 
----
-
-## 1. Template Deployment Flow (`moai init`)
-
-The primary purpose of `moai init` is to extract embedded templates into a new project directory, render Go text/template variables, and write all configuration files.
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant CLI as cli/init.go
-    participant UI as internal/ui
-    participant Proj as core/project/Initializer
-    participant TmplCtx as template/TemplateContext
-    participant Deployer as template/Deployer
-    participant EmbedFS as embed.FS (templates/)
-    participant Renderer as template/Renderer
-    participant Manifest as internal/manifest
-    participant FS as Filesystem
-
-    User->>CLI: moai init [project-name]
-    CLI->>UI: RunInitWizard() — collect language, model policy, mode
-    UI-->>CLI: WizardResult{lang, policy, mode, name}
-    CLI->>Proj: Initializer.Initialize(projectRoot, config)
-    Proj->>TmplCtx: NewTemplateContext(GoBinPath, HomeDir, ...)
-    Proj->>Deployer: Deploy(ctx, projectRoot, DeployerMode=Init)
-
-    loop For each file in embedded FS
-        Deployer->>EmbedFS: ReadFile(path)
-        EmbedFS-->>Deployer: []byte content
-        alt File is .tmpl
-            Deployer->>Renderer: Render(content, TemplateContext)
-            Renderer-->>Deployer: rendered []byte
-        end
-        Deployer->>FS: SafeWrite(destPath, content)
-        Deployer->>Manifest: Record(path, hash, version)
-    end
-
-    Deployer->>Manifest: Save(.moai/manifest.json)
-    Deployer-->>Proj: DeployResult
-    Proj->>CLI: InitResult{filesWritten, skipped}
-    CLI->>User: "Project initialized at ./project-name"
-```
-
-**Key data transformations:**
-
-| Stage | Input | Output |
-|-------|-------|--------|
-| Wizard | User prompts | `WizardResult` struct |
-| TemplateContext | OS env vars, Go paths | `TemplateContext{GoBinPath, HomeDir}` |
-| Renderer | `.tmpl` file bytes + context | Rendered file bytes (variables substituted) |
-| ModelPolicy | Agent `.md` files + policy level | Modified `model:` frontmatter fields |
-| Manifest | File paths + content hashes | `.moai/manifest.json` (deploy record) |
+**모듈**: `github.com/modu-ai/moai-adk`  
+**Go 버전**: go 1.26.4
 
 ---
 
-## 2. Hook Execution Flow (`moai hook <event>`)
-
-Claude Code invokes `moai hook <event>` via shell wrappers whenever a hook event fires. The process reads JSON from stdin, dispatches to handlers, and writes a JSON response to stdout.
-
-```mermaid
-sequenceDiagram
-    participant ClaudeCode as Claude Code
-    participant Shell as .claude/hooks/moai/handle-*.sh
-    participant CLI as cli/hook.go
-    participant Protocol as hook/Protocol
-    participant Registry as hook/Registry
-    participant Handler as hook/Handler (specific)
-    participant LSP as internal/lsp
-    participant Config as internal/config
-
-    ClaudeCode->>Shell: Execute hook script (stdin = JSON payload)
-    Shell->>CLI: moai hook pre-tool-use (stdin piped)
-    CLI->>Protocol: ReadInput(os.Stdin)
-    Protocol-->>CLI: HookPayload{eventType, toolName, toolInput, ...}
-    CLI->>Registry: Dispatch(eventType, payload)
-    Registry->>Handler: Handle(ctx, payload)
-
-    alt PreToolUse event
-        Handler->>Handler: security.Scan(toolInput)
-        Handler-->>Registry: HookResponse{decision: "allow"|"block", message}
-    else TeammateIdle event
-        Handler->>LSP: DiagnosticsCollector.Collect(cwd)
-        LSP-->>Handler: DiagnosticResult{errors, warnings}
-        alt errors > 0
-            Handler-->>Registry: HookResponse{exitCode: 2}  -- keep working
-        else clean
-            Handler-->>Registry: HookResponse{exitCode: 0}  -- accept idle
-        end
-    else SessionEnd event
-        Handler->>Config: Load() → session metadata
-        Handler->>Handler: FormatMetrics(toolCounts, duration)
-        Handler-->>Registry: HookResponse{message: summary}
-    end
-
-    Registry-->>CLI: HookResponse
-    CLI->>Protocol: WriteOutput(os.Stdout, response)
-    Protocol->>Shell: JSON response (stdout)
-    Shell->>ClaudeCode: Exit code + stdout JSON
-```
-
-**Hook response exit codes:**
-
-| Exit Code | Meaning | Events That Use It |
-|-----------|---------|-------------------|
-| `0` | Success / allow | All events |
-| `1` | Error / deny | `PreToolUse`, `PermissionRequest` |
-| `2` | Special signal | `TeammateIdle` (keep working), `TaskCompleted` (reject), `PermissionRequest` (auto-approve) |
-
----
-
-## 3. Project Initialization Flow (Full `moai init` with Git)
-
-This shows the broader initialization beyond template deployment, including Git setup and settings generation.
+## 1. 템플릿 배포 (moai init / moai update)
 
 ```mermaid
 flowchart TD
-    A["User: moai init myproject"] --> B["UI Wizard: lang, model-policy, mode"]
-    B --> C["core/project.Initializer.Initialize()"]
-    C --> D{"Project exists?"}
-    D -- No --> E["Create project directory"]
-    D -- Yes --> F["Validate not already initialized"]
-    E --> G["template.Deployer.Deploy(Init mode)"]
+    A["EmbeddedTemplates()"]
+    B["Deployer.Deploy()"]
+    C["Renderer.Render<br/>(strict missingkey=error)"]
+    D["atomic write<br/>(temp+rename)"]
+    E["Manifest.Track<br/>(3중 해시)"]
+    F["3-way merge<br/>(사용자 커스터마이징 보존)"]
+    
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+```
+
+**흐름**:
+1. `EmbeddedTemplates()` 파일시스템 로드
+2. `Deployer.Deploy()` 렌더링 시작
+3. `Renderer` TemplateContext와 함께 template 렌더 (엄격 모드)
+4. 원자적 쓰기 (임시 파일 + 이름 바꾸기)
+5. `Manifest.Track()` 3중 해시 기록 (template/deployed/current)
+6. `update` 시에만: 3-way 병합 (사용자 변경사항 보존)
+
+---
+
+## 2. SPEC 라이프사이클 (moai plan/run/sync)
+
+```mermaid
+flowchart TD
+    A["CLI /moai plan/run/sync"]
+    B["spec.Linter<br/>(13+3 규칙)"]
+    C["spec.ClassifyEra<br/>(H-1..H-6)"]
+    D["spec.Audit<br/>(SyncStatusDrift)"]
+    E["spec.ClassifyPRTitle<br/>(git 유추 상태)"]
+    F["status enum<br/>transition"]
+    
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+```
+
+**흐름**:
+1. CLI `/moai plan` → manager-spec 위임
+2. CLI `/moai run` → manager-develop 위임 (TDD/DDD)
+3. CLI `/moai sync` → manager-docs 위임
+4. `Linter` frontmatter + ownership 검증 (13 단일 + 3 크로스 규칙)
+5. `ClassifyEra()` grandfather (V2.x/V3R2-R4/V3R5) vs modern (V3R6)
+6. `Audit()` drift 감지 (SyncStatusDrift 유일 차원)
+7. `ClassifyPRTitle()` git 히스토리로부터 상태 추론 (50-commit 윈도우)
+8. 상태 전환 기록 (status enum: draft→planned→in-progress→implemented→completed|superseded|archived|rejected)
+
+---
+
+## 3. 훅 이벤트 분배 (moai hook <event>)
+
+```mermaid
+flowchart TD
+    A["Claude Code emits event"]
+    B["handle-event.sh wrapper"]
+    C["moai hook event<br/>(stdin JSON)"]
+    D["Registry.Dispatch<br/>(28+ handlers)"]
+    E["Handler chain<br/>(sequential)"]
+    F["first 2-error<br/>short-circuit"]
+    G["JSON + exit-code<br/>(stdout)"]
+    
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
     F --> G
-    G --> H["Extract all embedded templates"]
-    H --> I["Render .tmpl files with TemplateContext"]
-    I --> J["Apply --model-policy to agent files"]
-    J --> K["template/settings.go: Generate settings.json"]
-    K --> L["Write hook wrapper shell scripts"]
-    L --> M["manifest.Save(.moai/manifest.json)"]
-    M --> N{"git init needed?"}
-    N -- Yes --> O["core/git.Manager.Init()"]
-    N -- No --> P["Skip git init"]
-    O --> P
-    P --> Q["Write CLAUDE.md from template"]
-    Q --> R["Display success + next steps"]
 ```
+
+**흐름**:
+1. Claude Code hook event 발생
+2. `.claude/hooks/moai/handle-<event>.sh` 래퍼 실행
+3. `moai hook <event>` stdin 통해 JSON 수신
+4. `Registry.Dispatch()` 중앙 허브가 28+ 타입 핸들러로 라우팅
+5. 핸들러 체인 순차 실행 (각각 exit 0 or 2)
+6. 첫 번째 2-exit (차단) 시 short-circuit
+7. JSON 결과 + exit-code stdout으로 반환
+
+**PostToolUse 예시** (8개 핸들러):
+- AST 스캔 (@MX 검증)
+- 커버리지 계산
+- cache telemetry
+- harness observer
+- 품질 게이트
+- 권한 해석
+- 진화 기록
+- 생명주기 상태
 
 ---
 
-## 4. Template Update Flow (`moai update`)
-
-`moai update` must safely merge new template versions with user modifications. It uses 3-way merge to preserve customizations.
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant CLI as cli/update.go
-    participant Manifest as internal/manifest
-    participant EmbedFS as embed.FS (new templates)
-    participant Merger as internal/merge
-    participant FS as Filesystem
-
-    User->>CLI: moai update
-    CLI->>Manifest: Load(.moai/manifest.json)
-    Manifest-->>CLI: FileRecords{path, originalHash, deployedVersion}
-
-    loop For each file in new embedded templates
-        CLI->>EmbedFS: ReadFile(newPath)
-        EmbedFS-->>CLI: newContent []byte
-        CLI->>FS: ReadFile(currentPath) → currentContent
-        CLI->>Manifest: GetOriginal(path) → originalContent
-
-        alt File not in manifest (new file)
-            CLI->>FS: Write(path, newContent)
-        else User did not modify (hash matches original)
-            CLI->>FS: Write(path, newContent)
-        else User modified file
-            CLI->>Merger: Merge3Way(original, current, newTemplate)
-            alt Clean merge
-                Merger-->>CLI: mergedContent, conflicts=nil
-                CLI->>FS: Write(path, mergedContent)
-            else Has conflicts
-                Merger-->>CLI: partialContent, conflicts=[...]
-                CLI->>FS: Write(path, contentWithMarkers)
-                CLI->>User: Warn "conflict in file X — review needed"
-            end
-        end
-
-        CLI->>Manifest: UpdateRecord(path, newHash, newVersion)
-    end
-
-    CLI->>Manifest: Save(.moai/manifest.json)
-    CLI->>User: "Update complete. N files updated, M conflicts."
-```
-
----
-
-## 5. Multi-Model (GLM/CG) Mode Flow
-
-The `moai cg` command enables a hybrid execution model where Claude Code acts as the orchestrator (leader) and GLM-powered sessions act as workers in isolated git worktrees.
+## 4. Ralph 진단 루프 (moai loop)
 
 ```mermaid
 flowchart TD
-    A["User: moai cg"] --> B["cli/cg.go: Detect tmux session"]
-    B --> C{"tmux running?"}
-    C -- No --> D["Error: tmux required for cg mode"]
-    C -- Yes --> E["Read GLM API key from rank.CredentialStore"]
-    E --> F{"API key stored?"}
-    F -- No --> G["Prompt: moai glm <api-key> first"]
-    F -- Yes --> H["Open tmux split pane"]
-
-    H --> I["Leader pane (left)"]
-    H --> J["Worker pane (right)"]
-
-    I --> K["Set leader env:\nRemove GLM env vars\nClaude uses its own model"]
-    J --> L["Set worker env:\nANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-air\nANTHROPIC_DEFAULT_SONNET_MODEL=glm-4.7\nANTHROPIC_DEFAULT_OPUS_MODEL=glm-5.1"]
-
-    K --> M["Leader: claude code session\n(Claude Opus/Sonnet)\norchestrates via Agent()"]
-    L --> N["Worker: claude code session\n(GLM models)\nexecutes in worktree isolation"]
-
-    M --> O["Leader delegates via Agent()\nwith team_name + isolation:worktree"]
-    O --> N
-    N --> P["Worker writes files in\n.claude/worktrees/<name>/"]
-    P --> Q["Worker returns result via SendMessage"]
-    Q --> M
+    A["LoopController.Start<br/>(상태 머신)"]
+    B["FeedbackGenerator<br/>(go test + LSP)"]
+    C["RalphEngine.Decide<br/>(우선순위)"]
+    D["Continue<br/>또는"]
+    E["Converge<br/>또는"]
+    F["Abort<br/>또는"]
+    G["HumanReview"]
+    
+    A --> B
+    B --> C
+    C --> D
+    D --> B
+    C --> E
+    C --> F
+    C --> G
 ```
 
-### Data Flow: `moai glm` (Settings Manipulation)
-
-```
-User: moai glm sk-xxxx
-  → cli/glm.go
-    → Read ~/.claude/settings.json
-    → rank.CredentialStore.Save("glm-api-key", "sk-xxxx")
-    → Patch settings.json env section:
-        ANTHROPIC_DEFAULT_HAIKU_MODEL  = "glm-4.7-air"
-        ANTHROPIC_DEFAULT_SONNET_MODEL = "glm-4.7"
-        ANTHROPIC_DEFAULT_OPUS_MODEL   = "glm-5.1"
-    → Write ~/.claude/settings.json
-    → Print confirmation
-```
-
-### Data Flow: `moai cc` (Revert to Claude)
-
-```
-User: moai cc
-  → cli/cc.go
-    → Read ~/.claude/settings.json
-    → Remove ANTHROPIC_DEFAULT_*_MODEL entries from env section
-    → Write ~/.claude/settings.json
-    → Print "Claude-only mode active"
-```
+**흐름**:
+1. `LoopController.Start()` 진단 루프 시작 (상태 머신 + goroutine)
+2. `FeedbackGenerator` 진단 정보 수집:
+   - `go test ./...` 실행
+   - LSP 진단 aggregate
+   - `go vet`, 커버리지 분석
+3. `RalphEngine.Decide()` 의사결정:
+   - 우선순위: max_iter > perfect_gate > stagnation > human_review
+   - Continue: 다음 반복 시작
+   - Converge: 게이트 통과, 완료
+   - Abort: 오류, 중단
+   - HumanReview: 사용자 개입 필요
 
 ---
 
-## 6. LSP Quality Gate Flow (TeammateIdle Hook)
-
-This is the quality enforcement mechanism that prevents teammates from going idle while LSP errors exist.
+## 5. 권한 해석 (PreToolUse hook)
 
 ```mermaid
-sequenceDiagram
-    participant Claude as Claude Code (teammate)
-    participant Shell as handle-teammate-idle.sh
-    participant Hook as hook/teammate_idle.go
-    participant LSP as lsp/DiagnosticsCollector
-    participant Fallback as lsp/FallbackDiagnostics
-    participant Config as config/ConfigManager
-
-    Claude->>Shell: TeammateIdle event (JSON stdin)
-    Shell->>Hook: moai hook teammate-idle
-
-    Hook->>Config: Load() → quality.enforce_quality
-    alt enforce_quality = false
-        Hook-->>Shell: exit 0 (accept idle)
-    else enforce_quality = true
-        Hook->>LSP: Collect(cwd)
-        alt LSP client available
-            LSP->>LSP: Query language server
-        else No LSP client
-            LSP->>Fallback: RunFallback(cwd)
-            Fallback->>Fallback: go vet ./...
-            Fallback->>Fallback: golangci-lint run
-            Fallback-->>LSP: DiagnosticResult
-        end
-        LSP-->>Hook: DiagnosticResult{errors:N, warnings:M}
-
-        alt errors > 0 (quality gate: max_errors=0)
-            Hook-->>Shell: exit 2 (keep working — fix errors)
-            Shell-->>Claude: TeammateIdle rejected, errors remain
-        else errors == 0
-            Hook-->>Shell: exit 0 (accept idle)
-            Shell-->>Claude: TeammateIdle accepted
-        end
-    end
+flowchart TD
+    A["PreToolUse hook"]
+    B["permission.Resolver.Resolve<br/>(8-tier)"]
+    C["Tier 1: policy"]
+    D["Tier 2-7: project→user→team<br/>→builtin→systemDefault<br/>→hookOverride"]
+    E["Tier 8: builtinDeny"]
+    F["allow/deny/ask"]
+    G["bubble mode<br/>→ parent"]
+    
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
 ```
 
-**Quality gate thresholds** (from `.moai/config/sections/quality.yaml`):
+**흐름**:
+1. Claude Code PreToolUse 훅 발동
+2. `permission.Resolver.Resolve()` 호출 (8-tier 스택)
+3. Tier 순서 적용:
+   - policy (프로젝트 정책)
+   - project (.claude/settings.json)
+   - user (~/.claude/settings.json)
+   - team (팀 설정)
+   - builtin (기본 정책)
+   - systemDefault (OS 기본)
+   - hookOverride (훅 오버라이드)
+   - builtinDeny (최종 거부)
+4. 첫 번째 "allow" 또는 "deny" 반환
+5. bubble 모드: 자식 세션이 부모 세션으로 에스컬레이션
 
-| Phase | `max_errors` | `max_type_errors` | `max_lint_errors` | Action on violation |
-|-------|-------------|-------------------|-------------------|---------------------|
-| `run` | 0 | 0 | 0 | TeammateIdle → exit 2 |
-| `sync` | 0 | — | — | TeammateIdle → exit 2 |
+**5 모드**:
+- default: 각 tool 별로 사용자에게 묻기
+- acceptEdits: 모든 편집 자동 허용
+- bypassPermissions: 모든 권한 자동 허용
+- plan: 읽기만 허용
+- bubble: 부모에게 에스컬레이션
 
 ---
 
-## Data Structure: Hook Payload
+## 6. 다중 세션 조율 (session.Registry)
 
-All hook events share a common JSON envelope read from stdin:
-
+```mermaid
+flowchart TD
+    A["SessionStart hook"]
+    B["session.Registry.Register<br/>(active-sessions.json)"]
+    C["Heartbeat"]
+    D["PreToolUse<br/>race check"]
+    E["ListActive"]
+    F["SessionEnd hook"]
+    G["Deregister"]
+    H["PurgeStale<br/>(zombies)"]
+    
+    A --> B
+    B --> C
+    C --> D
+    E --> D
+    F --> G
+    G --> H
 ```
-{
-  "event":     "TeammateIdle" | "PreToolUse" | "SessionStart" | ...,
-  "sessionId": "uuid",
-  "toolName":  "Bash" | "Write" | "Read" | ...,   // PreToolUse only
-  "toolInput": { ... },                              // PreToolUse only
-  "cwd":       "/path/to/project",
-  "hookId":    "uuid",
-  "timestamp": "ISO8601"
+
+**흐름**:
+1. SessionStart 훅 → `Registry.Register()` 활성 세션 기록
+2. active-sessions.json 에 진입
+3. Heartbeat 주기적 갱신 (stale 방지)
+4. PreToolUse: ListActive 쿼리, 병렬 세션 race 감지
+5. SessionEnd 훅 → `Deregister()` 제거
+6. `PurgeStale()` 좀비 세션 정리
+
+**다중 세션 race 감지**:
+- 같은 SPEC 작업 중인 다른 세션 감지
+- git worktree base mismatch 경고
+- advisory lock (flock/Windows mutex)
+
+---
+
+## 주요 인터페이스 계약
+
+### Handler (Hook System)
+```go
+type Handler interface {
+    Handle(ctx context.Context, input []byte) (output []byte, exit int, err error)
 }
 ```
 
-Response written to stdout:
-
-```
-{
-  "decision":  "allow" | "block",   // PreToolUse / PermissionRequest
-  "message":   "human-readable",
-  "reason":    "machine-readable"
+### Resolver (Permission)
+```go
+type Resolver interface {
+    Resolve(ctx context.Context, tool string) (Allow, Deny, Ask)
 }
 ```
 
-Exit code carries the primary signal; stdout JSON provides human-readable context.
+### Deployer (Template)
+```go
+type Deployer interface {
+    Deploy(ctx context.Context, dest, version string) error
+}
+```
+
+### Registry (Session)
+```go
+type Registry interface {
+    Register(spec, branch string) error
+    Heartbeat(spec string) error
+    ListActive(spec string) ([]Session, error)
+    Deregister(spec string) error
+}
+```
+
+---
+
+**생성**: `/moai codemaps --force`로 자동 생성

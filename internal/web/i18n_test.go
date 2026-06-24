@@ -219,8 +219,8 @@ func TestDataI18nWiring(t *testing.T) {
 		`data-i18n="sec.identity.desc"`,
 		`data-i18n="f.user_name.title"`,
 		`data-i18n="f.user_name.desc"`,
-		`data-i18n="seg.title"`,
-		`data-i18n="seg.note"`,
+		// seg.title / seg.note removed (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001):
+		// the statusline segment grid is gone.
 		`data-i18n="actions.save"`,
 	} {
 		if !strings.Contains(body, key) {
@@ -392,9 +392,27 @@ func TestLangpickJSWiring(t *testing.T) {
 	if !strings.Contains(js, "uiLangSelect") {
 		t.Error("app.js does not wire the uiLangSelect change listener")
 	}
-	// The interface-language path must not submit the form or fetch.
-	if strings.Contains(js, "fetch(") {
-		t.Error("app.js contains a fetch( call — the langpick must not perform a network request")
+	// The interface-language (langpick) path must not submit the form or perform a
+	// network request. The langpick's change handler only applies + persists the
+	// locale client-side. A fetch may exist elsewhere in app.js (e.g. the in-page
+	// server shutdown button POSTs to /__shutdown__), so the check is scoped to the
+	// wireLangpick function body rather than the whole file.
+	langpickStart := strings.Index(js, "function wireLangpick")
+	if langpickStart < 0 {
+		t.Fatal("app.js does not define wireLangpick")
+	}
+	searchFrom := langpickStart + len("function wireLangpick")
+	nextFn := strings.Index(js[searchFrom:], "\n  function ")
+	langpickEnd := len(js)
+	if nextFn >= 0 {
+		langpickEnd = searchFrom + nextFn
+	}
+	langpickBody := js[langpickStart:langpickEnd]
+	if strings.Contains(langpickBody, "fetch(") {
+		t.Error("the langpick change handler contains a fetch( call — the interface-language path must not perform a network request")
+	}
+	if strings.Contains(langpickBody, "submit(") {
+		t.Error("the langpick change handler contains a submit( call — the interface-language path must not submit the form")
 	}
 }
 
@@ -454,10 +472,10 @@ func TestInterfaceLanguageDoesNotAlterPOST(t *testing.T) {
 		"permission_mode":   {"acceptEdits"},
 		"model":             {"sonnet"},
 		"effort_level":      {"high"},
-		"statusline_preset": {"full"},
-		"statusline_theme":  {"catppuccin-mocha"},
-		"development_mode":  {"tdd"},
-		"git_convention":    {"conventional-commits"},
+		// statusline_preset / statusline_theme removed
+		// (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001) — handler no longer binds them.
+		"development_mode": {"tdd"},
+		"git_convention":   {"conventional-commits"},
 	}
 
 	bind := func(form url.Values) profile.ProfilePreferences {
@@ -512,7 +530,8 @@ func TestServerContractPreserved(t *testing.T) {
 	for _, name := range []string{
 		"user_name", "conversation_lang", "git_commit_lang", "code_comment_lang",
 		"doc_lang", "permission_mode", "model_policy", "model", "effort_level",
-		"statusline_preset", "statusline_theme",
+		// statusline_preset / statusline_theme removed
+		// (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001) — the statusline panel is gone.
 		"development_mode", "git_convention", "__profile",
 	} {
 		if !strings.Contains(body, `name="`+name+`"`) {
@@ -529,15 +548,13 @@ func TestServerContractPreserved(t *testing.T) {
 	// hardcoded; field errors are server-side rendered; the langSelect/optSelect
 	// helpers are present) is retargeted to the RENDERED BODY:
 
-	// All 15 server-rendered segment_<key> checkboxes present (a hardcoded block
-	// would not produce every canonical key — proves view.AllSegments drives them).
-	for _, key := range allSegments {
-		if !strings.Contains(body, `name="segment_`+key+`"`) {
-			t.Errorf("statusline segment segment_%s missing (no longer server-rendered from view.AllSegments)", key)
-		}
-	}
-	// Language options are server-rendered: all four canonical langOptions render.
-	for _, lang := range langOptions {
+	// segment_<key> checkbox assertions removed
+	// (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001): the statusline panel (including
+	// the segment checkbox grid) is gone from the web console.
+
+	// Language options are server-rendered: all four canonical languages render.
+	// SPEC-WEB-CONSOLE-010: the list is schema-sourced via langOptionList().
+	for _, lang := range langOptionList() {
 		if !strings.Contains(body, `<option value="`+lang+`"`) {
 			t.Errorf("language option %q not server-rendered (option list no longer view-driven)", lang)
 		}

@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK is a **high-performance AI development environment** for Claude Code. 8 specialized AI agents and 31 skills collaborate to produce high-quality code. It automatically applies TDD (default) for new projects and feature development, and DDD for existing projects with low test coverage, while supporting both Sub-Agent and Agent Teams dual execution modes.
+MoAI-ADK is a **high-performance AI development environment** for Claude Code. 8 specialized AI agents and 32 skills collaborate to produce high-quality code. It automatically applies TDD (default) for new projects and feature development, and DDD for existing projects with low test coverage, while supporting both Sub-Agent and Agent Teams dual execution modes.
 
 Written as a single Go binary -- runs instantly on all platforms with zero dependencies.
 
@@ -45,7 +45,7 @@ The Python-based MoAI-ADK (~73,000 lines) was completely rewritten in Go.
 
 - **34,220 lines** of Go code, **32** packages
 - **85-100%** test coverage
-- **8** specialized AI agents + **31** skills
+- **8** specialized AI agents + **32** skills
 - **18** programming languages supported
 - **16** Claude Code Hook events
 
@@ -213,7 +213,7 @@ MoAI-ADK implements the **Harness Engineering** paradigm — designing the envir
 | **Context Map** | Codebase architecture maps and documentation always available to agents | `/moai codemaps` |
 | **Session Persistence** | `progress.md` tracks completed phases across sessions; interrupted runs resume automatically | `/moai run SPEC-XXX` |
 | **Failing Checklist** | All acceptance criteria registered as pending tasks at run start; marked complete as implemented | `/moai run SPEC-XXX` |
-| **Language-Agnostic** | 18 languages supported: auto-detects language, selects correct LSP/linter/test/coverage tools | All workflows |
+| **Language-Agnostic** | 16 languages supported: auto-detects language, selects correct LSP/linter/test/coverage tools | All workflows |
 | **Garbage Collection** | Periodic scan and removal of dead code, AI Slop, and unused imports | `/moai clean` |
 | **Scaffolding First** | Empty file stubs created before implementation to prevent entropy | `/moai run SPEC-XXX` |
 
@@ -264,7 +264,7 @@ flowchart TD
     MoAI --> Explore
 ```
 
-### 31 Skills (Progressive Disclosure)
+### 32 Skills (Progressive Disclosure)
 
 Managed token-efficiently with a 3-level Progressive Disclosure system:
 
@@ -411,7 +411,7 @@ An autonomous error-fixing engine that combines LSP diagnostics with AST-grep:
 
 ```bash
 /moai fix       # Single pass: scan → classify → fix → verify
-/moai loop      # Iterative fix: repeat until completion marker detected (max 100)
+/moai loop      # Iterative fix: repeat until completion conditions are satisfied (max 100)
 ```
 
 **How Ralph Engine works:**
@@ -514,7 +514,7 @@ flowchart TD
     B -->|"Default (Auto)"| E["Auto Selection"]
 
     C --> F["Sequential Expert Delegation\nTask → Expert Agent"]
-    D --> G["Parallel Team Collaboration\nTeamCreate → SendMessage"]
+    D --> G["Parallel Team Collaboration\nAgent(name=…) → SendMessage"]
     E -->|"High Complexity"| D
     E -->|"Low Complexity"| C
 
@@ -537,7 +537,7 @@ MoAI-ADK automatically analyzes project complexity to select the optimal executi
 **Agent Teams mode** uses parallel team-based development:
 
 - Multiple agents work simultaneously, collaborating via shared task list
-- Real-time coordination through `TeamCreate`, `SendMessage`, and `TaskList`
+- Real-time coordination through `Agent(name=…)` (implicit team), `SendMessage`, and `TaskList`
 - Ideal for large-scale feature development and multi-domain tasks
 
 ```bash
@@ -649,7 +649,7 @@ my-project/
 ├── CLAUDE.md                  # MoAI execution guidelines
 ├── .claude/
 │   ├── agents/moai/           # 8 AI agent definitions
-│   ├── skills/moai-*/         # 31 skill modules
+│   ├── skills/moai-*/         # 32 skill modules
 │   ├── hooks/moai/            # Automation hook scripts
 │   └── rules/moai/            # Coding rules and standards
 └── .moai/

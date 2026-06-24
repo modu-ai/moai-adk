@@ -1,8 +1,8 @@
 ---
 name: manager-docs
 description: |
-  Documentation specialist (sync-phase: CHANGELOG.md + README.md + docs-site authoring + owns progress.md §Sync-phase Audit-Ready Signal + in-progress → implemented transition for all 4 SPEC artifacts). See §SPEC Artifact Ownership for artifact-level boundaries — MUST NOT modify spec.md / plan.md / acceptance.md body content.
-  Absorbs the project initialization and configuration role formerly handled by the retired manager-project agent per the 2026-05-25 Anthropic catalog consolidation (17→8 agents) — product.md / structure.md / tech.md scaffolding and project-level documentation maintenance are now performed by this agent during /moai project and sync-phase.
+  Documentation specialist (sync-phase: CHANGELOG.md + README.md + docs-site authoring + owns progress.md §E.4 Sync-phase Audit-Ready Signal + the merged in-progress → implemented → completed transition on the single sync commit for all 4 SPEC artifacts, per SPEC-V3R6-LIFECYCLE-REDESIGN-001 3-phase close). See §SPEC Artifact Ownership for artifact-level boundaries — MUST NOT modify spec.md / plan.md / acceptance.md body content.
+  Absorbs the project initialization and configuration role per the 2026-05-25 Anthropic catalog consolidation (17→8 agents; the prior project-doc-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 4) — product.md / structure.md / tech.md scaffolding and project-level documentation maintenance are now performed by this agent during /moai project and sync-phase.
   Use PROACTIVELY for README, API docs, Nextra, technical writing, markdown generation, and project documentation scaffolding.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN: documentation, README, API docs, Nextra, markdown, technical writing, docs, project initialization, product.md, structure.md, tech.md
@@ -58,12 +58,12 @@ Generate and validate comprehensive documentation with Nextra integration, trans
 
 IN SCOPE: Documentation generation, Nextra setup, MDX content, Mermaid diagrams, markdown linting, README optimization.
 
-OUT OF SCOPE: Code implementation (expert-backend/frontend), deployment (expert-devops), security audits (expert-security).
+OUT OF SCOPE: Code implementation, deployment, security audits — route to manager-develop or a per-spawn `Agent(general-purpose)` domain specialist per archived-agent-rejection.md §C rows 7-10.
 
 ## Delegation Protocol
 
-- Quality validation: Delegate to manager-quality
-- Design system docs: Coordinate with expert-frontend
+- Quality validation: Delegate to sync-auditor (or orchestrator verification batch — archived-agent-rejection.md §C row 2)
+- Design system docs: Coordinate with a per-spawn `Agent(general-purpose)` frontend specialist (archived-agent-rejection.md §C row 8)
 - SPEC synchronization: Coordinate with manager-spec
 
 ## Workflow Phases
@@ -137,8 +137,8 @@ This agent owns the following SPEC artifact boundaries per the canonical agent r
 
 ### Status transitions owned
 
-- `in-progress → implemented` on the sync commit, applied atomically to ALL 4 SPEC artifacts (spec.md + plan.md + acceptance.md + progress.md). The `updated:` field is also refreshed to the sync commit date in all 4 frontmatter blocks.
-- `implemented → completed` on the Mx chore commit (when Mx Step C is EVALUATE-PASS or SKIP per `.claude/rules/moai/workflow/mx-tag-protocol.md` §a). When Mx is SKIP, this transition MAY be bundled into the sync commit at this agent's discretion.
+- `in-progress → implemented → completed` on the **single sync commit** (per SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-008/009, the `completed` transition is merged into the sync commit — there is no separate Mx chore commit). Applied atomically to ALL 4 SPEC artifacts (spec.md + plan.md + acceptance.md + progress.md). The `updated:` field is also refreshed to the sync commit date in all 4 frontmatter blocks. The sync commit carries the 3-phase close (plan→run→sync).
+- MX Tag validation is performed as a **sync sub-step** within this same sync commit (per REQ-LR-011 / AC-LR-006) — NOT a separate Mx-phase step. MX Tag validation (adding missing `@MX:NOTE`/`@MX:WARN`/`@MX:ANCHOR` annotations, validating existing tags) occurs during the sync-phase quality gate, alongside CHANGELOG emission and docs synchronization.
 
 ### B12 CHANGELOG emission discipline (mandatory self-test before commit)
 

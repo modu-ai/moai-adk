@@ -50,12 +50,12 @@ func TestBackupUserOwnedNamespace(t *testing.T) {
 		mustExist  []string
 	}{
 		{
-			name: "REQ-UNP-001 my-harness skill preserved and backed up",
+			name: "REQ-UNP-001 harness skill preserved and backed up",
 			files: map[string]string{
-				".claude/skills/my-harness-test/SKILL.md": "user harness skill content",
+				".claude/skills/harness-test/SKILL.md": "user harness skill content",
 			},
 			wantBackup: true,
-			mustExist:  []string{".claude/skills/my-harness-test/SKILL.md"},
+			mustExist:  []string{".claude/skills/harness-test/SKILL.md"},
 		},
 		{
 			name: "REQ-UNP-002 harness agent directory preserved and backed up",
@@ -92,7 +92,7 @@ func TestBackupUserOwnedNamespace(t *testing.T) {
 		{
 			name: "multiple user-owned categories backed up together",
 			files: map[string]string{
-				".claude/skills/my-harness-foo/SKILL.md":  "a",
+				".claude/skills/harness-foo/SKILL.md":  "a",
 				".claude/agents/harness/teammate.md":      "b",
 				".moai/harness/extensions/custom.md":      "c",
 				".claude/agents/custom-direct.md":         "d",
@@ -100,7 +100,7 @@ func TestBackupUserOwnedNamespace(t *testing.T) {
 			},
 			wantBackup: true,
 			mustExist: []string{
-				".claude/skills/my-harness-foo/SKILL.md",
+				".claude/skills/harness-foo/SKILL.md",
 				".claude/agents/harness/teammate.md",
 				".moai/harness/extensions/custom.md",
 				".claude/agents/custom-direct.md",
@@ -119,12 +119,12 @@ func TestBackupUserOwnedNamespace(t *testing.T) {
 		{
 			name: "MoAI-managed paths NOT included in backup",
 			files: map[string]string{
-				".claude/skills/my-harness-test/SKILL.md": "user content",
+				".claude/skills/harness-test/SKILL.md": "user content",
 				".claude/skills/moai-foundation-cc/SKILL.md": "moai content",
 				".claude/agents/core/manager-develop.md":  "moai content",
 			},
 			wantBackup: true,
-			mustExist:  []string{".claude/skills/my-harness-test/SKILL.md"},
+			mustExist:  []string{".claude/skills/harness-test/SKILL.md"},
 		},
 	}
 
@@ -224,9 +224,9 @@ func TestAssertNoUserOwnedNamespaceTouch(t *testing.T) {
 			wantSentry: true,
 		},
 		{
-			name: "REQ-UNP-001 my-harness skill overwrite triggers sentinel",
+			name: "REQ-UNP-001 harness skill overwrite triggers sentinel",
 			plan: []deployOp{
-				{rel: ".claude/skills/my-harness-foo/file.md", action: "overwrite"},
+				{rel: ".claude/skills/harness-foo/file.md", action: "overwrite"},
 			},
 			wantErr:    true,
 			wantSentry: true,

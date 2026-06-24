@@ -5,6 +5,12 @@ description: >
   cycle for test-first software development. Use when developing new
   features from scratch or when behavior specification drives
   implementation.
+
+when_to_use: >
+  Use for Test-Driven Development: the RED-GREEN-REFACTOR cycle for
+  test-first software development, new-feature implementation from
+  scratch, and behavior-specification-driven implementation.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Bash(pytest:*), Bash(ruff:*), Bash(npm:*), Bash(npx:*), Bash(node:*), Bash(jest:*), Bash(vitest:*), Bash(go:*), Bash(cargo:*), Bash(mix:*), Bash(uv:*), Bash(bundle:*), Bash(php:*), Bash(phpunit:*), Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
@@ -17,8 +23,6 @@ metadata:
   modularized: "true"
   tags: "workflow, tdd, test-driven, red-green-refactor, test-first"
   author: "MoAI-ADK Team"
-  context: "fork"
-  agent: "manager-develop"
   related-skills: "moai-workflow-ddd, moai-workflow-testing, moai-foundation-quality"
 
 # MoAI Extension: Progressive Disclosure
@@ -26,12 +30,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["TDD", "test-driven development", "red-green-refactor", "test-first", "new feature", "greenfield"]
-  phases: ["run"]
-  agents: ["manager-develop", "expert-backend", "expert-frontend"]
 ---
 
 # Test-Driven Development (TDD) Workflow

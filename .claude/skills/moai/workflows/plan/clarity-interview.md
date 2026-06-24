@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-plan-clarity-interview
 description: "Plan Phase 0.3.1/0.4/0.5/1.25/1B/DP1 — Deep interview loop, UltraThink activation, deep research, design direction, SPEC planning, and plan review annotation cycle"
 user-invocable: false
 metadata:
@@ -7,7 +6,7 @@ metadata:
   phase: "Phase 0.3.1 through Decision Point 1: Clarity Interview, Research, and Plan Review"
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 
 ### Phase 0.3.1: Deep Interview Loop (Conditional)
@@ -49,11 +48,11 @@ For each round:
 ```
 # Interview: {SPEC Title}
 
-## Round 1: Scope
+## Interview Phase 1: Scope
 Question: {question asked}
 Answer: {user's answer}
 
-## Round 2: Constraints
+## Interview Phase 2: Constraints
 ...
 
 ## Clarity Score
@@ -133,7 +132,7 @@ When to skip:
 - User explicitly requests "skip design" or uses --prototype flag
 - Backend-only, infrastructure, or documentation SPECs
 
-Agent: expert-frontend subagent (with moai-design-craft skill)
+Agent: per-spawn `Agent(general-purpose)` frontend specialist (with moai-design-craft skill; frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8)
 
 Tasks:
 1. Check if `.moai/design/system.md` exists and has content

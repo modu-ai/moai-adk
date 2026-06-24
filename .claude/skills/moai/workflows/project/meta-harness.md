@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-project-meta-harness
 description: "Project Phase 5/6 — 16-question 4-round Socratic interview (AskUserQuestion) for harness activation and meta-harness invocation"
 user-invocable: false
 metadata:
@@ -7,19 +6,19 @@ metadata:
   phase: "Phase 5/6: Socratic Interview and meta-harness Invocation"
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 
 ## Phase 5: Socratic Interview (Harness Activation)
 
 Purpose: Conduct a 16-question / 4-round Socratic interview using `AskUserQuestion` to gather
 project context required by `moai-meta-harness`. Answers are accumulated in an in-memory buffer
-(no disk I/O) until Round 4 Q16 final confirmation (REQ-PH-001, REQ-PH-002, REQ-PH-010).
+(no disk I/O) until Round 4 Q16 final confirmation.
 
 [HARD] Each round is exactly one `AskUserQuestion` call with up to 4 questions (C-PH-003).
 [HARD] Each question's first option MUST be marked "(권장)" with a detailed description (C-PH-003).
 [HARD] All question text and option labels MUST be in conversation_language (default: ko) (C-PH-004).
-[HARD] No disk I/O until Round 4 Q16 "Confirm" answer is received (REQ-PH-010).
+[HARD] No disk I/O until Round 4 Q16 "Confirm" answer is received.
 
 In-Memory Buffer Protocol:
 - Maintain all 16 answers in memory across the 4 `AskUserQuestion` calls.
@@ -179,7 +178,7 @@ Present via `AskUserQuestion` — 4 questions, each with 4 options:
 - (권장) 표준 (Standard): 도메인 특화 에이전트 2개 + 스킬 2개. 대부분의 프로젝트에 충분. moai-meta-harness가 답변 기반으로 최적 구성 자동 생성.
 - 경량 (Minimal): 도메인 특화 스킬 1개만. 가장 빠른 setup. MVP 또는 소규모 프로젝트에 적합.
 - 심화 (Thorough): 에이전트 3개 이상 + 스킬 3개 이상 + design-extension 포함. 복잡한 도메인에 최적.
-- 전체 커스텀 (Advanced / full custom): 모든 요소를 완전 커스텀. design-extension.md 추가 생성 (REQ-PH-012). 고급 사용자용.
+- 전체 커스텀 (Advanced / full custom): 모든 요소를 완전 커스텀. design-extension.md 추가 생성. 고급 사용자용.
 
 **Q14 — 특수제약 (Special Constraints)**
 
@@ -208,12 +207,12 @@ Present via `AskUserQuestion` — 4 questions, each with 4 options:
 옵션:
 - (권장) Confirm — 생성 진행: 모든 답변을 확인했습니다. `.moai/harness/interview-results.md`에 결과를 기록하고 Phase 6 (meta-harness 호출)으로 진행합니다.
 - Restart — 처음부터 다시: Round 1부터 인터뷰를 다시 시작합니다. 이전 답변은 모두 초기화됩니다.
-- Abort — 취소: 인터뷰를 중단합니다. 어떠한 파일도 생성되지 않습니다 (REQ-PH-010).
+- Abort — 취소: 인터뷰를 중단합니다. 어떠한 파일도 생성되지 않습니다.
 
 **Q16 Branch Logic:**
 - "Confirm" → `Buffer.Commit()` 호출 → `.moai/harness/interview-results.md` 작성 → Phase 6 (meta-harness)으로 진행.
 - "Restart" → `Buffer.Abort()` 후 `NewBuffer()` → Round 1부터 재시작.
-- "Abort" → `Buffer.Abort()` 호출 → 디스크에 0 파일 작성 → Phase 5 종료 (zero disk writes, REQ-PH-010).
+- "Abort" → `Buffer.Abort()` 호출 → 디스크에 0 파일 작성 → Phase 5 종료 (zero disk writes).
 
 ---
 
@@ -221,14 +220,14 @@ Present via `AskUserQuestion` — 4 questions, each with 4 options:
 
 Purpose: Call `Skill("moai-meta-harness")` with the 16 answers collected in Phase 5,
 generating project-specific dynamic harness artifacts in the user area
-(REQ-PH-004, T-P2-01).
+(internal provenance omitted).
 
 [HARD] This phase MUST run the FROZEN guard (`EnsureAllowed`) as the **first check**
 before any write attempt. Paths in `.claude/agents/{moai,harness}/`, `.claude/skills/moai-*/`,
 or `.claude/rules/moai/` are permanently FROZEN and must be rejected immediately.
 
 [HARD] If meta-harness generation fails mid-way, `CleanupOnFailure` MUST remove all
-partial artifacts written so far (REQ-PH-010).
+partial artifacts written so far.
 
 ### 6.1 Pre-Condition
 
@@ -289,19 +288,18 @@ in the **user area** (FROZEN guard pre-verified):
 |----------|------|----------|
 | Architect agent | `.claude/agents/harness/<domain>-architect.md` | Always |
 | Engineer agent | `.claude/agents/harness/<domain>-engineer.md` | Always |
-| Patterns skill | `.claude/skills/my-harness-<domain>-patterns/SKILL.md` | Always |
-| Best-practices skill | `.claude/skills/my-harness-<domain>-best-practices/SKILL.md` | Always |
+| Patterns skill | `.claude/skills/harness-<domain>-patterns/SKILL.md` | Always |
+| Best-practices skill | `.claude/skills/harness-<domain>-best-practices/SKILL.md` | Always |
 | Harness directory | `.moai/harness/` | Always |
 | Design extension | `.moai/harness/design-extension.md` | Q13 == Advanced only |
 
 > **Prefix note (code-side):** the companion skills are emitted under the
-> `my-harness-*` prefix — the prefix the Go code + generator actually use today
-> (the prefix `doctor harness` `checkLayer1Triggers` matches and that
-> `moai update` namespace protection preserves). The doctrine-vs-code prefix
-> drift (`harness-*` doctrine target vs `my-harness-*` code reality) is documented
-> in the `moai-meta-harness` skill body § Namespace Separation; advancing the
-> generator to the bare `harness-*` prefix is a separate, future concern and is
-> NOT performed here. References above read `my-harness-`, never a bare `harness-`.
+> `harness-*` prefix — the canonical user-owned namespace the doctrine
+> declares and that Go enforcement (`doctor harness` `checkLayer1Triggers`,
+> `moai update` namespace protection) now recognizes. The doctrine-vs-code
+> drift that previously existed was resolved by the namespace catch-up;
+> the legacy prefixed form is retained only as a backward-compat
+> recognition during a deprecation window. References above read `harness-*`.
 
 All write paths must pass `EnsureAllowed(path)` before the file is created.
 Any `FrozenViolationError` causes immediate abort + `CleanupOnFailure`.
@@ -313,7 +311,7 @@ the following frontmatter so the generated harness self-activates when the
 agent is delegated:
 
 - A `skills:` frontmatter entry that **preloads the agent's companion
-  `my-harness-*` skill**, so the domain skill loads deterministically when the
+  `harness-*` skill**, so the domain skill loads deterministically when the
   agent runs (rather than relying on auto-discovery, which fails silently when
   the companion skill is not in the agent's context). Example for a generated
   architect agent:
@@ -323,17 +321,17 @@ agent is delegated:
   name: <domain>-architect
   description: <non-empty trigger-shaped description — see below>
   skills:
-    - my-harness-<domain>-patterns
-    - my-harness-<domain>-best-practices
+        - harness-<domain>-patterns
+        - harness-<domain>-best-practices
   ---
   ```
 
   Concrete example for an `ios-mobile` project (the `<domain>` placeholder
   resolves to the project domain): the architect agent declares
-  `my-harness-ios-patterns` and `my-harness-ios-best-practices` under `skills:`,
-  matching the `.claude/skills/my-harness-ios-patterns/SKILL.md` and
-  `.claude/skills/my-harness-ios-best-practices/SKILL.md` directories emitted
-  by Phase 6 (the code-side `my-harness-*` prefix, never a bare `harness-*`).
+  `harness-ios-patterns` and `harness-ios-best-practices` under `skills:`,
+  matching the `.claude/skills/harness-ios-patterns/SKILL.md` and
+  `.claude/skills/harness-ios-best-practices/SKILL.md` directories emitted
+  by Phase 6 (the `harness-*` prefix).
 
 - A **non-empty, trigger-shaped `description`** frontmatter field naming the
   domain and the observable task-shape that should route to this agent (so the
@@ -341,7 +339,7 @@ agent is delegated:
 
 These two frontmatter fields are enforced at runtime by the Phase-6 smoke gate
 (Phase 7.3): a generated agent with an empty `description`, with a `skills:`
-entry pointing at a non-existent `my-harness-*` directory (dangling), or with
+entry pointing at a non-existent `harness-*` directory (dangling), or with
 NO `skills:` key at all causes the gate to FAIL. A `skills:`-less agent must
 not pass silently — that is the auto-discovery failure mode this contract closes.
 
@@ -373,7 +371,7 @@ exists, then verifies all five with the smoke gate (7.3):
 
 | Layer | Mechanism | Owner |
 |-------|-----------|-------|
-| L1 | `my-harness-*` skill frontmatter triggers (paths / keywords / agents / phases) | Phase 6 (generation) |
+| L1 | `harness-*` skill frontmatter triggers (paths / keywords / agents / phases) | Phase 6 (generation) |
 | L2 | `.moai/config/sections/workflow.yaml` `harness:` section | Phase 6 (generation) |
 | L3 | `CLAUDE.md` `<!-- moai:harness-start -->` ~ `<!-- moai:harness-end -->` marker block | **Phase 7 (install)** |
 | L4 | `.claude/skills/moai/workflows/{plan,run,sync,design}.md` static `@.moai/harness/` import line | Phase 6 (already present in workflow files) |
@@ -414,7 +412,7 @@ incomplete — covering:
 - CLAUDE.md does not contain exactly one paired
   `<!-- moai:harness-start -->` / `<!-- moai:harness-end -->` block (L3 marker).
 - a generated `.claude/agents/harness/*.md` agent has an empty `description`.
-- a generated agent's `skills:` preload references a `my-harness-*` skill
+- a generated agent's `skills:` preload references a `harness-*` skill
   directory that does not exist on disk (dangling skill reference).
 - a generated agent OMITS the `skills:` frontmatter key entirely (the runtime
   enforcement of the `skills:` preload emission contract — a `skills:`-less agent

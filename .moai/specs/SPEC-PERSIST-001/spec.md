@@ -24,6 +24,8 @@ tags: "legacy"
 
 # SPEC-PERSIST-001: Stop Persistent Mode (종료 방지 모드)
 
+> **부분 supersession (2026-06-15)**: 본 SPEC의 완료 마커(`<moai>DONE</moai>` / `<moai>COMPLETE</moai>`) → persistent-mode 해제 계약(REQ-PERSIST-002) 및 persistent-mode 서브시스템 표면은 `SPEC-COMPLETION-MARKER-RETIRE-001`에 의해 은퇴되었습니다(marker/persistent-mode 표면 한정 부분 supersession). 완료 마커는 자연어 완료 신호로 대체되었고, 관련 acceptance oracle은 마커 값의 존재가 아닌 부재를 단언하도록 반전되었습니다. 본 SPEC의 나머지 표면은 영향받지 않습니다.
+
 ## Overview
 
 Stop hook을 확장하여, `/moai loop` 또는 `/moai run` 진행 중 Claude의 조기 종료를 방지. 완료 마커 감지 또는 최대 지속 시간 초과 시 자동 해제.

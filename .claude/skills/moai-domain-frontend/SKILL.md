@@ -5,6 +5,12 @@ description: >
   and modern UI/UX patterns with component architecture. Use when building
   web UIs, implementing components, optimizing frontend performance, or
   integrating state management.
+
+when_to_use: >
+  Use for frontend development: React 19, Next.js 16, Vue 3.5 components,
+  responsive UIs, TypeScript/JavaScript, state management, hooks, props,
+  JSX/TSX, DOM, CSS, Tailwind, and client-side browser performance.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
@@ -18,10 +24,6 @@ metadata:
   tags: "frontend, react, nextjs, vue, ui, components"
   author: "MoAI-ADK Team"
   context7-libraries: "/facebook/react, /vercel/next.js, /vuejs/vue"
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["frontend", "UI", "component", "React", "Next.js", "Vue", "user interface", "responsive", "TypeScript", "JavaScript", "state management", "hooks", "props", "JSX", "TSX", "client-side", "browser", "DOM", "CSS", "Tailwind"]
 ---
 
 # Frontend Development Specialist
@@ -196,7 +198,7 @@ Last Updated: 2026-03-28
 ## Refactor Notes
 
 **R4 audit verdict** (2026-04-23): REFACTOR — router-only skill pointing to moai-ref-react-patterns and moai-library-nextra
-**SPEC**: SPEC-V3R2-WF-001 §6.2 line 262
+**SPEC**: (internal provenance omitted)
 **Refactor scope** (deferred to future sub-SPEC):
 - Reduce body to routing/delegation content pointing at moai-ref-react-patterns and moai-library-nextra
 - Extract framework-specific deep-dives into Level-3 modules

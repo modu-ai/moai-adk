@@ -12,14 +12,8 @@ MoAI is the strategic orchestrator for Claude Code. Direct implementation by MoA
 
 Rules:
 - Delegate implementation tasks to specialized agents
-- [ZONE:Frozen] [HARD] All user-facing questions MUST go through AskUserQuestion — no free-form prose questions in response text
-- [ZONE:Frozen] [HARD] AskUserQuestion is used ONLY by MoAI orchestrator; subagents must never prompt users
-- [ZONE:Frozen] [HARD] AskUserQuestion is a deferred tool — invoke `ToolSearch(query: "select:AskUserQuestion")` immediately before each AskUserQuestion call
-- Collect all user preferences before delegating to subagents
-- When context is insufficient, conduct a Socratic interview via AskUserQuestion rounds (see CLAUDE.md Section 7 Rule 5 + Section 8)
-- First option in every AskUserQuestion MUST be the recommended choice, marked "(Recommended)"
-- Every option MUST include a detailed description explaining implications
-- Canonical reference: `.claude/rules/moai/core/askuser-protocol.md`
+- [ZONE:Frozen] [HARD] AskUserQuestion is the sole user-facing question channel, used ONLY by the MoAI orchestrator (subagents must never prompt users); all preload (`ToolSearch(query: "select:AskUserQuestion")` before each call), Socratic-interview, and option-standard mechanics live in the canonical reference below
+- Canonical reference: `.claude/rules/moai/core/askuser-protocol.md` § Channel Monopoly / § ToolSearch Preload Procedure / § Socratic Interview Structure / § Option Description Standards
 
 ## Response Language
 
@@ -39,7 +33,7 @@ Rules:
 - Use sequential execution only when dependencies exist
 - Maximum 10 parallel agents for optimal throughput
 - For sub-agent mode: Launch multiple Agent() calls in a single message for parallel execution
-- For team mode: Use TeamCreate for persistent team coordination, SendMessage for inter-teammate communication
+- For team mode: spawn teammates directly with the Agent tool's `name` parameter (the team forms implicitly on first spawn — one team per session, no setup step); use SendMessage for inter-teammate communication
 - Team agents share TaskList for work coordination; sub-agents return results directly
 - Spawn multiple subagents in the same turn when fanning out across independent items or files; do not spawn a subagent for work completable directly in a single response
 - Three orchestration primitives exist — choose by who holds the plan: **sub-agents** (Claude orchestrates turn by turn, results land in Claude's context), **Agent Teams** (shared TaskList, start with 3-5 teammates), and **dynamic workflows** (a script orchestrates dozens-to-hundreds of agents, intermediate results stay in script variables). For coding-heavy work prefer sequential sub-agents; reserve workflow-scale fan-out for genuinely parallel high-volume tasks (codebase sweeps, large migrations, cross-checked research). See `.claude/rules/moai/workflow/dynamic-workflows.md`.
@@ -53,8 +47,8 @@ Rules:
 - Adaptive Thinking: do NOT set fixed thinking budgets via `budget_tokens` — Opus 4.7+ and 4.8 reject fixed budgets with HTTP 400. Enable thinking via `thinking: {type: "adaptive"}` and let the model self-allocate reasoning depth.
 - State scope explicitly: Opus 4.8 follows instructions literally and does not silently generalize from one item to another. When an instruction should apply broadly, say so (e.g. "apply to every section, not just the first").
 - Remove Opus 4.6-era defensive scaffolding: "double-check X before returning", "verify N times", "explicitly confirm before proceeding" patterns are counterproductive given literal instruction following.
-- [ZONE:Evolvable] [HARD] Principle 4 — Fewer subagents spawned by default: Opus 4.7 does not auto-spawn subagents. This behavior is steerable: when fan-out helps, instruct explicitly "Spawn multiple subagents in the same turn when fanning out across items or files; do not spawn a subagent for work you can complete directly in one response."
-- [ZONE:Evolvable] [HARD] Principle 5 — Fewer tool calls by default, more reasoning: Opus 4.7 prefers reasoning over tool invocation. When tool use is expected, specify when and why to use each tool (Grep for content search, Glob for file discovery, Read for full-file context). Raise effort to high/xhigh to increase tool usage when needed.
+- [ZONE:Evolvable] [HARD] Principle 4 — Fewer subagents spawned by default: Opus 4.7+ / 4.8 does not auto-spawn subagents. This behavior is steerable: when fan-out helps, instruct explicitly "Spawn multiple subagents in the same turn when fanning out across items or files; do not spawn a subagent for work you can complete directly in one response."
+- [ZONE:Evolvable] [HARD] Principle 5 — Fewer tool calls by default, more reasoning: Opus 4.7+ / 4.8 prefers reasoning over tool invocation. When tool use is expected, specify when and why to use each tool (Grep for content search, Glob for file discovery, Read for full-file context). Raise effort to high/xhigh to increase tool usage when needed.
 - Effort defaults: Opus 4.8 defaults to `effort: high` on all surfaces (Claude API and Claude Code). Set `effort: xhigh` for coding/agentic work, keep a minimum of `high` for intelligence-sensitive work, and step down to `medium`/`low` only for speed-critical or simple tasks (route effort by role rather than by named agent).
 
 ## Output Format
@@ -99,6 +93,7 @@ Rules:
 - High fan_in functions (>=3 callers): MUST have @MX:ANCHOR
 - Dangerous patterns (goroutines, complexity >=15): SHOULD have @MX:WARN
 - Untested public functions: SHOULD have @MX:TODO
+- Deliberate working simplifications: Use @MX:DEBT with @MX:CEILING + @MX:UPGRADE sub-lines
 - Legacy code without SPEC: Use @MX:LEGACY sub-line
 - MX tags are autonomous: Agents add/update/remove without human approval
 - Reports notify humans of tag changes
@@ -239,6 +234,19 @@ Questions to ask before completing implementation:
 Cross-reference: TRUST 5 Readable principle.
 
 Anti-pattern: Building 1000 lines when 100 would suffice; creating a factory for a single concrete implementation.
+
+Simplicity decision ladder (apply in order, before writing code — cheapest capability first):
+
+1. Does this need to be built at all? (YAGNI)
+2. Does the standard library do this? Use it.
+3. Does a native platform feature cover it? Use it.
+4. Does an already-installed dependency solve it? Use it.
+5. Can this be one line? Make it one line.
+6. Only then: write the minimum code that works.
+
+The ladder is the dependency-avoidance ordering axis — reach for the cheapest existing capability before adding new code or a new dependency. It is language-neutral: "standard library" and "native platform feature" name whichever capability source the project's language provides, not any specific package manager or import.
+
+Never simplify away (safety carve-out): the ladder is a code-economy aid, NOT a license to cut safety. It MUST NOT be used to drop input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility, or one runnable check behind non-trivial logic. These boundaries are governed by existing rules — the TRUST 5 Secured principle (validation, OWASP compliance) and the Bash risk-amplifier doctrine in `.claude/rules/moai/development/coding-standards.md` § Bash Risk-Amplifier Doctrine (destructive-primitive confirmation) — and the ladder is subordinate to them.
 
 Quantitative trigger: If implementation exceeds 3x the estimated minimum viable LOC, flag for simplification before proceeding. Estimate by asking: "What is the fewest lines this could be written in?" — then compare. If the ratio exceeds 3:1, stop and rewrite.
 

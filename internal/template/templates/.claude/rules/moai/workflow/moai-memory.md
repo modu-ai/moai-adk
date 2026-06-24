@@ -156,3 +156,23 @@ Available checks, NOT yet wired into the PostToolUse hook — the index-overflow
 | `MEMORY_DUPLICATE` | Two files share the same description |
 
 All warnings are observation-only. Hook exit code is always 0 (non-blocking).
+
+### Memory Hygiene (operating discipline)
+
+These operating rules prevent the memory store from degrading into an unread, oversized, mis-classified dump. Apply them whenever you write or consolidate memory entries.
+
+**type field is top-level SSOT.** The canonical `type:` field lives at the frontmatter top level (per Required Frontmatter above). The host's native auto-memory MAY additionally emit a `metadata:` block containing `type:` — when both exist, the top-level `type:` is the source of truth and the two MUST carry the same value. Do not rely on `metadata.type` alone; if a file has `metadata.type` but no top-level `type:`, add the top-level one.
+
+**Filename prefix determines type.** Use the naming convention as the default classifier and keep filenames honest:
+- `project_*` → `project`
+- `feedback_*` / `lesson*` → `feedback` (lessons are experience-derived feedback)
+- `reference_*` → `reference`
+- Non-standard filenames require a content-based type decision.
+
+**Topic-file `description` is a one-line recall summary.** Keep each `description:` under ~150 characters. It is the string the recall layer matches against — a long description defeats relevance matching; an empty one defeats discovery. If a topic needs more detail, put it in the body, not the description.
+
+**MEMORY.md index is the discovery surface.** Every active topic file SHOULD have a one-line entry in `MEMORY.md` (`- [title](file) — short-summary`), because topic files are loaded on demand — an index entry is how a future session discovers the file exists. When the index approaches the 200-line / 25KB ceiling, prefer promoting the most-recent active topics over retaining stale ones.
+
+**MEMORY.md diet procedure (when the index exceeds limits).** Rewrite each entry as `[title](file) — <topic description>` (single line, ≤~150 chars), drawing the summary from the topic file's `description` field. The body of detail belongs in the topic file, NOT the index entry. This collapses oversized index entries without losing information.
+
+**Stale completed records move to `_archive/`, never deleted.** When a topic is a completed/superseded one-time incident with no ongoing relevance, move the file into a `memory/_archive/` subdirectory (reversible) and drop its index entry. Do NOT delete — archive preserves the audit trail. Conservatively keep anything that holds an enduring lesson.

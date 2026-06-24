@@ -4,6 +4,13 @@ description: >
   Backend development specialist covering API design, database integration,
   microservices architecture, and modern backend patterns. Use when designing
   APIs, implementing server logic, authentication, or authorization.
+
+when_to_use: >
+  Use for backend work: API design (REST, GraphQL, gRPC), server logic,
+  authentication and authorization, microservices, middleware, caching,
+  and frameworks (FastAPI, Express, Django, Flask). Covers serverless,
+  PostgreSQL, MongoDB, and Redis integration.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Bash(npm:*), Bash(npx:*), Bash(node:*), Bash(uv:*), Bash(pip:*), Bash(pytest:*), Bash(ruff:*), Bash(docker:*), Bash(curl:*), Bash(go:*), Bash(cargo:*), Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
@@ -16,10 +23,6 @@ metadata:
   modularized: "false"
   tags: "backend, api, database, microservices, architecture"
   author: "MoAI-ADK Team"
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["backend", "API", "server", "authentication", "authorization", "REST", "GraphQL", "gRPC", "microservices", "database", "endpoint", "middleware", "FastAPI", "Express", "Django", "Flask", "serverless", "caching", "Redis", "PostgreSQL", "MongoDB"]
 ---
 
 # Backend Development Specialist
@@ -186,7 +189,7 @@ Maintained by: MoAI-ADK Backend Team
 ## Refactor Notes
 
 **R4 audit verdict** (2026-04-23): REFACTOR — narrow to "API design decision matrix" focused content
-**SPEC**: SPEC-V3R2-WF-001 §6.2 line 261
+**SPEC**: (internal provenance omitted)
 **Refactor scope** (deferred to future sub-SPEC):
 - Narrow body to API design decision matrix (REST vs GraphQL vs tRPC vs gRPC)
 - Extract language-specific implementation details into Level-3 modules

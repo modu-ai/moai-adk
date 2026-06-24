@@ -33,7 +33,7 @@ func TestLangSelectHelperMarkupParity(t *testing.T) {
 		Key:     "conversation_lang",
 		Desc:    "Language the assistant replies in during chat.",
 		Value:   "ko",
-		Options: langOptions,
+		Options: langOptionList(),
 		Errors:  map[string]string{},
 	}))
 
@@ -69,7 +69,7 @@ func TestLangSelectHelperMarkupParity(t *testing.T) {
 		Key:     "conversation_lang",
 		Desc:    "Language the assistant replies in during chat.",
 		Value:   "",
-		Options: langOptions,
+		Options: langOptionList(),
 		Errors:  map[string]string{"conversation_lang": "unrecognized language: xx"},
 	}))
 	for _, want := range []string{
@@ -98,7 +98,7 @@ func TestOptSelectHelperMarkupParity(t *testing.T) {
 		Desc:    "The specific model to run, including 1M-context variants.",
 		Value:   "sonnet",
 		Empty:   "(project default)",
-		Options: modelCanonical,
+		Options: modelOptionList(),
 		Errors:  map[string]string{},
 	}))
 	for _, want := range []string{

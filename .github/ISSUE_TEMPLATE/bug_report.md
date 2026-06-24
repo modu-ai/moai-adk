@@ -2,7 +2,7 @@
 name: Bug Report
 about: Report a bug to help us improve MoAI-ADK
 title: "[Bug] "
-labels: bug
+labels: ["type:fix"]
 assignees: ''
 ---
 

@@ -12,7 +12,7 @@ Detailed guide to the 3 builder agents that extend MoAI-ADK.
 
 ## What are Builder Agents?
 
-In addition to the 31 built-in skills and 8 agents, MoAI-ADK provides 3 builder agents that users can use to extend the system.
+In addition to the 32 built-in skills and 8 agents, MoAI-ADK provides 3 builder agents that users can use to extend the system.
 
 ```mermaid
 flowchart TD

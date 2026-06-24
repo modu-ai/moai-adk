@@ -54,10 +54,10 @@ func TestRootCmd_HelpOutput(t *testing.T) {
 
 	output := buf.String()
 
-	// M6-S5: tui-based help uses 4 Korean section groups (ScreenHelp design).
-	// The launcher group header (Korean label) replaces the old cobra "Launch Commands:" header.
-	if !strings.Contains(output, "런처") {
-		t.Error("root --help should show 런처 section (M6-S5 tui help)")
+	// M6-S5: tui-based help uses 4 English section groups (ScreenHelp design).
+	// The launcher group header (English label) replaces the old cobra "Launch Commands:" header.
+	if !strings.Contains(output, "Launchers") {
+		t.Error("root --help should show Launchers section (M6-S5 tui help)")
 	}
 
 	// Verify core subcommands are listed in help output
@@ -132,7 +132,7 @@ func TestCharacterize_Help_FourSections(t *testing.T) {
 
 	output := buf.String()
 
-	sections := []string{"프로젝트", "런처", "자율 개발", "거버넌스"}
+	sections := []string{"Project", "Launchers", "Autonomous Development", "Governance"}
 	for _, s := range sections {
 		if !strings.Contains(output, s) {
 			t.Errorf("root --help should contain section %q (ScreenHelp group)", s)
@@ -150,7 +150,7 @@ func TestCharacterize_Help_HelpBarPresent(t *testing.T) {
 
 	output := buf.String()
 
-	hints := []string{"↑↓", "스크롤", "enter", "선택"}
+	hints := []string{"↑↓", "scroll", "enter", "select"}
 	for _, h := range hints {
 		if !strings.Contains(output, h) {
 			t.Errorf("root --help HelpBar should contain hint %q", h)
@@ -175,8 +175,8 @@ func TestCharacterize_Help_SubcommandHelpUnchanged(t *testing.T) {
 	}
 
 	// Should NOT show ScreenHelp 4-group layout in subcommand help.
-	if strings.Contains(output, "프로젝트") {
-		t.Error("subcommand help should not show 프로젝트 group (tui help is rootCmd-only)")
+	if strings.Contains(output, "Project") {
+		t.Error("subcommand help should not show Project group (tui help is rootCmd-only)")
 	}
 }
 

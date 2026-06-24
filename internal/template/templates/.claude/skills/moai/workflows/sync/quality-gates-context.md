@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-sync-quality-gates-context
 description: "Sync Phase 0 — Purpose/Scope/Input/Mode/Flags/Context Loading and Phase 0 Pre-Sync Quality Gate through Phase 0.1 Deployment Readiness Check. Contains HUMAN GATE 1 (Pre-Sync Quality)."
 user-invocable: false
 metadata:
@@ -7,7 +6,7 @@ metadata:
   phase: "Phase 0: Pre-Sync Context and Deployment Readiness"
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 <!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
 
@@ -32,14 +31,14 @@ Synchronize documentation with code changes, verify project quality, and finaliz
 
 ## Mode Flag Compatibility
 
-Per SPEC-V3R2-WF-003 REQ-WF003-005 and SPEC-V3R2-WF-004:
+Per the subcommand-classification contract:
 
 - This subcommand is multi-agent (open-ended) but does NOT participate in the
-  `--mode {autopilot|loop|team}` axis defined in SPEC-V3R2-WF-003.
+  `--mode {autopilot|loop|team}` axis.
 - Any `--mode` value supplied to `/moai sync` is silently ignored. The sync workflow
   proceeds with its default behavior.
 - The `pipeline` value is the only special case: passing `--mode pipeline` triggers
-  `MODE_PIPELINE_ONLY_UTILITY` (the same error key shared with WF-004 REQ-WF004-014).
+  `MODE_PIPELINE_ONLY_UTILITY` (the same error key the utility subcommands share).
 
 See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the
 full subcommand × mode matrix.
@@ -141,7 +140,7 @@ Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before th
 - Execute gate workflow equivalent: lint + format + type-check + test in parallel
 - Auto-fix any fixable issues (lint auto-fix, format auto-fix)
 - If unfixable errors remain: Present summary and offer options via AskUserQuestion
-  - Fix errors (Recommended): Delegate to manager-quality subagent for targeted fixes
+  - Fix errors (Recommended): Delegate to manager-develop subagent for targeted fixes
   - Skip gate: Proceed to Phase 0.1 (errors will be caught later but at higher cost)
   - Abort: Exit sync workflow
 
@@ -182,7 +181,7 @@ moai hook db-schema-sync
 ```
 
 - Input (stdin JSON): filtered migration file list, project language, `db.yaml` config — read from current working directory by the Go handler
-- Implementation: `internal/hook/dbsync/db_schema_sync.go` (SPEC-DB-SYNC-001, registered as `moai hook db-schema-sync` subcommand in `internal/cli/hook.go`)
+- Implementation: the DB-schema-sync hook handler, registered as the `moai hook db-schema-sync` subcommand
 - Output: updated `.moai/project/db/schema.md`, `erd.mmd`, `migrations.md`; refresh report
 - Changes are staged for the sync commit — no separate commit is created
 
@@ -208,7 +207,7 @@ Purpose: Verify the implementation is deployment-ready before quality verificati
 - Run full test suite for detected project language
 - Verify all tests pass (zero failures required)
 - If tests fail: Present failure summary and offer options via AskUserQuestion
-  - Fix and retry (Recommended): Delegate to manager-quality subagent
+  - Fix and retry (Recommended): Delegate to manager-develop subagent
   - Continue anyway: Proceed with warning
   - Abort: Exit sync workflow
 

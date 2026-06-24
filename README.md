@@ -37,7 +37,7 @@
 
 > **"The purpose of vibe coding is not rapid productivity but code quality."**
 
-MoAI-ADK is a **high-performance AI development environment** for Claude Code. 24 specialized AI agents and 52 skills collaborate to produce quality code. It automatically applies TDD (default) for new projects and feature development, or DDD for existing projects with minimal test coverage, and supports dual execution modes with Sub-Agent and Agent Teams.
+MoAI-ADK is a **high-performance AI development environment** for Claude Code. 8 retained AI agents (7 MoAI-custom + 1 Anthropic built-in `Explore`) and 30 `moai-*` template-managed skills collaborate to produce quality code. It automatically applies TDD (default) for new projects and feature development, or DDD for existing projects with minimal test coverage, and supports dual execution modes with Sub-Agent and Agent Teams.
 
 A single binary written in Go -- runs instantly on any platform with zero dependencies.
 
@@ -59,10 +59,10 @@ We completely rewrote the Python-based MoAI-ADK (~73,000 lines) in Go.
 
 ### Key Numbers
 
-- **38,700+ lines** of Go code, **38** packages
+- **100K+ lines** of Go code across **100+** packages
 - **85-100%** test coverage
-- **26** specialized AI agents + **47** skills
-- **18** programming languages supported
+- **8** retained AI agents + **30** `moai-*` skills (template-managed; excludes 2 `harness-moaiadk-*` user-owned)
+- **16** programming languages supported
 - **27** Claude Code hook events
 
 ---
@@ -80,8 +80,12 @@ MoAI-ADK implements the **Harness Engineering** paradigm — designing the envir
 | **Language-Agnostic** | 16 languages supported: auto-detects language, selects correct LSP/linter/test/coverage tools | All workflows |
 | **Garbage Collection** | Periodic scan and removal of dead code, AI Slop, and unused imports | `/moai clean` |
 | **Scaffolding First** | Empty file stubs created before implementation to prevent entropy | `/moai run SPEC-XXX` |
+| **Harness v4 Builder** | Orchestrator-direct harness build system with 4-phase workflow (ANALYZE → PLAN → GENERATE → ACTIVATE), manifest-driven Runner, and conditional worktree isolation | `/moai:harness <natural-language request>` |
+| **Harness Lifecycle** | List/edit/remove harness lifecycle commands (`/harness:<name>` list, edit, remove) | `/moai:harness status`, `/moai:harness edit <name>`, `/moai:harness remove <name>` |
 
 > "Human steers, agents execute." — The engineer's role shifts from writing code to designing the harness: SPECs, quality gates, and feedback loops.
+
+**Harness v4 Architecture**: See [SPEC-V3R6-HARNESS-V4-001](.moai/specs/SPEC-V3R6-HARNESS-V4-001/spec.md) and [`.claude/skills/moai/workflows/harness-builder.md`](.claude/skills/moai/workflows/harness-builder.md) for the orchestrator-direct Builder workflow, manifest.json schema, Runner primitive mapping, and conditional worktree isolation rules.
 
 ---
 
@@ -259,71 +263,67 @@ Spawns dozens of agents in isolated git worktrees for large-scale parallel work.
 
 ## AI Agent Orchestration
 
-MoAI is a **strategic orchestrator**. Rather than writing code directly, it delegates tasks to 24 specialized agents.
+MoAI is a **strategic orchestrator**. Rather than writing code directly, it delegates tasks to 8 retained agents.
 
 ```mermaid
 graph LR
     U["👤 User Request"] --> M["🗿 MoAI Orchestrator"]
 
-    M --> MG["📋 Manager (8)"]
-    M --> EX["⚡ Expert (8)"]
-    M --> BL["🔧 Builder (3)"]
-    M --> EV["🔍 Evaluator (2)"]
-    M --> AG["🎨 Design System (4+1)"]
-
-    MG --> MG1["spec · ddd · tdd · docs<br/>quality · project · strategy · git"]
-    EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring"]
-    BL --> BL1["agent · skill · plugin"]
-    EV --> EV1["sync-auditor · plan-auditor"]
-    AG --> AG1["planner · copywriter · designer<br/>builder · evaluator · learner"]
+    M --> MS["📋 manager-spec"]
+    M --> MD["🔨 manager-develop"]
+    M --> MDoc["📄 manager-docs"]
+    M --> MG["🌿 manager-git"]
+    M --> PA["🔍 plan-auditor"]
+    M --> SA["⚖️ sync-auditor"]
+    M --> BH["🔧 builder-harness"]
+    M --> EX["👁️ Explore (built-in)"]
 
     style M fill:#FF6B35,color:#fff
-    style MG fill:#4CAF50,color:#fff
-    style EX fill:#2196F3,color:#fff
-    style BL fill:#9C27B0,color:#fff
-    style EV fill:#FF5722,color:#fff
-    style AG fill:#FF9800,color:#fff
+    style MS fill:#4CAF50,color:#fff
+    style MD fill:#2196F3,color:#fff
+    style MDoc fill:#2196F3,color:#fff
+    style MG fill:#2196F3,color:#fff
+    style PA fill:#FF5722,color:#fff
+    style SA fill:#FF5722,color:#fff
+    style BH fill:#9C27B0,color:#fff
+    style EX fill:#607D8B,color:#fff
 ```
 
 ### Agent Categories
 
 | Category | Count | Agents | Role |
 |----------|-------|--------|------|
-| **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | Workflow coordination, SPEC creation, quality management |
-| **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | Domain-specific implementation, analysis, optimization |
-| **Builder** | 3 | agent, skill, plugin | Creating new MoAI components |
-| **Evaluator** | 2 | sync-auditor, plan-auditor | Independent quality assessment, plan-phase document audit |
-| **Design System** | 4 (+ evaluator) | moai-domain-copywriting, moai-domain-brand-design, moai-workflow-design-import, moai-workflow-gan-loop | Hybrid creative + code production |
+| **Manager** | 4 | manager-spec, manager-develop, manager-docs, manager-git | Plan-phase authoring, run-phase implementation, sync-phase docs, PR routing |
+| **Evaluator** | 2 | plan-auditor, sync-auditor | Independent plan-phase audit, sync-phase 4-dimension quality scoring |
+| **Builder** | 1 | builder-harness | Dynamic project-specific harness specialist generation |
+| **Anthropic built-in** | 1 | Explore | Read-only codebase exploration (invoked directly, no MoAI file) |
 
-**Total: 27 agents**
+**Total: 8 retained agents** (7 MoAI-custom + 1 Anthropic built-in `Explore`)
+
+12 legacy agent names (e.g. `manager-strategy`, `manager-quality`, `manager-project`, the 6 `expert-*` agents) are **archived** and MUST NOT be spawned. When a paste-ready resume or `Agent()` invocation references an archived name, the orchestrator rejects the spawn and consults the migration table at `.claude/rules/moai/workflow/archived-agent-rejection.md`.
 
 Note: Dynamic team teammates (researcher, analyst, architect, implementer, tester, designer, reviewer) are spawned at runtime via role profiles, not as static agent definitions.
 
-### 47 Skills (Progressive Disclosure)
+### `/moai` Slash Commands (17)
 
-Managed through a 3-level progressive disclosure system for token efficiency:
+MoAI exposes **17 `/moai` slash commands** in `.claude/commands/moai/`, managed through a 3-level progressive disclosure system for token efficiency (skill metadata is always listed; bodies load on invocation; bundled references load on demand).
 
-| Category | Count | Examples |
-|----------|-------|----------|
-| **Foundation** | 6 | core, cc, philosopher, quality, context, thinking |
-| **Workflow** | 12 | spec, project, ddd, tdd, testing, worktree, loop, research, jit-docs... |
-| **Domain** | 4 | backend, frontend, database, uiux |
-| **Format** | 1 | data-formats |
-| **Platform** | 4 | auth, chrome-extension, database-cloud, deployment |
-| **Library** | 3 | shadcn, nextra, mermaid |
-| **Reference** | 5 | api-patterns, git-workflow, owasp, react-patterns, testing-pyramid |
-| **Tool** | 2 | ast-grep, svg |
-| **Design** | 2 | design-tools, design-craft |
-| **Framework** | 1 | electron |
-| **Design System** | 4 | moai-domain-copywriting, moai-domain-brand-design, moai-workflow-design-import, moai-workflow-gan-loop |
-| **Docs** | 1 | docs-generation |
-| **Language Rules** | 16 | Go, Python, TypeScript, Rust, Java... (path-based rules, not skills) |
+| Group | Commands |
+|-------|----------|
+| **Workflow** | `plan`, `run`, `sync`, `project` |
+| **Utility** | `fix`, `loop`, `clean`, `mx`, `codemaps`, `coverage`, `e2e` |
+| **Quality** | `review`, `gate` |
+| **Design** | `design` |
+| **Autonomy** | `brain`, `harness` |
+| **Feedback** | `feedback` |
+
+The full command set (17 total): `brain` · `clean` · `codemaps` · `coverage` · `design` · `e2e` · `feedback` · `fix` · `gate` · `harness` · `loop` · `mx` · `plan` · `project` · `review` · `run` · `sync`.
 
 ---
 
 ## Model Policy (Token Optimization)
 
-MoAI-ADK assigns optimal AI models to each of 24 agents based on your Claude Code subscription plan. This maximizes quality within your plan's rate limits.
+MoAI-ADK assigns optimal AI models to each of the 8 retained agents based on your Claude Code subscription plan. This maximizes quality within your plan's rate limits.
 
 | Policy | Plan | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku | Best For |
 |--------|------|------|--------|-------|----------|
@@ -335,48 +335,39 @@ MoAI-ADK assigns optimal AI models to each of 24 agents based on your Claude Cod
 
 ### Agent Model Assignment by Tier
 
+Only the 8 retained agents appear below. 12 legacy agent names are archived — for the migration table of `manager-strategy`, `manager-quality`, `manager-project`, the 6 `expert-*` agents, and others, see `.claude/rules/moai/workflow/archived-agent-rejection.md`.
+
 #### Manager Agents
 
 | Agent | High | Medium | Low |
 |-------|------|--------|-----|
 | manager-spec | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| manager-strategy | 🟣 opus | 🟣 opus | 🔵 sonnet |
 | manager-develop | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| manager-project | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 | manager-docs | 🔵 sonnet | 🟡 haiku | 🟡 haiku |
-| manager-quality | 🟡 haiku | 🟡 haiku | 🟡 haiku |
 | manager-git | 🟡 haiku | 🟡 haiku | 🟡 haiku |
 
-#### Expert Agents
+#### Evaluator Agents
 
 | Agent | High | Medium | Low |
 |-------|------|--------|-----|
-| expert-backend | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-frontend | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-security | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| expert-debug | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-refactoring | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-devops | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| expert-performance | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| expert-testing | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| plan-auditor | 🟣 opus | 🟣 opus | 🔵 sonnet |
+| sync-auditor | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
 
 #### Builder Agents
 
 | Agent | High | Medium | Low |
 |-------|------|--------|-----|
-| builder-agent | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| builder-skill | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| builder-plugin | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| builder-harness | 🟣 opus | 🔵 sonnet | 🟡 haiku |
 
-#### Team Agents
+#### Anthropic Built-in
 
 | Agent | High | Medium | Low |
 |-------|------|--------|-----|
-| team-reader | 🔵 sonnet | 🔵 sonnet | 🔵 sonnet |
-| team-coder | 🔵 sonnet | 🔵 sonnet | 🔵 sonnet |
-| team-tester | 🔵 sonnet | 🔵 sonnet | 🔵 sonnet |
-| team-designer | 🔵 sonnet | 🔵 sonnet | 🔵 sonnet |
-| team-validator | 🟡 haiku | 🟡 haiku | 🟡 haiku |
+| Explore (Anthropic built-in) | (inherits session model — no MoAI model-policy assignment) | | |
+
+#### Team Role Profiles (dynamic, not static agents)
+
+Team role profiles (researcher, analyst, architect, implementer, tester, designer, reviewer) are spawned dynamically at runtime via `Agent(subagent_type: "general-purpose")` with model + isolation overrides from `workflow.yaml`. They are NOT static agent definitions and do not have fixed tier-mapping rows.
 
 ### Configuration
 
@@ -385,10 +376,14 @@ MoAI-ADK assigns optimal AI models to each of 24 agents based on your Claude Cod
 moai init my-project          # Interactive wizard includes model policy selection
 
 # Reconfigure existing project
-moai update                   # Interactive prompts for each configuration step
+moai update -c                # Re-run the init wizard (no template sync)
 ```
 
-During `moai update`, you'll be asked:
+> **`moai update` vs `moai update -c`**: bare `moai update` syncs templates via 3-way merge;
+> `moai update -c` (`--config`) re-runs the init wizard to edit project configuration and
+> does NOT synchronize templates.
+
+During `moai update -c`, you'll be asked:
 - **Reset model policy?** (y/n) - Re-run model policy configuration wizard
 - **Update GLM settings?** (y/n) - Configure GLM environment variables in settings.local.json
 
@@ -408,7 +403,7 @@ graph TD
     B -->|"Default (Auto)"| E["Auto Selection"]
 
     C --> F["Sequential Expert Delegation<br/>Task() → Expert Agent"]
-    D --> G["Parallel Team Collaboration<br/>TeamCreate → SendMessage"]
+    D --> G["Parallel Team Collaboration<br/>Agent(name=…) → SendMessage"]
     E -->|"High Complexity"| D
     E -->|"Low Complexity"| C
 
@@ -431,7 +426,7 @@ MoAI-ADK automatically analyzes project complexity and selects the optimal execu
 **Agent Teams Mode** uses parallel team-based development:
 
 - Multiple agents work simultaneously, collaborating through a shared task list
-- Real-time coordination via `TeamCreate`, `SendMessage`, and `TaskList`
+- Real-time coordination via `Agent(name=…)` (implicit team), `SendMessage`, and `TaskList`
 - Best suited for large-scale feature development and multi-domain tasks
 
 ```bash
@@ -489,6 +484,8 @@ graph TB
     style Run fill:#E8F5E9,stroke:#2E7D32
     style Sync fill:#FFF3E0,stroke:#E65100
 ```
+
+> **3-phase lifecycle (V3R6)**: MoAI's lifecycle is exactly three phases — plan → run → sync. The former fourth "Mx-phase" was retired per `SPEC-V3R6-LIFECYCLE-REDESIGN-001`; MX Tag validation is now a cross-cutting sync concern, not a separate phase. Dynamic workflows (`/effort ultracode`, Claude Code v2.1.154+) are available as an optional fan-out primitive within the run phase.
 
 #### Execution Mode Selection Gate
 
@@ -647,7 +644,9 @@ All hook events follow the Claude Code hooks protocol with JSON stdin/stdout com
 | `moai init` | Interactive project setup (auto-detects language/framework/methodology) |
 | `moai doctor` | System health diagnosis and environment verification |
 | `moai status` | Project status summary including Git branch, quality metrics, etc. |
+| `moai inventory` | Unified read-only inventory of active sessions, worktrees, and harnesses (add `--json` for structured output) |
 | `moai update` | Update to the latest version (with automatic rollback support) |
+| `moai update -c` | Re-run the init wizard to edit project configuration (no template sync) |
 | `moai update --check` | Check for updates without installing |
 | `moai update --project` | Sync project templates only |
 | `moai worktree new <name>` | Create a new Git worktree (parallel branch development). Add `--tmux` to auto-create a tmux session in the worktree |
@@ -673,15 +672,17 @@ MoAI-ADK supports **z.ai GLM** as an alternative AI backend for Claude Code, ena
 |------|---------|
 | GLM Coding Plan | From **$10/month** ([z.ai](https://z.ai/subscribe?ic=1NDV03BGWU)) |
 | Compatibility | Works with Claude Code — no code changes needed |
-| Models | GLM-5.1, GLM-4.7, GLM-4.5-Air, and free models |
+| Models | glm-5.2[1m], glm-4.7, glm-4.5-air, and free models |
 
 **Default Model Mapping:**
 
 | Claude Tier | GLM Model | Input (per 1M tokens) | Output (per 1M tokens) |
 |-------------|-----------|----------------------|------------------------|
-| Opus | GLM-5.1 | $2.00 | $8.00 |
-| Sonnet | GLM-4.7 | $0.60 | $2.20 |
-| Haiku | GLM-4.5-Air | $0.20 | $1.10 |
+| Opus | glm-5.2[1m] | $2.00 | $8.00 |
+| Sonnet | glm-4.7 | $0.60 | $2.20 |
+| Haiku | glm-4.5-air | $0.20 | $1.10 |
+
+> The `[1m]` suffix on `glm-5.2[1m]` activates Claude Code's 1M-token context mode. Claude Code parses and strips the suffix before the upstream z.ai API call, so z.ai never sees it.
 
 > Free models also available: GLM-4.7-Flash, GLM-4.5-Flash. See [z.ai Pricing](https://docs.z.ai/guides/overview/pricing) for full details.
 
@@ -947,9 +948,9 @@ This single command triggers the **entire autonomous workflow**:
 1. **Client Interview** — Manager-spec asks 9 structured questions about your business, brand, and tech preferences (skipped if already configured)
 2. **BRIEF Generation** — Manager-spec expands your request into a comprehensive project brief
 3. **Copy + Design** — moai-domain-copywriting produces brand-aligned marketing copy; moai-domain-brand-design creates a full design system with tokens (Path B). Alternative Path A: moai-workflow-design-import parses Claude Design handoff bundles.
-4. **Code Implementation** — expert-frontend implements production code using TDD (Next.js + Tailwind by default)
+4. **Code Implementation** — manager-develop (cycle_type=tdd) or a harness-generated frontend specialist implements production code using TDD (Next.js + Tailwind by default)
 5. **Quality Assurance** — sync-auditor runs Playwright tests, Lighthouse audits, and 4-dimension scoring with Sprint Contract protocol
-6. **GAN Loop** — If quality fails, expert-frontend and sync-auditor iterate via moai-workflow-gan-loop (up to 5 rounds) until threshold is met
+6. **GAN Loop** — If quality fails, manager-develop (or the harness specialist) and sync-auditor iterate via moai-workflow-gan-loop (up to 5 rounds) until threshold is met
 7. **Self-Learning** — (Optional) Learner detects patterns from the session and proposes skill improvements
 
 **Typical duration**: 15-45 minutes for a complete landing page, fully autonomous.
@@ -977,7 +978,7 @@ flowchart LR
 | **moai-domain-copywriting** | Writes marketing copy as structured JSON — headlines, body, CTAs — following brand voice rules |
 | **moai-domain-brand-design** | Creates complete design system — color tokens, typography scale, spacing, component specs (Path B) |
 | **moai-workflow-design-import** | Parses Claude Design handoff bundles (ZIP/HTML) for design tokens and components (Path A) |
-| **expert-frontend** | Implements production code with TDD (RED-GREEN-REFACTOR). Default stack: Next.js, TypeScript, Tailwind, shadcn/ui |
+| **manager-develop** (cycle_type=tdd) | Implements production code with TDD (RED-GREEN-REFACTOR). Default stack: Next.js, TypeScript, Tailwind, shadcn/ui. A harness-generated frontend specialist (per `SPEC-V3R6-HARNESS-NAMESPACE-V2-001`) may substitute for domain-specific work. |
 | **sync-auditor** | Runs Playwright visual tests + Lighthouse audits. Scores 4 dimensions with Sprint Contract protocol and must-pass criteria validation |
 | **moai-workflow-gan-loop** | Manages GAN Loop iteration: Builder-Evaluator negotiates Sprint Contract, implements, scores, escalates on stagnation |
 
@@ -1119,105 +1120,7 @@ This command safely moves legacy `.agency/` data to `.moai/project/brand/` and `
 
 ---
 
-## Database Workflow: /moai db
-
-Database metadata management system for MoAI projects. Manages schema documentation, migrations, ERD diagrams, and seeds through four subcommands: init, refresh, verify, and list.
-
-### Quick Start
-
-```bash
-# Initialize database metadata (interactive interview)
-/moai db init
-
-# Rescan migrations and update schema documentation
-/moai db refresh
-
-# Check for drift between schema.md and migration files
-/moai db verify
-
-# Display all tables from schema.md
-/moai db list
-```
-
-### Subcommands
-
-| Command | Purpose | When to Use |
-|---------|---------|------------|
-| **init** | Interactive setup of database engine, ORM, multi-tenant strategy, and migration tool. Scaffolds `.moai/project/db/` with 7-file template set | New project initialization, before any database work |
-| **refresh** | Scans migration files and regenerates `schema.md`, `erd.mmd` (Mermaid ERD), and `migrations.md` from current migration state | After adding/modifying migrations, milestone sync |
-| **verify** | Read-only drift detection: compares `schema.md` table set against actual migration files, exits non-zero if drift detected | Before PR submission, in CI/CD pipelines |
-| **list** | Read-only table listing: displays all tables from `schema.md` in aligned Markdown table format | Quick project overview, documentation review |
-
-### Directory Structure
-
-`/moai db init` creates the following structure in `.moai/project/db/`:
-
-```plaintext
-.moai/project/db/
-├── README.md              # Database overview and setup instructions
-├── schema.md              # Table schema documentation (auto-generated)
-├── erd.mmd                # Entity-Relationship Diagram in Mermaid format
-├── migrations.md          # Migration history and sequencing
-├── rls-policies.md        # Row-level security policies (PostgreSQL)
-├── queries.md             # Important queries and performance notes
-└── seed-data.md           # Sample data and seeding instructions
-```
-
-### Supported Database Technologies
-
-Auto-detects and supports 6 migration file patterns:
-
-| Migration Type | File Pattern | Example |
-|---------------|-------------|---------|
-| **Prisma** | `prisma/migrations/*/migration.sql` | `20260401120000_add_users_table/migration.sql` |
-| **Alembic** | `alembic/versions/*.py` | `a1b2c3d4e5f6_add_users_table.py` |
-| **Rails** | `db/migrate/*.rb` | `20260401120000_add_users_table.rb` |
-| **Raw SQL** | `db/migrations/*.sql` | `001_add_users_table.sql` |
-| **Supabase** | `supabase/migrations/*.sql` | `20260401120000_initial_schema.sql` |
-| **Generic** | `migrations/*.sql` or `db/*.sql` | Custom patterns supported |
-
-Supports 16 programming language ecosystems (Go, Python, TypeScript, Java, etc.) through common package paths.
-
-### Integrations
-
-- **PostToolUse Hook**: Auto-refreshes `schema.md`, `erd.mmd`, `migrations.md` when migration files are edited
-- **Drift Detection**: Prevents schema documentation from drifting out of sync with actual migrations
-- **Mermaid Diagrams**: Generates ERD diagrams automatically for documentation and design reviews
-- **Phase 4.1a DB Detection**: `/moai project` automatically surfaces `/moai db` recommendations based on detected database technology
-
-### Configuration
-
-Database settings are stored in `.moai/config/sections/db.yaml`:
-
-```yaml
-db:
-  enabled: true
-  dir: ".moai/project/db"
-  auto_sync: true
-  migration_patterns:
-    - "prisma/migrations/*/migration.sql"
-    - "alembic/versions/*.py"
-    - "db/migrate/*.rb"
-  engine: ""  # Populated during init interview
-  orm: ""     # Populated during init interview
-  multi_tenant: false
-  migration_tool: ""
-```
-
-### Workflow Example
-
-1. **New Project**: Run `/moai db init`, answer 4 questions about your database setup
-2. **During Development**: Create migrations as usual; `/moai db` auto-syncs documentation
-3. **Before PR**: Run `/moai db verify` to check for schema drift
-4. **Review**: Reference `.moai/project/db/erd.mmd` in PRs for visual schema review
-
-### When to Use
-
-- **Always on**: Enable during `moai init` for any project with a database
-- **Init**: New projects, database architecture changes
-- **Refresh**: After significant migration work, before major commits
-- **Verify**: Part of CI/CD pipeline, pre-PR checks
-- **List**: Quick reference, documentation generation
+> **Database schema tooling**: database-schema synchronization is handled by the CLI hook `moai hook db-schema-sync` (see the CLI reference), not a dedicated slash command.
 
 ---
 
@@ -1243,7 +1146,7 @@ The statusline v3 features a **multi-line layout** with real-time API usage moni
 
 **Full mode** (5 lines — 40-block individual bars):
 ```
-🤖 Opus 4.6 │ 🔅 v2.1.74 │ 🗿 v2.7.12 │ ⏳ 5h 32m │ 💬 MoAI
+🤖 Opus 4.7 │ 🔅 v2.1.170 │ 🗿 v2.7.12 │ ⏳ 5h 32m │ 💬 MoAI
 CW: 🔋 █████████████████████░░░░░░░░░░░░░░░░░░░ 52%
 5H: 🔋 █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 4%
 7D: 🔋 ██████████████████████░░░░░░░░░░░░░░░░░░░ 56%
@@ -1252,7 +1155,7 @@ CW: 🔋 █████████████████████░░�
 
 **Default mode** (3 lines — 10-block inline bars):
 ```
-🤖 Opus 4.6 │ 🔅 v2.1.74 │ 🗿 v2.7.12 │ ⏳ 16m │ 💬 MoAI
+🤖 Opus 4.7 │ 🔅 v2.1.170 │ 🗿 v2.7.12 │ ⏳ 16m │ 💬 MoAI
 CW: 🔋 ██░░░░░░░░ 25% │ 5H: 🔋 █░░░░░░░░░ 12% │ 7D: 🔋 ░░░░░░░░░░ 3%
 📁 moai-adk-go │ 🅱️ fix/my-feature │ 📭 +0 M38 ?2
 ```
@@ -1266,7 +1169,6 @@ Edit `.moai/config/sections/statusline.yaml` directly:
 
 ```yaml
 statusline:
-  preset: default  # or full
   segments:
     model: true
     context: true
@@ -1280,7 +1182,7 @@ statusline:
     git_branch: true
 ```
 
-> **Note**: As of v2.7.8, segment preset selection has been removed from the `moai init`/`moai update` wizard. Configure segments directly in the YAML file above.
+> **Note**: The `preset` shorthand (`full`/`compact`/`minimal`) has been retired — configure the segment map directly above. A legacy `preset:` key in an existing config is silently ignored by the loader. Segment selection was already removed from the `moai init`/`moai update` wizard as of v2.7.8.
 
 ---
 

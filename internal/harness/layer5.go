@@ -118,7 +118,7 @@ func mainMD(opts ScaffoldOpts, now string) string {
 	fmt.Fprintf(&b, "**Updated**: %s\n\n", now)
 	b.WriteString("## Domain Summary\n\n")
 	b.WriteString("이 프로젝트는 ")
-	fmt.Fprintf(&b, "%s 도메인 기반입니다. 도메인 특화 패턴은 my-harness-* skills에 정의됩니다.\n\n", opts.Domain)
+	fmt.Fprintf(&b, "%s 도메인 기반입니다. 도메인 특화 패턴은 harness-* skills에 정의됩니다.\n\n", opts.Domain)
 	// REQ-HAW-006: task-shape → specialist ROUTER manifest. The orchestrator
 	// reads this table at activation time to route an observable task-shape to
 	// the matching generated harness specialist agent. Additive only — the
@@ -189,7 +189,7 @@ func readmeMD(opts ScaffoldOpts) string {
 	fmt.Fprintf(&b, "**Domain**: %s · **SPEC**: %s\n\n", opts.Domain, opts.SpecID)
 	b.WriteString("## 5-Layer Integration\n\n")
 	b.WriteString("이 디렉터리는 Layer 5 (사용자 영역) 콘텐츠입니다. 5-Layer 통합 장치:\n\n")
-	b.WriteString("- **L1**: my-harness-* skill frontmatter triggers (paths/keywords/agents/phases)\n")
+	b.WriteString("- **L1**: harness-* skill frontmatter triggers (paths/keywords/agents/phases)\n")
 	b.WriteString("- **L2**: `.moai/config/sections/workflow.yaml` `harness:` 섹션\n")
 	b.WriteString("- **L3**: `CLAUDE.md` `<!-- moai:harness-start -->` ~ `<!-- moai:harness-end -->` marker\n")
 	b.WriteString("- **L4**: `.claude/skills/moai/workflows/{plan,run,sync,design}.md` 정적 import line\n")

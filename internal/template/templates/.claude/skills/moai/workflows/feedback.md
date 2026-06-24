@@ -1,8 +1,7 @@
 ---
-name: moai-workflow-feedback
 description: >
   Collects user feedback, bug reports, or feature suggestions and creates
-  GitHub issues automatically via the manager-quality agent. Supports bug
+  GitHub issues automatically via the orchestrator-direct gh CLI. Supports bug
   reports, feature requests, and questions with priority classification.
   Use when submitting feedback, reporting bugs, or requesting features.
 user-invocable: false
@@ -22,13 +21,13 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["feedback", "bug", "issue", "suggestion", "report", "feature request"]
-  agents: ["manager-quality"]
+  agents: []
   phases: ["feedback"]
 ---
 
 # Workflow: feedback - GitHub Issue Creation
 
-Purpose: Collect user feedback, bug reports, or feature suggestions and create GitHub issues automatically via the manager-quality agent.
+Purpose: Collect user feedback, bug reports, or feature suggestions and create GitHub issues automatically via the orchestrator-direct `gh` CLI (the archived-agent-rejection.md §C migration table provides no retained-agent owner for issue creation, so issue creation is performed orchestrator-direct).
 
 Prerequisite: The `gh` CLI must be installed and authenticated (`gh auth status`). If not available, guide user to install via https://cli.github.com/.
 
@@ -66,9 +65,9 @@ Options:
 
 ## Phase 2: GitHub Issue Creation
 
-[HARD] Delegate to manager-quality subagent with collected feedback details.
+[HARD] Create the GitHub issue orchestrator-direct via the `gh` CLI with collected feedback details (no subagent spawn — issue creation has no retained-agent owner per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C).
 
-Pass to manager-quality:
+Inputs for the `gh issue create` invocation:
 
 - Feedback Type: Bug Report, Feature Request, or Question
 - Title: User-provided title
@@ -102,7 +101,7 @@ Language examples:
 
 ### Issue Creation Command
 
-The manager-quality agent executes: gh issue create --repo modu-ai/moai-adk
+The orchestrator executes directly: gh issue create --repo modu-ai/moai-adk
 
 Issue body uses a consistent template in the user's conversation_language, including:
 
@@ -139,9 +138,8 @@ Use AskUserQuestion after successful submission:
 This workflow uses simple sequential execution (no parallelism needed):
 
 - Phase 1 collects all user input at MoAI orchestrator level
-- Phase 2 delegates to manager-quality with complete context
-- Single agent handles the entire submission process
-- Typical execution completes in under 30 seconds
+- Phase 2 creates the issue orchestrator-direct via the `gh` CLI with complete context
+- The orchestrator handles the entire submission process (no subagent spawn)
 
 Resume support: Not applicable (atomic operation).
 
@@ -150,7 +148,7 @@ Resume support: Not applicable (atomic operation).
 ## Agent Chain Summary
 
 - Phase 1: MoAI orchestrator (AskUserQuestion for feedback collection)
-- Phase 2: manager-quality subagent (GitHub issue creation via gh CLI)
+- Phase 2: MoAI orchestrator-direct (GitHub issue creation via gh CLI)
 
 ---
 

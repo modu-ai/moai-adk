@@ -179,7 +179,7 @@ known_preexisting_failures:                # NOT integration-attributed
 authored_by: orchestrator-direct
 ```
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 spec_id: SPEC-V3R6-HARNESS-ACTIVATION-WIRING-001

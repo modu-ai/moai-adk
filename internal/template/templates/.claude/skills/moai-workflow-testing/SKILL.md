@@ -4,6 +4,12 @@ description: >
   Comprehensive testing and development workflow specialist combining DDD
   testing, characterization tests, performance profiling, and quality
   assurance. Use when writing tests or measuring coverage.
+
+when_to_use: >
+  Use for comprehensive testing and QA: DDD domain-driven testing,
+  characterization tests, behavior preservation, performance profiling,
+  code and PR review, CI/CD, and TRUST 5 quality-assurance validation.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Bash(pytest:*), Bash(ruff:*), Bash(npm:*), Bash(npx:*), Bash(node:*), Bash(jest:*), Bash(vitest:*), Bash(go:*), Bash(cargo:*), Bash(mix:*), Bash(uv:*), Bash(bundle:*), Bash(php:*), Bash(phpunit:*), Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
@@ -16,20 +22,12 @@ metadata:
   modularized: "true"
   tags: "workflow, ddd, testing, debugging, performance, quality, review, pr-review"
   author: "MoAI-ADK Team"
-  context: "fork"
-  agent: "manager-develop"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["DDD", "domain-driven development", "characterization tests", "behavior preservation", "debugging", "performance optimization", "code review", "PR review", "quality assurance", "testing", "CI/CD", "TRUST 5"]
-  phases: ["run", "sync"]
-  agents: ["manager-develop", "manager-quality", "expert-performance"]
 ---
 
 # Development Workflow Specialist

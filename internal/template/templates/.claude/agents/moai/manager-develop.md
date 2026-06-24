@@ -17,7 +17,7 @@ description: |
   ZH (DDD): DDD, 重构, 遗留代码, 行为保存, 特性测试, 领域驱动重构
   ZH (TDD): TDD, 测试驱动开发, 红绿重构, 测试优先, 新功能, 规格测试, 绿地项目
   ZH (autofix): 自动修复, 自动修补, lint修复, 错误修复, 流水线修复
-  NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md / design.md / research.md — manager-spec only per Status Transition Ownership Matrix), security audits, performance optimization, deployment (use expert-devops via builder-harness fallback if needed)
+  NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md / design.md / research.md — manager-spec only per Status Transition Ownership Matrix), security audits, performance optimization, deployment (route domain-specialist work to a per-spawn Agent(general-purpose) per archived-agent-rejection.md §C)
 tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: inherit
 effort: xhigh
@@ -54,7 +54,7 @@ hooks:
         timeout: 10
 ---
 
-<!-- @MX:ANCHOR: [AUTO] develop-dispatch — unified entry point for all DDD+TDD implementation; fan_in >= 5 (manager-ddd, manager-tdd, expert-security, expert-devops, expert-refactoring all route here) -->
+<!-- @MX:ANCHOR: [AUTO] develop-dispatch — unified entry point for all DDD+TDD implementation; fan_in >= 5 (the former manager-ddd / manager-tdd cycles + per-spawn general-purpose security / devops / refactoring specialists all route here) -->
 <!-- @MX:REASON: ORC-001 consolidation: manager-ddd + manager-tdd merged into single cycle_type dispatch; any change to cycle routing must preserve backward compatibility -->
 
 # Development Implementer - Unified DDD/TDD Agent
@@ -115,16 +115,16 @@ Per the canonical CI auto-fix protocol, the `manager-develop` agent supports a t
 
 **OUT OF SCOPE (both cycles)**:
 - SPEC creation (delegate to manager-spec)
-- Security audits (delegate to expert-security)
-- Performance optimization (delegate to expert-performance)
-- Deployment (delegate to expert-devops)
+- Security audits (route to a per-spawn `Agent(general-purpose)` security reviewer per archived-agent-rejection.md §C row 9, or the Stop hook dependency-manifest audit)
+- Performance optimization (route to a per-spawn `Agent(general-purpose)` performance specialist per archived-agent-rejection.md §C row 11)
+- Deployment (route to a per-spawn `Agent(general-purpose)` devops specialist per archived-agent-rejection.md §C row 10)
 
 ## Delegation Protocol
 
 - SPEC unclear: Delegate to manager-spec
-- Security concerns: Delegate to expert-security
-- Performance issues: Delegate to expert-performance
-- Quality validation: Delegate to manager-quality
+- Security concerns: route to a per-spawn `Agent(general-purpose)` security reviewer (archived-agent-rejection.md §C row 9)
+- Performance issues: route to a per-spawn `Agent(general-purpose)` performance specialist (archived-agent-rejection.md §C row 11)
+- Quality validation: Delegate to sync-auditor (or orchestrator verification batch — lint + test + coverage; archived-agent-rejection.md §C row 2)
 - Git operations: Delegate to manager-git
 
 ## DDD Cycle (cycle_type: ddd)

@@ -217,7 +217,7 @@ After each methodology cycle, compare planned files against actual modifications
 
 ### Team Mode Methodology
 
-Each teammate applies the methodology within their file ownership scope. team-validator validates compliance. team-tester exclusively owns test files.
+Each teammate applies the methodology within its file ownership scope. Teammates are spawned dynamically via `Agent(subagent_type: "general-purpose")` with `role_profile` overrides — the reviewer role_profile validates compliance; the tester role_profile exclusively owns test files.
 
 ### MX Tag Integration
 
@@ -276,12 +276,6 @@ Output:
 - Updated README
 - CHANGELOG entry
 - Pull request
-
-## Completion Markers
-
-AI uses markers to signal task completion:
-- `<moai>DONE</moai>` - Task complete
-- `<moai>COMPLETE</moai>` - Full completion
 
 ## Context Management
 
@@ -371,13 +365,13 @@ When team mode is enabled (workflow.team.enabled and AGENT_TEAMS env), phases ca
 | Phase | Sub-agent Mode | Team Mode | Condition |
 |-------|---------------|-----------|-----------|
 | Plan | manager-spec (single) | Dynamic teammates: researcher + analyst + architect (parallel, general-purpose) | Complexity >= threshold |
-| Run | manager-develop (sequential) | Dynamic teammates: backend-dev + frontend-dev + tester (parallel, general-purpose) | Domains >= 3 or files >= 10 |
+| Run | manager-develop (sequential) | Dynamic teammates: implementer + tester + reviewer role_profiles (parallel, spawned as general-purpose) | Domains >= 3 or files >= 10 |
 | Sync | manager-docs (single) | manager-docs (always sub-agent) | N/A |
 
 All teammates are spawned dynamically via `Agent(subagent_type: "general-purpose")` with runtime overrides from `workflow.yaml` role profiles. No static team agent definitions are used. See `.claude/skills/moai/team/run.md` for complete orchestration.
 
 ### Team Mode Plan Phase
-- TeamCreate for parallel research team
+- Spawn the parallel research teammates directly via Agent(name=...) — the team forms implicitly on first spawn (one team per session, no setup step)
 - Spawn general-purpose teammates with mode: "plan" (read-only)
 - researcher teammate produces research.md with deep codebase analysis
 - analyst teammate validates requirements against research findings
@@ -387,7 +381,7 @@ All teammates are spawned dynamically via `Agent(subagent_type: "general-purpose
 - Shutdown team, /clear before Run phase
 
 ### Team Mode Run Phase
-- TeamCreate for implementation team
+- Spawn the implementation teammates directly via Agent(name=...) — the team forms implicitly on first spawn (one team per session, no setup step)
 - Task decomposition with file ownership boundaries
 - [SHOULD] Implementation teammates (role_profiles: implementer, tester) may use L1 `isolation: "worktree"` for parallel file safety; Claude Code runtime decides per-call. Per user policy 2026-05-17, MoAI orchestrator does not mandate L1 isolation.
 - [SHOULD] Read-only teammates (role_profiles: reviewer) typically do not need L1 `isolation: "worktree"` — `mode: "plan"` is sufficient.
@@ -451,4 +445,4 @@ If team mode fails or prerequisites are not met:
 - Graceful fallback to sub-agent mode
 - Continue from last completed task
 - No data loss or state corruption
-- Trigger conditions: AGENT_TEAMS env not set, workflow.team.enabled false, TeamCreate failure, teammate spawn failure
+- Trigger conditions: AGENT_TEAMS env not set, workflow.team.enabled false, first teammate spawn failure (the implicit team forms on first spawn — there is no separate team-creation step to fail), subsequent teammate spawn failure

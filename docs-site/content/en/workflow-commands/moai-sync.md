@@ -554,6 +554,10 @@ After fixing, run `/moai sync` again.
 
 `/moai sync` is only responsible for **documenting completed implementation code**. `/moai` automatically performs the **entire workflow** from SPEC creation to implementation and documentation.
 
+## `/cd` Cache-Preserving Resume (CC 2.1.169+)
+
+When resuming a multi-phase workflow across a directory boundary (e.g. entering an L2 worktree between run and sync), Claude Code 2.1.169+ ships `/cd <path>` — a command that switches the session's working directory **while preserving the prompt cache**, so the accumulated reasoning context survives the cwd change instead of being rebuilt. This is the cache-preserving complement to opening a new terminal: `/cd` keeps context, a new terminal cold-starts. For sync-phase entry into an L2 worktree where you want to retain the run-phase context, `/cd <worktree-path>` is the lower-friction path. See [Statusline Guide](/advanced/statusline) for how the `cwd` field reflects the switch.
+
 ## Related Documents
 
 - [/moai run](/workflow-commands/moai-run) - Previous phase: DDD implementation

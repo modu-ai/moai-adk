@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-sync-doc-execution
 description: "Sync Phase 1~2 — Analysis and Planning (with HUMAN GATE 2: Documentation Scope) and Execute Document Synchronization."
 user-invocable: false
 metadata:
@@ -7,7 +6,7 @@ metadata:
   phase: "Phase 1~2: Analysis, Planning, and Document Synchronization"
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 <!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
 
@@ -184,7 +183,7 @@ Constraints:
 
 #### Step 2.3: Post-Sync Quality Verification
 
-Agent: manager-quality subagent
+Agent: sync-auditor subagent (independent quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2; OR orchestrator verification batch — lint + test + coverage)
 
 Verify synchronization quality against TRUST 5:
 

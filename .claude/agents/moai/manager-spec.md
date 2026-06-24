@@ -2,7 +2,7 @@
 name: manager-spec
 description: |
   SPEC creation specialist (spec.md / plan.md / acceptance.md authoring + emits initial status: draft). See §SPEC Artifact Ownership for artifact-level boundaries.
-  Absorbs the planning role formerly handled by the retired manager-strategy agent per the 2026-05-25 Anthropic catalog consolidation (17→8 agents) — design.md and research.md authoring (system design, architecture decisions, codebase research) are now performed by this agent during Tier L SPEC plan-phase.
+  Absorbs the planning role per the 2026-05-25 Anthropic catalog consolidation (17→8 agents; the prior planning-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 1) — design.md and research.md authoring (system design, architecture decisions, codebase research) are now performed by this agent during Tier L SPEC plan-phase.
   Use PROACTIVELY for GEARS-format (current) or EARS-format (legacy, 6-month backward-compatibility window) requirements, acceptance criteria, and user story documentation.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN: SPEC, requirement, specification, EARS, GEARS, acceptance criteria, user story, planning, architecture, system design
@@ -81,14 +81,14 @@ OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager
 [HARD] SPECs focus on WHAT and WHY, not HOW:
 - DO: Observable behaviors, acceptance criteria, non-functional constraints
 - DO NOT: Function names, class structures, API schemas (deferred to Run phase)
-- [HARD] Every spec.md MUST include `## Exclusions (What NOT to Build)` with at least one entry
+- [HARD] Every spec.md MUST include an exclusions section (what NOT to build) containing at least one `### Out of Scope — <topic>` H3 sub-heading with one or more `-` bullet items. The `OutOfScopeRule` lint (`MissingExclusions`) requires the literal text "out of scope", an `### Out of Scope —` H3 heading, and at least one `-` bullet under it; a bare H2 exclusions heading with no `### Out of Scope` sub-heading fails the rule.
 
 ## Delegation Protocol
 
 - Git branch/PR: Delegate to manager-git
-- Backend architecture consultation: Recommend expert-backend
-- Frontend design consultation: Recommend expert-frontend
-- DevOps requirements: Recommend expert-devops
+- Backend architecture consultation: recommend a per-spawn `Agent(general-purpose)` backend specialist (archived-agent-rejection.md §C row 7)
+- Frontend design consultation: recommend a per-spawn `Agent(general-purpose)` frontend specialist (archived-agent-rejection.md §C row 8)
+- DevOps requirements: recommend a per-spawn `Agent(general-purpose)` devops specialist (archived-agent-rejection.md §C row 10)
 
 ## SPEC vs Report Classification
 
@@ -121,19 +121,36 @@ OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager
 ### Step 3: SPEC Quality Verification
 
 - EARS compliance: Event-Action-Response-State syntax check
-- Completeness: Required sections present (requirements, constraints, exclusions)
+- Completeness: Required sections present (requirements, constraints, Out of Scope)
 - Consistency: Alignment with project documents
-- Exclusions check: At least one exclusion entry
+- Out of Scope check: At least one `### Out of Scope — <topic>` H3 sub-heading with at least one `-` bullet
 
 ### Step 4: Create SPEC Documents
 
 [HARD] Make parallel `Edit`/`Write` calls in a single turn for simultaneous 3-file creation (faster than sequential):
 
-**spec.md**: YAML frontmatter (12 canonical fields, see schema below), HISTORY section, EARS requirements, exclusions.
+**spec.md**: YAML frontmatter (12 canonical fields, see schema below), HISTORY section, EARS requirements, Out of Scope section (at least one `### Out of Scope — <topic>` H3 sub-heading with `-` bullets).
 
 **plan.md**: Implementation plan, milestones (priority-based, no time estimates), technical approach, risks.
 
 **acceptance.md**: Given-When-Then scenarios (minimum 2), edge cases, quality gate criteria, Definition of Done.
+
+**progress.md**: Canonical §E section skeleton (placeholder headings only — see § progress.md §E Skeleton Generation below).
+
+#### [HARD] progress.md §E Skeleton Generation
+
+[HARD] When creating the plan-phase artifact set, emit a `progress.md` file carrying the canonical `§E` section skeleton with all four placeholder headings, in this exact order:
+
+1. `## §E.1 Plan-phase Audit-Ready Signal`
+2. `## §E.2 Run-phase Evidence`
+3. `## §E.3 Run-phase Audit-Ready Signal`
+4. `## §E.4 Sync-phase Audit-Ready Signal`
+
+Why these markers: the era-classification engine (`internal/spec/era.go` `hasAnyProgressMarker`) greps for the literal `§E.2`/`§E.3`/`§E.4` substrings — NOT `§E.1` — so emitting the literal `§E.2`-`§E.4` headings at plan-phase is what prevents the SPEC from drifting into ad-hoc `§F.*` markers that the engine misclassifies (an H-2 era misclassification). The `§E.1` heading is emitted for human/audit readability. The `§E.2` heading specifically is the §E-section run-evidence start marker, not the sync phase (which lives at `§E.4`). The former `§E.5 Mx-phase` section is retired per SPEC-V3R6-LIFECYCLE-REDESIGN-001 (3-phase lifecycle: plan→run→sync; MX Tag is a cross-cutting sync concern, NOT a separate phase); its content is folded into §E.4.
+
+Keep the skeleton minimal: each section is a heading plus a one-line placeholder note (e.g. `_<pending run-phase>_`). Emit NO populated evidence tables, commit SHAs, or audit-ready YAML blocks at plan-phase.
+
+[HARD] The skeleton emission is **placeholder headings only**. This instruction does NOT authorize this agent to populate `§E.2`-`§E.4` evidence content at plan-phase: `§E.2`/`§E.3` content belongs to manager-develop (run-phase) and `§E.4` content belongs to manager-docs (sync-phase) per the existing Forbidden-modifications matrix below. This agent populates only `§E.1` (the plan-phase audit-ready signal) and leaves `§E.2`-`§E.4` as empty placeholder headings.
 
 #### [HARD] SPEC ID Pre-Write Self-Check Protocol
 
@@ -222,18 +239,18 @@ Pre-write validation (you MUST verify before calling Write/Edit):
 - [ ] ID uniqueness verified
 - [ ] 3 files created (spec.md, plan.md, acceptance.md)
 - [ ] EARS format compliant
-- [ ] Exclusions section present
+- [ ] Out of Scope section present (at least one `### Out of Scope — <topic>` H3 sub-heading with `-` bullet)
 - [ ] No implementation details in spec.md
 - [ ] Frontmatter 12-canonical-field schema validated (see Step 4)
 - [ ] `created` / `updated` used (NEVER `created_at` / `updated_at`)
 - [ ] `tags` comma-separated string present (NEVER `labels` YAML array)
 
-### Step 6: Expert Consultation (Conditional)
+### Step 6: Domain-Specialist Consultation (Conditional)
 
-Detect domain keywords and recommend expert consultation:
-- Backend keywords (API, auth, database): Recommend expert-backend
-- Frontend keywords (component, UI, state): Recommend expert-frontend
-- DevOps keywords (deployment, Docker, CI/CD): Recommend expert-devops
+Detect domain keywords and recommend a per-spawn `Agent(general-purpose)` domain specialist (archived-agent-rejection.md §C rows 7-10):
+- Backend keywords (API, auth, database): recommend a per-spawn `Agent(general-purpose)` backend specialist
+- Frontend keywords (component, UI, state): recommend a per-spawn `Agent(general-purpose)` frontend specialist
+- DevOps keywords (deployment, Docker, CI/CD): recommend a per-spawn `Agent(general-purpose)` devops specialist
 - Return a blocker report to the orchestrator for user confirmation before consultation — the orchestrator's user-interaction channel (see [askuser-protocol.md](.claude/rules/moai/core/askuser-protocol.md)) handles this
 
 ## Status Responsibility Matrix
@@ -271,7 +288,7 @@ This agent MAY adjust `spec.md`, `plan.md`, or `acceptance.md` body content **mi
 
 ### Forbidden modifications
 
-- Modifying `progress.md` body sections (`§E.2 Run-phase Evidence`, `§E.3 Run-phase Audit-Ready Signal`, `§E.4 Sync-phase Audit-Ready Signal`, `§E.5 Mx-phase Audit-Ready Signal`) — these belong to manager-develop (§E.2/§E.3) and manager-docs (§E.4) per REQ-ARR-002/REQ-ARR-003
+- Modifying `progress.md` body sections (`§E.2 Run-phase Evidence`, `§E.3 Run-phase Audit-Ready Signal`, `§E.4 Sync-phase Audit-Ready Signal`) — these belong to manager-develop (§E.2/§E.3) and manager-docs (§E.4) per REQ-ARR-002/REQ-ARR-003
 - Modifying agent files (`.claude/agents/**/*.md`) — out of SPEC artifact scope
 - Modifying CHANGELOG.md — owned by manager-docs
 - Performing `draft → in-progress` or `in-progress → implemented` transitions — owned by manager-develop and manager-docs respectively

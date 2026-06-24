@@ -5,6 +5,12 @@ description: >
   platforms (Neon, Supabase, Firestore). Use for schema design, query optimization,
   indexing strategies, data modeling, or cloud database selection.
   Cloud vendor guide absorbed from moai-platform-database-cloud.
+
+when_to_use: >
+  Use for schema design, query optimization, indexing strategies, and
+  ORMs/ODMs (Prisma, Mongoose, SQLAlchemy, Drizzle). Covers PostgreSQL,
+  MongoDB, Redis, Oracle, and cloud databases (Neon, Supabase, Firestore).
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Bash(psql:*), Bash(mysql:*), Bash(sqlite3:*), Bash(mongosh:*), Bash(redis-cli:*), Bash(npm:*), Bash(npx:*), Bash(prisma:*), Bash(neonctl:*), Bash(firebase:*), Bash(supabase:*), Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
@@ -25,13 +31,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["database", "PostgreSQL", "MongoDB", "Redis", "Oracle", "SQL", "NoSQL", "PL/SQL", "query", "schema", "migration", "indexing", "ORM", "ODM", "SQLAlchemy", "Mongoose", "Prisma", "Drizzle", "python-oracledb", "cx_Oracle", "connection pool", "transaction", "data modeling", "aggregation", "partitioning", "hierarchical query", "neon", "supabase", "firestore", "cloud database", "serverless postgresql", "real-time database", "offline sync", "pgvector", "rls", "database branching", "vector database", "nosql", "mobile database"]
-  agents: ["expert-backend", "expert-devops", "manager-spec"]
-  phases: ["plan", "run"]
-  languages: ["typescript", "javascript", "python", "go"]
 ---
 
 # Database Domain Specialist
@@ -309,7 +308,7 @@ Full platform reference: [modules/cloud-database.md](modules/cloud-database.md)
 ## Refactor Notes
 
 **R4 audit verdict** (2026-04-23): REFACTOR — MERGE target (absorbs moai-platform-database-cloud) with additional restructuring needed
-**SPEC**: SPEC-V3R2-WF-001 §6.2 line 263
+**SPEC**: (internal provenance omitted)
 **Refactor scope** (deferred to future sub-SPEC):
 - Separate moai-domain-db-docs workflow skill from this query/schema design skill
 - Extract cloud vendor deep-dives (Neon, Supabase, Firestore) into dedicated Level-3 modules

@@ -17,6 +17,10 @@ paths: ".moai/design/**,.moai/specs/SPEC-*-DESIGN-*/**,.moai/project/brand/**,.c
 
 Core principles governing the MoAI design production system. These rules define identity, safety boundaries, evolution mechanics, and integration contracts.
 
+> **Pipeline `expert-frontend` carve-out (catalog-consistency note).** The `expert-frontend` agent named throughout this design pipeline is an **archived** agent per `.claude/rules/moai/workflow/archived-agent-rejection.md`. The name here denotes the pipeline **ROLE** (frontend design-token implementation), not a live spawn target. At runtime, the role resolves to a per-spawn `Agent(general-purpose)` with a frontend domain whitelist per the archived-agent-rejection §C migration table. The FROZEN-zone clause text below is preserved verbatim for stability; the archived name is not silently load-bearing because this note cross-references the migration table.
+
+---
+
 ---
 
 ## 1. Identity and Purpose

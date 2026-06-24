@@ -3,8 +3,8 @@ name: moai
 description: >
   MoAI unified orchestrator for autonomous development. Routes natural
   language or subcommands (brain, plan, run, sync, design, project, fix,
-  loop, mx, feedback, review, clean, codemaps, coverage, e2e, harness) to
-  specialized agents.
+  loop, mx, feedback, review, clean, codemaps, coverage, e2e, gate,
+  security, harness) to specialized agents.
 allowed-tools: Agent, AskUserQuestion, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
 argument-hint: "[subcommand] [args] | \"natural language task\""
 ---
@@ -63,7 +63,7 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **project** (aliases: init): Project documentation generation
 - **feedback** (aliases: fb, bug, issue): GitHub issue creation
 - **fix**: Auto-fix errors in a single pass
-- **loop**: Iterative auto-fix until completion marker detected
+- **loop**: Iterative auto-fix until completion conditions are satisfied
 - **mx**: MX tag scan and annotation for codebase
 - **review** (aliases: code-review): Code review with security and MX tag compliance
 - **clean** (aliases: dead-code): Identify and safely remove dead code
@@ -72,9 +72,7 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **e2e** (aliases: e2e-test): Create and run E2E tests
 - **gate** (aliases: check, pre-commit): Lightweight pre-commit quality gate (lint+format+type-check+test)
 - **security** (aliases: audit, sec): Dedicated OWASP security audit with dependency scanning
-- **harness** (aliases: hrn, learn): V3R4 self-evolving harness lifecycle (status / apply / rollback &lt;date&gt; / disable) — slash-command-only surface; CLI verb path retired per SPEC-V3R4-HARNESS-001 (BC-V3R4-HARNESS-001-CLI-RETIREMENT)
-- **release-update** (aliases: cc-update, release-track) *(dev-only)*: CC upstream change tracker → update plan + docs-site 4-locale sync
-
+- **harness** (aliases: hrn, learn): V3R4 self-evolving harness lifecycle (status / apply / rollback &lt;date&gt; / disable) — slash-command-only surface; CLI verb path retired per the harness foundation policy (BC-V3R4-HARNESS-001-CLI-RETIREMENT)
 
 ### Priority 2: SPEC-ID Detection
 
@@ -104,25 +102,33 @@ If the intent is clearly a development task with no specific routing signal, def
 
 ## Workflow Quick Reference
 
+### brain - Pre-Spec Ideation (7-Phase)
+
+Purpose: Convert vague ideas into validated product proposals with a Claude Design handoff package. Pre-spec ideation workflow — runs BEFORE `/moai project` and `/moai plan`. Produces IDEA-NNN artifacts under `.moai/brain/` and a SPEC decomposition candidate list.
+Phases: Discovery (Socratic clarity) -> Diverge -> Research -> Converge (Lean Canvas) -> Critical Evaluation -> Proposal (SPEC decomposition) -> Claude Design Handoff
+Skills: moai-domain-ideation, moai-domain-research, moai-domain-design-handoff, moai-foundation-thinking (deep-questioning, diverge-converge, critical-evaluation, first-principles)
+Artifacts: `.moai/brain/IDEA-NNN/{research.md, ideation.md, proposal.md}` + 5-file Claude Design handoff package
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/brain.md
+
 ### plan - SPEC Document Creation
 
 Purpose: Create comprehensive specification documents using EARS format with Research-Plan-Annotate cycle.
 Phases: Deep Research (research.md) -> SPEC Planning -> Annotation Cycle (1-6 iterations) -> SPEC Creation
 Agents: manager-spec (primary), Explore (research), manager-git (conditional)
-Flags: --worktree, --branch, --resume SPEC-XXX, --team, --issue (opt-in; default skips GitHub Issue creation per SPEC-V3R5-LATE-BRANCH-001 REQ-LB-009)
+Flags: --worktree, --branch, --resume SPEC-XXX, --team, --issue (opt-in; default skips GitHub Issue creation per the late-branch opt-in policy)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md (team mode: ${CLAUDE_SKILL_DIR}/team/plan.md)
 
 ### run - DDD/TDD Implementation
 
 Purpose: Implement SPEC requirements through configured development methodology.
-Agents: manager-strategy, manager-develop (cycle_type=ddd|tdd per quality.yaml), manager-quality, manager-git
+Agents: manager-develop (cycle_type=ddd|tdd per quality.yaml, primary), manager-git
 Flags: --resume SPEC-XXX, --team
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md (team mode: ${CLAUDE_SKILL_DIR}/team/run.md)
 
 ### sync - Documentation Sync and PR
 
 Purpose: Synchronize documentation with code changes and prepare pull requests.
-Agents: manager-docs (primary), manager-quality, manager-git
+Agents: manager-docs (primary), sync-auditor (quality gate), manager-git
 Modes: auto, force, status, project. Flags: --merge, --skip-mx
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/sync.md (team mode: ${CLAUDE_SKILL_DIR}/team/sync.md)
 
@@ -137,42 +143,42 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/gate.md
 ### security - OWASP Security Audit
 
 Purpose: Dedicated security audit with OWASP Top 10 analysis, dependency scanning, secrets detection, and data isolation checks.
-Agents: expert-security (primary)
+Agents: Agent(general-purpose) with security scope (per archived-agent-rejection §C)
 Flags: --full, --deps, --secrets, --file PATH, --branch BRANCH
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/security.md
 
 ### fix - Auto-Fix Errors
 
 Purpose: Autonomously detect and fix LSP errors, linting issues, and type errors.
-Agents: manager-quality (diagnostic-mode), expert-backend/expert-frontend (fixes)
+Agents: manager-develop (cycle_type=autofix), Agent(general-purpose) with domain whitelist (fixes)
 Flags: --dry, --sequential, --level N, --resume, --team
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/fix.md
 
 ### loop - Iterative Auto-Fix
 
-Purpose: Repeatedly fix issues until completion marker detected or max iterations reached.
-Agents: manager-quality (diagnostic-mode), expert-backend, expert-frontend, manager-develop
+Purpose: Repeatedly fix issues until completion conditions are satisfied or max iterations reached.
+Agents: manager-develop (cycle_type=autofix), Agent(general-purpose) with domain whitelist
 Flags: --max N, --auto-fix, --seq
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/loop.md
 
 ### mx - MX Tag Scan and Annotation
 
 Purpose: Scan codebase and add @MX code-level annotations for AI agent context.
-Agents: Explore (scan), expert-backend (annotation)
+Agents: Explore (scan), Agent(general-purpose) with backend scope (annotation)
 Flags: --all, --dry, --priority P1-P4, --force, --team
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/mx.md
 
 ### review - Code Review
 
 Purpose: Multi-perspective code review with security, performance, quality, and UX analysis.
-Agents: manager-quality (primary), expert-security
+Agents: sync-auditor (review), Agent(general-purpose) with security scope
 Flags: --staged, --branch, --security, --team
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/review.md (team mode: ${CLAUDE_SKILL_DIR}/team/review.md)
 
 ### clean - Dead Code Removal
 
 Purpose: Identify and safely remove unused code with test verification.
-Agents: expert-refactoring, manager-develop
+Agents: manager-develop, Agent(general-purpose) with refactoring scope
 Flags: --dry, --safe-only, --file PATH
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/clean.md
 
@@ -193,14 +199,14 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/coverage.md
 ### e2e - End-to-End Testing
 
 Purpose: Create and run E2E tests using Chrome, Playwright, or Agent Browser.
-Agents: manager-develop (cycle_type=tdd), expert-frontend
+Agents: manager-develop (cycle_type=tdd), Agent(general-purpose) with frontend scope
 Flags: --record, --url URL, --journey NAME
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/e2e.md
 
 ### design - Hybrid Design Workflow
 
 Purpose: Produce web/brand design artifacts via Claude Design import (path A) or code-based skill pipeline (path B). Integrates brand context from `.moai/project/brand/` and design briefs from `.moai/design/`.
-Agents: manager-spec (BRIEF), expert-frontend (implementation), sync-auditor (GAN loop scoring)
+Agents: manager-spec (BRIEF), Agent(general-purpose) with frontend scope (implementation), sync-auditor (GAN loop scoring)
 Skills: moai-domain-copywriting, moai-domain-brand-design, moai-workflow-design, moai-workflow-gan-loop
 Flags: --path A|B, --harness thorough|standard, --brief BRIEF-XXX
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/design.md
@@ -209,40 +215,54 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/design.md
 
 Purpose: Full autonomous research -> plan -> annotate -> run -> sync pipeline.
 Phases: Parallel Exploration (research.md) -> SPEC Generation -> Annotation Cycle -> Implementation -> Sync
-Agents: Explore, manager-spec, manager-develop, manager-quality, manager-docs, manager-git
-Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo, --issue (opt-in; default skips GitHub Issue creation per SPEC-V3R5-LATE-BRANCH-001 REQ-LB-009)
+Agents: Explore, manager-spec, manager-develop, manager-docs, manager-git, sync-auditor (quality gate)
+Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo, --issue (opt-in; default skips GitHub Issue creation per the late-branch opt-in policy)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/moai.md
 
 ### project - Project Documentation
 
 Purpose: Generate project documentation by analyzing the existing codebase.
-Agents: Explore, manager-docs, expert-devops (optional)
+Agents: Explore, manager-docs, Agent(general-purpose) with devops scope (optional)
 Output: product.md, structure.md, tech.md in .moai/project/
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/project.md
 
 ### feedback - GitHub Issue Creation
 
 Purpose: Collect user feedback and create GitHub issues.
-Agents: manager-quality
+Agents: orchestrator-direct (records feedback via gh CLI)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/feedback.md
 
-### harness - V3R4 Self-Evolving Harness Lifecycle
+### harness - Harness Lifecycle + Natural-Language Build (argument-branching)
+
+This single `harness` subcommand dispatches to ONE of two workflows based on the FIRST token of `$ARGUMENTS` (argument-based routing — no second command is introduced). Apply the routing rule before any workflow-specific logic:
+
+- **Reserved verb** (`status` / `apply` / `rollback` / `disable`) → route to the existing **harness learning lifecycle** workflow (Branch A below). This path is unchanged.
+- **Reserved verb** (`list` / `edit` / `remove`) → route to the **harness-v4 lifecycle** handler (Branch A.1 below). These enumerate / edit / atomically-remove harness-v4 entries via the `moai harness <verb>` Go binary subcommand.
+- **Anything else** (a natural-language harness-creation request, e.g. "build a harness for CLI template development") → route to the **harness build entry** workflow (Branch B below).
+
+#### Branch A — harness learning lifecycle (reserved verbs: status / apply / rollback / disable)
 
 Purpose: Surface the harness learning subsystem (observer, 4-tier proposal ladder, 5-layer safety pipeline) to the user via the slash command path. Owns all lifecycle verbs (status / apply / rollback / disable) entirely within the workflow body using file-system operations — no Go binary subcommand invoked. Tier-4 application is gated by orchestrator-issued AskUserQuestion per REQ-HRN-FND-004.
 Skills: moai-harness-learner (Tier-4 surfacing companion), moai-meta-harness (project-specific harness generation, indirect)
 Verbs: status (tier distribution + telemetry) | apply (next Tier-4 proposal → AskUserQuestion → 5-layer pipeline → snapshot + write) | rollback &lt;YYYY-MM-DD&gt; (restore snapshot) | disable (set learning.enabled: false)
 Artifacts: `.moai/harness/usage-log.jsonl`, `.moai/harness/proposals/`, `.moai/harness/learning-history/snapshots/`, `.moai/harness/learning-history/applied/`, `.moai/harness/learning-history/frozen-guard-violations.jsonl`
-Authoritative SPEC: SPEC-V3R4-HARNESS-001 (supersedes V3R3-HARNESS-001, V3R3-HARNESS-LEARNING-001, V3R3-PROJECT-HARNESS-001)
+Authoritative SPEC: the harness foundation policy (supersedes V3R3-HARNESS-001, V3R3-HARNESS-LEARNING-001, V3R3-PROJECT-HARNESS-001)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness.md
 
-### release-update - CC Upstream Change Tracker *(dev-only)*
+#### Branch A.1 — harness-v4 lifecycle (reserved verbs: list / edit / remove)
 
-Purpose: Track Claude Code release notes since last analyzed version, classify by impact tier, generate update plan, sync docs-site 4-locale + README, open PR.
-Agents: manager-docs (Phase 6 docs sync), manager-git (Phase 7 PR)
-Flags: --since vX.Y.Z, --dry, --report-only, --docs-only, --master-spec
-State: .moai/state/last-cc-version.json
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/release-update.md
-NOT distributed to user projects (dev-only; entry: .claude/commands/97-release-update.md)
+Purpose: Manage harness-v4 entries — enumerate built harnesses, locate their manifest + specialist files for editing, or atomically remove a harness with all its artifacts. The three verbs dispatch to the `moai harness <verb>` Go binary subcommand which performs the filesystem work (scan `.claude/commands/harness/*.md` joined with `manifest.json`; atomic remove with fail-closed orphan prevention).
+Verbs: list (enumerate all harnesses: name + domain + entry command) | edit &lt;name&gt; (show manifest + specialist + skill paths for editing — manifest is the SSOT) | remove &lt;name&gt; (atomic removal of command + workflow + specialists + skills + manifest; fail-closed if any artifact is missing)
+CLI: `moai harness list [--json]`, `moai harness edit <name> [--json]`, `moai harness remove <name>` (all support `--project-root`)
+Artifacts: `.claude/commands/harness/<name>.md` (thin-wrapper command), `.claude/commands/harness/<name>/manifest.json` (SSOT), `.claude/workflows/harness-<name>-run.js` (Runner), `.claude/agents/harness/harness-<name>*-specialist.md` (specialists), `.claude/skills/harness-<name>*/` (companion skills)
+Namespace: `.claude/commands/harness/`, `.claude/workflows/harness-*.js`, `.claude/agents/harness/`, and `.claude/skills/harness-*/` are USER-OWNED — `moai update` preserves them (backup if needed, never overwrites).
+
+#### Branch B — harness build entry (natural-language request)
+
+Purpose: Turn a natural-language harness-creation request into a concrete harness via Context-First Discovery (extract domain / goal / constraints / scope), harness `<name>` derivation (the name is derived from the request — NOT statically supplied by the user), explicit orchestrator-issued approval, then transition into the orchestrator-direct Builder (4 signal-driven phases: ANALYZE / PLAN / GENERATE / ACTIVATE). The orchestrator MUST conduct AskUserQuestion Socratic rounds (max 4 questions per round) when intent clarity is below 100%.
+Skills: moai-meta-harness (project-specific harness generation, indirect)
+Builder: orchestrator-direct processing (NOT a dynamic-workflow script) — the entry's Phases 0-3 hand off to `${CLAUDE_SKILL_DIR}/workflows/harness-builder.md` for the 4-phase creation logic. The orchestrator holds the PLAN→GENERATE AskUserQuestion approval gate directly.
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness-build-entry.md
 
 ---
 
@@ -319,63 +339,13 @@ Update task status using TaskUpdate as work progresses (pending to in_progress t
 Step 8 - Present Results:
 Display results to the user in their conversation_language using Markdown format.
 
-Step 9 - Add Completion Marker:
-When all workflow phases complete successfully, add the appropriate completion marker (`<moai>DONE</moai>` or `<moai>COMPLETE</moai>`).
+Step 9 - Declare Completion:
+When all workflow phases complete successfully, state that the workflow is complete in the Completion Report (banner / prose) so the result is unambiguous.
 
 Step 10 - Guide Next Steps:
 Use AskUserQuestion to present the user with logical next actions based on the completed workflow.
 
 ---
 
-Version: 2.6.0
-Last Updated: 2026-02-25
-
-<!-- moai:evolvable-start id="rationalizations" -->
-## Common Rationalizations
-
-| Rationalization | Reality |
-|---|---|
-| "I will just implement this directly, delegation is overhead" | MoAI is an orchestrator. Direct implementation bypasses the quality gates agents enforce. |
-| "The user's intent is obvious, no need for a Socratic interview" | Ambiguous verbs (clean, fix, improve) almost always produce wrong scope. Rule 5 exists because obvious is often wrong. |
-| "This is a small change, Approach-First is unnecessary" | Small changes still touch files the user cares about. One sentence of approach costs nothing and prevents rework. |
-| "I can run /moai run without a SPEC, it is just a tweak" | Without a SPEC, there is no acceptance criterion to check. Every run without a SPEC silently degrades quality tracking. |
-| "Parallel agents will just race, sequential is safer" | Independent tool calls are explicitly required to run in parallel. Sequentializing them wastes user time. |
-| "I will respond in English since it is technical" | Conversation language is a HARD rule. User-facing output must match the configured language, always. |
-| "Schema 로드가 귀찮으니 이번엔 산문으로 질문하자" | AskUserQuestion/Task* 는 deferred tool. ToolSearch 한 번으로 session 전체 사용 가능. 산문 질문은 HARD 위반 (CLAUDE.md §1, §8 Deferred Tool Preload Protocol). |
-| "짧은 확인 질문은 산문으로 처리해도 된다" | 모든 user-facing 질문은 AskUserQuestion 경유 강제. "짧은 질문"은 예외 아님. Self-check: 응답에 "?" 있으면 AskUserQuestion 호출 동반 필수. |
-
-<!-- moai:evolvable-end -->
-
-<!-- moai:evolvable-start id="red-flags" -->
-## Red Flags
-
-- MoAI writes code directly instead of delegating to a specialized agent
-- Response in English when conversation_language is not English
-- Multiple independent tool calls executed sequentially in separate messages
-- AskUserQuestion with more than 4 options or containing emoji
-- Agent invocation prompt contains absolute paths to the main project when isolation is worktree
-- /moai run executed without a corresponding SPEC-XXX document
-- Response ends with "?" but no AskUserQuestion tool call accompanies it
-- Options listed as markdown (`- A:`, `- B:`, `Option X:`) without structured AskUserQuestion
-- Prose decision requests ("진행할까요?", "어느 것 선호?", "A or B?") instead of AskUserQuestion
-- First AskUserQuestion call in session without prior ToolSearch preload (produces InputValidationError)
-- Waiting for user's next message after prose question without AskUserQuestion tool call
-
-<!-- moai:evolvable-end -->
-
-<!-- moai:evolvable-start id="verification" -->
-## Verification
-
-- [ ] User-facing response language matches conversation_language from language.yaml
-- [ ] Every independent tool call was launched in parallel (one message, multiple tool blocks)
-- [ ] Agent selection trace documents why this agent, not another, was chosen
-- [ ] No XML tags visible in user-facing output
-- [ ] For non-trivial tasks, approach was explained and approved before code changes
-- [ ] SPEC-ID is referenced when /moai run, /moai sync, or /moai fix is invoked
-- [ ] TodoList used to decompose multi-file changes (3+ files)
-- [ ] Session opened with ToolSearch preload of deferred tools (AskUserQuestion, TaskCreate/Update/List/Get)
-- [ ] Every response containing "?" is accompanied by a structured AskUserQuestion tool call
-- [ ] Option lists (`- A:`, `- B:`) are routed through AskUserQuestion, not markdown-only
-- [ ] No silent "wait for user input" state after prose question (§8 Deferred Tool Preload Protocol)
-
-<!-- moai:evolvable-end -->
+Version: 2.7.0
+Last Updated: 2026-06-20

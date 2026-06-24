@@ -147,7 +147,7 @@ specs_artifacts_modified:
   - "progress.md": "backfilled run_commit_sha + sync-phase evidence"
 ```
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-06-14

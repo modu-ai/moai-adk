@@ -393,7 +393,7 @@ Store personal settings in separate files to prevent overwriting during updates:
     "context7"
   ],
   "companyAnnouncements": [
-    "🗿 MoAI-ADK: 8 Specialized Agents + 31 Skills with SPEC-First DDD",
+    "🗿 MoAI-ADK: 8 Specialized Agents + 32 Skills with SPEC-First DDD",
     "⚡ /moai: One-stop Plan→Run→Sync automation with intelligent routing",
     "🌳 moai worktree: Parallel SPEC development in isolated worktree environments",
     "🤖 Manager Agents (4): manager-spec, manager-develop, manager-docs, manager-git",

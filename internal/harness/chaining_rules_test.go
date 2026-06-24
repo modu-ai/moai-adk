@@ -16,8 +16,8 @@ func TestWriteChainingRules_BasicRoundTrip(t *testing.T) {
 			{
 				Phase:        "run",
 				When:         map[string]string{"agent": "manager-tdd"},
-				InsertBefore: []string{"my-harness/ios-architect"},
-				InsertAfter:  []string{"my-harness/swiftui-engineer"},
+				InsertBefore: []string{"harness/ios-architect"},
+				InsertAfter:  []string{"harness/swiftui-engineer"},
 			},
 		},
 	}
@@ -68,8 +68,8 @@ func TestReadChainingRules_RoundTrip(t *testing.T) {
 	original := ChainingRules{
 		Version: 2,
 		Chains: []ChainEntry{
-			{Phase: "plan", When: map[string]string{"agent": "manager-spec"}, InsertBefore: []string{}, InsertAfter: []string{"my-harness/arch"}},
-			{Phase: "run", When: map[string]string{"agent": "manager-tdd"}, InsertBefore: []string{"my-harness/ios"}, InsertAfter: []string{}},
+			{Phase: "plan", When: map[string]string{"agent": "manager-spec"}, InsertBefore: []string{}, InsertAfter: []string{"harness/arch"}},
+			{Phase: "run", When: map[string]string{"agent": "manager-tdd"}, InsertBefore: []string{"harness/ios"}, InsertAfter: []string{}},
 		},
 	}
 	if err := WriteChainingRules(path, original); err != nil {

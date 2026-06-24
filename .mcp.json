@@ -11,15 +11,6 @@
       "command": "/bin/bash",
       "args": ["-l", "-c", "exec npx -y chrome-devtools-mcp@latest --headless"]
     },
-    "zai-mcp-server": {
-      "$comment": "Z.AI Vision MCP (local stdio npx, GLM-4.6V): image_analysis, extract_text_from_screenshot, understand_technical_diagram, and 5 more vision tools. Requires Node >= v22 and Z_AI_API_KEY env. Use under moai glm for image reading instead of the built-in Read on image files.",
-      "command": "/bin/bash",
-      "args": ["-l", "-c", "exec npx -y @z_ai/mcp-server@latest"],
-      "env": {
-        "Z_AI_API_KEY": "${Z_AI_API_KEY}",
-        "Z_AI_MODE": "ZAI"
-      }
-    },
     "web_search_prime": {
       "$comment": "Z.AI Web Search MCP (remote HTTP, tool webSearchPrime). Use under moai glm for web search instead of the built-in WebSearch, which routes through the 529-prone api.z.ai/api/anthropic gateway. Requires Z_AI_API_KEY env.",
       "type": "http",

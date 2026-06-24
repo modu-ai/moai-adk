@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-sync
 description: >
   Synchronizes documentation with code changes, verifies project quality,
   and finalizes pull requests. Third step of the Plan-Run-Sync workflow.
@@ -27,7 +26,7 @@ triggers:
   phases: ["sync"]
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 <!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
 
@@ -39,7 +38,7 @@ triggers:
 
 Phase Owners: `manager-docs` (sync-phase artifact authoring — CHANGELOG.md + README.md + docs-site + progress.md §F.3 + frontmatter `in-progress → implemented` transition for all SPEC artifacts; MUST NOT modify spec.md/plan.md/acceptance.md body content per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix) + `manager-git` (PR creation per branching strategy when Tier L OR `--pr` flag per the canonical Tier-based PR routing policy).
 
-Sync-phase quality gate (per the canonical sync-phase quality gate policy) is enforced by the `.claude/hooks/moai/sync-phase-quality-gate.sh` Stop hook — lint + test + coverage delta verification + dependency manifest audit. The hook returns exit 2 to block sync completion on lint/test failure or coverage regression > 5pp. The hook replaces the prior pattern of spawning `manager-quality` for inline coverage and security analysis during sync.
+Sync-phase quality gate (per the canonical sync-phase quality gate policy) is enforced by the `.claude/hooks/moai/sync-phase-quality-gate.sh` Stop hook — lint + test + coverage delta verification + dependency manifest audit. The hook returns exit 2 to block sync completion on lint/test failure or coverage regression > 5pp. The hook replaces the prior pattern of spawning an inline quality agent for coverage and security analysis during sync (that agent is archived per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2; the Stop hook is its canonical replacement).
 
 ## Phase Routing Table
 
@@ -113,4 +112,4 @@ Read .claude/skills/moai/workflows/sync/delivery.md
 
 ## Sentinel Error Keys
 
-CI guards in `internal/template/agentless_audit_test.go` enforce the literal `MODE_PIPELINE_ONLY_UTILITY` sentinel remains present in this skill body (REQ-WF003-016 ↔ REQ-WF004-014, shared with `design.md`). Passing `--mode pipeline` to `/moai sync` is rejected because sync is a Multi-Agent subcommand; pipeline mode is reserved for utility subcommands per SPEC-V3R2-WF-004.
+A CI audit verifies the literal `MODE_PIPELINE_ONLY_UTILITY` sentinel remains present in this skill body (shared with `design.md`). Passing `--mode pipeline` to `/moai sync` is rejected because sync is a Multi-Agent subcommand; pipeline mode is reserved for utility subcommands.

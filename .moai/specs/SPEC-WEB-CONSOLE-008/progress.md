@@ -135,7 +135,7 @@ readme_docs_site: not-applicable   # internal config redesign; no user-facing AP
 independent_verification: orchestrator Trust-but-verify 7/7 (V1-V7) + precise V2/V6 false-positive clearance + full focused suite GREEN + cross-platform exit 0
 ```
 
-## §E.5 — Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-06-07

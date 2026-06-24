@@ -33,6 +33,19 @@ import (
 // helpers default to this constant.
 const DefaultRegistryPath = ".moai/state/active-sessions.json"
 
+// CurrentSideChannelFile is the project-relative path of the side-channel
+// file the SessionStart hook writes (SPEC-V3R6-SESSION-ID-ATTRIBUTION-REPAIR-001
+// M3 additionalContext injection) so `moai session current` can read THIS
+// orchestrator's own UUID back. The file is per-project (lives under the
+// gitignored .moai/state/ tree) and is overwritten on every SessionStart.
+//
+// This constant lives in internal/session (not internal/cli) to avoid an
+// import cycle: internal/hook needs it for the write path, internal/cli
+// needs it for the read path, and internal/cli already imports internal/hook.
+//
+// SPEC-V3R6-SESSION-ID-ATTRIBUTION-REPAIR-001 REQ-RDP-002, REQ-RDP-004.
+const CurrentSideChannelFile = ".moai/state/current-session-id.txt"
+
 // PhaseNone is the sentinel string for entries with no SPEC scope yet
 // (e.g., a session registered at SessionStart hook before any /moai
 // subcommand has been invoked).

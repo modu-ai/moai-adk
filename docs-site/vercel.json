@@ -41,6 +41,16 @@
       "source": "/agency/:path*",
       "destination": "/design/:path*",
       "permanent": true
+    },
+    {
+      "source": "/book",
+      "destination": "https://book.mo.ai.kr",
+      "permanent": true
+    },
+    {
+      "source": "/book/:path*",
+      "destination": "https://book.mo.ai.kr/:path*",
+      "permanent": true
     }
   ],
   "headers": [

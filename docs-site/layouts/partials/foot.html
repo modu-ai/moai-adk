@@ -8,31 +8,34 @@
 
   // 라이트 테마 단일화 — 다크 분기 제거 (2026-05-13)
   var lightTheme = {
-    primaryColor: '#144a46',
-    primaryTextColor: '#ffffff',
-    primaryBorderColor: '#0e3835',
-    lineColor: '#144a46',
-    secondaryColor: '#e6f0ef',
-    tertiaryColor: '#f3f3f3',
-    noteBkgColor: '#e6f0ef',
-    noteTextColor: '#09110f',
-    noteBorderColor: '#144a46',
-    edgeLabelBackground: '#ffffff',
-    clusterBkg: '#f3f3f3',
-    clusterBorder: '#144a46',
-    titleColor: '#09110f',
-    actorTextColor: '#09110f',
-    actorBorder: '#144a46',
-    actorBkg: '#e6f0ef',
-    signalColor: '#09110f',
-    signalTextColor: '#09110f',
-    labelBoxBkgColor: '#ffffff',
-    labelBoxBorderColor: '#144a46',
-    labelTextColor: '#09110f',
-    loopTextColor: '#09110f',
-    activationBorderColor: '#144a46',
-    activationBkgColor: '#e6f0ef',
-    sequenceNumberColor: '#ffffff'
+    primaryColor: '#f5e4dc',
+    primaryTextColor: '#141413',
+    primaryBorderColor: '#cc785c',
+    nodeTextColor: '#141413',
+    textColor: '#141413',
+    mainBkg: '#f5e4dc',
+    lineColor: '#cc785c',
+    secondaryColor: '#efe9de',
+    tertiaryColor: '#faf9f5',
+    noteBkgColor: '#f5e4dc',
+    noteTextColor: '#141413',
+    noteBorderColor: '#cc785c',
+    edgeLabelBackground: '#faf9f5',
+    clusterBkg: '#faf9f5',
+    clusterBorder: '#cc785c',
+    titleColor: '#141413',
+    actorTextColor: '#141413',
+    actorBorder: '#cc785c',
+    actorBkg: '#f5e4dc',
+    signalColor: '#cc785c',
+    signalTextColor: '#141413',
+    labelBoxBkgColor: '#faf9f5',
+    labelBoxBorderColor: '#cc785c',
+    labelTextColor: '#141413',
+    loopTextColor: '#141413',
+    activationBorderColor: '#cc785c',
+    activationBkgColor: '#f5e4dc',
+    sequenceNumberColor: '#141413'
   };
   var flowchartConfig = {
     htmlLabels: true,
@@ -77,11 +80,14 @@
       // 이미 로드 중 — onload 콜백 대기 (다른 script 태그가 이미 추가됨)
       return;
     }
+    {{- /* geekdoc 내장 번들은 window.mermaid 를 노출하지 않아 코랄 themeVariables 가
+           적용되지 않음(기본 라벤더로 자체 렌더). window.mermaid 를 노출하는 CDN UMD
+           빌드를 로드해야 아래 runMermaid 의 coral theme:'base' init 이 동작한다. */ -}}
     var s = document.createElement('script');
-    s.src = '{{ index (index hugo.Data.assets "mermaid.js") "src" | relURL }}';
+    s.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
     s.setAttribute('data-mermaid-bundle', '1');
     s.onload = runMermaid;
-    s.onerror = function() { console.error('[mermaid] bundle load failed'); };
+    s.onerror = function() { console.error('[mermaid] CDN load failed'); };
     document.head.appendChild(s);
   }
 

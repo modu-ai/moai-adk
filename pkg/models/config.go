@@ -184,7 +184,6 @@ type LSPStateComparison struct {
 type LSPStateLogging struct {
 	LogLSPStateChanges     bool `yaml:"log_lsp_state_changes"`
 	LogRegressionDetection bool `yaml:"log_regression_detection"`
-	LogCompletionMarkers   bool `yaml:"log_completion_markers"`
 	IncludeLSPInReports    bool `yaml:"include_lsp_in_reports"`
 }
 
@@ -196,8 +195,11 @@ type FullQualityConfig struct {
 }
 
 // StatuslineConfig represents the statusline configuration section.
+// The preset field was retired (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001):
+// segments + theme are the only configuration levers now. A legacy `preset:`
+// key in statusline.yaml is silently ignored by the loader (unknown YAML keys
+// do not error).
 type StatuslineConfig struct {
-	Preset   string          `yaml:"preset"`
 	Segments map[string]bool `yaml:"segments"`
 	Theme    string          `yaml:"theme"`
 }

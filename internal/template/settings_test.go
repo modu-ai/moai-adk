@@ -285,6 +285,107 @@ func TestSettingsTemplateNewFields(t *testing.T) {
 	}
 }
 
+// === SPEC-CC2178-MODEL-POLICY-REPAIR-001 M4 + SPEC-GLM-MODEL-ALLOWLIST-001 M2 ===
+//
+// These tests assert the CC 2.1.175 Default-model cost lever is wired in the
+// settings.json template: availableModels (allowlist), enforceAvailableModels
+// (enforce flag), and model (Default = sonnet).
+//
+// SPEC-GLM-MODEL-ALLOWLIST-001 expands availableModels with the [1m] canonical
+// aliases (opus[1m], sonnet[1m]) AND the 6 GLM model ids (glm-5.2, glm-5.1,
+// glm-4.7, glm-4.6, glm-4.5, glm-4.5-air) so that a GLM
+// ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL swap (the GLM model id itself) is
+// not declined by enforceAvailableModels:true (CC 2.1.186 swap-blocking
+// semantics). The earlier [1m]-only expansion was insufficient: the GLM model
+// ids themselves were absent, so every GLM swap was rejected and the session
+// fell back to the Claude model. The Default-model cost lever (model: sonnet)
+// and the enforcement flag (enforceAvailableModels: true) stay byte-unchanged —
+// the allowlist only EXPANDS to admit the swap targets.
+//
+// AC bindings: AC-MPR-003 / AC-GMA-002 (Default model = sonnet, invariant),
+// AC-MPR-002 / AC-GMA-002 (enforceAvailableModels: true, invariant),
+// AC-GMA-004 (availableModels includes the [1m] variants AND the GLM swap targets),
+// AC-GMA-007 (template lever regression test updated to expanded expectation).
+func TestSettingsTemplateDefaultModelLever(t *testing.T) {
+	ctx := testContext("darwin")
+	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
+
+	var settings map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+
+	// AC-MPR-003 / AC-GMA-002: Default model is sonnet (the [1m]-safe cost-routing
+	// lever). INVARIANT — the GLM allowlist expansion must NOT change the Default.
+	model, ok := settings["model"]
+	if !ok {
+		t.Fatal(`missing top-level "model" key (AC-MPR-003: Default model must be set to sonnet)`)
+	}
+	if model != "sonnet" {
+		t.Errorf(`model = %v, want "sonnet" (AC-MPR-003/AC-GMA-002: Default-Sonnet cost-routing thesis, invariant)`, model)
+	}
+
+	// AC-MPR-002 / AC-GMA-002: enforceAvailableModels: true (the allowlist constrains
+	// Default resolution). INVARIANT — expansion admits [1m] without disabling enforcement.
+	enforce, ok := settings["enforceAvailableModels"]
+	if !ok {
+		t.Fatal(`missing "enforceAvailableModels" key (AC-MPR-002)`)
+	}
+	if enforce != true {
+		t.Errorf(`enforceAvailableModels = %v, want true (AC-MPR-002/AC-GMA-002: enforcement invariant)`, enforce)
+	}
+
+	// AC-MPR-001 / AC-GMA-004: availableModels lists the 3 base CC aliases PLUS the
+	// 2 [1m] canonical variants (opus[1m], sonnet[1m]) PLUS the 6 GLM model ids
+	// (glm-5.2, glm-5.1, glm-4.7, glm-4.6, glm-4.5, glm-4.5-air) so the GLM swap is
+	// admitted by enforceAvailableModels:true rather than declined.
+	avail, ok := settings["availableModels"]
+	if !ok {
+		t.Fatal(`missing "availableModels" key (AC-MPR-001)`)
+	}
+	arr, ok := avail.([]any)
+	if !ok {
+		t.Fatalf(`availableModels is %T, want a JSON array`, avail)
+	}
+	// The allowlist admits two classes of entry: the 5 canonical CC aliases
+	// (opus, opus[1m], sonnet, sonnet[1m], haiku — a subset of modelCanonical in
+	// internal/web/validate.go) AND the 6 GLM model ids that the GLM swap targets.
+	// The GLM ids match the internal/config/defaults.go DefaultGLM* constants
+	// (glm-5-turbo is intentionally excluded). modelCanonical validates only the
+	// per-profile web/TUI model picker, NOT this settings.json allowlist, so the
+	// GLM ids are admitted here without being members of modelCanonical.
+	wantSet := map[string]bool{
+		"sonnet":      true,
+		"opus":        true,
+		"haiku":       true,
+		"opus[1m]":    true,
+		"sonnet[1m]":  true,
+		"glm-5.2":     true,
+		"glm-5.1":     true,
+		"glm-4.7":     true,
+		"glm-4.6":     true,
+		"glm-4.5":     true,
+		"glm-4.5-air": true,
+	}
+	gotSet := make(map[string]bool)
+	for _, v := range arr {
+		s, ok := v.(string)
+		if !ok {
+			t.Errorf("availableModels entry %v is %T, want string", v, v)
+			continue
+		}
+		gotSet[s] = true
+	}
+	for want := range wantSet {
+		if !gotSet[want] {
+			t.Errorf("availableModels missing %q (AC-GMA-004: [1m] variants + GLM swap targets required); got %v", want, gotSet)
+		}
+	}
+	if len(arr) != len(wantSet) {
+		t.Errorf("availableModels has %d entries, want exactly %d (sonnet, opus, haiku, opus[1m], sonnet[1m], glm-5.2, glm-5.1, glm-4.7, glm-4.6, glm-4.5, glm-4.5-air); got %v", len(arr), len(wantSet), arr)
+	}
+}
+
 func TestSettingsTemplateAllHookEvents(t *testing.T) {
 	t.Parallel()
 

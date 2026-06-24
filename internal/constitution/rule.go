@@ -5,9 +5,11 @@ import (
 	"regexp"
 )
 
-// ruleIDPattern is a regex constant for validating IDs in CONST-V3R2-NNN or CONST-V3R5-NNN format.
-// NNN is 3 or more digits. V3R2 = initial namespace; V3R5 = parallel namespace (SPEC-V3R5-CONSTITUTION-DUAL-001).
-const ruleIDPattern = `^CONST-V3R[25]-\d{3,}$`
+// ruleIDPattern is a regex constant for validating IDs in CONST-V3R2-NNN, CONST-V3R5-NNN, or CONST-V3R6-NNN format.
+// NNN is 3 or more digits. V3R2 = initial namespace; V3R5 = parallel namespace (SPEC-V3R5-CONSTITUTION-DUAL-001);
+// V3R6 = modern-era namespace (SPEC-V3R6-RULES-CONST-RULEID-001 broadened [25] -> [256]).
+// The character class [256] enumerates exactly the three existing namespaces; V3R3/V3R4 do not exist and remain rejected.
+const ruleIDPattern = `^CONST-V3R[256]-\d{3,}$`
 
 // ruleIDRegexp is the compiled ruleIDPattern.
 var ruleIDRegexp = regexp.MustCompile(ruleIDPattern)
@@ -19,7 +21,7 @@ var ruleIDRegexp = regexp.MustCompile(ruleIDPattern)
 // Orphan field (unexported) is set internally by the loader when the referenced file is missing.
 // Has no yaml tag, so it does not appear in registry files.
 type Rule struct {
-	// ID is the unique identifier in CONST-V3R2-NNN format.
+	// ID is the unique identifier in CONST-V3R2-NNN, CONST-V3R5-NNN, or CONST-V3R6-NNN format.
 	ID string `yaml:"id"`
 	// Zone is the zone of the clause (Frozen or Evolvable).
 	Zone Zone `yaml:"zone"`

@@ -187,7 +187,7 @@ flowchart TD
     R --> S["调用 manager-docs<br/>生成文档"]
     S --> T{"--pr?"}
     T -->|是| U["创建 PR"]
-    T -->|否| V["完成标记"]
+    T -->|否| V["完成信号"]
     U --> V
 ```
 
@@ -195,7 +195,7 @@ flowchart TD
 
 - **Phase 0 (并行探索)**: 三个 agent 同时运行，速度提升 2-3 倍
 - **单领域路由**: 简单任务直接委托给 expert agent，跳过 SPEC
-- **完成标记**: 工作完成时输出 `<moai>DONE</moai>` 或 `<moai>COMPLETE</moai>`
+- **完成信号**: 工作完成时在完成报告中说明工作已完成
 
 ## 分阶段详情
 
@@ -247,8 +247,8 @@ flowchart TD
   1. 运行诊断 (默认并行)
   2. 将修复委托给适当的专家 agent
   3. 验证修复结果
-  4. 检查完成标记
-  5. 发现标记时退出循环
+  4. 检查是否满足完成条件
+  5. 检测到完成语句时退出循环
 ```
 
 ### Phase 3: 文档同步
@@ -258,7 +258,7 @@ flowchart TD
 - 生成 API 文档
 - 更新 README
 - 添加到 CHANGELOG
-- 成功时添加完成标记
+- 成功时说明工作已完成
 
 ## TODO 管理
 
@@ -269,13 +269,9 @@ flowchart TD
 - 完成工作后: TodoWrite (completed 状态)
 - 禁止将 TODO 列表打印为文本
 
-## 完成标记
+## 完成信号
 
-AI 在工作完成时添加标记:
-
-- `<moai>DONE</moai>` - 任务完成
-- `<moai>COMPLETE</moai>` - 完全完成
-- `<moai:done />` - XML 格式
+当所有工作流阶段成功完成时，MoAI 在完成报告 (横幅/散文) 中说明工作已完成，以使结果清晰明确。
 
 ## LLM 模式路由
 

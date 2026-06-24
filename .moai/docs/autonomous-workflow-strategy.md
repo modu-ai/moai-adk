@@ -9,7 +9,7 @@
 
 ## 1. 요약 (Executive Summary)
 
-본 전략은 Claude Code의 두 신규 오케스트레이션 primitive — **Dynamic Workflows**(스크립트가 수십~수백 에이전트를 fan-out)와 **`/goal`**(세션 범위 종료 조건으로 turn 자동 연속) — 을 기존 **`/moai loop`**(Ralph Engine, 결정론적 진단 루프)와 결합해 MoAI 전 서브커맨드를 "목표를 향해 자율 수렴"하도록 만드는 3-엔진 모델을 제안한다. 핵심은 **phase 내부에는 자율을 부여하되 phase 경계에는 human gate를 보존**하는 것이다: GATE-2(plan→run), sync→PR, destructive op은 절대 자율 bypass 대상이 아니며 모두 `AskUserQuestion`으로 남는다. 두 primitive 모두 doctrine 레이어(`dynamic-workflows.md` / `goal-directive.md`)에는 정착했으나 **어떤 서브커맨드 skill body에도 wiring되지 않은** 상태가 본 전략이 해소할 핵심 gap이다. 자율의 4대 불변식은 (1) GATE-2 AskUserQuestion 게이트, (2) AskUserQuestion 채널 독점, (3) subagent-cannot-spawn-subagent flat 계층, (4) background-write 금지 — 이며 세 엔진 모두 이 불변식을 상속한다.
+본 전략은 Claude Code의 두 신규 오케스트레이션 primitive — **Dynamic Workflows**(스크립트가 수십~수백 에이전트를 fan-out)와 **`/goal`**(세션 범위 종료 조건으로 turn 자동 연속) — 을 기존 **`/moai loop`**(Ralph Engine, 결정론적 진단 루프)와 결합해 MoAI 전 서브커맨드를 "목표를 향해 자율 수렴"하도록 만드는 3-엔진 모델을 제안한다. 핵심은 **phase 내부에는 자율을 부여하되 phase 경계에는 human gate를 보존**하는 것이다: 구현 착수 승인(plan→run), sync→PR, destructive op은 절대 자율 bypass 대상이 아니며 모두 `AskUserQuestion`으로 남는다. 두 primitive 모두 doctrine 레이어(`dynamic-workflows.md` / `goal-directive.md`)에는 정착했으나 **어떤 서브커맨드 skill body에도 wiring되지 않은** 상태가 본 전략이 해소할 핵심 gap이다. 자율의 4대 불변식은 (1) 구현 착수 승인 AskUserQuestion 게이트, (2) AskUserQuestion 채널 독점, (3) subagent-cannot-spawn-subagent flat 계층, (4) background-write 금지 — 이며 세 엔진 모두 이 불변식을 상속한다.
 
 ---
 
@@ -65,7 +65,7 @@
    사용자 ──AskUserQuestion──▶ [phase 경계 게이트]
                                      │
           ┌──────────────────────────┼──────────────────────────┐
-          │ GATE-2 (plan→run)        │ sync→PR 생성/머지 승인     │
+          │ 구현 착수 승인 (plan→run)        │ sync→PR 생성/머지 승인     │
           │ destructive op 확인       │ ambiguity Socratic 인터뷰  │
           │ hook-block 에스컬레이션   │ CI autofix iter>3 에스컬   │
           └──────────────────────────┼──────────────────────────┘
@@ -83,7 +83,7 @@
 
 ### 4대 불변식
 
-1. **GATE-2 (plan→run human gate)** — plan-auditor PASS·score ≥0.90이어도 run-phase 진입 직전 `AskUserQuestion`(진입/추가검토/중단, 첫 옵션 권장)으로 명시 승인. skip-eligible ≥0.90 자율 bypass는 **Phase 0.5 verdict 재실행에만** 적용되며 GATE-2에는 적용 안 됨 (CLAUDE.local.md §19.1 REQ-ATR-015). `/goal`이 turn STOP을 제거해도 GATE-2 의무는 불변.
+1. **구현 착수 승인 (plan→run human gate)** — plan-auditor PASS·score ≥0.90이어도 run-phase 진입 직전 `AskUserQuestion`(진입/추가검토/중단, 첫 옵션 권장)으로 명시 승인. skip-eligible ≥0.90 자율 bypass는 **Phase 0.5 verdict 재실행에만** 적용되며 구현 착수 승인에는 적용 안 됨 (CLAUDE.local.md §19.1 REQ-ATR-015). `/goal`이 turn STOP을 제거해도 구현 착수 승인 의무는 불변.
 2. **AskUserQuestion 채널 독점** — 모든 user-facing 질문은 `AskUserQuestion` 경유. 자율 모드가 prose-prompting으로 대체 불가. deferred tool이므로 매 호출 직전 `ToolSearch(query: "select:AskUserQuestion")` preload 필수.
 3. **subagent-cannot-spawn-subagent (Finding A1)** — 오케스트레이터(main 세션)만 spawn 주체. Workflow는 *scaling 메커니즘*이지 subagent 중첩 spawn 수단이 아니다. Workflow agent도, /goal turn 내 agent도 사용자 prompt 불가(비대칭 boundary 상속).
 4. **background-write 금지** — `run_in_background: true` agent는 Write/Edit 금지. read-only(research/analysis/review)만 background 허용. 파일 수정 agent는 `run_in_background: false` foreground 순차. (단, Workflow agent는 별개 primitive로 `acceptEdits`로 파일 쓰기 가능 — background-write 금지는 `Agent(run_in_background:true)`에만 적용.)
@@ -98,7 +98,7 @@
 |-----------|----------------|-----------|:----------:|:----------------:|-------------|
 | `project` | 인터뷰 → product/structure/tech.md + codemaps 생성 | Workflow(문서 fan-out) + /goal(전체 완성) | O | O (문서 섹션 병렬) | 인터뷰 Socratic, harness 생성 승인 |
 | `plan` | manager-spec 인터뷰·author + plan-auditor 게이트 | Workflow(Phase 0.5 연구 + 2.3 audit) + /goal(2.3 수렴) | O (Phase 2.3 한정) | O (연구·audit) | DP1, Tier, BODP, 품질게이트, 실행모드 |
-| `run` | Phase 0.95 모드선택 → manager-develop TDD/DDD 구현 | /goal(AC 수렴) + /moai loop(진단) + Workflow(다파일 sweep만) | O | 조건부(코딩=No, 기계적 migration=Yes) | **GATE-2**, 모드선택은 자율 |
+| `run` | Phase 0.95 모드선택 → manager-develop TDD/DDD 구현 | /goal(AC 수렴) + /moai loop(진단) + Workflow(다파일 sweep만) | O | 조건부(코딩=No, 기계적 migration=Yes) | **구현 착수 승인**, 모드선택은 자율 |
 | `sync` | manager-docs 문서·frontmatter + sync-auditor + PR | Workflow(4-locale parity) + /goal(parity 0) | O | O (locale·doc 병렬) | **sync→PR 생성/머지** |
 | `fix` | LSP/lint/type 오류 자동 감지·수정 | /moai loop(주) + /goal(수렴 래핑) | O | X (순차 수정) | Level 3+ 수정 승인 |
 | `loop` | scan→fix→verify 반복 (Ralph Engine) | /moai loop(기존) + /goal(상위 종료) | O | X | Level 3 AskUserQuestion, 메모리 압박 체크포인트 |
@@ -119,7 +119,7 @@
 
 #### 그룹 A — plan (SPEC 기획)
 
-**현재 흐름**: manager-spec + Explore + manager-git 소유의 단일 phase 체인. Step 0 brain-proposal 스캔 → Phase 1A Explore 코드베이스 분석 → Phase 0.3 명료도 점수 → Phase 0.3.1 deep 인터뷰(1-5 라운드) → Phase 0.4 UltraThink → Phase 0.5 Explore research.md → Phase 1B GEARS planning → **DP1 HUMAN GATE**(Proceed/Annotate/Draft/Cancel) → Phase 1.6 Tier 판정 → Phase 2 spec/plan/acceptance 작성 → **Phase 2.3 plan-auditor adversarial audit + FAIL→revise 재시도(max 3)** → Phase 3 BODP 게이트 → Phase 3.6 SPEC 품질게이트 → DP2/3/3.5 실행모드 선택. **plan은 audit-ready 신호에서 종료하며 GATE-2(run 진입)를 건너지 않는다.**
+**현재 흐름**: manager-spec + Explore + manager-git 소유의 단일 phase 체인. Step 0 brain-proposal 스캔 → Phase 1A Explore 코드베이스 분석 → Phase 0.3 명료도 점수 → Phase 0.3.1 deep 인터뷰(1-5 인터뷰 회차) → Phase 0.4 UltraThink → Phase 0.5 Explore research.md → Phase 1B GEARS planning → **DP1 HUMAN GATE**(Proceed/Annotate/Draft/Cancel) → Phase 1.6 Tier 판정 → Phase 2 spec/plan/acceptance 작성 → **Phase 2.3 plan-auditor adversarial audit + FAIL→revise 재시도(max 3)** → Phase 3 BODP 게이트 → Phase 3.6 SPEC 품질게이트 → DP2/3/3.5 실행모드 선택. **plan은 audit-ready 신호에서 종료하며 구현 착수 승인(run 진입)를 건너지 않는다.**
 
 **적용 엔진**: hybrid — Workflow(Phase 0.5 multi-angle 연구 + Phase 2.3 adversarial audit) + /goal(Phase 2.3 FAIL→revise 수렴 루프). `/moai loop`은 **미사용** — plan-phase는 명세 markdown만 생산하며 컴파일러/test 표면이 없다(Ralph Engine의 진단 대상이 run-phase에 있음).
 
@@ -132,21 +132,21 @@
 
 **Workflow shape**: (1) **Phase 0.5 multi-angle 연구** (`/deep-research` 형): fan-out 단위 = 연구 각도당 1 에이전트(코드베이스-아키텍처는 Explore, 요구·엣지케이스, 선행기술은 WebSearch+Context7, 보안-범위, 의존성-영향). parallel-barrier(5-8 read-only 에이전트, 동일 파일 미접촉) → adversarial 교차 검토(claim voting·모순 표면화) → 단일 research.md 합성. (2) **Phase 2.3 adversarial audit ensemble** (선택, Tier L / thorough만): fan-out 단위 = audit 차원당 1 에이전트(frontmatter-schema, GEARS↔AC coverage, 보안-범위, simplicity/scope-creep, GEARS-pattern). parallel-barrier → "judge" 에이전트가 차원 발견을 단일 PASS/FAIL verdict로 reconcile. **두 스크립트 모두 read-only** — verdict는 run 반환 *후* 오케스트레이터/manager-spec이 review 리포트에 기록(workflow agent가 surface 단계 수행 안 함) (교정 4).
 
-**보존 게이트**: Phase 0.3.1 명료도 인터뷰, DP1 plan-review + annotation 사이클, Phase 1.6 Tier 판정, Phase 2.3 Step 2.3.5 3×FAIL 에스컬레이션, Phase 3.0 BODP, Phase 3.6 SPEC 품질게이트, DP2/3/3.5 실행모드 — 모두 `AskUserQuestion`이며 **모든 preference를 Workflow/goal launch 전에 수집**. GATE-2는 plan 범위 밖. brain-proposal 선택(Step 0)은 명시 AskUserQuestion(SPEC 자동 생성 금지).
+**보존 게이트**: Phase 0.3.1 명료도 인터뷰, DP1 plan-review + annotation 사이클, Phase 1.6 Tier 판정, Phase 2.3 Step 2.3.5 3×FAIL 에스컬레이션, Phase 3.0 BODP, Phase 3.6 SPEC 품질게이트, DP2/3/3.5 실행모드 — 모두 `AskUserQuestion`이며 **모든 preference를 Workflow/goal launch 전에 수집**. 구현 착수 승인는 plan 범위 밖. brain-proposal 선택(Step 0)은 명시 AskUserQuestion(SPEC 자동 생성 금지).
 
 #### 그룹 B — run (구현)
 
 > 주의: run group의 원본 design은 rate-limit으로 미전달되어 adversarial verdict가 "missing-input UNSOUND"(내용 거부 아님)였다. 아래는 primitive 프로파일 + orchestration-mode-selection 그라운드트루스 + HARD 제약에서 재설계한 안이며, verdict가 요구한 6개 안전 조항을 모두 명시 충족한다.
 
-**현재 흐름**: Phase 0.5 plan-auditor verdict → **GATE-2 HUMAN GATE** → Phase 0.95 5-mode 자율 선택(trivial/background/agent-team/parallel/sub-agent) → manager-develop 구현(cycle_type ∈ {ddd, tdd, autofix}). 코딩-heavy 기본은 Mode 5 sequential sub-agent (Finding A4 caveat).
+**현재 흐름**: Phase 0.5 plan-auditor verdict → **구현 착수 승인 HUMAN GATE** → Phase 0.95 5-mode 자율 선택(trivial/background/agent-team/parallel/sub-agent) → manager-develop 구현(cycle_type ∈ {ddd, tdd, autofix}). 코딩-heavy 기본은 Mode 5 sequential sub-agent (Finding A4 caveat).
 
 **적용 엔진**: /goal(AC 수렴 래핑) + /moai loop(진단) 주축, Workflow는 **대규모 기계적 변환에 한정**. 코딩-heavy 본체는 sequential sub-agent 유지 — Anthropic "coding has fewer parallelizable subtasks than research" caveat가 MoAI Mode 5 default와 일치하므로 Workflow를 코딩 구현 자체에 쓰지 않는다.
 
-**Phase 0.95 모드 카탈로그 확장 제안**: 현재 5-mode는 dynamic-workflows를 누락한다. **Mode 6: workflow**를 추가하되 진입 조건을 엄격히: scope ≥ ~30 파일 AND 변환이 기계적(call-site rename, import 경로 일괄 변경 등) AND 진정 병렬(파일 간 의존 없음). 코딩-heavy + multi-domain은 여전히 Mode 5 우선(Finding A4). Mode 6 선택 시에도 GATE-2는 이미 통과한 상태이며, Workflow launch 전 모든 preference 수집 완료를 progress.md에 로깅.
+**Phase 0.95 모드 카탈로그 확장 제안**: 현재 5-mode는 dynamic-workflows를 누락한다. **Mode 6: workflow**를 추가하되 진입 조건을 엄격히: scope ≥ ~30 파일 AND 변환이 기계적(call-site rename, import 경로 일괄 변경 등) AND 진정 병렬(파일 간 의존 없음). 코딩-heavy + multi-domain은 여전히 Mode 5 우선(Finding A4). Mode 6 선택 시에도 구현 착수 승인는 이미 통과한 상태이며, Workflow launch 전 모든 preference 수집 완료를 progress.md에 로깅.
 
-**/goal 조건**: run-phase 전체를 "모든 blocking AC가 transcript에 PASS 입증 + 회귀 없음 + max N turns"로 래핑(§5.2). 단, **GATE-2 통과 후에만** /goal 설정 — /goal이 GATE-2를 대체하거나 우회하지 않는다. semantic 실패(data race, deadlock, panic, test assertion)는 /goal이 자율 수정 금지, AskUserQuestion 에스컬레이션(CONST-V3R5-010).
+**/goal 조건**: run-phase 전체를 "모든 blocking AC가 transcript에 PASS 입증 + 회귀 없음 + max N turns"로 래핑(§5.2). 단, **구현 착수 승인 통과 후에만** /goal 설정 — /goal이 구현 착수 승인를 대체하거나 우회하지 않는다. semantic 실패(data race, deadlock, panic, test assertion)는 /goal이 자율 수정 금지, AskUserQuestion 에스컬레이션(CONST-V3R5-010).
 
-**verdict 요구 6조항 충족**: (1) GATE-2는 plan-auditor 점수와 무관하게 mandatory AskUserQuestion human gate로 유지; (2) 모든 user preference를 Workflow/subagent launch 전 오케스트레이터가 수집; (3) subagent-spawns-subagent 중첩 없음(flat, Mode 6 Workflow도 scaling이지 중첩 아님); (4) background agent는 read-only만(구현=foreground); (5) 각 /goal은 transcript-측정 가능 + turn bound; (6) Workflow는 진정 병렬 고볼륨에만, 결정론 진단은 /moai loop.
+**verdict 요구 6조항 충족**: (1) 구현 착수 승인는 plan-auditor 점수와 무관하게 mandatory AskUserQuestion human gate로 유지; (2) 모든 user preference를 Workflow/subagent launch 전 오케스트레이터가 수집; (3) subagent-spawns-subagent 중첩 없음(flat, Mode 6 Workflow도 scaling이지 중첩 아님); (4) background agent는 read-only만(구현=foreground); (5) 각 /goal은 transcript-측정 가능 + turn bound; (6) Workflow는 진정 병렬 고볼륨에만, 결정론 진단은 /moai loop.
 
 #### 그룹 C — sync (문서·PR)
 
@@ -189,7 +189,7 @@
 - **codemaps**: 모듈 스캔 → 아키텍처 문서. Workflow 모듈 병렬 sweep(단발 fan-out, /goal 불요). 기존 문서 overwrite 확인.
 - **clean**: dead code 식별·삭제. **삭제 = write path → foreground 강제** (verdict 조항 d). /moai loop(test 검증)으로 삭제 후 회귀 검증. /goal = "dead code 0 + 모든 test pass가 transcript에 입증". **삭제 승인은 AskUserQuestion** — clean은 destructive 성격이므로 자율 bypass 금지.
 
-**verdict 요구 6조항 충족**: (a) mx/codemaps/clean의 run-phase 진입도 GATE-2 human 승인 보존(plan에서 파생된 SPEC일 경우); (b) 모든 preference를 launch 전 AskUserQuestion 수집, mid-run prompt 없음; (c) subagent 중첩 spawn 없음; (d) clean 삭제는 foreground; (e) 각 /goal은 transcript-측정 가능 + turn bound; (f) Workflow는 진정 병렬 sweep, /moai loop은 결정론 진단.
+**verdict 요구 6조항 충족**: (a) mx/codemaps/clean의 run-phase 진입도 구현 착수 승인 human 승인 보존(plan에서 파생된 SPEC일 경우); (b) 모든 preference를 launch 전 AskUserQuestion 수집, mid-run prompt 없음; (c) subagent 중첩 spawn 없음; (d) clean 삭제는 foreground; (e) 각 /goal은 transcript-측정 가능 + turn bound; (f) Workflow는 진정 병렬 sweep, /moai loop은 결정론 진단.
 
 #### 그룹 G — meta (brain · design · db · harness · feedback)
 
@@ -232,7 +232,7 @@ the escalation autonomously.
  entirely — no goal, no audit workflow.]
 ```
 
-### 5.2 run (AC 수렴 — GATE-2 통과 후에만 설정)
+### 5.2 run (AC 수렴 — 구현 착수 승인 통과 후에만 설정)
 
 ```text
 Every blocking acceptance criterion in
@@ -244,8 +244,8 @@ hold. Max 20 turns.
 On any semantic failure (data race, deadlock, panic, test assertion
 failure), clear this goal and escalate via AskUserQuestion — do NOT
 auto-fix semantic failures.
-[PRECONDITION: GATE-2 user approval already obtained; this goal does
- NOT substitute for or bypass GATE-2.]
+[PRECONDITION: 구현 착수 승인 user approval already obtained; this goal does
+ NOT substitute for or bypass 구현 착수 승인.]
 ```
 
 ### 5.3 sync (4-locale parity 수렴 — PR 게이트 제외)
@@ -354,7 +354,7 @@ results = parallel_for(file in files):
 return summarize(results)
 ```
 
-**주의**: allowlist에 `go test`, `golangci-lint`, `gh` 등 사전 등록(mid-run permission stall 방지). 변환 규칙은 GATE-2 통과 후 확정된 것만.
+**주의**: allowlist에 `go test`, `golangci-lint`, `gh` 등 사전 등록(mid-run permission stall 방지). 변환 규칙은 구현 착수 승인 통과 후 확정된 것만.
 
 ### 6.3 sync-phase 4-locale doc-parity (parallel-barrier)
 
@@ -432,11 +432,11 @@ return aggregate(outputs)
 
 ### 7.1 4대 불변식의 자율 모드 적용
 
-**GATE-2 (§19.1 REQ-ATR-015)**: plan→run 경계는 항상 명시 AskUserQuestion. plan-auditor PASS·score ≥0.90이어도 자율 bypass 금지. skip-eligible ≥0.90은 Phase 0.5 verdict 재실행에만 적용, GATE-2에 적용 안 됨. `/goal`은 turn STOP을 제거하지만 GATE-2 의무를 제거하지 않는다. **Dynamic Workflows는 mid-run 사용자 입력 불가이므로 GATE-2를 run 내부에 삽입 불가** — 따라서 GATE-2는 반드시 Workflow launch *전*에 통과해야 하며, gated phase 간 sign-off는 각각 별도 workflow로 분리.
+**구현 착수 승인 (§19.1 REQ-ATR-015)**: plan→run 경계는 항상 명시 AskUserQuestion. plan-auditor PASS·score ≥0.90이어도 자율 bypass 금지. skip-eligible ≥0.90은 Phase 0.5 verdict 재실행에만 적용, 구현 착수 승인에 적용 안 됨. `/goal`은 turn STOP을 제거하지만 구현 착수 승인 의무를 제거하지 않는다. **Dynamic Workflows는 mid-run 사용자 입력 불가이므로 구현 착수 승인를 run 내부에 삽입 불가** — 따라서 구현 착수 승인는 반드시 Workflow launch *전*에 통과해야 하며, gated phase 간 sign-off는 각각 별도 workflow로 분리.
 
 **AskUserQuestion 채널 독점**: 자율 모드가 prose-prompting으로 질문 대체 불가. 매 호출 직전 `ToolSearch(query: "select:AskUserQuestion")` preload. 자율 흐름이 게이트로 재진입할 때마다 재-preload. AskUserQuestion이 자동 부착하는 "Other" 옵션으로 free-form 답변 지원(prose 질문 불요).
 
-**subagent-cannot-spawn-subagent (Finding A1)**: 오케스트레이터(main 세션)만 spawn. Workflow는 scaling이지 중첩 spawn이 아니다. Workflow agent도 사용자 prompt 불가(비대칭 boundary 상속) — 입력 부재 시 structured blocker report 반환, 오케스트레이터가 AskUserQuestion 라운드 후 fresh prompt로 재위임.
+**subagent-cannot-spawn-subagent (Finding A1)**: 오케스트레이터(main 세션)만 spawn. Workflow는 scaling이지 중첩 spawn이 아니다. Workflow agent도 사용자 prompt 불가(비대칭 boundary 상속) — 입력 부재 시 structured blocker report 반환, 오케스트레이터가 AskUserQuestion 인터뷰 회차 후 fresh prompt로 재위임.
 
 **background-write 금지**: `Agent(run_in_background:true)`는 Write/Edit 금지. read-only(research/analysis/review)만 background. 파일 수정은 `run_in_background:false` foreground 순차. (Workflow agent는 별개 primitive로 acceptEdits 쓰기 가능 — 이 금지는 background Agent에만.)
 
@@ -457,7 +457,7 @@ Step 5: 자율 수렴 → 종료 조건 충족 → 다음 게이트로 surface
 
 ### 7.3 위반 anti-pattern 목록
 
-- **AP-1**: plan-auditor 점수가 높다는 이유로 GATE-2 없이 `/moai run` 자율 시작 (CLAUDE.local.md §19.1 명시 anti-pattern).
+- **AP-1**: plan-auditor 점수가 높다는 이유로 구현 착수 승인 없이 `/moai run` 자율 시작 (CLAUDE.local.md §19.1 명시 anti-pattern).
 - **AP-2**: `/goal` 평가자가 파일을 읽는다고 가정한 조건(파일 경로 술어). 평가자는 transcript만 판정 — 측정 대상을 surface된 라인으로 작성해야 함 (plan group 교정 1).
 - **AP-3**: STOP-on-regression / 3×FAIL 에스컬레이션을 `/goal` 루프가 직접 해결 시도 (AskUserQuestion swallow) (교정 2).
 - **AP-4**: `minimal` harness에서 `plan_audit.enabled:false`인데 audit /goal launch → 영원히 미충족, 3-cap까지 무의미 spin (교정 3).
@@ -546,7 +546,7 @@ workflow:
 
 ### Priority High
 
-- **SPEC-AUTONOMY-RUN-GOAL** (Tier M): `/moai run` Phase 0.95 모드 카탈로그에 Mode 6(workflow) 추가 + run-phase `/goal` 래핑(§5.2) wiring. **GATE-2 보존 회귀 테스트 필수** — plan-auditor 점수 무관 AskUserQuestion 게이트 유지 검증. run group design이 rate-limit으로 미전달되었으므로 이 SPEC의 plan-phase에서 design을 정식 author + adversarial 재검증(verdict 6조항 충족 확인) 필요.
+- **SPEC-AUTONOMY-RUN-GOAL** (Tier M): `/moai run` Phase 0.95 모드 카탈로그에 Mode 6(workflow) 추가 + run-phase `/goal` 래핑(§5.2) wiring. **구현 착수 승인 보존 회귀 테스트 필수** — plan-auditor 점수 무관 AskUserQuestion 게이트 유지 검증. run group design이 rate-limit으로 미전달되었으므로 이 SPEC의 plan-phase에서 design을 정식 author + adversarial 재검증(verdict 6조항 충족 확인) 필요.
 - **SPEC-AUTONOMY-GOAL-CONDITIONS** (Tier S): §5 /goal 조건 템플릿 카탈로그를 `.claude/rules/moai/workflow/goal-directive.md`에 정식 등재 + 각 서브커맨드 skill body에 조건 emit 로직 wiring. plan group의 4개 교정(파일경로→transcript술어, STOP-regression bound, harness 게이트, 중복절 제거) 반영.
 
 ### Priority Med
@@ -561,7 +561,7 @@ workflow:
 - **SPEC-AUTONOMY-SWEEP** (Tier M): mx/codemaps/clean Workflow + /goal. **clean foreground-강제 + 삭제 승인 게이트** 회귀 테스트. sweep group design 정식 author 필요.
 - **SPEC-AUTONOMY-META** (Tier S): brain/design/db/harness/feedback autonomy profile. brain Phase 전환 게이트 + db migration destructive 확인 보존.
 
-> 로드맵 주의: run/sync/fixloop/quality/sweep/meta/project group의 원본 design이 rate-limit으로 미전달되어 adversarial verdict가 "missing-input UNSOUND"였다. 이는 **내용 거부가 아니라** 검증 입력 부재이므로, 각 후속 SPEC의 plan-phase에서 design을 정식 author하고 adversarial 재검증(verdict 6조항: GATE-2 mandatory / preference-launch전수집 / no-nested-spawn / background-read-only / transcript-측정가능 goal / workflow-병렬·loop-진단)을 통과시킨 뒤 run-phase 진입할 것.
+> 로드맵 주의: run/sync/fixloop/quality/sweep/meta/project group의 원본 design이 rate-limit으로 미전달되어 adversarial verdict가 "missing-input UNSOUND"였다. 이는 **내용 거부가 아니라** 검증 입력 부재이므로, 각 후속 SPEC의 plan-phase에서 design을 정식 author하고 adversarial 재검증(verdict 6조항: 구현 착수 승인 mandatory / preference-launch전수집 / no-nested-spawn / background-read-only / transcript-측정가능 goal / workflow-병렬·loop-진단)을 통과시킨 뒤 run-phase 진입할 것.
 
 ---
 
@@ -582,4 +582,4 @@ workflow:
 
 ---
 
-> **종합**: 본 전략은 doctrine 레이어에만 머물던 두 primitive(Dynamic Workflows / `/goal`)를 기존 `/moai loop`과 3-엔진 모델로 통합해 모든 서브커맨드의 phase *내부* 자율을 실현하되, GATE-2·AskUserQuestion 독점·flat 계층·background-write 금지의 4대 불변식과 모든 phase *경계* 게이트(GATE-2, sync→PR, destructive, ambiguity, hook-block, CI autofix iter>3)를 보존한다. plan group의 검증된 4개 교정은 §4.2-A·§5.1에 반영했고, rate-limit으로 design이 미전달된 그룹은 후속 SPEC의 plan-phase에서 정식 author + adversarial 재검증을 거치도록 로드맵에 명시했다.
+> **종합**: 본 전략은 doctrine 레이어에만 머물던 두 primitive(Dynamic Workflows / `/goal`)를 기존 `/moai loop`과 3-엔진 모델로 통합해 모든 서브커맨드의 phase *내부* 자율을 실현하되, 구현 착수 승인·AskUserQuestion 독점·flat 계층·background-write 금지의 4대 불변식과 모든 phase *경계* 게이트(구현 착수 승인, sync→PR, destructive, ambiguity, hook-block, CI autofix iter>3)를 보존한다. plan group의 검증된 4개 교정은 §4.2-A·§5.1에 반영했고, rate-limit으로 design이 미전달된 그룹은 후속 SPEC의 plan-phase에서 정식 author + adversarial 재검증을 거치도록 로드맵에 명시했다.

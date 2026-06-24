@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-run-task-decomposition
 description: "Run Phase 2~4 — DDD/TDD implementation cycles, quality validation, git operations, and completion guidance"
 user-invocable: false
 metadata:
@@ -100,7 +99,7 @@ After each TDD REFACTOR cycle completion, compare planned vs actual:
 
 ## Phase 2.5: Quality Validation
 
-Agent: manager-quality subagent
+Agent: sync-auditor subagent (independent quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2; OR orchestrator verification batch — lint + test + coverage)
 
 Input: Both Phase 1 planning context and Phase 2 implementation results.
 
@@ -209,11 +208,11 @@ Output: evaluation_report with per-dimension PASS/FAIL/UNVERIFIED verdicts and f
 - [ ] User has reviewed post-implementation issues list
 <!-- moai:evolvable-end -->
 
-## Phase 2.8b: TRUST 5 Static Verification (manager-quality) [MANDATORY]
+## Phase 2.8b: TRUST 5 Static Verification (sync-auditor) [MANDATORY]
 
 Purpose: Multi-dimensional review iteration for high-quality output. This phase is ALWAYS executed to ensure consistent code quality.
 
-**Standard review** (always executed via manager-quality subagent):
+**Standard review** (always executed via the sync-auditor subagent — independent quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2):
 - Purpose alignment: Do changes match SPEC requirements?
 - Improvement safety: Are existing behaviors preserved?
 - Side effect verification: Any unintended impacts?

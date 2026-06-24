@@ -75,14 +75,16 @@ func TestEventTypeValues(t *testing.T) {
 	}
 }
 
-// TestLogSchemaVersion verifies the constant value is "v2".
+// TestLogSchemaVersion verifies the constant value is "v2.1".
 // Bumped "v1" → "v2" by SPEC-HARNESS-OUTCOME-CAPTURE-001 (REQ-OC-010) to mark the
 // additive apply_outcome event type + its omitempty Event fields.
+// Bumped "v2" → "v2.1" by SPEC-V3R6-CONTEXT-GOV-AXIS-001 (REQ-CGA-002) to mark the
+// additive eager-vs-on-demand context-weight fields.
 func TestLogSchemaVersion(t *testing.T) {
 	t.Parallel()
 
-	if LogSchemaVersion != "v2" {
-		t.Errorf("LogSchemaVersion: want %q got %q", "v2", LogSchemaVersion)
+	if LogSchemaVersion != "v2.1" {
+		t.Errorf("LogSchemaVersion: want %q got %q", "v2.1", LogSchemaVersion)
 	}
 }
 

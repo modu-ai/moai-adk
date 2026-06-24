@@ -1,6 +1,6 @@
 ---
-description: "Zone Registry — MoAI-ADK HARD 조항 SSOT. rules/agents/skills/specs 디렉토리 수정 시에만 로드."
-paths: ".claude/**,.moai/specs/**,.claude/rules/**"
+description: "Zone Registry — MoAI-ADK HARD 조항 SSOT. rules/agents 디렉토리 수정 시에만 로드 (registry는 moai constitution CLI가 직접 읽으므로 SPEC authoring turn에는 컨텍스트 로드 불필요)."
+paths: ".claude/rules/**,.claude/agents/**"
 ---
 
 # Zone Registry
@@ -221,7 +221,7 @@ moai constitution list --format json
   zone_class: frozen-safety
   file: CLAUDE.md
   anchor: "#14-parallel-execution-safeguards"
-  clause: "Background subagents (run_in_background: true) auto-deny Write/Edit operations. Use run_in_background: false for agents that modify files."
+  clause: "As of CC v2.1.186 background subagents (run_in_background: true) surface permission prompts in the main session rather than auto-denying; MoAI keeps run_in_background: false for agents that modify files as a conservative default."
   canary_gate: false
 
 - id: CONST-V3R2-021
@@ -288,7 +288,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/core/moai-constitution.md
   anchor: "#opus-47-prompt-philosophy"
-  clause: "Principle 4 — Fewer subagents spawned by default: Opus 4.7 does not auto-spawn subagents."
+  clause: "Principle 4 — Fewer subagents spawned by default: Opus 4.7+ / 4.8 does not auto-spawn subagents."
   canary_gate: false
 
 - id: CONST-V3R2-029
@@ -296,7 +296,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/core/moai-constitution.md
   anchor: "#opus-47-prompt-philosophy"
-  clause: "Principle 5 — Fewer tool calls by default, more reasoning: Opus 4.7 prefers reasoning over tool invocation."
+  clause: "Principle 5 — Fewer tool calls by default, more reasoning: Opus 4.7+ / 4.8 prefers reasoning over tool invocation."
   canary_gate: false
 
 - id: CONST-V3R2-030
@@ -558,7 +558,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#31-brand-context-constitutional-parent"
-  clause: "[HARD] expert-frontend MUST implement design tokens derived from brand context"
+  clause: "[HARD] expert-frontend MUST implement design tokens derived from brand context (archived name — resolves to Agent(general-purpose) with frontend whitelist per archived-agent-rejection.md §C; see design/constitution.md carve-out note)"
   canary_gate: true
 
 - id: CONST-V3R2-065
@@ -635,7 +635,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/session-handoff.md
   anchor: "#when-to-generate-5-triggers"
-  clause: "[HARD] The orchestrator MUST emit a paste-ready resume message when ANY of the 5 trigger conditions activate (model-specific context threshold — 1M context model 50% / 200K context model 90% — / SPEC phase complete / user session-end request / PR creation success with pending SPECs / multi-milestone checkpoint)"
+  clause: "[HARD] The orchestrator MUST emit a paste-ready resume message when ANY of the 5 trigger conditions activate (model-specific context threshold per context-window-management.md § Context Window Targets / SPEC phase complete / user session-end request / PR creation success with pending SPECs / multi-milestone checkpoint)"
   canary_gate: false
 
 - id: CONST-V3R2-151
@@ -1002,5 +1002,18 @@ moai constitution list --format json
   file: .claude/rules/moai/core/glm-web-tooling.md
   anchor: "#hard-routing-table"
   clause: "While a session is GLM-backed, MoAI agents and the orchestrator SHALL NOT invoke the built-in WebSearch or WebFetch, nor Read on an image file, because those route through the 529-prone api.z.ai/api/anthropic gateway and the base64->422 image path; the moai cg leader pane (Claude backend) is exempt"
+  canary_gate: true
+
+# ============================================================
+# CONST-V3R6-NNN: V3R6 modern-era parallel namespace
+# (first V3R6 entry: SPEC-V3R6-HARNESS-RUNTIME-RECOVERY-001 M3)
+# ============================================================
+# --- runtime-recovery-doctrine.md (1 entry: V3R6-001 anti-death-spiral) ---
+- id: CONST-V3R6-001
+  zone: Evolvable
+  zone_class: frozen-safety
+  file: .claude/rules/moai/workflow/runtime-recovery-doctrine.md
+  anchor: "#4-anti-death-spiral-hook-carve-out-documentation-only-policy"
+  clause: "Recovery-Signal Carve-Out: while a turn is itself a recovery signal (recovering from a compact, prompt_too_long, max_output_tokens, media_size, or compact-failure), Stop/PostToolUse hooks SHOULD exit 0 rather than exit 2, so that recovery turns are NOT placed into the error → stop-hook-blocks → retry → error death-spiral; documentation-only policy guidance (current hooks do not parse stopReason; mechanical enforcement deferred to future SPEC-V3R6-HOOK-RECOVERY-SIGNAL-001)"
   canary_gate: true
 ```

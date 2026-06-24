@@ -4,11 +4,14 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 func TestCollectMemory(t *testing.T) {
 	// Disable auto-compact scaling for existing tests
 	t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "100")
+	isolateModelEnv(t) // neutralize ambient ANTHROPIC_DEFAULT_*_MODEL so the 200K baseline holds
 
 	tests := []struct {
 		name       string
@@ -105,6 +108,22 @@ func TestCollectMemory(t *testing.T) {
 	}
 }
 
+// isolateModelEnv neutralizes the ambient ANTHROPIC_DEFAULT_*_MODEL env vars
+// so resolveContextWindowOverride() returns 0 on its priority-3 built-in-table
+// lookup and the subtest's StdinData.ContextWindowSize is the sole context-size
+// source. Required because GLM-ambient developer shells (moai glm / moai cg)
+// populate these vars and would otherwise override a 200K test input with a 1M
+// GLM context window, producing TokensUsed/TokenBudget failures. The isolation
+// keys on "any model-env value present" (neutralized to empty string), NOT on a
+// specific model identifier, so it survives future GLM model renames.
+// See SPEC-V3R6-STATUSLINE-MILLION-BUDGET-001.
+func isolateModelEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv(config.EnvAnthropicDefaultOpusModel, "")
+	t.Setenv(config.EnvAnthropicDefaultSonnetModel, "")
+	t.Setenv(config.EnvAnthropicDefaultHaikuModel, "")
+}
+
 // TestCollectMemory_AutoCompactScaling verifies that TokenBudget is scaled
 // to the auto-compact threshold so the CW bar shows 100% at compact point.
 func TestCollectMemory_AutoCompactScaling(t *testing.T) {
@@ -186,6 +205,7 @@ func TestCollectMemory_AutoCompactScaling(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", tt.threshold)
+			isolateModelEnv(t)
 
 			got := CollectMemory(tt.input)
 

@@ -274,6 +274,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	goBinPath := detectGoBinPathForUpdate(homeDir)
 	tmplCtx := template.NewTemplateContext(
 		template.WithGoBinPath(goBinPath),
+		template.WithResolvedMoaiPath(resolveMoaiExecutable()),
 		template.WithHomeDir(homeDir),
 		template.WithSmartPATH(template.BuildSmartPATH()),
 		template.WithPlatform(runtime.GOOS),

@@ -78,7 +78,9 @@ sync_commit_sha: 860ee0378
 - README: no update (Tier S internal/spec, user-facing surface unchanged)
 - docs-site: no update (internal classifier, user docs stable)
 
-## §E.5 Mx-phase Audit-Ready Signal
+## §E.4 Audit-Ready Signal
+
+### (Migrated from §E.5)
 
 mx_commit_sha: 7b7009e3e
 - Mx determination: SKIP-eligible — classifier fix is purely declarative Go code (transitions.go + drift.go rewrites), no fan_in≥3 functions, no goroutines, no per-entity cross-module routing → Mx tags not required per MX-tag-protocol.md § Tag Necessity Heuristic

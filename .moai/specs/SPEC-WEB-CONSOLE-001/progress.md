@@ -150,7 +150,9 @@ sync_rationale: >
   Authored-By-Agent trailer omitted = legacy silent SKIP to avoid OwnershipTransitionInvalid).
 ```
 
-## §E.5 Mx-phase Audit-Ready Signal
+## §E.4 Audit-Ready Signal
+
+### (Migrated from §E.5)
 
 ```yaml
 mx_commit_sha: 6f47818d8

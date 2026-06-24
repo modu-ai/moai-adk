@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-plan
 description: >
   Creates comprehensive SPEC documents using GEARS notation (EARS retained
   as legacy reference, 6-month backward-compat window) as the first step
@@ -27,7 +26,7 @@ triggers:
   phases: ["plan"]
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 <!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai plan Phase <N> <enter|exit> -->
 
@@ -131,7 +130,7 @@ This signal marks the plan artifacts as finalized and enables the Plan Audit Gat
 When --team flag is provided or auto-selected, the plan phase MUST switch to team orchestration:
 
 1. Verify prerequisites: workflow.team.enabled == true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var is set
-2. If prerequisites met: Read ${CLAUDE_SKILL_DIR}/team/plan.md and execute the team workflow (TeamCreate with researcher + analyst + architect)
+2. If prerequisites met: Read ${CLAUDE_SKILL_DIR}/team/plan.md and execute the team workflow (spawn researcher + analyst + architect via Agent(name=...) — the team forms implicitly on first spawn)
 3. If prerequisites NOT met: Warn user then fallback to standard sub-agent mode (manager-spec)
 
 Team composition: researcher (haiku) + analyst (inherit) + architect (inherit)
@@ -154,4 +153,4 @@ Changes: Added test scenarios, Phase 0.9 JIT Language Detection.
 
 ## Sentinel Error Keys
 
-CI guards in `internal/template/agentless_audit_test.go` enforce the literal `MODE_PIPELINE_ONLY_UTILITY` sentinel remains present in this skill body (REQ-WF003-016 ↔ REQ-WF004-014, shared with `design.md`). Passing `--mode pipeline` to `/moai plan` is rejected because plan is a Multi-Agent subcommand; pipeline mode is reserved for utility subcommands per SPEC-V3R2-WF-004.
+A CI audit verifies the literal `MODE_PIPELINE_ONLY_UTILITY` sentinel remains present in this skill body (shared with `design.md`). Passing `--mode pipeline` to `/moai plan` is rejected because plan is a Multi-Agent subcommand; pipeline mode is reserved for utility subcommands.

@@ -77,7 +77,7 @@ flowchart TD
     Fix --> Verify["Phase 5: 验证<br/>检查修复结果"]
     Verify --> Check{完成<br/>条件满足?}
     Check -->|否| Diag
-    Check -->|是| Done["输出完成标记"]
+    Check -->|是| Done["说明循环已完成"]
 ```
 
 ### Phase 1: 并行诊断

@@ -152,9 +152,7 @@ docs_site_updated: false
 
 **Rationale**: 5 HIGH security/concurrency defects fixed entirely within internal packages with no user-facing CLI/API/config change. The 1 additive `tmux.SessionManager.InjectSensitiveEnv(ctx, key, value) error` interface method is internal to the `internal/tmux` package (not exported, not part of public API surface). README and docs-site 4-locale do not require updates (internal hardening, not a user-facing feature announcement). CHANGELOG entry added to `[Unreleased] ### Security` subsection per the SSOT at `.moai/specs/SPEC-SEC-HARDEN-001/acceptance.md` AC count 27 automated + 1 observational = 28 total.
 
----
-
-## §E.5 — Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-06-13
@@ -189,3 +187,5 @@ The §E.3 pre-existing-failure blocker (`internal/web` 2 sentinel test failures 
 ### Multi-session race note (L52 race-absorbed → reconciled)
 
 During this Mx-phase, a parallel session completed the full SPEC-GITSTRATEGY-SAVE-ISOLATION-001 lifecycle (plan→sync→Mx→backfill) based on the D1 fix `f25772d1c`. The momentary divergence (origin/main D1 fix vs local main GITSTRATEGY plan, merge-base `c14fea54b`) was scope-disjoint (`internal/permission` vs `.moai/specs` + `internal/web`) and reconciled to a clean linear local-ahead state; both SPECs pushed together per user decision. Combined-tree integrity verified (whole-tree build exit 0, SEC-HARDEN 5 packages green, D1 8-case adversarial deny, internal/web ok).
+
+---

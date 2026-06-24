@@ -30,7 +30,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/runtime/gobin"
 	"github.com/modu-ai/moai-adk/internal/shell"
-	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -86,7 +85,7 @@ func init() {
 
 	updateCmd.Flags().Bool("check", false, "Check if a newer binary version is available (informational)")
 	updateCmd.Flags().Bool("shell-env", false, "Configure shell environment variables for Claude Code")
-	updateCmd.Flags().BoolP("config", "c", false, "Edit project configuration (same as init wizard)")
+	updateCmd.Flags().BoolP("config", "c", false, "Re-run the init wizard to edit project configuration (no template sync; bare 'moai update' syncs templates)")
 	updateCmd.Flags().Bool("force", false, "Force update: bypass version-match skip, force backup+merge, and overwrite archive drift (backed up to .moai/archive/skills/v2.16-drift-<UTC-timestamp>/)")
 	updateCmd.Flags().Bool("yes", false, "Auto-confirm all prompts (CI/CD mode)")
 	updateCmd.Flags().Bool("templates-only", false, "Skip binary update, sync templates only")
@@ -107,9 +106,20 @@ func init() {
 // templates with the project directory. If a newer binary is installed,
 // the process re-execs itself so the latest templates are used.
 //
+// Reconfigure vs template sync (SPEC-V3R6-CLI-CONFIG-INTEGRITY-001 REQ-CCI-001/002):
+//
+//	`moai update` (bare)    → binary update + template sync (3-way merge).
+//	`moai update -c`        → short-circuits to runInitWizard(cmd, true) and
+//	                          performs NO template sync. It re-runs the init
+//	                          wizard to edit project configuration (model
+//	                          policy, dev mode, git strategy, credentials).
+//	                          See the `if editConfig { ... }` block in this
+//	                          function for the short-circuit.
+//
 // Flags:
 //
-//	-c, --config: Edit project configuration (same as init wizard)
+//	-c, --config: Re-run the init wizard to edit project configuration; does NOT
+//	              synchronize templates (use bare `moai update` for that).
 //	--check: Check if a newer binary version is available (informational)
 //	--force: Force update with these effects (SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001):
 //	  * bypass version-match skip-sync branch (template sync always runs)
@@ -649,6 +659,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				goBinPath := detectGoBinPathForUpdate(homeDir)
 				tmplCtx := template.NewTemplateContext(
 					template.WithGoBinPath(goBinPath),
+					template.WithResolvedMoaiPath(resolveMoaiExecutable()),
 					template.WithHomeDir(homeDir),
 					template.WithSmartPATH(template.BuildSmartPATH()),
 					template.WithPlatform(runtime.GOOS),
@@ -687,6 +698,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				goBinPath := detectGoBinPathForUpdate(homeDir)
 				tmplCtx := template.NewTemplateContext(
 					template.WithGoBinPath(goBinPath),
+					template.WithResolvedMoaiPath(resolveMoaiExecutable()),
 					template.WithHomeDir(homeDir),
 					template.WithSmartPATH(template.BuildSmartPATH()),
 					template.WithPlatform(runtime.GOOS),
@@ -1186,9 +1198,14 @@ func analyzeFiles(templates []string, projectRoot string) []merge.FileAnalysis {
 // isUserAreaPath returns true when the relative project path belongs to the
 // user customization area and must never be overwritten or deleted by moai update.
 //
-// Protected patterns (SPEC-V3R3-HARNESS-001 REQ-HARNESS-004):
-//   - .claude/skills/my-harness-*   (user harness skill directories)
-//   - .claude/agents/my-harness/    (user harness agent directory)
+// Protected patterns (SPEC-V3R3-HARNESS-001 REQ-HARNESS-004 + SPEC-V3R6-HARNESS-NAMESPACE-V2-001):
+//   - .claude/skills/harness-*       (user harness skill directories — canonical, doctrine §24.1)
+//   - .claude/skills/my-harness-*    (user harness skill directories — legacy, REQ-HNS-005 backward-compat)
+//   - .claude/agents/harness/        (user harness agent directory — canonical)
+//   - .claude/agents/my-harness/     (user harness agent directory — legacy, REQ-HNS-005 backward-compat)
+//
+// REQ-HNS-004: exact HasPrefix comparison (never Contains) so moai-harness-* is not misclassified.
+// REQ-HNS-005: legacy my-harness-* retained during the deprecation window (sunset = follow-up chore SPEC).
 //
 // This function is called by cleanMoaiManagedPaths before any remove operation
 // and by the template overlay write loop to skip user-owned paths.
@@ -1196,13 +1213,36 @@ func isUserAreaPath(rel string) bool {
 	// Normalize to forward slashes for consistent matching on all platforms.
 	norm := strings.ReplaceAll(rel, "\\", "/")
 
-	// .claude/skills/my-harness-* (any sub-path inside)
+	// .claude/skills/harness-* (canonical user-owned, any sub-path inside)
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-NAMESPACE-V2-001 M1 — canonical harness-* recognition.
+	if strings.HasPrefix(norm, ".claude/skills/harness-") {
+		return true
+	}
+
+	// .claude/skills/my-harness-* (legacy user-owned, REQ-HNS-005 backward-compat)
 	if strings.HasPrefix(norm, ".claude/skills/my-harness-") {
 		return true
 	}
 
-	// .claude/agents/my-harness/ (any sub-path inside)
+	// .claude/agents/harness/ (canonical user-owned, any sub-path inside)
+	if strings.HasPrefix(norm, ".claude/agents/harness/") || norm == ".claude/agents/harness" {
+		return true
+	}
+
+	// .claude/agents/my-harness/ (legacy user-owned, REQ-HNS-005 backward-compat)
 	if strings.HasPrefix(norm, ".claude/agents/my-harness/") || norm == ".claude/agents/my-harness" {
+		return true
+	}
+
+	// .claude/commands/harness/ (SPEC-V3R6-HARNESS-V4-001 M1 — user-generated /harness:<name> commands, AC-HV4-010a)
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness command subdirectory user-owned.
+	if strings.HasPrefix(norm, ".claude/commands/harness/") || norm == ".claude/commands/harness" {
+		return true
+	}
+
+	// .claude/workflows/harness-*.js (SPEC-V3R6-HARNESS-V4-001 M1 — user-generated Runner Workflows, AC-HV4-010b)
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness Runner Workflow user-owned.
+	if strings.HasPrefix(norm, ".claude/workflows/harness-") {
 		return true
 	}
 
@@ -1218,7 +1258,8 @@ func isUserAreaPath(rel string) bool {
 // authoritative user-owned check used by backup and sentinel logic.
 //
 // Protected patterns:
-//   - .claude/skills/my-harness-*    (REQ-UNP-001)
+//   - .claude/skills/harness-*       (REQ-HNS-001 canonical, doctrine §24.1)
+//   - .claude/skills/my-harness-*    (REQ-UNP-001 legacy, REQ-HNS-005 backward-compat)
 //   - .claude/agents/harness/        (REQ-UNP-002 — overrides isMoaiManaged classification)
 //   - .moai/harness/                  (REQ-UNP-003)
 //   - .claude/skills/<custom>/        when prefix != "moai-" and name != "moai" (REQ-UNP-009)
@@ -1233,7 +1274,13 @@ func isUserOwnedNamespace(rel string) bool {
 	// Normalize to forward slashes for consistent matching on all platforms (NFR-UNP-003).
 	norm := strings.ReplaceAll(rel, "\\", "/")
 
-	// REQ-UNP-001: user harness skills
+	// REQ-HNS-001: user harness skills (canonical harness-* prefix, doctrine §24.1)
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-NAMESPACE-V2-001 M1 — canonical harness-* recognition.
+	if strings.HasPrefix(norm, ".claude/skills/harness-") {
+		return true
+	}
+
+	// REQ-UNP-001 / REQ-HNS-005: legacy my-harness-* user harness skills (backward-compat)
 	if strings.HasPrefix(norm, ".claude/skills/my-harness-") {
 		return true
 	}
@@ -1245,6 +1292,18 @@ func isUserOwnedNamespace(rel string) bool {
 
 	// REQ-UNP-003: harness extension directory
 	if norm == ".moai/harness" || strings.HasPrefix(norm, ".moai/harness/") {
+		return true
+	}
+
+	// SPEC-V3R6-HARNESS-V4-001 M1 (AC-HV4-010a): .claude/commands/harness/ user-generated /harness:<name> commands.
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness command subdirectory user-owned.
+	if norm == ".claude/commands/harness" || strings.HasPrefix(norm, ".claude/commands/harness/") {
+		return true
+	}
+
+	// SPEC-V3R6-HARNESS-V4-001 M1 (AC-HV4-010b): .claude/workflows/harness-*.js user-generated Runner Workflows.
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness Runner Workflow user-owned.
+	if strings.HasPrefix(norm, ".claude/workflows/harness-") {
 		return true
 	}
 
@@ -2724,18 +2783,9 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 	return nil
 }
 
-// allStatuslineSegments lists all supported statusline segment names in display
-// order. Aliases the canonical SSOT (statusline.CanonicalSegments) so the CLI
-// and the profile write path share one segment key set (SLR-3 / SLM-5).
-var allStatuslineSegments = statusline.CanonicalSegments
-
-// presetToSegments converts a statusline preset name and optional custom segment
-// map into a full segment-to-enabled map. Thin delegation to the canonical SSOT
-// statusline.PresetToSegments so preset expansion logic lives in exactly one
-// place (the CLI render path and the profile write path share it).
-func presetToSegments(preset string, custom map[string]bool) map[string]bool {
-	return statusline.PresetToSegments(preset, custom)
-}
+// allStatuslineSegments removed (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001): the
+// presetToSegments wrapper that consumed it was deleted, leaving this alias
+// unused. The canonical segment SSOT remains statusline.CanonicalSegments.
 
 // settingsLocalEnv represents the structure of .claude/settings.local.json.
 type settingsLocalEnv struct {
@@ -3015,6 +3065,19 @@ func execCommand(name string, args ...string) (string, error) {
 // REQ-V3R2-RT-007-001: deduplicated via the gobin.Detect helper.
 func detectGoBinPathForUpdate(homeDir string) string {
 	return gobin.Detect(homeDir)
+}
+
+// resolveMoaiExecutable returns the running binary's own resolved executable path
+// via os.Executable(), or "" when it errors. The running binary IS the installed
+// moai binary, so this resolves the installer location (e.g. on Windows) even when
+// that directory is not on PATH. An empty result leaves the resolved-executable
+// branch out of the rendered status_line.sh (graceful degradation).
+func resolveMoaiExecutable() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	return exe
 }
 
 // readHookOptInEnabled reads the SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 master

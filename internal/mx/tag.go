@@ -23,6 +23,12 @@ const (
 
 	// MXLegacy marks code without SPEC coverage.
 	MXLegacy TagKind = "LEGACY"
+
+	// MXDebt marks a deliberate, working simplification with a named
+	// ceiling (@MX:CEILING) and an upgrade trigger (@MX:UPGRADE).
+	// Distinct from MXTodo: DEBT is complete and works within its ceiling;
+	// it is resolved when its @MX:UPGRADE trigger fires, not when work completes.
+	MXDebt TagKind = "DEBT"
 )
 
 // Tag represents a single @MX tag found in source code.
@@ -41,6 +47,11 @@ type Tag struct {
 
 	// Reason is the @MX:REASON sub-line content (required for WARN and ANCHOR).
 	Reason string `json:"reason,omitempty"`
+
+	// RotRisk flags a DEBT tag whose @MX:UPGRADE trigger is absent.
+	// Value "no-trigger" means the simplification has no exit condition and
+	// silently rots; empty string means a trigger is present (omitted in JSON).
+	RotRisk string `json:"rotRisk,omitempty"`
 
 	// AnchorID is the unique identifier for ANCHOR tags (used by resolver).
 	AnchorID string `json:"anchorId,omitempty"`

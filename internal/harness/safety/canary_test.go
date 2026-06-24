@@ -44,7 +44,7 @@ func TestEvaluateCanary_PassesWhenNoDrop(t *testing.T) {
 		makeSession("s3", 0.91, 0.90, 0.85),
 	}
 
-	proposal := makeProposal("p1", ".claude/skills/my-harness-plugin/SKILL.md")
+	proposal := makeProposal("p1", ".claude/skills/harness-plugin/SKILL.md")
 
 	result, err := EvaluateCanary(proposal, sessions)
 	if err != nil {
@@ -74,7 +74,7 @@ func TestEvaluateCanary_RejectsWhenDropExceedsThreshold(t *testing.T) {
 	// Simulate a proposal that lowers the score via its target path.
 	// Internally the canary computes the projected score from the modified proposal.
 	// degradingProposal is a proposal that induces lower effectiveness.
-	proposal := makeProposal("p-degrade", ".claude/skills/my-harness-bad/SKILL.md")
+	proposal := makeProposal("p-degrade", ".claude/skills/harness-bad/SKILL.md")
 	// To signal "this proposal is degrading" to the canary, set NewValue to empty.
 	proposal.NewValue = ""
 	proposal.FieldKey = ""

@@ -161,14 +161,17 @@ func TestAudit_JSONSchema(t *testing.T) {
 }
 
 // AC-LSG-009 — Y_Y_Y_Y_StatusDrift detection: V3R6 with all phase markers + SHAs but status != completed.
-func TestAudit_Y4StatusDriftDetection(t *testing.T) {
+// SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-019 — SyncStatusDrift (re-anchored from
+// Y_Y_Y_Y_StatusDrift): §E.2 + §E.4 + sync_commit_sha present (sync complete) but
+// spec.md status != completed. The new 3-marker predicate (4-section layout).
+func TestAudit_SyncStatusDriftDetection(t *testing.T) {
 	t.Parallel()
 
 	fixtures := []auditFixtureSpec{
 		{
 			id:         "SPEC-V3R6-DRIFT-001",
 			specMD:     makeSpecMD("SPEC-V3R6-DRIFT-001", "implemented", "V3R6", "2026-05-25"),
-			progressMD: "## §E.2 Sync\nsync_commit_sha: abc1234\n## §E.5 Mx\nmx_commit_sha: def5678\n",
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha: abc1234\n",
 		},
 	}
 
@@ -180,10 +183,10 @@ func TestAudit_Y4StatusDriftDetection(t *testing.T) {
 
 	found := false
 	for _, f := range result.DriftFindings {
-		if f.FindingType == FindingY_Y_Y_Y_StatusDrift {
+		if f.FindingType == FindingSyncStatusDrift {
 			found = true
 			if f.Severity != "MUST-FIX" {
-				t.Errorf("Y_Y_Y_Y_StatusDrift severity = %q, want MUST-FIX", f.Severity)
+				t.Errorf("SyncStatusDrift severity = %q, want MUST-FIX", f.Severity)
 			}
 			if !strings.Contains(f.Remediation, "moai spec close") {
 				t.Errorf("Remediation should reference moai spec close; got %q", f.Remediation)
@@ -194,19 +197,19 @@ func TestAudit_Y4StatusDriftDetection(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Error("Y_Y_Y_Y_StatusDrift finding not emitted for drift fixture")
+		t.Error("SyncStatusDrift finding not emitted for 4-section drift fixture (§E.2 + §E.4 + sync_sha, status != completed)")
 	}
 }
 
-// AC-LSG-009 — Y_N_N_Y drift: sync present, mx absent + status != completed.
-func TestAudit_Y_N_N_Y_DriftDetection(t *testing.T) {
+// REQ-LR-019 — completed SPEC with full 3-marker predicate: no drift finding (clean end state).
+func TestAudit_SyncStatusDrift_CompletedClean(t *testing.T) {
 	t.Parallel()
 
 	fixtures := []auditFixtureSpec{
 		{
-			id:         "SPEC-V3R6-Y_N_N_Y-001",
-			specMD:     makeSpecMD("SPEC-V3R6-Y_N_N_Y-001", "implemented", "V3R6", "2026-05-25"),
-			progressMD: "## §E.2 Sync\nsync_commit_sha: abc\n", // mx absent
+			id:         "SPEC-V3R6-CLEAN-001",
+			specMD:     makeSpecMD("SPEC-V3R6-CLEAN-001", "completed", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha: abc1234\n",
 		},
 	}
 	baseDir := buildAuditFixture(t, fixtures)
@@ -214,26 +217,47 @@ func TestAudit_Y_N_N_Y_DriftDetection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Audit() error = %v", err)
 	}
-	found := false
+	for _, f := range result.DriftFindings {
+		if f.FindingType == FindingSyncStatusDrift && f.SpecID == "SPEC-V3R6-CLEAN-001" {
+			t.Errorf("SyncStatusDrift must NOT fire for completed SPEC; got %+v", f)
+		}
+	}
+}
+
+// REQ-LR-019 (D2) — Y_N_N_Y is RETIRED. A 4-section V3R6 SPEC (§E.2 present,
+// §E.5 ABSENT, status=in-progress) must NOT emit a Y_N_N_Y finding. Under the old
+// code this was the catalog-wide false-positive storm the redesign eliminates.
+func TestAudit_Y_N_N_Y_NotEmitted(t *testing.T) {
+	t.Parallel()
+
+	fixtures := []auditFixtureSpec{
+		{
+			id:         "SPEC-V3R6-4SECTION-001",
+			specMD:     makeSpecMD("SPEC-V3R6-4SECTION-001", "in-progress", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha:\n", // §E.5 absent, sync_sha empty
+		},
+	}
+	baseDir := buildAuditFixture(t, fixtures)
+	result, err := Audit(AuditOptions{BaseDir: baseDir})
+	if err != nil {
+		t.Fatalf("Audit() error = %v", err)
+	}
 	for _, f := range result.DriftFindings {
 		if f.FindingType == FindingY_N_N_Y {
-			found = true
+			t.Errorf("Y_N_N_Y finding must NOT be emitted under the 3-phase lifecycle (retired per REQ-LR-019); got %+v", f)
 		}
-	}
-	if !found {
-		t.Error("Y_N_N_Y finding not emitted")
 	}
 }
 
-// AC-LSG-009 — Y_Y_N_Y drift: both sections present but mx_commit_sha missing.
-func TestAudit_Y_Y_N_Y_DriftDetection(t *testing.T) {
+// REQ-LR-019 (D2) — Y_Y_N_Y is RETIRED. mx_commit_sha is no longer a drift dimension.
+func TestAudit_Y_Y_N_Y_NotEmitted(t *testing.T) {
 	t.Parallel()
 
 	fixtures := []auditFixtureSpec{
 		{
-			id:         "SPEC-V3R6-Y_Y_N_Y-001",
-			specMD:     makeSpecMD("SPEC-V3R6-Y_Y_N_Y-001", "implemented", "V3R6", "2026-05-25"),
-			progressMD: "## §E.2 Sync\nsync_commit_sha: abc\n## §E.5 Mx\nmx_commit_sha:\n", // empty mx
+			id:         "SPEC-V3R6-LEGACYMX-001",
+			specMD:     makeSpecMD("SPEC-V3R6-LEGACYMX-001", "in-progress", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Sync\nsync_commit_sha: abc\n## §E.5 Mx\nmx_commit_sha:\n", // §E.5 present, mx empty
 		},
 	}
 	baseDir := buildAuditFixture(t, fixtures)
@@ -241,14 +265,10 @@ func TestAudit_Y_Y_N_Y_DriftDetection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Audit() error = %v", err)
 	}
-	found := false
 	for _, f := range result.DriftFindings {
 		if f.FindingType == FindingY_Y_N_Y {
-			found = true
+			t.Errorf("Y_Y_N_Y finding must NOT be emitted under the 3-phase lifecycle (retired per REQ-LR-019); got %+v", f)
 		}
-	}
-	if !found {
-		t.Error("Y_Y_N_Y finding not emitted")
 	}
 }
 
@@ -440,3 +460,153 @@ func TestAudit_EmptyDriftFindingsSerialize(t *testing.T) {
 		t.Errorf("empty drift_findings should serialize as [], got: %s", jsonBytes)
 	}
 }
+
+// SPEC-V3R6-ORCH-IGGDA-001 M5 — FilterSpec restricts drift_findings to a single
+// named SPEC-ID. Additive to FilterEra: FilterEra restricts by era bucket,
+// FilterSpec restricts by exact SPEC-ID match. The two MAY compose (filter to
+// one SPEC within one era). When FilterSpec matches no SPEC, the result has
+// empty drift_findings (graceful, not an error).
+func TestAudit_FilterSpec(t *testing.T) {
+	t.Parallel()
+
+	fixtures := []auditFixtureSpec{
+		{
+			id:         "SPEC-V3R6-DRIFT-001",
+			specMD:     makeSpecMD("SPEC-V3R6-DRIFT-001", "implemented", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha: abc1234\n",
+		},
+		{
+			id:         "SPEC-V3R6-DRIFT-002",
+			specMD:     makeSpecMD("SPEC-V3R6-DRIFT-002", "implemented", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha: def5678\n",
+		},
+		{
+			// Grandfathered V3R2 SPEC — excluded from drift detection regardless of filter.
+			id:     "SPEC-V3R2-001",
+			specMD: makeSpecMD("SPEC-V3R2-001", "implemented", "", "2026-02-15"),
+		},
+	}
+	baseDir := buildAuditFixture(t, fixtures)
+
+	// Filter to SPEC-V3R6-DRIFT-001 only.
+	result, err := Audit(AuditOptions{BaseDir: baseDir, FilterSpec: "SPEC-V3R6-DRIFT-001"})
+	if err != nil {
+		t.Fatalf("Audit() error = %v", err)
+	}
+
+	// Every finding MUST belong to SPEC-V3R6-DRIFT-001 (no leakage from -002 or V3R2).
+	if len(result.DriftFindings) == 0 {
+		t.Fatal("FilterSpec=SPEC-V3R6-DRIFT-001 returned 0 findings; expected the drift finding for that SPEC")
+	}
+	for _, f := range result.DriftFindings {
+		if f.SpecID != "SPEC-V3R6-DRIFT-001" {
+			t.Errorf("FilterSpec leaked finding for SpecID=%q; want SPEC-V3R6-DRIFT-001 only", f.SpecID)
+		}
+	}
+
+	// The drift finding for SPEC-V3R6-DRIFT-001 MUST be present (SyncStatusDrift MUST-FIX).
+	found := false
+	for _, f := range result.DriftFindings {
+		if f.SpecID == "SPEC-V3R6-DRIFT-001" && f.FindingType == FindingSyncStatusDrift {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("FilterSpec=SPEC-V3R6-DRIFT-001 did not return the SyncStatusDrift finding for that SPEC")
+	}
+}
+
+// FilterSpec matching no SPEC returns empty drift_findings (graceful, not error).
+func TestAudit_FilterSpec_NoMatch(t *testing.T) {
+	t.Parallel()
+
+	fixtures := []auditFixtureSpec{
+		{
+			id:         "SPEC-V3R6-DRIFT-001",
+			specMD:     makeSpecMD("SPEC-V3R6-DRIFT-001", "implemented", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha: abc1234\n",
+		},
+	}
+	baseDir := buildAuditFixture(t, fixtures)
+
+	result, err := Audit(AuditOptions{BaseDir: baseDir, FilterSpec: "SPEC-NONEXISTENT-999"})
+	if err != nil {
+		t.Fatalf("Audit() error = %v", err)
+	}
+	if len(result.DriftFindings) != 0 {
+		t.Errorf("FilterSpec=SPEC-NONEXISTENT-999 should return 0 findings; got %d", len(result.DriftFindings))
+	}
+}
+
+// FilterSpec empty string = no filter (all SPECs audited). This is the backward-
+// compatible default — existing callers that omit FilterSpec see no behavior change.
+func TestAudit_FilterSpec_EmptyIsNoFilter(t *testing.T) {
+	t.Parallel()
+
+	fixtures := []auditFixtureSpec{
+		{
+			id:         "SPEC-V3R6-DRIFT-001",
+			specMD:     makeSpecMD("SPEC-V3R6-DRIFT-001", "implemented", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha: abc1234\n",
+		},
+		{
+			id:         "SPEC-V3R6-DRIFT-002",
+			specMD:     makeSpecMD("SPEC-V3R6-DRIFT-002", "implemented", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha: def5678\n",
+		},
+	}
+	baseDir := buildAuditFixture(t, fixtures)
+
+	result, err := Audit(AuditOptions{BaseDir: baseDir}) // FilterSpec empty
+	if err != nil {
+		t.Fatalf("Audit() error = %v", err)
+	}
+
+	// Both SPECs' findings present (no filter applied).
+	ids := map[string]bool{}
+	for _, f := range result.DriftFindings {
+		ids[f.SpecID] = true
+	}
+	if !ids["SPEC-V3R6-DRIFT-001"] || !ids["SPEC-V3R6-DRIFT-002"] {
+		t.Errorf("empty FilterSpec should return findings for both SPECs; got %v", ids)
+	}
+}
+
+// FilterSpec must also gate the AuditError branch (per-spec errors). A SPEC
+// directory whose auditSpec returns an error (e.g., missing spec.md) MUST NOT
+// leak its AuditError finding past a FilterSpec that names a different SPEC.
+// Regression for the top-of-loop filter placement (M5 correction discovered
+// during M6 verification: the original lower placement leaked AuditError).
+func TestAudit_FilterSpec_GatesAuditError(t *testing.T) {
+	t.Parallel()
+
+	fixtures := []auditFixtureSpec{
+		{
+			id:         "SPEC-V3R6-DRIFT-001",
+			specMD:     makeSpecMD("SPEC-V3R6-DRIFT-001", "implemented", "V3R6", "2026-05-25"),
+			progressMD: "## §E.2 Run-phase Evidence\n## §E.4 Sync-phase Audit-Ready Signal\nsync_commit_sha: abc1234\n",
+		},
+		{
+			// Directory-only entry — no spec.md. This produces an AuditError
+			// when audited. FilterSpec targeting the DRIFT-001 SPEC must NOT
+			// surface this AuditError.
+			id:        "SPEC-BROKEN-NOSPECMD-001",
+			specMD:    "", // empty = buildAuditFixture skips spec.md write
+			progressMD: "",
+		},
+	}
+	baseDir := buildAuditFixture(t, fixtures)
+
+	result, err := Audit(AuditOptions{BaseDir: baseDir, FilterSpec: "SPEC-V3R6-DRIFT-001"})
+	if err != nil {
+		t.Fatalf("Audit() error = %v", err)
+	}
+
+	for _, f := range result.DriftFindings {
+		if f.SpecID != "SPEC-V3R6-DRIFT-001" {
+			t.Errorf("FilterSpec leaked finding for SpecID=%q (e.g. AuditError from a directory-only entry); want SPEC-V3R6-DRIFT-001 only", f.SpecID)
+		}
+	}
+}
+
+

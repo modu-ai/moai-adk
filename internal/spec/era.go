@@ -7,7 +7,7 @@
 //   - V2.x       Pre-2026-02 — no progress.md
 //   - V3R2-R4    2026-02 ~ 2026-03 — progress.md introduced; no sync_commit_sha
 //   - V3R5       2026-03 ~ 2026-04 — sync section emerges; sync_commit_sha not enforced
-//   - V3R6       2026-04 ~ present — 4-phase modern standard
+//   - V3R6       2026-04 ~ present — 3-phase modern standard (plan/run/sync)
 //   - unclassified — auto-detection ambiguous (H-6 fallback)
 //
 // Grandfather clause (design §C.3): V2.x / V3R2-R4 / V3R5 SPECs are protected
@@ -30,9 +30,14 @@ const (
 	EraV2x Era = "V2.x"
 	// EraV3R2R4 — early-V3 SPECs with progress.md but no §E.* markers (H-2)
 	EraV3R2R4 Era = "V3R2-R4"
-	// EraV3R5 — V3R5 SPECs with §E.2 sync but missing sync_commit_sha (H-3)
+	// EraV3R5 — V3R5 SPECs that have the §E.2 run-evidence start marker but are
+	// missing sync_commit_sha (H-3). Classification is string-presence-based: the
+	// var name hasSyncSection is a misnomer — §E.2 marks the §E-section progress
+	// structure START (run-evidence), not the sync phase (sync lives at §E.4).
 	EraV3R5 Era = "V3R5"
-	// EraV3R6 — V3R6 SPECs with full §E.2 + §E.5 + both *_commit_sha fields (H-4)
+	// EraV3R6 — V3R6 SPECs with §E.2 + §E.4 + sync_commit_sha (new H-4, REQ-LR-005),
+	// or via the legacy §E.2 + §E.5 + both commit_sha predicate during the migration
+	// window (H-4-legacy, REQ-LR-006).
 	EraV3R6 Era = "V3R6"
 	// EraUnclassified — ambiguous, no heuristic matched (H-6)
 	EraUnclassified Era = "unclassified"
@@ -88,10 +93,29 @@ type EraSignals struct {
 //	H-override: FrontmatterEra non-empty + valid → returned verbatim
 //	H-1:        ProgressMDExists == false → V2.x
 //	H-2:        progress.md present but no §E.{2,3,4,5} markers → V3R2-R4
-//	H-3:        §E.2 present but sync_commit_sha empty/missing → V3R5
-//	H-4:        §E.2 + §E.5 present AND sync_commit_sha + mx_commit_sha non-empty → V3R6
+//	H-3:        §E.2 run-evidence start marker present but sync_commit_sha empty/missing → V3R5
+//	H-4:        §E.2 + §E.4 present AND sync_commit_sha non-empty → V3R6 (new H-4, REQ-LR-005)
+//	H-4-legacy: §E.2 + §E.5 present AND sync_commit_sha + mx_commit_sha non-empty → V3R6
+//	            (REQ-LR-006 dual-predicate migration window — legacy 5-section layout)
 //	H-5:        H-4 ambiguous + (phase ~ v3.0|v3R6 OR created >= 2026-04-01) → V3R6
 //	H-6:        no heuristic matched → unclassified
+//
+// The new H-4 predicate (§E.2 + §E.4 + sync_commit_sha) reflects the 3-phase
+// lifecycle restoration (SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-005): §E.4 is
+// the sync-phase marker, and sync_commit_sha is the sole required commit SHA.
+// The legacy H-4-legacy fallback (§E.2 + §E.5 + both SHAs) preserves V3R6
+// classification for SPECs still carrying the pre-redesign 5-section layout
+// during the migration window (REQ-LR-006); it is defense-in-depth plus
+// classification-rationale precision (the re-derived H-6 at-risk set is empty
+// for the current catalog — every V3R6 SPEC is caught by H-5 even without the
+// window — but an explicit predicate is a stronger signal than the H-5 date
+// heuristic, and the catalog is moving).
+//
+// Detection is string-presence-based (hasProgressMarker): hasSyncSection tests
+// the §E.2 run-evidence start marker (the var name is a historical misnomer
+// retained for call-site stability — §E.2 marks run-evidence, not sync);
+// hasSyncMarker tests §E.4 (the actual sync phase); hasMxSection tests §E.5
+// (the legacy Mx-completion marker).
 func ClassifyEra(signals EraSignals) (Era, string) {
 	// H-override: explicit frontmatter `era:` field wins
 	if signals.FrontmatterEra != "" {
@@ -106,8 +130,11 @@ func ClassifyEra(signals EraSignals) (Era, string) {
 		return EraV2x, "H-1 (progress.md absent)"
 	}
 
-	// Parse progress.md signals
+	// Parse progress.md signals.
+	// hasSyncSection is a historical misnomer: it tests §E.2 (run-evidence start),
+	// not the sync phase (which lives at §E.4 — tested by hasSyncMarker below).
 	hasSyncSection := hasProgressMarker(signals.ProgressMDContent, "§E.2")
+	hasSyncMarker := hasProgressMarker(signals.ProgressMDContent, "§E.4")
 	hasMxSection := hasProgressMarker(signals.ProgressMDContent, "§E.5")
 	syncSHA := extractProgressField(signals.ProgressMDContent, "sync_commit_sha")
 	mxSHA := extractProgressField(signals.ProgressMDContent, "mx_commit_sha")
@@ -117,14 +144,27 @@ func ClassifyEra(signals EraSignals) (Era, string) {
 		return EraV3R2R4, "H-2 (progress.md without §E.* markers)"
 	}
 
-	// H-3: §E.2 present but sync_commit_sha empty/missing → V3R5
+	// H-3: §E.2 run-evidence start marker present but sync_commit_sha empty/missing → V3R5
+	// (hasSyncSection tests literal §E.2 string presence — the run-evidence start
+	// marker — not the sync phase, which lives at §E.4.)
 	if hasSyncSection && syncSHA == "" {
 		return EraV3R5, "H-3 (§E.2 present, sync_commit_sha missing)"
 	}
 
-	// H-4: §E.2 + §E.5 + both *_commit_sha non-empty → V3R6
+	// H-4 (new H-4, REQ-LR-005): §E.2 run-evidence + §E.4 sync marker + sync_commit_sha → V3R6.
+	// This is the canonical 3-phase predicate (plan/run/sync); §E.5 + mx_commit_sha
+	// are no longer required.
+	if hasSyncSection && hasSyncMarker && syncSHA != "" {
+		return EraV3R6, "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+	}
+
+	// H-4-legacy (REQ-LR-006 dual-predicate migration window): SPECs authored before
+	// the redesign still carry §E.5 + mx_commit_sha. Treat them as V3R6 during the
+	// migration window so they classify via an explicit predicate (precise rationale)
+	// rather than falling through to the weaker H-5 date heuristic. The window is
+	// defense-in-depth; the re-derived H-6 at-risk set is empty for the current catalog.
 	if hasSyncSection && hasMxSection && syncSHA != "" && mxSHA != "" {
-		return EraV3R6, "H-4 (§E.2 + §E.5 + both commit_sha present)"
+		return EraV3R6, "H-4-legacy (§E.2 + §E.5 + both commit_sha — migration window)"
 	}
 
 	// H-5: tie-breaker via phase or created date

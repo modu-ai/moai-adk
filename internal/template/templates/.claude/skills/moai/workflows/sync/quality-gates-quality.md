@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-sync-quality-gates-quality
 description: "Sync Phase 0.5~0.7 — Quality Verification, Security Scan, MX Tag Validation, and Coverage Analysis with Test Generation."
 user-invocable: false
 metadata:
@@ -7,7 +6,7 @@ metadata:
   phase: "Phase 0.5~0.7: Quality Verification and Coverage"
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 <!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
 
@@ -56,7 +55,7 @@ If any tests fail, use AskUserQuestion:
 
 #### Step 0.5.4: Deep Code Review with Auto-Fix
 
-Agent: manager-quality subagent
+Agent: sync-auditor subagent (independent quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2)
 
 Invoke regardless of project language. Execute multi-perspective code review beyond basic TRUST 5 validation:
 
@@ -67,7 +66,7 @@ Review Perspectives:
 - UX: User flow integrity, error states, accessibility (WCAG/ARIA), breaking changes in public interfaces
 
 Auto-Fix Behavior:
-- If critical issues found: Delegate auto-fix to manager-quality or appropriate expert subagent
+- If critical issues found: Delegate auto-fix to manager-develop or a per-spawn `Agent(general-purpose)` domain specialist (per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C)
 - Re-run review after fix to verify resolution
 - Maximum 3 auto-fix iterations for critical issues before escalating to user
 - Warnings and suggestions are logged in report but do not block pipeline
@@ -103,9 +102,9 @@ Purpose: Run a targeted security audit on changed files before PR creation. Catc
 
 #### Step 0.55.1: Security Analysis
 
-Agent: expert-security subagent
+Agent: per-spawn `Agent(general-purpose)` security reviewer (security whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 9; OR the Stop hook dependency-manifest audit `.claude/hooks/moai/sync-phase-quality-gate.sh`)
 
-Delegate to expert-security with the security workflow (workflows/security.md) in inline mode:
+Delegate to the per-spawn security reviewer with the security workflow (workflows/security.md) in inline mode:
 - Only CRITICAL findings block the sync pipeline
 - HIGH findings are reported as warnings in PR description
 - MEDIUM and LOW findings are logged in sync report
@@ -115,14 +114,14 @@ Delegate to expert-security with the security workflow (workflows/security.md) i
 Audit ALL of the following manifest files present at project root — dependency surface must be checked at every sync to detect drift from transitive vulnerability changes unrelated to this SPEC:
 `go.mod`, `package.json`, `requirements.txt`, `Cargo.toml`, `pyproject.toml`, `Gemfile`, `composer.json`, `mix.exs`, `Package.swift`, `pubspec.yaml`.
 
-When any manifest is detected, invoke `expert-security` for a dependency vulnerability scan of that manifest.
+When any manifest is detected, run a dependency vulnerability scan of that manifest via the Stop hook dependency-manifest audit (`.claude/hooks/moai/sync-phase-quality-gate.sh`) OR a per-spawn `Agent(general-purpose)` security reviewer.
 Rationale: a transitive vulnerability may have been introduced by an unrelated dependency update since the last sync, even if no manifest file was modified in the current SPEC.
 
 #### Step 0.55.2: Security Gate Decision
 
 If CRITICAL findings exist:
 - Present findings via AskUserQuestion:
-  - Fix now (Recommended): Delegate to expert-security subagent for auto-fix, then re-scan
+  - Fix now (Recommended): Delegate to a per-spawn `Agent(general-purpose)` security reviewer for auto-fix, then re-scan
   - Continue with warning: Proceed to Phase 0.6 with security warnings embedded in PR description
   - Abort: Exit sync workflow
 

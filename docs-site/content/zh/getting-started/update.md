@@ -393,7 +393,7 @@ $ moai update --force
     "context7"
   ],
   "companyAnnouncements": [
-    "🗿 MoAI-ADK: 8个专业代理 + 31个技能的SPEC-First DDD",
+    "🗿 MoAI-ADK: 8个专业代理 + 32个技能的SPEC-First DDD",
     "⚡ /moai: 一站式 Plan→Run→Sync 自动化（智能路由）",
     "🌳 moai worktree: 在隔离的工作树环境中并行SPEC开发",
     "🤖 Expert Agents (8): backend, frontend, security, devops, debug, performance, refactoring, testing",

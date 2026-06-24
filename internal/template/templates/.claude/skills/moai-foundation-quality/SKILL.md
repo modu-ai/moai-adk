@@ -4,6 +4,13 @@ description: >
   Code quality orchestrator enforcing TRUST 5 validation, proactive code analysis,
   linting standards, and automated best practices. Use for code review, quality
   gate checks, or TRUST 5 compliance.
+
+when_to_use: >
+  Use for code-quality orchestration: TRUST 5 validation, proactive code
+  analysis, linting standards, coverage targets, pytest, security checks,
+  CI/CD quality gates, code-smell detection, and technical-debt
+  refactoring.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
@@ -22,28 +29,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["quality", "testing", "test", "validation", "trust-5", "best practice", "code review", "linting", "coverage", "pytest", "security", "ci/cd", "quality gate", "proactive", "code smell", "technical debt", "refactoring"]
-  agents:
-    - "manager-quality"
-    - "manager-develop"
-    - "manager-develop"
-    - "expert-security"
-    - "expert-refactoring"
-  phases:
-    - "run"
-    - "sync"
-  languages:
-    - "python"
-    - "javascript"
-    - "typescript"
-    - "java"
-    - "go"
-    - "rust"
-    - "cpp"
-    - "csharp"
 ---
 
 # Enterprise Code Quality Orchestrator

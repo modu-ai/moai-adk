@@ -18,7 +18,7 @@
 // PRESERVE inventory composition per REQ-VVCR-005:
 //   - .moai/specs/                                      (SPEC documents)
 //   - .moai/project/{product,structure,tech}.md         (project docs)
-//   - .claude/skills/my-harness-*                       (user harness skills)
+//   - .claude/skills/harness-*                          (user harness skills — canonical + legacy my-harness-*)
 //   - .claude/agents/harness/                           (user harness agents)
 //   - .claude/agents/local/                             (maintainer agents)
 //   - .claude/commands/  (root files + non-moai subdirs) (user commands)

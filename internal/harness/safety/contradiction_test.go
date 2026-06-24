@@ -14,15 +14,15 @@ func TestDetectContradictions_OverlappingTriggers(t *testing.T) {
 
 	skillTriggers := []SkillTriggers{
 		{
-			SkillPath: ".claude/skills/my-harness-plan/SKILL.md",
+			SkillPath: ".claude/skills/harness-plan/SKILL.md",
 			Keywords:  []string{"plan", "spec", "blueprint"},
 		},
 		{
-			SkillPath: ".claude/skills/my-harness-run/SKILL.md",
+			SkillPath: ".claude/skills/harness-run/SKILL.md",
 			Keywords:  []string{"run", "execute", "plan"}, // "plan" overlaps
 		},
 		{
-			SkillPath: ".claude/skills/my-harness-sync/SKILL.md",
+			SkillPath: ".claude/skills/harness-sync/SKILL.md",
 			Keywords:  []string{"sync", "docs"},
 		},
 	}
@@ -55,15 +55,15 @@ func TestDetectContradictions_NoOverlap(t *testing.T) {
 
 	skillTriggers := []SkillTriggers{
 		{
-			SkillPath: ".claude/skills/my-harness-plan/SKILL.md",
+			SkillPath: ".claude/skills/harness-plan/SKILL.md",
 			Keywords:  []string{"plan", "spec"},
 		},
 		{
-			SkillPath: ".claude/skills/my-harness-run/SKILL.md",
+			SkillPath: ".claude/skills/harness-run/SKILL.md",
 			Keywords:  []string{"run", "execute"},
 		},
 		{
-			SkillPath: ".claude/skills/my-harness-sync/SKILL.md",
+			SkillPath: ".claude/skills/harness-sync/SKILL.md",
 			Keywords:  []string{"sync", "docs"},
 		},
 	}

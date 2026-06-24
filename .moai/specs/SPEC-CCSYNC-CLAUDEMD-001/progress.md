@@ -51,7 +51,14 @@ passing_ac_count: 17
 
 ---
 
-## §E.5 Mx-phase Audit-Ready Signal
+
+Version: 0.1.0
+Status: completed (4-phase close)
+Linked spec: `.moai/specs/SPEC-CCSYNC-CLAUDEMD-001/spec.md`
+
+## §E.4 Audit-Ready Signal
+
+### (Migrated from §E.5)
 
 ```yaml
 mx_phase_ready: true
@@ -60,9 +67,3 @@ mx_commit_sha: "cf7d78a9c7d68e92c2018605448ed6e7cb1024bc"
 mx_status: ready
 four_phase_close: true
 ```
-
----
-
-Version: 0.1.0
-Status: completed (4-phase close)
-Linked spec: `.moai/specs/SPEC-CCSYNC-CLAUDEMD-001/spec.md`

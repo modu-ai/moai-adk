@@ -357,9 +357,21 @@ Claude がアクセスできる追加作業ディレクトリです。
 }
 ```
 
+### disableBundledSkills
+
+`disableBundledSkills` (ブール値、または環境変数形式) は Claude Code バンドル skills およびワークフロー — 例: `/deep-research`、組み込みスラッシュコマンド skills — を discovery から隠し、enterprise + personal + project + plugin skills のみを表示します。`true` に設定して、キュレーションされたバンドルフリーの skill サーフェスを提供します。
+
+```json
+{
+  "disableBundledSkills": true
+}
+```
+
+`--safe-mode` CLI フラグは、settings ではなく起動時に同じランタイム効果を適用します — ロックダウンされた環境や、ある動作がバンドル skill に由来するかどうかをデバッグする際に便利です。MoAI-ADK は `disableBundledSkills` を送出したり `--safe-mode` を自動的に渡したりしません。両者は利用可能なオプションとしてここに文書化されます。
+
 ## 権限ルール構文 (Permission Rule Syntax)
 
-権限ルールは `Tool` または `Tool(specifier)` 形式に従います。
+権限ルールは `Tool` または `Tool(specifier)` 形式に従います。パラメータスコープのワイルドカード形式 `Tool(param:value)` もサポートされています — 例: `WebFetch(domain:example.com)` はそのドメインへの WebFetch のみを許可、`Bash(cmd:git status)` は `git status` コマンドにマッチ、値内部の `*` ワイルドカードでマッチ範囲を広げられます (`WebFetch(domain:*.example.com)`, `Bash(cmd:git *)`)。このパラメータスコープ形式は、通常の `Tool(specifier)` 形式よりもきめ細かい制御を提供します。MoAI-ADK は現在、独自の設定ジェネレータからパラメータスコープルールを出力しません。この構文は、パラメータレベルの権限制御を必要とするプロジェクト向けの利用可能なオプションとして文書化されています。
 
 ### ルール評価順序
 

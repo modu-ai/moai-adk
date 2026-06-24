@@ -9,11 +9,6 @@ workflow:
         after_run: false
         enabled: true
         token_threshold: 150000
-    completion:
-        detect_in_output: true
-        markers:
-            complete: <moai>COMPLETE</moai>
-            done: <moai>DONE</moai>
     execution_mode: team
     loop_prevention:
         failure_pattern_detection: true
@@ -30,48 +25,57 @@ workflow:
         max_teammates: 10
         # role_profile_keys: enumeration of allowed role types for the 5+1+1
         # Agent Teams composition documented in
-        # .claude/rules/moai/workflow/agent-teams-pattern.md (SPEC-V3R5-WORKFLOW-OPT-001
-        # Layer B). The full role_profiles map below contains all 7 profile
-        # definitions; this list restricts which keys participate in the
-        # 5+1+1 spawn pattern (implementer × 5 + tester × 1 + reviewer × 1).
+        # .claude/rules/moai/workflow/team-pattern-cookbook.md (6th pattern,
+        # the Implementation Team 5+1+1 variant). The full role_profiles map
+        # below contains all 7 profile definitions; this list restricts which
+        # keys participate in the 5+1+1 spawn pattern (implementer × 5 +
+        # tester × 1 + reviewer × 1).
         # Requires: CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in settings.json env.
         role_profile_keys:
             - implementer
             - tester
             - reviewer
+        # effort: declarative metadata consumed by orchestrator/workflow-script authors; no Go code reads this field.
         role_profiles:
             researcher:
                 mode: plan
+                effort: low
                 model: haiku
                 isolation: none
                 description: "Read-only codebase exploration and analysis"
             analyst:
                 mode: plan
+                effort: medium
                 model: sonnet
                 isolation: none
                 description: "Requirements analysis and validation"
             architect:
                 mode: plan
+                effort: xhigh
                 model: sonnet
                 isolation: none
                 description: "Solution design and architecture decisions"
             implementer:
                 mode: acceptEdits
+                effort: xhigh
                 model: sonnet
                 isolation: worktree
                 description: "Code implementation (backend, frontend, full-stack)"
             tester:
                 mode: acceptEdits
+                effort: medium
                 model: sonnet
                 isolation: worktree
                 description: "Test creation and coverage validation"
             designer:
                 mode: acceptEdits
+                effort: medium
                 model: sonnet
                 isolation: worktree
                 description: "UI/UX design with MCP design tools"
             reviewer:
                 mode: plan
+                effort: high
                 model: haiku
                 isolation: none
                 description: "Code review and quality validation"

@@ -570,6 +570,58 @@ JWT トークンを使用したユーザー認証システム。
   どのように変換されるかを理解するための参考資料です。
 {{< /callout >}}
 
+## SPEC ライフサイクルと Era 分類
+
+SPEC は一度書いて終わる文書ではなく、**計画(plan) → 実装(run) → 同期(sync)** というライフサイクルに従います。MoAI-ADK は各 SPEC がどの時代(era)の規約で書かれたかを自動的に分類し、現代の規約に従う SPEC にのみドリフト(drift、規約からの逸脱)検査を適用します。
+
+### 3 フェーズクローズ(plan → run → sync)
+
+すべての V3R6 SPEC は**3 フェーズ**で完結します。かつて存在した 4 番目のフェーズ(Mx-phase)は**廃止**されました — MX タグ検証は独立したフェーズではなく、sync フェーズ内で処理される横断的関心事(cross-cutting concern)です。
+
+| フェーズ | コマンド | 行うこと | 記録先 |
+| --- | --- | --- | --- |
+| **plan** | `/moai plan` | SPEC 成果物(spec/plan/acceptance)を作成 | `progress.md` §E.1 |
+| **run** | `/moai run` | 方法論(DDD/TDD)に従って実装 | `progress.md` §E.2 / §E.3 |
+| **sync** | `/moai sync` | ドキュメント同期 + 完了コミット | `progress.md` §E.4 |
+
+sync フェーズが完了すると、そのコミットの SHA が `progress.md` の **`§E.4 Sync-phase Audit-Ready Signal`** セクションに **`sync_commit_sha`** フィールドとして記録されます。このフィールドの有無が、SPEC が現代の規約(V3R6)を完全に遵守したかを判別する重要なシグナルです。
+
+{{< callout type="info" >}}
+  **Mx-phase の廃止:** 以前のバージョンでは plan/run/sync の後に `Mx-phase` という 4 番目のフェーズと `mx_commit_sha` フィールドがありました。現在は廃止され 3 フェーズに統合されています。MX コード注釈(@MX タグ)の管理は sync フェーズ内で併せて実行されます。
+{{< /callout >}}
+
+### 5 つの Era 分類
+
+すべての SPEC は、作成された時期の規約に応じて正確に 1 つの era バケットに分類されます。
+
+| Era | 時期 | ライフサイクル標準 |
+| --- | --- | --- |
+| **V2.x** | 2026-02 以前 | `progress.md` なし; 直接コミットで実装 |
+| **V3R2-R4** | 2026-02 ~ 2026-03 | `progress.md` 導入; `sync_commit_sha` なし |
+| **V3R5** | 2026-03 ~ 2026-04 | sync セクション登場; `sync_commit_sha` 未強制 |
+| **V3R6** | 2026-04 ~ 現在 | 3 フェーズ現代標準(plan/run/sync); `sync_commit_sha` 必須 |
+| **unclassified** | — | 自動分類不可(どのヒューリスティックにもマッチせず) |
+
+era 分類は `spec.md` フロントマターの `created:` 日付と `progress.md` のセクション構造を自動的に検査して決定されます。境界が曖昧な場合は、フロントマターに `era: V3R6` のような明示的なフィールドを追加して直接指定できます。
+
+### Grandfather 条項(grandfather clause)
+
+**V2.x · V3R2-R4 · V3R5** に分類された SPEC は **grandfather 条項で保護**されます。これら 3 つの era は作成当時の規約が正当だったため、現代の V3R6 規約を遡及適用しません。
+
+- grandfather SPEC は監査結果で `era_final: true` と表示されます。
+- セクション欠落、コミット SHA 不在など、どのようなパターンでも**ドリフト結果は報告されません**。
+- 過去の SPEC を現代の規約に合わせて一括正規化することは運用上不可能で、実益もないためです。
+
+### ドリフト検査は V3R6 専用
+
+ライフサイクルドリフト検査(`moai spec audit`)は **V3R6 SPEC にのみ**適用されます。
+
+- 現代 era の境界基準日は **`2026-04-01`** です。この日付以降に作成され V3R6 シグナルを備えた SPEC のみがドリフト検査の対象です。
+- 内部的に `IsModern()` 判定は **V3R6 のときだけ true** を返します。
+- つまり grandfather era(V2.x/V3R2-R4/V3R5)はドリフト検査から常に除外され、結果として欠陥に分類されることはありません。
+
+この分類体系により、古い SPEC に対する誤検出(false positive)なく、現在作成中の SPEC の規約遵守だけを正確に検証できます。
+
 ## 関連ドキュメント
 
 - [MoAI-ADK とは？](/core-concepts/what-is-moai-adk) -- MoAI-ADK の全体構造を

@@ -22,6 +22,7 @@ jobs:
   welcome:
     if: github.event_name == 'issues' || (github.event_name == 'pull_request_target' && github.event.action == 'opened')
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Welcome first-time contributors
         uses: actions/first-interaction@v1
@@ -57,6 +58,7 @@ jobs:
   stale:
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Mark stale issues and PRs
         uses: actions/stale@v9
@@ -86,9 +88,14 @@ jobs:
             This pull request has been automatically closed due to inactivity. If you would like to continue working on it, feel free to reopen it.
 
   # Auto-label PRs based on changed file paths
+  # pull_request_target-safe-by-contract:
+  #   This job MUST NOT checkout the PR ref or execute PR-controlled code.
+  #   It reads only base .github/labeler.yml and uses the labeler action.
+  #   Adding a checkout/run step here would create an injection vector — re-audit before doing so.
   labeler:
     if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Label PR based on file paths
         uses: actions/labeler@v5

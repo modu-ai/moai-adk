@@ -99,7 +99,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["example", "demo"]
-  agents: ["expert-backend"]
+  agents: ["manager-develop"]
   phases: ["run"]
 ---
 ```
@@ -170,7 +170,7 @@ Language Skills:
 ```yaml
 triggers:
   keywords: ["api", "database", "authentication"]
-  agents: ["manager-spec", "expert-backend"]
+  agents: ["manager-spec", "manager-develop"]
   phases: ["plan", "run"]
   languages: ["python", "typescript"]
 ```
@@ -258,7 +258,15 @@ Skills can exist at multiple levels. When the same name exists across levels, hi
 
 ### Discovery (nested / monorepo / --add-dir)
 
-Project skill discovery walks the directory tree: Claude Code finds `.claude/skills/` not only at the project root but also in nested subdirectories (parent-walk), so a monorepo can place package-local skills in each package's own `.claude/skills/` directory. Directories added at launch via the `--add-dir` flag are an exception — their skills are NOT auto-loaded for skill discovery (use `permissions.additionalDirectories` in settings.json when an added directory's skills should participate in discovery rather than `--add-dir`, which grants file access only).
+Project skill discovery walks the directory tree: Claude Code finds `.claude/skills/` not only at the project root but also in nested subdirectories (parent-walk), so a monorepo can place package-local skills in each package's own `.claude/skills/` directory. When you are working inside a nested directory that contains its own `.claude/skills/`, the skills in that nested directory are loaded alongside the root-level skills for the duration of the work in that subtree. Directories added at launch via the `--add-dir` flag are an exception — their skills are NOT auto-loaded for skill discovery (use `permissions.additionalDirectories` in settings.json when an added directory's skills should participate in discovery rather than `--add-dir`, which grants file access only).
+
+### Closest-wins on name collision (nested `.claude/`)
+
+When the same skill name appears in more than one `.claude/skills/` directory along the nested chain, the **closest-directory-wins** rule resolves the collision: the `.claude/skills/` nearest to the current working directory shadows the one further up the tree. This mirrors the precedence that already applies to agents, workflows, and output-styles under nested `.claude/` directories — the innermost `.claude/` wins. Authoring implication: a package-local skill that intentionally overrides a root skill MUST keep the same name; renaming it would create a second skill rather than an override.
+
+### `disableBundledSkills` toggle
+
+`disableBundledSkills` (settings.json boolean, or its environment-variable form) hides the Claude Code bundled skills and workflows — e.g. `/deep-research`, built-in slash-command skills — from discovery, leaving only enterprise + personal + project + plugin skills visible. Use it when shipping a curated, bundle-free skill surface. MoAI-ADK does not emit this toggle from its own generators; it is documented here as an available option. See `.claude/rules/moai/core/settings-management.md` § Claude Code Settings for the companion `--safe-mode` launch flag.
 
 ## Best Practices
 
@@ -318,18 +326,19 @@ per-language guidance, and `.claude/rules/moai/development/coding-standards.md`
 |--------|------|-----------------|---------------------|
 | `moai-foundation-*` / `moai-workflow-*` / `moai-domain-*` / `moai-ref-*` / `moai-meta-*` | 핵심 framework + workflow + 도메인 + reference | template | **삭제 후 신규 설치** (overwrite) |
 | `moai-harness-*` | **하네스 builder/lifecycle** (현재 `moai-meta-harness` + `moai-harness-learner`만 해당) | template | **삭제 후 신규 설치** (overwrite) |
-| **`harness-*`** | **사용자 생성** — `moai-meta-harness`가 `/moai project` Phase 5+ 인터뷰 후 generate | user project | **절대 삭제/modify 금지 + 백업 보존** (intent declaration — Go enforcement는 별도 catch-up SPEC에서 작동 전환) |
+| **`harness-*`** | **사용자 생성** — `moai-meta-harness`가 `/moai project` Phase 5+ 인터뷰 후 generate | user project | **절대 삭제/modify 금지 + 백업 보존** (Go enforcement `harness-*` 인식 + `my-harness-*` legacy dual-recognition) |
 
-### Deprecated Skill Slots (migrated to `.claude/agents/local/`)
+### Deprecated Skill Slots (split into three independent harnesses)
 
-The following dev-only skill slots were retired and their workflows migrated into hand-authored local agents under `.claude/agents/local/` (see agent-authoring.md § Agent Directory Convention). Thin command wrappers `.claude/commands/97-release-update.md` and `.claude/commands/98-github.md` now delegate to the new local agents instead of skill invocations.
+The following dev-only skill slots were retired and their workflows live as three INDEPENDENT dev-maintainer harnesses under the user-owned harness namespace (`.claude/agents/harness/harness-{release-update,github,release}-specialist.md` + `.claude/commands/harness/{release-update,github,release}.md`; only release-update carries a Runner + `.claude/commands/harness/release-update/manifest.json`; see agent-authoring.md § Agent Directory Convention). Each thin command routes directly to its matching specialist. These three workflows were first consolidated into a single unified entry by SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001, then split into three independent harnesses by SPEC-V3R6-DEV-HARNESS-SPLIT-001 (which reverses the unified-entry decision). The earlier intermediate migration into `.claude/agents/local/*-specialist.md` (with `/97-release-update`, `/98-github` thin wrappers) and the standalone `/99-release` command were all removed during the consolidation step.
 
-| Retired Skill | Migration Target | Entry Point |
+| Retired Skill / Command | Current Target | Entry Point |
 |---------------|------------------|-------------|
-| `.claude/skills/moai/workflows/release-update.md` (97 series) | `.claude/agents/local/release-update-specialist.md` | `/97-release-update` thin command |
-| `.claude/skills/moai/workflows/github.md` (98 series) | `.claude/agents/local/github-specialist.md` | `/98-github` thin command |
+| `.claude/skills/moai/workflows/release-update.md` (97 series) | `.claude/agents/harness/harness-release-update-specialist.md` | `/harness:release-update` |
+| `.claude/skills/moai/workflows/github.md` (98 series) | `.claude/agents/harness/harness-github-specialist.md` | `/harness:github` |
+| `.claude/skills/moai/workflows/release.md` (99 series) | `.claude/agents/harness/harness-release-specialist.md` | `/harness:release` |
 
-The migration preserves the Thin Command Pattern (`coding-standards.md` § Thin Command Pattern) while shifting routing from `Skill("moai/workflows/<name>")` to `Use the <name>-specialist subagent` delegation. The underlying workflow bodies are retained verbatim with structural fidelity; the namespace shift is purely architectural to align maintainer-only assets under the local namespace contract.
+Each split harness preserves the structural fidelity of its workflow body. Routing shifted from `Skill("moai/workflows/<name>")` / `Use the <name>-specialist subagent` to `/harness:<name>` direct dispatch. The harness artifacts live in the user-owned namespace (`moai update` preserves them); they are dev-only and never distributed to user projects.
 
 ### Rules
 
@@ -338,7 +347,7 @@ The migration preserves the Thin Command Pattern (`coding-standards.md` § Thin 
 - [HARD] `moai-meta-harness`가 emit하는 사용자 프로젝트별 domain skill은 **`harness-*` prefix만** 허용. `moai-harness-*` 또는 다른 `moai-*` prefix로 emit하면 contract 위반.
 - [HARD] `moai-harness-*` namespace를 사용자 프로젝트별 artifact로 오인 금지 — 본 namespace는 framework builder 전용이며 현재 `moai-harness-learner`, `moai-meta-harness`만 해당한다.
 - [HARD] `harness-*` (user-owned) vs `moai-harness-*` (template builder) substring 구분: prefix 매칭은 정확한 startsWith 비교를 사용하고, `*harness-*` substring 패턴은 false positive 위험이 있으므로 금지.
-- [HARD] CI guard: `internal/template/templates/.claude/skills/harness-*` 누출 시 lint 실패해야 한다 (intent declaration; sentinel pattern은 catch-up SPEC에서 `my-harness-` → `harness-` 으로 갱신).
+- [HARD] CI guard: `internal/template/templates/.claude/skills/harness-*` 누출 시 lint 실패해야 한다 (`TestNamespaceLeakHarnessSkills` sentinel이 `harness-` 패턴 감지).
 
 ### Cross-References
 

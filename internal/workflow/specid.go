@@ -13,10 +13,3 @@ func ValidateSpecID(specID string) error {
 	}
 	return nil
 }
-
-// ParseSpecID extracts the first SPEC ID from text using the canonical pattern.
-// Returns empty string if no SPEC ID is found.
-func ParseSpecID(text string) string {
-	match := SpecIDPattern.FindString(text)
-	return match
-}

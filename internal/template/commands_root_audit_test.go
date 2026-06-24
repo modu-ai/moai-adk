@@ -59,7 +59,13 @@ func TestRootLevelCommandsThinPattern(t *testing.T) {
 	}
 
 	if len(cmdFiles) == 0 {
-		t.Fatal("no root-level command files found under .claude/commands/")
+		// Post-SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001: the dev-only numeric
+		// commands (97/98/99) were the only root-level command files; they were
+		// consolidated into the .claude/commands/harness/ devkit harness (a subdir,
+		// skipped above). An empty root level is therefore a valid post-consolidation
+		// state — the thin-pattern audit is vacuously satisfied. The audit still runs
+		// for any future root-level command that is added.
+		t.Skip("no root-level command files (dev commands consolidated into harness/ subdir)")
 	}
 
 	for _, path := range cmdFiles {

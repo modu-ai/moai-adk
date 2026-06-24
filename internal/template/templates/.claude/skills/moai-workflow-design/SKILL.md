@@ -4,8 +4,14 @@ description: >
   Unified design workflow skill — handles Path A (Claude Design handoff bundle import,
   via Figma extractor when needed) and design-brief context loading from .moai/design/
   (research, system, spec). Validates DTCG tokens, enforces brand-context constitutional
-  priority. Use for /moai design workflow — NOT for general design system documentation
-  (see moai-design-system).
+  priority. Use for /moai design workflow — NOT for general design system documentation.
+
+when_to_use: >
+  Use for the /moai design workflow: Path A Claude Design handoff-bundle
+  import (via Figma extractor when needed), design-brief context loading
+  from .moai/design/, DTCG token validation, and brand-context
+  constitutional priority.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash
@@ -22,11 +28,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 120
   level2_tokens: 5000
-
-triggers:
-  keywords: ["design import", "handoff bundle", "claude design", "bundle path", "design zip", "figma extractor", "path b1", "design context", "attach design", "design brief", ".moai/design"]
-  agents: ["expert-frontend"]
-  phases: ["design", "run"]
 ---
 
 # Design Workflow (`moai-workflow-design`)
@@ -107,10 +108,10 @@ created_at) + `tokens.json` (colors, typography, spacing, radii, shadows) + opti
 
 ### Part 2 — Path B1: Figma Extractor (Meta-Harness)
 
-**Prerequisite**: SPEC-V3R3-HARNESS-001 `moai-meta-harness`. Path B1 does NOT ship a
+**Prerequisite**: the harness policy `moai-meta-harness`. Path B1 does NOT ship a
 static Figma skill — it is generated dynamically. When user selects Path B1, invoke
-`moai-meta-harness` to generate `.claude/skills/moai-harness-figma-extractor/SKILL.md`
-(project-scoped and user-owned via `moai-harness-*` prefix — `moai update` never
+`moai-meta-harness` to generate `.claude/skills/harness-figma-extractor/SKILL.md`
+(project-scoped and user-owned via `harness-*` prefix — `moai update` never
 overwrites). Meta-harness Phase 5 (Customization) collects via Socratic interview:
 Figma file ID, page selectors mapping pages to token categories, credential reference
 (env var name like `FIGMA_TOKEN`; value NEVER stored in skill file). Generated extractor
@@ -213,8 +214,8 @@ priority + reserved paths).
 - [ ] Budget truncation appends `> truncated: <filename> at char_offset=N`
 - [ ] All-`_TBD_` case emits header + log only
 - [ ] DTCG validation runs on Path A and Path B1 outputs
-- [ ] `internal/design/dtcg/frozen_guard_test.go` references this skill name
+- [ ] the DTCG frozen-guard CI test references this skill name
 
-REQ coverage: REQ-DPL-001..003, REQ-SKILL-007..015 (Path A); REQ-1..16 (context).
+REQ coverage: (internal provenance omitted)..003, (Path A); REQ-1..16 (context).
 
 <!-- absorbed from moai-workflow-design-import + moai-workflow-design-context per the skill consolidation policy -->

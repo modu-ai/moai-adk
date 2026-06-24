@@ -65,8 +65,8 @@ type Config struct {
 }
 
 // @MX:ANCHOR: [AUTO] Console HTTP 서버 엔트리 포인트 — 루프백 바인드 + graceful shutdown 불변식을 보장한다.
-// @MX:REASON: [AUTO] fan_in≥3 (CLI web 서브커맨드 + 단위 테스트 + 통합 테스트가 호출). 127.0.0.1 전용 바인드(REQ-WC-002)와
-// SIGINT/SIGTERM 5초 드레인 후 exit 0(REQ-WC-003) 계약을 이 함수가 단독으로 책임진다 — 0.0.0.0 바인드는 금지된 안티패턴.
+// @MX:REASON: [AUTO] fan_in≥3 (CLI web 서브커맨드 + 단위 테스트 + 통합 테스트 + 페이지 내 종료 버튼이 호출). 127.0.0.1 전용 바인드(REQ-WC-002)와
+// SIGINT/SIGTERM + 페이지 내 /__shutdown__ 라우트 5초 드레인 후 exit 0(REQ-WC-003) 계약을 이 함수가 단독으로 책임진다 — 0.0.0.0 바인드는 금지된 안티패턴.
 //
 // Run starts the Console server, blocks until SIGINT/SIGTERM (or ctx
 // cancellation), then drains in-flight requests for up to shutdownDrain and
@@ -83,6 +83,11 @@ func Run(ctx context.Context, cfg Config) error {
 type Server struct {
 	cfg     Config
 	handler http.Handler
+
+	// app 은 handler 를 만든 *app 이다. ListenAndServe 가 이 app 의
+	// triggerShutdown seam 을 signal.NotifyContext 의 cancel 함수로 wire
+	// 한다(페이지 내 종료 버튼이 기존 signal drain 경로를 재사용하도록).
+	app *app
 
 	// mu guards listener: bind() writes it from the serving goroutine while
 	// Addr() may read it concurrently from another goroutine (tests, signal
@@ -102,6 +107,7 @@ func NewServer(cfg Config) (*Server, error) {
 	srv := &Server{
 		cfg:     cfg,
 		handler: a.routes(),
+		app:     a,
 	}
 	// REQ-WC4-005: wire the loopback-indicator address accessor. The app renders
 	// {{.BindAddr}} from this closure at request time, so once the listener is
@@ -193,6 +199,13 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 	// Signal-aware context: cancel on SIGINT/SIGTERM (REQ-WC-003).
 	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// 페이지 내 종료 버튼(/__shutdown__)을 기존 signal drain 경로에 연결한다.
+	// handleShutdown 이 고루틴에서 이 cancel 함수를 호출하면 select 의
+	// <-sigCtx.Done() 분기가 기존 drain 로직(아래)을 그대로 실행한다.
+	// 새 종료 경로를 만들지 않으므로 REQ-WC-003(5초 drain) invariant 가 보존된다.
+	// stop 은 idempotent 하므로 버튼 중복 클릭 / signal 경쟁에도 안전하다.
+	s.app.triggerShutdown = func() { stop() }
 
 	serveErr := make(chan error, 1)
 	go func() {

@@ -38,25 +38,6 @@
 
 Per Anthropic Finding A4 (most coding tasks involve fewer truly parallelizable tasks than research, and LLM agents are not yet great at real-time coordination), coding-heavy run-phase work defaults to Mode 5 sequential sub-agent. The milestone chain has hard dependencies (M1↔M2 bidirectional cache_control↔config; M3 telemetry requires M1/M2; M4 doctor requires M3 JSONL; M5 docs requires M1-M4 understanding), so parallel spawn (Mode 4) would race on shared `internal/` files. Spawn grouping: Spawn 1 = M1-M4 (all Go, 9 Blocking ACs); Spawn 2 = M5 (docs-site 4-locale markdown, AC-PC-009 Should-fix). Tier M is below the SSE-stall Round threshold (≥30 tasks), so no Round split required; the Go/markdown domain split keeps each spawn within safe context.
 
-## §E.5 Mx-phase Audit-Ready Signal (2026-06-02)
-
-```yaml
-mx_complete_at: 2026-06-02
-mx_status: evaluate-pass
-mx_commit_sha: e979a4d13
-mx_tag_count: 10
-mx_new_tags_introduced: 0
-mx_skip_justified: false
-mx_verdict: EVALUATE-PASS
-mx_evidence: |
-  All 8 production .go files successfully integrated with cache_control system. 
-  10 @MX:ANCHOR tags added during run-phase (cache_control.go, cache_config.go, 
-  cache_usage_log.go, doctor_cache.go, posttooluse_cache.go). 
-  No new dangerous patterns introduced. TAG delta = +10. 
-  AC-PC-001..009 all PASS (docs-site Should-fix AC-PC-009 deferred to Phase M5).
-  Sync commit 84a184f2c confirmed; mx_commit_sha e979a4d13 (backfilled by orchestrator 2026-06-02).
-```
-
 ## §R — Run-phase Evidence
 
 ### M1 + M2 (cycle_type=tdd, atomic) — 2026-05-30
@@ -154,3 +135,24 @@ manager-develop spawn (Mode 5 sub-agent). M3 (PostToolUse telemetry hook + JSONL
 #### Run-phase completion note
 
 M3+M4 complete the 5 Blocking ACs in this spawn's scope (AC-PC-005/006/007/010 + AC-PC-008 cross-cutting). Combined with the M1+M2 record above, 8 of 9 Blocking ACs (AC-PC-001..008 + AC-PC-010) are PASS. AC-PC-009 (docs-site 4-locale, Should-fix) remains M5 scope (not in this spawn).
+
+## §E.4 Audit-Ready Signal
+
+### (Migrated from §E.5)
+
+```yaml
+mx_complete_at: 2026-06-02
+mx_status: evaluate-pass
+mx_commit_sha: e979a4d13
+mx_tag_count: 10
+mx_new_tags_introduced: 0
+mx_skip_justified: false
+mx_verdict: EVALUATE-PASS
+mx_evidence: |
+  All 8 production .go files successfully integrated with cache_control system. 
+  10 @MX:ANCHOR tags added during run-phase (cache_control.go, cache_config.go, 
+  cache_usage_log.go, doctor_cache.go, posttooluse_cache.go). 
+  No new dangerous patterns introduced. TAG delta = +10. 
+  AC-PC-001..009 all PASS (docs-site Should-fix AC-PC-009 deferred to Phase M5).
+  Sync commit 84a184f2c confirmed; mx_commit_sha e979a4d13 (backfilled by orchestrator 2026-06-02).
+```

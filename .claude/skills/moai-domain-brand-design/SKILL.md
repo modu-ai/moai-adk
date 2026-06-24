@@ -5,6 +5,12 @@ description: >
   hero-first layout chaining, WCAG 2.1 AA accessibility, Lighthouse >= 80,
   and design token extraction from brand identity files. Covers color palettes,
   typography, spacing, and component specifications.
+
+when_to_use: >
+  Use for brand-aligned visual design systems: color palettes, typography,
+  spacing systems, hero-first layout, component specs, design tokens,
+  visual identity, and WCAG 2.1 AA accessibility enforcement.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob
@@ -22,12 +28,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["design-tokens", "color-palette", "typography", "hero-section", "wcag", "visual-identity", "design system", "brand design", "spacing system", "component spec"]
-  agents: ["expert-frontend"]
-  phases: ["run"]
 ---
 
 # moai-domain-brand-design
@@ -253,5 +253,5 @@ Generated design must meet:
 ---
 
 Source: Absorbed from the retired v2.x `*-design-system` capability v1.0.0 (per the design-system absorption policy) on 2026-04-20.
-REQ coverage: REQ-SKILL-004, REQ-SKILL-005, REQ-SKILL-006, REQ-FALLBACK-003
+REQ coverage: (internal provenance omitted)
 Version: 1.0.0

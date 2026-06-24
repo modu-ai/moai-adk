@@ -2,21 +2,21 @@
 
 ## SPEC Reference
 
-Design-system absorption policy: REQ-ROUTE-001 through REQ-ROUTE-008, REQ-FALLBACK-001 through REQ-FALLBACK-003, REQ-BRIEF-001 through REQ-BRIEF-003, REQ-DETECT-003
-Design pipeline canonical policy: REQ-DPL-005, REQ-DPL-008 (Phase 2 — Workflow Routing)
+Design-system absorption policy: route selection, fallback handling, brief authoring, and legacy-agency detection.
+Design pipeline canonical policy: path-selection idempotency and the Phase 2 workflow-routing contract.
 
 ---
 
 ## Mode Dispatch (Multi-Mode Router)
 
-Per SPEC-V3R2-WF-003, `/moai design` participates in the `--mode` axis with 4 valid values: `autopilot`, `import`, `team`, `pipeline`. Each value selects a distinct execution path. Note that the design value set differs from `/moai run` (uses `import` instead of `loop`), but the precedence rules and sentinel keys are identical.
+`/moai design` participates in the `--mode` axis with 4 valid values: `autopilot`, `import`, `team`, `pipeline`. Each value selects a distinct execution path. Note that the design value set differs from `/moai run` (uses `import` instead of `loop`), but the precedence rules and sentinel keys are identical.
 
 ### Mode Values
 
 - **`autopilot` (default)**: Path B — code-based brand design. Sequential pipeline of `moai-domain-copywriting` + `moai-domain-brand-design` + `moai-workflow-gan-loop`. When `--mode autopilot` is supplied explicitly, Phase 1 path-selection AskUserQuestion is skipped and Phase B-Common begins immediately. (Default invocations without `--mode` retain the AskUserQuestion path selection so users can still choose Path A / B1 / B2.)
-- **`import`**: Path A — Claude Design handoff bundle parsing. Invokes `moai-workflow-design` (Part 1 — Path A) per Phase A Steps A1-A5 only; skips Phase 1 path selection AND Phase B-Common copy + brand authoring (REQ-WF003-013).
-- **`team`**: Path B-Common with **parallel** execution. Spawns `moai-domain-copywriting` and `moai-domain-brand-design` as concurrent teammates (role_profile `designer` per `workflow.yaml`); both feed `moai-workflow-gan-loop` for evaluation per the GAN Loop contract (REQ-WF003-009). Requires the same team prerequisites as `/moai run --mode team`: `workflow.team.enabled: true` AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`.
-- **`pipeline`**: REJECTED on `/moai design`. Pipeline mode is reserved for utility subcommands per SPEC-V3R2-WF-004. Passing `--mode pipeline` here triggers `MODE_PIPELINE_ONLY_UTILITY` (preserved from the WF-004 baseline; REQ-WF003-016 ↔ REQ-WF004-014 byte-identical).
+- **`import`**: Path A — Claude Design handoff bundle parsing. Invokes `moai-workflow-design` (Part 1 — Path A) per Phase A Steps A1-A5 only; skips Phase 1 path selection AND Phase B-Common copy + brand authoring.
+- **`team`**: Path B-Common with **parallel** execution. Spawns `moai-domain-copywriting` and `moai-domain-brand-design` as concurrent teammates (role_profile `designer` per `workflow.yaml`); both feed `moai-workflow-gan-loop` for evaluation per the GAN Loop contract. Requires the same team prerequisites as `/moai run --mode team`: `workflow.team.enabled: true` AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`.
+- **`pipeline`**: REJECTED on `/moai design`. Pipeline mode is reserved for utility subcommands. Passing `--mode pipeline` here triggers `MODE_PIPELINE_ONLY_UTILITY` (the same error key the utility subcommands share).
 
 ### Path B1 (Figma) — Not in `--mode` Axis
 
@@ -24,14 +24,14 @@ Per `research.md` §2.2.3, Path B1 (figma-extractor) is deliberately NOT exposed
 
 ### Sentinel Error Keys
 
-This skill emits the same sentinel error keys as `/moai run` for consistency. CI guards in `internal/template/agentless_audit_test.go` enforce the literal `MODE_UNKNOWN` sentinel remains present in this skill body.
+This skill emits the same sentinel error keys as `/moai run` for consistency. A CI audit verifies the literal `MODE_UNKNOWN` sentinel remains present in this skill body.
 
-- **`MODE_UNKNOWN`** (REQ-WF003-010, owned by SPEC-V3R2-WF-003): Emitted when `--mode <value>` is supplied but `<value>` is not in the design 4-value valid set `{autopilot, import, team, pipeline}`. The error message MUST enumerate the 4 valid values.
-- **`MODE_PIPELINE_ONLY_UTILITY`** (REQ-WF003-016 ↔ REQ-WF004-014, shared with SPEC-V3R2-WF-004): Preserved from the WF-004 baseline. Emitted when `--mode pipeline` is passed.
+- **`MODE_UNKNOWN`**: Emitted when `--mode <value>` is supplied but `<value>` is not in the design 4-value valid set `{autopilot, import, team, pipeline}`. The error message MUST enumerate the 4 valid values.
+- **`MODE_PIPELINE_ONLY_UTILITY`**: Preserved from the utility-subcommand baseline. Emitted when `--mode pipeline` is passed (pipeline mode is reserved for utility subcommands).
 
 ### Cross-Reference
 
-Mode precedence (CLI `--mode` > `workflow.default_mode` config > harness auto), harness-based default selection, the silent downgrade behavior for auto-resolved `team` (REQ-WF003-012), and the `MODE_TEAM_UNAVAILABLE` sentinel for explicit `--mode team` requests are documented in `.claude/skills/moai/workflows/run.md` § Mode Dispatch (Multi-Mode Router). The same rules apply to `/moai design`. Refer to that section for the resolver pseudocode and team prerequisite check; do not duplicate.
+Mode precedence (CLI `--mode` > `workflow.default_mode` config > harness auto), harness-based default selection, the silent downgrade behavior for auto-resolved `team`, and the `MODE_TEAM_UNAVAILABLE` sentinel for explicit `--mode team` requests are documented in `.claude/skills/moai/workflows/run.md` § Mode Dispatch (Multi-Mode Router). The same rules apply to `/moai design`. Refer to that section for the resolver pseudocode and team prerequisite check; do not duplicate.
 
 See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the cross-skill mode dispatch contract.
 
@@ -41,14 +41,14 @@ See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.m
 
 Before presenting the route selection, perform these checks in order:
 
-### Check 1: Existing legacy `.agency/` detection (REQ-DETECT-003)
+### Check 1: Existing legacy `.agency/` detection
 
 If the legacy `.agency/` directory exists (v2.x layout, retired per the design-system absorption policy) AND `.moai/project/brand/` does not exist:
 - Output warning before route selection: "Legacy v2.x agency data detected — run `moai migrate agency` to migrate your brand context first."
 - Include `moai migrate agency --dry-run` as the preview command.
 - Continue to route selection (do not block).
 
-### Check 2: Brand context existence (REQ-ROUTE-001)
+### Check 2: Brand context existence
 
 Check whether `.moai/project/brand/` contains the three brand files:
 - `brand-voice.md`
@@ -65,7 +65,7 @@ If partial brand context exists (some files present, some missing):
 - Output "Incomplete brand context: missing `<filenames>`."
 - Offer to complete only the missing files via targeted interview.
 
-### Check 3: Brand Context Loader (REQ-DPL-008)
+### Check 3: Brand Context Loader
 
 After brand files are confirmed present, load and cache brand context:
 1. Read `.moai/project/brand/brand-voice.md` → cache as `brand_voice`
@@ -77,7 +77,7 @@ After brand files are confirmed present, load and cache brand context:
 - If mismatch detected: output warning "Brand conflict detected: token values differ from visual-identity.md. Brand context takes precedence." and list conflicting keys.
 - Proceed regardless — brand values are authoritative; downstream agents must use `brand_voice`/`visual_identity` over stale tokens.
 
-### Check 4: Previous Path Selection (REQ-DPL-005 — idempotency)
+### Check 4: Previous Path Selection (idempotency)
 
 If `.moai/design/path-selection.json` exists (written by `internal/design/pipeline`):
 - Surface previous selection via AskUserQuestion:
@@ -88,7 +88,7 @@ If `.moai/design/path-selection.json` exists (written by `internal/design/pipeli
 
 ---
 
-## Phase 1: Route Selection (REQ-ROUTE-002, REQ-ROUTE-003, REQ-ROUTE-006, REQ-DPL-005)
+## Phase 1: Route Selection
 
 Use AskUserQuestion to present the three design paths.
 
@@ -104,7 +104,7 @@ Option 2: Path B1 (Figma)
 - Requirements: Figma API token in environment or `.moai/config/sections/design.yaml`
 - Output: Extracted design tokens and component specs from Figma file
 
-**Subscription override** (REQ-ROUTE-006): When `subscription.tier: "pro-or-below"` in user.yaml or user states no Claude Design access:
+**Subscription override**: When `subscription.tier: "pro-or-below"` in user.yaml or user states no Claude Design access:
 - Swap Option 1 ↔ Option 2 (B1 becomes recommended).
 - Add to Path A description: "Requires Claude.ai Pro or higher subscription."
 
@@ -115,13 +115,13 @@ Option 2: Path B1 (Figma)
 - `ts`: current UTC timestamp
 - `session_id`: `${CLAUDE_SESSION_ID}`
 
-**No-response handling** (REQ-ROUTE-007): Re-present up to 3 times. After 3 failures, output "Selection not confirmed. Resume with `/moai design` when ready." and stop.
+**No-response handling**: Re-present up to 3 times. After 3 failures, output "Selection not confirmed. Resume with `/moai design` when ready." and stop.
 
 ---
 
 ## Brain Handoff Bundle Auto-Detection
 
-<!-- Verifies REQ-BRAIN-005: brain output (claude-design-handoff/) consumed by /moai design --path A -->
+<!-- Verifies: brain output (claude-design-handoff/) consumed by /moai design --path A -->
 
 When `/moai design --path A` is invoked WITHOUT a `--bundle` argument:
 
@@ -161,7 +161,7 @@ AskUserQuestion({
 
 ---
 
-## Phase A: Claude Design Import Path (REQ-ROUTE-004)
+## Phase A: Claude Design Import Path
 
 When Path A (Claude Design) is selected:
 
@@ -191,7 +191,7 @@ Step A5: On import failure:
 
 ---
 
-## Phase B1: Figma Extractor Path (REQ-DPL-005)
+## Phase B1: Figma Extractor Path
 
 When Path B1 (Figma) is selected:
 
@@ -221,7 +221,7 @@ Step BC-1: Load design context:
 - Receive consolidated context block (token-capped per REQ-5 algorithm).
 - Prepend context block to downstream subagent prompts.
 
-Step BC-2: Generate BRIEF (REQ-BRIEF-001, REQ-BRIEF-002, REQ-BRIEF-003):
+Step BC-2: Generate BRIEF:
 - Invoke `manager-spec` in BRIEF generation mode.
 - Required BRIEF sections: `## Goal`, `## Audience`, `## Brand`
 - Auto-inject brand content from brand files if Brand section is empty.
@@ -232,15 +232,15 @@ Step BC-3: Load code-based design skills:
 - Load `moai-domain-brand-design`
 - Load `moai-workflow-gan-loop`
 
-Step BC-4: Delegate to `expert-frontend`:
+Step BC-4: Delegate to a per-spawn `Agent(general-purpose)` frontend specialist (frontend whitelist + design-token instructions per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8; the design-pipeline ROLE formerly named `expert-frontend` per `.claude/rules/moai/design/constitution.md`):
 - Prompt includes: BRIEF, brand context summary, loaded skill references, `.moai/config/sections/design.yaml`.
-- `expert-frontend` generates copy (JSON) and design tokens concurrently.
+- The frontend specialist generates copy (JSON) and design tokens concurrently.
 
 Step BC-5: Proceed to Phase C (quality gate).
 
 ---
 
-## Phase C: Quality Gate (REQ-ROUTE-008)
+## Phase C: Quality Gate
 
 After Path A or B1/B2 produces design artifacts:
 
@@ -264,7 +264,7 @@ Step C4: Optional E2E testing (when Playwright or claude-in-chrome MCP available
 
 ---
 
-## BRIEF Section Requirements (REQ-BRIEF-001)
+## BRIEF Section Requirements
 
 When `manager-spec` generates the BRIEF document for a design task, it must include:
 

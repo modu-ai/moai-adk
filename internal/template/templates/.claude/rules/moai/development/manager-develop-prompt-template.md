@@ -105,7 +105,7 @@ Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` §
 - 무관 untracked files은 commit 포함 금지 (`git add` specific path만)
 
 **B9. Git Commit + Push 자체 수행 (Hybrid Trunk 1-person OSS)**
-- manager-develop은 본 SPEC scope 내 commit + push 자체 수행 권장 (main 직진 per .claude/rules/moai/workflow/git-workflow-doctrine.md Tier S/M)
+- manager-develop은 본 SPEC scope 내 commit + push 자체 수행 권장 (main 직진 per .moai/docs/git-workflow-doctrine.md Tier S/M)
 - Conventional Commits format 의무 (`feat(SPEC-...): M{N} <subject>`)
 - M별 분리 commit + 마지막 push 또는 M별 push 둘 다 허용
 - `--no-verify` 사용 절대 금지 (pre-commit hook warn-only는 정상)
@@ -166,42 +166,42 @@ grep -r "Retired\|TestHarnessRetirement\|superseded" internal/<target_pkg> || ec
 
 ### Section E — Self-Verification Deliverables
 
-manager-develop이 완료 보고 시 자체 검증한 다음 항목을 강제 포함:
+When manager-develop reports completion, it MUST include self-verification of the following items:
 
 **E1. AC Binary PASS/FAIL Matrix**
 | AC | Status | Verification Command | Actual Output |
 |----|--------|---------------------|---------------|
 | AC-XXX-001 | PASS | `go test -run TestX ./pkg` | `PASS — ok  pkg 0.5s` |
 
-**E2. Cross-Platform Build 결과**
+**E2. Cross-Platform Build result**
 ```
 $ go build ./...                          → exit 0
 $ GOOS=windows GOARCH=amd64 go build ./... → exit 0
 ```
 
-**E3. Coverage 측정 (≥85% threshold per package)**
+**E3. Coverage measurement (≥85% threshold per package)**
 ```
 $ go test -cover ./internal/<pkg>/...
 ```
 
-**E4. Subagent Boundary Grep (C-HRA-008 류)**
+**E4. Subagent Boundary Grep (C-HRA-008 family)**
 ```
 $ grep -rn 'AskUserQuestion' <pkg> | grep -v "_test.go" | grep -v "// "
 (no output expected)
 ```
 
-**E5. Lint Status (NEW vs baseline 구분)**
+**E5. Lint Status (distinguish NEW vs baseline)**
 ```
 $ golangci-lint run --timeout=2m
-# NEW issues 발견 시 explicit report; pre-existing baseline은 별도 mark
+# On NEW issues, report explicitly; mark pre-existing baseline separately
 ```
 
-**E6. Branch HEAD + Push 상태**
-- 새 commits SHA 리스트
-- `git push origin <branch>` 결과
+**E6. Branch HEAD + Push state**
+- List of new commit SHAs
+- Result of `git push origin <branch>`
 
-**E7. Blocker Report (있을 시)**
-- 위임 prompt에서 명시 안 된 사용자 결정 필요 항목 발견 시 structured 보고 (AskUserQuestion 절대 호출 금지)
+**E7. Blocker Report (if any)**
+- When the delegation prompt did not specify a needed user decision, report it as a structured blocker (NEVER call AskUserQuestion)
 
 ## 2. 위임 Prompt 작성 Workflow (오케스트레이터 입장)
 
@@ -231,12 +231,12 @@ $ golangci-lint run --timeout=2m
 - Layer D (검증 병렬화): orchestrator self-discipline
 - Layer F (lessons 자동 capture): SubagentStop hook 확장
 
-## 5. 검증 (본 rule 자체 적용 결과)
+## 5. Verification (this rule applied to itself)
 
-다음 SPEC (W4 PROJECT-MEGA-001) 위임에서:
-- 1-pass 성공률 측정 (목표: ≥80%, W3에서 33%)
-- 재위임 횟수 (목표: ≤1, W3에서 3)
-- 총 wall-time (목표: ≤30분, W3에서 91분)
+On the next SPEC delegation, measure by phase ordering (not wall-clock targets, per `agent-common-protocol.md` § Time Estimation):
+- 1-pass success rate — Priority High target (W3 baseline: 33%)
+- Re-delegation count — Priority Medium target (W3 baseline: 3)
+- Overall completion — track by milestone progression, not duration
 
 ---
 

@@ -40,6 +40,7 @@ Claude Code は**10 イベントタイプ**をサポートします。
 | `Setup` | `--init`, `--init-only`, `--maintenance` フラグで開始時 | 初期設定、環境チェック |
 | `SessionStart` | セッション開始時 | プロジェクト情報表示、環境初期化 |
 | `SessionEnd` | セッション終了時 | 整理作業、コンテキスト保存 |
+| `PostSession` | セッション終了後 (self-hosted runner、CC 2.1.169+) | セッション後のクリーンアップ/テレメトリ; セッションが完全に破棄された後、`SessionEnd` よりも遅く発火します。MoAI-ADK は現在このフックをワイヤリングしません — self-hosted デプロイ向けの利用可能なオプションとして文書化されます。 |
 | `PreCompact` | コンテキスト圧縮前 (`/clear` 等) | 重要コンテキストバックアップ |
 | `PreToolUse` | ツール使用前 | セキュリティ検証、危険コマンドブロック |
 | **`PermissionRequest`** | 権限ダイアログ表示時 | 自動許可/拒否決定 |
@@ -498,7 +499,7 @@ Ralph Engine フィードバックループを制御します。
 - LSP 警告数
 - テスト通過有無
 - カバレッジ目標 (デフォルト 85%)
-- 完了マーカー (`<moai>DONE</moai>`, `<moai>COMPLETE</moai>`) 検出
+- 完了文の検出 (自然言語ループ終了シグナル)
 
 **状態ファイル:** `.moai/cache/.moai_loop_state.json`
 

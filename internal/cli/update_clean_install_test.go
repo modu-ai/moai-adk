@@ -79,7 +79,7 @@ func (s *stubMigrateRunner) Run(projectRoot string, dryRun bool, out io.Writer) 
 //   - .moai/config/sections/system.yaml with moai.version = v2.16.1
 //   - .agency/ directory present
 //   - .claude/agents/moai/manager-strategy.md (deprecated path)
-//   - PRESERVE seed: .moai/specs/SPEC-USER-001/spec.md + .claude/skills/my-harness-tool/SKILL.md
+//   - PRESERVE seed: .moai/specs/SPEC-USER-001/spec.md + .claude/skills/harness-tool/SKILL.md
 //
 // Returns the projectRoot path.
 func makeScenarioA(t *testing.T) string {
@@ -94,7 +94,7 @@ func makeScenarioA(t *testing.T) string {
 
 	// PRESERVE seed
 	writeTestFile(t, root, ".moai/specs/SPEC-USER-001/spec.md", "user spec content\n")
-	writeTestFile(t, root, ".claude/skills/my-harness-tool/SKILL.md", "user skill\n")
+	writeTestFile(t, root, ".claude/skills/harness-tool/SKILL.md", "user skill\n")
 	writeTestFile(t, root, ".moai/project/product.md", "product doc\n")
 
 	return root
@@ -132,7 +132,7 @@ func makeScenarioC(t *testing.T) string {
 
 // TestRunCleanReinstall_ScenarioA verifies the full v2 → v3 cycle:
 //   - All 3 signals fire
-//   - PRESERVE inventory snapshot taken (.moai/specs/, .claude/skills/my-harness-*, .moai/project/)
+//   - PRESERVE inventory snapshot taken (.moai/specs/, .claude/skills/harness-*, .moai/project/)
 //   - Backup directory created at .moai/backups/v2-to-v3-<stamp>/
 //   - .agency/ migration auto-invoked (REQ-VVCR-025)
 //   - Deprecated paths removed
@@ -192,7 +192,7 @@ func TestRunCleanReinstall_ScenarioA(t *testing.T) {
 	// AC-VVCR-003: PRESERVE files survive byte-identical.
 	preservePaths := []string{
 		".moai/specs/SPEC-USER-001/spec.md",
-		".claude/skills/my-harness-tool/SKILL.md",
+		".claude/skills/harness-tool/SKILL.md",
 		".moai/project/product.md",
 	}
 	for _, rel := range preservePaths {

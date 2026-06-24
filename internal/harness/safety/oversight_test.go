@@ -15,7 +15,7 @@ func TestBuildOversightProposal_BasicStructure(t *testing.T) {
 
 	proposal := harness.Proposal{
 		ID:               "test-001",
-		TargetPath:       ".claude/skills/my-harness-plugin/SKILL.md",
+		TargetPath:       ".claude/skills/harness-plugin/SKILL.md",
 		FieldKey:         "description",
 		NewValue:         "improved description with heuristic note",
 		PatternKey:       "moai_subcommand:/moai plan:",
@@ -99,7 +99,7 @@ func TestBuildOversightProposal_AllOptionsHaveDescriptions(t *testing.T) {
 
 	proposal := harness.Proposal{
 		ID:               "test-004",
-		TargetPath:       ".claude/skills/my-harness-x/SKILL.md",
+		TargetPath:       ".claude/skills/harness-x/SKILL.md",
 		Tier:             harness.TierAutoUpdate,
 		ObservationCount: 12,
 		CreatedAt:        time.Now(),
@@ -126,7 +126,7 @@ func TestBuildOversightProposal_ContextContainsProposalInfo(t *testing.T) {
 
 	proposal := harness.Proposal{
 		ID:               "unique-id-xyz",
-		TargetPath:       ".claude/skills/my-harness-abc/SKILL.md",
+		TargetPath:       ".claude/skills/harness-abc/SKILL.md",
 		Tier:             harness.TierAutoUpdate,
 		ObservationCount: 15,
 		CreatedAt:        time.Now(),

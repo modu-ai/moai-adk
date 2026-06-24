@@ -24,11 +24,26 @@ window.MOAI_I18N = {
     "actions.meta": "writes to ~/.moai profile & project config",
     "seg.title": "Custom segments",
     "seg.note": "Choose exactly which pieces of information appear.",
+    "seg.claude_version": "Claude version",
+    "seg.context": "Context usage",
+    "seg.directory": "Current directory",
+    "seg.effort_thinking": "Effort + thinking mode",
+    "seg.git_branch": "Git branch",
+    "seg.git_status": "Git status (porcelain)",
+    "seg.moai_version": "MoAI version",
+    "seg.model": "Model name",
+    "seg.output_style": "Output style",
+    "seg.pr": "Open PR number",
+    "seg.session_time": "Session elapsed time",
+    "seg.task": "Current task (/moai run XXX)",
+    "seg.usage_5h": "Usage 5h window bar",
+    "seg.usage_7d": "Usage 7d window bar",
+    "seg.worktree": "Worktree path / identifier",
     "count.identity": "1 field",
     "count.language": "4 fields",
     "count.launch": "4 fields",
-    "count.statusline": "3 fields · segments",
-    "count.project": "8 fields",
+    "count.statusline": "16 fields",
+    "count.project": "9 fields",
 
     "sec.identity.title": "Identity",
     "sec.identity.desc": "Who you are in commits and sessions.",
@@ -85,7 +100,9 @@ window.MOAI_I18N = {
     "f.git_convention.validation.enforce_on_push.desc": "Reject a push when a commit message violates the convention.",
 
     "lang.aria": "Interface language",
-    "theme.aria": "Toggle light / dark theme"
+    "theme.aria": "Toggle light / dark theme",
+    "appbar.shutdown.confirm": "Shut down the server? The console will stop and this tab will go offline.",
+    "opt.unchanged": "(unchanged)"
   },
 
   ko: {
@@ -95,11 +112,26 @@ window.MOAI_I18N = {
     "actions.meta": "기록 위치: ~/.moai 프로필 및 프로젝트 설정",
     "seg.title": "커스텀 세그먼트",
     "seg.note": "상태줄에 표시할 정보 항목을 직접 선택하세요.",
+    "seg.claude_version": "Claude 버전",
+    "seg.context": "컨텍스트 사용량",
+    "seg.directory": "현재 디렉토리",
+    "seg.effort_thinking": "추론 강도 + 사고 모드",
+    "seg.git_branch": "Git 브랜치",
+    "seg.git_status": "Git 상태 (porcelain)",
+    "seg.moai_version": "MoAI 버전",
+    "seg.model": "모델 이름",
+    "seg.output_style": "출력 스타일",
+    "seg.pr": "열린 PR 번호",
+    "seg.session_time": "세션 경과 시간",
+    "seg.task": "현재 작업 (/moai run XXX)",
+    "seg.usage_5h": "사용량 5시간 바",
+    "seg.usage_7d": "사용량 7일 바",
+    "seg.worktree": "워크트리 경로 / 식별자",
     "count.identity": "1개 항목",
     "count.language": "4개 항목",
     "count.launch": "4개 항목",
-    "count.statusline": "3개 항목 · 세그먼트",
-    "count.project": "8개 항목",
+    "count.statusline": "16개 항목",
+    "count.project": "9개 항목",
 
     "sec.identity.title": "사용자 정보",
     "sec.identity.desc": "커밋과 세션에 표시되는 사용자 정보입니다.",
@@ -156,7 +188,9 @@ window.MOAI_I18N = {
     "f.git_convention.validation.enforce_on_push.desc": "커밋 메시지가 규칙을 위반하면 푸시를 거부합니다.",
 
     "lang.aria": "인터페이스 언어",
-    "theme.aria": "라이트 / 다크 테마 전환"
+    "theme.aria": "라이트 / 다크 테마 전환",
+    "appbar.shutdown.confirm": "서버를 종료하시겠습니까? 콘솔이 중지되며 이 탭은 오프라인됩니다.",
+    "opt.unchanged": "(변경 안 함)"
   },
 
   ja: {
@@ -166,11 +200,26 @@ window.MOAI_I18N = {
     "actions.meta": "書き込み先: ~/.moai プロフィールとプロジェクト設定",
     "seg.title": "カスタムセグメント",
     "seg.note": "ステータスラインに表示する情報項目を選択してください。",
+    "seg.claude_version": "Claude バージョン",
+    "seg.context": "コンテキスト使用量",
+    "seg.directory": "現在のディレクトリ",
+    "seg.effort_thinking": "推論強度 + 思考モード",
+    "seg.git_branch": "Git ブランチ",
+    "seg.git_status": "Git ステータス (porcelain)",
+    "seg.moai_version": "MoAI バージョン",
+    "seg.model": "モデル名",
+    "seg.output_style": "出力スタイル",
+    "seg.pr": "オープン PR 番号",
+    "seg.session_time": "セッション経過時間",
+    "seg.task": "現在のタスク (/moai run XXX)",
+    "seg.usage_5h": "使用量 5h ウィンドウバー",
+    "seg.usage_7d": "使用量 7d ウィンドウバー",
+    "seg.worktree": "ワークツリーパス / 識別子",
     "count.identity": "1 項目",
     "count.language": "4 項目",
     "count.launch": "4 項目",
-    "count.statusline": "3 項目 · セグメント",
-    "count.project": "8 項目",
+    "count.statusline": "16 項目",
+    "count.project": "9 項目",
 
     "sec.identity.title": "ユーザー情報",
     "sec.identity.desc": "コミットやセッションに表示されるユーザー情報です。",
@@ -227,7 +276,9 @@ window.MOAI_I18N = {
     "f.git_convention.validation.enforce_on_push.desc": "コミットメッセージが規約に違反した場合にプッシュを拒否します。",
 
     "lang.aria": "インターフェース言語",
-    "theme.aria": "ライト / ダークテーマ切替"
+    "theme.aria": "ライト / ダークテーマ切替",
+    "appbar.shutdown.confirm": "サーバーをシャットダウンしますか？コンソールが停止し、このタブはオフラインになります。",
+    "opt.unchanged": "(変更なし)"
   },
 
   zh: {
@@ -237,11 +288,26 @@ window.MOAI_I18N = {
     "actions.meta": "写入到 ~/.moai 个人与项目配置",
     "seg.title": "自定义段",
     "seg.note": "精确选择状态栏中要显示的信息项。",
+    "seg.claude_version": "Claude 版本",
+    "seg.context": "上下文使用量",
+    "seg.directory": "当前目录",
+    "seg.effort_thinking": "推理强度 + 思考模式",
+    "seg.git_branch": "Git 分支",
+    "seg.git_status": "Git 状态 (porcelain)",
+    "seg.moai_version": "MoAI 版本",
+    "seg.model": "模型名称",
+    "seg.output_style": "输出样式",
+    "seg.pr": "开放 PR 编号",
+    "seg.session_time": "会话经过时间",
+    "seg.task": "当前任务 (/moai run XXX)",
+    "seg.usage_5h": "使用量 5 小时窗口条",
+    "seg.usage_7d": "使用量 7 天窗口条",
+    "seg.worktree": "工作树路径 / 标识符",
     "count.identity": "1 项",
     "count.language": "4 项",
     "count.launch": "4 项",
-    "count.statusline": "3 项 · 段",
-    "count.project": "8 项",
+    "count.statusline": "16 项",
+    "count.project": "9 项",
 
     "sec.identity.title": "身份",
     "sec.identity.desc": "在提交和会话中显示的身份信息。",
@@ -298,6 +364,8 @@ window.MOAI_I18N = {
     "f.git_convention.validation.enforce_on_push.desc": "当提交信息违反约定时拒绝推送。",
 
     "lang.aria": "界面语言",
-    "theme.aria": "切换浅色 / 深色主题"
+    "theme.aria": "切换浅色 / 深色主题",
+    "appbar.shutdown.confirm": "要关闭服务器吗？控制台将停止，此标签页将离线。",
+    "opt.unchanged": "(不变)"
   }
 };

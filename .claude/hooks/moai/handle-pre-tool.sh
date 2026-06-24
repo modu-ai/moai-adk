@@ -14,19 +14,46 @@ if [ -f "$MOAI_HOOK_STDERR_LOG" ]; then
     fi
 fi
 
+# --- Bash Risk-Amplifier warn signal (SPEC-V3R6-BASH-RISK-GOVERNANCE-001) ---
+# WARN-ONLY, FAIL-OPEN. Reads stdin once into $payload so we can both inspect it
+# (for the subcommand count) AND forward it to the moai binary below. The check
+# is a heuristic shell-metacharacter counter — NOT a parser (see coding-standards.md
+# §Bash Risk-Amplifier Doctrine (4)). It MUST NOT block, exit non-zero, or break
+# the session on a false positive. Every code path below exits 0 or falls through.
+BASH_SUBCOMMAND_SOFT_CAP=5
+payload=$(head -c 65536)
+# Only meaningful for the Bash tool (matcher scope is Write|Edit|Bash; Write/Edit have no command).
+if printf '%s' "$payload" | grep -q '"tool_name"[[:space:]]*:[[:space:]]*"Bash"'; then
+    # Extract the command value (best-effort, no jq dependency).
+    cmd=$(printf '%s' "$payload" | grep -oE '"command"[[:space:]]*:[[:space:]]*"([^"\\]|\\.)*"' | head -n1 | sed -E 's/^"command"[[:space:]]*:[[:space:]]*"//; s/"$//')
+    if [ -n "$cmd" ]; then
+        # Count compound-command metacharacters: | && || ; backtick $(
+        # `&&` and `||` each count as one subcommand boundary; pipe/semicolon/substitution too.
+        meta_count=$(printf '%s' "$cmd" | grep -oE '\|\||&&|[|;]|`\|\$\(' | wc -l | tr -d ' ')
+        if [ -n "$meta_count" ] && [ "$meta_count" -gt "$BASH_SUBCOMMAND_SOFT_CAP" ]; then
+            printf '[moai:bash-risk] WARN: subcommand count %s exceeds soft cap %d — consider splitting into a script file or delegating (coding-standards.md §Bash Risk-Amplifier Doctrine)\n' "$meta_count" "$BASH_SUBCOMMAND_SOFT_CAP" >&2
+            printf '[moai:bash-risk] WARN: subcommand count %s exceeds soft cap %d — consider splitting into a script file or delegating (coding-standards.md §Bash Risk-Amplifier Doctrine)\n' "$meta_count" "$BASH_SUBCOMMAND_SOFT_CAP" >>"$MOAI_HOOK_STDERR_LOG" 2>/dev/null || true
+        fi
+    fi
+fi
+# --- end Bash Risk-Amplifier warn signal ---
+
 # Try moai command in PATH
 if command -v moai &> /dev/null; then
-    exec head -c 65536 | moai hook pre-tool 2>>"$MOAI_HOOK_STDERR_LOG"
+    printf '%s' "$payload" | moai hook pre-tool 2>>"$MOAI_HOOK_STDERR_LOG"
+    exit 0
 fi
 
 # Try default ~/go/bin/moai
 if [ -f "$HOME/go/bin/moai" ]; then
-    exec head -c 65536 | "$HOME/go/bin/moai" hook pre-tool 2>>"$MOAI_HOOK_STDERR_LOG"
+    printf '%s' "$payload" | "$HOME/go/bin/moai" hook pre-tool 2>>"$MOAI_HOOK_STDERR_LOG"
+    exit 0
 fi
 
 # Try ~/.local/bin/moai (Linux install location)
 if [ -f "$HOME/.local/bin/moai" ]; then
-    exec head -c 65536 | "$HOME/.local/bin/moai" hook pre-tool 2>>"$MOAI_HOOK_STDERR_LOG"
+    printf '%s' "$payload" | "$HOME/.local/bin/moai" hook pre-tool 2>>"$MOAI_HOOK_STDERR_LOG"
+    exit 0
 fi
 
 # Not found - exit silently (Claude Code handles missing hooks gracefully)

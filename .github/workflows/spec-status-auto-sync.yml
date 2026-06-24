@@ -12,9 +12,17 @@ permissions:
   contents: write    # git push origin main (line 107)
   issues: write      # gh issue create fallback (line 95-99)
 
+# Serialize pushes — never cancel an in-flight sync. This job does git
+# commit + git push origin main; cancelling mid-push would leave the
+# working tree and remote in an inconsistent state. false is load-bearing.
+concurrency:
+  group: spec-status-sync
+  cancel-in-progress: false
+
 jobs:
   spec-status-sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: github.event.pull_request.merged == true
     steps:
       - uses: actions/checkout@v4

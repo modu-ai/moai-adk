@@ -29,6 +29,7 @@ The canonical role to (mode, model, isolation, write-heavy) mapping. Source: `.m
 - Read-only roles (researcher, analyst, architect, reviewer) MUST NOT use `isolation: "worktree"` — enforced by LR-09 lint rule.
 - Role profiles are schema-locked to these 7 names during v3.0.x. Adding a new role requires SPEC amendment through CON-002 protocol.
 - No teammate can override the isolation flag downward (implementer in plan mode is rejected).
+- [ZONE:Evolvable] [HARD] team-mode teammates default to `model: sonnet` (200K window). Under MoAI's heavy baseline a 200K window can saturate at spawn and trip the runtime rapid-refill circuit breaker → zero output. Switching to `model: inherit` does NOT reliably fix this (Team `[1m]` non-inheritance, Anthropic issue #36670 OPEN → teammate falls back to 200K). For large SPECs prefer a single `manager-develop` (`model: inherit`, 1M) + Round split; reserve team mode for small SPECs. See `.claude/rules/moai/development/model-policy.md` § Baseline-Refill Breaker.
 
 ### Teammate Naming
 
@@ -102,7 +103,7 @@ The task ledger at `.moai/state/team/{team-id}/tasklist.md` follows the Magentic
 - `TaskList.Claim()` atomically reserves the lowest-ID unblocked task by appending a `CLAIMED by {teammate-id}` row.
 - Concurrent claims are serialized via filesystem lock on tasklist.md.
 - No teammate or team lead shall remove or reorder rows — corrections via new TaskUpdate rows.
-- On TeamDelete, the ledger is archived to `.moai/state/team-archive/{team-id}-{timestamp}/`.
+- On automatic team cleanup at session exit, the ledger is archived to `.moai/state/team-archive/{team-id}-{timestamp}/` (the explicit `TeamDelete` tool was removed in Claude Code v2.1.178 — cleanup is now automatic; `{team-id}` is the session-derived name `session-<first8>`).
 
 ## Spawn Wrapper Validation
 
@@ -110,7 +111,7 @@ The team spawn wrapper enforces these checks before creating a teammate:
 
 1. **Role validation**: Reject unknown role profiles with `ORC_UNKNOWN_ROLE_PROFILE`.
 2. **Worktree enforcement**: Reject write-heavy roles without `isolation: "worktree"` with `ORC_WORKTREE_REQUIRED`.
-3. **Roster limit**: Reject teams exceeding `workflow.yaml team.max_teammates` (default 10) with `ORC_TEAM_ROSTER_LIMIT`.
+3. **Roster limit**: Reject teams exceeding `workflow.yaml team.max_teammates` (default 10) with `ORC_TEAM_ROSTER_LIMIT`. Note: `max_teammates` (default 10) is the **hard mechanical reject ceiling**, not a target — the recommended starting team size is **3-5 teammates** per Anthropic guidance ("Start with 3-5 teammates for most workflows"). The 10 ceiling exists to block runaway rosters; teams should default toward the 3-5 recommended size and only grow toward the ceiling when a SPEC declares the parallel surface area to justify it (e.g. the 5+1+1 pattern in `team-pattern-cookbook.md`).
 4. **Static agent check**: CI fails with `ORC_STATIC_TEAM_AGENT_PROHIBITED` if any `team-*.md` file exists in `.claude/agents/{moai,harness}/`.
 
 ## Cross-References

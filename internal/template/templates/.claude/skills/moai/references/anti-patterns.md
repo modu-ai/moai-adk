@@ -1,5 +1,4 @@
 ---
-name: moai-reference-anti-patterns
 description: "8 anti-patterns with wrong/right code examples mapped to Agent Core Behaviors — loaded during run and review phases"
 triggers:
   keywords:
@@ -10,9 +9,7 @@ triggers:
     - "scope"
     - "style drift"
   agents:
-    - "expert-backend"
-    - "expert-frontend"
-    - "manager-quality"
+    - "manager-develop"
     - "sync-auditor"
   phases:
     - "run"

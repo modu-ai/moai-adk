@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-e2e
 description: >
   Create and run E2E tests using Agent Browser, Playwright CLI, or Claude in Chrome.
   Supports auto-detection and installation, user journey mapping, GIF recording,
@@ -22,7 +21,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["e2e", "end-to-end", "e2e test", "browser test", "playwright", "agent-browser", "user journey"]
-  agents: ["manager-develop", "expert-frontend"]
+  agents: ["manager-develop"]
   phases: ["e2e"]
 ---
 
@@ -245,7 +244,7 @@ No test script files generated. Instead, create journey step definitions as stru
 
 ## Phase 3: Test Execution
 
-[HARD] Delegate test execution to the manager-develop subagent (or expert-frontend for Chrome MCP).
+[HARD] Delegate test execution to the manager-develop subagent (or a per-spawn `Agent(general-purpose)` frontend specialist for Chrome MCP, per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C).
 
 ### Playwright CLI Execution
 
@@ -431,8 +430,8 @@ Next Steps (AskUserQuestion):
 - Phase 0: manager-develop subagent (tool detection and installation)
 - Phase 1: manager-develop subagent (journey mapping)
 - Phase 2: manager-develop subagent (test script creation)
-- Phase 3: manager-develop or expert-frontend subagent (test execution). For Chrome DevTools MCP performance baselines and Lighthouse audits, delegate to expert-performance subagent.
-- Phase 4: expert-frontend subagent (GIF recording via Chrome MCP / Chrome DevTools MCP screenshot sequences) or manager-develop (Playwright/Agent Browser traces)
+- Phase 3: manager-develop or a per-spawn `Agent(general-purpose)` frontend specialist (test execution). For Chrome DevTools MCP performance baselines and Lighthouse audits, delegate to a per-spawn `Agent(general-purpose)` performance specialist.
+- Phase 4: per-spawn `Agent(general-purpose)` frontend specialist (GIF recording via Chrome MCP / Chrome DevTools MCP screenshot sequences) or manager-develop (Playwright/Agent Browser traces)
 - Phase 5: MoAI orchestrator (report and user interaction)
 
 ## Execution Summary
@@ -443,7 +442,7 @@ Next Steps (AskUserQuestion):
 4. Phase 1: Delegate journey mapping to manager-develop subagent
 5. Present journey options to user via AskUserQuestion
 6. Phase 2: Delegate test script creation to manager-develop subagent
-7. Phase 3: Delegate test execution to manager-develop/expert-frontend subagent
+7. Phase 3: Delegate test execution to manager-develop or a per-spawn `Agent(general-purpose)` frontend specialist
 8. Phase 4: If --record, capture recordings via selected tool's mechanism
 9. TaskCreate/TaskUpdate for all journeys
 10. Phase 5: Report results with next step options

@@ -1,255 +1,107 @@
-# Dependency Graph
+# 패키지 의존도 분석
 
-Internal and external dependency analysis for moai-adk-go.
+> 이 문서는 `/moai codemaps --force`로 자동 생성된 의존도 그래프입니다.
 
----
-
-## Dependency Direction Principles
-
-1. **Strictly acyclic**: No circular imports exist. Go's compiler enforces this at build time.
-2. **Downward only**: Higher layers import lower layers; lower layers never import higher layers.
-3. **Interface at boundaries**: Packages export interfaces, not concrete types, at layer boundaries.
-4. **`pkg/` is universally accessible**: Both `internal/` packages and potential external consumers may import `pkg/`.
-5. **`internal/defs/` and `internal/foundation/` are leaves**: They import nothing from the project — only the standard library.
+**모듈**: `github.com/modu-ai/moai-adk`  
+**Go 버전**: go 1.26.4
 
 ---
 
-## Internal Dependency Graph
+## 의존도 그래프 (Mermaid)
 
 ```mermaid
-flowchart TD
-    MAIN["cmd/moai/main.go"]
-
-    subgraph cli_layer["CLI Layer"]
-        CLI["internal/cli"]
-        WT["internal/cli/worktree"]
+graph TD
+    cmd["cmd/moai<br/>main()"]
+    
+    subgraph P["Presentation Layer"]
+        cli["internal/cli<br/>(241파일)<br/>50+ subcommand"]
+        tui["internal/tui"]
+        statusline["internal/statusline"]
+        web["internal/web"]
+        version["pkg/version"]
     end
-
-    subgraph interface_layer["Interface Layer"]
-        HOOK["internal/hook"]
-        CONFIG["internal/config"]
-        TMUX["internal/tmux"]
-        HOOKSEC["internal/hook/security"]
-        LSPHOOK["internal/lsp/hook"]
+    
+    subgraph B["Business/Domain Layer"]
+        models["pkg/models<br/>(Very High Fan-in)"]
+        foundation["internal/foundation"]
+        spec["internal/spec"]
+        workflow["internal/workflow"]
+        loop["internal/loop"]
+        harness["internal/harness"]
+        permission["internal/permission"]
+        constitution["internal/constitution"]
+        merge["internal/merge"]
     end
-
-    subgraph domain_layer["Domain Layer"]
-        PROJ["internal/core/project"]
-        CGIT["internal/core/git"]
-        QUAL["internal/core/quality"]
-        TMPL["internal/template"]
-        WORKFLOW["internal/workflow"]
-        LOOP["internal/loop"]
-        MERGE["internal/merge"]
+    
+    subgraph I["Infrastructure Layer"]
+        coreGit["internal/core/git<br/>(High Fan-in)"]
+        coreProject["internal/core/project"]
+        coreQuality["internal/core/quality"]
+        template["internal/template"]
+        config["internal/config<br/>(Very High Fan-in)"]
+        manifest["internal/manifest"]
+        hook["internal/hook"]
+        runtime["internal/runtime"]
+        session["internal/session"]
+        lsp["internal/lsp"]
+        mx["internal/mx"]
     end
-
-    subgraph infra_layer["Infrastructure Layer"]
-        LSP["internal/lsp"]
-        GITHUB["internal/github"]
-        RANK["internal/rank"]
-        UPDATE["internal/update"]
-        SHELL["internal/shell"]
-        STATUS["internal/statusline"]
-        RESIL["internal/resilience"]
-    end
-
-    subgraph support_layer["Support Layer (Leaves)"]
-        FOUND["internal/foundation"]
-        DEFS["internal/defs"]
-        I18N["internal/i18n"]
-        MANIFEST["internal/manifest"]
-        ASTGREP["internal/astgrep"]
-        RALPH["internal/ralph"]
-        GIT["internal/git"]
-    end
-
-    subgraph pkg_layer["Public API"]
-        MODELS["pkg/models"]
-        VER["pkg/version"]
-    end
-
-    MAIN --> CLI
-
-    CLI --> HOOK
-    CLI --> CONFIG
-    CLI --> TMUX
-    CLI --> PROJ
-    CLI --> CGIT
-    CLI --> TMPL
-    CLI --> UPDATE
-    CLI --> RANK
-    CLI --> GITHUB
-    CLI --> STATUS
-    CLI --> WORKFLOW
-    CLI --> LOOP
-    CLI --> FOUND
-    CLI --> DEFS
-    CLI --> I18N
-    CLI --> VER
-    WT --> CGIT
-
-    HOOK --> CONFIG
-    HOOK --> RANK
-    HOOK --> HOOKSEC
-    HOOK --> LSPHOOK
-    HOOK --> DEFS
-
-    HOOKSEC --> ASTGREP
-    LSPHOOK --> LSP
-
-    PROJ --> CGIT
-    PROJ --> SHELL
-    PROJ --> TMPL
-    PROJ --> MERGE
-    PROJ --> MANIFEST
-    PROJ --> QUAL
-    PROJ --> FOUND
-
-    LOOP --> LSP
-    LOOP --> RESIL
-    LOOP --> FOUND
-
-    CONFIG --> MODELS
-    TMPL --> MODELS
-    TMPL --> MANIFEST
-    TMPL --> FOUND
-
-    LSP --> RESIL
-    UPDATE --> RESIL
-    RANK --> RESIL
-    GITHUB --> RESIL
-
-    STATUS --> SHELL
-    STATUS --> WORKFLOW
-
-    QUAL --> LSP
-    QUAL --> RALPH
-
-    GIT --> FOUND
-    CGIT --> GIT
-    CGIT --> FOUND
+    
+    cmd --> cli
+    cli --> models
+    cli --> config
+    cli --> hook
+    cli --> template
+    cli --> session
+    cli --> spec
+    cli --> loop
+    cli --> coreGit
+    cli --> coreProject
+    
+    config --> models
+    template --> manifest
+    spec --> constitution
+    hook --> config
+    workflow --> coreGit
+    loop --> config
+    harness --> config
+    permission --> config
+    coreGit --> foundation
+    coreProject --> foundation
+    lsp -.-> astgrep["internal/astgrep"]
+    mx --> lsp
 ```
 
 ---
 
-## Key Dependency Paths
+## 팬-인 분석 (Very High)
 
-### Composition Root to Domain Services
-
-```
-cmd/moai/main.go
-  → cli.Execute()
-    → cli.InitDependencies() [deps.go]
-      → config.NewConfigManager()
-      → core/git.NewManager()          (Repository + BranchManager + WorktreeManager)
-      → hook.NewRegistry(config)
-        → hook.NewSessionStartHandler(config)
-        → hook.NewSessionEndHandler()
-        → hook.NewPreToolHandler(security.NewSecurityScanner())
-        → hook.NewPostToolHandler(lsp.NewDiagnosticsCollector(...))
-        → hook.NewTeammateIdleHandler(lsp.NewDiagnosticsCollector(...))
-        → hook.NewTaskCompletedHandler(...)
-        → hook.NewWorktreeCreateHandler()
-        → hook.NewWorktreeRemoveHandler()
-        → [9 more handlers...]
-      → update.NewChecker()
-      → update.NewOrchestrator()
-      → rank.NewFileCredentialStore()
-```
-
-### Template Deployment Path
-
-```
-cli.init (moai init)
-  → core/project.Initializer.Initialize()
-    → template.Deployer.Deploy(TemplateContext, projectRoot, mode)
-      → template.embed.FS (//go:embed templates)
-      → template.Renderer.Render(file, TemplateContext)
-      → manifest.Save(fileRecords)
-      → foundation.SafeWrite(path, content)
-```
-
-### Hook Event Path
-
-```
-moai hook <event> [flags]
-  → cli.hook.RunE()
-    → hook.Registry.Dispatch(eventType, stdin)
-      → hook.Protocol.ReadInput(stdin) → JSON payload
-      → handler.Handle(ctx, payload)
-        → [handler-specific logic]
-        → hook.Protocol.WriteOutput(stdout, response)
-```
+| 패키지 | 팬-인 수준 | 이유 |
+|--------|----------|------|
+| `pkg/models` | 45+ | Config 타입 중심 |
+| `internal/config` | 48+ | CLI composition에서 모든 패키지에 주입 |
+| `internal/cli` | (50+ import) | Composition root |
+| `internal/core/git` | 35+ | workflow/spec/session 필수 |
+| `pkg/version` | 30+ | 버전 출력 (CLI/help) |
+| `internal/foundation` | 32+ | 언어 registry (모든 도메인) |
 
 ---
 
-## External Dependencies
+## 계층 간 의존도
 
-### Direct Dependencies
+**Presentation → Business → Infrastructure**
 
-| Package | Version | Purpose | Layer Used By |
-|---------|---------|---------|---------------|
-| `github.com/spf13/cobra` | v1.10.2 | CLI framework — command parsing, help generation, flag management | `internal/cli` |
-| `github.com/charmbracelet/bubbletea` | v1.3.10 | TUI event loop — Elm-style model/update/view | `internal/ui` |
-| `github.com/charmbracelet/bubbles` | v1.0.0 | Pre-built TUI components (text input, spinner, list) | `internal/ui` |
-| `github.com/charmbracelet/huh` | v0.8.0 | Interactive form prompts | `internal/ui` |
-| `github.com/charmbracelet/glamour` | v0.10.0 | Markdown-to-ANSI terminal rendering | `internal/ui`, `internal/ralph` |
-| `github.com/charmbracelet/lipgloss` | v1.1.1+ | Terminal styling primitives (color, border, padding) | `internal/ui`, `internal/statusline` |
-| `github.com/mattn/go-isatty` | v0.0.20 | TTY detection for output format switching | `internal/cli`, `internal/ui` |
-| `gopkg.in/yaml.v3` | v3.0.1 | YAML parsing and serialization for config files | `internal/config`, `pkg/models` |
-| `golang.org/x/text` | v0.34.0 | Unicode text transformation and encoding utilities | `internal/foundation`, `internal/i18n` |
-
-### Indirect Dependencies (Selected)
-
-| Package | Purpose |
-|---------|---------|
-| `github.com/alecthomas/chroma/v2` | Syntax highlighting used by glamour |
-| `github.com/aymanbagabas/go-osc52/v2` | OSC52 clipboard escape sequences |
-| `github.com/dustin/go-humanize` | Human-readable number/size formatting |
-| `github.com/charmbracelet/x/ansi` | ANSI escape sequence parsing |
-| `github.com/gorilla/css` | CSS parser used by glamour for Markdown styling |
-| `github.com/dlclark/regexp2` | Full-featured regex (chroma dependency) |
-
-### Standard Library Usage (Key Packages)
-
-| Stdlib Package | Usage |
-|---------------|-------|
-| `log/slog` | Structured logging throughout (Go 1.21+) |
-| `embed` | Template filesystem embedding (`//go:embed`) |
-| `text/template` | Go template rendering for `.tmpl` files |
-| `os/exec` | Shell-out to `git`, `go vet`, `golangci-lint`, `ast-grep` |
-| `encoding/json` | Hook event JSON encoding/decoding |
-| `path/filepath` | Cross-platform path manipulation |
-| `sync` | Mutex usage in hook registry and LSP cache |
-| `context` | Context propagation for cancellation/timeout |
-| `io/fs` | Filesystem abstraction over embedded templates |
-| `net/http` | GitHub API and update check HTTP calls |
+- `cli` → 모든 business 계층 + infrastructure
+- `config` → models, defs (핵심 주입)
+- `hook` → config, lsp, session, mx
+- `coreGit` → foundation
 
 ---
 
-## Dependency Rules
+## 순환 의존성 검증
 
-These rules are enforced by Go's import system and project convention:
-
-| Rule | Enforcement |
-|------|------------|
-| No import cycles | Go compiler (build fails) |
-| `internal/` not importable externally | Go toolchain (`internal` convention) |
-| `internal/defs/` imports stdlib only | Convention + code review |
-| `internal/foundation/` imports stdlib only | Convention + code review |
-| CLI layer never bypasses interfaces | Code review (deps.go is the only wiring point) |
-| No `fmt.Println` in library packages | `golangci-lint` rule |
+**결과**: 0개 순환 의존성 (검증됨)
 
 ---
 
-## Circular Dependency Analysis
-
-No circular dependencies exist. The Go compiler would reject the build if any were introduced.
-
-The packages at highest risk for accidental cycles are:
-
-| Package Pair | Risk | Mitigation |
-|-------------|------|-----------|
-| `internal/hook` ↔ `internal/config` | High (both needed at startup) | `config` exposes `ConfigProvider` interface; `hook` imports the interface only |
-| `internal/core/project` ↔ `internal/template` | Medium (project uses templates) | One-directional: `project` → `template` only |
-| `internal/cli` ↔ `internal/hook` | Medium (CLI dispatches hooks) | One-directional: `cli` → `hook` via `Registry` interface |
+**생성**: `/moai codemaps --force`로 자동 생성

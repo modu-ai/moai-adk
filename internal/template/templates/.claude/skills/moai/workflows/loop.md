@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-loop
 description: >
   Iterative autonomous fixing workflow that scans, fixes, verifies, and
   repeats until all issues are resolved or max iterations reached.
@@ -22,7 +21,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["loop", "iterate", "repeat", "until done", "keep fixing", "all errors"]
-  agents: ["manager-quality", "expert-backend", "expert-frontend", "manager-develop"]
+  agents: ["manager-develop"]
   phases: ["loop"]
 ---
 
@@ -32,17 +31,17 @@ Purpose: Iterative autonomous fixing until all issues resolved. AI scans, fixes,
 
 Flow: Check Completion -> Memory Check -> Diagnose -> Fix -> Verify -> Repeat
 
-<!-- @MX:NOTE - REQ-WF003-004 alias relationship: /moai loop and /moai run --mode loop are equivalent. Alias enforced by TestLoopAliasCrossReference audit. -->
+<!-- @MX:NOTE - alias relationship: /moai loop and /moai run --mode loop are equivalent. The alias is enforced by a CI audit that checks the cross-reference text is present. -->
 
-## Invocation Routes (SPEC-V3R2-WF-003)
+## Invocation Routes
 
 This skill is invocable via two equivalent routes:
 - Direct: `/moai loop $ARGUMENTS` — historical entry point, preserved as thin wrapper.
-- Via run dispatch: `/moai run --mode loop` — per SPEC-V3R2-WF-003 REQ-WF003-004, the
-  `/moai run` skill delegates to this skill (e.g., `/moai run SPEC-XXX --mode loop`) when supplied.
+- Via run dispatch: `/moai run --mode loop` — the `/moai run` skill delegates to this skill
+  (e.g., `/moai run SPEC-XXX --mode loop`) when supplied.
 
-Both routes invoke this skill body unchanged. Behavioral equivalence is enforced by the audit
-test `TestLoopAliasCrossReference` in `internal/template/agentless_audit_test.go`.
+Both routes invoke this skill body unchanged. Behavioral equivalence is enforced by a CI audit
+that verifies this skill documents the `/moai run --mode loop` cross-reference.
 
 See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent + mode-axis contract.
 
@@ -61,9 +60,9 @@ See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.m
 Each iteration executes the following steps in order:
 
 Step 1 - Completion Check:
-- Check for completion marker in previous iteration response
-- Marker types: `<moai>DONE</moai>`, `<moai>COMPLETE</moai>`
-- If marker found: Exit loop with success
+- Check whether the previous iteration's response declared loop completion in natural language
+- Completion sentence: "All loop completion conditions satisfied; exiting loop."
+- If the completion sentence is present: Exit loop with success
 
 Step 2 - Memory Pressure Check (if --memory-check enabled):
 - Calculate session duration from start time
@@ -97,7 +96,7 @@ If --sequential flag: Run LSP, then AST-grep, then Tests, then Coverage sequenti
 
 Step 4 - Completion Condition Check:
 - Conditions: Zero errors AND all tests passing AND coverage meets threshold
-- If all conditions met: Prompt user to add completion marker or continue
+- If all conditions met: Emit the completion sentence "All loop completion conditions satisfied; exiting loop." so Step 1 of the next iteration detects success-exit, or continue
 - If only coverage below target (zero errors + tests passing): Auto-route to coverage workflow (workflows/coverage.md) for intelligent gap analysis and test generation instead of blind looping. Coverage workflow identifies P1-P4 priority gaps and generates targeted tests.
 
 Step 5 - Task Generation:
@@ -117,12 +116,12 @@ Step 6 - Fix Execution:
 - [HARD] Before each fix: TaskUpdate to change item to in_progress
 - [HARD] Agent delegation mandate: ALL fix tasks MUST be delegated to specialized agents. NEVER execute fixes directly.
 
-Agent selection by issue type:
-- Type errors, logic bugs: manager-quality subagent
-- Import/module issues: expert-backend or expert-frontend subagent
+Agent selection by issue type (domain expertise injected per-spawn per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C):
+- Type errors, logic bugs: manager-develop subagent (or orchestrator verification batch)
+- Import/module issues: manager-develop (or per-spawn `Agent(general-purpose)` backend/frontend specialist)
 - Test failures: manager-develop subagent
-- Security issues: expert-security subagent
-- Performance issues: expert-performance subagent
+- Security issues: per-spawn `Agent(general-purpose)` security reviewer
+- Performance issues: per-spawn `Agent(general-purpose)` performance specialist
 
 Fix levels applied per --auto setting:
 - Level 1 (Immediate): No approval. Import sorting, whitespace
@@ -154,7 +153,7 @@ Step 9 - Repeat or Exit:
 ## Completion Conditions
 
 The loop exits when any of these conditions are met:
-- Completion marker detected in response
+- Completion sentence "All loop completion conditions satisfied; exiting loop." detected in response
 - All conditions met: zero errors + tests passing + coverage threshold
 - Max iterations reached (displays remaining issues)
 - Memory pressure threshold exceeded (saves checkpoint)

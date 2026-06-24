@@ -47,7 +47,6 @@ func TestIsFrozen_Allowed(t *testing.T) {
 		"internal/design/dtcg/validator.go",
 		"internal/design/dtcg/categories/color.go",
 		".claude/skills/moai-workflow-design/SKILL.md",
-		".claude/skills/moai-design-system/SKILL.md",
 		".moai/design/tokens.json",
 		".moai/design/components.json",
 		// EVOLVABLE sections (§6, §7, §8, §9, §10).
@@ -101,7 +100,6 @@ func TestBlockWrite_AllowedPath(t *testing.T) {
 	allowedPaths := []string{
 		"internal/design/dtcg/validator.go",
 		".moai/design/tokens.json",
-		".claude/skills/moai-design-system/SKILL.md",
 	}
 
 	for _, path := range allowedPaths {

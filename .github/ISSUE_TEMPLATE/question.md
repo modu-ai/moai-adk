@@ -2,7 +2,7 @@
 name: Question
 about: Ask a question about MoAI-ADK (English, Korean, Japanese, Chinese welcome)
 title: "[Question] "
-labels: question
+labels: []
 assignees: ''
 ---
 

@@ -14,20 +14,7 @@ var (
 
 	// ErrHookInvalidPermissionDecision is returned when an invalid permission decision is encountered.
 	ErrHookInvalidPermissionDecision = errors.New("hook protocol: invalid permission decision")
-
-	// ErrHookSpecificOutputMismatch is returned when the hook-specific output does not match the expected event type.
-	ErrHookSpecificOutputMismatch = errors.New("hook protocol: hook-specific output mismatch")
 )
-
-// HookSpecificOutputMismatch provides details about a hook-specific output type mismatch.
-type HookSpecificOutputMismatch struct {
-	Expected string
-	Actual   string
-}
-
-func (e *HookSpecificOutputMismatch) Error() string {
-	return fmt.Sprintf("%s: expected %s, got %s", ErrHookSpecificOutputMismatch, e.Expected, e.Actual)
-}
 
 // ParseHookOutput implements the dual-parse protocol for hook outputs.
 // It attempts JSON unmarshal first (canonical Claude Code HookJSONOutput format),

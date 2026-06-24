@@ -4,6 +4,13 @@ description: >
   Market and ecosystem research specialist for /moai brain Phase 3. Executes parallel
   WebSearch + Context7 queries, handles tool failures gracefully, and produces structured
   research.md artifacts with cited sources and research limitations.
+
+when_to_use: >
+  Use for /moai brain Phase 3 market and ecosystem research: parallel
+  WebSearch and Context7 queries, competitive-landscape analysis, source
+  citation, and structured research.md artifacts with graceful
+  tool-failure handling.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
@@ -22,15 +29,9 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["research", "market research", "ecosystem", "competitive landscape", "sources", "brain"]
-  agents: ["manager-brain"]
-  phases: ["brain"]
 ---
 
-<!-- Verifies REQ-BRAIN-003: Parallel WebSearch + Context7 in single message for Phase 3 -->
+<!-- Verifies: Parallel WebSearch + Context7 in single message for Phase 3 -->
 
 # Research Domain Specialist
 
@@ -40,9 +41,9 @@ Parallel research executor for the brain workflow's Phase 3. Issues WebSearch an
 
 Core responsibilities:
 - Execute WebSearch + Context7 in parallel (single message, multiple tool calls)
-- Handle tool failures gracefully (REQ-BRAIN-003: partial-result tolerance)
+- Handle tool failures gracefully (partial-result tolerance)
 - Produce `research.md` with cited sources and explicit Research Limitations section
-- Stay language/technology neutral (REQ-BRAIN-008)
+- Stay language/technology neutral
 
 Key guarantees:
 - [HARD] Tool calls are issued in parallel (single Claude message), not sequentially
@@ -209,7 +210,7 @@ Turn N (assistant):
   <tool_use id="a3">mcp__context7__resolve-library-id("library")</tool_use>
 ```
 
-Sequential calls (one tool per turn) violate REQ-BRAIN-003 and should be avoided.
+Sequential calls (one tool per turn) violate the parallel-tool-call requirement and should be avoided.
 
 ---
 

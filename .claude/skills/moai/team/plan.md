@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-team-plan
 description: >
   Create SPEC documents through parallel team-based research and analysis.
   Spawns researcher, analyst, and architect teammates for multi-angle exploration.
@@ -22,14 +21,14 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["team plan", "parallel research", "team spec"]
-  agents: ["team-reader"]
+  agents: ["general-purpose"]
   phases: ["plan"]
 ---
 # Workflow: Team Plan - Agent Teams SPEC Creation
 
 Purpose: Create comprehensive SPEC documents through parallel team-based research and analysis. Used when plan phase benefits from multi-angle exploration.
 
-Flow: TeamCreate -> Parallel Research -> Annotation Cycle -> SPEC Document -> Shutdown
+Flow: Spawn research teammates (implicit team) -> Parallel Research -> Annotation Cycle -> SPEC Document -> Shutdown
 
 ## Prerequisites
 
@@ -41,10 +40,7 @@ See .claude/rules/moai/workflow/spec-workflow.md for team mode prerequisites.
    - .moai/config/sections/workflow.yaml for team settings
    - .moai/config/sections/quality.yaml for development mode
 
-2. Create team:
-   ```
-   TeamCreate(team_name: "moai-plan-{feature-slug}")
-   ```
+2. The team forms implicitly on the first teammate spawn (one team per session, no setup step). Teams/tasks are stored under the session-derived name `session-<first8>`.
 
 3. Create shared task list:
    ```
@@ -56,12 +52,11 @@ See .claude/rules/moai/workflow/spec-workflow.md for team mode prerequisites.
 
 ## Phase 1: Spawn Research Team
 
-Spawn 3 teammates using the **team-reader** profile with role-specific prompts and model overrides. All spawns MUST use Agent() with `team_name` and `name` parameters. Launch all three in a single response for parallel execution:
+Spawn 3 teammates using `subagent_type: "general-purpose"` with the read-only role_profiles (`researcher` / `analyst` / `architect`) applied via the `name` + `model` + `mode: "plan"` overrides. All spawns MUST use Agent() with the `name` parameter — the team forms implicitly on the first spawn (no setup step; the `team_name` parameter is accepted but ignored as of Claude Code v2.1.178). Launch all three in a single response for parallel execution:
 
 ```
 Agent(
-  subagent_type: "team-reader",
-  team_name: "moai-plan-{feature-slug}",
+  subagent_type: "general-purpose",
   name: "researcher",
   model: "haiku",
   mode: "plan",
@@ -77,8 +72,7 @@ Agent(
 )
 
 Agent(
-  subagent_type: "team-reader",
-  team_name: "moai-plan-{feature-slug}",
+  subagent_type: "general-purpose",
   name: "analyst",
   model: "sonnet",
   mode: "plan",
@@ -91,8 +85,7 @@ Agent(
 )
 
 Agent(
-  subagent_type: "team-reader",
-  team_name: "moai-plan-{feature-slug}",
+  subagent_type: "general-purpose",
   name: "architect",
   model: "opus",
   mode: "plan",
@@ -159,7 +152,7 @@ After all research tasks complete and annotation cycle is approved:
 
 #### [HARD] Pre-Write Frontmatter Checklist
 
-[HARD] Before manager-spec calls Write/MultiEdit for spec.md, it MUST validate the frontmatter contains ALL 12 required fields AND rejects snake_case legacy aliases. This checklist prevents dual-schema drift between the plan workflow and `internal/spec/lint.go` `FrontmatterSchemaRule`. SSOT: `.claude/rules/moai/development/spec-frontmatter-schema.md`.
+[HARD] Before manager-spec calls Write/MultiEdit for spec.md, it MUST validate the frontmatter contains ALL 12 required fields AND rejects snake_case legacy aliases. This checklist prevents dual-schema drift between the plan workflow and the SPEC frontmatter lint rule. SSOT: `.claude/rules/moai/development/spec-frontmatter-schema.md`.
 
 Required 12 fields (canonical order):
 - [ ] `id: SPEC-{DOMAIN}-{NUM}` — matches `^SPEC-[A-Z][A-Z0-9]+-[0-9]{3}$`
@@ -215,7 +208,7 @@ AskUserQuestion with options:
    ```
    This safely removes GLM env vars while preserving ANTHROPIC_AUTH_TOKEN and other settings.
    Do NOT manually Read/Write settings.local.json — use the CLI command which handles JSON merging correctly.
-5. TeamDelete to clean up team resources
+5. Team cleanup is automatic on session exit (no explicit teardown call — the TeamDelete tool was removed in Claude Code v2.1.178)
 6. Log any unresponsive teammates for debugging
 7. Do NOT wait indefinitely for shutdown_response
 8. Execute /clear to free context for next phase
@@ -230,4 +223,4 @@ If team creation fails or AGENT_TEAMS not enabled:
 
 ---
 
-Version: 3.0.0 (Dynamic team-reader profiles + Annotation Cycle)
+Version: 3.0.0 (Dynamic general-purpose read-only role_profiles + Annotation Cycle)

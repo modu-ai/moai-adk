@@ -29,8 +29,8 @@ func TestClassifySkill(t *testing.T) {
 			wantClass: "WARN",
 		},
 		{
-			name:      "user customization my-harness prefix returns INFO",
-			skillName: "my-harness-test",
+			name:      "user customization harness prefix returns INFO",
+			skillName: "harness-test",
 			wantClass: "INFO",
 		},
 		{
@@ -47,13 +47,7 @@ func TestClassifySkill(t *testing.T) {
 			name:      "valid static core skill moai-meta-harness returns PASS",
 			skillName: "moai-meta-harness",
 			wantClass: "PASS",
-		},
-		{
-			name:      "valid static core skill moai-design-system returns PASS",
-			skillName: "moai-design-system",
-			wantClass: "PASS",
-		},
-		{
+		}, {
 			name:      "third-party skill without moai- prefix returns INFO",
 			skillName: "my-custom-thing",
 			wantClass: "INFO",

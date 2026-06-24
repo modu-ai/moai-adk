@@ -2,7 +2,7 @@ package cli
 
 // @MX:NOTE: [AUTO] GLM command launches Claude Code with GLM backend via Z.AI proxy
 // @MX:NOTE: [AUTO] Requires 'moai glm setup <key>' to save API key to ~/.moai/.env.glm
-// @MX:NOTE: [AUTO] Main session uses GLM: 128K/200K/1M context windows per model tier (high=glm-5.2[1m])
+// @MX:NOTE: [AUTO] Main session uses GLM: 128K/200K/1M context windows per model tier (high=glm-5.2)
 // @MX:NOTE: [AUTO] M6-S2 DDD: renderSuccessCard used in enableTeamMode (L285, L325); WARNING block on stderr is plain fmt by design (non-TTY safe)
 
 import (
@@ -49,7 +49,7 @@ Use 'moai cc --permission-mode auto' or 'moai cg --permission-mode auto' instead
 Note: Z.AI enforces low concurrency limits (paid tiers observe 1-3 in-flight
 requests). Multi-agent workflows that exceed this limit can surface as opaque
 errors (sometimes misreported by clients as "context window limit"). The GLM
-models themselves have ample context (glm-5.2[1m] 1M, glm-4.7 ~202K). For more
+models themselves have ample context (glm-5.2 1M, glm-4.7 ~202K). For more
 stable parallel execution with MoAI Agent Teams, prefer 'moai cg' (hybrid mode).
 
 Examples:
@@ -152,7 +152,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// Z.AI concurrency limits (1-3 in-flight requests per paid tier) are sometimes
 	// misreported by Claude Code as "context window limit".
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "WARNING: moai glm uses GLM models for the MAIN SESSION. Known limitations:")
-	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Main session context window: 128K (glm-4.5-air), 202K (glm-4.7), 1M (glm-5.2[1m])")
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Main session context window: 128K (glm-4.5-air), 202K (glm-4.7), 1M (glm-5.2)")
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Z.AI concurrency is limited (1-3 in-flight requests per paid tier)")
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "If you want Claude as leader and GLM for teammates, use 'moai cg' instead.")
 
@@ -174,11 +174,13 @@ func containsPermissionMode(args []string, mode string) bool {
 
 // glmAutoCompactWindow returns the CLAUDE_CODE_AUTO_COMPACT_WINDOW value and a
 // flag indicating whether it should be injected. The window is only set when
-// the High slot model carries the [1m] suffix, which activates Claude Code's
-// 1M context mode — auto-compact must then scale to the enlarged window. The
-// suffix match is case-insensitive so a [1M]-cased model id resolves too.
+// the High slot model resolves to the 1M context tier (e.g. glm-5.2), which
+// activates Claude Code's 1M context mode — auto-compact must then scale to the
+// enlarged window. The trigger is the model's resolved context window (via
+// statusline.ResolveGLMContextWindow), not a model-id suffix: z.ai rejects a
+// suffixed id such as glm-5.2[1m], so the suffix is no longer used.
 func glmAutoCompactWindow(highModel string) (string, bool) {
-	if strings.Contains(strings.ToLower(highModel), "[1m]") {
+	if statusline.ResolveGLMContextWindow(highModel) >= config.Default1MContextTokens {
 		return strconv.Itoa(config.Default1MContextTokens), true
 	}
 	return "", false
@@ -193,15 +195,14 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 	_ = os.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", glmConfig.Models.High)     //nolint:errcheck
 	_ = os.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", glmConfig.Models.Medium) //nolint:errcheck
 	_ = os.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", glmConfig.Models.Low)     //nolint:errcheck
-	// 1M context activation: when the High slot uses a [1m]-suffixed model,
-	// scale the auto-compact window to the full 1M context.
+	// 1M context activation: when the High slot model resolves to the 1M context
+	// tier, scale the auto-compact window to the full 1M context.
 	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
 		_ = os.Setenv(config.EnvClaudeCodeAutoCompactWindow, window) //nolint:errcheck
 	}
 	// Z.AI proxy compatibility: strip Anthropic beta headers
-	_ = os.Setenv("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "1")   //nolint:errcheck
-	_ = os.Setenv("API_TIMEOUT_MS", "3000000")                     //nolint:errcheck
-	_ = os.Setenv("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "1") //nolint:errcheck
+	_ = os.Setenv("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "1") //nolint:errcheck
+	_ = os.Setenv("API_TIMEOUT_MS", "3000000")                   //nolint:errcheck
 	// Z.AI MCP server (zai-mcp-server) reads this env for authentication.
 	_ = os.Setenv("Z_AI_API_KEY", apiKey) //nolint:errcheck
 }
@@ -352,9 +353,9 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 			"Config saved to: .moai/config/sections/llm.yaml",
 			"",
 			"Role model mapping (dynamic teams):",
-			"  - lead: glm-5.2[1m]",
+			"  - lead: glm-5.2",
 			"  - researcher/reviewer: glm-4.7-flash (read-only roles)",
-			"  - analyst/architect: glm-5.2[1m] (planning roles)",
+			"  - analyst/architect: glm-5.2 (planning roles)",
 			"  - implementer/tester/designer: glm-4.7 (write roles)",
 			"",
 			"Available models: glm-5.2, glm-5.1, glm-4.7, glm-4.6, glm-4.5, glm-4.5-air",
@@ -384,7 +385,17 @@ func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 	if !tmux.NewDetector().InTmuxSession() {
 		return nil
 	}
+	return injectTmuxSessionEnvVia(tmux.NewSessionManager(), glmConfig, apiKey)
+}
 
+// buildTmuxInjectVars returns the GLM environment variable set that is injected
+// into the tmux session env for teammate isolation. Extracted as a pure helper
+// (no tmux side effects) so the credential-routing invariant and the
+// inject↔clear key-parity invariant (REQ-CGH-009) can be asserted directly.
+// ANTHROPIC_AUTH_TOKEN is included here as the teammate-facing GLM credential set;
+// the sensitive-channel routing (which deletes it from the bulk map) happens in
+// injectTmuxSessionEnvVia.
+func buildTmuxInjectVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]string {
 	vars := map[string]string{
 		"ANTHROPIC_AUTH_TOKEN":           apiKey,
 		"ANTHROPIC_BASE_URL":             glmConfig.BaseURL,
@@ -392,9 +403,8 @@ func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
 		// Z.AI proxy compatibility: strip Anthropic beta headers
-		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":   "1",
-		"API_TIMEOUT_MS":                           "3000000",
-		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
+		"API_TIMEOUT_MS":                         "3000000",
 	}
 
 	// Issue #742: Map the High slot model to its real context window so
@@ -403,17 +413,26 @@ func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 		vars[config.EnvStatuslineContextSize] = strconv.Itoa(size)
 	}
 
-	// 1M context activation: scale auto-compact window when the High slot uses
-	// a [1m]-suffixed model.
+	// 1M context activation: scale auto-compact window when the High slot model
+	// resolves to the 1M context tier.
 	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
 		vars[config.EnvClaudeCodeAutoCompactWindow] = window
 	}
+
+	return vars
+}
+
+// injectTmuxSessionEnvVia performs the actual credential routing through the given
+// SessionManager. Split out from injectTmuxSessionEnv (which holds the
+// test-environment / in-tmux guards) so tests can exercise the production routing
+// path with a recording-fake SessionManager (REQ-CGH-009 Scenario 9a).
+func injectTmuxSessionEnvVia(mgr tmux.SessionManager, glmConfig *GLMConfigFromYAML, apiKey string) error {
+	vars := buildTmuxInjectVars(glmConfig, apiKey)
 
 	// SPEC-V3R5-SECURITY-CRIT-001 P0-2 (CWE-214): route ANTHROPIC_AUTH_TOKEN
 	// through the argv-safe sensitive injection channel. The remaining
 	// non-sensitive vars stay on the fast bulk path. On sensitive-injection
 	// failure we MUST NOT fall back to argv (would re-leak the token).
-	mgr := tmux.NewSessionManager()
 	ctx := context.Background()
 
 	const sensitiveKey = "ANTHROPIC_AUTH_TOKEN"
@@ -443,10 +462,21 @@ func clearTmuxSessionEnv() error {
 		return nil
 	}
 
-	// ANTHROPIC_AUTH_TOKEN intentionally excluded from this list:
-	// it may be an OAuth token that must survive mode switches.
-	// ANTHROPIC_BASE_URL serves as the GLM activation indicator.
-	vars := []string{
+	mgr := tmux.NewSessionManager()
+	_ = mgr.ClearEnv(context.Background(), buildTmuxClearVars()) //nolint:errcheck // best-effort cleanup
+	return nil
+}
+
+// buildTmuxClearVars returns the GLM environment variable keys removed from the
+// tmux session env when switching back to Claude mode (moai cc). Extracted as a
+// pure helper so the inject↔clear key-parity invariant (REQ-CGH-009) can be
+// asserted directly.
+//
+// ANTHROPIC_AUTH_TOKEN is intentionally excluded from this list: it may be an
+// OAuth token that must survive mode switches. ANTHROPIC_BASE_URL serves as the
+// GLM activation indicator — removing it is sufficient to deactivate GLM mode.
+func buildTmuxClearVars() []string {
+	return []string{
 		"ANTHROPIC_BASE_URL",
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",
@@ -465,10 +495,6 @@ func clearTmuxSessionEnv() error {
 		// auto-compact itself).
 		config.EnvClaudeCodeAutoCompactWindow,
 	}
-
-	mgr := tmux.NewSessionManager()
-	_ = mgr.ClearEnv(context.Background(), vars) //nolint:errcheck // best-effort cleanup
-	return nil
 }
 
 // persistTeamMode saves the team_mode value to .moai/config/sections/llm.yaml.
@@ -597,7 +623,6 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 	// Z.AI proxy compatibility: strip Anthropic beta headers
 	settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
 	settings.Env["API_TIMEOUT_MS"] = "3000000"
-	settings.Env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = "1"
 	// Issue #742: pre-compute statusline context size from the High slot
 	// (Opus equivalent) so SessionStart hook propagates it via tmux env.
 	if size := statusline.ResolveGLMContextWindow(glmConfig.Models.High); size > 0 {
@@ -606,8 +631,8 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 		// Clean up stale value from a prior session that resolved a known model.
 		delete(settings.Env, config.EnvStatuslineContextSize)
 	}
-	// 1M context activation: scale auto-compact window when the High slot uses
-	// a [1m]-suffixed model; otherwise clean up any stale value.
+	// 1M context activation: scale auto-compact window when the High slot model
+	// resolves to the 1M context tier; otherwise clean up any stale value.
 	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
 		settings.Env[config.EnvClaudeCodeAutoCompactWindow] = window
 	} else {
@@ -897,12 +922,11 @@ func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]str
 		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
 		// Z.AI proxy compatibility
-		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":   "1",
-		"API_TIMEOUT_MS":                           "3000000",
-		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
+		"API_TIMEOUT_MS":                         "3000000",
 	}
-	// 1M context activation: scale auto-compact window when the High slot uses
-	// a [1m]-suffixed model.
+	// 1M context activation: scale auto-compact window when the High slot model
+	// resolves to the 1M context tier.
 	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
 		vars[config.EnvClaudeCodeAutoCompactWindow] = window
 	}
@@ -949,9 +973,8 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 	// Z.AI proxy compatibility: strip Anthropic beta headers
 	settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
 	settings.Env["API_TIMEOUT_MS"] = "3000000"
-	settings.Env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = "1"
-	// 1M context activation: scale auto-compact window when the High slot uses
-	// a [1m]-suffixed model; otherwise clean up any stale value.
+	// 1M context activation: scale auto-compact window when the High slot model
+	// resolves to the 1M context tier; otherwise clean up any stale value.
 	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
 		settings.Env[config.EnvClaudeCodeAutoCompactWindow] = window
 	} else {

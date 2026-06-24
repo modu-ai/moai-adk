@@ -5,15 +5,27 @@ on:
     paths:
       - '.moai/specs/**'
 
+permissions:
+  contents: read
+
+# Cancel in-progress runs for the same PR (lint is fast and idempotent).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   spec-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      # Version alignment with ci.yml: actions/checkout@v5, actions/setup-go@v6.
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-      - name: Build moai
-        run: make build && make install
+          cache: true
       - name: Run SPEC lint
-        run: moai spec lint --strict
+        # Invoke the freshly built binary directly via go run instead of
+        # `make install` (which pollutes $GOPATH/bin and is unnecessary for
+        # a one-shot lint invocation).
+        run: go run ./cmd/moai spec lint --strict

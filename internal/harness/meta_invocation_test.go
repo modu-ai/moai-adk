@@ -24,10 +24,10 @@ func TestIsAllowedPath_Allowed(t *testing.T) {
 		name string
 		path string
 	}{
-		{"agents my-harness root", ".claude/agents/my-harness/"},
-		{"agents my-harness deep", ".claude/agents/my-harness/ios-architect.md"},
-		{"skills my-harness- root", ".claude/skills/my-harness-ios-patterns/"},
-		{"skills my-harness- deep", ".claude/skills/my-harness-swiftui/SKILL.md"},
+		{"agents harness root", ".claude/agents/harness/"},
+		{"agents harness deep", ".claude/agents/harness/ios-architect.md"},
+		{"skills harness- root", ".claude/skills/harness-ios-patterns/"},
+		{"skills harness- deep", ".claude/skills/harness-swiftui/SKILL.md"},
 		{"moai harness root", ".moai/harness/"},
 		{"moai harness file", ".moai/harness/main.md"},
 		{"moai harness deep", ".moai/harness/chaining-rules.yaml"},
@@ -197,7 +197,7 @@ func TestEnsureAllowed_Reject(t *testing.T) {
 func TestEnsureAllowed_Pass(t *testing.T) {
 	t.Parallel()
 
-	err := EnsureAllowed(".claude/agents/my-harness/ios-architect.md")
+	err := EnsureAllowed(".claude/agents/harness/ios-architect.md")
 	if err != nil {
 		t.Errorf("EnsureAllowed (allowed path): unexpected error: %v", err)
 	}

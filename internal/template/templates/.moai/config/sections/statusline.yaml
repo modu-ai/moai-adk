@@ -1,10 +1,4 @@
 statusline:
-  # Preset name: full, compact, minimal, custom
-  # Write-time shorthand: a non-custom preset expands into a full 15-key
-  # segments map at save. At runtime the segments map wins; preset is not
-  # re-read once segments exist.
-  preset: "full"
-
   # Theme — exactly 2 themes exist: catppuccin-mocha (seeded) | catppuccin-latte
   theme: "catppuccin-mocha"
 

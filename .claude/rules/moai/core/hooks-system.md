@@ -9,7 +9,7 @@ Claude Code hooks for extending functionality with custom scripts.
 ## Hook Events
 
 26 hook event types + 4 RETIRE-OBS-ONLY events = 30 total Go handlers (retired).
-**Note**: EventSetup retired (orphan constant, no handler implementation).
+**Note**: The moai-adk Go `EventSetup` constant is retired (orphan, no handler implementation); the upstream Claude Code `Setup` event remains a current, usable event.
 Active settings.json keys: 22. RETIRE-OBS-ONLY (Go-only, opt-in via system.yaml): 4. Total: 26 events.
 
 **Active events (22 in settings.json + 4 RETIRE-OBS-ONLY in Go = 26 events):**
@@ -18,6 +18,7 @@ Active settings.json keys: 22. RETIRE-OBS-ONLY (Go-only, opt-in via system.yaml)
 |-------|---------|-----------|-------------|
 | SessionStart | Source | No | Runs when a new session begins. Matchers: startup, resume, clear, compact |
 | SessionEnd | Reason | No | Runs when session terminates. Matchers: clear, resume, logout, prompt_input_exit |
+| PostSession | No | No | Runs after a session ends (self-hosted runner lifecycle event, CC 2.1.169+). Fires once the session is fully torn down, later than SessionEnd. MoAI-ADK does not wire this hook today; documented as an available option for self-hosted deployments that need post-session cleanup/telemetry. |
 | PreToolUse | Tool name | Yes | Runs before a tool executes |
 | PostToolUse | Tool name | No | Runs after a tool completes successfully |
 | PostToolUseFailure | Tool name | No | Runs after a tool execution fails |
@@ -58,7 +59,7 @@ Active settings.json keys: 22. RETIRE-OBS-ONLY (Go-only, opt-in via system.yaml)
 
 | Event | Status |
 |-------|--------|
-| Setup | REMOVED — EventSetup constant retired; `moai hook setup` subcommand removed. Was triggered via --init, --init-only, or --maintenance flags (v2.1.10+) but had no handler implementation. |
+| Setup | Upstream CC event is CURRENT (triggered via --init, --init-only, or --maintenance flags, v2.1.10+). Only moai-adk internals retired: the Go `EventSetup` constant (orphan, no handler implementation) and the `moai hook setup` subcommand. The upstream Claude Code `Setup` event still exists and remains usable. |
 
 ### Event Categories
 
@@ -319,13 +320,14 @@ MoAI-ADK uses shorter independent timeout policies for operational efficiency:
 
 | Hook Type | MoAI Default | Max Value | Notes |
 |-----------|-------------|-----------|-------|
-| SessionStart, PreCompact, PreToolUse, PostToolUse | 5s | 600s | Fast lifecycle hooks |
+| SessionStart, PreCompact, PreToolUse | 5s | 600s | Synchronous fast lifecycle hooks (blocking default) |
+| PostToolUse | 10s + `async: true` | 600s | Exception: background LSP/AST/MX validation runs async (10s is a per-run background ceiling, not a blocking wait) |
 | PostCompact, PostToolUseFailure, Stop | 10s | 600s | Context/recovery hooks |
 | TeammateIdle, TaskCompleted | 10s | 600s | Agent lifecycle hooks |
 | UserPromptSubmit | 5s | 30s | Blocks user interaction; reduced max |
 | prompt, agent hooks | 30s-60s | 600s | Evaluation/verification hooks |
 
-These MoAI defaults (5s, 10s, 30s) are valid independent policies and do NOT violate the 600s upper bound. Customize the `timeout` field in hook definitions to adjust per-hook timing as needed.
+The **5s default applies to synchronous blocking hooks** (SessionStart, PreToolUse, etc.). **PostToolUse is the documented exception at 10s + `async: true`** because its LSP/AST/MX validations run in the background — this matches the JSON example below (`PostToolUse` block with `timeout: 10, async: true`). These MoAI defaults (5s, 10s, 30s) are valid independent policies and do NOT violate the 600s upper bound. Customize the `timeout` field in hook definitions to adjust per-hook timing as needed.
 
 ## Rules
 

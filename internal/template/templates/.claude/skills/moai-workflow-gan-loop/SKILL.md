@@ -5,6 +5,13 @@ description: >
   Implements Sprint Contract negotiation, 4-dimension scoring (Design Quality,
   Originality, Completeness, Functionality), stagnation detection, and
   escalation protocol. Reads parameters from design.yaml.
+
+when_to_use: >
+  Use for the Builder-Evaluator GAN loop: iterative design-quality
+  improvement via Sprint Contract negotiation, 4-dimension scoring (Design
+  Quality, Originality, Completeness, Functionality), stagnation
+  detection, and escalation.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash
@@ -22,12 +29,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["gan loop", "builder evaluator", "quality score", "pass threshold", "sprint contract", "iterative review", "design quality"]
-  agents: ["sync-auditor", "expert-frontend"]
-  phases: ["run"]
 ---
 
 # moai-workflow-gan-loop
@@ -280,5 +281,5 @@ When testing tools are unavailable, fall back to static code analysis only, and 
 ---
 
 Source: Absorbed from the retired v2.x design constitution per the design constitution absorption policy (Section 11 GAN Loop Contract, Section 12 Evaluator Leniency Prevention).
-REQ coverage: REQ-SKILL-011, REQ-SKILL-012, REQ-SKILL-012a, REQ-SKILL-013, REQ-SKILL-014, REQ-CONST-004
+REQ coverage: (internal provenance omitted)
 Version: 1.0.0

@@ -579,6 +579,58 @@ Here is a comparison of how everyday requests are transformed into EARS format.
   understand how the conversion works.
 {{< /callout >}}
 
+## SPEC Lifecycle and Era Classification
+
+A SPEC is not a write-once document — it follows a lifecycle of **plan → run → sync**. MoAI-ADK automatically classifies which era's conventions each SPEC was authored under, and applies drift detection (deviation from convention) only to SPECs that follow the modern conventions.
+
+### The 3-phase close (plan → run → sync)
+
+Every V3R6 SPEC is completed in **three phases**. The former fourth phase (Mx-phase) has been **retired** — MX tag validation is not a separate phase but a cross-cutting concern handled within the sync phase.
+
+| Phase | Command | What it does | Recorded in |
+| --- | --- | --- | --- |
+| **plan** | `/moai plan` | Author SPEC artifacts (spec/plan/acceptance) | `progress.md` §E.1 |
+| **run** | `/moai run` | Implement per the methodology (DDD/TDD) | `progress.md` §E.2 / §E.3 |
+| **sync** | `/moai sync` | Synchronize docs + close commit | `progress.md` §E.4 |
+
+When the sync phase completes, that commit's SHA is recorded as the **`sync_commit_sha`** field in the **`§E.4 Sync-phase Audit-Ready Signal`** section of `progress.md`. The presence of this field is the key signal that determines whether a SPEC fully followed the modern conventions (V3R6).
+
+{{< callout type="info" >}}
+  **Mx-phase retirement:** Earlier versions had a fourth phase called `Mx-phase` after plan/run/sync, along with an `mx_commit_sha` field. It has been retired and folded into the 3-phase model. MX code annotation (@MX tags) management is now performed within the sync phase.
+{{< /callout >}}
+
+### The 5 era buckets
+
+Every SPEC is classified into exactly one era bucket based on the conventions in effect when it was authored.
+
+| Era | Period | Lifecycle standard |
+| --- | --- | --- |
+| **V2.x** | Before 2026-02 | No `progress.md`; implemented via direct commit |
+| **V3R2-R4** | 2026-02 ~ 2026-03 | `progress.md` introduced; no `sync_commit_sha` |
+| **V3R5** | 2026-03 ~ 2026-04 | Sync section emerges; `sync_commit_sha` not enforced |
+| **V3R6** | 2026-04 ~ present | 3-phase modern standard (plan/run/sync); `sync_commit_sha` required |
+| **unclassified** | — | Auto-detection ambiguous (no heuristic matched) |
+
+Era classification is determined automatically by inspecting the `created:` date in `spec.md` frontmatter and the section structure of `progress.md`. For borderline cases, you can pin the era explicitly by adding a frontmatter field such as `era: V3R6`.
+
+### The grandfather clause
+
+SPECs classified as **V2.x · V3R2-R4 · V3R5** are **protected by the grandfather clause**. These three eras had legitimate conventions at their time of authorship, so the modern V3R6 conventions are not applied retroactively.
+
+- Grandfathered SPECs are marked `era_final: true` in audit results.
+- **No drift findings are reported** regardless of the pattern (missing sections, absent commit SHAs, etc.).
+- Retroactively normalizing historical SPECs to the modern conventions is operationally infeasible and provides no production value.
+
+### Drift detection is V3R6-only
+
+Lifecycle drift detection (`moai spec audit`) applies **only to V3R6 SPECs**.
+
+- The modern era boundary date is **`2026-04-01`**. Only SPECs authored on or after this date that carry the V3R6 signals are subject to drift detection.
+- Internally, the `IsModern()` determination returns **true only for V3R6**.
+- In other words, grandfather eras (V2.x/V3R2-R4/V3R5) are always excluded from drift detection and are never classified as defects.
+
+This classification scheme verifies convention compliance precisely for the SPEC currently being authored, without false positives on older SPECs.
+
 ## Related Documents
 
 - [What is MoAI-ADK?](/core-concepts/what-is-moai-adk) -- Understand the

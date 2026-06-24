@@ -315,7 +315,6 @@ type RalphConfig struct {
 type WorkflowConfig struct {
 	// Nested canonical fields (yaml-aligned with workflow.yaml top-level keys).
 	AutoClear      AutoClearConfig        `yaml:"auto_clear"`
-	Completion     CompletionConfig       `yaml:"completion"`
 	DefaultMode    string                 `yaml:"default_mode"`
 	ExecutionMode  string                 `yaml:"execution_mode"`
 	LoopPrevention LoopPreventionConfig   `yaml:"loop_prevention"`
@@ -346,18 +345,6 @@ type AutoClearConfig struct {
 	AfterPlan      bool `yaml:"after_plan"`
 	AfterRun       bool `yaml:"after_run"`
 	TokenThreshold int  `yaml:"token_threshold"`
-}
-
-// CompletionConfig mirrors workflow.completion.* — completion-marker detection policy.
-type CompletionConfig struct {
-	DetectInOutput bool          `yaml:"detect_in_output"`
-	Markers        MarkersConfig `yaml:"markers"`
-}
-
-// MarkersConfig mirrors workflow.completion.markers.* — the literal completion markers.
-type MarkersConfig struct {
-	Complete string `yaml:"complete"`
-	Done     string `yaml:"done"`
 }
 
 // LoopPreventionConfig mirrors workflow.loop_prevention.* — iteration/retry guards.

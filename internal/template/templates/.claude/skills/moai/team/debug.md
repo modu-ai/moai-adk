@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-team-debug
 description: >
   Debug complex issues through parallel competing hypothesis investigation.
   Each teammate explores a different theory independently using haiku model.
@@ -22,14 +21,14 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["debug team", "hypothesis", "investigation", "parallel debug"]
-  agents: ["manager-quality"]
+  agents: ["manager-develop"]
   phases: ["fix"]
 ---
 # Workflow: Team Debug - Investigation Team
 
 Purpose: Debug complex issues through parallel competing hypothesis investigation. Each teammate explores a different theory independently.
 
-Flow: TeamCreate -> Hypothesis Assignment -> Parallel Investigation -> Evidence Synthesis -> Fix
+Flow: Spawn teammates (implicit team) -> Hypothesis Assignment -> Parallel Investigation -> Evidence Synthesis -> Fix
 
 ## Prerequisites
 
@@ -41,10 +40,7 @@ Flow: TeamCreate -> Hypothesis Assignment -> Parallel Investigation -> Evidence 
 
 1. Analyze the error/issue to identify potential root causes
 2. Formulate 2-3 competing hypotheses
-3. Create team:
-   ```
-   TeamCreate(team_name: "moai-debug-{issue-slug}")
-   ```
+3. The team forms implicitly on the first teammate spawn (one team per session, no setup step). Teams/tasks are stored under the session-derived name `session-<first8>`.
 4. Create investigation tasks:
    ```
    TaskCreate: "Investigate hypothesis 1: {description}" (no deps)
@@ -57,13 +53,13 @@ Flow: TeamCreate -> Hypothesis Assignment -> Parallel Investigation -> Evidence 
 
 Use the investigation team pattern:
 
-Teammate 1 - hypothesis-1 (team-reader agent, haiku model):
+Teammate 1 - hypothesis-1 (general-purpose agent, haiku model):
 - Prompt: "Investigate whether the issue is caused by {hypothesis_1}. Look for evidence supporting or contradicting this theory. Report your findings with confidence level."
 
-Teammate 2 - hypothesis-2 (team-reader agent, haiku model):
+Teammate 2 - hypothesis-2 (general-purpose agent, haiku model):
 - Prompt: "Investigate whether the issue is caused by {hypothesis_2}. Look for evidence supporting or contradicting this theory. Report your findings with confidence level."
 
-Teammate 3 - hypothesis-3 (team-reader agent, haiku model):
+Teammate 3 - hypothesis-3 (general-purpose agent, haiku model):
 - Prompt: "Investigate whether the issue is caused by {hypothesis_3}. Look for evidence supporting or contradicting this theory. Report your findings with confidence level."
 
 ## Phase 2: Parallel Investigation
@@ -83,7 +79,7 @@ MoAI monitors:
 After all investigations complete:
 1. Compare evidence across hypotheses
 2. Identify the most likely root cause
-3. Delegate fix to manager-quality subagent (NOT a teammate) with:
+3. Delegate fix to manager-develop subagent (NOT a teammate) with:
    - All investigation findings
    - Identified root cause
    - Reproduction steps from evidence
@@ -98,7 +94,7 @@ After all investigations complete:
    ```
    This safely removes GLM env vars while preserving ANTHROPIC_AUTH_TOKEN and other settings.
    Do NOT manually Read/Write settings.local.json — use the CLI command which handles JSON merging correctly.
-3. TeamDelete to clean up resources
+3. Team cleanup is automatic on session exit (no explicit teardown call — the TeamDelete tool was removed in Claude Code v2.1.178)
 4. Report diagnosis and fix to user
 
 ## Fallback

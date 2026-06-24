@@ -5,6 +5,12 @@ description: >
   Enforces brand voice, anti-AI-slop rules, concrete numbers, and JSON section
   structure for downstream agent consumption. Covers hero, features,
   social_proof, cta, and footer sections with A/B variant output.
+
+when_to_use: >
+  Use for brand-aligned marketing and product copy: headlines, CTAs,
+  microcopy, taglines, value propositions, landing-page and footer copy,
+  with anti-AI-slop rules and concrete-number enforcement.
+
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob
@@ -22,12 +28,6 @@ progressive_disclosure:
   enabled: true
   level1_tokens: 100
   level2_tokens: 5000
-
-# MoAI Extension: Triggers
-triggers:
-  keywords: ["copy", "copywriting", "headline", "cta", "marketing", "microcopy", "tagline", "landing page copy", "value proposition", "brand voice"]
-  agents: ["expert-frontend"]
-  phases: ["run"]
 ---
 
 # moai-domain-copywriting
@@ -209,5 +209,5 @@ When testimonials or case study data are available in brand context:
 ---
 
 Source: Absorbed from the retired v2.x `*-copywriting` capability v3.2.0 per the copywriting absorption policy.
-REQ coverage: REQ-SKILL-001, REQ-SKILL-002, REQ-SKILL-003
+REQ coverage: (internal provenance omitted)
 Version: 1.0.0

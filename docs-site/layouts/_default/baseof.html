@@ -132,13 +132,36 @@
     {{ partial "foot" . }}
 
     <script>
-    // Cowork 지시 코드블록 자동 분류 — 첫 줄이 '>'로 시작하면 macOS chrome 적용
+    // macOS 코드 카드 복사 버튼 (render-codeblock.html이 생성한 .code-card)
     (function(){
-      document.querySelectorAll('.gdoc-markdown .highlight').forEach(function(el){
-        var pre = el.querySelector('pre');
-        if (!pre) return;
-        var firstLine = pre.textContent.replace(/^\s+/, '').split('\n')[0];
-        if (firstLine.startsWith('>')) el.classList.add('cw-instruction');
+      document.querySelectorAll('.code-card .copy-btn[data-copy]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var card = btn.closest('.code-card');
+          if (!card) return;
+          // 줄번호 테이블이면 코드 칸(.lntd:last-child)만, 아니면 단일 pre
+          var codeEl = card.querySelector('.lntable .lntd:last-child pre')
+                     || card.querySelector('.chroma > code')
+                     || card.querySelector('pre');
+          var text = codeEl ? codeEl.innerText.replace(/\n+$/, '') : '';
+          if (!text) return;
+          var label = btn.querySelector('.copy-label');
+          var done = btn.getAttribute('data-label-copied') || 'Copied';
+          var orig = btn.getAttribute('data-label-copy') || 'Copy';
+          var ok = function(){
+            btn.classList.add('copied');
+            if (label) label.textContent = done;
+            setTimeout(function(){ btn.classList.remove('copied'); if (label) label.textContent = orig; }, 1600);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(ok).catch(function(){});
+          } else {
+            var ta = document.createElement('textarea');
+            ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); ok(); } catch(e){}
+            document.body.removeChild(ta);
+          }
+        });
       });
     })();
 

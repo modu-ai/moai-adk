@@ -22,7 +22,7 @@ Three orchestration patterns for the MoAI orchestrator when coordinating sub-age
 ```
 User Request
     ↓
-[MoAI] → TeamCreate → [Member A, Member B, Member C]
+[MoAI] → Agent(name=A), Agent(name=B), Agent(name=C)  (implicit team forms on first spawn)
          ↓
       Coordination Loop:
       - SendMessage (member-to-member)
@@ -40,7 +40,8 @@ Agent(
   subagent_type: "general-purpose",
   mode: "acceptEdits",
   prompt: "You are leading a 3-person team to solve X. "
-          "Create team via TeamCreate with members: [researcher, implementer, reviewer]. "
+          "Spawn teammates directly with Agent(name=...) — researcher, implementer, reviewer — "
+          "into the session's implicit team (no setup step). "
           "Use SendMessage to coordinate. Use TaskCreate for shared work list. "
           "Present final result to user."
 )
@@ -69,7 +70,7 @@ Team Created: Researcher, Analyst, Synthesizer
 7. Lead: "Here's the final report"
 8. Leader sends shutdown_request
 9. All approve
-10. TeamDelete
+10. Team cleanup is automatic on session exit (no explicit teardown call)
 ```
 
 ---
@@ -98,10 +99,10 @@ User Request
 
 **How to Spawn**:
 ```javascript
-// Sequential
-const resultA = Agent(prompt: "Analyze X", subagent_type: "analyzer")
-const resultB = Agent(prompt: `Design based on: ${resultA}`, subagent_type: "designer")
-const resultC = Agent(prompt: `Implement: ${resultB}`, subagent_type: "implementer")
+// Sequential — all teammates are general-purpose; the role is conveyed by the prompt (role_profile)
+const resultA = Agent(prompt: "Analyze X", subagent_type: "general-purpose")
+const resultB = Agent(prompt: `Design based on: ${resultA}`, subagent_type: "general-purpose")
+const resultC = Agent(prompt: `Implement: ${resultB}`, subagent_type: "general-purpose")
 
 // Consolidate
 MoAI: "Here are the results from the pipeline..."
@@ -149,7 +150,7 @@ Stage 1: Sequential (Sub-orchestrator)
   Research Agent → Analysis Agent
 
 Stage 2: Parallel (Team-Orchestrator)
-  [TeamCreate] → [Implementation Team with Backend, Frontend, Tests]
+  Agent(name=Backend), Agent(name=Frontend), Agent(name=Tests)  (implicit team forms on first spawn)
 
 Stage 3: Sequential (Sub-orchestrator)
   Reviewer Agent (review all outputs)
@@ -165,14 +166,14 @@ const research = Agent(prompt: "Research X and Y")
 
 // Stage 2: Parallel implementation
 const implementation = Agent(
-  prompt: "Lead a team to implement based on research...",
-  teamCreate: true
+  prompt: "Lead a team to implement based on research; spawn teammates with Agent(name=...) into the implicit team...",
+  subagent_type: "general-purpose"
 )
 
-// Stage 3: Sequential review
+// Stage 3: Sequential review (general-purpose with reviewer role conveyed by prompt)
 const reviewed = Agent(
   prompt: `Review this implementation: ${implementation}`,
-  subagent_type: "reviewer"
+  subagent_type: "general-purpose"
 )
 
 // Consolidate
@@ -195,8 +196,8 @@ Stage 1 (Research):
 - Research Agent: "Analyze requirements and existing architecture"
 
 Stage 2 (Implementation Team):
-- TeamCreate with Backend, Frontend, Tester
-- Parallel development for 2 days
+- Spawn Backend, Frontend, Tester via Agent(name=...) into the implicit team
+- Parallel development across two phases
 - Integration testing
 
 Stage 3 (Review):

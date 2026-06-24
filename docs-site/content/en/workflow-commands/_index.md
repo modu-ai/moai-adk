@@ -4,11 +4,11 @@ weight: 30
 draft: false
 ---
 
-Complete a systematic development cycle with MoAI-ADK's 4 workflow commands.
+Complete a systematic development cycle with MoAI-ADK's workflow commands.
 
 ## Development Cycle Overview
 
-MoAI-ADK supports the entire process from project initialization to deployment preparation through **4-phase workflow commands**. Each command is managed by a specialized AI agent, and executing them in sequence allows you to consistently create high-quality software.
+MoAI-ADK supports the entire process from project initialization to deployment preparation through **workflow commands**. Each command is managed by a specialized AI agent, and executing them in sequence allows you to consistently create high-quality software.
 
 ```mermaid
 flowchart TD
@@ -17,6 +17,7 @@ flowchart TD
     D --> E["/moai sync<br/>Document Sync and PR"]
     E -.-> B
     D -.-> B
+    F["/moai harness<br/>Harness Learning System"] -.-> D
 ```
 
 ## Command Summary
@@ -27,9 +28,12 @@ flowchart TD
 | [`/moai plan`](./moai-plan) | Phase 1 | manager-spec | 30K | SPEC document creation |
 | [`/moai run`](./moai-run) | Phase 2 | manager-develop | 180K | DDD/TDD-based implementation |
 | [`/moai sync`](./moai-sync) | Phase 3 | manager-docs | 40K | Document synchronization and PR creation |
+| [`/moai harness`](./moai-harness) | Auxiliary | builder-harness | - | Harness learning lifecycle management |
 
 {{< callout type="info" >}}
 If you're using it for the first time, start with `/moai project`. Project documents are needed for AI to accurately understand and work on the project in subsequent phases.
+
+`/moai harness` is an auxiliary command for managing the harness learning subsystem — it monitors CLAUDE.md changes and proposes tier-based auto-updates.
 {{< /callout >}}
 
 ## Quick Start
@@ -48,6 +52,10 @@ If you're using it for the first time, start with `/moai project`. Project docum
 
 # Phase 3: Document synchronization and PR
 > /moai sync SPEC-AUTH-001
+
+# Auxiliary: Harness learning management (optional)
+> /moai harness status
+> /moai harness apply
 ```
 
 ## Related Documents
@@ -55,4 +63,5 @@ If you're using it for the first time, start with `/moai project`. Project docum
 - [SPEC-based Development](/core-concepts/spec-based-dev) - Detailed explanation of SPEC and EARS format
 - [DDD Methodology](/core-concepts/ddd) - Detailed explanation of ANALYZE-PRESERVE-IMPROVE cycle
 - [TRUST 5 Quality System](/core-concepts/trust-5) - Detailed explanation of quality gates
+- [Harness Engineering](/core-concepts/harness-engineering) - Harness learning subsystem overview
 - [Quick Start](/getting-started/quickstart) - Tutorial from start to finish

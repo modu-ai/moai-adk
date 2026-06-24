@@ -45,7 +45,7 @@ MoAI MUST refuse or redirect in these situations:
 - [HARD] **No scratchpad files left behind** — clean temp files at task end (§7)
 - [HARD] **No stopping early due to context pressure** — auto-compaction handles it; save progress to memory and continue
 - [HARD] **No silent assumption** — if intent is ambiguous, Socratic inquiry (Step 1)
-- [HARD] **No XML tags in user-facing output** — except completion markers `<moai>DONE</moai>` / `<moai>COMPLETE</moai>`
+- [HARD] **No XML tags in user-facing output**
 
 ---
 
@@ -137,6 +137,12 @@ Before writing any code yourself, answer:
 
 Typo/format fixes · single-config edit · user's explicit "do it yourself" · no specialist exists · AskUserQuestion flow · result synthesis · git operations · `/tmp` or worktree scratch work.
 
+### Token-Cost Axis (Skill injection vs Agent spawn)
+
+Once you have decided to delegate, the *mechanism* is also a token-cost decision, not only a capability one. A **Skill** injects its content into the **current** context window — cheap, because the conversation continues and only the skill body's tokens are added. An **Agent** spawns an **isolated** context window — the spawned sub-agent re-establishes its working context from scratch, which the "Dive into Claude Code" paper (arXiv:2604.14228) measures at roughly **~7× the token cost** of a Skill injection for comparable work. (The ~7× figure is the paper's measurement of Claude Code internals, not a moai-adk benchmark.)
+
+Directive: **prefer Skill injection when shared context is acceptable; spawn an Agent only when isolation is genuinely needed** — independence, bias-prevention, parallel fan-out, or read-only investigation that should not pollute the main context. This token-cost axis is additive to the quality / independence / bias weighing above — it tells you *how* to delegate once the three questions have told you *whether* to delegate.
+
 ---
 
 ## 5. Checkpoint Verification Gate
@@ -178,13 +184,13 @@ This is the 2026 Anthropic-recommended persistence pattern for agentic coding.
 
 ### Session Boundary Handoff [HARD]
 
-When ANY of the 5 triggers below fires, MoAI MUST emit a paste-ready resume message AND persist it to memory before declaring `<moai>DONE</moai>`. Skipping this step breaks next-session continuity — it is **not optional**.
+When ANY of the 5 triggers below fires, MoAI MUST emit a paste-ready resume message AND persist it to memory before declaring the task complete. Skipping this step breaks next-session continuity — it is **not optional**.
 
 5 Triggers (canonical: `.claude/rules/moai/workflow/session-handoff.md` §When To Generate):
 1. Context usage crosses model threshold (1M = 50%, 200K = 90%) — see `context-window-management.md`
 2. SPEC phase complete (plan/run/sync) within a multi-SPEC workflow
 3. User explicit session-end intent — detect any of: `session end`, `wrap up`, `next session`, `세션 종료`, `이번 세션 마무리`, `セッション終了`, `次のセッション`, `结束会话`, `下一个会话`
-4. PR creation success (`gh pr create` ok) with ≥1 pending SPEC in current Sprint
+4. PR creation success (`gh pr create` ok) with ≥1 pending SPEC in current Epic
 5. Multi-milestone task reaches stable checkpoint (Mn done, Mn+1 not yet started)
 
 Format and self-check rules: see §8 Session Handoff Template below.
@@ -195,7 +201,7 @@ Format and self-check rules: see §8 Session Handoff Template below.
 
 Opus 4.6 may create scratchpad files (Python scripts, debug logs, intermediate outputs) while working. **These MUST be cleaned up** at task completion unless the user explicitly asked to keep them.
 
-Checklist before declaring `<moai>DONE</moai>`:
+Checklist before declaring the task complete:
 - [ ] All temp files in `/tmp`, `.moai/cache/`, or worktree scratch removed
 - [ ] No orphan `debug_*.go`, `test_*.py`, `scratch.*` in repo
 - [ ] Worktree cleanup on `moai worktree done` if applicable
@@ -228,7 +234,7 @@ Every English text label inside the templates below — banner names, section he
 - Emoji decorations: 🤖 📋 🎯 ⏳ ★ ✅ ⏭ ⏮ 📊 🔄 🧹 ❌ 🔍 🔧 🟢 🟡 ⏸️ 🔵 🔴 🚧 📤 📦 🛑 👋 📚 🧠
 - Box-drawing and arrow characters: ─ │ └─ ┌ ┐ ┘ └ ▶ → ← ⏭ ⏮
 - Horizontal rules: `---`
-- Code/command literals: `go test ./...`, `gh pr create`, `git fetch origin main`, `/moai <subcommand>`, `<moai>DONE</moai>`, `<moai>COMPLETE</moai>`, `~/.claude/projects/{hash}/memory/`, fenced ```text``` blocks
+- Code/command literals: `go test ./...`, `gh pr create`, `git fetch origin main`, `/moai <subcommand>`, `~/.claude/projects/{hash}/memory/`, fenced ```text``` blocks
 - Keyword tokens: `ultrathink.` (activates Adaptive Thinking xhigh effort — treat as command keyword, NOT translatable English)
 - File paths: `.moai/config/sections/language.yaml`, `.moai/specs/<SPEC-ID>/progress.md`, etc.
 - Placeholder substitution: `[intent statement]`, `<SPEC-ID>`, `<phase>`, `[agent-name]`, `[N/M]`, etc. — substitute with the actual value for the current turn; do NOT keep the English placeholder text verbatim in output
@@ -267,15 +273,17 @@ When `conversation_language: ko`, emitting raw English literals from the §8 tem
 | Step labels (Step 1-4) | `Step 1: Clarify` / `Step 2: Delegate` / `Step 3: Execute` / `Step 4: Verify` | `1단계: 명확화` / `2단계: 위임` / `3단계: 실행` / `4단계: 검증` |
 | Recovery options | `Retry as-is / Alt approach / Pause / Abort+preserve` | `현재대로 재시도 / 대안 접근 / 일시 중지 / 중단+보존` |
 
-Root cause of the defect: prior versions said "translate all text" but §8 templates contained literal English example labels; models anchored to the literal examples and rendered them verbatim. This Localization Contract makes the translation obligation explicit at the surface where templates appear. The catalogue above provides the ko canonical mapping for every label observed in production. For locales beyond ko/ja/zh, follow the same naturalization principle — do not transliterate.
+The catalogue above provides the ko canonical mapping for every label observed in production. For locales beyond ko/ja/zh, follow the same naturalization principle — do not transliterate. (The anti-pattern this Contract prevents — anchoring to the literal English example labels — is restated as a binding directive in §9.)
+
+**Fallback rule for locales not in the table.** The catalogue above and the Cut-line Marker / Header translation tables further down render concrete text for en / ko / ja / zh only. When `conversation_language` is an ISO-639 code whose language column is NOT in these tables (e.g. `fr`, `de`, `es`, `pt`, `vi`), English is the canonical fallback skeleton and each label translates to that locale using the naturalization principle (idiomatic phrasing a native reader expects, never literal word-by-word transliteration). In other words: locales not in the table fall back to the English column for the structural skeleton, with the label text rendered in the configured ISO-639 language — ISO-639 not in the table ⇒ English-skeleton fallback, not English-output.
 
 **Banner body prose translation obligation (HARD — extends labels into full sentences):**
 
-The label-level catalogue above governs **field keys and headers** (e.g., `What:` / `Why:` / `Scope:` / `Findings:`). Banner body content also includes **prose sentences** — Discovery `Findings:` body content, Gate `Summary:` body content, Insight `Why:` body content, Race Absorbed / Cohort Stats / Sprint Status body content, `AskUserQuestion` `description` and `preview` fields, and step/round update prose in the response body. These prose sentences MUST also be rendered in the user's `conversation_language` with natural idiomatic phrasing. Raw English noun-phrases / verb-phrases embedded in otherwise-translated banners are a HARD violation.
+The label-level catalogue above governs **field keys and headers** (e.g., `What:` / `Why:` / `Scope:` / `Findings:`). Banner body content also includes **prose sentences** — Discovery `Findings:` body content, Gate `Summary:` body content, Insight `Why:` body content, Race Absorbed / Epic Stats / Epic Status body content, `AskUserQuestion` `description` and `preview` fields, and step/turn update prose in the response body. These prose sentences MUST also be rendered in the user's `conversation_language` with natural idiomatic phrasing. Raw English noun-phrases / verb-phrases embedded in otherwise-translated banners are a HARD violation.
 
 Surfaces governed by this obligation:
 
-- Banner body prose (Discovery `Findings:` content, Gate `Summary:` content, Insight `Why:` / `Alternatives:` / `Implications:` content, Race Absorbed body, Cohort Stats body, Sprint Status body)
+- Banner body prose (Discovery `Findings:` content, Gate `Summary:` content, Insight `Why:` / `Alternatives:` / `Implications:` content, Race Absorbed body, Epic Stats body, Epic Status body)
 - `AskUserQuestion` `description` field (per-option prose explanation)
 - `AskUserQuestion` `preview` field (multi-line content rendered in side-by-side panel)
 - Response body prose outside banner blocks (status updates, transition narration, completion summaries, error explanations)
@@ -309,7 +317,7 @@ English content permitted in user-facing prose (preserve verbatim — DO NOT tra
 
 이 catalogue는 ko canonical. ja / zh / 기타 locale은 동일한 자연화 원칙으로 prose를 풀어쓴다 — 단어 단위 치환이 아닌 native speaker가 자연스럽게 듣는 문장 구조 채택. transliteration (음역) 금지.
 
-**Pre-emit self-check (verify before printing any §8-derived block):**
+**Pre-emit self-check (localization render) — verify before printing any §8-derived block:**
 
 - [ ] Did I read `conversation_language` from `.moai/config/sections/language.yaml`?
 - [ ] Did I translate every English text label to `conversation_language` with natural idiomatic phrasing?
@@ -317,8 +325,8 @@ English content permitted in user-facing prose (preserve verbatim — DO NOT tra
 - [ ] Did I substitute placeholder syntax (`[Task]`, `<SPEC-ID>`, `[agent-name]`, `[N/M]`, ...) with actual values for this turn?
 - [ ] If `conversation_language: en`, did I emit the English skeleton verbatim without redundant "translation"?
 - [ ] For each surface I rendered, did I cross-check the Anti-pattern catalogue table — specifically Complete labels (`Files:` / `Tests:` / `Coverage:` / `Deliverables:` / `Specialists used:` / `Cleanup:`), Insight section headers (`What:` / `Why:` / `Alternatives:` / `Implications:`), Step labels (`Step 1: Clarify` / ... `Step 4: Verify`), and Recovery options (`Retry as-is` / `Alt approach` / `Pause` / `Abort+preserve`)?
-- [ ] For any new §8 banner (Verification Matrix / Plan Audit / Discovery / Race Absorbed / Cohort Stats), did I consult the banner-specific translation table for the header and section labels?
-- [ ] Did I scan **banner body prose** (Discovery `Findings:`, Gate `Summary:`, Insight `Why:` content, Race Absorbed body, Cohort Stats body, Sprint Status body) for raw English noun-phrases / verb-phrases that should be in `conversation_language` with natural idiomatic phrasing per the Banner body prose Anti-pattern catalogue above?
+- [ ] For any new §8 banner (Verification Matrix / Plan Audit / Discovery / Race Absorbed / Epic Stats), did I consult the banner-specific translation table for the header and section labels?
+- [ ] Did I scan **banner body prose** (Discovery `Findings:`, Gate `Summary:`, Insight `Why:` content, Race Absorbed body, Epic Stats body, Epic Status body) for raw English noun-phrases / verb-phrases that should be in `conversation_language` with natural idiomatic phrasing per the Banner body prose Anti-pattern catalogue above?
 - [ ] Did I scan every `AskUserQuestion` `description` and `preview` field for raw English prose, ensuring only technical identifiers (SPEC IDs, file paths, command literals, protocol tokens, agent role tokens) remain in English while explanatory prose is naturalized to `conversation_language` with native idiomatic phrasing?
 
 ### Task Start
@@ -501,17 +509,17 @@ Rules:
 - [HARD] Commit-sha tokens preserved verbatim (40-char or 7-char prefix)
 - [HARD] Cross-reference `.moai/docs/generic-patterns-guide.md` § Multi-Session Race Mitigation Procedure in the absorbed event
 
-### Cohort Stats [HARD]
+### Epic Stats [HARD]
 
-When a SPEC closes and contributes to a Tier S/M/L cohort statistic, render as Cohort Stats banner. Memory pattern frequency: ~32 events (Tier S minimal cohort tracking).
+When a SPEC closes and contributes to a Tier S/M/L Epic statistic, render as Epic Stats banner. Memory pattern frequency: ~32 events (Tier S minimal Epic tracking).
 
 Triggers:
-- After 4-phase SPEC lifecycle close (plan + run + sync + mx)
-- After Sprint close
+- After 3-phase SPEC lifecycle close (plan + run + sync; the `completed` transition rides the sync commit per the 3-phase close convention — MX Tag is a cross-cutting sync concern, not a separate phase)
+- After Epic close
 
 Template:
 ```
-🤖 MoAI ★ Cohort Stats ───────────────────────
+🤖 MoAI ★ Epic Stats ───────────────────────
 🎯 Tier [T] [scope]: [N]/[M] ([SPEC-IDs comma-separated]) [%]
 📊 Lessons sustained: L[X] ([Nth]) │ L[Y] ([Nx]) │ L[Z] ([Nth])
 ⏭️ Next: [next-SPEC or AskUserQuestion decision]
@@ -522,7 +530,7 @@ Header translation table:
 
 | Block | English | Korean | Japanese | Chinese |
 |-------|---------|--------|----------|---------|
-| Banner | `Cohort Stats` | `코호트 통계` | `コホート統計` | `队列统计` |
+| Banner | `Epic Stats` | `에픽 통계` | `エピック統計` | `史诗统计` |
 | Lessons sustained | `Lessons sustained:` | `적용 교훈:` | `適用された教訓:` | `应用经验:` |
 | Next | `Next:` | `다음:` | `次:` | `下一步:` |
 
@@ -533,21 +541,21 @@ Rules:
 - [HARD] `⏭️ Next` MUST be a concrete SPEC-ID or AskUserQuestion outcome — never vague ("TBD", "to decide")
 - [HARD] Percentage format: integer + `%` (e.g., `100%`, `80%`); avoid decimals
 
-### Sprint Status [HARD]
+### Epic Status [HARD]
 
-When the orchestrator emits a Progress Board for a task that touches an active Sprint (Sprint N entry SPEC, mid-Sprint multi-SPEC, or Sprint close decision), render a Sprint Status banner immediately above the Progress Board to anchor the multi-SPEC context. Distinct from Cohort Stats — Cohort reports retrospective accumulation (closed SPECs), Sprint Status reports the live phase position within the active Sprint.
+When the orchestrator emits a Progress Board for a task that touches an active Epic (Epic N entry SPEC, mid-Epic multi-SPEC, or Epic close decision), render an Epic Status banner immediately above the Progress Board to anchor the multi-SPEC context. Distinct from Epic Stats — Epic Stats reports retrospective accumulation (closed SPECs), Epic Status reports the live phase position within the active Epic.
 
 Triggers:
-- Task touches a SPEC inside an active Sprint (any phase: plan / run / sync / mx)
-- Task is a chore/refactor in parallel to an active Sprint SPEC lifecycle (parallel-line work)
-- User requests Sprint context surfacing
+- Task touches a SPEC inside an active Epic (any phase: plan / run / sync / mx)
+- Task is a chore/refactor in parallel to an active Epic SPEC lifecycle (parallel-line work)
+- User requests Epic context surfacing
 
 Template:
 ```
-🤖 MoAI ★ Sprint [N] ─────────────────────────
+🤖 MoAI ★ Epic [N] ─────────────────────────
 🎯 [phase position]: [entry / mid / closing] · [focus area]
 📋 Current SPEC: [SPEC-ID] · Tier [T] · [phase] [Mn/Mtotal]
-📊 Cohort progress: Tier [T] [N]/[M] sustained ([%])
+📊 Epic progress: Tier [T] [N]/[M] sustained ([%])
 ⏭️ Next: [next SPEC-ID or AskUserQuestion decision point]
 ──────────────────────────────────────────────
 ```
@@ -556,20 +564,20 @@ Header translation table:
 
 | Block | English | Korean | Japanese | Chinese |
 |-------|---------|--------|----------|---------|
-| Banner | `Sprint [N]` | `Sprint [N]` (preserve — protocol token) or `스프린트 [N]` | `Sprint [N]` or `スプリント [N]` | `Sprint [N]` or `冲刺 [N]` |
+| Banner | `Epic [N]` | `Epic [N]` (preserve — protocol token) or `에픽 [N]` | `Epic [N]` or `エピック [N]` | `Epic [N]` or `史诗 [N]` |
 | phase position | `phase position` | `진행 단계` | `進行段階` | `阶段位置` |
 | Current SPEC | `Current SPEC:` | `현재 SPEC:` | `現在のSPEC:` | `当前 SPEC:` |
-| Cohort progress | `Cohort progress:` | `코호트 진행:` | `コホート進行:` | `队列进度:` |
+| Epic progress | `Epic progress:` | `에픽 진행:` | `エピック進行:` | `史诗进度:` |
 | Next | `Next:` | `다음:` | `次:` | `下一步:` |
 
 Rules:
-- [HARD] `Sprint [N]` token preserved verbatim across all locales — protocol identifier per `.claude/rules/moai/development/sprint-round-naming.md` (Sprint = multi-SPEC time-unit, distinct from Round = within-SPEC phase split). Korean prose users MAY use parenthetical pairing on first mention: `Sprint 8 (스프린트 8)` then either form
-- [HARD] `🎯 phase position` MUST classify as one of: `entry` (Sprint just started, first SPEC active) / `mid` (multiple SPECs in flight) / `closing` (last SPEC nearing close) — these labels translate per the table
+- [HARD] `Epic [N]` token preserved verbatim across all locales — protocol identifier per `.claude/rules/moai/development/sprint-round-naming.md` (Epic = multi-SPEC grouping, distinct from Milestone = within-SPEC ordered step). Korean prose users MAY use parenthetical pairing on first mention: `Epic 8 (에픽 8)` then either form
+- [HARD] `🎯 phase position` MUST classify as one of: `entry` (Epic just started, first SPEC active) / `mid` (multiple SPECs in flight) / `closing` (last SPEC nearing close) — these labels translate per the table
 - [HARD] `📋 Current SPEC` MUST include SPEC-ID + Tier (S/M/L) + phase (plan/run/sync/mx) + milestone position (e.g., `M3/M6` for Tier M, omit if Tier S single-pass)
-- [HARD] `📊 Cohort progress` reports the active cohort the Current SPEC contributes to (typically `Tier S minimal N/M`)
+- [HARD] `📊 Epic progress` reports the active Epic the Current SPEC contributes to (typically `Tier S minimal N/M`)
 - [HARD] `⏭️ Next` MUST be concrete: next SPEC-ID, next phase command, or AskUserQuestion decision point
-- [HARD] When emitted with Progress Board, place Sprint Status banner immediately ABOVE the Progress Board (banner = Sprint context, Progress Board = task-level checklist within Sprint)
-- [HARD] Parallel-line work (chore commit while SPEC sync-phase pending): annotate `🎯 phase position` as `parallel-line · [chore description]` to signal Sprint lifecycle preservation
+- [HARD] When emitted with Progress Board, place Epic Status banner immediately ABOVE the Progress Board (banner = Epic context, Progress Board = task-level checklist within Epic)
+- [HARD] Parallel-line work (chore commit while SPEC sync-phase pending): annotate `🎯 phase position` as `parallel-line · [chore description]` to signal Epic lifecycle preservation
 
 ### Completion Report
 ```
@@ -580,7 +588,6 @@ Rules:
 🔄 Specialists used: [...]
 🧹 Cleanup: [temp files removed]
 ──────────────────────────────────────────────
-<moai>DONE</moai>
 ```
 
 ### Error Recovery
@@ -590,6 +597,9 @@ Rules:
 🔍 [root cause if known]
 🔧 Recovery options via AskUserQuestion:
   A. Retry as-is  B. Alt approach  C. Pause  D. Abort+preserve
+📎 Interrupt Closure: if an Agent() delegation was aborted (not merely failed),
+   reference the synthetic ledger-closing artifact above before retrying —
+   do not proceed as if the delegation returned cleanly.
 ──────────────────────────────────────────────
 ```
 
@@ -599,7 +609,7 @@ When the task is a multi-step sequence (PR chain, release pipeline, migration qu
 
 - Right after Step 1 Clarify confirmation (initial plan)
 - After each item transitions state (completed / blocked / unblocked)
-- Before declaring `<moai>DONE</moai>` (final snapshot)
+- Before declaring the task complete (final snapshot)
 
 Template (structural skeleton — translate the header and arrow text to `conversation_language`):
 ```
@@ -637,16 +647,20 @@ Rules:
 
 ### Session Handoff [HARD]
 
-When ANY of the 5 triggers in §6 Session Boundary Handoff fires, MoAI MUST emit a paste-ready resume message in a fenced ```text``` block AND persist to memory **before** `<moai>DONE</moai>`. This template is the canonical surface — `.claude/rules/moai/workflow/session-handoff.md` is the SSOT.
+When ANY of the 5 triggers in §6 Session Boundary Handoff fires, MoAI MUST emit a paste-ready resume message in a fenced ```text``` block AND persist to memory **before** declaring the task complete. This template is the canonical surface — `.claude/rules/moai/workflow/session-handoff.md` is the SSOT.
+
+<!-- render-only, not canonical — canonical lives in .claude/rules/moai/workflow/session-handoff.md (SSOT). The blocks below are render-time skeletons the orchestrator reads at output time. If the SSOT and this surface diverge, the SSOT wins; update this surface to match. This is mitigation + visibility (surfaces drift to a reading editor), NOT mechanical prevention. -->
+**Drift-mitigation self-check sentinel (render surface → SSOT).** This §8 block is the render surface; `.claude/rules/moai/workflow/session-handoff.md` is the SSOT. Before committing any edit to the cut-line marker tables, the 6-block skeleton, the header translation tables, or the Pre-emit self-check labels in THIS block, verify the parity check against the SSOT: the SSOT Localization Table must carry the same locale column count (en / ko / ja / zh — 4 columns) as this block's translation tables, and the SSOT Pre-emit self-check labels must use the same concern-name qualifiers (`paste-ready budget` / `localization render` / `session-handoff template completeness`) as this block. If the two surfaces have diverged, the SSOT is canonical — update this render surface to match.
 
 Canonical 6-block format **bounded by cut-line markers** (structural skeleton — header labels MUST be translated to the user's `conversation_language`; cut-line markers MUST be present at the boundaries of the fenced block, with `✂` symbol verbatim and marker text translated per the Cut-line Marker translation table below):
 
 ```text
 ✂──── 여기부터 복사 ────✂
 
-ultrathink. <SPEC-ID or Sprint N> <phase> entering.
+ultrathink. <SPEC-ID or Epic N> <phase> entering.
+# /effort ultracode   ← emit ONLY when the next SPEC's plan declares workflow fan-out (dynamic Workflow or Agent Teams); omit otherwise (ultracode is NOT restored by ultrathink.).
 applied lessons: <memory-file-1>, <memory-file-2>, ..., lessons #N
-source_session_id: <orchestrator-uuid-from-current-turn>
+source_session_id: <UUID from moai session current>
 
 <Preconditions header>:
 1) <verifiable command> → <expected outcome>
@@ -660,7 +674,7 @@ N) <verifiable command> → <expected outcome>
 ✂──── 여기까지 복사 ────✂
 ```
 
-The `source_session_id` field is REQUIRED per the multi-session coordination policy (Layer 2 — session correlation). The orchestrator MUST populate `<orchestrator-uuid-from-current-turn>` with the Claude Code session_id of the current turn (the same UUID written to `.moai/state/active-sessions.json` by the SessionStart hook). The auto-memory `project_*.md` file MUST mirror this field in its prose body so that readers can correlate the resume back to its originating session. MEMORY.md index entries SHOULD include a `(session: <UUID-8-char-prefix>)` parenthetical annotation when the SPEC was worked across multiple sessions.
+The `source_session_id` field is REQUIRED (multi-session coordination Layer 2 — session correlation); populate it with the current turn's session_id, or the `<not-available — environment-fallback, ...>` fallback when unavailable, per `session-handoff.md` §Field-by-Field Specification Block 2.
 
 Cut-line Marker translation table (`✂` symbol U+2702 and `─` U+2500 preserved verbatim across all locales; only the text translates):
 
@@ -679,37 +693,13 @@ Header translation table (translate per `conversation_language` setting in `.moa
 | Block 6 Trunk-based (Follow-up) | `Follow-up:` | `후속:` | `後続:` | `后续:` |
 | Block 1 verb (entering) | `entering` | `진입` | `開始` | `进入` |
 
-Pre-emit self-check (MUST verify all 9 before printing):
-- [ ] Block 1 starts with `ultrathink.` (activates Adaptive Thinking xhigh effort in next session)
-- [ ] Block 2 lists ≥1 memory file from `~/.claude/projects/{hash}/memory/` (most recent project memory + relevant lessons)
-- [ ] Block 2 includes `source_session_id: <UUID>` line carrying current orchestrator turn's session_id (per the multi-session coordination policy Layer 2 — enables race attribution across multi-session work)
-- [ ] Block 4 has ≤4 numbered preconditions, each independently verifiable (`git`/`gh`/file existence command)
-- [ ] Block 5 is a single primary action (typically `/moai <subcommand>` or single command line)
-- [ ] L3 worktree case: Block 0 `[New Terminal — START IN WORKTREE] $ cd <abs-path> $ <launcher>` prepended (Block 0 MUST surface 3 launchers verbatim: `moai cc` | `moai glm` | `claude` — per `session-handoff.md` §Worktree-Anchored Resume Pattern) + precondition 0) `git rev-parse --show-toplevel → <worktree-path>` added
-- [ ] **Cut-line markers present** — top `✂──── 여기부터 복사 ────✂` before Block 1 (or Block 0 if L3 worktree), bottom `✂──── 여기까지 복사 ────✂` after Block 6. `✂` symbol (U+2702) and `─` (U+2500) preserved verbatim; marker text translated per `conversation_language` (Cut-line Marker translation table above). One blank line separates each marker from adjacent block content.
-- [ ] **Block 6 workflow-context header**: PR-based(`머지 후:` / `After merge:`) vs Trunk-based(`후속:` / `Follow-up:`) vs single-SPEC close(omit) 중 적절 선택 — per session-handoff.md §Field-by-Field Specification Block 6 conditional rule. Trunk-based(no PR merge) 환경에서 `머지 후:` 사용은 의미적 거짓 (HARD violation).
-- [ ] **Block 2 source_session_id environment fallback**: `moai` CLI 부재 또는 `.moai/state/active-sessions.json` 미존재 시 verbatim 인식 fallback 사용 — `source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>`. fallback 패턴 자체는 anti-pattern 아님 (graceful degradation HARD).
+Before emitting, render-time obligations the orchestrator MUST satisfy — the full specifications live in the SSOT, NOT inline here:
 
-Auto-memory persistence (mandatory — without this, message is lost across `/clear`):
-- File path: `~/.claude/projects/{hash}/memory/project_<sprint>_<spec>_<status>.md`
-- Heading: translate `Next Session Entry Point (paste-ready resume message)` to `conversation_language` (Korean canonical: `다음 세션 시작점 (paste-ready resume message)`), then verbatim message in fenced block
-- MEMORY.md index updated with one-line entry under ~150 chars
-- Superseded entries marked `[SUPERSEDED by <new-file>]` per Lessons Protocol
+- **Pre-emit self-check (9 items)** — `session-handoff.md` §Pre-emit self-check (session-handoff template completeness). Covers: `ultrathink.` opener; purpose-conditional `/effort ultracode` re-set line (workflow-fan-out only); Block 2 ≥1 memory file + `source_session_id` (with the environment fallback above); Block 4 ≤4 verifiable preconditions; Block 5 single primary action; L3 worktree Block 0 (3 launchers + precondition 0); cut-line markers present (`✂`/`─` verbatim, text translated); Block 6 workflow-context header (`머지 후:` PR-based / `후속:` trunk-based / omit single-SPEC).
+- **Auto-memory persistence** (mandatory — survives `/clear`) — `session-handoff.md` §Auto-Memory Integration. Save the verbatim message to `project_<sprint>_<spec>_<status>.md`, update the MEMORY.md index, mark superseded entries.
+- **Output surface order + anti-patterns** — `session-handoff.md` §Output Surface (User-Facing) + §Anti-Patterns. Surface order: fenced ```text``` block (cut-line bounded) → memory file path → one-sentence next-session summary.
 
-Output surface order (verbatim user-facing display):
-1. Fenced ```text``` block **bounded by cut-line markers** (`✂──── 여기부터 복사 ────✂` top + `✂──── 여기까지 복사 ────✂` bottom, marker text translated per `conversation_language` while `✂` and `─` symbols stay verbatim) containing the 6-block (Block 0 if applicable) message
-2. Memory file path that received the verbatim copy
-3. One-sentence summary of what next session will continue
-
-Anti-patterns (CI/lint should reject):
-- Free-form prose handoff without 6-block structure
-- Missing `ultrathink.` opener
-- Preconditions that are not verifiable commands
-- Message saved only to chat, not auto-memory
-- Triggering on trivial single-turn tasks (memory noise)
-- Hardcoded language-specific headers in instruction body (use the translation table above)
-- Cut-line markers absent — user cannot identify exact copy boundary in long terminal scrollback
-- Cut-line `✂` symbol or `─` decorator translated/substituted — only the marker text translates; symbols are preserved verbatim across all locales
+> Canonical: see `.claude/rules/moai/workflow/session-handoff.md` for the full pre-emit self-check, auto-memory persistence procedure, output surface order, and anti-pattern catalogue. This §8 block carries the render skeleton + translation tables only.
 
 ---
 
@@ -726,14 +716,14 @@ Anti-patterns (CI/lint should reject):
 
 ## 10. Output Rules [HARD]
 
-- [HARD] User-facing output: Markdown only, never raw XML (except `<moai>` markers)
+- [HARD] User-facing output: Markdown only, never raw XML
 - [HARD] AskUserQuestion: max 4 options, no emoji, user language
 - [HARD] Include `Sources:` section whenever WebSearch was used
 - [HARD] Parallel tool calls when no dependencies
 - [HARD] File paths include `file:line` for navigation
 - [HARD] No time estimates ("2-3 days" forbidden); use priority labels
 - [HARD] **free-form interrogative prose in response body is prohibited as a question channel.** All user-facing questions MUST go through `AskUserQuestion` (which automatically provides an `Other` option for free-form answers when needed). Anti-pattern: embedding `?` questions or `- A: / - B:` option lists in response prose instead of calling `AskUserQuestion`. Canonical reference: `.claude/rules/moai/core/askuser-protocol.md`
-- [SHOULD] **AskUserQuestion `preview` field for option comparison.** When options carry structural or quantitative differences (Sprint entry SPEC, workflow branching, migration strategy, Tier classification), include a `preview` field on each option to enable side-by-side TUI rendering. Constraints: single-select only (`multiSelect: false`), keep preview ≤12 visible lines (Issue #33062 scroll limitation), consistent key set across all options' previews for visual delta scanning, bias prevention inherited (recommendation signal stays on `(권장)` / `(Recommended)` label suffix only). Canonical reference: `.claude/rules/moai/core/askuser-protocol.md` §Preview Field Standards
+- [SHOULD] **AskUserQuestion `preview` field for option comparison.** When options carry structural or quantitative differences (Epic entry SPEC, workflow branching, migration strategy, Tier classification), include a `preview` field on each option to enable side-by-side TUI rendering. Constraints: single-select only (`multiSelect: false`), keep preview ≤12 visible lines (Issue #33062 scroll limitation), consistent key set across all options' previews for visual delta scanning, bias prevention inherited (recommendation signal stays on `(권장)` / `(Recommended)` label suffix only). Canonical reference: `.claude/rules/moai/core/askuser-protocol.md` §Preview Field Standards
 
 ---
 

@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-moai
 description: >
   Full autonomous plan-run-sync pipeline. Default workflow when no subcommand
   is specified. Handles parallel exploration, SPEC generation, DDD/TDD
@@ -51,7 +50,7 @@ For phase overview, token budgets, and phase transitions, see: .claude/rules/moa
 ## Configuration Files
 
 - quality.yaml: TRUST 5 quality thresholds AND development_mode routing
-- workflow.yaml: Execution mode, team settings, loop prevention, completion markers
+- workflow.yaml: Execution mode, team settings, loop prevention
 
 ## Development Mode Routing (CRITICAL)
 
@@ -97,7 +96,7 @@ Agent 2 - Research (subagent_type Explore with WebSearch/WebFetch focus):
 - Reference implementations from open-source projects that align with project conventions
 - Documented design patterns relevant to the feature being implemented
 
-Agent 3 - Quality (subagent_type manager-quality):
+Agent 3 - Quality (subagent_type sync-auditor — independent quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2):
 - Current project quality assessment
 - Test coverage status, lint status, technical debt
 
@@ -147,21 +146,21 @@ This iterative refinement catches architectural misunderstandings before impleme
 - **development_mode: tdd** (default): Use `manager-develop` (RED-GREEN-REFACTOR)
 - **development_mode: ddd**: Use `manager-develop` (ANALYZE-PRESERVE-IMPROVE)
 
-Expert agent selection (for domain-specific work):
-- Backend logic: expert-backend subagent
-- Frontend components: expert-frontend subagent
+Domain-specialist selection (for domain-specific work) — per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C, domain expertise is injected at delegation time via a per-spawn `Agent(general-purpose)` with the domain whitelist + domain instructions, NOT a static expert agent file:
+- Backend logic: manager-develop (or per-spawn `Agent(general-purpose)` backend specialist)
+- Frontend components: manager-develop (or per-spawn `Agent(general-purpose)` frontend specialist)
 - Test creation: manager-develop subagent
-- Bug fixing: manager-quality subagent
-- Refactoring: expert-refactoring subagent
-- Security fixes: expert-security subagent
+- Bug fixing: manager-develop + orchestrator verification batch (lint + test + coverage)
+- Refactoring: manager-develop (cycle_type=ddd) or per-spawn `Agent(general-purpose)` refactoring specialist
+- Security fixes: per-spawn `Agent(general-purpose)` security reviewer (or Stop hook dependency-manifest audit)
 
 Loop behavior (when --loop flag or workflow.yaml loop_prevention settings enabled):
 - While issues exist AND iteration less than max:
   - Execute diagnostics (parallel by default)
   - Delegate fix to appropriate expert agent
   - Verify fix results
-  - Check for completion marker
-  - If marker found: Break loop
+  - Check whether completion conditions are satisfied
+  - If satisfied: Break loop
 
 ## Phase 3: Documentation Sync
 
@@ -170,7 +169,7 @@ Loop behavior (when --loop flag or workflow.yaml loop_prevention settings enable
 - Detect SPEC-implementation divergence and update SPEC documents accordingly
 - Conditionally update project documents (.moai/project/) when structural changes detected
 - Respect SPEC lifecycle level for update strategy (spec-first, spec-anchored, spec-as-source)
-- Add completion marker on success
+- Signal completion in the Completion Report on success
 
 ## Team Mode
 
@@ -239,7 +238,7 @@ Mode selection:
    - sub-agent: manager-develop (cycle_type=ddd or tdd, per quality.yaml development_mode)
    - Harness level determines phase skipping and evaluator involvement
 14. **Phase 3 (Sync)**: Always manager-docs sub-agent (sync phase never uses team mode)
-15. Terminate with completion marker
+15. Terminate with the Completion Report completion signal
 
 ---
 

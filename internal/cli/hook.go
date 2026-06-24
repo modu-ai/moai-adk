@@ -633,8 +633,19 @@ func runHarnessObserve(cmd *cobra.Command, _ []string) error {
 		subject = "unknown"
 	}
 
+	// SPEC-V3R6-CONTEXT-GOV-AXIS-001 REQ-CGA-001: build the full Event so the
+	// eager-vs-on-demand weight fields can be populated (fail-open; schema_version
+	// is still stamped "v2.1" when estimation skips).
+	evt := harness.Event{
+		EventType:     harness.EventTypeAgentInvocation,
+		Subject:       subject,
+		ContextHash:   "",
+		TierIncrement: 0,
+	}
+	harness.EstimateContextWeight(&evt, cwd)
+
 	// log error to stderr but return exit 0 (non-blocking)
-	if err := obs.RecordEvent(harness.EventTypeAgentInvocation, subject, ""); err != nil {
+	if err := obs.RecordExtendedEvent(evt); err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe: event recording failed: %v\n", err)
 	}
 
@@ -700,6 +711,8 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 		LastAssistantMessageHash: msgHash,
 		LastAssistantMessageLen:  msgLen,
 	}
+	// SPEC-V3R6-CONTEXT-GOV-AXIS-001 REQ-CGA-001: populate eager-vs-on-demand weight.
+	harness.EstimateContextWeight(&evt, cwd)
 
 	if err := obs.RecordExtendedEvent(evt); err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: event recording failed: %v\n", err)
@@ -787,6 +800,8 @@ func runHarnessObserveSubagentStop(cmd *cobra.Command, _ []string) error {
 		AgentID:         hookInput.AgentID,
 		ParentSessionID: hookInput.Session.ID,
 	}
+	// SPEC-V3R6-CONTEXT-GOV-AXIS-001 REQ-CGA-001: populate eager-vs-on-demand weight.
+	harness.EstimateContextWeight(&evt, cwd)
 
 	if err := obs.RecordExtendedEvent(evt); err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-subagent-stop: event recording failed: %v\n", err)
@@ -951,6 +966,8 @@ func runHarnessObserveUserPromptSubmit(cmd *cobra.Command, _ []string) error {
 		PromptLen:     promptLen,
 		PromptLang:    promptLang,
 	}
+	// SPEC-V3R6-CONTEXT-GOV-AXIS-001 REQ-CGA-001: populate eager-vs-on-demand weight.
+	harness.EstimateContextWeight(&evt, cwd)
 
 	// opt-in: preview (Strategy B) — REQ-HRN-OBS-013: first 64 bytes (UTF-8 boundary safe).
 	if strategy == UserPromptStrategyPreview && len(prompt) > 0 {

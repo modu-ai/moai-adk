@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-clean
 description: >
   Identify and safely remove dead code with test verification.
   Uses static analysis, usage graph analysis, and safe removal with rollback.
@@ -22,7 +21,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["clean", "dead code", "unused code", "dead-code", "remove unused"]
-  agents: ["expert-refactoring", "manager-develop"]
+  agents: ["manager-develop"]
   phases: ["clean"]
 ---
 
@@ -42,13 +41,13 @@ Flow: Static Analysis -> Usage Graph -> Classification -> Safe Removal -> Test V
 
 ## Pipeline Contract (Agentless Classification)
 
-<!-- @MX:NOTE - Agentless classification per SPEC-V3R2-WF-004; localize→repair→validate contract. See spec-workflow.md#subcommand-classification. -->
+<!-- @MX:NOTE - Agentless fixed-pipeline classification; localize→repair→validate contract. See spec-workflow.md#subcommand-classification. -->
 
-This subcommand is classified as **Agentless fixed-pipeline** per SPEC-V3R2-WF-004.
+This subcommand is classified as **Agentless fixed-pipeline**.
 It executes a deterministic 3-phase contract: **localize → repair → validate**.
 
 - **Phase mapping**: localize ← Phase 1+2; repair ← Phase 4; validate ← Phase 5+5.5
-- **No LLM-driven control flow**: Agent() invocations exist for executor delegation within phases (e.g., `expert-refactoring` for removal) but never select the next phase.
+- **No LLM-driven control flow**: Agent() invocations exist for executor delegation within phases (e.g., a per-spawn `Agent(general-purpose)` refactoring specialist for removal, per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C) but never select the next phase.
 - **No-op exit**: When the localize phase finds zero targets, the pipeline exits with status `no-op` and exit code 0, skipping repair and validate.
 - **Fail-fast**: When repair encounters an unresolvable error, the pipeline terminates and reports the error. There is no multi-agent fallback.
 - **`--mode` flag handling**: Any `--mode` flag passed to this subcommand is ignored. The system logs `MODE_FLAG_IGNORED_FOR_UTILITY` at info level and proceeds with the fixed pipeline.
@@ -58,7 +57,7 @@ See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.m
 
 ## Phase 1: Static Analysis Scan
 
-[HARD] Delegate static analysis to the expert-refactoring subagent.
+[HARD] Delegate static analysis to a per-spawn `Agent(general-purpose)` refactoring specialist (refactoring whitelist + ANALYZE-PRESERVE-IMPROVE instructions per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C).
 
 Language-specific dead code detection:
 
@@ -81,7 +80,7 @@ Scan Categories:
 
 ## Phase 2: Usage Graph Analysis
 
-[HARD] Delegate usage graph analysis to the expert-refactoring subagent.
+[HARD] Delegate usage graph analysis to a per-spawn `Agent(general-purpose)` refactoring specialist.
 
 Build a usage graph to verify static analysis results:
 
@@ -146,9 +145,9 @@ If --dry flag: Display analysis results and exit without removing anything.
 
 ## Phase 4: Safe Removal
 
-<!-- @MX:WARN @MX:REASON - Phase 4 delegates to expert-refactoring subagent for *executor* role. Do NOT extend this delegation to choose between Phase 4 and Phase 5; that would violate REQ-WF004-004. -->
+<!-- @MX:WARN @MX:REASON - Phase 4 delegates to a per-spawn general-purpose refactoring specialist for the *executor* role. Do NOT extend this delegation to choose between Phase 4 and Phase 5; that would violate the agentless-pipeline contract. -->
 
-[HARD] Delegate removal to the expert-refactoring subagent.
+[HARD] Delegate removal to a per-spawn `Agent(general-purpose)` refactoring specialist.
 
 Removal Strategy:
 
@@ -229,23 +228,23 @@ Next Steps (AskUserQuestion):
 
 ## Agent Chain Summary
 
-- Phase 1: expert-refactoring subagent (static analysis)
-- Phase 2: expert-refactoring subagent (usage graph analysis)
+- Phase 1: per-spawn `Agent(general-purpose)` refactoring specialist (static analysis)
+- Phase 2: per-spawn `Agent(general-purpose)` refactoring specialist (usage graph analysis)
 - Phase 3: MoAI orchestrator (user approval via AskUserQuestion)
-- Phase 4: expert-refactoring subagent (safe removal)
+- Phase 4: per-spawn `Agent(general-purpose)` refactoring specialist (safe removal)
 - Phase 5: manager-develop subagent (test verification)
-- Phase 5.5: MoAI orchestrator or expert-refactoring (MX tag cleanup)
+- Phase 5.5: MoAI orchestrator or a per-spawn `Agent(general-purpose)` refactoring specialist (MX tag cleanup)
 
 ## Execution Summary
 
 1. Parse arguments (extract flags: --dry, --safe-only, --file, --type, --aggressive)
-2. Delegate static analysis scan to expert-refactoring subagent
-3. Delegate usage graph analysis to expert-refactoring subagent
+2. Delegate static analysis scan to a per-spawn `Agent(general-purpose)` refactoring specialist
+3. Delegate usage graph analysis to a per-spawn `Agent(general-purpose)` refactoring specialist
 4. Cross-check candidates against @MX tags (MX Tag Cross-Check)
 5. Classify results (Confirmed Dead, Test-Only, Likely Dead, False Positive)
 6. If --dry: Display analysis results and exit
 7. Present removal plan to user via AskUserQuestion
-8. Delegate safe removal to expert-refactoring subagent
+8. Delegate safe removal to a per-spawn `Agent(general-purpose)` refactoring specialist
 9. Delegate test verification to manager-develop subagent
 10. Clean up @MX tags for removed code (Phase 5.5)
 11. TaskCreate/TaskUpdate for all candidates

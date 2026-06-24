@@ -44,23 +44,36 @@ var workflowOptMirroredPaths = []string{
 	".claude/rules/moai/core/hooks-system.md",
 	// Layer E — Phase Transitions skip policy
 	".claude/rules/moai/workflow/spec-workflow.md",
+	// SPEC-SESSION-HANDOFF-ALIGN-001 — session-handoff.md mirror parity (REQ-SHA-007).
+	// Both trees are byte-identical post-neutralization (Diet/V0/`/cd` blocks ported +
+	// internal SPEC-IDs stripped per CLAUDE.local.md §25). Enrolled here so future
+	// single-tree edits on this always-loaded canonical rule are caught at CI.
+	".claude/rules/moai/workflow/session-handoff.md",
+	// model-policy.md mirror parity. The GLM-mode reconciliation subsection
+	// (availableModels [1m] expansion) is added to BOTH trees byte-identically;
+	// pre-existing internal dates were stripped from both per CLAUDE.local.md §25 so
+	// byte-parity holds and the template mirror is internal-content clean. Enrolled
+	// so future single-tree edits on this rule are caught at CI.
+	".claude/rules/moai/development/model-policy.md",
 	// Layer G — evaluator profile D7/D8 weight registration
 	".moai/config/evaluator-profiles/default.md",
 	".moai/config/evaluator-profiles/frontend.md",
 	// per-file §25 sanitization targets — REMOVED from the byte-parity allowlist.
-	// The 6 source files below retain internal-development content (SPEC-IDs, REQ/AC
+	// The 5 source files below retain internal-development content (SPEC-IDs, REQ/AC
 	// tokens) in their .claude/ working copy, while their template mirrors are held
 	// sanitized for neutral distribution (CLAUDE.local.md §25). byte-parity therefore
 	// cannot hold for them; mirror cleanliness is enforced by
 	// TestTemplateNoInternalContentLeak instead of byte-identity here. Ground-truth at
-	// remediation time: drift∩leak = 8 files (not 1), so all leak-bearing drift files
+	// remediation time: drift∩leak = 7 files (not 1), so all leak-bearing drift files
 	// move to leak-test coverage:
 	//   - .claude/rules/moai/development/manager-develop-prompt-template.md (5 tokens)
 	//   - .claude/rules/moai/workflow/ci-watch-protocol.md (1 token)
 	//   - .claude/rules/moai/core/agent-common-protocol.md (17 tokens)
-	//   - .claude/rules/moai/workflow/agent-teams-pattern.md (1 token)
 	//   - .claude/rules/moai/workflow/verification-batch-pattern.md (2 tokens)
 	//   - .claude/agents/moai/plan-auditor.md (6 tokens)
+	//   (the former 5+1+1 Agent Teams pattern file was deleted per
+	//   SPEC-V3R6-RULES-SSOT-DEDUP-001 M6 — its content folded into
+	//   team-pattern-cookbook.md 6th pattern.)
 }
 
 // SPEC-V3R5-LATE-BRANCH-001 mirrored files. Each entry MUST have a byte-identical
@@ -75,16 +88,20 @@ var workflowOptMirroredPaths = []string{
 var lateBranchMirroredPaths = []string{
 	// D2 — spec-assembly Phase 3 Late-branch pre-check + Phase 2.5 opt-in
 	".claude/skills/moai/workflows/plan/spec-assembly.md",
-	// D5 — SKILL.md --issue flag opt-in semantics
-	".claude/skills/moai/SKILL.md",
 	// (spec-workflow.md is already in workflowOptMirroredPaths above — Late-branch
 	// closure additions are part of the same file, mirror parity verified there.)
-	// per-file §25 sanitization targets — REMOVED from the byte-parity allowlist:
+	// per-file §21 dev-only / §25 sanitization targets — REMOVED from the byte-parity allowlist:
+	//   - .claude/skills/moai/SKILL.md: source retains the dev-only `release-update` command
+	//     entry + section (CLAUDE.local.md §21 — 97-series dev-only, NOT distributed to user
+	//     projects) while the template mirror is held free of it. byte-parity therefore cannot
+	//     hold; mirror cleanliness is covered by TestTemplateNoInternalContentLeak instead.
+	//     (Origin: M2 commit 73dbdb672 intentionally stripped the release-update route from the
+	//     template mirror per §21; this allowlist entry should have been removed at that time.)
 	//   - manager-spec.md: source retains the SPEC ID regex pedagogical example
 	//     (working copy) while the mirror is held sanitized for distribution.
 	//   - manager-git.md: source retains internal SPEC-ID/token content while the
 	//     mirror is held sanitized.
-	// byte-parity cannot hold for either; mirror cleanliness is covered by
+	// byte-parity cannot hold for any of these; mirror cleanliness is covered by
 	// TestTemplateNoInternalContentLeak (leak test) instead of byte-parity here.
 }
 

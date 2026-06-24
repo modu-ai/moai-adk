@@ -1,10 +1,9 @@
-<!-- Verifies REQ-BRAIN-001: 7 phases execute sequentially -->
-<!-- Verifies REQ-BRAIN-002: Discovery rounds capped at 5 -->
-<!-- Verifies REQ-BRAIN-009: Phase 7 exit AskUserQuestion with 3 options -->
-<!-- Verifies REQ-BRAIN-010: NO auto-execution of /moai project -->
-<!-- Verifies REQ-BRAIN-012: NO prose questions (AskUserQuestion only) -->
+<!-- Verifies: 7 phases execute sequentially -->
+<!-- Verifies: Discovery rounds capped at 5 -->
+<!-- Verifies: Phase 7 exit AskUserQuestion with 3 options -->
+<!-- Verifies: NO auto-execution of /moai project -->
+<!-- Verifies: NO prose questions (AskUserQuestion only) -->
 ---
-name: moai-workflow-brain
 description: >
   Brain workflow orchestration: 7-phase idea-to-proposal pipeline with Claude Design
   handoff package. Use for /moai brain invocations — converts vague ideas into validated
@@ -26,7 +25,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["brain", "idea", "ideation", "brain workflow"]
-  agents: ["manager-brain"]
+  agents: ["Explore", "manager-spec"]
   phases: ["brain"]
 ---
 
@@ -84,7 +83,7 @@ Set `brand_present` flag accordingly. Pass to Phase 7 (moai-domain-design-handof
 
 **Purpose**: Clarify the idea to a clarity score of 4+ out of 5.
 **Foundation reuse**: `moai-foundation-thinking` modules/deep-questioning.md
-**Key constraint**: Max 5 rounds (REQ-BRAIN-002). In practice, 1-2 rounds typically suffice.
+**Key constraint**: Max 5 rounds. In practice, 1-2 rounds typically suffice.
 
 ### Clarity Scoring
 
@@ -197,10 +196,10 @@ Execution: Invoke `moai-domain-ideation` Phase 6 Proposal with:
 
 The proposal.md MUST contain `### SPEC Decomposition Candidates` section with 2-10 entries matching grammar `- SPEC-{DOMAIN}-{NUM}: {scope}`.
 
-[HARD] No tech-stack assumptions: proposal.md solution sections describe capabilities, not implementations (REQ-BRAIN-011).
+[HARD] No tech-stack assumptions: proposal.md solution sections describe capabilities, not implementations.
 
 After proposal.md is written, it becomes the input for downstream workflows:
-- `REQ-BRAIN-007`: `/moai project --from-brain IDEA-NNN` reads proposal.md as primary product scope input (Phase A8.1 downstream patch)
+- `/moai project --from-brain IDEA-NNN` reads proposal.md as primary product scope input (Phase A8.1 downstream patch)
 - `/moai plan` detects proposal.md and surfaces SPEC Decomposition Candidates via AskUserQuestion suggestion (Phase A8.2 downstream patch)
 
 ---
@@ -239,11 +238,11 @@ Execution: Invoke `moai-domain-design-handoff` with:
 - research.md Sources section for reference URLs
 - `brand_present` flag
 
-### Phase 7 Exit: AskUserQuestion (REQ-BRAIN-009)
+### Phase 7 Exit: AskUserQuestion
 
 After all 5 files are written, present next-action options. See `moai-domain-design-handoff` for the exact AskUserQuestion payload.
 
-[HARD] NO auto-execution of `/moai project` (REQ-BRAIN-010). User MUST explicitly select the option to proceed.
+[HARD] NO auto-execution of `/moai project`. User MUST explicitly select the option to proceed.
 
 ---
 

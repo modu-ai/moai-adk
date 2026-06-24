@@ -116,8 +116,25 @@
 - m1_to_mN_commit_strategy: M1(dep+RED) → M2(§F.1 GREEN) → M3(§F.2 RED+GREEN) → M4(OPTIONAL godoc + full verification + evidence). M별 분리 commit, L1 worktree 작업 후 orchestrator 통합·push.
 
 ### §E.4 Sync-phase Audit-Ready Signal
-- _(manager-docs append — REQ-ARR-003)_
+- sync_complete_at: 2026-06-15
+- sync_commit_sha: (본 progress.md update 포함 commit — orchestrator backfill)
+- sync_status: implemented
+- frontmatter_transition: in-progress → implemented (spec.md)
+- changelog_updated: true (### Security 섹션 1 항목)
+- readme_updated: false (내부 권한/cli 봉쇄 — 사용자-facing 표면 변경 없음, README 갱신 불필요)
+- docs_site_updated: false (docs-site는 사용자 가이드 — 내부 permission/cli 보안 봉쇄는 무관)
+- sync_scope_files: 3 (CHANGELOG.md, spec.md frontmatter, progress.md §E.4)
+- preserve_unrelated_uncommitted: 6 M files (settings-management workstream) + 7 untracked — NOT absorbed (explicit-path discipline)
 
 ### §E.5 Mx-phase Audit-Ready Signal
-- _(manager-docs OR orchestrator append)_
-- mx_commit_sha: _(pending)_
+- mx_complete_at: 2026-06-15
+- mx_commit_sha: b69f72dad
+- mx_status: completed
+- frontmatter_transition: implemented → completed (spec.md)
+- sync_auditor_verdict: PASS-WITH-DEBT 0.90 (harmonic mean; Functionality 1.00 / Security 1.00 MUST-PASS 통과 / Craft 0.75 / Consistency 1.00). report: `.moai/reports/sync-audit/SPEC-SEC-HARDEN-005-2026-06-15.md`
+- ac_reproduction: 13/13 독립 재확인 (progress.md §E.2 claim 미신뢰, 전부 재실행 GREEN)
+- adversarial_probes: 다수 (§F.1 ${IFS} 변형 + §F.2 env-trust 변형), real bash + fake curl sentinel 계측, 0 genuine bypass — 두 위협모델 demonstrably closed
+- deferred_should_fix: 1건 adjacent-class — nested `${x:-${IFS}}` default-value expansion AST walk 미재귀(stack.go). 비악용 입증(word-split→arg, command 합성 불가), design D.1.3 CallExpr-args-only scope 일치, command-chain 위협모델 닫힘. self-claim 위반 아님. SEC-HARDEN-003/004 §F adjacent-class 선례 → follow-up 후보(별도 SPEC). 사용자 결정: 이연.
+- minor_findings: 2건 (design.md B.1 invariant 문구 광범위 doc-precision / AC-012(1) grep `internal/config` 경로 vacuous — const는 internal/cli, AC PASS 유지)
+- pre_existing_diagnostics: 11건 (glm.go/team_spawn.go/update.go unused param 등) — SEC-HARDEN-005 commit 수 0, scope 밖 pre-existing baseline noise, 흡수/수정 안 함 (scope discipline)
+- 4_phase_complete: plan(328ff95e3) → run(M1 9648c7721 / M2 bf5e2ee75 / M3 8914af483 / M4+orch a18bf798b) → sync(c5c4d0a36) → Mx(본 close commit)

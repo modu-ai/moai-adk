@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-sync-delivery
 description: "Sync Phase 3~4 — Git Operations and Delivery (CI mirror, push/PR, auto-merge), Completion, Team Mode, Graceful Exit, Test Scenarios, and Custom Harness."
 user-invocable: false
 metadata:
@@ -7,7 +6,7 @@ metadata:
   phase: "Phase 3~4: Git Delivery, Completion, and Auxiliary"
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 <!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
 
@@ -132,15 +131,17 @@ go test -race -coverprofile=coverage.out -covermode=atomic ./...
 # Check 3: golangci-lint (mirrors CI lint job)
 # Auto-detect if golangci-lint is available
 which golangci-lint && golangci-lint run --timeout=5m \
-  || echo "SKIP: golangci-lint not installed (run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6)"
+  || echo "SKIP: golangci-lint not installed (install via your project's pinned version)"
 
 # Check 4: Cross-compile all CI targets (mirrors CI build job)
-# Run all 5 targets in parallel — CGO_ENABLED=0 for all
-GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-amd64     ./cmd/moai/ &
-GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-arm64     ./cmd/moai/ &
-GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-amd64    ./cmd/moai/ &
-GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-arm64    ./cmd/moai/ &
-GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-windows-amd64.exe ./cmd/moai/ &
+# Replace <your-module> with your main package path (e.g. ./cmd/<your-binary>/).
+# Replicate whatever GOOS/GOARCH targets your CI build matrix declares; the
+# example below shows the common 5-target matrix — run them in parallel, CGO_ENABLED=0 for all.
+GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-amd64     ./<your-module>/ &
+GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-arm64     ./<your-module>/ &
+GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-amd64    ./<your-module>/ &
+GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-arm64    ./<your-module>/ &
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-windows-amd64.exe ./<your-module>/ &
 wait
 ```
 
@@ -171,7 +172,7 @@ Always report what was skipped and why:
 ```
 CI Mirror: Skipped checks
 - test (windows-latest): Cannot run Windows tests locally — will be verified by remote CI
-- lint: golangci-lint not installed — install with: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+- lint: golangci-lint not installed — install via your project's pinned version
 ```
 
 ##### Step 3.1.5.4: Evaluate Results
@@ -180,7 +181,7 @@ CI Mirror: Skipped checks
 
 **Any check fails**: Present failure summary via AskUserQuestion:
 
-- Fix now — delegate to manager-quality subagent with failure details, then re-run CI mirror
+- Fix now — delegate to manager-develop subagent with failure details, then re-run CI mirror
 - Push anyway — proceed to Step 3.2 with warning embedded in PR description
 - Abort — exit sync workflow, preserve commit (allow local fix and re-run)
 
@@ -310,7 +311,7 @@ Auto-merge trigger conditions:
 When auto-merge is triggered:
 1. Verify all CI/CD checks pass (gh pr checks)
 2. Verify zero merge conflicts (gh pr view --json mergeable)
-3. If all checks pass: Resolve the merge method from the active mode's `git_strategy.<mode>.merge_method` config value (`squash` | `merge` | `rebase`; default `squash`), then execute `gh pr merge --<merge_method> --delete-branch`. When `merge_method` resolves to `squash` (the default), this is `gh pr merge --squash --delete-branch`.
+3. If all checks pass: Execute `gh pr merge --squash --delete-branch`
 4. If checks fail: Report error with recovery command, do NOT merge
 
 ##### Flag Behavior
@@ -322,7 +323,7 @@ When auto-merge is triggered:
 
 1. Check CI/CD status via `gh pr checks --watch` (wait for completion)
 2. Check merge conflicts via `gh pr view --json mergeable`
-3. If passing and mergeable: Resolve the merge method from the active mode's `git_strategy.<mode>.merge_method` config value (default `squash`), then execute `gh pr merge --<merge_method> --delete-branch` (the squash default renders `gh pr merge --squash --delete-branch`)
+3. If passing and mergeable: Execute `gh pr merge --squash --delete-branch`
 4. Checkout target branch, fetch latest
 5. Verify local is synchronized with remote
 

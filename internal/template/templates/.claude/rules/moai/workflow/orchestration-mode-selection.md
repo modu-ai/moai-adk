@@ -11,7 +11,9 @@ metadata:
 
 Canonical 6-mode autonomous decision tree for the MoAI orchestrator. Activated at Phase 0.95 (after Phase 0.5 plan-auditor verdict, before Phase 1 implementation). The decision is autonomous (no `AskUserQuestion` round); the chosen mode and the selection rationale are logged to `progress.md § Mode Selection`.
 
-[ZONE:Frozen] [HARD] All Phase 0.95 execution modes are strictly downstream of GATE-2 (the plan→run HUMAN GATE). The orchestrator reaches Phase 0.95 ONLY after GATE-2 user approval has already been obtained. Mode selection — including Mode 6 (workflow) — is never a substitute for GATE-2 and never a path that crosses the plan→run boundary ahead of the human gate. GATE-2 is mandatory and score-independent (a plan-auditor PASS or a high skip-eligible score never auto-bypasses it; skip-eligibility applies only to Phase 0.5 verdict re-execution, not to GATE-2) per the GATE-2 mandatory-restoration policy.
+[ZONE:Frozen] [HARD] All Phase 0.95 execution modes are strictly downstream of Implementation Kickoff Approval (renamed from GATE-2) (the plan→run HUMAN GATE). The orchestrator reaches Phase 0.95 ONLY after Implementation Kickoff Approval user approval has already been obtained. Mode selection — including Mode 6 (workflow) — is never a substitute for Implementation Kickoff Approval and never a path that crosses the plan→run boundary ahead of the human gate. Implementation Kickoff Approval is mandatory and score-independent (a plan-auditor PASS or a high skip-eligible score never auto-bypasses it; skip-eligibility applies only to Phase 0.5 verdict re-execution, not to Implementation Kickoff Approval) per the Implementation Kickoff Approval mandatory-restoration policy.
+
+> **Path B amendment (Intent-Gated Goal-Directed Autonomy — IGGDA)**: the Implementation Kickoff Approval gate above is AMENDED, not removed, by the safe-condition predicate documented in §H below. The `[ZONE:Frozen]` marker is PRESERVED as an audit trail; the amendment reduces the gate's per-run-blocking weight in safe domains (lightweight confirmation that auto-proceeds after a bounded timeout) while preserving the user's veto authority and forcing explicit-gate in dangerous domains. The marker is never removed; only the gate's weight is redistributed. The user-facing `AskUserQuestion` round is ALWAYS issued (auto-proceed does NOT skip it — the user retains veto). See §H for the 4-condition compound predicate, §I for the IGGDA 4-phase pipeline it governs, and §J for the independent-audit preservation invariants.
 
 > Cross-reference: `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification covers the `--mode` flag matrix (autopilot / loop / team / pipeline) which interacts with — but is separate from — the 6-mode catalog below. The run-phase `/goal ac_converge` autonomy wiring point lives in `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy (/goal ac_converge); `.claude/rules/moai/workflow/dynamic-workflows.md` is the source for the Workflow (Mode 6) primitive (16-concurrent / 1000-total cap) and the named-script-API prohibition.
 
@@ -25,12 +27,12 @@ The orchestrator selects exactly one of the following modes per Phase 0.95 invoc
 |---|------|-------------|---------------|----------------|
 | 1 | `trivial` | None — direct execution by the orchestrator, no sub-agent spawn | n/a | Typo fix, single-line formatting, no semantic change |
 | 2 | `background` | 1 concurrent sub-agent | `Agent(run_in_background: true, ...)` | Read-only analysis that can complete asynchronously without blocking the conversation |
-| 3 | `agent-team` | 3-5 dynamic teammates | `TeamCreate(...)` + `Agent(subagent_type: "general-purpose", team_name: ..., name: ...)` × N | Multi-domain (≥3 domains OR ≥10 files) research-heavy work AND all Agent Teams capability-gate prerequisites met |
+| 3 | `agent-team` | 3-5 dynamic teammates | `Agent(subagent_type: "general-purpose", name: ...)` × N (implicit team forms on first spawn — no setup step; `team_name` accepted but ignored per Claude Code v2.1.178) | Multi-domain (≥3 domains OR ≥10 files) research-heavy work AND all Agent Teams capability-gate prerequisites met |
 | 4 | `parallel` | 3-5 concurrent sub-agents (single message, multiple `Agent()` calls) | Multiple `Agent()` invocations in one assistant turn | Multi-domain research that does NOT meet Agent Teams prerequisites; or any case where Agent Teams session overhead exceeds benefit |
 | 5 | `sub-agent` | 1 sequential sub-agent per milestone | Sequential `Agent(...)` spawns, one milestone at a time | Coding-heavy work (per Anthropic's coding-task parallelism caveat), or any case where the simpler mode suffices |
 | 6 | `workflow` | Up to 16 concurrent workflow agents (1000-total per-run backstop, per `dynamic-workflows.md`) | Orchestrator-launched Workflow fan-out (a script the runtime executes to coordinate agents — NOT a subagent spawning subagents) | Genuinely-parallel, high-volume **mechanical** transformation (≥ ~30 files AND a single uniform transform rule AND no inter-file dependency) — call-site rename, import-path bulk change, signature-stable edits. Coding-heavy / multi-domain / new-code work stays Mode 5 (per Anthropic's coding-task parallelism caveat). |
 
-Mode 5 is the **default fallback** when no other mode's selection criteria are unambiguously met. Mode 6 (`workflow`) is the narrow high-volume-mechanical exception, selectable ONLY after GATE-2 has passed (see §C.3).
+Mode 5 is the **default fallback** when no other mode's selection criteria are unambiguously met. Mode 6 (`workflow`) is the narrow high-volume-mechanical exception, selectable ONLY after Implementation Kickoff Approval has passed (see §C.3).
 
 ---
 
@@ -54,7 +56,7 @@ START (Phase 0.95 Mode Selection)
   │     • `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml`
   │     • environment variable `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
   │   AND is the scope multi-domain (≥3 domains OR ≥10 files)?
-  │   ├── YES → Mode 3: AGENT-TEAM (TeamCreate + dynamic teammate spawn)
+  │   ├── YES → Mode 3: AGENT-TEAM (implicit team — dynamic teammate spawn via Agent(name=...))
   │   └── NO  → continue
   │
   ├── Is the task multi-domain (≥3 domains) AND research-heavy
@@ -64,7 +66,7 @@ START (Phase 0.95 Mode Selection)
   │
   ├── Is the task ≥ ~30 files AND mechanical (one uniform transform rule)
   │   AND genuinely parallel — no inter-file dependency
-  │   AND GATE-2 already passed AND all preferences already collected
+  │   AND Implementation Kickoff Approval already passed AND all preferences already collected
   │   AND Workflows available (not disabled, runtime version ≥ v2.1.154)?
   │   ├── YES → Mode 6: WORKFLOW (orchestrator-launched fan-out, scaling NOT nesting)
   │   └── NO  → continue
@@ -84,6 +86,10 @@ The orchestrator collects the following signals before traversing the decision t
 - **file language mix**: e.g., 100% markdown vs Go source vs shell vs mixed
 - **concurrency benefit**: HIGH for research-heavy work (parallel reads, independent perspectives); LOW for coding-heavy work (Anthropic's coding-task parallelism caveat — most coding tasks involve fewer truly parallelizable tasks than research)
 - **Agent Teams prereqs status**: each of the three Agent Teams capability-gate conditions individually verified
+
+### §B.1b Auto-mode pre-launch classifier (CC 2.1.178+)
+
+When Claude Code runs in **auto mode** (per-tool auto-approval, paired with `/goal` for unattended loops), a pre-launch classifier evaluates each subagent spawn before it is dispatched — the classifier gates whether a spawn proceeds without a per-tool approval prompt. This is a platform-level mechanism that runs ahead of the Phase 0.95 mode-selection logic documented here; Phase 0.95 selects which mode the orchestrator uses to structure work, while the auto-mode classifier gates the per-spawn approval surface underneath that choice. The two are complementary: `/goal` (see `.claude/rules/moai/workflow/goal-directive.md`) removes per-turn STOP prompts, auto mode removes per-tool approval prompts, and Phase 0.95 mode selection decides HOW the orchestrator fans out. An active auto-mode classifier does NOT relax Implementation Kickoff Approval (the plan-to-implement human gate) — the human gate is decided before any run-phase work begins, and the classifier only governs per-spawn approval latency within an already-approved run.
 
 ### §B.2 Tie-breaker rules (boundary cases)
 
@@ -130,11 +136,11 @@ Mode 6 (`workflow`) is candidate ONLY when ALL of the following preconditions ho
 
 | Precondition | Why it is required |
 |--------------|---------------------|
-| GATE-2 already passed | Workflow agents cannot prompt the user mid-run (no mid-run user input). Therefore the one decision that MUST involve the user — the plan→run human gate — MUST already be cleared. A Mode 6 launch before GATE-2 passes is prohibited (§E anti-pattern). |
-| All preferences collected | All user preferences (Tier, mode preference, PR strategy, etc.) MUST be drained at GATE-2 before launch, because the asymmetric boundary forbids both Workflow agents and `/goal`-turn agents from prompting the user (agent-common-protocol.md § User Interaction Boundary). |
+| Implementation Kickoff Approval already passed | Workflow agents cannot prompt the user mid-run (no mid-run user input). Therefore the one decision that MUST involve the user — the plan→run human gate — MUST already be cleared. A Mode 6 launch before Implementation Kickoff Approval passes is prohibited (§E anti-pattern). |
+| All preferences collected | All user preferences (Tier, mode preference, PR strategy, etc.) MUST be drained at Implementation Kickoff Approval before launch, because the asymmetric boundary forbids both Workflow agents and `/goal`-turn agents from prompting the user (agent-common-protocol.md § User Interaction Boundary). |
 | Scope ≥ ~30 files, mechanical, genuinely parallel | The Workflow primitive earns its overhead only on genuinely-parallel high-volume mechanical work; coding-heavy / multi-domain work stays Mode 5 (Anthropic's coding-task parallelism caveat). |
 | Workflows available | `CLAUDE_CODE_DISABLE_WORKFLOWS` is not set AND runtime version ≥ v2.1.154; otherwise fall through to Mode 5. |
-| Selection logged | The Mode 6 selection AND a confirmation that GATE-2 already passed AND that all preferences were collected MUST be recorded in `progress.md § Mode Selection` before the Workflow launches (§D). |
+| Selection logged | The Mode 6 selection AND a confirmation that Implementation Kickoff Approval already passed AND that all preferences were collected MUST be recorded in `progress.md § Mode Selection` before the Workflow launches (§D). |
 
 #### Mode 6 is scaling, not nesting
 
@@ -162,7 +168,7 @@ The Mode Selection section MUST include:
 2. **Mode evaluation table** — for each of the 6 modes, a row stating "selected" or "not selected" and a one-line rationale
 3. **Decision** — the chosen mode (one of: `trivial`, `background`, `agent-team`, `parallel`, `sub-agent`, `workflow`) on a single line for grep-friendly verification
 4. **Justification** — a short paragraph (2-5 sentences) explaining why the chosen mode is preferable to alternatives, citing the relevant Anthropic finding(s) when applicable
-5. **Mode 6 confirmation (when `workflow` is selected)** — an explicit line confirming GATE-2 already passed AND all preferences were collected before the Workflow launches (§C.3 logging precondition)
+5. **Mode 6 confirmation (when `workflow` is selected)** — an explicit line confirming Implementation Kickoff Approval already passed AND all preferences were collected before the Workflow launches (§C.3 logging precondition)
 
 ### §D.2 Token requirement (grep verification)
 
@@ -177,7 +183,7 @@ The grep count MUST be ≥ 1. In practice, naming the chosen mode anywhere withi
 
 ### §D.3 When to log a boundary case
 
-When the decision tree hit a boundary (e.g., scope = exactly 10 files, exactly 3 domains, harness = `standard` with team.enabled = true but env var unset), the orchestrator MUST additionally include a **Boundary Case** subsection documenting the tie-breaker rule that resolved the ambiguity. This enables retrospective analysis to recalibrate threshold values across SPEC cohorts.
+When the decision tree hit a boundary (e.g., scope = exactly 10 files, exactly 3 domains, harness = `standard` with team.enabled = true but env var unset), the orchestrator MUST additionally include a **Boundary Case** subsection documenting the tie-breaker rule that resolved the ambiguity. This enables retrospective analysis to recalibrate threshold values across SPEC groups (Epics).
 
 ---
 
@@ -189,12 +195,12 @@ The following patterns violate the orchestration mode selection contract:
 - **Spawning > 5 concurrent agents in Mode 3 or Mode 4** — exceeds Anthropic-recommended 3-5 ceiling and incurs coordination overhead
 - **Selecting Mode 4 (Parallel) for coding-heavy work** — violates Anthropic's coding-task parallelism caveat; Mode 5 (Sub-Agent sequential) is the correct default for coding tasks
 - **Selecting Mode 6 (Workflow) for coding-heavy / multi-domain / new-code work** — violates Anthropic's coding-task parallelism caveat; Mode 6 admits ONLY genuinely-parallel high-volume mechanical work (one uniform transform rule, no inter-file dependency). Coding-heavy work belongs to Mode 5
-- **Launching a Mode 6 Workflow before GATE-2 has passed** — violates the GATE-2 mandatory-restoration policy; the orchestrator MUST NOT launch the Workflow before GATE-2 user approval and MUST return control to the GATE-2 `AskUserQuestion` gate. Mode 6 is strictly downstream of GATE-2
+- **Launching a Mode 6 Workflow before Implementation Kickoff Approval has passed** — violates the Implementation Kickoff Approval mandatory-restoration policy; the orchestrator MUST NOT launch the Workflow before Implementation Kickoff Approval user approval and MUST return control to the Implementation Kickoff Approval `AskUserQuestion` gate. Mode 6 is strictly downstream of Implementation Kickoff Approval
 - **Asserting a typed/named Workflow script API** — a named `agent`-function, `parallel`-function, `pipeline`-function, or `phase`-function signature is NOT documented by Claude Code; describe the conceptual coordinate-agents → script-variable results → final-synthesis model instead (the named-script-API prohibition)
-- **Selecting Mode 6 without recording the GATE-2-passed + preferences-collected confirmation in `progress.md`** — the §C.3 / §D.1 #5 logging precondition makes the autonomy decision auditable; skipping it leaves the Workflow launch unverifiable post-hoc
+- **Selecting Mode 6 without recording the Implementation Kickoff Approval-passed + preferences-collected confirmation in `progress.md`** — the §C.3 / §D.1 #5 logging precondition makes the autonomy decision auditable; skipping it leaves the Workflow launch unverifiable post-hoc
 - **Skipping the progress.md logging step** — fails the canonical mode-logging acceptance criterion; the decision is no longer auditable post-hoc
 - **Re-spawning the same mode for multiple consecutive milestones in Mode 5 without re-evaluating** — acceptable practice for a single SPEC, but when run-phase scope changes mid-flight (e.g., milestone scope-up via blocker report), the orchestrator SHOULD re-run Phase 0.95
-- **Substituting an `AskUserQuestion` round for the autonomous decision** — Phase 0.95 is autonomous by contract; user intervention belongs to Phase 0.5 verdict review (when verdict is FAIL or INCONCLUSIVE) or GATE-2 (plan-to-implement HUMAN GATE), not Phase 0.95
+- **Substituting an `AskUserQuestion` round for the autonomous decision** — Phase 0.95 is autonomous by contract; user intervention belongs to Phase 0.5 verdict review (when verdict is FAIL or INCONCLUSIVE) or Implementation Kickoff Approval (plan-to-implement HUMAN GATE), not Phase 0.95
 
 ---
 
@@ -204,9 +210,9 @@ The following patterns violate the orchestration mode selection contract:
 - `.claude/rules/moai/workflow/spec-workflow.md` § Phase 0.5 Plan Audit Gate — runs before Phase 0.95 and may produce `BYPASSED` / `INCONCLUSIVE` / `FAIL` verdicts that affect Phase 0.95 inputs
 - `.claude/rules/moai/development/manager-develop-prompt-template.md` § Applicability — Tier S/M/L delegation template selection (interacts with Mode 5 sub-agent spawn prompts)
 - `.claude/rules/moai/workflow/archived-agent-rejection.md` — sibling rule documenting the orchestrator's rejection behavior when a paste-ready resume references an archived-agent name (independent of mode selection)
-- `.claude/rules/moai/workflow/dynamic-workflows.md` — the Workflow (Mode 6) primitive: 16-concurrent / 1000-total cap, no-mid-run-user-input semantics, GATE-2-is-unaffected note, and the absence of a documented named-script API
+- `.claude/rules/moai/workflow/dynamic-workflows.md` — the Workflow (Mode 6) primitive: 16-concurrent / 1000-total cap, no-mid-run-user-input semantics, Implementation Kickoff Approval-is-unaffected note, and the absence of a documented named-script API
 - `.claude/rules/moai/workflow/goal-directive.md` — `/goal` autonomous-continuation semantics (the run-phase `ac_converge` condition wiring lives in `run.md` § Run-phase Autonomy (/goal ac_converge))
-- `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy (/goal ac_converge) — co-located GATE-2 ordering reference + `/goal ac_converge` set
+- `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy (/goal ac_converge) — co-located Implementation Kickoff Approval ordering reference + `/goal ac_converge` set
 - The canonical agent catalog design — design-time decision tree from which this rule was derived
 - Anthropic Sub-agents and Agent Teams documentation — verbatim citations grounding the Mode 3 ceiling and Mode 4-vs-Mode-5 coding-task caveat
 - Anthropic Agent Teams documentation — *"Start with 3-5 teammates for most workflows."*
@@ -218,13 +224,135 @@ The following patterns violate the orchestration mode selection contract:
 
 [ZONE:Frozen] [HARD] "Mode 6 (workflow)" added here is appended to ONE specific list: the **Phase 0.95 execution-mode catalog** in this file (`trivial` / `background` / `agent-team` / `parallel` / `sub-agent` → + `workflow`). This is a DIFFERENT axis from the `run.md` `--mode` **dispatch axis** (`autopilot` / `loop` / `team` / `pipeline`) documented in `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification and the `run.md` Mode Dispatch table. Both happen to be short lists, which is the confusion trap.
 
-- **Execution-mode catalog** (Phase 0.95, where Mode 6 lands): governs HOW the orchestrator spawns — concurrency + spawn surface (direct / background `Agent` / `TeamCreate` / parallel `Agent()` / sequential `Agent()` / **Workflow fan-out**).
+- **Execution-mode catalog** (Phase 0.95, where Mode 6 lands): governs HOW the orchestrator spawns — concurrency + spawn surface (direct / background `Agent` / implicit-team `Agent(name=...)` / parallel `Agent()` / sequential `Agent()` / **Workflow fan-out**).
 - **`--mode` dispatch axis** (CLI flag, NOT touched here): governs WHICH `/moai run` workflow variant runs — `autopilot` vs `loop` (Ralph) vs `team` vs the rejected `pipeline`.
 
 [ZONE:Frozen] [HARD] Mode 6 (`workflow`) is added ONLY to the execution-mode catalog. It is NOT a new `--mode` dispatch value; no `--mode workflow` flag is introduced; the `run.md` Mode Dispatch sentinel set (`MODE_UNKNOWN` / `MODE_TEAM_UNAVAILABLE` / `MODE_PIPELINE_ONLY_UTILITY`) is unchanged. The header cross-reference above already notes the two axes "interact with — but are separate from" each other; this separation is preserved.
 
 ---
 
-Version: 1.1.0
-Origin: canonical agent catalog policy; Mode 6 (workflow) added by the run-phase autonomy line
+## §H — IGGDA Safe-Condition Predicate (Path B Implementation Kickoff Amendment)
+
+Intent-Gated Goal-Directed Autonomy (IGGDA) AMENDS the Implementation Kickoff Approval gate from a per-run-blocking `AskUserQuestion` (Path A — what AUTONOMY-RUN-GOAL-001 preserved) into a **safe-condition predicate** with two branches. The gate is NOT removed; its weight is redistributed. The `[ZONE:Frozen]` marker on the header paragraph above is PRESERVED as the audit trail for the original invariant; the amendment below is the behavioral change.
+
+### §H.1 The compound predicate (4 conditions, all-must-hold for auto-proceed)
+
+[ZONE:Evolvable] [HARD] **Where** the Socratic interview has reached 100% intent clarity, **While** the plan-auditor has issued a PASS verdict, **When** the orchestrator reaches the plan→run boundary, the Implementation Kickoff Approval gate shall evaluate the following four-condition compound predicate:
+
+| # | Condition | FAIL verdict |
+|---|-----------|--------------|
+| (a) | **Intent clarity 100%** — the Socratic interview (multi-round, max 4 questions per round) is complete; every assumption surfaced; every ambiguity resolved per `.claude/rules/moai/core/askuser-protocol.md` § Socratic Interview Structure | return-to-Phase-0 (the interview must complete first) |
+| (b) | **plan-auditor PASS** — the independent plan-audit verdict (Phase 0.5) is PASS (NOT FAIL, NOT INCONCLUSIVE) | surface-to-user (the independent audit halt) |
+| (c) | **Tier S or Tier M** — the SPEC tier is S or M (NOT Tier L — Tier L is the complexity cutoff for "dangerous") | explicit-gate (mandatory blocking gate) |
+| (d) | **No dangerous keywords AND no destructive scope** — the SPEC scope contains none of the security / payment / critical keywords enumerated in §H.3 below AND the `--pr` flag is absent AND the scope is not marked destructive | explicit-gate (mandatory blocking gate) |
+
+The predicate is evaluated in order (a)→(b)→(c)→(d). The FIRST failing condition determines the verdict rationale (logged for audit), but the gate decision collapses to one of: **auto-proceed** (all 4 hold) / **explicit-gate** (c or d fails) / **return-to-Phase-0** (a fails) / **surface-to-user** (b fails).
+
+### §H.2 The two branches
+
+| Branch | Trigger | Behavior |
+|--------|---------|----------|
+| **Auto-proceed** | All 4 conditions hold | The `AskUserQuestion` round is STILL ISSUED (the user retains veto authority); the first option `(Recommended)` is auto-selected after a bounded timeout (default 30 seconds, configurable via `workflow.iggda.kickoff_timeout_seconds`). The gate is REDUCED to a lightweight confirmation, NOT removed. |
+| **Explicit-gate** | Condition (c) OR (d) fails | The `AskUserQuestion` round REMAINS mandatory and blocks until the user responds (no timeout, no auto-proceed). This is the Path A behavior preserved verbatim for dangerous domains. |
+
+**User veto is never overridden.** Even in the auto-proceed branch, the user CAN select "abort" or "further review" within the timeout window (AC-IGGDA-003). The predicate does NOT override user intent — it only reduces the latency of the gate in safe domains where the Socratic interview has already drained intent.
+
+### §H.3 The dangerous-domain keyword list (condition (d) determinator)
+
+The keyword list is enumerable at design time and extensible via rule-file edit (not code change). It is intentionally OVER-INCLUSIVE in the initial release — better to force explicit-gate on a false-positive than auto-proceed on a false-negative. The orchestrator matches keywords case-insensitively against the SPEC's title, scope summary, plan.md §A context, and acceptance.md.
+
+**Security domain** (any match → condition (d) FAILS):
+- `auth`, `authentication`, `authorization`, `acl`
+- `secret`, `credential`, `password`, `token`, `api_key`, `apikey`
+- `crypto`, `encryption`, `decrypt`, `hash`, `salt`
+- `session`, `cookie`, `jwt`, `oauth`, `saml`, `sso`
+- `injection`, `xss`, `csrf`, `sqli`, `rce`
+- `vulnerability`, `cve`, `owasp`
+
+**Payment domain** (any match → condition (d) FAILS):
+- `payment`, `billing`, `invoice`, `charge`
+- `stripe`, `paypal`, `portone`, `iamport`, `toss`, `kakopay`, `naverpay`
+- `card`, `pan`, `pci`, `dss`
+- `refund`, `settlement`
+
+**Critical infrastructure domain** (any match → condition (d) FAILS):
+- `production`, `prod`, `live`
+- `migration`, `rollback`, `drop_table`, `drop table`
+- `force_push`, `force-push`
+- `rm_rf`, `rm -rf`
+- `database`, `schema` (when paired with `drop` / `alter`)
+
+**Destructive scope markers** (any match → condition (d) FAILS):
+- `--pr` flag supplied by the user
+- SPEC scope marked destructive (PR creation / force-push / table-drop / external-post semantics)
+
+**Maintenance**: this list lives in this rule file and is extended via SPEC amendment. When a new dangerous domain is identified, add it here; no code change is required (the orchestrator reads the list from this rule at gate-evaluation time).
+
+### §H.4 Decision logging (auditable)
+
+[ZONE:Evolvable] [HARD] Every safe-condition predicate evaluation (either branch) MUST be logged to `.moai/specs/<SPEC-ID>/progress.md` under a `## §E IGGDA Kickoff Predicate` section with: condition (a) value, condition (b) value, condition (c) value, condition (d) value + any matched keyword, the final verdict (auto-proceed / explicit-gate / return-to-Phase-0 / surface-to-user), and a timestamp. This makes every auto-proceed post-hoc reviewable; a miscaptured intent that slipped through is detectable.
+
+### §H.5 Why this preserves the FROZEN-spirit (intent-verification-before-code)
+
+The original Implementation Kickoff Approval invariant protects **intent verification before code is written** — a plan-auditor PASS score is NOT sufficient evidence of intent fidelity. Path B preserves this protection because:
+
+1. **Condition (a) requires 100% Socratic clarity** — a multi-round interview (far more rigorous than a single plan→run boundary confirmation) IS intent verification, and is STRONGER than the single gate.
+2. **The `AskUserQuestion` round is STILL ISSUED in the auto-proceed branch** — the user sees the confirmation and CAN veto within the timeout window. The gate is REDUCED, not removed.
+3. **Dangerous domains are carved out** (conditions (c) + (d)) — where the stakes are high, the gate remains fully mandatory (explicit-gate branch).
+4. **The decision is auditable** (§H.4) — every auto-proceed is logged with all 4 conditions, so post-hoc verification is possible.
+
+The amendment moves the human checkpoint's WEIGHT from a per-run-blocking gate to an intent-collection-time gate (Phase 0 Socratic), EXCEPT in dangerous domains where the per-run-blocking gate remains.
+
+---
+
+## §I — IGGDA 4-Phase Pipeline (the autonomous plan→run→sync chain)
+
+IGGDA chains autonomy across all four phases of the pipeline. The user concentrates involvement in Phase 0 (Socratic intent collection); the rest is autonomous, with independent audits at Phase 1 and Phase 3 and a bounded recursive self-diagnosis loop at Phase 2.
+
+### §I.1 The four phases (in execution order)
+
+| Phase | Name | Autonomy | Human involvement |
+|-------|------|----------|-------------------|
+| **0** | **Intent** | Human-in-the-loop (Socratic) | Drains ALL preferences (Tier, mode, PR strategy, domain). ABSORBS the gating weight of Implementation Kickoff Approval under Path B (the human checkpoint moves HERE, except in dangerous domains where it remains at the plan→run boundary). |
+| **1** | **Plan** | Autonomous | manager-spec produces SPEC artifacts → plan-auditor INDEPENDENT audit (fresh context). PASS → auto-advance to Phase 2. FAIL/INCONCLUSIVE → halt, surface to user (REQ-IGGDA-023). |
+| **2** | **Run** | Autonomous + recursive self-diagnosis | manager-develop implements (DDD/TDD/autofix cycle_type). Bounded recursive self-diagnosis loop on mechanical failures (DIAGNOSE-PATCH-VERIFY, max 3 iterations). Semantic failures escalate immediately. All blocking ACs PASS + go test exit 0 + no out-of-scope modification → auto-advance to Phase 3. |
+| **3** | **Sync + final independent audit** | Autonomous | manager-docs: CHANGELOG/README/frontmatter transitions → sync-auditor INDEPENDENT 4-dimension score (fresh context) → `moai spec audit` deterministic final check (0 MUST-FIX required). sync-auditor ≥ threshold + 0 MUST-FIX + git clean → IGGDA-complete (`/goal` clears). |
+
+No phase is skipped except by graceful degradation (when `/goal` is unavailable per `.claude/rules/moai/workflow/goal-directive.md` — the pipeline degrades to per-turn progression rather than failing).
+
+### §I.2 Phase ordering invariant
+
+[ZONE:Evolvable] [HARD] The four phases execute in strict order: Phase 0 (Intent) → Phase 1 (Plan) → Phase 2 (Run) → Phase 3 (Sync + audit). Phase 0.5 (plan-audit) runs WITHIN Phase 1 (it is the Phase 1 exit gate, not a separate phase). The safe-condition predicate (§H) runs at the Phase 1 → Phase 2 boundary, AFTER Phase 0.5 PASS. The predicate does NOT substitute for Phase 0.5 — it is a downstream reduction of the Phase 1→2 gate weight, evaluated only after Phase 0.5 has already passed.
+
+### §I.3 The auto-advance mechanism (moai-aware Stop hook)
+
+The Stop hook driver at `.claude/hooks/moai/iggda-phase-driver.sh` fires at turn-end, reads `progress.md` + invokes `moai spec audit --json --filter-spec=<SPEC-ID>`, and emits a `/goal`-style auto-advance signal when the current phase's safe-transition predicate holds. The user does NOT author a `/goal` condition string; the goal is derived from Socratic intent and auto-converted to the phase-transition signal by the driver. See `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` §4 for the Recovery-Signal Carve-Out (the driver exits 0 on recovery turns, never blocking a recovery).
+
+---
+
+## §J — IGGDA Independent-Audit Preservation
+
+IGGDA's autonomous execution does NOT collapse the independent auditors (plan-auditor, sync-auditor) into the implementer. The independent-audit guarantee (bias prevention via fresh-context skeptical evaluation) is preserved verbatim.
+
+### §J.1 Fresh-context spawn (NOT continuation of implementer turn)
+
+[ZONE:Evolvable] [HARD] The plan-auditor (Phase 1) and sync-auditor (Phase 3) are spawned via `Agent(subagent_type: "plan-auditor")` and `Agent(subagent_type: "sync-auditor")` respectively, each in a FRESH isolated context. They are NOT continuations of the implementer's turn (manager-spec / manager-docs). The implementer's context carries the assumptions that produced the implementation; the auditor's fresh context catches what the implementer rationalized away. This is the "skeptical evaluation stance" in `.claude/rules/moai/core/agent-common-protocol.md` § Skeptical Evaluation Stance.
+
+### §J.2 FAIL/INCONCLUSIVE verdict halts auto-advance
+
+[ZONE:Evolvable] [HARD] When plan-auditor OR sync-auditor returns FAIL or INCONCLUSIVE, the Stop hook driver halts auto-advance (no transition to the next phase). The orchestrator surfaces the verdict to the user via `AskUserQuestion`. The FAIL/INCONCLUSIVE is a hard stop regardless of prior phase PASS — a Phase 1 PASS does not authorize proceeding past a Phase 3 sync-auditor FAIL.
+
+### §J.3 "Self-audit" vs "Independent audit" disambiguation
+
+The IGGDA documentation uses both terms; they are COMPLEMENTARY, NOT interchangeable:
+
+- **"Self-audit"** = the Phase 2 bounded recursive self-diagnosis loop (D3) performing first-party verification of MECHANICAL failures. It is a code-quality loop, NOT a SPEC-quality audit. No bias-prevention guarantee (it is the implementer checking their own mechanical work — acceptable for lint/type/import errors).
+- **"Independent audit"** = plan-auditor (Phase 1) + sync-auditor (Phase 3) in fresh contexts. These are the SPEC-quality audits with bias-prevention guarantees.
+
+IGGDA does NOT trade one for the other. Self-audit handles mechanical code failures fast (bounded loop, no human in the loop for easy cases); independent audit handles SPEC-quality assurance (human-grade skeptical evaluation in a fresh context).
+
+---
+
+Version: 1.2.0 (IGGDA: §H safe-condition predicate + §I 4-phase pipeline + §J independent-audit preservation added — Path B Implementation Kickoff Amendment)
+Origin: canonical agent catalog policy; Mode 6 (workflow) added by the run-phase autonomy line; §H/§I/§J added by IGGDA (Intent-Gated Goal-Directed Autonomy)
 Status: Active — applies to all `/moai run` Phase 0.95 invocations

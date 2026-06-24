@@ -81,7 +81,7 @@ changelog_entry: added           # CHANGELOG.md [Unreleased] § Fixed
 plan_audit_verdict: PASS-WITH-DEBT 0.86   # Tier S threshold 0.80
 ```
 
-## §E.5 Mx-phase Audit-Ready Signal
+### (Migrated from §E.5)
 
 ```yaml
 mx_complete_at: 2026-06-13

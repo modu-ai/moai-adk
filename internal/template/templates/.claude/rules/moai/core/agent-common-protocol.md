@@ -23,14 +23,9 @@ Rationale:
 
 ### Orchestrator Obligations
 
-The MoAI orchestrator MUST follow these obligations when using AskUserQuestion:
+> Canonical: see `.claude/rules/moai/core/askuser-protocol.md` § Orchestrator Obligations for the full preload sequence (`ToolSearch(query: "select:AskUserQuestion")` before each call), the AskUserQuestion channel monopoly, the Socratic interview structure, and the option-description standards. This file owns only the subagent-side boundary (above) and the blocker-report → re-delegation flow (below).
 
-- [ZONE:Frozen] [HARD] The orchestrator MUST preload AskUserQuestion via `ToolSearch(query: "select:AskUserQuestion")` before each call — AskUserQuestion is a deferred tool and its schema is not loaded at session start
-- [ZONE:Frozen] [HARD] All user-facing questions MUST go through AskUserQuestion — free-form prose questions in response text are prohibited
-- Collect all user preferences before delegating to subagents via Agent()
-- On receiving a blocker report from a subagent: run an AskUserQuestion round, inject the user's responses into a fresh subagent prompt, and re-delegate
-
-Canonical reference: see `.claude/rules/moai/core/askuser-protocol.md` for full preload sequence, Socratic interview structure, and anti-pattern catalog.
+The MoAI orchestrator collects all user preferences before delegating to subagents via `Agent()`. On receiving a blocker report from a subagent, it runs an `AskUserQuestion` round, injects the user's responses into a fresh subagent prompt, and re-delegates (procedure below).
 
 ### Hook Invocation Surface
 
@@ -161,7 +156,7 @@ Architecture:
 
 [ZONE:Frozen] [HARD] Background subagents (`run_in_background: true`) MUST NOT perform Write/Edit operations.
 
-Background agents auto-deny all non-pre-approved permission prompts because they cannot interact with the user. Even with `mode: "bypassPermissions"`, the background execution context does not fully inherit the parent session's permission allowlist.
+As of Claude Code v2.1.186, when a background subagent reaches a tool call that needs permission, the prompt surfaces in the main session and names the asking subagent (Esc denies just that one call). Before v2.1.186, background subagents auto-denied any prompting tool call — the prior basis for this rule. MoAI nonetheless keeps `run_in_background: false` for write tasks as a conservative default: in standard permission mode each background write raises a main-session permission prompt that interrupts the leader's flow and undercuts the parallelism benefit of backgrounding, whereas foreground execution keeps write-permission flow deterministic. Read-only tasks (research, analysis, review) remain safe and efficient in the background.
 
 Rules for agent spawning:
 - **Read-only tasks** (research, analysis, review): `run_in_background: true` is safe
@@ -311,7 +306,7 @@ each, serial execution adds ~14 s of dead-time per run-phase completion.
 ### Pre-Spawn Sync Check (Multi-Session Race Mitigation)
 
 [ZONE:Evolvable] [HARD] Before spawning any implementation `Agent()`
-(manager-develop / manager-docs / expert-*) that will commit or modify
+(manager-develop / manager-docs / per-spawn `Agent(general-purpose)` with a domain whitelist) that will commit or modify
 shared working-tree files, the orchestrator MUST execute the following
 2-command parallel batch and surface any divergence to the user.
 
@@ -367,8 +362,7 @@ commit in the push range. Lesson L9 reinforced
 (parallel session race during long agent runs) + L44 NEW (pre-spawn fetch
 discipline).
 
-Exemption: read-only agents (`Explore`, `manager-quality` in diagnostic
-mode) do not require pre-spawn fetch — they cannot trigger race conflicts.
+Exemption: read-only agents (`Explore`, or a per-spawn `Agent(general-purpose)` scoped to read-only investigation) do not require pre-spawn fetch — they cannot trigger race conflicts.
 
 Cross-reference: `.moai/docs/generic-patterns-guide.md` § Multi-Session
 Race Mitigation Procedure (defense-in-depth policy at user-facing

@@ -9,6 +9,11 @@ permissions:
   contents: write
   packages: write
 
+# Third-party actions are pinned to floating major tags (@vN). Version bumps are
+# governed by Dependabot (github-actions ecosystem, weekly) — see
+# .github/dependabot.yml. Do NOT downgrade to @main/@latest; Dependabot opens PRs
+# for each major bump so reviews are auditable. (Wave-3 hardening #21.)
+
 # Release publish — cancel-in-progress: false (tag publish + GoReleaser cancel 시 partial release 위험)
 concurrency:
   group: release-${{ github.ref }}
@@ -18,6 +23,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
       - name: Checkout code

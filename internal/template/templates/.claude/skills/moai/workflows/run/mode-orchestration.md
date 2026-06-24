@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-run-mode-orchestration
 description: "Run Mode Routing — Execution mode gate integration, team mode routing, context propagation, completion criteria, test scenarios, and custom harness extension"
 user-invocable: false
 metadata:
@@ -38,7 +37,7 @@ Apply existing --team/--solo flag logic in Team Mode Routing below.
 When --team flag is provided or auto-selected, the run phase MUST switch to team orchestration:
 
 1. Verify prerequisites: workflow.team.enabled == true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var is set
-2. If prerequisites met: Read ${CLAUDE_SKILL_DIR}/team/run.md and execute the team workflow (TeamCreate with backend-dev + frontend-dev + tester + quality)
+2. If prerequisites met: Read ${CLAUDE_SKILL_DIR}/team/run.md and execute the team workflow (spawn backend-dev + frontend-dev + tester + quality via Agent(name=...) — the team forms implicitly on first spawn)
 3. If prerequisites NOT met: Warn user then fallback to standard sub-agent mode
 
 Team composition: backend-dev (inherit) + frontend-dev (inherit) + tester (inherit) + quality (inherit, read-only)
@@ -69,12 +68,12 @@ Context flows forward through every phase:
 
 All of the following must be verified:
 
-- Phase 1: manager-strategy returned execution plan with requirements and success criteria
+- Phase 1: manager-spec returned execution plan with requirements and success criteria
 - User approval checkpoint blocked Phase 2 until user confirmed
 - Phase 1.5: Tasks decomposed with requirement traceability
 - Phase 1.8: MX context map built for target files (skipped for greenfield)
 - Phase 2: Implementation completed according to development_mode (with MX context)
-- Phase 2.5: manager-quality completed TRUST 5 validation with PASS or WARNING status
+- Phase 2.5: sync-auditor (or orchestrator verification batch) completed TRUST 5 validation with PASS or WARNING status
 - Quality gate blocked Phase 3 if status was CRITICAL
 - Phase 3: manager-git created commits (branch or direct) only if quality permitted
 - Phase 4: User presented with next step options
@@ -88,7 +87,7 @@ All of the following must be verified:
 **Expected Result**:
 - Phase 0.9: Detects Go project (go.mod) → references `.claude/rules/moai/languages/go.md`
 - Phase 0.95: SPEC has 8 files, 2 domains → Standard Mode selected
-- Phase 1: manager-strategy creates execution plan with 5 tasks
+- Phase 1: manager-spec creates execution plan with 5 tasks
 - Decision Point: User approves plan
 - Phase 2: Implementation via manager-develop (DDD mode)
 - Phase 2.5: TRUST 5 validation passes
@@ -98,7 +97,7 @@ All of the following must be verified:
 **Prompt**: "/moai run SPEC-BUG-042" (bug fix SPEC, 2 files affected)
 **Expected Result**:
 - Phase 0.95: SPEC has 2 files, 1 domain → Fix Mode selected
-- Directly spawns manager-quality + manager-develop
+- Directly spawns manager-develop + orchestrator verification batch (lint + test + coverage)
 - Minimal overhead, fast execution
 - Quality validation still runs
 

@@ -2,59 +2,10 @@ package cli
 
 import "testing"
 
-// TestNormalizeStatuslineMode_Canonical verifies that canonical values pass through unchanged.
-func TestNormalizeStatuslineMode_Canonical(t *testing.T) {
-	tests := []struct {
-		in, want string
-	}{
-		{"default", "default"},
-		{"full", "full"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.in, func(t *testing.T) {
-			if got := normalizeStatuslineMode(tt.in); got != tt.want {
-				t.Errorf("normalizeStatuslineMode(%q) = %q, want %q", tt.in, got, tt.want)
-			}
-		})
-	}
-}
-
-// TestNormalizeStatuslineMode_Deprecated verifies that deprecated aliases are converted to v3 canonical values.
-// minimal/compact → default, verbose → full (consistent with statusline.NormalizeMode behavior).
-func TestNormalizeStatuslineMode_Deprecated(t *testing.T) {
-	tests := []struct {
-		in, want string
-	}{
-		{"minimal", "default"},
-		{"compact", "default"},
-		{"verbose", "full"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.in, func(t *testing.T) {
-			if got := normalizeStatuslineMode(tt.in); got != tt.want {
-				t.Errorf("normalizeStatuslineMode(%q) = %q, want %q", tt.in, got, tt.want)
-			}
-		})
-	}
-}
-
-// TestNormalizeStatuslineMode_EmptyAndUnknown verifies that empty strings and unknown values fall back to "default".
-func TestNormalizeStatuslineMode_EmptyAndUnknown(t *testing.T) {
-	tests := []struct {
-		in, want string
-	}{
-		{"", "default"},
-		{"something-else", "default"},
-		{"extra", "default"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.in, func(t *testing.T) {
-			if got := normalizeStatuslineMode(tt.in); got != tt.want {
-				t.Errorf("normalizeStatuslineMode(%q) = %q, want %q", tt.in, got, tt.want)
-			}
-		})
-	}
-}
+// TestNormalizeStatuslineMode_* tests removed (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001):
+// normalizeStatuslineMode + its canonical list + helpers were deleted from
+// profile_setup.go. Runtime mode was already inert; the wizard no longer
+// prompts for mode.
 
 // TestNormalizeStatuslineTheme verifies that valid themes pass through unchanged
 // and that unknown or legacy "default" values are converted to "catppuccin-mocha".

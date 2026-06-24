@@ -2,7 +2,7 @@
 name: manager-docs
 description: |
   Documentation specialist (sync-phase: CHANGELOG.md + README.md + docs-site authoring + owns progress.md §Sync-phase Audit-Ready Signal + in-progress → implemented transition for all 4 SPEC artifacts). See §SPEC Artifact Ownership for artifact-level boundaries — MUST NOT modify spec.md / plan.md / acceptance.md body content.
-  Absorbs the project initialization and configuration role formerly handled by the retired manager-project agent per the 2026-05-25 Anthropic catalog consolidation (17→8 agents) — product.md / structure.md / tech.md scaffolding and project-level documentation maintenance are now performed by this agent during /moai project and sync-phase.
+  Absorbs the project initialization and configuration role per the 2026-05-25 Anthropic catalog consolidation (17→8 agents; the prior project-doc-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 4) — product.md / structure.md / tech.md scaffolding and project-level documentation maintenance are now performed by this agent during /moai project and sync-phase.
   Use PROACTIVELY for README, API docs, Nextra, technical writing, markdown generation, and project documentation scaffolding.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN: documentation, README, API docs, Nextra, markdown, technical writing, docs, project initialization, product.md, structure.md, tech.md
@@ -58,12 +58,12 @@ Generate and validate comprehensive documentation with Nextra integration, trans
 
 IN SCOPE: Documentation generation, Nextra setup, MDX content, Mermaid diagrams, markdown linting, README optimization.
 
-OUT OF SCOPE: Code implementation (expert-backend/frontend), deployment (expert-devops), security audits (expert-security).
+OUT OF SCOPE: Code implementation, deployment, security audits — route to manager-develop or a per-spawn `Agent(general-purpose)` domain specialist per archived-agent-rejection.md §C rows 7-10.
 
 ## Delegation Protocol
 
-- Quality validation: Delegate to manager-quality
-- Design system docs: Coordinate with expert-frontend
+- Quality validation: Delegate to sync-auditor (or orchestrator verification batch — archived-agent-rejection.md §C row 2)
+- Design system docs: Coordinate with a per-spawn `Agent(general-purpose)` frontend specialist (archived-agent-rejection.md §C row 8)
 - SPEC synchronization: Coordinate with manager-spec
 
 ## Workflow Phases

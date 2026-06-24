@@ -208,9 +208,7 @@ internal/statusline/renderer.go (3-line v3 layout)
 
 ```yaml
 statusline:
-  mode: default              # default | full
   theme: catppuccin-mocha    # 색상 테마
-  preset: custom             # full | minimal | custom
   segments:
     # Line 1
     model: true
@@ -359,6 +357,10 @@ Claude Code가 statusline 스크립트로 전달하는 stdin JSON 전체 필드 
 NOW=$(date +%s)
 echo '{"session_id":"test","model":{"display_name":"Opus 4.7"},"workspace":{"repo":{"host":"github.com","owner":"modu-ai","name":"moai-adk"}},"version":"2.1.146","output_style":{"name":"MoAI"},"context_window":{"used_percentage":62,"context_window_size":1000000},"exceeds_200k_tokens":true,"effort":{"level":"xhigh"},"thinking":{"enabled":true},"rate_limits":{"five_hour":{"used_percentage":56,"resets_at":'$((NOW + 2820))'},"seven_day":{"used_percentage":13,"resets_at":'$((NOW + 518400))'}},"cost":{"total_duration_ms":17520000},"pr":{"number":1234,"url":"https://github.com/modu-ai/moai-adk/pull/1234","review_state":"approved"}}' | moai statusline
 ```
+
+## `/cd` 캐시 보존 디렉터리 전환 (CC 2.1.169+)
+
+Claude Code 2.1.169+는 세션의 작업 디렉터리를 **프롬프트 캐시를 보존하면서** 변경하는 `/cd <path>` 명령을 제공합니다 — statusline의 `cwd` 필드가 새 디렉터리를 반영하도록 업데이트되지만, 진행 중인 추론 컨텍스트는 재구축되지 않습니다. 이는 새 터미널 세션을 여는 것에 대한 캐시 보존 대안입니다: `/cd`는 누적된 컨텍스트를 유지하고, 새 터미널은 처음부터 cold-start합니다. statusline이 컨텍스트 손실 없이 떠나고 싶은 `cwd`를 표시할 때 (예: 세션 중 L2 worktree로 전환), `/cd`가 마찰이 적은 경로입니다. resume-pattern 통합은 [세션 핸드오프](/ko/workflow-commands/moai-sync)를 참조하세요.
 
 ## 관련 문서
 

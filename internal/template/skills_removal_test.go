@@ -3,7 +3,7 @@
 // RED phase: directories still exist → test fails.
 // GREEN phase: directories deleted via git rm -rf → test passes.
 //
-// T-M3-03: Additionally asserts that no my-harness-* skills or my-harness agents
+// T-M3-03: Additionally asserts that no harness-* skills or harness agents
 // exist in the template tree (user customization dirs must never be shipped as templates).
 
 package template
@@ -70,7 +70,7 @@ func TestRemovedSkillsNotPresent(t *testing.T) {
 }
 
 // TestNoMyHarnessInTemplate asserts that no user customization directories
-// (my-harness-* skills, my-harness agents) exist in the template tree.
+// (harness-* skills, harness agents) exist in the template tree.
 // User customization paths must NEVER be shipped as part of the moai template set.
 //
 // SPEC-V3R3-HARNESS-001 / T-M3-03
@@ -84,28 +84,28 @@ func TestNoMyHarnessInTemplate(t *testing.T) {
 
 	templateRoot := filepath.Join(filepath.Dir(currentFile), "templates", ".claude")
 
-	// Check .claude/skills/ for my-harness-* directories
+	// Check .claude/skills/ for harness-* directories (canonical user-owned prefix)
 	skillsRoot := filepath.Join(templateRoot, "skills")
 	if entries, err := os.ReadDir(skillsRoot); err == nil {
 		for _, entry := range entries {
 			if !entry.IsDir() {
 				continue
 			}
-			if strings.HasPrefix(entry.Name(), "my-harness-") {
+			if strings.HasPrefix(entry.Name(), "harness-") {
 				t.Errorf("user customization skill found in template tree (must not be shipped): %s",
 					filepath.Join(skillsRoot, entry.Name()))
 			}
 		}
 	}
 
-	// Check .claude/agents/ for my-harness directory
+	// Check .claude/agents/ for harness directory (canonical user-owned agents dir)
 	agentsRoot := filepath.Join(templateRoot, "agents")
 	if entries, err := os.ReadDir(agentsRoot); err == nil {
 		for _, entry := range entries {
 			if !entry.IsDir() {
 				continue
 			}
-			if entry.Name() == "my-harness" {
+			if entry.Name() == "harness" {
 				t.Errorf("user customization agent dir found in template tree (must not be shipped): %s",
 					filepath.Join(agentsRoot, entry.Name()))
 			}

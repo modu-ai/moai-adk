@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-project
 description: >
   Generates project documentation from codebase analysis or user input.
   Creates product.md, structure.md, and tech.md in .moai/project/ directory,
@@ -23,11 +22,11 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["project", "init", "documentation", "setup", "initialize"]
-  agents: ["manager-project", "manager-docs", "Explore", "expert-devops"]
+  agents: ["manager-docs", "Explore"]
   phases: ["project"]
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 <!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai project Phase <N> <enter|exit> -->
 
@@ -107,4 +106,4 @@ For convenience, the DB engine categories are: Relational/SQL (PostgreSQL, MySQL
 
 Version: 2.5.0
 Last Updated: 2026-02-21
-SPEC: SPEC-PROJECT-DB-HINT-001, SPEC-V3R3-PROJECT-HARNESS-001, SPEC-V3R4-WORKFLOW-SPLIT-001
+SPEC: SPEC-PROJECT-DB-HINT-001, the project-harness generation policy, the workflow-split policy

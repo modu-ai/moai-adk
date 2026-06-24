@@ -17,7 +17,7 @@ Selection guidance for Phase 3 (Synthesis):
 
 ## Phase 1 — Discovery
 
-`manager-spec` conducts a 16-question Socratic interview (owned by SPEC-V3R3-PROJECT-HARNESS-001). The interview surfaces:
+`manager-spec` conducts a 16-question Socratic interview (owned by the project-harness generation policy). The interview surfaces:
 
 - Project domain (e.g., fintech, e-commerce, IoT)
 - Primary languages and frameworks
@@ -62,7 +62,7 @@ Agents involved: `builder-harness` (artifact_type=agent or artifact_type=skill) 
 This skill fills the skeleton with domain-specific content:
 
 1. Generate agent definitions (`.claude/agents/harness/*.md`) referencing existing MoAI agents: `manager-spec`, `manager-strategy`, `manager-develop` (`cycle_type=tdd` or `cycle_type=ddd` per `quality.yaml` `development_mode`), `manager-quality` (diagnostic-mode replaces former expert-debug), `manager-docs`, `manager-git`, `manager-brain`, `expert-backend`, `expert-frontend`, `expert-security`, `expert-refactoring`, `expert-performance`, `expert-devops`, `builder-harness` (use `artifact_type=agent|skill|plugin`), `sync-auditor`, `plan-auditor`.
-2. Generate domain skills (`.claude/skills/moai-harness-*/SKILL.md`) following the skill-authoring.md schema with `moai-harness-*` prefix.
+2. Generate domain skills (`.claude/skills/harness-*/SKILL.md`) following the skill-authoring.md schema with `harness-*` prefix.
 3. All artifacts are user-owned and never overwritten by `moai update`.
 
 ## Phase 6 — Evaluation
@@ -78,4 +78,4 @@ Pass threshold: 0.75 (configurable via `design.yaml pass_threshold`; FROZEN floo
 
 ## Phase 7 — Iteration
 
-Owned by SPEC-V3R3-HARNESS-LEARNING-001. Out of scope for this skill. The evolution mechanism captures scoring deltas from Phase 6 and feeds them back to Phase 4/5 on next harness run.
+Owned by the harness-learning policy. Out of scope for this skill. The evolution mechanism captures scoring deltas from Phase 6 and feeds them back to Phase 4/5 on next harness run.

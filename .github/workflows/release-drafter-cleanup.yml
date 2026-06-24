@@ -14,7 +14,8 @@ name: Release Drafter cleanup
 #   - Supports MOAI_CLEANUP_DRY_RUN=1 environment for validation testing
 #
 # Audit:
-#   All cleanup actions logged to .github/release-drafter-cleanup-log.md
+#   All cleanup actions appended to the workflow run's job summary ($GITHUB_STEP_SUMMARY).
+#   The job summary persists in the Actions run UI and is queryable via the GitHub API.
 #   Supports manual run via workflow_dispatch for on-demand cleanup.
 
 on:
@@ -30,6 +31,7 @@ jobs:
   cleanup:
     name: Clean stale drafts
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -101,19 +103,16 @@ jobs:
           stale_count="${{ steps.drafts.outputs.stale_count }}"
           dry_run="${{ steps.env.outputs.dry_run }}"
 
-          if [ ! -f .github/release-drafter-cleanup-log.md ]; then
-            {
-              printf '# Release Drafter Cleanup Log\n\n'
-              printf 'Audit trail for automated cleanup of stale Release Drafter drafts.\n'
-              printf 'See .github/workflows/release-drafter-cleanup.yml for details.\n\n'
-              printf '## Cleanup History\n\n'
-            } > .github/release-drafter-cleanup-log.md
-          fi
-
           mode="normal"
           [ "$dry_run" = "1" ] && mode="dry-run"
 
-          printf -- '- `%s` [%s] Processed %s stale draft(s)\n' "${timestamp}" "${mode}" "${stale_count}" >> .github/release-drafter-cleanup-log.md
+          {
+            echo "## Release Drafter Cleanup Audit"
+            echo ""
+            echo "| Timestamp (UTC) | Mode | Stale drafts processed |"
+            echo "|---|---|---|"
+            printf -- '| `%s` | %s | %s |\n' "${timestamp}" "${mode}" "${stale_count}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Show results
         run: |

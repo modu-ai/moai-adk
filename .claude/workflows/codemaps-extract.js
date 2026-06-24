@@ -50,7 +50,8 @@ Return a markdown report with EXACTLY these 4 sections:
 A numbered list of SPECIFIC claims NOT mechanically derivable from "go list -deps -json" (import edges) + "go doc" (exported symbol names). Each item MUST be a genuine inference (layering, role, fan-in implication, domain boundary) — NOT a restatement of an import edge or symbol name. If you cannot make a non-trivial claim beyond the mechanical baseline, write exactly "NONE — reducible to baseline" (an honest, valuable outcome). Do NOT pad with restated mechanical facts.`
 
 const syntheses = await parallel(PACKAGES.map(pkg => () =>
-  agent(PROMPT(pkg), { label: `extract:${pkg}`, phase: 'Extract', agentType: 'Explore' })
+  // read-only-extract purpose → effort: 'low' per dynamic-workflows.md § Purpose-driven model+effort selection
+  agent(PROMPT(pkg), { label: `extract:${pkg}`, phase: 'Extract', agentType: 'Explore', effort: 'low' })
 ))
 
 return {

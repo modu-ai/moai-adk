@@ -189,7 +189,7 @@ flowchart TD
     R --> S["Call manager-docs<br/>Generate documents"]
     S --> T{"--pr?"}
     T -->|Yes| U["Create PR"]
-    T -->|No| V["Completion marker"]
+    T -->|No| V["Completion signal"]
     U --> V
 ```
 
@@ -197,7 +197,7 @@ flowchart TD
 
 - **Phase 0 (Parallel Exploration)**: Three agents run simultaneously for 2-3x speed improvement
 - **Single Domain Routing**: Simple tasks are delegated directly to expert agents, skipping SPEC
-- **Completion Marker**: Outputs `<moai>DONE</moai>` or `<moai>COMPLETE</moai>` when work is complete
+- **Completion Signal**: States in the Completion Report that the work is complete
 
 ## Phase-by-Phase Details
 
@@ -249,8 +249,8 @@ problem exists AND iteration < max:
   1. Run diagnostics (parallel by default)
   2. Delegate fix to appropriate expert agent
   3. Verify fix results
-  4. Check for completion marker
-  5. Exit loop when marker found
+  4. Check whether completion conditions are satisfied
+  5. Exit loop when the completion sentence is detected
 ```
 
 ### Phase 3: Document Synchronization
@@ -260,7 +260,7 @@ The **manager-docs** subagent synchronizes implementation with documentation:
 - Generate API documentation
 - Update README
 - Add to CHANGELOG
-- Add completion marker on success
+- State that the work is complete on success
 
 ## TODO Management
 
@@ -271,13 +271,9 @@ The **manager-docs** subagent synchronizes implementation with documentation:
 - After completing work: TodoWrite (completed status)
 - Prohibit printing TODO list as text
 
-## Completion Markers
+## Completion Signal
 
-AI adds markers when work is complete:
-
-- `<moai>DONE</moai>` - Task complete
-- `<moai>COMPLETE</moai>` - Fully complete
-- `<moai:done />` - XML format
+When all workflow phases complete successfully, MoAI states that the work is complete in the Completion Report (banner / prose) so the result is unambiguous.
 
 ## LLM Mode Routing
 

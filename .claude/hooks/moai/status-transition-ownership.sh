@@ -17,7 +17,7 @@ fi
 
 # Graceful degradation: jq is required for JSON parsing
 if ! command -v jq >/dev/null 2>&1; then
-    echo "{\"hook\":\"status-transition-ownership\",\"decision\":\"allow\",\"warning\":\"jq absent — hook degraded to no-op\"}"
+    # jq absent — hook degrades to no-op. stdout intentionally empty (PostToolUse schema).
     exit 0
 fi
 
@@ -31,8 +31,7 @@ case "$FILE_PATH" in
     *.moai/specs/SPEC-*/spec.md|*.moai/specs/SPEC-*/plan.md|*.moai/specs/SPEC-*/acceptance.md|*.moai/specs/SPEC-*/design.md|*.moai/specs/SPEC-*/research.md)
         ;;
     *)
-        # Not a SPEC artifact — allow without inspection
-        echo "{\"hook\":\"status-transition-ownership\",\"decision\":\"allow\",\"reason\":\"not a SPEC artifact\"}"
+        # Not a SPEC artifact — allow without inspection. stdout intentionally empty (PostToolUse schema).
         exit 0
         ;;
 esac
@@ -41,17 +40,18 @@ esac
 case "$TOOL_NAME" in
     Write|Edit|MultiEdit) ;;
     *)
-        echo "{\"hook\":\"status-transition-ownership\",\"decision\":\"allow\",\"reason\":\"non-write tool\"}"
+        # Non-write tool — allow. stdout intentionally empty (PostToolUse schema).
         exit 0
         ;;
 esac
 
 # Extract status: from new content (Write) or post-edit state
-# Status Transition Ownership Matrix (canonical reference):
+# Status Transition Ownership Matrix (canonical reference, 3-phase close per SPEC-V3R6-LIFECYCLE-REDESIGN-001):
 #   * → draft       : manager-spec
 #   draft → in-progress : manager-develop (first M-commit only; frontmatter status+updated only)
-#   in-progress → implemented : manager-docs (frontmatter status+updated only)
-#   implemented → completed : manager-docs OR orchestrator (Mx chore)
+#   in-progress → implemented → completed : manager-docs (single sync commit carries the completed
+#                       transition — the former separate "Mx chore commit" is retired; MX Tag
+#                       validation is a sync sub-step, NOT a separate phase)
 #   * → superseded  : manager-spec (when authoring superseding SPEC)
 #   * → archived    : manager-docs
 #   * → rejected    : orchestrator (recorded by manager-docs)
@@ -63,20 +63,13 @@ else
     CURRENT_STATUS="<file absent — Write creating new>"
 fi
 
-# Diagnostic output (advisory; never blocks)
-# Note: agent name attribution via tool_input is not directly available in Claude Code hook payload;
-# this hook is currently advisory and logs the transition site. Future enhancement: integrate with
-# SubagentStop hook for agent-name correlation.
-cat <<EOF
-{
-  "hook": "status-transition-ownership",
-  "decision": "allow",
-  "file_path": "$FILE_PATH",
-  "tool_name": "$TOOL_NAME",
-  "current_status": "$CURRENT_STATUS",
-  "advisory": "Verify the modifying agent matches Status Transition Ownership Matrix at .claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix"
-}
-EOF
+# Advisory hook (never blocks; exit 2 reserved for future ownership-mismatch enforcement).
+# stdout intentionally empty: PostToolUse accepts only empty / {} / {"systemMessage": "..."} /
+# {"hookSpecificOutput": {...}} on stdout. A custom {"hook":...,"decision":"allow",...} object
+# failed Claude Code JSON-schema validation on every Write|Edit (validation error noise with no
+# functional effect — the file write still completed, and the audit log below captured the
+# transition site). Agent-name attribution via tool_input is not directly available in the
+# Claude Code hook payload; future enhancement: integrate with SubagentStop for correlation.
 
 # Log for audit trail
 mkdir -p "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs"

@@ -1,6 +1,12 @@
 package cli
 
 // profileSetupText holds all translatable strings for the profile setup wizard.
+//
+// The StatuslineModeTitle/Desc, ModeDefault/Compact/Full/Verbose/Minimal,
+// StatuslinePresetTitle/Desc, PresetFull/Compact/Minimal/Custom,
+// SummaryStatuslineMode, and MigrationNoticeStatuslineMode fields were removed
+// by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 (runtime mode was inert; named
+// presets were redundant with the segment map). Theme keys survive.
 type profileSetupText struct {
 	// Banner
 	ConfiguringProfile string
@@ -59,29 +65,12 @@ type profileSetupText struct {
 	PermBypass          string
 	PermDontAsk         string
 
-	// Section: Display
+	// Section: Display (theme only — mode + preset removed by
+	// SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001)
 	DisplayTitle string
-	// Statusline mode selector (layout style)
-	StatuslineModeTitle string
-	StatuslineModeDesc  string
-	// v3 mode labels (REQ-V3-MODE-003)
-	ModeDefault string // label for mode = "default"
-	ModeCompact string // label for mode = "compact"
-	ModeFull    string // label for mode = "full"
-	// Deprecated: v2 labels. Kept for backward compatibility.
-	ModeVerbose string // label for mode = "verbose" (deprecated)
-	ModeMinimal string // label for mode = "minimal" (deprecated)
 
-	// Statusline preset selector (SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001)
-	StatuslinePresetTitle string
-	StatuslinePresetDesc  string
-	PresetFull            string
-	PresetCompact         string
-	PresetMinimal         string
-	PresetCustom          string
-
-	// Statusline segments multi-select (SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001)
-	// Only shown when preset = "custom".
+	// Statusline segments multi-select — now unconditional (the preset==custom
+	// gate was removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001).
 	// Order matches statuslineAllSegments slice in profile_setup.go (15 segments).
 	StatuslineSegmentsTitle string
 	StatuslineSegmentsDesc  string
@@ -111,21 +100,21 @@ type profileSetupText struct {
 	SetupCancelled string
 	SavedProfile   string
 
-	// Final summary block (rendered after SavedProfile)
+	// Final summary block (rendered after SavedProfile). SummaryStatuslineMode
+	// was removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001.
 	SummaryHeader          string
 	SummaryUserName        string
 	SummaryLanguages       string
 	SummaryModel           string
 	SummaryEffort          string
 	SummaryPermission      string
-	SummaryStatuslineMode  string
 	SummaryStatuslineTheme string
 	SummaryDefault         string
 	SummarySyncedHeader    string
 	SummarySyncSkipped     string
 
-	// W-4: statusline migration banner (previous value → new value)
-	MigrationNoticeStatuslineMode  string
+	// W-4: statusline theme migration banner (previous value → new value). The
+	// mode migration banner was removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001.
 	MigrationNoticeStatuslineTheme string
 
 	// SPEC-WEB-CONSOLE-003: project-config selects (development_mode + git_convention).
@@ -140,6 +129,27 @@ type profileSetupText struct {
 	// ProjectDefaultOption labels the empty "(project default)" option shared by
 	// both project-config selects.
 	ProjectDefaultOption string
+
+	// SPEC-WEB-CONSOLE-010 (M3): the 7 nested project-config fields the TUI gained
+	// for parity with the web console. These persist to quality.yaml /
+	// git-convention.yaml via the shared nested write seam (settings.WriteProjectNestedConfig),
+	// NOT the profile store. Each field has a title + desc. The web side already
+	// carries the matching f.quality.* / f.git_convention.* dotted keys in i18n.js;
+	// the schemaKeyToTUIField bridge maps each schema dotted key to these struct fields.
+	QualityCoverageTargetTitle string
+	QualityCoverageTargetDesc  string
+	QualityEnforceQualityTitle string
+	QualityEnforceQualityDesc  string
+	QualityMinCoverageTitle    string
+	QualityMinCoverageDesc     string
+	GitAutoEnabledTitle        string
+	GitAutoEnabledDesc         string
+	GitConfidenceTitle         string
+	GitConfidenceDesc          string
+	GitSampleSizeTitle         string
+	GitSampleSizeDesc          string
+	GitEnforceOnPushTitle      string
+	GitEnforceOnPushDesc       string
 }
 
 // profileSetupTexts maps language code to translated UI strings.
@@ -191,21 +201,8 @@ var profileSetupTexts = map[string]profileSetupText{
 		PermBypass:              "Bypass permissions - Skip all checks (isolated environments only)",
 		PermDontAsk:             "Don't ask - Only pre-approved tools (CI/locked-down environments)",
 		DisplayTitle:            "Display",
-		StatuslineModeTitle:     "Statusline display mode",
-		StatuslineModeDesc:      "Controls the layout style of the statusline.",
-		ModeDefault:             "Default - 3-line: info, CW/5H/7D bars, dir+git",
-		ModeCompact:             "Compact - 2-line: model+CW bar, git status",
-		ModeFull:                "Full - 5-line: info, CW/5H/7D bars (40-block), dir+git",
-		ModeVerbose:             "Verbose - 3-line detailed view with cost tracking",
-		ModeMinimal:             "Minimal - Model and context only",
-		StatuslinePresetTitle:   "Statusline preset",
-		StatuslinePresetDesc:    "Choose a preset segment bundle. Select 'custom' to toggle individual segments below.",
-		PresetFull:              "full - Show all segments (full visibility)",
-		PresetCompact:           "compact - Essential segments only (minimal noise)",
-		PresetMinimal:           "minimal - Just model and context",
-		PresetCustom:            "custom - Pick individual segments below",
-		StatuslineSegmentsTitle: "Statusline segments (custom preset only)",
-		StatuslineSegmentsDesc:  "Toggle which segments appear. Applied only when preset = 'custom'.",
+		StatuslineSegmentsTitle: "Statusline segments",
+		StatuslineSegmentsDesc:  "Toggle which segments appear in the status bar.",
 		SegmentClaudeVersion:    "Claude version",
 		SegmentContext:          "Context usage",
 		SegmentDirectory:        "Current directory",
@@ -234,13 +231,11 @@ var profileSetupTexts = map[string]profileSetupText{
 		SummaryModel:           "Model",
 		SummaryEffort:          "Effort level",
 		SummaryPermission:      "Permission mode",
-		SummaryStatuslineMode:  "Statusline mode",
 		SummaryStatuslineTheme: "Statusline theme",
 		SummaryDefault:         "(runtime default)",
 		SummarySyncedHeader:    "Synced to project config:",
 		SummarySyncSkipped:     "No project-level sync (profile saved globally).",
 
-		MigrationNoticeStatuslineMode:  "Notice: your previous statusline mode %q was migrated to %q in v3.",
 		MigrationNoticeStatuslineTheme: "Notice: your previous statusline theme %q was migrated to %q in v3.",
 
 		DevelopmentModeTitle: "Development mode",
@@ -250,6 +245,21 @@ var profileSetupTexts = map[string]profileSetupText{
 		GitConventionTitle:   "Git commit convention",
 		GitConventionDesc:    "Commit message convention written to git-convention.yaml. Empty keeps the project default.",
 		ProjectDefaultOption: "(project default)",
+
+		QualityCoverageTargetTitle: "Test coverage target",
+		QualityCoverageTargetDesc:  "Minimum overall test coverage percentage (0-100). Empty keeps the project default.",
+		QualityEnforceQualityTitle: "Enforce quality gate",
+		QualityEnforceQualityDesc:  "Block on TRUST 5 quality-gate failures.",
+		QualityMinCoverageTitle:    "Min coverage per commit",
+		QualityMinCoverageDesc:     "Minimum coverage required per commit in TDD mode (0-100). Empty keeps the project default.",
+		GitAutoEnabledTitle:        "Auto-detect convention",
+		GitAutoEnabledDesc:         "Auto-detect the commit convention from history.",
+		GitConfidenceTitle:         "Detection confidence threshold",
+		GitConfidenceDesc:          "Confidence required to auto-detect a convention (0.0-1.0). Empty keeps the project default.",
+		GitSampleSizeTitle:         "Detection sample size",
+		GitSampleSizeDesc:          "Number of recent commits analyzed during auto-detection. Empty keeps the project default.",
+		GitEnforceOnPushTitle:      "Enforce on push",
+		GitEnforceOnPushDesc:       "Reject a push when a commit message violates the convention.",
 	},
 	"ko": {
 		ConfiguringProfile:      "프로필 '%s' 설정",
@@ -298,21 +308,8 @@ var profileSetupTexts = map[string]profileSetupText{
 		PermBypass:              "권한 건너뛰기 (bypassPermissions) - 모든 검사 생략 (격리된 환경 전용)",
 		PermDontAsk:             "묻지 않기 (dontAsk) - 사전 승인된 도구만 사용 (CI/잠금 환경)",
 		DisplayTitle:            "화면 표시",
-		StatuslineModeTitle:     "상태줄 표시 모드",
-		StatuslineModeDesc:      "상태줄의 레이아웃 스타일을 제어합니다.",
-		ModeDefault:             "Default - 3줄: 정보, CW/5H/7D 바, 디렉토리+git",
-		ModeCompact:             "Compact - 2줄: 모델+CW 바, git 상태",
-		ModeFull:                "Full - 5줄: 정보, CW/5H/7D 바(40블록), 디렉토리+git",
-		ModeVerbose:             "Verbose - 비용 추적이 포함된 3줄 상세 뷰",
-		ModeMinimal:             "Minimal - 모델과 컨텍스트만 표시",
-		StatuslinePresetTitle:   "상태줄 프리셋",
-		StatuslinePresetDesc:    "세그먼트 묶음 프리셋을 선택하세요. 'custom'을 선택하면 아래에서 개별 세그먼트를 토글할 수 있습니다.",
-		PresetFull:              "full - 모든 세그먼트 표시 (전체 가시성)",
-		PresetCompact:           "compact - 필수 세그먼트만 (최소 노이즈)",
-		PresetMinimal:           "minimal - 모델과 컨텍스트만",
-		PresetCustom:            "custom - 아래에서 개별 세그먼트를 선택",
-		StatuslineSegmentsTitle: "상태줄 세그먼트 (custom 프리셋 전용)",
-		StatuslineSegmentsDesc:  "표시할 세그먼트를 토글합니다. preset이 'custom'일 때만 적용됩니다.",
+		StatuslineSegmentsTitle: "상태줄 세그먼트",
+		StatuslineSegmentsDesc:  "상태 표시줄에 표시할 세그먼트를 선택하세요.",
 		SegmentClaudeVersion:    "Claude 버전",
 		SegmentContext:          "컨텍스트 사용량",
 		SegmentDirectory:        "현재 디렉토리",
@@ -341,13 +338,11 @@ var profileSetupTexts = map[string]profileSetupText{
 		SummaryModel:           "모델",
 		SummaryEffort:          "추론 강도",
 		SummaryPermission:      "권한 모드",
-		SummaryStatuslineMode:  "상태줄 모드",
 		SummaryStatuslineTheme: "상태줄 테마",
 		SummaryDefault:         "(런타임 기본값)",
 		SummarySyncedHeader:    "프로젝트 설정에 동기화됨:",
 		SummarySyncSkipped:     "프로젝트별 동기화 없음 (프로필만 저장됨).",
 
-		MigrationNoticeStatuslineMode:  "알림: 이전 statusline 모드 %q 가 v3에서 %q 로 마이그레이션되었습니다.",
 		MigrationNoticeStatuslineTheme: "알림: 이전 statusline 테마 %q 가 v3에서 %q 로 마이그레이션되었습니다.",
 
 		DevelopmentModeTitle: "개발 방법론",
@@ -357,6 +352,21 @@ var profileSetupTexts = map[string]profileSetupText{
 		GitConventionTitle:   "Git 커밋 컨벤션",
 		GitConventionDesc:    "git-convention.yaml에 기록되는 커밋 메시지 컨벤션. 비워두면 프로젝트 기본값을 유지합니다.",
 		ProjectDefaultOption: "(프로젝트 기본값)",
+
+		QualityCoverageTargetTitle: "테스트 커버리지 목표",
+		QualityCoverageTargetDesc:  "전체 테스트 커버리지 최소 비율(0-100)입니다. 비워두면 프로젝트 기본값을 유지합니다.",
+		QualityEnforceQualityTitle: "품질 게이트 강제",
+		QualityEnforceQualityDesc:  "TRUST 5 품질 게이트 실패 시 차단합니다.",
+		QualityMinCoverageTitle:    "커밋당 최소 커버리지",
+		QualityMinCoverageDesc:     "TDD 모드에서 커밋마다 요구되는 최소 커버리지(0-100)입니다. 비워두면 프로젝트 기본값을 유지합니다.",
+		GitAutoEnabledTitle:        "규칙 자동 감지",
+		GitAutoEnabledDesc:         "커밋 히스토리에서 커밋 규칙을 자동 감지합니다.",
+		GitConfidenceTitle:         "감지 신뢰도 임계값",
+		GitConfidenceDesc:          "규칙 자동 감지에 필요한 신뢰도(0.0-1.0)입니다. 비워두면 프로젝트 기본값을 유지합니다.",
+		GitSampleSizeTitle:         "감지 샘플 크기",
+		GitSampleSizeDesc:          "자동 감지 시 분석할 최근 커밋 수입니다. 비워두면 프로젝트 기본값을 유지합니다.",
+		GitEnforceOnPushTitle:      "푸시 시 강제",
+		GitEnforceOnPushDesc:       "커밋 메시지가 규칙을 위반하면 푸시를 거부합니다.",
 	},
 	"ja": {
 		ConfiguringProfile:      "プロファイル '%s' を設定",
@@ -405,21 +415,8 @@ var profileSetupTexts = map[string]profileSetupText{
 		PermBypass:              "権限スキップ (bypassPermissions) - 全チェックを省略（隔離環境専用）",
 		PermDontAsk:             "確認しない (dontAsk) - 事前承認済みツールのみ（CI/制限環境）",
 		DisplayTitle:            "表示設定",
-		StatuslineModeTitle:     "ステータスライン表示モード",
-		StatuslineModeDesc:      "ステータスラインのレイアウトスタイルを制御します。",
-		ModeDefault:             "Default - 3行: 情報、CW/5H/7Dバー、ディレクトリ+git",
-		ModeCompact:             "Compact - 2行: モデル+CWバー、gitステータス",
-		ModeFull:                "Full - 5行: 情報、CW/5H/7Dバー(40ブロック)、ディレクトリ+git",
-		ModeVerbose:             "Verbose - コスト追跡付きの3行詳細表示",
-		ModeMinimal:             "Minimal - モデルとコンテキストのみ",
-		StatuslinePresetTitle:   "ステータスラインプリセット",
-		StatuslinePresetDesc:    "セグメントバンドルプリセットを選択。'custom'を選ぶと下のセグメントを個別に切り替えられます。",
-		PresetFull:              "full - 全セグメント表示 (全可視性)",
-		PresetCompact:           "compact - 必須セグメントのみ (最小ノイズ)",
-		PresetMinimal:           "minimal - モデルとコンテキストのみ",
-		PresetCustom:            "custom - 下で個別セグメントを選択",
-		StatuslineSegmentsTitle: "ステータスラインセグメント (custom プリセット専用)",
-		StatuslineSegmentsDesc:  "表示するセグメントを切り替えます。preset = 'custom' の時のみ適用されます。",
+		StatuslineSegmentsTitle: "ステータスラインセグメント",
+		StatuslineSegmentsDesc:  "ステータスバーに表示するセグメントを選択してください。",
 		SegmentClaudeVersion:    "Claude バージョン",
 		SegmentContext:          "コンテキスト使用量",
 		SegmentDirectory:        "現在のディレクトリ",
@@ -448,13 +445,11 @@ var profileSetupTexts = map[string]profileSetupText{
 		SummaryModel:           "モデル",
 		SummaryEffort:          "推論レベル",
 		SummaryPermission:      "権限モード",
-		SummaryStatuslineMode:  "ステータスラインモード",
 		SummaryStatuslineTheme: "ステータスラインテーマ",
 		SummaryDefault:         "(ランタイムデフォルト)",
 		SummarySyncedHeader:    "プロジェクト設定に同期しました:",
 		SummarySyncSkipped:     "プロジェクト別同期なし (プロファイルのみ保存).",
 
-		MigrationNoticeStatuslineMode:  "お知らせ: 以前のステータスラインモード %q は v3 で %q に移行されました。",
 		MigrationNoticeStatuslineTheme: "お知らせ: 以前のステータスラインテーマ %q は v3 で %q に移行されました。",
 
 		DevelopmentModeTitle: "開発方法論",
@@ -464,6 +459,21 @@ var profileSetupTexts = map[string]profileSetupText{
 		GitConventionTitle:   "Git コミット規約",
 		GitConventionDesc:    "git-convention.yaml に記録されるコミットメッセージ規約。空欄の場合はプロジェクトのデフォルトを維持します。",
 		ProjectDefaultOption: "(プロジェクトのデフォルト)",
+
+		QualityCoverageTargetTitle: "テストカバレッジ目標",
+		QualityCoverageTargetDesc:  "全体のテストカバレッジ最小割合（0-100）です。空欄の場合はプロジェクトのデフォルトを維持します。",
+		QualityEnforceQualityTitle: "品質ゲートを強制",
+		QualityEnforceQualityDesc:  "TRUST 5 品質ゲート失敗時にブロックします。",
+		QualityMinCoverageTitle:    "コミットごとの最小カバレッジ",
+		QualityMinCoverageDesc:     "TDD モードでコミットごとに必要な最小カバレッジ（0-100）です。空欄の場合はプロジェクトのデフォルトを維持します。",
+		GitAutoEnabledTitle:        "規約を自動検出",
+		GitAutoEnabledDesc:         "コミット履歴からコミット規約を自動検出します。",
+		GitConfidenceTitle:         "検出信頼度しきい値",
+		GitConfidenceDesc:          "規約を自動検出するために必要な信頼度（0.0-1.0）です。空欄の場合はプロジェクトのデフォルトを維持します。",
+		GitSampleSizeTitle:         "検出サンプルサイズ",
+		GitSampleSizeDesc:          "自動検出時に解析する直近のコミット数です。空欄の場合はプロジェクトのデフォルトを維持します。",
+		GitEnforceOnPushTitle:      "プッシュ時に強制",
+		GitEnforceOnPushDesc:       "コミットメッセージが規約に違反した場合にプッシュを拒否します。",
 	},
 	"zh": {
 		ConfiguringProfile:      "配置文件 '%s' 设置",
@@ -512,21 +522,8 @@ var profileSetupTexts = map[string]profileSetupText{
 		PermBypass:              "跳过权限 (bypassPermissions) - 跳过所有检查（仅限隔离环境）",
 		PermDontAsk:             "不询问 (dontAsk) - 仅预批准工具（CI/锁定环境）",
 		DisplayTitle:            "显示设置",
-		StatuslineModeTitle:     "状态栏显示模式",
-		StatuslineModeDesc:      "控制状态栏的布局样式。",
-		ModeDefault:             "Default - 3行: 信息、CW/5H/7D栏、目录+git",
-		ModeCompact:             "Compact - 2行: 模型+CW栏、git状态",
-		ModeFull:                "Full - 5行: 信息、CW/5H/7D栏(40块)、目录+git",
-		ModeVerbose:             "Verbose - 含费用追踪的3行详细视图",
-		ModeMinimal:             "Minimal - 仅显示模型和上下文",
-		StatuslinePresetTitle:   "状态栏预设",
-		StatuslinePresetDesc:    "选择段位束预设。选择 'custom' 可在下方逐个切换段位。",
-		PresetFull:              "full - 显示所有段位 (完全可见)",
-		PresetCompact:           "compact - 仅必需段位 (最小噪声)",
-		PresetMinimal:           "minimal - 仅模型和上下文",
-		PresetCustom:            "custom - 在下方选择单独段位",
-		StatuslineSegmentsTitle: "状态栏段位 (仅 custom 预设)",
-		StatuslineSegmentsDesc:  "切换显示哪些段位。仅当 preset = 'custom' 时应用。",
+		StatuslineSegmentsTitle: "状态栏段位",
+		StatuslineSegmentsDesc:  "选择要在状态栏中显示的段位。",
 		SegmentClaudeVersion:    "Claude 版本",
 		SegmentContext:          "上下文使用量",
 		SegmentDirectory:        "当前目录",
@@ -555,13 +552,11 @@ var profileSetupTexts = map[string]profileSetupText{
 		SummaryModel:           "模型",
 		SummaryEffort:          "推理强度",
 		SummaryPermission:      "权限模式",
-		SummaryStatuslineMode:  "状态栏模式",
 		SummaryStatuslineTheme: "状态栏主题",
 		SummaryDefault:         "(运行时默认值)",
 		SummarySyncedHeader:    "已同步到项目配置:",
 		SummarySyncSkipped:     "未进行项目级同步 (仅保存全局配置文件).",
 
-		MigrationNoticeStatuslineMode:  "提示：您之前的状态栏模式 %q 已在 v3 中迁移为 %q。",
 		MigrationNoticeStatuslineTheme: "提示：您之前的状态栏主题 %q 已在 v3 中迁移为 %q。",
 
 		DevelopmentModeTitle: "开发方法论",
@@ -571,6 +566,21 @@ var profileSetupTexts = map[string]profileSetupText{
 		GitConventionTitle:   "Git 提交规范",
 		GitConventionDesc:    "写入 git-convention.yaml 的提交信息规范。留空则保留项目默认值。",
 		ProjectDefaultOption: "(项目默认值)",
+
+		QualityCoverageTargetTitle: "测试覆盖率目标",
+		QualityCoverageTargetDesc:  "整体测试覆盖率最低百分比（0-100）。留空则保留项目默认值。",
+		QualityEnforceQualityTitle: "强制质量门禁",
+		QualityEnforceQualityDesc:  "TRUST 5 质量门禁失败时阻止。",
+		QualityMinCoverageTitle:    "每次提交最低覆盖率",
+		QualityMinCoverageDesc:     "TDD 模式下每次提交所需的最低覆盖率（0-100）。留空则保留项目默认值。",
+		GitAutoEnabledTitle:        "自动检测约定",
+		GitAutoEnabledDesc:         "从提交历史自动检测提交约定。",
+		GitConfidenceTitle:         "检测置信度阈值",
+		GitConfidenceDesc:          "自动检测约定所需的置信度（0.0-1.0）。留空则保留项目默认值。",
+		GitSampleSizeTitle:         "检测样本大小",
+		GitSampleSizeDesc:          "自动检测时分析的最近提交数量。留空则保留项目默认值。",
+		GitEnforceOnPushTitle:      "推送时强制",
+		GitEnforceOnPushDesc:       "当提交信息违反约定时拒绝推送。",
 	},
 }
 

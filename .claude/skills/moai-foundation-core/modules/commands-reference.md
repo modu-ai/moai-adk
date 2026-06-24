@@ -13,30 +13,29 @@ MoAI-ADK provides 6 core commands for SPEC-First DDD execution:
 
 | Command            | Purpose                | Phase         |
 | ------------------ | ---------------------- | ------------- |
-| `/moai:0-project`  | Project initialization | Setup         |
-| `/moai:1-plan`     | SPEC generation        | Planning      |
-| `/moai:2-run`      | DDD implementation     | Development   |
-| `/moai:3-sync`     | Documentation sync     | Documentation |
-| `/moai:9-feedback` | Feedback collection    | Improvement   |
-| `/moai:99-release` | Production deployment  | Release       |
+| `/moai project`  | Project initialization | Setup         |
+| `/moai plan`     | SPEC generation        | Planning      |
+| `/moai run`      | DDD implementation     | Development   |
+| `/moai sync`     | Documentation sync     | Documentation |
+| `/moai feedback` | Feedback collection    | Improvement   |
 
 Required Workflow:
 ```
-1. /moai:0-project # Initialize
-2. /moai:1-plan "description" # Generate SPEC
+1. /moai project # Initialize
+2. /moai plan "description" # Generate SPEC
 3. /clear # Clear context (REQUIRED)
-4. /moai:2-run SPEC-001 # Implement
-5. /moai:3-sync SPEC-001 # Document
-6. /moai:9-feedback # Improve
+4. /moai run SPEC-001 # Implement
+5. /moai sync SPEC-001 # Document
+6. /moai feedback # Improve
 ```
 
-Critical Rule: Execute `/clear` after `/moai:1-plan` (saves 45-50K tokens)
+Critical Rule: Execute `/clear` after `/moai plan` (saves 45-50K tokens)
 
 ---
 
 ## Implementation Guide (5 minutes)
 
-### `/moai:0-project` - Project Initialization
+### `/moai project` - Project Initialization
 
 Purpose: Initialize project structure and generate configuration
 
@@ -44,8 +43,8 @@ Agent Delegation: `workflow-project`
 
 Usage:
 ```bash
-/moai:0-project
-/moai:0-project --with-git
+/moai project
+/moai project --with-git
 ```
 
 What It Does:
@@ -60,11 +59,11 @@ Output:
 - `.moai/state/` (empty, ready for session state)
 - `.moai/logs/` (empty, ready for logging)
 
-Next Step: Ready for SPEC generation via `/moai:1-plan`
+Next Step: Ready for SPEC generation via `/moai plan`
 
 Example:
 ```
-User: /moai:0-project
+User: /moai project
 MoAI: Project initialized successfully.
  - .moai/config/config.yaml created
  - Git workflow set to 'manual' mode
@@ -73,7 +72,7 @@ MoAI: Project initialized successfully.
 
 ---
 
-### `/moai:1-plan` - SPEC Generation
+### `/moai plan` - SPEC Generation
 
 Purpose: Generate SPEC document in GEARS format (current; EARS retained as legacy reference for the 6-month backward-compat window)
 
@@ -81,8 +80,8 @@ Agent Delegation: `workflow-spec`
 
 Usage:
 ```bash
-/moai:1-plan "Implement user authentication endpoint (JWT)"
-/moai:1-plan "Add dark mode toggle to settings page"
+/moai plan "Implement user authentication endpoint (JWT)"
+/moai plan "Add dark mode toggle to settings page"
 ```
 
 What It Does:
@@ -117,7 +116,7 @@ CRITICAL: Execute `/clear` immediately after completion
 
 Example:
 ```
-User: /moai:1-plan "Implement user authentication endpoint (JWT)"
+User: /moai plan "Implement user authentication endpoint (JWT)"
 MoAI: SPEC-001 generated successfully.
  Location: .moai/specs/SPEC-001/spec.md
 
@@ -126,7 +125,7 @@ MoAI: SPEC-001 generated successfully.
 
 ---
 
-### `/moai:2-run` - DDD Implementation
+### `/moai run` - DDD Implementation
 
 Purpose: Execute ANALYZE-PRESERVE-IMPROVE cycle
 
@@ -134,8 +133,8 @@ Agent Delegation: `workflow-ddd`
 
 Usage:
 ```bash
-/moai:2-run SPEC-001
-/moai:2-run SPEC-002
+/moai run SPEC-001
+/moai run SPEC-002
 ```
 
 What It Does:
@@ -175,7 +174,7 @@ Requirement: Test coverage ≥ 85% (TRUST 5)
 
 Example:
 ```
-User: /moai:2-run SPEC-001
+User: /moai run SPEC-001
 MoAI: DDD implementation cycle started for SPEC-001.
 
  ANALYZE: Requirements analyzed, 12 acceptance criteria identified
@@ -188,7 +187,7 @@ MoAI: DDD implementation cycle started for SPEC-001.
 
 ---
 
-### `/moai:3-sync` - Documentation Synchronization
+### `/moai sync` - Documentation Synchronization
 
 Purpose: Auto-generate API documentation and project artifacts
 
@@ -196,8 +195,8 @@ Agent Delegation: `workflow-docs`
 
 Usage:
 ```bash
-/moai:3-sync SPEC-001
-/moai:3-sync SPEC-002
+/moai sync SPEC-001
+/moai sync SPEC-002
 ```
 
 What It Does:
@@ -214,7 +213,7 @@ Output:
 
 Example:
 ```
-User: /moai:3-sync SPEC-001
+User: /moai sync SPEC-001
 MoAI: Documentation synchronized for SPEC-001.
 
  Generated:
@@ -225,7 +224,7 @@ MoAI: Documentation synchronized for SPEC-001.
 
 ---
 
-### `/moai:9-feedback` - Improvement Feedback Collection
+### `/moai feedback` - Improvement Feedback Collection
 
 Purpose: Error analysis and improvement suggestions
 
@@ -233,8 +232,8 @@ Agent Delegation: `core-quality`
 
 Usage:
 ```bash
-/moai:9-feedback
-/moai:9-feedback --analyze SPEC-001
+/moai feedback
+/moai feedback --analyze SPEC-001
 ```
 
 What It Does:
@@ -250,7 +249,7 @@ Use Cases:
 
 Example:
 ```
-User: /moai:9-feedback
+User: /moai feedback
 MoAI: Collecting feedback for recent session.
 
  Errors: 2 permission issues detected
@@ -261,32 +260,15 @@ MoAI: Collecting feedback for recent session.
 
 ---
 
-### `/moai:99-release` - Production Deployment
-
-Purpose: Production deployment workflow
-
-Agent Delegation: `infra-devops`
-
-Usage:
-```bash
-/moai:99-release
-```
-
-What It Does:
-1. Validates all TRUST 5 quality gates
-2. Runs full test suite
-3. Builds production artifacts
-4. Deploys to production environment
-
-Note: This command is local-only and NOT synchronized to the package template. It's for local development and testing.
-
----
-
 ## Advanced Implementation (10+ minutes)
+
+<!-- Release section removed (dev-only §21 leak): release is the maintainer-only
+     97-series release-update command, not a user-facing command, so it must not
+     appear in this user-facing reference. -->
 
 ### Context Initialization Rules
 
-Rule 1: Execute `/clear` AFTER `/moai:1-plan` (mandatory)
+Rule 1: Execute `/clear` AFTER `/moai plan` (mandatory)
 - SPEC generation uses 45-50K tokens
 - `/clear` frees this context for implementation phase
 - Prevents context overflow
@@ -321,12 +303,11 @@ Each command delegates to a specific agent:
 
 | Command            | Agent              | Agent Type              |
 | ------------------ | ------------------ | ----------------------- |
-| `/moai:0-project`  | `workflow-project` | Tier 1 (Always Active)  |
-| `/moai:1-plan`     | `workflow-spec`    | Tier 1 (Always Active)  |
-| `/moai:2-run`      | `workflow-ddd`     | Tier 1 (Always Active)  |
-| `/moai:3-sync`     | `workflow-docs`    | Tier 1 (Always Active)  |
-| `/moai:9-feedback` | `core-quality`     | Tier 2 (Auto-triggered) |
-| `/moai:99-release` | `infra-devops`     | Tier 3 (Lazy-loaded)    |
+| `/moai project`  | `workflow-project` | Tier 1 (Always Active)  |
+| `/moai plan`     | `workflow-spec`    | Tier 1 (Always Active)  |
+| `/moai run`      | `workflow-ddd`     | Tier 1 (Always Active)  |
+| `/moai sync`     | `workflow-docs`    | Tier 1 (Always Active)  |
+| `/moai feedback` | `core-quality`     | Tier 2 (Auto-triggered) |
 
 Delegation Flow:
 ```
@@ -347,14 +328,14 @@ Results reported to user
 
 | Command        | Average Tokens | Phase Budget                          |
 | -------------- | -------------- | ------------------------------------- |
-| `/moai:1-plan` | 45-50K         | Planning Phase (30K allocated)        |
-| `/moai:2-run`  | 80-100K        | Implementation Phase (180K allocated) |
-| `/moai:3-sync` | 20-25K         | Documentation Phase (40K allocated)   |
+| `/moai plan` | 45-50K         | Planning Phase (30K allocated)        |
+| `/moai run`  | 80-100K        | Implementation Phase (180K allocated) |
+| `/moai sync` | 20-25K         | Documentation Phase (40K allocated)   |
 | Total          | 145-175K       | 250K per feature                      |
 
 Optimization:
-- Use Haiku 4.5 for `/moai:2-run` (fast, cost-effective)
-- Use Sonnet 4.5 for `/moai:1-plan` (high-quality SPEC)
+- Use Haiku 4.5 for `/moai run` (fast, cost-effective)
+- Use Sonnet 4.5 for `/moai plan` (high-quality SPEC)
 - Execute `/clear` between phases (critical)
 
 ---
@@ -365,16 +346,16 @@ Common Errors:
 
 | Error                     | Command                | Solution                                    |
 | ------------------------- | ---------------------- | ------------------------------------------- |
-| "Project not initialized" | `/moai:1-plan`         | Run `/moai:0-project` first                 |
-| "SPEC not found"          | `/moai:2-run SPEC-999` | Verify SPEC ID exists                       |
+| "Project not initialized" | `/moai plan`         | Run `/moai project` first                 |
+| "SPEC not found"          | `/moai run SPEC-999` | Verify SPEC ID exists                       |
 | "Token limit exceeded"    | Any                    | Execute `/clear` immediately                |
-| "Test coverage < 85%"     | `/moai:2-run`          | `core-quality` auto-generates missing tests |
+| "Test coverage < 85%"     | `/moai run`          | `core-quality` auto-generates missing tests |
 
 Recovery Pattern:
 ```bash
 # Error: Token limit exceeded
 1. /clear # Reset context
-2. /moai:2-run SPEC-001 # Retry with clean context
+2. /moai run SPEC-001 # Retry with clean context
 ```
 
 ---
@@ -383,18 +364,18 @@ Recovery Pattern:
 
 Standard Workflow (Full SPEC):
 ```
-/moai:0-project → /moai:1-plan → /clear → /moai:2-run → /moai:3-sync
+/moai project → /moai plan → /clear → /moai run → /moai sync
 ```
 
 Quick Workflow (No SPEC for simple tasks):
 ```
-/moai:0-project → Direct implementation (for 1-2 file changes)
+/moai project → Direct implementation (for 1-2 file changes)
 ```
 
 Iterative Workflow (Multiple SPECs):
 ```
-/moai:1-plan "Feature A" → /clear → /moai:2-run SPEC-001 → /moai:3-sync SPEC-001
-/moai:1-plan "Feature B" → /clear → /moai:2-run SPEC-002 → /moai:3-sync SPEC-002
+/moai plan "Feature A" → /clear → /moai run SPEC-001 → /moai sync SPEC-001
+/moai plan "Feature B" → /clear → /moai run SPEC-002 → /moai sync SPEC-002
 ```
 
 ---
@@ -404,19 +385,19 @@ Iterative Workflow (Multiple SPECs):
 Commands automatically integrate with Git based on `config.json` settings:
 
 Manual Mode (Local Git):
-- `/moai:1-plan`: Prompts for branch creation
-- `/moai:2-run`: Auto-commits to local branch
+- `/moai plan`: Prompts for branch creation
+- `/moai run`: Auto-commits to local branch
 - No auto-push
 
 Personal Mode (GitHub Individual):
-- `/moai:1-plan`: Auto-creates feature branch + auto-push
-- `/moai:2-run`: Auto-commits + auto-push
-- `/moai:3-sync`: Suggests PR creation (user choice)
+- `/moai plan`: Auto-creates feature branch + auto-push
+- `/moai run`: Auto-commits + auto-push
+- `/moai sync`: Suggests PR creation (user choice)
 
 Team Mode (GitHub Team):
-- `/moai:1-plan`: Auto-creates feature branch + Draft PR
-- `/moai:2-run`: Auto-commits + auto-push
-- `/moai:3-sync`: Prepares PR for team review
+- `/moai plan`: Auto-creates feature branch + Draft PR
+- `/moai run`: Auto-commits + auto-push
+- `/moai sync`: Prepares PR for team review
 
 ---
 
@@ -432,10 +413,10 @@ Other Modules:
 - [agents-reference.md](agents-reference.md) - Agent catalog
 
 Agents:
-- [workflow-project](agents-reference.md#tier-1-command-processors) - `/moai:0-project`
-- [workflow-spec](agents-reference.md#tier-1-command-processors) - `/moai:1-plan`
-- [workflow-ddd](agents-reference.md#tier-1-command-processors) - `/moai:2-run`
-- [workflow-docs](agents-reference.md#tier-1-command-processors) - `/moai:3-sync`
+- [workflow-project](agents-reference.md#tier-1-command-processors) - `/moai project`
+- [workflow-spec](agents-reference.md#tier-1-command-processors) - `/moai plan`
+- [workflow-ddd](agents-reference.md#tier-1-command-processors) - `/moai run`
+- [workflow-docs](agents-reference.md#tier-1-command-processors) - `/moai sync`
 
 ---
 

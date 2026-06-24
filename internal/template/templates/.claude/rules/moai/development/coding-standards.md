@@ -41,6 +41,10 @@ Prohibited in instruction documents:
 - Emoji characters (except output styles)
 - Time estimates or duration predictions
 
+## Footer Convention
+
+Rule files follow a consistent-by-absence footer policy: a `Version` / `Status` / `Classification` footer is OPTIONAL, not required. SSOT-owning canonical-reference rules (files that declare "Single Source of Truth" or carry a `Classification: Canonical Reference` line) SHOULD include a footer stating version, status, and classification. Short path-scoped rules MAY omit a footer entirely — absence is a valid consistent state, not a gap. Do not bulk-add footers to rules that currently lack one; the policy statement (this section) is the deliverable, not uniform footer insertion.
+
 ## Duplicate Prevention
 
 Single source of truth principle:

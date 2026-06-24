@@ -28,6 +28,7 @@ draft: false
 |--------|------|------|
 | `SessionStart` | 세션 시작 | — |
 | `SessionEnd` | 세션 종료 | — |
+| `PostSession` | 会话结束后运行 (self-hosted runner 生命周期事件，CC 2.1.169+)。在会话完全拆除后触发，晚于 `SessionEnd`。MoAI-ADK 目前不接入此钩子；作为面向需要会话后清理/遥测的 self-hosted 部署的可用选项进行文档化。 | — |
 | `Stop` | 에이전트 정지 | — |
 | `SubagentStop` | 서브에이전트 정지 | — |
 | `SubagentStart` | 서브에이전트 시작 | — |

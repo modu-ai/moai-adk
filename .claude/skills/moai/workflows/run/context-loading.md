@@ -1,5 +1,4 @@
 ---
-name: moai-workflow-run-context-loading
 description: "Run Phase 0 — Context loading, mode dispatch, harness level routing, and worktree path rules"
 user-invocable: false
 metadata:
@@ -7,7 +6,7 @@ metadata:
   phase: "Phase 0: Context Loading and Mode Dispatch"
 ---
 
-<!-- TRACE PROBE: per SPEC-V3R4-WORKFLOW-SPLIT-001 T0.5 baseline trace mechanism -->
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 <!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai run Phase <N> <enter|exit> -->
 
@@ -33,20 +32,20 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 
 ## Mode Dispatch (Multi-Mode Router)
 
-<!-- @MX:NOTE - Multi-Mode Router per SPEC-V3R2-WF-003 REQ-WF003-001..018; --mode {autopilot,loop,team,pipeline} dispatch with harness-based default. See spec-workflow.md#mode-dispatch-cross-reference. -->
+<!-- @MX:NOTE - Multi-Mode Router per the mode-dispatch policy; --mode {autopilot,loop,team,pipeline} dispatch with harness-based default. See spec-workflow.md#mode-dispatch-cross-reference. -->
 
-Per SPEC-V3R2-WF-003, `/moai run` participates in the `--mode` axis with 4 valid values: `autopilot`, `loop`, `team`, `pipeline`. Each value selects a distinct execution style.
+`/moai run` participates in the `--mode` axis with 4 valid values: `autopilot`, `loop`, `team`, `pipeline`. Each value selects a distinct execution style.
 
 ### Mode Values
 
 - **`autopilot` (default for harness `minimal` / `standard`)**: Single-lead orchestration via Phase 0.95 Scale-Based Mode Selection (Fix / Focused / Standard / Full Pipeline) → Phase 2A/2B per `quality.yaml development_mode`. Behaves as today's default `/moai run` invocation.
-- **`loop`**: Delegate to `Skill("moai-workflow-loop")` with the SPEC-ID and remaining args. Bypasses Phase 2A/2B and enters the Ralph engine per-iteration cycle (see `loop.md` Steps 1-9). Per REQ-WF003-004, `/moai loop SPEC-XXX` is an alias resolving to `/moai run --mode loop SPEC-XXX` with identical behavior.
+- **`loop`**: Delegate to `Skill("moai-workflow-loop")` with the SPEC-ID and remaining args. Bypasses Phase 2A/2B and enters the Ralph engine per-iteration cycle (see `loop.md` Steps 1-9). `/moai loop SPEC-XXX` is an alias resolving to `/moai run --mode loop SPEC-XXX` with identical behavior.
 - **`team` (default for harness `thorough` AND prerequisites met)**: Routes to existing Team Mode Routing (Phase 0.95 row 5 + the Team Mode Routing section). Requires `workflow.team.enabled: true` AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env var.
-- **`pipeline`**: REJECTED on `/moai run`. Pipeline mode is reserved for utility subcommands (`fix`, `coverage`, `mx`, `codemaps`, `clean`) per SPEC-V3R2-WF-004. Passing `--mode pipeline` here triggers `MODE_PIPELINE_ONLY_UTILITY` (preserved from the WF-004 baseline; REQ-WF003-016 ↔ REQ-WF004-014 byte-identical).
+- **`pipeline`**: REJECTED on `/moai run`. Pipeline mode is reserved for utility subcommands (`fix`, `coverage`, `mx`, `codemaps`, `clean`). Passing `--mode pipeline` here triggers `MODE_PIPELINE_ONLY_UTILITY` (the same error key the utility subcommands share).
 
 ### Mode Resolver
 
-Precedence order (REQ-WF003-018, hard-coded):
+Precedence order (hard-coded):
 
 1. CLI flag `--mode <value>` — highest priority. Wins regardless of config / harness.
 2. Config field `workflow.default_mode` in `.moai/config/sections/workflow.yaml` — used when CLI flag is absent.
@@ -54,7 +53,7 @@ Precedence order (REQ-WF003-018, hard-coded):
 
 Pseudocode:
 
-<!-- @MX:WARN - Mode resolver validation sensitive to new mode value additions. REQ-WF003-018 lock-in. @MX:REASON - Expanding the mode set without updating validation set breaks runtime error path. -->
+<!-- @MX:WARN - Mode resolver validation sensitive to new mode value additions. Mode-set lock-in. @MX:REASON - Expanding the mode set without updating validation set breaks runtime error path. -->
 ```
 mode = cli_mode_flag or config.workflow.default_mode or harness_auto_select(harness_level)
 if mode not in {autopilot, loop, team, pipeline}:
@@ -65,26 +64,26 @@ if mode == team and not (workflow.team.enabled and CLAUDE_CODE_EXPERIMENTAL_AGEN
     if cli_mode_flag == team:                      # explicit request
         emit MODE_TEAM_UNAVAILABLE suggesting --mode autopilot; abort
     else:                                          # harness auto-selected team
-        log [mode-auto-downgrade] info; mode = autopilot  # silent downgrade per REQ-WF003-012
+        log [mode-auto-downgrade] info; mode = autopilot  # silent downgrade per the relevant requirement
 dispatch(mode)
 ```
 
-### Harness-Based Default Selection (REQ-WF003-002, REQ-WF003-003)
+### Harness-Based Default Selection
 
 | Harness level | Team prerequisites | Default mode |
 |---------------|--------------------|--------------|
 | `minimal` | (any) | `autopilot` |
 | `standard` | (any) | `autopilot` |
 | `thorough` | satisfied | `team` |
-| `thorough` | not satisfied | `autopilot` (downgraded with `[mode-auto-downgrade]` info log; REQ-WF003-012) |
+| `thorough` | not satisfied | `autopilot` (downgraded with `[mode-auto-downgrade]` info log) |
 
 ### Sentinel Error Keys
 
-This skill emits the following sentinel error keys when mode dispatch fails. CI guards in `internal/template/agentless_audit_test.go` enforce each literal sentinel remains present in this skill body.
+This skill emits the following sentinel error keys when mode dispatch fails. A CI audit verifies each literal sentinel remains present in this skill body.
 
-- **`MODE_UNKNOWN`** (REQ-WF003-010, owned by SPEC-V3R2-WF-003): Emitted when `--mode <value>` is supplied but `<value>` is not in the 4-value valid set `{autopilot, loop, team, pipeline}`. The error message MUST enumerate the 4 valid values to guide the user.
-- **`MODE_TEAM_UNAVAILABLE`** (REQ-WF003-011, owned by SPEC-V3R2-WF-003): Emitted when an EXPLICIT `--mode team` request cannot be honored because either `workflow.team.enabled: false` in workflow.yaml OR the `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` env var is unset. The error message MUST suggest `--mode autopilot` as the supported fallback. Note: when `team` is auto-selected by harness (not explicit CLI), the system silently downgrades to `autopilot` with an info log instead of raising this error (REQ-WF003-012).
-- **`MODE_PIPELINE_ONLY_UTILITY`** (REQ-WF003-016 ↔ REQ-WF004-014, shared with SPEC-V3R2-WF-004): Preserved from the WF-004 baseline. Emitted when `--mode pipeline` is passed to this multi-agent subcommand. The error message MUST point the user to the utility subcommand set `{fix, coverage, mx, codemaps, clean}`.
+- **`MODE_UNKNOWN`**: Emitted when `--mode <value>` is supplied but `<value>` is not in the 4-value valid set `{autopilot, loop, team, pipeline}`. The error message MUST enumerate the 4 valid values to guide the user.
+- **`MODE_TEAM_UNAVAILABLE`**: Emitted when an EXPLICIT `--mode team` request cannot be honored because either `workflow.team.enabled: false` in workflow.yaml OR the `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` env var is unset. The error message MUST suggest `--mode autopilot` as the supported fallback. Note: when `team` is auto-selected by harness (not explicit CLI), the system silently downgrades to `autopilot` with an info log instead of raising this error.
+- **`MODE_PIPELINE_ONLY_UTILITY`**: Preserved from the utility-subcommand baseline. Emitted when `--mode pipeline` is passed to this multi-agent subcommand. The error message MUST point the user to the utility subcommand set `{fix, coverage, mx, codemaps, clean}`.
 
 See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the cross-skill mode dispatch contract.
 
@@ -141,7 +140,7 @@ Before execution, load these essential files:
 
 Pre-execution commands: git status, git branch, git log, git diff.
 
-### Lessons Loading (REQ-SLQG-013)
+### Lessons Loading
 
 Before spawning implementation agents, load relevant lessons from auto-memory:
 

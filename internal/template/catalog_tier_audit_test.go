@@ -138,7 +138,16 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// retired from template (moai-harness-cli-template, moai-harness-patterns are
 	// project-specific artifacts, not framework builders), net -2 = 31. Only the
 	// builders moai-meta-harness + moai-harness-learner remain in template.
-	const expectedSkillCount = 31
+	// moai-design-system retired (SPEC-V3R6-DESIGN-SYSTEM-RETIRE-001),
+	// net -1 = 31.
+	// SPEC-V3R6-SEC-SKILL-INTEGRATION-001 (2026-06-24): moai-ref-llm-security
+	// added as the first of three defensive-cybersecurity reference skills
+	// (LLM/AI security; registered under optional-pack:devops alongside
+	// moai-ref-owasp-checklist), net +1 = 32. moai-ref-supply-chain added as
+	// the second (supply-chain security; same optional-pack:devops), net +1 = 33.
+	// moai-ref-secops added as the third (DevSecOps/container/API operational
+	// security; same optional-pack:devops), net +1 = 34.
+	const expectedSkillCount = 34
 	if len(diskSkills) != expectedSkillCount {
 		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
 	}

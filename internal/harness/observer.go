@@ -147,6 +147,109 @@ func (o *Observer) RecordExtendedEvent(evt Event) error {
 const defaultRetentionDays = 30
 
 // ─────────────────────────────────────────────
+// Context-Governance Axis weight estimation (SPEC-V3R6-CONTEXT-GOV-AXIS-001)
+// ─────────────────────────────────────────────
+
+// WeightUnitTokens / WeightUnitBytes are the two accepted WeightUnit values.
+// The estimation records bytes (sum of file sizes); a bytes/4 heuristic to
+// tokens is left to the reader — exactness is out of scope (spec.md §X.5).
+const (
+	WeightUnitTokens = "tokens"
+	WeightUnitBytes  = "bytes"
+)
+
+// eagerWeightSources are the eagerly-loaded context files whose combined byte
+// size estimates the eager context weight (REQ-CGA-001). Paths are relative to
+// the project root (cwd). Missing files are skipped silently (EC-1 fail-open).
+var eagerWeightSources = []string{
+	"CLAUDE.md",
+	".claude/output-styles/moai/moai.md",
+	".claude/agent-memory/manager-develop/MEMORY.md",
+}
+
+// eagerWeightRulesGlob is the glob pattern for auto-loaded rule files included
+// in the eager weight. Walked via filepath.Glob (fail-open on glob error).
+const eagerWeightRulesGlob = ".claude/rules/moai/**/*.md"
+
+// EstimateContextWeight estimates the eager-vs-on-demand context-weight split
+// for the current turn, rooted at projectRoot (the hook's cwd). It populates
+// the three weight fields on the Event in place (REQ-CGA-001). Fail-open
+// guarantee (REQ-CGA-003): on ANY error (unreadable file, stat error, glob
+// error), the function returns nil and leaves the Event's weight fields at
+// their Go zero values — the caller still stamps schema_version="v2.1" so a
+// reader can distinguish estimation-skipped (v2.1 + sentinel) from pre-SPEC
+// legacy (v1/v2). The function NEVER returns a non-nil error to the hook
+// caller; it is fail-open by construction.
+//
+// On-demand weight is recorded as 0 in this SPEC — per-skill attribution is
+// out of scope (spec.md §X.6); the field exists so future SPECs can populate
+// it without another schema bump.
+//
+// @MX:NOTE: [AUTO] REQ-CGA-001/003: eager-vs-on-demand weight estimator with fail-open.
+// @MX:SPEC: SPEC-V3R6-CONTEXT-GOV-AXIS-001
+func EstimateContextWeight(evt *Event, projectRoot string) {
+	if evt == nil {
+		return
+	}
+
+	eager, ok := estimateEagerWeight(projectRoot)
+	if !ok {
+		// fail-open: leave weight fields at zero value; schema_version is still
+		// stamped "v2.1" by the recorder, distinguishing estimation-skipped from
+		// pre-SPEC legacy lines.
+		return
+	}
+
+	evt.EagerContextWeight = eager
+	evt.OnDemandContextWeight = 0 // §X.6: per-skill attribution deferred
+	evt.WeightUnit = WeightUnitBytes
+}
+
+// estimateEagerWeight sums the byte sizes of the eager-weight source files
+// under projectRoot. Returns (sum, true) on success; (0, false) on any error
+// (fail-open). Missing individual files are skipped (EC-1), NOT treated as
+// errors — only a total failure (e.g. projectRoot empty) returns false.
+func estimateEagerWeight(projectRoot string) (int, bool) {
+	if projectRoot == "" {
+		return 0, false
+	}
+
+	total := 0
+
+	// Fixed-path sources (CLAUDE.md, moai.md, MEMORY.md index).
+	for _, rel := range eagerWeightSources {
+		abs := filepath.Join(projectRoot, rel)
+		info, err := os.Stat(abs)
+		if err != nil {
+			// EC-1: missing file is skipped, not an error.
+			continue
+		}
+		if info.IsDir() {
+			continue
+		}
+		total += int(info.Size())
+	}
+
+	// Globbed rule files (.claude/rules/moai/**/*.md).
+	matches, err := filepath.Glob(filepath.Join(projectRoot, eagerWeightRulesGlob))
+	if err == nil {
+		for _, m := range matches {
+			info, err := os.Stat(m)
+			if err != nil {
+				continue
+			}
+			if info.IsDir() {
+				continue
+			}
+			total += int(info.Size())
+		}
+	}
+	// Glob error is fail-open: we still return the fixed-path subtotal.
+
+	return total, true
+}
+
+// ─────────────────────────────────────────────
 // Internal package helpers (also used in tests)
 // ─────────────────────────────────────────────
 
