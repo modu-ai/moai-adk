@@ -100,7 +100,7 @@ ok  	github.com/modu-ai/moai-adk/internal/cli/preference	1.515s
 
 **N/A — policy-document milestone**: 본 M2는 Go 코드가 아닌 policy-doc authoring이므로 E3 (coverage)는 N/A. AC의 "관측 증거" 조항은 policy 문서 내에 원칙이 서술되어 있는지 (grep 가능한 문구 존재)로 검증.
 
-**commit SHA**: _(아래 E6에서 commit 후 backfill)_
+**commit SHA**: `c51839d2f` (M2 askuser recommendation-placement rules — 본 커밋, origin/main synced `0 0`)
 
 ---
 
