@@ -77,7 +77,7 @@ jobs:
         # AND a prompt input is provided (per docs/custom-automations.md §
         # "Author-Specific Code Reviews"). Without a prompt it would fall back
         # to interactive @claude-mention mode, which is not what this job wants.
-        uses: anthropics/claude-code-action@567fe954a4527e81f132d87d1bdbcc94f7737434
+        uses: anthropics/claude-code-action@80b31826338489861333dc17217865dfe8085cdc
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
@@ -133,7 +133,7 @@ jobs:
         # Pinned to commit SHA to prevent supply chain attacks via floating tags.
         # Tag: v1.0.82 | SHA: 567fe954a4527e81f132d87d1bdbcc94f7737434
         # No prompt input → interactive mode (responds to @claude mentions).
-        uses: anthropics/claude-code-action@567fe954a4527e81f132d87d1bdbcc94f7737434
+        uses: anthropics/claude-code-action@80b31826338489861333dc17217865dfe8085cdc
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # C4 Fix: Use claude_args for max-turns (max_turns input is deprecated).
