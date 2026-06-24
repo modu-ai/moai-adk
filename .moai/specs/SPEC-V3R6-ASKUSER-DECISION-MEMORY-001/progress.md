@@ -6,10 +6,14 @@
 
 ## §A. 현재 상태
 
-- **Phase**: plan-phase 완료
-- **Status**: draft (frontmatter)
-- **plan-auditor 독립 감사**: _<pending>_
-- **Implementation Kickoff Approval**: _<pending>_
+- **Phase**: run-phase 진행 중 (M1·M2 완료, M3 대기) — handoff 시점 2026-06-25
+- **Status**: in-progress (frontmatter — M1 commit `6a42cde91`에서 draft → in-progress 전환)
+- **plan-auditor 독립 감사**: iter-2 PASS 0.88 (Tier M threshold 0.80)
+- **Implementation Kickoff Approval**: 획득 (사용자 "M1부터 순차 진입" 승인, IGGDA explicit-gate)
+- **M1 (REQ-ADM-001~004)**: ✅ 완료 — `internal/cli/preference/` 9 파일 (Entry 7필드/Store/3-tier cascade/atomic upsert), 5 AC PASS (AC-ADM-001~004+NFR-002), coverage 85.7%, commit `6a42cde91`+`ffe162709`, orchestrator 독립 검증 7/7 PASS
+- **M2 (REQ-ADM-005~008,017 + NFR-006)**: ✅ 완료 — askuser-protocol.md + moai.md live/template 분할 (+77 ins, 0 del), CI guard PASS (본 SPEC ID 0건), moai.md byte-identical parity, commit `c51839d2f`+`693ee464d`, orchestrator 독립 검증 7/7 PASS
+- **origin/main**: synced `0 0` (HEAD = `693ee464d`)
+- **다음 (M3)**: PostToolUse advisory 캡처 훅 — `internal/hook/post_tool.go` `user_decision_capture` 서브파이프라인 (REQ-ADM-009/010/018, AC-ADM-009/010/018). advisory/fail-open + Recovery-Signal Carve-Out(SHOULD doctrine-honest). 새 세션 sequential 위임.
 
 ---
 
