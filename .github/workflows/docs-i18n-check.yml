@@ -100,7 +100,7 @@ jobs:
 
       - name: Comment PR summary
         if: always() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           ERRORS: ${{ steps.counts.outputs.errors }}
           WARNINGS: ${{ steps.counts.outputs.warnings }}
