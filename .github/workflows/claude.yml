@@ -59,7 +59,7 @@ jobs:
       - name: Checkout repository
         # Pinned to commit SHA to prevent supply chain attacks via floating tags.
         # Tag: v4.1.1 | SHA: 08c6903cd8c0fde910a37f88322edcfb5dd907a8 (Node 20 runtime)
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           fetch-depth: 0  # PR review needs full diff history
 
@@ -118,7 +118,7 @@ jobs:
       - name: Checkout repository
         # Pinned to commit SHA to prevent supply chain attacks via floating tags.
         # Tag: v4.1.1 | SHA: 08c6903cd8c0fde910a37f88322edcfb5dd907a8
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           fetch-depth: 1
 
