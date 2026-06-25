@@ -495,6 +495,41 @@ WHEN input is null is detected, the system shall return an error.
 
 이 정규화는 트리거를 "조건"이 아닌 "사건"으로 명시함으로써 AI 에이전트의 의도 해석 모호성을 줄이고, 테스트 케이스 작성 시 입력/검증 시점을 더 명확히 만들어 줍니다.
 
+## 적응형 추천 배치 (Adaptive Recommendation Placement)
+
+MoAI-ADK v0.1.0부터 **AskUserQuestion 추천**이 사용자 결정 패턴에 맞춰 개인화됩니다. 시스템은 선택을 캡처하고, 시스템 기본값이 아닌 관측된 통계적 다수에 기반해 미래 질문 옵션을 개인화합니다.
+
+### 작동 원리
+
+MoAI가 `AskUserQuestion`으로 질문할 때, 추천 배치를 안내하는 5가지 원칙이 적용됩니다:
+
+1. **Fisher 정보 타이밍** — 불확실성이 가장 높을 때(p≈0.5, Fisher 정보 I=p(1−p) 최대 결정 경계) 질문이 발화됩니다. p≈0 또는 p≈1(거의 확정)일 때는 시스템이 자동 처리하고 질문을 생략합니다.
+
+2. **질문 순서 — 정보이익 내림차순** — 여러 질문이 필요할 때, 추정 정보이익이 높은 순서대로 정렬되어 가장 중요한 결정을 먼저 내릴니다.
+
+3. **통계적 다수 합리적 기본값** — 추천 옵션(`(권장)` 표시)은 결정 기록의 관측된 다수 선택을 반영하며, **시스템 정책 기본값이 아닙니다**. 데이터가 부족하면(cold-start) *"기본 설정 기반, 개인화에 N건 관찰 필요"*를 공개합니다.
+
+4. **전제조건 공개** — 각 추천 옵션은 성립 전제조건을 *"Recommended when <precondition>"* 형식으로 명시하여 즉시 트레이드오프를 평가할 수 있게 합니다.
+
+5. **숙련도 기반 적응형 강도** — 추천 강도는 세션 카운트에 따라 조절됩니다:
+   - **전문가**(20+ 세션): 약한 강도 — inferred preference를 `(권장)` override 없이 공개만(info-centric, 자율성 존중)
+   - **일반 사용자**(5-19 세션): 강한 강도 — `(권장)` + 투명한 근거 제시
+   - **Cold-start**(<5 세션): 중립 강도 — override 없음, 시스템 기본값 적용
+
+### 프라이버시 및 안전
+
+- **세션 범위 토글**: `moai preference toggle`로 프로젝트별 개인화 비활성화(세션 간 비영속)
+- **민감 도메인 게이트**: 보안 관련 주제(취약점, 침투 test, 유출)는 중립 추천 + 공개 로그
+- **자동 감쇠**: Transient 선호는 28일 후 soft-delete, stable 선호(명시적 표시)는 보존
+- **Advisory 캡처**: PostToolUse 캡처 훅은 AskUserQuestion 실행을 절대 차단하지 않음(fail-open 설계)
+- **Recovery-Signal Carve-Out**: recovery 턴(compact 복구, prompt_too_long 등)에서 advisory 훅은 복구에 양보(REQ-ADM-010 준거, doctrine-honest)
+
+### 기술 구현
+
+{{< callout type="info" >}}
+**내부 동작**: 5가지 원칙은 `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles에 명세화되어 있으며, `moai.md`에 렌더링됩니다. 캡처 훅은 `internal/hook/user_decision_capture.go`에 구현되어 있으며 schema 허용 파싱과 도메인 분류를 지원합니다. 감쇠 정책은 power-law 함수 `(age+1)^(-0.5)`를 따르며 α=0.5 고정(Standard tier). 전체 아키텍처와 수용 기준은 [SPEC-V3R6-ASKUSER-DECISION-MEMORY-001](https://github.com/modu-ai/moai-adk-go/blob/main/.moai/specs/SPEC-V3R6-ASKUSER-DECISION-MEMORY-001/spec.md)를 참조하세요.
+{{< /callout >}}
+
 ## 관련 문서
 
 - [SPEC 기반 개발](/core-concepts/spec-based-dev) - EARS 형식 상세 설명

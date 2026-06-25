@@ -391,6 +391,67 @@ During `moai update -c`, you'll be asked:
 
 ---
 
+## Decision Memory
+
+MoAI-ADK now captures your AskUserQuestion decisions and uses them to personalize future recommendations. This system learns from your choices while maintaining privacy through automatic data decay and session-scoped controls.
+
+### 5 Components
+
+1. **3-Tier Memory Layer** (`internal/cli/preference/`)
+   - **Core**: Hot preferences (≤4KB) for instant access
+   - **Recall**: Recent session data with weight-based decay
+   - **Archival**: Long-term storage with soft-delete after 28 days
+
+2. **Adaptive Recommendation Placement** (`.claude/rules/moai/core/askuser-protocol.md`)
+   - Questions are asked when uncertainty is highest (Fisher information p≈0.5)
+   - Recommendations are based on statistical majority, not system defaults
+   - Expert users receive weaker (info-centric) guidance
+   - Cold-start preferences disclose "based on static default, N observations needed for personalization"
+
+3. **PostToolUse Capture Hook** (`internal/hook/user_decision_capture.go`)
+   - Advisory/fail-open design — never blocks AskUserQuestion execution
+   - Captures observed confidence with session-level source citation
+   - Schema-tolerant parsing handles multiple payload formats
+   - Recovery-Signal Carve-Out: advisory on recovery turns (doctrine-honest, per REQ-ADM-010)
+
+4. **Decay Policy** (`moai preference decay-scan`)
+   - Power-law weight function: `(age+1)^(-0.5)` — α=0.5 fixed for Standard tier
+   - 28-day TTL for transient preferences (stable preferences preserved)
+   - Touch reset-on-reuse: using a preference refreshes its weight to 1.0
+   - Daily scan cadence with 24h gate (idempotent, cross-process safe)
+
+5. **Recovery Controls**
+   - Session-scoped toggle (`moai preference toggle` — disable per project)
+   - Sensitive-domain gate — reduces recommendation strength for security/vulnerability topics
+   - Proficiency estimator — cold-start (<5 sessions) / general (5-19) / expert (20+)
+   - Freshness disclosure — "based on N-day-old data" transparency
+   - Correction loop — observed facts override inferences with archival audit trail
+
+### Usage
+
+```bash
+# View captured preferences
+moai preference list [--domain=<D>] [--key=<K>]
+
+# Trigger decay scan (runs daily via cron/automation)
+moai preference decay-scan [--memory-dir=<path>] [--now=<timestamp>] [--force]
+
+# Toggle personalization (session-scoped)
+moai preference toggle [--disable] [--project-root=<path>]
+```
+
+### Privacy & Safety
+
+- **Namespace separation**: User decisions stored in `memory/user_decisions/`, separate from engineering lessons
+- **Advisory capture**: Hook never blocks AskUserQuestion; all errors fail-open
+- **Automatic decay**: Transient entries soft-delete after 28 days; stable entries (explicitly marked) preserved
+- **Session control**: Toggle is per-project, non-persistent across sessions (automatic re-activation on new sessions)
+- **Sensitive domains**: Security-related topics receive neutral recommendations with disclosure logging
+
+See [SPEC-V3R6-ASKUSER-DECISION-MEMORY-001](.moai/specs/SPEC-V3R6-ASKUSER-DECISION-MEMORY-001/spec.md) for complete requirements, architecture, and acceptance criteria.
+
+---
+
 ## Dual Execution Modes
 
 MoAI-ADK provides both **Sub-Agent** and **Agent Teams** execution modes supported by Claude Code.

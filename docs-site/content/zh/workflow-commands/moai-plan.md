@@ -430,6 +430,41 @@ WHEN input is null is detected, the system shall return an error.
 
 这种归一化将触发条件表达为 "事件" 而非 "条件"，从而减少 AI 代理的意图解释模糊性，并在编写测试用例时更清晰地界定输入和验证时机。
 
+## 自适应推荐配置 (Adaptive Recommendation Placement)
+
+MoAI-ADK v0.1.0 起，**AskUserQuestion 推荐**现在适配您的决策模式。系统捕获您的选择，并基于观察到的统计多数而非系统默认值来个性化未来的问题选项。
+
+### 工作原理
+
+当 MoAI 通过 `AskUserQuestion` 向您提问时，推荐配置遵循以下 5 条原则：
+
+1. **Fisher 信息时机** — 在不确定性最高时（p≈0.5，Fisher 信息 I=p(1−p) 在决策边界处最大）提问。当 p≈0 或 p≈1（几乎确定）时，系统自动处理并跳过提问。
+
+2. **问题排序按信息增益** — 需要多个问题时，按估计的信息增益降序排列，以便您尽早做出最重要的决策。
+
+3. **统计多数合理默认值** — 推荐选项（标记 `(권장)`）反映您决策历史中观察到的多数选择，**而非**系统策略默认值。数据不足时（冷启动）会公开说明：*"基于静态默认值，个性化需要 N 次观察"*。
+
+4. **前提条件公开** — 每个推荐选项包含其成功前提条件，格式为：*"Recommended when <precondition>"*，便于您立即评估权衡。
+
+5. **基于熟练度的自适应强度** — 推荐强度根据您的会话数调整：
+   - **专家**(20+ 会话): 弱强度 — 推断偏好仅公开，无 `(권장)` 覆盖（info-centric，尊重自主性）
+   - **一般用户**(5-19 会话): 强强度 — 推荐选项带 `(권장)` + 透明理由
+   - **冷启动**(<5 会话): 中立强度 — 无覆盖，应用系统默认
+
+### 隐私与安全
+
+- **会话范围切换**: `moai preference toggle` 按项目禁用个性化（会话间不持久）
+- **敏感域门槛**: 安全相关主题（漏洞、渗透测试、泄露）接收中立推荐 + 公开日志
+- **自动衰减**: 瞬时偏好 28 天后 soft-delete，稳定偏好（显式标记）保留
+- **Advisory 捕获**: PostToolUse 捕获钩绝不阻塞 AskUserQuestion 执行（fail-open 设计）
+- **Recovery-Signal Carve-Out**: recovery 回合（compact 恢复、prompt_too_long 等）advisory 钩子让步于恢复（REQ-ADM-010 准则，doctrine-honest）
+
+### 技术实现
+
+{{< callout type="info" >}}
+**内部原理**：5 条原则在 `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles 中详细说明，由 `moai.md` 渲染。捕获钩子实现在 `internal/hook/user_decision_capture.go`，支持 schema 容错解析和域分类。衰减策略遵循 power-law 函数 `(age+1)^(-0.5)`，α=0.5 固定（Standard tier）。完整架构和验收标准参见 [SPEC-V3R6-ASKUSER-DECISION-MEMORY-001](https://github.com/modu-ai/moai-adk-go/blob/main/.moai/specs/SPEC-V3R6-ASKUSER-DECISION-MEMORY-001/spec.md)。
+{{< /callout >}}
+
 ## 相关文档
 
 - [基于 SPEC 的开发](/core-concepts/spec-based-dev) - EARS 格式详细说明

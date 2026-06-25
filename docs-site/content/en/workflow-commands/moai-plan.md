@@ -430,6 +430,41 @@ WHEN input is null is detected, the system shall return an error.
 
 The normalization expresses the trigger as an *event*, not a *condition*, which reduces intent-interpretation ambiguity for AI agents and clarifies the input/validation moment when test cases are written.
 
+## Adaptive Recommendation Placement
+
+Starting with MoAI-ADK v0.1.0, **AskUserQuestion recommendations** now adapt to your decision patterns. The system captures your choices and personalizes future question options based on statistical majority, not system defaults.
+
+### How It Works
+
+When MoAI asks you a question via `AskUserQuestion`, the following 5 principles guide recommendation placement:
+
+1. **Fisher Information Timing** — Questions are asked when uncertainty is highest (Fisher information I=p(1−p) is maximum at p≈0.5, the decision boundary). When p≈0 or p≈1 (near-certain), the system processes automatically and skips the question.
+
+2. **Question Ordering by Information Value** — When multiple questions are needed, they are ordered by estimated information gain (highest first) so you make the most important decisions early.
+
+3. **Statistical Majority Baseline** — The recommended option (marked `(권장)` / `(Recommended)`) reflects observed majority choices from your decision history, **not** system policy defaults. When insufficient data exists (cold start), recommendations disclose: *"based on static default, N observations needed for personalization"*.
+
+4. **Precondition Disclosure** — Each recommended option includes its success precondition in the format: *"Recommended when <precondition>"* so you can evaluate trade-offs immediately.
+
+5. **Adaptive Strength by Proficiency** — Recommendation intensity adjusts based on your session count:
+   - **Expert** (20+ sessions): Weak strength — inferred preference is disclosed without `(권장)` override (info-centric, respects autonomy)
+   - **General** (5-19 sessions): Strong strength — recommended option carries `(권장)` + transparent reasoning
+   - **Cold-start** (<5 sessions): Neutral strength — no override, system default applies
+
+### Privacy & Safety
+
+- **Session-scoped toggle**: `moai preference toggle` disables personalization per-project (not persistent across sessions)
+- **Sensitive-domain gate**: Security-related topics (vulnerability, pen-test, breach) receive neutral recommendations with disclosure logging
+- **Automatic decay**: Transient preferences soft-delete after 28 days; stable preferences (explicitly marked) are preserved
+- **Advisory capture**: The PostToolUse capture hook never blocks AskUserQuestion execution (fail-open design)
+- **Recovery-Signal Carve-Out**: On recovery turns (compact recovery, prompt_too_long, etc.), advisory hooks defer to recovery (doctrine-honest per REQ-ADM-010)
+
+### Technical Implementation
+
+{{< callout type="info" >}}
+**Under the Hood:** The 5 principles are codified in `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles and rendered in `moai.md`. The capture hook lives in `internal/hook/user_decision_capture.go` with schema-tolerant parsing and domain classification. Decay policy follows a power-law function `(age+1)^(-0.5)` with α=0.5 fixed for Standard tier. See [SPEC-V3R6-ASKUSER-DECISION-MEMORY-001](https://github.com/modu-ai/moai-adk-go/blob/main/.moai/specs/SPEC-V3R6-ASKUSER-DECISION-MEMORY-001/spec.md) for complete architecture and acceptance criteria.
+{{< /callout >}}
+
 ## Related Documents
 
 - [SPEC-Based Development](/core-concepts/spec-based-dev) - Detailed explanation of EARS format

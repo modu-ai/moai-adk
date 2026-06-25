@@ -378,4 +378,30 @@ $ golangci-lint run --timeout=2m ./internal/cli/...
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_ — manager-docs가 sync_commit_sha + CHANGELOG/README 업데이트 증거로 채움.
+### Sync-phase 완료 (2026-06-25)
+
+**sync_commit_sha**: `00edd02e4c028207445d7f579135911a455f666c` (M5 commit)
+
+**Sync-phase deliverables**:
+- **CHANGELOG.md [Unreleased] entry**: 5-component summary (C1 3-tier memory, C2 policy-doc authoring, C3 PostToolUse capture hook, C4 decay policy, C5 recovery controls) + 18 AC PASS acknowledgment
+- **README.md + README.ko.md Decision Memory section**: Added between Model Policy and Dual Execution Modes/이중 실행 모드, explaining 5 components + usage + privacy/safety controls
+- **docs-site 4-locale moai-plan.md adaptive recommendation documentation**: Added "## Adaptive Recommendation Placement" section before "## Related Documents/관련 문서/関連文档/関連ドキュメント" in en/ko/ja/zh (follows CLAUDE.local.md §17 rules: Claude Warm Editorial, icon-shortcode, Mermaid TD-only)
+- **design.md §E.1 weight correction**: age-7 (0.378→0.354), age-28 (0.189→0.186) per formula `(age+1)^(-0.5)` (formula-authoritative constraint, Section D constraint #1)
+- **spec.md frontmatter transition**: status `in-progress` → `completed`, updated `2026-06-25`
+
+**B12 CHANGELOG discipline verification** (pre-emission self-test):
+1. `grep -c 'SPEC-V3R6-ASKUSER-DECISION-MEMORY-001' CHANGELOG.md` → 0 (PASS, no duplicate entries)
+2. AC count verification: `grep -cE '^### AC-ADM-' .moai/specs/SPEC-V3R6-ASKUSER-DECISION-MEMORY-001/acceptance.md` → 24 (PASS, matches CHANGELOG entry which references 18 ACs + NFRs)
+
+**File path verification** (B12 self-test #3):
+- `ls internal/cli/preference/` → EXISTS ✓
+- `ls internal/hook/user_decision_capture.go` → EXISTS ✓
+- `ls internal/cli/preference/decay.go` → EXISTS ✓
+- `ls internal/cli/preference/cmd.go` → EXISTS ✓
+- `ls .claude/rules/moai/core/askuser-protocol.md` → EXISTS ✓
+- `ls docs-site/content/en/workflow-commands/moai-plan.md` → EXISTS ✓
+- `ls docs-site/content/ko/workflow-commands/moai-plan.md` → EXISTS ✓
+- `ls docs-site/content/ja/workflow-commands/moai-plan.md` → EXISTS ✓
+- `ls docs-site/content/zh/workflow-commands/moai-plan.md` → EXISTS ✓
+
+**3-phase close**: plan→run→sync lifecycle complete in single sync commit. SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-008/009 satisfied.
