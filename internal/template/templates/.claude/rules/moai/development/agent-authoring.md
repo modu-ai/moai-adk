@@ -97,7 +97,7 @@ The `tools` field supports `Agent(worker, researcher)` syntax to restrict which 
 
 ## Fork Subagents (experimental)
 
-Fork subagents are an experimental, opt-in feature (Claude Code v2.1.117+) enabled via the `CLAUDE_CODE_FORK_SUBAGENT` environment variable and invoked with `/fork`. A forked subagent inherits the parent conversation's context (rather than starting fresh), which makes it useful for branching exploratory work off the current state. Fork subagents cannot nest — a forked subagent cannot itself fork or spawn further subagents, consistent with the flat-hierarchy constraint that subagents cannot spawn other subagents. MoAI does not enable fork subagents by default; the env var is opt-in.
+Fork subagents are an experimental, opt-in feature (Claude Code v2.1.117+) enabled via the `CLAUDE_CODE_FORK_SUBAGENT` environment variable and invoked with `/fork`. A forked subagent inherits the parent conversation's context (rather than starting fresh), which makes it useful for branching exploratory work off the current state. A forked subagent cannot itself fork, but it can spawn other subagent types, and those nested spawns count toward the fixed depth cap (depth 5) as of Claude Code v2.1.187. MoAI's flat hierarchy holds by configuration — the retained agents omit the `Agent` tool from their `tools` list, so they do not spawn nested subagents regardless. MoAI does not enable fork subagents by default; the env var is opt-in.
 
 ## Permission Modes
 
