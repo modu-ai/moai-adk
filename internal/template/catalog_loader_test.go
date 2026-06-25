@@ -48,7 +48,9 @@ func TestLoadCatalog(t *testing.T) {
 	// (second defensive-cybersecurity reference skill, optional-pack:devops),
 	// net +1 = 40. moai-ref-secops added (third defensive-cybersecurity
 	// reference skill, optional-pack:devops), net +1 = 41.
-	const expectedTotal = 41
+	// moai-domain-html-report added (html-report port from cowork content plugin,
+	// core skill), net +1 = 42.
+	const expectedTotal = 42
 	if len(all) != expectedTotal {
 		t.Errorf("AllEntries() returned %d entries, want %d", len(all), expectedTotal)
 	}

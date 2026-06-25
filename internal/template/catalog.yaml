@@ -98,6 +98,11 @@ catalog:
               path: templates/.claude/skills/moai-domain-research/
               hash: 499aa255d9fd151a9eb03f41cfd6d8c0e6ab25034f54192431db8081132ab128
               version: 1.0.0
+            - name: moai-domain-html-report
+              tier: core
+              path: templates/.claude/skills/moai-domain-html-report/
+              hash: 6c48c0bfbcd0c0188966f3dbd471d973bd4c09c6466747158aa603882b5aa859
+              version: 1.0.0
         agents:
             - name: sync-auditor
               tier: core

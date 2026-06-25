@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{title}}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&family=Noto+Serif+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    /* ============================================================
+       CSS variable contract (follows the design-tokens.md SSOT)
+       html-report — explainer mode
+    ============================================================ */
+    :root {
+      /* palette */
+      --ivory:  #FAF9F5;
+      --paper:  #FFFFFF;
+      --slate:  #141413;
+      --clay:   #D97757;
+      --clay-d: #B85C3E;
+      --oat:    #E3DACC;
+      --olive:  #788C5D;
+
+      /* greyscale */
+      --g100: #F0EEE6;
+      --g300: #D1CFC5;
+      --g500: #87867F;
+      --g700: #3D3D3A;
+
+      /* fonts — explainer mode: Noto Sans KR + Noto Serif KR + JetBrains Mono */
+      --sans:  "Noto Sans KR", system-ui, -apple-system, sans-serif;
+      --serif: "Noto Serif KR", ui-serif, Georgia, serif;
+      --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+      /* layout */
+      --max-width:    1100px;
+      --content-max:  680px;
+      --radius-panel: 12px;
+      --radius-row:   8px;
+      --border:       1.5px solid var(--g300);
+    }
+
+    /* ============================================================
+       base styles
+    ============================================================ */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--ivory);
+      color: var(--g700);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      padding: 56px 24px 120px;
+    }
+
+    .page {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 200px minmax(0, 1fr);
+      gap: 48px;
+    }
+
+    @media (max-width: 920px) {
+      .page { grid-template-columns: 1fr; }
+      nav { display: none; }
+    }
+
+    /* ============================================================
+       side navigation
+    ============================================================ */
+    nav {
+      position: sticky;
+      top: 32px;
+      align-self: start;
+      font-size: 13px;
+    }
+
+    nav .nav-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--g500);
+      margin-bottom: 12px;
+    }
+
+    nav a {
+      display: block;
+      padding: 5px 0 5px 12px;
+      border-left: 2px solid var(--g300);
+      color: var(--g700);
+      text-decoration: none;
+    }
+
+    nav a:hover { color: var(--slate); border-color: var(--clay); }
+
+    nav a.l2 {
+      padding-left: 24px;
+      font-size: 12.5px;
+      color: var(--g500);
+    }
+
+    nav .nav-files {
+      margin-top: 28px;
+      border-top: 1px solid var(--g300);
+      padding-top: 16px;
+    }
+
+    nav .nav-files code {
+      display: block;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--g500);
+      padding: 3px 0;
+    }
+
+    /* ============================================================
+       header
+    ============================================================ */
+    header { margin-bottom: 12px; }
+
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--g500);
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 30px;
+      color: var(--slate);
+      letter-spacing: -0.01em;
+      margin-bottom: 14px;
+      line-height: 1.25;
+    }
+
+    /* TL;DR banner (explainer lightweight version) */
+    .tldr {
+      border: var(--border);
+      border-left: 3px solid var(--clay);
+      border-radius: 10px;
+      background: var(--paper);
+      padding: 16px 18px;
+      margin-bottom: 8px;
+      font-size: 14.5px;
+    }
+
+    .tldr b { color: var(--slate); }
+
+    /* ============================================================
+       section titles
+    ============================================================ */
+    h2 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 22px;
+      color: var(--slate);
+      margin: 40px 0 14px;
+      scroll-margin-top: 24px;
+    }
+
+    p { margin-bottom: 12px; max-width: var(--content-max); }
+    code { font-family: var(--mono); font-size: 13px; }
+
+    /* ============================================================
+       collapsible steps (<details> / <summary>, no JS needed)
+       steps: [{
+         num: "1",
+         title: "step title",
+         where: "file/location hint (optional)",
+         body_html: "<p>...</p>"
+       }]
+    ============================================================ */
+    details.step {
+      border: var(--border);
+      border-radius: 10px;
+      background: var(--paper);
+      margin: 14px 0;
+      overflow: hidden;
+    }
+
+    details.step > summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 16px;
+      font-family: var(--serif);
+      font-size: 16px;
+      color: var(--slate);
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    details.step > summary::-webkit-details-marker { display: none; }
+
+    details.step > summary::before {
+      content: "▸";
+      color: var(--clay);
+      font-family: var(--sans);
+      font-size: 12px;
+    }
+
+    details.step[open] > summary::before { content: "▾"; }
+
+    details.step > summary .step-num {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--oat);
+      color: var(--slate);
+      padding: 2px 8px;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    details.step > summary .where {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--g500);
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    details.step .step-body {
+      padding: 0 16px 16px;
+    }
+
+    details.step .step-body p {
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    /* ============================================================
+       tabbed code blocks
+       tab switching: vanilla JS (inline <script>, ≤30 lines)
+       tabs: [{label, code_html}]  ← code_html: <pre> content HTML
+    ============================================================ */
+    .tabs {
+      border: var(--border);
+      border-radius: 10px;
+      background: var(--paper);
+      margin: 16px 0 8px;
+      overflow: hidden;
+    }
+
+    .tabbar {
+      display: flex;
+      border-bottom: 1px solid var(--g300);
+      background: var(--g100);
+    }
+
+    .tabbar button {
+      appearance: none;
+      border: none;
+      background: none;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+      padding: 10px 16px;
+      cursor: pointer;
+      border-right: 1px solid var(--g300);
+    }
+
+    .tabbar button.active {
+      background: var(--paper);
+      color: var(--slate);
+      border-bottom: 2px solid var(--clay);
+      margin-bottom: -1px;
+    }
+
+    .tab-pane {
+      display: none;
+      margin: 0;
+      padding: 16px 18px;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.65;
+      color: var(--slate);
+      overflow-x: auto;
+    }
+
+    .tab-pane.active { display: block; }
+
+    .hl { color: var(--clay); }
+    .cm { color: var(--g500); }
+
+    /* ============================================================
+       callout box
+    ============================================================ */
+    .callout {
+      display: flex;
+      gap: 12px;
+      border: var(--border);
+      border-color: var(--oat);
+      background: rgba(227, 218, 204, 0.35);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin: 18px 0;
+      font-size: 14px;
+    }
+
+    .callout .ico { color: var(--clay); font-weight: 600; flex-shrink: 0; }
+
+    /* ============================================================
+       FAQ accordion (<details> / <summary> based, no JS needed)
+       faq_items: [{question, answer_html}]
+    ============================================================ */
+    details.faq-item {
+      border-bottom: 1px solid var(--g300);
+      padding: 4px 0;
+    }
+
+    details.faq-item > summary {
+      list-style: none;
+      cursor: pointer;
+      font-family: var(--serif);
+      font-size: 16px;
+      color: var(--slate);
+      padding: 12px 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    details.faq-item > summary::-webkit-details-marker { display: none; }
+
+    details.faq-item > summary::before {
+      content: "+";
+      color: var(--clay);
+      font-size: 18px;
+      font-weight: 400;
+      width: 20px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    details.faq-item[open] > summary::before { content: "−"; }
+
+    details.faq-item .faq-body {
+      padding: 0 4px 16px 30px;
+      font-size: 14px;
+      color: var(--g700);
+      max-width: var(--content-max);
+    }
+
+    details.faq-item .faq-body p { margin-bottom: 8px; }
+
+    /* ============================================================
+       footer
+    ============================================================ */
+    footer {
+      margin-top: 64px;
+      padding-top: 20px;
+      border-top: 1px solid var(--g300);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+    }
+
+    /* ============================================================
+       print styles
+    ============================================================ */
+    @media print {
+      .page { grid-template-columns: 1fr; }
+      nav { display: none; }
+
+      body {
+        background: white;
+        color: black;
+        padding: 0;
+        font-size: 12pt;
+      }
+
+      details.step { page-break-inside: avoid; }
+      details[open] { display: block; }
+
+      a[href]::after {
+        content: " (" attr(href) ")";
+        font-size: 10pt;
+        color: #555;
+      }
+
+      h1, h2, h3 { page-break-after: avoid; }
+
+      .no-print { display: none !important; }
+
+      * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ========================================================
+       side navigation
+       nav_links: [{href, label, l2: false}]
+       nav_files: [string]  (list of files read, optional)
+  ======================================================== -->
+  <nav>
+    <div class="nav-label">On this page</div>
+    {{#nav_links}}
+    <a href="{{href}}"{{#l2}} class="l2"{{/l2}}>{{label}}</a>
+    {{/nav_links}}
+    {{#nav_files.length}}
+    <div class="nav-files">
+      <div class="nav-label">Referenced Files</div>
+      {{#nav_files}}<code>{{.}}</code>{{/nav_files}}
+    </div>
+    {{/nav_files.length}}
+  </nav>
+
+  <!-- ========================================================
+       main content
+  ======================================================== -->
+  <main>
+
+    <!-- header -->
+    <header>
+      <div class="eyebrow">{{eyebrow}}</div>
+      <h1>{{title}}</h1>
+      <div class="tldr" id="tldr">
+        <b>TL;DR</b> &mdash; {{tldr_html}}
+      </div>
+    </header>
+
+    <!-- ========================================================
+         walkthrough (collapsible steps)
+         steps: [{num, title, where, body_html}]
+    ======================================================== -->
+    <h2 id="walkthrough">{{walkthrough_title}}</h2>
+    <p>{{walkthrough_intro}}</p>
+    {{#steps}}
+    <details class="step"{{#open}} open{{/open}}>
+      <summary>
+        <span class="step-num">{{num}}</span>
+        {{title}}
+        {{#where}}<span class="where">{{where}}</span>{{/where}}
+      </summary>
+      <div class="step-body">{{body_html}}</div>
+    </details>
+    {{/steps}}
+
+    <!-- ========================================================
+         configuration (tabbed code)
+         config_tabs: [{label, pane_id, code_html}]
+    ======================================================== -->
+    <h2 id="config">{{config_title}}</h2>
+    <p>{{config_intro}}</p>
+    <div class="tabs" data-tabs="config-tabs">
+      <div class="tabbar">
+        {{#config_tabs}}
+        <button data-pane="{{pane_id}}"{{#first}} class="active"{{/first}}>{{label}}</button>
+        {{/config_tabs}}
+      </div>
+      {{#config_tabs}}
+      <pre class="tab-pane{{#first}} active{{/first}}" id="{{pane_id}}">{{code_html}}</pre>
+      {{/config_tabs}}
+    </div>
+
+    {{#callout_html}}
+    <div class="callout">
+      <span class="ico">★</span>
+      <div>{{callout_html}}</div>
+    </div>
+    {{/callout_html}}
+
+    <!-- ========================================================
+         FAQ (accordion)
+         faq_items: [{question, answer_html}]
+    ======================================================== -->
+    <h2 id="faq">FAQ</h2>
+    {{#faq_items}}
+    <details class="faq-item">
+      <summary>{{question}}</summary>
+      <div class="faq-body">{{answer_html}}</div>
+    </details>
+    {{/faq_items}}
+
+    <footer>
+      Sources: {{footer_sources}} &nbsp;&mdash;&nbsp; Generated: {{generated_at}}
+    </footer>
+
+  </main>
+
+</div>
+
+<!-- tab switching script (vanilla JS, ≤30 lines) -->
+<script>
+document.querySelectorAll("[data-tabs]").forEach(function(box) {
+  var btns = box.querySelectorAll("button");
+  var panes = box.querySelectorAll(".tab-pane");
+  btns.forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      btns.forEach(function(b) { b.classList.remove("active"); });
+      panes.forEach(function(p) { p.classList.remove("active"); });
+      btn.classList.add("active");
+      var target = document.getElementById(btn.dataset.pane);
+      if (target) target.classList.add("active");
+    });
+  });
+});
+</script>
+</body>
+</html>

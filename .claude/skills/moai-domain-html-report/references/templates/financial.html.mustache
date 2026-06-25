@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{title}} — {{period}}</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    /* ============================================================
+       CSS variable contract (follows the design-tokens.md SSOT)
+       html-report — financial mode
+    ============================================================ */
+    :root {
+      /* palette */
+      --ivory:  #FAF9F5;
+      --paper:  #FFFFFF;
+      --slate:  #141413;
+      --clay:   #D97757;
+      --clay-d: #B85C3E;
+      --oat:    #E3DACC;
+      --olive:  #788C5D;
+
+      /* greyscale */
+      --g100: #F0EEE6;
+      --g300: #D1CFC5;
+      --g500: #87867F;
+      --g700: #3D3D3A;
+
+      /* fonts — financial mode: Pretendard + JetBrains Mono */
+      --sans:  "Pretendard", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --serif: "Pretendard", ui-serif, Georgia, serif;
+      --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+      /* layout */
+      --max-width:    920px;
+      --radius-panel: 12px;
+      --radius-row:   8px;
+      --border:       1.5px solid var(--g300);
+    }
+
+    /* ============================================================
+       base styles
+    ============================================================ */
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 56px 24px 120px;
+      background: var(--ivory);
+      color: var(--slate);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page {
+      max-width: var(--max-width);
+      margin: 0 auto;
+    }
+
+    /* ============================================================
+       header
+    ============================================================ */
+    header { margin-bottom: 40px; }
+
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--g500);
+      margin: 0 0 10px;
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 32px;
+      letter-spacing: -0.01em;
+      margin: 0 0 12px;
+      color: var(--slate);
+      line-height: 1.2;
+    }
+
+    .period-badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--g100);
+      border: var(--border);
+      border-radius: 8px;
+      padding: 5px 12px;
+      color: var(--g700);
+    }
+
+    /* ============================================================
+       common section
+    ============================================================ */
+    section { margin-bottom: 52px; }
+
+    h2 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 22px;
+      letter-spacing: -0.01em;
+      margin: 0 0 6px;
+      color: var(--slate);
+    }
+
+    hr.rule {
+      border: none;
+      border-top: 1px solid var(--g300);
+      margin: 0 0 22px;
+    }
+
+    /* ============================================================
+       KPI card grid
+       kpis: [{label, value, delta, delta_type}]
+       delta_type: "up" | "down" | "flat"
+    ============================================================ */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    @media (max-width: 720px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 400px) {
+      .kpi-grid { grid-template-columns: 1fr; }
+    }
+
+    .kpi-card {
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      padding: 20px 22px 18px;
+    }
+
+    .kpi-num {
+      font-family: var(--serif);
+      font-size: 36px;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--slate);
+      margin-bottom: 8px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .kpi-label {
+      font-family: var(--sans);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--g500);
+    }
+
+    .kpi-delta {
+      font-family: var(--mono);
+      font-size: 11px;
+      margin-top: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .kpi-delta.up   { color: var(--olive); }
+    .kpi-delta.down { color: var(--clay-d); }
+    .kpi-delta.flat { color: var(--g500); }
+
+    /* ============================================================
+       income statement table
+       statement_rows: [{
+         label, current, prior, change_abs, change_pct,
+         is_header: false, is_subtotal: false, is_total: false
+       }]
+       numbers are right-aligned, negatives use var(--clay-d)
+    ============================================================ */
+    table.statement {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      overflow: hidden;
+    }
+
+    table.statement thead th {
+      text-align: right;
+      font-family: var(--sans);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--g500);
+      background: var(--g100);
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--g300);
+    }
+
+    table.statement thead th:first-child {
+      text-align: left;
+      min-width: 200px;
+    }
+
+    table.statement tbody td {
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--g100);
+      font-size: 14px;
+      vertical-align: middle;
+      color: var(--slate);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    table.statement tbody td:first-child {
+      text-align: left;
+      color: var(--g700);
+    }
+
+    table.statement tbody tr:last-child td { border-bottom: none; }
+
+    table.statement tbody tr.row-header td {
+      background: var(--g100);
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--g500);
+      padding: 8px 16px;
+      border-top: 1px solid var(--g300);
+    }
+
+    table.statement tbody tr.row-subtotal td {
+      background: var(--ivory);
+      font-weight: 600;
+      border-top: 1px solid var(--g300);
+    }
+
+    table.statement tbody tr.row-total td {
+      background: var(--oat);
+      font-weight: 700;
+      font-size: 15px;
+      border-top: 2px solid var(--g300);
+    }
+
+    .num-neg { color: var(--clay-d); }
+    .num-pos { color: var(--olive); }
+
+    /* ============================================================
+       variance horizontal bar SVG chart
+       variance_bars: [{
+         label, value_abs, pct, positive: true|false,
+         bar_width_pct: 0~100 (ratio to max)
+       }]
+       rendering rules:
+       - viewBox: 640×(row count * 44 + 40)
+       - positive: fill var(--olive), negative: fill var(--clay-d)
+       - bar start x: 200 (label area), max length: 380px
+    ============================================================ */
+    .chart-panel {
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      padding: 24px 28px 18px;
+    }
+
+    .chart-panel svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .chart-caption {
+      font-size: 12px;
+      color: var(--g500);
+      margin-top: 12px;
+      font-family: var(--sans);
+    }
+
+    /* ============================================================
+       Notes
+    ============================================================ */
+    .notes {
+      background: var(--oat);
+      border-radius: var(--radius-panel);
+      padding: 20px 22px;
+    }
+
+    .notes ul {
+      margin: 0;
+      padding: 0 0 0 18px;
+    }
+
+    .notes li {
+      font-size: 14px;
+      color: var(--g700);
+      padding: 4px 0;
+    }
+
+    .notes li + li { border-top: 1px solid rgba(20, 20, 19, 0.08); }
+
+    /* ============================================================
+       footer
+    ============================================================ */
+    footer {
+      margin-top: 64px;
+      padding-top: 20px;
+      border-top: 1px solid var(--g300);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+    }
+
+    /* ============================================================
+       print styles
+    ============================================================ */
+    @media print {
+      body {
+        background: white;
+        color: black;
+        padding: 0;
+        font-size: 11pt;
+      }
+
+      .page { max-width: none; }
+
+      a[href]::after {
+        content: " (" attr(href) ")";
+        font-size: 10pt;
+        color: #555;
+      }
+
+      h1, h2, h3 { page-break-after: avoid; }
+
+      table.statement, .chart-panel { page-break-inside: avoid; }
+
+      .no-print { display: none !important; }
+
+      * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- ========================================================
+         header
+         eyebrow: e.g. "Income Statement · Q1 2026"
+         title: company name or report title
+         period: e.g. "Jan 1 – Mar 31, 2026"
+    ======================================================== -->
+    <header>
+      <p class="eyebrow">{{eyebrow}}</p>
+      <h1>{{title}}</h1>
+      <span class="period-badge">{{period}}</span>
+    </header>
+
+    <!-- ========================================================
+         KPI cards
+         kpis: [{label, value, delta, delta_type}]
+    ======================================================== -->
+    <section aria-label="Key financial metrics">
+      <div class="kpi-grid">
+        {{#kpis}}
+        <div class="kpi-card">
+          <div class="kpi-num">{{value}}</div>
+          <div class="kpi-label">{{label}}</div>
+          {{#delta}}<div class="kpi-delta {{delta_type}}">{{delta}}</div>{{/delta}}
+        </div>
+        {{/kpis}}
+      </div>
+    </section>
+
+    <!-- ========================================================
+         income statement table
+         statement_rows: [
+           {
+             label: "Revenue",
+             current: "1,234,567",
+             prior: "1,089,234",
+             change_abs: "+145,333",
+             change_pct: "+13.3%",
+             is_header: false,
+             is_subtotal: false,
+             is_total: false,
+             change_cls: "num-pos" | "num-neg" | ""
+           }
+         ]
+    ======================================================== -->
+    <section aria-label="Income statement">
+      <h2>Income Statement</h2>
+      <hr class="rule">
+      <table class="statement">
+        <thead>
+          <tr>
+            <th style="text-align: left;">Item</th>
+            <th>Current</th>
+            <th>Prior</th>
+            <th>Change</th>
+            <th>Change %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#statement_rows}}
+          <tr class="{{#is_header}}row-header{{/is_header}}{{#is_subtotal}}row-subtotal{{/is_subtotal}}{{#is_total}}row-total{{/is_total}}">
+            <td>{{label}}</td>
+            <td>{{current}}</td>
+            <td>{{prior}}</td>
+            <td class="{{change_cls}}">{{change_abs}}</td>
+            <td class="{{change_cls}}">{{change_pct}}</td>
+          </tr>
+          {{/statement_rows}}
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ========================================================
+         variance bar chart (inline SVG)
+         variance_bars: [
+           {label, value_str, pct_str, bar_x: 200, bar_width: 0~380, positive: true}
+         ]
+         chart_height: row count * 44 + 40
+         caption: "caption text"
+
+         SVG rendering guide:
+         - per-item y base: 40 + idx*44
+         - label text: x=190, text-anchor=end
+         - bar rect: x=200, y=y_base-14, height=28, width=bar_width
+         - value text: x=200+bar_width+6, y=y_base+5
+         - positive fill: #788C5D (--olive), negative fill: #B85C3E (--clay-d)
+    ======================================================== -->
+    <section aria-label="Variance chart">
+      <h2>Variance vs Prior Period</h2>
+      <hr class="rule">
+      <div class="chart-panel">
+        <svg viewBox="0 0 640 {{chart_height}}" role="img" aria-label="{{caption}}">
+          <!-- baseline -->
+          <line x1="200" y1="20" x2="200" y2="{{chart_height_minus_20}}"
+                stroke="#D1CFC5" stroke-width="1.5"/>
+
+          {{#variance_bars}}
+          <!-- item: {{label}} -->
+          <text x="190" y="{{label_y}}" text-anchor="end"
+                font-family="system-ui" font-size="12" fill="#3D3D3A">{{label}}</text>
+          <rect x="{{bar_x}}" y="{{bar_rect_y}}" width="{{bar_width}}" height="28" rx="4"
+                fill="{{bar_fill}}"/>
+          <text x="{{val_x}}" y="{{val_y}}"
+                font-family="ui-monospace, monospace" font-size="11.5"
+                fill="{{val_fill}}">{{value_str}} ({{pct_str}})</text>
+          {{/variance_bars}}
+        </svg>
+        <div class="chart-caption">{{caption}}</div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         notes
+         notes: [string]
+    ======================================================== -->
+    {{#notes.length}}
+    <section aria-label="Notes">
+      <h2>Notes</h2>
+      <hr class="rule">
+      <div class="notes">
+        <ul>
+          {{#notes}}
+          <li>{{.}}</li>
+          {{/notes}}
+        </ul>
+      </div>
+    </section>
+    {{/notes.length}}
+
+    <footer>
+      Sources: {{footer_sources}} &nbsp;&mdash;&nbsp; Generated: {{generated_at}}
+    </footer>
+
+  </div>
+</body>
+</html>

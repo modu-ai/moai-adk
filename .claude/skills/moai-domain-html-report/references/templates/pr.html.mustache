@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{pr_ref}} — {{title}}</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    /* ============================================================
+       CSS variable contract (follows the design-tokens.md SSOT)
+       html-report — pr mode
+    ============================================================ */
+    :root {
+      /* palette */
+      --ivory:  #FAF9F5;
+      --paper:  #FFFFFF;
+      --slate:  #141413;
+      --clay:   #D97757;
+      --clay-d: #B85C3E;
+      --oat:    #E3DACC;
+      --olive:  #788C5D;
+
+      /* greyscale */
+      --g100: #F0EEE6;
+      --g300: #D1CFC5;
+      --g500: #87867F;
+      --g700: #3D3D3A;
+
+      /* fonts — pr mode: Pretendard + JetBrains Mono */
+      --sans:  "Pretendard", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --serif: "Pretendard", ui-serif, Georgia, serif;
+      --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+      /* layout */
+      --max-width:    1040px;
+      --radius-panel: 12px;
+      --radius-row:   8px;
+      --border:       1.5px solid var(--g300);
+    }
+
+    /* ============================================================
+       base styles
+    ============================================================ */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--ivory);
+      color: var(--g700);
+      line-height: 1.55;
+      padding: 56px 32px 120px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page { max-width: var(--max-width); margin: 0 auto; }
+
+    /* ============================================================
+       header
+    ============================================================ */
+    header.page-head { margin-bottom: 44px; max-width: 820px; }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--g500);
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 34px;
+      line-height: 1.15;
+      color: var(--slate);
+      margin-bottom: 10px;
+      letter-spacing: -0.01em;
+    }
+
+    .pr-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--g500);
+      margin-bottom: 18px;
+    }
+
+    .pr-meta .stat strong { color: var(--slate); font-weight: 600; }
+    .pr-meta .add { color: var(--olive); }
+    .pr-meta .del { color: var(--clay); }
+
+    /* ============================================================
+       layout: main content + right TOC
+    ============================================================ */
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 220px;
+      gap: 48px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .toc { display: none; }
+    }
+
+    section {
+      margin-bottom: 56px;
+      scroll-margin-top: 24px;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 24px;
+      color: var(--slate);
+      margin-bottom: 14px;
+      letter-spacing: -0.01em;
+    }
+
+    p.lede {
+      font-size: 15px;
+      max-width: 680px;
+      margin-bottom: 12px;
+      color: var(--g700);
+    }
+
+    /* TOC */
+    .toc {
+      position: sticky;
+      top: 32px;
+      border-left: 1.5px solid var(--g300);
+      padding-left: 18px;
+      font-size: 13px;
+    }
+
+    .toc .t-head {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--g500);
+      margin-bottom: 10px;
+    }
+
+    .toc a {
+      display: block;
+      color: var(--g700);
+      text-decoration: none;
+      padding: 4px 0;
+    }
+
+    .toc a:hover { color: var(--clay); }
+    .toc .sub { padding-left: 12px; color: var(--g500); font-size: 12.5px; }
+
+    /* ============================================================
+       TL;DR banner
+    ============================================================ */
+    .tldr {
+      background: var(--paper);
+      border: var(--border);
+      border-left: 4px solid var(--clay);
+      border-radius: var(--radius-panel);
+      padding: 20px 24px;
+      margin-bottom: 48px;
+      max-width: 760px;
+    }
+
+    .tldr .k {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--g500);
+      margin-bottom: 8px;
+    }
+
+    .tldr p { font-size: 15px; color: var(--slate); }
+
+    /* ============================================================
+       Before / After card pair
+       ba_before: [{text}]
+       ba_after: [{text}]
+    ============================================================ */
+    .ba {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin: 22px 0 4px;
+    }
+
+    @media (max-width: 720px) { .ba { grid-template-columns: 1fr; } }
+
+    .ba .panel {
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      padding: 18px 20px;
+    }
+
+    .ba .panel.after { border-color: var(--olive); }
+
+    .ba .k {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--g500);
+      margin-bottom: 10px;
+    }
+
+    .ba .after .k { color: var(--olive); }
+
+    .ba ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 13.5px;
+    }
+
+    .ba li::before { content: "·"; color: var(--g500); margin-right: 8px; }
+    .ba .after li::before { color: var(--olive); }
+
+    /* ============================================================
+       file-by-file changes (<details> based)
+       files: [{
+         path, badge_class: "new"|"mod"|"del", badge_label,
+         adds, dels, why_html, open: false
+       }]
+    ============================================================ */
+    .file-tour { display: flex; flex-direction: column; gap: 22px; }
+
+    .file {
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      overflow: hidden;
+    }
+
+    .file summary {
+      padding: 14px 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      list-style: none;
+      background: var(--g100);
+      border-bottom: var(--border);
+    }
+
+    .file:not([open]) summary { border-bottom: none; }
+    .file summary::-webkit-details-marker { display: none; }
+
+    .file summary .chev {
+      width: 8px;
+      height: 8px;
+      border-right: 2px solid var(--g500);
+      border-bottom: 2px solid var(--g500);
+      transform: rotate(-45deg);
+      transition: transform 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .file[open] summary .chev { transform: rotate(45deg); }
+
+    .file summary .path {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--slate);
+      flex: 1;
+    }
+
+    .file summary .badge {
+      font-family: var(--mono);
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    .badge.new { background: #E4E9DC; color: #4B5C39; }
+    .badge.mod { background: var(--oat); color: var(--slate); }
+    .badge.del { background: #F3D9CC; color: #8A3B1E; }
+
+    .file summary .stat { font-family: var(--mono); font-size: 12px; }
+    .file summary .stat .add { color: var(--olive); }
+    .file summary .stat .del { color: var(--clay); }
+
+    .file .file-body { padding: 18px 20px 22px; }
+
+    .file .why {
+      font-size: 14.5px;
+      margin-bottom: 14px;
+      max-width: 680px;
+    }
+
+    .file .why strong { color: var(--slate); }
+
+    /* ============================================================
+       review focus areas
+       focus_items: [{num, title, desc_html}]
+    ============================================================ */
+    .focus { display: flex; flex-direction: column; gap: 14px; max-width: 760px; }
+
+    .focus .item {
+      background: var(--paper);
+      border: var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: flex;
+      gap: 16px;
+    }
+
+    .focus .n {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--paper);
+      background: var(--clay);
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .focus .t { font-weight: 600; color: var(--slate); font-size: 15px; margin-bottom: 2px; }
+    .focus .d { font-size: 13.5px; color: var(--g500); }
+    .focus .d code { font-size: 12.5px; }
+
+    /* ============================================================
+       test plan
+       tests: [{done, label, note}]
+    ============================================================ */
+    .tests { display: flex; flex-direction: column; gap: 10px; max-width: 760px; }
+
+    .test {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: var(--paper);
+      border: var(--border);
+      border-radius: 10px;
+      padding: 13px 18px;
+      font-size: 14px;
+    }
+
+    .test .check {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      flex-shrink: 0;
+      margin-top: 2px;
+      border: 1.5px solid var(--g300);
+      background: var(--paper);
+      position: relative;
+    }
+
+    .test.done .check {
+      background: var(--olive);
+      border-color: var(--olive);
+    }
+
+    .test.done .check::after {
+      content: "";
+      position: absolute;
+      left: 5px;
+      top: 2px;
+      width: 5px;
+      height: 9px;
+      border-right: 2px solid var(--paper);
+      border-bottom: 2px solid var(--paper);
+      transform: rotate(40deg);
+    }
+
+    .test .label { color: var(--slate); }
+    .test .note { color: var(--g500); font-size: 13px; margin-top: 2px; }
+
+    /* ============================================================
+       rollout steps
+       rollout_steps: [{when, pct_label, desc}]
+    ============================================================ */
+    .rollout {
+      display: flex;
+      gap: 0;
+      max-width: 780px;
+    }
+
+    @media (max-width: 720px) { .rollout { flex-direction: column; } }
+
+    .rollout .step {
+      flex: 1;
+      background: var(--paper);
+      border: var(--border);
+      padding: 16px 18px;
+      position: relative;
+    }
+
+    .rollout .step:first-child { border-radius: 12px 0 0 12px; }
+    .rollout .step:last-child  { border-radius: 0 12px 12px 0; }
+    .rollout .step + .step { border-left: none; }
+
+    @media (max-width: 720px) {
+      .rollout .step,
+      .rollout .step:first-child,
+      .rollout .step:last-child { border-radius: 12px; }
+      .rollout .step + .step {
+        border-left: var(--border);
+        margin-top: 10px;
+      }
+    }
+
+    .rollout .step .pct {
+      font-family: var(--mono);
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--clay);
+      margin-bottom: 6px;
+    }
+
+    .rollout .step .when {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--g500);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .rollout .step .d { font-size: 13px; color: var(--g500); }
+
+    /* ============================================================
+       footer
+    ============================================================ */
+    footer {
+      margin-top: 64px;
+      padding-top: 20px;
+      border-top: 1px solid var(--g300);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+    }
+
+    /* ============================================================
+       print styles
+    ============================================================ */
+    @media print {
+      .layout { grid-template-columns: 1fr; }
+      .toc { display: none; }
+
+      body {
+        background: white;
+        color: black;
+        padding: 0;
+        font-size: 12pt;
+      }
+
+      a[href]::after {
+        content: " (" attr(href) ")";
+        font-size: 10pt;
+        color: #555;
+      }
+
+      h1, h2, h3 { page-break-after: avoid; }
+
+      .file, .test, .focus .item { page-break-inside: avoid; }
+
+      .no-print { display: none !important; }
+
+      * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- ========================================================
+         header
+         pr_ref: e.g. "PR" followed by the pull-request number
+         title: PR title
+         file_count, adds, dels, branch_from, branch_to, author
+    ======================================================== -->
+    <header class="page-head">
+      <div class="eyebrow">{{eyebrow}}</div>
+      <h1>{{pr_ref}} — {{title}}</h1>
+      <div class="pr-meta">
+        <span class="stat"><strong>{{file_count}}</strong> files</span>
+        <span class="stat"><span class="add">+{{adds}}</span> / <span class="del">&minus;{{dels}}</span></span>
+        <span class="stat">Branch <strong>{{branch_from}}</strong> &rarr; <strong>{{branch_to}}</strong></span>
+        <span class="stat">Author <strong>{{author}}</strong></span>
+      </div>
+    </header>
+
+    <div class="layout">
+      <main>
+
+        <!-- TL;DR -->
+        <div class="tldr">
+          <div class="k">TL;DR</div>
+          <p>{{tldr_html}}</p>
+        </div>
+
+        <!-- ========================================================
+             Why (Before / After)
+             why_html: narrative HTML
+             ba_before: [{text}], ba_after: [{text}]
+        ======================================================== -->
+        <section id="why">
+          <h2>Background</h2>
+          <p class="lede">{{why_html}}</p>
+          <div class="ba">
+            <div class="panel">
+              <div class="k">Before</div>
+              <ul>{{#ba_before}}<li>{{text}}</li>{{/ba_before}}</ul>
+            </div>
+            <div class="panel after">
+              <div class="k">After</div>
+              <ul>{{#ba_after}}<li>{{text}}</li>{{/ba_after}}</ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========================================================
+             file-by-file changes
+             files: [{path, badge_class, badge_label, adds, dels, why_html, open}]
+        ======================================================== -->
+        <section id="tour">
+          <h2>File-by-File Changes</h2>
+          <p class="lede">{{tour_intro}}</p>
+          <div class="file-tour">
+            {{#files}}
+            <details class="file"{{#open}} open{{/open}}>
+              <summary>
+                <span class="chev"></span>
+                <span class="path">{{path}}</span>
+                <span class="badge {{badge_class}}">{{badge_label}}</span>
+                <span class="stat">
+                  {{#adds}}<span class="add">+{{adds}}</span>{{/adds}}
+                  {{#dels}}<span class="del">&minus;{{dels}}</span>{{/dels}}
+                </span>
+              </summary>
+              <div class="file-body">
+                <p class="why">{{{why_html}}}</p>
+              </div>
+            </details>
+            {{/files}}
+          </div>
+        </section>
+
+        <!-- ========================================================
+             review focus areas
+             focus_items: [{num, title, desc_html}]
+        ======================================================== -->
+        <section id="focus">
+          <h2>Review Focus</h2>
+          <div class="focus">
+            {{#focus_items}}
+            <div class="item">
+              <div class="n">{{num}}</div>
+              <div>
+                <div class="t">{{title}}</div>
+                <div class="d">{{desc_html}}</div>
+              </div>
+            </div>
+            {{/focus_items}}
+          </div>
+        </section>
+
+        <!-- ========================================================
+             test plan
+             tests: [{done, label, note}]
+        ======================================================== -->
+        <section id="tests">
+          <h2>Test Plan</h2>
+          <div class="tests">
+            {{#tests}}
+            <div class="test{{#done}} done{{/done}}">
+              <span class="check"></span>
+              <div>
+                <div class="label">{{label}}</div>
+                {{#note}}<div class="note">{{note}}</div>{{/note}}
+              </div>
+            </div>
+            {{/tests}}
+          </div>
+        </section>
+
+        <!-- ========================================================
+             rollout
+             rollout_intro: narrative text
+             rollout_steps: [{when, pct_label, desc}]
+        ======================================================== -->
+        <section id="rollout">
+          <h2>Rollout</h2>
+          <p class="lede">{{rollout_intro}}</p>
+          <div class="rollout">
+            {{#rollout_steps}}
+            <div class="step">
+              <div class="when">{{when}}</div>
+              <div class="pct">{{pct_label}}</div>
+              <div class="d">{{desc}}</div>
+            </div>
+            {{/rollout_steps}}
+          </div>
+        </section>
+
+      </main>
+
+      <!-- TOC -->
+      <nav class="toc">
+        <div class="t-head">In this PR</div>
+        <a href="#why">Background</a>
+        <a href="#tour">File-by-File Changes</a>
+        {{#files}}
+        <a href="#tour" class="sub">{{path_short}}</a>
+        {{/files}}
+        <a href="#focus">Review Focus</a>
+        <a href="#tests">Test Plan</a>
+        <a href="#rollout">Rollout</a>
+      </nav>
+
+    </div><!-- .layout -->
+
+    <footer>
+      Sources: {{footer_sources}} &nbsp;&mdash;&nbsp; Generated: {{generated_at}}
+    </footer>
+
+  </div>
+</body>
+</html>

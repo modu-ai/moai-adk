@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{inc_id}} — {{title}}</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    /* ============================================================
+       CSS variable contract (follows the design-tokens.md SSOT)
+       html-report — incident mode
+    ============================================================ */
+    :root {
+      /* palette */
+      --ivory:  #FAF9F5;
+      --paper:  #FFFFFF;
+      --slate:  #141413;
+      --clay:   #D97757;
+      --clay-d: #B85C3E;
+      --oat:    #E3DACC;
+      --olive:  #788C5D;
+
+      /* greyscale */
+      --g100: #F0EEE6;
+      --g300: #D1CFC5;
+      --g500: #87867F;
+      --g700: #3D3D3A;
+
+      /* fonts — incident mode: Pretendard + JetBrains Mono */
+      --sans:  "Pretendard", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --serif: "Pretendard", ui-serif, Georgia, serif;
+      --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+      /* severity colors */
+      --sev1: var(--clay-d);
+      --sev2: var(--clay);
+      --sev3: var(--olive);
+
+      /* layout */
+      --max-width:    860px;
+      --radius-panel: 12px;
+      --radius-row:   8px;
+      --border:       1.5px solid var(--g300);
+    }
+
+    /* ============================================================
+       base styles
+    ============================================================ */
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      padding: 56px 24px 120px;
+      background: var(--ivory);
+      color: var(--slate);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page {
+      max-width: var(--max-width);
+      margin: 0 auto;
+    }
+
+    /* ============================================================
+       header
+    ============================================================ */
+    header { margin-bottom: 32px; }
+
+    .inc-id {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--g500);
+      letter-spacing: 0.02em;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 32px;
+      letter-spacing: -0.01em;
+      margin: 0 0 16px;
+      line-height: 1.2;
+      color: var(--slate);
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+    }
+
+    /* severity / status pills */
+    .pill {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 999px;
+      padding: 5px 12px;
+      line-height: 1;
+    }
+
+    .pill .k { font-weight: 400; opacity: 0.75; }
+
+    .pill.sev-1 { background: var(--sev1); color: var(--paper); }
+    .pill.sev-2 { background: var(--sev2); color: var(--paper); }
+    .pill.sev-3 { background: var(--sev3); color: var(--paper); }
+
+    .pill.resolved { background: var(--olive); color: var(--paper); }
+    .pill.active   { background: var(--clay);  color: var(--paper); }
+
+    .pill.neutral {
+      background: var(--g100);
+      color: var(--g700);
+      border: var(--border);
+    }
+
+    .pill.neutral .v { font-family: var(--mono); }
+
+    /* ============================================================
+       TL;DR banner
+    ============================================================ */
+    .tldr {
+      background: var(--slate);
+      color: var(--ivory);
+      border-radius: var(--radius-panel);
+      padding: 22px 26px;
+      margin-bottom: 48px;
+    }
+
+    .tldr-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--oat);
+      margin-bottom: 10px;
+    }
+
+    .tldr p {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.65;
+    }
+
+    .tldr code {
+      font-family: var(--mono);
+      font-size: 13.5px;
+      background: rgba(250, 249, 245, 0.12);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    /* ============================================================
+       common section
+    ============================================================ */
+    section {
+      margin-bottom: 52px;
+      scroll-margin-top: 24px;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 22px;
+      letter-spacing: -0.01em;
+      margin: 0 0 6px;
+      color: var(--slate);
+    }
+
+    hr.rule {
+      border: none;
+      border-top: 1px solid var(--g300);
+      margin: 0 0 22px;
+    }
+
+    p { margin: 0 0 14px; }
+
+    code.inline {
+      font-family: var(--mono);
+      font-size: 13px;
+      background: var(--g100);
+      padding: 1.5px 5px;
+      border-radius: 4px;
+      color: var(--slate);
+    }
+
+    /* ============================================================
+       timeline
+       tl_entries: [{time, event, dot_type, body, log_excerpt}]
+       dot_type: "" | "impact" | "mitigated"
+       log_excerpt: optional <details> code excerpt
+    ============================================================ */
+    .timeline {
+      position: relative;
+      padding: 4px 0 4px 16px;
+    }
+
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 16px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      background: var(--g300);
+    }
+
+    .tl-entry {
+      position: relative;
+      padding: 0 0 22px 28px;
+    }
+
+    .tl-entry:last-child { padding-bottom: 0; }
+
+    .tl-dot {
+      position: absolute;
+      left: -5px;
+      top: 6px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--g500);
+      border: 2px solid var(--ivory);
+      box-sizing: content-box;
+    }
+
+    .tl-dot.impact    { background: var(--clay); }
+    .tl-dot.mitigated { background: var(--olive); }
+
+    .tl-time {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g700);
+      background: var(--g100);
+      border: 1px solid var(--g300);
+      border-radius: 6px;
+      padding: 2px 8px;
+      margin-bottom: 6px;
+    }
+
+    .tl-body {
+      font-size: 14px;
+      color: var(--g700);
+    }
+
+    .tl-body strong { color: var(--slate); font-weight: 600; }
+
+    /* timeline log excerpt (<details>) */
+    .tl-log {
+      margin-top: 8px;
+    }
+
+    .tl-log summary {
+      list-style: none;
+      cursor: pointer;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+    }
+
+    .tl-log summary::-webkit-details-marker { display: none; }
+
+    .tl-log summary::before {
+      content: "▸ ";
+      color: var(--clay);
+    }
+
+    .tl-log[open] summary::before { content: "▾ "; }
+
+    .log-block {
+      margin-top: 8px;
+      background: var(--slate);
+      color: var(--g100);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.65;
+      overflow-x: auto;
+    }
+
+    /* ============================================================
+       root cause code panel
+    ============================================================ */
+    .code-panel {
+      background: var(--slate);
+      color: var(--g100);
+      border-radius: var(--radius-panel);
+      padding: 18px 20px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.7;
+      overflow-x: auto;
+      margin: 12px 0 4px;
+    }
+
+    .code-panel .path {
+      color: var(--g500);
+      font-size: 12px;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .diff-line { white-space: pre; }
+    .diff-line.ctx { color: var(--g300); }
+    .diff-line.del { color: #E0897A; }
+    .diff-line.add { color: #A3B88A; }
+
+    /* ============================================================
+       impact table
+       impact_rows: [{label, value}]
+    ============================================================ */
+    table.impact {
+      width: 100%;
+      max-width: 460px;
+      border-collapse: separate;
+      border-spacing: 0;
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      overflow: hidden;
+    }
+
+    table.impact th,
+    table.impact td {
+      text-align: left;
+      padding: 12px 18px;
+      font-size: 14px;
+      border-bottom: 1px solid var(--g100);
+    }
+
+    table.impact tr:last-child th,
+    table.impact tr:last-child td { border-bottom: none; }
+
+    table.impact th {
+      font-weight: 400;
+      color: var(--g500);
+      width: 55%;
+    }
+
+    table.impact td {
+      font-family: var(--mono);
+      color: var(--slate);
+    }
+
+    /* ============================================================
+       action item checklist
+       actions: [{done, assignee_initials, assignee_name, desc, deadline}]
+    ============================================================ */
+    .actions {
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      overflow: hidden;
+    }
+
+    .ai-row {
+      display: grid;
+      grid-template-columns: 36px 36px 1fr 96px;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--g100);
+    }
+
+    .ai-row:last-child { border-bottom: none; }
+
+    .ai-check {
+      width: 18px;
+      height: 18px;
+      border: 1.5px solid var(--g300);
+      border-radius: 5px;
+      background: var(--paper);
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .ai-row.done .ai-check {
+      background: var(--olive);
+      border-color: var(--olive);
+    }
+
+    .ai-row.done .ai-check::after {
+      content: "";
+      position: absolute;
+      left: 4px;
+      top: 1px;
+      width: 5px;
+      height: 9px;
+      border: solid var(--paper);
+      border-width: 0 2px 2px 0;
+      transform: rotate(40deg);
+    }
+
+    .ai-row.done .ai-desc {
+      color: var(--g500);
+      text-decoration: line-through;
+      text-decoration-color: var(--g300);
+    }
+
+    .ai-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--oat);
+      color: var(--g700);
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: 0.02em;
+      flex-shrink: 0;
+    }
+
+    .ai-desc { font-size: 14px; color: var(--slate); }
+
+    .ai-due {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+      text-align: right;
+    }
+
+    /* ============================================================
+       responsive
+    ============================================================ */
+    @media (max-width: 640px) {
+      .ai-row {
+        grid-template-columns: 32px 1fr;
+        grid-template-rows: auto auto;
+      }
+
+      .ai-avatar { display: none; }
+      .ai-due { grid-column: 2; font-size: 11px; }
+    }
+
+    /* ============================================================
+       footer
+    ============================================================ */
+    footer {
+      margin-top: 64px;
+      padding-top: 20px;
+      border-top: 1px solid var(--g300);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+    }
+
+    /* ============================================================
+       print styles
+    ============================================================ */
+    @media print {
+      body {
+        background: white;
+        color: black;
+        padding: 0;
+        font-size: 12pt;
+      }
+
+      .page { max-width: none; }
+
+      a[href]::after {
+        content: " (" attr(href) ")";
+        font-size: 10pt;
+        color: #555;
+      }
+
+      h1, h2, h3 { page-break-after: avoid; }
+
+      table.impact, .actions, .code-panel { page-break-inside: avoid; }
+
+      .tldr {
+        background: #f5f5f5 !important;
+        color: black !important;
+        border: 1px solid #ccc;
+      }
+
+      .no-print { display: none !important; }
+
+      * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- ========================================================
+         header
+         inc_id: e.g. INC-2026-0422
+         title: incident title
+         severity: "SEV-1" | "SEV-2" | "SEV-3"
+         sev_class: "sev-1" | "sev-2" | "sev-3"
+         status: "Resolved" | "Active"
+         status_class: "resolved" | "active"
+         duration: e.g. 47 min
+         detected_at: e.g. 2026-04-22 · 14:02 UTC
+         owner: owner name
+    ======================================================== -->
+    <header>
+      <div class="inc-id">{{inc_id}}</div>
+      <h1>{{title}}</h1>
+      <div class="meta-row">
+        <span class="pill {{sev_class}}">{{severity}}</span>
+        <span class="pill {{status_class}}">{{status_label}}</span>
+        <span class="pill neutral"><span class="k">Duration</span> <span class="v">{{duration}}</span></span>
+        <span class="pill neutral"><span class="k">Detected at</span> <span class="v">{{detected_at}}</span></span>
+        <span class="pill neutral"><span class="k">Owner</span> <span class="v">{{owner}}</span></span>
+      </div>
+    </header>
+
+    <!-- ========================================================
+         TL;DR banner
+         tldr_html: inline HTML allowed (<code> etc.)
+    ======================================================== -->
+    <div class="tldr">
+      <div class="tldr-label">TL;DR</div>
+      <p>{{tldr_html}}</p>
+    </div>
+
+    <!-- ========================================================
+         timeline
+         tl_entries: [
+           {
+             time: "14:02",
+             dot_class: "" | "impact" | "mitigated",
+             body_html: "...",
+             log_excerpt: "" | "log text"
+           }
+         ]
+    ======================================================== -->
+    <section id="timeline">
+      <h2>Timeline</h2>
+      <hr class="rule">
+      <div class="timeline">
+        {{#tl_entries}}
+        <div class="tl-entry">
+          <span class="tl-dot {{dot_class}}"></span>
+          <span class="tl-time">{{time}}</span>
+          <div class="tl-body">{{body_html}}</div>
+          {{#log_excerpt}}
+          <details class="tl-log">
+            <summary>View log excerpt</summary>
+            <div class="log-block">{{log_excerpt}}</div>
+          </details>
+          {{/log_excerpt}}
+        </div>
+        {{/tl_entries}}
+      </div>
+    </section>
+
+    <!-- ========================================================
+         root cause
+         root_cause_html: narrative HTML
+         diff_path: file path (optional)
+         diff_lines: [{cls: "ctx|del|add", text: "..."}] (optional)
+    ======================================================== -->
+    <section id="root-cause">
+      <h2>Root Cause</h2>
+      <hr class="rule">
+      {{root_cause_html}}
+      {{#diff_path}}
+      <div class="code-panel">
+        <span class="path">{{diff_path}}</span>
+        {{#diff_lines}}
+        <div class="diff-line {{cls}}">{{text}}</div>
+        {{/diff_lines}}
+      </div>
+      {{/diff_path}}
+    </section>
+
+    <!-- ========================================================
+         impact
+         impact_rows: [{label, value}]
+    ======================================================== -->
+    <section id="impact">
+      <h2>Impact</h2>
+      <hr class="rule">
+      <table class="impact">
+        {{#impact_rows}}
+        <tr>
+          <th>{{label}}</th>
+          <td>{{value}}</td>
+        </tr>
+        {{/impact_rows}}
+      </table>
+    </section>
+
+    <!-- ========================================================
+         action items
+         actions: [
+           {
+             done: true|false,
+             initials: "AB",
+             assignee: "name",
+             desc_html: "...",
+             deadline: "Apr 28"
+           }
+         ]
+    ======================================================== -->
+    <section id="actions">
+      <h2>Action Items</h2>
+      <hr class="rule">
+      <div class="actions">
+        {{#actions}}
+        <div class="ai-row{{#done}} done{{/done}}">
+          <span class="ai-check"></span>
+          <span class="ai-avatar" title="{{assignee}}">{{initials}}</span>
+          <span class="ai-desc">{{desc_html}}</span>
+          <span class="ai-due">{{deadline}}</span>
+        </div>
+        {{/actions}}
+      </div>
+    </section>
+
+    <footer>
+      Sources: {{footer_sources}} &nbsp;&mdash;&nbsp; Generated: {{generated_at}}
+    </footer>
+
+  </div>
+</body>
+</html>

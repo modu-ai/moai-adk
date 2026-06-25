@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{title}} — Action Plan</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    /* ============================================================
+       CSS variable contract (follows the design-tokens.md SSOT)
+       html-report — plan mode
+    ============================================================ */
+    :root {
+      /* palette */
+      --ivory:  #FAF9F5;
+      --paper:  #FFFFFF;
+      --slate:  #141413;
+      --clay:   #D97757;
+      --clay-d: #B85C3E;
+      --oat:    #E3DACC;
+      --olive:  #788C5D;
+
+      /* greyscale */
+      --g100: #F0EEE6;
+      --g150: #F0EEE6;
+      --g300: #D1CFC5;
+      --g500: #87867F;
+      --g700: #3D3D3A;
+
+      /* fonts — plan mode: Pretendard sans + Noto Serif KR serif + JetBrains Mono */
+      --sans:  "Pretendard", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --serif: "Noto Serif KR", ui-serif, Georgia, serif;
+      --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+      /* layout */
+      --max-width:    1100px;
+      --radius-panel: 12px;
+      --radius-row:   8px;
+      --border:       1.5px solid var(--g300);
+    }
+
+    /* ============================================================
+       base styles
+    ============================================================ */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--ivory);
+      color: var(--g700);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      padding: 56px 32px 120px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page { max-width: var(--max-width); margin: 0 auto; }
+
+    /* ============================================================
+       header
+    ============================================================ */
+    header.page-head { margin-bottom: 48px; max-width: 820px; }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--g500);
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 36px;
+      line-height: 1.15;
+      color: var(--slate);
+      margin-bottom: 16px;
+      letter-spacing: -0.01em;
+    }
+
+    .goal-box {
+      background: var(--g100);
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      padding: 16px 20px;
+      font-size: 14.5px;
+      color: var(--g700);
+    }
+
+    .goal-box .label {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--g500);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    /* ============================================================
+       common section
+    ============================================================ */
+    section { margin-bottom: 64px; }
+
+    .sec-head {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      margin-bottom: 8px;
+    }
+
+    .sec-head .num {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--oat);
+      color: var(--slate);
+      padding: 3px 9px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+
+    .sec-head h2 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 24px;
+      color: var(--slate);
+      letter-spacing: -0.01em;
+    }
+
+    .sec-intro {
+      font-size: 14.5px;
+      color: var(--g500);
+      max-width: 720px;
+      margin-bottom: 28px;
+    }
+
+    /* ============================================================
+       summary card strip
+       summary_cells: [{label, value, accent: false}]
+    ============================================================ */
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 64px;
+    }
+
+    @media (max-width: 900px) {
+      .summary-strip { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .sum-cell {
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      padding: 18px 20px;
+    }
+
+    .sum-cell .k {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--g500);
+      margin-bottom: 6px;
+    }
+
+    .sum-cell .v {
+      font-size: 17px;
+      color: var(--slate);
+      font-weight: 600;
+    }
+
+    .sum-cell .v.accent { color: var(--clay); }
+
+    /* ============================================================
+       milestone timeline (vertical)
+       milestones: [{
+         when, title, desc, done: false, tags: [string]
+       }]
+    ============================================================ */
+    .milestones { display: flex; flex-direction: column; }
+
+    .milestone {
+      display: grid;
+      grid-template-columns: 130px 28px 1fr;
+      gap: 0 18px;
+      position: relative;
+    }
+
+    .milestone .when {
+      text-align: right;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+      padding-top: 4px;
+    }
+
+    .milestone .dot-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .milestone .dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--paper);
+      border: 3px solid var(--clay);
+      margin-top: 4px;
+      flex-shrink: 0;
+    }
+
+    .milestone .dot.done {
+      background: var(--olive);
+      border-color: var(--olive);
+    }
+
+    .milestone .line {
+      width: 2px;
+      flex: 1;
+      background: var(--g300);
+      margin: 4px 0;
+    }
+
+    .milestone:last-child .line { display: none; }
+
+    .milestone .body { padding-bottom: 36px; }
+
+    .milestone .body h3 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--slate);
+      margin-bottom: 4px;
+    }
+
+    .milestone .body p {
+      font-size: 14px;
+      color: var(--g500);
+      margin-bottom: 10px;
+      max-width: 620px;
+    }
+
+    .tag-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .tag {
+      font-family: var(--mono);
+      font-size: 11.5px;
+      background: var(--g100);
+      border: 1px solid var(--g300);
+      border-radius: 6px;
+      padding: 3px 8px;
+      color: var(--g700);
+    }
+
+    /* ============================================================
+       data-flow diagram (inline SVG)
+       diagram slot: viewBox="0 0 860 340"
+       SVG rendering guide:
+       - nodes: <rect rx="10"> + <text> combination
+       - arrows: <path marker-end="url(#arrow)">
+       - solid line: request/response path (stroke=#87867F)
+       - dashed line: async path (stroke=#D97757, stroke-dasharray="5 4")
+       - use short text labels instead of icons
+    ============================================================ */
+    .diagram {
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      padding: 28px;
+      overflow-x: auto;
+    }
+
+    .diagram svg { display: block; min-width: 760px; }
+    .caption { font-size: 13px; color: var(--g500); margin-top: 12px; }
+
+    /* ============================================================
+       risk matrix table
+       risks: [{risk, severity, sev_class: "high"|"med"|"low", mitigation}]
+    ============================================================ */
+    .risks {
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      overflow: hidden;
+      background: var(--paper);
+    }
+
+    .risks .row {
+      display: grid;
+      grid-template-columns: 1.6fr 90px 1.6fr;
+    }
+
+    @media (max-width: 780px) {
+      .risks .row { grid-template-columns: 1fr; }
+    }
+
+    .risks .row + .row { border-top: var(--border); }
+
+    .risks .cell {
+      padding: 14px 18px;
+      font-size: 13.5px;
+    }
+
+    .risks .cell + .cell { border-left: var(--border); }
+
+    @media (max-width: 780px) {
+      .risks .cell + .cell {
+        border-left: none;
+        border-top: 1px dashed var(--g300);
+      }
+    }
+
+    .risks .head {
+      background: var(--g100);
+      font-weight: 600;
+      color: var(--slate);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .sev {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    .sev.high { background: #F3D9CC; color: #8A3B1E; }
+    .sev.med  { background: var(--oat); color: var(--slate); }
+    .sev.low  { background: #E4E9DC; color: #4B5C39; }
+
+    /* ============================================================
+       success metrics
+       metrics: [{label, target, current, met: false}]
+    ============================================================ */
+    .metrics-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 760px;
+    }
+
+    .metric-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-row);
+      padding: 14px 18px;
+    }
+
+    .metric-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .metric-indicator.met   { background: var(--olive); }
+    .metric-indicator.unmet { background: var(--g300); }
+
+    .metric-label {
+      flex: 1;
+      font-size: 14px;
+      color: var(--slate);
+    }
+
+    .metric-target {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+    }
+
+    .metric-current {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--slate);
+    }
+
+    /* ============================================================
+       footer
+    ============================================================ */
+    footer {
+      margin-top: 64px;
+      padding-top: 20px;
+      border-top: 1px solid var(--g300);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+    }
+
+    /* ============================================================
+       print styles
+    ============================================================ */
+    @media print {
+      body {
+        background: white;
+        color: black;
+        padding: 0;
+        font-size: 12pt;
+      }
+
+      .page { max-width: none; }
+
+      a[href]::after {
+        content: " (" attr(href) ")";
+        font-size: 10pt;
+        color: #555;
+      }
+
+      h1, h2, h3 { page-break-after: avoid; }
+
+      table, .risks, .diagram, .chart-panel { page-break-inside: avoid; }
+
+      .no-print { display: none !important; }
+
+      * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- ========================================================
+         header
+         eyebrow: e.g. "Action Plan · Product Team"
+         title: plan title
+         goal_html: goal summary HTML
+    ======================================================== -->
+    <header class="page-head">
+      <div class="eyebrow">{{eyebrow}}</div>
+      <h1>{{title}}</h1>
+      <div class="goal-box">
+        <span class="label">Goal</span>
+        {{goal_html}}
+      </div>
+    </header>
+
+    <!-- ========================================================
+         summary strip
+         summary_cells: [{label, value, accent}]
+    ======================================================== -->
+    <div class="summary-strip">
+      {{#summary_cells}}
+      <div class="sum-cell">
+        <div class="k">{{label}}</div>
+        <div class="v{{#accent}} accent{{/accent}}">{{value}}</div>
+      </div>
+      {{/summary_cells}}
+    </div>
+
+    <!-- ========================================================
+         milestones
+         milestones: [{when, title, desc, done, tags}]
+    ======================================================== -->
+    <section aria-label="Milestones">
+      <div class="sec-head"><span class="num">01</span><h2>Milestones</h2></div>
+      <p class="sec-intro">{{milestones_intro}}</p>
+      <div class="milestones">
+        {{#milestones}}
+        <div class="milestone">
+          <div class="when">{{when}}</div>
+          <div class="dot-col">
+            <span class="dot{{#done}} done{{/done}}"></span>
+            <span class="line"></span>
+          </div>
+          <div class="body">
+            <h3>{{title}}</h3>
+            <p>{{desc}}</p>
+            <div class="tag-row">
+              {{#tags}}<span class="tag">{{.}}</span>{{/tags}}
+            </div>
+          </div>
+        </div>
+        {{/milestones}}
+      </div>
+    </section>
+
+    <!-- ========================================================
+         data-flow diagram
+         diagram_svg: completed SVG code (includes viewBox)
+         diagram_caption: caption text
+    ======================================================== -->
+    <section aria-label="Data flow">
+      <div class="sec-head"><span class="num">02</span><h2>Data Flow</h2></div>
+      <p class="sec-intro">{{dataflow_intro}}</p>
+      <div class="diagram">
+        {{diagram_svg}}
+        <p class="caption">{{diagram_caption}}</p>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         risk matrix
+         risks: [{risk, severity, sev_class, mitigation}]
+    ======================================================== -->
+    <section aria-label="Risks">
+      <div class="sec-head"><span class="num">03</span><h2>Risks &amp; Mitigation</h2></div>
+      <div class="risks">
+        <div class="row">
+          <div class="cell head">Risk</div>
+          <div class="cell head">Severity</div>
+          <div class="cell head">Mitigation</div>
+        </div>
+        {{#risks}}
+        <div class="row">
+          <div class="cell">{{risk}}</div>
+          <div class="cell"><span class="sev {{sev_class}}">{{severity}}</span></div>
+          <div class="cell">{{mitigation}}</div>
+        </div>
+        {{/risks}}
+      </div>
+    </section>
+
+    <!-- ========================================================
+         success metrics
+         success_metrics: [{label, target, current, met}]
+    ======================================================== -->
+    <section aria-label="Success metrics">
+      <div class="sec-head"><span class="num">04</span><h2>Success Metrics</h2></div>
+      <div class="metrics-list">
+        {{#success_metrics}}
+        <div class="metric-row">
+          <div class="metric-indicator {{#met}}met{{/met}}{{^met}}unmet{{/met}}"></div>
+          <div class="metric-label">{{label}}</div>
+          <div class="metric-target">Target: {{target}}</div>
+          {{#current}}<div class="metric-current">{{current}}</div>{{/current}}
+        </div>
+        {{/success_metrics}}
+      </div>
+    </section>
+
+    <footer>
+      Sources: {{footer_sources}} &nbsp;&mdash;&nbsp; Generated: {{generated_at}}
+    </footer>
+
+  </div>
+</body>
+</html>

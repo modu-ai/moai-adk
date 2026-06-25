@@ -147,7 +147,11 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// the second (supply-chain security; same optional-pack:devops), net +1 = 33.
 	// moai-ref-secops added as the third (DevSecOps/container/API operational
 	// security; same optional-pack:devops), net +1 = 34.
-	const expectedSkillCount = 34
+	// html-report skill ported from the cowork content plugin and renamed
+	// moai-domain-html-report for template-managed namespace compliance
+	// (bare names are classified user-owned by isUserOwnedNamespace, never updated);
+	// registered under core.skills, net +1 = 35.
+	const expectedSkillCount = 35
 	if len(diskSkills) != expectedSkillCount {
 		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
 	}

@@ -39,7 +39,9 @@ func TestLoadEmbeddedCatalog_Success(t *testing.T) {
 	// (second defensive-cybersecurity reference skill, optional-pack:devops),
 	// net +1 = 40. moai-ref-secops added (third defensive-cybersecurity
 	// reference skill, optional-pack:devops), net +1 = 41.
-	const wantTotal = 41
+	// moai-domain-html-report added (html-report port from cowork content plugin,
+	// core skill), net +1 = 42.
+	const wantTotal = 42
 	all := cat.AllEntries()
 	if len(all) != wantTotal {
 		t.Errorf("LoadEmbeddedCatalog() AllEntries() = %d, want %d", len(all), wantTotal)
