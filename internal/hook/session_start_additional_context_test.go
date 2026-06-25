@@ -129,6 +129,16 @@ func TestSessionStartAdditionalContextStrictlyAdditive(t *testing.T) {
 // P1-outcome implication). When SessionID is empty, no UUID is injected
 // and no side-channel file is written (would be an empty UUID).
 func TestSessionStartAdditionalContextSkippedOnEmptySessionID(t *testing.T) {
+	// Isolate GLM PROCESS env so glmGuardrailReminder() returns "" on a
+	// developer machine running CG mode (where the tmux session carries a
+	// real z.ai base URL that would otherwise inject a GLM reminder into
+	// AdditionalContext even when SessionID is empty). Same isolation
+	// pattern as TestSessionStartHandler_Handle in session_start_test.go
+	// and TestGLMGuardrailReminder_NonGLMSession in
+	// session_start_glm_guardrail_test.go. The SUT is correct per
+	// SPEC-STEERING-ALIGN-GUARDRAIL-HOOK-001 — the test isolates the env.
+	t.Setenv("ANTHROPIC_BASE_URL", "")
+
 	projectDir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(projectDir, ".moai", "state"), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)

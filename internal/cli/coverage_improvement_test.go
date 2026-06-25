@@ -5543,6 +5543,14 @@ func TestEnableTeamMode_NoAPIKey(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("MOAI_TEST_MODE", "1")
+	// Isolate GLM_API_KEY PROCESS env so the test is machine-independent.
+	// getGLMAPIKey falls back to os.Getenv(glmConfig.EnvVar) when
+	// loadGLMKey() returns empty, and on a developer machine running CG
+	// mode the tmux session carries a real GLM_API_KEY that leaks into
+	// the test process. Mirror the sibling pattern used by
+	// TestEnableTeamMode_NoAPIKey_GLM/_CG (see t.Setenv("GLM_API_KEY", "")
+	// at lines 1467 and 1505) so the "no key" error path is reached.
+	t.Setenv("GLM_API_KEY", "")
 
 	// Create minimal project structure with GLM config
 	moaiDir := filepath.Join(tmpDir, ".moai", "config", "sections")

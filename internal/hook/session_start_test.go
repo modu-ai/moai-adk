@@ -28,7 +28,18 @@ func TestSessionStartHandler_EventType(t *testing.T) {
 }
 
 func TestSessionStartHandler_Handle(t *testing.T) {
-	t.Parallel()
+	// Not parallel: t.Setenv("ANTHROPIC_BASE_URL", "") isolates the GLM
+	// PROCESS env so glmGuardrailReminder() returns "" on a developer
+	// machine running CG mode (where the tmux session carries a real
+	// z.ai base URL). Without this isolation, the "nil config" and
+	// "empty project config" subtests fail because the GLM reminder is
+	// injected into HookSpecificOutput.AdditionalContext even when
+	// SessionID/ProjectDir is empty. This matches the non-parallel +
+	// t.Setenv pattern used by TestGLMGuardrailReminder_* siblings in
+	// session_start_glm_guardrail_test.go. The SUT is correct per
+	// SPEC-STEERING-ALIGN-GUARDRAIL-HOOK-001 REQ-GH-002 — the test must
+	// isolate the env, not weaken the SUT.
+	t.Setenv("ANTHROPIC_BASE_URL", "")
 
 	tests := []struct {
 		name         string
@@ -81,7 +92,7 @@ func TestSessionStartHandler_Handle(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			// Subtest inherits non-parallel parent (GLM env isolated above).
 
 			cfg := &mockConfigProvider{cfg: tt.cfg}
 			h := NewSessionStartHandler(cfg)
