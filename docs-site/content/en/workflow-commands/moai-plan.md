@@ -457,12 +457,12 @@ When MoAI asks you a question via `AskUserQuestion`, the following 5 principles 
 - **Sensitive-domain gate**: Security-related topics (vulnerability, pen-test, breach) receive neutral recommendations with disclosure logging
 - **Automatic decay**: Transient preferences soft-delete after 28 days; stable preferences (explicitly marked) are preserved
 - **Advisory capture**: The PostToolUse capture hook never blocks AskUserQuestion execution (fail-open design)
-- **Recovery-Signal Carve-Out**: On recovery turns (compact recovery, prompt_too_long, etc.), advisory hooks defer to recovery (doctrine-honest per REQ-ADM-010)
+- **Recovery-Signal Carve-Out**: On recovery turns (compact recovery, prompt_too_long, etc.), advisory hooks defer to recovery (doctrine-honest — recovery-signal carve-out policy)
 
 ### Technical Implementation
 
 {{< callout type="info" >}}
-**Under the Hood:** The 5 principles are codified in `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles and rendered in `moai.md`. The capture hook lives in `internal/hook/user_decision_capture.go` with schema-tolerant parsing and domain classification. Decay policy follows a power-law function `(age+1)^(-0.5)` with α=0.5 fixed for Standard tier. See [SPEC-V3R6-ASKUSER-DECISION-MEMORY-001](https://github.com/modu-ai/moai-adk-go/blob/main/.moai/specs/SPEC-V3R6-ASKUSER-DECISION-MEMORY-001/spec.md) for complete architecture and acceptance criteria.
+**Under the Hood:** The 5 principles are codified in `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles and rendered in `moai.md`. The capture hook lives in `internal/hook/user_decision_capture.go` with schema-tolerant parsing and domain classification. Decay policy follows a power-law function `(age+1)^(-0.5)` with α=0.5 fixed for Standard tier. See the project's SPEC documentation for complete architecture and acceptance criteria.
 {{< /callout >}}
 
 ## Related Documents

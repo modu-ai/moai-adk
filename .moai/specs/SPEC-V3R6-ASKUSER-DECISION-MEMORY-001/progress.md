@@ -380,7 +380,7 @@ $ golangci-lint run --timeout=2m ./internal/cli/...
 
 ### Sync-phase 완료 (2026-06-25)
 
-**sync_commit_sha**: `00edd02e4c028207445d7f579135911a455f666c` (M5 commit)
+sync_commit_sha: 382d8c2fbcaa27fe35668026e67c451e1562a2ca
 
 **Sync-phase deliverables**:
 - **CHANGELOG.md [Unreleased] entry**: 5-component summary (C1 3-tier memory, C2 policy-doc authoring, C3 PostToolUse capture hook, C4 decay policy, C5 recovery controls) + 18 AC PASS acknowledgment

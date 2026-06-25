@@ -457,12 +457,12 @@ MoAIが `AskUserQuestion` で質問するとき、レコメンデーション配
 - **機密ドメイン ゲート**: セキュリティ関連トピック(脆弱性、ペネテスト、漏洩)は中立レコメンデーション + 開示ログ
 - **自動減衰**: Transient 選好は 28 日後に soft-delete、stable 選好(明示的マーク)は保存
 - **Advisory キャプチャ**: PostToolUse キャプチャ フックは AskUserQuestion 実行を絶対にブロックしません(fail-open 設計)
-- **Recovery-Signal Carve-Out**: recovery ターン(compact 復旧、prompt_too_long 等)では advisory フックは復旧に譲歩(REQ-ADM-010 準拠、doctrine-honest)
+- **Recovery-Signal Carve-Out**: recovery ターン(compact 復旧、prompt_too_long 等)では advisory フックは復旧に譲歩(recovery-signal carve-out 準拠、doctrine-honest)
 
 ### 技術実装
 
 {{< callout type="info" >}}
-**内部動作**: 5 つの原則は `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles に詳細化されており、`moai.md` にレンダリングされます。キャプチャ フックは `internal/hook/user_decision_capture.go` に実装されており、schema 許容パースとドメイン分類をサポートします。減衰ポリシーは power-law 関数 `(age+1)^(-0.5)` に従い、α=0.5 固定(Standard tier)。完全なアーキテクチャと受諾基準は [SPEC-V3R6-ASKUSER-DECISION-MEMORY-001](https://github.com/modu-ai/moai-adk-go/blob/main/.moai/specs/SPEC-V3R6-ASKUSER-DECISION-MEMORY-001/spec.md) を参照してください。
+**内部動作**: 5 つの原則は `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles に詳細化されており、`moai.md` にレンダリングされます。キャプチャ フックは `internal/hook/user_decision_capture.go` に実装されており、schema 許容パースとドメイン分類をサポートします。減衰ポリシーは power-law 関数 `(age+1)^(-0.5)` に従い、α=0.5 固定(Standard tier)。完全なアーキテクチャと受諾基準はプロジェクトの SPEC 文書を参照してください。
 {{< /callout >}}
 
 ## 関連ドキュメント
