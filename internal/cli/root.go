@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/cli/preference"
 	"github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
@@ -111,4 +112,8 @@ func init() {
 	// SPEC-DIVECC-INVENTORY-VIEW-001: register inventory subcommand — a
 	// read-only unified view composing sessions / worktrees / harnesses.
 	rootCmd.AddCommand(newInventoryCmd())
+
+	// SPEC-V3R6-ASKUSER-DECISION-MEMORY-001 M4: register the preference
+	// subtree (parent + decay-scan child). M5 will add `toggle` as a sibling.
+	rootCmd.AddCommand(preference.PreferenceCmd)
 }

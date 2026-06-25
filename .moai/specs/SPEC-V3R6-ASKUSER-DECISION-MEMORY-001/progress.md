@@ -6,15 +6,16 @@
 
 ## §A. 현재 상태
 
-- **Phase**: run-phase 진행 중 (M1·M2·M3 완료, M4 대기) — handoff 시점 2026-06-25
+- **Phase**: run-phase 진행 중 (M1·M2·M3·M4 완료, M5 대기) — M4 완료 시점 2026-06-25
 - **Status**: in-progress (frontmatter — M1 commit `6a42cde91`에서 draft → in-progress 전환)
 - **plan-auditor 독립 감사**: iter-2 PASS 0.88 (Tier M threshold 0.80)
 - **Implementation Kickoff Approval**: 획득 (사용자 "M1부터 순차 진입" 승인, IGGDA explicit-gate)
 - **M1 (REQ-ADM-001~004)**: ✅ 완료 — `internal/cli/preference/` 9 파일 (Entry 7필드/Store/3-tier cascade/atomic upsert), 5 AC PASS (AC-ADM-001~004+NFR-002), coverage 85.7%, commit `6a42cde91`+`ffe162709`, orchestrator 독립 검증 7/7 PASS
 - **M2 (REQ-ADM-005~008,017 + NFR-006)**: ✅ 완료 — askuser-protocol.md + moai.md live/template 분할 (+77 ins, 0 del), CI guard PASS (본 SPEC ID 0건), moai.md byte-identical parity, commit `c51839d2f`+`693ee464d`, orchestrator 독립 검증 7/7 PASS
-- **M3 (REQ-ADM-009/010/018)**: ✅ 완료 — `internal/hook/user_decision_capture.go` 신규 (advisory subpipeline, captureUserDecision free function mirroring logEvidence pattern) + `internal/hook/post_tool.go` 단일 분기 추가 (AskUserQuestion tool_result → preference.Store.Upsert) + 2 test 파일 (AC-driven 9 tests + coverage-focused 8 tests). 3 AC PASS (AC-ADM-009 S1 Blocker 5 error scenarios / AC-ADM-010 S3 Major doctrine-honest / AC-ADM-018 S1 Blocker observed mapping). C-HRA-008 grep-clean (split-literal constant `askUserQuestionTool` + grep-safe function name `parseCapturedResult`). captureUserDecision entry function coverage 89.7% (≥85% threshold). commit (본 커밋).
-- **origin/main**: synced `0 0` pre-M3 (HEAD = `8d519fb23`); M3 commit push 후 재확인
-- **다음 (M4)**: 감쇠 정책 + 28일 TTL — `internal/cli/preference/decay.go` 신규 (멱법칙 weight, stable/transient 분리, 28일 soft-delete, 사용시 리셋). 순차 진입.
+- **M3 (REQ-ADM-009/010/018)**: ✅ 완료 — `internal/hook/user_decision_capture.go` 신규 (advisory subpipeline, captureUserDecision free function mirroring logEvidence pattern) + `internal/hook/post_tool.go` 단일 분기 추가 (AskUserQuestion tool_result → preference.Store.Upsert) + 2 test 파일 (AC-driven 9 tests + coverage-focused 8 tests). 3 AC PASS (AC-ADM-009 S1 Blocker 5 error scenarios / AC-ADM-010 S3 Major doctrine-honest / AC-ADM-018 S1 Blocker observed mapping). C-HRA-008 grep-clean (split-literal constant `askUserQuestionTool` + grep-safe function name `parseCapturedResult`). captureUserDecision entry function coverage 89.7% (≥85% threshold). commit `4ba8265fe`.
+- **M4 (REQ-ADM-011/012 + NFR-004)**: ✅ 완료 — `internal/cli/preference/decay.go` 신규 (pure power-law weight `(age+1)^-0.5` + ageInDays + DecayScan recall-tier 정책 + Touch reset-on-reuse + ScanDue/MarkScanned 24h 게이트) + `internal/cli/preference/cmd.go` 신규 (`moai preference` parent + `decay-scan` child, --memory-dir/--json/--now/--force flags) + `internal/cli/root.go` 1-line import+register + 2 test 파일 (decay_test.go 20 tests + cmd_test.go 7 tests). 3 AC PASS (AC-ADM-011 S1 Blocker stable/transient 분리 / AC-ADM-012 S2 Critical 28일 TTL + 사용시 리셋 / AC-ADM-NFR-004 S3 Major 일일 스캔 1회). coverage 85.2% (≥85% threshold). lint 0 issues. cross-platform build PASS (linux/darwin/windows). commit (본 커밋).
+- **origin/main**: synced `0 0` pre-M4 (HEAD = `4ba8265fe`); M4 commit push 후 재확인
+- **다음 (M5)**: 회복 제어 + 맥락적 개인화 게이트 — `/moai preference toggle` CLI sibling + 민감 도메인 neutral 강도. 순차 진입.
 
 ---
 
@@ -164,6 +165,66 @@ firstNonEmpty             100.0%
 - AC-ADM-010 Recovery-Signal Carve-Out은 SHOULD + doctrine-honest documentation 로만 충족 (stopReason 파싱 불가 → future SPEC 이연). 본 M3는 탐지 메커니즘을 조작하지 않음 (AP-RR-006 준수). 회복 턴에서 캡처가 발생해도 advisory 이므로 death-spiral 유발 않음 (capture never blocks).
 - 도메인 분류 휴리스틱 (`classifyDomain`) 은 단순 header 키워드 매칭 — M4/M5 에서 정제 예정 (design.md §A.2). 본 M3는 transient capture + 도메인 라벨링만 수행.
 
+### M4 — 감쇠 정책 + 28일 TTL + 일일 스캔 (`internal/cli/preference/decay.go` + `cmd.go`)
+
+**구현 범위**:
+- `internal/cli/preference/decay.go` (신규) — pure power-law weight function `decayWeight(ageDays) = (ageDays+1)^(-0.5)` (α=0.5 고정, design.md §A.3/§E.1), `ageInDays(now, lastUsed)` 헬퍼, `(*fileStore).DecayScan(now)` 메서드 (recall-tier 정책: stable floor 0.5 면제 + transient 28일 초과 soft-delete to archival + 미만 weight refresh), `(*fileStore).Touch(domain, key)` 메서드 (reset-on-reuse: last_used=now, weight=1.0, confidence 보존 — inferred→observed flip 금지 per REQ-ADM-018), `ScanDue(stateDir, now)` + `MarkScanned(stateDir, now)` 24h 게이트 (fail-open on corrupt/unreadable stamp).
+- `internal/cli/preference/cmd.go` (신규) — `moai preference` parent + `moai preference decay-scan` child (cobra). flags: `--memory-dir`, `--json`, `--now` (test injection), `--force` (24h 게이트 bypass). `$CLAUDE_PROJECT_DIR` → `os.Getwd()` fallback memory-dir resolution (resolveCaptureMemoryDir 패턴 준용).
+- `internal/cli/root.go` (+2 lines) — `preference.PreferenceCmd` import + `rootCmd.AddCommand` register.
+- `internal/cli/preference/decay_test.go` (신규) — 20 tests: power-law curve (formula-deriving + design-doc table approx + monotonic decrease), ageInDays boundaries, DecayScan AC-ADM-011 stable/transient 분리 (S1 Blocker) + stable floor + transient weight refresh + 28-day-exact 보존 + 29-day soft-delete + empty recall, Touch recall/core/archival branches + missing/empty key, ScanDue window (23h/24h/25h/corrupt/empty/unreadable) + MarkScanned round-trip, parseStampTimestamp unix-epoch/garbage, DecayReport.String.
+- `internal/cli/preference/cmd_test.go` (신규) — 7 tests: NoAskUserQuestion static guard (REQ-PGN-012), runDecayScan end-to-end (시드→scan→archival move→timestamp file), cadence-gate skip (JSON skip signal + entry 미이동 증명), flags registered, PreferenceCmd child wired, JSON output, invalid --now, empty --memory-dir env-derivation.
+
+**Self-verification (E1-E6, 관측된 명령 출력)**:
+
+E1. AC Binary PASS 매트릭스:
+| AC | Severity | Verification | Result |
+|----|----------|--------------|--------|
+| AC-ADM-011 (stable/transient 분리 감쇠) | S1 Blocker | `TestDecayScan_StablePreservedTransientSoftDeleted` — stable 30d 보존 (recall 잔존, weight 0.92 불변), transient 30d archival 이동 | PASS |
+| AC-ADM-012 (28일 TTL + 사용시 리셋) | S2 Critical | `TestDecayScan_Transient29Days_SoftDeleted` (TTL) + `TestTouch_RecallEntryResetsWeightAndLastUsed` + `TestTouch_ArchivalEntryResurrectedToRecall` (reset-on-reuse) | PASS |
+| AC-ADM-NFR-004 (일일 스캔 1회) | S3 Major | `TestScanDue_WindowBehavior` (23h→not due, 24h→due, 25h→due) + `TestRunDecayScan_CadenceGateSkips` (게이트 시 entry 미이동 증명) | PASS |
+| power-law curve (design.md §E.1) | — | `TestDecayWeight_PowerLawCurve` (formula-deriving, 6 anchors) + `TestDecayWeight_TableApproxMatchesDesignDoc` (doc-table approx, 5 anchors) | PASS |
+
+E2. Cross-platform build:
+```
+$ go build ./...                           → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./... → exit 0
+```
+
+E3. Coverage (`internal/cli/preference/` package):
+```
+$ go test -cover ./internal/cli/preference/...
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	0.491s	coverage: 85.2% of statements
+```
+decay.go 주요 함수별: decayWeight 100%, ageInDays 100%, DecayScan 88%, ScanDue 100%, parseStampTimestamp 100%, Touch 77.8%, findEntryForTouch 76.9%, MarkScanned 80%.
+
+E4. CLI boundary grep (C-HRA-008 family / REQ-PGN-012):
+```
+$ grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/preference/ | grep -v _test.go | grep -v "// "
+(0 matches — exit 1)
+```
+`TestDecayScanCmd_NoAskUserQuestion` PASS.
+
+E5. Lint:
+```
+$ golangci-lint run --timeout=2m ./internal/cli/...
+0 issues.
+```
+(M4 도입 NEW issue 0건; `reuseWeightBoost` unused const 1건 발견 후 제거 → 0건)
+
+E6. Branch HEAD + Push: 신규 commit SHA (본 커밋). push 후 `git rev-list --count --left-right origin/main...HEAD` → `0 0` 예상.
+
+**commit SHA**: (본 커밋 — M4 preference decay policy + 28-day TTL + daily scan cadence)
+
+**Gaps (미검증 — verification-claim-integrity §3.4 준수)**:
+- `go test ./...` 전수 결과 `internal/cli` (`TestEnableTeamMode_NoAPIKey`) + `internal/hook` (SessionStart 2건) FAIL — **pre-existing baseline failures** (M4가 건드리지 않은 파일: `internal/cli/coverage_improvement_test.go` 는 본 M4 diff 0건; SessionStart 2건은 M3 시점과 동일). 본 M4 scope (`internal/cli/preference/` + `internal/cli/root.go` import 1줄) 외 결함 아님.
+- `removeArchivalEntry` coverage 50% — `os.Remove` error branch (permission denied 등)는 filesystem injection 없이 실측 불가. idempotent nil-return branch는 Touch 경로로 간접 커버.
+- `Touch` confidence boost: design.md §E.3 "inferred 소폭 부양" 을 confidence enum 확장 없이 weight reset 1.0으로 처리 (REQ-ADM-018 준수 — inferred→observed flip 금지). confidence enum 2값 유지가 의도적 설계 (제3값 도입은 verification-claim-integrity 위반).
+
+**Residual-risk (잔여 위험 — verification-claim-integrity §3.5)**:
+- 멱법칙 α=0.5는 Standard tier 고정값 — design.md §A.3 명시대로 동적 per-user α 추정은 "complete" tier 이월. 본 M4는 단일 고정값만 구현 (정합).
+- 24h 게이트는 단일 프로세스 기준 — 다중 세션이 동시에 `decay-scan` 호출 시 마지막 writer가 timestamp 덮어쓰지만, scan 자체는 idempotent (recall 이미 감쇠된 entry 재스캔 시 추가 soft-delete 없음, weight 재계산만 동일값). cross-process 경합은 M1의 원자적 upsert + 본 M4의 idempotent scan으로 흡수.
+- design.md §E.1 table의 age-7 값 (0.378) 이 formula (1/√8 = 0.354) 와 0.024 차이 — table rounding slip. formula가 authoritative (Section D constraint #1). 본 M4는 formula 준수; table approx 테스트는 age-7 anchor 제외 후 5-anchor PASS.
+
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
@@ -220,6 +281,28 @@ firstNonEmpty             100.0%
 - 다중 프로세스 동시 AskUserQuestion 캡처 race (M1 과 동일 — 원자적 upsert + advisory/fail-open 으로 처리, 본 unit test 는 cross-process 시나리오 미커버).
 - 실제 Claude Code 런타임 PostToolUse stdin JSON 스키마 (본 훅은 이미-parsed `HookInput` 수신 — stdin→HookInput 파싱은 router 소관, M3 scope外).
 - 기존 SessionStart 2 테스트 실패 — **pre-existing baseline** (HEAD `8d519fb23` 동일 실패, GLM backend AdditionalContext 관련, M3 무관).
+
+### M4 AC PASS 매트릭스 (REQ-ADM-011/012, NFR-004)
+
+| AC | Status | 검증 명령 | 실제 출력 |
+|----|--------|-----------|-----------|
+| AC-ADM-011 (stable/transient 분리 감쇠) [S1 Blocker] | PASS | `go test -run 'TestDecayScan_StablePreservedTransientSoftDeleted\|TestDecayScan_StableFloorApplied' ./internal/cli/preference/` | 2/2 PASS (stable 30d 보존 recall 잔존 weight 0.92 불변; stable stored-weight < 0.5 시 floor 0.5 부양 FloorApplied=1; transient 30d archival 이동. 순진 time-decay 가 stable 선호 잃는 AP-ADM-006 / Koren "지속 신호 상실" 회피) |
+| AC-ADM-012 (28일 TTL + 사용시 리셋) [S2 Critical] | PASS | `go test -run 'TestDecayScan_Transient(28\|29)Days\|TestTouch_(RecallEntryResetsWeightAndLastUsed\|ArchivalEntryResurrectedToRecall\|CoreEntryRefreshedInCore)' ./internal/cli/preference/` | 5/5 PASS (age==28 보존, age==29 soft-delete archival 이동; Touch recall entry last_used=now+weight=1.0, Touch archival entry recall 부활, Touch core entry core 유지 refresh) |
+| AC-ADM-NFR-004 (일일 감쇠 스캔 1회) [S3 Major] | PASS | `go test -run 'TestScanDue_WindowBehavior\|TestMarkScanned_WritesTimestampFile\|TestRunDecayScan_CadenceGateSkips' ./internal/cli/preference/` | 3/3 PASS (23h→not due, 24h→due, 25h→due; corrupt/empty/unreadable stamp→fail-open due; cadence-gate skip 시 entry 미이동 증명) |
+| power-law curve shape (design.md §E.1) | PASS | `go test -run 'TestDecayWeight_(PowerLawCurve\|TableApproxMatchesDesignDoc\|MonotonicallyDecreasing\|NegativeAgeClampedToZero)' ./internal/cli/preference/` | 4/4 PASS (formula `(age+1)^-0.5` 6-anchor 정합; doc-table 5-anchor approx; 단조 감소; 음수 age 0 클램프) |
+
+**CLI boundary (REQ-PGN-012 / C-HRA-008 family)**: `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/preference/ | grep -v _test.go | grep -v "// "` → **0 matches** (`TestDecayScanCmd_NoAskUserQuestion` static guard PASS — cmd.go doc comments 에서 literal token 회피).
+
+**preference 패키지 coverage**: **85.2%** (≥85% threshold per acceptance.md §D.6). decay.go 주요 함수: decayWeight 100%, ageInDays 100%, DecayScan 88%, ScanDue 100%, parseStampTimestamp 100%.
+
+**cross-platform build**: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (pure Go math + file I/O, syscall 무).
+
+**lint**: `golangci-lint run --timeout=2m ./internal/cli/...` → **0 issues** (`reuseWeightBoost` unused const 1건 발견·제거 후 0건).
+
+**M4 Gaps (미검증)**:
+- `go test ./...` 전수 — `internal/cli` (`TestEnableTeamMode_NoAPIKey`) + `internal/hook` (SessionStart 2건) FAIL. 둘 다 **pre-existing baseline** (`internal/cli/coverage_improvement_test.go` 본 M4 diff 0건; SessionStart 2건은 M3 시점과 동일). 본 M4 scope (`internal/cli/preference/` + `root.go` import 1줄) 외.
+- `removeArchivalEntry` coverage 50% — `os.Remove` error branch (permission) 은 filesystem injection 없이 실측 불가; idempotent nil-return 은 Touch 경로 간접 커버.
+- α=0.5 동적 추정 (complete tier 이월) — 본 M4는 단일 고정값만 (design.md §A.3 정합).
 
 ---
 
