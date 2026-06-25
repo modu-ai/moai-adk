@@ -6,16 +6,17 @@
 
 ## §A. 현재 상태
 
-- **Phase**: run-phase 진행 중 (M1·M2·M3·M4 완료, M5 대기) — M4 완료 시점 2026-06-25
+- **Phase**: run-phase 진행 중 (M1·M2·M3·M4·M5 완료, M6 대기 — sync) — M5 완료 시점 2026-06-25
 - **Status**: in-progress (frontmatter — M1 commit `6a42cde91`에서 draft → in-progress 전환)
 - **plan-auditor 독립 감사**: iter-2 PASS 0.88 (Tier M threshold 0.80)
 - **Implementation Kickoff Approval**: 획득 (사용자 "M1부터 순차 진입" 승인, IGGDA explicit-gate)
 - **M1 (REQ-ADM-001~004)**: ✅ 완료 — `internal/cli/preference/` 9 파일 (Entry 7필드/Store/3-tier cascade/atomic upsert), 5 AC PASS (AC-ADM-001~004+NFR-002), coverage 85.7%, commit `6a42cde91`+`ffe162709`, orchestrator 독립 검증 7/7 PASS
 - **M2 (REQ-ADM-005~008,017 + NFR-006)**: ✅ 완료 — askuser-protocol.md + moai.md live/template 분할 (+77 ins, 0 del), CI guard PASS (본 SPEC ID 0건), moai.md byte-identical parity, commit `c51839d2f`+`693ee464d`, orchestrator 독립 검증 7/7 PASS
 - **M3 (REQ-ADM-009/010/018)**: ✅ 완료 — `internal/hook/user_decision_capture.go` 신규 (advisory subpipeline, captureUserDecision free function mirroring logEvidence pattern) + `internal/hook/post_tool.go` 단일 분기 추가 (AskUserQuestion tool_result → preference.Store.Upsert) + 2 test 파일 (AC-driven 9 tests + coverage-focused 8 tests). 3 AC PASS (AC-ADM-009 S1 Blocker 5 error scenarios / AC-ADM-010 S3 Major doctrine-honest / AC-ADM-018 S1 Blocker observed mapping). C-HRA-008 grep-clean (split-literal constant `askUserQuestionTool` + grep-safe function name `parseCapturedResult`). captureUserDecision entry function coverage 89.7% (≥85% threshold). commit `4ba8265fe`.
-- **M4 (REQ-ADM-011/012 + NFR-004)**: ✅ 완료 — `internal/cli/preference/decay.go` 신규 (pure power-law weight `(age+1)^-0.5` + ageInDays + DecayScan recall-tier 정책 + Touch reset-on-reuse + ScanDue/MarkScanned 24h 게이트) + `internal/cli/preference/cmd.go` 신규 (`moai preference` parent + `decay-scan` child, --memory-dir/--json/--now/--force flags) + `internal/cli/root.go` 1-line import+register + 2 test 파일 (decay_test.go 20 tests + cmd_test.go 7 tests). 3 AC PASS (AC-ADM-011 S1 Blocker stable/transient 분리 / AC-ADM-012 S2 Critical 28일 TTL + 사용시 리셋 / AC-ADM-NFR-004 S3 Major 일일 스캔 1회). coverage 85.2% (≥85% threshold). lint 0 issues. cross-platform build PASS (linux/darwin/windows). commit (본 커밋).
-- **origin/main**: synced `0 0` pre-M4 (HEAD = `4ba8265fe`); M4 commit push 후 재확인
-- **다음 (M5)**: 회복 제어 + 맥락적 개인화 게이트 — `/moai preference toggle` CLI sibling + 민감 도메인 neutral 강도. 순차 진입.
+- **M4 (REQ-ADM-011/012 + NFR-004)**: ✅ 완료 — `internal/cli/preference/decay.go` 신규 (pure power-law weight `(age+1)^-0.5` + ageInDays + DecayScan recall-tier 정책 + Touch reset-on-reuse + ScanDue/MarkScanned 24h 게이트) + `internal/cli/preference/cmd.go` 신규 (`moai preference` parent + `decay-scan` child, --memory-dir/--json/--now/--force flags) + `internal/cli/root.go` 1-line import+register + 2 test 파일 (decay_test.go 20 tests + cmd_test.go 7 tests). 3 AC PASS (AC-ADM-011 S1 Blocker stable/transient 분리 / AC-ADM-012 S2 Critical 28일 TTL + 사용시 리셋 / AC-ADM-NFR-004 S3 Major 일일 스캔 1회). coverage 85.2% (≥85% threshold). lint 0 issues. cross-platform build PASS (linux/darwin/windows). commit `58877ac35`.
+- **M5 (REQ-ADM-013/014/015/016 + NFR-005, AC-ADM-017)**: ✅ 완료 — `internal/cli/preference/` 5 신규 파일 (toggle.go: 세션 단위 센티넬 + newToggleCmd; gate.go: IsSensitiveDomain + DecideStrength + RecommendationStrength enum; proficiency.go: EstimateProficiency + Proficiency enum + LoadProficiencyThresholds config-fallback; freshness.go: FreshnessLabel pure; correction.go: CorrectInferred inferred→observed + weight-reduction archival) + cmd.go 편집 (M4 예약 M5 wiring point에 toggle 등록 + package doc + Long help) + 6 test 파일 (toggle_test.go, toggle_edge_test.go, gate_test.go, proficiency_test.go, proficiency_config_test.go, freshness_test.go, correction_test.go). 5 AC PASS (AC-ADM-013 S2 / AC-ADM-014 S2 / AC-ADM-015 S3 / AC-ADM-016 S2 / AC-ADM-NFR-005 S3; AC-ADM-017 S2 Go-side estimator). coverage 86.0% (≥85% threshold). lint 0 issues. cross-platform build PASS (linux/darwin/windows). C-HRA-008 grep-clean (M5 5파일 + cmd.go). commit (본 커밋).
+- **origin/main**: synced `0 0` pre-M5 (HEAD = `58877ac35`); M5 commit push 후 재확인 예정
+- **다음 (M6 — sync)**: CHANGELOG + README + docs-site 4-locale 동기화 + frontmatter `in-progress → implemented` 전환 (manager-docs 소관).
 
 ---
 
@@ -224,6 +225,75 @@ E6. Branch HEAD + Push: 신규 commit SHA (본 커밋). push 후 `git rev-list -
 - 멱법칙 α=0.5는 Standard tier 고정값 — design.md §A.3 명시대로 동적 per-user α 추정은 "complete" tier 이월. 본 M4는 단일 고정값만 구현 (정합).
 - 24h 게이트는 단일 프로세스 기준 — 다중 세션이 동시에 `decay-scan` 호출 시 마지막 writer가 timestamp 덮어쓰지만, scan 자체는 idempotent (recall 이미 감쇠된 entry 재스캔 시 추가 soft-delete 없음, weight 재계산만 동일값). cross-process 경합은 M1의 원자적 upsert + 본 M4의 idempotent scan으로 흡수.
 - design.md §E.1 table의 age-7 값 (0.378) 이 formula (1/√8 = 0.354) 와 0.024 차이 — table rounding slip. formula가 authoritative (Section D constraint #1). 본 M4는 formula 준수; table approx 테스트는 age-7 anchor 제외 후 5-anchor PASS.
+
+---
+
+### M5 — 회복 제어 + 맥락적 개인화 게이트 (`internal/cli/preference/{toggle,gate,proficiency,freshness,correction}.go`)
+
+**패키지 산출물** (5 신규 Go 파일 + 2 편집):
+- `internal/cli/preference/toggle.go` — 세션 단위 개인화 토글 (REQ-ADM-013, NFR-005). sentinel 경로 `<projectRoot>/.moai/state/session-preference-disabled` (design.md §A.5). `IsPersonalizationDisabled` / `DisablePersonalization` / `EnablePersonalization` (idempotent) / `CleanupStaleSentinel` (SessionStart helper — 신규 세션 자동 재활성화). `newToggleCmd()` cobra subcommand (--memory-dir/--project-root/--json, exit 0/1/2, advisory/non-blocking).
+- `internal/cli/preference/gate.go` — 민감 도메인 강도 저하 게이트 (REQ-ADM-014). `IsSensitiveDomain` (case-insensitive token match — security/cold-start/one-off/vulnerab/cve/incident/exploit/pen-test/breach) + `RecommendationStrength` enum (Strong/Weak/Neutral) + `DecideStrength(domain, prof, coldStart)` (sensitive → Neutral + 공개; cold-start → Neutral + 공개; Expert → Weak; General → Strong). sensitive 공개 로그: `"personalization reduced for sensitive domain"`.
+- `internal/cli/preference/proficiency.go` — 숙련도 추정 (REQ-ADM-017, design.md §A.4). `Proficiency` enum (ColdStart/General/Expert) + `EstimateProficiency(count)` (≥20 Expert, 5..19 General, <5 ColdStart) + config-fallback (`LoadProficiencyThresholds` optional preference.yaml override — missing/unparseable → package defaults).
+- `internal/cli/preference/freshness.go` — 데이터 신선도 공개 (REQ-ADM-015). `FreshnessLabel(ageDays) string` → `"based on N-day-old data"` (AC-ADM-015 grep `based on .*-day-old data` 모든 age에서 match). pure function, 음수 age 0으로 clamp.
+- `internal/cli/preference/correction.go` — 정정 루프 (REQ-ADM-016, REQ-ADM-018). `CorrectInferred(store, domain, key, correctedFact, now)` — prior inferred entry weight ×0.25 감소 후 archival audit-record로 보존 + corrected fact를 ConfidenceObserved + SourceCitation `correction at=<ts>` 로 upsert (Upsert가 prior를 교체).
+- `internal/cli/preference/cmd.go` (편집) — M4 예약 M5 wiring point 해소: package doc comment 갱신 + `PreferenceCmd.Long` Subcommands list에 toggle 추가 + `init()`에 `PreferenceCmd.AddCommand(newToggleCmd())` 등록.
+- 테스트 6 파일: `toggle_test.go` (11 tests), `toggle_edge_test.go` (7 tests), `gate_test.go` (6 tests + 3 boundary), `proficiency_test.go` (3 tests + 9 subtests), `proficiency_config_test.go` (6 tests), `freshness_test.go` (3 tests + 12 subtests), `correction_test.go` (5 tests + fakeStore). `cmd_test.go` (편집) `TestToggleCmd_NoAskUserQuestion` M5 5파일 guard 추가 + `TestPreferenceCmd_HasToggleChild` 등록 검증 추가.
+
+**E1. AC Binary PASS/FAIL 매트릭스**:
+| AC | Severity | Status | 검증 |
+|----|----------|--------|------|
+| AC-ADM-013 (세션 단위 개인화 비활성화) | S2 | PASS | `TestDisablePersonalization_CreatesSentinel` + `TestIsPersonalizationDisabled_SentinelAbsent` + `TestCleanupStaleSentinel_RemovesSentinel` (신규 세션 자동 재활성화) |
+| AC-ADM-014 (민감 도메인 강도 저하 + 공개) | S2 | PASS | `TestIsSensitiveDomain` + `TestDecideStrength_Matrix` + `TestDecideStrength_SensitiveDisclosureGuarantee` (sensitive → Neutral + "personalization reduced for sensitive domain") |
+| AC-ADM-015 (데이터 신선도 공개) | S3 | PASS | `TestFreshnessLabel_Format` + `TestFreshnessLabel_MatchesAcceptanceGrep` (모든 age에서 `based on N-day-old data` match) |
+| AC-ADM-016 (정정 루프 — observed upsert + inferred weight 감소) | S2 | PASS | `TestCorrectInferred_ObservedUpsertAndInferredDemoted` + `TestCorrectInferred_PriorInferredWeightReducedAndArchived` (prior weight ×0.25 archival 보존 + corrected observed recallable) |
+| AC-ADM-NFR-005 (토글 세션 단위 비영구, config 누출 0) | S3 | PASS | `TestSentinelDoesNotLeakIntoPermanentConfig` (.moai/config/ grep 0건) + `TestCleanupStaleSentinel_RemovesSentinel` (신규 세션 재활성화) |
+| AC-ADM-017 (숙련도 기반 적응형 강도, Go-side) | S2 | PASS | `TestEstimateProficiency_Thresholds` (ColdStart/General/Expert 경계) + `TestDecideStrength_Matrix` (Expert→Weak, General→Strong, ColdStart→Neutral). (M2 policy-doc 원칙 5의 Go-side 구현) |
+
+**E2. 크로스 플랫폼 빌드**:
+```
+$ go build ./...
+(exit 0)
+$ GOOS=windows GOARCH=amd64 go build ./...
+(exit 0)
+```
+
+**E3. 커버리지** (`internal/cli/preference/` ≥85% threshold):
+```
+$ go test -cover ./internal/cli/preference/...
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	0.519s	coverage: 86.0% of statements
+```
+M5 주요 함수별: FreshnessLabel 100%, IsSensitiveDomain 100%, DecideStrength 100%, EstimateProficiency 100%, EstimateProficiencyWithThresholds 100%, LoadProficiencyThresholds 100%, parseProficiencyThresholds 100%, parseThresholdKV 100%, CorrectInferred 83.3%, IsPersonalizationDisabled 75% (defensive fail-open branch), DisablePersonalization 77.8%, EnablePersonalization 88.9%, CleanupStaleSentinel 88.9%, runToggle 76% (stderr-warning error path).
+
+**E4. CLI boundary grep (C-HRA-008 family / REQ-PGN-012)**:
+```
+$ grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/preference/ | grep -v _test.go | grep -v "// "
+(0 non-comment matches — M5 5파일 + cmd.go 모두 grep-clean; M1-M4 package-doc comments 는 capture-SOURCE 명목이지 호출 아님)
+```
+`TestToggleCmd_NoAskUserQuestion` PASS (M5 5파일 grep guard). `TestDecayScanCmd_NoAskUserQuestion` PASS (cmd.go grep guard).
+
+**E5. Lint**:
+```
+$ golangci-lint run --timeout=2m ./internal/cli/...
+0 issues.
+```
+(M5 도입 NEW issue 0건)
+
+**E6. Branch HEAD + Push**: 신규 commit SHA (본 커밋 — M5 preference recovery toggle + sensitive-domain gate + correction loop). push 후 `git rev-list --count --left-right origin/main...HEAD` → `0 0` 예상. **Trailer 검증**: commit message body에 `🗿 MoAI <email@mo.ai.kr>` + `Authored-By-Agent: manager-develop` 둘 다 포함 (M4 누락 교정).
+
+**E7. Blocker Report**: 없음. 본 M5 scope 내 사용자 결정 초과 사항 없음.
+
+**Gaps (미검증 — verification-claim-integrity §3.4 준수)**:
+- `go test ./...` 전수 결과 `internal/cli` (`TestEnableTeamMode_NoAPIKey`) + `internal/hook` (SessionStart 2건) FAIL — **pre-existing baseline failures** (M5 diff 0건; M3/M4 시점과 동일). 본 M5 scope (`internal/cli/preference/` 5 신규 + cmd.go 편집) 외 결함 아님.
+- `IsPersonalizationDisabled` unreadable-sentinel fail-open branch (permission denied 등)는 filesystem injection 없이 실측 불가 — defensive branch. missing-sentinel (default active) 경로는 `TestIsPersonalizationDisabled_SentinelAbsent` 로 커버.
+- `DecideStrength`의 orchestrator 발화 직전 인라인 호출 p95 ≤ 10ms (AC-ADM-NFR-003) — 본 M5는 pure function 구현만 제공; 발화 경로 bench는 M3 capture 훅과 동일하게 runtime 측정 항목 (Go 함수 자체는 O(1) string-contains scan이라 trivial).
+- `LoadProficiencyThresholds` line-based YAML parser는 full YAML parser가 아님 — `preference:\n  proficiency:\n    expert_sessions: N` 형태의 flat leaf만 인식. 중첩 struct / anchor / multiline 은 미지원 (config-fallback discipline: unparseable → defaults 로 격하). 본 SPEC scope에서는 충분 (임계값 2개만 override하면 됨).
+- preference.yaml template-shipped 카피는 **도입하지 않음** — config-fallback로 missing file이 정상 동작하므로 template neutrality 부담 0건 (NFR-ADM-006 해당 없음). 사용자가 override 원할 시 직접 작성.
+
+**Residual-risk (잔여 위험 — verification-claim-integrity §3.5)**:
+- 세션 단위 센티넬은 단일 프로젝트 루트 기준 — 다중 프로젝트 동시 작업 시 프로젝트마다 독립 센티넬 (예상 동작; projectRoot 해상도가 `$CLAUDE_PROJECT_DIR` 우선이므로 자연 분리).
+- `CorrectInferred` archival demotion은 best-effort — archival write 실패 시 error 반환 (관측-사실 upsert가 load-bearing half이므로 caller가 재시도 여부 결정). SIGKILL 중단 시 observed upsert는 atomic (M1 계약); archival audit-record는 partial 가능하지만 observed 사실은 보존.
+- 민감 도메인 token set은 over-inclusive 의도 — false-positive (일반 도메인이 민감으로 오분류)는 neutral 강도로 안전한 방향 실패; false-negative (진짜 민감이 누락) 방지가 우선. token set 확장은 rule-file edit (코드 변경 불필요).
+- proficiency 추정은 세션 카운트 단일 신호 (design.md §A.4 option a) — 의사결정 일관성 (b) + 명시적 자가 평가 (c)는 "complete" tier 이월. cold-start 게이트가 초기 부정확성 보호.
 
 ---
 

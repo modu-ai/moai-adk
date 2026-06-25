@@ -1,16 +1,20 @@
 // Package preference — CLI subcommand surface (cmd.go).
 //
-// This file wires the `moai preference` parent command and its first child
-// `moai preference decay-scan` (SPEC-V3R6-ASKUSER-DECISION-MEMORY-001 M4,
-// REQ-ADM-011/012, NFR-ADM-004). M5 will add `moai preference toggle` as a
-// sibling under the same parent.
+// This file wires the `moai preference` parent command and its two children:
+//
+//   - `moai preference decay-scan` (M4, REQ-ADM-011/012, NFR-ADM-004): the
+//     daily background decay-policy pass (power-law weight refresh + 28-day
+//     TTL eviction of transient entries).
+//   - `moai preference toggle` (M5, REQ-ADM-013, NFR-ADM-005): the session-
+//     level personalization recovery toggle (non-permanent; auto-reactivates
+//     each new session).
 //
 // The CLI is a maintenance entry point: it resolves the Claude Code memory
-// dir, opens the preference fileStore, runs one DecayScan pass, prints a
-// machine-readable summary, and writes the daily-cadence timestamp file so
-// the SessionStart-hook branch (or a cron) can skip if invoked again within
-// 24h. The scan is advisory — errors go to structured stderr and the command
-// exits non-zero; it does NOT block any workflow.
+// dir, opens the preference fileStore, runs one maintenance pass, prints a
+// machine-readable summary, and writes the cadence/sentinel state files so
+// the SessionStart-hook branch (or a cron) can skip or reactivate as needed.
+// The subcommands are advisory — errors go to structured stderr and the
+// command exits non-zero; they do NOT block any workflow.
 
 package preference
 
@@ -43,7 +47,8 @@ It has three tiers (core / recall / archival) and a power-law decay policy
 with a 28-day TTL for transient entries.
 
 Subcommands:
-  decay-scan   Run one background decay pass (≤1/day, timestamp-gated)`,
+  decay-scan   Run one background decay pass (≤1/day, timestamp-gated)
+  toggle       Toggle session-level personalization on/off (non-permanent)`,
 	GroupID: "tools",
 }
 
@@ -234,9 +239,10 @@ func runDecayScan(stdout, stderr io.Writer, flags *decayScanFlags) error {
 	return nil
 }
 
-// init registers the decay-scan child under the PreferenceCmd parent. The
-// parent itself is registered under rootCmd by internal/cli/root.go via
+// init registers the children under the PreferenceCmd parent. The parent
+// itself is registered under rootCmd by internal/cli/root.go via
 // rootCmd.AddCommand(preference.PreferenceCmd).
 func init() {
 	PreferenceCmd.AddCommand(newDecayScanCmd())
+	PreferenceCmd.AddCommand(newToggleCmd())
 }

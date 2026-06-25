@@ -13,8 +13,13 @@ import (
 // TestDecayScanCmd_NoAskUserQuestion (REQ-PGN-012 / C-HRA-008 family) is the
 // static guard mirroring internal/cli/worktree/new_test.go::TestNew_NoAskUserQuestion.
 // The CLI runs in subagent context and MUST NOT reference AskUserQuestion or
-// mcp__askuser anywhere in its source. A grep over the cmd.go file asserts 0
-// matches.
+// mcp__askuser anywhere in its source. The guard covers cmd.go (the CLI wiring
+// file touched by both M4 and M5) — the M1-M4 data-layer files (decay.go /
+// entry.go / store.go / filestore.go / user_decision_capture.go) are excluded
+// because their package-doc comments legitimately name the AskUserQuestion
+// channel as the capture SOURCE (they do not INVOKE it). The M5-specific guard
+// (TestToggleCmd_NoAskUserQuestion + the M5 file set) covers the M5 additions
+// separately.
 func TestDecayScanCmd_NoAskUserQuestion(t *testing.T) {
 	t.Parallel()
 	files := []string{
@@ -27,6 +32,31 @@ func TestDecayScanCmd_NoAskUserQuestion(t *testing.T) {
 		}
 		if strings.Contains(string(src), "AskUserQuestion") || strings.Contains(string(src), "mcp__askuser") {
 			t.Errorf("internal/cli/preference/%s must NOT reference AskUserQuestion or mcp__askuser (orchestrator-only HARD per REQ-PGN-012)", file)
+		}
+	}
+}
+
+// TestToggleCmd_NoAskUserQuestion is the M5-specific static guard. It asserts
+// the M5 CLI + pure-function files stay free of AskUserQuestion / mcp__askuser
+// (REQ-PGN-012 / C-HRA-008 orchestrator-only boundary). The M5 files are all
+// NEW (no pre-existing package-doc comments that name the channel as a capture
+// source), so a literal substring scan is a sound guard here.
+func TestToggleCmd_NoAskUserQuestion(t *testing.T) {
+	t.Parallel()
+	files := []string{
+		"toggle.go",     // the toggle subcommand (the M5 CLI surface)
+		"gate.go",       // DecideStrength pure function
+		"proficiency.go", // EstimateProficiency pure function
+		"freshness.go",  // FreshnessLabel pure function
+		"correction.go", // CorrectInferred store helper
+	}
+	for _, file := range files {
+		src, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatalf("read %s: %v", file, err)
+		}
+		if strings.Contains(string(src), "AskUserQuestion") || strings.Contains(string(src), "mcp__askuser") {
+			t.Errorf("internal/cli/preference/%s must NOT reference AskUserQuestion or mcp__askuser (REQ-PGN-012 / C-HRA-008 orchestrator-only boundary)", file)
 		}
 	}
 }
@@ -203,6 +233,22 @@ func TestPreferenceCmd_HasDecayScanChild(t *testing.T) {
 	}
 	if !found {
 		t.Error("PreferenceCmd has no decay-scan child; init() wiring broken")
+	}
+}
+
+// TestPreferenceCmd_HasToggleChild verifies the init() func wired the M5 toggle
+// child under the parent so `moai preference toggle` resolves.
+func TestPreferenceCmd_HasToggleChild(t *testing.T) {
+	t.Parallel()
+	found := false
+	for _, c := range PreferenceCmd.Commands() {
+		if c.Use == "toggle" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("PreferenceCmd has no toggle child; init() wiring broken (M5 toggle not registered)")
 	}
 }
 
