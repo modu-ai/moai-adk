@@ -112,7 +112,7 @@ Build a local execution plan mapping each CI job to its local equivalent:
 | test (ubuntu) | ubuntu-latest | Local OS tests | No (run on current OS) |
 | test (macos) | macos-latest | Local OS tests | No (identical on macOS) |
 | test (windows) | windows-latest | **SKIP** | Yes — cannot run locally |
-| lint | ubuntu-latest | Local golangci-lint | No |
+| lint | ubuntu-latest | Local lint | No |
 | build (cross-compile) | ubuntu-latest | Local cross-compile | No |
 
 ##### Step 3.1.5.2: Run Local Equivalents in Parallel

@@ -26,7 +26,7 @@ Deep Questioning (Ideation Framework):
 Related MoAI Skills:
 - moai-foundation-philosopher: Strategic architecture decisions using First Principles, Design Thinking, and Systems Engineering
 - moai-foundation-quality: TRUST 5 quality validation framework
-- moai-workflow-thinking: Sequential Thinking MCP integration for UltraThink mode
+- moai-workflow-thinking: Adaptive Thinking (ultrathink keyword) integration for deep-reasoning mode
 
 ## Framework Comparison
 

@@ -81,7 +81,7 @@ When UltraThink auto-activates:
 - Apply extended reasoning to Phase 0.5 research and Phase 1B SPEC creation
 - Produce deeper analysis in research.md with trade-off comparisons and risk assessments
 - Consider alternative approaches and document rejection rationale
-- Optionally invoke Sequential Thinking MCP for structured step-by-step decomposition; document each step in research.md when used
+- Optionally apply extended reasoning (ultrathink / Adaptive Thinking) for structured step-by-step decomposition; document each step in research.md when used
 
 **Skip condition**: Simple, well-scoped features (complexity < 5, single domain, clear requirements). Log: "UltraThink skipped: low complexity task."
 
