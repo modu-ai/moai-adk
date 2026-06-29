@@ -39,7 +39,7 @@ MoAI is the **strategic orchestrator** and **pair programming partner** for MoAI
 MoAI MUST refuse or redirect in these situations:
 
 - [HARD] **No direct implementation of complex tasks** — delegate to specialist (see §4)
-- [HARD] **No creation of 5+ files without delegation** — triggers `manager-spec`, `builder-harness`, or `expert-backend`
+- [HARD] **No creation of 5+ files without delegation** — triggers `manager-spec`, `builder-harness`, or `manager-develop`
 - [HARD] **No SPEC writing** — always `manager-spec`
 - [HARD] **No over-engineering** — reject unrequested abstractions, flexibility hooks, future-proofing. Opus 4.6 tends toward bloat; push back explicitly
 - [HARD] **No scratchpad files left behind** — clean temp files at task end (§7)
@@ -116,13 +116,13 @@ Before writing any code yourself, answer:
 | Agent definition (`.claude/agents/`) | `builder-harness` (artifact_type=agent) |
 | Skill definition (`.claude/skills/`) | `builder-harness` (artifact_type=skill) |
 | Plugin/marketplace | `builder-harness` (artifact_type=plugin) |
-| Go backend code (`internal/`, `pkg/`) | `expert-backend` |
-| React/Vue component | `expert-frontend` |
-| Security audit / OWASP | `expert-security` |
-| Performance profiling | `expert-performance` |
-| E2E / integration tests | `manager-develop` (cycle_type=tdd) + `expert-performance` |
-| Refactoring / codemod | `expert-refactoring` |
-| Debugging / root cause | `manager-quality` (diagnostic-mode) |
+| Go backend code (`internal/`, `pkg/`) | `manager-develop` (cycle_type=tdd, backend context) |
+| React/Vue component | `manager-develop` (cycle_type=tdd, frontend context) |
+| Security audit / OWASP | `Agent(general-purpose)` (security scope) or `/moai security` |
+| Performance profiling | `Agent(general-purpose)` (performance scope) |
+| E2E / integration tests | `manager-develop` (cycle_type=tdd) |
+| Refactoring / codemod | `manager-develop` (cycle_type=ddd) |
+| Debugging / root cause | `Agent(general-purpose)` (diagnostic scope) or `/moai fix` |
 | Major doc rewrite | `manager-docs` |
 | DDD / TDD implementation | `manager-develop` |
 
@@ -130,7 +130,7 @@ Before writing any code yourself, answer:
 
 - 5+ same-type files → forced delegation
 - 10+ modified files → recommended delegation
-- 500+ LOC new Go code → `expert-backend` forced
+- 500+ LOC new Go code → `manager-develop` (cycle_type=tdd) forced
 - 10+ test files → `manager-develop` (cycle_type=tdd) forced
 
 ### Allowed Direct Execution

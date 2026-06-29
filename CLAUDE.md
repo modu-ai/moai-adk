@@ -288,9 +288,9 @@ For core parallel execution principles, see .claude/rules/moai/core/moai-constit
 - **Team File Ownership**: In team mode, each teammate owns specific file patterns to prevent write conflicts
 - **Background Agent Write Restriction**: [ZONE:Frozen] [HARD] As of Claude Code v2.1.186, when a background subagent (`run_in_background: true`) reaches a tool call needing permission, the prompt surfaces in the main session (naming the asking subagent; Esc denies just that one call). MoAI nonetheless keeps `run_in_background: false` for agents that modify files as a conservative default — each background write would otherwise raise a main-session prompt that interrupts the leader's flow and undercuts the parallelism benefit of backgrounding. Read-only agents (research, analysis) can safely run in background.
 
-### Worktree Isolation Rules (Advisory — 2026-05-17 Policy)
+### Worktree Isolation Rules (Advisory)
 
-Per user policy 2026-05-17, L2/L3 worktree usage is user opt-in. L1 `Agent(isolation: "worktree")` is Claude Code runtime autonomous — MoAI orchestrator does not mandate isolation (implementation/read-only teammate guidance, one-shot cross-file changes, and GitHub fixer isolation are all [SHOULD], runtime-decided). For the complete worktree selection decision tree and per-role isolation guidance, see .claude/rules/moai/workflow/worktree-integration.md § Terminology Glossary.
+Per the current worktree-opt-in policy, L2/L3 worktree usage is user opt-in. L1 `Agent(isolation: "worktree")` is Claude Code runtime autonomous — MoAI orchestrator does not mandate isolation (implementation/read-only teammate guidance, one-shot cross-file changes, and GitHub fixer isolation are all [SHOULD], runtime-decided). For the complete worktree selection decision tree and per-role isolation guidance, see .claude/rules/moai/workflow/worktree-integration.md § Terminology Glossary.
 
 ---
 

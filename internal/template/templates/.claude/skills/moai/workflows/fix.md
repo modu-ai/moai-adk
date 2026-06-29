@@ -307,7 +307,7 @@ Team Prerequisites:
 
 ## Related Skills
 
-Workflow audit 2026-05-16 (F-005) 정적 routing 명시:
+정적 routing:
 
 - **moai-workflow-ci-loop** — Unified CI watch + auto-fix loop skill. After `/moai sync` PR creation, polls required checks; on failure handoff classifies mechanical vs semantic and attempts up to 3 auto-fix iterations. HARD invocation contracts: `.claude/rules/moai/workflow/ci-watch-protocol.md` + `.claude/rules/moai/workflow/ci-autofix-protocol.md`. 패치 실패 시 AskUserQuestion 경유 escalation.
 

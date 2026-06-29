@@ -13,17 +13,7 @@ runtime:
   # Agents not listed here use the 'default' value.
   per_agent_budget:
     default: 30000
-    manager-strategy: 60000
     manager-spec: 40000
-    expert-backend: 40000
-    expert-frontend: 40000
-    expert-security: 40000
-    expert-testing: 40000
-    expert-debug: 40000
-    expert-performance: 40000
-    expert-refactoring: 40000
-    expert-devops: 40000
-    expert-mobile: 40000
     sync-auditor: 20000
     plan-auditor: 20000
 

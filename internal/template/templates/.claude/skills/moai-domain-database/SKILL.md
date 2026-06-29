@@ -307,8 +307,6 @@ Full platform reference: [modules/cloud-database.md](modules/cloud-database.md)
 
 ## Refactor Notes
 
-**R4 audit verdict** (2026-04-23): REFACTOR — MERGE target (absorbs moai-platform-database-cloud) with additional restructuring needed
-**SPEC**: (internal provenance omitted)
 **Refactor scope** (deferred to future sub-SPEC):
 - Separate moai-domain-db-docs workflow skill from this query/schema design skill
 - Extract cloud vendor deep-dives (Neon, Supabase, Firestore) into dedicated Level-3 modules
