@@ -39,7 +39,7 @@ Critical Rule: Execute `/clear` after `/moai plan` (saves 45-50K tokens)
 
 Purpose: Initialize project structure and generate configuration
 
-Agent Delegation: `workflow-project`
+Agent Delegation: `manager-docs` (project-doc scaffolding)
 
 Usage:
 ```bash
@@ -76,7 +76,7 @@ MoAI: Project initialized successfully.
 
 Purpose: Generate SPEC document in GEARS format (current; EARS retained as legacy reference for the 6-month backward-compat window)
 
-Agent Delegation: `workflow-spec`
+Agent Delegation: `manager-spec`
 
 Usage:
 ```bash
@@ -129,7 +129,7 @@ MoAI: SPEC-001 generated successfully.
 
 Purpose: Execute ANALYZE-PRESERVE-IMPROVE cycle
 
-Agent Delegation: `workflow-ddd`
+Agent Delegation: `manager-develop` (cycle_type ddd/tdd/autofix)
 
 Usage:
 ```bash
@@ -191,7 +191,7 @@ MoAI: DDD implementation cycle started for SPEC-001.
 
 Purpose: Auto-generate API documentation and project artifacts
 
-Agent Delegation: `workflow-docs`
+Agent Delegation: `manager-docs`
 
 Usage:
 ```bash
@@ -228,7 +228,7 @@ MoAI: Documentation synchronized for SPEC-001.
 
 Purpose: Error analysis and improvement suggestions
 
-Agent Delegation: `core-quality`
+Agent Delegation: orchestrator (creates a GitHub issue)
 
 Usage:
 ```bash
@@ -301,13 +301,13 @@ With /clear:
 
 Each command delegates to a specific agent:
 
-| Command            | Agent              | Agent Type              |
-| ------------------ | ------------------ | ----------------------- |
-| `/moai project`  | `workflow-project` | Tier 1 (Always Active)  |
-| `/moai plan`     | `workflow-spec`    | Tier 1 (Always Active)  |
-| `/moai run`      | `workflow-ddd`     | Tier 1 (Always Active)  |
-| `/moai sync`     | `workflow-docs`    | Tier 1 (Always Active)  |
-| `/moai feedback` | `core-quality`     | Tier 2 (Auto-triggered) |
+| Command            | Agent              | Phase scope                 |
+| ------------------ | ------------------ | --------------------------- |
+| `/moai project`  | `manager-docs`     | Project-doc scaffolding     |
+| `/moai plan`     | `manager-spec`     | Plan-phase                  |
+| `/moai run`      | `manager-develop`  | Run-phase (ddd/tdd/autofix) |
+| `/moai sync`     | `manager-docs`     | Sync-phase                  |
+| `/moai feedback` | orchestrator       | Creates a GitHub issue      |
 
 Delegation Flow:
 ```
@@ -349,7 +349,7 @@ Common Errors:
 | "Project not initialized" | `/moai plan`         | Run `/moai project` first                 |
 | "SPEC not found"          | `/moai run SPEC-999` | Verify SPEC ID exists                       |
 | "Token limit exceeded"    | Any                    | Execute `/clear` immediately                |
-| "Test coverage < 85%"     | `/moai run`          | `core-quality` auto-generates missing tests |
+| "Test coverage < 85%"     | `/moai run`          | `manager-develop` adds the missing tests    |
 
 Recovery Pattern:
 ```bash
@@ -413,10 +413,9 @@ Other Modules:
 - [agents-reference.md](agents-reference.md) - Agent catalog
 
 Agents:
-- [workflow-project](agents-reference.md#tier-1-command-processors) - `/moai project`
-- [workflow-spec](agents-reference.md#tier-1-command-processors) - `/moai plan`
-- [workflow-ddd](agents-reference.md#tier-1-command-processors) - `/moai run`
-- [workflow-docs](agents-reference.md#tier-1-command-processors) - `/moai sync`
+- [manager-spec](agents-reference.md) - `/moai plan`
+- [manager-develop](agents-reference.md) - `/moai run`
+- [manager-docs](agents-reference.md) - `/moai sync`, `/moai project`
 
 ---
 

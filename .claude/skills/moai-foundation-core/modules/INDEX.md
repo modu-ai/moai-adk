@@ -33,10 +33,10 @@ Use Cases:
 Specification-Driven Development - GEARS format requirements (current; EARS retained as legacy reference for 6-month backward-compat) with ANALYZE-PRESERVE-IMPROVE DDD cycles.
 
 Quick Access:
-- SPEC generation (/moai:1-plan)
+- SPEC generation (/moai plan)
 - GEARS format patterns (current; EARS as legacy reference)
-- DDD implementation (/moai:2-run)
-- Documentation sync (/moai:3-sync)
+- DDD implementation (/moai run)
+- Documentation sync (/moai sync)
 
 Use Cases:
 - New feature development
@@ -114,32 +114,32 @@ Use Cases:
 
 ---
 
-### 7. agents-reference.md (NEW)
-Agent Catalog - Complete reference of MoAI-ADK's 26 specialized agents with 7-tier hierarchy.
+### 7. agents-reference.md
+Agent Catalog - Reference of MoAI-ADK's 8 retained agents (flat catalog, no tier hierarchy).
 
 Quick Access:
-- `{domain}-{role}` naming convention
-- 7 tiers: workflow, core, domain, mcp, factory, support, ai
-- Agent selection criteria
-- MCP Resume pattern (40-60% token savings)
+- 8 retained agents (7 MoAI-custom + Explore)
+- Natural-language delegation (no `subagent_type` code literal)
+- Selection decision tree
+- Archived agent names rejected at spawn
 
 Use Cases:
-- Agent selection for Agent() delegation
-- Understanding agent hierarchy
-- MCP integrator usage
-- Historical agent merges
+- Agent selection for delegation
+- Understanding the flat catalog
+- Routing domain work to retained agents
+- Orchestration primitive selection
 
 ---
 
-### 8. commands-reference.md (NEW)
-Command Catalog - Complete reference for MoAI-ADK's 6 core commands in SPEC-First DDD workflow.
+### 8. commands-reference.md
+Command Catalog - Reference for MoAI-ADK's core `/moai` commands in the SPEC-First workflow.
 
 Quick Access:
-- /moai:0-project (Project init)
-- /moai:1-plan (SPEC generation)
-- /moai:2-run (DDD implementation)
-- /moai:3-sync (Documentation)
-- /moai:9-feedback (Improvement)
+- /moai project (project init)
+- /moai plan (SPEC generation)
+- /moai run (implementation)
+- /moai sync (documentation)
+- /moai feedback (improvement)
 
 Use Cases:
 - Command workflow execution
@@ -263,10 +263,10 @@ Detailed Reference: [TRUST 5 Framework Module](modules/trust-5-framework.md)
 | token-optimization | 656 | Budget, /clear, loading, models | 4 |
 | progressive-disclosure | 576 | 3 levels, 500-line limit, splitting | 4 |
 | modular-system | 588 | File structure, organization, discovery | 4 |
-| agents-reference | ~400 | 26 agents, 7 tiers, MCP Resume | 4 |
-| commands-reference | ~300 | 6 commands, workflow, /clear rules | 4 |
+| agents-reference | ~123 | 8 retained agents, flat catalog | 4 |
+| commands-reference | ~300 | core /moai commands, workflow, /clear rules | 4 |
 | execution-rules | ~700 | Security, Git, compliance, RBAC | 4 |
-| Total | ~6,825 | 36 major topics | 36 use cases |
+| Total | ~5,548 | 36 major topics | 36 use cases |
 
 ---
 
@@ -274,18 +274,17 @@ Detailed Reference: [TRUST 5 Framework Module](modules/trust-5-framework.md)
 
 Skills:
 - moai-foundation-core (parent skill)
-- moai-cc-skill-factory (skill creation)
-- moai-core-agent-factory (agent creation)
+- moai-foundation-cc (Claude Code authoring: skills, agents, plugins)
 
 Agents:
-- skill-factory (module generation)
-- docs-manager (documentation)
-- quality-gate (validation)
+- builder-harness (agent / skill / harness generation)
+- manager-docs (documentation)
+- sync-auditor (quality validation)
 
 Commands:
-- /moai:1-plan (SPEC-First DDD)
-- /moai:2-run (DDD implementation)
-- /moai:3-sync (Documentation)
+- /moai plan (SPEC generation)
+- /moai run (implementation)
+- /moai sync (documentation)
 - /clear (Token optimization)
 
 ---
