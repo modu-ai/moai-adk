@@ -1,5 +1,4 @@
 # Self-Learning Quality Guard: Go hardcoding detection rules
-# SPEC: SPEC-SLQG-001
 #
 # These rules detect common hardcoding anti-patterns in Go source code.
 # Severity levels:

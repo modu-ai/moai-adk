@@ -1,4 +1,4 @@
-# Build to Delete Framework (SPEC-SUNSET-001)
+# Build to Delete Framework
 # Best harness gradually erases itself as agents grow.
 # Sunset conditions define when quality gates can be relaxed.
 # Gate names are language-agnostic; the runtime maps them to project-specific tools.

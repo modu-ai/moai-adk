@@ -30,7 +30,7 @@ github:
   # SPEC git workflow strategy (main_direct, feature_branch, release_branch)
   spec_git_workflow: main_direct
 
-# Hook observability configuration (SPEC-V3R2-RT-006 REQ-004)
+# Hook observability configuration
 hook:
   # List of retired events to re-enable as observability taps.
   # Empty list (default) means all retired events are silently no-op.
@@ -42,7 +42,7 @@ hook:
   # Controls TaskCreated, Notification, and handle-harness-observe-* hook execution.
   # Default: false (hooks are skipped, reduces per-turn overhead by ~25-30%).
   # NOTE: This key is INDEPENDENT of `observability.enabled` in observability.yaml
-  # (REQ-OBS-005 trace-logging master toggle). See SPEC §A.3 cohabitation contract.
+  # (the trace-logging master toggle in observability.yaml). The two toggles cohabit independently.
   opt_in:
     enabled: false
 

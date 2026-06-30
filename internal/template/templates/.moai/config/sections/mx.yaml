@@ -194,7 +194,7 @@ mx:
       - ".moai/project/product.md"
       - "README.md"
 
-  # SPEC-V3R2-SPC-004: default danger_categories mapping (REQ-SPC-004-012)
+  # default danger_categories mapping
   # Pattern map for classifying WARN tag REASON text into categories.
   # Keys: category names; values: case-insensitive substring pattern lists.
   danger_categories:
@@ -213,7 +213,7 @@ mx:
       - sql injection
       - xss
 
-  # Test file path patterns (excluded by default when computing fan-in, REQ-SPC-004-040)
+  # Test file path patterns (excluded by default when computing fan-in)
   test_paths:
     - "*_test.go"
     - "tests/**"

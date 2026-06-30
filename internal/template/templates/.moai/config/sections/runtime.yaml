@@ -1,6 +1,6 @@
 # Token Circuit Breaker configuration
-# SPEC-V3R3-ARCH-007: per-agent token budget tracking + stall detection.
-# Warning-first policy (BC-V3R3-006); planned transition to hard-fail in P5.
+# Per-agent token budget tracking + stall detection.
+# Warning-first policy; a hard-fail transition is planned for a future phase.
 # /clear is never triggered automatically (HARD constraint).
 runtime:
   context_window:

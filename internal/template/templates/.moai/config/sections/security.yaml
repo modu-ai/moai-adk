@@ -1,4 +1,4 @@
-# Security Hardening Configuration (SPEC-SECURITY-001)
+# Security Hardening Configuration
 # Extra patterns extend (never replace) DefaultSecurityPolicy hardcoded patterns.
 # Uses SOLID O-Principle: extend via config without modifying core.
 
@@ -22,8 +22,7 @@ security:
   # Additional sensitive content patterns (regex, case-insensitive).
   extra_sensitive_content_patterns: []
 
-  # T-RT002-18: SPEC-V3R2-RT-002 permission subsystem new keys.
-  # REQ-V3R2-RT-002-022, REQ-V3R2-RT-002-006, REQ-V3R2-RT-002-030.
+  # Permission subsystem keys.
   permission:
     # When strict_mode=true, agent spawn in bypassPermissions mode is rejected.
     strict_mode: false
@@ -32,8 +31,7 @@ security:
     # session_rules: session-scoped rules loaded at the SrcSession tier.
     session_rules: []
 
-  # SPEC-V3R2-RT-003: Sandbox Execution Layer configuration.
-  # REQ-V3R2-RT-003-008/020/030/031.
+  # Sandbox Execution Layer configuration.
   sandbox:
     # When required=true, agents with sandbox: none are rejected without sandbox.justification.
     # Default: false (v3.0 — considered for true in v3.1+).

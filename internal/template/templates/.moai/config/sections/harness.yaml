@@ -64,7 +64,7 @@ harness:
   plan_audit_global:
     always_enabled: true              # [HARD] Cannot be disabled by auto_detection
     enforce_gate_on_spec_creation: true  # [HARD] Blocks SPEC creation outside /moai plan
-    rationale: "SPEC-AUDIT-POSTMORTEM-2026-04-21 — prevent scope-creep SPEC generation"
+    rationale: "prevent scope-creep SPEC generation"
 
   # Level definitions
   levels:
@@ -155,7 +155,7 @@ harness:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Harness Learning Subsystem Configuration
-# REQ-HL-010: Learning behavior parameters, defined under the learning: key.
+# Learning behavior parameters, defined under the learning: key.
 # ─────────────────────────────────────────────────────────────────────────────
 learning:
   # Whether the observer + learner are enabled (default true).
@@ -164,7 +164,7 @@ learning:
 
   # Whether to apply automatically upon reaching Tier 4 (default false).
   # When false, user approval via AskUserQuestion is required.
-  # REQ-HL-005: auto_apply default value MUST be false.
+  # auto_apply default value MUST be false.
   auto_apply: false
 
   # Tier promotion thresholds [Observation, Heuristic, Rule, AutoUpdate].

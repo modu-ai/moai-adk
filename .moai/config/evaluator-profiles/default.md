@@ -70,7 +70,7 @@ At the finding stage, report every issue you find, including ones you are uncert
 | 0.50 | Some pattern violations; deviations are localized |
 | 0.25 | Significant inconsistencies with existing codebase patterns |
 
-## D7/D8 Plan-Phase Dimensions (SPEC-V3R5-WORKFLOW-OPT-001 Layer G)
+## D7/D8 Plan-Phase Dimensions
 
 The following two dimensions are evaluated by plan-auditor during plan-phase
 audit, not by sync-auditor during run-phase. They are listed here for

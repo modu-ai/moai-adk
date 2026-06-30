@@ -72,7 +72,7 @@ When 1-2 AI-slop patterns are detected: Originality score capped at 0.50.
 | 0.50 | Some accessibility violations; responsive issues at one breakpoint; some states missing |
 | 0.25 | Multiple WCAG AA failures or broken responsive behavior (triggers Craft & Functionality FAIL) |
 
-## D7/D8 Plan-Phase Dimensions (SPEC-V3R5-WORKFLOW-OPT-001 Layer G)
+## D7/D8 Plan-Phase Dimensions
 
 The following two dimensions are evaluated by plan-auditor during plan-phase
 audit, not by sync-auditor during run-phase. Frontend SPECs (this profile)

@@ -1,16 +1,16 @@
 observability:
   # enabled controls whether structured hook trace logging is active.
-  # When false, no trace files are written (REQ-OBS-005).
+  # When false, no trace files are written.
   enabled: true
   # trace_dir is the directory where per-session JSONL trace files are written.
   trace_dir: .moai/logs
   # report_dir is the directory where per-session Markdown summary reports are written.
   report_dir: .moai/reports
-  # max_file_size_mb is the maximum trace file size in MB before rotation (REQ-OBS-006).
+  # max_file_size_mb is the maximum trace file size in MB before rotation.
   max_file_size_mb: 10
-  # retention_days is the number of days to retain trace files (REQ-OBS-007).
+  # retention_days is the number of days to retain trace files.
   retention_days: 30
-  # hook_metrics configures slow hook detection and JSONL metric logging (REQ-CC2122-HOOK-001-002/007).
+  # hook_metrics configures slow hook detection and JSONL metric logging.
   hook_metrics:
     # slow_hook_threshold_ms: hooks exceeding this duration are logged to hook-metrics.jsonl.
     # Default is 5000ms. Override here to customize the threshold.

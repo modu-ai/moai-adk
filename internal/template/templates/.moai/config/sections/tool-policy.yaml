@@ -22,7 +22,7 @@
 #   tool + args_pattern → action    | risk_tier → risk      | owner_agent → requestor
 #   decision → approval             | audit → impact + rationale
 #
-# Entry schema (REQ-TPS-002):
+# Entry schema:
 #   tool (string, required)         — Tool name (Bash, Write, WebSearch, mcp__* )
 #   args_pattern (string, required) — glob/regex ("git push:*", "*", or "" for tool-level)
 #   risk_tier (enum, required)      — read | write | irreversible
@@ -35,7 +35,7 @@
 # Query surface: `moai tool-policy list [--risk-tier|--decision|--tool FILTER]`.
 # This query loads the YAML directly with its OWN schema — it is DISJOINT from
 # the constitution Rule schema ({id,zone,zone_class,file,anchor,clause,
-# canary_gate}) and does NOT wrap `moai constitution list` (REQ-TPS-006 / D9).
+# canary_gate}) and does NOT wrap `moai constitution list`.
 #
 # Cross-references:
 #   - .moai/docs/harness-namespace-doctrine.md §24.5 (drift-class analogy)
@@ -700,7 +700,7 @@ entries:
     audit: "sg (ast-grep alias)"
     source: ".claude/settings.json#permissions.allow"
 
-  # --- §D.2-bg Background-agent write deny (AC-TPS-012) ---
+  # --- §D.2-bg Background-agent write deny ---
   # Documented prose in agent-common-protocol.md L162, BACKED BY Claude Code
   # runtime auto-deny (background subagents auto-deny non-pre-approved
   # permission prompts). This YAML entry makes the existing policy
@@ -720,11 +720,11 @@ entries:
 
   # --- §D.2-st SPEC status-transition writes (mirrored, audit-only) ---
   # Source (b): .claude/hooks/moai/status-transition-ownership.sh L48-69 is a
-  # COMMENT BLOCK (NOT executable shell policy — verified research.md §C.2
-  # iter-2). The hook's only branches are a FILE_PATH filter (L30-37) and a
+  # COMMENT BLOCK (NOT executable shell policy — verified by inspection).
+  # The hook's only branches are a FILE_PATH filter (L30-37) and a
   # Write|Edit filter (L40-46). The Ownership Matrix is ALSO documented in
   # .claude/rules/moai/development/spec-frontmatter-schema.md as a markdown
-  # table (the SSOT). Migration target (REQ-TPS-008b): record the Matrix
+  # table (the SSOT). Migration target: record the Matrix
   # machine-readably in the YAML; the comment block + markdown table remain
   # as cross-referenced doctrine. The entries below carry env_gate so the
   # codegen does NOT emit them as static specifiers (they are owner-gated,
