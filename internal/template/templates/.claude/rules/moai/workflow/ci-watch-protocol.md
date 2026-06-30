@@ -139,9 +139,8 @@ The SSoT is read-only for Wave 2. Modifications require `moai github init` re-ru
 (typically 5+ minutes), it MUST use `gh pr checks --watch` invoked via
 `run_in_background: true`. Idle polling loops (e.g., `sleep N && gh pr checks`)
 are prohibited because they block the orchestrator's main session and waste
-both wall-time and tokens. This rule was added by SPEC-V3R5-WORKFLOW-OPT-001
-Layer C in response to the W3 HARNESS-AUTONOMY-001 meta-analysis which found
-15 min of serial CI wait during a single run-phase.
+both wall-time and tokens. This rule was added in response to a meta-analysis
+which found 15 min of serial CI wait during a single run-phase.
 
 ### Canonical Pattern
 

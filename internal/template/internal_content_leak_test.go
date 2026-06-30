@@ -51,9 +51,9 @@ import (
 // readability in test failure output) and a compiled regex.
 //
 // Pattern notes:
-//   - C1 (SPEC ID): matches `SPEC-V3R6-` / `SPEC-AGENCY-` / `SPEC-WORKTREE-`
-//     prefix patterns that are unambiguously moai-adk-internal. Generic
-//     placeholder `SPEC-XXX-001` (in example fixtures) does NOT match.
+//   - C1 (SPEC ID): matches `SPEC-V3R2-`…`SPEC-V3R6-` / `SPEC-AGENCY-` /
+//     `SPEC-WORKTREE-` prefix patterns that are unambiguously moai-adk-internal.
+//     Generic placeholder `SPEC-XXX-001` (in example fixtures) does NOT match.
 //   - C2 (REQ/AC token): matches `REQ-XYZ-NNN` or `AC-XYZ-NNN` where XYZ is
 //     2+ uppercase letters and NNN is 3 digits. This matches moai-adk
 //     internal tracking tokens like REQ-ATR-007 / AC-WO-013 while leaving
@@ -86,6 +86,12 @@ type leakClass struct {
 	// template tree would flag dozens of legitimately-scoped agent/rule
 	// references and make the GREEN state unreachable.
 	skillBodyScoped bool
+	// requireHexLetter, when true, restricts a regex match to strings that
+	// contain at least one [a-f] hex letter. The S2 short-sha class sets it
+	// so a purely-decimal run (e.g. the 10485760 byte constant in the hook
+	// log-rotation) is NOT flagged: a genuine git short-sha almost always
+	// carries a hex letter, while a decimal size constant never does.
+	requireHexLetter bool
 }
 
 // skillBodyPrefix is the relative-path prefix (under templatesRoot) that
@@ -105,9 +111,10 @@ const skillBodyPrefix = ".claude/skills/"
 // entries about external Anthropic releases, etc.) is tracked as a
 // follow-up tightening tier in §25.1 evolution policy.
 //
-//   - C1 (SPEC ID prefix): `SPEC-V3R6-` / `SPEC-AGENCY-` (current
-//     project-internal series). Future series prefixes require explicit
-//     extension here + cross-reference to CLAUDE.local.md §25.1.
+//   - C1 (SPEC ID prefix): `SPEC-V3R2-`…`SPEC-V3R6-` / `SPEC-AGENCY-` /
+//     `SPEC-WORKTREE-` (current project-internal series, whole-tree). Future
+//     series prefixes require explicit extension here + cross-reference to
+//     CLAUDE.local.md §25.1.
 //   - C2 (REQ/AC token prefix-allowlist): only known project-internal REQ/AC
 //     prefixes — `ATR`, `WO`, `COORD`, `UNP`, `LNC`, `TII`. New SPEC families
 //     add their prefix here.
@@ -127,7 +134,7 @@ const skillBodyPrefix = ".claude/skills/"
 var leakClasses = []leakClass{
 	{
 		name:    "C1-spec-id-prefix",
-		pattern: regexp.MustCompile(`\bSPEC-(V3R6|AGENCY|WORKTREE)-[A-Z0-9-]+\b`),
+		pattern: regexp.MustCompile(`\bSPEC-(V3R[2-6]|AGENCY|WORKTREE)-[A-Z0-9-]+\b`),
 	},
 	{
 		name:    "C2-req-ac-internal-prefix",
@@ -246,6 +253,11 @@ var strictLeakClasses = []leakClass{
 		name: "S2-short-sha-sentence-final",
 		// D-007 inline extension: trailing punctuation [.,;:!?] + EOL.
 		pattern: regexp.MustCompile(`\b[0-9a-f]{7,8}([\s\.,;:!?]|$)`),
+		// A short-sha run that is ALL decimal digits is a byte/size constant
+		// (e.g. 10485760 = 10 MiB in hook log-rotation), not a git sha.
+		// Require >=1 [a-f] hex letter so decimal-constant false positives
+		// are excluded while genuine shas still match.
+		requireHexLetter: true,
 	},
 }
 
@@ -358,6 +370,44 @@ var pedagogicalAllowlist = []pedagogicalAllowlistEntry{
 		LineEnd:   0,
 		SpecID:    "internal/core/handler.go",
 		Rationale: "Illustrative example Go path in mixed-language modified-files list example (EXCL-SBN-003 keep-list)",
+	},
+	// --- C1 whole-tree V3R2-5 expansion: regex-example + mirror-parity-enforced retained tokens ---
+	//
+	// When C1 broadened to SPEC-V3R[2-6]- (whole-tree), two surfaces retain a
+	// legitimate SPEC-V3R5 token that must NOT be flagged:
+	//   1. plan-auditor.md regex-example: SPEC-V3R5-WO-001 is a multi-segment
+	//      SPEC-ID grammar illustration, not an internal-provenance leak.
+	//   2. spec-workflow.md: byte-parity-enforced with its .claude/ source
+	//      (rule_template_mirror_test allowlist). Its internal provenance is
+	//      retained on BOTH trees by design; stripping the template mirror
+	//      alone would break mirror parity, so the tokens are allowlisted here.
+	{
+		File:      ".claude/agents/moai/plan-auditor.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-V3R5-WO-001",
+		Rationale: "Multi-segment SPEC-ID grammar illustration in the D7-1 extraction regex example (not internal-provenance leak)",
+	},
+	{
+		File:      ".claude/rules/moai/workflow/spec-workflow.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-V3R5-LATE-BRANCH-001",
+		Rationale: "Mirror-parity-enforced provenance (spec-workflow.md byte-parity with .claude/ source); internal SPEC provenance retained on both trees",
+	},
+	{
+		File:      ".claude/rules/moai/workflow/spec-workflow.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-V3R5-WORKFLOW-LEAN-001",
+		Rationale: "Mirror-parity-enforced provenance (spec-workflow.md byte-parity with .claude/ source); internal SPEC provenance retained on both trees",
+	},
+	{
+		File:      ".claude/rules/moai/workflow/spec-workflow.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-V3R5-WORKFLOW-OPT-001",
+		Rationale: "Mirror-parity-enforced provenance (spec-workflow.md byte-parity with .claude/ source); internal SPEC provenance retained on both trees",
 	},
 }
 
@@ -477,6 +527,11 @@ func TestTemplateNoInternalContentLeak(t *testing.T) {
 			seen := map[string]struct{}{}
 			for _, m := range matches {
 				trimmed := strings.TrimSpace(m)
+				// requireHexLetter gate (S2): a match with no [a-f] hex
+				// letter is a decimal byte/size constant, not a short-sha.
+				if class.requireHexLetter && !strings.ContainsAny(trimmed, "abcdef") {
+					continue
+				}
 				if _, ok := seen[trimmed]; ok {
 					continue
 				}

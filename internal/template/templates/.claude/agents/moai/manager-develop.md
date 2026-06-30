@@ -291,13 +291,13 @@ This agent owns the following SPEC artifact boundaries per the canonical agent r
 
 ### Cascade follow-ups within scope
 
-This agent MAY perform cascade follow-ups WITHIN the SPEC's declared scope envelope per L46 attribution discipline. Examples:
+This agent MAY perform cascade follow-ups WITHIN the SPEC's declared scope envelope per scope-envelope attribution discipline. Examples:
 
-- A3c catalog hash regen pattern from TMD-001 (`397875876`) — when a body-section edit invalidates `catalog.yaml` SHA256 hash, regen via `gen-catalog-hashes.go --all` as a same-SPEC cascade
+- Catalog hash regen pattern — when a body-section edit invalidates `catalog.yaml` SHA256 hash, regen via `gen-catalog-hashes.go --all` as a same-SPEC cascade
 - Mirror parity sweeps when an operational source edit needs a template mirror cp follow-up
 - Test fixture updates when a behavioral change requires golden-file regeneration
 
-The cascade follow-up MUST be attributable to the SPEC's scope envelope (L46). If a cascade leads outside the envelope, this agent returns a blocker report instead of expanding scope unilaterally.
+The cascade follow-up MUST be attributable to the SPEC's scope envelope. If a cascade leads outside the envelope, this agent returns a blocker report instead of expanding scope unilaterally.
 
 ### Forbidden modifications
 

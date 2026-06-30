@@ -27,7 +27,7 @@ set -u
 # --- Read stdin JSON from Claude Code ---
 INPUT=$(cat)
 
-# --- Recovery-Signal Carve-Out (AC-IGGDA-014, REQ-IGGDA-011) ---
+# --- Recovery-Signal Carve-Out ---
 # If the turn's stopReason indicates a recovery signal OR a withheld-recoverable
 # error, exit 0 immediately. Blocking a recovery turn is the death-spiral shape.
 stop_reason=""

@@ -46,7 +46,7 @@ When applying the minimal form for Tier S, Section B (Known Issues B1-B8) MAY be
 
 When the SPEC tier is M or L, the full Section A-E template SHOULD be applied; Section B (known issues) MAY filter B1-B8 categories by domain relevance (e.g., a documentation-only SPEC may omit B1 cross-platform build tags).
 
-Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier (S/M/L). Origin: SPEC-V3R5-WORKFLOW-LEAN-001 (root-cause fix for WORKFLOW-OPT-001 over-formalization).
+Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier (S/M/L).
 
 > [ZONE:Evolvable] [HARD] 모든 Tier M/L의 `manager-develop` subagent 위임 prompt는 본 템플릿의 5개 섹션 (Context / Known Issues / Pre-flight / Constraints / Self-Verification Deliverables)을 포함해야 한다. Tier S는 위 Applicability 절의 minimal form을 사용해도 무방. 누락 시 (Tier M/L에서) 재위임 반복 위험 증가.
 

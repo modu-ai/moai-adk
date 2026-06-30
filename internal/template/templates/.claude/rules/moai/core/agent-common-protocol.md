@@ -235,7 +235,7 @@ When a tool call fails:
 batch as a single-turn multi-Bash call. Serial verification across turns wastes
 wall-time and is the single largest source of run-phase latency (W3 meta-analysis:
 10 min serial verification ≈ 11% of total run-phase wall-time). This rule was
-added by SPEC-V3R5-WORKFLOW-OPT-001 Layer D in response to that finding.
+added in response to that finding.
 
 ### Read-only verification batching
 

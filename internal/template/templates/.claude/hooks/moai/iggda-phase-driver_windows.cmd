@@ -1,5 +1,5 @@
 @echo off
-REM IGGDA Phase Driver - Windows stub (AC-IGGDA-019 SHOULD-PASS).
+REM IGGDA Phase Driver - Windows stub.
 REM
 REM The IGGDA phase driver is a bash shell script that relies on jq + moai CLI +
 REM progress.md parsing. On Windows, these dependencies are not reliably present

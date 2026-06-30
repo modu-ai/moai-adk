@@ -1,6 +1,6 @@
 # Verification Batch Pattern
 
-Canonical pattern for orchestrator-side read-only verification batching during run-phase completion. Added by SPEC-V3R5-WORKFLOW-OPT-001 Layer D (W3 meta-analysis: ≈10 min, ~11% of run-phase wall-time lost to serial verification).
+Canonical pattern for orchestrator-side read-only verification batching during run-phase completion. Added in response to a meta-analysis (≈10 min, ~11% of run-phase wall-time lost to serial verification).
 
 Cross-reference: `.claude/rules/moai/core/agent-common-protocol.md` §Parallel Execution defines the HARD batching obligation; this file owns the grouping rationale and class taxonomy.
 
@@ -65,4 +65,4 @@ The orchestrator's response contains multiple Bash tool calls within a single as
 
 Version: 1.0.0
 Classification: Evolvable operational rule, applies to all run-phase completion verifications
-Origin: SPEC-V3R5-WORKFLOW-OPT-001 Layer D (2026-05-20)
+Origin: workflow-optimization Layer D (2026-05-20)
