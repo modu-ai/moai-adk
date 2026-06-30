@@ -54,7 +54,7 @@ out_of_scope_untouched: "internal/mx/, @MX doctrine, runtime-managed files — 0
 ```yaml
 sync_complete_at: 2026-06-30
 sync_mode: orchestrator-direct
-sync_commit_sha: "PENDING_BACKFILL"
+sync_commit_sha: "52c189694"
 changelog_entry: "[Unreleased] ### Added — SPEC-SIMPLICITY-LADDER-002"
 frontmatter_transition: "draft → completed (Tier S 3-phase consolidated close)"
 era: V3R6
