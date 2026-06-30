@@ -238,13 +238,14 @@ Anti-pattern: Building 1000 lines when 100 would suffice; creating a factory for
 Simplicity decision ladder (apply in order, before writing code — cheapest capability first):
 
 1. Does this need to be built at all? (YAGNI)
-2. Does the standard library do this? Use it.
-3. Does a native platform feature cover it? Use it.
-4. Does an already-installed dependency solve it? Use it.
-5. Can this be one line? Make it one line.
-6. Only then: write the minimum code that works.
+2. Does a helper, util, type, or pattern already exist in this codebase? Reuse it.
+3. Does the standard library do this? Use it.
+4. Does a native platform feature cover it? Use it.
+5. Does an already-installed dependency solve it? Use it.
+6. Can this be one line? Make it one line.
+7. Only then: write the minimum code that works.
 
-The ladder is the dependency-avoidance ordering axis — reach for the cheapest existing capability before adding new code or a new dependency. It is language-neutral: "standard library" and "native platform feature" name whichever capability source the project's language provides, not any specific package manager or import.
+The ladder is the reuse-and-dependency-avoidance ordering axis — reach for the cheapest existing capability before adding new code or a new dependency. It is language-neutral: "standard library" and "native platform feature" name whichever capability source the project's language provides, not any specific package manager or import.
 
 Never simplify away (safety carve-out): the ladder is a code-economy aid, NOT a license to cut safety. It MUST NOT be used to drop input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility, or one runnable check behind non-trivial logic. These boundaries are governed by existing rules — the TRUST 5 Secured principle (validation, OWASP compliance) and the Bash risk-amplifier doctrine in `.claude/rules/moai/development/coding-standards.md` § Bash Risk-Amplifier Doctrine (destructive-primitive confirmation) — and the ladder is subordinate to them.
 

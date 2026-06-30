@@ -2,7 +2,7 @@
 id: SPEC-SIMPLICITY-LADDER-002
 title: "In-Codebase Reuse Rung — Simplicity Decision Ladder 6→7-Rung Completion"
 version: "0.2.0"
-status: draft
+status: completed
 created: 2026-06-30
 updated: 2026-06-30
 author: manager-spec
