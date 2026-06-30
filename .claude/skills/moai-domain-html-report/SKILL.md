@@ -71,10 +71,10 @@ Once the `.html` file is written, the response MUST do two things:
 2. **Open command** — surface the output file as a ready-to-run open command so the user can view it in one step:
 
    ```
-   !open <output_path>
+   ! open <output_path>
    ```
 
-   The leading `!` runs the command in the session and opens the file in the default browser. Use the platform-appropriate opener: `!open <file>` on macOS, `!xdg-open <file>` on Linux, `!start <file>` on Windows.
+   The leading `!` runs the command in the session and opens the file in the default browser. Use the platform-appropriate opener: `! open <file>` on macOS, `! xdg-open <file>` on Linux, `! start <file>` on Windows.
 
 Always provide the open command — a rendered report the user cannot locate or open has no value.
 

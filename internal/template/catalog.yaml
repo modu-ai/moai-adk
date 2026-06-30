@@ -101,38 +101,38 @@ catalog:
             - name: moai-domain-html-report
               tier: core
               path: templates/.claude/skills/moai-domain-html-report/
-              hash: 6c48c0bfbcd0c0188966f3dbd471d973bd4c09c6466747158aa603882b5aa859
+              hash: a818c4d86db127792ef0af62272b7d3addf8d05c493fdbcf9cf827a3e96d150c
               version: 1.0.0
         agents:
             - name: sync-auditor
               tier: core
               path: templates/.claude/agents/moai/sync-auditor.md
-              hash: 2ba85a561e769406c0972b05772cc623810fbd2aa635093be74dd85cd3121f83
+              hash: 0e72151179644d401c9062aff0c78f7a442f817b8ba966d1b2494daeb2b77822
               version: 1.0.0
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/moai/manager-develop.md
-              hash: 0395dfd597e3f9d9043c9b600fb83282195b5c51a4b43947b9f8ec0467e09d0d
+              hash: 790e14842f31d7e7f1cd8ec401f739de9e10b606174ce5818d120b81c51d27fe
               version: 1.0.0
             - name: manager-docs
               tier: core
               path: templates/.claude/agents/moai/manager-docs.md
-              hash: f04b96ece3414a60d80e60079d1e1d0ea8b8bb2f96859022b7ef9049a6210d11
+              hash: bb4c28accf1066b999d62948b653b004bdb7e16858c50f171b16ed9663676111
               version: 1.0.0
             - name: manager-git
               tier: core
               path: templates/.claude/agents/moai/manager-git.md
-              hash: 647ad9f59bd601c75b03fbabb5d4f2af7fe701101b5bfee4cdef67aabc024b14
+              hash: fbcb164c3ae1999f2426dc57f836f96bfcbb30d793503c86c00fc66e1de5b56f
               version: 1.0.0
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/moai/manager-spec.md
-              hash: 73d8dfd45db334e8a4747ffeb9d01c38e8af104b1d838ca6a13b06af89f9a52f
+              hash: 21259ea43d65f35bfc0de63b6c44d61d5bcf6fee3dc8d5ea9112d33953b7edf8
               version: 1.0.0
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
-              hash: 58d11f7216140ec0ae7df4d961ad0160cbb9b8598be021c0f62325d6a6166cfe
+              hash: 980606e41b6ebf86c69db12e72a8bc9f179ba54133dcd447eb3a6c7a353d8a15
               version: 1.0.0
     optional_packs:
         backend:
@@ -142,12 +142,12 @@ catalog:
                 - name: moai-domain-backend
                   tier: optional-pack:backend
                   path: templates/.claude/skills/moai-domain-backend/
-                  hash: c1cdfb81de94332fc18ee9c7c91c4a08de61a05065f85536b70b5ba40f45fb4e
+                  hash: dcb431c9a93e1eb3c8c3e210859e8bbc7a90139dd1f2eeecbe03e89fb1b36f72
                   version: 1.0.0
                 - name: moai-domain-database
                   tier: optional-pack:backend
                   path: templates/.claude/skills/moai-domain-database/
-                  hash: c122a25882cee5621f07ff34d1ea804bb0fb9480354d5809993fb4b2d34c1bc9
+                  hash: c4efe61662e51252aecdda7d4aa4b9c7591ec938b54752a9abc65da3e218f2ab
                   version: 1.0.0
                 - name: moai-ref-api-patterns
                   tier: optional-pack:backend
@@ -230,7 +230,7 @@ catalog:
                 - name: moai-domain-frontend
                   tier: optional-pack:frontend
                   path: templates/.claude/skills/moai-domain-frontend/
-                  hash: 0582dce4451d038c1cf6f451142fe360dfb3b21ecb0de990aaf373f545b0c7f5
+                  hash: f2e5fb49d55d9b60ad86a6a9831b4fd3541ebf7337c94212de30ea26ec1b8e21
                   version: 1.0.0
                 - name: moai-ref-react-patterns
                   tier: optional-pack:frontend
@@ -249,5 +249,5 @@ catalog:
             - name: builder-harness
               tier: harness-generated
               path: templates/.claude/agents/moai/builder-harness.md
-              hash: 85c7726b2109d2aa86be620209931b42d9a7c05e419dc8541d640f896224fedd
+              hash: e23eea29ac005dcf07f37a85299edb089b8879f710f96560c3f58d41edccd0f5
               version: 1.0.0
