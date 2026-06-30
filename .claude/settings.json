@@ -455,8 +455,8 @@
     ]
   },
   "attribution": {
-    "commit": "🗿 MoAI <email@mo.ai.kr>",
-    "pr": "🗿 MoAI <email@mo.ai.kr>"
+    "commit": "🗿 MoAI",
+    "pr": "🗿 MoAI"
   },
   "enableAllProjectMcpServers": true,
   "respectGitignore": true
