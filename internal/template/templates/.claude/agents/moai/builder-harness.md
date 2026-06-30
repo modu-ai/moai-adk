@@ -25,7 +25,7 @@ skills:
 
 Create standards-compliant Claude Code artifacts (agents, skills, plugins, commands, hooks, MCP servers, LSP servers) with optimal configuration and single responsibility design.
 
-<!-- @MX:NOTE: [AUTO] retirement-pattern — matches SPEC-V3R3-RETIRED-DDD-001 stub migration; all three builder-* agents consolidated here -->
+<!-- @MX:NOTE: [AUTO] retirement-pattern — matches the retirement-marker stub migration; all three builder-* agents consolidated here -->
 
 ## Required Input Parameter
 
@@ -33,8 +33,8 @@ Create standards-compliant Claude Code artifacts (agents, skills, plugins, comma
 <!-- @MX:REASON: Every artifact creation request (agent/skill/plugin/command/hook/mcp-server/lsp-server) resolves to this dispatch table -->
 **artifact_type**: Must be one of: `agent | skill | plugin | command | hook | mcp-server | lsp-server`
 
-<!-- @MX:WARN: [AUTO] trigger-union coverage — REQ-ORC-001-017 forbids trigger drops from builder-agent + builder-skill + builder-plugin union -->
-<!-- @MX:REASON: CI test in SPEC-V3R2-ORC-002 will enforce no trigger keyword is dropped vs the three source agents; any rewrite of this description row must preserve all tokens -->
+<!-- @MX:WARN: [AUTO] trigger-union coverage — policy forbids trigger drops from builder-agent + builder-skill + builder-plugin union -->
+<!-- @MX:REASON: a CI test enforces no trigger keyword is dropped vs the three source agents; any rewrite of this description row must preserve all tokens -->
 
 ## Artifact Type Dispatch Table
 

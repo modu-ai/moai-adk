@@ -2,7 +2,7 @@
 name: manager-spec
 description: |
   SPEC creation specialist (spec.md / plan.md / acceptance.md authoring + emits initial status: draft). See §SPEC Artifact Ownership for artifact-level boundaries.
-  Absorbs the planning role per the 2026-05-25 Anthropic catalog consolidation (17→8 agents; the prior planning-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 1) — design.md and research.md authoring (system design, architecture decisions, codebase research) are now performed by this agent during Tier L SPEC plan-phase.
+  Absorbs the planning role per the Anthropic catalog consolidation (17→8 agents; the prior planning-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 1) — design.md and research.md authoring (system design, architecture decisions, codebase research) are now performed by this agent during Tier L SPEC plan-phase.
   Use PROACTIVELY for GEARS-format (current) or EARS-format (legacy, 6-month backward-compatibility window) requirements, acceptance criteria, and user story documentation.
   MUST INVOKE when ANY of these keywords appear in user request:
   EN: SPEC, requirement, specification, EARS, GEARS, acceptance criteria, user story, planning, architecture, system design
@@ -181,7 +181,7 @@ Acceptance criteria sub-IDs MAY use a trailing lowercase alphabetic suffix to de
 
 Confusion case (illustrative): `SPEC-RETIRED-DDD-001` is **VALID** per the canonical regex because `RETIRED` matches `[A-Z][A-Z0-9]*` and `DDD` matches `[A-Z][A-Z0-9]*` and `001` matches `\d{3}`. Multi-segment domain names with retired-marker prefixes remain canonical SPEC IDs.
 
-L32 chain context (informational footnote): The 5 historical drift incidents in 2026-05-23..2026-05-24 (CHANGELOG-CLEANUP-001 typo, CLI-AUDIT-001 sub-ID bleed-over, LCL-003 acronym ambiguity, SARM-001 doc-vs-lint regex drift, TMC-001 `-002a` digit-alpha suffix) collectively cost ~15 reactive Edit/mv operations downstream. This self-check protocol short-circuits the failure mode at the earliest possible detection point — inside the agent turn that decides to Write.
+Rationale (informational footnote): historical SPEC-ID drift incidents (typos, sub-ID bleed-over, acronym ambiguity, doc-vs-lint regex drift, digit-alpha suffixes) collectively cost many reactive Edit/mv operations downstream. This self-check protocol short-circuits the failure mode at the earliest possible detection point — inside the agent turn that decides to Write.
 
 #### [HARD] SPEC Frontmatter Canonical Schema
 
@@ -289,7 +289,7 @@ This agent MAY adjust `spec.md`, `plan.md`, or `acceptance.md` body content **mi
 
 ### Forbidden modifications
 
-- Modifying `progress.md` body sections (`§E.2 Run-phase Evidence`, `§E.3 Run-phase Audit-Ready Signal`, `§E.4 Sync-phase Audit-Ready Signal`, `§E.5 Mx-phase Audit-Ready Signal`) — these belong to manager-develop (§E.2/§E.3) and manager-docs (§E.4) per REQ-ARR-002/REQ-ARR-003
+- Modifying `progress.md` body sections (`§E.2 Run-phase Evidence`, `§E.3 Run-phase Audit-Ready Signal`, `§E.4 Sync-phase Audit-Ready Signal`, `§E.5 Mx-phase Audit-Ready Signal`) — these belong to manager-develop (§E.2/§E.3) and manager-docs (§E.4)
 - Modifying agent files (`.claude/agents/**/*.md`) — out of SPEC artifact scope
 - Modifying CHANGELOG.md — owned by manager-docs
 - Performing `draft → in-progress` or `in-progress → implemented` transitions — owned by manager-develop and manager-docs respectively

@@ -290,7 +290,7 @@ Execute each check in order. Mark each item PASS, FAIL, or N/A with evidence.
 
 * **D7**: Cross-SPEC Reconciliation — verifies referenced SPEC IDs against `.moai/specs/` status
 
-D7 is a new dimension introduced by SPEC-V3R5-WORKFLOW-OPT-001 Layer G. It
+D7 is a plan-phase cross-SPEC reconciliation dimension. It
 verifies that every SPEC ID referenced in the body has its current status
 documented in `.moai/specs/<ID>/spec.md` frontmatter. If a referenced SPEC has
 status `retired`, `superseded`, or `archived` without an explicit reconciliation
@@ -330,7 +330,7 @@ SHOULD for missing-but-recoverable references.
 
 * **D8**: Cross-Platform Discipline — verifies `syscall` introductions declare `//go:build` constraint
 
-D8 is a new dimension introduced by SPEC-V3R5-WORKFLOW-OPT-001 Layer G. It
+D8 is a plan-phase cross-platform discipline dimension. It
 verifies that SPECs introducing `syscall` package imports declare a
 `//go:build` build-tag constraint in the SPEC body OR explicitly justify a
 cross-platform exemption. This dimension prevents the W3 lesson #21 incident
@@ -415,9 +415,9 @@ If iteration 3 results in FAIL, the agent produces a final escalation report wit
 
 Stagnation detection: If a defect appears in all three iterations unchanged, flag it as "blocking defect — manager-spec made no progress". This indicates a misunderstanding, not just a missed fix.
 
-### LEAN Workflow Additions (SPEC-V3R5-WORKFLOW-LEAN-001)
+### LEAN Workflow Additions
 
-The following three clauses extend the retry loop contract to fix the score-regression pattern (0.78 → 0.81 → 0.77) observed in LANG-COMPLIANCE-001 plan-phase abandonment (2026-05-20).
+The following three clauses extend the retry loop contract to fix the score-regression pattern (e.g. 0.78 → 0.81 → 0.77) where iterative re-auditing degrades rather than improves the aggregate score.
 
 **STOP escalation on score regression.** If iter(N+1) aggregate score is **lower** than iter(N) aggregate score, the agent emits a `STOP` signal in the Verdict block of the report and proposes a scope-reduction action to the orchestrator. The orchestrator MUST NOT iterate further unconditionally; instead, present the user with three options via the orchestrator's user-question channel (`.claude/rules/moai/core/askuser-protocol.md`):
 

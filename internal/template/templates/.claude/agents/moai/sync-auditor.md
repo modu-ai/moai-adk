@@ -102,7 +102,7 @@ When invoked for contract negotiation before implementation:
 
 ## HRN-003 Hierarchical Scoring Protocol
 
-When `harness.yaml` has `evaluator_mode: hierarchical` (SPEC-V3R2-HRN-003), scoring MUST follow the
+When `harness.yaml` has `evaluator_mode: hierarchical`, scoring MUST follow the
 4-dimension x sub-criteria model:
 
 ### Dimension Enum (FROZEN — design-constitution §12 Mechanism 3)
@@ -117,8 +117,8 @@ Intermediate values are rejected (ErrFlatScoreCardProhibited).
 
 ### Aggregation
 
-- Default: `min` aggregation per dimension (REQ-HRN-003-007)
-- Optional: `mean` aggregation enabled per profile (REQ-HRN-003-015)
+- Default: `min` aggregation per dimension
+- Optional: `mean` aggregation enabled per profile
 - Profile field: `aggregation: min | mean`
 
 ### Must-Pass Firewall (FROZEN)

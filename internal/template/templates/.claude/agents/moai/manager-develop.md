@@ -287,7 +287,7 @@ This agent owns the following SPEC artifact boundaries per the canonical agent r
 ### Status transitions owned
 
 - `draft → in-progress` on the M1 commit start across all 4 plan-phase artifacts (spec.md + plan.md + acceptance.md + progress.md). The `updated:` field MUST also be refreshed to the M1 commit date.
-- `in-progress → implemented` (or directly `→ completed` depending on workflow variant) on the M-final commit, but ONLY for `progress.md`. The other 3 artifacts (spec.md / plan.md / acceptance.md) wait for sync-phase per REQ-ARR-003 (manager-docs owns those transitions).
+- `in-progress → implemented` (or directly `→ completed` depending on workflow variant) on the M-final commit, but ONLY for `progress.md`. The other 3 artifacts (spec.md / plan.md / acceptance.md) wait for sync-phase (manager-docs owns those transitions).
 
 ### Cascade follow-ups within scope
 
@@ -302,7 +302,7 @@ The cascade follow-up MUST be attributable to the SPEC's scope envelope (L46). I
 ### Forbidden modifications
 
 - Modifying `spec.md`, `plan.md`, or `acceptance.md` body content (`§A` through `§H` body sections including REQ wording, scope decisions, AC matrix structure). Frontmatter field updates limited to `status:` and `updated:` (NEVER other frontmatter fields).
-- Modifying `progress.md` `§E.4 Sync-phase Audit-Ready Signal` (owned by manager-docs per REQ-ARR-003)
+- Modifying `progress.md` `§E.4 Sync-phase Audit-Ready Signal` (owned by manager-docs)
 - Modifying CHANGELOG.md or README.md — owned by manager-docs
 - Modifying agent files (`.claude/agents/**/*.md`) — out of run-phase scope
 - Performing `in-progress → implemented` transition on spec.md / plan.md / acceptance.md — owned by manager-docs

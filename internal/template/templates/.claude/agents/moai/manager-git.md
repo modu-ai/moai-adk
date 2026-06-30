@@ -110,11 +110,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 - true: Create `feature/SPEC-{ID}`, checkout from main_branch, set upstream
 - false: Use current branch (warn if on protected branch)
 
-### Late-Branch Invocation Pattern (SPEC-V3R5-LATE-BRANCH-001)
+### Late-Branch Invocation Pattern
 
 [HARD] When `team.branch_creation.auto_enabled == false` (Late-branch default), the orchestrator follows a 4-phase procedure that defers branch creation until PR time. `mode: team` is preserved; branch protection (4 required checks) + PR/CI gates remain unchanged.
 
-Detection cue: after manual `git switch -c feat/SPEC-*`, `manager-git` recognizes Late-branch via `git rev-list main..HEAD --count > 0 && git branch --show-current matches feat/SPEC-*` (REQ-LB-003).
+Detection cue: after manual `git switch -c feat/SPEC-*`, `manager-git` recognizes Late-branch via `git rev-list main..HEAD --count > 0 && git branch --show-current matches feat/SPEC-*`.
 
 Phase A — SPEC creation on main:
 ```bash
@@ -149,7 +149,7 @@ git reset --hard origin/main   # align local main with squashed remote
 git pull origin main           # verify (no-op if reset succeeded)
 ```
 
-[HARD] Caveat: per REQ-LB-007, `git push origin main` is BLOCKED in Phase A/B even with `auto_push: true`. The orchestrator MUST hold push until Phase C branch creation. Branch protection enforces this server-side, but the agent MUST NOT attempt direct pushes during Phase A/B.
+[HARD] Caveat: `git push origin main` is BLOCKED in Phase A/B even with `auto_push: true`. The orchestrator MUST hold push until Phase C branch creation. Branch protection enforces this server-side, but the agent MUST NOT attempt direct pushes during Phase A/B.
 
 Failure modes:
 - Skipping Phase D leaves local main with un-squashed history → next `git pull` produces merge conflict against squashed remote. Recovery: `git fetch origin && git reset --hard origin/main`.
@@ -163,7 +163,7 @@ Cross-reference: `.claude/rules/moai/workflow/spec-workflow.md` § Step 1 entry 
 
 SPEC Git Workflow options (from git-strategy.yaml):
 - **main_direct** [RECOMMENDED]: Direct commits to main, no branches needed
-- **main_late_branch**: main commit + late `git switch -c feat/SPEC-*` at PR time, PR squash + delete-branch, local main `reset --hard origin/main` cleanup (SPEC-V3R5-LATE-BRANCH-001 4-phase procedure — see Late-Branch Invocation Pattern above)
+- **main_late_branch**: main commit + late `git switch -c feat/SPEC-*` at PR time, PR squash + delete-branch, local main `reset --hard origin/main` cleanup (4-phase procedure — see Late-Branch Invocation Pattern above)
 - **main_feature**: Feature branches from main, optional PR
 - **develop_direct**: Direct commits to develop
 - **feature_branch** / **per_spec**: Feature branches with PR required
