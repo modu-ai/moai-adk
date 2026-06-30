@@ -2,9 +2,9 @@
 id: SPEC-GLM-MODEL-ALLOWLIST-001
 title: "GLM 모드 모델 allowlist 정합 — enforceAvailableModels와 GLM 모델 활성화 충돌 해소"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-06-22
-updated: 2026-06-23
+updated: 2026-07-01
 author: manager-spec
 priority: P1
 phase: "v3.0.0"

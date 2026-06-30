@@ -102,4 +102,19 @@ m1_to_mN_commit_strategy: "single M1 commit (Approach C = one logical change); d
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: "2026-07-01"
+sync_commit_sha: "<backfill-after-commit>"
+sync_status: completed
+ac_matrix_summary: "6 AC PASS (AC-GMA-002/003/004/005/007/008) + 2 DEFERRED-MANUAL (AC-GMA-001/006) — all in-scope mechanical verification complete; deferred manual procedures documented in §E.2 Manual M1 Procedure for post-deploy live-GLM confirmation"
+frontmatter_status_transitions:
+  spec_md_status: "in-progress → completed"
+  spec_md_updated: "2026-06-23 → 2026-07-01"
+changelog_entry_position: "[Unreleased] § Fixed (SPEC-GLM-MODEL-ALLOWLIST-001 inline Korean entry with CHANGELOG content-anchor)"
+readme_update_required: false
+  rationale: "technical change with no user-facing doc delta (template-only settings.json.tmpl change)"
+b12_self_test_results:
+  changelog_duplicate_grep: "0 (no prior SPEC-GLM-MODEL-ALLOWLIST-001 entry in CHANGELOG.md)"
+  ac_count_match: "8 AC rows in acceptance.md (6 PASS + 2 DEFERRED-MANUAL), 8 rows in sync-phase coverage"
+  file_path_verification: "all 5 Section D allow-list files verified exist via ls: PASS"
+```
