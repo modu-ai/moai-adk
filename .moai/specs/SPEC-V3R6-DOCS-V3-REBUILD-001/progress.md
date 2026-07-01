@@ -734,6 +734,28 @@ Interpretation: FleetView count 0 (cross-cutting correction verified), v2.1.178 
 - Trailer: 🗿 MoAI
 - Commit SHA: d427a4e1d
 
+## M3.1 COMPLETE — English propagation (38 files, 7 chunks)
+
+Executed 2026-07-01 (orchestrator-coordinated; manager-docs authored content, orchestrator independently verified + committed each chunk). Scope per user decision: **comprehensive parity** (27 M1/M2-changed files + 11 pre-existing en parity gaps, incl. 2 stubs).
+
+**Pre-cleanup**: removed 3 stray PreCompact `.moai/state/session-memo.md` scratch dirs from `docs-site/content/{,ko/,ko/claude-code/}` (gitignored; parity count normalized ko 99 / en 96→99).
+
+**Chunks + commits (all pushed to origin/main):**
+- en-1 `9a99ab403` — getting-started (introduction/installation/cli/inventory-NEW) + core-concepts/what-is-moai-adk (5)
+- en-2 `da907aa5a` — advanced (agent-guide/builder-agents/claude-md-guide/skill-guide) + workflow-commands/moai-harness (5)
+- en-3 `b1ff846c4` — advanced NEW pages (decision-memory/harness-v4-builder/ultracode-workflows) (3)
+- en-4 `bf7597941` — claude-code/foundations (6)
+- en-5 `c7a702583` — claude-code/agentic (7)
+- en-6 `6f20ce642` — claude-code/extensibility (4) + context-memory/context-window (1) (5)
+- en-7a `51f2a41e7` — pre-existing gaps: _index, contributing-STUB, cg-mode-STUB, prompt-caching, trust-5 (5)
+- en-7b `8e2700cb2` — workflow-commands/moai-plan + moai-run (2)
+
+**Final parity**: `find docs-site/content/{ko,en} -name '*.md' | wc -l` → ko 99 == en 99 (file-count parity achieved). ja/zh still 95 (M3.2 pending).
+
+**Verification discipline (per chunk, orchestrator-independent)**: section-heading parity (`^#{2,4}`), weight parity, 0 Hangul leak, 0 forbidden URL, 0 LR mermaid, 0 FleetView, working-tree hygiene, git scope. Defects caught + fixed (manager-docs false-report mitigation): en-1 cli.md under-propagation (529→742, +moai profile/inventory/Statusline v3/1M-context) + what-is-moai-adk stale "32 skills"→27 + skill-table; en-4 claude-directory bloat (142→116); en-5 best-practices over-expansion (253→225 trim) + large-codebases/sub-agents under (re-expanded).
+
+**Known M4 item (SHOULD-FIX, non-blocking)**: builder-agents.md line 21 ASCII `builder-skill/agent/plugin` inside "Differences from Previous Versions" migration table faithfully mirrors ko (Korean transliteration 빌더-스킬); AC-DVR-010b mechanical grep would flag it — M4 to reconcile across 4 locales (EC-5 carve-out or rephrase). Also: 84 line-matched pages may harbor hidden content staleness (like claude-md-guide's "20 agents") — M4 spot-check.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — populated by manager-develop>_
