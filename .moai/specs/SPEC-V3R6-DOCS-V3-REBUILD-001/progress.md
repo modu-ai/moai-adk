@@ -774,5 +774,5 @@ Executed 2026-07-01 (orchestrator-coordinated; manager-docs authored content, or
 - **Artifacts**: CHANGELOG.md entry added, spec.md frontmatter status transition completed, progress.md §E.3/§E.4 populated, era: V3R6 field added to spec.md
 - **Frontmatter transitions**: spec.md `status: in-progress → completed`, `updated: 2026-07-01 → 2026-07-02`, `era: V3R6` added
 - **Audit summary**: run-phase 45 commits all pushed to origin/main, 4-locale parity achieved (ko 99 == en 99), ja/zh 95 (M3.2 pending)
-- **Sync commit SHA**: PENDING_BACKFILL (backfilled in commit 2 after this commit is made)
+- **Sync commit SHA**: 44073782b
 - **Status transitions**: only spec.md has frontmatter `status:` field; plan.md and acceptance.md begin with H1 headings (no frontmatter). Transition completed: spec.md `in-progress → completed`
