@@ -43,9 +43,9 @@ Go로 작성된 단일 바이너리 — 의존성 없이 모든 플랫폼에서 
 
 ---
 
-## v3.0.0-rc2 (V3R6)의 새로운 기능
+## v3.0.0-rc5 (V3R6)의 새로운 기능
 
-MoAI-ADK v3.0.0-rc2 (V3R6 세대)는 8-retained-agent 카탈로그, `glm-5.2[1m]` 모델, 3-phase 라이프사이클(plan→run→sync), CG 모드 기본값, 동적 워크플로우, `/effort ultracode`를 제공합니다.
+MoAI-ADK v3.0.0-rc5 (V3R6 세대)는 8-retained-agent 카탈로그, `glm-5.2[1m]` 모델, 3-phase 라이프사이클(plan→run→sync), CG 모드 기본값, 동적 워크플로우, `/effort ultracode`, 세션 핸드오프 `/goal` 결합을 제공합니다.
 
 ### 주요 마일스톤
 
@@ -54,6 +54,7 @@ MoAI-ADK v3.0.0-rc2 (V3R6 세대)는 8-retained-agent 카탈로그, `glm-5.2[1m]
 | **v2.17.0** | 메타-하니스 스킬 (revfactory/harness Apache 2.0), 정적 스킬 16개 제거, namespace 분리 (moai-* / harness-*) |
 | **v3.0.0-rc1** | 8 retained 에이전트 카탈로그 통합 (12 phantom/domain-expert 에이전트 아카이브), Anthropic 2026 정합 |
 | **v3.0.0-rc2** | 3-phase 라이프사이클(Mx 페이즈 retired), harness namespace V2, runtime recovery doctrine, orchestrator interrupt ledger, `glm-5.2[1m]`, 동적 워크플로우 + `/effort ultracode` |
+| **v3.0.0-rc5** | 세션 핸드오프 `/goal` 결합, AskUserQuestion 결정 메모리, native invocation-model doctrine, OWASP 보안 원칙 보강, retry idempotency 게이트, simplicity ladder 7-rung |
 
 ### 주요 변경사항
 
