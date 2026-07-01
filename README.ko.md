@@ -37,7 +37,7 @@
 
 > **"바이브 코딩의 목적은 빠른 생산성이 아니라 코드 품질이다."**
 
-MoAI-ADK는 Claude Code를 위한 **고성능 AI 개발 환경**입니다. 8개 retained 에이전트와 12개 `/moai` 명령이 협력하여 품질 있는 코드를 만듭니다. 신규 프로젝트와 기능 개발에는 TDD(기본값)를, 테스트 커버리지가 낮은 기존 프로젝트에는 DDD를 자동 적용하며, Sub-Agent와 Agent Teams 이중 실행 모드를 지원합니다.
+MoAI-ADK는 Claude Code를 위한 **고성능 AI 개발 환경**입니다. 8개 retained 에이전트와 27개 `moai-*` 스킬이 협력하여 품질 있는 코드를 만듭니다. 신규 프로젝트와 기능 개발에는 TDD(기본값)를, 테스트 커버리지가 낮은 기존 프로젝트에는 DDD를 자동 적용하며, Sub-Agent와 Agent Teams 이중 실행 모드를 지원합니다.
 
 Go로 작성된 단일 바이너리 — 의존성 없이 모든 플랫폼에서 즉시 실행됩니다.
 
@@ -96,7 +96,7 @@ Python 기반 MoAI-ADK(~73,000줄)를 Go로 완전히 재작성했습니다.
 
 - **100K+줄** Go 코드, **100+개** 패키지
 - **85-100%** 테스트 커버리지
-- **8개** retained 에이전트 + **30개** `moai-*` 스킬 (template-managed; 2개 `harness-moaiadk-*` user-owned 제외)
+- **8개** retained 에이전트 + **27개** `moai-*` 스킬 (template-managed; 2개 `harness-moaiadk-*` user-owned 제외)
 - **16개** 프로그래밍 언어 지원
 - **27개** Claude Code 훅 이벤트
 
@@ -335,9 +335,9 @@ graph LR
 
 참고: 동적 팀 팀원(researcher, analyst, architect, implementer, tester, designer, reviewer)은 role profile을 통해 런타임에 생성되며 정적 에이전트 정의로 관리되지 않습니다.
 
-### `/moai` 슬래시 명령 (12개)
+### `/moai` 슬래시 명령 (13개)
 
-MoAI는 `.claude/commands/moai/`에 **12개 `/moai` 슬래시 명령**을 노출하며, 토큰 효율을 위한 3단계 프로그레시브 디스클로저 시스템으로 관리됩니다 (스킬 메타데이터는 항상 목록에 표시, 본문은 호출 시 로드, 번들 참조는 필요시 로드).
+MoAI는 `.claude/commands/moai/`에 **13개 `/moai` 슬래시 명령**을 노출하며, 토큰 효율을 위한 3단계 프로그레시브 디스클로저 시스템으로 관리됩니다 (스킬 메타데이터는 항상 목록에 표시, 본문은 호출 시 로드, 번들 참조는 필요시 로드).
 
 | 그룹 | 명령 |
 |------|------|
@@ -347,7 +347,7 @@ MoAI는 `.claude/commands/moai/`에 **12개 `/moai` 슬래시 명령**을 노출
 | **자율** | `harness` |
 | **피드백** | `feedback` |
 
-전체 명령 세트 (총 12개): `clean` · `codemaps` · `feedback` · `fix` · `gate` · `harness` · `loop` · `mx` · `plan` · `project` · `review` · `run` · `sync`.
+전체 명령 세트 (총 13개): `clean` · `codemaps` · `feedback` · `fix` · `gate` · `harness` · `loop` · `mx` · `plan` · `project` · `review` · `run` · `sync`.
 
 ---
 
@@ -610,8 +610,6 @@ graph LR
 | `fix` | — | LSP 에러, 린트, 타입 에러 자동 수정 (단일 패스) | `--dry`, `--seq`, `--level N`, `--resume`, `--team` |
 | `loop` | — | 완료까지 반복 자동 수정 (최대 100회) | `--max N`, `--auto-fix`, `--seq` |
 | `review` | `code-review` | 보안 및 @MX 태그 준수 코드 리뷰 | `--staged`, `--branch`, `--security` |
-| `coverage` | `test-coverage` | 테스트 커버리지 분석 및 갭 보완 (16개 언어) | `--target N`, `--file PATH`, `--report` |
-| `e2e` | — | E2E 테스트 (Claude-in-Chrome, Playwright CLI, Agent Browser) | `--record`, `--url URL`, `--journey NAME` |
 | `clean` | `refactor-clean` | 데드 코드 식별 및 안전한 제거 | `--dry`, `--safe-only`, `--file PATH` |
 
 #### 문서 & 코드베이스

@@ -37,7 +37,7 @@
 
 > **"The purpose of vibe coding is not rapid productivity but code quality."**
 
-MoAI-ADK is a **high-performance AI development environment** for Claude Code. 8 retained AI agents (7 MoAI-custom + 1 Anthropic built-in `Explore`) and 30 `moai-*` template-managed skills collaborate to produce quality code. It automatically applies TDD (default) for new projects and feature development, or DDD for existing projects with minimal test coverage, and supports dual execution modes with Sub-Agent and Agent Teams.
+MoAI-ADK is a **high-performance AI development environment** for Claude Code. 8 retained AI agents (7 MoAI-custom + 1 Anthropic built-in `Explore`) and 27 `moai-*` template-managed skills collaborate to produce quality code. It automatically applies TDD (default) for new projects and feature development, or DDD for existing projects with minimal test coverage, and supports dual execution modes with Sub-Agent and Agent Teams.
 
 A single binary written in Go -- runs instantly on any platform with zero dependencies.
 
@@ -61,7 +61,7 @@ We completely rewrote the Python-based MoAI-ADK (~73,000 lines) in Go.
 
 - **100K+ lines** of Go code across **100+** packages
 - **85-100%** test coverage
-- **8** retained AI agents + **30** `moai-*` skills (template-managed; excludes 2 `harness-moaiadk-*` user-owned)
+- **8** retained AI agents + **27** `moai-*` skills (template-managed; excludes 2 `harness-moaiadk-*` user-owned)
 - **16** programming languages supported
 - **27** Claude Code hook events
 
@@ -304,9 +304,9 @@ graph LR
 
 Note: Dynamic team teammates (researcher, analyst, architect, implementer, tester, designer, reviewer) are spawned at runtime via role profiles, not as static agent definitions.
 
-### `/moai` Slash Commands (12)
+### `/moai` Slash Commands (13)
 
-MoAI exposes **12 `/moai` slash commands** in `.claude/commands/moai/`, managed through a 3-level progressive disclosure system for token efficiency (skill metadata is always listed; bodies load on invocation; bundled references load on demand).
+MoAI exposes **13 `/moai` slash commands** in `.claude/commands/moai/`, managed through a 3-level progressive disclosure system for token efficiency (skill metadata is always listed; bodies load on invocation; bundled references load on demand).
 
 | Group | Commands |
 |-------|----------|
@@ -316,7 +316,7 @@ MoAI exposes **12 `/moai` slash commands** in `.claude/commands/moai/`, managed 
 | **Autonomy** | `harness` |
 | **Feedback** | `feedback` |
 
-The full command set (12 total): `clean` · `codemaps` · `feedback` · `fix` · `gate` · `harness` · `loop` · `mx` · `plan` · `project` · `review` · `run` · `sync`.
+The full command set (13 total): `clean` · `codemaps` · `feedback` · `fix` · `gate` · `harness` · `loop` · `mx` · `plan` · `project` · `review` · `run` · `sync`.
 
 ---
 
@@ -581,8 +581,6 @@ All subcommands are invoked within Claude Code as `/moai <subcommand>`.
 | `fix` | — | Auto-fix LSP errors, linting, type errors (single pass) | `--dry`, `--seq`, `--level N`, `--resume`, `--team` |
 | `loop` | — | Iterative auto-fix until completion (max 100 iterations) | `--max N`, `--auto-fix`, `--seq` |
 | `review` | `code-review` | Code review with security and @MX tag compliance check | `--staged`, `--branch`, `--security` |
-| `coverage` | `test-coverage` | Test coverage analysis and gap filling (16 languages) | `--target N`, `--file PATH`, `--report` |
-| `e2e` | — | E2E testing (Claude-in-Chrome, Playwright CLI, or Agent Browser) | `--record`, `--url URL`, `--journey NAME` |
 | `clean` | `refactor-clean` | Dead code identification and safe removal | `--dry`, `--safe-only`, `--file PATH` |
 
 #### Documentation & Codebase
