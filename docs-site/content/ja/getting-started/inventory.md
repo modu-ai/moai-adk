@@ -71,7 +71,7 @@ moai inventory --verbose --json
 
 ```
 MOAI Inventory for moai-adk-go
-Project Root: /Users/goos/MoAI/moai-adk-go
+Project Root: /path/to/your-project
 Updated: 2026-07-01T10:15:00Z
 
 ========== ACTIVE SESSIONS ==========
@@ -129,7 +129,7 @@ Worktree: SPEC-DOCS-001
 ```json
 {
   "inventory": {
-    "project_root": "/Users/goos/MoAI/moai-adk-go",
+    "project_root": "/path/to/your-project",
     "timestamp": "2026-07-01T10:15:00Z",
     "sessions": [...],
     "worktrees": [...],

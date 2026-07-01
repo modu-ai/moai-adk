@@ -388,7 +388,7 @@ Current LLM: GLM 5 (no change)
 ```bash
 # Check Worktree directory
 pwd
-/Users/goos/MoAI/moai-project/.moai/worktrees/SPEC-AUTH-001
+/path/to/your-project/.moai/worktrees/SPEC-AUTH-001
 
 # Check Git status
 git status

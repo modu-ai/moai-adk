@@ -23,7 +23,7 @@ draft: false
 
 ```bash
 # プロジェクトルートで
-$ cd /Users/goos/MoAI/moai-project
+$ cd /path/to/your-project
 
 # SPEC 計画作成
 > /moai plan "JWT ベースユーザー認証システム実装" --worktree
@@ -44,7 +44,7 @@ SPEC ドキュメント作成中...
 
 Worktree 作成中...
   ✓ ブランチ作成: feature/SPEC-AUTH-001
-  ✓ Worktree 作成: /Users/goos/MoAI/moai-project/.moai/worktrees/SPEC-AUTH-001
+  ✓ Worktree 作成: /path/to/your-project/.moai/worktrees/SPEC-AUTH-001
   ✓ ブランチ切り替え完了
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -139,7 +139,7 @@ Phase 3: IMPROVE
 
 ```bash
 # プロジェクトルートに戻って
-$ cd /Users/goos/MoAI/moai-project
+$ cd /path/to/your-project
 
 # Worktree 完了
 $ moai worktree done SPEC-AUTH-001 --push
@@ -430,7 +430,7 @@ git add src/auth/jwt.ts
 git commit -m "fix: resolve merge conflict in JWT config"
 
 # 完了再試行
-cd /Users/goos/MoAI/moai-project
+cd /path/to/your-project
 moai worktree done SPEC-AUTH-001 --push
 ✓ 完了!
 ```

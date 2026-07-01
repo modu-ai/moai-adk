@@ -23,7 +23,7 @@ Learn how to apply Git Worktree in real projects through concrete examples.
 
 ```bash
 # In project root
-$ cd /Users/goos/MoAI/moai-project
+$ cd /path/to/your-project
 
 # Create SPEC plan
 > /moai plan "Implement JWT-based user authentication system" --worktree
@@ -44,7 +44,7 @@ Creating SPEC document...
 
 Creating Worktree...
   ✓ Branch created: feature/SPEC-AUTH-001
-  ✓ Worktree created: /Users/goos/MoAI/moai-project/.moai/worktrees/SPEC-AUTH-001
+  ✓ Worktree created: /path/to/your-project/.moai/worktrees/SPEC-AUTH-001
   ✓ Branch checkout complete
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -139,7 +139,7 @@ Next step: moai worktree done SPEC-AUTH-001 --push
 
 ```bash
 # Return to project root
-$ cd /Users/goos/MoAI/moai-project
+$ cd /path/to/your-project
 
 # Complete Worktree
 $ moai worktree done SPEC-AUTH-001 --push
@@ -430,7 +430,7 @@ git add src/auth/jwt.ts
 git commit -m "fix: resolve merge conflict in JWT config"
 
 # Retry completion
-cd /Users/goos/MoAI/moai-project
+cd /path/to/your-project
 moai worktree done SPEC-AUTH-001 --push
 ✓ Complete!
 ```

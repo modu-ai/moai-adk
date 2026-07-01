@@ -388,7 +388,7 @@ moai worktree go SPEC-LOG-002
 ```bash
 # 检查 Worktree 目录
 pwd
-/Users/goos/MoAI/moai-project/.moai/worktrees/SPEC-AUTH-001
+/path/to/your-project/.moai/worktrees/SPEC-AUTH-001
 
 # 检查 Git 状态
 git status

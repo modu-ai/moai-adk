@@ -23,7 +23,7 @@ draft: false
 
 ```bash
 # 在项目根目录
-$ cd /Users/goos/MoAI/moai-project
+$ cd /path/to/your-project
 
 # 创建 SPEC 规划
 > /moai plan "实现基于 JWT 的用户认证系统" --worktree
@@ -44,7 +44,7 @@ $ cd /Users/goos/MoAI/moai-project
 
 正在创建 Worktree...
   ✓ 分支创建: feature/SPEC-AUTH-001
-  ✓ Worktree 创建: /Users/goos/MoAI/moai-project/.moai/worktrees/SPEC-AUTH-001
+  ✓ Worktree 创建: /path/to/your-project/.moai/worktrees/SPEC-AUTH-001
   ✓ 分支检出完成
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -139,7 +139,7 @@ Claude Code v1.0.0
 
 ```bash
 # 返回项目根目录
-$ cd /Users/goos/MoAI/moai-project
+$ cd /path/to/your-project
 
 # 完成 Worktree
 $ moai worktree done SPEC-AUTH-001 --push
@@ -430,7 +430,7 @@ git add src/auth/jwt.ts
 git commit -m "fix: resolve merge conflict in JWT config"
 
 # 重试完成
-cd /Users/goos/MoAI/moai-project
+cd /path/to/your-project
 moai worktree done SPEC-AUTH-001 --push
 ✓ 完成!
 ```

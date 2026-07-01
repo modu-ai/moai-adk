@@ -24,7 +24,7 @@ draft: false
 
 ```bash
 # 프로젝트 루트에서
-$ cd /Users/goos/MoAI/moai-project
+$ cd /path/to/your-project
 
 # SPEC 계획 생성
 > /moai plan "JWT 기반 사용자 인증 시스템 구현" --worktree
@@ -45,7 +45,7 @@ SPEC 문서 생성 중...
 
 Worktree 생성 중...
   ✓ 브랜치 생성: feature/SPEC-AUTH-001
-  ✓ Worktree 생성: /Users/goos/MoAI/moai-project/.moai/worktrees/SPEC-AUTH-001
+  ✓ Worktree 생성: /path/to/your-project/.moai/worktrees/SPEC-AUTH-001
   ✓ 브랜치 전환 완료
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -140,7 +140,7 @@ Phase 3: IMPROVE
 
 ```bash
 # 프로젝트 루트로 돌아와서
-$ cd /Users/goos/MoAI/moai-project
+$ cd /path/to/your-project
 
 # Worktree 완료
 $ moai worktree done SPEC-AUTH-001 --push
@@ -431,7 +431,7 @@ git add src/auth/jwt.ts
 git commit -m "fix: resolve merge conflict in JWT config"
 
 # 완료 재시도
-cd /Users/goos/MoAI/moai-project
+cd /path/to/your-project
 moai worktree done SPEC-AUTH-001 --push
 ✓ 완료!
 ```

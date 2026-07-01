@@ -389,7 +389,7 @@ moai worktree go SPEC-LOG-002
 ```bash
 # Worktree 디렉토리 확인
 pwd
-/Users/goos/MoAI/moai-project/.moai/worktrees/SPEC-AUTH-001
+/path/to/your-project/.moai/worktrees/SPEC-AUTH-001
 
 # Git 상태 확인
 git status
