@@ -542,6 +542,69 @@ docs-site/content/ko/claude-code/context-memory/memory.md:23:백업이나 버전
 - Authored-By-Agent: manager-docs
 - Trailer: 🗿 MoAI
 
+**M2c-1 (Milestone 2: Chunk 3-1 — Korean Agentic Pages Validate-Rewrite) — COMPLETE**
+
+Executed 2026-07-01 by manager-docs (ko claude-code/agentic pages, validate-then-rewrite approach).
+
+**Files Modified (2 pages):**
+
+1. `docs-site/content/ko/claude-code/agentic/sub-agents.md` (rewrite):
+   - Validate: research-cc-latest.md §4 AGENTIC subsection (v2.1.172 depth-5 nesting cap, v2.1.186 bg permission prompts, built-in agents, optional fields)
+   - Rewrite: v2.1.172 depth-5 hard cap & Agent tool gating mechanism added; bg permission prompts (v2.1.186) updated; Explore thoroughness options added; /fork mechanism clarified; optional fields table expanded (permissionMode, maxTurns, skills, mcpServers, hooks, memory, background, effort, color, initialPrompt)
+
+2. `docs-site/content/ko/claude-code/agentic/agent-teams.md` (rewrite):
+   - Validate: research-cc-latest.md §4 AGENTIC subsection (v2.1.178 implicit teams, TeamCreate/TeamDelete REMOVED, team_name deprecated, in-process default display mode)
+   - Rewrite: v2.1.178 implicit teams emphasis added; TeamCreate/TeamDelete removal language changed from "deprecated" to "REMOVED v2.1.178"; team_name accepted-but-ignored clarified; in-process default display mode (v2.1.179 change) documented; v2.1.186 split-pane tmux/iterm2 support added; recommended team size 3-5 members with cost/coordination rationale
+
+**Validation (pages NOT modified — validated-clean):**
+- `docs-site/content/ko/claude-code/agentic/_index.md`: validated-clean (structure + flow correct)
+- `docs-site/content/ko/claude-code/agentic/agent-view.md`: validated-clean (terminology "agent view" correct, shell commands current, worktree.bgIsolation accurate)
+- `docs-site/content/ko/claude-code/agentic/workflows.md`: validated-clean (v2.1.154+, ultracode keyword, 16/1000 limits, /deep-research accurate)
+
+**Verification (M2c-1 gate) — Quoted grep output:**
+
+```
+$ grep -c 'FleetView' docs-site/content/ko/claude-code/agentic/*.md
+0
+
+$ grep -c 'v2.1.178' docs-site/content/ko/claude-code/agentic/agent-teams.md
+5
+
+$ grep -c 'TeamCreate/TeamDelete.*제거\|TeamCreate.*TeamDelete.*REMOVED\|v2.1.178부터 이' docs-site/content/ko/claude-code/agentic/agent-teams.md
+1
+
+$ grep -c 'ultracode' docs-site/content/ko/claude-code/agentic/workflows.md
+3
+
+$ grep -c 'v2.1.172' docs-site/content/ko/claude-code/agentic/sub-agents.md
+2
+
+$ grep -c '깊이 5\|depth.5.*하드.*한계' docs-site/content/ko/claude-code/agentic/sub-agents.md
+2
+```
+
+Interpretation: FleetView count 0 (cross-cutting correction verified), v2.1.178 mentions 5 (implicit teams), TeamCreate/TeamDelete removal 1, ultracode keyword 3, v2.1.172 nesting 2, 깊이 5 hard cap 2 (all targets met).
+
+**Content validation:**
+- ✓ sub-agents.md: YAML frontmatter, Korean-only, cross-linking to advanced guides, no "FleetView" mentions, v2.1.172 depth-5 section complete
+- ✓ agent-teams.md: YAML frontmatter, Korean-only, v2.1.178 implicit teams emphasis, TeamCreate/TeamDelete REMOVED language, team_name accepted-but-ignored clarity
+- ✓ agent-view.md: validated-clean (terminology, shell commands, worktree.bgIsolation)
+- ✓ workflows.md: validated-clean (v2.1.154+, ultracode, 16/1000 limits)
+- ✓ _index.md: validated-clean (structure + flow)
+- ✓ 4-locale scope preserved (ko pages only)
+
+**Commit:**
+- Subject: `docs(SPEC-V3R6-DOCS-V3-REBUILD-001): M2c-1 ko claude-code/agentic CC-latest mirror`
+- Message body:
+  - Pages (5 agentic): sub-agents.md + agent-teams.md (rewritten per research SSOT); _index.md + agent-view.md + workflows.md (validated-clean)
+  - Validation: research-cc-latest.md v2.1.196 SSOT (4-locale agentic facts)
+  - Rewrites: sub-agents (v2.1.172 depth-5 cap, v2.1.186 bg perms, optional fields); agent-teams (v2.1.178 implicit teams, TeamCreate/TeamDelete REMOVED, in-process default)
+  - Verification: FleetView 0, v2.1.178 count 5, TeamCreate removal 1, ultracode 3, nesting-cap 2 (all self-checks PASS)
+  - 4-locale scope: ko pages only (no en/ja/zh leakage)
+- Authored-By-Agent: manager-docs
+- Trailer: 🗿 MoAI
+- Commit SHA: d427a4e1d
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — populated by manager-develop>_
