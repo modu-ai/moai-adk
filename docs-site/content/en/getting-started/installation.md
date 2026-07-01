@@ -14,7 +14,7 @@ Commercial use, modification, and distribution are free with no source code disc
 
 {{< callout type="info" >}}
 **Note**: MoAI-ADK 1.x (Python version) was licensed under GPL-3.0. Starting from v2.0.0, it was rewritten in Go and changed to Apache-2.0.
-{{< /callout }}
+{{< /callout >}}
 
 ## Prerequisites
 
