@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DOCS-POSTREBUILD-CLEANUP-001
 title: "Docs-Site Post-Rebuild Cleanup — Deferred Defects (D2/D6/D7) + New Findings"
 version: "0.1.2"
-status: in-progress
+status: completed
 created: 2026-07-02
 updated: 2026-07-02
 author: manager-spec

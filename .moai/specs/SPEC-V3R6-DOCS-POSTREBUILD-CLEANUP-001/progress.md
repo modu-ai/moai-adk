@@ -73,4 +73,12 @@ Run-phase executed as a single manager-develop session (M1→M5, sequential, no 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+- **sync_status**: complete
+- **sync_complete_at**: 2026-07-02
+- **sync_commit_sha**: <backfill>
+- **changelog_entry_position**: [Unreleased] / Fixed section, first entry
+- **frontmatter_status_transitions.in-progress_to_implemented**: YES (M1 commit 1b97cb4d3)
+- **frontmatter_status_transitions.implemented_to_completed**: YES (sync commit, this artifact)
+- **canary_compliance_check.no_go_code_modified**: YES (git diff internal/ cmd/ pkg/ 0 matches in run+sync commits)
+- **canary_compliance_check.no_template_modified**: YES (internal/template/templates/ 0 changes — docs-site-only SPEC)
+- **canary_compliance_check.specific_path_discipline**: YES (staged: CHANGELOG.md + spec.md + progress.md only; other project files untouched)
