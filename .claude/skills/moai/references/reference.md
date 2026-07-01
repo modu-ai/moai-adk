@@ -234,8 +234,6 @@ Previous /moai:X-Y command format mapped to new /moai subcommand format:
 - /moai:review maps to /moai review
 - /moai:clean maps to /moai clean
 - /moai:codemaps maps to /moai codemaps
-- /moai:coverage maps to /moai coverage
-- /moai:e2e maps to /moai e2e
 - /moai:mx maps to /moai mx
 
 ---
