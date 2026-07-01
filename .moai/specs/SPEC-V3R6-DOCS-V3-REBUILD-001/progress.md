@@ -82,28 +82,53 @@ Reconciliation: Prior M1-C4b (209a8de8c) corrected the skill *total* to 27 but l
 
 **Verification:** grep -rn retired-skill-names → 0 matches; all 4 new skills present; "uiux" removed.
 
-**M2c-2 (Agentic Pages Research + WebFetch Validation) — IN PROGRESS**
+**M2c-2a (Agentic Pages CC-Latest Research Rewrite — 3 pages, NO WebFetch) — COMPLETE**
 
-Executed 2026-07-01 by manager-docs (M2 milestone claude-code/agentic pages rewrite track).
+Executed 2026-07-01 by manager-docs (M2 milestone claude-code/agentic pages rewrite track, chunk A).
 
-**Research & Validation Summary:**
-- Completed pre-flight: `git rev-parse HEAD` = e4bdd0765776d1b5cd178775162fe5aa66b5a127 (expected ✓)
-- Completed race check: `git rev-list --count --left-right origin/main...HEAD` = "0 0" (no parallel session conflict ✓)
-- Completed source-of-truth research: Research document research-cc-latest.md §4 AGENTIC provides 5 per-page feature signals (goal, scheduled-tasks, worktrees, best-practices, large-codebases)
-- Completed mandatory WebFetch (2 pages): 
-  * `code.claude.com/docs/en/best-practices` fetched successfully; 12.5K markdown content (context window, verification, exploration-plan-code, CLAUDE.md best practices, configuration, communication, session management, automation)
-  * `code.claude.com/docs/en/large-codebases` fetched successfully; 11.8K markdown content (layered CLAUDE.md, sparse worktrees, code intelligence plugins, permission denial, per-directory skills, plugin centralization, cross-package changes)
-- Completed file-existence validation: All 5 pages exist in docs-site/content/ko/claude-code/agentic/
-  * goal.md (already in-locale, rewrite needed per WebFetch sources) ✓
-  * scheduled-tasks.md (already in-locale, rewrite needed per WebFetch sources) ✓
-  * worktrees.md (already in-locale, rewrite needed per WebFetch sources) ✓
-  * best-practices.md (already in-locale, mandatory WebFetch completed, rewrite ready) ✓
-  * large-codebases.md (already in-locale, mandatory WebFetch completed, rewrite ready) ✓
+**Scope & Execution:**
+- **M2c-2a target**: 3 pages rewritten from research-cc-latest.md §4 AGENTIC (goal, scheduled-tasks, worktrees)
+- **Constraint**: NO WebFetch needed for these 3 (research was directly fetched; no search-synthesized content)
+- **Pre-flight**: `git rev-parse HEAD` = b05585b08 (expected ✓); race check "0 1" (no parallel session conflict ✓)
 
-**Next: Rewrite Implementation (token-limit defer)**
-M2c-2 rewrite phase blocked by context window saturation (158K used / 200K budget). Defer M2c-2 page rewrites to follow-up continuation session. Prepared artifacts (research, WebFetch content) ready for M2c-3 continuation.
-- plan.md M2 milestone status: NOT COMPLETE (awaiting M2c-3 full rewrite execution)
-- progress.md status: persisting validation evidence for continuity
+**Files Modified & Delta Integrated:**
+
+1. **goal.md** — Rewritten (v2.1.139+, Haiku evaluator, disableAllHooks detail)
+   - Updated dynamic model from "빠른 모델" to explicit "**Haiku**" + behavioral detail ("no tools/reads")
+   - Clarified "드러낸 내용" (surfaced output) only in §동작 방식 (removed redundant para)
+   - Refined `disableAllHooks`/`allowManagedHooksOnly` requirement detail (3 bullets: cannot use if either set)
+   - Updated CC docs reference label ("Goal directive (`/goal`) — Claude Code 공식 문서")
+   - Verification (grep): v2.1.139 (1 match), Haiku (1 match) ✓
+
+2. **scheduled-tasks.md** — Rewritten (v2.1.72+, max 50/session, jitter 30min/90s, 7-day expiry)
+   - Bolded **v2.1.72** version anchor
+   - Added max 50 tasks/session to feature table (new row)
+   - Replaced abstract comparison with precise table (Cloud Routines min 1hr / Desktop min 1min / `/loop` min 1min)
+   - Refined jitter description: recurring **30분** late, one-shot **90초** early; bolded numbers
+   - Bolded "자동으로 삭제" (7-day expiry behavior)
+   - Updated CC docs reference label ("Scheduled tasks — Claude Code 공식 문서")
+   - Verification (grep): v2.1.72 (1 match), 30분 (1 match) ✓
+
+3. **worktrees.md** — Rewritten (origin/HEAD default, worktree.baseRef head option, PR syntax, EnterWorktree/ExitWorktree, .worktreeinclude, cleanup nuance, .gitignore tip)
+   - Updated feature table: baseRef logic clarified (origin/HEAD default, "head" option for local HEAD)
+   - Added PR branch syntax note (`claude --worktree "#1234"` creates `.claude/worktrees/pr-1234`)
+   - Added workspace trust + `-p` skip mechanism to feature table
+   - Expanded §워크트리에서 시작하기: added baseRef config example + trust/bypass detail
+   - Refined §서브에이전트 격리: "각자 워크트리" → "항상 워크트리", added "프롬프트가 바뀐 경우도"
+   - Completely rewrote §정리 (cleanup section) with 6 bullet points covering clean-state/changed-prompts/non-sweep behavior + .gitignore tip
+   - Updated CC docs reference label ("Worktrees — Claude Code 공식 문서")
+   - Verification (grep): origin/HEAD (3 matches), EnterWorktree (1 match) ✓
+
+**Commit:**
+- Subject: `docs(SPEC-V3R6-DOCS-V3-REBUILD-001): M2c-2a ko claude-code/agentic goal+scheduled+worktrees CC-latest`
+- Authored-By-Agent: manager-docs
+- Commit SHA: 7dc291698
+- Files staged: 3 M (only agentic pages; untracked .moai/specs/SPEC-INVOCATION-MODEL-001/ NOT staged per scope)
+
+**Next: M2c-2b (best-practices + large-codebases, WebFetch required)**
+- M2c-2b remaining: 2 pages (best-practices.md, large-codebases.md) require WebFetch per research-cc-latest.md note ("search-synthesized — FETCH before rewrite")
+- plan.md M2 milestone status: PARTIAL (M2c-2a COMPLETE; M2c-2b PENDING WebFetch)
+- progress.md status: M2c-2a evidence persisted; M2c-2b blockers documented
 
 **M1 (Milestone 1: Track B Korean Pages) — COMPLETE**
 
