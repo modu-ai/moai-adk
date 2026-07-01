@@ -8,7 +8,7 @@ description: "Claude Code 的斜杠命令 — 整理内置命令、用 Markdown 
 斜杠命令 (slash command) 是在会话中通过以 `/` 开头的一行直接操控 Claude Code 的最快方式。
 
 {{< callout type="info" >}}
-**一句话总结**: 以 `/` 开头的一行输入，从切换模型到整理上下文，再到运行你亲手编写的工作流，让你在指尖掌控整个会话。
+**一句话总结**：以 `/` 开头的一行输入，从切换模型到整理上下文，再到运行你亲手编写的工作流，让你在指尖掌控整个会话。
 {{< /callout >}}
 
 ## 什么是斜杠命令
@@ -25,33 +25,54 @@ description: "Claude Code 的斜杠命令 — 整理内置命令、用 Markdown 
 | 捆绑技能 (bundled skill) | 随 Claude Code 一同附带的技能 | 向模型下达指令，由模型用工具来协调工作 |
 | 自定义命令 | `.claude/commands/` 或 `.claude/skills/` | 由用户用 Markdown 直接定义 |
 
-## 内置斜杠命令示例
+## 内置斜杠命令及技能列表
 
-常用的内置命令与捆绑技能整理如下。完整列表可在输入框中通过 `/` 查看，或参阅官方命令参考。
+斜杠命令由三类构成。常用的命令列表如下。完整列表可在输入框中通过 `/` 查看，公式命令参考见 [code.claude.com/docs/en/commands](https://code.claude.com/docs/en/commands)。
+
+### 内置命令 (Built-in)
+
+| 命令 | 用途 | 版本 |
+| :--- | :--- | :--- |
+| `/goal <condition>` | 设定完成条件并跨多轮自主进行 (Haiku 定期检查) | v2.1.139+ |
+| `/workflows` | 动态工作流执行列表管理 UI | v2.1.139+ |
+| `/rewind` (别名：`/checkpoint`、`/undo`) | 将代码和对话回退到之前的检查点 | v2.1.191+ |
+| `/context [all]` | 分析当前上下文窗口用量 | 基础 |
+| `/memory` | 加载·切换 `CLAUDE.md` + 自动内存列表 | v2.1.59+ |
+| `/compact` | 在保持同一对话的前提下摘要至今内容以腾出上下文 | 基础 |
+| `/clear` (别名：`/reset`、`/new`) | 清空上下文并开始新对话 | 基础 |
+| `/agents` | 子智能体管理 UI | v2.1.139+ |
+| `/mcp` | MCP 服务器连接及 OAuth 认证管理 | v2.1.186+ |
+| `/plugin` | 插件管理 | 基础 |
+| `/effort [low\|medium\|high\|xhigh\|max\|ultracode\|auto]` | 设置模型的推理深度或编排方式 | 基础 |
+| `/model` | 选择 AI 模型 | 基础 |
+| `/background` (别名：`/bg`) | 后台执行 | v2.1.139+ |
+| `/fork <directive>` | 继承对话的 fork 子智能体 | v2.1.161+ |
+| `/recap` | 会话摘要 | 基础 |
+| `/btw` | 旁白提问 | v2.1.187+ |
+| `/cd` | 切换会话工作目录，保留提示词缓存 | v2.1.169+ |
+| `/schedule` (别名：`/routines`) | 计划任务 | v2.1.72+ |
+| `/branch`、`/tasks`、`/plan`、`/doctor`、`/skills`、`/reload-skills`、`/reload-plugins` | 其他管理命令 | 基础 |
+
+### 技能命令 `[Skill]`
 
 | 命令 | 用途 |
 | :--- | :--- |
-| `/help` | 显示帮助和可用命令列表 |
-| `/clear` | 清空上下文并开始新对话 (之前的对话保存在 `/resume` 中) |
-| `/compact` | 在保持同一对话的前提下，将至今为止的内容摘要以腾出上下文 |
-| `/context` | 以彩色网格可视化当前上下文窗口的使用量 |
-| `/cost` | 显示会话费用和套餐用量 (`/usage`、`/stats` 的别名) |
-| `/model` | 切换 AI 模型并保存默认模型 |
-| `/effort` | 设置模型的推理深度 (effort 级别) |
-| `/config` | 打开主题、模型、输出风格等设置界面 (`/settings` 的别名) |
-| `/agents` | 管理子代理配置 |
-| `/skills` | 显示可用技能列表 |
-| `/mcp` | 管理 MCP 服务器连接与认证 |
-| `/hooks` | 查看按工具事件划分的 hook 配置 |
-| `/permissions` | 管理工具权限的 allow/ask/deny 规则 (`/allowed-tools` 的别名) |
-| `/init` | 为项目生成起始用的 `CLAUDE.md` |
-| `/memory` | 编辑 `CLAUDE.md` 记忆文件 |
-| `/plan` | 在进行大改动之前进入计划模式 |
-| `/rewind` | 将代码和对话回退到之前的检查点 (检查点机制) |
-| `/resume` | 按 ID 或名称恢复对话 (`/continue` 的别名) |
-| `/doctor` | 诊断安装与配置 |
+| `/loop` (别名：`/proactive`) | 重复循环执行 (Ralph/间隔 based) |
+| `/batch` | 批量执行 |
+| `/simplify` | 代码简化 (v2.1.154+) |
+| `/code-review` | 代码审查 |
 
-正如 `/cost` 和 `/stats` 是 `/usage` 的别名，同一功能往往可以用多个名称调用。此外，部分命令会根据平台、套餐和环境而有不同的可见性。
+### 工作流命令 `[Workflow]`
+
+| 命令 | 用途 |
+| :--- | :--- |
+| `/deep-research` | 并行执行网络搜索并交叉验证结果的研究 (需要 WebSearch) |
+
+### 命令可用性说明
+
+- 同一功能往往可以用多个名称调用 (别名)。
+- 某些命令会根据平台、计划和环境而有不同的可见性。
+- `ultracode` 既是当前工作流触发关键字 (pre-v2.1.160 是 `workflow`) 也是 `/effort` 级别。
 
 ## 自定义斜杠命令
 
@@ -161,7 +182,7 @@ MoAI-ADK 提供的 `/moai` 及其子命令 (`/moai plan`、`/moai run`、`/moai 
 
 `/moai` 命令本身的行为及其子命令在另外的文档中介绍。
 
-## 相关文档
+## 关联文档
 
 - [/moai 命令](/utility-commands/moai)
 - [工作流命令](/workflow-commands)
