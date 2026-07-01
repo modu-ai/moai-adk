@@ -37,6 +37,12 @@ main:
           zh: 简介
         ref: /getting-started/introduction
       - name:
+          ko: moai inventory 커맨드
+          en: moai inventory Command
+          ja: moai inventory コマンド
+          zh: moai inventory 命令
+        ref: /getting-started/inventory
+      - name:
           ko: 설치
           en: Installation
           ja: インストール
@@ -412,6 +418,24 @@ main:
           ja: ビルダーエージェントガイド
           zh: 构建者代理指南
         ref: /advanced/builder-agents
+      - name:
+          ko: 동적 워크플로우와 Ultracode
+          en: Dynamic Workflows and Ultracode
+          ja: 動的ワークフローと Ultracode
+          zh: 动态工作流和 Ultracode
+        ref: /advanced/ultracode-workflows
+      - name:
+          ko: Harness v4 Builder 심화 가이드
+          en: Harness v4 Builder Advanced Guide
+          ja: Harness v4 Builder 深掘りガイド
+          zh: Harness v4 Builder 深掘指南
+        ref: /advanced/harness-v4-builder
+      - name:
+          ko: 의사결정 메모리 시스템
+          en: Decision Memory System
+          ja: 意思決定メモリシステム
+          zh: 决策记忆系统
+        ref: /advanced/decision-memory
       - name:
           ko: Hooks 가이드
           en: Hooks Guide
