@@ -31,6 +31,7 @@ When NONE apply (single-turn, trivial task, read-only query), emit a brief compl
 
 ultrathink. <SPEC-ID> <phase> <entering verb>.
 # /effort ultracode   ← emit ONLY when the next SPEC's plan declares workflow fan-out (dynamic Workflow or Agent Teams); omit otherwise (per Field-by-Field Spec, Block 1).
+# /goal <completion-condition>   ← emit ONLY when the next SPEC is run-phase AND has a machine-verifiable end-state (e.g. the SPEC's test suite passes AND lint is clean, or stop after N turns); omit otherwise (per Field-by-Field Spec, Block 1). A /goal line does NOT authorize autonomous run-phase entry — Implementation Kickoff Approval still required.
 applied lessons: <memory-file-1>, <memory-file-2>, ...
 
 전제 검증:
@@ -76,6 +77,7 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
 
 - **Block 1**: `ultrathink.` sets `effort: xhigh` on Opus 4.7+ (next session lacks accumulated reasoning). Adaptive Thinking is a DISTINCT axis — the thinking mode, explicitly enabled via `thinking: {type: "adaptive"}` — not something `ultrathink` toggles. `<phase>` ∈ `plan | run | sync | mx`.
   - **Purpose-conditional `/effort ultracode` re-set line** [HARD]: Block 1 also carries a purpose-conditional `/effort ultracode` re-set line, emitted ONLY when the next SPEC's plan declares workflow fan-out (dynamic Workflow or Agent Teams). The line sits immediately after `ultrathink.`. Per `.claude/rules/moai/workflow/dynamic-workflows.md`, ultracode is NOT restored by the `ultrathink.` opener — it must be explicitly re-issued after `/clear` when the resumed session needs auto-orchestration. When the next SPEC does NOT need workflow fan-out, the ultracode line is omitted (the `ultrathink.` opener alone suffices). Default on ambiguity: omit.
+  - **Purpose-conditional `/goal` re-set line** [HARD]: Block 1 also carries a purpose-conditional `/goal <completion-condition>` re-set line, authored with the same conditional-emit mechanism as the `/effort ultracode` line above. It is emitted ONLY when the next SPEC's phase is run-phase AND the next SPEC declares a mechanically verifiable completion condition (a machine-checkable end-state such as the SPEC's test suite passing, a lint-clean state, or a bounded `stop after N turns` clause). The line sits immediately after the `/effort ultracode` line. Per `.claude/rules/moai/workflow/goal-directive.md`, a `/goal` is NOT restored by the `ultrathink.` opener — `/clear` removes an active goal, so it must be explicitly re-issued after `/clear` when the resumed session needs the autonomous-continuation loop. The renderer omits the `/goal` line for a plan-phase or sync-phase next SPEC, and for any next SPEC lacking a machine-verifiable end-state. Default on ambiguity: omit — the identical default binding the `/effort ultracode` line. **Implementation Kickoff Approval invariant**: a `/goal` line does NOT authorize autonomous run-phase entry; the Implementation Kickoff Approval human gate (orchestrator `AskUserQuestion` per `CLAUDE.local.md §19.1` and `.claude/rules/moai/workflow/goal-directive.md`) remains required before run-phase entry, independent of whether a `/goal` line is present. The `/goal` line is a continuation-loop convenience, never a run-phase pre-authorization.
 - **Block 2**: `applied lessons:` — relevant memory files from `~/.claude/projects/{hash}/memory/`. MUST include the most recent relevant project memory + any relevant lessons. Block 2 MUST also include a `source_session_id: <UUID from moai session current>` line carrying the Claude Code session_id of the orchestrator turn that generated this resume message per the canonical multi-session coordination policy. The session_id is the same value emitted by `moai session list --json` and stored in `.moai/state/active-sessions.json` — readers can correlate the resume back to its originating session.
   - **Environment fallback** [HARD]: the primary UUID source is `moai session current`. If `moai session current` returns the canonical fallback (runtime did not expose session.id to the CLI subprocess), OR `moai session list --json` returns error (CLI not installed in PATH), OR `.moai/state/active-sessions.json` does not exist (the multi-session coordination layer not yet deployed in this project), the orchestrator MUST emit the recognized fallback pattern verbatim: `source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>`. This pattern is NOT an anti-pattern; it is the prescribed graceful degradation when the CLI/registry layer is absent or the runtime does not expose session.id. The next session, upon `/moai session register` activation, MAY backfill the UUID by appending a `[backfilled: <UUID>]` annotation to the memory file's Block 2 line.
 - **Block 3**: separator + `전제 검증:` (Korean) or `Preconditions:` (English).
@@ -94,6 +96,7 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
 ✂──── 여기부터 복사 ────✂
 
 ultrathink. SPEC-MYPROJ-001 implementation 진입.
+# /goal the SPEC's test suite passes AND lint is clean, or stop after 20 turns   ← run-phase + machine-verifiable; omit for plan/sync or non-verifiable.
 applied lessons: project_sprint6_myproj001_plan_ready, lessons #9 wave-split.
 source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>
 
@@ -163,6 +166,7 @@ The table below is the single navigational index for every anti-pattern code def
 - Cut-line markers absent — user cannot identify exact copy boundary in long terminal scrollback (see § Cut-line Marker Specification for the literal format).
 - Cut-line markers with translated `✂` symbol or `─` decorator — contrary to § Cut-line Marker Specification (only the marker text translates; the symbols are preserved verbatim).
 - Omitting the `/effort ultracode` re-set line when the next SPEC's plan declares workflow fan-out (dynamic Workflow or Agent Teams) — the resumed session silently drops to non-ultracode effort and loses auto-orchestration (ultracode is NOT restored by `ultrathink.` per `.claude/rules/moai/workflow/dynamic-workflows.md`).
+- Omitting the `/goal` re-set line when the next SPEC has a verifiable run-phase completion condition — the resumed session silently loses the autonomous-continuation loop (a `/goal` is NOT restored by `ultrathink.`; `/clear` removes an active goal, per `.claude/rules/moai/workflow/goal-directive.md`).
 
 ## Worktree-Anchored Resume Pattern
 
@@ -281,7 +285,7 @@ applied lessons: project_myproj_prev_sprint_complete, lessons #12 #13 #14.
 - **AP-D-004**: directive escalation embedded in body (N-th "stronger directive", N+1-th "even-stronger directive", N+2-th "documentation-level codification entry-condition") → codify in a rule file; the paste-ready keeps only the reference
 - **AP-D-005**: ceremonial reminder ("B8/B15 observe discipline", "manager-develop must exactly reference plan.md §F.3 line 130-143") → keep inside SPEC artifacts; the paste-ready relies on trust delegation
 
-### Pre-emit self-check (paste-ready budget) — 8 items
+### Pre-emit self-check (paste-ready budget) — 9 items
 
 - [ ] Block 2 ≤ 4 references
 - [ ] Block 2 each reference is a single-line identifier (full history prohibited)
@@ -291,6 +295,7 @@ applied lessons: project_myproj_prev_sprint_complete, lessons #12 #13 #14.
 - [ ] Block 6 ≤ 2 lines
 - [ ] Doctrine history not embedded → rule-file reference only
 - [ ] No ceremonial reminder
+- [ ] Block 1 `/goal` re-set line (if emitted) is a single conditional line, not a multi-line block
 
 ### Applicable scope
 
