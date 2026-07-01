@@ -72,7 +72,7 @@ multi_session_race: "origin/main advanced to 2f49c9dc4 (parallel SPEC-RETRY-IDEM
 
 ```yaml
 sync_complete_at: 2026-07-01
-sync_commit_sha: "3e930ec793413018108c83a9c8bf46652ec041da"
+sync_commit_sha: "85f1ec91d503d51f5422faf9e1787ce1c100b565"
 sync_status: completed
 changelog_entry_position: "CHANGELOG.md lines 24+ (Unreleased/Removed section)"
 changelog_format: "bilingual + 10 AC references + replacement guidance + 3-phase close confirmation + 🗿 MoAI signature"
