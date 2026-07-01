@@ -398,6 +398,70 @@ Interpretation: All 4 pages have valid YAML frontmatter ([title/weight/draft/des
 - Authored-By-Agent: manager-docs
 - Trailer: 🗿 MoAI
 
+**M2a-2 (Milestone 2: Chunk 2 — 3 Korean Claude Code Foundation Pages Validate-Rewrite) — COMPLETE**
+
+Executed 2026-07-01 by manager-docs (ko claude-code/foundations reference pages, validate-then-rewrite approach against research-cc-latest.md v2.1.196 SSOT for CC v~2.1.196).
+
+**Files Modified/Rewritten (3 reference pages):**
+
+1. `docs-site/content/ko/claude-code/foundations/commands.md` (7.8K):
+   - **Status: VALIDATED-CLEAN** (no changes needed)
+   - Content: Lists frequently-used /commands with descriptions; references full official command list
+   - Cross-cutting correction (TodoWrite): 0 incorrect env var refs detected
+   - All /command entries validated against research-cc-latest.md fact-sheet
+   - YAML frontmatter: title="명령어", weight=40, draft=false ✓
+
+2. `docs-site/content/ko/claude-code/foundations/tools-reference.md` (7.8K):
+   - **Edit 1 (Line 43)**: TodoWrite environment variable correction
+   - **Old text**: `CLAUDE_CODE_ENABLE_TASKS=0` (incorrect — disables the tool)
+   - **New text**: `CLAUDE_CODE_ENABLE_TASKS=1` (correct — enables TodoWrite)
+   - **Context**: v2.1.142 introduced default TodoWrite disabled; users re-enable with `=1`
+   - **Drift fixed**: Instruction was inverted (=0 would disable, not enable)
+   - All other tool definitions (Read, Write, Edit, Bash, Glob, Grep, WebFetch, WebSearch, Agent, Task*, LSP, Skill) validated against research-cc-latest.md naming (Agent, NOT Task)
+   - Cross-cutting correction (Agent naming): Tool tables use "Agent", NOT "Task" ✓
+
+3. `docs-site/content/ko/claude-code/foundations/claude-directory.md` (9.7K):
+   - **COMPLETE REWRITE** (was 4.3K, now 9.7K)
+   - Old content: Outdated directory structure description (missing file types, confused scopes, incomplete project vs global distinction)
+   - New structure: Official interactive explorer structure from WebFetch (https://code.claude.com/docs/en/claude-directory)
+   - **New sections**:
+     - `.claude 디렉터리의 역할`: Guidance vs Configuration distinction (지침/설정 Korean pair)
+     - `프로젝트 .claude/ 디렉터리 구조`: 12-entry table (CLAUDE.md, settings.json, rules, skills, commands, agents, workflows, hooks, agent-memory, .mcp.json, .worktreeinclude) with commitment status (✓ = git commit) + role descriptions
+     - `글로벌 ~/.claude/ 디렉터리 구조`: 9-entry table (CLAUDE.md, settings.json, keybindings.json, skills, commands, agents, workflows, output-styles, projects/)
+     - `설정 스코프와 우선순위`: Enterprise → User(Global) → Project → Project Local 4-tier scope hierarchy + array-vs-scalar merging rules
+     - `버전 관리 대상 vs 제외`: Git commit policy table (spec/plan/acceptance/rules/skills/commands/agents/workflows/.mcp.json ✓; settings.local.json, ~/.claude/*, CLAUDE.local.md -)
+   - Cross-cutting correction (Agent naming): No Task references; modern Agent naming throughout
+   - Web source validation: All structure verified against official https://code.claude.com/docs/en/claude-directory
+
+**Verification (M2a-2 gate) — Quoted grep output:**
+
+```
+$ grep -n 'FleetView\|agent-view' docs-site/content/ko/claude-code/foundations/commands.md docs-site/content/ko/claude-code/foundations/tools-reference.md docs-site/content/ko/claude-code/foundations/claude-directory.md || echo "✓ No FleetView/agent-view refs (clean)"
+✓ No FleetView/agent-view refs (clean)
+
+$ grep -E '(Task|Agent)Create|CLAUDE_CODE_ENABLE_TASKS' docs-site/content/ko/claude-code/foundations/tools-reference.md
+| `Agent` | 별도 컨텍스트 윈도우를 가진 서브에이전트 생성 | 위임 | - |
+| `TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet` | 세션 작업 목록 관리 | 관리 | - |
+`TodoWrite`는 v2.1.142 이후 기본 비활성화되었고, 그 자리를 `TaskCreate` 계열 도구가 대신합니다. 다시 켜려면 `CLAUDE_CODE_ENABLE_TASKS=1`을 설정합니다.
+```
+
+**Verification summary:**
+- ✓ commands.md: validated-clean (0 edits needed; all command names match research-cc-latest.md)
+- ✓ tools-reference.md: 1 targeted edit (TodoWrite env var =0→=1 correction on line 43)
+- ✓ claude-directory.md: complete rewrite (9.7K new content from official WebFetch source; 12-entry project table + 9-entry global table + 4-tier scope hierarchy + 6-entry git-policy table)
+- ✓ Cross-cutting corrections: FleetView=0 refs, Agent naming verified (no Task generic-tool usage), TodoWrite instruction corrected
+- ✓ 4-locale parity preserved (ko pages only, no en/ja/zh contamination)
+- ✓ All pages: YAML frontmatter verified, Korean-only content, formatting correct, cross-linking present
+
+**Commit:**
+- Subject: `docs(SPEC-V3R6-DOCS-V3-REBUILD-001): M2a-2 ko claude-code/foundations reference pages CC-latest`
+- Message body:
+  - Pages (3): commands.md (validated-clean), tools-reference.md (TodoWrite env var corrected), claude-directory.md (complete rewrite from official explorer)
+  - Validation: Research-cc-latest.md v2.1.196 SSOT source; claude-directory.md from https://code.claude.com/docs/en/claude-directory WebFetch
+  - Verification: 0 FleetView refs, Agent naming verified, TodoWrite instruction corrected (=0→=1), all YAML frontmatter valid, 4-locale parity clean
+- Authored-By-Agent: manager-docs
+- Trailer: 🗿 MoAI
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — populated by manager-develop>_

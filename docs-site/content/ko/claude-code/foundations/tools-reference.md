@@ -40,7 +40,7 @@ Claude Code는 코드를 읽고 수정하기 위한 **내장 도구** (built-in 
 | `LSP` | 언어 서버 기반 코드 인텔리전스 (정의 이동, 참조 찾기, 타입 오류 보고) | 읽기 | - |
 | `Skill` | 메인 대화 안에서 스킬 실행 | 실행 | 필요 |
 
-`TodoWrite`는 v2.1.142 이후 기본 비활성화되었고, 그 자리를 `TaskCreate` 계열 도구가 대신합니다. 다시 켜려면 `CLAUDE_CODE_ENABLE_TASKS=0`을 설정합니다.
+`TodoWrite`는 v2.1.142 이후 기본 비활성화되었고, 그 자리를 `TaskCreate` 계열 도구가 대신합니다. 다시 켜려면 `CLAUDE_CODE_ENABLE_TASKS=1`을 설정합니다.
 
 ### 읽기 도구의 작은 차이
 

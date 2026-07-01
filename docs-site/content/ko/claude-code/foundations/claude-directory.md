@@ -21,11 +21,9 @@ Claude Code는 두 곳에서 설정을 읽습니다. 하나는 작업 중인 프
 - **동작 강제**: `settings.json`의 권한(permissions)과 hook처럼 Claude의 준수 여부와 무관하게 "집행되는" 설정
 - **확장 기능 보관**: 스킬, 서브에이전트, 다이내믹 워크플로우 등 재사용 가능한 자산
 
-여기서 핵심 구분은 **지침 (guidance)** 과 **설정 (configuration)** 입니다. `CLAUDE.md`나 rules는 Claude가 참고하는 안내문이라 항상 지켜진다는 보장이 없지만, hook과 permissions는 런타임이 직접 집행하므로 결정적입니다. 확실한 동작이 필요하면 지침이 아니라 hook 또는 permissions로 구현해야 합니다.
+여기서 핵심 구분은 **지침 (guidance)** 과 **설정 (configuration)** 입니다. `CLAUDE.md`나 rules는 Claude가 참고하는 안내문이라 항상 지켜진다는 보장이 없지만, hook과 permissions은 런타임이 직접 집행하므로 결정적입니다. 확실한 동작이 필요하면 지침이 아니라 hook 또는 permissions로 구현해야 합니다.
 
-## 디렉터리 구조
-
-프로젝트 `.claude/` 아래에 들어가는 주요 항목입니다. `CLAUDE.md`, `.mcp.json`, `.worktreeinclude`는 예외적으로 프로젝트 루트에 위치합니다.
+## 프로젝트 .claude/ 디렉터리 구조
 
 | 항목 | 위치 | 커밋 | 역할 |
 | --- | --- | --- | --- |
@@ -40,68 +38,58 @@ Claude Code는 두 곳에서 설정을 읽습니다. 하나는 작업 중인 프
 | `hooks/` | `.claude/` | ✓ | hook이 실행하는 스크립트 (settings.json에서 등록) |
 | `agent-memory/` | `.claude/` | ✓ | 서브에이전트 전용 영속 메모리 |
 | `.mcp.json` | 프로젝트 루트 | ✓ | 팀 공유 MCP 서버 구성 |
-
-> 공식 문서의 인터랙티브 탐색기에는 `hooks/` 디렉터리가 별도 노드로 나오지 않습니다. hook은 `settings.json`의 `hooks` 키에서 등록하며, 실행할 스크립트 파일을 `.claude/` 아래에 두고 그 경로를 가리키는 구성 방식입니다.
+| `.worktreeinclude` | 프로젝트 루트 | ✓ | worktree 생성 시 복사할 gitignore 패일 |
 
 ### 지침 파일 (Claude가 읽는 것)
 
-- **`CLAUDE.md`**: 프로젝트의 규칙, 자주 쓰는 명령, 아키텍처 맥락을 담습니다. 매 세션 전체가 컨텍스트로 로드되므로 200줄 이하를 권장하며, 길어지면 rules로 분리합니다.
-- **`rules/*.md`**: `paths:` 프론트매터가 없으면 세션 시작 시 로드되고, `paths:` 글롭이 있으면 해당 파일이 컨텍스트에 들어올 때만 로드됩니다. `CLAUDE.md`가 200줄에 가까워지면 주제별 rule로 쪼개는 것이 모범 사례입니다.
+**`CLAUDE.md`**: 프로젝트의 규칙, 자주 쓰는 명령, 아키텍처 맥락을 담습니다. 매 세션 전체가 컨텍스트로 로드되므로 200줄 이하를 권장하며, 길어지면 rules로 분리합니다.
+
+**`rules/*.md`**: `paths:` 프론트매터가 없으면 세션 시작 시 로드되고, `paths:` 글롭이 있으면 해당 파일이 컨텍스트에 들어올 때만 로드됩니다. `CLAUDE.md`가 200줄에 가까워지면 주제별 rule로 쪼개는 것이 모범 사례입니다.
 
 ### 집행 설정 (Claude Code가 강제하는 것)
 
-- **`settings.json`**: `permissions` (도구·명령 허용/차단), `hooks` (이벤트 시점 스크립트 실행), `statusLine`, `model`, `env`, `outputStyle` 키를 담습니다.
-- **`settings.local.json`**: 동일한 스키마이지만 개인용이며 커밋하지 않습니다. 팀 기본값과 다른 권한이 필요할 때 사용합니다.
+**`settings.json`**: `permissions` (도구·명령 허용/차단), `hooks` (이벤트 시점 스크립트 실행), `statusLine`, `model`, `env`, `outputStyle` 키를 담습니다.
+
+**`settings.local.json`**: 동일한 스키마이지만 개인용이며 커밋하지 않습니다. 팀 기본값과 다른 권한이 필요할 때 사용합니다.
 
 ### 확장 자산
 
-- **`skills/<name>/SKILL.md`**: 폴더 단위 스킬로, 참고 문서·템플릿·스크립트를 함께 번들할 수 있습니다.
-- **`commands/*.md`**: 단일 파일 프롬프트입니다. 공식적으로 스킬과 동일한 메커니즘이며, 신규 워크플로우는 스킬로 작성하는 것이 권장됩니다.
-- **`agents/*.md`**: 자체 시스템 프롬프트와 도구 접근 권한을 가진 서브에이전트입니다. 새 컨텍스트 윈도우에서 실행되어 메인 대화를 깨끗하게 유지합니다.
-- **`workflows/*.js`**: 다수의 서브에이전트를 스폰·조율하는 다이내믹 워크플로우 스크립트입니다.
+**`skills/<name>/SKILL.md`**: 폴더 단위 스킬로, 참고 문서·템플릿·스크립트를 함께 번들할 수 있습니다.
+
+**`commands/*.md`**: 단일 파일 프롬프트입니다. 공식적으로 스킬과 동일한 메커니즘이며, 신규 워크플로우는 스킬로 작성하는 것이 권장됩니다.
+
+**`agents/*.md`**: 자체 시스템 프롬프트와 도구 접근 권한을 가진 서브에이전트입니다. 새 컨텍스트 윈도우에서 실행되어 메인 대화를 깨끗하게 유지합니다.
+
+**`workflows/*.js`**: 다수의 서브에이전트를 스폰·조율하는 다이내믹 워크플로우 스크립트입니다.
+
+## 글로벌 ~/.claude/ 디렉터리 구조
+
+| 항목 | 위치 | 역할 |
+| --- | --- | --- |
+| `CLAUDE.md` | `~/.claude/` | 모든 프로젝트에 적용되는 개인 지침 |
+| `settings.json` | `~/.claude/` | 모든 프로젝트의 기본 설정 (프로젝트 설정으로 덮어씀) |
+| `keybindings.json` | `~/.claude/` | 커스텀 키보드 단축키 |
+| `skills/` | `~/.claude/` | 모든 프로젝트에서 사용 가능한 개인 스킬 |
+| `commands/` | `~/.claude/` | 모든 프로젝트에서 사용 가능한 개인 명령 |
+| `agents/` | `~/.claude/` | 모든 프로젝트에서 사용 가능한 개인 서브에이전트 |
+| `workflows/` | `~/.claude/` | 모든 프로젝트에서 사용 가능한 개인 워크플로우 |
+| `output-styles/` | `~/.claude/` | 개인 출력 스타일 |
+| `projects/` | `~/.claude/` | 프로젝트별 세션 기록, 대화 전사, 자동 메모리 |
 
 ## 설정 스코프와 우선순위
 
 같은 설정이 여러 위치에 존재할 수 있고, 더 구체적인 스코프가 우선합니다. 스코프는 엔터프라이즈, 사용자, 프로젝트 세 단계로 나뉩니다.
 
-| 스코프 | 위치 | 적용 범위 | 비고 |
-| --- | --- | --- | --- |
-| 엔터프라이즈 | `managed-settings.json` (OS별 시스템 경로) | 조직 전체 | 사용자가 오버라이드 불가, 최우선 |
-| 사용자(글로벌) | `~/.claude/` | 모든 프로젝트 | 개인 기본값, 커밋 안 함 |
-| 프로젝트 | `.claude/` | 현재 프로젝트 | 팀 공유, 커밋 대상 |
-| 프로젝트 로컬 | `.claude/settings.local.json` | 현재 프로젝트, 개인 | 사용자 편집 파일 중 최우선 |
+| 스코프 | 위치 | 적용 범위 |
+| --- | --- | --- |
+| 엔터프라이즈 | `managed-settings.json` (OS별 시스템 경로) | 조직 전체 (사용자 오버라이드 불가, 최우선) |
+| 사용자(글로벌) | `~/.claude/` | 모든 프로젝트 (개인 기본값) |
+| 프로젝트 | `.claude/` | 현재 프로젝트 (팀 공유) |
+| 프로젝트 로컬 | `.claude/settings.local.json` | 현재 프로젝트, 개인 (사용자 편집 파일 중 최우선) |
 
-`settings.json`의 우선순위는 다음과 같이 적용됩니다.
-
-- **조직 managed-settings.json**이 모든 것을 압도합니다.
-- **CLI 플래그** (`--permission-mode`, `--settings` 등)는 해당 세션의 `settings.json`을 오버라이드합니다.
-- **`settings.local.json`**은 사용자 편집 파일 중 가장 우선하며, 프로젝트 `settings.json`을 덮어씁니다.
-- 프로젝트 `settings.json`은 글로벌 `~/.claude/settings.json`을 덮어씁니다.
-
-병합 방식에는 중요한 차이가 있습니다.
-
-- **배열형 설정** (`permissions.allow` 등)은 모든 스코프의 값이 **합쳐집니다 (combine)**.
-- **스칼라형 설정** (`model` 등)은 가장 구체적인 스코프의 **단일 값을 사용합니다**.
-- `CLAUDE.md`는 키 단위 병합이 아니라 글로벌과 프로젝트 파일이 **둘 다 컨텍스트에 로드**되며, 지침이 충돌하면 프로젝트 쪽이 우선합니다.
-
-```mermaid
-flowchart TD
-    A[설정 키 조회] --> B{managed-settings.json<br/>조직 강제값 존재?}
-    B -->|예| Z[강제값 사용<br/>오버라이드 불가]
-    B -->|아니오| C{CLI 플래그로<br/>지정됨?}
-    C -->|예| Y[플래그 값 사용<br/>해당 세션 한정]
-    C -->|아니오| D{settings.local.json에<br/>키 존재?}
-    D -->|예| X[로컬 값 사용]
-    D -->|아니오| E{프로젝트<br/>settings.json?}
-    E -->|예| W[프로젝트 값 사용]
-    E -->|아니오| V[글로벌 ~/.claude<br/>기본값 사용]
-```
-
-> Windows에서 `~/.claude`는 `%USERPROFILE%\.claude`로 해석됩니다. `CLAUDE_CONFIG_DIR` 환경 변수를 설정하면 모든 `~/.claude` 경로가 그 디렉터리 아래로 옮겨집니다.
+**배열 설정** (`permissions.allow` 등)은 모든 스코프의 값이 **합쳐집니다**. **스칼라 설정** (`model` 등)은 가장 구체적인 스코프의 **단일 값을 사용**합니다.
 
 ## 버전 관리 대상 vs 제외
-
-`.claude/` 안의 파일은 팀 공유 여부에 따라 커밋 대상이 갈립니다. 팀이 함께 쓰는 자산은 커밋하고, 개인용·머신별 값은 git에서 제외합니다.
 
 | 파일 | 커밋 | 이유 |
 | --- | --- | --- |
@@ -109,24 +97,10 @@ flowchart TD
 | `skills/`, `commands/`, `agents/`, `workflows/` | ✓ | 팀이 공유하는 확장 자산 |
 | `.mcp.json` | ✓ | 팀 공유 MCP 서버 구성 |
 | `settings.local.json` | - | 개인 오버라이드 (자동 gitignore) |
-| `~/.claude/` 전체 | - | 모든 프로젝트에 적용되는 개인 설정, 절대 커밋 안 함 |
-| `CLAUDE.local.md` | - | 프로젝트별 개인 지침, 수동 생성 후 `.gitignore` 추가 |
+| `~/.claude/` 전체 | - | 모든 프로젝트에 적용되는 개인 설정 |
+| `CLAUDE.local.md` | - | 프로젝트별 개인 지침 (수동 생성 후 `.gitignore` 추가) |
 
-Claude Code는 `settings.local.json`을 처음 만들 때 `~/.config/git/ignore`에 자동으로 추가합니다. 커스텀 `core.excludesFile`을 쓰거나 팀과 무시 규칙을 공유하려면 프로젝트 `.gitignore`에도 직접 패턴을 넣어야 합니다.
-
-이 점은 MoAI-ADK에서도 동일하게 중요합니다. MoAI-ADK는 `settings.local.json`을 런타임이 관리하는 파일로 취급해 템플릿에 절대 포함하지 않으며, 머신별 토큰·경로·세션 상태를 여기에 격리합니다. 자세한 키별 동작은 별도 가이드를 참고하세요.
-
-## 그 외 위치에 사는 관련 파일
-
-탐색기에 나오지 않지만 `.claude` 생태계와 밀접한 파일도 있습니다.
-
-| 파일 | 위치 | 역할 |
-| --- | --- | --- |
-| `managed-settings.json` | OS별 시스템 경로 | 조직이 강제하는 엔터프라이즈 설정 |
-| `CLAUDE.local.md` | 프로젝트 루트 | `CLAUDE.md`와 함께 로드되는 개인 지침 |
-| 설치된 플러그인 | `~/.claude/plugins` | `claude plugin` 명령으로 관리되는 플러그인 데이터 |
-
-`~/.claude`에는 Claude Code가 작업 중 기록하는 데이터(대화 전사, 프롬프트 기록, 파일 스냅샷, 캐시, 로그)도 함께 저장됩니다. 이 데이터는 기본적으로 30일(`cleanupPeriodDays`) 후 자동 정리됩니다.
+Claude Code는 `settings.local.json`을 처음 만들 때 `.gitignore`에 자동으로 추가합니다.
 
 ## 관련 문서
 
