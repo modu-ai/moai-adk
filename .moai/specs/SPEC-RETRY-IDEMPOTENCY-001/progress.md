@@ -76,7 +76,7 @@ embedded_mechanism_note: "no checked-in embedded.go intermediate — repo uses /
 
 ```yaml
 sync_complete_at: 2026-07-01
-sync_commit_sha: 8b3f2a7c9   # sync commit (this commit, orchestrator-direct)
+sync_commit_sha: 366e701af   # backfilled to actual sync commit SHA (366e701af)
 sync_status: audit-ready
 changelog_entry_present: true    # CHANGELOG.md [Unreleased] ### Added section
 sync_auditor_spawn: skipped      # Tier S doc-only consolidated close — no audit
