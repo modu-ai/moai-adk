@@ -26,7 +26,7 @@ description: "완료 조건을 정하면 충족될 때까지 Claude Code가 매 
 
 ## 동작 방식
 
-`/goal`은 세션 범위의 **프롬프트 기반 Stop hook** (prompt-based Stop hook)을 감싼 것입니다. Claude가 한 턴을 마칠 때마다 조건과 지금까지의 대화 내용이 설정된 작은 빠른 모델(기본값 Haiku)에게 전달됩니다. 모델은 예/아니오 판정과 짧은 사유를 반환합니다.
+`/goal`은 세션 범위의 **프롬프트 기반 Stop hook** (prompt-based Stop hook)을 감싼 것입니다. Claude가 한 턴을 마칠 때마다 조건과 지금까지의 대화 내용이 설정된 작은 빠른 모델(기본값 **Haiku**)에게 전달됩니다. 모델은 조건이 충족되었는지 대화에 드러난 내용만으로 판정하고 예/아니오와 짧은 사유를 반환합니다. 평가자는 도구를 호출하거나 파일을 직접 읽지 않으므로, Claude가 이미 대화에 드러낸 내용만을 근거로 판단합니다.
 
 ```mermaid
 flowchart TD
@@ -36,8 +36,6 @@ flowchart TD
     D --> B
     C -->|예| E[목표 자동 해제<br>달성 기록 남김]
 ```
-
-평가자는 도구를 호출하거나 파일을 직접 읽지 않습니다. 오직 Claude가 대화에 이미 **드러낸 내용** (surfaced output)만으로 판단합니다. 따라서 "`test/auth`의 모든 테스트 통과" 같은 조건은 Claude가 테스트를 실행하고 그 결과가 대화 기록에 남기 때문에 잘 작동합니다.
 
 평가자는 세션이 사용하는 동일한 공급자에서 실행되며, 평가에 드는 토큰은 작은 빠른 모델에 청구되어 본 턴 비용에 비하면 보통 무시할 만한 수준입니다.
 
@@ -122,7 +120,9 @@ claude -p "/goal CHANGELOG.md has an entry for every PR merged this week"
 
 - Claude Code **v2.1.139** 이상이 필요합니다.
 - 신뢰 대화상자를 수락한 워크스페이스에서만 동작합니다. 평가자가 hooks 시스템의 일부이기 때문입니다.
-- 어떤 설정 레벨에서든 `disableAllHooks`가 켜져 있거나, 관리 설정에 `allowManagedHooksOnly`가 켜져 있으면 사용할 수 없습니다. 이 경우 명령이 조용히 무시되지 않고 이유를 알려줍니다.
+- 어떤 설정 레벨에서든 `disableAllHooks`가 켜져 있으면 사용할 수 없습니다.
+- 조직 수준의 관리 설정에 `allowManagedHooksOnly`가 켜져 있어도 사용할 수 없습니다.
+- 위 조건이 충족되지 않으면 명령이 조용히 무시되지 않고 사용 불가 사유를 알려줍니다.
 
 ## 관련 문서
 
@@ -131,7 +131,7 @@ claude -p "/goal CHANGELOG.md has an entry for every PR merged this week"
 
 ## 참고 자료
 
-- [Keep Claude working toward a goal (`/goal`)](https://code.claude.com/docs/en/goal)
+- [Goal directive (`/goal`) — Claude Code 공식 문서](https://code.claude.com/docs/en/goal)
 
 {{< callout type="tip" >}}
 조건은 Claude의 출력이 증명할 수 있는 형태로 쓰고, `or stop after N turns` 같은 한도 절을 항상 함께 넣으세요. 평가자는 파일을 직접 읽지 않으므로 "테스트가 통과한다"보다 "`go test ./...`가 0으로 종료한다"처럼 대화 기록에 결과가 남는 검증 방법을 명시하는 편이 훨씬 안정적입니다.

@@ -63,36 +63,46 @@ claude --worktree feature-auth
 
 # 다른 터미널에서 두 번째 격리 세션
 claude --worktree bugfix-123
+
+# 기준 브랜치를 origin/HEAD 대신 로컬 HEAD에서 분기
+# (설정에서 worktree.baseRef: "head" 필요)
+claude --worktree experimental
 ```
 
-이름을 생략하면 `bright-running-fox` 같은 이름을 Claude가 자동 생성합니다. 세션 도중 "워크트리에서 작업해"라고 요청하면 `EnterWorktree` tool로 워크트리를 만들 수도 있습니다.
+이름을 생략하면 `bright-running-fox` 같은 이름을 Claude가 자동 생성합니다. 세션 도중 "워크트리에서 작업해"라고 요청하면 `EnterWorktree` 도구로 워크트리를 만들 수도 있습니다.
 
-> 디렉터리에서 `--worktree`를 처음 쓰기 전에는 먼저 그 디렉터리에서 `claude`를 한 번 실행해 워크스페이스 신뢰 (workspace trust) 대화창을 수락해야 합니다.
+기준 브랜치는 기본적으로 `origin/HEAD`에서 분기합니다. 미푸시 커밋까지 포함하고 싶으면 `worktree.baseRef: "head"` 설정으로 로컬 `HEAD`에서 분기하도록 변경할 수 있습니다.
+
+> 디렉터리에서 `--worktree`를 처음 쓰기 전에는 먼저 그 디렉터리에서 `claude`를 한 번 실행해 워크스페이스 신뢰 (workspace trust) 대화상자를 수락해야 합니다. `-p` 플래그를 사용하면 비대화형 모드에서 신뢰 대화상자를 건너뛸 수 있습니다.
 
 ### 기준 브랜치와 무시 파일 복사
 
 | 항목 | 동작 | 비고 |
 |------|------|------|
-| 기준 브랜치 | 기본은 `origin/HEAD`에서 분기 | 원격이 없으면 로컬 `HEAD`로 폴백 |
-| `worktree.baseRef` | `"fresh"` 또는 `"head"`만 허용 | `"head"`는 미푸시 커밋까지 가져옴 |
-| PR 기준 분기 | `claude --worktree "#1234"` | `.claude/worktrees/pr-1234`에 생성 |
+| 기준 브랜치 | 기본은 `origin/HEAD`에서 분기 | `worktree.baseRef: "head"` 설정으로 로컬 `HEAD`에서 분기 가능 |
+| PR 기준 분기 | `claude --worktree "#1234"` | `.claude/worktrees/pr-1234` 디렉터리에 생성 |
 | `.worktreeinclude` | gitignore 문법으로 무시 파일 복사 | `.env` 등 추적되지 않는 파일을 새 트리에 자동 복사 |
+| 워크스페이스 신뢰 | 첫 사용 시 신뢰 대화상자 | `-p` 플래그로 대화상자 건너뛰기 가능 |
 
 `.gitignore`에 `.claude/worktrees/`를 추가하면 워크트리 내용이 메인 체크아웃에 추적되지 않은 파일로 나타나지 않습니다.
 
 ### 서브에이전트 격리
 
-서브에이전트도 각자 워크트리에서 실행해 병렬 편집 충돌을 막을 수 있습니다. 커스텀 서브에이전트 frontmatter에 `isolation: worktree`를 추가하면 항상 격리됩니다. 변경 없이 끝난 서브에이전트의 임시 워크트리는 자동으로 제거됩니다.
+서브에이전트도 각자 워크트리에서 실행해 병렬 편집 충돌을 막을 수 있습니다. 커스텀 서브에이전트 정의의 frontmatter에 `isolation: worktree`를 추가하면 항상 워크트리에서 실행됩니다. 
+
+변경 없이 끝난 서브에이전트의 임시 워크트리는 자동으로 제거됩니다. 프롬프트가 바뀐 경우 기존 워크트리도 정리됩니다.
 
 ### 정리
 
-종료 시 변경 여부에 따라 정리 방식이 달라집니다.
+워크트리 정리는 다음 기준을 따릅니다.
 
-- 커밋·변경·미추적 파일이 없으면 워크트리와 브랜치가 자동 제거됩니다.
-- 변경 사항이 있으면 보존할지 제거할지 Claude가 묻습니다.
-- 비대화형 (`-p`) 실행은 자동 정리되지 않으므로 `git worktree remove`로 직접 제거합니다.
+- **클린 상태** (커밋·변경·미추적 파일 없음): 워크트리와 브랜치가 자동 제거됩니다.
+- **변경 사항 있음**: Claude가 보존할지 제거할지 묻습니다.
+- **프롬프트 변경**: 이전에 생성한 임시 워크트리는 자동 제거됩니다.
+- **비대화형 실행** (`-p`): 자동 정리되지 않으므로 `git worktree remove`로 직접 제거합니다.
+- **`--worktree` 플래그로 생성한 워크트리**: `git worktree prune` 같은 도구로 자동 스윕되지 않습니다.
 
-git이 아닌 SVN·Perforce·Mercurial 등은 `WorktreeCreate` / `WorktreeRemove` hook으로 생성·정리 로직을 직접 정의할 수 있습니다.
+`.gitignore`에 `.claude/worktrees/`를 추가하면 워크트리 디렉터리 자체가 추적되지 않은 파일로 표시되지 않아 메인 체크아웃이 깨끗하게 유지됩니다.
 
 ## MoAI-ADK에서의 깊은 활용
 
@@ -106,7 +116,7 @@ MoAI-ADK는 이 워크트리 메커니즘을 SPEC 단위 병렬 개발과 다중
 
 ## 참고 자료
 
-- [Run parallel sessions with worktrees (Claude Code 공식 문서)](https://code.claude.com/docs/en/worktrees)
+- [Worktrees — Claude Code 공식 문서](https://code.claude.com/docs/en/worktrees)
 
 {{< callout type="tip" >}}
 처음 워크트리를 도입한다면 `.claude/worktrees/`를 `.gitignore`에 먼저 추가하세요. 메인 체크아웃이 깨끗하게 유지되어 어떤 변경이 어느 트리에 속하는지 한눈에 파악할 수 있습니다.
