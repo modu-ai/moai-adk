@@ -165,7 +165,6 @@ Loads the following 10 sections in fixed order. All return defaults on absent fi
 | Section | Loader | Package | Rationale |
 |---|---|---|---|
 | harness.yaml | `LoadHarnessConfig(path)` | `internal/config` | FROZEN validation (HRN-001); returns error on absent file (not defaults) |
-| runtime.yaml | `LoadRuntime(path)` | `internal/runtime` | Separate package, separate lifecycle |
 
 **MIG-003 new loaders** (`internal/config/loader_{constitution,context,interview,design}.go`):
 

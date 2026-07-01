@@ -14,10 +14,8 @@ import (
 // REQ-MIG003-013 (OQ6 decision): maintain as sorted []string literal.
 var acknowledgedUnloadedSections = []string{
 	"db",             // out-of-scope: separate SPEC (database config not yet runtime-consumed)
-	"gate",           // out-of-scope: GateConfig exists but loaded via separate path (not Loader.Load)
 	"github-actions", // out-of-scope: CI config, not consumed at runtime
 	"lsp",            // out-of-scope: LSP config not yet runtime-enforced (separate SPEC)
-	"memo",           // out-of-scope: memo configuration, not runtime-consumed
 	"mx",             // out-of-scope: ad-hoc parsing retained; struct neuverbalisation deferred (spec.md §2.2)
 	"observability",  // out-of-scope: observability config, separate SPEC
 	"project",        // out-of-scope: loaded via separate ProjectConfig loader path
@@ -35,7 +33,6 @@ var acknowledgedUnloadedSections = []string{
 var acknowledgedDedicatedLoaders = []string{
 	"cache",       // dedicated: LoadCacheConfig (SPEC-V3R6-PROMPT-CACHE-001) — consumed by the SDK wrapper cache_control injector, not the aggregate Loader.Load chain
 	"harness",     // dedicated: LoadHarnessConfig (HRN-001) — stricter FROZEN validation semantics
-	"runtime",     // dedicated: LoadRuntime (internal/runtime/config.go) — separate package
 	"tool-policy", // dedicated: toolpolicy.Load / LoadFromProjectDir (internal/config/toolpolicy) — codegen SSOT, loaded outside Loader.Load chain
 }
 
