@@ -97,13 +97,14 @@ MoAI-ADK의 3가지 명령어 유형을 정의합니다.
 
 ### 4. 에이전트 카탈로그
 
-20개 에이전트의 역할과 선택 기준을 정의합니다.
+MoAI-ADK는 **8개 보존 에이전트** (7개 MoAI-custom + 1개 Anthropic built-in)로 구성됩니다. 아키텍처 단순화로 manager-strategy, manager-quality, manager-brain, manager-project 등 12개 archived 에이전트는 특정 도메인에 대한 per-spawn `Agent(general-purpose)` delegation으로 대체되었습니다.
 
-| 계층 | 에이전트 | 개수 |
+| 분류 | 에이전트 | 역할 |
 |------|----------|------|
-| Manager | spec, ddd, docs, quality, strategy, project, git | 7개 |
-| Expert | backend, frontend, security, devops, performance, debug, testing, refactoring | 8개 |
-| Builder | agent, skill, command, plugin | 4개 |
+| Manager (4) | manager-spec, manager-develop, manager-docs, manager-git | 핵심 라이프사이클 단계별 전문가 |
+| Evaluator (2) | plan-auditor, sync-auditor | 계획/완료 단계 독립적 품질 평가 |
+| Builder (1) | builder-harness | 동적 프로젝트별 하네스 생성 |
+| Built-in (1) | Explore (Anthropic) | 읽기 전용 코드베이스 탐색 |
 
 ### 5. SPEC 워크플로우
 
