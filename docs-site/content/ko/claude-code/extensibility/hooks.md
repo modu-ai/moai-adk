@@ -40,17 +40,25 @@ description: "Claude Code 라이프사이클 이벤트에 반응해 자동으로
 
 ## 주요 이벤트
 
-훅이 반응할 수 있는 이벤트는 다양하며, 다음은 가장 자주 쓰이는 것들입니다.
+훅이 반응할 수 있는 이벤트는 30개 이상이며, 다음은 가장 자주 쓰이는 것들입니다.
 
 | 이벤트 | 발동 시점 |
 | :--- | :--- |
 | `SessionStart` | 세션이 시작되거나 재개될 때 (컨텍스트 주입에 활용) |
+| `Setup` | `/init` 또는 `--init` 플래그로 Claude Code를 시작할 때 |
 | `UserPromptSubmit` | 사용자가 프롬프트를 제출한 직후, Claude가 처리하기 전 |
+| `UserPromptExpansion` | 사용자 입력 명령이 프롬프트로 확장될 때 |
 | `PreToolUse` | 도구 호출이 실행되기 직전 (차단 가능) |
+| `PermissionRequest` | 권한 대화상자가 나타났을 때 |
 | `PostToolUse` | 도구 호출이 성공한 직후 (포매팅·린트에 활용) |
+| `PostToolUseFailure` | 도구 호출이 실패했을 때 |
+| `SubagentStart` | 서브에이전트가 시작될 때 |
 | `SubagentStop` | 서브에이전트가 작업을 마칠 때 |
+| `TaskCreated` | 작업이 생성될 때 |
+| `TaskCompleted` | 작업이 완료로 표시될 때 |
 | `Stop` | Claude가 응답을 끝낼 때 |
 | `PreCompact` | 컨텍스트 윈도우 압축 직전 |
+| `PostCompact` | 컨텍스트 압축이 완료된 후 |
 | `SessionEnd` | 세션이 종료될 때 |
 
 전체 이벤트 목록과 이벤트별 입력 스키마는 공식 [Hooks 레퍼런스](https://code.claude.com/docs/en/hooks)에 정리되어 있습니다.
