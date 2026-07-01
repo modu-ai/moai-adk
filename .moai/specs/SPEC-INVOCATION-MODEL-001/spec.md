@@ -140,3 +140,4 @@ This section is load-bearing: it defines what is explicitly out of scope so run-
 - `CLAUDE.local.md` §2 (Template-First Rule), §15 (16-language neutrality), §25 (Template Internal-Content Isolation) — the mirror + neutrality constraints.
 - `.claude/rules/moai/core/askuser-protocol.md` § Orchestrator–Subagent Boundary — the orchestrator owns the AskUserQuestion round that surfaces the REQ-IM-014 dedupe candidate-report (feedback runs orchestrator-direct; the constraint is about not embedding a blind dedupe prompt, not a subagent boundary).
 - `SPEC-SUBCOMMAND-RETIRE-001` — sibling SPEC (legacy subcommand retirement); disjoint scope, noted for awareness only.
+> Errata (SPEC-INVOCATION-MODEL-002): /security-review and /review are PROGRAMMATIC (built-in exposed via the Skill tool); the §A HUMAN-ONLY classification for these two is superseded — see native-invocation-model.md and this follow-up SPEC.

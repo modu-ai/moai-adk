@@ -133,6 +133,14 @@ If --security flag: This perspective receives primary focus with deeper analysis
 - Loading states and feedback mechanisms
 - Breaking changes in public interfaces
 
+### Native /code-review compose (Axis A)
+
+Where native `/code-review` is auto-invocable, the orchestrator MAY invoke it via `Skill("code-review")` as one Phase 2 finding source, covering the correctness-bug + reuse/simplification/efficiency portion; its findings feed the sync-auditor synthesis. The Security review (Perspective 1), `@MX` tag-compliance (Phase 3), UX review (Perspective 4), and design review (Phase 4.5) composition is preserved — native `/code-review` augments, never replaces, the MoAI-specific perspectives.
+
+Conditional-PROGRAMMATIC caveat: before relying on `Skill("code-review")`, verify auto-invocability at runtime — a bundled skill with `disable-model-invocation: true`, a session with `disableBundledSkills`, or a denied `Skill` tool all remove auto-invocability.
+
+Compose fallback: where native `/code-review` is not auto-invocable, Phase 2 runs entirely via the sync-auditor as today. See `native-invocation-model.md` Axis A.
+
 ## Phase 3: MX Tag Compliance Check
 
 After perspective analysis, check @MX tag compliance for changed files:
