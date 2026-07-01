@@ -1,6 +1,6 @@
 ---
 title: TRUST 5 质量框架
-weight: 50
+weight: 70
 draft: false
 ---
 
