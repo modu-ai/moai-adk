@@ -41,7 +41,9 @@ func TestLoadEmbeddedCatalog_Success(t *testing.T) {
 	// reference skill, optional-pack:devops), net +1 = 41.
 	// moai-domain-html-report added (html-report port from cowork content plugin,
 	// core skill), net +1 = 42.
-	const wantTotal = 42
+	// SPEC-SUBCOMMAND-RETIRE-001 (2026-07-01): retired 7 dependent skills of 5 /moai
+	// subcommands (2 core.skills + 5 optional-pack:design); agents unchanged, net -7 = 35.
+	const wantTotal = 35
 	all := cat.AllEntries()
 	if len(all) != wantTotal {
 		t.Errorf("LoadEmbeddedCatalog() AllEntries() = %d, want %d", len(all), wantTotal)

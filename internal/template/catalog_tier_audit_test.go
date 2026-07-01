@@ -151,7 +151,11 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// moai-domain-html-report for template-managed namespace compliance
 	// (bare names are classified user-owned by isUserOwnedNamespace, never updated);
 	// registered under core.skills, net +1 = 35.
-	const expectedSkillCount = 35
+	// SPEC-SUBCOMMAND-RETIRE-001 (2026-07-01): retired 5 /moai subcommands and their
+	// 7 dependent skills — moai-domain-ideation + moai-domain-research (core.skills)
+	// and moai-domain-brand-design + moai-domain-copywriting + moai-domain-design-handoff
+	// + moai-workflow-design + moai-workflow-gan-loop (optional-pack:design); net -7 = 28.
+	const expectedSkillCount = 28
 	if len(diskSkills) != expectedSkillCount {
 		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
 	}

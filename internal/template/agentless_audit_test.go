@@ -8,13 +8,13 @@
 // TestImplementationSkillsContainPipelineRejectionSentinel (REQ-WF004-014).
 //
 // SPEC-V3R2-WF-003 tests (three — RED phase, M1):
-// TestRunDesignSkillsContainModeUnknownSentinel (REQ-WF003-010),
+// TestRunSkillContainsModeUnknownSentinel (REQ-WF003-010),
 // TestRunSkillContainsModeTeamUnavailableSentinel (REQ-WF003-011),
 // TestLoopAliasCrossReference (REQ-WF003-004).
-// @MX:ANCHOR fan_in=2 - SPEC-V3R2-WF-003 REQ-WF003-010 enforcer; guards
-// run.md and design.md against sentinel drift. Touching this test signature
-// affects mode dispatch contract for both implementation skills.
-// @MX:REASON - Two implementation skills depend on this audit; dropping it permits silent contract regression.
+// @MX:ANCHOR fan_in=1 - SPEC-V3R2-WF-003 REQ-WF003-010 enforcer; guards
+// run.md against sentinel drift. Touching this test signature
+// affects mode dispatch contract for the run implementation skill.
+// @MX:REASON - The run implementation skill depends on this audit; dropping it permits silent contract regression.
 package template
 
 import (
@@ -25,32 +25,32 @@ import (
 	"testing"
 )
 
-// utilitySkillPaths lists the 5 utility skill files subject to Agentless classification.
+// utilitySkillPaths lists the 4 utility skill files subject to Agentless classification.
 // Path separator is forward-slash (embedded FS convention).
+// (coverage.md removed by SPEC-SUBCOMMAND-RETIRE-001, 2026-07-01.)
 var utilitySkillPaths = []string{
 	".claude/skills/moai/workflows/fix.md",
-	".claude/skills/moai/workflows/coverage.md",
 	".claude/skills/moai/workflows/mx.md",
 	".claude/skills/moai/workflows/codemaps.md",
 	".claude/skills/moai/workflows/clean.md",
 }
 
-// implementationSkillPaths lists the 4 implementation skill files that must reject
+// implementationSkillPaths lists the 3 implementation skill files that must reject
 // the --mode pipeline flag per REQ-WF004-014.
+// (design.md removed by SPEC-SUBCOMMAND-RETIRE-001, 2026-07-01.)
 var implementationSkillPaths = []string{
 	".claude/skills/moai/workflows/plan.md",
 	".claude/skills/moai/workflows/run.md",
 	".claude/skills/moai/workflows/sync.md",
-	".claude/skills/moai/workflows/design.md",
 }
 
 // forbiddenControlFlowPatterns are regex patterns whose presence in utility skill bodies
 // (outside code blocks) indicates LLM-driven control flow — a violation of the Agentless
 // contract (REQ-WF004-013). See research.md §6.2.
 //
-// @MX:ANCHOR fan_in=5 - SPEC-V3R2-WF-004 REQ-WF004-013 enforcer; guards 5 utility
+// @MX:ANCHOR fan_in=4 - SPEC-V3R2-WF-004 REQ-WF004-013 enforcer; guards 4 utility
 // skills against LLM-dispatch regression. Touching this regex set affects the contract
-// for fix/coverage/mx/codemaps/clean.
+// for fix/mx/codemaps/clean. (coverage retired by SPEC-SUBCOMMAND-RETIRE-001.)
 var forbiddenControlFlowPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)Use the .* subagent to (decide|determine|choose|select|orchestrate|route|dispatch)`),
 	regexp.MustCompile(`(?i)Use the .* subagent to (plan|design) the (pipeline|workflow|next phase|sequence)`),
@@ -172,18 +172,18 @@ func TestImplementationSkillsContainPipelineRejectionSentinel(t *testing.T) {
 	}
 }
 
-// @MX:ANCHOR fan_in=2 - SPEC-V3R2-WF-003 REQ-WF003-010 enforcer; guards
-// run.md and design.md against sentinel drift. Touching this test signature
-// affects mode dispatch contract for both implementation skills.
-// @MX:REASON - Two implementation skills depend on this audit; dropping it permits silent contract regression.
+// @MX:ANCHOR fan_in=1 - SPEC-V3R2-WF-003 REQ-WF003-010 enforcer; guards
+// run.md against sentinel drift. Touching this test signature
+// affects mode dispatch contract for the run implementation skill.
+// @MX:REASON - The run implementation skill depends on this audit; dropping it permits silent contract regression.
+// (design.md removed by SPEC-SUBCOMMAND-RETIRE-001, 2026-07-01.)
 //
-// TestRunDesignSkillsContainModeUnknownSentinel verifies that run.md and design.md
-// each contain the literal sentinel string MODE_UNKNOWN (REQ-WF003-010).
-// At M1 (RED), both subtests fail because the sentinel has not yet been added.
+// TestRunSkillContainsModeUnknownSentinel verifies that run.md
+// contains the literal sentinel string MODE_UNKNOWN (REQ-WF003-010).
 //
-// @MX:NOTE: [AUTO] REQ-WF003-010 enforcer — run.md and design.md must document
-// MODE_UNKNOWN handling for unrecognized --mode values passed to implementation skills.
-func TestRunDesignSkillsContainModeUnknownSentinel(t *testing.T) {
+// @MX:NOTE: [AUTO] REQ-WF003-010 enforcer — run.md must document
+// MODE_UNKNOWN handling for unrecognized --mode values passed to the run implementation skill.
+func TestRunSkillContainsModeUnknownSentinel(t *testing.T) {
 	t.Parallel()
 
 	fsys, err := EmbeddedTemplates()
@@ -195,7 +195,6 @@ func TestRunDesignSkillsContainModeUnknownSentinel(t *testing.T) {
 
 	runDesignSkillPaths := []string{
 		".claude/skills/moai/workflows/run.md",
-		".claude/skills/moai/workflows/design.md",
 	}
 
 	for _, skillPath := range runDesignSkillPaths {

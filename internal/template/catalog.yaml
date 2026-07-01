@@ -88,16 +88,6 @@ catalog:
               path: templates/.claude/skills/moai-workflow-worktree/
               hash: 4fccb160bec48762850401c9cc4a1bb66da2623499d08b3af351571d15660658
               version: 1.0.0
-            - name: moai-domain-ideation
-              tier: core
-              path: templates/.claude/skills/moai-domain-ideation/
-              hash: 8bc5f78d3fe3bc1b87e1b2eb7176caee33f9e7cf696e9c31b6b699acdf4766bf
-              version: 1.0.0
-            - name: moai-domain-research
-              tier: core
-              path: templates/.claude/skills/moai-domain-research/
-              hash: 499aa255d9fd151a9eb03f41cfd6d8c0e6ab25034f54192431db8081132ab128
-              version: 1.0.0
             - name: moai-domain-html-report
               tier: core
               path: templates/.claude/skills/moai-domain-html-report/
@@ -162,39 +152,14 @@ catalog:
             skills: []
             agents: []
         design:
-            description: Brand-aligned design system, copywriting, GAN loop, and Claude Design handoff workflow
+            description: AI text humanization and post-editing (윤문) support
             depends_on:
                 - frontend
             skills:
-                - name: moai-domain-brand-design
-                  tier: optional-pack:design
-                  path: templates/.claude/skills/moai-domain-brand-design/
-                  hash: ad5186314086ac53e83a611d09682afbe9e329355439e300d000f8ef4327e369
-                  version: 1.0.0
-                - name: moai-domain-copywriting
-                  tier: optional-pack:design
-                  path: templates/.claude/skills/moai-domain-copywriting/
-                  hash: 93ed20c934e773570b42d045117ab2819141a11d7f61b3c3c3dd0d2b869ff356
-                  version: 1.0.0
                 - name: moai-domain-humanize
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-domain-humanize/
                   hash: 9a714577c8972484280affa2011fa9cbb1e4367070b65c22f7bf3ae63b321d85
-                  version: 1.0.0
-                - name: moai-domain-design-handoff
-                  tier: optional-pack:design
-                  path: templates/.claude/skills/moai-domain-design-handoff/
-                  hash: 4c7ae956e1cb30a16a4c043a5e103f058dc6b8053907f91326431642d7b20b4f
-                  version: 1.0.0
-                - name: moai-workflow-design
-                  tier: optional-pack:design
-                  path: templates/.claude/skills/moai-workflow-design/
-                  hash: e7cc4096262df6b7bd0eb4573e44f60e4ef57c5e48373ca4b213cd2b33f0541f
-                  version: 0.1.0
-                - name: moai-workflow-gan-loop
-                  tier: optional-pack:design
-                  path: templates/.claude/skills/moai-workflow-gan-loop/
-                  hash: a1df80357b5a8fc539eab44cc7553760c3314712dc49433e0249a88ea6d6aae9
                   version: 1.0.0
             agents: []
         devops:
