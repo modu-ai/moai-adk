@@ -28,6 +28,8 @@
 
 - **Consolidated close (orchestrator-direct)**: doc-only Tier M, zero code — sync-phase performed directly by the orchestrator per user decision (manager-develop hit session limit mid-run). CHANGELOG entry omitted: this is an internal rule/output-style binding, not a user-facing feature change.
 - **Status transition**: in-progress → implemented → completed — this single sync commit carries the merged transition per SPEC-V3R6-LIFECYCLE-REDESIGN-001 3-phase close.
-- **sync_commit_sha**: _(backfilled in follow-up chore commit — the sync commit's own SHA)_
+- **sync_commit_sha**: eca4075ae (this sync commit)
+
+sync_commit_sha: eca4075aee9612e2540fe807f1009f1a4fdb9f0e
 - **3-phase close**: plan (draft, manager-spec) → run (577f84c8a, orchestrator-direct after manager-develop abort) → sync (this commit). era V3R6 (H-4 predicate: §E.2 + §E.4 + sync_commit_sha present).
 - **Final verification**: 14/14 AC PASS (see §E.3), LIVE==TMPL byte-identical for all 3 edited files, make build + go build exit 0, final divergence 0 0.
