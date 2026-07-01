@@ -97,7 +97,7 @@ If --sequential flag: Run LSP, then AST-grep, then Tests, then Coverage sequenti
 Step 4 - Completion Condition Check:
 - Conditions: Zero errors AND all tests passing AND coverage meets threshold
 - If all conditions met: Emit the completion sentence "All loop completion conditions satisfied; exiting loop." so Step 1 of the next iteration detects success-exit, or continue
-- If only coverage below target (zero errors + tests passing): Auto-route to coverage workflow (workflows/coverage.md) for intelligent gap analysis and test generation instead of blind looping. Coverage workflow identifies P1-P4 priority gaps and generates targeted tests.
+- If only coverage below target (zero errors + tests passing): route coverage-gap handling through `go test -cover` gap analysis + `/moai gate` (the documented coverage replacement path) for intelligent gap analysis and test generation instead of blind looping. Identify P1-P4 priority gaps and generate targeted tests.
 
 Step 5 - Task Generation:
 - [HARD] TaskCreate for all newly discovered issues with pending status

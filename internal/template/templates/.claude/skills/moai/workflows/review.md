@@ -83,7 +83,7 @@ Enumerate project manifest files and run a vulnerability scan for each detected 
 `go.mod`, `package.json`, `requirements.txt`, `Cargo.toml`, `pyproject.toml`, `Gemfile`, `composer.json`, `mix.exs`, `Package.swift`, `pubspec.yaml`.
 
 Auto-detect language from project markers; run the dependency vulnerability scan via a per-spawn `Agent(general-purpose)` security reviewer (security whitelist + OWASP instructions per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 9) with the detected manifest.
-Full procedure: `${CLAUDE_SKILL_DIR}/workflows/security.md`.
+Full OWASP checklist: load the retained `moai-ref-owasp-checklist` skill (OWASP Top 10 + dependency-scan + secrets patterns), which supplements the inline dependency and secrets scans above.
 
 #### Secrets Scan (Full Git History)
 

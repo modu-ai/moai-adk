@@ -952,12 +952,6 @@ The @MX tag system optimizes **"Signal-to-Noise Ratio"**:
 
 ---
 
-## Design System: Hybrid Web & App Production (v3.2, SPEC-AGENCY-ABSORB-001)
-
-> Just describe what you want. Design system interviews you, designs, builds, tests, and learns — autonomously.
-
-
-> [Design System Documentation](https://adk.mo.ai.kr/design)
 
 ---
 

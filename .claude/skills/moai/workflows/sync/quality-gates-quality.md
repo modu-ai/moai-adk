@@ -104,7 +104,7 @@ Purpose: Run a targeted security audit on changed files before PR creation. Catc
 
 Agent: per-spawn `Agent(general-purpose)` security reviewer (security whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 9; OR the Stop hook dependency-manifest audit `.claude/hooks/moai/sync-phase-quality-gate.sh`)
 
-Delegate to the per-spawn security reviewer with the security workflow (workflows/security.md) in inline mode:
+Delegate to a per-spawn `Agent(general-purpose)` security reviewer loading the retained `moai-ref-owasp-checklist` / `moai-ref-secops` skills (the documented security replacement path) in inline mode:
 - Only CRITICAL findings block the sync pipeline
 - HIGH findings are reported as warnings in PR description
 - MEDIUM and LOW findings are logged in sync report

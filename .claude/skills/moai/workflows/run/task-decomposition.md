@@ -142,7 +142,7 @@ If status is CRITICAL:
 - Exit current execution flow
 
 If coverage is below target (quality.yaml test_coverage_target):
-- Auto-route to coverage workflow (workflows/coverage.md)
+- Route coverage-gap handling through `go test -cover` + `/moai gate` (the documented coverage replacement path)
 - Re-run quality validation after coverage improvement
 
 If status is PASS or WARNING: Continue to Phase 2.8.
