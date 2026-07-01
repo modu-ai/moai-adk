@@ -1,0 +1,6 @@
+feedback:
+    # Target repository for the /moai feedback workflow (GitHub owner/repo slug).
+    # Default: the remote MoAI-ADK tool repository — bug reports and feature
+    # requests about the MoAI-ADK tool itself, NOT the user's own project.
+    # Fork maintainers override this to redirect feedback to their own fork.
+    repository: modu-ai/moai-adk

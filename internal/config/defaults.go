@@ -89,6 +89,12 @@ const (
 	DefaultMemoryStalenessHours          = 24  // files older than this are wrapped in staleness caveat
 	DefaultMemoryIndexLineCap            = 200 // MEMORY.md lines beyond this trigger MEMORY_INDEX_OVERFLOW
 	DefaultMemoryStaleAggregateThreshold = 10  // stale files >= this count emit one aggregated warning
+
+	// DefaultFeedbackRepository is the default target repository for the /moai
+	// feedback workflow (SPEC-INVOCATION-MODEL-001). Feedback targets the remote
+	// MoAI-ADK tool repository (bug reports about the tool itself), NOT the user's
+	// own repo; fork maintainers override via .moai/config/sections/feedback.yaml.
+	DefaultFeedbackRepository = "modu-ai/moai-adk"
 )
 
 // NewDefaultConfig returns a Config with all fields set to compiled defaults.
@@ -109,6 +115,7 @@ func NewDefaultConfig() *Config {
 		Gate:          NewDefaultGateConfig(),
 		Sunset:        NewDefaultSunsetConfig(),
 		Research:      NewDefaultResearchConfig(),
+		Feedback:      NewDefaultFeedbackConfig(),
 		Session:       NewDefaultSessionConfig(),
 		// MIG-003: 4 new section defaults (REQ-MIG003-004)
 		Constitution:  defaultConstitutionConfig(),
@@ -151,6 +158,15 @@ func NewDefaultResearchConfig() ResearchConfig {
 			DefaultMode:     "terminal",
 			HTMLOpenBrowser: true,
 		},
+	}
+}
+
+// NewDefaultFeedbackConfig returns a FeedbackConfig whose target repository is
+// the default tool feedback channel (DefaultFeedbackRepository). An absent
+// feedback.yaml therefore still resolves to the tool channel.
+func NewDefaultFeedbackConfig() FeedbackConfig {
+	return FeedbackConfig{
+		Repository: DefaultFeedbackRepository,
 	}
 }
 

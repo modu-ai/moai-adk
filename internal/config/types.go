@@ -29,7 +29,8 @@ type Config struct {
 	Gate          GateConfig                 `yaml:"gate"`
 	Sunset        SunsetConfig               `yaml:"sunset"`
 	Research      ResearchConfig             `yaml:"research"`
-	Session       SessionConfig              `yaml:"session"` // SPEC-V3R2-RT-004 REQ-022: STALE_SECONDS
+	Feedback      FeedbackConfig             `yaml:"feedback"` // SPEC-INVOCATION-MODEL-001: /moai feedback target repo
+	Session       SessionConfig              `yaml:"session"`  // SPEC-V3R2-RT-004 REQ-022: STALE_SECONDS
 	// MIG-003: 4 new sections loaded by Loader.Load() (REQ-MIG003-001)
 	Constitution  ConstitutionConfig `yaml:"constitution"`
 	ContextSearch ContextConfig      `yaml:"context_search"`
@@ -1099,6 +1100,20 @@ type statuslineFileWrapper struct {
 // researchFileWrapper handles the research.yaml section file.
 type researchFileWrapper struct {
 	Research ResearchConfig `yaml:"research"`
+}
+
+// FeedbackConfig represents the /moai feedback workflow configuration section.
+// SPEC-INVOCATION-MODEL-001: the feedback target repository is a config value so
+// fork maintainers can redirect feedback away from the default tool channel.
+type FeedbackConfig struct {
+	// Repository is the "owner/repo" GitHub slug the feedback workflow targets.
+	// Default DefaultFeedbackRepository (the remote MoAI-ADK tool repo).
+	Repository string `yaml:"repository"`
+}
+
+// feedbackFileWrapper handles the feedback.yaml section file.
+type feedbackFileWrapper struct {
+	Feedback FeedbackConfig `yaml:"feedback"`
 }
 
 // ralphFileWrapper handles the ralph.yaml section file.

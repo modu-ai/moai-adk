@@ -76,6 +76,9 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load research section
 	l.loadResearchSection(sectionsDir, cfg)
 
+	// Load feedback section (SPEC-INVOCATION-MODEL-001: /moai feedback target repo)
+	l.loadFeedbackSection(sectionsDir, cfg)
+
 	// Load constitution section (REQ-MIG003-001/002)
 	l.loadConstitutionSection(sectionsDir, cfg)
 
@@ -271,6 +274,23 @@ func (l *Loader) loadResearchSection(dir string, cfg *Config) {
 	if loaded {
 		cfg.Research = wrapper.Research
 		l.loadedSections["research"] = true
+	}
+}
+
+// loadFeedbackSection loads the feedback configuration section from feedback.yaml.
+// The wrapper is seeded with the populated default (cfg.Feedback) so that a
+// feedback.yaml omitting the repository key retains the default tool channel
+// (partial-override contract; parallel to loadResearchSection).
+func (l *Loader) loadFeedbackSection(dir string, cfg *Config) {
+	wrapper := &feedbackFileWrapper{Feedback: cfg.Feedback}
+	loaded, err := loadYAMLFile(dir, "feedback.yaml", wrapper)
+	if err != nil {
+		slog.Warn("failed to load feedback config, using defaults", "error", err)
+		return
+	}
+	if loaded {
+		cfg.Feedback = wrapper.Feedback
+		l.loadedSections["feedback"] = true
 	}
 }
 
