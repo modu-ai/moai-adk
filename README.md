@@ -256,7 +256,6 @@ Spawns dozens of agents in isolated git worktrees for large-scale parallel work.
 |----------|------------------|
 | `run` | tasks ≥ 5, OR predicted file changes ≥ 10, OR independent tasks ≥ 3 |
 | `mx` | source files ≥ 50 |
-| `coverage` | P1+P2 coverage gaps ≥ 10 |
 | `clean` | confirmed dead code items ≥ 20 |
 
 ---

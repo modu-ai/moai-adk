@@ -6,7 +6,7 @@ draft: false
 
 MoAI-ADK (Agentic Development Kit) is a strategic orchestration framework for Claude Code.
 
-> **Current version:** {{< version >}} (release candidate 2) — version information follows the single source of truth `params.version` in `hugo.toml`.
+> **Current version:** {{< version >}} — version information follows the single source of truth `params.version` in `hugo.toml`.
 
 > {{< icon book primary >}} **[Practical Agentic Coding with Claude Code](/book)** — the end of vibe coding, the beginning of harness engineering. A 488-page practical guide written by MoAI-ADK maintainers (with endorsements from 9 experts).
 
