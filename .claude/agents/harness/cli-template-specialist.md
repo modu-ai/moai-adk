@@ -3,10 +3,11 @@ name: cli-template-specialist
 description: >-
   MUST INVOKE for moai-adk-go CLI and go:embed template system work — Cobra
   commands in internal/cli/, template source under
-  internal/template/templates/, embedded.go regeneration via make build, config
-  in internal/config/, or any edit touching the Template-First build cycle.
-  Covers adding a CLI subcommand, wiring a new template file, regenerating
-  embedded assets, and resolving config-rendering bugs.
+  internal/template/templates/, binary recompilation via make build (templates
+  embedded via //go:embed all:templates), config in internal/config/, or any
+  edit touching the Template-First build cycle. Covers adding a CLI subcommand,
+  wiring a new template file, recompiling embedded assets, and resolving
+  config-rendering bugs.
 skills:
   - harness-moaiadk-patterns
   - harness-moaiadk-best-practices
@@ -46,8 +47,8 @@ contract).
   <subcommand>.go + tests."
 - **`Explore`** (Anthropic built-in) — for read-only investigation of the
   template/embed pipeline before delegation: "Use the Explore subagent to map
-  how internal/template/templates/.claude/skills/* flows through embedded.go
-  into the deployer."
+  how internal/template/templates/.claude/skills/* flows through the
+  //go:embed all:templates directive (embed.go) into the deployer."
 
 Do NOT reference archived domain-expert agents. Per
 `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row #7, the
@@ -63,11 +64,14 @@ default moai-adk-go path is `manager-develop`, not a per-spawn specialist.
   hooks and emit structured output for the orchestrator.
 - **Template-First Rule** (CLAUDE.local.md §2): every new file destined for
   `.claude/`, `.moai/`, or `.agency/` MUST be added to
-  `internal/template/templates/<path>` FIRST, then `make build` regenerates
-  `internal/template/embedded.go`, THEN sync to local via `moai update`. Never
-  edit `.claude/` or `.moai/` directly without a template source.
-- **`embedded.go` is generated**: never hand-edit `internal/template/embedded.go`
-  — it carries `DO NOT EDIT`. Run `make build` after any template edit.
+  `internal/template/templates/<path>` FIRST, then `make build` recompiles the
+  binary (templates embedded via `//go:embed all:templates` in `embed.go`),
+  THEN sync to local via `moai update`. Never edit `.claude/` or `.moai/`
+  directly without a template source.
+- **The embedded FS is NOT a generated file**: there is no `embedded.go`. The
+  embedded filesystem comes from `//go:embed all:templates` +
+  `//go:embed catalog.yaml` in `internal/template/embed.go`. Edit `templates/`
+  (the source of truth), then run `make build` to recompile.
 - **Config system**: `internal/config/` holds defaults (`defaults.go`), env-key
   constants (`envkeys.go`), and the `TemplateContext` renderer. Hardcoding of
   URLs / model names / thresholds is forbidden — see the best-practices skill.

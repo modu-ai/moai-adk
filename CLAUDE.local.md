@@ -151,9 +151,9 @@ Do NOT use `t.Setenv` with OTEL environment variables (`OTEL_EXPORTER_*`, `OTEL_
 ### Embedded Template System
 
 moai-adk-go uses Go's `go:embed` directive:
-- **Source**: `internal/template/templates/` (edit here)
-- **Generated**: `internal/template/embedded.go` (auto-generated, DO NOT EDIT)
-- **Build**: Run `make build` after editing templates
+- **Source**: `internal/template/templates/` (edit here — this is the source of truth)
+- **Embed mechanism**: `internal/template/embed.go` carries `//go:embed all:templates` + `//go:embed catalog.yaml`, which compile the `templates/` FS directly into the binary (there is NO generated `embedded.go` file)
+- **Build**: Run `make build` after editing templates (recompiles the binary)
 
 ---
 
@@ -516,11 +516,11 @@ git commit -m "feat(template): update SKILL.md"
 
 **Solution:**
 ```bash
-# Regenerate embedded files
+# Recompile the binary (templates embedded via //go:embed all:templates in embed.go)
 make build
 
-# Verify
-ls -la internal/template/embedded.go
+# Verify the build succeeded
+go build ./...
 ```
 
 ### Issue: Tests modify ~/.claude/settings.json

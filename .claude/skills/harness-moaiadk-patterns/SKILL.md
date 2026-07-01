@@ -26,7 +26,7 @@ triggers:
     - quality-specialist
     - workflow-specialist
     - hook-ci-specialist
-  keywords: moai-adk-go, internal/cli, internal/template, embedded.go, make build, go:embed, template-first, harness namespace
+  keywords: moai-adk-go, internal/cli, internal/template, embed.go, make build, go:embed, template-first, harness namespace
 paths: "internal/**/*.go,internal/template/templates/**,.claude/**,.moai/**"
 ---
 
@@ -41,8 +41,9 @@ moai-adk-go is a Go binary (`moai`) with four subsystems:
    `spec`. Subcommand handlers read stdin JSON for hooks, emit structured
    output for the orchestrator.
 2. **Template system** (`internal/template/`) — `go:embed`-based scaffolding.
-   Source at `internal/template/templates/`, generated artifact at
-   `internal/template/embedded.go` (DO NOT EDIT). `make build` regenerates.
+   Source at `internal/template/templates/`, embedded into the binary via
+   `//go:embed all:templates` in `internal/template/embed.go` (no generated
+   `.go` file). `make build` recompiles the binary.
    `TemplateContext` (`{{.GoBinPath}}` / `{{.HomeDir}}`) renders at `moai init`.
 3. **Config** (`internal/config/`) — `defaults.go` (single source for
    thresholds), `envkeys.go` (env-var constants), `TemplateContext` renderer.
@@ -59,7 +60,7 @@ development (plan→run→sync→Mx).
 |-----------|------|-------|
 | Cobra commands | `internal/cli/*.go` | wired from `cmd/moai/` |
 | Template source | `internal/template/templates/**` | edit HERE first |
-| Embedded assets | `internal/template/embedded.go` | generated, DO NOT EDIT |
+| Embedded assets | `internal/template/embed.go` | `//go:embed all:templates` (no generated file) |
 | Config defaults | `internal/config/defaults.go` | threshold SSOT |
 | Env constants | `internal/config/envkeys.go` | no hardcoded env names |
 | SPEC docs | `.moai/specs/SPEC-*/` | spec/plan/acceptance/progress |
@@ -93,13 +94,14 @@ CLI/Template ──→ quality ──→ workflow ──→ hook/CI
 When adding/editing anything that ships to user projects:
 
 1. Edit `internal/template/templates/<path>` FIRST.
-2. Run `make build` → regenerates `internal/template/embedded.go`.
+2. Run `make build` → recompiles the binary (templates embedded via
+   `//go:embed all:templates` in `embed.go`; no generated `.go` file).
 3. Sync to local: `moai update` (or manual copy).
 4. Verify the local `.claude/` / `.moai/` reflects the template.
 5. Run `go test ./internal/template/...` (neutrality audit included).
 
-Never edit `.claude/` or `.moai/` directly without a template source. Never
-hand-edit `embedded.go`.
+Never edit `.claude/` or `.moai/` directly without a template source. The
+source of truth is `templates/` — edit files there, then `make build`.
 
 ## Namespace Separation Contract
 

@@ -147,7 +147,9 @@ New orchestrator agents self-assert by adding `AskUserQuestion` to their
 All agent definition files have a canonical copy under
 `internal/template/templates/.claude/agents/moai/` and a local mirror at
 `.claude/agents/moai/`. After editing templates, run `make build` to
-regenerate `internal/template/embedded.go` and synchronize local mirrors.
+recompile the binary (templates are embedded via `//go:embed all:templates`
+in `embed.go`; there is no generated `embedded.go`) and synchronize local
+mirrors.
 
 `moai agent lint` scans both trees by default and emits `LINT_TREE_DRIFT`
 warnings when violation counts differ between the template and local copies of
