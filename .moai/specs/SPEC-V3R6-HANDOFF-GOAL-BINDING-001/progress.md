@@ -21,9 +21,13 @@
 - **AC matrix**: 14/14 PASS (orchestrator independent grep/build batch, all observed):
   - AC-001/002 `/goal` in both surfaces (SSOT 5, render 2) · AC-003 run+verifiable emit-trigger + default-omit · AC-004 Diet single-line `/goal` item · AC-005 Kickoff-Approval invariant present · AC-006 (D2) qualifier count == 3 · AC-007 (D1) locale 4×2 parity · AC-008 omission anti-pattern · AC-009 (D7) `Block 1` pin in goal-directive · AC-010 mirror parity 4 files · AC-011 context-window non-contradiction (refs SSOT, 0 inline `/goal`) · AC-012 `make build` + `go build ./...` exit 0 · AC-013 label==enum (SSOT budget 9/9, render completeness 10/10) · AC-014 (D6) template neutrality 0 tokens.
 - **Build**: `make build` exit 0 (catalog.yaml re-embedded) + `go build ./...` exit 0.
-- **run_commit_sha**: _(backfilled below after commit)_
+- **run_commit_sha**: 577f84c8a (pushed to main; parent efa6217e7, parallel docs-site session fast-forward absorbed, final divergence 0 0)
 - **Run-phase status**: audit-ready. All 14 AC GREEN; ready for sync-phase.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+- **Consolidated close (orchestrator-direct)**: doc-only Tier M, zero code — sync-phase performed directly by the orchestrator per user decision (manager-develop hit session limit mid-run). CHANGELOG entry omitted: this is an internal rule/output-style binding, not a user-facing feature change.
+- **Status transition**: in-progress → implemented → completed — this single sync commit carries the merged transition per SPEC-V3R6-LIFECYCLE-REDESIGN-001 3-phase close.
+- **sync_commit_sha**: _(backfilled in follow-up chore commit — the sync commit's own SHA)_
+- **3-phase close**: plan (draft, manager-spec) → run (577f84c8a, orchestrator-direct after manager-develop abort) → sync (this commit). era V3R6 (H-4 predicate: §E.2 + §E.4 + sync_commit_sha present).
+- **Final verification**: 14/14 AC PASS (see §E.3), LIVE==TMPL byte-identical for all 3 edited files, make build + go build exit 0, final divergence 0 0.

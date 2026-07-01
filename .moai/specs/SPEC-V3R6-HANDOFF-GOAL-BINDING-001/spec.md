@@ -2,7 +2,7 @@
 id: SPEC-V3R6-HANDOFF-GOAL-BINDING-001
 title: "Bind Claude Code /goal into session-handoff resume Block 1"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-01
 updated: 2026-07-01
 author: manager-spec
