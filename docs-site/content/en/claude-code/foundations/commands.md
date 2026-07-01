@@ -25,33 +25,54 @@ Commands fall into three broad categories.
 | Bundled skill | A skill shipped with Claude Code | Hands instructions to the model, which orchestrates the work with tools |
 | Custom command | `.claude/commands/` or `.claude/skills/` | Defined by the user directly in Markdown |
 
-## Examples of Built-in Slash Commands
+## Built-in Commands and Skills
 
-The commonly used built-in commands and bundled skills are summarized below. For the full list, check `/` in the input box or consult the official command reference.
+Slash commands comprise built-in commands, bundled skills, and custom workflows. The commonly used commands are summarized below. For the full list, check `/` in the input box or the official command reference.
+
+### Built-in Commands
+
+| Command | Purpose | Version |
+| :--- | :--- | :--- |
+| `/goal <condition>` | Set a completion condition and proceed autonomously across multiple turns (Haiku checks periodically) | v2.1.139+ |
+| `/workflows` | Manage and review active dynamic workflow runs | v2.1.139+ |
+| `/rewind` (alias: `/checkpoint`, `/undo`) | Roll code and conversation back to an earlier checkpoint | v2.1.191+ |
+| `/context [all]` | Analyze current context window usage | Default |
+| `/memory` | Load and toggle `CLAUDE.md` + auto memory | v2.1.59+ |
+| `/compact` | Summarize the conversation so far to free up context while keeping the same conversation | Default |
+| `/clear` (alias: `/reset`, `/new`) | Clear context and start a new conversation | Default |
+| `/agents` | Manage subagent configuration | v2.1.139+ |
+| `/mcp` | Manage MCP server connections and authentication | v2.1.186+ |
+| `/plugin` | Manage plugins | Default |
+| `/effort [low|medium|high|xhigh|max|ultracode|auto]` | Set the model's reasoning depth or orchestration setting | Default |
+| `/model` | Switch the AI model | Default |
+| `/background` (alias: `/bg`) | Run in background | v2.1.139+ |
+| `/fork <directive>` | Create a forked subagent inheriting this conversation | v2.1.161+ |
+| `/recap` | Generate a session summary | Default |
+| `/btw` | Ask a side question without polluting conversation history | v2.1.187+ |
+| `/cd` | Change session working directory, preserving prompt cache | v2.1.169+ |
+| `/schedule` (alias: `/routines`) | Schedule tasks for later | v2.1.72+ |
+| `/branch`, `/tasks`, `/plan`, `/doctor`, `/skills`, `/reload-skills`, `/reload-plugins` | Other management commands | Default |
+
+### Bundled Skills
 
 | Command | Purpose |
 | :--- | :--- |
-| `/help` | Show help and the list of available commands |
-| `/clear` | Clear context and start a new conversation (the previous one is preserved in `/resume`) |
-| `/compact` | Summarize the conversation so far to free up context while keeping the same conversation |
-| `/context` | Visualize current context-window usage as a colored grid |
-| `/cost` | Show session cost and plan usage (alias of `/usage`, `/stats`) |
-| `/model` | Switch the AI model and save the default model |
-| `/effort` | Set the model's reasoning depth (effort level) |
-| `/config` | Open the settings screen for theme, model, output style, and more (alias of `/settings`) |
-| `/agents` | Manage subagent configuration |
-| `/skills` | Show the list of available skills |
-| `/mcp` | Manage MCP server connections and authentication |
-| `/hooks` | Review hook configuration by tool event |
-| `/permissions` | Manage allow/ask/deny rules for tool permissions (alias of `/allowed-tools`) |
-| `/init` | Create a starter `CLAUDE.md` for the project |
-| `/memory` | Edit `CLAUDE.md` memory files |
-| `/plan` | Enter plan mode before a large change |
-| `/rewind` | Roll code and conversation back to an earlier checkpoint (checkpointing) |
-| `/resume` | Resume a conversation by ID or name (alias of `/continue`) |
-| `/doctor` | Diagnose your installation and configuration |
+| `/loop` (alias: `/proactive`) | Run an iterative fix loop (Ralph/interval-based) |
+| `/batch` | Run batch operations |
+| `/simplify` | Simplify code (v2.1.154+) |
+| `/code-review` | Review code |
 
-Just as `/cost` and `/stats` are aliases of `/usage`, the same feature can often be called by several names. In addition, some commands are exposed differently depending on platform, plan, and environment.
+### Workflow Commands
+
+| Command | Purpose |
+| :--- | :--- |
+| `/deep-research` | Run research with parallel web searches and cross-verification (requires WebSearch) |
+
+### Note on Command Availability
+
+- Many features can be called by several names (aliases).
+- Some commands are exposed differently depending on platform, plan, and environment.
+- `ultracode` is both a workflow trigger keyword (pre-v2.1.160 it was `workflow`) and an `/effort` level.
 
 ## Custom Slash Commands
 

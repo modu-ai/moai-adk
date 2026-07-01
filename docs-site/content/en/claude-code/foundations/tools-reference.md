@@ -40,7 +40,7 @@ The following are the tools used most often in day-to-day coding work, listed wi
 | `LSP` | Language-server-based code intelligence (go to definition, find references, report type errors) | Read | - |
 | `Skill` | Run a skill within the main conversation | Execute | Yes |
 
-`TodoWrite` was disabled by default as of v2.1.142, and the `TaskCreate` family of tools took its place. To turn it back on, set `CLAUDE_CODE_ENABLE_TASKS=0`.
+Since v2.1.142, task-list functionality is managed through the `TaskCreate`, `TaskUpdate`, `TaskList`, and `TaskGet` tools. To enable task-list editing features, set the environment variable `CLAUDE_CODE_ENABLE_TASKS=1`.
 
 ### Small Differences Among Read Tools
 

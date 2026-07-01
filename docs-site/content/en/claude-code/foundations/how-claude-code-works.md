@@ -87,6 +87,8 @@ The moment you run `claude` in a directory, Claude has access to the following.
 - **Auto memory**: Patterns and preferences learned while working are saved automatically (the beginning of `MEMORY.md` is loaded at session start)
 - **Extensions**: Configured MCP servers, skills, subagents, and more
 
+When the context window fills up, Claude automatically compresses it. The compression process first summarizes early tool call results, then compacts remaining information. Additionally, MCP tool definitions are loaded only when explicitly requested, not upfront, so only necessary tools load at the time you need them.
+
 ### Permissions
 
 The permission model that governs actions is covered in the [Permission Model](#permission-model) section below.
@@ -133,9 +135,9 @@ Press `Shift+Tab` to cycle through the permission modes.
 | Mode | Behavior |
 |------|----------|
 | **default** | Confirms before every file edit and shell command |
-| **auto-accept edits** | Runs common file commands like `mkdir` and `mv` and edits without asking, while confirming other commands |
-| **plan mode** | Uses read-only tools only and writes a plan for you to approve before execution |
-| **auto mode** | Evaluates all actions together with background safety checks (research preview) |
+| **plan** | Uses read-only tools only and writes a plan for you to approve before execution |
+| **acceptEdits** | Runs common file commands like `mkdir` and `mv` and edits without asking, while confirming other commands |
+| **bypassPermissions** | Bypasses permission prompts (limited use, such as in isolated sandbox environments) |
 
 If you pre-allow specific commands in `.claude/settings.json`, you won't be asked every time. This is useful for trusted commands like `npm test` or `git status`, and the settings can be scoped from organization-wide policy down to personal preference.
 

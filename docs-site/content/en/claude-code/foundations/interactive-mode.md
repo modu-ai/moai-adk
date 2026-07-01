@@ -25,7 +25,7 @@ The basic flow is simple.
 5. /clear for a new session, Ctrl+D to quit
 ```
 
-While the session is running, input history is saved per working directory, and for complex multi-step tasks Claude builds a task list to track progress.
+While the session is running, input history is saved per working directory, and for complex multi-step tasks Claude builds a task list to track progress. The task list persists even during context compression.
 
 ## Five Input Methods
 
@@ -79,12 +79,16 @@ These are the core shortcuts of the interactive session. Some behaviors may diff
 | `Esc` `Esc` | Clear the draft if there is input; open the rewind menu if empty |
 | `Ctrl+C` | Cancel execution or clear input (press twice to quit) |
 | `Ctrl+D` | End the session (EOF) |
-| `Shift+Tab` | Cycle through permission modes |
+| `Shift+Tab` or `Alt+M` | Cycle through permission modes |
 | `Ctrl+R` | Reverse-search command history |
-| `Ctrl+O` | Toggle the transcript viewer (detailed tool-use view) |
 | `Ctrl+T` | Toggle the task list |
 | `Ctrl+B` | Move a running task to the background |
+| `Ctrl+O` | Toggle the transcript viewer (detailed tool-use view) |
+| `Ctrl+X` `Ctrl+K` | Stop all background subagents |
 | `Ctrl+L` | Redraw the screen (recover broken output) |
+| `Opt+P` | Switch AI model |
+| `Opt+O` | Toggle fast mode |
+| `Opt+T` | Toggle extended thinking mode |
 | `Up` / `Down` | Move the cursor; navigate history once you reach the end |
 
 ### Rewind (Esc Esc)
@@ -101,7 +105,7 @@ Option-key combinations like `Alt+B`, `Alt+F`, and `Alt+P` require the terminal 
 
 ## Permission Modes
 
-Claude Code controls how far file modifications and command execution are automatically allowed through **permission modes**. You can cycle through the modes with `Shift+Tab`.
+Claude Code controls how far file modifications and command execution are automatically allowed through **permission modes**. You can cycle through the modes with `Shift+Tab` (or `Alt+M`).
 
 | Mode | Behavior | Suited For |
 |------|------|-------------|
@@ -112,7 +116,7 @@ Claude Code controls how far file modifications and command execution are automa
 
 ```mermaid
 flowchart TD
-    A[Cycle modes with<br>Shift+Tab] --> B[default<br>Asks every time]
+    A[Cycle modes with<br>Shift+Tab or Alt+M] --> B[default<br>Asks every time]
     B --> C[plan<br>Builds a plan only]
     C --> D[acceptEdits<br>Auto-accepts edits]
     D --> E[bypassPermissions<br>Bypasses prompts]
@@ -144,8 +148,9 @@ You can enable vim-style editing under Editor mode in `/config`. You switch betw
 
 In `/config` you adjust settings such as the theme, display options, and Session recap. Other commonly used extras include the following.
 
+- **`/recap`**: Generate a summary of the session. This is automatically available after 3+ minutes or 3+ turns of work.
 - **`/btw`**: Quickly ask a question about the current task without polluting the conversation history. The answer is shown only as a transient overlay.
-- **Task list**: Expand or collapse the task list Claude builds during multi-step tasks with `Ctrl+T`.
+- **Task list**: Expand or collapse the task list Claude builds during multi-step tasks with `Ctrl+T`. The task list persists through context compression.
 - **Extended thinking toggle**: Turn extended thinking mode on and off with `Option+T` (macOS) or `Alt+T`.
 
 ## Related Docs
