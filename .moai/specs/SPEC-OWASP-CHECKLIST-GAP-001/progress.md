@@ -63,4 +63,14 @@ m1_to_mN_commit_strategy: "single M1 commit (Tier S, M1 = M-final) covering M1-M
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: "2026-07-01"
+sync_commit_sha: "14bd2203ff12d38c1790ee24892fbce013ddbbaa"
+sync_status: completed
+b12_self_test_a: "PASS — grep -c 'SPEC-OWASP-CHECKLIST-GAP-001' CHANGELOG.md → 1 (fresh entry added, no duplicates)"
+b12_self_test_b: "PASS — AC count in spec.md §3 (8 items) matches CHANGELOG reference (8/8 PASS)"
+b12_self_test_c: "PASS — ls -la .moai/specs/SPEC-OWASP-CHECKLIST-GAP-001/spec.md CHANGELOG.md → both exist"
+changelog_entry_position: "CHANGELOG.md [Unreleased] → ### Added (line ~11 postfix)"
+frontmatter_status_transitions: "status: in-progress → completed (spec.md line 4)"
+canary_compliance_check: "Tier S 3-phase close: plan-auditor PASS-WITH-DEBT 0.92, run-phase 8/8 AC, sync-phase CHANGELOG + frontmatter + progress.md §E.4 backfill complete"
+```
