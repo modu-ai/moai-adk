@@ -56,7 +56,7 @@ flowchart TD
 
 ## スキルカテゴリ
 
-MoAI-ADKには計**31スキル**が6カテゴリに分類されています。`moai` umbrellaルーター1個と30の専門スキルで構成されます (Foundation、Workflow、Domain、Reference、Meta/Harness、Design)。プログラミング言語サポートは`rules/moai/languages/`配下のルールで提供され、個別スキルではありません。
+MoAI-ADK テンプレートには計**27個の `moai-*` スキル**が 5 個の機能カテゴリに分類されています（Foundation 4 + Workflow 8 + Domain 5 + Reference 8 + Meta/Harness 2 = 27）。ここに要求を専門スキルにルーティングする `moai` umbrella スキル 1 個が別途存在します。ユーザープロジェクトでは追加的にプロジェクト別 `harness-*` ユーザー定義スキルを作成できます。プログラミング言語サポートは `rules/moai/languages/` 配下のルールで提供され、個別スキルではありません。
 
 ### Foundation (中核哲学) - 4個
 
@@ -67,7 +67,7 @@ MoAI-ADKには計**31スキル**が6カテゴリに分類されています。`m
 | `moai-foundation-thinking` | 構造化思考、アイデア創出、第一原理分析 |
 | `moai-foundation-quality` | コード品質自動検証、TRUST 5バリデーション |
 
-### Workflow (自動化ワークフロー) - 10個
+### Workflow (自動化ワークフロー) - 8個
 
 | スキル名 | 説明 |
 |---------|------|
@@ -79,32 +79,29 @@ MoAI-ADKには計**31スキル**が6カテゴリに分類されています。`m
 | `moai-workflow-worktree` | Git worktreeベース並列開発 |
 | `moai-workflow-loop` | Ralph Engine自律ループ、LSP連携 |
 | `moai-workflow-ci-loop` | CI監視・自動修正ループワークフロー |
-| `moai-workflow-gan-loop` | Builder-Evaluator GANループ、デザイン品質 |
-| `moai-workflow-design` | デザインワークフロー、Claude Design取り込み |
 
-### Domain (ドメイン専門性) - 9個
+### Domain (ドメイン専門性) - 5個
 
 | スキル名 | 説明 |
 |----------|------|
 | `moai-domain-backend` | API設計、マイクロサービス、データベース統合 |
 | `moai-domain-frontend` | React 19、Next.js 16、Vue 3.5、コンポーネントアーキテクチャ |
 | `moai-domain-database` | PostgreSQL、MongoDB、Redis、高度データパターン |
-| `moai-domain-ideation` | Lean Canvas、提案生成、ダイバージ-コンバージ |
-| `moai-domain-research` | 市場調査、エコシステム分析、WebSearch |
-| `moai-domain-brand-design` | ブランド整合ビジュアルデザイン、デザイントークン |
-| `moai-domain-design-handoff` | Claude Designハンドオフパッケージ |
-| `moai-domain-copywriting` | ブランド整合マーケティングコピー、アンチAI-slop |
-| `moai-domain-humanize` | AIテキストヒューマナイゼーション、ポスト編集、韓国語AI-tell分類体系 |
+| `moai-domain-html-report` | Markdown → 単一 HTML レポートレンダラー（6 つのモード、外部依存性なし） |
+| `moai-domain-humanize` | AI テキストヒューマナイゼーション、ポスト編集（KO/EN/JA/ZH） |
 
-### Reference (ベストプラクティス) - 5個
+### Reference (ベストプラクティス) - 8個
 
 | スキル名 | 説明 |
 |----------|------|
-| `moai-ref-api-patterns` | REST/GraphQL API設計パターン、エラー処理 |
-| `moai-ref-git-workflow` | Gitワークフロー、ブランチ戦略、Conventional Commits |
-| `moai-ref-owasp-checklist` | OWASP Top 10セキュリティパターン、入力バリデーション |
-| `moai-ref-react-patterns` | React/Next.jsコンポーネントパターン、状態管理 |
+| `moai-ref-api-patterns` | REST/GraphQL API 設計パターン、エラー処理 |
+| `moai-ref-git-workflow` | Git ワークフロー、ブランチ戦略、Conventional Commits |
+| `moai-ref-owasp-checklist` | OWASP Top 10 セキュリティパターン、入力バリデーション |
+| `moai-ref-react-patterns` | React/Next.js コンポーネントパターン、状態管理 |
 | `moai-ref-testing-pyramid` | テストピラミッド戦略、カバレッジ目標 |
+| `moai-ref-llm-security` | AI/LLM 防御セキュリティ（プロンプトインジェクション、OWASP LLM Top 10） |
+| `moai-ref-secops` | DevSecOps/コンテナ/API 運用防御セキュリティ |
+| `moai-ref-supply-chain` | ソフトウェア供給鎖防御セキュリティ（SBOM、SLSA、Sigstore） |
 
 ### Meta/Harness (システム拡張) - 2個
 
@@ -113,7 +110,7 @@ MoAI-ADKには計**31スキル**が6カテゴリに分類されています。`m
 | `moai-meta-harness` | プロジェクト特化エージェントチーム動的生成 |
 | `moai-harness-learner` | Harness学習サブシステム、自動更新提案 |
 
-> `moai` umbrellaスキル (統合`/moai`ルーター) は合計31に含まれますが、分類された機能スキルではなく、このガイドで説明されるサブコマンドをディスパッチします。
+> 27 個の `moai-*` スキルは MoAI-ADK テンプレートにデフォルトで含まれており、各スキルは独立的にロードされてトークンを節約します。ユーザーは追加的にプロジェクト別 `harness-*` ユーザー定義スキルを作成できます。
 
 ## 段階的開示システム
 
@@ -151,7 +148,7 @@ flowchart TD
 
 ### トークン節約効果
 
-- **従来方式**: 31スキル全ロード = 約160,000トークン (不可能)
+- **従来方式**: 27スキル全ロード = 約135,000トークン (不可能)
 - **段階的開示**: メタデータのみロード = 約5,200トークン (97%節約)
 - **必要時ロード**: タスクに必要な2〜3スキルのみ = 約15,000トークン追加
 

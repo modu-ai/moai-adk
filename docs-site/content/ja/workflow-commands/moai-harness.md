@@ -1,113 +1,272 @@
 ---
-title: /moai harness
+title: /moai harness コマンド
 weight: 55
 draft: false
 ---
 
-V3R4 Self-Evolving Harness 学習サブシステムを運用するコマンドです。4 段階の進化ラダー（observer → heuristic → rule → frozen-zone）と 5 層の安全パイプライン（frozen-guard → canary → contradiction → rate-limit → human oversight）を案内します。
+Harness v4 Builder でプロジェクト固有の動的専門家チームを生成・管理します。
 
 {{< callout type="info" >}}
-**スラッシュコマンド**: Claude Code で `/moai harness` を入力するとこのコマンドを直接実行できます。
+**スラッシュコマンド**: Claude Code で `/moai:harness <自然言語リクエスト>` を入力するとこのコマンドを直接実行できます。
 {{< /callout >}}
 
 ## 概要
 
-`/moai harness` は MoAI-ADK の自己進化学習サブシステムを安全に運用するための 4 つの verb（`status`、`apply`、`rollback`、`disable`）を提供します。PostToolUse フックがすべてのツール呼び出しを `.moai/harness/usage-log.jsonl` に append-only で記録し、提案は 4-tier 進化ラダーに沿って分類されます。Tier-4 のフローズンゾーン変更は必ず `AskUserQuestion` を通じてユーザー承認を得てから適用されます。
+`/moai:harness` は MoAI-ADK の **Harness v4 Builder** を実行してプロジェクト要求に合わせた動的専門家チームを自動生成します。
 
-主要概念:
+### Harness v4 Builder とは？
 
-- **Observer**: PostToolUse フックがすべてのツール使用を `.moai/harness/usage-log.jsonl` に追記します。
-- **4-Tier Evolution Ladder**: observation → heuristic → rule → frozen-zone 提案の 4 段階。
-- **5-Layer Safety Pipeline**: すべての進化提案は 5 層の安全検証を通過する必要があります。
-- **CLI Retirement**: V3R4 以降、すべての verb は workflow body のファイルシステム操作で実行され、Go バイナリのサブコマンドは呼び出されません。
+Harness v4 Builder は Socratic インタビューベースの 4-phase ワークフロー（ANALYZE → PLAN → GENERATE → ACTIVATE）でチームを構成します。
 
-## コマンド形式
+| 段階 | 説明 |
+|------|------|
+| ANALYZE | プロジェクト構造、使用言語、既存エージェントインベントリ分析 |
+| PLAN | 必要なチーム規模（3～5 名）、各チームメンバーの役割、worktree 隔離の有無決定 |
+| GENERATE | `.claude/agents/harness/` エージェントファイル、`.moai/harness/manifest.json` 生成 |
+| ACTIVATE | チーム登録および `/harness:<name>` コマンド活性化 |
 
-```bash
-/moai harness {status | apply | rollback <YYYY-MM-DD> | disable}
-```
+## 使用方法
 
-- 引数が空の場合はヘルプが表示されます。
-- すべての verb は orchestrator のメインコンテキストで実行されます。
-
-## verbs の詳細
-
-### status
-
-現在の harness 学習状態、保留中の Tier-4 提案、7 日間の rate-limit ウィンドウ使用量を表示します。
-
-- **読み取り専用**: ファイルを変更しません。
-- **出力内容**:
-  - `.moai/config/sections/harness.yaml` の `learning.enabled` 値
-  - `.moai/harness/proposals/` 内の保留 Tier-4 提案件数
-  - `.moai/harness/learning-history/applied/` 配下、過去 7 日間の適用件数
-  - 最近の tier 昇格イベント（`tier-promotions.jsonl`）
-  - Frozen Guard 違反ログ（`frozen-guard-violations.jsonl`）
-
-### apply
-
-最も古い保留中の Tier-4 提案を 5-Layer Safety パイプラインへ送り、適用します。適用前には必ず orchestrator が `AskUserQuestion` ラウンドを実行し、ユーザーの明示的な承認を必要とします。
-
-- **前提条件**:
-  - 7 日間ウィンドウ内の適用件数が 1 件未満（REQ-HRN-FND-012 rate-limit floor）。
-  - 提案ペイロードの整合性検証を通過。
-- **ユーザー選択肢（推奨 / Modify / Defer / Reject）**: 最初の選択肢に `(推奨)` 表記。Apply を選ぶと事前スナップショットが `.moai/harness/learning-history/snapshots/<ISO-DATE>/` に保存されます。
-
-### rollback `<YYYY-MM-DD>`
-
-指定された日付のスナップショットを用いて直前の適用を取り消します。他の進化が累積している場合は競合レポートを出力し、再度ユーザー承認を求めます。
-
-- **引数**: ISO-8601 日付（YYYY-MM-DD）。形式違反はエラー。
-- **効果**: `.moai/harness/learning-history/applied/<DATE>.json` が `rolled-back/` に移され、対象ファイルがスナップショット状態に戻ります。
-
-### disable
-
-harness 学習を一時停止します（`learning.enabled: false`）。PostToolUse による観察は継続しますが、4-tier 分類器と提案生成器は無効になります。
-
-- **使用場面**: 進化提案が疑わしい、または外部監査を実施するとき。
-- **再有効化**: `.moai/config/sections/harness.yaml` で `learning.enabled: true` に戻します。
-
-## 4-Tier Evolution Ladder
-
-| Tier | 分類 | 自動適用 | 備考 |
-|------|------|----------|------|
-| Tier-1 | Observation | n/a（手動レビュー） | パッシブなログ蓄積のみ |
-| Tier-2 | Heuristic | 提案のみ | orchestrator がユーザーへ推奨 |
-| Tier-3 | Rule | 非 frozen 領域のみ自動適用可 | canary 通過必須 |
-| Tier-4 | Frozen-zone | **ユーザー承認必須** | 5-Layer Safety を完走 |
-
-Frozen ゾーンは `.claude/rules/moai/design/constitution.md` §2 と `.claude/rules/moai/core/zone-registry.md` で定義されます。
-
-## 5-Layer Safety Pipeline
-
-1. **L1 Frozen Guard**: Frozen ゾーンへの変更試行を遮断。
-2. **L2 Canary**: 隔離サンドボックスで変更影響をシミュレーション。
-3. **L3 Contradiction**: 他の有効規則との競合を検出。
-4. **L4 Rate Limit**: 7 日間ウィンドウ内で最大 1 回の適用（REQ-HRN-FND-012）。
-5. **L5 Human Oversight**: orchestrator 主導の `AskUserQuestion` 承認ラウンド。
-
-5 層のいずれかが拒否すれば `apply` は中断され、提案は `pending` のまま保持されます。
-
-## 使用例
+### 1段階：自然言語でチーム生成リクエスト
 
 ```bash
-# 1) 現在の状態を確認
-/moai harness status
-
-# 2) 保留中の Tier-4 提案を確認して適用
-/moai harness apply
-
-# 3) 直前の適用を昨日のスナップショットで取り消し
-/moai harness rollback 2026-05-21
-
-# 4) 学習を一時停止
-/moai harness disable
+> /moai:harness <自然言語リクエスト>
 ```
 
-## 関連資料
+**例示:**
+```
+私たちの Go バックエンドプロジェクトに合わせた専門家チームを作成してください。
+DB マイグレーション、REST API エンドポイント、単位テストをそれぞれ担当するチームが必要です。
+```
 
-- [`.claude/skills/moai/workflows/harness.md`](https://github.com/modu-ai/moai-adk) — workflow body SSOT
-- [`SPEC-V3R4-HARNESS-001`](https://github.com/modu-ai/moai-adk) — V3R4 foundation SPEC（3 つの V3R3 harness SPEC を統合）
-- [`/moai plan`](/ja/workflow-commands/moai-plan) — SPEC ドキュメント作成
-- [`/moai run`](/ja/workflow-commands/moai-run) — DDD/TDD 実装
-- [`/moai sync`](/ja/workflow-commands/moai-sync) — ドキュメント同期 + PR
+### 2段階：Builder の自動処理
+
+Builder が 4-phase を自動実行します:
+
+1. **ANALYZE**: Go、PostgreSQL、REST API 技術スタック検知
+2. **PLAN**: DB Engineer、API Developer、Test Engineer 3 人チーム構成決定
+3. **GENERATE**: 
+   - `.claude/agents/harness/db-engineer.md`
+   - `.claude/agents/harness/api-developer.md`
+   - `.claude/agents/harness/test-engineer.md`
+   - `.moai/harness/manifest.json` 生成
+4. **ACTIVATE**: `/harness:backend-team` コマンド登録
+
+### 3段階：生成されたチーム活用
+
+生成後すべての作業でチームを自動活用:
+
+```bash
+/moai run SPEC-BACKEND-001
+/moai run --team SPEC-BACKEND-001    # チームモード強制
+```
+
+MoAI が SPEC 複雑度を分析して manifest の phase 順序通りにチームメンバーを自動委任します。
+
+## Harness 管理コマンド
+
+### harness list
+
+生成されたすべてのハネス一覧表示:
+
+```bash
+/harness list
+```
+
+### harness:<name> status
+
+特定ハネスの詳細情報:
+
+```bash
+/harness:backend-team status
+```
+
+出力情報:
+- チームメンバーリストと役割
+- 使用モデル（inherit、haiku、sonnet、opus）
+- 選択的 worktree 隔離設定
+- Manifest バージョンおよび生成日
+
+### harness:<name> edit
+
+manifest.json とエージェント定義編集:
+
+```bash
+/harness:backend-team edit
+```
+
+修正可能な項目:
+- チームメンバー追加/削除
+- スキル事前ロードリスト
+- Worktree 隔離ポリシー
+- 役割別プロンプト
+
+### harness:<name> remove
+
+ハネス及び関連ファイル削除:
+
+```bash
+/harness:backend-team remove
+```
+
+削除対象:
+- `.claude/agents/harness/` エージェント定義
+- `.moai/harness/manifest.json` ファイル
+- 登録された `/harness:<name>` コマンド
+- Worktree 隔離ポリシー
+
+## Manifest 構造
+
+Harness v4 は **manifest.json** でチーム構成を定義します。
+
+### manifest.json 例
+
+```json
+{
+  "spec_id": "HARNESS-BACKEND-001",
+  "name": "Backend Development Team",
+  "version": "1.0.0",
+  "created_at": "2026-07-01T10:00:00Z",
+  "worktree_isolation": "L1_optional",
+  
+  "phases": [
+    {
+      "name": "plan",
+      "teammates": [
+        {
+          "name": "architect",
+          "role": "API アーキテクチャ専門家",
+          "model": "inherit",
+          "skills": ["moai-foundation-core"]
+        }
+      ]
+    },
+    {
+      "name": "run",
+      "teammates": [
+        {
+          "name": "db-engineer",
+          "role": "DB 設計及びマイグレーション",
+          "model": "inherit"
+        },
+        {
+          "name": "api-developer",
+          "role": "REST API エンドポイント",
+          "model": "inherit"
+        },
+        {
+          "name": "test-engineer",
+          "role": "単位テスト",
+          "model": "haiku"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Phase フィールド
+
+| フィールド | 説明 |
+|----------|------|
+| `name` | 段階名 (`plan`, `run`, `sync`) |
+| `teammates` | この段階に参加するチームメンバー配列 |
+
+### Teammate フィールド
+
+| フィールド | デフォルト | 説明 |
+|----------|--------|------|
+| `name` | 必須 | チームメンバー固有識別子 |
+| `role` | 必須 | チームメンバーの役割説明 |
+| `model` | `inherit` | モデル選択 (`inherit`, `haiku`, `sonnet`, `opus`) |
+| `skills` | `[]` | 事前ロードするスキル一覧 |
+
+## Worktree 隔離
+
+Harness v4 は選択的 worktree 隔離をサポートします。
+
+### L1_optional (デフォルト)
+
+```json
+"worktree_isolation": "L1_optional"
+```
+
+Claude Code が並列チームメンバー間の競合を検出した場合、自動的に L1 ワークツリーを生成します。
+
+- **選択的**: 競合時のみ隔離適用
+- **自動**: ランタイムが競合検出後自動生成
+- **コスト**: ワークツリー隔離時のメモリ増加
+
+### none
+
+```json
+"worktree_isolation": "none"
+```
+
+すべてのチームメンバーがプロジェクトルートで作業します（最小メモリ使用）。
+
+## チーム委任ワークフロー
+
+Harness が活性化されると MoAI はそのチームを自動的に活用します。
+
+### SPEC 実行時のチーム委任
+
+```bash
+> /moai run SPEC-BACKEND-001
+```
+
+**MoAI の自動判断:**
+1. SPEC 複雑度推定（ファイル数、コード行数）
+2. 適切なハネス選択
+3. manifest phase 順序通りにチームメンバーを順次/並列委任
+
+### Phase 基準の委任例
+
+```
+PLAN Phase:
+  → architect チームメンバーがアーキテクチャ設計担当
+
+RUN Phase:
+  → db-engineer、api-developer 並列委任
+  → test-engineer 順次委任（テスト）
+
+SYNC Phase:
+  → ドキュメント生成及び PR 作成（デフォルト manager-docs）
+```
+
+## 自然言語リクエストの力
+
+Harness v4 Builder は Socratic インタビュー方式で要件を把握します。
+
+### 効果的なリクエスト例
+
+```
+私たちのチーム は Python FastAPI バックエンドを開発中です。
+API エンドポイント、データ検証、エラーハンドリングが得意なチームが必要です。
+```
+
+Builder が自動的に:
+- Python、FastAPI、asyncio 技術スタック検知
+- 3～5 名チーム規模決定
+- 各チームメンバーの特化領域設定
+- 必要なスキル事前ロード
+
+### 不明確なリクエストは Builder が質問します
+
+```
+チームが必要です。
+
+→ Builder: プロジェクトの主要技術は？（言語、フレームワーク）
+→ Builder: チームが集中する領域は？（バックエンド、フロントエンド、全体）
+→ Builder: 特別に必要な専門性は？
+```
+
+## 関連ドキュメント
+
+- [Harness v4 Builder ガイド](/advanced/builder-agents) - Builder 4-phase 詳細
+- [エージェントガイド](/advanced/agent-guide) - 8 つのコアエージェント理解
+- [SPEC ベース開発](/workflow-commands/moai-plan) - SPEC ワークフロー概要
+
+{{< callout type="info" >}}
+**ヒント**: Harness を一度生成すると、すべての後続作業でそのチームが自動的に活用されます。`/harness:team-name` コマンドでいつでも再利用できます。
+{{< /callout >}}

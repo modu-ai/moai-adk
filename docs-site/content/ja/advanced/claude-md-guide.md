@@ -1,6 +1,6 @@
 ---
 title: CLAUDE.md ガイド
-weight: 70
+weight: 80
 draft: false
 ---
 
@@ -97,13 +97,14 @@ MoAI-ADK の 3 つのコマンドタイプを定義します。
 
 ### 4. エージェントカタログ
 
-20 エージェントの役割と選択基準を定義します。
+MoAI-ADKは**8つの保持エージェント**（7つのMoAI独自エージェント + 1つのAnthropicビルトイン）で構成されます。アーキテクチャ簡素化により、manager-strategy、manager-quality、manager-brain、manager-project などの12個のアーカイブエージェントは特定ドメイン向けのper-spawn `Agent(general-purpose)` 委任に置き換えられました。
 
 | 階層 | エージェント | 数 |
 |------|----------|------|
-| Manager | spec, ddd, docs, quality, strategy, project, git | 7 つ |
-| Expert | backend, frontend, security, devops, performance, debug, testing, refactoring | 8 つ |
-| Builder | agent, skill, command, plugin | 4 つ |
+| Manager | spec, develop, docs, git | 4 つ |
+| Evaluator | plan-auditor, sync-auditor | 2 つ |
+| Builder | builder-harness | 1 つ |
+| ビルトイン | Explore | 1 つ |
 
 ### 5. SPEC ワークフロー
 
