@@ -276,9 +276,9 @@ flowchart TD
 
 | 카테고리 | 예시 |
 |----------|------|
-| **Foundation** | core, claude, thinking, quality |
+| **Foundation** | core, cc, thinking, quality |
 | **Workflow** | spec, project, ddd, tdd, testing, worktree |
-| **Domain** | backend, frontend, database, uiux |
+| **Domain** | backend, frontend, database, html-report |
 | **Language** | Go, Python, TypeScript, Rust, Java, Kotlin, Swift, C++... |
 | **Platform** | Vercel, Supabase, Firebase, Auth0, Clerk... |
 | **Reference** | REST/GraphQL patterns, OWASP, git workflow |

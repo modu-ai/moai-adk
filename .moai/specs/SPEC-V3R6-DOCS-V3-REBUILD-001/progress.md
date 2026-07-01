@@ -49,6 +49,39 @@ $ grep -n 'test-coverage\|E2E\|/moai coverage\|/moai e2e\|/moai design' README.m
 - Subject: `docs(SPEC-V3R6-DOCS-V3-REBUILD-001): M0 complete zh README parity (coverage/e2e retired)`
 - Authored-By-Agent: manager-docs
 
+**M1-C4b-fix (skill catalog reconcile)** — hotfix commit on HEAD 209a8de8c
+
+Reconciliation: Prior M1-C4b (209a8de8c) corrected the skill *total* to 27 but left the skill *catalog tables* stale with 7 retired skills listed, 4 new skills missing, and 3 wrong category counts. This fixup corrects:
+
+**Removed (7 retired):**
+- `moai-workflow-gan-loop`
+- `moai-workflow-design`
+- `moai-domain-ideation`
+- `moai-domain-research`
+- `moai-domain-brand-design`
+- `moai-domain-design-handoff`
+- `moai-domain-copywriting`
+
+**Added (4 new):**
+- `moai-domain-html-report` (Domain category)
+- `moai-ref-llm-security` (Reference category)
+- `moai-ref-secops` (Reference category)
+- `moai-ref-supply-chain` (Reference category)
+
+**Header counts corrected:**
+- Foundation: 4 (no change)
+- Workflow: 10 → 8 (removed gan-loop, design)
+- Domain: 9 → 5 (added html-report, removed 5 design-domain skills)
+- Reference: 5 → 8 (added llm-security, secops, supply-chain)
+- Meta/Harness: 2 (no change)
+- **Arithmetic**: 4 + 8 + 5 + 8 + 2 = 27 ✓
+
+**Files modified:**
+- `docs-site/content/ko/advanced/skill-guide.md` — L62 summary + 5 category sections (L64, L73, L86, L96, L109)
+- `docs-site/content/ko/core-concepts/what-is-moai-adk.md` — L279 (claude→cc) + L281 (uiux→html-report)
+
+**Verification:** grep -rn retired-skill-names → 0 matches; all 4 new skills present; "uiux" removed.
+
 **M1 (Milestone 1: Track B Korean Pages) — COMPLETE**
 
 Executed 2026-07-01 by manager-docs (ko-only rewrite + 4 new pages).
