@@ -38,7 +38,7 @@ Claude Code는 두 곳에서 설정을 읽습니다. 하나는 작업 중인 프
 | `hooks/` | `.claude/` | ✓ | hook이 실행하는 스크립트 (settings.json에서 등록) |
 | `agent-memory/` | `.claude/` | ✓ | 서브에이전트 전용 영속 메모리 |
 | `.mcp.json` | 프로젝트 루트 | ✓ | 팀 공유 MCP 서버 구성 |
-| `.worktreeinclude` | 프로젝트 루트 | ✓ | worktree 생성 시 복사할 gitignore 패일 |
+| `.worktreeinclude` | 프로젝트 루트 | ✓ | worktree 생성 시 복사할 gitignore 패턴 |
 
 ### 지침 파일 (Claude가 읽는 것)
 
