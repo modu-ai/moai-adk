@@ -27,19 +27,26 @@ Executed 2026-07-01 by manager-docs (docs-content-only SPEC, run-phase ownership
 2. `README.md` (M0.5): L40 "30 moai-* skills" → "27"; L64 "30" → "27"; L307-309 "12 commands" → "13"; L584-585 removed coverage/e2e rows
 3. `README.ko.md` (M0.5): L40 first paragraph updated; L99 "30개" → "27개"; L338 "12개" → "13개"; L613-614 removed coverage/e2e rows
 4. `README.ja.md` (M0.5): L623, L633 removed "/moai coverage" workflow chain refs; L563-564 removed coverage/e2e rows; removed Design System section (L920-1191); removed /agency refs
-5. `README.zh.md` (M0.5): L563-564 removed coverage/e2e rows; removed Design System section (L920-1092); removed /agency refs; removed legacy v2.x /agency migration reference
+5. `README.zh.md` (M0.5): L561-562 removed coverage/e2e rows; L619 removed "/moai coverage" from "新功能开发"; L629 removed "/moai coverage" from "重构"; removed Design System section (~L920-1092); removed /agency refs
 
-**Verification (M0 gate):**
+**Verification (M0 gate) — Quoted grep output:**
+```
+$ grep -n 'test-coverage\|E2E\|/moai coverage\|/moai e2e\|/moai design' README.md README.ko.md README.ja.md README.zh.md || echo "✓ No matches found (clean)"
+✓ No matches found (clean)
+```
+
+**Verification summary:**
 - ✓ hugo.toml SSOT updated (L55/L56 match expected rc4 + 2026-06-23)
 - ✓ skill count corrected all 4 locales (27 moai-* verified in internal/template/templates/.claude/skills/)
 - ✓ command count corrected all 4 locales (13 /moai commands verified in plan.md fig-ref + research.md fact-sheet)
-- ✓ coverage/e2e subcommands removed all 4 locales (SPEC-SUBCOMMAND-RETIRE-001 compliance)
-- ✓ /agency → /moai design migration refs removed ja/zh (legacy v2.12.0 context not in en/ko)
+- ✓ coverage/e2e subcommands removed all 4 locales (SPEC-SUBCOMMAND-RETIRE-001 compliance, grep zero-hits verified)
+- ✓ /moai coverage workflow chain refs removed all 4 locales (grep zero-hits verified)
+- ✓ /agency → /moai design migration refs removed ja/zh (legacy v2.12.0 context not in en/ko, grep zero-hits verified)
 - ✓ Design System section removed ja/zh (large section ~L920-1195 ja; ~L920-1092 zh; not in en/ko per v3.0 scope)
-- ✓ 4-locale parity validated (skill count, command count, coverage/e2e retirement consistent across all 4 READMEs per REQ-DVR-015)
+- ✓ 4-locale parity validated (skill count, command count, coverage/e2e retirement, /moai coverage chain removal consistent across all 4 READMEs per REQ-DVR-015)
 
 **Commit:**
-- Subject: `docs(SPEC-V3R6-DOCS-V3-REBUILD-001): M0 ground-truth + README 4-locale drift fix + hugo.toml rc4`
+- Subject: `docs(SPEC-V3R6-DOCS-V3-REBUILD-001): M0 complete zh README parity (coverage/e2e retired)`
 - Authored-By-Agent: manager-docs
 
 ## §E.3 Run-phase Audit-Ready Signal

@@ -558,8 +558,6 @@ graph LR
 | `fix` | — | 自动修复 LSP 错误、Lint、类型错误（单次执行） | `--dry`, `--seq`, `--level N`, `--resume`, `--team` |
 | `loop` | — | 迭代自动修复直至完成（最多 100 次） | `--max N`, `--auto-fix`, `--seq` |
 | `review` | `code-review` | 代码审查与安全和 @MX 标签合规检查 | `--staged`, `--branch`, `--security` |
-| `coverage` | `test-coverage` | 测试覆盖率分析和缺口补充（16 种语言） | `--target N`, `--file PATH`, `--report` |
-| `e2e` | — | E2E 测试（Claude-in-Chrome、Playwright CLI 或 Agent Browser） | `--record`, `--url URL`, `--journey NAME` |
 | `clean` | `refactor-clean` | 死代码识别和安全移除 | `--dry`, `--safe-only`, `--file PATH` |
 
 #### 文档与代码库
@@ -618,7 +616,7 @@ graph LR
 
 **新功能开发：**
 ```
-/moai plan → /moai run SPEC-XXX → /moai review → /moai coverage → /moai sync SPEC-XXX
+/moai plan → /moai run SPEC-XXX → /moai review → /moai sync SPEC-XXX
 ```
 
 **Bug 修复：**
@@ -628,7 +626,7 @@ graph LR
 
 **重构：**
 ```
-/moai plan → /moai clean → /moai run SPEC-XXX → /moai review → /moai coverage → /moai codemaps
+/moai plan → /moai clean → /moai run SPEC-XXX → /moai review → /moai codemaps
 ```
 
 **文档更新：**
