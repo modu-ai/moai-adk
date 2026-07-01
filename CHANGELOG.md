@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **[SPEC-HAIKU-EFFORT-INERT-001](.moai/specs/SPEC-HAIKU-EFFORT-INERT-001/spec.md)** — haiku-tier 에이전트의 inert `effort` 필드 제거 + 회귀 가드 (Tier S, v0.1.1). `manager-docs`·`manager-git`가 `model: haiku`인데 `effort: medium`을 선언했으나, 공식 `code.claude.com/docs/en/model-config` 실측("Models not listed here do not support effort" — Haiku 미포함)상 Haiku는 effort 미지원이라 해당 필드가 silently inert였던 결함 해소. 근본원인=hand-authored stray frontmatter 줄 (generator `agentEffortMap`은 이미 5개 effort-지원 `model: inherit` 에이전트만 포함, haiku 제외 — 기존 `TestApplyEffortPolicy/no_op_for_agent_not_in_effort_map`로 확인). Option 1: template source + local mirror 양 트리에서 `effort` 줄 제거 + `make build` + `model: haiku ⇒ no effort` 회귀 가드 테스트(`haiku_effort_guard_test.go`, model 필드 기준·양 트리 스캔) 추가. `agentEffortMap` 로직 무변경. 6파일(2 agent md ×2 트리 + catalog.yaml + guard test), 9/9 AC PASS (AC-HEI-001..009), guard RED(4 findings)→GREEN, go build 0, make build idempotent, golangci-lint 0. plan-auditor iter-2 PASS 0.90 (Tier S 임계 0.75; iter-1 FAIL 0.83 → D1 §25 non-parity 정정 / D2 tier:S / D3 both-tree guard / D4 GEARS subject 해소, 근본원인 독립검증 생존). Run-phase 2026-07-01 (manager-develop TDD, worktree `bf0e527fa` → orchestrator cherry-pick `54e8f76b3`, FF push `eb8ce68fb..54e8f76b3`, 병렬 DOCS-V3-REBUILD race clean 흡수). Sync-phase 2026-07-01 (orchestrator-direct, Tier S 3-phase consolidated close: spec/plan/acceptance/progress status completed + era V3R6 + progress §E.4 sync_commit_sha, specific-path-discipline). 🗿 MoAI
+
 ## [v3.0.0-rc5] — 2026-07-01
 
 ### Added
