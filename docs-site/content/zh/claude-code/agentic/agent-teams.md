@@ -94,9 +94,9 @@ flowchart TD
 
 主导者通过任务列表分配工作，成员通过邮箱彼此直接对话，用户也可以不经主导者向单个成员下达指令。
 
-## 启用要求
+## 启用要求 (v2.1.178+)
 
-智能体团队是 **实验性功能，默认处于禁用状态**。它需要 Claude Code v2.1.32 或更高版本，通过将环境变量 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` 设为 `1` 来启用。可以直接在 shell 环境中指定，或在 `settings.json` 中注册。
+智能体团队是 **实验性功能，默认处于禁用状态**。它需要 Claude Code v2.1.178 或更高版本，通过将环境变量 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` 设为 `1` 来启用。可以直接在 shell 环境中指定，或在 `settings.json` 中注册。
 
 ```json
 {
@@ -106,6 +106,12 @@ flowchart TD
 }
 ```
 
+### v2.1.178 的变化
+
+- **隐含团队 (Implicit Teams)**：团队创建变得更简单。主导者生成第一个成员时会自动形成团队，会话结束时自动清理。
+- **TeamCreate/TeamDelete 移除**：v2.1.178 之后这两个命令已消失（不再需要手动创建或删除团队）。
+- **`team_name` 接受但忽略**：Hook 载荷中仍包含 `team_name` 字段，但实际被忽略（遗留兼容性）。
+
 启用后，只需用自然语言请求创建团队即可。Claude 会创建团队、生成成员，然后协调工作。
 
 ```text
@@ -114,11 +120,16 @@ flowchart TD
 一名负责 UX，一名负责技术架构，一名担任批评者角色。
 ```
 
-### 显示模式与成员模型
+## 显示模式与成员模型
 
-智能体团队支持两种显示模式。**进程内 (in-process)** 让所有成员在主终端内运行，在任何终端中无需额外设置即可使用。**分屏 (split panes)** 为每名成员打开单独的窗口，需要 tmux 或 iTerm2。默认值为 `"auto"`，在 tmux 会话中运行时使用分屏，否则使用进程内。
+智能体团队支持两种显示模式。
 
-模式可通过 `~/.claude/settings.json` 中的 `teammateMode` 键指定，或仅限单个会话使用 `--teammate-mode in-process` 标志强制设定。
+| 模式 | 特征 | 需求 |
+|------|------|------|
+| **进程内 (in-process)** | 所有成员在主终端内运行 | 无需额外配置（默认值） |
+| **分屏 (split panes)** | 每名成员开启单独窗口 | tmux 或 iTerm2 需要 (v2.1.186+) |
+
+默认值为 **in-process** (v2.1.179 起；之前是 `"auto"`)，因此任何地方都可用且无需设置。若要强制使用分屏模式：
 
 ```json
 {
@@ -126,9 +137,11 @@ flowchart TD
 }
 ```
 
+或在单个会话中用 `--teammate-mode in-process` 标志强制指定。
+
 成员默认不继承主导者的 `/model` 选择。在提示中未指定模型时所使用的模型，在 `/config` 的 **Default teammate model** 中设置。
 
-### 质量门 hook
+## 质量门 hook
 
 使用 [hook](/claude-code/extensibility/hooks)，可以在成员完成工作，或任务被创建、完成时强制执行规则。
 
