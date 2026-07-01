@@ -31,6 +31,16 @@ Purpose: Collect user feedback, bug reports, or feature suggestions and create G
 
 Prerequisite: The `gh` CLI must be installed and authenticated (`gh auth status`). If not available, guide user to install via https://cli.github.com/.
 
+### gh Availability and Failure Fallback
+
+[HARD] Before issue creation, run `gh auth status`. When `gh` is unauthenticated OR the GitHub API is rate-limited (detected via a non-zero `gh auth status` exit, or a rate-limit signal such as an HTTP 403 / "rate limit exceeded" message on a `gh` call), the workflow MUST follow a graceful fallback path instead of failing silently:
+
+1. Report the detected condition (unauthenticated vs rate-limited) to the user in `conversation_language`.
+2. Guide the user to resolve it — run `gh auth login` for the unauthenticated case, or wait for the rate-limit window to reset for the rate-limited case.
+3. Offer to save the drafted issue body locally (e.g. under `.moai/state/feedback-draft-<timestamp>.md`) so no drafted content is lost. On acceptance, write the full drafted title + body to that path and report the saved path to the user.
+
+No drafted feedback is discarded on a `gh` failure; the local draft is the recovery artifact.
+
 ---
 
 ## Phase 1: Feedback Collection
@@ -60,6 +70,17 @@ Options:
 - Low: Minor issue, workaround available
 - Medium: Moderate impact, no urgent workaround needed
 - High: Significant impact, blocks workflow
+
+### Step 3: Duplicate Detection
+
+[HARD] After the title is drafted and before issue creation, run a duplicate-issue search against the resolved feedback target repository:
+
+`gh issue list --repo <resolved-target> --search "<title keywords>" --state open`
+
+- `<resolved-target>` is the resolved feedback target repository (config `feedback.repository`, default `modu-ai/moai-adk`).
+- `<title keywords>` are the salient keywords extracted from the drafted title.
+
+[HARD] The duplicate-detection step emits a structured "possible duplicates" candidate-report — the list of likely-duplicate issues (issue number, title, URL, state) — for the orchestrator to present. The step itself MUST NOT prompt the user inline; it only produces the candidate-report. The orchestrator decides at its own level whether to proceed with a new issue, link to an existing one, or continue.
 
 ---
 
@@ -101,14 +122,28 @@ Language examples:
 
 ### Issue Creation Command
 
-The orchestrator executes directly: gh issue create --repo modu-ai/moai-adk
+The orchestrator executes directly: `gh issue create --repo <resolved-target>`, where `<resolved-target>` is the resolved feedback target repository (config `feedback.repository`, default `modu-ai/moai-adk`).
 
 Issue body uses a consistent template in the user's conversation_language, including:
 
 - Feedback type header (translated)
 - Description content (user's original text)
 - Priority level (translated)
-- Environment information (MoAI version, OS)
+- Tool-diagnostic information (see Diagnostic Attachment below)
+
+### Diagnostic Attachment
+
+[HARD] The workflow auto-collects and appends tool-diagnostic information to the issue body. Two items are GUARANTEED (always collected):
+
+- MoAI version — `moai version`
+- Operating system — `uname` (OS name / release)
+
+Additionally, the workflow attempts the following on a best-effort basis. Their absence is NOT a failure — most users run a prebuilt `moai` binary with no Go toolchain installed, and the orchestrator may not carry error context:
+
+- Go toolchain version — `go version` (tool build-provenance; describes the tool binary's provenance, not the user's project language — absent when no Go toolchain is installed)
+- Last-failed-command / error context — appended additively ONLY when the orchestrator passes it into the feedback invocation. The workflow never reads session error history itself.
+
+[HARD] Diagnostic attachment is restricted to tool-diagnostic information only. The workflow MUST NOT attach arbitrary user file contents to the issue body — no reading or embedding of source files, configuration files, or any user-supplied file contents beyond the tool-diagnostic set above.
 
 ### Result Reporting
 
