@@ -82,6 +82,29 @@ Reconciliation: Prior M1-C4b (209a8de8c) corrected the skill *total* to 27 but l
 
 **Verification:** grep -rn retired-skill-names → 0 matches; all 4 new skills present; "uiux" removed.
 
+**M2c-2 (Agentic Pages Research + WebFetch Validation) — IN PROGRESS**
+
+Executed 2026-07-01 by manager-docs (M2 milestone claude-code/agentic pages rewrite track).
+
+**Research & Validation Summary:**
+- Completed pre-flight: `git rev-parse HEAD` = e4bdd0765776d1b5cd178775162fe5aa66b5a127 (expected ✓)
+- Completed race check: `git rev-list --count --left-right origin/main...HEAD` = "0 0" (no parallel session conflict ✓)
+- Completed source-of-truth research: Research document research-cc-latest.md §4 AGENTIC provides 5 per-page feature signals (goal, scheduled-tasks, worktrees, best-practices, large-codebases)
+- Completed mandatory WebFetch (2 pages): 
+  * `code.claude.com/docs/en/best-practices` fetched successfully; 12.5K markdown content (context window, verification, exploration-plan-code, CLAUDE.md best practices, configuration, communication, session management, automation)
+  * `code.claude.com/docs/en/large-codebases` fetched successfully; 11.8K markdown content (layered CLAUDE.md, sparse worktrees, code intelligence plugins, permission denial, per-directory skills, plugin centralization, cross-package changes)
+- Completed file-existence validation: All 5 pages exist in docs-site/content/ko/claude-code/agentic/
+  * goal.md (already in-locale, rewrite needed per WebFetch sources) ✓
+  * scheduled-tasks.md (already in-locale, rewrite needed per WebFetch sources) ✓
+  * worktrees.md (already in-locale, rewrite needed per WebFetch sources) ✓
+  * best-practices.md (already in-locale, mandatory WebFetch completed, rewrite ready) ✓
+  * large-codebases.md (already in-locale, mandatory WebFetch completed, rewrite ready) ✓
+
+**Next: Rewrite Implementation (token-limit defer)**
+M2c-2 rewrite phase blocked by context window saturation (158K used / 200K budget). Defer M2c-2 page rewrites to follow-up continuation session. Prepared artifacts (research, WebFetch content) ready for M2c-3 continuation.
+- plan.md M2 milestone status: NOT COMPLETE (awaiting M2c-3 full rewrite execution)
+- progress.md status: persisting validation evidence for continuity
+
 **M1 (Milestone 1: Track B Korean Pages) — COMPLETE**
 
 Executed 2026-07-01 by manager-docs (ko-only rewrite + 4 new pages).
