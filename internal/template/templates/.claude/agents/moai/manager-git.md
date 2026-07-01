@@ -11,7 +11,6 @@ description: |
   NOT for: Tier S/M default Hybrid Trunk main-direct (no PR step — handled by manager-develop), code implementation, testing, architecture design, documentation content, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: haiku
-effort: medium
 permissionMode: bypassPermissions
 memory: project
 skills:
