@@ -368,6 +368,48 @@ The domain is automatically determined by manager-spec based on the feature area
 
 **--worktree** creates an independent working directory for a completely isolated environment. **--branch** creates a new branch in the current repository. If developing multiple features simultaneously, --worktree is recommended.
 
+## v2.9.0 New Features
+
+### Delta Markers (Brownfield Classification)
+
+Classifies SPEC requirements in existing codebases (brownfield) projects.
+
+| Marker      | Meaning       | Description                    |
+| ----------- | ------------- | ------------------------------ |
+| `[EXISTING]`| Maintain existing | No changes, reference only    |
+| `[MODIFY]`  | Modify        | Change existing code           |
+| `[NEW]`     | Create new    | Create new from scratch        |
+| `[REMOVE]`  | Delete        | Remove existing code           |
+
+### spec-compact.md Generation
+
+The Plan phase automatically generates a summary version (`spec-compact.md`) of the SPEC document. The Run phase saves ~30% tokens by loading the compact version.
+
+### Exclusions Requirement ("What NOT to Build")
+
+All SPEC documents now require an **Out of Scope / Exclusions** section. This prevents scope creep by explicitly documenting what is NOT included.
+
+### What/Why Constraints
+
+SPEC requirements specify only **What** (what needs to be done) and **Why** (the reason). **How** (how to implement) is determined during implementation and is not over-specified in the SPEC.
+
+### Decision Point 3.5: Execution Mode Selection Gate
+
+After Plan completion and before Run starts, the system automatically detects the execution environment and recommends the optimal mode to the user.
+
+**Detection Items:**
+1. tmux availability (`$TMUX` environment variable)
+2. Current LLM mode (`llm.yaml`'s `team_mode`: cc/glm/cg)
+
+**When tmux is available:**
+- Worktree + {current mode} (Recommended)
+- Team Mode (in-process)
+- Sub-agent Mode (sequential)
+
+**When tmux is not available:**
+- Sub-agent Mode (Recommended)
+- Team Mode (in-process)
+
 ## GEARS notation (v3.0.0+) {#gears-notation}
 
 Starting with MoAI-ADK v3.0.0, **GEARS** (Generalized Expression for AI-Ready Specs) is introduced as the recommended SPEC authoring notation. The legacy EARS notation remains backward-compatible for **6 months**, during which authors can migrate progressively. New SPECs are encouraged to follow GEARS patterns from the outset.
@@ -442,13 +484,13 @@ When MoAI asks you a question via `AskUserQuestion`, the following 5 principles 
 
 2. **Question Ordering by Information Value** — When multiple questions are needed, they are ordered by estimated information gain (highest first) so you make the most important decisions early.
 
-3. **Statistical Majority Baseline** — The recommended option (marked `(권장)` / `(Recommended)`) reflects observed majority choices from your decision history, **not** system policy defaults. When insufficient data exists (cold start), recommendations disclose: *"based on static default, N observations needed for personalization"*.
+3. **Statistical Majority Baseline** — The recommended option (marked `(Recommended)`) reflects observed majority choices from your decision history, **not** system policy defaults. When insufficient data exists (cold start), recommendations disclose: *"based on static default, N observations needed for personalization"*.
 
 4. **Precondition Disclosure** — Each recommended option includes its success precondition in the format: *"Recommended when <precondition>"* so you can evaluate trade-offs immediately.
 
 5. **Adaptive Strength by Proficiency** — Recommendation intensity adjusts based on your session count:
-   - **Expert** (20+ sessions): Weak strength — inferred preference is disclosed without `(권장)` override (info-centric, respects autonomy)
-   - **General** (5-19 sessions): Strong strength — recommended option carries `(권장)` + transparent reasoning
+   - **Expert** (20+ sessions): Weak strength — inferred preference is disclosed without `(Recommended)` override (info-centric, respects autonomy)
+   - **General** (5-19 sessions): Strong strength — recommended option carries `(Recommended)` + transparent reasoning
    - **Cold-start** (<5 sessions): Neutral strength — no override, system default applies
 
 ### Privacy & Safety

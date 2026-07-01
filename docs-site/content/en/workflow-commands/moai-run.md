@@ -423,6 +423,82 @@ The quality issues are reported to the user, and asked whether to retry fixes. S
 
 `/moai run` only performs **implementation based on an already created SPEC**. `/moai` automatically performs the **entire workflow** from SPEC creation to implementation and documentation.
 
+## v2.9.0 New Features
+
+### Harness Level Routing (Quality Depth Routing)
+
+At the start of the Run phase, the SPEC complexity automatically determines the quality pipeline depth.
+
+| Level | Target | Evaluator | Skipped Phases |
+|-------|--------|-----------|----------------|
+| **minimal** | Simple bug fixes, config changes | Inactive | 0, 0.5, 2.0, 2.5, 2.75, 2.8a |
+| **standard** | General feature development (default) | final-pass (Phase 2.8a only) | None |
+| **thorough** | Security/payment and critical features | per-sprint (Phase 2.0 + 2.8a) | None |
+
+Auto-escalation on failure: minimal → standard → thorough (maximum 2 times)
+
+### Phase 0.9: JIT Language Detection (Auto Language Detection)
+
+Automatically detects the project's primary language and injects appropriate language skills when spawning agents.
+
+| Detected File | Language Skill |
+|---------------|----------------|
+| `go.mod` | moai-lang-go |
+| `package.json` (typescript) | moai-lang-typescript |
+| `pyproject.toml` | moai-lang-python |
+| `Cargo.toml` | moai-lang-rust |
+| `pom.xml` / `build.gradle` | moai-lang-java |
+
+### Phase 0.95: Scale-Based Mode Selection (Scale-Based Mode Selection)
+
+Automatically selects the optimal execution mode based on SPEC scope.
+
+| Pattern | Criteria | Execution Mode |
+|---------|----------|----------------|
+| Bug fix | Files ≤ 3, single domain | **Fix Mode** |
+| Single feature | Files ≤ 5, single domain | **Focused Mode** |
+| Domain feature | Files 5-10 | **Standard Mode** |
+| Multi-domain | Files ≥ 10 or domains ≥ 3 | **Full Pipeline** |
+| Large change | complexity ≥ 7 + --team | **Team Mode** |
+
+### Phase 2.0: Sprint Contract (thorough level only)
+
+Executed only at thorough level. sync-auditor and implementation agree on Done criteria before implementing.
+
+**Contract Includes:**
+- Specific test cases that must pass
+- Identified edge cases
+- Hard thresholds (coverage %, performance goals, security requirements)
+
+Maximum 2 negotiation rounds before confirming per evaluator recommendation.
+
+### Phase 2.8a/2.8b Separation
+
+The legacy Phase 2.8 is now split into two stages:
+
+- **Phase 2.8a**: sync-auditor proactive assessment (Functionality/Security/Craft/Consistency)
+- **Phase 2.8b**: sync-auditor TRUST 5 static validation (existing behavior)
+
+{{< callout type="warning" >}}
+Security FAIL = complete failure. Maximum 3 fix-assessment cycles before reporting to user.
+{{< /callout >}}
+
+### Drift Guard (Scope Deviation Detection)
+
+Compares planned changes against actual implementation after DDD/TDD cycle completion.
+
+- drift ≤ 20%: Record information only
+- 20% < drift ≤ 30%: Issue warning
+- drift > 30%: Trigger Phase 2.7 re-planning gate
+
+### tasks.md Persistent Artifact
+
+Task decomposition is recorded in `.moai/specs/SPEC-{ID}/tasks.md`. Tracked in Git and referenced by Drift Guard.
+
+### spec-compact.md
+
+When entering Run phase, automatically loads SPEC summary to save ~30% tokens. If `.moai/specs/SPEC-{ID}/spec-compact.md` exists, it is used instead of the full spec.md.
+
 ## Related Documents
 
 - [Domain-Driven Development](/core-concepts/ddd) - Detailed ANALYZE-PRESERVE-IMPROVE cycle explanation
