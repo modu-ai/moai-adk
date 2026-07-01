@@ -4,7 +4,17 @@ weight: 30
 draft: false
 ---
 
-了解如何在您的系统上安装 MoAI-ADK 2.x。
+MoAI-ADK 2.x 在您的系统上的安装方法指南。
+
+## 许可证
+
+MoAI-ADK {{< version >}} 及以上版本采用 **Apache-2.0 许可证** 发布。
+
+商业使用、修改和分发都是自由的，无需公开源代码。详细信息请参阅 [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)。
+
+{{< callout type="info" >}}
+**说明**：MoAI-ADK 1.x (Python 版) 采用 GPL-3.0 许可证。从 v2.0.0 开始，使用 Go 重写并改为 Apache-2.0 许可证。
+{{< /callout }}
 
 ## 前提条件
 
@@ -78,7 +88,7 @@ moai version
 
 ```bash
 # 安装特定版本
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version v3.0.0-rc2
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version v3.0.0-rc4
 
 # 安装到自定义目录
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin

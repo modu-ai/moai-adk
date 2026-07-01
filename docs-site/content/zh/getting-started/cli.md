@@ -1,6 +1,6 @@
 ---
 title: CLI 参考
-weight: 70
+weight: 90
 draft: false
 ---
 
@@ -27,6 +27,7 @@ Available Commands:
   update      Update to the latest version (with automatic rollback support)
   worktree    Manage Git worktrees for parallel SPEC development
   hook        Claude Code hook dispatcher
+  profile     Manage Claude Code configuration profiles
   glm         Switch to GLM backend (cost-effective) or update API key
   claude      Switch to Claude backend (Anthropic API)
   version     Display version, commit hash, and build date
@@ -41,9 +42,11 @@ Flags:
 | `moai init` | 项目初始化 (自动检测语言/框架/方法论) |
 | `moai doctor` | 系统诊断和环境验证 |
 | `moai status` | 项目状态概览 (Git 分支、质量指标等) |
+| `moai inventory` | 活跃会话、worktree、harness 集成库存读取专用列表 (添加 `--json` 用于结构化输出) |
 | `moai update` | 更新到最新版本 (支持自动回滚) |
 | `moai worktree` | Git worktree 管理 (并行 SPEC 开发) |
 | `moai hook` | Claude Code 钩子调度器 |
+| `moai profile` | Profile 管理 (list、setup、current、delete) |
 | `moai glm` | 切换到 GLM 后端 (`--team`: GLM Worker 模式) |
 | `moai claude`、`moai cc` | 切换到 Claude 后端 |
 | `moai cg` | 启用 CG 模式 — Claude 领导 + GLM 团队成员 (需要 tmux) |
@@ -159,6 +162,95 @@ moai doctor --fix
 
 ---
 
+## moai profile
+
+管理 Profile。Profile 为独立的 Claude Code 配置环境。
+
+### profile 子命令
+
+| 命令 | 描述 |
+|--------|-------------|
+| `moai profile list` | 显示所有可用 Profile 列表 |
+| `moai profile setup` | 使用交互式向导创建新 Profile |
+| `moai profile current` | 显示当前活跃 Profile 信息 |
+| `moai profile delete <name>` | 删除指定 Profile |
+
+### moai profile list
+
+```bash
+moai profile list
+```
+
+显示所有可用 Profile 和当前活跃 Profile。
+
+### moai profile setup
+
+```bash
+moai profile setup
+```
+
+交互式向导创建新 Profile:
+
+1. **Profile 名称**: 唯一标识符 (例如: `work`、`personal`)
+2. **用户名**: Claude Code 用来称呼用户的名称
+3. **语言设置**:
+   - 对话语言 (conversation_language)
+   - Git 提交语言 (git_commit_lang)
+   - 代码注释语言 (code_comment_lang)
+   - 文档语言 (doc_lang)
+4. **模型设置**:
+   - 模型策略 (model_policy): high、medium、low
+   - 默认模型 (model): inherit、opus、sonnet、haiku、1M 上下文模型
+5. **执行设置**:
+   - 权限模式 (permission_mode): default、acceptEdits
+6. **显示设置**:
+   - 状态栏模式 (statusline_mode): off、basic、full
+   - 状态栏主题 (statusline_theme): auto、light、dark、monokai、nord、dracula
+   - 团队成员显示 (teammate_display): auto、in-process、tmux
+
+### moai profile current
+
+```bash
+moai profile current
+```
+
+显示当前活跃 Profile 的信息。
+
+### moai profile delete
+
+```bash
+moai profile delete <name>
+```
+
+删除指定 Profile 及其目录。
+
+### Profile 运行
+
+使用 Profile 运行 MoAI 命令，使用 `-p` 标志:
+
+```bash
+# 在 Claude 模式下使用特定 Profile
+moai cc -p work
+
+# 在 GLM 模式下使用特定 Profile
+moai glm -p personal
+
+# 在 CG 模式下使用特定 Profile
+moai cg -p team-project
+```
+
+Profile 的 Claude Code 设置应用于该会话。
+
+### Profile vs MoAI Worktree
+
+| 功能 | Profile | Worktree |
+|------|---------|----------|
+| **目的** | Claude Code 配置隔离 | 项目文件隔离 |
+| **路径** | `~/.moai/claude-profiles/<name>/` | `~/.moai/worktrees/<project>/<spec>/` |
+| **用途** | 管理不同环境配置 | SPEC 开发工作区 |
+
+---
+
 ## moai glm
 
 切换到 GLM 后端或更新 API 密钥。
@@ -171,6 +263,7 @@ moai glm [OPTIONS] [API_KEY]
 
 | 选项 | 描述 |
 |--------|-------------|
+| `-p, --profile TEXT` | 使用的 Profile 名称 |
 | `--team` | 启动 GLM Worker 模式 (Opus 领导 + GLM-5 团队成员) |
 | `--help` | 显示帮助 |
 
@@ -188,6 +281,12 @@ moai glm --team
 
 # 从 z.ai 获取 API 密钥
 # https://z.ai/subscribe?ic=1NDV03BGWU
+
+# Profile 指定运行
+moai glm -p work
+
+# GLM Worker 模式启动 (经济高效的团队开发)
+moai glm --team
 ```
 
 ### GLM Worker 模式
@@ -198,7 +297,7 @@ moai glm --team
 - **优势**: 相比 Claude 节省 70% 成本，性能相当
 - **用途**: 大规模团队开发时优化令牌成本
 
-### 基于配置文件的登录 (v2.7.0+)
+### 基于 Profile 的登录 (v2.7.0+)
 
 `moai glm`、`moai cc` 和 `moai cg` 现在是支持持久配置文件的登录命令。配置文件存储在 `~/.moai/claude-profiles/`。
 
@@ -213,9 +312,25 @@ moai glm --team
 切换到 Claude 后端 (Anthropic API)。
 
 ```bash
-$ moai claude
+$ moai claude [OPTIONS]
 # 或简写
-$ moai cc
+$ moai cc [OPTIONS]
+```
+
+### 选项
+
+| 选项 | 描述 |
+|--------|-------------|
+| `-p, --profile TEXT` | 使用的 Profile 名称 |
+
+### 用法
+
+```bash
+# 切换到 Claude 后端
+moai cc
+
+# Profile 指定运行
+moai cc -p work
 ```
 
 ---
@@ -225,8 +340,14 @@ $ moai cc
 启用 CG 模式 (Claude + GLM 混合)。领导使用 Claude API，团队成员使用 GLM API，通过 tmux 会话级别环境变量隔离实现。
 
 ```bash
-moai cg
+moai cg [OPTIONS]
 ```
+
+### 选项
+
+| 选项 | 描述 |
+|--------|-------------|
+| `-p, --profile TEXT` | 使用的 Profile 名称 |
 
 {{< callout type="warning" >}}
 **v2.7.1 变更**: CG 模式现在是**默认**团队模式。使用 `--team` 时，无需额外设置即以 CG 模式运行。
@@ -252,6 +373,9 @@ claude
 
 # 4. 运行团队工作流
 /moai --team "任务描述"
+
+# Profile 指定运行
+moai cg -p team-project
 ```
 
 ### 注意事项
@@ -309,6 +433,39 @@ moai status
 - **SPECs**: 活动 SPEC 数量
 - **分支**: 当前分支
 - **Git 状态**: Git 状态 (Clean、Modified)
+
+---
+
+## moai inventory
+
+查询活跃会话、worktree、harness 的集成读取专用库存。
+
+```bash
+moai inventory [OPTIONS]
+```
+
+### 选项
+
+| 选项 | 描述 |
+|--------|-------------|
+| `--json` | 结构化 JSON 格式输出 |
+
+### 用法
+
+```bash
+# 查看基本库存
+moai inventory
+
+# JSON 格式查询 (编程使用)
+moai inventory --json
+```
+
+**输出信息:**
+- **活跃会话**: 当前运行的 Claude Code 会话
+- **Worktree**: 并行开发的活跃 Git worktree 列表
+- **Harness**: 注册的开发 harness 列表
+
+更多信息，请参阅 [库存管理](./inventory) 页面。
 
 ---
 
@@ -456,6 +613,57 @@ moai hook UserPromptSubmit
 
 ---
 
+## Statusline v3
+
+MoAI Statusline v3 在 Claude Code 状态栏中显示实时 API 使用量。
+
+### v3 新功能
+
+| 功能 | 描述 |
+|------|------|
+| **RGB 渐变色** | 根据使用量比例平滑变色 |
+| **5H/7D API 使用量** | 显示 5 小时/7 天累计使用量 |
+| **rate_limits 字段解析** | Claude API 响应的精确限制信息 |
+
+### 颜色渐变
+
+根据使用量比例颜色平滑变化:
+
+- **0-30%**: 绿色 → 黄色 (安全)
+- **31-70%**: 黄色 → 橙色 (注意)
+- **71-100%**: 橙色 → 红色 (接近限制)
+
+### API 使用量显示
+
+```
+5H: 45K/200K (22%) | 7D: 180K/500K (36%)
+```
+
+- **5H**: 最近 5 小时使用量
+- **7D**: 最近 7 天使用量
+- **比例**: 相对于当前配额的使用百分比
+
+### 配置方法
+
+在 Profile 设置向导 (`moai profile setup`) 中选择以下选项:
+
+1. **statusline_mode**: `off`、`basic`、`full`
+2. **statusline_theme**: `auto`、`light`、`dark`、`monokai`、`nord`、`dracula`
+
+### 用法
+
+```bash
+# 创建 Profile 时配置 Statusline
+moai profile setup
+# → 选择 statusline_mode: full
+# → 选择 statusline_theme: auto
+
+# 使用 Profile 运行
+moai cc -p my-profile
+```
+
+---
+
 ## 任务指标日志
 
 MoAI-ADK 在开发会话期间自动捕获 Task 工具指标。
@@ -511,6 +719,15 @@ moai update -c
 
 > **注意**: 默认策略为 `High`。运行 `moai update` 后，通过 `moai update -c` 配置设置。
 
+### 1M 上下文模型
+
+在 Profile 设置过程中选择**默认模型**时，可以选择 1M 上下文模型:
+
+- `claude-opus-4-6 1M context`
+- `claude-sonnet-4-6 1M context`
+
+这些模型适合用于大规模代码库分析或长文档工作。
+
 ---
 
 ## 环境变量
@@ -529,3 +746,4 @@ moai update -c
 - [快速开始](./quickstart)
 - [安装](./installation)
 - [更新](./update)
+- [配置文件](./profile)
