@@ -229,6 +229,13 @@ When a tool call fails:
 3. Try an alternative approach — do not retry the identical call
 4. After 3 failures on the same operation, report the blocker
 
+**Retry safety is asymmetric with respect to a call's side effects.** Before applying the 3-retry ceiling above, classify the failed call by its side-effect profile:
+
+- **Idempotent / read-only calls** (re-reading a file, re-running a search or query, re-running an initializer, fetching a URL) may be retried up to the ceiling — repeating them produces the same observable result, so a transient failure (a file lock, a network blip) is legitimately recovered by a retry.
+- **Side-effecting calls** (writing/editing a file, committing, pushing, opening a pull request, deploying, mutating external-API state) carry a duplicate-effect hazard. When a side-effecting call fails *ambiguously* — the failure signal is present but whether the effect already landed is uncertain — first **observe the current state** to determine whether the effect already occurred, and retry only when the effect is confirmed absent. Retrying a side-effecting call without first observing state is the duplicate-effect hazard: a blind retry after an uncertain failure risks a duplicate commit, a duplicate pull request, or a double deploy. The absence of a success signal is not evidence the effect did not land.
+
+This refines step 3 above ("do not retry the identical call") along the side-effect axis: for a side-effecting call, "try an alternative approach" begins with observing whether the effect already occurred.
+
 ## Parallel Execution
 
 [ZONE:Evolvable] [HARD] The orchestrator MUST execute every read-only verification
