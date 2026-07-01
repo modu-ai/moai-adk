@@ -2,9 +2,9 @@
 name: moai
 description: >
   MoAI unified orchestrator for autonomous development. Routes natural
-  language or subcommands (brain, plan, run, sync, design, project, fix,
-  loop, mx, feedback, review, clean, codemaps, coverage, e2e, gate,
-  security, harness) to specialized agents.
+  language or subcommands (plan, run, sync, project, fix, loop, mx,
+  feedback, review, clean, codemaps, gate, harness) to specialized
+  agents.
 allowed-tools: Agent, AskUserQuestion, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
 argument-hint: "[subcommand] [args] | \"natural language task\""
 ---
@@ -55,11 +55,9 @@ When no flag is provided, the system evaluates task complexity and automatically
 
 [HARD] Extract the FIRST WORD from the Raw User Input section above. If it matches any subcommand below (or its alias), route to that workflow IMMEDIATELY. Do NOT analyze the remaining text for routing — it is context for the matched workflow:
 
-- **brain** (aliases: ideate, idea): Pre-spec ideation workflow — 7-phase idea-to-proposal pipeline with Claude Design handoff package. Runs BEFORE project and plan.
 - **plan** (aliases: spec): SPEC document creation workflow
 - **run** (aliases: impl): DDD/TDD implementation workflow (per quality.yaml development_mode)
 - **sync** (aliases: docs, pr): Documentation synchronization and PR creation
-- **design** (aliases: brief, brand): Hybrid design workflow (Claude Design import path A or code-based skill path B)
 - **project** (aliases: init): Project documentation generation
 - **feedback** (aliases: fb, bug, issue): GitHub issue creation
 - **fix**: Auto-fix errors in a single pass
@@ -68,10 +66,7 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **review** (aliases: code-review): Code review with security and MX tag compliance
 - **clean** (aliases: dead-code): Identify and safely remove dead code
 - **codemaps**: Generate architecture documentation in `.moai/project/codemaps/`
-- **coverage** (aliases: cov): Analyze test coverage and generate missing tests
-- **e2e** (aliases: e2e-test): Create and run E2E tests
 - **gate** (aliases: check, pre-commit): Lightweight pre-commit quality gate (lint+format+type-check+test)
-- **security** (aliases: audit, sec): Dedicated OWASP security audit with dependency scanning
 - **harness** (aliases: hrn, learn): V3R4 self-evolving harness lifecycle (status / apply / rollback &lt;date&gt; / disable) — slash-command-only surface; CLI verb path retired per the harness foundation policy (BC-V3R4-HARNESS-001-CLI-RETIREMENT)
 
 ### Priority 2: SPEC-ID Detection
@@ -84,7 +79,7 @@ Only if BOTH Priority 1 AND Priority 2 did not match: Classify the intent of the
 
 - Planning and design language (design, architect, plan, spec, requirements, feature request) routes to **plan**
 - Quality gate language (lint, format, check, pre-commit, quality gate) routes to **gate**
-- Security language (security, audit, owasp, vulnerability, injection, xss, csrf) routes to **security**
+- Security language (security, audit, owasp, vulnerability, injection, xss, csrf) routes to **review** (with `--security` scope)
 - Error and fix language (fix, error, bug, broken, failing, lint) routes to **fix**
 - Iterative and repeat language (keep fixing, until done, repeat, iterate, all errors) routes to **loop**
 - Documentation language (document, sync, docs, readme, changelog, PR) routes to **sync** or **project**
@@ -101,14 +96,6 @@ If the intent is clearly a development task with no specific routing signal, def
 ---
 
 ## Workflow Quick Reference
-
-### brain - Pre-Spec Ideation (7-Phase)
-
-Purpose: Convert vague ideas into validated product proposals with a Claude Design handoff package. Pre-spec ideation workflow — runs BEFORE `/moai project` and `/moai plan`. Produces IDEA-NNN artifacts under `.moai/brain/` and a SPEC decomposition candidate list.
-Phases: Discovery (Socratic clarity) -> Diverge -> Research -> Converge (Lean Canvas) -> Critical Evaluation -> Proposal (SPEC decomposition) -> Claude Design Handoff
-Skills: moai-domain-ideation, moai-domain-research, moai-domain-design-handoff, moai-foundation-thinking (deep-questioning, diverge-converge, critical-evaluation, first-principles)
-Artifacts: `.moai/brain/IDEA-NNN/{research.md, ideation.md, proposal.md}` + 5-file Claude Design handoff package
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/brain.md
 
 ### plan - SPEC Document Creation
 
@@ -139,13 +126,6 @@ Agents: Direct execution (no agent delegation)
 Flags: --fix, --staged, --file PATH
 Integration: Automatically invoked by run workflow (Phase 2.75) and sync workflow (Phase 0.0.1) with --fix behavior.
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/gate.md
-
-### security - OWASP Security Audit
-
-Purpose: Dedicated security audit with OWASP Top 10 analysis, dependency scanning, secrets detection, and data isolation checks.
-Agents: Agent(general-purpose) with security scope (per archived-agent-rejection §C)
-Flags: --full, --deps, --secrets, --file PATH, --branch BRANCH
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/security.md
 
 ### fix - Auto-Fix Errors
 
@@ -188,28 +168,6 @@ Purpose: Scan codebase and generate architecture documentation.
 Agents: Explore, manager-docs
 Flags: --force, --area AREA
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/codemaps.md
-
-### coverage - Test Coverage Analysis
-
-Purpose: Analyze test coverage gaps and generate missing tests.
-Agents: manager-develop (cycle_type=tdd)
-Flags: --target N, --file PATH, --report
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/coverage.md
-
-### e2e - End-to-End Testing
-
-Purpose: Create and run E2E tests using Chrome, Playwright, or Agent Browser.
-Agents: manager-develop (cycle_type=tdd), Agent(general-purpose) with frontend scope
-Flags: --record, --url URL, --journey NAME
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/e2e.md
-
-### design - Hybrid Design Workflow
-
-Purpose: Produce web/brand design artifacts via Claude Design import (path A) or code-based skill pipeline (path B). Integrates brand context from `.moai/project/brand/` and design briefs from `.moai/design/`.
-Agents: manager-spec (BRIEF), Agent(general-purpose) with frontend scope (implementation), sync-auditor (GAN loop scoring)
-Skills: moai-domain-copywriting, moai-domain-brand-design, moai-workflow-design, moai-workflow-gan-loop
-Flags: --path A|B, --harness thorough|standard, --brief BRIEF-XXX
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/design.md
 
 ### (default) - MoAI Autonomous Workflow
 

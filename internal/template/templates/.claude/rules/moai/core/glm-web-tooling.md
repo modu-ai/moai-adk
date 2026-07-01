@@ -9,7 +9,7 @@ This file is the **single source of truth** for how MoAI agents and the orchestr
 
 > **Why this rule exists**: Under a GLM backend the built-in Claude Code `WebSearch` / `WebFetch` tools route through the z.ai Anthropic-compatible gateway, which intermittently returns HTTP 529 (overload). Reading an image file with the built-in `Read` tool likewise hits a known base64-encoding failure (HTTP 422) under GLM. z.ai ships dedicated MCP servers that run server-side and bypass these failure modes. Without this doctrine, agents silently fall back to the failing built-in tools and research/fetch/vision operations break.
 
-Cross-referenced by: `agent-common-protocol.md` §MCP Fallback Strategy, `settings-management.md` §MCP Configuration, `moai-constitution.md` §URL Verification, `moai-domain-research/SKILL.md`, `output-styles/moai/einstein.md`, `CLAUDE.md` §10/§12.
+Cross-referenced by: `agent-common-protocol.md` §MCP Fallback Strategy, `settings-management.md` §MCP Configuration, `moai-constitution.md` §URL Verification, `output-styles/moai/einstein.md`, `CLAUDE.md` §10/§12.
 
 ---
 

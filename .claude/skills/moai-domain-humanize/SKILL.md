@@ -146,7 +146,6 @@ Automated AI-text detectors are unreliable across these four languages (notably 
 
 ## Works Well With
 
-- `moai-domain-copywriting`: the generation counterpart. That skill produces brand-aligned marketing/product text with anti-AI-slop rules; this skill is the post-editing pass that removes residual AI tells from any generated or pasted text.
 - `sync-auditor`: independent skeptical review. Use it to score whether the humanized output preserved meaning against the original and met the target grade.
 
 ---

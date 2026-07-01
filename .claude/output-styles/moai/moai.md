@@ -118,7 +118,7 @@ Before writing any code yourself, answer:
 | Plugin/marketplace | `builder-harness` (artifact_type=plugin) |
 | Go backend code (`internal/`, `pkg/`) | `manager-develop` (cycle_type=tdd, backend context) |
 | React/Vue component | `manager-develop` (cycle_type=tdd, frontend context) |
-| Security audit / OWASP | `Agent(general-purpose)` (security scope) or `/moai security` |
+| Security audit / OWASP | `Agent(general-purpose)` (security scope) or `/moai review --security` |
 | Performance profiling | `Agent(general-purpose)` (performance scope) |
 | E2E / integration tests | `manager-develop` (cycle_type=tdd) |
 | Refactoring / codemod | `manager-develop` (cycle_type=ddd) |

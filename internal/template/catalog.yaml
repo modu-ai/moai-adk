@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 5497ea65ed6868056e92f19b160cfface20c4e5dc7c032dac029800b9c9f6134
+              hash: ee72d3389782f8a1515ed543af5dcb4654d451bd141fecf68a2c8c539ff66ac7
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -159,7 +159,7 @@ catalog:
                 - name: moai-domain-humanize
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-domain-humanize/
-                  hash: 9a714577c8972484280affa2011fa9cbb1e4367070b65c22f7bf3ae63b321d85
+                  hash: 6a6ff53422f5db5cd84d226fcfecddf80df7b499c765930a8de529d895568f13
                   version: 1.0.0
             agents: []
         devops:

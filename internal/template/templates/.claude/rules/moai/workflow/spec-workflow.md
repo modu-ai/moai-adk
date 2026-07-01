@@ -63,14 +63,12 @@ how the `--mode` flag is interpreted, and which CI guards apply.
 | Subcommand   | Class          | 3-phase contract (localize → repair → validate)                | `--mode` honored? | Default mode | Valid `--mode` values | Sentinel on invalid mode | Reference                                                    |
 |--------------|----------------|-----------------------------------------------------------------|-------------------|--------------|-----------------------|--------------------------|--------------------------------------------------------------|
 | `/moai fix`      | Pipeline (Agentless) | Parallel Scan + Classify + MX context → Auto-Fix → Verify        | No (info log)     | n/a (pipeline-fixed) | n/a (any ignored)        | `MODE_FLAG_IGNORED_FOR_UTILITY` (info log only) | `.claude/skills/moai/workflows/fix.md`                       |
-| `/moai coverage` | Pipeline (Agentless) | Measure + Gap Analysis → Test Generation → Verify                 | No (info log)     | n/a (pipeline-fixed) | n/a (any ignored)        | `MODE_FLAG_IGNORED_FOR_UTILITY` (info log only) | `.claude/skills/moai/workflows/coverage.md`                  |
 | `/moai mx`       | Pipeline (Agentless) | Pass 1 + Pass 2 → Pass 3 → Post-edit scan                         | No (info log)     | n/a (pipeline-fixed) | n/a (any ignored)        | `MODE_FLAG_IGNORED_FOR_UTILITY` (info log only) | `.claude/skills/moai/workflows/mx.md`                        |
 | `/moai codemaps` | Pipeline (Agentless) | Explore → Analyze + Generate → Verify                             | No (info log)     | n/a (pipeline-fixed) | n/a (any ignored)        | `MODE_FLAG_IGNORED_FOR_UTILITY` (info log only) | `.claude/skills/moai/workflows/codemaps.md`                  |
 | `/moai clean`    | Pipeline (Agentless) | Static Analysis + Usage Graph → Safe Removal → Test Verification  | No (info log)     | n/a (pipeline-fixed) | n/a (any ignored)        | `MODE_FLAG_IGNORED_FOR_UTILITY` (info log only) | `.claude/skills/moai/workflows/clean.md`                     |
 | `/moai plan`     | Multi-Agent    | n/a — open-ended (mode-NA per REQ-WF003-005)                      | Yes (rejects `pipeline`) | `autopilot` | (none — `--mode` ignored) | `MODE_PIPELINE_ONLY_UTILITY` (only on `pipeline`) | `.claude/skills/moai/workflows/plan.md`               |
 | `/moai run`      | Multi-Agent    | n/a — open-ended (`autopilot` / `loop` / `team` per WF-003)        | Yes (rejects `pipeline`) | `autopilot` (harness `minimal`/`standard`); `team` (harness `thorough` + prereqs) | `autopilot`, `loop`, `team` | `MODE_UNKNOWN`, `MODE_TEAM_UNAVAILABLE`, `MODE_PIPELINE_ONLY_UTILITY` | `.claude/skills/moai/workflows/run.md`                |
 | `/moai sync`     | Multi-Agent    | n/a — open-ended (mode-NA per REQ-WF003-005)                      | Yes (rejects `pipeline`) | `autopilot` | (none — `--mode` ignored) | `MODE_PIPELINE_ONLY_UTILITY` (only on `pipeline`) | `.claude/skills/moai/workflows/sync.md`               |
-| `/moai design`   | Multi-Agent    | n/a — open-ended (`autopilot` / `import` / `team` per WF-003)      | Yes (rejects `pipeline`) | `autopilot` (harness `minimal`/`standard`); `team` (harness `thorough` + prereqs) | `autopilot`, `import`, `team` | `MODE_UNKNOWN`, `MODE_PIPELINE_ONLY_UTILITY` | `.claude/skills/moai/workflows/design.md`             |
 | `/moai loop`     | Multi-Agent (alias for `/moai run --mode loop`) | n/a — delegates to `/moai run` mode dispatch | Yes (alias semantics) | (inherits from `run --mode loop`) | (alias only — `--mode` resolves via `run`) | (delegates to `run` sentinels) | `.claude/skills/moai/workflows/loop.md`               |
 
 ### Mode Dispatch Cross-Reference
@@ -97,7 +95,7 @@ Sentinel error keys:
 - `MODE_PIPELINE_ONLY_UTILITY` (REQ-WF003-016 ↔ REQ-WF004-014, shared): `--mode pipeline` on a multi-agent subcommand.
 - `MODE_FLAG_IGNORED_FOR_UTILITY` (REQ-WF004-011, owned by WF-004): `--mode <any>` on a utility subcommand (info log only).
 
-See `.claude/skills/moai/workflows/run.md` § Mode Dispatch and `.claude/skills/moai/workflows/design.md` § Mode Dispatch for the per-skill dispatch rules.
+See `.claude/skills/moai/workflows/run.md` § Mode Dispatch for the per-skill dispatch rules.
 
 ### Pipeline Class — Contract
 
@@ -110,7 +108,7 @@ Pipeline-classified subcommands MUST satisfy:
 
 ### Out of scope of this matrix
 
-`/moai feedback`, `/moai review`, `/moai e2e` are *not* yet classified.
+`/moai feedback` and `/moai review` are *not* yet classified.
 See `spec.md` §1.2 (Non-Goals) — they are deferred to a future SPEC.
 
 ### Cross-references
