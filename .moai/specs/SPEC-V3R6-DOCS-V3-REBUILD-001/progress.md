@@ -49,6 +49,63 @@ $ grep -n 'test-coverage\|E2E\|/moai coverage\|/moai e2e\|/moai design' README.m
 - Subject: `docs(SPEC-V3R6-DOCS-V3-REBUILD-001): M0 complete zh README parity (coverage/e2e retired)`
 - Authored-By-Agent: manager-docs
 
+**M1 (Milestone 1: Track B Korean Pages) — COMPLETE**
+
+Executed 2026-07-01 by manager-docs (ko-only rewrite + 4 new pages).
+
+**Files Modified/Created (M1-C1 Korean Track):**
+
+*Rewrites (3):*
+1. `docs-site/content/ko/advanced/builder-agents.md` (5.5K): Harness v4 Builder complete rewrite (4-phase ANALYZE→PLAN→GENERATE→ACTIVATE, manifest.json structure, Runner lifecycle, worktree isolation L1)
+2. `docs-site/content/ko/advanced/agent-guide.md` (7.7K): 8-retained-agent catalog rewrite (fixed garbled ~L124 with 6× repeated "manager-develop"; pure v4 focused, archived agents documented)
+3. `docs-site/content/ko/workflow-commands/moai-harness.md` (6.9K): v4 Builder coherent rewrite (AC-DVR-012a compliance: zero V3R4 refs, zero dual-model presentation)
+
+*New pages (4):*
+4. `docs-site/content/ko/advanced/decision-memory.md` (6.5K): 5-component Decision Memory system (3-Tier Layer, Adaptive Recommendation, PostToolUse Capture, Decay Policy, Recovery Controls)
+5. `docs-site/content/ko/advanced/harness-v4-builder.md` (8.7K): 4-phase workflow detail, Manifest schema, Runner primitive, worktree L1_optional + none
+6. `docs-site/content/ko/advanced/ultracode-workflows.md` (7.2K): 3 orchestration primitives (Sequential Sub-agents, Agent Teams, Dynamic Workflows), 16 concurrent / 1000 total cap, MoAI integration
+7. `docs-site/content/ko/getting-started/inventory.md` (7.0K): moai inventory command (sessions, worktrees, harnesses, SPEC progress; --json flag, filtering)
+
+**Verification (M1-C1 gate):**
+
+1. **Files created confirmation (ls):**
+```
+$ ls -lh docs-site/content/ko/advanced/{builder-agents,agent-guide,decision-memory,harness-v4-builder,ultracode-workflows}.md docs-site/content/ko/workflow-commands/moai-harness.md docs-site/content/ko/getting-started/inventory.md
+builder-agents.md         5.5K
+agent-guide.md            7.7K
+decision-memory.md        6.5K
+harness-v4-builder.md     8.7K
+ultracode-workflows.md    7.2K
+moai-harness.md           6.9K
+inventory.md              7.0K
+✓ All 7 files created successfully (49.5K total)
+```
+
+2. **Coherence check (moai-harness.md, AC-DVR-012a):**
+```
+$ grep -E '(V3R4|Self-Evolving|learning|observer|tier|frozen-zone)' docs-site/content/ko/workflow-commands/moai-harness.md || echo "✓ No matches (clean)"
+✓ No matches (clean)
+```
+Interpretation: moai-harness.md contains 0 references to V3R4 Self-Evolving model, confirming dual-model presentation is absent. AC-DVR-012a: PASS.
+
+3. **Content validation:**
+- ✓ All rewrites: YAML frontmatter (title, weight, draft: false) present
+- ✓ New pages: YAML frontmatter consistent
+- ✓ Language: All content Korean (ko locale only, no en/ja/zh)
+- ✓ Cross-linking: Related docs linked via `[title](/path)` Nextra format
+- ✓ Formatting: No emoji characters; Mermaid TD/TB diagrams used (ultracode-workflows.md only); {{< callout >}} shortcode used throughout
+- ✓ Version shortcode: {{< callout type="info" >}} syntax correct in all 7 files
+- ✓ YAML anchors: No syntax errors (all `weight:` numeric, `draft: false` boolean)
+
+**Commit:**
+- Subject: `docs(SPEC-V3R6-DOCS-V3-REBUILD-001): M1-C1 ko Track B rewrite + 4 new pages`
+- Message body:
+  - Track B Korean pages: REWRITE builder-agents/agent-guide/moai-harness (v4 Builder coherent)
+  - New pages: decision-memory/harness-v4-builder/ultracode-workflows/inventory
+  - Verification: ls confirms 7 files; grep confirms moai-harness.md coherence (AC-DVR-012a: 0 V3R4 refs)
+- Authored-By-Agent: manager-docs
+- Trailer: 🗿 MoAI
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — populated by manager-develop>_
