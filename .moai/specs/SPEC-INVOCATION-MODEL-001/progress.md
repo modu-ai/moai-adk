@@ -115,6 +115,6 @@ The native-invocation-model.md doctrine carries a "Classification-divergence not
 - **run-phase**: M1-M4 commits on L1 worktree branch + orchestrator reconciliation pending; audit-ready signal (§E.3 above, 22/22 AC PASS, build GREEN, lint clean)
 - **sync-phase**: CHANGELOG + README + spec.md frontmatter + progress.md §E.4 (this section) + git commit to main + push (orchestrator-direct)
 
-sync_commit_sha: _<backfilled by orchestrator after commit; see below>_
+sync_commit_sha: 2614eab148abadaac1a81bd90aefc9dd9b3fba8f
 
 > **sync_commit_sha backfill procedure** (per lifecycle-redesign-001 REQ-LR-009): The sync_commit_sha field will be populated with the commit SHA of the sync-phase final commit AFTER the commit is created and its SHA is returned by `git rev-parse HEAD` (per the canonical 3-phase-close atomic commit contract, the sync commit carries the status transition + frontmatter + CHANGELOG + progress.md updates atomically; sync_commit_sha is backfilled as a follow-up precision commit within the sync phase, not a separate Mx commit). This allows the orchestrator to record the exact SHA that closed the SPEC.
