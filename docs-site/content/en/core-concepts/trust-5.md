@@ -1,10 +1,10 @@
 ---
 title: TRUST 5 Quality Framework
-weight: 50
+weight: 70
 draft: false
 ---
 
-Detailed guide to 5 quality principles that all MoAI-ADK code must pass.
+Detailed guide to 5 quality principles that all MoAI-ADK code must pass through.
 
 {{< callout type="info" >}}
   **One-line summary:** TRUST 5 is an automated quality gate that verifies "is code tested, readable, consistent, secure, and trackable?"
@@ -360,8 +360,70 @@ constitution:
     timeout_seconds: 3 # LSP diagnostic timeout
 ```
 
-## Related Documents
+### Customization Tips
 
-- [What is MoAI-ADK?](/core-concepts/what-is-moai-adk) -- Understand the overall structure of MoAI-ADK
-- [SPEC-Based Development](/core-concepts/spec-based-dev) -- Learn Plan phase where TRUST 5 is applied
-- [Domain-Driven Development](/core-concepts/ddd) -- Learn Run phase where TRUST 5 is applied
+| Situation | Adjustment |
+|-----------|------------|
+| Early project, few tests | Lower `test_coverage_target` to 70, raise gradually |
+| Legacy code heavy | Temporarily set `allow_regression` to true |
+| Strict security needed | Set `max_warnings` to 0 |
+
+## Real-World Application: Quality Gate Scenarios
+
+Let's see how TRUST 5 applies in actual development.
+
+### Scenario: Implementing User Search API
+
+```bash
+# 1. Plan: Create SPEC (capture LSP baseline)
+> /moai plan "implement user search API"
+```
+
+```bash
+# 2. Run: Implement with DDD (validate TRUST 5)
+> /moai run SPEC-SEARCH-001
+```
+
+**TRUST 5 Validation in Run Phase:**
+
+| Item | Validation | Result |
+|------|-----------|--------|
+| **T** (Tested) | Test coverage 85%, 0 type errors | Pass |
+| **R** (Readable) | 0 lint errors, clear function names | Pass |
+| **U** (Unified) | ruff/black formatting applied, 3 LSP warnings | Pass |
+| **S** (Secured) | SQL Injection prevention, input validation | Pass |
+| **T** (Trackable) | Conventional Commit format, SPEC reference | Pass |
+
+```bash
+# 3. Sync: Generate docs and PR (final LSP clean check)
+> /moai sync SPEC-SEARCH-001
+```
+
+**Sync Phase Final Check:**
+
+```
+LSP Diagnostics:
+- Errors: 0
+- Type Errors: 0
+- Lint Errors: 0
+- Warnings: 3 (under threshold of 10)
+- Security Warnings: 0
+
+TRUST 5 Complete Pass: Ready to deploy
+```
+
+## TRUST 5 At A Glance
+
+| Principle | Core Question | Automated Tool | Criteria |
+|-----------|---------------|----------------|----------|
+| **T** (Tested) | Is code verified by tests? | pytest, LSP type checking | 85%+ coverage, 0 type errors |
+| **R** (Readable) | Can others understand? | ruff, eslint, LSP lint | 0 lint errors, clear names |
+| **U** (Unified) | Matches project standards? | black, prettier, LSP | Consistent format, warnings < 10 |
+| **S** (Secured) | No security vulnerabilities? | bandit, semgrep, LSP | OWASP compliance, 0 security warnings |
+| **T** (Trackable) | Is change history traceable? | commitlint, git | Conventional Commits |
+
+## Related Documentation
+
+- [What is MoAI-ADK?](/en/core-concepts/what-is-moai-adk) — Understand the overall structure of MoAI-ADK
+- [SPEC-Based Development](/en/core-concepts/spec-based-dev) — Learn Plan phase where TRUST 5 is applied
+- [Domain-Driven Development](/en/core-concepts/ddd) — Learn Run phase where TRUST 5 is applied
