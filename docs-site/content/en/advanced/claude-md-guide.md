@@ -1,6 +1,6 @@
 ---
 title: CLAUDE.md Guide
-weight: 70
+weight: 80
 draft: false
 ---
 
@@ -97,13 +97,14 @@ Defines 3 command types in MoAI-ADK.
 
 ### 4. Agent Catalog
 
-Defines roles and selection criteria for 20 agents.
+MoAI-ADK is structured around **8 retained agents** (7 MoAI-custom + 1 Anthropic built-in). The 12 archived agents were consolidated per SPEC-V3R6-AGENT-TEAM-REBUILD-001.
 
-| Tier | Agents | Count |
-|------|--------|-------|
-| Manager | spec, ddd, docs, quality, strategy, project, git | 7 |
-| Expert | backend, frontend, security, devops, performance, debug, testing, refactoring | 8 |
-| Builder | agent, skill, command, plugin | 4 |
+| Classification | Agents | Count |
+|--------|--------|-------|
+| Manager | manager-spec, manager-develop, manager-docs, manager-git | 4 |
+| Evaluator | plan-auditor, sync-auditor | 2 |
+| Builder | builder-harness | 1 |
+| Built-in | Explore (Anthropic) | 1 |
 
 ### 5. SPEC Workflow
 
@@ -342,7 +343,7 @@ flowchart TD
 |-------|------|-----------|-----|
 | 1. CLAUDE.md | `CLAUDE.md` | Always | Project identity, core rules |
 | 2. Rules | `.claude/rules/*.md` | File pattern match | Conditional detailed rules |
-| 3. Skills | `.claude/skills/*/skill.md` | Trigger match | Expert knowledge, patterns |
+| 3. Skills | `.claude/skills/*/SKILL.md` | Trigger match | Expert knowledge, patterns |
 | 4. Agents | `.claude/agents/*.md` | On delegation | Expert role definitions |
 
 ## Related Documentation
