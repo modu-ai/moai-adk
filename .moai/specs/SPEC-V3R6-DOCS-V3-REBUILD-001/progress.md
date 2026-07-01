@@ -761,11 +761,11 @@ Executed 2026-07-01 (orchestrator-coordinated; manager-docs authored content, or
 - **Phase**: run (complete)
 - **Tier**: L (thorough) — 4 milestone tracks (M0 ground-truth sync, M1-M3 korean rewrite, M2a-2b claude-code mirror, M3.1 english propagation) with cross-cutting validation-then-rewrite discipline
 - **Run-phase ownership**: manager-docs (docs-content-only SPEC per plan.md §B.2)
-- **Milestones complete**: M0 (README drift fix + hugo.toml rc4 lock), M1 (57 ko pages validated/rewritten/created), M2 (28 CC-mirror pages rewritten), M3.1 (38 en files propagated, 7 chunks)
-- **Final parity state**: ko 99 files == en 99 files (file-count parity achieved); ja/zh 95 files (M3.2 pending), target 99×4 locales
+- **Milestones complete**: M0 (README drift fix + hugo.toml rc4 lock), M1 (57 ko pages validated/rewritten/created), M2 (28 CC-mirror pages rewritten), M3.1 (38 en files propagated, 7 chunks), M3.2 (ja+zh propagation to 99×4 parity), M3.3 (menu 4-locale — advanced 3 NEW + inventory), M4 (build-fix — unclosed callout shortcode en+zh installation)
+- **Final parity state**: ko/en/ja/zh 99 files each — 99×4 locale full file-count parity achieved (M3.2/M3.3/M4 complete); hugo build clean, EN/JA/ZH 131 pages parity (KO 133)
 - **Verification basis**: per-chunk orchestrator-independent validation (section-heading parity, 0 Hangul leak, 0 forbidden URL, 0 LR mermaid, 0 FleetView, git scope clean, all 45 commits pushed to origin/main)
 - **Ground truth**: hugo.toml v3.0.0-rc4 lock (2026-06-23), 27 moai-* skills verified, 13 /moai commands verified, 8 retained agents verified, 4-locale drift baseline captured
-- **Known M4 item (SHOULD-FIX)**: builder-agents.md line 21 ASCII transliteration in migration table, 84 line-matched pages may harbor hidden staleness (e.g., claude-md-guide "20 agents")
+- **Known residual (SHOULD-FIX, non-blocking)**: builder-agents.md line 21 ASCII transliteration in migration table faithfully mirrors ko; 84 line-matched pages may harbor hidden staleness (e.g., claude-md-guide "20 agents") — deferred, does not block close
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
@@ -773,6 +773,7 @@ Executed 2026-07-01 (orchestrator-coordinated; manager-docs authored content, or
 - **Tier**: L (thorough)
 - **Artifacts**: CHANGELOG.md entry added, spec.md frontmatter status transition completed, progress.md §E.3/§E.4 populated, era: V3R6 field added to spec.md
 - **Frontmatter transitions**: spec.md `status: in-progress → completed`, `updated: 2026-07-01 → 2026-07-02`, `era: V3R6` added
-- **Audit summary**: run-phase 45 commits all pushed to origin/main, 4-locale parity achieved (ko 99 == en 99), ja/zh 95 (M3.2 pending)
-- **Sync commit SHA**: 44073782b
+- **Audit summary**: run-phase 45 commits all pushed to origin/main; 99×4 locale full parity (ko/en/ja/zh 99 each), hugo build clean
+
+sync_commit_sha: 44073782b
 - **Status transitions**: only spec.md has frontmatter `status:` field; plan.md and acceptance.md begin with H1 headings (no frontmatter). Transition completed: spec.md `in-progress → completed`
