@@ -75,7 +75,7 @@ Run-phase executed as a single manager-develop session (M1→M5, sequential, no 
 
 - **sync_status**: complete
 - **sync_complete_at**: 2026-07-02
-- **sync_commit_sha**: <backfill>
+- **sync_commit_sha**: 85391a77028a13568f0b2f64cef99ed7a7f6b4dd
 - **changelog_entry_position**: [Unreleased] / Fixed section, first entry
 - **frontmatter_status_transitions.in-progress_to_implemented**: YES (M1 commit 1b97cb4d3)
 - **frontmatter_status_transitions.implemented_to_completed**: YES (sync commit, this artifact)
