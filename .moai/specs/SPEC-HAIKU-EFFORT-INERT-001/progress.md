@@ -29,7 +29,7 @@ Implementation Kickoff Approval granted (user selected run-phase entry). Resolut
 - **Files changed (6)**: `.claude/agents/moai/manager-docs.md`, `.claude/agents/moai/manager-git.md`, `internal/template/templates/.claude/agents/moai/manager-docs.md`, `internal/template/templates/.claude/agents/moai/manager-git.md`, `internal/template/catalog.yaml`, `internal/template/haiku_effort_guard_test.go` (+110/−6).
 - **Commit provenance**: manager-develop implemented in an L1 worktree (`agent-a81e131d8f87ab080`, commit `bf0e527fa`); push blocked by a parallel-session race (DOCS-V3-REBUILD advanced origin by 2 docs-only commits). Orchestrator reconciled via `cherry-pick -x bf0e527fa` onto main → `54e8f76b3`; fast-forward push `eb8ce68fb..54e8f76b3`. The race was clean (docs-site vs SPEC files, empty overlap).
 
-**run_commit_sha: 54e8f76b3**
+run_commit_sha: 54e8f76b3
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -48,7 +48,7 @@ Independent orchestrator batch (on main): guard test GREEN, `go build ./...` exi
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-**sync_commit_sha: 54e8f76b3**
+sync_commit_sha: 54e8f76b3
 
 Sync executed orchestrator-direct (Tier S small consolidated lifecycle — worktree-reconcile risk avoidance per memory lesson `feedback_glm_orchestrator_direct_sync_mx` + `feedback_small_spec_consolidated_lifecycle`).
 
