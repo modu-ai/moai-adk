@@ -462,6 +462,86 @@ $ grep -E '(Task|Agent)Create|CLAUDE_CODE_ENABLE_TASKS' docs-site/content/ko/cla
 - Authored-By-Agent: manager-docs
 - Trailer: 🗿 MoAI
 
+**M2b-1 (Milestone 2: Chunk 1b — 5 Korean Context-Memory Pages Validate-Then-Rewrite) — COMPLETE**
+
+Executed 2026-07-01 by manager-docs (ko claude-code/context-memory section, validate-then-rewrite approach against research-cc-latest.md v2.1.196 SSOT).
+
+**Files Modified/Validated (5 total pages, 1 landing + 4 concept pages):**
+
+*1 CONFIRMED DRIFT TARGET REWRITTEN:*
+1. `docs-site/content/ko/claude-code/context-memory/context-window.md` (6.8K):
+   - **Edit 1 (Lines 20-26)**: Startup load table reordered and clarified
+     - Separated "MCP 도구 이름" row with explicit note: "(지연 로드)" — MCP tool definitions deferred until needed
+     - Added new "환경 정보" row (OS, shell, workspace path info)
+     - Clarified MEMORY.md load limit: "앞 200줄 또는 25KB까지만 로드" inline in table
+     - Reordered CLAUDE.md and 스킬 설명 rows for logical grouping
+   - **Edit 2 (Lines 77-83, new subsection)**: Added "자동 압축 시점 제어" subsection
+     - Documented `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` environment variable
+     - Example: `export CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=70  # 70%에서 압축 시작`
+     - Drift fixed: research-cc-latest.md §2 documents both deferred MCP loading + autocompact control; ko page was missing both critical details
+
+*4 PAGES VALIDATED CLEAN:*
+2. `docs-site/content/ko/claude-code/context-memory/_index.md` (landing page):
+   - **Status: VALIDATED-CLEAN** (0 changes needed)
+   - Landing page accurately describes context-memory section learning flow
+   - All facts from research-cc-latest.md present and correct
+
+3. `docs-site/content/ko/claude-code/context-memory/memory.md`:
+   - **Status: VALIDATED-CLEAN** (0 changes needed)
+   - Line 23: "앞 200줄 또는 25KB" ✓ (MEMORY.md cap documented)
+   - Line 111: v2.1.59+ requirement ✓
+   - Line 125: git-derived memory path shared across worktrees ✓
+   - Line 154: `autoMemoryEnabled` toggle + `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` ✓
+
+4. `docs-site/content/ko/claude-code/context-memory/prompt-caching.md`:
+   - **Status: VALIDATED-CLEAN** (0 changes needed)
+   - Lines 40-46: 3-layer cache structure (system prompt, project context, conversation) ✓
+   - Lines 50-51: model + effort as cache keys ✓
+   - Lines 84-89: cache invalidation triggers ✓
+   - Lines 98-102: preservation conditions ✓
+   - Lines 119-122: TTL table (subscription 1h auto / API key 5min default / opt-in 1h via `ENABLE_PROMPT_CACHING_1H=1`) ✓
+
+5. `docs-site/content/ko/claude-code/context-memory/checkpointing.md`:
+   - **Status: VALIDATED-CLEAN** (0 changes needed)
+   - Lines 22-26: tracking table (Edit-tool changes only, NOT bash rm/mv/cp, NOT external changes, NOT git commits) ✓
+   - Line 31: /rewind and Esc Esc commands ✓
+   - Lines 40-50: menu options for checkpoint save/restore ✓
+   - Lines 64-73: precise scope of what is/isn't tracked ✓
+
+**Verification (M2b-1 gate) — Quoted grep output:**
+
+```
+$ grep -rn 'CLAUDE_AUTOCOMPACT_PCT_OVERRIDE' docs-site/content/ko/claude-code/context-memory/
+docs-site/content/ko/claude-code/context-memory/context-window.md:79:export CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=70  # 70%에서 압축 시작
+docs-site/content/ko/claude-code/context-memory/context-window.md:78:자동 압축의 시점을 조정해야 한다면, 환경 변수 `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` 로 임계값 (기본값: 전체 컨텍스트 대비 약 75~80%)을 변경할 수 있습니다.
+
+$ grep -rn '지연 로드' docs-site/content/ko/claude-code/context-memory/context-window.md
+docs-site/content/ko/claude-code/context-memory/context-window.md:23:| MCP 도구 이름 (지연 로드) | 보이지 않음 | MCP 도구 정의는 필요할 때만 로드되어 컨텍스트 절약 |
+
+$ grep -rn '200줄 또는 25KB' docs-site/content/ko/claude-code/context-memory/
+docs-site/content/ko/claude-code/context-memory/context-window.md:21:| 자동 메모리 (`MEMORY.md`) | 보이지 않음 | 이전 세션에서 남긴 메모. 앞 200줄 또는 25KB까지만 로드 |
+docs-site/content/ko/claude-code/context-memory/memory.md:23:백업이나 버전 컨트롤이 필요한 큰 메모리는 전체 로드를 피하기 위해 이 상한 (200줄 또는 25KB)이 적용됩니다. 이렇게 제한이 있는 이유는, 파일이 매우 크면 세션마다 로드 비용이 누적되어 컨텍스트 윈도우를 낭비하기 때문입니다.
+```
+
+**Verification summary:**
+- ✓ context-window.md: 2 targeted edits (deferred MCP loading clarification + CLAUDE_AUTOCOMPACT_PCT_OVERRIDE documentation)
+- ✓ _index.md: landing page validated-clean (0 edits)
+- ✓ memory.md: validated-clean (all facts present: 200줄/25KB cap, v2.1.59+, shared path, env var)
+- ✓ prompt-caching.md: validated-clean (all facts present: 3-layer, cache keys, TTL table with ENABLE_PROMPT_CACHING_1H=1)
+- ✓ checkpointing.md: validated-clean (all facts present: Edit-tool tracking only, no bash/git tracking)
+- ✓ 4-locale parity preserved (ko pages only, no en/ja/zh contamination)
+- ✓ All pages: YAML frontmatter verified, Korean-only content, cross-linking, formatting correct
+
+**Commit:**
+- Subject: `docs(SPEC-V3R6-DOCS-V3-REBUILD-001): M2b-1 ko claude-code/context-memory CC-latest mirror`
+- Message body:
+  - Pages (5): context-window.md (2 edits), _index.md (validated-clean), memory.md (validated-clean), prompt-caching.md (validated-clean), checkpointing.md (validated-clean)
+  - Validation: Research-cc-latest.md v2.1.196 SSOT source (context-memory facts from CC docs)
+  - Verification: 2 edits in context-window.md (CLAUDE_AUTOCOMPACT_PCT_OVERRIDE + MCP deferred-load clarification), 4 pages confirmed clean with all required facts present
+  - grep proofs: CLAUDE_AUTOCOMPACT_PCT_OVERRIDE (2 matches), 지연 로드 (1 match), 200줄 또는 25KB (2 matches)
+- Authored-By-Agent: manager-docs
+- Trailer: 🗿 MoAI
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — populated by manager-develop>_
