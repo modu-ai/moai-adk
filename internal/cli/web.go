@@ -2,7 +2,7 @@ package cli
 
 // @MX:NOTE: [AUTO] web 서브커맨드는 MoAI Web Console(브라우저 기반 설정 CRUD)을 띄우는 thin 진입점이다.
 // 실제 HTTP 서버/핸들러/검증/영속화는 internal/web 패키지가 소유한다. CLI는 플래그 파싱 + 프로젝트 루트 해석 후
-// web.Run 에 위임한다 (cc.go / brain.go 의 thin-command 패턴). 사용자 상호작용 프롬프트 호출 금지(orchestrator-only HARD,
+// web.Run 에 위임한다 (cc.go 의 thin-command 패턴). 사용자 상호작용 프롬프트 호출 금지(orchestrator-only HARD,
 // C-HRA-008 / internal/cli/CLAUDE.md).
 
 import (

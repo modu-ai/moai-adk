@@ -26,10 +26,6 @@ Output Files:
 - structure.md: Directory tree, purpose of each directory, key file locations, module organization
 - tech.md: Technology stack overview, framework choices with rationale, dev environment requirements, build and deployment config
 
-Note: When `--from-brain IDEA-NNN` was supplied (see `mode-detection.md` Flag section),
-the `proposal.md` content is the primary product scope input for manager-docs.
-SPEC Decomposition Candidates from `proposal.md` are surfaced in Phase 4 completion — do NOT auto-create SPECs.
-
 ---
 
 ## Phase 3.1: Independent Document Audit (Conditional)

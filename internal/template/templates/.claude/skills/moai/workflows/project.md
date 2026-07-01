@@ -43,7 +43,6 @@ This workflow is also triggered automatically when project documentation does no
 | Phase | Sub-skill | Description |
 |---|---|---|
 | Mode flag / Scope boundary | `project/mode-detection.md` | --mode compatibility, NO SPEC Generation rule |
-| --from-brain IDEA-NNN | `project/mode-detection.md` | Brain context loading and precedence |
 | Phase 0: Project Type Detection | `project/mode-detection.md` | Auto-detect existing vs. new project |
 | Phase 0.3: Deep Interview (New) | `project/mode-detection.md` | 3-round Vision/Technology/Scope interview |
 | Phase 1: Codebase Analysis | `project/codebase-analysis.md` | Explore subagent analysis (existing projects) |
@@ -61,19 +60,10 @@ This workflow is also triggered automatically when project documentation does no
 
 ---
 
-## --from-brain Cross-Reference
-
-When invoked as `/moai project --from-brain IDEA-NNN`:
-- **Defined in**: `project/mode-detection.md` (Flag section) — loads proposal.md, sets precedence
-- **Consumed by**: `project/doc-generation.md` (Phase 3) — uses proposal.md as primary generation input; Phase 4 surfaces SPEC candidates (informational only, never auto-creates)
-- **SPEC candidates**: surfaced in Phase 4 completion AskUserQuestion from proposal.md §SPEC Decomposition Candidates
-
----
-
 ## Invocation Flow
 
 ```
-/moai project [--from-brain IDEA-NNN]
+/moai project
   └─ Mode Detection (mode-detection.md)
        ├─ New Project → Phase 0.3 interview → Phase 3 (skip Phase 1/2)
        └─ Existing Project → Phase 1 analysis
