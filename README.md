@@ -304,20 +304,19 @@ graph LR
 
 Note: Dynamic team teammates (researcher, analyst, architect, implementer, tester, designer, reviewer) are spawned at runtime via role profiles, not as static agent definitions.
 
-### `/moai` Slash Commands (17)
+### `/moai` Slash Commands (12)
 
-MoAI exposes **17 `/moai` slash commands** in `.claude/commands/moai/`, managed through a 3-level progressive disclosure system for token efficiency (skill metadata is always listed; bodies load on invocation; bundled references load on demand).
+MoAI exposes **12 `/moai` slash commands** in `.claude/commands/moai/`, managed through a 3-level progressive disclosure system for token efficiency (skill metadata is always listed; bodies load on invocation; bundled references load on demand).
 
 | Group | Commands |
 |-------|----------|
 | **Workflow** | `plan`, `run`, `sync`, `project` |
-| **Utility** | `fix`, `loop`, `clean`, `mx`, `codemaps`, `coverage`, `e2e` |
+| **Utility** | `fix`, `loop`, `clean`, `mx`, `codemaps` |
 | **Quality** | `review`, `gate` |
-| **Design** | `design` |
-| **Autonomy** | `brain`, `harness` |
+| **Autonomy** | `harness` |
 | **Feedback** | `feedback` |
 
-The full command set (17 total): `brain` · `clean` · `codemaps` · `coverage` · `design` · `e2e` · `feedback` · `fix` · `gate` · `harness` · `loop` · `mx` · `plan` · `project` · `review` · `run` · `sync`.
+The full command set (12 total): `clean` · `codemaps` · `feedback` · `fix` · `gate` · `harness` · `loop` · `mx` · `plan` · `project` · `review` · `run` · `sync`.
 
 ---
 
@@ -642,7 +641,7 @@ An autonomous error-fixing engine that combines LSP diagnostics with AST-grep:
 
 **New Feature Development:**
 ```
-/moai plan → /moai run SPEC-XXX → /moai review → /moai coverage → /moai sync SPEC-XXX
+/moai plan → /moai run SPEC-XXX → /moai review → /moai sync SPEC-XXX
 ```
 
 **Bug Fix:**
@@ -652,7 +651,7 @@ An autonomous error-fixing engine that combines LSP diagnostics with AST-grep:
 
 **Refactoring:**
 ```
-/moai plan → /moai clean → /moai run SPEC-XXX → /moai review → /moai coverage → /moai codemaps
+/moai plan → /moai clean → /moai run SPEC-XXX → /moai review → /moai codemaps
 ```
 
 **Documentation Update:**
@@ -957,225 +956,6 @@ The @MX tag system optimizes **"Signal-to-Noise Ratio"**:
 
 > Just describe what you want. Design system interviews you, designs, builds, tests, and learns — autonomously.
 
-MoAI-ADK includes an integrated **Design System** — a specialized harness for autonomous website and web application production. Like `/moai "description"` runs the full development workflow, `/moai design "description"` runs the full creative production pipeline from brief to deployed code.
-
-### Why Design? — /moai vs /moai design
-
-```mermaid
-flowchart TB
-    subgraph MOAI["/moai — General Software Development"]
-        direction LR
-        M1["📋 Plan<br>(SPEC)"] --> M2["⚙️ Run<br>(DDD/TDD)"] --> M3["📦 Sync<br>(Docs + PR)"]
-    end
-
-    subgraph DESIGN["/moai design — Creative Web Production"]
-        direction LR
-        D1["📋 Manager-Spec<br>(BRIEF)"] --> D2["✍️ Copywriting"]
-        D1 --> D3["🎨 Brand Design"]
-        D2 --> D4["🔨 Builder"]
-        D3 --> D4
-        D4 --> D5["🔍 Evaluator"]
-        D5 -->|"FAIL"| D4
-        D5 -->|"PASS"| D6["🧠 Learner"]
-    end
-
-    style MOAI fill:#e8f5e9,stroke:#4caf50
-    style DESIGN fill:#fff3e0,stroke:#ff9800
-```
-
-| Aspect | `/moai` | `/moai design` |
-|--------|---------|-----------|
-| **Purpose** | Any software (backend, CLI, library, API) | Websites, landing pages, web apps |
-| **Input** | Feature description → SPEC | Business goal → BRIEF |
-| **Unique Phase** | DDD/TDD implementation cycle | Copywriting + Design System → Code |
-| **Quality** | Single manager-quality pass | **GAN Loop** (Builder↔Evaluator, max 5 rounds) |
-| **Self-Learning** | None | **Learner** detects patterns → proposes skill evolution |
-| **Brand** | None | Brand context as constitutional constraint |
-| **Implementation** | 20 agents (manager/expert/builder) | 4 skills (copywriting, brand-design, design-import, gan-loop) + sync-auditor |
-
-**When to use which:**
-- Building a REST API, CLI tool, or library? → `/moai`
-- Building a marketing website, SaaS landing page, or web app with design? → `/moai design`
-- Need copy, design tokens, and code as separate artifacts? → `/moai design`
-
-### Quick Start: One Command, Full Pipeline
-
-```bash
-/moai design "SaaS landing page for my AI developer tools startup"
-```
-
-This single command triggers the **entire autonomous workflow**:
-
-1. **Client Interview** — Manager-spec asks 9 structured questions about your business, brand, and tech preferences (skipped if already configured)
-2. **BRIEF Generation** — Manager-spec expands your request into a comprehensive project brief
-3. **Copy + Design** — moai-domain-copywriting produces brand-aligned marketing copy; moai-domain-brand-design creates a full design system with tokens (Path B). Alternative Path A: moai-workflow-design-import parses Claude Design handoff bundles.
-4. **Code Implementation** — manager-develop (cycle_type=tdd) or a harness-generated frontend specialist implements production code using TDD (Next.js + Tailwind by default)
-5. **Quality Assurance** — sync-auditor runs Playwright tests, Lighthouse audits, and 4-dimension scoring with Sprint Contract protocol
-6. **GAN Loop** — If quality fails, manager-develop (or the harness specialist) and sync-auditor iterate via moai-workflow-gan-loop (up to 5 rounds) until threshold is met
-7. **Self-Learning** — (Optional) Learner detects patterns from the session and proposes skill improvements
-
-**Typical duration**: 15-45 minutes for a complete landing page, fully autonomous.
-
-### Pipeline Architecture
-
-```mermaid
-flowchart LR
-    REQ["🎯 /moai design 'request'"] --> INT["📋 Client Interview"]
-    INT --> P["📝 Manager-Spec (BRIEF)"]
-    P --> C["✍️ Copywriting"]
-    P --> D["🎨 Brand Design"]
-    C --> B["🔨 Builder (TDD)"]
-    D --> B
-    B --> E["🔍 Evaluator"]
-    E -->|"FAIL (max 5 rounds)"| B
-    E -->|"PASS (score ≥ 0.75)"| L["🧠 Learner (optional)"]
-```
-
-### What Each Skill Does
-
-| Skill | Purpose |
-|-------|---------|
-| **manager-spec** | Conducts client interview, generates structured BRIEF document |
-| **moai-domain-copywriting** | Writes marketing copy as structured JSON — headlines, body, CTAs — following brand voice rules |
-| **moai-domain-brand-design** | Creates complete design system — color tokens, typography scale, spacing, component specs (Path B) |
-| **moai-workflow-design-import** | Parses Claude Design handoff bundles (ZIP/HTML) for design tokens and components (Path A) |
-| **manager-develop** (cycle_type=tdd) | Implements production code with TDD (RED-GREEN-REFACTOR). Default stack: Next.js, TypeScript, Tailwind, shadcn/ui. A harness-generated frontend specialist (per `SPEC-V3R6-HARNESS-NAMESPACE-V2-001`) may substitute for domain-specific work. |
-| **sync-auditor** | Runs Playwright visual tests + Lighthouse audits. Scores 4 dimensions with Sprint Contract protocol and must-pass criteria validation |
-| **moai-workflow-gan-loop** | Manages GAN Loop iteration: Builder-Evaluator negotiates Sprint Contract, implements, scores, escalates on stagnation |
-
-### The GAN Loop: Adversarial Quality Assurance
-
-The Evaluator is **skeptical by default** — tuned to find defects, not rationalize acceptance.
-
-```mermaid
-sequenceDiagram
-    participant B as 🔨 Builder
-    participant E as 🔍 Evaluator
-    participant U as 👤 User
-
-    B->>E: Submit code (iteration 1)
-    E->>E: Score 4 dimensions
-    E-->>B: ❌ FAIL (0.58) — feedback with file:line refs
-
-    B->>E: Revised code (iteration 2)
-    E->>E: Score 4 dimensions
-    E-->>B: ❌ FAIL (0.67) — mobile viewport + copy mismatch
-
-    B->>E: Revised code (iteration 3)
-    E->>E: Score 4 dimensions
-    Note over E: Stagnation detected (improvement < 0.05)
-    E-->>U: ⚠️ Escalation — 3 rounds without pass
-
-    alt User adjusts criteria
-        U-->>E: Lower threshold to 0.65
-        E-->>B: ✅ PASS (0.67)
-    else User provides guidance
-        U-->>B: Fix specific layout issue
-        B->>E: Revised code (iteration 4)
-        E-->>B: ✅ PASS (0.78)
-    end
-```
-
-**Scoring dimensions** (must-pass threshold: 0.75):
-
-| Dimension | Weight | What It Measures | Auto-FAIL Triggers |
-|-----------|--------|-----------------|-------------------|
-| Design Quality | 30% | Visual polish, spacing, typography, color harmony | AI cliches (purple gradients + white cards + generic icons) |
-| Originality | 25% | Unique brand expression, non-template feel | Copy differs from Copywriter output |
-| Completeness | 25% | All sections, responsive, interactive elements | Mobile viewport broken, any 404 link |
-| Functionality | 20% | Working links, forms, animations, Lighthouse score | Lighthouse Accessibility < 80 |
-
-**Iteration flow**: Evaluator provides specific feedback with file:line references → Builder fixes → re-evaluation. After 3 failed iterations, escalates to user with options: adjust criteria, provide guidance, or force-pass.
-
-### Brand Context: Your Creative Constitution
-
-On first run, Design System conducts a **structured client interview** (9 questions across 4 phases):
-
-| Phase | Questions | Populates |
-|-------|-----------|-----------|
-| Business Context | Objective, target customer, success KPIs | `.moai/project/brand/target-audience.md` |
-| Brand Identity | Voice adjectives, reference sites, design preferences | `.moai/project/brand/brand-voice.md`, `visual-identity.md` |
-| Technical Scope | Pages needed, tech requirements | `.moai/project/tech.md` |
-| Quality Expectations | Priority factors | `.moai/config/sections/design.yaml` |
-
-Brand context flows through **every skill** as an immutable constraint. The sync-auditor scores brand consistency as a must-pass criterion. After 5+ projects, the interview adapts to ask only 3 key questions.
-
-### Self-Evolution with Safety
-
-Every skill has **Static + Dynamic zones**:
-- **Static Zone**: Core principles (never auto-modified)
-- **Dynamic Zone**: Rules, heuristics, anti-patterns (evolved via Learner)
-
-```mermaid
-flowchart LR
-    subgraph Observation["📊 Pattern Detection"]
-        O1["1x seen"] -->|"Logged"| O2["3x seen"]
-        O2 -->|"Promoted"| O3["5x seen"]
-    end
-
-    subgraph Graduation["🎓 Knowledge Graduation"]
-        O3 -->|"confidence ≥ 0.80"| G1["Canary Check"]
-        G1 -->|"No score drop"| G2["Contradiction Check"]
-        G2 -->|"No conflicts"| G3["👤 Human Review"]
-        G3 -->|"Approved"| G4["✅ Graduated"]
-    end
-
-    subgraph Safety["🛡️ Safety Gates"]
-        G4 --> S1["Verify in next project"]
-        S1 -->|"Score drops > 0.10"| S2["🔄 Auto-Rollback"]
-    end
-
-    style Observation fill:#e3f2fd,stroke:#1976d2
-    style Graduation fill:#f3e5f5,stroke:#7b1fa2
-    style Safety fill:#fce4ec,stroke:#c62828
-```
-
-**Knowledge Graduation lifecycle**: observation (1x) → heuristic (3x) → rule (5x, confidence ≥ 0.80) → graduated (applied with user approval)
-
-**5-Layer Safety Architecture**:
-1. **Frozen Guard** — Blocks modification of identity, safety rails, and ethical boundaries
-2. **Canary Check** — Shadow-evaluates last 3 projects; rejects if any score drops > 0.10
-3. **Contradiction Detector** — Flags rules that conflict with existing ones
-4. **Rate Limiter** — Max 3 evolutions/week, 24h cooldown, max 50 active learnings
-5. **Human Oversight** — Presents before/after diff with evidence; requires user approval
-
-**Anti-Pattern Protection**: A single critical failure (score drop > 0.20) triggers immediate Anti-Pattern classification — the pattern is FROZEN and can never be evolved away. Only human intervention can reclassify.
-
-### Commands
-
-```bash
-# Autonomous workflow (recommended)
-/moai design "SaaS landing page for my AI startup"  # Full pipeline: interview → build → test → learn
-
-# Alternative paths
-/moai design brief "landing page for dev tools"    # Interview + BRIEF only (review before building)
-/moai design build BRIEF-001                       # Run full pipeline from existing BRIEF
-/moai design import /path/to/design.zip            # Import Claude Design handoff bundle (Path A)
-
-# Legacy v2.x commands (deprecated, redirects to /moai design — see SPEC-AGENCY-ABSORB-001)
-/agency "..."                                      # Redirects to /moai design with deprecation warning
-/agency brief "..."                                # Not supported; use /moai design brief
-```
-
-### Default Tech Stack (configurable)
-
-| Layer | Default | Configured via |
-|-------|---------|---------------|
-| Framework | Next.js + App Router | `.moai/project/tech.md` |
-| Language | TypeScript (strict) | `.moai/project/tech.md` |
-| Styling | Tailwind CSS v4 | `.moai/project/tech.md` |
-| Components | shadcn/ui | `.moai/project/tech.md` |
-| Testing | Vitest + Playwright | `.moai/config/sections/design.yaml` |
-| Hosting | Vercel | `.moai/project/tech.md` |
-
-### Migration from legacy v2.x
-
-Existing projects using the v2.x `/agency` command can migrate to `/moai design` via:
-```bash
-moai migrate agency
-```
-
-This command safely moves legacy `.agency/` data to `.moai/project/brand/` and `.moai/config/sections/design.yaml`. Data is preserved as `.agency.archived/` for recovery if needed. See [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md) for absorption history.
 
 > [Design System Documentation](https://adk.mo.ai.kr/design)
 

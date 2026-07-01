@@ -70,4 +70,22 @@ multi_session_race: "origin/main advanced to 2f49c9dc4 (parallel SPEC-RETRY-IDEM
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs>_
+```yaml
+sync_complete_at: 2026-07-01
+sync_commit_sha: "3e930ec793413018108c83a9c8bf46652ec041da"
+sync_status: completed
+changelog_entry_position: "CHANGELOG.md lines 24+ (Unreleased/Removed section)"
+changelog_format: "bilingual + 10 AC references + replacement guidance + 3-phase close confirmation + 🗿 MoAI signature"
+dangling_reference_grep: "verified — grep all 5 subcommands (design,brain,e2e,coverage,security) across README.md / README.ko.md / CHANGELOG.md / SKILL.md / CLAUDE.md / spec-workflow.md → 0 matches"
+readme_parity: "verified — EN/KO command count 17→12, design section removed from both, /moai coverage removed from both workflow examples"
+docs_site_4locale: "verified — 8 pages deleted (en/ko/ja/zh coverage.md + e2e.md + 2 menu entries), 4-locale parity maintained, hugo --cleanDestinationDir exit 0"
+frontmatter_status_transitions: "spec.md: in-progress → completed (status field + updated: 2026-07-01); plan.md/acceptance.md: no frontmatter"
+b12_self_test_changelog_entry:
+  pre_emission_grep_count: 0    # grep -c 'SPEC-SUBCOMMAND-RETIRE-001' CHANGELOG.md before edit
+  ac_count_match: "15 AC rows in acceptance.md → 15 ACs referenced in CHANGELOG entry"
+  file_path_verification: "all 10 file paths (6 command files + 5 workflow files deleted, 7 skill dirs deleted) verified via ls"
+canary_compliance_check:
+  template_leak_neutrality: "PASS — no internal SPEC ID / REQ token / audit citation / commit SHA / date / CLAUDE.local reference in template source changes"
+  spec_lint_run: "exit 0 — spec.md frontmatter canonical 12 fields validated"
+  lsp_quality_gate: "exit 0 — golangci-lint 0 issues; go vet clean"
+```

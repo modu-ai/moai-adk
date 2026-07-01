@@ -2,7 +2,7 @@
 id: SPEC-SUBCOMMAND-RETIRE-001
 title: "Retire 5 underused /moai subcommands and 7 dependent skills"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-01
 updated: 2026-07-01
 author: manager-spec
