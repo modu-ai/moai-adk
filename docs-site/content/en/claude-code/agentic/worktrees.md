@@ -2,7 +2,7 @@
 title: Worktrees
 weight: 50
 draft: false
-description: "How Claude Code isolates parallel sessions with git worktrees so you can run multiple tasks at once without conflicts."
+description: "How Claude Code uses git worktrees to isolate parallel sessions so multiple tasks run simultaneously without file conflicts."
 ---
 
 A worktree lets you split a single git repository into multiple working trees, so Claude Code sessions can work in parallel without ever touching each other's files.
@@ -63,11 +63,14 @@ claude --worktree feature-auth
 
 # A second isolated session in another terminal
 claude --worktree bugfix-123
+
+# Let Claude auto-generate a name
+claude --worktree
 ```
 
 If you omit the name, Claude auto-generates one like `bright-running-fox`. You can also create a worktree mid-session with the `EnterWorktree` tool by asking it to "work in a worktree."
 
-> Before using `--worktree` for the first time in a directory, you must first run `claude` once in that directory and accept the workspace trust dialog.
+> Before using `--worktree` for the first time in a directory, you must first run `claude` once in that directory and accept the workspace trust dialog. The `-p` flag allows you to skip the trust dialog in non-interactive mode.
 
 ### Base Branch and Copying Ignored Files
 
@@ -82,21 +85,25 @@ Adding `.claude/worktrees/` to `.gitignore` keeps worktree contents from showing
 
 ### Subagent Isolation
 
-Subagents can also run each in their own worktree to prevent parallel-edit conflicts. Adding `isolation: worktree` to a custom subagent's frontmatter makes it always isolated. A subagent's temporary worktree is automatically removed if it finishes without any changes.
+Subagents can also run each in their own worktree to prevent parallel-edit conflicts. Adding `isolation: worktree` to a custom subagent's frontmatter makes it always isolated.
+
+A subagent's temporary worktree is automatically removed if it finishes without any changes. If there were changes, Claude asks whether to keep or remove them.
 
 ### Cleanup
 
 How cleanup happens on exit depends on whether there were changes.
 
-- If there are no commits, changes, or untracked files, the worktree and branch are automatically removed.
-- If there are changes, Claude asks whether to keep or remove them.
-- Non-interactive (`-p`) runs are not cleaned up automatically, so remove them yourself with `git worktree remove`.
+- **Clean state** (no commits, changes, or untracked files): The worktree and branch are automatically removed.
+- **With changes**: Claude asks whether to keep or remove them.
+- **Prompt changed**: If the subagent's prompt changed since spawning, any previous temporary worktree is automatically removed.
+- **Non-interactive (`-p`)**: Non-interactive runs are not cleaned up automatically, so remove them yourself with `git worktree remove`.
+- **Worktree created with `--worktree` flag**: These worktrees are not automatically pruned by `git worktree prune` or similar tools.
 
-For non-git systems such as SVN, Perforce, and Mercurial, you can define the creation/cleanup logic yourself with the `WorktreeCreate` / `WorktreeRemove` hooks.
+Adding `.claude/worktrees/` to `.gitignore` ensures the main checkout stays clean and you can tell at a glance which change belongs to which tree.
 
 ## Deep Use in MoAI-ADK
 
-MoAI-ADK makes broad use of this worktree mechanism for SPEC-level parallel development and multi-session isolation. Practical topics—such as which situations call for turning on worktrees and how they mesh with session handoff—are covered in the MoAI-ADK-specific guides below, so this page stops at the conceptual introduction and points to the links for the deeper material.
+MoAI-ADK makes broad use of this worktree mechanism for SPEC-level parallel development and multi-session isolation. Practical topics — such as which situations call for turning on worktrees, how they mesh with session handoff, and multi-terminal coordination — are covered in the MoAI-ADK-specific guides below, so this page stops at the conceptual introduction and points to the links for the deeper material.
 
 ## Related Docs
 
@@ -106,7 +113,7 @@ MoAI-ADK makes broad use of this worktree mechanism for SPEC-level parallel deve
 
 ## References
 
-- [Run parallel sessions with worktrees (official Claude Code docs)](https://code.claude.com/docs/en/worktrees)
+- [Worktrees — Claude Code official docs](https://code.claude.com/docs/en/worktrees)
 
 {{< callout type="tip" >}}
 If you are adopting worktrees for the first time, add `.claude/worktrees/` to `.gitignore` first. This keeps the main checkout clean so you can tell at a glance which change belongs to which tree.

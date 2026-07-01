@@ -2,7 +2,7 @@
 title: Agent Teams
 weight: 20
 draft: false
-description: "An overview of agent teams—how multiple Claude Code sessions collaborate through a shared TaskList, the recommended team size, and how to enable them."
+description: "How multiple Claude Code sessions collaborate as agent teams through a shared task list, the recommended team size, and how to enable them."
 ---
 
 Agent Teams is an experimental feature that groups multiple Claude Code sessions into a single team so they can collaborate through a shared task list and peer-to-peer messaging.
@@ -94,9 +94,17 @@ flowchart TD
 
 The lead distributes work through the task list, teammates talk to each other directly via the mailbox, and the user can also instruct individual teammates without going through the lead.
 
-## Enablement Requirements
+## Enablement Requirements (v2.1.178+)
 
-Agent teams are an **experimental feature and disabled by default**. They require Claude Code v2.1.32 or later, and you enable them by setting the environment variable `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` to `1`. Specify it directly in your shell environment or register it in `settings.json`.
+Agent teams are an **experimental feature and disabled by default**. They require Claude Code v2.1.178 or later, and you enable them by setting the environment variable `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` to `1`.
+
+### Changes in v2.1.178
+
+- **Implicit Teams**: Team creation is now simpler. When the lead spawns the first teammate, a team forms automatically and cleans up automatically when the session ends.
+- **TeamCreate/TeamDelete Removed**: As of v2.1.178, these commands are gone (no need to manually create or delete teams anymore).
+- **`team_name` accepted-but-ignored**: The `team_name` field still appears in hook payloads for legacy compatibility, but it is ignored (not used).
+
+Specify the environment variable directly in your shell or register it in `settings.json`.
 
 ```json
 {
@@ -114,11 +122,16 @@ Please create an agent team to explore it from different perspectives.
 One on UX, one on technical architecture, and one as a critic.
 ```
 
-### Display Modes and Teammate Model
+## Display Modes and Teammate Model
 
-Agent teams support two display modes. **In-process** runs all teammates inside the main terminal and works in any terminal with no extra setup. **Split panes** opens a separate window for each teammate and requires tmux or iTerm2. The default is `"auto"`, which uses split panes when running inside a tmux session and in-process otherwise.
+Agent teams support two display modes.
 
-You can set the mode with the `teammateMode` key in `~/.claude/settings.json`, or force it for a single session only with the `--teammate-mode in-process` flag.
+| Mode | Features | Requirements |
+|------|----------|--------------|
+| **In-process** | All teammates work inside the main terminal | No extra setup (default as of v2.1.179) |
+| **Split panes** | Each teammate gets its own window | tmux or iTerm2 required (v2.1.186+) |
+
+The default is **in-process** (as of v2.1.179), so you can use it anywhere without additional configuration. If you want to force split-pane mode:
 
 ```json
 {
@@ -126,9 +139,11 @@ You can set the mode with the `teammateMode` key in `~/.claude/settings.json`, o
 }
 ```
 
-By default, teammates do not inherit the lead's `/model` selection. The model to use when no model is specified in the prompt is configured under **Default teammate model** in `/config`.
+You can override the mode for a single session with the `--teammate-mode in-process` flag.
 
-### Quality Gate Hooks
+Teammates do not automatically inherit the lead's `/model` selection. The model to use when no model is specified in the prompt is configured under **Default teammate model** in `/config`.
+
+## Quality Gate Hooks
 
 Using [hooks](/claude-code/extensibility/hooks), you can enforce rules when a teammate finishes work, or when a task is created or completed.
 

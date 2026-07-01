@@ -2,20 +2,20 @@
 title: Goal-Driven Execution (/goal)
 weight: 60
 draft: false
-description: "Explains the /goal command, which lets Claude Code autonomously continue work every turn until a completion condition you set is satisfied."
+description: "The /goal command keeps Claude Code working autonomously toward a completion condition you set, without requiring additional prompts until the goal is achieved."
 ---
 
 The `/goal` command is an autonomous continuation mechanism: once you set a verifiable completion condition, Claude Code keeps advancing the work on its own every turn until that condition is met.
 
 {{< callout type="info" >}}
-**TL;DR**: At the end of each turn a fast model judges "is the condition met?" — if not, it automatically starts the next turn, so you never have to re-enter a prompt until the work is done.
+**TL;DR**: At the end of each turn, a fast model judges "is the condition met?" — if not, it automatically starts the next turn, so you never have to re-enter a prompt until the work is done.
 {{< /callout >}}
 
 ## What /goal Is
 
-`/goal` sets a **completion condition** and keeps Claude Code working toward it without any further input from you until the condition holds. At the end of each turn, a small fast model checks whether the condition is satisfied; if not, instead of returning control to you, it automatically starts the next turn. Once the condition is met, the goal is cleared automatically.
+`/goal` sets a **completion condition** and keeps Claude Code working toward it without any further input from you until the condition holds. At the end of each turn, a small fast model (Haiku by default) checks whether the condition is satisfied; if not, instead of returning control to you, it automatically starts the next turn. Once the condition is met, the goal is cleared automatically.
 
-It suits large tasks that have a verifiable end state.
+It suits large tasks that have a verifiable end state:
 
 - Migrating a module to a new API until every call site compiles and the tests pass
 - Implementing a design document until every acceptance criterion holds
@@ -37,7 +37,7 @@ flowchart TD
     C -->|Yes| E[Goal cleared automatically<br>achievement recorded]
 ```
 
-The evaluator does not call tools or read files directly. It judges solely from the content Claude has already **surfaced** in the conversation. That is why a condition like "all tests in `test/auth` pass" works well — Claude runs the tests and the results stay in the conversation record.
+The evaluator does not call tools or read files directly. It judges solely from the content Claude has already **surfaced** in the conversation. That is why a condition like "all tests in test/auth pass" works well — Claude runs the tests and the results stay in the conversation record.
 
 The evaluator runs on the same provider the session uses, and the tokens spent on evaluation are billed to the small fast model, which is usually negligible compared to the cost of the turn itself.
 
@@ -47,7 +47,7 @@ Since the evaluator judges only from what is surfaced in the conversation, you m
 
 | Element | Description | Example |
 | --- | --- | --- |
-| Measurable end state | A test result, a build exit code, a file count, an empty queue, and so on | "all auth tests pass" |
+| Measurable end state | A test result, a build exit code, a file count, an empty queue, etc. | "all auth tests pass" |
 | Stated verification method | How Claude should prove it | "`npm test` exits 0" or "`git status` is clean" |
 | Constraints to uphold | What must not change along the way | "no other test file is modified" |
 
@@ -103,7 +103,7 @@ To interrupt a non-interactive goal before the condition is met, terminate the p
 
 | Aspect | When the next turn starts | When it ends |
 | --- | --- | --- |
-| `/goal` | When the previous turn finishes | When the fast model confirms the condition is met |
+| `/goal` | When the previous turn finishes | When a fast model confirms the condition is met |
 | `/moai loop` (Ralph Engine) | When the diagnostic cycle (LSP / AST-grep / test / coverage) finds remaining work | When all issues are resolved or the maximum iterations are reached |
 | Stop hook | When the previous turn finishes | When your script or prompt decides |
 
@@ -131,7 +131,7 @@ The key differences are as follows.
 
 ## References
 
-- [Keep Claude working toward a goal (`/goal`)](https://code.claude.com/docs/en/goal)
+- [Goal directive (`/goal`) — Claude Code official docs](https://code.claude.com/docs/en/goal)
 
 {{< callout type="tip" >}}
 Write the condition in a form that Claude's output can prove, and always include a limit clause such as `or stop after N turns`. Because the evaluator does not read files directly, it is far more reliable to specify a verification method whose result stays in the conversation record — like "`go test ./...` exits 0" rather than "the tests pass."

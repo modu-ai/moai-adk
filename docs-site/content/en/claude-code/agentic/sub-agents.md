@@ -2,7 +2,7 @@
 title: Subagents
 weight: 10
 draft: false
-description: "An overview of Claude Code subagents — their concept, delegation to isolated contexts, and how to define them."
+description: "Claude Code subagents are specialized workers for isolated tasks. Learn their constraints, optional fields (v2.1.172+), v2.1.186 background-mode permissions, and when to delegate."
 ---
 
 Claude Code subagents are delegated workers that handle side-tasks in a separate context window and return only a result summary to the main conversation.
@@ -30,24 +30,40 @@ Each subagent independently owns the following.
 
 Claude decides when to delegate by reading each subagent's `description`. Writing that description clearly is therefore the starting point for good delegation.
 
-Claude Code includes built-in subagents such as `Explore` (read-only codebase exploration), `Plan` (plan-mode research), and `general-purpose` (combined exploration + modification tasks).
+Claude Code includes built-in subagents such as `Explore` (read-only codebase exploration with thoroughness options: quick/medium/very-thorough), `Plan` (plan-mode research), and `general-purpose` (combined exploration + modification tasks).
 
-## Core Constraint: A Subagent Cannot Spawn Another Subagent
+## Core Constraint: Subagent Nesting Depth (v2.1.172+)
 
-This is the most important structural constraint. **Subagents cannot spawn other subagents.** In other words, delegation descends exactly one level from the main conversation, and infinite nesting never occurs.
+The most important structural constraint is **nesting depth**. Subagents can spawn other subagents, but subject to a **hard depth limit of 5 levels**.
 
-This constraint is also the foundation of MoAI-ADK's orchestration design. Only the orchestrator (the main session) can invoke subagents, and an invoked agent cannot delegate to anyone in turn. As a result, instead of a hierarchical agent chain, MoAI-ADK follows a flat structure in which **the orchestrator invokes each step directly**.
+### Depth Configuration
+
+| Setting | Behavior | Enabled when |
+|---------|----------|--------------|
+| With `Agent` tool included | Nested spawning allowed | Frontmatter `tools:` field includes `Agent` |
+| Without `Agent` tool | No nested spawning | `Agent` tool omitted (or `disallowedTools:` blocks it) |
+
+This constraint is also the foundation of MoAI-ADK's orchestration design. Only the orchestrator (the main session) directly spawns subagents, and an invoked agent at depth 4 cannot spawn further (depth-5 cap). As a result, instead of a hierarchical agent chain, MoAI-ADK follows a flat structure in which **the orchestrator invokes each step directly**.
 
 ```mermaid
 flowchart TD
-    M[Main conversation<br/>Orchestrator] --> A[Subagent A<br/>Exploration]
-    M --> B[Subagent B<br/>Verification]
-    M --> C[Subagent C<br/>Implementation]
-    A -.->|Not allowed| X[Nested spawn<br/>prohibited]
-    style X fill:#fdd,stroke:#c00
+    M[Main conversation<br/>Orchestrator] --> A[Subagent A<br/>depth 1]
+    M --> B[Subagent B<br/>depth 1]
+    M --> C[Subagent C<br/>depth 1]
+    A -.->|Optional (depth ≤ 4)<br/>Requires Agent tool| X["Nested subagent<br/>depth 2"]
+    style X fill:#ffd,stroke:#c80
 ```
 
-This is also why the built-in `Plan` subagent exists separately: to perform research when plan mode needs context, without circumventing this constraint.
+The built-in `Plan` subagent exists separately for a reason: to perform research when plan mode needs context, without hitting the depth limit.
+
+## Background Mode Permissions (v2.1.186+)
+
+Subagents can run in the background (`background: true`). When a background subagent needs a permission for a tool like Bash or WebFetch:
+
+- **v2.1.186 and later**: The permission prompt surfaces in the main session (the user can press Esc to deny that one call only)
+- **Before v2.1.186**: The call was automatically rejected
+
+To avoid mid-run permission prompts when running long background tasks, pre-add needed tools to the allowlist in `settings.json`.
 
 ## When to Use One
 
@@ -55,7 +71,7 @@ Subagents are most effective in situations like these.
 
 | Situation | Benefit |
 |-----------|---------|
-| Parallel exploration | Investigate multiple files and directories simultaneously and collect only the summaries |
+| Parallel exploration | Investigate multiple files and directories simultaneously, collect only the summaries |
 | Independent verification | Check results in a separate context, free of the main conversation's bias |
 | Context isolation | Quarantine large logs and search results away from the main conversation |
 | Cost control | Route simple tasks to a fast model such as `haiku` |
@@ -69,28 +85,62 @@ A subagent is defined as a Markdown file with YAML frontmatter. You can create o
 ```markdown
 ---
 name: code-reviewer
-description: 코드 품질과 모범 사례를 검토합니다
+description: Reviews code quality and best practices
 tools: Read, Glob, Grep
 model: sonnet
 ---
 
-당신은 코드 리뷰어입니다. 호출되면 코드를 분석하고
-품질·보안·모범 사례에 대해 구체적이고 실행 가능한 피드백을 제공합니다.
+You are a code reviewer. When invoked, you analyze code and provide
+concrete, actionable feedback on quality, security, and best practices.
 ```
 
-The only required fields are `name` and `description`, and the body becomes the system prompt. The scope of application depends on where the file is stored.
+### Required Fields
+
+- `name` — The subagent's identifier (used when delegating)
+- `description` — When to delegate (Claude reads only this to decide whether to invoke the agent)
+
+### Optional Fields
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `tools` | CSV string | Allow-list of tools (e.g., `Read, Glob, Grep`) |
+| `disallowedTools` | CSV string | Deny-list of tools (alternative to `tools:`) |
+| `model` | string | Model selection: `sonnet`, `opus`, `haiku`, `fable`, or specific model ID; default `inherit` |
+| `permissionMode` | enum | Default permissions (default, plan, acceptEdits, bypass) |
+| `maxTurns` | integer | Maximum turn limit for this agent |
+| `skills` | list | Skills to load by default |
+| `mcpServers` | list | MCP servers to connect |
+| `hooks` | list | Hook events to invoke |
+| `memory` | enum | Memory scope (user, project, local) |
+| `background` | bool | Run in the background (true/false) |
+| `effort` | enum | Reasoning effort (low, medium, high, xhigh, max) |
+| `isolation: worktree` | string | Run in an isolated worktree copy of the repository |
+| `color` | string | Color shown in agent view |
+| `initialPrompt` | string | Prompt to send when the subagent is first spawned |
+
+Scope varies based on where the file is stored.
 
 | Location | Scope |
 |----------|-------|
 | `.claude/agents/` | Current project (include in version control to share with the team) |
-| `~/.claude/agents/` | All of my projects |
+| `~/.claude/agents/` | All of your projects |
 | A plugin's `agents/` | Wherever the plugin is enabled |
 
-You can restrict tool access with `tools` (allow list) or `disallowedTools` (deny list), specify the model with `model`, and use `isolation: worktree` to have the agent work in an isolated copy of the repository. However, user-interaction tools such as `AskUserQuestion` cannot be used in a subagent. This is why, in MoAI-ADK, a subagent cannot ask the user directly and instead returns a blocker report to the orchestrator.
+### AskUserQuestion Unavailable in Subagents
+
+User-interaction tools such as `AskUserQuestion` cannot be used in a subagent. This is why, in MoAI-ADK, a subagent cannot ask the user directly and instead returns a **blocker report** to the orchestrator, which then asks the user via `AskUserQuestion`.
+
+## /fork — Session Forking
+
+The `/fork <directive>` command lets you fork the current session's context into a new subagent-like context. The forked subagent:
+
+- Inherits the current conversation content
+- Leverages the parent session's prompt cache
+- Explores in a new direction independently
 
 ## For Depth, See the MoAI Agent Guide
 
-That covers the subagent concept at the Claude Code level. How MoAI-ADK operates its agent catalog on top of this mechanism, how it delegates each stage of the Plan-Run-Sync workflow, and how it generates project-specific domain-expert agents are covered in the advanced guides below.
+That covers the subagent concept at the Claude Code level. How MoAI-ADK operates its 8-agent catalog on top of this mechanism, how it delegates each stage of the Plan-Run-Sync workflow, and how it generates project-specific domain-expert agents are covered in the advanced guides below.
 
 ## Related Docs
 
