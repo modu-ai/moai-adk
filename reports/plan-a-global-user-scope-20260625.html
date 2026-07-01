@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A안 — 글로벌 user-scope 구조 전환 — Action Plan</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    :root {
+      --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413; --clay:#D97757; --clay-d:#B85C3E; --oat:#E3DACC; --olive:#788C5D;
+      --g100:#F0EEE6; --g150:#F0EEE6; --g300:#D1CFC5; --g500:#87867F; --g700:#3D3D3A;
+      --sans:"Pretendard",system-ui,-apple-system,"Segoe UI",sans-serif;
+      --serif:"Noto Serif KR",ui-serif,Georgia,serif;
+      --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+      --max-width:1100px; --radius-panel:12px; --radius-row:8px; --border:1.5px solid var(--g300);
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--ivory);color:var(--g700);font-family:var(--sans);font-size:15px;line-height:1.6;padding:56px 32px 120px;-webkit-font-smoothing:antialiased;}
+    .page{max-width:var(--max-width);margin:0 auto;}
+    header.page-head{margin-bottom:48px;max-width:820px;}
+    .eyebrow{font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--g500);margin-bottom:12px;}
+    h1{font-family:var(--serif);font-weight:700;font-size:36px;line-height:1.15;color:var(--slate);margin-bottom:16px;letter-spacing:-0.01em;}
+    .goal-box{background:var(--g100);border:var(--border);border-radius:var(--radius-panel);padding:16px 20px;font-size:14.5px;color:var(--g700);}
+    .goal-box .label{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--g500);display:block;margin-bottom:6px;}
+    section{margin-bottom:64px;}
+    .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:8px;}
+    .sec-head .num{font-family:var(--mono);font-size:12px;background:var(--oat);color:var(--slate);padding:3px 9px;border-radius:8px;flex-shrink:0;}
+    .sec-head h2{font-family:var(--serif);font-weight:700;font-size:24px;color:var(--slate);letter-spacing:-0.01em;}
+    .sec-intro{font-size:14.5px;color:var(--g500);max-width:720px;margin-bottom:28px;}
+    .summary-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:64px;}
+    @media(max-width:900px){.summary-strip{grid-template-columns:repeat(2,1fr);}}
+    .sum-cell{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:18px 20px;}
+    .sum-cell .k{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--g500);margin-bottom:6px;}
+    .sum-cell .v{font-size:17px;color:var(--slate);font-weight:600;}
+    .sum-cell .v.accent{color:var(--clay);}
+    .milestones{display:flex;flex-direction:column;}
+    .milestone{display:grid;grid-template-columns:130px 28px 1fr;gap:0 18px;position:relative;}
+    .milestone .when{text-align:right;font-family:var(--mono);font-size:12px;color:var(--g500);padding-top:4px;}
+    .milestone .dot-col{display:flex;flex-direction:column;align-items:center;}
+    .milestone .dot{width:14px;height:14px;border-radius:50%;background:var(--paper);border:3px solid var(--clay);margin-top:4px;flex-shrink:0;}
+    .milestone .dot.done{background:var(--olive);border-color:var(--olive);}
+    .milestone .line{width:2px;flex:1;background:var(--g300);margin:4px 0;}
+    .milestone:last-child .line{display:none;}
+    .milestone .body{padding-bottom:36px;}
+    .milestone .body h3{font-family:var(--serif);font-weight:700;font-size:18px;color:var(--slate);margin-bottom:4px;}
+    .milestone .body p{font-size:14px;color:var(--g500);margin-bottom:10px;max-width:620px;}
+    .tag-row{display:flex;gap:8px;flex-wrap:wrap;}
+    .tag{font-family:var(--mono);font-size:11.5px;background:var(--g100);border:1px solid var(--g300);border-radius:6px;padding:3px 8px;color:var(--g700);}
+    .diagram{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:28px;overflow-x:auto;}
+    .diagram svg{display:block;min-width:760px;}
+    .caption{font-size:13px;color:var(--g500);margin-top:12px;}
+    .risks{border:var(--border);border-radius:var(--radius-panel);overflow:hidden;background:var(--paper);}
+    .risks .row{display:grid;grid-template-columns:1.6fr 90px 1.6fr;}
+    @media(max-width:780px){.risks .row{grid-template-columns:1fr;}}
+    .risks .row + .row{border-top:var(--border);}
+    .risks .cell{padding:14px 18px;font-size:13.5px;}
+    .risks .cell + .cell{border-left:var(--border);}
+    @media(max-width:780px){.risks .cell + .cell{border-left:none;border-top:1px dashed var(--g300);}}
+    .risks .head{background:var(--g100);font-weight:600;color:var(--slate);font-size:12px;text-transform:uppercase;letter-spacing:0.04em;}
+    .sev{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;}
+    .sev.high{background:#F3D9CC;color:#8A3B1E;}
+    .sev.med{background:var(--oat);color:var(--slate);}
+    .sev.low{background:#E4E9DC;color:#4B5C39;}
+    .metrics-list{display:flex;flex-direction:column;gap:10px;max-width:760px;}
+    .metric-row{display:flex;align-items:center;gap:16px;background:var(--paper);border:var(--border);border-radius:var(--radius-row);padding:14px 18px;}
+    .metric-indicator{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+    .metric-indicator.met{background:var(--olive);}
+    .metric-indicator.unmet{background:var(--g300);}
+    .metric-label{flex:1;font-size:14px;color:var(--slate);}
+    .metric-target{font-family:var(--mono);font-size:12px;color:var(--g500);}
+    .metric-current{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--slate);}
+    footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--g300);font-family:var(--mono);font-size:12px;color:var(--g500);}
+    @media print{body{background:white;color:black;padding:0;font-size:12pt;}.page{max-width:none;}a[href]::after{content:" (" attr(href) ")";font-size:10pt;color:#555;}h1,h2,h3{page-break-after:avoid;}table,.risks,.diagram,.chart-panel{page-break-inside:avoid;}*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <header class="page-head">
+      <div class="eyebrow">Architecture Plan · moai-adk-go · 2026-06-25</div>
+      <h1>A안 — 글로벌 user-scope 구조 전환</h1>
+      <div class="goal-box">
+        <span class="label">Goal</span>
+        per-project 배포 모델에서 <strong>글로벌 user-scope</strong>(<code>~/.claude</code> + <code>~/.moai/config</code>) 공통 자산 + 프로젝트 오버라이드 <strong>3-tier 모델</strong>로 전환. Claude Code scope 병합(Managed &gt; Project &gt; User &gt; Plugin)을 활용해 자산 중복을 제거하고 16-locale 일관성과 머신 특이성 격리를 동시에 달성한다.
+      </div>
+    </header>
+
+    <div class="summary-strip">
+      <div class="sum-cell">
+        <div class="k">글로벌 배포 자산</div>
+        <div class="v accent">~330 files</div>
+      </div>
+      <div class="sum-cell">
+        <div class="k">신규 인프라 패키지</div>
+        <div class="v">5 packages</div>
+      </div>
+      <div class="sum-cell">
+        <div class="k">예상 신규 파일</div>
+        <div class="v">~15–20 Go files</div>
+      </div>
+      <div class="sum-cell">
+        <div class="k">마이그레이션 진입점</div>
+        <div class="v">moai update --global</div>
+      </div>
+    </div>
+
+    <section aria-label="Milestones">
+      <div class="sec-head"><span class="num">01</span><h2>Milestones</h2></div>
+      <p class="sec-intro">5개 신규 인프라 패키지 + 검증/문서화를 순차 마일스톤으로 진행한다. 각 패키지는 기존 아키텍처(deployer · manifest · namespace · config · cli)의 자연스러운 확장 지점에 위치한다.</p>
+      <div class="milestones">
+
+        <div class="milestone">
+          <div class="when">M1</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>Global Manifest Manager</h3>
+            <p><code>~/.moai/manifest.global.json</code>을 관리. 기존 <code>internal/manifest</code>(per-project <code>.moai/manifest.json</code>만 취급)를 글로벌 root로 확장한다. TemplateManaged/UserModified/UserCreated/Deprecated provenance 분류는 그대로 유지.</p>
+            <div class="tag-row"><span class="tag">internal/manifest</span><span class="tag">global root</span></div>
+          </div>
+        </div>
+
+        <div class="milestone">
+          <div class="when">M2</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>다중 Root Deployer</h3>
+            <p><code>Deployer.Deploy(ctx, projectRoot, m, tmplCtx)</code>가 글로벌 root 지원으로 확장. skip-on-user-modified 로직(<code>deployer.go:156-172</code>)을 글로벌 배포에도 동일 적용해 사용자 수정을 덮어쓰지 않는다.</p>
+            <div class="tag-row"><span class="tag">deployer.go</span><span class="tag">multi-root</span></div>
+          </div>
+        </div>
+
+        <div class="milestone">
+          <div class="when">M3</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>Namespace 보호 확장</h3>
+            <p><code>userOwnedScanRoots</code>(<code>update_namespace_protect.go:37-41, 213-235</code>)에 글로벌 경로를 추가하고, <code>assertNoUserOwnedNamespaceTouch</code>가 project-relative만 검사하던 것을 글로벌로 확장한다. <code>harness-*</code> 및 사용자 자산을 글로벌 scope에서도 절대 삭제/수정 금지.</p>
+            <div class="tag-row"><span class="tag">namespace</span><span class="tag">protection</span><span class="tag">§24 contract</span></div>
+          </div>
+        </div>
+
+        <div class="milestone">
+          <div class="when">M4</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>Config Fallback Loader</h3>
+            <p>글로벌 config = 기본값, 프로젝트 config이 override하는 2-tier fallback. <code>FindProjectRoot()</code>(<code>root.go:7-33</code>)는 이미 <code>~/.moai/</code>를 global state로 제외 중 — 이 원칙을 유지하며 글로벌 기본값 로딩을 얹는다.</p>
+            <div class="tag-row"><span class="tag">internal/config</span><span class="tag">fallback</span></div>
+          </div>
+        </div>
+
+        <div class="milestone">
+          <div class="when">M5</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>마이그레이션 경로</h3>
+            <p><code>moai update --global</code> 플래그 추가(<code>update.go</code> flags 84-96). 기존 프로젝트 → 글로벌 promote 경로를 제공한다. 1인 OSS Hybrid Trunk 정책(main-direct push)과 정합.</p>
+            <div class="tag-row"><span class="tag">internal/cli</span><span class="tag">--global flag</span></div>
+          </div>
+        </div>
+
+        <div class="milestone">
+          <div class="when">M6</div>
+          <div class="dot-col"><span class="dot"></span></div>
+          <div class="body">
+            <h3>검증 + 문서화</h3>
+            <p>neutrality guard를 글로벌 manifest로 확장, docs-site 4-locale 갱신, README 마이그레이션 가이드 추가. 기존 프로젝트 호환성 regression 테스트로 전환 안전성을 확보한다.</p>
+            <div class="tag-row"><span class="tag">validation</span><span class="tag">docs-site</span><span class="tag">regression</span></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section aria-label="Data flow">
+      <div class="sec-head"><span class="num">02</span><h2>Data Flow</h2></div>
+      <p class="sec-intro">글로벌 user-scope 자산이 Claude Code scope 병합을 거쳐 프로젝트 scope과 합쳐지는 3-tier 구조. 배열(permissions/hooks)은 merge, 스칼라는 override된다.</p>
+      <div class="diagram">
+        <svg viewBox="0 0 860 340" role="img" aria-label="3-tier global scope architecture">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#87867F"/>
+            </marker>
+          </defs>
+          <text x="20" y="24" font-family="JetBrains Mono, monospace" font-size="10" fill="#87867F" letter-spacing="1">GLOBAL  (~/.claude + ~/.moai)</text>
+
+          <rect x="40" y="40" width="240" height="64" rx="10" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+          <text x="160" y="66" text-anchor="middle" font-family="Noto Serif KR, serif" font-size="14" font-weight="700" fill="#141413">~/.claude</text>
+          <text x="160" y="88" text-anchor="middle" font-family="system-ui" font-size="11" fill="#87867F">agents 7 · skills 240+ · commands 18 · rules 59</text>
+
+          <rect x="300" y="40" width="240" height="64" rx="10" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+          <text x="420" y="66" text-anchor="middle" font-family="Noto Serif KR, serif" font-size="14" font-weight="700" fill="#141413">~/.moai/config</text>
+          <text x="420" y="88" text-anchor="middle" font-family="system-ui" font-size="11" fill="#87867F">language-agnostic defaults (21 sections)</text>
+
+          <rect x="560" y="40" width="260" height="64" rx="10" fill="#FAF9F5" stroke="#D1CFC5" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <text x="690" y="66" text-anchor="middle" font-family="Noto Serif KR, serif" font-size="14" font-weight="700" fill="#3D3D3A">User scope</text>
+          <text x="690" y="88" text-anchor="middle" font-family="system-ui" font-size="11" fill="#87867F">shadowed by Project (closest-wins)</text>
+
+          <line x1="180" y1="104" x2="410" y2="146" stroke="#87867F" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <line x1="420" y1="104" x2="430" y2="146" stroke="#87867F" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <line x1="660" y1="104" x2="450" y2="146" stroke="#D97757" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+
+          <rect x="160" y="150" width="540" height="48" rx="10" fill="#E3DACC" stroke="#B85C3E" stroke-width="1.5"/>
+          <text x="430" y="172" text-anchor="middle" font-family="Noto Serif KR, serif" font-size="13" font-weight="700" fill="#141413">Claude Code scope merge</text>
+          <text x="430" y="190" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#3D3D3A">precedence: Managed &gt; Project &gt; User &gt; Plugin</text>
+
+          <line x1="300" y1="198" x2="230" y2="232" stroke="#87867F" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <line x1="560" y1="198" x2="630" y2="232" stroke="#87867F" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+          <text x="20" y="226" font-family="JetBrains Mono, monospace" font-size="10" fill="#87867F" letter-spacing="1">PROJECT  (.claude + .moai)</text>
+
+          <rect x="40" y="234" width="380" height="64" rx="10" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+          <text x="230" y="260" text-anchor="middle" font-family="Noto Serif KR, serif" font-size="14" font-weight="700" fill="#141413">Project .claude</text>
+          <text x="230" y="282" text-anchor="middle" font-family="system-ui" font-size="11" fill="#87867F">hooks handle-*.sh · settings.json (machine-specific)</text>
+
+          <rect x="440" y="234" width="380" height="64" rx="10" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+          <text x="630" y="260" text-anchor="middle" font-family="Noto Serif KR, serif" font-size="14" font-weight="700" fill="#141413">Project .moai</text>
+          <text x="630" y="282" text-anchor="middle" font-family="system-ui" font-size="11" fill="#87867F">git-strategy · user · language · quality · specs/</text>
+
+          <text x="430" y="324" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#87867F">$CLAUDE_PROJECT_DIR resolves in all scopes  ·  arrays merge  ·  scalars override</text>
+        </svg>
+        <p class="caption">실선 = 동기 scope 병합, 점선 = User scope(프로젝트가 shadow). 프로젝트 scope은 오버라이드/확장만 담당한다.</p>
+      </div>
+    </section>
+
+    <section aria-label="Risks">
+      <div class="sec-head"><span class="num">03</span><h2>Risks &amp; Mitigation</h2></div>
+      <div class="risks">
+        <div class="row">
+          <div class="cell head">Risk</div>
+          <div class="cell head">Severity</div>
+          <div class="cell head">Mitigation</div>
+        </div>
+        <div class="row">
+          <div class="cell">글로벌 자산 변경이 모든 프로젝트에 즉시 영향 — 단일 변경이 다중 프로젝트 회귀를 유발</div>
+          <div class="cell"><span class="sev high">High</span></div>
+          <div class="cell">글로벌 manifest provenance 추적 + namespace 보호(<code>harness-*</code> 절대 삭제 금지) + 글로벌 변경 시 per-project regression 스위트 실행</div>
+        </div>
+        <div class="row">
+          <div class="cell">기존 per-project <code>.moai/manifest.json</code> 마이그레이션 중 provenance 손실</div>
+          <div class="cell"><span class="sev med">Med</span></div>
+          <div class="cell">promote 경로는 manifest 백업 + atomic copy, <code>--global --dry-run</code>으로 사전 검증</div>
+        </div>
+        <div class="row">
+          <div class="cell">scope 병합 우선순위 역방향 해석으로 사용자 자산이 shadow됨</div>
+          <div class="cell"><span class="sev high">High</span></div>
+          <div class="cell">user-owned namespace(<code>harness-*</code>)는 Project scope에서 강제 보존. <code>assertNoUserOwnedNamespaceTouch</code> 글로벌 확장</div>
+        </div>
+        <div class="row">
+          <div class="cell">머신 특이 config(team_mode · PATH)가 글로벌로 누출 — 타 머신에서 깨짐</div>
+          <div class="cell"><span class="sev med">Med</span></div>
+          <div class="cell"><code>settings.local.json</code> 분리(§2 HARD) 유지 + machine-specific config은 프로젝트 <code>.moai/</code>에만</div>
+        </div>
+        <div class="row">
+          <div class="cell">16-locale neutrality 위반 — 글로벌 자산에 moai-adk 내부 토큰(SPEC ID 등) 누출</div>
+          <div class="cell"><span class="sev low">Low</span></div>
+          <div class="cell"><code>TestTemplateNoInternalContentLeak</code> CI guard를 글로벌 배포 자산에도 확장 적용</div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-label="Success metrics">
+      <div class="sec-head"><span class="num">04</span><h2>Success Metrics</h2></div>
+      <div class="metrics-list">
+        <div class="metric-row">
+          <div class="metric-indicator unmet"></div>
+          <div class="metric-label">프로젝트별 중복 자산 제거율</div>
+          <div class="metric-target">Target: 글로벌 promote 후 <code>moai-*</code> skill 중복 0</div>
+          <div class="metric-current">측정 전</div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-indicator unmet"></div>
+          <div class="metric-label">신규 프로젝트 <code>moai init</code> 시간</div>
+          <div class="metric-target">Target: 글로벌 자산 재사용으로 50% 단축</div>
+          <div class="metric-current">baseline 필요</div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-indicator unmet"></div>
+          <div class="metric-label">namespace 보호 회귀</div>
+          <div class="metric-target">Target: <code>harness-*</code> / user-owned 자산 삭제 0건</div>
+          <div class="metric-current">방어 레이어 구축 후 측정</div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-indicator unmet"></div>
+          <div class="metric-label">16-locale neutrality</div>
+          <div class="metric-target">Target: 글로벌 자산 internal-content leak 0</div>
+          <div class="metric-current">CI guard 확장 전</div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-indicator unmet"></div>
+          <div class="metric-label">기존 프로젝트 호환성</div>
+          <div class="metric-target">Target: 마이그레이션 후 기존 워크플로우 regression 0</div>
+          <div class="metric-current">릴리스 전 E2E</div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      Sources: project_html_report_port_a_plan_handoff memory + codebase survey (deployer · manifest · namespace · config · cli) &nbsp;&mdash;&nbsp; Generated: 2026-06-25 16:00 KST
+    </footer>
+
+  </div>
+</body>
+</html>
