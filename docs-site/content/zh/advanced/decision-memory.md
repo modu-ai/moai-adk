@@ -4,6 +4,8 @@ weight: 50
 draft: false
 ---
 
+# 决策记忆系统
+
 指导 MoAI 用户偏好学习和自适应推荐系统。
 
 {{< callout type="info" >}}

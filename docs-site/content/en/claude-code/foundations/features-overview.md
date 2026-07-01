@@ -5,6 +5,8 @@ draft: false
 description: "A hub page that lays out Claude Code's core features and extension layers on a single page and guides you to each detailed document."
 ---
 
+# Features at a Glance
+
 This page is a hub that helps you survey the entire set of features Claude Code offers at a glance and quickly grasp exactly which problem each feature solves.
 
 {{< callout type="info" >}}

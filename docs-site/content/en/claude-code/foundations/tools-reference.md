@@ -5,6 +5,8 @@ draft: false
 description: "A reference for Claude Code's built-in tools — their purpose, the read/write distinction, settings.json permission configuration, and tool-selection best practices."
 ---
 
+# Tools Reference
+
 A reference for the built-in tools Claude Code uses to understand and modify a codebase, and how permissions connect to each tool.
 
 {{< callout type="info" >}}

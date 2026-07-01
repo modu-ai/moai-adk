@@ -5,6 +5,8 @@ draft: false
 description: "讲解在终端中运行的智能体编码工具 Claude Code 的智能体循环、核心组成与权限模型。"
 ---
 
+# 工作原理
+
 本文讲解 Claude Code 在理解代码并直接执行工具以完成任务时，其智能体循环的工作原理。
 
 {{< callout type="info" >}}

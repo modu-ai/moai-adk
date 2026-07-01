@@ -5,6 +5,8 @@ draft: false
 description: "Claude Code 라이프사이클 이벤트에 반응해 자동으로 실행되는 셸 스크립트, 훅(hook)의 개념과 주요 이벤트를 정리합니다."
 ---
 
+# 훅 (Hooks)
+
 훅(hook)은 Claude Code의 라이프사이클 특정 지점에서 자동으로 실행되는 셸 명령으로, 모델의 판단에 의존하지 않고 "항상 일어나야 하는 동작"을 결정적으로 보장합니다.
 
 {{< callout type="info" >}}

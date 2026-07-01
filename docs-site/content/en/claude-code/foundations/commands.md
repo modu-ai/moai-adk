@@ -5,6 +5,8 @@ draft: false
 description: "Claude Code slash commands — built-in commands, custom commands defined in Markdown, scopes, and plugin commands."
 ---
 
+# Slash Commands
+
 A slash command is the fastest way to control Claude Code directly: a single line starting with `/` inside a session.
 
 {{< callout type="info" >}}

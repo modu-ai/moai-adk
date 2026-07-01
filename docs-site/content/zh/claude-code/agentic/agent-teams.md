@@ -5,6 +5,8 @@ draft: false
 description: "梳理智能体团队的结构、推荐规模与启用方法——多个 Claude Code 会话如何通过共享 TaskList 协作。"
 ---
 
+# 智能体团队
+
 智能体团队 (Agent Teams) 是一项实验性功能，它将多个 Claude Code 会话组成一个团队，通过共享任务列表与相互消息进行协作。
 
 {{< callout type="info" >}}

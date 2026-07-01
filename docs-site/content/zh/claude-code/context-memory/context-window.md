@@ -5,6 +5,8 @@ draft: false
 description: "整理 Claude Code 上下文窗口的 token 概念、自动压缩与 /clear、用量监控以及长任务管理策略的指南。"
 ---
 
+# 上下文窗口
+
 本文整理 Claude Code 在单次会话期间所记住的一切内容所在的空间——上下文窗口 (context window)，以及高效管理它的方法。
 
 {{< callout type="info" >}}

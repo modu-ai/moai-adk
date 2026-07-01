@@ -5,6 +5,8 @@ draft: false
 description: "Claude Code 的斜杠命令 — 整理内置命令、用 Markdown 定义的自定义命令、作用域以及插件命令。"
 ---
 
+# 斜杠命令
+
 斜杠命令 (slash command) 是在会话中通过以 `/` 开头的一行直接操控 Claude Code 的最快方式。
 
 {{< callout type="info" >}}

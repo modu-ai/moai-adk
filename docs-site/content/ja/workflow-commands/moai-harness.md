@@ -4,6 +4,8 @@ weight: 55
 draft: false
 ---
 
+# /moai harness コマンド
+
 Harness v4 Builder でプロジェクト固有の動的専門家チームを生成・管理します。
 
 {{< callout type="info" >}}

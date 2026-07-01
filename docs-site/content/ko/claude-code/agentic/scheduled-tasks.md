@@ -5,6 +5,8 @@ draft: false
 description: "Claude Code의 /loop과 cron 도구로 세션 안에서 프롬프트를 정해진 주기에 자동 실행하는 예약 작업을 정리합니다."
 ---
 
+# 예약 작업
+
 Claude Code의 예약 작업 (scheduled tasks)은 같은 세션이 열려 있는 동안 프롬프트를 정해진 주기로 다시 실행하게 해 주는 기능입니다.
 
 {{< callout type="info" >}}

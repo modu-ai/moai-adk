@@ -5,6 +5,8 @@ draft: false
 description: "Claude Code subagents are specialized workers for isolated tasks. Learn their constraints, optional fields (v2.1.172+), v2.1.186 background-mode permissions, and when to delegate."
 ---
 
+# Subagents
+
 Claude Code subagents are delegated workers that handle side-tasks in a separate context window and return only a result summary to the main conversation.
 
 {{< callout type="info" >}}

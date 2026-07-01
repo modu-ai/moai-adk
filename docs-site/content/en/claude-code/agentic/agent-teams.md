@@ -5,6 +5,8 @@ draft: false
 description: "How multiple Claude Code sessions collaborate as agent teams through a shared task list, the recommended team size, and how to enable them."
 ---
 
+# Agent Teams
+
 Agent Teams is an experimental feature that groups multiple Claude Code sessions into a single team so they can collaborate through a shared task list and peer-to-peer messaging.
 
 {{< callout type="info" >}}

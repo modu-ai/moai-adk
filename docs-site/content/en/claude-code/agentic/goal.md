@@ -5,6 +5,8 @@ draft: false
 description: "The /goal command keeps Claude Code working autonomously toward a completion condition you set, without requiring additional prompts until the goal is achieved."
 ---
 
+# Goal-Driven Execution (/goal)
+
 The `/goal` command is an autonomous continuation mechanism: once you set a verifiable completion condition, Claude Code keeps advancing the work on its own every turn until that condition is met.
 
 {{< callout type="info" >}}

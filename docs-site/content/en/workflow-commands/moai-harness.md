@@ -4,6 +4,8 @@ weight: 55
 draft: false
 ---
 
+# /moai harness
+
 Create and manage dynamic project-specific expert teams with Harness v4 Builder.
 
 {{< callout type="info" >}}

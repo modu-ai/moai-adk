@@ -5,6 +5,8 @@ draft: false
 description: "Documents the structure and scopes of the .claude directory, the per-project configuration root from which Claude Code reads CLAUDE.md, settings.json, skills, sub-agents, and hooks."
 ---
 
+# The .claude Directory
+
 The `.claude` directory is the single configuration root from which Claude Code reads each project's instructions, settings, and extensions.
 
 {{< callout type="info" >}}

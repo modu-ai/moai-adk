@@ -5,6 +5,8 @@ draft: false
 description: "整理 Claude Code 内置工具的用途、读取/写入的区分、settings.json 权限配置，以及工具选择的最佳实践。"
 ---
 
+# 工具参考
+
 整理 Claude Code 在理解和修改代码库时使用的内置工具，以及权限如何与各工具关联。
 
 {{< callout type="info" >}}

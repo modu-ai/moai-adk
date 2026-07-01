@@ -5,6 +5,8 @@ draft: false
 description: "Comprehensive strategies for using Claude Code effectively: context management, verification methods, planning workflows, environment setup, and integration with MoAI-ADK."
 ---
 
+# Best Practices
+
 Claude Code is an agentic tool that reads code, runs commands, makes changes, and works through problems autonomously — so how you instruct it and how you have it verify its work determines the quality of the results.
 
 {{< callout type="info" >}}

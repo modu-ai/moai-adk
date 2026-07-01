@@ -5,6 +5,8 @@ draft: false
 description: "Claude Code 컨텍스트 윈도우의 토큰 개념, 자동 압축과 /clear, 사용량 모니터링, 긴 작업 관리 전략을 정리한 안내서입니다."
 ---
 
+# 컨텍스트 윈도우
+
 Claude Code가 한 세션 동안 기억하는 모든 것이 담기는 공간인 컨텍스트 윈도우 (context window)와, 그것을 효율적으로 관리하는 방법을 정리합니다.
 
 {{< callout type="info" >}}

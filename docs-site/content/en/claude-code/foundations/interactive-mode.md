@@ -5,6 +5,8 @@ draft: false
 description: "A quick reference to the input methods, keyboard shortcuts, and permission modes of the Claude Code interactive REPL session."
 ---
 
+# Interactive Mode
+
 This page covers the input methods, shortcuts, and permission modes of the interactive session (REPL) you encounter when you run Claude Code in the terminal.
 
 {{< callout type="info" >}}

@@ -5,6 +5,8 @@ draft: false
 description: "Claude Code のスラッシュコマンド — 組み込みコマンド、Markdown で定義するカスタムコマンド、スコープ、プラグインコマンドを整理します。"
 ---
 
+# スラッシュコマンド
+
 スラッシュコマンド (slash command) は、セッション内で `/` から始まる 1 行で Claude Code を直接操作する最速の方法です。
 
 {{< callout type="info" >}}

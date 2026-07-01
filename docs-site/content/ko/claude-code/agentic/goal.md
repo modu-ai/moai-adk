@@ -5,6 +5,8 @@ draft: false
 description: "완료 조건을 정하면 충족될 때까지 Claude Code가 매 턴마다 자율적으로 작업을 이어가는 /goal 명령을 설명합니다."
 ---
 
+# 목표 지향 실행 (/goal)
+
 `/goal` 명령은 검증 가능한 완료 조건을 한 번 정해두면 그 조건이 충족될 때까지 Claude Code가 매 턴마다 스스로 작업을 이어가도록 만드는 자율 연속 실행 장치입니다.
 
 {{< callout type="info" >}}

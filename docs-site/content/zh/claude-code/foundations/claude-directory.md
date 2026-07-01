@@ -5,6 +5,8 @@ draft: false
 description: ".claude 目录是 Claude Code 按项目读取 CLAUDE.md、settings.json、技能、子智能体和 hook 的配置根。本文梳理其结构和作用域。"
 ---
 
+# .claude 目录
+
 `.claude` 目录是 Claude Code 按项目读取指令、配置和扩展功能的单一配置根目录。
 
 {{< callout type="info" >}}

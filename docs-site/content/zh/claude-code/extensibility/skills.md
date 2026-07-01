@@ -5,6 +5,8 @@ draft: false
 description: "梳理 Claude Code 技能（SKILL.md）的概念与 Progressive Disclosure 工作方式的概览文档。"
 ---
 
+# 技能
+
 Claude Code 的技能（skill）是一种扩展机制，它将重复的流程或专业知识汇总到一个 `SKILL.md` 文件中，并将其添加到 Claude 的工具箱里。
 
 {{< callout type="info" >}}

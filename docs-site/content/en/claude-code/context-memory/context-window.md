@@ -5,6 +5,8 @@ draft: false
 description: "A guide to the token concept of the Claude Code context window, automatic compaction and /clear, usage monitoring, and strategies for managing long-running tasks."
 ---
 
+# Context Window
+
 This page covers the context window — the space that holds everything Claude Code remembers during a single session — and how to manage it efficiently.
 
 {{< callout type="info" >}}

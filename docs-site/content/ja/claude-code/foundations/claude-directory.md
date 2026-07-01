@@ -5,6 +5,8 @@ draft: false
 description: "Claude Code が CLAUDE.md、settings.json、スキル、サブエージェント、hook を読み込むプロジェクト単位の設定ルートである .claude ディレクトリの構造とスコープを整理します。"
 ---
 
+# .claude ディレクトリ
+
 `.claude` ディレクトリは、Claude Code がプロジェクトごとに指示文、設定、拡張機能を読み込む単一の設定ルートです。
 
 {{< callout type="info" >}}

@@ -4,6 +4,8 @@ weight: 55
 draft: false
 ---
 
+# /moai harness 命令
+
 通过 Harness v4 Builder 创建和管理项目特定的动态专家团队。
 
 {{< callout type="info" >}}

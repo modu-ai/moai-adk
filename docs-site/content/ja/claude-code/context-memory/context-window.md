@@ -5,6 +5,8 @@ draft: false
 description: "Claude Code のコンテキストウィンドウにおけるトークンの概念、自動圧縮と /clear、使用量モニタリング、長時間タスクの管理戦略をまとめたガイドです。"
 ---
 
+# コンテキストウィンドウ
+
 Claude Code が 1 セッションの間に記憶するすべてが収まる空間であるコンテキストウィンドウ (context window) と、それを効率的に管理する方法を整理します。
 
 {{< callout type="info" >}}

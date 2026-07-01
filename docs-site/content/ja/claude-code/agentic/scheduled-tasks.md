@@ -5,6 +5,8 @@ draft: false
 description: "Claude Code の /loop と cron ツールを使い、セッション内でプロンプトを決まった周期で自動実行する予約タスクについてまとめます。"
 ---
 
+# 予約タスク
+
 Claude Code の予約タスク (scheduled tasks) は、同じセッションが開いている間、プロンプトを決まった周期で再実行してくれる機能です。
 
 {{< callout type="info" >}}

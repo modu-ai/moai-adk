@@ -5,6 +5,8 @@ draft: false
 description: "Claude Code 내장 도구의 용도, 읽기/쓰기 구분, settings.json 권한 설정, 그리고 도구 선택 모범 사례를 정리합니다."
 ---
 
+# 도구 레퍼런스
+
 Claude Code가 코드베이스를 이해하고 수정할 때 사용하는 내장 도구들과, 각 도구에 권한이 어떻게 연결되는지를 정리합니다.
 
 {{< callout type="info" >}}

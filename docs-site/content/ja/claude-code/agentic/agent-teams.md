@@ -5,6 +5,8 @@ draft: false
 description: "複数の Claude Code セッションが共有 TaskList で協働するエージェントチームの構造、推奨規模、有効化方法をまとめます。"
 ---
 
+# エージェントチーム
+
 エージェントチーム (Agent Teams) は、複数の Claude Code セッションを 1 つのチームにまとめ、共有タスクリストと相互メッセージングによって協働させる実験的な機能です。
 
 {{< callout type="info" >}}

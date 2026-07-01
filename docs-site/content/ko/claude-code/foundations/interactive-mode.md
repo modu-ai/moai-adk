@@ -5,6 +5,8 @@ draft: false
 description: "Claude Code 대화형 REPL 세션의 입력 방식, 키보드 단축키, 권한 모드를 한눈에 정리한 안내서입니다."
 ---
 
+# 대화형 모드
+
 Claude Code를 터미널에서 실행하면 만나는 대화형 세션(REPL)의 입력 방식과 단축키, 권한 모드를 정리합니다.
 
 {{< callout type="info" >}}

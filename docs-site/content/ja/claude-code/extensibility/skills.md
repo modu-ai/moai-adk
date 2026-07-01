@@ -5,6 +5,8 @@ draft: false
 description: "Claude Code のスキル（SKILL.md）の概念と Progressive Disclosure の動作方式をまとめた概要ドキュメントです。"
 ---
 
+# スキル
+
 Claude Code のスキル（skill）は、繰り返される手順や専門知識を `SKILL.md` ファイル 1 枚にまとめて Claude のツール箱に追加する拡張メカニズムです。
 
 {{< callout type="info" >}}

@@ -5,6 +5,8 @@ draft: false
 description: "一份概览 Claude Code 交互式 REPL 会话的输入方式、键盘快捷键和权限模式的指南。"
 ---
 
+# 交互模式
+
 本文整理在终端运行 Claude Code 时进入的交互式会话（REPL）的输入方式、快捷键和权限模式。
 
 {{< callout type="info" >}}

@@ -5,6 +5,8 @@ draft: false
 description: "Using /loop and cron tools to automatically re-run prompts on a fixed interval while a Claude Code session remains open."
 ---
 
+# Scheduled Tasks
+
 Scheduled tasks in Claude Code let you re-run a prompt on a fixed interval for as long as the same session stays open.
 
 {{< callout type="info" >}}

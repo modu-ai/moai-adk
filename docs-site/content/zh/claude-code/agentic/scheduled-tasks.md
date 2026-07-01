@@ -5,6 +5,8 @@ draft: false
 description: "梳理 Claude Code 通过 /loop 和 cron 工具，在会话内按固定周期自动执行提示词的定时任务。"
 ---
 
+# 定时任务
+
 Claude Code 的定时任务 (scheduled tasks) 让你在同一个会话保持打开期间，按固定周期重新执行提示词。
 
 {{< callout type="info" >}}

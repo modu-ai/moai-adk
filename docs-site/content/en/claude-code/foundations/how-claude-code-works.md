@@ -5,6 +5,8 @@ draft: false
 description: "Explains the agentic loop, core components, and permission model of Claude Code, the agentic coding tool that runs in your terminal."
 ---
 
+# How It Works
+
 This page explains how Claude Code's agentic loop works as it understands your code and runs tools directly to complete tasks.
 
 {{< callout type="info" >}}

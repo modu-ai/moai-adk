@@ -5,6 +5,8 @@ draft: false
 description: "介绍 /goal 命令：设定完成条件后，Claude Code 会在每一轮自主推进工作，直到该条件被满足。"
 ---
 
+# 目标驱动执行 (/goal)
+
 `/goal` 命令是一种自主连续执行机制：只要设定一个可验证的完成条件，Claude Code 就会在每一轮自行推进工作，直到该条件被满足。
 
 {{< callout type="info" >}}

@@ -5,6 +5,8 @@ draft: false
 description: "An overview of hooks — shell scripts that run automatically in response to Claude Code lifecycle events — covering the concept and the key events."
 ---
 
+# Hooks
+
 A hook is a shell command that runs automatically at a specific point in the Claude Code lifecycle. It deterministically guarantees "actions that must always happen" without relying on the model's judgment.
 
 {{< callout type="info" >}}

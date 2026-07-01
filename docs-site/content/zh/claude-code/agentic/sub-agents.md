@@ -5,6 +5,8 @@ draft: false
 description: "在概要层面梳理 Claude Code 子代理的概念、隔离上下文委派以及定义方法。"
 ---
 
+# 子代理
+
 Claude Code 的子代理是一种委派型工作者，它在独立的上下文窗口中处理旁支任务，只把结果摘要返回主对话。
 
 {{< callout type="info" >}}

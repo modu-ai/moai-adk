@@ -5,6 +5,8 @@ draft: false
 description: "Claude Code の対話型 REPL セッションの入力方法、キーボードショートカット、権限モードを一目で整理したガイドです。"
 ---
 
+# 対話型モード
+
 Claude Code をターミナルで実行すると現れる対話型セッション（REPL）の入力方法やショートカット、権限モードを整理します。
 
 {{< callout type="info" >}}

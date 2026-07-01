@@ -5,6 +5,8 @@ draft: false
 description: "Claude Code의 슬래시 명령어 — 내장 명령, 마크다운으로 정의하는 커스텀 명령, 스코프, 플러그인 명령을 정리합니다."
 ---
 
+# 슬래시 명령어
+
 슬래시 명령어 (slash command)는 세션 안에서 `/`로 시작하는 한 줄로 Claude Code를 직접 조작하는 가장 빠른 방법입니다.
 
 {{< callout type="info" >}}

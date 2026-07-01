@@ -5,6 +5,8 @@ draft: false
 description: "在一页中梳理 Claude Code 的核心功能与扩展层，并引导你前往各篇详细文档的中枢页面。"
 ---
 
+# 功能一览
+
 本页是一个中枢页面，帮助你一目了然地纵览 Claude Code 提供的全部功能，并快速把握每项功能究竟解决了什么问题。
 
 {{< callout type="info" >}}

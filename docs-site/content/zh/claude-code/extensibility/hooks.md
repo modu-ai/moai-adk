@@ -5,6 +5,8 @@ draft: false
 description: "整理在 Claude Code 生命周期事件中自动触发执行的 shell 脚本——钩子（hook）的概念与主要事件。"
 ---
 
+# 钩子 (Hooks)
+
 钩子（hook）是在 Claude Code 生命周期的特定节点自动执行的 shell 命令，它不依赖模型的判断，而是确定性地保证那些"必须发生的动作"。
 
 {{< callout type="info" >}}

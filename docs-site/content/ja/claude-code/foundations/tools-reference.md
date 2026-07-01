@@ -5,6 +5,8 @@ draft: false
 description: "Claude Code の組み込みツールの用途、読み取り/書き込みの区別、settings.json の権限設定、そしてツール選択のベストプラクティスを整理します。"
 ---
 
+# ツールリファレンス
+
 Claude Code がコードベースを理解し修正するときに使う組み込みツールと、各ツールに権限がどのように結びつくのかを整理します。
 
 {{< callout type="info" >}}

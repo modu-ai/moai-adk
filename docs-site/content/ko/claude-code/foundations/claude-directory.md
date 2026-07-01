@@ -5,6 +5,8 @@ draft: false
 description: "Claude Code가 CLAUDE.md, settings.json, 스킬, 서브에이전트, hook을 읽어 들이는 프로젝트별 설정 루트인 .claude 디렉터리의 구조와 스코프를 정리합니다."
 ---
 
+# .claude 디렉터리
+
 `.claude` 디렉터리는 Claude Code가 프로젝트마다 지시문, 설정, 확장 기능을 읽어 들이는 단일 설정 루트입니다.
 
 {{< callout type="info" >}}

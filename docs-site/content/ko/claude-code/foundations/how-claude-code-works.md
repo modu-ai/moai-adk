@@ -5,6 +5,8 @@ draft: false
 description: "터미널에서 동작하는 에이전틱 코딩 도구 Claude Code의 에이전틱 루프, 핵심 구성, 권한 모델을 설명합니다."
 ---
 
+# 작동 원리
+
 Claude Code가 코드를 이해하고 직접 도구를 실행하면서 작업을 완성하는 에이전틱 루프의 작동 원리를 설명합니다.
 
 {{< callout type="info" >}}

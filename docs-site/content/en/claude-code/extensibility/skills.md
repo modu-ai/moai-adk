@@ -5,6 +5,8 @@ draft: false
 description: "An overview of the concept of Claude Code skills (SKILL.md) and how Progressive Disclosure works."
 ---
 
+# Skills
+
 A Claude Code skill is an extension mechanism that bundles a recurring procedure or specialized knowledge into a single `SKILL.md` file and adds it to Claude's toolbox.
 
 {{< callout type="info" >}}

@@ -4,6 +4,8 @@ weight: 50
 draft: false
 ---
 
+# Decision Memory System
+
 MoAI's user preference learning and adaptive recommendation system.
 
 {{< callout type="info" >}}
