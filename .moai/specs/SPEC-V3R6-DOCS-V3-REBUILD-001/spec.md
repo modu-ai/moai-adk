@@ -2,15 +2,16 @@
 id: SPEC-V3R6-DOCS-V3-REBUILD-001
 title: "Documentation Site (adk.mo.ai.kr) Full Rebuild to v3.0 Accuracy"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-07-01
-updated: 2026-07-01
+updated: 2026-07-02
 author: manager-docs
 priority: P1
 phase: "v3.0.0"
 module: "docs-site/content"
 lifecycle: spec-anchored
 tags: "docs, docs-site, i18n, rebuild"
+era: V3R6
 ---
 
 # SPEC-V3R6-DOCS-V3-REBUILD-001 — Documentation Site Full Rebuild to v3.0 Accuracy

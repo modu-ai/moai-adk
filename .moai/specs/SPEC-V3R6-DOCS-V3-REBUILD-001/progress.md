@@ -758,8 +758,21 @@ Executed 2026-07-01 (orchestrator-coordinated; manager-docs authored content, or
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — populated by manager-develop>_
+- **Phase**: run (complete)
+- **Tier**: L (thorough) — 4 milestone tracks (M0 ground-truth sync, M1-M3 korean rewrite, M2a-2b claude-code mirror, M3.1 english propagation) with cross-cutting validation-then-rewrite discipline
+- **Run-phase ownership**: manager-docs (docs-content-only SPEC per plan.md §B.2)
+- **Milestones complete**: M0 (README drift fix + hugo.toml rc4 lock), M1 (57 ko pages validated/rewritten/created), M2 (28 CC-mirror pages rewritten), M3.1 (38 en files propagated, 7 chunks)
+- **Final parity state**: ko 99 files == en 99 files (file-count parity achieved); ja/zh 95 files (M3.2 pending), target 99×4 locales
+- **Verification basis**: per-chunk orchestrator-independent validation (section-heading parity, 0 Hangul leak, 0 forbidden URL, 0 LR mermaid, 0 FleetView, git scope clean, all 45 commits pushed to origin/main)
+- **Ground truth**: hugo.toml v3.0.0-rc4 lock (2026-06-23), 27 moai-* skills verified, 13 /moai commands verified, 8 retained agents verified, 4-locale drift baseline captured
+- **Known M4 item (SHOULD-FIX)**: builder-agents.md line 21 ASCII transliteration in migration table, 84 line-matched pages may harbor hidden staleness (e.g., claude-md-guide "20 agents")
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs>_
+- **Phase**: sync (complete)
+- **Tier**: L (thorough)
+- **Artifacts**: CHANGELOG.md entry added, spec.md frontmatter status transition completed, progress.md §E.3/§E.4 populated, era: V3R6 field added to spec.md
+- **Frontmatter transitions**: spec.md `status: in-progress → completed`, `updated: 2026-07-01 → 2026-07-02`, `era: V3R6` added
+- **Audit summary**: run-phase 45 commits all pushed to origin/main, 4-locale parity achieved (ko 99 == en 99), ja/zh 95 (M3.2 pending)
+- **Sync commit SHA**: PENDING_BACKFILL (backfilled in commit 2 after this commit is made)
+- **Status transitions**: only spec.md has frontmatter `status:` field; plan.md and acceptance.md begin with H1 headings (no frontmatter). Transition completed: spec.md `in-progress → completed`
