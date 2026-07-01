@@ -18,12 +18,59 @@ Lifecycle progress ledger. §E.1 is populated at plan-phase (manager-spec). §E.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase executed as a single manager-develop session (M1→M5, sequential, no re-delegation needed). All 5 milestones committed + pushed to `main` individually (Hybrid Trunk 1-person OSS policy, no PR). Commit SHAs (oldest → newest): `1b97cb4d3` (M1), `e06864285` (M2), `9cf657de6` (M3), `7c62c4882` (M4). HEAD == `origin/main` == `7c62c48829bf9367e6613e55c2b0540bbb76974a` after final push.
+
+### AC PASS/FAIL Matrix
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|----------------------|----------------|
+| AC-DPC-001a | PASS | `DOCS_I18N_STRICT=0 scripts/docs-i18n-check.sh 2>&1 \| grep -c 'no H1 heading'` | `0` (down from plan-phase baseline 64) |
+| AC-DPC-001b | PASS | `head -n 8 <file>` spot-check across ko/en/ja/zh × 2 pages | H1 text matches frontmatter `title:` for that locale in every sampled file (verified for all 64 during authoring, not just a subset) |
+| AC-DPC-001c | PASS | `find docs-site/content/<L> -name '*.md' \| wc -l` for ko/en/ja/zh | `99 / 99 / 99 / 99` — unchanged from plan-phase baseline |
+| AC-DPC-002a | PASS | `grep -c goos docs-site/content/<L>/worktree/examples.md` for ko/en/ja/zh | `0 / 0 / 0 / 0` |
+| AC-DPC-002b | PASS | `grep -c goos docs-site/content/<L>/worktree/faq.md` for ko/en/ja/zh | `0 / 0 / 0 / 0` |
+| AC-DPC-002c | PASS | `grep -c '/path/to/your-project' docs-site/content/<L>/worktree/examples.md` for ko/en/ja/zh | `4 / 4 / 4 / 4` |
+| AC-DPC-003a | PASS | `grep -c goos docs-site/content/<L>/getting-started/inventory.md` for ko/en/ja/zh | `0 / 0 / 0 / 0` |
+| AC-DPC-003b | PASS | `grep -c '/path/to/your-project' docs-site/content/<L>/getting-started/inventory.md` for ko/en/ja/zh | `2 / 2 / 2 / 2` |
+| AC-DPC-003c | PASS | Read of the JSON block (`"project_root": "/path/to/your-project"`) in ko/inventory.md | Block starts with `{`, ends with `}`, balanced braces, valid JSON (verified by direct read) |
+| AC-DPC-004a | PASS | `cat docs-site/static/robots.txt` | `Sitemap: https://adk.mo.ai.kr/sitemap.xml` exactly |
+| AC-DPC-004b | PASS | `grep -c cowork docs-site/static/robots.txt` | `0` |
+| AC-DPC-005a | PASS | `grep -n 'version = "v3.0.0-rc5"' docs-site/hugo.toml` | Matches (params block) |
+| AC-DPC-005b | PASS | `grep -n 'rc4\|rc2\|rc3' docs-site/hugo.toml` | no matches, exit 1 |
+| AC-DPC-005c | PASS | `grep -rn 'rc4\|rc2\|rc3' docs-site/content/*/_index.md` | no matches, exit 1 |
+| AC-DPC-005d | PASS | `grep -c 'releaseDate = "2026-07-01"' docs-site/hugo.toml` → `grep -c '2026-06-23' docs-site/hugo.toml` | `1` → `0` |
+| AC-DPC-006a | PASS | `grep -c 'moai version\|uname' / 'go version' / '중복\|dedupe\|duplicate' / 'gh auth\|인증되지 않' ko/moai-feedback.md` | `3 / 2 / 5 / 2` (all ≥1) |
+| AC-DPC-006b | PASS | `grep -c 'sync-auditor' ko/moai-feedback.md` | `0` |
+| AC-DPC-006c | PASS | `grep -c 'feedback.repository\|modu-ai/moai-adk' ko/moai-feedback.md` | `1` |
+| AC-DPC-006d | PASS (manual cross-check) | Every claim in the new "피드백 설정" subsection traced against `.claude/skills/moai/workflows/feedback.md` (Diagnostic Attachment, Duplicate Detection, gh Availability and Failure Fallback sections) + `internal/config/feedback_accessors.go` (`FeedbackRepository()`) + `internal/template/templates/.moai/config/sections/feedback.yaml` (`feedback.repository` default) | No invented behavior found; all 4 enhancements traced 1:1 to source lines actually read in M4.1 |
+| AC-DPC-006e | PASS | `grep -c 'Claude Code 버전\|현재 SPEC' ko/moai-feedback.md` → `grep -c 'Go 툴체인\|Go 버전\|go version' ko/moai-feedback.md` | `0` → `3` |
+| AC-DPC-006f | PASS | `grep -c 'feedback.repository\|modu-ai/moai-adk' docs-site/content/{en,ja,zh}/utility-commands/moai-feedback.md` | `0 / 0 / 0` (ko-only content, per NFR-DPC-004) |
+
+### Milestone-to-commit mapping
+
+- M1 (`1b97cb4d3`): robots.txt domain fix + hugo.toml version/releaseDate bump + frontmatter `status: draft → in-progress`.
+- M2 (`e06864285`): 12 files (3 pages × 4 locales), maintainer-path-leak mechanical substitution.
+- M3 (`9cf657de6`): 64 files (16 pages × 4 locales), H1 heading insertion.
+- M4 (`7c62c4882`): 1 file (ko moai-feedback.md), new subsection + table + diagram correction.
+- M5: verification-only, no additional commit (this progress.md update is the sole M5 artifact change).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- **run_status**: complete
+- **run_complete_at**: 2026-07-02
+- **run_commit_sha (final)**: `7c62c48829bf9367e6613e55c2b0540bbb76974a` (== HEAD == origin/main at run-phase close)
+- **ac_pass_count**: 19 / 19 (all lettered AC-DPC entries in acceptance.md §D)
+- **ac_fail_count**: 0
+- **preserve_list_post_run_count**: 0 unintended modifications — `git status --porcelain docs-site/` empty after final push; no file outside the M1-M4 enumerated set was touched
+- **new_warnings_or_lints_introduced**: none applicable (docs-content-only SPEC; no Go/lint toolchain touched)
+- **cross_platform_build**: N/A (docs-site-only SPEC, no Go code changed)
+- **total_run_phase_files**: 78 (2 + 12 + 64 + 1 — hugo.toml + robots.txt counted individually in M1's 2, spec.md frontmatter update not counted as a "docs-site" file)
+- **hugo_build**: `hugo --minify` in `docs-site/` completed exit 0, 1750ms, emitted `v3.0.0-rc5` string in output HTML, zero warnings
+- **docs_i18n_check_strict_result**: exit 1 with exactly 1 residual error (`ja/claude-code/agentic/best-practices.md` glossary term 'Anthropic' — pre-existing, out-of-scope Check-4 finding per spec.md Exclusions), 0 Check-3 (H1) errors — matches Definition of Done exactly
+- **m1_to_mN_commit_strategy**: 4 separate milestone commits (M1-M4), each pushed individually to `main` directly (Hybrid Trunk 1-person OSS, no PR), verified `git fetch origin main` + `git rev-list --count --left-right` before each push (all `0 N`, no divergence, no parallel-session race detected on `docs-site/`)
+- **status transition performed**: `draft → in-progress` on M1 commit (frontmatter `status:` field only, per Status Transition Ownership Matrix)
+- **blockers encountered**: none — Ground Truth from plan-phase (2026-07-02 same-day) was re-verified unchanged at run-phase entry (64 H1-missing files, 28 `goos` occurrences, stale hugo.toml version, wrong robots.txt domain — all confirmed identical to plan-phase snapshot before starting M1)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+_<pending sync-phase — owned by manager-docs>_
