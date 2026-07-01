@@ -2,7 +2,7 @@
 id: SPEC-OWASP-CHECKLIST-GAP-001
 title: "moai-ref-owasp-checklist: Generalized Trust-Boundary Principles + Stale Agent Reference Fix"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-07-01
 updated: 2026-07-01
 author: manager-spec
