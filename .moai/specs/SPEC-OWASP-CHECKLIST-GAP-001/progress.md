@@ -29,7 +29,7 @@ Implementation performed by `manager-develop` (cycle_type=tdd, skill-content sco
 | AC-OCG-006 | REQ-OCG-008 | `git diff 366e701af60bb789714efbe6068cac59788fb6bb -- internal/template/templates/.claude/skills/moai-ref-owasp-checklist/SKILL.md \| grep -E '^-[^-]' \| grep -v -E 'expert-security\|expert-backend'` | (no output; grep exit code 1 = every deleted line matched the stale-reference exclusion) | PASS |
 | AC-OCG-007 | REQ-OCG-009 | `git diff --name-only 366e701af60bb789714efbe6068cac59788fb6bb -- . ':!.moai/specs/SPEC-OWASP-CHECKLIST-GAP-001/' \| grep -vE '^(\.claude/skills/moai-ref-owasp-checklist/SKILL\.md\|internal/template/templates/\.claude/skills/moai-ref-owasp-checklist/SKILL\.md\|internal/template/catalog\.yaml)$'` | Literal command returns ~103 files (see Gaps/Residual-risk below — the pinned plan-phase baseline SHA is now stale: multiple unrelated SPECs, e.g. SPEC-SUBCOMMAND-RETIRE-001, merged to `main` between plan-authoring and this run-phase session, each touching files outside this SPEC's scope). Supplementary check anchored to the actual run-phase session start (`git diff --name-only HEAD` = working-tree-vs-current-HEAD, i.e. this session's own uncommitted changes) returns exactly the 3 allowed paths: `.claude/skills/moai-ref-owasp-checklist/SKILL.md`, `internal/template/catalog.yaml`, `internal/template/templates/.claude/skills/moai-ref-owasp-checklist/SKILL.md` | PASS-WITH-DEBT (literal baseline-anchored command fails numerically due to environmental staleness, not scope violation; supplementary same-session diff confirms scope containment) |
 | AC-OCG-008 (pre-commit) | REQ-OCG-010 | `git status --porcelain -- '.claude/skills/' 'internal/template/templates/.claude/skills/' \| grep -E '^\?\?\|^A '` | (no output, grep exit 1) | PASS |
-| AC-OCG-008 (post-commit) | REQ-OCG-010 | `git diff --name-only --diff-filter=A 366e701af60bb789714efbe6068cac59788fb6bb -- '.claude/skills/' 'internal/template/templates/.claude/skills/'` | (no output, exit 0) — re-verified after the M1 commit below | PASS |
+| AC-OCG-008 (post-commit) | REQ-OCG-010 | `git diff --name-only --diff-filter=A 366e701af60bb789714efbe6068cac59788fb6bb -- '.claude/skills/' 'internal/template/templates/.claude/skills/'` | (no output, exit 0) — re-run after M1 commit `4d118e4cd1ae43e3e3586c864df65544e33a0af4`, confirmed still empty | PASS |
 
 Supplementary verification (not one of the 8 SPEC ACs, but run for correctness): `go build ./...` → exit 0, no output. `go test ./internal/template/...` → `ok  github.com/modu-ai/moai-adk/internal/template  1.124s`.
 
@@ -40,7 +40,7 @@ Supplementary verification (not one of the 8 SPEC ACs, but run for correctness):
 
 ```yaml
 run_complete_at: "2026-07-01"
-run_commit_sha: "<pending — backfilled in a follow-up commit after M1>"
+run_commit_sha: "4d118e4cd1ae43e3e3586c864df65544e33a0af4"
 run_status: implemented
 ac_pass_count: 8
 ac_fail_count: 0
