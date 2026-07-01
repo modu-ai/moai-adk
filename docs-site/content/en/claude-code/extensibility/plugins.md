@@ -67,7 +67,7 @@ With `/plugin marketplace add` you can register various sources.
 
 ```bash
 # GitHub repository (owner/repo format)
-/plugin marketplace add anthropics/claude-code
+/plugin marketplace add anthropics/claude-plugins-official
 
 # Other Git hosts (.git suffix required)
 /plugin marketplace add https://gitlab.com/company/plugins.git
@@ -84,11 +84,11 @@ The official Anthropic marketplace (`claude-plugins-official`) is automatically 
 
 ```bash
 # Install from the official marketplace
-/plugin install github@claude-plugins-official
+/plugin install hello@claude-plugins-official
 
 # Add a community marketplace, then install
 /plugin marketplace add anthropics/claude-plugins-community
-/plugin install <plugin-name>@claude-community
+/plugin install <plugin-name>@claude-plugins-community
 ```
 
 ### Installing and Managing

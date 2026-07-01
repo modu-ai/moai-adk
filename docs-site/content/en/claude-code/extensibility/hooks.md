@@ -40,17 +40,25 @@ The example above automatically runs `prettier` whenever a file is modified with
 
 ## Key Events
 
-Hooks can respond to a variety of events; the following are the most commonly used.
+Hooks can respond to over 30 different events; the following are the most commonly used.
 
 | Event | When It Fires |
 | :--- | :--- |
 | `SessionStart` | When a session starts or resumes (used for context injection) |
+| `Setup` | When Claude Code starts with the `/init` or `--init` flag |
 | `UserPromptSubmit` | Right after the user submits a prompt, before Claude processes it |
+| `UserPromptExpansion` | When a user input command expands into a prompt |
 | `PreToolUse` | Just before a tool call executes (can block) |
+| `PermissionRequest` | When a permission dialog appears |
 | `PostToolUse` | Right after a tool call succeeds (used for formatting and linting) |
+| `PostToolUseFailure` | When a tool call fails |
+| `SubagentStart` | When a subagent starts |
 | `SubagentStop` | When a subagent finishes its task |
+| `TaskCreated` | When a task is created |
+| `TaskCompleted` | When a task is marked as completed |
 | `Stop` | When Claude finishes a response |
 | `PreCompact` | Just before the context window is compacted |
+| `PostCompact` | After the context window is compacted |
 | `SessionEnd` | When a session ends |
 
 The full list of events and the per-event input schemas are documented in the official [Hooks Reference](https://code.claude.com/docs/en/hooks).

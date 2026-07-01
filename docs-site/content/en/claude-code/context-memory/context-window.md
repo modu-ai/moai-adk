@@ -19,15 +19,17 @@ The context window is the total amount of information Claude can "see" at once i
 |------------------------|-------------------|------|
 | System prompt | Not visible | Behavior rules. Always loaded first |
 | CLAUDE.md (global + project) | Not visible | Project rules and build commands |
-| Auto memory (`MEMORY.md`) | Not visible | Notes left from previous sessions |
-| Skill descriptions (1 line) + MCP tool names | Not visible | The actual body is loaded only when used |
+| Auto memory (`MEMORY.md`) | Not visible | Notes left from previous sessions. Only the first 200 lines or 25KB loads |
+| Environment info | Not visible | Operating system, shell, workspace path, etc. |
+| MCP tool names (deferred loading) | Not visible | MCP tool definitions are loaded only when needed to conserve context |
+| Skill descriptions (1 line) | Not visible | The actual body is loaded only when used |
 | User prompt | Visible | The request you actually typed |
 | Files Claude has read | Only a one-line summary | The file body is seen only by Claude |
 | Claude's analysis, edits, and responses | Visible | Printed directly to the terminal |
 
 A token is the unit used to count this information. Roughly, one English word is 1–2 tokens, while Korean takes more tokens per character. One counterintuitive fact is that **a substantial amount is already filled before the session even begins**. This is because CLAUDE.md, memory, the skill list, and MCP tool names are loaded before your first prompt.
 
-### Reading files consumes the most context
+### Reading Files Consumes the Most Context
 
 The files Claude reads while working dominate context usage. That's why writing specific prompts ("fix the bug in `auth.ts`") to reduce the number of files Claude reads is the key to saving tokens. For work that requires digging through many files — like research — delegating to a subagent processes the large file reads in a separate context window and returns only a summary of the result to the main session.
 
@@ -71,6 +73,14 @@ What happens to each piece of information after compaction depends on how it was
 | hooks | Not applicable (hooks run as code and do not remain in the context) |
 
 If you want a rule to survive compaction, remove its `paths:` frontmatter or move it to the project root CLAUDE.md. Since a skill keeps its beginning when truncated, it's safest to put important instructions near the top of `SKILL.md`.
+
+### Controlling Compaction Timing
+
+To adjust when automatic compaction starts, use the `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` environment variable. The default threshold is approximately 75–80% of the total context. For example, to start compaction at 70%, set:
+
+```bash
+export CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=70
+```
 
 ### /clear — Full Reset
 

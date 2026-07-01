@@ -31,19 +31,19 @@ An MCP server grants Claude Code access to tools, data, and APIs. Once connected
 
 ## Server Types (Transports)
 
-MCP servers are categorized by the **transport** they use to communicate with Claude Code. The common practice is to use HTTP for cloud services and stdio for local tools.
+MCP servers are categorized by the **transport** they use to communicate with Claude Code. HTTP is recommended, and legacy SSE has been deprecated.
 
 | Transport | Location | Best suited for | Notes |
 | --- | --- | --- | --- |
 | HTTP | Remote | Cloud SaaS integration | Recommended, OAuth 2.0 support |
 | stdio | Local process | System access, custom scripts | No automatic reconnection |
 | SSE | Remote | Legacy remote connections | Deprecated, replaced by HTTP |
-| WebSocket | Remote | When the server pushes events | No OAuth or `--transport` support |
+| WebSocket | Remote | When the server pushes events | HTTP or stdio preferred |
 
 ```mermaid
 flowchart TD
     CC[Claude Code]
-    CC -->|HTTP / SSE| Remote[Remote MCP Server<br>SaaS·API]
+    CC -->|HTTP| Remote[Remote MCP Server<br>SaaS·API]
     CC -->|stdio| Local[Local MCP Server<br>Process·Script]
     Remote --> Ext1[Issue Tracker·Monitoring]
     Local --> Ext2[Local DB·Filesystem]
@@ -54,14 +54,14 @@ flowchart TD
 You add a server with the `claude mcp add` family of commands. Place all options **before** the server name, and for stdio use `--` to separate the launch command.
 
 ```bash
-# Add a remote HTTP server
+# Add a remote HTTP server (recommended)
 claude mcp add --transport http notion https://mcp.notion.com/mcp
 
 # Add a local stdio server (everything after -- is the launch command)
 claude mcp add --transport stdio --env API_KEY=YOUR_KEY airtable \
   -- npx -y airtable-mcp-server
 
-# Check registrations / check status within a session
+# Check registrations
 claude mcp list
 ```
 
