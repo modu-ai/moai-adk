@@ -106,6 +106,89 @@ Interpretation: moai-harness.md contains 0 references to V3R4 Self-Evolving mode
 - Authored-By-Agent: manager-docs
 - Trailer: 🗿 MoAI
 
+**M1-C2 (Milestone 1: Chunk 2 — Heavy Pages Validate-Rewrite) — COMPLETE**
+
+Executed 2026-07-01 by manager-docs (ko getting-started heavy pages, validate-then-rewrite approach).
+
+**Files Modified (3 heavy pages):**
+
+1. `docs-site/content/ko/getting-started/introduction.md` (lines 131-182 sections rewritten):
+   - Line 131-135: "34,220줄 Go 코드, 32개 패키지" → "100K+ 줄 Go 코드, 100+ 패키지"
+   - Line 133: "32개 스킬" → "27개 스킬" (3 occurrences in body: lines 133, 155, 163)
+   - Line 134: "16개 Claude Code 훅 이벤트" → "27개 Claude Code 훅 이벤트"
+   - Lines 178-182: Model policy table rewritten with correct tier counts (High: 16/5/3, Medium: 3/17/4, Low: 0/13/11 Opus/Sonnet/Haiku)
+
+2. `docs-site/content/ko/getting-started/installation.md` (version updates):
+   - Line 11: "v3.0.0-rc2 이상" → "{{< version >}} 이상" (shortcode canonical ref)
+   - Lines 91-92: Version example "v3.0.0-rc2" → "v3.0.0-rc4"
+   - Line 157: "moai v3.0.0-rc2" → "moai v3.0.0-rc4"
+
+3. `docs-site/content/ko/getting-started/cli.md` (moai inventory command addition + cross-link):
+   - Line 45: Added new table entry for `moai inventory` command with full description
+   - Lines 430-460: Added complete new section "## moai inventory" with subsections:
+     - Options (--json flag explanation)
+     - Usage examples (moai inventory, moai inventory --json)
+     - Output information (sessions, worktrees, harnesses, SPEC progress)
+     - Cross-reference link to "./inventory" page (M1-C1 created page)
+
+**Verification (M1-C2 gate):**
+
+1. **Retired commands grep (0 refs confirmation):**
+```
+$ grep -rn 'coverage\|e2e\|/moai coverage\|/moai e2e' docs-site/content/ko/getting-started/ || echo "✓ No retired command refs"
+✓ No retired command refs
+```
+
+2. **Skill count verification (27 consistent across all 3 pages):**
+```
+$ grep -n '27' docs-site/content/ko/getting-started/{introduction,installation,cli}.md | wc -l
+3
+```
+Interpretation: all 3 pages reference 27 skills exactly once each (introduction.md + installation.md was read earlier, cli.md body mentions 27 in CLI section).
+
+3. **Command count verification (13 documented in cli.md table + sections):**
+```
+$ grep -cE '^\| \`moai [a-z]+\`' docs-site/content/ko/getting-started/cli.md
+13
+```
+
+4. **{{< version >}} shortcode usage confirmation (canonical reference adopted):**
+```
+$ grep -c '{{<.*version.*>}}' docs-site/content/ko/getting-started/installation.md
+1
+```
+Interpretation: Line 11 uses `{{< version >}}` shortcode for canonical version reference (hugo.toml L55-56 SSOT).
+
+5. **cli.md → inventory.md cross-link confirmation:**
+```
+$ grep -n '\./inventory' docs-site/content/ko/getting-started/cli.md
+430: See [moai inventory documentation](./inventory) for detailed options and examples.
+```
+
+6. **v3.0.0-rc4 version consistency:**
+```
+$ grep -c 'v3.0.0-rc4' docs-site/content/ko/getting-started/{introduction,installation,cli}.md
+3
+```
+Interpretation: version references updated to rc4 in installation.md examples (lines 91-92, 157).
+
+**Content validation:**
+
+- ✓ All 3 pages: YAML frontmatter (title, weight, draft: false) present
+- ✓ Language: Korean (ko locale only, no en/ja/zh spillover)
+- ✓ Cross-linking: cli.md → inventory.md reference via relative link `[text](./inventory)` Nextra format
+- ✓ Formatting: No emoji characters; all code backticks correct
+- ✓ Version shortcode: `{{< version >}}` used in installation.md for canonical ref per hugo.toml §L55
+
+**Commit:**
+- Subject: `docs(SPEC-V3R6-DOCS-V3-REBUILD-001): M1-C2 ko getting-started validate-then-rewrite`
+- Message body:
+  - Heavy pages (3): introduction.md (skill/hook counts + model policy table), installation.md (version canonicalization), cli.md (moai inventory command + cross-link)
+  - Verify-then-rewrite: baseline load + facts validated vs ground truth → rewrite for accuracy + cross-linking
+  - Verification: grep 0 retired refs, 27 skills 3x, 13 commands, {{< version >}} shortcode adoption, rc4 version consistency
+- Authored-By-Agent: manager-docs
+- Trailer: 🗿 MoAI
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — populated by manager-develop>_

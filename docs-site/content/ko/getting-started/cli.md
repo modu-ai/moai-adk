@@ -42,6 +42,7 @@ Flags:
 | `moai init` | 프로젝트 초기화 (언어/프레임워크/방법론 자동 감지) |
 | `moai doctor` | 시스템 진단 및 환경 검증 |
 | `moai status` | 프로젝트 상태 요약 (Git 브랜치, 품질 메트릭 등) |
+| `moai inventory` | 활성 세션, worktree, 하네스 통합 인벤토리 읽기 전용 목록 (add `--json` for structured output) |
 | `moai update` | 최신 버전 업데이트 (자동 롤백 지원) |
 | `moai worktree` | Git worktree 관리 (병렬 SPEC 개발) |
 | `moai hook` | Claude Code 훅 디스패처 |
@@ -425,6 +426,39 @@ moai status
 - **SPECs**: 활성 SPEC 개수
 - **Branch**: 현재 브랜치
 - **Git Status**: Git 상태 (Clean, Modified)
+
+---
+
+## moai inventory
+
+활성 세션, worktree, 하네스를 통합 관리하는 읽기 전용 인벤토리를 조회합니다.
+
+```bash
+moai inventory [OPTIONS]
+```
+
+### 옵션
+
+| 옵션 | 설명 |
+|------|------|
+| `--json` | 구조화된 JSON 형식 출력 |
+
+### 사용법
+
+```bash
+# 기본 인벤토리 보기
+moai inventory
+
+# JSON 형식으로 조회 (프로그래밍 활용)
+moai inventory --json
+```
+
+**출력 정보:**
+- **활성 세션**: 현재 실행 중인 Claude Code 세션
+- **Worktree**: 병렬 개발을 위한 활성 Git worktree 목록
+- **하네스**: 등록된 개발 하네스 목록
+
+자세한 내용은 [인벤토리 관리](./inventory) 페이지를 참조하세요.
 
 ---
 

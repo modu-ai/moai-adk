@@ -8,7 +8,7 @@ MoAI-ADK 2.x를 시스템에 설치하는 방법을 안내합니다.
 
 ## 라이선스
 
-MoAI-ADK v3.0.0-rc2 이상은 **Apache-2.0 라이선스** 하에 배포됩니다.
+MoAI-ADK {{< version >}} 이상은 **Apache-2.0 라이선스** 하에 배포됩니다.
 
 상업적 사용, 수정, 배포가 자유로우며, 소스 코드 공개 의무가 없습니다. 자세한 내용은 [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)을 참조하세요.
 
@@ -88,7 +88,7 @@ moai version
 
 ```bash
 # 특정 버전 설치
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version v3.0.0-rc2
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version v3.0.0-rc4
 
 # 커스텀 디렉터리에 설치
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin
@@ -154,7 +154,7 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | 
 
 ```bash
 moai version
-# 출력 예시: moai v3.0.0-rc2 (commit: abc1234, built: 2026-06-03)
+# 출력 예시: moai v3.0.0-rc4 (commit: abc1234, built: 2026-06-03)
 ```
 
 {{< callout type="info" >}}
