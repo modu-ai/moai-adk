@@ -258,7 +258,7 @@ flowchart TD
 
 **리팩토링:**
 ```
-/moai plan → /moai clean → /moai run SPEC-XXX → /moai review → /moai coverage → /moai codemaps
+/moai plan → /moai clean → /moai run SPEC-XXX → /moai review → /moai codemaps
 ```
 
 **문서 업데이트:**

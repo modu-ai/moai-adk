@@ -434,7 +434,7 @@ An autonomous error-fixing engine that combines LSP diagnostics with AST-grep:
 
 **Refactoring:**
 ```
-/moai plan → /moai clean → /moai run SPEC-XXX → /moai review → /moai coverage → /moai codemaps
+/moai plan → /moai clean → /moai run SPEC-XXX → /moai review → /moai codemaps
 ```
 
 **Documentation update:**

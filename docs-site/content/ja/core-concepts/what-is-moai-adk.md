@@ -432,7 +432,7 @@ LSP診断とAST-grepを組み合わせた自律エラー修正エンジンです
 
 **リファクタリング:**
 ```
-/moai plan → /moai clean → /moai run SPEC-XXX → /moai review → /moai coverage → /moai codemaps
+/moai plan → /moai clean → /moai run SPEC-XXX → /moai review → /moai codemaps
 ```
 
 **ドキュメント更新:**

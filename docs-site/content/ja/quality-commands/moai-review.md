@@ -274,6 +274,4 @@ flowchart TD
 ## 関連ドキュメント
 
 - [/moai fix - ワンショット自動修正](/utility-commands/moai-fix)
-- [/moai coverage - カバレッジ分析](/quality-commands/moai-coverage)
-- [/moai e2e - E2E テスト](/quality-commands/moai-e2e)
 - [/moai codemaps - アーキテクチャドキュメント](/quality-commands/moai-codemaps)

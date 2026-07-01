@@ -204,4 +204,3 @@ In `--safe-only` mode, only "Confirmed Dead" code is removed. Code used via refl
 - [/moai fix - One-shot Auto Fix](/utility-commands/moai-fix)
 - [/moai mx - @MX Tag Scan](/utility-commands/moai-mx)
 - [/moai review - Code Review](/quality-commands/moai-review)
-- [/moai coverage - Coverage Analysis](/quality-commands/moai-coverage)

@@ -274,6 +274,4 @@ flowchart TD
 ## 相关文档
 
 - [/moai fix - 一键自动修复](/utility-commands/moai-fix)
-- [/moai coverage - 覆盖率分析](/quality-commands/moai-coverage)
-- [/moai e2e - E2E 测试](/quality-commands/moai-e2e)
 - [/moai codemaps - 架构文档](/quality-commands/moai-codemaps)

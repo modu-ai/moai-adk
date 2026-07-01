@@ -173,4 +173,3 @@ flowchart TD
 - [/moai fix - 一键自动修复](/utility-commands/moai-fix)
 - [/moai mx - @MX 标签扫描](/utility-commands/moai-mx)
 - [/moai review - 代码审查](/quality-commands/moai-review)
-- [/moai coverage - 覆盖率分析](/quality-commands/moai-coverage)

@@ -274,6 +274,4 @@ Yes, after the review you can run `/moai fix` to auto-fix Level 1-2 issues. Leve
 ## Related Documentation
 
 - [/moai fix - One-shot Auto Fix](/utility-commands/moai-fix)
-- [/moai coverage - Coverage Analysis](/quality-commands/moai-coverage)
-- [/moai e2e - E2E Testing](/quality-commands/moai-e2e)
 - [/moai codemaps - Architecture Documentation](/quality-commands/moai-codemaps)

@@ -223,5 +223,4 @@ MVC, Clean Architecture, Hexagonal, Layered Architecture 등 주요 패턴을 �
 ## 관련 문서
 
 - [/moai review - 코드 리뷰](/quality-commands/moai-review)
-- [/moai coverage - 커버리지 분석](/quality-commands/moai-coverage)
 - [/moai mx - @MX 태그 스캔](/utility-commands/moai-mx)

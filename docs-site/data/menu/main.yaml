@@ -273,18 +273,6 @@ main:
           zh: /moai review
         ref: /quality-commands/moai-review
       - name:
-          ko: /moai coverage
-          en: /moai coverage
-          ja: /moai coverage
-          zh: /moai coverage
-        ref: /quality-commands/moai-coverage
-      - name:
-          ko: /moai e2e
-          en: /moai e2e
-          ja: /moai e2e
-          zh: /moai e2e
-        ref: /quality-commands/moai-e2e
-      - name:
           ko: /moai codemaps
           en: /moai codemaps
           ja: /moai codemaps
