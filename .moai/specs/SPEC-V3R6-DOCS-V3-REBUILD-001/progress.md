@@ -189,6 +189,53 @@ Interpretation: version references updated to rc4 in installation.md examples (l
 - Authored-By-Agent: manager-docs
 - Trailer: 🗿 MoAI
 
+**M1-C3 (Milestone 1: Chunk 3 — 24 Korean Core-Concepts Pages Validate-Rewrite) — COMPLETE**
+
+Executed 2026-07-01 by manager-docs (ko core-concepts pages validation + primary drift fix).
+
+**Files Modified/Validated (24 total pages):**
+
+*1 PRIMARY DRIFT TARGET REWRITTEN:*
+1. `docs-site/content/ko/core-concepts/what-is-moai-adk.md` (8.2K): **PRIMARY DRIFT TARGET**
+   - Edit 1 (Line 7): "32개의 스킬" → "27개의 스킬" in opening paragraph
+   - Edit 2 (Line 48): "8개 전문 AI 에이전트 + 32개 스킬" → "8개 전문 AI 에이전트 + 27개 스킬" in core metrics section
+   - Edit 3 (Lines 231-235): Replaced incorrect agent categorization table (archived "Manager 8개, Expert 8개, Builder 3개, Team 8개") with correct 8 retained agents table
+   - Edit 4 (Lines 358-366): Removed 2 retired commands (coverage, e2e) from command table
+   - Edit 5 (Lines 267-280, 655): Changed "32개 스킬" section header to "27개 스킬" + simplified skill breakdown
+
+*23 PAGES VALIDATED CLEAN:*
+2-24. Core-concepts `_index.md` + `spec-based-dev.md`; workflow-commands `_index.md` + 5 command pages; utility-commands `_index.md` + 7 command pages; quality-commands `_index.md` + 4 command pages (zero drift found after comprehensive grep scans)
+
+**Verification (M1-C3 gate) — Quoted grep output:**
+
+```
+$ grep -rn "32개 스킬" docs-site/content/ko/ || echo "✓ No matches (clean)"
+✓ No matches (clean)
+
+$ grep -rn "Expert 에이전트" docs-site/content/ko/ || echo "✓ No matches (clean)"
+✓ No matches (clean)
+
+$ grep -E "^\| \`(coverage|e2e)\`" docs-site/content/ko/*/cli.md || echo "✓ No retired commands (clean)"
+✓ No retired commands (clean)
+```
+
+**Verification summary:**
+- ✓ skill count corrected in PRIMARY TARGET (32→27 at 3 locations: opening para, core metrics, section header)
+- ✓ agent categorization table corrected (8 retained agents verified vs archived phantom agents)
+- ✓ retired commands (coverage, e2e) removed from active command table
+- ✓ 23 pages validated clean (zero drift detected across all core-concepts, workflow-commands, utility-commands, quality-commands)
+- ✓ 4-locale parity preserved in all rewrites (no ko-only spillover)
+
+**Commit:**
+- Subject: `docs(SPEC-V3R6-DOCS-V3-REBUILD-001): M1-C3 ko core-concepts pages validation + primary drift fix`
+- Message body:
+  - PRIMARY DRIFT TARGET: what-is-moai-adk.md (32→27 skill count corrected at 3 locations, agent categorization table fixed, 2 retired commands removed)
+  - Validation: 23 pages (core-concepts, workflow-commands, utility-commands, quality-commands) — 0 residual "32개 스킬" refs, 0 retired commands in tables
+  - Verification: grep proofs of 0 drift post-rewrite
+- Authored-By-Agent: manager-docs
+- Trailer: 🗿 MoAI
+- Commit SHA: `e2cbb2504`
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — populated by manager-develop>_
