@@ -4,11 +4,21 @@ weight: 30
 draft: false
 ---
 
-Learn how to install MoAI-ADK 2.x on your system.
+This guide shows you how to install MoAI-ADK 2.x on your system.
+
+## License
+
+MoAI-ADK {{< version >}} and above are distributed under the **Apache-2.0 License**.
+
+Commercial use, modification, and distribution are free with no source code disclosure requirement. See [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) for details.
+
+{{< callout type="info" >}}
+**Note**: MoAI-ADK 1.x (Python version) was licensed under GPL-3.0. Starting from v2.0.0, it was rewritten in Go and changed to Apache-2.0.
+{{< /callout }}
 
 ## Prerequisites
 
-Verify the following before installation:
+Before installation, verify the following:
 
 ### 1. Claude Code
 
@@ -18,7 +28,7 @@ MoAI-ADK is an extension framework that runs on top of Claude Code. Claude Code 
 claude --version
 ```
 
-If not yet installed, refer to the [Claude Code official documentation](https://docs.anthropic.com/en/docs/claude-code).
+If not yet installed, see the [Claude Code official documentation](https://docs.anthropic.com/en/docs/claude-code).
 
 ### 2. Git (Required)
 
@@ -29,7 +39,7 @@ git --version
 ```
 
 {{< callout type="warning" >}}
-**Windows Users**: You must use **Git Bash** or **WSL**. Command Prompt (cmd.exe) is not supported.
+**Windows users**: You must use **Git Bash** or **WSL**. Native Command Prompt (cmd.exe) is not supported.
 
 If Git is not installed:
 - **Windows**: Install Git for Windows from [git-scm.com](https://git-scm.com). Git Bash is included.
@@ -40,8 +50,8 @@ If Git is not installed:
 ### System Requirements
 
 | Item | Requirement |
-|------|------------|
-| **OS** | macOS, Linux, Windows (Git Bash / WSL) |
+|------|-------------|
+| **Operating System** | macOS, Linux, Windows (Git Bash / WSL) |
 | **Architecture** | amd64, arm64 |
 | **Memory** | Minimum 4GB RAM |
 | **Disk** | Minimum 100MB free space |
@@ -50,7 +60,7 @@ If Git is not installed:
 
 ### Method 1: Quick Install (Recommended)
 
-Install the latest version automatically with a single command.
+Install the latest version with a single command.
 
 **macOS / Linux / WSL / Git Bash:**
 
@@ -65,20 +75,20 @@ irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
 ```
 
 {{< callout type="info" >}}
-The install script automatically detects your platform, downloads the prebuilt binary from GitHub, verifies the SHA256 checksum, and configures PATH. No Python or separate runtime is required.
+The installation script automatically detects your platform, downloads pre-built binaries from GitHub, verifies SHA256 checksums, and configures PATH. Python or any separate runtime is not required.
 {{< /callout >}}
 
-After installation, verify:
+Verify the installation:
 
 ```bash
 moai version
 ```
 
-#### Install Options
+#### Installation Options
 
 ```bash
 # Install a specific version
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version v3.0.0-rc2
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version v3.0.0-rc4
 
 # Install to a custom directory
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin
@@ -86,7 +96,7 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | 
 
 ### Method 2: Build from Source
 
-If you have a Go development environment, you can build from source.
+If you have a Go development environment, you can build directly from source.
 
 ```bash
 git clone https://github.com/modu-ai/moai-adk.git
@@ -94,7 +104,7 @@ cd moai-adk
 make build
 ```
 
-The built binary will be at `./bin/moai`. Copy it to a directory in your PATH:
+The built binary is created at `./bin/moai`. Copy it to a PATH-specified location:
 
 ```bash
 cp ./bin/moai ~/.local/bin/

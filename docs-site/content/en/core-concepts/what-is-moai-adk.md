@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK is a **high-performance AI development environment** for Claude Code. 8 specialized AI agents and 32 skills collaborate to produce high-quality code. It automatically applies TDD (default) for new projects and feature development, and DDD for existing projects with low test coverage, while supporting both Sub-Agent and Agent Teams dual execution modes.
+MoAI-ADK is a **high-performance AI development environment** for Claude Code. 8 specialized AI agents and 27 skills collaborate to produce high-quality code. It automatically applies TDD (default) for new projects and feature development, and DDD for existing projects with low test coverage, while supporting both Sub-Agent and Agent Teams dual execution modes.
 
 Written as a single Go binary -- runs instantly on all platforms with zero dependencies.
 
@@ -45,7 +45,7 @@ The Python-based MoAI-ADK (~73,000 lines) was completely rewritten in Go.
 
 - **34,220 lines** of Go code, **32** packages
 - **85-100%** test coverage
-- **8** specialized AI agents + **32** skills
+- **8** specialized AI agents + **27** skills
 - **18** programming languages supported
 - **16** Claude Code Hook events
 
@@ -264,20 +264,19 @@ flowchart TD
     MoAI --> Explore
 ```
 
-### 32 Skills (Progressive Disclosure)
+### 27 Skills (Progressive Disclosure)
 
 Managed token-efficiently with a 3-level Progressive Disclosure system:
 
-| Category | Count | Examples |
-|----------|-------|---------|
-| **Foundation** | 4 | core, cc, thinking, quality |
-| **Workflow** | 7 | spec, project, ddd, tdd, testing, worktree, ci-loop... |
-| **Domain** | 9 | backend, frontend, database, ideation, research, design... |
-| **Reference** | 5 | api-patterns, git-workflow, owasp-checklist, react, testing-pyramid |
-| **Meta/Harness** | 2 | meta-harness, harness-learner |
-| **Design** | 1 | design-system |
-| **Tools** | 1 | foundation-cc |
-| **Integration** | 2 | claude-in-chrome, browser automation tools |
+| Category | Examples |
+|----------|---------|
+| **Foundation** | core, cc, thinking, quality |
+| **Workflow** | spec, project, ddd, tdd, testing, worktree |
+| **Domain** | backend, frontend, database, html-report |
+| **Language** | Go, Python, TypeScript, Rust, Java, Kotlin, Swift, C++... |
+| **Platform** | Vercel, Supabase, Firebase, Auth0, Clerk... |
+| **Reference** | REST/GraphQL patterns, OWASP, git workflow |
+| **Tool** | ast-grep, svg |
 
 ## MoAI Workflow
 
@@ -649,7 +648,7 @@ my-project/
 ├── CLAUDE.md                  # MoAI execution guidelines
 ├── .claude/
 │   ├── agents/moai/           # 8 AI agent definitions
-│   ├── skills/moai-*/         # 32 skill modules
+│   ├── skills/moai-*/         # 27 skill modules
 │   ├── hooks/moai/            # Automation hook scripts
 │   └── rules/moai/            # Coding rules and standards
 └── .moai/
