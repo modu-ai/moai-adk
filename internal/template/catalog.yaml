@@ -170,7 +170,7 @@ catalog:
                 - name: moai-ref-owasp-checklist
                   tier: optional-pack:devops
                   path: templates/.claude/skills/moai-ref-owasp-checklist/
-                  hash: 33c63223016f0920f534227abc3c256c0c8e732dde9d77d8942749a2be5a7383
+                  hash: e478ec44936a1bd0b571b61f2305e5a9ba5740b8b2a3bba90de43ac9e6518440
                   version: 1.0.0
                 - name: moai-ref-llm-security
                   tier: optional-pack:devops

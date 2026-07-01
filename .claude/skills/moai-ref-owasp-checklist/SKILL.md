@@ -3,13 +3,13 @@ name: moai-ref-owasp-checklist
 description: >
   OWASP Top 10 security checklist, authentication patterns, input validation,
   and HTTP security headers reference. Agent-extending skill that amplifies
-  expert-security and expert-backend expertise with production-grade security patterns.
+  backend-implementation and security-audit workflows with production-grade security patterns.
   NOT for: frontend UI, DevOps deployment, performance optimization, testing strategy.
 
 when_to_use: >
   Use for security reference: OWASP Top 10 vulnerabilities (injection,
   XSS, CSRF), authentication patterns, input validation, and HTTP security
-  headers. Amplifies expert-security and expert-backend expertise with
+  headers. Amplifies backend-implementation and security-audit workflows with
   production-grade security patterns.
 
 user-invocable: false
@@ -31,8 +31,8 @@ progressive_disclosure:
 
 ## Target Agents
 
-- `expert-security` - Primary: applies checklist during security audits
-- `expert-backend` - Secondary: applies during API implementation
+- `manager-develop` - Applies checklist during backend API implementation (`cycle_type=tdd` or `cycle_type=ddd` context)
+- `/moai security` workflow - Primary security-audit invocation surface; equivalently available as a per-spawn `Agent(general-purpose)` security specialist per `archived-agent-rejection.md` §C
 
 ## OWASP API Security Top 10
 
@@ -114,6 +114,16 @@ progressive_disclosure:
 | P1 | HIGH | Fix before merge | Missing authorization check |
 | P2 | MEDIUM | Fix within sprint | Weak password policy |
 | P3 | LOW | Track in backlog | Missing security header |
+
+## Trust Boundary Verification Principles
+
+| Principle | Applies To | Defense |
+|-----------|------------|---------|
+| Cached/client-supplied session state is not proof of current identity | Any framework caching or locally decoding a session/JWT value | Re-verify identity against the server-side source of truth (session store, token introspection, identity provider) before every authorization decision |
+| Edge/gateway/middleware auth checks are a UX convenience, not a security boundary | Reverse proxies, framework middleware, API gateways, serverless edge functions | Every mutation-handling endpoint independently re-checks authentication AND resource-ownership authorization |
+| Scheduled/cron-triggered HTTP endpoints are still public URLs | Any scheduler that invokes an HTTP endpoint (cron jobs, scheduled serverless functions, container-orchestrator scheduled jobs) | Require a shared-secret bearer check (constant-time compare) on every scheduled-endpoint invocation |
+| Production builds must not expose source maps or equivalent debug artifacts | Any bundler/build tool | Disable production source maps, verbose stack traces, and build manifests in production configuration |
+| Webhook receivers must verify a signature/HMAC header before trusting the payload | Any webhook provider | Verify signature/HMAC against a shared secret before treating the payload as legitimate business data |
 
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations
