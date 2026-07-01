@@ -92,4 +92,29 @@ Per verification-claim-integrity §1.1, the 9-command PROGRAMMATIC/HUMAN-ONLY cl
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+### Sync-phase audit evidence
+
+- **CHANGELOG.md entry created**: `[SPEC-INVOCATION-MODEL-001]` added to [Unreleased]/Added section on 2026-07-01 (orchestrator-direct append, pre-verification: grep -c = 0 before append). AC count verified = 22. Deliverable file paths verified via ls: (1) `.claude/rules/moai/workflow/native-invocation-model.md` (13.3 KB), (2) `.claude/skills/moai/workflows/feedback.md` (8.4 KB), (3) `.moai/config/sections/feedback.yaml` (356 bytes).
+- **README.md assessment**: No changes required. SPEC is infrastructure/doctrine (not a user-facing feature addition). High-level README describes architecture; detailed deliverables are documented in the deliverable files themselves and the CHANGELOG entry.
+- **spec.md frontmatter transition**: status `in-progress` → `completed` (applied 2026-07-01 on spec.md line 5).
+- **Template mirror parity**: all 3 deliverables byte-identical between local and template (verified during run-phase M4).
+- **Build + lint baseline**: `go build ./...` exit 0; `golangci-lint run ./internal/config/ ./internal/template/...` → 0 new issues; `moai spec lint spec.md` → clean.
+- **SPEC-ID format**: SPEC-INVOCATION-MODEL-001 verified correct per canonical regex at plan-phase §E.1.
+
+### Divergence recorded (classification refinement logged)
+
+During run-phase official-docs verification (AC-IM-022 in §E.2 above), two native commands were reclassified from the plan.md provisional HUMAN-ONLY to PROGRAMMATIC:
+- `/security-review` — official `skills.md` confirms it is available via the Skill tool (built-in-exposed-via-Skill-tool case)
+- `/review` — same; official `skills.md` confirms Skill-tool availability
+
+The native-invocation-model.md doctrine carries a "Classification-divergence note" cross-reference to this finding (documented in §E.2 line 39 above). The `/moai review` per-subcommand note in the doctrine reflects this divergence (its PROGRAMMATIC justification rests on Axis A orchestration composition, not a HUMAN-ONLY premise). No spec.md body edit was performed; divergence is recorded here for audit trail.
+
+### Three-phase close metadata
+
+- **plan-phase**: draft (plan.md recorded) + audit-ready signal (§E.1 above)
+- **run-phase**: M1-M4 commits on L1 worktree branch + orchestrator reconciliation pending; audit-ready signal (§E.3 above, 22/22 AC PASS, build GREEN, lint clean)
+- **sync-phase**: CHANGELOG + README + spec.md frontmatter + progress.md §E.4 (this section) + git commit to main + push (orchestrator-direct)
+
+sync_commit_sha: _<backfilled by orchestrator after commit; see below>_
+
+> **sync_commit_sha backfill procedure** (per lifecycle-redesign-001 REQ-LR-009): The sync_commit_sha field will be populated with the commit SHA of the sync-phase final commit AFTER the commit is created and its SHA is returned by `git rev-parse HEAD` (per the canonical 3-phase-close atomic commit contract, the sync commit carries the status transition + frontmatter + CHANGELOG + progress.md updates atomically; sync_commit_sha is backfilled as a follow-up precision commit within the sync phase, not a separate Mx commit). This allows the orchestrator to record the exact SHA that closed the SPEC.
