@@ -6,6 +6,18 @@ draft: false
 
 MoAI-ADK 2.x をシステムにインストールする方法を説明します。
 
+## ライセンス
+
+MoAI-ADK {{< version >}} 以降は **Apache-2.0 ライセンス** の下で配布されています。
+
+商用利用、修正、配布が自由であり、ソースコード公開の義務がありません。詳細については、[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) を参照してください。
+
+{{< callout type="info" >}}
+**注記**: MoAI-ADK 1.x (Python バージョン) は GPL-3.0 ライセンスでした。v2.0.0 から Go 言語に書き直され、Apache-2.0 に変更されました。
+{{< /callout >}}
+
+---
+
 ## 前提条件
 
 インストール前に以下を確認してください:
@@ -78,7 +90,7 @@ moai version
 
 ```bash
 # 特定バージョンをインストール
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version v3.0.0-rc2
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version v3.0.0-rc4
 
 # カスタムディレクトリにインストール
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin
