@@ -1,6 +1,6 @@
 ---
 title: CLAUDE.md 指南
-weight: 70
+weight: 80
 draft: false
 ---
 
@@ -96,6 +96,8 @@ MoAI 是 Claude Code 的战略协调器。
 | Type C (反馈) | `/moai feedback` | 改进建议报告 |
 
 ### 4. 代理目录
+
+MoAI-ADK 由 **8 个保留代理**（7 个 MoAI-custom + 1 个 Anthropic built-in）组成。架构简化后，manager-strategy、manager-quality、manager-brain、manager-project 等 12 个已归档代理已被特定域的 per-spawn `Agent(general-purpose)` 委托所替代。
 
 定义 8 个核心代理的角色和选择标准。
 

@@ -1,113 +1,272 @@
 ---
-title: /moai harness
+title: /moai harness 命令
 weight: 55
 draft: false
 ---
 
-运维 V3R4 Self-Evolving Harness 学习子系统的命令。介绍 4 阶段进化阶梯（observer → heuristic → rule → frozen-zone）以及 5 层安全流水线（frozen-guard → canary → contradiction → rate-limit → human oversight）。
+通过 Harness v4 Builder 创建和管理项目特定的动态专家团队。
 
 {{< callout type="info" >}}
-**斜杠命令**: 在 Claude Code 中输入 `/moai harness` 即可直接执行该命令。
+**斜杠命令**: 在 Claude Code 中输入 `/moai:harness <自然语言请求>` 即可直接执行该命令。
 {{< /callout >}}
 
 ## 概述
 
-`/moai harness` 提供 4 个 verb（`status`、`apply`、`rollback`、`disable`），用于安全运维 MoAI-ADK 的自演化学习子系统。PostToolUse 钩子会将每次工具调用以 append-only 方式写入 `.moai/harness/usage-log.jsonl`，提案沿 4-tier 进化阶梯进行分类。任何 Tier-4 的 frozen-zone 变更都必须通过 `AskUserQuestion` 获得用户的明确批准后才会应用。
+`/moai:harness` 执行 MoAI-ADK 的 **Harness v4 Builder**，生成与项目需求相匹配的动态专家团队。
 
-核心概念:
+### Harness v4 Builder 是什么?
 
-- **Observer**: PostToolUse 钩子把每次工具调用追加到 `.moai/harness/usage-log.jsonl`。
-- **4-Tier Evolution Ladder**: observation → heuristic → rule → frozen-zone 提案的 4 阶段。
-- **5-Layer Safety Pipeline**: 每条进化提案都必须通过 5 层安全验证才能应用。
-- **CLI Retirement**: 自 V3R4 起,所有 verb 仅在 workflow body 中通过文件系统操作执行,Go 二进制不再暴露 `moai harness` 子命令。
+Harness v4 Builder 通过基于 Socratic 访谈的 4 阶段工作流 (ANALYZE → PLAN → GENERATE → ACTIVATE) 来构建团队。
 
-## 命令格式
+| 阶段 | 说明 |
+|------|------|
+| ANALYZE | 分析项目结构、使用语言、现有代理清单 |
+| PLAN | 确定所需团队规模 (3~5 人)、角色定义、worktree 隔离策略 |
+| GENERATE | 生成 `.claude/agents/harness/` 代理文件、`.moai/harness/manifest.json` |
+| ACTIVATE | 注册团队并启用 `/harness:<name>` 命令 |
 
-```bash
-/moai harness {status | apply | rollback <YYYY-MM-DD> | disable}
-```
+## 使用方法
 
-- 参数为空时输出帮助。
-- 所有 verb 均在 orchestrator 主上下文中执行。
-
-## verbs 详解
-
-### status
-
-输出当前 harness 学习状态、待处理 Tier-4 提案数量,以及 7 天 rate-limit 窗口使用量。
-
-- **只读**: 不修改任何文件。
-- **输出包含**:
-  - `.moai/config/sections/harness.yaml` 中 `learning.enabled` 的值
-  - `.moai/harness/proposals/` 中待处理 Tier-4 提案数
-  - `.moai/harness/learning-history/applied/` 目录,过去 7 天内的应用次数
-  - 最近的 tier 提升事件(`tier-promotions.jsonl`)
-  - Frozen Guard 违规日志(`frozen-guard-violations.jsonl`)
-
-### apply
-
-将最久未处理的 Tier-4 提案送入 5-Layer Safety 流水线进行应用。应用前必须由 orchestrator 执行一次 `AskUserQuestion` 轮次,获得用户的明确批准。
-
-- **前置条件**:
-  - 7 天窗口内应用次数小于 1 次(REQ-HRN-FND-012 rate-limit floor)。
-  - 提案载荷完整性校验通过。
-- **用户选项(推荐 / Modify / Defer / Reject)**: 首选项带 `(推荐)` 标识。选择 Apply 时,事前快照将保存到 `.moai/harness/learning-history/snapshots/<ISO-DATE>/`。
-
-### rollback `<YYYY-MM-DD>`
-
-使用指定日期的快照回滚最近一次应用。若期间已累积其他进化,将输出冲突报告并请求用户再次批准。
-
-- **参数**: ISO-8601 日期(YYYY-MM-DD)。格式错误将报错。
-- **效果**: `.moai/harness/learning-history/applied/<DATE>.json` 会被移动至 `rolled-back/`,相关文件恢复到快照状态。
-
-### disable
-
-暂停 harness 学习(`learning.enabled: false`)。PostToolUse 观察继续运行,但 4-tier 分类器与提案生成器停止工作。
-
-- **使用场景**: 当进化提案可疑或正在进行外部审计时。
-- **重新启用**: 在 `.moai/config/sections/harness.yaml` 中将 `learning.enabled` 设回 `true`。
-
-## 4-Tier Evolution Ladder
-
-| Tier | 分类 | 自动应用 | 备注 |
-|------|------|----------|------|
-| Tier-1 | Observation | n/a(人工复核) | 仅被动累积日志 |
-| Tier-2 | Heuristic | 仅提示 | orchestrator 向用户建议 |
-| Tier-3 | Rule | 非 frozen 区域可自动应用 | 必须通过 canary |
-| Tier-4 | Frozen-zone | **必须用户批准** | 必须完成 5-Layer Safety |
-
-Frozen 区域由 `.claude/rules/moai/design/constitution.md` §2 与 `.claude/rules/moai/core/zone-registry.md` 定义。
-
-## 5-Layer Safety Pipeline
-
-1. **L1 Frozen Guard**: 阻止对 frozen 区域的修改尝试。
-2. **L2 Canary**: 在隔离沙箱中模拟变更影响。
-3. **L3 Contradiction**: 检测与其他生效规则的冲突。
-4. **L4 Rate Limit**: 7 天窗口内最多应用 1 次(REQ-HRN-FND-012)。
-5. **L5 Human Oversight**: 由 orchestrator 主导的 `AskUserQuestion` 批准轮次。
-
-任意一层拒绝,`apply` 即中止,提案保持 `pending` 状态。
-
-## 使用示例
+### 1 步: 用自然语言请求创建团队
 
 ```bash
-# 1) 查看当前状态
-/moai harness status
-
-# 2) 复核并应用待处理的 Tier-4 提案
-/moai harness apply
-
-# 3) 用昨日快照回滚最近一次应用
-/moai harness rollback 2026-05-21
-
-# 4) 暂停学习
-/moai harness disable
+> /moai:harness <自然语言请求>
 ```
 
-## 相关资料
+**示例:**
+```
+为我们的 Go 后端项目创建专家团队。
+我们需要分别处理 DB 迁移、REST API 端点、单元测试的团队。
+```
 
-- [`.claude/skills/moai/workflows/harness.md`](https://github.com/modu-ai/moai-adk) — workflow body SSOT
-- [`SPEC-V3R4-HARNESS-001`](https://github.com/modu-ai/moai-adk) — V3R4 foundation SPEC(合并三个 V3R3 harness SPEC)
-- [`/moai plan`](/zh/workflow-commands/moai-plan) — SPEC 文档创建
-- [`/moai run`](/zh/workflow-commands/moai-run) — DDD/TDD 实现
-- [`/moai sync`](/zh/workflow-commands/moai-sync) — 文档同步 + PR
+### 2 步: Builder 自动处理
+
+Builder 自动执行 4 阶段:
+
+1. **ANALYZE**: 检测 Go, PostgreSQL, REST API 技术栈
+2. **PLAN**: 决定 3 人团队 (DB Engineer, API Developer, Test Engineer)
+3. **GENERATE**: 
+   - `.claude/agents/harness/db-engineer.md`
+   - `.claude/agents/harness/api-developer.md`
+   - `.claude/agents/harness/test-engineer.md`
+   - `.moai/harness/manifest.json` 生成
+4. **ACTIVATE**: 注册 `/harness:backend-team` 命令
+
+### 3 步: 使用生成的团队
+
+生成后，所有后续工作中自动使用该团队:
+
+```bash
+/moai run SPEC-BACKEND-001
+/moai run --team SPEC-BACKEND-001    # 强制团队模式
+```
+
+MoAI 分析 SPEC 复杂度并按照 manifest 的阶段序列自动委托团队成员。
+
+## Harness 管理命令
+
+### harness list
+
+查看生成的所有 harness:
+
+```bash
+/harness list
+```
+
+### harness:<name> status
+
+查看特定 harness 的详细信息:
+
+```bash
+/harness:backend-team status
+```
+
+输出信息:
+- 团队成员列表和角色
+- 使用的模型 (inherit, haiku, sonnet, opus)
+- 可选 worktree 隔离设置
+- Manifest 版本和生成日期
+
+### harness:<name> edit
+
+编辑 manifest.json 和代理定义:
+
+```bash
+/harness:backend-team edit
+```
+
+可修改项:
+- 添加/删除团队成员
+- 技能预加载列表
+- Worktree 隔离策略
+- 角色特定提示
+
+### harness:<name> remove
+
+删除 harness 和关联文件:
+
+```bash
+/harness:backend-team remove
+```
+
+删除项:
+- `.claude/agents/harness/` 代理定义
+- `.moai/harness/manifest.json`
+- 注册的 `/harness:<name>` 命令
+- worktree 隔离策略
+
+## Manifest 结构
+
+Harness v4 通过 **manifest.json** 定义团队组成。
+
+### manifest.json 示例
+
+```json
+{
+  "spec_id": "HARNESS-BACKEND-001",
+  "name": "Backend Development Team",
+  "version": "1.0.0",
+  "created_at": "2026-07-01T10:00:00Z",
+  "worktree_isolation": "L1_optional",
+  
+  "phases": [
+    {
+      "name": "plan",
+      "teammates": [
+        {
+          "name": "architect",
+          "role": "API 架构专家",
+          "model": "inherit",
+          "skills": ["moai-foundation-core"]
+        }
+      ]
+    },
+    {
+      "name": "run",
+      "teammates": [
+        {
+          "name": "db-engineer",
+          "role": "DB 设计和迁移",
+          "model": "inherit"
+        },
+        {
+          "name": "api-developer",
+          "role": "REST API 端点",
+          "model": "inherit"
+        },
+        {
+          "name": "test-engineer",
+          "role": "单元测试",
+          "model": "haiku"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### 阶段字段
+
+| 字段 | 说明 |
+|------|------|
+| `name` | 阶段名称 (`plan`, `run`, `sync`) |
+| `teammates` | 该阶段参与的团队成员数组 |
+
+### 团队成员字段
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `name` | 必需 | 团队成员唯一标识 |
+| `role` | 必需 | 团队成员的角色描述 |
+| `model` | `inherit` | 模型选择 (`inherit`, `haiku`, `sonnet`, `opus`) |
+| `skills` | `[]` | 预加载的技能列表 |
+
+## Worktree 隔离
+
+Harness v4 支持可选的 worktree 隔离。
+
+### L1_optional (默认)
+
+```json
+"worktree_isolation": "L1_optional"
+```
+
+Claude Code 在并行团队成员间检测到冲突时自动创建 L1 worktree。
+
+- **可选**: 仅在冲突时启用隔离
+- **自动**: 运行时在冲突后自动生成
+- **成本**: worktree 隔离时内存增加
+
+### none
+
+```json
+"worktree_isolation": "none"
+```
+
+所有团队成员在项目根目录工作 (最小内存使用)。
+
+## 团队委托工作流
+
+Harness 激活后，MoAI 自动利用该团队。
+
+### SPEC 执行时的团队委托
+
+```bash
+> /moai run SPEC-BACKEND-001
+```
+
+**MoAI 的自动判断:**
+1. 估计 SPEC 复杂度 (文件数、代码行数)
+2. 选择合适的 harness
+3. 按 manifest 阶段顺序顺序/并列委托团队成员
+
+### 基于阶段的委托示例
+
+```
+PLAN 阶段:
+  → architect 团队成员负责架构设计
+
+RUN 阶段:
+  → db-engineer、api-developer 并列委托
+  → test-engineer 顺序委托 (测试)
+
+SYNC 阶段:
+  → 文档生成和 PR 撰写 (默认 manager-docs)
+```
+
+## 自然语言请求的力量
+
+Harness v4 Builder 通过 Socratic 访谈方式理解需求。
+
+### 有效请求示例
+
+```
+我们的团队正在开发 Python FastAPI 后端。
+我们需要擅长 API 端点、数据验证、错误处理的团队。
+```
+
+Builder 自动:
+- 检测 Python、FastAPI、asyncio 技术栈
+- 决定 3~5 人团队规模
+- 设置每个团队成员的特化领域
+- 预加载必要技能
+
+### 模糊请求由 Builder 澄清
+
+```
+我需要一个团队。
+
+→ Builder: 项目的主要技术是? (语言、框架)
+→ Builder: 团队应关注哪个领域? (后端、前端、全栈)
+→ Builder: 特别需要什么专业性?
+```
+
+## 相关文档
+
+- [Harness v4 Builder 指南](/zh/advanced/builder-agents) - Builder 4 阶段详情
+- [代理指南](/zh/advanced/agent-guide) - 8 个核心代理理解
+- [SPEC 基础开发](/zh/workflow-commands/moai-plan) - SPEC 工作流概览
+
+{{< callout type="info" >}}
+**提示**: Harness 创建一次后，所有后续工作中该团队会自动使用。可通过 `/harness:team-name` 命令随时重复使用。
+{{< /callout >}}

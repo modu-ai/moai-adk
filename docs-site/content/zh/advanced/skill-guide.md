@@ -58,62 +58,61 @@ MoAI-ADK 的规则、模式、最佳实践来响应。
 
 ## 技能分类
 
-MoAI-ADK 共有 **31 个技能** — moai 伞形路由器加上 30 个专业技能,分为 6 大类: Foundation(4)、Workflow(10)、Domain(9)、Reference(5)、Meta/Harness(2)、Design(0)。编程语言支持通过 `rules/moai/languages/` 下的规则提供,而不是单独的技能。
+MoAI-ADK 模板包含总共 **27 个 `moai-*` 技能**，分为 5 个功能类别：Foundation 4 + Workflow 8 + Domain 5 + Reference 8 + Meta/Harness 2 = 27。除此之外，还有一个独立的 `moai` umbrella 技能，用于将请求路由到专业技能。用户项目中可以额外编写 `harness-*` 自定义技能。编程语言支持通过 `rules/moai/languages/` 下的规则提供，而不是单独的技能。
 
 ### Foundation (核心哲学) - 4 个
 
 | 技能名称                     | 描述                                             |
 | ----------------------------- | ------------------------------------------------ |
 | `moai-foundation-core`        | 基于 SPEC 的 TDD/DDD, TRUST 5 框架, 执行规则    |
-| `moai-foundation-cc`          | Claude Code 扩展模式 (Skills, Agents, Hooks 等) |
+| `moai-foundation-cc`          | Claude Code 扩展模式 (Skills, Agents, Hooks) |
 | `moai-foundation-thinking`    | 结构化思维, 创意框架, 第一性原理分析            |
-| `moai-foundation-quality`     | 企业级代码质量管理, TRUST 5 验证          |
+| `moai-foundation-quality`     | 代码质量自动验证, TRUST 5 验证          |
 
-### Workflow (自动化工作流) - 10 个
+### Workflow (自动化工作流) - 8 个
 
 | 技能名称                 | 描述                                     |
 | ------------------------- | ---------------------------------------- |
 | `moai-workflow-spec`      | SPEC 文档创建, GEARS 格式, 需求分析 |
-| `moai-workflow-project`   | 项目初始化, 文档生成, 语言设置, JIT 文档加载 |
-| `moai-workflow-ddd`       | 域驱动开发 ANALYZE-PRESERVE-IMPROVE 周期   |
-| `moai-workflow-tdd`       | 测试驱动开发 RED-GREEN-REFACTOR 周期     |
-| `moai-workflow-testing`   | 测试创建, 调试, 代码审查, 性能优化 |
-| `moai-workflow-worktree`  | Git worktree 管理, 并行 SPEC 开发   |
-| `moai-workflow-loop`      | Ralph Engine 自主循环, LSP 诊断    |
-| `moai-workflow-ci-loop`   | CI 监视和自动修复循环     |
-| `moai-workflow-gan-loop`  | GAN 循环, 迭代设计改进     |
-| `moai-workflow-design`    | 设计工作流, Claude Design 集成     |
+| `moai-workflow-project`   | 项目初始化, 文档生成, 语言设置 |
+| `moai-workflow-ddd`       | ANALYZE-PRESERVE-IMPROVE 周期   |
+| `moai-workflow-tdd`       | RED-GREEN-REFACTOR 测试驱动开发     |
+| `moai-workflow-testing`   | 测试创建, 调试, 代码审查集成 |
+| `moai-workflow-worktree`  | Git worktree 基础并行开发   |
+| `moai-workflow-loop`      | Ralph Engine 自主循环, LSP 联动    |
+| `moai-workflow-ci-loop`   | CI 监视和自动修复循环工作流     |
 
-### Domain (领域专业性) - 9 个
+### Domain (领域专业性) - 5 个
 
 | 技能名称              | 描述                                             |
 | ---------------------- | ------------------------------------------------ |
-| `moai-domain-backend`  | 后端开发, API 设计, 数据库集成      |
-| `moai-domain-frontend` | 前端开发, React 19, Next.js 16, Vue 3.5 |
-| `moai-domain-database` | PostgreSQL, MongoDB, Redis 数据库设计 和查询优化 |
-| `moai-domain-design-handoff` | Claude Design 交接包, 设计系统 |
-| `moai-domain-ideation` | 创意头脑风暴, 提案生成     |
-| `moai-domain-research` | 市场和生态研究     |
-| `moai-domain-brand-design` | 品牌对齐视觉设计, 设计令牌     |
-| `moai-domain-copywriting` | 品牌对齐文案, 营销文本     |
-| `moai-domain-humanize` | AI文本拟人化, 后期编辑, 韩语AI-tell分类体系     |
+| `moai-domain-backend`  | API 设计, 微服务, 数据库集成      |
+| `moai-domain-frontend` | React 19, Next.js 16, Vue 3.5, 组件架构 |
+| `moai-domain-database` | PostgreSQL, MongoDB, Redis, 高级数据模式 |
+| `moai-domain-html-report` | Markdown → 单一 HTML 报告渲染器 (6 种模式, 无外部依赖) |
+| `moai-domain-humanize` | AI 文本拟人化, 后期编辑 (KO/EN/JA/ZH)     |
 
-### Reference (参考) - 5 个
+### Reference (参考) - 8 个
 
 | 技能名称              | 描述                                             |
 | ---------------------- | ------------------------------------------------ |
-| `moai-ref-api-patterns`  | REST/GraphQL API 设计模式      |
-| `moai-ref-react-patterns` | React/Next.js 组件设计模式 |
-| `moai-ref-git-workflow` | Git 工作流, 分支策略, 常规提交     |
-| `moai-ref-owasp-checklist` | OWASP Top 10 安全检查表 |
-| `moai-ref-testing-pyramid` | 测试金字塔, 覆盖率策略     |
+| `moai-ref-api-patterns`  | REST/GraphQL API 设计模式, 错误处理      |
+| `moai-ref-git-workflow` | Git 工作流, 分支策略, Conventional Commits     |
+| `moai-ref-owasp-checklist` | OWASP Top 10 安全模式, 输入验证 |
+| `moai-ref-react-patterns` | React/Next.js 组件模式, 状态管理     |
+| `moai-ref-testing-pyramid` | 测试金字塔策略, 覆盖率目标     |
+| `moai-ref-llm-security` | AI/LLM 防御安全 (提示注入, OWASP LLM Top 10) |
+| `moai-ref-secops` | DevSecOps/容器/API 运维防御安全 |
+| `moai-ref-supply-chain` | 软件供应链防御安全 (SBOM, SLSA, Sigstore) |
 
-### Meta/Harness (Harness 专业化) - 2 个
+### Meta/Harness (系统扩展) - 2 个
 
 | 技能名称              | 描述                                             |
 | ---------------------- | ------------------------------------------------ |
-| `moai-meta-harness`  | 项目特定代理团队设计      |
-| `moai-harness-learner` | Harness 学习子系统, 自适应更新     |
+| `moai-meta-harness`  | 项目特定代理团队动态生成      |
+| `moai-harness-learner` | Harness 学习子系统, 自动更新建议     |
+
+> 27 个 `moai-*` 技能默认包含在 MoAI-ADK 模板中，每个技能都能独立加载以节省 token。用户还可以为项目编写额外的 `harness-*` 自定义技能。
 
 ## 渐进式公开系统
 
@@ -152,7 +151,7 @@ flowchart TD
 
 ### Token 节省效果
 
-- **原有方式**: 31 个技能全部加载 = 约 160,000 tokens (不可行)
+- **原有方式**: 27 个技能全部加载 = 约 135,000 tokens (不可行)
 - **渐进式公开**: 仅加载元数据 = 约 5,200 tokens (节省 97%)
 - **按需加载**: 仅加载任务所需的 2~3 个技能 = 约 15,000 tokens 额外
 
