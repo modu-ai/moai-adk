@@ -23,9 +23,7 @@ Claude Code は 2 か所から設定を読み込みます。1 つは作業中の
 
 ここでの重要な区別は **指針 (guidance)** と **設定 (configuration)** です。`CLAUDE.md` や rules は Claude が参照する案内文なので常に守られる保証はありませんが、hook と permissions はランタイムが直接執行するため決定的です。確実な動作が必要なら、指針ではなく hook または permissions で実装すべきです。
 
-## ディレクトリ構造
-
-プロジェクトの `.claude/` 配下に入る主な項目です。`CLAUDE.md`、`.mcp.json`、`.worktreeinclude` は例外的にプロジェクトルートに配置されます。
+## プロジェクト .claude/ ディレクトリ構造
 
 | 項目 | 場所 | コミット | 役割 |
 | --- | --- | --- | --- |
@@ -40,8 +38,7 @@ Claude Code は 2 か所から設定を読み込みます。1 つは作業中の
 | `hooks/` | `.claude/` | ✓ | hook が実行するスクリプト (settings.json で登録) |
 | `agent-memory/` | `.claude/` | ✓ | サブエージェント専用の永続メモリ |
 | `.mcp.json` | プロジェクトルート | ✓ | チーム共有の MCP サーバー構成 |
-
-> 公式ドキュメントのインタラクティブエクスプローラーには、`hooks/` ディレクトリが独立したノードとして表示されません。hook は `settings.json` の `hooks` キーで登録し、実行するスクリプトファイルを `.claude/` 配下に置いてそのパスを指す構成方式です。
+| `.worktreeinclude` | プロジェクトルート | ✓ | worktree 作成時にコピーする gitignore パターン |
 
 ### 指針ファイル (Claude が読むもの)
 
@@ -59,6 +56,20 @@ Claude Code は 2 か所から設定を読み込みます。1 つは作業中の
 - **`commands/*.md`**: 単一ファイルのプロンプトです。公式にはスキルと同一のメカニズムであり、新規ワークフローはスキルとして作成することが推奨されます。
 - **`agents/*.md`**: 独自のシステムプロンプトとツールアクセス権を持つサブエージェントです。新しいコンテキストウィンドウで実行され、メイン会話をクリーンに保ちます。
 - **`workflows/*.js`**: 複数のサブエージェントをスポーン・調整するダイナミックワークフロースクリプトです。
+
+## グローバル ~/.claude/ ディレクトリ構造
+
+| 項目 | 場所 | 役割 |
+| --- | --- | --- |
+| `CLAUDE.md` | `~/.claude/` | すべてのプロジェクトに適用される個人指示 |
+| `settings.json` | `~/.claude/` | すべてのプロジェクトのデフォルト設定（プロジェクト設定でオーバーライド） |
+| `keybindings.json` | `~/.claude/` | カスタムキーボードショートカット |
+| `skills/` | `~/.claude/` | すべてのプロジェクトで使用可能な個人スキル |
+| `commands/` | `~/.claude/` | すべてのプロジェクトで使用可能な個人コマンド |
+| `agents/` | `~/.claude/` | すべてのプロジェクトで使用可能な個人サブエージェント |
+| `workflows/` | `~/.claude/` | すべてのプロジェクトで使用可能な個人ワークフロー |
+| `output-styles/` | `~/.claude/` | 個人出力スタイル |
+| `projects/` | `~/.claude/` | プロジェクト別セッション記録、会話トランスクリプト、自動メモリ |
 
 ## 設定スコープと優先順位
 
@@ -114,19 +125,7 @@ flowchart TD
 
 Claude Code は `settings.local.json` を初めて作成するとき、`~/.config/git/ignore` に自動的に追加します。カスタムの `core.excludesFile` を使う場合や、無視ルールをチームと共有したい場合は、プロジェクトの `.gitignore` にも直接パターンを入れる必要があります。
 
-この点は MoAI-ADK でも同じく重要です。MoAI-ADK は `settings.local.json` をランタイムが管理するファイルとして扱い、テンプレートには絶対に含めず、マシン別のトークン・パス・セッション状態をここに隔離します。詳しいキー別の動作は別ガイドを参照してください。
-
-## その他の場所に存在する関連ファイル
-
-エクスプローラーには表示されませんが、`.claude` エコシステムと密接に関連するファイルもあります。
-
-| ファイル | 場所 | 役割 |
-| --- | --- | --- |
-| `managed-settings.json` | OS 別のシステムパス | 組織が強制するエンタープライズ設定 |
-| `CLAUDE.local.md` | プロジェクトルート | `CLAUDE.md` と一緒に読み込まれる個人指示 |
-| インストール済みプラグイン | `~/.claude/plugins` | `claude plugin` コマンドで管理されるプラグインデータ |
-
-`~/.claude` には、Claude Code が作業中に記録するデータ (会話のトランスクリプト、プロンプト履歴、ファイルスナップショット、キャッシュ、ログ) も一緒に保存されます。このデータはデフォルトで 30 日 (`cleanupPeriodDays`) 後に自動的に整理されます。
+Claude Code は `settings.local.json` を初めて作成するとき、`.gitignore` に自動的に追加します。
 
 ## 関連ドキュメント
 
@@ -139,5 +138,5 @@ Claude Code は `settings.local.json` を初めて作成するとき、`~/.confi
 - [Explore the .claude directory (Claude Code 公式ドキュメント)](https://code.claude.com/docs/en/claude-directory)
 
 {{< callout type="tip" >}}
-新規プロジェクトであれば、まず `CLAUDE.md` と `settings.json` の 2 つのファイルだけを埋め、チームの権限・hook はプロジェクトの `settings.json` に、自分だけが使う権限は `settings.local.json` に置けば、git の衝突なくきれいに始められます。
+新規プロジェクトであれば `CLAUDE.md` と `settings.json` の 2 つのファイルだけをまず埋め、チーム権限・hook はプロジェクト `settings.json` に、本人だけが使う権限は `settings.local.json` に置けば、git 競合なくスマートに始められます。
 {{< /callout >}}
