@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK는 Claude Code를 위한 **고성능 AI 개발 환경**입니다. 8개의 전문 AI 에이전트와 32개의 스킬이 협력하여 품질 높은 코드를 생산합니다. 새 프로젝트와 기능 개발에는 TDD (기본값), 테스트 커버리지가 낮은 기존 프로젝트에는 DDD를 자동으로 적용하며, Sub-Agent와 Agent Teams 이중 실행 모드를 지원합니다.
+MoAI-ADK는 Claude Code를 위한 **고성능 AI 개발 환경**입니다. 8개의 전문 AI 에이전트와 27개의 스킬이 협력하여 품질 높은 코드를 생산합니다. 새 프로젝트와 기능 개발에는 TDD (기본값), 테스트 커버리지가 낮은 기존 프로젝트에는 DDD를 자동으로 적용하며, Sub-Agent와 Agent Teams 이중 실행 모드를 지원합니다.
 
 Go로 작성된 단일 바이너리 -- 의존성 없이 모든 플랫폼에서 즉시 실행됩니다.
 
@@ -45,7 +45,7 @@ Python 기반 MoAI-ADK (~73,000줄)를 Go로 완전히 재작성했습니다.
 
 - **34,220줄** Go 코드, **32개** 패키지
 - **85-100%** 테스트 커버리지
-- **8개** 전문 AI 에이전트 + **32개** 스킬
+- **8개** 전문 AI 에이전트 + **27개** 스킬
 - **16개** 프로그래밍 언어 지원
 - **16개** Claude Code Hook 이벤트
 
@@ -227,12 +227,18 @@ MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 작성하
 
 ### 에이전트 카테고리
 
-| 구분 | 수량 | 에이전트 | 역할 |
-|------|------|---------|------|
-| **Manager** | 8개 | spec, ddd, tdd, docs, quality, project, strategy, git | 워크플로우 조율, SPEC 생성, 품질 관리 |
-| **Expert** | 8개 | backend, frontend, security, devops, performance, debug, testing, refactoring | 도메인별 구현, 분석, 최적화 |
-| **Builder** | 3개 | agent, skill, plugin | 새로운 MoAI 구성 요소 생성 |
-| **Team** | 8개 | researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality | 병렬 팀 기반 개발 |
+MoAI는 **8개의 유지 에이전트**(7 MoAI 커스텀 + 1 Anthropic 빌트인)로 구성됩니다:
+
+| 에이전트 | 역할 |
+|---------|------|
+| **manager-spec** | Plan 단계: SPEC 문서 생성 |
+| **manager-develop** | Run 단계: DDD/TDD 구현 |
+| **manager-docs** | Sync 단계: 문서화 및 PR 생성 |
+| **manager-git** | Git 워크플로우 및 branch 관리 |
+| **plan-auditor** | SPEC 문서의 독립적 감사 |
+| **sync-auditor** | 4차원 품질 평가 |
+| **builder-harness** | 동적 하네스 생성 |
+| **Explore** (빌트인) | 읽기 전용 코드 분석 |
 
 ```mermaid
 flowchart TD
@@ -264,20 +270,19 @@ flowchart TD
     MoAI --> Explore
 ```
 
-### 32개 스킬 (Progressive Disclosure)
+### 27개 스킬 (Progressive Disclosure)
 
 3레벨 Progressive Disclosure 시스템으로 토큰 효율적으로 관리됩니다:
 
-| 카테고리 | 수량 | 예시 |
-|----------|------|------|
-| **Foundation** | 5 | core, claude, philosopher, quality, context |
-| **Workflow** | 11 | spec, project, ddd, tdd, testing, worktree, thinking... |
-| **Domain** | 5 | backend, frontend, database, uiux, data-formats |
-| **Language** | 18 | Go, Python, TypeScript, Rust, Java, Kotlin, Swift, C++... |
-| **Platform** | 9 | Vercel, Supabase, Firebase, Auth0, Clerk, Railway... |
-| **Library** | 3 | shadcn, nextra, mermaid |
-| **Tool** | 2 | ast-grep, svg |
-| **Specialist** | 10 | Figma, Flutter, Pencil... |
+| 카테고리 | 예시 |
+|----------|------|
+| **Foundation** | core, claude, thinking, quality |
+| **Workflow** | spec, project, ddd, tdd, testing, worktree |
+| **Domain** | backend, frontend, database, uiux |
+| **Language** | Go, Python, TypeScript, Rust, Java, Kotlin, Swift, C++... |
+| **Platform** | Vercel, Supabase, Firebase, Auth0, Clerk... |
+| **Reference** | REST/GraphQL patterns, OWASP, git workflow |
+| **Tool** | ast-grep, svg |
 
 ## MoAI 워크플로우
 
@@ -362,8 +367,6 @@ flowchart TD
 | `fix` | -- | LSP 오류, 린트, 타입 오류 자동 수정 (단일 패스) | `--dry`, `--seq`, `--level N`, `--resume`, `--team` |
 | `loop` | -- | 완료까지 반복 자동 수정 (최대 100회) | `--max N`, `--auto-fix`, `--seq` |
 | `review` | `code-review` | 보안 및 @MX 태그 준수 코드 리뷰 | `--staged`, `--branch`, `--security` |
-| `coverage` | `test-coverage` | 테스트 커버리지 분석 및 갭 채우기 (16개 언어) | `--target N`, `--file PATH`, `--report` |
-| `e2e` | -- | E2E 테스트 (Chrome, Playwright, Agent Browser) | `--record`, `--url URL`, `--journey NAME` |
 | `clean` | `refactor-clean` | 죽은 코드 식별 및 안전 제거 | `--dry`, `--safe-only`, `--file PATH` |
 
 #### 문서 및 코드베이스
@@ -649,7 +652,7 @@ my-project/
 ├── CLAUDE.md                  # MoAI의 실행 지침서
 ├── .claude/
 │   ├── agents/moai/           # 7개 MoAI 커스텀 에이전트 정의 (+ Explore 빌트인)
-│   ├── skills/moai-*/         # 32개 스킬 모듈
+│   ├── skills/moai-*/         # 27개 스킬 모듈
 │   ├── hooks/moai/            # 자동화 훅 스크립트
 │   └── rules/moai/            # 코딩 규칙 및 표준
 └── .moai/
