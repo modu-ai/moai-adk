@@ -33,6 +33,7 @@ MoAI-ADK는 바로 이 Claude Code 위에서 동작하는 워크플로 도구입
 | 스킬 | 재사용 가능한 지식·워크플로를 담은 마크다운 단위입니다. | [확장](/claude-code/extensibility) |
 | MCP | 외부 서비스·도구를 모델에 연결하는 프로토콜입니다. | [확장](/claude-code/extensibility) |
 | hook | 라이프사이클 이벤트에 스크립트·요청·프롬프트를 자동 실행합니다. | [확장](/claude-code/extensibility) |
+| 결과물 저장소 | Claude가 생성한 HTML·마크다운·스니펫을 구조화하고 공유합니다. | [확장](/claude-code/extensibility) |
 | 플러그인 | 스킬·hook·서브에이전트·MCP를 묶어 배포하는 패키징 단위입니다. | [확장](/claude-code/extensibility) |
 | 서브에이전트 | 격리된 컨텍스트에서 독립 실행 후 요약만 반환하는 작업자입니다. | [에이전트와 자동화](/claude-code/agentic) |
 | 에이전트 팀 | 여러 독립 세션이 작업과 메시지를 공유하며 협업합니다. | [에이전트와 자동화](/claude-code/agentic) |

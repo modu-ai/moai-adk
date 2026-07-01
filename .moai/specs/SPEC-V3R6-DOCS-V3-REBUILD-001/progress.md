@@ -328,6 +328,76 @@ M1 encompasses all 13 Korean advanced content pages + 50 additional pages across
 - ✓ 4-locale parity: no ko-only spillover, all rewrites preserve en/ja/zh baseline
 - ✓ Git push state: all M0/M1 commits pushed to origin/main (origin up-to-date)
 
+**M2a-1 (Milestone 2: Chunk 1 — 4 Korean Claude Code Foundation Pages Validate-Rewrite) — COMPLETE**
+
+Executed 2026-07-01 by manager-docs (ko claude-code/foundations section, validate-then-rewrite approach against research-cc-latest.md v2.1.196 SSOT).
+
+**Files Modified/Validated (4 pages, 1 landing + 3 concept pages):**
+
+*4 CONCEPT PAGES REVIEWED + TARGETED REWRITES:*
+
+1. `docs-site/content/ko/claude-code/foundations/_index.md` (landing page):
+   - **Status: VALIDATED-CLEAN** (0 changes needed)
+   - Landing page accurately describes foundation section learning flow
+   - Cross-linking, YAML frontmatter verified correct
+   - No drift from research-cc-latest.md
+
+2. `docs-site/content/ko/claude-code/foundations/how-claude-code-works.md` (8.2K):
+   - **Edit 1 (Lines 79-91)**: Added paragraph to Context section explaining auto-compaction sequence + MCP tool-search deferral
+   - **Text added**: "컨텍스트 윈도우가 가득 찬 경우, Claude는 자동으로 컨텍스트를 압축합니다. 압축 시에는 먼저 초반의 도구 호출 결과물들을 정리하고, 그 다음 남은 정보를 요약하는 순서로 진행됩니다. 또한 MCP 도구 정의는 명시적으로 요청할 때까지 지연되어, 필요한 도구만 필요한 시점에 로드됩니다."
+   - **Drift fixed**: Official CC docs (code.claude.com/docs/en/how-claude-code-works § Context section) documents both auto-compaction order + MCP deferral; ko page was missing both
+
+3. `docs-site/content/ko/claude-code/foundations/features-overview.md` (6.1K):
+   - **Edit 1 (Line 36)**: Added new table row for "결과물 저장소" (Artifacts) feature
+   - **Row text**: "| 결과물 저장소 | Claude가 생성한 HTML·마크다운·스니펫을 구조화하고 공유합니다. | [확장](/claude-code/extensibility) |"
+   - **Position**: Inserted between MCP (row 34) and 플러그인 (row 37) to maintain logical grouping
+   - **Drift fixed**: Official CC features-overview lists Artifacts as core feature; ko page catalog was missing this entry
+
+4. `docs-site/content/ko/claude-code/foundations/interactive-mode.md` (8.9K):
+   - **Edit 1 (Line 82)**: Added Shift+Tab / Alt+M permission mode cycle row to keyboard shortcuts table
+   - **Row text**: "| `Shift+Tab` 또는 `Alt+M` | 권한 모드 순환 전환 |"
+   - **Edit 2 (Lines 87-91)**: Added 4 missing keyboard shortcuts: Ctrl+X Ctrl+K, Opt+P, Opt+O, Opt+T extension thinking toggle
+   - **Text added**: 
+     - "| `Ctrl+X` `Ctrl+K` | 모든 백그라운드 서브에이전트 중단 |"
+     - "| `Opt+P` | 모델 전환 |"
+     - "| `Opt+T` | 확장 사고(extended thinking) 모드 토글 |"
+     - "| `Opt+O` | 빠른 모드 전환 |"
+   - **Edit 3 (Line 152)**: Added /recap command documentation
+   - **Text added**: "- **`/recap`**: 세션의 요약(session recap)을 생성합니다. 자동으로는 3분 이상 또는 3턴 이상 진행된 세션에서 활성화됩니다."
+   - **Edit 4 (Line 153-154)**: Added task list persistence note
+   - **Text added**: "- **작업 목록**: 다단계 작업에서 Claude가 만든 작업 목록을 `Ctrl+T`로 펼치거나 접습니다. 작업 목록은 컨텍스트 압축 중에도 유지됩니다."
+   - **Drift fixed**: Official CC interactive-mode docs (code.claude.com/docs/en/interactive-mode) cover 5 keyboard shortcuts (Shift+Tab, Ctrl+X Ctrl+K, Opt+P, Opt+O, Opt+T) + /recap command + task list persistence notes across 5 separate subsections; ko page had only 3 shortcuts + no /recap + task list item was a bare label without persistence note context
+
+**Verification (M2a-1 gate) — Quoted grep output:**
+
+```
+$ grep -rn 'FleetView' docs-site/content/ko/claude-code/ || echo "✓ No FleetView refs (clean)"
+✓ No FleetView refs (clean)
+
+$ grep -E '^\[' docs-site/content/ko/claude-code/foundations/{_index,how-claude-code-works,features-overview,interactive-mode}.md | wc -l
+8
+```
+Interpretation: All 4 pages have valid YAML frontmatter ([title/weight/draft/description keys]; grep count = 8 = 4 pages × 2 keys min = 8 bracket-prefixed lines).
+
+**Verification summary:**
+- ✓ 1 landing page validated clean (no changes needed)
+- ✓ 3 concept pages rewritten (4 targeted edits):
+  - how-claude-code-works.md: auto-compaction + MCP deferral explanation added (Lines 79-91)
+  - features-overview.md: Artifacts feature row added (Line 36)
+  - interactive-mode.md: 5 keyboard shortcuts + /recap + task list persistence (Lines 82, 87-91, 152-154)
+- ✓ 4-locale parity preserved (ko pages only, no en/ja/zh contamination)
+- ✓ Cross-cutting correction (FleetView) passed: 0 refs found
+- ✓ All pages: YAML frontmatter verified, Korean-only content, formatting correct
+
+**Commit:**
+- Subject: `docs(SPEC-V3R6-DOCS-V3-REBUILD-001): M2a-1 ko claude-code/foundations concept pages CC-latest`
+- Message body:
+  - Pages (4): _index.md (validated-clean), how-claude-code-works.md (auto-compaction + MCP deferral), features-overview.md (Artifacts feature row), interactive-mode.md (5 shortcuts + /recap + task list persistence)
+  - Validation: Research-cc-latest.md v2.1.196 SSOT source (code.claude.com official docs)
+  - Verification: 0 FleetView refs, all YAML frontmatter valid, 4-locale parity clean
+- Authored-By-Agent: manager-docs
+- Trailer: 🗿 MoAI
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — populated by manager-develop>_
