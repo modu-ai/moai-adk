@@ -1,3 +1,7 @@
+---
+paths: "**/dynamic-workflows.md"
+---
+
 # Dynamic Workflows (Claude Code Orchestration Primitive)
 
 Guidance for the Claude Code **dynamic workflow** primitive — a script the runtime executes to orchestrate subagents at scale. Distinct from MoAI's SPEC plan/run/sync workflow (which is a development lifecycle, not a runtime primitive).

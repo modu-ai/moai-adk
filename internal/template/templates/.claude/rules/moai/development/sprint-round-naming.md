@@ -1,3 +1,7 @@
+---
+paths: "**/sprint-round-naming.md"
+---
+
 # Sprint vs Round Naming Convention — SSOT
 
 > **Single Source of Truth** for the distinction between "Sprint" and "Round" terminology.

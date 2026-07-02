@@ -1,3 +1,7 @@
+---
+paths: "**/native-invocation-model.md"
+---
+
 # Native Invocation-Model Alignment
 
 Policy-layer doctrine naming the axis on which a MoAI `/moai` subcommand's existence is justified: the **invocation model** of its nearest Claude Code native counterpart, NOT a naive "does it duplicate a native command" test.

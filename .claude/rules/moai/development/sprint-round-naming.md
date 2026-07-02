@@ -1,3 +1,7 @@
+---
+paths: "**/sprint-round-naming.md"
+---
+
 # Epic Naming Taxonomy — SSOT
 
 > **Single Source of Truth** for the Epic-based naming taxonomy. Defines exactly four canonical terms (`Epic`, `SPEC`, `Milestone`, `Constitution`) and documents the retired legacy aliases (`Sprint`, `cohort`, `Round`, `Wave`).

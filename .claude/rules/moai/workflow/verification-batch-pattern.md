@@ -1,3 +1,7 @@
+---
+paths: "**/verification-batch-pattern.md"
+---
+
 # Verification Batch Pattern
 
 Canonical pattern for orchestrator-side read-only verification batching during run-phase completion. Added by SPEC-V3R5-WORKFLOW-OPT-001 Layer D (W3 meta-analysis: ≈10 min, ~11% of run-phase wall-time lost to serial verification).

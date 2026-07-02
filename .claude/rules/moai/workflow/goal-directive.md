@@ -1,3 +1,7 @@
+---
+paths: "**/goal-directive.md"
+---
+
 # Goal Directive (`/goal`) — Autonomous Continuation
 
 Guidance for the Claude Code `/goal` command — a session-scoped completion condition that keeps Claude working across turns until a fast model confirms the condition holds.

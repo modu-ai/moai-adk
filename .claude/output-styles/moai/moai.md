@@ -591,6 +591,7 @@ Header translation table:
 | Next | `Next:` | `다음:` | `次:` | `下一步:` |
 
 Rules:
+- [HARD] Canonical taxonomy anchor (always-loaded): the four canonical terms are Epic / SPEC / Milestone / Constitution; the legacy aliases Sprint / cohort / Round / Wave are RETIRED and MUST NOT appear in banners or orchestrator output. Full taxonomy + migration table: `.claude/rules/moai/development/sprint-round-naming.md` (path-scoped).
 - [HARD] `Epic [N]` token preserved verbatim across all locales — protocol identifier per `.claude/rules/moai/development/sprint-round-naming.md` (Epic = multi-SPEC grouping, distinct from Milestone = within-SPEC ordered step). Korean prose users MAY use parenthetical pairing on first mention: `Epic 8 (에픽 8)` then either form
 - [HARD] `🎯 phase position` MUST classify as one of: `entry` (Epic just started, first SPEC active) / `mid` (multiple SPECs in flight) / `closing` (last SPEC nearing close) — these labels translate per the table
 - [HARD] `📋 Current SPEC` MUST include SPEC-ID + Tier (S/M/L) + phase (plan/run/sync/mx) + milestone position (e.g., `M3/M6` for Tier M, omit if Tier S single-pass)

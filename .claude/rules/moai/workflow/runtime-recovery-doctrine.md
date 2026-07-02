@@ -1,3 +1,7 @@
+---
+paths: "**/runtime-recovery-doctrine.md"
+---
+
 # Runtime Recovery Doctrine
 
 > **Single source of truth** for runtime-recovery policy when the loop itself fails mid-SPEC.

@@ -1,3 +1,7 @@
+---
+paths: "**/verification-batch-pattern.md"
+---
+
 # Verification Batch Pattern
 
 Canonical pattern for orchestrator-side read-only verification batching during run-phase completion. Added in response to a meta-analysis (≈10 min, ~11% of run-phase wall-time lost to serial verification).
