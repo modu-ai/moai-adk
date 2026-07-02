@@ -13,12 +13,12 @@ Claude Code 与 moai-adk-go 集成的 **自定义 statusline 系统**。从 Clau
 ### 最终布局 (3-line v3)
 
 ```
-🤖 Opus 4.7 │ 🧠 xhigh·t │ 🔅 v2.1.146 │ 🗿 v2.20.0-rc1 │ ⏳ 4h 52m │ 💬 MoAI
+🤖 Opus 4.7 │ 🧠 xhigh·t │ 💾 67% │ 🔅 v2.1.146 │ 🗿 v3.0.0-rc6 │ ⏳ 4h 52m │ 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) │ 🔋 5H: █████░░░░░ 56% (46m) │ 🔋 7D: █░░░░░░░░░ 13% (May 28)
 📁 moai-adk-go │ 🔀 modu-ai/moai-adk (🅱️ main ↑5 +2) │ 💾 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
 ```
 
-- **Line 1 (Info)**: 模型 · effort/thinking · Claude Code 版本 · MoAI 版本 · 会话时间 · output style
+- **Line 1 (Info)**: 模型 · effort/thinking · 缓存命中率 · Claude Code 版本 · MoAI 版本 · 会话时间 · output style
 - **Line 2 (Usage bars)**: CW (context window) · 5H (rolling) · 7D (rolling) — 每个 bar 显示 emoji + label + bar + % + reset 信息
 - **Line 3 (Git/PR)**: 目录 · 仓库+分支组合 · git status · 活动 SPEC task · PR 信息
 
@@ -58,6 +58,16 @@ internal/statusline/renderer.go (3-line v3 布局)
   - `·t` (effort 缺失 + 仅 thinking 启用)
 - **隐藏条件**: `effort` + `thinking` 都缺失 (包括 effort.level 空字符串)
 - **段键**: `effort_thinking`
+
+### 💾 缓存命中率
+
+- **格式**: `💾 <N>%` (N = cache_read / (cache_read + cache_creation) × 100，小数截断)
+- **数据源**: stdin `current_usage.cache_read_tokens` + `current_usage.cache_creation_tokens`
+- **示例**: `💾 28%` (cache_read 2000, cache_creation 5000 → 2000/7000)
+- **隐藏条件**: `current_usage` 缺失 · `cache_creation == 0` (无 fresh cache write) · 两者皆 0 — 静默省略，不编造值 (graceful degradation)
+- **切换**: `cache_hit: false` in statusline.yaml → 隐藏 (default-on)
+- **段键**: `cache_hit`
+- **注**: 同一 💾 emoji 亦用于 Line 3 Git Status (`💾 +N M? ?`) — 本段位于 Line 1，以百分比格式区分。prompt-cache 复用率监控 (SPEC-TOKEN-EFFICIENCY-001 P0-2)
 
 ### 🔅 Claude Code 版本
 

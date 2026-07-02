@@ -90,7 +90,7 @@ moai version
 
 ```bash
 # 特定バージョンをインストール
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version v3.0.0-rc4
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version v3.0.0-rc6
 
 # カスタムディレクトリにインストール
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin

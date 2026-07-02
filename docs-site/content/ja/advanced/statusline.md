@@ -13,12 +13,12 @@ Claude Code と moai-adk-go の統合のための **カスタム statusline シ�
 ### 最終レイアウト (3-line v3)
 
 ```
-🤖 Opus 4.7 │ 🧠 xhigh·t │ 🔅 v2.1.146 │ 🗿 v2.20.0-rc1 │ ⏳ 4h 52m │ 💬 MoAI
+🤖 Opus 4.7 │ 🧠 xhigh·t │ 💾 67% │ 🔅 v2.1.146 │ 🗿 v3.0.0-rc6 │ ⏳ 4h 52m │ 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) │ 🔋 5H: █████░░░░░ 56% (46m) │ 🔋 7D: █░░░░░░░░░ 13% (May 28)
 📁 moai-adk-go │ 🔀 modu-ai/moai-adk (🅱️ main ↑5 +2) │ 💾 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
 ```
 
-- **Line 1 (Info)**: モデル · effort/thinking · Claude Code バージョン · MoAI バージョン · セッション時間 · output style
+- **Line 1 (Info)**: モデル · effort/thinking · キャッシュヒット率 · Claude Code バージョン · MoAI バージョン · セッション時間 · output style
 - **Line 2 (Usage bars)**: CW (context window) · 5H (rolling) · 7D (rolling) — 各 bar に絵文字 + label + bar + % + reset 情報
 - **Line 3 (Git/PR)**: ディレクトリ · リポジトリ+ブランチ統合 · git status · アクティブ SPEC task · PR 情報
 
@@ -58,6 +58,16 @@ internal/statusline/renderer.go (3-line v3 レイアウト)
   - `·t` (effort 不在 + thinking のみ有効)
 - **非表示条件**: `effort` + `thinking` の両方が不在 (effort.level 空文字列含む)
 - **セグメントキー**: `effort_thinking`
+
+### 💾 キャッシュヒット率
+
+- **フォーマット**: `💾 <N>%` (N = cache_read / (cache_read + cache_creation) × 100、小数点切り捨て)
+- **データソース**: stdin `current_usage.cache_read_tokens` + `current_usage.cache_creation_tokens`
+- **例**: `💾 28%` (cache_read 2000, cache_creation 5000 → 2000/7000)
+- **非表示条件**: `current_usage` 不在 · `cache_creation == 0` (fresh cache write なし) · 両方 0 — 値を捏造せず静かに省略 (graceful degradation)
+- **トグル**: `cache_hit: false` in statusline.yaml → 非表示 (default-on)
+- **セグメントキー**: `cache_hit`
+- **参考**: 同じ 💾 絵文字は Line 3 Git Status (`💾 +N M? ?`) にも使用 — 本セグメントは Line 1 に位置し、パーセント形式で区別。prompt-cache 再利用率モニタリング (SPEC-TOKEN-EFFICIENCY-001 P0-2)
 
 ### 🔅 Claude Code バージョン
 

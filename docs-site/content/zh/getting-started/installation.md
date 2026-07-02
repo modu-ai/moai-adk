@@ -88,7 +88,7 @@ moai version
 
 ```bash
 # 安装特定版本
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version v3.0.0-rc4
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version v3.0.0-rc6
 
 # 安装到自定义目录
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin

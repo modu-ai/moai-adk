@@ -88,7 +88,7 @@ moai version
 
 ```bash
 # 특정 버전 설치
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version v3.0.0-rc4
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version v3.0.0-rc6
 
 # 커스텀 디렉터리에 설치
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin
@@ -154,7 +154,7 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | 
 
 ```bash
 moai version
-# 출력 예시: moai v3.0.0-rc4 (commit: abc1234, built: 2026-06-03)
+# 출력 예시: moai v3.0.0-rc6 (commit: abc1234, built: 2026-06-03)
 ```
 
 {{< callout type="info" >}}

@@ -13,12 +13,12 @@ A **custom statusline system** for Claude Code ↔ moai-adk-go integration. Sinc
 ### Final Layout (3-line v3)
 
 ```
-🤖 Opus 4.7 │ 🧠 xhigh·t │ 🔅 v2.1.146 │ 🗿 v2.20.0-rc1 │ ⏳ 4h 52m │ 💬 MoAI
+🤖 Opus 4.7 │ 🧠 xhigh·t │ 💾 67% │ 🔅 v2.1.146 │ 🗿 v3.0.0-rc6 │ ⏳ 4h 52m │ 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) │ 🔋 5H: █████░░░░░ 56% (46m) │ 🔋 7D: █░░░░░░░░░ 13% (May 28)
 📁 moai-adk-go │ 🔀 modu-ai/moai-adk (🅱️ main ↑5 +2) │ 💾 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
 ```
 
-- **Line 1 (Info)**: model · effort/thinking · Claude Code version · MoAI version · session time · output style
+- **Line 1 (Info)**: model · effort/thinking · cache-hit ratio · Claude Code version · MoAI version · session time · output style
 - **Line 2 (Usage bars)**: CW (context window) · 5H (rolling) · 7D (rolling) — each bar shows emoji + label + bar + % + reset info
 - **Line 3 (Git/PR)**: directory · combined repo+branch · git status · active SPEC task · PR info
 
@@ -58,6 +58,16 @@ internal/statusline/renderer.go (3-line v3 layout)
   - `·t` (effort absent + only thinking active)
 - **Hidden when**: both `effort` + `thinking` absent (including empty effort.level)
 - **Segment key**: `effort_thinking`
+
+### 💾 Cache-hit Ratio
+
+- **Format**: `💾 <N>%` (N = cache_read / (cache_read + cache_creation) × 100, truncated)
+- **Data source**: stdin `current_usage.cache_read_tokens` + `current_usage.cache_creation_tokens`
+- **Example**: `💾 28%` (cache_read 2000, cache_creation 5000 → 2000/7000)
+- **Hidden when**: `current_usage` absent · `cache_creation == 0` (no fresh cache write) · both zero — silently omitted, no fabricated value (graceful degradation)
+- **Toggle**: `cache_hit: false` in statusline.yaml → hidden (default-on)
+- **Segment key**: `cache_hit`
+- **Note**: the same 💾 emoji is also used for Line 3 Git Status (`💾 +N M? ?`) — this segment sits on Line 1 and is distinguished by its percentage format. Prompt-cache reuse monitoring (SPEC-TOKEN-EFFICIENCY-001 P0-2)
 
 ### 🔅 Claude Code Version
 

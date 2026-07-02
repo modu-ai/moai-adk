@@ -13,12 +13,12 @@ Claude Code와 moai-adk-go 통합을 위한 **커스텀 statusline 시스템**�
 ### 최종 레이아웃 (3-line v3)
 
 ```
-🤖 Opus 4.7 │ 🧠 xhigh·t │ 🔅 v2.1.146 │ 🗿 v2.20.0-rc1 │ ⏳ 4h 52m │ 💬 MoAI
+🤖 Opus 4.7 │ 🧠 xhigh·t │ 💾 67% │ 🔅 v2.1.146 │ 🗿 v3.0.0-rc6 │ ⏳ 4h 52m │ 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) │ 🔋 5H: █████░░░░░ 56% (46m) │ 🔋 7D: █░░░░░░░░░ 13% (May 28)
 📁 moai-adk-go │ 🔀 modu-ai/moai-adk (🅱️ main ↑5 +2) │ 💾 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
 ```
 
-- **Line 1 (Info)**: 모델 · effort/thinking · Claude Code 버전 · MoAI 버전 · 세션 시간 · output style
+- **Line 1 (Info)**: 모델 · effort/thinking · 캐시 히트율 · Claude Code 버전 · MoAI 버전 · 세션 시간 · output style
 - **Line 2 (Usage bars)**: CW (context window) · 5H (rolling) · 7D (rolling) — 각 bar는 이모지 + label + bar + % + reset 정보
 - **Line 3 (Git/PR)**: 디렉터리 · 리포지토리+브랜치 통합 · git status · 활성 SPEC task · PR 정보
 
@@ -58,6 +58,16 @@ internal/statusline/renderer.go (3-line v3 layout)
   - `·t` (effort 부재 + thinking만 활성)
 - **숨김 조건**: `effort` + `thinking` 모두 부재 (effort.level 빈 문자열 포함)
 - **세그먼트 키**: `effort_thinking`
+
+### 💾 캐시 히트율
+
+- **포맷**: `💾 <N>%` (N = cache_read / (cache_read + cache_creation) × 100, 소수점 버림)
+- **데이터 소스**: stdin `current_usage.cache_read_tokens` + `current_usage.cache_creation_tokens`
+- **예시**: `💾 28%` (cache_read 2000, cache_creation 5000 → 2000/7000)
+- **숨김 조건**: `current_usage` 부재 · `cache_creation == 0` (fresh cache write 없음) · 둘 다 0 — 값을 지어내지 않고 조용히 생략 (graceful degradation)
+- **토글**: `cache_hit: false` in statusline.yaml → 숨김 (default-on)
+- **세그먼트 키**: `cache_hit`
+- **참고**: 동일 💾 이모지가 Line 3 Git Status(`💾 +N M? ?`)에도 사용 — 본 세그먼트는 Line 1에 위치하며 백분율 포맷으로 구분. prompt-cache 재사용률 모니터링 (SPEC-TOKEN-EFFICIENCY-001 P0-2)
 
 ### 🔅 Claude Code 버전
 
