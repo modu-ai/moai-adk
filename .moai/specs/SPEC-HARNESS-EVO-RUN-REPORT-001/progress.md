@@ -20,7 +20,7 @@ exclusions_forward_links:
   - SPEC-HARNESS-EVO-CONFIDENCE-MEASURE-001    # learner.go confidence 실측화 (별도 후속, ID 미확정)
   - SPEC-HARNESS-EVO-WRITE-SURFACE-001         # write-surface 개방 + 헌법 amendment (SPEC-3)
   - SPEC-HARNESS-EVO-REQ-ARTIFACT-001          # 요구사항 아티팩트 스키마 + 레거시 retire (SPEC-4)
-plan_auditor_verdict: pending   # Phase 0.5 plan-audit gate 대기
+plan_auditor_verdict: PASS-WITH-DEBT 0.87 (iter-1, Tier M 임계 0.80) — D1/D2 SHOULD-FIX→run M2/M4, D3/D4 MINOR; BLOCKING 0
 ```
 
 ### Plan-phase 요약
@@ -49,3 +49,27 @@ _<pending run-phase — manager-develop 소관>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase — manager-docs 소관>_
+
+---
+
+## §F Phase 0.95 Mode Selection
+
+**Input parameters** (orchestrator, plan→run boundary):
+- tier: M · scope: ~5-15 files · domain count: 4 (Go v4manifest/doctor · JS Runner · agent MD specialist · doctrine/rule + template mirror)
+- file language mix: Go + JavaScript + Markdown (mixed, coding-heavy)
+- concurrency benefit: LOW (coding-heavy — Anthropic coding-task parallelism caveat)
+- Agent Teams prereqs: not met (harness level ≠ thorough / team.enabled unverified / env unset)
+
+**Mode evaluation**:
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| 1 trivial | no | 다중 파일 + 시맨틱 변경 (typo 아님) |
+| 2 background | no | Write/Edit 수반 (read-only 아님) |
+| 3 agent-team | no | Agent Teams capability-gate 미충족 |
+| 4 parallel | no | coding-heavy → §B.2 tie-breaker Mode 5 우선 |
+| 5 sub-agent | **selected** | coding-heavy 단일 SPEC 5-milestone 순차 구현 (기본 fallback) |
+| 6 workflow | no | 기계적 대량(≥~30 파일) 변환 아님; 시맨틱 신규 코드 |
+
+**Decision: sub-agent** (sequential manager-develop, cycle_type=tdd, M1..M5)
+
+**Justification**: 4개 도메인에 걸치지만 코딩 중심(Go 스키마/게이트 + JS 계약 + 문서)이라 Anthropic coding-task parallelism caveat에 따라 병렬화 이득이 낮다. §B.2 tie-breaker(coding-heavy + multi-domain → Mode 5)로 순차 sub-agent를 선택. Implementation Kickoff Approval은 explicit-gate 분기로 사용자 AskUserQuestion 승인 완료(Path A, score-independent) — Phase 0.95는 그 downstream.
