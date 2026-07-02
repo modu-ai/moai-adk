@@ -94,6 +94,28 @@ subagent_boundary_grep: "0 matches in modified files (mapper/types/hook/doctor/h
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
+```yaml
+sync_complete_at: 2026-07-03
+sync_commit_sha: "58ec3a2ea2c641fff8bba8b6a5c22f9785e2c08f"
+sync_status: ready
+changelog_entry_position: "[Unreleased] HARNESS-EVO-PIPE-REPAIR-001 추가 (20 AC PASS, 0 FAIL)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"
+  plan_md: "in-progress → completed"
+  acceptance_md: "in-progress → completed"
+  updated_field: "2026-07-02 → 2026-07-03 (current date)"
+canary_compliance_check:
+  template_mirror_parity: "8 surfaces — spec.md/plan.md/acceptance.md live+template; harness.md / harness-build-entry.md / harness-builder.md / moai SKILL.md / commands/moai/harness.md / learner SKILL.md (8/8 mirrors exist, byte-match or render-pair per AC-HEP-013a class taxonomy)"
+  template_neutrality: "TestSplitHarnessNamespaceNoLeak + TestTemplateNoInternalContentLeak PASS (0 SPEC-ID / 0 REQ-HEP token / 0 audit citation in template-managed surfaces)"
+  changelog_ac_count: "20 AC rows in acceptance.md (grep -c 'AC-HEP-' = 20 ✓)"
+b12_self_test_a_pre_emission_grep: "grep -c 'HARNESS-EVO-PIPE-REPAIR' CHANGELOG.md = 0 (pre-emission ✓ no duplicate)"
+b12_self_test_b_file_path_validation: "9 key files exist (mapper.go / mapper_test.go / types.go / hook.go / doctor.go / runner.js / settings.json / settings.json.tmpl / harness.yaml)"
+b12_self_test_c_ac_count_match: "20 AC rows in acceptance.md; CHANGELOG entry references 20-AC PASS (match ✓)"
+sync_auditor_placeholder: "[orchestrator will invoke sync-auditor after sync commit lands; pending external audit]"
+```
+
+## §E.4 Sync-phase Audit-Ready Signal
+
 _<pending sync-phase>_
 
 ## §F Phase 0.95 Mode Selection
