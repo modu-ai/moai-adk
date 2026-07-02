@@ -4,88 +4,88 @@ weight: 80
 draft: false
 ---
 
-3계층 카탈로그 매니페스트와 slim init으로 프로젝트 초기화를 최적화합니다.
+3階層カタログマニフェストとslim initでプロジェクト初期化を最適化します。
 
-## 개요
+## 概要
 
-MoAI-ADK v2.15+의 카탈로그 시스템은 모든 에이전트, 스킬, 플러그인, 규칙을 **3계층
-매니페스트**로 관리합니다. `moai init --slim`을 통해 프로젝트에 필요한 최소 템플릿만
-배포하여 초기화 시간을 단축합니다.
+MoAI-ADK v2.15+のカタログシステムは、すべてのエージェント、スキル、プラグイン、ルールを **3階層
+マニフェスト** で管理します。`moai init --slim`により、プロジェクトに必要な最小限のテンプレートのみを
+デプロイし、初期化時間を短縮します。
 
-## 3계층 매니페스트
+## 3階層マニフェスト
 
-| 계층 | 설명 | 배포 기준 |
+| 階層 | 説明 | 配布基準 |
 |------|------|----------|
-| **Tier 1 (Core)** | 핵심 인프라 — 오케스트레이터, 품질 게이트, 기본 스킬 | 항상 배포 |
-| **Tier 2 (Standard)** | 표준 확장 — 언어별 규칙, 프레임워크 스킬 | 프로젝트 언어/프레임워크 감지 시 |
-| **Tier 3 (Optional)** | 선택적 — 도메인 스킬, 플랫폼별 설정 | 명시적 요청 또는 프로젝트 설정 시 |
+| **Tier 1 (Core)** | 中核インフラ — オーケストレーター、品質ゲート、基本スキル | 常に配布 |
+| **Tier 2 (Standard)** | 標準拡張 — 言語別ルール、フレームワークスキル | プロジェクトの言語/フレームワークを検出した場合 |
+| **Tier 3 (Optional)** | 任意 — ドメインスキル、プラットフォーム別設定 | 明示的なリクエストまたはプロジェクト設定時 |
 
-## 카탈로그 파일
+## カタログファイル
 
-카탈로그 매니페스트는 YAML 형식으로 정의됩니다:
+カタログマニフェストはYAML形式で定義されます:
 
 ```yaml
-# 카탈로그 엔트리 예시
+# カタログエントリ例
 - id: moai-workflow-tdd
   tier: 1                    # 1=Core, 2=Standard, 3=Optional
   type: skill
   path: .claude/skills/moai/workflows/tdd.md
-  languages: []              # 빈 배열 = 모든 언어
+  languages: []              # 空の配列 = すべての言語
   frameworks: []
-  hash: abc123...             # 콘텐츠 해시 (무결성 검증)
+  hash: abc123...             # コンテンツハッシュ (整合性検証)
 ```
 
-## SlimFS 필터
+## SlimFSフィルタ
 
-`moai init --slim`은 SlimFS 필터를 통해 배포 파일을 제한합니다:
+`moai init --slim`はSlimFSフィルタを通じて配布ファイルを制限します:
 
 ```bash
-# 전체 설치 (모든 계층)
+# フルインストール (すべての階層)
 moai init my-project
 
-# Slim 설치 (Tier 1 + 감지된 Tier 2만)
+# Slimインストール (Tier 1 + 検出されたTier 2のみ)
 moai init --slim my-project
 ```
 
-### 필터 로직
+### フィルタロジック
 
-1. Tier 1은 항상 포함
-2. 프로젝트 언어 감지 (Go, Python, TypeScript 등)
-3. 감지된 언어에 해당하는 Tier 2 항목만 포함
-4. Tier 3은 제외
+1. Tier 1は常に含まれる
+2. プロジェクトの言語を検出 (Go、Python、TypeScriptなど)
+3. 検出された言語に対応するTier 2項目のみを含める
+4. Tier 3は除外
 
 ## Typed Loader
 
-`LoadCatalog()` 함수가 매니페스트를 타입 안전하게 로드합니다:
+`LoadCatalog()`関数がマニフェストを型安全にロードします:
 
-- 3계층 분류 검증
-- 해시 무결성 검사 (Hash Sentinel)
-- 누락 필드 감지
-- 100% 테스트 커버리지
+- 3階層分類の検証
+- ハッシュ整合性チェック (Hash Sentinel)
+- 欠落フィールドの検出
+- 100%のテストカバレッジ
 
-## 카탈로그 활용
+## カタログの活用
 
-### 프로젝트 초기화
+### プロジェクト初期化
 
 ```bash
-# 일반 초기화 — 모든 템플릿 배포
+# 通常初期化 — すべてのテンプレートを配布
 moai init my-project
 
-# Slim 초기화 — 최소 템플릿만 배포
+# Slim初期化 — 最小限のテンプレートのみを配布
 moai init --slim my-project
 ```
 
-### 업데이트
+### アップデート
 
 ```bash
-# 카탈로그 기반 업데이트
-moai update                  # 모든 계층 업데이트
-moai update --slim           # slim 모드로 업데이트
+# カタログベースのアップデート
+moai update                  # すべての階層を更新
+moai update --slim           # slimモードで更新
 ```
 
-## 관련 문서
+## 関連ドキュメント
 
-- [설치](/ko/getting-started/installation) — 설치 가이드
-- [초기 설정](/ko/getting-started/init-wizard) — init 마법사
-- [업데이트](/ko/getting-started/update) — 업데이트 가이드
-- [스킬 가이드](/ko/advanced/skill-guide) — 스킬 작성 가이드
+- [インストール](/ja/getting-started/installation) — インストールガイド
+- [初期設定](/ja/getting-started/init-wizard) — initウィザード
+- [アップデート](/ja/getting-started/update) — アップデートガイド
+- [スキルガイド](/ja/advanced/skill-guide) — スキル作成ガイド

@@ -3,32 +3,32 @@ title: プロファイル管理
 weight: 80
 draft: false
 ---
-# 프로필 관리
+# プロファイル管理
 
 
-MoAI-ADK의 프로필 시스템으로 여러 Claude Code 설정을 격리하여 관리합니다.
+MoAI-ADKのプロファイルシステムで、複数のClaude Code設定を分離して管理します。
 
-## 프로필이란?
+## プロファイルとは？
 
-프로필은 **격리된 Claude Code 설정 디렉토리**(`CLAUDE_CONFIG_DIR`)입니다. 프로필별로 독립적인 설정, 모델 선택, 언어 환경을 유지할 수 있습니다.
+プロファイルは **分離されたClaude Code設定ディレクトリ**(`CLAUDE_CONFIG_DIR`)です。プロファイルごとに独立した設定、モデル選択、言語環境を維持できます。
 
 ```
 ~/.moai/claude-profiles/
-├── default/           # 기본 프로필
+├── default/           # デフォルトプロファイル
 │   ├── settings.json
 │   └── settings.local.json
-├── work/              # 업무용 프로필
+├── work/              # 業務用プロファイル
 │   ├── settings.json
 │   └── settings.local.json
-└── personal/          # 개인용 프로필
+└── personal/          # 個人用プロファイル
     └── ...
 ```
 
-## 명령어 레퍼런스
+## コマンドリファレンス
 
 ### moai profile list
 
-사용 가능한 모든 프로필을 표시합니다.
+利用可能なすべてのプロファイルを表示します。
 
 ```bash
 moai profile list
@@ -36,22 +36,22 @@ moai profile list
 
 ### moai profile setup [name]
 
-인터랙티브 설정 위자드를 실행합니다.
+インタラクティブな設定ウィザードを実行します。
 
 ```bash
-moai profile setup          # 기본 프로필 설정
-moai profile setup work     # "work" 프로필 설정
+moai profile setup          # デフォルトプロファイルの設定
+moai profile setup work     # "work"プロファイルの設定
 ```
 
-**위자드 설정 항목:**
-- **Identity**: 사용자 이름, 역할
-- **Languages**: 대화 언어, 코드 주석 언어
-- **Model Settings**: 기본 모델, 1M 컨텍스트 모델 선택
-- **Display**: 출력 스타일, 상태 표시줄 설정
+**ウィザード設定項目:**
+- **Identity**: ユーザー名、役割
+- **Languages**: 対話言語、コードコメント言語
+- **Model Settings**: デフォルトモデル、1Mコンテキストモデルの選択
+- **Display**: 出力スタイル、ステータスライン設定
 
 ### moai profile current
 
-현재 활성 프로필 이름을 표시합니다.
+現在アクティブなプロファイル名を表示します。
 
 ```bash
 moai profile current
@@ -59,46 +59,46 @@ moai profile current
 
 ### moai profile delete [name]
 
-프로필을 삭제합니다.
+プロファイルを削除します。
 
 ```bash
 moai profile delete old-profile
 ```
 
-## 프로필로 Claude Code 실행
+## プロファイルでClaude Codeを実行
 
-`-p` (또는 `--profile`) 플래그로 프로필을 지정합니다.
+`-p` (または`--profile`) フラグでプロファイルを指定します。
 
 ```bash
-moai cc -p work          # work 프로필로 Claude 실행
-moai glm -p cost-save    # cost-save 프로필로 GLM 실행
-moai cg -p team          # team 프로필로 CG 모드 실행
+moai cc -p work          # workプロファイルでClaudeを実行
+moai glm -p cost-save    # cost-saveプロファイルでGLMを実行
+moai cg -p team          # teamプロファイルでCGモードを実行
 ```
 
 {{< callout type="info" >}}
-프로필 미지정 시 기본 프로필이 사용됩니다. 첫 실행 시 자동으로 설정 위자드가 시작됩니다.
+プロファイルを指定しない場合はデフォルトプロファイルが使用されます。初回実行時には自動的に設定ウィザードが起動します。
 {{< /callout >}}
 
-## 1M 컨텍스트 모델 선택
+## 1Mコンテキストモデルの選択
 
-프로필 설정 시 1M 컨텍스트 윈도우를 지원하는 모델을 선택할 수 있습니다.
+プロファイル設定時に、1Mコンテキストウィンドウをサポートするモデルを選択できます。
 
-**지원 모델:**
+**サポートされているモデル:**
 - `claude-opus-4-8[1m]` - Opus 4.8 (1M context)
 - `claude-sonnet-4-6[1m]` - Sonnet 4.6 (1M context)
 
-설정 위자드에서 "Model Settings" 단계에서 선택하거나, 프로필 설정 파일을 직접 수정합니다.
+設定ウィザードの「Model Settings」ステップで選択するか、プロファイル設定ファイルを直接編集します。
 
-## 프로필 전환 시 동작
+## プロファイル切り替え時の動作
 
-| 전환 | 동작 |
+| 切り替え | 動作 |
 |------|------|
-| `moai cc` → `moai glm` | GLM 환경 변수 자동 주입 |
-| `moai glm` → `moai cc` | GLM 환경 변수 자동 제거 |
-| `moai cc` → `moai cg` | GLM env를 tmux 세션에만 주입, Leader는 Claude 유지 |
+| `moai cc` → `moai glm` | GLM環境変数が自動的に注入される |
+| `moai glm` → `moai cc` | GLM環境変数が自動的に削除される |
+| `moai cc` → `moai cg` | GLM envはtmuxセッションにのみ注入され、Leaderは引き続きClaudeを使用 |
 
-## 관련 문서
+## 関連ドキュメント
 
-- [CLI 레퍼런스](/getting-started/cli) - 전체 CLI 명령어
-- [빠른 시작](/getting-started/quickstart) - 처음 시작하기
-- [초기 설정](/getting-started/init-wizard) - 프로젝트 초기화
+- [CLIレファレンス](/getting-started/cli) - CLIコマンドの全リファレンス
+- [クイックスタート](/getting-started/quickstart) - はじめての利用開始
+- [初期設定](/getting-started/init-wizard) - プロジェクトの初期化
