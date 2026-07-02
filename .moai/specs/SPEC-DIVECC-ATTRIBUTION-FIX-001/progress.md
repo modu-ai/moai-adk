@@ -57,7 +57,7 @@ Run-phase executed orchestrator-direct (Tier S doc-only: 5 edit points / 3 livin
 **Documented debt (plan-auditor D1/D2, SHOULD-FIX — user-approved as debt):**
 - D1: AC-AFX-004's inline negative grep covers only archive L52 (not L75/L90); mitigated — AC-AFX-005's broader signature is the mechanical safety net guaranteeing the 5→0 end-state across all 3 surfaces.
 - D2: spec.md §A.6 immutable-whitelist enumeration omits `.claude/worktrees/` + this-spec-dir, though AC-AFX-005 self-contains the full whitelist; end-state correctness unaffected.
-- Disposition: recorded as debt (scope discipline — run-phase edited only the 3 declared surfaces; spec.md body touch-up deferred to an optional future manager-spec plan-revision). D3/D4 MINOR — no action.
+- Disposition (updated — user directive "잔여 모두 처리"): D1/D2/D4 **resolved** in a post-close follow-up chore. D1 — AC-AFX-004 negative grep broadened to the AC-005 signature restricted to the archive (independently covers L52/L75/L90). D2 — §A.6 immutable whitelist now enumerates `.claude/worktrees/**` + this-spec-dir. D4 — REQ-AFX-005's "14 .moai/ occurrences" figure generalized (drift-prone count removed). `era: V3R6` frontmatter pinned (suppresses `moai spec audit` EraAutoDetected INFO). D3 needs no edit — already framed as agent-teams-vs-single in the run-phase correction + §A.2 Gaps hedge.
 
 **Gaps (not observed):** no code/test/build run (doc-only per D-1); the arXiv PDF itself not re-fetched (companion README treated as consistent per archive §5 framing).
 

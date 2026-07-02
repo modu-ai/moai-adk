@@ -13,6 +13,7 @@ lifecycle: spec-anchored
 tags: "verification-claim-integrity, attribution, dive-into-cc, output-style, template-mirror, tier-s"
 issue_number: null
 tier: S
+era: V3R6
 related_specs: [SPEC-TOKEN-EFFICIENCY-001, SPEC-DIVECC-DELEGATION-TOKEN-COST-001, SPEC-DIVECC-PAPER-ARCHIVE-001]
 ---
 
@@ -123,6 +124,12 @@ This section enumerates what this SPEC deliberately does NOT touch.
   records — historical artifacts.
 - **v2-to-v3 backups** — `.moai/backups/**`. Frozen migration snapshots.
 - **Regenerable cache** — `.moai/cache/lecture.html`. Rebuildable artifact.
+- **L1 agent worktrees** — `.claude/worktrees/**`. Registered Claude Code L1
+  agent worktrees are full repo clones (the highest-volume match source);
+  runtime-managed, never edited by this SPEC.
+- **This SPEC's own directory** — `.moai/specs/SPEC-DIVECC-ATTRIBUTION-FIX-001/`.
+  Its spec.md/plan.md/progress.md necessarily describe the mis-attribution being
+  fixed; self-referential occurrences are whitelisted.
 
 ### Out of Scope — different-claim occurrences (assessed, NOT the mis-attribution)
 
@@ -191,7 +198,7 @@ signature (a `~7×` figure asserted as the paper's skill-injection-vs-agent-spaw
 measurement) and **shall** return zero matches OUTSIDE the whitelisted immutable
 historical artifacts enumerated in §A.6. The gate **shall** include `.moai/` in
 its scan surface (the prior gate scanned only `.claude` / `internal` / `CLAUDE.md`
-and was structurally blind to the 14 `.moai/` occurrences), and **shall**
+and was structurally blind to the `.moai/` occurrences), and **shall**
 whitelist the §A.6 immutable artifacts so the assertion is real and non-vacuous
 over the in-scope surfaces.
 
@@ -249,8 +256,10 @@ Canonical AC enumeration (SSOT for this Tier S SPEC — AC inline per the Tier S
 - **Verify**:
   `grep -n 'agent teams\|plan mode\|extrapolat' .moai/research/dive-into-claude-code-archive.md`
   returns the corrected rows, AND
-  `grep -n '7× the token cost of a Skill\|measured by the paper at roughly' .moai/research/dive-into-claude-code-archive.md`
-  returns nothing.
+  `grep -n '~7×' .moai/research/dive-into-claude-code-archive.md | grep -iE 'Skill injection|token cost of a Skill|delegation .*token-cost|the paper.?s measurement'`
+  returns nothing (the AC-AFX-005 mis-attribution signature restricted to the
+  archive file — independently covers all three L52 / L75 / L90 regions, not only
+  L52; closes plan-auditor D1).
 
 ### AC-AFX-005 (↔ REQ-AFX-005) — non-vacuous repo-wide grep gate (scans .moai/, whitelists immutable artifacts)
 
