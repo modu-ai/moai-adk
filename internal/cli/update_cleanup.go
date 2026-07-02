@@ -182,10 +182,10 @@ type BackupManifestFile struct {
 
 // BackupFileEntry records metadata for one backed-up file.
 type BackupFileEntry struct {
-	Path               string `json:"path"`
-	Hash               string `json:"hash"`
-	Classification     string `json:"classification"`
-	SymlinkTarget      string `json:"symlink_target,omitempty"`
+	Path                string `json:"path"`
+	Hash                string `json:"hash"`
+	Classification      string `json:"classification"`
+	SymlinkTarget       string `json:"symlink_target,omitempty"`
 	SymlinkTargetStatus string `json:"symlink_target_status,omitempty"`
 }
 
@@ -357,7 +357,7 @@ func classifyDeprecatedFile(projectRoot, relPath string, mgr manifest.Manager) D
 type CleanupEvent struct {
 	AtomicWriteUsed       bool     `json:"atomic_write_used"`
 	PreUpdateSuffix2Files []string `json:"pre_update_suffix2_files"`
-	BackupOutcome         string   `json:"backup_outcome"`  // "success" | "skipped" | "failed"
+	BackupOutcome         string   `json:"backup_outcome"` // "success" | "skipped" | "failed"
 	BackupPath            string   `json:"backup_path"`
 	CleanupOutcome        string   `json:"cleanup_outcome"` // "completed" | "deferred" | "aborted"
 	UserOptOutPaths       []string `json:"user_opt_out_paths"`

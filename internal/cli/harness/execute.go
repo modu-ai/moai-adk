@@ -34,7 +34,7 @@ import (
 // 의미가 일치하지만 패키지 경계가 다르므로 여기서 별도 선언한다 (cli 패키지의
 // unexported const는 cross-package 참조 불가).
 const (
-	execProposalDirRel = ".moai/harness/proposals"
+	execProposalDirRel  = ".moai/harness/proposals"
 	execSnapshotBaseRel = ".moai/harness/learning-history/snapshots"
 	execManifestRel     = ".moai/harness/learning-history/manifest.jsonl"
 	execBaselineRel     = ".moai/harness/measurements-baseline.yaml"
@@ -56,12 +56,12 @@ type ExecuteOptions struct {
 // 경로 집합이다 (REQ-AEX-009, design.md §B Wiring Recipe). 테스트가 production
 // 경로 구성을 non-vacuous하게 관측할 수 있도록 노출된 seam이다.
 type executePaths struct {
-	proposalDir  string
-	snapshotBase string
-	manifestPath string
-	baselinePath string
-	usageLogPath string
-	violationLog string
+	proposalDir   string
+	snapshotBase  string
+	manifestPath  string
+	baselinePath  string
+	usageLogPath  string
+	violationLog  string
 	rateLimitPath string
 }
 

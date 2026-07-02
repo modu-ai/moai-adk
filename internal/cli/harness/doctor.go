@@ -3,12 +3,12 @@
 // Doctor scans every v4 harness under .claude/commands/harness/ and verifies a
 // 4-axis reference-integrity contract:
 //
-//	1. entry command file exists (given by ListHarnesses enumeration)
-//	2. manifest.json exists + schema-valid (v4manifest.Validate reuse)
-//	3. Runner (harness-<name>-run.js) exists + its MANIFEST_PATH constant resolves
-//	   to a real file
-//	4. each specialist agent referenced by the Runner resolves to an existing
-//	   .claude/agents/harness/<name>.md file
+//  1. entry command file exists (given by ListHarnesses enumeration)
+//  2. manifest.json exists + schema-valid (v4manifest.Validate reuse)
+//  3. Runner (harness-<name>-run.js) exists + its MANIFEST_PATH constant resolves
+//     to a real file
+//  4. each specialist agent referenced by the Runner resolves to an existing
+//     .claude/agents/harness/<name>.md file
 //
 // Severity policy (design D2): findings are ERROR or INFO. A command-only thin
 // harness (no manifest.json / Runner — the github / release maintainer harnesses)

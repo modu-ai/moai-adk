@@ -108,9 +108,9 @@ func TestToolPolicyList_InvalidFlagValues(t *testing.T) {
 	policyPath := "../../.moai/config/sections/tool-policy.yaml"
 
 	tests := []struct {
-		name   string
-		flag   string
-		value  string
+		name    string
+		flag    string
+		value   string
 		wantErr string
 	}{
 		{name: "bad risk-tier", flag: "risk-tier", value: "critical", wantErr: "not in {read,write,irreversible}"},
