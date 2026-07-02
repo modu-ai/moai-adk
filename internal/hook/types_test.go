@@ -2,6 +2,7 @@ package hook
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -9,8 +10,8 @@ func TestValidEventTypes(t *testing.T) {
 	t.Parallel()
 
 	events := ValidEventTypes()
-	if len(events) != 29 {
-		t.Errorf("ValidEventTypes() returned %d events, want 29 (3 observe-only events added by SPEC-HOOK-EVENT-REGISTRY-001)", len(events))
+	if len(events) != 30 {
+		t.Errorf("ValidEventTypes() returned %d events, want 30 (3 observe-only events added by SPEC-HOOK-EVENT-REGISTRY-001 + official Setup recognition)", len(events))
 	}
 
 	expected := map[EventType]bool{
@@ -43,6 +44,7 @@ func TestValidEventTypes(t *testing.T) {
 		EventPostToolBatch:       true,
 		EventUserPromptExpansion: true,
 		EventMessageDisplay:      true,
+		EventSetup:               true,
 	}
 
 	for _, et := range events {
@@ -186,14 +188,36 @@ func TestNewPermissionRequestOutput(t *testing.T) {
 	if out.HookSpecificOutput == nil {
 		t.Fatal("HookSpecificOutput is nil")
 	}
-	if out.HookSpecificOutput.PermissionDecision != DecisionAllow {
-		t.Errorf("PermissionDecision = %q, want %q", out.HookSpecificOutput.PermissionDecision, DecisionAllow)
+	// Official PermissionRequest schema: hookSpecificOutput.decision{behavior},
+	// NOT permissionDecision (that field is PreToolUse-only).
+	if out.HookSpecificOutput.Decision == nil {
+		t.Fatal("Decision is nil, want official decision object")
 	}
-	if out.HookSpecificOutput.PermissionDecisionReason != "auto-approved tool" {
-		t.Errorf("PermissionDecisionReason = %q, want %q", out.HookSpecificOutput.PermissionDecisionReason, "auto-approved tool")
+	if out.HookSpecificOutput.Decision.Behavior != DecisionAllow {
+		t.Errorf("Decision.Behavior = %q, want %q", out.HookSpecificOutput.Decision.Behavior, DecisionAllow)
+	}
+	if out.HookSpecificOutput.PermissionDecision != "" {
+		t.Errorf("PermissionDecision = %q, want empty (non-schema for PermissionRequest)", out.HookSpecificOutput.PermissionDecision)
+	}
+	// The reason rides systemMessage (the decision object has no reason slot).
+	if out.SystemMessage != "auto-approved tool" {
+		t.Errorf("SystemMessage = %q, want %q", out.SystemMessage, "auto-approved tool")
 	}
 	if out.HookSpecificOutput.HookEventName != "PermissionRequest" {
 		t.Errorf("HookEventName = %q, want %q", out.HookSpecificOutput.HookEventName, "PermissionRequest")
+	}
+
+	// Wire-format check: JSON must carry decision.behavior, not permissionDecision.
+	data, err := json.Marshal(out)
+	if err != nil {
+		t.Fatalf("json.Marshal failed: %v", err)
+	}
+	s := string(data)
+	if !strings.Contains(s, `"decision":{"behavior":"allow"}`) {
+		t.Errorf("JSON missing official decision object: %s", s)
+	}
+	if strings.Contains(s, "permissionDecision") {
+		t.Errorf("JSON must not carry permissionDecision for PermissionRequest: %s", s)
 	}
 }
 
@@ -212,18 +236,87 @@ func TestNewUserPromptBlockOutput(t *testing.T) {
 func TestNewTeammateKeepWorkingOutput(t *testing.T) {
 	t.Parallel()
 
-	out := NewTeammateKeepWorkingOutput()
-	if out.ExitCode != 2 {
-		t.Errorf("ExitCode = %d, want 2", out.ExitCode)
+	// Official TeammateIdle blocking channel: decision:"block" + reason JSON
+	// with exit 0 (NOT ExitCode=2, whose stdout JSON is ignored by Claude Code).
+	out := NewTeammateKeepWorkingOutput("quality gate failed")
+	if out.Decision != DecisionBlock {
+		t.Errorf("Decision = %q, want %q", out.Decision, DecisionBlock)
+	}
+	if out.Reason != "quality gate failed" {
+		t.Errorf("Reason = %q, want %q", out.Reason, "quality gate failed")
+	}
+	if out.ExitCode != 0 {
+		t.Errorf("ExitCode = %d, want 0 (block rides JSON, not exit code)", out.ExitCode)
 	}
 }
 
 func TestNewTaskRejectedOutput(t *testing.T) {
 	t.Parallel()
 
-	out := NewTaskRejectedOutput()
-	if out.ExitCode != 2 {
-		t.Errorf("ExitCode = %d, want 2", out.ExitCode)
+	// Official TaskCompleted rejection channel: decision:"block" + reason JSON
+	// with exit 0 (NOT ExitCode=2, whose stdout JSON is ignored by Claude Code).
+	out := NewTaskRejectedOutput("unchecked acceptance criteria")
+	if out.Decision != DecisionBlock {
+		t.Errorf("Decision = %q, want %q", out.Decision, DecisionBlock)
+	}
+	if out.Reason != "unchecked acceptance criteria" {
+		t.Errorf("Reason = %q, want %q", out.Reason, "unchecked acceptance criteria")
+	}
+	if out.ExitCode != 0 {
+		t.Errorf("ExitCode = %d, want 0 (block rides JSON, not exit code)", out.ExitCode)
+	}
+}
+
+// TestHookOutputContinueMarshaling verifies the G1 fix: "continue": false is
+// the only meaningful value per the official spec, so the field must be
+// absent by default (nil) and representable when explicitly set to false —
+// the old plain-bool + omitempty could never emit false.
+func TestHookOutputContinueMarshaling(t *testing.T) {
+	t.Parallel()
+
+	t.Run("absent by default", func(t *testing.T) {
+		t.Parallel()
+		data, err := json.Marshal(&HookOutput{})
+		if err != nil {
+			t.Fatalf("json.Marshal failed: %v", err)
+		}
+		if strings.Contains(string(data), `"continue"`) {
+			t.Errorf("continue must be absent from default output: %s", data)
+		}
+	})
+
+	t.Run("explicit false is emitted", func(t *testing.T) {
+		t.Parallel()
+		out := &HookOutput{StopReason: "halting"}
+		out.SetContinue(false)
+		data, err := json.Marshal(out)
+		if err != nil {
+			t.Fatalf("json.Marshal failed: %v", err)
+		}
+		if !strings.Contains(string(data), `"continue":false`) {
+			t.Errorf(`JSON must carry "continue":false when explicitly halted: %s`, data)
+		}
+	})
+
+	t.Run("BoolPtr helper", func(t *testing.T) {
+		t.Parallel()
+		p := BoolPtr(false)
+		if p == nil || *p != false {
+			t.Errorf("BoolPtr(false) = %v, want pointer to false", p)
+		}
+	})
+}
+
+// TestEventSetupRecognized verifies the official Setup event validates
+// (recognition-only; no handler, no CLI binding).
+func TestEventSetupRecognized(t *testing.T) {
+	t.Parallel()
+
+	if !IsValidEventType(EventSetup) {
+		t.Error("IsValidEventType(EventSetup) = false, want true (official Setup event)")
+	}
+	if EventSetup != "Setup" {
+		t.Errorf("EventSetup = %q, want %q", EventSetup, "Setup")
 	}
 }
 

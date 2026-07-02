@@ -5,19 +5,19 @@
 //
 // Distinction:
 //   - resolveProjectRoot          (post_tool_metrics.go): WRITE-side resolver
-//                                  with .moai/ existence guard. Used when a
-//                                  handler is about to create files under
-//                                  .moai/. Returns empty string when the
-//                                  resolved path is NOT a MoAI project root.
+//     with .moai/ existence guard. Used when a
+//     handler is about to create files under
+//     .moai/. Returns empty string when the
+//     resolved path is NOT a MoAI project root.
 //   - resolveProjectRootFromEnv          (this file): NO .moai/ guard. Used
-//                                  for read-side or registration-time cwd
-//                                  resolution where the .moai/ directory may
-//                                  legitimately be absent (e.g., loading the
-//                                  observability.yaml toggle itself from a
-//                                  fresh project).
+//     for read-side or registration-time cwd
+//     resolution where the .moai/ directory may
+//     legitimately be absent (e.g., loading the
+//     observability.yaml toggle itself from a
+//     fresh project).
 //   - resolveProjectRootFromInputOrEnv   (this file): NO .moai/ guard, but
-//                                  prefers input.CWD over env var. Used by
-//                                  handlers that have HookInput available.
+//     prefers input.CWD over env var. Used by
+//     handlers that have HookInput available.
 //
 // Both helpers emit a structured slog.Warn entry with `"cwd_fallback":true`
 // whenever os.Getwd() is the last-resort fallback (REQ-HCWA-008).

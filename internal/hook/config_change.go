@@ -60,10 +60,17 @@ func (h *configChangeHandler) EventType() EventType {
 // 20ms debounce, YAML validation, and ConfigManager.Reload() all execute
 // in a background goroutine bounded by asyncDeadline (5s).
 func (h *configChangeHandler) Handle(_ context.Context, input *HookInput) (*HookOutput, error) {
+	// Official stdin field is config_source; configuration_source is the
+	// legacy MoAI field name (kept as fallback for old payloads).
+	configSource := input.ConfigSource
+	if configSource == "" {
+		configSource = input.ConfigurationSource
+	}
+
 	slog.Info("config file changed",
 		"session_id", input.SessionID,
 		"config_file_path", input.ConfigFilePath,
-		"configuration_source", input.ConfigurationSource,
+		"config_source", configSource,
 	)
 
 	// REQ-HAE-002 async transition: debounce + validation + reload run in
@@ -77,7 +84,9 @@ func (h *configChangeHandler) Handle(_ context.Context, input *HookInput) (*Hook
 		h.runReload(asyncCtx, input)
 	}()
 
-	return &HookOutput{Continue: true}, nil
+	// Empty output = continue (official spec: "continue": false is the only
+	// meaningful value; the affirmative case omits the field entirely).
+	return &HookOutput{}, nil
 }
 
 // runReload performs the debounce + YAML validation + diff-aware reload

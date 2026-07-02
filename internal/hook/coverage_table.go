@@ -79,13 +79,13 @@ var CoverageTable = []EventCoverageEntry{
 
 // CoverageSummary holds aggregate counts from the CoverageTable.
 type CoverageSummary struct {
-	Total           int `json:"total"`
-	Keep            int `json:"keep"`
-	Upgrade         int `json:"upgrade"`
-	Fix             int `json:"fix"`
-	RetireObsOnly   int `json:"retire"`
-	Remove          int `json:"remove"`
-	Composite       int `json:"composite"`
+	Total         int `json:"total"`
+	Keep          int `json:"keep"`
+	Upgrade       int `json:"upgrade"`
+	Fix           int `json:"fix"`
+	RetireObsOnly int `json:"retire"`
+	Remove        int `json:"remove"`
+	Composite     int `json:"composite"`
 }
 
 // Summarize computes aggregate counts from the CoverageTable.

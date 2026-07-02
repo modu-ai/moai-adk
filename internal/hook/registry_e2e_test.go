@@ -79,7 +79,7 @@ func TestRegistryDispatch_AllNewEventTypes(t *testing.T) {
 			wantNilHSO: false,
 		},
 		{
-			name:    "PermissionRequest dispatches with real handler and returns ask",
+			name:    "PermissionRequest dispatches with real handler and defers (empty output)",
 			handler: NewPermissionRequestHandler(),
 			event:   EventPermissionRequest,
 			input: &HookInput{
@@ -88,9 +88,9 @@ func TestRegistryDispatch_AllNewEventTypes(t *testing.T) {
 				HookEventName: "PermissionRequest",
 				ToolName:      "Bash",
 			},
-			wantNilHSO:        false,
-			wantPermDecision:  DecisionAsk,
-			wantHookEventName: "PermissionRequest",
+			// Handler defers (nil) and the official default is empty JSON {} —
+			// no hookSpecificOutput (the old "ask" default was non-schema).
+			wantNilHSO: true,
 		},
 		{
 			name:    "TeammateIdle dispatches with real handler and exits 0",
@@ -197,11 +197,11 @@ func TestRegistryDispatch_NewEventDefaults(t *testing.T) {
 			wantNilHSO: true,
 		},
 		{
-			name:              "PermissionRequest default is ask",
-			event:             EventPermissionRequest,
-			wantNilHSO:        false,
-			wantPermDecision:  DecisionAsk,
-			wantHookEventName: "PermissionRequest",
+			// Official schema has no "ask" behavior for PermissionRequest; the
+			// default defers to the normal permission flow with empty JSON {}.
+			name:       "PermissionRequest default is empty output (defer)",
+			event:      EventPermissionRequest,
+			wantNilHSO: true,
 		},
 		{
 			name:       "TeammateIdle default is empty output",
@@ -464,9 +464,9 @@ func TestRegistryDispatch_FullPipeline_JSONRoundTrip(t *testing.T) {
 				HookEventName: "PermissionRequest",
 				ToolName:      "Bash",
 			},
-			wantNilHSO:        false,
-			wantPermDecision:  DecisionAsk,
-			wantHookEventName: "PermissionRequest",
+			// Handler defers (nil) and the official default is empty JSON {} —
+			// the old "ask" default was non-schema output for this event.
+			wantNilHSO: true,
 		},
 		{
 			name:    "TeammateIdle round-trip",
@@ -551,7 +551,8 @@ func TestRegistryDispatch_FullPipeline_JSONRoundTrip(t *testing.T) {
 				if roundTripped.Reason != got.Reason {
 					t.Errorf("round-trip Reason = %q, want %q", roundTripped.Reason, got.Reason)
 				}
-				if roundTripped.Continue != got.Continue {
+				if (roundTripped.Continue == nil) != (got.Continue == nil) ||
+					(roundTripped.Continue != nil && *roundTripped.Continue != *got.Continue) {
 					t.Errorf("round-trip Continue = %v, want %v", roundTripped.Continue, got.Continue)
 				}
 				if roundTripped.SuppressOutput != got.SuppressOutput {

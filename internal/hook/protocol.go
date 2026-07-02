@@ -6,7 +6,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
+
+// maxHookInputBytes caps the stdin payload read by ReadInput (5 MiB).
+// An unbounded io.ReadAll on stdin would let a runaway producer exhaust
+// memory; payloads beyond the cap are truncated and fail JSON parsing,
+// which callers handle gracefully (default output, exit 0).
+const maxHookInputBytes = 5 << 20
 
 // jsonProtocol implements the Protocol interface using encoding/json.
 // It communicates with Claude Code via JSON stdin/stdout as specified
@@ -33,7 +41,7 @@ func NewProtocol() Protocol {
 //
 // Returns ErrHookInvalidInput if non-empty JSON is malformed or otherwise unparseable.
 func (p *jsonProtocol) ReadInput(r io.Reader) (*HookInput, error) {
-	data, err := io.ReadAll(r)
+	data, err := io.ReadAll(io.LimitReader(r, maxHookInputBytes))
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrHookInvalidInput, err)
 	}
@@ -105,8 +113,22 @@ func validateInput(input *HookInput) error {
 	// Allow missing cwd: can fall back to the $CLAUDE_PROJECT_DIR env var.
 	// Hook handlers check the env var when cwd is empty.
 	if input.CWD == "" {
-		if projectDir := os.Getenv("CLAUDE_PROJECT_DIR"); projectDir != "" {
+		if projectDir := os.Getenv(config.EnvClaudeProjectDir); projectDir != "" {
 			input.CWD = projectDir
+		}
+	}
+	// Populate project_dir when absent: project_dir is NOT an official Claude
+	// Code stdin field (only the legacy nested-camelCase format carried it),
+	// but many handlers (SessionStart context injection, Stop, TeammateIdle)
+	// gate their side effects on input.ProjectDir != "". Under the official
+	// runtime the field would stay empty and those side effects would never
+	// fire — so resolve it env-first (CLAUDE_PROJECT_DIR, per
+	// internal/hook/CLAUDE.md §B7) with input.CWD as fallback.
+	if input.ProjectDir == "" {
+		if projectDir := os.Getenv(config.EnvClaudeProjectDir); projectDir != "" {
+			input.ProjectDir = projectDir
+		} else {
+			input.ProjectDir = input.CWD
 		}
 	}
 	// hook_event_name is not strictly required: CLI subcommands (moai hook stop, etc.)

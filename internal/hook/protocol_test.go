@@ -445,8 +445,10 @@ func TestWriteOutput(t *testing.T) {
 				if err := json.Unmarshal(written, &parsed); err != nil {
 					t.Fatalf("unmarshal error: %v", err)
 				}
-				if !parsed.Continue {
-					t.Error("Continue = false, want true")
+				// NewSessionOutput(true, ...) omits "continue" entirely per
+				// official spec (false is the only meaningful value).
+				if parsed.Continue != nil && !*parsed.Continue {
+					t.Error("Continue = false, want absent or true")
 				}
 				if parsed.SystemMessage != "Session started" {
 					t.Errorf("SystemMessage = %q, want %q", parsed.SystemMessage, "Session started")

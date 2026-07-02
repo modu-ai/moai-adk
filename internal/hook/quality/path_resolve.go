@@ -4,17 +4,17 @@
 // as the package-quality counterpart to resolveProjectRootFromEnv in the
 // parent hook package. The split is necessary because:
 //
-//   1. package hook/quality does NOT import package hook (avoiding a cycle).
-//   2. package hook/quality has no HookInput type to consult; the
-//      authoritative project-dir source here is GateConfig.ProjectDir.
-//   3. package hook/quality does NOT import internal/config (kept minimal);
-//      the env-var name "CLAUDE_PROJECT_DIR" is a literal string here.
+//  1. package hook/quality does NOT import package hook (avoiding a cycle).
+//  2. package hook/quality has no HookInput type to consult; the
+//     authoritative project-dir source here is GateConfig.ProjectDir.
+//  3. package hook/quality does NOT import internal/config (kept minimal);
+//     the env-var name "CLAUDE_PROJECT_DIR" is a literal string here.
 //
 // Resolution priority:
 //
-//   1. cfg.ProjectDir  — set by the caller (e.g., preToolHandler.loadGateConfig)
-//   2. CLAUDE_PROJECT_DIR  — env var set by the Claude Code hook system
-//   3. os.Getwd()  — last-resort fallback, emits slog.Warn cwd_fallback:true
+//  1. cfg.ProjectDir  — set by the caller (e.g., preToolHandler.loadGateConfig)
+//  2. CLAUDE_PROJECT_DIR  — env var set by the Claude Code hook system
+//  3. os.Getwd()  — last-resort fallback, emits slog.Warn cwd_fallback:true
 //
 // No .moai/ existence guard here — quality-gate operations (linting, vet, test)
 // are contractually invoked from project roots; adding the guard would change

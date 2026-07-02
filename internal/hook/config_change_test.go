@@ -50,9 +50,10 @@ func TestConfigChange_RT005ReloadIntegration(t *testing.T) {
 	if elapsed > 100*time.Millisecond {
 		t.Errorf("synchronous return took %v, want ≤ 100ms (REQ-HAE-002)", elapsed)
 	}
-	// Continue=true preserves SDK protocol invariant for the success case.
-	if !out.Continue {
-		t.Errorf("expected Continue=true for valid config, got false")
+	// Not-explicitly-halted preserves the protocol invariant for the success
+	// case (continue absent = continue per official spec).
+	if out.Continue != nil && !*out.Continue {
+		t.Errorf("expected no explicit halt for valid config, got continue=false")
 	}
 	// SystemMessage moves to async log per REQ-HAE-002 design.
 	if out.SystemMessage != "" {
@@ -95,8 +96,8 @@ func TestConfigChange_InvalidYAMLAsyncReject(t *testing.T) {
 		t.Fatal("Handle() returned nil")
 	}
 	// Main response is success (rejection moved to async log).
-	if !out.Continue {
-		t.Error("expected Continue=true (async design — validation runs in goroutine)")
+	if out.Continue != nil && !*out.Continue {
+		t.Error("expected no explicit halt (async design — validation runs in goroutine)")
 	}
 
 	// The async goroutine MUST complete (even though it logs a Warn and returns).
@@ -189,10 +190,10 @@ func TestConfigChangeHandler_Handle(t *testing.T) {
 				t.Fatal("expected non-nil output")
 			}
 
-			// REQ-HAE-002: main response is Continue=true regardless of
+			// REQ-HAE-002: main response is non-halting regardless of
 			// validation outcome (validation runs in goroutine).
-			if !out.Continue {
-				t.Errorf("expected Continue=true (async design), got false")
+			if out.Continue != nil && !*out.Continue {
+				t.Errorf("expected no explicit halt (async design), got continue=false")
 			}
 			// REQ-HAE-002: SystemMessage moves to async log.
 			if out.SystemMessage != "" {
@@ -330,4 +331,3 @@ func bencPercentileMillis(durations []time.Duration, p float64) float64 {
 	}
 	return float64(sorted[idx].Microseconds()) / 1000.0
 }
-

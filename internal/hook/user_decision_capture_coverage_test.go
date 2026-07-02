@@ -32,16 +32,16 @@ func TestClassifyDomain_Branches(t *testing.T) {
 		"진행 방향":            "workflow_direction",
 		"direction":        "workflow_direction",
 		"agent delegation": "agent_delegation",
-		"에이전트":            "agent_delegation",
-		"branch":          "git_strategy",
-		"브랜치":             "git_strategy",
-		"PR strategy":     "pr_strategy",
-		"design":          "design",
-		"디자인":             "design",
-		"scope":           "scope",
-		"범위":              "scope",
-		"unknown thing":   "general",
-		"":                "general",
+		"에이전트":             "agent_delegation",
+		"branch":           "git_strategy",
+		"브랜치":              "git_strategy",
+		"PR strategy":      "pr_strategy",
+		"design":           "design",
+		"디자인":              "design",
+		"scope":            "scope",
+		"범위":               "scope",
+		"unknown thing":    "general",
+		"":                 "general",
 	}
 	for header, want := range cases {
 		got := classifyDomain(header)
@@ -144,7 +144,7 @@ func TestCaptureUserDecision_ToolInputOnlySelection(t *testing.T) {
 	input := &HookInput{
 		ToolName: askUserQuestionTool,
 		ToolInput: mustMarshal(t, map[string]any{
-			"questions":            []map[string]any{{"header": "lang", "question": "언어?"}},
+			"questions":             []map[string]any{{"header": "lang", "question": "언어?"}},
 			"selected_option_label": "ko",
 		}),
 		ToolResponse: nil,
@@ -282,4 +282,3 @@ func TestParseCapturedResult_HeaderFromToolInput(t *testing.T) {
 		t.Errorf("header=%q want %q", header, "from_input")
 	}
 }
-

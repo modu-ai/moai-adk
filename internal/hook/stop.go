@@ -51,7 +51,11 @@ func (h *stopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput
 		projectDir = input.CWD
 	}
 
-	// Prune telemetry files older than 90 days (SPEC-TELEMETRY-001 R4).
+	// Prune telemetry files older than 90 days.
+	// Retention source of truth: SPEC-TELEMETRY-001 R4 (90 days). A second
+	// PruneOldFiles(projectDir, 30) call used to follow the reflective-learning
+	// step below, silently shrinking the effective retention to 30 days —
+	// the two windows collided on the same files and the shorter one won.
 	// Best-effort: errors are logged and never propagated.
 	if projectDir != "" {
 		if pruneErr := telemetry.PruneOldFiles(projectDir, 90); pruneErr != nil {
@@ -66,11 +70,6 @@ func (h *stopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput
 		if numRecords >= minToolInvocationsForReflection {
 			AnalyzeSessionAndLog(projectDir, input.SessionID)
 		}
-	}
-
-	// Prune old telemetry files (keep 30 days).
-	if projectDir != "" {
-		_ = telemetry.PruneOldFiles(projectDir, 30)
 	}
 
 	// Evidence gate (SPEC-STOP-EVIDENCE-GATE-001, advisory-only): reads the

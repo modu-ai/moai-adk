@@ -150,11 +150,11 @@ func TestHookResponseContinue(t *testing.T) {
 	tests := []struct {
 		name     string
 		cont     *bool
-		expected bool // true if continue should be true
+		expected *bool // nil = field absent (no opinion); pointer = explicit value
 	}{
-		{"nil continue", nil, true}, // nil means no opinion, defaults to true
-		{"continue true", boolPtr(true), true},
-		{"continue false", boolPtr(false), false},
+		{"nil continue", nil, nil}, // nil means no opinion → field stays absent
+		{"continue true", boolPtr(true), boolPtr(true)},
+		{"continue false", boolPtr(false), boolPtr(false)},
 	}
 
 	for _, tt := range tests {
@@ -163,8 +163,11 @@ func TestHookResponseContinue(t *testing.T) {
 			output := ToHookOutput(resp)
 
 			got := output.Continue
-			if got != tt.expected {
-				t.Errorf("ToHookOutput().Continue = %v, want %v", got, tt.expected)
+			if (got == nil) != (tt.expected == nil) {
+				t.Fatalf("ToHookOutput().Continue = %v, want %v", got, tt.expected)
+			}
+			if got != nil && *got != *tt.expected {
+				t.Errorf("ToHookOutput().Continue = %v, want %v", *got, *tt.expected)
 			}
 		})
 	}

@@ -97,10 +97,12 @@ func TestHookSubcommands_EventTypeMapping(t *testing.T) {
 			// SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001: the runHookEvent dispatcher
 			// gates TaskCreated + Notification on hook.opt_in.enabled. To
 			// exercise the dispatch path for the notification subcommand,
-			// chdir to a tempdir with HOI enabled so the gate passes through.
+			// point the env-first project-root resolution (CLAUDE_PROJECT_DIR,
+			// then Getwd) at a tempdir with HOI enabled so the gate passes.
 			if wantEvent == hook.EventNotification || wantEvent == hook.EventTaskCreated {
 				dir := t.TempDir()
 				writeSystemYAMLHookOptIn(t, dir, true)
+				t.Setenv("CLAUDE_PROJECT_DIR", dir)
 				t.Chdir(dir)
 			}
 
@@ -198,9 +200,10 @@ func TestHookValidEventTypes_Complete(t *testing.T) {
 
 	validTypes := hook.ValidEventTypes()
 
-	// Verify exact count. 3 observe-only events added by SPEC-HOOK-EVENT-REGISTRY-001.
-	if got := len(validTypes); got != 29 {
-		t.Errorf("ValidEventTypes() returned %d types, want 29 (3 observe-only events added by SPEC-HOOK-EVENT-REGISTRY-001)", got)
+	// Verify exact count. 3 observe-only events added by SPEC-HOOK-EVENT-REGISTRY-001
+	// + official Setup recognition (recognition-only, no subcommand).
+	if got := len(validTypes); got != 30 {
+		t.Errorf("ValidEventTypes() returned %d types, want 30 (3 observe-only events + official Setup recognition)", got)
 	}
 
 	// Build a lookup set for quick membership checks.
@@ -294,6 +297,7 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 		hook.EventPostToolBatch:       true, // observe-only, no subcommand
 		hook.EventUserPromptExpansion: true, // observe-only, no subcommand
 		hook.EventMessageDisplay:      true, // observe-only, no subcommand
+		hook.EventSetup:               true, // official event, recognition-only, no subcommand (MIG-002 keeps the CLI binding removed)
 	}
 
 	// Build a mapping from EventType to expected subcommand name.

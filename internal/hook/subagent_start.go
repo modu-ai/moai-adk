@@ -241,7 +241,9 @@ func (h *agentStartHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 
 // loadAgentFrontmatter finds the agent file and parses YAML frontmatter.
 // Search order (post SPEC-V3R6-AGENT-FOLDER-SPLIT-001):
-//   .claude/agents/{core,expert,meta,harness}/<name>.md → .claude/agents/<name>.md
+//
+//	.claude/agents/{core,expert,meta,harness}/<name>.md → .claude/agents/<name>.md
+//
 // found=false means file does not exist (REQ-RA-008 bypass).
 func (h *agentStartHandler) loadAgentFrontmatter(projectDir, agentName string) (*agentFrontmatter, bool, error) {
 	candidates := []string{

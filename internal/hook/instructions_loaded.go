@@ -27,14 +27,21 @@ func (h *instructionsLoadedHandler) EventType() EventType {
 // Handle processes an InstructionsLoaded event. It checks that loaded files
 // comply with the 40,000 character budget per coding-standards.md.
 func (h *instructionsLoadedHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
+	// Official stdin field for InstructionsLoaded is file_path;
+	// instruction_file_path is the legacy MoAI field name (kept as fallback).
+	instructionPath := input.FilePath
+	if instructionPath == "" {
+		instructionPath = input.InstructionFilePath
+	}
+
 	slog.Info("instructions loaded",
 		"session_id", input.SessionID,
-		"instruction_file_path", input.InstructionFilePath,
+		"file_path", instructionPath,
 	)
 
 	// Check character budget for the loaded instruction file
-	if input.InstructionFilePath != "" {
-		if err := h.checkCharacterBudget(input.InstructionFilePath); err != nil {
+	if instructionPath != "" {
+		if err := h.checkCharacterBudget(instructionPath); err != nil {
 			return &HookOutput{
 				SystemMessage: err.Error(),
 			}, nil

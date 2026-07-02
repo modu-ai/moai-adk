@@ -98,15 +98,22 @@ func TestPermissionRequestHandler_UpdatedInputDeny(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// When __updated_input_marker__ is present, handler must deny.
+	// When __updated_input_marker__ is present, handler must deny via the
+	// official PermissionRequest schema: hookSpecificOutput.decision.behavior.
 	if got == nil {
 		t.Fatal("expected non-nil output (deny) when __updated_input_marker__ is set")
 	}
 	if got.HookSpecificOutput == nil {
 		t.Fatal("expected HookSpecificOutput to be set")
 	}
-	if got.HookSpecificOutput.PermissionDecision != "deny" {
-		t.Errorf("PermissionDecision = %q, want 'deny'", got.HookSpecificOutput.PermissionDecision)
+	if got.HookSpecificOutput.Decision == nil {
+		t.Fatal("expected official decision object to be set")
+	}
+	if got.HookSpecificOutput.Decision.Behavior != "deny" {
+		t.Errorf("decision.behavior = %q, want 'deny'", got.HookSpecificOutput.Decision.Behavior)
+	}
+	if got.HookSpecificOutput.PermissionDecision != "" {
+		t.Errorf("permissionDecision = %q, want empty (PreToolUse-only field)", got.HookSpecificOutput.PermissionDecision)
 	}
 }
 

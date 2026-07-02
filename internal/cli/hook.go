@@ -70,6 +70,9 @@ func init() {
 		cmd := &cobra.Command{
 			Use:   sub.use,
 			Short: sub.short,
+			// Hook subcommands are invoked by Claude Code, not humans: a
+			// genuine error must not dump usage noise into the hook pipeline.
+			SilenceUsage: true,
 			RunE: func(cmd *cobra.Command, _ []string) error {
 				return runHookEvent(cmd, event)
 			},
@@ -86,11 +89,12 @@ func init() {
 
 	// Add "agent" subcommand for agent-specific hooks
 	hookCmd.AddCommand(&cobra.Command{
-		Use:   "agent [action]",
-		Short: "Execute agent-specific hook action",
-		Long:  "Execute agent-specific hook actions like ddd-pre-transformation, backend-validation, etc.",
-		Args:  cobra.ExactArgs(1),
-		RunE:  runAgentHook,
+		Use:          "agent [action]",
+		Short:        "Execute agent-specific hook action",
+		Long:         "Execute agent-specific hook actions like ddd-pre-transformation, backend-validation, etc.",
+		Args:         cobra.ExactArgs(1),
+		SilenceUsage: true,
+		RunE:         runAgentHook,
 	})
 
 	// harness-observe Add subcommands (SPEC-V3R3-HARNESS-LEARNING-001 T-P1-03)
@@ -173,7 +177,12 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 
 	input, err := deps.HookProtocol.ReadInput(os.Stdin)
 	if err != nil {
-		return fmt.Errorf("read hook input: %w", err)
+		// Malformed/truncated stdin JSON must NEVER fail the hook pipeline:
+		// a cobra error would print usage noise and exit 1, and the tool the
+		// hook observes would surface a spurious hook failure. Warn on stderr,
+		// emit the event's safe default output ({}), and exit 0.
+		_, _ = fmt.Fprintf(os.Stderr, "moai hook %s: invalid stdin JSON (%v); emitting default output\n", event, err)
+		return writeHookOutput(event, nil, &hook.HookOutput{})
 	}
 
 	// Inject event name from CLI subcommand when Claude Code omits it.
@@ -187,11 +196,10 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 	// secondary harness-observe wrappers are gated separately in their
 	// runHarnessObserve* handlers. See SPEC §A.3 cohabitation contract.
 	if event == hook.EventTaskCreated || event == hook.EventNotification {
-		cwd, cwdErr := os.Getwd()
-		if cwdErr != nil {
-			cwd = "."
-		}
-		if !isHookOptInEnabled(cwd) {
+		// Env-first project-root resolution (CLAUDE_PROJECT_DIR then Getwd):
+		// hook wrappers may run with cwd inside a worktree, where a bare
+		// os.Getwd() is NOT the project root (internal/hook/CLAUDE.md §B7).
+		if !isHookOptInEnabled(resolveHookProjectRoot()) {
 			// Pattern A silent return: write empty HookOutput and exit.
 			emptyOutput := &hook.HookOutput{}
 			if writeErr := writeHookOutput(event, input, emptyOutput); writeErr != nil {
@@ -213,15 +221,16 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 		return err
 	}
 
-	// Exit code 2 for explicit exit code (TeammateIdle, TaskCompleted)
+	// Exit code 2 for explicit exit code requests (generic plumbing for any
+	// handler that sets ExitCode; nothing in-tree sets it today).
 	if output != nil && output.ExitCode == 2 {
 		os.Exit(2)
 	}
 
-	// Exit code 2 for deny decisions per Claude Code protocol
-	if output != nil && output.Decision == hook.DecisionDeny {
-		os.Exit(2)
-	}
+	// NOTE: there is intentionally NO exit-2 branch for deny decisions. A JSON
+	// deny lives in hookSpecificOutput (permissionDecision / decision.behavior),
+	// never in the top-level Decision field, and per the official spec a JSON
+	// deny exits 0 (on exit 2 stdout JSON is IGNORED and the deny would be lost).
 
 	return nil
 }
@@ -298,7 +307,12 @@ func runAgentHook(cmd *cobra.Command, args []string) error {
 	// Read hook input from stdin
 	input, err := deps.HookProtocol.ReadInput(os.Stdin)
 	if err != nil {
-		return fmt.Errorf("read hook input: %w", err)
+		// Same graceful degradation as runHookEvent: warn + default output + exit 0.
+		_, _ = fmt.Fprintf(os.Stderr, "moai hook agent %s: invalid stdin JSON (%v); emitting default output\n", action, err)
+		if writeErr := deps.HookProtocol.WriteOutput(os.Stdout, &hook.HookOutput{}); writeErr != nil {
+			return fmt.Errorf("write hook output: %w", writeErr)
+		}
+		return nil
 	}
 
 	// Determine the event type based on the action suffix
@@ -318,8 +332,13 @@ func runAgentHook(cmd *cobra.Command, args []string) error {
 		event = hook.EventPreToolUse
 	}
 
-	// Add action to input for handler identification
-	input.Data = fmt.Appendf(nil, `{"action":"%s"}`, action)
+	// Add action to input for handler identification. json.Marshal (not a
+	// format string) so an action containing quotes cannot produce malformed JSON.
+	if actionJSON, marshalErr := json.Marshal(struct {
+		Action string `json:"action"`
+	}{Action: action}); marshalErr == nil {
+		input.Data = actionJSON
+	}
 
 	ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
 	defer cancel()
@@ -333,13 +352,9 @@ func runAgentHook(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("write hook output: %w", writeErr)
 	}
 
-	// Exit code 2 for explicit exit code (TeammateIdle, TaskCompleted)
+	// Exit code 2 for explicit exit code requests (generic plumbing; see
+	// runHookEvent). A JSON deny exits 0 by design — no Decision==deny branch.
 	if output != nil && output.ExitCode == 2 {
-		os.Exit(2)
-	}
-
-	// Exit code 2 for deny decisions per Claude Code protocol
-	if output != nil && output.Decision == hook.DecisionDeny {
 		os.Exit(2)
 	}
 

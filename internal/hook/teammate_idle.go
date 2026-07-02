@@ -30,20 +30,30 @@ func (h *teammateIdleHandler) EventType() EventType {
 }
 
 // Handle processes a TeammateIdle event.
-// Returns empty output (exit code 0) to accept idle.
-// Returns NewTeammateKeepWorkingOutput() (exit code 2) to keep working.
+// Returns empty output to accept idle.
+// Returns NewTeammateKeepWorkingOutput(reason) — top-level decision:"block" +
+// reason JSON with exit 0, per official TeammateIdle protocol — to keep working.
 //
-// Quality gate enforcement only applies in team mode (TeamName non-empty).
+// Quality gate enforcement only applies in team mode. The official runtime
+// signals team context via agent_type (the teammate name); legacy MoAI
+// payloads used team_name. Either field activates the gate.
 // Graceful degradation: if config or baseline cannot be loaded, idle is accepted.
 func (h *teammateIdleHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
+	// Teammate display name: official agent_type first, legacy teammate_name fallback.
+	teammate := input.AgentType
+	if teammate == "" {
+		teammate = input.TeammateName
+	}
+
 	slog.Info("teammate idle",
 		"session_id", input.SessionID,
-		"teammate", input.TeammateName,
+		"teammate", teammate,
 		"team", input.TeamName,
 	)
 
-	// Only enforce quality gates in team mode.
-	if input.TeamName == "" {
+	// Only enforce quality gates in team mode: official agent_type (teammate
+	// name) OR legacy team_name marks team context.
+	if input.AgentType == "" && input.TeamName == "" {
 		return &HookOutput{}, nil
 	}
 
@@ -83,16 +93,16 @@ func (h *teammateIdleHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	if enforcer.ShouldBlock(counts, gate) {
 		msg := fmt.Sprintf(
 			"Quality gate failed for teammate %q: %s\nFix errors before going idle.",
-			input.TeammateName,
+			teammate,
 			lsphook.FormatGateResult(counts, gate),
 		)
 		fmt.Fprint(os.Stderr, msg)
 		slog.Warn("teammate_idle: blocking idle - quality gate failed",
-			"teammate", input.TeammateName,
+			"teammate", teammate,
 			"errors", counts.Errors,
 			"max_errors", gate.MaxErrors,
 		)
-		return NewTeammateKeepWorkingOutput(), nil
+		return NewTeammateKeepWorkingOutput(msg), nil
 	}
 
 	// Check test coverage gate.
@@ -101,15 +111,15 @@ func (h *teammateIdleHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		if coveragePct < threshold {
 			msg := fmt.Sprintf(
 				"Coverage gate failed for teammate %q: %.1f%% < %.1f%% required. Run tests to improve coverage.",
-				input.TeammateName, coveragePct, threshold,
+				teammate, coveragePct, threshold,
 			)
 			fmt.Fprint(os.Stderr, msg)
 			slog.Warn("teammate_idle: blocking idle - coverage gate failed",
-				"teammate", input.TeammateName,
+				"teammate", teammate,
 				"coverage", coveragePct,
 				"threshold", threshold,
 			)
-			return NewTeammateKeepWorkingOutput(), nil
+			return NewTeammateKeepWorkingOutput(msg), nil
 		}
 	}
 

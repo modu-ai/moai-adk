@@ -2,6 +2,7 @@ package hook
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -49,10 +50,13 @@ func (r *registry) Register(handler Handler) {
 	event := handler.EventType()
 	r.mu.Lock()
 	r.handlers[event] = append(r.handlers[event], handler)
+	// Capture the count under the mutex — reading r.handlers after Unlock
+	// raced with concurrent Register calls (found by TestHandlers_RaceSafeCopy).
+	count := len(r.handlers[event])
 	r.mu.Unlock()
 	slog.Debug("handler registered",
 		"event", string(event),
-		"handler_count", len(r.handlers[event]),
+		"handler_count", count,
 	)
 }
 
@@ -99,19 +103,22 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 		output, err := h.Handle(ctx, input)
 		elapsed := time.Since(start)
 
-		// Check for context deadline exceeded (timeout)
-		if ctx.Err() != nil {
-			slog.Error("hook execution timed out",
-				"event", string(event),
-				"handler_index", i,
-				"timeout", r.timeout.String(),
-			)
-			r.writeTrace(input, event, h, elapsed, nil, ctx.Err())
-			return nil, fmt.Errorf("%w: %v", ErrHookTimeout, ctx.Err())
-		}
-
-		// Handler returned an error: stop dispatch chain
+		// Handler error handling. The handler's OWN result is inspected first:
+		// a handler that returns (output, nil) just past the deadline must have
+		// its valid output honored — the previous ctx.Err()-first ordering
+		// discarded such output and replaced it with ErrHookTimeout.
 		if err != nil {
+			// Map to ErrHookTimeout only when the error is cancellation-shaped
+			// or the dispatch context has expired.
+			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) || ctx.Err() != nil {
+				slog.Error("hook execution timed out",
+					"event", string(event),
+					"handler_index", i,
+					"timeout", r.timeout.String(),
+				)
+				r.writeTrace(input, event, h, elapsed, nil, err)
+				return nil, fmt.Errorf("%w: %v", ErrHookTimeout, err)
+			}
 			slog.Error("handler returned error",
 				"event", string(event),
 				"handler_index", i,
@@ -147,43 +154,102 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 			return output, nil
 		}
 
-		// Accumulate SystemMessage from non-blocking handlers so that
-		// messages from earlier handlers (e.g. auto-update notifications,
-		// memory injection) are not silently discarded.
-		if output != nil && output.SystemMessage != "" {
-			if merged.SystemMessage != "" {
-				merged.SystemMessage += "\n" + output.SystemMessage
-			} else {
-				merged.SystemMessage = output.SystemMessage
-			}
-		}
-
-		// Merge HookSpecificOutput (additionalContext) returned by UserPromptSubmit handlers.
-		// Perform a nil check before setting to prevent later-registered handlers from overwriting values set earlier.
-		if output != nil && output.HookSpecificOutput != nil {
-			if merged.HookSpecificOutput == nil {
-				merged.HookSpecificOutput = output.HookSpecificOutput
-			} else if output.HookSpecificOutput.AdditionalContext != "" && merged.HookSpecificOutput.AdditionalContext == "" {
-				merged.HookSpecificOutput.AdditionalContext = output.HookSpecificOutput.AdditionalContext
-			}
-		}
+		// Accumulate non-blocking fields per official multi-hook semantics
+		// (additionalContext from EVERY hook is kept, etc.).
+		mergeHandlerOutput(merged, output)
 	}
 
 	return merged, nil
+}
+
+// mergeHandlerOutput folds a non-blocking handler output into merged, per
+// official Claude Code multi-hook semantics:
+//   - systemMessage / hookSpecificOutput.additionalContext from EVERY hook are
+//     kept (accumulated, "\n"-joined) — previously only the FIRST
+//     additionalContext survived.
+//   - updatedInput / updatedToolOutput / updatedMCPToolOutput: last-non-nil wins.
+//   - continue:false (the only meaningful value) + stopReason propagate once set.
+//   - retry propagates when any handler sets it.
+func mergeHandlerOutput(merged, output *HookOutput) {
+	if output == nil {
+		return
+	}
+
+	if output.SystemMessage != "" {
+		if merged.SystemMessage != "" {
+			merged.SystemMessage += "\n" + output.SystemMessage
+		} else {
+			merged.SystemMessage = output.SystemMessage
+		}
+	}
+
+	// continue:false is the only meaningful value; keep the first explicit halt.
+	if output.Continue != nil && !*output.Continue && merged.Continue == nil {
+		merged.Continue = output.Continue
+	}
+	if output.StopReason != "" && merged.StopReason == "" {
+		merged.StopReason = output.StopReason
+	}
+	if output.Retry {
+		merged.Retry = true
+	}
+
+	if output.HookSpecificOutput == nil {
+		return
+	}
+	if merged.HookSpecificOutput == nil {
+		merged.HookSpecificOutput = output.HookSpecificOutput
+		return
+	}
+
+	src := output.HookSpecificOutput
+	dst := merged.HookSpecificOutput
+
+	// additionalContext from every hook is kept (official multi-hook semantics).
+	if src.AdditionalContext != "" {
+		if dst.AdditionalContext != "" {
+			dst.AdditionalContext += "\n" + src.AdditionalContext
+		} else {
+			dst.AdditionalContext = src.AdditionalContext
+		}
+	}
+	// Input/output rewrites: last-non-nil wins.
+	if len(src.UpdatedInput) > 0 {
+		dst.UpdatedInput = src.UpdatedInput
+	}
+	if src.UpdatedToolOutput != "" {
+		dst.UpdatedToolOutput = src.UpdatedToolOutput
+	}
+	if src.UpdatedMCPToolOutput != "" {
+		dst.UpdatedMCPToolOutput = src.UpdatedMCPToolOutput
+	}
+	if src.SessionTitle != "" && dst.SessionTitle == "" {
+		dst.SessionTitle = src.SessionTitle
+	}
+	if len(src.MxTags) > 0 {
+		dst.MxTags = append(dst.MxTags, src.MxTags...)
+	}
 }
 
 // isBlockDecision checks if the output represents a blocking decision.
 // Per Claude Code protocol:
 // - Stop/PostToolUse use top-level decision = "block"
 // - PreToolUse uses hookSpecificOutput.permissionDecision = "deny"
+// - PermissionRequest uses hookSpecificOutput.decision.behavior = "deny"
 func isBlockDecision(output *HookOutput) bool {
 	// Check top-level decision (Stop, PostToolUse)
 	if output.Decision == DecisionBlock {
 		return true
 	}
-	// Check hookSpecificOutput.permissionDecision (PreToolUse)
-	if output.HookSpecificOutput != nil && output.HookSpecificOutput.PermissionDecision == DecisionDeny {
-		return true
+	if output.HookSpecificOutput != nil {
+		// Check hookSpecificOutput.permissionDecision (PreToolUse)
+		if output.HookSpecificOutput.PermissionDecision == DecisionDeny {
+			return true
+		}
+		// Check hookSpecificOutput.decision.behavior (PermissionRequest)
+		if output.HookSpecificOutput.Decision != nil && output.HookSpecificOutput.Decision.Behavior == DecisionDeny {
+			return true
+		}
 	}
 	return false
 }
@@ -197,6 +263,11 @@ func getBlockReason(output *HookOutput) string {
 	// Check hookSpecificOutput.permissionDecisionReason (PreToolUse)
 	if output.HookSpecificOutput != nil && output.HookSpecificOutput.PermissionDecisionReason != "" {
 		return output.HookSpecificOutput.PermissionDecisionReason
+	}
+	// PermissionRequest deny carries its reason in systemMessage (the official
+	// decision object has no reason slot).
+	if output.SystemMessage != "" {
+		return output.SystemMessage
 	}
 	return ""
 }
@@ -214,14 +285,11 @@ func (r *registry) defaultOutputForEvent(event EventType) *HookOutput {
 		// Return empty JSON {}
 		return &HookOutput{}
 	case EventPermissionRequest:
-		// PermissionRequest defaults to "ask" (defer to user).
-		// Per Claude Code protocol (v2.1.59+), hookEventName must be "PermissionRequest".
-		return &HookOutput{
-			HookSpecificOutput: &HookSpecificOutput{
-				HookEventName:      "PermissionRequest",
-				PermissionDecision: DecisionAsk,
-			},
-		}
+		// PermissionRequest default is empty JSON {} = defer to the normal
+		// permission flow. The official schema is hookSpecificOutput.decision
+		// {behavior:"allow"|"deny"} — there is no "ask" behavior, and emitting
+		// the PreToolUse-only permissionDecision field here was non-schema output.
+		return &HookOutput{}
 	case EventPreToolUse:
 		return NewAllowOutput()
 	case EventPostToolUse:
@@ -231,9 +299,15 @@ func (r *registry) defaultOutputForEvent(event EventType) *HookOutput {
 	}
 }
 
-// Handlers returns all handlers registered for the given event type.
+// Handlers returns a copy of all handlers registered for the given event type.
+// A copy is returned under the mutex so callers never observe a slice that
+// Register mutates concurrently.
 func (r *registry) Handlers(event EventType) []Handler {
-	return r.handlers[event]
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	handlers := make([]Handler, len(r.handlers[event]))
+	copy(handlers, r.handlers[event])
+	return handlers
 }
 
 // SetTraceWriter attaches an async TraceWriter to the registry.
@@ -313,10 +387,16 @@ func (r *registry) writeTrace(
 }
 
 // effectiveDecision extracts the decision string from a HookOutput.
-// PreToolUse uses hookSpecificOutput.permissionDecision; others use top-level decision.
+// PreToolUse uses hookSpecificOutput.permissionDecision; PermissionRequest
+// uses hookSpecificOutput.decision.behavior; others use top-level decision.
 func effectiveDecision(output *HookOutput) string {
-	if output.HookSpecificOutput != nil && output.HookSpecificOutput.PermissionDecision != "" {
-		return output.HookSpecificOutput.PermissionDecision
+	if output.HookSpecificOutput != nil {
+		if output.HookSpecificOutput.PermissionDecision != "" {
+			return output.HookSpecificOutput.PermissionDecision
+		}
+		if output.HookSpecificOutput.Decision != nil && output.HookSpecificOutput.Decision.Behavior != "" {
+			return output.HookSpecificOutput.Decision.Behavior
+		}
 	}
 	return output.Decision
 }

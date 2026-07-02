@@ -6,6 +6,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -262,10 +263,12 @@ func isEnforceOnPushEnabled() bool {
 }
 
 // readStdinLines reads all non-empty lines from stdin.
+// Uses io.ReadAll(os.Stdin) — the previous os.ReadFile("/dev/stdin") does not
+// exist on Windows, so pre-push validation silently skipped there.
 func readStdinLines() ([]string, error) {
-	data, err := os.ReadFile("/dev/stdin")
+	data, err := io.ReadAll(os.Stdin)
 	if err != nil {
-		// stdin may not be available; return empty.
+		// stdin may not be available; return empty (tolerate-empty behavior).
 		return nil, nil //nolint:nilerr // empty stdin is not an error
 	}
 

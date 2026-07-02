@@ -74,7 +74,7 @@ func (h *specStatusHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 		targetStatus = status
 		specIDs = spec.ExtractSPECIDs(data.Title)
 
-	// Handle git commit commands (existing behavior: Round 1)
+		// Handle git commit commands (existing behavior: Round 1)
 	} else if isGitCommitCommand(data.Command) {
 		commitMsg := extractCommitMessage(data.Command)
 		if commitMsg == "" {
@@ -160,4 +160,3 @@ func extractCommitMessage(command string) string {
 	// Fallback: return empty string
 	return ""
 }
-

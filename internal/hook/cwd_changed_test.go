@@ -4,8 +4,61 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+// TestCwdChangedHandler_EnvFileAppendPreservesContent is the G8 regression
+// test: CLAUDE_ENV_FILE may already carry user/session content, so the write
+// MUST append (the old os.WriteFile truncated and clobbered it), and repeat
+// invocations MUST be idempotent (no duplicate export lines).
+func TestCwdChangedHandler_EnvFileAppendPreservesContent(t *testing.T) {
+	tmpDir := t.TempDir()
+	envFile := filepath.Join(tmpDir, "claude-env")
+
+	// Pre-existing content that must survive the hook write.
+	preexisting := "export USER_SET_VAR=\"keep-me\"\n"
+	if err := os.WriteFile(envFile, []byte(preexisting), 0o644); err != nil {
+		t.Fatalf("seed env file: %v", err)
+	}
+
+	moaiDir := filepath.Join(tmpDir, ".moai", "config")
+	if err := os.MkdirAll(moaiDir, 0o755); err != nil {
+		t.Fatalf("failed to create moai config dir: %v", err)
+	}
+
+	t.Setenv("CLAUDE_ENV_FILE", envFile)
+
+	h := NewCwdChangedHandler()
+	input := &HookInput{SessionID: "sess-append", CWD: tmpDir, NewCwd: tmpDir}
+	if _, err := h.Handle(context.Background(), input); err != nil {
+		t.Fatalf("Handle() error = %v", err)
+	}
+
+	data, err := os.ReadFile(envFile)
+	if err != nil {
+		t.Fatalf("read env file: %v", err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "USER_SET_VAR=\"keep-me\"") {
+		t.Errorf("pre-existing content was clobbered (append required): %q", content)
+	}
+	if !strings.Contains(content, "MOAI_PROJECT_DIR=") {
+		t.Errorf("MOAI_PROJECT_DIR export missing: %q", content)
+	}
+
+	// Idempotency: a second invocation must not duplicate the export line.
+	if _, err := h.Handle(context.Background(), input); err != nil {
+		t.Fatalf("Handle() second call error = %v", err)
+	}
+	data2, err := os.ReadFile(envFile)
+	if err != nil {
+		t.Fatalf("re-read env file: %v", err)
+	}
+	if n := strings.Count(string(data2), "MOAI_PROJECT_DIR="); n != 1 {
+		t.Errorf("MOAI_PROJECT_DIR export appears %d times, want 1 (idempotent append): %q", n, string(data2))
+	}
+}
 
 func TestCwdChangedHandler_EventType(t *testing.T) {
 	h := NewCwdChangedHandler()

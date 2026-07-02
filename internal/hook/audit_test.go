@@ -50,7 +50,8 @@ var retiredEventNames = RetiredEventNames
 
 // TestAuditRegistrationParity verifies that the handler count matches the
 // expected formula:
-//   Go handlers == native settings.json events + 1 composite (autoUpdate) + |observability-only handlers|
+//
+//	Go handlers == native settings.json events + 1 composite (autoUpdate) + |observability-only handlers|
 //
 // SPEC-V3R2-RT-006 REQ-003, AC-13.
 // Implements T-RT006-02 (RED) + T-RT006-19 (body).
@@ -295,8 +296,9 @@ var deregisteredButLiveEventNames = []string{
 
 // TestAuditThreeWaySync verifies the 3-way sync invariant (extended to 4-way):
 // Go-registered event set ≡ settings.json.tmpl hook-key set
-//                          ∪ retiredEventNames
-//                          ∪ deregisteredButLiveEventNames.
+//
+//	∪ retiredEventNames
+//	∪ deregisteredButLiveEventNames.
 //
 // SPEC-V3R2-MIG-002 REQ-MIG002-009, REQ-MIG002-010 → AC-MIG002-A1.
 // Reports HOOK_SYNC_DRIFT for Go-only entries; HOOK_WRAPPER_ORPHAN for settings-only entries.
@@ -379,19 +381,20 @@ func TestAuditThreeWaySync(t *testing.T) {
 	}
 }
 
-// TestAuditNoEventSetupOrphan verifies that the EventSetup constant and the
-// "setup" cobra subcommand binding have been removed from the codebase.
+// TestAuditNoEventSetupOrphan guards the EventSetup ORPHAN hazard.
 //
-// SPEC-V3R2-MIG-002 REQ-MIG002-003 → AC-MIG002-A2, AC-MIG002-A3.
+// History: SPEC-V3R2-MIG-002 REQ-MIG002-003 removed an orphan EventSetup
+// (constant + dead "setup" cobra binding, no handler). Setup is, however, an
+// OFFICIAL Claude Code event (hooks spec v2.1.196, trigger init|maintenance),
+// so the constant was re-added as RECOGNITION-ONLY. The orphan guard therefore
+// now asserts the non-orphan invariants that remain true:
+//   - NO "setup" cobra subcommand binding (the dead CLI surface stays removed)
+//   - NO CoverageTable row (no phantom handler inventory entry)
+//   - EventSetup validates via IsValidEventType (recognition works)
 func TestAuditNoEventSetupOrphan(t *testing.T) {
-	// Check that types.go does NOT define EventSetup.
-	typesData, err := os.ReadFile("types.go")
-	if err != nil {
-		t.Fatalf("read types.go: %v", err)
-	}
-
-	if strings.Contains(string(typesData), "EventSetup") {
-		t.Errorf("AC-MIG002-A2 FAIL: EventSetup constant still present in types.go (SPEC-V3R2-MIG-002 REQ-MIG002-003)")
+	// Recognition-only: the constant must validate.
+	if !IsValidEventType(EventSetup) {
+		t.Error("EventSetup must be recognized as a valid official event type")
 	}
 
 	// Check that internal/cli/hook.go does NOT have the "setup" cobra binding.
@@ -402,6 +405,14 @@ func TestAuditNoEventSetupOrphan(t *testing.T) {
 
 	if strings.Contains(string(hookCLIData), `"setup"`) {
 		t.Errorf("AC-MIG002-A3 FAIL: \"setup\" cobra binding still present in internal/cli/hook.go (SPEC-V3R2-MIG-002 REQ-MIG002-003)")
+	}
+
+	// No CoverageTable row: Setup has no handler and must not appear in the
+	// handler inventory.
+	for _, entry := range CoverageTable {
+		if entry.EventName == "Setup" {
+			t.Errorf("CoverageTable must not carry a Setup row (recognition-only event): %+v", entry)
+		}
 	}
 }
 

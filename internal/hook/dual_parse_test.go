@@ -216,8 +216,8 @@ func TestToHookOutput_ContinueFalse(t *testing.T) {
 
 	output := ToHookOutput(resp)
 
-	if output.Continue != false {
-		t.Errorf("Continue = %v, want false", output.Continue)
+	if output.Continue == nil || *output.Continue != false {
+		t.Errorf("Continue = %v, want pointer to false", output.Continue)
 	}
 	if output.StopReason != "Stopping execution" {
 		t.Errorf("StopReason = %v, want %v", output.StopReason, "Stopping execution")
@@ -231,15 +231,17 @@ func TestToHookOutput_ContinueNil(t *testing.T) {
 
 	output := ToHookOutput(resp)
 
-	if output.Continue != true { // nil means "no opinion", defaults to true (continue)
-		t.Errorf("Continue should default to true when nil, got %v", output.Continue)
+	// nil means "no opinion" — the field stays absent from JSON per official
+	// spec ("continue": false is the only meaningful value).
+	if output.Continue != nil {
+		t.Errorf("Continue should stay nil (absent) when resp has no opinion, got %v", *output.Continue)
 	}
 }
 
 func TestToHookResponse_RoundTrip(t *testing.T) {
 	original := &HookOutput{
 		SystemMessage: "test message",
-		Continue:      true,
+		Continue:      BoolPtr(true),
 		HookSpecificOutput: &HookSpecificOutput{
 			PermissionDecision:       string(PermissionDecisionAllow),
 			AdditionalContext:        "context",
@@ -254,7 +256,8 @@ func TestToHookResponse_RoundTrip(t *testing.T) {
 	if output.SystemMessage != original.SystemMessage {
 		t.Errorf("SystemMessage = %v, want %v", output.SystemMessage, original.SystemMessage)
 	}
-	if output.Continue != original.Continue {
+	if (output.Continue == nil) != (original.Continue == nil) ||
+		(output.Continue != nil && *output.Continue != *original.Continue) {
 		t.Errorf("Continue = %v, want %v", output.Continue, original.Continue)
 	}
 	if output.Retry != original.Retry {

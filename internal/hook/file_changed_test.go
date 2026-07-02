@@ -389,10 +389,13 @@ func TestRunMXScan_AllowsInProjectPath(t *testing.T) {
 // 실경로를 해소해 root 탈출을 검출하고 ScanFile 없이 early return 해야 한다.
 //
 // RED(fix 전): lexical pathContainedIn은 통과(contained=true) → ScanFile이
-//   os.ReadFile로 링크를 따라 secret의 MX-tag를 읽어 root 내 .moai/state 사이드카에
-//   기록함(CWE-61 읽기 증폭).
+//
+//	os.ReadFile로 링크를 따라 secret의 MX-tag를 읽어 root 내 .moai/state 사이드카에
+//	기록함(CWE-61 읽기 증폭).
+//
 // GREEN(fix 후): EvalSymlinks 해소 결과가 root 밖 → slog.Warn + early return →
-//   사이드카에 secret MX-tag 미기록.
+//
+//	사이드카에 secret MX-tag 미기록.
 func TestRunMXScan_RejectsSymlinkInRootEscapingTarget(t *testing.T) {
 	t.Parallel()
 

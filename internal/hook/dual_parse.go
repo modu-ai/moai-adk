@@ -113,16 +113,13 @@ func ToHookOutput(resp *HookResponse) *HookOutput {
 		SuppressOutput: false, // Not mapped in HookResponse
 	}
 
-	// Map Continue field
-	// nil = no opinion (default true), false = halt, true = continue
+	// Map Continue field (both sides are *bool):
+	// nil = no opinion (field absent from JSON), false = halt.
 	if resp.Continue != nil {
-		output.Continue = *resp.Continue
+		output.Continue = resp.Continue
 		if !*resp.Continue {
 			output.StopReason = resp.SystemMessage
 		}
-	} else {
-		// nil means "no opinion", default to true (continue)
-		output.Continue = true
 	}
 
 	// Map PermissionDecision to HookSpecificOutput
@@ -154,11 +151,10 @@ func ToHookResponse(output *HookOutput) *HookResponse {
 		SystemMessage: output.SystemMessage,
 	}
 
-	// Map Continue field
-	if !output.Continue {
-		f := false
-		resp.Continue = &f
-	}
+	// Map Continue field (pointer copy: nil = no opinion, false = halt).
+	// Note: the old bool-typed mapping set continue:false for EVERY zero-value
+	// HookOutput{}, turning default outputs into halt signals on round-trip.
+	resp.Continue = output.Continue
 
 	// Map HookSpecificOutput fields
 	if output.HookSpecificOutput != nil {

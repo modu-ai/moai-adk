@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
@@ -50,7 +51,10 @@ func (h *cwdChangedHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 }
 
 // writeEnvFile appends project-specific environment variables to CLAUDE_ENV_FILE.
-// Non-blocking: errors are logged but never propagated.
+// CLAUDE_ENV_FILE may already hold user/session content, so the write MUST be
+// an append (O_APPEND|O_CREATE), never a truncating os.WriteFile that would
+// clobber it. Idempotent: an export line already present in the file is not
+// appended again. Non-blocking: errors are logged but never propagated.
 func (h *cwdChangedHandler) writeEnvFile(envFile, cwd string) {
 	// Check if the new directory has a .envrc or .env file
 	var exports []string
@@ -64,20 +68,52 @@ func (h *cwdChangedHandler) writeEnvFile(envFile, cwd string) {
 		return
 	}
 
-	content := ""
-	for _, e := range exports {
-		content += e + "\n"
+	// Idempotency: skip export lines that already exist verbatim in the file.
+	existing, readErr := os.ReadFile(envFile)
+	if readErr != nil && !os.IsNotExist(readErr) {
+		slog.Warn("cwd_changed: failed to read CLAUDE_ENV_FILE",
+			"error", readErr,
+			"env_file", envFile,
+		)
+		return
+	}
+	existingLines := make(map[string]bool)
+	for _, line := range strings.Split(string(existing), "\n") {
+		existingLines[strings.TrimSpace(line)] = true
 	}
 
-	if err := os.WriteFile(envFile, []byte(content), 0o644); err != nil {
-		slog.Warn("cwd_changed: failed to write CLAUDE_ENV_FILE",
+	content := ""
+	pending := 0
+	for _, e := range exports {
+		if existingLines[e] {
+			continue
+		}
+		content += e + "\n"
+		pending++
+	}
+	if pending == 0 {
+		return
+	}
+
+	f, err := os.OpenFile(envFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		slog.Warn("cwd_changed: failed to open CLAUDE_ENV_FILE for append",
+			"error", err,
+			"env_file", envFile,
+		)
+		return
+	}
+	defer func() { _ = f.Close() }()
+
+	if _, err := f.WriteString(content); err != nil {
+		slog.Warn("cwd_changed: failed to append to CLAUDE_ENV_FILE",
 			"error", err,
 			"env_file", envFile,
 		)
 	} else {
-		slog.Debug("cwd_changed: wrote env file",
+		slog.Debug("cwd_changed: appended env file",
 			"env_file", envFile,
-			"exports", len(exports),
+			"exports", pending,
 		)
 	}
 }

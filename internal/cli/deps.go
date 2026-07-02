@@ -185,7 +185,9 @@ func InitDependencies() {
 	deps.HookRegistry.Register(hook.NewCompactHandler())
 	deps.HookRegistry.Register(hook.NewPostToolUseFailureHandler())
 	deps.HookRegistry.Register(hook.NewNotificationHandlerWithConfig(deps.Config))
-	deps.HookRegistry.Register(hook.NewSubagentStartHandler())
+	// Config-ful constructor so project-context additionalContext injection is
+	// live in production (the no-config constructor left buildContext dead).
+	deps.HookRegistry.Register(hook.NewSubagentStartHandlerWithConfig(deps.Config))
 	deps.HookRegistry.Register(hook.NewUserPromptSubmitHandler(deps.Config))
 	deps.HookRegistry.Register(hook.NewPermissionRequestHandler())
 	deps.HookRegistry.Register(hook.NewTeammateIdleHandler())
@@ -201,8 +203,11 @@ func InitDependencies() {
 	deps.HookRegistry.Register(hook.NewConfigChangeHandler())
 	deps.HookRegistry.Register(hook.NewCwdChangedHandler())
 	deps.HookRegistry.Register(hook.NewFileChangedHandler())
-	deps.HookRegistry.Register(hook.NewElicitationHandler())
-	deps.HookRegistry.Register(hook.NewElicitationResultHandler())
+	// Config-ful constructors so the observability opt-in
+	// (system.yaml hook.observability_events) can actually activate — the
+	// nil-config constructors made the opt-in permanently unreachable.
+	deps.HookRegistry.Register(hook.NewElicitationHandlerWithConfig(deps.Config))
+	deps.HookRegistry.Register(hook.NewElicitationResultHandlerWithConfig(deps.Config))
 }
 
 // enableObservabilityIfConfigured reads observability config and enables

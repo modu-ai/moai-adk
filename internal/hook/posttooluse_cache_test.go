@@ -231,8 +231,8 @@ func TestLogCacheUsage_AppendErrorTolerated(t *testing.T) {
 	}
 	// Must not panic even though the append will fail.
 	logCacheUsage(&HookInput{
-		CWD:       root,
-		SessionID: "s",
+		CWD:          root,
+		SessionID:    "s",
 		ToolResponse: []byte(`{"model":"m","turn":1,"usage":{"cache_read_input_tokens":10,"cache_creation_input_tokens":0}}`),
 	})
 }

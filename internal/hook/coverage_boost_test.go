@@ -478,14 +478,16 @@ func TestGetBlockReason_EmptyReason(t *testing.T) {
 func TestDefaultOutputForEvent_PermissionRequest(t *testing.T) {
 	t.Parallel()
 
+	// Official PermissionRequest schema has no "ask" behavior; the default is
+	// empty JSON {} = defer to the normal permission flow. The old default
+	// actively emitted the PreToolUse-only permissionDecision field ("ask"),
+	// which is non-schema output for this event.
 	reg := &registry{}
 	out := reg.defaultOutputForEvent(EventPermissionRequest)
 	if out == nil {
 		t.Fatal("defaultOutputForEvent(PermissionRequest) returned nil")
-	} else if out.HookSpecificOutput == nil {
-		t.Fatal("PermissionRequest default should have HookSpecificOutput")
-	} else if out.HookSpecificOutput.PermissionDecision != DecisionAsk {
-		t.Errorf("PermissionDecision = %q, want %q", out.HookSpecificOutput.PermissionDecision, DecisionAsk)
+	} else if out.HookSpecificOutput != nil {
+		t.Errorf("PermissionRequest default should be empty output, got HookSpecificOutput = %+v", out.HookSpecificOutput)
 	}
 }
 

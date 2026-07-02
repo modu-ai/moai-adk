@@ -192,8 +192,8 @@ func TestProtocol_WriteOutput_NewEventOutputs(t *testing.T) {
 			},
 		},
 		{
-			name:   "PermissionRequest output with ask decision",
-			output: NewPermissionRequestOutput(DecisionAsk, "deferred to user"),
+			name:   "PermissionRequest output with deny decision (official schema)",
+			output: NewPermissionRequestOutput(DecisionDeny, "deferred to user"),
 			check: func(t *testing.T, data []byte) {
 				t.Helper()
 				var m map[string]any
@@ -204,11 +204,18 @@ func TestProtocol_WriteOutput_NewEventOutputs(t *testing.T) {
 				if !ok {
 					t.Fatal("hookSpecificOutput missing or wrong type")
 				}
-				if hso["permissionDecision"] != DecisionAsk {
-					t.Errorf("permissionDecision = %v, want %q", hso["permissionDecision"], DecisionAsk)
+				decision, ok := hso["decision"].(map[string]any)
+				if !ok {
+					t.Fatal("decision object missing (official PermissionRequest schema)")
 				}
-				if hso["permissionDecisionReason"] != "deferred to user" {
-					t.Errorf("permissionDecisionReason = %v, want %q", hso["permissionDecisionReason"], "deferred to user")
+				if decision["behavior"] != DecisionDeny {
+					t.Errorf("decision.behavior = %v, want %q", decision["behavior"], DecisionDeny)
+				}
+				if _, present := hso["permissionDecision"]; present {
+					t.Errorf("permissionDecision is PreToolUse-only, must not appear: %s", data)
+				}
+				if m["systemMessage"] != "deferred to user" {
+					t.Errorf("systemMessage = %v, want %q (reason rides systemMessage)", m["systemMessage"], "deferred to user")
 				}
 				if hso["hookEventName"] != "PermissionRequest" {
 					t.Errorf("hookEventName = %v, want %q", hso["hookEventName"], "PermissionRequest")
@@ -216,11 +223,14 @@ func TestProtocol_WriteOutput_NewEventOutputs(t *testing.T) {
 			},
 		},
 		{
-			name:   "TeammateKeepWorkingOutput excludes ExitCode from JSON",
-			output: NewTeammateKeepWorkingOutput(),
+			name:   "TeammateKeepWorkingOutput carries decision block, no ExitCode in JSON",
+			output: NewTeammateKeepWorkingOutput("gate failed"),
 			check: func(t *testing.T, data []byte) {
 				t.Helper()
 				s := string(data)
+				if !strings.Contains(s, `"decision":"block"`) {
+					t.Errorf("JSON should carry decision block: %s", s)
+				}
 				if strings.Contains(s, "exitCode") || strings.Contains(s, "ExitCode") {
 					t.Errorf("ExitCode should not appear in JSON: %s", s)
 				}
@@ -230,11 +240,14 @@ func TestProtocol_WriteOutput_NewEventOutputs(t *testing.T) {
 			},
 		},
 		{
-			name:   "TaskRejectedOutput excludes ExitCode from JSON",
-			output: NewTaskRejectedOutput(),
+			name:   "TaskRejectedOutput carries decision block, no ExitCode in JSON",
+			output: NewTaskRejectedOutput("AC unchecked"),
 			check: func(t *testing.T, data []byte) {
 				t.Helper()
 				s := string(data)
+				if !strings.Contains(s, `"decision":"block"`) {
+					t.Errorf("JSON should carry decision block: %s", s)
+				}
 				if strings.Contains(s, "exitCode") || strings.Contains(s, "ExitCode") {
 					t.Errorf("ExitCode should not appear in JSON: %s", s)
 				}
@@ -256,11 +269,15 @@ func TestProtocol_WriteOutput_NewEventOutputs(t *testing.T) {
 				if !ok {
 					t.Fatal("hookSpecificOutput missing or wrong type")
 				}
-				if hso["permissionDecision"] != DecisionAllow {
-					t.Errorf("permissionDecision = %v, want %q", hso["permissionDecision"], DecisionAllow)
+				decision, ok := hso["decision"].(map[string]any)
+				if !ok {
+					t.Fatal("decision object missing (official PermissionRequest schema)")
 				}
-				if hso["permissionDecisionReason"] != "approved by policy" {
-					t.Errorf("permissionDecisionReason = %v, want %q", hso["permissionDecisionReason"], "approved by policy")
+				if decision["behavior"] != DecisionAllow {
+					t.Errorf("decision.behavior = %v, want %q", decision["behavior"], DecisionAllow)
+				}
+				if m["systemMessage"] != "approved by policy" {
+					t.Errorf("systemMessage = %v, want %q (reason rides systemMessage)", m["systemMessage"], "approved by policy")
 				}
 			},
 		},
@@ -398,8 +415,12 @@ func TestProtocol_FullRoundTrip_NewEvents(t *testing.T) {
 				if !ok {
 					t.Fatal("hookSpecificOutput missing for PermissionRequest")
 				}
-				if hso["permissionDecision"] != DecisionAllow {
-					t.Errorf("permissionDecision = %v, want %q", hso["permissionDecision"], DecisionAllow)
+				decision, ok := hso["decision"].(map[string]any)
+				if !ok {
+					t.Fatal("decision object missing (official PermissionRequest schema)")
+				}
+				if decision["behavior"] != DecisionAllow {
+					t.Errorf("decision.behavior = %v, want %q", decision["behavior"], DecisionAllow)
 				}
 				if hso["hookEventName"] != "PermissionRequest" {
 					t.Errorf("hookEventName = %v, want %q", hso["hookEventName"], "PermissionRequest")
@@ -407,13 +428,19 @@ func TestProtocol_FullRoundTrip_NewEvents(t *testing.T) {
 			},
 		},
 		{
-			name:      "TeammateIdle round-trip with keep-working exit code",
+			name:      "TeammateIdle round-trip with keep-working block decision",
 			inputJSON: `{"session_id":"rt6","cwd":"/tmp","hook_event_name":"TeammateIdle","agent_id":"tm-2"}`,
 			makeOutput: func(_ *HookInput) *HookOutput {
-				return NewTeammateKeepWorkingOutput()
+				return NewTeammateKeepWorkingOutput("keep working")
 			},
 			checkOutput: func(t *testing.T, parsed map[string]any) {
 				t.Helper()
+				if parsed["decision"] != DecisionBlock {
+					t.Errorf("decision = %v, want %q", parsed["decision"], DecisionBlock)
+				}
+				if parsed["reason"] != "keep working" {
+					t.Errorf("reason = %v, want %q", parsed["reason"], "keep working")
+				}
 				// ExitCode should not appear in JSON
 				if _, ok := parsed["exitCode"]; ok {
 					t.Error("exitCode should not be in JSON output")
@@ -424,13 +451,19 @@ func TestProtocol_FullRoundTrip_NewEvents(t *testing.T) {
 			},
 		},
 		{
-			name:      "TaskCompleted round-trip with rejection exit code",
+			name:      "TaskCompleted round-trip with rejection block decision",
 			inputJSON: `{"session_id":"rt7","cwd":"/tmp","hook_event_name":"TaskCompleted"}`,
 			makeOutput: func(_ *HookInput) *HookOutput {
-				return NewTaskRejectedOutput()
+				return NewTaskRejectedOutput("rejected")
 			},
 			checkOutput: func(t *testing.T, parsed map[string]any) {
 				t.Helper()
+				if parsed["decision"] != DecisionBlock {
+					t.Errorf("decision = %v, want %q", parsed["decision"], DecisionBlock)
+				}
+				if parsed["reason"] != "rejected" {
+					t.Errorf("reason = %v, want %q", parsed["reason"], "rejected")
+				}
 				// ExitCode should not appear in JSON
 				if _, ok := parsed["exitCode"]; ok {
 					t.Error("exitCode should not be in JSON output")

@@ -103,9 +103,15 @@ func (h *taskCreatedHandler) logTaskCreated(ctx context.Context, input *HookInpu
 		return
 	default:
 	}
+	// Official stdin field for TaskCreated is task_name; task_subject is the
+	// legacy MoAI field name (kept as fallback).
+	taskName := input.TaskName
+	if taskName == "" {
+		taskName = input.TaskSubject
+	}
 	slog.Info("task created",
 		"session_id", input.SessionID,
 		"task_id", input.TaskID,
-		"task_subject", input.TaskSubject,
+		"task_name", taskName,
 	)
 }

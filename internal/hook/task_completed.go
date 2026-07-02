@@ -28,22 +28,32 @@ func (h *taskCompletedHandler) EventType() EventType {
 }
 
 // Handle processes a TaskCompleted event.
-// Returns empty output (exit code 0) to accept completion.
-// Returns NewTaskRejectedOutput() (exit code 2) to reject completion.
+// Returns empty output to accept completion.
+// Returns NewTaskRejectedOutput(reason) — top-level decision:"block" + reason
+// JSON with exit 0, per official TaskCompleted protocol — to reject completion.
 //
-// Validation only applies in team mode (TeamName non-empty).
-// If a task subject references a SPEC ID, the corresponding spec.md must exist.
+// The task is identified by the official task_name stdin field, falling back
+// to the legacy MoAI task_subject field. Validation applies when either the
+// legacy team-mode marker (team_name) or an official task_name is present.
+// If the task name references a SPEC ID, the corresponding spec.md must exist.
 func (h *taskCompletedHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
+	// Task identification: official task_name first, legacy task_subject fallback.
+	taskName := input.TaskName
+	if taskName == "" {
+		taskName = input.TaskSubject
+	}
+
 	slog.Info("task completed",
 		"session_id", input.SessionID,
 		"task_id", input.TaskID,
-		"task_subject", input.TaskSubject,
+		"task_name", taskName,
 		"teammate", input.TeammateName,
 		"team", input.TeamName,
 	)
 
-	// Only enforce validation in team mode.
-	if input.TeamName == "" {
+	// Only enforce validation in team context: legacy team_name marker OR
+	// official task_name (the official runtime never sends team_name).
+	if input.TeamName == "" && input.TaskName == "" {
 		return &HookOutput{}, nil
 	}
 
@@ -52,40 +62,41 @@ func (h *taskCompletedHandler) Handle(ctx context.Context, input *HookInput) (*H
 		projectDir = input.CWD
 	}
 
-	// If the task subject references a SPEC ID, verify the SPEC file exists.
-	if projectDir != "" && input.TaskSubject != "" {
-		if specID := workflow.SpecIDPattern.FindString(input.TaskSubject); specID != "" {
+	// If the task name references a SPEC ID, verify the SPEC file exists.
+	if projectDir != "" && taskName != "" {
+		if specID := workflow.SpecIDPattern.FindString(taskName); specID != "" {
 			specPath := filepath.Join(projectDir, ".moai", "specs", specID, "spec.md")
 			if _, err := os.Stat(specPath); os.IsNotExist(err) {
 				msg := fmt.Sprintf(
 					"Task %q references SPEC %s but spec.md not found at %s.\nCreate the SPEC document before marking task complete.",
-					input.TaskSubject, specID, specPath,
+					taskName, specID, specPath,
 				)
 				fmt.Fprint(os.Stderr, msg)
 				slog.Warn("task_completed: rejecting completion - SPEC not found",
-					"task_subject", input.TaskSubject,
+					"task_name", taskName,
 					"spec_id", specID,
 					"spec_path", specPath,
 				)
-				return NewTaskRejectedOutput(), nil
+				return NewTaskRejectedOutput(msg), nil
 			}
 
 			// Check for unchecked acceptance criteria in spec.md.
 			if unchecked := parseUncheckedCriteria(specPath); len(unchecked) > 0 {
 				var sb strings.Builder
 				fmt.Fprintf(&sb, "Task %q has %d unchecked acceptance criteria in SPEC %s:\n",
-					input.TaskSubject, len(unchecked), specID)
+					taskName, len(unchecked), specID)
 				for _, criterion := range unchecked {
 					fmt.Fprintf(&sb, "  %s\n", criterion)
 				}
 				sb.WriteString("Mark these criteria as complete ([x]) in spec.md before marking the task complete.")
-				fmt.Fprint(os.Stderr, sb.String())
+				msg := sb.String()
+				fmt.Fprint(os.Stderr, msg)
 				slog.Warn("task_completed: rejecting completion - unchecked acceptance criteria",
-					"task_subject", input.TaskSubject,
+					"task_name", taskName,
 					"spec_id", specID,
 					"unchecked_count", len(unchecked),
 				)
-				return NewTaskRejectedOutput(), nil
+				return NewTaskRejectedOutput(msg), nil
 			}
 		}
 	}

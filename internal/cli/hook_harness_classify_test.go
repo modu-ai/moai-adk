@@ -3,12 +3,17 @@
 // SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001 (HCW)
 // REQ-HCW-001: Workflow body §2.1 status verb invokes the Go classifier.
 // REQ-HCW-002: Classifier reads usage-log.jsonl, aggregates patterns, classifies
-//              tiers, and writes promotions to tier-promotions.jsonl.
+//
+//	tiers, and writes promotions to tier-promotions.jsonl.
+//
 // REQ-HCW-003: On classifier error, hook surfaces error annotation (stderr) and
-//              continues — fail-open with exit code 1 (workflow body interprets
-//              exit 1 as the trigger for the error annotation without aborting).
+//
+//	continues — fail-open with exit code 1 (workflow body interprets
+//	exit 1 as the trigger for the error annotation without aborting).
+//
 // REQ-HCW-004: When learning.enabled is false, the hook is a complete no-op —
-//              promotions file is NOT created and stderr is silent.
+//
+//	promotions file is NOT created and stderr is silent.
 package cli
 
 import (

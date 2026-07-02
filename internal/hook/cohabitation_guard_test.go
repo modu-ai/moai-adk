@@ -156,9 +156,9 @@ func TestCohabitationGuard_HOIKeyIndependence(t *testing.T) {
 
 	// SystemHookConfig MUST contain all 3 distinct fields.
 	required := []struct {
-		field  string
+		field   string
 		yamlTag string
-		owner  string
+		owner   string
 	}{
 		{"ObservabilityEvents", `yaml:"observability_events"`, "SPEC-V3R2-RT-006 REQ-040"},
 		{"StrictMode", `yaml:"strict_mode"`, "SPEC-V3R2-RT-006 sibling"},

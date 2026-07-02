@@ -99,10 +99,16 @@ func (h *notificationHandler) logNotification(ctx context.Context, input *HookIn
 		return
 	default:
 	}
+	// Official stdin field for Notification is type; notification_type is the
+	// legacy MoAI field name (kept as fallback).
+	notificationType := input.Type
+	if notificationType == "" {
+		notificationType = input.NotificationType
+	}
 	slog.Info("notification received",
 		"session_id", input.SessionID,
 		"title", input.Title,
 		"message", input.Message,
-		"type", input.NotificationType,
+		"type", notificationType,
 	)
 }

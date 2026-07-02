@@ -8,13 +8,14 @@ import (
 )
 
 // TestExitCodeBehavior_TeammateKeepWorking verifies that NewTeammateKeepWorkingOutput
-// sets ExitCode=2 internally but does NOT serialize it to JSON.
+// carries the official decision:"block" + reason JSON (exit 0 channel) and no
+// ExitCode — on exit 2 Claude Code ignores stdout JSON, so the reason would be lost.
 func TestExitCodeBehavior_TeammateKeepWorking(t *testing.T) {
 	t.Parallel()
 
-	output := NewTeammateKeepWorkingOutput()
-	if output.ExitCode != 2 {
-		t.Errorf("ExitCode = %d, want 2", output.ExitCode)
+	output := NewTeammateKeepWorkingOutput("keep working: gate failed")
+	if output.ExitCode != 0 {
+		t.Errorf("ExitCode = %d, want 0 (block rides JSON)", output.ExitCode)
 	}
 
 	data, err := json.Marshal(output)
@@ -23,6 +24,12 @@ func TestExitCodeBehavior_TeammateKeepWorking(t *testing.T) {
 	}
 
 	s := string(data)
+	if !strings.Contains(s, `"decision":"block"`) {
+		t.Errorf("JSON should carry decision block: %s", s)
+	}
+	if !strings.Contains(s, `"reason":"keep working: gate failed"`) {
+		t.Errorf("JSON should carry the reason: %s", s)
+	}
 	if strings.Contains(s, "exitCode") || strings.Contains(s, "ExitCode") {
 		t.Errorf("ExitCode should not be in JSON: %s", s)
 	}
@@ -33,13 +40,14 @@ func TestExitCodeBehavior_TeammateKeepWorking(t *testing.T) {
 }
 
 // TestExitCodeBehavior_TaskRejected verifies that NewTaskRejectedOutput
-// sets ExitCode=2 internally but does NOT serialize it to JSON.
+// carries the official decision:"block" + reason JSON (exit 0 channel) and no
+// ExitCode (see TestExitCodeBehavior_TeammateKeepWorking).
 func TestExitCodeBehavior_TaskRejected(t *testing.T) {
 	t.Parallel()
 
-	output := NewTaskRejectedOutput()
-	if output.ExitCode != 2 {
-		t.Errorf("ExitCode = %d, want 2", output.ExitCode)
+	output := NewTaskRejectedOutput("reject: AC unchecked")
+	if output.ExitCode != 0 {
+		t.Errorf("ExitCode = %d, want 0 (block rides JSON)", output.ExitCode)
 	}
 
 	data, err := json.Marshal(output)
@@ -48,6 +56,12 @@ func TestExitCodeBehavior_TaskRejected(t *testing.T) {
 	}
 
 	s := string(data)
+	if !strings.Contains(s, `"decision":"block"`) {
+		t.Errorf("JSON should carry decision block: %s", s)
+	}
+	if !strings.Contains(s, `"reason":"reject: AC unchecked"`) {
+		t.Errorf("JSON should carry the reason: %s", s)
+	}
 	if strings.Contains(s, "exitCode") || strings.Contains(s, "ExitCode") {
 		t.Errorf("ExitCode should not be in JSON: %s", s)
 	}
@@ -116,11 +130,12 @@ func TestExitCodeBehavior_RegistryPreservesExitCode(t *testing.T) {
 	t.Run("handler ExitCode=2 is preserved through dispatch (TeammateIdle keep-working)", func(t *testing.T) {
 		t.Parallel()
 
-		// NewTeammateKeepWorkingOutput returns ExitCode=2 without a block Decision.
+		// Raw ExitCode=2 output (generic plumbing retained for any handler that
+		// sets it; the TeammateIdle constructor now uses decision:"block" JSON).
 		// The registry must short-circuit and return this output so the CLI can exit(2).
 		handler := &mockHandler{
 			event:  EventTeammateIdle,
-			output: NewTeammateKeepWorkingOutput(), // ExitCode=2, no block Decision
+			output: &HookOutput{ExitCode: 2}, // ExitCode=2, no block Decision
 		}
 
 		cfg := &mockConfigProvider{cfg: newTestConfig()}
@@ -154,7 +169,7 @@ func TestExitCodeBehavior_RegistryPreservesExitCode(t *testing.T) {
 
 		handler := &mockHandler{
 			event:  EventTaskCompleted,
-			output: NewTaskRejectedOutput(), // ExitCode=2, no block Decision
+			output: &HookOutput{ExitCode: 2}, // ExitCode=2, no block Decision (raw plumbing)
 		}
 
 		cfg := &mockConfigProvider{cfg: newTestConfig()}

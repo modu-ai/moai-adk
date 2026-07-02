@@ -99,7 +99,7 @@ func TestCaptureUserDecision_StdinParseFailure_FailOpen(t *testing.T) {
 
 	h := NewPostToolHandler()
 	input := &HookInput{
-		ToolName:     askUserQuestionTool, // grep-safe constant
+		ToolName:     askUserQuestionTool,                // grep-safe constant
 		ToolInput:    json.RawMessage(`{not valid json`), // malformed
 		ToolResponse: json.RawMessage(`{}`),
 		SessionID:    "test-session-parse",

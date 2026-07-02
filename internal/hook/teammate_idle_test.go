@@ -22,10 +22,11 @@ func TestTeammateIdleHandler_Handle(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name         string
-		input        *HookInput
-		setupDir     func(t *testing.T) string // returns projectDir to inject; "" means skip
-		wantExitCode int
+		name     string
+		input    *HookInput
+		setupDir func(t *testing.T) string // returns projectDir to inject; "" means skip
+		// wantBlock: true = keep-working (official decision:"block" + reason JSON, exit 0)
+		wantBlock bool
 	}{
 		{
 			name: "no team mode - always allow idle",
@@ -34,7 +35,7 @@ func TestTeammateIdleHandler_Handle(t *testing.T) {
 				TeammateName: "worker-1",
 				// TeamName is empty: not in team mode
 			},
-			wantExitCode: 0,
+			wantBlock: false,
 		},
 		{
 			name: "team mode with no project dir - allow idle (graceful degradation)",
@@ -44,7 +45,7 @@ func TestTeammateIdleHandler_Handle(t *testing.T) {
 				TeammateName: "worker-1",
 				// CWD and ProjectDir both empty
 			},
-			wantExitCode: 0,
+			wantBlock: false,
 		},
 		{
 			name: "team mode with project dir but no baseline - allow idle",
@@ -62,7 +63,7 @@ func TestTeammateIdleHandler_Handle(t *testing.T) {
 				}
 				return dir
 			},
-			wantExitCode: 0,
+			wantBlock: false,
 		},
 		{
 			name: "team mode with baseline containing zero errors - allow idle",
@@ -80,7 +81,7 @@ func TestTeammateIdleHandler_Handle(t *testing.T) {
 				})
 				return dir
 			},
-			wantExitCode: 0,
+			wantBlock: false,
 		},
 		{
 			name: "team mode with baseline containing errors exceeding threshold - block idle",
@@ -99,7 +100,7 @@ func TestTeammateIdleHandler_Handle(t *testing.T) {
 				})
 				return dir
 			},
-			wantExitCode: 2,
+			wantBlock: true,
 		},
 		{
 			name: "team mode with coverage data meeting threshold - allow idle",
@@ -118,7 +119,7 @@ func TestTeammateIdleHandler_Handle(t *testing.T) {
 				writeCoverageData(t, dir, 90.0)
 				return dir
 			},
-			wantExitCode: 0,
+			wantBlock: false,
 		},
 		{
 			name: "team mode with coverage data below threshold - block idle",
@@ -137,7 +138,7 @@ func TestTeammateIdleHandler_Handle(t *testing.T) {
 				writeCoverageData(t, dir, 50.0)
 				return dir
 			},
-			wantExitCode: 2,
+			wantBlock: true,
 		},
 		{
 			name: "team mode with no coverage data - allow idle (graceful)",
@@ -156,7 +157,7 @@ func TestTeammateIdleHandler_Handle(t *testing.T) {
 				// No coverage.json written - graceful degradation
 				return dir
 			},
-			wantExitCode: 0,
+			wantBlock: false,
 		},
 	}
 
@@ -182,11 +183,89 @@ func TestTeammateIdleHandler_Handle(t *testing.T) {
 			}
 			if got == nil {
 				t.Fatal("got nil output")
-			} else if got.ExitCode != tt.wantExitCode {
-				t.Errorf("ExitCode = %d, want %d", got.ExitCode, tt.wantExitCode)
+			} else {
+				gotBlock := got.Decision == DecisionBlock
+				if gotBlock != tt.wantBlock {
+					t.Errorf("block = %v (decision=%q), want %v", gotBlock, got.Decision, tt.wantBlock)
+				}
+				if tt.wantBlock && got.Reason == "" {
+					t.Error("keep-working block output must carry a reason")
+				}
+				// Official channel is JSON with exit 0 — never ExitCode=2.
+				if got.ExitCode != 0 {
+					t.Errorf("ExitCode = %d, want 0 (block rides JSON)", got.ExitCode)
+				}
 			}
 		})
 	}
+}
+
+// TestTeammateIdleHandler_OfficialAgentTypeGate verifies the official stdin
+// contract: TeammateIdle sends agent_type (the teammate name) — team_name is
+// a legacy MoAI field the official runtime never sends. The quality gate must
+// key on agent_type with team_name as legacy fallback.
+func TestTeammateIdleHandler_OfficialAgentTypeGate(t *testing.T) {
+	t.Parallel()
+
+	h := NewTeammateIdleHandler()
+
+	t.Run("agent_type alone activates team gate (official payload)", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		writeQualityConfig(t, dir, true)
+		writeBaseline(t, dir, map[string][]string{
+			"file.go": {"error", "error"},
+		})
+		got, err := h.Handle(context.Background(), &HookInput{
+			SessionID: "sess-official-1",
+			AgentType: "researcher", // official teammate-name field
+			CWD:       dir,
+			// TeamName intentionally absent (official runtime never sends it)
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got == nil || got.Decision != DecisionBlock {
+			t.Fatalf("Decision = %+v, want block (agent_type must activate the gate)", got)
+		}
+		if got.Reason == "" {
+			t.Error("block output must carry a reason")
+		}
+	})
+
+	t.Run("legacy team_name still activates team gate", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		writeQualityConfig(t, dir, true)
+		writeBaseline(t, dir, map[string][]string{
+			"file.go": {"error", "error"},
+		})
+		got, err := h.Handle(context.Background(), &HookInput{
+			SessionID:    "sess-legacy-1",
+			TeamName:     "team-alpha",
+			TeammateName: "worker-1",
+			CWD:          dir,
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got == nil || got.Decision != DecisionBlock {
+			t.Fatalf("Decision = %+v, want block (legacy team_name fallback)", got)
+		}
+	})
+
+	t.Run("neither field present - gate inactive", func(t *testing.T) {
+		t.Parallel()
+		got, err := h.Handle(context.Background(), &HookInput{
+			SessionID: "sess-nogate-1",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got == nil || got.Decision != "" {
+			t.Fatalf("Decision = %+v, want empty output (no team context)", got)
+		}
+	})
 }
 
 // writeQualityConfig writes a minimal quality.yaml that enables blocking on errors.
