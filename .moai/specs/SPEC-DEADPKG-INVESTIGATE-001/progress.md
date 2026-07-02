@@ -64,5 +64,5 @@ Dispositions 실행 완료 (cycle_type=ddd, 격리 워크트리 → main reconci
 
 ### sync_commit_sha
 
-sync_commit_sha: <backfill>
-run_commit_sha: <backfill>
+sync_commit_sha: 65e250ca5
+run_commit_sha: 65e250ca5
