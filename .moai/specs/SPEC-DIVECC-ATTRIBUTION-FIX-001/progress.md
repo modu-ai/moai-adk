@@ -72,5 +72,5 @@ Run-phase executed orchestrator-direct (Tier S doc-only: 5 edit points / 3 livin
 - Tier S consolidated close (orchestrator-direct, Route A main-direct): run + sync collapsed into one close commit per the small-SPEC consolidated-lifecycle convention.
 - CHANGELOG: no entry — internal doctrine attribution correction, not a user-facing change.
 - Frontmatter: status draft → completed; updated 2026-07-02.
-- sync_commit_sha: <pending backfill>
+- sync_commit_sha: 61f23bf766bb39c64d7789403bfdc8db50c5024d
 - 3-phase close (plan → run → sync); MX Tag cross-cutting — no @MX targets in a doc-only correction.
