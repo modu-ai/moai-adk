@@ -77,6 +77,32 @@ flowchart TD
 | 現在の SPEC | 作業中の SPEC ID | SPEC-AUTH-001 |
 | エラーログ | 最近のエラー (ある場合) | TypeError: ... |
 
+## フィードバック設定
+
+`/moai feedback` は次の4つの詳細な動作で Issue 作成プロセスを強化します。
+
+### 診断情報: 保証項目 + best-effort 項目
+
+上記の表のとおり、MoAI-ADK バージョン(`moai version`)と OS 情報(`uname`)は**常に**収集される保証項目です。Go ツールチェーンバージョン(`go version`)とオーケストレータが伝えるエラーコンテキストは **best-effort** 項目であり、条件が整わない場合(例: 事前ビルドされた `moai` バイナリのみが存在し、Go ツールチェーンがインストールされていない環境)は省略されますが、これは失敗ではありません。
+
+### 重複 Issue 候補の確認
+
+Issue タイトルが決まると、Issue 作成前に `gh issue list --repo <対象リポジトリ> --search "<タイトルキーワード>" --state open` コマンドで対象リポジトリ内の未解決の重複 Issue を検索します。このステップはユーザーに直接尋ねることはなく、「重複の可能性がある Issue」候補レポート(Issue 番号、タイトル、URL、状態)のみを生成し、新規 Issue として進めるか既存 Issue を案内するかはオーケストレータが判断します。
+
+### `gh` 認証失敗時のローカル一時保存
+
+Issue 作成の直前に `gh auth status` を確認します。`gh` が認証されていない、または GitHub API のレート制限に達している場合、次のように適切に対応します。
+
+1. 検出された状態(未認証またはレート制限)をユーザーに通知します。
+2. 未認証の場合は `gh auth login` の実行を、レート制限の場合は制限解除までの待機を案内します。
+3. 作成済みの Issue 内容を `.moai/state/feedback-draft-<timestamp>.md` にローカル保存するかを提案します。
+
+作成したフィードバック内容は `gh` の失敗によって失われることはなく、ローカルの一時ファイルが復旧手段となります。
+
+### フィードバック対象リポジトリの設定
+
+`/moai feedback` が Issue を作成する対象リポジトリは、`.moai/config/sections/feedback.yaml` の `feedback.repository` 値で設定されます。デフォルト値は `modu-ai/moai-adk`(MoAI-ADK ツールリポジトリ自体)であり、フォークを保守しているユーザーはこの値を自分のフォークリポジトリに変更してフィードバックをリダイレクトできます。
+
 ## フィードバックタイプ
 
 ### バグレポート
@@ -119,35 +145,33 @@ MoAI-ADK に追加してほしい新機能を提案します。
 
 ## エージェント委任チェーン
 
-`/moai feedback` コマンドのエージェント委任フロー：
+`/moai feedback` コマンドは、サブエージェントへの委任なしに **オーケストレータが直接** 全プロセスを実行します:
 
 ```mermaid
 flowchart TD
     User["ユーザーリクエスト"] --> Orchestrator["MoAI オーケストレータ"]
     Orchestrator --> Collect["環境情報を収集"]
 
-    Collect --> Info1["MoAI-ADK バージョン"]
-    Collect --> Info2["OS 情報"]
-    Collect --> Info3["Claude Code バージョン"]
-    Collect --> Info4["現在の SPEC"]
-    Collect --> Info5["エラーログ"]
+    Collect --> Info1["MoAI-ADK バージョン (保証)"]
+    Collect --> Info2["OS 情報 (保証)"]
+    Collect --> Info3["Go ツールチェーンバージョン (best-effort)"]
+    Collect --> Info4["エラーログ (best-effort)"]
 
     Info1 --> Format["Issue をフォーマット"]
     Info2 --> Format
     Info3 --> Format
     Info4 --> Format
-    Info5 --> Format
 
-    Format --> GitHub["sync-auditor エージェント<br/>GitHub Issue 作成"]
+    Format --> Dup["重複 Issue 候補検索<br/>gh issue list --search"]
+    Dup --> GitHub["オーケストレータが直接実行<br/>(サブエージェント委任なし)<br/>gh issue create"]
     GitHub --> Complete["Issue URL を返す"]
 ```
 
-**エージェントの役割:**
+**担当:**
 
-| エージェント | 役割 | 主なタスク |
-|-------|------|------------|
-| **MoAI オーケストレータ** | フィードバックプロセスをガイド |
-| **sync-auditor** | GitHub 統合 | Issue 作成、URL 返却 |
+| 担当 | 役割 | 主なタスク |
+|----------|------|----------|
+| **MoAI オーケストレータ** | フィードバックプロセス全体をオーケストレータが直接進行(サブエージェント委任なし) | タイプ/タイトル/説明の収集、環境情報の収集、重複 Issue 候補検索、`gh issue create` の直接実行、URL の返却 |
 
 ## 実践例
 

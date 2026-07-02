@@ -79,6 +79,32 @@ flowchart TD
 | 当前 SPEC | 正在处理的 SPEC ID | SPEC-AUTH-001 |
 | 错误日志 | 最近的错误 (如果有) | TypeError: ... |
 
+## 反馈设置
+
+`/moai feedback` 通过以下 4 项详细行为增强 issue 创建流程。
+
+### 诊断信息：保证项 + best-effort 项
+
+如上表所示，MoAI-ADK 版本(`moai version`)和 OS 信息(`uname`)是**始终**收集的保证项。Go 工具链版本(`go version`)和编排器传递的错误上下文属于 **best-effort** 项，如果条件不满足(例如仅有预构建的 `moai` 二进制文件、未安装 Go 工具链的环境)会被省略，这并不算失败。
+
+### 检查重复 issue 候选
+
+确定 issue 标题后，在创建 issue 之前，会使用 `gh issue list --repo <目标仓库> --search "<标题关键词>" --state open` 命令在目标仓库中搜索未解决的重复 issue。此步骤不会直接询问用户，只会生成"可能重复"的候选报告(issue 编号、标题、URL、状态)，是否以新 issue 继续还是指向现有 issue，由编排器决定。
+
+### `gh` 认证失败时的本地临时保存
+
+在创建 issue 之前，会检查 `gh auth status`。如果 `gh` 未通过身份验证，或触发了 GitHub API 速率限制，会按以下方式优雅应对。
+
+1. 将检测到的状态(未认证或速率受限)告知用户。
+2. 未认证时引导执行 `gh auth login`，速率受限时引导等待限制解除。
+3. 提议将已撰写的 issue 内容本地保存至 `.moai/state/feedback-draft-<timestamp>.md`。
+
+已撰写的反馈内容不会因 `gh` 失败而丢失，本地临时文件将作为恢复手段。
+
+### 反馈目标仓库设置
+
+`/moai feedback` 创建 issue 的目标仓库通过 `.moai/config/sections/feedback.yaml` 中的 `feedback.repository` 值设置。默认值为 `modu-ai/moai-adk`(MoAI-ADK 工具仓库本身)，维护 fork 的用户可以将此值改为自己的 fork 仓库，从而将反馈重定向过去。
+
 ## 反馈类型
 
 ### Bug 报告
@@ -121,35 +147,33 @@ flowchart TD
 
 ## Agent 委托链
 
-`/moai feedback` 命令的 agent 委托流程:
+`/moai feedback` 命令**不委托给任何子 agent**，而是由 **编排器直接** 执行整个流程:
 
 ```mermaid
 flowchart TD
     User["用户请求"] --> Orchestrator["MoAI Orchestrator"]
     Orchestrator --> Collect["收集环境信息"]
 
-    Collect --> Info1["MoAI-ADK 版本"]
-    Collect --> Info2["OS 信息"]
-    Collect --> Info3["Claude Code 版本"]
-    Collect --> Info4["当前 SPEC"]
-    Collect --> Info5["错误日志"]
+    Collect --> Info1["MoAI-ADK 版本 (保证)"]
+    Collect --> Info2["OS 信息 (保证)"]
+    Collect --> Info3["Go 工具链版本 (best-effort)"]
+    Collect --> Info4["错误日志 (best-effort)"]
 
     Info1 --> Format["格式化 Issue"]
     Info2 --> Format
     Info3 --> Format
     Info4 --> Format
-    Info5 --> Format
 
-    Format --> GitHub["sync-auditor Agent<br/>创建 GitHub Issue"]
+    Format --> Dup["搜索重复 issue 候选<br/>gh issue list --search"]
+    Dup --> GitHub["编排器直接执行<br/>(不委托给子 agent)<br/>gh issue create"]
     GitHub --> Complete["返回 Issue URL"]
 ```
 
-**Agent 角色:**
+**职责主体:**
 
-| Agent | 角色 | 主要任务 |
-|-------|------|------------|
-| **MoAI Orchestrator** | 引导反馈流程 |
-| **sync-auditor** | GitHub 集成 | 创建 issue、返回 URL |
+| 职责主体 | 角色 | 主要任务 |
+|----------|------|----------|
+| **MoAI Orchestrator** | 由编排器直接推进整个反馈流程 (不委托给子 agent) | 收集类型/标题/描述、收集环境信息、搜索重复 issue 候选、直接执行 `gh issue create`、返回 URL |
 
 ## 实际示例
 

@@ -77,6 +77,32 @@ When submitting feedback, the following information is automatically included to
 | Current SPEC | SPEC ID being worked on | SPEC-AUTH-001 |
 | Error Log | Recent errors (if any) | TypeError: ... |
 
+## Feedback Settings
+
+`/moai feedback` enhances the issue-creation process with the following 4 detailed behaviors.
+
+### Diagnostic Information: Guaranteed Items + Best-Effort Items
+
+As shown in the table above, the MoAI-ADK version (`moai version`) and OS information (`uname`) are **guaranteed** items that are **always** collected. The Go toolchain version (`go version`) and the error context passed by the orchestrator are **best-effort** items — when conditions aren't met (for example, in an environment with only a prebuilt `moai` binary and no Go toolchain installed), they're omitted, and this is not treated as a failure.
+
+### Checking Duplicate Issue Candidates
+
+Once the issue title is decided, before creating the issue, `/moai feedback` searches for open duplicate issues in the target repository using `gh issue list --repo <target-repo> --search "<title keywords>" --state open`. This step doesn't ask the user directly — it only produces a report of "possible duplicate" candidates (issue number, title, URL, state), and the orchestrator decides whether to proceed with a new issue or point to an existing one.
+
+### Local Draft Save on `gh` Authentication Failure
+
+Just before creating the issue, `/moai feedback` checks `gh auth status`. If `gh` isn't authenticated or the GitHub API rate limit has been hit, it responds gracefully as follows:
+
+1. Notifies you of the detected state (unauthenticated or rate-limited).
+2. Guides you to run `gh auth login` if unauthenticated, or to wait for the rate limit to reset if rate-limited.
+3. Offers to save the drafted issue content locally at `.moai/state/feedback-draft-<timestamp>.md`.
+
+The feedback content you wrote is never lost due to a `gh` failure — the local draft file serves as the recovery mechanism.
+
+### Feedback Target Repository Setting
+
+The target repository where `/moai feedback` creates issues is configured via the `feedback.repository` value in `.moai/config/sections/feedback.yaml`. The default is `modu-ai/moai-adk` (the MoAI-ADK tool repository itself); if you maintain a fork, you can change this value to your own fork repository to redirect feedback there.
+
 ## Feedback Types
 
 ### Bug Report
