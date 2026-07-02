@@ -30,5 +30,5 @@
 
 - 3-phase close (consolidated Tier S, orchestrator-direct sync): status `draft → completed`, era `V3R6`, updated `2026-07-02`.
 - CHANGELOG `### Removed` 엔트리 추가.
-- sync_commit_sha: <backfill>
+- sync_commit_sha: 7d9bc4147c45ed8344c19535bd9a0bba5150c5ad
 - MX Tag: Tier S consolidated — MX는 sync sub-step, 별도 Mx 커밋 없음(3-phase close).
