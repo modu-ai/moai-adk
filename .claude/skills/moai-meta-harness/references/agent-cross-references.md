@@ -1,23 +1,19 @@
 # MoAI Agent Cross-References — Full Inventory
 
-This skill orchestrates but does NOT replace existing agents. All agents referenced below are static MoAI agents — no new agents are introduced.
+This skill orchestrates but does NOT replace existing agents. All named agents below are retained MoAI agents — no new agents are introduced; domain-specific work is delegated via per-spawn Agent(general-purpose) with domain instructions.
 
 ## Planning & Strategy
 
-- `manager-spec` — Discovery (Phase 1) and Synthesis (Phase 3)
-- `manager-strategy` — Analysis codebase scan (Phase 2)
+- `manager-spec` — Discovery (Phase 1), Analysis codebase scan (Phase 2), and Synthesis (Phase 3); strategic analysis is absorbed into manager-spec
 - `plan-auditor` — EARS compliance check on the SPEC produced in Phase 3
 
 ## Implementation
 
-- `expert-backend` — Backend domain harness templates
-- `expert-frontend` — Frontend domain harness templates
-- `expert-devops` — DevOps/platform domain harness templates
-- `expert-security` — Security review of generated permissions
+- Backend / Frontend / DevOps domain harness templates — per-spawn `Agent(general-purpose)` with the matching domain instructions injected at delegation time (per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C)
+- Security review of generated permissions — per-spawn `Agent(general-purpose)` with security-review instructions (OWASP checks); dependency-manifest audit is mechanically enforced by the `sync-phase-quality-gate.sh` Stop hook
 - `manager-develop` (cycle_type=tdd) — Test harness pattern generation (former expert-testing capability)
-- `manager-quality` (diagnostic-mode) — Debug agent patterns (former expert-debug capability)
-- `expert-refactoring` — Refactoring workflow patterns
-- `expert-performance` — Performance profiling patterns
+- `manager-develop` (cycle_type=autofix) — Debug / failure-diagnosis agent patterns (former expert-debug / manager-quality diagnostic capability)
+- Refactoring / Performance domain patterns — per-spawn `Agent(general-purpose)` with refactoring / performance instructions
 
 ## Builders
 
@@ -28,7 +24,7 @@ This skill orchestrates but does NOT replace existing agents. All agents referen
 ## Workflow Managers
 
 - `manager-develop` (`cycle_type=ddd` or `cycle_type=tdd` per `.moai/config/sections/quality.yaml` `development_mode`) — DDD or TDD-flavored harness workflow templates (the retired-DDD policy M3 consolidated the prior DDD and TDD specialist managers into the unified `manager-develop` agent with cycle-type dispatch)
-- `manager-quality` — Quality gate configuration in generated harnesses
+- Quality gate configuration in generated harnesses — the `/moai gate` skill or the `sync-phase-quality-gate.sh` Stop hook (former manager-quality quality-gate role)
 - `manager-docs` — Documentation generation patterns
 - `manager-git` — Git workflow patterns for generated harnesses
 

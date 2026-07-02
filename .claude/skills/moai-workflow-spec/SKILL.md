@@ -172,7 +172,7 @@ See [requirement clarification detailed workflow](references/requirement-clarifi
 
 PLAN (/moai:1-plan): manager-spec analyzes input → EARS requirements → clarification → SPEC creation in `.moai/specs/` → optional `--branch` or `--worktree`.
 
-RUN (/moai:2-run): manager-develop loads SPEC → ANALYZE-PRESERVE-IMPROVE (DDD) or RED-GREEN-REFACTOR (TDD) per `quality.yaml development_mode` → moai-workflow-testing reference → expert agent delegation → manager-quality validation.
+RUN (/moai:2-run): manager-develop loads SPEC → ANALYZE-PRESERVE-IMPROVE (DDD) or RED-GREEN-REFACTOR (TDD) per `quality.yaml` `constitution.development_mode` → moai-workflow-testing reference → per-spawn Agent(general-purpose) domain delegation → quality-gate validation (Stop hook / /moai gate).
 
 SYNC (/moai:3-sync): manager-docs synchronizes documentation → API docs from SPEC → README and architecture updates → CHANGELOG → version control commit.
 
@@ -278,7 +278,7 @@ These routing rules decide what is out of scope for a SPEC document (and where i
 - moai-workflow-worktree: Git Worktree management for parallel development
 - manager-spec: SPEC creation and requirement analysis agent
 - manager-develop: DDD/TDD implementation based on SPEC requirements
-- manager-quality: TRUST 5 quality validation and gate enforcement
+- /moai gate skill (or sync-phase-quality-gate.sh Stop hook): TRUST 5 quality validation and gate enforcement (former manager-quality role)
 
 For migration scenarios and validation scripts: [reference/migration-guide.md](reference/migration-guide.md).
 

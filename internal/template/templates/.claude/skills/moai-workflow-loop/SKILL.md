@@ -151,8 +151,8 @@ Skills:
 Agents:
 
 - manager-develop: DDD implementation
-- manager-quality: Quality validation
-- manager-quality: Complex debugging
+- manager-develop (cycle_type=autofix): complex debugging and fix proposal (former manager-quality debug role)
+- /moai gate skill or sync-phase-quality-gate.sh Stop hook: quality validation (former manager-quality gate role)
 
 Commands:
 

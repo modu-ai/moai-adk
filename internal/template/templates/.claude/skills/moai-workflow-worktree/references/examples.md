@@ -92,12 +92,12 @@ moai-worktree config get worktree_root
 
 ## Agent Integration Examples
 
-### Example 4: Manager-Project with Worktree Setup
+### Example 4: Project Initialization with Worktree Setup
 
 Agent Usage: Project initialization with worktree support
 
 ```python
-# In manager-project agent context
+# In /moai project orchestration context (project docs owned by manager-docs)
 Skill("moai-worktree") # Load worktree patterns
 
 # Setup project with worktree support

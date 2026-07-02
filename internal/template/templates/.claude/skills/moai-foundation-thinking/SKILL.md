@@ -191,7 +191,7 @@ Agent Teams:
 ## Works Well With
 
 Agents:
-- manager-strategy: Combined with Philosopher for full decision framework
+- manager-spec: Combined with Philosopher for full decision framework (planning absorbs strategic analysis)
 - manager-spec: Deep Questioning during requirement analysis
 - team-reader (analyst role): Primary consumer for plan phase analysis
 - team-reader (researcher role): Comprehensive research methodology

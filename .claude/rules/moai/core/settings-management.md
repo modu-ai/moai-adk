@@ -259,7 +259,7 @@ Example:
 
 Quality gates in quality.yaml:
 
-- development_mode: ddd or tdd
+- constitution.development_mode: ddd or tdd (nested under the top-level `constitution:` block in quality.yaml — NOT a top-level `quality.development_mode` key)
 - test_coverage_target: Minimum coverage percentage
 - lsp_quality_gates: LSP-based validation
 

@@ -5,6 +5,8 @@ paths: ".moai/design/**,.moai/specs/SPEC-*-DESIGN-*/**,.moai/project/brand/**,.c
 
 # Design System Constitution v3.2
 
+> **RETIRED — historical reference.** The MoAI design production system described in this file (the `/moai design` route, the design pipeline, and the named design skills `moai-domain-copywriting`, `moai-domain-brand-design`, `moai-workflow-design`, `moai-workflow-gan-loop`) has been **retired** per the design-system retirement. None of those four skills exist in the current catalog, and `/moai design` is no longer a routed subcommand — design-language requests route to `/moai plan`, and quality/security review routes to `/moai review`. This file is preserved for two reasons only: (1) as the FROZEN-clause source mirrored by the zone-registry, and (2) as a historical record of the design pipeline contract. The `expert-frontend` name throughout resolves to a per-spawn `Agent(general-purpose)` with frontend instructions per the carve-out note below. Do not treat any pipeline, route, or skill named below as a live capability.
+
 ## HISTORY
 
 - 2026-05-20: §3.2 + §4 Pencil MCP (Path B2) row removed — Pencil MCP server no longer registered in `.mcp.json.tmpl`, dead reference cleanup as part of v2.20.0-rc1 release-readiness consolidation. Path B1 (figma-extractor) preserved. Version 3.4.0 → 3.5.0.
@@ -82,7 +84,7 @@ Brand context is stored in `.moai/project/brand/` and initialized through the br
 
 Iteration-specific design briefs are stored in `.moai/design/`:
 
-- [ZONE:Frozen] [HARD] `/moai design` MUST auto-load human-authored design documents (research.md, system.md, spec.md) when present and not _TBD_
+- [ZONE:Frozen] [HARD] `/moai design` MUST auto-load human-authored design documents (research.md, system.md, spec.md) when present and not _TBD_ (RETIRED route — `/moai design` is no longer a routed subcommand; design-language requests route to `/moai plan`. See the retirement banner at the top of this file. Clause text preserved verbatim for the FROZEN zone-registry mirror.)
 - [ZONE:Frozen] [HARD] Design briefs MUST NOT override brand context — brand remains the constitutional parent
 - [ZONE:Frozen] [HARD] `moai-workflow-design` continues to write machine-generated artifacts to `.moai/design/`; the exact set of reserved file paths is enumerated below — human-authored files must not collide with them
 - [ZONE:Frozen] [HARD] Reserved file paths (canonical list): `tokens.json`, `components.json`, `assets/`, `import-warnings.json`, `brief/BRIEF-*.md`
@@ -376,7 +378,7 @@ Before finalizing a passing score, sync-auditor checks all known anti-patterns. 
 When configuration conflicts arise, the following precedence applies (highest first):
 
 1. FROZEN constitutional rules (this file)
-2. User overrides via /moai design config
+2. User overrides via `/moai design config` (RETIRED route — see the retirement banner at the top of this file)
 3. Evolved configuration (graduated learnings)
 4. .moai/config/sections/design.yaml defaults
 5. Brand context constraints

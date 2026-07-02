@@ -28,7 +28,7 @@ Output: `answers.yaml` written to `.moai/harness/answers.yaml`.
 
 ## Phase 2 — Analysis
 
-`manager-spec` and `manager-strategy` scan the repository:
+`manager-spec` scans the repository (strategic analysis absorbed into manager-spec):
 
 - File structure patterns → infer domain boundaries
 - Existing agents/skills → avoid duplication
@@ -61,7 +61,7 @@ Agents involved: `builder-harness` (artifact_type=agent or artifact_type=skill) 
 
 This skill fills the skeleton with domain-specific content:
 
-1. Generate agent definitions (`.claude/agents/harness/*.md`) referencing existing MoAI agents: `manager-spec`, `manager-strategy`, `manager-develop` (`cycle_type=tdd` or `cycle_type=ddd` per `quality.yaml` `development_mode`), `manager-quality` (diagnostic-mode replaces former expert-debug), `manager-docs`, `manager-git`, `manager-brain`, `expert-backend`, `expert-frontend`, `expert-security`, `expert-refactoring`, `expert-performance`, `expert-devops`, `builder-harness` (use `artifact_type=agent|skill|plugin`), `sync-auditor`, `plan-auditor`.
+1. Generate agent definitions (`.claude/agents/harness/*.md`) referencing the retained MoAI agents: `manager-spec`, `manager-develop` (`cycle_type=tdd`, `cycle_type=ddd`, or `cycle_type=autofix` per `quality.yaml` `constitution.development_mode`), `manager-docs`, `manager-git`, `builder-harness` (use `artifact_type=agent|skill|plugin`), `sync-auditor`, `plan-auditor` — plus per-spawn `Agent(general-purpose)` with domain instructions for backend / frontend / security / refactoring / performance / devops / debug domain work, and the `/moai gate` skill or the `sync-phase-quality-gate.sh` Stop hook for quality-gate configuration (per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C).
 2. Generate domain skills (`.claude/skills/harness-*/SKILL.md`) following the skill-authoring.md schema with `harness-*` prefix.
 3. All artifacts are user-owned and never overwritten by `moai update`.
 

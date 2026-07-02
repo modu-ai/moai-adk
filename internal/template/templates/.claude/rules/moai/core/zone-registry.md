@@ -574,7 +574,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#32-design-brief-execution-scope"
-  clause: "[HARD] /moai design MUST auto-load human-authored design documents when present and not _TBD_"
+  clause: "[HARD] /moai design MUST auto-load human-authored design documents when present and not _TBD_ (RETIRED route — /moai design is no longer a routed subcommand; design-language routes to /moai plan; historical mirror of the design/constitution.md FROZEN clause, see that file's retirement banner)"
   canary_gate: true
 
 - id: CONST-V3R2-067

@@ -152,7 +152,7 @@ Each MoAI phase maps to upstream revfactory/harness phases (ref: https://github.
 | MoAI Phase | Upstream Harness Phase | Owning Agent | Inputs | Outputs |
 |------------|------------------------|--------------|--------|---------|
 | 1. Discovery | Phase 0 (audit) + Phase 1 domain analysis (Socratic) | manager-spec | User request | `answers.yaml` |
-| 2. Analysis | Phase 1 domain analysis (codebase scan) | manager-spec + manager-strategy | `answers.yaml` + repo state | Analysis report |
+| 2. Analysis | Phase 1 domain analysis (codebase scan) | manager-spec | `answers.yaml` + repo state | Analysis report |
 | 3. Synthesis | Phase 2 team architecture design | manager-spec | Analysis report | SPEC doc with EARS |
 | 4. Skeleton | Phase 3 agent definition generation | meta-harness (this skill) | SPEC doc | `.moai/harness/main.md` + extensions |
 | 5. Customization | Phase 4 skill generation | meta-harness (this skill) | Skeleton | `.claude/agents/harness/*.md` + `.claude/skills/harness-*/SKILL.md` |
@@ -162,10 +162,10 @@ Each MoAI phase maps to upstream revfactory/harness phases (ref: https://github.
 ### Phase Summaries
 
 - Phase 1 (Discovery): `manager-spec` conducts 16-question Socratic interview (owned by the project-harness generation policy). Output: `.moai/harness/answers.yaml`
-- Phase 2 (Analysis): `manager-spec` + `manager-strategy` scan repo (file structure, existing agents/skills, dependency files, test coverage)
+- Phase 2 (Analysis): `manager-spec` scans repo (file structure, existing agents/skills, dependency files, test coverage) — strategic analysis is absorbed into manager-spec
 - Phase 3 (Synthesis): `manager-spec` produces SPEC with EARS requirements selecting one of 6 architectural patterns, defining agent roles, skill categories, acceptance criteria
 - Phase 4 (Skeleton): This skill generates harness skeleton — main.md, agents.md, skills.md extensions, agent definition stubs
-- Phase 5 (Customization): This skill fills the skeleton with domain-specific content referencing existing MoAI agents (manager-*, expert-*, builder-harness, sync-auditor)
+- Phase 5 (Customization): This skill fills the skeleton with domain-specific content referencing the retained MoAI agents (manager-*, builder-harness, sync-auditor) plus per-spawn Agent(general-purpose) domain delegations for domain-specific work
 - Phase 6 (Evaluation): `sync-auditor` runs Sprint Contract protocol (design constitution §11.5) — 4 dimensions, pass threshold 0.75 (FROZEN floor 0.60)
 - Phase 7 (Iteration): Owned by the harness-learning policy (out of scope for this skill)
 
@@ -173,7 +173,7 @@ See [Phase 1-7 detailed walkthrough + agent involvement](references/seven-phase-
 
 ### MoAI Agent Cross-References
 
-This skill orchestrates but does NOT replace existing agents. All agents referenced are static MoAI agents — no new agents are introduced. Categories: Planning & Strategy (manager-spec, manager-strategy, plan-auditor), Implementation (expert-*, manager-develop, manager-quality), Builders (builder-harness with artifact_type=agent|skill|plugin), Workflow Managers (manager-develop, manager-quality, manager-docs, manager-git), Quality (sync-auditor).
+This skill orchestrates but does NOT replace existing agents. All named agents are retained MoAI agents — no new agents are introduced; domain-specific work is delegated via per-spawn Agent(general-purpose) with domain instructions. Categories: Planning & Strategy (manager-spec, plan-auditor), Implementation (manager-develop, plus per-spawn Agent(general-purpose) domain delegations), Builders (builder-harness with artifact_type=agent|skill|plugin), Workflow Managers (manager-develop, manager-docs, manager-git; quality gate via /moai gate or the sync-phase-quality-gate.sh Stop hook), Quality (sync-auditor).
 
 See [agent cross-references full inventory](references/agent-cross-references.md) for per-agent role and phase mapping.
 
@@ -270,7 +270,7 @@ Both fields are enforced at runtime by the Phase-6 post-generation smoke gate (`
 This skill loads when any of the following match:
 
 - Keywords: `harness`, `project-init`, `meta-skill`, `agent-team`, `harness-evolve`
-- Agents: `manager-spec`, `manager-strategy`, `sync-auditor`
+- Agents: `manager-spec`, `sync-auditor`
 - Phases: `plan`, `run`, `sync`
 
 **Deferred Execution Contract**:

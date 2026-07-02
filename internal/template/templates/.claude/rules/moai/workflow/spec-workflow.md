@@ -203,7 +203,7 @@ Brownfield enhancement: Pre-RED step reads existing code to understand current b
 | Brownfield | >= 10% | TDD |
 | Brownfield | < 10% | DDD |
 
-Manual override: `quality.development_mode` in quality.yaml, `MOAI_DEVELOPMENT_MODE` env var, or `moai init --mode <ddd|tdd>`.
+Manual override: `constitution.development_mode` in quality.yaml (nested under the top-level `constitution:` block), `MOAI_DEVELOPMENT_MODE` env var, or `moai init --mode <ddd|tdd>`.
 
 ### Pre-submission Self-Review
 

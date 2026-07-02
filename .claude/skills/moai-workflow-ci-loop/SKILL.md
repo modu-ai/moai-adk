@@ -59,7 +59,7 @@ MOAI_CIWATCH_GH=gh sh scripts/ci-watch/run.sh <PR_NUMBER> <BRANCH>
 - `3` — 30-min hard timeout → blocker message, return control
 
 **HARD invariants**:
-- AskUserQuestion is orchestrator-only — CLI, shell scripts, and `manager-quality` MUST NOT call it.
+- AskUserQuestion is orchestrator-only — CLI, shell scripts, and the `manager-develop` (cycle_type=autofix) subagent MUST NOT call it.
 - Force-push is absolutely prohibited (`--force`, `-f`, `--force-with-lease` all banned).
 - Max 3 auto-fix iterations; iteration 4+ triggers mandatory blocking AskUserQuestion.
 - Semantic failures (race, deadlock, panic, assertion) are never auto-patched.
@@ -127,7 +127,7 @@ rename. Schema source: the CI-watch handoff struct.
 2. SPEC 수정 — revise the SPEC and restart implementation
 3. PR 포기 — close the PR and abandon this approach
 
-**manager-quality spawn prompt** injects: handoff JSON, classification + sub_class,
+**`manager-develop` (cycle_type=autofix) spawn prompt** injects: handoff JSON, classification + sub_class,
 failed CI log + PR diff, mode directive (mechanical → propose unified-diff patch;
 semantic/unknown → return diagnosis only, no patch). HARD: no AskUserQuestion call from
 the subagent — return Markdown only.
@@ -143,7 +143,7 @@ iteration records classification, sub_class, action, patch_sha, escalation_reaso
 - `.github/required-checks.yml` (Wave 1 SSoT, read-only for Wave 2/3)
 - `scripts/ci-watch/run.sh` (Wave 2 invariant)
 
-If `manager-quality` proposes a patch touching any of these, reject and escalate.
+If the `manager-develop` (cycle_type=autofix) subagent proposes a patch touching any of these, reject and escalate.
 
 ### Go Helpers and Shell Scripts
 
@@ -159,7 +159,7 @@ fallback); `scripts/ci-autofix/log-fetch.sh` (failure log + PR diff);
 
 ## Works Well With
 
-- `manager-quality` — failure diagnosis + patch proposal subagent
+- `manager-develop` (cycle_type=autofix) — failure diagnosis + patch proposal subagent
 - `manager-git` — commit/push of auto-fix patches
 - `.claude/rules/moai/workflow/ci-watch-protocol.md` — HARD watch invocation contract
 - `.claude/rules/moai/workflow/ci-autofix-protocol.md` — HARD autofix invocation contract
@@ -177,7 +177,7 @@ fallback); `scripts/ci-autofix/log-fetch.sh` (failure log + PR diff);
 
 ## Red Flags
 
-- `manager-quality` subagent calls AskUserQuestion (HARD: orchestrator-only)
+- `manager-develop` (cycle_type=autofix) subagent calls AskUserQuestion (HARD: orchestrator-only)
 - Iteration 4 auto-continues without blocking AskUser
 - `git push --force` / `-f` / `--force-with-lease` anywhere in scripts
 - Semantic classification produces a patch attempt

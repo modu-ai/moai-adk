@@ -2,15 +2,15 @@
 name: moai-ref-testing-pyramid
 description: >
   Test pyramid strategy, coverage targets, test patterns, and quality metrics
-  reference. Agent-extending skill that amplifies manager-develop and manager-quality
-  expertise with production-grade testing patterns.
+  reference. Agent-extending skill that amplifies manager-develop test-creation and
+  quality-validation work with production-grade testing patterns.
   NOT for: production code implementation, architecture design, DevOps, security audits.
 
 when_to_use: >
   Use for test-pyramid strategy reference: coverage targets,
   unit/integration/e2e test patterns, and quality metrics. Amplifies
-  manager-develop and manager-quality expertise with production-grade
-  testing patterns.
+  manager-develop test-creation and quality-validation work with
+  production-grade testing patterns.
 
 user-invocable: false
 metadata:

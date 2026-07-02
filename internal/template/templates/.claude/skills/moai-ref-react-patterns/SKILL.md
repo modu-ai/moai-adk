@@ -3,14 +3,15 @@ name: moai-ref-react-patterns
 description: >
   React/Next.js component design patterns, state management strategies, and project
   structure reference for frontend development. Agent-extending skill that amplifies
-  expert-frontend expertise with production-grade React patterns.
+  frontend domain work (spawned via Agent(general-purpose) with frontend instructions)
+  with production-grade React patterns.
   NOT for: backend API design, database modeling, DevOps, mobile apps.
 
 when_to_use: >
   Use for React/Next.js component design patterns: state-management
   strategies, hooks, component composition, and project structure.
-  Amplifies expert-frontend expertise with production-grade React
-  patterns.
+  Amplifies frontend domain work (Agent(general-purpose) with frontend
+  instructions) with production-grade React patterns.
 
 user-invocable: false
 metadata:
@@ -29,9 +30,9 @@ progressive_disclosure:
 
 # React Patterns Reference
 
-## Target Agent
+## Target Spawn
 
-`expert-frontend` - Applies these patterns directly to component design and state management.
+Frontend domain work spawned via `Agent(general-purpose)` with frontend instructions - Applies these patterns directly to component design and state management.
 
 ## Component Design Patterns
 

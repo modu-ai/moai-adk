@@ -205,11 +205,11 @@ Phase 4 Commit: Descriptive messages, logical groupings, clean history
 
 ### Essential Sub-agents
 
-- spec-builder: EARS specifications
+- manager-spec: EARS specifications
 - manager-develop: DDD execution
-- expert-security: Security analysis
-- expert-backend: API development
-- expert-frontend: UI implementation
+- Agent(general-purpose) with security instructions: Security analysis
+- Agent(general-purpose) with backend instructions: API development
+- Agent(general-purpose) with frontend instructions: UI implementation
 
 ## Security Features
 

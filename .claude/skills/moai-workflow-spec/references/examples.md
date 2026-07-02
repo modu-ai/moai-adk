@@ -673,7 +673,7 @@ paid → [refund request] → refunding → refunded
 Created: 2025-12-07
 Status: Planned
 Priority: Medium
-Assigned: expert-frontend
+Assigned: Agent(general-purpose) with frontend instructions
 Related SPECs: SPEC-011 (Design System), SPEC-012 (Accessibility)
 Epic: EPIC-UI
 Estimated Effort: 4 hours
