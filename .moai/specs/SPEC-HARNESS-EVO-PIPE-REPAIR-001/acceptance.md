@@ -1,6 +1,6 @@
 # SPEC-HARNESS-EVO-PIPE-REPAIR-001 — Acceptance Criteria
 
-status: draft · Tier M · 검증 원칙: 모든 AC는 관측 가능한 명령 출력/파일 상태로 판정 (verification-claim-integrity §3 — Claim에는 반드시 verbatim Evidence 첨부)
+status: in-progress · Tier M · 검증 원칙: 모든 AC는 관측 가능한 명령 출력/파일 상태로 판정 (verification-claim-integrity §3 — Claim에는 반드시 verbatim Evidence 첨부)
 
 ---
 

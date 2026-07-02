@@ -43,7 +43,8 @@ type ProposalCandidate struct {
 	Confidence float64 `json:"confidence"`
 
 	// Tier is the originating Promotion.ToTier
-	// (always "recommendation" or "approval_required" after mapping).
+	// (always "rule" or "auto_update" after mapping — the two actionable Tier
+	// vocabulary values per Tier.String() SSOT).
 	Tier string `json:"tier"`
 
 	// SourceTs is the originating Promotion.Ts timestamp (UTC).

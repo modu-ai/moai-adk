@@ -244,6 +244,29 @@ func (t Tier) String() string {
 	}
 }
 
+// PatternBearingEventTypes 는 buildPatternKey(learner.go)가 pattern_key를 방출하는
+// EventType 값을 열거한다 (형식: <event_type>:<subject>:<context_hash>).
+// apply_outcome 은 pattern_key를 갖지 않으므로(correlation key는 outcome_proposal_id)
+// 파생 집합에서 제외한다.
+//
+// 이 함수는 proposalgen mapper가 actionable pattern_key prefix 집합을 파생하는
+// 단일 SSOT이다. 새 pattern-bearing EventType 추가 시 여기만 갱신하면 mapper의
+// 수용 prefix 집합이 자동 확장된다 — 병렬 수기 목록을 두지 않는다.
+//
+// @MX:NOTE: [AUTO] proposalgen mapper(buildActionablePatternRE)가 파생하는
+// pattern_key prefix SSOT. apply_outcome 제외는 REQ-OBL-005(pattern_key 부재) 근거.
+func PatternBearingEventTypes() []EventType {
+	return []EventType{
+		EventTypeMoaiSubcommand,
+		EventTypeAgentInvocation,
+		EventTypeSpecReference,
+		EventTypeFeedback,
+		EventTypeSessionStop,
+		EventTypeSubagentStop,
+		EventTypeUserPrompt,
+	}
+}
+
 // Pattern is a single pattern identified by (event_type, subject, context_hash) combination.
 // REQ-HL-002: Learner reads JSONL logs and aggregates into patterns.
 type Pattern struct {

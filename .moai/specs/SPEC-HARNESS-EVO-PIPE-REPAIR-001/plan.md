@@ -1,6 +1,6 @@
 # SPEC-HARNESS-EVO-PIPE-REPAIR-001 — Implementation Plan
 
-Tier: **M** (6 milestones) · development_mode: **tdd** (quality.yaml 실측) · status: draft
+Tier: **M** (6 milestones) · development_mode: **tdd** (quality.yaml 실측) · status: in-progress
 
 ---
 

@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-EVO-PIPE-REPAIR-001
 title: "하네스 학습 파이프라인 수리 + v4 스모크 게이트 (Epic Harness-Evolution 1/4)"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-07-02
 updated: 2026-07-02
 author: manager-spec
