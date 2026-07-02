@@ -4,88 +4,88 @@ weight: 80
 draft: false
 ---
 
-3계층 카탈로그 매니페스트와 slim init으로 프로젝트 초기화를 최적화합니다.
+Optimizes project initialization with a 3-tier catalog manifest and slim init.
 
-## 개요
+## Overview
 
-MoAI-ADK v2.15+의 카탈로그 시스템은 모든 에이전트, 스킬, 플러그인, 규칙을 **3계층
-매니페스트**로 관리합니다. `moai init --slim`을 통해 프로젝트에 필요한 최소 템플릿만
-배포하여 초기화 시간을 단축합니다.
+The catalog system in MoAI-ADK v2.15+ manages every agent, skill, plugin, and rule
+through a **3-tier manifest**. `moai init --slim` deploys only the minimal templates
+a project actually needs, shortening initialization time.
 
-## 3계층 매니페스트
+## 3-Tier Manifest
 
-| 계층 | 설명 | 배포 기준 |
+| Tier | Description | Deployment criteria |
 |------|------|----------|
-| **Tier 1 (Core)** | 핵심 인프라 — 오케스트레이터, 품질 게이트, 기본 스킬 | 항상 배포 |
-| **Tier 2 (Standard)** | 표준 확장 — 언어별 규칙, 프레임워크 스킬 | 프로젝트 언어/프레임워크 감지 시 |
-| **Tier 3 (Optional)** | 선택적 — 도메인 스킬, 플랫폼별 설정 | 명시적 요청 또는 프로젝트 설정 시 |
+| **Tier 1 (Core)** | Core infrastructure — orchestrator, quality gates, base skills | Always deployed |
+| **Tier 2 (Standard)** | Standard extensions — language-specific rules, framework skills | Deployed when the project's language/framework is detected |
+| **Tier 3 (Optional)** | Optional — domain skills, platform-specific settings | Deployed only on explicit request or project configuration |
 
-## 카탈로그 파일
+## Catalog File
 
-카탈로그 매니페스트는 YAML 형식으로 정의됩니다:
+The catalog manifest is defined in YAML format:
 
 ```yaml
-# 카탈로그 엔트리 예시
+# Example catalog entry
 - id: moai-workflow-tdd
   tier: 1                    # 1=Core, 2=Standard, 3=Optional
   type: skill
   path: .claude/skills/moai/workflows/tdd.md
-  languages: []              # 빈 배열 = 모든 언어
+  languages: []              # empty array = all languages
   frameworks: []
-  hash: abc123...             # 콘텐츠 해시 (무결성 검증)
+  hash: abc123...             # content hash (integrity verification)
 ```
 
-## SlimFS 필터
+## SlimFS Filter
 
-`moai init --slim`은 SlimFS 필터를 통해 배포 파일을 제한합니다:
+`moai init --slim` restricts the deployed files through the SlimFS filter:
 
 ```bash
-# 전체 설치 (모든 계층)
+# Full installation (all tiers)
 moai init my-project
 
-# Slim 설치 (Tier 1 + 감지된 Tier 2만)
+# Slim installation (Tier 1 + detected Tier 2 only)
 moai init --slim my-project
 ```
 
-### 필터 로직
+### Filter Logic
 
-1. Tier 1은 항상 포함
-2. 프로젝트 언어 감지 (Go, Python, TypeScript 등)
-3. 감지된 언어에 해당하는 Tier 2 항목만 포함
-4. Tier 3은 제외
+1. Tier 1 is always included
+2. Detects the project language (Go, Python, TypeScript, etc.)
+3. Includes only the Tier 2 entries matching the detected language
+4. Excludes Tier 3
 
 ## Typed Loader
 
-`LoadCatalog()` 함수가 매니페스트를 타입 안전하게 로드합니다:
+The `LoadCatalog()` function loads the manifest in a type-safe way:
 
-- 3계층 분류 검증
-- 해시 무결성 검사 (Hash Sentinel)
-- 누락 필드 감지
-- 100% 테스트 커버리지
+- Validates the 3-tier classification
+- Checks hash integrity (Hash Sentinel)
+- Detects missing fields
+- 100% test coverage
 
-## 카탈로그 활용
+## Using the Catalog
 
-### 프로젝트 초기화
+### Project Initialization
 
 ```bash
-# 일반 초기화 — 모든 템플릿 배포
+# Standard initialization — deploys all templates
 moai init my-project
 
-# Slim 초기화 — 최소 템플릿만 배포
+# Slim initialization — deploys only the minimal templates
 moai init --slim my-project
 ```
 
-### 업데이트
+### Updates
 
 ```bash
-# 카탈로그 기반 업데이트
-moai update                  # 모든 계층 업데이트
-moai update --slim           # slim 모드로 업데이트
+# Catalog-based update
+moai update                  # updates all tiers
+moai update --slim           # updates in slim mode
 ```
 
-## 관련 문서
+## Related Documentation
 
-- [설치](/ko/getting-started/installation) — 설치 가이드
-- [초기 설정](/ko/getting-started/init-wizard) — init 마법사
-- [업데이트](/ko/getting-started/update) — 업데이트 가이드
-- [스킬 가이드](/ko/advanced/skill-guide) — 스킬 작성 가이드
+- [Installation](/getting-started/installation) — Installation guide
+- [Initial Setup](/getting-started/init-wizard) — init wizard
+- [Update](/getting-started/update) — Update guide
+- [Skill Guide](/advanced/skill-guide) — Skill authoring guide

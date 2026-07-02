@@ -3,128 +3,128 @@ title: Harness Engineering
 weight: 30
 draft: false
 ---
-# 하네스 엔지니어링
+# Harness Engineering
 
 
-## 하네스 엔지니어링이란?
+## What Is Harness Engineering?
 
-MoAI-ADK는 **하네스 엔지니어링(Harness Engineering)** 패러다임을 구현합니다. 이는 개발자가 직접 코드를 작성하는 대신, **AI 에이전트가 최적의 코드를 생산할 수 있는 환경(하네스)을 설계**하는 접근 방식입니다.
+MoAI-ADK implements the **Harness Engineering** paradigm. Rather than having developers write code directly, this approach **designs the environment (the harness) in which an AI agent can produce optimal code**.
 
 > "Human steers, agents execute."
-> — 엔지니어의 역할은 코드 작성에서 하네스 설계로 전환됩니다: SPEC, 품질 게이트, 피드백 루프.
+> — The engineer's role shifts from writing code to designing the harness: the SPEC, the quality gates, the feedback loops.
 
-기존 바이브코딩은 AI에게 자유롭게 코드를 생성하게 한 뒤 결과를 수동으로 검토합니다. 하네스 엔지니어링은 반대입니다 — **규격(SPEC), 자동 검증, 지속적 피드백 루프**로 AI 에이전트를 가이드하여 일관된 품질의 코드를 생산합니다.
+Traditional vibe coding lets the AI generate code freely and then reviews the result manually. Harness engineering is the opposite — it guides the AI agent with a **specification (SPEC), automated validation, and a continuous feedback loop** to produce consistently high-quality code.
 
-## 7가지 핵심 컴포넌트
+## 7 Core Components
 
 ```mermaid
 graph TB
-    subgraph Harness["🏗️ 하네스 엔지니어링"]
+    subgraph Harness["🏗️ Harness Engineering"]
         direction TB
-        SF["📐 Scaffolding First<br/>빈 파일 스텁 생성"] --> FC["✅ Failing Checklist<br/>수락 기준 태스크 등록"]
-        FC --> SV["🔄 Self-Verify Loop<br/>코드→테스트→수정→통과"]
-        SV --> GC["🗑️ Garbage Collection<br/>데드 코드 제거"]
-        GC --> CM["🗺️ Context Map<br/>아키텍처 문서 유지"]
-        CM --> SP["💾 Session Persistence<br/>세션 간 진행 추적"]
-        SP --> LA["🌐 Language-Agnostic<br/>16개 언어 자동 감지"]
+        SF["📐 Scaffolding First<br/>Generate empty file stubs"] --> FC["✅ Failing Checklist<br/>Register acceptance criteria as tasks"]
+        FC --> SV["🔄 Self-Verify Loop<br/>Code→Test→Fix→Pass"]
+        SV --> GC["🗑️ Garbage Collection<br/>Remove dead code"]
+        GC --> CM["🗺️ Context Map<br/>Maintain architecture docs"]
+        CM --> SP["💾 Session Persistence<br/>Track progress across sessions"]
+        SP --> LA["🌐 Language-Agnostic<br/>Auto-detect 16 languages"]
         LA --> SF
     end
 
     style Harness fill:#f0f7ff,stroke:#1565C0
 ```
 
-각 컴포넌트는 MoAI의 특정 명령어에 매핑됩니다:
+Each component maps to a specific MoAI command:
 
-| 컴포넌트 | 설명 | 명령어 |
+| Component | Description | Command |
 |----------|------|--------|
-| **Self-Verify Loop** | 에이전트가 코드 작성 → 테스트 → 실패 → 수정 → 통과 사이클을 자율적으로 반복 | [`/moai loop`](/ko/utility-commands/moai-loop) |
-| **Context Map** | 코드베이스 아키텍처 맵과 문서를 항상 에이전트에게 제공 | [`/moai codemaps`](/ko/quality-commands/moai-codemaps) |
-| **Session Persistence** | `progress.md`가 세션 간 완료된 단계를 추적하여 중단된 작업을 자동 재개 | [`/moai run SPEC-XXX`](/ko/workflow-commands/moai-run) |
-| **Failing Checklist** | 실행 시작 시 모든 수락 기준을 대기 태스크로 등록하고 구현 완료 시 체크 | [`/moai run SPEC-XXX`](/ko/workflow-commands/moai-run) |
-| **Language-Agnostic** | 16개 언어 지원: 언어를 자동 감지하고 올바른 LSP/린터/테스트/커버리지 도구 선택 | 모든 워크플로우 |
-| **Garbage Collection** | 데드 코드, AI 슬롭(slop), 사용하지 않는 import를 주기적으로 스캔하고 제거 | [`/moai clean`](/ko/utility-commands/moai-clean) |
-| **Scaffolding First** | 구현 전에 빈 파일 스텁을 먼저 생성하여 코드 엔트로피 방지 | [`/moai run SPEC-XXX`](/ko/workflow-commands/moai-run) |
+| **Self-Verify Loop** | The agent autonomously repeats the write-code → run-tests → fail → fix → pass cycle | [`/moai loop`](/utility-commands/moai-loop) |
+| **Context Map** | Always gives the agent a codebase architecture map and documentation | [`/moai codemaps`](/quality-commands/moai-codemaps) |
+| **Session Persistence** | `progress.md` tracks completed steps across sessions and automatically resumes interrupted work | [`/moai run SPEC-XXX`](/workflow-commands/moai-run) |
+| **Failing Checklist** | Registers every acceptance criterion as a pending task at the start of the run, and checks it off once implementation is complete | [`/moai run SPEC-XXX`](/workflow-commands/moai-run) |
+| **Language-Agnostic** | Supports 16 languages: auto-detects the language and selects the correct LSP/linter/test/coverage tools | Every workflow |
+| **Garbage Collection** | Periodically scans for and removes dead code, AI slop, and unused imports | [`/moai clean`](/utility-commands/moai-clean) |
+| **Scaffolding First** | Generates empty file stubs before implementation begins, preventing code entropy | [`/moai run SPEC-XXX`](/workflow-commands/moai-run) |
 
-## 작동 원리
+## How It Works
 
-### 1. Scaffolding First (스캐폴딩 우선)
+### 1. Scaffolding First
 
-`/moai run`이 시작되면, 에이전트는 코드를 작성하기 전에 먼저 필요한 파일 구조를 생성합니다:
+When `/moai run` starts, the agent first creates the necessary file structure before writing any code:
 
 ```
 src/
 ├── auth/
-│   ├── handler.go      ← 빈 스텁
-│   ├── handler_test.go  ← 빈 테스트
-│   ├── service.go       ← 빈 스텁
-│   └── service_test.go  ← 빈 테스트
+│   ├── handler.go      ← empty stub
+│   ├── handler_test.go  ← empty test
+│   ├── service.go       ← empty stub
+│   └── service_test.go  ← empty test
 └── middleware/
-    └── jwt.go           ← 빈 스텁
+    └── jwt.go           ← empty stub
 ```
 
-이 방식은 에이전트가 무질서하게 파일을 생성하는 것을 방지하고, 일관된 프로젝트 구조를 유지합니다.
+This approach prevents the agent from creating files haphazardly and keeps the project structure consistent.
 
-### 2. Failing Checklist (실패 체크리스트)
+### 2. Failing Checklist
 
-SPEC의 수락 기준이 자동으로 태스크 목록에 등록됩니다:
+The SPEC's acceptance criteria are automatically registered on the task list:
 
 ```
-- [ ] JWT 토큰 생성 엔드포인트
-- [ ] 토큰 검증 미들웨어
-- [ ] 리프레시 토큰 로직
-- [ ] 만료된 토큰 처리
-- [ ] 85%+ 테스트 커버리지
+- [ ] JWT token generation endpoint
+- [ ] Token verification middleware
+- [ ] Refresh token logic
+- [ ] Expired token handling
+- [ ] 85%+ test coverage
 ```
 
-각 항목이 구현되고 테스트를 통과하면 체크됩니다. 모든 항목이 체크되어야 작업이 완료됩니다.
+Each item is checked off once it is implemented and its tests pass. The work is complete only when every item is checked.
 
-### 3. Self-Verify Loop (자기검증 루프)
+### 3. Self-Verify Loop
 
-에이전트가 자율적으로 실행하는 핵심 사이클:
+The core cycle the agent runs autonomously:
 
 ```mermaid
 graph TD
-    A["코드 작성"] --> B["테스트 실행"]
-    B --> C{"통과?"}
-    C -->|"실패"| D["에러 분석"]
+    A["Write code"] --> B["Run tests"]
+    B --> C{"Pass?"}
+    C -->|"Fail"| D["Analyze error"]
     D --> A
-    C -->|"통과"| E["다음 항목"]
+    C -->|"Pass"| E["Next item"]
 ```
 
-이 루프는 `/moai loop`에서 최대 100회까지 반복되며, 수렴 감지(같은 에러 반복 시 대안 전략 적용)를 포함합니다.
+This loop repeats up to 100 times within `/moai loop`, and includes convergence detection (applying an alternative strategy when the same error repeats).
 
-### 4. Context Map (컨텍스트 맵)
+### 4. Context Map
 
-`/moai codemaps`가 생성하는 아키텍처 문서는 에이전트에게 코드베이스의 전체 구조를 제공합니다. 이를 통해 에이전트는:
+The architecture documentation `/moai codemaps` generates gives the agent the codebase's full structure. This lets the agent:
 
-- 기존 코드와 충돌하지 않는 구현 방법을 선택
-- 적절한 패턴과 규칙을 따름
-- 의존성 관계를 이해하고 영향 범위를 파악
+- Choose an implementation approach that does not conflict with existing code
+- Follow the appropriate patterns and conventions
+- Understand dependency relationships and gauge the scope of impact
 
-### 5. Session Persistence (세션 지속성)
+### 5. Session Persistence
 
-Claude Code 세션이 중단되더라도 `progress.md`가 완료된 단계를 기록합니다:
+Even if a Claude Code session is interrupted, `progress.md` records the steps that were completed:
 
 ```markdown
 ## Progress
-- [x] Phase 1: 분석 완료
-- [x] Phase 2: 핸들러 구현
-- [ ] Phase 3: 테스트 작성 ← 여기서 재개
-- [ ] Phase 4: 리팩토링
+- [x] Phase 1: Analysis complete
+- [x] Phase 2: Handler implemented
+- [ ] Phase 3: Writing tests ← resume here
+- [ ] Phase 4: Refactoring
 ```
 
-`/moai run --resume SPEC-XXX`로 중단된 지점부터 자동으로 재개됩니다.
+`/moai run --resume SPEC-XXX` automatically resumes from the point where it was interrupted.
 
-## 전통적 개발 vs 하네스 엔지니어링
+## Traditional Development vs Harness Engineering
 
-| 관점 | 전통적 개발 | 하네스 엔지니어링 |
+| Aspect | Traditional Development | Harness Engineering |
 |------|-----------|-----------------|
-| **개발자 역할** | 코드 작성자 | 환경 설계자 |
-| **코드 생산** | 수동 작성 | AI 에이전트 자동 생산 |
-| **품질 보증** | 사후 리뷰 | 내장된 자동 검증 루프 |
-| **세션 연속성** | 수동 메모 | 자동 진행 추적 |
-| **코드 정리** | 기술 부채 누적 | 자동 가비지 컬렉션 |
-| **문서화** | 별도 작업 | 자동 아키텍처 맵 생성 |
+| **Developer's role** | Code author | Environment designer |
+| **Code production** | Written by hand | Produced automatically by an AI agent |
+| **Quality assurance** | Reviewed after the fact | Built-in automated validation loop |
+| **Session continuity** | Manual notes | Automatic progress tracking |
+| **Code cleanup** | Technical debt accumulates | Automatic garbage collection |
+| **Documentation** | A separate task | Automatically generated architecture maps |
 
 ## Harness namespace policy (template-managed vs user-owned)
 
@@ -149,7 +149,7 @@ To make sure your custom domain-specific skills or agents survive `moai update`,
 
 > This namespace separation policy originates from `SPEC-V3R6-HARNESS-NAMESPACE-V2-001` (completed).
 
-## 다음 단계
+## Next Steps
 
-- [SPEC 기반 개발](/ko/core-concepts/spec-based-dev) — 하네스의 입력이 되는 SPEC 문서 작성법
-- [TRUST 5 품질](/ko/core-concepts/trust-5) — 하네스가 검증하는 5가지 품질 기준
+- [SPEC-Based Development](/core-concepts/spec-based-dev) — How to write the SPEC document that feeds the harness
+- [TRUST 5 Quality](/core-concepts/trust-5) — The 5 quality criteria the harness validates

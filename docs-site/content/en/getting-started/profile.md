@@ -3,32 +3,32 @@ title: Profile Management
 weight: 80
 draft: false
 ---
-# 프로필 관리
+# Profile Management
 
 
-MoAI-ADK의 프로필 시스템으로 여러 Claude Code 설정을 격리하여 관리합니다.
+MoAI-ADK's profile system lets you manage multiple Claude Code configurations in isolation.
 
-## 프로필이란?
+## What Is a Profile?
 
-프로필은 **격리된 Claude Code 설정 디렉토리**(`CLAUDE_CONFIG_DIR`)입니다. 프로필별로 독립적인 설정, 모델 선택, 언어 환경을 유지할 수 있습니다.
+A profile is an **isolated Claude Code configuration directory** (`CLAUDE_CONFIG_DIR`). Each profile can maintain its own independent settings, model selection, and language environment.
 
 ```
 ~/.moai/claude-profiles/
-├── default/           # 기본 프로필
+├── default/           # default profile
 │   ├── settings.json
 │   └── settings.local.json
-├── work/              # 업무용 프로필
+├── work/              # work profile
 │   ├── settings.json
 │   └── settings.local.json
-└── personal/          # 개인용 프로필
+└── personal/          # personal profile
     └── ...
 ```
 
-## 명령어 레퍼런스
+## Command Reference
 
 ### moai profile list
 
-사용 가능한 모든 프로필을 표시합니다.
+Displays every available profile.
 
 ```bash
 moai profile list
@@ -36,22 +36,22 @@ moai profile list
 
 ### moai profile setup [name]
 
-인터랙티브 설정 위자드를 실행합니다.
+Runs the interactive setup wizard.
 
 ```bash
-moai profile setup          # 기본 프로필 설정
-moai profile setup work     # "work" 프로필 설정
+moai profile setup          # set up the default profile
+moai profile setup work     # set up the "work" profile
 ```
 
-**위자드 설정 항목:**
-- **Identity**: 사용자 이름, 역할
-- **Languages**: 대화 언어, 코드 주석 언어
-- **Model Settings**: 기본 모델, 1M 컨텍스트 모델 선택
-- **Display**: 출력 스타일, 상태 표시줄 설정
+**Wizard configuration items:**
+- **Identity**: User name, role
+- **Languages**: Conversation language, code comment language
+- **Model Settings**: Default model, 1M-context model selection
+- **Display**: Output style, status line settings
 
 ### moai profile current
 
-현재 활성 프로필 이름을 표시합니다.
+Displays the name of the currently active profile.
 
 ```bash
 moai profile current
@@ -59,46 +59,46 @@ moai profile current
 
 ### moai profile delete [name]
 
-프로필을 삭제합니다.
+Deletes a profile.
 
 ```bash
 moai profile delete old-profile
 ```
 
-## 프로필로 Claude Code 실행
+## Running Claude Code with a Profile
 
-`-p` (또는 `--profile`) 플래그로 프로필을 지정합니다.
+Specify a profile with the `-p` (or `--profile`) flag.
 
 ```bash
-moai cc -p work          # work 프로필로 Claude 실행
-moai glm -p cost-save    # cost-save 프로필로 GLM 실행
-moai cg -p team          # team 프로필로 CG 모드 실행
+moai cc -p work          # run Claude with the work profile
+moai glm -p cost-save    # run GLM with the cost-save profile
+moai cg -p team          # run CG mode with the team profile
 ```
 
 {{< callout type="info" >}}
-프로필 미지정 시 기본 프로필이 사용됩니다. 첫 실행 시 자동으로 설정 위자드가 시작됩니다.
+When no profile is specified, the default profile is used. The setup wizard starts automatically on first run.
 {{< /callout >}}
 
-## 1M 컨텍스트 모델 선택
+## Choosing a 1M-Context Model
 
-프로필 설정 시 1M 컨텍스트 윈도우를 지원하는 모델을 선택할 수 있습니다.
+When configuring a profile, you can choose a model that supports the 1M-token context window.
 
-**지원 모델:**
+**Supported models:**
 - `claude-opus-4-8[1m]` - Opus 4.8 (1M context)
 - `claude-sonnet-4-6[1m]` - Sonnet 4.6 (1M context)
 
-설정 위자드에서 "Model Settings" 단계에서 선택하거나, 프로필 설정 파일을 직접 수정합니다.
+Select it in the "Model Settings" step of the setup wizard, or edit the profile configuration file directly.
 
-## 프로필 전환 시 동작
+## Behavior on Profile Switch
 
-| 전환 | 동작 |
+| Switch | Behavior |
 |------|------|
-| `moai cc` → `moai glm` | GLM 환경 변수 자동 주입 |
-| `moai glm` → `moai cc` | GLM 환경 변수 자동 제거 |
-| `moai cc` → `moai cg` | GLM env를 tmux 세션에만 주입, Leader는 Claude 유지 |
+| `moai cc` → `moai glm` | GLM environment variables are injected automatically |
+| `moai glm` → `moai cc` | GLM environment variables are removed automatically |
+| `moai cc` → `moai cg` | GLM env is injected only into the tmux session; the Leader stays on Claude |
 
-## 관련 문서
+## Related Documentation
 
-- [CLI 레퍼런스](/getting-started/cli) - 전체 CLI 명령어
-- [빠른 시작](/getting-started/quickstart) - 처음 시작하기
-- [초기 설정](/getting-started/init-wizard) - 프로젝트 초기화
+- [CLI Reference](/getting-started/cli) - Full CLI command reference
+- [Quick Start](/getting-started/quickstart) - Getting started for the first time
+- [Initial Setup](/getting-started/init-wizard) - Project initialization
