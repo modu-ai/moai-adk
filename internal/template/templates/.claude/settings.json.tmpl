@@ -88,7 +88,21 @@
           }
         ],
         "matcher": "Write|Edit"
-      }
+      }{{ if .HookOptIn.Enabled }},
+      {
+        "hooks": [
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command",
+            "async": true
+          }
+        ]
+      }{{ end }}
     ],
     "Stop": [
       {

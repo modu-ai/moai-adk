@@ -746,6 +746,19 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: event recording failed: %v\n", err)
 	}
 
+	// SPEC-HARNESS-EVO-PIPE-REPAIR-001 REQ-HEP-003: auto-classify on the Stop path.
+	// Chains the classifier after the observe record so the learning pipeline
+	// advances WITHOUT depending on a manual `/moai:harness status` invocation.
+	// Fail-open (AP-3): classify errors are logged to stderr but NEVER block
+	// session end, and the chain stays within the 5s hook budget (classify is a
+	// single usage-log aggregation + promotion append, O(log lines)).
+	// Precondition (isHarnessLearningEnabled) already satisfied above.
+	if patternCount, promoCount, classifyErr := classifyHarnessPatterns(root); classifyErr != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: auto-classify failed (non-blocking): %v\n", classifyErr)
+	} else {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: auto-classify %d patterns → %d promotions\n", patternCount, promoCount)
+	}
+
 	return nil
 }
 
@@ -1087,22 +1100,53 @@ func runHarnessClassify(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
+	patternCount, promoCount, err := classifyHarnessPatterns(root)
+	if err != nil {
+		// REQ-HCW-003 fail-open (manual path): emit the annotation and return the
+		// error so the workflow body Bash wrapper reads exit code 1.
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-classify error: %v\n", err)
+		return err
+	}
+
+	// REQ-HCW-001 summary line for workflow body rendering.
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-classify: %d patterns → %d promotions written\n", patternCount, promoCount)
+
+	return nil
+}
+
+// classifyHarnessPatterns aggregates usage-log.jsonl patterns, classifies each
+// into a tier, and appends one Promotion per pattern to tier-promotions.jsonl.
+// It is the shared core of BOTH the manual `harness-classify` subcommand and the
+// automatic Stop-path classify chain (SPEC-HARNESS-EVO-PIPE-REPAIR-001 REQ-HEP-003).
+//
+// The caller decides how to treat the returned error: the manual subcommand
+// propagates it for exit-code 1 (REQ-HCW-003); the Stop-path chain is fail-open
+// and discards it (AP-3, never blocks session end).
+//
+// Precondition: the caller has already verified isHarnessLearningEnabled(root)
+// (the REQ-HCW-004 / REQ-HRN-FND-009 no-op gate). This helper does not re-check
+// it.
+//
+// @MX:ANCHOR: [AUTO] classifyHarnessPatterns is the single classifier-invocation
+// core shared by the manual subcommand and the Stop-path auto-classify chain.
+// @MX:REASON: [AUTO] fan_in >= 2 growing to 3: runHarnessClassify,
+// runHarnessObserveStop, hook_harness_classify(_chain)_test.go — the canonical
+// classifier entry the learning loop depends on.
+func classifyHarnessPatterns(root string) (patternCount, promoCount int, err error) {
 	logPath := filepath.Join(root, ".moai", "harness", "usage-log.jsonl")
 	promoPath := filepath.Join(root, ".moai", "harness", "learning-history", "tier-promotions.jsonl")
 
 	// REQ-HCW-002: aggregate patterns from the usage log. AggregatePatterns
-	// returns an empty map when the file does not exist (normal first-run
-	// state on a fresh project) — no error in that path.
-	patterns, err := harness.AggregatePatterns(logPath)
-	if err != nil {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-classify error: aggregate patterns: %v\n", err)
-		return err
+	// returns an empty map when the file does not exist (normal first-run state
+	// on a fresh project) — no error in that path.
+	patterns, aggErr := harness.AggregatePatterns(logPath)
+	if aggErr != nil {
+		return 0, 0, fmt.Errorf("aggregate patterns: %w", aggErr)
 	}
 
 	thresholds := readTierThresholds(root)
 	learner := harness.NewLearner(promoPath)
 
-	promoCount := 0
 	for _, p := range patterns {
 		tier := harness.ClassifyTier(p, thresholds)
 		promo := harness.Promotion{
@@ -1113,14 +1157,10 @@ func runHarnessClassify(cmd *cobra.Command, _ []string) error {
 			Confidence:       p.Confidence,
 		}
 		if writeErr := learner.WritePromotion(promo); writeErr != nil {
-			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-classify error: write promotion (pattern=%s): %v\n", p.Key, writeErr)
-			return writeErr
+			return len(patterns), promoCount, fmt.Errorf("write promotion (pattern=%s): %w", p.Key, writeErr)
 		}
 		promoCount++
 	}
 
-	// REQ-HCW-001 summary line for workflow body rendering.
-	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-classify: %d patterns → %d promotions written\n", len(patterns), promoCount)
-
-	return nil
+	return len(patterns), promoCount, nil
 }

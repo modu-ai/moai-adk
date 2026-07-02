@@ -60,14 +60,15 @@ func TestRunPropose_DefaultFlags_UsesDefaults(t *testing.T) {
 // TestRunPropose_WriteMode_PersistsProposals — actionable 패턴 1건을 담은
 // tier-promotions.jsonl 픽스처에 대해 --dry-run=false로 runPropose를 직접 호출하여
 // non-dry-run WriteProposals 경로(propose.go:125-127)를 도달시킨다 (REQ-HCC-011).
-// 픽스처는 code_change: prefix + to_tier recommendation이어야 MapPromotions가
-// candidates>0를 반환한다 (EC-3, TestPropose_AutoFlagWithActionableData와 동일 형식).
+// 픽스처는 EventType-prefix pattern_key + to_tier rule/auto_update이어야 MapPromotions가
+// candidates>0를 반환한다 (EC-3, TestPropose_AutoFlagWithActionableData와 동일 형식;
+// SPEC-HARNESS-EVO-PIPE-REPAIR-001 REQ-HEP-001/002 어휘·스키마 정렬 반영).
 func TestRunPropose_WriteMode_PersistsProposals(t *testing.T) {
 	t.Parallel()
 
 	tmp := t.TempDir()
 	input := filepath.Join(tmp, "tier-promotions.jsonl")
-	data := `{"ts":"2026-05-24T10:00:00Z","pattern_key":"code_change:func_extract:auth_module","from_tier":"observation","to_tier":"recommendation","observation_count":7,"confidence":0.85}
+	data := `{"ts":"2026-05-24T10:00:00Z","pattern_key":"moai_subcommand:/moai run:auth","from_tier":"heuristic","to_tier":"rule","observation_count":7,"confidence":0.85}
 `
 	if err := os.WriteFile(input, []byte(data), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
@@ -146,7 +147,7 @@ func TestRunPropose_WriteError_Propagates(t *testing.T) {
 
 	tmp := t.TempDir()
 	input := filepath.Join(tmp, "tier-promotions.jsonl")
-	data := `{"ts":"2026-05-24T10:00:00Z","pattern_key":"code_change:func_extract:auth_module","from_tier":"observation","to_tier":"recommendation","observation_count":7,"confidence":0.85}
+	data := `{"ts":"2026-05-24T10:00:00Z","pattern_key":"moai_subcommand:/moai run:auth","from_tier":"heuristic","to_tier":"rule","observation_count":7,"confidence":0.85}
 `
 	if err := os.WriteFile(input, []byte(data), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)

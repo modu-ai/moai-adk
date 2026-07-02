@@ -13,9 +13,12 @@ import (
 	"testing"
 )
 
-// TestPropose_DryRun_BaselineFixture verifies AC-PGN-004: the CLI exits 0
-// against the frozen 8-record current-data baseline fixture and emits the
-// canonical no-op JSON payload.
+// TestPropose_DryRun_BaselineFixture verifies the structural-0 resolution at the
+// CLI level (SPEC-HARNESS-EVO-PIPE-REPAIR-001 DoD-2): against the frozen 8-record
+// current-data baseline fixture, the repaired mapper now emits 3 actionable
+// candidates (the auto_update system events subagent_stop/session_stop/user_prompt;
+// agent_invocation:Bash: stays excluded as observation tier). Pre-repair this
+// fixture yielded 0 candidates + reason "no-actionable-patterns".
 func TestPropose_DryRun_BaselineFixture(t *testing.T) {
 	t.Parallel()
 
@@ -50,11 +53,11 @@ func TestPropose_DryRun_BaselineFixture(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
 		t.Fatalf("stdout is not valid JSON: %v\nstdout:\n%s", err, stdout.String())
 	}
-	if len(got.Proposals) != 0 {
-		t.Errorf("proposals = %v, want empty []", got.Proposals)
+	if len(got.Proposals) != 3 {
+		t.Errorf("proposals = %d, want 3 (auto_update system events now actionable)", len(got.Proposals))
 	}
-	if got.Reason != "no-actionable-patterns" {
-		t.Errorf("reason = %q, want %q", got.Reason, "no-actionable-patterns")
+	if got.Reason != "ok" {
+		t.Errorf("reason = %q, want %q", got.Reason, "ok")
 	}
 	if got.MalformedLines != 0 {
 		t.Errorf("malformed_lines = %d, want 0", got.MalformedLines)
@@ -66,9 +69,9 @@ func TestPropose_DryRun_BaselineFixture(t *testing.T) {
 		t.Errorf("auto_delegate = true, want false (no --auto flag set)")
 	}
 
-	// REQ-PGN-007: scaffolder must not create .moai/proposals/ on no-op.
+	// --dry-run: scaffolder must not write to disk even when candidates exist.
 	if _, err := os.Stat(outDir); !errors.Is(err, fs.ErrNotExist) {
-		t.Errorf(".moai/proposals MUST NOT exist on no-op path; stat err = %v", err)
+		t.Errorf(".moai/proposals MUST NOT exist with --dry-run; stat err = %v", err)
 	}
 }
 
@@ -108,19 +111,27 @@ func TestPropose_DryRun_MissingInputFile(t *testing.T) {
 }
 
 // TestPropose_AutoFlagSetsAutoDelegateOnlyWithProposals verifies REQ-PGN-010:
-// auto_delegate true only when --auto AND at least one proposal exists.
-// With current data (zero proposals), --auto alone must NOT set auto_delegate.
+// auto_delegate true only when --auto AND at least one proposal exists. This
+// test exercises the zero-proposal branch: an all-observation-tier fixture
+// yields 0 candidates (pre-actionable), so --auto alone must NOT set auto_delegate.
 func TestPropose_AutoFlagSetsAutoDelegateOnlyWithProposals(t *testing.T) {
 	t.Parallel()
 
-	fixture := filepath.Join("..", "..", "harness", "proposalgen", "testdata", "tier-promotions-current-baseline.jsonl")
-	outDir := filepath.Join(t.TempDir(), ".moai", "proposals")
+	tmp := t.TempDir()
+	input := filepath.Join(tmp, "tp.jsonl")
+	// observation tier is pre-actionable → 0 candidates (post-repair contract).
+	data := `{"ts":"2026-05-24T10:00:00Z","pattern_key":"agent_invocation:Bash:","from_tier":"","to_tier":"observation","observation_count":1,"confidence":1}
+`
+	if err := os.WriteFile(input, []byte(data), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	outDir := filepath.Join(tmp, ".moai", "proposals")
 
 	cmd := NewProposeCmd()
 	stdout := &bytes.Buffer{}
 	cmd.SetOut(stdout)
 	cmd.SetErr(&bytes.Buffer{})
-	cmd.SetArgs([]string{"--auto", "--dry-run", "--input", fixture, "--output-dir", outDir})
+	cmd.SetArgs([]string{"--auto", "--dry-run", "--input", input, "--output-dir", outDir})
 
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Execute: %v", err)
@@ -133,7 +144,7 @@ func TestPropose_AutoFlagSetsAutoDelegateOnlyWithProposals(t *testing.T) {
 		t.Fatalf("json: %v", err)
 	}
 	if len(got.Proposals) != 0 {
-		t.Errorf("setup: expected 0 proposals on baseline fixture, got %d", len(got.Proposals))
+		t.Errorf("setup: expected 0 proposals on observation-tier fixture, got %d", len(got.Proposals))
 	}
 	if got.AutoDelegate {
 		t.Errorf("auto_delegate = true, want false (no proposals to delegate)")
@@ -148,7 +159,7 @@ func TestPropose_AutoFlagWithActionableData(t *testing.T) {
 
 	tmp := t.TempDir()
 	input := filepath.Join(tmp, "tp.jsonl")
-	data := `{"ts":"2026-05-24T10:00:00Z","pattern_key":"code_change:func_extract:auth_module","from_tier":"observation","to_tier":"recommendation","observation_count":7,"confidence":0.85}
+	data := `{"ts":"2026-05-24T10:00:00Z","pattern_key":"moai_subcommand:/moai run:auth","from_tier":"heuristic","to_tier":"rule","observation_count":7,"confidence":0.85}
 `
 	if err := os.WriteFile(input, []byte(data), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
@@ -200,12 +211,13 @@ func TestPropose_LimitTruncates(t *testing.T) {
 
 	tmp := t.TempDir()
 	input := filepath.Join(tmp, "tp.jsonl")
-	// 5 actionable candidates with distinct confidences and pattern keys.
-	const data = `{"ts":"2026-05-24T10:00:00Z","pattern_key":"code_change:a:m","from_tier":"observation","to_tier":"recommendation","observation_count":3,"confidence":0.71}
-{"ts":"2026-05-24T10:00:00Z","pattern_key":"code_change:b:m","from_tier":"observation","to_tier":"recommendation","observation_count":3,"confidence":0.95}
-{"ts":"2026-05-24T10:00:00Z","pattern_key":"code_change:c:m","from_tier":"observation","to_tier":"recommendation","observation_count":3,"confidence":0.80}
-{"ts":"2026-05-24T10:00:00Z","pattern_key":"code_change:d:m","from_tier":"observation","to_tier":"recommendation","observation_count":3,"confidence":0.90}
-{"ts":"2026-05-24T10:00:00Z","pattern_key":"code_change:e:m","from_tier":"observation","to_tier":"recommendation","observation_count":3,"confidence":0.75}
+	// 5 actionable candidates with distinct confidences and pattern keys
+	// (EventType-prefixed keys + auto_update tier per the repaired mapper contract).
+	const data = `{"ts":"2026-05-24T10:00:00Z","pattern_key":"moai_subcommand:a:m","from_tier":"rule","to_tier":"auto_update","observation_count":12,"confidence":0.71}
+{"ts":"2026-05-24T10:00:00Z","pattern_key":"moai_subcommand:b:m","from_tier":"rule","to_tier":"auto_update","observation_count":12,"confidence":0.95}
+{"ts":"2026-05-24T10:00:00Z","pattern_key":"moai_subcommand:c:m","from_tier":"rule","to_tier":"auto_update","observation_count":12,"confidence":0.80}
+{"ts":"2026-05-24T10:00:00Z","pattern_key":"moai_subcommand:d:m","from_tier":"rule","to_tier":"auto_update","observation_count":12,"confidence":0.90}
+{"ts":"2026-05-24T10:00:00Z","pattern_key":"moai_subcommand:e:m","from_tier":"rule","to_tier":"auto_update","observation_count":12,"confidence":0.75}
 `
 	if err := os.WriteFile(input, []byte(data), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
@@ -253,7 +265,7 @@ func TestPropose_WriteMode_CreatesFiles(t *testing.T) {
 
 	tmp := t.TempDir()
 	input := filepath.Join(tmp, "tp.jsonl")
-	data := `{"ts":"2026-05-24T10:00:00Z","pattern_key":"code_change:func_extract:auth_module","from_tier":"observation","to_tier":"recommendation","observation_count":7,"confidence":0.85}
+	data := `{"ts":"2026-05-24T10:00:00Z","pattern_key":"moai_subcommand:/moai run:auth","from_tier":"heuristic","to_tier":"rule","observation_count":7,"confidence":0.85}
 `
 	if err := os.WriteFile(input, []byte(data), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)

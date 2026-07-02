@@ -63,6 +63,16 @@
           }
         ],
         "matcher": "Write|Edit"
+      },
+      {
+        "hooks": [
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe.sh\"",
+            "timeout": 5,
+            "type": "command",
+            "async": true
+          }
+        ]
       }
     ],
     "Stop": [
