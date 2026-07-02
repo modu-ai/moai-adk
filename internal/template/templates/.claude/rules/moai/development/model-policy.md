@@ -74,35 +74,30 @@ Evidence fetched via the GitHub issue API + the canonical CC CHANGELOG:
 
 Because the Team-mode path (#36670) is open and no CHANGELOG resolves the single-spawn root cause, the constraint is treated as still-active. A follow-up SPEC (conditional) MAY re-enable per-agent pinning only when #36670 is closed-with-fixed AND a CHANGELOG confirms Team `[1m]` inheritance for explicit `model:` teammates.
 
-## Default-Model Cost Lever (CC 2.1.175)
+## Default-Model Cost Lever (Default = sonnet, no allowlist enforcement)
 
-[ZONE:Evolvable] [HARD] The `[1m]`-safe cost lever is the **Default-model** routed via `availableModels` + `enforceAvailableModels`, NOT per-agent `model:` pins. The deployed `settings.json` template (`.claude/settings.json.tmpl`) sets:
+[ZONE:Evolvable] [HARD] The `[1m]`-safe cost lever is the **Default model** set at the settings level, NOT per-agent `model:` pins. The deployed `settings.json` template (`.claude/settings.json.tmpl`) sets ONLY:
 
 ```json
-"model": "sonnet",
-"availableModels": ["sonnet", "opus", "haiku"],
-"enforceAvailableModels": true
+"model": "sonnet"
 ```
 
-Semantics (CC 2.1.175 CHANGELOG verbatim): _"Added `enforceAvailableModels` managed setting — when enabled, the `availableModels` allowlist also constrains the Default model (a Default that would resolve to a disallowed model now falls back to the first allowed model)"_. CC 2.1.176 further tightens enforcement: alias model picks can no longer be redirected to a blocked model via `ANTHROPIC_DEFAULT_*_MODEL` env vars.
+The template deliberately does **NOT** set `availableModels` or `enforceAvailableModels`. A closed `availableModels` allowlist combined with `enforceAvailableModels: true` hides any model not in the list from the `/model` picker (CC v2.1.172 behavior), which caused two problems:
+
+1. **New-model lockout** — every new Claude model (for example a new `fable` generation, or any future tier) was invisible in `/model` until an operator manually appended it to the allowlist. This recurred on every model release.
+2. **GLM allowlist maintenance** — enforcement forced every GLM swap target (`glm-5.2` and the other GLM tiers) to be enumerated in the allowlist, or the swap was declined (see GLM-mode reconciliation below).
+
+Dropping `enforceAvailableModels` resolves both at once: all Claude models (current and future) auto-appear in the picker with no maintenance, and the GLM swap is admitted without an allowlist. Only the Default-model cost lever is retained — `"model": "sonnet"` alone still routes the busy-agent cost through Sonnet by default.
 
 Why this is `[1m]`-safe: the lever operates on the **Default** model resolution at the settings level, not on per-agent explicit pins, so it does not trigger the spawn-time entitlement-inheritance failure (#45847/#51060/#36670). The cost-routing thesis (route the busy-agent cost through Sonnet, not Opus) flows through the Default; deep-reasoning exceptions use per-spawn `Agent(model: "opus")` only for the 5-10% of tasks where Opus wins (architecture, complex perf) — and even those inherit the parent `[1m]` entitlement because they are spawned without a frontmatter `model:` pin (the per-spawn `model` parameter is a runtime arg, distinct from the frontmatter field that triggers the bug).
 
 ### GLM-mode reconciliation
 
-[ZONE:Evolvable] [HARD] The `enforceAvailableModels: true` cost lever above interacts with GLM mode. When GLM mode is active (`moai glm` whole-session, or the GLM teammate panes of `moai cg`), the GLM activation sets `ANTHROPIC_DEFAULT_OPUS_MODEL` to the configured GLM high model (default `glm-5.2`), surfaced in the model UI as the Opus-slot alias. CC 2.1.176 redirect-blocking semantics mean that an `ANTHROPIC_DEFAULT_*_MODEL` redirect to a model NOT in `availableModels` is blocked, and the active model silently falls back to the first allowed model (Sonnet). Before reconciliation, the allowlist was `["sonnet", "opus", "haiku"]` — which does NOT contain the Opus-slot `[1m]` alias variant, so every GLM session fell back to Sonnet and the GLM cost-optimization purpose was defeated.
+[ZONE:Evolvable] [HARD] With `enforceAvailableModels` unset, GLM mode needs no allowlist reconciliation. When GLM mode is active (`moai glm` whole-session, or the GLM teammate panes of `moai cg`), the GLM activation sets `ANTHROPIC_DEFAULT_OPUS_MODEL` to the configured GLM high model (default `glm-5.2`), surfaced in the model UI as the Opus-slot alias. The CC 2.1.176 redirect-blocking semantics — which decline an `ANTHROPIC_DEFAULT_*_MODEL` redirect to a model NOT in `availableModels` — apply ONLY when `enforceAvailableModels` is `true`. Because the template no longer sets that flag, the GLM swap is never checked against an allowlist and is admitted directly; the session runs on the configured GLM model instead of silently falling back to Sonnet.
 
-The reconciliation EXPANDS the allowlist in two stages. Stage 1 added the `[1m]` canonical alias variants (`opus[1m]`, `sonnet[1m]`); this admitted the Claude 1M-context aliases but was INSUFFICIENT for GLM mode, because Claude Code (v2.1.186) forwards the resolved swap target — the raw GLM model id (e.g. `glm-5.2`) — and checks THAT against `availableModels`. The raw GLM ids were still absent, so the swap was still declined (`availableModels allowlist; declining the swap`) and the session fell back to Sonnet. Stage 2 therefore adds the raw GLM model ids directly:
+This supersedes the earlier approach of enumerating the GLM model ids in `availableModels` (the `[1m]`-variant + raw-GLM-id expansion). That expansion existed only to satisfy `enforceAvailableModels: true`; removing the enforcement flag removes the need for the expansion entirely. The Default model stays `sonnet` — a non-GLM (`moai cc` / plain Claude) session still resolves its Default to Sonnet; the only change is that no model is hidden and no swap is declined.
 
-```json
-"availableModels": ["sonnet", "opus", "haiku", "opus[1m]", "sonnet[1m]", "glm-5.2", "glm-5.1", "glm-4.7", "glm-4.6", "glm-4.5", "glm-4.5-air"]
-```
-
-The expansion is **allowlist-only**: the Default model stays `sonnet` and `enforceAvailableModels` stays `true`, both byte-unchanged. A non-GLM (Claude `moai cc` / plain Claude) session still resolves its Default to Sonnet and still has enforcement active — the only behavioral change is that the GLM swap targets (`glm-5.2` and the other GLM tiers) are now admitted instead of declined.
-
-The raw GLM model ids are added directly to the settings `availableModels` allowlist. They are NOT added to `modelCanonical` (`internal/web/validate.go`: `["opus", "opus[1m]", "sonnet", "sonnet[1m]", "haiku", "opusplan"]`) — that set governs only the web/profile model picker and does NOT cross-check the settings `availableModels` array, so the GLM ids live in the settings allowlist without surfacing in the web picker.
-
-Scope note: this reconciliation is a **static template allowlist expansion** in `.claude/settings.json.tmpl`. It touches no Go runtime code (`glm.go` / `launcher.go` / `settings.go` unchanged) and writes nothing to `settings.local.json` — so the solo `moai glm` "settings.local.json clean" design (no GLM env leak to subsequent plain-`claude` invocations) is preserved.
+Scope note: this is a **static template change** in `.claude/settings.json.tmpl` (removal of the `availableModels` + `enforceAvailableModels` keys). It touches no Go runtime code (`glm.go` / `launcher.go` / `settings.go` unchanged) and writes nothing to `settings.local.json` — so the solo `moai glm` "settings.local.json clean" design (no GLM env leak to subsequent plain-`claude` invocations) is preserved.
 
 ## Model Policy Tiers
 
