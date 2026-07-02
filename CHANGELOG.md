@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **[SPEC-DEAD-CONFIG-001](.moai/specs/SPEC-DEAD-CONFIG-001/spec.md)** — 미사용 `runtime.yaml` config 섹션 + dead CI-guard allowlist row 제거 (Tier S, v1.0.0). `runtime.yaml`은 로컬·템플릿 양 트리에서 온디스크로만 존재했고 `LoadRuntime`은 `budget_test.go`의 자기완결 `t.TempDir()` 픽스처로만 호출되어 프로덕션 importer가 0이었음. 온디스크 YAML 양 트리 삭제 + `audit_loader_completeness_test.go`의 dead `runtime` allowlist 행 제거 + `settings-management.md` 로더 행 정리. `LoadRuntime` Go surface는 보존(온디스크 YAML만 제거, 프로덕션 코드 무변경). DeprecatedPaths 매니페스트 + `dirs_test.go` 43-count 핀은 무변경(REQ-DC-007 out-of-scope 경계). impl은 `d3337cc8e`로 merge, 10 AC 전부 GREEN, 3-phase 소급 close(status completed + era V3R6 + progress §E 증거 + sync_commit_sha d3337cc8e). 🗿 MoAI
+
 ### Fixed
 
 - **[SPEC-V3R6-DOCS-I18N-COMPLETION-001](.moai/specs/SPEC-V3R6-DOCS-I18N-COMPLETION-001/spec.md)** — docs-site i18n 최종 완성: 비-KO 미번역 콘텐츠 23파일 + REQ-DPC-006 피드백 페이지 i18n + Check-4 용어 정정 (Tier L, v0.1.1). SPEC-V3R6-DOCS-POSTREBUILD-CLEANUP-001에서 명시적으로 deferred한 3개 항목 통합 처리: D5(26 flagged 파일 중 3개 false-positive `init-wizard.md` 제외한 23개 진정한 번역 대상 — en 7, ja 8, zh 8), REQ-DPC-006(`moai-feedback.md` 새로운 "피드백 설정" subsection en/ja/zh 번역 + 실제 workflow orchestrator-direct로 수정된 sync-auditor misattribution 제거 ja/zh에서만 존재, en은 이미 정확), Check-4 glossary defect(ja `claude-code/agentic/best-practices.md` "Anthropic" 용어 누락 추가 — ko/en/zh의 attribution-sentence 패턴 매칭). Ground truth(2026-07-02 실측): `grep -rlP '[가-힣]' docs-site/content/{en,ja,zh}/` → 정확히 3 파일(locale당 1개, 모두 false-positive). 4-locale parity 유지(ko/en/ja/zh 각 99파일 기준선 무변경). M1-M6 전체 완료(Check-4 ja 정정/en ja zh 피드백 번역/en 7 Item-1 번역/ja 8 Item-1 번역/zh 8 Item-1 번역/최종 검증 sweep), `scripts/docs-i18n-check.sh`(default strict mode) 처음으로 exit 0 달성(SPEC-V3R6-DOCS-V3-REBUILD-001 후 지속되던 항목). Hugo build clean, 유지보수 경로 leak 0, 모든 AC(20/20) PASS, frontmatter status in-progress→completed + era V3R6, progress.md §E.4 sync_commit_sha backfill 예정, 이 sync commit으로 docs-site i18n 백로그 최종 폐기. 🗿 MoAI
