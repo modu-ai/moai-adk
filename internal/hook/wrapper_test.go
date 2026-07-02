@@ -35,8 +35,12 @@ func skipOnWindows(t *testing.T) {
 }
 
 const (
-	// wrapperTestTimeout is the maximum time to wait for a wrapper script to execute
-	wrapperTestTimeout = 5 * time.Second
+	// wrapperTestTimeout is the test's patience ceiling for a wrapper script to
+	// execute — NOT the hook runtime SLA (that 5s policy lives in settings.json).
+	// Kept generous so CPU contention under the full parallel `go test ./...` run
+	// does not cause false timeouts: these tests complete in <0.3s in isolation,
+	// so a 30s ceiling only guards against scheduling delay, never masks a hang.
+	wrapperTestTimeout = 30 * time.Second
 	// maxWrapperInputSize is the 1MB size limit enforced by wrapper scripts
 	maxWrapperInputSize = 1048576
 )
