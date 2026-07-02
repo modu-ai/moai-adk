@@ -96,7 +96,7 @@ subagent_boundary_grep: "0 matches in modified files (mapper/types/hook/doctor/h
 
 ```yaml
 sync_complete_at: 2026-07-03
-sync_commit_sha: "58ec3a2ea2c641fff8bba8b6a5c22f9785e2c08f"
+sync_commit_sha: "f48efc975404856524c1a148f7a2f5a899ee15d3"
 sync_status: ready
 changelog_entry_position: "[Unreleased] HARNESS-EVO-PIPE-REPAIR-001 추가 (20 AC PASS, 0 FAIL)"
 frontmatter_status_transitions:
@@ -111,12 +111,8 @@ canary_compliance_check:
 b12_self_test_a_pre_emission_grep: "grep -c 'HARNESS-EVO-PIPE-REPAIR' CHANGELOG.md = 0 (pre-emission ✓ no duplicate)"
 b12_self_test_b_file_path_validation: "9 key files exist (mapper.go / mapper_test.go / types.go / hook.go / doctor.go / runner.js / settings.json / settings.json.tmpl / harness.yaml)"
 b12_self_test_c_ac_count_match: "20 AC rows in acceptance.md; CHANGELOG entry references 20-AC PASS (match ✓)"
-sync_auditor_placeholder: "[orchestrator will invoke sync-auditor after sync commit lands; pending external audit]"
+sync_auditor: "PASS-WITH-DEBT 0.96 (harmonic; Functionality 1.00 / Security 1.00 / Craft 0.90 / Consistency 0.95); 20/20 AC 독립 검증 PASS, 0 Gaps, 0 BLOCKING; Must-Pass firewall 통과; recommendation=accept-with-noted-debt"
 ```
-
-## §E.4 Sync-phase Audit-Ready Signal
-
-_<pending sync-phase>_
 
 ## §F Phase 0.95 Mode Selection
 
