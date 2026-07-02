@@ -1,19 +1,33 @@
 #!/bin/bash
 # Hook: sync-phase-quality-gate
-# Purpose: Enforce sync-phase quality gate (lint + test + coverage delta + dependency manifest audit)
-# Trigger: Stop event when current session contains sync-phase commit
+# Purpose: Fast sync-phase quality gate (compile/vet + dependency manifest audit)
+# Trigger: Stop event when the current session's HEAD is a sync-phase commit
 #
-# Language support: detects the project language from canonical project markers
-# and runs the matching toolchain. Each language's tools live inside its own
-# case branch; absent tools are skipped gracefully; projects with no recognized
-# language marker pass the gate silently.
+# Scope: the hook runs ONLY fast structural checks (compile/vet) that finish well
+# within the Stop timeout. Heavy lint (golangci-lint) and the full test suite are
+# deliberately NOT run here — they cannot finish within a turn-end Stop timeout and
+# belong in CI. Each language's fast check lives inside its own case branch; absent
+# tools are skipped gracefully; projects with no recognized language marker pass
+# the gate silently.
+#
+# Behavior: advisory (non-blocking) by DEFAULT. A failing check emits only
+# {"systemMessage": ...} — a warning that does NOT block the turn. The blocking
+# path (exit 2 + {"decision":"block"}) is dormant and enabled only when
+# MOAI_SYNC_GATE_BLOCKING=1 is explicitly set. This split matters because, per
+# Claude Code Stop-hook semantics, stdout carrying {"decision":"block"} blocks the
+# turn REGARDLESS of exit code — so an advisory run must never emit that field.
+#
+# Once-per-commit: a given sync commit is gated at most ONCE. The gated HEAD SHA is
+# recorded in .moai/state/sync-quality-gate.last and the hook short-circuits on any
+# later turn whose HEAD is unchanged, so the gate does not re-run every turn-end.
 #
 # Manual smoke test:
 #   echo '{}' | bash .claude/hooks/moai/sync-phase-quality-gate.sh
-# Expected: empty stdout (silent pass) on skip/allow; on block, a Stop-schema JSON
-# {"decision":"block","reason":...,"systemMessage":...}. The verifications detail is
-# written to .moai/logs/sync-quality-gate.log, not stdout (Stop JSON-schema rejects
-# unknown fields and non-{approve,block} decision values).
+# Expected: empty stdout (silent pass) on skip/allow; on an advisory warning a Stop
+# JSON {"systemMessage":...}; on a blocking failure (MOAI_SYNC_GATE_BLOCKING=1) a
+# Stop JSON {"decision":"block","reason":...,"systemMessage":...}. The per-check
+# detail is written to .moai/logs/sync-quality-gate.log, not stdout (Stop JSON-schema
+# rejects unknown fields and non-{approve,block} decision values).
 #
 # Unit-test the detector directly (bypasses the sync-phase git gate):
 #   source .claude/hooks/moai/sync-phase-quality-gate.sh && detect_language "$dir"
@@ -110,16 +124,33 @@ if [ "$CODE_DELTA" -eq 0 ]; then
     exit 0
 fi
 
+# Once-per-commit sentinel: gate a given sync commit at most ONCE. Without this the
+# Stop hook re-fires on every subsequent turn-end while HEAD is still the sync commit
+# (the last-commit-subject trigger stays matched until a newer non-sync commit lands),
+# re-running the toolchain each turn. Record the gated HEAD SHA and short-circuit when
+# it is unchanged. The SHA is recorded BEFORE the checks run, so a slow/killed run
+# still counts as gated and cannot re-trigger a per-turn re-run.
+HEAD_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
+STATE_DIR="${CLAUDE_PROJECT_DIR:-$PWD}/.moai/state"
+SENTINEL_FILE="$STATE_DIR/sync-quality-gate.last"
+if [ -n "$HEAD_SHA" ] && [ -f "$SENTINEL_FILE" ] && [ "$(cat "$SENTINEL_FILE" 2>/dev/null)" = "$HEAD_SHA" ]; then
+    # This commit was already gated in a prior turn — silent pass, no re-run.
+    exit 0
+fi
+if [ -n "$HEAD_SHA" ]; then
+    mkdir -p "$STATE_DIR"
+    echo "$HEAD_SHA" > "$SENTINEL_FILE"
+fi
+
 # Per-check result scratch dir
 TMPDIR=$(mktemp -d)
 trap "rm -rf $TMPDIR" EXIT
 
-# Default per-check results: 0 = pass/skipped, used when a step does not run for
-# the detected language. command -v guards every tool invocation so an absent
-# toolchain is skipped gracefully (exit 0, recorded as skipped) rather than failing.
-echo "0" > "$TMPDIR/vet.exit";  echo "not run for $LANG" > "$TMPDIR/vet.log"
-echo "0" > "$TMPDIR/lint.exit"; echo "not run for $LANG" > "$TMPDIR/lint.log"
-echo "0" > "$TMPDIR/test.exit"; echo "not run for $LANG" > "$TMPDIR/test.log"
+# Default per-check results: 0 = pass/skipped, used when a step does not run for the
+# detected language. command -v guards every tool invocation so an absent toolchain
+# is skipped gracefully (exit 0, recorded as skipped) rather than failing.
+echo "0" > "$TMPDIR/c1.exit"; echo "not run for $LANG" > "$TMPDIR/c1.log"
+echo "0" > "$TMPDIR/c2.exit"; echo "not run for $LANG" > "$TMPDIR/c2.log"
 
 # run_step <tool> <result-prefix> <command...>: run only if the tool is on PATH,
 # otherwise record exit 0 and log a graceful skip. The `&& rc=0 || rc=$?` idiom
@@ -137,41 +168,35 @@ run_step() {
     fi
 }
 
-VET_LABEL="(none)"
-LINT_LABEL="(none)"
-TEST_LABEL="(none)"
-COVERAGE="0.0"
+# Fast structural checks only. Two slots per language: c1 (vet/lint) + c2 (build).
+# Heavy lint (golangci-lint) and the full test suite are intentionally NOT run here —
+# they cannot finish within the Stop timeout and belong in CI.
+C1_LABEL="(none)"
+C2_LABEL="(none)"
 
 case "$LANG" in
     go)
-        VET_LABEL="go vet"; LINT_LABEL="golangci-lint"; TEST_LABEL="go test"
-        run_step go vet go vet ./...
-        run_step golangci-lint lint golangci-lint run --timeout=2m
-        run_step go test go test ./...
-        if command -v go >/dev/null 2>&1; then
-            go test -cover ./... 2>/dev/null | grep -E "^ok\s" | awk '{sum += $5; count++} END {if (count > 0) printf "%.1f", sum/count; else print "0.0"}' > "$TMPDIR/coverage.log" 2>/dev/null || echo "0.0" > "$TMPDIR/coverage.log"
-            COVERAGE=$(cat "$TMPDIR/coverage.log")
-        fi
+        C1_LABEL="go vet"; C2_LABEL="go build"
+        run_step go c1 go vet ./...
+        run_step go c2 go build ./...
         ;;
     node)
-        LINT_LABEL="eslint"; TEST_LABEL="npm test"
-        run_step eslint lint eslint .
-        run_step npm test npm test
+        C1_LABEL="eslint"
+        run_step eslint c1 eslint .
         ;;
     python)
-        LINT_LABEL="ruff"; TEST_LABEL="pytest"
-        run_step ruff lint ruff check .
-        run_step pytest test pytest
+        C1_LABEL="ruff"
+        run_step ruff c1 ruff check .
         ;;
     rust)
-        LINT_LABEL="cargo clippy"; TEST_LABEL="cargo test"
-        run_step cargo lint cargo clippy
-        run_step cargo test cargo test
+        C1_LABEL="cargo check"
+        run_step cargo c1 cargo check
         ;;
 esac
 
 # Dependency manifest audit: flag if a dependency manifest was modified in the
-# sync-phase commit (unexpected for a docs sync). Language-specific manifest set.
+# sync-phase commit (unexpected for a docs sync). Informational only — it does NOT
+# drive the block decision. Language-specific manifest set.
 DEPS_MANIFESTS=""
 case "$LANG" in
     go)     DEPS_MANIFESTS="go.mod go.sum" ;;
@@ -185,46 +210,52 @@ if [ -s "$TMPDIR/deps.diff" ]; then
     DEPS_MODIFIED=1
 fi
 
-VET_EXIT=$(cat "$TMPDIR/vet.exit")
-LINT_EXIT=$(cat "$TMPDIR/lint.exit")
-TEST_EXIT=$(cat "$TMPDIR/test.exit")
+C1_EXIT=$(cat "$TMPDIR/c1.exit")
+C2_EXIT=$(cat "$TMPDIR/c2.exit")
 
 # Decision
 DECISION="allow"
 BLOCKED_REASON=""
-if [ "$VET_EXIT" -ne 0 ]; then
+if [ "$C1_EXIT" -ne 0 ]; then
     DECISION="block"
-    BLOCKED_REASON="$VET_LABEL failed"
-elif [ "$LINT_EXIT" -ne 0 ]; then
+    BLOCKED_REASON="$C1_LABEL failed"
+elif [ "$C2_EXIT" -ne 0 ]; then
     DECISION="block"
-    BLOCKED_REASON="$LINT_LABEL failed"
-elif [ "$TEST_EXIT" -ne 0 ]; then
-    DECISION="block"
-    BLOCKED_REASON="$TEST_LABEL failed"
+    BLOCKED_REASON="$C2_LABEL failed"
 fi
 
-# Emit Stop-schema-compliant JSON. The custom {hook,language,decision:skip/allow,
-# verifications} shape failed Claude Code JSON-schema validation on every Stop fire:
-# Stop accepts only "decision":"approve"|"block" (not "skip"/"allow") and rejects
-# unknown top-level fields. Per-check verifications detail is recorded in the audit
-# log below; stdout carries only schema-valid fields. On block, systemMessage surfaces
-# the failure to the user (advisory: non-blocking unless MOAI_SYNC_GATE_BLOCKING=1).
-# On allow, stdout is intentionally empty (silent pass; audit log records the detail).
+# Resolve the mode once (set -e safe) for both stdout and the audit log.
+if [ "${MOAI_SYNC_GATE_BLOCKING:-0}" = "1" ]; then MODE="blocking"; else MODE="advisory"; fi
+
+# Emit a Stop-schema-compliant response.
+#
+# Advisory (default): a failing check emits ONLY {"systemMessage": ...} — a
+# non-blocking warning. Per Claude Code Stop-hook semantics, stdout carrying
+# {"decision":"block"} blocks the turn REGARDLESS of exit code, so the advisory
+# path MUST NOT emit a "decision" field.
+#
+# Blocking (opt-in, MOAI_SYNC_GATE_BLOCKING=1): a failing check emits
+# {"decision":"block", ...} and exits 2 below — this blocks the turn.
+#
+# On allow, stdout is intentionally empty (silent pass); the audit log records detail.
 if [ "$DECISION" = "block" ]; then
-    printf '{"decision":"block","reason":"%s","systemMessage":"sync-phase quality gate BLOCKED: %s (vet=%s lint=%s test=%s deps_modified=%s coverage=%s%%). Detail: .moai/logs/sync-quality-gate.log"}\n' \
-        "$BLOCKED_REASON" "$BLOCKED_REASON" "$VET_EXIT" "$LINT_EXIT" "$TEST_EXIT" "$DEPS_MODIFIED" "$COVERAGE"
+    if [ "$MODE" = "blocking" ]; then
+        printf '{"decision":"block","reason":"%s","systemMessage":"sync-phase quality gate BLOCKED: %s (%s=%s %s=%s deps_modified=%s). Detail: .moai/logs/sync-quality-gate.log"}\n' \
+            "$BLOCKED_REASON" "$BLOCKED_REASON" "$C1_LABEL" "$C1_EXIT" "$C2_LABEL" "$C2_EXIT" "$DEPS_MODIFIED"
+    else
+        printf '{"systemMessage":"sync-phase quality gate WARNING (advisory, not blocking): %s (%s=%s %s=%s deps_modified=%s). Heavy lint/tests run in CI. Detail: .moai/logs/sync-quality-gate.log"}\n' \
+            "$BLOCKED_REASON" "$C1_LABEL" "$C1_EXIT" "$C2_LABEL" "$C2_EXIT" "$DEPS_MODIFIED"
+    fi
 fi
 
 mkdir -p "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs"
-echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [sync-phase-quality-gate] language=$LANG decision=$DECISION vet=$VET_EXIT lint=$LINT_EXIT test=$TEST_EXIT deps_modified=$DEPS_MODIFIED coverage=$COVERAGE" \
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [sync-phase-quality-gate] language=$LANG mode=$MODE decision=$DECISION $C1_LABEL=$C1_EXIT $C2_LABEL=$C2_EXIT deps_modified=$DEPS_MODIFIED head=$HEAD_SHA" \
     >> "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs/sync-quality-gate.log"
 
-# Warn-first (advisory) by default: the blocking exit-2 path is dormant and
-# enabled only when MOAI_SYNC_GATE_BLOCKING=1 is explicitly set. With the flag
-# unset (the shipped default), a "block" decision is logged but the hook exits 0
-# so the Stop event is not blocked. Activating the exit-2 gate is deferred to a
-# follow-up; the dormant path is preserved here intentionally.
-if [ "$DECISION" = "block" ] && [ "${MOAI_SYNC_GATE_BLOCKING:-0}" = "1" ]; then
+# Blocking exit-2 path is dormant and enabled only when MOAI_SYNC_GATE_BLOCKING=1.
+# With the flag unset (the shipped default), a "block" decision surfaces only as an
+# advisory systemMessage above and the hook exits 0 so the Stop event is not blocked.
+if [ "$DECISION" = "block" ] && [ "$MODE" = "blocking" ]; then
     exit 2
 fi
 exit 0
