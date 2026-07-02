@@ -52,12 +52,14 @@ tags: "tag1, tag2, tag3"
 ## Status Enum (8 values)
 
 ```
-draft → planned → in-progress → implemented → completed
-                                         ↓
-                               superseded | archived | rejected
+draft → in-progress → implemented → completed
+   ↑                            ↓
+(planned, legacy-optional)  superseded | archived | rejected
 ```
 
 Valid values: `draft`, `planned`, `in-progress`, `implemented`, `completed`, `superseded`, `archived`, `rejected`
+
+> **`planned` is legacy-optional — NOT part of the active V3R6 flow.** The modern flow transitions `draft → in-progress` directly (manager-develop, on the first run-phase commit). `planned` is retained in the enum for backward compatibility with pre-V3R6 SPECs that recorded it, but it has **no active-flow owner** — no agent authors a `draft → planned` transition in the current lifecycle, and the Status Transition Ownership Matrix below deliberately omits a `draft → planned` row. Do NOT invent a new owner for it, and do NOT remove it from the enum (removal would break parsing of grandfathered SPECs that carry `status: planned`).
 
 ## Status Transition Ownership Matrix
 
@@ -65,7 +67,7 @@ Per the canonical agent-responsibility realignment policy (DRI ownership at agen
 
 | Transition | Owning agent | Canonical commit subject pattern |
 |------------|--------------|----------------------------------|
-| `(none) → draft` | manager-spec | `feat(SPEC-{ID}): plan-phase artifacts ({tier} Section A-E, 4 artifacts)` |
+| `(none) → draft` | manager-spec | `feat(SPEC-{ID}): plan-phase artifacts ({tier}, {N} artifacts)` — `{N}` is the Tier artifact count (Tier S = 2, Tier M = 3, Tier L = 5 per § SPEC Complexity Tier); do NOT hardcode a fixed count |
 | `draft → in-progress` | manager-develop (on M1 commit start) | `fix(SPEC-{ID}): M1 ...` or `feat(SPEC-{ID}): M1 ...` — first run-phase commit |
 | `in-progress → implemented → completed` | manager-docs (on the single sync commit — the `completed` transition is merged into the sync commit, NOT a separate Mx chore commit) | `docs(SPEC-{ID}): sync-phase artifacts` or `chore(SPEC-{ID}): sync-phase artifacts` (this same sync commit carries the `completed` transition + the 3-phase close) |
 | `* → superseded` | manager-spec (when authoring the new superseding SPEC) | `feat(SPEC-{NEW-ID}): supersedes SPEC-{OLD-ID}` |
@@ -73,6 +75,25 @@ Per the canonical agent-responsibility realignment policy (DRI ownership at agen
 | `* → rejected` | orchestrator decision, recorded by manager-docs | `chore(SPEC-{ID}): rejected per <rationale>` |
 
 > **3-phase close (plan→run→sync)** — Per SPEC-V3R6-LIFECYCLE-REDESIGN-001, the MoAI lifecycle is exactly three phases (`plan`, `run`, `sync`); MX Tag is a cross-cutting concern validated during sync, NOT a separate fourth phase. The `completed` status transition rides the sync commit (manager-docs owns it); there is no separate "Mx chore commit". The progress.md §E structure is 4 sections (§E.1 Plan / §E.2 Run Evidence / §E.3 Run Audit-Ready / §E.4 Sync Audit-Ready) — the former `§E.5 Mx-phase` section is retired (folded into §E.4).
+
+## progress.md Section Map (canonical SSOT)
+
+`progress.md` uses lettered top-level sections. **Section §E and its `§E.N` sub-sections are parser-load-bearing**: `internal/spec/era.go` `ClassifyEra()` classifies a SPEC's era by string-matching the literal heading tokens `§E.2`, `§E.3`, `§E.4`, `§E.5` and the literal field names `sync_commit_sha` / `mx_commit_sha` in `progress.md` content (see `hasProgressMarker` / `hasAnyProgressMarker` / `extractProgressField`). Renaming any `§E.N` heading or either field name would silently break era classification (a V3R6 SPEC would misclassify as V3R2-R4 or V3R5). The map below is the SSOT for section-letter allocation; it PRESERVES the parsed §E.* headings verbatim and assigns every other progress.md concern a distinct, non-colliding letter so no two concerns share `§E`.
+
+| Section | Purpose | Parsed by era.go? | Owner / when written |
+|---------|---------|-------------------|----------------------|
+| `## §E.1 Plan-phase Audit-Ready Signal` | Plan-phase completion signal (`plan_status: audit-ready`, `plan_complete_at`) | No (only §E.2-§E.5 headings + the two SHA fields are matched) | manager-spec (plan-phase) |
+| `## §E.2 Run-phase Evidence` | Run-phase evidence; the literal `§E.2` heading is the run-evidence START marker era.go detects | **YES** — literal `§E.2` heading | manager-develop (run-phase) |
+| `## §E.3 Run-phase Audit-Ready Signal` | Run-phase completion signal | **YES** — literal `§E.3` heading | manager-develop (run-phase) |
+| `## §E.4 Sync-phase Audit-Ready Signal` | Sync-phase close; carries the literal `sync_commit_sha:` field (populated by the single sync commit) | **YES** — literal `§E.4` heading + `sync_commit_sha` field | manager-docs (sync commit) |
+| `## §E.5 Mx-phase` (RETIRED) | Legacy Mx-phase marker; folded into §E.4. era.go still matches it for the H-4-legacy migration-window dual predicate (§E.5 + `mx_commit_sha`) so pre-redesign SPECs classify as V3R6 | **YES** — literal `§E.5` heading + `mx_commit_sha` field (legacy only) | (retired — do NOT author new §E.5 sections; retained in the parser for backward-compat classification of legacy SPECs) |
+| `## §F Phase 0.95 Mode Selection` | Orchestrator's Phase 0.95 mode-selection log (must preserve the `Mode Selection` token for the grep AC) | No | orchestrator (before first run-phase `Agent()` spawn) |
+| `## §G IGGDA Kickoff Predicate` | IGGDA safe-condition predicate evaluation log (conditions a-d + verdict + timestamp) | No | orchestrator (at the plan→run boundary, IGGDA Path B) |
+| `## §H Recursive Self-Diagnosis Log` | Phase 2 bounded recursive self-diagnosis loop record (DIAGNOSE-PATCH-VERIFY, mechanical failures) | No | manager-develop / orchestrator (run-phase) |
+
+**Section-letter allocation rule.** New progress.md concerns MUST claim a fresh top-level letter (`§F`, `§G`, `§H`, `§I`, ...) — they MUST NOT overload `§E` or any `§E.N` sub-heading, because the `§E.*` namespace is reserved for the era.go-parsed lifecycle-phase structure. A concern that reuses `## §E — <something else>` collides with the parser's heading match and is prohibited.
+
+> **§F disambiguation (progress.md vs SPEC-body §F).** The `§F` allocated here is a **progress.md** section (Phase 0.95 Mode Selection log). It is distinct from the SPEC-body "§F" that `plan.md` / `sync.md` skill workflows reference (a spec.md / plan.md body section, a different document). The two live in different files and do not collide; when citing "§F", name the file (`progress.md §F` vs `spec.md §F`).
 
 ### Close-subject full-ID mandate
 
@@ -82,7 +103,7 @@ Per the drift-detector close-subject convention (owned by SPEC-V3R6-DRIFT-LEGACY
 
 ### Forbidden ownership crossings
 
-- `manager-docs` MUST NOT modify `spec.md` / `plan.md` / `acceptance.md` body content (frontmatter `status:` + `updated:` updates on the `in-progress → implemented` transition are allowed; ALL other body modifications are forbidden). When sync-phase reveals a need to modify SPEC body content, manager-docs MUST return a blocker report and the orchestrator re-delegates to manager-spec.
+- `manager-docs` MUST NOT modify `spec.md` / `plan.md` / `acceptance.md` body content (frontmatter `status:` + `updated:` updates across the full `in-progress → implemented → completed` sync-commit transition are allowed — the single sync commit carries the terminal `completed` transition, so manager-docs' allowed frontmatter scope reaches `completed`, NOT only `implemented`; ALL other body modifications are forbidden). When sync-phase reveals a need to modify SPEC body content, manager-docs MUST return a blocker report and the orchestrator re-delegates to manager-spec.
 - `manager-develop` MUST NOT modify `spec.md` / `plan.md` / `acceptance.md` body content (frontmatter `status:` + `updated:` updates on the `draft → in-progress` transition are allowed; ALL other body modifications are forbidden). When run-phase reveals a need to modify SPEC body content, manager-develop MUST return a blocker report and the orchestrator re-delegates to manager-spec for the scope-doc update before re-delegating back.
 
 ### Forward-looking enforcement (optional defense-in-depth)

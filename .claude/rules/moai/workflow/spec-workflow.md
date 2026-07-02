@@ -22,22 +22,37 @@ Per the canonical agent catalog policy, the MoAI agent catalog consists of exact
 
 > [2026-05-17 user policy] L2/L3 worktree usage is opt-in. Default flow executes all phases on main checkout with a feature branch. See `feedback_worktree_autonomous` memory and `.claude/rules/moai/workflow/worktree-integration.md` § Terminology Glossary for L1/L2/L3 layer definitions.
 
-[ZONE:Frozen] [HARD] Every MoAI SPEC follows this 4-step lifecycle. Each step has a fixed location, branch convention, and PR merge strategy.
+[ZONE:Frozen] [HARD] Every MoAI SPEC follows the three-phase lifecycle (plan → run → sync). How each phase transition is *triggered* depends on the **route** the SPEC takes. There are exactly TWO routes, and the route is determined by Tier (per § SPEC Complexity Tier) and the explicit `--pr` flag:
 
-| Step | Location                                              | Command                                                                                                  | Branch                                     | PR strategy | Lifecycle event               |
-|------|-------------------------------------------------------|----------------------------------------------------------------------------------------------------------|--------------------------------------------|-------------|-------------------------------|
-| 1    | main checkout                                         | `/moai plan SPEC-XXX`                                                                                    | `plan/SPEC-XXX`                            | configured* | plan PR merged into main      |
-| 2    | main checkout (default) OR L2 SPEC worktree (opt-in) | (opt-in) `moai worktree new SPEC-XXX --base origin/main` then `/moai run SPEC-XXX`; OR `/moai run SPEC-XXX` on `feat/SPEC-XXX` branch in main checkout | `feat/SPEC-XXX`  | configured* | run PR merged into main       |
-| 3    | same as Step 2                                        | `/moai sync SPEC-XXX` (same L2 worktree as Step 2 if L2 was used; otherwise same feature branch)        | `sync/SPEC-XXX` (or `chore/SPEC-XXX-sync`) | configured* | sync PR merged into main      |
-| 4    | host checkout (only if L2 was created)                | `moai worktree done SPEC-XXX`                                                                            | n/a                                        | n/a         | L2 worktree disposed          |
+- **Route A — Hybrid Trunk main-direct (default; Tier S / Tier M):** manager-develop commits and pushes directly to `main`; there is NO per-phase PR and NO per-phase branch. Phase transitions are triggered by commit / push events (Conventional-Commit subjects pushed to `main` + green CI), NOT by PR merges. This is the 1-person-OSS Hybrid Trunk policy (CLAUDE.md §5 + `manager-develop-prompt-template.md` §B9 + `.moai/docs/git-local-workflow-doctrine.md`).
+- **Route B — PR route (Tier L OR explicit `--pr`):** `manager-git` creates a feature branch and opens a PR per phase (`gh pr create`); phase transitions are triggered by PR merges into `main`. This is the route the Late-Branch closure pattern (below) applies to.
 
-\* PR strategy is the configured `merge_method` (`git_strategy.<mode>.merge_method`; one of `squash` | `merge` | `rebase`), **default `squash`**. Squash remains the documented recommendation — one squash commit per phase yields clean, revertable SPEC history — and is the value applied when `merge_method` is absent or unset. The method is configurable (per the per-mode `merge_method` field) so that workflows such as gitflow `release/*` may opt into a merge commit; the FROZEN default and its rationale are unchanged.
+The route governs the trigger vocabulary in § Phase Transitions below (commit/push event vs PR merge). Neither route changes the phase *ordering* (plan → run → sync) or the *artifact* set (per Tier).
+
+**Route A — Hybrid Trunk main-direct (default, Tier S / M):**
+
+| Step | Location | Command | Branch | Merge strategy | Lifecycle event (trigger) |
+|------|----------|---------|--------|----------------|---------------------------|
+| 1 (plan) | main checkout | `/moai plan SPEC-XXX` | `main` (direct) | n/a (no PR) | plan-phase artifacts committed + pushed to `main` |
+| 2 (run)  | main checkout | `/moai run SPEC-XXX` | `main` (direct) | n/a (no PR) | run-phase commits pushed to `main` + tests green |
+| 3 (sync) | main checkout | `/moai sync SPEC-XXX` | `main` (direct) | n/a (no PR) | single sync commit pushed to `main` (carries `implemented → completed`) |
+
+**Route B — PR route (Tier L OR explicit `--pr`):**
+
+| Step | Location | Command | Branch | PR strategy | Lifecycle event (trigger) |
+|------|----------|---------|--------|-------------|---------------------------|
+| 1 (plan) | main checkout | `/moai plan SPEC-XXX` | `plan/SPEC-XXX` | configured* | plan PR merged into main |
+| 2 (run)  | main checkout (default) OR L2 SPEC worktree (opt-in) | (opt-in) `moai worktree new SPEC-XXX --base origin/main` then `/moai run SPEC-XXX`; OR `/moai run SPEC-XXX` on `feat/SPEC-XXX` branch in main checkout | `feat/SPEC-XXX` | configured* | run PR merged into main |
+| 3 (sync) | same as Step 2 | `/moai sync SPEC-XXX` (same L2 worktree as Step 2 if L2 was used; otherwise same feature branch) | `sync/SPEC-XXX` (or `chore/SPEC-XXX-sync`) | configured* | sync PR merged into main |
+| 4 (cleanup) | host checkout (only if L2 was created) | `moai worktree done SPEC-XXX` | n/a | n/a | L2 worktree disposed |
+
+\* Route B PR strategy is the configured `merge_method` (`git_strategy.<mode>.merge_method`; one of `squash` | `merge` | `rebase`), **default `squash`**. Squash remains the documented recommendation — one squash commit per phase yields clean, revertable SPEC history — and is the value applied when `merge_method` is absent or unset. The method is configurable (per the per-mode `merge_method` field) so that workflows such as gitflow `release/*` may opt into a merge commit; the FROZEN default and its rationale are unchanged. Route A has no PR and therefore no `merge_method` — it pushes directly to `main`. Step 4 (worktree cleanup) applies to Route B only when an L2 worktree was created.
 
 [ZONE:Frozen] [HARD] Step ordering rules:
-- Step 1 (plan) MUST execute in main checkout. NO L2/L3 worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping. **Late-branch precondition (SPEC-V3R5-LATE-BRANCH-001 REQ-LB-005):** when `team.branch_creation.auto_enabled == false` in `git-strategy.yaml`, Step 1 entry requires `git rev-parse --abbrev-ref HEAD == main` (or the user's chosen `main_branch` if it differs). No `plan/SPEC-XXX` branch is created at this step; plan-phase commits land directly on `main` and are pushed only after Phase C `git switch -c plan/SPEC-XXX` at PR creation time.
-- Step 2 (run) SHOULD create a fresh L2 SPEC worktree from the plan-merged main HEAD (`--base origin/main`) if user opted into L2/L3; otherwise continue on the `feat/SPEC-XXX` branch in main checkout. When L2 is used, worktree base alignment is a precondition for `Agent(isolation: "worktree")` correctness (see lessons #13).
-- Step 3 (sync) SHOULD reuse the SAME L2 worktree as Step 2 if L2 was used; otherwise continue on the same feature branch in main checkout. Sync rotates codemap / MX / docs in the run-modified tree; spawning a fresh L2 worktree at sync would lose run-state context.
-- Step 4 (cleanup) MUST happen ONLY after BOTH run AND sync PRs are merged, and ONLY when an L2 worktree was created. Premature `moai worktree done` between run-merge and sync-merge breaks Step 3. **Late-branch closure (SPEC-V3R5-LATE-BRANCH-001 REQ-LB-006):** when `auto_enabled == false`, after squash merge of run-PR and sync-PR, the user (or `manager-git` automation) MUST execute the canonical Late-branch closure step:
+- Step 1 (plan) MUST execute in main checkout on BOTH routes. NO L2/L3 worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping. On **Route A** the plan-phase artifacts are committed + pushed directly to `main` (no branch). On **Route B**, the **Late-branch precondition (SPEC-V3R5-LATE-BRANCH-001 REQ-LB-005)** applies: when `team.branch_creation.auto_enabled == false` in `git-strategy.yaml`, Step 1 entry requires `git rev-parse --abbrev-ref HEAD == main` (or the user's chosen `main_branch` if it differs). No `plan/SPEC-XXX` branch is created at Step 1; plan-phase commits land directly on `main` and are pushed only after Phase C `git switch -c plan/SPEC-XXX` at PR creation time.
+- Step 2 (run) — **Route A** commits + pushes directly to `main` (no branch, no worktree). **Route B** SHOULD create a fresh L2 SPEC worktree from the plan-merged main HEAD (`--base origin/main`) if the user opted into L2/L3; otherwise continue on the `feat/SPEC-XXX` branch in main checkout. When L2 is used, worktree base alignment is a precondition for `Agent(isolation: "worktree")` correctness (see lessons #13).
+- Step 3 (sync) — **Route A** emits the single sync commit directly on `main` (carrying the `implemented → completed` transition; see § Phase Transitions). **Route B** SHOULD reuse the SAME L2 worktree as Step 2 if L2 was used; otherwise continue on the same feature branch in main checkout. Sync rotates codemap / MX / docs in the run-modified tree; spawning a fresh L2 worktree at sync would lose run-state context.
+- Step 4 (cleanup) applies to **Route B only**. It MUST happen ONLY after BOTH run AND sync PRs are merged, and ONLY when an L2 worktree was created. Premature `moai worktree done` between run-merge and sync-merge breaks Step 3. **Late-branch closure (SPEC-V3R5-LATE-BRANCH-001 REQ-LB-006):** when `auto_enabled == false`, after squash merge of run-PR and sync-PR, the user (or `manager-git` automation) MUST execute the canonical Late-branch closure step:
 
   ```bash
   git checkout main
@@ -289,27 +304,49 @@ Progressive Disclosure:
 
 ## Phase Transitions
 
+Each transition below is stated per route (per § SPEC Phase Discipline). Route A (Hybrid Trunk main-direct, Tier S/M default) triggers on commit/push events; Route B (PR route, Tier L OR `--pr`) triggers on PR merges. The phase *ordering* (plan → run → sync) is identical on both routes; only the trigger vocabulary differs.
+
 Plan to Run:
-- Trigger: Plan PR merged into main (squash) AND SPEC document approved (annotation cycle completed, user confirmed "Proceed")
-- Pre-condition: plan.md records `plan_complete_at` + `plan_status: audit-ready` in progress.md; plan PR is in MERGED state
-- Action: Execute /clear, then `/moai run SPEC-XXX` on `feat/SPEC-XXX` branch in main checkout (default); OR if user opted into L2: `moai worktree new SPEC-XXX --base origin/main`, then `/moai run SPEC-XXX` inside the L2 worktree.
+- Trigger (Route A): plan-phase artifacts committed + pushed to `main` AND SPEC document approved (annotation cycle completed, user confirmed "Proceed").
+- Trigger (Route B): Plan PR merged into main (squash) AND SPEC document approved (annotation cycle completed, user confirmed "Proceed").
+- Pre-condition: plan.md records `plan_complete_at` + `plan_status: audit-ready` in progress.md; on Route B the plan PR is additionally in MERGED state.
+- Action: Execute /clear, then `/moai run SPEC-XXX`. Route A runs directly on `main` in main checkout. Route B runs on `feat/SPEC-XXX` branch in main checkout (default); OR if the user opted into L2: `moai worktree new SPEC-XXX --base origin/main`, then `/moai run SPEC-XXX` inside the L2 worktree.
 - Gate: `/moai run` Phase 0.5 (Plan Audit Gate) executes automatically before any implementation.
   See "Phase 0.5: Plan Audit Gate" section below for details.
-- [ZONE:Evolvable] Plan Audit Gate skip policy: when the most recent plan-auditor
-  verdict on the SPEC was `PASS` with overall score ≥ 0.90 AND no plan-PR commit
-  has landed since that verdict, the orchestrator MAY skip Phase 0.5 re-execution
-  and proceed directly to Phase 1. The skip decision MUST be recorded in the
-  run-phase delegation prompt (Section A: Context) so that downstream actors
-  (manager-develop, auditors) can verify the skip rationale. This policy was
-  added by SPEC-V3R5-WORKFLOW-OPT-001 Layer E to remove redundant audit
-  re-execution when the plan-PR audit verdict is already strong (PASS ≥ 0.90).
-  Below the 0.90 threshold, Phase 0.5 always runs.
-- Concurrent plan-run pipeline: the orchestrator MAY begin run-phase pre-flight
+- [ZONE:Evolvable] Plan Audit Gate skip policy (single authoritative contract):
+  the orchestrator MAY skip Phase 0.5 re-execution and proceed directly to
+  Phase 1 **IF AND ONLY IF ALL FOUR** of the following hold for the most recent
+  plan-auditor verdict on the SPEC:
+    1. **Verdict is `PASS`** (NOT FAIL, NOT INCONCLUSIVE, NOT BYPASSED).
+    2. **Overall score ≥ 0.90.**
+    3. **Artifact-hash unchanged** since that verdict — no plan-phase artifact
+       (spec.md / plan.md / acceptance.md / research.md / design.md) has been
+       modified since the audit that produced the verdict (equivalently on
+       Route B: no plan-PR commit has landed since that verdict).
+    4. **Within 24h** — the verdict was produced no more than 24 hours ago.
+  If ANY of the four fails, Phase 0.5 re-executes (the gate is never disabled by
+  harness level; see Gate Entry Condition below). When the skip is taken, the
+  skip decision AND the four satisfied conditions MUST be recorded in the
+  run-phase delegation prompt (Section A: Context) so downstream actors
+  (manager-develop, auditors) can verify the skip rationale. This is the ONE
+  authoritative skip contract — any other surface (e.g. the skill-layer
+  `run/phase-execution.md`) MUST cite this contract rather than restating a
+  divergent condition set. Origin: SPEC-V3R5-WORKFLOW-OPT-001 Layer E (redundant
+  audit re-execution removal), tightened to the 4-condition compound predicate.
+  This skip is distinct from Implementation Kickoff Approval: skip-eligibility
+  governs ONLY Phase 0.5 verdict re-execution — it NEVER auto-bypasses the
+  plan-to-implement human gate (the mandatory blocking `AskUserQuestion` gate;
+  see `.claude/rules/moai/workflow/orchestration-mode-selection.md` header for
+  the Implementation Kickoff Approval mandatory-restoration policy).
+- Concurrent plan-run pipeline (Route B only): the orchestrator MAY begin run-phase pre-flight
   (Section C of the manager-develop prompt) on a feature branch while the plan
   PR is still in CI/review, PROVIDED the SPEC plan-auditor verdict is already
   PASS and no manager-develop commit lands on the feature branch until the
   plan PR is in MERGED state. This overlap reduces the W3 idle-wait penalty
   documented in `feedback_w3_metaanalysis_lessons.md` (15 min serial CI wait).
+  Route A has no plan PR to wait on, so this overlap does not apply — run-phase
+  begins directly after the plan-phase push + plan-auditor PASS + Implementation
+  Kickoff Approval.
 
 ## Phase 0.5: Plan Audit Gate
 
@@ -345,14 +382,19 @@ not blocking. After grace window expires, FAIL verdicts block Phase 1 unconditio
 Grace window start: `.moai/state/audit-gate-merge-at.txt` (ISO-8601 timestamp).
 
 Run to Sync:
-- Trigger: Run PR merged into main, tests passing
-- Action: Execute `/moai sync SPEC-XXX` on the same branch/location as run — in the SAME L2 worktree if L2 was used (do NOT create a new L2 worktree); otherwise on the same feature branch in main checkout.
+- Trigger (Route A): run-phase commits pushed to `main` AND tests passing (green CI on `main`).
+- Trigger (Route B): Run PR merged into main, tests passing.
+- Action: Execute `/moai sync SPEC-XXX`. Route A runs directly on `main`. Route B runs on the same branch/location as run — in the SAME L2 worktree if L2 was used (do NOT create a new L2 worktree); otherwise on the same feature branch in main checkout.
 
-Sync to Cleanup:
+Sync (close):
+- Trigger (Route A): the single sync commit — carrying the `implemented → completed` transition (manager-docs) and populating `sync_commit_sha` in progress.md §E.4 — is pushed to `main`. This is the 3-phase close: there is NO separate Mx-phase commit (MX Tag validation is a sync sub-step). The SPEC is `completed` once this commit lands.
+- Trigger (Route B): sync PR merged into main. The sync PR carries the same single sync commit (the `implemented → completed` transition + `sync_commit_sha` population).
+
+Sync to Cleanup (Route B only):
 - Trigger: Sync PR merged into main
 - Pre-condition: BOTH run PR AND sync PR are in MERGED state (verify via `gh pr view <PR>`)
 - Action (only if L2 worktree was created): `moai worktree done SPEC-XXX` (executed from host checkout, not from inside the worktree)
-- See § SPEC Phase Discipline (Step 4)
+- See § SPEC Phase Discipline (Step 4). Route A has no PR and no worktree cleanup step.
 
 ## Agent Teams Variant
 

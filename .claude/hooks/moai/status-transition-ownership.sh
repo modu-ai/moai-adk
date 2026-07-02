@@ -46,12 +46,12 @@ case "$TOOL_NAME" in
 esac
 
 # Extract status: from new content (Write) or post-edit state
-# Status Transition Ownership Matrix (canonical reference, 3-phase close per SPEC-V3R6-LIFECYCLE-REDESIGN-001):
+# Status Transition Ownership Matrix (canonical reference, 3-phase close — plan/run/sync):
 #   * → draft       : manager-spec
-#   draft → in-progress : manager-develop (first M-commit only; frontmatter status+updated only)
+#   draft → in-progress : manager-develop (first run-phase commit; frontmatter status+updated only)
 #   in-progress → implemented → completed : manager-docs (single sync commit carries the completed
-#                       transition — the former separate "Mx chore commit" is retired; MX Tag
-#                       validation is a sync sub-step, NOT a separate phase)
+#                       transition — there is no separate "Mx chore commit"; MX Tag validation is a
+#                       sync sub-step, NOT a separate phase)
 #   * → superseded  : manager-spec (when authoring superseding SPEC)
 #   * → archived    : manager-docs
 #   * → rejected    : orchestrator (recorded by manager-docs)
