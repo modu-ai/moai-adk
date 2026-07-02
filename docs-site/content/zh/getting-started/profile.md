@@ -3,32 +3,32 @@ title: 配置文件管理
 weight: 80
 draft: false
 ---
-# 프로필 관리
+# 配置文件管理
 
 
-MoAI-ADK의 프로필 시스템으로 여러 Claude Code 설정을 격리하여 관리합니다.
+通过MoAI-ADK的配置文件系统隔离管理多个Claude Code配置。
 
-## 프로필이란?
+## 什么是配置文件？
 
-프로필은 **격리된 Claude Code 설정 디렉토리**(`CLAUDE_CONFIG_DIR`)입니다. 프로필별로 독립적인 설정, 모델 선택, 언어 환경을 유지할 수 있습니다.
+配置文件是**隔离的Claude Code配置目录**（`CLAUDE_CONFIG_DIR`）。可以为每个配置文件维护独立的设置、模型选择和语言环境。
 
 ```
 ~/.moai/claude-profiles/
-├── default/           # 기본 프로필
+├── default/           # 默认配置文件
 │   ├── settings.json
 │   └── settings.local.json
-├── work/              # 업무용 프로필
+├── work/              # 工作用配置文件
 │   ├── settings.json
 │   └── settings.local.json
-└── personal/          # 개인용 프로필
+└── personal/          # 个人用配置文件
     └── ...
 ```
 
-## 명령어 레퍼런스
+## 命令参考
 
 ### moai profile list
 
-사용 가능한 모든 프로필을 표시합니다.
+显示所有可用的配置文件。
 
 ```bash
 moai profile list
@@ -36,22 +36,22 @@ moai profile list
 
 ### moai profile setup [name]
 
-인터랙티브 설정 위자드를 실행합니다.
+运行交互式设置向导。
 
 ```bash
-moai profile setup          # 기본 프로필 설정
-moai profile setup work     # "work" 프로필 설정
+moai profile setup          # 设置默认配置文件
+moai profile setup work     # 设置"work"配置文件
 ```
 
-**위자드 설정 항목:**
-- **Identity**: 사용자 이름, 역할
-- **Languages**: 대화 언어, 코드 주석 언어
-- **Model Settings**: 기본 모델, 1M 컨텍스트 모델 선택
-- **Display**: 출력 스타일, 상태 표시줄 설정
+**向导设置项目：**
+- **Identity**: 用户名、角色
+- **Languages**: 对话语言、代码注释语言
+- **Model Settings**: 默认模型、1M上下文模型选择
+- **Display**: 输出样式、状态栏设置
 
 ### moai profile current
 
-현재 활성 프로필 이름을 표시합니다.
+显示当前活动的配置文件名称。
 
 ```bash
 moai profile current
@@ -59,46 +59,46 @@ moai profile current
 
 ### moai profile delete [name]
 
-프로필을 삭제합니다.
+删除配置文件。
 
 ```bash
 moai profile delete old-profile
 ```
 
-## 프로필로 Claude Code 실행
+## 使用配置文件运行Claude Code
 
-`-p` (또는 `--profile`) 플래그로 프로필을 지정합니다.
+通过 `-p`（或 `--profile`）标志指定配置文件。
 
 ```bash
-moai cc -p work          # work 프로필로 Claude 실행
-moai glm -p cost-save    # cost-save 프로필로 GLM 실행
-moai cg -p team          # team 프로필로 CG 모드 실행
+moai cc -p work          # 以work配置文件运行Claude
+moai glm -p cost-save    # 以cost-save配置文件运行GLM
+moai cg -p team          # 以team配置文件运行CG模式
 ```
 
 {{< callout type="info" >}}
-프로필 미지정 시 기본 프로필이 사용됩니다. 첫 실행 시 자동으로 설정 위자드가 시작됩니다.
+未指定配置文件时使用默认配置文件。首次运行时会自动启动设置向导。
 {{< /callout >}}
 
-## 1M 컨텍스트 모델 선택
+## 选择1M上下文模型
 
-프로필 설정 시 1M 컨텍스트 윈도우를 지원하는 모델을 선택할 수 있습니다.
+设置配置文件时，可以选择支持1M上下文窗口的模型。
 
-**지원 모델:**
+**支持的模型：**
 - `claude-opus-4-8[1m]` - Opus 4.8 (1M context)
 - `claude-sonnet-4-6[1m]` - Sonnet 4.6 (1M context)
 
-설정 위자드에서 "Model Settings" 단계에서 선택하거나, 프로필 설정 파일을 직접 수정합니다.
+可在设置向导的"Model Settings"步骤中选择，或直接编辑配置文件。
 
-## 프로필 전환 시 동작
+## 切换配置文件时的行为
 
-| 전환 | 동작 |
+| 切换 | 行为 |
 |------|------|
-| `moai cc` → `moai glm` | GLM 환경 변수 자동 주입 |
-| `moai glm` → `moai cc` | GLM 환경 변수 자동 제거 |
-| `moai cc` → `moai cg` | GLM env를 tmux 세션에만 주입, Leader는 Claude 유지 |
+| `moai cc` → `moai glm` | 自动注入GLM环境变量 |
+| `moai glm` → `moai cc` | 自动移除GLM环境变量 |
+| `moai cc` → `moai cg` | 仅将GLM env注入tmux会话，Leader仍保持Claude |
 
-## 관련 문서
+## 相关文档
 
-- [CLI 레퍼런스](/getting-started/cli) - 전체 CLI 명령어
-- [빠른 시작](/getting-started/quickstart) - 처음 시작하기
-- [초기 설정](/getting-started/init-wizard) - 프로젝트 초기화
+- [CLI参考](/getting-started/cli) - 完整CLI命令参考
+- [快速开始](/getting-started/quickstart) - 首次上手指南
+- [初始设置](/getting-started/init-wizard) - 项目初始化

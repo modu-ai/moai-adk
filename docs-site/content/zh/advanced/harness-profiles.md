@@ -3,92 +3,91 @@ title: Harness 配置与评估系统
 weight: 75
 draft: false
 ---
-# 하네스 프로필과 평가 시스템
+# Harness 配置与评估系统
 
 
-3계층 하네스 레벨과 4차원 평가 프로필을 통한 적응형 품질 검증 시스템입니다.
+通过3级Harness等级和4维度评估配置实现的自适应质量验证系统。
 
-## 개요
+## 概述
 
-MoAI-ADK의 하네스(Harness)는 **3계층 적응형 품질 검증 시스템**입니다. SPEC의 복잡도에
-따라 자동으로 검증 깊이를 조절합니다. sync-auditor 에이전트가 4차원 스코어링으로
-독립적이고 회의적인 품질 평가를 수행합니다.
+MoAI-ADK的Harness（工具链）是一个**3级自适应质量验证系统**。会根据SPEC的复杂度
+自动调整验证深度。sync-auditor代理通过4维度评分执行独立且严谨的质量评估。
 
-## 3계층 하네스 레벨
+## 3级Harness等级
 
-| 레벨 | 설명 | 적용 시점 | sync-auditor |
+| 等级 | 说明 | 适用时机 | sync-auditor |
 |------|------|----------|-----------------|
-| **minimal** | 빠른 검증 | 단순 변경 (typos, 설정 수정) | 생략 가능 |
-| **standard** | 기본 품질 검증 | 대부분의 작업 | 선택적 |
-| **thorough** | 전체 검증 + TRUST 5 | 복잡한 SPEC, 대규모 변경 | 필수 |
+| **minimal** | 快速验证 | 简单变更（typo、配置修改） | 可省略 |
+| **standard** | 基本质量验证 | 大多数任务 | 可选 |
+| **thorough** | 完整验证 + TRUST 5 | 复杂SPEC、大规模变更 | 必需 |
 
-하네스 레벨은 SPEC scope를 기반으로 **복잡도 추정기**(Complexity Estimator)가 자동으로
-결정합니다.
+Harness等级由基于SPEC范围的**复杂度评估器**（Complexity Estimator）自动
+决定。
 
-## 4차원 스코어링
+## 4维度评分
 
-sync-auditor는 4개 차원으로 점수를 매깁니다:
+sync-auditor按4个维度进行评分：
 
-| 차원 | 설명 | 기본 Must-Pass |
+| 维度 | 说明 | 默认Must-Pass |
 |------|------|---------------|
-| **Functionality** | 기능 완성도 — 의도된 목적을 달성했는가 | 예 |
-| **Security** | 보안 — OWASP, 인증, 권한, 입력 검증 | 예 |
-| **Craft** | 코드 품질 — 가독성, 구조, 테스트 커버리지 | 아니오 |
-| **Consistency** | 일관성 — 프로젝트 규칙, 코드 스타일 준수 | 아니오 |
+| **Functionality** | 功能完成度 — 是否达成预期目的 | 是 |
+| **Security** | 安全性 — OWASP、认证、权限、输入验证 | 是 |
+| **Craft** | 代码质量 — 可读性、结构、测试覆盖率 | 否 |
+| **Consistency** | 一致性 — 是否遵守项目规则与代码风格 | 否 |
 
-### 점수 범위
+### 分数范围
 
-각 차원은 0.0 ~ 1.0 점수를 받습니다.
+每个维度的分数范围为0.0~1.0。
 
-### 루브릭 앵커
+### 评分标准锚点
 
-모든 평가 기준은 4단계 루브릭 앵커를 가집니다:
+所有评估标准均具有4阶段评分标准锚点：
 
-| 점수 | 수준 | 의미 |
+| 分数 | 等级 | 含义 |
 |------|------|------|
-| 0.25 | 미달 | 기본 요구사항 미충족 |
-| 0.50 | 부분 | 일부 충족, 개선 필요 |
-| 0.75 | 충족 | 대부분 충족, 소규모 개선 |
-| 1.00 | 우수 | 모든 기준 완벽 충족 |
+| 0.25 | 未达标 | 未满足基本要求 |
+| 0.50 | 部分达标 | 部分满足，需要改进 |
+| 0.75 | 达标 | 大部分满足，小幅改进即可 |
+| 1.00 | 优秀 | 完全满足所有标准 |
 
-## 평가 프로필
+## 评估配置
 
-`.moai/config/evaluator-profiles/`에 4개 프로필이 제공됩니다:
+`.moai/config/evaluator-profiles/` 中提供4种配置：
 
-| 프로필 | 설명 | 적합한 경우 |
+| 配置 | 说明 | 适用场景 |
 |--------|------|------------|
-| `default.md` | 균형 잡힌 기본 프로필 | 대부분의 작업 |
-| `strict.md` | 엄격한 기준 | 보안 중요 작업 |
-| `lenient.md` | 관대한 기준 | 프로토타이핑 |
-| `frontend.md` | 프론트엔드 특화 | UI/UX 작업 |
+| `default.md` | 均衡的默认配置 | 大多数任务 |
+| `strict.md` | 严格标准 | 安全关键任务 |
+| `lenient.md` | 宽松标准 | 原型开发 |
+| `frontend.md` | 前端专用 | UI/UX任务 |
 
-## 평가자 편향 방지 (5가지 메커니즘)
+## 评估者偏见防范（5种机制）
 
-평가자의 관대함을 방지하기 위해 5가지 메커니즘이 작동합니다:
+为防止评估者过度宽容，共有5种机制在起作用：
 
-| # | 메커니즘 | 설명 |
+| # | 机制 | 说明 |
 |---|---------|------|
-| 1 | **루브릭 앵커링** | 점수에 루브릭 정당화 필수 |
-| 2 | **회귀 베이스라인** | 이전 프로젝트 대비 과도한 점수 상승 감지 |
-| 3 | **Must-Pass 방화벽** | 필수 기준은 다른 영역 점수로 보상 불가 |
-| 4 | **독립 재평가** | 5번째마다 독립 재평가 (편차 > 0.10 시 재조정) |
-| 5 | **안티패턴 교차 검사** | 알려진 안티패턴 발견 시 해당 차원 점수 0.50 제한 |
+| 1 | **评分标准锚定** | 评分必须有评分标准依据 |
+| 2 | **回归基线** | 检测相对于历史项目的分数过度上升 |
+| 3 | **Must-Pass防火墙** | 必需标准不可被其他维度分数弥补 |
+| 4 | **独立复审** | 每第5次执行独立复审（偏差 > 0.10时重新校准） |
+| 5 | **反模式交叉检查** | 检测到已知反模式时，将该维度分数限制在0.50以内 |
 
 ## Evaluator Memory Scope
 
-평가자의 판단 기억은 **반복별로 일시적**입니다. GAN Loop의 각 반복에서 sync-auditor는
-새 컨텍스트로 재시작되며, 이전 반복의 판단 근거는 새 프롬프트에 포함되지 않습니다.
-Sprint Contract 상태만이 반복 간에 유지됩니다.
+评估者的判断记忆是**按迭代临时保存**的。在GAN Loop的每次迭代中，sync-auditor都会
+以全新上下文重新启动，上一次迭代的判断依据不会包含在新提示中。
+只有Sprint Contract状态会在各次迭代之间保留。
 
-## 설정
+## 配置
 
-`.moai/config/sections/harness.yaml`에서 설정합니다:
+在 `.moai/config/sections/harness.yaml` 中进行配置：
 
 ```yaml
 harness:
   level: auto              # auto | minimal | standard | thorough
   evaluator:
-    memory_scope: per_iteration   # FROZEN — 변경 불가
+    memory_scope: per_iteration   # FROZEN — 不可更改
     profiles:
       default: .moai/config/evaluator-profiles/default.md
       strict: .moai/config/evaluator-profiles/strict.md
@@ -98,9 +97,9 @@ harness:
       - Security
 ```
 
-## 관련 문서
+## 相关文档
 
-- [하네스 엔지니어링](/ko/core-concepts/harness-engineering) — 하네스 개념 개요
-- [TRUST 5 품질](/ko/core-concepts/trust-5) — 5가지 품질 기준
-- [Constitution 시스템](/ko/core-concepts/constitution) — FROZEN/Evolvable 규칙
-- GAN Loop — 디자인 품질 검증 반복 (GAN Loop는 adversarial 평가자-판별자 루프로 품질 개선을 위한 반복 검증 패턴입니다)
+- [Harness工程](/zh/core-concepts/harness-engineering) — Harness概念概述
+- [TRUST 5质量](/zh/core-concepts/trust-5) — 5项质量标准
+- [Constitution系统](/zh/core-concepts/constitution) — FROZEN/Evolvable规则
+- GAN Loop — 用于设计质量验证的迭代循环（GAN Loop是一种基于对抗性评估者-判别器循环的迭代验证模式，用于提升质量）

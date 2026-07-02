@@ -4,88 +4,87 @@ weight: 80
 draft: false
 ---
 
-3계층 카탈로그 매니페스트와 slim init으로 프로젝트 초기화를 최적화합니다.
+通过3级目录清单和slim init优化项目初始化。
 
-## 개요
+## 概述
 
-MoAI-ADK v2.15+의 카탈로그 시스템은 모든 에이전트, 스킬, 플러그인, 규칙을 **3계층
-매니페스트**로 관리합니다. `moai init --slim`을 통해 프로젝트에 필요한 최소 템플릿만
-배포하여 초기화 시간을 단축합니다.
+MoAI-ADK v2.15+的目录系统通过**3级清单**管理所有代理、技能、插件、规则。
+通过 `moai init --slim` 仅部署项目所需的最小模板集，从而缩短初始化时间。
 
-## 3계층 매니페스트
+## 3级清单
 
-| 계층 | 설명 | 배포 기준 |
+| 层级 | 说明 | 部署标准 |
 |------|------|----------|
-| **Tier 1 (Core)** | 핵심 인프라 — 오케스트레이터, 품질 게이트, 기본 스킬 | 항상 배포 |
-| **Tier 2 (Standard)** | 표준 확장 — 언어별 규칙, 프레임워크 스킬 | 프로젝트 언어/프레임워크 감지 시 |
-| **Tier 3 (Optional)** | 선택적 — 도메인 스킬, 플랫폼별 설정 | 명시적 요청 또는 프로젝트 설정 시 |
+| **Tier 1 (Core)** | 核心基础设施 — 编排器、质量门禁、基础技能 | 始终部署 |
+| **Tier 2 (Standard)** | 标准扩展 — 各语言规则、框架技能 | 检测到项目语言/框架时 |
+| **Tier 3 (Optional)** | 可选 — 领域技能、平台专属设置 | 显式请求或项目设置时 |
 
-## 카탈로그 파일
+## 目录文件
 
-카탈로그 매니페스트는 YAML 형식으로 정의됩니다:
+目录清单以YAML格式定义：
 
 ```yaml
-# 카탈로그 엔트리 예시
+# 目录条目示例
 - id: moai-workflow-tdd
   tier: 1                    # 1=Core, 2=Standard, 3=Optional
   type: skill
   path: .claude/skills/moai/workflows/tdd.md
-  languages: []              # 빈 배열 = 모든 언어
+  languages: []              # 空数组 = 全部语言
   frameworks: []
-  hash: abc123...             # 콘텐츠 해시 (무결성 검증)
+  hash: abc123...             # 内容哈希（完整性校验）
 ```
 
-## SlimFS 필터
+## SlimFS过滤器
 
-`moai init --slim`은 SlimFS 필터를 통해 배포 파일을 제한합니다:
+`moai init --slim` 通过SlimFS过滤器限制部署文件：
 
 ```bash
-# 전체 설치 (모든 계층)
+# 完整安装（全部层级）
 moai init my-project
 
-# Slim 설치 (Tier 1 + 감지된 Tier 2만)
+# Slim安装（仅Tier 1 + 检测到的Tier 2）
 moai init --slim my-project
 ```
 
-### 필터 로직
+### 过滤逻辑
 
-1. Tier 1은 항상 포함
-2. 프로젝트 언어 감지 (Go, Python, TypeScript 등)
-3. 감지된 언어에 해당하는 Tier 2 항목만 포함
-4. Tier 3은 제외
+1. Tier 1始终包含
+2. 检测项目语言（Go、Python、TypeScript等）
+3. 仅包含与检测到的语言对应的Tier 2条目
+4. Tier 3被排除
 
 ## Typed Loader
 
-`LoadCatalog()` 함수가 매니페스트를 타입 안전하게 로드합니다:
+`LoadCatalog()` 函数以类型安全的方式加载清单：
 
-- 3계층 분류 검증
-- 해시 무결성 검사 (Hash Sentinel)
-- 누락 필드 감지
-- 100% 테스트 커버리지
+- 3级分类校验
+- 哈希完整性检查（Hash Sentinel）
+- 缺失字段检测
+- 100%测试覆盖率
 
-## 카탈로그 활용
+## 目录使用
 
-### 프로젝트 초기화
+### 项目初始化
 
 ```bash
-# 일반 초기화 — 모든 템플릿 배포
+# 常规初始化 — 部署所有模板
 moai init my-project
 
-# Slim 초기화 — 최소 템플릿만 배포
+# Slim初始化 — 仅部署最小模板集
 moai init --slim my-project
 ```
 
-### 업데이트
+### 更新
 
 ```bash
-# 카탈로그 기반 업데이트
-moai update                  # 모든 계층 업데이트
-moai update --slim           # slim 모드로 업데이트
+# 基于目录的更新
+moai update                  # 更新所有层级
+moai update --slim           # 以slim模式更新
 ```
 
-## 관련 문서
+## 相关文档
 
-- [설치](/ko/getting-started/installation) — 설치 가이드
-- [초기 설정](/ko/getting-started/init-wizard) — init 마법사
-- [업데이트](/ko/getting-started/update) — 업데이트 가이드
-- [스킬 가이드](/ko/advanced/skill-guide) — 스킬 작성 가이드
+- [安装](/zh/getting-started/installation) — 安装指南
+- [初始设置](/zh/getting-started/init-wizard) — init向导
+- [更新](/zh/getting-started/update) — 更新指南
+- [技能指南](/zh/advanced/skill-guide) — 技能编写指南
