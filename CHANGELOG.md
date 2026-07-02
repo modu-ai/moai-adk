@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- **[SPEC-DEADPKG-INVESTIGATE-001](.moai/specs/SPEC-DEADPKG-INVESTIGATE-001/spec.md)** — 감사가 지목한 5개 flagged 패키지를 전용 도구(`go list -deps` + `deadcode`) 증거 기반 verdict로 처분 (Tier M, v1.0.0). 사전 삭제 없이 패키지별 도달성+의도 조사 후: `internal/design`(51파일, DTCG 토큰 검증 — 완료된 DESIGN-SYSTEM-RETIRE-001 은퇴의 잔재)·`internal/research`(33파일, A/B 실험엔진 — importer 0)를 **삭제**; `internal/migrate`의 `CleanupUserSettings`를 `internal/migration/migrations/m002_settings_cleanup.go`로 **relocate**(atomic-write guard 보존, Version:2 등록); `internal/i18n`(test-only)을 `internal/github/i18n_helper_test.go`로 **relocate**; `internal/runtime`(top-level)은 SPEC-WF-AUDIT-GATE staged 구현체라 @MX:NOTE retention 마커로 **보존**(gobin 보호). 89파일 삭제 + 3 relocate/marker + stale C7 fixture 정리. `go build ./...`(native+windows) exit 0, touched-package(migration/github/runtime/hook) 전체 GREEN, 외부 importer 0 확인으로 behavior 보존 입증. verification-claim-integrity 규율로 감사의 "죽은 코드" 가설을 전용 도구로 검증 후 처분(runtime은 staged로 보존). 🗿 MoAI
+
 - **[SPEC-DEAD-CONFIG-001](.moai/specs/SPEC-DEAD-CONFIG-001/spec.md)** — 미사용 `runtime.yaml` config 섹션 + dead CI-guard allowlist row 제거 (Tier S, v1.0.0). `runtime.yaml`은 로컬·템플릿 양 트리에서 온디스크로만 존재했고 `LoadRuntime`은 `budget_test.go`의 자기완결 `t.TempDir()` 픽스처로만 호출되어 프로덕션 importer가 0이었음. 온디스크 YAML 양 트리 삭제 + `audit_loader_completeness_test.go`의 dead `runtime` allowlist 행 제거 + `settings-management.md` 로더 행 정리. `LoadRuntime` Go surface는 보존(온디스크 YAML만 제거, 프로덕션 코드 무변경). DeprecatedPaths 매니페스트 + `dirs_test.go` 43-count 핀은 무변경(REQ-DC-007 out-of-scope 경계). impl은 `d3337cc8e`로 merge, 10 AC 전부 GREEN, 3-phase 소급 close(status completed + era V3R6 + progress §E 증거 + sync_commit_sha d3337cc8e). 🗿 MoAI
 
 ### Fixed

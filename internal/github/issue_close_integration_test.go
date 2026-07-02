@@ -9,8 +9,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/modu-ai/moai-adk/internal/i18n"
 )
 
 // TestIntegration_CommentGenerator_To_IssueCloser verifies the end-to-end flow:
@@ -20,8 +18,8 @@ func TestIntegration_CommentGenerator_To_IssueCloser(t *testing.T) {
 	t.Parallel()
 
 	// Step 1: Generate a Korean comment.
-	gen := i18n.NewCommentGenerator()
-	data := &i18n.CommentData{
+	gen := NewCommentGenerator()
+	data := &CommentData{
 		Summary:         "Added user authentication feature",
 		PRNumber:        456,
 		IssueNumber:     123,
@@ -105,8 +103,8 @@ func TestIntegration_CommentGenerator_To_IssueCloser(t *testing.T) {
 func TestIntegration_MultilingualComments(t *testing.T) {
 	t.Parallel()
 
-	gen := i18n.NewCommentGenerator()
-	data := &i18n.CommentData{
+	gen := NewCommentGenerator()
+	data := &CommentData{
 		Summary:         "Fixed login redirect bug",
 		PRNumber:        789,
 		IssueNumber:     42,
@@ -173,8 +171,8 @@ func TestIntegration_MultilingualComments(t *testing.T) {
 func TestIntegration_IssueClose_RetryRecovery(t *testing.T) {
 	t.Parallel()
 
-	gen := i18n.NewCommentGenerator()
-	comment, err := gen.Generate("en", &i18n.CommentData{
+	gen := NewCommentGenerator()
+	comment, err := gen.Generate("en", &CommentData{
 		Summary:     "Retry recovery test",
 		PRNumber:    100,
 		IssueNumber: 50,
@@ -238,8 +236,8 @@ func TestIntegration_IssueClose_RetryRecovery(t *testing.T) {
 func TestIntegration_IssueClose_PartialFailure(t *testing.T) {
 	t.Parallel()
 
-	gen := i18n.NewCommentGenerator()
-	comment, err := gen.Generate("ja", &i18n.CommentData{
+	gen := NewCommentGenerator()
+	comment, err := gen.Generate("ja", &CommentData{
 		Summary:         "Partial failure test",
 		PRNumber:        200,
 		IssueNumber:     75,

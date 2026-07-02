@@ -3,6 +3,16 @@
 // SPEC-V3R3-ARCH-007: per-agent token budget tracking + stall detection.
 // Warning-first policy (BC-V3R3-006); will switch to hard-fail in P5.
 // /clear is never triggered automatically (HARD constraint per MEMORY.md).
+//
+// @MX:NOTE: [AUTO] Retention marker — this package is NOT dead code. In addition to the
+// Token Circuit Breaker (ARCH-007), it carries the staged audit-gate implementation
+// (audit_gate.go / audit_cache.go / audit_report.go) owned by SPEC-WF-AUDIT-GATE-001
+// (status: implemented). The audit-gate has no production caller yet, but it is exercised
+// by internal/cli/*_test.go (run_audit_gate_integration_test.go, run_audit_gate_filesystem_test.go,
+// run_audit_gate_grace_test.go, run_audit_gate_cache_test.go, team_run_audit_gate_test.go) and is
+// deliberately retained pending run-phase wiring. The internal/runtime/gobin subpackage is LIVE
+// (imported by internal/cli/update.go + internal/core/project/initializer.go).
+// SPEC-DEADPKG-INVESTIGATE-001 verdict: RETAINED (do not remove).
 package runtime
 
 import (

@@ -847,7 +847,6 @@ func TestC7PackageRestriction(t *testing.T) {
 		"internal/cli/harness.go",
 		"internal/hook/dbsync/db_schema_sync.go",
 		"internal/ciwatch/handoff.go",
-		"internal/design/dtcg/frozen_guard_test.go",
 	} {
 		if !c7.MatchString(real) {
 			t.Errorf("AC-SBN-020(a): C7 regex must match real restricted-package path %q", real)

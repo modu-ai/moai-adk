@@ -1,8 +1,8 @@
 ---
 id: SPEC-DEADPKG-INVESTIGATE-001
 title: "Investigate 5 flagged dead internal packages and dispose per evidence-backed verdict"
-version: "0.1.0"
-status: draft
+version: "1.0.0"
+status: completed
 created: 2026-07-02
 updated: 2026-07-02
 author: manager-spec

@@ -1,9 +1,10 @@
-// Package migrate — hook_cleanup_test.go
+// Package migrations — m002_settings_cleanup_test.go
+// Relocated from internal/migrate/hook_cleanup_test.go by SPEC-DEADPKG-INVESTIGATE-001.
 // SPEC-V3R2-MIG-002 T-MIG002-15 → AC-MIG002-A7
 // SPEC-V3R5-ATOMIC-WRITE-001 → AC-AWR-001..008
-// Table-driven tests for CleanupUserSettings and TestAtomicWrite_* regression coverage
+// Table-driven tests for m002Apply and TestAtomicWrite_* regression coverage
 // for the atomic temp+rename pattern in atomicWrite (P0-4 fix).
-package migrate
+package migrations
 
 import (
 	"encoding/json"
@@ -77,9 +78,9 @@ func TestCleanupUserSettings(t *testing.T) {
 			name: "mixed_retired_and_active",
 			settingsJSON: settingsWithHooks(
 				map[string]string{
-					"SessionStart":  "handle-session-start.sh",
-					"PreToolUse":    "handle-pre-tool.sh",
-					"PostToolUse":   "handle-post-tool.sh",
+					"SessionStart": "handle-session-start.sh",
+					"PreToolUse":   "handle-pre-tool.sh",
+					"PostToolUse":  "handle-post-tool.sh",
 				},
 				map[string]string{
 					"Notification": "handle-notification.sh",
@@ -97,10 +98,10 @@ func TestCleanupUserSettings(t *testing.T) {
 			wantErrContains: "parse settings.json",
 		},
 		{
-			name:          "missing_settings_json_noop",
-			settingsJSON:  nil, // signals: don't create settings.json
+			name:             "missing_settings_json_noop",
+			settingsJSON:     nil, // signals: don't create settings.json
 			wantRemovedCount: 0,
-			wantArchiveFile: false,
+			wantArchiveFile:  false,
 		},
 	}
 
@@ -124,12 +125,12 @@ func TestCleanupUserSettings(t *testing.T) {
 			}
 
 			// Run the migration.
-			err := CleanupUserSettings(projectRoot)
+			err := m002Apply(projectRoot)
 
 			// Error assertions.
 			if tc.wantErr {
 				if err == nil {
-					t.Fatal("CleanupUserSettings: want error, got nil")
+					t.Fatal("m002Apply: want error, got nil")
 				}
 				if tc.wantErrContains != "" && !strings.Contains(err.Error(), tc.wantErrContains) {
 					t.Errorf("error %q does not contain %q", err.Error(), tc.wantErrContains)
@@ -139,7 +140,7 @@ func TestCleanupUserSettings(t *testing.T) {
 			}
 
 			if err != nil {
-				t.Fatalf("CleanupUserSettings unexpected error: %v", err)
+				t.Fatalf("m002Apply unexpected error: %v", err)
 			}
 
 			// If no settings.json was created (missing-file test), nothing more to check.
@@ -224,8 +225,8 @@ func TestCleanupUserSettings_NoHooksKey(t *testing.T) {
 		t.Fatalf("write settings.json: %v", err)
 	}
 
-	if err := CleanupUserSettings(projectRoot); err != nil {
-		t.Fatalf("CleanupUserSettings: %v", err)
+	if err := m002Apply(projectRoot); err != nil {
+		t.Fatalf("m002Apply: %v", err)
 	}
 
 	// Archive should not exist.
@@ -254,7 +255,7 @@ func TestCleanupUserSettings_InvalidHooksSection(t *testing.T) {
 		t.Fatalf("write settings.json: %v", err)
 	}
 
-	err := CleanupUserSettings(projectRoot)
+	err := m002Apply(projectRoot)
 	if err == nil {
 		t.Fatal("expected parse error for hooks array, got nil")
 	}
@@ -279,13 +280,13 @@ func TestCleanupUserSettings_ReadError(t *testing.T) {
 		t.Fatalf("create fake settings dir: %v", err)
 	}
 
-	err := CleanupUserSettings(projectRoot)
+	err := m002Apply(projectRoot)
 	if err == nil {
 		t.Fatal("expected error reading directory as file, got nil")
 	}
 }
 
-// TestCleanupUserSettings_Idempotent verifies that re-invoking CleanupUserSettings
+// TestCleanupUserSettings_Idempotent verifies that re-invoking m002Apply
 // after a successful cleanup is a no-op (no additional archive files, no error).
 func TestCleanupUserSettings_Idempotent(t *testing.T) {
 	t.Parallel()
@@ -307,8 +308,8 @@ func TestCleanupUserSettings_Idempotent(t *testing.T) {
 	}
 
 	// First invocation — should clean.
-	if err := CleanupUserSettings(projectRoot); err != nil {
-		t.Fatalf("first CleanupUserSettings: %v", err)
+	if err := m002Apply(projectRoot); err != nil {
+		t.Fatalf("first m002Apply: %v", err)
 	}
 
 	// Capture settings.json state after first run.
@@ -318,8 +319,8 @@ func TestCleanupUserSettings_Idempotent(t *testing.T) {
 	}
 
 	// Second invocation — should be a no-op.
-	if err := CleanupUserSettings(projectRoot); err != nil {
-		t.Fatalf("second CleanupUserSettings: %v", err)
+	if err := m002Apply(projectRoot); err != nil {
+		t.Fatalf("second m002Apply: %v", err)
 	}
 
 	afterSecond, err := os.ReadFile(settingsPath)
@@ -390,7 +391,7 @@ func TestAtomicWrite_HappyPath(t *testing.T) {
 		t.Fatalf("read dir: %v", err)
 	}
 	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), ".hook_cleanup_tmp_") {
+		if strings.HasPrefix(e.Name(), ".settings_cleanup_tmp_") {
 			t.Errorf("temp file %q remains in directory", e.Name())
 		}
 	}
@@ -467,7 +468,7 @@ func TestAtomicWrite_PreservesPerm(t *testing.T) {
 // Verifies:
 //   - error is returned wrapping the failing step ("rename")
 //   - destination is unchanged (still a directory, not corrupted)
-//   - no .hook_cleanup_tmp_* file remains
+//   - no .settings_cleanup_tmp_* file remains
 func TestAtomicWrite_CleanupOnError(t *testing.T) {
 	t.Parallel()
 
@@ -507,7 +508,7 @@ func TestAtomicWrite_CleanupOnError(t *testing.T) {
 		t.Fatalf("read parent dir: %v", err)
 	}
 	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), ".hook_cleanup_tmp_") {
+		if strings.HasPrefix(e.Name(), ".settings_cleanup_tmp_") {
 			t.Errorf("temp file %q remains in directory after failed write", e.Name())
 		}
 	}
@@ -539,10 +540,9 @@ func TestAtomicWrite_CreateTempError(t *testing.T) {
 }
 
 // TestCleanupUserSettings_AtomicWriteRegression — Scenario 6: caller-level
-// regression test. Verifies that CleanupUserSettings (which calls atomicWrite
-// at line 109) still produces a valid settings.json with the Notification
-// hook removed and a same-day archive file written. This protects R-AWR-001
-// (caller regression risk).
+// regression test. Verifies that m002Apply (which calls atomicWrite) still
+// produces a valid settings.json with the Notification hook removed and a
+// same-day archive file written. This protects R-AWR-001 (caller regression risk).
 func TestCleanupUserSettings_AtomicWriteRegression(t *testing.T) {
 	t.Parallel()
 
@@ -562,9 +562,9 @@ func TestCleanupUserSettings_AtomicWriteRegression(t *testing.T) {
 		t.Fatalf("seed settings.json: %v", err)
 	}
 
-	// Invoke CleanupUserSettings (which calls atomicWrite at line 109).
-	if err := CleanupUserSettings(projectRoot); err != nil {
-		t.Fatalf("CleanupUserSettings returned error: %v", err)
+	// Invoke m002Apply (which calls atomicWrite).
+	if err := m002Apply(projectRoot); err != nil {
+		t.Fatalf("m002Apply returned error: %v", err)
 	}
 
 	// Verify settings.json is valid JSON.

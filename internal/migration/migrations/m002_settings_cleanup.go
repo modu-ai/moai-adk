@@ -1,7 +1,12 @@
-// Package migrate provides migration steps for upgrading user project configurations
-// between MoAI-ADK versions. Each step is idempotent and archival — no user data
-// is deleted without a corresponding archive entry.
-package migrate
+package migrations
+
+// @MX:NOTE - m002 settings-cleanup migration step. Relocated from the former
+// internal/migrate.CleanupUserSettings by SPEC-DEADPKG-INVESTIGATE-001 (the
+// internal/migrate package had a single function with zero callers). Folded here
+// as a proper registry-registered migration following the m001 pattern. Removes
+// stale RETIRE-OBS-ONLY event entries from the user's local .claude/settings.json
+// (SPEC-V3R2-MIG-002). Idempotent + archival: no user data is deleted without a
+// corresponding archive entry.
 
 import (
 	"encoding/json"
@@ -11,13 +16,23 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/migration"
 )
 
-// CleanupUserSettings removes stale RETIRE-OBS-ONLY event entries from the user's
-// local .claude/settings.json. This migration step is required for users upgrading
-// from pre-SPEC-V3R2-RT-006 v3.0 builds whose settings.json still carries the 4
-// retired event hook registrations (Notification, Elicitation, ElicitationResult,
-// TaskCreated).
+// init registers m002 in the migration registry.
+func init() {
+	migration.Register(migration.Migration{
+		Version:  2,
+		Name:     "cleanup_retired_hook_events",
+		Apply:    m002Apply,
+		Rollback: nil, // archival cleanup; not rollback-able
+	})
+}
+
+// m002Apply removes stale RETIRE-OBS-ONLY event entries from the user's local
+// .claude/settings.json. This migration step is required for users upgrading from
+// pre-SPEC-V3R2-RT-006 v3.0 builds whose settings.json still carries the 4 retired
+// event hook registrations (Notification, Elicitation, ElicitationResult, TaskCreated).
 //
 // Behavior:
 //   - Reads <projectRoot>/.claude/settings.json.
@@ -28,7 +43,7 @@ import (
 //   - Returns a wrapped error on JSON parse failure without writing any output.
 //
 // SPEC-V3R2-MIG-002 REQ-MIG002-011, REQ-MIG002-012, REQ-MIG002-019 → AC-MIG002-A7.
-func CleanupUserSettings(projectRoot string) error {
+func m002Apply(projectRoot string) error {
 	settingsPath := filepath.Join(projectRoot, ".claude", "settings.json")
 
 	data, err := os.ReadFile(settingsPath)
@@ -113,9 +128,8 @@ func CleanupUserSettings(projectRoot string) error {
 	return nil
 }
 
-// appendOrWriteJSON writes data to path as JSON. If the file already exists,
-// the new data is written alongside the existing content (both wrapped in an array).
-// For migration use: keeps a day-level record of all removed entries.
+// appendOrWriteJSON writes data to path as JSON. For migration use it keeps a
+// day-level record of removed entries (one write per run).
 func appendOrWriteJSON(path string, data []byte) error {
 	// Simple overwrite: per-day migration file, one write per run.
 	return atomicWrite(path, data, 0o644)
@@ -124,18 +138,16 @@ func appendOrWriteJSON(path string, data []byte) error {
 // atomicWrite writes data to path atomically using a temp file + rename sequence.
 //
 // @MX:WARN: writes to user .claude/settings.json — partial writes corrupt configuration.
-// @MX:REASON: P0-4 (review-v214-to-HEAD.md L53-58) — prior os.WriteFile body broke the
-//             atomicity contract implied by the function name. The two callers (line 109
-//             settings.json, line 121 archive) depend on all-or-nothing semantics.
-//             Pattern matches internal/runtime/persist.go:62-85 (canonical reference)
-//             and the five other writers in this codebase (config/manager.go,
-//             manifest/manifest.go, template/deployer.go, harness/applier.go,
-//             harness/tier/tier.go, harness/safety/canary_veto.go).
+// @MX:REASON: both callers (settings.json write + archive write) depend on all-or-nothing
+//             semantics; a plain os.WriteFile body would break the atomicity contract implied
+//             by the function name. Pattern matches internal/runtime/persist.go (canonical
+//             reference) and the other atomic writers in this codebase (config/manager.go,
+//             manifest/manifest.go, template/deployer.go, harness/applier.go, harness/tier/tier.go).
 //
 // SPEC-V3R5-ATOMIC-WRITE-001 REQ-AWR-001..006 → AC-AWR-001..008.
 func atomicWrite(path string, data []byte, perm os.FileMode) error {
 	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, ".hook_cleanup_tmp_*")
+	tmp, err := os.CreateTemp(dir, ".settings_cleanup_tmp_*")
 	if err != nil {
 		return fmt.Errorf("atomicWrite: create temp file: %w", err)
 	}

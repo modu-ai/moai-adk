@@ -9,7 +9,6 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/core/quality"
 	"github.com/modu-ai/moai-adk/internal/git"
-	"github.com/modu-ai/moai-adk/internal/i18n"
 )
 
 // TestIntegration_ParseIssue_ToBranchDetection validates the cross-package flow
@@ -406,8 +405,8 @@ func TestIntegration_FullPipeline_IssueToClose(t *testing.T) {
 	}
 
 	// Phase 4: Generate multilingual comment (Korean).
-	gen := i18n.NewCommentGenerator()
-	comment, err := gen.Generate("ko", &i18n.CommentData{
+	gen := NewCommentGenerator()
+	comment, err := gen.Generate("ko", &CommentData{
 		Summary:         "Fixed login timeout by extending session duration",
 		PRNumber:        450,
 		IssueNumber:     600,
@@ -475,8 +474,8 @@ func TestIntegration_I18nCommentToIssueCloser(t *testing.T) {
 	t.Parallel()
 
 	// Generate a comment with zero coverage (should omit coverage line).
-	gen := i18n.NewCommentGenerator()
-	comment, err := gen.Generate("en", &i18n.CommentData{
+	gen := NewCommentGenerator()
+	comment, err := gen.Generate("en", &CommentData{
 		Summary:         "Fixed login bug",
 		PRNumber:        100,
 		IssueNumber:     50,
@@ -564,8 +563,8 @@ func TestIntegration_I18nCommentToIssueCloser(t *testing.T) {
 func TestIntegration_MultilingualCommentGeneration(t *testing.T) {
 	t.Parallel()
 
-	gen := i18n.NewCommentGenerator()
-	data := &i18n.CommentData{
+	gen := NewCommentGenerator()
+	data := &CommentData{
 		Summary:         "Added user authentication",
 		PRNumber:        456,
 		IssueNumber:     123,

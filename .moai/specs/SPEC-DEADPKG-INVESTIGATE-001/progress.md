@@ -41,8 +41,28 @@
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending — dispositions execution + verification>_
+Dispositions 실행 완료 (cycle_type=ddd, 격리 워크트리 → main reconcile). 결과:
+
+| 패키지 | disposition | 결과 |
+|--------|-------------|------|
+| internal/design (51파일) | DELETE | 제거 완료 (dtcg/pipeline/categories 전체 + testdata) |
+| internal/research (33파일) | DELETE | 제거 완료 (experiment/eval/observe/safety/dashboard) |
+| internal/migrate (2파일) | RELOCATE | `CleanupUserSettings` → `internal/migration/migrations/m002_settings_cleanup.go`(m002Apply, Version:2, atomic-write guard 보존) + test 이식; `retired_events.go` referent 갱신; 패키지 제거 |
+| internal/i18n (3파일) | RELOCATE | `errors.go`/`templates.go` → `internal/github/i18n_helper_test.go`(package github, test-scoped) + 2 test import 갱신; 패키지 제거 |
+| internal/runtime (top) | RETAIN | `config.go`에 @MX:NOTE retention 마커(SPEC-WF-AUDIT-GATE staged); gobin 보호 |
+
+- 검증: `go build ./...` exit 0 (native + windows), touched-package 전체 GREEN (migration/migrations/github/runtime/hook `ok`). 외부 importer 0 확인 후 삭제(behavior 보존 — 제거 코드 미사용 입증).
+- stale fixture 정리: `internal/template/internal_content_leak_test.go`의 삭제된 `internal/design/dtcg/frozen_guard_test.go` C7 regex fixture 참조 제거(나머지 4개 실존 경로로 검증 유지).
+- 89파일 삭제 + 4 modified + 3 new.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- Tier M 통합 close (run+sync). run-phase는 격리 워크트리(base==938aa668b) 실행 → orchestrator가 병렬 세션과 disjoint 확인 후 main으로 결정적 replicate(git rm + 파일 복사) + 재검증 + path-limited 커밋.
+- spec.md/progress.md frontmatter: `status: draft → completed`, `era: V3R6`.
+- CHANGELOG.md `[Unreleased] Removed` 항목 추가.
+- 관측된 pre-existing red(내 변경 무관): `internal/template` catalog hash 불안정(manager-docs/git/plan-auditor) + reports-gitkeep + haiku-effort — 병렬 세션이 agent 파일 수정·push하며 `make build` 미실행으로 발생. 전체 워킹트리 stash 후에도 committed origin에서 FAIL 재현 확인. catalog 재생성은 병렬 세션 소관(그들의 미커밋 agent 변경 섞임 방지).
+
+### sync_commit_sha
+
+sync_commit_sha: <backfill>
+run_commit_sha: <backfill>
