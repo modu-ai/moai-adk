@@ -19,8 +19,10 @@
 //     directory at project root. v.2.x exclusive artifact.
 //
 //   - Signal 3 (V2DetectedViaDeprecatedPath): existence of ANY path
-//     enumerated in defs.DeprecatedPaths (43 entries: Category A 9 +
-//     Category B 31 + Category C 3 per spec.md §A.4).
+//     enumerated in defs.DeprecatedPaths (41 entries: Category A 9 +
+//     Category B 29 + Category C 3; reconciled by
+//     SPEC-DEPRECATEDPATHS-RECONCILE-001 which un-deprecated design.yaml +
+//     db.yaml as live v3 config).
 //
 // The SignalDetails map carries per-signal diagnostic strings used by
 // telemetry and `--dry-run` output (REQ-VVCR-028 / REQ-VVCR-029).

@@ -1,8 +1,8 @@
 ---
 id: SPEC-DEPRECATEDPATHS-RECONCILE-001
 title: "Reconcile DeprecatedPaths: un-deprecate live v3 config design.yaml + db.yaml"
-version: "0.1.0"
-status: draft
+version: "1.0.0"
+status: completed
 created: 2026-07-02
 updated: 2026-07-02
 author: manager-spec

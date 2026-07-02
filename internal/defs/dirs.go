@@ -40,13 +40,18 @@ type DeprecatedPathEntry struct {
 // Managed by: SPEC-V3R3-UPDATE-CLEANUP-001 (REQ-UPC-006).
 // Extended by SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 M2 (2026-05-25, v3.0.0-rc2):
 // Category B = 31 v.2.x-era NEW entries + Category C = 3 rc1-stage staging
-// artifacts. After extension: 43 entries total per spec.md §A.4 Canonical
-// DeprecatedPaths Derivation Table.
+// artifacts (43 entries at that point).
+// Reconciled by SPEC-DEPRECATEDPATHS-RECONCILE-001: design.yaml + db.yaml
+// un-deprecated (live v3 config, shipped by the template AND read by
+// loadDesignSection / loadMigrationPatterns), reducing Category B 31→29 and
+// the total to 41 entries.
 //
 // @MX:ANCHOR: SSOT for v.2.x → v3 cleanup targets.
-// @MX:REASON: External-user cleanup correctness depends on the 43-entry total
-// + 9/31/3 category split; modifications MUST update both this slice and
-// spec.md §A.4 atomically. See SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001.
+// @MX:REASON: External-user cleanup correctness depends on the 41-entry total
+// + 9/29/3 category split; the count is governed by
+// SPEC-DEPRECATEDPATHS-RECONCILE-001 (origin SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001
+// §A.4 is the historical 43-entry derivation). Modifications MUST update both
+// this slice and internal/defs/dirs_test.go atomically.
 var DeprecatedPaths = []DeprecatedPathEntry{
 	// ====================================================================
 	// Category A — Pre-existing entries (9; SPEC-AGENCY-ABSORB-001)
@@ -222,19 +227,9 @@ var DeprecatedPaths = []DeprecatedPathEntry{
 		DeprecatedBy:    "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
 		RemovalSchedule: "v3.0.0",
 	},
-	// deprecated config yaml files
-	{
-		Path:            ".moai/config/sections/design.yaml",
-		DeprecatedSince: "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
-		DeprecatedBy:    "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
-		RemovalSchedule: "v3.0.0",
-	},
-	{
-		Path:            ".moai/config/sections/db.yaml",
-		DeprecatedSince: "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
-		DeprecatedBy:    "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
-		RemovalSchedule: "v3.0.0",
-	},
+	// deprecated config yaml files (design.yaml + db.yaml un-deprecated by
+	// SPEC-DEPRECATEDPATHS-RECONCILE-001 — live v3 config shipped by the
+	// template AND read by loadDesignSection / loadMigrationPatterns)
 	{
 		Path:            ".moai/config/sections/gate.yaml",
 		DeprecatedSince: "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",

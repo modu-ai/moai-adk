@@ -1,10 +1,13 @@
 // Package defs unit tests for DeprecatedPaths enumeration.
 //
 // @MX:ANCHOR: DeprecatedPaths is the SSOT for v.2.x → v3 cleanup targets;
-// see SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 §A.4 Canonical Derivation Table.
-// @MX:REASON: External-user cleanup correctness depends on the 43-entry
-// total + 9/31/3 category split; any future modification MUST update both
-// this test and spec.md §A.4 atomically.
+// the 41-entry count is governed by SPEC-DEPRECATEDPATHS-RECONCILE-001
+// (origin SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 §A.4 is the historical
+// 43-entry derivation, reconciled 43→41 after design.yaml + db.yaml were
+// un-deprecated as live v3 config).
+// @MX:REASON: External-user cleanup correctness depends on the 41-entry
+// total + 9/29/3 category split; any future modification MUST update both
+// this test and the dirs.go slice atomically.
 package defs
 
 import (
@@ -13,31 +16,34 @@ import (
 )
 
 // TestDeprecatedPathsTotalCount asserts the total slice size matches the
-// canonical derivation table in SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 §A.4.
+// reconciled count governed by SPEC-DEPRECATEDPATHS-RECONCILE-001.
 //
-// After M2 of that SPEC: 9 (Category A) + 31 (Category B) + 3 (Category C)
-// = 43 entries total. AC-VVCR-005 references this assertion.
+// Origin SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 §A.4 derived 43 entries
+// (9 Category A + 31 Category B + 3 Category C). SPEC-DEPRECATEDPATHS-RECONCILE-001
+// un-deprecated the 2 live config yaml files (design.yaml + db.yaml), reducing
+// Category B 31→29 and the total 43→41. AC-DPR-002 references this assertion.
 func TestDeprecatedPathsTotalCount(t *testing.T) {
-	const want = 43
+	const want = 41
 	got := len(DeprecatedPaths)
 	if got != want {
-		t.Errorf("len(DeprecatedPaths) = %d, want %d (per spec.md §A.4 Canonical Derivation Table: 9 Category A + 31 Category B + 3 Category C)", got, want)
+		t.Errorf("len(DeprecatedPaths) = %d, want %d (per SPEC-DEPRECATEDPATHS-RECONCILE-001: 9 Category A + 29 Category B + 3 Category C)", got, want)
 	}
 }
 
 // TestDeprecatedPathsCategorySplit asserts the per-category subtotals match
-// the canonical derivation table, classified by DeprecatedSince field.
+// the reconciled derivation, classified by DeprecatedSince field.
 //
 //   - Category A (9 entries): DeprecatedSince == "SPEC-AGENCY-ABSORB-001"
-//   - Category B (31 entries): DeprecatedSince == "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001"
+//   - Category B (29 entries): DeprecatedSince == "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001"
 //   - Category C (3 entries):  DeprecatedSince == "SPEC-V3R6-AGENT-FOLDER-SPLIT-001"
 //
-// AC-VVCR-005 explicitly requires verifying both the total count and the
+// Category B was reduced 31→29 by SPEC-DEPRECATEDPATHS-RECONCILE-001 (design.yaml
+// + db.yaml un-deprecated). AC-DPR-003 verifies both the total count and the
 // per-category subtotals.
 func TestDeprecatedPathsCategorySplit(t *testing.T) {
 	const (
 		wantCategoryA = 9  // SPEC-AGENCY-ABSORB-001
-		wantCategoryB = 31 // SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001
+		wantCategoryB = 29 // SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 (reconciled 31→29 by SPEC-DEPRECATEDPATHS-RECONCILE-001)
 		wantCategoryC = 3  // SPEC-V3R6-AGENT-FOLDER-SPLIT-001
 	)
 
@@ -76,11 +82,13 @@ func TestDeprecatedPathsRequiredFields(t *testing.T) {
 	}
 }
 
-// TestDeprecatedPathsCategoryBExpectedEntries asserts the 31 Category B entries
-// match the exact enumeration in spec.md §A.4.
+// TestDeprecatedPathsCategoryBExpectedEntries asserts the 29 Category B entries
+// match the exact reconciled enumeration.
 //
 // This test catches accidental additions/removals that would drift away from
-// the canonical derivation table without simultaneous spec.md update.
+// the canonical derivation without a simultaneous slice update. The 2 live
+// config yaml files (design.yaml + db.yaml) were removed by
+// SPEC-DEPRECATEDPATHS-RECONCILE-001 (31→29).
 func TestDeprecatedPathsCategoryBExpectedEntries(t *testing.T) {
 	wantCategoryB := []string{
 		// v2 directories
@@ -106,9 +114,8 @@ func TestDeprecatedPathsCategoryBExpectedEntries(t *testing.T) {
 		".claude/agents/moai/expert-devops.md",
 		".claude/agents/moai/expert-performance.md",
 		".claude/agents/moai/expert-refactoring.md",
-		// deprecated config yaml files
-		".moai/config/sections/design.yaml",
-		".moai/config/sections/db.yaml",
+		// deprecated config yaml files (design.yaml + db.yaml un-deprecated by
+		// SPEC-DEPRECATEDPATHS-RECONCILE-001 — live v3 config, not v2 removal targets)
 		".moai/config/sections/gate.yaml",
 		".moai/config/sections/github-actions.yaml",
 		".moai/config/sections/memo.yaml",
