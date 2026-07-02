@@ -128,7 +128,11 @@ CLAUDE.local.md                # This file
 .moai/reports/                 # Generated reports
 .moai/manifest.json            # Generated at runtime
 .moai/status_line.sh           # Rendered from .sh.tmpl
+.moai/config/astgrep-rules/sgconfig.yml                                    # Dogfood-only: experimental multi-lang ast-grep config (SPEC-ID 포함, mirror 시 §25 위반)
+.moai/config/astgrep-rules/{cpp,csharp,elixir,flutter,go,java,javascript,kotlin,php,python,r,ruby,rust,scala,security,swift,typescript}/  # Dogfood-only: 실험적 언어별 ast-grep 룰(10/17 빈 stub); 배포 룰셋은 root go-hardcoding.yml만. 16-언어 룰셋 정식 배포는 후속 SPEC
 ```
+
+> **§2.2 astgrep-rules 로컬 전용 예외 (2026-07-02)**: 로컬 `.moai/config/astgrep-rules/`의 언어별 서브디렉터리 트리 + `sgconfig.yml`은 dogfood-experimental(10/17 빈 `.gitkeep` stub, 나머지는 데모성 스캐폴드, 메시지 언어 혼재 ko/en, `sgconfig.yml`이 존재하지 않는 `utils` ruleDir 참조 + SPEC-ID 포함)이라 템플릿에 미러하지 않는다. 배포 사용자는 template-managed `go-hardcoding.yml`(root, SPEC-ID stripped) 1개를 baseline으로 받으며, ast-grep pre-tool gate는 기본 OFF(`gate.yaml`/`gate` 로더 부재 → `AstGrepGate.Enabled` 항상 컴파일 기본값 false)이라 실제 영향은 명시적 `moai ast-grep` CLI 경로 + `sg` 설치 시에만 발생. 16-언어 정식 룰셋 배포(메시지 영어 통일 + 데모 stub → 실제 패턴 + `utils` 정리 + SPEC-ID strip + `sg` config-mode 검증)는 별도 후속 SPEC 소관.
 
 ### [HARD] settings.local.json Separation
 

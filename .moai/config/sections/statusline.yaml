@@ -1,6 +1,4 @@
 statusline:
-    mode: default
-    preset: custom
     segments:
         claude_version: true
         context: true
