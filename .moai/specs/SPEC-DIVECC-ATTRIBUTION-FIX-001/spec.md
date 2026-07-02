@@ -1,8 +1,8 @@
 ---
 id: SPEC-DIVECC-ATTRIBUTION-FIX-001
 title: "Correct the ~7× token-cost mis-attribution across living Dive-into-CC surfaces"
-version: "0.1.0"
-status: draft
+version: "1.0.0"
+status: completed
 created: 2026-07-02
 updated: 2026-07-02
 author: manager-spec

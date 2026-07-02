@@ -2,7 +2,7 @@
 name: dive-into-claude-code-archive
 description: Durable archive of the VILA-Lab "Dive into Claude Code" paper (arXiv:2604.14228) — Claude Code v2.1.88 internals authority reference + consolidation of 4 scattered in-repo citation surfaces (SPEC-DIVECC-PAPER-ARCHIVE-001 / Epic Dive-into-CC N7)
 created: 2026-06-22
-updated: 2026-06-22
+updated: 2026-07-02
 author: manager-develop (N7 run-phase)
 related_spec: SPEC-DIVECC-PAPER-ARCHIVE-001
 related_epic: Epic Dive-into-CC (DIVECC)
@@ -49,7 +49,7 @@ The following five paper claims are the CC-internals content moai-adk has **alre
 | 1 | **5-layer graduated-compaction taxonomy** (see §3.1 below) | #2 (context-window-management.md) + #3 (runtime-recovery-doctrine.md §1) |
 | 2 | **AI-agent-system design-space taxonomy** + open-direction enumeration (the "98.4% infrastructure" central thesis and its design-space framing) | #2 / #3 (as the framing that motivates the compaction-layer naming) |
 | 3 | **query-loop / withheld-recoverable-error framing** — the input-governance preamble the query loop performs BEFORE the model call (memory prefetch → snip → microcompact → context-collapse → autocompact), during which recoverable errors are withheld and routed to layered recovery | #3 (runtime-recovery-doctrine.md §1) |
-| 4 | **delegation token-cost (~7×) signal** — a Skill injects into the current context (cheap); an Agent spawns an isolated context that re-establishes from scratch, measured by the paper at roughly **~7× the token cost** of a Skill injection for comparable work | #1 (moai.md §4 Token-Cost Axis) |
+| 4 | **delegation-mechanism cost signal** — a Skill injects into the current context (cheap); an Agent spawns an isolated context that re-establishes from scratch (expensive). The paper reports **agent teams in plan mode at roughly ~7× the tokens of a single session** — a related but distinct comparison; the Skill-over-Agent cost gap is a moai extrapolation of that isolated-context principle (additionally supported by Anthropic's ~15× multi-agent figure), not a skill-vs-agent benchmark by the paper | #1 (moai.md §4 Token-Cost Axis) |
 | 5 | **extension-mechanism context-cost ladder** — Hooks (zero) → Skills (low) → Plugins (medium) → MCP (high); the cheapest mechanism that meets the capability requirement should be preferred | #4 (agent-authoring.md Extension-Mechanism Context-Cost Ladder) |
 
 ### §3.1 The 5-layer graduated-compaction taxonomy (consume-not-implement boundary)
@@ -72,7 +72,7 @@ The paper is cited at **four canonical surfaces** in the moai-adk tree. Each sur
 
 | # | Citation surface | Added by Epic candidate | What it consumes |
 |---|------------------|-------------------------|------------------|
-| 1 | `.claude/output-styles/moai/moai.md` | N3 (DELEGATION-TOKEN-COST) | delegation ~7× token-cost signal (Skill injection vs Agent spawn) — §4 Token-Cost Axis |
+| 1 | `.claude/output-styles/moai/moai.md` | N3 (DELEGATION-TOKEN-COST) | delegation-mechanism cost signal (Skill-over-Agent, a moai extrapolation; the paper's ~7× figure is the agent teams in plan mode vs single session comparison) — §4 Token-Cost Axis |
 | 2 | `.claude/rules/moai/workflow/context-window-management.md` | N5 (COMPACTION-LAYER-NAMING) | the 5-layer graduated-compaction taxonomy (the `/clear` thresholds sit atop these layers) |
 | 3 | `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` §1 | N5 (COMPACTION-LAYER-NAMING) | "convergent second source" — the 5-layer naming corroborated against book1 ch03; the query-loop / withheld-recoverable-error framing |
 | 4 | `.claude/rules/moai/development/agent-authoring.md` | N2 (EXTENSION-COST-LADDER) | extension-mechanism context-cost ladder (Hooks/Skills/Plugins/MCP) |
@@ -87,7 +87,7 @@ A reader who lands on any one of these four surfaces can reach this durable arch
 
 - The "98.4% infrastructure, 1.6% AI" figure (§2) is the paper's thesis, not a moai-adk benchmark of its own tree.
 - The 5-layer graduated-compaction taxonomy (§3.1) names a **Claude Code runtime** mechanism that moai-adk **consumes, does not implement** — the interception lives inside Claude Code's `queryLoop()`, out of moai-adk's reach.
-- The ~7× delegation token-cost figure (§3 row 4) is the paper's measurement of Claude Code internals, not a moai-adk benchmark (the moai.md §4 surface states this explicitly).
+- The paper's ~7× figure (§3 row 4) is the **agent teams in plan mode vs single session** comparison (the paper's own claim, not a moai-adk benchmark); the Skill-over-Agent delegation-cost gap that moai.md §4 applies is a moai extrapolation of that isolated-context principle, not something the paper measured for the skill-vs-agent case.
 - The extension-mechanism cost ladder (§3 row 5) is the paper's claim about Claude Code's internals, recorded as external grounding for moai-adk's decision criterion, not a moai-adk measurement (the agent-authoring.md surface states this explicitly).
 
 This framing aligns with `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 3: a defect / debt / drift / external claim is a **hypothesis (a citation) until the moai-tree's own dedicated tooling verifies it**. None of the figures above were independently re-measured in the moai-adk tree by this SPEC (and re-measuring them is explicitly out of scope — REQ-PA-008). The citation itself was established by sibling N5 (VERIFIED-by-citation); this archive consolidates, it does not re-verify.
