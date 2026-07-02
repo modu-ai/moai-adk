@@ -139,6 +139,11 @@ satisfies AC-HRA-009 (6+ verb surface).`,
 	cmd.AddCommand(harnesscli.NewHarnessV4EditCmd())
 	cmd.AddCommand(harnesscli.NewHarnessV4RemoveCmd())
 
+	// SPEC-HARNESS-EVO-PIPE-REPAIR-001 REQ-HEP-005: v4 reference-integrity smoke
+	// gate (`moai harness doctor`). Distinct from the legacy `moai doctor`
+	// learning-loop 5-layer check.
+	cmd.AddCommand(harnesscli.NewHarnessDoctorCmd())
+
 	return cmd
 }
 
