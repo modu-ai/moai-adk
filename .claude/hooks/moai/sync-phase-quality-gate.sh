@@ -12,10 +12,11 @@
 #
 # Behavior: advisory (non-blocking) by DEFAULT. A failing check emits only
 # {"systemMessage": ...} — a warning that does NOT block the turn. The blocking
-# path (exit 2 + {"decision":"block"}) is dormant and enabled only when
+# path ({"decision":"block"} on stdout + exit 0) is dormant and enabled only when
 # MOAI_SYNC_GATE_BLOCKING=1 is explicitly set. This split matters because, per
-# Claude Code Stop-hook semantics, stdout carrying {"decision":"block"} blocks the
-# turn REGARDLESS of exit code — so an advisory run must never emit that field.
+# Claude Code Stop-hook semantics, stdout JSON is honored only on exit 0 (on
+# exit 2 stdout is discarded and only stderr is surfaced) — the "decision" field
+# is the blocking channel, so an advisory run must never emit that field.
 #
 # Once-per-commit: a given sync commit is gated at most ONCE. The gated HEAD SHA is
 # recorded in .moai/state/sync-quality-gate.last and the hook short-circuits on any
@@ -97,19 +98,21 @@ case "$LAST_COMMIT_SUBJECT" in
         ;;
 esac
 
-# Resolve project root and detect language from canonical markers
+# Resolve project root and detect language from canonical markers.
+# GATE_LANG (not LANG): LANG is the reserved POSIX locale variable — assigning
+# the detected language to it would change the locale of every child tool.
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
-LANG=$(detect_language "$PROJECT_ROOT")
+GATE_LANG=$(detect_language "$PROJECT_ROOT")
 
 # Silent pass when no recognized language marker is present (docs-only projects, etc.)
-if [ -z "$LANG" ]; then
+if [ -z "$GATE_LANG" ]; then
     # stdout intentionally empty (Stop schema: decision must be approve|block, not "skip").
     exit 0
 fi
 
 # Detect code-file changes in HEAD commit; skip if 0 code-file delta (markdown-only sync).
 # On an initial commit HEAD~1 does not exist, so diff against the empty tree instead.
-DELTA_PATTERN=$(code_delta_pattern "$LANG")
+DELTA_PATTERN=$(code_delta_pattern "$GATE_LANG")
 if git rev-parse --verify -q HEAD~1 >/dev/null 2>&1; then
     DIFF_RANGE="HEAD~1..HEAD"
 else
@@ -142,15 +145,17 @@ if [ -n "$HEAD_SHA" ]; then
     echo "$HEAD_SHA" > "$SENTINEL_FILE"
 fi
 
-# Per-check result scratch dir
-TMPDIR=$(mktemp -d)
-trap "rm -rf $TMPDIR" EXIT
+# Per-check result scratch dir.
+# GATE_TMPDIR (not TMPDIR): TMPDIR is the reserved POSIX temp-dir variable —
+# exporting/assigning it would redirect every child tool's temp files here.
+GATE_TMPDIR=$(mktemp -d)
+trap "rm -rf $GATE_TMPDIR" EXIT
 
 # Default per-check results: 0 = pass/skipped, used when a step does not run for the
 # detected language. command -v guards every tool invocation so an absent toolchain
 # is skipped gracefully (exit 0, recorded as skipped) rather than failing.
-echo "0" > "$TMPDIR/c1.exit"; echo "not run for $LANG" > "$TMPDIR/c1.log"
-echo "0" > "$TMPDIR/c2.exit"; echo "not run for $LANG" > "$TMPDIR/c2.log"
+echo "0" > "$GATE_TMPDIR/c1.exit"; echo "not run for $GATE_LANG" > "$GATE_TMPDIR/c1.log"
+echo "0" > "$GATE_TMPDIR/c2.exit"; echo "not run for $GATE_LANG" > "$GATE_TMPDIR/c2.log"
 
 # run_step <tool> <result-prefix> <command...>: run only if the tool is on PATH,
 # otherwise record exit 0 and log a graceful skip. The `&& rc=0 || rc=$?` idiom
@@ -160,11 +165,11 @@ run_step() {
     tool="$1"; prefix="$2"; shift 2
     if command -v "$tool" >/dev/null 2>&1; then
         local rc=0
-        "$@" > "$TMPDIR/$prefix.log" 2>&1 && rc=0 || rc=$?
-        echo "$rc" > "$TMPDIR/$prefix.exit"
+        "$@" > "$GATE_TMPDIR/$prefix.log" 2>&1 && rc=0 || rc=$?
+        echo "$rc" > "$GATE_TMPDIR/$prefix.exit"
     else
-        echo "0" > "$TMPDIR/$prefix.exit"
-        echo "skipped: $tool absent" > "$TMPDIR/$prefix.log"
+        echo "0" > "$GATE_TMPDIR/$prefix.exit"
+        echo "skipped: $tool absent" > "$GATE_TMPDIR/$prefix.log"
     fi
 }
 
@@ -174,7 +179,7 @@ run_step() {
 C1_LABEL="(none)"
 C2_LABEL="(none)"
 
-case "$LANG" in
+case "$GATE_LANG" in
     go)
         C1_LABEL="go vet"; C2_LABEL="go build"
         run_step go c1 go vet ./...
@@ -198,20 +203,22 @@ esac
 # sync-phase commit (unexpected for a docs sync). Informational only — it does NOT
 # drive the block decision. Language-specific manifest set.
 DEPS_MANIFESTS=""
-case "$LANG" in
+case "$GATE_LANG" in
     go)     DEPS_MANIFESTS="go.mod go.sum" ;;
     node)   DEPS_MANIFESTS="package.json package-lock.json yarn.lock pnpm-lock.yaml" ;;
     python) DEPS_MANIFESTS="pyproject.toml requirements.txt poetry.lock" ;;
     rust)   DEPS_MANIFESTS="Cargo.toml Cargo.lock" ;;
 esac
-git diff HEAD~1..HEAD -- $DEPS_MANIFESTS > "$TMPDIR/deps.diff" 2>&1 || true
+# Reuse the initial-commit-safe DIFF_RANGE computed above (HEAD~1..HEAD would
+# fail on an initial commit; DIFF_RANGE already falls back to the empty tree).
+git diff "$DIFF_RANGE" -- $DEPS_MANIFESTS > "$GATE_TMPDIR/deps.diff" 2>&1 || true
 DEPS_MODIFIED=0
-if [ -s "$TMPDIR/deps.diff" ]; then
+if [ -s "$GATE_TMPDIR/deps.diff" ]; then
     DEPS_MODIFIED=1
 fi
 
-C1_EXIT=$(cat "$TMPDIR/c1.exit")
-C2_EXIT=$(cat "$TMPDIR/c2.exit")
+C1_EXIT=$(cat "$GATE_TMPDIR/c1.exit")
+C2_EXIT=$(cat "$GATE_TMPDIR/c2.exit")
 
 # Decision
 DECISION="allow"
@@ -230,12 +237,13 @@ if [ "${MOAI_SYNC_GATE_BLOCKING:-0}" = "1" ]; then MODE="blocking"; else MODE="a
 # Emit a Stop-schema-compliant response.
 #
 # Advisory (default): a failing check emits ONLY {"systemMessage": ...} — a
-# non-blocking warning. Per Claude Code Stop-hook semantics, stdout carrying
-# {"decision":"block"} blocks the turn REGARDLESS of exit code, so the advisory
-# path MUST NOT emit a "decision" field.
+# non-blocking warning. The "decision":"block" stdout field is the blocking
+# channel (honored on exit 0), so the advisory path MUST NOT emit it.
 #
 # Blocking (opt-in, MOAI_SYNC_GATE_BLOCKING=1): a failing check emits
-# {"decision":"block", ...} and exits 2 below — this blocks the turn.
+# {"decision":"block", ...} on stdout — this blocks the turn. The hook still
+# exits 0: per Claude Code hook semantics, stdout JSON is honored only on
+# exit 0 (on exit 2 stdout is discarded and only stderr is surfaced).
 #
 # On allow, stdout is intentionally empty (silent pass); the audit log records detail.
 if [ "$DECISION" = "block" ]; then
@@ -249,13 +257,11 @@ if [ "$DECISION" = "block" ]; then
 fi
 
 mkdir -p "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs"
-echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [sync-phase-quality-gate] language=$LANG mode=$MODE decision=$DECISION $C1_LABEL=$C1_EXIT $C2_LABEL=$C2_EXIT deps_modified=$DEPS_MODIFIED head=$HEAD_SHA" \
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [sync-phase-quality-gate] language=$GATE_LANG mode=$MODE decision=$DECISION $C1_LABEL=$C1_EXIT $C2_LABEL=$C2_EXIT deps_modified=$DEPS_MODIFIED head=$HEAD_SHA" \
     >> "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs/sync-quality-gate.log"
 
-# Blocking exit-2 path is dormant and enabled only when MOAI_SYNC_GATE_BLOCKING=1.
-# With the flag unset (the shipped default), a "block" decision surfaces only as an
-# advisory systemMessage above and the hook exits 0 so the Stop event is not blocked.
-if [ "$DECISION" = "block" ] && [ "$MODE" = "blocking" ]; then
-    exit 2
-fi
+# The hook always exits 0. In blocking mode the {"decision":"block"} stdout JSON
+# above is the blocking channel — exiting 2 here would make Claude Code discard
+# that stdout JSON and surface only stderr (which the wrappers redirect away),
+# silently losing the block reason.
 exit 0

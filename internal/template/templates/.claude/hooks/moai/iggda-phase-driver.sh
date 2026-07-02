@@ -10,34 +10,40 @@
 # asymmetric orchestrator-subagent boundary — hooks return exit codes + JSON,
 # the orchestrator translates blocks to AskUserQuestion).
 #
-# Recovery-Signal Carve-Out: on a recovery-turn stopReason (PTL /
-# max_output_tokens / media_size / compact-failure) OR a withheld-recoverable
-# error, this hook exits 0 immediately (never blocks a recovery). See
+# Recovery-Signal Carve-Out: when the Stop input carries stop_hook_active=true
+# (a Stop hook already continued this turn — the official loop guard) OR a
+# best-effort recovery-turn keyword, this hook exits 0 immediately (never
+# blocks a recovery). See
 # .claude/rules/moai/workflow/runtime-recovery-doctrine.md §4.
 #
-# Exit codes:
-#   0 = continue (turn may end; predicate either held or was not evaluated)
-#   2 = block (predicate failed; orchestrator translates JSON to AskUserQuestion)
-#
-# JSON output (stdout, when blocking): {"continue": false, "stopReason": "...",
-# "details": {...}, "ledger_note": "<human-readable block reason>"}
+# Delivery channel: the hook always exits 0. A block is signaled via stdout
+# JSON {"decision":"block","reason":"..."} — per Claude Code Stop-hook
+# semantics, stdout JSON is honored only on exit 0 (on exit 2 stdout is
+# discarded and only stderr is surfaced, which the generated wrappers redirect
+# to a log file). On a pass, stdout is intentionally empty (silent continue).
 
 set -u
 
 # --- Read stdin JSON from Claude Code ---
 INPUT=$(cat)
 
-# --- Recovery-Signal Carve-Out ---
-# If the turn's stopReason indicates a recovery signal OR a withheld-recoverable
-# error, exit 0 immediately. Blocking a recovery turn is the death-spiral shape.
+# --- Loop guard + Recovery-Signal Carve-Out ---
+# stop_hook_active (official Stop input field) is true when a Stop hook has
+# already continued the turn — blocking again risks the death-spiral loop, so
+# exit 0 immediately. The stopReason keyword scan below is best-effort only
+# (stopReason is not part of the official Stop stdin contract).
 stop_reason=""
 if command -v jq &> /dev/null; then
-    stop_reason=$(echo "$INPUT" | jq -r '.stop_hook_active // .stopReason // empty' 2>/dev/null || echo "")
+    stop_hook_active=$(echo "$INPUT" | jq -r '.stop_hook_active // false' 2>/dev/null || echo "false")
+    if [ "$stop_hook_active" = "true" ]; then
+        exit 0
+    fi
+    stop_reason=$(echo "$INPUT" | jq -r '.stopReason // empty' 2>/dev/null || echo "")
 fi
 # Recovery-signal keywords (runtime-recovery-doctrine §1 withheld-recoverable set).
 case "$stop_reason" in
-    *prompt_too_long*|*max_output_tokens*|*media_size*|*compact*|*end_turn*)
-        # Recovery turn OR normal end-turn — do not block. Exit 0.
+    *prompt_too_long*|*max_output_tokens*|*media_size*|*compact*)
+        # Recovery turn — do not block. Exit 0.
         exit 0
         ;;
 esac
@@ -53,13 +59,15 @@ if [ -z "$SPEC_ID" ]; then
 fi
 
 # --- Read progress.md for the current SPEC ---
-PROGRESS_MD="$CLAUDE_PROJECT_DIR/.moai/specs/${SPEC_ID}/progress.md"
+# CLAUDE_PROJECT_DIR is guarded (set -u): fall back to $PWD when unset.
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
+PROGRESS_MD="$PROJECT_ROOT/.moai/specs/${SPEC_ID}/progress.md"
 if [ ! -f "$PROGRESS_MD" ]; then
     # progress.md absent — cannot evaluate predicate. Graceful degradation: exit 0.
     exit 0
 fi
 
-# --- Invoke moai spec audit --json --filter-spec=<SPEC-ID> (M5 dependency) ---
+# --- Invoke moai spec audit --json --filter-spec=<SPEC-ID> ---
 # This is the dedicated verification tool per verification-claim-integrity.md §1.1
 # surface 3. We do NOT infer phase completion from frontmatter text alone.
 MUST_FIX_COUNT=0
@@ -78,11 +86,14 @@ fi
 # decision based on the full predicate (plan-auditor verdict, sync-auditor score,
 # go test exit, git status). This hook only blocks when MUST-FIX drift exists.
 if [ "${MUST_FIX_COUNT:-0}" -gt 0 ]; then
-    # MUST-FIX drift blocks phase advance. Emit JSON block + exit 2.
-    # The orchestrator translates this to AskUserQuestion (NEVER done here).
-    printf '{"continue": false, "stopReason": "iggda_must_fix_drift", "details": {"must_fix_count": %s, "spec_id": "%s"}, "ledger_note": "IGGDA phase advance blocked: %s MUST-FIX drift finding(s) detected by moai spec audit --filter-spec=%s"}\n' \
-        "$MUST_FIX_COUNT" "$SPEC_ID" "$MUST_FIX_COUNT" "$SPEC_ID"
-    exit 2
+    # MUST-FIX drift blocks phase advance. Emit the Stop block decision on
+    # stdout + exit 0 (the JSON decision field is the blocking channel; exit 2
+    # would discard stdout). The orchestrator translates this to
+    # AskUserQuestion (NEVER done here). The reason text doubles as the
+    # ledger-closing note per agent-common-protocol.md § Ledger Closure.
+    printf '{"decision":"block","reason":"IGGDA phase advance blocked: %s MUST-FIX drift finding(s) detected by moai spec audit --filter-spec=%s"}\n' \
+        "$MUST_FIX_COUNT" "$SPEC_ID"
+    exit 0
 fi
 
 # --- Predicate holds (or could not be evaluated) → exit 0 (continue) ---

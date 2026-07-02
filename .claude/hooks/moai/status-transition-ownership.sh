@@ -56,9 +56,11 @@ esac
 #   * → archived    : manager-docs
 #   * → rejected    : orchestrator (recorded by manager-docs)
 
-# Read current status from file on disk (post-edit state for Edit/MultiEdit; pre-write state for Write)
+# Read current status from file on disk (post-edit state for Edit/MultiEdit; pre-write state for Write).
+# [[:space:]] (not \s): BSD sed/grep on macOS do not support the \s escape —
+# with \s the pattern silently fails to strip, leaving stray whitespace in the log.
 if [ -f "$FILE_PATH" ]; then
-    CURRENT_STATUS=$(grep -E '^status:\s*' "$FILE_PATH" 2>/dev/null | head -1 | sed 's/^status:\s*//;s/\s*$//')
+    CURRENT_STATUS=$(grep -E '^status:[[:space:]]*' "$FILE_PATH" 2>/dev/null | head -1 | sed 's/^status:[[:space:]]*//;s/[[:space:]]*$//')
 else
     CURRENT_STATUS="<file absent — Write creating new>"
 fi

@@ -10,9 +10,9 @@ Claude Code hooks for extending functionality with custom scripts.
 
 26 hook event types + 4 RETIRE-OBS-ONLY events = 30 total Go handlers (retired).
 **Note**: The moai-adk Go `EventSetup` constant is retired (orphan, no handler implementation); the upstream Claude Code `Setup` event remains a current, usable event.
-Active settings.json keys: 22. RETIRE-OBS-ONLY (Go-only, opt-in via system.yaml): 4. Total: 26 events.
+Active settings.json keys: 20 (the shipped settings.json registers 20 hook event keys). RETIRE-OBS-ONLY (Go-only, opt-in via system.yaml): 4.
 
-**Active events (22 in settings.json + 4 RETIRE-OBS-ONLY in Go = 26 events):**
+**Event reference (20 registered in settings.json + 4 RETIRE-OBS-ONLY in Go; the table also documents upstream events MoAI does not register by default — PostSession, PostToolBatch, UserPromptExpansion, WorktreeCreate, WorktreeRemove):**
 
 | Event | Matcher | Can Block | Description |
 |-------|---------|-----------|-------------|
@@ -219,47 +219,67 @@ Hooks are defined in `.claude/hooks/` directory:
 
 ## Configuration
 
-Define hooks in `.claude/settings.json`:
+Define hooks in `.claude/settings.json`. Each event key maps to an array of matcher groups; each group carries an inner `"hooks"` array of hook definitions (the inner array is REQUIRED — a hook definition placed directly in the outer array is not valid schema):
 
 ```json
 {
   "hooks": {
     "SessionStart": [{
-      "type": "command",
-      "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
-      "timeout": 5
+      "matcher": "startup|resume|clear|compact",
+      "hooks": [{
+        "type": "command",
+        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
+        "timeout": 30
+      }]
     }],
     "PreCompact": [{
-      "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
-      "timeout": 5
+      "matcher": "manual|auto",
+      "hooks": [{
+        "type": "command",
+        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
+        "timeout": 5
+      }]
     }],
     "PreToolUse": [{
       "matcher": "Write|Edit|Bash",
-      "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
-      "timeout": 5
+      "hooks": [{
+        "type": "command",
+        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
+        "timeout": 5
+      }]
     }],
     "PostToolUse": [{
       "matcher": "Write|Edit",
-      "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
-      "timeout": 10,
-      "async": true
+      "hooks": [{
+        "type": "command",
+        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
+        "timeout": 10,
+        "async": true
+      }]
     }],
     "Stop": [{
-      "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\"",
-      "timeout": 5
+      "hooks": [{
+        "type": "command",
+        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\"",
+        "timeout": 5
+      }, {
+        "type": "command",
+        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/sync-phase-quality-gate.sh\"",
+        "timeout": 60
+      }]
     }],
     "TeammateIdle": [{
       "hooks": [{
         "type": "command",
-        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\"",
-        "timeout": 10
+        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-teammate-idle.sh\"",
+        "timeout": 5
       }]
     }],
     "TaskCompleted": [{
       "hooks": [{
         "type": "command",
-        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\"",
-        "timeout": 10
+        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-completed.sh\"",
+        "timeout": 5
       }]
     }]
   }
@@ -316,18 +336,21 @@ MoAI-ADK implements intelligent handler logic beyond simple logging:
 
 All hook types support a `timeout` field (in seconds). The maximum timeout is **600 seconds (10 minutes)** across all hook types.
 
-MoAI-ADK uses shorter independent timeout policies for operational efficiency:
+MoAI-ADK uses shorter independent timeout policies for operational efficiency. The values below are the timeouts actually registered in the shipped settings.json:
 
-| Hook Type | MoAI Default | Max Value | Notes |
-|-----------|-------------|-----------|-------|
-| SessionStart, PreCompact, PreToolUse | 5s | 600s | Synchronous fast lifecycle hooks (blocking default) |
-| PostToolUse | 10s + `async: true` | 600s | Exception: background LSP/AST/MX validation runs async (10s is a per-run background ceiling, not a blocking wait) |
-| PostCompact, PostToolUseFailure, Stop | 10s | 600s | Context/recovery hooks |
-| TeammateIdle, TaskCompleted | 10s | 600s | Agent lifecycle hooks |
+| Hook registration | Shipped timeout | Max Value | Notes |
+|-------------------|-----------------|-----------|-------|
+| SessionStart | 30s | 600s | Session bootstrap (context injection, version checks) needs more headroom than the 5s fast-hook default |
+| SessionEnd | 10s | 600s | Session teardown |
+| PostToolUse (handle-post-tool) | 10s + `async: true` | 600s | Exception: background LSP/AST/MX validation runs async (10s is a per-run background ceiling, not a blocking wait) |
+| PostToolUse (status-transition-ownership.sh) | 5s | 600s | Advisory governance gate |
+| Stop (handle-stop) | 5s | 600s | Turn-end wrapper |
+| Stop (sync-phase-quality-gate.sh) | 60s | 600s | Runs fast structural checks (`go vet` + `go build` etc.) — needs headroom beyond the 5s wrapper default |
 | UserPromptSubmit | 5s | 30s | Blocks user interaction; reduced max |
+| All other registered events (PreCompact, PreToolUse, PostToolUseFailure, SubagentStart, SubagentStop, TeammateIdle, TaskCompleted, ConfigChange, StopFailure, PostCompact, InstructionsLoaded, CwdChanged, FileChanged, PermissionDenied, PermissionRequest) and the opt-in harness-observe entries | 5s | 600s | Synchronous fast lifecycle hooks (blocking default; PostToolUse harness-observe is `async: true`) |
 | prompt, agent hooks | 30s-60s | 600s | Evaluation/verification hooks |
 
-The **5s default applies to synchronous blocking hooks** (SessionStart, PreToolUse, etc.). **PostToolUse is the documented exception at 10s + `async: true`** because its LSP/AST/MX validations run in the background — this matches the JSON example below (`PostToolUse` block with `timeout: 10, async: true`). These MoAI defaults (5s, 10s, 30s) are valid independent policies and do NOT violate the 600s upper bound. Customize the `timeout` field in hook definitions to adjust per-hook timing as needed.
+The **5s default applies to synchronous blocking hooks** (PreCompact, PreToolUse, etc.); **SessionStart is 30s** (session bootstrap) and **SessionEnd is 10s**. **PostToolUse (handle-post-tool) is the documented exception at 10s + `async: true`** because its LSP/AST/MX validations run in the background — this matches the JSON example below (`PostToolUse` block with `timeout: 10, async: true`). **The Stop-event sync-phase-quality-gate entry is 60s** so the gate's compile/vet checks are not killed mid-run. These MoAI values (5s, 10s, 30s, 60s) are valid independent policies and do NOT violate the 600s upper bound. Customize the `timeout` field in hook definitions to adjust per-hook timing as needed.
 
 ## Rules
 

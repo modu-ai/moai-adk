@@ -57,7 +57,7 @@
 {{- else}}
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
 {{- end}}
-            "timeout": 10,
+            "timeout": 5,
             "type": "command"
           }
         ],
@@ -122,7 +122,7 @@
 {{- else}}
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/sync-phase-quality-gate.sh\"",
 {{- end}}
-            "timeout": 10,
+            "timeout": 60,
             "type": "command"
           }{{ if .HookOptIn.Enabled }},
           {
@@ -381,7 +381,11 @@
   },
   "statusLine": {
     "type": "command",
+{{- if eq .Platform "windows"}}
+    "command": "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
+{{- else}}
     "command": "$CLAUDE_PROJECT_DIR/.moai/status_line.sh",
+{{- end}}
     "refreshInterval": 10
   },
   "outputStyle": "MoAI",

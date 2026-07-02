@@ -20,19 +20,26 @@ fi
 # is a heuristic shell-metacharacter counter — NOT a parser (see coding-standards.md
 # §Bash Risk-Amplifier Doctrine (4)). It MUST NOT block, exit non-zero, or break
 # the session on a false positive. Every code path below exits 0 or falls through.
-BASH_SUBCOMMAND_SOFT_CAP=5
-payload=$(head -c 65536)
+# bash_subcommand_soft_cap is the BASH_SUBCOMMAND_SOFT_CAP doctrine constant
+# (coding-standards.md §Bash Risk-Amplifier Doctrine (2)); the shell variable is
+# lowercase because the template renderer flags uppercase dollar-prefixed names
+# as unexpanded dynamic tokens.
+bash_subcommand_soft_cap=5
+# 1MB stdin cap: a large Write/Edit payload must not be truncated mid-JSON,
+# which would silently skip the security scan (64KB was too small).
+payload=$(head -c 1048576)
 # Only meaningful for the Bash tool (matcher scope is Write|Edit|Bash; Write/Edit have no command).
 if printf '%s' "$payload" | grep -q '"tool_name"[[:space:]]*:[[:space:]]*"Bash"'; then
     # Extract the command value (best-effort, no jq dependency).
     cmd=$(printf '%s' "$payload" | grep -oE '"command"[[:space:]]*:[[:space:]]*"([^"\\]|\\.)*"' | head -n1 | sed -E 's/^"command"[[:space:]]*:[[:space:]]*"//; s/"$//')
     if [ -n "$cmd" ]; then
         # Count compound-command metacharacters: | && || ; backtick $(
-        # `&&` and `||` each count as one subcommand boundary; pipe/semicolon/substitution too.
-        meta_count=$(printf '%s' "$cmd" | grep -oE '\|\||&&|[|;]|`\|\$\(' | wc -l | tr -d ' ')
-        if [ -n "$meta_count" ] && [ "$meta_count" -gt "$BASH_SUBCOMMAND_SOFT_CAP" ]; then
-            printf '[moai:bash-risk] WARN: subcommand count %s exceeds soft cap %d — consider splitting into a script file or delegating (coding-standards.md §Bash Risk-Amplifier Doctrine)\n' "$meta_count" "$BASH_SUBCOMMAND_SOFT_CAP" >&2
-            printf '[moai:bash-risk] WARN: subcommand count %s exceeds soft cap %d — consider splitting into a script file or delegating (coding-standards.md §Bash Risk-Amplifier Doctrine)\n' "$meta_count" "$BASH_SUBCOMMAND_SOFT_CAP" >>"$MOAI_HOOK_STDERR_LOG" 2>/dev/null || true
+        # `&&` and `||` each count as one subcommand boundary; pipe/semicolon/
+        # substitution too (a `...` backtick pair counts as 2 — open + close).
+        meta_count=$(printf '%s' "$cmd" | grep -oE '\|\||&&|[|;]|`|\$\(' | wc -l | tr -d ' ')
+        if [ -n "$meta_count" ] && [ "$meta_count" -gt "$bash_subcommand_soft_cap" ]; then
+            printf '[moai:bash-risk] WARN: subcommand count %s exceeds soft cap %d — consider splitting into a script file or delegating (coding-standards.md §Bash Risk-Amplifier Doctrine)\n' "$meta_count" "$bash_subcommand_soft_cap" >&2
+            printf '[moai:bash-risk] WARN: subcommand count %s exceeds soft cap %d — consider splitting into a script file or delegating (coding-standards.md §Bash Risk-Amplifier Doctrine)\n' "$meta_count" "$bash_subcommand_soft_cap" >>"$MOAI_HOOK_STDERR_LOG" 2>/dev/null || true
         fi
     fi
 fi
