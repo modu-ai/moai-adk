@@ -2,7 +2,7 @@
 id: SPEC-TOKEN-EFFICIENCY-001
 title: "Token-Efficiency P0 bundle — always-loaded budget guard + cache-hit-ratio statusline"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-07-02
 updated: 2026-07-02
 author: manager-spec
@@ -13,6 +13,7 @@ lifecycle: spec-anchored
 tags: "token-efficiency, prompt-cache, statusline, budget-guard, observability, tier-m"
 issue_number: null
 tier: M
+era: V3R6
 ---
 
 # SPEC-TOKEN-EFFICIENCY-001 — Token-Efficiency P0 bundle
