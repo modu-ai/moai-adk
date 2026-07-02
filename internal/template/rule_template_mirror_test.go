@@ -74,6 +74,14 @@ var workflowOptMirroredPaths = []string{
 	//   (the former 5+1+1 Agent Teams pattern file was deleted per
 	//   SPEC-V3R6-RULES-SSOT-DEDUP-001 M6 — its content folded into
 	//   team-pattern-cookbook.md 6th pattern.)
+	//
+	// runtime-recovery-doctrine.md is ALSO a §25 sanitized pair and is
+	// deliberately NOT added to this byte-parity allowlist: its template mirror
+	// strips internal provenance (SPEC-IDs, REQ/AC tokens, CONST registry ID,
+	// Origin line) while keeping the PUBLIC book1 + arXiv citations, so
+	// byte-parity cannot hold. Its doctrine-propagation parity is enforced by
+	// TestSanitizedPairParity (sanitized_pair_parity_test.go registry) and its
+	// mirror cleanliness by TestTemplateNoInternalContentLeak — not here.
 }
 
 // SPEC-V3R5-LATE-BRANCH-001 mirrored files. Each entry MUST have a byte-identical

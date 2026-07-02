@@ -68,6 +68,12 @@ var sanitizedPairPaths = []string{
 	".claude/agents/moai/plan-auditor.md",
 	".claude/rules/moai/core/askuser-protocol.md",
 	".claude/rules/moai/core/verification-claim-integrity.md",
+	// runtime-recovery-doctrine.md: local copy retains internal provenance
+	// (SPEC-IDs, REQ/AC tokens, CONST registry ID, Origin line); the template
+	// mirror is held sanitized per §25 (internal tokens stripped/reworded to
+	// generic prose, PUBLIC book1 + arXiv citations kept). Newly deployed so the
+	// 5 shipped template files that cross-reference it no longer dangle.
+	".claude/rules/moai/workflow/runtime-recovery-doctrine.md",
 }
 
 // tokenNormalizer pairs a regex matching an intentionally-divergent internal
