@@ -33,7 +33,7 @@ var acknowledgedUnloadedSections = []string{
 var acknowledgedDedicatedLoaders = []string{
 	"cache",       // dedicated: LoadCacheConfig (SPEC-V3R6-PROMPT-CACHE-001) — consumed by the SDK wrapper cache_control injector, not the aggregate Loader.Load chain
 	"harness",     // dedicated: LoadHarnessConfig (HRN-001) — stricter FROZEN validation semantics
-	"tool-policy", // dedicated: toolpolicy.Load / LoadFromProjectDir (internal/config/toolpolicy) — codegen SSOT, loaded outside Loader.Load chain
+	"tool-policy", // dev-only: repo-root SSOT for `moai tool-policy` codegen (internal/config/toolpolicy); removed from template distribution as an orphan (no user-runtime consumer — settings.json permissions render independently from settings.json.tmpl); entry retained to acknowledge the dedicated loader
 }
 
 // fileNameToSectionKey maps YAML filename stems to their loadedSections key when
