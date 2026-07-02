@@ -2,7 +2,7 @@
 id: SPEC-HANDOFF-CTXGUIDE-001
 title: "256K 윈도우 핸드오프 안내 임계 결함 수정 — 구현 계획"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-03
 updated: 2026-07-03
 author: MoAI

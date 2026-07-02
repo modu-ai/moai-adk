@@ -116,6 +116,83 @@ func TestShouldShowHandoffGuide_NilDataFalse(t *testing.T) {
 	}
 }
 
+// ---------- SPEC-HANDOFF-CTXGUIDE-001: size-agnostic band cases ----------
+//
+// The former exact-match switch (1M / 200K only) permanently hid the handoff
+// guide for every other window size. These cases lock in the band logic:
+//   - window >= 500K → >=50% ; 0 < window < 500K → >=90% ; window <= 0 → hidden.
+// AC-256K-006 (window == 0 → hidden) is already covered by
+// TestShouldShowHandoffGuide_UnknownCwSizeFalse above.
+
+func TestShouldShowHandoffGuide_TwoHundredFiftySixKNinetyPercentTrue(t *testing.T) {
+	t.Parallel()
+
+	// AC-256K-001: 256K window at raw 90% must show the guide (90% band).
+	data := &StatusData{
+		Memory: MemoryData{
+			ContextWindowSize: 256_000,
+			TokensUsed:        230_400, // 90.0% of 256K
+			Available:         true,
+		},
+	}
+
+	if !shouldShowHandoffGuide(data) {
+		t.Fatalf("expected true for 256K @ 90%%, got false")
+	}
+}
+
+func TestShouldShowHandoffGuide_TwoHundredFiftySixKEightyNinePercentFalse(t *testing.T) {
+	t.Parallel()
+
+	// AC-256K-002: 256K window at raw 89% stays below the 90% band → hidden.
+	data := &StatusData{
+		Memory: MemoryData{
+			ContextWindowSize: 256_000,
+			TokensUsed:        227_840, // 89.0% of 256K
+			Available:         true,
+		},
+	}
+
+	if shouldShowHandoffGuide(data) {
+		t.Fatalf("expected false for 256K @ 89%%, got true")
+	}
+}
+
+func TestShouldShowHandoffGuide_FiveHundredKFiftyPercentTrue(t *testing.T) {
+	t.Parallel()
+
+	// AC-256K-005 (large band): 500K is the large-window cutoff → 50% band.
+	data := &StatusData{
+		Memory: MemoryData{
+			ContextWindowSize: 500_000,
+			TokensUsed:        250_000, // 50.0% of 500K
+			Available:         true,
+		},
+	}
+
+	if !shouldShowHandoffGuide(data) {
+		t.Fatalf("expected true for 500K @ 50%%, got false")
+	}
+}
+
+func TestShouldShowHandoffGuide_JustBelowFiveHundredKFiftyPercentFalse(t *testing.T) {
+	t.Parallel()
+
+	// AC-256K-005 (band boundary): 499,999 is below the 500K cutoff → 90% band,
+	// so raw ~50% is insufficient → hidden.
+	data := &StatusData{
+		Memory: MemoryData{
+			ContextWindowSize: 499_999,
+			TokensUsed:        250_000, // ~50% of 499,999, well below the 90% band
+			Available:         true,
+		},
+	}
+
+	if shouldShowHandoffGuide(data) {
+		t.Fatalf("expected false for 499,999 @ ~50%% (needs 90%% band), got true")
+	}
+}
+
 // ---------- isXxxEnabled predicate edge cases (default-on contract) ----------
 
 // NOTE: TestIsRepoEnabled_DefaultOnContract removed (layout v3 CH3).

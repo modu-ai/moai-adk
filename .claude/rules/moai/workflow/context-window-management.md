@@ -25,6 +25,7 @@ The orchestrator CONSUMES Claude Code's graduated-compaction layers; it does NOT
 | Model class | Window | Handoff threshold | Absolute ceiling |
 |-------------|--------|-------------------|------------------|
 | Opus 4.8 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
+| Opus/Fable (256K) | 256,000 tokens | **90%** | ~230,000 tokens |
 | Sonnet/Opus standard (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 | Haiku (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 

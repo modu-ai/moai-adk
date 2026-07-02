@@ -28,3 +28,46 @@ Debt 해소(orchestrator-direct, plan-phase — 게이트 미교차):
 - D3–D5(MINOR) 수용 debt.
 
 게이트 상태: 구현 착수 승인(AskUserQuestion) 발행 → 사용자 AFK 무응답 → run-phase 진입 **보류**. 커밋/푸시 미수행(outward-facing, AFK 중 보류). 다음 세션: 게이트 재발행 → run-phase.
+
+## §E.2 Run-phase Evidence
+
+Run-phase M1 (cycle_type=tdd, Tier S). 실행 방식: L1 isolation worktree(`agent-afd4b0e338b708936`)에서 수행. worktree 초기 base가 stale(2510c2775 — SPEC 산출물 부재)여서 clean 트리를 main HEAD(b303d9916)로 정렬 후 편집.
+
+RED→GREEN→REFACTOR 요약:
+- RED: stdinfields_test.go에 256K/500K 밴드 케이스 4종 추가. 256K@90 + 500K@50 두 "show" 케이스가 기존 exact-match switch(default:false)에서 FAIL 확인(관측: `stdinfields_test.go:140 expected true for 256K @ 90%, got false` + `:174 expected true for 500K @ 50%`).
+- GREEN: renderer.go의 `switch cwSize{case 1_000_000/case 200_000/default}` → `if cwSize>=500_000{return rawPct>=50.0}; return rawPct>=90.0` 밴드 로직 교체. `cwSize<=0` 가드(L576-578) 무변경. 10개 handoff 테스트 전부 GREEN.
+- REFACTOR: doc-comment 임계표 + `@MX:NOTE`를 크기 무관 밴드 표현(`>=500K→>=50% ; 0<size<500K→>=90% ; <=0→hidden`)으로 갱신. renderBarsInline L319-320 stale comment은 선언 편집 범위(L555-589) 밖이라 미접촉(잔여, §Residual).
+
+AC 실측 매트릭스 (관측 명령 + 실제 출력):
+
+| AC | Given/When | Then | Status | Evidence |
+|----|-----------|------|--------|----------|
+| AC-256K-001 | 256000 @ rawPct=90 (used 230400) | == true | PASS | `TestShouldShowHandoffGuide_TwoHundredFiftySixKNinetyPercentTrue --- PASS` |
+| AC-256K-002 | 256000 @ rawPct=89 (used 227840) | == false | PASS | `..._TwoHundredFiftySixKEightyNinePercentFalse --- PASS` |
+| AC-256K-003 | 1000000 @ 50 / 49 | true / false (보존) | PASS | 기존 `..._OneMillionFiftyPercentTrue --- PASS` + `..._OneMillionFortyNinePercentFalse --- PASS` |
+| AC-256K-004 | 200000 @ 90 / 89 | true / false (보존) | PASS | 기존 `..._TwoHundredKNinetyPercentTrue --- PASS` + `..._TwoHundredKEightyNinePercentFalse --- PASS` |
+| AC-256K-005 | 500000@50 / 499999@50 | true(대형) / false(90% 밴드) | PASS | `..._FiveHundredKFiftyPercentTrue --- PASS` + `..._JustBelowFiveHundredKFiftyPercentFalse --- PASS` |
+| AC-256K-006 | 0 @ any | == false | PASS | 기존 `..._UnknownCwSizeFalse --- PASS` (extend/confirm; 신규 중복 미추가) |
+| AC-256K-007 | 문서 grep | `256,000` + `90%` 행 존재 | PASS | `grep -n '256' … : 28:| Opus/Fable (256K) | 256,000 tokens | **90%** | ~230,000 tokens |` |
+| AC-256K-008 | 회귀 | `go test ./internal/statusline/` 통과 | PASS | `ok  github.com/modu-ai/moai-adk/internal/statusline 3.203s` |
+| AC-256K-009 | 크로스플랫폼 | host + windows build exit 0 | PASS | `go build ./...` exit 0 / `GOOS=windows GOARCH=amd64 go build ./...` exit 0 |
+
+## §E.3 Run-phase Audit-Ready Signal
+
+```yaml
+run_complete_at: 2026-07-03
+run_commit_sha: <M1-commit-pending — 본 progress.md를 포함하는 M1 커밋을 self-reference; era 분류는 §E.4 sync_commit_sha 기반이라 backfill 불요, era:V3R6 explicit>
+run_status: green
+ac_pass_count: 9
+ac_fail_count: 0
+preserve_list_post_run_count: 5   # renderBarsInline 단일단계 (⚠️/clear) 렌더 유지 · memory.go ContextWindowSize/TokenBudget 유도 불변 · 미커밋 ♻️(renderCacheHit L311) 무접촉(git diff: NO renderCacheHit-region changes) · cache_hit_test.go clean · 신규 config/state 파일 0
+l44_pre_commit_fetch: "origin/main=2510c2775 · rev-list --left-right 0 1 (origin 0 ahead, local 1 ahead=plan commit b303d9916) · clean, race 없음"
+l44_post_push_fetch: "<post-push 기록: agent 반환 리포트 E6>"
+new_warnings_or_lints_introduced: 0   # go vet exit 0 · golangci-lint ./internal/statusline/... = 0 issues
+cross_platform_build:
+  host: "exit 0"
+  windows_amd64: "exit 0"
+coverage_statusline_pkg: "84.7% (baseline b303d9916 = 84.7% — 회귀 아님, package pre-existing; shouldShowHandoffGuide func-level 100%)"
+total_run_phase_files: 6   # renderer.go · stdinfields_test.go · context-window-management.md · spec.md · plan.md · progress.md
+m1_to_mN_commit_strategy: "single atomic M1 commit (Tier S) — HEAD:main fast-forward push"
+```

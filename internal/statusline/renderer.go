@@ -554,20 +554,27 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 
 // shouldShowHandoffGuide returns true when accumulated context usage crosses
 // the model-class threshold and the orchestrator should hint the user toward
-// a /clear handoff (REQ-SSE-005). Threshold table:
+// a /clear handoff (REQ-SSE-005). Size-agnostic band logic:
 //
-//   - 1M context (ContextWindowSize == 1,000,000): >=50% raw usage
-//   - 200K context (ContextWindowSize == 200,000):  >=90% raw usage
-//   - other / 0 window size: hidden (safety default — no marker without raw signal)
+//   - large window   (ContextWindowSize >= 500,000):        >=50% raw usage
+//   - standard/medium (0 < ContextWindowSize < 500,000):    >=90% raw usage
+//   - unknown window  (ContextWindowSize <= 0):              hidden (safety default)
+//
+// The band replaces the former exact-match switch (1,000,000 / 200,000 only),
+// which fell through to default:false for every other window size — so 256,000
+// (the current non-1M Opus/Fable class) was permanently hidden regardless of
+// usage. 256K shares the 200K headroom band (>=90%); the 500K cutoff cleanly
+// separates the 1M large-window class (>=50%) from the standard/medium class
+// (>=90%). REQ-256K-001..005.
 //
 // Uses raw Memory.ContextWindowSize (Claude Code stdin context_window_size)
 // instead of Memory.TokenBudget — TokenBudget is auto-compact-threshold-scaled
-// (e.g., 1M × 85% = 850K) which would never match the raw 1M/200K switch cases.
+// (e.g., 1M × 85% = 850K) which would never match the raw class boundaries.
 // Boundary defect fix: handoff_guide was permanently hidden because production
 // TokenBudget never equals raw class boundaries (only unit tests bypassed this
 // by injecting raw values directly into MemoryData).
 //
-// @MX:NOTE: [AUTO] 1M=50%/200K=90% thresholds — aligned with context-window-management.md HARD rule.
+// @MX:NOTE: [AUTO] band logic: >=500K → >=50% ; 0<size<500K → >=90% ; <=0 → hidden — aligned with context-window-management.md HARD rule.
 func shouldShowHandoffGuide(data *StatusData) bool {
 	if data == nil {
 		return false
@@ -578,14 +585,10 @@ func shouldShowHandoffGuide(data *StatusData) bool {
 	}
 	used := data.Memory.TokensUsed
 	rawPct := float64(used) * 100.0 / float64(cwSize)
-	switch cwSize {
-	case 1_000_000:
+	if cwSize >= 500_000 {
 		return rawPct >= 50.0
-	case 200_000:
-		return rawPct >= 90.0
-	default:
-		return false
 	}
+	return rawPct >= 90.0
 }
 
 // prReviewStateColor maps a Claude Code v2.1.145 review_state value to a
