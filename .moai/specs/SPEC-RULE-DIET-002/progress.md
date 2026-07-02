@@ -56,5 +56,5 @@ _Ready for plan-auditor review — the KEEP/SCOPE boundary at §A.3 is the focus
 
 - 3-phase close (Tier M, orchestrator-direct sync): status `draft → completed`, era `V3R6`, updated `2026-07-02`.
 - CHANGELOG `### Changed` 엔트리 추가.
-- sync_commit_sha: <backfill>
+- sync_commit_sha: 2035b4af4bb9c240d2ddece7b51669412981368e
 - MX Tag: Tier M — MX는 sync sub-step(3-phase close, 별도 Mx 커밋 없음).
