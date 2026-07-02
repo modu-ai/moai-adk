@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/harness"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/hook/dbsync"
@@ -367,22 +368,20 @@ func endsWithAny(s string, suffixes ...string) bool {
 func runDBSchemaSync(cmd *cobra.Command, _ []string) error {
 	filePath, _ := cmd.Flags().GetString("file")
 
-	// Resolve project root from cwd
-	cwd, err := os.Getwd()
-	if err != nil {
-		cwd = "."
-	}
+	// Resolve project root env-first (CLAUDE_PROJECT_DIR then os.Getwd()) per
+	// internal/hook/CLAUDE.md §B7 — a hook may run with cwd inside a worktree.
+	root := resolveHookProjectRoot()
 
 	// Load migration patterns from db.yaml if available; use defaults otherwise.
-	patterns := loadMigrationPatterns(cwd)
+	patterns := loadMigrationPatterns(root)
 
 	cfg := dbsync.Config{
 		FilePath:          filePath,
 		MigrationPatterns: patterns,
 		ExcludedPatterns:  dbsync.DefaultExcludedPatterns,
-		StateFile:         filepath.Join(cwd, ".moai", "cache", "db-sync", "last-seen.json"),
-		ProposalFile:      filepath.Join(cwd, ".moai", "cache", "db-sync", "proposal.json"),
-		ErrorLogFile:      filepath.Join(cwd, ".moai", "logs", "db-sync-errors.log"),
+		StateFile:         filepath.Join(root, ".moai", "cache", "db-sync", "last-seen.json"),
+		ProposalFile:      filepath.Join(root, ".moai", "cache", "db-sync", "proposal.json"),
+		ErrorLogFile:      filepath.Join(root, ".moai", "logs", "db-sync-errors.log"),
 		DebounceWindow:    10 * time.Second,
 	}
 
@@ -598,31 +597,67 @@ func isHookOptInEnabled(projectRoot string) bool {
 // no write, no append to usage-log.jsonl. Existing log entries are not deleted.
 // Gate is implemented by isHarnessLearningEnabled (fail-open semantics: missing
 // config or parse error preserves baseline observation).
-func runHarnessObserve(cmd *cobra.Command, _ []string) error {
-	// detect project route: based on cwd
+// resolveHookProjectRoot resolves the project root for the harness-observe
+// family + db-schema-sync + harness-classify handlers, env-first per
+// internal/hook/CLAUDE.md §B7: CLAUDE_PROJECT_DIR then os.Getwd(). Hook wrappers
+// run with cwd inside a worktree (~/.moai/worktrees/{project}/{spec}/), so a
+// bare os.Getwd() is NOT the project root — CLAUDE_PROJECT_DIR is authoritative.
+//
+// Mirrors internal/hook/path_resolve.go resolveProjectRootFromEnv semantics
+// (that resolver is unexported): returns "" — never a fabricated "." — when
+// os.Getwd() fails, so a failed resolution is visible rather than silently
+// aliased to the current directory.
+func resolveHookProjectRoot() string {
+	if root := os.Getenv(config.EnvClaudeProjectDir); root != "" {
+		return root
+	}
 	cwd, err := os.Getwd()
 	if err != nil {
-		cwd = "."
+		return ""
 	}
+	return cwd
+}
+
+// readNormalizedHookInput reads and normalizes hook stdin JSON for the
+// harness-observe family. It routes through hook.Protocol.ReadInput, which
+// applies normalizeHookInput (internal/hook/normalize.go), so BOTH Claude Code
+// wire formats decode into the same *hook.HookInput:
+//   - native CC 2.1.x nested camelCase (lastAssistantMessage, agentId,
+//     agentType, agentName, toolName, session.id)
+//   - flat legacy snake_case (last_assistant_message, agent_id, tool_name,
+//     top-level session_id)
+//
+// Prior to this the handlers decoded a single hard-coded convention per handler,
+// so half of each struct silently decoded empty under the other wire format.
+//
+// On read/parse failure a zero-value *hook.HookInput is returned (never nil):
+// the observer is non-blocking and must never fail the tool it observes, so an
+// unparseable payload degrades to empty fields rather than an error.
+func readNormalizedHookInput() *hook.HookInput {
+	input, err := hook.NewProtocol().ReadInput(os.Stdin)
+	if err != nil || input == nil {
+		return &hook.HookInput{}
+	}
+	return input
+}
+
+func runHarnessObserve(cmd *cobra.Command, _ []string) error {
+	// Resolve project root env-first (CLAUDE_PROJECT_DIR then os.Getwd()).
+	root := resolveHookProjectRoot()
 
 	// REQ-HRN-FND-009 gate: if learning.enabled is explicitly false, exit no-op.
 	// stdin is NOT consumed in the no-op path; the hook exits 0 immediately so
 	// the PostToolUse pipeline is non-blocking and leaves usage-log.jsonl untouched.
-	if !isHarnessLearningEnabled(cwd) {
+	if !isHarnessLearningEnabled(root) {
 		return nil
 	}
 
-	// read stdin JSON
-	var hookInput struct {
-		ToolName string `json:"toolName"`
-	}
+	// Read + normalize stdin JSON (handles native camelCase + flat snake_case).
+	// on parsing failure fields degrade to empty (non-blocking: never fails the parent tool).
+	hookInput := readNormalizedHookInput()
 
-	decoder := json.NewDecoder(os.Stdin)
-	// on parsing failure also exit 0 (non-blocking: does not block parent tool call)
-	_ = decoder.Decode(&hookInput)
-
-	logPath := filepath.Join(cwd, ".moai", "harness", "usage-log.jsonl")
-	archiveDir := filepath.Join(cwd, ".moai", "harness", "learning-history", "archive")
+	logPath := filepath.Join(root, ".moai", "harness", "usage-log.jsonl")
+	archiveDir := filepath.Join(root, ".moai", "harness", "learning-history", "archive")
 
 	retention := harness.NewRetention(logPath, archiveDir, nil)
 	obs := harness.NewObserverWithRetention(logPath, retention)
@@ -642,7 +677,7 @@ func runHarnessObserve(cmd *cobra.Command, _ []string) error {
 		ContextHash:   "",
 		TierIncrement: 0,
 	}
-	harness.EstimateContextWeight(&evt, cwd)
+	harness.EstimateContextWeight(&evt, root)
 
 	// log error to stderr but return exit 0 (non-blocking)
 	if err := obs.RecordExtendedEvent(evt); err != nil {
@@ -668,38 +703,31 @@ func runHarnessObserve(cmd *cobra.Command, _ []string) error {
 // last_assistant_message_hash = SHA-256[:16] hex, last_assistant_message_len = byte length.
 // Errors are logged to stderr and the hook returns exit 0 (non-blocking).
 func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
-	cwd, err := os.Getwd()
-	if err != nil {
-		cwd = "."
-	}
+	root := resolveHookProjectRoot()
 
 	// SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-002: HOI master toggle gates the
 	// 3 secondary observability wrappers. Default off; runtime defense-in-depth.
-	if !isHookOptInEnabled(cwd) {
+	if !isHookOptInEnabled(root) {
 		return nil
 	}
 
-	if !isHarnessLearningEnabled(cwd) {
+	if !isHarnessLearningEnabled(root) {
 		return nil
 	}
 
-	// T-A3 spec: nested stdin JSON — last_assistant_message + session.id
-	var hookInput struct {
-		LastAssistantMessage string `json:"last_assistant_message"`
-		Session              struct {
-			ID string `json:"id"`
-		} `json:"session"`
-	}
-	_ = json.NewDecoder(os.Stdin).Decode(&hookInput)
+	// Read + normalize stdin JSON: LastAssistantMessage (native lastAssistantMessage
+	// or flat last_assistant_message) + SessionID (native nested session.id or flat
+	// top-level session_id) both decode correctly via normalizeHookInput.
+	hookInput := readNormalizedHookInput()
 
-	// subject: detect SPEC-ID from cwd (empty string when not found)
-	subject := detectSpecIDFromCwd(cwd)
+	// subject: detect SPEC-ID from the project root (empty string when not found)
+	subject := detectSpecIDFromCwd(root)
 
 	// Compute last_assistant_message_hash + len (only when non-empty)
 	msgHash, msgLen := assistantMessageFields(hookInput.LastAssistantMessage)
 
-	logPath := filepath.Join(cwd, ".moai", "harness", "usage-log.jsonl")
-	archiveDir := filepath.Join(cwd, ".moai", "harness", "learning-history", "archive")
+	logPath := filepath.Join(root, ".moai", "harness", "usage-log.jsonl")
+	archiveDir := filepath.Join(root, ".moai", "harness", "learning-history", "archive")
 	obs := harness.NewObserverWithRetention(logPath, harness.NewRetention(logPath, archiveDir, nil))
 
 	evt := harness.Event{
@@ -707,12 +735,12 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 		Subject:                  subject,
 		ContextHash:              "",
 		TierIncrement:            0,
-		SessionID:                hookInput.Session.ID,
+		SessionID:                hookInput.SessionID,
 		LastAssistantMessageHash: msgHash,
 		LastAssistantMessageLen:  msgLen,
 	}
 	// SPEC-V3R6-CONTEXT-GOV-AXIS-001 REQ-CGA-001: populate eager-vs-on-demand weight.
-	harness.EstimateContextWeight(&evt, cwd)
+	harness.EstimateContextWeight(&evt, root)
 
 	if err := obs.RecordExtendedEvent(evt); err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: event recording failed: %v\n", err)
@@ -752,33 +780,23 @@ func assistantMessageFields(msg string) (hash string, length int) {
 // Reuses the isHarnessLearningEnabled gate (REQ-HRN-FND-009).
 // parent_session_id is extracted from session.id (nested).
 func runHarnessObserveSubagentStop(cmd *cobra.Command, _ []string) error {
-	cwd, err := os.Getwd()
-	if err != nil {
-		cwd = "."
-	}
+	root := resolveHookProjectRoot()
 
 	// SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-002: HOI master toggle gates the
 	// 3 secondary observability wrappers. Default off; runtime defense-in-depth.
-	if !isHookOptInEnabled(cwd) {
+	if !isHookOptInEnabled(root) {
 		return nil
 	}
 
-	if !isHarnessLearningEnabled(cwd) {
+	if !isHarnessLearningEnabled(root) {
 		return nil
 	}
 
-	// T-A4 spec: camelCase agentType/agentName, nested session.id
-	var hookInput struct {
-		AgentType            string `json:"agentType"`
-		AgentName            string `json:"agentName"`
-		LastAssistantMessage string `json:"last_assistant_message"`
-		AgentID              string `json:"agent_id"`
-		AgentTranscriptPath  string `json:"agent_transcript_path"`
-		Session              struct {
-			ID string `json:"id"`
-		} `json:"session"`
-	}
-	_ = json.NewDecoder(os.Stdin).Decode(&hookInput)
+	// Read + normalize stdin JSON: AgentType/AgentName (native agentType/agentName
+	// or flat agent_type/agent_name), AgentID (native agentId or flat agent_id), and
+	// ParentSessionID (native nested session.id or flat top-level session_id) all
+	// decode correctly via normalizeHookInput.
+	hookInput := readNormalizedHookInput()
 
 	// subject: agent name (falls back to "unknown")
 	subject := hookInput.AgentName
@@ -786,8 +804,8 @@ func runHarnessObserveSubagentStop(cmd *cobra.Command, _ []string) error {
 		subject = "unknown"
 	}
 
-	logPath := filepath.Join(cwd, ".moai", "harness", "usage-log.jsonl")
-	archiveDir := filepath.Join(cwd, ".moai", "harness", "learning-history", "archive")
+	logPath := filepath.Join(root, ".moai", "harness", "usage-log.jsonl")
+	archiveDir := filepath.Join(root, ".moai", "harness", "learning-history", "archive")
 	obs := harness.NewObserverWithRetention(logPath, harness.NewRetention(logPath, archiveDir, nil))
 
 	evt := harness.Event{
@@ -798,10 +816,10 @@ func runHarnessObserveSubagentStop(cmd *cobra.Command, _ []string) error {
 		AgentName:       hookInput.AgentName,
 		AgentType:       hookInput.AgentType,
 		AgentID:         hookInput.AgentID,
-		ParentSessionID: hookInput.Session.ID,
+		ParentSessionID: hookInput.SessionID,
 	}
 	// SPEC-V3R6-CONTEXT-GOV-AXIS-001 REQ-CGA-001: populate eager-vs-on-demand weight.
-	harness.EstimateContextWeight(&evt, cwd)
+	harness.EstimateContextWeight(&evt, root)
 
 	if err := obs.RecordExtendedEvent(evt); err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-subagent-stop: event recording failed: %v\n", err)
@@ -908,36 +926,33 @@ func readUserPromptContentStrategy(projectRoot string) string {
 // @MX:WARN: [AUTO] PII-sensitive handler — user prompt body is logged when Strategy C is active.
 // @MX:REASON: [AUTO] REQ-HRN-OBS-014: default is Strategy A (no body recorded); opt-in is required for body recording.
 func runHarnessObserveUserPromptSubmit(cmd *cobra.Command, _ []string) error {
-	cwd, err := os.Getwd()
-	if err != nil {
-		cwd = "."
-	}
+	root := resolveHookProjectRoot()
 
 	// SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-002: HOI master toggle gates the
 	// 3 secondary observability wrappers. Default off; runtime defense-in-depth.
-	if !isHookOptInEnabled(cwd) {
+	if !isHookOptInEnabled(root) {
 		return nil
 	}
 
-	if !isHarnessLearningEnabled(cwd) {
+	if !isHarnessLearningEnabled(root) {
 		return nil
 	}
 
-	var hookInput struct {
-		Prompt string `json:"prompt"`
-	}
-	_ = json.NewDecoder(os.Stdin).Decode(&hookInput)
+	// Read + normalize stdin JSON. The prompt field is identical across both wire
+	// formats; routing through readNormalizedHookInput keeps decode uniform with the
+	// sibling observers and picks up the env-first project root for its config gate.
+	hookInput := readNormalizedHookInput()
 
 	prompt := hookInput.Prompt
 
-	// Detect SPEC-ID: extract from the prompt first; fall back to cwd-based detection
+	// Detect SPEC-ID: extract from the prompt first; fall back to project-root path detection
 	subject := specIDRegexp.FindString(prompt)
 	if subject == "" {
-		subject = detectSpecIDFromCwd(cwd)
+		subject = detectSpecIDFromCwd(root)
 	}
 
 	// Decide PII strategy (REQ-HRN-OBS-014)
-	strategyRaw := readUserPromptContentStrategy(cwd)
+	strategyRaw := readUserPromptContentStrategy(root)
 	strategy := resolveUserPromptStrategy(strategyRaw)
 
 	// Strategy None: do not record the event
@@ -953,8 +968,8 @@ func runHarnessObserveUserPromptSubmit(cmd *cobra.Command, _ []string) error {
 	promptLen := len([]byte(prompt))
 	promptLang := detectPromptLang(prompt)
 
-	logPath := filepath.Join(cwd, ".moai", "harness", "usage-log.jsonl")
-	archiveDir := filepath.Join(cwd, ".moai", "harness", "learning-history", "archive")
+	logPath := filepath.Join(root, ".moai", "harness", "usage-log.jsonl")
+	archiveDir := filepath.Join(root, ".moai", "harness", "learning-history", "archive")
 	obs := harness.NewObserverWithRetention(logPath, harness.NewRetention(logPath, archiveDir, nil))
 
 	evt := harness.Event{
@@ -967,7 +982,7 @@ func runHarnessObserveUserPromptSubmit(cmd *cobra.Command, _ []string) error {
 		PromptLang:    promptLang,
 	}
 	// SPEC-V3R6-CONTEXT-GOV-AXIS-001 REQ-CGA-001: populate eager-vs-on-demand weight.
-	harness.EstimateContextWeight(&evt, cwd)
+	harness.EstimateContextWeight(&evt, root)
 
 	// opt-in: preview (Strategy B) — REQ-HRN-OBS-013: first 64 bytes (UTF-8 boundary safe).
 	if strategy == UserPromptStrategyPreview && len(prompt) > 0 {
@@ -1063,18 +1078,17 @@ func readTierThresholds(projectRoot string) []int {
 // ANCHOR is added preemptively because this function is the canonical
 // invocation site of the classifier pipeline.
 func runHarnessClassify(cmd *cobra.Command, _ []string) error {
-	cwd, err := os.Getwd()
-	if err != nil {
-		cwd = "."
-	}
+	// Resolve project root env-first (CLAUDE_PROJECT_DIR then os.Getwd()) per
+	// internal/hook/CLAUDE.md §B7 — a hook may run with cwd inside a worktree.
+	root := resolveHookProjectRoot()
 
 	// REQ-HCW-004 gate — silent no-op when learning is disabled.
-	if !isHarnessLearningEnabled(cwd) {
+	if !isHarnessLearningEnabled(root) {
 		return nil
 	}
 
-	logPath := filepath.Join(cwd, ".moai", "harness", "usage-log.jsonl")
-	promoPath := filepath.Join(cwd, ".moai", "harness", "learning-history", "tier-promotions.jsonl")
+	logPath := filepath.Join(root, ".moai", "harness", "usage-log.jsonl")
+	promoPath := filepath.Join(root, ".moai", "harness", "learning-history", "tier-promotions.jsonl")
 
 	// REQ-HCW-002: aggregate patterns from the usage log. AggregatePatterns
 	// returns an empty map when the file does not exist (normal first-run
@@ -1085,7 +1099,7 @@ func runHarnessClassify(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	thresholds := readTierThresholds(cwd)
+	thresholds := readTierThresholds(root)
 	learner := harness.NewLearner(promoPath)
 
 	promoCount := 0

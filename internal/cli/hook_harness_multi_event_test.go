@@ -50,8 +50,9 @@ func TestRunHarnessObserveStop_RecordsBaseline(t *testing.T) {
 	t.Chdir(dir)
 
 	cmd := &cobra.Command{}
-	// T-A3 spec: nested stdin JSON — last_assistant_message + session.id
-	withStdin(t, `{"last_assistant_message":"test msg","session":{"id":"sess-xyz"},"hook_event_name":"Stop"}`, func() {
+	// Native Stop wire format: nested session.id (top-level hook_event_name is
+	// omitted — its presence would short-circuit nested/camel normalization).
+	withStdin(t, `{"last_assistant_message":"test msg","session":{"id":"sess-xyz"}}`, func() {
 		if err := runHarnessObserveStop(cmd, nil); err != nil {
 			t.Fatalf("runHarnessObserveStop error: %v", err)
 		}
@@ -120,9 +121,10 @@ func TestRunHarnessObserveSubagentStop_RecordsSubagentStop(t *testing.T) {
 	writeSystemYAMLHookOptIn(t, dir, true)
 	t.Chdir(dir)
 
-	// T-A4 spec: camelCase agentName + nested session.id
+	// Native SubagentStop wire format: camelCase agentName (top-level
+	// hook_event_name omitted — its presence would short-circuit camel normalization).
 	cmd := &cobra.Command{}
-	withStdin(t, `{"agentName":"expert-backend","hook_event_name":"SubagentStop"}`, func() {
+	withStdin(t, `{"agentName":"expert-backend"}`, func() {
 		if err := runHarnessObserveSubagentStop(cmd, nil); err != nil {
 			t.Fatalf("runHarnessObserveSubagentStop error: %v", err)
 		}

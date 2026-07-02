@@ -185,14 +185,14 @@ secret-*.*
 
 # ===========================================
 # Update Noise-Suppression Ledgers (per-machine, never tracked)
-# See SPEC-V3R6-UPDATE-NOISE-001
+# Per-machine state + cache ledgers used to suppress redundant update noise.
 # ===========================================
 .moai/state/
 .moai/cache/
 
 # ===========================================
 # Plan Audit Reports (local artifacts)
-# See SPEC-WF-AUDIT-GATE-001
+# Plan-audit verdict reports are local artifacts; only .gitkeep is tracked.
 # ===========================================
 .moai/reports/plan-audit/*.md
 !.moai/reports/plan-audit/.gitkeep

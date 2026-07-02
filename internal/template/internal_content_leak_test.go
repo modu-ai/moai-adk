@@ -433,6 +433,85 @@ func isPedagogicallyAllowed(relPath, matched string) bool {
 // package directory (internal/template/), templates/ is the embedded fs.
 const templatesRoot = "templates"
 
+// leakTextExtensions is the set of file extensions scanned verbatim for
+// internal-content leak — the text formats that ship to user projects.
+var leakTextExtensions = map[string]bool{
+	".md":   true,
+	".tmpl": true,
+	".yaml": true,
+	".yml":  true,
+	".sh":   true,
+	".json": true,
+}
+
+// leakScannedDotfiles is the basename allowlist of EXTENSIONLESS dotfiles that
+// ship verbatim to user projects but carry no scannable extension
+// (filepath.Ext(".gitignore") == ".gitignore", which is not in
+// leakTextExtensions). Before this allowlist these files escaped the walker
+// entirely, so a SPEC-ID leak in .gitignore / .gitkeep slipped past the audit.
+// Scanning them by basename closes that leak class going forward.
+var leakScannedDotfiles = map[string]bool{
+	".gitignore":     true,
+	".gitkeep":       true,
+	".gitattributes": true,
+}
+
+// shouldScanForLeak reports whether the file at path is an internal-content
+// leak-scan target — either a text format (by extension) OR an extensionless
+// dotfile that ships verbatim to user projects (by basename).
+func shouldScanForLeak(path string) bool {
+	if leakTextExtensions[filepath.Ext(path)] {
+		return true
+	}
+	return leakScannedDotfiles[filepath.Base(path)]
+}
+
+// collectLeakViolations scans text for every applicable leak class and returns
+// human-readable violation strings (one per distinct match). The three per-class
+// gates are applied here: skill-body scope (skillBodyScoped classes apply only
+// under ".claude/skills/"), requireHexLetter (S2 decimal-constant exclusion),
+// and the pedagogical allowlist.
+//
+// relForAllowlist is the templatesRoot-relative, forward-slash path used for the
+// skill-body scope check and the pedagogical allowlist lookup; displayPath is the
+// label rendered in each violation string.
+func collectLeakViolations(displayPath, relForAllowlist, text string, classes []leakClass) []string {
+	var out []string
+	for _, class := range classes {
+		// Skill-body scope gate (SPEC-SKILL-BODY-NEUTRALITY-001):
+		// a skillBodyScoped class applies ONLY to files under ".claude/skills/"
+		// — skip it for agents/rules/hooks/config (EXCL-SBN-002).
+		if class.skillBodyScoped && !strings.HasPrefix(relForAllowlist, skillBodyPrefix) {
+			continue
+		}
+		matches := class.pattern.FindAllString(text, -1)
+		if len(matches) == 0 {
+			continue
+		}
+		// Deduplicate matches within the same file for readability.
+		seen := map[string]struct{}{}
+		for _, m := range matches {
+			trimmed := strings.TrimSpace(m)
+			// requireHexLetter gate (S2): a match with no [a-f] hex letter is a
+			// decimal byte/size constant, not a short-sha.
+			if class.requireHexLetter && !strings.ContainsAny(trimmed, "abcdef") {
+				continue
+			}
+			if _, ok := seen[trimmed]; ok {
+				continue
+			}
+			seen[trimmed] = struct{}{}
+			// Pedagogical allowlist gate: skip legitimate pedagogical SPEC ID
+			// illustrations per progress.md §A.6 user decision.
+			if isPedagogicallyAllowed(relForAllowlist, trimmed) {
+				continue
+			}
+			out = append(out, displayPath+" | class="+class.name+" | match="+trimmed)
+		}
+	}
+	return out
+}
+
 // TestTemplateNoInternalContentLeak enforces CLAUDE.local.md §25 doctrine
 // across `internal/template/templates/`. Walks every `.md` and `.tmpl` file
 // (text formats) and reports any forbidden-class match per CLAUDE.local.md
@@ -484,12 +563,13 @@ func TestTemplateNoInternalContentLeak(t *testing.T) {
 			}
 		}
 
-		// Only scan text formats that ship verbatim to user projects.
-		// Markdown bodies, template (.tmpl) bodies, and YAML config
-		// fragments are the documented surfaces for internal-content
-		// leak (per research.md §B predecessor cleanup history).
-		ext := filepath.Ext(path)
-		if ext != ".md" && ext != ".tmpl" && ext != ".yaml" && ext != ".yml" && ext != ".sh" && ext != ".json" {
+		// Scan text formats + extensionless dotfiles that ship verbatim to
+		// user projects. Markdown/tmpl/YAML/sh/json bodies are the documented
+		// leak surfaces; .gitignore / .gitkeep / .gitattributes carry no
+		// scannable extension (filepath.Ext(".gitignore") == ".gitignore") so
+		// they are matched by basename — previously they escaped the walker
+		// entirely, letting a SPEC-ID leak in .gitignore / .gitkeep slip past.
+		if !shouldScanForLeak(path) {
 			return nil
 		}
 
@@ -497,55 +577,16 @@ func TestTemplateNoInternalContentLeak(t *testing.T) {
 		if readErr != nil {
 			return readErr
 		}
-		text := string(content)
 
 		// relForAllowlist: relative path under templatesRoot
 		// (e.g., ".claude/agents/moai/manager-spec.md"). The
 		// pedagogicalAllowlist entries are keyed by this form.
 		relForAllowlist := strings.TrimPrefix(rel, root+"/")
 
-		// Per-class scan. Each class match accumulates into the
-		// violations slice with file+class+match-excerpt context.
-		// Pedagogical allowlist consultation (progress.md §A.6):
-		// matches that pair (relForAllowlist, matched-substring) with a
-		// registered pedagogicalAllowlistEntry are skipped as legitimate
-		// pedagogical illustrations, not internal-content leak.
-		for _, class := range classes {
-			// Skill-body scope gate (SPEC-SKILL-BODY-NEUTRALITY-001):
-			// a skillBodyScoped class applies ONLY to files under
-			// ".claude/skills/" — skip it for agents/rules/hooks/config
-			// (EXCL-SBN-002). relForAllowlist is the path relative to
-			// templatesRoot, so the skill-body prefix check is direct.
-			if class.skillBodyScoped && !strings.HasPrefix(relForAllowlist, skillBodyPrefix) {
-				continue
-			}
-			matches := class.pattern.FindAllString(text, -1)
-			if len(matches) == 0 {
-				continue
-			}
-			// Deduplicate matches within the same file for readability.
-			seen := map[string]struct{}{}
-			for _, m := range matches {
-				trimmed := strings.TrimSpace(m)
-				// requireHexLetter gate (S2): a match with no [a-f] hex
-				// letter is a decimal byte/size constant, not a short-sha.
-				if class.requireHexLetter && !strings.ContainsAny(trimmed, "abcdef") {
-					continue
-				}
-				if _, ok := seen[trimmed]; ok {
-					continue
-				}
-				seen[trimmed] = struct{}{}
-				// Pedagogical allowlist gate: skip legitimate
-				// pedagogical SPEC ID illustrations per
-				// progress.md §A.6 user decision.
-				if isPedagogicallyAllowed(relForAllowlist, trimmed) {
-					continue
-				}
-				violations = append(violations,
-					rel+" | class="+class.name+" | match="+trimmed)
-			}
-		}
+		// Per-class scan (skill-body scope + requireHexLetter + pedagogical
+		// allowlist gates applied inside collectLeakViolations).
+		violations = append(violations,
+			collectLeakViolations(rel, relForAllowlist, string(content), classes)...)
 		return nil
 	})
 
@@ -577,6 +618,73 @@ func TestTemplateNoInternalContentLeak(t *testing.T) {
 			".moai/specs/SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001/design.md §B " +
 			"(or its rule-mirror at .claude/rules/ if/when promoted). " +
 			"Cross-reference CLAUDE.local.md §25 doctrine.")
+	}
+}
+
+// TestTemplateLeakWalkerScansExtensionlessDotfiles enforces that the walker now
+// scans extensionless dotfiles that ship verbatim to user projects (.gitignore,
+// .gitkeep, .gitattributes). Before this, filepath.Ext(".gitignore") returned
+// ".gitignore" (not in the text-extension set), so these files were skipped and
+// a SPEC-ID leak in them (SPEC-V3R6-UPDATE-NOISE-001 / SPEC-WF-AUDIT-GATE-001)
+// escaped the audit. This test documents the RED→GREEN transition: it plants a
+// synthetic internal SPEC-ID in a temp .gitignore-named file and asserts the
+// walker's real leak classes flag it; a clean dotfile is NOT flagged.
+func TestTemplateLeakWalkerScansExtensionlessDotfiles(t *testing.T) {
+	t.Parallel()
+
+	// (a) Extensionless dotfiles are in scope; ordinary source files are not
+	// (they are covered by their own leak-scan surfaces, not this walker).
+	for _, base := range []string{".gitignore", ".gitkeep", ".gitattributes"} {
+		if !shouldScanForLeak(filepath.Join("some", "dir", base)) {
+			t.Errorf("shouldScanForLeak(%q) = false, want true — extensionless dotfile must be scanned", base)
+		}
+	}
+	if shouldScanForLeak(filepath.Join("some", "dir", "main.go")) {
+		t.Errorf("shouldScanForLeak(main.go) = true, want false — .go is not a leak-scan surface")
+	}
+
+	// (b) End-to-end: plant a synthetic internal SPEC-ID (V3R6 series → matched
+	// by the whole-tree C1 class) in a temp .gitignore-named file and confirm the
+	// walker flags it. This proves extensionless files are now walked + scanned.
+	planted := "SPEC-V3R6-DEMO-001"
+	leakTree := t.TempDir()
+	giPath := filepath.Join(leakTree, ".gitignore")
+	if err := os.WriteFile(giPath, []byte("bin/\n# leaked internal token: "+planted+"\n*.log\n"), 0o644); err != nil {
+		t.Fatalf("write planted .gitignore: %v", err)
+	}
+
+	var flagged []string
+	walkErr := filepath.WalkDir(leakTree, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !shouldScanForLeak(path) {
+			return nil
+		}
+		content, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		rel := filepath.ToSlash(strings.TrimPrefix(path, leakTree+string(os.PathSeparator)))
+		flagged = append(flagged, collectLeakViolations(rel, rel, string(content), leakClasses)...)
+		return nil
+	})
+	if walkErr != nil {
+		t.Fatalf("walk planted tree: %v", walkErr)
+	}
+	if len(flagged) == 0 {
+		t.Errorf("planted internal SPEC-ID %q in a .gitignore was NOT flagged — extensionless-dotfile scanning is not working", planted)
+	}
+
+	// (c) Regression backstop: a clean dotfile (no internal token) is NOT flagged.
+	cleanTree := t.TempDir()
+	cleanPath := filepath.Join(cleanTree, ".gitignore")
+	if err := os.WriteFile(cleanPath, []byte("bin/\n*.log\nnode_modules/\n"), 0o644); err != nil {
+		t.Fatalf("write clean .gitignore: %v", err)
+	}
+	cleanContent, _ := os.ReadFile(cleanPath)
+	if v := collectLeakViolations(".gitignore", ".gitignore", string(cleanContent), leakClasses); len(v) != 0 {
+		t.Errorf("clean .gitignore falsely flagged as leak: %v", v)
 	}
 }
 
@@ -623,8 +731,8 @@ func TestLeakClassReqTokenPartition(t *testing.T) {
 func TestLeakClassNoDateShaInDefaultTier(t *testing.T) {
 	t.Parallel()
 
-	dateProbe := "2026-06-04"      // an internal-date sample
-	shaProbe := "a1b2c3d "         // a short-sha-sentence-final sample (trailing space)
+	dateProbe := "2026-06-04" // an internal-date sample
+	shaProbe := "a1b2c3d "    // a short-sha-sentence-final sample (trailing space)
 	for _, c := range leakClasses {
 		if c.pattern.MatchString(dateProbe) {
 			t.Errorf("AC-SBN-018(a) FAILED: default-tier leakClass %q matches an internal-date "+
@@ -656,9 +764,9 @@ func TestSkillBodyLeakClassRecurrenceBackstop(t *testing.T) {
 	}
 
 	cases := []struct {
-		class      string
-		leaky      string // a re-leak that MUST match
-		clean      string // the generic-ized replacement that MUST NOT match
+		class string
+		leaky string // a re-leak that MUST match
+		clean string // the generic-ized replacement that MUST NOT match
 	}{
 		{
 			class: "C1b-spec-id-skill-v3r",

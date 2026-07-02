@@ -90,7 +90,9 @@ func TestRunHarnessObserveStop_RecordsWhenEnabled(t *testing.T) {
 		assistantMsg = "Hello from assistant"
 	)
 	cmd := &cobra.Command{}
-	withStdin(t, `{"last_assistant_message":"`+assistantMsg+`","session":{"id":"`+sessionID+`"},"hook_event_name":"Stop"}`, func() {
+	// Native Claude Code Stop wire format: nested session.id (no top-level
+	// hook_event_name, which would short-circuit camel/nested normalization).
+	withStdin(t, `{"last_assistant_message":"`+assistantMsg+`","session":{"id":"`+sessionID+`"}}`, func() {
 		if err := runHarnessObserveStop(cmd, nil); err != nil {
 			t.Fatalf("runHarnessObserveStop 에러 반환: %v", err)
 		}
