@@ -142,7 +142,156 @@ _<M6 final verification sweep pending — populated by subsequent manager-develo
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — populated by manager-develop>_
+### M6 · Final verification sweep — COMPLETE
+
+Isolated L1 worktree for this spawn: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/agent-a647b511b9419228a` (branch `worktree-agent-a647b511b9419228a`), HEAD at `3d14bc35e` (M5 merged) before this milestone's commit. This is a distinct git working tree from the shared primary checkout — the unrelated parallel session's uncommitted changes (`.moai/config/sections/github-actions.yaml` deletion, `internal/template/templates/.moai/config/sections/language.yaml` deletion, `internal/config/CLAUDE.md` modification) were not visible here and were not touched.
+
+All 8 verification items below are GREEN. No defects found in the AC-DIC-001f spot-check (item 8) — no content file was modified beyond this section.
+
+**Item 1 — Hangul exact-count (D1/D2 corrected assertion)**:
+```
+$ grep -rlP '[가-힣]' docs-site/content/en/ docs-site/content/ja/ docs-site/content/zh/
+docs-site/content/en/getting-started/init-wizard.md
+docs-site/content/ja/getting-started/init-wizard.md
+docs-site/content/zh/getting-started/init-wizard.md
+```
+Exactly 3 files, all `init-wizard.md` (one per locale) — the accepted false-positive exception per REQ-DIC-002. Matches M6.1's corrected exact-count assertion (3, down from the plan-phase baseline of 26). PASS.
+
+**Item 2 — `scripts/docs-i18n-check.sh` default strict mode**:
+```
+$ bash scripts/docs-i18n-check.sh; echo "EXIT_CODE=$?"
+=== Preflight: locale directory presence ===
+
+=== Check 1: File path parity (ko ↔ target locales) ===
+ℹ️  INFO   ko: 99 .md files (canonical)
+ℹ️  INFO   en: 99 .md files
+ℹ️  INFO   ja: 99 .md files
+ℹ️  INFO   zh: 99 .md files
+
+=== Check 2: Frontmatter title presence ===
+
+=== Check 3: H1 heading existence ===
+
+=== Check 4: Glossary term preservation (canonical: ko) ===
+
+=== Summary ===
+Errors:   0
+Warnings: 0
+OK: all 4 locales pass parity, frontmatter, H1, and glossary checks.
+EXIT_CODE=0
+```
+0 errors, 0 warnings, exit 0 — the definitive GREEN signal for the entire SPEC (Item 1 + Item 2 + Item 3 all resolved). Satisfies AC-DIC-005c, AC-DIC-001e, and the SPEC's Quality Gate Criteria "exits 0" requirement. PASS.
+
+**Item 3 — Per-locale file count parity (NFR-DIC-001)**:
+```
+$ for L in ko en ja zh; do echo -n "$L "; find docs-site/content/$L -name '*.md' | wc -l; done
+ko       99
+en       99
+ja       99
+zh       99
+```
+All 4 locales at 99 — unchanged from the SPEC-V3R6-DOCS-V3-REBUILD-001 M3 baseline. No file added or removed. PASS.
+
+**Item 4 — sync-auditor misattribution final confirmation (REQ-DIC-004)**:
+```
+$ grep -c sync-auditor docs-site/content/{ko,en,ja,zh}/utility-commands/moai-feedback.md
+docs-site/content/en/utility-commands/moai-feedback.md:0
+docs-site/content/ja/utility-commands/moai-feedback.md:0
+docs-site/content/ko/utility-commands/moai-feedback.md:0
+docs-site/content/zh/utility-commands/moai-feedback.md:0
+```
+0 across all 4 locales. AC-DIC-004a/b/c PASS.
+
+**Item 5 — maintainer-path-leak check (NFR-DIC-005, full-SPEC scope)**:
+```
+$ grep -rn goos docs-site/content/
+0 matches
+```
+0 matches anywhere across the entire `docs-site/content/` tree — no maintainer path leak introduced across this SPEC's full scope (23 Item-1 files + 3 Item-2 files + 1 Item-3 file). PASS.
+
+**Item 6 — Mermaid diagram-direction parity final check (NFR-DIC-004 / AC-DIC-006a/b)**:
+```
+--- harness-engineering.md graph TB ---
+docs-site/content/ja/core-concepts/harness-engineering.md:1
+docs-site/content/en/core-concepts/harness-engineering.md:1
+docs-site/content/ko/core-concepts/harness-engineering.md:1
+docs-site/content/zh/core-concepts/harness-engineering.md:1
+--- harness-engineering.md graph TD ---
+docs-site/content/en/core-concepts/harness-engineering.md:1
+docs-site/content/zh/core-concepts/harness-engineering.md:1
+docs-site/content/ko/core-concepts/harness-engineering.md:1
+docs-site/content/ja/core-concepts/harness-engineering.md:1
+--- harness-engineering.md graph LR / flowchart LR (should be 0 for en/ja/zh) ---
+docs-site/content/en/core-concepts/harness-engineering.md:0
+docs-site/content/zh/core-concepts/harness-engineering.md:0
+docs-site/content/ja/core-concepts/harness-engineering.md:0
+
+--- moai-feedback.md flowchart TD ---
+docs-site/content/ko/utility-commands/moai-feedback.md:2
+docs-site/content/zh/utility-commands/moai-feedback.md:2
+docs-site/content/en/utility-commands/moai-feedback.md:2
+docs-site/content/ja/utility-commands/moai-feedback.md:2
+--- moai-feedback.md flowchart LR / graph LR (should be 0) ---
+docs-site/content/ja/utility-commands/moai-feedback.md:0
+docs-site/content/en/utility-commands/moai-feedback.md:0
+docs-site/content/zh/utility-commands/moai-feedback.md:0
+```
+`harness-engineering.md`: `graph TB`=1 and `graph TD`=1 for all 4 locales (parity confirmed), `graph LR`/`flowchart LR`=0 for en/ja/zh (no direction drift). AC-DIC-006a PASS.
+`moai-feedback.md`: `flowchart TD`=2 for all 4 locales (parity confirmed, including ja/zh where REQ-DIC-004 edited diagram labels), `flowchart LR`/`graph LR`=0 for en/ja/zh. AC-DIC-006b PASS.
+
+**Item 7 — `hugo --minify` clean build**:
+```
+$ cd docs-site && hugo --source . --minify --destination <out-of-tree-dir>
+Start building sites …
+hugo v0.160.1+extended+withdeploy darwin/arm64 BuildDate=2026-04-08T14:02:42Z VendorInfo=Homebrew
+
+              │ KO  │ EN  │ JA  │ ZH
+──────────────┼─────┼─────┼─────┼─────
+ Pages        │ 133 │ 131 │ 131 │ 131
+ Paginator    │   0 │   0 │   0 │   0
+ pages        │     │     │     │
+ Non-page     │  11 │   9 │   9 │   9
+ files        │     │     │     │
+ Static files │ 208 │ 208 │ 208 │ 208
+ Processed    │   0 │   0 │   0 │   0
+ images       │     │     │     │
+ Aliases      │   6 │   5 │   5 │   5
+ Cleaned      │   0 │   0 │   0 │   0
+
+Total in 1772 ms
+HUGO_EXIT=0
+```
+Re-run with explicit `grep -i "warn\|error"` over the build output: `NO_WARN_OR_ERROR_LINES`. Hugo is installed (`/opt/homebrew/bin/hugo` v0.160.1+extended+withdeploy). Build completed cleanly, 0 warnings/errors. Page counts are reasonable for all 4 locales (the ko/non-ko Pages-count delta, 133 vs 131, is a pre-existing Hugo section/taxonomy-page generation artifact unrelated to content — the underlying `.md` file count is identical at 99 per locale per Item 3; this delta pre-dates this SPEC and is out of this SPEC's scope per NFR-DIC-001, which is scoped to content-file-count parity, not Hugo's derived Pages count). PASS.
+
+**Item 8 — AC-DIC-001f grounding-compliance spot-check (one file per locale, fresh read)**:
+- `en/core-concepts/harness-engineering.md` vs `ko/core-concepts/harness-engineering.md` (full-file Read, both sides): natural, accurate, complete English prose; all 7-core-component table entries, both Mermaid diagrams (node labels translated, direction unchanged), the Self-Verify Loop cycle description, and the "Harness namespace policy" section all traced correctly to ko. No invented claims, no omissions found.
+- `ja/getting-started/windows-guide.md` vs `ko/getting-started/windows-guide.md` (full-file Read, both sides): natural, accurate Japanese prose; the documented placeholder-name deviation (`田中太郎` replacing ko's `홍길동`, per the M4 §E.2 record) is present exactly as recorded — a deliberate, correctly-applied deviation, not an accidental defect. All troubleshooting-table rows, WSL setup steps, and CG-mode tmux instructions traced correctly to ko.
+- `zh/core-concepts/constitution.md` vs `ko/core-concepts/constitution.md` (full-file Read, both sides): natural, accurate Chinese prose; all 5-layer safety architecture sections, the Zone Registry ID-assignment scheme, the Rate Limiter parameter table, and the CLI examples traced correctly to ko. No invented claims found.
+
+No defect found in any of the 3 spot-checked files. No content-file edit was required or made during this milestone.
+
+### M6 milestone verify-block cross-check (plan.md §F)
+
+- **M6.1**: PASS — exactly 3 files (Item 1 above).
+- **M6.2**: PASS — 0 errors, 0 warnings, both `DOCS_I18N_STRICT=0` and default strict-mode invocations (default strict-mode result shown in Item 2 above; the `DOCS_I18N_STRICT=0` variant was already confirmed identical at the end of M5 §E.2).
+- **M6.3**: PASS — 99/99/99/99 (Item 3 above).
+- **M6.4**: PASS — `hugo --minify` completes with zero warnings (Item 7 above).
+- **M6.5**: PASS — 0 `goos` matches across `docs-site/content/{en,ja,zh}/` (subsumed by Item 5's full-tree `docs-site/content/` scan above, which is a superset).
+
+### Definition of Done cross-check (acceptance.md)
+
+- [x] All 5 REQs (REQ-DIC-001..005) have PASS evidence — REQ-DIC-001/002 in M3-M5 §E.2 + Item 1 here; REQ-DIC-003/004 in M2 §E.2 + Item 4 here; REQ-DIC-005 in M1 §E.2 + Item 2 here. AC-DIC-001f incremental per-file record complete (M3/M4/M5 §E.2 + this milestone's item-8 spot-check). NFR-DIC-004 AC-DIC-006a/b PASS (Item 6 here).
+- [x] `scripts/docs-i18n-check.sh` (default strict mode) exits `0` — Item 2.
+- [x] `grep -rlP '[가-힣]' docs-site/content/{en,ja,zh}/` returns exactly 3 files — Item 1.
+- [x] `hugo --minify` builds cleanly — Item 7.
+- [x] 99-files-per-locale count unchanged across ko/en/ja/zh — Item 3.
+- [x] en/ja/zh `moai-feedback.md` each document the 4 `/moai feedback` enhancements with no invented behavior and no residual "sync-auditor" misattribution — M2 §E.2 + Item 4 here.
+- [x] ja `best-practices.md` contains "Anthropic" verbatim — M1 §E.2.
+- [x] No Go code, template source, `hugo.toml`, `static/`, or ko-locale file was modified — confirmed via `git status --short` at commit time (staged files enumerated below).
+- [x] `.moai/specs/SPEC-DEAD-CONFIG-001/` untouched — not present in this isolated worktree (confirmed by `ls .moai/specs/` at commit time — see below).
+- [x] `progress.md` §E.2/§E.3 populated by manager-develop at run-phase completion (this commit); §E.4 remains pending for manager-docs at sync-phase.
+
+**SPEC scope status: GREEN end-to-end.** All of D5's 26-flagged/23-genuine translation backlog (Item 1), REQ-DPC-006 i18n translation (Item 2), and the Check-4 glossary defect (Item 3) are resolved. `scripts/docs-i18n-check.sh` exits 0 in both strict and default modes for the first time since SPEC-V3R6-DOCS-V3-REBUILD-001.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
