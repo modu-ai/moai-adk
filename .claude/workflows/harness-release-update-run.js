@@ -1,4 +1,4 @@
-// harness-devkit-run.js — Runner for the devkit dev-maintainer harness.
+// harness-release-update-run.js — Runner for the release-update dev-maintainer harness.
 //
 // [DEV-ONLY] maintainer harness Runner. NOT distributed to user projects.
 //
@@ -22,13 +22,13 @@
 // or Math.random(). Any timestamp the run needs is injected via the `args`
 // input or stamped onto results AFTER the run returns.
 //
-// Manifest (SSOT): .claude/commands/harness/manifest.json. The Runner reads the
+// Manifest (SSOT): .claude/commands/harness/release-update/manifest.json. The Runner reads the
 // manifest and dispatches each specialist per its declared `primitive` verbatim
 // (no re-derivation). All three specialists declare `primitive: "sub-agent"` and
 // `isolation: "none"`, so NO worktree is created and NO worktree-cleanup
 // directive is emitted.
 
-const MANIFEST_PATH = ".claude/commands/harness/manifest.json";
+const MANIFEST_PATH = ".claude/commands/harness/release-update/manifest.json";
 
 // Fan-out config: per-version research sweep for the release-update capability.
 // Each entry is a read-only analysis target (one CC version-delta per agent).
@@ -53,7 +53,7 @@ function selectResearchSweepTargets(args) {
       `Do NOT modify any file, do NOT open a pull request, do NOT prompt the user — ` +
       `return the table only. Every human-gated step (user sign-off, docs sync, ` +
       `pull-request creation) is handled by the ` +
-      `harness-devkit-release-update-specialist sub-agent outside this run.`,
+      `harness-release-update-specialist sub-agent outside this run.`,
   }));
 }
 
@@ -88,7 +88,7 @@ async function run({ agent, args }) {
     note:
       "Non-interactive research sweep only. Human-gated work (user sign-off, " +
       "docs-site 4-locale sync, pull-request creation) is delegated to " +
-      "harness-devkit-release-update-specialist; the orchestrator holds every " +
+      "harness-release-update-specialist; the orchestrator holds every " +
       "human-decision gate before and after this run. github and release " +
       "capabilities have no non-interactive fan-out and are not modeled here.",
   };
