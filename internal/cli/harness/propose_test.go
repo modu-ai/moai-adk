@@ -137,7 +137,7 @@ func TestPropose_AutoFlagSetsAutoDelegateOnlyWithProposals(t *testing.T) {
 		t.Fatalf("Execute: %v", err)
 	}
 	var got struct {
-		AutoDelegate bool `json:"auto_delegate"`
+		AutoDelegate bool             `json:"auto_delegate"`
 		Proposals    []map[string]any `json:"proposals"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {

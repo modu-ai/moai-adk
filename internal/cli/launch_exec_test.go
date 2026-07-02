@@ -30,7 +30,7 @@ func TestExecOrSpawnClaude_PosixBuildTagGate(t *testing.T) {
 		t.Fatalf("read launcher.go: %v", err)
 	}
 	if strings.Contains(string(launcherSrc), "syscall.Exec(") {
-		t.Errorf("launcher.go must not call syscall.Exec inline; the POSIX-only call "+
+		t.Errorf("launcher.go must not call syscall.Exec inline; the POSIX-only call " +
 			"belongs in launch_exec_posix.go behind //go:build !windows (REQ-CGH-001)")
 	}
 	if !strings.Contains(string(launcherSrc), "execOrSpawnClaude(") {
@@ -58,7 +58,7 @@ func TestExecOrSpawnClaude_PosixBuildTagGate(t *testing.T) {
 		t.Errorf("launch_exec_windows.go must carry the //go:build windows tag (REQ-CGH-001)")
 	}
 	if strings.Contains(string(winSrc), "syscall.Exec(") {
-		t.Errorf("launch_exec_windows.go must NOT call syscall.Exec (POSIX-only); it spawns "+
+		t.Errorf("launch_exec_windows.go must NOT call syscall.Exec (POSIX-only); it spawns " +
 			"a child and exits instead (REQ-CGH-001)")
 	}
 	if !strings.Contains(string(winSrc), "exec.Command(") {

@@ -143,9 +143,10 @@ func freshEntry(scope Scope, lastUsed time.Time, weight float64) Entry {
 // same age are soft-deleted (moved to archival).
 //
 // Per acceptance.md AC-ADM-011:
-//   Given stable + transient entries exist,
-//   When 28 days pass,
-//   Then transient is soft-deleted, stable is preserved, stable's weight unchanged.
+//
+//	Given stable + transient entries exist,
+//	When 28 days pass,
+//	Then transient is soft-deleted, stable is preserved, stable's weight unchanged.
 //
 // A naive time-decay that expires stable preferences FAILS this and reproduces
 // Koren's "지속 신호 상실" (AP-ADM-006).

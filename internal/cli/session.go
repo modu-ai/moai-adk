@@ -274,10 +274,10 @@ SPEC-V3R6-SESSION-ID-ATTRIBUTION-REPAIR-001 REQ-RDP-001/002/003/006.`,
 			if showFallback {
 				if jsonOutput {
 					return emitOK(cmd, true, map[string]any{
-						"action":        "current",
-						"source":        "fallback",
-						"session_id":    CanonicalFallbackSessionID,
-						"available":     false,
+						"action":             "current",
+						"source":             "fallback",
+						"session_id":         CanonicalFallbackSessionID,
+						"available":          false,
 						"canonical_fallback": CanonicalFallbackSessionID,
 					})
 				}
@@ -288,10 +288,10 @@ SPEC-V3R6-SESSION-ID-ATTRIBUTION-REPAIR-001 REQ-RDP-001/002/003/006.`,
 			uuid, source, available := resolveCurrentSessionID()
 			if jsonOutput {
 				return emitOK(cmd, true, map[string]any{
-					"action":            "current",
-					"source":            source,
-					"session_id":        uuid,
-					"available":         available,
+					"action":             "current",
+					"source":             source,
+					"session_id":         uuid,
+					"available":          available,
 					"canonical_fallback": CanonicalFallbackSessionID,
 				})
 			}
@@ -365,12 +365,12 @@ REQ-WPR-001/002).`,
 			// We still emit them so the orchestrator can correlate.
 
 			payload := map[string]any{
-				"action":                 "doctor",
-				"registry_path":          session.DefaultRegistryPath,
-				"registry_exists":        registryExists,
-				"entry_count":            entryCount,
-				"root_cause_candidates":  candidates,
-				"side_channel_file":      session.CurrentSideChannelFile,
+				"action":                "doctor",
+				"registry_path":         session.DefaultRegistryPath,
+				"registry_exists":       registryExists,
+				"entry_count":           entryCount,
+				"root_cause_candidates": candidates,
+				"side_channel_file":     session.CurrentSideChannelFile,
 			}
 			if queryErr != nil {
 				payload["query_error"] = queryErr.Error()

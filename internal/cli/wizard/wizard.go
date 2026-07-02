@@ -41,10 +41,10 @@ func RunWithDefaultsModes(projectRoot, locale string, standardMode, advancedMode
 		StandardMode: standardMode || advancedMode,
 		AdvancedMode: advancedMode,
 		// Phase 1 boolean defaults (applied before wizard so non-interactive path works)
-		EnforceQuality:           true,
+		EnforceQuality:            true,
 		CoverageExemptionsEnabled: false,
-		DesignEnabled:            true,
-		ClaudeDesignEnabled:      true,
+		DesignEnabled:             true,
+		ClaudeDesignEnabled:       true,
 	}
 
 	// Run wizard with pre-populated result

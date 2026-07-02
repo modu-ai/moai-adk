@@ -3,11 +3,12 @@
 //
 // SPEC-HARNESS-CLI-COVERAGE-001 M3: 기존 execute_test.go는 runExecuteCommand의
 // error 경로(stderr diagnostic emit + missing-proposal inherit)만 커버한다. 본 파일은
-//   (1) runExecuteCommand success stdout emit 블록(execute.go:366-369),
-//   (2) runExecuteCommand InheritedFlags success 분기(execute.go:358-360),
-//   (3) NewExecuteCmd().Execute() RunE 클로저 success 경로(execute.go:327-328 entry +
-//       335 return nil) — D3 debt: runExecuteCommand 직접 호출은 RunE 클로저를 통과하지
-//       않으므로, cmd.Execute()를 valid fixture로 구동해야 RunE 진입 + return-nil이 도달된다.
+//
+//	(1) runExecuteCommand success stdout emit 블록(execute.go:366-369),
+//	(2) runExecuteCommand InheritedFlags success 분기(execute.go:358-360),
+//	(3) NewExecuteCmd().Execute() RunE 클로저 success 경로(execute.go:327-328 entry +
+//	    335 return nil) — D3 debt: runExecuteCommand 직접 호출은 RunE 클로저를 통과하지
+//	    않으므로, cmd.Execute()를 valid fixture로 구동해야 RunE 진입 + return-nil이 도달된다.
 //
 // gate-active Apply는 corrected project root에서 `go test ./...`를 실제 실행하므로
 // (SPEC-HARNESS-EXECUTE-E2E-001 measurementRoot threading), success 경로 fixture는

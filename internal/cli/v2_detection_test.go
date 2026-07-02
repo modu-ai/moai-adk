@@ -170,27 +170,27 @@ func TestDetectV2Fingerprint_Signal2_AgencyDir(t *testing.T) {
 // real entries from defs.DeprecatedPaths (Category B v.2.x-era subset).
 func TestDetectV2Fingerprint_Signal3_DeprecatedPath(t *testing.T) {
 	tests := []struct {
-		name        string
-		seedPaths   []string // paths under project root to create
-		wantSignal  bool
+		name         string
+		seedPaths    []string // paths under project root to create
+		wantSignal   bool
 		wantInDetail string // expected substring in deprecated_signal_first_hit
 	}{
 		{
-			name:        "agency agent path triggers Signal 3",
-			seedPaths:   []string{".claude/agents/moai/planner.md"},
-			wantSignal:  true,
+			name:         "agency agent path triggers Signal 3",
+			seedPaths:    []string{".claude/agents/moai/planner.md"},
+			wantSignal:   true,
 			wantInDetail: ".claude/agents/moai/planner.md",
 		},
 		{
-			name:        "retired manager path triggers Signal 3",
-			seedPaths:   []string{".claude/agents/moai/manager-strategy.md"},
-			wantSignal:  true,
+			name:         "retired manager path triggers Signal 3",
+			seedPaths:    []string{".claude/agents/moai/manager-strategy.md"},
+			wantSignal:   true,
 			wantInDetail: "manager-strategy",
 		},
 		{
-			name:        "rc1-stage core/ directory triggers Signal 3",
-			seedPaths:   []string{".claude/agents/core/manager-develop.md"},
-			wantSignal:  true,
+			name:         "rc1-stage core/ directory triggers Signal 3",
+			seedPaths:    []string{".claude/agents/core/manager-develop.md"},
+			wantSignal:   true,
 			wantInDetail: ".claude/agents/core",
 		},
 		{

@@ -1364,9 +1364,9 @@ func TestGLMToolsDisable_WebReader_RemovesOnlyMatching(t *testing.T) {
 	homeDir := setupToolsTestHome(t)
 	setupGLMToken(t, homeDir, "test-token")
 	claudeJSONPath := setupClaudeJSON(t, homeDir, map[string]any{
-		"context7":        map[string]any{"command": "npx", "args": []any{"-y", "context7"}},
-		"chrome-devtools": map[string]any{"command": "npx", "args": []any{"-y", "chrome-devtools"}},
-		"web_reader":      map[string]any{"type": "http", "url": "https://api.z.ai/api/mcp/web_reader/mcp"},
+		"context7":         map[string]any{"command": "npx", "args": []any{"-y", "context7"}},
+		"chrome-devtools":  map[string]any{"command": "npx", "args": []any{"-y", "chrome-devtools"}},
+		"web_reader":       map[string]any{"type": "http", "url": "https://api.z.ai/api/mcp/web_reader/mcp"},
 		"web_search_prime": map[string]any{"type": "http", "url": "https://api.z.ai/api/mcp/web_search_prime/mcp"},
 	})
 

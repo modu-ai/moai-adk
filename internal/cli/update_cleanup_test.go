@@ -399,12 +399,12 @@ func TestCleanup_TelemetryEmitted(t *testing.T) {
 
 	var stderr bytes.Buffer
 	event := CleanupEvent{
-		AtomicWriteUsed:      true,
+		AtomicWriteUsed:       true,
 		PreUpdateSuffix2Files: []string{},
-		BackupOutcome:        "skipped",
-		BackupPath:           "",
-		CleanupOutcome:       "completed",
-		UserOptOutPaths:      []string{},
+		BackupOutcome:         "skipped",
+		BackupPath:            "",
+		CleanupOutcome:        "completed",
+		UserOptOutPaths:       []string{},
 	}
 	if err := emitCleanupTelemetry(root, event, &stderr); err != nil {
 		t.Fatalf("emitCleanupTelemetry: %v", err)
@@ -671,8 +671,8 @@ func newManifestManagerForTest(t *testing.T, root string) manifest.Manager {
 // Helper: backupManifest mirrors the JSON schema used by backupDeprecatedPaths.
 // ---------------------------------------------------------------------------
 type backupManifest struct {
-	SpecID    string           `json:"spec_id"`
-	DeletedAt time.Time        `json:"deleted_at"`
+	SpecID    string            `json:"spec_id"`
+	DeletedAt time.Time         `json:"deleted_at"`
 	Files     []backupFileEntry `json:"files"`
 }
 

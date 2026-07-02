@@ -25,12 +25,12 @@ const defaultHarnessConfigPath = ".moai/config/sections/harness.yaml"
 // harnessRouteJSONOutput is the --json output schema.
 // REQ-HRN-001-011, AC-HRN-001-06.
 type harnessRouteJSONOutput struct {
-	Level           string           `json:"level"`
-	Rationale       router.Rationale `json:"rationale"`
-	Effort          string           `json:"effort"`
-	EvaluatorProfile string          `json:"evaluator_profile"`
-	SprintContract  bool             `json:"sprint_contract"`
-	PlanAudit       bool             `json:"plan_audit"`
+	Level            string           `json:"level"`
+	Rationale        router.Rationale `json:"rationale"`
+	Effort           string           `json:"effort"`
+	EvaluatorProfile string           `json:"evaluator_profile"`
+	SprintContract   bool             `json:"sprint_contract"`
+	PlanAudit        bool             `json:"plan_audit"`
 }
 
 // newHarnessRouterCmd is the `moai harness` parent command factory (V3R5 unified).

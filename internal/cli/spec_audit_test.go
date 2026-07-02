@@ -7,9 +7,9 @@
 // AC coverage (M2 scope):
 //   - AC-LSG-002  — era classification 5 buckets surfaced through CLI
 //   - AC-LSG-007  — JSON output schema (audited_at, total_specs, grandfathered,
-//                   modern_era_clean, drift_findings)
+//     modern_era_clean, drift_findings)
 //   - AC-LSG-016  — NFR performance (verified via dedicated benchmark in M1;
-//                   M2 wires the CLI surface invocation path)
+//     M2 wires the CLI surface invocation path)
 package cli
 
 import (

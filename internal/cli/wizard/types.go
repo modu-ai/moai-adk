@@ -33,13 +33,13 @@ type WizardResult struct {
 	AdvancedMode bool // True when --advanced flag is set (implies StandardMode)
 
 	// Phase 1 fields — exposed by --standard/--advanced (REQ-IWE-001..005)
-	ProjectMode              string // project.mode: personal, team (B1)
-	HarnessProfile           string // harness.default_profile: default, strict, lenient, frontend (B2)
-	LSPEnabled               bool   // lsp.enabled: false (opt-in) (B3)
-	EnforceQuality           bool   // quality.enforce_quality: true (B5)
+	ProjectMode               string // project.mode: personal, team (B1)
+	HarnessProfile            string // harness.default_profile: default, strict, lenient, frontend (B2)
+	LSPEnabled                bool   // lsp.enabled: false (opt-in) (B3)
+	EnforceQuality            bool   // quality.enforce_quality: true (B5)
 	CoverageExemptionsEnabled bool   // quality.coverage_exemptions.enabled: false (B5)
-	DesignEnabled            bool   // design.enabled: true (B8)
-	ClaudeDesignEnabled      bool   // design.claude_design.enabled: true (B8)
+	DesignEnabled             bool   // design.enabled: true (B8)
+	ClaudeDesignEnabled       bool   // design.claude_design.enabled: true (B8)
 }
 
 // QuestionType represents the type of wizard question.

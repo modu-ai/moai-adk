@@ -550,10 +550,13 @@ func TestRestoreMoaiConfigLegacy_AllowsRegularInConfigFile(t *testing.T) {
 // 따라 configDir를 탈출(outside/evil.yaml)하면 안 된다. 모던 walk + 레거시 walk 둘 다 커버.
 //
 // RED(fix 전): leaf evil.yaml은 아직 없어 leaf isSymlinkEntry=false, filepath.Rel은
-//   lexically-contained 판정 → os.MkdirAll + os.WriteFile가 symlinked parent를 따라
-//   outside/evil.yaml에 쓴다(CWE-22 탈출).
+//
+//	lexically-contained 판정 → os.MkdirAll + os.WriteFile가 symlinked parent를 따라
+//	outside/evil.yaml에 쓴다(CWE-22 탈출).
+//
 // GREEN(fix 후): restoreTargetContained가 parent chain을 EvalSymlinks로 해소해
-//   resolved parent의 configDir 봉쇄를 재검사 → false 반환 → outside 파일 미생성.
+//
+//	resolved parent의 configDir 봉쇄를 재검사 → false 반환 → outside 파일 미생성.
 func TestRestoreMoaiConfig_RejectsSymlinkedParentDir(t *testing.T) {
 	// 모던 walk(sections/ 하위)와 레거시 walk(backup root)를 둘 다 검증해
 	// 공유 헬퍼(restoreTargetContained) 1곳 수정이 양 walk를 동시 봉쇄함을 확인한다(AC-SEC4-002).
@@ -638,15 +641,17 @@ func TestRestoreMoaiConfig_RejectsSymlinkedParentDir(t *testing.T) {
 // AC-SEC4-001 deep variant (SEC-HARDEN-004 fast-follow, sync-auditor SHOULD-FIX).
 //
 // 결함(fix 전): configDir/sections/linkdir → outside가 사전 존재하고, 백업이
-//   sections/linkdir/sub/evil.yaml relPath를 산출하면(sub는 아직 미존재),
-//   parentChainContained가 filepath.Dir(target)=.../linkdir/sub를 EvalSymlinks하다
-//   os.IsNotExist를 만나 blanket-allow(return true)한다. 그러나 한 단계 얕은
-//   component linkdir 자체가 outside를 가리키는 symlink이므로, 이어지는
-//   os.MkdirAll(filepath.Dir(target))가 linkdir를 통과해 outside/sub를 만들고
-//   os.WriteFile가 outside/sub/evil.yaml로 탈출한다(CWE-22, §B.1 CLOSED 위반).
+//
+//	sections/linkdir/sub/evil.yaml relPath를 산출하면(sub는 아직 미존재),
+//	parentChainContained가 filepath.Dir(target)=.../linkdir/sub를 EvalSymlinks하다
+//	os.IsNotExist를 만나 blanket-allow(return true)한다. 그러나 한 단계 얕은
+//	component linkdir 자체가 outside를 가리키는 symlink이므로, 이어지는
+//	os.MkdirAll(filepath.Dir(target))가 linkdir를 통과해 outside/sub를 만들고
+//	os.WriteFile가 outside/sub/evil.yaml로 탈출한다(CWE-22, §B.1 CLOSED 위반).
 //
 // fix 후: deepest-existing-ancestor walk가 가장 깊은 *존재* 조상(=linkdir)을
-//   EvalSymlinks로 해소→outside→configDir 미봉쇄→reject → outside 파일 미생성.
+//
+//	EvalSymlinks로 해소→outside→configDir 미봉쇄→reject → outside 파일 미생성.
 func TestRestoreMoaiConfig_RejectsDeepNonexistentUnderSymlinkedParent(t *testing.T) {
 	t.Run("modern_walk", func(t *testing.T) {
 		tmpDir := t.TempDir()
@@ -728,10 +733,12 @@ func TestRestoreMoaiConfig_RejectsDeepNonexistentUnderSymlinkedParent(t *testing
 
 // TestRestoreTargetContained_ParentChainBranches — AC-SEC4-001 / watch-item 3.
 // restoreTargetContained의 parent-chain 봉쇄 분기를 직접 검증한다:
-//   (a) parent가 symlink로 configDir 밖을 가리키면 → reject (false)
-//   (b) parent가 아직 존재하지 않으면(첫 복원, 아직 symlink 없음) → allow (true)
-//   (c) [deep] 가장 깊은 *존재* 조상이 symlink로 밖을 가리키면 → reject (false)
-//   (d) [deep] 가장 깊은 *존재* 조상이 in-config 실 디렉터리면(하위만 미존재) → allow (true)
+//
+//	(a) parent가 symlink로 configDir 밖을 가리키면 → reject (false)
+//	(b) parent가 아직 존재하지 않으면(첫 복원, 아직 symlink 없음) → allow (true)
+//	(c) [deep] 가장 깊은 *존재* 조상이 symlink로 밖을 가리키면 → reject (false)
+//	(d) [deep] 가장 깊은 *존재* 조상이 in-config 실 디렉터리면(하위만 미존재) → allow (true)
+//
 // coarse "any error → pass"가 (a)/(c)를 RE-OPEN하지 않음을 보장한다.
 func TestRestoreTargetContained_ParentChainBranches(t *testing.T) {
 	t.Run("parent_exists_as_symlink_rejects", func(t *testing.T) {

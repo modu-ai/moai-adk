@@ -1,16 +1,18 @@
 // Package cli — harness CLI surface CI guard.
 //
 // HISTORY:
+//
 //   - V3R4 (SPEC-V3R4-HARNESS-001 REQ-HRN-FND-002): retired the lifecycle verbs
 //     (status/apply/rollback/disable) from the `moai harness` CLI tree. This test
 //     historically asserted that none of those verbs appeared under any harness
 //     command, allowing only the SPEC-V3R2-HRN-001 routing verbs (route/validate).
+//
 //   - V3R5 (SPEC-V3R5-HARNESS-AUTONOMY-001 §6.4 + AC-HRA-009): supersedes the V3R4
 //     retirement. The lifecycle verbs are un-retired and MUST be registered under
 //     `moai harness`, alongside the new proposal-management verbs (mute/mute-list/
 //     unmute/verify). The unified Cobra tree must satisfy:
 //
-//         ./moai harness --help | grep -E '(status|apply|rollback|disable|mute|verify)'
+//     ./moai harness --help | grep -E '(status|apply|rollback|disable|mute|verify)'
 //
 //     yielding at least 6 matches.
 //

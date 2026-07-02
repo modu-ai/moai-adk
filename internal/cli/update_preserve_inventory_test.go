@@ -171,11 +171,11 @@ func TestSnapshotAndMergeBack_RoundTrip(t *testing.T) {
 
 	// Seed files with various content shapes.
 	files := map[string]string{
-		".moai/specs/SPEC-A/spec.md":              "spec A content\n",
-		".moai/specs/SPEC-A/plan.md":              "plan A content\nmultiline\n",
-		".moai/project/product.md":                "product doc\n",
-		".claude/skills/harness-x/SKILL.md":    "skill body\n",
-		".claude/agents/harness/x-specialist.md":  "agent body\n",
+		".moai/specs/SPEC-A/spec.md":             "spec A content\n",
+		".moai/specs/SPEC-A/plan.md":             "plan A content\nmultiline\n",
+		".moai/project/product.md":               "product doc\n",
+		".claude/skills/harness-x/SKILL.md":      "skill body\n",
+		".claude/agents/harness/x-specialist.md": "agent body\n",
 	}
 	for rel, content := range files {
 		writeTestFile(t, root, rel, content)

@@ -11,8 +11,9 @@ import (
 // confirmation line MUST be emitted to the output writer carrying a
 // deterministic, grep-stable anchor. The anchor states the two facts
 // REQ-CCI-006 requires:
-//   (1) "acceptEdits" is the project default;
-//   (2) settings.local.json will NOT receive a defaultMode override.
+//
+//	(1) "acceptEdits" is the project default;
+//	(2) settings.local.json will NOT receive a defaultMode override.
 //
 // This converts AC-CCI-006 from a weasel-phrase ("wizard 실행 출력 검사") into a
 // binary-testable assertion (D4 pin — plan-auditor review-2 defect, resolved

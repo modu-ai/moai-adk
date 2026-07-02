@@ -32,8 +32,8 @@ const workflowYAMLPath = ".moai/config/sections/workflow.yaml"
 type workflowMuteConfig struct {
 	Harness struct {
 		Proposal struct {
-			Mode  string `yaml:"mode,omitempty"`
-			Mute  struct {
+			Mode string `yaml:"mode,omitempty"`
+			Mute struct {
 				Categories []string `yaml:"categories"`
 			} `yaml:"mute"`
 		} `yaml:"proposal"`

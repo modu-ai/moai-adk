@@ -408,4 +408,3 @@ func TestApplyWizardConfig_AllFields(t *testing.T) {
 // the lowercase presetToSegments wrapper in update.go and the capital
 // statusline.PresetToSegments function were both deleted. Named presets no
 // longer exist as a configuration surface — segments are configured directly.
-

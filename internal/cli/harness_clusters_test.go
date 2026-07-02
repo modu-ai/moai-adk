@@ -30,7 +30,7 @@ func writeClusterUsageLog(t *testing.T, dir string, lines []string) {
 }
 
 const (
-	rolledBackCovLine = `{"timestamp":"2026-06-01T00:00:00Z","event_type":"apply_outcome","subject":"apply:PROPOSAL-A","outcome_verdict":"rolled-back","outcome_decision":"regression-blocked","outcome_proposal_id":"PROPOSAL-A","outcome_regressed":["coverage"],"schema_version":"v2.1"}`
+	rolledBackCovLine  = `{"timestamp":"2026-06-01T00:00:00Z","event_type":"apply_outcome","subject":"apply:PROPOSAL-A","outcome_verdict":"rolled-back","outcome_decision":"regression-blocked","outcome_proposal_id":"PROPOSAL-A","outcome_regressed":["coverage"],"schema_version":"v2.1"}`
 	rolledBackCov2Line = `{"timestamp":"2026-06-02T00:00:00Z","event_type":"apply_outcome","subject":"apply:PROPOSAL-B","outcome_verdict":"rolled-back","outcome_decision":"regression-blocked","outcome_proposal_id":"PROPOSAL-B","outcome_regressed":["coverage"],"schema_version":"v2.1"}`
 	keptLine           = `{"timestamp":"2026-06-03T00:00:00Z","event_type":"apply_outcome","subject":"apply:PROPOSAL-K","outcome_verdict":"kept","outcome_decision":"approved","outcome_proposal_id":"PROPOSAL-K","schema_version":"v2.1"}`
 )

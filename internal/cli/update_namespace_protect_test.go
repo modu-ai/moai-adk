@@ -92,11 +92,11 @@ func TestBackupUserOwnedNamespace(t *testing.T) {
 		{
 			name: "multiple user-owned categories backed up together",
 			files: map[string]string{
-				".claude/skills/harness-foo/SKILL.md":  "a",
-				".claude/agents/harness/teammate.md":      "b",
-				".moai/harness/extensions/custom.md":      "c",
-				".claude/agents/custom-direct.md":         "d",
-				".claude/skills/custom-skill/file.md":     "e",
+				".claude/skills/harness-foo/SKILL.md": "a",
+				".claude/agents/harness/teammate.md":  "b",
+				".moai/harness/extensions/custom.md":  "c",
+				".claude/agents/custom-direct.md":     "d",
+				".claude/skills/custom-skill/file.md": "e",
 			},
 			wantBackup: true,
 			mustExist: []string{
@@ -112,16 +112,16 @@ func TestBackupUserOwnedNamespace(t *testing.T) {
 			files: map[string]string{
 				// Only MoAI-managed paths
 				".claude/agents/core/manager-develop.md": "moai-managed",
-				".moai/config/sections/quality.yaml":    "config",
+				".moai/config/sections/quality.yaml":     "config",
 			},
 			wantBackup: false,
 		},
 		{
 			name: "MoAI-managed paths NOT included in backup",
 			files: map[string]string{
-				".claude/skills/harness-test/SKILL.md": "user content",
+				".claude/skills/harness-test/SKILL.md":       "user content",
 				".claude/skills/moai-foundation-cc/SKILL.md": "moai content",
-				".claude/agents/core/manager-develop.md":  "moai content",
+				".claude/agents/core/manager-develop.md":     "moai content",
 			},
 			wantBackup: true,
 			mustExist:  []string{".claude/skills/harness-test/SKILL.md"},
@@ -210,10 +210,10 @@ func TestBackupUserOwnedNamespace(t *testing.T) {
 // Maps to AC-UNP-005.
 func TestAssertNoUserOwnedNamespaceTouch(t *testing.T) {
 	tests := []struct {
-		name        string
-		plan        []deployOp
-		wantErr     bool
-		wantSentry  bool // expect UPDATE_USER_NAMESPACE_VIOLATION literal
+		name       string
+		plan       []deployOp
+		wantErr    bool
+		wantSentry bool // expect UPDATE_USER_NAMESPACE_VIOLATION literal
 	}{
 		{
 			name: "AC-UNP-005 harness file overwrite triggers sentinel",

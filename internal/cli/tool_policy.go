@@ -176,11 +176,11 @@ func reportBuild(stdout, stderr io.Writer, results []*toolpolicy.CodegenResult, 
 // resolution.
 func newToolPolicyListCmd() *cobra.Command {
 	var (
-		riskTierFlag string
-		decisionFlag string
-		toolFlag     string
-		formatFlag   string
-		repoRootFlag string
+		riskTierFlag   string
+		decisionFlag   string
+		toolFlag       string
+		formatFlag     string
+		repoRootFlag   string
 		policyPathFlag string
 	)
 

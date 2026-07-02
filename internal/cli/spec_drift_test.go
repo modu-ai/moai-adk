@@ -129,4 +129,3 @@ This is a test SPEC.
 		t.Fatalf("Failed to write spec.md: %v", err)
 	}
 }
-

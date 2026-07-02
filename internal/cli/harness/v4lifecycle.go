@@ -2,12 +2,12 @@
 //
 // ListHarnesses / EditHarness / RemoveHarness implement design §B.3 lifecycle:
 //   - list:   enumerate harnesses by scanning .claude/commands/harness/*.md and
-//             joining each with its manifest.json (REQ-HV4-011 / AC-HV4-011a)
+//     joining each with its manifest.json (REQ-HV4-011 / AC-HV4-011a)
 //   - edit:   locate the manifest + specialist files for editing (manifest is
-//             the SSOT; editing it propagates to Runner behavior on next run)
+//     the SSOT; editing it propagates to Runner behavior on next run)
 //   - remove: atomic removal of command + workflow + specialists + skills +
-//             manifest, fail-closed if any referenced artifact is missing
-//             (orphan prevention, REQ-HV4-011 / AC-HV4-011b/c)
+//     manifest, fail-closed if any referenced artifact is missing
+//     (orphan prevention, REQ-HV4-011 / AC-HV4-011b/c)
 //
 // The functions are pure filesystem operations against a projectRoot. The cobra
 // command wrappers (newHarnessV4ListCmd etc.) live in package cli and delegate
@@ -102,8 +102,8 @@ func ListHarnesses(projectRoot string) ([]HarnessEntry, error) {
 		manifestPath := filepath.Join(commandsDir, name, "manifest.json")
 
 		entry := HarnessEntry{
-			Name:        name,
-			CommandPath: cmdPath,
+			Name:         name,
+			CommandPath:  cmdPath,
 			ManifestPath: manifestPath,
 		}
 

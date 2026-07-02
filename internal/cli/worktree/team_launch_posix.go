@@ -102,15 +102,15 @@ var tmuxNewWindowFn = defaultTmuxNewWindow
 //
 // Command shape:
 //
-//	tmux new-window -d -P -F '#{pane_id}' -c <cwd> '<command>'
+//		tmux new-window -d -P -F '#{pane_id}' -c <cwd> '<command>'
 //
-//   - `-d` creates the window without switching focus to it (user stays in
-//     their current pane; can switch manually with C-b n).
-//   - `-P` prints information about the new window to stdout (combined with
-//     `-F`, this is just the pane_id).
-//   - `-F '#{pane_id}'` formats the stdout output as the pane_id only.
-//   - `-c <cwd>` sets the working directory for the new window.
-//   - `<command>` is the shell command the window runs (e.g., `moai cc`).
+//	  - `-d` creates the window without switching focus to it (user stays in
+//	    their current pane; can switch manually with C-b n).
+//	  - `-P` prints information about the new window to stdout (combined with
+//	    `-F`, this is just the pane_id).
+//	  - `-F '#{pane_id}'` formats the stdout output as the pane_id only.
+//	  - `-c <cwd>` sets the working directory for the new window.
+//	  - `<command>` is the shell command the window runs (e.g., `moai cc`).
 //
 // On non-zero exit code from tmux (server not running, syntax error, etc.)
 // this function returns a wrapped error so the caller can degrade to the

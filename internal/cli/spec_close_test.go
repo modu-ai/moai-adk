@@ -336,9 +336,9 @@ func TestSpecClose_BackfillOnly_FullyCompletedNoOp(t *testing.T) {
 // implementation can return a deterministic outcome.
 func TestBackfillOnlyVariants(t *testing.T) {
 	tests := []struct {
-		name      string
-		writeFix  func(t *testing.T, baseDir, specID string)
-		wantError bool
+		name             string
+		writeFix         func(t *testing.T, baseDir, specID string)
+		wantError        bool
 		wantStdoutSubstr string
 	}{
 		{

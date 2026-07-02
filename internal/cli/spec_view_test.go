@@ -51,10 +51,10 @@ func TestFormatAcceptanceNode_ShapeTrace(t *testing.T) {
 		{
 			name: "node with full GWT and REQ mapping",
 			ac: spec.Acceptance{
-				ID:            "AC-004",
-				Given:         "database is connected",
-				When:          "querying data",
-				Then:          "results are returned",
+				ID:             "AC-004",
+				Given:          "database is connected",
+				When:           "querying data",
+				Then:           "results are returned",
 				RequirementIDs: []string{"001", "002"}, // Note: Stored without "REQ-" prefix
 			},
 			depth:    1,
@@ -76,10 +76,10 @@ func TestFormatAcceptanceNode_ShapeTrace(t *testing.T) {
 // TestFormatAcceptanceNode_NoShapeTrace verifies normal output without shape trace
 func TestFormatAcceptanceNode_NoShapeTrace(t *testing.T) {
 	ac := spec.Acceptance{
-		ID:            "AC-001",
-		Given:         "user is logged in",
-		When:          "clicking save",
-		Then:          "data is persisted",
+		ID:             "AC-001",
+		Given:          "user is logged in",
+		When:           "clicking save",
+		Then:           "data is persisted",
 		RequirementIDs: []string{"001"}, // Note: Stored without "REQ-" prefix
 	}
 
@@ -100,9 +100,9 @@ func TestPrintTree_ShapeTraceIntegration(t *testing.T) {
 			Given: "root requirement",
 			Children: []spec.Acceptance{
 				{
-					ID:      "AC-CHILD-1",
-					When:    "first child action",
-					Then:    "first child result",
+					ID:   "AC-CHILD-1",
+					When: "first child action",
+					Then: "first child result",
 					Children: []spec.Acceptance{
 						{
 							ID:   "AC-GRANDCHILD",

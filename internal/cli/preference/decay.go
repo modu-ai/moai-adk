@@ -115,15 +115,15 @@ func (r *DecayReport) String() string {
 //  1. Loads recall.jsonl.
 //  2. For each entry, separates stable from transient behavior:
 //     - STABLE entries are EXEMPT from pure time-decay (REQ-ADM-011, the
-//       anti-AP-ADM-006 / Koren "지속 신호 상실" invariant). Their weight is
-//       floored at stableWeightFloor (design.md §E.2: max(weight, 0.5)); the
-//       floor is recorded in the report only when it actually lifts the
-//       stored weight. Stable entries are NEVER soft-deleted by age.
+//     anti-AP-ADM-006 / Koren "지속 신호 상실" invariant). Their weight is
+//     floored at stableWeightFloor (design.md §E.2: max(weight, 0.5)); the
+//     floor is recorded in the report only when it actually lifts the
+//     stored weight. Stable entries are NEVER soft-deleted by age.
 //     - TRANSIENT entries get full power-law decay. An entry whose age
-//       (now - LastUsed, in whole days) exceeds decayTTLDays (28) is
-//       SOFT-DELETED: moved from recall to archival via writeArchivalEntry +
-//       dropped from the recall write-back. Age <= 28 entries get their
-//       weight refreshed to decayWeight(age) and are kept in recall.
+//     (now - LastUsed, in whole days) exceeds decayTTLDays (28) is
+//     SOFT-DELETED: moved from recall to archival via writeArchivalEntry +
+//     dropped from the recall write-back. Age <= 28 entries get their
+//     weight refreshed to decayWeight(age) and are kept in recall.
 //  3. Writes the surviving recall entries (stable + non-expired transient)
 //     back via writeRecall (atomic).
 //

@@ -180,8 +180,8 @@ func TestSaveAnswerPhase1(t *testing.T) {
 func TestSaveBoolAnswer(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		id   string
-		val  bool
+		id    string
+		val   bool
 		check func(*WizardResult) bool
 	}{
 		{"lsp_enabled", true, func(r *WizardResult) bool { return r.LSPEnabled }},
@@ -263,12 +263,12 @@ func TestWizardResultDefaultsPrePopulated(t *testing.T) {
 	t.Parallel()
 	// We test the pre-population logic directly since we can't run interactive wizard in tests.
 	result := &WizardResult{
-		StandardMode:             true,
-		AdvancedMode:             false,
-		EnforceQuality:           true,
+		StandardMode:              true,
+		AdvancedMode:              false,
+		EnforceQuality:            true,
 		CoverageExemptionsEnabled: false,
-		DesignEnabled:            true,
-		ClaudeDesignEnabled:      true,
+		DesignEnabled:             true,
+		ClaudeDesignEnabled:       true,
 	}
 
 	if !result.StandardMode {

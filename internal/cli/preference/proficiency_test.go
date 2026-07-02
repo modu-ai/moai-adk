@@ -12,9 +12,9 @@ import (
 func TestEstimateProficiency_Thresholds(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name    string
-		count   int
-		want    Proficiency
+		name  string
+		count int
+		want  Proficiency
 	}{
 		{"zero sessions", 0, ProficiencyColdStart},
 		{"one session", 1, ProficiencyColdStart},

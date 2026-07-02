@@ -6,6 +6,7 @@
 // installers into a live CLI call path. The command:
 //   - scaffolds .moai/harness/ (emitting main.md), and
 //   - injects the CLAUDE.md harness marker block,
+//
 // using the generating SPEC ID + project domain. It never prompts the user
 // (subagent boundary, covered by the package-level TestPropose_NoAskUserQuestion
 // guard in propose_boundary_test.go).

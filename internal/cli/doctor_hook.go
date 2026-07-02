@@ -19,7 +19,7 @@ import (
 
 // doctorHookOutput is the JSON output shape for "moai doctor hook --json".
 type doctorHookOutput struct {
-	CoverageTable []doctorHookEntry `json:"coverage_table"`
+	CoverageTable []doctorHookEntry    `json:"coverage_table"`
 	Summary       hook.CoverageSummary `json:"summary"`
 }
 

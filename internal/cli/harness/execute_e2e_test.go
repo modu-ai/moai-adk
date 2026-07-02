@@ -12,9 +12,12 @@
 // 디렉터리에서 `go test ./...`를 실행 → fail-close → telemetry 0건.
 //
 // RED(미수정): measurer가 snapshot base를 측정 → build-fail / 0-byte stdout →
-//              regression-gate measurement 에러 → apply_outcome 라인 0건.
+//
+//	regression-gate measurement 에러 → apply_outcome 라인 0건.
+//
 // GREEN(수정 후): measurer가 corrected project root(=fixture 모듈)를 측정 →
-//              `go test ./...` 통과 → Δ=0 → verdict="kept" → apply_outcome 1건.
+//
+//	`go test ./...` 통과 → Δ=0 → verdict="kept" → apply_outcome 1건.
 //
 // 격리 불변식 (spec.md §B.3): 모든 write(go.mod / trivial 테스트 / proposal /
 // 타겟 / usage-log / baseline / coverage profile)는 t.TempDir() 내부에서만
@@ -115,12 +118,14 @@ func countApplyOutcomeKept(t *testing.T, usageLogPath string) int {
 // e2e 재현 테스트다 (REQ-E2E-004 RED / REQ-E2E-005 GREEN / REQ-E2E-006 직접 진입점).
 //
 // RED(미수정 measurementRoot): RunExecute는 measurer를 snapshot base에서 실행 →
-//   fail-close → 반환 error != nil + apply_outcome("kept") 라인 0건. 이 테스트는
-//   미수정 코드에서 FAIL하여 출시된 verb의 결함을 재현한다.
+//
+//	fail-close → 반환 error != nil + apply_outcome("kept") 라인 0건. 이 테스트는
+//	미수정 코드에서 FAIL하여 출시된 verb의 결함을 재현한다.
 //
 // GREEN(수정 후): RunExecute가 .WithProjectRoot(root)를 배선 → measurer가 corrected
-//   project root(fixture 모듈)에서 go test ./... 통과(Δ=0) → DecisionApproved →
-//   verdict="kept" → 반환 error == nil + apply_outcome("kept") 라인 정확히 1건.
+//
+//	project root(fixture 모듈)에서 go test ./... 통과(Δ=0) → DecisionApproved →
+//	verdict="kept" → 반환 error == nil + apply_outcome("kept") 라인 정확히 1건.
 //
 // 격리(REQ-E2E-008): ProjectRoot=t.TempDir()로 모든 harness 경로를 격리한다 —
 // 실제 레포 .moai/harness/*는 절대 touch되지 않는다.

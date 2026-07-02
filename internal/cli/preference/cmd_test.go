@@ -44,11 +44,11 @@ func TestDecayScanCmd_NoAskUserQuestion(t *testing.T) {
 func TestToggleCmd_NoAskUserQuestion(t *testing.T) {
 	t.Parallel()
 	files := []string{
-		"toggle.go",     // the toggle subcommand (the M5 CLI surface)
-		"gate.go",       // DecideStrength pure function
+		"toggle.go",      // the toggle subcommand (the M5 CLI surface)
+		"gate.go",        // DecideStrength pure function
 		"proficiency.go", // EstimateProficiency pure function
-		"freshness.go",  // FreshnessLabel pure function
-		"correction.go", // CorrectInferred store helper
+		"freshness.go",   // FreshnessLabel pure function
+		"correction.go",  // CorrectInferred store helper
 	}
 	for _, file := range files {
 		src, err := os.ReadFile(file)

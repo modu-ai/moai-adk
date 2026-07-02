@@ -67,56 +67,56 @@ func TestIsSensitiveDomain_CaseInsensitive(t *testing.T) {
 func TestDecideStrength_Matrix(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name       string
-		domain     string
-		prof       Proficiency
-		coldStart  bool
-		wantStr    RecommendationStrength
-		wantDisc   string
+		name      string
+		domain    string
+		prof      Proficiency
+		coldStart bool
+		wantStr   RecommendationStrength
+		wantDisc  string
 	}{
 		{
 			name:      "sensitive domain overrides everything",
 			domain:    "security-review",
-			prof:       ProficiencyExpert,
-			coldStart:  false,
-			wantStr:    StrengthNeutral,
-			wantDisc:   "personalization reduced for sensitive domain",
+			prof:      ProficiencyExpert,
+			coldStart: false,
+			wantStr:   StrengthNeutral,
+			wantDisc:  "personalization reduced for sensitive domain",
 		},
 		{
 			name:      "sensitive domain with cold-start too",
 			domain:    "vulnerability-scan",
-			prof:       ProficiencyColdStart,
-			coldStart:  true,
-			wantStr:    StrengthNeutral,
-			wantDisc:   "personalization reduced for sensitive domain",
+			prof:      ProficiencyColdStart,
+			coldStart: true,
+			wantStr:   StrengthNeutral,
+			wantDisc:  "personalization reduced for sensitive domain",
 		},
 		{
 			name:      "non-sensitive general user strong",
 			domain:    "backend-language",
-			prof:       ProficiencyGeneral,
-			coldStart:  false,
-			wantStr:    StrengthStrong,
+			prof:      ProficiencyGeneral,
+			coldStart: false,
+			wantStr:   StrengthStrong,
 		},
 		{
 			name:      "non-sensitive expert weak (info-centric)",
 			domain:    "backend-language",
-			prof:       ProficiencyExpert,
-			coldStart:  false,
-			wantStr:    StrengthWeak,
+			prof:      ProficiencyExpert,
+			coldStart: false,
+			wantStr:   StrengthWeak,
 		},
 		{
 			name:      "non-sensitive cold-start neutral (cold-start gate)",
 			domain:    "backend-language",
-			prof:       ProficiencyColdStart,
-			coldStart:  true,
-			wantStr:    StrengthNeutral,
+			prof:      ProficiencyColdStart,
+			coldStart: true,
+			wantStr:   StrengthNeutral,
 		},
 		{
 			name:      "explicit cold-start flag forces neutral even if prof says general",
 			domain:    "log_level",
-			prof:       ProficiencyGeneral,
-			coldStart:  true,
-			wantStr:    StrengthNeutral,
+			prof:      ProficiencyGeneral,
+			coldStart: true,
+			wantStr:   StrengthNeutral,
 		},
 	}
 	for _, tc := range cases {
