@@ -232,6 +232,12 @@ type StatusData struct {
 	Thinking          *ThinkingInfo  // Thinking flag from Claude Code v2.1.139+ (nil when unavailable, REQ-CC2122-002)
 	PR                *PRInfo        // Active GitHub PR from Claude Code v2.1.145+ (nil when no PR detected, REQ-SLV-010)
 
+	// CacheUsage mirrors context_window.current_usage (SPEC-TOKEN-EFFICIENCY-001
+	// P0-2). Nil when current_usage is absent — before the first API call, or
+	// after /compact until the next call repopulates it — which drives the
+	// cache-hit segment's graceful degradation (REQ-TEF-006).
+	CacheUsage *CurrentUsageInfo
+
 	// Workspace mirrors the v2.1.145+ workspace.* stdin sub-object so the
 	// renderer can access workspace metadata (e.g., Repo) without reaching
 	// back into raw stdin (REQ-SSE-001). Value type — zero-value safe.
@@ -313,6 +319,14 @@ const (
 
 	// REQ-CC2122-001: effort/thinking segment (Claude Code 2.1.122+)
 	SegmentEffortThinking = "effort_thinking" // Effort level + thinking flag indicator
+
+	// SPEC-TOKEN-EFFICIENCY-001 P0-2: cache-hit-ratio segment. Surfaces
+	// cache_read / (cache_read + cache_creation) as an early-warning signal of
+	// prompt-prefix churn. Like SegmentRepo it is a render-time constant outside
+	// the 15-key CanonicalSegments schema, but — parallel to SegmentEffortThinking
+	// — it IS config-toggleable via isSegmentEnabled (default-on; disable with
+	// `cache_hit: false` in statusline.yaml segments).
+	SegmentCacheHit = "cache_hit" // Cache-read-vs-cache-creation hit ratio indicator
 
 	// REQ-SLV-016: PR segment (Claude Code 2.1.145+)
 	SegmentPR = "pr" // Active GitHub PR indicator (number + review_state)

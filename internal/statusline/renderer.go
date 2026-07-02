@@ -217,6 +217,14 @@ func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 		}
 	}
 
+	// Cache-hit-ratio indicator (SPEC-TOKEN-EFFICIENCY-001 P0-2, REQ-TEF-005/007).
+	// Graceful degradation (renderCacheHit returns "" on null usage / zero creation).
+	if r.isSegmentEnabled(SegmentCacheHit) {
+		if ch := renderCacheHit(data); ch != "" {
+			segs = append(segs, ch)
+		}
+	}
+
 	// Claude version
 	if r.isSegmentEnabled(SegmentClaudeVersion) && data.ClaudeCodeVersion != "" {
 		if withPrefix {
@@ -269,6 +277,38 @@ func renderEffortThinking(data *StatusData) string {
 		result += "·t"
 	}
 	return result
+}
+
+// cacheHitPercent는 cache-read 대 cache-creation 히트율을 계산한다.
+// 히트율 = cache_read / (cache_read + cache_creation) * 100.
+// cacheCreation이 0 이하이면(측정할 fresh cache write가 없음 — 0/0 both-zero 포함) ok=false를
+// 반환해 호출자가 세그먼트를 생략하도록 한다(graceful degradation, REQ-TEF-006 — 값을
+// 지어내지 않고 0으로 나누지 않는다). 곱셈은 int64로 수행해 매우 큰 토큰 수에서도 오버플로가
+// 없다.
+func cacheHitPercent(cacheRead, cacheCreation int) (int, bool) {
+	if cacheCreation <= 0 {
+		return 0, false
+	}
+	denom := int64(cacheRead) + int64(cacheCreation)
+	if denom <= 0 {
+		return 0, false
+	}
+	return int(int64(cacheRead) * 100 / denom), true
+}
+
+// renderCacheHit은 cache-hit-ratio 세그먼트를 렌더한다(SPEC-TOKEN-EFFICIENCY-001 P0-2).
+// prompt-prefix churn의 조기 경고 신호(Claude Code 팀이 직접 알림을 거는 지표와 동일)로서
+// cache_read / (cache_read + cache_creation)를 노출한다. cache usage가 없거나(null
+// current_usage) cache_creation이 0이면 "" 을 반환해 세그먼트를 생략한다(REQ-TEF-006).
+func renderCacheHit(data *StatusData) string {
+	if data.CacheUsage == nil {
+		return ""
+	}
+	pct, ok := cacheHitPercent(data.CacheUsage.CacheReadTokens, data.CacheUsage.CacheCreationTokens)
+	if !ok {
+		return ""
+	}
+	return fmt.Sprintf("💾 %d%%", pct)
 }
 
 // renderBarsInline renders CW/5H/7D bars inline on a single line (default mode L2).

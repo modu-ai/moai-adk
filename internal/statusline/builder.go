@@ -233,6 +233,14 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		data.Thinking = input.Thinking
 	}
 
+	// Extract cache usage breakdown from context window (SPEC-TOKEN-EFFICIENCY-001
+	// P0-2, REQ-TEF-005). Nil when current_usage is absent (before first API call /
+	// after /compact until repopulation) — feeds renderCacheHit's graceful
+	// degradation. Reads the already-parsed CurrentUsage; no stdin schema change.
+	if input != nil && input.ContextWindow != nil && input.ContextWindow.CurrentUsage != nil {
+		data.CacheUsage = input.ContextWindow.CurrentUsage
+	}
+
 	// Extract PR info from Claude Code (v2.1.145+, segment key SegmentPR).
 	// REQ-SLV-010: PR data piped through to StatusData.PR.
 	// REQ-SLV-016: see SegmentPR constant in types.go.
