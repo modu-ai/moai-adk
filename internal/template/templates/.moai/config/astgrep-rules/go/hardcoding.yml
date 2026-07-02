@@ -1,0 +1,23 @@
+# Go hardcoding-detection rules.
+#
+# These rules detect common hardcoding anti-patterns in Go source code.
+# Severity levels:
+#   - error: intended to block a commit in a quality gate
+#   - warning: intended to be reported without blocking
+---
+id: go-no-hardcoded-api-url
+language: go
+severity: warning
+message: "Extract the API URL to a package-level constant or configuration value. Hardcoded URLs reduce maintainability and make environment changes error-prone."
+note: "A literal API endpoint embedded in source cannot be changed per environment without a recompile. Move it to a constant, an environment variable, or a configuration file."
+rule:
+  kind: interpreted_string_literal
+  regex: '^"https://api\.'
+---
+id: go-no-duplicate-coverage-threshold
+language: go
+severity: warning
+message: "Use a shared coverage-threshold constant instead of redefining the value locally. A single source of truth prevents drift across packages."
+note: "Duplicating a numeric quality threshold in more than one place lets the copies drift apart. Define it once and reference it."
+rule:
+  pattern: const $NAME = 85.0

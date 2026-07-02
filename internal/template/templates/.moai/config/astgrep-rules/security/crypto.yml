@@ -1,0 +1,19 @@
+# Weak-cryptography detection (CWE-327).
+#
+# Detects use of the MD5 hash constructor, which is unsuitable for any security
+# purpose (it is vulnerable to collision attacks). This is deliberately narrow:
+# it flags the constructor call, not incidental references, so a clean sample
+# using a strong hash produces zero findings.
+#
+# Languages not yet listed are equal-priority future additions.
+---
+id: sec-weak-hash-md5
+language: go
+severity: error
+message: "MD5 is unsuitable for security use. Use crypto/sha256 or stronger, or bcrypt/argon2 for password hashing."
+note: "MD5 is vulnerable to collision attacks and must not be used for integrity or authentication. Use SHA-256/SHA-512 for hashing, or a password-hashing function such as bcrypt or argon2 for passwords."
+metadata:
+  owasp: "A02:2021 - Cryptographic Failures"
+  cwe: "CWE-327"
+rule:
+  pattern: md5.New()

@@ -1,0 +1,14 @@
+# ast-grep project configuration for the MoAI curated ruleset.
+#
+# ruleDirs lists ONLY directories that ship at least one production-vetted rule.
+# Every rule under these directories has been verified against a positive fixture
+# (it matches its intended construct) and a negative fixture (a clean sample
+# produces zero findings).
+#
+# Language coverage is intentionally partial and treated with equal opportunity:
+# a language that does not yet appear in a rule directory is an equal-priority
+# future addition, never an unsupported one. New languages are added by shipping
+# a vetted rule for that language under the relevant directory.
+ruleDirs:
+  - go
+  - security

@@ -1,0 +1,62 @@
+# Command-injection detection (CWE-78).
+#
+# Detects the canonical shell-execution constructs where an unvalidated value
+# can reach a shell interpreter: Go's exec.Command("sh", "-c", ...), Python's
+# subprocess shell=True / os.system, and Node's child_process.exec. Each rule
+# is scoped to the specific dangerous call so a benign, argument-list-based
+# invocation (which does not spawn a shell) is not flagged.
+#
+# Every language below carries the identical pattern-family with equal
+# opportunity. Languages not yet listed are equal-priority future additions.
+---
+id: sec-command-injection-shell
+language: go
+severity: error
+message: "A shell command is built with exec.Command(\"sh\", \"-c\", ...). If any argument derives from external input, this is a command-injection risk."
+note: "Passing a value to sh -c lets shell metacharacters execute. Prefer exec.Command with an explicit argument list and no shell, and validate any external input against an allowlist."
+metadata:
+  owasp: "A03:2021 - Injection"
+  cwe: "CWE-78"
+rule:
+  pattern: exec.Command("sh", "-c", $CMD)
+---
+id: sec-command-injection-shell
+language: python
+severity: error
+message: "A shell command is executed with shell=True or os.system. If any argument derives from external input, this is a command-injection risk."
+note: "shell=True and os.system route the command through a shell, so metacharacters execute. Pass an argument list without shell=True and validate any external input against an allowlist."
+metadata:
+  owasp: "A03:2021 - Injection"
+  cwe: "CWE-78"
+rule:
+  any:
+    - pattern: subprocess.call($CMD, shell=True)
+    - pattern: subprocess.run($CMD, shell=True)
+    - pattern: subprocess.Popen($CMD, shell=True)
+    - pattern: os.system($CMD)
+---
+id: sec-command-injection-exec
+language: javascript
+severity: error
+message: "A shell command is executed with child_process.exec. If any argument derives from external input, this is a command-injection risk."
+note: "child_process.exec runs the command through a shell, so metacharacters execute. Prefer child_process.execFile or spawn with an explicit argument list, and validate any external input against an allowlist."
+metadata:
+  owasp: "A03:2021 - Injection"
+  cwe: "CWE-78"
+rule:
+  any:
+    - pattern: child_process.exec($CMD)
+    - pattern: cp.exec($CMD)
+---
+id: sec-command-injection-exec
+language: typescript
+severity: error
+message: "A shell command is executed with child_process.exec. If any argument derives from external input, this is a command-injection risk."
+note: "child_process.exec runs the command through a shell, so metacharacters execute. Prefer child_process.execFile or spawn with an explicit argument list, and validate any external input against an allowlist."
+metadata:
+  owasp: "A03:2021 - Injection"
+  cwe: "CWE-78"
+rule:
+  any:
+    - pattern: child_process.exec($CMD)
+    - pattern: cp.exec($CMD)
