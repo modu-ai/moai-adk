@@ -145,7 +145,9 @@ The GENERATE output contract (§ GENERATE Output Contract below) is the handoff 
 
 Run a sample task dry-run through the newly built harness. Use `/goal "<harness> completes task X at quality Y"` for autonomous convergence (per `.claude/rules/moai/workflow/goal-directive.md`). The `/goal` evaluator (a small fast model) checks after each turn whether the harness has demonstrably completed the sample task.
 
-**With/without A/B (optional).** Run the same sample task once WITH the harness and once WITHOUT (baseline), then compare. This is the Anthropic Generator-Evaluator separation pattern. Pass → expose the harness via `/harness:<name>`. Fail → regress to GENERATE for refinement.
+**Reference-integrity smoke gate [HARD].** Before declaring the harness active, the ACTIVATE phase MUST run the reference-integrity smoke gate (`moai harness doctor`). The gate verifies the entry command, manifest, Runner (including its MANIFEST_PATH constant), and every specialist agent the Runner references all resolve to existing artifacts. If the gate reports any ERROR-severity finding, the workflow MUST NOT declare the harness active (do NOT expose `/harness:<name>`); regress to GENERATE and repair the flagged references first. A harness is exposed only after the smoke gate reports zero ERROR findings.
+
+**With/without A/B (optional).** Run the same sample task once WITH the harness and once WITHOUT (baseline), then compare. This is the Anthropic Generator-Evaluator separation pattern. Pass → expose the harness via `/harness:<name>` (after the smoke gate above is clean). Fail → regress to GENERATE for refinement.
 
 **Load-bearing minimum — A/B is SKIPPED for tasks within the model's solo reliable range.** For a simple, well-bounded harness (e.g., single-skill generation with no adversarial-verification need), the A/B evaluation adds cost without value. The orchestrator skips the A/B and records the skip with rationale ("task within solo range, evaluator skipped per simplest-solution-first"). The evaluator is invoked ONLY when the task exceeds the model's solo range.
 
@@ -254,7 +256,7 @@ The GENERATE phase emits exactly 5 artifact types. This contract is the handoff 
 
 ### Artifact 5 — manifest.json (the SSOT)
 
-**Path**: `.claude/commands/harness/manifest.json` (co-located with the entry command) OR `.claude/harness/<name>/manifest.json` (dedicated harness dir) — the location is fixed per harness and recorded in the entry command for the Runner to find.
+**Path**: `.claude/commands/harness/<name>/manifest.json` (co-located with the entry command, in a per-harness subdirectory) — the single canonical manifest location, recorded in the entry command for the Runner to find. This location matches the `moai harness` Go lifecycle norm; no alternate location is used.
 **Purpose**: the single source of truth the Runner reads for its dispatch logic.
 **Content contract** (8 top-level fields, per the canonical manifest schema):
 

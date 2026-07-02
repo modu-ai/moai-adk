@@ -67,7 +67,7 @@ When no flag is provided, the system evaluates task complexity and automatically
 - **clean** (aliases: dead-code): Identify and safely remove dead code
 - **codemaps**: Generate architecture documentation in `.moai/project/codemaps/`
 - **gate** (aliases: check, pre-commit): Lightweight pre-commit quality gate (lint+format+type-check+test)
-- **harness** (aliases: hrn, learn): V3R4 self-evolving harness lifecycle (status / apply / rollback &lt;date&gt; / disable) — slash-command-only surface; CLI verb path retired per the harness foundation policy (BC-V3R4-HARNESS-001-CLI-RETIREMENT)
+- **harness** (aliases: hrn, learn): V3R4 self-evolving harness lifecycle (status / apply / rollback &lt;date&gt; / disable) + v4-lifecycle verbs (list / edit / remove / doctor) — slash-command-only surface; CLI verb path retired per the harness foundation policy (BC-V3R4-HARNESS-001-CLI-RETIREMENT)
 
 ### Priority 2: SPEC-ID Detection
 
@@ -195,7 +195,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/feedback.md
 This single `harness` subcommand dispatches to ONE of two workflows based on the FIRST token of `$ARGUMENTS` (argument-based routing — no second command is introduced). Apply the routing rule before any workflow-specific logic:
 
 - **Reserved verb** (`status` / `apply` / `rollback` / `disable`) → route to the existing **harness learning lifecycle** workflow (Branch A below). This path is unchanged.
-- **Reserved verb** (`list` / `edit` / `remove`) → route to the **harness-v4 lifecycle** handler (Branch A.1 below). These enumerate / edit / atomically-remove harness-v4 entries via the `moai harness <verb>` Go binary subcommand.
+- **Reserved verb** (`list` / `edit` / `remove` / `doctor`) → route to the **harness-v4 lifecycle** handler (Branch A.1 below). These enumerate / edit / atomically-remove harness-v4 entries and run the reference-integrity smoke gate (`doctor`) via the `moai harness <verb>` Go binary subcommand.
 - **Anything else** (a natural-language harness-creation request, e.g. "build a harness for CLI template development") → route to the **harness build entry** workflow (Branch B below).
 
 #### Branch A — harness learning lifecycle (reserved verbs: status / apply / rollback / disable)

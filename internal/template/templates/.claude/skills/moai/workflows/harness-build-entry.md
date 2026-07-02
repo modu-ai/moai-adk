@@ -52,7 +52,7 @@ This workflow is reached when the `harness` subcommand dispatcher (in `SKILL.md`
 
 ## Phase 0: Reserved-Verb Guard
 
-[HARD] If `$ARGUMENTS` (trimmed, first token) matches a reserved verb (`status` / `apply` / `rollback` / `disable`), STOP — this is a misroute. The dispatcher should have sent it to the learning-lifecycle workflow (`${CLAUDE_SKILL_DIR}/workflows/harness.md`). Re-emit the routing guidance and halt. This guard is defense-in-depth; the dispatcher in `SKILL.md` already filters, but this workflow body re-verifies to catch direct-invocation edge cases.
+[HARD] If `$ARGUMENTS` (trimmed, first token) matches any reserved verb — the learning-lifecycle verbs (`status` / `apply` / `rollback` / `disable`) OR the v4-lifecycle verbs (`list` / `edit` / `remove` / `doctor`) — STOP — this is a misroute. The learning-lifecycle verbs belong to `${CLAUDE_SKILL_DIR}/workflows/harness.md`; the v4-lifecycle verbs (`list` / `edit` / `remove` / `doctor`) route to the `moai harness <verb>` Go binary subcommand. Re-emit the routing guidance and halt. This guard is defense-in-depth; the dispatcher in `SKILL.md` already filters, but this workflow body re-verifies to catch direct-invocation edge cases.
 
 ## Phase 1: Context-First Discovery (extract domain / goal / constraints / scope)
 

@@ -88,7 +88,7 @@ AskUserQuestion({
 
 ### Rate-Limit Enforcement (REQ-HRN-FND-012)
 
-Before opening the AskUserQuestion round, count entries in `.moai/harness/learning-history/applied/` whose `applied_at` falls within the last 7 days. If the count is ≥ 1, the new candidate MUST be deferred and recorded with a `deferred_at` timestamp; do NOT invoke `AskUserQuestion`. The rate-limit floor of 1 application per 7-day window is invariant per REQ-HRN-FND-018 — any future adaptive expansion may raise the limit but never lower it.
+Before opening the AskUserQuestion round, apply the rate limit from `harness.yaml` `rate_limit` (single source of truth): at most `max_per_week` applications per rolling 7-day window (default **3**) and a `cooldown_hours` gap between applications (default **24h**). Count entries in `.moai/harness/learning-history/applied/` whose `applied_at` falls within the rolling window; if the count is ≥ `max_per_week`, OR the most recent application is within `cooldown_hours`, the new candidate MUST be deferred and recorded with a `deferred_at` timestamp; do NOT invoke `AskUserQuestion`. Provenance: an earlier revision documented a stricter single-application weekly floor (the REQ-HRN-FND-018 floor claim); that stricter floor is superseded — the binding limit is `harness.yaml` `rate_limit` (`max_per_week: 3`, `cooldown_hours: 24`), which the harness CLI default also uses.
 
 ---
 
@@ -170,15 +170,15 @@ No user prompt. Stop after rendering.
 
 Operations:
 
-1. **Layer 4 (Rate Limiter) pre-screen**: Scan `.moai/harness/learning-history/applied/` for any entry with `applied_at` within the last 7 days. If count ≥ 1, defer:
+1. **Layer 4 (Rate Limiter) pre-screen**: Scan `.moai/harness/learning-history/applied/` for entries with `applied_at` in the rolling 7-day window, per `harness.yaml` `rate_limit`. If the window count ≥ `max_per_week` (default 3) OR the most recent application is within `cooldown_hours` (default 24h), defer:
    - Append `{ "deferred_at": <ISO-8601>, "reason": "rate-limit window active", "proposal_id": <id> }` to the candidate proposal's metadata.
    - Render "Tier-4 rate-limit window active — proposal <id> deferred" and STOP. Do NOT invoke AskUserQuestion (REQ-HRN-FND-012).
 2. **Load next pending proposal**: Read `.moai/harness/proposals/` directory; pick the oldest pending entry (`.json` payload). If none, render "No Tier-4 proposals awaiting approval" and stop.
 3. **Layer 1 (Frozen Guard) pre-screen**: Read the proposal's `target_path`. Match against the FROZEN prefix list:
-   - `.claude/agents/{moai,harness}/`
+   - `.claude/agents/moai/` (template-managed agents are FROZEN; `.claude/agents/harness/` is a user-owned allowed-write target, NOT frozen — it matches the guard's allowed-prefix list, not the frozen list)
    - `.claude/skills/moai-`
    - `.claude/rules/moai/`
-   - `.moai/project/brand/`
+   - `.moai/project/brand/` (guard default-deny: no allowed prefix matches, so writes here are blocked even though it is not in the frozen list)
    If any prefix matches, append a JSONL entry to `.moai/harness/learning-history/frozen-guard-violations.jsonl` with at minimum: ISO-8601 timestamp, the attempted target path, the proposal id (as calling subject), and a rejection rationale (REQ-HRN-FND-006, REQ-HRN-FND-014). Then move the proposal to `.moai/harness/learning-history/rejected/` and stop. Do NOT raise an error to the user; the rejection is silent except for the audit log.
 4. **Layer 3 (Contradiction Detector) pre-screen**: Out of scope for the V3R4 foundation SPEC. Downstream `the harness lifecycle policy` introduces principle-based scoring; this workflow body documents the contract assertion (REQ-HRN-FND-017) and treats Layer 3 as a no-op pass-through for the foundation release.
 5. **Tier-4 Application Gate**: `ToolSearch(query: "select:AskUserQuestion")` → `AskUserQuestion` with the canonical four-option pattern from the section above. The first option `Apply (권장)` MUST carry the `(권장)` / `(Recommended)` suffix per `.claude/rules/moai/core/askuser-protocol.md` § Option Description Standards.
@@ -269,5 +269,5 @@ After any successful verb execution, render a one-paragraph summary in the user'
 <!-- Verifies REQ-HRN-FND-007/008: pre-modification snapshot + rollback to byte-identical state. -->
 <!-- Verifies REQ-HRN-FND-009: observer no-op contract documented (enforced by hook code path, Wave C). -->
 <!-- Verifies REQ-HRN-FND-010/011: PostToolUse baseline schema + 4-tier ladder preserved. -->
-<!-- Verifies REQ-HRN-FND-012/018: Tier-4 rate-limit floor of 1 per 7-day window. -->
+<!-- Verifies REQ-HRN-FND-012/018: Tier-4 rate-limit per harness.yaml rate_limit (max_per_week 3, cooldown_hours 24). -->
 <!-- Verifies REQ-HRN-FND-016: telemetry exposure (weekly Tier-4 apply count + reach rate) via `status` verb. -->

@@ -136,9 +136,9 @@ The 5-Layer Safety Pipeline (L1 Frozen Guard → L2 Canary Check → L3 Contradi
 | L5 | Human Oversight | Orchestrator surfaces user-approval via AskUserQuestion (this skill emits payload) |
 
 [HARD] L1 Frozen paths (never auto-modified at runtime):
-- `.claude/agents/{moai,harness}/**`
+- `.claude/agents/moai/**` (template-managed agents; `.claude/agents/harness/` is a user-owned allowed-write target, NOT frozen)
 - `.claude/skills/moai-*/**`
 - `.claude/rules/moai/**`
-- `.moai/project/brand/**`
+- `.moai/project/brand/**` (guard default-deny — not in the allowed-prefix list, so writes are blocked even though it is not a frozen prefix)
 
-Only user-area skills (`.claude/skills/harness-*/`) are valid auto-update targets.
+Only user-area skills (`.claude/skills/harness-*/`) and agents (`.claude/agents/harness/`) are valid auto-update targets.
