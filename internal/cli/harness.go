@@ -63,8 +63,8 @@ const harnessConfigPath = ".moai/config/sections/harness.yaml"
 func newHarnessCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "harness",
-		Short: "Harness Manage learning subsystem",
-		Long: `Harness Manage learning subsystem subcommand.
+		Short: "Manage the harness learning subsystem",
+		Long: `Manage the harness learning subsystem.
 
 Available verbs:
 status: Show tier distribution, rate-limit window, pending proposal state
@@ -117,7 +117,7 @@ func resolveProjectRoot(cmd *cobra.Command) (string, error) {
 func newHarnessStatusCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
-		Short: "output learning subsystem state",
+		Short: "Show learning subsystem state",
 		Long: `Show tier distribution, last update, rate-limit windows,
 pending proposal count, observer activation state.`,
 		RunE: runHarnessStatus,
@@ -138,7 +138,7 @@ func runHarnessStatus(cmd *cobra.Command, _ []string) error {
 		cfg = defaultLearningConfig()
 	}
 
-	// usage-log.jsonlaggregate patterns from
+	// aggregate patterns from usage-log.jsonl
 	logPath := filepath.Join(root, harnessDefaultLogPath)
 	patterns, _ := harness.AggregatePatterns(logPath)
 
@@ -166,15 +166,15 @@ func runHarnessStatus(cmd *cobra.Command, _ []string) error {
 	// output (errcheck: ignoring fmt.Fprintf return value is allowed by convention for CLI output)
 	out := cmd.OutOrStdout()
 	_, _ = fmt.Fprintf(out, "=== Harness Learning Subsystem State ===\n\n")
-	_, _ = fmt.Fprintf(out, "learning enabled): %v\n", cfg.Enabled)
-	_, _ = fmt.Fprintf(out, "auto apply): %v\n", cfg.AutoApply)
+	_, _ = fmt.Fprintf(out, "learning enabled: %v\n", cfg.Enabled)
+	_, _ = fmt.Fprintf(out, "auto apply: %v\n", cfg.AutoApply)
 	_, _ = fmt.Fprintf(out, "log retention period: %d days\n", cfg.LogRetentionDays)
-	_, _ = fmt.Fprintf(out, "\n--- tier distribution (total %d patterns)\n", len(patterns))
+	_, _ = fmt.Fprintf(out, "\n--- tier distribution (total %d patterns) ---\n", len(patterns))
 	_, _ = fmt.Fprintf(out, " observation : %d\n", tierCounts["observation"])
 	_, _ = fmt.Fprintf(out, " heuristic : %d\n", tierCounts["heuristic"])
 	_, _ = fmt.Fprintf(out, " rule : %d\n", tierCounts["rule"])
 	_, _ = fmt.Fprintf(out, " auto_update : %d\n", tierCounts["auto_update"])
-	_, _ = fmt.Fprintf(out, "\n--- Rate Limit configuration/settings ---\n")
+	_, _ = fmt.Fprintf(out, "\n--- Rate Limit configuration ---\n")
 	_, _ = fmt.Fprintf(out, " max per week: %d times\n", cfg.RateLimit.MaxPerWeek)
 	_, _ = fmt.Fprintf(out, " cooldown : %d hours\n", cfg.RateLimit.CooldownHours)
 	_, _ = fmt.Fprintf(out, "\npending proposals: %d items\n", pendingCount)
@@ -324,7 +324,7 @@ func runHarnessRollback(cmd *cobra.Command, args []string) error {
 
 	// verify snapshot directory exists
 	if _, statErr := os.Stat(snapshotDir); os.IsNotExist(statErr) {
-		return fmt.Errorf("rollback: snapshot not found (date: %s). 'moai harness status'with/by/to check available snapshots with", date)
+		return fmt.Errorf("rollback: snapshot not found (date: %s). Run 'moai harness status' to check available snapshots", date)
 	}
 
 	// call RestoreSnapshot (harness.RestoreSnapshot)

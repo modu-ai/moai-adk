@@ -41,10 +41,14 @@
 ```bash
 moai init <project>     # Initialize new project with templates
 moai update             # Sync templates to current project
-moai build              # Build embedded templates
 moai hook <event>       # Execute hook handler
 moai glm                # GLM worker mode
 moai version            # Show version
+
+# NOTE: There is NO top-level `moai build` command. To rebuild the binary
+# after editing templates, run `make build` (templates are embedded via
+# //go:embed all:templates in internal/template/embed.go — recompiled into
+# the binary). See §2 Embedded Template System.
 ```
 
 **Claude Code `/moai` commands:**
@@ -457,9 +461,19 @@ moai-adk-go uses YAML for configuration:
 
 ### Configuration Priority
 
-1. Environment Variables: `MOAI_USER_NAME`, `MOAI_CONVERSATION_LANG`
+1. Environment Variables (override file values) — the actually-implemented
+   config overrides read by `internal/config/manager.go` `applyEnvOverrides`:
+   `MOAI_DEVELOPMENT_MODE`, `MOAI_LOG_LEVEL`, `MOAI_LOG_FORMAT`, `MOAI_NO_COLOR`,
+   plus `MOAI_CONFIG_DIR` (config directory location). All env-var names are
+   constants in `internal/config/envkeys.go`.
 2. User Configuration: `.moai/config/sections/*.yaml`
 3. Template Defaults: From `internal/template/templates/.moai/config/`
+
+> NOTE: `MOAI_USER_NAME` / `MOAI_CONVERSATION_LANG` are NOT currently
+> implemented — no code in `internal/`/`pkg/`/`cmd/` reads them. User name and
+> conversation language come from `.moai/config/sections/user.yaml` /
+> `language.yaml` only. (Adding these env overrides would be a future
+> enhancement, not current behavior.)
 
 ---
 
