@@ -28,12 +28,96 @@ author: manager-spec
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+run-phase 실행자: manager-develop (cycle_type=tdd) · Route A(Hybrid Trunk main-direct) · worktree 격리(agent-a74fcf2669c9458e4) → `git push origin HEAD:main`.
+
+### 20-AC 이진 매트릭스 (전건 PASS)
+
+| AC | Status | 검증 명령 | 관측 출력(요지) |
+|----|--------|-----------|------------------|
+| AC-HEP-001a | PASS | `go test -run TestMapper_RealDataAutoUpdate\|TestMapper_CurrentDataProducesCandidates ./internal/harness/proposalgen/` | `ok ... proposalgen` — user_prompt::(auto_update)+moai_subcommand(rule) 2 candidates; baseline fixture 3 candidates |
+| AC-HEP-001b | PASS | `go test -run TestMapper_PreActionableExcluded ./internal/harness/proposalgen/` | observation/heuristic/recommendation/approval_required → 0; rule/auto_update → 1 |
+| AC-HEP-002a | PASS | `go test -run TestMapper_RealDataSchemaPass ./internal/harness/proposalgen/` | `user_prompt::` / `agent_invocation:Bash:` / `session_stop::` 빈-segment 채택; apply_outcome/code_change 거부 |
+| AC-HEP-002b | PASS | `grep -c "code_change\|error_pattern\|tool_failure\|repeated_edit" internal/harness/proposalgen/mapper.go` | `0` (EventType enum 파생, 수기 목록 제거) |
+| AC-HEP-003a | PASS | `go test -run TestRunHarnessObserveStop_AutoClassifyChain ./internal/cli/` | Stop 경로 → tier-promotions.jsonl 생성(classify 연쇄) |
+| AC-HEP-003b | PASS | `go test -run TestRunHarnessObserveStop_ClassifyFailOpen ./internal/cli/` | usage-log 차단 시 훅 exit 0(fail-open), tier-promotions 미생성 |
+| AC-HEP-004 | PASS | `grep -c "handle-harness-observe.sh" internal/template/templates/.claude/settings.json.tmpl .claude/settings.json` | tmpl=2(windows/비-windows), local=1(단일) — PostToolUse 등록 |
+| AC-HEP-005a | PASS | `go test -run TestDoctor_ValidHarness_Passes ./internal/cli/harness/` | valid 하네스 → 0 ERROR |
+| AC-HEP-005b | PASS | `go test -run TestDoctor_ZeroHarness_Graceful ./internal/cli/harness/` / `moai harness doctor` (0-harness) | 0 harness → exit 0, "No v4 harnesses found" |
+| AC-HEP-006 | PASS | `go test -run TestDoctor_DefectClass_Detected ./internal/cli/harness/` | B5 결함 fixture → runner+agent 축 ERROR ≥2 |
+| AC-HEP-007a | PASS | `moai harness doctor --project-root <repo>` (수리 전) | release-update 2 ERROR(MANIFEST_PATH `.claude/commands/harness/manifest.json` + agent `harness-devkit-release-update-specialist`), github/release INFO, exit 1 |
+| AC-HEP-007b | PASS | `moai harness doctor --project-root <repo>` (수리 후) + `git status internal/template/` | 0 ERROR / 2 INFO / exit 0; template 청정 |
+| AC-HEP-008 | PASS | `awk '/^## Phase 0/,/^## Phase 1/' harness-build-entry.md \| grep -o "status\|apply\|rollback\|disable\|list\|edit\|remove\|doctor" \| sort -u` | 8 verb 전건: apply disable doctor edit list remove rollback status |
+| AC-HEP-009 | PASS | commands/moai/harness.md argument-hint + SKILL.md :70·§harness grep | list/edit/remove/doctor 열거 |
+| AC-HEP-010 | PASS | `grep -c "\.claude/harness/" harness-builder.md` | `0` (OR-분기 제거, 단일 정본) |
+| AC-HEP-011 | PASS | harness.md Layer1 + learner L1 grep | `.claude/agents/harness/` FROZEN 제거(allowed-write), `.claude/agents/moai/` FROZEN 유지, brand/** 유지 |
+| AC-HEP-012 | PASS | `grep -c "floor of 1\|1 per 7-day\|per 7-day window" harness.md` | `0`; harness.yaml rate_limit(3/week·24h) 기준 + REQ-HRN-FND-018 supersede provenance |
+| AC-HEP-013a | PASS | class-A 6 `diff live↔template` / class-B settings 토큰 grep / class-C harness.yaml rate_limit 키 | 6 byte-identical; settings 토큰 존재; rate_limit max_per_week:3·cooldown_hours:24 양측 일치; make build 성공 |
+| AC-HEP-013b | PASS | `grep -rn "HARNESS-EVO-PIPE-REPAIR\|REQ-HEP" internal/template/templates/` + `TestSplitHarnessNamespaceNoLeak` | 0 matches + PASS (+ TestTemplateNoInternalContentLeak PASS) |
+| AC-HEP-014 | PASS | `grep -c -i "doctor\|smoke" harness-builder.md` | ACTIVATE 절에 스모크 게이트 실행 + 결함 시 활성 선언 금지 계약 존재(2 matches) |
+
+### DoD 증거
+
+- **DoD-2 (real-data 스모크)**: `moai harness propose --input <repo>/.moai/harness/learning-history/tier-promotions.jsonl --dry-run` → `proposals: 3 | reason: ok | evaluated: 4` (session_stop:: / subagent_stop:unknown: / user_prompt:: 모두 auto_update). 수리 전 동일 데이터는 `reason: no-actionable-patterns` / 0 candidates(구조적 0). **해소 실증**.
+- **DoD-3 (exemplar 게이트 회귀)**: 수리 전 `moai harness doctor` → release-update `[ERROR](runner) MANIFEST_PATH ".claude/commands/harness/manifest.json" does not resolve` + `[ERROR](agent) references "harness-devkit-release-update-specialist" ... does not exist` (2 ERROR); 수리 후 → `Scanned 3 harness(es): 0 ERROR, 2 INFO` exit 0.
+- **DoD-4 (template parity+중립성)**: class-A 6표면 byte-identical, class-C harness.yaml rate_limit 키 일치, neutrality grep 0, TestSplitHarnessNamespaceNoLeak + TestTemplateNoInternalContentLeak PASS.
+
+### classify 5s 예산 실측 (EC-5)
+
+`moai hook harness-observe-stop` on 608-line usage-log(격리 tempdir, HOI+learning enabled) → `real 0.53` wall (프로세스 기동 지배; classify 자체 sub-ms) → 5s 예산 내. `auto-classify 2 patterns → 2 promotions` 관측.
+
+### 커버리지 / 빌드
+
+- `internal/harness/proposalgen`: coverage **90.6%** (≥85% ✓)
+- `internal/cli/harness/doctor.go`: Doctor 91.7% / checkHarness 86.7% / NewHarnessDoctorCmd 84.0% (파일 집계 ≥85%)
+- cross-platform: `go build ./...` exit 0 + `GOOS=windows GOARCH=amd64 go build ./...` exit 0
+- `go test ./...` exit 0 (90 pkg ok) · `go test -race` touched pkg PASS · `golangci-lint run` 0 issues
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-07-02
+run_commit_sha: "<M6 progress 커밋 — 본 §E.2/§E.3 기록 커밋; M1..M5 = 2ef2c6a8b/3c2d1ef11/3a91c80ce/143b816a9/48e226b03>"
+run_status: complete
+ac_pass_count: 20
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # frozen_guard.go / Tier.String 방출부 / reader tolerance / observe wrapper 3종 / runtime-managed 무변경
+l44_pre_commit_fetch: "0 0 (매 커밋 전 git fetch origin main + rev-list; 병렬 세션 disjoint 스코프)"
+l44_post_push_fetch: "origin/main == HEAD 매 push 후 확인 (2ef2c6a8b/3c2d1ef11/3a91c80ce/143b816a9/48e226b03 순차 fast-forward)"
+new_warnings_or_lints_introduced: 0   # golangci-lint run 0 issues on touched pkgs
+cross_platform_build:
+  linux_darwin: exit 0
+  windows_amd64: exit 0
+total_run_phase_files: 22   # Go src 5(mapper/types/hook/doctor/harness_route) + Go test 4(mapper/classify-chain/doctor/propose×2) + settings 2 + doc live 6 + doc template 6 + catalog 1 + exemplar Runner 1 + SPEC frontmatter 3(spec/plan/acceptance status) + progress 1
+m1_to_mN_commit_strategy: "M1(fix Go 어휘/스키마) → M2(feat classify+observer) → M3(feat doctor) → M4(fix exemplar local) → M5(docs dispatcher/mirror) → M6(progress §E.2/§E.3); pathspec 제한 커밋, Route A main-direct push"
+subagent_boundary_grep: "0 matches in modified files (mapper/types/hook/doctor/harness_route); 잔여 match는 pre-existing 벤치(scaffolder 문자열/agent_lint 탐지코드/cobra doc-string/testdata fixture)"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 0.95 Mode Selection
+
+Mode Selection (orchestrator-direct, 2026-07-02, run-phase 진입 직전 기록):
+
+- Input parameters: tier=M · scope≈10-15 files(internal/harness + internal/cli/hook·harness Go + settings.json(.tmpl) + 8 doc surface) · domain count≈4(Go source / hook wiring / settings / doc-template mirror) · file mix=Go+shell/json+markdown 혼합 · concurrency benefit=LOW(coding-heavy TDD, inter-milestone 의존 M2←M1·M4←M3·M6←전체) · Agent Teams prereqs=미충족(solo 세션, thorough·team.enabled·env 3조건 불성립)
+- Mode evaluation:
+  - Mode 1 trivial → not selected(다중 마일스톤 semantic 변경)
+  - Mode 2 background → not selected(Write 작업, run_in_background:false 필수)
+  - Mode 3 agent-team → not selected(capability-gate 3조건 미충족)
+  - Mode 4 parallel → not selected(coding-heavy, Anthropic coding-task parallelism caveat)
+  - Mode 6 workflow → not selected(≥30-file mechanical uniform transform 아님; ultracode 활성이나 coding-task caveat이 Mode 6를 배제)
+  - **Mode 5 sub-agent → SELECTED**
+- Decision: sub-agent
+- Justification: coding-heavy TDD 신규/수리 코드 + 마일스톤 간 강한 의존(M2 RED은 M1 GREEN 어휘에 의존, M4는 M3 doctor 사용, M6는 전체 검증). Anthropic coding-task parallelism caveat에 따라 순차 sub-agent(manager-develop cycle_type=tdd)가 정답. ultracode 활성 상태이나 Mode 6(Workflow fan-out)은 §E anti-pattern("Workflow for coding-heavy/new-code")에 해당하여 배제.
+
+## §G IGGDA Kickoff Predicate
+
+Implementation Kickoff Approval 판정 (orchestrator-direct, 2026-07-02):
+
+- (a) Intent clarity 100%: PASS — plan-phase AFK 권장옵션 채택(Epic 4-SPEC 구조 + cleanup 4건) + 본 세션 사용자 명시 승인 "착수"
+- (b) plan-auditor PASS: PASS — verdict PASS-WITH-DEBT 0.85(Tier M 임계 0.80 충족); D1~D6 v0.1.1 반영(auditor 재감사 불요 계약 충족)
+- (c) Tier S/M: PASS — Tier M(NOT L)
+- (d) No dangerous keyword AND no destructive scope: **FAIL** — 위험 도메인 키워드 `session` 매칭(Stop-hook 맥락, §H.3 over-inclusive); `--pr` 부재·비파괴 스코프이나 (d)는 키워드 단독 FAIL
+- Verdict: **explicit-gate**(조건 d FAIL) → mandatory blocking AskUserQuestion 발행 → 사용자 응답 "착수" 수신 → run-phase 인가
+- Pre-spawn 관측: git divergence 0 0(동기화) · 세션 레지스트리 [] · working tree에 병렬 세션 live 신호(disjoint 스코프 — docs/config/release) → pathspec 제한 커밋 규율 하 흡수 진행
