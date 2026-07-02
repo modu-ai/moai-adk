@@ -54,7 +54,7 @@ Tier: **M** (6 milestones) · development_mode: **tdd** (quality.yaml 실측) ·
 - **D2 (스키마 정렬 방향)**: `actionablePatternRE`의 수기 prefix 목록을 제거하고 EventType enum SSOT에서 파생한다 (prefix ∈ EventType values; subject/context_hash 빈 문자열 허용). `apply_outcome`은 pattern_key를 갖지 않으므로(cluster.go 주석, REQ-OBL-005) 파생 집합에서 제외. 실질 필터는 tier + confidence가 담당 — regex는 형식 검증만.
 - **D3 (classify 배선 방식)**: 후보 (a) 기존 `runHarnessObserveStop`(Stop 경로 Go 핸들러)이 observe 기록 후 classify를 연쇄 호출 — settings 변경 불요, 훅 5s 예산 내, fail-open 용이 (**권고**); 후보 (b) settings.json에 별도 Stop hook 항목 등록 — 훅 수 증가, template 변경 필요. run-phase에서 (a)의 시간 예산 실측 후 확정.
 - **D4 (smoke gate 배치)**: 신규 `moai harness doctor` subcommand — `internal/cli/harness/`의 v4lifecycle 스캔(list의 command↔manifest 조인) 재사용 + `v4manifest` validate 확장 + Runner 정적 파싱(manifest 경로 상수/agent 이름 참조 추출은 정규식 기반 heuristic으로 시작, JS 파싱 도입 금지 — Enforce Simplicity). 기존 `moai doctor`의 legacy 5-layer check와 별개 유지.
-- **Template-First**: 문서 표면 수정은 live + `internal/template/templates/` mirror 동시 편집 → `make build`. mirror 실측 확인 완료(8개 표면 전부 MIRRORED). Exemplar Runner는 **dev-only 로컬 전용 — 절대 template 반입 금지**.
+- **Template-First**: 문서 표면 수정은 live + `internal/template/templates/` 대응 표면 동시 편집 → `make build`. template 트리 내 대응 파일 존재는 8개 표면 확인 — 단 검증 등급은 3-클래스(plan-audit D1 정정: "8개 전부 MIRRORED"는 byte-parity 기준으로 6/8만 참): ① byte-parity mirror 6개(harness.md / harness-build-entry.md / harness-builder.md / learner SKILL.md / moai SKILL.md / commands/moai/harness.md), ② render-pair 1쌍(`settings.json.tmpl`↔로컬 settings.json — mirror 아님, tmpl은 bash-prefix 이중 항목 vs 로컬 단일 항목), ③ 기존 구조 분기 1개(`harness.yaml` — template은 주석형 구조로 live와 대규모 분기 선재 → `rate_limit` 키-레벨 비교만). 클래스별 검증 절차는 AC-HEP-013a. Exemplar Runner는 **dev-only 로컬 전용 — 절대 template 반입 금지**.
 - **§25 중립성**: template mirror에 SPEC ID / REQ-HEP 토큰 / 감사 인용 기입 금지. 정정 문구는 generic prose로 작성 (예: rate-limit 정정은 "per harness.yaml rate_limit" 형태).
 - **TDD**: development_mode=tdd — M1/M2/M3는 RED(실데이터 fixture 재현) → GREEN → REFACTOR 순.
 - **하위 호환**: mapper 수리는 기존 reader tolerance(malformed 라인 skip)를 보존; observe 훅 등록은 기존 3종 wrapper와 공존(hook.go §A.3 cohabitation contract 준수).
@@ -71,8 +71,8 @@ run-phase 완료 시 오케스트레이터/manager-develop이 단일 턴 병렬 
 4. `golangci-lint run --timeout=2m`
 5. `go test -run TestSplitHarnessNamespaceNoLeak ./internal/template/`
 6. 중립성 grep: `grep -rn "HARNESS-EVO-PIPE-REPAIR\|REQ-HEP" internal/template/templates/` → 0 matches
-7. `moai harness doctor` 실행 스모크 (exemplar 수리 후 0 findings)
-8. template↔live mirror parity diff (8개 표면)
+7. `moai harness doctor` 실행 스모크 — exemplar 수리 후 **0 ERROR-severity findings** (manifest-less thin 하네스 github/release의 INFO note는 허용 — acceptance.md Doctor severity 정책)
+8. template↔live 검증 — AC-HEP-013a 3-클래스 절차 (byte-diff 6 표면 / settings 토큰-grep / harness.yaml `rate_limit` 키-레벨 비교)
 
 ---
 
@@ -102,7 +102,7 @@ run-phase 완료 시 오케스트레이터/manager-develop이 단일 턴 병렬 
 
 - 수리 전: 실제 `.claude/workflows/harness-release-update-run.js`에 doctor 실행 → 2 findings 관측 기록 (게이트 1호 실전 검증)
 - 수리: MANIFEST_PATH → `.claude/commands/harness/release-update/manifest.json`; agent 참조 → `harness-release-update-specialist`; 헤더 구명칭 정정
-- 수리 후: doctor 재실행 → 0 findings
+- 수리 후: doctor 재실행 → ERROR-severity findings 0 (github/release thin 하네스의 INFO note는 허용)
 - **template 반입 금지** (dev-only user-owned artifact)
 
 ### M5 — 디스패처/문서 드리프트 수리 (REQ-HEP-006, 008, 009, 010, 011, 012)

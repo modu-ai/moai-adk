@@ -39,9 +39,9 @@ status: draft · Tier M · 검증 원칙: 모든 AC는 관측 가능한 명령 �
 - Then: 훅 exit 0 (세션 종료 비차단); stderr에 오류 표기 허용
 
 **AC-HEP-004 (PostToolUse observer 등록)** [MUST]
-- Given: `make build` 후 렌더된 settings
+- Given: (a) template 소스 `settings.json.tmpl` — 편집 후 `make build`로 임베드 재컴파일까지 확인; (b) 로컬 `.claude/settings.json` — make build 산출물이 **아니며**(직접 편집/`moai init` 렌더 대상) 별도 편집으로 갱신
 - When: `grep -n "handle-harness-observe.sh" internal/template/templates/.claude/settings.json.tmpl .claude/settings.json`
-- Then: 양쪽 모두 PostToolUse 항목 존재 (기존 stop/subagent-stop/user-prompt-submit 3종 등록과 공존)
+- Then: 양쪽 모두 PostToolUse 항목 존재 — tmpl은 기존 bash-prefix 이중 항목 패턴, 로컬은 단일 항목 (기존 stop/subagent-stop/user-prompt-submit 3종 등록과 공존)
 
 ### 스모크 게이트
 
@@ -55,20 +55,22 @@ status: draft · Tier M · 검증 원칙: 모든 AC는 관측 가능한 명령 �
 - When: doctor 실행
 - Then: exit 0 + "no harnesses" 상당 안내
 
+> **Doctor severity 정책 (본 SPEC 확정 — plan-audit D2)**: findings는 2단계 severity(**ERROR/INFO**). manifest 없는 command-only thin 하네스(현존 실측: `github`/`release` — manifest·Runner 모두 부재; `v4lifecycle.go:64-66`이 `ManifestMissing` partial state로 모델링)는 **INFO-severity note**로 보고하고 ERROR로 계상하지 않는다. Runner/agent 축 검사는 해당 아티팩트가 선언된 경우에만 적용한다. exit code는 ERROR ≥ 1일 때만 비-0.
+
 **AC-HEP-006 (결함 클래스 탐지 — 게이트 RED 증명)** [MUST]
 - Given: B5 결함 재현 fixture — Runner의 manifest 경로 상수가 비실존 경로, agent 참조가 비실존 이름
 - When: doctor 실행
-- Then: findings ≥ 2 (wrong-manifest-path + unresolved-agent 각 1건 이상), 비-0 exit 또는 결함 보고 출력
+- Then: ERROR-severity findings ≥ 2 (wrong-manifest-path + unresolved-agent 각 1건 이상), 비-0 exit
 
 **AC-HEP-007a (exemplar 수리 전 실전 탐지)** [MUST]
 - Given: 수리 전 실제 `.claude/workflows/harness-release-update-run.js`
 - When: doctor 실행 (run-phase M4 기록)
-- Then: `:31` MANIFEST_PATH 결함 + `:56` `harness-devkit-release-update-specialist` 결함 2건 보고 — verbatim 출력을 progress.md §E.2에 기록
+- Then: `:31` MANIFEST_PATH 결함 + `:56` `harness-devkit-release-update-specialist` 결함 — ERROR-severity 2건 보고; verbatim 출력을 progress.md §E.2에 기록
 
 **AC-HEP-007b (exemplar 수리 후 클린)** [MUST]
 - Given: 수리 후 Runner (`.claude/commands/harness/release-update/manifest.json` + `harness-release-update-specialist` 참조)
 - When: doctor 재실행
-- Then: 해당 하네스 findings 0; `git diff` 범위가 로컬 파일 1개로 한정(템플릿 무변경: `git status internal/template/` 청정)
+- Then: 해당 하네스 ERROR-severity findings 0 (전역 스캔 시 github/release의 INFO note는 허용); `git diff` 범위가 로컬 파일 1개로 한정(템플릿 무변경: `git status internal/template/` 청정)
 
 **AC-HEP-014 (Builder ACTIVATE 계약)** [MUST]
 - Given: 수리 후 `harness-builder.md` ACTIVATE 절 (live + template mirror)
@@ -78,8 +80,8 @@ status: draft · Tier M · 검증 원칙: 모든 AC는 관측 가능한 명령 �
 ### 디스패처 / 문서 정합
 
 **AC-HEP-008 (가드 완전화)** [MUST]
-- When: `grep -n "list\|edit\|remove\|doctor" .claude/skills/moai/workflows/harness-build-entry.md` (Phase 0 절)
-- Then: 예약 동사 집합에 `list/edit/remove/doctor` 포함 (기존 4-verb + 신규 — 총 8-verb); template mirror 동일
+- When: Phase 0 절만 추출한 섹션-한정 파이프라인으로 검사 (파일 전역 산문과의 매치 충돌 방지 — plan-audit D6) — `awk '/^## Phase 0/,/^## Phase 1/' .claude/skills/moai/workflows/harness-build-entry.md | grep -o "status\|apply\|rollback\|disable\|list\|edit\|remove\|doctor" | sort -u`
+- Then: 8개 예약 동사(`status/apply/rollback/disable/list/edit/remove/doctor`) 전부 출력; template mirror 동일
 
 **AC-HEP-009 (help 현행화)** [MUST]
 - When: `.claude/commands/moai/harness.md` argument-hint + `.claude/skills/moai/SKILL.md` 라우터 행(:70 상당) + §harness 디스패처 절 grep
@@ -91,7 +93,7 @@ status: draft · Tier M · 검증 원칙: 모든 AC는 관측 가능한 명령 �
 
 **AC-HEP-011 (FROZEN 정렬)** [MUST]
 - When: harness.md Layer 1 목록 + learner SKILL.md L1 목록 grep
-- Then: `.claude/agents/harness/`가 FROZEN 목록에서 제거되고 허용 쓰기 대상으로 서술; `.claude/agents/moai/`는 FROZEN 유지 — `frozen_guard.go` `allowedPrefixes`/`frozenPrefixes`와 문서가 일치; template mirror 동일
+- Then: `.claude/agents/harness/`가 FROZEN 목록에서 제거되고 허용 쓰기 대상으로 서술; `.claude/agents/moai/`는 FROZEN 유지 — `frozen_guard.go` `allowedPrefixes`/`frozenPrefixes`와 문서가 일치; `.moai/project/brand/**` 항목은 유지(neutral/default-deny — REQ-HEP-011 disposition note 참조, 삭제 금지); template mirror 동일
 
 **AC-HEP-012 (rate-limit SSOT)** [MUST]
 - When: `grep -n "7-day\|7일\|per week\|max_per_week" .claude/skills/moai/workflows/harness.md`
@@ -99,9 +101,16 @@ status: draft · Tier M · 검증 원칙: 모든 AC는 관측 가능한 명령 �
 
 ### 횡단
 
-**AC-HEP-013a (Template-First parity)** [MUST]
-- When: 수정된 8개 문서/설정 표면 각각 `diff <live> <template mirror>`
-- Then: 의도된 차이(§25 중립성 목적의 SPEC-토큰 제거) 외 불일치 0; `make build` 성공 출력 인용
+**AC-HEP-013a (Template-First 3-클래스 검증)** [MUST] — plan-audit D1 정정: 8개 표면 일괄 byte-diff는 2개 표면에서 구조적 false-fail (harness.yaml 기존 분기 + settings render-pair)
+- Given: 수정 표면의 3-클래스 구분
+  - 클래스 A (byte-parity mirror, 6개): `harness.md` / `harness-build-entry.md` / `harness-builder.md` / learner `SKILL.md` / moai `SKILL.md` / `commands/moai/harness.md`
+  - 클래스 B (render-pair, 1쌍): `settings.json.tmpl` ↔ 로컬 `settings.json` — mirror 아님 (tmpl은 bash-prefix 이중 항목 vs 로컬 단일 항목)
+  - 클래스 C (기존 분기 선재, 1개): `harness.yaml` — template은 주석형 구조로 live와 대규모 분기가 이미 존재
+- When/Then:
+  - 클래스 A: 각 `diff <live> <template mirror>` → 의도된 §25 중립성 델타(SPEC-토큰 제거) 외 불일치 0
+  - 클래스 B: 양쪽 `grep "handle-harness-observe.sh"` 토큰 존재 확인 (AC-HEP-004 절차 재사용 — full-file diff 금지)
+  - 클래스 C: `rate_limit` 키 블록만 키-레벨 비교 — `max_per_week: 3` + `cooldown_hours: 24`가 양쪽에 존재 (full-file diff 금지)
+  - 공통: `make build` 성공 출력 인용
 
 **AC-HEP-013b (중립성 + 네임스페이스 누출 차단)** [MUST]
 - When: `grep -rn "HARNESS-EVO-PIPE-REPAIR\|REQ-HEP" internal/template/templates/` + `go test -run TestSplitHarnessNamespaceNoLeak ./internal/template/`
@@ -134,7 +143,7 @@ status: draft · Tier M · 검증 원칙: 모든 AC는 관측 가능한 명령 �
 - **EC-1**: promotions 파일 부재/빈 파일 → `MapPromotions` 빈(non-nil) slice, 무오류 (기존 tolerance 보존)
 - **EC-2**: malformed JSONL 라인 혼재 → reader가 해당 라인만 skip (기존 계약 보존 — 회귀 테스트)
 - **EC-3**: confidence < 0.70 promotion → tier 유효해도 배제 (ConfidenceThreshold 계약 유지)
-- **EC-4**: doctor 실행 대상 하네스의 manifest는 있으나 Runner 부재 (thin command → specialist 직결형, 예: github/release) → Runner 축 검사는 "Runner 선언 시에만" 적용 — false-positive 금지
+- **EC-4** (plan-audit D2 사실관계 정정): `github`/`release` 하네스는 manifest도 Runner도 **없는** command-only thin 하네스다 (v4 manifest 보유는 release-update뿐; `v4lifecycle.go:64-66` `ManifestMissing` partial state). §D의 Doctor severity 정책에 따라 INFO note로 보고(ERROR 아님), Runner/agent 축은 선언 시에만 적용 — 전역 스모크가 이 2개 하네스로 false-fail하지 않아야 함
 - **EC-5**: classify가 훅 시간 예산(5s)에 근접 → 시간 초과 시에도 훅 exit 0 (fail-open); 예산 실측치를 progress.md에 기록
 - **EC-6**: Windows 렌더 경로 — settings.json.tmpl observer 등록이 기존 크로스 플랫폼 패턴(bash prefix 이중 항목)을 따름
 
@@ -153,8 +162,8 @@ status: draft · Tier M · 검증 원칙: 모든 AC는 관측 가능한 명령 �
 
 ## Definition of Done
 
-1. AC-HEP-001a ~ 013b 전건 PASS — 각 AC에 verbatim 명령 출력 증거 (progress.md §E.2)
+1. §D 전체 20개 AC (AC-HEP-001a~013b + AC-HEP-014) 전건 PASS — 각 AC에 verbatim 명령 출력 증거 (progress.md §E.2)
 2. 실데이터 스모크: 실제 `.moai/harness/learning-history/tier-promotions.jsonl` 대상 proposal 생성 경로 실행 → 후보 ≥ 1 관측 (구조적 0의 해소 실증)
-3. exemplar Runner: 수리 전 2 findings → 수리 후 0 findings 시퀀스가 progress.md에 기록
+3. exemplar Runner: 수리 전 ERROR-severity 2 findings → 수리 후 ERROR-severity 0 findings 시퀀스가 progress.md에 기록
 4. 8개 문서/설정 표면 live↔template parity + 중립성 확인
 5. spec.md frontmatter `status` 전이는 소유 매트릭스 준수 (draft→in-progress: manager-develop, →implemented→completed: manager-docs)

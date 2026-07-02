@@ -1,7 +1,7 @@
 ---
 id: SPEC-HARNESS-EVO-PIPE-REPAIR-001
 title: "하네스 학습 파이프라인 수리 + v4 스모크 게이트 (Epic Harness-Evolution 1/4)"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-02
 updated: 2026-07-02
@@ -10,6 +10,7 @@ priority: P1
 phase: "v3.0.0"
 module: "internal/harness"
 lifecycle: spec-anchored
+tier: M
 tags: "harness, learning-loop, smoke-gate, hooks, proposalgen, template-first"
 related_specs: [SPEC-V3R6-HARNESS-V4-001, SPEC-V3R6-HARNESS-PROPOSAL-GEN-001, SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001, SPEC-HARNESS-LOOP-CLOSURE-001]
 ---
@@ -21,6 +22,7 @@ related_specs: [SPEC-V3R6-HARNESS-V4-001, SPEC-V3R6-HARNESS-PROPOSAL-GEN-001, SP
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
 | 0.1.0 | 2026-07-02 | 최초 작성 — Epic Harness-Evolution entry SPEC (파이프 수리 + 스모크 게이트) | manager-spec |
+| 0.1.1 | 2026-07-02 | plan-audit iter-1 (PASS-WITH-DEBT 0.85) D1~D6 반영: template 검증 3-클래스화(D1), doctor severity 정책 ERROR/INFO(D2), AC 인용 범위 정정(D3), tier 필드 추가(D4), brand/** disposition note(D5), AC-004 Given·AC-008 grep 정밀화(D6) | manager-spec |
 
 ---
 
@@ -113,7 +115,7 @@ related_specs: [SPEC-V3R6-HARNESS-V4-001, SPEC-V3R6-HARNESS-PROPOSAL-GEN-001, SP
 3. Runner(`.claude/workflows/harness-<name>-run.js`) 존재 + Runner 내 manifest 경로 상수가 실존 파일로 해석
 4. manifest/Runner가 참조하는 specialist agent 이름이 `.claude/agents/harness/*.md` 실존 파일로 해석
 
-**When** 하네스가 0개인 프로젝트에서 실행되면, the checker shall 정상 종료(exit 0)해야 한다.
+**When** 하네스가 0개인 프로젝트에서 실행되면, the checker shall 정상 종료(exit 0)해야 한다. **While** 검사 대상이 manifest 없는 command-only thin 하네스(현존: `github`/`release` — manifest·Runner 모두 부재, `v4lifecycle.go:64-66`이 `ManifestMissing` partial state로 모델링)이면, the checker shall 이를 INFO-severity note로 보고해야 하며 ERROR finding으로 계상해서는 안 된다(shall not) — Runner/agent 축 검사는 해당 아티팩트가 선언된 경우에만 적용한다. exit code는 ERROR-severity finding ≥ 1일 때만 비-0이다.
 
 **REQ-HEP-006 (Builder ACTIVATE 계약)** — **When** Builder ACTIVATE 단계가 산출물 생성을 완료하면, the Builder workflow contract(harness-builder.md ACTIVATE 절) shall 스모크 게이트 실행을 요구해야 한다. **When** 게이트가 결함을 보고하면, the workflow shall 해당 하네스를 활성(active)으로 선언하지 않아야 한다(shall not).
 
@@ -127,19 +129,19 @@ related_specs: [SPEC-V3R6-HARNESS-V4-001, SPEC-V3R6-HARNESS-PROPOSAL-GEN-001, SP
 
 **REQ-HEP-010 (manifest 위치 단일 정본)** — The 하네스 문서 표면 shall manifest 위치를 단일 정본 `.claude/commands/harness/<name>/manifest.json`(Go `v4lifecycle` norm)으로 선언해야 한다. The `harness-builder.md`의 대안 위치 서술(`.claude/harness/<name>/manifest.json` OR-분기) shall not 잔존해서는 안 된다.
 
-**REQ-HEP-011 (FROZEN 문서-코드 정렬)** — The 스킬/워크플로우 문서(`harness.md` Layer 1 목록, learner `SKILL.md` L1 목록) shall `frozen_guard.go` norm과 정렬되어야 한다: `.claude/agents/harness/`는 허용 쓰기 대상(`allowedPrefixes`), `.claude/agents/moai/`는 FROZEN(`frozenPrefixes`). 문서 shall not `.claude/agents/harness/`를 FROZEN으로 선언해서는 안 된다.
+**REQ-HEP-011 (FROZEN 문서-코드 정렬)** — The 스킬/워크플로우 문서(`harness.md` Layer 1 목록, learner `SKILL.md` L1 목록) shall `frozen_guard.go` norm과 정렬되어야 한다: `.claude/agents/harness/`는 허용 쓰기 대상(`allowedPrefixes`), `.claude/agents/moai/`는 FROZEN(`frozenPrefixes`). 문서 shall not `.claude/agents/harness/`를 FROZEN으로 선언해서는 안 된다. Disposition note: 문서 L1 목록의 `.moai/project/brand/**`는 `frozen_guard.go:21-37`의 allowed/frozen 어느 목록에도 없는 **neutral 경로**이며, `EnsureAllowed`의 default-deny에 의해 쓰기가 차단되므로 문서의 차단 취지는 행동적으로 유지된다 — run-phase 목록 재작성 시 brand/** 항목을 삭제하지 말고 유지하며(필요 시 "guard 기본 차단(neutral, default-deny)" 각주 허용), 본 정렬 편집의 델타는 `agents/{harness,moai}` 두 항목으로 한정한다.
 
 **REQ-HEP-012 (rate-limit SSOT 정정)** — The `harness.md` 워크플로우의 rate-limit 서술 shall 단일 SSOT(`harness.yaml` + Go 기본값: `max_per_week: 3`, `cooldown_hours: 24`)를 따라야 한다. "7일당 1회 invariant" 문구(:91, :173)는 정정하고, REQ-HRN-FND-018 provenance note(구 floor 주장이 본 SPEC에 의해 supersede됨)를 남겨야 한다(shall).
 
 ### 횡단 제약
 
-**REQ-HEP-013 (Template-First + 중립성)** — **Where** 본 SPEC이 수정하는 표면이 template-managed이면(mirror 실측 확인: `harness.md`, `harness-build-entry.md`, `harness-builder.md`, learner `SKILL.md`, moai `SKILL.md`, `commands/moai/harness.md`, `harness.yaml`, `settings.json.tmpl`), the run-phase shall template mirror를 함께 갱신하고 `make build`를 실행해야 한다. The template content shall not 본 SPEC의 ID / REQ-HEP 토큰 / 감사 인용을 포함해서는 안 된다(§25 neutrality). The dev-only Runner(`harness-release-update-run.js`)와 생성물 `harness-*` artifacts shall not template로 유출되어서는 안 된다 (CI guard: `TestSplitHarnessNamespaceNoLeak`, `template-neutrality-check`).
+**REQ-HEP-013 (Template-First + 중립성)** — **Where** 본 SPEC이 수정하는 표면이 template-managed이면(mirror 실측 확인: `harness.md`, `harness-build-entry.md`, `harness-builder.md`, learner `SKILL.md`, moai `SKILL.md`, `commands/moai/harness.md`, `harness.yaml`, `settings.json.tmpl`), the run-phase shall template 대응 표면을 함께 갱신하고 `make build`를 실행해야 한다. 단, 검증 등급은 3-클래스로 구분된다(8개 표면 일괄 byte-diff는 2개 표면에서 구조적 false-fail): byte-parity mirror 6개 문서 표면 / render-pair 1쌍(`settings.json.tmpl`↔로컬 `settings.json` — mirror 아님) / 기존 구조 분기 1개(`harness.yaml`) — 클래스별 검증 절차는 acceptance.md AC-HEP-013a를 따른다. The template content shall not 본 SPEC의 ID / REQ-HEP 토큰 / 감사 인용을 포함해서는 안 된다(§25 neutrality). The dev-only Runner(`harness-release-update-run.js`)와 생성물 `harness-*` artifacts shall not template로 유출되어서는 안 된다 (CI guard: `TestSplitHarnessNamespaceNoLeak`, `template-neutrality-check`).
 
 ---
 
 ## §D 수용 기준
 
-AC 매트릭스는 `acceptance.md` §D 참조 (AC-HEP-001 ~ AC-HEP-015, REQ↔AC 추적표 포함).
+AC 매트릭스는 `acceptance.md` §D 참조 (AC-HEP-001a ~ AC-HEP-014, 총 20개 AC + REQ↔AC 추적표).
 
 ---
 
