@@ -107,5 +107,5 @@ Net: the baseline's quality is load-bearing through the CLI path even though the
 - Run-phase은 manager-develop이 L1 격리 worktree(`agent-a5e3ed044af847d4d`)에서 수행 → 오케스트레이터가 5개 큐레이션 파일(`sgconfig.yml` + `go/hardcoding.yml` + `security/{credentials,injection,crypto}.yml`)을 main 트리로 reconcile + 구 `go-hardcoding.yml` 삭제 적용(L1 격리 이탈 reconcile 패턴, worktree 정리 예정).
 - 오케스트레이터 독립 재검증(main 트리): neutrality Hangul/CJK 0 + SPEC/REQ/AC 토큰 0; `sg scan --config sgconfig.yml` 파싱 정상(credential 룰 영어 메시지 발화); `go test ./internal/astgrep/... ./internal/template/...` GREEN(embed/leak/neutrality 회귀 없음); `go build ./...` exit 0.
 - CHANGELOG `### Added` 엔트리 추가.
-- sync_commit_sha: <backfill>
+- sync_commit_sha: 82b49d82e94663cc662f2da5c81fc4c249179dc0
 - MX Tag: Tier M — MX는 sync sub-step(3-phase close, 별도 Mx 커밋 없음).
