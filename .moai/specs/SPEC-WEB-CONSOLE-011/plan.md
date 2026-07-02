@@ -1,6 +1,6 @@
 ---
 id: SPEC-WEB-CONSOLE-011
-status: draft
+status: in-progress
 created: 2026-07-03
 updated: 2026-07-03
 ---

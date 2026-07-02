@@ -153,10 +153,15 @@ func parseProjectNestedForm(r *http.Request) projectNestedForm {
 // @MX:WARN: [AUTO] readProjectConfig/writeProjectConfig는 프로필 스토어가 아닌 *프로젝트 설정*
 // (.moai/config/sections/quality.yaml + git-convention.yaml)을 디스크에서 읽고 쓰는 두 번째 영속화 경계다
 // (SPEC-WEB-CONSOLE-003). handlers.go handleSave의 첫 번째 경계(WritePreferences + SyncToProjectConfig)와는 별개다.
-// @MX:REASON: [AUTO] 영속화는 반드시 config.NewConfigManager()/LoadRaw/SetSection/Save 를 통해서만 수행한다 —
-// 웹 레이어에서 YAML을 직접 marshal/os.WriteFile 하는 것은 금지된 안티패턴(REQ-WC3-008). scope는 quality(development_mode)
-// + git_convention(convention) 두 섹션으로 엄격히 한정되며 workflow/harness/git-strategy/llm은 절대 건드리지 않는다
-// (REQ-WC3-007). 비어있는 제출값은 기존 영속값을 덮어쓰지 않는다(empty = "keep existing", EC-1).
+// @MX:REASON: [AUTO] 이 함수 쌍의 영속화는 반드시 config.NewConfigManager()/LoadRaw/SetSection/Save 를 통해서만
+// 수행하며, 그 scope는 quality(development_mode) + git_convention(convention) 두 섹션으로 한정된다. 웹 레이어에서
+// YAML을 직접 marshal/os.WriteFile 하는 것은 금지된 안티패턴(REQ-WC3-008). 구 REQ-WC3-007의 "workflow/harness/
+// git-strategy/llm 절대 금지" 조항은 SPEC-WEB-CONSOLE-011 REQ-WC11-001이 공식 SUPERSEDE했다 — 이제 10개
+// user-facing 섹션(git-strategy, llm, workflow, harness, ralph, research, feedback, observability, security, db)이
+// 편집 가능하되 라우팅 SSOT는 settings.RouteForSection이다: git-strategy/llm은 typed 경로, Save() 경로가 없는
+// 8개 섹션은 yamlpatch seam 전용(REQ-WC11-017)이며 workflow.yaml의 typed re-marshal은 금지(REQ-WC11-005).
+// 제외군(state/system/project/cache/sunset/tool-policy/lsp/mx/미지명)은 REQ-WC11-018로 계속 쓰기 금지.
+// 비어있는 제출값은 기존 영속값을 덮어쓰지 않는다(empty = "keep existing", EC-1).
 
 // readProjectConfig is the real read seam (REQ-WC3-004). It loads the project
 // config via the config manager (LoadRaw — no validation, write-intent path)

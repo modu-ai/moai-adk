@@ -1,0 +1,70 @@
+package settings
+
+import "testing"
+
+// TestRouteForSectionTable은 라우팅 테이블의 4분류(typed/seam/statusline/excluded)
+// 를 전수 검증한다 (REQ-WC11-016/017/018 — design.md §A.3).
+func TestRouteForSectionTable(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]SectionRoute{
+		// typed.
+		"user":           RouteTypedSave,
+		"language":       RouteTypedSave,
+		"quality":        RouteTypedSave,
+		"git-convention": RouteTypedSave,
+		"git-strategy":   RouteTypedSave,
+		"llm":            RouteTypedSave,
+		// seam ×8.
+		"workflow":      RouteSeam,
+		"harness":       RouteSeam,
+		"ralph":         RouteSeam,
+		"research":      RouteSeam,
+		"feedback":      RouteSeam,
+		"observability": RouteSeam,
+		"security":      RouteSeam,
+		"db":            RouteSeam,
+		// 기존 전용 경로.
+		"statusline": RouteStatusline,
+		// 제외군 + 미등재.
+		"state":       RouteExcluded,
+		"tool-policy": RouteExcluded,
+		"interview":   RouteExcluded,
+		"no-such":     RouteExcluded,
+	}
+	for name, want := range cases {
+		if got := RouteForSection(name); got != want {
+			t.Errorf("RouteForSection(%q) = %d, want %d", name, got, want)
+		}
+	}
+}
+
+// TestSeamSectionsMatchesRoutes는 SeamSections 열거와 라우팅 테이블의 정합을
+// 검증한다 — 열거에 있는 섹션은 전부 RouteSeam이어야 한다.
+func TestSeamSectionsMatchesRoutes(t *testing.T) {
+	t.Parallel()
+	seam := SeamSections()
+	if len(seam) != 8 {
+		t.Fatalf("SeamSections() length = %d, want 8", len(seam))
+	}
+	for _, name := range seam {
+		if got := RouteForSection(name); got != RouteSeam {
+			t.Errorf("seam section %q routes to %d, want RouteSeam", name, got)
+		}
+	}
+}
+
+// TestExcludedSectionsAllRejected는 명시적 제외군 전원이 RouteExcluded임을
+// 검증한다 (REQ-WC11-018).
+func TestExcludedSectionsAllRejected(t *testing.T) {
+	t.Parallel()
+	excluded := ExcludedSections()
+	if len(excluded) != 12 {
+		t.Fatalf("ExcludedSections() length = %d, want 12", len(excluded))
+	}
+	for _, name := range excluded {
+		if got := RouteForSection(name); got != RouteExcluded {
+			t.Errorf("excluded section %q routes to %d, want RouteExcluded", name, got)
+		}
+	}
+}

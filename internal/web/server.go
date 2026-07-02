@@ -1,16 +1,28 @@
 // Package web implements the MoAI Web Console — a loopback-only browser surface
 // for reading and writing the named MoAI settings (profile preferences plus the
-// project-level user.yaml / language.yaml / statusline.yaml sections).
+// editable project-level config sections).
 //
 // The Console is a thin equivalent of the terminal profile wizard: it reuses the
 // existing internal/profile read/write/sync functions and the canonical
-// validation value lists. It never writes YAML directly and never introduces a
-// parallel validation rule set.
+// validation value lists. Persistence flows exclusively through the config-manager
+// typed paths or the internal/settings/yamlpatch seam — never ad-hoc
+// yaml.Marshal/os.WriteFile in the web layer — and no parallel validation rule
+// set is introduced.
 //
-// Scope boundary (REQ-WC-012): the Console touches ONLY profile preferences plus
-// user.yaml / language.yaml / statusline.yaml. It never reads or writes
-// quality.yaml, workflow.yaml, harness.yaml, git-strategy.yaml, or any other
-// config section.
+// Scope boundary — the original REQ-WC-012 clause ("profile preferences plus
+// user.yaml / language.yaml / statusline.yaml ONLY") is formally SUPERSEDED by
+// SPEC-WEB-CONSOLE-011 REQ-WC11-001. The Console now touches profile preferences
+// plus the editable sections routed by settings.RouteForSection (the SSOT):
+// the legacy typed coverage (user, language, quality, git-convention, statusline)
+// and the 10 user-facing sections — git-strategy, llm, workflow, harness, ralph,
+// research, feedback, observability, security, db. The 8 sections without a typed
+// Save path (workflow, harness, ralph, research, feedback, observability,
+// security, db) persist EXCLUSIVELY through the comment-preserving yamlpatch seam
+// (REQ-WC11-017); workflow.yaml is never written via a typed re-marshal
+// (REQ-WC11-005). The machine/state sections (state, system, project, cache,
+// sunset), the large policy files (tool-policy, lsp, mx), and any section not
+// named editable (constitution, context, design, interview, …) remain OUTSIDE
+// the web write scope (REQ-WC11-018).
 package web
 
 import (
