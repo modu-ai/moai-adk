@@ -215,7 +215,7 @@ Claude が自動的に繰り返し、目標達成時に止まります。
 
 ## 参考資料
 
-- [Best practices for Claude Code(公式ドキュメント)](https://code.claude.com/docs/en/best-practices)
+このガイドは Anthropic の公式 [Best practices for Claude Code](https://code.claude.com/docs/en/best-practices) ドキュメントを基に作成されています。
 
 {{< callout type="tip" >}}
 同じ問題を二度を超えて修正したなら、コンテキストはすでに失敗したアプローチで汚染された状態です。未練なく `/clear` で初期化し、その間に学んだ点を盛り込んでより具体的なプロンプトで新たに始めるほうが、ほぼ常に速いです。

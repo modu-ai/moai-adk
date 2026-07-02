@@ -19,7 +19,18 @@ Lifecycle progress ledger. §E.1 is populated at plan-phase (manager-spec). §E.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — populated by manager-develop>_
+### M1 · Check-4 glossary fix (REQ-DIC-005) — COMPLETE
+
+- **M1.1 pre-check**: `DOCS_I18N_STRICT=0 bash scripts/docs-i18n-check.sh` re-run before editing confirmed the sole residual finding (ja `Anthropic` glossary miss) still present, matching plan-phase Ground Truth.
+- **M1.2 edit**: `docs-site/content/ja/claude-code/agentic/best-practices.md` `## 参考資料` section — replaced the bare bullet-list link with a natural Japanese attribution sentence: "このガイドは Anthropic の公式 [Best practices for Claude Code](https://code.claude.com/docs/en/best-practices) ドキュメントを基に作成されています。" — mirrors the ko/en/zh attribution-sentence pattern (`이 가이드는 Anthropic의 공식 ... 문서를 바탕으로 작성되었습니다.` / `This guide is based on Anthropic's official ... documentation.` / `此指南基于 Anthropic 的官方文档 ... 编写。`), preserves the glossary term "Anthropic" verbatim, grounded in the same factual content (no invented claims).
+- **M1.3 verify**: `DOCS_I18N_STRICT=0 bash scripts/docs-i18n-check.sh` re-run after edit → `Errors: 0`, `Warnings: 0` (down from the pre-edit `Errors: 1`). `grep -c Anthropic docs-site/content/ja/claude-code/agentic/best-practices.md` → `1` (up from `0`).
+- **AC-DIC-005a**: PASS — `grep -c 'Anthropic' docs-site/content/ja/claude-code/agentic/best-practices.md` → `1` (≥ 1 required).
+- **AC-DIC-005b**: PASS — Check 4 reports 0 errors for this file (full script Summary: `Errors: 0`, `Warnings: 0`).
+- **AC-DIC-005c**: deferred to M6 final sweep — default strict-mode (`bash scripts/docs-i18n-check.sh` without `DOCS_I18N_STRICT=0`) exit-code check requires Item 1 (M3-M5) to also complete first per the AC's own proviso ("PROVIDED Item 1's translation has not introduced any new Check-4 finding").
+
+**Scope note**: This milestone touched ONLY `docs-site/content/ja/claude-code/agentic/best-practices.md` + this SPEC's own frontmatter/progress artifacts. M2-M6 (Item 1 backlog translation, Item 2 moai-feedback.md translation) are NOT part of this milestone and remain pending for subsequent spawns.
+
+_<M2-M6 pending — populated by subsequent manager-develop milestone spawns>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
