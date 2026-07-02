@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DOCS-I18N-COMPLETION-001
 title: "Docs-Site i18n Completion — Non-KO Translation Backlog + Feedback Page Parity + Glossary Fix"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-07-02
 updated: 2026-07-02
 author: manager-spec
