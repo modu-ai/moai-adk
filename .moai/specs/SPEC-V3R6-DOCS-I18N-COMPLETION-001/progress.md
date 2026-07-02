@@ -307,7 +307,7 @@ No defect found in any of the 3 spot-checked files. No content-file edit was req
 
 ### sync_commit_sha
 
-sync_commit_sha: 3d14bc35e (backfill to be performed post-commit — following the predecessor's backfill pattern: this entry will be updated to the literal SHA after the sync commit is created)
+sync_commit_sha: 4efd60268
 
 ### Acceptance criteria final closure
 
