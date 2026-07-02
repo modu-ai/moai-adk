@@ -58,7 +58,7 @@ Because these siblings remain in `DeprecatedPaths`, `probeDeprecatedPathSignal` 
 
 ```yaml
 run_complete_at: 2026-07-02
-run_commit_sha: <backfill — orchestrator race-safe path-limited commit>
+run_commit_sha: 0cdf18e07
 run_status: implemented
 ac_pass_count: 9
 ac_fail_count: 0
@@ -83,5 +83,5 @@ m1_to_mN_commit_strategy: single race-safe path-limited commit by orchestrator (
 
 ### sync_commit_sha
 
-sync_commit_sha: <backfill>
-run_commit_sha: <backfill>
+sync_commit_sha: 0cdf18e07
+run_commit_sha: 0cdf18e07
