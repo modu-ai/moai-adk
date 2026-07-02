@@ -111,4 +111,16 @@ full_suite_note: >
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-02
+sync_commit_sha: 8f626b67f
+sync_status: completed
+changelog_entry_position: "[Unreleased] ### Added section, SPEC-TOKEN-EFFICIENCY-001"
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented"
+  updated_field_refresh: "2026-07-02"
+b12_self_test_a: "grep -c 'SPEC-TOKEN-EFFICIENCY-001' CHANGELOG.md → 1 (no duplicates from parallel BATCH-SYNC)"
+b12_self_test_b: "AC count match: acceptance.md has 7 ACs (AC-TEF-001..007); CHANGELOG cites 7/7 AC PASS"
+b12_self_test_c: "ls -1 internal/config/token_budget_guard{,_test}.go internal/statusline/{cache_hit_test.go,renderer.go,builder.go,types.go} → 6 files (all cited in CHANGELOG ✓)"
+canary_compliance_check: "PASS (no Mx-deferred items, all ACs closed, CHANGELOG prose conformant)"
+```
