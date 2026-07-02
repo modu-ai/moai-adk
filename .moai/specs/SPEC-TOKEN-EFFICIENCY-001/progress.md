@@ -30,7 +30,7 @@
   D-1 token-estimation method (recommend char/4), D-2 budget value (recommend
   baseline+15%), D-3 P0-2 display form (recommend cache-hit %).
 - plan_status: audit-ready
-- _plan-auditor verdict: pending (re-audit after v0.2.0 scope reduction)_
+- plan-auditor verdict (iter-2, after v0.2.0 scope reduction): **PASS 0.91** (Tier M threshold 0.80; skip-eligible ≥0.90). MP-1..4 all PASS (MP-4 N/A — Go-internal single-language). Dimensions: Clarity 0.90 / Completeness 0.92 / Testability 0.88 / Traceability 0.95. iter-1 FAIL 0.77 (2 BLOCKING in P0-2 "~7×" reword) resolved by carving P0-2 → SPEC-DIVECC-ATTRIBUTION-FIX-001; iter-2 confirmed clean carve-out (7↔7 bijection) + D4 fix. Report artifact is a gitignored local `.moai/reports/plan-audit/` record (not committed per spec-workflow.md § Report Persistence).
 
 ## §E.2 Run-phase Evidence
 
