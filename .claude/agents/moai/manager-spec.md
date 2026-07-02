@@ -255,14 +255,13 @@ Detect domain keywords and recommend a per-spawn `Agent(general-purpose)` domain
 
 ## Status Responsibility Matrix
 
-This agent is responsible for the following SPEC status transitions:
+This agent emits exactly the initial `status: draft` at SPEC creation. It performs NO later transition — `draft → in-progress` is owned by manager-develop, and `in-progress → implemented → completed` by manager-docs. See §SPEC Artifact Ownership.
 
 | Transition | Trigger | Agent Role |
 |---|---|---|
-| `draft` (initial) | SPEC file created | Sets initial `status: draft` in frontmatter |
-| `draft → planned` | Plan PR merged | Not directly triggered by this agent; enforced by CI/hook |
+| `(none) → draft` | Plan-phase artifact creation | Sets initial `status: draft` across all 4 plan-phase artifacts (spec.md + plan.md + acceptance.md + progress.md) |
 
-Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected.
+Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected. (`planned` is a legacy-optional enum value, not in the active V3R6 3-phase flow.)
 
 ## SPEC Artifact Ownership
 

@@ -448,11 +448,16 @@ var leakTextExtensions = map[string]bool{
 // ship verbatim to user projects but carry no scannable extension
 // (filepath.Ext(".gitignore") == ".gitignore", which is not in
 // leakTextExtensions). Before this allowlist these files escaped the walker
-// entirely, so a SPEC-ID leak in .gitignore / .gitkeep slipped past the audit.
+// entirely, so a SPEC-ID leak in .gitignore slipped past the audit.
 // Scanning them by basename closes that leak class going forward.
+//
+// `.gitkeep` is deliberately EXCLUDED: some `.gitkeep` files legitimately carry
+// a provenance marker (e.g. the plan-audit reports dir's `.gitkeep` references
+// SPEC-WF-AUDIT-GATE-001, and that reference is REQUIRED by
+// skills_audit_test.go TestReportsDirGitkeepExists). The leak walker must not
+// police `.gitkeep` or it would forbid a guard-required provenance token.
 var leakScannedDotfiles = map[string]bool{
 	".gitignore":     true,
-	".gitkeep":       true,
 	".gitattributes": true,
 }
 
@@ -565,10 +570,12 @@ func TestTemplateNoInternalContentLeak(t *testing.T) {
 
 		// Scan text formats + extensionless dotfiles that ship verbatim to
 		// user projects. Markdown/tmpl/YAML/sh/json bodies are the documented
-		// leak surfaces; .gitignore / .gitkeep / .gitattributes carry no
-		// scannable extension (filepath.Ext(".gitignore") == ".gitignore") so
-		// they are matched by basename — previously they escaped the walker
-		// entirely, letting a SPEC-ID leak in .gitignore / .gitkeep slip past.
+		// leak surfaces; .gitignore / .gitattributes carry no scannable
+		// extension (filepath.Ext(".gitignore") == ".gitignore") so they are
+		// matched by basename — previously they escaped the walker entirely,
+		// letting a SPEC-ID leak in .gitignore slip past. (.gitkeep is
+		// deliberately NOT scanned — it may carry a guard-required provenance
+		// marker; see leakScannedDotfiles.)
 		if !shouldScanForLeak(path) {
 			return nil
 		}
@@ -623,21 +630,30 @@ func TestTemplateNoInternalContentLeak(t *testing.T) {
 
 // TestTemplateLeakWalkerScansExtensionlessDotfiles enforces that the walker now
 // scans extensionless dotfiles that ship verbatim to user projects (.gitignore,
-// .gitkeep, .gitattributes). Before this, filepath.Ext(".gitignore") returned
+// .gitattributes). Before this, filepath.Ext(".gitignore") returned
 // ".gitignore" (not in the text-extension set), so these files were skipped and
-// a SPEC-ID leak in them (SPEC-V3R6-UPDATE-NOISE-001 / SPEC-WF-AUDIT-GATE-001)
-// escaped the audit. This test documents the RED→GREEN transition: it plants a
-// synthetic internal SPEC-ID in a temp .gitignore-named file and asserts the
-// walker's real leak classes flag it; a clean dotfile is NOT flagged.
+// a SPEC-ID leak in them escaped the audit. This test documents the RED→GREEN
+// transition: it plants a synthetic internal SPEC-ID in a temp .gitignore-named
+// file and asserts the walker's real leak classes flag it; a clean dotfile is
+// NOT flagged.
+//
+// `.gitkeep` is deliberately OUT of scope: a `.gitkeep` may carry a
+// guard-required provenance marker (e.g. the plan-audit reports dir's `.gitkeep`
+// references SPEC-WF-AUDIT-GATE-001, required by TestReportsDirGitkeepExists),
+// so the leak walker must NOT police it.
 func TestTemplateLeakWalkerScansExtensionlessDotfiles(t *testing.T) {
 	t.Parallel()
 
-	// (a) Extensionless dotfiles are in scope; ordinary source files are not
+	// (a) .gitignore / .gitattributes are in scope; .gitkeep is NOT (it may
+	// carry a guard-required provenance marker); ordinary source files are not
 	// (they are covered by their own leak-scan surfaces, not this walker).
-	for _, base := range []string{".gitignore", ".gitkeep", ".gitattributes"} {
+	for _, base := range []string{".gitignore", ".gitattributes"} {
 		if !shouldScanForLeak(filepath.Join("some", "dir", base)) {
 			t.Errorf("shouldScanForLeak(%q) = false, want true — extensionless dotfile must be scanned", base)
 		}
+	}
+	if shouldScanForLeak(filepath.Join("some", "dir", ".gitkeep")) {
+		t.Errorf("shouldScanForLeak(.gitkeep) = true, want false — .gitkeep may carry a guard-required provenance marker and must not be policed")
 	}
 	if shouldScanForLeak(filepath.Join("some", "dir", "main.go")) {
 		t.Errorf("shouldScanForLeak(main.go) = true, want false — .go is not a leak-scan surface")

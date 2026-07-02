@@ -11,7 +11,6 @@ description: |
   NOT for: Tier S/M default Hybrid Trunk main-direct (no PR step — handled by manager-develop), code implementation, testing, architecture design, documentation content, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: haiku
-effort: medium
 permissionMode: bypassPermissions
 memory: project
 skills:
@@ -61,15 +60,12 @@ Manage Git workflows, branch strategies, commit conventions, and code review pro
 
 [CONFIGURATION-DRIVEN] Read `git_commit_messages` from language.yaml.
 
-**DDD Phase Commits** (development_mode: ddd):
-- ANALYZE: `🔴 ANALYZE: [description]` (ANALYZE:[SPEC_ID]-DOC)
-- PRESERVE: `🟢 PRESERVE: [description]` (PRESERVE:[SPEC_ID]-TEST)
-- IMPROVE: `♻ IMPROVE: [description]` (IMPROVE:[SPEC_ID]-CLEAN)
+[HARD] All commits use **Conventional Commits** (`<type>(<scope>): <subject>`) with the `🗿 MoAI` trailer. NO emoji-phase commit subjects (no `🔴 RED` / `🟢 GREEN` / `♻ REFACTOR` / `ANALYZE` / `PRESERVE` / `IMPROVE`), NO `Co-Authored-By: Claude` line.
 
-**TDD Phase Commits** (development_mode: tdd):
-- RED: `🔴 RED: [description]` (RED:[SPEC_ID]-TEST)
-- GREEN: `🟢 GREEN: [description]` (GREEN:[SPEC_ID]-IMPL)
-- REFACTOR: `♻ REFACTOR: [description]` (REFACTOR:[SPEC_ID]-CLEAN)
+- Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `revert`
+- Per-milestone subject: `feat(SPEC-{ID}): M{N} <subject>` (or `fix(...)` / `docs(...)` as the change dictates)
+- Plan-phase artifacts: `feat(SPEC-{ID}): plan-phase artifacts (...)`
+- Sync-phase close: `docs(SPEC-{ID}): sync-phase artifacts` or `chore(SPEC-{ID}): sync-phase artifacts` (carries the merged 3-phase close)
 
 ## Context Memory Section
 
@@ -95,10 +91,10 @@ SPEC/Phase tracking: `SPEC: SPEC-XXX-NNN` and `Phase: [PLAN|RUN-*|SYNC|FIX|LOOP]
 
 ## Git Commit Signature
 
-```
-https://adk.mo.ai.kr
+Every commit message ends with the `🗿 MoAI` trailer as its final line. Do NOT add a `Co-Authored-By: Claude` line.
 
-Co-Authored-By: Claude <noreply@anthropic.com>
+```
+🗿 MoAI
 ```
 
 ## Branch Management
@@ -126,9 +122,9 @@ git commit -m "spec(SPEC-XXX): initial plan"
 
 Phase B — Implementation commits accumulate on main (no push):
 ```bash
-git commit -m "🔴 RED: ..."
-git commit -m "🟢 GREEN: ..."
-git commit -m "♻ REFACTOR: ..."
+git commit -m "feat(SPEC-XXX): M1 ..."
+git commit -m "feat(SPEC-XXX): M2 ..."
+git commit -m "test(SPEC-XXX): M3 ..."
 ```
 
 Phase C — At PR time: late switch + push + merge (method from config):

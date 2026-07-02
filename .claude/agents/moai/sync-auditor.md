@@ -81,18 +81,18 @@ At invocation, load the active evaluator profile to determine dimension weights 
 Profile determines: dimension weights, pass thresholds, must-pass criteria, and hard thresholds.
 The "Evaluation Dimensions" table above reflects the built-in default profile. When a non-default profile is loaded, its weights and thresholds override these defaults.
 
-## Sprint Contract Negotiation (Phase 2.0, thorough only)
+## Evaluation Contract Negotiation (Phase 2.0, thorough only)
 
 When invoked for contract negotiation before implementation:
-1. Review implementation plan from manager-develop/tdd
+1. Review implementation plan from manager-develop
 2. Identify missing edge cases, untested scenarios, security gaps
-3. Produce contract.md with agreed Done criteria and hard thresholds
+3. RETURN the Evaluation Contract content (agreed Done criteria + hard thresholds) in the response body for the orchestrator to persist — this agent has no Write tool (`permissionMode: plan`) and MUST NOT attempt a file write
 4. Maximum 2 negotiation rounds
 
 ## Intervention Modes
 
-- **final-pass** (standard harness): Single evaluation at Phase 2.8a
-- **per-sprint** (thorough harness): Phase 2.0 contract negotiation + Phase 2.8a post-evaluation
+- **final-pass** (standard harness): Single post-implementation evaluation
+- **per-iteration** (thorough harness): Phase 2.0 Evaluation Contract negotiation + post-implementation evaluation
 
 ## Mode-Specific Deployment
 
@@ -127,16 +127,16 @@ Per design-constitution §12 Mechanism 3: dimensions in `must_pass_dimensions` (
 Functionality + Security) must meet their pass_threshold independently. A failing must-pass
 dimension causes overall FAIL regardless of other dimension scores.
 
-### Sprint Contract Integration
+### Evaluation Contract Integration
 
-Sprint Contract YAML at `.moai/sprints/{spec-id}/contract.yaml` carries criterion state:
+The Evaluation Contract (returned by this agent, persisted by the orchestrator at `.moai/state/evaluation/{spec-id}/contract.yaml`) carries criterion state:
 - `passed`: criterion met in a previous iteration (no regression allowed)
 - `failed`: criterion did not meet threshold
 - `refined`: expectation revised based on feedback
 - `new`: added in current iteration
 
 NEVER include scoring rationale, prior iteration verdicts, or reasoning traces in the contract
-(HRN-002 §11.4.1 fresh-judgment constraint).
+(HRN-002 §11.4.1 fresh-judgment constraint). This agent RETURNS the contract content; it does not write the file (`permissionMode: plan`, no Write tool).
 
 ### Rubric Citation Requirement
 

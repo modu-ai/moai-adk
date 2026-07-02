@@ -58,7 +58,7 @@ This agent consolidates three previously separate builder agents.
 | Use `builder-skill` subagent | Use `builder-harness` subagent with `artifact_type=skill` |
 | Use `builder-plugin` subagent | Use `builder-harness` subagent with `artifact_type=plugin` |
 
-**Deprecated agents** (retired stubs still present for compatibility):
+**Archived agents** (rejected at spawn — no stub files exist; use the new form):
 - `builder-agent` → replaced by `builder-harness` with `artifact_type=agent`
 - `builder-skill` → replaced by `builder-harness` with `artifact_type=skill`
 - `builder-plugin` → replaced by `builder-harness` with `artifact_type=plugin`

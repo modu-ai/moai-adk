@@ -48,10 +48,10 @@ hooks:
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" develop-post-implementation"
           timeout: 10
   SubagentStop:
-    hooks:
-      - type: command
-        command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" develop-completion"
-        timeout: 10
+    - hooks:
+        - type: command
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" develop-completion"
+          timeout: 10
 ---
 
 <!-- @MX:ANCHOR: [AUTO] develop-dispatch — unified entry point for all DDD+TDD implementation; fan_in >= 5 (the former manager-ddd / manager-tdd cycles + per-spawn general-purpose security / devops / refactoring specialists all route here) -->
@@ -79,7 +79,7 @@ This agent consolidates the previously separate `manager-ddd` and `manager-tdd` 
 | Use `manager-ddd` subagent | Use `manager-develop` subagent with `cycle_type=ddd` |
 | Use `manager-tdd` subagent | Use `manager-develop` subagent with `cycle_type=tdd` |
 
-**Deprecated agents** (retired stubs still present for compatibility):
+**Archived agents** (rejected at spawn — no stub files exist; use the new form):
 - `manager-tdd` → replaced by `manager-develop` with `cycle_type=tdd`
 - `manager-ddd` → replaced by `manager-develop` with `cycle_type=ddd`
 
@@ -97,7 +97,7 @@ Per the canonical CI auto-fix protocol, the `manager-develop` agent supports a t
 
 ## Behavioral Contract (SEMAP)
 
-**Preconditions**: SPEC document exists with approved status. Implementation plan approved. Target files identified. **cycle_type parameter provided**.
+**Preconditions**: SPEC document exists with `status: draft` and plan-auditor PASS + Implementation Kickoff Approval granted. Implementation plan approved. Target files identified. **cycle_type parameter provided**.
 
 **Postconditions**: All existing tests still pass. New tests cover modified code. Coverage >= 85% on modified files. No new lint/type errors.
 
@@ -213,7 +213,7 @@ For each improvement:
 
 **STEP 5: Complete and Report**
 - Run complete test suite (memory guard: batches if needed)
-- Verify coverage targets met (80% minimum, 85% recommended)
+- Verify coverage targets met (85% minimum per quality.yaml SSOT — `.moai/config/sections/quality.yaml`)
 - Generate TDD completion report with all tests and design decisions
 - Commit changes, update SPEC status
 
@@ -260,19 +260,17 @@ Respect per-file limits: max 3 ANCHOR, 5 WARN, 10 NOTE, 5 TODO.
 - Extract Method, Extract Class, Move Method, Rename (safe multi-file rename via AST-grep)
 
 **TDD Patterns**:
+- Specification by Example, Outside-In TDD, Inside-Out TDD, Test Doubles (Mocks, Stubs, Fakes, Spies)
 
 ## Status Responsibility Matrix
 
-This agent is responsible for the following SPEC status transitions:
+This agent performs exactly ONE status transition, on the first run-phase commit (M1), for the `progress.md` artifact only. See §SPEC Artifact Ownership for the full artifact-level boundary.
 
 | Transition | Trigger | Agent Role |
 |---|---|---|
-| `planned → in-progress` | Partial AC met during run | Updates status when some (not all) acceptance criteria pass |
-| `planned → implemented` | All AC GREEN | Updates status when all acceptance criteria pass |
-| `in-progress → implemented` | Remaining AC met | Updates status from partial to full completion |
+| `draft → in-progress` | First run-phase commit (M1) after plan-auditor PASS + Implementation Kickoff Approval | Sets `status: in-progress` + refreshes `updated:` on the M1 commit; the `in-progress → implemented → completed` close is owned by manager-docs (single sync commit) |
 
-Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected.
-- Specification by Example, Outside-In TDD, Inside-Out TDD, Test Doubles (Mocks, Stubs, Fakes, Spies)
+Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected. (`planned` is a legacy-optional enum value, not in the active V3R6 3-phase flow.)
 
 ## SPEC Artifact Ownership
 

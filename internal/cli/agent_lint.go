@@ -59,6 +59,7 @@ type AgentFrontmatter struct {
 	Skills         []string          `yaml:"skills"`
 	Hooks          map[string][]Hook `yaml:"hooks"`
 	Effort         string            `yaml:"effort"`
+	Model          string            `yaml:"model"`
 	Isolation      string            `yaml:"isolation"`
 	PermissionMode string            `yaml:"permissionMode"`
 	// Sandbox fields (SPEC-V3R2-RT-003 REQ-033/043)
@@ -426,9 +427,28 @@ func checkAgentInTools(file string, fm AgentFrontmatter) []LintViolation {
 	return violations
 }
 
+// isHaikuAgent reports whether the agent declares model: haiku.
+// Haiku does not support the effort frontmatter field (per
+// code.claude.com/docs/en/model-config — Haiku is not listed among the
+// effort-supporting models, so an effort: value is silently inert). The
+// canonical `model: haiku ⇒ no effort` invariant is authoritatively enforced
+// by the haiku_effort_guard (internal/template/haiku_effort_guard_test.go,
+// TestHaikuAgentsHaveNoEffort). LR-03 and LR-12 therefore MUST NOT demand an
+// effort field on haiku agents — doing so contradicts that guard.
+func isHaikuAgent(fm AgentFrontmatter) bool {
+	return strings.TrimSpace(fm.Model) == "haiku"
+}
+
 // checkMissingEffort checks for LR-03.
 func checkMissingEffort(file string, fm AgentFrontmatter) []LintViolation {
 	var violations []LintViolation
+
+	// Haiku agents must NOT declare effort (it is silently inert on Haiku).
+	// Exempt them from LR-03 so the lint does not demand a field the canonical
+	// haiku_effort_guard forbids. See isHaikuAgent.
+	if isHaikuAgent(fm) {
+		return violations
+	}
 
 	if fm.Effort == "" {
 		severity := SeverityError
@@ -531,6 +551,15 @@ var validEffortValues = map[string]struct{}{
 // @MX:NOTE: LR-12 — 17-agent matrix drift detection; blocks the 32% drift ratio in spec.md §1.1 R5 audit to 0%; out-of-roster agents (e.g., manager-brain) are exempt from LR-12
 func checkEffortMatrixDrift(file string, fm AgentFrontmatter) []LintViolation {
 	var violations []LintViolation
+
+	// Haiku agents must NOT declare effort (it is silently inert on Haiku).
+	// This early-return fires BEFORE the canonicalEffortMatrix lookup so no
+	// drift is reported for haiku agents (manager-docs / manager-git) even
+	// though the matrix still lists a legacy effort value for them. See
+	// isHaikuAgent and the haiku_effort_guard invariant.
+	if isHaikuAgent(fm) {
+		return violations
+	}
 
 	// Extract agent name from file path (e.g., "expert-security.md" -> "expert-security")
 	baseName := filepath.Base(file)
@@ -1089,6 +1118,8 @@ func (fm *AgentFrontmatter) setField(key, value string) {
 		fm.Tools = value
 	case "effort":
 		fm.Effort = value
+	case "model":
+		fm.Model = value
 	case "isolation":
 		fm.Isolation = value
 	case "permissionMode":

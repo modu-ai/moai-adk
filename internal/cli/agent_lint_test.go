@@ -1193,6 +1193,81 @@ Agent body`
 	}
 }
 
+// TestLintHaikuAgentExemptFromEffortRules verifies that a model: haiku agent
+// with NO effort: field is exempt from BOTH LR-03 (missing effort) and LR-12
+// (effort matrix drift). Haiku does not support the effort field (it is
+// silently inert), so demanding effort on a haiku agent contradicts the
+// canonical haiku_effort_guard invariant (model: haiku ⇒ no effort). The
+// haiku-named agents manager-docs / manager-git are the canonical instances.
+func TestLintHaikuAgentExemptFromEffortRules(t *testing.T) {
+	// manager-docs is in canonicalEffortMatrix with a legacy "medium" value;
+	// the LR-12 haiku early-return must fire before the matrix lookup, and LR-03
+	// must not fire despite the absent effort field.
+	content := `---
+name: manager-docs
+description: Documentation specialist
+tools: Read, Write, Edit
+model: haiku
+permissionMode: bypassPermissions
+---
+Docs agent body`
+
+	tmpDir := t.TempDir()
+	agentPath := filepath.Join(tmpDir, "manager-docs.md")
+	if err := os.WriteFile(agentPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+
+	violations, err := lintAgentFile(agentPath, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	for _, v := range violations {
+		if v.Rule == "LR-03" {
+			t.Errorf("haiku agent must be exempt from LR-03 (missing effort), got: %s", v.Message)
+		}
+		if v.Rule == "LR-12" {
+			t.Errorf("haiku agent must be exempt from LR-12 (effort matrix drift), got: %s", v.Message)
+		}
+	}
+}
+
+// TestLintNonHaikuAgentStillRequiresEffort is the negative control for the
+// haiku exemption: a non-haiku agent (or one with no model: field) with no
+// effort: field MUST still trip LR-03. This guards against the exemption being
+// broadened to weaken LR-03/LR-12 for non-haiku agents.
+func TestLintNonHaikuAgentStillRequiresEffort(t *testing.T) {
+	content := `---
+name: manager-spec
+description: Plan-phase specialist
+tools: Read, Write, Edit
+model: inherit
+---
+Spec agent body`
+
+	tmpDir := t.TempDir()
+	agentPath := filepath.Join(tmpDir, "manager-spec.md")
+	if err := os.WriteFile(agentPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+
+	violations, err := lintAgentFile(agentPath, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	foundLR03 := false
+	for _, v := range violations {
+		if v.Rule == "LR-03" {
+			foundLR03 = true
+		}
+	}
+	if !foundLR03 {
+		t.Error("non-haiku agent (model: inherit) with no effort field must still trip LR-03")
+	}
+}
+
 // TestCheckDeadHooks tests LR-04 dead hook detection via direct AgentFrontmatter struct
 func TestCheckDeadHooks(t *testing.T) {
 	tests := []struct {

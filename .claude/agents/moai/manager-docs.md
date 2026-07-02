@@ -12,7 +12,6 @@ description: |
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md body — manager-spec only per Status Transition Ownership Matrix; manager-docs limited to frontmatter `status` + `updated` field transitions only), code implementation, testing, git branch management, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 model: haiku
-effort: medium
 permissionMode: bypassPermissions
 memory: project
 skills:
@@ -116,13 +115,13 @@ OUT OF SCOPE: Code implementation, deployment, security audits — route to mana
 
 ## Status Responsibility Matrix
 
-This agent is responsible for the following SPEC status transitions:
+This agent performs the merged `in-progress → implemented → completed` transition on the SINGLE sync commit (per SPEC-V3R6-LIFECYCLE-REDESIGN-001 3-phase close), applied atomically to all 4 SPEC artifacts. There is no separate Mx chore commit. See §SPEC Artifact Ownership.
 
 | Transition | Trigger | Agent Role |
 |---|---|---|
-| `implemented → completed` | Sync PR merged | Final status transition after documentation sync |
+| `in-progress → implemented → completed` | Sync commit (single commit for all 4 artifacts) | Merged 3-phase close (`completed` rides the sync commit); refreshes `updated:` in all 4 frontmatter blocks |
 
-Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected.
+Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected. (`planned` is a legacy-optional enum value, not in the active V3R6 3-phase flow.)
 
 ## SPEC Artifact Ownership
 
