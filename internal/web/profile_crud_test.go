@@ -159,6 +159,138 @@ func TestProfileCRUDI18nKeys(t *testing.T) {
 	}
 }
 
+// TestProfileCRUDMethodNotAllowed: non-POST on the CRUD routes → 405.
+func TestProfileCRUDMethodNotAllowed(t *testing.T) {
+	a, _ := crudApp(t, "default")
+	h := a.routes()
+	for _, path := range []string{"/profile/create", "/profile/delete"} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusMethodNotAllowed {
+			t.Errorf("GET %s status = %d, want 405", path, rec.Code)
+		}
+	}
+}
+
+// TestProfileDeleteNonexistent: deleting a valid, non-active, non-existent
+// profile surfaces profile.Delete's error as a 4xx (readable, never blank).
+func TestProfileDeleteNonexistent(t *testing.T) {
+	a, _ := crudApp(t, "default")
+	h := a.routes()
+	rec := postProfile(t, h, "/profile/delete", "ghost")
+	if rec.Code < 400 || rec.Code >= 500 {
+		t.Errorf("delete nonexistent 'ghost' status = %d, want 4xx", rec.Code)
+	}
+}
+
+// TestProfileDeleteInvalidName: a traversal name that clears the default/active
+// guards is still rejected 4xx by the isValidProfileName check (REQ-WC11-034 —
+// delete route).
+func TestProfileDeleteInvalidName(t *testing.T) {
+	a, _ := crudApp(t, "default")
+	h := a.routes()
+	for _, name := range []string{"a/b", "a\\b", ".hidden"} {
+		rec := postProfile(t, h, "/profile/delete", name)
+		if rec.Code < 400 || rec.Code >= 500 {
+			t.Errorf("delete %q status = %d, want 4xx", name, rec.Code)
+		}
+	}
+}
+
+// TestProfileCRUDSeamErrors: an injected create/delete seam failure surfaces a
+// 5xx / 4xx error page (covers the seam-error branches).
+func TestProfileCRUDSeamErrors(t *testing.T) {
+	a, base := crudApp(t, "default")
+	a.createProfile = func(string) error { return os.ErrPermission }
+	rec := postProfile(t, a.routes(), "/profile/create", "work")
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("create seam error status = %d, want 500", rec.Code)
+	}
+
+	// A delete-seam failure on an existing, non-active profile → 4xx.
+	if err := os.MkdirAll(filepath.Join(base, "gone"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	a.deleteProfile = func(string) error { return os.ErrPermission }
+	rec = postProfile(t, a.routes(), "/profile/delete", "gone")
+	if rec.Code < 400 || rec.Code >= 500 {
+		t.Errorf("delete seam error status = %d, want 4xx", rec.Code)
+	}
+}
+
+// TestActiveProfileNameFallback: an empty cfg.ProfileName resolves to "default".
+func TestActiveProfileNameFallback(t *testing.T) {
+	a := newApp(Config{ProjectRoot: t.TempDir(), ProfileName: ""})
+	if got := a.activeProfileName(); got != "default" {
+		t.Errorf("activeProfileName() = %q, want default", got)
+	}
+	b := newApp(Config{ProjectRoot: t.TempDir(), ProfileName: "work"})
+	if got := b.activeProfileName(); got != "work" {
+		t.Errorf("activeProfileName() = %q, want work", got)
+	}
+}
+
+// TestCreateProfileDirRejectsReserved: the default create seam rejects reserved
+// and traversal names without creating a directory.
+func TestCreateProfileDirRejectsReserved(t *testing.T) {
+	profileBase := t.TempDir()
+	orig := profile.BaseDirOverride
+	profile.BaseDirOverride = profileBase
+	t.Cleanup(func() { profile.BaseDirOverride = orig })
+
+	for _, name := range []string{"", "default", "../x", "a/b", ".hidden"} {
+		if err := createProfileDir(name); err == nil {
+			t.Errorf("createProfileDir(%q) = nil, want error", name)
+		}
+	}
+	// A valid name creates the directory.
+	if err := createProfileDir("ok"); err != nil {
+		t.Errorf("createProfileDir(ok) = %v, want nil", err)
+	}
+	if _, err := os.Stat(filepath.Join(profileBase, "ok")); err != nil {
+		t.Errorf("createProfileDir(ok) did not create the dir: %v", err)
+	}
+}
+
+// TestProfileResultDegradesOnBadSelection: when the request's own ?profile
+// selection is itself a traversal name, the error re-render degrades to the
+// minimal error page (never feeds a traversal name into the read seam).
+func TestProfileResultDegradesOnBadSelection(t *testing.T) {
+	a, _ := crudApp(t, "default")
+	// profile_name empty → 4xx error path → renderProfileResult; ?profile=../bad
+	// makes selectedProfile return a traversal name → renderError degrade.
+	form := url.Values{"profile_name": {""}}
+	req := httptest.NewRequest(http.MethodPost, "/profile/create?profile=../bad", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Host = "127.0.0.1"
+	rec := httptest.NewRecorder()
+	a.routes().ServeHTTP(rec, req)
+	if rec.Code < 400 || rec.Code >= 500 {
+		t.Errorf("bad-selection error path status = %d, want 4xx", rec.Code)
+	}
+}
+
+// TestProfileResultDegradesOnReadError: a read-seam failure while re-rendering a
+// CRUD result degrades gracefully (error path → 4xx minimal page; success path →
+// 500), never panicking.
+func TestProfileResultDegradesOnReadError(t *testing.T) {
+	a, _ := crudApp(t, "default")
+	a.readProjectConfig = func(string) (string, string, error) {
+		return "", "", os.ErrPermission
+	}
+	// Error path: invalid name → renderProfileResult → buildIndexView errors → 4xx.
+	rec := postProfile(t, a.routes(), "/profile/create", "")
+	if rec.Code < 400 || rec.Code >= 500 {
+		t.Errorf("read-error error path status = %d, want 4xx", rec.Code)
+	}
+	// Success path: valid create → renderProfileSuccess → buildIndexView errors → 500.
+	rec = postProfile(t, a.routes(), "/profile/create", "work")
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("read-error success path status = %d, want 500", rec.Code)
+	}
+}
+
 // TestProfileManagerRendered verifies the CRUD manager renders on GET / with its
 // create form + i18n-keyed controls (AC-WC11-032 render half).
 func TestProfileManagerRendered(t *testing.T) {

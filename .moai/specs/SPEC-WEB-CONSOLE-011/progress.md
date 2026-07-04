@@ -85,13 +85,51 @@ Lifecycle tracking for the 3-phase plan → run → sync flow. §E carries the a
 2. **선재 실패 (내 변경 무관)**: `go test ./...`에서 `internal/cli` `TestRunHookEvent_ReadInputError` FAIL (nil pointer panic @ coverage_test.go:77). **base 시점 선재** — 본 worktree에서 internal/cli는 무변경(`git status --porcelain internal/cli/` = empty)이고 M1/M2a 커밋은 해당 패키지 무접촉. main checkout에는 병렬 세션(SPEC-CLI-SUBPKG-SPLIT-001)의 internal/cli/coverage_test.go 미커밋 수정이 존재 — 해당 세션 소관. PRESERVE 제약상 무접촉 유지.
 3. **선재 gofmt 드리프트 (내 변경 무관)**: `gofmt -l`이 internal/web/handlers.go + internal/web/projectnested_error_test.go 지적 — 양쪽 모두 git 무변경 base 파일. 내 신규/수정 파일은 전부 gofmt clean.
 
+### M4 — Profile CRUD (repro-test-first 보안 수정 + CRUD UI) — 커밋 133a3c9d5 / b66580ffc / d436aa80c
+
+> **범위**: 본 후속 위임은 **M4만** 커버한다 (M2b=002446611, M3=ab555742f/4f5b3fbbb 는 앞선 위임에서 landing). base = 4f5b3fbbb (M3 tip). cycle_type=tdd, Reproduction-First.
+
+**Step 1 — RED (AC-WC11-030a, 커밋 133a3c9d5)**: 가설(웹 쓰기 경로가 `__profile`/`?profile=` 를 `isValidProfileName` 없이 `WritePreferences`→`MkdirAll` 로 흘려 path traversal 로 profile store 밖 디렉터리 생성)을 repro test 로 기계 검증. 수정 前 트리에서 **FAIL 관측 (verbatim)**:
+
+```
+--- FAIL: TestProfileNameTraversal (internal/web)
+    profile_traversal_test.go:75: POST /save with __profile="../../moai-repro-escaped" status = 200, want 4xx
+    profile_traversal_test.go:83: traversal created a directory outside the profile store: .../001/sub1/moai-repro-escaped
+--- FAIL: TestProfileNameTraversal (internal/profile)
+    traversal_test.go:42: WritePreferences("../../moai-repro-escaped") = nil, want error (invalid profile name)
+    traversal_test.go:47: WritePreferences created a directory outside the profile store: .../001/sub1/moai-repro-escaped
+```
+
+가설은 **반증되지 않고 확정**됨 (verification-claim-integrity §1.1 surface 3). RED 커밋(test-only, failing)이 fix 커밋에 선행 — `git log` 순서 증거: 133a3c9d5(RED) → b66580ffc(GREEN).
+
+**Step 2 — GREEN (AC-WC11-030b/031/034, 커밋 b66580ffc)**: design.md §D.1 defense-in-depth 2중 배치. (1차) 웹 경계 `handleSave`: `selected` 해석 직후 `profile.IsValidProfileName` 검증→400, write seam 도달 전 차단. (2차) `WritePreferences` 내부: `os.MkdirAll` 이전 `isValidProfileName` 가드→오류. `profile.IsValidProfileName` exported wrapper 신설(REQ-WC11-031, 재선언 금지). `""`/`"default"` 특수명 통과 확인(회귀 0). repro test GREEN 전환: `__profile=../../x` → 400 + escaped dir 미생성.
+
+**Step 3 — CRUD UI (AC-WC11-032/033, 커밋 d436aa80c)**: 2개 신규 POST 라우트(`/profile/create`, `/profile/delete`) + `profileManager` Templ 컴포넌트 + 4-locale i18n(6키 ×4). create=`GetProfileDir`+`os.MkdirAll`(env 무접촉 — EnsureDir 의 `CLAUDE_CONFIG_DIR` os.Setenv 부작용 회피, 장수 서버+테스트 격리 근거 profile_crud.go 주석). delete guards: default(기존 guard) + active(cfg.ProfileName/GetCurrentName — 웹 경계 NEW 4xx guard, live 는 stderr 경고 후 진행). switch=기존 GET `/?profile=<name>` 재사용. `handleIndex`→`buildIndexView` 추출(전체 페이지 재렌더 재사용). PRESERVE 준수: app.go @MX:NOTE(REQ-WC-009) CSRF 블록 무접촉(routes() 라우트만 추가), statusline/agent body 무접촉.
+
+**M4 AC 매트릭스 (전 [B] PASS)**:
+
+| AC | 검증 | 결과 |
+|----|------|------|
+| AC-WC11-030a | RED 커밋(133a3c9d5) → fix 커밋(b66580ffc) 순서 + RED verbatim 출력 | PASS — repro FAIL 관측 후 커밋 순서 증거 |
+| AC-WC11-030b | `go test -run TestProfileNameTraversal ./internal/web/ ./internal/profile/` | PASS (양 패키지 ok) — `../../x` → 4xx + 디렉터리 미생성 |
+| AC-WC11-031 | `grep isValidProfileName internal/web/ internal/profile/preferences.go` | PASS — 실호출 preferences.go:159 + web 경계 `profile.IsValidProfileName` |
+| AC-WC11-032 | `TestProfileCRUDFlow` (create→list→switch→delete) + i18n 4-locale | PASS — 전 흐름 + `TestProfileCRUDI18nKeys` 6키×4 |
+| AC-WC11-033 | `TestProfileDeleteGuards` (default + active keepme 삭제) | PASS — 양쪽 4xx + 디렉터리 잔존 |
+| AC-WC11-034 | `TestProfileCreateInvalidName` + `TestProfileDeleteInvalidName` (빈/예약/traversal) | PASS — 4xx + MkdirAll side effect 0 |
+
+**커버리지 (M4 신규 함수)**: `createProfileDir` 100% / `activeProfileName` 100% / `renderProfileSuccess` 100% / `renderProfileResult` 100% / `buildIndexView` 93.8% / `handleProfileDelete` 88.2% / `handleProfileCreate` 85.7% (잔여 gap = ParseForm 오류 방어 분기, 저가치). 패키지 커버리지: internal/web 71.1%(M3 base ~70.6% → 신규 코드 잘 커버, 미세 상승), internal/profile 80.2%. 패키지 총계 <85% 는 대형 UI 패키지의 선재 baseline(M4 도입 아님) — 신규 코드는 전부 85%+.
+
+**PRESERVE 검증**: `git diff --name-only 4f5b3fbbb..HEAD` = internal/web/{app.go, handlers.go, root.templ, root_templ.go, profile_crud.go, profile_crud_test.go, profile_traversal_test.go, assets/{i18n.js, console.css}} + internal/profile/{profile.go, preferences.go, traversal_test.go} + progress.md. renderer.go/cache_hit_test.go/app.go:90-92 CSRF/agent 파일/병렬 세션 산출물 전부 무접촉.
+
+**선재 실패 (무접촉 유지)**: `go test ./...` = 91 pkg ok, 유일 FAIL = `internal/cli TestRunHookEvent_ReadInputError` (base 선재, 병렬 세션 SPEC-CLI-SUBPKG-SPLIT-001 도메인 — finding #2 동일). internal/cli 무변경(`git status --porcelain internal/cli/` empty).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-07-04
-run_commit_sha: "af4bdf245 (M1) + 5d2d18f3b (M2a) + 002446611 (M2b — rebased SHA) + <M3 — 본 progress.md 동승 커밋>"
-run_status: in-progress — M1 + M2a + M2b + M3 완료; M4/M5/M6 후속 위임 대기
-ac_pass_count: 28  # M1/M2a/M2b 15 + M3: 020, 021(llm tier round-trip — M2b 스모크 포함), 022, 023, 024, 025, 026, 027, 028, 029, 070, 071, 072, 073, 074 중 검증 완료분 (021은 TestSaveSchemaSmokeAllSections의 llm 필드로 커버)
+run_commit_sha: "af4bdf245 (M1) + 5d2d18f3b (M2a) + 002446611 (M2b — rebased SHA) + ab555742f/4f5b3fbbb (M3) + 133a3c9d5 (M4 RED) + b66580ffc (M4 GREEN) + d436aa80c (M4 CRUD) + <본 progress.md 동승 커밋>"
+run_status: in-progress — M1 + M2a + M2b + M3 + M4 완료; M5/M6 후속 위임 대기
+ac_pass_count: 34  # M1/M2a/M2b 15 + M3 13 + M4: 030a, 030b, 031, 032, 033, 034 (6 — 전 [B] PASS)
 ac_fail_count: 0
 ac_partial_notes: "AC-WC11-011은 '노출 ∪ 명시 제외 목록' 파티션 테스트(TestQualityKeyPartition)로 충족 — lsp_quality_gates/lsp_integration/principles/cycle_type_routing은 명시 제외(form UI 부적합 대형 정책 블록). AC-WC11-015는 신규 data-i18n 키 25종 ×4 locale로 충족 — M2b 필드 라벨은 key-chip 기술 식별자(비번역 계약)라 per-field 키 비대상. AC-WC11-005 allowlist 불변(신규 NewConfigManager/.Save( 0 — 신규 typed 경로는 internal/settings 소재)"
 preserve_list_post_run_count: 0   # PRESERVE 위반 0 — statusline/app.go@MX:NOTE/병렬 세션 산출물/agent 파일 전부 무접촉
@@ -105,9 +143,9 @@ cross_platform_build:
 coverage:
   internal_settings: "90.9% (M2b 확장 후 — 163필드 전수 round-trip 테스트 포함)"
   internal_settings_yamlpatch: "86.3%"
-  internal_web: "70.9% — baseline 73.0% 대비 −2.1pp (templ generate 산출 코드 분모 팽창; 신규 비생성 코드는 신규 AC 테스트가 커버)"
+  internal_web: "70.9% (M2b/M3 측정) → 71.1% (M4 후 재측정, go test -cover ./internal/web/); baseline 73.0% 대비 하락은 templ generate 산출 코드 분모 팽창 — M4 신규 함수는 createProfileDir/activeProfileName/renderProfileSuccess/renderProfileResult 100%, handleProfileDelete 88.2%, handleProfileCreate 85.7%, buildIndexView 93.8%"
 total_run_phase_files: 30   # M1(11) + M2a(12) + M2b: settings 4신규+2수정+testdata 3, web 2신규(go)+1신규(test)+3수정(go)+2 templ+2 _templ 재생성+3 테스트 수정+i18n.js
-m1_to_mN_commit_strategy: "마일스톤별 path-limited 커밋 (M1: af4bdf245 / M2a: 5d2d18f3b — rebased SHA / M2b: 후속 커밋), 전용 worktree 브랜치, push/landing은 orchestrator 소관"
+m1_to_mN_commit_strategy: "마일스톤별 path-limited 커밋 (M1: af4bdf245 / M2a: 5d2d18f3b / M2b: 002446611 / M3: ab555742f+4f5b3fbbb / M4: 133a3c9d5 RED→b66580ffc GREEN→d436aa80c CRUD — RED→GREEN→UI 순서 준수), 전용 worktree 브랜치, push/landing은 orchestrator 소관"
 known_preexisting_failures: "internal/cli TestRunHookEvent_ReadInputError (base 선재, 병렬 세션 SPEC-CLI-SUBPKG-SPLIT-001 도메인, 무접촉); gofmt 드리프트 2파일 (base 선재, 무접촉)"
 ```
 
