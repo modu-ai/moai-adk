@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>6839c4898 - Agent Host Hook Compatibility Layer</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;display=swap">
+  <style>
+    :root {
+      --ivory: #FAF9F5;
+      --paper: #FFFFFF;
+      --slate: #141413;
+      --clay: #D97757;
+      --clay-d: #B85C3E;
+      --oat: #E3DACC;
+      --olive: #788C5D;
+      --g100: #F0EEE6;
+      --g300: #D1CFC5;
+      --g500: #87867F;
+      --g700: #3D3D3A;
+      --sans: "Pretendard", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --serif: "Pretendard", ui-serif, Georgia, serif;
+      --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --max-width: 1040px;
+      --radius-panel: 12px;
+      --radius-row: 8px;
+      --border: 1.5px solid var(--g300);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--ivory);
+      color: var(--g700);
+      line-height: 1.55;
+      padding: 56px 32px 120px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page { max-width: var(--max-width); margin: 0 auto; }
+
+    header.page-head { margin-bottom: 44px; max-width: 860px; }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--g500);
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 34px;
+      line-height: 1.15;
+      color: var(--slate);
+      margin-bottom: 10px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--g500);
+      margin-bottom: 18px;
+    }
+
+    .meta strong { color: var(--slate); font-weight: 600; }
+    .add { color: var(--olive); }
+    .del { color: var(--clay); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 220px;
+      gap: 48px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .toc { display: none; }
+    }
+
+    section {
+      margin-bottom: 56px;
+      scroll-margin-top: 24px;
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 24px;
+      color: var(--slate);
+      margin-bottom: 14px;
+    }
+
+    h3 {
+      font-size: 16px;
+      color: var(--slate);
+      margin-bottom: 8px;
+    }
+
+    p.lede {
+      font-size: 15px;
+      max-width: 720px;
+      margin-bottom: 12px;
+      color: var(--g700);
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.92em;
+      background: var(--g100);
+      border: 1px solid var(--g300);
+      border-radius: 5px;
+      padding: 1px 5px;
+      color: var(--slate);
+    }
+
+    a { color: var(--clay-d); text-decoration-thickness: 1px; }
+
+    .toc {
+      position: sticky;
+      top: 32px;
+      border-left: 1.5px solid var(--g300);
+      padding-left: 18px;
+      font-size: 13px;
+    }
+
+    .toc .t-head {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--g500);
+      margin-bottom: 10px;
+    }
+
+    .toc a {
+      display: block;
+      color: var(--g700);
+      text-decoration: none;
+      padding: 4px 0;
+    }
+
+    .toc a:hover { color: var(--clay); }
+    .toc .sub { padding-left: 12px; color: var(--g500); font-size: 12.5px; }
+
+    .tldr {
+      background: var(--paper);
+      border: var(--border);
+      border-left: 4px solid var(--clay);
+      border-radius: var(--radius-panel);
+      padding: 20px 24px;
+      margin-bottom: 48px;
+      max-width: 780px;
+    }
+
+    .tldr .k {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--g500);
+      margin-bottom: 8px;
+    }
+
+    .tldr p { font-size: 15px; color: var(--slate); }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin: 0 0 42px;
+    }
+
+    @media (max-width: 780px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 520px) { .kpis { grid-template-columns: 1fr; } }
+
+    .kpi {
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-row);
+      padding: 14px 16px;
+    }
+
+    .kpi .label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--g500);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .kpi .value {
+      color: var(--slate);
+      font-weight: 700;
+      font-size: 22px;
+      line-height: 1.1;
+    }
+
+    .ba {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin: 22px 0 4px;
+    }
+
+    @media (max-width: 720px) { .ba { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      padding: 18px 20px;
+    }
+
+    .panel.after { border-color: var(--olive); }
+
+    .panel .k {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--g500);
+      margin-bottom: 10px;
+    }
+
+    .panel.after .k { color: var(--olive); }
+
+    .panel ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 13.5px;
+    }
+
+    .panel li::before { content: "·"; color: var(--g500); margin-right: 8px; }
+    .panel.after li::before { color: var(--olive); }
+
+    .file-tour { display: flex; flex-direction: column; gap: 18px; }
+
+    .file {
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      overflow: hidden;
+    }
+
+    .file summary {
+      padding: 14px 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      list-style: none;
+      background: var(--g100);
+      border-bottom: var(--border);
+    }
+
+    .file:not([open]) summary { border-bottom: none; }
+    .file summary::-webkit-details-marker { display: none; }
+
+    .chev {
+      width: 8px;
+      height: 8px;
+      border-right: 2px solid var(--g500);
+      border-bottom: 2px solid var(--g500);
+      transform: rotate(45deg);
+      flex-shrink: 0;
+    }
+
+    .path {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--slate);
+      flex: 1;
+      overflow-wrap: anywhere;
+    }
+
+    .badge {
+      font-family: var(--mono);
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    .badge.new { background: #E4E9DC; color: #4B5C39; }
+    .badge.mod { background: var(--oat); color: var(--slate); }
+
+    .stat { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+    .file-body { padding: 18px 20px 22px; }
+    .why { font-size: 14.5px; margin-bottom: 12px; max-width: 760px; }
+    .why strong { color: var(--slate); }
+
+    .mini {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    @media (max-width: 720px) { .mini { grid-template-columns: 1fr; } }
+
+    .mini-card {
+      border: 1px solid var(--g300);
+      border-radius: var(--radius-row);
+      padding: 12px;
+      background: #FFFEFB;
+      font-size: 13px;
+    }
+
+    .mini-card .m-label {
+      font-family: var(--mono);
+      color: var(--g500);
+      font-size: 11px;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    .focus { display: flex; flex-direction: column; gap: 14px; max-width: 800px; }
+
+    .focus .item {
+      background: var(--paper);
+      border: var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: flex;
+      gap: 16px;
+    }
+
+    .focus .n {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--paper);
+      background: var(--clay);
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .focus .t { font-weight: 600; color: var(--slate); font-size: 15px; margin-bottom: 2px; }
+    .focus .d { font-size: 13.5px; color: var(--g500); }
+
+    .tests { display: flex; flex-direction: column; gap: 10px; max-width: 800px; }
+
+    .test {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: var(--paper);
+      border: var(--border);
+      border-radius: 10px;
+      padding: 13px 18px;
+      font-size: 14px;
+    }
+
+    .check {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      flex-shrink: 0;
+      margin-top: 2px;
+      border: 1.5px solid var(--g300);
+      background: var(--paper);
+      position: relative;
+    }
+
+    .test.done .check {
+      background: var(--olive);
+      border-color: var(--olive);
+    }
+
+    .test.done .check::after {
+      content: "";
+      position: absolute;
+      left: 5px;
+      top: 2px;
+      width: 5px;
+      height: 9px;
+      border-right: 2px solid var(--paper);
+      border-bottom: 2px solid var(--paper);
+      transform: rotate(40deg);
+    }
+
+    .test.warn .check {
+      background: #F5D7C8;
+      border-color: var(--clay);
+    }
+
+    .test .label { color: var(--slate); }
+    .test .note { color: var(--g500); font-size: 13px; margin-top: 2px; }
+
+    .rollout {
+      display: flex;
+      gap: 0;
+      max-width: 820px;
+    }
+
+    @media (max-width: 720px) { .rollout { flex-direction: column; gap: 10px; } }
+
+    .rollout .step {
+      flex: 1;
+      background: var(--paper);
+      border: var(--border);
+      padding: 16px 18px;
+    }
+
+    .rollout .step:first-child { border-radius: 12px 0 0 12px; }
+    .rollout .step:last-child { border-radius: 0 12px 12px 0; }
+    .rollout .step + .step { border-left: none; }
+
+    @media (max-width: 720px) {
+      .rollout .step,
+      .rollout .step:first-child,
+      .rollout .step:last-child { border-radius: 12px; }
+      .rollout .step + .step { border-left: var(--border); }
+    }
+
+    .pct {
+      font-family: var(--mono);
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--clay);
+      margin-bottom: 6px;
+    }
+
+    .when {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--g500);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .rollout .d { font-size: 13px; color: var(--g500); }
+
+    footer {
+      margin-top: 64px;
+      padding-top: 20px;
+      border-top: 1px solid var(--g300);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+    }
+
+    @media print {
+      .layout { grid-template-columns: 1fr; }
+      .toc { display: none; }
+      body { background: white; color: black; padding: 0; font-size: 12pt; }
+      a[href]::after { content: " (" attr(href) ")"; font-size: 10pt; color: #555; }
+      h1, h2, h3 { page-break-after: avoid; }
+      .file, .test, .focus .item, .kpi { page-break-inside: avoid; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="page-head">
+      <div class="eyebrow">MoAI-ADK Change Report</div>
+      <h1>6839c4898 - Agent Host Hook Compatibility Layer</h1>
+      <div class="meta">
+        <span><strong>11</strong> files</span>
+        <span><span class="add">+931</span> / <span class="del">-0</span></span>
+        <span>Branch <strong>main</strong></span>
+        <span>Commit <strong>6839c4898</strong></span>
+        <span>Generated <strong>2026-07-04 16:20 KST</strong></span>
+      </div>
+    </header>
+
+    <div class="layout">
+      <main>
+        <div class="tldr">
+          <div class="k">TL;DR</div>
+          <p>이번 커밋은 Claude 중심으로 존재하던 MoAI 훅 런타임을 Codex와 OpenCode까지 설명하고 검증할 수 있게 만든 변경입니다. 핵심은 호스트별 이벤트 호환성 매트릭스, <code>moai host matrix</code> CLI, Codex용 <code>.codex/hooks.json</code> 템플릿, 그리고 실제 훅 호출을 볼 수 있는 opt-in JSONL probe입니다.</p>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi"><div class="label">Changed files</div><div class="value">11</div></div>
+          <div class="kpi"><div class="label">Insertions</div><div class="value">931</div></div>
+          <div class="kpi"><div class="label">New package</div><div class="value">1</div></div>
+          <div class="kpi"><div class="label">Primary hosts</div><div class="value">3</div></div>
+        </div>
+
+        <section id="why">
+          <h2>Background</h2>
+          <p class="lede">목표는 MoAI를 한 번 설치해도 Claude, Codex, OpenCode 계열 코딩 에이전트에서 같은 런타임 개념을 재사용할 수 있는지 판단하고, 특히 훅 계층이 호환성의 병목이 되는지 테스트 가능한 구조로 만드는 것이었습니다.</p>
+          <div class="ba">
+            <div class="panel">
+              <div class="k">Before</div>
+              <ul>
+                <li>호스트별 훅 이벤트 지원 수준을 코드에서 조회할 수 없었습니다.</li>
+                <li>Codex 프로젝트용 <code>.codex/hooks.json</code> 템플릿이 없었습니다.</li>
+                <li>OpenCode는 공식 plugin event 기반이라 Claude/Codex 훅과 1:1 대응 여부가 불명확했습니다.</li>
+                <li>훅이 실제 호출됐는지 테스트하려면 런타임 로그에 의존해야 했습니다.</li>
+              </ul>
+            </div>
+            <div class="panel after">
+              <div class="k">After</div>
+              <ul>
+                <li><code>internal/agenthost</code>가 Claude, Codex, OpenCode 이벤트 매핑을 SSOT로 제공합니다.</li>
+                <li><code>moai host matrix [host] --json</code>으로 호환성 표를 CLI에서 바로 볼 수 있습니다.</li>
+                <li>Codex는 공식 hooks 이벤트 10개를 native로 연결하는 템플릿이 생겼습니다.</li>
+                <li><code>MOAI_HOOK_INVOCATION_LOG</code>로 훅 호출 JSONL을 남기는 검증 경로가 생겼습니다.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section id="tour">
+          <h2>File-by-File Changes</h2>
+          <p class="lede">아래 파일 투어는 최신 커밋 <code>6839c4898</code>의 변경 파일 11개를 기준으로 정리했습니다.</p>
+          <div class="file-tour">
+            <details class="file" open>
+              <summary><span class="chev"></span><span class="path">internal/agenthost/capability.go</span><span class="badge new">new</span><span class="stat"><span class="add">+186</span></span></summary>
+              <div class="file-body">
+                <p class="why"><strong>호스트 호환성 모델의 중심 파일입니다.</strong> <code>Host</code>, <code>Event</code>, <code>SupportLevel</code>, <code>Mapping</code>, <code>Matrix</code>를 정의하고, Claude/Codex/OpenCode의 공식문서 기반 이벤트 매핑을 반환합니다.</p>
+                <div class="mini">
+                  <div class="mini-card"><div class="m-label">Codex</div>10개 이벤트가 <code>native</code>로 매핑됩니다.</div>
+                  <div class="mini-card"><div class="m-label">OpenCode</div>plugin event로 가능한 항목은 <code>adapter</code>, 의미상 추론이 필요한 항목은 <code>fallback</code>입니다.</div>
+                  <div class="mini-card"><div class="m-label">Source</div>각 matrix에 공식 문서 URL을 보존합니다.</div>
+                </div>
+              </div>
+            </details>
+
+            <details class="file">
+              <summary><span class="chev"></span><span class="path">internal/agenthost/capability_test.go</span><span class="badge new">new</span><span class="stat"><span class="add">+88</span></span></summary>
+              <div class="file-body">
+                <p class="why">Codex native parity, OpenCode adapter/fallback 경계, <code>ParseHost</code> 정규화/거부 동작을 테스트합니다. 호환성 표가 문서화만 되고 깨지는 일을 막는 회귀 테스트입니다.</p>
+              </div>
+            </details>
+
+            <details class="file" open>
+              <summary><span class="chev"></span><span class="path">internal/cli/host.go</span><span class="badge new">new</span><span class="stat"><span class="add">+80</span></span></summary>
+              <div class="file-body">
+                <p class="why"><code>moai host matrix [host]</code> 명령을 추가했습니다. 기본 텍스트 표와 <code>--json</code> 출력 모두 지원하므로 사람이 읽는 점검과 자동화 검증을 둘 다 처리할 수 있습니다.</p>
+              </div>
+            </details>
+
+            <details class="file">
+              <summary><span class="chev"></span><span class="path">internal/cli/host_test.go</span><span class="badge new">new</span><span class="stat"><span class="add">+73</span></span></summary>
+              <div class="file-body">
+                <p class="why">OpenCode 텍스트 출력에 <code>fallback</code>과 <code>tool.execute.before</code>가 포함되는지, Codex JSON 출력이 유효하고 <code>PreToolUse</code>가 native인지, <code>host matrix</code> 서브커맨드가 등록됐는지 확인합니다.</p>
+              </div>
+            </details>
+
+            <details class="file" open>
+              <summary><span class="chev"></span><span class="path">internal/template/templates/.codex/hooks.json.tmpl</span><span class="badge new">new</span><span class="stat"><span class="add">+140</span></span></summary>
+              <div class="file-body">
+                <p class="why"><strong>Codex 프로젝트 템플릿입니다.</strong> Codex 공식 hooks 이벤트 <code>SessionStart</code>, <code>PreToolUse</code>, <code>PermissionRequest</code>, <code>PostToolUse</code>, <code>UserPromptSubmit</code>, <code>Stop</code>, <code>SubagentStart</code>, <code>SubagentStop</code>, <code>PreCompact</code>, <code>PostCompact</code>를 구성합니다. 기존 <code>.claude/hooks/moai/*.sh</code> 래퍼를 재사용하고, 각 명령은 <code>MOAI_HOOK_HOST=codex</code>를 설정합니다.</p>
+                <div class="mini">
+                  <div class="mini-card"><div class="m-label">Root lookup</div><code>git rev-parse --show-toplevel</code> 실패 시 <code>pwd</code>를 사용합니다.</div>
+                  <div class="mini-card"><div class="m-label">No async</div>Codex에서 async command hook이 실행되지 않는 제약 때문에 <code>async: true</code>를 넣지 않았습니다.</div>
+                  <div class="mini-card"><div class="m-label">Reuse</div>중앙 설치 또는 symlink 전략에서 기존 MoAI wrapper를 계속 사용할 수 있습니다.</div>
+                </div>
+              </div>
+            </details>
+
+            <details class="file">
+              <summary><span class="chev"></span><span class="path">internal/template/settings_test.go</span><span class="badge mod">mod</span><span class="stat"><span class="add">+212</span></span></summary>
+              <div class="file-body">
+                <p class="why">Codex hook 템플릿 회귀 테스트를 추가했습니다. JSON 유효성, 필수 10개 이벤트 존재, Claude wrapper 재사용, unsupported async 미사용, 렌더링된 command가 fake wrapper를 실제로 호출하고 stdin과 <code>MOAI_HOOK_HOST=codex</code>를 전달하는지까지 검증합니다.</p>
+              </div>
+            </details>
+
+            <details class="file" open>
+              <summary><span class="chev"></span><span class="path">internal/cli/hook_invocation_probe.go</span><span class="badge new">new</span><span class="stat"><span class="add">+62</span></span></summary>
+              <div class="file-body">
+                <p class="why"><strong>훅 호출을 눈으로 확인하기 위한 opt-in probe입니다.</strong> <code>MOAI_HOOK_INVOCATION_LOG</code>가 설정된 경우에만 JSONL로 기록합니다. 기록 필드는 <code>ts</code>, <code>host</code>, <code>event</code>, <code>hook_event_name</code>, <code>tool_name</code>, <code>session_id</code>, <code>cwd</code>입니다.</p>
+              </div>
+            </details>
+
+            <details class="file">
+              <summary><span class="chev"></span><span class="path">internal/cli/hook.go</span><span class="badge mod">mod</span><span class="stat"><span class="add">+4</span></span></summary>
+              <div class="file-body">
+                <p class="why"><code>runHookEvent</code> 흐름에서 입력의 <code>HookEventName</code>을 주입한 뒤 <code>recordHookInvocationProbe</code>를 호출합니다. 정상 런타임은 env가 없으면 무동작이고, 테스트/진단 시에만 JSONL 기록이 남습니다.</p>
+              </div>
+            </details>
+
+            <details class="file">
+              <summary><span class="chev"></span><span class="path">internal/cli/hook_invocation_probe_test.go</span><span class="badge new">new</span><span class="stat"><span class="add">+81</span></span></summary>
+              <div class="file-body">
+                <p class="why">mock hook protocol/registry를 사용해 <code>runHookEvent</code>가 probe JSONL을 쓰는지 검증합니다. 특히 host marker, event, injected hook event name, tool/session/cwd가 보존되는지 확인합니다.</p>
+              </div>
+            </details>
+
+            <details class="file">
+              <summary><span class="chev"></span><span class="path">internal/cli/root.go</span><span class="badge mod">mod</span><span class="stat"><span class="add">+3</span></span></summary>
+              <div class="file-body">
+                <p class="why">새 <code>host</code> CLI 그룹을 root command에 등록했습니다. 사용자는 <code>moai host matrix</code>를 통해 전체 호스트 matrix를 바로 볼 수 있습니다.</p>
+              </div>
+            </details>
+
+            <details class="file">
+              <summary><span class="chev"></span><span class="path">.gitignore</span><span class="badge mod">mod</span><span class="stat"><span class="add">+2</span></span></summary>
+              <div class="file-body">
+                <p class="why">루트 <code>.codex/</code>는 계속 ignore하되, 템플릿 자산인 <code>internal/template/templates/.codex/**</code>는 추적되도록 예외를 추가했습니다. 실제 사용자/project state와 배포 템플릿을 분리하기 위한 변경입니다.</p>
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <section id="focus">
+          <h2>Review Focus</h2>
+          <div class="focus">
+            <div class="item"><div class="n">1</div><div><div class="t">OpenCode는 native parity가 아닙니다</div><div class="d">OpenCode 공식 표면은 hook JSON이 아니라 plugin event입니다. 그래서 이 커밋은 가능한 항목을 <code>adapter</code>, 생명주기 추론이 필요한 항목을 <code>fallback</code>으로 명시합니다.</div></div></div>
+            <div class="item"><div class="n">2</div><div><div class="t">Codex async command hook은 제외했습니다</div><div class="d">Codex 공식 문서상 <code>async: true</code> command hook은 파싱되지만 실행되지 않는 제약이 있어 템플릿에서 의도적으로 사용하지 않습니다.</div></div></div>
+            <div class="item"><div class="n">3</div><div><div class="t">Probe는 opt-in입니다</div><div class="d"><code>MOAI_HOOK_INVOCATION_LOG</code>가 없으면 아무 파일도 쓰지 않습니다. 따라서 일반 훅 성능/동작에는 영향을 주지 않고, 테스트가 필요할 때만 켤 수 있습니다.</div></div></div>
+            <div class="item"><div class="n">4</div><div><div class="t">Symlink/중앙 설치 전략의 남은 경계</div><div class="d">Codex 템플릿은 기존 <code>.claude/hooks/moai/*.sh</code> wrapper를 재사용합니다. 즉 중앙 설치 또는 symlink는 가능하지만, wrapper 경로와 host marker 계약은 계속 유지되어야 합니다.</div></div></div>
+          </div>
+        </section>
+
+        <section id="tests">
+          <h2>Validation Evidence</h2>
+          <div class="tests">
+            <div class="test done"><span class="check"></span><div><div class="label"><code>GOCACHE=/private/tmp/moai-go-build go test ./internal/cli -run 'TestRunHookEvent_RecordsInvocationProbe'</code></div><div class="note">probe JSONL 기록 경로 통과.</div></div></div>
+            <div class="test done"><span class="check"></span><div><div class="label"><code>GOCACHE=/private/tmp/moai-go-build go test ./internal/template -run 'TestCodexHooksTemplate'</code></div><div class="note">Codex hook template JSON, 이벤트, wrapper 호출 smoke 검증 통과.</div></div></div>
+            <div class="test done"><span class="check"></span><div><div class="label"><code>GOCACHE=/private/tmp/moai-go-build go test ./internal/template</code></div><div class="note">template 패키지 전체 테스트 통과.</div></div></div>
+            <div class="test done"><span class="check"></span><div><div class="label"><code>GOCACHE=/private/tmp/moai-go-build go test ./internal/agenthost ./internal/template ./internal/cli -run 'TestMatrixFor_|TestParseHost|TestCodexHooksTemplate|TestRunHookEvent_RecordsInvocationProbe|TestHookSubcommands_EventTypeMapping|TestHost(MatrixCmd|Cmd)|TestRootCmd_(HelpOutput|SubcommandCount)|TestCharacterize_Help_FourSections'</code></div><div class="note">변경 영향이 있는 targeted suite 통과.</div></div></div>
+            <div class="test done"><span class="check"></span><div><div class="label"><code>GOCACHE=/private/tmp/moai-go-build go run ./cmd/moai host matrix codex</code> / <code>opencode</code></div><div class="note">CLI matrix 출력 smoke 검증 통과.</div></div></div>
+            <div class="test warn"><span class="check"></span><div><div class="label"><code>GOCACHE=/private/tmp/moai-go-build go test ./...</code></div><div class="note">전체 suite는 sandbox/network/home-dir/port 제한으로 완료되지 않았습니다. 실패 원인은 module cache write, home dir write, DNS, httptest bind 제한 등 환경 제약으로 확인했습니다.</div></div></div>
+          </div>
+        </section>
+
+        <section id="rollout">
+          <h2>How To Use</h2>
+          <p class="lede">이 커밋 이후에는 호환성 판단, Codex template 적용, 실제 hook 호출 확인을 각각 독립적으로 진행할 수 있습니다.</p>
+          <div class="rollout">
+            <div class="step"><div class="when">Inspect</div><div class="pct">1</div><div class="d"><code>moai host matrix codex</code> 또는 <code>moai host matrix opencode --json</code>으로 지원 수준을 확인합니다.</div></div>
+            <div class="step"><div class="when">Install</div><div class="pct">2</div><div class="d">템플릿 렌더링 단계에서 <code>.codex/hooks.json</code>을 생성하고 기존 MoAI hook wrapper를 재사용합니다.</div></div>
+            <div class="step"><div class="when">Probe</div><div class="pct">3</div><div class="d"><code>MOAI_HOOK_INVOCATION_LOG=/tmp/moai-hooks.jsonl</code>를 설정해 실제 호출 로그를 확인합니다.</div></div>
+          </div>
+        </section>
+      </main>
+
+      <nav class="toc">
+        <div class="t-head">In this report</div>
+        <a href="#why">Background</a>
+        <a href="#tour">File Changes</a>
+        <a href="#tour" class="sub">agenthost</a>
+        <a href="#tour" class="sub">host CLI</a>
+        <a href="#tour" class="sub">Codex template</a>
+        <a href="#tour" class="sub">hook probe</a>
+        <a href="#focus">Review Focus</a>
+        <a href="#tests">Validation</a>
+        <a href="#rollout">How To Use</a>
+      </nav>
+    </div>
+
+    <footer>
+      Sources: local git commit 6839c4898; Codex hooks docs https://developers.openai.com/codex/hooks; OpenCode plugin docs https://opencode.ai/docs/plugins/; Claude Code hooks docs https://docs.anthropic.com/en/docs/claude-code/hooks. Generated by moai-domain-html-report pr mode.
+    </footer>
+  </div>
+</body>
+</html>
