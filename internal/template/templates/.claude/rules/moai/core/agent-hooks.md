@@ -80,4 +80,4 @@ stdin JSON structure:
 
 ## Handler Architecture
 
-The `internal/hook/agents/factory.go` implements handler creation per agent. Each agent type has a dedicated handler file: `{agent}_handler.go` (e.g., `ddd_handler.go`, `backend_handler.go`). Unknown actions fall through to `default_handler.go`.
+The `moai hook agent <action>` subcommand infers the hook `EventType` from the action suffix (`-validation` / `-pre-transformation` / `-pre-implementation` → `PreToolUse`; `-verification` / `-post-transformation` / `-post-implementation` → `PostToolUse`; `-completion` → `SubagentStop`; unknown suffix → `PreToolUse`) and dispatches through the generic `EventType`-keyed hook registry (`internal/hook/registry.go`). Handlers are registered by event type, not by per-agent identity — there is no per-agent handler factory.
