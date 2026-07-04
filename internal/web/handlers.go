@@ -274,6 +274,19 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		selected = p
 	}
 
+	// SPEC-WEB-CONSOLE-011 REQ-WC11-031/034: validate the target profile name at
+	// the web boundary BEFORE any write. An untrusted `?profile=` / `__profile`
+	// value (e.g. `../../x`) must be rejected 4xx and must not reach
+	// WritePreferences (whose os.MkdirAll would otherwise create a directory
+	// outside the profile store). The profile-package WritePreferences carries the
+	// same guard (defense in depth), but rejecting here keeps the response a clean
+	// 400 rather than a 500 persistence error.
+	if !profile.IsValidProfileName(selected) {
+		a.renderError(w, http.StatusBadRequest,
+			"invalid profile name "+selected+": must not contain path separators or start with '.'")
+		return
+	}
+
 	prefs := bindForm(r)
 
 	// REQ-WC3-005: bind the two project-config fields (NOT into ProfilePreferences —

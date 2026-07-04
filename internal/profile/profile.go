@@ -123,12 +123,22 @@ func GetProfileDir(name string) string {
 
 // isValidProfileName checks that a profile name does not contain path traversal
 // characters. Names must not contain slashes, backslashes, or start with a dot.
+// The two special names "" (base store) and "default" are valid — they resolve to
+// the base preferences.yaml, not a named subdirectory, so they never traverse.
 func isValidProfileName(name string) bool {
 	if strings.Contains(name, "/") || strings.Contains(name, "\\") ||
 		strings.HasPrefix(name, ".") || filepath.IsAbs(name) {
 		return false
 	}
 	return true
+}
+
+// IsValidProfileName is the exported guard over isValidProfileName. Callers
+// outside the profile package (e.g. the web console write boundary,
+// SPEC-WEB-CONSOLE-011 REQ-WC11-031) reuse this predicate rather than
+// re-declaring the traversal rules.
+func IsValidProfileName(name string) bool {
+	return isValidProfileName(name)
 }
 
 // EnsureDir creates the profile directory if it doesn't exist and sets

@@ -149,7 +149,16 @@ func migrateOldFile(dir, oldName, newName string) {
 
 // WritePreferences saves the preferences for a profile.
 // Creates the profile directory if it does not exist.
+//
+// SPEC-WEB-CONSOLE-011 REQ-WC11-034: reject path-traversal profile names BEFORE
+// the os.MkdirAll below, so an untrusted caller (e.g. the web console
+// `__profile` form value) cannot create a directory outside the profile store.
+// The two special names "" / "default" pass isValidProfileName (they resolve to
+// the base preferences.yaml, never a traversing subdirectory).
 func WritePreferences(profileName string, prefs ProfilePreferences) error {
+	if !isValidProfileName(profileName) {
+		return fmt.Errorf("invalid profile name %q: must not contain path separators or start with '.'", profileName)
+	}
 	path := GetPreferencesPath(profileName)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("create directory: %w", err)
