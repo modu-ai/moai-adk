@@ -190,6 +190,10 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 		input.HookEventName = string(event)
 	}
 
+	if err := recordHookInvocationProbe(event, input); err != nil {
+		return fmt.Errorf("record hook invocation: %w", err)
+	}
+
 	// SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-002: HOI master toggle gates
 	// TaskCreated + Notification dispatch at the central dispatcher (defense-
 	// in-depth — runtime gate even if settings.json is hand-edited). The 3

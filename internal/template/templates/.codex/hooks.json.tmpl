@@ -1,0 +1,140 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-session-start.sh\"'",
+            "commandWindows": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-session-start.sh\"'",
+            "timeout": 30,
+            "statusMessage": "MoAI session start"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-compact.sh\"'",
+            "commandWindows": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-compact.sh\"'",
+            "timeout": 5,
+            "statusMessage": "MoAI pre-compact"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-post-compact.sh\"'",
+            "commandWindows": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-post-compact.sh\"'",
+            "timeout": 5,
+            "statusMessage": "MoAI post-compact"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-pre-tool.sh\"'",
+            "commandWindows": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-pre-tool.sh\"'",
+            "timeout": 10,
+            "statusMessage": "MoAI pre-tool policy"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "Bash|apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-permission-request.sh\"'",
+            "commandWindows": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-permission-request.sh\"'",
+            "timeout": 10,
+            "statusMessage": "MoAI permission policy"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-post-tool.sh\"'",
+            "commandWindows": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-post-tool.sh\"'",
+            "timeout": 10,
+            "statusMessage": "MoAI post-tool observer"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-user-prompt-submit.sh\"'",
+            "commandWindows": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-user-prompt-submit.sh\"'",
+            "timeout": 5,
+            "statusMessage": "MoAI prompt routing"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-stop.sh\"'",
+            "commandWindows": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-stop.sh\"'",
+            "timeout": 5,
+            "statusMessage": "MoAI stop gate"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-subagent-start.sh\"'",
+            "commandWindows": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-subagent-start.sh\"'",
+            "timeout": 5,
+            "statusMessage": "MoAI subagent start"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-subagent-stop.sh\"'",
+            "commandWindows": "bash -lc 'export MOAI_HOOK_HOST=codex; root=$(git rev-parse --show-toplevel 2>/dev/null || pwd); exec \"$root/.claude/hooks/moai/handle-subagent-stop.sh\"'",
+            "timeout": 5,
+            "statusMessage": "MoAI subagent stop"
+          }
+        ]
+      }
+    ]
+  }
+}

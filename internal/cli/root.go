@@ -113,6 +113,9 @@ func init() {
 	// read-only unified view composing sessions / worktrees / harnesses.
 	rootCmd.AddCommand(newInventoryCmd())
 
+	// Agent-host compatibility matrix for Claude/Codex/OpenCode adapter work.
+	rootCmd.AddCommand(newHostCmd())
+
 	// SPEC-V3R6-ASKUSER-DECISION-MEMORY-001 M4: register the preference
 	// subtree (parent + decay-scan child). M5 will add `toggle` as a sibling.
 	rootCmd.AddCommand(preference.PreferenceCmd)

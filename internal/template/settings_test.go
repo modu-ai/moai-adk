@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -582,6 +583,217 @@ func hookKeys(m map[string]any) []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+// --- .codex/hooks.json.tmpl tests ---
+
+func TestCodexHooksTemplateValidJSON(t *testing.T) {
+	platforms := []string{"darwin", "linux", "windows"}
+
+	for _, platform := range platforms {
+		t.Run(platform, func(t *testing.T) {
+			ctx := testContext(platform)
+			output := renderTemplate(t, ".codex/hooks.json.tmpl", ctx)
+
+			trimmed := strings.TrimSpace(output)
+			if !json.Valid([]byte(trimmed)) {
+				t.Fatalf("rendered .codex/hooks.json is not valid JSON for platform %s:\n%s", platform, trimmed)
+			}
+		})
+	}
+}
+
+func TestCodexHooksTemplateRequiredEvents(t *testing.T) {
+	hooks := renderCodexHooks(t)
+
+	requiredEvents := []string{
+		"SessionStart",
+		"PreCompact",
+		"PostCompact",
+		"PreToolUse",
+		"PermissionRequest",
+		"PostToolUse",
+		"UserPromptSubmit",
+		"Stop",
+		"SubagentStart",
+		"SubagentStop",
+	}
+	for _, event := range requiredEvents {
+		if _, ok := hooks[event]; !ok {
+			t.Errorf("missing required Codex hook event %q", event)
+		}
+	}
+	if len(hooks) != len(requiredEvents) {
+		t.Errorf("Codex hook event count = %d, want %d; events: %v", len(hooks), len(requiredEvents), hookKeys(hooks))
+	}
+}
+
+func TestCodexHooksTemplateReusesClaudeWrappers(t *testing.T) {
+	hooks := renderCodexHooks(t)
+
+	expectedScripts := map[string]string{
+		"SessionStart":      "handle-session-start.sh",
+		"PreCompact":        "handle-compact.sh",
+		"PostCompact":       "handle-post-compact.sh",
+		"PreToolUse":        "handle-pre-tool.sh",
+		"PermissionRequest": "handle-permission-request.sh",
+		"PostToolUse":       "handle-post-tool.sh",
+		"UserPromptSubmit":  "handle-user-prompt-submit.sh",
+		"Stop":              "handle-stop.sh",
+		"SubagentStart":     "handle-subagent-start.sh",
+		"SubagentStop":      "handle-subagent-stop.sh",
+	}
+
+	for event, script := range expectedScripts {
+		t.Run(event, func(t *testing.T) {
+			entry := firstCodexHookEntry(t, hooks, event)
+			command, ok := entry["command"].(string)
+			if !ok {
+				t.Fatalf("%s: missing command", event)
+			}
+			if !strings.Contains(command, ".claude/hooks/moai/"+script) {
+				t.Errorf("%s: command %q does not reuse Claude wrapper %q", event, command, script)
+			}
+			if !strings.Contains(command, "git rev-parse --show-toplevel") {
+				t.Errorf("%s: command %q does not resolve from git root", event, command)
+			}
+			if strings.Contains(command, "CLAUDE_PROJECT_DIR") {
+				t.Errorf("%s: command must not rely on Claude-only CLAUDE_PROJECT_DIR env var: %q", event, command)
+			}
+			if entry["type"] != "command" {
+				t.Errorf("%s: type = %v, want command", event, entry["type"])
+			}
+			if _, ok := entry["commandWindows"].(string); !ok {
+				t.Errorf("%s: missing commandWindows fallback", event)
+			}
+		})
+	}
+}
+
+func TestCodexHooksTemplateNoUnsupportedAsync(t *testing.T) {
+	hooks := renderCodexHooks(t)
+
+	for _, eventData := range hooks {
+		for _, entry := range codexHookEntries(t, eventData) {
+			if _, ok := entry["async"]; ok {
+				t.Errorf("Codex hooks template must not set async because Codex skips async command hooks: %+v", entry)
+			}
+		}
+	}
+}
+
+func TestCodexHooksTemplateCommandInvokesWrapper(t *testing.T) {
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("bash is required for Codex hook command smoke test")
+	}
+
+	hooks := renderCodexHooks(t)
+	entry := firstCodexHookEntry(t, hooks, "PreToolUse")
+	command, ok := entry["command"].(string)
+	if !ok {
+		t.Fatal("PreToolUse command is missing")
+	}
+
+	projectRoot := t.TempDir()
+	wrapperPath := filepath.Join(projectRoot, ".claude", "hooks", "moai", "handle-pre-tool.sh")
+	if err := os.MkdirAll(filepath.Dir(wrapperPath), 0o755); err != nil {
+		t.Fatalf("mkdir wrapper dir: %v", err)
+	}
+	wrapper := `#!/bin/sh
+{
+  printf 'host=%s\n' "$MOAI_HOOK_HOST"
+  cat
+} >> "$MOAI_HOOK_INVOCATION_LOG"
+`
+	if err := os.WriteFile(wrapperPath, []byte(wrapper), 0o755); err != nil {
+		t.Fatalf("write fake wrapper: %v", err)
+	}
+
+	logPath := filepath.Join(projectRoot, "hook-invocation.log")
+	cmd := exec.Command("bash", "-lc", command)
+	cmd.Dir = projectRoot
+	cmd.Env = append(os.Environ(), "MOAI_HOOK_INVOCATION_LOG="+logPath)
+	cmd.Stdin = strings.NewReader(`{"eventType":"PreToolUse","toolName":"Bash","session":{"id":"sess-codex","cwd":"` + projectRoot + `"}}`)
+
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("Codex hook command failed: %v\n%s", err, out)
+	}
+
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("read fake wrapper log: %v", err)
+	}
+	got := string(data)
+	if !strings.Contains(got, "host=codex") {
+		t.Errorf("wrapper log missing host marker:\n%s", got)
+	}
+	if !strings.Contains(got, `"eventType":"PreToolUse"`) {
+		t.Errorf("wrapper log missing forwarded stdin payload:\n%s", got)
+	}
+	if !strings.Contains(got, `"toolName":"Bash"`) {
+		t.Errorf("wrapper log missing forwarded tool name:\n%s", got)
+	}
+}
+
+func renderCodexHooks(t *testing.T) map[string]any {
+	t.Helper()
+
+	ctx := testContext("darwin")
+	output := renderTemplate(t, ".codex/hooks.json.tmpl", ctx)
+
+	var config map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &config); err != nil {
+		t.Fatalf("Unmarshal .codex/hooks.json.tmpl error: %v", err)
+	}
+
+	hooks, ok := config["hooks"].(map[string]any)
+	if !ok {
+		t.Fatal("missing hooks section")
+	}
+	return hooks
+}
+
+func firstCodexHookEntry(t *testing.T, hooks map[string]any, event string) map[string]any {
+	t.Helper()
+
+	eventData, ok := hooks[event]
+	if !ok {
+		t.Fatalf("missing Codex hook event %q", event)
+	}
+	entries := codexHookEntries(t, eventData)
+	if len(entries) == 0 {
+		t.Fatalf("%s: no hook entries", event)
+	}
+	return entries[0]
+}
+
+func codexHookEntries(t *testing.T, eventData any) []map[string]any {
+	t.Helper()
+
+	hookGroups, ok := eventData.([]any)
+	if !ok {
+		t.Fatalf("Codex hook event must be an array, got %T", eventData)
+	}
+
+	var entries []map[string]any
+	for _, groupData := range hookGroups {
+		group, ok := groupData.(map[string]any)
+		if !ok {
+			t.Fatalf("Codex hook group must be an object, got %T", groupData)
+		}
+		hooksArr, ok := group["hooks"].([]any)
+		if !ok {
+			t.Fatalf("Codex hook group missing hooks array")
+		}
+		for _, hookData := range hooksArr {
+			entry, ok := hookData.(map[string]any)
+			if !ok {
+				t.Fatalf("Codex hook entry must be an object, got %T", hookData)
+			}
+			entries = append(entries, entry)
+		}
+	}
+	return entries
 }
 
 // --- .mcp.json.tmpl tests ---

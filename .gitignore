@@ -125,6 +125,8 @@ logs/
 .codex/
 .agents/
 AGENTS.md
+!internal/template/templates/.codex/
+!internal/template/templates/.codex/**
 
 # ===========================================
 # Secrets and Credentials (CRITICAL)
