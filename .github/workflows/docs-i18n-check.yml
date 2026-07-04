@@ -93,8 +93,8 @@ jobs:
         id: counts
         if: always()
         run: |
-          errors=$(grep -c '^❌ ERROR' check-output.txt 2>/dev/null || echo 0)
-          warnings=$(grep -c '^⚠️  WARN' check-output.txt 2>/dev/null || echo 0)
+          errors=$(grep -c '^❌ ERROR' check-output.txt 2>/dev/null || true)
+          warnings=$(grep -c '^⚠️  WARN' check-output.txt 2>/dev/null || true)
           echo "errors=${errors}" >> "$GITHUB_OUTPUT"
           echo "warnings=${warnings}" >> "$GITHUB_OUTPUT"
 
