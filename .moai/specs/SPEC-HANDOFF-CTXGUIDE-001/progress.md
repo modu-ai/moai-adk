@@ -56,13 +56,13 @@ AC 실측 매트릭스 (관측 명령 + 실제 출력):
 
 ```yaml
 run_complete_at: 2026-07-03
-run_commit_sha: <M1-commit-pending — 본 progress.md를 포함하는 M1 커밋을 self-reference; era 분류는 §E.4 sync_commit_sha 기반이라 backfill 불요, era:V3R6 explicit>
+run_commit_sha: 092dcba9f   # M1 close commit — fix(SPEC-HANDOFF-CTXGUIDE-001): M1 256K 윈도우 핸드오프 밴드 로직, origin/main FF landed (sync-phase backfill)
 run_status: green
 ac_pass_count: 9
 ac_fail_count: 0
 preserve_list_post_run_count: 5   # renderBarsInline 단일단계 (⚠️/clear) 렌더 유지 · memory.go ContextWindowSize/TokenBudget 유도 불변 · 미커밋 ♻️(renderCacheHit L311) 무접촉(git diff: NO renderCacheHit-region changes) · cache_hit_test.go clean · 신규 config/state 파일 0
 l44_pre_commit_fetch: "origin/main=2510c2775 · rev-list --left-right 0 1 (origin 0 ahead, local 1 ahead=plan commit b303d9916) · clean, race 없음"
-l44_post_push_fetch: "<post-push 기록: agent 반환 리포트 E6>"
+l44_post_push_fetch: "M1 092dcba9f origin/main FF landed; 후속 병렬 WEB-CONSOLE-011 M3(ab555742f·4f5b3fbbb)+CI fix(497445a24)가 위에 적재, M1 무손상 (renderer.go 밴드 로직 committed) — sync-phase backfill"
 new_warnings_or_lints_introduced: 0   # go vet exit 0 · golangci-lint ./internal/statusline/... = 0 issues
 cross_platform_build:
   host: "exit 0"
@@ -70,4 +70,26 @@ cross_platform_build:
 coverage_statusline_pkg: "84.7% (baseline b303d9916 = 84.7% — 회귀 아님, package pre-existing; shouldShowHandoffGuide func-level 100%)"
 total_run_phase_files: 6   # renderer.go · stdinfields_test.go · context-window-management.md · spec.md · plan.md · progress.md
 m1_to_mN_commit_strategy: "single atomic M1 commit (Tier S) — HEAD:main fast-forward push"
+```
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_status: complete
+sync_complete_at: 2026-07-04
+sync_commit_sha: PENDING-BACKFILL   # 아래 backfill 커밋에서 이 sync-close 커밋 SHA로 갱신
+lifecycle_transition: "in-progress → implemented → completed (single sync commit, Tier S 3-phase close)"
+sync_deliverables:
+  - "spec.md + plan.md frontmatter status in-progress → completed, updated 2026-07-04"
+  - "CHANGELOG.md [Unreleased] ### Fixed 엔트리 추가 (256K 핸드오프 임계 결함 수정)"
+  - "progress.md §E.4 (본 섹션) 신설 + §E.3 run_commit_sha 092dcba9f / l44_post_push backfill"
+sync_method: "orchestrator-direct (manager-docs 세션 한도 회피) · 격리 worktree(origin/main 497445a24 detached)에서 수행"
+race_isolation: "병렬 WEB-CONSOLE-011 세션의 shared-index 오염(renderer.go M1 역전 + spec draft 강등이 index에 staged)을 회피 — 해당 역전은 supersede 아님 확정: 병렬 세션이 16:55 내 M1(092dcba9f) 이후 17:18·17:18·17:27 3커밋을 path-scoped 커밋하며 역전을 매번 미포함 → stale-base 인덱스 아티팩트"
+sync_verification:
+  spec_status: "grep '^status: completed' spec.md = 1"
+  plan_status: "grep '^status: completed' plan.md = 1"
+  m1_intact_committed: "origin/main:renderer.go 밴드 로직 cwSize>=500_000 grep=1, case 1_000_000 grep=0 (역전 아님)"
+  changelog_dedup: "grep -c HANDOFF-CTXGUIDE CHANGELOG.md = 1 (중복 없음)"
+  pre_push_fetch: "로컬 HEAD == origin/main (rev-list --left-right 0 0), 활성 claude cwd 프로세스 1(self)"
+epic_context: "Epic Handoff-v2 M1/4 close. 다음: M2 message-v2 plan 착수"
 ```
