@@ -52,7 +52,7 @@ The article names four unknown-reduction activities: **Interviews**, **Reference
 
 ### §A.4 Affected surfaces (Template-First paired edits)
 
-Every surface below is template-mirrored under `internal/template/templates/`. Per CLAUDE.local.md §2 (Template-First), each content edit is applied to BOTH the local file AND its mirror, followed by `make build`. Baseline parity checked at plan-time: `CLAUDE.md` and `spec-workflow.md` are local==template identical; `askuser-protocol.md` and `manager-spec.md` diverge trivially (~1 line, §25-neutrality SPEC-ref stripping) with identical edit anchors.
+Every surface below is template-mirrored under `internal/template/templates/`. Per CLAUDE.local.md §2 (Template-First), each content edit is applied to BOTH the local file AND its mirror, followed by `make build`. Baseline parity checked at plan-time: `CLAUDE.md` and `spec-workflow.md` are local==template identical; `askuser-protocol.md` diverges by ~1 hunk and `manager-spec.md` by ~5 hunks / 10 lines (all §25-neutrality strips of internal dates / SPEC-IDs / REQ tokens — verified via live diff). Neither divergence touches this SPEC's T1/T2 edit anchors (the manager-spec `Step 4` / `**plan.md**` T2 anchor is confirmed untouched), so the paired edits target identical anchors in each surface.
 
 | # | Surface (local) | Template mirror | Enhancement(s) |
 |---|-----------------|-----------------|----------------|
@@ -72,7 +72,7 @@ Every surface below is template-mirrored under `internal/template/templates/`. P
 ### §C.1 T1 — Blind Spot Pass
 
 - **REQ-DU-001** (Ubiquitous): The `askuser-protocol` rule **shall** define a named "Blind Spot Pass" Discovery technique as its own subsection.
-- **REQ-DU-002** (Capability gate): **Where** the user is working in an unfamiliar domain (a new subsystem, unfamiliar design/library work) and unknown-unknowns are suspected, the orchestrator **shall** run a Blind Spot Pass before plan-phase entry.
+- **REQ-DU-002** (Capability gate): **Where** the user is working in an unfamiliar domain (a new subsystem, unfamiliar design/library work) and unknown-unknowns are suspected, the orchestrator **shall** run a Blind Spot Pass (at orchestrator discretion — the suspicion-trigger is a judgment call, not an automatic gate; see REQ-DU-004 for the optionality invariant) before plan-phase entry. The "shall run" obligation is conditioned on the orchestrator's suspicion of unknown-unknowns; it does NOT make the pass a mandatory gate on every unfamiliar-domain plan entry.
 - **REQ-DU-003** (Event-driven): **When** the orchestrator runs a Blind Spot Pass, the orchestrator **shall** spawn `Agent(Explore)` in read-only mode to scan the relevant domain and then surface the user's likely unknown-unknowns through an `AskUserQuestion` round so the user can react and prompt better.
 - **REQ-DU-004** (Ubiquitous): The Blind Spot Pass **shall** be optional — triggered only when unknown-unknowns are suspected — and **shall not** be a mandatory gate.
 - **REQ-DU-005** (Unwanted behavior): The Blind Spot Pass **shall not** have `Agent(Explore)` or any subagent prompt the user directly; unknown-unknowns **shall** be surfaced only through the orchestrator's `AskUserQuestion` channel (preserving the asymmetric orchestrator–subagent boundary).
@@ -98,7 +98,7 @@ Every surface below is template-mirrored under `internal/template/templates/`. P
 
 ## §D. Acceptance Criteria (summary)
 
-The canonical AC enumeration is the SSOT in `acceptance.md` (AC-DU-001 .. AC-DU-015, 1:1 with the REQs above). Each AC is independently testable via grep-verifiable section presence, template-mirror parity check, `make build` exit-0, or a no-Go-change assertion. See `acceptance.md` § D AC Matrix + § Given-When-Then scenarios.
+The canonical AC enumeration is the SSOT in `acceptance.md` (AC-DU-001 .. AC-DU-016 — 16 ACs). Mapping to the 15 REQs: REQ-DU-002 is covered by AC-DU-016 (its unfamiliar-domain trigger + before-plan-phase-entry timing); REQ-DU-009 and REQ-DU-013 share the no-machinery / no-Go-change checks AC-DU-008 + AC-DU-015; all other REQs map 1:1 to a single AC. Each AC is independently testable via grep-verifiable section presence, template-mirror parity check, `make build` exit-0, or a no-Go-change assertion. See `acceptance.md` § D AC Matrix + § Given-When-Then scenarios.
 
 ## §E. Out of Scope (exclusions)
 

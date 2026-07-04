@@ -18,25 +18,124 @@ tags: "discovery, unknowns, blind-spot, gears, askuser, planning, context-first,
 
 ## §D. AC Matrix
 
-Each AC is independently testable. Commands are run from the project root (`/Users/goos/MoAI/moai-adk-go`) after run-phase edits + `make build`. `<local>` / `<mirror>` shorthand: the local file and its `internal/template/templates/` mirror per spec.md §A.4.
+Each AC is independently testable. Commands run from the project root (`/Users/goos/MoAI/moai-adk-go`) after run-phase edits + `make build`. `<local>` / `<mirror>` shorthand: the local file and its `internal/template/templates/` mirror per spec.md §A.4.
 
-| AC | REQ | Verification command (independently testable) | PASS condition |
-|----|-----|-----------------------------------------------|----------------|
-| AC-DU-001 | REQ-DU-001 | `grep -cE '^#{2,3} .*Blind Spot Pass' .claude/rules/moai/core/askuser-protocol.md` | ≥ 1 (a named H2/H3 Blind Spot Pass subsection exists) |
-| AC-DU-002 | REQ-DU-003 | `grep -A40 'Blind Spot Pass' .claude/rules/moai/core/askuser-protocol.md \| grep -E 'Agent\(Explore\)' && grep -A40 'Blind Spot Pass' .claude/rules/moai/core/askuser-protocol.md \| grep -iE 'read-only'` | both match (mechanism = Explore read-only scan) |
-| AC-DU-003 | REQ-DU-004 | `grep -A40 'Blind Spot Pass' .claude/rules/moai/core/askuser-protocol.md \| grep -iE 'optional\|not a mandatory gate'` | ≥ 1 match (optionality stated) |
-| AC-DU-004 | REQ-DU-005 | `grep -A40 'Blind Spot Pass' .claude/rules/moai/core/askuser-protocol.md \| grep -iE 'AskUserQuestion' && grep -A40 'Blind Spot Pass' .claude/rules/moai/core/askuser-protocol.md \| grep -iE 'not prompt\|never prompt\|does not prompt'` | both match (boundary reaffirmed: surface via AskUserQuestion; Explore does not prompt) |
-| AC-DU-005 | REQ-DU-006 | `grep -c 'Blind Spot Pass' .claude/rules/moai/workflow/spec-workflow.md` and `grep -c 'Blind Spot Pass' CLAUDE.md` | both ≥ 1 (wired from Plan Phase + §7 Rule 5) |
-| AC-DU-006 | REQ-DU-007 | `grep -iE 'most likely to change\|decision-reversibility' .claude/agents/moai/manager-spec.md && grep -iE 'mechanical\|refactor' .claude/agents/moai/manager-spec.md \| grep -iE 'bottom\|defer\|last'` | both match (lead-with-change-likelihood + defer-mechanical) |
-| AC-DU-007 | REQ-DU-008 | `grep -A2 'Rule 1 — Approach-First' CLAUDE.md \| grep -iE 'most likely to change\|change[ -]likelihood\|first'` | ≥ 1 match (Approach-First leads with high-change decisions) |
-| AC-DU-008 | REQ-DU-009, REQ-DU-013 | `find internal pkg cmd -newer .moai/specs/SPEC-DISCOVERY-UNKNOWNS-001/spec.md -name '*.go' -not -path '*/testdata/*'` scoped to this SPEC's change set | empty (no new/modified Go from this SPEC — ordering rule only, no machinery) |
-| AC-DU-009 | REQ-DU-010 | `grep -iE 'Known-Knowns' .claude/rules/moai/core/askuser-protocol.md && grep -iE 'Known-Unknowns' … && grep -iE 'Unknown-Knowns' … && grep -iE 'Unknown-Unknowns' …` (all four terms) | all four quadrant terms present in § Ambiguity Triggers |
-| AC-DU-010 | REQ-DU-011 | `grep -iE 'Unknown-Unknowns' .claude/rules/moai/core/askuser-protocol.md \| grep -iE 'Blind Spot Pass'` OR proximity grep (`grep -A6 'Unknown-Unknowns' … \| grep 'Blind Spot Pass'`) | ≥ 1 (suspected Unknown-Unknowns routes to Blind Spot Pass) |
-| AC-DU-011 | REQ-DU-012 | `grep -A3 'Rule 5 — Context-First' CLAUDE.md \| grep -iE 'Known-Unknowns\|4-quadrant\|unknown-unknown'` AND the §7 Rule 5 net addition for T3 is ≤ 1 line + pointer (diet check via diff review) | lens framing + SSOT pointer present; ≤ 1 line + pointer added |
-| AC-DU-012 | REQ-DU-014 | For each of the 4 files: the M1-M3 phrase present in BOTH `<local>` AND `<mirror>` — e.g. `grep -c 'Blind Spot Pass' internal/template/templates/.claude/rules/moai/core/askuser-protocol.md` ≥ 1, and same for manager-spec/CLAUDE.md/spec-workflow mirrors | every new phrase present in local AND mirror (parity) |
-| AC-DU-013 | REQ-DU-014 | `make build` | exit 0 (embedded template FS regenerated) |
-| AC-DU-014 | REQ-DU-015 | `grep -rn 'SPEC-DISCOVERY-UNKNOWNS' internal/template/templates/` and `grep -rnE '2026-07-05\|Finding [0-9]\|Audit [0-9]' internal/template/templates/.claude/rules/moai/core/askuser-protocol.md internal/template/templates/.claude/agents/moai/manager-spec.md` | both return zero matches introduced by this SPEC (§25 neutrality) |
-| AC-DU-015 | REQ-DU-013 | `git status --porcelain` filtered to this SPEC's change set; assert no `.go` path | no `.go` file modified/added by this SPEC (doc/rule/agent-body only) |
+> **Command-format note (audit D1 fix)**: every verification command is placed in a fenced `bash` block, NOT a markdown table cell. Under ERE (`grep -E`/`-iE`) a `\|` is a LITERAL pipe, not alternation (verified on this platform: `printf 'optional' | grep -iE 'optional\|x'` → NO MATCH), so alternation must be written with a raw `|`. A raw `|` breaks a markdown table cell (column separator), so the commands live in fenced blocks where `|` is preserved literally and every command is copy-paste-correct.
+
+### AC-DU-001 (REQ-DU-001) — named Blind Spot Pass subsection exists
+```bash
+grep -cE '^#{2,3} .*Blind Spot Pass' .claude/rules/moai/core/askuser-protocol.md
+```
+PASS: ≥ 1 (a named H2/H3 "Blind Spot Pass" subsection is present).
+
+### AC-DU-016 (REQ-DU-002) — Blind Spot Pass trigger text present (unfamiliar-domain + before-plan-phase-entry)
+```bash
+grep -A40 'Blind Spot Pass' .claude/rules/moai/core/askuser-protocol.md | grep -iE 'unfamiliar'
+grep -A40 'Blind Spot Pass' .claude/rules/moai/core/askuser-protocol.md | grep -iE 'before plan-phase|before the plan phase|pre-plan'
+```
+PASS: both match — the subsection states the trigger is an unfamiliar domain AND that the pass runs before plan-phase entry (covers REQ-DU-002, whose trigger/timing was previously unverified).
+
+### AC-DU-002 (REQ-DU-003) — mechanism = Agent(Explore) read-only scan
+```bash
+grep -A40 'Blind Spot Pass' .claude/rules/moai/core/askuser-protocol.md | grep -E 'Agent\(Explore\)'
+grep -A40 'Blind Spot Pass' .claude/rules/moai/core/askuser-protocol.md | grep -iE 'read-only'
+```
+PASS: both match.
+
+### AC-DU-003 (REQ-DU-004) — optionality stated
+```bash
+grep -A40 'Blind Spot Pass' .claude/rules/moai/core/askuser-protocol.md | grep -iE 'optional|not a mandatory gate'
+```
+PASS: ≥ 1 match.
+
+### AC-DU-004 (REQ-DU-005) — subagent boundary reaffirmed
+```bash
+grep -A40 'Blind Spot Pass' .claude/rules/moai/core/askuser-protocol.md | grep -iE 'AskUserQuestion'
+grep -A40 'Blind Spot Pass' .claude/rules/moai/core/askuser-protocol.md | grep -iE 'not prompt|never prompt|does not prompt'
+```
+PASS: both match (surface via AskUserQuestion; Explore does not prompt the user directly).
+
+### AC-DU-005 (REQ-DU-006) — wired from Plan Phase + §7 Rule 5
+```bash
+grep -c 'Blind Spot Pass' .claude/rules/moai/workflow/spec-workflow.md
+grep -c 'Blind Spot Pass' CLAUDE.md
+```
+PASS: both ≥ 1.
+
+### AC-DU-006 (REQ-DU-007) — plan.md decision-reversibility ordering guidance in manager-spec.md
+```bash
+grep -iE 'most likely to change|decision-reversibility' .claude/agents/moai/manager-spec.md
+grep -iE 'mechanical|refactor' .claude/agents/moai/manager-spec.md | grep -iE 'bottom|defer|last'
+```
+PASS: both match (lead-with-change-likelihood + defer-mechanical).
+
+### AC-DU-007 (REQ-DU-008) — CLAUDE.md §7 Rule 1 leads with high-change decisions
+```bash
+grep -A2 'Rule 1 — Approach-First' CLAUDE.md | grep -iE 'most likely to change|change[ -]likelihood|first'
+```
+PASS: ≥ 1 match.
+
+### AC-DU-008 (REQ-DU-009, REQ-DU-013) — no Go change in THIS SPEC's commit set (audit D4 fix)
+```bash
+# Diff-based, scoped to this SPEC's commits — NOT a blanket `-newer` mtime find
+# (which false-fails against any parallel-session .go edit newer than spec.md).
+# Run after run-phase commits land:
+git log --grep='SPEC-DISCOVERY-UNKNOWNS-001' --name-only --format='' -- '*.go' | grep -c '\.go$'
+```
+PASS: 0 (this SPEC's commits touch zero `.go` files — ordering rule only, no machinery). Sound companion: AC-DU-015.
+
+### AC-DU-009 (REQ-DU-010) — all four quadrant terms present in § Ambiguity Triggers
+```bash
+for t in 'Known-Knowns' 'Known-Unknowns' 'Unknown-Knowns' 'Unknown-Unknowns'; do
+  printf '%s=' "$t"; grep -c "$t" .claude/rules/moai/core/askuser-protocol.md
+done
+```
+PASS: each of the four counts ≥ 1.
+
+### AC-DU-010 (REQ-DU-011) — suspected Unknown-Unknowns routes to a Blind Spot Pass
+```bash
+grep -A6 'Unknown-Unknowns' .claude/rules/moai/core/askuser-protocol.md | grep 'Blind Spot Pass'
+```
+PASS: ≥ 1 (the taxonomy paragraph routes Unknown-Unknowns to the Blind Spot Pass).
+
+### AC-DU-011 (REQ-DU-012) — CLAUDE.md §7 Rule 5 lens framing + SSOT pointer (diet-respecting)
+```bash
+grep -A3 'Rule 5 — Context-First' CLAUDE.md | grep -iE 'Known-Unknowns|4-quadrant|unknown-unknown'
+```
+PASS: ≥ 1 (lens framing + SSOT pointer present) AND a diet check: the T3 net addition to §7 Rule 5 is ≤ 1 line + pointer, verified against the run-phase diff of CLAUDE.md §7 Rule 5.
+
+### AC-DU-012 (REQ-DU-014) — template-mirror parity, per-file token (audit D6 fix)
+Each file receives DIFFERENT inserted text, so the parity token is enumerated per file (do not reuse `Blind Spot Pass` for the manager-spec mirror, which receives the T2 phrase):
+```bash
+grep -c 'Blind Spot Pass'        internal/template/templates/.claude/rules/moai/core/askuser-protocol.md    # askuser mirror (T1 + T3)
+grep -ci 'most likely to change' internal/template/templates/.claude/agents/moai/manager-spec.md           # manager-spec mirror (T2)
+grep -c 'Blind Spot Pass'        internal/template/templates/CLAUDE.md                                      # CLAUDE.md mirror (T1 Rule 5 ref)
+grep -c 'Blind Spot Pass'        internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md   # spec-workflow mirror (T1 wire)
+```
+PASS: each mirror count ≥ 1, AND the same file-specific token is present in the corresponding LOCAL file (parity in both directions).
+
+### AC-DU-013 (REQ-DU-014) — make build succeeds
+```bash
+make build
+```
+PASS: exit 0 (embedded template FS regenerated from the mirror edits).
+
+### AC-DU-014 (REQ-DU-015) — §25 template neutrality (audit D1 fix — raw `|` alternation)
+```bash
+grep -rn 'SPEC-DISCOVERY-UNKNOWNS' internal/template/templates/
+grep -rnE '2026-07-05|Finding [0-9]|Audit [0-9]' \
+  internal/template/templates/.claude/rules/moai/core/askuser-protocol.md \
+  internal/template/templates/.claude/agents/moai/manager-spec.md \
+  internal/template/templates/CLAUDE.md \
+  internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+```
+PASS: both commands return zero matches introduced by this SPEC (no internal SPEC ID / date / audit-citation leak). The raw `|` here is genuine ERE alternation — the prior `\|` form vacuously passed (matched a literal `2026-07-05|Finding...` string that never occurs), masking real leakage.
+
+### AC-DU-015 (REQ-DU-013) — no `.go` in the working-tree change set
+```bash
+git status --porcelain | grep -E '\.go$'
+```
+PASS: empty (no `.go` file modified/added by this SPEC — doc/rule/agent-body only).
 
 ## §D.1 Given-When-Then scenarios
 
@@ -63,13 +162,13 @@ Each AC is independently testable. Commands are run from the project root (`/Use
 ## §D.2 Edge cases
 
 - **Familiar domain / no suspected unknown-unknowns** → the Blind Spot Pass is NOT run; optionality is preserved and no forced overhead is incurred (guards REQ-DU-004). Verifiable: the subsection text explicitly gates on "suspected unknown-unknowns", not on every plan entry.
-- **Template-mirror divergence** → `askuser-protocol.md` and `manager-spec.md` already diverge local-vs-template by ~1 line (§25 SPEC-ref stripping). The paired edit targets the semantically-equivalent anchor in each surface; the new phrase must still appear in BOTH (AC-DU-012).
+- **Template-mirror divergence** → `askuser-protocol.md` diverges local-vs-template by ~1 hunk and `manager-spec.md` by ~5 hunks (all §25-neutrality strips of internal dates / SPEC-IDs / REQ tokens); neither divergence touches this SPEC's T1/T2 edit anchors. The paired edit targets the semantically-equivalent anchor in each surface; the new phrase must still appear in BOTH (AC-DU-012).
 - **CLAUDE.md active diet** → §7 Rule 5 gains ≤ ~2 lines total (T1 ref + T3 lens framing + pointer); §7 Rule 1 gains 1 line (T2). No section-block expansion (AC-DU-011 diet check).
 - **Parallel-session working tree** → ~52 uncommitted files from other SPECs are present; edits touch only the 8 enumerated targets + this SPEC dir; AC-DU-015 asserts no unrelated `.go` change is attributed to this SPEC.
 
 ## §D.3 Quality gate criteria / Definition of Done
 
-- [ ] All 15 ACs (AC-DU-001 .. AC-DU-015) PASS with observed command output recorded in the run-phase E1 matrix.
+- [ ] All 16 ACs (AC-DU-001 .. AC-DU-016) PASS with observed command output recorded in the run-phase E1 matrix.
 - [ ] `make build` exits 0 (AC-DU-013).
 - [ ] Template parity holds for all 4 surfaces — every new phrase present in local AND mirror (AC-DU-012).
 - [ ] §25 neutrality: zero internal SPEC ID / date / SHA / audit-citation leakage into template content (AC-DU-014).

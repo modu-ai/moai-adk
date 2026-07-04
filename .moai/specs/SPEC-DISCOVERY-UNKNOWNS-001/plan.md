@@ -39,7 +39,7 @@ The milestone ordering below is itself ordered by decision-reversibility (T2) �
 - **B6. spec-lint heading convention**: spec.md exclusions use `### Out of Scope — <topic>` H3 sub-headings (not a bare `## Out of Scope` H2), each with `-` bullets, to satisfy `OutOfScopeRule` (`MissingExclusions`). Verified in spec.md §E.
 - **B10. Untouched paths PRESERVE (CRITICAL)**: the shared checkout has ~52 uncommitted files from a PARALLEL session (SPEC-WEB-CONSOLE-011 / SPEC-HANDOFF-CTXGUIDE-001). Run-phase MUST touch ONLY the 4 target surfaces + their 4 template mirrors + this SPEC directory. NO `git add -A` / `git add .`; use pathspec-restricted staging only. Do NOT touch, stage, or modify any file outside the enumerated edit set.
 - **B11. AskUserQuestion boundary**: run-phase is subagent-executed; if the exact insertion wording needs a user decision, return a structured blocker report — never prompt the user.
-- **Template divergence (this SPEC)**: `askuser-protocol.md` and `manager-spec.md` diverge local-vs-template by ~1 line (§25-neutrality SPEC-ref stripping). Edit anchors are identical; the paired edit targets the semantically-equivalent anchor in each surface. `make build` re-embeds the mirror edits.
+- **Template divergence (this SPEC)**: `askuser-protocol.md` diverges local-vs-template by ~1 hunk and `manager-spec.md` by ~5 hunks / 10 lines (all §25-neutrality strips of internal dates / SPEC-IDs / REQ tokens — verified via live diff). Neither divergence touches this SPEC's T1/T2 edit anchors (the manager-spec `Step 4` / `**plan.md**` T2 anchor is confirmed untouched); the paired edit targets identical anchors in each surface. `make build` re-embeds the mirror edits.
 
 ## §C. Pre-flight Check List (run-phase, before any edit)
 

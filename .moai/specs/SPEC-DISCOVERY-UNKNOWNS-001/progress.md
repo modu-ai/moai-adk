@@ -26,7 +26,7 @@ tier: M
 artifacts: [spec.md, plan.md, acceptance.md, progress.md]
 milestones: 4
 req_count: 15
-ac_count: 15
+ac_count: 16
 ```
 
 Plan-phase artifacts (spec.md + plan.md + acceptance.md + this progress.md skeleton) authored. Applies the Tier-1 subset of the "Finding Your Unknowns" framework to Context-First Discovery via three genuinely-absent enhancements (T1 Blind Spot Pass, T2 decision-reversibility plan ordering, T3 unknowns 4-quadrant lens). All 3 problem-baseline gaps grep-verified against the current tree (spec.md §A.2). Doc/rule/agent-body level only — no Go code, no new agents/skills/subsystems. Ready for plan-auditor review.
