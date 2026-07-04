@@ -1,0 +1,9 @@
+observability:
+    enabled: true
+    hook_metrics:
+        output_path: .moai/observability/hook-metrics.jsonl
+        slow_hook_threshold_ms: 5000
+    max_file_size_mb: 10
+    report_dir: .moai/reports
+    retention_days: 30
+    trace_dir: .moai/logs

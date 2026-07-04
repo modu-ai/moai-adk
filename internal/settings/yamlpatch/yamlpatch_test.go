@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 // copyFixture는 testdata fixture를 t.TempDir 아래로 복사하고 사본 경로와 원본
@@ -272,6 +274,88 @@ func TestYAMLPatchErrors(t *testing.T) {
 			t.Error("failed patch must not mutate the file")
 		}
 	})
+
+	t.Run("empty document", func(t *testing.T) {
+		t.Parallel()
+		path := writeTempYAML(t, "")
+		err := PatchFile(path, []KeyEdit{{Path: []string{"a"}, Value: "1"}})
+		if err == nil {
+			t.Fatal("want error for empty yaml document")
+		}
+	})
+
+	t.Run("non-mapping root", func(t *testing.T) {
+		t.Parallel()
+		path := writeTempYAML(t, "- item1\n- item2\n")
+		err := PatchFile(path, []KeyEdit{{Path: []string{"a"}, Value: "1"}})
+		if err == nil {
+			t.Fatal("want error for sequence root document")
+		}
+	})
+
+	t.Run("scalar intermediate segment", func(t *testing.T) {
+		t.Parallel()
+		path := writeTempYAML(t, "a: 1\n")
+		before, _ := os.ReadFile(path)
+		err := PatchFile(path, []KeyEdit{{Path: []string{"a", "b", "c"}, Value: "x"}})
+		if err == nil {
+			t.Fatal("want error when an intermediate segment is a scalar, not a mapping")
+		}
+		after, _ := os.ReadFile(path)
+		if string(before) != string(after) {
+			t.Error("failed patch must not mutate the file")
+		}
+	})
+
+	t.Run("sequence target", func(t *testing.T) {
+		t.Parallel()
+		path := writeTempYAML(t, "a:\n    - x\n    - y\n")
+		err := PatchFile(path, []KeyEdit{{Path: []string{"a"}, Value: "flat"}})
+		if err == nil {
+			t.Fatal("want error when target is a sequence, not a scalar")
+		}
+	})
+}
+
+// TestYAMLPatchDefaultIndentFallback은 들여쓰기 검출이 불가능한 flat 문서의
+// 중첩 upsert가 섹션 관례 기본값(4-space)으로 기록됨을 검증한다.
+func TestYAMLPatchDefaultIndentFallback(t *testing.T) {
+	t.Parallel()
+	path := writeTempYAML(t, "a: 1\n")
+
+	if err := PatchFile(path, []KeyEdit{{Path: []string{"b", "c"}, Value: "v"}}); err != nil {
+		t.Fatalf("PatchFile: %v", err)
+	}
+	raw, _ := os.ReadFile(path)
+	after := string(raw)
+	if !strings.Contains(after, "b:\n    c: v") {
+		t.Errorf("default 4-space indent not applied on upsert, got:\n%s", after)
+	}
+	if !strings.Contains(after, "a: 1") {
+		t.Errorf("existing key lost, got:\n%s", after)
+	}
+}
+
+// TestYAMLPatchMultiEditSingleWrite는 복수 edit이 한 번의 원자적 기록으로
+// 모두 반영됨을 검증한다 (M2b 폼 저장 시 다중 필드 제출 대비).
+func TestYAMLPatchMultiEditSingleWrite(t *testing.T) {
+	t.Parallel()
+	path := writeTempYAML(t, "s:\n    a: 1\n    b: two\n    c: true\n")
+
+	err := PatchFile(path, []KeyEdit{
+		{Path: []string{"s", "a"}, Value: "9"},
+		{Path: []string{"s", "c"}, Value: "false"},
+	})
+	if err != nil {
+		t.Fatalf("PatchFile: %v", err)
+	}
+	raw, _ := os.ReadFile(path)
+	after := string(raw)
+	for _, want := range []string{"a: 9", "b: two", "c: false"} {
+		if !strings.Contains(after, want) {
+			t.Errorf("multi-edit missing %q, got:\n%s", want, after)
+		}
+	}
 }
 
 // TestYAMLPatchIndentDetection은 2-space 파일(db.yaml 형상)의 upsert가 원본
@@ -287,5 +371,55 @@ func TestYAMLPatchIndentDetection(t *testing.T) {
 	after := string(raw)
 	if !strings.Contains(after, "  extra:\n    key: v") {
 		t.Errorf("2-space indent not preserved on upsert, got:\n%s", after)
+	}
+}
+
+// TestYAMLPatchAtomicWriteErrors는 atomicWrite의 오류 분기를 직접 검증한다:
+// 대상 파일 부재(stat 실패) + 쓰기 불가 디렉터리(temp 생성 실패).
+func TestYAMLPatchAtomicWriteErrors(t *testing.T) {
+	t.Parallel()
+
+	t.Run("stat missing target", func(t *testing.T) {
+		t.Parallel()
+		err := atomicWrite(filepath.Join(t.TempDir(), "gone.yaml"), []byte("a: 1\n"))
+		if err == nil {
+			t.Fatal("want error when target file does not exist")
+		}
+	})
+
+	t.Run("read-only directory", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		path := filepath.Join(dir, "section.yaml")
+		if err := os.WriteFile(path, []byte("a: 1\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(dir, 0o555); err != nil {
+			t.Skipf("cannot chmod dir read-only on this platform: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+		if err := atomicWrite(path, []byte("a: 2\n")); err == nil {
+			t.Fatal("want error when temp file cannot be created in a read-only dir")
+		}
+		raw, readErr := os.ReadFile(path)
+		if readErr != nil || string(raw) != "a: 1\n" {
+			t.Errorf("failed atomic write mutated the target: %q (err %v)", raw, readErr)
+		}
+	})
+}
+
+// TestYAMLPatchEncodeError는 인코딩 불가 노드(unknown kind)가 오류로 전파됨을
+// 직접 검증한다 (encode 오류 분기).
+func TestYAMLPatchEncodeError(t *testing.T) {
+	t.Parallel()
+	bad := &yaml.Node{
+		Kind: yaml.DocumentNode,
+		// Kind 0 + 비어있지 않은 노드 — yaml.v3가 "unknown kind"로 거부한다
+		// (Kind 0의 zero 노드는 null로 인코딩되므로 Value를 채워야 오류 분기 진입).
+		Content: []*yaml.Node{{Value: "x"}},
+	}
+	if _, err := encode(bad, 4); err == nil {
+		t.Fatal("want error when encoding a node with unknown kind")
 	}
 }

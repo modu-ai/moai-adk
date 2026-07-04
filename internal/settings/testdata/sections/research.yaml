@@ -1,0 +1,25 @@
+research:
+    active:
+        budget_cap_tokens: 500000
+        max_experiments: 20
+        pass_threshold: 0.8
+        runs_per_experiment: 3
+        target_score: 0.95
+    dashboard:
+        default_mode: terminal
+        html_open_browser: true
+    enabled: false
+    passive:
+        correction_window_seconds: 60
+        enabled: true
+        pattern_thresholds:
+            heuristic: 3
+            high_confidence: 10
+            rule: 5
+    safety:
+        canary_regression_threshold: 0.1
+        rate_limits:
+            max_accepted_per_session: 5
+            max_auto_research_per_week: 3
+            max_experiments_per_session: 20
+        worktree_isolation: true
