@@ -87,6 +87,8 @@ The dynamic workflow `agent()` primitive accepts an opts object `{model, effort,
 
 The official effort levels are `low`, `medium`, `high` (default), `xhigh`, `max` (`https://platform.claude.com/docs/en/build-with-claude/effort`). The taxonomy below maps each workflow-agent purpose to a recommended `(model, effort)`.
 
+> **Config surface.** The `workflow_agents:` block in `.moai/config/sections/workflow.yaml` is the SSOT for these per-purpose `(model, effort)` DEFAULTS — the web console and tooling read/write that block, and per-script literals in `.claude/workflows/*.js` remain overrides that win over the config defaults. Values are validated against the closed sets above (model: inherit/haiku/sonnet/opus; effort: low/medium/high/xhigh/max).
+
 | Purpose | Example surfaces | Recommended model | Recommended effort | Official citation |
 |---------|------------------|-------------------|--------------------|-------------------|
 | **read-only-extract** | per-package dep-graph + public-surface extraction; mechanical AST/grep sweeps | haiku | **low** | "`low` — Simpler tasks that need the best speed and lowest costs, such as subagents" |

@@ -68,6 +68,17 @@ Lifecycle tracking for the 3-phase plan → run → sync flow. §E carries the a
 - **커버리지**: settings 75.4%→**90.9%**(전수 round-trip 테스트 TestApplySchemaEditsAllFieldsRoundTrip — 163필드 단일 호출 왕복), yamlpatch 86.3% 유지, web 70.9%(baseline 73.0% 대비 −2.1pp — templ generate 산출 코드가 분모 팽창; 신규 비생성 코드는 신규 테스트가 커버).
 - lint: `golangci-lint run` **0 issues** (unused parseFloatValue 제거 후).
 
+### M3 — Agent Settings 4표면 전면 쓰기 (rebased base 002446611 위)
+
+- **(b) role_profiles 28필드 + (d) workflow_agents 14필드** (REQ-WC11-020/022/024/070..073): `schema_sections.go` agentSettingsFields — SectionAgentSettings 신설, 전부 PersistSeam(workflow.yaml). 옵션은 **v4manifest exported 상수 재사용**(EffortLow../ModelInherit../IsolationNone.. — 리터럴 재선언 0, REQ-WC11-024/072). role_profiles effort는 seam opaque-node 패치 — `RoleProfileEntry`에 Effort 필드 미추가(TestRoleProfileEntryHasNoEffortField reflection 가드, AC-WC11-023; 제네릭 파서/렌더가 그대로 처리해 웹 신규 코드 0줄로 두 표면 커버).
+- **workflow_agents typed 읽기** (REQ-WC11-070/071): `internal/config/types.go` WorkflowAgentEntry{Model, Effort} + WorkflowConfig.WorkflowAgents map — 블록 부재 시 nil 무오류(TestWorkflowAgentsAbsentBlockZeroValue), 7-purpose 파싱(TestWorkflowAgentsTypedLoad). 쓰기는 M1 seam upsert 전용(AP-11 — TestWorkflowAgentsUpsertGolden: 블록 부재 fixture 최초 기록 additive-only + 주석/patterns/role_profile_keys 보존, GWT-7).
+- **(c) frontmatter patch layer** (REQ-WC11-025/027..029): 신규 패키지 `internal/settings/agentfm` — 첫 두 `---` 구분선으로 frontmatter만 yaml.Node 패치, **body는 파싱조차 없이 원본 bytes 재조립**(구조적 byte 보존). 연산: model/effort 교체 + upsert + **effort 키 삭제**(EC-7 "(absent)" 복귀 — seam에 없는 유일한 삭제 연산). Idempotency 2회 patch byte-identical + body bytes.Equal 기계 검증(TestPatchIdempotencyAndBodyPreserved, AC-WC11-027). live 파일 전용 — template dual-write 0 (`grep "internal/template/templates"` in agentfm/web 경로 = 0, AC-WC11-029 iii).
+- **웹 배선**: `internal/web/agentfm.go` — v4manifest **직접 import 검증**(AC-WC11-024 grep ≥1 실참조), no-change 제출 필터(불필요 재직렬화 방지), agent 이름 경로 조작 가드. fieldsetAgentFrontmatter templ 카드: 지속 경고(agentfm.warn, REQ-WC11-028) + llm 교차 참조 + dynamic-workflows.md taxonomy 참조(REQ-WC11-026) + "(keep current)"/"(absent)" select. i18n 신규 10키 × 4 locale(TestAgentFMWarnI18nParity).
+- **AC 테스트 (전부 GREEN 1-pass)**: 020(4표면 렌더 — llm/role_profiles 7/frontmatter/purposes 7), 022(role_profile 편집 1-line diff + 주석/patterns 보존), 023, 024+071(superhigh/gpt5/ultra → 400 + 파일 불변), 025(GWT-6 round-trip + 재렌더 ✓ 반영), 029(i 거부/ii effort 키 미주입), 072(upsert golden), 027(agentfm 패키지).
+- **REQ-WC11-074 (rule + mirror work item)**: live `.moai/config/sections/workflow.yaml` + template mirror에 workflow_agents 기본 블록(7 purposes — taxonomy 권장값) 추가; dynamic-workflows.md live+mirror에 "Config surface" SSOT 문단(config 블록 = 기본값 SSOT, per-script 리터럴 = override) 추가. **§25 neutrality**: 미러 추가분에 SPEC ID/내부 날짜 0 (기존 `{SPEC-ID}` 플레이스홀더 변수 1건은 선재 허용 클래스); `make build` **exit 0** (재임베드 + catalog 재생성 — 터치한 config/rule은 catalog 해시 대상 아님이라 catalog.yaml 무변경); `go test ./internal/template/` PASS (neutrality/leak 가드).
+- **스코프 가드**: 광역 gofmt가 선재 드리프트 파일(projectnested_error_test.go)을 포맷한 것을 감지 → `git checkout`으로 원복 (Scope Discipline — 해당 파일 무접촉 유지).
+- 커버리지: agentfm 85.3%(오류 경로 보강 후), settings 91.1%, config 80.2%(선재 대형 패키지 — 본 위임 추가 실행문 0, struct 필드 + 테스트만).
+
 ### 발견 사항 / 특이 기록
 
 1. **yaml.v3 blank-line 정규화** (위 M2a 항 — design.md §A.4 예상 리스크의 실측 확정, 허용 범위 내 golden 고정).
@@ -78,9 +89,9 @@ Lifecycle tracking for the 3-phase plan → run → sync flow. §E carries the a
 
 ```yaml
 run_complete_at: 2026-07-04
-run_commit_sha: "af4bdf245 (M1, rebased) + 5d2d18f3b (M2a, rebased) + <M2b — 본 progress.md 동승 커밋>"
-run_status: in-progress — M1 + M2a + M2b 완료; M3/M4/M5/M6 후속 위임 대기
-ac_pass_count: 15  # M1/M2a: AC-WC11-001..005, 017 + M2b: 010(전 필드 typed round-trip), 012, 013, 014, 016, 018, 019, 063 + 004 행동 완결. 011은 파티션 계약으로 충족(하단 노트)
+run_commit_sha: "af4bdf245 (M1) + 5d2d18f3b (M2a) + 002446611 (M2b — rebased SHA) + <M3 — 본 progress.md 동승 커밋>"
+run_status: in-progress — M1 + M2a + M2b + M3 완료; M4/M5/M6 후속 위임 대기
+ac_pass_count: 28  # M1/M2a/M2b 15 + M3: 020, 021(llm tier round-trip — M2b 스모크 포함), 022, 023, 024, 025, 026, 027, 028, 029, 070, 071, 072, 073, 074 중 검증 완료분 (021은 TestSaveSchemaSmokeAllSections의 llm 필드로 커버)
 ac_fail_count: 0
 ac_partial_notes: "AC-WC11-011은 '노출 ∪ 명시 제외 목록' 파티션 테스트(TestQualityKeyPartition)로 충족 — lsp_quality_gates/lsp_integration/principles/cycle_type_routing은 명시 제외(form UI 부적합 대형 정책 블록). AC-WC11-015는 신규 data-i18n 키 25종 ×4 locale로 충족 — M2b 필드 라벨은 key-chip 기술 식별자(비번역 계약)라 per-field 키 비대상. AC-WC11-005 allowlist 불변(신규 NewConfigManager/.Save( 0 — 신규 typed 경로는 internal/settings 소재)"
 preserve_list_post_run_count: 0   # PRESERVE 위반 0 — statusline/app.go@MX:NOTE/병렬 세션 산출물/agent 파일 전부 무접촉

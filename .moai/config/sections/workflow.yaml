@@ -125,6 +125,19 @@ workflow:
         plan: 30000
         run: 180000
         sync: 40000
+    # workflow_agents: dynamic-workflow purpose taxonomy -> {model, effort}
+    # DEFAULTS. This block is the SSOT for workflow agent() model/effort
+    # defaults; per-script literals in .claude/workflows/*.js override it.
+    # Values are validated against the closed sets: model in
+    # {inherit, haiku, sonnet, opus}, effort in {low, medium, high, xhigh, max}.
+    workflow_agents:
+        read-only-extract: { model: haiku, effort: low }
+        mechanical-transform: { model: sonnet, effort: medium }
+        synthesize: { model: sonnet, effort: high }
+        research: { model: sonnet, effort: high }
+        verify-judge: { model: sonnet, effort: xhigh }
+        implement: { model: sonnet, effort: xhigh }
+        design-architecture: { model: opus, effort: xhigh }
     worktree:
         # 2026-05-22: auto_create false (user policy feedback_worktree_autonomous 정렬).
         # L1 worktree는 Claude Code runtime autonomous — MoAI orchestrator는 자동 생성 안함.
