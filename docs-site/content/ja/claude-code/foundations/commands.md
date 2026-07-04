@@ -42,7 +42,7 @@ description: "Claude Code のスラッシュコマンド — 組み込みコマ�
 | `/memory` | `CLAUDE.md` + 自動メモリ読み込みリスト/トグル | v2.1.59+ |
 | `/compact` | 同じ会話を維持したまま、これまでの内容を要約してコンテキストを確保 | デフォルト |
 | `/clear` (別名: `/reset`, `/new`) | コンテキストを空にして新しい会話を開始 | デフォルト |
-| `/agents` | サブエージェント管理 UI | v2.1.139+ |
+| `/agents` | サブエージェント管理 UI（v2.1.198 で作成ウィザードが削除 — Claude に依頼するか `.claude/agents/` を直接編集。公式ドキュメントには 2026-07 時点でタブ UI がまだ残存） | v2.1.139+ |
 | `/mcp` | MCP サーバー接続および OAuth 認証管理 | v2.1.186+ |
 | `/plugin` | プラグイン管理 | デフォルト |
 | `/effort [low\|medium\|high\|xhigh\|max\|ultracode\|auto]` | モデルの推論強度またはオーケストレーション設定 | デフォルト |
@@ -63,6 +63,7 @@ description: "Claude Code のスラッシュコマンド — 組み込みコマ�
 | `/batch` | バッチ実行 |
 | `/simplify` | コードを簡潔化 (v2.1.154+) |
 | `/code-review` | コードレビュー |
+| `/dataviz` | データから可視化を生成 (v2.1.198+) |
 
 ### ワークフローコマンド `[Workflow]`
 

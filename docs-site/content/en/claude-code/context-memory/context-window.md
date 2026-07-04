@@ -41,8 +41,8 @@ The size of the context window varies by model. The exact figures depend on the 
 
 | Size (general) | Meaning |
 |---------------|------|
-| About 200K tokens | The standard window for many models. Sufficient for typical coding work |
-| About 1M tokens | An extended window offered by some models. Advantageous for a large codebase |
+| About 200K tokens | The standard window for Haiku and for Sonnet/Opus behind a gateway or older models. Sufficient for typical coding work |
+| About 1M tokens | The native window for Sonnet 5 and Opus on the Anthropic API (and some other models). Advantageous for a large codebase |
 
 A larger size lets you hold more files and conversation at once, but the window is not infinite. Whatever model you use, management becomes necessary as you approach the limit. The core principle is that **keeping the amount of content small is more stable than increasing the window size**.
 

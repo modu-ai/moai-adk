@@ -115,8 +115,8 @@ internal/statusline/renderer.go (3-line v3 layout)
   - 🪫 (경고, 50-79% scaled)
   - 🪫 (위험, ≥80% scaled, 색상 추가)
 - **(⚠️/clear) handoff suffix**:
-  - 1M context 모델 (Opus 4.7): used_percentage ≥50% (raw context_window_size 기준)
-  - 200K context 모델 (Sonnet/Haiku): used_percentage ≥90%
+  - 1M context 모델 (Opus; Anthropic API의 Sonnet 5): used_percentage ≥50% (raw context_window_size 기준)
+  - 200K context 모델 (Haiku; 게이트웨이·구형 모델의 Sonnet/Opus): used_percentage ≥90%
   - 의미: 다음 turn 시작 전에 `/clear` 권고 + paste-ready resume message 활용
 - **예시**: `🪫 CW: ███████░░░ 72% (⚠️/clear)`
 - **세그먼트 키**: `context`
@@ -268,8 +268,8 @@ CW bar의 `(⚠️/clear)` suffix는 컨텍스트 사용량이 모델별 임계�
 
 | 모델 클래스 | Context Window | 임계값 | 권고 시점 |
 |------------|----------------|--------|----------|
-| **1M context** (Opus 4.7) | 1,000,000 tokens | **≥50%** | ~500K 토큰 사용 |
-| **200K context** (Sonnet, Haiku) | 200,000 tokens | **≥90%** | ~180K 토큰 사용 |
+| **1M context** (Opus; Anthropic API의 Sonnet 5) | 1,000,000 tokens | **≥50%** | ~500K 토큰 사용 |
+| **200K context** (Haiku; 게이트웨이·구형 모델) | 200,000 tokens | **≥90%** | ~180K 토큰 사용 |
 | 기타 / 알 수 없음 | — | 표시 안 함 | (안전 default) |
 
 > 임계값은 `internal/statusline/renderer.go shouldShowHandoffGuide()` 함수에서 강제됩니다. 이 임계값은 `.claude/rules/moai/workflow/context-window-management.md` HARD rule과 일치합니다.

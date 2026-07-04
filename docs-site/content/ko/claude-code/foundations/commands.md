@@ -42,7 +42,7 @@ description: "Claude Code의 슬래시 명령어 — 내장 명령, 마크다운
 | `/memory` | `CLAUDE.md` + 자동 메모리 로드 목록/토글 | v2.1.59+ |
 | `/compact` | 같은 대화를 유지한 채 지금까지의 내용을 요약해 컨텍스트 확보 | 기본 |
 | `/clear` (별칭: `/reset`, `/new`) | 컨텍스트를 비우고 새 대화 시작 | 기본 |
-| `/agents` | 서브에이전트 관리 UI | v2.1.139+ |
+| `/agents` | 서브에이전트 관리 UI (v2.1.198에서 생성 마법사 제거 — Claude에게 요청하거나 `.claude/agents/`를 직접 편집; 공식 문서에는 2026-07 기준 탭 UI가 아직 남아 있음) | v2.1.139+ |
 | `/mcp` | MCP 서버 연결 및 OAuth 인증 관리 | v2.1.186+ |
 | `/plugin` | 플러그인 관리 | 기본 |
 | `/effort [low\|medium\|high\|xhigh\|max\|ultracode\|auto]` | 모델의 추론 강도 또는 오케스트레이션 설정 | 기본 |
@@ -63,6 +63,7 @@ description: "Claude Code의 슬래시 명령어 — 내장 명령, 마크다운
 | `/batch` | 배치 실행 |
 | `/simplify` | 코드 단순화 (v2.1.154+) |
 | `/code-review` | 코드 리뷰 |
+| `/dataviz` | 데이터로 시각화 생성 (v2.1.198+) |
 
 ### 워크플로우 명령 `[Workflow]`
 

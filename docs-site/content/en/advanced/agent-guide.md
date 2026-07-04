@@ -61,7 +61,7 @@ MoAI-ADK uses **8 retained agents** (7 MoAI-custom + 1 Anthropic built-in).
 
 | Agent | Role | Characteristics |
 |--------|------|-----------------|
-| `Explore` | Read-only code exploration and analysis | Haiku model, Read-only tools |
+| `Explore` | Read-only code exploration and analysis | Inherits the main session model, capped at opus (Haiku before CC 2.1.198), Read-only tools |
 
 ## Manager-Develop Domain Context Injection
 
@@ -172,7 +172,7 @@ Claude Code's official Sub-agent system forms the foundation of MoAI-ADK's agent
 
 | Feature | Description |
 |---------|-------------|
-| **Independent Context** | Each sub-agent runs in its own 200K token context window |
+| **Independent Context** | Each sub-agent runs in its own context window; size follows the session model (1M for Sonnet 5 / Opus on the Anthropic API, 200K via a gateway or older models) |
 | **Custom Prompt** | Specialized system prompt defines role and behavior |
 | **Specific Tools** | Only necessary tools are provided |
 | **Independent Permissions** | Individual permission mode settings |
@@ -184,7 +184,7 @@ Claude Code's official Sub-agent system forms the foundation of MoAI-ADK's agent
 | Cannot create sub-agents | Sub-agents cannot spawn other sub-agents |
 | AskUserQuestion limit | Sub-agents cannot interact directly with users |
 | Skills not inherited | Does not inherit skills from parent conversation |
-| Independent context | Each agent has its own 200K token context |
+| Independent context | Each agent has its own context window (1M for Sonnet 5 / Opus on the Anthropic API, 200K via a gateway or older models) |
 
 ## Agent Teams (Experimental)
 

@@ -115,8 +115,8 @@ internal/statusline/renderer.go (3-line v3 布局)
   - 🪫 (警告, 50-79% scaled)
   - 🪫 (危险, ≥80% scaled, 颜色添加)
 - **(⚠️/clear) handoff 后缀**:
-  - 1M context 模型 (Opus 4.7): used_percentage ≥50% (基于 raw context_window_size)
-  - 200K context 模型 (Sonnet/Haiku): used_percentage ≥90%
+  - 1M context 模型 (Opus; Anthropic API 的 Sonnet 5): used_percentage ≥50% (基于 raw context_window_size)
+  - 200K context 模型 (Haiku; 网关或旧模型的 Sonnet/Opus): used_percentage ≥90%
   - 含义: 下一 turn 开始前建议 `/clear` + 利用 paste-ready resume message
 - **示例**: `🪫 CW: ███████░░░ 72% (⚠️/clear)`
 - **段键**: `context`
@@ -268,8 +268,8 @@ CW bar 的 `(⚠️/clear)` 后缀在上下文使用量超过模型特定阈值�
 
 | 模型类别 | Context Window | 阈值 | 建议时机 |
 |------------|----------------|------|----------|
-| **1M context** (Opus 4.7) | 1,000,000 tokens | **≥50%** | ~500K tokens 使用 |
-| **200K context** (Sonnet, Haiku) | 200,000 tokens | **≥90%** | ~180K tokens 使用 |
+| **1M context** (Opus; Anthropic API 的 Sonnet 5) | 1,000,000 tokens | **≥50%** | ~500K tokens 使用 |
+| **200K context** (Haiku; 网关或旧模型) | 200,000 tokens | **≥90%** | ~180K tokens 使用 |
 | 其他 / 未知 | — | 不显示 | (安全 default) |
 
 > 阈值由 `internal/statusline/renderer.go shouldShowHandoffGuide()` 函数强制执行。这些阈值与 `.claude/rules/moai/workflow/context-window-management.md` HARD rule 一致。

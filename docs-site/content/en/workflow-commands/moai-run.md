@@ -42,7 +42,7 @@ Pass the SPEC ID created in the Plan phase as an argument:
 ```
 
 {{< callout type="warning" >}}
-  Make sure to run `/clear` before executing `/moai run`. You need to clean up tokens used in the Plan phase to fully utilize **200K tokens** in the Run phase.
+  Make sure to run `/clear` before executing `/moai run`. You need to clean up tokens used in the Plan phase to fully utilize the **Run phase context window** (up to 1M on Sonnet 5 / Opus on the Anthropic API, 200K via a gateway or older models).
 {{< /callout >}}
 
 ## Supported Flags

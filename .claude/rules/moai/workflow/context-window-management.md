@@ -6,6 +6,8 @@ Long-horizon session continuity guidance for both users and the MoAI orchestrato
 
 Anthropic SSE streams stall (`stream_idle_partial`) near the context window ceiling — intermittent but predictable above the model-specific threshold. Reference: 2026-04-25 incident (`feedback_large_spec_wave_split.md`).
 
+> **CC 2.1.196 watchdog note**: The streaming idle watchdog is now default-on for all providers — it aborts and retries a response stream that produces no events for 5 minutes (`CLAUDE_ENABLE_STREAM_WATCHDOG=0` disables). This softens the mid-stream-hang *consequence* (auto-abort+retry) but not the stall *hazard* itself — a stall near the ceiling still wastes a turn. The `/clear` thresholds below are unchanged.
+
 ## Claude Code's Graduated-Compaction Layers (consumed, not implemented)
 
 Before the context window reaches the ceiling, the Claude Code runtime applies a **graduated-compaction** mechanism — five escalating layers that progressively reduce the live input before each model call, in escalation order:
@@ -25,10 +27,12 @@ The orchestrator CONSUMES Claude Code's graduated-compaction layers; it does NOT
 | Model class | Window | Handoff threshold | Absolute ceiling |
 |-------------|--------|-------------------|------------------|
 | Opus 4.8 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
-| Sonnet/Opus standard (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
-| Haiku (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
+| Sonnet 5 (1M native, Anthropic API) | 1,000,000 tokens | **50%** | ~500,000 tokens |
+| 200K-window sessions (Haiku; Sonnet/Opus behind an LLM gateway or with `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`; older models) | 200,000 tokens | **90%** | ~180,000 tokens |
 
 The model-specific threshold is the operational ceiling — beyond it, plan for a `/clear` before the next non-trivial action. Both this rule and `session-handoff.md` Trigger #1 read from this same table.
+
+> **CC 2.1.198 re-verification (Sonnet 5)**: On the Anthropic API, `sonnet` resolves to Sonnet 5 with a **native 1M window — no 200K variant, no `[1m]` suffix to select, and no usage credits required on any plan** (sessions auto-compact ~967K). A Sonnet 5 session therefore reads the 1M row (50% handoff), NOT the 200K row. The 200K row applies ONLY behind an LLM gateway (`ANTHROPIC_BASE_URL` non-Anthropic, e.g. GLM/z.ai), with `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`, or for older models. Source: `code.claude.com/docs/en/model-config` §Sonnet 5 context window + CC 2.1.197 CHANGELOG.
 
 ## User Responsibilities
 

@@ -43,7 +43,7 @@ DDD ANALYZE-PRESERVE-IMPROVE 周期就像**家庭装修**:
 ```
 
 {{< callout type="warning" >}}
-  在执行 `/moai run` 之前确保运行 `/clear`。您需要清理 Plan 阶段使用的 tokens 以充分利用 Run 阶段的 **200K tokens**。
+  在执行 `/moai run` 之前确保运行 `/clear`。您需要清理 Plan 阶段使用的 tokens 以充分利用 Run 阶段的 **上下文窗口**（Anthropic API 的 Sonnet 5 / Opus 最高 1M，网关或旧模型为 200K）。
 {{< /callout >}}
 
 ## 支持的标志

@@ -115,8 +115,8 @@ internal/statusline/renderer.go (3-line v3 layout)
   - 🪫 (warning, 50-79% scaled)
   - 🪫 (critical, ≥80% scaled, color added)
 - **(⚠️/clear) handoff suffix**:
-  - 1M context model (Opus 4.7): used_percentage ≥50% (against raw context_window_size)
-  - 200K context model (Sonnet/Haiku): used_percentage ≥90%
+  - 1M context model (Opus; Sonnet 5 on the Anthropic API): used_percentage ≥50% (against raw context_window_size)
+  - 200K context model (Haiku; Sonnet/Opus via a gateway or older models): used_percentage ≥90%
   - Meaning: recommend running `/clear` before next turn + use paste-ready resume message
 - **Example**: `🪫 CW: ███████░░░ 72% (⚠️/clear)`
 - **Segment key**: `context`
@@ -268,8 +268,8 @@ The CW bar's `(⚠️/clear)` suffix activates when context usage crosses model-
 
 | Model Class | Context Window | Threshold | When Recommended |
 |-------------|----------------|-----------|------------------|
-| **1M context** (Opus 4.7) | 1,000,000 tokens | **≥50%** | ~500K tokens used |
-| **200K context** (Sonnet, Haiku) | 200,000 tokens | **≥90%** | ~180K tokens used |
+| **1M context** (Opus; Sonnet 5 on the Anthropic API) | 1,000,000 tokens | **≥50%** | ~500K tokens used |
+| **200K context** (Haiku; Sonnet/Opus via gateway or older) | 200,000 tokens | **≥90%** | ~180K tokens used |
 | Other / unknown | — | not shown | (safety default) |
 
 > Thresholds are enforced by `internal/statusline/renderer.go shouldShowHandoffGuide()`. These match the HARD rule in `.claude/rules/moai/workflow/context-window-management.md`.

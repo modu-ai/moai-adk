@@ -42,7 +42,7 @@ Slash commands comprise built-in commands, bundled skills, and custom workflows.
 | `/memory` | Load and toggle `CLAUDE.md` + auto memory | v2.1.59+ |
 | `/compact` | Summarize the conversation so far to free up context while keeping the same conversation | Default |
 | `/clear` (alias: `/reset`, `/new`) | Clear context and start a new conversation | Default |
-| `/agents` | Manage subagent configuration | v2.1.139+ |
+| `/agents` | Manage subagent configuration (v2.1.198 removed the creation wizard — ask Claude or edit `.claude/agents/` directly; official docs still document the tabbed UI as of 2026-07) | v2.1.139+ |
 | `/mcp` | Manage MCP server connections and authentication | v2.1.186+ |
 | `/plugin` | Manage plugins | Default |
 | `/effort [low|medium|high|xhigh|max|ultracode|auto]` | Set the model's reasoning depth or orchestration setting | Default |
@@ -63,6 +63,7 @@ Slash commands comprise built-in commands, bundled skills, and custom workflows.
 | `/batch` | Run batch operations |
 | `/simplify` | Simplify code (v2.1.154+) |
 | `/code-review` | Review code |
+| `/dataviz` | Generate data visualizations from your data (v2.1.198+) |
 
 ### Workflow Commands
 

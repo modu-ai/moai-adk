@@ -47,7 +47,7 @@ Plan 단계에서 생성된 SPEC ID를 인자로 전달합니다:
 
 {{< callout type="warning" >}}
   `/moai run` 실행 전에 반드시 `/clear`를 실행하세요. Plan 단계에서 사용한
-  토큰을 정리해야 Run 단계에서 **200K 토큰을 온전히 활용**할 수 있습니다.
+  토큰을 정리해야 Run 단계에서 **컨텍스트 윈도우를 온전히 활용**(Anthropic API의 Sonnet 5 / Opus는 최대 1M, 게이트웨이·구형 모델은 200K)할 수 있습니다.
 {{< /callout >}}
 
 ## 지원 플래그

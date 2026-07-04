@@ -82,7 +82,7 @@ Conversely, if a task finishes in a single response, or if it spans multiple ste
 
 ## Definition Overview
 
-A subagent is defined as a Markdown file with YAML frontmatter. You can create one interactively with the `/agents` command, or write the file directly.
+A subagent is defined as a Markdown file with YAML frontmatter. You can create one interactively with the `/agents` command, or write the file directly. (CC 2.1.198 removed the `/agents` creation wizard — ask Claude or edit `.claude/agents/` directly; the official docs still show the `/agents` interface as of 2026-07, so verify in a live 2.1.198 session.)
 
 ```markdown
 ---

@@ -115,8 +115,8 @@ internal/statusline/renderer.go (3-line v3 レイアウト)
   - 🪫 (警告, 50-79% scaled)
   - 🪫 (危険, ≥80% scaled, 色追加)
 - **(⚠️/clear) handoff サフィックス**:
-  - 1M context モデル (Opus 4.7): used_percentage ≥50% (raw context_window_size 基準)
-  - 200K context モデル (Sonnet/Haiku): used_percentage ≥90%
+  - 1M context モデル (Opus; Anthropic API の Sonnet 5): used_percentage ≥50% (raw context_window_size 基準)
+  - 200K context モデル (Haiku; ゲートウェイ・旧モデルの Sonnet/Opus): used_percentage ≥90%
   - 意味: 次の turn 開始前に `/clear` 推奨 + paste-ready resume message 活用
 - **例**: `🪫 CW: ███████░░░ 72% (⚠️/clear)`
 - **セグメントキー**: `context`
@@ -268,8 +268,8 @@ CW bar の `(⚠️/clear)` サフィックスはコンテキスト使用量が�
 
 | モデルクラス | Context Window | 閾値 | 推奨時点 |
 |------------|----------------|------|----------|
-| **1M context** (Opus 4.7) | 1,000,000 tokens | **≥50%** | ~500K トークン使用 |
-| **200K context** (Sonnet, Haiku) | 200,000 tokens | **≥90%** | ~180K トークン使用 |
+| **1M context** (Opus; Anthropic API の Sonnet 5) | 1,000,000 tokens | **≥50%** | ~500K トークン使用 |
+| **200K context** (Haiku; ゲートウェイ・旧モデル) | 200,000 tokens | **≥90%** | ~180K トークン使用 |
 | その他 / 不明 | — | 表示なし | (安全 default) |
 
 > 閾値は `internal/statusline/renderer.go shouldShowHandoffGuide()` 関数で強制されます。この閾値は `.claude/rules/moai/workflow/context-window-management.md` HARD rule と一致します。

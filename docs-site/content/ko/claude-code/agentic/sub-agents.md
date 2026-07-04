@@ -36,7 +36,7 @@ Claude Code에는 다음과 같은 내장 서브에이전트가 포함되어 있
 
 | 에이전트 | 특징 |
 |---------|------|
-| **Explore** | 읽기 전용 코드베이스 탐색 (Haiku, 신속); thoroughness 옵션으로 quick/medium/very-thorough 선택 가능 |
+| **Explore** | 읽기 전용 코드베이스 탐색 (CC 2.1.198부터 메인 세션 모델을 상속, opus 상한 — 이전에는 Haiku 고정); thoroughness 옵션으로 quick/medium/very-thorough 선택 가능 |
 | **Plan** | 플랜 모드 리서치 (읽기 전용) |
 | **general-purpose** | 모든 도구 접근 가능, 탐색과 수정 모두 가능 |
 
@@ -92,7 +92,7 @@ flowchart TD
 
 ## 정의 방법 개요
 
-서브에이전트는 YAML 프론트매터를 가진 마크다운 파일로 정의합니다. `/agents` 명령으로 대화형 생성할 수도 있고, 파일을 직접 작성할 수도 있습니다.
+서브에이전트는 YAML 프론트매터를 가진 마크다운 파일로 정의합니다. `/agents` 명령으로 대화형 생성할 수도 있고, 파일을 직접 작성할 수도 있습니다. (CC 2.1.198에서 `/agents` 생성 마법사가 제거되었습니다 — Claude에게 요청하거나 `.claude/agents/`를 직접 편집하세요. 공식 문서에는 2026-07 기준 `/agents` 인터페이스가 아직 남아 있으니 실제 2.1.198 세션에서 확인하세요.)
 
 ```markdown
 ---
