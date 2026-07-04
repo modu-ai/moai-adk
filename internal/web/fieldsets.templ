@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/modu-ai/moai-adk/internal/settings"
+	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
 )
 
 // sectionCount renders a section field-count label DERIVED from the schema
@@ -396,4 +397,85 @@ templ schemaRawBlock(name, content string) {
 		<summary><code class="field__key">{ name }</code> <span data-i18n="raw.note">structured block (read-only)</span></summary>
 		<pre class="rawview__pre">{ content }</pre>
 	</details>
+}
+
+// ─── SPEC-WEB-CONSOLE-011 M3: sub-agent frontmatter 편집 카드 ────────────────
+//
+// 4표면 agent-settings 뷰의 (c) 표면 (REQ-WC11-020/025/027..029). (a) llm tiers는
+// LLM 섹션에서 편집(교차 참조 노트), (b) role_profiles + (d) workflow_agents는
+// 제네릭 Agent Settings fieldset(SectionAgentSettings)이 렌더한다.
+
+// fieldsetAgentFrontmatter는 7개 sub-agent의 model/effort frontmatter 편집 표를
+// 렌더한다. 지속 경고("moai update가 덮어쓸 수 있음", REQ-WC11-028) + llm 교차
+// 참조 + dynamic-workflows taxonomy 참조(REQ-WC11-026)를 포함한다. effort의
+// "(absent)" 옵션은 키 삭제를 의미한다 (EC-7).
+templ fieldsetAgentFrontmatter(view pageView) {
+	<fieldset class="section">
+		<div class="section__head">
+			<div class="section__head-row">
+				<legend class="section__legend"><span class="section__ico">@icon("user-round")</span><span data-i18n="sec.agentfm.title">Sub-agent Frontmatter</span></legend>
+				@sectionCount(len(view.AgentFMs))
+			</div>
+			<p class="section__desc" data-i18n="sec.agentfm.desc">Per-agent model/effort frontmatter of the live agent files (frontmatter-only writes; bodies untouched).</p>
+			<p class="section__desc agentfm-warn">@icon("alert-circle") <span data-i18n="agentfm.warn">These files are template-managed — a later `moai update` may overwrite live edits.</span></p>
+			<p class="section__desc"><span data-i18n="agentfm.llmnote">LLM tier mappings are edited in the LLM section above.</span></p>
+			<p class="section__desc"><span data-i18n="agentfm.taxonomy">workflow_agents purpose defaults follow the purpose taxonomy in</span> <code class="field__key">.claude/rules/moai/workflow/dynamic-workflows.md</code></p>
+		</div>
+		<div class="section__body">
+			<div class="grid">
+				for _, agent := range view.AgentFMs {
+					@agentFMRow(agent, view.FieldErrors)
+				}
+			</div>
+		</div>
+	</fieldset>
+}
+
+// agentFMRow는 agent 1종의 model/effort select 쌍이다. 빈 옵션 = 현재값 유지
+// (empty=preserve). 파싱 실패 행은 편집 비활성 표시만 한다 (design.md §C.1).
+templ agentFMRow(agent agentfm.AgentInfo, errs map[string]string) {
+	if agent.ParseOK {
+		<div class="field">
+			<span class="field__label"><code class="field__key">{ agent.Name }</code></span>
+			<span class="select-wrap">
+				<select class="select" name={ "agentfm." + agent.Name + ".model" } id={ "agentfm." + agent.Name + ".model" }>
+					<option value="" selected data-i18n="agentfm.keep">(keep current)</option>
+					for _, m := range agentFMModelValues() {
+						if m == agent.Model {
+							<option value={ m }>{ m } ✓</option>
+						} else {
+							<option value={ m }>{ m }</option>
+						}
+					}
+				</select>
+			</span>
+			<span class="select-wrap">
+				<select class="select" name={ "agentfm." + agent.Name + ".effort" } id={ "agentfm." + agent.Name + ".effort" }>
+					<option value="" selected data-i18n="agentfm.keep">(keep current)</option>
+					for _, e := range agentFMEffortValues() {
+						if agent.EffortPresent && e == agent.Effort {
+							<option value={ e }>{ e } ✓</option>
+						} else {
+							<option value={ e }>{ e }</option>
+						}
+					}
+					if agent.EffortPresent {
+						<option value="__absent__" data-i18n="agentfm.absent">(absent)</option>
+					} else {
+						<option value="__absent__" data-i18n="agentfm.absent">(absent) ✓</option>
+					}
+				</select>
+			</span>
+			if msg := fieldErrorMsg(errs, "agentfm."+agent.Name+".model"); msg != "" {
+				<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
+			}
+			if msg := fieldErrorMsg(errs, "agentfm."+agent.Name+".effort"); msg != "" {
+				<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
+			}
+		</div>
+	} else {
+		<div class="field field--readonly">
+			<span class="field__label"><code class="field__key">{ agent.Name }</code><span class="field__ro" data-i18n="agentfm.unavailable">unavailable (frontmatter parse failed)</span></span>
+		</div>
+	}
 }

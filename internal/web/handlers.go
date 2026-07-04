@@ -9,6 +9,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
+	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
 
@@ -69,6 +70,10 @@ type pageView struct {
 	// 디스크 현재값(FieldDef.Name → 문자열)과 REQ-WC11-062 raw view 블록 텍스트.
 	SchemaValues map[string]string
 	RawBlocks    map[string]string
+
+	// M3 agent-settings (REQ-WC11-020/025): sub-agent frontmatter 현재 상태
+	// (7 agents — model/effort, effort 부재는 유효 상태 EC-7).
+	AgentFMs []agentfm.AgentInfo
 
 	// Banner is an optional status/error message; BannerKind is "ok" or "error".
 	Banner     string
@@ -284,6 +289,12 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// (FieldDef가 SSOT — read-only/제외군 키는 스키마에 없어 자동 무시, EC-8).
 	schemaEdits, schemaErrs := parseSchemaForm(r)
 
+	// SPEC-WEB-CONSOLE-011 M3: parse the sub-agent frontmatter edits against the
+	// CURRENT live frontmatter state (no-change 제출은 편집으로 승격되지 않는다 —
+	// 불필요한 frontmatter 재직렬화 방지). 목록 실패는 편집 불가로 저하한다.
+	agents, _ := a.listAgentFMs(agentsDirFor(a.cfg.ProjectRoot))
+	agentEdits, agentErrs := parseAgentFMForm(r, agents)
+
 	// REQ-WC-008 / REQ-WC3-001/002 / REQ-WC7-007: run ALL validators and merge
 	// their FieldErrors. Any failure → atomic reject (EC-2): leave ALL persisted
 	// state unchanged and re-render with per-field errors.
@@ -295,6 +306,9 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		fieldErrs[k] = v
 	}
 	for k, v := range schemaErrs {
+		fieldErrs[k] = v
+	}
+	for k, v := range agentErrs {
 		fieldErrs[k] = v
 	}
 	if len(fieldErrs) > 0 {
@@ -346,6 +360,15 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	if err := a.applySchemaEdits(a.cfg.ProjectRoot, schemaEdits); err != nil {
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but section config write failed: "+err.Error())
+		return
+	}
+
+	// SPEC-WEB-CONSOLE-011 M3: persist sub-agent frontmatter edits through the
+	// frontmatter-only patch layer (body byte-무접촉, live 파일 전용 —
+	// REQ-WC11-025/027).
+	if err := a.patchAgentFM(a.cfg.ProjectRoot, agentEdits); err != nil {
+		a.renderErrorPage(w, prefs, selected, devMode, convention,
+			"settings saved, but agent frontmatter write failed: "+err.Error())
 		return
 	}
 

@@ -18,6 +18,17 @@
 // network fetch.
 window.MOAI_I18N = {
   en: {
+    // Agent-settings surface keys (frontmatter card + generic section).
+    "sec.agent_settings.title": "Agent Settings",
+    "sec.agent_settings.desc": "Team role profiles and workflow-agent purpose defaults (workflow.yaml — comment-preserving writes).",
+    "sec.agentfm.title": "Sub-agent Frontmatter",
+    "sec.agentfm.desc": "Per-agent model/effort frontmatter of the live agent files (frontmatter-only writes; bodies untouched).",
+    "agentfm.warn": "These files are template-managed — a later `moai update` may overwrite live edits.",
+    "agentfm.llmnote": "LLM tier mappings are edited in the LLM section above.",
+    "agentfm.taxonomy": "workflow_agents purpose defaults follow the purpose taxonomy in",
+    "agentfm.keep": "(keep current)",
+    "agentfm.absent": "(absent)",
+    "agentfm.unavailable": "unavailable (frontmatter parse failed)",
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "field(s)",
     "ro.note": "read-only (runtime-managed)",
@@ -132,6 +143,17 @@ window.MOAI_I18N = {
   },
 
   ko: {
+    // Agent-settings surface keys (frontmatter card + generic section).
+    "sec.agent_settings.title": "에이전트 설정",
+    "sec.agent_settings.desc": "팀 role profile과 workflow-agent purpose 기본값 (workflow.yaml — 주석 보존 기록).",
+    "sec.agentfm.title": "서브에이전트 Frontmatter",
+    "sec.agentfm.desc": "라이브 에이전트 파일의 model/effort frontmatter (frontmatter만 기록, 본문 무접촉).",
+    "agentfm.warn": "이 파일들은 template-managed입니다 — 이후 `moai update`가 라이브 편집을 덮어쓸 수 있습니다.",
+    "agentfm.llmnote": "LLM 티어 매핑은 위의 LLM 섹션에서 편집합니다.",
+    "agentfm.taxonomy": "workflow_agents purpose 기본값은 다음 문서의 purpose taxonomy를 따릅니다:",
+    "agentfm.keep": "(현재값 유지)",
+    "agentfm.absent": "(부재)",
+    "agentfm.unavailable": "사용 불가 (frontmatter 파싱 실패)",
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "개 필드",
     "ro.note": "읽기 전용 (런타임 관리)",
@@ -246,6 +268,17 @@ window.MOAI_I18N = {
   },
 
   ja: {
+    // Agent-settings surface keys (frontmatter card + generic section).
+    "sec.agent_settings.title": "エージェント設定",
+    "sec.agent_settings.desc": "チームロールプロファイルと workflow-agent purpose 既定値（workflow.yaml — コメント保持書き込み）。",
+    "sec.agentfm.title": "サブエージェント Frontmatter",
+    "sec.agentfm.desc": "ライブエージェントファイルの model/effort frontmatter（frontmatter のみ書き込み、本文は変更なし）。",
+    "agentfm.warn": "これらのファイルは template-managed です — 後の `moai update` がライブ編集を上書きする可能性があります。",
+    "agentfm.llmnote": "LLM ティア対応表は上の LLM セクションで編集します。",
+    "agentfm.taxonomy": "workflow_agents purpose 既定値は次の文書の purpose taxonomy に従います:",
+    "agentfm.keep": "（現在値を維持）",
+    "agentfm.absent": "（未設定）",
+    "agentfm.unavailable": "利用不可（frontmatter 解析失敗）",
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "項目",
     "ro.note": "読み取り専用（ランタイム管理）",
@@ -360,6 +393,17 @@ window.MOAI_I18N = {
   },
 
   zh: {
+    // Agent-settings surface keys (frontmatter card + generic section).
+    "sec.agent_settings.title": "代理设置",
+    "sec.agent_settings.desc": "团队角色配置与 workflow-agent purpose 默认值（workflow.yaml — 保留注释写入）。",
+    "sec.agentfm.title": "子代理 Frontmatter",
+    "sec.agentfm.desc": "实时代理文件的 model/effort frontmatter（仅写入 frontmatter，正文不变）。",
+    "agentfm.warn": "这些文件由模板管理 — 之后的 `moai update` 可能覆盖实时编辑。",
+    "agentfm.llmnote": "LLM 层级映射在上方的 LLM 部分编辑。",
+    "agentfm.taxonomy": "workflow_agents purpose 默认值遵循以下文档中的 purpose 分类：",
+    "agentfm.keep": "（保持当前值）",
+    "agentfm.absent": "（未设置）",
+    "agentfm.unavailable": "不可用（frontmatter 解析失败）",
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "个字段",
     "ro.note": "只读（运行时管理）",

@@ -338,6 +338,24 @@ type WorkflowConfig struct {
 	// Deprecated: use Team.AutoSelection — the legacy field used a broken yaml
 	// path (workflow.auto_selection) that never matched team.auto_selection.
 	AutoSelectionLegacy TeamAutoSelectionConfig `yaml:"-"`
+
+	// WorkflowAgents는 dynamic-workflow purpose 분류(7종) → {model, effort} 기본값
+	// 맵이다 (SPEC-WEB-CONSOLE-011 REQ-WC11-070/071). config 블록이 기본값의
+	// SSOT이고 per-script 리터럴이 override다. 읽기는 이 typed 필드, 쓰기는
+	// yamlpatch seam upsert 전용(REQ-WC11-073) — typed Save로 workflow.yaml을
+	// 재직렬화하면 주석/team.patterns가 파괴된다 (AP-11). 블록 부재 시 nil
+	// (zero-value, 무오류).
+	WorkflowAgents map[string]WorkflowAgentEntry `yaml:"workflow_agents"`
+}
+
+// WorkflowAgentEntry는 dynamic-workflow purpose별 model/effort 기본값이다
+// (REQ-WC11-071 — design.md §C.2). RoleProfileEntry와 달리 Effort 필드를
+// 가진다: role-profile effort는 Go-invisible opaque node 결정(REQ-WEM-006)이
+// 유지되지만, workflow_agents는 신설 typed 표면이라 그 결정의 적용 대상이
+// 아니다.
+type WorkflowAgentEntry struct {
+	Model  string `yaml:"model"`
+	Effort string `yaml:"effort"`
 }
 
 // AutoClearConfig mirrors workflow.auto_clear.* — context-window auto-clear policy.

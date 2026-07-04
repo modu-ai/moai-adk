@@ -14,7 +14,55 @@ package settings
 // 편집 FieldDef를 갖지 않는다 — ReadOnlyDisplayFields()가 표시 전용 메타를 제공.
 // form UI에 맞지 않는 map/list 서브블록(REQ-WC11-062)은 RawViewBlocks()가 제공.
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/harness/v4manifest"
+)
+
+// ─── v4manifest closed sets 재사용 (REQ-WC11-024/029/072 — 재선언 금지) ──────
+
+// v4EffortValues는 v4manifest의 5-effort closed set이다 (exported 상수 재사용 —
+// 옵션 목록 리터럴 재선언 금지).
+func v4EffortValues() []string {
+	return []string{
+		v4manifest.EffortLow, v4manifest.EffortMedium, v4manifest.EffortHigh,
+		v4manifest.EffortXhigh, v4manifest.EffortMax,
+	}
+}
+
+// v4ModelValues는 v4manifest의 4-model-tier closed set이다.
+func v4ModelValues() []string {
+	return []string{
+		v4manifest.ModelInherit, v4manifest.ModelHaiku,
+		v4manifest.ModelSonnet, v4manifest.ModelOpus,
+	}
+}
+
+// v4IsolationValues는 v4manifest의 2-isolation closed set이다.
+func v4IsolationValues() []string {
+	return []string{v4manifest.IsolationNone, v4manifest.IsolationWorktree}
+}
+
+// V4EffortValues / V4ModelValues는 웹 계층(agent frontmatter 편집 검증,
+// REQ-WC11-029)이 소비하는 공개 접근자다.
+func V4EffortValues() []string { return v4EffortValues() }
+func V4ModelValues() []string  { return v4ModelValues() }
+
+// RoleProfileNames는 workflow.yaml team.role_profiles의 7개 profile 키다
+// (실측 — workflow.yaml role_profiles map).
+func RoleProfileNames() []string {
+	return []string{"analyst", "architect", "designer", "implementer", "researcher", "reviewer", "tester"}
+}
+
+// WorkflowAgentPurposes는 dynamic-workflows.md 7-purpose taxonomy 슬러그다
+// ("Purpose-driven model+effort selection" 표 실측 — REQ-WC11-070).
+func WorkflowAgentPurposes() []string {
+	return []string{
+		"read-only-extract", "mechanical-transform", "synthesize",
+		"research", "verify-judge", "implement", "design-architecture",
+	}
+}
 
 // ─── 컴팩트 생성자 ───────────────────────────────────────────────────────────
 
@@ -269,14 +317,57 @@ func seamSectionFields() []FieldDef {
 	}
 }
 
-// sectionExtraFields는 M2b 확장 필드 전체를 렌더 순서(AllSections 순서와 일치)로
-// 반환한다.
+// ─── M3: agent-settings 필드 (REQ-WC11-020..024, 070..073) ───────────────────
+
+// agentSettingsFields는 agent-settings의 config-파일 표면 2종을 반환한다:
+// (b) team.role_profiles — 7 profiles × {model, effort, isolation, mode};
+//
+//	effort는 seam이 opaque node로 패치한다 — RoleProfileEntry에 Effort 필드를
+//	추가하지 않는다 (REQ-WC11-022/023, REQ-WEM-006 유지).
+//
+// (d) workflow_agents — 7 purposes × {model, effort}; 블록 부재 시 seam upsert가
+//
+//	최초 기록을 생성한다 (REQ-WC11-070/073 — M1 upsert 확장).
+//
+// 옵션은 v4manifest closed sets에서 파생한다 (REQ-WC11-024/072 — 재선언 금지).
+func agentSettingsFields() []FieldDef {
+	modelSel := func(f FieldDef) FieldDef {
+		return withSelect(f, "f.v4.model.opt.", v4ModelValues(), "", "")
+	}
+	effortSel := func(f FieldDef) FieldDef {
+		return withSelect(f, "f.v4.effort.opt.", v4EffortValues(), "", "")
+	}
+
+	var fields []FieldDef
+	for _, p := range RoleProfileNames() {
+		base := []string{"workflow", "team", "role_profiles", p}
+		fields = append(fields,
+			modelSel(seamField(SectionAgentSettings, "workflow", TypeSelect, append(base, "model")...)),
+			effortSel(seamField(SectionAgentSettings, "workflow", TypeSelect, append(base, "effort")...)),
+			withSelect(seamField(SectionAgentSettings, "workflow", TypeSelect, append(base, "isolation")...),
+				"f.v4.isolation.opt.", v4IsolationValues(), "", ""),
+			seamField(SectionAgentSettings, "workflow", TypeText, append(base, "mode")...),
+		)
+	}
+	for _, purpose := range WorkflowAgentPurposes() {
+		base := []string{"workflow", "workflow_agents", purpose}
+		fields = append(fields,
+			modelSel(seamField(SectionAgentSettings, "workflow", TypeSelect, append(base, "model")...)),
+			effortSel(seamField(SectionAgentSettings, "workflow", TypeSelect, append(base, "effort")...)),
+		)
+	}
+	return fields
+}
+
+// sectionExtraFields는 M2b/M3 확장 필드 전체를 렌더 순서(AllSections 순서와
+// 일치)로 반환한다.
 func sectionExtraFields() []FieldDef {
 	var fields []FieldDef
 	fields = append(fields, qualityExtraFields()...) // SectionQuality 렌더 그룹에 합류
 	fields = append(fields, gitStrategyFields()...)
 	fields = append(fields, llmFields()...)
 	fields = append(fields, seamSectionFields()...)
+	fields = append(fields, agentSettingsFields()...)
 	return fields
 }
 
@@ -341,5 +432,6 @@ func SchemaSectionIDs() []SectionID {
 		SectionObservability,
 		SectionSecurity,
 		SectionDB,
+		SectionAgentSettings,
 	}
 }
