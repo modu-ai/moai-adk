@@ -77,7 +77,7 @@ m1_to_mN_commit_strategy: "single atomic M1 commit (Tier S) — HEAD:main fast-f
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-07-04
-sync_commit_sha: PENDING-BACKFILL   # 아래 backfill 커밋에서 이 sync-close 커밋 SHA로 갱신
+sync_commit_sha: 9ef78ceff   # commit A (docs sync-phase 3-phase close) — sync-close 커밋 self-reference via backfill 커밋
 lifecycle_transition: "in-progress → implemented → completed (single sync commit, Tier S 3-phase close)"
 sync_deliverables:
   - "spec.md + plan.md frontmatter status in-progress → completed, updated 2026-07-04"
