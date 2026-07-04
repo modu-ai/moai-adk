@@ -265,6 +265,88 @@ func TestRegistryDispatch_NewEventDefaults(t *testing.T) {
 	}
 }
 
+// TestRegistryDispatch_PreToolUseFallbackPermissionModeAware verifies that
+// the "no handlers registered" PreToolUse fallback (defaultOutputForEvent)
+// is permission-mode-aware, mirroring preToolHandler's own safe path:
+// "default"/"plan" defer to the normal permission flow (empty output),
+// while autonomous modes and an empty mode preserve "allow".
+func TestRegistryDispatch_PreToolUseFallbackPermissionModeAware(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		permissionMode string
+		wantEmpty      bool
+	}{
+		{name: "default mode defers to permission prompt", permissionMode: PermissionModeDefault, wantEmpty: true},
+		{name: "plan mode defers to permission prompt", permissionMode: PermissionModePlan, wantEmpty: true},
+		{name: "acceptEdits mode allows", permissionMode: PermissionModeAcceptEdits, wantEmpty: false},
+		{name: "bypassPermissions mode allows", permissionMode: PermissionModeBypassPermissions, wantEmpty: false},
+		{name: "auto mode allows", permissionMode: PermissionModeAuto, wantEmpty: false},
+		{name: "dontAsk mode allows", permissionMode: PermissionModeDontAsk, wantEmpty: false},
+		{name: "empty mode allows (autonomous fallback)", permissionMode: "", wantEmpty: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := &mockConfigProvider{cfg: newTestConfig()}
+			reg := NewRegistry(cfg) // no handlers registered for PreToolUse
+
+			input := &HookInput{
+				SessionID:      "sess-fallback-mode",
+				CWD:            "/tmp",
+				HookEventName:  string(EventPreToolUse),
+				PermissionMode: tt.permissionMode,
+			}
+
+			got, err := reg.Dispatch(context.Background(), EventPreToolUse, input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got == nil {
+				t.Fatal("got nil output")
+			}
+
+			if tt.wantEmpty {
+				if got.HookSpecificOutput != nil {
+					t.Errorf("HookSpecificOutput = %+v, want nil for mode %q", got.HookSpecificOutput, tt.permissionMode)
+				}
+			} else {
+				if got.HookSpecificOutput == nil {
+					t.Fatalf("HookSpecificOutput is nil for mode %q, want allow decision", tt.permissionMode)
+				}
+				if got.HookSpecificOutput.PermissionDecision != DecisionAllow {
+					t.Errorf("PermissionDecision = %q, want %q for mode %q",
+						got.HookSpecificOutput.PermissionDecision, DecisionAllow, tt.permissionMode)
+				}
+			}
+		})
+	}
+}
+
+// TestDefaultOutputForEvent_PreToolUse_NilInput verifies that a nil input to
+// defaultOutputForEvent(EventPreToolUse, nil) is treated as unspecified
+// (empty) permission mode, resolving to the autonomous (allow) fallback —
+// consistent with permissionModeOf's nil-safety contract.
+func TestDefaultOutputForEvent_PreToolUse_NilInput(t *testing.T) {
+	t.Parallel()
+
+	reg := &registry{}
+	out := reg.defaultOutputForEvent(EventPreToolUse, nil)
+	if out == nil {
+		t.Fatal("defaultOutputForEvent(PreToolUse, nil) returned nil")
+	}
+	if out.HookSpecificOutput == nil {
+		t.Fatal("HookSpecificOutput is nil, want allow decision for nil input")
+	}
+	if out.HookSpecificOutput.PermissionDecision != DecisionAllow {
+		t.Errorf("PermissionDecision = %q, want %q for nil input",
+			out.HookSpecificOutput.PermissionDecision, DecisionAllow)
+	}
+}
+
 // TestRegistryDispatch_PermissionRequestBlockChain verifies that a blocking
 // (deny) decision for PermissionRequest propagates correctly through the
 // dispatch chain, short-circuiting subsequent handlers.

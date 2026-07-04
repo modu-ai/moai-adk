@@ -119,6 +119,72 @@ func TestNewAllowOutput(t *testing.T) {
 	}
 }
 
+// TestNewSafeDefaultOutput verifies the mode-aware PreToolUse safe-path
+// decision: cautious modes ("default", "plan") defer to Claude Code's normal
+// permission flow (empty no-opinion output), while autonomous modes and any
+// empty/unrecognized mode preserve the existing "allow" behavior.
+func TestNewSafeDefaultOutput(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		permissionMode string
+		wantEmpty      bool // true: expect &HookOutput{} (no permissionDecision)
+	}{
+		{name: "default mode defers to normal permission flow", permissionMode: PermissionModeDefault, wantEmpty: true},
+		{name: "plan mode defers to normal permission flow", permissionMode: PermissionModePlan, wantEmpty: true},
+		{name: "acceptEdits mode allows", permissionMode: PermissionModeAcceptEdits, wantEmpty: false},
+		{name: "bypassPermissions mode allows", permissionMode: PermissionModeBypassPermissions, wantEmpty: false},
+		{name: "auto mode allows", permissionMode: PermissionModeAuto, wantEmpty: false},
+		{name: "dontAsk mode allows", permissionMode: PermissionModeDontAsk, wantEmpty: false},
+		{name: "empty mode allows (autonomous fallback)", permissionMode: "", wantEmpty: false},
+		{name: "unrecognized mode allows (autonomous fallback)", permissionMode: "some-future-mode", wantEmpty: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := NewSafeDefaultOutput(tt.permissionMode)
+			if got == nil {
+				t.Fatal("NewSafeDefaultOutput() returned nil")
+			}
+
+			if tt.wantEmpty {
+				if got.HookSpecificOutput != nil {
+					t.Errorf("HookSpecificOutput = %+v, want nil for mode %q", got.HookSpecificOutput, tt.permissionMode)
+				}
+				if got.Decision != "" {
+					t.Errorf("Decision = %q, want empty for mode %q", got.Decision, tt.permissionMode)
+				}
+			} else {
+				if got.HookSpecificOutput == nil {
+					t.Fatalf("HookSpecificOutput is nil for mode %q, want allow decision", tt.permissionMode)
+				}
+				if got.HookSpecificOutput.PermissionDecision != DecisionAllow {
+					t.Errorf("PermissionDecision = %q, want %q for mode %q",
+						got.HookSpecificOutput.PermissionDecision, DecisionAllow, tt.permissionMode)
+				}
+			}
+		})
+	}
+}
+
+// TestPermissionModeOf verifies the nil-safety helper used by both pre_tool.go
+// safe-path returns and registry.go's PreToolUse fallback.
+func TestPermissionModeOf(t *testing.T) {
+	t.Parallel()
+
+	if got := permissionModeOf(nil); got != "" {
+		t.Errorf("permissionModeOf(nil) = %q, want empty", got)
+	}
+
+	input := &HookInput{PermissionMode: PermissionModeDefault}
+	if got := permissionModeOf(input); got != PermissionModeDefault {
+		t.Errorf("permissionModeOf(input) = %q, want %q", got, PermissionModeDefault)
+	}
+}
+
 func TestNewBlockOutput(t *testing.T) {
 	t.Parallel()
 

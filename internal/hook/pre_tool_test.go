@@ -168,6 +168,148 @@ func TestPreToolHandler_Handle(t *testing.T) {
 	}
 }
 
+// TestPreToolHandler_SafePathPermissionModeAware verifies that the PreToolUse
+// safe path (no dangerous pattern found) is permission-mode-aware: "default"
+// and "plan" defer to Claude Code's normal permission flow (empty output, no
+// permissionDecision field), while acceptEdits/bypassPermissions/auto/dontAsk
+// and an empty mode preserve the existing "allow" behavior.
+func TestPreToolHandler_SafePathPermissionModeAware(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		permissionMode string
+		wantEmpty      bool
+	}{
+		{name: "default mode defers to permission prompt", permissionMode: PermissionModeDefault, wantEmpty: true},
+		{name: "plan mode defers to permission prompt", permissionMode: PermissionModePlan, wantEmpty: true},
+		{name: "acceptEdits mode allows", permissionMode: PermissionModeAcceptEdits, wantEmpty: false},
+		{name: "bypassPermissions mode allows", permissionMode: PermissionModeBypassPermissions, wantEmpty: false},
+		{name: "auto mode allows", permissionMode: PermissionModeAuto, wantEmpty: false},
+		{name: "dontAsk mode allows", permissionMode: PermissionModeDontAsk, wantEmpty: false},
+		{name: "empty mode allows (autonomous fallback)", permissionMode: "", wantEmpty: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := &mockConfigProvider{cfg: newTestConfig()}
+			h := NewPreToolHandler(cfg, DefaultSecurityPolicy())
+
+			input := &HookInput{
+				SessionID:      "sess-mode",
+				CWD:            "/tmp",
+				HookEventName:  "PreToolUse",
+				ToolName:       "Bash",
+				ToolInput:      json.RawMessage(`{"command": "go test ./..."}`),
+				PermissionMode: tt.permissionMode,
+			}
+
+			got, err := h.Handle(context.Background(), input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got == nil {
+				t.Fatal("got nil output")
+			}
+
+			if tt.wantEmpty {
+				if got.HookSpecificOutput != nil {
+					t.Errorf("HookSpecificOutput = %+v, want nil for mode %q", got.HookSpecificOutput, tt.permissionMode)
+				}
+			} else {
+				if got.HookSpecificOutput == nil {
+					t.Fatalf("HookSpecificOutput is nil for mode %q, want allow decision", tt.permissionMode)
+				}
+				if got.HookSpecificOutput.PermissionDecision != DecisionAllow {
+					t.Errorf("PermissionDecision = %q, want %q for mode %q",
+						got.HookSpecificOutput.PermissionDecision, DecisionAllow, tt.permissionMode)
+				}
+			}
+		})
+	}
+}
+
+// TestPreToolHandler_NilPolicySafePathPermissionModeAware verifies that the
+// "no policy configured" safe path (h.policy == nil) is ALSO permission-mode
+// aware, matching the "no dangerous pattern found" path — a nil policy
+// trivially finds nothing dangerous.
+func TestPreToolHandler_NilPolicySafePathPermissionModeAware(t *testing.T) {
+	t.Parallel()
+
+	cfg := &mockConfigProvider{cfg: newTestConfig()}
+	h := NewPreToolHandler(cfg, nil)
+
+	input := &HookInput{
+		SessionID:      "sess-nilpolicy",
+		CWD:            "/tmp",
+		HookEventName:  "PreToolUse",
+		ToolName:       "Bash",
+		ToolInput:      json.RawMessage(`{"command": "rm -rf /"}`), // even a dangerous-looking command is unaffected: no policy to scan with
+		PermissionMode: PermissionModeDefault,
+	}
+
+	got, err := h.Handle(context.Background(), input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("got nil output")
+	}
+	if got.HookSpecificOutput != nil {
+		t.Errorf("HookSpecificOutput = %+v, want nil (default mode, no policy)", got.HookSpecificOutput)
+	}
+}
+
+// TestPreToolHandler_DangerousPathUnaffectedByPermissionMode verifies that a
+// known dangerous Bash pattern still yields "deny" regardless of
+// permission_mode. Only the safe/no-danger path becomes mode-aware; the
+// deny/ask paths are UNCHANGED.
+func TestPreToolHandler_DangerousPathUnaffectedByPermissionMode(t *testing.T) {
+	t.Parallel()
+
+	modes := []string{
+		PermissionModeDefault,
+		PermissionModePlan,
+		PermissionModeAcceptEdits,
+		PermissionModeBypassPermissions,
+		PermissionModeAuto,
+		PermissionModeDontAsk,
+		"",
+	}
+
+	for _, mode := range modes {
+		t.Run("mode="+mode, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := &mockConfigProvider{cfg: newTestConfig()}
+			h := NewPreToolHandler(cfg, DefaultSecurityPolicy())
+
+			input := &HookInput{
+				SessionID:      "sess-danger-mode",
+				CWD:            "/tmp",
+				HookEventName:  "PreToolUse",
+				ToolName:       "Bash",
+				ToolInput:      json.RawMessage(`{"command": "rm -rf /"}`),
+				PermissionMode: mode,
+			}
+
+			got, err := h.Handle(context.Background(), input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got == nil || got.HookSpecificOutput == nil {
+				t.Fatal("got nil output or nil HookSpecificOutput")
+			}
+			if got.HookSpecificOutput.PermissionDecision != DecisionDeny {
+				t.Errorf("PermissionDecision = %q, want %q (mode %q must not weaken a dangerous-pattern deny)",
+					got.HookSpecificOutput.PermissionDecision, DecisionDeny, mode)
+			}
+		})
+	}
+}
+
 // TestPreToolHandler_UnicodeNFDNFCPathNormalization verifies that the path
 // traversal security check correctly handles Unicode NFD/NFC mismatches.
 // On macOS, HFS+/APFS stores paths in NFD form, but Claude Code sends paths

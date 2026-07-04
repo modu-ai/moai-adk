@@ -357,9 +357,11 @@ func (h *preToolHandler) EventType() EventType {
 // "deny" with a reason if the tool is denied, "ask" if user confirmation is
 // needed, or "allow" otherwise.
 func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
-	// No policy means allow everything
+	// No policy means allow everything (subject to the same permission-mode
+	// awareness as the "no dangerous pattern found" path below — a nil
+	// policy trivially finds nothing dangerous).
 	if h.policy == nil {
-		return NewAllowOutput(), nil
+		return NewSafeDefaultOutput(permissionModeOf(input)), nil
 	}
 
 	slog.Debug("checking tool security",
@@ -448,7 +450,7 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		}
 	}
 
-	return NewAllowOutput(), nil
+	return NewSafeDefaultOutput(permissionModeOf(input)), nil
 }
 
 // scanWriteContent scans the content to be written using AST-based security scanner.

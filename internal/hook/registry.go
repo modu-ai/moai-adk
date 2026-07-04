@@ -76,7 +76,7 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 
 	if len(handlers) == 0 {
 		slog.Debug("no handlers registered for event", "event", string(event))
-		return r.defaultOutputForEvent(event), nil
+		return r.defaultOutputForEvent(event, input), nil
 	}
 
 	// Lazily initialize TraceWriter on first Dispatch with a known SessionID (REQ-OBS-001).
@@ -90,7 +90,7 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 
 	// Start with the default output for this event type and accumulate
 	// non-blocking fields (e.g. SystemMessage) from each handler.
-	merged := r.defaultOutputForEvent(event)
+	merged := r.defaultOutputForEvent(event, input)
 
 	for i, h := range handlers {
 		slog.Debug("dispatching handler",
@@ -275,7 +275,14 @@ func getBlockReason(output *HookOutput) string {
 // defaultOutputForEvent returns the appropriate default output based on event type.
 // Stop, SessionEnd, SessionStart, and PreCompact events return empty HookOutput per Claude Code protocol.
 // PreToolUse and PostToolUse events return HookOutput with hookSpecificOutput.
-func (r *registry) defaultOutputForEvent(event EventType) *HookOutput {
+//
+// input carries the triggering HookInput so the PreToolUse fallback (the
+// "no handlers registered" no-opinion path) can be permission-mode-aware via
+// NewSafeDefaultOutput, matching the mode-aware behavior of the registered
+// preToolHandler's own safe path. input may be nil; permissionModeOf treats
+// a nil input as unspecified (empty), which resolves to the autonomous
+// (allow) fallback. Every other event's default is unaffected by input.
+func (r *registry) defaultOutputForEvent(event EventType, input *HookInput) *HookOutput {
 	switch event {
 	case EventStop, EventSessionEnd, EventSessionStart, EventPreCompact,
 		EventSubagentStop, EventPostToolUseFailure, EventNotification,
@@ -291,7 +298,7 @@ func (r *registry) defaultOutputForEvent(event EventType) *HookOutput {
 		// the PreToolUse-only permissionDecision field here was non-schema output.
 		return &HookOutput{}
 	case EventPreToolUse:
-		return NewAllowOutput()
+		return NewSafeDefaultOutput(permissionModeOf(input))
 	case EventPostToolUse:
 		return NewPostToolOutput("")
 	default:

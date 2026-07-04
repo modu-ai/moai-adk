@@ -483,7 +483,7 @@ func TestDefaultOutputForEvent_PermissionRequest(t *testing.T) {
 	// actively emitted the PreToolUse-only permissionDecision field ("ask"),
 	// which is non-schema output for this event.
 	reg := &registry{}
-	out := reg.defaultOutputForEvent(EventPermissionRequest)
+	out := reg.defaultOutputForEvent(EventPermissionRequest, nil)
 	if out == nil {
 		t.Fatal("defaultOutputForEvent(PermissionRequest) returned nil")
 	} else if out.HookSpecificOutput != nil {
@@ -502,7 +502,7 @@ func TestDefaultOutputForEvent_SessionEvents(t *testing.T) {
 		EventTaskCompleted,
 	}
 	for _, event := range events {
-		out := reg.defaultOutputForEvent(event)
+		out := reg.defaultOutputForEvent(event, nil)
 		if out == nil {
 			t.Errorf("defaultOutputForEvent(%q) returned nil", event)
 			continue
@@ -518,7 +518,7 @@ func TestDefaultOutputForEvent_Default(t *testing.T) {
 
 	reg := &registry{}
 	// Unknown event type should return empty HookOutput.
-	out := reg.defaultOutputForEvent(EventType("UnknownEvent"))
+	out := reg.defaultOutputForEvent(EventType("UnknownEvent"), nil)
 	if out == nil {
 		t.Fatal("defaultOutputForEvent(unknown) returned nil")
 	}

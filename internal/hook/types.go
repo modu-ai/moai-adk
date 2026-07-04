@@ -187,6 +187,22 @@ const (
 	DecisionBlock = "block" // Used in top-level decision field for Stop, PostToolUse, etc.
 )
 
+// Permission mode constants for HookInput.PermissionMode (Claude Code
+// protocol input.permission_mode). "default" and "plan" are the
+// interactive/cautious modes where the user expects Claude Code's normal
+// permission prompt; "acceptEdits", "bypassPermissions", "auto", and
+// "dontAsk" are modes where the user has already opted into reduced
+// prompting. See NewSafeDefaultOutput for how these drive the PreToolUse
+// safe-path (no dangerous pattern found) decision.
+const (
+	PermissionModeDefault           = "default"
+	PermissionModePlan              = "plan"
+	PermissionModeAcceptEdits       = "acceptEdits"
+	PermissionModeBypassPermissions = "bypassPermissions"
+	PermissionModeAuto              = "auto"
+	PermissionModeDontAsk           = "dontAsk"
+)
+
 // HookInput represents the JSON payload received from Claude Code via stdin.
 // Fields follow the official Claude Code hooks protocol.
 type HookInput struct {
@@ -194,7 +210,7 @@ type HookInput struct {
 	SessionID      string `json:"session_id,omitempty"`
 	TranscriptPath string `json:"transcript_path,omitempty"`
 	CWD            string `json:"cwd,omitempty"`
-	PermissionMode string `json:"permission_mode,omitempty"` // default, plan, acceptEdits, dontAsk, bypassPermissions
+	PermissionMode string `json:"permission_mode,omitempty"` // default, plan, acceptEdits, bypassPermissions, auto, dontAsk
 	HookEventName  string `json:"hook_event_name,omitempty"`
 
 	// Tool-related fields (PreToolUse, PostToolUse, PostToolUseFailure, PermissionRequest)
@@ -387,6 +403,44 @@ func NewAllowOutputWithData(data json.RawMessage) *HookOutput {
 		},
 		Data: data,
 	}
+}
+
+// @MX:NOTE: [AUTO] Mode-aware safe-path decision for PreToolUse. Fixes the
+// defect where a clean security scan ("allow") silently skipped Claude
+// Code's interactive permission prompt even in "default"/"plan" mode.
+//
+// NewSafeDefaultOutput returns the PreToolUse response for the "no dangerous
+// pattern found" safe path, chosen by permissionMode:
+//   - "default" / "plan" (interactive/cautious modes): returns an empty
+//     no-opinion output (&HookOutput{}) so Claude Code's normal permission
+//     flow decides — the user still gets prompted.
+//   - "acceptEdits" / "bypassPermissions" / "auto" / "dontAsk" (modes the
+//     user already opted into reduced prompting for): returns the existing
+//     allow decision, preserving autonomous UX.
+//   - empty or any unrecognized value: treated as autonomous (allow). The
+//     official Claude Code runtime always sends permission_mode, so an
+//     absent value should not surprise existing autonomous users with new
+//     prompts — only an EXPLICIT "default"/"plan" restores the prompt.
+//
+// Dangerous-pattern paths (deny/ask) are UNCHANGED by this function — it is
+// only ever consulted on the safe/no-danger path.
+func NewSafeDefaultOutput(permissionMode string) *HookOutput {
+	switch permissionMode {
+	case PermissionModeDefault, PermissionModePlan:
+		return &HookOutput{}
+	default:
+		return NewAllowOutput()
+	}
+}
+
+// permissionModeOf safely extracts PermissionMode from input, treating a nil
+// input as unspecified (empty) — which NewSafeDefaultOutput resolves to the
+// autonomous (allow) fallback, consistent with its documented rationale.
+func permissionModeOf(input *HookInput) string {
+	if input == nil {
+		return ""
+	}
+	return input.PermissionMode
 }
 
 // @MX:ANCHOR: [AUTO] PreToolUse deny response factory. Core factory used when rejecting tool execution.
