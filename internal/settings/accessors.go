@@ -41,8 +41,8 @@ func FieldNames() []string {
 	return names
 }
 
-// StatuslineSegmentKeys는 정규 15개 세그먼트 키를 렌더 순서대로 반환한다.
-// 웹 statusline 섹션 재추가(REQ-WC10-009)와 TUI MultiSelect 가 동일한 15개
+// StatuslineSegmentKeys는 정규 16개 세그먼트 키를 렌더 순서대로 반환한다.
+// 웹 statusline 섹션 재추가(REQ-WC10-009)와 TUI MultiSelect 가 동일한 16개
 // 세그먼트를 단일 원천에서 파생하도록 한다.
 func StatuslineSegmentKeys() []string {
 	return statuslineSegmentKeys()

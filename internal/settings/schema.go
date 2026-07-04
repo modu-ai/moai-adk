@@ -26,7 +26,7 @@ const (
 	SectionIdentity      SectionID = "identity"       // user_name (1)
 	SectionLanguage      SectionID = "language"       // conversation/git_commit/code_comment/doc (4)
 	SectionLaunch        SectionID = "launch"         // model/model_policy/effort_level/permission_mode (4)
-	SectionStatusline    SectionID = "statusline"     // theme + 15 segments (16)
+	SectionStatusline    SectionID = "statusline"     // theme + 16 segments (17)
 	SectionQuality       SectionID = "quality"        // development_mode + nested (M2b에서 확장)
 	SectionGitConvention SectionID = "git_convention" // convention + 4 nested (5)
 
@@ -140,11 +140,12 @@ type FieldDef struct {
 	Persist       PersistTarget     // 값 영속화 대상
 }
 
-// statuslineSegmentKeys는 정규 15개 세그먼트 키를 렌더 순서대로 반환한다.
-// internal/statusline.Segment* 상수에서 파생되며(단일 원천) SegmentRepo(16번째)는
-// 의도적으로 제외된다(15-키 스키마 밖, sync.go:154).
+// statuslineSegmentKeys는 정규 16개 세그먼트 키를 렌더 순서대로 반환한다.
+// internal/statusline.Segment* 상수에서 파생되며(단일 원천) SegmentRepo(17번째)는
+// 의도적으로 제외된다(16-키 스키마 밖, sync.go).
 func statuslineSegmentKeys() []string {
 	return []string{
+		statusline.SegmentCacheHit,
 		statusline.SegmentClaudeVersion,
 		statusline.SegmentContext,
 		statusline.SegmentDirectory,
@@ -362,7 +363,7 @@ func allFields() []FieldDef {
 		},
 	)
 
-	// ── Section 4: Statusline (16: theme + 15 segments) ──────────────────
+	// ── Section 4: Statusline (17: theme + 16 segments) ──────────────────
 	themeOpts := statuslineThemeOptions()
 	fields = append(fields, FieldDef{
 		Name:          "statusline_theme",

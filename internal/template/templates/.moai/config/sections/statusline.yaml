@@ -3,7 +3,7 @@ statusline:
   theme: "catppuccin-mocha"
 
   # Individual segment toggles — the only runtime lever.
-  # All 15 segments default-on; graceful no-output handles inactive states.
+  # All 16 segments default-on; graceful no-output handles inactive states.
   segments:
     # Line 1: model + version + session metadata
     model: true
@@ -13,6 +13,9 @@ statusline:
     moai_version: true
     session_time: true
     effort_thinking: true
+    # Cache-read-vs-cache-creation hit ratio indicator (early-warning of
+    # prompt-prefix churn). Config-toggleable; set false to hide.
+    cache_hit: true
     # Line 2: context window + API usage bars
     usage_5h: true
     usage_7d: true

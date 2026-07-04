@@ -74,17 +74,17 @@ func TestWebStatuslineNoPresetControl(t *testing.T) {
 	}
 }
 
-// TestWebStatuslineRendersThemeAnd15Segments covers AC-WC10-011a (rendered side):
-// the re-added Statusline section renders the theme select + 15 segment toggles.
-func TestWebStatuslineRendersThemeAnd15Segments(t *testing.T) {
+// TestWebStatuslineRendersThemeAnd16Segments covers AC-WC10-011a (rendered side):
+// the re-added Statusline section renders the theme select + 16 segment toggles.
+func TestWebStatuslineRendersThemeAnd16Segments(t *testing.T) {
 	body := renderConsolePage(t)
 
 	if !strings.Contains(body, `name="statusline_theme"`) {
 		t.Error("rendered page missing the statusline_theme control")
 	}
 	segs := settings.StatuslineSegmentKeys()
-	if len(segs) != 15 {
-		t.Fatalf("schema segment keys = %d, want 15", len(segs))
+	if len(segs) != 16 {
+		t.Fatalf("schema segment keys = %d, want 16", len(segs))
 	}
 	for _, seg := range segs {
 		if !strings.Contains(body, `name="seg_`+seg+`"`) {

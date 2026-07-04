@@ -65,11 +65,11 @@ type StdinData struct {
 	ContextWindow  *ContextWindowInfo `json:"context_window"`
 	OutputStyle    *OutputStyleInfo   `json:"output_style"`
 	RateLimits     *RateLimitInfo     `json:"rate_limits"`
-	Effort         *EffortInfo        `json:"effort"`   // Claude Code v2.1.139+ effort level (nil if absent)
-	Thinking       *ThinkingInfo      `json:"thinking"` // Claude Code v2.1.139+ thinking flag (nil if absent)
-	Version        string             `json:"version"`  // Claude Code version (e.g., "1.0.80")
-	PR             *PRInfo            `json:"pr,omitempty"`            // Claude Code v2.1.145+ active PR info (nil if no PR detected)
-	ExceedsLong    bool               `json:"exceeds_200k_tokens"`     // long-context overflow boolean (false if absent)
+	Effort         *EffortInfo        `json:"effort"`              // Claude Code v2.1.139+ effort level (nil if absent)
+	Thinking       *ThinkingInfo      `json:"thinking"`            // Claude Code v2.1.139+ thinking flag (nil if absent)
+	Version        string             `json:"version"`             // Claude Code version (e.g., "1.0.80")
+	PR             *PRInfo            `json:"pr,omitempty"`        // Claude Code v2.1.145+ active PR info (nil if no PR detected)
+	ExceedsLong    bool               `json:"exceeds_200k_tokens"` // long-context overflow boolean (false if absent)
 }
 
 // PRInfo represents GitHub Pull Request metadata from Claude Code v2.1.145+
@@ -155,10 +155,10 @@ func (m *ModelInfo) UnmarshalJSON(data []byte) error {
 // Claude Code 2.1.97+ adds git_worktree field for active worktree path.
 // Claude Code 2.1.145+ adds repo field for GitHub repository identity.
 type WorkspaceInfo struct {
-	CurrentDir  string    `json:"current_dir"`            // Current working directory
-	ProjectDir  string    `json:"project_dir"`            // Original project directory (used for display)
-	GitWorktree string    `json:"git_worktree"`           // Active git worktree path (2.1.97+, empty string if none)
-	Repo        *RepoInfo `json:"repo,omitempty"`         // GitHub repository identity (2.1.145+, nil if not detected)
+	CurrentDir  string    `json:"current_dir"`    // Current working directory
+	ProjectDir  string    `json:"project_dir"`    // Original project directory (used for display)
+	GitWorktree string    `json:"git_worktree"`   // Active git worktree path (2.1.97+, empty string if none)
+	Repo        *RepoInfo `json:"repo,omitempty"` // GitHub repository identity (2.1.145+, nil if not detected)
 }
 
 // RepoInfo represents the GitHub repository identity discovered by Claude Code v2.1.145+.
@@ -322,18 +322,18 @@ const (
 
 	// SPEC-TOKEN-EFFICIENCY-001 P0-2: cache-hit-ratio segment. Surfaces
 	// cache_read / (cache_read + cache_creation) as an early-warning signal of
-	// prompt-prefix churn. Like SegmentRepo it is a render-time constant outside
-	// the 15-key CanonicalSegments schema, but — parallel to SegmentEffortThinking
-	// — it IS config-toggleable via isSegmentEnabled (default-on; disable with
-	// `cache_hit: false` in statusline.yaml segments).
+	// prompt-prefix churn. Config-toggleable via isSegmentEnabled (default-on;
+	// disable with `cache_hit: false` in statusline.yaml segments) and — parallel
+	// to SegmentEffortThinking — part of the 16-key CanonicalSegments schema
+	// (exposed across the segment-list surfaces by SPEC-WEB-CONSOLE-011 M6).
 	SegmentCacheHit = "cache_hit" // Cache-read-vs-cache-creation hit ratio indicator
 
 	// REQ-SLV-016: PR segment (Claude Code 2.1.145+)
 	SegmentPR = "pr" // Active GitHub PR indicator (number + review_state)
 
-	// workspace.repo segment (Claude Code 2.1.145+). SegmentRepo is the 16th
-	// segment constant and is intentionally excluded from the 15-key statusline
-	// config schema (the config segments map covers exactly the 15 in
+	// workspace.repo segment (Claude Code 2.1.145+). SegmentRepo is the 17th
+	// segment constant and is intentionally excluded from the 16-key statusline
+	// config schema (the config segments map covers exactly the 16 in
 	// CanonicalSegments); it is a render-time constant, not a configurable toggle.
 	SegmentRepo = "repo" // GitHub repo identity indicator — intentionally outside the config schema (SLM-7)
 

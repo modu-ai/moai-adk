@@ -34,7 +34,7 @@ var schemaFieldBridge = map[string]func(t profileSetupText) tuiLabel{
 	"f.model_policy":    func(t profileSetupText) tuiLabel { return tuiLabel{t.ModelPolicyTitle, t.ModelPolicyDesc} },
 	"f.effort_level":    func(t profileSetupText) tuiLabel { return tuiLabel{t.EffortLevelTitle, t.EffortLevelDesc} },
 	"f.permission_mode": func(t profileSetupText) tuiLabel { return tuiLabel{t.PermissionModeTitle, t.PermissionModeDesc} },
-	// Statusline theme (15 segments handled by schemaSegmentBridge below)
+	// Statusline theme (16 segments handled by schemaSegmentBridge below)
 	"f.statusline_theme": func(t profileSetupText) tuiLabel { return tuiLabel{t.StatuslineThemeTitle, t.StatuslineThemeDesc} },
 	// Quality
 	"f.development_mode": func(t profileSetupText) tuiLabel { return tuiLabel{t.DevelopmentModeTitle, t.DevelopmentModeDesc} },
@@ -55,9 +55,10 @@ var schemaFieldBridge = map[string]func(t profileSetupText) tuiLabel{
 	"f.git_convention.validation.enforce_on_push":          func(t profileSetupText) tuiLabel { return tuiLabel{t.GitEnforceOnPushTitle, t.GitEnforceOnPushDesc} },
 }
 
-// schemaSegmentBridge는 15개 statusline 세그먼트의 스키마 키(예: "seg.git_branch")를
+// schemaSegmentBridge는 16개 statusline 세그먼트의 스키마 키(예: "seg.git_branch")를
 // profileSetupText 의 세그먼트 라벨 필드로 매핑한다. 세그먼트는 title 만 가진다(desc 없음).
 var schemaSegmentBridge = map[string]func(t profileSetupText) string{
+	"seg.cache_hit":       func(t profileSetupText) string { return t.SegmentCacheHit },
 	"seg.claude_version":  func(t profileSetupText) string { return t.SegmentClaudeVersion },
 	"seg.context":         func(t profileSetupText) string { return t.SegmentContext },
 	"seg.directory":       func(t profileSetupText) string { return t.SegmentDirectory },

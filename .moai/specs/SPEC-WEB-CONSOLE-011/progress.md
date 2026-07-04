@@ -156,19 +156,46 @@ Lifecycle tracking for the 3-phase plan → run → sync flow. §E carries the a
 
 **선재 실패 (무접촉 유지)**: `go test ./...` = 유일 FAIL `internal/cli TestRunHookEvent_ReadInputError`(nil pointer panic, base 선재, 병렬 세션 SPEC-CLI-SUBPKG-SPLIT-001 도메인 — finding #2/M4 동일). `git status --porcelain internal/cli/` empty. 선재 gofmt 드리프트(lint.go EOF 후행 빈 줄 등)는 무접촉(내 Tier 편집 구간 gofmt clean).
 
+### M6 — Statusline cache_hit delta + segment-list SSOT (커밋 <M6>)
+
+> **범위**: 본 후속 위임은 **M6만** 커버한다 (마지막 마일스톤 — run-phase 완료). base = 62e3077c9 (M5 tip). cycle_type=tdd. L1 runtime worktree (`worktree-agent-a12d03f291ea54d9e` 브랜치). renderer는 committed 3e30fef48(SPEC-TOKEN-EFFICIENCY-001)에 이미 존재 — M6은 렌더링 미구현, **노출 fan-out만**.
+
+- **cache_hit 노출 fan-out (REQ-WC11-050)**: renderer(무접촉)에만 존재하던 `SegmentCacheHit`("cache_hit")를 6개 노출 표면 전부에 추가 — SSOT `statusline.CanonicalSegments`(preset.go) + `settings.statuslineSegmentKeys`(schema.go) + profile `defaultStatuslineSegments`(sync.go) + TUI `statuslineAllSegments`(profile_setup.go) + live/template statusline.yaml + i18n.js. Go 표면은 magic string 대신 SSOT 상수 `statusline.SegmentCacheHit` 참조(§14 하드코딩 회피). **segment 카운트 15→16, section 필드 카운트(theme+segments) 16→17.**
+- **TUI 완전 배선**: statuslineAllSegments만 추가하면 MultiSelect Options(15)와 불일치하는 half-done TUI가 되므로 — `profileSetupText.SegmentCacheHit` struct 필드 + 4-locale 번역(en "Cache hit ratio" / ko "캐시 적중률" / ja "キャッシュヒット率" / zh "缓存命中率") + MultiSelect `huh.NewOption` + `schemaSegmentBridge` `seg.cache_hit` 전부 추가.
+- **segment-list SSOT set-equality (REQ-WC11-051, design.md §F)**: `TestSegmentListSSOT` 3-패키지 white-box(settings/profile/cli) — 각 로컬 목록을 SSOT `statusline.CanonicalSegments`와 집합 비교(순서 무시, 중복/누락/초과 실패). cli→settings import 사이클 때문에 단일 중앙 테스트 불가 → 패키지별 분산(동일 SSOT 앵커로 이행적 4-목록 집합-동일; 신규 public API 0). `go test -run TestSegmentListSSOT ./...` = 3 PASS. drift 시 컴파일·CI 차단(3-way orphan 재발 방지).
+- **파생 카운트 (REQ-WC11-053)**: fieldsets.templ 카운트 라벨은 base(committed)에서 이미 `@sectionCount(len(settings.SectionFields(SectionStatusline)))` 파생 — cache_hit 추가로 17 자동 반영. `grep -nE '"[0-9]+ fields"'`=0. stale "11-segment" 주석(profile_setup.go) 정정.
+- **Template-First (REQ-WC11-052)**: live + template statusline.yaml 양쪽 `cache_hit: true` + `make build` 재임베드(exit 0; catalog.yaml 무변 — config yaml은 skill/agent 해시셋 밖). §25 neutrality: 추가 라인 SPEC/REQ/date 토큰 0 (line 28 `<SPEC-ID>`는 base 선재 플레이스홀더, 무접촉).
+
+**M6 AC 매트릭스 (전 [B] PASS, [N] 포함)**:
+
+| AC | Sev | 검증 | 결과 |
+|----|-----|------|------|
+| AC-WC11-050 | [B] | 6표면 노출: profile_setup.go=2, i18n.js=4, live/template yaml=1/1, Go 표면 SSOT 상수 `SegmentCacheHit`=schema.go/preset.go/sync.go 각 1 + `TestSegmentListSSOT` 집합 증명 | PASS — 전 표면 노출, 집합-동일 |
+| AC-WC11-051 | [B] | `go test -run TestSegmentListSSOT ./...` (settings/profile/cli 3-pkg) | PASS — 3/3 ok; drift-on-add 실패 보장 |
+| AC-WC11-052 | [B] | live vs template `grep cache_hit` 양쪽 1; template §25 (추가 라인 SPEC/REQ 토큰 0) | PASS — 미러 동일 키 + neutrality clean |
+| AC-WC11-053 | [B] | `grep -nE '"[0-9]+ fields"' internal/web/fieldsets.templ`=0 + @sectionCount 파생 + `go test -run TestStatusline ./internal/web/` | PASS — 파생 라벨 + 하드코딩 총계 0 + segment 16 |
+| AC-WC11-054 | [N] | `grep -n "11-segment" internal/cli/profile_setup.go` | PASS — 0 매치 (stale 주석 정정) |
+| AC-WC11-060 | [B] | (재확인) CSRF 비-주석 grep | PASS — 0 (M6 web 편집=i18n.js/handlers.go 주석/statusline_test/schema_render_test) |
+| AC-WC11-061 | [B] | seg.cache_hit 4-locale + TUI SegmentCacheHit 4-locale(`TestProfileSetupTranslations_PresetSegments`) | PASS — parity 4/4 |
+| AC-WC11-062 | [B] | `grep -rn 'AskUserQuestion\|mcp__askuser' internal/web/ internal/spec/ \| grep -v _test.go \| grep -v //` | PASS — 0 매치 |
+
+**PRESERVE 검증**: `git status --porcelain` = statusline/{preset.go,types.go} + settings/{schema.go,accessors.go,accessors_test.go,schema_test.go,+segment_ssot_test.go} + profile/{sync.go,statusline_segments_test.go,+segment_ssot_test.go} + cli/{profile_setup.go,profile_setup_translations.go,profile_setup_translations_test.go,profile_setup_test.go,schema_bridge.go,+segment_ssot_test.go} + web/{assets/i18n.js,handlers.go,statusline_test.go,schema_render_test.go} + live/template statusline.yaml + progress.md. **renderer.go/cache_hit_test.go/stdinfields_test.go(병렬 세션) 무접촉**(git diff --name-only 부재), app.go:90-92 CSRF @MX:NOTE/agent 파일/병렬 세션 산출물 무접촉. internal/spec 무변경.
+
+**선재 실패 (무접촉 유지)**: `go test ./...` = 유일 FAIL 패키지 `internal/cli`. git stash로 clean HEAD 대비 검증한 결과 (a) `coverage_test.go` `TestRunHookEvent_ReadInputError`/`TestRunAgentHook_ReadInputError` nil-pointer panic (병렬 세션 SPEC-CLI-SUBPKG-SPLIT-001), (b) `schema_bridge_test.go` `TestBridgeFieldDefResolver`/`TestI18nKeySetParity`/`TestTUIRendersSchemaFieldSet` — M3 `workflow.workflow_agents.*` TUI-bridge 미배선 — **전부 base 선재**(clean HEAD에서 동일 FAIL, 해당 파일 무접촉). 내 M6 편집분은 신규 FAIL 0 (수정 대상 테스트 TestSectionFieldsOrder/TestStatuslineAllSegments_CardinalityAndOrder/TestSchemaSixSections 등 count assertion 전부 갱신 후 PASS).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-07-05
-run_commit_sha: "af4bdf245 (M1) + 5d2d18f3b (M2a) + 002446611 (M2b) + ab555742f/4f5b3fbbb (M3) + 133a3c9d5/b66580ffc/d436aa80c (M4) + <M5-spec 커밋>/<M5-web 커밋 — 커밋 후 §E6/E2 기준>"
-run_status: in-progress — M1 + M2a + M2b + M3 + M4 + M5 완료; M6 후속 위임 대기
-ac_pass_count: 40  # M1/M2a/M2b 15 + M3 13 + M4 6 + M5: 040, 041, 043, 044, 045, 046 (6 [B] PASS)
+run_commit_sha: "af4bdf245 (M1) + 5d2d18f3b (M2a) + 002446611 (M2b) + ab555742f/4f5b3fbbb (M3) + 133a3c9d5/b66580ffc/d436aa80c (M4) + <M5-spec 커밋>/<M5-web 커밋> + <M6 커밋 — 커밋 후 backfill>"
+run_status: in-progress — M1 + M2a + M2b + M3 + M4 + M5 + M6 완료; run-phase 완료 (sync 대기)
+ac_pass_count: 45  # M1/M2a/M2b 15 + M3 13 + M4 6 + M5 6 + M6: 050, 051, 052, 053 (4 [B]) + 054 ([N]) = 5
 ac_fail_count: 0
 ac_partial_notes: "M5: AC-WC11-042는 [N] tier optional badge PASS(present/absent 양 케이스). AC-WC11-060/061/062는 M5 보드 스코프에서 재확인 PASS(CSRF 비-주석 0, board.* 키 4-locale parity, subagent boundary 0). 이전: AC-WC11-011 파티션 테스트(TestQualityKeyPartition) 충족; AC-WC11-005 allowlist 불변; AC-WC11-015 key-chip 비번역 계약."
 preserve_list_post_run_count: 0   # PRESERVE 위반 0 — statusline/app.go@MX:NOTE/병렬 세션 산출물/agent 파일/internal/cli 전부 무접촉
 l44_pre_commit_fetch: "n/a — L1 runtime worktree 격리 실행 (전용 브랜치, push 금지 지시); landing은 orchestrator gate 검증 후 수행"
 l44_post_push_fetch: "n/a — push 미수행 (지시 사항)"
-new_warnings_or_lints_introduced: 0   # golangci-lint run ./internal/web/... ./internal/spec/... → "0 issues."
+new_warnings_or_lints_introduced: 0   # M6: golangci-lint run ./internal/statusline/... ./internal/settings/... ./internal/profile/... ./internal/cli/... ./internal/web/... → "0 issues."
 cross_platform_build:
   darwin_arm64: PASS (go build ./... → BUILD_OK)
   windows_amd64: PASS (GOOS=windows GOARCH=amd64 go build ./... → WIN_OK)
@@ -178,7 +205,8 @@ coverage:
   internal_settings: "90.9%"
   internal_settings_yamlpatch: "86.3%"
   internal_web: "70.4% (M5 후 go test -cover ./internal/web/); 신규 board.go 88.9%(48/54 stmts — boardSpecID/orderedStatusCounts/boardCount 100%, buildBoardView 88.9%, handleBoard/renderBoard 잔여 gap=방어적 err 분기). 패키지 총계 <85%는 대형 UI 패키지 선재 baseline — M5 도입 아님, 신규 코드는 85%+"
-total_run_phase_files: 10   # M5: 신규 6(spec/listdocs.go, spec/listdocs_test.go, web/board.go, web/board.templ, web/board_templ.go, web/board_test.go) + 수정 4(spec/lint.go, web/app.go, web/assets/i18n.js, web/assets/app.js) + progress.md
+  m6_touched_packages: "statusline 84.7% / settings 91.1% / web 70.6% / profile 80.2% (go test -cover, M6 후). 패키지 총계 <85%(web/profile/statusline)는 선재 baseline — M6은 리스트 상수/맵 항목 추가 + 주석 위주 additive 변경, 수정 라인은 TestSegmentListSSOT/PresetSegments/CardinalityAndOrder로 커버. 패키지-전체 커버리지 상향은 M6 스코프 아님."
+total_run_phase_files: 22   # M6: 신규 3(settings/profile/cli segment_ssot_test.go) + 수정 18(statusline/{preset,types}.go, settings/{schema,accessors,accessors_test,schema_test}.go, profile/{sync,statusline_segments_test}.go, cli/{profile_setup,profile_setup_translations,profile_setup_translations_test,profile_setup_test,schema_bridge}.go, web/{assets/i18n.js,handlers,statusline_test,schema_render_test}.go, live+template statusline.yaml) + progress.md
 m1_to_mN_commit_strategy: "마일스톤별 path-limited 커밋; M5는 spec-export 커밋 → web-board+progress 커밋 2분할(데이터 소스 먼저), 전용 worktree 브랜치, push/landing은 orchestrator 소관"
 known_preexisting_failures: "internal/cli TestRunHookEvent_ReadInputError (base 선재, 병렬 세션 SPEC-CLI-SUBPKG-SPLIT-001 도메인, 무접촉); gofmt 드리프트(lint.go EOF 후행 빈 줄 등, base 선재, 무접촉 — 내 Tier 편집 구간은 gofmt clean)"
 ```

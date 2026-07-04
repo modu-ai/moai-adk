@@ -33,8 +33,8 @@ type pageView struct {
 	ShowProfileSwitch bool
 
 	// Option lists for the form selects. SPEC-WEB-CONSOLE-010 re-added the
-	// Statusline section (theme + 15 segments, NO preset): StatuslineThemes is the
-	// theme option list and StatuslineSegs is the 15 canonical segment keys, both
+	// Statusline section (theme + 16 segments, NO preset): StatuslineThemes is the
+	// theme option list and StatuslineSegs is the 16 canonical segment keys, both
 	// schema-sourced. The retired `preset` selector is NOT reintroduced (REQ-WC10-010).
 	LangOptions      []string
 	ModelOptions     []string
@@ -42,7 +42,7 @@ type pageView struct {
 	ModelPolicies    []string
 	PermissionModes  []string
 	StatuslineThemes []string
-	StatuslineSegs   []string // 15 canonical segment keys (schema-sourced)
+	StatuslineSegs   []string // 16 canonical segment keys (schema-sourced)
 
 	// Project-config selects (SPEC-WEB-CONSOLE-003). Option lists + the current
 	// persisted/submitted values for the two flat project-config enum fields.
@@ -91,7 +91,7 @@ type pageView struct {
 
 // newPageView assembles a view-model with the canonical option lists populated.
 // SPEC-WEB-CONSOLE-010: all option lists derive from the shared settings schema
-// (no hand-mirrored re-declarations). The statusline fields (theme + 15 segment
+// (no hand-mirrored re-declarations). The statusline fields (theme + 16 segment
 // keys) are also schema-sourced for the re-added Statusline section (REQ-WC10-009).
 func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pageView {
 	profiles := a.listProfiles()
@@ -443,11 +443,11 @@ func (a *app) renderErrorPage(w http.ResponseWriter, prefs profile.ProfilePrefer
 }
 
 // bindForm maps submitted form values onto a ProfilePreferences.
-// SPEC-WEB-CONSOLE-010 re-added the Statusline section: the theme value and the 15
+// SPEC-WEB-CONSOLE-010 re-added the Statusline section: the theme value and the 16
 // segment toggles are bound here. A segment toggle is a checkbox named seg_<key>
 // with a hidden companion seg_<key>__present (the same disambiguation pattern as the
 // nested-config bool toggles). When ANY segment companion is present, the full
-// 15-key StatuslineSegments map is populated (unchecked → false) so the segment map
+// 16-key StatuslineSegments map is populated (unchecked → false) so the segment map
 // round-trips without dropping keys; when NO segment companion is present, the map is
 // left nil so syncStatusline preserves the on-disk segments (theme-only / no-change
 // save). The retired `preset` field is NOT bound (REQ-WC10-010).

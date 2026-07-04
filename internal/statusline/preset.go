@@ -1,8 +1,8 @@
 package statusline
 
-// CanonicalSegments lists the 15 canonical statusline segment keys in display
-// order. SegmentRepo is intentionally excluded — it is the 16th constant,
-// outside the 15-key statusline schema (SLM-7). This is the single source of
+// CanonicalSegments lists the 16 canonical statusline segment keys in display
+// order. SegmentRepo is intentionally excluded — it is the 17th constant,
+// outside the 16-key statusline schema (SLM-7). This is the single source of
 // truth for the segment key set; both the CLI render path and the profile
 // write path derive their segment maps from it.
 //
@@ -14,5 +14,5 @@ var CanonicalSegments = []string{
 	SegmentGitStatus, SegmentClaudeVersion, SegmentMoaiVersion, SegmentGitBranch,
 	SegmentSessionTime, SegmentUsage5H, SegmentUsage7D,
 	SegmentTask, SegmentWorktree, SegmentEffortThinking,
-	SegmentPR,
+	SegmentCacheHit, SegmentPR,
 }

@@ -22,24 +22,24 @@ func TestFieldLookup(t *testing.T) {
 // TestSectionFieldsOrder는 SectionFields 가 섹션별 필드를 반환함을 검증한다.
 func TestSectionFieldsOrder(t *testing.T) {
 	statusline := SectionFields(SectionStatusline)
-	if len(statusline) != 16 {
-		t.Fatalf("Statusline section field count = %d, want 16", len(statusline))
+	if len(statusline) != 17 {
+		t.Fatalf("Statusline section field count = %d, want 17", len(statusline))
 	}
 	if statusline[0].Name != "statusline_theme" {
 		t.Errorf("first statusline field = %q, want statusline_theme", statusline[0].Name)
 	}
 }
 
-// TestStatuslineSegmentKeys는 15개 정규 세그먼트 키를 반환함을 검증한다.
+// TestStatuslineSegmentKeys는 16개 정규 세그먼트 키를 반환함을 검증한다.
 func TestStatuslineSegmentKeys(t *testing.T) {
 	keys := StatuslineSegmentKeys()
-	if len(keys) != 15 {
-		t.Fatalf("StatuslineSegmentKeys count = %d, want 15", len(keys))
+	if len(keys) != 16 {
+		t.Fatalf("StatuslineSegmentKeys count = %d, want 16", len(keys))
 	}
-	// SegmentRepo(16번째)는 제외되어야 한다.
+	// SegmentRepo(17번째)는 제외되어야 한다.
 	for _, k := range keys {
 		if k == "repo" {
-			t.Error("StatuslineSegmentKeys must NOT include 'repo' (16th, outside 15-key schema)")
+			t.Error("StatuslineSegmentKeys must NOT include 'repo' (17th, outside 16-key schema)")
 		}
 	}
 }

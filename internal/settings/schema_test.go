@@ -81,7 +81,7 @@ func TestSchemaSixSections(t *testing.T) {
 		SectionIdentity:      1,
 		SectionLanguage:      4,
 		SectionLaunch:        4,
-		SectionStatusline:    16,
+		SectionStatusline:    17,
 		SectionQuality:       4,
 		SectionGitConvention: 5,
 	}

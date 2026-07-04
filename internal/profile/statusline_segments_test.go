@@ -9,9 +9,10 @@ import (
 )
 
 // TestDefaultStatuslineSegments verifies that defaultStatuslineSegments returns
-// the canonical 15-key segment map (SLM-5 fix). Before the fix the seed emitted
-// only 11 of 15 segments (missing effort_thinking, worktree, task, pr), so a
-// statusline.yaml created on first sync silently dropped those four segments.
+// the canonical 16-key segment map (SLM-5 fix; cache_hit exposed by
+// SPEC-WEB-CONSOLE-011 M6). Before the SLM-5 fix the seed emitted only 11 of the
+// then-15 segments (missing effort_thinking, worktree, task, pr), so a
+// statusline.yaml created on first sync silently dropped those segments.
 //
 // After SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 this is the ONLY default path —
 // no preset participates in defaulting (REQ-SPR-009).
@@ -20,8 +21,8 @@ func TestDefaultStatuslineSegments(t *testing.T) {
 
 	want := []string{
 		"model", "context", "output_style", "claude_version", "moai_version",
-		"session_time", "effort_thinking", "usage_5h", "usage_7d", "directory",
-		"git_status", "git_branch", "worktree", "task", "pr",
+		"session_time", "effort_thinking", "cache_hit", "usage_5h", "usage_7d",
+		"directory", "git_status", "git_branch", "worktree", "task", "pr",
 	}
 
 	if len(got) != len(want) {
@@ -39,7 +40,7 @@ func TestDefaultStatuslineSegments(t *testing.T) {
 		}
 	}
 
-	// SegmentRepo ("repo") is intentionally outside the 15-key schema (SLM-7).
+	// SegmentRepo ("repo") is intentionally outside the 16-key schema (SLM-7).
 	if _, ok := got["repo"]; ok {
 		t.Errorf("defaultStatuslineSegments() includes \"repo\" — SegmentRepo is intentionally excluded (SLM-7)")
 	}

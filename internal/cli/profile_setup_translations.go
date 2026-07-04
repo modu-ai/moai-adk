@@ -71,9 +71,10 @@ type profileSetupText struct {
 
 	// Statusline segments multi-select — now unconditional (the preset==custom
 	// gate was removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001).
-	// Order matches statuslineAllSegments slice in profile_setup.go (15 segments).
+	// Order matches statuslineAllSegments slice in profile_setup.go (16 segments).
 	StatuslineSegmentsTitle string
 	StatuslineSegmentsDesc  string
+	SegmentCacheHit         string
 	SegmentClaudeVersion    string
 	SegmentContext          string
 	SegmentDirectory        string
@@ -203,6 +204,7 @@ var profileSetupTexts = map[string]profileSetupText{
 		DisplayTitle:            "Display",
 		StatuslineSegmentsTitle: "Statusline segments",
 		StatuslineSegmentsDesc:  "Toggle which segments appear in the status bar.",
+		SegmentCacheHit:         "Cache hit ratio",
 		SegmentClaudeVersion:    "Claude version",
 		SegmentContext:          "Context usage",
 		SegmentDirectory:        "Current directory",
@@ -310,6 +312,7 @@ var profileSetupTexts = map[string]profileSetupText{
 		DisplayTitle:            "화면 표시",
 		StatuslineSegmentsTitle: "상태줄 세그먼트",
 		StatuslineSegmentsDesc:  "상태 표시줄에 표시할 세그먼트를 선택하세요.",
+		SegmentCacheHit:         "캐시 적중률",
 		SegmentClaudeVersion:    "Claude 버전",
 		SegmentContext:          "컨텍스트 사용량",
 		SegmentDirectory:        "현재 디렉토리",
@@ -417,6 +420,7 @@ var profileSetupTexts = map[string]profileSetupText{
 		DisplayTitle:            "表示設定",
 		StatuslineSegmentsTitle: "ステータスラインセグメント",
 		StatuslineSegmentsDesc:  "ステータスバーに表示するセグメントを選択してください。",
+		SegmentCacheHit:         "キャッシュヒット率",
 		SegmentClaudeVersion:    "Claude バージョン",
 		SegmentContext:          "コンテキスト使用量",
 		SegmentDirectory:        "現在のディレクトリ",
@@ -524,6 +528,7 @@ var profileSetupTexts = map[string]profileSetupText{
 		DisplayTitle:            "显示设置",
 		StatuslineSegmentsTitle: "状态栏段位",
 		StatuslineSegmentsDesc:  "选择要在状态栏中显示的段位。",
+		SegmentCacheHit:         "缓存命中率",
 		SegmentClaudeVersion:    "Claude 版本",
 		SegmentContext:          "上下文使用量",
 		SegmentDirectory:        "当前目录",

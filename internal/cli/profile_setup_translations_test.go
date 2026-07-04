@@ -220,10 +220,11 @@ func TestGetProfileText_EmptyString(t *testing.T) {
 
 // TestProfileSetupTranslations_PresetSegments verifies that all 4 locales
 // (en/ko/ja/zh) provide non-empty translations for the statusline preset
-// selector + 15 segment toggle labels added by
-// SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001 REQ-SPW-003.
+// selector + 16 segment toggle labels added by
+// SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001 REQ-SPW-003 (cache_hit added by
+// SPEC-WEB-CONSOLE-011 M6).
 //
-// 4 locales × 17 keys (2 segments section titles + 15 segment labels) = 68
+// 4 locales × 18 keys (2 segments section titles + 16 segment labels) = 72
 // cells verified. The 6 preset-title/option cells were removed by
 // SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 (preset Select retired).
 func TestProfileSetupTranslations_PresetSegments(t *testing.T) {
@@ -235,6 +236,7 @@ func TestProfileSetupTranslations_PresetSegments(t *testing.T) {
 	cells := []cell{
 		{"StatuslineSegmentsTitle", func(p profileSetupText) string { return p.StatuslineSegmentsTitle }},
 		{"StatuslineSegmentsDesc", func(p profileSetupText) string { return p.StatuslineSegmentsDesc }},
+		{"SegmentCacheHit", func(p profileSetupText) string { return p.SegmentCacheHit }},
 		{"SegmentClaudeVersion", func(p profileSetupText) string { return p.SegmentClaudeVersion }},
 		{"SegmentContext", func(p profileSetupText) string { return p.SegmentContext }},
 		{"SegmentDirectory", func(p profileSetupText) string { return p.SegmentDirectory }},

@@ -24,11 +24,11 @@ func TestStatuslineThemeOptionList(t *testing.T) {
 }
 
 // TestBindFormStatuslineSegmentsSubmitted covers the bindForm statusline-segment
-// submission branch (companion present → full 15-key map populated, unchecked → false).
+// submission branch (companion present → full 16-key map populated, unchecked → false).
 func TestBindFormStatuslineSegmentsSubmitted(t *testing.T) {
 	form := url.Values{}
 	form.Set("statusline_theme", "catppuccin-latte")
-	// Submit segments: companion present for all 15; check only a few.
+	// Submit segments: companion present for all 16; check only a few.
 	checkedSet := map[string]bool{"model": true, "git_branch": true, "pr": true}
 	for _, seg := range settings.StatuslineSegmentKeys() {
 		form.Set("seg_"+seg+"__present", "1")
@@ -50,8 +50,8 @@ func TestBindFormStatuslineSegmentsSubmitted(t *testing.T) {
 	if prefs.StatuslineSegments == nil {
 		t.Fatal("StatuslineSegments must be populated when segment companions are present")
 	}
-	if len(prefs.StatuslineSegments) != 15 {
-		t.Errorf("StatuslineSegments has %d keys, want 15 (full map)", len(prefs.StatuslineSegments))
+	if len(prefs.StatuslineSegments) != 16 {
+		t.Errorf("StatuslineSegments has %d keys, want 16 (full map)", len(prefs.StatuslineSegments))
 	}
 	for _, seg := range settings.StatuslineSegmentKeys() {
 		got, present := prefs.StatuslineSegments[seg]

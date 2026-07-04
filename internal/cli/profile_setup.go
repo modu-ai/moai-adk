@@ -67,15 +67,15 @@ func normalizeStatuslineTheme(theme string) string {
 	return defaultStatuslineTheme
 }
 
-// statuslineAllSegments lists the 15 canonical segment keys that the MultiSelect
+// statuslineAllSegments lists the 16 canonical segment keys that the MultiSelect
 // widget offers. Order MUST match statusline.yaml segment definitions and
 // Segment* fields in profileSetupText. The segment step is now unconditional
 // (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 retired the preset==custom gate).
 var statuslineAllSegments = []string{
-	"claude_version", "context", "directory", "effort_thinking",
-	"git_branch", "git_status", "moai_version", "model",
-	"output_style", "pr", "session_time", "task",
-	"usage_5h", "usage_7d", "worktree",
+	"cache_hit", "claude_version", "context", "directory",
+	"effort_thinking", "git_branch", "git_status", "moai_version",
+	"model", "output_style", "pr", "session_time",
+	"task", "usage_5h", "usage_7d", "worktree",
 }
 
 // @MX:NOTE: [AUTO] Wizard v3 migration — normalizes deprecated Claude model IDs to canonical aliases.
@@ -328,10 +328,10 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 
 	// Extract enabled segment keys for MultiSelect default selection. The segment
 	// step is now unconditional (preset==custom gate removed). When
-	// prefs.StatuslineSegments is nil (new user), default to all 15 segments enabled
-	// (matching .moai/config/sections/statusline.yaml 15-segment baseline, NOT the
-	// 11-segment defaultStatuslineSegments() in internal/profile/sync.go which serves a
-	// different purpose: yaml fallback when statusline.yaml is absent).
+	// prefs.StatuslineSegments is nil (new user), default to all 16 segments enabled
+	// (matching .moai/config/sections/statusline.yaml 16-segment baseline; the same
+	// 16-key set that profile.defaultStatuslineSegments() in internal/profile/sync.go
+	// seeds as the yaml fallback when statusline.yaml is absent).
 	statuslineSegmentsSelection := make([]string, 0, len(statuslineAllSegments))
 	if existingPrefs.StatuslineSegments != nil {
 		for _, key := range statuslineAllSegments {
@@ -523,13 +523,14 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		).Title(t.DisplayTitle),
 
 		// Section 5: Segments — now unconditional (preset==custom gate removed by
-		// SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001). 15 segments KEEP IN SYNC with
+		// SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001). 16 segments KEEP IN SYNC with
 		// statuslineAllSegments slice at top of file.
 		huh.NewGroup(
 			huh.NewMultiSelect[string]().
 				Title(t.StatuslineSegmentsTitle).
 				Description(t.StatuslineSegmentsDesc).
 				Options(
+					huh.NewOption(t.SegmentCacheHit, "cache_hit"),
 					huh.NewOption(t.SegmentClaudeVersion, "claude_version"),
 					huh.NewOption(t.SegmentContext, "context"),
 					huh.NewOption(t.SegmentDirectory, "directory"),
@@ -639,7 +640,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 	}
 
 	// Build the segments map unconditionally (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001
-	// retired the preset==custom gate). The wizard always emits a full 15-key map.
+	// retired the preset==custom gate). The wizard always emits a full 16-key map.
 	selected := make(map[string]bool, len(statuslineSegmentsSelection))
 	for _, key := range statuslineSegmentsSelection {
 		selected[key] = true

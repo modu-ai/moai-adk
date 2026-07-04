@@ -146,12 +146,12 @@ func syncStatusline(projectRoot string, prefs ProfilePreferences) error {
 	return nil
 }
 
-// defaultStatuslineSegments returns the canonical 15-key segment map with every
+// defaultStatuslineSegments returns the canonical 16-key segment map with every
 // segment enabled — equivalent to the "full" preset (SLM-5 fix). The keys are
 // sourced from the statusline.Segment* constants (the same SSOT the CLI's
 // presetToSegments uses) so the seed never drifts from the canonical schema.
-// SegmentRepo is intentionally excluded — it is the 16th constant, outside the
-// 15-key statusline schema (SLM-7).
+// SegmentRepo is intentionally excluded — it is the 17th constant, outside the
+// 16-key statusline schema (SLM-7).
 func defaultStatuslineSegments() map[string]bool {
 	keys := []string{
 		statusline.SegmentModel,
@@ -161,6 +161,7 @@ func defaultStatuslineSegments() map[string]bool {
 		statusline.SegmentMoaiVersion,
 		statusline.SegmentSessionTime,
 		statusline.SegmentEffortThinking,
+		statusline.SegmentCacheHit,
 		statusline.SegmentUsage5H,
 		statusline.SegmentUsage7D,
 		statusline.SegmentDirectory,

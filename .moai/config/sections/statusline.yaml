@@ -1,5 +1,6 @@
 statusline:
     segments:
+        cache_hit: true
         claude_version: true
         context: true
         directory: true
