@@ -284,6 +284,11 @@ type SPECFrontmatter struct {
 	// SPEC-V3R6-LIFECYCLE-SYNC-GATE-001 REQ-LSG-002 / AC-LSG-013: when present,
 	// overrides auto-detection in ClassifyEra. Not one of the 12 required fields.
 	Era string `yaml:"era,omitempty"`
+	// Tier is the optional SPEC complexity tier (S | M | L). SPEC-WEB-CONSOLE-011
+	// REQ-WC11-042: the read-only web SPEC board renders it as an OPTIONAL badge
+	// (absent → no badge, not an error). Not one of the 12 required fields, so
+	// FrontmatterSchemaRule does not report its absence.
+	Tier string `yaml:"tier,omitempty"`
 }
 
 type REQEntry struct {
