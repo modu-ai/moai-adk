@@ -37,16 +37,17 @@ func schemaFieldToWebControlName(fieldName string) string {
 	}
 }
 
-// TestWebRendersSchemaFieldSet covers AC-WC10-010 (web side): the set of field
-// control names the web console renders equals the schema's 34-field-name set
-// (set equality, not merely count==34). Each schema field must have a matching
-// name= attribute in the rendered page.
+// TestWebRendersSchemaFieldSet covers AC-WC10-010 (web side): every schema field
+// name must have a matching name= control attribute in the rendered page.
+// SPEC-WEB-CONSOLE-011 M2b: 총계 하드코딩(구 34 pin)은 B11 파생 카운트 원칙에
+// 따라 제거 — 확장 포함 전 필드가 렌더됨을 집합 기준으로 검증한다 (기존
+// 34-필드 잔존은 settings 쪽 TestSchemaFieldNameSet이 별도 고정).
 func TestWebRendersSchemaFieldSet(t *testing.T) {
 	body := renderConsolePage(t)
 
 	names := settings.FieldNames()
-	if len(names) != 34 {
-		t.Fatalf("schema field-name set has %d entries, want 34", len(names))
+	if len(names) == 0 {
+		t.Fatal("schema field-name set is empty")
 	}
 
 	for _, f := range names {

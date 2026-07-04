@@ -35,11 +35,11 @@ type pageView struct {
 	// Statusline section (theme + 15 segments, NO preset): StatuslineThemes is the
 	// theme option list and StatuslineSegs is the 15 canonical segment keys, both
 	// schema-sourced. The retired `preset` selector is NOT reintroduced (REQ-WC10-010).
-	LangOptions     []string
-	ModelOptions    []string
-	EffortLevels    []string
-	ModelPolicies   []string
-	PermissionModes []string
+	LangOptions      []string
+	ModelOptions     []string
+	EffortLevels     []string
+	ModelPolicies    []string
+	PermissionModes  []string
 	StatuslineThemes []string
 	StatuslineSegs   []string // 15 canonical segment keys (schema-sourced)
 
@@ -64,6 +64,11 @@ type pageView struct {
 	CurAutoDetectionEnabled bool
 	CurSampleSize           string
 	CurEnforceOnPush        bool
+
+	// M2b 10섹션 확장 (SPEC-WEB-CONSOLE-011): 확장 필드 + read-only 표시 키의
+	// 디스크 현재값(FieldDef.Name → 문자열)과 REQ-WC11-062 raw view 블록 텍스트.
+	SchemaValues map[string]string
+	RawBlocks    map[string]string
 
 	// Banner is an optional status/error message; BannerKind is "ok" or "error".
 	Banner     string
@@ -99,6 +104,8 @@ func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pag
 		Conventions:       conventionOptionList(),
 		StatuslineThemes:  statuslineThemeOptionList(),
 		StatuslineSegs:    settings.StatuslineSegmentKeys(),
+		SchemaValues:      map[string]string{},
+		RawBlocks:         map[string]string{},
 		BindAddr:          a.resolveBindAddr(),
 		FieldErrors:       map[string]string{},
 	}
@@ -177,6 +184,15 @@ func (a *app) handleIndex(w http.ResponseWriter, r *http.Request) {
 	view.CurDevelopmentMode = devMode
 	view.CurConvention = convention
 	applyNestedCurrent(&view, nested)
+
+	// SPEC-WEB-CONSOLE-011 M2b: 10섹션 확장 필드 + read-only 표시 + raw view
+	// 블록의 현재값 시딩. 읽기 실패는 다른 read seam과 동일하게 readable inline
+	// error다 (never blank, never panic).
+	if err := a.applySchemaCurrent(&view); err != nil {
+		a.renderError(w, http.StatusInternalServerError,
+			"could not read section config: "+err.Error())
+		return
+	}
 	a.render(w, http.StatusOK, view)
 }
 
@@ -264,7 +280,11 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// *Set flags + bool companion). Distinct from the two scalars above.
 	nestedForm := parseProjectNestedForm(r)
 
-	// REQ-WC-008 / REQ-WC3-001/002 / REQ-WC7-007: run ALL THREE validators and merge
+	// SPEC-WEB-CONSOLE-011 M2b: parse the 10-section schema fields generically
+	// (FieldDef가 SSOT — read-only/제외군 키는 스키마에 없어 자동 무시, EC-8).
+	schemaEdits, schemaErrs := parseSchemaForm(r)
+
+	// REQ-WC-008 / REQ-WC3-001/002 / REQ-WC7-007: run ALL validators and merge
 	// their FieldErrors. Any failure → atomic reject (EC-2): leave ALL persisted
 	// state unchanged and re-render with per-field errors.
 	fieldErrs := validatePrefs(prefs)
@@ -274,8 +294,12 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	for k, v := range validateProjectNestedConfig(convention, nestedForm) {
 		fieldErrs[k] = v
 	}
+	for k, v := range schemaErrs {
+		fieldErrs[k] = v
+	}
 	if len(fieldErrs) > 0 {
 		view := a.rejectedProjectView(prefs, selected, devMode, convention, nestedForm)
+		overlaySchemaEdits(&view, schemaEdits)
 		view.FieldErrors = fieldErrs
 		view.Banner = "Validation failed — no changes were saved."
 		view.BannerKind = "error"
@@ -315,6 +339,16 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// SPEC-WEB-CONSOLE-011 M2b: persist the 10-section schema fields — seam
+	// 8섹션은 yamlpatch(주석/미모델링 키 보존, REQ-WC11-017), git-strategy/llm/
+	// quality 확장 키는 typed 경로(REQ-WC11-010/012). 마지막에 실행되므로 앞선
+	// typed 쓰기 결과를 재로드해 수렴한다.
+	if err := a.applySchemaEdits(a.cfg.ProjectRoot, schemaEdits); err != nil {
+		a.renderErrorPage(w, prefs, selected, devMode, convention,
+			"profile preferences saved, but section config write failed: "+err.Error())
+		return
+	}
+
 	view := a.successProjectView(prefs, selected, devMode, convention)
 	view.Banner = "Settings saved."
 	view.BannerKind = "ok"
@@ -348,10 +382,13 @@ func (a *app) rejectedProjectView(prefs profile.ProfilePreferences, selected, de
 // projectView builds a page view-model with the two project-config current
 // values echoed back (used on POST so a rejected save keeps the submitted
 // project-config selections visible, mirroring the profile fields).
+// M2b: 확장 섹션 현재값은 best-effort로 시딩한다 (POST 재렌더 경로 — 읽기
+// 실패는 빈 맵으로 저하하고 배너가 성패를 전달한다).
 func (a *app) projectView(prefs profile.ProfilePreferences, selected, devMode, convention string) pageView {
 	view := a.newPageView(prefs, selected)
 	view.CurDevelopmentMode = devMode
 	view.CurConvention = convention
+	a.applySchemaCurrentBestEffort(&view)
 	return view
 }
 

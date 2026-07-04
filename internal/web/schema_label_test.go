@@ -58,8 +58,18 @@ func i18nKeyInAllLocales(t *testing.T, key string) bool {
 // f.* field keys + seg.* segment keys) has a matching flat dotted-key entry in
 // window.MOAI_I18N for all 4 locales. The TUI half (bridge resolution) lives in
 // internal/cli (TestI18nKeySetParity there).
+//
+// SPEC-WEB-CONSOLE-011 M2b 범위 조정: 10섹션 확장 필드(PersistSeam /
+// PersistTypedSection)는 기술 식별자 key chip으로 렌더하며 data-i18n을 방출하지
+// 않는다 — i18n.js 헤더 계약("Field identifiers stay in English as code chips
+// and are NOT translated")과 동일 원칙. 따라서 per-field title/desc 사전 항목
+// 의무는 data-i18n을 실제 방출하는 기존 34-필드 위젯에만 적용된다. 렌더된
+// data-i18n 키의 사전 존재는 TestDataI18nKeysSubsetOfDictionary가 전수 강제한다.
 func TestI18nKeySetParity(t *testing.T) {
 	for _, f := range settings.AllFields() {
+		if f.Persist.Kind == settings.PersistSeam || f.Persist.Kind == settings.PersistTypedSection {
+			continue // M2b key-chip 필드 — data-i18n 미방출 (위 주석 참조)
+		}
 		if strings.HasPrefix(f.I18nKey, "seg.") {
 			// Segment keys: the seg.<segment> label must exist in all 4 locales.
 			if !i18nKeyInAllLocales(t, f.I18nKey) {

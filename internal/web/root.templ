@@ -107,6 +107,10 @@ templ page(view pageView) {
 					@fieldsetLaunch(view)
 					@fieldsetStatusline(view)
 					@fieldsetProject(view)
+					// SPEC-WEB-CONSOLE-011 M2b: 10섹션 확장 — 스키마 주도 제네릭 fieldset.
+					for _, meta := range schemaSectionMetas() {
+						@fieldsetSchemaSection(view, meta)
+					}
 					<div class="actions">
 						<button class="btn btn--primary" type="submit">@icon("save")<span data-i18n="actions.save">Save settings</span></button>
 						<span class="actions__meta" data-i18n="actions.meta">writes to ~/.moai profile &amp; project config</span>

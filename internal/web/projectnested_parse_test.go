@@ -169,8 +169,9 @@ func TestProjectFieldsetRendersNestedWidgets(t *testing.T) {
 		// new enforce_on_push toggle.
 		`name="git_convention.validation.enforce_on_push__present"`,
 		`name="git_convention.validation.enforce_on_push"`,
-		// updated section count.
-		`data-i18n="count.project"`,
+		// updated section count — SPEC-WEB-CONSOLE-011 M2b: 파생 카운트 라벨
+		// (schema 길이 렌더 + count.fields 단위 접미 i18n 키, B11).
+		`data-i18n="count.fields"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("fieldsetProject render missing %q\n--- rendered ---\n%s", want, body)

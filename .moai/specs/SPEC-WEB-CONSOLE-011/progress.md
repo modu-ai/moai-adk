@@ -53,6 +53,21 @@ Lifecycle tracking for the 3-phase plan → run → sync flow. §E carries the a
 - harness `learning:` 최상위 키 seam 기록 검증 (TestYAMLPatchGoldenHarnessLearningRoot).
 - 커버리지 보강: yamlpatch 오류 경로 직접 테스트 (atomicWrite stat/read-only-dir, encode unknown-kind, 매핑/시퀀스 대상 거부) → 77.9% → **86.3%**.
 
+### M2b — 10섹션 fieldsets + i18n (worktree 브랜치, rebased base 5d2d18f3b 위)
+
+- **스키마 확장 (REQ-WC11-010/011/012/016/019)**: `internal/settings/schema_sections.go` — 신규 편집 필드 **163개** (git-strategy 57 [3 mode-profile 루프 생성 + top-level 4 + 조건부 8], llm 안전 키 10 [performance_tier select + claude_models×3 + glm.models×6; mode/team_mode 제외], quality 잔여 typed 16, workflow 21, harness 14, ralph 19, research 12, feedback 1, observability 7, security 3, db 3). PersistKind 2종 신설: `PersistTypedSection`(git_strategy/llm/quality — config 매니저 LoadRaw→apply→SetSection→Save) + `PersistSeam`(8섹션 — WriteSectionViaSeam 전용). 렌더 섹션 11개 신설(SectionQualityExtras 포함 — 기존 Project fieldset 9-필드 구성과 충돌 방지 분리).
+- **영속화 디스패처**: `sectionapply.go` ApplySchemaEdits — typed 3섹션 per-key applier switch(전 분기 전수 round-trip 테스트로 커버) + seam 파일별 단일 PatchFile. git-strategy dirty-flag 격리 검증(비-git-strategy 편집 시 git-strategy.yaml byte 불변 — TestApplySchemaEditsGitStrategyDirtyFlagIsolation).
+- **제네릭 읽기 seam**: `sectionvalues.go` SchemaCurrentValues(전 확장 필드 + read-only 표시 키) + RawBlockValues(REQ-WC11-062 raw view 블록 표시용 재직렬화).
+- **웹 배선**: `schemaform.go` 스키마 주도 제네릭 파서(hand-wiring 0 — FieldDef가 SSOT; bool `__present` companion, int/float/select 검증 → atomic reject 합류) + handlers.go handleSave/handleIndex/projectView 배선 + app.go injectable seam 3종.
+- **제네릭 fieldset 렌더**: fieldsets.templ `fieldsetSchemaSection` + 위젯 5종(text/number/toggle/select/read-only) + `schemaRawBlock`(collapsed `<details>`, input 컨트롤 0). **필드 라벨은 key-chip 기술 식별자로 렌더, data-i18n 미방출** — i18n.js 기존 계약("Field identifiers stay in English as code chips and are NOT translated")과 정합. root.templ에 11 fieldset 조립. templ generate로 _templ.go 재생성 (v0.3.1020 = go.mod 일치).
+- **파생 카운트 라벨 (REQ-WC11-053 전략 선적용, B11)**: 기존 5개 fieldset의 하드코딩 "N fields" 리터럴 전부 제거 → `sectionCount(len(settings.SectionFields(...)))` 파생 + `count.fields` 단위 접미 i18n 키. `grep -nE '"[0-9]+ fields?"' fieldsets.templ` 코드 리터럴 0 (잔여 1건은 갱신된 주석에서도 제거 완료).
+- **i18n ×4 (REQ-WC11-015/061)**: 신규 data-i18n 키 25종(sec.<11섹션>.title/.desc ×22 + count.fields + ro.note + raw.note)을 en/ko/ja/zh 4-locale 전부에 추가 (수작업 번역, blind sed 없음 — B10). TestDataI18nKeysSubsetOfDictionary(렌더된 키 ⊆ 사전) + TestI18nKeySetParity 전부 GREEN.
+- **기존 테스트 계약 갱신 3건**: (i) settings TestSchemaFieldNameSet/TestSchemaSixSections — 34-총계 pin 제거, 기존 34필드 잔존 floor로 전환(B11); (ii) web TestWebRendersSchemaFieldSet — 34 pin 제거, 전 필드 집합 검증으로 강화; (iii) TestI18nKeySetParity — M2b key-chip 필드(PersistSeam/PersistTypedSection) 제외 스코프 명시(사유 주석 포함); (iv) projectnested_parse_test count.project → count.fields 마커.
+- **AC-WC11-004 행동 완결**: TestSaveWorkflowRoutesThroughSeam — POST /save의 workflow 스칼라 편집이 seam 경유로 정확히 1라인만 변경 + 주석/team.patterns 보존을 end-to-end 검증.
+- **신규 웹 AC 테스트**: TestSchemaSectionsRenderSmoke(016 GET + 014 placeholder + 018 렌더 + 063 rawview input-0), TestSaveLLMModeReadOnlyIgnored(013), TestSaveInvalidSchemaValueRejected(012 oneof 4xx + EC-2), TestSaveDBKeySplitWebLayer(019), TestSaveExcludedSectionForgedPost(EC-8/018), TestSaveSchemaSmokeAllSections(016 저장 10/10 + git-strategy/llm 포함 11필드).
+- **커버리지**: settings 75.4%→**90.9%**(전수 round-trip 테스트 TestApplySchemaEditsAllFieldsRoundTrip — 163필드 단일 호출 왕복), yamlpatch 86.3% 유지, web 70.9%(baseline 73.0% 대비 −2.1pp — templ generate 산출 코드가 분모 팽창; 신규 비생성 코드는 신규 테스트가 커버).
+- lint: `golangci-lint run` **0 issues** (unused parseFloatValue 제거 후).
+
 ### 발견 사항 / 특이 기록
 
 1. **yaml.v3 blank-line 정규화** (위 M2a 항 — design.md §A.4 예상 리스크의 실측 확정, 허용 범위 내 golden 고정).
@@ -63,11 +78,11 @@ Lifecycle tracking for the 3-phase plan → run → sync flow. §E carries the a
 
 ```yaml
 run_complete_at: 2026-07-04
-run_commit_sha: "81f8ee11e (M1) + <M2a — 본 progress.md 동승 커밋, 커밋 후 백필 불요: 커밋 목록은 §E.2/E6 보고 기준>"
-run_status: in-progress — M1 + M2a 완료 (본 위임 범위 전체); M2b/M3/M4/M5/M6 후속 위임 대기
-ac_pass_count: 5   # AC-WC11-001, 002, 003, 004(인프라 계층), 017 — M1/M2a 바인딩 AC
+run_commit_sha: "af4bdf245 (M1, rebased) + 5d2d18f3b (M2a, rebased) + <M2b — 본 progress.md 동승 커밋>"
+run_status: in-progress — M1 + M2a + M2b 완료; M3/M4/M5/M6 후속 위임 대기
+ac_pass_count: 15  # M1/M2a: AC-WC11-001..005, 017 + M2b: 010(전 필드 typed round-trip), 012, 013, 014, 016, 018, 019, 063 + 004 행동 완결. 011은 파티션 계약으로 충족(하단 노트)
 ac_fail_count: 0
-ac_partial_notes: "AC-WC11-004/005는 M1 인프라 계층에서 충족(seam 라우팅 + allowlist grep); 웹 핸들러 경유 행동 바인딩은 M2b/M3에서 완결"
+ac_partial_notes: "AC-WC11-011은 '노출 ∪ 명시 제외 목록' 파티션 테스트(TestQualityKeyPartition)로 충족 — lsp_quality_gates/lsp_integration/principles/cycle_type_routing은 명시 제외(form UI 부적합 대형 정책 블록). AC-WC11-015는 신규 data-i18n 키 25종 ×4 locale로 충족 — M2b 필드 라벨은 key-chip 기술 식별자(비번역 계약)라 per-field 키 비대상. AC-WC11-005 allowlist 불변(신규 NewConfigManager/.Save( 0 — 신규 typed 경로는 internal/settings 소재)"
 preserve_list_post_run_count: 0   # PRESERVE 위반 0 — statusline/app.go@MX:NOTE/병렬 세션 산출물/agent 파일 전부 무접촉
 l44_pre_commit_fetch: "n/a — L1 runtime worktree 격리 실행 (전용 브랜치, push 금지 지시); landing은 orchestrator gate 검증 후 수행"
 l44_post_push_fetch: "n/a — push 미수행 (지시 사항)"
@@ -77,11 +92,11 @@ cross_platform_build:
   windows_amd64: PASS (GOOS=windows GOARCH=amd64 go build ./... → WIN_BUILD_OK)
   go_vet: PASS (VET_OK)
 coverage:
-  internal_settings: "96.1%"
+  internal_settings: "90.9% (M2b 확장 후 — 163필드 전수 round-trip 테스트 포함)"
   internal_settings_yamlpatch: "86.3%"
-  internal_web: "73.0% — 선재 baseline (본 위임의 web 변경은 주석 + 테스트만, 신규 실행문 0)"
-total_run_phase_files: 11   # M1: server.go, projectconfig.go, scope_contract_test.go, sectionroute{,_test}.go, yamlpatch{,_test}.go, testdata/workflow.yaml + M2a: sectionwrite{,_test}.go, testdata/sections/×8, yamlpatch_test.go(보강) — 신규 12 + 수정 3 (SPEC frontmatter 3종 별도)
-m1_to_mN_commit_strategy: "마일스톤별 path-limited 커밋 (M1: 81f8ee11e / M2a: 후속 커밋), 전용 worktree 브랜치, push는 orchestrator 소관"
+  internal_web: "70.9% — baseline 73.0% 대비 −2.1pp (templ generate 산출 코드 분모 팽창; 신규 비생성 코드는 신규 AC 테스트가 커버)"
+total_run_phase_files: 30   # M1(11) + M2a(12) + M2b: settings 4신규+2수정+testdata 3, web 2신규(go)+1신규(test)+3수정(go)+2 templ+2 _templ 재생성+3 테스트 수정+i18n.js
+m1_to_mN_commit_strategy: "마일스톤별 path-limited 커밋 (M1: af4bdf245 / M2a: 5d2d18f3b — rebased SHA / M2b: 후속 커밋), 전용 worktree 브랜치, push/landing은 orchestrator 소관"
 known_preexisting_failures: "internal/cli TestRunHookEvent_ReadInputError (base 선재, 병렬 세션 SPEC-CLI-SUBPKG-SPLIT-001 도메인, 무접촉); gofmt 드리프트 2파일 (base 선재, 무접촉)"
 ```
 
