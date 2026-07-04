@@ -561,6 +561,28 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 .actions__meta { font-size: 13px; color: var(--fg-3); }
 .actions__meta .mono { font-size: 0.92em; color: var(--fg-2); }
 
+/* ── Profile CRUD manager (SPEC-WEB-CONSOLE-011 M4) ── */
+.profilemgr {
+  margin: 0 0 20px; padding: 18px 20px; border: 1px solid var(--border-1, #e5e2dc);
+  border-radius: var(--radius-lg, 12px); background: var(--bg-1, #fff);
+}
+.profilemgr__head { margin-bottom: 12px; }
+.profilemgr__title { font-size: var(--text-md, 16px); font-weight: var(--fw-semibold, 600); margin: 0; }
+.profilemgr__desc { font-size: var(--text-sm, 13px); color: var(--fg-3, #6b6660); margin: 4px 0 0; }
+.profilemgr__list { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.profilemgr__item { display: flex; align-items: center; gap: 10px; }
+.profilemgr__name { font-family: var(--font-mono); font-size: var(--text-sm, 13px); color: var(--color-primary); text-decoration: none; }
+.profilemgr__name:hover { text-decoration: underline; }
+.profilemgr__name--active { color: var(--fg-1); font-weight: var(--fw-semibold, 600); text-decoration: none; }
+.profilemgr__badge { font-size: 12px; color: var(--fg-3, #6b6660); }
+.profilemgr__delete { margin-left: auto; }
+.profilemgr__create { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; }
+.profilemgr__create-label { font-size: var(--text-sm, 13px); font-weight: var(--fw-semibold, 600); align-self: center; }
+.profilemgr__create .input { max-width: 240px; }
+.btn--sm { padding: 8px 16px; border-radius: var(--radius-pill, 999px); font-size: 13px; }
+.btn--ghost { background: transparent; color: var(--fg-2, #3f3a34); border: 1px solid var(--border-1, #e5e2dc); }
+.btn--ghost:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
 /* reveal animation for conditional segments */
 @keyframes segIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 .segments { animation: segIn var(--duration-normal) var(--easing-default); }

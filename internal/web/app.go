@@ -61,6 +61,13 @@ type app struct {
 	listAgentFMs func(agentsDir string) ([]agentfm.AgentInfo, error)
 	patchAgentFM func(projectRoot string, edits []agentFMEdit) error
 
+	// Injectable seams over the M4 profile CRUD surface (SPEC-WEB-CONSOLE-011
+	// REQ-WC11-032/033/034). createProfile creates the profile directory (no
+	// env side effect — distinct from profile.EnsureDir, which also mutates
+	// CLAUDE_CONFIG_DIR); deleteProfile removes it. Tests inject failures here.
+	createProfile func(name string) error
+	deleteProfile func(name string) error
+
 	// triggerShutdown is 페이지 내 서버 종료 버튼(/__shutdown__)이 호출하는
 	// injectable seam 이다. openBrowser 와 동일한 패턴이지만 app 에 두는 이유는 —
 	// Config 가 값 전달이라 server 와 handler 가 하나의 closure 를 공유해야
@@ -91,6 +98,9 @@ func newApp(cfg Config) *app {
 
 		listAgentFMs: agentfm.List,
 		patchAgentFM: applyAgentFMEdits,
+
+		createProfile: createProfileDir,
+		deleteProfile: profile.Delete,
 	}
 }
 
@@ -100,6 +110,11 @@ func (a *app) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", a.handleIndex)
 	mux.HandleFunc("/save", a.handleSave)
+	// SPEC-WEB-CONSOLE-011 M4: profile CRUD (create / delete) — POST-only,
+	// loopback-gated by hostCheckMiddleware. Switch reuses the existing
+	// GET /?profile=<name> load path (no dedicated route needed).
+	mux.HandleFunc("/profile/create", a.handleProfileCreate)
+	mux.HandleFunc("/profile/delete", a.handleProfileDelete)
 	// /__shutdown__ 은 페이지 내 종료 버튼이 POST 하는 루트다. hostCheckMiddleware
 	// 가 이미 전체 mux 를 감싸 non-loopback Host 의 POST 를 403 차단하므로 추가
 	// CSRF/토큰 인프라 없이 loopback-only 단일 경계로 보호된다(@MX:NOTE app.go 참조).

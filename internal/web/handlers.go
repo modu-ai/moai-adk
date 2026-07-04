@@ -157,48 +157,52 @@ func (a *app) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	selected := a.selectedProfile(r)
+	view, errMsg := a.buildIndexView(selected)
+	if errMsg != "" {
+		// Read failure: readable inline error, never blank, never panic.
+		a.renderError(w, http.StatusInternalServerError, errMsg)
+		return
+	}
+	a.render(w, http.StatusOK, view)
+}
+
+// buildIndexView assembles the full GET / view-model for the selected profile,
+// running every read seam (preferences + project config + nested + 10-section
+// schema). On a read failure it returns a non-empty errMsg carrying the readable
+// inline-error message (the caller renders it as a 500). SPEC-WEB-CONSOLE-011 M4
+// extracts this from handleIndex so the profile CRUD handlers can re-render the
+// full page with the updated profile list (mirroring the /save full-page path).
+func (a *app) buildIndexView(selected string) (view pageView, errMsg string) {
 	prefs, err := a.readPreferences(selected)
 	if err != nil {
-		// Read failure: readable inline error, never blank, never panic.
-		a.renderError(w, http.StatusInternalServerError,
-			"could not read preferences for profile "+selected+": "+err.Error())
-		return
+		return pageView{}, "could not read preferences for profile " + selected + ": " + err.Error()
 	}
 
 	// REQ-WC3-004: read the current project-config values (development_mode /
 	// git_convention) from quality.yaml / git-convention.yaml via the read seam.
-	// A read failure surfaces a readable inline error (never blank, never panic).
 	devMode, convention, err := a.readProjectConfig(a.cfg.ProjectRoot)
 	if err != nil {
-		a.renderError(w, http.StatusInternalServerError,
-			"could not read project config: "+err.Error())
-		return
+		return pageView{}, "could not read project config: " + err.Error()
 	}
 
 	// REQ-WC7-010: read the current curated nested values (quality + git_convention)
-	// from the nested read seam for GET echo-back. A read failure surfaces a readable
-	// inline error (never blank, never panic) — same discipline as the scalar seam.
+	// from the nested read seam for GET echo-back.
 	nested, err := a.readProjectNestedConfig(a.cfg.ProjectRoot)
 	if err != nil {
-		a.renderError(w, http.StatusInternalServerError,
-			"could not read project nested config: "+err.Error())
-		return
+		return pageView{}, "could not read project nested config: " + err.Error()
 	}
 
-	view := a.newPageView(prefs, selected)
+	view = a.newPageView(prefs, selected)
 	view.CurDevelopmentMode = devMode
 	view.CurConvention = convention
 	applyNestedCurrent(&view, nested)
 
 	// SPEC-WEB-CONSOLE-011 M2b: 10섹션 확장 필드 + read-only 표시 + raw view
-	// 블록의 현재값 시딩. 읽기 실패는 다른 read seam과 동일하게 readable inline
-	// error다 (never blank, never panic).
+	// 블록의 현재값 시딩.
 	if err := a.applySchemaCurrent(&view); err != nil {
-		a.renderError(w, http.StatusInternalServerError,
-			"could not read section config: "+err.Error())
-		return
+		return pageView{}, "could not read section config: " + err.Error()
 	}
-	a.render(w, http.StatusOK, view)
+	return view, ""
 }
 
 // applyNestedCurrent copies the persisted nested current values onto the view-model

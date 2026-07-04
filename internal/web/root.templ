@@ -89,6 +89,12 @@ templ page(view pageView) {
 				if view.ShowProfileSwitch {
 					@profileSwitch(view)
 				}
+				// SPEC-WEB-CONSOLE-011 M4: profile CRUD manager (create / switch /
+				// delete). Rendered OUTSIDE the main settings form (its create/delete
+				// forms are their own POST targets — nested forms are invalid HTML,
+				// same placement rationale as profileSwitch). Always rendered so the
+				// first non-default profile can be created.
+				@profileManager(view)
 				if view.Banner != "" {
 					@banner(view)
 				}
@@ -184,6 +190,62 @@ templ profileSwitch(view pageView) {
 		</span>
 		<span class="profilebar__meta">selected: <strong>{ view.SelectedProfile }</strong></span>
 	</div>
+}
+
+// profileCanDelete reports whether the delete control should render for a
+// profile entry. The default profile, the profile currently active per
+// GetCurrentName (current), and the profile the console is currently editing
+// (view.SelectedProfile) are never deletable — mirroring the server-side guard
+// in handleProfileDelete (REQ-WC11-033). The server enforces the block
+// regardless; hiding the control keeps the UI honest.
+func profileCanDelete(view pageView, name string, current bool) bool {
+	return name != "default" && !current && name != view.SelectedProfile
+}
+
+// profileDeleteAction is the delete form target.
+func profileDeleteAction() string { return "/profile/delete" }
+
+// profileCreateAction is the create form target.
+func profileCreateAction() string { return "/profile/create" }
+
+// profileManager renders the CRUD manager: a switch/delete list + a create form
+// (SPEC-WEB-CONSOLE-011 M4, REQ-WC11-032/033/034). hx-boost enhances the create/
+// delete POSTs into AJAX full-page swaps; with JS/htmx disabled they degrade to
+// plain full-page POST round-trips (the server returns the full page in both
+// cases, same contract as /save). Every static string carries a data-i18n key
+// (4-locale, REQ-WC11-061).
+templ profileManager(view pageView) {
+	<section class="profilemgr" id="profile-manager" hx-boost="true">
+		<div class="profilemgr__head">
+			<h2 class="profilemgr__title" data-i18n="profile.manage.title">Profiles</h2>
+			<p class="profilemgr__desc" data-i18n="profile.manage.desc">Create, switch, or delete your ~/.moai profiles.</p>
+		</div>
+		<ul class="profilemgr__list">
+			for _, p := range view.Profiles {
+				<li class="profilemgr__item">
+					if p.Name == view.SelectedProfile {
+						<span class="profilemgr__name profilemgr__name--active">{ p.Name }</span>
+					} else {
+						<a class="profilemgr__name" href={ templ.SafeURL("/?profile=" + p.Name) }>{ p.Name }</a>
+					}
+					if p.Current {
+						<span class="profilemgr__badge" data-i18n="profile.current">(current)</span>
+					}
+					if profileCanDelete(view, p.Name, p.Current) {
+						<form class="profilemgr__delete" method="POST" action={ templ.SafeURL(profileDeleteAction()) }>
+							<input type="hidden" name="profile_name" value={ p.Name }/>
+							<button class="btn btn--ghost btn--sm" type="submit" data-i18n="profile.delete.button">Delete</button>
+						</form>
+					}
+				</li>
+			}
+		</ul>
+		<form class="profilemgr__create" method="POST" action={ templ.SafeURL(profileCreateAction()) }>
+			<label class="profilemgr__create-label" for="profile_name_new" data-i18n="profile.create.label">New profile name</label>
+			<input class="input" type="text" id="profile_name_new" name="profile_name" placeholder="e.g. work" autocomplete="off"/>
+			<button class="btn btn--primary btn--sm" type="submit" data-i18n="profile.create.button">Create profile</button>
+		</form>
+	</section>
 }
 
 // banner ports the {{if .Banner}} server-rendered status block (page.html.tmpl ~96-103).
