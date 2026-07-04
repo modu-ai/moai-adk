@@ -123,30 +123,64 @@ Lifecycle tracking for the 3-phase plan → run → sync flow. §E carries the a
 
 **선재 실패 (무접촉 유지)**: `go test ./...` = 91 pkg ok, 유일 FAIL = `internal/cli TestRunHookEvent_ReadInputError` (base 선재, 병렬 세션 SPEC-CLI-SUBPKG-SPLIT-001 도메인 — finding #2 동일). internal/cli 무변경(`git status --porcelain internal/cli/` empty).
 
+### M5 — SPEC READ-ONLY Board (커밋 <M5-spec> + <M5-web>)
+
+> **범위**: 본 후속 위임은 **M5만** 커버한다. base = 3e6471f25 (M4 tip). cycle_type=tdd. L1 runtime worktree (`worktree-agent-acd2613c5f8ce51b9` 브랜치). M6은 후속 위임 소관.
+
+- **spec.ListDocs export (REQ-WC11-041)**: `internal/spec/listdocs.go` — `DocRecord{Path, Frontmatter, ParseError}` + `ListDocs(baseDir)` exported wrapper (unexported discoverSPECs/parseSPECDoc 경유). baseDir=프로젝트 루트(Audit 규약과 동일하게 `.moai/specs` 내부 append), 결측 dir→빈 slice 무오류, per-record ParseError 표면(malformed 1건이 전체 스캔 중단 방지), path 정렬 결정성. **TDD RED**(stub 부재 → `undefined: ListDocs` 컴파일 실패) → GREEN. 커버리지 93.3%.
+- **Tier frontmatter field (REQ-WC11-042)**: `SPECFrontmatter`에 `Tier string yaml:"tier,omitempty"` 추가 — optional(12 필수 무영향, TestFrontmatterSchemaRule GREEN 유지, Era/HarnessLevel 선례와 동일 패턴). 부재→빈 문자열(오류 아님).
+- **보드 핸들러 (REQ-WC11-040)**: `internal/web/board.go` — GET `/specs` `handleBoard`(app.go routes()에 라우트 추가, GET-only 405 gate). `buildBoardView` = `spec.ListDocs(ProjectRoot)` + `spec.Audit(BaseDir=ProjectRoot)` **순수 FS 스캔만**. status 분포(canonical 8-value enum 순서 + out-of-enum/`(unknown)` 버킷) + close-debt(status==implemented) + MUST-FIX(Severity==MUST-FIX) 뷰모델 조립. boardSpecID는 frontmatter id 부재 시 디렉터리명 폴백.
+- **Templ (`board.templ` → `board_templ.go`)**: standalone `boardPage` — 자체 `<html>` shell, 패키지 const `brandBadgeSVG`/`foucHeadScript` + `@icon` 재사용, `<form>`/write 컨트롤 0. status badge + close-debt 열(tier optional badge — 있으면 `board-tier`, 없으면 생략) + MUST-FIX badge + copyable remediation(`<code class="board-remedy">` + `data-copy` 버튼). `templ generate -path ./internal/web`(Makefile/CI 정본) → **기존 _templ.go 무변경(드리프트 0)**, board_templ.go만 신규(bare `board.templ` FileName 규약 일치).
+- **copyable remediation (REQ-WC11-043/044)**: `assets/app.js` document-레벨 위임 click 리스너를 IIFE 최상위에서 **1회만** 등록(initConsole 내부 아님 — htmx afterSettle 중복등록 회피) — `data-copy` 값 클립보드 복사(navigator.clipboard + textarea/execCommand 폴백, 복사 ✓ 플래시). **서버측 명령 실행 0**.
+- **제외 (REQ-WC11-045/046)**: `DetectDrift` 동기 호출 0(`grep -rn DetectDrift internal/web/` = 0 실측), status 쓰기 경로 0, 명령 실행 0. 가드: `TestBoard_NoWritePathSourceScan`(board.go 소스 스캔 — exec.Command/os-exec/UpdateStatus/WriteFile/PatchFile/git-drift 토큰 0) + `TestBoard_GETOnly`(POST/PUT/DELETE/PATCH → 405, loopback host로 hostCheck 통과 후 handleBoard 자체 405 격리).
+- **i18n ×4 (REQ-WC11-015/061)**: 신규 `board.*` 키 **13종**을 en/ko/ja/zh 4-locale 전부에 추가(수작업 번역, native UTF-8, blind sed 0). status/SPEC-ID/tier/finding-type/remediation 명령은 code-chip(비번역 계약 — i18n.js 헤더 정합) 유지. `node --check` + 4-locale parity 스크립트 PASS.
+
+**M5 AC 매트릭스 (전 [B] PASS, [N] 포함)**:
+
+| AC | Sev | 검증 | 결과 |
+|----|-----|------|------|
+| AC-WC11-040 | [B] | `go test -run TestBoard_Render ./internal/web/` (fixture 4-SPEC) | PASS — status 분포(implemented/completed) + close-debt(DEBT-001/DRIFT-002, DONE-003 제외) + MUST-FIX badge 렌더 |
+| AC-WC11-041 | [B] | `go doc ./internal/spec ListDocs` + `go test -run TestListDocs ./internal/spec/` | PASS — exported `func ListDocs(baseDir string) ([]DocRecord, error)` 문서화 + 4 unit test ok |
+| AC-WC11-042 | [N] | `go test -run 'TestBoard_TierBadge\|TestListDocs' ./...` | PASS — tier: L → `board-tier` badge 렌더; tier 부재 → badge 생략 + 200(오류 0) |
+| AC-WC11-043 | [B] | `go test -run TestBoard_RemediationCopyable ./internal/web/` | PASS — `moai spec close SPEC-BOARD-DRIFT-002 --backfill-only` 이 `<code class="board-remedy">` + `data-copy="..."` 버튼으로 렌더 |
+| AC-WC11-044 | [B] | `go test -run TestBoard_NoWritePathSourceScan ./internal/web/` (board.go 소스 스캔) | PASS — exec/os-exec/status-transition/write/patch 토큰 0 (board 핸들러 신규 exec 0) |
+| AC-WC11-045 | [B] | `grep -rn "DetectDrift" internal/web/` + `go test -run TestBoard_NoGitDriftPathInWebPackage` | PASS — 비-테스트 web 소스 0 매치 (동기 렌더는 pure-FS Audit만) |
+| AC-WC11-046 | [B] | `go test -run TestBoard_GETOnly ./internal/web/` | PASS — GET 200, POST/PUT/DELETE/PATCH 405 (쓰기 경로 부재) |
+| AC-WC11-060 | [B] | `grep -rn "csrf\|CSRF\|xsrf" internal/web/ \| grep -v _test.go \| grep -v REQ-WC-009 \| grep -vE ':[0-9]+:[[:space:]]*//'` | PASS — 비-주석 CSRF 매치 0 (app.go @MX:NOTE 보존, routes()에 라우트만 추가) |
+| AC-WC11-061 | [B] | `go test -run TestBoard_I18nParity ./internal/web/` | PASS — 렌더된 board.* 키 각각 i18n.js 4회(en/ko/ja/zh) 출현 |
+| AC-WC11-062 | [B] | `grep -rn 'AskUserQuestion\|mcp__askuser' internal/web/board.go internal/web/board.templ internal/spec/listdocs.go \| grep -v // ` | PASS — 0 매치 (subagent boundary) |
+
+**라이브 리포 성능 재확인(GWT-3 전제, spec.Audit 순수 FS)**: `Audit(BaseDir=repo root)` = 414 SPECs / 330 drift findings(0 MUST-FIX) / **112ms**; `ListDocs(repo root)` = 414 records / **37ms**. 합계 ~150ms — 동기 렌더 허용(git 호출 0, DetectDrift 7.9s 경로 미접촉). 라이브 catalog MUST-FIX 0.
+
+**PRESERVE 검증**: `git status --porcelain` = internal/spec/{lint.go, listdocs.go, listdocs_test.go} + internal/web/{app.go, board.go, board.templ, board_templ.go, board_test.go, assets/{i18n.js, app.js}} + progress.md 만. renderer.go/cache_hit_test.go(병렬 세션)/app.go:90-92 CSRF @MX:NOTE/agent 파일/병렬 세션 산출물 전부 무접촉. internal/cli 무변경.
+
+**선재 실패 (무접촉 유지)**: `go test ./...` = 유일 FAIL `internal/cli TestRunHookEvent_ReadInputError`(nil pointer panic, base 선재, 병렬 세션 SPEC-CLI-SUBPKG-SPLIT-001 도메인 — finding #2/M4 동일). `git status --porcelain internal/cli/` empty. 선재 gofmt 드리프트(lint.go EOF 후행 빈 줄 등)는 무접촉(내 Tier 편집 구간 gofmt clean).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_complete_at: 2026-07-04
-run_commit_sha: "af4bdf245 (M1) + 5d2d18f3b (M2a) + 002446611 (M2b — rebased SHA) + ab555742f/4f5b3fbbb (M3) + 133a3c9d5 (M4 RED) + b66580ffc (M4 GREEN) + d436aa80c (M4 CRUD) + <본 progress.md 동승 커밋>"
-run_status: in-progress — M1 + M2a + M2b + M3 + M4 완료; M5/M6 후속 위임 대기
-ac_pass_count: 34  # M1/M2a/M2b 15 + M3 13 + M4: 030a, 030b, 031, 032, 033, 034 (6 — 전 [B] PASS)
+run_complete_at: 2026-07-05
+run_commit_sha: "af4bdf245 (M1) + 5d2d18f3b (M2a) + 002446611 (M2b) + ab555742f/4f5b3fbbb (M3) + 133a3c9d5/b66580ffc/d436aa80c (M4) + <M5-spec 커밋>/<M5-web 커밋 — 커밋 후 §E6/E2 기준>"
+run_status: in-progress — M1 + M2a + M2b + M3 + M4 + M5 완료; M6 후속 위임 대기
+ac_pass_count: 40  # M1/M2a/M2b 15 + M3 13 + M4 6 + M5: 040, 041, 043, 044, 045, 046 (6 [B] PASS)
 ac_fail_count: 0
-ac_partial_notes: "AC-WC11-011은 '노출 ∪ 명시 제외 목록' 파티션 테스트(TestQualityKeyPartition)로 충족 — lsp_quality_gates/lsp_integration/principles/cycle_type_routing은 명시 제외(form UI 부적합 대형 정책 블록). AC-WC11-015는 신규 data-i18n 키 25종 ×4 locale로 충족 — M2b 필드 라벨은 key-chip 기술 식별자(비번역 계약)라 per-field 키 비대상. AC-WC11-005 allowlist 불변(신규 NewConfigManager/.Save( 0 — 신규 typed 경로는 internal/settings 소재)"
-preserve_list_post_run_count: 0   # PRESERVE 위반 0 — statusline/app.go@MX:NOTE/병렬 세션 산출물/agent 파일 전부 무접촉
+ac_partial_notes: "M5: AC-WC11-042는 [N] tier optional badge PASS(present/absent 양 케이스). AC-WC11-060/061/062는 M5 보드 스코프에서 재확인 PASS(CSRF 비-주석 0, board.* 키 4-locale parity, subagent boundary 0). 이전: AC-WC11-011 파티션 테스트(TestQualityKeyPartition) 충족; AC-WC11-005 allowlist 불변; AC-WC11-015 key-chip 비번역 계약."
+preserve_list_post_run_count: 0   # PRESERVE 위반 0 — statusline/app.go@MX:NOTE/병렬 세션 산출물/agent 파일/internal/cli 전부 무접촉
 l44_pre_commit_fetch: "n/a — L1 runtime worktree 격리 실행 (전용 브랜치, push 금지 지시); landing은 orchestrator gate 검증 후 수행"
 l44_post_push_fetch: "n/a — push 미수행 (지시 사항)"
-new_warnings_or_lints_introduced: 0   # golangci-lint baseline 0 → 이후에도 "0 issues."
+new_warnings_or_lints_introduced: 0   # golangci-lint run ./internal/web/... ./internal/spec/... → "0 issues."
 cross_platform_build:
   darwin_arm64: PASS (go build ./... → BUILD_OK)
-  windows_amd64: PASS (GOOS=windows GOARCH=amd64 go build ./... → WIN_BUILD_OK)
-  go_vet: PASS (VET_OK)
+  windows_amd64: PASS (GOOS=windows GOARCH=amd64 go build ./... → WIN_OK)
+  go_vet: PASS (go vet ./internal/web/ ./internal/spec/ → VET_OK)
 coverage:
-  internal_settings: "90.9% (M2b 확장 후 — 163필드 전수 round-trip 테스트 포함)"
+  internal_spec: "87.8% (M5 후 — listdocs.go ListDocs 93.3%)"
+  internal_settings: "90.9%"
   internal_settings_yamlpatch: "86.3%"
-  internal_web: "70.9% (M2b/M3 측정) → 71.1% (M4 후 재측정, go test -cover ./internal/web/); baseline 73.0% 대비 하락은 templ generate 산출 코드 분모 팽창 — M4 신규 함수는 createProfileDir/activeProfileName/renderProfileSuccess/renderProfileResult 100%, handleProfileDelete 88.2%, handleProfileCreate 85.7%, buildIndexView 93.8%"
-total_run_phase_files: 30   # M1(11) + M2a(12) + M2b: settings 4신규+2수정+testdata 3, web 2신규(go)+1신규(test)+3수정(go)+2 templ+2 _templ 재생성+3 테스트 수정+i18n.js
-m1_to_mN_commit_strategy: "마일스톤별 path-limited 커밋 (M1: af4bdf245 / M2a: 5d2d18f3b / M2b: 002446611 / M3: ab555742f+4f5b3fbbb / M4: 133a3c9d5 RED→b66580ffc GREEN→d436aa80c CRUD — RED→GREEN→UI 순서 준수), 전용 worktree 브랜치, push/landing은 orchestrator 소관"
-known_preexisting_failures: "internal/cli TestRunHookEvent_ReadInputError (base 선재, 병렬 세션 SPEC-CLI-SUBPKG-SPLIT-001 도메인, 무접촉); gofmt 드리프트 2파일 (base 선재, 무접촉)"
+  internal_web: "70.4% (M5 후 go test -cover ./internal/web/); 신규 board.go 88.9%(48/54 stmts — boardSpecID/orderedStatusCounts/boardCount 100%, buildBoardView 88.9%, handleBoard/renderBoard 잔여 gap=방어적 err 분기). 패키지 총계 <85%는 대형 UI 패키지 선재 baseline — M5 도입 아님, 신규 코드는 85%+"
+total_run_phase_files: 10   # M5: 신규 6(spec/listdocs.go, spec/listdocs_test.go, web/board.go, web/board.templ, web/board_templ.go, web/board_test.go) + 수정 4(spec/lint.go, web/app.go, web/assets/i18n.js, web/assets/app.js) + progress.md
+m1_to_mN_commit_strategy: "마일스톤별 path-limited 커밋; M5는 spec-export 커밋 → web-board+progress 커밋 2분할(데이터 소스 먼저), 전용 worktree 브랜치, push/landing은 orchestrator 소관"
+known_preexisting_failures: "internal/cli TestRunHookEvent_ReadInputError (base 선재, 병렬 세션 SPEC-CLI-SUBPKG-SPLIT-001 도메인, 무접촉); gofmt 드리프트(lint.go EOF 후행 빈 줄 등, base 선재, 무접촉 — 내 Tier 편집 구간은 gofmt clean)"
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal

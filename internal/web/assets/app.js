@@ -276,4 +276,61 @@
   // htmx boost 가 body 를 swap 한 직후 document 에서 발생한다. afterSettle 없으면
   // swap 이후 DOMContentLoaded 가 재발생하지 않아 초기화가 누락된다.
   document.addEventListener("htmx:afterSettle", initConsole);
+
+  // SPEC-WEB-CONSOLE-011 M5 — SPEC 보드의 remediation 명령 복사 버튼.
+  // document 레벨 위임 리스너를 IIFE 최상위에서 "한 번만" 등록한다(initConsole
+  // 내부가 아님 — htmx afterSettle 재호출 시 중복 등록을 피하기 위함). data-copy 를
+  // 가진 버튼 클릭 시 그 값을 클립보드에 복사한다. 서버로의 요청·명령 실행은 전혀
+  // 없다 — 순수 클라이언트 텍스트 복사다(REQ-WC11-043/044). 보드가 아닌 페이지에는
+  // data-copy 요소가 없으므로 이 리스너는 no-op 이다.
+  function copyToClipboard(text, btn) {
+    function flash() {
+      if (!btn) {
+        return;
+      }
+      var label = btn.querySelector("[data-i18n]") || btn;
+      var prev = label.textContent;
+      label.textContent = "✓";
+      setTimeout(function () {
+        label.textContent = prev;
+      }, 1200);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(flash, function () {
+        legacyCopy(text);
+        flash();
+      });
+    } else {
+      legacyCopy(text);
+      flash();
+    }
+  }
+  function legacyCopy(text) {
+    // navigator.clipboard 불가(비-보안 컨텍스트 등) 시 textarea + execCommand 폴백.
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "absolute";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    } catch (e) {
+      /* 복사 불가 — 사용자는 <code> 텍스트를 직접 선택해 복사할 수 있다 */
+    }
+  }
+  document.addEventListener("click", function (e) {
+    var btn = e.target && e.target.closest ? e.target.closest("[data-copy]") : null;
+    if (!btn) {
+      return;
+    }
+    var text = btn.getAttribute("data-copy");
+    if (!text) {
+      return;
+    }
+    e.preventDefault();
+    copyToClipboard(text, btn);
+  });
 })();

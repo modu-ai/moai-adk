@@ -1,0 +1,136 @@
+package web
+
+// SPEC-WEB-CONSOLE-011 M5 — READ-ONLY SPEC board Templ component.
+//
+// boardPage renders the standalone SPEC dashboard (GET /specs). It reuses the
+// package-level brandBadgeSVG / foucHeadScript constants and the @icon component
+// from the settings page, but is a SEPARATE page with its own <html> shell — it
+// carries NO <form>, NO write control, and NO status-transition affordance
+// (REQ-WC11-046). The remediation string for each MUST-FIX finding renders as a
+// selectable <code> plus a copy button whose data-copy attribute app.js reads;
+// nothing is ever executed server-side (REQ-WC11-044).
+
+templ boardPage(view boardView) {
+	<!DOCTYPE html>
+	<html lang="en" data-theme="light">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>MoAI Web Console — SPEC Board</title>
+			<link rel="stylesheet" href="/static/console.css"/>
+			@templ.Raw(foucHeadScript)
+		</head>
+		<body>
+			@boardAppbar(view)
+			<main class="page">
+				<div class="pagehead">
+					<h1>SPEC <span class="accent" data-i18n="board.title">Board</span></h1>
+					<p class="pagehead__sub" data-i18n="board.subtitle">Read-only SPEC lifecycle dashboard (loopback only — local machine)</p>
+				</div>
+				if view.Banner != "" {
+					@boardBanner(view)
+				}
+				<section class="board-summary" aria-labelledby="board-summary-h">
+					<h2 id="board-summary-h" data-i18n="board.summary.title">Status distribution</h2>
+					<p class="board-summary__total">
+						<span data-i18n="board.summary.total">Total SPECs</span>: <strong>{ boardCount(view.TotalSpecs) }</strong>
+					</p>
+					<div class="board-badges">
+						for _, sc := range view.StatusCounts {
+							<span class="board-badge">{ sc.Status } <strong>{ boardCount(sc.Count) }</strong></span>
+						}
+					</div>
+				</section>
+				<section class="board-section" aria-labelledby="board-debt-h">
+					<h2 id="board-debt-h" data-i18n="board.closedebt.title">Close debt (implemented, not completed)</h2>
+					<p class="board-section__desc" data-i18n="board.closedebt.desc">SPECs whose implementation landed but whose lifecycle has not been closed to completed.</p>
+					if len(view.CloseDebt) == 0 {
+						<p class="board-empty" data-i18n="board.closedebt.empty">No close-debt SPECs.</p>
+					} else {
+						<ul class="board-list">
+							for _, s := range view.CloseDebt {
+								<li class="board-item">
+									<code class="board-item__id">{ s.ID }</code>
+									if s.Tier != "" {
+										<span class="board-tier">{ s.Tier }</span>
+									}
+									if s.Title != "" {
+										<span class="board-item__title">{ s.Title }</span>
+									}
+									if s.Updated != "" {
+										<span class="board-item__meta">{ s.Updated }</span>
+									}
+								</li>
+							}
+						</ul>
+					}
+				</section>
+				<section class="board-section" aria-labelledby="board-mustfix-h">
+					<h2 id="board-mustfix-h" data-i18n="board.mustfix.title">Must-fix drift</h2>
+					<p class="board-section__desc" data-i18n="board.mustfix.desc">Sync-status drift findings that require a lifecycle close. Copy the remediation command and run it in your terminal.</p>
+					if len(view.MustFix) == 0 {
+						<p class="board-empty" data-i18n="board.mustfix.empty">No must-fix drift.</p>
+					} else {
+						<ul class="board-list">
+							for _, f := range view.MustFix {
+								<li class="board-finding">
+									<span class="board-badge board-badge--mustfix" data-i18n="board.badge.mustfix">MUST-FIX</span>
+									<code class="board-finding__id">{ f.SpecID }</code>
+									<span class="board-finding__type">{ f.FindingType }</span>
+									if f.Remediation != "" {
+										<code class="board-remedy">{ f.Remediation }</code>
+										<button class="board-copy" type="button" data-copy={ f.Remediation } aria-label="Copy remediation command">
+											<span data-i18n="board.copy">Copy</span>
+										</button>
+									}
+								</li>
+							}
+						</ul>
+					}
+				</section>
+			</main>
+			<script src="/static/i18n.js"></script>
+			<script src="/static/app.js"></script>
+		</body>
+	</html>
+}
+
+// boardAppbar ports the settings-page appbar chrome (brand + loopback indicator +
+// langpick + theme toggle), plus a link back to the settings page. It omits the
+// shutdown button and the settings form's controls — the board is read-only. The
+// langpick and theme toggle are wired by the same app.js initConsole path.
+templ boardAppbar(view boardView) {
+	<header class="appbar">
+		<span class="brand" aria-label="모두의AI — MoAI">
+			<span class="brand__badge">
+				@templ.Raw(brandBadgeSVG)
+			</span>
+			<span class="brand__name">모두의AI</span>
+		</span>
+		<span class="appbar__divider"></span>
+		<span class="loopback"><span class="loopback__dot"></span>{ view.BindAddr }</span>
+		<span class="appbar__spacer"></span>
+		<a class="board-nav" href="/" data-i18n="board.nav.settings">Settings</a>
+		<span class="select-wrap langpick-wrap">
+			<select class="select langpick" id="uiLangSelect" aria-label="Interface language" title="Interface language">
+				<option value="en">English</option>
+				<option value="ko">한국어</option>
+				<option value="ja">日本語</option>
+				<option value="zh">中文</option>
+			</select>
+		</span>
+		<button class="iconbtn" id="themeToggle" type="button" aria-label="Toggle light / dark theme" title="Toggle theme">
+			@icon("sun")
+			@icon("moon")
+		</button>
+	</header>
+}
+
+// boardBanner renders a read-only error banner (the board never emits a success
+// banner — there is nothing to save).
+templ boardBanner(view boardView) {
+	<div class="banner banner--error" role="status" aria-live="polite">
+		<span class="banner__icon">@icon("alert-circle")</span>
+		<div class="banner__body"><p class="banner__text">{ view.Banner }</p></div>
+	</div>
+}

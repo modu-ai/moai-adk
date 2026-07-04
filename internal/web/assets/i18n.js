@@ -145,7 +145,22 @@ window.MOAI_I18N = {
     "lang.aria": "Interface language",
     "theme.aria": "Toggle light / dark theme",
     "appbar.shutdown.confirm": "Shut down the server? The console will stop and this tab will go offline.",
-    "opt.unchanged": "(unchanged)"
+    "opt.unchanged": "(unchanged)",
+
+    // SPEC board (read-only dashboard) — GET /specs.
+    "board.title": "Board",
+    "board.subtitle": "Read-only SPEC lifecycle dashboard (loopback only — local machine)",
+    "board.summary.title": "Status distribution",
+    "board.summary.total": "Total SPECs",
+    "board.closedebt.title": "Close debt (implemented, not completed)",
+    "board.closedebt.desc": "SPECs whose implementation landed but whose lifecycle has not been closed to completed.",
+    "board.closedebt.empty": "No close-debt SPECs.",
+    "board.mustfix.title": "Must-fix drift",
+    "board.mustfix.desc": "Sync-status drift findings that require a lifecycle close. Copy the remediation command and run it in your terminal.",
+    "board.mustfix.empty": "No must-fix drift.",
+    "board.badge.mustfix": "MUST-FIX",
+    "board.copy": "Copy",
+    "board.nav.settings": "Settings"
   },
 
   ko: {
@@ -276,7 +291,22 @@ window.MOAI_I18N = {
     "lang.aria": "인터페이스 언어",
     "theme.aria": "라이트 / 다크 테마 전환",
     "appbar.shutdown.confirm": "서버를 종료하시겠습니까? 콘솔이 중지되며 이 탭은 오프라인됩니다.",
-    "opt.unchanged": "(변경 안 함)"
+    "opt.unchanged": "(변경 안 함)",
+
+    // SPEC board (read-only dashboard) — GET /specs.
+    "board.title": "보드",
+    "board.subtitle": "읽기 전용 SPEC 라이프사이클 대시보드 (로컬 머신 · 루프백 전용)",
+    "board.summary.title": "상태 분포",
+    "board.summary.total": "전체 SPEC",
+    "board.closedebt.title": "종료 부채 (구현 완료, 미완결)",
+    "board.closedebt.desc": "구현은 반영됐지만 라이프사이클이 completed로 종료되지 않은 SPEC.",
+    "board.closedebt.empty": "종료 부채 SPEC 없음.",
+    "board.mustfix.title": "필수 수정 드리프트",
+    "board.mustfix.desc": "라이프사이클 종료가 필요한 동기화 상태 드리프트. 조치 명령을 복사해 터미널에서 실행하세요.",
+    "board.mustfix.empty": "필수 수정 드리프트 없음.",
+    "board.badge.mustfix": "MUST-FIX",
+    "board.copy": "복사",
+    "board.nav.settings": "설정"
   },
 
   ja: {
@@ -407,7 +437,22 @@ window.MOAI_I18N = {
     "lang.aria": "インターフェース言語",
     "theme.aria": "ライト / ダークテーマ切替",
     "appbar.shutdown.confirm": "サーバーをシャットダウンしますか？コンソールが停止し、このタブはオフラインになります。",
-    "opt.unchanged": "(変更なし)"
+    "opt.unchanged": "(変更なし)",
+
+    // SPEC board (read-only dashboard) — GET /specs.
+    "board.title": "ボード",
+    "board.subtitle": "読み取り専用の SPEC ライフサイクルダッシュボード（ローカルマシン・ループバック専用）",
+    "board.summary.title": "ステータス分布",
+    "board.summary.total": "SPEC 合計",
+    "board.closedebt.title": "クローズ負債（実装済み・未完了）",
+    "board.closedebt.desc": "実装は反映されたが、ライフサイクルが completed に閉じられていない SPEC。",
+    "board.closedebt.empty": "クローズ負債の SPEC はありません。",
+    "board.mustfix.title": "要修正ドリフト",
+    "board.mustfix.desc": "ライフサイクルのクローズが必要な同期ステータスドリフト。修正コマンドをコピーしてターミナルで実行してください。",
+    "board.mustfix.empty": "要修正ドリフトはありません。",
+    "board.badge.mustfix": "MUST-FIX",
+    "board.copy": "コピー",
+    "board.nav.settings": "設定"
   },
 
   zh: {
@@ -538,6 +583,21 @@ window.MOAI_I18N = {
     "lang.aria": "界面语言",
     "theme.aria": "切换浅色 / 深色主题",
     "appbar.shutdown.confirm": "要关闭服务器吗？控制台将停止，此标签页将离线。",
-    "opt.unchanged": "(不变)"
+    "opt.unchanged": "(不变)",
+
+    // SPEC board (read-only dashboard) — GET /specs.
+    "board.title": "看板",
+    "board.subtitle": "只读的 SPEC 生命周期看板（本地机器 · 仅回环）",
+    "board.summary.title": "状态分布",
+    "board.summary.total": "SPEC 总数",
+    "board.closedebt.title": "收尾债务（已实现，未完成）",
+    "board.closedebt.desc": "实现已落地但生命周期尚未收尾为 completed 的 SPEC。",
+    "board.closedebt.empty": "没有收尾债务的 SPEC。",
+    "board.mustfix.title": "必修复漂移",
+    "board.mustfix.desc": "需要收尾生命周期的同步状态漂移。复制修复命令并在终端中运行。",
+    "board.mustfix.empty": "没有必修复漂移。",
+    "board.badge.mustfix": "MUST-FIX",
+    "board.copy": "复制",
+    "board.nav.settings": "设置"
   }
 };

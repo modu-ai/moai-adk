@@ -110,6 +110,11 @@ func (a *app) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", a.handleIndex)
 	mux.HandleFunc("/save", a.handleSave)
+	// SPEC-WEB-CONSOLE-011 M5: /specs 는 READ-ONLY SPEC 보드다. handleBoard 가
+	// GET 이외 메서드를 405 로 거부하며 쓰기 경로·명령 실행·status 전이가 전혀 없다
+	// (REQ-WC11-044/045/046). hostCheckMiddleware 는 GET 을 게이트하지 않으므로
+	// 보드 읽기는 다른 읽기 라우트와 동일하게 통과한다.
+	mux.HandleFunc("/specs", a.handleBoard)
 	// SPEC-WEB-CONSOLE-011 M4: profile CRUD (create / delete) — POST-only,
 	// loopback-gated by hostCheckMiddleware. Switch reuses the existing
 	// GET /?profile=<name> load path (no dedicated route needed).
