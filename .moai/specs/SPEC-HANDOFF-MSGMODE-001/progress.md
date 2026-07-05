@@ -89,7 +89,7 @@ m1_to_mN_commit_strategy: "single consolidated run commit (plan-phase commit def
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-07-05
-sync_commit_sha: ""
+sync_commit_sha: 157925058
 tier: S
 scope: doctrine-only        # Go/config/state 변경 0
 frontmatter_status_transitions:
