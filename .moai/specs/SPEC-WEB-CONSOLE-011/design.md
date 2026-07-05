@@ -1,8 +1,8 @@
 ---
 id: SPEC-WEB-CONSOLE-011
-status: draft
+status: completed
 created: 2026-07-03
-updated: 2026-07-03
+updated: 2026-07-05
 ---
 
 # Design — SPEC-WEB-CONSOLE-011 (v0.2.1)

@@ -230,4 +230,16 @@ known_preexisting_failures: "internal/cli TestRunHookEvent_ReadInputError (base 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-05
+sync_commit_sha: PENDING   # backfill by orchestrator post-commit
+sync_status: completed — CHANGELOG + spec/plan/acceptance/design/research frontmatter 3-phase close (status: in-progress → completed, updated: 2026-07-05, era: V3R6 preserved)
+documentation_updates: CHANGELOG.md entry 새 SPEC-WEB-CONSOLE-011 추가; README/docs-site 사용자 대면 변경 미해당 (internal/web 콘솔은 moai 개발자 도구, 배포된 사용자 README/docs-site는 무변경)
+changelog_entry_position: [Unreleased] → Added section, 첫 항목(SPEC-HARNESS-EVO 앞)
+b12_self_test_a: "Pre-emission grep SPEC-WEB-CONSOLE-011 CHANGELOG.md (git -C $WT show HEAD:CHANGELOG.md | grep -c SPEC-WEB-CONSOLE-011) → count 1 확인 후 diff 실측 = 신규 행 1개(SPEC-WEB-CONSOLE-011 entry)"
+b12_self_test_b: "AC count (orchestrator LIVE 재도출): acceptance.md AC 매트릭스 행 grep '^\|.*AC-WC11-[0-9]+.*\|' = 52 rows, 고유 AC-WC11 토큰 = 51 (비연속 인덱싱 일부 merged/split). CHANGELOG 서술 = '총 52 AC'로 정정 — 직전 '55+' 주장은 자체 산술 결과 50과도 불일치한 미관측 과장이라 실측 52로 교체(verification-claim-integrity §2 baseline 귀속)"
+b12_self_test_c: "File path verification: CHANGELOG.md 실존 → git -C $WT ls-files CHANGELOG.md → 1 match; .moai/specs/SPEC-WEB-CONSOLE-011/{spec,plan,acceptance,design,research,progress}.md 전부 실존 검증 6파일"
+frontmatter_status_transitions: "spec.md(in-progress→completed) + plan.md(in-progress→completed) + acceptance.md(in-progress→completed) + design.md(draft→completed) + research.md(draft→completed) 총 5파일 상태 전이"
+updated_field_refresh: "모든 5파일 frontmatter updated: 2026-07-05로 동시 갱신(sync-phase 당일 timestamp)"
+canary_compliance_check: "MX tag boundary 준수(spec/plan/acceptance body 편집 0, frontmatter-only), README.ko.md 병렬 세션 변경(main checkout staged) 격리됨 — worktree 사본은 origin/main pristine, 사용자 대면 docs sync 0"
+```
