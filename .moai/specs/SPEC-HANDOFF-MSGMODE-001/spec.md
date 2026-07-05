@@ -2,7 +2,7 @@
 id: SPEC-HANDOFF-MSGMODE-001
 title: "핸드오프 메시지 오케스트레이션-모드 내장 (message-v2)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-04
 updated: 2026-07-05
 author: MoAI

@@ -5,8 +5,8 @@ Epic "Handoff-v2" M2/4. Tier S · doctrine-only. 선행 M1 = SPEC-HANDOFF-CTXGUI
 | Phase | Status | Signal |
 |-------|--------|--------|
 | plan  | completed | spec.md + plan.md + progress.md authoring (plan-auditor PASS 0.86) |
-| run   | in-progress | doctrine 4-surface 편집 완료 (SSOT→render→mirror×2); AC-001..016 전부 PASS; frontmatter draft→in-progress |
-| sync  | pending | frontmatter → implemented/completed + CHANGELOG + 3-phase close |
+| run   | completed | doctrine 4-surface 편집 완료 (SSOT→render→mirror×2); AC-001..016 전부 PASS; frontmatter in-progress→completed |
+| sync  | completed | spec/plan/progress frontmatter transitions + CHANGELOG [Unreleased] entry + 3-phase close |
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -86,6 +86,32 @@ m1_to_mN_commit_strategy: "single consolidated run commit (plan-phase commit def
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending — sync-phase 미착수._
-
-(sync 완료 시: `sync_commit_sha:` 기록, frontmatter `status: draft → in-progress → implemented → completed` 전이, CHANGELOG [Unreleased] 항목, 3-phase close.)
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-07-05
+sync_commit_sha: ""
+tier: S
+scope: doctrine-only        # Go/config/state 변경 0
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed"
+  plan.md: "in-progress → completed"
+changelog_entry_position: "[Unreleased] → Changed section"
+artifacts_updated:
+  - spec.md                 # status: in-progress → completed; updated: 2026-07-05
+  - plan.md                 # status: in-progress → completed; updated: 2026-07-05
+  - progress.md             # §E.4 this signal populated
+  - CHANGELOG.md            # [Unreleased]/Changed 항목 추가
+b12_self_test:
+  pre_append_grep_count: 0  # dedup gate PASS (no prior entry)
+  ac_count_match: 16        # acceptance.md / spec.md §3 AC-MSGMODE-001..016 인라인
+  file_path_verification:
+    - "ls .moai/specs/SPEC-HANDOFF-MSGMODE-001/spec.md ✓"
+    - "ls .moai/specs/SPEC-HANDOFF-MSGMODE-001/plan.md ✓"
+    - "ls .moai/specs/SPEC-HANDOFF-MSGMODE-001/progress.md ✓"
+    - "ls CHANGELOG.md ✓"
+sync_auditor_gate_4d:
+  functionality: PASS      # Tier S doctrine-only, 4-surface docstring sync completes without content drift
+  security: PASS           # No secrets, no auth changes (doctrine-only)
+  craft: PASS              # GEARS lint, neutrality grep 0, parity SH==SH-mir, M8==M8-mir
+  consistency: PASS        # frontmatter epoch aligned 2026-07-05, AC-count matched, CHANGELOG format compliant
+```
