@@ -2,7 +2,7 @@
 id: SPEC-WEB-CONSOLE-CONFIG-DIET-001
 title: "Web Console Config 과다 노출 정리 — Dead-Config 다이어트"
 version: "0.1.0"
-status: draft
+status: cancelled
 created: 2026-07-05
 updated: 2026-07-05
 author: manager-spec
@@ -18,6 +18,13 @@ related_specs: [SPEC-WEB-CONSOLE-011, SPEC-WEB-CONSOLE-010]
 
 ## HISTORY
 
+- 2026-07-05: **CANCELLED (superseded by parallel WEB-CONSOLE-011 revert)**. plan-audit
+  PASS-WITH-DEBT 0.81 통과 + 구현 착수 승인까지 받았으나, run-phase spawn 직전 pre-spawn 검증에서
+  병렬 세션이 WEB-CONSOLE-011 M2~M6(seam 섹션 확장 + agent settings + profile CRUD + SPEC 보드)를
+  **통째로 revert** 중임을 발견(`internal/settings/schema_sections.go` -437 등 2125줄 삭제, 콘솔을
+  pre-011 최소 6섹션/34필드로 복귀). 전체 되돌림이 과다 노출을 근원 제거하므로 surgical diet는 무의미.
+  사용자 결정(2026-07-05): 병렬 revert 존중, 본 SPEC 폐기. 5-에이전트 감사 findings(research.md)는
+  revert 결정의 근거 기록으로 **보존**한다 — 어떤 필드가 왜 dead였는지의 institutional memory.
 - 2026-07-05: draft 최초 작성 (manager-spec). SPEC-WEB-CONSOLE-011 M2 재설계(약 163 필드로 확장)의
   후속. 5-에이전트 감사가 발견한 dead-config 과다 노출을 정리하는 "다이어트" SPEC.
   감사 findings는 clean worktree(`preview-wc011`, origin/main `97723664c`)에서 grep 재검증됨
