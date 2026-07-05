@@ -77,4 +77,13 @@ make_build: PASS — embedded FS regenerated (REQ-PC-016); catalog.yaml unchange
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+sync_complete_at: 2026-07-05
+sync_commit_sha: "<backfill>"
+sync_status: PASS
+sync_actor: orchestrator-direct (manager-docs validation-only 실패 — 계획만 반환, 실제 Edit/commit 미수행 → orchestrator 직접 수행; feedback_manager_docs_grep_clean_fabrication)
+changelog_entry: CHANGELOG.md [Unreleased] → Added (grep -c 'SPEC-PRECOMMIT-001' pre-emit → 0, 중복 없음)
+readme_decision: skip — README.md/README.ko.md에 pre-push 전용 설치-훅 섹션 부재, Tier S 신규 섹션 발명 금지 (일반 hook-event 설명만 존재)
+ac_count_ssot: 15 (acceptance.md AC-PC-001..015)
+frontmatter_transition: in-progress → completed (3-phase close, 단일 sync commit)
+push_state: NOT pushed — origin/main +8 divergence, 로컬 미커밋 대량 (병렬 세션), rebase/push는 사용자 조율 별도
+close_type: 3-phase close (plan → run → sync); MX Tag은 sync 교차 관심사

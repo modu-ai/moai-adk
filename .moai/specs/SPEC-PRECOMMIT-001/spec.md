@@ -2,7 +2,7 @@
 id: SPEC-PRECOMMIT-001
 title: "Deployment-layer fast-subset pre-commit git hook installer"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-05
 updated: 2026-07-05
 author: GOOS행님
