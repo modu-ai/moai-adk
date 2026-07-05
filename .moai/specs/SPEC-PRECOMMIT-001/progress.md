@@ -58,7 +58,7 @@ With both excluded, `go test ./internal/cli/ -skip 'TestRunHookEvent_ReadInputEr
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-07-05
-run_commit_sha: "c72da7395"
+run_commit_sha: "2ebff1355"
 run_status: PASS
 ac_pass_count: 15
 ac_fail_count: 0
