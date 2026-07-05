@@ -232,7 +232,7 @@ known_preexisting_failures: "internal/cli TestRunHookEvent_ReadInputError (base 
 
 ```yaml
 sync_complete_at: 2026-07-05
-sync_commit_sha: PENDING   # backfill by orchestrator post-commit
+sync_commit_sha: 0c79680f7   # commit A (docs sync-phase 3-phase close) — sync-close 커밋 self-reference via backfill 커밋 B
 sync_status: completed — CHANGELOG + spec/plan/acceptance/design/research frontmatter 3-phase close (status: in-progress → completed, updated: 2026-07-05, era: V3R6 preserved)
 documentation_updates: CHANGELOG.md entry 새 SPEC-WEB-CONSOLE-011 추가; README/docs-site 사용자 대면 변경 미해당 (internal/web 콘솔은 moai 개발자 도구, 배포된 사용자 README/docs-site는 무변경)
 changelog_entry_position: [Unreleased] → Added section, 첫 항목(SPEC-HARNESS-EVO 앞)
