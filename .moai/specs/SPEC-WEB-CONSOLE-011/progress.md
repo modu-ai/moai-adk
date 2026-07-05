@@ -183,6 +183,23 @@ Lifecycle tracking for the 3-phase plan → run → sync flow. §E carries the a
 
 **선재 실패 (무접촉 유지)**: `go test ./...` = 유일 FAIL 패키지 `internal/cli`. git stash로 clean HEAD 대비 검증한 결과 (a) `coverage_test.go` `TestRunHookEvent_ReadInputError`/`TestRunAgentHook_ReadInputError` nil-pointer panic (병렬 세션 SPEC-CLI-SUBPKG-SPLIT-001), (b) `schema_bridge_test.go` `TestBridgeFieldDefResolver`/`TestI18nKeySetParity`/`TestTUIRendersSchemaFieldSet` — M3 `workflow.workflow_agents.*` TUI-bridge 미배선 — **전부 base 선재**(clean HEAD에서 동일 FAIL, 해당 파일 무접촉). 내 M6 편집분은 신규 FAIL 0 (수정 대상 테스트 TestSectionFieldsOrder/TestStatuslineAllSegments_CardinalityAndOrder/TestSchemaSixSections 등 count assertion 전부 갱신 후 PASS).
 
+### M2b-regression 후속 정정 — TUI 브리지 테스트 범위 조정 (REQ-WC11-015/061 대칭성 완결)
+
+> **범위**: base = 22220186c (M6 tip). cycle_type=tdd. 위 M6 "선재 실패 (b)"로 기록된 3개 `internal/cli/schema_bridge_test.go` 테스트를 정식 해소한다. M2b(002446611)가 WEB측 i18n parity 테스트(`internal/web/schema_label_test.go` `TestI18nKeySetParity`)에는 PersistSeam/PersistTypedSection 제외 스코프를 적용했으나, 대칭인 TUI측 3개 브리지 테스트에는 누락하여 회귀가 남아 있었다 — 본 정정으로 교차표면 대칭성을 완결한다.
+
+- **근본 원인 검증(verify, don't assume)**: TUI 위저드(`profile_setup.go`)가 `settings.AllFields()`를 제네릭 순회하지 않고 수제 위젯 셋(기존 34필드 + statusline 세그먼트)만 바인딩함을 실측 확인 — `PersistSeam`/`PersistTypedSection` 섹션명 참조 0건, 인라인 `huh.New*` 92건. 따라서 M2b/M3 확장 필드(웹 콘솔 전용 key-chip, TUI 위저드 부재)는 TUI 브리지 항목이 설계상 부재이며, 3개 테스트의 `settings.AllFields()` 전수 순회가 이들을 잘못 요구하고 있었다.
+- **정정(테스트 범위 조정, 동작 변경 아님)**: `schema_bridge_test.go`에 `isWebOnlyKeyChipField(f) = f.Persist.Kind==PersistSeam || PersistTypedSection` 술어를 추가하고 3개 테스트 루프(`TestI18nKeySetParity`/`TestBridgeFieldDefResolver`/`TestTUIRendersSchemaFieldSet`)에서 skip — WEB측(`schema_label_test.go`) 스코핑의 대칭 미러. persist-kind 기준 제외(blanket skip 아님)라 TUI-렌더 셋 신규 추가(profile-store/project-config, M6 cache_hit 세그먼트 포함)는 여전히 검증됨(가드 주석 명시).
+- **RED→GREEN 증거**: 정정 前 3개 전부 FAIL(누락 키 verbatim: `f.quality.coverage_threshold` 등 M2b/M3 seam/typed 필드) → 정정 後 3개 전부 PASS. 파티션 실측(ephemeral test): `AllFields()=240` = asserted(TUI-렌더) 35(profile-store 26 + project-config 9, `seg.cache_hit` 포함) + excluded(web-only key-chip) 205, 교차오염 0.
+- **AC 매트릭스 (전 PASS)**:
+
+| AC | 검증 | 결과 |
+|----|------|------|
+| REQ-WC11-015/061 대칭 | `go test -run 'TestI18nKeySetParity\|TestBridgeFieldDefResolver\|TestTUIRendersSchemaFieldSet' ./internal/cli/` | PASS — before=3 FAIL / after=3 PASS (verbatim) |
+| 34+세그먼트 셋 보존 | ephemeral 파티션 test — asserted=35(profile-store 26 + project-config 9) + `seg.cache_hit` asserted=true | PASS — 제외군은 Seam/Typed만(205), asserted에 Seam/Typed 0 |
+| 잔여 FAIL 격리 | `go test ./internal/cli/` = coverage_test.go의 2개 nil-pointer panic만(병렬 SPEC-CLI-SUBPKG-SPLIT-001) | PASS — skip 3개 검증 시 패키지 `ok` |
+
+- **PRESERVE 검증**: `git diff --name-only` = `internal/cli/schema_bridge_test.go` + `progress.md` 2파일만. renderer.go/cache_hit_test.go(병렬 세션)·coverage_test.go(무관 nil-pointer)·spec/plan/acceptance body·프로덕션 코드 무접촉. 빌드 darwin/windows/linux 전부 exit 0, `go vet` OK, `golangci-lint run ./internal/cli/` = 0 issues.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

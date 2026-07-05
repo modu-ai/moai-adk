@@ -11,6 +11,27 @@ import (
 // fourLocales는 i18n parity 검증 대상 4개 로케일이다.
 var fourLocales = []string{"en", "ko", "ja", "zh"}
 
+// isWebOnlyKeyChipField reports whether a schema field is a WEB-console-only key-chip
+// field introduced by SPEC-WEB-CONSOLE-011 M2b/M3. Such fields carry the PersistSeam or
+// PersistTypedSection persist kind and render as technical key-chips in the moai web
+// console ONLY; they are intentionally NOT surfaced in the TUI `moai profile setup`
+// wizard (profile_setup.go binds a curated widget set — the original 34 fields plus the
+// statusline segments — NOT settings.AllFields() generically). Because these fields are
+// absent from the TUI wizard, they have no TUI bridge entry by design.
+//
+// The 3 bridge-parity tests below scope settings.AllFields() to the TUI-rendered set by
+// skipping this predicate. This mirrors the symmetric web-side scoping in
+// internal/web/schema_label_test.go (TestI18nKeySetParity): M2b/M3 updated the web half
+// but the symmetric TUI half was missed, which this predicate corrects.
+//
+// The exclusion is by persist-kind, NOT a blanket skip: any field added to the
+// TUI-rendered set (PersistProfileStore / PersistProjectConfig — e.g. the M6 cache_hit
+// statusline segment) is still asserted, so a missing bridge entry for a genuinely
+// TUI-rendered field is still caught.
+func isWebOnlyKeyChipField(f settings.FieldDef) bool {
+	return f.Persist.Kind == settings.PersistSeam || f.Persist.Kind == settings.PersistTypedSection
+}
+
 // TestI18nKeySetParity covers AC-WC10-016: every schema i18n key resolves through
 // the TUI bridge resolver into a NON-EMPTY value for all 4 locales. (The web side
 // of this AC — matching f./seg. dotted keys in i18n.js — is asserted in
@@ -18,6 +39,9 @@ var fourLocales = []string{"en", "ko", "ja", "zh"}
 // expecting an f.* literal in the struct file, per design §F.2.)
 func TestI18nKeySetParity(t *testing.T) {
 	for _, f := range settings.AllFields() {
+		if isWebOnlyKeyChipField(f) {
+			continue // WEB-console-only key-chip field — no TUI bridge entry by design (see helper)
+		}
 		for _, locale := range fourLocales {
 			label, ok := schemaKeyToTUIField(f.I18nKey, locale)
 			if !ok {
@@ -58,6 +82,9 @@ func TestI18nSegmentParity(t *testing.T) {
 // schema FieldDef resolves through it.
 func TestBridgeFieldDefResolver(t *testing.T) {
 	for _, f := range settings.AllFields() {
+		if isWebOnlyKeyChipField(f) {
+			continue // WEB-console-only key-chip field — no TUI bridge entry by design (see helper)
+		}
 		if _, ok := fieldDefTUILabel(f, "en"); !ok {
 			t.Errorf("fieldDefTUILabel could not resolve field %q (key %q)", f.Name, f.I18nKey)
 		}
@@ -76,6 +103,9 @@ func TestBridgeFieldDefResolver(t *testing.T) {
 func TestTUIRendersSchemaFieldSet(t *testing.T) {
 	// (a) Every schema field name resolves through the bridge.
 	for _, f := range settings.AllFields() {
+		if isWebOnlyKeyChipField(f) {
+			continue // WEB-console-only key-chip field — no TUI bridge entry by design (see helper)
+		}
 		if _, ok := schemaKeyToTUIField(f.I18nKey, "en"); !ok {
 			t.Errorf("schema field %q has no TUI bridge label path (AC-WC10-010)", f.Name)
 		}
