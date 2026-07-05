@@ -78,7 +78,7 @@ make_build: PASS — embedded FS regenerated (REQ-PC-016); catalog.yaml unchange
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-07-05
-sync_commit_sha: "<backfill>"
+sync_commit_sha: "ea2641189"
 sync_status: PASS
 sync_actor: orchestrator-direct (manager-docs validation-only 실패 — 계획만 반환, 실제 Edit/commit 미수행 → orchestrator 직접 수행; feedback_manager_docs_grep_clean_fabrication)
 changelog_entry: CHANGELOG.md [Unreleased] → Added (grep -c 'SPEC-PRECOMMIT-001' pre-emit → 0, 중복 없음)
