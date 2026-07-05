@@ -472,5 +472,8 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// Install pre-push hook (REQ-CIAUT-002). Non-fatal; --no-hooks opts out.
 	installPrePushHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.OutOrStdout())
 
+	// Install pre-commit hook (REQ-PC-001). Fast-subset commit tier; --no-hooks opts out.
+	installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.OutOrStdout())
+
 	return nil
 }

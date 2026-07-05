@@ -171,8 +171,19 @@ func installPrePushHookOptional(projectRoot string, skip bool, out io.Writer) {
 }
 
 // fileHasMoaiMarker reads the first 3 lines of the given file and returns true
-// if any of them contain the MoAI-ADK marker string.
+// if any of them contain the pre-push MoAI-ADK marker string.
+//
+// It is a thin wrapper over fileHasMarker preserving the pre-push installer's
+// behaviour byte-for-byte; callers checking a different marker use fileHasMarker.
 func fileHasMoaiMarker(path string) (bool, error) {
+	return fileHasMarker(path, moaiPrePushMarker)
+}
+
+// fileHasMarker reads the first 3 lines of the given file and returns true if
+// any of them contain the supplied marker string. Shared by the pre-push and
+// pre-commit installers so each hook keeps its own marker while reusing the
+// first-3-lines detection logic.
+func fileHasMarker(path, marker string) (bool, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return false, err
@@ -182,7 +193,7 @@ func fileHasMoaiMarker(path string) (bool, error) {
 	scanner := bufio.NewScanner(f)
 	lineCount := 0
 	for scanner.Scan() && lineCount < 3 {
-		if strings.Contains(scanner.Text(), moaiPrePushMarker) {
+		if strings.Contains(scanner.Text(), marker) {
 			return true, nil
 		}
 		lineCount++
