@@ -84,4 +84,13 @@ pre_existing_baseline_failure: "internal/cli TestRunHookEvent_ReadInputError (co
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs 소관>_
+- 작성일: 2026-07-06 (orchestrator-direct sync — manager-docs가 CHANGELOG 7720줄 read로 autocompact thrashing 실패하여 전환; `feedback_glm_orchestrator_direct_sync_mx` fallback 패턴)
+- Run-phase landing: origin/main `2b0efe516` (6 atomic GREEN 커밋 M1 `30840b276` / M2 `b165fa0ff` / M3 `a2d65265d` / cover `6e0332236` / lint `382b72ae9` / docs `2b0efe516`, L1 격리 worktree → FF push, 병렬 세션 로컬 main 86건 무접촉)
+- 독립 재검증 (orchestrator, 8/8 PASS): `go test ./internal/config/... ./internal/hook/...` ok / `go test -race ./internal/hook/...` clean(AC-013) / AC-016 경계 grep 0 matches / `go build ./...` + `GOOS=windows` exit 0 / `golangci-lint` 0 issues / `go vet` exit 0 / `moai spec lint` spec+plan No findings / coverage handoff 86.6% (≥85%)
+- plan-auditor iter-3 PASS-WITH-DEBT 0.90 (Tier L 임계 0.85; 0.85→0.89→0.90 단조 증가); D1 MINOR(AC-008 GIVEN live-scope 한정어 누락, REQ-level 모순 없음) → run-phase test-authoring guidance로 carry(AC-008 fixture는 LIVE non-stale pending 사용, §E.2 AC-008 row 확인)
+- 19/19 AC PASS (AC-AUTORESUME-001..019, REQ 1:1)
+- 경로 격리 확인: `session-handoff/pending.md` 무접촉, settings.json 무변경 (matcher 이미 `startup|resume|clear|compact`, assertion only)
+- frontmatter: spec.md status in-progress → completed + updated 2026-07-06 (era V3R6, H-4 predicate)
+- CHANGELOG: [Unreleased] `### Added` 엔트리 추가 (dup grep = 1)
+- pre-existing baseline: `internal/cli` `TestRunHookEvent_ReadInputError` nil-deref panic — base `9fbc7a2be`(handoff refs 0)에서도 동일 재현, SPEC scope 밖 (manager-develop 결백)
+- sync_commit_sha: _<백필 대기 — sync 커밋 SHA로 후속 커밋에서 채움>_

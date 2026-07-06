@@ -2,7 +2,7 @@
 id: SPEC-HANDOFF-AUTORESUME-001
 title: "핸드오프 auto-resume — handoff.yaml landing + save CLI + SessionStart 주입/소비"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-05
 updated: 2026-07-06
 author: MoAI
