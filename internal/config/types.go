@@ -30,6 +30,7 @@ type Config struct {
 	Sunset        SunsetConfig               `yaml:"sunset"`
 	Research      ResearchConfig             `yaml:"research"`
 	Feedback      FeedbackConfig             `yaml:"feedback"` // SPEC-INVOCATION-MODEL-001: /moai feedback target repo
+	Handoff       HandoffConfig              `yaml:"handoff"`  // SPEC-HANDOFF-AUTORESUME-001: auto-resume 핸드오프 설정
 	Session       SessionConfig              `yaml:"session"`  // SPEC-V3R2-RT-004 REQ-022: STALE_SECONDS
 	// MIG-003: 4 new sections loaded by Loader.Load() (REQ-MIG003-001)
 	Constitution  ConstitutionConfig `yaml:"constitution"`
@@ -589,6 +590,19 @@ type SunsetCondition struct {
 	Description string `yaml:"description"`
 }
 
+// HandoffConfig represents the auto-resume 핸드오프 설정 section (handoff.yaml).
+//
+// Mode gates whether the SessionStart handoffInjectHandler auto-injects a saved
+// handoff on /clear ("auto") or stays a pure no-op ("manual", the default —
+// auto-resume is opt-in, preserving the unchanged baseline UX). Guide gates
+// whether the notice-only cells (non-clear source) emit a best-effort stderr
+// hint. No Consume field: the sole consume source `clear` is a fixed semantic
+// boundary, not a configurable value (design.md §E.1 YAGNI rationale).
+type HandoffConfig struct {
+	Mode  string `yaml:"mode"`  // "manual"(default) | "auto"
+	Guide bool   `yaml:"guide"` // true → notice-only 셀에서 stderr 힌트 방출
+}
+
 // ResearchConfig represents the Self-Research System configuration section.
 type ResearchConfig struct {
 	Enabled   bool                    `yaml:"enabled"`
@@ -1132,6 +1146,11 @@ type FeedbackConfig struct {
 // feedbackFileWrapper handles the feedback.yaml section file.
 type feedbackFileWrapper struct {
 	Feedback FeedbackConfig `yaml:"feedback"`
+}
+
+// handoffFileWrapper handles the handoff.yaml section file.
+type handoffFileWrapper struct {
+	Handoff HandoffConfig `yaml:"handoff"`
 }
 
 // ralphFileWrapper handles the ralph.yaml section file.

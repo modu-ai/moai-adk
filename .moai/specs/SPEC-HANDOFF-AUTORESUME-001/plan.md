@@ -2,9 +2,9 @@
 id: SPEC-HANDOFF-AUTORESUME-001
 title: "핸드오프 auto-resume — 구현 계획 (Tier L)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-05
-updated: 2026-07-05
+updated: 2026-07-06
 author: MoAI
 priority: P2
 phase: "v3.0.0"

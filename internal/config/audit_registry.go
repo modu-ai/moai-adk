@@ -37,6 +37,7 @@ var yamlToStructRegistry = map[string]string{
 	"gate":           "GateConfig",
 	"sunset":         "SunsetConfig",
 	"research":       "ResearchConfig",
+	"handoff":        "HandoffConfig", // SPEC-HANDOFF-AUTORESUME-001: auto-resume config
 	// Additional sections with partial/specialized loaders:
 	"lsp":      "LSPQualityGates",
 	"mx":       "MXConfig",

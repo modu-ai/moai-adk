@@ -1,0 +1,14 @@
+handoff:
+    # Auto-resume handoff behavior for session boundaries.
+    #
+    # mode: how a saved handoff is treated at the next SessionStart.
+    #   manual (default) — pure no-op; a saved handoff is never auto-injected.
+    #                      The unchanged baseline UX; auto-resume is opt-in.
+    #   auto            — on /clear, the saved handoff is injected as session
+    #                      context, then cleared (moved to an audit-trail copy).
+    mode: manual
+
+    # guide: when true, emit a best-effort stderr hint on non-/clear session
+    #        starts (startup / resume / compact) that a saved handoff is waiting.
+    #        Purely informational; never blocks the session.
+    guide: false

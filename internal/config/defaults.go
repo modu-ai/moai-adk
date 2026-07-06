@@ -1,6 +1,8 @@
 package config
 
 import (
+	"time"
+
 	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
@@ -95,7 +97,20 @@ const (
 	// MoAI-ADK tool repository (bug reports about the tool itself), NOT the user's
 	// own repo; fork maintainers override via .moai/config/sections/feedback.yaml.
 	DefaultFeedbackRepository = "modu-ai/moai-adk"
+
+	// DefaultHandoffMode is the compiled default for HandoffConfig.Mode.
+	// SPEC-HANDOFF-AUTORESUME-001: auto-resume is opt-in — the default is
+	// "manual" (pure no-op), preserving the unchanged baseline UX.
+	DefaultHandoffMode = "manual"
 )
+
+// DefaultHandoffStaleTTL is the age past which a handoff/pending.json is
+// considered stale and silently removed by the SessionStart handler — auto-mode
+// ONLY (SPEC-HANDOFF-AUTORESUME-001 REQ-019). Manual mode never removes a stale
+// pending record (REQ-009 pure no-op). Single source of truth consumed by the
+// M3 handoffInjectHandler; not a compile-time const because time.Duration
+// multiplication is not a constant expression.
+var DefaultHandoffStaleTTL = 7 * 24 * time.Hour
 
 // NewDefaultConfig returns a Config with all fields set to compiled defaults.
 func NewDefaultConfig() *Config {
@@ -116,6 +131,7 @@ func NewDefaultConfig() *Config {
 		Sunset:        NewDefaultSunsetConfig(),
 		Research:      NewDefaultResearchConfig(),
 		Feedback:      NewDefaultFeedbackConfig(),
+		Handoff:       NewDefaultHandoffConfig(),
 		Session:       NewDefaultSessionConfig(),
 		// MIG-003: 4 new section defaults (REQ-MIG003-004)
 		Constitution:  defaultConstitutionConfig(),
@@ -167,6 +183,16 @@ func NewDefaultResearchConfig() ResearchConfig {
 func NewDefaultFeedbackConfig() FeedbackConfig {
 	return FeedbackConfig{
 		Repository: DefaultFeedbackRepository,
+	}
+}
+
+// NewDefaultHandoffConfig returns a HandoffConfig with safe defaults.
+// SPEC-HANDOFF-AUTORESUME-001 REQ-001: Mode defaults to "manual" (auto-resume
+// is opt-in) and Guide defaults to false.
+func NewDefaultHandoffConfig() HandoffConfig {
+	return HandoffConfig{
+		Mode:  DefaultHandoffMode,
+		Guide: false,
 	}
 }
 
