@@ -48,7 +48,7 @@ func TestStatuslineSegmentKeys(t *testing.T) {
 func TestSelectOptions(t *testing.T) {
 	f, _ := Field("model")
 	vals := f.SelectOptions()
-	want := []string{"opus", "opus[1m]", "sonnet", "sonnet[1m]", "haiku", "opusplan"}
+	want := []string{"opus", "opus[1m]", "sonnet", "sonnet[1m]", "fable", "fable[1m]", "haiku", "opusplan"}
 	if !reflect.DeepEqual(vals, want) {
 		t.Errorf("model SelectOptions = %v, want %v", vals, want)
 	}
@@ -67,7 +67,7 @@ func TestOptionValueHelpers(t *testing.T) {
 		got  []string
 		want []string
 	}{
-		{"model", ModelOptionValues(), []string{"opus", "opus[1m]", "sonnet", "sonnet[1m]", "haiku", "opusplan"}},
+		{"model", ModelOptionValues(), []string{"opus", "opus[1m]", "sonnet", "sonnet[1m]", "fable", "fable[1m]", "haiku", "opusplan"}},
 		{"effort", EffortOptionValues(), []string{"low", "medium", "high", "xhigh", "max"}},
 		{"language", LanguageOptionValues(), []string{"en", "ko", "ja", "zh"}},
 		{"development_mode", DevelopmentModeOptionValues(), []string{"ddd", "tdd"}},
