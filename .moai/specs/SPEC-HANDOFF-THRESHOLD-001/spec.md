@@ -2,7 +2,7 @@
 id: SPEC-HANDOFF-THRESHOLD-001
 title: "핸드오프 임계 완성 — 2단계 statusline suffix + HandoffConfig 소비 + context-usage.json 영속화 + Detection 독트린"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-06
 updated: 2026-07-06
 author: MoAI

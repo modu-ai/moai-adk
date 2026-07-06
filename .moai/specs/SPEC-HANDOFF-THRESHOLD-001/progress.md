@@ -81,10 +81,21 @@ coverage:
   statusline: 85.4%     # 신규 context_usage.go per-func avg ~96.5%
   config: 80.3%         # 패키지 pre-existing baseline — M2/M3는 config 무접촉, M1 상수는 compile-time(statement 커버리지 영향 없음), 회귀 아님
 total_run_phase_files: 10   # M1 4(renderer.go/defaults.go/handoff_stage_test.go/handoff_thresholds_test.go) + M2/M3 6(context_usage.go/context_usage_test.go/builder.go/builder_test.go/LIVE doctrine/template doctrine)
-m1_to_mN_commit_strategy: per-milestone-atomic-green   # M1 eb23fc075(feat) → M2 2aaf43986(feat) → M3 0a843503e(docs), RED 커밋 없음
+m1_to_mN_commit_strategy: per-milestone-atomic-green   # origin/main landed: M1 eb23fc075(feat) → M2 318db2617(feat) → M3 8020e877d(docs); rebase 전 로컬 SHA는 2aaf43986/0a843503e (병렬 web-console 위 rebase로 rewrite), RED 커밋 없음
 known_baseline_failure: internal/cli/TestRunHookEvent_ReadInputError   # coverage_test.go:77 pre-existing panic, base eb23fc075에서도 fail, internal/cli는 M4 무접촉(diff empty) → M4 무관
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs>_
+```yaml
+sync_status: complete
+sync_complete_at: 2026-07-06
+sync_commit_sha: <pending-backfill>          # 이 sync 커밋 SHA — 다음 백필 커밋에서 기록 (spec.md era:V3R6 H-override라 classify 안전)
+lifecycle_transition: in-progress → completed # 3-phase close (SPEC-V3R6-LIFECYCLE-REDESIGN-001)
+run_landed_commits: eb23fc075(M1) 318db2617(M2) 8020e877d(M3)  # origin/main rebase 후 실제 landed SHA (병렬 web-console a73ceedf6 위 선형)
+ac_matrix: 18/18 PASS (AC-THRESHOLD-001..018)
+plan_auditor: iter-1 PASS-WITH-DEBT 0.84 (Tier M thresh 0.80); D1(template drift)/D2(B4 concurrent empty-id) SHOULD-FIX 해소
+independent_verification: orchestrator 7/7 PASS  # go build+GOOS=windows / go test 89 ok(cli TestRunHookEvent_ReadInputError baseline 제외) / make build exit0 / 256K parity LIVE=1 template=1 / template §25 internal-token 0 / AC-006 불변 statusline HandoffConfig 시그니처 0 / 런타임 아티팩트 누출 0
+sync_method: orchestrator-direct  # manager-docs CHANGELOG(7000+줄) autocompact thrashing 회피 (memory 교훈), frontmatter+CHANGELOG+§E.4 직접 편집
+known_baseline_failure: internal/cli/TestRunHookEvent_ReadInputError  # M4 무관 pre-existing (base eb23fc075도 fail)
+```
