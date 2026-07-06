@@ -130,6 +130,9 @@ characterization; CHANGELOG/README authoring).
 - **REQ-CSS-012** (Unwanted behavior): The extraction shall not weaken the test suite — no existing
   test shall be deleted or skipped during a move; a test that cannot compile in its new package
   signals an incomplete symbol relocation and shall block the milestone (not be removed).
+- **REQ-CSS-013** (Unwanted behavior): The extraction shall not introduce any `AskUserQuestion` or
+  `mcp__askuser` invocation in any extracted subpackage — the subagent boundary (sentinel C-HRA-008)
+  is preserved across the move; this REQ parents AC-CSS-009.
 
 ## §D. Acceptance Criteria Pointer
 
