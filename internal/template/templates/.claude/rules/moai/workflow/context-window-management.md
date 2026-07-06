@@ -25,6 +25,7 @@ The orchestrator CONSUMES Claude Code's graduated-compaction layers; it does NOT
 | Model class | Window | Handoff threshold | Absolute ceiling |
 |-------------|--------|-------------------|------------------|
 | Opus 4.8 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
+| Opus/Fable (256K) | 256,000 tokens | **90%** | ~230,000 tokens |
 | Sonnet/Opus standard (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 | Haiku (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 
@@ -67,7 +68,44 @@ Paste-ready, no editing required.
 
 ## Detection Heuristics
 
-Orchestrator estimates context usage from four signals:
+The orchestrator estimates context usage **state-file-first**: it reads the
+authoritative snapshot the statusline writes each render, and falls back to the
+byte / system-reminder heuristics only when that snapshot is absent, stale, or
+unparseable.
+
+### 1. Authoritative snapshot — `.moai/state/context-usage.json`
+
+The statusline persists a best-effort snapshot of raw context usage to
+`<projectDir>/.moai/state/context-usage.json` on every render. When present and
+valid, this file is the authoritative signal — prefer it over the estimation
+heuristics below. Its fields:
+
+- `raw_pct` — raw context-window usage (tokens ÷ window); the direct handoff signal
+- `stage` — the two-stage handoff classification: `none` / `soft` / `hard`
+- `session_id` / `writer_pid` / `captured_at` — validity-guard inputs (see §2)
+- `context_window_size` / `tokens_used` / `band` — supporting context
+
+Read `stage` and `raw_pct` directly rather than re-deriving usage from proxies.
+
+### 2. Validity guard (do not resume another session's snapshot)
+
+Trust the snapshot only when it belongs to the current session:
+
+- **Real session id on both sides**: valid only when the record's `session_id`
+  equals the current session id (last-writer-wins). A differing id → treat as
+  stale and fall back to the heuristics (avoids resuming another session's usage).
+- **No real session id (empty) on both sides**: validate by `captured_at`
+  freshness (a generous, session-scoped window) instead of id equality, so the
+  common single-session case still uses the snapshot. When two same-checkout
+  sessions both lack a real id and share one file, the `writer_pid` discriminator
+  distinguishes them; a reader that cannot supply its own writer identity treats
+  a concurrent same-checkout case conservatively and falls back to the heuristics.
+- **Mixed (one real id, one empty), unparseable, or absent**: fall back to the
+  heuristics.
+
+### 3. Fallback heuristics (snapshot absent, stale, or unparseable)
+
+When the snapshot cannot be trusted, estimate context usage from four signals:
 
 - Cumulative output bytes since session start (rough proxy)
 - System reminder volume per turn (rule-file injections inflate input)
@@ -75,6 +113,28 @@ Orchestrator estimates context usage from four signals:
 - Number of Agent() invocations completed (each contributes to parent context on return)
 
 Under-estimate when uncertain — premature `/clear` costs one paste; missed one costs a stalled stream.
+
+### 4. Two-stage handoff marker + reachability limitation
+
+The statusline appends a `/clear` hint to the context bar in two stages: a soft
+`(⚠️/clear)` marker at the band's soft threshold, and a hard `(🛑/clear!)` marker
+at an auto-compact-aware ceiling (`min(cap, auto-compact-threshold + margin)`).
+
+Because the runtime's auto-compact fires near the auto-compact threshold of the
+raw window, the hard ceiling is **frequently pre-empted** by auto-compact and
+the hard stage **rarely fires** in practice — an intentional, documented
+tradeoff of the auto-compact-aware formula. The hard marker is a strong upper
+signal, not a guarantee; the doctrine makes no claim that the hard stage will
+trigger on every session.
+
+### 5. Guide-gated advisory (optional)
+
+When the handoff guide flag is enabled, the orchestrator MAY surface a
+state-file-derived advisory (for example, "raw usage at the hard stage —
+consider `/clear`") alongside the automatic pre-clear announcement. This
+advisory is doctrine-level guidance only: it adds no new runtime hook and never
+gates the statusline marker or the snapshot write, both of which stay
+unconditional.
 
 ## Applies To
 
