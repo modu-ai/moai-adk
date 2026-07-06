@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // Renderer formats StatusData into a multiline statusline string.
@@ -316,12 +317,19 @@ func renderCacheHit(data *StatusData) string {
 func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	var segs []string
 
-	// CW bar with handoff_guide ⚠️ /clear suffix integration (layout v3 CH2).
-	// shouldShowHandoffGuide gates the suffix per 1M ≥50% / 200K ≥90% threshold.
+	// CW bar with two-stage handoff_guide /clear suffix (layout v3 CH2 +
+	// SPEC-HANDOFF-THRESHOLD-001 M4). handoffGuideStage classifies raw context
+	// usage into none / soft / hard: soft keeps the M1 "(⚠️/clear)" marker, hard
+	// escalates to the distinct stage-2 "(🛑/clear!)" marker at the auto-compact-
+	// aware ceiling. The suffix is a pure function of usage — the handoff mode /
+	// guide config never gates it (M1 no-regression invariant, REQ-THRESHOLD-006).
 	if r.isSegmentEnabled(SegmentContext) && data.Memory.Available && data.Memory.TokenBudget > 0 {
 		pct := usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
 		bar := renderUsageBar("CW:", pct, width, r.noColor)
-		if shouldShowHandoffGuide(data) {
+		switch handoffGuideStage(data) {
+		case handoffStageHard:
+			bar += " (🛑/clear!)"
+		case handoffStageSoft:
 			bar += " (⚠️/clear)"
 		}
 		segs = append(segs, bar)
@@ -552,43 +560,95 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 	return fmt.Sprintf("🔀 %s/%s | %s", repo.Owner, repo.Name, inner)
 }
 
-// shouldShowHandoffGuide returns true when accumulated context usage crosses
-// the model-class threshold and the orchestrator should hint the user toward
-// a /clear handoff (REQ-SSE-005). Size-agnostic band logic:
+// handoffStage classifies accumulated context usage into the two-stage handoff
+// gate (SPEC-HANDOFF-THRESHOLD-001 M4). none < soft < hard by raw usage.
+type handoffStage int
+
+const (
+	handoffStageNone handoffStage = iota // below the soft threshold — no suffix
+	handoffStageSoft                     // soft threshold reached — "(⚠️/clear)" hint
+	handoffStageHard                     // hard (auto-compact-aware) ceiling reached — "(🛑/clear!)"
+)
+
+// handoffGuideStage classifies raw context usage into none / soft / hard.
+// It supersedes the former bare-bool decision while preserving the M1 band
+// logic verbatim for the soft threshold (SPEC-HANDOFF-CTXGUIDE-001):
 //
-//   - large window   (ContextWindowSize >= 500,000):        >=50% raw usage
-//   - standard/medium (0 < ContextWindowSize < 500,000):    >=90% raw usage
-//   - unknown window  (ContextWindowSize <= 0):              hidden (safety default)
+//   - large window   (ContextWindowSize >= HandoffLargeWindowCutoff): soft at HandoffSoftLargePct%
+//   - standard/medium (0 < ContextWindowSize < HandoffLargeWindowCutoff): soft at HandoffSoftStandardPct%
+//   - unknown window  (ContextWindowSize <= 0): none (safety default)
 //
-// The band replaces the former exact-match switch (1,000,000 / 200,000 only),
-// which fell through to default:false for every other window size — so 256,000
-// (the current non-1M Opus/Fable class) was permanently hidden regardless of
-// usage. 256K shares the 200K headroom band (>=90%); the 500K cutoff cleanly
-// separates the 1M large-window class (>=50%) from the standard/medium class
-// (>=90%). REQ-256K-001..005.
+// The hard stage escalates at hardCeilingPct — an auto-compact-aware ceiling
+// (§ hardCeilingPct). hard is evaluated before soft so the stronger marker wins.
 //
 // Uses raw Memory.ContextWindowSize (Claude Code stdin context_window_size)
 // instead of Memory.TokenBudget — TokenBudget is auto-compact-threshold-scaled
 // (e.g., 1M × 85% = 850K) which would never match the raw class boundaries.
-// Boundary defect fix: handoff_guide was permanently hidden because production
-// TokenBudget never equals raw class boundaries (only unit tests bypassed this
-// by injecting raw values directly into MemoryData).
 //
-// @MX:NOTE: [AUTO] band logic: >=500K → >=50% ; 0<size<500K → >=90% ; <=0 → hidden — aligned with context-window-management.md HARD rule.
-func shouldShowHandoffGuide(data *StatusData) bool {
+// @MX:NOTE: [AUTO] two-stage band: soft at band threshold, hard at min(cap, autoCompact+margin) — aligned with context-window-management.md HARD rule.
+func handoffGuideStage(data *StatusData) handoffStage {
 	if data == nil {
-		return false
+		return handoffStageNone
 	}
 	cwSize := data.Memory.ContextWindowSize
 	if cwSize <= 0 {
-		return false
+		return handoffStageNone
 	}
-	used := data.Memory.TokensUsed
-	rawPct := float64(used) * 100.0 / float64(cwSize)
-	if cwSize >= 500_000 {
-		return rawPct >= 50.0
+	rawPct := float64(data.Memory.TokensUsed) * 100.0 / float64(cwSize)
+	soft := softThresholdPct(cwSize)
+	hard := hardCeilingPct(cwSize)
+	switch {
+	case rawPct >= hard:
+		return handoffStageHard
+	case rawPct >= soft:
+		return handoffStageSoft
+	default:
+		return handoffStageNone
 	}
-	return rawPct >= 90.0
+}
+
+// softThresholdPct returns the raw-usage soft-stage threshold (%) for the given
+// context window size, using the config band constants (no inline literals, §14).
+// M1 band logic (≥ cutoff → large, else standard/medium) is preserved verbatim.
+func softThresholdPct(cwSize int) float64 {
+	if cwSize >= config.HandoffLargeWindowCutoff {
+		return config.HandoffSoftLargePct
+	}
+	return config.HandoffSoftStandardPct
+}
+
+// hardCeilingPct returns the auto-compact-aware hard (stage-2) ceiling (%):
+//
+//	min(HandoffHardCeilingCapPct, getAutoCompactThreshold() + HandoffHardCeilingMarginPct)
+//
+// clamped up to the band's soft threshold when a degenerate auto-compact
+// override would place the computed ceiling below soft (so stage-2 never
+// inverts below stage-1; instead it collapses onto the soft threshold and only
+// the hard marker shows for that band). getAutoCompactThreshold lives in the
+// same package (memory.go) so no wiring is needed.
+//
+// Reachability note: because auto-compact fires near getAutoCompactThreshold()%
+// of the raw window, the hard ceiling is frequently pre-empted and stage-2
+// rarely fires in practice — an intentional, documented tradeoff of the
+// auto-compact-aware formula (see context-window-management.md § Detection
+// Heuristics).
+func hardCeilingPct(cwSize int) float64 {
+	ceil := getAutoCompactThreshold() + config.HandoffHardCeilingMarginPct
+	if ceil > config.HandoffHardCeilingCapPct {
+		ceil = config.HandoffHardCeilingCapPct
+	}
+	soft := softThresholdPct(cwSize)
+	if float64(ceil) < soft {
+		return soft
+	}
+	return float64(ceil)
+}
+
+// shouldShowHandoffGuide is the M1 backward-compatible wrapper: true when the
+// stage is anything other than none. Kept so existing callers/tests compile and
+// the M1 threshold behavior is byte-preserved (REQ-THRESHOLD-001).
+func shouldShowHandoffGuide(data *StatusData) bool {
+	return handoffGuideStage(data) != handoffStageNone
 }
 
 // prReviewStateColor maps a Claude Code v2.1.145 review_state value to a

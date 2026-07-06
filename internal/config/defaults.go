@@ -102,6 +102,25 @@ const (
 	// SPEC-HANDOFF-AUTORESUME-001: auto-resume is opt-in — the default is
 	// "manual" (pure no-op), preserving the unchanged baseline UX.
 	DefaultHandoffMode = "manual"
+
+	// SPEC-HANDOFF-THRESHOLD-001 (Handoff-v2 M4): handoff-guide band boundaries.
+	// Named constants so renderer.go carries no inline band literals (§14
+	// hardcoding-prevention). These boundaries are compiled-in and NOT
+	// config-overridable — the "M3 lands / M4 consumes" contract keeps
+	// HandoffConfig limited to {Mode, Guide}, so band boundaries never become
+	// user-tunable config fields.
+	//
+	// Soft-stage thresholds (raw context-usage %): the large-window class uses
+	// 50%, the standard/medium class uses 90%. HandoffLargeWindowCutoff (tokens)
+	// separates the two classes. The hard (stage-2) ceiling is auto-compact-aware:
+	// min(HandoffHardCeilingCapPct, autoCompactThreshold + HandoffHardCeilingMarginPct),
+	// clamped up to the band's soft threshold when a degenerate override would put
+	// it below soft.
+	HandoffSoftLargePct         = 50      // ≥ HandoffLargeWindowCutoff → soft at 50% raw usage
+	HandoffSoftStandardPct      = 90      // < HandoffLargeWindowCutoff → soft at 90% raw usage
+	HandoffLargeWindowCutoff    = 500_000 // token cutoff separating large from standard/medium window
+	HandoffHardCeilingCapPct    = 95      // absolute cap for the hard (stage-2) ceiling
+	HandoffHardCeilingMarginPct = 10      // margin above auto-compact threshold for the hard ceiling
 )
 
 // DefaultHandoffStaleTTL is the age past which a handoff/pending.json is
