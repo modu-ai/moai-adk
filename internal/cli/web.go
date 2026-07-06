@@ -13,10 +13,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// webPort / webNoOpen back the --port / --no-open flags.
+// webPort / webNoOpen / webNoReuse back the --port / --no-open / --no-reuse flags.
 var (
-	webPort   int
-	webNoOpen bool
+	webPort    int
+	webNoOpen  bool
+	webNoReuse bool
 )
 
 // newWebCmd constructs the `web` subcommand. Factory form (mirrors
@@ -33,19 +34,27 @@ The Console binds to loopback only (127.0.0.1) and reuses the same validation
 and persistence logic as the terminal profile wizard. There is no external
 database, no auth, and no network exposure.
 
+By default, if the target port is already held by a stale moai instance, the
+Console terminates that instance and rebinds. A non-moai (foreign) process is
+never terminated — the Console reports an error and suggests --port. Pass
+--no-reuse to disable the reclaim and fail on any port conflict.
+
 Flags:
   --port <int>   TCP port to bind on 127.0.0.1 (default 3041)
   --no-open      Do not auto-open the browser
+  --no-reuse     Do not reclaim the port from a stale moai instance
 
 Examples:
   moai web                 # bind 127.0.0.1:3041 and open the browser
   moai web --port 9000     # bind a different port
-  moai web --no-open       # start without launching a browser`,
+  moai web --no-open       # start without launching a browser
+  moai web --no-reuse      # fail instead of reclaiming a busy port`,
 		GroupID: "tools",
 		RunE:    runWeb,
 	}
 	cmd.Flags().IntVar(&webPort, "port", 3041, "TCP port to bind on 127.0.0.1")
 	cmd.Flags().BoolVar(&webNoOpen, "no-open", false, "do not auto-open the browser")
+	cmd.Flags().BoolVar(&webNoReuse, "no-reuse", false, "do not reclaim the port from a stale moai instance")
 	return cmd
 }
 
@@ -56,6 +65,12 @@ func runWeb(cmd *cobra.Command, _ []string) error {
 	projectRoot, err := findProjectRootFn()
 	if err != nil {
 		return fmt.Errorf("moai web must run inside a MoAI project: %w", err)
+	}
+
+	// web.Run 위임 전 대상 포트를 확보한다: stale moai 인스턴스는 회수하고
+	// 외부 프로세스는 보호(에러). --no-reuse면 회수를 건너뛴다.
+	if err := ensurePortFree(cmd.ErrOrStderr(), webPort, !webNoReuse); err != nil {
+		return err
 	}
 
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(),
