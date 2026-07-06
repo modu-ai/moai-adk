@@ -89,7 +89,7 @@ func newHandoffSaveCmd(projectDir *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "handoff saved: %s\n", path)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "handoff saved: %s\n", path)
 			return nil
 		},
 	}
@@ -119,7 +119,7 @@ func newHandoffClearCmd(projectDir *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "handoff cleared: %s\n", path)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "handoff cleared: %s\n", path)
 			return nil
 		},
 	}
