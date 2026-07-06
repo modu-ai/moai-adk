@@ -200,6 +200,87 @@ func TestReadPending_States(t *testing.T) {
 	})
 }
 
+// TestSavePending_MkdirFails covers the MkdirAll error branch by placing a
+// regular file where the state directory would be created.
+func TestSavePending_MkdirFails(t *testing.T) {
+	t.Parallel()
+
+	pd := t.TempDir()
+	// Create .moai/state as a FILE so MkdirAll(.moai/state/handoff) fails.
+	moaiDir := filepath.Join(pd, ".moai")
+	if err := os.MkdirAll(moaiDir, 0o755); err != nil {
+		t.Fatalf("mkdir .moai: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(moaiDir, "state"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("write state file: %v", err)
+	}
+	if err := SavePending(pd, &PendingRecord{Body: "b"}); err == nil {
+		t.Error("SavePending should fail when the state dir cannot be created")
+	}
+}
+
+// TestClearPending_NonENOENTError covers the non-ENOENT remove-error branch by
+// making pending.json a non-empty directory (os.Remove returns ENOTEMPTY).
+func TestClearPending_NonENOENTError(t *testing.T) {
+	t.Parallel()
+
+	pd := t.TempDir()
+	// Make pending.json a directory containing a child so Remove fails non-ENOENT.
+	pjDir := PendingPath(pd)
+	if err := os.MkdirAll(pjDir, 0o755); err != nil {
+		t.Fatalf("mkdir pending dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(pjDir, "child"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("write child: %v", err)
+	}
+	if err := ClearPending(pd); err == nil {
+		t.Error("ClearPending should surface a non-ENOENT remove error")
+	}
+}
+
+// TestReadPending_NonENOENTError covers the non-ENOENT read-error branch by
+// making pending.json a directory (ReadFile returns EISDIR, not ENOENT).
+func TestReadPending_NonENOENTError(t *testing.T) {
+	t.Parallel()
+
+	pd := t.TempDir()
+	if err := os.MkdirAll(PendingPath(pd), 0o755); err != nil {
+		t.Fatalf("mkdir pending dir: %v", err)
+	}
+	rec, present, err := ReadPending(pd)
+	if err == nil {
+		t.Error("ReadPending should surface a non-ENOENT read error")
+	}
+	if rec != nil || present {
+		t.Errorf("non-ENOENT read: got (%v, %v), want (nil, false)", rec, present)
+	}
+}
+
+// TestConsumedDir verifies the consumed/ audit-trail path helper.
+func TestConsumedDir(t *testing.T) {
+	t.Parallel()
+
+	got := ConsumedDir("/tmp/proj")
+	want := filepath.Join("/tmp/proj", ".moai", "state", "handoff", "consumed")
+	if got != want {
+		t.Errorf("ConsumedDir: got %q, want %q", got, want)
+	}
+}
+
+// TestSavePending_NilRecord verifies the nil-record guard returns an error and
+// writes nothing.
+func TestSavePending_NilRecord(t *testing.T) {
+	t.Parallel()
+
+	pd := t.TempDir()
+	if err := SavePending(pd, nil); err == nil {
+		t.Error("SavePending(nil) should return an error")
+	}
+	if _, err := os.Stat(PendingPath(pd)); !os.IsNotExist(err) {
+		t.Error("SavePending(nil) must not create pending.json")
+	}
+}
+
 // TestSavePending_FilePerm verifies pending.json is written 0o600 (the resume
 // body may carry session context; mirror the persist.go 0o600 discipline).
 func TestSavePending_FilePerm(t *testing.T) {
