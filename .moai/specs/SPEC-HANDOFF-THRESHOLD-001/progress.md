@@ -90,7 +90,7 @@ known_baseline_failure: internal/cli/TestRunHookEvent_ReadInputError   # coverag
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-07-06
-sync_commit_sha: <pending-backfill>          # 이 sync 커밋 SHA — 다음 백필 커밋에서 기록 (spec.md era:V3R6 H-override라 classify 안전)
+sync_commit_sha: bb134140f          # sync 커밋 SHA (3-phase close, backfill)
 lifecycle_transition: in-progress → completed # 3-phase close (SPEC-V3R6-LIFECYCLE-REDESIGN-001)
 run_landed_commits: eb23fc075(M1) 318db2617(M2) 8020e877d(M3)  # origin/main rebase 후 실제 landed SHA (병렬 web-console a73ceedf6 위 선형)
 ac_matrix: 18/18 PASS (AC-THRESHOLD-001..018)
