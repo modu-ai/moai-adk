@@ -108,16 +108,47 @@ templ page(view pageView) {
 				// comment, so it is not emitted into the rendered page.)
 				<form class="form" method="POST" action={ templ.SafeURL(saveAction(view.SelectedProfile)) } hx-boost="true">
 					<input type="hidden" name="__profile" value={ view.SelectedProfile }/>
-					@fieldsetIdentity(view)
-					@fieldsetLanguage(view)
-					@fieldsetLaunch(view)
-					@fieldsetProject(view)
+					// M5-b D1: 탭 nav. 각 탭 label 은 기존 sec.<section>.title i18n 키를
+					// 재사용한다 (0 NEW sec.* keys). 탭은 type="button" 이라 폼을 제출하지
+					// 않는다. 모든 패널이 DOM 에 상주한다 (atomic Save contract).
+					<nav class="tabs" role="tablist">
+						for i, tab := range consoleTabs() {
+							if i == 0 {
+								<button class="tab is-active" type="button" role="tab" data-tab={ tab.ID } aria-selected="true">
+									<span data-i18n={ tab.LabelKey }>{ tab.Baseline }</span>
+								</button>
+							} else {
+								<button class="tab" type="button" role="tab" data-tab={ tab.ID } aria-selected="false">
+									<span data-i18n={ tab.LabelKey }>{ tab.Baseline }</span>
+								</button>
+							}
+						}
+					</nav>
+					// M5-b D1: 각 fieldset 을 .tabpanel 로 감싼다. CSS 가 비활성 패널을
+					// display:none 한다 — DOM 에서 제거하지 않으므로 비활성 패널의
+					// 필드도 제출된다 (atomic Save contract).
+					<div class={ "tabpanel", templ.KV("is-active", true) } data-panel="identity">
+						@fieldsetIdentity(view)
+					</div>
+					<div class="tabpanel" data-panel="language">
+						@fieldsetLanguage(view)
+					</div>
+					<div class="tabpanel" data-panel="launch">
+						@fieldsetLaunch(view)
+					</div>
+					<div class="tabpanel" data-panel="project">
+						@fieldsetProject(view)
+					</div>
 					// SPEC-WEB-CONSOLE-011 M2b: 10섹션 확장 — 스키마 주도 제네릭 fieldset.
 					for _, meta := range schemaSectionMetas() {
-						@fieldsetSchemaSection(view, meta)
+						<div class="tabpanel" data-panel={ string(meta.ID) }>
+							@fieldsetSchemaSection(view, meta)
+						</div>
 					}
 					// SPEC-WEB-CONSOLE-011 M3: sub-agent frontmatter 편집 카드.
-					@fieldsetAgentFrontmatter(view)
+					<div class="tabpanel" data-panel="agentfm">
+						@fieldsetAgentFrontmatter(view)
+					</div>
 					<div class="actions">
 						<button class="btn btn--primary" type="submit">@icon("save")<span data-i18n="actions.save">Save settings</span></button>
 						<span class="actions__meta" data-i18n="actions.meta">writes to ~/.moai profile &amp; project config</span>

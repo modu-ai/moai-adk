@@ -107,9 +107,9 @@ templ fieldsetLaunch(view pageView) {
 						<span class="field-error" id="err_permission_mode">@icon("alert-circle")<span>{ msg }</span></span>
 					}
 				</div>
-				@optSelect(optSelectArgs{Name: "model_policy", Title: "Model policy", Key: "model_policy", Desc: "Quality vs. speed bias when a model is auto-selected.", Value: view.Prefs.ModelPolicy, Empty: settings.EmptyLabelFor("model_policy"), Options: view.ModelPolicies, Errors: view.FieldErrors})
-				@optSelect(optSelectArgs{Name: "model", Title: "Model", Key: "model", Desc: "The specific model to run, including 1M-context variants.", Value: view.Prefs.Model, Empty: settings.EmptyLabelFor("model"), Options: view.ModelOptions, Errors: view.FieldErrors})
-				@optSelect(optSelectArgs{Name: "effort_level", Title: "Effort level", Key: "effort_level", Desc: "How much reasoning effort the model spends per task.", Value: view.Prefs.EffortLevel, Empty: settings.EmptyLabelFor("effort_level"), Options: view.EffortLevels, Errors: view.FieldErrors})
+				@optSelect(optSelectArgs{Name: "model_policy", Title: "Model policy", Key: "model_policy", Desc: "Quality vs. speed bias when a model is auto-selected.", Value: view.Prefs.ModelPolicy, Empty: settings.EmptyLabelFor("model_policy"), EmptyKey: settings.EmptyLabelKeyFor("model_policy"), Options: view.ModelPolicies, Errors: view.FieldErrors})
+				@optSelect(optSelectArgs{Name: "model", Title: "Model", Key: "model", Desc: "The specific model to run, including 1M-context variants.", Value: view.Prefs.Model, Empty: settings.EmptyLabelFor("model"), EmptyKey: settings.EmptyLabelKeyFor("model"), Options: view.ModelOptions, Errors: view.FieldErrors})
+				@optSelect(optSelectArgs{Name: "effort_level", Title: "Effort level", Key: "effort_level", Desc: "How much reasoning effort the model spends per task.", Value: view.Prefs.EffortLevel, Empty: settings.EmptyLabelFor("effort_level"), EmptyKey: settings.EmptyLabelKeyFor("effort_level"), Options: view.EffortLevels, Errors: view.FieldErrors})
 			</div>
 		</div>
 	</fieldset>
@@ -117,19 +117,20 @@ templ fieldsetLaunch(view pageView) {
 
 // permissionOption ports the permission_mode option rendering: an empty value
 // renders "(project default)", otherwise the value itself; the current value is
-// marked selected (page.html.tmpl ~165-167).
-templ permissionOption(value, current string) {
-	if value == current {
-		if value == "" {
-			<option value="" selected>(project default)</option>
+// marked selected (page.html.tmpl ~165-167). M5-b D4: OptionDef 를 받아
+// data-i18n 키를 방출한다. 빈 값은 opt.project_default 키를 쓴다.
+templ permissionOption(opt settings.OptionDef, current string) {
+	if opt.Value == current {
+		if opt.Value == "" {
+			<option value="" selected data-i18n="opt.project_default">(project default)</option>
 		} else {
-			<option value={ value } selected>{ value }</option>
+			<option value={ opt.Value } selected data-i18n={ opt.I18nKey }>{ opt.Value }</option>
 		}
 	} else {
-		if value == "" {
-			<option value="">(project default)</option>
+		if opt.Value == "" {
+			<option value="" data-i18n="opt.project_default">(project default)</option>
 		} else {
-			<option value={ value }>{ value }</option>
+			<option value={ opt.Value } data-i18n={ opt.I18nKey }>{ opt.Value }</option>
 		}
 	}
 }
@@ -153,8 +154,8 @@ templ fieldsetProject(view pageView) {
 		</div>
 		<div class="section__body">
 			<div class="grid" data-convention={ view.CurConvention }>
-				@optSelect(optSelectArgs{Name: "development_mode", Title: "Development mode", Key: "development_mode", Desc: "Default workflow — domain-driven (DDD) or test-driven (TDD).", Value: view.CurDevelopmentMode, Empty: settings.EmptyLabelFor("development_mode"), Options: view.DevelopmentModes, Errors: view.FieldErrors})
-				@optSelect(optSelectArgs{Name: "git_convention", Title: "Git convention", Key: "git_convention", Desc: "Commit message convention enforced in this project.", Value: view.CurConvention, Empty: settings.EmptyLabelFor("git_convention"), Options: view.Conventions, Errors: view.FieldErrors})
+				@optSelect(optSelectArgs{Name: "development_mode", Title: "Development mode", Key: "development_mode", Desc: "Default workflow — domain-driven (DDD) or test-driven (TDD).", Value: view.CurDevelopmentMode, Empty: settings.EmptyLabelFor("development_mode"), EmptyKey: settings.EmptyLabelKeyFor("development_mode"), Options: view.DevelopmentModes, Errors: view.FieldErrors})
+				@optSelect(optSelectArgs{Name: "git_convention", Title: "Git convention", Key: "git_convention", Desc: "Commit message convention enforced in this project.", Value: view.CurConvention, Empty: settings.EmptyLabelFor("git_convention"), EmptyKey: settings.EmptyLabelKeyFor("git_convention"), Options: view.Conventions, Errors: view.FieldErrors})
 				@numberField(numberFieldArgs{Name: "quality.test_coverage_target", Title: "Test coverage target", Key: "quality.test_coverage_target", Desc: "Minimum overall test coverage percentage (0-100).", Value: view.CurTestCoverageTarget, Min: "0", Max: "100", Step: "1", Errors: view.FieldErrors})
 				@toggle(toggleArgs{Name: "quality.enforce_quality", Title: "Enforce quality gate", Key: "quality.enforce_quality", Desc: "Block on TRUST 5 quality-gate failures.", Checked: view.CurEnforceQuality, Errors: view.FieldErrors})
 				@numberField(numberFieldArgs{Name: "quality.tdd_settings.min_coverage_per_commit", Title: "Min coverage per commit", Key: "quality.tdd_settings.min_coverage_per_commit", Desc: "Minimum coverage required per commit in TDD mode (0-100).", Value: view.CurMinCoveragePerCommit, Min: "0", Max: "100", Step: "1", Errors: view.FieldErrors})
@@ -228,13 +229,13 @@ templ fieldsetSchemaSection(view pageView, meta schemaSectionMeta) {
 templ schemaFieldWidget(view pageView, f settings.FieldDef) {
 	switch f.Type {
 		case settings.TypeBool:
-			@schemaToggleRow(f.Name, view.SchemaValues[f.Name] == "true")
+			@schemaToggleRow(f, view.SchemaValues[f.Name] == "true")
 		case settings.TypeSelect:
 			@schemaSelectRow(f, view.SchemaValues[f.Name], view.FieldErrors)
 		case settings.TypeInt:
-			@schemaNumberRow(f.Name, view.SchemaValues[f.Name], "1", view.FieldErrors)
+			@schemaNumberRow(f, view.SchemaValues[f.Name], "1", view.FieldErrors)
 		case settings.TypeFloat:
-			@schemaNumberRow(f.Name, view.SchemaValues[f.Name], "0.01", view.FieldErrors)
+			@schemaNumberRow(f, view.SchemaValues[f.Name], "0.01", view.FieldErrors)
 		default:
 			@schemaTextRow(f, view.SchemaValues[f.Name], view.FieldErrors)
 	}
@@ -243,10 +244,12 @@ templ schemaFieldWidget(view pageView, f settings.FieldDef) {
 // schemaTextRow — 자유 텍스트. EmptyLabel이 있으면 placeholder로 렌더한다
 // (빈 값의 "(runtime default)" 시맨틱 — REQ-WC11-014/EC-4. M4 다이어트로
 // claude_models tier는 제거되었고, EmptyLabel 메커니즘은 generic placeholder로
-// 잔류한다.)
+// 잔류한다.) M5-b D3: field__title + field__desc data-i18n 훅 추가 (key chip 은
+// data-i18n 없이 영문 코드 토큰 유지).
 templ schemaTextRow(f settings.FieldDef, value string, errs map[string]string) {
 	<div class={ "field", templ.KV("has-error", hasFieldError(errs, f.Name)) }>
-		<span class="field__label"><code class="field__key">{ f.Name }</code></span>
+		<span class="field__label"><span class="field__title" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span><code class="field__key">{ f.Name }</code></span>
+		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
 		<input class="input" type="text" id={ f.Name } name={ f.Name } value={ value } placeholder={ f.EmptyLabel } autocomplete="off"/>
 		if msg := fieldErrorMsg(errs, f.Name); msg != "" {
 			<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
@@ -254,12 +257,13 @@ templ schemaTextRow(f settings.FieldDef, value string, errs map[string]string) {
 	</div>
 }
 
-// schemaNumberRow — 정수/실수 입력.
-templ schemaNumberRow(name, value, step string, errs map[string]string) {
-	<div class={ "field", templ.KV("has-error", hasFieldError(errs, name)) }>
-		<span class="field__label"><code class="field__key">{ name }</code></span>
-		<input class="input" type="number" id={ name } name={ name } value={ value } step={ step } autocomplete="off"/>
-		if msg := fieldErrorMsg(errs, name); msg != "" {
+// schemaNumberRow — 정수/실수 입력. M5-b D3: field__title + field__desc 추가.
+templ schemaNumberRow(f settings.FieldDef, value, step string, errs map[string]string) {
+	<div class={ "field", templ.KV("has-error", hasFieldError(errs, f.Name)) }>
+		<span class="field__label"><span class="field__title" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span><code class="field__key">{ f.Name }</code></span>
+		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
+		<input class="input" type="number" id={ f.Name } name={ f.Name } value={ value } step={ step } autocomplete="off"/>
+		if msg := fieldErrorMsg(errs, f.Name); msg != "" {
 			<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
 		}
 	</div>
@@ -267,15 +271,17 @@ templ schemaNumberRow(name, value, step string, errs map[string]string) {
 
 // schemaToggleRow — bool 토글. hidden __present companion으로 "unchecked →
 // false"와 "미제출 → preserve"를 구분한다 (동일한 disambiguation 패턴).
-templ schemaToggleRow(name string, checked bool) {
+// M5-b D3: field__title + field__desc 추가.
+templ schemaToggleRow(f settings.FieldDef, checked bool) {
 	<div class="field">
-		<span class="field__label"><code class="field__key">{ name }</code></span>
+		<span class="field__label"><span class="field__title" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span><code class="field__key">{ f.Name }</code></span>
+		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
 		<label class="seg">
-			<input type="hidden" name={ name + "__present" } value="1"/>
+			<input type="hidden" name={ f.Name + "__present" } value="1"/>
 			if checked {
-				<input type="checkbox" id={ name } name={ name } value="1" checked/>
+				<input type="checkbox" id={ f.Name } name={ f.Name } value="1" checked/>
 			} else {
-				<input type="checkbox" id={ name } name={ name } value="1"/>
+				<input type="checkbox" id={ f.Name } name={ f.Name } value="1"/>
 			}
 			<span class="seg__box"><span class="seg__tick">@icon("check")</span></span>
 		</label>
@@ -284,29 +290,32 @@ templ schemaToggleRow(name string, checked bool) {
 
 // schemaSelectRow — 닫힌 옵션 select. EmptyLabel이 있으면 빈 옵션을 렌더한다.
 // effort 필드에는 "(Go 미독)" 배지를 표시한다 — Go 런타임이 행동적으로 바인딩하지
-// 않는 선언적 힌트임을 사용자에게 알린다 (M5-a B5).
+// 않는 선언적 힌트임을 사용자에게 알린다 (M5-a B5). M5-b D3: field__title +
+// field__desc 추가.
 templ schemaSelectRow(f settings.FieldDef, value string, errs map[string]string) {
 	<div class={ "field", templ.KV("has-error", hasFieldError(errs, f.Name)) }>
 		<span class="field__label">
+			<span class="field__title" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span>
 			<code class="field__key">{ f.Name }</code>
 			if strings.HasSuffix(f.Name, ".effort") {
 				<span class="field__hint" data-i18n="hint.effort.go_unbound">(Go 미독)</span>
 			}
 		</span>
+		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
 		<span class="select-wrap">
 			<select class="select" id={ f.Name } name={ f.Name }>
 				if f.EmptyLabel != "" {
 					if value == "" {
-						<option value="" selected>{ f.EmptyLabel }</option>
+						<option value="" selected data-i18n={ f.EmptyLabelKey }>{ f.EmptyLabel }</option>
 					} else {
-						<option value="">{ f.EmptyLabel }</option>
+						<option value="" data-i18n={ f.EmptyLabelKey }>{ f.EmptyLabel }</option>
 					}
 				}
-				for _, opt := range f.SelectOptions() {
-					if opt == value {
-						<option value={ opt } selected>{ opt }</option>
+				for _, opt := range f.Options {
+					if opt.Value == value {
+						<option value={ opt.Value } selected data-i18n={ opt.I18nKey }>{ opt.Value }</option>
 					} else {
-						<option value={ opt }>{ opt }</option>
+						<option value={ opt.Value } data-i18n={ opt.I18nKey }>{ opt.Value }</option>
 					}
 				}
 			</select>

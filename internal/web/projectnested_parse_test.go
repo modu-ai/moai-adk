@@ -137,8 +137,8 @@ func TestProjectFieldsetRendersNestedWidgets(t *testing.T) {
 	t.Parallel()
 	view := pageView{
 		FieldErrors:             map[string]string{},
-		DevelopmentModes:        developmentModeOptionList(),
-		Conventions:             conventionOptionList(),
+		DevelopmentModes:        developmentModeOptionDefs(),
+		Conventions:             conventionOptionDefs(),
 		CurConvention:           "auto",
 		CurTestCoverageTarget:   "85",
 		CurEnforceQuality:       true,

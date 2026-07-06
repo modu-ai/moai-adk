@@ -128,8 +128,9 @@ func TestIndexNeutralDefaultsForZeroValueProfile(t *testing.T) {
 	if !strings.Contains(body, `method="POST"`) {
 		t.Error("zero-value profile did not render a POST form (page may be blank)")
 	}
-	// The unset language option must be the selected default.
-	if !strings.Contains(body, `<option value="" selected>(unset)</option>`) {
+	// The unset language option must be the selected default (M5-b D4: carries
+	// data-i18n="opt.unset" for 4-locale rendering).
+	if !strings.Contains(body, `<option value="" selected data-i18n="opt.unset">(unset)</option>`) {
 		t.Error("zero-value profile did not render neutral (unset) language default")
 	}
 }

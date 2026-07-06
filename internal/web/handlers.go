@@ -5,11 +5,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
-	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // pageView is the typed view-model for the Console page. It is the input to the
@@ -23,22 +24,24 @@ type pageView struct {
 
 	// Option lists for the form selects. SPEC-WEB-CONSOLE-010: all option lists
 	// derive from the shared settings schema (no hand-mirrored re-declarations).
+	// M5-b D4: OptionDef(Value + I18nKey) — 웹 렌더가 option data-i18n 키를
+	// 방출한다. 제출 값(value 속성)은不变.
 	// The Statusline section was removed from the web console (M3 redesign) — its
 	// theme/segment option lists are no longer surfaced here; the statusline schema
 	// + statusline.yaml remain consumed by the TUI / profile_setup CLI path.
-	LangOptions     []string
-	ModelOptions    []string
-	EffortLevels    []string
-	ModelPolicies   []string
-	PermissionModes []string
+	LangOptions     []settings.OptionDef
+	ModelOptions    []settings.OptionDef
+	EffortLevels    []settings.OptionDef
+	ModelPolicies   []settings.OptionDef
+	PermissionModes []settings.OptionDef
 
 	// Project-config selects (SPEC-WEB-CONSOLE-003). Option lists + the current
 	// persisted/submitted values for the two flat project-config enum fields.
 	// Current values come from the read seam (quality.yaml / git-convention.yaml)
 	// on GET, or are echoed back from the submitted form on a rejected POST —
 	// NOT from the profile store, which has no slot for them.
-	DevelopmentModes   []string
-	Conventions        []string
+	DevelopmentModes   []settings.OptionDef
+	Conventions        []settings.OptionDef
 	CurDevelopmentMode string
 	CurConvention      string
 
@@ -82,18 +85,24 @@ type pageView struct {
 // (no hand-mirrored re-declarations).
 func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pageView {
 	profiles := a.listProfiles()
+	// M5-b D2: current 프로필을 인덱스 0으로 stable-sort 한다. listProfiles 코어는
+	// 그대로 두고 newPageView 에서만 정렬 — 기존 호출자(TUI / CLI)에 영향 0.
+	// stable-sort 이므로 current 가 아닌 프로필 간의 기존 순서를 보존한다.
+	sort.SliceStable(profiles, func(i, j int) bool {
+		return profiles[i].Current && !profiles[j].Current
+	})
 	return pageView{
 		Prefs:             prefs,
 		SelectedProfile:   selected,
 		Profiles:          profiles,
 		ShowProfileSwitch: len(profiles) > 1, // REQ-WC-011: omit UI when only default
-		LangOptions:       langOptionList(),
-		ModelOptions:      modelOptionList(),
-		EffortLevels:      effortOptionList(),
-		ModelPolicies:     template.ValidModelPolicies(),
-		PermissionModes:   profile.ValidPermissionModes,
-		DevelopmentModes:  developmentModeOptionList(),
-		Conventions:       conventionOptionList(),
+		LangOptions:       langOptionDefs(),
+		ModelOptions:      modelOptionDefs(),
+		EffortLevels:      effortOptionDefs(),
+		ModelPolicies:     modelPolicyOptionDefs(),
+		PermissionModes:   permissionModeOptionDefs(),
+		DevelopmentModes:  developmentModeOptionDefs(),
+		Conventions:       conventionOptionDefs(),
 		SchemaValues:      map[string]string{},
 		RawBlocks:         map[string]string{},
 		BindAddr:          a.resolveBindAddr(),

@@ -16,6 +16,39 @@ import (
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
+// consoleTab 은 콘솔 탭 nav 의 한 탭을 기술한다 (M5-b D1). LabelKey 는 기존
+// sec.<section>.title i18n 키를 재사용한다 — 신규 sec.* 키 없음. ID 는 탭과
+// 패널을 매칭하는 data-tab/data-panel 식별자다.
+type consoleTab struct {
+	ID        string
+	LabelKey  string // 기존 sec.<section>.title 재사용 (0 NEW sec.* keys)
+	Baseline  string // data-i18n 미실행 시 표시될 영문 fallback
+}
+
+// consoleTabs 는 탭 nav 의 정렬된 탭 목록을 반환한다. 각 탭의 label 은 기존
+// sec.<section>.title i18n 키를 재사용한다 (REQ: 0 NEW sec.* keys).
+// 순서는 fieldset 렌더 순서와 일치한다.
+func consoleTabs() []consoleTab {
+	return []consoleTab{
+		{ID: "identity", LabelKey: "sec.identity.title", Baseline: "Identity"},
+		{ID: "language", LabelKey: "sec.language.title", Baseline: "Language"},
+		{ID: "launch", LabelKey: "sec.launch.title", Baseline: "Launch"},
+		{ID: "project", LabelKey: "sec.project.title", Baseline: "Project"},
+		// 10 섹션 확장 (SchemaSectionIDs 순서와 일치).
+		{ID: "quality_extras", LabelKey: "sec.quality_extras.title", Baseline: "Quality (advanced)"},
+		{ID: "git_strategy", LabelKey: "sec.git_strategy.title", Baseline: "Git Strategy"},
+		{ID: "llm", LabelKey: "sec.llm.title", Baseline: "LLM"},
+		{ID: "workflow", LabelKey: "sec.workflow.title", Baseline: "Workflow"},
+		{ID: "harness", LabelKey: "sec.harness.title", Baseline: "Harness"},
+		{ID: "ralph", LabelKey: "sec.ralph.title", Baseline: "MoAI-Loop"},
+		{ID: "feedback", LabelKey: "sec.feedback.title", Baseline: "Feedback"},
+		{ID: "observability", LabelKey: "sec.observability.title", Baseline: "Observability"},
+		{ID: "security", LabelKey: "sec.security.title", Baseline: "Security"},
+		{ID: "agent_settings", LabelKey: "sec.agent_settings.title", Baseline: "Agent Settings"},
+		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Sub-agent Frontmatter"},
+	}
+}
+
 // schemaSectionMeta는 제네릭 fieldset의 섹션 표시 메타다. Title/Desc는 영어
 // baseline이고 data-i18n 키(sec.<id>.title/.desc)가 4-locale 렌더를 담당한다.
 // 필드 자체의 라벨은 기술 식별자(key chip)로 렌더하며 번역하지 않는다 —

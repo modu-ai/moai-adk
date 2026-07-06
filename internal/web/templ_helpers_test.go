@@ -33,7 +33,7 @@ func TestLangSelectHelperMarkupParity(t *testing.T) {
 		Key:     "conversation_lang",
 		Desc:    "Language the assistant replies in during chat.",
 		Value:   "ko",
-		Options: langOptionList(),
+		Options: langOptionDefs(),
 		Errors:  map[string]string{},
 	}))
 
@@ -46,9 +46,9 @@ func TestLangSelectHelperMarkupParity(t *testing.T) {
 		`class="select select--lang"`,
 		`id="conversation_lang"`,
 		`name="conversation_lang"`,
-		`<option value="">(unset)</option>`, // not selected (value=ko)
-		`<option value="ko" selected>ko</option>`,
-		`<option value="en">en</option>`,
+		`<option value="" data-i18n="opt.unset">(unset)</option>`, // not selected (value=ko)
+		`<option value="ko" selected data-i18n="lang.opt.ko">ko</option>`,
+		`<option value="en" data-i18n="lang.opt.en">en</option>`,
 	} {
 		if !strings.Contains(clean, want) {
 			t.Errorf("langSelect clean render missing %q\n--- rendered ---\n%s", want, clean)
@@ -69,13 +69,13 @@ func TestLangSelectHelperMarkupParity(t *testing.T) {
 		Key:     "conversation_lang",
 		Desc:    "Language the assistant replies in during chat.",
 		Value:   "",
-		Options: langOptionList(),
+		Options: langOptionDefs(),
 		Errors:  map[string]string{"conversation_lang": "unrecognized language: xx"},
 	}))
 	for _, want := range []string{
 		`class="field has-error"`,
 		`aria-invalid="true"`,
-		`<option value="" selected>(unset)</option>`, // unset value selected
+		`<option value="" selected data-i18n="opt.unset">(unset)</option>`, // unset value selected
 		`class="field-error"`,
 		`unrecognized language: xx`,
 		`class="icon-alert-circle"`, // error icon
@@ -92,14 +92,15 @@ func TestLangSelectHelperMarkupParity(t *testing.T) {
 // with `selected` on the current value, and the error span only when errored.
 func TestOptSelectHelperMarkupParity(t *testing.T) {
 	clean := renderTempl(t, optSelect(optSelectArgs{
-		Name:    "model",
-		Title:   "Model",
-		Key:     "model",
-		Desc:    "The specific model to run, including 1M-context variants.",
-		Value:   "sonnet",
-		Empty:   "(project default)",
-		Options: modelOptionList(),
-		Errors:  map[string]string{},
+		Name:     "model",
+		Title:    "Model",
+		Key:      "model",
+		Desc:     "The specific model to run, including 1M-context variants.",
+		Value:    "sonnet",
+		Empty:    "(project default)",
+		EmptyKey: "opt.project_default",
+		Options:  modelOptionDefs(),
+		Errors:   map[string]string{},
 	}))
 	for _, want := range []string{
 		`class="field"`,
@@ -108,9 +109,9 @@ func TestOptSelectHelperMarkupParity(t *testing.T) {
 		`class="select"`, // plain select chrome (no select--lang)
 		`id="model"`,
 		`name="model"`,
-		`<option value="">(project default)</option>`,
-		`<option value="sonnet" selected>sonnet</option>`,
-		`<option value="opus">opus</option>`,
+		`<option value="" data-i18n="opt.project_default">(project default)</option>`,
+		`<option value="sonnet" selected data-i18n="f.model.opt.sonnet">sonnet</option>`,
+		`<option value="opus" data-i18n="f.model.opt.opus">opus</option>`,
 	} {
 		if !strings.Contains(clean, want) {
 			t.Errorf("optSelect clean render missing %q\n--- rendered ---\n%s", want, clean)

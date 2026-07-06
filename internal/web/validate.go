@@ -23,28 +23,56 @@ var errDictKey = errors.New("web: dict key must be a string")
 // 손수 재선언했던 드리프트 원천이 제3 중립 패키지(internal/settings)로 단일화되었다.
 // 두 표면(웹/TUI)이 모두 internal/settings 를 import 하므로 더 이상 손수 동기화가 필요 없다.
 // permission mode 검증은 profile.IsValidPermissionMode 를 그대로 재사용한다(REQ-WC-008).
+//
+// M5-b D4: optionListDef* 함수들은 []settings.OptionDef(Value + I18nKey) 를
+// 반환한다 — 웹 렌더가 option data-i18n 키를 방출한다. 검증 경로는 기존
+// langOptionList()/modelOptionList() 등 ([]string 반환) 을 그대로 사용한다.
 
 // langOptionList returns the four supported conversation/commit/comment/doc
 // languages from the schema (REQ-WC10-004). No standalone re-declaration.
+// 검증 경로 ([]string).
 func langOptionList() []string { return settings.LanguageOptionValues() }
 
 // modelOptionList returns the canonical model option set from the schema
 // (REQ-WC10-004). The empty string ("project default") is allowed by validatePrefs'
-// empty-allowed guard and is not listed here.
+// empty-allowed guard and is not listed here. 검증 경로 ([]string).
 func modelOptionList() []string { return settings.ModelOptionValues() }
 
 // effortOptionList returns the canonical effort level option set from the schema
 // (REQ-WC10-004). The empty string ("runtime default") is allowed by the
-// empty-allowed guard and is not listed here.
+// empty-allowed guard and is not listed here. 검증 경로 ([]string).
 func effortOptionList() []string { return settings.EffortOptionValues() }
 
 // developmentModeOptionList returns the canonical development_mode option list from
-// the schema (REQ-WC10-004).
+// the schema (REQ-WC10-004). 검증 경로 ([]string).
 func developmentModeOptionList() []string { return settings.DevelopmentModeOptionValues() }
 
 // conventionOptionList returns the canonical git_convention option list from the
-// schema (REQ-WC10-004).
+// schema (REQ-WC10-004). 검증 경로 ([]string).
 func conventionOptionList() []string { return settings.ConventionOptionValues() }
+
+// ── M5-b D4: OptionDef 반환 렌더 경로 ──
+
+// langOptionDefs returns the OptionDef slice (Value + I18nKey) for language fields.
+func langOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("conversation_lang") }
+
+// modelOptionDefs returns the OptionDef slice for the model select.
+func modelOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("model") }
+
+// effortOptionDefs returns the OptionDef slice for the effort_level select.
+func effortOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("effort_level") }
+
+// modelPolicyOptionDefs returns the OptionDef slice for the model_policy select.
+func modelPolicyOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("model_policy") }
+
+// permissionModeOptionDefs returns the OptionDef slice for permission_mode.
+func permissionModeOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("permission_mode") }
+
+// developmentModeOptionDefs returns the OptionDef slice for development_mode.
+func developmentModeOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("development_mode") }
+
+// conventionOptionDefs returns the OptionDef slice for git_convention.
+func conventionOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("git_convention") }
 
 // inList reports whether v is a member of list.
 func inList(list []string, v string) bool {

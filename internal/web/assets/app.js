@@ -250,6 +250,41 @@
     });
   }
 
+  // ── M5-b D1 — Tab navigation (CSS show/hide) ──
+
+  // wireTabs 배선: 탭 버튼 클릭 시 .is-active 클래스를 토글한다. 패널은 DOM
+  // 에서 제거되지 않고 CSS display:none 만 토글된다 — 비활성 패널의 폼 필드도
+  // 그대로 제출된다 (atomic Save contract). 첫 탭이 기본 활성 탭이다(서버가
+  // is-active 클래스를 렌더 시 부여한다).
+  function wireTabs() {
+    var tabBtns = document.querySelectorAll(".tabs .tab[data-tab]");
+    if (tabBtns.length === 0) {
+      return;
+    }
+    for (var i = 0; i < tabBtns.length; i++) {
+      tabBtns[i].addEventListener("click", function () {
+        var tabId = this.getAttribute("data-tab");
+        // 모든 탭/패널에서 is-active 제거.
+        var allBtns = document.querySelectorAll(".tabs .tab[data-tab]");
+        var allPanels = document.querySelectorAll(".tabpanel[data-panel]");
+        for (var j = 0; j < allBtns.length; j++) {
+          allBtns[j].classList.remove("is-active");
+          allBtns[j].setAttribute("aria-selected", "false");
+        }
+        for (var k = 0; k < allPanels.length; k++) {
+          allPanels[k].classList.remove("is-active");
+        }
+        // 클릭한 탭과 대응 패널에 is-active 추가.
+        this.classList.add("is-active");
+        this.setAttribute("aria-selected", "true");
+        var panel = document.querySelector('.tabpanel[data-panel="' + tabId + '"]');
+        if (panel) {
+          panel.classList.add("is-active");
+        }
+      });
+    }
+  }
+
   // initConsole 는 모든 콘솔 초기화를 한 곳에서 수행한다 — DOMContentLoaded(첫
   // 로드 / htmx 비활성 전체 새로고침) 와 htmx:afterSettle(boost body swap 직후)
   // 양쪽에서 호출된다. boost swap 은 body 전체를 교체하므로 새 요소는 리스너가
@@ -270,6 +305,9 @@
     // 요소에 persisted 언어(예: 한국어)를 재적용한다.
     wireLangpick();
     wireShutdownButton();
+    // M5-b D1: 탭 nav 배선. CSS show/hide 만으로 동작 — 패널은 DOM 에 상주한다
+    // (atomic Save contract: 비활성 패널의 필드도 제출됨).
+    wireTabs();
   }
 
   document.addEventListener("DOMContentLoaded", initConsole);

@@ -394,6 +394,28 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
    Fieldset / section card
    ============================================================ */
 .form { display: flex; flex-direction: column; gap: var(--space-6); }
+
+/* ============================================================
+   M5-b D1 — Tab navigation (CSS show/hide, panels stay in DOM)
+   ============================================================ */
+.tabs {
+  display: flex; flex-wrap: wrap; gap: var(--space-1);
+  border-bottom: 2px solid var(--border-1);
+  padding-bottom: 0;
+}
+.tab {
+  background: transparent; border: none; border-bottom: 2px solid transparent;
+  padding: var(--space-2) var(--space-3); cursor: pointer;
+  font-size: var(--text-sm); font-weight: 500; color: var(--text-muted);
+  margin-bottom: -2px; transition: color .15s, border-color .15s;
+}
+.tab:hover { color: var(--text); }
+.tab.is-active {
+  color: var(--color-primary); border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}
+.tabpanel { display: block; }
+.tabpanel:not(.is-active) { display: none; }
 .section {
   margin: 0; padding: 0; border: 1px solid var(--border-1);
   border-radius: var(--radius-lg); background: var(--color-surface);

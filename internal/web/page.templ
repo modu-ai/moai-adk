@@ -1,5 +1,9 @@
 package web
 
+import (
+	"github.com/modu-ai/moai-adk/internal/settings"
+)
+
 // Templ component tree for the Console page (SPEC-WEB-CONSOLE-006). Ported 1:1
 // from the retired internal/web/assets/page.html.tmpl (html/template) so the
 // emitted markup contract — CSS class names, data-i18n / data-theme attributes,
@@ -15,18 +19,20 @@ package web
 // optSelectArgs replaces the retired html/template `dict` FuncMap for the
 // optSelect helper: a renamed field is now a compile error instead of a
 // render-time <no value>. (design.md §A.1)
+// M5-b D4: Options 는 []settings.OptionDef(Value + I18nKey) — option 의
+// data-i18n 키를 방출한다. 제출 값(value 속성)은不变.
 type optSelectArgs struct {
-	Name, Title, Key, Desc, Value, Empty string
-	Options                              []string
-	Errors                               map[string]string
+	Name, Title, Key, Desc, Value, Empty, EmptyKey string
+	Options                                        []settings.OptionDef
+	Errors                                         map[string]string
 }
 
 // langSelectArgs is the typed argument set for the langSelect helper (the
 // language selects fix their empty option to "(unset)" and add the select--lang
-// modifier class).
+// modifier class). M5-b D4: Options 는 []settings.OptionDef.
 type langSelectArgs struct {
 	Name, Title, Key, Desc, Value string
-	Options                       []string
+	Options                       []settings.OptionDef
 	Errors                        map[string]string
 }
 
@@ -90,18 +96,20 @@ templ langSelect(a langSelectArgs) {
 }
 
 // langOptionTags emits the `(unset)` empty option followed by the canonical
-// option list, marking the current value selected.
-templ langOptionTags(value string, options []string) {
+// option list, marking the current value selected. M5-b D4: 각 option 에
+// data-i18n 키를 방출한다 — 표시 텍스트는 applyI18n 이 사전값으로 교체한다.
+// 제출 값(value 속성)은 OptionDef.Value 그대로다.
+templ langOptionTags(value string, options []settings.OptionDef) {
 	if value == "" {
-		<option value="" selected>(unset)</option>
+		<option value="" selected data-i18n="opt.unset">(unset)</option>
 	} else {
-		<option value="">(unset)</option>
+		<option value="" data-i18n="opt.unset">(unset)</option>
 	}
 	for _, o := range options {
-		if o == value {
-			<option value={ o } selected>{ o }</option>
+		if o.Value == value {
+			<option value={ o.Value } selected data-i18n={ o.I18nKey }>{ o.Value }</option>
 		} else {
-			<option value={ o }>{ o }</option>
+			<option value={ o.Value } data-i18n={ o.I18nKey }>{ o.Value }</option>
 		}
 	}
 }
@@ -121,7 +129,7 @@ templ optSelect(a optSelectArgs) {
 					aria-invalid="true"
 				}
 			>
-				@optOptionTags(a.Value, a.Empty, a.Options)
+				@optOptionTags(a.Value, a.Empty, a.EmptyKey, a.Options)
 			</select>
 		</span>
 		if msg := fieldErrorMsg(a.Errors, a.Name); msg != "" {
@@ -131,18 +139,20 @@ templ optSelect(a optSelectArgs) {
 }
 
 // optOptionTags emits the caller-labelled empty option followed by the canonical
-// option list, marking the current value selected.
-templ optOptionTags(value, empty string, options []string) {
+// option list, marking the current value selected. M5-b D4: 각 option 에
+// data-i18n 키를 방출한다. empty 옵션의 data-i18n 은 emptyKey (예:
+// "opt.project_default") 에서 온다.
+templ optOptionTags(value, empty, emptyKey string, options []settings.OptionDef) {
 	if value == "" {
-		<option value="" selected>{ empty }</option>
+		<option value="" selected data-i18n={ emptyKey }>{ empty }</option>
 	} else {
-		<option value="">{ empty }</option>
+		<option value="" data-i18n={ emptyKey }>{ empty }</option>
 	}
 	for _, o := range options {
-		if o == value {
-			<option value={ o } selected>{ o }</option>
+		if o.Value == value {
+			<option value={ o.Value } selected data-i18n={ o.I18nKey }>{ o.Value }</option>
 		} else {
-			<option value={ o }>{ o }</option>
+			<option value={ o.Value } data-i18n={ o.I18nKey }>{ o.Value }</option>
 		}
 	}
 }

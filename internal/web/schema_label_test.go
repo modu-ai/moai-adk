@@ -80,9 +80,9 @@ func TestI18nKeySetParity(t *testing.T) {
 	}
 
 	for _, f := range settings.AllFields() {
-		if f.Persist.Kind == settings.PersistSeam || f.Persist.Kind == settings.PersistTypedSection {
-			continue // M2b key-chip 필드 — data-i18n 미방출 (위 주석 참조)
-		}
+		// M5-b D3: PersistSeam / PersistTypedSection 필드도 이제 field__title /
+		// field__desc data-i18n 을 방출한다 (과거 key-chip 전용에서 승격). 따라서
+		// 이 필드들의 .title / .desc 도 사전에 존재해야 한다.
 		if statuslineFields[f.Name] {
 			continue // statusline: schema-preserved, web-i18n-removed (M3 redesign)
 		}
@@ -99,6 +99,22 @@ func TestI18nKeySetParity(t *testing.T) {
 			key := f.I18nKey + suffix
 			if !i18nKeyInAllLocales(t, key) {
 				t.Errorf("i18n.js missing key %q in all 4 locales (schema field %q)", key, f.Name)
+			}
+		}
+		// M5-b D4: select 필드의 각 option 도 data-i18n 을 방출한다. OptionDef.I18nKey
+		// 가 비어있지 않은 모든 option 의 i18n 키가 4-locale 사전에 존재해야 한다.
+		for _, opt := range f.Options {
+			if opt.I18nKey == "" {
+				continue
+			}
+			if !i18nKeyInAllLocales(t, opt.I18nKey) {
+				t.Errorf("i18n.js missing option key %q in all 4 locales (field %q)", opt.I18nKey, f.Name)
+			}
+		}
+		// EmptyLabelKey 도 비어있지 않으면 사전에 존재해야 한다.
+		if f.EmptyLabelKey != "" {
+			if !i18nKeyInAllLocales(t, f.EmptyLabelKey) {
+				t.Errorf("i18n.js missing empty-label key %q in all 4 locales (field %q)", f.EmptyLabelKey, f.Name)
 			}
 		}
 	}
