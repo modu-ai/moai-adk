@@ -96,15 +96,16 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 	}
 	body := rec.Body.String()
 
-	// 10섹션 각각 대표 스칼라 1개의 폼 컨트롤 (AC-WC11-016 렌더 half).
+	// M2b 확장 섹션 각각 대표 스칼라 1개의 폼 컨트롤 (AC-WC11-016 렌더 half).
+	// M4 다이어트: research 섹션 제거, quality/ralph/llm 대표 필드를 KEPT 필드로
+	// 교체 (performance_tier/coverage_threshold/loop.max_iterations는 제거됨).
 	for _, name := range []string{
 		"git_strategy.mode",
-		"llm.performance_tier",
-		"quality.coverage_threshold",
+		"llm.glm.models.high",
+		"quality.ddd_settings.characterization_tests",
 		"workflow.team.max_teammates",
 		"harness.default_profile",
-		"ralph.loop.max_iterations",
-		"research.enabled",
+		"ralph.lint_as_instruction",
 		"feedback.repository",
 		"observability.retention_days",
 		"security.sandbox.docker_image",
@@ -112,11 +113,6 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 		if !strings.Contains(body, `name="`+name+`"`) {
 			t.Errorf("rendered page missing form control %q", name)
 		}
-	}
-
-	// 빈 claude_models tier는 "(runtime default)" placeholder (AC-WC11-014).
-	if !strings.Contains(body, `name="llm.claude_models.high" value="" placeholder="(runtime default)"`) {
-		t.Error("empty claude_models tier missing (runtime default) placeholder")
 	}
 
 	// 제외군 섹션 폼 컨트롤 0 (AC-WC11-018 렌더 half).
@@ -221,9 +217,10 @@ func TestSaveInvalidSchemaValueRejected(t *testing.T) {
 	beforeGS := readSectionFile(t, root, "git-strategy")
 	beforeLLM := readSectionFile(t, root, "llm")
 
+	// git_strategy.mode oneof 위반만으로 4xx atomic reject 발생 (M4 다이어트로
+	// llm.performance_tier 필드가 제거되어 turbo 제출은 무시된다 — schema 미등록).
 	rec := postSave(t, a, url.Values{
-		"git_strategy.mode":    {"bogus"},
-		"llm.performance_tier": {"turbo"},
+		"git_strategy.mode": {"bogus"},
 	})
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("POST /save status = %d, want 400", rec.Code)
@@ -267,22 +264,24 @@ func TestSaveExcludedSectionForgedPost(t *testing.T) {
 	}
 }
 
-// TestSaveSchemaSmokeAllSections는 AC-WC11-016의 저장 half다: 9섹션 각각 스칼라
-// 1개를 단일 POST로 저장하고 디스크 반영을 제네릭 리더로 확인한다 (9/9).
+// TestSaveSchemaSmokeAllSections는 AC-WC11-016의 저장 half다: 각 섹션 스칼라
+// 1개를 단일 POST로 저장하고 디스크 반영을 제네릭 리더로 확인한다. M4 다이어트로
+// research 섹션이 제거되고 quality/ralph 대표 필드가 bool KEPT 필드로 교체되었다.
 func TestSaveSchemaSmokeAllSections(t *testing.T) {
 	a, root := newSchemaTestApp(t)
 
 	form := url.Values{
-		"git_strategy.github_username":       {"goos"},
-		"llm.claude_models.high":             {"opus-x"},
-		"quality.coverage_threshold":         {"90"},
-		"workflow.token_budget.plan":         {"31000"},
-		"harness.escalation.max_escalations": {"3"},
-		"ralph.lsp.timeout_seconds":          {"20"},
-		"research.active.max_experiments":    {"25"},
-		"feedback.repository":                {"example-org/fork"},
-		"observability.retention_days":       {"45"},
-		"security.sandbox.docker_image":      {"alpine:3.20"},
+		"git_strategy.team.hooks.pre_push":                      {"skip"},
+		"llm.glm.models.high":                                   {"glm-test"},
+		"quality.ddd_settings.characterization_tests__present":  {"1"},
+		"quality.ddd_settings.characterization_tests":           {"on"},
+		"workflow.token_budget.plan":                            {"31000"},
+		"harness.escalation.max_escalations":                    {"3"},
+		"ralph.warn_as_instruction__present":                    {"1"},
+		"ralph.warn_as_instruction":                             {"on"},
+		"feedback.repository":                                   {"example-org/fork"},
+		"observability.retention_days":                          {"45"},
+		"security.sandbox.docker_image":                         {"alpine:3.20"},
 	}
 	rec := postSave(t, a, form)
 	if rec.Code != http.StatusOK {
@@ -294,16 +293,15 @@ func TestSaveSchemaSmokeAllSections(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, want := range map[string]string{
-		"git_strategy.github_username":       "goos",
-		"llm.claude_models.high":             "opus-x",
-		"quality.coverage_threshold":         "90",
-		"workflow.token_budget.plan":         "31000",
-		"harness.escalation.max_escalations": "3",
-		"ralph.lsp.timeout_seconds":          "20",
-		"research.active.max_experiments":    "25",
-		"feedback.repository":                "example-org/fork",
-		"observability.retention_days":       "45",
-		"security.sandbox.docker_image":      "alpine:3.20",
+		"git_strategy.team.hooks.pre_push":             "skip",
+		"llm.glm.models.high":                          "glm-test",
+		"quality.ddd_settings.characterization_tests":  "true",
+		"workflow.token_budget.plan":                   "31000",
+		"harness.escalation.max_escalations":           "3",
+		"ralph.warn_as_instruction":                    "true",
+		"feedback.repository":                          "example-org/fork",
+		"observability.retention_days":                 "45",
+		"security.sandbox.docker_image":                "alpine:3.20",
 	} {
 		if got := values[name]; got != want {
 			t.Errorf("persisted %q = %q, want %q", name, got, want)

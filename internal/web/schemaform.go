@@ -31,13 +31,12 @@ type schemaSectionMeta struct {
 // 반환한다 (settings.SchemaSectionIDs와 동순).
 func schemaSectionMetas() []schemaSectionMeta {
 	return []schemaSectionMeta{
-		{settings.SectionQualityExtras, "check-circle", "Quality (advanced)", "Remaining quality.yaml keys — DDD/TDD settings, exemptions, and test quality."},
-		{settings.SectionGitStrategy, "folder-git", "Git Strategy", "Git workflow strategy — mode, provider, and per-mode automation profiles."},
-		{settings.SectionLLM, "rocket", "LLM", "Model tier mappings for Claude and GLM backends."},
+		{settings.SectionQualityExtras, "check-circle", "Quality (advanced)", "DDD gate toggles — characterization tests, behavior snapshots, preserve-before-improve."},
+		{settings.SectionGitStrategy, "folder-git", "Git Strategy", "Git workflow mode and per-mode pre-push hook action (skip/warn/enforce)."},
+		{settings.SectionLLM, "rocket", "LLM", "GLM backend model tier mappings (high/medium/low/opus/sonnet/haiku)."},
 		{settings.SectionWorkflow, "panel-bottom", "Workflow", "Workflow execution, auto-clear, team, token budget, and worktree settings."},
 		{settings.SectionHarness, "check-circle", "Harness", "Quality harness levels, escalation, and learning subsystem."},
-		{settings.SectionRalph, "rocket", "MoAI-Loop", "MoAI-Loop feedback loop — LSP, AST-grep, and loop completion settings."},
-		{settings.SectionResearch, "languages", "Research", "Self-harness research subsystem settings."},
+		{settings.SectionRalph, "rocket", "MoAI-Loop", "MoAI-Loop instruction injection — lint and warning severity as systemMessage."},
 		{settings.SectionFeedback, "alert-circle", "Feedback", "Feedback workflow target repository."},
 		{settings.SectionObservability, "panel-bottom", "Observability", "Trace, report, and hook metrics settings."},
 		{settings.SectionSecurity, "check-circle", "Security", "Permission strictness and sandbox settings (pattern lists are read-only)."},

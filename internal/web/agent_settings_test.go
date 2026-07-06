@@ -76,8 +76,8 @@ func TestAgentSettingsFourSurfacesRendered(t *testing.T) {
 	a, _ := newAgentTestApp(t)
 	body := getIndex(t, a)
 
-	// (a) llm tiers (LLM 섹션 + 교차 참조 노트).
-	for _, marker := range []string{`name="llm.claude_models.high"`, `data-i18n="agentfm.llmnote"`} {
+	// (a) llm tiers — M4 다이어트 후 GLM tier 매핑만 잔류 (claude_models 제거됨).
+	for _, marker := range []string{`name="llm.glm.models.high"`, `data-i18n="agentfm.llmnote"`} {
 		if !strings.Contains(body, marker) {
 			t.Errorf("surface (a) marker missing: %s", marker)
 		}

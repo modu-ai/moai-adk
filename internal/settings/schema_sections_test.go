@@ -88,16 +88,17 @@ func TestApplySchemaEditsSeamRoundTrip(t *testing.T) {
 }
 
 // TestApplySchemaEditsGitStrategyTyped는 git-strategy 편집이 typed dirty-flag
-// Save 경로로 반영됨을 검증한다 (REQ-WC11-010, AC-WC11-010).
+// Save 경로로 반영됨을 검증한다 (REQ-WC11-010, AC-WC11-010). M4 다이어트 후
+// mode와 profile별 hooks.pre_push만 편집 가능하다.
 func TestApplySchemaEditsGitStrategyTyped(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	seedTypedFixtures(t, root, "git-strategy", "llm", "quality")
 
 	err := ApplySchemaEdits(root, map[string]string{
-		"git_strategy.mode":                          "personal",
-		"git_strategy.personal.automation.auto_push": "false",
-		"git_strategy.team.required_reviews":         "2",
+		"git_strategy.mode":                  "personal",
+		"git_strategy.team.hooks.pre_push":   "enforce",
+		"git_strategy.manual.hooks.pre_push": "skip",
 	})
 	if err != nil {
 		t.Fatalf("ApplySchemaEdits(git_strategy): %v", err)
@@ -109,16 +110,17 @@ func TestApplySchemaEditsGitStrategyTyped(t *testing.T) {
 	}
 	var doc struct {
 		GS struct {
-			Mode     string `yaml:"mode"`
-			Personal struct {
-				Automation struct {
-					AutoPush bool `yaml:"auto_push"`
-				} `yaml:"automation"`
-			} `yaml:"personal"`
-			Team struct {
-				RequiredReviews int  `yaml:"required_reviews"`
-				DraftPR         bool `yaml:"draft_pr"`
+			Mode   string `yaml:"mode"`
+			Team   struct {
+				Hooks struct {
+					PrePush string `yaml:"pre_push"`
+				} `yaml:"hooks"`
 			} `yaml:"team"`
+			Manual struct {
+				Hooks struct {
+					PrePush string `yaml:"pre_push"`
+				} `yaml:"hooks"`
+			} `yaml:"manual"`
 		} `yaml:"git_strategy"`
 	}
 	if err := yaml.Unmarshal(raw, &doc); err != nil {
@@ -127,11 +129,11 @@ func TestApplySchemaEditsGitStrategyTyped(t *testing.T) {
 	if doc.GS.Mode != "personal" {
 		t.Errorf("mode = %q, want personal", doc.GS.Mode)
 	}
-	if doc.GS.Personal.Automation.AutoPush {
-		t.Error("personal.automation.auto_push still true")
+	if doc.GS.Team.Hooks.PrePush != "enforce" {
+		t.Errorf("team.hooks.pre_push = %q, want enforce", doc.GS.Team.Hooks.PrePush)
 	}
-	if doc.GS.Team.RequiredReviews != 2 {
-		t.Errorf("team.required_reviews = %d, want 2", doc.GS.Team.RequiredReviews)
+	if doc.GS.Manual.Hooks.PrePush != "skip" {
+		t.Errorf("manual.hooks.pre_push = %q, want skip", doc.GS.Manual.Hooks.PrePush)
 	}
 }
 
@@ -148,7 +150,7 @@ func TestApplySchemaEditsGitStrategyDirtyFlagIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := ApplySchemaEdits(root, map[string]string{"llm.performance_tier": "high"}); err != nil {
+	if err := ApplySchemaEdits(root, map[string]string{"llm.glm.models.high": "glm-test-model"}); err != nil {
 		t.Fatalf("ApplySchemaEdits(llm): %v", err)
 	}
 
@@ -161,8 +163,8 @@ func TestApplySchemaEditsGitStrategyDirtyFlagIsolation(t *testing.T) {
 	}
 
 	llmAfter, _ := os.ReadFile(filepath.Join(root, ".moai", "config", "sections", "llm.yaml"))
-	if !strings.Contains(string(llmAfter), "performance_tier: high") {
-		t.Errorf("llm.performance_tier not persisted:\n%s", llmAfter)
+	if !strings.Contains(string(llmAfter), "high: glm-test-model") {
+		t.Errorf("llm.glm.models.high not persisted:\n%s", llmAfter)
 	}
 }
 
@@ -173,7 +175,14 @@ func TestApplySchemaEditsRejectsUnknownAndReadOnly(t *testing.T) {
 	root := t.TempDir()
 	seedTypedFixtures(t, root, "git-strategy", "llm", "quality")
 
-	for _, name := range []string{"llm.mode", "llm.team_mode", "db.enabled", "db.orm", "state.anything", "nope"} {
+	for _, name := range []string{
+		"llm.mode", "llm.team_mode",
+		"db.enabled", "db.orm", "state.anything", "nope",
+		// M4 다이어트로 제거된 필드 — 편집 불가 (yaml 로드는 backward-compat 보존).
+		"llm.performance_tier", "git_strategy.team.required_reviews",
+		"quality.coverage_threshold", "ralph.loop.max_iterations",
+		"research.enabled",
+	} {
 		if err := ApplySchemaEdits(root, map[string]string{name: "x"}); err == nil {
 			t.Errorf("edit %q: want rejection, got nil", name)
 		}
@@ -197,16 +206,17 @@ func TestSchemaCurrentValuesReadsAllSections(t *testing.T) {
 		"workflow.team.max_teammates":                  "10",
 		"harness.default_profile":                      "default",
 		"learning.enabled":                             "true",
-		"ralph.loop.max_iterations":                    "10",
-		"research.enabled":                             "false",
+		"ralph.lint_as_instruction":                    "true",
+		"ralph.warn_as_instruction":                    "false",
 		"feedback.repository":                          "modu-ai/moai-adk",
 		"observability.retention_days":                 "30",
 		"security.permission.strict_mode":              "false",
 		"git_strategy.mode":                            "team",
-		"git_strategy.team.required_reviews":           "0",
-		"llm.performance_tier":                         "",
-		"quality.coverage_threshold":                   "0",
-		"quality.ddd_settings.max_transformation_size": "small",
+		"git_strategy.team.hooks.pre_push":             "enforce",
+		"llm.glm.models.high":                          "glm-5.2",
+		"quality.ddd_settings.characterization_tests":  "true",
+		"quality.ddd_settings.behavior_snapshots":      "true",
+		"quality.ddd_settings.preserve_before_improve": "true",
 		// read-only 표시 키.
 		"llm.mode":      "",
 		"llm.team_mode": "",
@@ -306,10 +316,12 @@ func TestQualityKeyPartition(t *testing.T) {
 	}
 }
 
-// TestApplySchemaEditsAllFieldsRoundTrip은 M2b 확장 편집 필드 전수(163개)에
-// 유효 값을 단일 ApplySchemaEdits 호출로 기록하고 제네릭 리더로 전량 재확인한다
-// — typed applier(git_strategy/llm/quality) 전 분기 + seam 라우팅 + 읽기 seam의
-// 전 필드 커버리지 가드다 (AC-WC11-010 "git-strategy 전체 필드" 포함).
+// TestApplySchemaEditsAllFieldsRoundTrip은 M2b 확장 편집 필드 전수에 유효 값을
+// 단일 ApplySchemaEdits 호출로 기록하고 제네릭 리더로 전량 재확인한다 — typed
+// applier(git_strategy/llm/quality) 전 분기 + seam 라우팅 + 읽기 seam의 전 필드
+// 커버리지 가드다 (AC-WC11-010 "git-strategy 전체 필드" 포함). M4 다이어트로
+// 편집 필드 수가 감소되었다 — 본 테스트는 AllFields()에서 동적으로 파생하므로
+// 감소에 자동 적응한다.
 func TestApplySchemaEditsAllFieldsRoundTrip(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -349,6 +361,38 @@ func TestApplySchemaEditsAllFieldsRoundTrip(t *testing.T) {
 	for name, want := range edits {
 		if got := values[name]; got != want {
 			t.Errorf("round-trip %q = %q, want %q", name, got, want)
+		}
+	}
+}
+
+// TestRemovedFieldsLoadWithoutError는 M4 다이어트로 제거된 필드 키가 포함된
+// 기존 yaml 설정이 오류 없이 로드됨을 검증한다 (backward compat — 제거된 키는
+// 조용히 무시되고 KEPT 키의 yaml 경로는 안정적이다). fixture(testdata/sections)
+// 각 파일은 제거된 키(ralph.loop.max_iterations, research.enabled,
+// quality.coverage_threshold, llm.performance_tier, git_strategy 전 profile
+// leaf 등)를 그대로 포함한다.
+func TestRemovedFieldsLoadWithoutError(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	seedTypedFixtures(t, root, "git-strategy", "llm", "quality",
+		"workflow", "harness", "ralph", "research", "feedback", "observability", "security")
+
+	// seam + typed 읽기 경로: SchemaCurrentValues는 각 섹션 yaml을 yaml.Node로
+	// 파싱 — 제거된 키가 있어도 오류 없이 로드된다. 제거된 키는 AllFields()에
+	// 없으므로 values 맵에 나타나지 않는다 (조용히 무시됨).
+	values, err := SchemaCurrentValues(root)
+	if err != nil {
+		t.Fatalf("SchemaCurrentValues with removed keys: %v", err)
+	}
+	for _, removed := range []string{
+		"ralph.loop.max_iterations", "ralph.enabled",
+		"research.enabled",
+		"llm.performance_tier",
+		"quality.coverage_threshold",
+		"git_strategy.team.required_reviews",
+	} {
+		if _, ok := values[removed]; ok {
+			t.Errorf("removed key %q should not appear in SchemaCurrentValues output", removed)
 		}
 	}
 }

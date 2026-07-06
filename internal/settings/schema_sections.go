@@ -105,71 +105,29 @@ func withSelect(f FieldDef, keyPrefix string, values []string, emptyLabel, empty
 
 // ─── git-strategy (REQ-WC11-010 — typed dirty-flag Save) ────────────────────
 
-// gitStrategyProfileLeaves는 3개 mode profile(manual/personal/team)이 공유하는
-// 스칼라 leaf 정의다: (key suffix, type).
-var gitStrategyProfileLeaves = []struct {
-	key string
-	typ FieldType
-}{
-	{"workflow", TypeText},
-	{"environment", TypeText},
-	{"github_integration", TypeBool},
-	{"push_to_remote", TypeBool},
-	{"automation.auto_branch", TypeBool},
-	{"automation.auto_commit", TypeBool},
-	{"automation.auto_pr", TypeBool},
-	{"automation.auto_push", TypeBool},
-	{"branch_creation.auto_enabled", TypeBool},
-	{"branch_creation.prompt_always", TypeBool},
-	{"commit_style.format", TypeText},
-	{"commit_style.scope_required", TypeBool},
-	{"hooks.pre_commit", TypeText},
-	{"hooks.pre_push", TypeText},
-	{"hooks.commit_msg", TypeText},
-}
-
+// gitStrategyFields는 M4 다이어트 후 웹 편집 노출 대상 git-strategy 필드만
+// 반환한다: mode (ActiveModeProfile 선택키) + 3개 profile의 hooks.pre_push
+// (hook_pre_push.go:72 런타임 소비자 — skip/warn/enforce). 나머지 ~53개 검증
+// 전용 키는 M4에서 제거되었다 (struct 멤버와 yaml 로드는 보존 — backward compat).
 func gitStrategyFields() []FieldDef {
 	fields := []FieldDef{
 		withSelect(typedField(SectionGitStrategy, "git_strategy", "mode", TypeSelect),
 			"f.git_strategy.mode.opt.", []string{"manual", "personal", "team"}, "", ""),
-		withSelect(typedField(SectionGitStrategy, "git_strategy", "provider", TypeSelect),
-			"f.git_strategy.provider.opt.", []string{"github", "gitlab"}, "", ""),
-		typedField(SectionGitStrategy, "git_strategy", "github_username", TypeText),
-		typedField(SectionGitStrategy, "git_strategy", "gitlab.instance_url", TypeText),
 	}
+	// hooks.pre_push 만 profile별 노출 — 런타임 reader (hook_pre_push.go:72).
 	for _, profile := range []string{"manual", "personal", "team"} {
-		for _, leaf := range gitStrategyProfileLeaves {
-			fields = append(fields, typedField(SectionGitStrategy, "git_strategy", profile+"."+leaf.key, leaf.typ))
-		}
+		fields = append(fields, typedField(SectionGitStrategy, "git_strategy", profile+".hooks.pre_push", TypeText))
 	}
-	// mode-conditional 키 (ModeProfile 주석 계약과 일치).
-	fields = append(fields,
-		typedField(SectionGitStrategy, "git_strategy", "manual.auto_checkpoint", TypeText),
-		typedField(SectionGitStrategy, "git_strategy", "personal.branch_prefix", TypeText),
-		typedField(SectionGitStrategy, "git_strategy", "personal.main_branch", TypeText),
-		typedField(SectionGitStrategy, "git_strategy", "team.branch_prefix", TypeText),
-		typedField(SectionGitStrategy, "git_strategy", "team.main_branch", TypeText),
-		typedField(SectionGitStrategy, "git_strategy", "team.draft_pr", TypeBool),
-		typedField(SectionGitStrategy, "git_strategy", "team.required_reviews", TypeInt),
-		typedField(SectionGitStrategy, "git_strategy", "team.branch_protection", TypeBool),
-	)
 	return fields
 }
 
 // ─── llm 안전 키 (REQ-WC11-012/013/014 — typed 경로) ─────────────────────────
 
+// llmFields는 M4 다이어트 후 GLM tier 매핑만 반환한다 (glm.go:195-197 런타임
+// 소비자 — ANTHROPIC_DEFAULT_*_MODEL 환경변수). performance_tier와
+// claude_models.*는 런타임 reader 없이 제거되었다 (struct 멤버와 yaml 로드 보존).
 func llmFields() []FieldDef {
-	perf := withSelect(typedField(SectionLLM, "llm", "performance_tier", TypeSelect),
-		"f.llm.performance_tier.opt.", []string{"high", "medium", "low"},
-		emptyLabelRuntimeDefault, "opt.runtime_default")
-	fields := []FieldDef{perf}
-	// claude_models tiers — 빈 값은 "(runtime default)" 시맨틱 (EC-4: 빈 값 유지).
-	for _, tier := range []string{"high", "medium", "low"} {
-		f := typedField(SectionLLM, "llm", "claude_models."+tier, TypeText)
-		f.EmptyLabel = emptyLabelRuntimeDefault
-		f.EmptyLabelKey = "opt.runtime_default"
-		fields = append(fields, f)
-	}
+	var fields []FieldDef
 	for _, tier := range []string{"high", "medium", "low", "opus", "sonnet", "haiku"} {
 		fields = append(fields, typedField(SectionLLM, "llm", "glm.models."+tier, TypeText))
 	}
@@ -178,39 +136,43 @@ func llmFields() []FieldDef {
 
 // ─── quality 잔여 키 (REQ-WC11-011 — 기존 typed 경로 확장) ───────────────────
 
+// qualityExtraFields는 M4 다이어트 후 런타임 소비자가 있는 DDD 게이트 필드만
+// 반환한다 (trust.go:740/748/756). 나머지 13개 dead/redundant 키는 제거되었다
+// (struct 멤버와 yaml 로드 보존 — TestQualityKeyPartition이 명시 제외 prefix로
+// 검증).
 func qualityExtraFields() []FieldDef {
 	q := func(key string, typ FieldType) FieldDef {
 		return typedField(SectionQualityExtras, "quality", key, typ)
 	}
 	return []FieldDef{
-		q("coverage_threshold", TypeInt),
-		q("ddd_settings.require_existing_tests", TypeBool),
 		q("ddd_settings.characterization_tests", TypeBool),
 		q("ddd_settings.behavior_snapshots", TypeBool),
-		q("ddd_settings.max_transformation_size", TypeText),
 		q("ddd_settings.preserve_before_improve", TypeBool),
-		q("tdd_settings.red_green_refactor", TypeBool),
-		q("tdd_settings.test_first_required", TypeBool),
-		q("tdd_settings.mutation_testing_enabled", TypeBool),
-		q("coverage_exemptions.enabled", TypeBool),
-		q("coverage_exemptions.require_justification", TypeBool),
-		q("coverage_exemptions.max_exempt_percentage", TypeInt),
-		q("test_quality.specification_based", TypeBool),
-		q("test_quality.meaningful_assertions", TypeBool),
-		q("test_quality.avoid_implementation_coupling", TypeBool),
-		q("test_quality.mutation_testing_enabled", TypeBool),
 	}
 }
 
 // QualityExcludedKeyPrefixes는 웹 노출에서 명시적으로 제외한 quality.yaml 키
 // prefix다 (AC-WC11-011의 "제외 목록 명시분"). cycle_type_routing은 문서화 블록,
-// lsp_* / principles는 대형 중첩 정책 블록 — form UI 부적합.
+// lsp_* / principles는 대형 중첩 정책 블록 — form UI 부적합. M4 다이어트로 제거된
+// dead/redundant leaf 키(coverage_threshold alias, 사용되지 않는 ddd/tdd leaf,
+// coverage_exemptions/test_quality 서브트리 전체)도 명시 제외 — struct 멤버와
+// yaml 로드는 보존되어 backward compat을 유지한다.
 func QualityExcludedKeyPrefixes() []string {
 	return []string{
 		"cycle_type_routing.",
 		"lsp_quality_gates.",
 		"lsp_integration.",
 		"principles.",
+		// M4 다이어트 — 런타임 reader 없는 개별 leaf.
+		"coverage_threshold",
+		"ddd_settings.require_existing_tests",
+		"ddd_settings.max_transformation_size",
+		"tdd_settings.red_green_refactor",
+		"tdd_settings.test_first_required",
+		"tdd_settings.mutation_testing_enabled",
+		// M4 다이어트 — 서브트리 전체 제거.
+		"coverage_exemptions.",
+		"test_quality.",
 	}
 }
 
@@ -258,40 +220,11 @@ func seamSectionFields() []FieldDef {
 		s(SectionHarness, "harness", TypeBool, "learning", "auto_apply"),
 		s(SectionHarness, "harness", TypeInt, "learning", "log_retention_days"),
 
-		// ralph.
-		s(SectionRalph, "ralph", TypeBool, "ralph", "enabled"),
+		// ralph — M4 다이어트: 런타임 reader가 있는 2개만 잔류
+		// (post_tool.go:431/444, engine.go:239). 나머지 17개(enabled/ast_grep/
+		// loop/lsp)는 문서화 전용이고 Go runtime이 binding하지 않는다.
 		s(SectionRalph, "ralph", TypeBool, "ralph", "lint_as_instruction"),
 		s(SectionRalph, "ralph", TypeBool, "ralph", "warn_as_instruction"),
-		s(SectionRalph, "ralph", TypeBool, "ralph", "ast_grep", "enabled"),
-		s(SectionRalph, "ralph", TypeBool, "ralph", "ast_grep", "auto_fix"),
-		s(SectionRalph, "ralph", TypeBool, "ralph", "ast_grep", "quality_scan"),
-		s(SectionRalph, "ralph", TypeBool, "ralph", "ast_grep", "security_scan"),
-		s(SectionRalph, "ralph", TypeBool, "ralph", "loop", "auto_fix"),
-		s(SectionRalph, "ralph", TypeInt, "ralph", "loop", "max_iterations"),
-		s(SectionRalph, "ralph", TypeInt, "ralph", "loop", "cooldown_seconds"),
-		s(SectionRalph, "ralph", TypeBool, "ralph", "loop", "require_confirmation"),
-		s(SectionRalph, "ralph", TypeInt, "ralph", "loop", "completion", "coverage_threshold"),
-		s(SectionRalph, "ralph", TypeBool, "ralph", "loop", "completion", "tests_pass"),
-		s(SectionRalph, "ralph", TypeBool, "ralph", "loop", "completion", "zero_errors"),
-		s(SectionRalph, "ralph", TypeBool, "ralph", "loop", "completion", "zero_warnings"),
-		s(SectionRalph, "ralph", TypeBool, "ralph", "lsp", "auto_start"),
-		s(SectionRalph, "ralph", TypeBool, "ralph", "lsp", "graceful_degradation"),
-		s(SectionRalph, "ralph", TypeInt, "ralph", "lsp", "poll_interval_ms"),
-		s(SectionRalph, "ralph", TypeInt, "ralph", "lsp", "timeout_seconds"),
-
-		// research.
-		s(SectionResearch, "research", TypeBool, "research", "enabled"),
-		s(SectionResearch, "research", TypeInt, "research", "active", "budget_cap_tokens"),
-		s(SectionResearch, "research", TypeInt, "research", "active", "max_experiments"),
-		s(SectionResearch, "research", TypeFloat, "research", "active", "pass_threshold"),
-		s(SectionResearch, "research", TypeInt, "research", "active", "runs_per_experiment"),
-		s(SectionResearch, "research", TypeFloat, "research", "active", "target_score"),
-		s(SectionResearch, "research", TypeText, "research", "dashboard", "default_mode"),
-		s(SectionResearch, "research", TypeBool, "research", "dashboard", "html_open_browser"),
-		s(SectionResearch, "research", TypeBool, "research", "passive", "enabled"),
-		s(SectionResearch, "research", TypeInt, "research", "passive", "correction_window_seconds"),
-		s(SectionResearch, "research", TypeFloat, "research", "safety", "canary_regression_threshold"),
-		s(SectionResearch, "research", TypeBool, "research", "safety", "worktree_isolation"),
 
 		// feedback.
 		s(SectionFeedback, "feedback", TypeText, "feedback", "repository"),
@@ -416,7 +349,6 @@ func SchemaSectionIDs() []SectionID {
 		SectionWorkflow,
 		SectionHarness,
 		SectionRalph,
-		SectionResearch,
 		SectionFeedback,
 		SectionObservability,
 		SectionSecurity,

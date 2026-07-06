@@ -16,7 +16,6 @@ package settings
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -136,8 +135,9 @@ func applyTypedEdits(projectRoot string, fields []FieldDef, values []string) err
 	return nil
 }
 
-// parseBoolValue / parseIntValue / parseFloatValue는 typed applier의 값 변환
-// 가드다 (웹 파서가 1차 검증하지만 seam 없이 직접 호출되는 경우를 방어).
+// parseBoolValue는 typed applier의 bool 값 변환 가드다 (웹 파서가 1차 검증하지만
+// seam 없이 직접 호출되는 경우를 방어). M4 다이어트로 int 변환 경로가 제거되어
+// parseIntValue는 폐기되었다.
 func parseBoolValue(key, v string) (bool, error) {
 	switch v {
 	case "true":
@@ -148,29 +148,14 @@ func parseBoolValue(key, v string) (bool, error) {
 	return false, fmt.Errorf("settings: %s: %q is not a boolean", key, v)
 }
 
-func parseIntValue(key, v string) (int, error) {
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		return 0, fmt.Errorf("settings: %s: %q is not an integer", key, v)
-	}
-	return n, nil
-}
-
 // applyGitStrategyKey는 git_strategy.<key> 편집을 typed struct에 적용한다
-// (REQ-WC11-010 — 전 필드 typed, Save dirty-flag 경로).
+// (REQ-WC11-010 — typed, Save dirty-flag 경로). M4 다이어트로 mode와 profile별
+// hooks.pre_push만 잔류한다 (hook_pre_push.go:72 런타임 reader). 나머지 ~53개
+// 검증 전용 키의 편집 FieldDef가 제거되어 도달 불가하다 — struct 멤버는 보존.
 func applyGitStrategyKey(gs *config.GitStrategyConfig, key, v string) error {
 	switch key {
 	case "mode":
 		gs.Mode = v
-		return nil
-	case "provider":
-		gs.Provider = v
-		return nil
-	case "github_username":
-		gs.GitHubUsername = v
-		return nil
-	case "gitlab.instance_url":
-		gs.GitLab.InstanceURL = v
 		return nil
 	}
 
@@ -191,80 +176,23 @@ func applyGitStrategyKey(gs *config.GitStrategyConfig, key, v string) error {
 	}
 
 	switch rest {
-	case "workflow":
-		p.Workflow = v
-	case "environment":
-		p.Environment = v
-	case "auto_checkpoint":
-		p.AutoCheckpoint = v
-	case "branch_prefix":
-		p.BranchPrefix = v
-	case "main_branch":
-		p.MainBranch = v
-	case "commit_style.format":
-		p.CommitStyle.Format = v
-	case "hooks.pre_commit":
-		p.Hooks.PreCommit = v
 	case "hooks.pre_push":
 		p.Hooks.PrePush = v
-	case "hooks.commit_msg":
-		p.Hooks.CommitMsg = v
-	case "required_reviews":
-		n, err := parseIntValue(key, v)
-		if err != nil {
-			return err
-		}
-		p.RequiredReviews = n
 	default:
-		b, err := parseBoolValue(key, v)
-		if err != nil {
-			return fmt.Errorf("settings: unknown git_strategy key %q", key)
-		}
-		switch rest {
-		case "github_integration":
-			p.GitHubIntegration = b
-		case "push_to_remote":
-			p.PushToRemote = b
-		case "draft_pr":
-			p.DraftPR = b
-		case "branch_protection":
-			p.BranchProtection = b
-		case "automation.auto_branch":
-			p.Automation.AutoBranch = b
-		case "automation.auto_commit":
-			p.Automation.AutoCommit = b
-		case "automation.auto_pr":
-			p.Automation.AutoPR = b
-		case "automation.auto_push":
-			p.Automation.AutoPush = b
-		case "branch_creation.auto_enabled":
-			p.BranchCreation.AutoEnabled = b
-		case "branch_creation.prompt_always":
-			p.BranchCreation.PromptAlways = b
-		case "commit_style.scope_required":
-			p.CommitStyle.ScopeRequired = b
-		default:
-			return fmt.Errorf("settings: unknown git_strategy key %q", key)
-		}
+		return fmt.Errorf("settings: unknown git_strategy key %q", key)
 	}
 	return nil
 }
 
 // applyLLMKey는 llm.<key> 편집을 typed struct에 적용한다 (REQ-WC11-012 안전 키만;
 // mode/team_mode는 read-only — 스키마에 편집 필드가 없어 여기 도달 불가하며,
-// 도달 시 명시적으로 거부한다, REQ-WC11-013).
+// 도달 시 명시적으로 거부한다, REQ-WC11-013). M4 다이어트로 performance_tier와
+// claude_models.* 편집 FieldDef가 제거되어 이 분기들은 도달 불가하다 — struct
+// 멤버는 보존되어 yaml 로드가 backward-compat를 유지한다.
 func applyLLMKey(l *config.LLMConfig, key, v string) error {
 	switch key {
 	case "mode", "team_mode":
 		return fmt.Errorf("settings: llm.%s is read-only (runtime-managed, REQ-WC11-013)", key)
-	case "performance_tier":
-		l.PerformanceTier = v
-	case "claude_models.high":
-		l.ClaudeModels.High = v
-	case "claude_models.medium":
-		l.ClaudeModels.Medium = v
-	case "claude_models.low":
-		l.ClaudeModels.Low = v
 	case "glm.models.high":
 		l.GLM.Models.High = v
 	case "glm.models.medium":
@@ -284,58 +212,23 @@ func applyLLMKey(l *config.LLMConfig, key, v string) error {
 }
 
 // applyQualityKey는 quality.<key> 확장 편집을 typed struct에 적용한다
-// (REQ-WC11-011 — 기존 4필드 외 잔여 typed 키).
+// (REQ-WC11-011). M4 다이어트로 런타임 reader가 있는 3개 DDD 게이트 키만 잔류한다
+// (trust.go:740/748/756). 나머지 키의 편집 FieldDef가 제거되어 도달 불가하다 —
+// struct 멤버는 보존되어 yaml 로드가 backward-compat를 유지한다.
 func applyQualityKey(q *models.QualityConfig, key, v string) error {
+	b, err := parseBoolValue(key, v)
+	if err != nil {
+		return fmt.Errorf("settings: unknown quality key %q", key)
+	}
 	switch key {
-	case "coverage_threshold":
-		n, err := parseIntValue(key, v)
-		if err != nil {
-			return err
-		}
-		q.CoverageThreshold = n
-	case "coverage_exemptions.max_exempt_percentage":
-		n, err := parseIntValue(key, v)
-		if err != nil {
-			return err
-		}
-		q.CoverageExemptions.MaxExemptPercentage = n
-	case "ddd_settings.max_transformation_size":
-		q.DDDSettings.MaxTransformationSize = v
+	case "ddd_settings.characterization_tests":
+		q.DDDSettings.CharacterizationTests = b
+	case "ddd_settings.behavior_snapshots":
+		q.DDDSettings.BehaviorSnapshots = b
+	case "ddd_settings.preserve_before_improve":
+		q.DDDSettings.PreserveBeforeImprove = b
 	default:
-		b, err := parseBoolValue(key, v)
-		if err != nil {
-			return fmt.Errorf("settings: unknown quality key %q", key)
-		}
-		switch key {
-		case "ddd_settings.require_existing_tests":
-			q.DDDSettings.RequireExistingTests = b
-		case "ddd_settings.characterization_tests":
-			q.DDDSettings.CharacterizationTests = b
-		case "ddd_settings.behavior_snapshots":
-			q.DDDSettings.BehaviorSnapshots = b
-		case "ddd_settings.preserve_before_improve":
-			q.DDDSettings.PreserveBeforeImprove = b
-		case "tdd_settings.red_green_refactor":
-			q.TDDSettings.RedGreenRefactor = b
-		case "tdd_settings.test_first_required":
-			q.TDDSettings.TestFirstRequired = b
-		case "tdd_settings.mutation_testing_enabled":
-			q.TDDSettings.MutationTestingEnabled = b
-		case "coverage_exemptions.enabled":
-			q.CoverageExemptions.Enabled = b
-		case "coverage_exemptions.require_justification":
-			q.CoverageExemptions.RequireJustification = b
-		case "test_quality.specification_based":
-			q.TestQuality.SpecificationBased = b
-		case "test_quality.meaningful_assertions":
-			q.TestQuality.MeaningfulAssertions = b
-		case "test_quality.avoid_implementation_coupling":
-			q.TestQuality.AvoidImplementationCoupling = b
-		case "test_quality.mutation_testing_enabled":
-			q.TestQuality.MutationTestingEnabled = b
-		default:
-			return fmt.Errorf("settings: unknown quality key %q", key)
-		}
+		return fmt.Errorf("settings: unknown quality key %q", key)
 	}
 	return nil
 }
