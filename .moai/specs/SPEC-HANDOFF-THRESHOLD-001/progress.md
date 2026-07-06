@@ -28,11 +28,62 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — manager-develop>_
+> cycle_type=tdd, per-milestone atomic GREEN 커밋(RED 커밋 없음). M1=eb23fc075(선행 landing), M2=2aaf43986, M3=0a843503e(로컬 worktree, push는 orchestrator 소관). 각 AC의 Actual Output은 이 run에서 실제 관측한 명령 출력.
+
+| AC | REQ | M | Actual Output (관측 증거) | Status |
+|----|-----|---|---------------------------|--------|
+| AC-001 | REQ-001 | M1 | `TestHandoffGuideStage_WrapperEquivalence` PASS — `shouldShowHandoffGuide == (handoffGuideStage != none)` 전 케이스 성립, 기존 M1 테스트 무손상 | PASS |
+| AC-002 | REQ-002 | M1 | `TestRenderBarsInline_TwoStageSuffix` PASS — none→suffix無 / soft→`(⚠️/clear)` / hard→`(🛑/clear!)` | PASS |
+| AC-003 | REQ-003 | M1 | `TestHardCeiling_Formula`(hardCeilingPct(256K)=95, 1M=95) + `TestHardCeiling_ClampBelowSoft`(env=60→clamp hard=soft=90) PASS | PASS |
+| AC-004 | REQ-004 | M1 | `TestHandoffThresholdConstants` PASS(5 상수 값 검증); `grep -cE '500_000\|500000' renderer.go` = **0**(inline literal 부재, config 상수 참조) | PASS |
+| AC-005 | REQ-005 | M3 | `grep -icE 'auto-compact.*pre-empt\|rarely fires\|frequently pre-empted'` = **2**(LIVE)/2(template); `grep -ic 'always fires'` = **0**/0 (verification-claim-integrity — stage-2 always fires 미주장) | PASS |
+| AC-006 | REQ-006 | M1 | **INVARIANT** — `TestNoM1Regression_SuffixUnconditional` PASS(default guide=false에서 soft suffix 유지); static `var _ func(*StatusData) handoffStage = handoffGuideStage`; `grep -c 'HandoffConfig' renderer.go` = **0**(suffix 게이팅 부재) | PASS |
+| AC-007 | REQ-007 | M2 | `TestWriteContextUsage_ConfigIndependent` PASS; static `var _ func(string,string,int,MemoryData,handoffStage) = writeContextUsage`(HandoffConfig 파라미터 없음 — 컴파일 보증) | PASS |
+| AC-009 | REQ-009 | M2 | `TestWriteContextUsage_Atomic`(temp+rename valid JSON, .tmp 잔존 없음) + `TestWriteContextUsage_SilentFail`(빈 projDir / Available=false / cwSize≤0 / MkdirAll 실패 → panic·error 없음) PASS | PASS |
+| AC-010 | REQ-010 | M2 | `TestContextUsage_Schema` PASS — 9필드(schema_version/session_id/writer_pid/captured_at/context_window_size/tokens_used/raw_pct/stage/band) 존재 | PASS |
+| AC-011 | REQ-011 | M2 | `TestBuild_WritesContextUsageWithSessionID` PASS — Build 후 파일 session_id="sess-build-011" ∧ context_window_size=256000 ∧ tokens_used=230400; `grep -c writeContextUsage builder.go`=**1**, renderer.go=**0** | PASS |
+| AC-012 | REQ-012 | M2 | `TestWriteContextUsage_ThrottleSkipUnchanged` PASS — 동일 payload 재write는 mtime 불변(skip, writer_pid 22 변경에도 throttle 유지), tokens 변경 시 write 발생 | PASS |
+| AC-013 | REQ-013 | M2 | `TestSessionGuard_MismatchStale` PASS — session_id A vs B → stale(false), A vs A → valid(true), UUID 경로 writer_pid 무관 | PASS |
+| AC-014 | REQ-014 | M2 | `TestFallbackUUID_FreshnessValidation` PASS — 빈 session_id도 write 발생, 양측 "" + fresh + 동일 writer → valid, expired → stale, UUID×"" mix → 보수적 stale | PASS |
+| AC-015 | REQ-015 | M3 | `grep -c 'context-usage.json'` = **2**(LIVE)/2(template); Detection §1 state-file 우선 + §3 fallback 4-signal 보존 서술 | PASS |
+| AC-016 | REQ-016 | M3 | LIVE·template §Detection 모두 context-usage.json 반영(section-level); `grep -c '256,000' <LIVE>` = **1**(중복 없음, Targets 표 무접촉); template internal-content-leak CI 가드 `ok` | PASS |
+| AC-017 | REQ-017 | M3 | `grep -c '256,000' <template>` = **1**(누락 행 ADD) ∧ `grep -c '256,000' <LIVE>` = **1** → 두 사본 parity(drift 제거); `make build` exit 0 | PASS |
+| AC-018 | REQ-018 | M2 | `TestConcurrentEmptyID_WriterPIDGuard` PASS(table: match+fresh→valid, mismatch+fresh→stale(cross-read 차단), match/mismatch+stale→stale) + UUID 경로 writer_pid 무관 유지(AC-013 보존) | PASS |
+| AC-008 | REQ-008 | M3 | `grep -c 'statusline.*미소비\|does not read HandoffConfig' design.md` = **2**; `git diff --stat eb23fc075..HEAD -- internal/hook/handoff_inject.go` = **empty**(M3 auto-resume 무접촉) | PASS |
+
+**불변식(invariant) row**:
+
+| Invariant | 관측 증거 | Status |
+|-----------|-----------|--------|
+| M1 무회귀 (AC-006) | default guide=false에서 soft suffix 유지, statusline이 HandoffConfig 미소비(컴파일 보증) | PASS |
+| M1 band 로직 verbatim 승계 (B10 PRESERVE) | `softThresholdPct` = M1 ≥cutoff→50 / else→90 로직 그대로(리터럴만 config 상수화) | PASS |
+| M3 handoff_inject.go 무접촉 (B10) | `git diff eb23fc075..HEAD internal/hook/handoff_inject.go` empty | PASS |
+| 4-signal 휴리스틱 fallback 보존 (AC-015) | Detection §3에 4-signal 그대로 유지 | PASS |
+| context-usage.json 커밋 미포함 (B8) | 런타임 생성물 — 코드만 커밋; TestMain이 test side-effect .moai/state 정리 | PASS |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — manager-develop>_
+```yaml
+run_complete_at: 2026-07-06
+run_commit_sha: 0a843503e   # M-final(M3) 로컬 worktree SHA; push 시 orchestrator rebase 가능 → backfill 대상
+run_status: complete        # 18/18 AC PASS, 0 FAIL
+ac_pass_count: 18
+ac_fail_count: 0
+preserve_list_post_run_count: 5   # M1 band verbatim / handoff_inject 무접촉 / M1 테스트 green / 4-signal fallback / LIVE 256K 무중복 — 5개 전부 준수, 위반 0
+l44_pre_commit_fetch: deferred-to-orchestrator   # push 미수행(task 지시) — 병렬 statusline 세션 레이스는 orchestrator가 pre-push 처리
+l44_post_push_fetch: deferred-to-orchestrator    # run-phase에서 push 없음
+new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues, go vet clean (statusline + config)
+cross_platform_build:
+  darwin_amd64: ok      # go build ./... exit 0
+  windows_amd64: ok     # GOOS=windows GOARCH=amd64 go build ./... exit 0
+  make_build: ok        # template embed 재컴파일 exit 0
+coverage:
+  statusline: 85.4%     # 신규 context_usage.go per-func avg ~96.5%
+  config: 80.3%         # 패키지 pre-existing baseline — M2/M3는 config 무접촉, M1 상수는 compile-time(statement 커버리지 영향 없음), 회귀 아님
+total_run_phase_files: 10   # M1 4(renderer.go/defaults.go/handoff_stage_test.go/handoff_thresholds_test.go) + M2/M3 6(context_usage.go/context_usage_test.go/builder.go/builder_test.go/LIVE doctrine/template doctrine)
+m1_to_mN_commit_strategy: per-milestone-atomic-green   # M1 eb23fc075(feat) → M2 2aaf43986(feat) → M3 0a843503e(docs), RED 커밋 없음
+known_baseline_failure: internal/cli/TestRunHookEvent_ReadInputError   # coverage_test.go:77 pre-existing panic, base eb23fc075에서도 fail, internal/cli는 M4 무접촉(diff empty) → M4 무관
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
