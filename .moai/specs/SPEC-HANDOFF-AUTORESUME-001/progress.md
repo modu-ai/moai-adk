@@ -93,4 +93,4 @@ pre_existing_baseline_failure: "internal/cli TestRunHookEvent_ReadInputError (co
 - frontmatter: spec.md status in-progress → completed + updated 2026-07-06 (era V3R6, H-4 predicate)
 - CHANGELOG: [Unreleased] `### Added` 엔트리 추가 (dup grep = 1)
 - pre-existing baseline: `internal/cli` `TestRunHookEvent_ReadInputError` nil-deref panic — base `9fbc7a2be`(handoff refs 0)에서도 동일 재현, SPEC scope 밖 (manager-develop 결백)
-- sync_commit_sha: _<백필 대기 — sync 커밋 SHA로 후속 커밋에서 채움>_
+- sync_commit_sha: b1ea0b9f9
