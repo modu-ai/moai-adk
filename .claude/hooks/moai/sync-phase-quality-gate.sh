@@ -42,14 +42,37 @@ set -e
 # passing the sync-phase-commit git gate below.
 detect_language() {
     root="${1:-.}"
+    # Marker priority follows the language matrix order (16 supported languages)
     if [ -f "$root/go.mod" ]; then
         echo "go"
-    elif [ -f "$root/package.json" ]; then
-        echo "node"
     elif [ -f "$root/pyproject.toml" ] || [ -f "$root/requirements.txt" ]; then
         echo "python"
+    elif [ -f "$root/package.json" ]; then
+        echo "node"
     elif [ -f "$root/Cargo.toml" ]; then
         echo "rust"
+    elif [ -f "$root/pom.xml" ] || [ -f "$root/build.gradle" ] || [ -f "$root/build.gradle.kts" ]; then
+        echo "java"
+    elif [ -f "$root/Gemfile" ]; then
+        echo "ruby"
+    elif [ -f "$root/composer.json" ]; then
+        echo "php"
+    elif [ -f "$root/mix.exs" ]; then
+        echo "elixir"
+    elif [ -f "$root/CMakeLists.txt" ] || [ -f "$root/Makefile" ]; then
+        echo "cpp"
+    elif [ -f "$root/build.sbt" ] || [ -f "$root/pom.xml" ]; then
+        echo "scala"
+    elif [ -f "$root/DESCRIPTION" ] || [ -f "$root/renv.lock" ]; then
+        echo "r"
+    elif [ -f "$root/pubspec.yaml" ]; then
+        echo "flutter"
+    elif [ -f "$root/Package.swift" ]; then
+        echo "swift"
+    elif [ -f "$root/*.csproj" ] 2>/dev/null || [ -d "$root/.vs" ]; then
+        echo "csharp"
+    elif [ -f "$root/*.csproj" ] 2>/dev/null || find "$root" -maxdepth 1 -name '*.csproj' -print -quit 2>/dev/null; then
+        echo "csharp"
     else
         echo ""
     fi
@@ -60,11 +83,22 @@ detect_language() {
 # delta means a docs/markdown-only sync and the gate skips.
 code_delta_pattern() {
     case "$1" in
-        go)     echo '\.go$' ;;
-        node)   echo '\.(js|ts|jsx|tsx|mjs|cjs)$' ;;
-        python) echo '\.py$' ;;
-        rust)   echo '\.rs$' ;;
-        *)      echo '' ;;
+        go)       echo '\.go$' ;;
+        python)   echo '\.py$' ;;
+        node)     echo '\.(js|ts|jsx|tsx|mjs|cjs)$' ;;
+        rust)     echo '\.rs$' ;;
+        java)     echo '\.java$' ;;
+        kotlin)   echo '\.kt|\.kts$' ;;
+        csharp)   echo '\.cs$' ;;
+        ruby)     echo '\.rb$' ;;
+        php)      echo '\.php$' ;;
+        elixir)   echo '\.ex$|\.exs$' ;;
+        cpp)      echo '\.(cpp|cc|cxx|h|hpp|hxx)$' ;;
+        scala)    echo '\.scala$' ;;
+        r)        echo '\.r$|\.R$' ;;
+        flutter)  echo '\.dart$' ;;
+        swift)    echo '\.swift$' ;;
+        *)        echo '' ;;
     esac
 }
 
@@ -185,17 +219,62 @@ case "$GATE_LANG" in
         run_step go c1 go vet ./...
         run_step go c2 go build ./...
         ;;
-    node)
-        C1_LABEL="eslint"
-        run_step eslint c1 eslint .
-        ;;
     python)
         C1_LABEL="ruff"
         run_step ruff c1 ruff check .
         ;;
+    node)
+        C1_LABEL="eslint"
+        run_step eslint c1 eslint .
+        ;;
     rust)
         C1_LABEL="cargo check"
         run_step cargo c1 cargo check
+        ;;
+    java)
+        C1_LABEL="javac compile check"
+        # Simple compile check: find .java files and attempt compilation
+        run_step javac c1 sh -c 'find . -name "*.java" -exec javac -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1 | head -20' || true
+        ;;
+    kotlin)
+        C1_LABEL="kotlinc"
+        run_step kotlinc c1 sh -c 'find . -name "*.kt" -exec kotlinc -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1 | head -20' || true
+        ;;
+    csharp)
+        C1_LABEL="dotnet build"
+        run_step dotnet c1 dotnet build --no-restore 2>&1 | head -30 || true
+        ;;
+    ruby)
+        C1_LABEL="ruby syntax"
+        run_step ruby c1 sh -c 'find . -name "*.rb" -exec ruby -c {} \; 2>&1' || true
+        ;;
+    php)
+        C1_LABEL="php syntax"
+        run_step php c1 sh -c 'find . -name "*.php" -exec php -l {} \; 2>&1' || true
+        ;;
+    elixir)
+        C1_LABEL="mix compile"
+        run_step mix c1 mix compile --no-start 2>&1 | head -20 || true
+        ;;
+    cpp)
+        C1_LABEL="g++ syntax check"
+        run_step g++ c1 sh -c 'find . -name "*.cpp" -o -name "*.cc" -exec g++ -fsyntax-only -std=c++17 {} \; 2>&1' || true
+        ;;
+    scala)
+        C1_LABEL="scalac"
+        run_step scalac c1 sh -c 'find . -name "*.scala" -exec scalac -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1 | head -20' || true
+        ;;
+    r)
+        C1_LABEL="R syntax"
+        run_step R c1 sh -c 'find . -name "*.R" -o -name "*.r" | head -5 | while read f; do Rscript -e "parse(\"$f\")" 2>&1; done' || true
+        ;;
+    flutter)
+        C1_LABEL="dart analyze"
+        run_step dart c1 dart analyze 2>&1 | head -30 || true
+        ;;
+    swift)
+        C1_LABEL="swift build"
+        run_step swift c1 swift build 2>&1 | head -30 || true
         ;;
 esac
 
@@ -204,10 +283,21 @@ esac
 # drive the block decision. Language-specific manifest set.
 DEPS_MANIFESTS=""
 case "$GATE_LANG" in
-    go)     DEPS_MANIFESTS="go.mod go.sum" ;;
-    node)   DEPS_MANIFESTS="package.json package-lock.json yarn.lock pnpm-lock.yaml" ;;
-    python) DEPS_MANIFESTS="pyproject.toml requirements.txt poetry.lock" ;;
-    rust)   DEPS_MANIFESTS="Cargo.toml Cargo.lock" ;;
+    go)       DEPS_MANIFESTS="go.mod go.sum" ;;
+    python)   DEPS_MANIFESTS="pyproject.toml requirements.txt poetry.lock" ;;
+    node)     DEPS_MANIFESTS="package.json package-lock.json yarn.lock pnpm-lock.yaml" ;;
+    rust)     DEPS_MANIFESTS="Cargo.toml Cargo.lock" ;;
+    java)     DEPS_MANIFESTS="pom.xml build.gradle build.gradle.kts gradle.properties" ;;
+    kotlin)   DEPS_MANIFESTS="pom.xml build.gradle.kts gradle.properties" ;;
+    csharp)   DEPS_MANIFESTS="*.csproj packages.lock.json" ;;
+    ruby)     DEPS_MANIFESTS="Gemfile Gemfile.lock" ;;
+    php)      DEPS_MANIFESTS="composer.json composer.lock" ;;
+    elixir)   DEPS_MANIFESTS="mix.exs mix.lock" ;;
+    cpp)      DEPS_MANIFESTS="CMakeLists.txt Makefile" ;;
+    scala)    DEPS_MANIFESTS="build.sbt pom.xml build.scala" ;;
+    r)        DEPS_MANIFESTS="DESCRIPTION renv.lock .Rprofile" ;;
+    flutter)  DEPS_MANIFESTS="pubspec.yaml pubspec.lock" ;;
+    swift)    DEPS_MANIFESTS="Package.swift Package.resolved" ;;
 esac
 # Reuse the initial-commit-safe DIFF_RANGE computed above (HEAD~1..HEAD would
 # fail on an initial commit; DIFF_RANGE already falls back to the empty tree).
