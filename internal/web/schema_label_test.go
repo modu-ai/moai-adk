@@ -65,10 +65,26 @@ func i18nKeyInAllLocales(t *testing.T, key string) bool {
 // and are NOT translated")과 동일 원칙. 따라서 per-field title/desc 사전 항목
 // 의무는 data-i18n을 실제 방출하는 기존 34-필드 위젯에만 적용된다. 렌더된
 // data-i18n 키의 사전 존재는 TestDataI18nKeysSubsetOfDictionary가 전수 강제한다.
+//
+// M3 redesign: statusline schema fields (statusline_theme + statusline_segment.*)
+// remain in the schema but their web i18n keys (f.statusline_theme.* / seg.*) are
+// intentionally removed — the web console no longer renders the section. They are
+// skipped here; the TUI half (internal/cli TestI18nKeySetParity) still resolves
+// them through the bridge.
 func TestI18nKeySetParity(t *testing.T) {
+	// Statusline fields stay in the schema (TUI path) but their web i18n keys are
+	// removed (M3 redesign) — skip them in the web dictionary parity check.
+	statuslineFields := map[string]bool{}
+	for _, f := range settings.SectionFields(settings.SectionStatusline) {
+		statuslineFields[f.Name] = true
+	}
+
 	for _, f := range settings.AllFields() {
 		if f.Persist.Kind == settings.PersistSeam || f.Persist.Kind == settings.PersistTypedSection {
 			continue // M2b key-chip 필드 — data-i18n 미방출 (위 주석 참조)
+		}
+		if statuslineFields[f.Name] {
+			continue // statusline: schema-preserved, web-i18n-removed (M3 redesign)
 		}
 		if strings.HasPrefix(f.I18nKey, "seg.") {
 			// Segment keys: the seg.<segment> label must exist in all 4 locales.
@@ -88,13 +104,17 @@ func TestI18nKeySetParity(t *testing.T) {
 	}
 }
 
-// TestI18nSegmentKeysComplete covers AC-WC10-016 segment half (web side): all 15
-// canonical segment keys (seg.<key>) exist in all 4 locales in i18n.js.
-func TestI18nSegmentKeysComplete(t *testing.T) {
+// TestI18nSegmentKeysRemovedFromWebDictionary covers the M3 redesign: the seg.*
+// segment label keys are removed from the web i18n dictionary across all 4
+// locales (the Statusline section is no longer rendered in the web console). The
+// canonical segment keys themselves remain in the schema (StatuslineSegmentKeys)
+// for the TUI / profile_setup CLI path.
+func TestI18nSegmentKeysRemovedFromWebDictionary(t *testing.T) {
+	dict := readEmbeddedAsset(t, "i18n.js")
 	for _, seg := range settings.StatuslineSegmentKeys() {
 		key := "seg." + seg
-		if !i18nKeyInAllLocales(t, key) {
-			t.Errorf("i18n.js missing segment key %q in all 4 locales", key)
+		if count := strings.Count(dict, `"`+key+`":`); count != 0 {
+			t.Errorf("i18n.js must NOT carry removed segment key %q (found %d occurrence(s))", key, count)
 		}
 	}
 }

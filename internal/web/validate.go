@@ -99,18 +99,11 @@ func validatePrefs(p profile.ProfilePreferences) map[string]string {
 		errs["model_policy"] = "unrecognized model policy: " + p.ModelPolicy
 	}
 
-	// Statusline theme: SPEC-WEB-CONSOLE-010 re-added the Statusline section. Empty
-	// allowed (theme-only-unset save), otherwise must be a canonical theme value
-	// from the shared schema. The retired `preset` field is NOT validated
-	// (REQ-WC10-010 — no preset control exists). Segment values are booleans bound
-	// in bindForm and carry no enum to validate.
-	if p.StatuslineTheme != "" {
-		if f, ok := settings.Field("statusline_theme"); ok {
-			if !inList(f.SelectOptions(), p.StatuslineTheme) {
-				errs["statusline_theme"] = "unrecognized statusline theme: " + p.StatuslineTheme
-			}
-		}
-	}
+	// NOTE: the Statusline section was removed from the web console (M3 of the
+	// surgical redesign). The statusline_theme validation branch is gone — the web
+	// handler no longer binds statusline form values, so there is nothing to
+	// validate. The statusline schema fields + statusline.yaml remain consumed by
+	// the TUI / profile_setup CLI path.
 
 	return errs
 }
