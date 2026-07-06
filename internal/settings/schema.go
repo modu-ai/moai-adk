@@ -41,7 +41,6 @@ const (
 	SectionFeedback      SectionID = "feedback"       // seam 전용
 	SectionObservability SectionID = "observability"  // seam 전용
 	SectionSecurity      SectionID = "security"       // seam 전용 (스칼라만; 리스트는 raw view)
-	SectionDB            SectionID = "db"             // seam 전용 (인터뷰 3키만 편집)
 
 	// SPEC-WEB-CONSOLE-011 M3: agent-settings 표면 (REQ-WC11-020..024, 070..073).
 	// workflow.yaml team.role_profiles(7 profiles — effort는 opaque node,
@@ -68,7 +67,6 @@ func AllSections() []SectionID {
 		SectionFeedback,
 		SectionObservability,
 		SectionSecurity,
-		SectionDB,
 		SectionAgentSettings,
 	}
 }

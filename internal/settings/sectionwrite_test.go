@@ -126,7 +126,7 @@ func TestYAMLPatchGoldenSections(t *testing.T) {
 		edit    yamlpatch.KeyEdit
 		want    string // 편집 라인이 담아야 할 부분 문자열
 		// blankNormalized는 yaml.v3 빈 줄 제거 정규화가 관측된 섹션 표시다
-		// (실측: security, db). true면 빈 줄 필터 후 1-line diff를 검증한다.
+		// (실측: security). true면 빈 줄 필터 후 1-line diff를 검증한다.
 		blankNormalized bool
 	}{
 		{"workflow", yamlpatch.KeyEdit{Path: []string{"workflow", "team", "default_model"}, Value: "sonnet"}, "default_model: sonnet", false},
@@ -136,7 +136,6 @@ func TestYAMLPatchGoldenSections(t *testing.T) {
 		{"feedback", yamlpatch.KeyEdit{Path: []string{"feedback", "repository"}, Value: "example-org/fork"}, "repository: example-org/fork", false},
 		{"observability", yamlpatch.KeyEdit{Path: []string{"observability", "retention_days"}, Value: "60"}, "retention_days: 60", false},
 		{"security", yamlpatch.KeyEdit{Path: []string{"security", "permission", "strict_mode"}, Value: "true"}, "strict_mode: true", true},
-		{"db", yamlpatch.KeyEdit{Path: []string{"db", "orm"}, Value: "prisma"}, "orm: \"prisma\"", true},
 	}
 
 	for _, tc := range cases {
@@ -262,89 +261,5 @@ func TestWriteSectionViaSeamRejectsForeignRootKey(t *testing.T) {
 	}
 	if got := readSection(t, root, "workflow"); got != before {
 		t.Error("rejected edit mutated the section file")
-	}
-}
-
-// TestWriteSectionViaSeamDBKeySplit는 REQ-WC11-019의 db 3/5 분리를 검증한다:
-// 인터뷰 입력 3키는 기록되고, system 5키 및 미지명 키 기록 시도는 거부되며
-// 파일 값이 불변이다 (AC-WC11-019의 데이터 계층 준비).
-func TestWriteSectionViaSeamDBKeySplit(t *testing.T) {
-	t.Parallel()
-
-	t.Run("editable interview keys", func(t *testing.T) {
-		t.Parallel()
-		root := t.TempDir()
-		seedSectionFixture(t, root, "db")
-
-		err := WriteSectionViaSeam(root, "db", []yamlpatch.KeyEdit{
-			{Path: []string{"db", "orm"}, Value: "prisma"},
-			{Path: []string{"db", "multi_tenant"}, Value: "schema"},
-			{Path: []string{"db", "migration_tool"}, Value: "alembic"},
-		})
-		if err != nil {
-			t.Fatalf("editable keys rejected: %v", err)
-		}
-		after := readSection(t, root, "db")
-		for _, want := range []string{"orm: \"prisma\"", "multi_tenant: \"schema\"", "migration_tool: \"alembic\""} {
-			if !strings.Contains(after, want) {
-				t.Errorf("editable key write missing %q", want)
-			}
-		}
-	})
-
-	t.Run("system keys read-only", func(t *testing.T) {
-		t.Parallel()
-		root := t.TempDir()
-		before := seedSectionFixture(t, root, "db")
-
-		for _, key := range DBSystemKeys() {
-			err := WriteSectionViaSeam(root, "db", []yamlpatch.KeyEdit{
-				{Path: []string{"db", key}, Value: "tampered"},
-			})
-			if err == nil {
-				t.Errorf("system key %q: want rejection, got nil", key)
-			}
-		}
-		if got := readSection(t, root, "db"); got != before {
-			t.Error("system-key write attempts mutated db.yaml")
-		}
-	})
-
-	t.Run("unknown or nested db paths rejected", func(t *testing.T) {
-		t.Parallel()
-		root := t.TempDir()
-		before := seedSectionFixture(t, root, "db")
-
-		for _, edit := range []yamlpatch.KeyEdit{
-			{Path: []string{"db", "unknown_key"}, Value: "x"},
-			{Path: []string{"db", "auto_sync", "enabled"}, Value: "false"},
-			{Path: []string{"db"}, Value: "x"},
-		} {
-			if err := WriteSectionViaSeam(root, "db", []yamlpatch.KeyEdit{edit}); err == nil {
-				t.Errorf("edit %v: want rejection, got nil", edit.Path)
-			}
-		}
-		if got := readSection(t, root, "db"); got != before {
-			t.Error("rejected db edits mutated db.yaml")
-		}
-	})
-}
-
-// TestWriteSectionViaSeamKeySplitConstantsMatchFixture는 3/5 키 상수가 실측
-// db.yaml fixture의 키 집합과 정합함을 검증한다 (드리프트 가드).
-func TestWriteSectionViaSeamKeySplitConstantsMatchFixture(t *testing.T) {
-	t.Parallel()
-	src, err := os.ReadFile(filepath.Join("testdata", "sections", "db.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	content := string(src)
-	for _, key := range append(DBEditableKeys(), DBSystemKeys()...) {
-		if !strings.Contains(content, "\n  "+key+":") {
-			t.Errorf("db.yaml fixture missing top-level key %q", key)
-		}
-	}
-	if got := len(DBEditableKeys()) + len(DBSystemKeys()); got != 8 {
-		t.Errorf("db key split total = %d, want 8 (3 interview + 5 system)", got)
 	}
 }

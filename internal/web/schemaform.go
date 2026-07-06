@@ -5,9 +5,9 @@ package web
 // 뷰모델 시딩 + 영속화 seam 연결. 영속화 자체는 settings.ApplySchemaEdits가
 // 담당한다 (seam 8섹션 = yamlpatch, git-strategy/llm/quality = typed 경로).
 //
-// read-only 키(llm.mode/team_mode, db system 5키 — REQ-WC11-013/019)와 제외군
-// 섹션(REQ-WC11-018)은 스키마에 편집 FieldDef가 없으므로 이 파서가 절대 집어
-// 올리지 않는다 — 위조 제출은 무시되고 파일은 불변이다 (EC-8).
+// read-only 키(llm.mode/team_mode — REQ-WC11-013)와 제외군 섹션(REQ-WC11-018)은
+// 스키마에 편집 FieldDef가 없으므로 이 파서가 절대 집어 올리지 않는다 — 위조
+// 제출은 무시되고 파일은 불변이다 (EC-8).
 
 import (
 	"net/http"
@@ -36,12 +36,11 @@ func schemaSectionMetas() []schemaSectionMeta {
 		{settings.SectionLLM, "rocket", "LLM", "Model tier mappings for Claude and GLM backends."},
 		{settings.SectionWorkflow, "panel-bottom", "Workflow", "Workflow execution, auto-clear, team, token budget, and worktree settings."},
 		{settings.SectionHarness, "check-circle", "Harness", "Quality harness levels, escalation, and learning subsystem."},
-		{settings.SectionRalph, "rocket", "Ralph", "Ralph feedback loop — LSP, AST-grep, and loop completion settings."},
+		{settings.SectionRalph, "rocket", "MoAI-Loop", "MoAI-Loop feedback loop — LSP, AST-grep, and loop completion settings."},
 		{settings.SectionResearch, "languages", "Research", "Self-harness research subsystem settings."},
 		{settings.SectionFeedback, "alert-circle", "Feedback", "Feedback workflow target repository."},
 		{settings.SectionObservability, "panel-bottom", "Observability", "Trace, report, and hook metrics settings."},
 		{settings.SectionSecurity, "check-circle", "Security", "Permission strictness and sandbox settings (pattern lists are read-only)."},
-		{settings.SectionDB, "folder-git", "Database", "Database documentation settings — interview keys editable, system keys read-only."},
 		{settings.SectionAgentSettings, "user-round", "Agent Settings", "Team role profiles and workflow-agent purpose defaults (workflow.yaml — comment-preserving writes)."},
 	}
 }

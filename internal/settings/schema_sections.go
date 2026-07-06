@@ -7,12 +7,12 @@ package settings
 // 영속화 라우팅 (design.md §A.3):
 //   - git_strategy / llm / quality 확장 키 → PersistTypedSection (sectionapply.go
 //     typed applier — git-strategy는 dirty-flag Save, REQ-WC11-010).
-//   - 8개 seam 섹션(workflow, harness, ralph, research, feedback, observability,
-//     security, db) → PersistSeam (WriteSectionViaSeam, REQ-WC11-017).
+//   - 7개 seam 섹션(workflow, harness, ralph, research, feedback, observability,
+//     security) → PersistSeam (WriteSectionViaSeam, REQ-WC11-017).
 //
-// read-only 지정 키(REQ-WC11-013/019 — llm.mode/team_mode, db system 5키)는
-// 편집 FieldDef를 갖지 않는다 — ReadOnlyDisplayFields()가 표시 전용 메타를 제공.
-// form UI에 맞지 않는 map/list 서브블록(REQ-WC11-062)은 RawViewBlocks()가 제공.
+// read-only 지정 키(REQ-WC11-013 — llm.mode/team_mode)는 편집 FieldDef를 갖지
+// 않는다 — ReadOnlyDisplayFields()가 표시 전용 메타를 제공. form UI에 맞지 않는
+// map/list 서브블록(REQ-WC11-062)은 RawViewBlocks()가 제공.
 
 import (
 	"strings"
@@ -214,7 +214,7 @@ func QualityExcludedKeyPrefixes() []string {
 	}
 }
 
-// ─── 8개 seam 섹션 스칼라 키 (REQ-WC11-016/017 — 2026-07-03 §C-7 실측 기반) ──
+// ─── 7개 seam 섹션 스칼라 키 (REQ-WC11-016/017 — 2026-07-03 §C-7 실측 기반) ──
 
 func seamSectionFields() []FieldDef {
 	s := seamField
@@ -309,11 +309,6 @@ func seamSectionFields() []FieldDef {
 		s(SectionSecurity, "security", TypeBool, "security", "permission", "strict_mode"),
 		s(SectionSecurity, "security", TypeBool, "security", "sandbox", "required"),
 		s(SectionSecurity, "security", TypeText, "security", "sandbox", "docker_image"),
-
-		// db (인터뷰 입력 3키만 편집 — REQ-WC11-019; system 5키는 read-only 표시).
-		s(SectionDB, "db", TypeText, "db", "orm"),
-		s(SectionDB, "db", TypeText, "db", "multi_tenant"),
-		s(SectionDB, "db", TypeText, "db", "migration_tool"),
 	}
 }
 
@@ -383,15 +378,11 @@ type ReadOnlyField struct {
 }
 
 // ReadOnlyDisplayFields는 read-only 표시 키를 반환한다: llm.mode / llm.team_mode
-// (runtime-managed 레이스, REQ-WC11-013) + db system 스칼라 3키 (REQ-WC11-019;
-// 나머지 system 2키 auto_sync/migration_patterns는 블록이라 RawViewBlocks 소관).
+// (runtime-managed 레이스, REQ-WC11-013).
 func ReadOnlyDisplayFields() []ReadOnlyField {
 	return []ReadOnlyField{
 		{SectionLLM, "llm", "llm.mode", []string{"llm", "mode"}},
 		{SectionLLM, "llm", "llm.team_mode", []string{"llm", "team_mode"}},
-		{SectionDB, "db", "db.enabled", []string{"db", "enabled"}},
-		{SectionDB, "db", "db.dir", []string{"db", "dir"}},
-		{SectionDB, "db", "db.engine", []string{"db", "engine"}},
 	}
 }
 
@@ -410,8 +401,6 @@ func RawViewBlocks() []RawBlockRef {
 		{SectionWorkflow, "workflow", "workflow.team.patterns", []string{"workflow", "team", "patterns"}},
 		{SectionHarness, "harness", "harness.levels", []string{"harness", "levels"}},
 		{SectionSecurity, "security", "security.extra_dangerous_bash_patterns", []string{"security", "extra_dangerous_bash_patterns"}},
-		{SectionDB, "db", "db.auto_sync", []string{"db", "auto_sync"}},
-		{SectionDB, "db", "db.migration_patterns", []string{"db", "migration_patterns"}},
 	}
 }
 
@@ -431,7 +420,6 @@ func SchemaSectionIDs() []SectionID {
 		SectionFeedback,
 		SectionObservability,
 		SectionSecurity,
-		SectionDB,
 		SectionAgentSettings,
 	}
 }

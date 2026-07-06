@@ -15,7 +15,7 @@ func TestRouteForSectionTable(t *testing.T) {
 		"git-convention": RouteTypedSave,
 		"git-strategy":   RouteTypedSave,
 		"llm":            RouteTypedSave,
-		// seam ×8.
+		// seam ×7.
 		"workflow":      RouteSeam,
 		"harness":       RouteSeam,
 		"ralph":         RouteSeam,
@@ -23,7 +23,6 @@ func TestRouteForSectionTable(t *testing.T) {
 		"feedback":      RouteSeam,
 		"observability": RouteSeam,
 		"security":      RouteSeam,
-		"db":            RouteSeam,
 		// 기존 전용 경로.
 		"statusline": RouteStatusline,
 		// 제외군 + 미등재.
@@ -44,8 +43,8 @@ func TestRouteForSectionTable(t *testing.T) {
 func TestSeamSectionsMatchesRoutes(t *testing.T) {
 	t.Parallel()
 	seam := SeamSections()
-	if len(seam) != 8 {
-		t.Fatalf("SeamSections() length = %d, want 8", len(seam))
+	if len(seam) != 7 {
+		t.Fatalf("SeamSections() length = %d, want 7", len(seam))
 	}
 	for _, name := range seam {
 		if got := RouteForSection(name); got != RouteSeam {

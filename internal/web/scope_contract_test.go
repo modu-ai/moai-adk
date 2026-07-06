@@ -14,11 +14,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
-// TestScopeContractTenSections는 10개 user-facing 섹션(git-strategy, llm,
-// workflow, harness, ralph, research, feedback, observability, security, db)이
+// TestScopeContractNineSections는 9개 user-facing 섹션(git-strategy, llm,
+// workflow, harness, ralph, research, feedback, observability, security)이
 // 전부 편집 가능 경로로 라우팅되고, 그 경로 분류가 design.md §A.3 표와 일치함을
 // 검증한다 (AC-WC11-002 허용 케이스).
-func TestScopeContractTenSections(t *testing.T) {
+func TestScopeContractNineSections(t *testing.T) {
 	t.Parallel()
 
 	// typed 경로 2종: git-strategy(dirty-flag Save), llm(typed oneof 검증).
@@ -28,11 +28,11 @@ func TestScopeContractTenSections(t *testing.T) {
 		}
 	}
 
-	// seam 전용 8종: typed Save() 경로 부재 — yamlpatch seam이 유일한 쓰기 경로
+	// seam 전용 7종: typed Save() 경로 부재 — yamlpatch seam이 유일한 쓰기 경로
 	// (REQ-WC11-017; workflow.yaml typed re-marshal 금지 REQ-WC11-005).
 	for _, name := range []string{
 		"workflow", "harness", "ralph", "research",
-		"feedback", "observability", "security", "db",
+		"feedback", "observability", "security",
 	} {
 		if got := settings.RouteForSection(name); got != settings.RouteSeam {
 			t.Errorf("section %q: route = %d, want RouteSeam", name, got)

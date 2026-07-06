@@ -21,7 +21,7 @@ func seedTypedFixtures(t *testing.T, root string, names ...string) {
 // TestSchemaSectionsRegistered는 M2b 확장 스키마의 구조 불변식을 검증한다:
 // (i) 확장 섹션 전부에 필드 ≥ 1 (ii) 필드명 유일 (iii) seam 필드의 섹션은
 // RouteSeam으로 라우팅 (iv) typed 필드의 섹션은 typed applier 대상
-// (v) read-only 키(llm.mode/team_mode, db system 5키)는 편집 필드에 없음.
+// (v) read-only 키(llm.mode/team_mode)는 편집 필드에 없음.
 func TestSchemaSectionsRegistered(t *testing.T) {
 	t.Parallel()
 
@@ -55,20 +55,13 @@ func TestSchemaSectionsRegistered(t *testing.T) {
 		}
 	}
 
-	// read-only 키는 편집 필드로 존재하지 않는다 (REQ-WC11-013/019).
+	// read-only 키는 편집 필드로 존재하지 않는다 (REQ-WC11-013).
 	for _, name := range []string{
 		"llm.mode", "llm.team_mode",
-		"db.enabled", "db.dir", "db.engine", "db.auto_sync", "db.migration_patterns",
 	} {
 		if seen[name] {
 			t.Errorf("read-only key %q must not be an editable field", name)
 		}
-	}
-
-	// db 편집 필드는 정확히 인터뷰 3키다 (REQ-WC11-019).
-	dbFields := SectionFields(SectionDB)
-	if len(dbFields) != 3 {
-		t.Errorf("db editable fields = %d, want 3", len(dbFields))
 	}
 }
 
@@ -180,7 +173,7 @@ func TestApplySchemaEditsRejectsUnknownAndReadOnly(t *testing.T) {
 	root := t.TempDir()
 	seedTypedFixtures(t, root, "git-strategy", "llm", "quality")
 
-	for _, name := range []string{"llm.mode", "llm.team_mode", "db.enabled", "state.anything", "nope"} {
+	for _, name := range []string{"llm.mode", "llm.team_mode", "db.enabled", "db.orm", "state.anything", "nope"} {
 		if err := ApplySchemaEdits(root, map[string]string{name: "x"}); err == nil {
 			t.Errorf("edit %q: want rejection, got nil", name)
 		}
@@ -193,7 +186,7 @@ func TestSchemaCurrentValuesReadsAllSections(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	seedTypedFixtures(t, root, "git-strategy", "llm", "quality",
-		"workflow", "harness", "ralph", "research", "feedback", "observability", "security", "db")
+		"workflow", "harness", "ralph", "research", "feedback", "observability", "security")
 
 	values, err := SchemaCurrentValues(root)
 	if err != nil {
@@ -209,7 +202,6 @@ func TestSchemaCurrentValuesReadsAllSections(t *testing.T) {
 		"feedback.repository":                          "modu-ai/moai-adk",
 		"observability.retention_days":                 "30",
 		"security.permission.strict_mode":              "false",
-		"db.multi_tenant":                              "none",
 		"git_strategy.mode":                            "team",
 		"git_strategy.team.required_reviews":           "0",
 		"llm.performance_tier":                         "",
@@ -218,8 +210,6 @@ func TestSchemaCurrentValuesReadsAllSections(t *testing.T) {
 		// read-only 표시 키.
 		"llm.mode":      "",
 		"llm.team_mode": "",
-		"db.enabled":    "false",
-		"db.dir":        ".moai/project/db",
 	}
 	for name, want := range cases {
 		if got := values[name]; got != want {
@@ -246,7 +236,7 @@ func TestSchemaCurrentValuesMissingFilesAreEmpty(t *testing.T) {
 func TestRawBlockValues(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedTypedFixtures(t, root, "workflow", "harness", "security", "db")
+	seedTypedFixtures(t, root, "workflow", "harness", "security")
 
 	blocks, err := RawBlockValues(root)
 	if err != nil {
@@ -257,9 +247,6 @@ func TestRawBlockValues(t *testing.T) {
 	}
 	if !strings.Contains(blocks["harness.levels"], "thorough:") {
 		t.Errorf("harness.levels raw block missing content: %q", blocks["harness.levels"])
-	}
-	if !strings.Contains(blocks["db.migration_patterns"], "prisma/schema.prisma") {
-		t.Errorf("db.migration_patterns raw block missing content: %q", blocks["db.migration_patterns"])
 	}
 }
 
@@ -327,7 +314,7 @@ func TestApplySchemaEditsAllFieldsRoundTrip(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	seedTypedFixtures(t, root, "git-strategy", "llm", "quality",
-		"workflow", "harness", "ralph", "research", "feedback", "observability", "security", "db")
+		"workflow", "harness", "ralph", "research", "feedback", "observability", "security")
 
 	edits := map[string]string{}
 	for _, f := range AllFields() {

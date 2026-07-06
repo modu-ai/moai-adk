@@ -19,11 +19,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
-// allSectionFixtures는 11개 섹션 fixture 이름이다 (settings testdata 재사용 —
+// allSectionFixtures는 10개 섹션 fixture 이름이다 (settings testdata 재사용 —
 // fixture 중복 없이 실제 파일 사본으로 테스트).
 var allSectionFixtures = []string{
 	"git-strategy", "llm", "quality",
-	"workflow", "harness", "ralph", "research", "feedback", "observability", "security", "db",
+	"workflow", "harness", "ralph", "research", "feedback", "observability", "security",
 }
 
 // seedWebSections는 internal/settings/testdata/sections의 실제 섹션 fixture를
@@ -108,7 +108,6 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 		"feedback.repository",
 		"observability.retention_days",
 		"security.sandbox.docker_image",
-		"db.orm",
 	} {
 		if !strings.Contains(body, `name="`+name+`"`) {
 			t.Errorf("rendered page missing form control %q", name)
@@ -128,7 +127,7 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 	}
 
 	// read-only 표시 (REQ-WC11-013/019): 편집 컨트롤 없음 + 표시 렌더.
-	for _, ro := range []string{"llm.mode", "llm.team_mode", "db.enabled", "db.dir", "db.engine"} {
+	for _, ro := range []string{"llm.mode", "llm.team_mode"} {
 		if strings.Contains(body, `name="`+ro+`"`) {
 			t.Errorf("read-only key %q rendered as a form control", ro)
 		}
@@ -138,7 +137,7 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 	}
 
 	// raw view 블록 (AC-WC11-063): rawview 렌더 + 내부 input 컨트롤 0.
-	for _, marker := range []string{"workflow.team.patterns", "harness.levels", "db.migration_patterns"} {
+	for _, marker := range []string{"workflow.team.patterns", "harness.levels"} {
 		if !strings.Contains(body, marker) {
 			t.Errorf("raw view block %q not rendered", marker)
 		}
@@ -237,35 +236,6 @@ func TestSaveInvalidSchemaValueRejected(t *testing.T) {
 	}
 }
 
-// TestSaveDBKeySplitWebLayer는 AC-WC11-019의 웹 계층을 검증한다: 인터뷰 키는
-// 반영되고, system 키 위조 제출은 무시되어 값이 불변이다.
-func TestSaveDBKeySplitWebLayer(t *testing.T) {
-	a, root := newSchemaTestApp(t)
-
-	rec := postSave(t, a, url.Values{
-		"db.orm":     {"prisma"},
-		"db.enabled": {"true"},          // system 키 — 스키마 밖, 무시
-		"db.dir":     {"/tmp/evil"},     // system 키 — 무시
-		"db.engine":  {"postgres-evil"}, // system 키 — 무시
-	})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("POST /save status = %d, want 200", rec.Code)
-	}
-	after := readSectionFile(t, root, "db")
-	if !strings.Contains(after, `orm: "prisma"`) {
-		t.Errorf("interview key db.orm not persisted:\n%s", after)
-	}
-	if !strings.Contains(after, "enabled: false") {
-		t.Error("system key db.enabled mutated by forged submission")
-	}
-	if !strings.Contains(after, `dir: ".moai/project/db"`) {
-		t.Error("system key db.dir mutated by forged submission")
-	}
-	if !strings.Contains(after, `engine: ""`) {
-		t.Error("system key db.engine mutated by forged submission")
-	}
-}
-
 // TestSaveExcludedSectionForgedPost는 EC-8 / AC-WC11-018 쓰기 half를 검증한다:
 // 제외군 섹션 이름을 위조한 제출은 무시되고 어떤 섹션 파일도 생성/변경되지 않는다.
 func TestSaveExcludedSectionForgedPost(t *testing.T) {
@@ -297,8 +267,8 @@ func TestSaveExcludedSectionForgedPost(t *testing.T) {
 	}
 }
 
-// TestSaveSchemaSmokeAllSections는 AC-WC11-016의 저장 half다: 10섹션 각각 스칼라
-// 1개를 단일 POST로 저장하고 디스크 반영을 제네릭 리더로 확인한다 (10/10).
+// TestSaveSchemaSmokeAllSections는 AC-WC11-016의 저장 half다: 9섹션 각각 스칼라
+// 1개를 단일 POST로 저장하고 디스크 반영을 제네릭 리더로 확인한다 (9/9).
 func TestSaveSchemaSmokeAllSections(t *testing.T) {
 	a, root := newSchemaTestApp(t)
 
@@ -313,7 +283,6 @@ func TestSaveSchemaSmokeAllSections(t *testing.T) {
 		"feedback.repository":                {"example-org/fork"},
 		"observability.retention_days":       {"45"},
 		"security.sandbox.docker_image":      {"alpine:3.20"},
-		"db.migration_tool":                  {"alembic"},
 	}
 	rec := postSave(t, a, form)
 	if rec.Code != http.StatusOK {
@@ -335,7 +304,6 @@ func TestSaveSchemaSmokeAllSections(t *testing.T) {
 		"feedback.repository":                "example-org/fork",
 		"observability.retention_days":       "45",
 		"security.sandbox.docker_image":      "alpine:3.20",
-		"db.migration_tool":                  "alembic",
 	} {
 		if got := values[name]; got != want {
 			t.Errorf("persisted %q = %q, want %q", name, got, want)
