@@ -161,7 +161,7 @@ pre_existing_unrelated_test_failure: "internal/statusline TestBuild_WritesContex
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-(populated by manager-docs at sync-phase — carries the `sync_commit_sha:` field)
+(populated by manager-docs at sync-phase — carries the `sync_commit_sha: 1c3e937dfaf6c4a13a62735d4f1d41acbaaf0276
 
 ## §F Phase 0.95 Mode Selection
 
