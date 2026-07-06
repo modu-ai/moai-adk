@@ -62,6 +62,20 @@
           }
         ],
         "matcher": "Write|Edit|Bash"
+      },
+      {
+        "hooks": [
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/gateguard-fact-force.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/gateguard-fact-force.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit"
       }
     ],
     "PostToolUse": [

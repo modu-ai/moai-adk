@@ -45,6 +45,16 @@
           }
         ],
         "matcher": "Write|Edit|Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/gateguard-fact-force.sh\"",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit"
       }
     ],
     "PostToolUse": [
