@@ -176,6 +176,11 @@ func InitDependencies() {
 	// Register auto-update handler for SessionStart
 	deps.HookRegistry.Register(hook.NewAutoUpdateHandler(buildAutoUpdateFunc()))
 
+	// Register auto-resume handoff-inject handler as the 3rd SessionStart handler
+	// (SPEC-HANDOFF-AUTORESUME-001 M3). The registry accumulate-all merge keeps its
+	// additionalContext alongside the sessionStartHandler / autoUpdateHandler output.
+	deps.HookRegistry.Register(hook.NewHandoffInjectHandler(deps.Config))
+
 	deps.HookRegistry.Register(hook.NewStopHandler())
 	// Build security policy: defaults + extra patterns from security.yaml (REQ-SEC-003).
 	secPolicy := hook.DefaultSecurityPolicy()
