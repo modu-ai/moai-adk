@@ -344,14 +344,14 @@ func TestGetAgentEffort(t *testing.T) {
 	}
 }
 
-// TestModelClaudeOpus47Constant verifies the claude-opus-4-7 model ID constant.
-func TestModelClaudeOpus47Constant(t *testing.T) {
-	if ModelIDOpus47 == "" {
-		t.Error("ModelIDOpus47 constant is empty, want non-empty model ID")
+// TestModelClaudeOpus48Constant verifies the claude-opus-4-8 model ID constant.
+func TestModelClaudeOpus48Constant(t *testing.T) {
+	if ModelIDOpus48 == "" {
+		t.Error("ModelIDOpus48 constant is empty, want non-empty model ID")
 	}
-	want := "claude-opus-4-7"
-	if ModelIDOpus47 != want {
-		t.Errorf("ModelIDOpus47 = %q, want %q", ModelIDOpus47, want)
+	want := "claude-opus-4-8"
+	if ModelIDOpus48 != want {
+		t.Errorf("ModelIDOpus48 = %q, want %q", ModelIDOpus48, want)
 	}
 }
 

@@ -598,11 +598,11 @@ func TestExpandModelString(t *testing.T) {
 	}{
 		{"empty string", "", ""},
 		// Short alias → canonical id resolution (forward map via central table)
-		{"opus alias resolves", "opus", template.ModelIDOpus47},
+		{"opus alias resolves", "opus", template.ModelIDOpus48},
 		{"sonnet alias resolves", "sonnet", template.ModelAliasCanonicalID("sonnet")},
 		{"haiku alias resolves", "haiku", template.ModelAliasCanonicalID("haiku")},
 		// [1m] suffix preserved across resolution
-		{"opus alias 1m resolves", "opus[1m]", template.ModelIDOpus47 + "[1m]"},
+		{"opus alias 1m resolves", "opus[1m]", template.ModelIDOpus48 + "[1m]"},
 		{"sonnet alias 1m resolves", "sonnet[1m]", template.ModelAliasCanonicalID("sonnet") + "[1m]"},
 		// opusplan is its own canonical form (CC-native routing alias, no full-id)
 		{"opusplan resolves to self", "opusplan", "opusplan"},

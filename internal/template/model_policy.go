@@ -39,9 +39,9 @@ func IsValidModelPolicy(s string) bool {
 	return false
 }
 
-// ModelIDOpus47 is the canonical model ID for Claude Opus 4.7.
+// ModelIDOpus48 is the canonical model ID for Claude Opus 4.8.
 // Used by launcher.go to route the new model and by profile translations.
-const ModelIDOpus47 = "claude-opus-4-7"
+const ModelIDOpus48 = "claude-opus-4-8"
 
 // ModelAliasTable is the single source of truth mapping short model aliases
 // (the user-facing wizard picker values) to their canonical Claude Code model
@@ -62,8 +62,9 @@ const ModelIDOpus47 = "claude-opus-4-7"
 // @MX:ANCHOR: [AUTO] ModelAliasTable — single SSOT for alias↔canonical-id mapping
 // @MX:REASON: [AUTO] fan_in >= 3 (launcher.go expandModelString + profile_setup.go normalizeModel + settings/schema.go modelOptions); hardcoding-prevention per CLAUDE.local.md §14
 var ModelAliasTable = map[string]string{
-	"opus":     ModelIDOpus47,
-	"sonnet":   "claude-sonnet-4-6",
+	"opus":     ModelIDOpus48,
+	"sonnet":   "claude-sonnet-5",
+	"fable":    "claude-fable-5",
 	"haiku":    "claude-haiku-4-5",
 	"opusplan": "opusplan", // CC-native routing alias, no full-id expansion
 }
@@ -71,14 +72,16 @@ var ModelAliasTable = map[string]string{
 // ModelDeprecatedCanonicalIDs maps superseded canonical model ids to their
 // short alias, so wizard migration can normalize historical prefs values that
 // predate the current canonical id. A new row is added whenever a model is
-// bumped to a newer version (e.g. claude-opus-4-6 → claude-opus-4-7); the old
+// bumped to a newer version (e.g. claude-opus-4-7 → claude-opus-4-8); the old
 // id stays here so existing prefs files keep resolving to the right alias.
 //
 // This is the reverse-companion of ModelAliasTable. The current canonical id
 // lives ONLY in ModelAliasTable; deprecated predecessors live ONLY here, so
 // there is exactly one home for each id and no duplication.
 var ModelDeprecatedCanonicalIDs = map[string]string{
-	"claude-opus-4-6": "opus",
+	"claude-opus-4-6":   "opus",
+	"claude-opus-4-7":   "opus",
+	"claude-sonnet-4-6": "sonnet",
 }
 
 // ModelAliasCanonicalID returns the canonical Claude Code model id for the
@@ -123,6 +126,7 @@ func ModelAliasPickerValues() []string {
 	return []string{
 		"opus", "opus[1m]",
 		"sonnet", "sonnet[1m]",
+		"fable", "fable[1m]",
 		"haiku",
 		"opusplan",
 	}
