@@ -8,10 +8,16 @@ package web
 // 검증은 v4manifest closed sets를 직접 재사용한다 (REQ-WC11-024/029 —
 // model ∈ {inherit, haiku, sonnet, opus}, effort ∈ {low, medium, high,
 // xhigh, max} ∪ {absent}; 옵션 목록 재선언 금지).
+//
+// M5-a B6: 편집 대상 디렉터리를 다중(moai/ + harness/)으로 확장했다 — 8
+// retained agents는 .claude/agents/moai/ 에, harness specialists는
+// .claude/agents/harness/ 에 위치한다 (namespace doctrine, CLAUDE.local.md §24).
 
 import (
+	"fmt"
 	"net/http"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/harness/v4manifest"
@@ -39,9 +45,31 @@ type agentFMEdit struct {
 	DeleteEffort bool   // "(absent)" 제출 — effort 키 삭제
 }
 
-// agentsDirFor는 frontmatter 편집 대상 디렉터리다 (live 파일 전용).
-func agentsDirFor(projectRoot string) string {
-	return filepath.Join(projectRoot, ".claude", "agents", "moai")
+// agentDirsFor는 frontmatter 편집 대상 디렉터리 목록이다 (live 파일 전용).
+// 8 retained agents는 .claude/agents/moai/ 에, harness specialists는
+// .claude/agents/harness/ 에 위치한다 (namespace doctrine, CLAUDE.local.md §24).
+// M5-a B6 — 단일 디렉터리에서 다중 디렉터리 해상도로 확장.
+func agentDirsFor(projectRoot string) []string {
+	return []string{
+		filepath.Join(projectRoot, ".claude", "agents", "moai"),
+		filepath.Join(projectRoot, ".claude", "agents", "harness"),
+	}
+}
+
+// listAllAgentFMs는 모든 편집 대상 디렉터리(moai/ + harness/)의 agent
+// frontmatter를 이름순으로 병합한다. 개별 디렉터리는 이미 정렬되어 반환되지만
+// 두 디렉터리를 병합한 후 전체를 다시 정렬한다.
+func (a *app) listAllAgentFMs(projectRoot string) ([]agentfm.AgentInfo, error) {
+	var all []agentfm.AgentInfo
+	for _, dir := range agentDirsFor(projectRoot) {
+		agents, err := a.listAgentFMs(dir)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, agents...)
+	}
+	sort.Slice(all, func(i, j int) bool { return all[i].Name < all[j].Name })
+	return all, nil
 }
 
 // parseAgentFMForm은 agentfm.<agent>.model / agentfm.<agent>.effort 제출을
@@ -89,11 +117,25 @@ func parseAgentFMForm(r *http.Request, agents []agentfm.AgentInfo) ([]agentFMEdi
 }
 
 // applyAgentFMEdits는 편집을 frontmatter patch 레이어로 영속화한다 (live 파일
-// 전용, no-change 편집은 파서가 이미 걸렀다).
+// 전용, no-change 편집은 파서가 이미 걸렀다). M5-a B6 — 다중 디렉터리(moai/ +
+// harness/)에서 이름 → 절대 경로를 해상한다. 폼은 이름만 전달하므로, 패치 직전
+// 라이브 디렉터리를 재스캔해 경로를 특정한다.
 func applyAgentFMEdits(projectRoot string, edits []agentFMEdit) error {
-	dir := agentsDirFor(projectRoot)
+	pathByName := map[string]string{}
+	for _, dir := range agentDirsFor(projectRoot) {
+		agents, err := agentfm.List(dir)
+		if err != nil {
+			return fmt.Errorf("agentfm: list %s: %w", dir, err)
+		}
+		for _, info := range agents {
+			pathByName[info.Name] = info.Path
+		}
+	}
 	for _, e := range edits {
-		path := filepath.Join(dir, e.Agent+".md")
+		path, ok := pathByName[e.Agent]
+		if !ok {
+			continue // 방어적 — 폼과 라이브 리스트 불일치 (이미 삭제된 에이전트 등)
+		}
 		if err := agentfm.Patch(path, e.Model, e.Effort, e.DeleteEffort); err != nil {
 			return err
 		}

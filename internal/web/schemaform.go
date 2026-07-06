@@ -123,7 +123,7 @@ func (a *app) applySchemaCurrent(view *pageView) error {
 
 	// M3: sub-agent frontmatter 현재 상태 시딩 (REQ-WC11-020/025). 목록 실패는
 	// 빈 목록으로 저하 — 페이지 전체 실패 금지 (design.md §C.1 견고성).
-	if agents, err := a.listAgentFMs(agentsDirFor(a.cfg.ProjectRoot)); err == nil {
+	if agents, err := a.listAllAgentFMs(a.cfg.ProjectRoot); err == nil {
 		view.AgentFMs = agents
 	}
 	return nil

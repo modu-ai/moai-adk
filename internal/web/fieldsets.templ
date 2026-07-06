@@ -2,6 +2,7 @@ package web
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
@@ -240,7 +241,9 @@ templ schemaFieldWidget(view pageView, f settings.FieldDef) {
 }
 
 // schemaTextRow — 자유 텍스트. EmptyLabel이 있으면 placeholder로 렌더한다
-// (빈 claude_models tier의 "(runtime default)" 시맨틱, REQ-WC11-014/EC-4).
+// (빈 값의 "(runtime default)" 시맨틱 — REQ-WC11-014/EC-4. M4 다이어트로
+// claude_models tier는 제거되었고, EmptyLabel 메커니즘은 generic placeholder로
+// 잔류한다.)
 templ schemaTextRow(f settings.FieldDef, value string, errs map[string]string) {
 	<div class={ "field", templ.KV("has-error", hasFieldError(errs, f.Name)) }>
 		<span class="field__label"><code class="field__key">{ f.Name }</code></span>
@@ -280,9 +283,16 @@ templ schemaToggleRow(name string, checked bool) {
 }
 
 // schemaSelectRow — 닫힌 옵션 select. EmptyLabel이 있으면 빈 옵션을 렌더한다.
+// effort 필드에는 "(Go 미독)" 배지를 표시한다 — Go 런타임이 행동적으로 바인딩하지
+// 않는 선언적 힌트임을 사용자에게 알린다 (M5-a B5).
 templ schemaSelectRow(f settings.FieldDef, value string, errs map[string]string) {
 	<div class={ "field", templ.KV("has-error", hasFieldError(errs, f.Name)) }>
-		<span class="field__label"><code class="field__key">{ f.Name }</code></span>
+		<span class="field__label">
+			<code class="field__key">{ f.Name }</code>
+			if strings.HasSuffix(f.Name, ".effort") {
+				<span class="field__hint" data-i18n="hint.effort.go_unbound">(Go 미독)</span>
+			}
+		</span>
 		<span class="select-wrap">
 			<select class="select" id={ f.Name } name={ f.Name }>
 				if f.EmptyLabel != "" {
@@ -392,6 +402,7 @@ templ agentFMRow(agent agentfm.AgentInfo, errs map[string]string) {
 					}
 				</select>
 			</span>
+			<span class="field__hint" data-i18n="hint.effort.go_unbound">(Go 미독)</span>
 			if msg := fieldErrorMsg(errs, "agentfm."+agent.Name+".model"); msg != "" {
 				<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
 			}

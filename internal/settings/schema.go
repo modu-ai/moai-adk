@@ -44,7 +44,8 @@ const (
 
 	// SPEC-WEB-CONSOLE-011 M3: agent-settings 표면 (REQ-WC11-020..024, 070..073).
 	// workflow.yaml team.role_profiles(7 profiles — effort는 opaque node,
-	// REQ-WEM-006 유지) + 신규 workflow_agents(7 purposes) — 전부 seam 전용.
+	// REQ-WEM-006 유지). M5-a B1부터 workflow_agents(7 purposes)는 웹 렌더에서
+	// 숨김 — struct/yaml 키는 유지되지만 웹 폼이 이 블록을 다루지 않는다.
 	SectionAgentSettings SectionID = "agent_settings"
 )
 

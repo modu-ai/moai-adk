@@ -294,7 +294,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// SPEC-WEB-CONSOLE-011 M3: parse the sub-agent frontmatter edits against the
 	// CURRENT live frontmatter state (no-change 제출은 편집으로 승격되지 않는다 —
 	// 불필요한 frontmatter 재직렬화 방지). 목록 실패는 편집 불가로 저하한다.
-	agents, _ := a.listAgentFMs(agentsDirFor(a.cfg.ProjectRoot))
+	agents, _ := a.listAllAgentFMs(a.cfg.ProjectRoot)
 	agentEdits, agentErrs := parseAgentFMForm(r, agents)
 
 	// REQ-WC-008 / REQ-WC3-001/002 / REQ-WC7-007: run ALL validators and merge

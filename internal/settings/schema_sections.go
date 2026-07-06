@@ -56,7 +56,9 @@ func RoleProfileNames() []string {
 }
 
 // WorkflowAgentPurposes는 dynamic-workflows.md 7-purpose taxonomy 슬러그다
-// ("Purpose-driven model+effort selection" 표 실측 — REQ-WC11-070).
+// ("Purpose-driven model+effort selection" 표 실측 — REQ-WC11-070). M5-a B1 이후
+// 웹 렌더에서는 사용하지 않지만(숨김), canonical taxonomy 참조로 유지한다 —
+// config.Workflow.WorkflowAgents 맵의 키 집합과 일치한다.
 func WorkflowAgentPurposes() []string {
 	return []string{
 		"read-only-extract", "mechanical-transform", "synthesize",
@@ -247,15 +249,19 @@ func seamSectionFields() []FieldDef {
 
 // ─── M3: agent-settings 필드 (REQ-WC11-020..024, 070..073) ───────────────────
 
-// agentSettingsFields는 agent-settings의 config-파일 표면 2종을 반환한다:
-// (b) team.role_profiles — 7 profiles × {model, effort, isolation, mode};
+// agentSettingsFields는 agent-settings의 웹 렌더 표면을 반환한다:
+// (b) team.role_profiles — 7 profiles × {model, effort, isolation, mode}.
 //
 //	effort는 seam이 opaque node로 패치한다 — RoleProfileEntry에 Effort 필드를
-//	추가하지 않는다 (REQ-WC11-022/023, REQ-WEM-006 유지).
+//	추가하지 않는다 (REQ-WC11-022/023, REQ-WEM-006 유지). effort는 Go 런타임이
+//	행동적으로 바인딩하지 않는 선언적 힌트다 (M5-a B5 — "(Go 미독)").
+//	mode는 permission_mode 옵션 집합을 재사용한다 (M5-a B4 — 자유 텍스트에서
+//	검증 select로 승격; 새 mode 값 발명 금지).
 //
-// (d) workflow_agents — 7 purposes × {model, effort}; 블록 부재 시 seam upsert가
-//
-//	최초 기록을 생성한다 (REQ-WC11-070/073 — M1 upsert 확장).
+// (d) workflow_agents — 웹 렌더에서 숨김 (M5-a B1). struct 필드와 yaml 키는
+//	유지된다 (config.Workflow.WorkflowAgents, types.go 참조). 웹 폼을 통한
+//	읽기/쓰기는 더 이상 발생하지 않는다 — dynamic-workflow JS 스크립트가
+//	yaml 파일을 직접 읽는다 (dynamic-workflows.md §Config surface).
 //
 // 옵션은 v4manifest closed sets에서 파생한다 (REQ-WC11-024/072 — 재선언 금지).
 func agentSettingsFields() []FieldDef {
@@ -264,6 +270,13 @@ func agentSettingsFields() []FieldDef {
 	}
 	effortSel := func(f FieldDef) FieldDef {
 		return withSelect(f, "f.v4.effort.opt.", v4EffortValues(), "", "")
+	}
+	// modeSel은 role_profiles.mode를 permission_mode 옵션 집합으로 검증한다
+	// (M5-a B4). permissionModeOptions() 재사용 — 새 mode 값 발명 금지.
+	modeSel := func(f FieldDef) FieldDef {
+		f.Type = TypeSelect
+		f.Options = permissionModeOptions()
+		return f
 	}
 
 	var fields []FieldDef
@@ -274,14 +287,7 @@ func agentSettingsFields() []FieldDef {
 			effortSel(seamField(SectionAgentSettings, "workflow", TypeSelect, append(base, "effort")...)),
 			withSelect(seamField(SectionAgentSettings, "workflow", TypeSelect, append(base, "isolation")...),
 				"f.v4.isolation.opt.", v4IsolationValues(), "", ""),
-			seamField(SectionAgentSettings, "workflow", TypeText, append(base, "mode")...),
-		)
-	}
-	for _, purpose := range WorkflowAgentPurposes() {
-		base := []string{"workflow", "workflow_agents", purpose}
-		fields = append(fields,
-			modelSel(seamField(SectionAgentSettings, "workflow", TypeSelect, append(base, "model")...)),
-			effortSel(seamField(SectionAgentSettings, "workflow", TypeSelect, append(base, "effort")...)),
+			modeSel(seamField(SectionAgentSettings, "workflow", TypeSelect, append(base, "mode")...)),
 		)
 	}
 	return fields

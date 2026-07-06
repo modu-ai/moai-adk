@@ -29,6 +29,7 @@ window.MOAI_I18N = {
     "agentfm.keep": "(keep current)",
     "agentfm.absent": "(absent)",
     "agentfm.unavailable": "unavailable (frontmatter parse failed)",
+    "hint.effort.go_unbound": "(not Go-bound)",
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "field(s)",
     "ro.note": "read-only (runtime-managed)",
@@ -153,6 +154,7 @@ window.MOAI_I18N = {
     "agentfm.keep": "(현재값 유지)",
     "agentfm.absent": "(부재)",
     "agentfm.unavailable": "사용 불가 (frontmatter 파싱 실패)",
+    "hint.effort.go_unbound": "(Go 미독)",
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "개 필드",
     "ro.note": "읽기 전용 (런타임 관리)",
@@ -277,6 +279,7 @@ window.MOAI_I18N = {
     "agentfm.keep": "（現在値を維持）",
     "agentfm.absent": "（未設定）",
     "agentfm.unavailable": "利用不可（frontmatter 解析失敗）",
+    "hint.effort.go_unbound": "（Go 未バインド）",
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "項目",
     "ro.note": "読み取り専用（ランタイム管理）",
@@ -401,6 +404,7 @@ window.MOAI_I18N = {
     "agentfm.keep": "（保持当前值）",
     "agentfm.absent": "（未设置）",
     "agentfm.unavailable": "不可用（frontmatter 解析失败）",
+    "hint.effort.go_unbound": "（Go 未绑定）",
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "个字段",
     "ro.note": "只读（运行时管理）",

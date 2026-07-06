@@ -70,8 +70,9 @@ func getIndex(t *testing.T, a *app) string {
 
 // TestAgentSettingsFourSurfacesRendered는 AC-WC11-020을 검증한다: 단일 뷰에
 // 4표면 전부 렌더 — (a) llm tiers, (b) role_profiles(7), (c) sub-agent
-// frontmatter, (d) workflow_agents(7 purposes). AC-WC11-026의 taxonomy 참조와
-// AC-WC11-028의 지속 경고 렌더도 함께 고정한다.
+// frontmatter, (d) workflow_agents. M5-a B1부터 (d) workflow_agents는 웹 렌더에서
+// 숨김 — 폼 컨트롤이 렌더되지 않는다 (struct/yaml 키는 유지). AC-WC11-026의
+// taxonomy 참조와 AC-WC11-028의 지속 경고 렌더도 함께 고정한다.
 func TestAgentSettingsFourSurfacesRendered(t *testing.T) {
 	a, _ := newAgentTestApp(t)
 	body := getIndex(t, a)
@@ -97,22 +98,28 @@ func TestAgentSettingsFourSurfacesRendered(t *testing.T) {
 			t.Errorf("surface (c) marker missing: %s", marker)
 		}
 	}
-	// (d) workflow_agents — 7 purposes.
+	// (d) workflow_agents — M5-a B1부터 웹 렌더에서 숨김. 7 purposes의 폼 컨트롤이
+	// 렌더되지 않는다 (struct 필드 + yaml 키는 유지, dynamic-workflow JS가 yaml
+	// 파일을 직접 읽는다).
 	for _, purpose := range []string{
 		"read-only-extract", "mechanical-transform", "synthesize",
 		"research", "verify-judge", "implement", "design-architecture",
 	} {
-		if !strings.Contains(body, `name="workflow.workflow_agents.`+purpose+`.model"`) {
-			t.Errorf("surface (d) purpose %q control missing", purpose)
+		if strings.Contains(body, `name="workflow.workflow_agents.`+purpose+`.model"`) {
+			t.Errorf("surface (d) purpose %q control should be hidden (M5-a B1)", purpose)
 		}
 	}
-	// AC-WC11-026: taxonomy 참조 잔존.
+	// AC-WC11-026: taxonomy 참조 잔존 (agentfm 섹션 설명에 잔류).
 	if !strings.Contains(body, ".claude/rules/moai/workflow/dynamic-workflows.md") {
 		t.Error("dynamic-workflows.md taxonomy reference missing")
 	}
 	// AC-WC11-028: 지속 경고 렌더.
 	if !strings.Contains(body, `data-i18n="agentfm.warn"`) {
 		t.Error("persistent moai-update warning missing")
+	}
+	// M5-a B5: effort 필드 "(Go 미독)" 배지 렌더 (role_profiles.effort + agentfm effort).
+	if !strings.Contains(body, `data-i18n="hint.effort.go_unbound"`) {
+		t.Error("effort (Go 미독) hint badge missing")
 	}
 }
 
@@ -264,10 +271,13 @@ func TestAgentFMValidationAndAbsent(t *testing.T) {
 	}
 }
 
-// TestWorkflowAgentsUpsertGolden은 AC-WC11-072를 검증한다: 블록 부재 fixture에
-// workflow_agents 최초 기록(upsert) → 기존 라인 전부 보존 + 신규 블록만 추가
-// (GWT-7).
-func TestWorkflowAgentsUpsertGolden(t *testing.T) {
+// TestWorkflowAgentsWebSubmissionIgnored는 M5-a B1의 행동 완결이다: workflow_agents
+// 폼 제출은 웹에서 더 이상 렌더/쓰기하지 않으므로 무시된다 — 블록은 생성되지 않고
+// 기존 workflow.yaml 내용은 불변이다. struct 필드(config.Workflow.WorkflowAgents)와
+// yaml 키는 유지되며, dynamic-workflow JS가 yaml 파일을 직접 읽는 소비자다
+// (dynamic-workflows.md §Config surface). 본 테스트는 선행 TestWorkflowAgentsUpsertGolden
+// (AC-WC11-072 웹 쓰기 경로)을 M5-a B1 이후 행동으로 대체한다.
+func TestWorkflowAgentsWebSubmissionIgnored(t *testing.T) {
 	a, root := newAgentTestApp(t)
 	before := readSectionFile(t, root, "workflow")
 	if strings.Contains(before, "workflow_agents") {
@@ -282,19 +292,19 @@ func TestWorkflowAgentsUpsertGolden(t *testing.T) {
 		t.Fatalf("POST /save status = %d, want 200 (body: %.300s)", rec.Code, rec.Body.String())
 	}
 	after := readSectionFile(t, root, "workflow")
-
-	if !strings.HasPrefix(after, strings.TrimSuffix(before, "\n")) {
-		// additive-only: 기존 내용은 prefix로 보존되어야 한다.
-		t.Error("upsert was not additive-only (existing lines drifted)")
+	if strings.Contains(after, "workflow_agents") {
+		t.Errorf("workflow_agents block created by web submission — should be ignored (M5-a B1):\n%s", after)
 	}
-	for _, want := range []string{"workflow_agents:", "implement:", "model: sonnet", "effort: xhigh"} {
-		if !strings.Contains(after, want) {
-			t.Errorf("upserted block missing %q", want)
-		}
+	// 무시된 제출은 workflow.yaml을 byte 단위로 불변으로 남긴다 (동일 패턴:
+	// TestSaveExcludedSectionForgedPost). "model: sonnet"/"effort: xhigh" 값 자체는
+	// role_profiles fixture에 이미 존재하므로 값 문자열 검사가 아닌 byte 동등성으로
+	// 검증한다.
+	if before != after {
+		t.Errorf("workflow.yaml mutated by ignored workflow_agents submission (M5-a B1)")
 	}
 	for _, keep := range []string{"patterns:", "role_profile_keys:"} {
 		if !strings.Contains(after, keep) {
-			t.Errorf("preserved content %q lost across upsert", keep)
+			t.Errorf("preserved content %q lost", keep)
 		}
 	}
 }

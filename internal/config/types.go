@@ -342,10 +342,14 @@ type WorkflowConfig struct {
 
 	// WorkflowAgents는 dynamic-workflow purpose 분류(7종) → {model, effort} 기본값
 	// 맵이다 (SPEC-WEB-CONSOLE-011 REQ-WC11-070/071). config 블록이 기본값의
-	// SSOT이고 per-script 리터럴이 override다. 읽기는 이 typed 필드, 쓰기는
-	// yamlpatch seam upsert 전용(REQ-WC11-073) — typed Save로 workflow.yaml을
-	// 재직렬화하면 주석/team.patterns가 파괴된다 (AP-11). 블록 부재 시 nil
-	// (zero-value, 무오류).
+	// SSOT이고 per-script 리터럴이 override다 (dynamic-workflows.md §Config
+	// surface — JS 스크립트가 yaml 파일을 직접 읽는다).
+	//
+	// 소비 관계 (M5-a B2 정정 — verification-claim-integrity): 이 typed 필드는
+	// 로더가 채우는 스키마 표면이며, production Go 코드는 이 필드를 읽지
+	// 않는다 (grep 실측 — config/workflow_agents_test.go만 접근). 웹 콘솔은
+	// M5-a B1부터 이 블록을 렌더/쓰기하지 않는다. dynamic-workflow JS가
+	// yaml 파일에서 직접 읽는 소비자다. 블록 부재 시 nil (zero-value, 무오류).
 	WorkflowAgents map[string]WorkflowAgentEntry `yaml:"workflow_agents"`
 }
 

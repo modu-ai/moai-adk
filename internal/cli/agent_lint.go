@@ -88,7 +88,7 @@ type SubHook struct {
 var agentLintCmd = &cobra.Command{
 	Use:   "lint",
 	Short: "Lint agent definition files",
-	Long: `Validate agent definition files (.claude/agents/{core,expert,meta,harness}/*.md) against common issues.
+	Long: `Validate agent definition files (.claude/agents/{moai,harness}/*.md) against common issues.
 
 	  LR-01: Reject literal AskUserQuestion in body text (excluding code blocks)
 	  LR-02: Reject Agent token in tools: CSV list
@@ -128,7 +128,7 @@ func init() {
 	rootCmd.AddCommand(agentCmd)
 	agentCmd.AddCommand(agentLintCmd)
 
-	agentLintCmd.Flags().String("path", "", "Path to agent directory (default: .claude/agents/{core,expert,meta,harness}/ and internal/template/templates/.claude/agents/{core,expert,meta,harness}/)")
+	agentLintCmd.Flags().String("path", "", "Path to agent directory (default: .claude/agents/{moai,harness}/ and internal/template/templates/.claude/agents/moai/)")
 	agentLintCmd.Flags().String("format", "text", "Output format: text or json")
 	agentLintCmd.Flags().Bool("strict", false, "Promote warnings to errors")
 }
@@ -153,7 +153,10 @@ func runAgentLint(cmd *cobra.Command, _ []string) error {
 		}
 		scanPaths = []string{
 			filepath.Join(cwd, defs.ClaudeDir, defs.AgentsMoaiSubdir),
+			filepath.Join(cwd, defs.ClaudeDir, "agents", "harness"),
 			filepath.Join(cwd, "internal", "template", "templates", defs.ClaudeDir, defs.AgentsMoaiSubdir),
+			// harness/ 전용 template mirror는 없다 (user-owned, CLAUDE.local.md §24) —
+			// live .claude/agents/harness/만 스캔한다.
 		}
 	}
 
