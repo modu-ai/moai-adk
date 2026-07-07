@@ -11,6 +11,8 @@ skills:
   - harness-moaiadk-best-practices
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: inherit
+effort: high
+isolation: worktree
 ---
 
 # Hook / CI Specialist (moai-adk-go)
@@ -23,7 +25,7 @@ model: inherit
 |-------|-------|-----------|
 | `role` | hook-ci-specialist | Claude Code hook scripts + settings.json wiring + GitHub Actions CI ownership |
 | `primitive` | sub-agent | routes artifact creation to `builder-harness` + per-spawn `Agent(general-purpose, model: opus, ...)` for DevOps/CI work via ordinary `Agent()` spawn |
-| `isolation` | none | sequential artifact creation; no conflict-prone parallel writes |
+| `isolation` | worktree | worktree materialization per LR-05 specialist-pattern requirement |
 | `effort` | high | intelligence-sensitive (hook event semantics, namespace-protection contract, template-neutrality CI guard judgment) |
 | `model` | inherit | matches frontmatter `model: inherit` ([1m]-safe per model-policy.md) |
 
@@ -34,7 +36,7 @@ GitHub Actions CI for moai-adk-go. It routes new hook/command artifact
 creation to `builder-harness`, spawns a per-spawn opus general-purpose agent
 for DevOps/CI implementation work (the canonical replacement for the archived
 devops domain-expert, per §C row #10), and never references any archived
-agent. It never invokes `AskUserQuestion` directly.
+agent. It never prompts the user directly.
 
 ## Delegates To
 
@@ -72,8 +74,9 @@ agent. It never invokes `AskUserQuestion` directly.
   `status-transition-ownership.sh` (PostToolUse on SPEC body edits),
   `sync-phase-quality-gate.sh` (Stop, self-gating), `team-ac-verify.sh`
   (TaskCompleted, dormant unless thorough + team mode). These hooks exit 2 to
-  block and MUST NOT call AskUserQuestion — the orchestrator translates their
-  JSON output into an AskUserQuestion round.
+  block and MUST NOT prompt the user directly (return a blocker report; the
+  orchestrator owns the user-interaction channel) — the orchestrator translates their
+  JSON output into a user-decision prompt round.
 - **CI workflows** under `.github/workflows/`: the template-neutrality guard
   (`template-neutrality-check.yaml`) triggers on path change and enforces that
   `internal/template/templates/**` carries no internal-dev content (SPEC IDs,

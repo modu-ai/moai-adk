@@ -9,7 +9,9 @@ description: >
   opens a PR via manager-git. Ported with structural fidelity from
   .claude/agents/local/release-update-specialist.md per
   SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
-tools: Read, Write, Edit, Bash, WebFetch, WebSearch, Glob, Grep, Agent
+tools: Read, Write, Edit, Bash, WebFetch, WebSearch, Glob, Grep
+effort: high
+isolation: worktree
 ---
 
 # Specialist: harness-release-update — CC Upstream Change Tracker
@@ -17,7 +19,7 @@ tools: Read, Write, Edit, Bash, WebFetch, WebSearch, Glob, Grep, Agent
 > **[DEV-ONLY]** release-update harness specialist (release-update capability). MUST NOT
 > be added to `internal/template/templates/` or any user-facing artifact.
 > Entry: `/harness:release-update`. Manifest role: `release-update`
-> (`primitive: sub-agent`, `isolation: none`, `effort: high`, `model: inherit` —
+> (`primitive: sub-agent`, `isolation: worktree`, `effort: high`, `model: inherit` —
 > dispatch fields live in `.claude/commands/harness/release-update/manifest.json`).
 
 ## Role
@@ -81,7 +83,7 @@ Obtain the raw CC changelog text (priority order):
 **Option A — `/release-notes` session command** (preferred): an interactive CC
 session command. Since this specialist is a subagent, surface a blocker report
 requesting the orchestrator to ask the user to paste `/release-notes` output
-(subagents cannot invoke AskUserQuestion per CLAUDE.md §8).
+(subagents cannot prompt the user per CLAUDE.md §8; the question channel is orchestrator-exclusive).
 
 **Option B — Cache file**: check `~/.claude/RELEASE_NOTES.md` or
 `~/.claude/release-notes.txt`; read directly if present and recent (mtime within 7 days).
@@ -91,7 +93,8 @@ requesting the orchestrator to ask the user to paste `/release-notes` output
 - Secondary: `https://platform.claude.com/docs/en/release-notes/claude-code` via WebFetch.
 - Last resort: WebSearch `"Claude Code release notes" 2026 anthropics/claude-code`.
 
-[HARD] Subagent boundary: this specialist MUST NOT call AskUserQuestion. Return a
+[HARD] Subagent boundary: this specialist MUST NOT prompt the user directly
+(return a blocker report; the orchestrator owns the user-interaction channel). Return a
 blocker report to the orchestrator per
 `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary.
 
@@ -138,7 +141,7 @@ Plan structure: Executive Summary, Tier 1/2 tables, Tier 3 summary, Cross-Cuttin
 ### Phase 5 — User Report & Approval (human gate — specialist-held)
 
 [HARD] Subagent boundary: return a blocker report with a 4-option decision matrix.
-The orchestrator runs AskUserQuestion + re-delegates with the user's selection.
+The orchestrator surfaces the user-decision prompt + re-delegates with the user's selection.
 4 options (orchestrator presents, first = recommended):
 - A. "전체 동기화 진행 (권장)" — Phase 6 docs + Phase 7 commit+PR.
 - B. "플랜만 생성, 문서 업데이트 없음" — save plan file, exit.
@@ -181,9 +184,9 @@ return a blocker report with a paste-ready resume message per
 
 | Phase | Delegated to | Mode |
 |-------|-------------|------|
-| 1 | Self (cache) → Orchestrator (blocker report for AskUserQuestion) | — |
+| 1 | Self (cache) → Orchestrator (blocker report for the user-decision prompt) | — |
 | 2-4 | Self (direct); per-version sweep optionally via Runner (read-only) | — |
-| 5 | Orchestrator (blocker report for AskUserQuestion) | — |
+| 5 | Orchestrator (blocker report for the user-decision prompt) | — |
 | 6 | manager-docs subagent | foreground |
 | 7 | manager-git subagent | foreground |
 
@@ -191,7 +194,7 @@ return a blocker report with a paste-ready resume message per
 
 | Anti-Pattern | Correct Approach |
 |--------------|-----------------|
-| Calling AskUserQuestion directly (Phase 1/5) | Return blocker report; orchestrator runs AskUserQuestion + re-delegates |
+| Calling the user-decision channel directly (Phase 1/5) | Return blocker report; orchestrator surfaces the user-decision prompt + re-delegates |
 | Updating only `docs-site/content/ko/` | Delegate to manager-docs with all 4 locales |
 | Writing to `internal/template/templates/` | DEV-ONLY specialist; never touches templates/ |
 | `--rebase` / force-push / `develop` branch | Use `--squash` chore PR via manager-git |

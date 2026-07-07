@@ -7,7 +7,9 @@ description: >
   multi-perspective code reviews. Ported with structural fidelity from
   .claude/agents/local/github-specialist.md per
   SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
-tools: Read, Write, Edit, Bash, Grep, Glob, Agent
+tools: Read, Write, Edit, Bash, Grep, Glob
+effort: high
+isolation: worktree
 ---
 
 # Specialist: harness-github — Issue Fix and PR Review
@@ -42,7 +44,7 @@ Flow: Discovery → Analysis → Implementation → PR Creation → Report.
 First argument determines the workflow:
 - **issues** (aliases: issue, fix): Fix GitHub issues
 - **pr** (aliases: review, pull-request): Review PRs
-- No argument: Return a blocker report requesting orchestrator AskUserQuestion to disambiguate
+- No argument: Return a blocker report for the orchestrator to surface a user-decision prompt to disambiguate
 
 Invocation: `/harness:github issues [--all | --label LABEL | NUMBER]` OR `/harness:github pr [--all | NUMBER]`
 
@@ -58,7 +60,7 @@ gh issue list --state open --limit 30 --json number,title,labels,body,assignees
 - NUMBER provided: `gh issue view {number} --json number,title,body,labels,comments`.
 - `--all`: process all open issues sequentially.
 - `--label LABEL`: `gh issue list --state open --label "{LABEL}" --json number,title,labels,body`.
-- Otherwise: return a blocker report; orchestrator runs AskUserQuestion to select.
+- Otherwise: return a blocker report; the orchestrator surfaces the user-decision prompt to select.
 
 Classify by title/labels/body → branch prefix: bug=`fix/issue-{n}`, feature=`feat/issue-{n}`, enhancement=`improve/issue-{n}`, docs=`docs/issue-{n}`.
 
@@ -81,8 +83,8 @@ Fixes #{number}"
 
 ### Phase 3: PR Creation (human gate — specialist-held)
 
-[HARD] Return a blocker report requesting PR-creation approval; orchestrator runs
-AskUserQuestion + re-delegates. On approval:
+[HARD] Return a blocker report requesting PR-creation approval; the orchestrator
+surfaces the user-decision prompt + re-delegates. On approval:
 ```bash
 git push -u origin {prefix}/issue-{number}
 gh pr create --title "{type}: {title}" --body "## Summary
@@ -104,7 +106,7 @@ git checkout main
 - Files modified: {count}
 - Tests: {pass_count}/{total_count} passing
 ```
-If `--all` in progress: return a blocker report (next-issue / done) for orchestrator AskUserQuestion.
+If `--all` in progress: return a blocker report (next-issue / done) for the orchestrator to surface a user-decision prompt.
 
 ---
 
@@ -117,7 +119,7 @@ gh pr list --state open --limit 20 --json number,title,author,additions,deletion
 gh pr diff {number}
 gh pr view {number} --json files --jq '.files[].path'
 ```
-- NUMBER: fetch specific PR. `--all`: review all sequentially. Otherwise: blocker report → orchestrator AskUserQuestion.
+- NUMBER: fetch specific PR. `--all`: review all sequentially. Otherwise: blocker report → orchestrator surfaces a user-decision prompt.
 
 ### Phase 6: Code Review
 
@@ -129,8 +131,8 @@ Synthesize: Critical (must fix) / Important (should fix) / Suggestion (nice to h
 
 ### Phase 7: Submit Review (human gate — specialist-held)
 
-[HARD] Return a blocker report with the review summary; orchestrator runs
-AskUserQuestion (Approve recommended if no Critical / Request Changes / Comment Only / Skip). After user selection:
+[HARD] Return a blocker report with the review summary; the orchestrator
+surfaces the user-decision prompt (Approve recommended if no Critical / Request Changes / Comment Only / Skip). After user selection:
 ```bash
 gh pr review {number} --approve --body "{review_body}"
 # OR --request-changes --body ... / --comment --body ...
@@ -143,7 +145,7 @@ gh pr review {number} --approve --body "{review_body}"
 - Decision: {APPROVE|REQUEST_CHANGES|COMMENT}
 - Critical: {count} | Important: {count} | Suggestions: {count}
 ```
-If `--all` in progress: return a blocker report (next-PR / done) for orchestrator AskUserQuestion.
+If `--all` in progress: return a blocker report (next-PR / done) for the orchestrator to surface a user-decision prompt.
 
 ---
 
@@ -151,14 +153,14 @@ If `--all` in progress: return a blocker report (next-PR / done) for orchestrato
 
 - [HARD] All GitHub operations use `gh` CLI directly — no custom wrappers.
 - [HARD] All implementation delegated to specialized agents.
-- [HARD] User confirmation required before PR creation and review submission — surface via orchestrator blocker report + AskUserQuestion (subagents cannot interact with users per CLAUDE.md §8).
+- [HARD] User confirmation required before PR creation and review submission — surface via orchestrator blocker report + the orchestrator's user-decision channel (subagents cannot interact with users per CLAUDE.md §8).
 - Branch per issue; test verification before PR; Conventional Commits.
 
 ## Anti-Patterns
 
 | Anti-Pattern | Correct Approach |
 |--------------|-----------------|
-| Calling AskUserQuestion directly for PR creation/review approval | Return blocker report; orchestrator runs AskUserQuestion + re-delegates |
+| Calling the user-decision channel directly for PR creation/review approval | Return blocker report; orchestrator surfaces the user-decision prompt + re-delegates |
 | Skipping test verification before PR | Always run language test suite before commit |
 | Custom Go wrappers for GitHub ops | Use `gh` CLI directly |
 | Direct write to main branch | Always create issue-prefixed branch + PR |

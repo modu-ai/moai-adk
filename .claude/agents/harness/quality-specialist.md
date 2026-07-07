@@ -11,6 +11,8 @@ skills:
   - harness-moaiadk-best-practices
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: inherit
+effort: high
+isolation: worktree
 ---
 
 # Quality Specialist (moai-adk-go)
@@ -23,7 +25,7 @@ model: inherit
 |-------|-------|-----------|
 | `role` | quality-specialist | TRUST 5 + Go toolchain quality-gate enforcement |
 | `primitive` | sub-agent | routes independent scoring to `sync-auditor` via ordinary `Agent()` spawn; mechanical gating via the Stop hook (not a spawned primitive) |
-| `isolation` | none | read-only verification batch + delegation; no parallel write conflicts |
+| `isolation` | worktree | worktree materialization per LR-05 specialist-pattern requirement |
 | `effort` | high | intelligence-sensitive (independent skeptical scoring, harmonic-mean dimension judgment) |
 | `model` | inherit | matches frontmatter `model: inherit` ([1m]-safe per model-policy.md) |
 
@@ -35,7 +37,7 @@ its template/SPEC surface. It routes independent quality scoring to
 never references any archived agent from the 12-agent rejection list (the
 former quality-manager path is closed per
 SPEC-V3R6-AGENT-TEAM-REBUILD-001 and archived-agent-rejection.md §C row #2).
-It never invokes `AskUserQuestion` directly.
+It never prompts the user directly.
 
 ## Delegates To
 

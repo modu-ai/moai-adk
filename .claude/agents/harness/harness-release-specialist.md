@@ -8,7 +8,9 @@ description: >
   support via --hotfix. All git operations delegated to manager-git. Ported with
   structural fidelity from .claude/skills/moai/workflows/release.md per
   SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
-tools: Read, Write, Edit, Grep, Glob, Bash, Agent
+tools: Read, Write, Edit, Grep, Glob, Bash
+effort: high
+isolation: worktree
 ---
 
 # Specialist: harness-release — Production Release (Enhanced GitHub Flow)
@@ -33,8 +35,8 @@ former `expert-debug` route is archived per
 `.claude/rules/moai/workflow/archived-agent-rejection.md`).
 
 Invocation: `/harness:release [VERSION] [--hotfix]` — if VERSION provided,
-use it directly; if omitted, return a blocker report for orchestrator
-AskUserQuestion (patch/minor/major).
+use it directly; if omitted, return a blocker report for the orchestrator
+to surface a user-decision prompt (patch/minor/major).
 
 ## Release Configuration (Enhanced GitHub Flow)
 
@@ -71,8 +73,8 @@ PROCEED or REVIEW_NEEDED.
 
 ### Phase 3 — Version Selection
 
-If VERSION provided: use directly. Else: return a blocker report for orchestrator
-AskUserQuestion (patch/minor/major). Update ALL version files:
+If VERSION provided: use directly. Else: return a blocker report for the orchestrator
+to surface a user-decision prompt (patch/minor/major). Update ALL version files:
 - [ ] `pkg/version/version.go`: `Version = "vX.Y.Z"`
 - [ ] `.moai/config/sections/system.yaml`: `moai.version` AND `moai.template_version`
 - [ ] `internal/template/templates/.moai/config/sections/system.yaml`: `moai.version`
@@ -95,7 +97,7 @@ Changes / Added / Changed / Fixed / Installation & Update), then `---`, then
 ### Phase 5 — Final Approval (human gate — specialist-held)
 
 [HARD] Return a blocker report with the release summary (version change, commits,
-quality results, what-happens-next); orchestrator runs AskUserQuestion (Release /
+quality results, what-happens-next); the orchestrator surfaces the user-decision prompt (Release /
 Abort). On Release approval, proceed to Phase 6.
 
 ### Phase 6 — Release Branch PR and Tag (manager-git delegation)
@@ -140,7 +142,7 @@ needed; `moai version` confirms `vX.Y.Z`.
 | Squash-merging the release PR | `--merge` (merge commit) — preserve individual SPEC commits (§18.3) |
 | Manual `git tag + push` | `./scripts/release.sh vX.Y.Z` (CHANGELOG verify + CI check included) |
 | Direct `git push origin main` | Always PR merge flow via manager-git |
-| Calling AskUserQuestion directly (Phase 3/5) | Return blocker report; orchestrator runs AskUserQuestion + re-delegates |
+| Calling the user-decision channel directly (Phase 3/5) | Return blocker report; orchestrator surfaces the user-decision prompt + re-delegates |
 | Referencing archived `expert-debug` | Use a per-spawn `Agent(general-purpose)` diagnostic specialist |
 | Asset names with "v" prefix | GoReleaser `{{ .Version }}` strips "v"; checker expects no "v" |
 
@@ -163,6 +165,6 @@ adaptations: (1) the archived `expert-debug` quality-escalation route is replace
 by a per-spawn `Agent(general-purpose)` diagnostic specialist per
 archived-agent-rejection.md; (2) the Phase 3/5 user-interaction points (which a
 subagent cannot drive directly per CLAUDE.md §8) are replaced by blocker-report →
-orchestrator-AskUserQuestion → re-delegation. Routing changed from `/99-release`
+orchestrator user-decision prompt → re-delegation. Routing changed from `/99-release`
 → `Skill("moai/workflows/release")` to `/harness:release` → this harness
 specialist.
