@@ -20,7 +20,6 @@ metadata:
   category: "domain"
   status: "active"
   updated: "2026-04-25"
-  modularized: "true"
   tags: "database, postgresql, mongodb, redis, oracle, data-patterns, performance, neon, supabase, firestore, cloud-database, serverless"
   author: "MoAI-ADK Team"
   context7-libraries: "/neondatabase/neon, /supabase/supabase, /firebase/firebase-docs"
@@ -200,10 +199,6 @@ Performance Features:
 
 ## Resources
 
-For working code examples, see [examples.md](examples.md).
-
-For detailed implementation patterns and database-specific optimizations, see the modules directory.
-
 Status: Production Ready
 Last Updated: 2026-01-11
 Maintained by: MoAI-ADK Database Team
@@ -302,8 +297,6 @@ match /users/{userId} {
 ```
 
 Offline persistence: Enable via `enableIndexedDbPersistence(db)` (web) or SDK default (mobile).
-
-Full platform reference: [modules/cloud-database.md](modules/cloud-database.md)
 
 ## Refactor Notes
 

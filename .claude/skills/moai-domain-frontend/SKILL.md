@@ -20,7 +20,6 @@ metadata:
   category: "domain"
   status: "active"
   updated: "2026-03-28"
-  modularized: "true"
   tags: "frontend, react, nextjs, vue, ui, components"
   author: "MoAI-ADK Team"
   context7-libraries: "/facebook/react, /vercel/next.js, /vuejs/vue"
@@ -49,43 +48,41 @@ When to Use:
 
 ---
 
-## Module Index
-
-Load specific modules for detailed patterns:
+## Patterns
 
 ### Framework Patterns
 
-React 19 Patterns in modules/react19-patterns.md:
+React 19 Patterns:
 
 - Server Components, Concurrent features, cache() API, Form handling
 
-Next.js 16 Patterns in modules/nextjs16-patterns.md:
+Next.js 16 Patterns:
 
 - App Router, Server Actions, ISR, Route Handlers, Parallel Routes
 
-Vue 3.5 Patterns in modules/vue35-patterns.md:
+Vue 3.5 Patterns:
 
 - Composition API, Composables, Reactivity, Pinia, Provide/Inject
 
 ### Architecture Patterns
 
-Component Architecture in modules/component-architecture.md:
+Component Architecture:
 
 - Design tokens, CVA variants, Compound components, Accessibility
 
-State Management in modules/state-management.md:
+State Management:
 
 - Zustand, Redux Toolkit, React Context, Pinia
 
-Performance Optimization in modules/performance-optimization.md:
+Performance Optimization:
 
 - Code splitting, Dynamic imports, Image optimization, Memoization
 
-AI-Assisted Frontend Patterns in modules/ai-frontend-patterns.md:
+AI-Assisted Frontend Patterns:
 
 - Visual reference strategy, Playwright verification, motion design, reasoning-level tuning
 
-Vercel React Best Practices in modules/vercel-react-best-practices.md:
+Vercel React Best Practices:
 
 - 45 rules across 8 categories from Vercel Engineering
 - Eliminating waterfalls, bundle optimization, server-side performance
@@ -142,10 +139,6 @@ Verification: Playwright (visual inspection, functional testing)
 ---
 
 ## Resources
-
-Module files in the modules directory contain detailed patterns.
-
-For working code examples, see [examples.md](examples.md).
 
 Official documentation:
 

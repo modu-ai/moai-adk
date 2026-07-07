@@ -107,12 +107,12 @@ catalog:
             - name: manager-docs
               tier: core
               path: templates/.claude/agents/moai/manager-docs.md
-              hash: 4d8593288c92a4619ddb035e2852d801af69aeb87358be9ead5a3a2ff229ec76
+              hash: dd877161c37a1b041d63db55c4d0c58d54dfba134439fcc855871c33187ff640
               version: 1.0.0
             - name: manager-git
               tier: core
               path: templates/.claude/agents/moai/manager-git.md
-              hash: 4edb7ab64d5bbdecf8ac5f3e2530e587dd2dce7801bdd84500cd0779583541dc
+              hash: a642663820c76132f6f18d1b7ade70252848f5ba24c37bcb36e65c6252d0119f
               version: 1.0.0
             - name: manager-spec
               tier: core
@@ -137,7 +137,7 @@ catalog:
                 - name: moai-domain-database
                   tier: optional-pack:backend
                   path: templates/.claude/skills/moai-domain-database/
-                  hash: c4efe61662e51252aecdda7d4aa4b9c7591ec938b54752a9abc65da3e218f2ab
+                  hash: cd60d373ba192a44aacc5f50779de2231d64079292bc9e2b63c71221aad0c073
                   version: 1.0.0
                 - name: moai-ref-api-patterns
                   tier: optional-pack:backend
@@ -195,7 +195,7 @@ catalog:
                 - name: moai-domain-frontend
                   tier: optional-pack:frontend
                   path: templates/.claude/skills/moai-domain-frontend/
-                  hash: f2e5fb49d55d9b60ad86a6a9831b4fd3541ebf7337c94212de30ea26ec1b8e21
+                  hash: ec5c0d63fe5a9a6738a1f26b45c202ca95e8f1203a46f4fe8c097a4743fb31f0
                   version: 1.0.0
                 - name: moai-ref-react-patterns
                   tier: optional-pack:frontend
