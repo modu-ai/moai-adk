@@ -25,6 +25,11 @@
 - AC PASS: AC-TA-006(session-set+high, count=2) / AC-TA-007(lineage 부재→low 폴백, count=1) / edge §D.2(공유 UUID→low 강등) — `go test -run TestAttributionConfidence` PASS. REQ-TA-013(absent transcript skip-and-continue) / extractSessionUUIDs 6 subcase PASS.
 - coverage: 90.1% (M1 90.0% 유지). race clean. golangci-lint 0 issues. gofmt clean. build host/windows exit 0.
 - @MX: `Attribute` ANCHOR (M3/M4 다운스트림 통합 지점), `determineConfidence` NOTE (신뢰도 휴리스틱).
+- M3 (§I writer + Section Map SSOT + era 무충돌 회귀테스트) 완료 — TDD(cycle_type=tdd). 신규 파일: `internal/tokenusage/section_writer.go`(`BuildSectionI`/`WriteSectionI`/`SectionIHeading` + `applySectionI` 멱등 replace-or-append) + `section_writer_test.go`(7 subcase). `internal/spec/era_token_section_test.go`(`TestEraUnchangedByTokenSection`, AC-TA-009). Section Map SSOT(`spec-frontmatter-schema.md`)에 `## §I Token Accounting` 행 추가.
+- AC PASS: AC-TA-008(`## §I Token Accounting` + `tokens_spent:` grep hit, fixture writer 실행 후) / AC-TA-009(`go test ./internal/spec/ -run TestEraUnchangedByTokenSection` PASS — §I 추가 전후 ClassifyEra == V3R6 H-4 불변) / AC-TA-011(era.go/audit.go `§E.N`+SHA 토큰 미개명 source guard — diff 공백). M1/M2 회귀 없음(`go test ./internal/tokenusage/... ./internal/spec/...` — 본 SPEC 추가 테스트만 신규, 기존 전부 PASS).
+- §I 실측 값 미기록(sync-phase 소관) — 본 마일스톤은 writer/스키마/회귀테스트만. §I placeholder는 그대로.
+- coverage: tokenusage 패키지 M1+M2+M3 합산 (M3 코드 신규 — `go test -cover`로 E3에서 실측). race clean. golangci-lint 0 issues(NEW). build host/windows exit 0.
+- @MX: `WriteSectionI` ANCHOR (sync-close 통합 지점), `BuildSectionI` NOTE (필드-스키마 1:1 매핑).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
