@@ -2,7 +2,7 @@
 id: SPEC-CLAUDEMD-DIET-V2-001
 title: "CLAUDE.md 2nd-round diet (405 → ~300 lines, rule-SSOT pointer-ization + §16 path-scoped extraction)"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-07-08
 updated: 2026-07-08
 author: manager-spec

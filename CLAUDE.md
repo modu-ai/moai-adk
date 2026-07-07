@@ -210,7 +210,7 @@ User and language configuration:
 @.moai/config/sections/user.yaml
 @.moai/config/sections/language.yaml
 
-MoAI-ADK uses Claude Code's official rules system at `.claude/rules/moai/` (core / workflow / development / language / design rule categories). Design System Configuration (absorbed from agency) lives in `.moai/config/sections/design.yaml`, `.moai/project/brand/`, `.claude/rules/moai/design/constitution.md`, `.moai/config/sections/constitution.yaml`, `.moai/config/sections/harness.yaml`, `.moai/config/evaluator-profiles/`. Legacy .agency/ directories are archived via `moai migrate agency`.
+MoAI-ADK uses Claude Code's official rules system at `.claude/rules/moai/` (core / workflow / development / language / design rule categories). Design System Configuration (absorbed from agency) lives in `.moai/config/sections/design.yaml`, `.moai/project/brand/`, `.moai/config/sections/constitution.yaml`, `.moai/config/sections/harness.yaml`, `.moai/config/evaluator-profiles/`. Legacy .agency/ directories are archived via `moai migrate agency`.
 
 Language rules:
 - User Responses: Always in user's conversation_language
@@ -338,48 +338,11 @@ Dynamic workflows are a third orchestration primitive alongside sub-agents and A
 
 > Canonical rule: see `.claude/rules/moai/workflow/context-window-management.md` for context window thresholds (1M = 50%, 200K = 90%) and `.claude/rules/moai/workflow/session-handoff.md` for paste-ready resume message format.
 
-MoAI searches previous Claude Code sessions when context is needed to continue work on existing tasks or discussions.
+MoAI searches previous Claude Code sessions when context is needed to continue work on existing tasks or discussions. **Search when**: user references past work without sufficient context, mentions a SPEC-ID not loaded in current context, asks to resume/continue previous work, or explicitly requests to find previous discussions. **Skip when**: relevant SPEC/code is already in current session, user references content present in conversation, or duplication would add no value.
 
-### When to Search
+**Process**: (1) check current session first (skip if found); (2) confirm via AskUserQuestion before searching; (3) Grep session index and transcripts in `~/.claude/projects/` (default 30-day window); (4) summarize and present for approval; (5) inject approved context avoiding duplicates. **Token budget**: max 5,000 tokens per injection; skip if current usage exceeds 150,000; summarize lengthy conversations to stay within budget.
 
-Search previous sessions when:
-- User references past work without sufficient context in current session
-- User mentions a SPEC-ID that is not loaded in current context
-- User asks to continue previous work or resume interrupted tasks
-- User explicitly requests to find previous discussions
-
-### When NOT to Search
-
-Skip context search when:
-- Relevant SPEC document is already loaded in current context
-- Related documents or code are already present in conversation
-- User references content that exists in current session
-- Context duplication would provide no additional value
-
-### Search Process
-
-1. Check if relevant context already exists in current session (skip if found)
-2. Ask user confirmation before searching (via AskUserQuestion)
-3. Use Grep to search session index and transcript files in ~/.claude/projects/
-4. Limit search to recent sessions (configurable, default 30 days)
-5. Summarize findings and present for user approval
-6. Inject approved context into current conversation (avoid duplicates)
-
-### Token Budget
-
-- Maximum 5,000 tokens per injection
-- Skip search if current token usage exceeds 150,000
-- Summarize lengthy conversations to stay within budget
-
-### Manual Trigger
-
-User can explicitly request context search at any time during conversation.
-
-### Integration Notes
-
-- Complements @MX TAG system for code context
-- Automatically triggered when SPEC reference lacks context
-- Available in both solo and team modes
+**Manual trigger**: user may request context search at any time. Complements @MX TAG system for code context; available in both solo and team modes.
 
 ---
 
