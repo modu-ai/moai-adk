@@ -289,7 +289,7 @@ feat(scope): description
 SPEC: SPEC-{ID}
 Fixes #{issue_number}
 
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 ```
 
 Output: branch_name, commits array (sha and message), files_staged count, status, issue_number (from SPEC metadata).
