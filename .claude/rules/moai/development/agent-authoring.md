@@ -325,3 +325,42 @@ This mechanism→context-cost ladder is a *cross-mechanism* cost axis. It runs p
 
 - the **within-skill** cost axis — `.claude/rules/moai/development/skill-authoring.md` § Progressive Disclosure (the 3-level metadata / body / bundled taxonomy that sets a Skill's "low" position on the ladder above);
 - the **per-spawn** cost axis — `.claude/rules/moai/workflow/dynamic-workflows.md` § Purpose-driven model+effort selection (the purpose→effort taxonomy, read-only-extract→low … implement→xhigh, governing the token cost of each agent spawn).
+
+
+## Effort-Level Calibration Matrix
+
+Per-agent default effort levels for the Opus 4.7+ / 4.8 substrate. The `effort` frontmatter field overrides the session effort level and is scoped to a single agent run; `xhigh` and `max` require Opus 4.7 or later. For the substrate-level effort policy (defaults, when to raise/lower), see `.claude/rules/moai/core/moai-constitution.md` § Opus 4.7+ / 4.8 Prompt Philosophy.
+
+### Retained Agents (8 — active, spawnable)
+
+| Agent | Default effort | Rationale |
+|-------|----------------|-----------|
+| `manager-spec` | xhigh | plan-phase GEARS/EARS authoring, reasoning-heavy |
+| `manager-develop` | xhigh | run-phase implementation (coding/agentic) |
+| `manager-docs` | high | sync-phase documentation + frontmatter transitions |
+| `manager-git` | high | git operations, PR creation, Tier-L routing |
+| `plan-auditor` | xhigh | adversarial plan audit, bias prevention |
+| `sync-auditor` | xhigh | skeptical 4-dimension quality scoring |
+| `builder-harness` | high | artifact scaffolding (agents/skills/plugins/hooks) |
+| `Explore` (Anthropic built-in) | medium | read-only codebase exploration |
+
+### Archived Agents (legacy reference — MUST NOT be spawned)
+
+The following agents were retired during the 2026-05-25 catalog consolidation (17 → 8 retained) and are listed here for historical traceability only. They MUST NOT be spawned; route their former work per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C migration table.
+
+| Archived agent | Former role | Successor routing |
+|----------------|-------------|-------------------|
+| `manager-strategy` | planning | `manager-spec` (absorbed) |
+| `manager-cycle` | cycle management | `manager-develop` |
+| `manager-quality` | quality gates | global Stop hook `sync-phase-quality-gate.sh` + `sync-auditor` |
+| `manager-project` | project docs | `manager-docs` (absorbed) |
+| `expert-backend` | backend domain | `Agent(general-purpose)` + backend scope |
+| `expert-frontend` | frontend domain | `Agent(general-purpose)` + frontend scope |
+| `expert-security` | security domain | `Agent(general-purpose)` + security scope |
+| `expert-devops` | devops domain | `Agent(general-purpose)` + infra scope |
+| `expert-performance` | performance domain | `Agent(general-purpose)` + perf scope |
+| `expert-refactoring` | refactoring | `manager-develop` (cycle_type=ddd) |
+| `builder-platform` | platform builder | `builder-harness` (absorbed) |
+| `researcher` | research | `Explore` / WebSearch |
+
+Effort values: `low` / `medium` / `high` / `xhigh` / `max`. Opus 4.8 defaults to `effort: high` on all surfaces; raise to `xhigh` for coding/agentic work, step down to `medium`/`low` only for speed-critical or simple tasks.

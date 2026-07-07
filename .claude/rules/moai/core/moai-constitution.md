@@ -50,6 +50,7 @@ Rules:
 - [ZONE:Evolvable] [HARD] Principle 4 — Fewer subagents spawned by default: Opus 4.7+ / 4.8 does not auto-spawn subagents. This behavior is steerable: when fan-out helps, instruct explicitly "Spawn multiple subagents in the same turn when fanning out across items or files; do not spawn a subagent for work you can complete directly in one response."
 - [ZONE:Evolvable] [HARD] Principle 5 — Fewer tool calls by default, more reasoning: Opus 4.7+ / 4.8 prefers reasoning over tool invocation. When tool use is expected, specify when and why to use each tool (Grep for content search, Glob for file discovery, Read for full-file context). Raise effort to high/xhigh to increase tool usage when needed.
 - Effort defaults: Opus 4.8 defaults to `effort: high` on all surfaces (Claude API and Claude Code). Set `effort: xhigh` for coding/agentic work, keep a minimum of `high` for intelligence-sensitive work, and step down to `medium`/`low` only for speed-critical or simple tasks (route effort by role rather than by named agent).
+- Per-agent effort calibration: see `.claude/rules/moai/development/agent-authoring.md` § Effort-Level Calibration Matrix for the retained-agent default-effort table and the archived-agent legacy reference.
 
 ## Output Format
 
