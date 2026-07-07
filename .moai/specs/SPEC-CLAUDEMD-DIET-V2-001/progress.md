@@ -144,7 +144,28 @@ m1_to_mN_commit_strategy: per-milestone (M1=210ca1818, M2=ab92ccaa0, M3=614c7161
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs populates this with the single sync commit SHA carrying the `implemented → completed` transition>_
+```yaml
+sync_complete_at: 2026-07-08
+sync_commit_sha: ""   # 2-commit backfill convention — populated by commit 2 (chore backfill, de3e96bf5 precedent)
+sync_status: audit-ready
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"   # merged 3-phase close on the single sync commit (Status Transition Ownership Matrix)
+  plan_md: "n/a (Tier M plan.md carries no status field — only spec.md + progress.md §E track lifecycle)"
+  acceptance_md: "n/a"
+  progress_md: "§E.4 populated (this block)"
+changelog_entry_position: "[Unreleased] > ### Changed (diet = change to existing CLAUDE.md; SPEC-RULE-DIET-002 precedent)"
+ac_count: 10   # acceptance.md SSOT AC-CMD2-001..010 (### H3 format)
+ac_pass_count: 10
+ac_fail_count: 0
+b12_self_test_a_changelog_collision_grep: 0   # grep -c 'SPEC-CLAUDEMD-DIET-V2-001' CHANGELOG.md pre-edit = 0 (clean)
+b12_self_test_b_ac_count_match: true   # acceptance.md 10 unique AC IDs == CHANGELOG "10/10 AC PASS"
+b12_self_test_c_file_paths_verified: true   # CLAUDE.md + internal/template/templates/CLAUDE.md + spec.md + progress.md ls-verified
+mx_tag_validation: "CLAUDE.md @MX count = 1 (§5 MX Tag Integration prose listing @MX:NOTE/WARN/ANCHOR/TODO types — NOT a code annotation; preserved through diet, byte-parity DIFF_EXIT=0, both trees 319L)"
+non_blocking_debts:
+  - "AC-CMD2-007 TestTemplateNeutralityAuditC8Preserve pre-existing FAIL (plan-phase commit 365feae6b removed scripts/ci-mirror → C8 3→2; predates this SPEC, directly-validating tests TestTemplateNoInternalContentLeak + TestSplitHarnessNamespaceNoLeak both PASS)"
+  - "SHOULD ≤210L not met (319L) — 3rd-round deferral per spec.md §D Out-of-Scope"
+canary_compliance_check: "n/a (this SPEC defines no forward-looking policy for its own sync to test)"
+```
 
 ---
 
