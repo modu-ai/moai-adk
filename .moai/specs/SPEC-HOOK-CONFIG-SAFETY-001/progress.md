@@ -86,7 +86,7 @@ This SPEC's 5 new tests PASS; 0 new failures introduced.
 ## §E.3 Run-phase Audit-Ready Signal
 
 - **run_complete_at**: 2026-07-07
-- **run_commit_sha**: `<pending push — will backfill in §E.4 sync phase per the canonical §E.4-ownership rule; the M1 commit SHA is recorded by git once committed>`
+- **run_commit_sha**: `e87bc205c`
 - **run_status**: `audit-ready` (all 7 ACs at PASS or PASS-WITH-DEBT; PASS-WITH-DEBT is AC-CS-006 only, debt = 3 pre-existing unrelated failures)
 - **ac_pass_count**: 7 (AC-CS-001, 002a, 002b, 002c, 003, 004, 005, 007 — PASS; AC-CS-006 PASS-WITH-DEBT)
 - **ac_fail_count**: 0
