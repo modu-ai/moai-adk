@@ -20,8 +20,10 @@ import (
 const (
 	styleNameMoAI     = "MoAI"
 	styleNameEinstein = "Einstein"
+	styleNameMoAIEasy = "MoAI-Easy"
 	styleFileMoAI     = "moai.md"
 	styleFileEinstein = "einstein.md"
+	styleFileMoAIEasy = "moai-easy.md"
 
 	// Frontmatter key names.
 	keyName                   = "name"
@@ -37,7 +39,7 @@ const (
 	outputStylesDir = ".claude/output-styles/moai"
 
 	// Expected number of output styles (REQ-WF006-002).
-	expectedStyleCount = 2
+	expectedStyleCount = 3
 )
 
 // outputStyleFrontmatter holds parsed frontmatter fields for an output style file.
@@ -174,6 +176,7 @@ func TestOutputStylesFrontmatterSchema(t *testing.T) {
 	}{
 		{styleFileMoAI, styleNameMoAI, "true"},
 		{styleFileEinstein, styleNameEinstein, "false"},
+		{styleFileMoAIEasy, styleNameMoAIEasy, "true"},
 	}
 
 	for _, tc := range realCases {
@@ -287,12 +290,12 @@ func TestOutputStylesFrontmatterSchema(t *testing.T) {
 	})
 }
 
-// TestOutputStylesExactlyTwo verifies that the embedded template contains exactly
-// two output style files with the expected names.
+// TestOutputStylesExactlyThree verifies that the embedded template contains exactly
+// three output style files with the expected names.
 //
-// REQ-WF006-002: exactly two styles (MoAI, Einstein).
-// REQ-WF006-014: a third style without schema validation emits OUTPUT_STYLE_UNVERIFIED.
-func TestOutputStylesExactlyTwo(t *testing.T) {
+// REQ-WF006-002: exactly three styles (MoAI, Einstein, MoAI-Easy).
+// REQ-WF006-014: a fourth style without schema validation emits OUTPUT_STYLE_UNVERIFIED.
+func TestOutputStylesExactlyThree(t *testing.T) {
 	t.Parallel()
 
 	fsys, err := EmbeddedTemplates()
@@ -321,11 +324,12 @@ func TestOutputStylesExactlyTwo(t *testing.T) {
 	expectedNames := map[string]bool{
 		styleFileMoAI:     true,
 		styleFileEinstein: true,
+		styleFileMoAIEasy: true,
 	}
 	for _, name := range mdFiles {
 		if !expectedNames[name] {
-			t.Errorf("%s: unexpected style file %q (not in allowed set {%s, %s})",
-				errPrefixUnverified, name, styleFileMoAI, styleFileEinstein)
+			t.Errorf("%s: unexpected style file %q (not in allowed set {%s, %s, %s})",
+				errPrefixUnverified, name, styleFileMoAI, styleFileEinstein, styleFileMoAIEasy)
 		}
 	}
 	for expected := range expectedNames {
@@ -342,12 +346,12 @@ func TestOutputStylesExactlyTwo(t *testing.T) {
 		}
 	}
 
-	// Synthetic: simulate adding a third style.
-	t.Run("Synthetic/ThirdStyleWouldFail", func(t *testing.T) {
+	// Synthetic: simulate adding a fourth style.
+	t.Run("Synthetic/FourthStyleWouldFail", func(t *testing.T) {
 		t.Parallel()
 		extraFiles := append(mdFiles, "foo.md")
 		if len(extraFiles) == expectedStyleCount {
-			t.Error("synthetic third style was not added correctly to the test")
+			t.Error("synthetic fourth style was not added correctly to the test")
 		}
 		// Verify the count check logic produces the expected error string.
 		if len(extraFiles) != expectedStyleCount {
@@ -457,7 +461,7 @@ func TestOutputStylesEncoding(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
 
-	styleFiles := []string{styleFileMoAI, styleFileEinstein}
+	styleFiles := []string{styleFileMoAI, styleFileEinstein, styleFileMoAIEasy}
 	for _, name := range styleFiles {
 		name := name
 		t.Run(name, func(t *testing.T) {

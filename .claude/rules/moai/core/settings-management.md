@@ -316,7 +316,7 @@ When `workflow.execution_mode` is `auto`, these thresholds determine when team m
 ## Output Style Configuration
 
 Output styles are Markdown files in `.claude/output-styles/moai/` that control how MoAI formats responses.
-Two styles ship with MoAI-ADK: **MoAI** (`moai.md`) and **Einstein** (`einstein.md`).
+Three styles ship with MoAI-ADK: **MoAI** (`moai.md`), **MoAI-Easy** (`moai-easy.md`), and **Einstein** (`einstein.md`).
 
 ### Precedence
 

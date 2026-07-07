@@ -108,7 +108,9 @@ if [ "$read_mode" = "1" ]; then
 fi
 
 # --- 11. Emit guidance + block (REQ-FF-001) ---
-cat <<GUIDANCE
+# GUIDANCE → stderr: Claude Code exit-2 semantics require the block reason on
+# stderr (stdout-only exit 2 surfaces as "No stderr output" error). See CC 2.1.202.
+cat <<GUIDANCE >&2
 FACT-FORCE GATE: first edit on $file_path blocked.
 
 Before proceeding, investigate:
