@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.0.0-rc7] - 2026-07-07
+
+### Fixed
+
+- **cache.yaml** — GLM (Z.AI) 자동 캐싱 명확화: 기존 주석 "ignores this section entirely"는 오해를 일으킴. GLM은 `cache_control` 헤더를 사용하지 않지만 컨텐츠 유사성 기반 자동 캐싱이 작동 중이며, `usage.prompt_tokens_details.cached_tokens` 필드로 확인 가능.
+
 ### Added
 
 - **[SPEC-HOOK-PREEDIT-INVESTIGATE-001](.moai/specs/SPEC-HOOK-PREEDIT-INVESTIGATE-001/spec.md)** — GateGuard Fact-Force PreToolUse hook 추가: 파일당 첫 Edit/Write/MultiEdit를 차단하고 조사(importers/data-schemas/user-instruction)를 강제한 뒤 두 번째 편집부터 허용. ECC `pre:edit-write:gateguard-fact-force` 적응. Tier S, shell-only ~95 LOC, additive-only (기존 handle-pre-tool.sh 무수정), session-scoped state (`.moai/state/fact-force/`), `MOAI_FACT_FORCE=off` opt-out, fail-open 기본, 5s timeout. 12/12 AC PASS · plan-auditor iter-2 0.94 · sync-audit 0.93 (harmonic mean, Functionality 0.95 / Security 0.92 / Craft 0.90 / Consistency 0.95). 후속 debt: path canonicalization, Go-side handler, shellcheck in CI.
