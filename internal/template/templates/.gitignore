@@ -156,6 +156,10 @@ secret-*.*
 .aws/config
 .aws/credentials
 
+# MINK agent credentials (plaintext API keys, per AC-CR-026).
+# Ignored anywhere in the tree so per-project auth dirs are never committed.
+**/.mink/auth/
+
 # ===========================================
 # Claude Code Configuration
 # ===========================================

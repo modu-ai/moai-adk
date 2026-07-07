@@ -545,35 +545,69 @@ func (h *preToolHandler) extractBashCommand(toolInput json.RawMessage) string {
 // loadGateConfig reads gate configuration from the config provider.
 // Falls back to DefaultGateConfig when the config is not available.
 func (h *preToolHandler) loadGateConfig() *quality.GateConfig {
+	var qcfg *quality.GateConfig
+
 	if h.cfg == nil {
-		return quality.DefaultGateConfig()
+		qcfg = quality.DefaultGateConfig()
+	} else {
+		cfg := h.cfg.Get()
+		if cfg == nil {
+			qcfg = quality.DefaultGateConfig()
+		} else {
+			gate := cfg.Gate
+			qcfg = &quality.GateConfig{
+				Enabled:     gate.Enabled,
+				SkipTests:   gate.SkipTests,
+				VetTimeout:  gate.VetTimeoutDuration(),
+				LintTimeout: gate.LintTimeoutDuration(),
+				TestTimeout: gate.TestTimeoutDuration(),
+			}
+			// Map config.AstGrepGateConfig → quality.AstGrepGateConfig (SPEC-SLQG-001).
+			ag := gate.AstGrepGate
+			qcfg.AstGrepGate = &quality.AstGrepGateConfig{
+				Enabled:      ag.Enabled,
+				RulesDir:     ag.RulesDir,
+				BlockOnError: ag.BlockOnError,
+				WarnOnlyMode: ag.WarnOnlyMode,
+			}
+			// Apply defaults when RulesDir is empty (not set in YAML).
+			if qcfg.AstGrepGate.RulesDir == "" {
+				qcfg.AstGrepGate.RulesDir = ".moai/config/astgrep-rules"
+			}
+		}
 	}
-	cfg := h.cfg.Get()
-	if cfg == nil {
-		return quality.DefaultGateConfig()
-	}
-	gate := cfg.Gate
-	qcfg := &quality.GateConfig{
-		Enabled:     gate.Enabled,
-		SkipTests:   gate.SkipTests,
-		VetTimeout:  gate.VetTimeoutDuration(),
-		LintTimeout: gate.LintTimeoutDuration(),
-		TestTimeout: gate.TestTimeoutDuration(),
-		ProjectDir:  h.projectDir,
-	}
-	// Map config.AstGrepGateConfig → quality.AstGrepGateConfig (SPEC-SLQG-001).
-	ag := gate.AstGrepGate
-	qcfg.AstGrepGate = &quality.AstGrepGateConfig{
-		Enabled:      ag.Enabled,
-		RulesDir:     ag.RulesDir,
-		BlockOnError: ag.BlockOnError,
-		WarnOnlyMode: ag.WarnOnlyMode,
-	}
-	// Apply defaults when RulesDir is empty (not set in YAML).
-	if qcfg.AstGrepGate.RulesDir == "" {
-		qcfg.AstGrepGate.RulesDir = ".moai/config/astgrep-rules"
-	}
+
+	// Project context + Go build tags apply uniformly across every config path
+	// (including the DefaultGateConfig fallback when no config provider is
+	// loaded), so a project requiring non-default build tags (e.g. goolm) is
+	// vetted/linted/tested under them regardless of config availability.
+	qcfg.ProjectDir = h.projectDir
+	qcfg.GoBuildTags = readGoBuildTags(h.projectDir)
 	return qcfg
+}
+
+// readGoBuildTags reads the project Go build tags from
+// <dir>/.moai/config/build-tags (first non-empty, non-comment line) when
+// present. Returns "" when the file is absent or unreadable so the gate
+// behaves as before for projects that do not declare build tags. The value
+// is passed verbatim to go vet/test (-tags=<value>) and golangci-lint
+// (--tags=<value>); Go accepts comma- or space-separated tags.
+func readGoBuildTags(dir string) string {
+	if dir == "" {
+		return ""
+	}
+	data, err := os.ReadFile(filepath.Join(dir, ".moai", "config", "build-tags"))
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		return line
+	}
+	return ""
 }
 
 // firstLine returns the first non-empty line of s, or s itself when there is no newline.

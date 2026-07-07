@@ -38,8 +38,16 @@ if command -v go >/dev/null 2>&1; then
         done | sort -u
     )"
     if [ -n "$PKGS" ]; then
+        # Optional Go build tags (.moai/config/build-tags, first non-comment
+        # non-blank line) so projects requiring non-default tags (e.g. goolm)
+        # are vetted under them.
+        BT_TAGS=""
+        if [ -f .moai/config/build-tags ]; then
+            _bt_line="$(sed -e 's/#.*//' .moai/config/build-tags | awk 'NF{print; exit}')" || true
+            [ -n "$_bt_line" ] && BT_TAGS="-tags=$_bt_line"
+        fi
         # shellcheck disable=SC2086
-        if ! go vet $PKGS >/dev/null 2>&1; then
+        if ! go vet $BT_TAGS $PKGS >/dev/null 2>&1; then
             printf '\n[pre-commit] FAILED: go vet reported issues in the staged packages.\n' >&2
             printf '[pre-commit] Hint: run go vet on the affected packages, fix, then re-commit.\n' >&2
             printf '[pre-commit] Override: SKIP_MOAI_PRECOMMIT=1 git commit\n' >&2

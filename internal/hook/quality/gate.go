@@ -28,6 +28,14 @@ type GateConfig struct {
 	// ProjectDir is the project root directory used for language detection.
 	// When empty, the current working directory is used.
 	ProjectDir string
+	// GoBuildTags is a space- or comma-separated list of Go build tags (e.g.
+	// "goolm") applied to the Go toolchain vet/test/lint steps when non-empty.
+	// Sourced from the project .moai/config/build-tags file so a project that
+	// requires non-default build tags (cgo-alternative pure-Go libraries such as
+	// goolm, sqlite-nocgo) is vetted under the same tags it compiles with;
+	// otherwise go vet ./... fails on the cgo variant (libolm fatal) and the
+	// gate false-negatives. Ignored for non-Go toolchains.
+	GoBuildTags string
 	// AstGrepGate configures the ast-grep domain rule scan step.
 	// When nil, ast-grep scanning is skipped.
 	AstGrepGate *AstGrepGateConfig
@@ -302,11 +310,11 @@ func (g *QualityGate) detectToolchain() *langToolchain {
 				// Glob pattern (e.g., "*.csproj")
 				matches, err := filepath.Glob(filepath.Join(dir, marker))
 				if err == nil && len(matches) > 0 {
-					return resolveDartFlutter(&toolchains[i], dir)
+					return resolveGoBuildTags(resolveDartFlutter(&toolchains[i], dir), g.config.GoBuildTags)
 				}
 			} else {
 				if fileExists(filepath.Join(dir, marker)) {
-					return resolveDartFlutter(&toolchains[i], dir)
+					return resolveGoBuildTags(resolveDartFlutter(&toolchains[i], dir), g.config.GoBuildTags)
 				}
 			}
 		}
@@ -336,6 +344,70 @@ func resolveDartFlutter(tc *langToolchain, dir string) *langToolchain {
 		markerFiles: tc.markerFiles,
 		vetSteps:    []gateStep{{name: "flutter analyze", binary: "flutter", args: []string{"analyze"}}},
 		testStep:    &gateStep{name: "flutter test", binary: "flutter", args: []string{"test"}, optional: true},
+	}
+}
+
+// resolveGoBuildTags returns a Go-toolchain variant whose vet/test/lint
+// steps carry the Go build-tags flag when tags is non-empty, so the gate
+// vets and tests the project under the same build tags it compiles with.
+// A non-Go toolchain and an empty tags value are returned unchanged. The
+// returned toolchain is a clone (the package-level toolchains slice is never
+// mutated), mirroring resolveDartFlutter.
+func resolveGoBuildTags(tc *langToolchain, tags string) *langToolchain {
+	if tags == "" {
+		return tc
+	}
+	// Only the Go toolchain (marker go.mod) carries go vet/test/golangci-lint.
+	if len(tc.markerFiles) == 0 || tc.markerFiles[0] != "go.mod" {
+		return tc
+	}
+	clone := &langToolchain{markerFiles: tc.markerFiles}
+	clone.vetSteps = make([]gateStep, len(tc.vetSteps))
+	for i := range tc.vetSteps {
+		clone.vetSteps[i] = applyGoBuildTags(tc.vetSteps[i], tags)
+	}
+	clone.lintSteps = make([]gateStep, len(tc.lintSteps))
+	for i := range tc.lintSteps {
+		clone.lintSteps[i] = applyGoBuildTags(tc.lintSteps[i], tags)
+	}
+	if tc.testStep != nil {
+		ts := applyGoBuildTags(*tc.testStep, tags)
+		clone.testStep = &ts
+	}
+	return clone
+}
+
+// applyGoBuildTags returns a copy of step with the Go build-tags flag injected.
+// go-subcommand steps (binary "go") get "-tags=<tags>" right after the
+// subcommand; golangci-lint gets "--build-tags=<tags>" appended (golangci-lint
+// uses a different flag name than go). Other steps are returned unchanged.
+// An empty tags value returns the step unchanged.
+func applyGoBuildTags(step gateStep, tags string) gateStep {
+	if tags == "" {
+		return step
+	}
+	switch step.binary {
+	case "go":
+		// Insert -tags=<tags> immediately after the subcommand (args[0]).
+		args := make([]string, 0, len(step.args)+1)
+		if len(step.args) > 0 {
+			args = append(args, step.args[0])
+		}
+		args = append(args, "-tags="+tags)
+		if len(step.args) > 1 {
+			args = append(args, step.args[1:]...)
+		}
+		out := step
+		out.args = args
+		return out
+	case "golangci-lint":
+		args := append([]string{}, step.args...)
+		args = append(args, "--build-tags="+tags)
+		out := step
+		out.args = args
+		return out
+	default:
+		return step
 	}
 }
 
