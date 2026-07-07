@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/cli/agentlint"
 	"github.com/modu-ai/moai-adk/internal/cli/preference"
 	"github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -70,6 +71,12 @@ func init() {
 
 	// Register worktree subcommand tree
 	rootCmd.AddCommand(worktree.WorktreeCmd)
+
+	// SPEC-CLI-SUBPKG-SPLIT-001 M1: register agentlint subpackage. The "agent"
+	// and "workflow" parent commands are exported by the subpackage; their lint
+	// subcommands are wired on in package init().
+	rootCmd.AddCommand(agentlint.AgentCmd)
+	rootCmd.AddCommand(agentlint.WorkflowCmd)
 
 	// Register statusline command
 	rootCmd.AddCommand(StatuslineCmd)

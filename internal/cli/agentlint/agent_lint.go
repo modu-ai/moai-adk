@@ -1,4 +1,4 @@
-package cli
+package agentlint
 
 import (
 	"bufio"
@@ -11,9 +11,38 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/spf13/cobra"
 )
+
+// Local CLI output styles — the agentlint subpackage is imported BY the parent
+// cli package, so it cannot import internal/cli without an import cycle. These
+// mirror the package-cli styles using the same tui source (single source of truth).
+var (
+	cliSuccess = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Success, Dark: tui.DarkTheme().Success})
+	cliWarn    = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Warning, Dark: tui.DarkTheme().Warning})
+	cliError   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Danger, Dark: tui.DarkTheme().Danger})
+)
+
+// getStringFlag retrieves a string flag value from the command.
+func getStringFlag(cmd *cobra.Command, name string) string {
+	val, err := cmd.Flags().GetString(name)
+	if err != nil {
+		return ""
+	}
+	return val
+}
+
+// getBoolFlag retrieves a bool flag value from the command.
+func getBoolFlag(cmd *cobra.Command, name string) bool {
+	val, err := cmd.Flags().GetBool(name)
+	if err != nil {
+		return false
+	}
+	return val
+}
 
 // errLintViolations signals that lint violations were detected.
 // cobra's RunE returns this to exit non-zero without printing an "Error: " prefix.
@@ -115,18 +144,19 @@ Exit Codes:
 	SilenceUsage:  true,
 }
 
+// AgentCmd is the parent "agent" command group. The parent cli package registers
+// it onto rootCmd; the lint subcommand is wired onto it in init() below.
+var AgentCmd = &cobra.Command{
+	Use:   "agent",
+	Short: "Agent management commands",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmd.Help()
+	},
+	GroupID: "tools",
+}
+
 func init() {
-	// Create agent command group if it doesn't exist
-	agentCmd := &cobra.Command{
-		Use:   "agent",
-		Short: "Agent management commands",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
-		},
-		GroupID: "tools",
-	}
-	rootCmd.AddCommand(agentCmd)
-	agentCmd.AddCommand(agentLintCmd)
+	AgentCmd.AddCommand(agentLintCmd)
 
 	agentLintCmd.Flags().String("path", "", "Path to agent directory (default: .claude/agents/{moai,harness}/ and internal/template/templates/.claude/agents/moai/)")
 	agentLintCmd.Flags().String("format", "text", "Output format: text or json")

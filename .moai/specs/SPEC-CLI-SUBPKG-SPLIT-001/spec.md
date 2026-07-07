@@ -2,7 +2,7 @@
 id: SPEC-CLI-SUBPKG-SPLIT-001
 title: "Split flat internal/cli package into cohesive command subpackages (phased)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-02
 updated: 2026-07-07
 author: manager-spec

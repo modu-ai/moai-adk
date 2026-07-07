@@ -1,4 +1,4 @@
-package cli
+package agentlint
 
 // @MX:NOTE: [AUTO] WorkflowLintIntent — moai workflow lint validates .moai/config/sections/workflow.yaml
 // role_profiles to ensure write-heavy team roles (implementer/tester/designer) declare
@@ -201,17 +201,18 @@ func runWorkflowLint(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func init() {
-	workflowCmd := &cobra.Command{
-		Use:   "workflow",
-		Short: "Workflow configuration commands",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
-		},
-		GroupID: "tools",
-	}
-	rootCmd.AddCommand(workflowCmd)
+// WorkflowCmd is the parent "workflow" command group. The parent cli package
+// registers it onto rootCmd; the lint subcommand is wired onto it in init() below.
+var WorkflowCmd = &cobra.Command{
+	Use:   "workflow",
+	Short: "Workflow configuration commands",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmd.Help()
+	},
+	GroupID: "tools",
+}
 
+func init() {
 	workflowLintCmd := &cobra.Command{
 		Use:   "lint",
 		Short: "Lint workflow configuration",
@@ -231,5 +232,5 @@ Exit Codes:
 	workflowLintCmd.Flags().String("path", "", "Path to workflow.yaml (default: .moai/config/sections/workflow.yaml)")
 	workflowLintCmd.Flags().String("format", "text", "Output format: text or json")
 
-	workflowCmd.AddCommand(workflowLintCmd)
+	WorkflowCmd.AddCommand(workflowLintCmd)
 }

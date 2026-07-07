@@ -1,4 +1,4 @@
-package cli
+package agentlint
 
 // Sentinel keys for structured error identification (SPEC-V3R2-ORC-004).
 //
