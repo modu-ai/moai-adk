@@ -47,12 +47,19 @@ mkdir -p "$LOG_DIR" 2>/dev/null || true
 
 START_TS="$(date +%s)"
 
-if make -C "$REPO_ROOT" -s ci-local >/dev/null; then
-    OUTCOME="pass"
-    EXIT_CODE=0
+if [ -f "$REPO_ROOT/Makefile" ]; then
+    if make -C "$REPO_ROOT" -s ci-local >/dev/null; then
+        OUTCOME="pass"
+        EXIT_CODE=0
+    else
+        EXIT_CODE=$?
+        OUTCOME="fail"
+    fi
 else
-    EXIT_CODE=$?
-    OUTCOME="fail"
+    # No Makefile — skip ci-local (end-user project without a CI mirror).
+    OUTCOME="skip (no Makefile)"
+    EXIT_CODE=0
+    printf '[pre-push] No Makefile found — skipping ci-local\n' >&2
 fi
 
 END_TS="$(date +%s)"
