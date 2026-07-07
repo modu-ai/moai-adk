@@ -55,14 +55,25 @@ func TestRunHookEvent_Success(t *testing.T) {
 	t.Error("pre-tool subcommand not found")
 }
 
+// TestRunHookEvent_ReadInputError asserts the fail-open contract for malformed stdin
+// (SPEC-INTERNAL-TEST-001 REQ-TEST-002 / F1). runHookEvent MUST return nil and emit the
+// event's safe default HookOutput rather than failing the hook pipeline on a ReadInput error.
+// The previous test asserted the stale fail-closed contract (err != nil) and then
+// unconditionally called err.Error(), causing a nil-pointer dereference SIGSEGV that crashed
+// the entire internal/cli test binary and made coverage measurement impossible.
 func TestRunHookEvent_ReadInputError(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
+	var capturedOutput *hook.HookOutput
 	deps = &Dependencies{
 		HookProtocol: &mockHookProtocol{
 			readInputFunc: func(_ io.Reader) (*hook.HookInput, error) {
 				return nil, errors.New("invalid JSON")
+			},
+			writeOutputFunc: func(_ io.Writer, output *hook.HookOutput) error {
+				capturedOutput = output
+				return nil
 			},
 		},
 		HookRegistry: &mockHookRegistry{},
@@ -72,11 +83,12 @@ func TestRunHookEvent_ReadInputError(t *testing.T) {
 		if cmd.Name() == "post-tool" {
 			cmd.SetContext(context.Background())
 			err := cmd.RunE(cmd, []string{})
-			if err == nil {
-				t.Error("should error on ReadInput failure")
+			if err != nil {
+				t.Fatalf("runHookEvent must fail-open (nil error) on ReadInput failure, got: %v", err)
 			}
-			if !strings.Contains(err.Error(), "read hook input") {
-				t.Errorf("error should mention read hook input, got %v", err)
+			// The safe default HookOutput must be emitted (fail-open contract, hook.go:174-187).
+			if capturedOutput == nil {
+				t.Error("default HookOutput must be emitted on ReadInput failure (fail-open contract)")
 			}
 			return
 		}
