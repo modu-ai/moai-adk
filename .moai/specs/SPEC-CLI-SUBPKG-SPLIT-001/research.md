@@ -51,10 +51,10 @@ cluster likely consumes shared unexported TUI/settings helpers (`renderCard`, `r
 | **launch/glm** | 11 | 3,501 | 7 | 4,740 | ✓ (`glm.go`) | some | `cc`/`cg`/`glm` launchers + `team_spawn` + platform exec split (`syscall.Exec`). Platform-tangled. |
 | **doctor** | 9 | 2,357 | 11 | 2,706 | — | **yes** | Diagnostics (`doctor.go` + `doctor_*` + `lsp_doctor`). Heavy `renderCard`/`renderStatusLine` use. |
 | **hook** | 3 | 1,598 | 13 | 3,290 | ✓ (`hook.go`, `hook_pre_push.go`) | some | Hook command surface. deps-coupled. |
-| **profile** | 3 | 1,511 | 8 | 1,112 | — | some | `profile_setup` wizard + translations. Self-contained. |
-| **lint (agent/workflow)** | 2 | 1,389 | 1 | 2,108 | — | some | `agent_lint.go` (1,154) + `workflow_lint.go`. One 2,108-LOC white-box test file. |
+| **profile** | 3 | 1,511 | 8 | 1,112 | — | some | `profile_setup` wizard + translations. **NOT clean** (see §C.4): (a) name collision — `internal/profile` already imported as `profile.` in 7 non-test files (`init.go:22`, `init_layout.go:13`, `launcher.go:14`, `profile.go:10`, `profile_setup.go:14`, `update.go:30`, `web.go:11`); (b) reverse-dep — `schema_bridge.go:24` references the `profileSetupText` type (`profile_setup_translations.go:10`, `getProfileText :604`). |
+| **lint (agent/workflow)** | 2 | 1,392 | 2 | 2,285 | — | **none** | **VERIFIED CLEAN** (see §C.4): kernel-render-free per the 14-file survey; zero reverse-dep from `package cli`; single forward dep on 3 `SentinelWorktree*` constants (`sentinels.go:13/17/21`) that are used ONLY by this cluster → co-locatable. `agent_lint.go` (1,157) + `workflow_lint.go` (235) + 2,108-LOC white-box `agent_lint_test.go` + `workflow_lint_test.go` (177). |
 | **harness (root-level)** | 5 | 1,306 | 5 | 1,036 | — | some | `harness_route/mute/validate/clusters`. **Collision risk**: `internal/cli/harness` subpackage already exists. |
-| **migrate** | 9 | 1,256 | 4 | 1,115 | — | minimal | agency migration (`migrate_agency*` + `migration.go`). No deps, no kernel. **Lowest-risk candidate.** |
+| **migrate** | 9 | 1,256 | 4 | 1,115 | — | **yes** | **TRI-AXIS COUPLED** (see §C.4 — blocked the original M1): (i) kernel — `migrate_agency.go:634`→`RenderError` (`render.go:105`); (ii) shared — `migrate_restore_skill.go:31/44/80`→`validateSkillID`/`archiveVersion`/`copyDirAll` (`update_archive.go:99/27/193`, shared with update cluster); (iii) reverse — `update.go:1922-1928` constructs `&migrateAgencyRunner{}` writing unexported fields; `update.go:1933-1935` type-asserts `*MigrateError` + `ErrMigrateNoSource`; `update_archive.go` constructs `&MigrateError{}` at 5 sites (`102/109/116/138/151`). Gates on M5 (uikit) + shared-helper co-extraction + `update.go` encapsulation refactor. |
 | **spec (cmd)** | 7 | 1,192 | 6 | 1,545 | ✓ (`spec_lint.go`) | some | `spec_status/close/audit/view/lint/drift`. deps-coupled via lint. |
 | **session/state** | 2 | 649 | 3 | 517 | — | some | `session.go` + `state.go`. |
 | **init** | 2 | 559 | — | — | — | some | `init.go` + `init_layout.go`. |
@@ -108,14 +108,24 @@ cycle. But the shared unexported helpers (`renderCard`, `renderKeyValue`, `rende
 until those helpers are relocated to a **neutral leaf package** (e.g. `internal/cli/uikit`)
 that both `package cli` and the new subpackages import.
 
-Consequence: clusters split cleanly into two tiers:
-- **Kernel-free clusters** (migrate, agent_lint, profile, github, astgrep, v2_detection,
-  branch_protection, loop, tool_policy, web, telemetry, research) — movable with NO kernel work.
+Consequence: clusters split into tiers based on verified coupling (see §C.4 for the per-cluster
+evidence derived from the orchestrator's 14-file kernel-helper survey):
+- **Verified-clean cluster** (agent_lint only) — kernel-render-free AND zero reverse-dep AND
+  forward-deps co-locatable. Movable with NO kernel work and NO coupling resolution.
+- **Coupled clusters requiring resolution before extraction** (migrate, profile, plus the
+  kernel-dependent set). Migrate is tri-axis coupled (kernel + shared-helper + reverse-dep);
+  profile has a name collision + `schema_bridge.go` reverse-dep. Both gated on design-time
+  resolution work, NOT movable as-is.
 - **Kernel-dependent clusters** (doctor, status/statusline, inventory, session, constitution,
-  design_folder) — blocked on a prior kernel-extraction milestone.
+  design_folder) — blocked on a prior uikit-extraction milestone (M5).
+- **Presumed-kernel-free single-file clusters** (github, astgrep, v2_detection,
+  branch_protection, loop, tool_policy, web, telemetry, research) — NOT in the 14-file kernel
+  survey, but NOT promoted per spec.md §E (tiny-cluster churn).
 
 This is verifiable per-cluster at extraction time via `go build ./...` failing on an
-undefined-symbol reference; it must NOT be assumed clean.
+undefined-symbol reference; it must NOT be assumed clean. The M1-blocker incident (original M1
+migrate) proved that front-matter "kernel-free" claims without verbatim file:line verification
+are unsound — see §C.4 for the corrected per-cluster coupling map.
 
 ### C.2 Test-migration surface (dominant regression risk)
 
@@ -153,6 +163,127 @@ set is not a localized failure — it blocks the whole package's test compilatio
 - **`team_spawn_lock_test_unix.go`** is a non-test build-tagged helper (name contains "test"
   but does not end `_test.go`) — an edge case that must move with the launch cluster.
 
+## §C.4 Per-Cluster Coupling Verification (M1-blocker corrective evidence)
+
+> **Provenance**: the original plan.md listed migrate as "kernel-free, deps-free, minimal kernel
+> dependency — Lowest-risk candidate." At run-phase M1 spawn, manager-develop blocked with a
+> structured blocker report; orchestrator grep then verified a tri-axis coupling the plan did
+> not characterize. This section attaches the verbatim evidence and corrects the cluster map.
+
+### §C.4.1 Kernel-helper survey — 14 files using ≥1 kernel symbol
+
+The orchestrator surveyed all `internal/cli/*.go` non-test files for usage of at least one of
+the 9 kernel-helper symbols (`renderCard`, `renderKeyValue`, `renderStatusLine`, `RenderError`,
+`PrintBanner`, `printWelcomeMessage`, `mutateSettingsLocal`, `writeFileAtomic`,
+`schemaKeyToTUIField`). The 14 files in the kernel-using set:
+
+```
+banner.go, hook.go, init.go, init_layout.go, inventory.go, launcher.go,
+migrate_agency.go, profile_setup_translations.go, render.go, research.go,
+root.go, schema_bridge.go, settings.go, update.go
+```
+
+**Evidence**:
+```
+$ grep -lnE 'renderCard|renderKeyValue|renderStatusLine|RenderError|PrintBanner|printWelcomeMessage|mutateSettingsLocal|writeFileAtomic|schemaKeyToTUIField' internal/cli/*.go | grep -v _test.go | sort
+```
+
+Files NOT in the set (kernel-render-free): `agent_lint.go`, `workflow_lint.go`, `design_folder.go`,
+`astgrep.go`, `loop.go`, `branch_protection.go`, `telemetry.go`, `tool_policy.go`,
+`constitution.go`, `migrate_restore_skill.go`, `migration.go`, plus migrate cluster's other
+non-`migrate_agency.go` files. Kernel-render-free is necessary but NOT sufficient for
+movability — see §C.4.2..§C.4.4 for the per-cluster coupling that actually governs risk.
+
+### §C.4.2 `agentlint` cluster — VERIFIED CLEAN (the only clean candidate)
+
+- Files: `agent_lint.go` (1,157 LOC) + `workflow_lint.go` (235 LOC) + `agent_lint_test.go`
+  (2,108 LOC) + `workflow_lint_test.go` (177 LOC).
+- **Kernel-render-free**: neither file appears in the 14-file set above (verified by grep).
+- **Zero reverse-dep**: `grep -rE 'AgentLint|WorkflowLint' internal/cli/*.go` excluding `_test.go`
+  and the cluster files returns no matches — no `package cli` non-test file references any
+  agentlint-exported symbol.
+- **Single forward-dep — co-locatable**: the cluster uses 3 sentinel constants
+  (`SentinelWorktreeMissing` `sentinels.go:13`, `SentinelWorktreeOnReadonly` `sentinels.go:17`,
+  `SentinelWorktreeRequired` `sentinels.go:21`) at `agent_lint.go:689,736` and
+  `workflow_lint.go:84,89,100,105,115,120`. A cross-file grep confirms these constants are
+  consumed ONLY by agentlint cluster files → move the `const` block with the cluster.
+- **Friction**: the 2,108-LOC white-box test. Every unexported reference in
+  `agent_lint_test.go` must resolve in the new `internal/cli/agentlint` package.
+
+### §C.4.3 `migrate` cluster — TRI-AXIS COUPLED (blocked the original M1)
+
+- **(i) Kernel axis** — `migrate_agency.go:634` calls `RenderError(err)` (defined `render.go:105`).
+  Evidence:
+  ```
+  internal/cli/migrate_agency.go:634:		fmt.Fprintln(os.Stderr, RenderError(err))
+  ```
+  Resolution: gate on M5 (uikit extraction).
+
+- **(ii) Shared-helper axis** — `migrate_restore_skill.go` calls 3 symbols co-located in
+  `update_archive.go` (shared with the update cluster):
+  ```
+  internal/cli/migrate_restore_skill.go:31:	if err := validateSkillID(skillID); err != nil {  → update_archive.go:99
+  internal/cli/migrate_restore_skill.go:44:	... "skills", archiveVersion, skillID ...         → update_archive.go:27 (const)
+  internal/cli/migrate_restore_skill.go:80:	if err := copyDirAll(archiveDir, targetDir); ...  → update_archive.go:193
+  ```
+  Resolution: co-extract to a neutral helper package (e.g. `internal/cli/archiveutil`) imported
+  by both `migrate` and `update`, OR move with one cluster and export-import from the other.
+
+- **(iii) Reverse-dependency axis** — `package cli` constructs migrate-cluster types and reads
+  unexported fields, which a subpackage cannot expose:
+  ```
+  internal/cli/update.go:1922:	r := &migrateAgencyRunner{           ← writes unexported fields
+  internal/cli/update.go:1923:		projectRoot: projectRoot,
+  internal/cli/update.go:1924:		homeDir:     homeDir,
+  internal/cli/update.go:1925:		dryRun:      dryRun,
+  internal/cli/update.go:1927:		force: false,
+  internal/cli/update.go:1933:	if me, ok := runErr.(*MigrateError); ok && me.Code == ErrMigrateNoSource {
+  internal/cli/update_archive.go:102,109,116,138,151:	return &MigrateError{...}   ← 5 construction sites
+  ```
+  Resolution: introduce `NewMigrateAgencyRunner(opts MigrateAgencyRunnerOpts) *migrateAgencyRunner`
+  (or an interface) so `update.go:1922` no longer writes unexported fields; export `MigrateError`,
+  its `Code` field, and the `ErrMigrateNoSource` const. This refactor lands in M7 (update cluster
+  extraction) OR a prior refactor commit.
+
+### §C.4.4 `profile` cluster — NOT CLEAN (two blocking issues)
+
+- **(a) Name collision with `internal/profile`** — the existing package
+  `github.com/modu-ai/moai-adk/internal/profile` is imported as `profile.` in 7 non-test files:
+  ```
+  internal/cli/init.go:22, init_layout.go:13, launcher.go:14, profile.go:10,
+  profile_setup.go:14, update.go:30, web.go:11
+  ```
+  Evidence:
+  ```
+  $ grep -ln '"github.com/modu-ai/moai-adk/internal/profile"' internal/cli/*.go | grep -v _test.go
+  ```
+  Creating `internal/cli/profile` forces import-alias churn across all 7 call sites OR renaming
+  the new subpackage (e.g. `internal/cli/profilesetup`).
+
+- **(b) `schema_bridge.go` reverse-dep** — `schema_bridge.go:24` references the `profileSetupText`
+  type (a kernel file that stays in `package cli`):
+  ```
+  internal/cli/schema_bridge.go:24:	var schemaFieldBridge = map[string]func(t profileSetupText) tuiLabel{
+  internal/cli/profile_setup_translations.go:10:	type profileSetupText struct {
+  internal/cli/profile_setup_translations.go:604:	func getProfileText(lang string) profileSetupText {
+  ```
+  Moving `profile_setup_translations.go` forces `schema_bridge.go` to import the new subpackage —
+  a kernel→subpackage import that risks a cycle. Resolution: lift `profileSetupText` +
+  `getProfileText` into a leaf package both import, OR split the bridge table into the new
+  subpackage.
+
+### §C.4.5 Why this changes the milestone ordering
+
+The original plan.md listed migrate / profile / agentlint as M1 / M2 / M3 — all "LOW risk,
+kernel-free." The §C.4 evidence proves:
+- agentlint is the ONLY genuinely-clean cluster;
+- migrate is tri-axis coupled and CANNOT ship without M5 (uikit) + shared-helper co-extraction +
+  `update.go` encapsulation refactor;
+- profile has a name collision and a `schema_bridge.go` reverse-dep that must be resolved first.
+
+Therefore plan.md §F now sequences M1=agentlint (prove the recipe), then a checkpoint, then
+conditional milestones (M2 profile, M3 migrate) each behind documented coupling resolution.
+
 ## §D. Behavior-Preservation Framing (this is a refactor of WORKING code)
 
 `go build ./internal/cli/...` exits 0 today; the CLI works. This SPEC is a **pure structural
@@ -178,20 +309,28 @@ none of which are user-observable. This is the tension the plan-auditor and user
 
 ## §F. Recommendation Basis (feeds spec.md / plan.md)
 
-The measured data supports a **phased, lowest-risk-first** extraction that is explicitly bounded
-— NOT a full 93-file reorganization:
+The measured data supports a **phased, recipe-proven-on-clean-first** extraction that is
+explicitly bounded — NOT a full 93-file reorganization:
 
-1. **Prove the recipe on kernel-free, deps-free clusters first** (migrate → profile → lint →
-   constitution-if-kernel-free). Zero import-cycle work, moderate LOC, self-contained tests.
-2. **Extract the shared kernel to a leaf package** only when a kernel-dependent cluster is worth
-   the cost (a distinct, higher-risk milestone).
-3. **Tackle the highest-value clusters (update, doctor) after the recipe is proven**, each behind
-   a re-evaluation checkpoint.
-4. **Defer the 14 tiny single-file clusters indefinitely** — moving a 69-370 LOC file is churn.
-5. **Defer the deps-tangled + platform-tangled clusters (glm/launch, hook)** unless a specific
+1. **Prove the recipe on the one verified-clean cluster first (agentlint)** — the M1-blocker
+   incident proved that cluster characterization without verbatim file:line verification is
+   unsound. Agentlint is the ONLY cluster where the recipe can be proven with zero
+   coupling-resolution work (see §C.4.2).
+2. **Checkpoint decision after agentlint.** If the recipe felt smooth AND the user accepts the
+   coupling-resolution cost, continue; otherwise STOP at M1.
+3. **Profile (M2) and migrate (M3) are conditional**, each behind documented coupling resolution
+   (§C.4.3, §C.4.4). Migrate additionally gates on M5 (uikit) for its kernel axis + M7 (update)
+   for its reverse-dep refactor. **The original M1 blocker proved migrate is NOT low-risk.**
+4. **Extract the shared kernel to a leaf package** only when a kernel-dependent cluster is worth
+   the cost (a distinct, higher-risk milestone — M5 uikit).
+5. **Tackle the highest-value clusters (update, doctor) after the recipe is proven AND the
+   post-M1 checkpoint passes**, each behind its conditional gate.
+6. **Defer the 14 tiny single-file clusters indefinitely** — moving a 69-370 LOC file is churn.
+7. **Defer the deps-tangled + platform-tangled clusters (glm/launch, hook)** unless a specific
    pain point justifies them.
 
 The honest conclusion (spec.md §A): the maintainability gain is real but incremental and
 non-user-observable; the test-migration + import-cycle risk is substantial. A big-bang split is
-NOT justified. A bounded phased extraction of the 3-4 highest-value low-risk clusters IS
-justified, with an explicit stop-when-marginal-value-drops checkpoint.
+NOT justified. A bounded extraction starting with the one verified-clean cluster (M1 agentlint),
+gated by a post-M1 checkpoint, with conditional follow-ups each behind documented coupling
+resolution, IS justified.
