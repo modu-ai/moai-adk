@@ -35,6 +35,7 @@ func glmConfigForTest() *GLMConfigFromYAML {
 			High   string
 			Medium string
 			Low    string
+			Fable  string
 		}{
 			High:   "glm-5.1",
 			Medium: "glm-4.7",

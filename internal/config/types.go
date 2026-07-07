@@ -277,6 +277,7 @@ type GLMModels struct {
 	High   string `yaml:"high"`   // Complex reasoning
 	Medium string `yaml:"medium"` // Balanced performance
 	Low    string `yaml:"low"`    // Fast exploration
+	Fable  string `yaml:"fable"`  // Fable tier (Claude Code ANTHROPIC_DEFAULT_FABLE_MODEL)
 	// Legacy fields for backward compatibility
 	Opus   string `yaml:"opus"`   // Maps to High
 	Sonnet string `yaml:"sonnet"` // Maps to Medium

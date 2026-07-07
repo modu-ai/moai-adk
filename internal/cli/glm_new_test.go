@@ -234,6 +234,7 @@ func TestInjectGLMEnv_Success(t *testing.T) {
 			High   string
 			Medium string
 			Low    string
+			Fable  string
 		}{
 			High:   "glm-5.1",
 			Medium: "glm-4.7",
@@ -339,6 +340,7 @@ func TestInjectGLMEnv_MergesExistingSettings(t *testing.T) {
 			High   string
 			Medium string
 			Low    string
+			Fable  string
 		}{
 			High:   "o",
 			Medium: "s",
@@ -424,6 +426,7 @@ func TestInjectGLMEnv_FromEnvironmentVariable(t *testing.T) {
 			High   string
 			Medium string
 			Low    string
+			Fable  string
 		}{
 			High:   "o",
 			Medium: "s",
@@ -827,6 +830,7 @@ func TestInjectGLMEnvForTeam_NeverModifiesSettingsJson(t *testing.T) {
 			High   string
 			Medium string
 			Low    string
+			Fable  string
 		}{
 			High:   "glm-5.1",
 			Medium: "glm-4.7",

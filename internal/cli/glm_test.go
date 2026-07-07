@@ -396,7 +396,7 @@ func TestResolveGLMModels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotHigh, gotMedium, gotLow := resolveGLMModels(tt.models)
+			gotHigh, gotMedium, gotLow, _ := resolveGLMModels(tt.models)
 			if gotHigh != tt.wantHigh {
 				t.Errorf("high = %q, want %q", gotHigh, tt.wantHigh)
 			}

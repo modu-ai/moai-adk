@@ -22,9 +22,10 @@ llm:
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
-      high: "glm-5.2"         # Complex reasoning (the z.ai-accepted id; 1M auto-compact is driven by the resolved context window, not a model-id suffix)
-      medium: "glm-4.7"       # Balanced performance
-      low: "glm-4.5-air"      # Lightweight tasks (Z.ai official default)
+      high: "glm-5.2"         # 1M context — all GLM slots unified to glm-5.2 (agent-spawn session sharing)
+      medium: "glm-5.2"       # 1M unified (1M + 200K models cannot share a session)
+      low: "glm-5.2"          # 1M unified (1M + 200K models cannot share a session)
+      fable: "glm-5.2"        # Fable tier (Claude Code ANTHROPIC_DEFAULT_FABLE_MODEL)
 
     # Optional: override the statusline context window gauge per GLM model
     # (issue #653). Claude Code reports context_window_size based on the

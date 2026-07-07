@@ -23,6 +23,7 @@ func TestGLMCmd_AddsModelOverrides(t *testing.T) {
 	t.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "")
 	t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "")
 	t.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", "")
+	t.Setenv("ANTHROPIC_DEFAULT_FABLE_MODEL", "")
 
 	// Create temp project
 	tmpDir := t.TempDir()
@@ -76,6 +77,11 @@ func TestGLMCmd_AddsModelOverrides(t *testing.T) {
 	}
 	if got := os.Getenv("ANTHROPIC_DEFAULT_HAIKU_MODEL"); got == "" {
 		t.Error("ANTHROPIC_DEFAULT_HAIKU_MODEL must be set in process env after moai glm")
+	}
+	if got := os.Getenv("ANTHROPIC_DEFAULT_FABLE_MODEL"); got == "" {
+		t.Error("ANTHROPIC_DEFAULT_FABLE_MODEL must be set in process env after moai glm")
+	} else if got != defaults.GLM.Models.Fable {
+		t.Errorf("ANTHROPIC_DEFAULT_FABLE_MODEL = %q, want %q", got, defaults.GLM.Models.Fable)
 	}
 	if got := os.Getenv("ANTHROPIC_AUTH_TOKEN"); got == "" {
 		t.Error("ANTHROPIC_AUTH_TOKEN must be set in process env after moai glm")

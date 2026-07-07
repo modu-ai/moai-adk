@@ -832,6 +832,7 @@ func TestInjectGLMEnvForTeam_NewFile(t *testing.T) {
 			High   string
 			Medium string
 			Low    string
+			Fable  string
 		}{High: "model-high", Medium: "model-med", Low: "model-low"},
 	}
 
@@ -1223,6 +1224,7 @@ func TestInjectTmuxSessionEnv_TestEnvironment(t *testing.T) {
 			High   string
 			Medium string
 			Low    string
+			Fable  string
 		}{High: "h", Medium: "m", Low: "l"},
 	}
 
@@ -7039,6 +7041,7 @@ func TestInjectGLMEnvForTeam_Phase6(t *testing.T) {
 			High   string
 			Medium string
 			Low    string
+			Fable  string
 		}{
 			High:   "glm-5.1",
 			Medium: "glm-4.7",
@@ -7080,6 +7083,7 @@ func TestInjectGLMEnvForTeam_MergesWithExisting(t *testing.T) {
 			High   string
 			Medium string
 			Low    string
+			Fable  string
 		}{
 			High:   "glm-5.1",
 			Medium: "glm-4.7",

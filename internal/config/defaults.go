@@ -51,6 +51,7 @@ const (
 	DefaultGLMHigh   = "glm-5.2"
 	DefaultGLMMedium = "glm-4.7"
 	DefaultGLMLow    = "glm-4.5-air"
+	DefaultGLMFable  = "glm-5.2"
 	// Additional GLM models (available but not default-mapped)
 	DefaultGLM45     = "glm-4.5"
 	DefaultGLM46     = "glm-4.6"
@@ -389,6 +390,7 @@ func NewDefaultLLMConfig() LLMConfig {
 				High:   DefaultGLMHigh,
 				Medium: DefaultGLMMedium,
 				Low:    DefaultGLMLow,
+				Fable:  DefaultGLMFable,
 				// Legacy fields for backward compatibility
 				Opus:   DefaultGLMOpus,
 				Sonnet: DefaultGLMSonnet,

@@ -11,11 +11,12 @@ llm:
         base_url: https://api.z.ai/api/anthropic
         models:
             high: glm-5.2
-            medium: glm-4.7
-            low: glm-4.5-air
+            medium: glm-5.2
+            low: glm-5.2
+            fable: glm-5.2
             opus: glm-5.2
-            sonnet: glm-4.7
-            haiku: glm-4.5-air
+            sonnet: glm-5.2
+            haiku: glm-5.2
     default_model: ""
     quality_model: ""
     speed_model: ""

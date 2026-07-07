@@ -196,6 +196,7 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 	_ = os.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", glmConfig.Models.High)     //nolint:errcheck
 	_ = os.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", glmConfig.Models.Medium) //nolint:errcheck
 	_ = os.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", glmConfig.Models.Low)     //nolint:errcheck
+	_ = os.Setenv("ANTHROPIC_DEFAULT_FABLE_MODEL", glmConfig.Models.Fable)   //nolint:errcheck
 	// 1M context activation: when the High slot model resolves to the 1M context
 	// tier, scale the auto-compact window to the full 1M context.
 	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
@@ -403,6 +404,7 @@ func buildTmuxInjectVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string
 		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.High,
 		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
+		"ANTHROPIC_DEFAULT_FABLE_MODEL":  glmConfig.Models.Fable,
 		// Z.AI proxy compatibility: strip Anthropic beta headers
 		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
 		"API_TIMEOUT_MS":                         "3000000",
@@ -482,6 +484,7 @@ func buildTmuxClearVars() []string {
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+		"ANTHROPIC_DEFAULT_FABLE_MODEL",
 		"CLAUDE_CONFIG_DIR",
 		// Z.AI proxy compatibility flags
 		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
@@ -621,6 +624,7 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 	settings.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
 	settings.Env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
 	settings.Env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
+	settings.Env["ANTHROPIC_DEFAULT_FABLE_MODEL"] = glmConfig.Models.Fable
 	// Z.AI proxy compatibility: strip Anthropic beta headers
 	settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
 	settings.Env["API_TIMEOUT_MS"] = "3000000"
@@ -682,6 +686,9 @@ func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
 	if llm.GLM.Models.Low == "" {
 		llm.GLM.Models.Low = defaults.GLM.Models.Low
 	}
+	if llm.GLM.Models.Fable == "" {
+		llm.GLM.Models.Fable = defaults.GLM.Models.Fable
+	}
 	// Also populate legacy model name fields for consistency
 	if llm.GLM.Models.Opus == "" {
 		llm.GLM.Models.Opus = defaults.GLM.Models.Opus
@@ -733,12 +740,13 @@ type GLMConfigFromYAML struct {
 		High   string
 		Medium string
 		Low    string
+		Fable  string
 	}
 	EnvVar string
 }
 
-// resolveGLMModels resolves the effective high, medium, and low model names.
-func resolveGLMModels(models config.GLMModels) (high, medium, low string) {
+// resolveGLMModels resolves the effective high, medium, low, and fable model names.
+func resolveGLMModels(models config.GLMModels) (high, medium, low, fable string) {
 	defaults := config.NewDefaultLLMConfig()
 
 	high = models.High
@@ -765,7 +773,12 @@ func resolveGLMModels(models config.GLMModels) (high, medium, low string) {
 		low = defaults.GLM.Models.Low
 	}
 
-	return high, medium, low
+	fable = models.Fable
+	if fable == "" {
+		fable = defaults.GLM.Models.Fable
+	}
+
+	return high, medium, low, fable
 }
 
 // loadGLMConfig reads GLM configuration from llm.yaml.
@@ -807,17 +820,19 @@ func loadGLMConfig(root string) (*GLMConfigFromYAML, error) {
 		envVar = defaults.GLMEnvVar
 	}
 
-	high, medium, low := resolveGLMModels(llm.GLM.Models)
+	high, medium, low, fable := resolveGLMModels(llm.GLM.Models)
 	return &GLMConfigFromYAML{
 		BaseURL: baseURL,
 		Models: struct {
 			High   string
 			Medium string
 			Low    string
+			Fable  string
 		}{
 			High:   high,
 			Medium: medium,
 			Low:    low,
+			Fable:  fable,
 		},
 		EnvVar: envVar,
 	}, nil
@@ -922,6 +937,7 @@ func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]str
 		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.High,
 		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
+		"ANTHROPIC_DEFAULT_FABLE_MODEL":  glmConfig.Models.Fable,
 		// Z.AI proxy compatibility
 		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
 		"API_TIMEOUT_MS":                         "3000000",
@@ -971,6 +987,7 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 	settings.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
 	settings.Env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
 	settings.Env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
+	settings.Env["ANTHROPIC_DEFAULT_FABLE_MODEL"] = glmConfig.Models.Fable
 	// Z.AI proxy compatibility: strip Anthropic beta headers
 	settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
 	settings.Env["API_TIMEOUT_MS"] = "3000000"

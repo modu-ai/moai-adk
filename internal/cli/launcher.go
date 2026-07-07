@@ -269,6 +269,7 @@ func removeGLMEnv(settingsPath string) error {
 		delete(settings.Env, "ANTHROPIC_DEFAULT_HAIKU_MODEL")
 		delete(settings.Env, "ANTHROPIC_DEFAULT_SONNET_MODEL")
 		delete(settings.Env, "ANTHROPIC_DEFAULT_OPUS_MODEL")
+		delete(settings.Env, "ANTHROPIC_DEFAULT_FABLE_MODEL")
 		// Remove Z.AI proxy compatibility flags (set by moai glm/cg)
 		delete(settings.Env, "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
 		delete(settings.Env, "API_TIMEOUT_MS")
