@@ -7,8 +7,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/tui"
 )
 
-// TestLightTokens verifies all 28 light-theme token values against the design source
-// tui.jsx:9-69 (TOK.light). This is the specification test for REQ-CLI-TUI-002.
+// TestLightTokens verifies all 28 light-theme token values. Backgrounds and
+// chrome are inherited from the original design source tui.jsx:9-69 (TOK.light);
+// the accent / success / warning / info family was re-grounded on the Claude
+// coral palette (#cc785c canonical mid-point) per the 2026-07 brand alignment.
+// This is the specification test for REQ-CLI-TUI-002.
 func TestLightTokens(t *testing.T) {
 	th := tui.LightTheme()
 
@@ -28,22 +31,22 @@ func TestLightTokens(t *testing.T) {
 		{"faint", th.Faint, "#8c918d"},
 		{"rule", th.Rule, "#dcd9d2"},
 		{"ruleSoft", th.RuleSoft, "#ebe8e1"},
-		{"accent", th.Accent, "#144a46"},
-		{"accentDeep", th.AccentDeep, "#0a2825"},
-		{"accentSoft", th.AccentSoft, "rgba(20,74,70,0.10)"},
-		{"accentSofter", th.AccentSofter, "rgba(20,74,70,0.05)"},
-		{"success", th.Success, "#0e7a6c"},
-		{"successSoft", th.SuccessSoft, "rgba(14,122,108,0.12)"},
-		{"warning", th.Warning, "#a86412"},
-		{"warningSoft", th.WarningSoft, "rgba(168,100,18,0.13)"},
+		{"accent", th.Accent, "#bf6547"},
+		{"accentDeep", th.AccentDeep, "#a84f33"},
+		{"accentSoft", th.AccentSoft, "rgba(191,101,71,0.10)"},
+		{"accentSofter", th.AccentSofter, "rgba(191,101,71,0.05)"},
+		{"success", th.Success, "#3d8b6e"},
+		{"successSoft", th.SuccessSoft, "rgba(61,139,110,0.12)"},
+		{"warning", th.Warning, "#b9701a"},
+		{"warningSoft", th.WarningSoft, "rgba(185,112,26,0.13)"},
 		{"danger", th.Danger, "#b1432f"},
 		{"dangerSoft", th.DangerSoft, "rgba(177,67,47,0.12)"},
-		{"info", th.Info, "#1f6f72"},
-		{"infoSoft", th.InfoSoft, "rgba(31,111,114,0.12)"},
-		{"cursor", th.Cursor, "#144a46"},
-		{"selection", th.Selection, "rgba(20,74,70,0.18)"},
-		{"promptArrow", th.PromptArrow, "#144a46"},
-		{"promptPath", th.PromptPath, "#1f6f72"},
+		{"info", th.Info, "#1f7a7d"},
+		{"infoSoft", th.InfoSoft, "rgba(31,122,125,0.12)"},
+		{"cursor", th.Cursor, "#bf6547"},
+		{"selection", th.Selection, "rgba(191,101,71,0.18)"},
+		{"promptArrow", th.PromptArrow, "#bf6547"},
+		{"promptPath", th.PromptPath, "#1f7a7d"},
 		{"shadow", th.Shadow, "0 24px 48px -22px rgba(9,17,15,0.22), 0 1px 0 rgba(255,255,255,0.6) inset"},
 	}
 
@@ -56,8 +59,12 @@ func TestLightTokens(t *testing.T) {
 	}
 }
 
-// TestDarkTokens verifies all 28 dark-theme token values against the design source
-// tui.jsx:39-68 (TOK.dark). This is the specification test for REQ-CLI-TUI-002.
+// TestDarkTokens verifies all 28 dark-theme token values. Backgrounds and
+// chrome are inherited from the original design source tui.jsx:39-68 (TOK.dark);
+// the accent family was re-grounded on the Claude coral palette (canonical
+// mid-point #cc785c) per the 2026-07 brand alignment. Warning, Danger, and Info
+// were already warm-harmonious and are retained verbatim.
+// This is the specification test for REQ-CLI-TUI-002.
 func TestDarkTokens(t *testing.T) {
 	th := tui.DarkTheme()
 
@@ -77,21 +84,21 @@ func TestDarkTokens(t *testing.T) {
 		{"faint", th.Faint, "#6b7370"},
 		{"rule", th.Rule, "#1c2624"},
 		{"ruleSoft", th.RuleSoft, "#152019"},
-		{"accent", th.Accent, "#3eb3a4"},
-		{"accentDeep", th.AccentDeep, "#22938a"},
-		{"accentSoft", th.AccentSoft, "rgba(62,179,164,0.16)"},
-		{"accentSofter", th.AccentSofter, "rgba(62,179,164,0.07)"},
-		{"success", th.Success, "#3fcfa6"},
-		{"successSoft", th.SuccessSoft, "rgba(63,207,166,0.14)"},
+		{"accent", th.Accent, "#d97757"},
+		{"accentDeep", th.AccentDeep, "#b85e3f"},
+		{"accentSoft", th.AccentSoft, "rgba(217,119,87,0.16)"},
+		{"accentSofter", th.AccentSofter, "rgba(217,119,87,0.07)"},
+		{"success", th.Success, "#5bbf9a"},
+		{"successSoft", th.SuccessSoft, "rgba(91,191,154,0.14)"},
 		{"warning", th.Warning, "#e3a14a"},
 		{"warningSoft", th.WarningSoft, "rgba(227,161,74,0.14)"},
 		{"danger", th.Danger, "#ed7d6b"},
 		{"dangerSoft", th.DangerSoft, "rgba(237,125,107,0.15)"},
 		{"info", th.Info, "#5cc7c9"},
 		{"infoSoft", th.InfoSoft, "rgba(92,199,201,0.14)"},
-		{"cursor", th.Cursor, "#3eb3a4"},
-		{"selection", th.Selection, "rgba(62,179,164,0.25)"},
-		{"promptArrow", th.PromptArrow, "#3eb3a4"},
+		{"cursor", th.Cursor, "#d97757"},
+		{"selection", th.Selection, "rgba(217,119,87,0.25)"},
+		{"promptArrow", th.PromptArrow, "#d97757"},
 		{"promptPath", th.PromptPath, "#5cc7c9"},
 		{"shadow", th.Shadow, "0 30px 60px -22px rgba(0,0,0,0.65), 0 1px 0 rgba(255,255,255,0.03) inset"},
 	}

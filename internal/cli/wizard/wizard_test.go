@@ -561,18 +561,20 @@ func TestCharacterize_WizardTotalSteps(t *testing.T) {
 	}
 }
 
-// TestCharacterize_WizardColors_PrimaryIsDeepTeal verifies that after M5 IMPROVE,
-// the primary wizard color resolves to the deep teal accent from internal/tui.
-// This replaces the old terra cotta (#DA7756 / #C45A3C) brand color.
-func TestCharacterize_WizardColors_PrimaryIsDeepTeal(t *testing.T) {
+// TestCharacterize_WizardColors_PrimaryIsCoral verifies that the primary wizard
+// color resolves to the Claude coral accent from internal/tui. The palette was
+// migrated from deep teal to Claude coral (#cc785c canonical mid-point) per the
+// 2026-07 brand alignment; the old terra cotta (#DA7756 / #C45A3C) brand color
+// remains forbidden (see TestCharacterize_WizardColors_NoTerracottaOrPurple).
+func TestCharacterize_WizardColors_PrimaryIsCoral(t *testing.T) {
 	c := wizardColors()
-	// Light deep teal accent
-	if c.Primary.Light != "#144a46" {
-		t.Errorf("Primary.Light: expected #144a46 (deep teal), got %q", c.Primary.Light)
+	// Light coral accent (slightly deeper for contrast on ivory)
+	if c.Primary.Light != "#bf6547" {
+		t.Errorf("Primary.Light: expected #bf6547 (Claude coral), got %q", c.Primary.Light)
 	}
-	// Dark deep teal accent
-	if c.Primary.Dark != "#3eb3a4" {
-		t.Errorf("Primary.Dark: expected #3eb3a4 (deep teal), got %q", c.Primary.Dark)
+	// Dark coral accent (brighter for legibility on ink)
+	if c.Primary.Dark != "#d97757" {
+		t.Errorf("Primary.Dark: expected #d97757 (Claude coral), got %q", c.Primary.Dark)
 	}
 }
 

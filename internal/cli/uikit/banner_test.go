@@ -180,7 +180,7 @@ func TestPrintBanner_EmptyVersion(t *testing.T) {
 // To regenerate snapshots: UPDATE_GOLDEN=1 go test ./internal/cli/ -run "TestBanner_Current|TestWelcome_Current" -count=1
 
 // TestBanner_Current_Light captures uikit.PrintBanner output with light-theme env.
-// Characteristics: deep teal Accent color (tui.Theme().Accent), MoAI ASCII art banner + 3 tui.Pill.
+// Characteristics: Claude coral Accent color (tui.Theme().Accent), MoAI ASCII art banner + 3 tui.Pill.
 // Note: Go version is embedded in the golden snapshot — re-run UPDATE_GOLDEN=1 when Go toolchain updates.
 func TestBanner_Current_Light(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
@@ -201,7 +201,7 @@ func TestBanner_Current_Light(t *testing.T) {
 }
 
 // TestBanner_Current_Dark captures uikit.PrintBanner output with dark-theme env.
-// Characteristics: deep teal Accent color (tui.DarkTheme().Accent), MoAI ASCII art banner + 3 tui.Pill.
+// Characteristics: Claude coral Accent color (tui.DarkTheme().Accent), MoAI ASCII art banner + 3 tui.Pill.
 // Note: Go version is embedded in the golden snapshot — re-run UPDATE_GOLDEN=1 when Go toolchain updates.
 func TestBanner_Current_Dark(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
@@ -241,7 +241,7 @@ func TestBanner_NoColor(t *testing.T) {
 }
 
 // TestWelcome_Current_Light captures uikit.PrintWelcomeMessage output with light-theme env.
-// Characteristics: deep teal Accent color (tui.LightTheme().Accent), bold title.
+// Characteristics: Claude coral Accent color (tui.LightTheme().Accent), bold title.
 func TestWelcome_Current_Light(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "light")
@@ -259,7 +259,7 @@ func TestWelcome_Current_Light(t *testing.T) {
 }
 
 // TestWelcome_Current_Dark captures uikit.PrintWelcomeMessage output with dark-theme env.
-// Characteristics: deep teal Accent color (tui.DarkTheme().Accent), bold title.
+// Characteristics: Claude coral Accent color (tui.DarkTheme().Accent), bold title.
 func TestWelcome_Current_Dark(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "dark")
