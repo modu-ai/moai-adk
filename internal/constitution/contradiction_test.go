@@ -10,7 +10,6 @@ func TestNewContradictionDetector(t *testing.T) {
 	if d == nil {
 		t.Fatal("NewContradictionDetector returned nil")
 	}
-	var _ ContradictionDetector = d
 }
 
 // TestContradictionDetector_Scan_NoConflicts verifies the clean path.

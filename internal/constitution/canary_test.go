@@ -14,7 +14,18 @@ func TestNewCanary(t *testing.T) {
 	if c == nil {
 		t.Fatal("NewCanary returned nil")
 	}
-	var _ Canary = c
+}
+
+// mkCompletedSpec creates a SPEC directory with a progress.md file under specsDir.
+func mkCompletedSpec(t *testing.T, specsDir, name string) {
+	t.Helper()
+	dir := filepath.Join(specsDir, name)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "progress.md"), []byte("done"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // TestCanary_Evaluate_NoSpecsDir verifies CanaryUnavailable when specs dir is absent.
@@ -39,9 +50,7 @@ func TestCanary_Evaluate_InsufficientSpecs(t *testing.T) {
 	root := t.TempDir()
 	specsDir := filepath.Join(root, ".moai", "specs")
 	for _, name := range []string{"SPEC-AAA001", "SPEC-AAA002"} {
-		dir := filepath.Join(specsDir, name)
-		os.MkdirAll(dir, 0o755)
-		os.WriteFile(filepath.Join(dir, "progress.md"), []byte("done"), 0o644)
+		mkCompletedSpec(t, specsDir, name)
 	}
 	c := NewCanary()
 	_, err := c.Evaluate(&AmendmentProposal{Before: "x", After: "x"}, root)
@@ -55,9 +64,7 @@ func TestCanary_Evaluate_Passed(t *testing.T) {
 	root := t.TempDir()
 	specsDir := filepath.Join(root, ".moai", "specs")
 	for _, name := range []string{"SPEC-AAA001", "SPEC-AAA002", "SPEC-AAA003"} {
-		dir := filepath.Join(specsDir, name)
-		os.MkdirAll(dir, 0o755)
-		os.WriteFile(filepath.Join(dir, "progress.md"), []byte("done"), 0o644)
+		mkCompletedSpec(t, specsDir, name)
 	}
 	c := NewCanary()
 	result, err := c.Evaluate(&AmendmentProposal{
@@ -81,9 +88,7 @@ func TestCanary_Evaluate_Rejected(t *testing.T) {
 	root := t.TempDir()
 	specsDir := filepath.Join(root, ".moai", "specs")
 	for _, name := range []string{"SPEC-AAA001", "SPEC-AAA002", "SPEC-AAA003"} {
-		dir := filepath.Join(specsDir, name)
-		os.MkdirAll(dir, 0o755)
-		os.WriteFile(filepath.Join(dir, "progress.md"), []byte("done"), 0o644)
+		mkCompletedSpec(t, specsDir, name)
 	}
 	c := NewCanary()
 	// Before is short; After is much longer + prohibition words → score drop > 0.10.
@@ -131,11 +136,17 @@ func TestCanary_sortMostRecent(t *testing.T) {
 	base := time.Now().Add(-time.Hour)
 	for i, name := range names {
 		dir := filepath.Join(specsDir, name)
-		os.MkdirAll(dir, 0o755)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
 		path := filepath.Join(dir, "progress.md")
-		os.WriteFile(path, []byte("x"), 0o644)
+		if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
 		mt := base.Add(time.Duration(i) * time.Minute)
-		os.Chtimes(path, mt, mt)
+		if err := os.Chtimes(path, mt, mt); err != nil {
+			t.Fatal(err)
+		}
 	}
 	got := c.sortMostRecent(names, specsDir, 2)
 	if len(got) != 2 {
@@ -151,7 +162,9 @@ func TestCanary_sortMostRecent(t *testing.T) {
 func TestParseScoreFromProgress(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "progress.md")
-	os.WriteFile(path, []byte("... sync-auditor Score: 0.87 ...\n"), 0o644)
+	if err := os.WriteFile(path, []byte("... sync-auditor Score: 0.87 ...\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	score, err := parseScoreFromProgress(path)
 	if err != nil {
 		t.Fatalf("parseScoreFromProgress: %v", err)
@@ -165,7 +178,9 @@ func TestParseScoreFromProgress(t *testing.T) {
 func TestParseScoreFromProgress_NoMatch(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "progress.md")
-	os.WriteFile(path, []byte("no score line here\n"), 0o644)
+	if err := os.WriteFile(path, []byte("no score line here\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	score, err := parseScoreFromProgress(path)
 	if err != nil {
 		t.Fatalf("parseScoreFromProgress no-match: %v", err)
