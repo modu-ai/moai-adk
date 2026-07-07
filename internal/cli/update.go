@@ -350,6 +350,22 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
+// emitHooksReviewGuidance writes the advisory /hooks review guidance line.
+//
+// Claude Code captures a snapshot of .claude/settings.json hooks at session
+// startup and uses that snapshot throughout the session. When `moai update`
+// re-renders the template (the "Template sync complete" branch), any running
+// CC session's snapshot is stale — new/changed hooks do not take effect until
+// the user reviews the /hooks menu or restarts Claude Code. This is ADVISORY
+// only (CC auto-warns on external modification); it is a stdout message, never
+// an interactive prompt (C-HRA-008 / REQ-PGN-012 subagent boundary).
+//
+// @MX:NOTE: [AUTO] Advisory /hooks review guidance (SPEC-HOOK-CONFIG-SAFETY-001).
+// @MX:SPEC: SPEC-HOOK-CONFIG-SAFETY-001
+func emitHooksReviewGuidance(w io.Writer) {
+	_, _ = fmt.Fprintln(w, "Hooks: running Claude Code sessions need a /hooks review (or a Claude Code restart) for new or changed hooks to take effect.")
+}
+
 // shouldSkipBinaryUpdate returns true when the binary update step should
 // be skipped. This happens in three cases:
 //  1. The --templates-only flag is set (update command only).
@@ -854,6 +870,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Template sync complete", Theme: &th}))
+	emitHooksReviewGuidance(out)
 
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, "To reconfigure project settings (development mode, git, model policy), run:")
