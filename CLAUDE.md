@@ -218,21 +218,14 @@ For research-heavy questions, the bundled `/deep-research <question>` workflow f
 
 ## 11. Error Handling
 
-> Canonical rule: this section is a high-level overview; detailed recovery flows live in `.claude/rules/moai/core/agent-common-protocol.md` § Error Recovery Pattern and individual agent definitions.
+> Canonical rule: detailed recovery flows live in `.claude/rules/moai/core/agent-common-protocol.md` § Error Recovery Pattern and individual agent definitions.
 
 ### Error Recovery
 
-- Agent execution errors: Consult `.claude/rules/moai/workflow/archived-agent-rejection.md` §C migration table; orchestrator emits `ARCHIVED_AGENT_REJECTED` when an archived agent is referenced; for diagnostic work spawn `Agent(general-purpose)` with diagnostic scope OR `Agent(Explore)` for read-only investigation
-- Token limit errors: Execute /clear, then guide user to resume via paste-ready resume message per `.claude/rules/moai/workflow/session-handoff.md`
-- Permission errors: Review settings.json manually (project + user scope)
-- Integration / DevOps errors: spawn `Agent(general-purpose)` with infrastructure/CI domain context per `archived-agent-rejection.md` §C migration table (formerly handled by an archived domain-expert agent)
-- MoAI-ADK errors: Suggest /moai feedback
+- **Agent / Integration-DevOps errors**: `ARCHIVED_AGENT_REJECTED` on archived-agent reference — consult `archived-agent-rejection.md` §C; spawn `Agent(general-purpose)` (diagnostics/infra) or `Agent(Explore)` (read-only)
+- **Token limit / Permission / MoAI-ADK errors**: /clear + paste-ready resume per `session-handoff.md`; permission → review settings.json; MoAI-ADK → /moai feedback
 
-### Resumable Agents
-
-Resume interrupted agent work using agentId:
-
-- "Resume agent abc123 and continue the security analysis"
+Resume interrupted agent work using agentId (e.g., "Resume agent abc123 and continue the analysis").
 
 ---
 
@@ -251,26 +244,16 @@ For MCP configuration and usage patterns, see .claude/rules/moai/core/settings-m
 
 ## 13. Progressive Disclosure System
 
-> Canonical rule: see `.claude/rules/moai/development/skill-authoring.md` § Progressive Disclosure for the 3-level token budget specification, the skill-listing / post-compaction budget (`skillListingBudgetFraction`), and trigger configuration schema.
-
-MoAI-ADK implements a 3-level Progressive Disclosure system — Level 1 (metadata, ~100 tokens, always listed), Level 2 (body, ~5K tokens, loaded on invocation), Level 3 (bundled, on-demand). Benefit: 67% reduction in initial token load with on-demand loading of full skill content.
+> Canonical rule: see `.claude/rules/moai/development/skill-authoring.md` § Progressive Disclosure for the 3-level token budget spec (Level 1: metadata ~100 tokens always listed; Level 2: body ~5K tokens on invocation; Level 3: bundled on-demand; 67% initial-token reduction), skill-listing / post-compaction budget (`skillListingBudgetFraction`), and trigger configuration schema.
 
 ---
 
 ## 14. Parallel Execution Safeguards
 
-For core parallel execution principles, see .claude/rules/moai/core/moai-constitution.md.
-
-- **File Write Conflict Prevention**: Analyze overlapping file access patterns and build dependency graphs before parallel execution
-- **Agent Tool Requirements**: All implementation agents MUST include Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet
-- **Loop Prevention**: Maximum 3 retries per operation with failure pattern detection and user intervention
-- **Platform Compatibility**: Always prefer Edit tool over sed/awk
-- **Team File Ownership**: In team mode, each teammate owns specific file patterns to prevent write conflicts
+For core principles, see `.claude/rules/moai/core/moai-constitution.md`. Operational safeguards: file-write-conflict prevention (dependency graphs before parallel execution), agent tool requirements (Read/Write/Edit/Grep/Glob/Bash/TaskCreate/Update/List/Get), loop prevention (max 3 retries), platform compatibility (prefer Edit over sed/awk), team file ownership (per-teammate patterns).
 - **Background Agent Write Restriction**: [ZONE:Frozen] [HARD] As of Claude Code v2.1.186, when a background subagent (`run_in_background: true`) reaches a tool call needing permission, the prompt surfaces in the main session (naming the asking subagent; Esc denies just that one call). MoAI nonetheless keeps `run_in_background: false` for agents that modify files as a conservative default — each background write would otherwise raise a main-session prompt that interrupts the leader's flow and undercuts the parallelism benefit of backgrounding. Read-only agents (research, analysis) can safely run in background.
 
-### Worktree Isolation Rules (Advisory)
-
-Per the current worktree-opt-in policy, L2/L3 worktree usage is user opt-in. L1 `Agent(isolation: "worktree")` is Claude Code runtime autonomous — MoAI orchestrator does not mandate isolation (implementation/read-only teammate guidance, one-shot cross-file changes, and GitHub fixer isolation are all [SHOULD], runtime-decided). For the complete worktree selection decision tree and per-role isolation guidance, see .claude/rules/moai/workflow/worktree-integration.md § Terminology Glossary.
+Per the worktree-opt-in policy, L2/L3 worktree usage is user opt-in; L1 `Agent(isolation: "worktree")` is Claude Code runtime autonomous (MoAI does not mandate isolation). For the decision tree and per-role guidance, see `.claude/rules/moai/workflow/worktree-integration.md` § Terminology Glossary.
 
 ---
 
@@ -332,8 +315,5 @@ When MoAI workflows behave unexpectedly, use Claude Code's built-in debug tools 
 
 ---
 
-Version: 14.3.0
-Language: English
-Core Rule: MoAI is an orchestrator; direct implementation is prohibited
-
-For detailed patterns on plugins, sandboxing, headless mode, and version management, see Skill("moai-foundation-cc").
+Version: 14.3.0 | Language: English | Core Rule: MoAI is an orchestrator; direct implementation is prohibited
+For detailed patterns (plugins, sandboxing, headless mode, version management), see Skill("moai-foundation-cc").
