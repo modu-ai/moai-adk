@@ -103,7 +103,7 @@ This SPEC's 5 new tests PASS; 0 new failures introduced.
 
 ```yaml
 sync_complete_at: 2026-07-07
-sync_commit_sha: "<pending backfill>"  # single sync commit carrying in-progress → completed transition + 3-phase close; backfilled in chore commit per feedback_era_commit_sha_field_format
+sync_commit_sha: "82cc1ff95"  # single sync commit carrying in-progress → completed transition + 3-phase close; backfilled in chore commit per feedback_era_commit_sha_field_format
 sync_status: pass
 changelog_entry_position: "[Unreleased] > Added"
 frontmatter_status_transitions:
