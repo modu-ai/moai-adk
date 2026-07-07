@@ -41,7 +41,7 @@ For phase overview, token budgets, and phase transitions, see: .claude/rules/moa
 - --resume SPEC-XXX: Resume previous work from existing SPEC
 - --team: Force Agent Teams mode for plan and run phases
 - --solo: Force sub-agent mode (single agent per phase)
-- --no-issue: Skip GitHub Issue creation after SPEC generation (plan phase)
+- --issue: Opt-in GitHub Issue creation after SPEC generation (plan phase); absence skips Issue creation per the late-branch opt-in policy
 
 **Default Behavior (no flag)**: The orchestrator auto-selects the execution mode from the Phase 0.95 6-mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A — trivial / background / agent-team / parallel / sub-agent / workflow). The complexity auto-select thresholds are stated once in that rule's §B.1 (machine source: `workflow.yaml` `auto_selection`) — not restated here.
 
@@ -223,7 +223,7 @@ Mode selection:
 
 ## Execution Summary
 
-1. Parse arguments (extract flags: --loop, --max, --sequential, --branch, --pr, --resume, --team, --solo, --no-issue)
+1. Parse arguments (extract flags: --loop, --max, --sequential, --branch, --pr, --resume, --team, --solo, --issue)
 2. If --resume with SPEC ID: Load existing SPEC and continue from last state
 3. Detect development_mode from quality.yaml (ddd/tdd)
 4. **Team mode decision**: Read workflow.yaml team settings and determine execution mode
@@ -237,7 +237,7 @@ Mode selection:
 8. User confirmation via AskUserQuestion
 9. **Phase 0.5 (Research)**: Save research.md from Phase 0 Explore findings to SPEC directory
 10. **Phase 1 (Plan)**: If team mode -> Read ${CLAUDE_SKILL_DIR}/team/plan.md and follow team orchestration. Else -> manager-spec sub-agent
-10.5. **Phase 1.2 (Issue)**: Create GitHub Issue linked to SPEC (unless --no-issue). See plan.md Phase 2.5.
+10.5. **Phase 1.2 (Issue)**: Create GitHub Issue linked to SPEC (only when the `--issue` opt-in flag is set; default skips per the late-branch opt-in policy). See plan.md Phase 2.5.
 11. **Phase 1.5 (Annotate)**: Run annotation cycle (1-6 iterations) until user approves plan
 11.2. **Plan-audit gate**: plan-auditor independent audit of the plan artifacts (Pipeline Gates #1); FAIL/INCONCLUSIVE halts
 11.3. **Implementation Kickoff Approval**: plan→run HUMAN GATE — exactly once per pipeline entry, score-independent (Pipeline Gates #2)

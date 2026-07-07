@@ -507,7 +507,7 @@ All of the following must be verified:
 - Exclusions section present with at least 1 entry
 - Delta markers applied for brownfield requirements (if applicable)
 - spec-compact.md auto-generated with requirements + acceptance criteria only
-- Phase 2.5: GitHub Issue created and linked (unless --no-issue)
+- Phase 2.5: GitHub Issue created and linked (only when `--issue` opt-in flag is set; default skips Issue creation)
 - Phase 3: Appropriate git action taken based on flags and user choice
 - If --worktree: SPEC committed before worktree creation
 - Next steps presented to user
