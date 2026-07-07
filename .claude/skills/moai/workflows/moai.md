@@ -161,7 +161,7 @@ Domain-specialist selection (for domain-specific work) — per `.claude/rules/mo
 - Refactoring: manager-develop (cycle_type=ddd) or per-spawn `Agent(general-purpose)` refactoring specialist
 - Security fixes: per-spawn `Agent(general-purpose)` security reviewer (or Stop hook dependency-manifest audit)
 
-Loop behavior (when --loop flag or workflow.yaml loop_prevention settings enabled):
+Loop behavior (when --loop flag or workflow.yaml loop_prevention settings enabled) — this is the run-phase diagnostic fix-loop (Ralph-style, bounded by `loop_prevention.max_iterations`), DISTINCT from the pipeline-level § Agentic Completion Loop below (bounded by `agentic_loop.max_iterations`):
 - While issues exist AND iteration less than max:
   - Execute diagnostics (parallel by default)
   - Delegate fix to appropriate expert agent

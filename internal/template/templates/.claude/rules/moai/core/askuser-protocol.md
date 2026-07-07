@@ -1,12 +1,13 @@
 ---
 description: Canonical reference for AskUserQuestion-only interaction protocol, ToolSearch deferred-tool preload procedure, and Socratic interview standards
-globs:
 ---
 
 # AskUserQuestion Protocol — Canonical Reference
 
 > This file is the **single source of truth** for AskUserQuestion interaction rules.
 > Cross-referenced by: CLAUDE.md §8, moai-constitution.md §MoAI Orchestrator, agent-common-protocol.md §User Interaction Boundary, output-styles/moai/moai.md §3/§10.
+>
+> **Loading scope**: Intentionally always-loaded (no `paths:` restriction). The orchestrator may compose an `AskUserQuestion` on any non-trivial turn, so the channel-monopoly rule and the ToolSearch deferred-tool preload procedure must be available every session.
 
 ---
 

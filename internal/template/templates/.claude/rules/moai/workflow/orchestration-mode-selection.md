@@ -244,7 +244,7 @@ The following patterns violate the orchestration mode selection contract:
 | `autopilot` | Mode 5 (`sub-agent`) | Default single-lead orchestration; the Phase 0.95 scale-based selection chooses the envelope (see scale-label rows below). |
 | `loop` | Mode 5 (`sub-agent`) | Ralph-engine diagnostic fix-loop variant — sequential per-iteration delegation. The granularity differs (diagnostics, not phases) but the spawn shape is the Mode 5 sequential sub-agent. |
 | `team` | Mode 3 (`agent-team`) | Resolves through the §C.1 capability gate; when the gate fails, an explicit `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back per the Mode Resolver. |
-| `pipeline` | Mode 5 (`sub-agent`) — utility subcommands only | Rejected on multi-agent subcommands (`MODE_PIPELINE_ONLY_UTILITY`); on the utility subcommands where it is valid, the execution shape is sequential direct / sub-agent processing. |
+| `pipeline` | Mode 5 (`sub-agent`) — utility subcommands only | Rejected on multi-agent subcommands (`MODE_PIPELINE_ONLY_UTILITY`); the utility subcommands are intrinsically pipeline-class, so `pipeline` names their fixed sequential direct / sub-agent execution shape — the `--mode pipeline` flag itself is ignored there (`MODE_FLAG_IGNORED_FOR_UTILITY`), not honored. |
 
 ### Phase 0.95 scale-table labels → catalog modes
 
