@@ -138,12 +138,22 @@ func NewLinter(opts LinterOptions) *Linter {
 // @MX:ANCHOR: [AUTO] Lint is the primary entry point; orchestrates rule execution across all SPECs
 // @MX:REASON: [AUTO] Fan-in hub — all callers (CLI, tests) go through this method
 func (l *Linter) Lint(paths []string) (*Report, error) {
+	// dirFindings collects directory-level findings emitted only on the
+	// auto-discovery path (paths empty). When a caller passes explicit paths
+	// it bypasses directory scanning, so root-integrity is not checked.
+	var dirFindings []Finding
 	if len(paths) == 0 {
 		discovered, err := discoverSPECs(l.opts.BaseDir)
 		if err != nil {
 			return nil, fmt.Errorf("SPEC discovery failed: %w", err)
 		}
 		paths = discovered
+		// Surface non-SPEC entries (loose files, non-SPEC directories) that
+		// discoverSPECs silently skips. Design choice: a standalone function
+		// (option 6b) rather than a Rule, because this is a directory-level
+		// concern that does not fit the per-SPECDoc Rule interface, and it
+		// keeps discoverSPECs' signature unchanged for its many callers.
+		dirFindings = lintSpecsDirRootIntegrity(l.opts.BaseDir)
 	}
 
 	// Parse SPEC documents
@@ -187,7 +197,7 @@ func (l *Linter) Lint(paths []string) (*Report, error) {
 	}
 
 	return &Report{
-		Findings: findings,
+		Findings: append(findings, dirFindings...),
 		Strict:   l.opts.Strict,
 	}, nil
 }
@@ -249,6 +259,55 @@ func discoverSPECs(baseDir string) ([]string, error) {
 	}
 
 	return paths, nil
+}
+
+// lintSpecsDirRootIntegrity scans baseDir (typically .moai/specs) for entries
+// that do not belong in a SPEC root and emits a SpecsDirForeignEntry warning
+// for each. discoverSPECs silently skips these; this function surfaces them so
+// accidentally-committed roadmap documents or non-SPEC directories are visible.
+//
+// Whitelist: entries whose name starts with "_" (e.g. "_archive") are exempt —
+// the underscore prefix is the established ignore convention.
+//
+// Severity is warning (not error) so that existing repositories with stray
+// entries (e.g. this dev repo's own UPGRADE-HARNESS-DESIGN/) are surfaced
+// without breaking their lint exit code.
+//
+// It returns nil (no findings) if baseDir cannot be read — discoverSPECs
+// already surfaces directory-read failures as a hard error upstream.
+func lintSpecsDirRootIntegrity(baseDir string) []Finding {
+	if baseDir == "" {
+		baseDir = "."
+	}
+	entries, err := os.ReadDir(baseDir)
+	if err != nil {
+		return nil
+	}
+
+	const msgTmpl = "%q: non-SPEC entry in .moai/specs/ — only SPEC-<DOMAIN>-<NNN>/ directories allowed; ROADMAP/planning docs belong in .moai/plans/ or project root (see spec-frontmatter-schema.md § Root Integrity)"
+
+	var findings []Finding
+	for _, entry := range entries {
+		name := entry.Name()
+		// Underscore-prefixed entries are whitelisted (_archive convention).
+		if strings.HasPrefix(name, "_") {
+			continue
+		}
+		// Valid SPEC-* directories are the expected occupants.
+		if entry.IsDir() && strings.HasPrefix(name, "SPEC-") {
+			continue
+		}
+		// Anything else is foreign: loose files (any extension) and
+		// non-SPEC directories (e.g. NOTES/, UPGRADE-HARNESS-DESIGN/).
+		findings = append(findings, Finding{
+			File:     filepath.Join(baseDir, name),
+			Line:     1,
+			Severity: SeverityWarning,
+			Code:     "SpecsDirForeignEntry",
+			Message:  fmt.Sprintf(msgTmpl, name),
+		})
+	}
+	return findings
 }
 
 // --- SPECDoc ---
