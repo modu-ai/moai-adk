@@ -20,9 +20,11 @@ GLM（Generative Language Model）はz.aiが提供するAIモデルサービス�
 
 | Claudeティア | GLMモデル | 入力（1Mトークンあたり） | 出力（1Mトークンあたり） |
 |--------------|-----------|---------------------------|----------------------------|
-| Opus | glm-5.2[1m] | $2.00 | $8.00 |
-| Sonnet | GLM-4.7 | $0.60 | $2.20 |
-| Haiku | GLM-4.5-Air | $0.20 | $1.10 |
+| Opus / Sonnet / Haiku / Fable | glm-5.2[1m] | $2.00 | $8.00 |
+
+> 4つのClaudeティア（Opus, Sonnet, Haiku, Fable）はすべて `glm-5.2[1m]` 単一モデル（1Mコンテキスト）に統一されています。GLMモデルを opus→glm-5.2, sonnet→glm-4.7, haiku→glm-4.5-air のようにティアごとに異なるモデルへ意図的にマッピングしない理由は、1Mコンテキストモデルと200Kコンテキストモデルをそれらのスロットに混在させるとエージェントスポーン時のセッション共有が壊れるためです — 1Mコンテキストモデルと200Kコンテキストモデルはセッションを共有できません。
+
+> このマッピングは4つのClaude Code `ANTHROPIC_DEFAULT_*_MODEL` 環境変数（`ANTHROPIC_DEFAULT_OPUS_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL`, `ANTHROPIC_DEFAULT_HAIKU_MODEL`, `ANTHROPIC_DEFAULT_FABLE_MODEL`）で実装され、すべて `glm-5.2` に設定されます。Fable環境変数はClaude Code v2.1.202から公式サポートされています。
 
 > 無料モデルも提供されています: GLM-4.7-Flash, GLM-4.5-Flash。完全な価格は[z.ai Pricing](https://docs.z.ai/guides/overview/pricing)を参照してください。
 

@@ -764,11 +764,13 @@ MoAI-ADK는 **z.ai GLM**을 Claude Code의 대안 AI 백엔드로 지원하며, 
 
 | Claude 티어 | GLM 모델 | 입력 (1M 토큰당) | 출력 (1M 토큰당) |
 |-------------|----------|------------------|------------------|
-| Opus | glm-5.2[1m] | $2.00 | $8.00 |
-| Sonnet | glm-4.7 | $0.60 | $2.20 |
-| Haiku | glm-4.5-air | $0.20 | $1.10 |
+| Opus / Sonnet / Haiku / Fable | glm-5.2[1m] | $2.00 | $8.00 |
+
+> 4개 Claude 티어(Opus, Sonnet, Haiku, Fable) 모두 `glm-5.2[1m]` 단일 모델(1M 컨텍스트)로 통일됩니다. GLM 모델을 opus→glm-5.2, sonnet→glm-4.7, haiku→glm-4.5-air처럼 티어별로 다르게 매핑하지 않는 이유는, 1M 컨텍스트 모델과 200K 컨텍스트 모델을 같은 세션에 섞어 쓸 수 없기 때문입니다 — 에이전트 spawn 시 1M 컨텍스트 윈도우를 가진 모델과 200K 모델이 세션을 공유하지 못하는 문제가 발생합니다.
 
 > `glm-5.2[1m]`의 `[1m]` suffix는 Claude Code의 1M 토큰 컨텍스트 모드를 활성화합니다. Claude Code가 suffix를 파싱하여 strip한 후 upstream z.ai API를 호출하므로 z.ai는 이 suffix를 보지 않습니다.
+
+> 이 매핑은 4개의 Claude Code `ANTHROPIC_DEFAULT_*_MODEL` 환경변수(`ANTHROPIC_DEFAULT_OPUS_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL`, `ANTHROPIC_DEFAULT_HAIKU_MODEL`, `ANTHROPIC_DEFAULT_FABLE_MODEL`)로 구현되며, 모두 `glm-5.2`로 설정됩니다. Fable 환경변수는 Claude Code v2.1.202부터 공식 지원됩니다.
 
 > 무료 모델도 제공: GLM-4.7-Flash, GLM-4.5-Flash. 전체 가격은 [z.ai Pricing](https://docs.z.ai/guides/overview/pricing) 참조.
 

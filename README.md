@@ -735,11 +735,13 @@ MoAI-ADK supports **z.ai GLM** as an alternative AI backend for Claude Code, ena
 
 | Claude Tier | GLM Model | Input (per 1M tokens) | Output (per 1M tokens) |
 |-------------|-----------|----------------------|------------------------|
-| Opus | glm-5.2[1m] | $2.00 | $8.00 |
-| Sonnet | glm-4.7 | $0.60 | $2.20 |
-| Haiku | glm-4.5-air | $0.20 | $1.10 |
+| Opus / Sonnet / Haiku / Fable | glm-5.2[1m] | $2.00 | $8.00 |
+
+> All four Claude tiers (Opus, Sonnet, Haiku, Fable) are unified to `glm-5.2[1m]` — a single 1M-context model. GLM models are intentionally NOT mapped disparately across these slots (e.g. opus→glm-5.2, sonnet→glm-4.7, haiku→glm-4.5-air) because mixing a 1M-context model with 200K-context models across those slots breaks agent-spawn session sharing: a 1M-context model and a 200K-context model cannot share a session.
 
 > The `[1m]` suffix on `glm-5.2[1m]` activates Claude Code's 1M-token context mode. Claude Code parses and strips the suffix before the upstream z.ai API call, so z.ai never sees it.
+
+> The mapping is implemented via four Claude Code `ANTHROPIC_DEFAULT_*_MODEL` environment variables — `ANTHROPIC_DEFAULT_OPUS_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL`, `ANTHROPIC_DEFAULT_HAIKU_MODEL`, and `ANTHROPIC_DEFAULT_FABLE_MODEL` — all set to `glm-5.2`. The Fable variable is officially supported as of Claude Code v2.1.202.
 
 > Free models also available: GLM-4.7-Flash, GLM-4.5-Flash. See [z.ai Pricing](https://docs.z.ai/guides/overview/pricing) for full details.
 
