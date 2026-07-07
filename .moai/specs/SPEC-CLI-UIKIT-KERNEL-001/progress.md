@@ -118,7 +118,7 @@ m1_to_mN_commit_strategy: single-atomic-M1
 
 ```yaml
 sync_complete_at: 2026-07-08
-sync_commit_sha: "_pending sync commit_"  # placeholder — backfilled in separate chore commit per feedback_era_commit_sha_field_format; run_commit_sha 5326b7632 already on origin/main (code landed prior session)
+sync_commit_sha: "8303eaf6d"  # backfilled in separate chore commit per feedback_era_commit_sha_field_format; run_commit_sha 5326b7632 already on origin/main (code landed prior session)
 sync_status: audit-ready
 close_decision: "3-phase close (plan→run→sync) — M1 uikit kernel extraction complete; AC-CUK-013 checkpoint deferred to post-M1 per §F (future migrate/doctor/update clusters gate on this uikit leaf and are separate SPECs)"
 run_commit_sha: "5326b7632"  # ancestor of origin/main, verified pre-sync
