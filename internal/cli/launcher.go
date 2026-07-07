@@ -173,7 +173,10 @@ func applyCGMode(root, profileName string) error {
 
 	if !inTmux && os.Getenv(config.EnvTestMode) != "1" {
 		return fmt.Errorf("CG mode requires a tmux session.\n\n" +
-			"tmux is required because:\n" +
+			"Claude Code itself supports iTerm2 split panes natively (v2.1.186+),\n" +
+			"but moai cg injects GLM credentials into teammate panes via tmux\n" +
+			"session-level env (set-environment). iTerm2 has no session-level env,\n" +
+			"so Leader=Claude / Teammates=GLM isolation requires tmux.\n\n" +
 			"  - This pane (lead): uses Claude API\n" +
 			"  - New panes (teammates): inherit GLM env for Z.AI API\n\n" +
 			"Start a tmux session first:\n" +

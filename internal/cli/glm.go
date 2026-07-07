@@ -279,8 +279,12 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 	inTmux := tmux.NewDetector().InTmuxSession()
 
 	// CG mode requires tmux for pane-level environment isolation.
+	// Claude Code supports iTerm2 split panes natively (v2.1.186+), but moai cg
+	// injects GLM credentials into teammate panes via tmux session-level env
+	// (set-environment); iTerm2 has no session-level env, so Leader=Claude /
+	// Teammates=GLM isolation requires tmux.
 	if isHybrid && !inTmux && os.Getenv(config.EnvTestMode) != "1" {
-		return fmt.Errorf("CG mode requires a tmux session: tmux is required for Claude + GLM hybrid mode because: Leader (this pane) uses Claude API, Teammates (new panes) inherit GLM env to use Z.AI API. Start a tmux session first: tmux new -s moai; moai cg. Or use 'moai glm' for all-GLM mode (no tmux required)")
+		return fmt.Errorf("CG mode requires a tmux session: Claude Code supports iTerm2 split panes natively (v2.1.186+), but moai cg injects GLM credentials into teammate panes via tmux session-level env (set-environment); iTerm2 has no session-level env, so Leader=Claude / Teammates=GLM isolation requires tmux. Leader (this pane) uses Claude API; teammates (new panes) inherit GLM env to use Z.AI API. Start a tmux session first: tmux new -s moai; moai cg. Or use 'moai glm' for all-GLM mode (no tmux required)")
 	}
 
 	// Inject GLM environment variables into tmux session (if available)
