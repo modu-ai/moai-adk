@@ -702,10 +702,6 @@ MCP (Model Context Protocol) サーバー関連設定です。
 | `alwaysThinkingEnabled` | 全セッションでデフォルトで拡張思考を有効化 | `true` |
 | `maxThinkingTokens` | 思考トークン予算を上書き (デフォルト: 31999、0 = 無効化) | `10000` |
 
-環境変数を通しても設定可能です:
-- `MAX_THINKING_TOKENS=10000`: 思考トークン制限
-- `MAX_THINKING_TOKENS=0`: 思考無効化
-
 ## 会社お知らせ (Company Announcements)
 
 開始時にユーザーに表示するお知らせです。複数のお知らせを提供するとランダムにローテーションされます。
@@ -780,9 +776,6 @@ Claude Code 下部に表示されるステータスバーを設定します。
 {
   "env": {
     "ENABLE_TOOL_SEARCH": "auto:5",
-    "MAX_THINKING_TOKENS": "31999",
-    "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS": "64000",
-    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "32000",
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50"
   }
 }
@@ -793,9 +786,6 @@ Claude Code 下部に表示されるステータスバーを設定します。
 | 変数 | 値 | 説明 |
 |------|-----|------|
 | `ENABLE_TOOL_SEARCH` | `"auto"`、`"auto:N"`、`"true"`、`"false"` | MCP ツール検索制御 |
-| `MAX_THINKING_TOKENS` | `0`-`31999` | 思考トークン制限 (0=無効化) |
-| `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | `1`-`64000` | 最大出力トークン (デフォルト: 32000) |
-| `CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS` | 数値 | ファイル読み取り最大出力トークン |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 自動圧縮トリガーパーセンテージ (デフォルト: ~95%) |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | OpenTelemetry データ収集有効化 |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | バックグラウンドタスク無効化 |

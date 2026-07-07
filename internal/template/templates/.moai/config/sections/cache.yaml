@@ -1,4 +1,4 @@
-# Anthropic Prompt Caching strategy (SPEC-V3R6-PROMPT-CACHE-001).
+# Anthropic Prompt Caching strategy.
 #
 # Controls ephemeral cache_control breakpoint injection on outgoing Anthropic
 # API requests. A 1h breakpoint caches the session-start context (CLAUDE.md +

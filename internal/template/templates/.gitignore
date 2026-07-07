@@ -104,7 +104,8 @@ ehthumbs.db
 # Logs & Temporary Files
 # ===========================================
 *.log
-logs/
+logs/*
+!logs/.gitkeep
 *.tmp
 *.temp
 *.bak

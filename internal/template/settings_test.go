@@ -103,7 +103,6 @@ func TestSettingsTemplateRequiredEnvVars(t *testing.T) {
 
 	requiredKeys := []string{
 		"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
-		"CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS",
 		"ENABLE_TOOL_SEARCH",
 		"MOAI_CONFIG_SOURCE",
 		"PATH",

@@ -702,10 +702,6 @@ MCP (Model Context Protocol) 서버 관련 설정입니다.
 | `alwaysThinkingEnabled` | 모든 세션에서 기본적으로 확장 사고 활성화 | `true` |
 | `maxThinkingTokens` | 사고 토큰 예산 재정의 (기본값: 31999, 0 = 비활성화) | `10000` |
 
-환경 변수를 통해서도 설정 가능합니다:
-- `MAX_THINKING_TOKENS=10000`: 사고 토큰 제한
-- `MAX_THINKING_TOKENS=0`: 사고 비활성화
-
 ## 회사 공지사항 (Company Announcements)
 
 시작 시 사용자에게 표시할 공지사항입니다. 여러 공지사항을 제공하면 무작위로 순환됩니다.
@@ -780,9 +776,6 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 {
   "env": {
     "ENABLE_TOOL_SEARCH": "auto:5",
-    "MAX_THINKING_TOKENS": "31999",
-    "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS": "64000",
-    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "32000",
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50"
   }
 }
@@ -793,9 +786,6 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 | 변수 | 값 | 설명 |
 |------|-----|------|
 | `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | MCP 도구 검색 제어 |
-| `MAX_THINKING_TOKENS` | `0`-`31999` | 사고 토큰 제한 (0=비활성화) |
-| `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | `1`-`64000` | 최대 출력 토큰 (기본값: 32000) |
-| `CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS` | 숫자 | 파일 읽기 최대 출력 토큰 |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 자동 압축 트리거 백분율 (기본값: ~95%) |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | OpenTelemetry 데이터 수집 활성화 |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | 백그라운드 작업 비활성화 |

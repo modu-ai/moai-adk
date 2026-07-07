@@ -702,10 +702,6 @@ MCP (Model Context Protocol) 服务器相关设置。
 | `alwaysThinkingEnabled` | 默认在所有会话中启用扩展思考 | `true` |
 | `maxThinkingTokens` | 覆盖思考 token 预算 (默认值: 31999, 0 = 禁用) | `10000` |
 
-也可以通过环境变量设置:
-- `MAX_THINKING_TOKENS=10000`: 思考 token 限制
-- `MAX_THINKING_TOKENS=0`: 禁用思考
-
 ## 公司公告 (Company Announcements)
 
 启动时向用户显示的公告。提供多个公告时会随机循环。
@@ -780,9 +776,6 @@ MCP (Model Context Protocol) 服务器相关设置。
 {
   "env": {
     "ENABLE_TOOL_SEARCH": "auto:5",
-    "MAX_THINKING_TOKENS": "31999",
-    "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS": "64000",
-    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "32000",
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50"
   }
 }
@@ -793,9 +786,6 @@ MCP (Model Context Protocol) 服务器相关设置。
 | 变量 | 值 | 说明 |
 |------|-----|------|
 | `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | MCP 工具搜索控制 |
-| `MAX_THINKING_TOKENS` | `0`-`31999` | 思考 token 限制 (0=禁用) |
-| `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | `1`-`64000` | 最大输出 token (默认值: 32000) |
-| `CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS` | 数字 | 文件读取最大输出 token |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 自动压缩触发百分比 (默认值: ~95%) |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | 启用 OpenTelemetry 数据收集 |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | 禁用后台任务 |

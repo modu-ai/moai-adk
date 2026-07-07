@@ -702,10 +702,6 @@ Settings for Extended Thinking.
 | `alwaysThinkingEnabled` | Enable extended thinking by default in all sessions | `true` |
 | `maxThinkingTokens` | Override thinking token budget (default: 31999, 0 = disabled) | `10000` |
 
-Can also be set via environment variables:
-- `MAX_THINKING_TOKENS=10000`: Thinking token limit
-- `MAX_THINKING_TOKENS=0`: Disable thinking
-
 ## Company Announcements
 
 Announcements to display to users on startup. When multiple announcements are provided, they rotate randomly.
@@ -780,9 +776,6 @@ Set environment variables that control Claude Code's behavior in the `env` secti
 {
   "env": {
     "ENABLE_TOOL_SEARCH": "auto:5",
-    "MAX_THINKING_TOKENS": "31999",
-    "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS": "64000",
-    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "32000",
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50"
   }
 }
@@ -793,9 +786,6 @@ Set environment variables that control Claude Code's behavior in the `env` secti
 | Variable | Value | Description |
 |----------|-------|-------------|
 | `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | Control MCP tool search |
-| `MAX_THINKING_TOKENS` | `0`-`31999` | Thinking token limit (0=disabled) |
-| `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | `1`-`64000` | Maximum output tokens (default: 32000) |
-| `CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS` | number | File read max output tokens |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | Auto-compact trigger percentage (default: ~95%) |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | Enable OpenTelemetry data collection |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | Disable background tasks |
