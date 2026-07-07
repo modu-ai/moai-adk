@@ -2,9 +2,9 @@
 id: SPEC-MOAI-AGENTIC-LOOP-001
 title: "Implementation plan — /moai agentic completion loop"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-07
-updated: 2026-07-07
+updated: 2026-07-08
 author: manager-spec
 priority: P1
 phase: "v3.x"

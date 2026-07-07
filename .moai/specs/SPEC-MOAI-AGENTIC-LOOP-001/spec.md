@@ -2,9 +2,9 @@
 id: SPEC-MOAI-AGENTIC-LOOP-001
 title: "/moai agentic completion loop — router requirement analysis, 6-mode wiring, autonomous plan-run-sync pipeline"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-07-07
-updated: 2026-07-07
+updated: 2026-07-08
 author: manager-spec
 priority: P1
 phase: "v3.x"
