@@ -201,6 +201,10 @@ for the `lint.skip` definition.
 
 The canonical Status Transition Ownership Matrix (close-subject full-ID mandate, D4 reconciliation, forbidden ownership crossings) lives in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix. This file does not restate it; refer there for the authoritative matrix.
 
+### Close-Subject Full-ID Mandate (amendment)
+
+Per the drift-detector close-subject convention, a combined/abbreviated scope that names only a shared prefix is prohibited in close commit subjects: the drift detector's exact-token SPEC-ID extraction cannot map an abbreviated prefix to its sibling SPECs, so a combined or abbreviated scope regenerates lifecycle drift false-positives. When closing N sibling SPECs together, emit N separate close commits — one per full SPEC-ID. A combined/abbreviated scope is disallowed; MUST use individual full-ID per close commit (see spec-frontmatter-schema.md § Close-subject full-ID mandate for the canonical prose).
+
 ---
 
 ## Worked Example: Era Auto-Detection
