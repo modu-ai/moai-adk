@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -687,9 +688,9 @@ func TestExportDiagnostics_Success(t *testing.T) {
 	exportPath := filepath.Join(tmpDir, "diagnostics.json")
 
 	checks := []DiagnosticCheck{
-		{Name: "Go Runtime", Status: CheckOK, Message: "go1.21"},
-		{Name: "Git", Status: CheckOK, Message: "git version 2.40"},
-		{Name: "Config", Status: CheckWarn, Message: "missing config"},
+		{Name: "Go Runtime", Status: uikit.CheckOK, Message: "go1.21"},
+		{Name: "Git", Status: uikit.CheckOK, Message: "git version 2.40"},
+		{Name: "Config", Status: uikit.CheckWarn, Message: "missing config"},
 	}
 
 	err := exportDiagnostics(exportPath, checks)
@@ -1280,7 +1281,7 @@ func TestEscapeDotenvValue(t *testing.T) {
 // TestReadStdinWithTimeout_ReturnsSomething removed - exists in misc_coverage_test.go
 
 // =============================================================================
-// statusIcon — doctor.go:262
+// uikit.StatusIcon — doctor.go:262
 // =============================================================================
 
 // TestStatusIcon removed - exists in doctor_test.go
@@ -1944,7 +1945,7 @@ func TestCheckGit_VerboseWithGit(t *testing.T) {
 		t.Error("message should not be empty")
 	}
 	// Verbose should include detail
-	if check.Status == CheckOK && check.Detail == "" {
+	if check.Status == uikit.CheckOK && check.Detail == "" {
 		t.Error("verbose mode with git installed should include path detail")
 	}
 }
@@ -2974,7 +2975,7 @@ func TestCheckGit_Default(t *testing.T) {
 		t.Error("message should not be empty")
 	}
 	// Git is available on this machine, so status should be OK
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Logf("checkGit non-verbose status: %s, message: %s", check.Status, check.Message)
 	}
 }
@@ -2991,7 +2992,7 @@ func TestCheckClaudeConfig_NoClaude2(t *testing.T) {
 
 	check := checkClaudeConfig(false)
 	// No .claude directory, should warn
-	if check.Status == CheckOK {
+	if check.Status == uikit.CheckOK {
 		t.Log("checkClaudeConfig returned OK even without .claude dir")
 	}
 }
@@ -3015,7 +3016,7 @@ func TestCheckClaudeConfig_WithConfigVerbose(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
 	check := checkClaudeConfig(true)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Logf("checkClaudeConfig verbose status: %s, message: %s", check.Status, check.Message)
 	}
 }
@@ -3032,7 +3033,7 @@ func TestCheckMoAIConfig_NoConfig2(t *testing.T) {
 
 	check := checkMoAIConfig(false)
 	// No .moai directory
-	if check.Status == CheckOK {
+	if check.Status == uikit.CheckOK {
 		t.Log("checkMoAIConfig returned OK without .moai dir")
 	}
 }
@@ -4847,7 +4848,7 @@ func TestCheckGit_WithoutVerbose(t *testing.T) {
 		t.Errorf("expected check name Git, got: %s", result.Name)
 	}
 	// On most dev machines, git is available
-	if result.Status == CheckOK && result.Detail != "" {
+	if result.Status == uikit.CheckOK && result.Detail != "" {
 		t.Error("expected no detail when not verbose")
 	}
 }
@@ -4859,7 +4860,7 @@ func TestCheckGit_WithVerboseShowsPath(t *testing.T) {
 	if result.Name != "Git" {
 		t.Errorf("expected check name Git, got: %s", result.Name)
 	}
-	if result.Status == CheckOK && !strings.Contains(result.Detail, "path:") {
+	if result.Status == uikit.CheckOK && !strings.Contains(result.Detail, "path:") {
 		t.Errorf("expected verbose detail to contain path, got: %s", result.Detail)
 	}
 }
@@ -4871,8 +4872,8 @@ func TestExportDiagnostics_VerifyJSON(t *testing.T) {
 	exportPath := filepath.Join(tmpDir, "diag.json")
 
 	checks := []DiagnosticCheck{
-		{Name: "Test Check", Status: CheckOK, Message: "all good", Detail: "details"},
-		{Name: "Warn Check", Status: CheckWarn, Message: "warning"},
+		{Name: "Test Check", Status: uikit.CheckOK, Message: "all good", Detail: "details"},
+		{Name: "Warn Check", Status: uikit.CheckWarn, Message: "warning"},
 	}
 
 	err := exportDiagnostics(exportPath, checks)

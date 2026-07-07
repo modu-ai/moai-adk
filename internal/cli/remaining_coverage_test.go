@@ -9,32 +9,33 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/spf13/cobra"
 )
 
 // =============================================================================
-// symError and symWarning — update.go:50-51 (currently 0%)
+// uikit.SymError and uikit.SymWarning — update.go:50-51 (currently 0%)
 // =============================================================================
 
 func TestSymError_ReturnsNonEmpty(t *testing.T) {
-	result := symError()
+	result := uikit.SymError()
 	if result == "" {
-		t.Error("symError() should return a non-empty string")
+		t.Error("uikit.SymError() should return a non-empty string")
 	}
 	// The rendered string should contain the cross symbol or its styled equivalent
 	if !strings.Contains(result, "✗") && len(result) == 0 {
-		t.Error("symError() should contain the error symbol")
+		t.Error("uikit.SymError() should contain the error symbol")
 	}
 }
 
 func TestSymWarning_ReturnsNonEmpty(t *testing.T) {
-	result := symWarning()
+	result := uikit.SymWarning()
 	if result == "" {
-		t.Error("symWarning() should return a non-empty string")
+		t.Error("uikit.SymWarning() should return a non-empty string")
 	}
 	// The rendered string should contain the warning symbol or its styled equivalent
 	if !strings.Contains(result, "!") && len(result) == 0 {
-		t.Error("symWarning() should contain the warning symbol")
+		t.Error("uikit.SymWarning() should contain the warning symbol")
 	}
 }
 
@@ -86,7 +87,7 @@ func TestCheckGit_VerbosePathDetail(t *testing.T) {
 	check := checkGit(true)
 	// checkGit(true) exercises the verbose branch (check.Detail = fmt.Sprintf("path: %s", gitPath))
 	// This test is primarily to ensure the verbose=true code path is hit.
-	if check.Status == CheckOK {
+	if check.Status == uikit.CheckOK {
 		if !strings.HasPrefix(check.Detail, "path:") {
 			t.Errorf("verbose checkGit Detail should start with 'path:', got %q", check.Detail)
 		}
@@ -363,7 +364,7 @@ func TestRemoveGLMEnv_EnvBecomesEmptyAfterRemoval(t *testing.T) {
 
 func TestCheckGit_NonVerboseNoDetail(t *testing.T) {
 	check := checkGit(false)
-	if check.Status == CheckOK {
+	if check.Status == uikit.CheckOK {
 		if check.Detail != "" {
 			t.Errorf("non-verbose checkGit should have empty Detail, got %q", check.Detail)
 		}

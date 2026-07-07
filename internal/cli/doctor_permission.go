@@ -133,7 +133,9 @@ func runDoctorPermission(cmd *cobra.Command, _ []string) error {
 
 // printJSONResult emits the resolution result in JSON format.
 // T-RT002-28: --format json support.
-func printJSONResult(out interface{ Write(p []byte) (n int, err error) }, result *permission.ResolveResult, tool, input string) error {
+func printJSONResult(out interface {
+	Write(p []byte) (n int, err error)
+}, result *permission.ResolveResult, tool, input string) error {
 	type jsonOutput struct {
 		Tool       string `json:"tool"`
 		Input      string `json:"input"`

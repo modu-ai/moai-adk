@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/state"
@@ -46,7 +47,7 @@ func checkCacheHitRate(projectRoot string, verbose bool) DiagnosticCheck {
 	// (enabled: false). The doctor metric only surfaces when caching is on.
 	cfg, _ := config.LoadCacheConfig(cachePath)
 	if cfg == nil || !cfg.Enabled {
-		check.Status = CheckOK
+		check.Status = uikit.CheckOK
 		check.Message = "prompt caching disabled (cacheStrategy.enabled: false)"
 		if verbose {
 			check.Detail = "set .moai/config/sections/cache.yaml `cacheStrategy.enabled: true` to enable + surface hit rate"
@@ -57,7 +58,7 @@ func checkCacheHitRate(projectRoot string, verbose bool) DiagnosticCheck {
 	entries, err := state.ReadCacheUsage(projectRoot)
 	if err != nil {
 		// Telemetry read failure degrades to OK — never a hard failure.
-		check.Status = CheckOK
+		check.Status = uikit.CheckOK
 		check.Message = "prompt caching enabled — no telemetry yet (cache-usage.jsonl unreadable)"
 		if verbose {
 			check.Detail = err.Error()
@@ -67,7 +68,7 @@ func checkCacheHitRate(projectRoot string, verbose bool) DiagnosticCheck {
 
 	stats := state.AggregateCacheUsage(entries, time.Now().UTC(), cacheHitRateWindow)
 	if stats.EntryCount == 0 {
-		check.Status = CheckOK
+		check.Status = uikit.CheckOK
 		check.Message = "Cache hit rate (last 7 days): n/a (no telemetry in window)"
 		return check
 	}
@@ -77,7 +78,7 @@ func checkCacheHitRate(projectRoot string, verbose bool) DiagnosticCheck {
 
 	ratio := stats.SingleTurnRatio()
 	if ratio > singleTurnRatioThreshold {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Detail = fmt.Sprintf(
 			"WARN: consider setting session_ttl: \"off\" — single-turn sessions are %.0f%% of the window (> %.0f%%), incurring 1h cache-write penalty",
 			ratio*100, singleTurnRatioThreshold*100,
@@ -85,7 +86,7 @@ func checkCacheHitRate(projectRoot string, verbose bool) DiagnosticCheck {
 		return check
 	}
 
-	check.Status = CheckOK
+	check.Status = uikit.CheckOK
 	if verbose {
 		check.Detail = fmt.Sprintf(
 			"reads %d / creation %d tokens over %d entries (%d sessions, %d single-turn)",

@@ -35,9 +35,9 @@ import (
 // then .moai/harness. The deterministic order makes backup directory contents
 // predictable for verification.
 var userOwnedScanRoots = []string{
-	filepath.Join(defs.ClaudeDir, "skills"),  // .claude/skills/ (filter via isUserOwnedNamespace)
-	filepath.Join(defs.ClaudeDir, "agents"),  // .claude/agents/ (filter via isUserOwnedNamespace)
-	filepath.Join(defs.MoAIDir, "harness"),   // .moai/harness/ (all contents user-owned per REQ-UNP-003)
+	filepath.Join(defs.ClaudeDir, "skills"), // .claude/skills/ (filter via isUserOwnedNamespace)
+	filepath.Join(defs.ClaudeDir, "agents"), // .claude/agents/ (filter via isUserOwnedNamespace)
+	filepath.Join(defs.MoAIDir, "harness"),  // .moai/harness/ (all contents user-owned per REQ-UNP-003)
 }
 
 // deployOp represents a planned destructive operation against a single path.
@@ -233,4 +233,3 @@ func assertNoUserOwnedNamespaceTouch(plan []deployOp) error {
 	}
 	return nil
 }
-

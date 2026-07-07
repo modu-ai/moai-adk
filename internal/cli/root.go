@@ -8,6 +8,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/agentlint"
 	"github.com/modu-ai/moai-adk/internal/cli/preference"
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
@@ -24,7 +25,7 @@ Git operations, quality gates, and autonomous development loop capabilities.
 Use 'moai cc', 'moai cg', or 'moai glm' to launch Claude Code.`,
 	Version: version.GetVersion(),
 	Run: func(cmd *cobra.Command, args []string) {
-		PrintBanner(version.GetVersion())
+		uikit.PrintBanner(version.GetVersion())
 		_ = cmd.Help()
 	},
 }

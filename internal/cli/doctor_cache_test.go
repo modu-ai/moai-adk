@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/state"
 )
 
@@ -107,7 +108,7 @@ func TestCheckCacheHitRate_SingleTurnWarning(t *testing.T) {
 	seedCacheUsage(t, root, 9)
 
 	check := checkCacheHitRate(root, true)
-	if check.Status != CheckWarn {
+	if check.Status != uikit.CheckWarn {
 		t.Errorf("status = %q, want warn (single-turn ratio > 10%%)", check.Status)
 	}
 	if !strings.Contains(check.Detail, `session_ttl: "off"`) {
@@ -132,7 +133,7 @@ func TestCheckCacheHitRate_EnabledNoTelemetry(t *testing.T) {
 	writeCacheYAML(t, root, true)
 	// No cache-usage.jsonl written → empty window.
 	check := checkCacheHitRate(root, false)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Errorf("status = %q, want ok (enabled, no telemetry)", check.Status)
 	}
 	if !strings.Contains(check.Message, "n/a") {
@@ -147,7 +148,7 @@ func TestCheckCacheHitRate_VerboseDetail(t *testing.T) {
 	writeCacheYAML(t, root, true)
 	seedCacheUsage(t, root, 0)
 	check := checkCacheHitRate(root, true)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Fatalf("status = %q, want ok", check.Status)
 	}
 	if !strings.Contains(check.Detail, "reads") || !strings.Contains(check.Detail, "creation") {
@@ -178,7 +179,7 @@ func TestCheckCacheHitRate_TelemetryReadError(t *testing.T) {
 		t.Fatalf("mkdir jsonl-as-dir: %v", err)
 	}
 	check := checkCacheHitRate(root, true)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Errorf("status = %q, want ok (read error degrades gracefully)", check.Status)
 	}
 	if strings.Contains(check.Message, "Cache hit rate (last 7 days):") &&

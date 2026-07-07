@@ -9,50 +9,72 @@ package cli
 // @MX:NOTE: [AUTO] schemaKeyToTUIField 는 스키마 키 namespace 의 단일 원천을 유지하면서
 // TUI 가 기존 struct-of-strings 번역 스토어를 그대로 쓰게 하는 어댑터다. 스키마 키 변경 시
 // 본 맵도 함께 갱신해야 하며 AC-WC10-016(TestI18nKeySetParity)이 이를 검증한다.
+//
+// SPEC-CLI-UIKIT-KERNEL-001 b-ii split: the TuiLabel type + SchemaKeyToTUIField +
+// FieldDefTUILabel helpers moved to internal/cli/uikit (leaf package). The two
+// profileSetupText-coupled maps STAY here (package cli); uikit accesses them via
+// the RegisterSchemaBridge callback registered in init() below. uikit has zero
+// profileSetupText references (REQ-CUK-007 b-ii, verified by AC-CUK-007).
 
-import "github.com/modu-ai/moai-adk/internal/settings"
-
-// tuiLabel은 한 필드의 TUI 위젯 title + description 을 운반한다.
-type tuiLabel struct {
-	Title string
-	Desc  string
-}
+import "github.com/modu-ai/moai-adk/internal/cli/uikit"
 
 // schemaFieldBridge는 스키마 필드의 i18n 키(예: "f.model")를 profileSetupText 의
 // 해당 title/desc 접근자로 매핑한다. 키는 settings.FieldDef.I18nKey 와 일치한다.
 // 모든 34개 필드(빈 라벨 제외)가 항목을 가진다.
-var schemaFieldBridge = map[string]func(t profileSetupText) tuiLabel{
+var schemaFieldBridge = map[string]func(t profileSetupText) uikit.TuiLabel{
 	// Identity
-	"f.user_name": func(t profileSetupText) tuiLabel { return tuiLabel{t.UserNameTitle, t.UserNameDesc} },
+	"f.user_name": func(t profileSetupText) uikit.TuiLabel { return uikit.TuiLabel{Title: t.UserNameTitle, Desc: t.UserNameDesc} },
 	// Language (conversation_lang 는 langForm 첫 단계에서 처리되나 스키마 parity 위해 매핑 유지)
-	"f.conversation_lang": func(t profileSetupText) tuiLabel { return tuiLabel{t.LangSelectTitle, t.LangSelectDesc} },
-	"f.git_commit_lang":   func(t profileSetupText) tuiLabel { return tuiLabel{t.GitCommitLangTitle, t.GitCommitLangDesc} },
-	"f.code_comment_lang": func(t profileSetupText) tuiLabel { return tuiLabel{t.CodeCommentLangTitle, t.CodeCommentLangDesc} },
-	"f.doc_lang":          func(t profileSetupText) tuiLabel { return tuiLabel{t.DocLangTitle, t.DocLangDesc} },
+	"f.conversation_lang": func(t profileSetupText) uikit.TuiLabel { return uikit.TuiLabel{Title: t.LangSelectTitle, Desc: t.LangSelectDesc} },
+	"f.git_commit_lang": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.GitCommitLangTitle, Desc: t.GitCommitLangDesc}
+	},
+	"f.code_comment_lang": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.CodeCommentLangTitle, Desc: t.CodeCommentLangDesc}
+	},
+	"f.doc_lang": func(t profileSetupText) uikit.TuiLabel { return uikit.TuiLabel{Title: t.DocLangTitle, Desc: t.DocLangDesc} },
 	// Launch
-	"f.model":           func(t profileSetupText) tuiLabel { return tuiLabel{t.ModelOverrideTitle, t.ModelOverrideDesc} },
-	"f.model_policy":    func(t profileSetupText) tuiLabel { return tuiLabel{t.ModelPolicyTitle, t.ModelPolicyDesc} },
-	"f.effort_level":    func(t profileSetupText) tuiLabel { return tuiLabel{t.EffortLevelTitle, t.EffortLevelDesc} },
-	"f.permission_mode": func(t profileSetupText) tuiLabel { return tuiLabel{t.PermissionModeTitle, t.PermissionModeDesc} },
+	"f.model": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.ModelOverrideTitle, Desc: t.ModelOverrideDesc}
+	},
+	"f.model_policy": func(t profileSetupText) uikit.TuiLabel { return uikit.TuiLabel{Title: t.ModelPolicyTitle, Desc: t.ModelPolicyDesc} },
+	"f.effort_level": func(t profileSetupText) uikit.TuiLabel { return uikit.TuiLabel{Title: t.EffortLevelTitle, Desc: t.EffortLevelDesc} },
+	"f.permission_mode": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.PermissionModeTitle, Desc: t.PermissionModeDesc}
+	},
 	// Statusline theme (16 segments handled by schemaSegmentBridge below)
-	"f.statusline_theme": func(t profileSetupText) tuiLabel { return tuiLabel{t.StatuslineThemeTitle, t.StatuslineThemeDesc} },
+	"f.statusline_theme": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.StatuslineThemeTitle, Desc: t.StatuslineThemeDesc}
+	},
 	// Quality
-	"f.development_mode": func(t profileSetupText) tuiLabel { return tuiLabel{t.DevelopmentModeTitle, t.DevelopmentModeDesc} },
-	"f.quality.test_coverage_target": func(t profileSetupText) tuiLabel {
-		return tuiLabel{t.QualityCoverageTargetTitle, t.QualityCoverageTargetDesc}
+	"f.development_mode": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.DevelopmentModeTitle, Desc: t.DevelopmentModeDesc}
 	},
-	"f.quality.enforce_quality": func(t profileSetupText) tuiLabel {
-		return tuiLabel{t.QualityEnforceQualityTitle, t.QualityEnforceQualityDesc}
+	"f.quality.test_coverage_target": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.QualityCoverageTargetTitle, Desc: t.QualityCoverageTargetDesc}
 	},
-	"f.quality.tdd_settings.min_coverage_per_commit": func(t profileSetupText) tuiLabel {
-		return tuiLabel{t.QualityMinCoverageTitle, t.QualityMinCoverageDesc}
+	"f.quality.enforce_quality": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.QualityEnforceQualityTitle, Desc: t.QualityEnforceQualityDesc}
+	},
+	"f.quality.tdd_settings.min_coverage_per_commit": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.QualityMinCoverageTitle, Desc: t.QualityMinCoverageDesc}
 	},
 	// Git Convention
-	"f.git_convention":                                     func(t profileSetupText) tuiLabel { return tuiLabel{t.GitConventionTitle, t.GitConventionDesc} },
-	"f.git_convention.auto_detection.enabled":              func(t profileSetupText) tuiLabel { return tuiLabel{t.GitAutoEnabledTitle, t.GitAutoEnabledDesc} },
-	"f.git_convention.auto_detection.confidence_threshold": func(t profileSetupText) tuiLabel { return tuiLabel{t.GitConfidenceTitle, t.GitConfidenceDesc} },
-	"f.git_convention.auto_detection.sample_size":          func(t profileSetupText) tuiLabel { return tuiLabel{t.GitSampleSizeTitle, t.GitSampleSizeDesc} },
-	"f.git_convention.validation.enforce_on_push":          func(t profileSetupText) tuiLabel { return tuiLabel{t.GitEnforceOnPushTitle, t.GitEnforceOnPushDesc} },
+	"f.git_convention": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.GitConventionTitle, Desc: t.GitConventionDesc}
+	},
+	"f.git_convention.auto_detection.enabled": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.GitAutoEnabledTitle, Desc: t.GitAutoEnabledDesc}
+	},
+	"f.git_convention.auto_detection.confidence_threshold": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.GitConfidenceTitle, Desc: t.GitConfidenceDesc}
+	},
+	"f.git_convention.auto_detection.sample_size": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.GitSampleSizeTitle, Desc: t.GitSampleSizeDesc}
+	},
+	"f.git_convention.validation.enforce_on_push": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.GitEnforceOnPushTitle, Desc: t.GitEnforceOnPushDesc}
+	},
 }
 
 // schemaSegmentBridge는 16개 statusline 세그먼트의 스키마 키(예: "seg.git_branch")를
@@ -76,24 +98,19 @@ var schemaSegmentBridge = map[string]func(t profileSetupText) string{
 	"seg.worktree":        func(t profileSetupText) string { return t.SegmentWorktree },
 }
 
-// schemaKeyToTUIField는 스키마 필드의 i18n 키를 주어진 locale 의 TUI 위젯
-// title/desc 로 해석한다(REQ-WC10-017a 의 named bridge resolver). field 스키마 키는
-// schemaFieldBridge 로, 세그먼트(불리언) 필드는 schemaSegmentBridge 로 해석된다.
-// 두 번째 반환값은 키가 bridge 에 존재하는지 여부다.
-func schemaKeyToTUIField(schemaKey, locale string) (tuiLabel, bool) {
-	t := getProfileText(locale)
-	if fn, ok := schemaFieldBridge[schemaKey]; ok {
-		return fn(t), true
-	}
-	if fn, ok := schemaSegmentBridge[schemaKey]; ok {
-		return tuiLabel{Title: fn(t)}, true
-	}
-	return tuiLabel{}, false
-}
-
-// fieldDefTUILabel는 스키마 FieldDef 의 I18nKey 를 통해 해당 locale 의 TUI title/desc
-// 를 해석하는 편의 함수다. statusline 세그먼트 필드(I18nKey 가 "seg." prefix)는
-// 세그먼트 bridge 로, 그 외는 field bridge 로 해석된다.
-func fieldDefTUILabel(f settings.FieldDef, locale string) (tuiLabel, bool) {
-	return schemaKeyToTUIField(f.I18nKey, locale)
+// init registers the profileSetupText-aware schema bridge resolver with the
+// uikit leaf package. The resolver closure captures the two maps above + the
+// package-cli-internal getProfileText; uikit dispatches SchemaKeyToTUIField /
+// FieldDefTUILabel through this callback (b-ii split, REQ-CUK-007).
+func init() {
+	uikit.RegisterSchemaBridge(func(schemaKey, locale string) (uikit.TuiLabel, bool) {
+		t := getProfileText(locale)
+		if fn, ok := schemaFieldBridge[schemaKey]; ok {
+			return fn(t), true
+		}
+		if fn, ok := schemaSegmentBridge[schemaKey]; ok {
+			return uikit.TuiLabel{Title: fn(t)}, true
+		}
+		return uikit.TuiLabel{}, false
+	})
 }

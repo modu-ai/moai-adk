@@ -13,6 +13,7 @@ import (
 
 	"log/slog"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/update"
@@ -775,10 +776,10 @@ func TestRunGLM_NilConfig(t *testing.T) {
 
 func TestCheckGit_Verbose(t *testing.T) {
 	check := checkGit(true)
-	if check.Status == CheckOK && check.Detail == "" {
+	if check.Status == uikit.CheckOK && check.Detail == "" {
 		t.Error("verbose git check should include detail")
 	}
-	if check.Status == CheckOK && !strings.Contains(check.Detail, "path:") {
+	if check.Status == uikit.CheckOK && !strings.Contains(check.Detail, "path:") {
 		t.Errorf("verbose git detail should contain path, got %q", check.Detail)
 	}
 }
@@ -803,7 +804,7 @@ func TestCheckMoAIConfig_Verbose(t *testing.T) {
 	}()
 
 	check := checkMoAIConfig(true)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Errorf("status = %q, want ok", check.Status)
 	}
 	if check.Detail == "" {
@@ -835,7 +836,7 @@ func TestCheckMoAIConfig_MissingSections(t *testing.T) {
 	}()
 
 	check := checkMoAIConfig(false)
-	if check.Status != CheckWarn {
+	if check.Status != uikit.CheckWarn {
 		t.Errorf("status = %q, want warn for missing sections", check.Status)
 	}
 	if !strings.Contains(check.Message, "sections") {
@@ -863,7 +864,7 @@ func TestCheckClaudeConfig_Present(t *testing.T) {
 	}()
 
 	check := checkClaudeConfig(false)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Errorf("status = %q, want ok for present .claude/", check.Status)
 	}
 	if !strings.Contains(check.Message, "found") {
@@ -891,7 +892,7 @@ func TestCheckClaudeConfig_Verbose(t *testing.T) {
 	}()
 
 	check := checkClaudeConfig(true)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Errorf("status = %q, want ok", check.Status)
 	}
 	if check.Detail == "" {

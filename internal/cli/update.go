@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/project"
@@ -41,24 +41,6 @@ const (
 	// maxConfigSize is the maximum allowed size for a config YAML file to prevent DoS
 	maxConfigSize = 10 * 1024 * 1024 // 10MB
 )
-
-// CLI output styles sourced from tui.LightTheme/DarkTheme — single source of truth.
-// AC-CLI-TUI-013: no hex literals outside internal/tui/. M4-S4d cleanup uses
-// AdaptiveColor with tui.LightTheme()/DarkTheme() values evaluated at package init.
-// cliPrimary now resolves to tui.Accent (deep teal) replacing the deprecated
-// terra cotta accent — brand consistency restored per M3 banner.go.
-var (
-	cliSuccess = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Success, Dark: tui.DarkTheme().Success})
-	cliWarn    = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Warning, Dark: tui.DarkTheme().Warning})
-	cliError   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Danger, Dark: tui.DarkTheme().Danger})
-	cliMuted   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Dim, Dark: tui.DarkTheme().Dim})
-	cliPrimary = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Accent, Dark: tui.DarkTheme().Accent})
-	cliBorder  = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Rule, Dark: tui.DarkTheme().Rule})
-)
-
-func symSuccess() string { return cliSuccess.Render("\u2713") }
-func symError() string   { return cliError.Render("\u2717") }
-func symWarning() string { return cliWarn.Render("!") }
 
 // symProgress was retired by SPEC-V3R6-UPDATE-PROGRESS-001 M1. All former
 // callers now use tui.ProgressLine which renders its own progress glyph
@@ -830,7 +812,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				plRestore.Done("User settings restored")
 				deletedCount := cleanup_old_backups(projectRoot, 5)
 				if deletedCount > 0 {
-					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", symSuccess(), deletedCount)
+					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)
 				}
 				if reporter != nil {
 					reporter.StepComplete("Settings restored")
@@ -840,15 +822,15 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			if len(gitignoreBackup) > 0 {
 				gitignorePath := filepath.Join(projectRoot, ".gitignore")
 				if mergeErr := mergeGitignoreFile(gitignorePath, gitignoreBackup); mergeErr != nil {
-					_, _ = fmt.Fprintf(out, "  %s .gitignore merge warning: %v\n", symWarning(), mergeErr)
+					_, _ = fmt.Fprintf(out, "  %s .gitignore merge warning: %v\n", uikit.SymWarning(), mergeErr)
 				} else {
-					_, _ = fmt.Fprintf(out, "  %s .gitignore user patterns preserved\n", symSuccess())
+					_, _ = fmt.Fprintf(out, "  %s .gitignore user patterns preserved\n", uikit.SymSuccess())
 				}
 			}
 			// Merge user-customized files using 3-way merge engine
 			if len(mergeableBackups) > 0 {
 				if err := mergeUserFiles(projectRoot, mergeableBackups, out); err != nil {
-					_, _ = fmt.Fprintf(out, "  %s File merge warning: %v\n", symWarning(), err)
+					_, _ = fmt.Fprintf(out, "  %s File merge warning: %v\n", uikit.SymWarning(), err)
 				}
 			}
 		default:
@@ -1078,7 +1060,7 @@ func mergeUserFiles(projectRoot string, backups []fileBackup, out io.Writer) err
 			if writeErr := os.WriteFile(destPath, fb.data, defs.FilePerm); writeErr != nil {
 				return fmt.Errorf("restore removed file %s: %w", fb.path, writeErr)
 			}
-			_, _ = fmt.Fprintf(out, "  %s %s preserved (removed in new template)\n", symSuccess(), fb.path)
+			_, _ = fmt.Fprintf(out, "  %s %s preserved (removed in new template)\n", uikit.SymSuccess(), fb.path)
 			mergedCount++
 			continue
 		}
@@ -1106,7 +1088,7 @@ func mergeUserFiles(projectRoot string, backups []fileBackup, out io.Writer) err
 			if err := os.WriteFile(destPath, fb.data, defs.FilePerm); err != nil {
 				return fmt.Errorf("restore user file %s: %w", fb.path, err)
 			}
-			_, _ = fmt.Fprintf(out, "  %s %s user content preserved\n", symSuccess(), fb.path)
+			_, _ = fmt.Fprintf(out, "  %s %s user content preserved\n", uikit.SymSuccess(), fb.path)
 			mergedCount++
 			continue
 		}
@@ -1115,7 +1097,7 @@ func mergeUserFiles(projectRoot string, backups []fileBackup, out io.Writer) err
 		result, mergeErr := engine.MergeFile(context.Background(), fb.path, baseContent, fb.data, updatedContent)
 		if mergeErr != nil {
 			// Merge failed - preserve user's version
-			_, _ = fmt.Fprintf(out, "  %s %s merge failed, preserving user version: %v\n", symWarning(), fb.path, mergeErr)
+			_, _ = fmt.Fprintf(out, "  %s %s merge failed, preserving user version: %v\n", uikit.SymWarning(), fb.path, mergeErr)
 			if err := os.WriteFile(destPath, fb.data, defs.FilePerm); err != nil {
 				return fmt.Errorf("preserve user file %s: %w", fb.path, err)
 			}
@@ -1130,15 +1112,15 @@ func mergeUserFiles(projectRoot string, backups []fileBackup, out io.Writer) err
 
 		// Report merge status
 		if result.HasConflict {
-			_, _ = fmt.Fprintf(out, "  %s %s merged with conflicts (user version preferred)\n", symWarning(), fb.path)
+			_, _ = fmt.Fprintf(out, "  %s %s merged with conflicts (user version preferred)\n", uikit.SymWarning(), fb.path)
 		} else {
-			_, _ = fmt.Fprintf(out, "  %s %s user customizations preserved\n", symSuccess(), fb.path)
+			_, _ = fmt.Fprintf(out, "  %s %s user customizations preserved\n", uikit.SymSuccess(), fb.path)
 		}
 		mergedCount++
 	}
 
 	if mergedCount > 0 {
-		_, _ = fmt.Fprintf(out, "  %s Merged %d file(s) with 3-way merge engine\n", symSuccess(), mergedCount)
+		_, _ = fmt.Fprintf(out, "  %s Merged %d file(s) with 3-way merge engine\n", uikit.SymSuccess(), mergedCount)
 	}
 
 	return nil
@@ -2535,12 +2517,12 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 	}
 
 	// Print banner and welcome message
-	PrintBanner(version.GetVersion())
+	uikit.PrintBanner(version.GetVersion())
 	if reconfigure {
 		_, _ = fmt.Fprintln(out, tui.Section("Project Reconfiguration Wizard", tui.SectionOpts{Theme: &th}))
 		_, _ = fmt.Fprintln(out, "This wizard will help you update your project configuration.")
 	} else {
-		PrintWelcomeMessage()
+		uikit.PrintWelcomeMessage()
 	}
 
 	// REQ-1: Read locale from language.yaml

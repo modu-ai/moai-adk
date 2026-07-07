@@ -15,6 +15,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/constitution"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/migration"
@@ -22,24 +23,12 @@ import (
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
-// CheckStatus represents the result of a single diagnostic check.
-type CheckStatus string
-
-const (
-	// CheckOK indicates the check passed.
-	CheckOK CheckStatus = "ok"
-	// CheckWarn indicates a non-fatal issue.
-	CheckWarn CheckStatus = "warn"
-	// CheckFail indicates a critical failure.
-	CheckFail CheckStatus = "fail"
-)
-
 // DiagnosticCheck holds the result of a single health check.
 type DiagnosticCheck struct {
-	Name    string      `json:"name"`
-	Status  CheckStatus `json:"status"`
-	Message string      `json:"message"`
-	Detail  string      `json:"detail,omitempty"`
+	Name    string            `json:"name"`
+	Status  uikit.CheckStatus `json:"status"`
+	Message string            `json:"message"`
+	Detail  string            `json:"detail,omitempty"`
 }
 
 // checkGroup holds a named group of DiagnosticCheck items for grouped rendering.
@@ -87,11 +76,11 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	okCount, warnCount, failCount := 0, 0, 0
 	for _, c := range allChecks {
 		switch c.Status {
-		case CheckOK:
+		case uikit.CheckOK:
 			okCount++
-		case CheckWarn:
+		case uikit.CheckWarn:
 			warnCount++
-		case CheckFail:
+		case uikit.CheckFail:
 			failCount++
 		}
 	}
@@ -131,12 +120,12 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	if fix && failCount > 0 {
 		var fixes []string
 		for _, c := range allChecks {
-			if c.Status == CheckFail {
+			if c.Status == uikit.CheckFail {
 				fixes = append(fixes, fmt.Sprintf("- %s: run 'moai init' to initialize project", c.Name))
 			}
 		}
 		_, _ = fmt.Fprintln(out)
-		_, _ = fmt.Fprintln(out, renderInfoCard("Suggested Fixes", strings.Join(fixes, "\n")))
+		_, _ = fmt.Fprintln(out, uikit.RenderInfoCard("Suggested Fixes", strings.Join(fixes, "\n")))
 	}
 
 	if exportPath != "" {
@@ -149,14 +138,14 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// checkStatusToTUI converts a CheckStatus to the tui.CheckLine status string.
-func checkStatusToTUI(s CheckStatus) string {
+// checkStatusToTUI converts a uikit.CheckStatus to the tui.CheckLine status string.
+func checkStatusToTUI(s uikit.CheckStatus) string {
 	switch s {
-	case CheckOK:
+	case uikit.CheckOK:
 		return "ok"
-	case CheckWarn:
+	case uikit.CheckWarn:
 		return "warn"
-	case CheckFail:
+	case uikit.CheckFail:
 		return "err"
 	default:
 		return "info"
@@ -240,13 +229,13 @@ func runDiagnosticChecks(verbose bool, filterCheck string) []DiagnosticCheck {
 // checkGoRuntime verifies the Go runtime is available.
 func checkGoRuntime(verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Go Runtime"}
-	// goVersion() is defined in banner.go (same package). It reads
+	// uikit.GoVersion() is defined in banner.go (same package). It reads
 	// MOAI_GO_VERSION_OVERRIDE env first for deterministic test output.
-	goVer := goVersion()
-	check.Status = CheckOK
-	// goosArch() reads MOAI_GOOS_OVERRIDE/MOAI_GOARCH_OVERRIDE for golden-test
+	goVer := uikit.GoVersion()
+	check.Status = uikit.CheckOK
+	// uikit.GoosArch() reads MOAI_GOOS_OVERRIDE/MOAI_GOARCH_OVERRIDE for golden-test
 	// determinism across CI runners (linux/amd64, darwin/arm64, windows/amd64).
-	check.Message = fmt.Sprintf("go %s (%s)", goVer, goosArch())
+	check.Message = fmt.Sprintf("go %s (%s)", goVer, uikit.GoosArch())
 	if verbose {
 		check.Detail = fmt.Sprintf("GOPATH=%s", os.Getenv("GOPATH"))
 	}
@@ -270,14 +259,14 @@ func GitInstallHint() string {
 // across CI runners (Apple Git 2.50.x on macOS-latest vs git 2.53.x on ubuntu-latest).
 func checkGit(verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Git"}
-	if v := gitVersionOverride(); v != "" {
-		check.Status = CheckOK
+	if v := uikit.GitVersionOverride(); v != "" {
+		check.Status = uikit.CheckOK
 		check.Message = v
 		return check
 	}
 	gitPath, err := exec.LookPath("git")
 	if err != nil {
-		check.Status = CheckFail
+		check.Status = uikit.CheckFail
 		check.Message = "git not found in PATH"
 		check.Detail = GitInstallHint()
 		return check
@@ -285,12 +274,12 @@ func checkGit(verbose bool) DiagnosticCheck {
 
 	out, err := exec.Command("git", "--version").Output()
 	if err != nil {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = "git found but version check failed"
 		return check
 	}
 
-	check.Status = CheckOK
+	check.Status = uikit.CheckOK
 	check.Message = string(out[:len(out)-1]) // trim newline
 	if verbose {
 		check.Detail = fmt.Sprintf("path: %s", gitPath)
@@ -302,18 +291,18 @@ func checkGit(verbose bool) DiagnosticCheck {
 // Reads CLAUDE_CODE_VERSION env first (deterministic for tests), then exec fallback.
 func checkClaudeCode(_ bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Claude Code"}
-	cv := claudeVersion()
+	cv := uikit.ClaudeVersion()
 	if cv == "claude" {
 		// env not set — try exec
 		out, err := exec.Command("claude", "--version").Output()
 		if err != nil {
-			check.Status = CheckWarn
+			check.Status = uikit.CheckWarn
 			check.Message = "claude CLI not found (CLAUDE_CODE_VERSION unset)"
 			return check
 		}
 		cv = strings.TrimSpace(string(out))
 	}
-	check.Status = CheckOK
+	check.Status = uikit.CheckOK
 	check.Message = cv
 	return check
 }
@@ -323,26 +312,26 @@ func checkClaudeCode(_ bool) DiagnosticCheck {
 // across CI runners (gh release lag differs between ubuntu-latest and macOS).
 func checkGitHubCLI(verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "GitHub CLI"}
-	if v := ghVersionOverride(); v != "" {
-		check.Status = CheckOK
+	if v := uikit.GhVersionOverride(); v != "" {
+		check.Status = uikit.CheckOK
 		check.Message = v
 		return check
 	}
 	ghPath, err := exec.LookPath("gh")
 	if err != nil {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = "gh not found — GitHub Actions and PR workflows unavailable"
 		return check
 	}
 	out, err := exec.Command("gh", "--version").Output()
 	if err != nil {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = "gh found but version check failed"
 		return check
 	}
 	// gh --version prints "gh version X.Y.Z (YYYY-MM-DD)\n..."
 	first := strings.SplitN(string(out), "\n", 2)[0]
-	check.Status = CheckOK
+	check.Status = uikit.CheckOK
 	check.Message = strings.TrimSpace(first)
 	if verbose {
 		check.Detail = fmt.Sprintf("path: %s", ghPath)
@@ -356,7 +345,7 @@ func checkMoAIConfig(verbose bool) DiagnosticCheck {
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		check.Status = CheckFail
+		check.Status = uikit.CheckFail
 		check.Message = "cannot determine working directory"
 		return check
 	}
@@ -364,19 +353,19 @@ func checkMoAIConfig(verbose bool) DiagnosticCheck {
 	moaiDir := filepath.Join(cwd, defs.MoAIDir)
 	info, err := os.Stat(moaiDir)
 	if err != nil || !info.IsDir() {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = ".moai/ directory not found (run 'moai init')"
 		return check
 	}
 
 	configDir := filepath.Join(moaiDir, defs.SectionsSubdir)
 	if _, statErr := os.Stat(configDir); statErr != nil {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = ".moai/config/sections/ not found"
 		return check
 	}
 
-	check.Status = CheckOK
+	check.Status = uikit.CheckOK
 	check.Message = "configuration directory found"
 	if verbose {
 		check.Detail = fmt.Sprintf("path: %s", moaiDir)
@@ -390,7 +379,7 @@ func checkClaudeConfig(verbose bool) DiagnosticCheck {
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		check.Status = CheckFail
+		check.Status = uikit.CheckFail
 		check.Message = "cannot determine working directory"
 		return check
 	}
@@ -398,12 +387,12 @@ func checkClaudeConfig(verbose bool) DiagnosticCheck {
 	claudeDir := filepath.Join(cwd, defs.ClaudeDir)
 	info, err := os.Stat(claudeDir)
 	if err != nil || !info.IsDir() {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = ".claude/ directory not found"
 		return check
 	}
 
-	check.Status = CheckOK
+	check.Status = uikit.CheckOK
 	check.Message = "Claude Code configuration found"
 	if verbose {
 		check.Detail = fmt.Sprintf("path: %s", claudeDir)
@@ -415,7 +404,7 @@ func checkClaudeConfig(verbose bool) DiagnosticCheck {
 func checkMoAIVersion(_ bool) DiagnosticCheck {
 	return DiagnosticCheck{
 		Name:    "MoAI Version",
-		Status:  CheckOK,
+		Status:  uikit.CheckOK,
 		Message: fmt.Sprintf("moai-adk %s", version.GetVersion()),
 	}
 }
@@ -434,28 +423,28 @@ func checkBinaryFreshness(verbose bool) DiagnosticCheck {
 
 	binCommit := strings.TrimSpace(version.GetCommit())
 	if binCommit == "" || binCommit == "none" || binCommit == "unknown" {
-		check.Status = CheckOK
+		check.Status = uikit.CheckOK
 		check.Message = "development build (no commit metadata)"
 		return check
 	}
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		check.Status = CheckOK
+		check.Status = uikit.CheckOK
 		check.Message = "cannot determine working directory"
 		return check
 	}
 
 	headOut, err := exec.Command("git", "-C", cwd, "rev-parse", "HEAD").Output()
 	if err != nil {
-		check.Status = CheckOK
+		check.Status = uikit.CheckOK
 		check.Message = "not in a git source tree (skipped)"
 		return check
 	}
 	sourceHead := strings.TrimSpace(string(headOut))
 
 	if strings.HasPrefix(sourceHead, binCommit) {
-		check.Status = CheckOK
+		check.Status = uikit.CheckOK
 		check.Message = fmt.Sprintf("binary matches source HEAD (%s)", binCommit)
 		return check
 	}
@@ -463,13 +452,13 @@ func checkBinaryFreshness(verbose bool) DiagnosticCheck {
 	// Binary differs from HEAD. Check whether it is an ancestor (= stale).
 	ancestorErr := exec.Command("git", "-C", cwd, "merge-base", "--is-ancestor", binCommit, sourceHead).Run()
 	if ancestorErr == nil {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = fmt.Sprintf("binary is behind source tree (binary: %s, HEAD: %s)", binCommit, shortCommit(sourceHead))
 		check.Detail = "Run 'make build && make install' to rebuild with the latest fixes"
 		return check
 	}
 
-	check.Status = CheckOK
+	check.Status = uikit.CheckOK
 	check.Message = fmt.Sprintf("binary from a different branch (binary: %s, HEAD: %s)", binCommit, shortCommit(sourceHead))
 	if verbose {
 		check.Detail = "binary commit is not an ancestor of source HEAD (release or branch build)"
@@ -517,7 +506,7 @@ func checkMCPScopeDuplicates(projectRoot string, verbose bool) DiagnosticCheck {
 	globalServers := parseMCPJSON(filepath.Join(homeDir, ".claude", ".mcp.json"))
 
 	if len(projectServers) == 0 && len(globalServers) == 0 {
-		check.Status = CheckOK
+		check.Status = uikit.CheckOK
 		check.Message = "no MCP configuration found (project or global)"
 		return check
 	}
@@ -533,12 +522,12 @@ func checkMCPScopeDuplicates(projectRoot string, verbose bool) DiagnosticCheck {
 
 	dups := findMCPDuplicates(counts)
 	if len(dups) == 0 {
-		check.Status = CheckOK
+		check.Status = uikit.CheckOK
 		check.Message = fmt.Sprintf("%d project, %d global MCP servers — no duplicates", len(projectServers), len(globalServers))
 		return check
 	}
 
-	check.Status = CheckWarn
+	check.Status = uikit.CheckWarn
 	check.Message = fmt.Sprintf("duplicate MCP server names across scopes: %s", strings.Join(dups, ", "))
 	if verbose {
 		check.Detail = "Duplicate server names may shadow configuration. Remove duplicates from one scope."
@@ -564,20 +553,6 @@ func parseMCPJSON(path string) map[string]struct{} {
 	return result
 }
 
-// statusIcon returns a colored Unicode icon for the check status.
-func statusIcon(s CheckStatus) string {
-	switch s {
-	case CheckOK:
-		return cliSuccess.Render("✓")
-	case CheckWarn:
-		return cliWarn.Render("!")
-	case CheckFail:
-		return cliError.Render("✗")
-	default:
-		return "?"
-	}
-}
-
 // constitutionStrictEnvKey is the environment variable name to enable strict mode.
 const constitutionStrictEnvKey = "MOAI_CONSTITUTION_STRICT"
 
@@ -601,21 +576,21 @@ func checkConstitution(projectDir, registryPath string, verbose, strictMode bool
 			// Windows (\) and macOS/Linux (/) golden tests.
 			displayPath = filepath.ToSlash(rel)
 		}
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = fmt.Sprintf("zone-registry.md not found at %q — run `moai constitution list` to verify", displayPath)
 		return check
 	}
 
 	reg, err := constitution.LoadRegistry(registryPath, projectDir)
 	if err != nil {
-		check.Status = CheckFail
+		check.Status = uikit.CheckFail
 		check.Message = fmt.Sprintf("registry load error: %v", err)
 		return check
 	}
 
 	// Check orphan warnings
 	if len(reg.Warnings) > 0 && strictMode {
-		check.Status = CheckFail
+		check.Status = uikit.CheckFail
 		check.Message = fmt.Sprintf("%d orphan/overflow warning(s) detected (strict mode)", len(reg.Warnings))
 		if verbose {
 			check.Detail = strings.Join(reg.Warnings, "\n")
@@ -626,14 +601,14 @@ func checkConstitution(projectDir, registryPath string, verbose, strictMode bool
 	// Check Frozen entry count
 	frozen := reg.FilterByZone(constitution.ZoneFrozen)
 	if len(frozen) == 0 {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = "no Frozen entries found in registry — expected at least 1"
 		return check
 	}
 
 	// Only orphan warnings case (non-strict)
 	if len(reg.Warnings) > 0 {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = fmt.Sprintf("registry OK (%d entries, %d Frozen), %d orphan/overflow warning(s)",
 			len(reg.Entries), len(frozen), len(reg.Warnings))
 		if verbose {
@@ -642,7 +617,7 @@ func checkConstitution(projectDir, registryPath string, verbose, strictMode bool
 		return check
 	}
 
-	check.Status = CheckOK
+	check.Status = uikit.CheckOK
 	check.Message = fmt.Sprintf("registry OK — %d entries (%d Frozen, %d Evolvable)",
 		len(reg.Entries), len(frozen), len(reg.Entries)-len(frozen))
 	return check
@@ -654,11 +629,11 @@ func checkHooksConfig(projectRoot string, verbose bool) DiagnosticCheck {
 	hooksDir := filepath.Join(projectRoot, ".claude", "hooks")
 	info, err := os.Stat(hooksDir)
 	if err != nil || !info.IsDir() {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = ".claude/hooks/ not found — hook handlers unavailable"
 		return check
 	}
-	check.Status = CheckOK
+	check.Status = uikit.CheckOK
 	check.Message = "hook handlers directory found"
 	if verbose {
 		check.Detail = fmt.Sprintf("path: %s", hooksDir)
@@ -675,7 +650,7 @@ func checkHooksConfig(projectRoot string, verbose bool) DiagnosticCheck {
 func checkHookOptIn(projectRoot string, verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Hook opt-in:"}
 	enabled := isHookOptInEnabled(projectRoot)
-	check.Status = CheckOK
+	check.Status = uikit.CheckOK
 	if enabled {
 		check.Message = "enabled"
 	} else {
@@ -697,12 +672,12 @@ func checkSlashCommands(projectRoot string, verbose bool) DiagnosticCheck {
 	cmdsDir := filepath.Join(projectRoot, ".claude", "commands")
 	info, err := os.Stat(cmdsDir)
 	if err != nil || !info.IsDir() {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = ".claude/commands/ not found — slash commands unavailable"
 		return check
 	}
 	entries, _ := os.ReadDir(cmdsDir)
-	check.Status = CheckOK
+	check.Status = uikit.CheckOK
 	check.Message = fmt.Sprintf("%d command file(s) registered", len(entries))
 	if verbose {
 		check.Detail = fmt.Sprintf("path: %s", cmdsDir)
@@ -717,11 +692,11 @@ func checkSkillsAllowlist(projectRoot string, verbose bool) DiagnosticCheck {
 	entries, err := os.ReadDir(skillsDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			check.Status = CheckWarn
+			check.Status = uikit.CheckWarn
 			check.Message = ".claude/skills/ not found"
 			return check
 		}
-		check.Status = CheckFail
+		check.Status = uikit.CheckFail
 		check.Message = fmt.Sprintf("cannot read skills directory: %v", err)
 		return check
 	}
@@ -735,14 +710,14 @@ func checkSkillsAllowlist(projectRoot string, verbose bool) DiagnosticCheck {
 		}
 	}
 	if warnCount > 0 {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = fmt.Sprintf("%d unknown moai- skill(s) detected (run 'moai update' to sync)", warnCount)
 		if verbose {
 			check.Detail = "Unknown skills may be outdated or removed. Verify with 'moai update'."
 		}
 		return check
 	}
-	check.Status = CheckOK
+	check.Status = uikit.CheckOK
 	check.Message = fmt.Sprintf("%d skill(s) verified", len(entries))
 	return check
 }
@@ -752,11 +727,11 @@ func checkMXTagConfig(projectRoot string, verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "MX Tag Config"}
 	mxPath := filepath.Join(projectRoot, ".moai", "config", "sections", "mx.yaml")
 	if _, err := os.Stat(mxPath); err != nil {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = ".moai/config/sections/mx.yaml not found — MX annotation thresholds use defaults"
 		return check
 	}
-	check.Status = CheckOK
+	check.Status = uikit.CheckOK
 	check.Message = "MX tag configuration present"
 	if verbose {
 		check.Detail = fmt.Sprintf("path: %s", mxPath)
@@ -770,11 +745,11 @@ func checkWorktreeState(projectRoot string, verbose bool) DiagnosticCheck {
 	statePath := filepath.Join(projectRoot, ".moai", "state")
 	info, err := os.Stat(statePath)
 	if err != nil || !info.IsDir() {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = ".moai/state/ not found — worktree checkpoint storage unavailable"
 		return check
 	}
-	check.Status = CheckOK
+	check.Status = uikit.CheckOK
 	check.Message = "worktree state directory found"
 	if verbose {
 		check.Detail = fmt.Sprintf("path: %s", statePath)
@@ -788,11 +763,11 @@ func checkBODPConfig(projectRoot string, verbose bool) DiagnosticCheck {
 	bodpPath := filepath.Join(projectRoot, ".moai", "branches")
 	info, err := os.Stat(bodpPath)
 	if err != nil || !info.IsDir() {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = ".moai/branches/ not found — BODP audit trail disabled"
 		return check
 	}
-	check.Status = CheckOK
+	check.Status = uikit.CheckOK
 	check.Message = "BODP audit trail directory found"
 	if verbose {
 		check.Detail = fmt.Sprintf("path: %s", bodpPath)
@@ -805,11 +780,11 @@ func checkTelemetryConfig(projectRoot string, verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Telemetry Config"}
 	telPath := filepath.Join(projectRoot, ".moai", "config", "sections", "telemetry.yaml")
 	if _, err := os.Stat(telPath); err != nil {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = ".moai/config/sections/telemetry.yaml not found — telemetry uses defaults"
 		return check
 	}
-	check.Status = CheckOK
+	check.Status = uikit.CheckOK
 	check.Message = "telemetry configuration present"
 	if verbose {
 		check.Detail = fmt.Sprintf("path: %s", telPath)
@@ -822,7 +797,7 @@ func checkTelemetryConfig(projectRoot string, verbose bool) DiagnosticCheck {
 func checkGlamourCache(_ bool) DiagnosticCheck {
 	return DiagnosticCheck{
 		Name:    "Glamour Cache",
-		Status:  CheckWarn,
+		Status:  uikit.CheckWarn,
 		Message: "glamour 미도입",
 		Detail:  "후속 SPEC에서 실제 검사로 교체 예정",
 	}
@@ -836,17 +811,17 @@ func checkMigration(projectDir string, verbose bool) DiagnosticCheck {
 	runner := migration.NewRunner(projectDir)
 	current, pending, lastApplied, err := runner.Status()
 	if err != nil {
-		check.Status = CheckFail
+		check.Status = uikit.CheckFail
 		check.Message = "마이그레이션 상태 조회 실패"
 		check.Detail = err.Error()
 		return check
 	}
 
-	check.Status = CheckOK
+	check.Status = uikit.CheckOK
 	check.Message = fmt.Sprintf("현재 버전 %d", current)
 
 	if len(pending) > 0 {
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = fmt.Sprintf("%d개 pending 마이그레이션", len(pending))
 		if verbose {
 			check.Detail = fmt.Sprintf("Pending 버전: %v", pending)

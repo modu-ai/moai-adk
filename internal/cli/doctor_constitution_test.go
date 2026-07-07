@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 )
 
 // validConstitutionRegistryForDoctor is a registry content valid for doctor tests.
@@ -84,8 +86,8 @@ func TestCheckConstitution_ValidRegistry(t *testing.T) {
 
 	check := checkConstitution(dir, registryPath, false, false)
 
-	if check.Status != CheckOK {
-		t.Errorf("유효한 registry에서 Status = %q, want %q\n메시지: %s", check.Status, CheckOK, check.Message)
+	if check.Status != uikit.CheckOK {
+		t.Errorf("유효한 registry에서 Status = %q, want %q\n메시지: %s", check.Status, uikit.CheckOK, check.Message)
 	}
 }
 
@@ -96,8 +98,8 @@ func TestCheckConstitution_RegistryMissing(t *testing.T) {
 
 	check := checkConstitution(dir, nonExistentPath, false, false)
 
-	if check.Status != CheckWarn {
-		t.Errorf("registry 없음 Status = %q, want %q", check.Status, CheckWarn)
+	if check.Status != uikit.CheckWarn {
+		t.Errorf("registry 없음 Status = %q, want %q", check.Status, uikit.CheckWarn)
 	}
 }
 
@@ -117,8 +119,8 @@ func TestCheckConstitution_DuplicateIDs(t *testing.T) {
 
 	check := checkConstitution(dir, registryPath, false, false)
 
-	if check.Status != CheckFail {
-		t.Errorf("중복 ID registry Status = %q, want %q\n메시지: %s", check.Status, CheckFail, check.Message)
+	if check.Status != uikit.CheckFail {
+		t.Errorf("중복 ID registry Status = %q, want %q\n메시지: %s", check.Status, uikit.CheckFail, check.Message)
 	}
 }
 
@@ -139,8 +141,8 @@ func TestCheckConstitution_EmptyFrozen(t *testing.T) {
 
 	check := checkConstitution(dir, registryPath, false, false)
 
-	if check.Status != CheckWarn {
-		t.Errorf("empty Frozen Status = %q, want %q\n메시지: %s", check.Status, CheckWarn, check.Message)
+	if check.Status != uikit.CheckWarn {
+		t.Errorf("empty Frozen Status = %q, want %q\n메시지: %s", check.Status, uikit.CheckWarn, check.Message)
 	}
 
 	if !strings.Contains(check.Message, "Frozen") {
@@ -163,7 +165,7 @@ func TestCheckConstitution_StrictMode(t *testing.T) {
 	// strictMode=true, orphan present → Fail
 	check := checkConstitution(dir, registryPath, false, true)
 
-	if check.Status != CheckFail {
-		t.Errorf("strict mode + orphan Status = %q, want %q\n메시지: %s", check.Status, CheckFail, check.Message)
+	if check.Status != uikit.CheckFail {
+		t.Errorf("strict mode + orphan Status = %q, want %q\n메시지: %s", check.Status, uikit.CheckFail, check.Message)
 	}
 }

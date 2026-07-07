@@ -43,12 +43,13 @@ import (
 // newSpecAuditCmd constructs the cobra command implementing `moai spec audit`.
 //
 // Flags:
-//   --json                       Emit AuditResult as JSON on stdout per AC-LSG-007.
-//   --filter-era <era>           Restrict drift_findings to one era
-//                                (V2.x / V3R2-R4 / V3R5 / V3R6 / unclassified).
-//   --include-grandfathered      Surface pre-V3R6 SPECs as INFO findings.
-//   --strict                     Exit code 1 when any MUST-FIX drift finding exists.
-//   --base-dir <path>            Project root (defaults to current working directory).
+//
+//	--json                       Emit AuditResult as JSON on stdout per AC-LSG-007.
+//	--filter-era <era>           Restrict drift_findings to one era
+//	                             (V2.x / V3R2-R4 / V3R5 / V3R6 / unclassified).
+//	--include-grandfathered      Surface pre-V3R6 SPECs as INFO findings.
+//	--strict                     Exit code 1 when any MUST-FIX drift finding exists.
+//	--base-dir <path>            Project root (defaults to current working directory).
 func newSpecAuditCmd() *cobra.Command {
 	var (
 		jsonOutput           bool
@@ -78,7 +79,7 @@ Drift patterns (V3R6 only):
   - Y_Y_Y_Y_StatusDrift   all 4 phase markers + valid SHAs but status != completed
 
 Each MUST-FIX finding includes a remediation command (typically
-`+"`moai spec close <SPEC-ID> --backfill-only`"+`) that resolves the drift.
+` + "`moai spec close <SPEC-ID> --backfill-only`" + `) that resolves the drift.
 
 JSON output schema (--json):
   {
@@ -164,17 +165,18 @@ func renderAuditResult(cmd *cobra.Command, result *spec.AuditResult, jsonOutput,
 // renderAuditHuman emits a human-readable summary of the audit result.
 //
 // Format:
-//   Audit summary
-//   =============
-//   Total SPECs:        <N>
-//   Grandfathered:      <N> (pre-V3R6 — protected)
-//   Modern-era clean:   <N>
-//   Drift findings:     <N>
 //
-//   Findings:
-//     [MUST-FIX] SPEC-XXX (V3R6) — Y_Y_Y_Y_StatusDrift
-//                Remediation: moai spec close SPEC-XXX --backfill-only
-//     [INFO]     SPEC-YYY (V2.x) — Grandfathered
+//	Audit summary
+//	=============
+//	Total SPECs:        <N>
+//	Grandfathered:      <N> (pre-V3R6 — protected)
+//	Modern-era clean:   <N>
+//	Drift findings:     <N>
+//
+//	Findings:
+//	  [MUST-FIX] SPEC-XXX (V3R6) — Y_Y_Y_Y_StatusDrift
+//	             Remediation: moai spec close SPEC-XXX --backfill-only
+//	  [INFO]     SPEC-YYY (V2.x) — Grandfathered
 //
 // The format prioritizes scannability over machine readability; downstream
 // consumers that need structured data should use --json.

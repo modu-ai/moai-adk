@@ -1,7 +1,7 @@
 package cli
 
 // @MX:NOTE: [AUTO] layout v2.1 helpers for moai init: compact header and
-// Next-steps block. Replaces the full-screen PrintBanner + PrintWelcomeMessage
+// Next-steps block. Replaces the full-screen uikit.PrintBanner + uikit.PrintWelcomeMessage
 // pair so repeat invocations are not noisy.
 
 import (
@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/tui"
@@ -25,8 +26,8 @@ func renderInitHeader(rootPath string, opts project.InitOptions, profileName str
 		title += " · " + opts.ProjectName
 	}
 
-	pairs := []kvPair{
-		{"Target", rootPath},
+	pairs := []uikit.KVPair{
+		{Key: "Target", Value: rootPath},
 	}
 	if profileName != "" {
 		profileDesc := profileName
@@ -40,12 +41,12 @@ func renderInitHeader(rootPath string, opts project.InitOptions, profileName str
 		if len(extras) > 0 {
 			profileDesc += " (" + strings.Join(extras, ", ") + ")"
 		}
-		pairs = append(pairs, kvPair{"Profile", profileDesc})
+		pairs = append(pairs, uikit.KVPair{Key: "Profile", Value: profileDesc})
 	}
 
 	th := resolveTheme()
 	body := "Initialize a new MoAI project in this directory."
-	if details := renderKeyValueLines(pairs); details != "" {
+	if details := uikit.RenderKeyValueLines(pairs); details != "" {
 		body += "\n\n" + details
 	}
 	return tui.Box(tui.BoxOpts{
@@ -69,7 +70,7 @@ func renderInitNextSteps(projectRoot, projectName string) string {
 		cdTarget = ""
 	}
 
-	lines := []string{"", "Next steps", cliMuted.Render("──────────")}
+	lines := []string{"", "Next steps", uikit.MutedStyle.Render("──────────")}
 	step := 1
 	if cdTarget != "" {
 		lines = append(lines, fmt.Sprintf("  %d. cd %s", step, cdTarget))

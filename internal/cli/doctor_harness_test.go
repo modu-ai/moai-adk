@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 )
 
 func writeFile(t *testing.T, path, body string) {
@@ -72,7 +74,7 @@ triggers:
 func TestRunHarnessCheck_AllPass(t *testing.T) {
 	root := fullySetupHarnessLayout(t)
 	check := runHarnessCheck(root)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Errorf("status = %v, want OK; msg=%s; detail=%s", check.Status, check.Message, check.Detail)
 	}
 	for _, layer := range []string{"L1:PASS", "L2:PASS", "L3:PASS", "L4:PASS", "L5:PASS"} {
@@ -85,7 +87,7 @@ func TestRunHarnessCheck_AllPass(t *testing.T) {
 func TestRunHarnessCheck_NoHarnessDir(t *testing.T) {
 	root := t.TempDir()
 	check := runHarnessCheck(root)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Errorf("expected OK when harness not configured, got %v", check.Status)
 	}
 }
@@ -95,7 +97,7 @@ func TestRunHarnessCheck_L5Missing(t *testing.T) {
 	// Remove a required L5 file
 	_ = os.Remove(filepath.Join(root, ".moai", "harness", "main.md"))
 	check := runHarnessCheck(root)
-	if check.Status != CheckFail {
+	if check.Status != uikit.CheckFail {
 		t.Errorf("expected FAIL, got %v", check.Status)
 	}
 	if !strings.Contains(check.Message, "L5:FAIL") {
@@ -110,7 +112,7 @@ func TestRunHarnessCheck_L3MarkerUnpaired(t *testing.T) {
 	doubled := string(claudeMd) + "\n<!-- moai:harness-start id=\"X\" -->\n<!-- moai:harness-end -->\n"
 	writeFile(t, filepath.Join(root, "CLAUDE.md"), doubled)
 	check := runHarnessCheck(root)
-	if check.Status != CheckFail {
+	if check.Status != uikit.CheckFail {
 		t.Errorf("expected FAIL for duplicate marker")
 	}
 }
@@ -120,7 +122,7 @@ func TestRunHarnessCheck_L4MissingImport(t *testing.T) {
 	// Overwrite plan.md without import line
 	writeFile(t, filepath.Join(root, ".claude", "skills", "moai", "workflows", "plan.md"), "# plan no import\n")
 	check := runHarnessCheck(root)
-	if check.Status != CheckFail {
+	if check.Status != uikit.CheckFail {
 		t.Errorf("expected FAIL when L4 import missing")
 	}
 }
@@ -139,7 +141,7 @@ triggers:
 ---
 `)
 	check := runHarnessCheck(root)
-	if check.Status != CheckWarn {
+	if check.Status != uikit.CheckWarn {
 		t.Errorf("expected WARN with prefix conflict, got %v: %s", check.Status, check.Message)
 	}
 	if !strings.Contains(check.Detail, "harness-foundation-core") {
@@ -188,7 +190,7 @@ func TestRunHarnessCheck_GoodAgentPasses(t *testing.T) {
 	writeHarnessAgent(t, root, "ios-architect",
 		"name: ios-architect\ndescription: iOS 도메인 아키텍처 설계 시 활성\nskills:\n  - harness-ios-patterns")
 	check := runHarnessCheck(root)
-	if check.Status == CheckFail {
+	if check.Status == uikit.CheckFail {
 		t.Errorf("good agent should not FAIL: msg=%s detail=%s", check.Message, check.Detail)
 	}
 }
@@ -201,7 +203,7 @@ func TestRunHarnessCheck_EmptyAgentDescription(t *testing.T) {
 	writeHarnessAgent(t, root, "ios-architect",
 		"name: ios-architect\ndescription:\nskills:\n  - harness-ios-patterns")
 	check := runHarnessCheck(root)
-	if check.Status != CheckFail {
+	if check.Status != uikit.CheckFail {
 		t.Errorf("expected FAIL for empty description, got %v (%s)", check.Status, check.Detail)
 	}
 	if !strings.Contains(check.Detail, "description") {
@@ -219,7 +221,7 @@ func TestRunHarnessCheck_MissingSkillsKey(t *testing.T) {
 	writeHarnessAgent(t, root, "ios-engineer",
 		"name: ios-engineer\ndescription: iOS 구현 시 활성")
 	check := runHarnessCheck(root)
-	if check.Status != CheckFail {
+	if check.Status != uikit.CheckFail {
 		t.Errorf("expected FAIL for missing skills: key, got %v (%s)", check.Status, check.Detail)
 	}
 	if !strings.Contains(check.Detail, "skills") {
@@ -240,7 +242,7 @@ func TestRunHarnessCheck_DanglingSkillReference(t *testing.T) {
 	writeHarnessAgent(t, root, "ios-architect",
 		"name: ios-architect\ndescription: iOS 설계 시 활성\nskills:\n  - harness-nonexistent")
 	check := runHarnessCheck(root)
-	if check.Status != CheckFail {
+	if check.Status != uikit.CheckFail {
 		t.Errorf("expected FAIL for dangling skill ref, got %v (%s)", check.Status, check.Detail)
 	}
 	if !strings.Contains(check.Detail, "harness-nonexistent") {
@@ -257,7 +259,7 @@ func TestRunHarnessCheck_TemplateSkillNotDangling(t *testing.T) {
 	writeHarnessAgent(t, root, "ios-architect",
 		"name: ios-architect\ndescription: iOS 설계 시 활성\nskills:\n  - moai-domain-frontend")
 	check := runHarnessCheck(root)
-	if check.Status == CheckFail {
+	if check.Status == uikit.CheckFail {
 		t.Errorf("moai-* skill reference must NOT be treated as dangling (EC-4): %s", check.Detail)
 	}
 }
@@ -268,7 +270,7 @@ func TestRunHarnessCheck_TemplateSkillNotDangling(t *testing.T) {
 func TestRunHarnessCheck_NoGeneratedAgents(t *testing.T) {
 	root := fullySetupHarnessLayout(t)
 	check := runHarnessCheck(root)
-	if check.Status == CheckFail {
+	if check.Status == uikit.CheckFail {
 		t.Errorf("no generated agents → agent-frontmatter checks must not FAIL: %s", check.Detail)
 	}
 }

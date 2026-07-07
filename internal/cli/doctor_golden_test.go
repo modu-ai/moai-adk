@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 )
 
 // updateDoctorGolden controls golden snapshot regeneration. Set via UPDATE_GOLDEN=1.
@@ -239,13 +241,13 @@ func TestCheckGoRuntime_UsesGoVersionHelper(t *testing.T) {
 // TestCheckStatusToTUI verifies the status mapping is correct.
 func TestCheckStatusToTUI(t *testing.T) {
 	tests := []struct {
-		status CheckStatus
+		status uikit.CheckStatus
 		want   string
 	}{
-		{CheckOK, "ok"},
-		{CheckWarn, "warn"},
-		{CheckFail, "err"},
-		{CheckStatus("unknown"), "info"},
+		{uikit.CheckOK, "ok"},
+		{uikit.CheckWarn, "warn"},
+		{uikit.CheckFail, "err"},
+		{uikit.CheckStatus("unknown"), "info"},
 	}
 	for _, tt := range tests {
 		got := checkStatusToTUI(tt.status)
@@ -281,7 +283,7 @@ func TestNewChecks_Names(t *testing.T) {
 		}
 		// status must be one of the valid values
 		switch c.Status {
-		case CheckOK, CheckWarn, CheckFail:
+		case uikit.CheckOK, uikit.CheckWarn, uikit.CheckFail:
 			// valid
 		default:
 			t.Errorf("check %q returned invalid status %q", tc.name, c.Status)
@@ -289,11 +291,11 @@ func TestNewChecks_Names(t *testing.T) {
 	}
 }
 
-// TestGlamourCacheIsWarn verifies the D8 placeholder returns CheckWarn (not CheckFail).
+// TestGlamourCacheIsWarn verifies the D8 placeholder returns uikit.CheckWarn (not uikit.CheckFail).
 func TestGlamourCacheIsWarn(t *testing.T) {
 	c := checkGlamourCache(false)
-	if c.Status != CheckWarn {
-		t.Errorf("Glamour Cache D8 placeholder should return CheckWarn, got %q", c.Status)
+	if c.Status != uikit.CheckWarn {
+		t.Errorf("Glamour Cache D8 placeholder should return uikit.CheckWarn, got %q", c.Status)
 	}
 }
 

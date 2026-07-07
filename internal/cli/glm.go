@@ -3,7 +3,7 @@ package cli
 // @MX:NOTE: [AUTO] GLM command launches Claude Code with GLM backend via Z.AI proxy
 // @MX:NOTE: [AUTO] Requires 'moai glm setup <key>' to save API key to ~/.moai/.env.glm
 // @MX:NOTE: [AUTO] Main session uses GLM: 128K/200K/1M context windows per model tier (high=glm-5.2)
-// @MX:NOTE: [AUTO] M6-S2 DDD: renderSuccessCard used in enableTeamMode (L285, L325); WARNING block on stderr is plain fmt by design (non-TTY safe)
+// @MX:NOTE: [AUTO] M6-S2 DDD: uikit.RenderSuccessCard used in enableTeamMode (L285, L325); WARNING block on stderr is plain fmt by design (non-TTY safe)
 
 import (
 	"bufio"
@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/statusline"
@@ -304,7 +305,7 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 			return fmt.Errorf("ensure settings.local.json: %w", err)
 		}
 
-		_, _ = fmt.Fprintln(out, renderSuccessCard(
+		_, _ = fmt.Fprintln(out, uikit.RenderSuccessCard(
 			"CG mode enabled (Claude + GLM)",
 			"",
 			"Architecture: Lead (Claude) + Teammates (GLM)",
@@ -344,7 +345,7 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 				"    4. /moai --team \"task\""
 		}
 
-		_, _ = fmt.Fprintln(out, renderSuccessCard(
+		_, _ = fmt.Fprintln(out, uikit.RenderSuccessCard(
 			"GLM Team mode enabled",
 			"",
 			"Architecture: All agents use GLM models",

@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/harness"
 )
 
@@ -21,7 +22,7 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 
 	harnessDir := filepath.Join(projectRoot, ".moai", "harness")
 	if _, err := os.Stat(harnessDir); os.IsNotExist(err) {
-		check.Status = CheckOK
+		check.Status = uikit.CheckOK
 		check.Message = ".moai/harness/ not present (no harness configured)"
 		return check
 	}
@@ -93,15 +94,15 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 
 	switch {
 	case len(failures) > 0:
-		check.Status = CheckFail
+		check.Status = uikit.CheckFail
 		check.Message = strings.Join(statuses, " ")
 		check.Detail = strings.Join(failures, "; ") + warnSuffix
 	case warnSuffix != "":
-		check.Status = CheckWarn
+		check.Status = uikit.CheckWarn
 		check.Message = strings.Join(statuses, " ") + " (with prefix conflicts)"
 		check.Detail = warnSuffix
 	default:
-		check.Status = CheckOK
+		check.Status = uikit.CheckOK
 		check.Message = strings.Join(statuses, " ")
 	}
 	return check

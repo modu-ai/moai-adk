@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/hook"
@@ -637,7 +638,7 @@ func TestExportDiagnostics_SingleCheckWithDetail(t *testing.T) {
 	exportPath := filepath.Join(tmpDir, "diag.json")
 
 	checks := []DiagnosticCheck{
-		{Name: "TestCheck", Status: CheckWarn, Message: "warning", Detail: "detailed info"},
+		{Name: "TestCheck", Status: uikit.CheckWarn, Message: "warning", Detail: "detailed info"},
 	}
 
 	if err := exportDiagnostics(exportPath, checks); err != nil {
@@ -662,7 +663,7 @@ func TestExportDiagnostics_SingleCheckWithDetail(t *testing.T) {
 func TestCheckGit_VerboseMode(t *testing.T) {
 	check := checkGit(true)
 	// In CI/test environments, git is typically available
-	if check.Status == CheckOK {
+	if check.Status == uikit.CheckOK {
 		if check.Detail == "" {
 			t.Error("verbose mode with git available should populate Detail")
 		}
@@ -671,7 +672,7 @@ func TestCheckGit_VerboseMode(t *testing.T) {
 		}
 	}
 	// If git not found, that's also a valid test path
-	if check.Status == CheckFail {
+	if check.Status == uikit.CheckFail {
 		if check.Detail == "" {
 			t.Error("failed checkGit should have install hint in Detail")
 		}

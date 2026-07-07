@@ -1,4 +1,4 @@
-package cli
+package uikit_test
 
 import (
 	"bytes"
@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 )
 
 // updateBannerGolden controls golden snapshot regeneration. Set via UPDATE_GOLDEN=1.
@@ -77,7 +79,7 @@ func captureStdout(fn func()) (string, error) {
 // TestPrintBanner_OutputFormat verifies the banner output contains expected elements.
 func TestPrintBanner_OutputFormat(t *testing.T) {
 	output, err := captureStdout(func() {
-		PrintBanner("1.2.3")
+		uikit.PrintBanner("1.2.3")
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -95,13 +97,13 @@ func TestPrintBanner_OutputFormat(t *testing.T) {
 
 	for _, expected := range expectedStrings {
 		if !strings.Contains(output, expected) {
-			t.Errorf("PrintBanner output should contain %q, got:\n%s", expected, output)
+			t.Errorf("uikit.PrintBanner output should contain %q, got:\n%s", expected, output)
 		}
 	}
 
 	// Verify output is not empty
 	if len(output) == 0 {
-		t.Error("PrintBanner should produce output")
+		t.Error("uikit.PrintBanner should produce output")
 	}
 }
 
@@ -128,7 +130,7 @@ func TestPrintBanner_WithVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			output, err := captureStdout(func() {
-				PrintBanner(tt.version)
+				uikit.PrintBanner(tt.version)
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -136,7 +138,7 @@ func TestPrintBanner_WithVersion(t *testing.T) {
 
 			// Verify version is in output
 			if !strings.Contains(output, tt.version) {
-				t.Errorf("PrintBanner should contain version %q, got:\n%s", tt.version, output)
+				t.Errorf("uikit.PrintBanner should contain version %q, got:\n%s", tt.version, output)
 			}
 		})
 	}
@@ -145,7 +147,7 @@ func TestPrintBanner_WithVersion(t *testing.T) {
 // TestPrintBanner_EmptyVersion verifies banner handles empty version gracefully.
 func TestPrintBanner_EmptyVersion(t *testing.T) {
 	output, err := captureStdout(func() {
-		PrintBanner("")
+		uikit.PrintBanner("")
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -153,18 +155,18 @@ func TestPrintBanner_EmptyVersion(t *testing.T) {
 
 	// Should still produce output (banner and description)
 	if len(output) == 0 {
-		t.Error("PrintBanner with empty version should still produce output")
+		t.Error("uikit.PrintBanner with empty version should still produce output")
 	}
 
 	// Should contain MoAI branding
 	if !strings.Contains(output, "MoAI") {
-		t.Error("PrintBanner should contain MoAI branding")
+		t.Error("uikit.PrintBanner should contain MoAI branding")
 	}
 }
 
 // --- DDD PRESERVE Phase: Golden-snapshot characterization tests ---
 //
-// These tests capture the BEFORE state of PrintBanner / PrintWelcomeMessage output
+// These tests capture the BEFORE state of uikit.PrintBanner / uikit.PrintWelcomeMessage output
 // (terra cotta / purple lipgloss styles) and serve as the regression baseline for
 // Step 2 DDD IMPROVE, which replaces the body with tui-derived rendering.
 //
@@ -177,7 +179,7 @@ func TestPrintBanner_EmptyVersion(t *testing.T) {
 //
 // To regenerate snapshots: UPDATE_GOLDEN=1 go test ./internal/cli/ -run "TestBanner_Current|TestWelcome_Current" -count=1
 
-// TestBanner_Current_Light captures PrintBanner output with light-theme env.
+// TestBanner_Current_Light captures uikit.PrintBanner output with light-theme env.
 // Characteristics: deep teal Accent color (tui.Theme().Accent), MoAI ASCII art banner + 3 tui.Pill.
 // Note: Go version is embedded in the golden snapshot — re-run UPDATE_GOLDEN=1 when Go toolchain updates.
 func TestBanner_Current_Light(t *testing.T) {
@@ -187,18 +189,18 @@ func TestBanner_Current_Light(t *testing.T) {
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.26.0") // pin Go version for cross-toolchain deterministic golden
 
 	got, err := captureStdout(func() {
-		PrintBanner("1.0.0")
+		uikit.PrintBanner("1.0.0")
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) == 0 {
-		t.Fatal("PrintBanner produced no output")
+		t.Fatal("uikit.PrintBanner produced no output")
 	}
 	checkBannerGolden(t, "banner-current-light", got)
 }
 
-// TestBanner_Current_Dark captures PrintBanner output with dark-theme env.
+// TestBanner_Current_Dark captures uikit.PrintBanner output with dark-theme env.
 // Characteristics: deep teal Accent color (tui.DarkTheme().Accent), MoAI ASCII art banner + 3 tui.Pill.
 // Note: Go version is embedded in the golden snapshot — re-run UPDATE_GOLDEN=1 when Go toolchain updates.
 func TestBanner_Current_Dark(t *testing.T) {
@@ -208,18 +210,18 @@ func TestBanner_Current_Dark(t *testing.T) {
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.26.0") // pin Go version for cross-toolchain deterministic golden
 
 	got, err := captureStdout(func() {
-		PrintBanner("1.0.0")
+		uikit.PrintBanner("1.0.0")
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) == 0 {
-		t.Fatal("PrintBanner produced no output")
+		t.Fatal("uikit.PrintBanner produced no output")
 	}
 	checkBannerGolden(t, "banner-current-dark", got)
 }
 
-// TestBanner_NoColor captures PrintBanner output with NO_COLOR=1 (no ANSI escape).
+// TestBanner_NoColor captures uikit.PrintBanner output with NO_COLOR=1 (no ANSI escape).
 // tui.MonochromeTheme() is used; all colours are empty; Pill degrades to [label] plain text.
 func TestBanner_NoColor(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
@@ -227,66 +229,66 @@ func TestBanner_NoColor(t *testing.T) {
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.26.0") // pin Go version for cross-toolchain deterministic golden
 
 	got, err := captureStdout(func() {
-		PrintBanner("1.0.0")
+		uikit.PrintBanner("1.0.0")
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) == 0 {
-		t.Fatal("PrintBanner produced no output")
+		t.Fatal("uikit.PrintBanner produced no output")
 	}
 	checkBannerGolden(t, "banner-current-nocolor", got)
 }
 
-// TestWelcome_Current_Light captures PrintWelcomeMessage output with light-theme env.
+// TestWelcome_Current_Light captures uikit.PrintWelcomeMessage output with light-theme env.
 // Characteristics: deep teal Accent color (tui.LightTheme().Accent), bold title.
 func TestWelcome_Current_Light(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "light")
 
 	got, err := captureStdout(func() {
-		PrintWelcomeMessage()
+		uikit.PrintWelcomeMessage()
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) == 0 {
-		t.Fatal("PrintWelcomeMessage produced no output")
+		t.Fatal("uikit.PrintWelcomeMessage produced no output")
 	}
 	checkBannerGolden(t, "welcome-current-light", got)
 }
 
-// TestWelcome_Current_Dark captures PrintWelcomeMessage output with dark-theme env.
+// TestWelcome_Current_Dark captures uikit.PrintWelcomeMessage output with dark-theme env.
 // Characteristics: deep teal Accent color (tui.DarkTheme().Accent), bold title.
 func TestWelcome_Current_Dark(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "dark")
 
 	got, err := captureStdout(func() {
-		PrintWelcomeMessage()
+		uikit.PrintWelcomeMessage()
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) == 0 {
-		t.Fatal("PrintWelcomeMessage produced no output")
+		t.Fatal("uikit.PrintWelcomeMessage produced no output")
 	}
 	checkBannerGolden(t, "welcome-current-dark", got)
 }
 
-// TestWelcome_NoColor captures PrintWelcomeMessage output with NO_COLOR=1.
+// TestWelcome_NoColor captures uikit.PrintWelcomeMessage output with NO_COLOR=1.
 // tui.MonochromeTheme() is used; all colours and Bold are suppressed; output is plain text only.
 func TestWelcome_NoColor(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
 
 	got, err := captureStdout(func() {
-		PrintWelcomeMessage()
+		uikit.PrintWelcomeMessage()
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) == 0 {
-		t.Fatal("PrintWelcomeMessage produced no output")
+		t.Fatal("uikit.PrintWelcomeMessage produced no output")
 	}
 	checkBannerGolden(t, "welcome-current-nocolor", got)
 }

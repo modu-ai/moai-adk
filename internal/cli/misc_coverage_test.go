@@ -670,54 +670,6 @@ func TestRunPrePush_DisabledByDefault(t *testing.T) {
 	}
 }
 
-// --- PrintWelcomeMessage tests ---
-
-func TestPrintWelcomeMessage_OutputFormat(t *testing.T) {
-	output, err := captureStdout(func() {
-		PrintWelcomeMessage()
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(output) == 0 {
-		t.Error("PrintWelcomeMessage should produce output")
-	}
-
-	expectedStrings := []string{
-		"Welcome",
-		"MoAI-ADK",
-		"Initialization",
-		"Ctrl+C",
-	}
-
-	for _, expected := range expectedStrings {
-		if !strings.Contains(output, expected) {
-			t.Errorf("PrintWelcomeMessage output should contain %q, got:\n%s", expected, output)
-		}
-	}
-}
-
-func TestPrintWelcomeMessage_MultipleCallsConsistent(t *testing.T) {
-	output1, err := captureStdout(func() {
-		PrintWelcomeMessage()
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	output2, err := captureStdout(func() {
-		PrintWelcomeMessage()
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if output1 != output2 {
-		t.Error("PrintWelcomeMessage should produce consistent output across calls")
-	}
-}
-
 // --- removeGLMEnv tests ---
 
 func TestRemoveGLMEnv_FileNotFound(t *testing.T) {

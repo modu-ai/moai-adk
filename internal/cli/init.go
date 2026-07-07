@@ -15,6 +15,7 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/foundation"
@@ -314,8 +315,8 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) {
 		// Print banner and welcome message
-		PrintBanner(version.GetVersion())
-		PrintWelcomeMessage()
+		uikit.PrintBanner(version.GetVersion())
+		uikit.PrintWelcomeMessage()
 
 		// Use RunWithDefaultsModes when --standard or --advanced is set; otherwise
 		// fall back to RunWithDefaults for Quick mode backward-compat (REQ-IWE-006).
@@ -432,16 +433,16 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	// Display success message
 	details := []string{
-		renderKeyValueLines([]kvPair{
-			{"Directories", fmt.Sprintf("%d created", len(result.CreatedDirs))},
-			{"Files", fmt.Sprintf("%d created", len(result.CreatedFiles))},
+		uikit.RenderKeyValueLines([]uikit.KVPair{
+			{Key: "Directories", Value: fmt.Sprintf("%d created", len(result.CreatedDirs))},
+			{Key: "Files", Value: fmt.Sprintf("%d created", len(result.CreatedFiles))},
 		}),
 	}
 	for _, w := range result.Warnings {
-		details = append(details, cliWarn.Render("Warning: "+w))
+		details = append(details, uikit.WarnStyle.Render("Warning: "+w))
 	}
 	_, _ = fmt.Fprintln(cmd.OutOrStdout())
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), renderSuccessCard("MoAI project initialized", details...))
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), uikit.RenderSuccessCard("MoAI project initialized", details...))
 
 	// Sync profile preferences to project config (after template deployment)
 	if err := profile.SyncToProjectConfig(opts.ProjectRoot, prefs); err != nil {

@@ -24,6 +24,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"github.com/spf13/cobra"
@@ -408,7 +409,7 @@ func TestCheckGit_VerbosePath(t *testing.T) {
 	if check.Message == "" {
 		t.Error("checkGit verbose message should not be empty")
 	}
-	if check.Status == CheckOK && check.Detail == "" {
+	if check.Status == uikit.CheckOK && check.Detail == "" {
 		t.Error("checkGit verbose with OK status should include path detail")
 	}
 }
@@ -834,7 +835,7 @@ func TestExportDiagnostics_WritesJSON(t *testing.T) {
 	outputPath := filepath.Join(tmpDir, "diagnostics.json")
 
 	checks := []DiagnosticCheck{
-		{Name: "Test", Status: CheckOK, Message: "ok"},
+		{Name: "Test", Status: uikit.CheckOK, Message: "ok"},
 	}
 
 	err := exportDiagnostics(outputPath, checks)
@@ -977,10 +978,10 @@ func TestCheckMoAIConfig_VerboseOKPath(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
 	check := checkMoAIConfig(true)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Logf("checkMoAIConfig status=%v (may depend on cwd state)", check.Status)
 	}
-	if check.Status == CheckOK && check.Detail == "" {
+	if check.Status == uikit.CheckOK && check.Detail == "" {
 		t.Error("verbose checkMoAIConfig with OK status should have non-empty Detail")
 	}
 }
@@ -1006,18 +1007,18 @@ func TestCheckClaudeConfig_VerboseOKPath(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
 	check := checkClaudeConfig(true)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Logf("checkClaudeConfig status=%v (may depend on cwd state)", check.Status)
 	}
-	if check.Status == CheckOK && check.Detail == "" {
+	if check.Status == uikit.CheckOK && check.Detail == "" {
 		t.Error("verbose checkClaudeConfig with OK status should have non-empty Detail")
 	}
 }
 
 // =============================================================================
 // runDoctor — fix=true with failCount > 0 (doctor.go:95)
-// Run in a dir without .moai — MoAI Config check returns CheckWarn (not Fail)
-// Trigger CheckFail by running in a minimal tmpDir
+// Run in a dir without .moai — MoAI Config check returns uikit.CheckWarn (not Fail)
+// Trigger uikit.CheckFail by running in a minimal tmpDir
 // =============================================================================
 
 func TestRunDoctor_FixWithFailures(t *testing.T) {

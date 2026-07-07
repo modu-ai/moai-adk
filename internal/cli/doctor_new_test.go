@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 )
 
 // --- Tests for GitInstallHint (additional coverage) ---
@@ -54,24 +56,24 @@ func TestCheckGit_Name(t *testing.T) {
 
 func TestCheckGit_VerboseShowsPath(t *testing.T) {
 	check := checkGit(true)
-	if check.Status == CheckOK && check.Detail == "" {
+	if check.Status == uikit.CheckOK && check.Detail == "" {
 		t.Error("verbose checkGit should have Detail when git is available")
 	}
-	if check.Status == CheckOK && !strings.Contains(check.Detail, "path:") {
+	if check.Status == uikit.CheckOK && !strings.Contains(check.Detail, "path:") {
 		t.Errorf("verbose Detail should contain 'path:', got %q", check.Detail)
 	}
 }
 
 func TestCheckGit_NonVerboseNoPath(t *testing.T) {
 	check := checkGit(false)
-	if check.Status == CheckOK && check.Detail != "" {
+	if check.Status == uikit.CheckOK && check.Detail != "" {
 		t.Errorf("non-verbose checkGit should not have Detail when OK, got %q", check.Detail)
 	}
 }
 
 func TestCheckGit_FailIncludesInstallHint(t *testing.T) {
 	check := checkGit(false)
-	if check.Status == CheckFail {
+	if check.Status == uikit.CheckFail {
 		if check.Detail == "" {
 			t.Error("failed checkGit should include install hint in Detail")
 		}
@@ -83,10 +85,10 @@ func TestCheckGit_FailIncludesInstallHint(t *testing.T) {
 
 func TestCheckGit_StatusIsValid(t *testing.T) {
 	check := checkGit(false)
-	validStatuses := map[CheckStatus]bool{
-		CheckOK:   true,
-		CheckWarn: true,
-		CheckFail: true,
+	validStatuses := map[uikit.CheckStatus]bool{
+		uikit.CheckOK:   true,
+		uikit.CheckWarn: true,
+		uikit.CheckFail: true,
 	}
 	if !validStatuses[check.Status] {
 		t.Errorf("checkGit returned invalid status %q", check.Status)
@@ -107,9 +109,9 @@ func TestExportDiagnostics_JSONFormat(t *testing.T) {
 	exportPath := filepath.Join(tmpDir, "diag.json")
 
 	checks := []DiagnosticCheck{
-		{Name: "Check1", Status: CheckOK, Message: "all good"},
-		{Name: "Check2", Status: CheckWarn, Message: "warning", Detail: "detail info"},
-		{Name: "Check3", Status: CheckFail, Message: "failed"},
+		{Name: "Check1", Status: uikit.CheckOK, Message: "all good"},
+		{Name: "Check2", Status: uikit.CheckWarn, Message: "warning", Detail: "detail info"},
+		{Name: "Check3", Status: uikit.CheckFail, Message: "failed"},
 	}
 
 	if err := exportDiagnostics(exportPath, checks); err != nil {
@@ -193,7 +195,7 @@ func TestExportDiagnostics_NilChecks(t *testing.T) {
 func TestExportDiagnostics_InvalidPath(t *testing.T) {
 	// Writing to a path inside a nonexistent directory should fail.
 	err := exportDiagnostics("/nonexistent/dir/diag.json", []DiagnosticCheck{
-		{Name: "Test", Status: CheckOK, Message: "ok"},
+		{Name: "Test", Status: uikit.CheckOK, Message: "ok"},
 	})
 	if err == nil {
 		t.Fatal("exportDiagnostics should error for invalid path")
@@ -205,7 +207,7 @@ func TestExportDiagnostics_IndentedJSON(t *testing.T) {
 	exportPath := filepath.Join(tmpDir, "pretty.json")
 
 	checks := []DiagnosticCheck{
-		{Name: "Test", Status: CheckOK, Message: "ok"},
+		{Name: "Test", Status: uikit.CheckOK, Message: "ok"},
 	}
 
 	if err := exportDiagnostics(exportPath, checks); err != nil {
@@ -232,7 +234,7 @@ func TestExportDiagnostics_DetailOmittedWhenEmpty(t *testing.T) {
 	exportPath := filepath.Join(tmpDir, "omit.json")
 
 	checks := []DiagnosticCheck{
-		{Name: "NoDetail", Status: CheckOK, Message: "ok"},
+		{Name: "NoDetail", Status: uikit.CheckOK, Message: "ok"},
 	}
 
 	if err := exportDiagnostics(exportPath, checks); err != nil {
@@ -255,7 +257,7 @@ func TestExportDiagnostics_DetailOmittedWhenEmpty(t *testing.T) {
 func TestDiagnosticCheck_JSONMarshal(t *testing.T) {
 	check := DiagnosticCheck{
 		Name:    "TestCheck",
-		Status:  CheckWarn,
+		Status:  uikit.CheckWarn,
 		Message: "test message",
 		Detail:  "test detail",
 	}
@@ -284,22 +286,22 @@ func TestDiagnosticCheck_JSONMarshal(t *testing.T) {
 	}
 }
 
-// --- Tests for CheckStatus constants ---
+// --- Tests for uikit.CheckStatus constants ---
 
 func TestCheckStatus_Values(t *testing.T) {
 	tests := []struct {
 		name   string
-		status CheckStatus
+		status uikit.CheckStatus
 		want   string
 	}{
-		{"ok", CheckOK, "ok"},
-		{"warn", CheckWarn, "warn"},
-		{"fail", CheckFail, "fail"},
+		{"ok", uikit.CheckOK, "ok"},
+		{"warn", uikit.CheckWarn, "warn"},
+		{"fail", uikit.CheckFail, "fail"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if string(tt.status) != tt.want {
-				t.Errorf("CheckStatus %s = %q, want %q", tt.name, tt.status, tt.want)
+				t.Errorf("uikit.CheckStatus %s = %q, want %q", tt.name, tt.status, tt.want)
 			}
 		})
 	}
@@ -325,10 +327,10 @@ func TestRunDiagnosticChecks_AllChecksHaveNames(t *testing.T) {
 
 func TestRunDiagnosticChecks_AllChecksHaveValidStatus(t *testing.T) {
 	checks := runDiagnosticChecks(false, "")
-	validStatuses := map[CheckStatus]bool{
-		CheckOK:   true,
-		CheckWarn: true,
-		CheckFail: true,
+	validStatuses := map[uikit.CheckStatus]bool{
+		uikit.CheckOK:   true,
+		uikit.CheckWarn: true,
+		uikit.CheckFail: true,
 	}
 	for i, check := range checks {
 		if !validStatuses[check.Status] {

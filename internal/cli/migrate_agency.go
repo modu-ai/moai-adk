@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/spf13/cobra"
 )
 
@@ -631,7 +632,7 @@ func runMigrateAgency(cmd *cobra.Command, _ []string) error {
 
 	result, err := m.Run()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, RenderError(err))
+		fmt.Fprintln(os.Stderr, uikit.RenderError(err))
 		if me, ok := err.(*MigrateError); ok {
 			switch me.Code {
 			case ErrMigrateNoSource:

@@ -138,7 +138,7 @@ type profileSetupText struct {
 	// git-convention.yaml via the shared nested write seam (settings.WriteProjectNestedConfig),
 	// NOT the profile store. Each field has a title + desc. The web side already
 	// carries the matching f.quality.* / f.git_convention.* dotted keys in i18n.js;
-	// the schemaKeyToTUIField bridge maps each schema dotted key to these struct fields.
+	// the uikit.SchemaKeyToTUIField bridge maps each schema dotted key to these struct fields.
 	QualityCoverageTargetTitle string
 	QualityCoverageTargetDesc  string
 	QualityEnforceQualityTitle string

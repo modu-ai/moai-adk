@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
@@ -43,7 +44,7 @@ func TestI18nKeySetParity(t *testing.T) {
 			continue // WEB-console-only key-chip field — no TUI bridge entry by design (see helper)
 		}
 		for _, locale := range fourLocales {
-			label, ok := schemaKeyToTUIField(f.I18nKey, locale)
+			label, ok := uikit.SchemaKeyToTUIField(f.I18nKey, locale)
 			if !ok {
 				t.Errorf("schema field %q (key %q): no TUI bridge entry", f.Name, f.I18nKey)
 				continue
@@ -66,7 +67,7 @@ func TestI18nSegmentParity(t *testing.T) {
 	for _, seg := range settings.StatuslineSegmentKeys() {
 		key := "seg." + seg
 		for _, locale := range fourLocales {
-			label, ok := schemaKeyToTUIField(key, locale)
+			label, ok := uikit.SchemaKeyToTUIField(key, locale)
 			if !ok {
 				t.Errorf("segment key %q: no TUI bridge entry", key)
 				continue
@@ -78,19 +79,19 @@ func TestI18nSegmentParity(t *testing.T) {
 	}
 }
 
-// TestBridgeFieldDefResolver covers the fieldDefTUILabel convenience wrapper: every
+// TestBridgeFieldDefResolver covers the uikit.FieldDefTUILabel convenience wrapper: every
 // schema FieldDef resolves through it.
 func TestBridgeFieldDefResolver(t *testing.T) {
 	for _, f := range settings.AllFields() {
 		if isWebOnlyKeyChipField(f) {
 			continue // WEB-console-only key-chip field — no TUI bridge entry by design (see helper)
 		}
-		if _, ok := fieldDefTUILabel(f, "en"); !ok {
-			t.Errorf("fieldDefTUILabel could not resolve field %q (key %q)", f.Name, f.I18nKey)
+		if _, ok := uikit.FieldDefTUILabel(f, "en"); !ok {
+			t.Errorf("uikit.FieldDefTUILabel could not resolve field %q (key %q)", f.Name, f.I18nKey)
 		}
 	}
-	if _, ok := schemaKeyToTUIField("__nonexistent__", "en"); ok {
-		t.Error("schemaKeyToTUIField reported a bogus key as resolvable")
+	if _, ok := uikit.SchemaKeyToTUIField("__nonexistent__", "en"); ok {
+		t.Error("uikit.SchemaKeyToTUIField reported a bogus key as resolvable")
 	}
 }
 
@@ -106,7 +107,7 @@ func TestTUIRendersSchemaFieldSet(t *testing.T) {
 		if isWebOnlyKeyChipField(f) {
 			continue // WEB-console-only key-chip field — no TUI bridge entry by design (see helper)
 		}
-		if _, ok := schemaKeyToTUIField(f.I18nKey, "en"); !ok {
+		if _, ok := uikit.SchemaKeyToTUIField(f.I18nKey, "en"); !ok {
 			t.Errorf("schema field %q has no TUI bridge label path (AC-WC10-010)", f.Name)
 		}
 	}

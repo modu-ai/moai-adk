@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/harness"
 	"github.com/modu-ai/moai-adk/internal/hook"
@@ -266,13 +267,13 @@ func runHookList(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 
 	if deps == nil || deps.HookRegistry == nil {
-		_, _ = fmt.Fprintln(out, renderInfoCard("Registered Hook Handlers", "Hook system not initialized."))
+		_, _ = fmt.Fprintln(out, uikit.RenderInfoCard("Registered Hook Handlers", "Hook system not initialized."))
 		return nil
 	}
 
 	events := hook.ValidEventTypes()
 	totalHandlers := 0
-	var pairs []kvPair
+	var pairs []uikit.KVPair
 	for _, event := range events {
 		handlers := deps.HookRegistry.Handlers(event)
 		count := len(handlers)
@@ -282,14 +283,14 @@ func runHookList(cmd *cobra.Command, _ []string) error {
 			if count > 1 {
 				label = "handlers"
 			}
-			pairs = append(pairs, kvPair{string(event), fmt.Sprintf("%d %s", count, label)})
+			pairs = append(pairs, uikit.KVPair{Key: string(event), Value: fmt.Sprintf("%d %s", count, label)})
 		}
 	}
 
 	if totalHandlers == 0 {
-		_, _ = fmt.Fprintln(out, renderInfoCard("Registered Hook Handlers", "No handlers registered."))
+		_, _ = fmt.Fprintln(out, uikit.RenderInfoCard("Registered Hook Handlers", "No handlers registered."))
 	} else {
-		_, _ = fmt.Fprintln(out, renderCard("Registered Hook Handlers", renderKeyValueLines(pairs)))
+		_, _ = fmt.Fprintln(out, uikit.RenderCard("Registered Hook Handlers", uikit.RenderKeyValueLines(pairs)))
 	}
 
 	return nil
