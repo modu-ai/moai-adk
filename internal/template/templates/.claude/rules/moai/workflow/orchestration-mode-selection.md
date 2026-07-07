@@ -87,6 +87,8 @@ The orchestrator collects the following signals before traversing the decision t
 - **concurrency benefit**: HIGH for research-heavy work (parallel reads, independent perspectives); LOW for coding-heavy work (Anthropic's coding-task parallelism caveat — most coding tasks involve fewer truly parallelizable tasks than research)
 - **Agent Teams prereqs status**: each of the three Agent Teams capability-gate conditions individually verified
 
+The numeric auto-select thresholds — **≥ 3 domains, ≥ 10 files, or complexity score ≥ 7** — are stated here as the single prose SSOT; the machine-readable source is `.moai/config/sections/workflow.yaml` `auto_selection` (`min_domains_for_team`, `min_files_for_team`, `min_complexity_score`). Dispatch and skill surfaces cross-reference this section instead of restating the numbers inline.
+
 ### §B.1b Auto-mode pre-launch classifier (CC 2.1.178+)
 
 When Claude Code runs in **auto mode** (per-tool auto-approval, paired with `/goal` for unattended loops), a pre-launch classifier evaluates each subagent spawn before it is dispatched — the classifier gates whether a spawn proceeds without a per-tool approval prompt. This is a platform-level mechanism that runs ahead of the Phase 0.95 mode-selection logic documented here; Phase 0.95 selects which mode the orchestrator uses to structure work, while the auto-mode classifier gates the per-spawn approval surface underneath that choice. The two are complementary: `/goal` (see `.claude/rules/moai/workflow/goal-directive.md`) removes per-turn STOP prompts, auto mode removes per-tool approval prompts, and Phase 0.95 mode selection decides HOW the orchestrator fans out. An active auto-mode classifier does NOT relax Implementation Kickoff Approval (the plan-to-implement human gate) — the human gate is decided before any run-phase work begins, and the classifier only governs per-spawn approval latency within an already-approved run.
@@ -228,6 +230,33 @@ The following patterns violate the orchestration mode selection contract:
 - **`--mode` dispatch axis** (CLI flag, NOT touched here): governs WHICH `/moai run` workflow variant runs — `autopilot` vs `loop` (Ralph) vs `team` vs the rejected `pipeline`.
 
 [ZONE:Frozen] [HARD] Mode 6 (`workflow`) is added ONLY to the execution-mode catalog. It is NOT a new `--mode` dispatch value; no `--mode workflow` flag is introduced; the `run.md` Mode Dispatch sentinel set (`MODE_UNKNOWN` / `MODE_TEAM_UNAVAILABLE` / `MODE_PIPELINE_ONLY_UTILITY`) is unchanged. The header cross-reference above already notes the two axes "interact with — but are separate from" each other; this separation is preserved.
+
+---
+
+## §G.1 — Dispatch-Axis Crosswalk (`--mode` values + scale-table labels → catalog modes)
+
+> **Correspondence, not merge.** This crosswalk documents how each `--mode` dispatch-axis value and each Phase 0.95 scale-table label CORRESPONDS to a catalog mode. It does NOT merge the two axes: per §G they remain separate, the `--mode` value set `{autopilot, loop, team, pipeline}` is unchanged, no `--mode workflow` value is introduced, and the Mode Dispatch sentinel set (`MODE_UNKNOWN` / `MODE_TEAM_UNAVAILABLE` / `MODE_PIPELINE_ONLY_UTILITY`) is untouched.
+
+### `--mode` dispatch-axis values → catalog modes
+
+| `--mode` value | Corresponds to catalog mode | Notes |
+|----------------|------------------------------|-------|
+| `autopilot` | Mode 5 (`sub-agent`) | Default single-lead orchestration; the Phase 0.95 scale-based selection chooses the envelope (see scale-label rows below). |
+| `loop` | Mode 5 (`sub-agent`) | Ralph-engine diagnostic fix-loop variant — sequential per-iteration delegation. The granularity differs (diagnostics, not phases) but the spawn shape is the Mode 5 sequential sub-agent. |
+| `team` | Mode 3 (`agent-team`) | Resolves through the §C.1 capability gate; when the gate fails, an explicit `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back per the Mode Resolver. |
+| `pipeline` | Mode 5 (`sub-agent`) — utility subcommands only | Rejected on multi-agent subcommands (`MODE_PIPELINE_ONLY_UTILITY`); on the utility subcommands where it is valid, the execution shape is sequential direct / sub-agent processing. |
+
+### Phase 0.95 scale-table labels → catalog modes
+
+| Scale label | Corresponds to catalog mode | Envelope |
+|-------------|------------------------------|----------|
+| Fix | Mode 5 (`sub-agent`) | Minimal envelope — single implementation agent + orchestrator verification batch. |
+| Focused | Mode 5 (`sub-agent`) | Focused envelope — single implementation agent with domain context injected. |
+| Standard | Mode 5 (`sub-agent`) | Standard envelope — planning + implementation + audit, sequential. |
+| Full Pipeline | Mode 5 (`sub-agent`) | Full envelope — full sequential agent chain (plan → implement → audit → docs). |
+| Team | Mode 3 (`agent-team`) | Resolves through the SAME §C.1 capability gate as auto-select — a forced `--team` flag and the flag-free auto-select path both pass the gate; the flag never bypasses it. |
+
+Every `--mode` value and every scale label corresponds to exactly one catalog mode. Mode 1 (trivial), Mode 2 (background), Mode 4 (parallel), and Mode 6 (workflow) have NO dispatch-axis or scale-label counterpart — they are selectable only via the Phase 0.95 decision tree (§B). This asymmetry is expected and is further evidence the two axes are distinct.
 
 ---
 
