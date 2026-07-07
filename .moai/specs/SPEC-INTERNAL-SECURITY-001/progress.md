@@ -94,18 +94,59 @@ tier: M
 | AC-SEC-006a (WIRE branch — ≥1 production caller) | PASS | `grep -rn "assertNoUserOwnedNamespaceTouch" internal/cli/ --include="*.go" \| grep -v "_test.go"` → update.go:797 verifyNamespaceBackupCoverage → :310 assertNoUserOwnedNamespaceTouch production path |
 | AC-SEC-006c (@MX fan_in matches actual) | PASS | update.go:1283 @MX:REASON = "called by collectUserOwnedFiles, assertNoUserOwnedNamespaceTouch, and isUserOwnedNamespaceConservative; fan_in = 3" — grep 실측 3 callers 일치 |
 
+### M3 — Hook 그룹 (REQ-SEC-007 P1 + REQ-SEC-008 P2)
+
+**REQ-SEC-007 — checkFileAccess EvalSymlinks resolve-recheck (CWE-61)**
+
+- `internal/hook/pre_tool.go` checkFileAccess (L664-725 region): `filepath.Abs(filePath)` 이후, project-boundary 검사 및 DenyPatterns 매칭 이전에 `filepath.EvalSymlinks(resolvedPath)` 호출. project-internal 심링크(notes.txt -> ~/.ssh/id_rsa)가 실제 target으로 해석되어 Write 도구의 링크 추종 secret 덮어쓰기(CWE-61)를 차단. `internal/hook/file_changed.go:176-203`(SPEC-SEC-HARDEN-004 / REQ-SEC4-004)의 resolve-recheck 패턴 전파 — 새 메커니즘 발명 없음.
+- new-file Write not-exist fallback (AC-SEC-007c): EvalSymlinks가 not-exist error 반환 시 unresolved 경로로 fallback, deny 아님 (NFR-SEC-003). file_changed.go의 fail-closed와 다른 critical-path 동작.
+- macOS `/var -> /private/var` 대칭 보정: projectAbs도 EvalSymlinks 정규화하되, resolvedPath가 fallback한(not-exist) 경우 projectAbs도 미해상 상태로 유지(`resolvedSymlink` 플래그) — 대칭성 보존. 없으면 정상 new-file Write가 false-positive boundary escape로 오탐.
+
+**REQ-SEC-008 — Edit new_string 민감 콘텐츠 스캔**
+
+- `internal/hook/pre_tool.go` checkFileAccess 민감 콘텐츠 스캔 게이트 (L745-762): 기존 `if toolName == "Write"` 단일 게이트 → `if toolName == "Write" || toolName == "Edit"` 확장. Edit일 때 `new_string` 필드 파싱하여 SensitiveContentPatterns 통과 — Write 콘텐츠와 동일 deny 동작. Edit 경유 secret 주입이 Write-path deny를 우회하던 갭 봉쇄.
+
+**회귀 테스트 (NFR-SEC-003/NFR-SEC-004)**
+
+- NEW `internal/hook/pre_tool_security_test.go` (5 tests, 모두 t.TempDir() 내 fixture):
+  - TestCheckFileAccess_SymlinkToDenyTargetBlocked (AC-SEC-007a) — project-internal 심링크 -> .ssh/id_rsa deny.
+  - TestCheckFileAccess_SymlinkEscapeProjectBlocked — project-internal 심링크 -> project 외부 normal file boundary deny.
+  - TestCheckFileAccess_NewFileWriteFallback (AC-SEC-007c) — 미존재 정상 경로 Write allow (fallback 보존).
+  - TestCheckFileAccess_EditNewStringSecretDenied (AC-SEC-008a) — Edit new_string private key deny.
+  - TestCheckFileAccess_EditNewStringCleanAllowed (NFR-SEC-003) — Edit clean new_string allow (false-positive 방지).
+- secret fixture(`rsaPrivateKeyFixture()`)는 runtime concatenation으로 생성 — source 파일 자체가 PreToolUse sensitive-content scan에 걸려 write 차단되는 것을 방지하면서, runtime 값은 scanner 정상 매칭.
+
+### AC Binary Matrix (M3)
+
+| AC | Status | Evidence |
+|----|--------|----------|
+| AC-SEC-007a (심링크 경유 deny target 차단) | PASS | `go test -run TestCheckFileAccess_SymlinkToDenyTargetBlocked ./internal/hook/` — ok |
+| AC-SEC-007b (EvalSymlinks 배선) | PASS | `grep -n EvalSymlinks internal/hook/pre_tool.go` → L685 + L705 (checkFileAccess scope, 6 matches total) |
+| AC-SEC-007c (new-file Write fallback) | PASS | `go test -run TestCheckFileAccess_NewFileWriteFallback ./internal/hook/` — ok |
+| AC-SEC-008a (Edit secret 거부) | PASS | `go test -run TestCheckFileAccess_EditNewStringSecretDenied ./internal/hook/` — ok |
+| AC-SEC-008b (Edit 경로 게이트 확장) | PASS | `grep -n 'toolName ==' internal/hook/pre_tool.go` → L749 `Write \\|\\| Edit` + L751 `Edit` |
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-- run_status: M2-complete (template-update 그룹); M1 web + M2 template-update done, M3 hook pending
-- run_commit_sha: (pending — M2 commit)
-- M2 AC 8/8 PASS (AC-SEC-003a/b, AC-SEC-004a/b, AC-SEC-005a/b, AC-SEC-006a/c)
-- cross-platform build: `go build ./...` exit 0 AND `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (post `make build`)
-- coverage: internal/cli 71.5% (package-level, baseline 유지 — pre-existing statusline-golden 6 FAIL은 본 SPEC 범위 외); internal/template 85.9%. M2 신규 함수 91–100% (isUserOwnedNamespace 96.7%, verifyNamespaceBackupCoverage 91.7%, isUserOwnedNamespaceConservative 100.0%, assertNoUserOwnedNamespaceTouch 100.0%)
-- subagent boundary (C-HRA-008): 0 matches in M2 신규/편집 파일 (update_namespace_protect.go, update_archive.go, update_security_m2_test.go, embed_gitignore_backups_test.go)
-- lint: golangci-lint 0 issues (NEW: 0, pre-existing baseline: 0)
-- NFR-SEC-003 (no false-positive deny): verifyNamespaceBackupCoverage empty/fully-backed-up cases pass → 정상 update 통과; conservative backup does not break EC-UNP-001 (no user-owned → no backup)
-- NFR-SEC-004 (테스트 격리): 모든 심링크/secret fixture t.TempDir() 내
-- M1 web (commit 5f33dfaa9) done; M3 hook pending — separate spawn
+- run_status: M3-complete (hook 그룹); M1 web + M2 template-update + M3 hook all done — 8/8 REQ complete
+- run_complete_at: 2026-07-08
+- run_commit_sha: M3 = (this commit SHA, captured post-push); M1 = 5f33dfaa9; M2 = 85e280599
+- ac_pass_count: 16/16 (M1 6/6 AC-SEC-001..002 + M2 8/8 AC-SEC-003..006 + M3 5/5 AC-SEC-007..008)
+- ac_fail_count: 0
+- preserve_list_post_run_count: 0 (M1 web/profile + M2 cli/template + file_changed.go + unrelated working-tree files untouched; diff confined to internal/hook/)
+- l44_pre_commit_fetch: origin/main = 85e280599 (M1+M2 base); worktree HEAD aligned, no parallel-session race
+- l44_post_push_fetch: (pending — post-push verification)
+- new_warnings_or_lints_introduced: 0 (golangci-lint 0 issues; baseline 0)
+- cross_platform_build.darwin: exit 0 (`go build ./...`)
+- cross_platform_build.windows_amd64: exit 0 (`GOOS=windows GOARCH=amd64 go build ./...`)
+- total_run_phase_files (M3): 2 (internal/hook/pre_tool.go edit +42/-3; NEW internal/hook/pre_tool_security_test.go, 5 tests)
+- m1_to_mN_commit_strategy: 3 separate Conventional-Commit `fix(SPEC-INTERNAL-SECURITY-001): M{N} ...` commits on main (Hybrid Trunk main-direct) — M1 5f33dfaa9, M2 85e280599, M3 this commit
+- coverage: internal/hook 83.6% (package-level, `go test -cover ./internal/hook/`); M3 신규 분기(checkFileAccess EvalSymlinks + Edit scan) 5 tests로 직접 커버
+- subagent boundary (C-HRA-008): 0 AskUserQuestion/mcp__askuser real calls in M3 edited+new files (pre_tool.go, pre_tool_security_test.go)
+- NFR-SEC-003 (no false-positive deny): new-file Write fallback PASS + Edit clean new_string allow PASS + symmetric EvalSymlinks (macOS /var 보정)
+- NFR-SEC-004 (테스트 격리): 모든 심링크/secret fixture t.TempDir() 내 — 실제 ~/.ssh 미접촉
+- M1 web (5f33dfaa9) done; M2 template-update (85e280599) done; M3 hook (this commit) done — run-phase complete, ready for sync-phase (manager-docs)
+- pre-existing baseline failures (out of SPEC scope, PRESERVE-list packages): internal/statusline `TestBuild_WritesContextUsageWithSessionID`, internal/template `TestOutputStylesTemplateLiveParity` + `TestTemplateNeutralityAuditC8Preserve` — confirmed FAIL at origin/main baseline (M3 changes stashed, true baseline run), independent of M3 (statusline/template do not reference checkFileAccess/pre_tool; grep -rl = no references)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

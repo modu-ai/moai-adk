@@ -667,6 +667,26 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 		return DecisionDeny, "Invalid file path: cannot resolve"
 	}
 
+	// SPEC-INTERNAL-SECURITY-001 REQ-SEC-007: resolve symlinks before the
+	// project-boundary check and DenyPatterns matching. A project-internal
+	// symlink (e.g. notes.txt -> ~/.ssh/id_rsa) passes the lexical boundary
+	// check and matches no deny pattern on its unresolved form, but the Write
+	// tool then follows the link and overwrites the real secret (CWE-61).
+	// EvalSymlinks resolves the real target so both downstream checks see the
+	// actual destination. This mirrors the file_changed.go resolve-recheck
+	// pattern (SPEC-SEC-HARDEN-004 / REQ-SEC4-004).
+	//
+	// Unlike file_changed.go (which fails-closed on EvalSymlinks error), this
+	// is the CRITICAL path: a Write to a not-yet-existing path (new file) MUST
+	// still succeed. When EvalSymlinks returns an error (not-exist for a
+	// new-file Write, or otherwise unresolvable), fall back to the unresolved
+	// path and do NOT deny (NFR-SEC-003 behavior preservation, AC-SEC-007c).
+	resolvedSymlink := false
+	if realPath, evalErr := filepath.EvalSymlinks(resolvedPath); evalErr == nil {
+		resolvedPath = realPath
+		resolvedSymlink = true
+	}
+
 	// Check if path is within project directory
 	if h.projectDir != "" {
 		projectAbs, absErr := filepath.Abs(h.projectDir)
@@ -674,6 +694,18 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 			// Cannot resolve project directory, skip boundary check
 			slog.Debug("cannot resolve project directory", "error", absErr)
 		} else {
+			// Normalize projectAbs via EvalSymlinks ONLY when resolvedPath was
+			// also resolved, so the boundary comparison stays symmetric. If
+			// resolvedPath fell back to its unresolved form (new-file Write),
+			// keep projectAbs unresolved too — otherwise a symlinked project
+			// prefix (macOS /var -> /private/var) would make a legitimate
+			// in-project new-file look like an escape (false-positive deny,
+			// NFR-SEC-003 violation). Mirrors file_changed.go's normRoot.
+			if resolvedSymlink {
+				if resolvedProject, evalErr := filepath.EvalSymlinks(projectAbs); evalErr == nil {
+					projectAbs = resolvedProject
+				}
+			}
 			// Normalize both paths to Unicode NFC before comparison.
 			// macOS HFS+/APFS stores paths in NFD form, but tools like
 			// Claude Code may send paths in NFC form. Without normalization,
@@ -710,9 +742,16 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 		}
 	}
 
-	// For Write operations, check content for secrets
-	if toolName == "Write" {
-		content, ok := parsed["content"].(string)
+	// Check content for sensitive data. Write carries the payload in "content";
+	// Edit carries the replacement in "new_string" (REQ-SEC-008). Both must be
+	// scanned so a secret injected via Edit cannot bypass the deny that the
+	// identical Write content would trigger.
+	if toolName == "Write" || toolName == "Edit" {
+		contentField := "content"
+		if toolName == "Edit" {
+			contentField = "new_string"
+		}
+		content, ok := parsed[contentField].(string)
 		if ok && content != "" {
 			for _, pattern := range h.policy.SensitiveContentPatterns {
 				if pattern.MatchString(content) {
