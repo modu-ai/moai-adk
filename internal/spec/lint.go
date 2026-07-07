@@ -960,6 +960,7 @@ var terminalStatusEnum = map[string]bool{
 	"superseded": true,
 	"archived":   true,
 	"rejected":   true, // future-proof: not currently used, kept for future extension
+	"completed":  true, // V3R6 3-phase lifecycle terminal state (reached via the sync commit)
 }
 
 // StatusGitConsistencyRule checks if SPEC frontmatter status agrees with git log

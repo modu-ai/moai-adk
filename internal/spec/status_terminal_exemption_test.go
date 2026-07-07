@@ -147,3 +147,85 @@ func TestStatusGitConsistency_ArchivedIsTerminal_InProgress(t *testing.T) {
 		t.Errorf("terminal state 'archived'는 finding을 emit하지 않아야 한다; got %d finding(s): %v", len(findings), findings)
 	}
 }
+
+// TestStatusGitConsistency_CompletedIsTerminal_Implemented verifies Pattern H.
+// frontmatter status='completed', git-implied='implemented' -> no finding.
+// 'completed' is the V3R6 3-phase lifecycle terminal state (reached via the
+// sync commit); like superseded/archived/rejected it must not be flagged as a
+// drift false positive when its git-implied status naturally diverges.
+//
+// NOTE: the SPEC-ID MUST end in a pure-digit segment so ExtractSPECIDs
+// (regex `SPEC-[A-Z0-9-]+-[0-9]+`) can parse it — otherwise the walker's
+// commitMatchesSPECID filter rejects every commit, getGitImpliedStatus errors
+// out, and StatusGitConsistencyRule.Check short-circuits via the L990-993
+// graceful-skip, producing a vacuous 0-finding PASS regardless of the enum
+// entry (the D2 vacuous-RED hazard from plan.md §F M1).
+func TestStatusGitConsistency_CompletedIsTerminal_Implemented(t *testing.T) {
+	// git fixture: feat commit -> git-implied 'implemented'
+	dir := setupGitFixture(t, []fixtureCommit{
+		{title: "feat(SPEC-TERMH-001): 구현 완료"},
+	})
+
+	orig, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd 실패: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir 실패: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(orig) })
+
+	doc := &SPECDoc{
+		Path: "fake/SPEC-TERMH-001/spec.md",
+		Frontmatter: SPECFrontmatter{
+			ID:     "SPEC-TERMH-001",
+			Status: "completed",
+		},
+	}
+
+	rule := &StatusGitConsistencyRule{}
+	findings := rule.Check(doc, nil)
+
+	if len(findings) != 0 {
+		t.Errorf("terminal state 'completed'는 finding을 emit하지 않아야 한다; got %d finding(s): %v", len(findings), findings)
+	}
+}
+
+// TestStatusGitConsistency_RejectedIsTerminal_Implemented verifies Pattern I.
+// frontmatter status='rejected', git-implied='implemented' -> no finding.
+// 'rejected' is already in terminalStatusEnum (lint.go:962), but no test
+// previously covered it (inline comment: "future-proof: not currently used").
+// This test closes the characterization gap so future removal of 'rejected'
+// from the enum would surface as a regression here. Uses a parseable SPEC-ID
+// (final segment pure digits) so the test exercises the getGitImpliedStatus
+// path rather than short-circuiting vacuously.
+func TestStatusGitConsistency_RejectedIsTerminal_Implemented(t *testing.T) {
+	// git fixture: feat commit -> git-implied 'implemented'
+	dir := setupGitFixture(t, []fixtureCommit{
+		{title: "feat(SPEC-TERMI-001): 구현 완료"},
+	})
+
+	orig, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd 실패: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir 실패: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(orig) })
+
+	doc := &SPECDoc{
+		Path: "fake/SPEC-TERMI-001/spec.md",
+		Frontmatter: SPECFrontmatter{
+			ID:     "SPEC-TERMI-001",
+			Status: "rejected",
+		},
+	}
+
+	rule := &StatusGitConsistencyRule{}
+	findings := rule.Check(doc, nil)
+
+	if len(findings) != 0 {
+		t.Errorf("terminal state 'rejected'는 finding을 emit하지 않아야 한다; got %d finding(s): %v", len(findings), findings)
+	}
+}
