@@ -52,7 +52,7 @@
 - sync_complete_at: 2026-07-08
 - sync_artifacts: spec.md frontmatter in-progress→completed + progress §E.3/§E.4 signals + §I 실측값 + CHANGELOG entry
 - token_self_measure: §I = 30,304,046 tokens_spent / cache_hit_ratio 0.9229 / session-set / high / 2 sessions — 본 SPEC 도입 메커니즘의 첫 실측 적용 (dogfood). throwaway `cmd/selfmeasure` 헬퍼로 `Attribute()`+`WriteSectionI()` 실행 후 헬퍼 삭제.
-- sync_commit_sha: <backfill — sync commit 직후 별도 chore commit에서 기록>
+- sync_commit_sha: f88d0226f
 - residual: plan-phase 세션 UUID 미회수 (측정 누락分); CLI write 경로 미연결 (현재 library-only — 후속 SPEC에서 `moai` CLI §I write 연동)
 
 ## §F Phase 0.95 Mode Selection
