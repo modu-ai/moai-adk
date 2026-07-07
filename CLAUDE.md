@@ -130,32 +130,16 @@ MoAI uses DDD and TDD as its development methodologies, selected via quality.yam
 ### MoAI Command Flow
 
 - /moai plan "description" → manager-spec subagent
-- /moai run SPEC-XXX → manager-develop subagent (with cycle_type per quality.yaml development_mode)
+- /moai run SPEC-XXX → manager-develop subagent (cycle_type per quality.yaml development_mode)
 - /moai sync SPEC-XXX → manager-docs subagent
-
-For detailed workflow specifications, see .claude/rules/moai/workflow/spec-workflow.md
 
 ### Agent Chain for SPEC Execution
 
-- Phase 1 (plan-phase): manager-spec → SPEC artifacts (spec/plan/acceptance/research/design)
-- Phase 2 (plan audit gate): plan-auditor → independent skeptical audit, bias prevention, GEARS compliance verification
-- Phase 3 (run-phase): manager-develop → implementation (cycle_type ∈ {ddd, tdd, autofix}); for domain-specific work (backend/frontend/security/etc.) the orchestrator spawns `Agent(general-purpose)` with domain whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C migration table
-- Phase 4 (sync-phase): manager-docs → CHANGELOG/README/docs + frontmatter status transitions (in-progress → implemented)
-- Phase 5 (sync audit gate): sync-auditor → independent 4-dimension quality scoring (Functionality/Security/Craft/Consistency)
-- Phase 6 (optional, Tier L OR explicit `--pr`): manager-git → branch creation + `gh pr create` + Late-Branch closure per Tier-based PR Routing
+Phases: plan (manager-spec) → plan-audit (plan-auditor) → run (manager-develop, cycle_type ∈ {ddd, tdd, autofix}; domain-specific work spawns `Agent(general-purpose)` with domain whitelist per `archived-agent-rejection.md` §C) → sync (manager-docs) → sync-audit (sync-auditor) → [optional Tier L OR `--pr`] PR (manager-git). For detailed phase specs, team-based parallel execution, and Late-Branch closure, see `.claude/rules/moai/workflow/spec-workflow.md`.
 
 ### MX Tag Integration
 
-All phases include @MX code annotation management (plan: identify targets; run: create/update tags; sync: validate + add missing). MX tag types:
-
-- `@MX:NOTE` - Context and intent delivery
-- `@MX:WARN` - Danger zone (requires @MX:REASON)
-- `@MX:ANCHOR` - Invariant contract (high fan_in functions)
-- `@MX:TODO` - Incomplete work (resolved in GREEN phase)
-
-For MX protocol details, see .claude/rules/moai/workflow/mx-tag-protocol.md
-
-For team-based parallel execution of these phases, see .claude/skills/moai/team/plan.md and .claude/skills/moai/team/run.md.
+All phases include @MX code annotation management (plan: identify targets; run: create/update; sync: validate + add missing). Tag types: `@MX:NOTE` (context/intent), `@MX:WARN` (danger zone, requires @MX:REASON), `@MX:ANCHOR` (invariant contract, high fan_in), `@MX:TODO` (incomplete, resolved in GREEN). Details: `.claude/rules/moai/workflow/mx-tag-protocol.md`.
 
 ---
 
@@ -292,7 +276,7 @@ Per the current worktree-opt-in policy, L2/L3 worktree usage is user opt-in. L1 
 
 ## 15. Agent Teams (Experimental)
 
-MoAI supports optional Agent Teams mode for parallel phase execution. Activation requires Claude Code v2.1.32+, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env, and `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml`. Mode selection: `--team` (force teams) / `--solo` (force sub-agent) / no flag (complexity-based auto-select: domains ≥ 3, files ≥ 10, or score ≥ 7). Teams are implicit — spawn teammates via `Agent(name=...)` and the team forms on first spawn (one team per session, no nested teams; `TeamCreate`/`TeamDelete` removed in v2.1.178; cleanup automatic on session exit). Team APIs: SendMessage, TaskCreate/Update/List/Get; team hook events TeammateIdle (exit 2 = keep working), TaskCompleted (exit 2 = reject completion). For complete Agent Teams documentation (team API reference, role profiles, file ownership strategy, team workflows, configuration), see .claude/rules/moai/workflow/spec-workflow.md and .moai/config/sections/workflow.yaml.
+MoAI supports optional Agent Teams mode for parallel phase execution (Claude Code v2.1.32+, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, `workflow.team.enabled: true`). Mode selection: `--team`/`--solo`/no flag (auto-select: domains ≥ 3, files ≥ 10, or score ≥ 7). Teams are implicit (`Agent(name=...)`, team forms on first spawn; cleanup automatic on exit). For complete documentation (team API, role profiles, file ownership, hooks), see `.claude/rules/moai/workflow/spec-workflow.md`.
 
 ### CG Mode (Claude + GLM Cost Optimization)
 
@@ -315,22 +299,9 @@ MoAI-ADK supports CG Mode for 60-70% cost reduction on implementation-heavy task
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Activation**: `moai cg` (requires tmux). Uses tmux session-level env isolation.
+**Activation**: `moai cg` (requires tmux). **Use for**: implementation-heavy SPECs (run phase), code generation, test writing, doc generation. **Avoid**: planning/architecture (needs Opus reasoning), security reviews, complex debugging.
 
-**When to use**:
-- Implementation-heavy SPECs (run phase)
-- Code generation tasks
-- Test writing
-- Documentation generation
-
-**When NOT to use**:
-- Planning/architecture decisions (needs Opus reasoning)
-- Security reviews (needs Claude's security training)
-- Complex debugging (needs advanced reasoning)
-
-### Dynamic Workflows (Research Preview)
-
-Dynamic workflows are a third orchestration primitive alongside sub-agents and Agent Teams: a JavaScript script the runtime executes to orchestrate dozens-to-hundreds of subagents, with intermediate results kept in script variables rather than conversation context. Use for codebase-wide sweeps, large migrations, and cross-checked research; prefer sequential sub-agents for coding-heavy work. Workflow subagents cannot prompt the user — the AskUserQuestion boundary holds. Requires Claude Code v2.1.154+. See .claude/rules/moai/workflow/dynamic-workflows.md and .claude/rules/moai/workflow/goal-directive.md.
+> Dynamic Workflows (a third orchestration primitive — JS scripts orchestrating dozens-to-hundreds of subagents, intermediate results in script variables) and `/effort ultracode` are documented in `.claude/rules/moai/workflow/dynamic-workflows.md` and `.claude/rules/moai/workflow/goal-directive.md` (requires Claude Code v2.1.154+). Workflow subagents cannot prompt the user.
 
 ---
 
