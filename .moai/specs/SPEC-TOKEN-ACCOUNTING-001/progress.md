@@ -30,6 +30,10 @@
 - §I 실측 값 미기록(sync-phase 소관) — 본 마일스톤은 writer/스키마/회귀테스트만. §I placeholder는 그대로.
 - coverage: tokenusage 패키지 M1+M2+M3 합산 (M3 코드 신규 — `go test -cover`로 E3에서 실측). race clean. golangci-lint 0 issues(NEW). build host/windows exit 0.
 - @MX: `WriteSectionI` ANCHOR (sync-close 통합 지점), `BuildSectionI` NOTE (필드-스키마 1:1 매핑).
+- M4 (audit 표면) 완료 — `AuditResult.TokensSpent *int` (JSON `tokens_spent,omitempty`) 신규 필드 + `parseTokensSpentFromSectionI` 파서. M3 `BuildSectionI` 출력 포맷(`- tokens_spent: <int>`) round-trip 파싱. 단일 SPEC / `--filter-spec` 감사 시 노출; 다중 SPEC 감사는 nil (정밀도-정직 — 신뢰도 한정자가 다른 SPEC간 합산은 misleading). 미기록 §I → nil (fabricate 금지, REQ-TA-012).
+- AC PASS: AC-TA-010(`TestSpecAuditTokensSpent` 3 subcase: §I 있음→1860 / §I 없음→nil / §I 있으나 tokens_spent 라인 없음→nil) + `TestParseTokensSpentFromSectionI` 6 boundary subcase — `go test -run 'TestSpecAuditTokensSpent|TestParseTokensSpentFromSectionI' ./internal/spec/` PASS. AC-TA-012(중립성 grep 0 files) PASS.
+- coverage: 88.2% (internal/spec, M3-debt TestCloseSubjectDoctrineAmendment 제외 시 통과). internal/tokenusage 90.1% 유지. golangci-lint 0 issues. build host/windows exit 0.
+- 로컬 heading 상수 `sectionIHeading` 사용 (M4 worktree가 M3 `section_writer.go` 이전 base여서 회수 당시 cross-package import 불가; coupling 주석으로 문서화 — M3 heading 변경 시 lockstep 갱신 필요, sync-phase에서 `tokenusage.SectionIHeading` 재사용으로 DRY 정리 후보). CLI human-readable summary에 `Tokens spent:` 라인 추가(nice-to-have).
 
 ## §E.3 Run-phase Audit-Ready Signal
 

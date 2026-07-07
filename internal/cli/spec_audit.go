@@ -187,6 +187,12 @@ func renderAuditHuman(out interface{ Write(p []byte) (int, error) }, result *spe
 	_, _ = fmt.Fprintf(out, "Grandfathered:      %d (pre-V3R6 — protected)\n", result.Grandfathered)
 	_, _ = fmt.Fprintf(out, "Modern-era clean:   %d\n", result.ModernEraClean)
 	_, _ = fmt.Fprintf(out, "Drift findings:     %d\n", len(result.DriftFindings))
+	if result.TokensSpent != nil {
+		// M4 audit surface (REQ-TA-011): surfaced only for the single-SPEC /
+		// --filter-spec case. The value is a measurement baseline, not a
+		// billing-grade figure (see progress.md §I confidence qualifier).
+		_, _ = fmt.Fprintf(out, "Tokens spent:       %d\n", *result.TokensSpent)
+	}
 
 	if len(result.DriftFindings) == 0 {
 		_, _ = fmt.Fprintln(out, "\nNo drift findings — all modern-era SPECs clean.")
