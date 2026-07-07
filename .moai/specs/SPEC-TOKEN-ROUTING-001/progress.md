@@ -105,7 +105,7 @@ the Tier S ceiling. The SPEC touched 5 files (2 YAML + types.go + loader + test)
 
 - sync_status: audit-ready
 - sync_complete_at: 2026-07-08
-- sync_commit_sha: <pending — backfill in follow-up chore commit (established convention per SPEC-BRAND-DIR-REMOVE-001 2c637ece2)>
+- sync_commit_sha: f5d82dca1 (sync commit `docs(SPEC-TOKEN-ROUTING-001): sync-phase artifacts + 3-phase close`; backfilled in this follow-up chore commit per convention — SHA cannot be in its own commit, per SPEC-BRAND-DIR-REMOVE-001 `2c637ece2`)
 - sync_phase_owner: manager-docs
 - close_pattern: merged 3-phase close (in-progress → implemented → completed rides the single sync commit per Status Transition Ownership Matrix; no separate Mx chore commit)
 - ac_pass_count_final: 12
