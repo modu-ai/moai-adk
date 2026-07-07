@@ -138,3 +138,19 @@ residual_debt:
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 0.95 Mode Selection
+
+- 입력: tier=S(선언)/M(실측, D1 권장), files≈11, domains=5+(cli/spec/migration/constitution/rules+template), language-mix=Go test+markdown, concurrency-benefit=LOW(coding-heavy)
+- 평가: Mode 1 trivial X | Mode 2 background X(write 작업) | Mode 3 agent-team X(prereqs 미확보) | Mode 4 parallel X(coding-heavy caveat) | Mode 5 sub-agent **선택** | Mode 6 workflow X(<30 files, multi-rule)
+- Decision: sub-agent (Mode 5)
+- 근거: Anthropic coding-task parallelism caveat — 테스트 저작 + doc 정합은 coding-heavy로 순차 sub-agent가 안전. domain이 다수라도 coding-heavy면 Mode 4/6 우회하고 Mode 5 기본.
+
+## §G IGGDA Kickoff Predicate
+
+- (a) intent clarity 100%: PASS (resume 메시지 + AskUserQuestion 승인)
+- (b) plan-auditor PASS: PASS (PASS-WITH-DEBT 0.91, skip-eligible, F1-F5 전부 CONFIRMED at HEAD)
+- (c) Tier S or M: PASS (tier S 선언 / M 실측 — 양 쪽 모두 조건 만족)
+- (d) no dangerous keywords: FAIL ("migration" 키워드 매치 — §H.3 critical-infra 목록 over-inclusive; internal/migration 패키지 대상이나 database migration 아님에도 매치)
+- verdict: explicit-gate (조건 d FAIL) → mandatory blocking AskUserQuestion 발행 → 사용자 승인 획득 ("승인 — 즉시 run 진입 (권장)")
+- timestamp: 2026-07-08 / source_session_id: fe5490b1
