@@ -21,6 +21,10 @@
 - 읽기 소스: transcript JSONL `message.usage` 4필드 합산 (statusline 현재-점유 스냅샷과 별개, spec.md §A.2). `~/.claude/projects/**` read-only.
 - 회수 경위: 런타임이 manager-develop을 L1 격리 worktree(base f7b55e637)에 배치 → 코드를 shared checkout로 회수 후 독립 재검증. M2(귀속)/M3(§I writer)/M4(audit) 미착수 — 별도 spawn.
 - @MX: `SumSession` ANCHOR (공개 추출 계약), `CacheHitRatio` NOTE (0-분모 규칙).
+- M2 (귀속 레이어) 완료 — `Attribution` struct + `Attribute(progressPath, transcriptRootDir, specsDir, activeSessionUUID)` 공개 진입점 신규 추가. session-set 합산(REQ-TA-005), lineage 부재 폴백(REQ-TA-006), high/low 신뢰도 한정자(REQ-TA-007) 구현. M1 `SumSession`+`finalize` 재사용(중복 금지). 공유-UUID 교차검사(specsDir 스캔).
+- AC PASS: AC-TA-006(session-set+high, count=2) / AC-TA-007(lineage 부재→low 폴백, count=1) / edge §D.2(공유 UUID→low 강등) — `go test -run TestAttributionConfidence` PASS. REQ-TA-013(absent transcript skip-and-continue) / extractSessionUUIDs 6 subcase PASS.
+- coverage: 90.1% (M1 90.0% 유지). race clean. golangci-lint 0 issues. gofmt clean. build host/windows exit 0.
+- @MX: `Attribute` ANCHOR (M3/M4 다운스트림 통합 지점), `determineConfidence` NOTE (신뢰도 휴리스틱).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
