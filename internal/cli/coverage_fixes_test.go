@@ -816,8 +816,8 @@ func TestRunAgentHook_AllActionSuffixes(t *testing.T) {
 		{"test-validation", hook.EventPreToolUse},
 		{"test-verification", hook.EventPostToolUse},
 		{"test-completion", hook.EventSubagentStop},
-		{"ddd-pre-transformation", hook.EventPreToolUse},
-		{"ddd-post-transformation", hook.EventPostToolUse},
+		{"cycle-pre-transformation", hook.EventPreToolUse},
+		{"cycle-post-transformation", hook.EventPostToolUse},
 		{"backend-pre-implementation", hook.EventPreToolUse},
 		{"backend-post-implementation", hook.EventPostToolUse},
 	}

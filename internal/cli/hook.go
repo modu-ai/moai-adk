@@ -91,7 +91,7 @@ func init() {
 	hookCmd.AddCommand(&cobra.Command{
 		Use:          "agent [action]",
 		Short:        "Execute agent-specific hook action",
-		Long:         "Execute agent-specific hook actions like ddd-pre-transformation, backend-validation, etc.",
+		Long:         "Execute agent-specific hook actions like cycle-pre-transformation, backend-validation, etc.",
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE:         runAgentHook,
@@ -296,7 +296,7 @@ func runHookList(cmd *cobra.Command, _ []string) error {
 }
 
 // runAgentHook executes an agent-specific hook action.
-// Agent actions are like: ddd-pre-transformation, backend-validation, etc.
+// Agent actions are like: cycle-pre-transformation, backend-validation, etc.
 func runAgentHook(cmd *cobra.Command, args []string) error {
 	if deps == nil || deps.HookProtocol == nil || deps.HookRegistry == nil {
 		return fmt.Errorf("hook system not initialized")

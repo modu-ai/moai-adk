@@ -30,7 +30,7 @@ The description field is **read-only metadata** that Claude Code uses to decide 
 |-------|------------------|-----|
 | moai-domain-frontend | "React 19 / Next.js 16 component development with modern patterns" | Clear domain (React/Next) + capability (components) + keywords |
 | moai-ref-testing-pyramid | "Test strategy and pyramid patterns for unit/integration/E2E coverage" | Clear domain (testing) + specific patterns + coverage levels |
-| moai-library-shadcn | "shadcn/ui component library for React with TypeScript integration" | Clear library name + framework + integration |
+| moai-domain-frontend | "frontend development specialist for React 19 and Next.js 16" | Clear domain + framework + scope |
 
 **Bad Descriptions** (too vague, won't trigger):
 - "General programming help" (too broad)
@@ -46,7 +46,7 @@ The description field is **read-only metadata** that Claude Code uses to decide 
 
 **The skill should NOT trigger when**:
 - User is asking about a different domain (e.g., "help with Python" to a React skill)
-- The capability is handled by general knowledge (e.g., "basic syntax" for moai-library-shadcn)
+- The capability is handled by general knowledge (e.g., "basic syntax" for moai-domain-frontend)
 - The skill would duplicate general MoAI capabilities (e.g., moai-domain-backend shouldn't trigger for "debug this Go error")
 
 ### Paths Frontmatter for Smart Triggering

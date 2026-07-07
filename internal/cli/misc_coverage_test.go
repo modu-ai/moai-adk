@@ -24,13 +24,13 @@ func TestEndsWith(t *testing.T) {
 	}{
 		{
 			name:     "single suffix match",
-			s:        "ddd-pre-transformation",
+			s:        "cycle-pre-transformation",
 			suffixes: []string{"-pre-transformation"},
 			want:     true,
 		},
 		{
 			name:     "single suffix no match",
-			s:        "ddd-pre-transformation",
+			s:        "cycle-pre-transformation",
 			suffixes: []string{"-validation"},
 			want:     false,
 		},
@@ -472,7 +472,7 @@ func TestRunAgentHook_PreTransformationAction(t *testing.T) {
 	for _, cmd := range hookCmd.Commands() {
 		if cmd.Name() == "agent" {
 			cmd.SetContext(context.Background())
-			err := cmd.RunE(cmd, []string{"ddd-pre-transformation"})
+			err := cmd.RunE(cmd, []string{"cycle-pre-transformation"})
 			if err != nil {
 				t.Fatalf("runAgentHook error: %v", err)
 			}
