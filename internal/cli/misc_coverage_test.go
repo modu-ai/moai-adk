@@ -369,11 +369,11 @@ func TestRunAgentHook_ReadInputError(t *testing.T) {
 		if cmd.Name() == "agent" {
 			cmd.SetContext(context.Background())
 			err := cmd.RunE(cmd, []string{"test-validation"})
-			if err == nil {
-				t.Error("should error on ReadInput failure")
-			}
-			if !strings.Contains(err.Error(), "read hook input") {
-				t.Errorf("error should mention read hook input, got %v", err)
+			// runAgentHook gracefully degrades on ReadInput failure:
+			// warn to stderr + emit default output + exit 0 (no error returned).
+			// See internal/cli/hook.go runAgentHook "Same graceful degradation as runHookEvent".
+			if err != nil {
+				t.Errorf("should gracefully degrade on ReadInput failure (default emit + exit 0), got err: %v", err)
 			}
 			return
 		}

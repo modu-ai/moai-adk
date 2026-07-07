@@ -158,7 +158,7 @@ When a Mode 6 Workflow agent or a `/goal`-turn agent lacks a required input, tha
 
 ## §D — Logging Contract (progress.md § Mode Selection)
 
-Per the canonical mode-logging policy, the orchestrator MUST record its mode-selection decision in `.moai/specs/SPEC-{ID}/progress.md` under a `## §E — Phase 0.95 Mode Selection` (or analogous section name preserving the `Mode Selection` token for the grep acceptance criterion) before spawning the first run-phase `Agent()` call.
+Per the canonical mode-logging policy, the orchestrator MUST record its mode-selection decision in `.moai/specs/SPEC-{ID}/progress.md` under a `## §F Phase 0.95 Mode Selection` section (preserving the `Mode Selection` token for the grep acceptance criterion) before spawning the first run-phase `Agent()` call. The `§F` letter is allocated by the canonical progress.md Section Map in `.claude/rules/moai/development/spec-frontmatter-schema.md` § progress.md Section Map — Mode Selection MUST NOT reuse `§E` (the `§E.*` namespace is reserved for the era.go-parsed lifecycle-phase structure; overloading it would collide with era classification).
 
 ### §D.1 Required content
 
@@ -183,7 +183,7 @@ The grep count MUST be ≥ 1. In practice, naming the chosen mode anywhere withi
 
 ### §D.3 When to log a boundary case
 
-When the decision tree hit a boundary (e.g., scope = exactly 10 files, exactly 3 domains, harness = `standard` with team.enabled = true but env var unset), the orchestrator MUST additionally include a **Boundary Case** subsection documenting the tie-breaker rule that resolved the ambiguity. This enables retrospective analysis to recalibrate threshold values across SPEC groups (Epics).
+When the decision tree hit a boundary (e.g., scope = exactly 10 files, exactly 3 domains, harness = `standard` with team.enabled = true but env var unset), the orchestrator MUST additionally include a **Boundary Case** subsection documenting the tie-breaker rule that resolved the ambiguity. This enables retrospective analysis to recalibrate threshold values across SPEC cohorts.
 
 ---
 
@@ -292,7 +292,7 @@ The keyword list is enumerable at design time and extensible via rule-file edit 
 
 ### §H.4 Decision logging (auditable)
 
-[ZONE:Evolvable] [HARD] Every safe-condition predicate evaluation (either branch) MUST be logged to `.moai/specs/<SPEC-ID>/progress.md` under a `## §E IGGDA Kickoff Predicate` section with: condition (a) value, condition (b) value, condition (c) value, condition (d) value + any matched keyword, the final verdict (auto-proceed / explicit-gate / return-to-Phase-0 / surface-to-user), and a timestamp. This makes every auto-proceed post-hoc reviewable; a miscaptured intent that slipped through is detectable.
+[ZONE:Evolvable] [HARD] Every safe-condition predicate evaluation (either branch) MUST be logged to `.moai/specs/<SPEC-ID>/progress.md` under a `## §G IGGDA Kickoff Predicate` section with: condition (a) value, condition (b) value, condition (c) value, condition (d) value + any matched keyword, the final verdict (auto-proceed / explicit-gate / return-to-Phase-0 / surface-to-user), and a timestamp. This makes every auto-proceed post-hoc reviewable; a miscaptured intent that slipped through is detectable. The `§G` letter is allocated by the canonical progress.md Section Map in `.claude/rules/moai/development/spec-frontmatter-schema.md` § progress.md Section Map — the IGGDA Kickoff Predicate MUST NOT reuse `§E` (reserved for the era.go-parsed lifecycle structure).
 
 ### §H.5 Why this preserves the FROZEN-spirit (intent-verification-before-code)
 
@@ -328,7 +328,10 @@ No phase is skipped except by graceful degradation (when `/goal` is unavailable 
 
 ### §I.3 The auto-advance mechanism (moai-aware Stop hook)
 
-The Stop hook driver at `.claude/hooks/moai/iggda-phase-driver.sh` fires at turn-end, reads `progress.md` + invokes `moai spec audit --json --filter-spec=<SPEC-ID>`, and emits a `/goal`-style auto-advance signal when the current phase's safe-transition predicate holds. The user does NOT author a `/goal` condition string; the goal is derived from Socratic intent and auto-converted to the phase-transition signal by the driver. See `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` §4 for the Recovery-Signal Carve-Out (the driver exits 0 on recovery turns, never blocking a recovery).
+The Stop hook driver `iggda-phase-driver.sh` fires at turn-end, reads `progress.md` + invokes `moai spec audit --json --filter-spec=<SPEC-ID>`, and emits a `/goal`-style auto-advance signal when the current phase's safe-transition predicate holds. The user does NOT author a `/goal` condition string; the goal is derived from Socratic intent and auto-converted to the phase-transition signal by the driver. See `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` §4 for the Recovery-Signal Carve-Out (the driver exits 0 on recovery turns, never blocking a recovery).
+
+**Installation status (honest reference).** The driver ships via the template tree and is installed into a project's `.claude/hooks/moai/` on `moai init` / `moai update`. It is therefore present and active in any project that has run `moai update` since the driver shipped, and absent in a checkout that has not yet synced. The driver is neither phantom (it exists and ships) nor unconditionally active in every session (a given checkout may not have it installed yet); its presence depends on whether the project has synced the template. When it is absent, the auto-advance degrades gracefully to per-turn progression (§I.1: "No phase is skipped except by graceful degradation").
+
 
 ---
 
