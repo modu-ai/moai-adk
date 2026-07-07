@@ -55,7 +55,7 @@
 | AC-MAL-018b | `grep -c "run --mode loop" loop.md` | `4` | ≥1 | PASS |
 | AC-MAL-019 | `grep -icE "auto-chain\|chain" sync.md` | `1` | ≥1 | PASS |
 | AC-MAL-020 | `grep -ci "blocker report" moai.md` | `1` | ≥1 | PASS (BLOCKING) |
-| AC-MAL-021 | `diff -rq --exclude=.moai S/ T/.claude/skills/moai` | verbatim: `Only in .claude/skills/moai/workflows: .run.md.swp` (exit 1) — a LIVE vim swap (lsof: `vim 7572 goos 5u`, user's open editor, created mid-run, NOT repo content). Plan-sanctioned alternative (plan.md §A.4 "or git-tracked file lists"): swp-excluded diff exit 0 + git-tracked pair sweep `cmp` 42/42 files → 0 DIFFERS | empty/exit 0 over git-tracked content | PASS (BLOCKING — git-tracked byte parity proven; verbatim form blocked only by a live-editor runtime artifact, same class as the `--exclude=.moai` leak) |
+| AC-MAL-021 | `diff -rq --exclude=.moai S/ T/.claude/skills/moai` | verbatim: `Only in .claude/skills/moai/workflows: .run.md.swp` (exit 1) — a LIVE vim swap (lsof: `vim 7572 goos 5u`, user's open editor, created mid-run, NOT repo content). Plan-sanctioned alternative (plan.md §A.1 git-tracked 42/42 markdown baseline + plan.md §E E2 `--exclude=.moai` load-bearing form): swp-excluded diff exit 0 + git-tracked pair sweep `cmp` 42/42 markdown files → 0 DIFFERS | empty/exit 0 over git-tracked content | PASS (BLOCKING — git-tracked byte parity proven; verbatim form blocked only by a live-editor runtime artifact, same class as the `--exclude=.moai` leak) |
 | AC-MAL-022 | `grep -rn "SPEC-MOAI-AGENTIC-LOOP\|REQ-MAL-" .claude/skills/ .claude/rules/ internal/template/templates/` | `0` matches | 0 | PASS (BLOCKING) |
 | AC-MAL-023 | `grep -c "MODE_PIPELINE_ONLY_UTILITY" context-loading.md plan.md sync.md` | ctx=3, plan=1, sync=1 | each ≥1 | PASS |
 | AC-MAL-023b | `grep -c "MODE_UNKNOWN" run.md` | `1` | ≥1 | PASS |
@@ -105,6 +105,6 @@
 - sync_commit_sha: b9b91dc71
 - sync_status: complete (4-artifact frontmatter status in-progress→completed atomic transition + CHANGELOG emission + progress §E.4 population)
 - final_artifacts: spec.md / plan.md / acceptance.md / progress.md (all 4 updated: status:completed + era:V3R6 + updated:2026-07-08 on sync commit)
-- verification_summary: run-phase 38/38 AC PASS all validated (AC-MAL-001..032 + AC-MAL-R01..R04); AC blocking group 011/011b/020/021/022 (Implementation Kickoff Approval / blocker-report boundary / template parity) all PASS; template neutrality 0 SPEC-ID leaks verified; mirror parity 42/42 git-tracked files
+- verification_summary: run-phase 38/38 AC PASS all validated (AC-MAL-001..026 incl. letter-suffixed rows + AC-MAL-R01..R04); AC blocking group 011/011b/020/021/022 (Implementation Kickoff Approval / blocker-report boundary / template parity) all PASS; template neutrality 0 SPEC-ID leaks verified; mirror parity 42/42 git-tracked markdown files
 - changelog_entry: Added entry at top of [Unreleased] § Added with complete 3-phase summary + run-commit attribution + 38/38 AC verification
 - specific_path_discipline: this sync commit touches ONLY CHANGELOG.md + .moai/specs/SPEC-MOAI-AGENTIC-LOOP-001/** (4 files: spec/plan/acceptance/progress.md frontmatter + §E.4 population)
