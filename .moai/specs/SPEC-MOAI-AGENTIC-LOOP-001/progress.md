@@ -102,7 +102,7 @@
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - sync_complete_at: 2026-07-08
-- sync_commit_sha: (backfill pending)
+- sync_commit_sha: b9b91dc71
 - sync_status: complete (4-artifact frontmatter status in-progress→completed atomic transition + CHANGELOG emission + progress §E.4 population)
 - final_artifacts: spec.md / plan.md / acceptance.md / progress.md (all 4 updated: status:completed + era:V3R6 + updated:2026-07-08 on sync commit)
 - verification_summary: run-phase 38/38 AC PASS all validated (AC-MAL-001..032 + AC-MAL-R01..R04); AC blocking group 011/011b/020/021/022 (Implementation Kickoff Approval / blocker-report boundary / template parity) all PASS; template neutrality 0 SPEC-ID leaks verified; mirror parity 42/42 git-tracked files
