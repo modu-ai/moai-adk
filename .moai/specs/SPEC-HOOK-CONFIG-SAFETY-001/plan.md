@@ -2,7 +2,7 @@
 id: SPEC-HOOK-CONFIG-SAFETY-001
 title: "moai update Configuration Safety /hooks Review Guidance"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-07
 updated: 2026-07-07
 author: manager-spec (P5 of hooks-hardening Epic)

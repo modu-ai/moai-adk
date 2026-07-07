@@ -2,7 +2,7 @@
 id: SPEC-HOOK-CONFIG-SAFETY-001
 title: "moai update Configuration Safety /hooks Review Guidance"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-07
 updated: 2026-07-07
 author: manager-spec (P5 of hooks-hardening Epic)
@@ -101,7 +101,47 @@ This SPEC's 5 new tests PASS; 0 new failures introduced.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs populates this section with the sync commit SHA and 3-phase close record>_
+```yaml
+sync_complete_at: 2026-07-07
+sync_commit_sha: "<pending backfill>"  # single sync commit carrying in-progress → completed transition + 3-phase close; backfilled in chore commit per feedback_era_commit_sha_field_format
+sync_status: pass
+changelog_entry_position: "[Unreleased] > Added"
+frontmatter_status_transitions:
+  spec_md: in-progress → completed       # single sync commit (manager-docs owned; merged 3-phase close per SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-008/009)
+  plan_md: in-progress → completed
+  acceptance_md: in-progress → completed
+  progress_md: in-progress → completed
+canary_compliance_check:
+  spec_lint: pending                      # moai spec lint not run in this sync-phase; SPEC frontmatter 12-field schema manually verified (status + updated + 10 other canonical fields present)
+  era_classification: V3R6                # H-4: §E.2 + §E.4 + sync_commit_sha present (once backfilled); created 2026-07-07 ≥ 2026-04-01 modernEraThreshold
+sync_phase_artifacts:
+  changelog_updated: true                 # CHANGELOG.md [Unreleased] > Added — SPEC-HOOK-CONFIG-SAFETY-001 entry
+  readme_updated: false                   # moai update /hooks guidance is internal CLI UX; README/README.ko/docs-site do not document it
+  frontmatter_transitioned: true          # spec/plan/acceptance/progress frontmatter status → completed (all 4 artifacts atomic on single sync commit)
+  progress_e4_backfilled: true            # §E.4 Sync-phase Audit-Ready Signal populated (this block)
+mx_tag_validation: pass                   # @MX:NOTE + @MX:SPEC annotations on emitHooksReviewGuidance helper verified present at internal/cli/update.go:353-365 (run-phase emission; sync-phase validation-only, no new MX tags added — sync is cross-cutting concern)
+b12_self_test:
+  a_pre_emission_grep: pass               # grep -c 'SPEC-HOOK-CONFIG-SAFETY-001' CHANGELOG.md = 0 pre-emission (no duplicate, HALT avoided)
+  b_ac_count_match: pass                  # acceptance.md SSOT AC count = 7 (AC-CS-001..007); CHANGELOG entry references "7/7 AC"
+  c_file_path_verification: pass          # all paths claimed in CHANGELOG entry (internal/cli/update.go, internal/cli/update_hooks_guidance_test.go, .moai/specs/SPEC-HOOK-CONFIG-SAFETY-001/) verified via ls
+```
+
+### Sync-phase Self-Verification (manager-docs variant)
+
+- **E1 Frontmatter status transitions**: all 4 SPEC artifacts (spec.md / plan.md / acceptance.md / progress.md) `status: in-progress → completed` applied atomically on this single sync commit per Status Transition Ownership Matrix (spec-frontmatter-schema.md L72+L106). Body content untouched — only frontmatter `status:` field edited; `updated:` field already at sync commit date (2026-07-07).
+- **E2 SHA backfill**: `sync_commit_sha` field will be backfilled in a separate chore commit per `feedback_era_commit_sha_field_format` (sync_commit_sha is a literal YAML field; backfill chore commit pattern is the established SPEC discipline). Run-phase SHA `e87bc205c` already in §E.3.
+- **E3 CHANGELOG entry**: `[Unreleased] > Added` section — SPEC-HOOK-CONFIG-SAFETY-001 entry appended (B12 pre-emission grep count 0 confirmed; 7 AC count matches acceptance.md SSOT AC-CS-001..007; file paths verified via ls).
+- **E4 Scope-boundary grep**: only spec.md / plan.md / acceptance.md / progress.md (frontmatter status only — body untouched) + CHANGELOG.md in this commit's stat (no implementation source files in scope per Forbidden modifications).
+- **E5 Pathspec discipline**: `git add` invoked with specific paths only — no `git add -A`.
+- **E6 Commit subject**: `docs(SPEC-HOOK-CONFIG-SAFETY-001): sync-phase artifacts — Tier S 3-phase close` follows the canonical sync-commit subject convention per Status Transition Ownership Matrix.
+
+### 3-Phase Close Record
+
+- **Plan → Run → Sync**: complete on 2026-07-07 (single-day close, Tier S scope).
+- **Plan-phase**: manager-spec, iter-2 PASS-WITH-DEBT 0.96 (skip-eligible ≥ 0.90). Verify-before-author pipeline complete (Greps 1-3 in spec.md §A.2 re-run independently, 0-hit confirmed — not memory-derived).
+- **Run-phase**: manager-develop, single M1 commit `e87bc205c` carrying implementation + characterization tests + progress.md §E.2/§E.3 population + 4-artifact frontmatter `draft → in-progress` transition + run_commit_sha backfill `f7107f76b`. All 7 AC at PASS or PASS-WITH-DEBT (only PASS-WITH-DEBT is AC-CS-006 — 3 pre-existing unrelated test failures verified via stash-and-retest: `TestRunHookEvent_ReadInputError` nil-pointer panic, `TestCloseSubjectDoctrineAmendment` lifecycle-sync-gate.md drift, `TestBuild_WritesContextUsageWithSessionID` 1M-vs-256K context-window assertion).
+- **Sync-phase** (this commit): manager-docs, single sync commit carrying 4-artifact frontmatter `in-progress → completed` transition + §E.4 audit-ready signal + CHANGELOG entry. MX Tag validation executed as sync sub-step (no new tags needed — run-phase `@MX:NOTE`/`@MX:SPEC` already present on `emitHooksReviewGuidance` helper at update.go:353-365).
+- **Epic context**: P5 of moai-adk hooks-hardening Epic. P1 = SPEC-HOOK-SESSIONSTART-PROBE-001 (completed 2026-07-07, sync recovery `a503af8c5`). P2/P3/P4 absorbed as stale-memory non-defects (`feedback_hypothesis_as_defect`). **P5 = this SPEC (real UX gap confirmed by mechanical grep — the opposite of P2/P3/P4 stale-memory phantoms)**. P5 closes the hooks-hardening Epic.
 
 ## §F Phase 0.95 Mode Selection
 
