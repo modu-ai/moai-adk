@@ -34,14 +34,26 @@
 - AC PASS: AC-TA-010(`TestSpecAuditTokensSpent` 3 subcase: §I 있음→1860 / §I 없음→nil / §I 있으나 tokens_spent 라인 없음→nil) + `TestParseTokensSpentFromSectionI` 6 boundary subcase — `go test -run 'TestSpecAuditTokensSpent|TestParseTokensSpentFromSectionI' ./internal/spec/` PASS. AC-TA-012(중립성 grep 0 files) PASS.
 - coverage: 88.2% (internal/spec, M3-debt TestCloseSubjectDoctrineAmendment 제외 시 통과). internal/tokenusage 90.1% 유지. golangci-lint 0 issues. build host/windows exit 0.
 - 로컬 heading 상수 `sectionIHeading` 사용 (M4 worktree가 M3 `section_writer.go` 이전 base여서 회수 당시 cross-package import 불가; coupling 주석으로 문서화 — M3 heading 변경 시 lockstep 갱신 필요, sync-phase에서 `tokenusage.SectionIHeading` 재사용으로 DRY 정리 후보). CLI human-readable summary에 `Tokens spent:` 라인 추가(nice-to-have).
+- source_session_id: ae640eb5-a14e-4c13-ad86-2b7d8afc464f (run-phase M1-M4 세션 — token-attribution lineage, REQ-TA-005 session-set 합산용)
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — manager-develop 소유>_
+- run_status: audit-ready
+- run_complete_at: 2026-07-08
+- milestones: M1(transcript 파서) + M2(session-set 귀속) + M3(§I writer + Section Map SSOT + era 무충돌 회귀) + M4(audit 표면 tokens_spent) 전부 완료
+- ac_pass: AC-TA-001..012 (12/12 PASS, SHOULD AC-TA-011 포함) — `go test ./internal/tokenusage/... ./internal/spec/...` 실측 PASS
+- coverage: internal/tokenusage 90.1%, internal/spec 88.2% (per §E.2 manager-develop E3 증거)
+- build: host exit 0, `GOOS=windows GOARCH=amd64` exit 0; golangci-lint 0 issues; go vet 0; gofmt clean; `-race` clean
+- note: shared-checkout 독립 재검증 + L1 격리 worktree 회수 (runtime 배치 → ff/cherry-pick)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs 소유. sync_commit_sha 는 sync commit 시 기록>_
+- sync_status: audit-ready (→ completed on sync commit)
+- sync_complete_at: 2026-07-08
+- sync_artifacts: spec.md frontmatter in-progress→completed + progress §E.3/§E.4 signals + §I 실측값 + CHANGELOG entry
+- token_self_measure: §I = 30,304,046 tokens_spent / cache_hit_ratio 0.9229 / session-set / high / 2 sessions — 본 SPEC 도입 메커니즘의 첫 실측 적용 (dogfood). throwaway `cmd/selfmeasure` 헬퍼로 `Attribute()`+`WriteSectionI()` 실행 후 헬퍼 삭제.
+- sync_commit_sha: <backfill — sync commit 직후 별도 chore commit에서 기록>
+- residual: plan-phase 세션 UUID 미회수 (측정 누락分); CLI write 경로 미연결 (현재 library-only — 후속 SPEC에서 `moai` CLI §I write 연동)
 
 ## §F Phase 0.95 Mode Selection
 
@@ -78,19 +90,12 @@ _<pending sync-phase — manager-docs 소유. sync_commit_sha 는 sync commit �
 
 ## §I Token Accounting
 
-_<pending sync-phase — 본 SPEC이 도입하는 신규 섹션. sync-close 시 token-accounting
-메커니즘이 아래 필드를 채운다. era.go가 grep하지 않는 신규 top-level letter(§I)이므로
-§E.N 파서와 무충돌. placeholder only — 값 미기록.>_
-
-<!--
-제안 필드 스키마 (run-phase에서 확정, sync-close 시 채움):
-- tokens_spent: <int 합산>
-- tokens_input: <int>
-- tokens_output: <int>
-- tokens_cache_creation: <int>
-- tokens_cache_read: <int>
-- cache_hit_ratio: <float [0,1]>
+- tokens_spent: 30304046
+- tokens_input: 2301120
+- tokens_output: 474670
+- tokens_cache_creation: 0
+- tokens_cache_read: 27528256
+- cache_hit_ratio: 0.9229
 - token_attribution: session-set
-- token_attribution_confidence: high | low
-- token_session_count: <int>
--->
+- token_attribution_confidence: high
+- token_session_count: 2

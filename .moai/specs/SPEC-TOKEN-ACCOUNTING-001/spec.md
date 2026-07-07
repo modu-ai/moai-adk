@@ -2,7 +2,7 @@
 id: SPEC-TOKEN-ACCOUNTING-001
 title: "Per-SPEC Token Accounting — runtime measurement baseline (Token-Economy Epic 1/4)"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-07-07
 updated: 2026-07-08
 author: manager-spec
