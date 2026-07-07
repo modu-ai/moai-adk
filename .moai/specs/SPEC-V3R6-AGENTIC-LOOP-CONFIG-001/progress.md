@@ -160,7 +160,7 @@ m1_to_mN_commit_strategy: single_commit  # M1+M2+M3 in one run-phase commit (Tie
 
 ```yaml
 sync_complete_at: 2026-07-08
-sync_commit_sha: "<pending — backfill in next chore commit per BRAND-DIR-REMOVE-001 2c637ece2 / TOKEN-ROUTING-001 e4465ec5d convention>"
+sync_commit_sha: "67e59463e"  # docs(...) sync commit — backfilled in this chore commit (BRAND-DIR-REMOVE-001 2c637ece2 / TOKEN-ROUTING-001 e4465ec5d convention)
 sync_status: audit-ready
 phase_close: 3-phase close (plan→run→sync; MX folded into sync per SPEC-V3R6-LIFECYCLE-REDESIGN-001)
 status_transition: in-progress → completed (atomic on single sync commit per Status Transition Ownership Matrix)
