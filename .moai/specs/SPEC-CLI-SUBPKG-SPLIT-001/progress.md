@@ -85,7 +85,7 @@ m1_to_mN_commit_strategy: "per-milestone commit (Route A main-direct intent; exe
 
 ```yaml
 sync_complete_at: 2026-07-07
-sync_commit_sha: "<placeholder — backfill post-sync-commit>"
+sync_commit_sha: "d0d9b49d7"
 sync_status: M1-only-close
 close_decision: "§F CHECKPOINT after M1 (REQ-CSS-010) — STOP (ship M1 only); remaining clusters (profile/migrate/doctor/update/uikit) require tri-axis coupling resolution -> separate SPECs"
 run_commit_sha_backfilled: "0ee246ad9 (M1 agentlint)"
