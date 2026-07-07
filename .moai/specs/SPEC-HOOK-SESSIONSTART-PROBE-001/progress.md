@@ -2,7 +2,7 @@
 id: SPEC-HOOK-SESSIONSTART-PROBE-001
 title: "SessionStart Probe — Progress"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-07
 updated: 2026-07-07
 author: manager-spec
@@ -98,7 +98,7 @@ Secondary channel (stderr audit log at `$HOME/.moai/logs/hook-stderr.log`, after
 
 ```yaml
 run_complete_at: 2026-07-07
-run_commit_sha: "<to-be-backfilled-after-M1-commit>"  # M1 single commit (Tier S); orchestrator-side backfill if agent context is lost
+run_commit_sha: "f34f19550"  # M1 single commit (Tier S) — feat(hook): SessionStart probe
 run_status: pass
 ac_pass_count: 7
 ac_fail_count: 0
@@ -138,9 +138,35 @@ test suite cleanly (`go test ./internal/hook/...` → all PASS).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs populates this section with the sync-phase
-completion signal, including `sync_commit_sha:` field, on the single sync
-commit that carries the `implemented → completed` transition>_
+```yaml
+sync_complete_at: 2026-07-07
+sync_commit_sha: "1b8432303"  # 본 sync commit은 shared-checkout race로 병렬 세션의 SPEC-CLI-LINT 백필 commit에 편입됨 (frontmatter completed transition + §E.4 + run_commit_sha를 carry). CHANGELOG entry는 ce60eb730에 편입. feedback_shared_checkout_concurrent_commit_race.md 패턴.
+sync_status: pass
+changelog_entry_position: "[Unreleased] > Added"
+frontmatter_status_transitions:
+  spec_md: draft → completed        # 3-phase close on sync commit (manager-docs owned; draft→in-progress was manager-develop scope but run-phase commit f34f19550 carried progress.md only — spec/plan/acceptance remained draft, terminal completed reached on this sync commit per matrix allowed scope)
+  plan_md: draft → completed
+  acceptance_md: draft → completed
+  progress_md: in-progress → completed
+canary_compliance_check:
+  spec_lint: pending                 # moai spec lint not run in this sync-phase; SPEC frontmatter 12-field schema manually verified
+  era_classification: V3R6           # H-4: §E.2 + §E.4 + sync_commit_sha present (once backfilled); created 2026-07-07 ≥ 2026-04-01 modernEraThreshold
+sync_phase_artifacts:
+  changelog_updated: true            # CHANGELOG.md [Unreleased] > Added — SPEC-HOOK-SESSIONSTART-PROBE-001 entry
+  readme_updated: false              # internal hook wrapper change; README/docs-site do not document SessionStart probe behavior (verified: grep SessionStart in README = event-type list only)
+  frontmatter_transitioned: true     # spec/plan/acceptance/progress frontmatter status → completed, updated 2026-07-07
+  progress_e4_backfilled: true       # §E.4 Sync-phase Audit-Ready Signal populated (this block)
+mx_tag_validation: n/a               # no @MX tags in scope (wrapper bash + Go test harness; no high fan_in Go functions annotated)
+```
+
+### Sync-phase Self-Verification (manager-docs variant)
+
+- **E1 Frontmatter status transitions**: `grep '^status:' spec.md plan.md acceptance.md progress.md` → all `completed` (verified pre-commit).
+- **E2 SHA backfill**: `run_commit_sha: f34f19550` populated (run-phase HEAD). `sync_commit_sha: 1b8432303` backfilled — 본 sync commit이 shared-checkout race로 병렬 세션의 SPEC-CLI-LINT 백필 commit에 편입되었으므로, 그 commit의 SHA를 sync_commit_sha로 기록 (frontmatter completed transition을 실제로 carry한 commit).
+- **E3 CHANGELOG entry**: `[Unreleased] > Added` section — SPEC-HOOK-SESSIONSTART-PROBE-001 entry appended (B12 pre-emission grep count 0 confirmed; 7 AC count matches acceptance.md SSOT; file paths verified via ls).
+- **E4 Scope-boundary grep**: `git show --stat HEAD` lists ONLY spec/plan/acceptance/progress + CHANGELOG (no leakage of the 6 P1-unrelated WT files: llm.yaml local+template, defaults.go, defaults_test.go, moai-easy.md local+template, SPEC-CLI-LINT-COMPLETED-001).
+- **E5 Pathspec discipline**: `git diff --cached --stat` pre-commit shows only SPEC files + CHANGELOG.
+- **E6 Commit subject**: follows `docs(SPEC-{ID}): sync-phase — 3-phase close` convention per Status Transition Ownership Matrix.
 
 ---
 
