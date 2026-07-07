@@ -19,7 +19,6 @@ var frozenPrefixes = []string{
 	".claude/agents/moai/",
 	".claude/skills/moai-",
 	".claude/rules/moai/",
-	".moai/project/brand/",
 }
 
 // IsFrozen returns true if path corresponds to a FROZEN area.

@@ -74,12 +74,9 @@ func TestMigrateAgency_HappyPath(t *testing.T) {
 		t.Fatalf("Run() returned unexpected error: %v", err)
 	}
 
-	// brand files copied
-	for _, name := range []string{"brand-voice.md", "visual-identity.md", "target-audience.md"} {
-		dst := filepath.Join(dir, ".moai", "project", "brand", name)
-		if _, err := os.Stat(dst); os.IsNotExist(err) {
-			t.Errorf("expected %s to exist", dst)
-		}
+	// brand migration removed (Phase 2 deleted): .moai/project/brand/ must NOT be created
+	if _, err := os.Stat(filepath.Join(dir, ".moai", "project", "brand")); !os.IsNotExist(err) {
+		t.Error("migrate must not create .moai/project/brand/ (Phase 2 removed)")
 	}
 
 	// design.yaml generated
@@ -177,11 +174,13 @@ func TestMigrateAgency_AlreadyMigrated(t *testing.T) {
 	dir := t.TempDir()
 	setupAgencyFixture(t, dir)
 
-	// Pre-create target to simulate already migrated
-	if err := os.MkdirAll(filepath.Join(dir, ".moai", "project", "brand"), 0o755); err != nil {
+	// Pre-create a migration target to simulate already migrated.
+	// (.moai/project/brand/ is no longer a target — Phase 2 removed; design.yaml
+	// remains a target written by the config-conversion phase.)
+	if err := os.MkdirAll(filepath.Join(dir, ".moai", "config", "sections"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, ".moai", "project", "brand", "brand-voice.md"), []byte("existing"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".moai", "config", "sections", "design.yaml"), []byte("existing"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -210,20 +209,18 @@ func TestMigrateAgency_ForceOverwrite(t *testing.T) {
 	dir := t.TempDir()
 	setupAgencyFixture(t, dir)
 
-	// Pre-create target
-	brandDir := filepath.Join(dir, ".moai", "project", "brand")
-	if err := os.MkdirAll(brandDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(brandDir, "brand-voice.md"), []byte("old-content"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
 	// Create required parent dirs
 	if err := os.MkdirAll(filepath.Join(dir, ".moai", "config", "sections"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(filepath.Join(dir, ".moai", "research"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Pre-create a migration target (design.yaml is written by the config-conversion phase).
+	// (.moai/project/brand/ is no longer a target — Phase 2 removed.)
+	designYAML := filepath.Join(dir, ".moai", "config", "sections", "design.yaml")
+	if err := os.WriteFile(designYAML, []byte("old-content"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -238,12 +235,12 @@ func TestMigrateAgency_ForceOverwrite(t *testing.T) {
 		t.Fatalf("Run() with --force returned error: %v", err)
 	}
 
-	data, err := os.ReadFile(filepath.Join(brandDir, "brand-voice.md"))
+	data, err := os.ReadFile(designYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if string(data) == "old-content" {
-		t.Error("expected brand-voice.md to be overwritten with agency content")
+		t.Error("expected design.yaml to be overwritten with converted agency config")
 	}
 }
 
@@ -283,7 +280,6 @@ func TestMigrateAgency_Atomicity(t *testing.T) {
 	dir := t.TempDir()
 	setupAgencyFixture(t, dir)
 
-	// Create a target dir to simulate phase-3 write failure via a read-only observations dir
 	if err := os.MkdirAll(filepath.Join(dir, ".moai", "config", "sections"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -294,13 +290,13 @@ func TestMigrateAgency_Atomicity(t *testing.T) {
 	m := &migrateAgencyRunner{
 		projectRoot: dir,
 		homeDir:     dir,
-		// inject a failure hook at phase 3
-		failAtPhase: 3,
+		// inject a failure hook at phase 2 (learnings migration)
+		failAtPhase: 2,
 	}
 
 	_, err := m.Run()
 	if err == nil {
-		t.Fatal("expected error when phase 3 fails")
+		t.Fatal("expected error when phase 2 fails")
 	}
 
 	// .agency/ must still exist (rolled back)
@@ -308,9 +304,9 @@ func TestMigrateAgency_Atomicity(t *testing.T) {
 		t.Error("rollback: .agency/ must be restored")
 	}
 
-	// partial .moai/project/brand/ must be cleaned up
-	if _, err := os.Stat(filepath.Join(dir, ".moai", "project", "brand")); !os.IsNotExist(err) {
-		t.Error("rollback: .moai/project/brand/ must be removed")
+	// the archive dir created by phase 1 must be cleaned up on rollback
+	if _, err := os.Stat(filepath.Join(dir, ".agency.archived")); !os.IsNotExist(err) {
+		t.Error("rollback: .agency.archived/ must be removed")
 	}
 }
 
@@ -585,9 +581,9 @@ func TestMigrateAgency_DiskFull_AlsoBlocksDryRun(t *testing.T) {
 	}
 }
 
-// TestMigrateAgency_PhaseFailure4 verifies rollback when phase 4 (config conversion) fails.
+// TestMigrateAgency_PhaseFailure3 verifies rollback when phase 3 (config conversion) fails.
 // @MX:SPEC: SPEC-AGENCY-ABSORB-001:REQ-MIGRATE-006
-func TestMigrateAgency_PhaseFailure4(t *testing.T) {
+func TestMigrateAgency_PhaseFailure3(t *testing.T) {
 	dir := t.TempDir()
 	setupAgencyFixture(t, dir)
 
@@ -601,12 +597,12 @@ func TestMigrateAgency_PhaseFailure4(t *testing.T) {
 	m := &migrateAgencyRunner{
 		projectRoot: dir,
 		homeDir:     dir,
-		failAtPhase: 4,
+		failAtPhase: 3,
 	}
 
 	_, err := m.Run()
 	if err == nil {
-		t.Fatal("expected error when phase 4 fails")
+		t.Fatal("expected error when phase 3 fails")
 	}
 
 	// .agency/ must still exist (rolled back)

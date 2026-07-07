@@ -24,8 +24,6 @@ func TestIsFrozen_FrozenPaths(t *testing.T) {
 		{"moai skill direct", ".claude/skills/moai-foundation-core/modules/foo.md"},
 		{"moai rules", ".claude/rules/moai/core/moai-constitution.md"},
 		{"moai rules nested", ".claude/rules/moai/workflow/spec-workflow.md"},
-		{"brand", ".moai/project/brand/brand-voice.md"},
-		{"brand nested", ".moai/project/brand/visual-identity.md"},
 	}
 
 	for _, tc := range frozenCases {
@@ -54,6 +52,9 @@ func TestIsFrozen_UserPaths(t *testing.T) {
 		{"project non-brand", ".moai/project/specs/SPEC-001.md"},
 		{"custom rules", ".claude/rules/custom/my-rule.md"},
 		{"harness chaining", ".moai/harness/chaining-rules.yaml"},
+		// The former .moai/project/brand/ prefix is no longer a FROZEN area.
+		{"former brand dir", ".moai/project/brand/brand-voice.md"},
+		{"former brand nested", ".moai/project/brand/visual-identity.md"},
 	}
 
 	for _, tc := range userCases {
@@ -221,7 +222,7 @@ func TestLogViolation_StderrWarning(t *testing.T) {
 	logPath := filepath.Join(dir, "violations.jsonl")
 
 	// Must execute without error (stderr output included)
-	err := LogViolation(logPath, ".moai/project/brand/hack.md", "test")
+	err := LogViolation(logPath, ".claude/agents/moai/hack.md", "test")
 	if err != nil {
 		t.Errorf("LogViolation 오류: %v", err)
 	}

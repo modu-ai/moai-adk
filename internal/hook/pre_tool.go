@@ -59,7 +59,7 @@ const (
 	SentinelHarnessFrozenInstruction = "HARNESS_FROZEN_INSTRUCTION_VIOLATION"
 
 	// SentinelHarnessFrozenConfig is emitted when a harness-learner attempts to modify
-	// a .moai/project/brand/ path or other frozen config area.
+	// a frozen config area (e.g. system-level .moai/config/sections/*.yaml).
 	SentinelHarnessFrozenConfig = "HARNESS_FROZEN_CONFIG_VIOLATION"
 
 	// harnessLearnerIdentity is the agent name used by the harness-learner subagent.
@@ -756,7 +756,6 @@ var frozenZonePrefixes = []struct {
 	{".claude/commands/", SentinelHarnessFrozenCommand},
 	{".claude/hooks/", SentinelHarnessFrozenHook},
 	{".claude/output-styles/", SentinelHarnessFrozenOutputStyle},
-	{".moai/project/brand/", SentinelHarnessFrozenConfig},
 }
 
 // frozenInstructionFiles lists CLAUDE.md variants guarded by HARNESS_FROZEN_INSTRUCTION_VIOLATION.

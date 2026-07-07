@@ -36,11 +36,24 @@ tags: "cleanup, brand, design-retirement, removal, deprecation"
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — manager-develop 소관>_
+- cycle_type: tdd (RED→GREEN→REFACTOR); Tier M single-SPEC.
+- run commit: `ec841d6b5` (isolated worktree) → cherry-picked to main as run-phase commit.
+- AC PASS/FAIL matrix (independently re-verified by orchestrator in main checkout):
+  - AC-BDR-001a in-scope grep (`internal/harness/ internal/hook/ internal/cli/` non-test) → 0 matches. PASS.
+  - AC-BDR-001c full-tree survivors (`internal/ cmd/ pkg/` non-test) → exactly 11 (dirs.go:292 RETAINED + 10 declared-OUT). PASS.
+  - AC-BDR-006 dirs.go DeprecatedPaths RETAIN → 1 match (removal driver preserved). PASS.
+  - AC-BDR-008 `grep "moai design" migrate_agency.go` → 0 (both L297 + L301 removed). PASS.
+  - AC-BDR-004 `moai init` scaffold check → `.moai/project/brand/` NOT created. PASS.
+  - md 6개 (template + local) deleted; template dir gone. PASS.
+- build: `go build ./...` exit 0; cross-platform `GOOS=windows` build exit 0 (per manager-develop §E2).
+- scope tests: `internal/harness/safety` ok, `internal/hook` ok, `internal/cli` migrate_agency ok.
+- RETAIN confirmed untouched: dirs.go:292, SentinelHarnessFrozenConfig const, defaults.go, template design.yaml/constitution.md/zone-registry.md.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — manager-develop 소관>_
+- run_status: audit-ready
+- All blocking ACs PASS (independently verified). Residual: 6 pre-existing statusline golden failures (TestDoctor_*/TestStatus_*) — verified unrelated to brand removal (identical on pristine 5f33dfaa9 via git stash); out of scope.
+- Next: sync-phase (manager-docs) → sync-auditor → 3-phase close (`implemented → completed` on sync commit).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

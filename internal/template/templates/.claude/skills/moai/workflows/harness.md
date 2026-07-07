@@ -178,7 +178,6 @@ Operations:
    - `.claude/agents/moai/` (template-managed agents are FROZEN; `.claude/agents/harness/` is a user-owned allowed-write target, NOT frozen — it matches the guard's allowed-prefix list, not the frozen list)
    - `.claude/skills/moai-`
    - `.claude/rules/moai/`
-   - `.moai/project/brand/` (guard default-deny: no allowed prefix matches, so writes here are blocked even though it is not in the frozen list)
    If any prefix matches, append a JSONL entry to `.moai/harness/learning-history/frozen-guard-violations.jsonl` with at minimum: ISO-8601 timestamp, the attempted target path, the proposal id (as calling subject), and a rejection rationale (REQ-HRN-FND-006, REQ-HRN-FND-014). Then move the proposal to `.moai/harness/learning-history/rejected/` and stop. Do NOT raise an error to the user; the rejection is silent except for the audit log.
 4. **Layer 3 (Contradiction Detector) pre-screen**: Out of scope for the V3R4 foundation SPEC. Downstream `the harness lifecycle policy` introduces principle-based scoring; this workflow body documents the contract assertion (REQ-HRN-FND-017) and treats Layer 3 as a no-op pass-through for the foundation release.
 5. **Tier-4 Application Gate**: `ToolSearch(query: "select:AskUserQuestion")` → `AskUserQuestion` with the canonical four-option pattern from the section above. The first option `Apply (권장)` MUST carry the `(권장)` / `(Recommended)` suffix per `.claude/rules/moai/core/askuser-protocol.md` § Option Description Standards.

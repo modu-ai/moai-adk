@@ -142,7 +142,7 @@ func (r *migrateAgencyRunner) checkpointPath(txID string) string {
 // Run executes the migration and returns a result summary on success.
 //
 // @MX:WARN: [AUTO] complex phase-based migration with rollback; cyclomatic complexity >= 15
-// @MX:REASON: [AUTO] each of 6 phases can fail; rollback must be attempted in reverse order
+// @MX:REASON: [AUTO] each of 5 phases can fail; rollback must be attempted in reverse order
 func (r *migrateAgencyRunner) Run() (*migrateResult, error) {
 	// Resume mode: load checkpoint and only run remaining phases.
 	if r.resumeTxID != "" {
@@ -204,79 +204,61 @@ func (r *migrateAgencyRunner) runFull() (*migrateResult, error) {
 	if r.failAtPhase == 1 {
 		return nil, &MigrateError{Code: "MIGRATE_PHASE_INJECT", Message: "injected failure at phase 1"}
 	}
-	r.logf("[1/6] Backing up .agency/ → .agency.archived/")
+	r.logf("[1/5] Backing up .agency/ → .agency.archived/")
 	if err := r.copyDir(agencyDir, archiveDir, tx); err != nil {
 		tx.rollback()
 		_ = os.RemoveAll(archiveDir)
 		return nil, fmt.Errorf("migrate: phase 1 backup: %w", err)
 	}
 
-	// Phase 2: copy context/ → .moai/project/brand/
+	// Phase 2: copy learnings/ → .moai/research/observations/
 	if r.failAtPhase == 2 {
+		r.errorf("rollback: %s", ErrMigrateRollbackOK)
 		tx.rollback()
 		_ = os.RemoveAll(archiveDir)
 		return nil, &MigrateError{Code: "MIGRATE_PHASE_INJECT", Message: "injected failure at phase 2"}
 	}
-	r.logf("[2/6] Migrating context/ → .moai/project/brand/")
-	brandDir := filepath.Join(r.projectRoot, ".moai", "project", "brand")
-	contextDir := filepath.Join(agencyDir, "context")
-	n, err := r.migrateContext(contextDir, brandDir, tx)
+	r.logf("[2/5] Migrating learnings/ → .moai/research/observations/")
+	learningsDir := filepath.Join(agencyDir, "learnings")
+	obsDir := filepath.Join(r.projectRoot, ".moai", "research", "observations")
+	n, err := r.migrateLearnings(learningsDir, obsDir, tx)
 	if err != nil {
 		r.errorf("rollback: %s", ErrMigrateRollbackOK)
 		tx.rollback()
 		_ = os.RemoveAll(archiveDir)
-		return nil, fmt.Errorf("migrate: phase 2 context: %w", err)
+		return nil, fmt.Errorf("migrate: phase 2 learnings: %w", err)
 	}
 	result.filesTransferred += n
 
-	// Phase 3: copy learnings/ → .moai/research/observations/
+	// Phase 3: convert config.yaml → design.yaml
 	if r.failAtPhase == 3 {
 		r.errorf("rollback: %s", ErrMigrateRollbackOK)
 		tx.rollback()
 		_ = os.RemoveAll(archiveDir)
 		return nil, &MigrateError{Code: "MIGRATE_PHASE_INJECT", Message: "injected failure at phase 3"}
 	}
-	r.logf("[3/6] Migrating learnings/ → .moai/research/observations/")
-	learningsDir := filepath.Join(agencyDir, "learnings")
-	obsDir := filepath.Join(r.projectRoot, ".moai", "research", "observations")
-	n, err = r.migrateLearnings(learningsDir, obsDir, tx)
-	if err != nil {
-		r.errorf("rollback: %s", ErrMigrateRollbackOK)
-		tx.rollback()
-		_ = os.RemoveAll(archiveDir)
-		return nil, fmt.Errorf("migrate: phase 3 learnings: %w", err)
-	}
-	result.filesTransferred += n
-
-	// Phase 4: convert config.yaml → design.yaml
-	if r.failAtPhase == 4 {
-		r.errorf("rollback: %s", ErrMigrateRollbackOK)
-		tx.rollback()
-		_ = os.RemoveAll(archiveDir)
-		return nil, &MigrateError{Code: "MIGRATE_PHASE_INJECT", Message: "injected failure at phase 4"}
-	}
-	r.logf("[4/6] Converting config.yaml → design.yaml")
+	r.logf("[3/5] Converting config.yaml → design.yaml")
 	configSrc := filepath.Join(agencyDir, "config.yaml")
 	designDst := filepath.Join(r.projectRoot, ".moai", "config", "sections", "design.yaml")
 	if err := r.convertConfig(configSrc, designDst, tx); err != nil {
 		r.errorf("rollback: %s", ErrMigrateRollbackOK)
 		tx.rollback()
 		_ = os.RemoveAll(archiveDir)
-		return nil, fmt.Errorf("migrate: phase 4 config: %w", err)
+		return nil, fmt.Errorf("migrate: phase 3 config: %w", err)
 	}
 	result.filesTransferred++
 
-	// Phase 5: archive fork-manifest.yaml (already in archive; just note it)
-	r.logf("[5/6] fork-manifest.yaml archived at .agency.archived/")
+	// Phase 4: archive fork-manifest.yaml (already in archive; just note it)
+	r.logf("[4/5] fork-manifest.yaml archived at .agency.archived/")
 
-	// Phase 6: conditional constitution.md relocation
-	if r.failAtPhase == 6 {
+	// Phase 5: conditional constitution.md relocation
+	if r.failAtPhase == 5 {
 		r.errorf("rollback: %s", ErrMigrateRollbackOK)
 		tx.rollback()
 		_ = os.RemoveAll(archiveDir)
-		return nil, &MigrateError{Code: "MIGRATE_PHASE_INJECT", Message: "injected failure at phase 6"}
+		return nil, &MigrateError{Code: "MIGRATE_PHASE_INJECT", Message: "injected failure at phase 5"}
 	}
-	r.logf("[6/6] Checking constitution.md relocation")
+	r.logf("[5/5] Checking constitution.md relocation")
 	constitutionSrc := filepath.Join(r.projectRoot, ".claude", "rules", "agency", "constitution.md")
 	if _, err := os.Stat(constitutionSrc); err == nil {
 		constitutionDst := filepath.Join(r.projectRoot, ".claude", "rules", "moai", "design", "constitution.md")
@@ -294,11 +276,9 @@ func (r *migrateAgencyRunner) runFull() (*migrateResult, error) {
 	result.archivePath, _ = filepath.Abs(archiveDir)
 	result.summary = append(result.summary, fmt.Sprintf("Transferred %d file(s)", result.filesTransferred))
 	result.summary = append(result.summary, fmt.Sprintf("Archive: %s", result.archivePath))
-	result.summary = append(result.summary, "Next step: /moai design")
 
 	r.logf("\nMigration complete: %d file(s) transferred", result.filesTransferred)
 	r.logf("Archive preserved at: %s", result.archivePath)
-	r.logf("Run '/moai design' to continue.")
 
 	return result, nil
 }
@@ -306,7 +286,6 @@ func (r *migrateAgencyRunner) runFull() (*migrateResult, error) {
 // runDryRun prints expected actions without modifying the filesystem.
 func (r *migrateAgencyRunner) runDryRun(agencyDir string) (*migrateResult, error) {
 	r.logf("[dry-run] Expected migration actions:")
-	r.logf(" %s → %s", filepath.Join(agencyDir, "context"), filepath.Join(r.projectRoot, ".moai", "project", "brand"))
 	r.logf(" %s → %s", filepath.Join(agencyDir, "config.yaml"), filepath.Join(r.projectRoot, ".moai", "config", "sections", "design.yaml"))
 	r.logf(" %s → %s", filepath.Join(agencyDir, "learnings"), filepath.Join(r.projectRoot, ".moai", "research", "observations"))
 	r.logf(" %s → %s", agencyDir, filepath.Join(r.projectRoot, ".agency.archived"))
@@ -358,7 +337,6 @@ func (r *migrateAgencyRunner) runResume() (*migrateResult, error) {
 // checkTargetsAbsent verifies that destination paths do not already exist.
 func (r *migrateAgencyRunner) checkTargetsAbsent() error {
 	targets := []string{
-		filepath.Join(r.projectRoot, ".moai", "project", "brand"),
 		filepath.Join(r.projectRoot, ".moai", "config", "sections", "design.yaml"),
 		filepath.Join(r.projectRoot, ".moai", "research", "observations"),
 	}
@@ -406,28 +384,6 @@ func extractValue(content, key string) string {
 		}
 	}
 	return ""
-}
-
-// migrateContext copies brand files from context/ to .moai/project/brand/.
-func (r *migrateAgencyRunner) migrateContext(src, dst string, tx *transactionLog) (int, error) {
-	brandFiles := []string{"brand-voice.md", "visual-identity.md", "target-audience.md"}
-	if err := os.MkdirAll(dst, 0o755); err != nil {
-		return 0, fmt.Errorf("mkdirall %s: %w", dst, err)
-	}
-	tx.recordDir(dst)
-
-	transferred := 0
-	for _, name := range brandFiles {
-		srcFile := filepath.Join(src, name)
-		if _, err := os.Stat(srcFile); os.IsNotExist(err) {
-			continue
-		}
-		if err := r.copyFile(srcFile, filepath.Join(dst, name), tx); err != nil {
-			return transferred, fmt.Errorf("copy %s: %w", name, err)
-		}
-		transferred++
-	}
-	return transferred, nil
 }
 
 // migrateLearnings copies all .md files from learnings/ to observations/.
@@ -586,7 +542,6 @@ var migrateAgencyCmd = &cobra.Command{
 This command is atomic: if any step fails, all changes are rolled back.
 
 File mapping:
-.agency/context/ → .moai/project/brand/
 .agency/config.yaml → .moai/config/sections/design.yaml
 .agency/learnings/ → .moai/research/observations/
 .agency/ → .agency.archived/ (backup)
