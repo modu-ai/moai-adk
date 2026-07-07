@@ -19,7 +19,7 @@ paths: ".moai/design/**,.moai/specs/SPEC-*-DESIGN-*/**,.moai/project/brand/**,.c
 
 Core principles governing the MoAI design production system. These rules define identity, safety boundaries, evolution mechanics, and integration contracts.
 
-> **Pipeline `expert-frontend` carve-out (catalog-consistency note).** The `expert-frontend` agent named throughout this design pipeline is an **archived** agent per `.claude/rules/moai/workflow/archived-agent-rejection.md`. The name here denotes the pipeline **ROLE** (frontend design-token implementation), not a live spawn target. At runtime, the role resolves to a per-spawn `Agent(general-purpose)` with a frontend domain whitelist per the archived-agent-rejection §C migration table. The FROZEN-zone clause text below is preserved verbatim for stability; the archived name is not silently load-bearing because this note cross-references the migration table.
+> **Pipeline `expert-frontend` carve-out (catalog-consistency note).** The `expert-frontend` agent named throughout this design pipeline is an **archived** agent per `.claude/rules/moai/workflow/archived-agent-rejection.md`. The name here denotes the pipeline **ROLE** (frontend design-token implementation), not a live spawn target. At runtime, the role resolves to a per-spawn `Agent(general-purpose)` with a frontend domain whitelist per the archived-agent-rejection §C migration table. The FROZEN-zone clause text below is preserved verbatim for stability; the archived name is not silently load-bearing because this note cross-references the migration table. Each `expert-frontend` FROZEN-clause occurrence below carries an inline `[ARCHIVED]` marker cross-referencing this note so the historical status is unambiguous at the clause site, and the pipeline diagrams / tables in §4-14 are covered by the §4 historical banner.
 
 ---
 
@@ -75,7 +75,7 @@ Brand context is not optional decoration. It is a constitutional constraint that
 - [ZONE:Frozen] [HARD] manager-spec MUST load brand context before generating BRIEF documents
 - [ZONE:Frozen] [HARD] moai-domain-copywriting MUST adhere to brand voice, tone, and terminology from brand-voice.md
 - [ZONE:Frozen] [HARD] moai-domain-brand-design MUST use brand color palette, typography, and visual language from visual-identity.md
-- [ZONE:Frozen] [HARD] expert-frontend MUST implement design tokens derived from brand context
+- [ZONE:Frozen] [HARD] [ARCHIVED] expert-frontend MUST implement design tokens derived from brand context (archived agent — resolves to Agent(general-purpose) with frontend whitelist per the line 22 carve-out note; historical design-pipeline clause preserved for the zone-registry mirror)
 - [ZONE:Frozen] [HARD] sync-auditor MUST score brand consistency as a must-pass criterion
 
 Brand context is stored in `.moai/project/brand/` and initialized through the brand interview process on first run. Context updates require explicit user approval.
@@ -127,7 +127,7 @@ Each phase produces typed artifacts consumed by downstream phases:
 | moai-domain-copywriting | BRIEF + brand voice | Copy JSON (hero/features/cta/etc.) | Path B |
 | moai-domain-brand-design | BRIEF + visual identity | Design tokens JSON + component spec | Path B |
 | moai-workflow-design | Handoff bundle path | .moai/design/ reserved artifacts (see Section 3.2) | Path A |
-| expert-frontend | Copy JSON + design tokens | Working code (pages, components, styles) | Always |
+| expert-frontend *(archived — see line 22)* | Copy JSON + design tokens | Working code (pages, components, styles) | Always (historical) |
 | sync-auditor | Built code + BRIEF | Score card + feedback | Always |
 | figma-extractor (Path B1) | BRIEF + Figma file ID + page selectors | tokens.json + components.json | Path B1 |
 
@@ -344,7 +344,7 @@ Rules:
 - [ZONE:Frozen] [HARD] Sprint Contracts are required when harness level is `thorough`
 - [ZONE:Frozen] [HARD] Sprint Contracts are optional but recommended for `standard` harness level
 - [ZONE:Frozen] [HARD] sync-auditor MUST NOT score on criteria not in the Sprint Contract
-- [ZONE:Frozen] [HARD] expert-frontend MUST NOT claim criteria as met without evidence
+- [ZONE:Frozen] [HARD] [ARCHIVED] expert-frontend MUST NOT claim criteria as met without evidence (archived agent — see line 22 carve-out note; historical GAN Loop clause)
 - Sprint Contract artifacts are stored in `.moai/sprints/` (from design.yaml `sprint_contract.artifact_dir`)
 
 ---
