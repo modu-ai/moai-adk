@@ -43,9 +43,7 @@ For phase overview, token budgets, and phase transitions, see: .claude/rules/moa
 - --solo: Force sub-agent mode (single agent per phase)
 - --no-issue: Skip GitHub Issue creation after SPEC generation (plan phase)
 
-**Default Behavior (no flag)**: System auto-selects based on complexity:
-- Team mode: Multi-domain tasks (>=3 domains), many files (>=10), or high complexity (>=7)
-- Sub-agent mode: Focused, single-domain tasks
+**Default Behavior (no flag)**: The orchestrator auto-selects the execution mode from the Phase 0.95 6-mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A — trivial / background / agent-team / parallel / sub-agent / workflow). The complexity auto-select thresholds are stated once in that rule's §B.1 (machine source: `workflow.yaml` `auto_selection`) — not restated here.
 
 ## Configuration Files
 
@@ -137,6 +135,15 @@ After SPEC generation and before implementation:
 
 This iterative refinement catches architectural misunderstandings before implementation begins.
 
+## Pipeline Gates (named, in order)
+
+The default pipeline declares these gates explicitly. Each is implemented by its owning sub-skill (plan.md / run.md / sync.md); they are named here so the pipeline body carries the full gate sequence:
+
+1. **Plan-audit gate (plan-auditor)** — after Phase 1/1.5: the plan-auditor subagent independently audits the SPEC plan artifacts in a fresh context (bias prevention). FAIL/INCONCLUSIVE halts the pipeline and surfaces to the user.
+2. **Implementation Kickoff Approval (plan→run HUMAN GATE)** — presented exactly once per pipeline entry, at the plan→run boundary, via an orchestrator AskUserQuestion round. Score-independent: a plan-auditor PASS or skip-eligible score never bypasses it. A derived completion condition (router Step 2.8) does NOT authorize run-phase entry — only this gate does. All user preferences (tier, mode preference, PR strategy, chain scope) are drained at this gate.
+3. **Phase 0.95 Mode Selection (6-mode catalog)** — autonomous selection per `orchestration-mode-selection.md` §A, logged to progress.md; strictly downstream of Implementation Kickoff Approval. **Mode 6 (workflow fan-out) operational entry**: selectable ONLY when the §C.3 capability gate holds — Implementation Kickoff Approval passed + all preferences collected + scope ≥ ~30 files with one uniform mechanical transform and no inter-file dependency + runtime ≥ v2.1.154 with workflows not disabled. Before launch, record the selection + gate confirmations in `progress.md` §F Phase 0.95 Mode Selection; then launch the fan-out from the orchestrator (scaling, not nesting) — workflow agents cannot prompt the user, so every needed decision must already be drained.
+4. **Sync-audit gate (sync-auditor)** — after Phase 3: the sync-auditor subagent scores the sync output in a fresh context (4-dimension). FAIL/INCONCLUSIVE halts the chain — the pipeline never auto-completes past a failing gate.
+
 ## Phase 2: Implementation (TDD or DDD based on development_mode)
 
 [HARD] Agent delegation mandate: ALL implementation tasks MUST be delegated to specialized agents. NEVER execute implementation directly, even after auto compact.
@@ -171,6 +178,31 @@ Loop behavior (when --loop flag or workflow.yaml loop_prevention settings enable
 - Respect SPEC lifecycle level for update strategy (spec-first, spec-anchored, spec-as-source)
 - Signal completion in the Completion Report on success
 
+## Agentic Completion Loop (post-kickoff autonomous iteration)
+
+When the router recorded a completion condition (router Step 2.8) and the pipeline contract is `full-pipeline`, the orchestrator drives an autonomous completion loop AFTER Implementation Kickoff Approval. The loop operates ONLY downstream of that gate — entering the loop never substitutes for it.
+
+**Lifecycle**:
+
+- **Entry**: post-kickoff only. The completion condition is set via `/goal` when the runtime supports it (goal-directive transcript-measurable form); otherwise the orchestrator evaluates the identical condition text per-turn (graceful degradation — no parallel evaluator).
+- **Iteration cycle**: run → sync → verify ONLY. While the condition is unmet, the loop re-enters the failing RUN or SYNC phase and iterates. Plan-phase re-entry is NEVER an autonomous loop step — it occurs solely via the no-progress escalation path below with explicit user approval, and the revised plan re-crosses the Implementation Kickoff Approval gate before any run-phase re-entry.
+- **Termination** (any of four): (1) the completion condition evaluates met; (2) the iteration ceiling is reached — `workflow.agentic_loop.max_iterations` in `.moai/config/sections/workflow.yaml` (default 10; pipeline-level iterations, DISTINCT from `loop_prevention.max_iterations`, the per-operation diagnostic fix-loop bound); (3) an escalation fires (no-progress or semantic failure); (4) context-threshold suspension.
+
+**Loop safety rules**:
+
+- **No-progress escalation**: when the same failure signature (identical failing check + same error class) is observed in two consecutive iterations, halt and escalate via a structured report; the orchestrator runs an AskUserQuestion round (continue with manual investigation / revert + re-plan / abort). Revert + re-plan re-crosses Implementation Kickoff Approval before any run-phase re-entry. No third identical iteration is attempted.
+- **Dark-flow guard**: every iteration surfaces a per-iteration visible report in the conversation (iteration #, phase executed, evidence delta, condition-evaluation result). Silent iterations are prohibited — the transcript evidence is also what keeps the `/goal` evaluator functional (transcript-measurability per goal-directive).
+- **Semantic-failure escalation**: on a semantic failure (data race, deadlock, panic, test assertion failure), clear the active completion condition and escalate immediately via AskUserQuestion — the loop never auto-fixes a semantic failure.
+- **Context-threshold suspension**: when context usage crosses the model-specific handoff threshold (`context-window-management.md` § Context Window Targets), suspend at the current iteration boundary, persist state to progress.md, and emit the paste-ready resume message per `session-handoff.md`. The loop does not start a new iteration past the threshold.
+- **Boundary**: subagents and workflow agents operating inside the loop never prompt the user; all mid-loop user decisions ride structured blocker reports → orchestrator AskUserQuestion (`agent-common-protocol.md` § User Interaction Boundary).
+- **Relationship to the Ralph engine**: the Ralph engine (`/moai loop`) remains the specialized diagnostic fix-loop; this pipeline-level loop MAY invoke it during the verify step for mechanical convergence. The two differ in granularity — this loop iterates over phases; the Ralph engine iterates over diagnostics.
+
+**run→sync chaining policy (pipeline contract)**:
+
+- `full-pipeline` contract: run-phase completion auto-chains into sync, announced in the transcript — no additional approval round at the run→sync phase boundary (sync doc work is non-destructive; PR creation still follows Tier-based PR routing and its own gates). The HUMAN GATEs preserved INSIDE the sync workflow (`gate-sync-1` pre-sync quality, `gate-sync-2` documentation scope) still fire unchanged within the chained sync phase.
+- `single-phase` contract (explicit `run`/`sync` invocation): phase completion surfaces the chain as the "(Recommended)" first option of the existing next-step AskUserQuestion — the chain never fires silently.
+- Failing gates halt the chain: when the sync-audit gate returns FAIL/INCONCLUSIVE or the sync-phase quality gate blocks, the chain halts and escalates — the loop never auto-completes past a failing gate.
+
 ## Team Mode
 
 When --team flag is provided or auto-selected (based on complexity thresholds in workflow.yaml):
@@ -185,9 +217,9 @@ For team orchestration details:
 - Sync rationale: See ${CLAUDE_SKILL_DIR}/team/sync.md
 
 Mode selection:
-- --team: Force team mode for all applicable phases
-- --solo: Force sub-agent mode
-- No flag (default): System auto-selects based on complexity thresholds (domains >= 3, files >= 10, or score >= 7)
+- --team: Force Mode 3 (agent-team) of the Phase 0.95 catalog for all applicable phases (the §C.1 capability gate still applies)
+- --solo: Force Mode 5 (sub-agent)
+- No flag (default): Auto-select per the Phase 0.95 6-mode catalog; thresholds stated once in `orchestration-mode-selection.md` §B.1 (machine source: workflow.yaml auto_selection)
 
 ## Execution Summary
 
@@ -197,7 +229,7 @@ Mode selection:
 4. **Team mode decision**: Read workflow.yaml team settings and determine execution mode
    - If `--team` flag: Force team mode (requires workflow.team.enabled: true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var)
    - If `--solo` flag: Force sub-agent mode (skip team mode entirely)
-   - If no flag (default): Check complexity thresholds from workflow.yaml auto_selection (domains >= 3, files >= 10, or score >= 7)
+   - If no flag (default): Auto-select per the Phase 0.95 6-mode catalog (thresholds per `orchestration-mode-selection.md` §B.1; machine source: workflow.yaml auto_selection)
    - If team mode selected but prerequisites not met: Warn user and fallback to sub-agent mode
 5. Execute Phase 0 (parallel or sequential exploration)
 6. Routing decision (single-domain direct delegation vs full workflow)
@@ -207,7 +239,9 @@ Mode selection:
 10. **Phase 1 (Plan)**: If team mode -> Read ${CLAUDE_SKILL_DIR}/team/plan.md and follow team orchestration. Else -> manager-spec sub-agent
 10.5. **Phase 1.2 (Issue)**: Create GitHub Issue linked to SPEC (unless --no-issue). See plan.md Phase 2.5.
 11. **Phase 1.5 (Annotate)**: Run annotation cycle (1-6 iterations) until user approves plan
-11.5. **Execution Mode Selection Gate**: After Phase 1.5 approval, before Phase 2
+11.2. **Plan-audit gate**: plan-auditor independent audit of the plan artifacts (Pipeline Gates #1); FAIL/INCONCLUSIVE halts
+11.3. **Implementation Kickoff Approval**: plan→run HUMAN GATE — exactly once per pipeline entry, score-independent (Pipeline Gates #2)
+11.5. **Execution Mode Selection Gate**: After Phase 1.5 approval, before Phase 2 — shape preferences collected here feed Phase 0.95 mode selection (6-mode catalog, Pipeline Gates #3)
    - If `--team` flag: Skip Gate, auto-select execution_mode="team" (no user prompt needed)
    - If `--solo` flag: Skip Gate, auto-select execution_mode="sub-agent"
    - Otherwise (no flag):
@@ -237,11 +271,12 @@ Mode selection:
    - team: Read ${CLAUDE_SKILL_DIR}/team/run.md and follow team orchestration
    - sub-agent: manager-develop (cycle_type=ddd or tdd, per quality.yaml development_mode)
    - Harness level determines phase skipping and evaluator involvement
-14. **Phase 3 (Sync)**: Always manager-docs sub-agent (sync phase never uses team mode)
-15. Terminate with the Completion Report completion signal
+14. **Phase 3 (Sync)**: Always manager-docs sub-agent (sync phase never uses team mode) — entered via auto-chain on a `full-pipeline` contract, or via the "(Recommended)" next-step option on a `single-phase` contract
+14.5. **Sync-audit gate**: sync-auditor independent 4-dimension scoring (Pipeline Gates #4); FAIL/INCONCLUSIVE halts the chain
+15. Terminate with the Completion Report completion signal (or continue the Agentic Completion Loop while the completion condition is unmet)
 
 ---
 
-Version: 2.9.0
-Updated: 2026-04-09
-Source: SPEC-MOAI-001. Fix --team/--solo flag Gate auto-skip (v2.9.0). Previous: Harness auto-detection (v2.8.0).
+Version: 3.0.0
+Updated: 2026-07-07
+Source: SPEC-MOAI-001. Named pipeline gates + agentic completion loop + chaining policy (v3.0.0). Previous: --team/--solo flag Gate auto-skip (v2.9.0), Harness auto-detection (v2.8.0).
