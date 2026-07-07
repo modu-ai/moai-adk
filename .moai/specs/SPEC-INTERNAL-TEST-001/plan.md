@@ -1,7 +1,7 @@
 ---
 id: SPEC-INTERNAL-TEST-001
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-08
 updated: 2026-07-08
 ---

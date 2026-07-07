@@ -1,7 +1,7 @@
 ---
 id: SPEC-INTERNAL-TEST-001
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-08
 updated: 2026-07-08
 ---
@@ -137,7 +137,43 @@ residual_debt:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: "2026-07-08"
+sync_commit_sha: "<sync commit SHA — to be backfilled by chore commit>"
+sync_status: "PASS-WITH-DEBT"
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed (merged 3-phase close on this sync commit)"
+  plan_md: "in-progress → implemented → completed (merged 3-phase close on this sync commit)"
+  acceptance_md: "in-progress → implemented → completed (merged 3-phase close on this sync commit)"
+  progress_md: "in-progress → implemented → completed (merged 3-phase close on this sync commit)"
+changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Fixed (single SPEC-INTERNAL-TEST-001 entry)"
+frontmatter_scope_untouched: true   # spec/plan/acceptance/progress body 무변경 — frontmatter status + updated only (acceptance.md §D.1 headline MUST-PASS gate body stays as-is; reinterpretation lives in CHANGELOG + this §E.4 residual_debt block as transparent documentation)
+b12_self_test_a_pre_emission_grep: 0   # grep -c 'SPEC-INTERNAL-TEST-001' CHANGELOG.md 사전 = 0 (duplicate 방어 PASS — parallel BATCH-SYNC session 충돌 없음)
+b12_self_test_b_ac_count_match: true   # acceptance.md 12 AC rows (AC-TEST-001..006b) ↔ CHANGELOG entry "11/12 AC PASS + AC-TEST-001 headline NOT-MET + AC-TEST-006b PASS-WITH-DEBT 67.5%" 일치
+b12_self_test_c_file_path_verification: true   # 인용 경로 전부 ls 통과 (internal/cli/hook.go, internal/cli/coverage_test.go, internal/cli/agentlint/agent_lint_test.go, .claude/rules/moai/workflow/lifecycle-sync-gate.md, internal/migration/*_test.go, internal/constitution/{canary,contradiction}_test.go)
+canary_compliance_check:
+  headline_gate_status: "NOT-MET (user-authorized PASS-WITH-DEBT)"
+  residual_debt_count: 3
+  follow_up_spec_named: "SPEC-INTERNAL-TEST-002 (directory NOT created by this sync — debt owner named only per task constraint)"
+production_code_untouched_verification: "git diff <run-base>..HEAD -- internal/cli/hook.go internal/migration/*.go internal/constitution/canary.go internal/constitution/contradiction.go (excluding *_test.go) → empty (C-1/C-3 준수)"
+route: "A (Hybrid Trunk main-direct — Tier S default)"
+push_target: "origin/main"
+residual_debt:
+  - id: "DEBT-TEST-001"
+    description: "AC-TEST-001 headline `go test ./internal/... -count=1` FAIL — 6× internal/cli TestDoctor/TestStatus TUI rendering failures (Current_Light/Dark/NoColor). 0 panic (F1 SIGSEGV 제거로 증명) but 6 pre-existing FAIL residual. SIGSEGV가 이들을 마스킹하고 있었음 — F1 수정으로 노출됨. 본 SPEC plan.md §G 예견 + spec.md §Out of Scope (CI workflow 변경 부재 항목이 사실상 이 한정적 TUI 렌더링 부채를 지칭)."
+    severity: P1
+    owner: "SPEC-INTERNAL-TEST-002 (follow-up — NOT created in this sync)"
+  - id: "DEBT-TEST-002"
+    description: "AC-TEST-001 headline — 1× internal/statusline TestBuild_WritesContextUsageWithSessionID pre-existing env-flake (context_window_size=1000000, want 256000). spec.md §Out of Scope — internal/statusline env-flaky test 항목으로 명시적 제외; project_ac_css_001_rescan_debt.md 기록 pre-existing 부채. acceptance.md §D.3 재실행 프로토콜은 본 SPEC에서 노이즈로 작용 (1회 재실행으로 PASS하지 않음 — deterministic flake)."
+    severity: P2
+    owner: "SPEC-INTERNAL-TEST-002 (follow-up — NOT created in this sync)"
+  - id: "DEBT-TEST-003"
+    description: "AC-TEST-006b internal/constitution package coverage 67.5% < 85% floor. F5 scope canary.go 87% / contradiction.go 95% 완료; gap은 pipeline.go (8 functions, 0% integration-level) + human_oversight.go 일부 — F5 scope 외 사전 부채. plan.md §G 예견 '도달 불가 시 실측 수치 + 사유 문서화' 적용."
+    severity: P2
+    owner: "SPEC-INTERNAL-TEST-002 (follow-up — NOT created in this sync)"
+follow_up_spec_scope_summary: "SPEC-INTERNAL-TEST-002 will own: (a) 6 internal/cli TestDoctor/TestStatus TUI rendering failures (Current_Light/Dark/NoColor — SIGSEGV unmasking으로 노출); (b) internal/statusline TestBuild_WritesContextUsageWithSessionID env-flake; (c) internal/constitution pipeline.go integration coverage (67.5%→85% target). Follow-up SPEC directory NOT created by this sync — debt owner named only per task constraint."
+acceptance_gate_transparency_note: "acceptance.md §D.1 'Binding gate (MUST-PASS): AC-TEST-001 headline' body stays UNMODIFIED (manager-docs forbidden from editing acceptance body). The operational reinterpretation — 'F1-F5 per-finding gates PASS + residual debt recorded + headline green deferred to follow-up SPEC-INTERNAL-TEST-002' — is user-authorized PASS-WITH-DEBT and lives in transparent documentation: this §E.4 residual_debt block + CHANGELOG `[Unreleased] > ### Fixed` entry. NOT a silent pretend-headline-is-green."
+```
 
 ## §F Phase 0.95 Mode Selection
 
