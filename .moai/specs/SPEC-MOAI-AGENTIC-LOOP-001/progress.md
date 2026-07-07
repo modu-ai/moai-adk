@@ -86,7 +86,7 @@
 ## §E.3 Run-phase Audit-Ready Signal
 
 - run_complete_at: 2026-07-08
-- run_commit_sha: (M6 evidence commit — backfilled in the follow-up chore commit per repo convention)
+- run_commit_sha: a8f6bc629
 - run_commits: 5022bdf63 (M1 rules SSOT + baseline) → d7fba8451 (M2 router) → ee8ca76a9 (M3 pipeline body) → 249cf8e08 (M4 run tree) → 8578c2a47 (M5 adjacent surfaces) → M6 (evidence)
 - run_status: implemented (progress.md-scoped signal; spec/plan/acceptance frontmatter close is sync-phase-owned per the Status Transition Ownership Matrix)
 - ac_pass_count: 38 (§B 38/38 PASS; BLOCKING group 011/011b/020/021/022 all PASS) + §C R01-R04 4/4 PASS
