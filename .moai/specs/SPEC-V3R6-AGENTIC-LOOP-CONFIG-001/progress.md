@@ -141,7 +141,7 @@ audit_struct_yaml_symmetry_test.go: NO-OP (WorkflowConfig not in the symmetryCas
 
 ```yaml
 run_complete_at: 2026-07-08
-run_commit_sha: "<pending commit — orchestrator rebases + pushes>"
+run_commit_sha: "8812e2bdb"  # rebased from 8a6f807e0 onto origin/main 1b224399d (shared-checkout 병렬 세션 race 정리 후)
 run_status: audit-ready
 ac_pass_count: 13
 ac_fail_count: 0
@@ -158,6 +158,21 @@ m1_to_mN_commit_strategy: single_commit  # M1+M2+M3 in one run-phase commit (Tie
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
-
-> manager-docs populates this section at sync-phase (3-phase close: lint + test + coverage delta + CHANGELOG/README sync).
+```yaml
+sync_complete_at: 2026-07-08
+sync_commit_sha: "<pending — backfill in next chore commit per BRAND-DIR-REMOVE-001 2c637ece2 / TOKEN-ROUTING-001 e4465ec5d convention>"
+sync_status: audit-ready
+phase_close: 3-phase close (plan→run→sync; MX folded into sync per SPEC-V3R6-LIFECYCLE-REDESIGN-001)
+status_transition: in-progress → completed (atomic on single sync commit per Status Transition Ownership Matrix)
+ac_pass_count: 13
+ac_fail_count: 0
+changelog_entry: CHANGELOG.md [Unreleased] > Added (SPEC-V3R6-AGENTIC-LOOP-CONFIG-001)
+readme_change: none  # internal config loader; user-visible CLI change 0
+template_change: none  # REQ-ALC-011 — template workflow.yaml already ships agentic_loop block; Go-only SPEC
+orchestrator_direct_sync: true  # shared-checkout 병렬 세션 race (c891b435 dead 확정) → pathspec commit; TOKEN-ROUTING/statusline/version 무관 변경 보존
+rebase_applied: origin/main 1b224399d (SECURITY-001 M3 + C8Preserve fix) 위로 local 3 commit rebase — run commit 8a6f807e0 → 8812e2bdb
+sync_phase_ac_remeasurement: 13/13 PASS (-count=1, sync-phase 재실측 per verification-claim-integrity §2 baseline-attribution)
+sync_phase_coverage: internal/config 80.0% (-count=1 sync-phase 재실측)
+sync_phase_build: go build ./internal/config/... ./internal/settings/... exit 0
+sync_phase_lint: golangci-lint 0 NEW issues
+```
