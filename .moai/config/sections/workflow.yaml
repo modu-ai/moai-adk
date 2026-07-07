@@ -144,6 +144,29 @@ workflow:
         verify-judge: { model: sonnet, effort: xhigh }
         implement: { model: sonnet, effort: xhigh }
         design-architecture: { model: opus, effort: xhigh }
+    # model_routing: Tier x Phase -> {model, effort} routing defaults.
+    # This block is the SSOT for per-spawn cost routing; the orchestrator
+    # consults RouteModelFor(tier, phase) at spawn time and applies the
+    # returned {model, effort} as a per-spawn override UNLESS the caller
+    # supplied an explicit override (matrix yields to explicit user override).
+    # Key format: <TIER>-<phase> where Tier in {S, M, L} and Phase in
+    # {plan, run, sync, mx}. Closed sets: model in
+    # {inherit, haiku, sonnet, opus, glm}, effort in {low, medium, high, xhigh, max}.
+    # An absent (Tier, Phase) pair falls back to a documented default with
+    # fallback_applied: true on the returned entry.
+    model_routing:
+        S-plan: { model: sonnet, effort: medium }
+        S-run: { model: sonnet, effort: high }
+        S-sync: { model: haiku, effort: low }
+        S-mx: { model: haiku, effort: low }
+        M-plan: { model: sonnet, effort: medium }
+        M-run: { model: sonnet, effort: xhigh }
+        M-sync: { model: sonnet, effort: medium }
+        M-mx: { model: haiku, effort: low }
+        L-plan: { model: opus, effort: high }
+        L-run: { model: opus, effort: xhigh }
+        L-sync: { model: sonnet, effort: high }
+        L-mx: { model: sonnet, effort: medium }
     worktree:
         # 2026-05-22: auto_create false (user policy feedback_worktree_autonomous 정렬).
         # L1 worktree는 Claude Code runtime autonomous — MoAI orchestrator는 자동 생성 안함.

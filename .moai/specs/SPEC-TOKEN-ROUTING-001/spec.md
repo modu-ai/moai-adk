@@ -2,7 +2,7 @@
 id: SPEC-TOKEN-ROUTING-001
 title: "Tier×Phase Declarative Model/Effort Routing Matrix (Token-Economy Epic 2/4)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-08
 updated: 2026-07-08
 author: manager-spec

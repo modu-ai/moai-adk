@@ -356,6 +356,25 @@ type WorkflowConfig struct {
 	// M5-a B1부터 이 블록을 렌더/쓰기하지 않는다. dynamic-workflow JS가
 	// yaml 파일에서 직접 읽는 소비자다. 블록 부재 시 nil (zero-value, 무오류).
 	WorkflowAgents map[string]WorkflowAgentEntry `yaml:"workflow_agents"`
+
+	// ModelRouting is the Tier x Phase -> {model, effort} routing map read by
+	// RouteModelFor(tier, phase). The key format is "<TIER>-<phase>" (e.g.
+	// "S-sync", "L-run"). This is the per-spawn COST axis, orthogonal to
+	// Phase 0.95's Mode 1-6 shape axis — B (this field) decides model/effort,
+	// Phase 0.95 decides spawn shape; they compose, never compete.
+	// When the block is absent the map is nil and RouteModelFor falls back to
+	// the documented default entry with FallbackApplied=true.
+	ModelRouting map[string]ModelRoutingEntry `yaml:"model_routing"`
+}
+
+// ModelRoutingEntry is a single Tier x Phase routing recommendation. It is a
+// NEW struct distinct from WorkflowAgentEntry because REQ-TR-002 mandates a
+// FallbackApplied indicator that WorkflowAgentEntry (which carries only
+// {Model, Effort}) does not have.
+type ModelRoutingEntry struct {
+	Model           string `yaml:"model"`
+	Effort          string `yaml:"effort"`
+	FallbackApplied bool   `yaml:"fallback_applied"`
 }
 
 // WorkflowAgentEntry는 dynamic-workflow purpose별 model/effort 기본값이다
