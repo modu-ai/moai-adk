@@ -140,7 +140,7 @@ test suite cleanly (`go test ./internal/hook/...` → all PASS).
 
 ```yaml
 sync_complete_at: 2026-07-07
-sync_commit_sha: "1b8432303"  # 본 sync commit은 shared-checkout race로 병렬 세션의 SPEC-CLI-LINT 백필 commit에 편입됨 (frontmatter completed transition + §E.4 + run_commit_sha를 carry). CHANGELOG entry는 ce60eb730에 편입. feedback_shared_checkout_concurrent_commit_race.md 패턴.
+sync_commit_sha: "a503af8c5"  # recovery sync commit (frontmatter completed transition carry). 병렬 세션 history rewrite(rebase)로 1b8432303가 main에서 제거되어 spec/plan/acceptance가 유실됨 — a503af8c5가 복구 sync commit. CHANGELOG entry는 ce60eb730, §E.4 + run_commit_sha backfill은 8e04e8d92에 안전 보존.
 sync_status: pass
 changelog_entry_position: "[Unreleased] > Added"
 frontmatter_status_transitions:
@@ -162,7 +162,7 @@ mx_tag_validation: n/a               # no @MX tags in scope (wrapper bash + Go t
 ### Sync-phase Self-Verification (manager-docs variant)
 
 - **E1 Frontmatter status transitions**: `grep '^status:' spec.md plan.md acceptance.md progress.md` → all `completed` (verified pre-commit).
-- **E2 SHA backfill**: `run_commit_sha: f34f19550` populated (run-phase HEAD). `sync_commit_sha: 1b8432303` backfilled — 본 sync commit이 shared-checkout race로 병렬 세션의 SPEC-CLI-LINT 백필 commit에 편입되었으므로, 그 commit의 SHA를 sync_commit_sha로 기록 (frontmatter completed transition을 실제로 carry한 commit).
+- **E2 SHA backfill**: `run_commit_sha: f34f19550` populated (run-phase HEAD). `sync_commit_sha: a503af8c5` backfilled — 병렬 세션 history rewrite로 인한 recovery sync commit (frontmatter completed transition을 carry). 원본 sync 작업은 shared-checkout race로 3 commit에 분산: CHANGELOG → ce60eb730, §E.4 + run_commit_sha → 8e04e8d92, frontmatter completed transition → a503af8c5 (본 commit).
 - **E3 CHANGELOG entry**: `[Unreleased] > Added` section — SPEC-HOOK-SESSIONSTART-PROBE-001 entry appended (B12 pre-emission grep count 0 confirmed; 7 AC count matches acceptance.md SSOT; file paths verified via ls).
 - **E4 Scope-boundary grep**: `git show --stat HEAD` lists ONLY spec/plan/acceptance/progress + CHANGELOG (no leakage of the 6 P1-unrelated WT files: llm.yaml local+template, defaults.go, defaults_test.go, moai-easy.md local+template, SPEC-CLI-LINT-COMPLETED-001).
 - **E5 Pathspec discipline**: `git diff --cached --stat` pre-commit shows only SPEC files + CHANGELOG.
