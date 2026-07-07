@@ -2,7 +2,7 @@
 id: SPEC-BRAND-DIR-REMOVE-001
 title: "Clean Removal of .moai/project/brand Directory"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-08
 updated: 2026-07-08
 author: GOOS

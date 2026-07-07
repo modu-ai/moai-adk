@@ -57,4 +57,16 @@ tags: "cleanup, brand, design-retirement, removal, deprecation"
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs 소관>_
+- sync_status: audit-ready
+- sync_complete_at: 2026-07-08
+- sync_commit_sha: (to be recorded post-commit)
+
+**Sync Evidence:**
+- CHANGELOG.md: [Unreleased] > Removed entry appended (11 AC references)
+- spec.md: frontmatter status in-progress → completed
+- No README changes (no references to project/brand found)
+- All AC (11 rows) verified against run-phase git commit 36126834f
+- Pre-emission B12 self-tests passed:
+  - grep -c 'SPEC-BRAND-DIR-REMOVE-001' CHANGELOG.md = 0 (no duplicate)
+  - acceptance.md AC count = 11 (matches CHANGELOG reference count)
+  - File paths verified from git show --stat (20 files changed, all claimed files present in commit)
