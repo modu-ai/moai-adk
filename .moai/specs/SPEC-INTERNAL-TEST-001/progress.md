@@ -139,7 +139,7 @@ residual_debt:
 
 ```yaml
 sync_complete_at: "2026-07-08"
-sync_commit_sha: "<sync commit SHA — to be backfilled by chore commit>"
+sync_commit_sha: "80dea9684"
 sync_status: "PASS-WITH-DEBT"
 frontmatter_status_transitions:
   spec_md: "in-progress → implemented → completed (merged 3-phase close on this sync commit)"
