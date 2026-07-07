@@ -103,4 +103,53 @@ the Tier S ceiling. The SPEC touched 5 files (2 YAML + types.go + loader + test)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: audit-ready
+- sync_complete_at: 2026-07-08
+- sync_commit_sha: <pending — backfill in follow-up chore commit (established convention per SPEC-BRAND-DIR-REMOVE-001 2c637ece2)>
+- sync_phase_owner: manager-docs
+- close_pattern: merged 3-phase close (in-progress → implemented → completed rides the single sync commit per Status Transition Ownership Matrix; no separate Mx chore commit)
+- ac_pass_count_final: 12
+- ac_fail_count_final: 0
+- ac_total: 12
+- run_phase_commit_sha: 8e7352348 (M1 run-phase — model_routing loader + accessor; cherry-picked to main)
+- plan_phase_commit_sha: 409b66431 (plan-phase artifacts, Tier M)
+- build_evidence:
+    host_go_build: PASS (exit 0, observed at run-phase commit 8e7352348)
+    windows_amd64_go_build: PASS (exit 0, observed at run-phase commit 8e7352348)
+    go_vet: clean (0 issues)
+    golangci_lint: 0 issues on internal/config (NEW issues introduced by this SPEC = 0)
+- test_evidence:
+    internal_config_model_routing_test: 11 tests PASS (TestRouteModelForHappyPath / Fallback / NilMap / InvalidInput / ClosedSet{Model,Effort} / SharedClosedSetWithWorkflowAgents / GLMAllowed / UnavailableModel + round-trip)
+    full_go_test: 3 pre-existing failures (statusline TestBuild_WritesContextUsageWithSessionID + template TestOutputStylesTemplateLiveParity + TestTemplateNeutralityAuditC8Preserve) — independently verified PRE-EXISTING on main HEAD before TOKEN-ROUTING changes; belong to parallel-session work areas, NOT this SPEC
+- coverage_evidence:
+    internal_config_package: 80.0% (measured at run-phase; includes model_routing.go + existing config surface; below 85% package target due to broad types.go/workflow.go surface untouched by this SPEC — the model_routing.go file itself is >85% covered)
+- template_neutrality_evidence:
+    spec_id_leak_grep: 0 matches (`grep -r 'SPEC-TOKEN-ROUTING\|TOKEN-ROUTING' internal/template/templates/` → empty)
+    model_routing_mirror: present (template workflow.yaml carries identical `model_routing:` block, 2 occurrences matching local)
+    internal_content_leak_test: PASS (TestTemplateNoInternalContentLeak)
+- b12_self_test_a_pre_emission_grep: PASS (`grep -c 'SPEC-TOKEN-ROUTING-001' CHANGELOG.md` = 0 before emission — no duplicate entry risk)
+- b12_self_test_b_ac_count_match: PASS (acceptance.md SSOT carries 12 AC rows AC-TR-001..012; CHANGELOG entry references "12/12 AC PASS")
+- b12_self_test_c_file_path_verification: PASS (every path claimed in CHANGELOG verified via ls: .moai/config/sections/workflow.yaml + internal/template/templates/.moai/config/sections/workflow.yaml + internal/config/{model_routing.go, model_routing_test.go, types.go} — all exist)
+- changelog_entry_position: `[Unreleased] > ### Added` (single entry, bilingual Korean prose + English technical terms, matching the cohort convention of SPEC-TOKEN-ACCOUNTING-001 Epic A sibling)
+- frontmatter_status_transitions:
+    spec_md: in-progress → completed (merged 3-phase close on this sync commit; the `implemented` intermediate state is folded into the same commit per the canonical close contract — manager-docs owns this transition atomically)
+    plan_md: N/A (no YAML frontmatter — plan.md carries no status field)
+    acceptance_md: N/A (no YAML frontmatter — acceptance.md carries no status field)
+    progress_md: N/A (no YAML frontmatter — progress.md carries no status field)
+- canary_compliance_check: N/A (this SPEC declares a routing matrix + typed loader; it does not define a forward-looking policy that its own sync mechanically tests — no canary signal owned)
+- mx_tag_validation: sub-step of this sync-phase (per 3-phase close contract; no separate Mx commit). @MX:ANCHOR godoc on `RouteModelFor` delivered at run-phase (M3 DD2 resolution); @MX:NOTE/@MX:SPEC markers present on ModelRoutingConfig/ModelRoutingEntry/loader. No missing @MX tags identified.
+- pre_existing_failures_caveat: 3 test failures (statusline + template×2) are PRE-EXISTING on main HEAD before TOKEN-ROUTING changes — orchestrator independently verified via stash-and-retest; they belong to parallel-session work areas (statusline renderer / output-styles template parity) and are OUT OF SCOPE for this SPEC. Documented as debt, NOT attempted to fix.
+- sync_auditor_handoff_signal: READY — AC final 12/12 PASS, build/test evidence anchored to run-phase commit 8e7352348, coverage 80.0%, template-neutrality clean, §I Token Accounting populated with observed session-set values. Awaiting orchestrator spawn of sync-auditor for independent 4-dimension scoring (Functionality / Security / Craft / Consistency).
+- source_session_id: c891b435 (orchestrator session; environment-fallback pattern per session-handoff.md §Field-by-Field Spec Block 2)
+
+## §I Token Accounting
+
+- tokens_spent: 26851010
+- tokens_input: 2124709
+- tokens_output: 129693
+- tokens_cache_creation: 0
+- tokens_cache_read: 24596608
+- cache_hit_ratio: 0.9204
+- token_attribution: subagent-set (5 subagents observed via meta.json + jq aggregation over JSONL transcripts in session c891b435; orchestrator parent session + post-return verification excluded — snapshot is a strict under-count)
+- token_attribution_confidence: low
+- token_session_count: 5
