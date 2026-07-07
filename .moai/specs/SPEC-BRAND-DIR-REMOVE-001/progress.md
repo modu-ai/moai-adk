@@ -59,7 +59,7 @@ tags: "cleanup, brand, design-retirement, removal, deprecation"
 
 - sync_status: audit-ready
 - sync_complete_at: 2026-07-08
-- sync_commit_sha: (to be recorded post-commit)
+- sync_commit_sha: 408db55d10f0e198325309a71ef627d6c99096ac
 
 **Sync Evidence:**
 - CHANGELOG.md: [Unreleased] > Removed entry appended (11 AC references)
