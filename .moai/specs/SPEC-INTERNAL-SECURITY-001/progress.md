@@ -53,17 +53,59 @@ tier: M
 | AC-SEC-002b (same-origin POST 성공) | PASS | `go test -run TestSameOriginPostAllowed ./internal/web/` — not 403 + WritePreferences called |
 | AC-SEC-002c (주석 정정) | PASS | `grep -in csrf internal/web/app.go` — CSRF claims now match actual Sec-Fetch-Site mechanism; no false claim |
 
+### M2 — Template-update 그룹 (REQ-SEC-003 P1 + REQ-SEC-004 P1 + REQ-SEC-005 P1 + REQ-SEC-006 P0)
+
+**REQ-SEC-003 — 심링크 역참조 백업 차단**
+
+- `internal/cli/update_namespace_protect.go` collectUserOwnedFilesWith walk 콜백: `isSymlinkEntry(path)` Lstat 가드 추가 (update.go:2179 기존 패턴 재사용 — 새 패턴 발명 금지). 심링크 skip → copyFile이 역참조 target 내용을 `.moai/backups/`에 기록하지 않음.
+- `internal/cli/update_archive.go` copyFile: 심링크 source 거부 방어 (defense-in-depth). copyDirAll: walk 시 심링크 skip (archive 경유 유출 차단).
+
+**REQ-SEC-004 — Template-First `.gitignore` `.moai/backups/`**
+
+- `internal/template/templates/.gitignore:118` 에 `.moai/backups/` (SLASH form) 추가 — 기존 `.moai-backups/` (HYPHEN, L117) 옆. Template-First Rule 준수: template source 먼저 편집 후 `make build` 로 임베드 재컴파일.
+
+**REQ-SEC-005 — conservative backup expansion [USER DECISION]**
+
+- `internal/cli/update_namespace_protect.go` 신규 `isUserOwnedNamespaceConservative(rel)` — isUserOwnedNamespace superset. reserved-prefix 모호 이름(`moai-my-notes`, `expert-mydomain.md` 등)도 백업 pass에 포함 (R4 low-risk path). system agent dirs (core/expert/meta)은 여전히 제외.
+- `collectUserOwnedFilesWith(projectRoot, classify)` 로 walk 로직 추출; `collectUserOwnedFiles`(strict, buildPreserveInventory용) 와 `collectUserOwnedFilesConservative`(backup용) 분리. buildPreserveInventory strict 유지 → clean-reinstall 회귀 없음.
+- `backupUserOwnedNamespace` 가 conservative collector 사용.
+
+**REQ-SEC-006 — dead abort sentinel WIRE [USER DECISION]**
+
+- `internal/cli/update_namespace_protect.go` 신규 `verifyNamespaceBackupCoverage(projectRoot, backupDir)` — backup 완료 후·파괴적 deploy 이전에 실행되는 real pre-modification abort gate. conservative collected set 중 backupDir에 없는 파일을 `unprotected` plan으로 구성 → `assertNoUserOwnedNamespaceTouch` 위임 (UPDATE_USER_NAMESPACE_VIOLATION sentinel).
+- `internal/cli/update.go` runUpdate "Backup" case (L797): `verifyNamespaceBackupCoverage(projectRoot, nsBackupPath)` 배선. 정상 update (no user-owned / fully backed up) → unprotected empty → 통과 (NFR-SEC-003).
+- `@MX:REASON` 정정 (AC-SEC-006c): update.go:1283 기존 거짓 "called by backupUserOwnedNamespace, assertNoUserOwnedNamespaceTouch, and template overlay write loop; fan_in >= 3" → 실제 fan_in=3 직접 호출자 (collectUserOwnedFiles value-pass + assertNoUserOwnedNamespaceTouch + isUserOwnedNamespaceConservative) 명시.
+
+**회귀 테스트 (NFR-SEC-003/NFR-SEC-004)**
+
+- NEW `internal/cli/update_security_m2_test.go`: AC-SEC-003a (심링크 target 미백업), AC-SEC-003b (심링크 skip), AC-SEC-005a (모호 이름 백업), AC-SEC-005b (conservative 분류 테이블), AC-SEC-006a (verifyNamespaceBackupCoverage 4-case: empty/fully-backed-up/missing/partial).
+- NEW `internal/template/embed_gitignore_backups_test.go`: AC-SEC-004b (임베드 FS `.moai/backups/` 서빙).
+
+### AC Binary Matrix (M2)
+
+| AC | Status | Evidence |
+|----|--------|----------|
+| AC-SEC-003a (심링크 target 미백업) | PASS | `go test -run TestBackupUserOwnedNamespace_SymlinkTargetNotBackedUp ./internal/cli/` — secret content not in backup tree |
+| AC-SEC-003b (Lstat 가드 배선) | PASS | `grep -nE "Lstat\|isSymlinkEntry" internal/cli/update_namespace_protect.go` → L122 `isSymlinkEntry(path)` |
+| AC-SEC-004a (template source `.moai/backups/`) | PASS | `grep -n "^\.moai/backups/" internal/template/templates/.gitignore` → L118 |
+| AC-SEC-004b (임베드 FS 서빙, make build 후) | PASS | `go test -run TestEmbeddedGitignoreHasMoaiBackupsSlash ./internal/template/` |
+| AC-SEC-005a (모호 이름 백업) | PASS | `go test -run TestBackupUserOwnedNamespace_ConservativeReservedPrefix ./internal/cli/` — moai-my-notes + expert-mydomain backed up |
+| AC-SEC-005b (prefix-collision 동작 문서화) | PASS | `go test -run TestIsUserOwnedNamespaceConservative_PrefixCollision ./internal/cli/` — 13-case table |
+| AC-SEC-006a (WIRE branch — ≥1 production caller) | PASS | `grep -rn "assertNoUserOwnedNamespaceTouch" internal/cli/ --include="*.go" \| grep -v "_test.go"` → update.go:797 verifyNamespaceBackupCoverage → :310 assertNoUserOwnedNamespaceTouch production path |
+| AC-SEC-006c (@MX fan_in matches actual) | PASS | update.go:1283 @MX:REASON = "called by collectUserOwnedFiles, assertNoUserOwnedNamespaceTouch, and isUserOwnedNamespaceConservative; fan_in = 3" — grep 실측 3 callers 일치 |
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-- run_status: M1-complete (web 그룹)
-- run_commit_sha: (pending — M1 commit)
-- M1 AC 6/6 PASS (AC-SEC-001a/b/c, AC-SEC-002a/b/c)
-- cross-platform build: `go build ./...` exit 0 AND `GOOS=windows GOARCH=amd64 go build ./...` exit 0
-- coverage: internal/web 69.8% (maintained — NFR-SEC-002 threshold ≥ 69.8%), internal/profile 82.6%
-- subagent boundary (C-HRA-008): 0 matches in internal/web/ + internal/profile/
+- run_status: M2-complete (template-update 그룹); M1 web + M2 template-update done, M3 hook pending
+- run_commit_sha: (pending — M2 commit)
+- M2 AC 8/8 PASS (AC-SEC-003a/b, AC-SEC-004a/b, AC-SEC-005a/b, AC-SEC-006a/c)
+- cross-platform build: `go build ./...` exit 0 AND `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (post `make build`)
+- coverage: internal/cli 71.5% (package-level, baseline 유지 — pre-existing statusline-golden 6 FAIL은 본 SPEC 범위 외); internal/template 85.9%. M2 신규 함수 91–100% (isUserOwnedNamespace 96.7%, verifyNamespaceBackupCoverage 91.7%, isUserOwnedNamespaceConservative 100.0%, assertNoUserOwnedNamespaceTouch 100.0%)
+- subagent boundary (C-HRA-008): 0 matches in M2 신규/편집 파일 (update_namespace_protect.go, update_archive.go, update_security_m2_test.go, embed_gitignore_backups_test.go)
 - lint: golangci-lint 0 issues (NEW: 0, pre-existing baseline: 0)
-- NFR-SEC-003 (no false-positive deny): valid profile GET 200, same-origin POST success — explicit behavior-preservation tests PASS
-- M2 (template-update) + M3 (hook) pending — separate spawn
+- NFR-SEC-003 (no false-positive deny): verifyNamespaceBackupCoverage empty/fully-backed-up cases pass → 정상 update 통과; conservative backup does not break EC-UNP-001 (no user-owned → no backup)
+- NFR-SEC-004 (테스트 격리): 모든 심링크/secret fixture t.TempDir() 내
+- M1 web (commit 5f33dfaa9) done; M3 hook pending — separate spawn
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

@@ -786,6 +786,22 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				plNsBackup.Done("No user-owned namespace to back up")
 			}
 
+			// SPEC-INTERNAL-SECURITY-001 REQ-SEC-006 (AC-SEC-006a): wire the
+			// pre-modification abort sentinel as a REAL gate on the moai update
+			// deploy path. verifyNamespaceBackupCoverage runs AFTER the backup
+			// completes and BEFORE any destructive deploy step; it aborts with
+			// UPDATE_USER_NAMESPACE_VIOLATION when a user-owned namespace file
+			// on disk would be overwritten without a backup. Normal updates
+			// (no user-owned content, or fully backed up) pass through
+			// unchanged (NFR-SEC-003).
+			if covErr := verifyNamespaceBackupCoverage(projectRoot, nsBackupPath); covErr != nil {
+				plNsBackup.Fail(fmt.Sprintf("Namespace safety check failed: %v", covErr))
+				if reporter != nil {
+					reporter.StepError(covErr)
+				}
+				return covErr
+			}
+
 			// Also backup .gitignore for EntryMerge after deploy
 			gitignorePath := filepath.Join(projectRoot, ".gitignore")
 			if data, readErr := os.ReadFile(gitignorePath); readErr == nil {
@@ -1264,7 +1280,7 @@ func isUserAreaPath(rel string) bool {
 // per NFR-UNP-003.
 //
 // @MX:ANCHOR: [AUTO] isUserOwnedNamespace is the authoritative user-owned namespace check for moai update
-// @MX:REASON: [AUTO] called by backupUserOwnedNamespace, assertNoUserOwnedNamespaceTouch, and template overlay write loop; fan_in >= 3
+// @MX:REASON: [AUTO] called by collectUserOwnedFiles (strict preserve inventory), assertNoUserOwnedNamespaceTouch (sentinel), and isUserOwnedNamespaceConservative (REQ-SEC-005 backup superset); fan_in = 3
 func isUserOwnedNamespace(rel string) bool {
 	// Normalize to forward slashes for consistent matching on all platforms (NFR-UNP-003).
 	norm := strings.ReplaceAll(rel, "\\", "/")

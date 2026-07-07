@@ -205,6 +205,10 @@ func hashFile(path string) ([]byte, error) {
 
 // copyDirAll recursively copies every entry in srcDir into dstDir,
 // preserving each file's Unix permission bits.
+//
+// Symlinks are skipped (REQ-SEC-003 / SPEC-INTERNAL-SECURITY-001): a symlinked
+// entry inside an archived skill must not have its dereferenced target copied,
+// so the archive never records out-of-tree content.
 func copyDirAll(srcDir, dstDir string) error {
 	return filepath.WalkDir(srcDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -224,6 +228,12 @@ func copyDirAll(srcDir, dstDir string) error {
 				return err
 			}
 			return os.MkdirAll(dstPath, info.Mode().Perm())
+		}
+
+		// REQ-SEC-003: skip symlinks so the archive copy does not dereference a
+		// link and record its target content (CWE-61 symlink-following write).
+		if isSymlinkEntry(path) {
+			return nil
 		}
 
 		return copyFile(path, dstPath)
@@ -343,7 +353,20 @@ func dryRunArchiveLegacySkills(projectRoot string, out io.Writer) error {
 
 // copyFile copies a single file from src to dst, preserving the source's
 // permission bits.
+//
+// REQ-SEC-003 defense-in-depth (SPEC-INTERNAL-SECURITY-001): if src is a
+// symlink, copyFile refuses rather than dereferencing the link and recording
+// the target's content (which could be an out-of-tree secret). The primary
+// guard lives in collectUserOwnedFiles / copyDirAll (callers skip symlinks);
+// this check ensures defense-in-depth if a symlink reaches copyFile directly.
 func copyFile(src, dst string) error {
+	// Defense-in-depth: refuse to dereference a symlink source. os.Stat (below)
+	// and os.Open both follow symlinks; an Lstat check here keeps the contract
+	// explicit even though upstream callers already skip symlinks.
+	if isSymlinkEntry(src) {
+		return fmt.Errorf("copy %s → %s: refusing to dereference symlink source", src, dst)
+	}
+
 	srcInfo, err := os.Stat(src)
 	if err != nil {
 		return fmt.Errorf("stat %s: %w", src, err)
