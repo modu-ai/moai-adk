@@ -221,10 +221,7 @@ func detectUserModifiedConfigs(projectRoot string, configPaths []string, baselin
 }
 
 // sha256Hex returns the SHA-256 hex digest of input.
-//
-// Distinct from hashBytes (design_folder.go:191) which returns the raw
-// SHA-256 bytes; this helper returns the hex-encoded string used by
-// SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 hash diff (REQ-VVCR-007).
+// Used by SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 hash diff (REQ-VVCR-007).
 func sha256Hex(b []byte) string {
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])

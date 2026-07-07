@@ -1,6 +1,6 @@
 ---
 description: "Design System Constitution — MoAI design pipeline FROZEN/EVOLVABLE zone, GAN Loop contract, brand integration. design/brand 작업 시에만 로드."
-paths: ".moai/design/**,.moai/specs/SPEC-*-DESIGN-*/**,.moai/project/brand/**,.claude/skills/moai/**/design*.md,.claude/skills/moai/**/brand*.md"
+paths: ".moai/specs/SPEC-*-DESIGN-*/**,.moai/project/brand/**,.claude/skills/moai/**/design*.md,.claude/skills/moai/**/brand*.md"
 ---
 
 # Design System Constitution v3.5.0
@@ -82,21 +82,23 @@ Brand context is stored in `.moai/project/brand/` and initialized through the br
 
 ### 3.2 Design Brief (execution scope)
 
-Iteration-specific design briefs are stored in `.moai/design/`:
+> The `.moai/design/` directory and its scaffold/sync code path were removed in a later cleanup (`scaffoldDesignDir` / `updateDesignDir` deleted; the `design_docs` config block and `DesignDocs` Go struct removed). The clauses below are preserved verbatim as the FROZEN-zone source mirrored by zone-registry; they document the historical contract only. The `.moai/design/` path is no longer created by `moai init` or synced by `moai update`.
+
+Historical iteration-specific design briefs were stored in `.moai/design/`:
 
 - [ZONE:Frozen] [HARD] `/moai design` MUST auto-load human-authored design documents (research.md, system.md, spec.md) when present and not _TBD_ (RETIRED route — `/moai design` is no longer a routed subcommand; design-language requests route to `/moai plan`. See the retirement banner at the top of this file. Clause text preserved verbatim for the FROZEN zone-registry mirror.)
 - [ZONE:Frozen] [HARD] Design briefs MUST NOT override brand context — brand remains the constitutional parent
-- [ZONE:Frozen] [HARD] `moai-workflow-design` continues to write machine-generated artifacts to `.moai/design/`; the exact set of reserved file paths is enumerated below — human-authored files must not collide with them
-- [ZONE:Frozen] [HARD] Reserved file paths (canonical list): `tokens.json`, `components.json`, `assets/`, `import-warnings.json`, `brief/BRIEF-*.md`
-- [ZONE:Frozen] [HARD] Token budget for auto-loading is bounded by `.moai/config/sections/design.yaml` `design_docs.token_budget`; when the key is absent, the system MUST default to 20000
-- [ZONE:Frozen] [HARD] Priority order when truncation is needed: spec.md > system.md > research.md
+- [ZONE:Frozen] [HARD] `moai-workflow-design` continues to write machine-generated artifacts to `.moai/design/`; the exact set of reserved file paths is enumerated below — human-authored files must not collide with them (historical — the `moai-workflow-design` skill is retired and the `.moai/design/` directory is no longer created)
+- [ZONE:Frozen] [HARD] Reserved file paths (canonical list): `tokens.json`, `components.json`, `assets/`, `import-warnings.json`, `brief/BRIEF-*.md` (historical — enforcement code path removed)
+- [ZONE:Frozen] [HARD] Token budget for auto-loading is bounded by `.moai/config/sections/design.yaml` `design_docs.token_budget`; when the key is absent, the system MUST default to 20000 (historical — the `design_docs` config block was removed)
+- [ZONE:Frozen] [HARD] Priority order when truncation is needed: spec.md > system.md > research.md (historical)
 
-> **Note:** Reserved name violations during `moai update` (update path) are reported as warnings; the user file is preserved and other templates continue to sync. During `moai init` / scaffold path, reserved name collisions remain hard errors. User data is never modified or deleted in either case.
+> **Note:** Reserved name violations during `moai update` (update path) are reported as warnings; the user file is preserved and other templates continue to sync. During `moai init` / scaffold path, reserved name collisions remain hard errors. User data is never modified or deleted in either case. (Historical — the reserved-name collision check was removed alongside `.moai/design/`.)
 
 ### 3.3 Relationship
 
 - Brand (`.moai/project/brand/`) = WHO the brand is (long-lived, rarely changes)
-- Design (`.moai/design/`) = WHAT each iteration produces (per-project, evolves with redesign cycles)
+- Design (`.moai/design/`) = WHAT each iteration produces (per-project, evolves with redesign cycles) — historical; the directory is no longer created
 - When both are present, brand constraints win on conflict.
 
 ---

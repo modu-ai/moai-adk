@@ -958,7 +958,6 @@ type DesignConfig struct {
 	BrandContext     DesignBrandContext `yaml:"brand_context"`
 	ClaudeDesign     DesignClaudeDesign `yaml:"claude_design"`
 	DefaultFramework string             `yaml:"default_framework"`
-	DesignDocs       DesignDocs         `yaml:"design_docs"`
 	Enabled          bool               `yaml:"enabled"`
 	Evaluator        DesignEvaluator    `yaml:"evaluator"`
 	Evolution        DesignEvolution    `yaml:"evolution"`
@@ -993,14 +992,6 @@ type DesignClaudeDesign struct {
 	Enabled                 bool     `yaml:"enabled"`
 	FallbackPath            string   `yaml:"fallback_path"`
 	SupportedBundleVersions []string `yaml:"supported_bundle_versions"`
-}
-
-// DesignDocs holds design document auto-loading settings.
-type DesignDocs struct {
-	AutoLoadOnDesignCommand bool     `yaml:"auto_load_on_design_command"`
-	Dir                     string   `yaml:"dir"`
-	Priority                []string `yaml:"priority"`
-	TokenBudget             int      `yaml:"token_budget"`
 }
 
 // DesignEvaluator holds evaluator configuration for design pipeline.

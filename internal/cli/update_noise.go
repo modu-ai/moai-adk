@@ -1,12 +1,10 @@
 package cli
 
-// @MX:ANCHOR: [AUTO] update_noise.go — noise-suppression ledgers for `moai update` reserved + merge fallback warnings
-// @MX:REASON: invariant contract — silent re-run for known reserved files (ack ledger) + silent fallback for transient 3-way merge regressions (3-strike threshold); user-visible signal preserved on first occurrence and on hash drift
+// @MX:ANCHOR: [AUTO] update_noise.go — noise-suppression ledger for `moai update` merge fallback warnings
+// @MX:REASON: invariant contract — silent fallback for transient 3-way merge regressions (3-strike threshold); user-visible signal preserved on first occurrence
 // @MX:SPEC: SPEC-V3R6-UPDATE-NOISE-001
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -20,17 +18,13 @@ import (
 // updateVerboseMode carries the `--verbose` flag through the update execution
 // path without requiring signature changes to every helper. Set once by
 // runUpdate at the top of the update command and consulted by
-// checkReservedCollision + recordMergeFallback. `moai update` is single-process
-// sequential so no synchronization is needed.
+// recordMergeFallback. `moai update` is single-process sequential so no
+// synchronization is needed.
 //
 // Default value (false) preserves the production default behavior of
 // noise-suppression. Tests can set this directly when exercising verbose
 // branches.
 var updateVerboseMode bool
-
-// reservedAckLedgerRelPath is the path of the reserved-ack ledger relative to
-// project root. The ledger is per-machine and gitignored.
-const reservedAckLedgerRelPath = ".moai/state/reserved-acknowledged.json"
 
 // mergeHistoryLedgerRelPath is the path of the 3-way merge fallback counter
 // relative to project root. The ledger is per-machine and gitignored.
@@ -43,46 +37,11 @@ const mergeHistoryLedgerRelPath = ".moai/cache/merge-history.json"
 // reset by a 3-way success (REQ-UN-009).
 const fallbackAdvisoryThreshold = 3
 
-// reservedAckEntry is the per-path record stored inside the reserved-ack ledger.
-// The JSON field names are part of the ledger contract — do not rename without
-// a migration plan (REQ-UN-001).
-type reservedAckEntry struct {
-	SHA256         string `json:"sha256"`
-	AcknowledgedAt string `json:"acknowledged_at"`
-}
-
 // mergeHistoryEntry is the per-relPath record stored inside the merge-history
 // ledger. The JSON field names are part of the ledger contract (REQ-UN-006).
 type mergeHistoryEntry struct {
 	FallbackCount int    `json:"fallback_count"`
 	LastFailedAt  string `json:"last_failed_at"`
-}
-
-// loadReservedAckLedger reads and parses the reserved-ack ledger from disk.
-// REQ-UN-011 fallback safety: if the file is absent or unparseable, an empty
-// map is returned silently (no error surfaced).
-func loadReservedAckLedger(projectRoot string) map[string]reservedAckEntry {
-	path := filepath.Join(projectRoot, reservedAckLedgerRelPath)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return map[string]reservedAckEntry{}
-	}
-	ledger := map[string]reservedAckEntry{}
-	if jsonErr := json.Unmarshal(data, &ledger); jsonErr != nil {
-		// REQ-UN-011: corrupt JSON → re-initialize as empty map.
-		return map[string]reservedAckEntry{}
-	}
-	return ledger
-}
-
-// saveReservedAckLedger persists the ledger to disk using an atomic temp+rename
-// pattern (plan.md §3.2). The parent directory is created if absent.
-func saveReservedAckLedger(projectRoot string, ledger map[string]reservedAckEntry) error {
-	dir := filepath.Join(projectRoot, ".moai", "state")
-	if err := os.MkdirAll(dir, defs.DirPerm); err != nil {
-		return fmt.Errorf("mkdir state dir: %w", err)
-	}
-	return atomicWriteJSON(filepath.Join(dir, "reserved-acknowledged.json"), ledger)
 }
 
 // loadMergeHistoryLedger reads and parses the merge-history ledger. REQ-UN-011
@@ -137,51 +96,6 @@ func atomicWriteJSON(targetPath string, value any) error {
 		return fmt.Errorf("rename to target: %w", renameErr)
 	}
 	return nil
-}
-
-// sha256FileHex computes the SHA-256 hash of the file at path and returns it
-// as a 64-character hex string. Returns empty string + error on I/O failure.
-func sha256FileHex(path string) (string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = f.Close() }()
-	h := sha256.New()
-	if _, copyErr := io.Copy(h, f); copyErr != nil {
-		return "", copyErr
-	}
-	return hex.EncodeToString(h.Sum(nil)), nil
-}
-
-// shouldEmitReservedWarning encapsulates the ack-ledger consultation policy
-// (REQ-UN-002 + REQ-UN-005). Returns true iff the warning should be emitted
-// for the given reserved-name occurrence.
-//
-// The decision matrix is:
-//
-//	verbose=true                        → always emit
-//	verbose=false + ack absent          → emit (first occurrence)
-//	verbose=false + ack present + drift → emit (hash drift re-emit per REQ-UN-004)
-//	verbose=false + ack present + same  → silent
-func shouldEmitReservedWarning(ledger map[string]reservedAckEntry, name, currentHash string, verbose bool) bool {
-	if verbose {
-		return true
-	}
-	entry, acknowledged := ledger[name]
-	if !acknowledged {
-		return true
-	}
-	return entry.SHA256 != currentHash
-}
-
-// recordReservedAck stamps the ledger entry for the given name with the
-// current hash + timestamp (REQ-UN-003).
-func recordReservedAck(ledger map[string]reservedAckEntry, name, currentHash string) {
-	ledger[name] = reservedAckEntry{
-		SHA256:         currentHash,
-		AcknowledgedAt: time.Now().UTC().Format(time.RFC3339),
-	}
 }
 
 // recordMergeFallback updates the merge-history ledger for relPath and, when

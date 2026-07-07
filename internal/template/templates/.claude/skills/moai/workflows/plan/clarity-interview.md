@@ -135,13 +135,11 @@ When to skip:
 Agent: per-spawn `Agent(general-purpose)` frontend specialist (with moai-design-craft skill; frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8)
 
 Tasks:
-1. Check if `.moai/design/system.md` exists and has content
-2. If system.md exists: Load as design context, skip Intent-First process
-3. If system.md is empty or missing: Execute Intent-First process:
+1. Execute Intent-First process:
    - Answer: Who is this human? What must they accomplish? What should this feel like?
    - Produce domain exploration: 5+ domain concepts, 5+ color world entries, 1 signature element
    - Identify 3+ defaults to avoid (generic patterns to reject)
-4. Generate design direction artifact
+2. Generate design direction artifact
 
 Output: `.moai/specs/SPEC-{ID}/design-direction.md` containing:
 - Intent statement (who, what, feel)
@@ -149,11 +147,8 @@ Output: `.moai/specs/SPEC-{ID}/design-direction.md` containing:
 - Color world exploration
 - Signature element definition
 - Defaults to avoid
-- Reference to `.moai/design/system.md` if exists
 
 Design direction guard: [HARD] During Phase 1.25, the agent MUST NOT write implementation code. Focus exclusively on design exploration and direction definition.
-
-After Phase 1.25: Offer to persist design decisions to `.moai/design/system.md` if it was newly created or updated. Use AskUserQuestion: "Save design direction to project-level design memory (.moai/design/system.md)?"
 
 ### Phase 1B: SPEC Planning (Required)
 

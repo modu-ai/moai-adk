@@ -37,7 +37,6 @@ Flow: Identify Changes -> Analyze Perspectives -> Consolidate -> Report
 - --branch BRANCH: Compare current branch against BRANCH (default: main)
 - --security: Focus primarily on security review (OWASP, injection, auth)
 - --file PATH: Review specific file(s) only
-- --design: Extract design patterns from UI code and create/update `.moai/design/system.md`
 - --critique: Post-build craft review focusing on subtle layering, surface elevation, token architecture, and typography hierarchy
 - --team: Use parallel multi-perspective review team (see ${CLAUDE_SKILL_DIR}/team/review.md)
 - --lean: Over-engineering-ONLY lean audit mode. Short-circuits the comprehensive 4-perspective analysis (Security / Performance / Quality / UX) and runs ONLY the over-engineering scan with the 5-tag finding format + net-reduction summary. Read-only and advisory: applies no fixes, modifies no files, renders no PASS/FAIL verdict. See the "--lean Mode" section below.
@@ -289,35 +288,21 @@ Team Prerequisites:
 
 ## Phase 4.5: Design Review (Conditional)
 
-When to run: --design or --critique flag is present, OR changed files include UI components (tsx, jsx, vue, svelte, css, scss)
-
-### --design: Extract Design Patterns
-
-Agent: per-spawn `Agent(general-purpose)` frontend specialist (with moai-design-craft skill; frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8)
-
-Tasks:
-1. Scan UI files for repeated patterns: spacing values, radius values, color tokens, button/card patterns, depth strategy (borders vs shadows)
-2. Identify existing design conventions and inconsistencies
-3. If `.moai/design/system.md` exists: Compare extracted patterns against system.md, report deviations
-4. If `.moai/design/system.md` does not exist: Create system.md from extracted patterns
-5. Present extraction summary with option to update system.md
-
-Output: Design pattern report with deviation list (file:line references)
+When to run: --critique flag is present, OR changed files include UI components (tsx, jsx, vue, svelte, css, scss)
 
 ### --critique: Post-Build Craft Review
 
 Agent: per-spawn `Agent(general-purpose)` frontend specialist (with moai-design-craft skill)
 
 Tasks:
-1. Read `.moai/design/system.md` for design direction context
-2. Review built UI against craft principles:
+1. Review built UI against craft principles:
    - **Composition**: Layout rhythm, proportions, focal point clarity
    - **Craft**: Spacing grid adherence, typography hierarchy, surface elevation consistency
    - **Content**: String coherence, data truthfulness
    - **Structure**: CSS quality (no negative margin hacks, no absolute positioning escapes)
-3. Run quality checks: swap test, squint test, signature test, token test
-4. Identify specific locations where defaults won over intentional design decisions
-5. Provide actionable rebuild recommendations with file:line references
+2. Run quality checks: swap test, squint test, signature test, token test
+3. Identify specific locations where defaults won over intentional design decisions
+4. Provide actionable rebuild recommendations with file:line references
 
 Output: Craft critique report with severity-ranked findings and rebuild suggestions
 

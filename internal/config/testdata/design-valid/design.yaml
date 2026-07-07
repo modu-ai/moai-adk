@@ -16,15 +16,6 @@ design:
         supported_bundle_versions:
             - "1.0"
     default_framework: next.js
-    design_docs:
-        auto_load_on_design_command: true
-        dir: .moai/design
-        priority:
-            - spec
-            - system
-            - research
-            - pencil-plan
-        token_budget: 20000
     enabled: true
     evaluator:
         memory_scope: per_iteration

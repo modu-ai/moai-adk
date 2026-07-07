@@ -210,7 +210,7 @@ User and language configuration:
 @.moai/config/sections/user.yaml
 @.moai/config/sections/language.yaml
 
-MoAI-ADK uses Claude Code's official rules system at `.claude/rules/moai/` (core / workflow / development / language / design rule categories). Design System Configuration (absorbed from agency) lives in `.moai/config/sections/design.yaml`, `.moai/project/brand/`, `.claude/rules/moai/design/constitution.md`, `.moai/config/sections/constitution.yaml`, `.moai/config/sections/harness.yaml`, `.moai/config/evaluator-profiles/`. Legacy .agency/ directories are archived via `moai migrate agency`.
+MoAI-ADK uses Claude Code's official rules system at `.claude/rules/moai/` (core / workflow / development / language / design rule categories). Design System Configuration (absorbed from agency) lives in `.moai/config/sections/design.yaml`, `.moai/project/brand/`, `.moai/config/sections/constitution.yaml`, `.moai/config/sections/harness.yaml`, `.moai/config/evaluator-profiles/`. Legacy .agency/ directories are archived via `moai migrate agency`.
 
 Language rules:
 - User Responses: Always in user's conversation_language

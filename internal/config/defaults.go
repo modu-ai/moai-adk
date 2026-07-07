@@ -685,12 +685,6 @@ func defaultDesignConfig() DesignConfig {
 			SupportedBundleVersions: []string{"1.0"},
 		},
 		DefaultFramework: "next.js",
-		DesignDocs: DesignDocs{
-			AutoLoadOnDesignCommand: true,
-			Dir:                     ".moai/design",
-			Priority:                []string{"spec", "system", "research", "pencil-plan"},
-			TokenBudget:             20000,
-		},
 		Enabled: true,
 		Evaluator: DesignEvaluator{
 			MemoryScope: "per_iteration",

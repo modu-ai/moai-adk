@@ -13,6 +13,7 @@
 package cli
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
@@ -163,7 +164,7 @@ func checkArchiveDrift(srcDir, dstDir string) error {
 }
 
 // computeDirHashes returns SHA-256 hashes for every file in dir as a
-// path → hash map. Reuses hashFile (declared in design_folder.go).
+// path → hash map.
 func computeDirHashes(dir string) (map[string]string, error) {
 	hashes := make(map[string]string)
 	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
@@ -177,7 +178,6 @@ func computeDirHashes(dir string) (map[string]string, error) {
 		if err != nil {
 			return err
 		}
-		// hashFile is declared in design_folder.go and returns []byte
 		rawHash, err := hashFile(path)
 		if err != nil {
 			return err
@@ -186,6 +186,21 @@ func computeDirHashes(dir string) (map[string]string, error) {
 		return nil
 	})
 	return hashes, err
+}
+
+// hashFile computes the SHA-256 hash of the file at path and returns the raw
+// 32-byte digest. Used by computeDirHashes for archive drift detection.
+func hashFile(path string) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return nil, err
+	}
+	return h.Sum(nil), nil
 }
 
 // copyDirAll recursively copies every entry in srcDir into dstDir,

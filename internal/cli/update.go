@@ -124,12 +124,12 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 	th := resolveTheme()
 
-	// SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010: propagate --verbose through the
-	// package-level updateVerboseMode flag so checkReservedCollision and
-	// recordMergeFallback can bypass ack-ledger / 3-strike suppression. `moai
-	// update` is single-process sequential — no synchronization needed. The
-	// flag is reset on function exit so subsequent in-process invocations
-	// (CLI tests, helpers) start with the default suppression-on behavior.
+	// SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-010: propagate --verbose through the
+	// package-level updateVerboseMode flag so recordMergeFallback can bypass
+	// 3-strike suppression. `moai update` is single-process sequential — no
+	// synchronization needed. The flag is reset on function exit so subsequent
+	// in-process invocations (CLI tests, helpers) start with the default
+	// suppression-on behavior.
 	updateVerboseMode = getBoolFlag(cmd, "verbose")
 	defer func() { updateVerboseMode = false }()
 
@@ -327,13 +327,6 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// that predate the evolution infrastructure (R2: Directory Scaffolding).
 	if err := scaffoldEvolutionDir("."); err != nil {
 		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Evolution dir", "scaffold failed", err.Error(), &th))
-	}
-
-	// Sync .moai/design/ templates (REQ-005, REQ-008).
-	// Preserves user-modified files (SHA-256 mismatch) and rejects reserved filename collisions.
-	if err := updateDesignDir(".", out); err != nil {
-		_, _ = fmt.Fprintln(out, tui.CheckLine("err", ".moai/design/ update", "failed", err.Error(), &th))
-		return err
 	}
 
 	// Sync profile preferences to project config (after template deployment)
