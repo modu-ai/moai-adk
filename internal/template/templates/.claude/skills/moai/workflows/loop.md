@@ -45,6 +45,10 @@ that verifies this skill documents the `/moai run --mode loop` cross-reference.
 
 See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent + mode-axis contract.
 
+## Relationship to the Pipeline-Level Agentic Completion Loop
+
+This skill is the Ralph engine — the specialized DIAGNOSTIC fix-loop (a per-iteration cycle over LSP / AST-grep / test / coverage diagnostics). It is distinct from the pipeline-level agentic completion loop (`workflows/moai.md` § Agentic Completion Loop), which iterates over PHASES (run → sync → verify) against a completion condition. The pipeline-level loop MAY invoke this engine during its verify step for mechanical convergence; the two loops are complementary, not competitors, and are NOT folded into one — the granularity differs (phases there, diagnostics here). The `/moai loop` ≡ `/moai run --mode loop` alias contract above is unchanged.
+
 ## Supported Flags
 
 - --max N (alias --max-iterations): Maximum iteration count (default 100)

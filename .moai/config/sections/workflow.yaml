@@ -1,4 +1,10 @@
 workflow:
+    # agentic_loop: pipeline-level completion-loop iteration ceiling, prose-read
+    # by the orchestrator (documented key; no Go-side loader field yet).
+    # DISTINCT from loop_prevention.max_iterations (per-operation diagnostic
+    # fix-loop bound) — separate blocks, separate semantics.
+    agentic_loop:
+        max_iterations: 10
     auto_clear:
         after_plan: true
         after_run: false

@@ -4,6 +4,12 @@ workflow:
     # Precedence: CLI --mode flag > this field > harness auto.
     # @MX:WARN - Default mode field is utility-skill-only consumer. @MX:REASON - Field is read by run skill dispatcher; changing semantics without updating dispatcher breaks behavior contract.
     default_mode: ""
+    # agentic_loop: pipeline-level completion-loop iteration ceiling, prose-read
+    # by the orchestrator (documented key; no Go-side loader field yet).
+    # DISTINCT from loop_prevention.max_iterations (per-operation diagnostic
+    # fix-loop bound) — separate blocks, separate semantics.
+    agentic_loop:
+        max_iterations: 10
     auto_clear:
         after_plan: true
         after_run: false

@@ -86,6 +86,8 @@ Sync-phase quality gate (per the canonical sync-phase quality gate policy) is en
 
 **Status mode early exit**: Phase 0.6 완료 후 보고서 출력 및 종료 (Phase 1+ 실행 안 함)
 
+**Chain entry**: sync may be entered via auto-chain from run-phase completion (a `full-pipeline` contract — announced in the transcript, no extra approval round at the run→sync phase boundary) or via explicit `/moai sync` invocation (a `single-phase` contract). Either way the sync-internal HUMAN GATEs (`gate-sync-1`, `gate-sync-2`) fire unchanged, and a FAIL/INCONCLUSIVE sync-audit verdict or a blocking sync quality gate HALTS the chain — no auto-completion past a failing gate.
+
 ## On-Demand Sub-skill Loading
 
 각 Phase 진입 시점에 해당 sub-skill을 로드합니다:
