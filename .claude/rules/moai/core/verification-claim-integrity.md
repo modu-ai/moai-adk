@@ -2,7 +2,7 @@
 
 Doctrine establishing the **"no unobserved-verification-claim" invariant** for all MoAI actors. This rule is automatically loaded for the orchestrator and all agents. It is a policy-layer (codification) doctrine — it defines the norm; it does not itself run a runtime detector.
 
-> Provenance: SPEC-EVIDENCE-CLAIM-INVARIANT-001 (IMP-06 of the fable-ish 13-agent "Verify, Don't Assume" analysis roadmap). The complementary mechanical advisory detection layer for one shape of this invariant's violation (code-session false-success) lives in SPEC-STOP-EVIDENCE-GATE-001 (IMP-02/03) — runtime, advisory, warn-first, fail-open. The two layers are complementary: this doctrine codifies the policy; that runtime gate detects one shape of its violation.
+> Provenance: SPEC-EVIDENCE-CLAIM-INVARIANT-001.
 
 ## 1. The Invariant — no unobserved-claim (verification OR defect)
 
@@ -73,7 +73,7 @@ This doctrine cross-references the following canonical surfaces. It does NOT cop
 - `.claude/rules/moai/workflow/verification-batch-pattern.md` — the orchestrator-side read-only verification batching pattern (the mechanism by which observed evidence is gathered efficiently).
 - `.claude/output-styles/moai/moai.md` §8 — the Verification Matrix and Completion Report banners (the orchestrator self-report surface bound by §1.1).
 
-## 5. Worked Example — Defect-Claim Hazard (2026-06-17)
+## 5. Worked Example — Defect-Claim Hazard
 
 A status report counted 29 SPECs with `status: implemented` and an absent `era:` frontmatter field. From frontmatter text alone, the reporter inferred "these 29 are V3R6 SPECs with a missing close (the legacy 'Mx-phase close' inference — the reporter assumed a separate Mx-phase close commit was required)" and proposed batch-closing all 29.
 

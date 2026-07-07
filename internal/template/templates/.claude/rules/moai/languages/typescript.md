@@ -106,12 +106,9 @@ Import atom from jotai and atomWithStorage from jotai/utils. Create countAtom wi
 
 ## Advanced Patterns
 
-For comprehensive documentation including advanced TypeScript patterns, performance optimization, testing strategies, and deployment configurations, see:
+For comprehensive coverage including advanced TypeScript patterns, performance optimization, testing strategies, and deployment configurations, apply the framework sections above together with the Context7 Integration mappings; this guide is self-contained.
 
-- reference.md for complete API reference, Context7 library mappings, and advanced type patterns
-- examples.md for production-ready code examples, full-stack patterns, and testing templates
-
-### Context7 Integration
+## Context7 Integration
 
 For TypeScript documentation, use microsoft/TypeScript with decorators satisfies topics. For React 19, use facebook/react with server-components use-hook. For Next.js 16, use vercel/next.js with app-router server-actions. For tRPC, use trpc/trpc with procedures middleware. For Zod, use colinhacks/zod with schema validation.
 
@@ -120,13 +117,12 @@ For TypeScript documentation, use microsoft/TypeScript with decorators satisfies
 
 - moai-domain-frontend for UI components and styling patterns
 - moai-domain-backend for API design and database integration
-- moai-library-shadcn for component library integration
 - moai-workflow-testing for testing strategies and patterns
 - moai-foundation-quality for code quality standards
 
 ---
 
-## Quick Troubleshooting
+## Troubleshooting
 
 TypeScript Errors:
 

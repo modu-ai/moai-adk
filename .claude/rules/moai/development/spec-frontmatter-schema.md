@@ -6,7 +6,7 @@ paths: "**/*.md,.moai/specs/**/*.md"
 # SPEC Frontmatter Schema — SSOT
 
 > **Single Source of Truth** for the canonical SPEC frontmatter schema.
-> Enforcement: `internal/spec/lint.go` `FrontmatterSchemaRule` (REQ-SPC-003-006).
+> Enforcement: `internal/spec/lint.go` `FrontmatterSchemaRule`.
 > Cross-referenced by: `.claude/skills/moai/workflows/plan.md` § Pre-Write Frontmatter Checklist,
 > `.claude/skills/moai/team/plan.md` § Pre-Write Frontmatter Checklist.
 
@@ -74,7 +74,7 @@ Per the canonical agent-responsibility realignment policy (DRI ownership at agen
 | `* → archived` | manager-docs (administrative cleanup) | `chore(specs): archive SPEC-{ID}` |
 | `* → rejected` | orchestrator decision, recorded by manager-docs | `chore(SPEC-{ID}): rejected per <rationale>` |
 
-> **3-phase close (plan→run→sync)** — Per SPEC-V3R6-LIFECYCLE-REDESIGN-001, the MoAI lifecycle is exactly three phases (`plan`, `run`, `sync`); MX Tag is a cross-cutting concern validated during sync, NOT a separate fourth phase. The `completed` status transition rides the sync commit (manager-docs owns it); there is no separate "Mx chore commit". The progress.md §E structure is 4 sections (§E.1 Plan / §E.2 Run Evidence / §E.3 Run Audit-Ready / §E.4 Sync Audit-Ready) — the former `§E.5 Mx-phase` section is retired (folded into §E.4).
+> **3-phase close (plan→run→sync)** — the MoAI lifecycle is exactly three phases (`plan`, `run`, `sync`); MX Tag is a cross-cutting concern validated during sync, NOT a separate fourth phase. The `completed` status transition rides the sync commit (manager-docs owns it); there is no separate "Mx chore commit". The progress.md §E structure is 4 sections (§E.1 Plan / §E.2 Run Evidence / §E.3 Run Audit-Ready / §E.4 Sync Audit-Ready) — the former `§E.5 Mx-phase` section is retired (folded into §E.4).
 
 ## progress.md Section Map (canonical SSOT)
 
@@ -97,9 +97,9 @@ Per the canonical agent-responsibility realignment policy (DRI ownership at agen
 
 ### Close-subject full-ID mandate
 
-Per the drift-detector close-subject convention (owned by SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001), every close commit (the sync commit carrying the `implemented → completed` transition above) MUST name exactly one individual full SPEC-ID in its subject scope — e.g. `chore(SPEC-{DOMAIN}-{SUB}-001): … 3-phase close`. A **combined/abbreviated scope** that names only a shared prefix (e.g. `chore(SPEC-{DOMAIN}): … 3-phase close (SUB-A + SUB-B)`) is **prohibited**: the drift detector's exact-token SPEC-ID extraction cannot map an abbreviated prefix to its sibling SPECs, so combined-scope close subjects regenerate lifecycle drift false-positives. When closing N sibling SPECs together, emit N separate close commits, one per full SPEC-ID — combined/abbreviated scope is disallowed in close subjects.
+Per the drift-detector close-subject convention, every close commit (the sync commit carrying the `implemented → completed` transition above) MUST name exactly one individual full SPEC-ID in its subject scope — e.g. `chore(SPEC-{DOMAIN}-{SUB}-001): … 3-phase close`. A **combined/abbreviated scope** that names only a shared prefix (e.g. `chore(SPEC-{DOMAIN}): … 3-phase close (SUB-A + SUB-B)`) is **prohibited**: the drift detector's exact-token SPEC-ID extraction cannot map an abbreviated prefix to its sibling SPECs, so combined-scope close subjects regenerate lifecycle drift false-positives. When closing N sibling SPECs together, emit N separate close commits, one per full SPEC-ID — combined/abbreviated scope is disallowed in close subjects.
 
-> **D4 reconciliation note (SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-020/021)**: The close-subject convention is owned by **SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001**. SPEC-V3R6-LIFECYCLE-REDESIGN-001 amends the close infix from the legacy `"4-phase close"` to the canonical `"3-phase close"` in this prose, and the drift detector's close-infix matcher (`internal/spec/transitions.go` `closeInfixMatch`) has been extended (M2) to accept BOTH infixes — the legacy `"4-phase close"` is RETAINED in the matcher because historical close commits in git history carry it. A doc-only rename without the dual-infix matcher update was forbidden (it would silently break drift close-recognition for all future closes). This note credits DRIFT-LEGACY-CONVENTION-001 as the convention owner; it does NOT silently override it.
+> **D4 reconciliation note**: The close-subject convention above owns the close-infix matcher contract. The legacy `"4-phase close"` infix was amended to the canonical `"3-phase close"` in this prose, and the drift detector's close-infix matcher (`internal/spec/transitions.go` `closeInfixMatch`) has been extended to accept BOTH infixes — the legacy `"4-phase close"` is RETAINED in the matcher because historical close commits in git history carry it. A doc-only rename without the dual-infix matcher update was forbidden (it would silently break drift close-recognition for all future closes).
 
 ### Forbidden ownership crossings
 
@@ -139,7 +139,7 @@ Snake_case aliases are silently dropped by the decoder, causing empty-value `Fro
 
 - **Rule code**: `FrontmatterInvalid`
 - **Severity**: Warning
-- **REQ coverage**: REQ-SPC-003-006
+- **REQ coverage**: covered by the schema-lint SPEC (owning-SPEC pointer retained in the footer)
 - **Check**: Iterates all 12 required fields; emits one finding per missing/empty field.
 - **YAML binding**: `SPECFrontmatter` struct uses canonical field names (`created`, `updated`, `tags`).
   Snake_case aliases in the source YAML file are not recognized — they produce empty values.
@@ -169,8 +169,8 @@ id: SPEC-AUTH-001
 title: "OAuth2 Authentication"
 version: "0.1.0"
 status: draft
-created: 2026-05-16
-updated: 2026-05-16
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
 author: Author Name
 priority: P1
 phase: "v3.0.0"
@@ -204,3 +204,8 @@ labels: [auth, oauth2]   # WRONG — use tags: "auth, oauth2"
 | Date | Author | Change |
 |------|--------|--------|
 | (initial) | maintainer | Initial creation — resolves dual-schema drift between plan.md (9-field) and lint.go (12-field) |
+
+## Owning SPEC
+
+- Schema enforcement (`FrontmatterSchemaRule`): SPEC-V3R6-LIFECYCLE-REDESIGN-001
+- Close-subject convention + 3-phase close infix matcher: SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001

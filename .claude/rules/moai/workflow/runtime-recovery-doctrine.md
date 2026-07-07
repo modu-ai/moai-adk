@@ -7,7 +7,7 @@ paths: "**/runtime-recovery-doctrine.md"
 > **Single source of truth** for runtime-recovery policy when the loop itself fails mid-SPEC.
 > Cross-referenced by: `.claude/rules/moai/core/agent-common-protocol.md` § Hook Invocation Surface (render surface for the anti-death-spiral carve-out), `.claude/rules/moai/core/zone-registry.md` (`CONST-V3R6-001` entry), `.claude/rules/moai/workflow/session-handoff.md` (recovery ladder rungs 2-3), `.claude/rules/moai/core/verification-claim-integrity.md` (narrative-consistency invariant 5).
 >
-> **Policy-layer only.** This doctrine is normative guidance for moai-adk agents and FUTURE hook authors. It does NOT reimplement any Claude Code TypeScript internal (`queryLoop`, `recoverFromError`, `truncateHeadForPTLRetry`, `hasAttemptedReactiveCompact`). moai-adk is a harness ON TOP of Claude Code and cannot modify the native query loop. Grounding: book1 (`github.com/wquguru/harness-books`) ch03 "Query Loop is the heartbeat" + ch06 "Errors and recovery".
+> **Policy-layer only.** This doctrine is normative guidance for moai-adk agents and FUTURE hook authors. It does NOT reimplement any Claude Code TypeScript internal (`queryLoop`, `recoverFromError`, `truncateHeadForPTLRetry`, `hasAttemptedReactiveCompact`). moai-adk is a harness ON TOP of Claude Code and cannot modify the native query loop. Grounding: book1 (internal reference: harness-books book1) ch03 "Query Loop is the heartbeat" + ch06 "Errors and recovery".
 
 ---
 
@@ -31,7 +31,7 @@ The withheld property is normative, not mechanical: the moai-adk agent's obligat
 
 ## §2. The 4-Rung Cheapest-First Recovery Ladder
 
-[ZONE:Evolvable] [HARD] The runtime recovery doctrine defines a **4-rung cheapest-first recovery ladder**. Each rung is mapped to a concrete moai-adk artifact so that no rung is introduced without a recovery path. **Cheapest-first** means: try the lowest-cost rung before escalating to a higher-cost rung. No rung may be skipped while a lower rung remains unattempted for the current failure (REQ-RR-004 ordering rule, §2.1 below).
+[ZONE:Evolvable] [HARD] The runtime recovery doctrine defines a **4-rung cheapest-first recovery ladder**. Each rung is mapped to a concrete moai-adk artifact so that no rung is introduced without a recovery path. **Cheapest-first** means: try the lowest-cost rung before escalating to a higher-cost rung. No rung may be skipped while a lower rung remains unattempted for the current failure (the ordering rule in §2.1 below).
 
 | Rung | Recovery action | moai-adk artifact cross-reference |
 |------|-----------------|-----------------------------------|
@@ -70,7 +70,7 @@ The ordering is normative (it binds the agent's choice), not mechanical. No runt
 
 ## §4. Anti-Death-Spiral Hook Carve-Out (documentation-only policy)
 
-> **Scope binding (LOAD-BEARING)**: This subsection binds **AGENT BEHAVIOR** and **FUTURE hook evolution**. It does NOT bind the current hook scripts (`sync-phase-quality-gate.sh`, `status-transition-ownership.sh`), which receive PostToolUse/Stop JSON but do not parse a recovery signal; no mechanical enforcement is possible without the runtime-layer hook that parses `stopReason`, which is deferred to a follow-up runtime-layer SPEC (forward-link: future `SPEC-V3R6-HOOK-RECOVERY-SIGNAL-001`). This SPEC does NOT rewrite the hook scripts.
+> **Scope binding (LOAD-BEARING)**: This subsection binds **AGENT BEHAVIOR** and **FUTURE hook evolution**. It does NOT bind the current hook scripts (`sync-phase-quality-gate.sh`, `status-transition-ownership.sh`), which receive PostToolUse/Stop JSON but do not parse a recovery signal; no mechanical enforcement is possible without the runtime-layer hook that parses `stopReason`, which is deferred to a follow-up runtime-layer hook SPEC. This doctrine does NOT rewrite the hook scripts.
 
 ### Recovery-Signal Carve-Out
 
@@ -79,7 +79,7 @@ The ordering is normative (it binds the agent's choice), not mechanical. No runt
 This carve-out is stated as **policy guidance** (a SHOULD recommendation) to agents and FUTURE hook authors, NOT as a mechanically-enforced gate:
 
 - **Current hooks do NOT mechanically enforce this.** The current `sync-phase-quality-gate.sh` (Stop hook) and `status-transition-ownership.sh` (PostToolUse hook) receive PostToolUse/Stop JSON but do not parse a recovery signal from `stopReason` or turn context; they therefore cannot mechanically distinguish a recovery turn from a normal turn and cannot mechanically exit 0 on recovery turns.
-- **Runtime-layer enforcement is deferred.** A future runtime-layer SPEC (forward-link: future `SPEC-V3R6-HOOK-RECOVERY-SIGNAL-001`) MAY propose a hook that parses `stopReason` to mechanically enforce this carve-out. This SPEC deliberately defers mechanical enforcement to that follow-up; this SPEC's AC for the carve-out (acceptance.md AC-RR-006) is SHOULD and documentation-only precisely because mechanical enforcement is not possible at this layer.
+- **Runtime-layer enforcement is deferred.** A future runtime-layer hook SPEC MAY propose a hook that parses `stopReason` to mechanically enforce this carve-out. This doctrine deliberately defers mechanical enforcement to that follow-up; the acceptance criterion for the carve-out is SHOULD and documentation-only precisely because mechanical enforcement is not possible at this layer.
 
 ### Both hooks named
 
@@ -104,14 +104,14 @@ The carve-out does NOT weaken the hooks' gate function on non-recovery turns. Th
 - `.claude/rules/moai/core/verification-claim-integrity.md` — the 5-Section Evidence-Bearing Report Format = circuit-breaker invariant 5 (narrative consistency across the compact/recovery boundary).
 - `.claude/rules/moai/core/agent-common-protocol.md` § Hook Invocation Surface — render surface for the §4 anti-death-spiral carve-out (the carve-out appears in BOTH this SSOT rule and that render surface).
 - `.claude/rules/moai/core/zone-registry.md` — `CONST-V3R6-001` entry exposes the anti-death-spiral invariant to `moai constitution list`.
-- book1 (`github.com/wquguru/harness-books`):
+- book1 (internal reference: harness-books book1):
   - **ch03 "Query Loop is the heartbeat"** — input governance, withheld-recoverable errors (`{PTL, max_output_tokens, media_size}`), layered recovery BEFORE the model call. Source for §1.
   - **ch06 "Errors and recovery"** — "错误路径就是主路径" (the error path IS the main path); "恢复的目标是继续工作" (recovery's goal is to keep working, not to apologize); cheapest-first layered recovery; `hasAttemptedReactiveCompact` self-loop guard; autocompact circuit breaker `MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3`; the death-spiral hazard; narrative consistency. Source for §2, §3, §4.
   - **§9.3 / §9.6 / §9.7** — the named principles (recoverable error withholding, cheapest-first ladder, narrative consistency).
   - **ch06 §5** — the 5-line circuit-breaker invariants (source for §3's five invariants).
-- `.moai/research/dive-into-claude-code-archive.md` — durable archive of the VILA-Lab "Dive into Claude Code" paper (arXiv:2604.14228) that §1's convergent-second-source citation draws on. The archive consolidates the four scattered in-repo citation surfaces (`moai.md` / `context-window-management.md` / `runtime-recovery-doctrine.md` §1 / `agent-authoring.md`) into one entry, so a reader on any surface can reach the paper's full picture from a single durable pointer (SPEC-DIVECC-PAPER-ARCHIVE-001 / Epic Dive-into-CC N7).
-- P1a sibling SPEC `SPEC-V3R6-ORCH-INTERRUPT-LEDGER-001` — owns the `§Ledger Closure` subsection in `agent-common-protocol.md`; this SPEC deliberately excludes that subsection (REQ-RR-011 boundary). The two carve-outs are sibling subsections under § Hook Invocation Surface, not nested.
-- Forward-link: future `SPEC-V3R6-HOOK-RECOVERY-SIGNAL-001` — runtime-layer hook that parses `stopReason` to mechanically enforce the §4 carve-out. This SPEC defers mechanical enforcement to that follow-up.
+- `.moai/research/dive-into-claude-code-archive.md` — durable archive of the VILA-Lab "Dive into Claude Code" paper (arXiv:2604.14228) that §1's convergent-second-source citation draws on. The archive consolidates the four scattered in-repo citation surfaces (`moai.md` / `context-window-management.md` / `runtime-recovery-doctrine.md` §1 / `agent-authoring.md`) into one entry, so a reader on any surface can reach the paper's full picture from a single durable pointer (the Dive-into-CC research).
+- The orchestrator-interrupt-ledger contract owns the `§Ledger Closure` subsection in `agent-common-protocol.md`; this doctrine deliberately excludes that subsection. The two carve-outs are sibling subsections under § Hook Invocation Surface, not nested.
+- Forward-link: a future runtime-layer hook SPEC — a hook that parses `stopReason` to mechanically enforce the §4 carve-out. This doctrine defers mechanical enforcement to that follow-up.
 
 ---
 
@@ -135,5 +135,5 @@ This obligation is the moai-adk projection of book1 ch06's "错误路径就是�
 ---
 
 Version: 1.0.0
-Origin: SPEC-V3R6-HARNESS-RUNTIME-RECOVERY-001 (Tier M, policy-layer doctrine, M1)
+Origin: the harness-runtime-recovery contract (Tier M, policy-layer doctrine, M1)
 Status: Active — single source of truth for runtime-recovery policy; binds agent behavior and future hook authors.

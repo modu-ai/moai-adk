@@ -129,7 +129,7 @@ The "Wave" terminology has been retired. Historical references in archived memor
 Incorrect (new content): "Wave 1 split across 7 phases"
 Correct: "Epic 1 split across 7 Milestones"
 
-> **Disambiguation note (NOT the taxonomy `Wave`)**: ci-watch pipeline infrastructure uses "Wave 1/2/3/5" as CI-pipeline wave numbering (a completely separate concept owned by SPEC-V3R5-CI-AUTONOMY-001 / `feedback_w3_metaanalysis_lessons.md`). Those infra-wave references are unrelated to this naming taxonomy and are exempt from AP-SRN-004.
+> **Disambiguation note (NOT the taxonomy `Wave`)**: ci-watch pipeline infrastructure uses "Wave 1/2/3/5" as CI-pipeline wave numbering (a separate legacy concept). Those infra-wave references are unrelated to this naming taxonomy and are exempt from AP-SRN-004.
 
 ### AP-SRN-005 — Using `cohort` as a standalone multi-SPEC grouping term
 

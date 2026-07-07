@@ -61,9 +61,11 @@ Note: Dynamic team teammates (spawned via `Agent(subagent_type: "general-purpose
 Agent hooks are executed via `moai hook agent <action>`:
 
 ```bash
-moai hook agent ddd-pre-transformation
+moai hook agent cycle-pre-transformation
 moai hook agent develop-pre-implementation
 ```
+
+(The `ddd-*` action family was retired; the current action is `cycle-pre-transformation`. The help text in `internal/cli/hook.go` still carries the stale example and is tracked for a follow-up code update.)
 
 stdin JSON structure:
 

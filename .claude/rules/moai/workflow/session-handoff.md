@@ -2,11 +2,11 @@
 
 Long-running session continuity: clean transitions across context boundaries via paste-ready resume messages.
 
-> **Loading scope**: Intentionally always-loaded (no `paths:` restriction) because Trigger #3 (user explicit session-end) can fire from any session context, including those without SPEC files. The ~5,900-token cost is justified by cross-cutting applicability.
+> **Loading scope**: Intentionally always-loaded (no `paths:` restriction) because Trigger #3 (user explicit session-end) can fire from any session context, including those without SPEC files. The always-loaded cost is justified by cross-cutting applicability.
 
 ## Why This Matters
 
-Long workflows (multi-SPEC waves, multi-milestone implementation) accumulate context that exceeds the window or benefits from fresh start. Without a standardized handoff, session boundaries lose work-in-progress. This rule defines when to emit a paste-ready resume, the 6-block structure, and auto-memory integration that persists across `/clear`.
+Long workflows (multi-SPEC Epics, multi-milestone implementation) accumulate context that exceeds the window or benefits from fresh start. Without a standardized handoff, session boundaries lose work-in-progress. This rule defines when to emit a paste-ready resume, the 6-block structure, and auto-memory integration that persists across `/clear`.
 
 ## When To Generate (5 Triggers)
 
@@ -17,7 +17,7 @@ Long workflows (multi-SPEC waves, multi-milestone implementation) accumulate con
 | 1 | Context usage crosses model-specific threshold (cumulative input+output) | Model-specific percentage threshold (1M-context models vs 200K-context models) — see `.claude/rules/moai/workflow/context-window-management.md` § Context Window Targets for the per-model-class threshold table (the authoritative SSOT for the numeric thresholds; this file carries no inline model-class numbers to avoid label drift). |
 | 2 | SPEC phase completion (plan/run/sync) within a multi-SPEC workflow | Phase boundary in `.claude/rules/moai/workflow/spec-workflow.md` §Phase Transitions (after plan/run/sync phase finishes within a multi-SPEC SPEC ID series) |
 | 3 | User explicitly requests session end ("세션 종료", "이번 세션 마무리", "next session") | Intent detection in user message |
-| 4 | PR creation success when more SPECs remain in the current wave | After `gh pr create` success + memory indicates >0 pending SPECs |
+| 4 | PR creation success when more SPECs remain in the current Epic | After `gh pr create` success + memory indicates >0 pending SPECs |
 | 5 | Long-running multi-milestone task reaches a stable checkpoint | After milestone Mn complete + Mn+1 not yet started |
 
 When NONE apply (single-turn, trivial task, read-only query), emit a brief completion confirmation. The threshold in Trigger #1 reflects asymmetric stall risk: 1M models tolerate higher absolute load; 200K models hit the ceiling earlier. The `/clear` policy in `context-window-management.md` is co-anchored to the same threshold per model class.
@@ -100,7 +100,7 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
 - **Block 3**: separator + `전제 검증:` (Korean) or `Preconditions:` (English).
 - **Block 4**: numbered preconditions `<N>) <action> → <expected outcome>`. Each MUST be independently verifiable (git/gh command, file existence). Max 4 preconditions.
 - **Block 5**: separator + `실행: <command-or-action>` — single primary action (typically `/moai <subcommand>`).
-- **Block 6**: separator + `<workflow-context header>: <next-action-or-spec>` — RECOMMENDED for multi-SPEC waves or follow-up; **omit entirely** for single-SPEC close with no further actions queued.
+- **Block 6**: separator + `<workflow-context header>: <next-action-or-spec>` — RECOMMENDED for multi-SPEC Epics or follow-up; **omit entirely** for single-SPEC close with no further actions queued.
   - **Header selection (workflow-context conditional)**:
     - **PR-based workflow** (feat/* → PR → merge): `머지 후:` (en `After merge:`)
     - **Trunk-based no-PR** (e.g., 1-person OSS, all-tier direct-to-main push, no merge step): `후속:` (en `Follow-up:`)
@@ -114,7 +114,7 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
 
 ultrathink. SPEC-MYPROJ-001 implementation 진입.
 # /goal the SPEC's test suite passes AND lint is clean, or stop after 20 turns   ← run-phase + machine-verifiable; omit for plan/sync or non-verifiable.
-applied lessons: project_sprint6_myproj001_plan_ready, lessons #9 wave-split.
+applied lessons: <lesson-id-1>, <lesson-id-2>.
 source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>
 
 전제 검증:
@@ -132,7 +132,7 @@ source_session_id: <not-available — environment-fallback, next session will ba
 
 [ZONE:Evolvable] [HARD] When generating a resume message, the orchestrator MUST also:
 
-1. Save the message to a memory project entry. Filename pattern: `project_<sprint>_<spec>_<status>.md` (e.g., `project_sprint6_wf002_complete.md`). The `<sprint>` token reflects the multi-SPEC time-unit grouping per `.claude/rules/moai/development/sprint-round-naming.md` (the legacy `<wave>` token is retired per AP-SRN-004).
+1. Save the message to a memory project entry. Filename pattern: `project_<epic>_<spec>_<status>.md` (e.g., `project_epic8_wf002_complete.md`). The `<epic>` token reflects the multi-SPEC grouping per sprint-round-naming.md (the legacy `<sprint>/<wave>` tokens are retired).
 2. Include the resume message verbatim in that file under a `## 다음 세션 시작점 (paste-ready resume message)` heading.
 3. Update `MEMORY.md` index with a one-line entry pointing to the new memory file.
 4. Mark superseded entries (if any) with `[SUPERSEDED by <new-file>]` prefix per Lessons Protocol in `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol.
@@ -148,30 +148,7 @@ At session end, the orchestrator displays: (1) the message in a fenced ```text``
 
 > See also: § Diet Constraints / Anti-pattern catalogue (paste-ready budget violations AP-D-001..005) and § V0 Abort Gate Doctrine / Anti-pattern (abort-gate violations AP-V-001..004). This list covers general resume-hygiene patterns; the Diet and V0 lists cover their respective specialized domains.
 
-### Anti-Pattern Index (consolidated)
-
-The table below is the single navigational index for every anti-pattern code defined in this file. Each row links forward to the detail section that carries the domain context; the index does NOT duplicate the prose. This is the canonical single-source entry point — when a code is referenced elsewhere, link to this index, not to the detail section directly.
-
-| Code | Concern | Detail section |
-|------|---------|----------------|
-| (general hygiene) | Free-form prose handoff — no executable context | § Anti-Patterns (general list below this index) |
-| (general hygiene) | Resume without preconditions — next session cannot detect state drift | § Anti-Patterns |
-| (general hygiene) | Resume without `ultrathink.` — fails to activate xhigh effort | § Anti-Patterns |
-| (general hygiene) | Resume saved only to chat, not auto-memory — lost across `/clear` | § Anti-Patterns |
-| (general hygiene) | Duplicate memory entries without `[SUPERSEDED by ...]` markers | § Anti-Patterns |
-| (general hygiene) | Resume Block 2 missing `source_session_id` AND the environment fallback | § Anti-Patterns |
-| (general hygiene) | Forcing the format on trivial tasks — memory noise | § Anti-Patterns |
-| (general hygiene) | Cut-line markers absent — user cannot identify copy boundary | § Anti-Patterns |
-| (general hygiene) | Cut-line markers with translated `✂` symbol or `─` decorator | § Anti-Patterns |
-| AP-D-001 | Block 2 lessons 5+ references | § Diet Constraints / Anti-pattern catalogue |
-| AP-D-002 | precondition body prose (history/lesson narrative) | § Diet Constraints / Anti-pattern catalogue |
-| AP-D-003 | Block 5 sub-step nesting (multi-phase 11-substep) | § Diet Constraints / Anti-pattern catalogue |
-| AP-D-004 | directive escalation embedded in body (N-th "stronger directive") | § Diet Constraints / Anti-pattern catalogue |
-| AP-D-005 | ceremonial reminder ("observe discipline", "exact reference") in paste-ready | § Diet Constraints / Anti-pattern catalogue |
-| AP-V-001 | `ps aux` raw count `≤ 2 STRICT` as sole V0 verification | § V0 Abort Gate Doctrine / Anti-pattern |
-| AP-V-002 | "user promise accumulated non-fulfillment N times" body tracking after V0 FAIL | § V0 Abort Gate Doctrine / Anti-pattern |
-| AP-V-003 | offering a force-through option (override + spawn) in AskUserQuestion on V0 FAIL | § V0 Abort Gate Doctrine / Anti-pattern |
-| AP-V-004 | measuring V0-b with `lsof +D "$PWD" | grep -iE 'claude'` (false-positive defect) | § V0 Abort Gate Doctrine / Anti-pattern |
+See the general-hygiene bullet list and the §Diet Constraints and §V0 Abort Gate Doctrine anti-pattern catalogues below for the full catalogue.
 
 - Free-form prose handoff — no executable context.
 - Resume without preconditions — next session cannot detect state drift.
@@ -189,7 +166,7 @@ The table below is the single navigational index for every anti-pattern code def
 
 [ZONE:Evolvable] [HARD] When the SPEC was initialized via L3 `/moai plan --worktree` (creating an L2 SPEC worktree at `~/.moai/worktrees/<project>/<spec-or-name>/`), the resume message MUST include **Block 0 (cwd anchoring)** prepended before the standard 6-block structure. Without Block 0, the next session starts in main project cwd by default, breaking L2 SPEC worktree isolation expectations.
 
-> Per user policy 2026-05-17 (`feedback_worktree_autonomous` memory): L3 `--worktree` is **user opt-in** only. For SPECs initialized without `--worktree` (the default as of 2026-05-17), the standard 6-block structure suffices — Block 0 is NOT required.
+> L3 `--worktree` is **user opt-in** only. For SPECs initialized without `--worktree` (the default), the standard 6-block structure suffices — Block 0 is NOT required.
 
 ### Why Block 0 (L3 `--worktree` opt-in only)
 
@@ -246,7 +223,7 @@ $ cd ~/.moai/worktrees/<project>/SPEC-MYPROJ-001
 $ moai cc        # 또는 moai glm | claude (3가지 launcher 중 선택; 본 예시는 moai cc)
 
 ultrathink. SPEC-MYPROJ-001 Epic N 진입.
-applied lessons: project_myproj_prev_sprint_complete, lessons #12 #13 #14.
+applied lessons: <lesson-id-1>, <lesson-id-2>.
 
 전제 검증:
 0) git rev-parse --show-toplevel → ~/.moai/worktrees/<project>/SPEC-MYPROJ-001 (★ critical)
@@ -266,7 +243,7 @@ applied lessons: project_myproj_prev_sprint_complete, lessons #12 #13 #14.
 ### Block 2 applied-lessons constraint
 
 - At most **4 references** (memory file slug or lesson identifier)
-- Each reference is a **single-line identifier** (e.g. `L52#33`, `L_NEW_V0_ABORT_GATE` — full prose history is prohibited)
+- Each reference is a **single-line identifier** (e.g. `<lesson-id>` — full prose history is prohibited)
 - Five or more is an anti-pattern → move the surplus into the memory file body
 
 ### Block 4 precondition constraint
@@ -371,9 +348,9 @@ Cross-line provenance: retained in lesson memory; this section codifies the doct
 - `.claude/output-styles/moai/moai.md` §8 (Response Templates → Session Handoff) — the canonical render surface for the 6-block template + pre-emit self-check; this file is the SSOT, moai.md §8 is the render surface (bidirectional link).
 - `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol — auto-memory + `[SUPERSEDED by ...]` convention
 - CLAUDE.md §11 (Error Handling) — token-limit recovery
-- `feedback_large_spec_wave_split.md` (auto-memory) — wave-split rationale
-- lessons #14 — `--worktree` Block 0 + single/multi-session decision
-- lessons #12, #13 — worktree isolation + --team base mismatch
+- large-SPEC wave-split rationale
+- `--worktree` Block 0 + single/multi-session decision rationale
+- worktree isolation + --team base mismatch
 
 ---
 

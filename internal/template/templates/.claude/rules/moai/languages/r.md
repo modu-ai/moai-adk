@@ -108,13 +108,11 @@ For comprehensive coverage including:
 - Performance optimization techniques
 - Production deployment with Docker and Posit Connect
 
-See:
-
-- modules/advanced-patterns.md for complete advanced patterns guide
+Apply the Quick Patterns and feature sections above together with the Context7 Integration mappings for these advanced topics; this guide is self-contained.
 
 ---
 
-## Context7 Library Mappings
+## Context7 Integration
 
 - tidyverse/dplyr for data manipulation verbs
 - tidyverse/ggplot2 for grammar of graphics visualization

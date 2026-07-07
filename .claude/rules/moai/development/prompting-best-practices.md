@@ -4,7 +4,7 @@ paths: "**/.claude/agents/**,**/.claude/skills/**"
 
 # Prompting Best Practices (Claude Latest Models)
 
-Condensed reference of Anthropic's official prompt-engineering guidance for Claude's latest models (Opus 4.8 / 4.7, Sonnet 4.6, Haiku 4.5), applied to MoAI agent prompts, skill bodies, and orchestrator output. Complements the Karpathy quick-reference (`.claude/rules/moai/development/karpathy-quickref.md`) and skill-writing craft (`.claude/rules/moai/development/skill-writing-craft.md`); cross-referenced from `.claude/rules/moai/development/agent-authoring.md`.
+Condensed reference of Anthropic's official prompt-engineering guidance for Claude's latest models (Opus 4.8 / 4.7, Sonnet (current generation), Haiku 4.5), applied to MoAI agent prompts, skill bodies, and orchestrator output. Complements the Karpathy quick-reference (`.claude/rules/moai/development/karpathy-quickref.md`) and skill-writing craft (`.claude/rules/moai/development/skill-writing-craft.md`); cross-referenced from `.claude/rules/moai/development/agent-authoring.md`.
 
 > **Loading scope**: read when authoring or tuning an agent prompt / skill body / system prompt. Reference: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices
 
@@ -31,7 +31,7 @@ Condensed reference of Anthropic's official prompt-engineering guidance for Clau
 
 ## Thinking & Reasoning
 
-- **Adaptive thinking** (`thinking: {type: "adaptive"}`) is the mode for Opus 4.7+/4.8 and Sonnet 4.6 — the model self-allocates reasoning by effort + query complexity. Do NOT set `budget_tokens` (deprecated; rejected on Opus 4.7+). Control depth with the **effort** parameter, not a token budget. On Opus 4.8 thinking is OFF unless explicitly enabled; the `ultrathink` keyword is MoAI's canonical trigger for `effort: xhigh`.
+- **Adaptive thinking** (`thinking: {type: "adaptive"}`) is the mode for Opus 4.7+/4.8 and Sonnet (current) — the model self-allocates reasoning by effort + query complexity. Do NOT set `budget_tokens` (deprecated; rejected on Opus 4.7+). Control depth with the **effort** parameter, not a token budget. On Opus 4.8 thinking is OFF unless explicitly enabled; the `ultrathink` keyword is MoAI's canonical trigger for `effort: xhigh`.
 - **Effort calibration**: `xhigh` for coding/agentic work, minimum `high` for intelligence-sensitive work, `medium`/`low` only for speed-critical or simple tasks. At `max`/`xhigh`, set a large max output budget (start ~64k) so the model has room to think and act across tool calls. Raising effort is the first lever for shallow reasoning — prefer it over prompt scaffolding.
 - **Prefer general thinking instructions** ("think thoroughly", "reason through the tradeoffs") over hand-written step-by-step plans. Ask the model to self-check before finishing ("verify your answer against the test criteria").
 - **Curb overthinking** when needed: "choose an approach and commit to it; avoid revisiting decisions unless new information contradicts your reasoning" — or simply lower effort.

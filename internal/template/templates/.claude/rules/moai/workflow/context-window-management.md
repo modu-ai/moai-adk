@@ -4,7 +4,7 @@ Long-horizon session continuity guidance for both users and the MoAI orchestrato
 
 ## Why This Matters
 
-Anthropic SSE streams stall (`stream_idle_partial`) near the context window ceiling — intermittent but predictable above the model-specific threshold. Reference: 2026-04-25 incident (`feedback_large_spec_wave_split.md`).
+Anthropic SSE streams stall (`stream_idle_partial`) near the context window ceiling — intermittent but predictable above the model-specific threshold. Reference: large-SPEC SSE-stall mitigation.
 
 ## Claude Code's Graduated-Compaction Layers (consumed, not implemented)
 
@@ -20,7 +20,7 @@ The orchestrator CONSUMES Claude Code's graduated-compaction layers; it does NOT
 
 ## Context Window Targets
 
-[ZONE:Evolvable] [HARD] Operational threshold is **model-specific** (revised 2026-05-09). Larger windows tolerate higher percentage utilization before stall risk dominates; smaller windows hit the operational ceiling later in percentage terms but with less absolute headroom:
+[ZONE:Evolvable] [HARD] Operational threshold is **model-specific**. Larger windows tolerate higher percentage utilization before stall risk dominates; smaller windows hit the operational ceiling later in percentage terms but with less absolute headroom:
 
 | Model class | Window | Handoff threshold | Absolute ceiling |
 |-------------|--------|-------------------|------------------|
@@ -57,7 +57,7 @@ The orchestrator MUST proactively recognize the model-specific boundary and prep
 
 [ZONE:Evolvable] [HARD] Resume message format: include all of the following so the next session is self-sufficient:
 ```
-ultrathink. Sprint <N> 이어서 진행. SPEC-<ID>부터 <approach 요약>.
+ultrathink. Epic <N> 이어서 진행. SPEC-<ID>부터 <approach 요약>.
 applied lessons: <memory file names>.
 progress.md 경로: .moai/specs/SPEC-<ID>/progress.md
 다음 단계: <one-line command>.
@@ -138,12 +138,12 @@ unconditional.
 
 ## Applies To
 
-All MoAI workflows: `/moai plan|run|sync`, multi-SPEC sprints, iterative loops (`/moai loop`, GAN loop).
+All MoAI workflows: `/moai plan|run|sync`, multi-SPEC Epics, iterative loops (`/moai loop`, GAN loop).
 
 ## Cross-references
 
 - `.claude/rules/moai/workflow/session-handoff.md` — paste-ready resume format + auto-memory integration. Trigger #1 consumes the model-specific threshold table from this file (1M = 50%, 200K = 90%); `/clear` recommendation and paste-ready emission both fire at the same boundary.
-- `feedback_large_spec_wave_split.md` (auto-memory) — wave-split mitigation for 30+ task SPECs
+- large-SPEC wave-split mitigation
 - `.claude/skills/moai/references/file-reading-optimization.md` — token budget per file read
 - `output-styles/moai/moai.md` §6 (Persistence & Context Awareness)
 - CLAUDE.md §11 (Error Handling) — token-limit recovery flow

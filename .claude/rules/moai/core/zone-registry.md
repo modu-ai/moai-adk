@@ -13,7 +13,7 @@ MoAI-ADK 규칙 트리의 모든 HARD 조항을 열거하는 단일 진실 공�
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 1.0.0 | (initial) | maintainer | Initial creation — annotation pass over 4 load-bearing source files |
-| 1.1.0 | (later)   | maintainer | Coverage gap closure — CONST-V3R5-001..039 added (parallel namespace), zone_class 4-classification introduced (retroactive on all 111 entries) |
+| 1.1.0 | (later)   | maintainer | Coverage gap closure — CONST-V3R5-001..041 added (parallel namespace), zone_class 4-classification introduced (retroactive on all 115 entries) |
 
 ## ID Allocation Policy
 
@@ -558,7 +558,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#31-brand-context-constitutional-parent"
-  clause: "[HARD] expert-frontend MUST implement design tokens derived from brand context (archived name — resolves to Agent(general-purpose) with frontend whitelist per archived-agent-rejection.md §C; see design/constitution.md carve-out note)"
+  clause: "[HARD] [ARCHIVED] expert-frontend MUST implement design tokens derived from brand context (archived name — resolves to Agent(general-purpose) with frontend whitelist per archived-agent-rejection.md §C; see design/constitution.md carve-out note)"
   canary_gate: true
 
 - id: CONST-V3R2-065
@@ -663,7 +663,7 @@ moai constitution list --format json
   canary_gate: false
 
 # ============================================================
-# CONST-V3R5-001..039: 신규 parallel namespace
+# CONST-V3R5-001..041: 신규 parallel namespace
 # 미매핑 [HARD] 규칙 coverage 완성 — 11개 소스 파일 신규 등록
 # ============================================================
 - id: CONST-V3R5-001
@@ -842,7 +842,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/context-window-management.md
   anchor: "#context-window-targets"
-  clause: "Operational threshold is model-specific: 1M context (Opus 4.7) = 50%, 200K context (Sonnet/Opus/Haiku) = 90%"
+  clause: "Operational threshold is model-specific: 1M context (Opus 4.8 / Fable 5) = 50%, 200K context (Sonnet/Opus/Haiku) = 90%"
   canary_gate: false
 
 - id: CONST-V3R5-023

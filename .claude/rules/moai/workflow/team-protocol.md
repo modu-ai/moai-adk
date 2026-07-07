@@ -8,7 +8,7 @@ Canonical protocol for MoAI Agent Teams — dynamic generation, role profiles, t
 
 ## Canonical Team Model
 
-MoAI teams are generated dynamically via `Agent(subagent_type: "general-purpose")` with runtime overrides from `workflow.yaml` role_profiles. No static team-* agent files exist in v3r2. Every teammate is a general-purpose agent whose behavior is shaped by the role profile applied at spawn time.
+MoAI teams are generated dynamically via `Agent(subagent_type: "general-purpose")` with runtime overrides from `workflow.yaml` role_profiles. No static team-* agent files exist in the current era (v3r6). Every teammate is a general-purpose agent whose behavior is shaped by the role profile applied at spawn time.
 
 ### Role Matrix
 
@@ -29,7 +29,7 @@ The canonical role to (mode, model, isolation, write-heavy) mapping. Source: `.m
 - Read-only roles (researcher, analyst, architect, reviewer) MUST NOT use `isolation: "worktree"` — enforced by LR-09 lint rule.
 - Role profiles are schema-locked to these 7 names during v3.0.x. Adding a new role requires SPEC amendment through CON-002 protocol.
 - No teammate can override the isolation flag downward (implementer in plan mode is rejected).
-- [ZONE:Evolvable] [HARD] team-mode teammates default to `model: sonnet` (200K window). Under MoAI's heavy baseline a 200K window can saturate at spawn and trip the runtime rapid-refill circuit breaker → zero output. Switching to `model: inherit` does NOT reliably fix this (Team `[1m]` non-inheritance, Anthropic issue #36670 OPEN → teammate falls back to 200K). For large SPECs prefer a single `manager-develop` (`model: inherit`, 1M) + Round split; reserve team mode for small SPECs. See `.claude/rules/moai/development/model-policy.md` § Baseline-Refill Breaker.
+- [ZONE:Evolvable] [HARD] team-mode teammates default to `model: sonnet` (200K window). Under MoAI's heavy baseline a 200K window can saturate at spawn and trip the runtime rapid-refill circuit breaker → zero output. Switching to `model: inherit` does NOT reliably fix this (Team `[1m]` non-inheritance, Anthropic issue #36670 OPEN → teammate falls back to 200K). For large SPECs prefer a single `manager-develop` (`model: inherit`, 1M) + Milestone split; reserve team mode for small SPECs. See `.claude/rules/moai/development/model-policy.md` § Baseline-Refill Breaker.
 
 ### Teammate Naming
 

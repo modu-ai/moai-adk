@@ -13,7 +13,7 @@ Canonical 6-mode autonomous decision tree for the MoAI orchestrator. Activated a
 
 [ZONE:Frozen] [HARD] All Phase 0.95 execution modes are strictly downstream of Implementation Kickoff Approval (renamed from GATE-2) (the plan→run HUMAN GATE). The orchestrator reaches Phase 0.95 ONLY after Implementation Kickoff Approval user approval has already been obtained. Mode selection — including Mode 6 (workflow) — is never a substitute for Implementation Kickoff Approval and never a path that crosses the plan→run boundary ahead of the human gate. Implementation Kickoff Approval is mandatory and score-independent (a plan-auditor PASS or a high skip-eligible score never auto-bypasses it; skip-eligibility applies only to Phase 0.5 verdict re-execution, not to Implementation Kickoff Approval) per the Implementation Kickoff Approval mandatory-restoration policy.
 
-> **Path B amendment (Intent-Gated Goal-Directed Autonomy — IGGDA)**: the Implementation Kickoff Approval gate above is AMENDED, not removed, by the safe-condition predicate documented in §H below. The `[ZONE:Frozen]` marker is PRESERVED as an audit trail; the amendment reduces the gate's per-run-blocking weight in safe domains (lightweight confirmation that auto-proceeds after a bounded timeout) while preserving the user's veto authority and forcing explicit-gate in dangerous domains. The marker is never removed; only the gate's weight is redistributed. The user-facing `AskUserQuestion` round is ALWAYS issued (auto-proceed does NOT skip it — the user retains veto). See §H for the 4-condition compound predicate, §I for the IGGDA 4-phase pipeline it governs, and §J for the independent-audit preservation invariants.
+> **Path B amendment (Intent-Gated Goal-Directed Autonomy — IGGDA)**: the Implementation Kickoff Approval gate above is AMENDED, not removed, by the safe-condition predicate documented in §H below. The `[ZONE:Frozen]` marker is PRESERVED as an audit trail; the amendment reduces the gate's per-run-blocking *framing* in safe domains (a lightweight confirmation with a clearly-recommended low-friction option) while preserving the user's veto authority and forcing explicit-gate in dangerous domains. The marker is never removed; only the gate's framing is adjusted. The user-facing `AskUserQuestion` round is ALWAYS issued and ALWAYS blocks until the user responds (auto-proceed does NOT skip it and does NOT auto-select — the user retains full veto). See §H.2 for the auto-select-after-timeout deferral note. See §H for the 4-condition compound predicate, §I for the IGGDA 4-phase pipeline it governs, and §J for the independent-audit preservation invariants.
 
 > Cross-reference: `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification covers the `--mode` flag matrix (autopilot / loop / team / pipeline) which interacts with — but is separate from — the 6-mode catalog below. The run-phase `/goal ac_converge` autonomy wiring point lives in `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy (/goal ac_converge); `.claude/rules/moai/workflow/dynamic-workflows.md` is the source for the Workflow (Mode 6) primitive (16-concurrent / 1000-total cap) and the named-script-API prohibition.
 
@@ -252,10 +252,12 @@ The predicate is evaluated in order (a)→(b)→(c)→(d). The FIRST failing con
 
 | Branch | Trigger | Behavior |
 |--------|---------|----------|
-| **Auto-proceed** | All 4 conditions hold | The `AskUserQuestion` round is STILL ISSUED (the user retains veto authority); the first option `(Recommended)` is auto-selected after a bounded timeout (default 30 seconds, configurable via `workflow.iggda.kickoff_timeout_seconds`). The gate is REDUCED to a lightweight confirmation, NOT removed. |
-| **Explicit-gate** | Condition (c) OR (d) fails | The `AskUserQuestion` round REMAINS mandatory and blocks until the user responds (no timeout, no auto-proceed). This is the Path A behavior preserved verbatim for dangerous domains. |
+| **Auto-proceed** | All 4 conditions hold | The `AskUserQuestion` round is STILL ISSUED (the user retains veto authority) and BLOCKS until the user responds. The gate is REDUCED in *framing* to a lightweight confirmation (the `(Recommended)` first option signals the low-friction path) but is NOT removed and does NOT auto-select. |
+| **Explicit-gate** | Condition (c) OR (d) fails | The `AskUserQuestion` round REMAINS mandatory and blocks until the user responds. This is the Path A behavior preserved verbatim for dangerous domains. |
 
-**User veto is never overridden.** Even in the auto-proceed branch, the user CAN select "abort" or "further review" within the timeout window (AC-IGGDA-003). The predicate does NOT override user intent — it only reduces the latency of the gate in safe domains where the Socratic interview has already drained intent.
+> **Auto-select-after-timeout is DEFERRED — not currently implementable.** [ZONE:Evolvable] An earlier design described the auto-proceed branch as auto-selecting the first `(Recommended)` option after a bounded 30-second timeout (`workflow.iggda.kickoff_timeout_seconds`). `AskUserQuestion` has **no timeout / auto-select mechanism** in Claude Code — a question always blocks until the user answers. The timeout auto-proceed is therefore **documentation-only, deferred, and NOT mechanically implementable via `AskUserQuestion`** (per the runtime-recovery-doctrine deferred-labeling convention; forward-link: a future runtime-layer SPEC would be required if a genuine bounded-timeout gate is ever wanted). Until then, the **canonical Implementation Kickoff Approval gate is the score-independent BLOCKING `AskUserQuestion` gate** — auto-proceed reduces the gate's *framing* (a recommended low-friction option) but never its *blocking* nature. The `run.md` skill owns the concrete skill-side gate text. The §H concept (the 4-condition safe-condition predicate and the two branches) is PRESERVED; only the auto-select-after-timeout mechanic is labeled deferred.
+
+**User veto is never overridden.** Even in the auto-proceed branch the user CAN select "abort" or "further review" — the question blocks until they answer, so there is no timeout window that could elapse without a response. The predicate does NOT override user intent — it only reduces the *friction* of the gate in safe domains (a clearly-recommended low-friction option) where the Socratic interview has already drained intent.
 
 ### §H.3 The dangerous-domain keyword list (condition (d) determinator)
 
@@ -297,7 +299,7 @@ The keyword list is enumerable at design time and extensible via rule-file edit 
 The original Implementation Kickoff Approval invariant protects **intent verification before code is written** — a plan-auditor PASS score is NOT sufficient evidence of intent fidelity. Path B preserves this protection because:
 
 1. **Condition (a) requires 100% Socratic clarity** — a multi-round interview (far more rigorous than a single plan→run boundary confirmation) IS intent verification, and is STRONGER than the single gate.
-2. **The `AskUserQuestion` round is STILL ISSUED in the auto-proceed branch** — the user sees the confirmation and CAN veto within the timeout window. The gate is REDUCED, not removed.
+2. **The `AskUserQuestion` round is STILL ISSUED in the auto-proceed branch** — the user sees the confirmation and CAN veto; the question blocks until the user responds (see §H.2 for the auto-select-after-timeout deferral note). The gate is REDUCED in framing, not removed.
 3. **Dangerous domains are carved out** (conditions (c) + (d)) — where the stakes are high, the gate remains fully mandatory (explicit-gate branch).
 4. **The decision is auditable** (§H.4) — every auto-proceed is logged with all 4 conditions, so post-hoc verification is possible.
 
@@ -314,7 +316,7 @@ IGGDA chains autonomy across all four phases of the pipeline. The user concentra
 | Phase | Name | Autonomy | Human involvement |
 |-------|------|----------|-------------------|
 | **0** | **Intent** | Human-in-the-loop (Socratic) | Drains ALL preferences (Tier, mode, PR strategy, domain). ABSORBS the gating weight of Implementation Kickoff Approval under Path B (the human checkpoint moves HERE, except in dangerous domains where it remains at the plan→run boundary). |
-| **1** | **Plan** | Autonomous | manager-spec produces SPEC artifacts → plan-auditor INDEPENDENT audit (fresh context). PASS → auto-advance to Phase 2. FAIL/INCONCLUSIVE → halt, surface to user (REQ-IGGDA-023). |
+| **1** | **Plan** | Autonomous | manager-spec produces SPEC artifacts → plan-auditor INDEPENDENT audit (fresh context). PASS → auto-advance to Phase 2. FAIL/INCONCLUSIVE → halt, surface to user. |
 | **2** | **Run** | Autonomous + recursive self-diagnosis | manager-develop implements (DDD/TDD/autofix cycle_type). Bounded recursive self-diagnosis loop on mechanical failures (DIAGNOSE-PATCH-VERIFY, max 3 iterations). Semantic failures escalate immediately. All blocking ACs PASS + go test exit 0 + no out-of-scope modification → auto-advance to Phase 3. |
 | **3** | **Sync + final independent audit** | Autonomous | manager-docs: CHANGELOG/README/frontmatter transitions → sync-auditor INDEPENDENT 4-dimension score (fresh context) → `moai spec audit` deterministic final check (0 MUST-FIX required). sync-auditor ≥ threshold + 0 MUST-FIX + git clean → IGGDA-complete (`/goal` clears). |
 
@@ -354,5 +356,5 @@ IGGDA does NOT trade one for the other. Self-audit handles mechanical code failu
 ---
 
 Version: 1.2.0 (IGGDA: §H safe-condition predicate + §I 4-phase pipeline + §J independent-audit preservation added — Path B Implementation Kickoff Amendment)
-Origin: canonical agent catalog policy; Mode 6 (workflow) added by the run-phase autonomy line; §H/§I/§J added by IGGDA (Intent-Gated Goal-Directed Autonomy)
+Origin: derived from the canonical agent catalog and IGGDA policies.
 Status: Active — applies to all `/moai run` Phase 0.95 invocations

@@ -8,13 +8,13 @@ paths: "**/*.rb,**/Gemfile,**/Gemfile.lock,**/*.gemspec"
 ---
 
 
-Ruby 4.0 Development Specialist - Rails 8.0, ActiveRecord, Hotwire/Turbo, RSpec, and modern Ruby patterns.
+Ruby 3.4 Development Specialist - Rails 8.1, ActiveRecord, Hotwire/Turbo, RSpec, and modern Ruby patterns.
 
 
 Core Capabilities:
 
-- Ruby 4.0 Features: YJIT production-ready, pattern matching, Data class, endless methods
-- Web Framework: Rails 8.0 with Turbo, Stimulus, and ActiveRecord
+- Ruby 3.4 Features: YJIT production-ready (default since Ruby 3.3), pattern matching, Data class, endless methods
+- Web Framework: Rails 8.1 with Turbo, Stimulus, and ActiveRecord
 - Frontend: Hotwire including Turbo and Stimulus for SPA-like experiences
 - Testing: RSpec with factories, request specs, and system specs
 - Background Jobs: Sidekiq with ActiveJob
@@ -39,11 +39,11 @@ Create RSpec.describe for User model type. In describe validations block, add ex
 ---
 
 
-### Ruby 4.0 New Features
+### Ruby 3.4 New Features
 
 YJIT Production-Ready:
 
-YJIT is enabled by default in Ruby 4.0 providing 15 to 20 percent performance improvement for Rails applications. Enable by running ruby with yjit flag or setting RUBY_YJIT_ENABLE environment variable to 1. Check status by calling RubyVM::YJIT.enabled? method.
+YJIT is enabled by default in Ruby 3.3 providing 15 to 20 percent performance improvement for Rails applications. Enable by running ruby with yjit flag or setting RUBY_YJIT_ENABLE environment variable to 1. Check status by calling RubyVM::YJIT.enabled? method.
 
 Pattern Matching with case/in:
 
@@ -57,11 +57,11 @@ Endless Method Definition:
 
 Create Calculator class with add, multiply, and positive? methods using equals sign syntax for single expression methods.
 
-### Rails 8.0 Patterns
+### Rails 8.1 Patterns
 
 Application Setup in Gemfile:
 
-Set source to rubygems.org. Add rails version constraint for 8.0, pg for 1.5, puma for 6.0 or later, turbo-rails, stimulus-rails, and sidekiq for 7.0. In development and test group add rspec-rails for 7.0, factory_bot_rails, faker, and rubocop-rails with require false. In test group add capybara and shoulda-matchers.
+Set source to rubygems.org. Add rails version constraint for 8.1, pg for 1.5, puma for 6.0 or later, turbo-rails, stimulus-rails, and sidekiq for 7.0. In development and test group add rspec-rails for 7.0, factory_bot_rails, faker, and rubocop-rails with require false. In test group add capybara and shoulda-matchers.
 
 Model with Concerns:
 
@@ -105,14 +105,11 @@ For comprehensive coverage including:
 - CI/CD integration patterns
 - Complete RSpec testing patterns
 
-See:
-
-- modules/advanced-patterns.md for production patterns and advanced features
-- modules/testing-patterns.md for complete RSpec testing guide
+Apply the Quick Patterns and framework sections above together with the Context7 Integration mappings for these advanced topics; this guide is self-contained.
 
 ---
 
-## Context7 Library Mappings
+## Context7 Integration
 
 - rails/rails for Ruby on Rails web framework
 - rspec/rspec for RSpec testing framework
@@ -138,11 +135,11 @@ Common Issues:
 
 Ruby Version Check:
 
-Run ruby with version flag for 4.0 or later. Check YJIT status by running ruby -e with puts RubyVM::YJIT.enabled? command.
+Run ruby with version flag for 3.4 or later. Check YJIT status by running ruby -e with puts RubyVM::YJIT.enabled? command.
 
 Rails Version Check:
 
-Run rails with version flag for 8.0 or later. Run bundle exec rails about for full environment information.
+Run rails with version flag for 8.1 or later. Run bundle exec rails about for full environment information.
 
 Database Connection Issues:
 

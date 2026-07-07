@@ -13,7 +13,7 @@ paths: "**/*.swift,**/Package.swift,**/*.xcodeproj/**"
 Swift 6.0+ development expert for iOS/macOS with SwiftUI, Combine, and Swift Concurrency.
 
 
-### Core Capabilities
+Core Capabilities:
 
 - Swift 6.0: Typed throws, complete concurrency, data-race safety by default
 - SwiftUI 6: @Observable macro, NavigationStack, modern declarative UI
@@ -26,8 +26,8 @@ Swift 6.0+ development expert for iOS/macOS with SwiftUI, Combine, and Swift Con
 
 - Swift: 6.0+
 - Xcode: 16.0+
-- iOS: 17.0+ (recommended), minimum 15.0
-- macOS: 14.0+ (recommended)
+- iOS: 18.0+ (recommended), minimum 16.0
+- macOS: 15.0+ (recommended)
 
 ### Project Setup
 
@@ -73,7 +73,7 @@ This guide is self-contained. Use the sections below as the primary reference fo
 - async/await bridge patterns
 - Integration with SwiftUI
 
-## Context7 Library Mappings
+## Context7 Integration
 
 ### Core Swift
 
@@ -104,4 +104,23 @@ Async Test with MainActor: Apply @MainActor attribute to test class extending XC
 
 ## Resources
 
-For architecture patterns, network-layer design, SwiftData, and production-ready code examples, use the Coverage Areas and Context7 Library Mappings sections above; this guide is self-contained.
+For architecture patterns, network-layer design, SwiftData, and production-ready code examples, use the Coverage Areas and Context7 Integration sections above; this guide is self-contained.
+
+---
+
+## Troubleshooting
+
+Common Issues:
+
+Xcode Build Clean: Run xcodebuild clean to remove build artifacts derived from the current project. For a deeper clean, delete the DerivedData folder at ~/Library/Developer/Xcode/DerivedData (affects all Xcode projects on this machine). Close Xcode before deleting the directory.
+
+SwiftPM Resolution Errors: Run swift package resolve to re-resolve dependencies. For cache corruption, delete .build/ and Package.resolved then run swift package update. Verify Package.swift version constraints are compatible across dependencies.
+
+Xcode "No such module" Errors: Run xcodebuild clean, then build again. Ensure the framework search paths and import paths are correctly configured in Build Settings. For SwiftPM dependencies, verify they are linked in the target's Frameworks, Libraries, and Embedded Content section.
+
+Simulator Issues: Run xcrun simctl list devices to enumerate available simulators. Reset a simulator with xcrun simctl erase all (erases all simulators) or xcrun simctl erase <device-id>. If simulator fails to boot, run xcrun simctl shutdown all then boot again.
+
+Code Signing Issues: Run security find-identity -v -p codesigning to list available signing identities. Verify the development team is set in Signing & Capabilities. For local development, use "Automatically manage signing" with a personal team.
+
+---
+

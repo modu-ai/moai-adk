@@ -396,9 +396,7 @@ Origin: an earlier sync-phase race incident — a parallel session
 committed a spec.md frontmatter status update between manager-develop's
 final run-phase commit and manager-docs' sync commit. Detection occurred
 retrospectively when `git push` succeeded with an unexpected intermediate
-commit in the push range. Lesson L9 reinforced
-(parallel session race during long agent runs) + L44 NEW (pre-spawn fetch
-discipline).
+commit in the push range. Lesson (parallel-session race during long agent runs) reinforced; a new lesson (pre-spawn fetch discipline) added.
 
 Exemption: read-only agents (`Explore`, or a per-spawn `Agent(general-purpose)` scoped to read-only investigation) do not require pre-spawn fetch — they cannot trigger race conflicts.
 

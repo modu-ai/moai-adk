@@ -8,9 +8,9 @@ Claude Code hooks for extending functionality with custom scripts.
 
 ## Hook Events
 
-26 hook event types + 4 RETIRE-OBS-ONLY events = 30 total Go handlers (retired).
+29 events documented below: 20 registered in settings.json + 4 RETIRE-OBS-ONLY (Go-only observability taps, opt-in via system.yaml) + 5 upstream events MoAI does not register by default (PostSession, PostToolBatch, UserPromptExpansion, WorktreeCreate, WorktreeRemove); plus 1 retired event (Setup).
 **Note**: The moai-adk Go `EventSetup` constant is retired (orphan, no handler implementation); the upstream Claude Code `Setup` event remains a current, usable event.
-Active settings.json keys: 20 (the shipped settings.json registers 20 hook event keys). RETIRE-OBS-ONLY (Go-only, opt-in via system.yaml): 4.
+Active settings.json keys: 20. RETIRE-OBS-ONLY (Go-only): 4.
 
 **Event reference (20 registered in settings.json + 4 RETIRE-OBS-ONLY in Go; the table also documents upstream events MoAI does not register by default — PostSession, PostToolBatch, UserPromptExpansion, WorktreeCreate, WorktreeRemove):**
 
@@ -30,21 +30,21 @@ Active settings.json keys: 20 (the shipped settings.json registers 20 hook event
 | StopFailure | Error type | No | Runs when a turn ends due to API error (v2.1.78+). Matchers: rate_limit, authentication_failed, billing_error, max_output_tokens |
 | SubagentStart | Agent type | No | Runs when a subagent spawns |
 | SubagentStop | Agent type | Yes | Runs when a subagent terminates |
-| Notification | Type | No | Runs when notifications sent. Matchers: permission_prompt, idle_prompt, auth_success, elicitation_dialog |
+| Notification | Type | No | Runs when notifications sent. Matchers: permission_prompt, idle_prompt, auth_success, elicitation_dialog. **Go-only observability tap (see sub-table below).** |
 | UserPromptSubmit | No | Yes | Runs when user submits a prompt, before processing |
 | PermissionRequest | Tool name | Yes | Runs when permission dialog appears |
 | PermissionDenied | Tool name | No | Runs after auto mode denies a tool call. Return {retry: true} to retry (v2.1.89+) |
 | TeammateIdle | No | Yes | Runs when agent team teammate is about to go idle |
-| TaskCompleted | No | Yes | Runs when a task is being marked complete |
-| TaskCreated | No | Yes | Runs when a task is created via TaskCreate (v2.1.84+) |
+| TaskCompleted | No | Yes | Runs when a task is being marked complete. **Go-only observability tap (see sub-table below).** |
+| TaskCreated | No | Yes | Runs when a task is created via TaskCreate (v2.1.84+). **Go-only observability tap (see sub-table below).** |
 | WorktreeCreate | No | Yes | Runs when a worktree is created for agent isolation (v2.1.49+). **Active creator contract**: hook MUST create the directory and echo its absolute path to stdout (plain text); empty stdout or non-zero exit aborts creation. **Not registered by MoAI default** — see `.claude/rules/moai/workflow/worktree-integration.md` §WorktreeCreate and WorktreeRemove Hooks. |
 | WorktreeRemove | No | No | Runs when a worktree is removed after agent terminates (v2.1.49+). Observer role; no output required. **Not registered by MoAI default** — see worktree-integration.md. |
 | ConfigChange | Config source | Yes | Runs when config files change (v2.1.49+). Matchers: user_settings, project_settings, local_settings, policy_settings, skills |
 | CwdChanged | No | No | Runs when working directory changes (v2.1.83+). Receives CLAUDE_ENV_FILE |
 | FileChanged | Filename | No | Runs when a file is changed externally (v2.1.83+). Receives CLAUDE_ENV_FILE |
 | InstructionsLoaded | Load reason | No | Runs when CLAUDE.md or rules loaded (v2.1.69+). Matchers: session_start, nested_traversal, path_glob_match, include, compact |
-| Elicitation | MCP server | Yes | Runs when MCP server requests user input (v2.1.76+) |
-| ElicitationResult | MCP server | Yes | Runs after user responds to MCP elicitation (v2.1.76+) |
+| Elicitation | MCP server | Yes | Runs when MCP server requests user input (v2.1.76+). **Go-only observability tap (see sub-table below).** |
+| ElicitationResult | MCP server | Yes | Runs after user responds to MCP elicitation (v2.1.76+). **Go-only observability tap (see sub-table below).** |
 
 **RETIRE-OBS-ONLY events (Go-only, not in settings.json — enable via system.yaml hook.observability_events):**
 

@@ -74,7 +74,19 @@ For .NET Runtime documentation, resolve with "dotnet runtime" and fetch with top
 
 ---
 
-## Quick Troubleshooting
+## Testing
+
+xUnit Fixture Pattern: Define a public class implementing ICollectionFixture of DatabaseFixture. Add Collection attribute referencing the collection definition. Tests in the collection share the fixture instance across test runs, ensuring database state setup only once.
+
+NUnit TestCase Pattern: Use TestCase attribute with expected return values. Define test method with input parameters. NUnit runs the test once per TestCase attribute, comparing actual to expected via Assert.AreEqual.
+
+Moq Setup Pattern: Create Mock of IRepository. Call Setup with lambda matching method call and argument constraint (It.IsAny of T). Configure Returns with expected value. Verify the mock was called with specific arguments using Verify and Times.Once.
+
+FluentAssertions Style: Use Should assertions. Call result.Should().BeEquivalentTo expecting matching object structure. Use Should().Throw of ExceptionType for exception assertions in async methods. Note: FluentAssertions changed its license in 2025 — consider plain xUnit asserts or Shouldly as alternatives for new projects.
+
+---
+
+## Troubleshooting
 
 Build and Runtime: Run dotnet build with --verbosity detailed for detailed output. Run dotnet run with --launch-profile https for HTTPS profile. Run dotnet ef database update to apply EF migrations. Run dotnet ef migrations add with migration name to create new migrations.
 

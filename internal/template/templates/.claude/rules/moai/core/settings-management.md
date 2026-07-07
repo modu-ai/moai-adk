@@ -142,7 +142,7 @@ Use the `ultrathink` keyword in user prompts to activate Adaptive Thinking (Opus
 Configuration sections are loaded via two mechanisms:
 
 **1. `Loader.Load()` chain** (`internal/config/loader.go:31-74`):
-Loads the following 10 sections in fixed order. All return defaults on absent file.
+Loads the following 15 sections in fixed order. All return defaults on absent file.
 
 | YAML file | loadedSections key | Go field |
 |---|---|---|
@@ -150,9 +150,11 @@ Loads the following 10 sections in fixed order. All return defaults on absent fi
 | language.yaml | `language` | `cfg.Language` |
 | quality.yaml | `quality` | `cfg.Quality` |
 | git-convention.yaml | `git_convention` | `cfg.GitConvention` |
+| git-strategy.yaml | `git_strategy` | `cfg.GitStrategy` |
 | llm.yaml | `llm` | `cfg.LLM` |
 | ralph.yaml | `ralph` | `cfg.Ralph` |
 | state.yaml | `state` | `cfg.State` |
+| workflow.yaml | `workflow` | `cfg.Workflow` |
 | statusline.yaml | `statusline` | `cfg.Statusline` |
 | research.yaml | `research` | `cfg.Research` |
 | constitution.yaml | `constitution` | `cfg.Constitution` |

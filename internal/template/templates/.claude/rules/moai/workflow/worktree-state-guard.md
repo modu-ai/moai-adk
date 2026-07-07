@@ -5,7 +5,7 @@ paths: "**/.moai/specs/**,**/internal/worktree/**,**/internal/cli/worktree/**"
 # Worktree State Guard
 
 Operational rule for the orchestrator's defense layer against
-`Agent(isolation: "worktree")` regressions. Wave 5
+`Agent(isolation: "worktree")` regressions. The worktree-guard feature
 introduces a Bash-invocable Go primitive (`moai worktree snapshot|verify|restore`)
 that captures pre-call state, detects post-call divergence, and surfaces empty
 `worktreePath` responses as suspect flags.
@@ -14,7 +14,7 @@ This rule defines **when** and **how** the orchestrator must invoke the
 primitive. The primitive itself lives in `internal/worktree/` and is exposed as
 CLI subcommands by `internal/cli/worktree/guard.go`.
 
-**Operational status (2026-05-17)**: This primitive is dormant by default. It activates only when Claude Code runtime opts into L1 isolation (via `Agent(isolation: "worktree")`) OR the user manually invokes `moai worktree {snapshot,verify,restore}` from an agent prompt. Wave 5 orchestrator wiring (auto-invocation around L1 isolation calls) remains out-of-scope — forensic-audit items 1-6 are deferred § Non-Goals. See `feedback_worktree_autonomous` memory for the 2026-05-17 user policy context.
+**Operational status**: This primitive is dormant by default. It activates only when Claude Code runtime opts into L1 isolation (via `Agent(isolation: "worktree")`) OR the user manually invokes `moai worktree {snapshot,verify,restore}` from an agent prompt. The orchestrator wiring (auto-invocation around L1 isolation calls) remains out-of-scope — forensic-audit items 1-6 are deferred § Non-Goals. L3 `--worktree` is user opt-in only.
 
 > Cross-references: `worktree-integration.md` § Terminology Glossary (L1/L2/L3 layer definitions),
 > `agent-common-protocol.md` § User Interaction Boundary (AskUserQuestion HARD).
@@ -37,7 +37,7 @@ Snapshots SHOULD be skipped for:
 
 ## Divergence Threshold
 
-Per OQ4 in strategy-wave5.md §7: **binary detection**.
+Per the design decision (OQ4): **binary detection**.
 
 A snapshot is considered divergent if **any** of the following changed between
 pre-call and post-call:
@@ -49,7 +49,7 @@ pre-call and post-call:
   `.moai/reports/`, `.moai/cache/`, `.moai/logs/`)
 
 There is no "soft" threshold; a configurable threshold is explicitly out of
-Wave 5 scope and may be added as a follow-up SPEC if false-positive rates require.
+scope for this rule and may be added as a follow-up SPEC if false-positive rates require.
 
 ## Escalation Path
 
@@ -107,12 +107,12 @@ The JSON report on stdout from `verify` includes:
 - `report_path` and `json_sidecar` (the markdown + JSON divergence logs)
 - `exit_code` (mirror of the process exit code for convenience)
 
-## Out of Wave 5 Scope
+## Out of Scope
 
-The following items are deliberately deferred (see strategy-wave5.md § 14):
+The following items are deliberately deferred:
 
 - Orchestrator-side wiring inside `Skill("moai")` workflows (`/moai run`,
-  `/moai sync`) — Wave 5 ships primitives + this rule only.
+  `/moai sync`) — this rule ships primitives + the rule itself only.
 - Untracked file content snapshot — paths-only restoration; users must
   recreate untracked content from external sources.
 - Configurable divergence threshold — binary detection only.

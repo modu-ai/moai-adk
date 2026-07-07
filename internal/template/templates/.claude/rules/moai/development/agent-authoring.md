@@ -37,7 +37,7 @@ Cross-references:
 - `.claude/skills/moai-meta-harness/SKILL.md` § Namespace Separation (canonical generator contract)
 - `.moai/docs/dev-only-commands-isolation.md` § 검증 체크리스트 (maintainer-local verification — `.claude/agents/local/` 누출 negative test)
 
-Platform Support: Windows ARM64 (`win32-arm64`) is natively supported as of Claude Code v2.1.41. No WSL required for ARM-based Windows devices.
+Platform Support: Windows ARM64 (`win32-arm64`) is natively supported. No WSL required for ARM-based Windows devices.
 
 ## Supported Frontmatter Fields
 
@@ -88,7 +88,7 @@ All agent definitions use YAML frontmatter. The following fields are available:
 
 ## Agent(agent_type) Restrictions
 
-The `tools` field supports `Agent(worker, researcher)` syntax to restrict which subagent types an agent can spawn. Prior to v2.1.63, this was `Task(worker, researcher)` — the old syntax still works as a backward-compatible alias.
+The `tools` field supports `Agent(worker, explore)` syntax to restrict which subagent types an agent can spawn. Prior to v2.1.63, this was `Task(worker, explore)` — the old syntax still works as a backward-compatible alias.
 
 - Only applies to agents running as the main thread via `claude --agent`
 - Has no effect on subagent definitions (subagents cannot spawn other subagents)
@@ -159,6 +159,8 @@ Domain-specific implementation work (backend, frontend, security, devops, perfor
 ```
 Agent(subagent_type: "general-purpose", name: "researcher", model: "haiku", mode: "plan")
 ```
+
+> Note: the `researcher` role_profile here is a workflow.yaml role, unrelated to the retired `researcher` agent file.
 
 Role profiles are defined in `.moai/config/sections/workflow.yaml` under `team.role_profiles`:
 
@@ -346,12 +348,12 @@ Per-agent default effort levels for the Opus 4.7+ / 4.8 substrate. The `effort` 
 
 ### Archived Agents (legacy reference — MUST NOT be spawned)
 
-The following agents were retired during the 2026-05-25 catalog consolidation (17 → 8 retained) and are listed here for historical traceability only. They MUST NOT be spawned; route their former work per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C migration table.
+The following agents were retired during the catalog consolidation (8 retained + 12 archived — see `archived-agent-rejection.md` §C for the canonical 12-row migration table) and are listed here for historical traceability only. They MUST NOT be spawned; route their former work per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C migration table.
 
 | Archived agent | Former role | Successor routing |
 |----------------|-------------|-------------------|
 | `manager-strategy` | planning | `manager-spec` (absorbed) |
-| `manager-cycle` | cycle management | `manager-develop` |
+| `manager-brain` | reasoning / orchestration | sequential chain `Explore` → `manager-spec` |
 | `manager-quality` | quality gates | global Stop hook `sync-phase-quality-gate.sh` + `sync-auditor` |
 | `manager-project` | project docs | `manager-docs` (absorbed) |
 | `expert-backend` | backend domain | `Agent(general-purpose)` + backend scope |
@@ -360,7 +362,7 @@ The following agents were retired during the 2026-05-25 catalog consolidation (1
 | `expert-devops` | devops domain | `Agent(general-purpose)` + infra scope |
 | `expert-performance` | performance domain | `Agent(general-purpose)` + perf scope |
 | `expert-refactoring` | refactoring | `manager-develop` (cycle_type=ddd) |
-| `builder-platform` | platform builder | `builder-harness` (absorbed) |
+| `claude-code-guide` | Claude Code Q&A | `Explore` |
 | `researcher` | research | `Explore` / WebSearch |
 
 Effort values: `low` / `medium` / `high` / `xhigh` / `max`. Opus 4.8 defaults to `effort: high` on all surfaces; raise to `xhigh` for coding/agentic work, step down to `medium`/`low` only for speed-critical or simple tasks.

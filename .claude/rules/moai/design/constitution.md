@@ -3,7 +3,7 @@ description: "Design System Constitution — MoAI design pipeline FROZEN/EVOLVAB
 paths: ".moai/design/**,.moai/specs/SPEC-*-DESIGN-*/**,.moai/project/brand/**,.claude/skills/moai/**/design*.md,.claude/skills/moai/**/brand*.md"
 ---
 
-# Design System Constitution v3.2
+# Design System Constitution v3.5.0
 
 > **RETIRED — historical reference.** The MoAI design production system described in this file (the `/moai design` route, the design pipeline, and the named design skills `moai-domain-copywriting`, `moai-domain-brand-design`, `moai-workflow-design`, `moai-workflow-gan-loop`) has been **retired** per the design-system retirement. None of those four skills exist in the current catalog, and `/moai design` is no longer a routed subcommand — design-language requests route to `/moai plan`, and quality/security review routes to `/moai review`. This file is preserved for two reasons only: (1) as the FROZEN-clause source mirrored by the zone-registry, and (2) as a historical record of the design pipeline contract. The `expert-frontend` name throughout resolves to a per-spawn `Agent(general-purpose)` with frontend instructions per the carve-out note below. Do not treat any pipeline, route, or skill named below as a live capability.
 
@@ -102,6 +102,8 @@ Iteration-specific design briefs are stored in `.moai/design/`:
 ---
 
 ## 4. Pipeline Architecture
+
+(Sections 4-14 describe the retired /moai design pipeline; skill names below are retired. Preserved as historical record — the load-bearing FROZEN clauses are §2 + §3, mirrored by zone-registry.md.)
 
 ### Phase Ordering
 
@@ -416,6 +418,5 @@ If a graduated learning causes regression:
 Version: 3.5.0
 Classification: FROZEN_AMENDMENT
 Original Source: v2.x `agency/constitution.md` v3.2.0 (retired per the design-system absorption policy)
-Last Updated: 2026-04-26
+Last Updated: 2026-05-20
 Relocated: 2026-04-20
-REQ coverage: REQ-CONST-001, REQ-CONST-002, REQ-CONST-003, REQ-CONST-004

@@ -16,11 +16,9 @@ MoAI's three-phase development workflow with token budget management.
 
 Per the canonical agent catalog policy, the MoAI agent catalog consists of exactly 8 retained agents (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `sync-auditor`, `builder-harness`, plus the Anthropic built-in `Explore`). 12 phantom and domain-expert agents (`manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, and the 6 `expert-*` agents) were archived offline during the catalog consolidation. For migration guidance and the per-archived-agent replacement pattern, see `.claude/rules/moai/workflow/archived-agent-rejection.md`.
 
-<!-- @MX:ANCHOR fan_in=10 - Subcommand classification single source of truth; cross-referenced by 10 workflow skills (5 multi-agent + 5 utility). Changes here affect all workflow contracts. -->
-
 ## SPEC Phase Discipline
 
-> [2026-05-17 user policy] L2/L3 worktree usage is opt-in. Default flow executes all phases on main checkout with a feature branch. See `feedback_worktree_autonomous` memory and `.claude/rules/moai/workflow/worktree-integration.md` § Terminology Glossary for L1/L2/L3 layer definitions.
+> L2/L3 worktree usage is opt-in. Default flow executes all phases on main checkout with a feature branch. See `.claude/rules/moai/workflow/worktree-integration.md` § Terminology Glossary for L1/L2/L3 layer definitions.
 
 [ZONE:Frozen] [HARD] Every MoAI SPEC follows the three-phase lifecycle (plan → run → sync). How each phase transition is *triggered* depends on the **route** the SPEC takes. There are exactly TWO routes, and the route is determined by Tier (per § SPEC Complexity Tier) and the explicit `--pr` flag:
 
@@ -49,10 +47,10 @@ The route governs the trigger vocabulary in § Phase Transitions below (commit/p
 \* Route B PR strategy is the configured `merge_method` (`git_strategy.<mode>.merge_method`; one of `squash` | `merge` | `rebase`), **default `squash`**. Squash remains the documented recommendation — one squash commit per phase yields clean, revertable SPEC history — and is the value applied when `merge_method` is absent or unset. The method is configurable (per the per-mode `merge_method` field) so that workflows such as gitflow `release/*` may opt into a merge commit; the FROZEN default and its rationale are unchanged. Route A has no PR and therefore no `merge_method` — it pushes directly to `main`. Step 4 (worktree cleanup) applies to Route B only when an L2 worktree was created.
 
 [ZONE:Frozen] [HARD] Step ordering rules:
-- Step 1 (plan) MUST execute in main checkout on BOTH routes. NO L2/L3 worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping. On **Route A** the plan-phase artifacts are committed + pushed directly to `main` (no branch). On **Route B**, the **Late-branch precondition (SPEC-V3R5-LATE-BRANCH-001 REQ-LB-005)** applies: when `team.branch_creation.auto_enabled == false` in `git-strategy.yaml`, Step 1 entry requires `git rev-parse --abbrev-ref HEAD == main` (or the user's chosen `main_branch` if it differs). No `plan/SPEC-XXX` branch is created at Step 1; plan-phase commits land directly on `main` and are pushed only after Phase C `git switch -c plan/SPEC-XXX` at PR creation time.
+- Step 1 (plan) MUST execute in main checkout on BOTH routes. NO L2/L3 worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping. On **Route A** the plan-phase artifacts are committed + pushed directly to `main` (no branch). On **Route B**, the **Late-branch precondition (the Late-Branch closure contract)** applies: when `team.branch_creation.auto_enabled == false` in `git-strategy.yaml`, Step 1 entry requires `git rev-parse --abbrev-ref HEAD == main` (or the user's chosen `main_branch` if it differs). No `plan/SPEC-XXX` branch is created at Step 1; plan-phase commits land directly on `main` and are pushed only after Phase C `git switch -c plan/SPEC-XXX` at PR creation time.
 - Step 2 (run) — **Route A** commits + pushes directly to `main` (no branch, no worktree). **Route B** SHOULD create a fresh L2 SPEC worktree from the plan-merged main HEAD (`--base origin/main`) if the user opted into L2/L3; otherwise continue on the `feat/SPEC-XXX` branch in main checkout. When L2 is used, worktree base alignment is a precondition for `Agent(isolation: "worktree")` correctness (see lessons #13).
 - Step 3 (sync) — **Route A** emits the single sync commit directly on `main` (carrying the `implemented → completed` transition; see § Phase Transitions). **Route B** SHOULD reuse the SAME L2 worktree as Step 2 if L2 was used; otherwise continue on the same feature branch in main checkout. Sync rotates codemap / MX / docs in the run-modified tree; spawning a fresh L2 worktree at sync would lose run-state context.
-- Step 4 (cleanup) applies to **Route B only**. It MUST happen ONLY after BOTH run AND sync PRs are merged, and ONLY when an L2 worktree was created. Premature `moai worktree done` between run-merge and sync-merge breaks Step 3. **Late-branch closure (SPEC-V3R5-LATE-BRANCH-001 REQ-LB-006):** when `auto_enabled == false`, after squash merge of run-PR and sync-PR, the user (or `manager-git` automation) MUST execute the canonical Late-branch closure step:
+- Step 4 (cleanup) applies to **Route B only**. It MUST happen ONLY after BOTH run AND sync PRs are merged, and ONLY when an L2 worktree was created. Premature `moai worktree done` between run-merge and sync-merge breaks Step 3. **Late-branch closure (the Late-Branch closure contract):** when `auto_enabled == false`, after squash merge of run-PR and sync-PR, the user (or `manager-git` automation) MUST execute the canonical Late-branch closure step:
 
   ```bash
   git checkout main
@@ -81,34 +79,27 @@ how the `--mode` flag is interpreted, and which CI guards apply.
 | `/moai mx`       | Pipeline (Agentless) | Pass 1 + Pass 2 → Pass 3 → Post-edit scan                         | No (info log)     | n/a (pipeline-fixed) | n/a (any ignored)        | `MODE_FLAG_IGNORED_FOR_UTILITY` (info log only) | `.claude/skills/moai/workflows/mx.md`                        |
 | `/moai codemaps` | Pipeline (Agentless) | Explore → Analyze + Generate → Verify                             | No (info log)     | n/a (pipeline-fixed) | n/a (any ignored)        | `MODE_FLAG_IGNORED_FOR_UTILITY` (info log only) | `.claude/skills/moai/workflows/codemaps.md`                  |
 | `/moai clean`    | Pipeline (Agentless) | Static Analysis + Usage Graph → Safe Removal → Test Verification  | No (info log)     | n/a (pipeline-fixed) | n/a (any ignored)        | `MODE_FLAG_IGNORED_FOR_UTILITY` (info log only) | `.claude/skills/moai/workflows/clean.md`                     |
-| `/moai plan`     | Multi-Agent    | n/a — open-ended (mode-NA per REQ-WF003-005)                      | Yes (rejects `pipeline`) | `autopilot` | (none — `--mode` ignored) | `MODE_PIPELINE_ONLY_UTILITY` (only on `pipeline`) | `.claude/skills/moai/workflows/plan.md`               |
-| `/moai run`      | Multi-Agent    | n/a — open-ended (`autopilot` / `loop` / `team` per WF-003)        | Yes (rejects `pipeline`) | `autopilot` (harness `minimal`/`standard`); `team` (harness `thorough` + prereqs) | `autopilot`, `loop`, `team` | `MODE_UNKNOWN`, `MODE_TEAM_UNAVAILABLE`, `MODE_PIPELINE_ONLY_UTILITY` | `.claude/skills/moai/workflows/run.md`                |
-| `/moai sync`     | Multi-Agent    | n/a — open-ended (mode-NA per REQ-WF003-005)                      | Yes (rejects `pipeline`) | `autopilot` | (none — `--mode` ignored) | `MODE_PIPELINE_ONLY_UTILITY` (only on `pipeline`) | `.claude/skills/moai/workflows/sync.md`               |
+| `/moai plan`     | Multi-Agent    | n/a — open-ended (mode-NA — mode not applicable)                      | Yes (rejects `pipeline`) | `autopilot` | (none — `--mode` ignored) | `MODE_PIPELINE_ONLY_UTILITY` (only on `pipeline`) | `.claude/skills/moai/workflows/plan.md`               |
+| `/moai run`      | Multi-Agent    | n/a — open-ended (`autopilot` / `loop` / `team` per the run-mode contract)        | Yes (rejects `pipeline`) | `autopilot` (harness `minimal`/`standard`); `team` (harness `thorough` + prereqs) | `autopilot`, `loop`, `team` | `MODE_UNKNOWN`, `MODE_TEAM_UNAVAILABLE`, `MODE_PIPELINE_ONLY_UTILITY` | `.claude/skills/moai/workflows/run.md`                |
+| `/moai sync`     | Multi-Agent    | n/a — open-ended (mode-NA — mode not applicable)                      | Yes (rejects `pipeline`) | `autopilot` | (none — `--mode` ignored) | `MODE_PIPELINE_ONLY_UTILITY` (only on `pipeline`) | `.claude/skills/moai/workflows/sync.md`               |
 | `/moai loop`     | Multi-Agent (alias for `/moai run --mode loop`) | n/a — delegates to `/moai run` mode dispatch | Yes (alias semantics) | (inherits from `run --mode loop`) | (alias only — `--mode` resolves via `run`) | (delegates to `run` sentinels) | `.claude/skills/moai/workflows/loop.md`               |
 
 ### Mode Dispatch Cross-Reference
 
 
-`/moai loop` is an alias for `/moai run --mode loop` per REQ-WF003-004. Both routes invoke the Ralph Engine identically; the alias preserves the historical entry point.
+`/moai loop` is an alias for `/moai run --mode loop` per the mode-dispatch contract. Both routes invoke the Ralph Engine identically; the alias preserves the historical entry point.
 
-Mode precedence (REQ-WF003-018, hard-coded):
+Mode precedence (hard-coded):
 
 1. CLI flag `--mode <value>` — highest priority.
 2. Config field `workflow.default_mode` in `.moai/config/sections/workflow.yaml`.
 3. Harness auto-selection — lowest priority (per `harness.yaml` level).
 
-Auto-selection rules (REQ-WF003-002, REQ-WF003-003):
+Auto-selection rules:
 
 - Harness `minimal` or `standard` → default mode = `autopilot`
 - Harness `thorough` AND `workflow.team.enabled: true` AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` → default mode = `team`
-- Otherwise (thorough but team prereqs missing) → fallback to `autopilot` with `[mode-auto-downgrade]` info log per REQ-WF003-012.
-
-Sentinel error keys:
-
-- `MODE_UNKNOWN` (REQ-WF003-010, owned by WF-003): invalid `--mode` value supplied.
-- `MODE_TEAM_UNAVAILABLE` (REQ-WF003-011, owned by WF-003): explicit `--mode team` request without prerequisites.
-- `MODE_PIPELINE_ONLY_UTILITY` (REQ-WF003-016 ↔ REQ-WF004-014, shared): `--mode pipeline` on a multi-agent subcommand.
-- `MODE_FLAG_IGNORED_FOR_UTILITY` (REQ-WF004-011, owned by WF-004): `--mode <any>` on a utility subcommand (info log only).
+- Otherwise (thorough but team prereqs missing) → fallback to `autopilot` with `[mode-auto-downgrade]` info log.
 
 See `.claude/skills/moai/workflows/run.md` § Mode Dispatch for the per-skill dispatch rules.
 
@@ -129,15 +120,15 @@ See `spec.md` §1.2 (Non-Goals) — they are deferred to a future SPEC.
 ### Cross-references
 
 - `--mode` flag matrix (defines `autopilot|loop|team|pipeline`).
-- Pipeline regression guard: `internal/template/agentless_audit_test.go` (REQ-WF004-013).
+- Pipeline regression guard: `internal/template/agentless_audit_test.go`.
 - Pattern source: `.moai/design/v3-redesign/synthesis/pattern-library.md` §O-6 (Agentless).
-- Research source: `.moai/design/v3-redesign/research/r1-ai-harness-papers.md` §25 (Xia et al. 2024).
+- Research source: Xia et al. 2024.
 
 ## SPEC Complexity Tier (S/M/L)
 
 The SPEC complexity classification taxonomy is referred to interchangeably as "Tier S/M/L" or "SPEC tiers" throughout this rule set.
 
-[ZONE:Evolvable] [HARD] Every SPEC plan-phase classifies the SPEC into one of three Tier S/M/L levels before artifact creation begins. The tier determines the artifact set, the delegation prompt template applicability, and the plan-auditor PASS threshold. Origin: SPEC-V3R5-WORKFLOW-LEAN-001 (root-cause fix for WORKFLOW-OPT-001 over-formalization observed in LANG-COMPLIANCE-001 plan-phase abandonment, 2026-05-20).
+[ZONE:Evolvable] [HARD] Every SPEC plan-phase classifies the SPEC into one of three Tier S/M/L levels before artifact creation begins. The tier determines the artifact set, the delegation prompt template applicability, and the plan-auditor PASS threshold. Origin: the workflow-lean root-cause fix for over-formalization observed in plan-phase abandonment.
 
 | Tier | Scope guidance (LOC) | Files affected | Artifact set | plan-auditor PASS threshold |
 |------|----------------------|----------------|--------------|------------------------------|
@@ -331,7 +322,7 @@ Plan to Run:
   (manager-develop, auditors) can verify the skip rationale. This is the ONE
   authoritative skip contract — any other surface (e.g. the skill-layer
   `run/phase-execution.md`) MUST cite this contract rather than restating a
-  divergent condition set. Origin: SPEC-V3R5-WORKFLOW-OPT-001 Layer E (redundant
+  divergent condition set. Origin: the workflow-optimization layer (redundant
   audit re-execution removal), tightened to the 4-condition compound predicate.
   This skip is distinct from Implementation Kickoff Approval: skip-eligibility
   governs ONLY Phase 0.5 verdict re-execution — it NEVER auto-bypasses the
@@ -342,8 +333,7 @@ Plan to Run:
   (Section C of the manager-develop prompt) on a feature branch while the plan
   PR is still in CI/review, PROVIDED the SPEC plan-auditor verdict is already
   PASS and no manager-develop commit lands on the feature branch until the
-  plan PR is in MERGED state. This overlap reduces the W3 idle-wait penalty
-  documented in `feedback_w3_metaanalysis_lessons.md` (15 min serial CI wait).
+  plan PR is in MERGED state. This overlap reduces serial CI wait.
   Route A has no plan PR to wait on, so this overlap does not apply — run-phase
   begins directly after the plan-phase push + plan-auditor PASS + Implementation
   Kickoff Approval.
@@ -357,7 +347,7 @@ the implementation phase.
 
 ### Gate Entry Condition
 
-- Triggered on every `/moai run <SPEC-ID>` invocation (REQ-WAG-001)
+- Triggered on every `/moai run <SPEC-ID>` invocation
 - Applies in both solo mode (workflows/run.md) and team mode (team/run.md)
 - Cannot be skipped by harness level — gate is never disabled, not even on `minimal`
 

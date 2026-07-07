@@ -42,15 +42,15 @@ Every autofix iteration MUST be logged to `.moai/logs/ci-autofix/` with timestam
 - Constraints (PRESERVE list, forbidden commands)
 - Self-verification (AC PASS/FAIL matrix)
 
-When applying the minimal form for Tier S, Section B (Known Issues B1-B8) MAY be filtered to relevant categories only or omitted entirely if no listed risk applies. Section C (Pre-flight) MAY be reduced to the single most-relevant baseline command.
+When applying the minimal form for Tier S, Section B (Known Issues B1-B12) MAY be filtered to relevant categories only or omitted entirely if no listed risk applies. Section C (Pre-flight) MAY be reduced to the single most-relevant baseline command.
 
-When the SPEC tier is M or L, the full Section A-E template SHOULD be applied; Section B (known issues) MAY filter B1-B8 categories by domain relevance (e.g., a documentation-only SPEC may omit B1 cross-platform build tags).
+When the SPEC tier is M or L, the full Section A-E template SHOULD be applied; Section B (known issues) MAY filter B1-B12 categories by domain relevance (e.g., a documentation-only SPEC may omit B1 cross-platform build tags).
 
-Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier (S/M/L). Origin: SPEC-V3R5-WORKFLOW-LEAN-001 (root-cause fix for WORKFLOW-OPT-001 over-formalization).
+Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier (S/M/L).
 
 > [ZONE:Evolvable] [HARD] 모든 Tier M/L의 `manager-develop` subagent 위임 prompt는 본 템플릿의 5개 섹션 (Context / Known Issues / Pre-flight / Constraints / Self-Verification Deliverables)을 포함해야 한다. Tier S는 위 Applicability 절의 minimal form을 사용해도 무방. 누락 시 (Tier M/L에서) 재위임 반복 위험 증가.
 
-본 rule은 W3 HARNESS-AUTONOMY-001 메타-분석 결과 (2026-05-20)에서 도출된 위임 품질 개선 사항을 표준화한다. 1-pass 위임으로 결함 사전 차단 목표.
+본 rule은 메타-분석 결과에서 도출된 위임 품질 개선 사항을 표준화한다. 1-pass 위임으로 결함 사전 차단 목표.
 
 ## 1. 표준 위임 Prompt 5-Section 구조
 
@@ -65,7 +65,7 @@ Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` §
 
 ### Section B — Known Issues 자동 주입 (가장 중요)
 
-[ZONE:Evolvable] [HARD] 다음 8 카테고리의 known issues는 위임 prompt에 자동 포함되어야 한다. 누락 = 재위임 위험.
+[ZONE:Evolvable] [HARD] 다음 12 카테고리의 known issues는 위임 prompt에 자동 포함되어야 한다. 누락 = 재위임 위험.
 
 **B1. Cross-platform Build Tags**
 - syscall 패키지 사용 시 build tag 강제 (lessons #21 W0 fix 패턴)
@@ -89,11 +89,10 @@ Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` §
 **B5. CI 3-tier 인지**
 - spec-lint, golangci-lint, Test (per OS) 각각 별도 fail 가능
 - W1/W2 chicken-and-egg 패턴 vs NEW 결함 구분
-- 참조: lessons #19
 
 **B6. spec-lint Heading 규약**
 - `## Out of Scope` (h2) 만으로는 `MissingExclusions` ERROR
-- `### <X.Y> Out of Scope` (h3) sub-section 필요 (W3 발견)
+- `### <X.Y> Out of Scope` (h3) sub-section 필요
 
 **B7. observer.go / capture path resolution**
 - `input.CWD` empty → `os.Getwd()` fallback 시 working dir 누수 (`internal/hook/.moai/` anomaly 원인)
@@ -166,6 +165,8 @@ grep -r "Retired\|TestHarnessRetirement\|superseded" internal/<target_pkg> || ec
 
 ### Section E — Self-Verification Deliverables
 
+> Each E-item is reported per the verification-claim-integrity 5-section format (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) — see `.claude/rules/moai/core/verification-claim-integrity.md` §3.
+
 When manager-develop reports completion, it MUST include self-verification of the following items:
 
 **E1. AC Binary PASS/FAIL Matrix**
@@ -207,7 +208,7 @@ $ golangci-lint run --timeout=2m
 
 ```
 1. Section A 구성 (SPEC 산출물 경로 + 현재 git 상태)
-2. Section B 자동 주입 (lessons memory에서 keyword 매칭으로 8 카테고리 select)
+2. Section B 자동 주입 (lessons memory에서 keyword 매칭으로 12 카테고리 select)
 3. Section C 표준 pre-flight checks (위 그대로 복사)
 4. Section D constraints (SPEC + PRESERVE list + working tree 상태에서 추출)
 5. Section E deliverables (위 그대로 복사)
@@ -234,12 +235,11 @@ $ golangci-lint run --timeout=2m
 ## 5. Verification (this rule applied to itself)
 
 On the next SPEC delegation, measure by phase ordering (not wall-clock targets, per `agent-common-protocol.md` § Time Estimation):
-- 1-pass success rate — Priority High target (W3 baseline: 33%)
-- Re-delegation count — Priority Medium target (W3 baseline: 3)
+- 1-pass success rate — Priority High target (baseline: 33%)
+- Re-delegation count — Priority Medium target (baseline: 3)
 - Overall completion — track by milestone progression, not duration
 
 ---
 
 Version: 1.0.0
-Origin: W3 HARNESS-AUTONOMY-001 메타-분석 (2026-05-20)
 Status: Active — applies to all manager-develop delegations

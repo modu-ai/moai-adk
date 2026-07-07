@@ -93,3 +93,9 @@ The im-not-ai skill is shared publicly under the MIT License. MoAI-ADK has porte
 **Import Date (im-not-ai)**: 2026-06-15
 **MoAI-ADK License**: MIT
 **Combined Compatibility**: Apache 2.0 imports distributed under MIT with both Apache and MIT attributions preserved.
+
+---
+
+## Anthropic 2026 Alignment
+
+Anthropic Claude Code documentation — fair-use academic attribution. The agent catalog was realigned to Anthropic 2026 best practices (8 retained agents). Realignment details: the agent-catalog realignment SPEC.

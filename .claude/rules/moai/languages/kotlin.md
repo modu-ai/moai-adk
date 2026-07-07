@@ -8,7 +8,7 @@ paths: "**/*.kt,**/*.kts,**/build.gradle.kts"
 ---
 
 
-Kotlin 2.2+ (current 2.4) Expert - K2 compiler, coroutines, Ktor, Compose Multiplatform with Context7 integration.
+Kotlin 2.2+ Expert - K2 compiler, coroutines, Ktor, Compose Multiplatform with Context7 integration.
 
 
 Core Capabilities:
@@ -121,16 +121,3 @@ Ktor: Ensure ContentNegotiation is installed. Check JWT verifier configuration. 
 Exposed: Ensure all DB operations run within transaction context. Be aware of lazy entity loading outside transactions.
 
 ---
-
-## Coverage Areas
-
-This guide is self-contained. Use the sections above as the primary reference for:
-
-- Kotlin 2.2+ language features, Ktor 3.x server development, and Exposed SQL framework patterns
-- Spring Boot with Kotlin application structure
-- Compose Multiplatform UI patterns
-- Testing with MockK and Gradle build configuration
-- Production-ready Ktor, Compose, and Android patterns
-
----
-

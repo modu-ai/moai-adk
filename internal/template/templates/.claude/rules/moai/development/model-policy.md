@@ -32,7 +32,7 @@ Invalid values (NEVER use):
 [ZONE:Evolvable] [HARD] All MoAI agents SHOULD declare `model: inherit` unless explicitly assigned `haiku` for speed-critical tasks. The previous practice of declaring `model: sonnet` or `model: opus` is deprecated for new agents.
 
 Rationale (Claude Code session inheritance bug):
-- When the parent session uses an `[1m]` context variant (e.g., `claude-opus-4-7[1m]`, `claude-sonnet-4-6[1m]`) and a spawned subagent declares an explicit `model: sonnet` or `model: opus` in its frontmatter, the parent's 1M context entitlement does NOT propagate to the subagent.
+- When the parent session uses an `[1m]` context variant (e.g., `claude-opus-4-8[1m]`, `claude-sonnet-5[1m]`) and a spawned subagent declares an explicit `model: sonnet` or `model: opus` in its frontmatter, the parent's 1M context entitlement does NOT propagate to the subagent.
 - Result: subagent spawn fails with `API Error: Usage credits required for 1M context · run /usage-credits to turn them on, or /model to switch to standard context`.
 - Sonnet 1M specifically requires extra usage credits on every plan (including Max), so the entitlement mismatch is unrecoverable mid-spawn.
 
@@ -44,7 +44,7 @@ Upstream tracking (Anthropic claude-code repository):
 Workaround pattern (`model: inherit`):
 - The subagent fully inherits the parent's model + context entitlement, eliminating the mismatch.
 - Reference implementation: `.claude/agents/moai/plan-auditor.md` has used `model: inherit`.
-- All package agents under `.claude/agents/moai/` (7 retained agents per FLAT v.2.x baseline) declare `model: inherit`, except `manager-docs` and `manager-git` which use `model: haiku`.
+- All package agents under `.claude/agents/moai/` (7 MoAI-custom retained agents) declare `model: inherit`, except `manager-docs` and `manager-git` which use `model: haiku`.
 
 Exceptions (do NOT migrate to inherit):
 - `model: haiku` agents (`manager-docs`, `manager-git`) — Haiku has no `[1m]` variant, so the bug does NOT apply. Speed-critical agents should remain on `haiku` for cost and latency.
@@ -59,7 +59,7 @@ Exceptions (do NOT migrate to inherit):
 | `[1m]` credit-fail | frontmatter `model: sonnet` pin | spawn fails immediately (`Usage credits required for 1M`) | use `model: inherit` |
 | baseline-refill breaker | per-spawn `model: "sonnet"` in team mode | spawn succeeds, but the 200K window saturates under the heavy baseline → autocompact → rapid-refill → runtime circuit breaker → zero output | avoid large SPECs in team mode (see below) |
 
-The breaker mode is NOT reliably fixed by switching to `model: inherit`, because Team teammates do not inherit the leader's `[1m]` entitlement (Anthropic issue #36670, OPEN) — the teammate falls back to 200K and the breaker can recur. The robust mitigation is operational: for **large SPECs**, prefer a single `manager-develop` (`model: inherit`, 1M window) + Round split (`.claude/rules/moai/development/sprint-round-naming.md`) over team mode; reserve team mode for **small SPECs** where the 200K window has headroom. Cross-reference: `.claude/rules/moai/workflow/team-protocol.md` § Role Matrix Constraints; `.claude/skills/moai/team/run.md` § Baseline-Refill Breaker Hazard.
+The breaker mode is NOT reliably fixed by switching to `model: inherit`, because Team teammates do not inherit the leader's `[1m]` entitlement (Anthropic issue #36670, OPEN) — the teammate falls back to 200K and the breaker can recur. The robust mitigation is operational: for **large SPECs**, prefer a single `manager-develop` (`model: inherit`, 1M window) + Milestone split (`.claude/rules/moai/development/sprint-round-naming.md`) over team mode; reserve team mode for **small SPECs** where the 200K window has headroom. Cross-reference: `.claude/rules/moai/workflow/team-protocol.md` § Role Matrix Constraints; `.claude/skills/moai/team/run.md` § Baseline-Refill Breaker Hazard.
 
 ## `[1m]` Constraint Re-Verification (CC 2.1.178)
 

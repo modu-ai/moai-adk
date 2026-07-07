@@ -8,13 +8,13 @@ paths: "**/*.ex,**/*.exs,**/mix.exs"
 ---
 
 
-Elixir 1.17+ Development Specialist - Phoenix 1.7, LiveView, Ecto, OTP patterns, and functional programming.
+Elixir 1.18+ Development Specialist - Phoenix 1.8, LiveView, Ecto, OTP patterns, and functional programming.
 
 
 Core Capabilities:
 
-- Elixir 1.17: Pattern matching, pipes, protocols, behaviours, macros
-- Phoenix 1.7: Controllers, LiveView, Channels, PubSub, Verified Routes
+- Elixir 1.18: Pattern matching, pipes, protocols, behaviours, macros
+- Phoenix 1.8: Controllers, LiveView, Channels, PubSub, Verified Routes
 - Ecto: Schemas, Changesets, Queries, Migrations, Multi
 - OTP: GenServer, Supervisor, Agent, Task, Registry
 - ExUnit: Testing with setup, describe, async
@@ -34,7 +34,7 @@ GenServer Pattern: Define a module using GenServer. Create start_link taking ini
 ---
 
 
-### Elixir 1.17 Features
+### Elixir 1.18 Features
 
 Pattern Matching Advanced: Define function heads with pattern matching on map keys and types. Use guard clauses with when to add constraints like is_binary or byte_size checks. Add a catch-all clause returning error tuple for invalid inputs.
 
@@ -42,7 +42,7 @@ Pipe Operator with Error Handling: Use the with special form for chaining operat
 
 Protocols for Polymorphism: Define a protocol with @doc and function specification using defprotocol. Implement the protocol for specific types using defimpl with for: option. Each implementation provides the specific behavior for that type.
 
-### Phoenix 1.7 Patterns
+### Phoenix 1.8 Patterns
 
 LiveView Component: Define a module using MyAppWeb with :live_view. Implement mount callback taking params, session, and socket, returning ok tuple with assigned state. Implement handle_event callback for user interactions, returning noreply tuple with updated socket using update helper. Implement render callback with assigns, using ~H sigil for HEEx templates with assigns accessed via @ prefix.
 
@@ -76,7 +76,7 @@ Apply the Quick Patterns and framework sections above together with the Context7
 
 ---
 
-## Context7 Library Mappings
+## Context7 Integration
 
 - /elixir-lang/elixir - Elixir language documentation
 - /phoenixframework/phoenix - Phoenix web framework
@@ -97,7 +97,7 @@ Apply the Quick Patterns and framework sections above together with the Context7
 
 Common Issues:
 
-Elixir Version Check: Run elixir --version to verify 1.17+ and mix --version for Mix build tool version.
+Elixir Version Check: Run elixir --version to verify 1.18+ and mix --version for Mix build tool version.
 
 Dependency Issues: Run mix deps.get to fetch dependencies, mix deps.compile to compile them, and mix clean to remove build artifacts.
 
