@@ -79,7 +79,7 @@ tdd_red_captured: true   # AC-LC-003 evidence — RED pre-fix emitted StatusGitC
 
 ```yaml
 sync_complete_at: 2026-07-07
-sync_commit_sha: "<pending commit>"   # orchestrator backfills after specific-path commit (.moai/specs/SPEC-CLI-LINT-COMPLETED-001/ + CHANGELOG.md only)
+sync_commit_sha: "ce60eb730"   # backfilled post specific-path commit (SPEC dir + CHANGELOG.md)
 sync_status: Tier-S-consolidated-close
 close_decision: "Tier S consolidated lifecycle per feedback-small-spec-consolidated-lifecycle — run-phase 2 files (≪ 5-file threshold), metadata-only sync (spec.md frontmatter + progress.md + CHANGELOG.md, zero code), single-domain (internal/spec). draft → completed in the single sync commit; intermediate implemented/in-progress skipped per consolidated-close policy."
 ac_close_subset: "3/3 AC PASS (AC-LC-001/002/003 — full set; no deferred AC, no PASS-WITH-DEBT)"
