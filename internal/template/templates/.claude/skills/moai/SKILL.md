@@ -45,11 +45,11 @@ $ARGUMENTS
 
 ## Execution Mode Flags (mutually exclusive)
 
-- `--team`: Force Agent Teams mode for parallel execution
-- `--solo`: Force sub-agent mode (single agent per phase)
-- No flag: System auto-selects based on complexity thresholds (domains >= 3, files >= 10, or complexity score >= 7)
+- `--team`: Force Mode 3 (agent-team) of the Phase 0.95 6-mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A), subject to its capability gate
+- `--solo`: Force Mode 5 (sub-agent — single sequential agent per phase)
+- No flag: The orchestrator auto-selects from the full 6-mode catalog at Phase 0.95; the complexity auto-select thresholds are stated once in `orchestration-mode-selection.md` §B.1 (machine source: `workflow.yaml` `auto_selection`) and are not restated here
 
-When no flag is provided, the system evaluates task complexity and automatically selects between team mode (for complex, multi-domain tasks) and sub-agent mode (for focused, single-domain tasks).
+The `--team` / `--solo` flags are forced overrides onto the catalog; the flag-free default resolves through the catalog decision tree (§B) and its capability gates. The `--mode` dispatch axis is a separate axis — see the crosswalk in `orchestration-mode-selection.md` §G.1 (correspondence, not merge).
 
 ### Priority 1: Explicit Subcommand Matching
 
@@ -279,6 +279,18 @@ All AskUserQuestion calls throughout MoAI workflows MUST follow these rules:
 - The first option MUST always be the recommended choice, clearly marked with "(Recommended)" suffix
 - Every option MUST include a detailed description explaining what it does and its implications
 
+Step 2.8 - Requirement Analysis & Completion Condition:
+Before loading the workflow body (Step 3), produce a requirement-analysis record for the routed request:
+
+1. **Requirement summary** (1-3 sentences): what the user asked for, restated in the orchestrator's own words.
+2. **Completion condition**: the end state that means "done". Where the condition is machine-verifiable (test exit code, lint-clean state, grep count, bounded turn count), express it in `/goal`-compatible transcript-measurable form per `.claude/rules/moai/workflow/goal-directive.md` (one measurable end state + a stated check + a bound clause). Do NOT invent a parallel evaluator: set the condition via `/goal` when the runtime supports it; otherwise the orchestrator evaluates the identical condition text per-turn (graceful degradation — no new machinery).
+3. **Pipeline contract**: `full-pipeline` (default natural-language route — run-phase completion auto-chains into sync) or `single-phase` (explicit `run`/`sync` subcommand — chaining is offered as the "(Recommended)" next-step option, never fired silently).
+4. **Orchestration-shape pre-signal**: an early input to the Phase 0.95 6-mode selection (`orchestration-mode-selection.md` §A) — noted here, decided at Phase 0.95.
+
+Trivial-scope exemption: skip this step entirely for `feedback`, `gate`, `codemaps`, `sync` status mode, and any Stage-1-Clarify exception per `askuser-protocol.md` § Ambiguity Triggers and Exceptions.
+Socratic-first ordering: while intent clarity is below 100%, run the Socratic interview (per `askuser-protocol.md`) BEFORE deriving the completion condition — the condition encodes drained intent, never a guess.
+A derived completion condition NEVER authorizes autonomous run-phase entry — Implementation Kickoff Approval remains mandatory at the plan→run boundary.
+
 Step 3 - Load Workflow Details:
 If `--team` flag was parsed AND `${CLAUDE_SKILL_DIR}/team/<name>.md` exists for the target subcommand, read the team workflow file instead of the solo workflow. Otherwise read `workflows/<name>.md`. The Quick Reference section above shows both paths for each subcommand that supports team mode.
 
@@ -305,5 +317,5 @@ Use AskUserQuestion to present the user with logical next actions based on the c
 
 ---
 
-Version: 2.7.0
-Last Updated: 2026-06-20
+Version: 2.8.0
+Last Updated: 2026-07-07
