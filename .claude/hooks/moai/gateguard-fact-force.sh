@@ -1,21 +1,22 @@
 #!/bin/bash
-# gateguard-fact-force.sh — PreToolUse hook (first-edit investigation gate)
+# gateguard-fact-force.sh — PreToolUse hook (first-edit investigation advisory)
 #
-# @MX:ANCHOR High fan-in gate — every edit passes through this hook
+# @MX:ANCHOR High fan-in advisory — every edit passes through this hook
 #
-# Blocks the FIRST Edit/Write/MultiEdit on each file path per session and
-# demands investigation (importers, data schemas, user instruction). Subsequent
-# edits to the same path in the same session are allowed. A prior Read on the
-# same path pre-populates the fact state, so the first post-Read Edit skips the
-# gate (Read-as-investigation). Advisory opt-out via MOAI_FACT_FORCE=off.
-# Shell-only, O(1), fail-open, self-terminates < 5s.
+# Emits a one-time ADVISORY notice on the FIRST Edit/Write/MultiEdit on each file
+# path per session, recommending investigation (importers, data schemas, user
+# instruction). The edit is ALLOWED to proceed (exit 0) — this hook never blocks.
+# Subsequent edits to the same path in the same session produce no advisory. A
+# prior Read on the same path pre-populates the fact state, so the first post-Read
+# Edit skips the advisory (Read-as-investigation). Advisory opt-out via
+# MOAI_FACT_FORCE=off. Shell-only, O(1), fail-open, self-terminates < 5s, jq-free.
 #
 # State: ${CLAUDE_PROJECT_DIR:-$PWD}/.moai/state/fact-force/<hash>
 # keyed by SHA-1(session_id + absolute_file_path), 0o600, single JSON line.
 # The hook MUST NOT invoke any user-prompting mechanism (subagent boundary, C-HRA-008).
 
-# Fail-open wrapper: any unexpected error → exit 0 (allow). The ONLY exit 2
-# path is the first-edit block after the state-file write succeeds.
+# Fail-open wrapper: any unexpected error → exit 0 (allow). This hook NEVER
+# exits 2 — it is advisory-only (exit 0 on every path).
 set +e
 
 # --- 1. Read payload (cap 1MB to avoid truncation mid-JSON) ---
@@ -107,11 +108,11 @@ if [ "$read_mode" = "1" ]; then
     exit 0
 fi
 
-# --- 11. Emit guidance + block (REQ-FF-001) ---
-# GUIDANCE → stderr: Claude Code exit-2 semantics require the block reason on
-# stderr (stdout-only exit 2 surfaces as "No stderr output" error). See CC 2.1.202.
-cat <<GUIDANCE >&2
-FACT-FORCE GATE: first edit on $file_path blocked.
+# --- 11. Emit advisory systemMessage + allow (REQ-FA-001) ---
+# stdout JSON systemMessage: Claude Code renders this as informational context
+# (NOT a red error box). exit 0 = allow. This hook NEVER blocks.
+guidance=$(cat <<GUIDANCE
+First-edit advisory on $file_path.
 
 Before proceeding, investigate:
   1. IMPORTERS — who imports / depends on this file?
@@ -121,7 +122,16 @@ Before proceeding, investigate:
   3. USER INSTRUCTION — what user instruction justifies this edit?
        Re-read the SPEC acceptance criteria or the explicit user request.
 
-This is a one-time gate per (session, file path). Your NEXT edit to this path
-will be allowed. To disable for the session: MOAI_FACT_FORCE=off
+This is a one-time advisory per (session, file path). Your NEXT edit to this path
+will not produce this notice. To disable for the session: MOAI_FACT_FORCE=off
 GUIDANCE
-exit 2
+)
+
+# JSON-escape via awk (jq-free, per §C.5 NFR): backslash to double-backslash,
+# double-quote to backslash-quote, inter-line newline to literal backslash-n.
+escaped=$(printf '%s' "$guidance" | awk '
+BEGIN { sep = "" }
+{ gsub(/\\/, "\\\\"); gsub(/"/, "\\\""); printf "%s%s", sep, $0; sep = "\\n" }
+')
+printf '{"systemMessage":"%s"}\n' "$escaped"
+exit 0

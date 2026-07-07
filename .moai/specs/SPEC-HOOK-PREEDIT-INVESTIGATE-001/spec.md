@@ -2,9 +2,9 @@
 id: SPEC-HOOK-PREEDIT-INVESTIGATE-001
 title: "GateGuard Fact-Force PreToolUse Hook (ECC Adaptation)"
 version: "0.1.1"
-status: completed
+status: superseded
 created: 2026-07-07
-updated: 2026-07-07
+updated: 2026-07-08
 author: manager-spec
 priority: P2
 phase: "v3.0.0"
@@ -22,6 +22,7 @@ tags: "hook, pretooluse, fact-force, gateguard, template-first"
 |------|---------|--------|--------|
 | 2026-07-07 | 0.1.0 | Initial plan-phase draft. Tier S. Adapts ECC `pre:edit-write:gateguard-fact-force` hook pattern as a moai-adk PreToolUse shell gate. Orchestrator performed 4-surface read-only audit (settings.json:38-49, agent-common-protocol.md:209, internal/hook/pre_tool.go, PostToolUse "*" occupancy) — confirmed the broad PreToolUse `Edit|Write|MultiEdit` matcher slot is empty and the proposed gate is additive-only. User scoped this SPEC to F (GateGuard Fact-Force) ONLY; candidates B / G / H / A are explicitly Out of Scope. | manager-spec |
 | 2026-07-07 | 0.1.1 | iter-2 defect fixes per plan-auditor verdict (PASS-WITH-DEBT 0.89). D1 (SHOULD-FIX): aligned hook-independence.md §3 catalogue-update phase across all 3 surfaces — spec.md §G changed from "sync phase" to "run-phase (M1 step 6)" to match plan.md §F.1 step 6 + acceptance.md §E. D2 (SHOULD-FIX): fixed pre-flight shasum/sha1sum operator in plan.md §C step 6 (`&&` → `||`) — macOS ships shasum only, so AND logic falsely failed. D3 (SHOULD-FIX): resolved session_id-absent contradiction — aligned acceptance.md E4 with spec.md §C.2 fail-open (removed sentinel "default" fallback; fail-open is the safer default). D4 (MINOR): weakened latency framing from "p99 < 100ms" to "each invocation < 100ms" in spec.md §C.1 + acceptance.md AC-FF-006 + §F (5 samples ≈ p80 not p99; per-invocation is the real concern for an O(1) shell hook). No REQ-FF or AC-FF-006 ID changes; GEARS intact; Out-of-Scope candidates B/G/H/A still excluded. | manager-spec |
+| 2026-07-08 | 0.1.1 | Superseded by SPEC-HOOK-FACTFORCE-ADVISORY-001 — exit 2 block replaced with exit 0 + advisory systemMessage (UX defect fix: red error box misread as crash by non-developer users). | manager-spec |
 
 ## §A. Context and Intent
 
