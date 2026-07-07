@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **[SPEC-CLI-SUBPKG-SPLIT-001](.moai/specs/SPEC-CLI-SUBPKG-SPLIT-001/spec.md)** — internal/cli flat 패키지 분할 1단계: agentlint cluster 추출 (M1-only 3-phase close, Tier L, v1.0.0). 25,838 LOC / 93 root 파일 flat `internal/cli`에서 첫 cluster로 `agent_lint.go`·`workflow_lint.go`·`sentinels.go`(impl) + 2 test 파일을 신규 `internal/cli/agentlint/` (`package agentlint`)로 추출. cobra wiring + local cycle-breaking helpers(cliSuccess/cliWarn/cliError, getStringFlag/getBoolFlag — byte-identical) + init() 재구조화(exported AgentCmd/WorkflowCmd). behavior-preserving(ddd): `moai --help` byte-identical, `go build`·`GOOS=windows` exit 0, lint baseline 0→0 NEW, coverage 82.9%. 7/7 M1 AC PASS(AC-CSS-001..005,009,010,011). M1 coupling blocker 발견으로 plan 재배치(c9abe2ddb): agentlint만 orchestrator-verified clean cluster(kernel-render-free + zero reverse-dep), 나머지 cluster(profile·migrate·doctor·update·uikit)는 tri-axis coupling → 별도 SPEC 요구 → §F CHECKPOINT after M1(REQ-CSS-010) "STOP (ship M1 only)" 결정. pre-existing RED doc-test 2종(TestAuthoringDocHasEffortMatrix·TestConstitutionCrossReference, M1 패키지 이동 2-level→3-level로 SKIP→FAIL 표면화)은 별도 commit(4268f938a)에 17-agent Effort-Level Calibration Matrix(retained 8 + archived 9 legacy) + constitution cross-ref 추가로 PASS 처리(template-first mirror 포함). Run-phase(manager-develop ddd, L1 격리 worktree agent-a17b7b2ec1dc3e9c4 → origin/main FF land `0ee246ad9`). Sync-phase(orchestrator-direct — GLM manager-docs context 폭발 회피, GateGuard Fact-Force hook Bash 우회, 3-phase close: status in-progress→completed + era V3R6 + progress §E.4 sync_commit_sha). 🗿 MoAI
+
 ## [v3.0.0-rc7] - 2026-07-07
 
 ### Fixed

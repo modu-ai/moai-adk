@@ -66,7 +66,7 @@ Baseline `golangci-lint run` = 0 issues (clean). Post-M1 = 0 issues. No NEW lint
 
 ```yaml
 run_complete_at: 2026-07-07
-run_commit_sha: "<placeholder — M1 agentlint commit; backfill post-commit>"
+run_commit_sha: "0ee246ad9"
 run_status: M1-complete
 ac_pass_count: 7
 ac_fail_count: 0
@@ -83,4 +83,14 @@ m1_to_mN_commit_strategy: "per-milestone commit (Route A main-direct intent; exe
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs; carries sync_commit_sha>_
+```yaml
+sync_complete_at: 2026-07-07
+sync_commit_sha: "<placeholder — backfill post-sync-commit>"
+sync_status: M1-only-close
+close_decision: "§F CHECKPOINT after M1 (REQ-CSS-010) — STOP (ship M1 only); remaining clusters (profile/migrate/doctor/update/uikit) require tri-axis coupling resolution -> separate SPECs"
+run_commit_sha_backfilled: "0ee246ad9 (M1 agentlint)"
+l44_pre_sync_fetch: "0 0 (origin/main synced at 360f7b39e)"
+m1_only_close_rationale: "agentlint is the only orchestrator-verified clean cluster (kernel-render-free, zero reverse-dep); M2-M7 conditional on coupling-resolution design work"
+ac_close_subset: "7/7 M1 AC PASS (AC-CSS-001..005,009,010,011); 12 AC total, remaining 5 AC are M2-M7 scope (deferred to separate SPECs)"
+followup: "uikit(M5 kernel) / profile / migrate / update clusters — separate SPECs post-M1 checkpoint"
+```
