@@ -29,5 +29,22 @@ if [ -f "$HOME/.local/bin/moai" ]; then
     exec "$HOME/.local/bin/moai" hook session-start 2>>"$MOAI_HOOK_STDERR_LOG"
 fi
 
-# Not found - exit silently (Claude Code handles missing hooks gracefully)
+# Not found - SessionStart probe: surface silent moai-binary degradation (non-blocking, source-gated)
+# Implements hook-independence.md §6 Recommendation (SessionStart probe follow-up)
+if [ "${MOAI_HOOK_PROBE_SILENCE:-}" != "1" ]; then
+    probe_input=$(cat 2>/dev/null || true)
+    case "$probe_input" in
+        *'"source":"resume"'*|*'"source": "resume"'*|*'"source":"clear"'*|*'"source": "clear"'*|*'"source":"compact"'*|*'"source": "compact"'*)
+            # Non-startup matcher — suppress (once-per-session dedup, REQ-HOOK-004)
+            ;;
+        *)
+            # startup OR source absent/malformed — emit surfaced warning (REQ-HOOK-002, §D.7 edge case)
+            probe_warn="moai binary not found in PATH, \$HOME/go/bin, or \$HOME/.local/bin — all 31 wrappers (handle-*.sh) are silently no-op (non-blocking, advisory). Reinstall moai or restore PATH (e.g. make build, then go install ./cmd/moai)."
+            # Primary channel: stdout JSON hookSpecificOutput.additionalContext (model-context surfacing)
+            printf '{"hookSpecificOutput":{"additionalContext":"%s"}}\n' "$probe_warn" 2>/dev/null || true
+            # Secondary channel: stderr audit log at $MOAI_HOOK_STDERR_LOG (after-the-fact, greppable)
+            printf '[sessionstart-probe] %s\n' "$probe_warn" >>"$MOAI_HOOK_STDERR_LOG" 2>/dev/null || true
+            ;;
+    esac
+fi
 exit 0
