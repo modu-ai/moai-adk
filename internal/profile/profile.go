@@ -111,6 +111,10 @@ func Delete(name string) error {
 
 // GetProfileDir returns the directory path for a named profile without creating it.
 // Returns an empty string for invalid profile names.
+//
+// REQ-SEC-001 (SPEC-INTERNAL-SECURITY-001): central traversal guard — a name
+// with path separators, traversal sequences, or that is absolute returns "" so
+// no caller can construct a directory path outside the profile base.
 func GetProfileDir(name string) string {
 	if name == "" || name == "default" {
 		return ""

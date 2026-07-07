@@ -79,9 +79,17 @@ func IsValidPermissionMode(mode string) bool {
 }
 
 // GetPreferencesPath returns the path to preferences.yaml for a profile.
+//
+// REQ-SEC-001 (SPEC-INTERNAL-SECURITY-001): central traversal guard. A name
+// containing path separators, traversal sequences, or that is absolute is
+// clamped to the base preferences.yaml here — it NEVER resolves to a path
+// outside the profile base directory. This centralizes the guard so every
+// caller (web read path, CLI, internal) is protected even if a higher layer
+// forgets to validate. WritePreferences additionally returns an error for
+// invalid names (defense in depth at the write boundary).
 func GetPreferencesPath(profileName string) string {
 	baseDir := GetBaseDir()
-	if profileName == "" || profileName == "default" {
+	if profileName == "" || profileName == "default" || !isValidProfileName(profileName) {
 		return filepath.Join(baseDir, preferencesFile)
 	}
 	return filepath.Join(baseDir, profileName, preferencesFile)

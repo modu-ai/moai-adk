@@ -40,6 +40,7 @@ func postProfile(t *testing.T, h http.Handler, path, name string) *httptest.Resp
 	form := url.Values{"profile_name": {name}}
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Sec-Fetch-Site", "same-origin") // simulate real browser form POST (REQ-SEC-002)
 	req.Host = "127.0.0.1"
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -263,6 +264,7 @@ func TestProfileResultDegradesOnBadSelection(t *testing.T) {
 	form := url.Values{"profile_name": {""}}
 	req := httptest.NewRequest(http.MethodPost, "/profile/create?profile=../bad", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Sec-Fetch-Site", "same-origin") // pass CSRF gate so handler degrade is reached
 	req.Host = "127.0.0.1"
 	rec := httptest.NewRecorder()
 	a.routes().ServeHTTP(rec, req)

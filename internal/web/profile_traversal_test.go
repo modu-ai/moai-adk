@@ -67,6 +67,7 @@ func TestProfileNameTraversal(t *testing.T) {
 			}
 			req := httptest.NewRequest(http.MethodPost, "/save", strings.NewReader(form.Encode()))
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req.Header.Set("Sec-Fetch-Site", "same-origin") // pass CSRF gate so the handler-level guard is tested
 			req.Host = "127.0.0.1" // loopback so hostCheckMiddleware does not 403 for the wrong reason
 			rec := httptest.NewRecorder()
 			h.ServeHTTP(rec, req)

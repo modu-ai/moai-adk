@@ -121,26 +121,39 @@ func (a *app) routes() http.Handler {
 	mux.HandleFunc("/profile/create", a.handleProfileCreate)
 	mux.HandleFunc("/profile/delete", a.handleProfileDelete)
 	// /__shutdown__ 은 페이지 내 종료 버튼이 POST 하는 루트다. hostCheckMiddleware
-	// 가 이미 전체 mux 를 감싸 non-loopback Host 의 POST 를 403 차단하므로 추가
-	// CSRF/토큰 인프라 없이 loopback-only 단일 경계로 보호된다(@MX:NOTE app.go 참조).
+	// 가 전체 mux 를 감싸 non-loopback Host(REQ-WC-009) 및 cross-site(REQ-SEC-002)
+	// POST 를 403 차단한다. 추가 CSRF 토큰 인프라는 없다(Goal Anti + @MX:NOTE 참조).
 	mux.HandleFunc("/__shutdown__", a.handleShutdown)
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS()))))
 	return hostCheckMiddleware(mux)
 }
 
-// @MX:NOTE: [AUTO] Host-check 미들웨어는 의도적으로 최소한의 쓰기-안전 모델이다 — 루프백 바인드 + Host 헤더 검사가 전부다.
-// 토큰 인증/세션 스토어/CSRF 토큰 인프라를 추가하지 말 것(REQ-WC-009 + Goal Anti). 이는 DNS-rebinding/CSRF를 막는 단일 경계이며
+// @MX:NOTE: [AUTO] Host-check 미들웨어는 2-layer 쓰기-안전 모델이다 — (1) Host 헤더 검사로 DNS-rebinding 차단(REQ-WC-009),
+// (2) Sec-Fetch-Site same-origin 강제로 drive-by CSRF 차단(REQ-SEC-002). per-process CSRF 토큰은 사용하지 않는다(Goal Anti).
 // GET(읽기)은 게이트하지 않는다 — 읽기는 안전하므로 foreign Host여도 통과시킨다.
 //
 // hostCheckMiddleware rejects mutating requests (POST/PUT/PATCH) whose Host
 // header does not resolve to a loopback origin (127.0.0.1 / localhost / ::1),
-// returning HTTP 403. GET and other safe methods are never Host-gated.
+// returning HTTP 403 (REQ-WC-009 DNS-rebinding gate). It additionally requires
+// Sec-Fetch-Site: same-origin on mutating requests (REQ-SEC-002 CSRF gate) — a
+// drive-by auto-submit carries an honest loopback Host but a cross-site/absent
+// Sec-Fetch-Site value, so the Host check alone cannot stop CSRF. GET and other
+// safe methods are never gated by either check.
 func hostCheckMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost, http.MethodPut, http.MethodPatch:
 			if !isLoopbackHost(r.Host) {
 				http.Error(w, "forbidden: non-loopback Host header", http.StatusForbidden)
+				return
+			}
+			// REQ-SEC-002: same-origin enforcement via Sec-Fetch-Site.
+			// Conservative policy: only "same-origin" is allowed; cross-site,
+			// same-site, none, and absent headers are all rejected. A modern
+			// browser always sends the header for fetch-initiated state-changing
+			// requests, so absent = legacy client or non-browser agent.
+			if r.Header.Get("Sec-Fetch-Site") != "same-origin" {
+				http.Error(w, "forbidden: cross-site or unverified request origin", http.StatusForbidden)
 				return
 			}
 		}

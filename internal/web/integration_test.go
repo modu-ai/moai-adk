@@ -244,6 +244,7 @@ func postForm(t *testing.T, client *http.Client, target string, form url.Values,
 		t.Fatalf("new request: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Sec-Fetch-Site", "same-origin") // simulate real browser form POST (REQ-SEC-002)
 	if host != "" {
 		req.Host = host
 	}

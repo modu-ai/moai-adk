@@ -159,6 +159,7 @@ func TestBoard_GETOnly(t *testing.T) {
 	h := a.routes()
 	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch} {
 		req := httptest.NewRequest(method, "/specs", nil)
+		req.Header.Set("Sec-Fetch-Site", "same-origin") // pass CSRF gate (REQ-SEC-002) so handleBoard's 405 is isolated
 		req.Host = "127.0.0.1" // loopback → passes hostCheck; isolates handleBoard's own 405
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)

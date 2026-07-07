@@ -394,6 +394,7 @@ func TestHostCheckAllowsLoopbackHostsOnPost(t *testing.T) {
 		form := url.Values{"__profile": {"default"}, "permission_mode": {"acceptEdits"}}
 		req := httptest.NewRequest(http.MethodPost, "/save", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Sec-Fetch-Site", "same-origin") // pass the CSRF gate (REQ-SEC-002)
 		req.Host = host
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
@@ -440,6 +441,7 @@ func servePost(t *testing.T, h http.Handler, path string, form url.Values) *http
 	t.Helper()
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Sec-Fetch-Site", "same-origin") // simulate real browser form POST (REQ-SEC-002)
 	req.Host = "127.0.0.1:8080"
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)

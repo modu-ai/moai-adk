@@ -151,6 +151,16 @@ func (a *app) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	selected := a.selectedProfile(r)
+	// REQ-SEC-001 (SPEC-INTERNAL-SECURITY-001): validate the profile name on the
+	// READ path, mirroring handleSave's write-path guard (REQ-WC11-031). Without
+	// this, GET /?profile=../../etc is an unauthenticated arbitrary-path read
+	// primitive (the target file need only be named preferences.yaml) because
+	// hostCheckMiddleware does not gate GET. Reject 4xx before readPreferences.
+	if !profile.IsValidProfileName(selected) {
+		a.renderError(w, http.StatusBadRequest,
+			"invalid profile name "+selected+": must not contain path separators or start with '.'")
+		return
+	}
 	view, errMsg := a.buildIndexView(selected)
 	if errMsg != "" {
 		// Read failure: readable inline error, never blank, never panic.

@@ -66,6 +66,7 @@ func postSave(t *testing.T, a *app, form url.Values) *httptest.ResponseRecorder 
 	req := httptest.NewRequest(http.MethodPost, "/save", strings.NewReader(form.Encode()))
 	req.Host = "127.0.0.1:8080"
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Sec-Fetch-Site", "same-origin") // simulate real browser form POST (REQ-SEC-002)
 	rec := httptest.NewRecorder()
 	a.routes().ServeHTTP(rec, req)
 	return rec
