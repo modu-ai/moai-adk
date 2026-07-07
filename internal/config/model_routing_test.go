@@ -305,3 +305,86 @@ func TestRouteModelForUnavailableModel(t *testing.T) {
 	// the advisory. The loader's contract here is: return the entry, don't
 	// block on glm.
 }
+
+// TestLoadModelRouting exercises LoadModelRouting directly across the four
+// contract paths: happy-path load, file-not-found (absence == fallback, not
+// failure), malformed YAML (parse error), and absent model_routing block
+// (valid YAML, no routing == fallback). Backfills the sync-auditor D3 coverage
+// gap — LoadModelRouting was the only model_routing loader function with 0%
+// direct coverage.
+func TestLoadModelRouting(t *testing.T) {
+	t.Parallel()
+
+	writeTempYAML := func(t *testing.T, content string) string {
+		t.Helper()
+		path := filepath.Join(t.TempDir(), "workflow.yaml")
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+
+	tests := []struct {
+		name    string
+		prepare func(t *testing.T) string
+		wantErr bool
+		check   func(t *testing.T, m map[string]ModelRoutingEntry)
+	}{
+		{
+			name:    "happy path — valid model_routing block loads typed entries",
+			prepare: func(t *testing.T) string { return writeTempYAML(t, fullRoutingYAML) },
+			check: func(t *testing.T, m map[string]ModelRoutingEntry) {
+				if len(m) != 12 {
+					t.Fatalf("ModelRouting length = %d, want 12", len(m))
+				}
+				if sync := m["S-sync"]; sync.Model != "haiku" || sync.Effort != "low" || sync.FallbackApplied {
+					t.Errorf("S-sync = %+v, want {Model:haiku Effort:low FallbackApplied:false}", sync)
+				}
+				if lrun := m["L-run"]; lrun.Model != "opus" || lrun.Effort != "xhigh" || lrun.FallbackApplied {
+					t.Errorf("L-run = %+v, want {Model:opus Effort:xhigh FallbackApplied:false}", lrun)
+				}
+			},
+		},
+		{
+			name:    "file not found — absence returns nil, nil (fallback, not failure)",
+			prepare: func(t *testing.T) string { return filepath.Join(t.TempDir(), "does-not-exist.yaml") },
+			check: func(t *testing.T, m map[string]ModelRoutingEntry) {
+				if m != nil {
+					t.Errorf("absent-file ModelRouting = %+v, want nil", m)
+				}
+			},
+		},
+		{
+			name:    "malformed YAML — unmarshal failure returns non-nil error",
+			prepare: func(t *testing.T) string { return writeTempYAML(t, "workflow:\n    model_routing: { model: sonnet\n") },
+			wantErr: true,
+		},
+		{
+			name:    "absent block — valid YAML without model_routing key returns nil, nil",
+			prepare: func(t *testing.T) string { return writeTempYAML(t, "workflow:\n    default_mode: \"\"\n") },
+			check: func(t *testing.T, m map[string]ModelRoutingEntry) {
+				if m != nil {
+					t.Errorf("absent-block ModelRouting = %+v, want nil", m)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			path := tt.prepare(t)
+			m, err := LoadModelRouting(path)
+			if tt.wantErr && err == nil {
+				t.Fatalf("LoadModelRouting(%q) error = nil, want non-nil", path)
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("LoadModelRouting(%q) error = %v, want nil", path, err)
+			}
+			if tt.check != nil {
+				tt.check(t, m)
+			}
+		})
+	}
+}
