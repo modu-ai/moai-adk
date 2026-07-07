@@ -34,7 +34,7 @@ Apply existing --team/--solo flag logic in Team Mode Routing below.
 
 # Team Mode Routing
 
-When --team flag is provided or auto-selected, the run phase MUST switch to team orchestration:
+When --team flag is provided or auto-selected — Mode 3 (`agent-team`) of the Phase 0.95 catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A), resolved through the §C.1 capability gate on both paths — the run phase MUST switch to team orchestration:
 
 1. Verify prerequisites: workflow.team.enabled == true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var is set
 2. If prerequisites met: Read ${CLAUDE_SKILL_DIR}/team/run.md and execute the team workflow (spawn backend-dev + frontend-dev + tester + quality via Agent(name=...) — the team forms implicitly on first spawn)
@@ -76,7 +76,7 @@ All of the following must be verified:
 - Phase 2.5: sync-auditor (or orchestrator verification batch) completed TRUST 5 validation with PASS or WARNING status
 - Quality gate blocked Phase 3 if status was CRITICAL
 - Phase 3: manager-git created commits (branch or direct) only if quality permitted
-- Phase 4: User presented with next step options
+- Phase 4: Next step honors the pipeline contract — `full-pipeline` auto-chains into `/moai sync` (announced in the transcript); `single-phase` presents sync as the "(Recommended)" first next-step option (never a silent chain)
 
 ---
 

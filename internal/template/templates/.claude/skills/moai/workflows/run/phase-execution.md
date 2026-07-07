@@ -213,17 +213,19 @@ This phase always executes and does NOT require user approval.
 
 ## Phase 0.95: Scale-Based Execution Mode Selection
 
-Purpose: Automatically select the optimal execution mode based on task scope, preventing over-engineering for simple tasks and under-resourcing for complex ones.
+Purpose: Automatically select the optimal execution mode based on task scope, preventing over-engineering for simple tasks and under-resourcing for complex ones. The scale labels below are ENVELOPES of the Phase 0.95 catalog modes (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A); the label→catalog correspondence is documented in that rule's §G.1 crosswalk (correspondence, not merge).
 
 Mode Selection Rules:
 
-| Request Pattern | Detection Criteria | Execution Mode | Agents |
+| Request Pattern | Detection Criteria | Execution Mode (catalog correspondence) | Agents |
 |----------------|-------------------|---------------|--------|
-| Bug fix / error fix | SPEC scope ≤ 3 files, single domain | **Fix Mode** | manager-develop + orchestrator verification batch (lint + test + coverage) |
-| Single endpoint / function | SPEC scope ≤ 5 files, single domain | **Focused Mode** | manager-develop (domain context injected per archived-agent-rejection.md §C) |
-| Feature across 1 domain | SPEC scope 5-10 files, single domain | **Standard Mode** | manager-spec (planning) + manager-develop + sync-auditor |
-| Multi-domain feature | SPEC scope ≥ 10 files OR ≥ 3 domains | **Full Pipeline** | manager-spec → manager-develop (per-spawn `Agent(general-purpose)` domain specialists) → sync-auditor → manager-docs |
-| Large cross-cutting change | complexity score ≥ 7 AND --team flag | **Team Mode** | 3-4 parallel teammates |
+| Bug fix / error fix | SPEC scope ≤ 3 files, single domain | **Fix Mode** (Mode 5 envelope) | manager-develop + orchestrator verification batch (lint + test + coverage) |
+| Single endpoint / function | SPEC scope ≤ 5 files, single domain | **Focused Mode** (Mode 5 envelope) | manager-develop (domain context injected per archived-agent-rejection.md §C) |
+| Feature across 1 domain | SPEC scope 5-10 files, single domain | **Standard Mode** (Mode 5 envelope) | manager-spec (planning) + manager-develop + sync-auditor |
+| Multi-domain feature | SPEC scope ≥ 10 files OR ≥ 3 domains | **Full Pipeline** (Mode 5 full envelope) | manager-spec → manager-develop (per-spawn `Agent(general-purpose)` domain specialists) → sync-auditor → manager-docs |
+| Large cross-cutting change | complexity score at/above the auto-select threshold (`orchestration-mode-selection.md` §B.1) | **Team Mode** (Mode 3 via the §C.1 capability gate) | 3-4 parallel teammates |
+
+Team-row gate note: the Team Mode row resolves through the SAME §C.1 capability gate on BOTH paths — the flag-free auto-select path and a forced `--team` flag both pass the gate; the flag never substitutes for the gate, and the gate never requires the flag.
 
 Detection Steps:
 1. Count files referenced in SPEC requirements and plan

@@ -36,6 +36,8 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 
 `/moai run` participates in the `--mode` axis with 4 valid values: `autopilot`, `loop`, `team`, `pipeline`. Each value selects a distinct execution style.
 
+> **Axis note**: the `--mode` flag set here is the DISPATCH axis — WHICH `/moai run` workflow variant runs. It is distinct from the Phase 0.95 execution-mode catalog (HOW the orchestrator spawns) in `.claude/rules/moai/workflow/orchestration-mode-selection.md` §A; the value-by-value correspondence is documented in that rule's §G.1 crosswalk (correspondence, not merge). The resolver pseudocode and sentinels below are unchanged.
+
 ### Mode Values
 
 - **`autopilot` (default for harness `minimal` / `standard`)**: Single-lead orchestration via Phase 0.95 Scale-Based Mode Selection (Fix / Focused / Standard / Full Pipeline) → Phase 2A/2B per `quality.yaml development_mode`. Behaves as today's default `/moai run` invocation.
