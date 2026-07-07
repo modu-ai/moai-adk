@@ -146,7 +146,7 @@ m1_to_mN_commit_strategy: per-milestone (M1=210ca1818, M2=ab92ccaa0, M3=614c7161
 
 ```yaml
 sync_complete_at: 2026-07-08
-sync_commit_sha: ""   # 2-commit backfill convention — populated by commit 2 (chore backfill, de3e96bf5 precedent)
+sync_commit_sha: 6ec8bc0d3   # backfilled by commit 2 (2-commit convention, de3e96bf5 precedent)
 sync_status: audit-ready
 frontmatter_status_transitions:
   spec_md: "in-progress → completed"   # merged 3-phase close on the single sync commit (Status Transition Ownership Matrix)
