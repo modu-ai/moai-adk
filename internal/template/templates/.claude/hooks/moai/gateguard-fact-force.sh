@@ -1,12 +1,14 @@
 #!/bin/bash
-# @MX:ANCHOR PreToolUse fact-force gate — 모든 Edit/Write/MultiEdit가 파일당 첫 시점에 이 gate를 통과 (high fan-in invariant). MOAI_FACT_FORCE=off로 opt-out.
-
 # gateguard-fact-force.sh — PreToolUse hook (first-edit investigation gate)
+#
+# @MX:ANCHOR High fan-in gate — every edit passes through this hook
 #
 # Blocks the FIRST Edit/Write/MultiEdit on each file path per session and
 # demands investigation (importers, data schemas, user instruction). Subsequent
-# edits to the same path in the same session are allowed. Advisory opt-out via
-# MOAI_FACT_FORCE=off. Shell-only, O(1), fail-open, self-terminates < 5s.
+# edits to the same path in the same session are allowed. A prior Read on the
+# same path pre-populates the fact state, so the first post-Read Edit skips the
+# gate (Read-as-investigation). Advisory opt-out via MOAI_FACT_FORCE=off.
+# Shell-only, O(1), fail-open, self-terminates < 5s.
 #
 # State: ${CLAUDE_PROJECT_DIR:-$PWD}/.moai/state/fact-force/<hash>
 # keyed by SHA-1(session_id + absolute_file_path), 0o600, single JSON line.
@@ -26,8 +28,9 @@ tool_name=$(printf '%s' "$payload" \
     | sed -E 's/^"tool_name"[[:space:]]*:[[:space:]]*"//; s/"$//')
 
 case "$tool_name" in
-    Edit|Write|MultiEdit) ;;  # gated tools — proceed
-    *) exit 0 ;;              # non-gated tool (Read, Bash, or absent) → allow
+    Read) read_mode=1 ;;                  # Read → pre-populate fact state, allow (no block)
+    Edit|Write|MultiEdit) read_mode=0 ;;  # gated tools — proceed to block logic
+    *) exit 0 ;;                          # non-gated tool (Bash, or absent) → allow
 esac
 
 # --- 3. Advisory opt-out (REQ-FF-004) ---
@@ -93,7 +96,16 @@ fi
 mkdir -p "$state_dir" 2>/dev/null || exit 0
 ts=$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo '')
 # umask 077 → created file is 0o600 regardless of touch/cat path (REQ-FF-012).
-( umask 077; printf '{"session_id":"%s","path":"%s","first_seen":"%s"}\n' "$session_id" "$file_path" "$ts" > "$state_file" ) 2>/dev/null || exit 0
+# `via` records whether the state was seeded by a Read (pre-populate) or a
+# blocked Edit (the original first-edit gate path).
+( umask 077; printf '{"session_id":"%s","path":"%s","first_seen":"%s","via":"%s"}\n' "$session_id" "$file_path" "$ts" "$tool_name" > "$state_file" ) 2>/dev/null || exit 0
+
+# Read mode: fact state pre-populated; allow the read with no block. The next
+# Edit/Write/MultiEdit on this path will skip the gate because the state file
+# now exists (REQ-FF-002 second-or-subsequent-edit allow + Read-as-investigation).
+if [ "$read_mode" = "1" ]; then
+    exit 0
+fi
 
 # --- 11. Emit guidance + block (REQ-FF-001) ---
 cat <<GUIDANCE
