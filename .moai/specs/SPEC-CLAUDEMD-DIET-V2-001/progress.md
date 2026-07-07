@@ -72,13 +72,73 @@ Recorded per D2 fix (verification-claim-integrity §1.1 surface 2 — baseline a
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — manager-develop populates this section with verbatim command outputs, M1-M4 milestone evidence, and the AC PASS/FAIL matrix>_
+### Run-phase decisions
+
+- **M1 §16 Option A (in-place compress) chosen over Option B (new rule file)**: §16 content is a search PROCEDURE (when/how to search previous sessions), not file-type-specific guidance. Path-scoping to `.moai/specs/**` would hide the procedure during general coding sessions where context search is equally likely. In-place compression preserves always-available access while achieving −37L always-loaded reduction (50→13L). Arithmetic (319L final) comfortably clears the 320L MUST ceiling. Decision within manager-develop authority per plan §D.1.
+- **M2 partial-KEEP for §5/§15**: AC-CMD2-009 preconditions confirmed §5 Agent Chain substance exists in spec-workflow.md under different wording (`manager-spec`=3, `Phase 1`=4 hits); §15 CG Mode ASCII / `moai cg` = 0 hits (genuinely distinctive → KEEP). Dynamic Workflows pointer-ized (`Agent Teams`=4+2 hits in SSOTs). Per plan §F.M2 fallback path (b).
+- **M3 re-compression**: initial M3 (§8+§11+§14) landed at 324L (4L over ceiling). Re-compressed per plan §F.M4: §13 2nd paragraph merged into blockquote pointer (−2L), footer 3 meta lines → 1 pipe-separated line (−3L) → 319L.
+- **Pre-existing parity break fixed**: plan-phase commit `365feae6b` removed `.claude/rules/moai/design/constitution.md` reference from template §9 but not live. Synced live to template (Template-First SSOT) as part of M1.
+
+### Milestone commits (worktree branch `worktree-agent-a39cdf096b4cb18c8`)
+
+| Milestone | Commit SHA | Subject |
+|-----------|-----------|---------|
+| M1 | `210ca1818` | fix(SPEC-CLAUDEMD-DIET-V2-001): M1 §16 in-place compress + byte-parity restore |
+| M2 | `ab92ccaa0` | fix(SPEC-CLAUDEMD-DIET-V2-001): M2 §5+§15 partial-KEEP pointer-ization |
+| M3 | `614c71618` | fix(SPEC-CLAUDEMD-DIET-V2-001): M3 §8+§11+§14 pointer-ization + footer/§13 micro-trim |
+| M4 | _(this commit)_ | fix(SPEC-CLAUDEMD-DIET-V2-001): M4 run-phase evidence + AC verification |
+
+### AC PASS/FAIL matrix (verbatim observed outputs, measured at M4 HEAD `614c71618`)
+
+| AC | Status | Command | Observed output |
+|----|--------|---------|-----------------|
+| AC-CMD2-001 (MUST ≤320) | **PASS** (319 ≤ 320) | `wc -l CLAUDE.md internal/template/templates/CLAUDE.md` | `319 CLAUDE.md` / `319 internal/template/templates/CLAUDE.md` (SHOULD ≤210 NOT met — 3rd-round deferred per spec §D Out-of-Scope) |
+| AC-CMD2-002 (byte-parity) | **PASS** | `diff CLAUDE.md internal/template/templates/CLAUDE.md; echo "DIFF_EXIT=$?"` | `DIFF_EXIT=0` (no diff output) |
+| AC-CMD2-003 ([HARD]/@embed) | **PASS** | `grep -c '\[HARD\]' CLAUDE.md` / `grep -c '\[ZONE:' CLAUDE.md` / `grep -cE '^@\.moai/config/sections/(user\|language)\.yaml$' CLAUDE.md` | `14` / `14` / `2` (both trees equal) |
+| AC-CMD2-004 (always-loaded) | **PASS** (Option A) | `ls .claude/rules/moai/workflow/context-search.md 2>/dev/null` | NOT-FOUND (Option A — no new rule file, n/a per AC) |
+| AC-CMD2-005 (no behavior change) | **PASS** | `grep -c '^| \`manager-' CLAUDE.md` / `grep -c 'Use the.*subagent' CLAUDE.md` / `grep -c 'archived.*MUST NOT be spawned' CLAUDE.md` | `4` / `11` / `1` (all baseline) |
+| AC-CMD2-006 (§16 extraction) | **PASS** (Option A) | `awk '/^## 16\. Context Search/,/^## 17\./' CLAUDE.md \| wc -l` | `13` (≤17 Option A target) |
+| AC-CMD2-007 (template neutrality) | **PASS\*** | `go test ./internal/template/ -run TestTemplateNoInternalContentLeak -count=1` / `-run TestSplitHarnessNamespaceNoLeak -count=1` | both `ok` (D7 fix: correct test names used). `TestTemplateNeutralityAudit` C8Preserve subtest fails PRE-EXISTINGLY (see note below) |
+| AC-CMD2-008 (GEARS lint) | **PASS\*** | `moai spec lint .moai/specs/SPEC-CLAUDEMD-DIET-V2-001/spec.md` | `0 error(s), 1 warning(s)` — StatusGitConsistency (worktree artifact, see note below) |
+| AC-CMD2-009 (distinctive-content grep) | **PASS** | pre-pointer greps per section | §11 `Error Recovery Pattern`=1, §14 `Parallel Execution`=1, §8 `AskUserQuestion`=50 (all ≥1). §5/§15 partial-KEEP per 0-hit distinctive tokens (CG Mode ASCII, `moai cg`) |
+| AC-CMD2-010 (§1-4 guard) | **PASS** | `awk` per section | S1=29 S2=36 S3=12 S4=50 (all ±1 of baseline) |
+
+### Build + lint evidence
+
+```
+$ go build ./...                          → exit 0
+$ make build                              → exit 0 (catalog.yaml regenerated, bin/moai built)
+$ golangci-lint run --timeout=2m ./internal/template/ → 0 issues
+```
+
+### Notes on PASS\* items (verification-claim-integrity §3.4 Gaps)
+
+1. **AC-CMD2-007 C8Preserve pre-existing failure**: `TestTemplateNeutralityAuditC8Preserve` fails with "C8 GOOS= PRESERVE expected 3 files, got 2". Verified PRE-EXISTING by checkout of `2eb5bcd23` (pre-M1 state) — identical failure. Cause: plan-phase commit `365feae6b` removed `internal/template/templates/scripts/ci-mirror/*.sh` (which contained GOOS= cross-compile patterns), dropping the C8 file count from 3 to 2. NOT caused by this SPEC's CLAUDE.md diet. The tests DIRECTLY validating my edits (`TestTemplateNoInternalContentLeak` + `TestSplitHarnessNamespaceNoLeak`) both PASS — my CLAUDE.md changes introduced zero new neutrality violations.
+2. **AC-CMD2-008 StatusGitConsistency warning**: `moai spec lint` reports 1 warning — frontmatter `status: in-progress` disagrees with git-implied `draft`. This is a **worktree artifact**: the M1 commit transitioned the status on the worktree branch (`worktree-agent-a39cdf096b4cb18c8`), but `main` still carries `status: draft` (my commits are not yet merged to main). The warning will resolve when the orchestrator merges the worktree branch to main. The iter-2 baseline (`✓ No findings`) was measured when status was still `draft` (pre-transition). 0 errors.
+3. **D7 resolved**: AC-CMD2-007 canonical tests are `TestTemplateNoInternalContentLeak` + `TestSplitHarnessNamespaceNoLeak` (not the non-existent `TestInternalContentLeak`). Both PASS.
+4. **D8 actual baselines**: §16=50, §15=45, §5=37, §11=21, §14=18, §8=11 (total 182L, +12L vs plan's 170L estimate). Used actuals in arithmetic.
 
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — manager-develop populates this on M4 completion>_
+```yaml
+run_complete_at: 2026-07-08
+run_commit_sha: 614c71618   # M3 final content commit; M4 = this progress.md evidence commit (placeholder, backfill if separate)
+run_status: audit-ready
+ac_pass_count: 10
+ac_fail_count: 0
+ac_pass_with_note_count: 2   # AC-CMD2-007 (C8Preserve pre-existing) + AC-CMD2-008 (StatusGitConsistency worktree artifact)
+preserve_list_post_run_count: 5   # [HARD]=14 [ZONE:]=14 @embed=2 (both trees)
+l44_pre_commit_fetch: true
+l44_post_push_fetch: pending   # worktree branch not yet merged to main
+new_warnings_or_lints_introduced: 0   # CLAUDE.md diet introduced 0 new neutrality/lint issues
+cross_platform_build:
+  go_build_all: pass   # exit 0
+  make_build: pass     # exit 0
+total_run_phase_files: 2   # CLAUDE.md + internal/template/templates/CLAUDE.md (+ spec.md frontmatter transition)
+m1_to_mN_commit_strategy: per-milestone (M1=210ca1818, M2=ab92ccaa0, M3=614c71618, M4=progress.md evidence)
+```
 
 ---
 
