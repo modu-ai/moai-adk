@@ -1073,13 +1073,13 @@ func TestAuthoringDocHasEffortMatrix(t *testing.T) {
 		t.Error("agent-authoring.md should contain '## Effort-Level Calibration Matrix' section")
 	}
 
-	// Check for the canonical 17-agent matrix table
+	// Check for the canonical 8-retained-agent matrix table (7 MoAI-custom + Explore).
+	// Archived agents (manager-strategy/quality/brain/project, expert-*, researcher, etc.)
+	// are NOT expected here — they appear only in the Archived Agents reference table.
 	expectedAgents := []string{
-		"manager-spec", "manager-strategy", "manager-cycle", "manager-quality",
-		"manager-docs", "manager-git", "manager-project",
-		"expert-backend", "expert-frontend", "expert-security", "expert-devops", "expert-performance",
-		"expert-refactoring", "builder-platform",
-		"sync-auditor", "plan-auditor", "researcher",
+		"manager-spec", "manager-develop", "manager-docs", "manager-git",
+		"plan-auditor", "sync-auditor", "builder-harness",
+		"Explore",
 	}
 
 	missingAgents := []string{}
