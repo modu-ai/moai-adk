@@ -32,6 +32,14 @@ const (
 
 	DefaultMaxIterations = 5
 
+	// DefaultAgenticLoopMaxIterations is the default for the pipeline-level
+	// completion-loop iteration ceiling (workflow.agentic_loop.max_iterations).
+	// DISTINCT from loop_prevention.max_iterations (default 100, per-operation
+	// diagnostic fix-loop bound) — SPEC-V3R6-AGENTIC-LOOP-CONFIG-001 §A.4.
+	// This is the single source of truth for the literal 10; all other
+	// references MUST use this const (CLAUDE.local.md §14 — no hardcoding).
+	DefaultAgenticLoopMaxIterations = 10
+
 	DefaultPlanTokens = 30000
 	DefaultRunTokens  = 180000
 	DefaultSyncTokens = 40000
@@ -431,6 +439,9 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		},
 		DefaultMode:   "",
 		ExecutionMode: "team",
+		AgenticLoop: AgenticLoopConfig{
+			MaxIterations: DefaultAgenticLoopMaxIterations,
+		},
 		LoopPrevention: LoopPreventionConfig{
 			FailurePatternDetection: true,
 			MaxIterations:           100,

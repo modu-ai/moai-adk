@@ -190,6 +190,7 @@ func seamSectionFields() []FieldDef {
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "auto_clear", "after_plan"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "auto_clear", "after_run"),
 		s(SectionWorkflow, "workflow", TypeInt, "workflow", "auto_clear", "token_threshold"),
+		s(SectionWorkflow, "workflow", TypeInt, "workflow", "agentic_loop", "max_iterations"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "loop_prevention", "failure_pattern_detection"),
 		s(SectionWorkflow, "workflow", TypeInt, "workflow", "loop_prevention", "max_iterations"),
 		s(SectionWorkflow, "workflow", TypeInt, "workflow", "loop_prevention", "max_retries_per_operation"),

@@ -320,6 +320,10 @@ type WorkflowConfig struct {
 	AutoClear      AutoClearConfig        `yaml:"auto_clear"`
 	DefaultMode    string                 `yaml:"default_mode"`
 	ExecutionMode  string                 `yaml:"execution_mode"`
+	// AgenticLoop mirrors workflow.agentic_loop.* — the pipeline-level completion-loop
+	// iteration ceiling. DISTINCT from LoopPrevention (per-operation diagnostic fix-loop
+	// bound) per SPEC-V3R6-AGENTIC-LOOP-CONFIG-001 §A.4 — the two MUST NOT be aliased.
+	AgenticLoop    AgenticLoopConfig      `yaml:"agentic_loop"`
 	LoopPrevention LoopPreventionConfig   `yaml:"loop_prevention"`
 	Team           TeamConfig             `yaml:"team"`
 	TokenBudget    TokenBudgetConfig      `yaml:"token_budget"`
@@ -370,6 +374,18 @@ type AutoClearConfig struct {
 	AfterPlan      bool `yaml:"after_plan"`
 	AfterRun       bool `yaml:"after_run"`
 	TokenThreshold int  `yaml:"token_threshold"`
+}
+
+// AgenticLoopConfig mirrors workflow.agentic_loop.* — the pipeline-level
+// completion-loop iteration ceiling (default DefaultAgenticLoopMaxIterations).
+// This is DISTINCT from LoopPreventionConfig.MaxIterations (per-operation
+// diagnostic fix-loop bound, default 100) per SPEC-V3R6-AGENTIC-LOOP-CONFIG-001
+// §A.4 — the two keys occupy separate YAML blocks and parse to separate Go fields.
+// @MX:ANCHOR: [AUTO] distinctness invariant — agentic_loop vs loop_prevention
+// @MX:REASON: anti-aliasing contract; a regression merging these fields silently
+// destroys the pipeline-level iteration-ceiling guarantee
+type AgenticLoopConfig struct {
+	MaxIterations int `yaml:"max_iterations"`
 }
 
 // LoopPreventionConfig mirrors workflow.loop_prevention.* — iteration/retry guards.
