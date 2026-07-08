@@ -2,24 +2,23 @@ package merge
 
 import (
 	"fmt"
-	"math/rand"
 	"slices"
-	"strings"
 	"testing"
 )
 
 // reconstructFromGreedyEdits rebuilds b from a + greedy edit script.
 // Works for diffLinesGreedy output (contiguous delete/insert ranges).
 func reconstructFromGreedyEdits(a []string, edits []Edit) []string {
-	var delStart, delEnd int = -1, -1
+	var delStart, delEnd = -1, -1
 	var insTexts []string
 	for _, e := range edits {
-		if e.Op == OpDelete {
+		switch e.Op {
+		case OpDelete:
 			if delStart == -1 {
 				delStart = e.OldLine
 			}
 			delEnd = e.OldLine + 1
-		} else if e.Op == OpInsert {
+		case OpInsert:
 			insTexts = append(insTexts, e.NewText)
 		}
 	}
@@ -81,9 +80,10 @@ func TestDiffLinesThresholdPreservation(t *testing.T) {
 	// Verify there are exactly 2 deletes and 2 inserts (minimal edit script)
 	var deletes, inserts int
 	for _, e := range edits {
-		if e.Op == OpDelete {
+		switch e.Op {
+		case OpDelete:
 			deletes++
-		} else if e.Op == OpInsert {
+		case OpInsert:
 			inserts++
 		}
 	}
@@ -132,16 +132,6 @@ func makeGreedyMid2(n int) []string {
 		} else {
 			lines[i] = fmt.Sprintf("b %d", i)
 		}
-	}
-	return lines
-}
-
-// RandomInput generates a pseudo-random large input pair for property testing.
-func randomLargeInput(seed int64, n int) []string {
-	r := rand.New(rand.NewSource(seed))
-	lines := make([]string, n)
-	for i := range lines {
-		lines[i] = strings.Repeat("x", r.Intn(20)+1) + fmt.Sprintf("%d", i)
 	}
 	return lines
 }
