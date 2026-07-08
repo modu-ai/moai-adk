@@ -2,7 +2,7 @@
 id: SPEC-HANDOFF-FANOUT-001
 title: "Mode 4 (parallel-subagents) paste-time fan-out steering phrase — resume message directive coupling"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-07-08
 updated: 2026-07-08
 author: GOOS행님
