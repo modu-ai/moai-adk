@@ -63,15 +63,57 @@ plan_audit_verdict: PASS-WITH-DEBT
 
 ## §E.2 Run-phase Evidence
 
-> Placeholder heading only. Per the SPEC Artifact Ownership matrix in `.claude/rules/moai/development/spec-frontmatter-schema.md`, manager-spec emits ONLY the placeholder heading at plan-phase; §E.2 content (run-phase commit SHAs, verbatim test/lint outputs with cited file paths, coverage) belongs to **manager-develop** at run-phase.
+> manager-develop owns §E.2 at run-phase. Verbatim tool outputs are file-redirected to `/tmp/moai-verify/` per the file-redirect contract this SPEC introduces (evidence-on-disk + cited path; context carries exit code + decision-relevant summary).
 
-_<pending run-phase>_
+**Run-phase commits** (Route A main-direct, per-milestone):
+- **M1** `f1bfd557f` — `feat(SPEC-TOKEN-VERIFY-DIET-001): M1 file-redirect contract in agent-common-protocol.md`. Carries the `draft → in-progress` frontmatter transition across all 4 plan-phase artifacts (Status Transition Ownership Matrix: manager-develop owns this on the first run-phase commit). Edits: 7-item batch → redirect form + new `### File-redirect contract` subsection (live + template mirror).
+- **M2** `12a13688f` — `feat(SPEC-TOKEN-VERIFY-DIET-001): M2 file-redirect cross-ref in batch-pattern + moai.md §8 banners`. Edits: Re-sync sentinel extension (verification-batch-pattern.md) + `└─ evidence:` / `📎 Evidence:` banner fields + non-HARD evidence rule (moai.md §8); live + template mirrors.
+
+**AC matrix** (8/8 PASS — 6 MUST-PASS + 2 SHOULD-PASS all green):
+
+| AC | Severity | Status | Verification command | Actual (decision-relevant) |
+|----|----------|--------|----------------------|------------------------------|
+| AC-VD-001 | MUST-PASS | PASS | `grep -n "File-redirect contract" agent-common-protocol.md` | 1 match — `### File-redirect contract` heading at L317 |
+| AC-VD-002 | SHOULD-PASS | PASS | `grep -nE "50 lines\|2KB\|ceiling\|bounded"` | `≤50 lines OR ≤2KB` ceiling + `bounded-tail ceiling` + redirect-on-exceed rule present |
+| AC-VD-003 | MUST-PASS | PASS | `grep "verification-claim-integrity"` + `grep "drop the evidence"` | vci §1.1 surface 1+2 named (L321); `NOT "drop the evidence"` present (L323) |
+| AC-VD-004 | SHOULD-PASS | PASS | `grep "evidence\|└─ evidence" moai.md` + 5 HARD rules | `└─ evidence:` (L413) + `📎 Evidence:` (L613); 5 HARD rules intact (L424-428) |
+| AC-VD-005 | MUST-PASS | PASS | `grep -cE "go test\|coverprofile\|grep\|sentinel\|cmd/moai\|bench\|lint"` | 23 matching lines (≥7) — all 7 keywords preserved (KI-1) |
+| AC-VD-006 | MUST-PASS | PASS | `sed -n '270,278p' agent-common-protocol.md` | HARD clause "MUST execute every read-only verification batch as a single-turn multi-Bash call" intact (KI parallel-execution obligation) |
+| AC-VD-007 | MUST-PASS | PASS | `grep -lE "File-redirect contract\|file-redirect contract"` × 3 | 3 surfaces match (agent-common-protocol, verification-batch-pattern, moai.md) |
+| AC-VD-008 | MUST-PASS | PASS | `git diff e62d52e2b..HEAD -- manager-develop.md \| grep E[1-7]` | exit 1 — no E1-E7 row additions/deletions (manager-develop.md untouched) |
+
+**Full AC matrix verbatim output**: `/tmp/moai-verify/ac-matrix.log` (59 lines) — reachable at render time per REQ-005.
+
+**Build / lint (E2, E5)**:
+- `go build ./...` → exit 0 — `/tmp/moai-verify/go-build.log` (no Go changed; sanity confirms nothing broke)
+- `make build` → exit 0 — catalog.yaml regenerated (10325 bytes), binary rebuilt, working tree clean post-build (`/tmp/moai-verify/make-build.log`). Template-First (KI-4) honored.
+- `golangci-lint run --timeout=2m` → exit 0, 0 findings — `/tmp/moai-verify/lint.log`. Baseline unchanged; **0 NEW warnings/lints introduced**.
+
+**Coverage / boundary (E3, E4 — N/A)**: E3 coverage N/A — no production Go code edited (doctrine markdown only). E4 subagent-boundary grep N/A — no `internal/harness/` or `internal/hook/` Go touched. Cross-platform (`GOOS=windows`) N/A for the same reason.
+
+**Template-First parity** (KI-4): `verification-batch-pattern.md` live↔template byte-identical post-edit; `moai.md` §8 edit regions live↔template match; `agent-common-protocol.md` — my additions neutral + identical across both trees (pre-existing live-only SPEC-ID neutralization untouched). §25 neutrality scan PASS (no `SPEC-TOKEN-VERIFY-DIET` / `REQ-VD` / `AC-VD` / `REQ-LEDGER` tokens in template additions).
+
+**Open debt**: D1 (REQ-VD rename) and D2 (plan.md KI-1 relabel) are SPEC-body fixes = out of run-phase scope; deferred to sync-phase (manager-docs re-delegates to manager-spec). Recorded here, not blocking close.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-> Placeholder heading only. **manager-develop** owns this section at run-phase.
+> **manager-develop** owns this section at run-phase.
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-07-08
+run_commit_sha: 12a13688f   # M2 = M-final doctrine commit; M1=f1bfd557f
+ac_pass_count: 8
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # doctrine-only SPEC; no PRESERVE-list items
+l44_pre_commit_fetch: "3 3 race detected pre-push → rebased (non-overlapping: origin touched SPEC-HANDOFF-FANOUT-001/SPEC-HOOK-FACTFORCE-ADVISORY-001/CHANGELOG; mine touched the 3 doctrine rule files + SPEC-TOKEN-VERIFY-DIET-001 dir) → 0 3 clean post-rebase"
+l44_post_push_fetch: <pending — backfill post-push>
+new_warnings_or_lints_introduced: 0   # golangci-lint 0 findings; baseline unchanged
+cross_platform_build.go_build_exit: 0
+cross_platform_build.windows_go_build: N/A   # no Go code changed (doctrine markdown only)
+total_run_phase_files: 9   # M1: 2 rule files (live+tmpl) + 4 frontmatter; M2: 2 rule pairs (live+tmpl); +progress.md (this commit)
+m1_to_mN_commit_strategy: per-milestone (M1 → M2), Route A main-direct, specific-path `git add` only
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
@@ -111,6 +153,16 @@ sync_commit_sha: <pending>
 
 ## §H Recursive Self-Diagnosis Log
 
-> Placeholder — manager-develop / orchestrator logs the Phase 2 bounded recursive self-diagnosis loop record (DIAGNOSE-PATCH-VERIFY, mechanical failures) at run-phase. manager-spec does NOT pre-populate.
+> manager-develop logs the Phase 2 bounded recursive self-diagnosis loop record at run-phase.
 
-_<pending run-phase>_
+**Phase 2 bounded recursive self-diagnosis** (cycle_type=ddd — ANALYZE-PRESERVE-IMPROVE; behavior-preserving OUTPUT-REPRESENTATION refactor, not enforcement-behavior change):
+
+- **DIAGNOSE**: No mechanical failures encountered. Run-phase was doctrine-markdown edits (no Go compilation, no test execution, no lint rules governing markdown). The invariant anchors KI-1..5 (7-keyword grep AC, parallel-execution HARD clause, moai.md §8 5 HARD rules, era.go parser-load-bearing `§E.*` headings, Template-First §25 neutrality) were preserved by construction — content-neutral additions placed in non-HARD-governed regions.
+- **PATCH**: N/A — no failing mechanical check required a patch.
+- **VERIFY**: All 8 AC greps PASS on the first verification pass (AC matrix in §E.2). `go build` exit 0, `golangci-lint` exit 0 (0 findings), `make build` exit 0 (catalog regenerated, clean tree). Template parity confirmed across all 3 file pairs.
+
+**Iteration count**: 0 DIAGNOSE-PATCH-VERIFY loops triggered (green on first pass). The DDD cycle has no fixed iteration cap; the autofix 3-iteration ceiling does not apply (cycle_type=ddd, not autofix). Stale-detection sentinel (5 no-progress iterations) not reached.
+
+**LSP baseline**: N/A — no LSP-governed language edited (100% markdown; LSP gates apply to Go/TS/etc. source, not rule markdown).
+
+**Blocker reports**: none. No ambiguity required orchestrator+user clarification mid-run.
