@@ -9,6 +9,20 @@ import (
 	"strings"
 )
 
+// Package-level pre-compiled regexes for status parsing (REQ-PERF-004-A).
+// Previously these were compiled inside parseStatusFromTable / parseStatusFromMarkdownList
+// on every call, causing per-call regexp.MustCompile in the moai spec audit hot path.
+//
+// @MX:NOTE: [AUTO] status regexes promoted to package level — REQ-PERF-004-A
+var (
+	// Table format: | Status | value | or | 상태 | value |
+	statusTableEnPattern  = regexp.MustCompile(`\|\s*Status\s*\|\s*([^\||]+)\s*\|`)
+	statusTableKoPattern  = regexp.MustCompile(`\|\s*상태\s*\|\s*([^\||]+)\s*\|`)
+	// Markdown list format: - **Status**: value or - **상태**: value
+	statusListEnPattern   = regexp.MustCompile(`-\s*\*\*Status\*\*:\s*(.+)`)
+	statusListKoPattern   = regexp.MustCompile(`-\s*\*\*상태\*\*:\s*(.+)`)
+)
+
 // ValidStatuses defines all allowed status values
 var ValidStatuses = []string{
 	"draft",
@@ -288,17 +302,14 @@ func parseStatusFromYAML(lines []string) (string, bool) {
 
 // parseStatusFromTable extracts status from table format
 func parseStatusFromTable(lines []string) (string, bool) {
-	reStatus := regexp.MustCompile(`\|\s*Status\s*\|\s*([^\||]+)\s*\|`)
-	reSangtae := regexp.MustCompile(`\|\s*상태\s*\|\s*([^\||]+)\s*\|`)
-
 	for _, line := range lines {
 		// Try English first
-		if matches := reStatus.FindStringSubmatch(line); len(matches) > 1 {
+		if matches := statusTableEnPattern.FindStringSubmatch(line); len(matches) > 1 {
 			return strings.TrimSpace(matches[1]), true
 		}
 
 		// Try Korean
-		if matches := reSangtae.FindStringSubmatch(line); len(matches) > 1 {
+		if matches := statusTableKoPattern.FindStringSubmatch(line); len(matches) > 1 {
 			return strings.TrimSpace(matches[1]), true
 		}
 	}
@@ -308,15 +319,12 @@ func parseStatusFromTable(lines []string) (string, bool) {
 
 // parseStatusFromMarkdownList extracts status from Markdown list format
 func parseStatusFromMarkdownList(lines []string) (string, bool) {
-	reStatus := regexp.MustCompile(`-\s*\*\*Status\*\*:\s*(.+)`)
-	reSangtae := regexp.MustCompile(`-\s*\*\*상태\*\*:\s*(.+)`)
-
 	for _, line := range lines {
-		if matches := reStatus.FindStringSubmatch(line); len(matches) > 1 {
+		if matches := statusListEnPattern.FindStringSubmatch(line); len(matches) > 1 {
 			return strings.TrimSpace(matches[1]), true
 		}
 
-		if matches := reSangtae.FindStringSubmatch(line); len(matches) > 1 {
+		if matches := statusListKoPattern.FindStringSubmatch(line); len(matches) > 1 {
 			return strings.TrimSpace(matches[1]), true
 		}
 	}
