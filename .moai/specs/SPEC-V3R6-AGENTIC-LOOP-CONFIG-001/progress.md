@@ -141,7 +141,7 @@ audit_struct_yaml_symmetry_test.go: NO-OP (WorkflowConfig not in the symmetryCas
 
 ```yaml
 run_complete_at: 2026-07-08
-run_commit_sha: "8812e2bdb"  # rebased from 8a6f807e0 onto origin/main 1b224399d (shared-checkout 병렬 세션 race 정리 후)
+run_commit_sha: "c31799827"  # post-rebase SHA (origin push 완료 868a9206d); chain: c31799827 ← 8812e2bdb ← 8a6f807e0
 run_status: audit-ready
 ac_pass_count: 13
 ac_fail_count: 0
@@ -160,7 +160,7 @@ m1_to_mN_commit_strategy: single_commit  # M1+M2+M3 in one run-phase commit (Tie
 
 ```yaml
 sync_complete_at: 2026-07-08
-sync_commit_sha: "67e59463e"  # docs(...) sync commit — backfilled in this chore commit (BRAND-DIR-REMOVE-001 2c637ece2 / TOKEN-ROUTING-001 e4465ec5d convention)
+sync_commit_sha: "61ae0e3ed"  # post-rebase sync commit SHA (origin push 완료 868a9206d); was 67e59463e pre-rebase
 sync_status: audit-ready
 phase_close: 3-phase close (plan→run→sync; MX folded into sync per SPEC-V3R6-LIFECYCLE-REDESIGN-001)
 status_transition: in-progress → completed (atomic on single sync commit per Status Transition Ownership Matrix)
