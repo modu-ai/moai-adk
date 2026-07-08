@@ -117,6 +117,98 @@ func (v *mxValidator) ValidateFile(ctx context.Context, filePath string) (*FileR
 
 // @MX:WARN: [AUTO] Called in parallel via goroutines from ValidateFiles. Can be interrupted via ctx.Done(), but individual countFanIn calls may block on file I/O.
 // @MX:REASON: parallel validation via goroutines, file I/O sections that do not stop immediately on context cancellation exist
+// fanInIndex is a single-traversal index of word-boundary identifier counts
+// across the entire project (REQ-PERF-002-A). Built once per analyzeFile call,
+// it eliminates F full-project walks (one per candidate function) → 1 walk.
+//
+// @MX:ANCHOR: [AUTO] fanInIndex — REQ-PERF-002-A single-traversal optimization
+// @MX:REASON: PostToolUse Write/Edit triggers analyzeFile per file; exported functions missing ANCHOR each triggered a full project walk (O(F × project_size))
+type fanInIndex struct {
+	// counts[funcName][filePath] = word-boundary match count in that file
+	counts map[string]map[string]int
+}
+
+// fanIn returns the total project-wide count of funcName occurrences,
+// subtracting 1 for the declaration in currentFile (preserving countFanIn semantics).
+func (idx *fanInIndex) fanIn(funcName, currentFile string) int {
+	fileCounts := idx.counts[funcName]
+	total := 0
+	for path, count := range fileCounts {
+		if path == currentFile {
+			total += count - 1 // subtract the declaration itself
+		} else {
+			total += count
+		}
+	}
+	if total < 0 {
+		total = 0
+	}
+	return total
+}
+
+// buildFanInIndex walks the project once, counting word-boundary occurrences
+// of ALL candidate function names in a single traversal (REQ-PERF-002-A).
+// ctx.Done() is checked inside the WalkDir callback (REQ-PERF-002-B).
+func (v *mxValidator) buildFanInIndex(ctx context.Context, funcNames []string) *fanInIndex {
+	idx := &fanInIndex{counts: make(map[string]map[string]int, len(funcNames))}
+	if v.projectRoot == "" || len(funcNames) == 0 {
+		return idx
+	}
+
+	// Compile patterns for all candidate names
+	patterns := make(map[string]*regexp.Regexp, len(funcNames))
+	for _, name := range funcNames {
+		patterns[name] = regexp.MustCompile(`\b` + regexp.QuoteMeta(name) + `\b`)
+		idx.counts[name] = make(map[string]int)
+	}
+
+	// Single project traversal — count all identifiers in one pass
+	_ = filepath.WalkDir(v.projectRoot, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil // skip unreadable entries
+		}
+
+		// REQ-PERF-002-B: check ctx.Done() inside traversal callback
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		if d.IsDir() {
+			base := d.Name()
+			if base == "vendor" || strings.HasPrefix(base, ".") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if filepath.Ext(path) != ".go" {
+			return nil
+		}
+		base := filepath.Base(path)
+		for _, glob := range defaultExcludeGlobs {
+			if matched, _ := filepath.Match(glob, base); matched {
+				return nil
+			}
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+
+		for name, re := range patterns {
+			c := len(re.FindAllIndex(data, -1))
+			if c > 0 {
+				idx.counts[name][path] = c
+			}
+		}
+		return nil
+	})
+
+	return idx
+}
+
 // analyzeFile performs the core analysis logic for a single file.
 // Returns all detected violations.
 func (v *mxValidator) analyzeFile(ctx context.Context, filePath, content, lang string, rawContent []byte) []Violation {
@@ -124,6 +216,16 @@ func (v *mxValidator) analyzeFile(ctx context.Context, filePath, content, lang s
 
 	lines := strings.Split(content, "\n")
 	funcInfos := extractFunctions(lines)
+
+	// REQ-PERF-002-A: collect candidate names and build single-traversal index.
+	// Eliminates F full-project walks → 1 walk (F = exported funcs missing ANCHOR).
+	var candidates []string
+	for _, fn := range funcInfos {
+		if fn.exported && !fn.hasAnchor {
+			candidates = append(candidates, fn.name)
+		}
+	}
+	fanInIdx := v.buildFanInIndex(ctx, candidates)
 
 	for _, fn := range funcInfos {
 		// Check context cancellation between functions.
@@ -135,7 +237,7 @@ func (v *mxValidator) analyzeFile(ctx context.Context, filePath, content, lang s
 
 		// P1: exported function with fan_in >= threshold missing @MX:ANCHOR.
 		if fn.exported && !fn.hasAnchor {
-			fanIn := v.countFanIn(ctx, fn.name, filePath)
+			fanIn := fanInIdx.fanIn(fn.name, filePath)
 			if fanIn >= v.fanInThreshold {
 				violations = append(violations, Violation{
 					FuncName:   fn.name,
@@ -388,95 +490,6 @@ func hasReasonNearLines(lines []string, tagLines []int) bool {
 		}
 	}
 	return false
-}
-
-// scanProjectForIdentifier walks projectRoot and counts word-boundary occurrences
-// of funcName in each .go file, skipping excluded patterns.
-// Returns a map of filePath → match count.
-func scanProjectForIdentifier(ctx context.Context, projectRoot, funcName string) (map[string]int, error) {
-	if projectRoot == "" {
-		return nil, nil
-	}
-
-	// Compile word-boundary regex once.
-	re := regexp.MustCompile(`\b` + regexp.QuoteMeta(funcName) + `\b`)
-
-	results := make(map[string]int)
-
-	err := filepath.WalkDir(projectRoot, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return nil // skip unreadable entries
-		}
-
-		// Check context cancellation.
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-
-		// Skip excluded directories.
-		if d.IsDir() {
-			base := d.Name()
-			if base == "vendor" || strings.HasPrefix(base, ".") {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
-		// Only process .go files.
-		if filepath.Ext(path) != ".go" {
-			return nil
-		}
-
-		// Skip excluded file patterns.
-		base := filepath.Base(path)
-		for _, glob := range defaultExcludeGlobs {
-			if matched, _ := filepath.Match(glob, base); matched {
-				return nil
-			}
-		}
-
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return nil // skip unreadable files
-		}
-
-		count := len(re.FindAllIndex(data, -1))
-		if count > 0 {
-			results[path] = count
-		}
-		return nil
-	})
-
-	if err != nil && err == ctx.Err() {
-		return results, nil // return partial results on cancellation
-	}
-	return results, nil
-}
-
-// countFanIn counts the number of word-boundary references to funcName in the project.
-// It uses a Go-native file walker with no external subprocess calls.
-func (v *mxValidator) countFanIn(ctx context.Context, funcName, currentFile string) int {
-	if v.projectRoot == "" {
-		return 0
-	}
-
-	fileCounts, err := scanProjectForIdentifier(ctx, v.projectRoot, funcName)
-	if err != nil {
-		return 0
-	}
-
-	callerCount := 0
-	for path, count := range fileCounts {
-		if path == currentFile {
-			// Subtract the declaration itself (one occurrence in the current file).
-			count--
-		}
-		callerCount += count
-	}
-
-	return callerCount
 }
 
 // validateResult holds the outcome of a single file validation goroutine.
