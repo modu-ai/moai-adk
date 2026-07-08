@@ -2,7 +2,7 @@
 id: SPEC-TOKEN-VERIFY-DIET-001
 title: "Verification Output Diet — Progress"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-08
 updated: 2026-07-08
 author: manager-spec
@@ -117,12 +117,16 @@ m1_to_mN_commit_strategy: per-milestone (M1 → M2), Route A main-direct, specif
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-> Placeholder heading only. **manager-docs** owns this section at sync-phase. The single sync commit carries the `implemented → completed` transition + the literal `sync_commit_sha:` field per the Status Transition Ownership Matrix.
-
-_<pending sync-phase>_
+> Sync-phase close (orchestrator-direct — `manager-docs` CHANGELOG thrashing fallback per `feedback_glm_orchestrator_direct_sync_mx`; shared-checkout pathspec commit per `feedback_shared_checkout_concurrent_commit_race`). The single sync commit carries the `in-progress → completed` transition across all 4 artifacts + the CHANGELOG entry. `sync_commit_sha` is backfilled by the follow-up chore commit (3-phase close per SPEC-V3R6-LIFECYCLE-REDESIGN-001; established convention per GOALFIX-001 `53b9fd950` / FANOUT-001 `6e9b4f017`).
 
 ```yaml
-sync_commit_sha: <pending>
+sync_status: audit-ready
+sync_complete_at: 2026-07-08
+sync_commit_sha: <pending backfill>   # populated by follow-up chore commit (sync commit SHA recorded after the sync commit lands)
+three_phase_close: "plan→run→sync (Route A main-direct, no PR)"
+sync_method: orchestrator-direct
+d1_d2_resolution: "resolved in commit 3d35cc18d — REQ-VD prefix (spec.md/acceptance.md) + KI-1 relabel (plan.md); the §E.2 'Open debt' note above is stale post-3d35cc18d (debt cleared, not carried into close)"
+changelog_entry_count: 1   # grep -c 'SPEC-TOKEN-VERIFY-DIET-001' CHANGELOG.md = 1 (post-sync-commit, pre-chore)
 ```
 
 ## §F Phase 0.95 Mode Selection

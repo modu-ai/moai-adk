@@ -2,7 +2,7 @@
 id: SPEC-TOKEN-VERIFY-DIET-001
 title: "Verification Output Diet — Implementation Plan"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-08
 updated: 2026-07-08
 author: manager-spec
