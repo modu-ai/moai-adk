@@ -5,6 +5,17 @@ import (
 	"strings"
 )
 
+// diffLinesThreshold is the maximum number of lines per input slice before the
+// linear-space fallback path activates (REQ-PERF-005-A). Inputs at or below this
+// threshold use the full O(m×n) DP algorithm (preserving minimal edit scripts per
+// REQ-PERF-005-C). Inputs exceeding the threshold use diffLinesGreedy, which
+// produces a valid but non-minimal edit script in O(m+n) time and space
+// (REQ-PERF-005-B).
+//
+// @MX:NOTE: [AUTO] diffLinesThreshold — REQ-PERF-005-A resource guard threshold
+// @MX:REASON: guards against O(m×n) DP table allocation for large merge inputs (~5,000+ line files → ~200MB)
+const diffLinesThreshold = 2000
+
 // EditOp represents a single edit operation in a diff.
 type EditOp int
 
@@ -32,7 +43,18 @@ type Edit struct {
 // DiffLines computes the edit script between two slices of lines using a
 // simple LCS-based diff algorithm. It returns a minimal list of insert and
 // delete operations needed to transform a into b.
+//
+// REQ-PERF-005-A: When either input exceeds diffLinesThreshold lines, the
+// linear-space fallback (diffLinesGreedy) is used instead of the full DP table.
+// The fallback produces a valid but non-minimal edit script (REQ-PERF-005-B).
+// Inputs at or below the threshold produce identical results to the pre-change
+// implementation (REQ-PERF-005-C behavior preservation).
 func DiffLines(a, b []string) []Edit {
+	// REQ-PERF-005-A: resource guard — use linear-space fallback for large inputs
+	if len(a) > diffLinesThreshold || len(b) > diffLinesThreshold {
+		return diffLinesGreedy(a, b)
+	}
+
 	// Compute the longest common subsequence table.
 	m := len(a)
 	n := len(b)
@@ -88,6 +110,52 @@ func DiffLines(a, b []string) []Edit {
 		edits[left], edits[right] = edits[right], edits[left]
 	}
 
+	return edits
+}
+
+// diffLinesGreedy computes a valid (but non-minimal) edit script in O(m+n) time
+// and space. It is the linear-space fallback for DiffLines when inputs exceed
+// diffLinesThreshold (REQ-PERF-005-A/B).
+//
+// Algorithm: trim common prefix and suffix, then emit delete-all-middle +
+// insert-all-middle for the remaining divergent section. The resulting edits,
+// when applied to `a`, always produce `b` exactly (AC-PERF-005b property).
+// The script is NOT minimal — the middle section is fully replaced even if only
+// a few lines changed — but REQ-PERF-005-B explicitly allows non-minimal scripts.
+func diffLinesGreedy(a, b []string) []Edit {
+	// Trim common prefix
+	prefix := 0
+	for prefix < len(a) && prefix < len(b) && a[prefix] == b[prefix] {
+		prefix++
+	}
+	// Trim common suffix (not overlapping with prefix)
+	suffix := 0
+	for suffix < len(a)-prefix && suffix < len(b)-prefix &&
+		a[len(a)-1-suffix] == b[len(b)-1-suffix] {
+		suffix++
+	}
+
+	aMid := a[prefix : len(a)-suffix]
+	bMid := b[prefix : len(b)-suffix]
+
+	var edits []Edit
+	// Delete all divergent lines from a (in forward order)
+	for i := range aMid {
+		edits = append(edits, Edit{
+			Op:      OpDelete,
+			OldLine: prefix + i,
+			NewLine: -1,
+		})
+	}
+	// Insert all divergent lines from b (in forward order)
+	for j := range bMid {
+		edits = append(edits, Edit{
+			Op:      OpInsert,
+			OldLine: -1,
+			NewLine: prefix + j,
+			NewText: bMid[j],
+		})
+	}
 	return edits
 }
 
