@@ -138,6 +138,13 @@ func NewLinter(opts LinterOptions) *Linter {
 // @MX:ANCHOR: [AUTO] Lint is the primary entry point; orchestrates rule execution across all SPECs
 // @MX:REASON: [AUTO] Fan-in hub — all callers (CLI, tests) go through this method
 func (l *Linter) Lint(paths []string) (*Report, error) {
+	// REQ-PERF-001-A/B: initialize per-run git-query cache. This memoizes
+	// git rev-parse environment checks so they run once per Lint() instead
+	// of once per SPEC (eliminating ~2×N redundant spawns). The cache is
+	// discarded at Lint() exit (per-run invalidation — REQ-PERF-001-B).
+	startGitQueryCache()
+	defer stopGitQueryCache()
+
 	// dirFindings collects directory-level findings emitted only on the
 	// auto-discovery path (paths empty). When a caller passes explicit paths
 	// it bypasses directory scanning, so root-integrity is not checked.

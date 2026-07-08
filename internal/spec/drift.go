@@ -176,11 +176,9 @@ const gitLogWindowSize = 50
 //
 //	the core walker incorporates both LSCSK-001 (chore-skip) and LSGF-001 (word-boundary) fixes.
 func getGitImpliedStatus(specID string) (string, error) {
-	// Decide default branch — prefer main; fall back to master (preserves current behavior)
-	branch := "main"
-	if _, err := exec.Command("git", "rev-parse", "--verify", "main").Output(); err != nil {
-		branch = "master"
-	}
+	// Decide default branch — prefer main; fall back to master.
+	// REQ-PERF-001-A: uses per-run cache to avoid redundant git rev-parse spawns.
+	branch := cachedMainBranch()
 
 	// Fetch up to N commits referencing the SPEC-ID, newest-first
 	cmd := exec.Command("git", "log", branch, "--oneline", "--no-merges",
@@ -464,10 +462,8 @@ func resolveCombinedScopeClose(specID string) bool {
 		return false
 	}
 
-	branch := "main"
-	if _, err := exec.Command("git", "rev-parse", "--verify", "main").Output(); err != nil {
-		branch = "master"
-	}
+	// REQ-PERF-001-A: uses per-run cache for branch detection.
+	branch := cachedMainBranch()
 
 	cmd := exec.Command("git", "log", branch, "--oneline", "--no-merges",
 		"--grep="+prefix, fmt.Sprintf("-%d", gitLogWindowSize))
