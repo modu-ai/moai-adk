@@ -107,7 +107,7 @@ ac_pass_count: 8
 ac_fail_count: 0
 preserve_list_post_run_count: 0   # doctrine-only SPEC; no PRESERVE-list items
 l44_pre_commit_fetch: "3 3 race detected pre-push → rebased (non-overlapping: origin touched SPEC-HANDOFF-FANOUT-001/SPEC-HOOK-FACTFORCE-ADVISORY-001/CHANGELOG; mine touched the 3 doctrine rule files + SPEC-TOKEN-VERIFY-DIET-001 dir) → 0 3 clean post-rebase"
-l44_post_push_fetch: <pending — backfill post-push>
+l44_post_push_fetch: "0 0"   # origin/main == HEAD == 52faef9e5 post-push; fully synced
 new_warnings_or_lints_introduced: 0   # golangci-lint 0 findings; baseline unchanged
 cross_platform_build.go_build_exit: 0
 cross_platform_build.windows_go_build: N/A   # no Go code changed (doctrine markdown only)
