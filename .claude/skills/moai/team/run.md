@@ -54,11 +54,11 @@ From `.moai/config/sections/workflow.yaml` → `team.role_profiles`:
 |---------|------|-------|-----------|---------|
 | researcher | plan | haiku | none | Codebase exploration, read-only analysis |
 | analyst | plan | sonnet | none | Requirements analysis, validation |
-| architect | plan | sonnet | none | Solution design, architecture |
+| architect | plan | opus | none | Solution design, architecture (deep reasoning) |
 | implementer | acceptEdits | sonnet | worktree | Backend, frontend, full-stack code |
 | tester | acceptEdits | sonnet | worktree | Test creation, coverage validation |
 | designer | acceptEdits | sonnet | worktree | UI/UX with MCP design tools |
-| reviewer | plan | haiku | none | Code review, quality validation |
+| reviewer | plan | sonnet | none | Code review, quality validation (context-aware analysis) |
 
 ### Baseline-Refill Breaker Hazard (team sonnet — Sonnet 5 / Opus 4.8-resolved)
 
@@ -79,6 +79,8 @@ This workflow is loaded ONLY when team mode has been explicitly selected (via `-
 | cg | CG Mode (tmux required) | Claude Leader + GLM Teammates via tmux session env |
 
 [HARD] When this workflow is loaded, team mode is already decided. Empty `team_mode` defaults to Agent Teams, NOT sub-agent fallback. Sub-agent mode uses a different workflow (`workflows/run.md`).
+
+**Disambiguation — two evaluation points for the same `team_mode` field**: the table above is read only AFTER team mode has already been selected (via `--team` flag or Phase 0.95 auto-select) — this workflow file itself does not load before that decision. It answers "which team execution flavor" (Agent Teams / GLM / CG), not "is team mode active at all". Contrast with `team/glm.md`'s LLM Mode Detection table, which is the earlier, global gate: it answers whether team infrastructure activates at all, and there `team_mode: ""` means plain sub-agent mode (no team file loads). Both tables read the SAME `.moai/config/sections/llm.yaml` `team_mode` field at different points in the decision tree — this is a separate field from the `teammateMode` setting in `.claude/settings.local.json` (tmux pane-display mode; different location, different value set, different purpose — see `team/glm.md` for that mechanism).
 
 ---
 

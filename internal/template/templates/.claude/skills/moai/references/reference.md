@@ -192,18 +192,6 @@ Propagation Method:
 - --security: Focus on security review
 - --team: Force parallel multi-perspective review team
 
-### Coverage Flags
-
-- --target N: Set coverage target percentage
-- --file PATH: Analyze specific file
-- --report: Generate report only (no test generation)
-
-### E2E Flags
-
-- --record: Record browser session as GIF
-- --url URL: Target URL for testing
-- --journey NAME: Specific user journey to test
-
 ### Clean Flags
 
 - --dry: Preview dead code without removing

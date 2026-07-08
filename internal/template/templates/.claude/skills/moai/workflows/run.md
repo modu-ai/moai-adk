@@ -164,7 +164,7 @@ The following HARD invariants govern the `ac_converge` loop. Each is the canonic
 ### Cross-references (cite, do not restate)
 
 - `.claude/rules/moai/workflow/goal-directive.md` — `/goal` semantics (transcript-only evaluation; `max N turns` bound; clear-on-`/clear`).
-- `.claude/rules/moai/workflow/orchestration-mode-selection.md` § C.3 — Mode 6 (Workflow) capability gate (Implementation Kickoff Approval-passed + preferences-collected; scaling-not-nesting; named-script-API prohibition) + §I IGGDA 4-phase pipeline + §J.3 self-audit-vs-independent-audit disambiguation.
+- `.claude/rules/moai/workflow/orchestration-mode-selection.md` § C.3 — Mode 6 (Workflow) capability gate (Implementation Kickoff Approval-passed + preferences-collected; scaling-not-nesting; named-script-API prohibition).
 - `.claude/rules/moai/workflow/dynamic-workflows.md` — the Workflow primitive (no mid-run user input; Implementation Kickoff Approval unaffected).
 - `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` §3 — the 5 circuit-breaker invariants the bounded self-diagnosis loop (below) complies with.
 - `.claude/rules/moai/workflow/ci-autofix-protocol.md` + `.claude/rules/moai/development/manager-develop-prompt-template.md` § cycle_type Mode Reference — the DIAGNOSE-PATCH-VERIFY max-3 mechanical-autofix contract the loop inherits.
@@ -173,7 +173,7 @@ The following HARD invariants govern the `ac_converge` loop. Each is the canonic
 
 ## Recursive Self-Diagnosis Loop (bounded — DIAGNOSE-PATCH-VERIFY)
 
-The IGGDA Phase 2 bounded self-diagnosis loop handles MECHANICAL run-phase failures fast (DIAGNOSE-PATCH-VERIFY, max 3 iterations) and escalates SEMANTIC failures immediately. It is the run-phase projection of the `cycle_type=autofix` DIAGNOSE-PATCH-VERIFY contract; the canonical doctrine lives in the cross-referenced rules above. Summary contract:
+The bounded self-diagnosis loop handles MECHANICAL run-phase failures fast (DIAGNOSE-PATCH-VERIFY, max 3 iterations) and escalates SEMANTIC failures immediately. It is the run-phase projection of the `cycle_type=autofix` DIAGNOSE-PATCH-VERIFY contract; the canonical doctrine lives in the cross-referenced rules above. Summary contract:
 
 | Item | Contract | Canonical SSOT |
 |------|----------|----------------|

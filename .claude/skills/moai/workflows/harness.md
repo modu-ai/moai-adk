@@ -1,17 +1,20 @@
 ---
 description: >
-  V3R4 Self-Evolving Harness lifecycle workflow. Owns all lifecycle verbs
-  (status, apply, rollback, disable) entirely within the moai skill body
-  using file-system operations — no Go binary subcommand is invoked. Tier-4
-  evolution applications are gated by an orchestrator-issued AskUserQuestion
-  approval round per the 5-Layer Safety architecture.
+  Self-Evolving Harness lifecycle workflow. This workflow body implements
+  the lifecycle verbs (status, apply, rollback, disable) directly via
+  file-system operations. The same verbs — plus routing and v4 harness
+  verbs — are also registered as `moai harness <verb>` Go-binary Cobra
+  subcommands, unified under a single command tree. Tier-4 evolution
+  applications are gated by an orchestrator-issued AskUserQuestion
+  approval round per the 5-Layer Safety architecture; the ungated
+  `moai harness apply --execute` CLI path is a distinct trust boundary.
 user-invocable: false
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
   category: "workflow"
   status: "active"
-  updated: "2026-05-14"
-  tags: "harness, learning, observer, tier-4, safety, evolution, apply, rollback, v3r4, cli-retired"
+  updated: "2026-07-08"
+  tags: "harness, learning, observer, tier-4, safety, evolution, apply, rollback, v3r5, cli-unified"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -26,12 +29,12 @@ triggers:
   phases: ["harness"]
 ---
 
-<!-- @MX:NOTE: [AUTO] Contract — the workflow body owns the lifecycle entirely via file-system operations. No `moai harness` CLI subcommand is invoked. -->
-<!-- @MX:REASON: [AUTO] An earlier workflow body shelled out to a `moai harness <verb>` cobra subcommand. That CLI verb path is retired; all lifecycle execution is consolidated into the slash command + workflow body surface. -->
+<!-- @MX:NOTE: [AUTO] Contract — this workflow body implements the lifecycle directly via file-system operations. The same verbs are also independently reachable as registered `moai harness <verb>` Go-binary Cobra subcommands; the two surfaces coexist. -->
+<!-- @MX:REASON: [AUTO] The harness lifecycle verbs are registered as `moai harness <verb>` Go-binary subcommands under a single unified command tree; this workflow surface documents the AI-orchestrated, AskUserQuestion-gated execution path, distinct from the ungated `moai harness apply --execute` CLI path. -->
 
 # Workflow: harness — Self-Evolving Harness Lifecycle
 
-Purpose: Surface the harness learning subsystem (observer, 4-tier proposal ladder, 5-layer safety pipeline) to the user. This workflow IS the implementation — every verb (`status`, `apply`, `rollback`, `disable`) is executed by file-system reads and writes inside this workflow body. No Go binary subcommand is invoked; the harness CLI verb path is retired and is never registered into the cobra command tree.
+Purpose: Surface the harness learning subsystem (observer, 4-tier proposal ladder, 5-layer safety pipeline) to the user. This workflow body implements every verb (`status`, `apply`, `rollback`, `disable`) directly via file-system reads and writes. The same verbs — plus the routing verbs (`route`, `validate`) and the v4 harness verbs (`list`, `edit`, `remove`, `doctor`) — are also registered as `moai harness <verb>` Go-binary Cobra subcommands, unified under a single command tree. There is no separate learning-vs-v4 Go-binary-dispatch split — every verb dispatches through that one unified tree.
 
 ## Authoritative Sources
 
@@ -59,7 +62,7 @@ Purpose: Surface the harness learning subsystem (observer, 4-tier proposal ladde
 
 ## Tier-4 Application Gate (Orchestrator-Only AskUserQuestion)
 
-[HARD] Tier-4 application of any harness evolution proposal MUST be gated by an orchestrator-issued `AskUserQuestion` round before any file modification occurs (REQ-HRN-FND-004, REQ-HRN-FND-015). The workflow body itself is executed in the orchestrator's main context; `AskUserQuestion` is invoked here as the orchestrator's tool. Subagents reachable from this workflow MUST NOT call `AskUserQuestion`; if a subagent needs user input it returns a structured blocker report and the orchestrator re-runs the round (canonical reference: `.claude/rules/moai/core/askuser-protocol.md`).
+[HARD] Tier-4 application of any harness evolution proposal MUST be gated by an orchestrator-issued `AskUserQuestion` round before any file modification occurs. The workflow body itself is executed in the orchestrator's main context; `AskUserQuestion` is invoked here as the orchestrator's tool. Subagents reachable from this workflow MUST NOT call `AskUserQuestion`; if a subagent needs user input it returns a structured blocker report and the orchestrator re-runs the round (canonical reference: `.claude/rules/moai/core/askuser-protocol.md`).
 
 ### Canonical Four-Option Pattern
 
@@ -86,9 +89,13 @@ AskUserQuestion({
 })
 ```
 
-### Rate-Limit Enforcement (REQ-HRN-FND-012)
+### Rate-Limit Enforcement
 
-Before opening the AskUserQuestion round, apply the rate limit from `harness.yaml` `rate_limit` (single source of truth): at most `max_per_week` applications per rolling 7-day window (default **3**) and a `cooldown_hours` gap between applications (default **24h**). Count entries in `.moai/harness/learning-history/applied/` whose `applied_at` falls within the rolling window; if the count is ≥ `max_per_week`, OR the most recent application is within `cooldown_hours`, the new candidate MUST be deferred and recorded with a `deferred_at` timestamp; do NOT invoke `AskUserQuestion`. Provenance: an earlier revision documented a stricter single-application weekly floor (the REQ-HRN-FND-018 floor claim); that stricter floor is superseded — the binding limit is `harness.yaml` `rate_limit` (`max_per_week: 3`, `cooldown_hours: 24`), which the harness CLI default also uses.
+Before opening the AskUserQuestion round, apply the rate limit from `harness.yaml` `rate_limit` (single source of truth): at most `max_per_week` applications per rolling 7-day window (default **3**) and a `cooldown_hours` gap between applications (default **24h**). Count entries in `.moai/harness/learning-history/applied/` whose `applied_at` falls within the rolling window; if the count is ≥ `max_per_week`, OR the most recent application is within `cooldown_hours`, the new candidate MUST be deferred and recorded with a `deferred_at` timestamp; do NOT invoke `AskUserQuestion`. The binding limit is `harness.yaml` `rate_limit` (`max_per_week: 3`, `cooldown_hours: 24`), which the harness CLI default also uses.
+
+### CLI `--execute` Trust Boundary (distinct, ungated path)
+
+[HARD] `moai harness apply --execute --id <proposal-id>` is a **separate, ungated** trust boundary — distinct from the AskUserQuestion-gated flow documented above. Invoking it applies the named Tier-4 proposal to disk via the Go execute pipeline directly, with **no AskUserQuestion approval round**: the CLI process cannot prompt the user, so `--execute` is an explicit opt-in for callers that have already obtained approval by some other means before invoking it. The default `apply` invocation (no `--execute` flag) remains payload-only — it prints the pending proposal as JSON and performs no file modification; it is THIS workflow body's AskUserQuestion-gated round (above) that actually authorizes and performs the write. Callers relying on the AskUserQuestion-gated flow MUST NOT pass `--execute`.
 
 ---
 
@@ -105,7 +112,7 @@ Before opening the AskUserQuestion round, apply the rate limit from `harness.yam
 | `status` | Read JSONL state files, aggregate counts | Read, Bash (jq) | Inspect tier distribution, rate-limit window, pending proposal count, Tier-4 reach rate |
 | `apply` | Layer 1 (FrozenGuard path-prefix check) → Layer 4 (rate-limit window check) → AskUserQuestion → snapshot creation → file write → audit log append | Read, Write, Edit, Bash, AskUserQuestion | Surface next Tier-4 proposal via AskUserQuestion, apply on approval through 5-layer pipeline |
 | `rollback <YYYY-MM-DD>` | Read snapshot `manifest.json`, copy files back | Read, Write, Bash | Restore byte-identical pre-modification state from snapshot |
-| `disable` | AskUserQuestion confirm → Edit harness.yaml `learning.enabled: false` | AskUserQuestion, Edit | Turn off observer; observer becomes a no-op (REQ-HRN-FND-009) |
+| `disable` | AskUserQuestion confirm → Edit harness.yaml `learning.enabled: false` | AskUserQuestion, Edit | Turn off observer; observer becomes a no-op |
 
 ---
 
@@ -138,8 +145,8 @@ Operations:
    - The classifier is gated by `learning.enabled` in `.moai/config/sections/harness.yaml`; when disabled, it is a complete no-op and tier-promotions.jsonl is left untouched.
 1. Read `.moai/harness/usage-log.jsonl` (line-count via `wc -l` or progressive Read).
 2. Read `.moai/harness/learning-history/tier-promotions.jsonl` (group by tier: observation / heuristic / rule / auto_update).
-3. Read `.moai/harness/learning-history/applied/` directory listing for Tier-4 application count within the last 7 days (REQ-HRN-FND-016 telemetry).
-4. Compute Tier-4 reach rate = (unique patterns with `tier=auto_update` in tier-promotions.jsonl) / (unique patterns in usage-log.jsonl) × 100. Patterns are keyed by `event_type + subject + context_hash` (REQ-HRN-FND-010).
+3. Read `.moai/harness/learning-history/applied/` directory listing for Tier-4 application count within the last 7 days (telemetry).
+4. Compute Tier-4 reach rate = (unique patterns with `tier=auto_update` in tier-promotions.jsonl) / (unique patterns in usage-log.jsonl) × 100. Patterns are keyed by `event_type + subject + context_hash`.
 5. Read `.moai/harness/proposals/` directory listing for pending proposal count.
 6. Render the result as a Markdown table in the user's `conversation_language`:
 
@@ -155,7 +162,7 @@ Tier Distribution:
   rule        (T3):         <int>
   auto_update (T4):         <int> patterns (pending user approval)
 
-Telemetry (REQ-HRN-FND-016):
+Telemetry:
   Weekly Tier-4 applications (rolling 7-day): <int>
   Tier-4 reach rate:                          <pct>%
 
@@ -172,18 +179,18 @@ Operations:
 
 1. **Layer 4 (Rate Limiter) pre-screen**: Scan `.moai/harness/learning-history/applied/` for entries with `applied_at` in the rolling 7-day window, per `harness.yaml` `rate_limit`. If the window count ≥ `max_per_week` (default 3) OR the most recent application is within `cooldown_hours` (default 24h), defer:
    - Append `{ "deferred_at": <ISO-8601>, "reason": "rate-limit window active", "proposal_id": <id> }` to the candidate proposal's metadata.
-   - Render "Tier-4 rate-limit window active — proposal <id> deferred" and STOP. Do NOT invoke AskUserQuestion (REQ-HRN-FND-012).
+   - Render "Tier-4 rate-limit window active — proposal <id> deferred" and STOP. Do NOT invoke AskUserQuestion.
 2. **Load next pending proposal**: Read `.moai/harness/proposals/` directory; pick the oldest pending entry (`.json` payload). If none, render "No Tier-4 proposals awaiting approval" and stop.
 3. **Layer 1 (Frozen Guard) pre-screen**: Read the proposal's `target_path`. Match against the FROZEN prefix list:
    - `.claude/agents/moai/` (template-managed agents are FROZEN; `.claude/agents/harness/` is a user-owned allowed-write target, NOT frozen — it matches the guard's allowed-prefix list, not the frozen list)
    - `.claude/skills/moai-`
    - `.claude/rules/moai/`
-   If any prefix matches, append a JSONL entry to `.moai/harness/learning-history/frozen-guard-violations.jsonl` with at minimum: ISO-8601 timestamp, the attempted target path, the proposal id (as calling subject), and a rejection rationale (REQ-HRN-FND-006, REQ-HRN-FND-014). Then move the proposal to `.moai/harness/learning-history/rejected/` and stop. Do NOT raise an error to the user; the rejection is silent except for the audit log.
-4. **Layer 3 (Contradiction Detector) pre-screen**: Out of scope for the V3R4 foundation SPEC. Downstream `the harness lifecycle policy` introduces principle-based scoring; this workflow body documents the contract assertion (REQ-HRN-FND-017) and treats Layer 3 as a no-op pass-through for the foundation release.
+   If any prefix matches, append a JSONL entry to `.moai/harness/learning-history/frozen-guard-violations.jsonl` with at minimum: ISO-8601 timestamp, the attempted target path, the proposal id (as calling subject), and a rejection rationale. Then move the proposal to `.moai/harness/learning-history/rejected/` and stop. Do NOT raise an error to the user; the rejection is silent except for the audit log.
+4. **Layer 3 (Contradiction Detector) pre-screen**: Out of scope for the V3R4 foundation SPEC. Downstream `the harness lifecycle policy` introduces principle-based scoring; this workflow body documents the contract assertion and treats Layer 3 as a no-op pass-through for the foundation release.
 5. **Tier-4 Application Gate**: `ToolSearch(query: "select:AskUserQuestion")` → `AskUserQuestion` with the canonical four-option pattern from the section above. The first option `Apply (권장)` MUST carry the `(권장)` / `(Recommended)` suffix per `.claude/rules/moai/core/askuser-protocol.md` § Option Description Standards.
 6. **On `Apply` selection**:
    - **Layer 2 (Canary Check)**: Out of scope for the V3R4 foundation SPEC. Downstream `the harness lifecycle policy` introduces multi-objective scoring with score-drop check; the workflow body treats Layer 2 as a no-op pass-through for the foundation release. The constitution §5 L2 layer remains documented as the binding contract.
-   - **Create snapshot** (REQ-HRN-FND-007): Create directory `.moai/harness/learning-history/snapshots/<ISO-DATE>/` (ISO-8601 timestamp). For each file the proposal will touch, Read the current contents, compute a content hash, and Write a byte-identical copy into the snapshot directory. Write `manifest.json` recording absolute target paths and content hashes. The snapshot MUST be complete before any modification of the target file.
+   - **Create snapshot**: Create directory `.moai/harness/learning-history/snapshots/<ISO-DATE>/` (ISO-8601 timestamp). For each file the proposal will touch, Read the current contents, compute a content hash, and Write a byte-identical copy into the snapshot directory. Write `manifest.json` recording absolute target paths and content hashes. The snapshot MUST be complete before any modification of the target file.
    - **Apply the change**: Read the proposal's `new_value`, perform the field replacement on `target_path` (typically a frontmatter `description` or `triggers` edit on a `harness-*` skill body). Use the `Edit` tool with exact `old_string` / `new_string` match.
    - **Move the proposal**: Move the proposal file from `.moai/harness/proposals/` to `.moai/harness/learning-history/applied/`. Append an `applied_at` ISO-8601 timestamp and the snapshot directory path to the JSON payload.
    - **Render outcome**: Confirm `Applied. Snapshot: <path>. Run /moai:harness status to verify the new tier distribution.`.
@@ -200,7 +207,7 @@ Edge case (EDGE-006): Concurrent `/moai:harness apply` invocations are out of sc
 Operations:
 
 1. Validate that the date argument matches `YYYY-MM-DD` or full ISO-8601 (`YYYY-MM-DDThh:mm:ssZ`). If invalid format, abort with usage hint.
-2. Locate snapshot directory: `.moai/harness/learning-history/snapshots/<date>/`. If the directory does not exist, render a diagnostic message naming the missing snapshot and STOP. Do NOT modify any file (REQ-HRN-FND-008 explicit unwanted behavior on missing snapshot).
+2. Locate snapshot directory: `.moai/harness/learning-history/snapshots/<date>/`. If the directory does not exist, render a diagnostic message naming the missing snapshot and STOP. Do NOT modify any file (a missing snapshot is a stop condition, not a recoverable error).
 3. Read `manifest.json` from the snapshot directory.
 4. For each entry in the manifest: Read the snapshot copy, Write to the absolute target path. Verify the post-write content hash matches the snapshot hash (byte-identical restoration).
 5. Render confirmation message naming the snapshot date and the restored file count.
@@ -221,7 +228,7 @@ Operations:
 3. On `Keep enabled`: stop without changes.
 4. On `Disable temporarily`: render guidance and stop.
 
-Observer no-op contract (REQ-HRN-FND-009): When `learning.enabled: false`, the PostToolUse observer hook MUST be a complete no-op — it does not read, write, or append to `.moai/harness/usage-log.jsonl`. Existing log entries MUST NOT be deleted.
+Observer no-op contract: When `learning.enabled: false`, the PostToolUse observer hook MUST be a complete no-op — it does not read, write, or append to `.moai/harness/usage-log.jsonl`. Existing log entries MUST NOT be deleted.
 
 ---
 
@@ -249,7 +256,7 @@ After any successful verb execution, render a one-paragraph summary in the user'
 
 ## Cross-references
 
-- SPEC (active): `.moai/specs/the harness foundation policy/spec.md` (REQ-HRN-FND-001 ~ REQ-HRN-FND-018)
+- SPEC (active): `.moai/specs/the harness foundation policy/spec.md`
 - SPEC (superseded by V3R4-001; preserved as historical reference):
   - `.moai/specs/the harness-learning policy/spec.md` (the relevant requirements — 4-tier ladder preserved)
   - `.moai/specs/the harness policy/spec.md` (Meta-harness skill + generated artifacts)
@@ -258,15 +265,15 @@ After any successful verb execution, render a one-paragraph summary in the user'
 - Skill: `.claude/skills/moai-meta-harness/SKILL.md` (project-specific harness generation — text-annotated only)
 - README: `.moai/harness/README.md` (subsystem overview)
 - Attribution: `.claude/rules/moai/NOTICE.md` (Apache-2.0 attribution to revfactory/harness)
-- Constitution: `.claude/rules/moai/design/constitution.md` §5 (5-Layer Safety — preserved verbatim per REQ-HRN-FND-005)
+- Constitution: `.claude/rules/moai/design/constitution.md` §5 (5-Layer Safety — preserved verbatim)
 
-<!-- Verifies REQ-HRN-FND-001/002: no Bash invocation of `moai harness` anywhere in this workflow body. -->
-<!-- Verifies REQ-HRN-FND-003: all four verbs (status/apply/rollback/disable) implemented in this body. -->
-<!-- Verifies REQ-HRN-FND-004/015: Tier-4 application is gated by orchestrator-issued AskUserQuestion. -->
-<!-- Verifies REQ-HRN-FND-005: 5-Layer Safety preserved (L2/L3 documented as deferred no-op to downstream SPECs; L1/L4/L5 active). -->
-<!-- Verifies REQ-HRN-FND-006/014: FROZEN zone path-prefix block + audit log emission. -->
-<!-- Verifies REQ-HRN-FND-007/008: pre-modification snapshot + rollback to byte-identical state. -->
-<!-- Verifies REQ-HRN-FND-009: observer no-op contract documented (enforced by hook code path, Wave C). -->
-<!-- Verifies REQ-HRN-FND-010/011: PostToolUse baseline schema + 4-tier ladder preserved. -->
-<!-- Verifies REQ-HRN-FND-012/018: Tier-4 rate-limit per harness.yaml rate_limit (max_per_week 3, cooldown_hours 24). -->
-<!-- Verifies REQ-HRN-FND-016: telemetry exposure (weekly Tier-4 apply count + reach rate) via `status` verb. -->
+<!-- Verifies: no Bash invocation of `moai harness` anywhere in this workflow body. -->
+<!-- Verifies: all four verbs (status/apply/rollback/disable) implemented in this body. -->
+<!-- Verifies: Tier-4 application is gated by orchestrator-issued AskUserQuestion. -->
+<!-- Verifies: 5-Layer Safety preserved (L2/L3 documented as deferred no-op to downstream SPECs; L1/L4/L5 active). -->
+<!-- Verifies: FROZEN zone path-prefix block + audit log emission. -->
+<!-- Verifies: pre-modification snapshot + rollback to byte-identical state. -->
+<!-- Verifies: observer no-op contract documented (enforced by the corresponding hook code path, added in a later Milestone). -->
+<!-- Verifies: PostToolUse baseline schema + 4-tier ladder preserved. -->
+<!-- Verifies: Tier-4 rate-limit per harness.yaml rate_limit (max_per_week 3, cooldown_hours 24). -->
+<!-- Verifies: telemetry exposure (weekly Tier-4 apply count + reach rate) via `status` verb. -->

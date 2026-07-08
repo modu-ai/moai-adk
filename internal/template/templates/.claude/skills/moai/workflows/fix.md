@@ -40,7 +40,7 @@ Flow: Parallel Scan -> Classify -> Fix -> Verify -> Report
 - --security (alias --include-security): Include security issues in scan
 - --no-fmt (alias --no-format): Skip formatting fixes
 - --resume [ID] (alias --resume-from): Resume from snapshot (latest if no ID)
-- --team: Enable team-based debugging (see team-debug.md for competing hypothesis investigation)
+- --team: Enable team-based debugging (see team/debug.md for competing hypothesis investigation)
 
 ## Pipeline Contract (Agentless Classification)
 
@@ -131,7 +131,7 @@ Normalize all scanner output into a unified issue record format regardless of la
 
 This normalization enables language-agnostic fix agents to work without language-specific logic.
 
-Language auto-detection uses indicator files and covers all 16 MoAI-supported languages equally (C++, C#, Elixir, Flutter, Go, Java, JavaScript, Kotlin, PHP, Python, R, Ruby, Rust, Scala, Swift, TypeScript). Each language has its own marker files (for example `go.mod` for Go, `pyproject.toml` for Python, `tsconfig.json` for TypeScript, `Cargo.toml` for Rust, `pubspec.yaml` for Flutter); the scanner inspects project root and activates the corresponding toolchain. See `.claude/skills/moai/workflows/sync.md` Phase 0.6.1 for the complete Language Detection table.
+Language auto-detection uses indicator files and covers all 16 MoAI-supported languages equally (C++, C#, Elixir, Flutter, Go, Java, JavaScript, Kotlin, PHP, Python, R, Ruby, Rust, Scala, Swift, TypeScript). Each language has its own marker files (for example `go.mod` for Go, `pyproject.toml` for Python, `tsconfig.json` for TypeScript, `Cargo.toml` for Rust, `pubspec.yaml` for Flutter); the scanner inspects project root and activates the corresponding toolchain. See `.claude/skills/moai/workflows/sync/quality-gates-quality.md` Step 0.6.1 for the complete Language Detection table.
 
 Error handling: If any scanner fails, continue with results from successful scanners. Note the failed scanner in the report.
 

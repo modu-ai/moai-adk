@@ -59,12 +59,26 @@ See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.m
 
 [HARD] Delegate static analysis to a per-spawn `Agent(general-purpose)` refactoring specialist (refactoring whitelist + ANALYZE-PRESERVE-IMPROVE instructions per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C).
 
-Language-specific dead code detection:
+Language-specific dead code detection (all 16 supported languages, equal treatment):
 
-- Go: `go vet ./...` for unused variables, `staticcheck` for unused functions/types, `deadcode` tool
-- Python: `vulture` for dead code detection, `autoflake` for unused imports
-- TypeScript/JavaScript: `ts-prune` for unused exports, ESLint `no-unused-vars`
-- Rust: `cargo clippy` for dead code warnings, `cargo udeps` for unused dependencies
+| Language | Detection Tool |
+|----------|----------------|
+| Go | `go vet ./...` for unused variables, `staticcheck` for unused functions/types, `deadcode` tool |
+| Python | `vulture` for dead code detection, `autoflake` for unused imports |
+| TypeScript | `ts-prune` for unused exports, ESLint `no-unused-vars` |
+| JavaScript | ESLint `no-unused-vars`, `depcheck` for unused dependencies |
+| Rust | `cargo clippy` for dead code warnings, `cargo udeps` for unused dependencies |
+| Java | `PMD` UnusedPrivateField/UnusedLocalVariable rules |
+| Kotlin | `detekt` unused-code rules |
+| C# | Roslyn unused-member analyzers via `dotnet format analyzers` |
+| Ruby | `rubocop` Lint/UselessAssignment cop |
+| PHP | `phpstan` dead-code rules |
+| Elixir | `mix xref unreachable`, unused-variable compile warnings |
+| C++ | `clang-tidy` unused-code checks, `cppcheck --enable=unusedFunction` |
+| Scala | `scalafix` unused-imports rule, `scalac -Ywarn-unused` |
+| R | `lintr` unused-object checks |
+| Flutter | `dart analyze` unused_element/unused_import lints |
+| Swift | `periphery` for unused code detection |
 
 If --file flag: Limit scan to the specified file/directory.
 If --type flag: Filter results to the specified code type only.

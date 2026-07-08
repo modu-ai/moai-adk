@@ -67,7 +67,7 @@ The `--team` / `--solo` flags are forced overrides onto the catalog; the flag-fr
 - **clean** (aliases: dead-code): Identify and safely remove dead code
 - **codemaps**: Generate architecture documentation in `.moai/project/codemaps/`
 - **gate** (aliases: check, pre-commit): Lightweight pre-commit quality gate (lint+format+type-check+test)
-- **harness** (aliases: hrn, learn): V3R4 self-evolving harness lifecycle (status / apply / rollback &lt;date&gt; / disable) + v4-lifecycle verbs (list / edit / remove / doctor) — slash-command-only surface; CLI verb path retired per the harness foundation policy (BC-V3R4-HARNESS-001-CLI-RETIREMENT)
+- **harness** (aliases: hrn, learn): harness lifecycle management — learning-lifecycle verbs (status / apply / rollback &lt;date&gt; / disable) + v4-lifecycle verbs (list / edit / remove / doctor), all dispatching through the unified `moai harness` Go-binary Cobra subcommand tree; the slash command is the documented user-facing entry point
 
 ### Priority 2: SPEC-ID Detection
 
@@ -99,9 +99,9 @@ If the intent is clearly a development task with no specific routing signal, def
 
 ### plan - SPEC Document Creation
 
-Purpose: Create comprehensive specification documents using EARS format with Research-Plan-Annotate cycle.
-Phases: Deep Research (research.md) -> SPEC Planning -> Annotation Cycle (1-6 iterations) -> SPEC Creation
-Agents: manager-spec (primary), Explore (research), manager-git (conditional)
+Purpose: Create comprehensive specification documents using GEARS format with Research-Plan-Annotate cycle.
+Phases: Deep Research (research.md) -> SPEC Planning -> Annotation Cycle (1-6 iterations) -> SPEC Creation -> Independent Review (plan-auditor)
+Agents: manager-spec (primary), Explore (research), plan-auditor (quality gate), manager-git (conditional)
 Flags: --worktree, --branch, --resume SPEC-XXX, --team, --issue (opt-in; default skips GitHub Issue creation per the late-branch opt-in policy)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md (team mode: ${CLAUDE_SKILL_DIR}/team/plan.md)
 
@@ -132,6 +132,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/gate.md
 Purpose: Autonomously detect and fix LSP errors, linting issues, and type errors.
 Agents: manager-develop (cycle_type=autofix), Agent(general-purpose) with domain whitelist (fixes)
 Flags: --dry, --sequential, --level N, --resume, --team
+Team mode: For competing-hypothesis debugging, read ${CLAUDE_SKILL_DIR}/team/debug.md
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/fix.md
 
 ### loop - Iterative Auto-Fix
@@ -173,7 +174,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/codemaps.md
 
 Purpose: Full autonomous research -> plan -> annotate -> run -> sync pipeline.
 Phases: Parallel Exploration (research.md) -> SPEC Generation -> Annotation Cycle -> Implementation -> Sync
-Agents: Explore, manager-spec, manager-develop, manager-docs, manager-git, sync-auditor (quality gate)
+Agents: Explore, manager-spec, plan-auditor (quality gate), manager-develop, manager-docs, manager-git, sync-auditor (quality gate)
 Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo, --issue (opt-in; default skips GitHub Issue creation per the late-branch opt-in policy)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/moai.md
 
@@ -200,18 +201,18 @@ This single `harness` subcommand dispatches to ONE of two workflows based on the
 
 #### Branch A — harness learning lifecycle (reserved verbs: status / apply / rollback / disable)
 
-Purpose: Surface the harness learning subsystem (observer, 4-tier proposal ladder, 5-layer safety pipeline) to the user via the slash command path. Owns all lifecycle verbs (status / apply / rollback / disable) entirely within the workflow body using file-system operations — no Go binary subcommand invoked. Tier-4 application is gated by orchestrator-issued AskUserQuestion per REQ-HRN-FND-004.
+Purpose: Surface the harness learning subsystem (observer, 4-tier proposal ladder, 5-layer safety pipeline) to the user via the slash command path. The lifecycle verbs (status / apply / rollback / disable) dispatch through the unified `moai harness` Go-binary Cobra subcommand tree, which performs the file-system operations. Tier-4 application is gated by orchestrator-issued AskUserQuestion.
 Skills: moai-harness-learner (Tier-4 surfacing companion), moai-meta-harness (project-specific harness generation, indirect)
 Verbs: status (tier distribution + telemetry) | apply (next Tier-4 proposal → AskUserQuestion → 5-layer pipeline → snapshot + write) | rollback &lt;YYYY-MM-DD&gt; (restore snapshot) | disable (set learning.enabled: false)
 Artifacts: `.moai/harness/usage-log.jsonl`, `.moai/harness/proposals/`, `.moai/harness/learning-history/snapshots/`, `.moai/harness/learning-history/applied/`, `.moai/harness/learning-history/frozen-guard-violations.jsonl`
 Authoritative SPEC: the harness foundation policy (supersedes V3R3-HARNESS-001, V3R3-HARNESS-LEARNING-001, V3R3-PROJECT-HARNESS-001)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness.md
 
-#### Branch A.1 — harness-v4 lifecycle (reserved verbs: list / edit / remove)
+#### Branch A.1 — harness-v4 lifecycle (reserved verbs: list / edit / remove / doctor)
 
-Purpose: Manage harness-v4 entries — enumerate built harnesses, locate their manifest + specialist files for editing, or atomically remove a harness with all its artifacts. The three verbs dispatch to the `moai harness <verb>` Go binary subcommand which performs the filesystem work (scan `.claude/commands/harness/*.md` joined with `manifest.json`; atomic remove with fail-closed orphan prevention).
-Verbs: list (enumerate all harnesses: name + domain + entry command) | edit &lt;name&gt; (show manifest + specialist + skill paths for editing — manifest is the SSOT) | remove &lt;name&gt; (atomic removal of command + workflow + specialists + skills + manifest; fail-closed if any artifact is missing)
-CLI: `moai harness list [--json]`, `moai harness edit <name> [--json]`, `moai harness remove <name>` (all support `--project-root`)
+Purpose: Manage harness-v4 entries — enumerate built harnesses, locate their manifest + specialist files for editing, atomically remove a harness with all its artifacts, or run the reference-integrity smoke gate. The four verbs dispatch to the `moai harness <verb>` Go binary subcommand which performs the filesystem work (scan `.claude/commands/harness/*.md` joined with `manifest.json`; atomic remove with fail-closed orphan prevention; doctor cross-references manifest/specialist/skill file existence).
+Verbs: list (enumerate all harnesses: name + domain + entry command) | edit &lt;name&gt; (show manifest + specialist + skill paths for editing — manifest is the SSOT) | remove &lt;name&gt; (atomic removal of command + workflow + specialists + skills + manifest; fail-closed if any artifact is missing) | doctor (reference-integrity smoke gate: verifies every built harness's manifest/specialist/skill files exist and cross-reference correctly)
+CLI: `moai harness list [--json]`, `moai harness edit <name> [--json]`, `moai harness remove <name>`, `moai harness doctor` (all support `--project-root`)
 Artifacts: `.claude/commands/harness/<name>.md` (thin-wrapper command), `.claude/commands/harness/<name>/manifest.json` (SSOT), `.claude/workflows/harness-<name>-run.js` (Runner), `.claude/agents/harness/harness-<name>*-specialist.md` (specialists), `.claude/skills/harness-<name>*/` (companion skills)
 Namespace: `.claude/commands/harness/`, `.claude/workflows/harness-*.js`, `.claude/agents/harness/`, and `.claude/skills/harness-*/` are USER-OWNED — `moai update` preserves them (backup if needed, never overwrites).
 
@@ -241,10 +242,10 @@ Forbidden flag-subcommand combinations:
 
 | Flag | Allowed subcommands | Forbidden subcommands |
 |------|---------------------|------------------------|
-| `--worktree` | `plan`, default (autonomous) | `run`, `sync` |
+| `--worktree` | `plan` | `run`, `sync`, default (autonomous) |
 | `--branch` | `plan`, default (autonomous) | `run`, `sync` |
 
-Rationale: `--worktree` (and `--branch`) provision the workspace at SPEC initialization. `/moai plan` is the sole entry point that creates the worktree/branch. `/moai run` and `/moai sync` MUST operate within the worktree/branch already established during `plan`. Re-creating during run/sync corrupts the SPEC lifecycle and is rejected at the router level.
+Rationale: `--worktree` provisions an isolated workspace at SPEC initialization; only `/moai plan --worktree` creates one, so `/moai run` and `/moai sync` MUST operate within the worktree already established during `plan` — re-creating during run/sync corrupts the SPEC lifecycle and is rejected at the router level. `--branch` (feature-branch creation) is parsed at both `plan` and the default autonomous pipeline, but remains forbidden for `run`/`sync` for the same re-creation-corruption reason.
 
 Error message template (Korean conversation_language; substitute the actual flag and subcommand):
 ```

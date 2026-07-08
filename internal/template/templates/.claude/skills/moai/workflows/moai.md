@@ -5,10 +5,10 @@ description: >
   implementation with optional auto-fix loop, and documentation sync.
 user-invocable: false
 metadata:
-  version: "2.6.0"
+  version: "3.0.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-23"
+  updated: "2026-07-07"
   tags: "moai, autonomous, pipeline, plan-run-sync, default"
 
 # MoAI Extension: Progressive Disclosure
@@ -41,6 +41,7 @@ For phase overview, token budgets, and phase transitions, see: .claude/rules/moa
 - --resume SPEC-XXX: Resume previous work from existing SPEC
 - --team: Force Agent Teams mode for plan and run phases
 - --solo: Force sub-agent mode (single agent per phase)
+- --sequential: Run Phase 0 exploration agents sequentially instead of in parallel
 - --issue: Opt-in GitHub Issue creation after SPEC generation (plan phase); absence skips Issue creation per the late-branch opt-in policy
 
 **Default Behavior (no flag)**: The orchestrator auto-selects the execution mode from the Phase 0.95 6-mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A — trivial / background / agent-team / parallel / sub-agent / workflow). The complexity auto-select thresholds are stated once in that rule's §B.1 (machine source: `workflow.yaml` `auto_selection`) — not restated here.
@@ -78,7 +79,7 @@ For methodology details, see: .claude/rules/moai/workflow/spec-workflow.md (Run 
 
 ## Phase 0: Parallel Exploration
 
-Launch three agents simultaneously in a single response for 2-3x speedup (15-30s vs 45-90s).
+Launch three agents simultaneously in a single response (Priority High: parallel execution over sequential when the three agents are independent).
 
 Agent 1 - Explore (subagent_type Explore, produces research.md):
 - If .moai/project/codemaps/ exists: Use as architecture baseline to accelerate exploration (skip redundant scanning)
@@ -121,7 +122,7 @@ User approval checkpoint via AskUserQuestion:
 ## Phase 1: SPEC Generation
 
 - Delegate to manager-spec subagent
-- Output: EARS-format SPEC document at .moai/specs/SPEC-XXX/spec.md
+- Output: GEARS-format SPEC document at .moai/specs/SPEC-XXX/spec.md
 - Includes requirements, acceptance criteria, technical approach
 
 ## Phase 1.5: Plan Annotation Cycle (1-6 iterations)
@@ -208,7 +209,7 @@ When the router recorded a completion condition (router Step 2.8) and the pipeli
 When --team flag is provided or auto-selected (based on complexity thresholds in workflow.yaml):
 
 - Phase 0 exploration: Parallel research team (researcher + analyst + architect)
-- Phase 2 implementation: Parallel implementation team (backend-dev + frontend-dev + tester)
+- Phase 2 implementation: Parallel implementation team (implementer + tester + reviewer)
 - Phase 3 sync: Always sub-agent mode (manager-docs)
 
 For team orchestration details:

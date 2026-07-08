@@ -7,7 +7,7 @@ description: >
   or branch creation. Use when planning features or creating specifications.
 user-invocable: false
 metadata:
-  version: "2.7.0"
+  version: "2.8.0"
   category: "workflow"
   status: "active"
   updated: "2026-05-25"
@@ -34,7 +34,7 @@ triggers:
 
 ## Phase Owners (per the canonical agent catalog policy)
 
-Phase Owners: `manager-spec` (SPEC artifact authoring — spec.md/plan.md/acceptance.md/design.md/research.md/progress.md §F.1) + `Explore` (read-only codebase investigation; Anthropic built-in agent) + `manager-git` (worktree/branch creation when Phase 6 worktree env opt-in).
+Phase Owners: `manager-spec` (SPEC artifact authoring — spec.md/plan.md/acceptance.md/design.md/research.md/progress.md §F.1) + `Explore` (read-only codebase investigation; Anthropic built-in agent) + `manager-git` (worktree/branch creation when Phase 3 worktree env opt-in).
 
 Cross-reference: per-SPEC Phase 0.5 SKIP rationale recorded at `.moai/specs/SPEC-{ID}/progress.md` § Phase 0.5 SKIP Rationale; Phase 0.95 Mode Selection autopilot logging at `progress.md` § Phase 0.95 Mode Selection.
 
@@ -140,7 +140,7 @@ For detailed team orchestration steps, see ${CLAUDE_SKILL_DIR}/team/plan.md.
 ---
 
 Version: 2.8.0
-Updated: 2026-03-30
+Updated: 2026-05-25
 Changes: Added test scenarios, Phase 0.9 JIT Language Detection.
 
 ---

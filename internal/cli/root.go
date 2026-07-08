@@ -153,16 +153,22 @@ func init() {
 	// SPEC-V3R2-RT-007: register migration subcommand group
 	rootCmd.AddCommand(migrationCmd)
 
-	// NOTE: newHarnessCmd is intentionally NOT registered per SPEC-V3R4-HARNESS-001
-	// (BC-V3R4-HARNESS-001-CLI-RETIREMENT). The harness lifecycle verbs
-	// (status / apply / rollback / disable) are retired and owned by the
-	// /moai:harness slash command + skill workflow surface (no Go binary invocation).
-	// See internal/cli/harness_retirement_test.go for the CI guard test.
+	// NOTE: newHarnessCmd is a superseded factory and is intentionally NOT
+	// registered here. It remains compilable only as a deprecation marker
+	// (see TestHarnessFactoryStillCompiles in harness_retirement_test.go).
+	// The harness lifecycle verbs (status / apply / rollback / disable) were
+	// retired by SPEC-V3R4-HARNESS-001 and later un-retired by
+	// SPEC-V3R5-HARNESS-AUTONOMY-001: they are registered live below, under
+	// the unified newHarnessRouterCmd() tree.
 
-	// SPEC-V3R2-HRN-001: Register the NEW harness routing command (route + validate verbs).
-	// This is DISTINCT from the retired newHarnessCmd() factory.
-	// The CI guard in harness_retirement_test.go allows 'route' and 'validate' verbs
-	// but continues to block the retired lifecycle verbs (status/apply/rollback/disable).
+	// newHarnessRouterCmd() (below) is the live, unified registration site for
+	// every harness verb: the routing verbs (route/validate), the un-retired
+	// lifecycle verbs (status/apply/rollback/disable), the proposal-management
+	// verbs (mute/mute-list/unmute/verify), and the v4 harness verbs
+	// (list/edit/remove/doctor). This is DISTINCT from the superseded
+	// newHarnessCmd() factory above, which is never added to the command tree.
+	// See internal/cli/harness_retirement_test.go TestHarnessV3R5VerbSurface
+	// for the CI guard enforcing this registration.
 	rootCmd.AddCommand(newHarnessRouterCmd())
 
 	// SPEC-V3R6-TOOL-POLICY-SSOT-001: register tool-policy subcommand

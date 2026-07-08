@@ -74,11 +74,11 @@ For each SPEC associated with the current sync:
   - Include: new_directories_created, new_dependencies_added, new_features_implemented
   - This report feeds into Phase 2.2 (SPEC updates) and Phase 2.2.5 (project doc updates)
 
-- Step 1.5.5: Check SPEC Lifecycle Level
-  - Read SPEC metadata for lifecycle level (default: spec-first if not specified)
-  - Level 1 (spec-first): SPEC will be marked completed with implementation summary appended
-  - Level 2 (spec-anchored): SPEC content will be updated to reflect actual implementation
-  - Level 3 (spec-as-source): Flag discrepancies as warnings (implementation should match SPEC exactly)
+- Step 1.5.5: Check SPEC Lifecycle
+  - Read `lifecycle` from SPEC frontmatter (enum: `spec-anchored`|`spec-lite`|`exploratory`; default `spec-anchored` per `.claude/rules/moai/development/spec-frontmatter-schema.md`)
+  - `spec-anchored` (default): SPEC content will be updated to reflect actual implementation
+  - `spec-lite`: SPEC will be marked completed with an implementation summary appended (no full requirements rewrite)
+  - `exploratory`: Flag discrepancies as warnings only (SPEC content is not modified; implementation is not expected to match exactly)
 
 #### Step 1.6: User Approval
 
@@ -134,21 +134,21 @@ All document updates use conversation_language setting.
 
 ##### Step 2.2.1: SPEC Document Update (Based on Divergence Report)
 
-Apply updates based on SPEC lifecycle level detected in Phase 1.5.5:
+Apply updates based on the SPEC `lifecycle` value detected in Phase 1.5.5:
 
-Level 1 (spec-first):
-- Append "Implementation Notes" section to spec.md summarizing actual implementation
-- Record scope changes: features added beyond plan, items deferred
-- Mark SPEC as completed (no ongoing maintenance expected)
-
-Level 2 (spec-anchored):
+spec-anchored (default):
 - Update spec.md requirements to reflect actual implementation
-- Add new EARS-format requirements for features implemented beyond original scope
+- Add new GEARS/EARS-format requirements for features implemented beyond original scope
 - Update plan.md with actual implementation steps taken
 - Update acceptance.md with new acceptance criteria for added features
 - Preserve original requirements with "as-implemented" annotations where changed
 
-Level 3 (spec-as-source):
+spec-lite:
+- Append "Implementation Notes" section to spec.md summarizing actual implementation
+- Record scope changes: features added beyond plan, items deferred
+- Mark SPEC as completed (no ongoing maintenance expected)
+
+exploratory:
 - Do NOT modify SPEC content
 - Generate discrepancy report listing implementation deviations from SPEC
 - Flag as warnings in sync report for manual review
@@ -183,7 +183,7 @@ Constraints:
 
 #### Step 2.3: Post-Sync Quality Verification
 
-Agent: sync-auditor subagent (independent quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2; OR orchestrator verification batch — lint + test + coverage)
+Agent: sync-auditor subagent (independent quality scoring, gated by harness level per `workflows/sync/quality-gates-quality.md` § Step 0.5.4; OR orchestrator verification batch — lint + test + coverage when the evaluator is disabled at the current harness level)
 
 Verify synchronization quality against TRUST 5:
 
@@ -195,11 +195,11 @@ Verify synchronization quality against TRUST 5:
 
 #### Step 2.4: Update SPEC Status
 
-Update SPEC status based on lifecycle level and implementation completeness:
+Update SPEC status based on the `lifecycle` value and implementation completeness:
 
-- Level 1 (spec-first): Set status to "completed". No further maintenance required.
-- Level 2 (spec-anchored): Set status to "completed" if all requirements met, or "in-progress" if partial. Schedule next review based on quarterly maintenance policy.
-- Level 3 (spec-as-source): Set status based on implementation-SPEC alignment. Flag discrepancies for resolution.
+- spec-anchored (default): Set status to "completed" if all requirements met, or "in-progress" if partial. Schedule next review based on quarterly maintenance policy.
+- spec-lite: Set status to "completed". No further maintenance required.
+- exploratory: Set status based on implementation-SPEC alignment. Flag discrepancies for resolution.
 
 Record version changes, status transitions, and divergence summary. Include in sync report.
 

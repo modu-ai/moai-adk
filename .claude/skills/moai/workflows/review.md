@@ -293,7 +293,7 @@ When to run: --design or --critique flag is present, OR changed files include UI
 
 ### --design: Extract Design Patterns
 
-Agent: per-spawn `Agent(general-purpose)` frontend specialist (with moai-design-craft skill; frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8)
+Agent: per-spawn `Agent(general-purpose)` frontend specialist (frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8)
 
 Tasks:
 1. Scan UI files for repeated patterns: spacing values, radius values, color tokens, button/card patterns, depth strategy (borders vs shadows)
@@ -306,7 +306,7 @@ Output: Design pattern report with deviation list (file:line references)
 
 ### --critique: Post-Build Craft Review
 
-Agent: per-spawn `Agent(general-purpose)` frontend specialist (with moai-design-craft skill)
+Agent: per-spawn `Agent(general-purpose)` frontend specialist (frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8)
 
 Tasks:
 1. Read `.moai/design/system.md` for design direction context
@@ -324,7 +324,7 @@ Output: Craft critique report with severity-ranked findings and rebuild suggesti
 ## Agent Chain Summary
 
 - Phase 1: MoAI orchestrator (change identification via git)
-- Phase 2-3: sync-auditor subagent (multi-perspective analysis) OR a per-spawn `Agent(general-purpose)` security reviewer (if --security)
+- Phase 2-3: sync-auditor subagent (multi-perspective analysis; the Security perspective receives deeper focus when --security is set) — the dependency vulnerability sub-scan additionally delegates to a per-spawn `Agent(general-purpose)` security reviewer
 - Phase 4-5: MoAI orchestrator (consolidation and user interaction)
 - Phase 4.5 (conditional): per-spawn `Agent(general-purpose)` frontend specialist (if --design or --critique)
 
@@ -335,7 +335,7 @@ Output: Craft critique report with severity-ranked findings and rebuild suggesti
 3. Identify code changes (git diff based on flags)
 4. Delegate multi-perspective review to the sync-auditor subagent
 5. Check @MX tag compliance for changed files
-6. If --design or --critique: Run design review phase 4.5 (per-spawn `Agent(general-purpose)` frontend specialist with moai-design-craft)
+6. If --design or --critique: Run design review phase 4.5 (per-spawn `Agent(general-purpose)` frontend specialist per the frontend whitelist)
 7. Consolidate findings by severity
 8. Present report with next step options
 

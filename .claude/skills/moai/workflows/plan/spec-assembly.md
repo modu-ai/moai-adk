@@ -32,6 +32,8 @@ Composite domain rules: Maximum 2 domains recommended, maximum 3 allowed.
 
 Skip condition: when the user explicitly provided the tier in the original request (e.g., "Tier S", "small SPEC, Tier S"), the orchestrator MAY skip the question and record the user-provided tier directly.
 
+Preload: `ToolSearch(query: "select:AskUserQuestion")`.
+
 Tier judgment AskUserQuestion (Socratic, in conversation_language):
 
 ```
@@ -156,14 +158,16 @@ Quality constraints:
 Purpose: Prevent confirmation bias by running an adversarial audit of the just-created SPEC before user approval and GitHub Issue creation. The reviewer sees only the final spec.md — not the author's reasoning — and is prompted to find defects, not rationalize acceptance.
 
 Execution conditions:
-- `harness.yaml` `levels.{current_level}.plan_audit.enabled` is `true`
-- Current harness level is `standard` or `thorough` (default: enabled)
+- `harness.yaml` `levels.{current_level}.plan_audit.enabled` is `true` — this holds at ALL three harness levels (`minimal`, `standard`, `thorough`); `plan_audit_global.always_enabled: true` additionally forces this phase on regardless of level
 - SPEC files were successfully created in Phase 2
 
 Skip conditions:
-- Harness level is `minimal` (fast iteration path, plan_audit.enabled: false)
 - `--no-review` flag is present in $ARGUMENTS
 - spec.md was not created (Phase 2 failed)
+
+Harness-level intensity (plan-audit ALWAYS runs — the level changes rigor, not whether it runs):
+- `minimal`: lightweight, non-blocking 1-iteration audit (`max_iterations: 1`, `require_must_pass: false`) — a FAIL verdict is logged but does not block Phase 2.5
+- `standard`/`thorough`: full retry loop up to 3 iterations, blocking (`max_iterations: 3`, `require_must_pass: true`)
 
 #### Step 2.3.1: Invoke plan-auditor
 
@@ -206,13 +210,14 @@ If all three iterations result in FAIL, do NOT proceed to Phase 2.5 automaticall
 Present the full defect history to the user:
 - Show `.moai/reports/plan-audit/{SPEC-ID}-review-1.md` through `-review-3.md`
 - Summarize blocking defects that persisted across all iterations
+- Preload: `ToolSearch(query: "select:AskUserQuestion")`
 - Use AskUserQuestion with options:
   - Force-accept SPEC with known defects (proceed to Phase 2.5): "Accept SPEC with known defects — I will fix them manually before /moai run"
   - Request manual SPEC revision: "I will manually edit the SPEC — re-run review after my edits"
   - Abort plan workflow: "Abort — start over with a clearer feature description"
 
 Harness configuration reference (harness.yaml):
-- `minimal`: plan_audit.enabled: false (skip this entire phase)
+- `minimal`: plan_audit.enabled: true, max_iterations: 1, require_must_pass: false (lightweight, non-blocking 1-iteration audit — NOT skipped; `plan_audit_global.always_enabled: true` guarantees this phase always runs)
 - `standard`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true
 - `thorough`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true, cross_validate_with_evaluator_active: true
 
@@ -425,6 +430,8 @@ Gate decision:
 - **WARNING**: Minor gaps found (e.g., missing acceptance criteria for edge cases). Present findings and offer fix or continue.
 - **FAIL**: Critical gaps (e.g., no acceptance criteria, security-sensitive scope without security considerations). Must fix before proceeding.
 
+Preload: `ToolSearch(query: "select:AskUserQuestion")`.
+
 Tool: AskUserQuestion (when WARNING or FAIL)
 Options:
 - Fix SPEC issues (Recommended): Return to SPEC editing with specific gaps highlighted
@@ -433,21 +440,25 @@ Options:
 
 ### Decision Point 2: Development Environment Selection
 
+Preload: `ToolSearch(query: "select:AskUserQuestion")`.
+
 Tool: AskUserQuestion (when prompt_always config is true and auto_branch is true)
 
 Options:
-- Create Worktree (recommended for parallel SPEC development)
-- Create Branch (traditional workflow)
+- Create Worktree (Recommended): recommended for parallel SPEC development
+- Create Branch: traditional workflow
 - Use current branch
 
 ### Decision Point 3: Next Action Selection
 
+Preload: `ToolSearch(query: "select:AskUserQuestion")`.
+
 Tool: AskUserQuestion (after SPEC creation completes)
 
 Options:
-- Start Implementation (execute /moai run SPEC-{ID})
+- Start Implementation (Recommended): execute /moai run SPEC-{ID}
 - Modify Plan
-- Add New Feature (create additional SPEC)
+- Add New Feature: create additional SPEC
 
 ### Decision Point 3.5: Execution Mode Selection Gate
 
@@ -465,6 +476,8 @@ Read `.moai/config/sections/llm.yaml` → `llm.team_mode` field:
 Check `$TMUX` environment variable via Bash: `test -n "$TMUX" && echo "tmux" || echo "no-tmux"`
 
 **Step 3: Present options based on detection**
+
+Preload: `ToolSearch(query: "select:AskUserQuestion")`.
 
 When tmux IS available: AskUserQuestion with 3 options (descriptions adapt to active_mode):
 - Option 1 (Recommended): Worktree + {active_mode}

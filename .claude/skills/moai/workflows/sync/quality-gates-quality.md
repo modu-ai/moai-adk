@@ -55,15 +55,18 @@ If any tests fail, use AskUserQuestion:
 
 #### Step 0.5.4: Deep Code Review with Auto-Fix
 
-Agent: sync-auditor subagent (independent quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2)
+Agent: sync-auditor subagent (independent quality scoring), gated by harness level:
 
-Invoke regardless of project language. Execute multi-perspective code review beyond basic TRUST 5 validation:
+- `minimal` harness level (`harness.yaml` `levels.minimal.evaluator: false`): skip the sync-auditor invocation; rely on the orchestrator verification batch (lint + test + coverage) instead
+- `standard` / `thorough` harness level (`evaluator: true`): invoke sync-auditor for independent quality scoring
 
-Review Perspectives:
-- Security: OWASP Top 10 compliance, injection risks, secrets exposure, dependency vulnerabilities
-- Performance: Algorithmic complexity, query efficiency (N+1), memory patterns, concurrency safety
-- Quality: TRUST 5 compliance, error handling completeness, naming conventions, code consistency
-- UX: User flow integrity, error states, accessibility (WCAG/ARIA), breaking changes in public interfaces
+Execute multi-perspective code review beyond basic TRUST 5 validation, using the canonical sync-auditor rubric (`.claude/agents/moai/sync-auditor.md`):
+
+Evaluation Dimensions:
+- Functionality (40%): All SPEC acceptance criteria met
+- Security (25%): OWASP Top 10 compliance, injection risks, secrets exposure, dependency vulnerabilities — HARD THRESHOLD: any Critical/High finding causes overall FAIL regardless of other scores
+- Craft (20%): Test coverage >= 85%, error handling completeness, naming conventions, algorithmic complexity, concurrency safety
+- Consistency (15%): Codebase pattern adherence, code style consistency
 
 Auto-Fix Behavior:
 - If critical issues found: Delegate auto-fix to manager-develop or a per-spawn `Agent(general-purpose)` domain specialist (per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C)
@@ -102,19 +105,19 @@ Purpose: Run a targeted security audit on changed files before PR creation. Catc
 
 #### Step 0.55.1: Security Analysis
 
-Agent: per-spawn `Agent(general-purpose)` security reviewer (security whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 9; OR the Stop hook dependency-manifest audit `.claude/hooks/moai/sync-phase-quality-gate.sh`)
+Agent: per-spawn `Agent(general-purpose)` security reviewer (security whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 9).
 
 Delegate to a per-spawn `Agent(general-purpose)` security reviewer loading the retained `moai-ref-owasp-checklist` / `moai-ref-secops` skills (the documented security replacement path) in inline mode:
 - Only CRITICAL findings block the sync pipeline
 - HIGH findings are reported as warnings in PR description
 - MEDIUM and LOW findings are logged in sync report
 
-**Dependency manifest audit (always runs, regardless of whether manifest files changed in this SPEC)**:
+**Dependency manifest audit (always runs, regardless of whether manifest files changed in this SPEC)** — a SEPARATE, automatic mechanism distinct from the agent-invoked security analysis above:
 
 Audit ALL of the following manifest files present at project root — dependency surface must be checked at every sync to detect drift from transitive vulnerability changes unrelated to this SPEC:
 `go.mod`, `package.json`, `requirements.txt`, `Cargo.toml`, `pyproject.toml`, `Gemfile`, `composer.json`, `mix.exs`, `Package.swift`, `pubspec.yaml`.
 
-When any manifest is detected, run a dependency vulnerability scan of that manifest via the Stop hook dependency-manifest audit (`.claude/hooks/moai/sync-phase-quality-gate.sh`) OR a per-spawn `Agent(general-purpose)` security reviewer.
+When any manifest is detected, the dependency vulnerability scan runs automatically via the Stop hook (`.claude/hooks/moai/sync-phase-quality-gate.sh`) as a mechanical check outside agent delegation. If the Stop hook path is unavailable, a per-spawn `Agent(general-purpose)` security reviewer MAY perform the same scan as a fallback.
 Rationale: a transitive vulnerability may have been introduced by an unrelated dependency update since the last sync, even if no manifest file was modified in the current SPEC.
 
 #### Step 0.55.2: Security Gate Decision

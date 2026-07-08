@@ -87,7 +87,7 @@ This skill emits the following sentinel error keys when mode dispatch fails. A C
 - **`MODE_TEAM_UNAVAILABLE`**: Emitted when an EXPLICIT `--mode team` request cannot be honored because either `workflow.team.enabled: false` in workflow.yaml OR the `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` env var is unset. The error message MUST suggest `--mode autopilot` as the supported fallback. Note: when `team` is auto-selected by harness (not explicit CLI), the system silently downgrades to `autopilot` with an info log instead of raising this error.
 - **`MODE_PIPELINE_ONLY_UTILITY`**: Preserved from the utility-subcommand baseline. Emitted when `--mode pipeline` is passed to this multi-agent subcommand. The error message MUST point the user to the utility subcommand set `{fix, coverage, mx, codemaps, clean}`.
 
-See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the cross-skill mode dispatch contract.
+See [Subcommand Classification matrix](../../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent) for the cross-skill mode dispatch contract.
 
 ## UltraThink Auto-Activation
 
@@ -113,7 +113,7 @@ At Run phase entry, determine the pipeline depth:
    - **minimal**: Skip phases [0, 0.6, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10]. Direct implementation only.
      Note: Phase 0.5 (Plan Audit Gate) is NEVER skipped, not even in minimal harness.
    - **standard**: Execute all phases. sync-auditor in final-pass mode (Phase 2.8a only).
-   - **thorough**: Execute all phases. sync-auditor in per-sprint mode (Phase 2.0 + 2.8a). Sprint contract enabled.
+   - **thorough**: Execute all phases. sync-auditor in per-milestone mode (Phase 2.0 + 2.8a). Milestone contract enabled.
 3. Load SPEC context (token-efficient):
    - If `.moai/specs/SPEC-{ID}/spec-compact.md` exists: Load spec-compact.md (~30% token savings)
    - Otherwise: Load full spec.md (backward compatible)

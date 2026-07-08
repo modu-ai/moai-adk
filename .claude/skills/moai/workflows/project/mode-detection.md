@@ -61,7 +61,7 @@ Enforcement layers (defense in depth):
 [HARD] Auto-detect project type by checking for existing source code files FIRST.
 
 Detection Logic:
-1. Check if source code files exist in the current directory (using Glob for *.py, *.ts, *.js, *.go, *.java, *.rb, *.rs, src/, lib/, app/)
+1. Check if source code files exist in the current directory, using Glob across all 16 MoAI-supported languages (alphabetical): C++ (*.cpp, *.hpp), C# (*.cs), Elixir (*.ex, *.exs), Flutter (*.dart), Go (*.go), Java (*.java), JavaScript (*.js, *.jsx), Kotlin (*.kt, *.kts), PHP (*.php), Python (*.py), R (*.R), Ruby (*.rb), Rust (*.rs), Scala (*.scala), Swift (*.swift), TypeScript (*.ts, *.tsx) — plus common source directories (src/, lib/, app/)
 2. If source code found: Classify as "Existing Project" and present confirmation
 3. If no source code found: Classify as "New Project"
 

@@ -116,7 +116,7 @@ Evaluate the user's input against five dimensions:
 
 Log the score: "Clarity score: {N}/10 — proceeding with {M} interview round(s)."
 
-If score is 1-3: Use a single AskUserQuestion asking for a clearer description, then re-evaluate. Do not enter the full interview loop.
+If score is 1-3: Preload `ToolSearch(query: "select:AskUserQuestion")`, then use a single AskUserQuestion asking for a clearer description, then re-evaluate. Do not enter the full interview loop.
 
 ---
 

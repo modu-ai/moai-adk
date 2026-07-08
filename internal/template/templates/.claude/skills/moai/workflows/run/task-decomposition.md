@@ -159,12 +159,7 @@ Purpose: Run lightweight quality gate checks before the full review phase. This 
 
 Execution: Always runs. Equivalent to `/moai gate --fix` on modified files.
 
-Steps:
-1. Run language-specific lint on modified files
-2. Run formatter check on modified files
-3. Run type-checker on modified files
-4. Auto-fix any fixable issues (--fix behavior)
-5. If unfixable errors remain: Report and block (must fix before review)
+Steps: Run language-specific lint, formatter check, and type-checker as a single-turn multi-Bash parallel batch (per `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution) — one Bash tool call per check within the same assistant turn, each redirecting verbatim output to `/tmp/moai-verify/` and surfacing only exit code + bounded-tail summary in context (the file-redirect contract). Auto-fix any fixable issues (`--fix` behavior) after the batch completes. If unfixable errors remain: Report and block (must fix before review).
 
 Output: gate_report with pass/fail per check category. If all pass, continue to Phase 2.8a.
 
@@ -176,7 +171,7 @@ Output: gate_report with pass/fail per check category. If all pass, continue to 
 Steps:
 1. Invoke sync-auditor with:
    - SPEC acceptance criteria (from spec-compact.md or spec.md)
-   - Sprint contract (from contract.md, if thorough harness)
+   - Milestone contract (from contract.md, if thorough harness)
    - Implementation changeset (modified/created files)
 2. sync-auditor evaluates all 4 dimensions:
    - Functionality (40%): Run tests, verify each acceptance criterion
@@ -266,33 +261,47 @@ The run phase enforces LSP-based quality gates as configured in quality.yaml:
 
 ## Phase 3: Git Operations (Conditional)
 
-Agent: manager-git subagent
-
 Input: Full context from Phases 1, 2, and 2.5.
 
 Execution conditions:
 - quality_status is PASS or WARNING
-- If config git_strategy.automation.auto_branch is true: Create feature branch feature/SPEC-{ID}
-- If auto_branch is false: Commit directly to current branch
 
-Tasks for manager-git:
-- Create feature branch (if auto_branch enabled)
+Route selection (per `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline — Frozen HARD Route A/B): **Route A** (Hybrid Trunk main-direct) applies to Tier S/M SPECs with no explicit `--pr` flag; **Route B** (PR route) applies to Tier L SPECs OR any SPEC with an explicit `--pr` flag.
+
+**Route A — Tier S/M, no `--pr` (default):**
+
+Agent: manager-develop subagent (the same agent that performed Phase 2 — no separate agent spawn for git operations)
+
+Tasks:
+- Stage all relevant implementation and test files
+- Commit directly to `main` with conventional commit messages (no feature branch, no PR)
+- If SPEC metadata contains `issue_number` (non-zero): Include `Fixes #{issue_number}` in commit message footer
+- Push the commit(s) to `main`
+- Verify each commit was created and pushed successfully
+
+**Route B — Tier L OR explicit `--pr`:**
+
+Agent: manager-git subagent
+
+Tasks:
+- Create feature branch `feat/SPEC-{ID}`
 - Stage all relevant implementation and test files
 - Create commits with conventional commit messages
 - If SPEC metadata contains `issue_number` (non-zero): Include `Fixes #{issue_number}` in commit message footer
+- Open a PR per the configured `merge_method` (default `squash`)
 - Verify each commit was created successfully
 
-Commit message format when issue_number exists:
+Commit message format when issue_number exists (both routes):
 ```
 feat(scope): description
 
 SPEC: SPEC-{ID}
 Fixes #{issue_number}
 
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
-Output: branch_name, commits array (sha and message), files_staged count, status, issue_number (from SPEC metadata).
+Output: branch_name (Route B only; n/a on Route A), commits array (sha and message), files_staged count, status, issue_number (from SPEC metadata).
 
 ## Phase 4: Completion and Guidance
 

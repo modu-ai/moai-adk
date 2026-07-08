@@ -37,15 +37,15 @@ Apply existing --team/--solo flag logic in Team Mode Routing below.
 When --team flag is provided or auto-selected — Mode 3 (`agent-team`) of the Phase 0.95 catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A), resolved through the §C.1 capability gate on both paths — the run phase MUST switch to team orchestration:
 
 1. Verify prerequisites: workflow.team.enabled == true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var is set
-2. If prerequisites met: Read ${CLAUDE_SKILL_DIR}/team/run.md and execute the team workflow (spawn backend-dev + frontend-dev + tester + quality via Agent(name=...) — the team forms implicitly on first spawn)
+2. If prerequisites met: Read ${CLAUDE_SKILL_DIR}/team/run.md and execute the team workflow (spawn implementer + tester + reviewer via Agent(name=...) — the team forms implicitly on first spawn)
 3. If prerequisites NOT met: Warn user then fallback to standard sub-agent mode
 
-Team composition: backend-dev (inherit) + frontend-dev (inherit) + tester (inherit) + quality (inherit, read-only)
+Team composition: implementer (inherit) + tester (inherit) + reviewer (inherit, read-only)
 
 ## Worktree Isolation [HARD]
 
-- [SHOULD] When spawning implementation teammates (backend-dev, frontend-dev, tester) via `Agent(isolation: "worktree")`, Claude Code runtime decides whether to materialize an L1 worktree. MoAI orchestrator does NOT mandate isolation (per the worktree-autonomous user policy).
-- [SHOULD] Read-only teammates (quality) typically do not benefit from `isolation: "worktree"`; omit the flag unless a specific reason applies. `permissionMode: plan` is sufficient.
+- [SHOULD] When spawning implementation teammates (implementer, tester) via `Agent(isolation: "worktree")`, Claude Code runtime decides whether to materialize an L1 worktree. MoAI orchestrator does NOT mandate isolation (per the worktree-autonomous user policy).
+- [SHOULD] Read-only teammates (reviewer) typically do not benefit from `isolation: "worktree"`; omit the flag unless a specific reason applies. `permissionMode: plan` is sufficient.
 - [HARD] All worktree path rules from context-loading.md "Worktree Path Rules [HARD] (All Modes)" section apply to team mode as well
 - After team shutdown, run `git worktree prune` to clean up stale worktree references
 

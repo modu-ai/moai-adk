@@ -223,7 +223,7 @@ Mode Selection Rules:
 | Single endpoint / function | SPEC scope ≤ 5 files, single domain | **Focused Mode** (Mode 5 envelope) | manager-develop (domain context injected per archived-agent-rejection.md §C) |
 | Feature across 1 domain | SPEC scope 5-10 files, single domain | **Standard Mode** (Mode 5 envelope) | manager-spec (planning) + manager-develop + sync-auditor |
 | Multi-domain feature | SPEC scope ≥ 10 files OR ≥ 3 domains | **Full Pipeline** (Mode 5 full envelope) | manager-spec → manager-develop (per-spawn `Agent(general-purpose)` domain specialists) → sync-auditor → manager-docs |
-| Large cross-cutting change | complexity score at/above the auto-select threshold (`orchestration-mode-selection.md` §B.1) | **Team Mode** (Mode 3 via the §C.1 capability gate) | 3-4 parallel teammates |
+| Large cross-cutting change | complexity score at/above the auto-select threshold (`orchestration-mode-selection.md` §B.1) | **Team Mode** (Mode 3 via the §C.1 capability gate) | 3-5 parallel teammates |
 
 Team-row gate note: the Team Mode row resolves through the SAME §C.1 capability gate on BOTH paths — the flag-free auto-select path and a forced `--team` flag both pass the gate; the flag never substitutes for the gate, and the gate never requires the flag.
 
@@ -232,7 +232,7 @@ Detection Steps:
 2. Identify domains touched (backend, frontend, database, infra, docs)
 3. Assess complexity from SPEC priority and acceptance criteria count
 4. Select mode based on the table above
-5. Log selected mode: "Scale-based mode: {mode} (files: {N}, domains: {N})"
+5. Write the `progress.md` § Phase 0.95 Mode Selection log entry per `orchestration-mode-selection.md` §D HARD logging contract BEFORE spawning the first run-phase `Agent()` call — the Input parameters block (tier, scope, domain count, file language mix, concurrency benefit, Agent Teams prereqs status), the mode evaluation table across all 6 catalog modes, a single-line Decision (e.g. "Scale-based mode: {mode} (files: {N}, domains: {N})"), a short Justification paragraph, and — when the selection resolves to the Team Mode row (Mode 3) — the Implementation Kickoff Approval-passed + preferences-collected confirmation
 
 This phase auto-selects and does NOT require user approval. The user can override with --team or --solo flags.
 
@@ -399,7 +399,7 @@ Before Phase 2, determine the development methodology by reading `.moai/config/s
 - Route all tasks to manager-develop subagent
 - Use RED-GREEN-REFACTOR cycle (see @spec-workflow.md for details)
 
-## Phase 2.0: Sprint Contract Negotiation
+## Phase 2.0: Milestone Contract Negotiation
 
 **Condition**: Execute only when harness level = thorough.
 **Skip**: When harness level = minimal or standard.

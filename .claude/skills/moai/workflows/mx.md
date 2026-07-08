@@ -21,7 +21,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["mx", "annotation", "code context", "tag scan", "mx tag"]
-  agents: ["manager-develop"]
+  agents: ["Explore", "general-purpose"]
   phases: ["mx", "sync"]
 ---
 # Workflow: MX Tag Scan and Annotation
@@ -81,6 +81,7 @@ See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.m
 | P2 | goroutine/async, complexity >= 15 | `@MX:WARN` |
 | P3 | magic constant, missing docstring | `@MX:NOTE` |
 | P4 | missing test | `@MX:TODO` |
+| P5 | deliberate working simplification (with `@MX:CEILING` + `@MX:UPGRADE` sub-lines) | `@MX:DEBT` |
 
 ## Workflow Phases
 
@@ -233,6 +234,26 @@ During DDD ANALYZE phase:
 # Lower threshold for more coverage
 /moai mx --all --threshold 2
 ```
+
+## Agent Chain Summary
+
+- Phase 0: Explore subagent (codebase discovery, language detection, project context loading)
+- Pass 1: Explore subagent or a per-spawn `Agent(general-purpose)` agent with backend scope (full file scan, priority queue generation)
+- Pass 2: a per-spawn `Agent(general-purpose)` agent with backend scope (selective deep read, tag description generation)
+- Pass 3: a per-spawn `Agent(general-purpose)` agent with backend scope (batch edit, tag insertion)
+
+## Team Mode
+
+When `--team` flag is provided, the scan parallelizes by language: each teammate scans and tags a distinct language subset concurrently.
+
+Team composition: one teammate per detected language, up to the Anthropic-recommended 3-5 concurrent ceiling, spawned via `Agent(subagent_type: "general-purpose")` with backend scope.
+
+Fallback: If team mode is unavailable, the standard sequential 3-Pass scan continues.
+
+Team Prerequisites:
+- workflow.team.enabled: true in .moai/config/sections/workflow.yaml
+- CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in environment
+- If prerequisites not met: Falls back to standard sequential 3-Pass scan
 
 ---
 

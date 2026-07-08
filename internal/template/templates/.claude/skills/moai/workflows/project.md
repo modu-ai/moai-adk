@@ -55,8 +55,8 @@ This workflow is also triggered automatically when project documentation does no
 | Phase 3.7: Dev Methodology Config | `project/doc-generation.md` | Auto-set development_mode in quality.yaml |
 | Phase 4.1a: DB Detection | `project/doc-generation.md` | Grep/Glob DB keyword detection, db-detection.json |
 | Phase 4: Completion | `project/doc-generation.md` | Summary report + 3-branch next-steps AskUserQuestion |
-| Phase 5: Socratic Interview | `project/meta-harness.md` | 16Q/4-round harness interview (in-memory buffer) |
-| Phase 6: meta-harness Invocation | `project/meta-harness.md` | Skill("moai-meta-harness") + FROZEN guard |
+| Phase 5/6: Harness Generation Entry | `project/meta-harness.md` | Redirect to the v4 harness Builder (Context-First Discovery + orchestrator-direct 4-phase Builder) |
+| Phase 7: 5-Layer Activation | `project/meta-harness.md` | Install CLAUDE.md marker + main.md router, post-generation smoke gate |
 
 ---
 
@@ -78,10 +78,10 @@ This workflow is also triggered automatically when project documentation does no
                                              ├─ Phase 3.7: Dev mode config
                                              ├─ Phase 4.1a: DB detection
                                              └─ Phase 4: Completion
-                                                  └─ [optional] Phase 5+6
+                                                  └─ [optional] Phase 5+6+7
                                                        └─ meta-harness.md
-                                                            ├─ Phase 5: Socratic (4 rounds)
-                                                            └─ Phase 6: meta-harness call
+                                                            ├─ Phase 5/6: v4 Builder entry + generation
+                                                            └─ Phase 7: 5-Layer Activation
 ```
 
 ---
@@ -96,4 +96,4 @@ For convenience, the DB engine categories are: Relational/SQL (PostgreSQL, MySQL
 
 Version: 2.5.0
 Last Updated: 2026-02-21
-SPEC: SPEC-PROJECT-DB-HINT-001, the project-harness generation policy, the workflow-split policy
+Provenance: the DB-detection hint policy, the project-harness generation policy, the workflow-split policy

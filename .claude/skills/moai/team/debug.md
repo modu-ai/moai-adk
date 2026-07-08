@@ -51,16 +51,44 @@ Flow: Spawn teammates (implicit team) -> Hypothesis Assignment -> Parallel Inves
 
 ## Phase 1: Spawn Investigation Team
 
-Use the investigation team pattern:
+Spawn 3 teammates using `subagent_type: "general-purpose"` with `model: "haiku"` (fast, cheap, read-only investigation) and `mode: "plan"`. All spawns MUST use Agent() with the `name` parameter — the team forms implicitly on the first spawn (no setup step). Launch all three in a single response for parallel execution:
 
-Teammate 1 - hypothesis-1 (general-purpose agent, haiku model):
-- Prompt: "Investigate whether the issue is caused by {hypothesis_1}. Look for evidence supporting or contradicting this theory. Report your findings with confidence level."
+```
+Agent(
+  subagent_type: "general-purpose",
+  name: "hypothesis-1",
+  model: "haiku",
+  mode: "plan",
+  prompt: "Investigate whether the issue is caused by {hypothesis_1}.
+    Look for evidence supporting or contradicting this theory.
+    Search the codebase, logs, tests, and configuration for evidence.
+    When done, report your findings with a confidence level (high/medium/low) to the team lead via SendMessage."
+)
 
-Teammate 2 - hypothesis-2 (general-purpose agent, haiku model):
-- Prompt: "Investigate whether the issue is caused by {hypothesis_2}. Look for evidence supporting or contradicting this theory. Report your findings with confidence level."
+Agent(
+  subagent_type: "general-purpose",
+  name: "hypothesis-2",
+  model: "haiku",
+  mode: "plan",
+  prompt: "Investigate whether the issue is caused by {hypothesis_2}.
+    Look for evidence supporting or contradicting this theory.
+    Search the codebase, logs, tests, and configuration for evidence.
+    When done, report your findings with a confidence level (high/medium/low) to the team lead via SendMessage."
+)
 
-Teammate 3 - hypothesis-3 (general-purpose agent, haiku model):
-- Prompt: "Investigate whether the issue is caused by {hypothesis_3}. Look for evidence supporting or contradicting this theory. Report your findings with confidence level."
+Agent(
+  subagent_type: "general-purpose",
+  name: "hypothesis-3",
+  model: "haiku",
+  mode: "plan",
+  prompt: "Investigate whether the issue is caused by {hypothesis_3}.
+    Look for evidence supporting or contradicting this theory.
+    Search the codebase, logs, tests, and configuration for evidence.
+    When done, report your findings with a confidence level (high/medium/low) to the team lead via SendMessage."
+)
+```
+
+All three teammates run in parallel.
 
 ## Phase 2: Parallel Investigation
 

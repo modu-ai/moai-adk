@@ -55,7 +55,7 @@ Question: What type of feedback would you like to submit?
 
 Options:
 
-- Bug Report: Technical issues or errors encountered
+- Bug Report (Recommended): Technical issues or errors encountered
 - Feature Request: Suggestions for improvements or new features
 - Question: Clarifications or help needed
 
@@ -162,7 +162,7 @@ Display in user's conversation_language:
 
 Use AskUserQuestion after successful submission:
 
-- Continue Development: Return to current development workflow
+- Continue Development (Recommended): Return to current development workflow
 - Submit Additional Feedback: Report another issue or suggestion
 - View Issue: Open created GitHub issue in browser
 

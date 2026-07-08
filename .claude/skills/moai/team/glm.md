@@ -44,7 +44,8 @@ User runs: moai cg             (configure CG mode)
     │   → Leader (this pane) uses Claude API
     ├── Injects GLM env into tmux session env
     │   → New panes inherit GLM env → Z.AI API
-    ├── Sets CLAUDE_CODE_TEAMMATE_DISPLAY=tmux
+    ├── Sets teammateMode: "tmux" in settings.local.json (deletes the legacy
+    │   CLAUDE_CODE_TEAMMATE_DISPLAY env var if present)
     ├── Sets CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
     └── Saves team_mode: cg to llm.yaml
 
@@ -75,7 +76,7 @@ The key mechanism is **tmux session-level environment variables**:
 1. `tmux set-environment` injects GLM vars at the session level
 2. The CURRENT pane is NOT affected (leader stays on Claude)
 3. Only NEW panes inherit session-level env vars
-4. Agent Teams with `CLAUDE_CODE_TEAMMATE_DISPLAY=tmux` spawns teammates in new panes
+4. Agent Teams, with `teammateMode: "tmux"` set in `settings.local.json`, spawns teammates in new panes
 5. Result: Leader = Claude API, Teammates = Z.AI GLM API
 
 This is NOT headless mode. Teammates run as full interactive Claude Code
@@ -107,6 +108,8 @@ Detection steps:
 2. If `team_mode == "cg"`: Activate CG mode (this skill)
 3. If `team_mode == "glm"`: All-GLM mode (no hybrid)
 4. If `team_mode == ""`: Fall back to sub-agent mode
+
+**Disambiguation — two evaluation points for the same `team_mode` field**: this table is the earlier, global gate — it answers whether team infrastructure activates at all, and here `team_mode: ""` means plain sub-agent mode (no team file loads). Contrast with `team/run.md`'s Mode Selection table, which is read only AFTER team mode has already been selected (via `--team` flag or Phase 0.95 auto-select); there, empty `team_mode` means Agent Teams (which team execution flavor), not sub-agent fallback. Both tables read the SAME `.moai/config/sections/llm.yaml` `team_mode` field at different points in the decision tree — this is a separate field from the `teammateMode` setting in `.claude/settings.local.json` (tmux pane-display mode; different location, different value set, different purpose — see `moai cg`'s mechanism above).
 
 ## Prerequisites
 
@@ -148,6 +151,7 @@ Detection steps:
 | ANTHROPIC_DEFAULT_OPUS_MODEL | glm-5.2 | Opus model override |
 | ANTHROPIC_DEFAULT_SONNET_MODEL | glm-5.2 | Sonnet model override |
 | ANTHROPIC_DEFAULT_HAIKU_MODEL | glm-5.2 | Haiku model override |
+| ANTHROPIC_DEFAULT_FABLE_MODEL | glm-5.2 | Fable model override |
 
 These are set via `tmux set-environment` (session-level, not global).
 
@@ -156,7 +160,7 @@ These are set via `tmux set-environment` (session-level, not global).
 CG mode uses standard Agent Teams with tmux display:
 
 - `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` enables Agent Teams
-- `CLAUDE_CODE_TEAMMATE_DISPLAY=tmux` makes teammates spawn in tmux panes
+- `teammateMode: "tmux"` in `settings.local.json` makes teammates spawn in tmux panes
 - Each teammate gets its own pane → inherits GLM env → uses Z.AI API
 - Leader stays in the original pane → no GLM env → uses Claude API
 
@@ -168,7 +172,7 @@ Agent model mapping in CG mode:
 | implementer | New pane | Z.AI | glm-5.2 |
 | tester | New pane | Z.AI | glm-5.2 |
 | designer | New pane | Z.AI | glm-5.2 |
-| researcher / analyst (read-only) | New pane | Z.AI | glm-5.2 |
+| researcher / analyst / architect (read-only) | New pane | Z.AI | glm-5.2 |
 | reviewer (read-only) | New pane | Z.AI | glm-5.2 |
 
 ## Error Recovery

@@ -119,6 +119,8 @@ Pre-execution commands: git status, git diff, git branch, git log, find .moai/sp
 
 ## Phase Sequence
 
+> **Phase-number namespace note**: The Phase N / Phase N.M labels below (Phase 0, Phase 0.08, Phase 0.1, Phase 0.5, Phase 0.55, Phase 0.6, Phase 0.7, Phase 1, Phase 2, Phase 3, Phase 4) are local to the `/moai sync` workflow only. They are a distinct numbering namespace from `harness.yaml` `levels.<level>.skip_phases`, which governs which `/moai run` phases (task-decomposition.md / phase-execution.md numbering) are skipped at a given harness level. A sync-phase number and a run-phase `skip_phases` entry sharing the same numeral (e.g. both using `0.5`) do NOT refer to the same phase.
+
 ### Phase 0: Pre-Sync Quality Gate
 
 <!-- moai:evolvable-start id="gate-sync-1" -->
@@ -149,8 +151,6 @@ Output: gate_report with pass/fail per check category.
 ### Phase 0.08: DB Schema Doc Check (Conditional)
 
 Purpose: Refresh `.moai/project/db/` derived documents (schema.md, erd.mmd, migrations.md) when the sync scope includes migration file changes. Replaces the per-event PostToolUse hook with a batch refresh at milestone boundary — eliminates the ~30-60ms/edit overhead the hook used to incur.
-
-Source SPEC: SPEC-DB-SYNC-RELOC-001.
 
 #### Step 0.08.1: Activation Gate
 

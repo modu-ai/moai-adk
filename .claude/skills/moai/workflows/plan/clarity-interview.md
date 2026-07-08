@@ -32,11 +32,10 @@ Purpose: Gather missing context through a structured, topic-focused interview be
 For each round:
 
 1. Formulate 3 recommended options relevant to the current topic and the user's request context.
-2. Present via AskUserQuestion with exactly 4 options:
+2. Preload `ToolSearch(query: "select:AskUserQuestion")`, then present via AskUserQuestion with 3 explicit options (Claude Code auto-appends a 4th "Other" option for free-form answers — do not add a manual duplicate):
    - Option 1: [Recommended based on context] (Recommended): [Detailed description of this answer]
    - Option 2: [Alternative]: [Description]
    - Option 3: [Alternative]: [Description]
-   - Option 4: Type your own answer: Enter a custom response if none of the above match
 3. Record the user's answer.
 4. Re-evaluate clarity score after each round.
 5. If updated clarity score drops to 3 or below: end the loop early (user's answers added no useful information).
@@ -132,7 +131,7 @@ When to skip:
 - User explicitly requests "skip design" or uses --prototype flag
 - Backend-only, infrastructure, or documentation SPECs
 
-Agent: per-spawn `Agent(general-purpose)` frontend specialist (with moai-design-craft skill; frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8)
+Agent: per-spawn `Agent(general-purpose)` frontend specialist (frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8)
 
 Tasks:
 1. Check if `.moai/design/system.md` exists and has content
@@ -153,7 +152,7 @@ Output: `.moai/specs/SPEC-{ID}/design-direction.md` containing:
 
 Design direction guard: [HARD] During Phase 1.25, the agent MUST NOT write implementation code. Focus exclusively on design exploration and direction definition.
 
-After Phase 1.25: Offer to persist design decisions to `.moai/design/system.md` if it was newly created or updated. Use AskUserQuestion: "Save design direction to project-level design memory (.moai/design/system.md)?"
+After Phase 1.25: Offer to persist design decisions to `.moai/design/system.md` if it was newly created or updated. Preload `ToolSearch(query: "select:AskUserQuestion")`, then use AskUserQuestion: "Save design direction to project-level design memory (.moai/design/system.md)?"
 
 ### Phase 1B: SPEC Planning (Required)
 
@@ -189,6 +188,8 @@ Implementation guard: [HARD] During Phases 0.5, 1A, and 1B, all agent prompts MU
 - [ ] No open questions remain in the SPEC
 <!-- moai:evolvable-end -->
 
+Preload: `ToolSearch(query: "select:AskUserQuestion")`.
+
 Tool: AskUserQuestion (at orchestrator level only)
 
 Options:
@@ -209,7 +210,7 @@ Purpose: Allow users to iteratively refine the plan through inline notes before 
 Process:
 1. User reviews plan.md (and research.md if available) in their editor
 2. User adds inline notes directly into the document (e.g., "NOTE: use drizzle:generate for migrations, not raw SQL")
-3. User signals completion via AskUserQuestion
+3. User signals completion via AskUserQuestion (preload `ToolSearch(query: "select:AskUserQuestion")` first)
 4. MoAI delegates to manager-spec subagent: "Address all inline notes in the plan document and update it accordingly. DO NOT implement any code."
 5. manager-spec updates plan.md, removing addressed notes and incorporating feedback
 6. MoAI presents updated plan to user for another review cycle
