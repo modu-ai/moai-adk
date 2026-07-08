@@ -39,7 +39,7 @@ Out-of-scope pre-existing trunk failures (NOT introduced by this SPEC; attributi
 
 Sync-phase orchestrator-direct (manager-docs CHANGELOG-thrashing fallback per `feedback_glm_orchestrator_direct_sync_mx`). 3-phase close per Status Transition Ownership Matrix: spec/plan/acceptance/progress.md frontmatter `status: draft → completed` atomic on the single sync commit + `updated: 2026-07-08` + this §E.4 signal + CHANGELOG `### Fixed` entry. Specific-path commit (this SPEC's change set only — pre-existing dirty statusline/version/PERF-001 files excluded per `feedback_shared_checkout_concurrent_commit_race`). plan-auditor iter-2 PASS 0.90 (Tier L threshold 0.85). `sync_commit_sha` backfilled via follow-up chore commit per established convention.
 
-sync_commit_sha: _<backfill via follow-up chore commit>_
+sync_commit_sha: d0d953894
 
 ## §F Phase 0.95 Mode Selection
 
