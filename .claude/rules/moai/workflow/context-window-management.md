@@ -25,15 +25,22 @@ The orchestrator CONSUMES Claude Code's graduated-compaction layers; it does NOT
 | Model class | Window | Handoff threshold | Absolute ceiling |
 |-------------|--------|-------------------|------------------|
 | Opus 4.8 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
+| GLM-5.2 via `moai glm`/`moai cg` (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Opus/Fable (256K) | 256,000 tokens | **90%** | ~230,000 tokens |
 | Sonnet/Opus standard (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 | Haiku (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 
 The model-specific threshold is the operational ceiling — beyond it, plan for a `/clear` before the next non-trivial action. Both this rule and `session-handoff.md` Trigger #1 read from this same table.
 
+### GLM-5.2 context window (Issue #653)
+
+GLM-5.2 (z.ai, served via `moai glm` / `moai cg` GLM panes) is a genuine 1M-context model; operate it at the **50% (~500K)** handoff threshold, the same class as Opus 4.8 (1M). Do NOT treat a `moai glm` session as a 200K session.
+
+Caveat (Issue #653): Claude Code reports `context_window_size` based on the Claude slot (Opus=1M, Sonnet/Haiku=200K) regardless of provider, so raw telemetry (`effectiveWindow`) may show ~180K under GLM. This is an upstream misreport. MoAI corrects it: the statusline gauge uses `MOAI_STATUSLINE_CONTEXT_SIZE` and Claude Code auto-compact uses `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, both resolved from the `glmContextWindows` table in `internal/statusline/memory.go` (glm-5.2 → 1,000,000) or the `llm.glm.context_windows` override. Trust the MoAI statusline CW%, not raw `effectiveWindow`.
+
 ## User Responsibilities
 
-User monitors via Claude Code statusline / `/cost` and intervenes at threshold (50% on 1M, 90% on 200K).
+User monitors via Claude Code statusline / `/cost` and intervenes at threshold (50% on 1M / GLM-5.2, 90% on 200K/256K).
 
 [ZONE:Evolvable] [HARD] When usage crosses the model-specific threshold:
 1. Save in-flight state to `.moai/specs/<SPEC-ID>/progress.md` if not already saved (orchestrator does this automatically)
@@ -49,7 +56,7 @@ User monitors via Claude Code statusline / `/cost` and intervenes at threshold (
 
 The orchestrator MUST proactively recognize the model-specific boundary and prepare the user for a clean handoff.
 
-[ZONE:Evolvable] [HARD] Pre-clear announcement: When the orchestrator detects accumulated context (input + output) approaching the model-specific threshold (50% on 1M, 90% on 200K), it MUST:
+[ZONE:Evolvable] [HARD] Pre-clear announcement: When the orchestrator detects accumulated context (input + output) approaching the model-specific threshold (50% on 1M / GLM-5.2, 90% on 200K/256K), it MUST:
 1. Stop initiating new large tool calls or `Agent()` delegations
 2. Persist all in-flight progress to `.moai/specs/<SPEC-ID>/progress.md`
 3. Emit a structured "resume message" the user can paste verbatim after `/clear`
