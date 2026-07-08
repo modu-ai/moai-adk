@@ -103,6 +103,7 @@ m1_to_mN_commit_strategy: "single M1 commit (Tier S doctrine-only) + push origin
 phase: sync
 signal: audit-ready
 sync_complete_at: 2026-07-08
+sync_commit_sha: "cdaea2fbb"
 sync_status: complete
 sync_auditor_verdict: PASS 0.96
 sync_auditor_dimensions:
