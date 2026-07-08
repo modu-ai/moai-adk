@@ -1,7 +1,7 @@
 ---
 id: SPEC-HANDOFF-GOALFIX-001
 title: "Acceptance criteria — retire inert '# /goal' line, two-step post-paste handoff"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-08
 updated: 2026-07-08
@@ -55,14 +55,14 @@ Pre-verified: all 8 baseline occurrences are `/goal`-context (no collateral mean
 | AC-GF-003b | `grep -c '^/goal <completion-condition>$' SH` (block skeleton, no `#` prefix) | 0 | ≥1 |
 | AC-GF-003c | `grep -c 'standalone message' SH` | 0 | ≥2 (instruction spec + anti-pattern/matrix) |
 | AC-GF-003d | Structural read: the skeleton's `/goal` line sits between its own `✂────` cut-line markers, OUTSIDE and AFTER the main block; instruction line sits outside the markers | n/a | PASS by inspection, cited in §E.2 evidence |
-| AC-GF-003e | Emission condition text preserved: `grep -c 'machine-verifiable end-state' SH` | ≥1 (pre-existing) | ≥1 (still present, now bound to the follow-up block) |
+| AC-GF-003e | Emission condition text preserved: `grep -c 'machine-verifiable end-state' SH` | 3 (re-measured 2026-07-08) | ≥3 (not reduced; now additionally bound to the follow-up block) |
 
 ### AC-GF-004 — Resumed-session reminder obligation (positive space, REQ-GF-003)
 
 | Sub | Command | Baseline | Target |
 |-----|---------|----------|--------|
-| AC-GF-004a | `grep -ci 'remind' SH` | 0 | ≥1 |
-| AC-GF-004b | `grep -ci 'remind' GD` | 0 | ≥1 |
+| AC-GF-004a | `grep -c 'reminder obligation' SH` | 0 (verified 2026-07-08; NOTE — `grep -ci 'remind'` is UNUSABLE here: its SH baseline is 3, since `remind` is a substring of `reminder` in the pre-existing "ceremonial reminder" prose. Plan-audit D1 fix: distinguishing multi-word token, guaranteed non-vacuous by REQ-GF-003's literal-token mandate) | ≥1 |
+| AC-GF-004b | `grep -ci 'remind' GD` | 0 (verified genuine — no substring collision on GD) | ≥1 |
 | AC-GF-004c | Reminder prose specifies: natural-language status guidance, NOT AskUserQuestion; timing = post-Implementation-Kickoff-Approval; rationale = model cannot invoke `/goal` | n/a | PASS by inspection on both surfaces |
 
 ### AC-GF-005 — Paste-time activation matrix (positive space, REQ-GF-004)
@@ -78,7 +78,7 @@ Pre-verified: all 8 baseline occurrences are `/goal`-context (no collateral mean
 
 | Sub | Command | Baseline | Target |
 |-----|---------|----------|--------|
-| AC-GF-006a | `grep -o 'Block 1 \`/goal\` line' GD \| wc -l` | 2 | 0 |
+| AC-GF-006a | ``grep -c 'Block 1 `/goal` line' GD`` (plain backticks inside single quotes — GNU grep treats `\`` as a start-of-buffer anchor, so backslash-escaped backticks false-pass on Linux; line-count form suffices since the target is 0) | 1 line (carrying 2 in-line occurrences; darwin re-verified 2026-07-08) | 0 |
 | AC-GF-006b | `grep -c 'follow-up block' GD` | 0 | ≥1 |
 | AC-GF-006c | Kickoff-Approval invariant retained: `grep -c 'Implementation Kickoff Approval' GD` | ≥1 (pre-existing) | ≥ baseline (not reduced) |
 
@@ -86,7 +86,7 @@ Pre-verified: all 8 baseline occurrences are `/goal`-context (no collateral mean
 
 | Sub | Command | Baseline | Target |
 |-----|---------|----------|--------|
-| AC-GF-007a | `grep -c 'bare \`ultracode\` keyword or fan-out steering phrase' SH` (and T/SH) | 0 | 1 each (in the rewritten line-order invariant) |
+| AC-GF-007a | ``grep -c 'bare `ultracode` keyword or fan-out steering phrase' SH`` (and T/SH; plain backticks inside single quotes per plan-audit D3) | 0 (darwin re-verified 2026-07-08 with the corrected pattern) | 1 each (in the rewritten line-order invariant) |
 
 ### AC-GF-008 — Localization row (REQ-GF-008)
 
@@ -124,9 +124,17 @@ Pre-verified: all 8 baseline occurrences are `/goal`-context (no collateral mean
 
 | Sub | Command | Baseline | Target |
 |-----|---------|----------|--------|
-| AC-GF-012a | `grep -c 'Omitting the \`/goal\` re-set line' SH` | 1 | 0 |
-| AC-GF-012b | `grep -c 'Omitting the post-paste \`/goal\` follow-up block' SH` | 0 | 1 |
+| AC-GF-012a | ``grep -c 'Omitting the `/goal` re-set line' SH`` (plain backticks inside single quotes per plan-audit D3) | 1 (darwin re-verified 2026-07-08 with the corrected pattern) | 0 |
+| AC-GF-012b | ``grep -c 'Omitting the post-paste `/goal` follow-up block' SH`` (plain backticks inside single quotes per plan-audit D3) | 0 (darwin re-verified 2026-07-08 with the corrected pattern) | 1 |
 | AC-GF-012c | New in-body-slash anti-pattern present: `grep -c 'input start' SH` | 0 | ≥1 (in the new anti-pattern and/or matrix) |
+
+### AC-GF-013 — Goal-first bootstrap variant (REQ-GF-009)
+
+| Sub | Command | Baseline | Target |
+|-----|---------|----------|--------|
+| AC-GF-013a | `grep -c 'goal-first bootstrap' SH` (and T/SH) | 0 (verified 2026-07-08; case-insensitive sweeps `goal-first` = 0 and `bootstrap` = 0 confirm no substring collision) | ≥1 each |
+| AC-GF-013b | `grep -c 'model discretion' SH` (and T/SH) | 0 (verified 2026-07-08) | ≥1 each |
+| AC-GF-013c | Variant prose states all five invariant/caveat clauses: two-step remains DEFAULT; effort keywords (`ultrathink`/`ultracode`) inside a slash-command argument NOT documented to fire (session may run at default effort); precondition verification shifts to model discretion; condition compact (one measurable end state); Implementation Kickoff Approval unaffected + `/goal` token locale-verbatim | n/a | PASS by inspection |
 
 ## §D.1 Given-When-Then Scenarios
 
@@ -144,7 +152,7 @@ Pre-verified: all 8 baseline occurrences are `/goal`-context (no collateral mean
 
 ### Scenario 3 — resumed session reminder
 
-- **Given** a resumed session whose pasted resume was accompanied by a follow-up block,
+- **Given** a resumed session whose handoff memory entry records a post-paste `/goal` follow-up block (persisted verbatim per § Auto-Memory Integration — the pasted main block itself carries no `/goal` reference; alternatively the orchestrator re-derives the emission condition from the resumed SPEC's run-phase + machine-verifiable end-state),
 - **When** the orchestrator processes the paste and later passes Implementation Kickoff Approval,
 - **Then** the orchestrator issues a natural-language reminder (NOT AskUserQuestion) that the user must send the `/goal` line as a standalone message now, because the model cannot set the goal itself.
 
@@ -156,7 +164,7 @@ Pre-verified: all 8 baseline occurrences are `/goal`-context (no collateral mean
 
 ## §D.2 Quality Gates / Definition of Done
 
-- All AC-GF-001..012 sub-items PASS with verbatim command outputs recorded (verification-claim-integrity 5-section format; no summarized evidence).
+- All AC-GF-001..013 sub-items PASS with verbatim command outputs recorded (verification-claim-integrity 5-section format; no summarized evidence).
 - Single-turn parallel verification batch (greps + diffs + build) per agent-common-protocol § Parallel Execution.
 - Commits pathspec-limited; working-tree unrelated files untouched.
 - LSP/lint: no Go changes expected → `golangci-lint` delta 0; markdown surfaces not lint-gated.

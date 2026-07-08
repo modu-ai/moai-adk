@@ -1,7 +1,7 @@
 ---
 id: SPEC-HANDOFF-GOALFIX-001
 title: "Implementation plan — retire inert '# /goal' line, two-step post-paste handoff"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-08
 updated: 2026-07-08
@@ -32,6 +32,9 @@ Doctrine-only defect fix across 6 markdown surfaces (3 live + 3 template mirrors
 | `code.claude.com/docs/en/interactive-mode` | 0 | — | 0 |
 | "bare `ultracode` keyword or fan-out steering phrase" | 0 | 0 | n/a |
 | Pre-emit item count | 10 (SSOT list) | 12 (render list) | n/a |
+| `reminder obligation` (D1 distinguishing token; NOT bare `remind` — see KI-6) | 0 | n/a | 0 |
+| `goal-first bootstrap` / `model discretion` (REQ-GF-009 tokens) | 0 / 0 | n/a | 0 / 0 |
+| `machine-verifiable end-state` (AC-GF-003e floor) | 3 | n/a | n/a |
 
 Anchor locations at measurement time (line numbers indicative only — anchor by content token): skeleton `# /goal` line (session-handoff ~L34, moai.md ~L686), line-order invariant (~L79), `mode:` bullet cross-ref (~L80), directive binding (~L92), `/goal` re-set bullet (~L98), Example (~L117), Output Surface (~L144), anti-pattern (~L164), pre-emit item 9 (~L294), sentinel (~L347); goal-directive resume-pairing bullet (~L48 under § MoAI Integration Notes ~L45); moai.md pre-emit paragraph (~L725).
 
@@ -44,6 +47,8 @@ Anchor locations at measurement time (line numbers indicative only — anchor by
 | KI-3 | Template neutrality violation (SPEC ID leaking into mirrored prose) | Rewritten prose cites official URLs only; AC-GF-011 neutrality grep; CI guard backstop |
 | KI-4 | Vacuous-AC hazard: positive-space greps matching the AC's own canonical literal quoted elsewhere | Negative-space checks target 0 from a measured non-zero baseline; positive-space heading tokens (`## Post-Paste /goal Follow-up Block`, `## Paste-Time Activation Matrix`) do not pre-exist anywhere in the repo doctrine surfaces |
 | KI-5 | Over-deletion of `re-set` where the word might be needed for other mechanisms | Verified: all 8 `re-set` occurrences across the 3 live surfaces are `/goal`-context; rewritten prose uses "re-arm"/"re-issue"/"follow-up block" |
+| KI-6 | Substring-collision false baseline in positive-space greps (plan-audit D1: `grep -ci 'remind'` had SH baseline 3 — `remind` ⊂ `reminder` in the pre-existing "ceremonial reminder" prose — so a ≥1 target passed pre-edit, i.e. vacuous) | All detection greps use distinguishing multi-word tokens verified to baseline 0 (`reminder obligation`, `goal-first bootstrap`, `model discretion`); single-word substring greps prohibited for positive-space ACs |
+| KI-7 | Backslash-escaped backticks in grep patterns (plan-audit D3: GNU grep treats `\`` as start-of-buffer anchor → false-pass on Linux) | All AC grep patterns use plain backticks inside single quotes; darwin baselines re-verified with corrected patterns (AC-GF-006a=1, 007a=0, 012a=1, 012b=0) |
 
 ## §C. Pre-flight
 
@@ -57,7 +62,7 @@ Inherited from spec.md §C: content-token Edit anchors only; SSOT-first ordering
 
 ## §E. Self-Verification (run-phase deliverables)
 
-- E1: AC PASS/FAIL matrix for AC-GF-001..012 with verbatim command outputs.
+- E1: AC PASS/FAIL matrix for AC-GF-001..013 with verbatim command outputs.
 - E2: `make build` exit 0 output.
 - E3: 3× `diff -q` live↔template byte-identity outputs.
 - E4: Template neutrality grep output (`grep -rn 'SPEC-HANDOFF-GOALFIX' internal/template/templates/` → empty).
@@ -81,6 +86,7 @@ Inherited from spec.md §C: content-token Edit anchors only; SSOT-first ordering
 10. Output Surface: insert the conditional follow-up block into the surface order.
 11. Anti-Patterns: rewrite "Omitting the `/goal` re-set line..." → "Omitting the post-paste `/goal` follow-up block..."; ADD "Embedding a `/goal` (or any slash command) line inside the main resume body — slash commands parse only at input start; a mid-paste slash line is inert plain text (see § Paste-Time Activation Matrix)".
 12. Pre-emit self-check: reword item 9 in place ("Post-paste `/goal` follow-up block (if emitted) is a separate cut-line-bounded block outside the main message, containing exactly one `/goal` line") — count stays 10.
+13. Goal-first bootstrap variant subsection (REQ-GF-009): sibling H3 inside `## Post-Paste /goal Follow-up Block` — selection criterion (two-step remains DEFAULT), caveats (effort keywords NOT documented to fire inside slash-command arguments → possible default-effort session; precondition verification shifts to model discretion), invariants (compact condition per official "one measurable end state", Implementation Kickoff Approval unaffected, `/goal` token locale-verbatim); MUST carry the literal tokens `goal-first bootstrap` + `model discretion` (AC-GF-013a/b).
 
 ### M2 — moai.md §8 render surface (live)
 
@@ -117,6 +123,6 @@ Inherited from spec.md §C: content-token Edit anchors only; SSOT-first ordering
 
 ## §H. Cross-References
 
-- spec.md §B (REQ-GF-001..008), acceptance.md §D (AC-GF-001..012).
+- spec.md §B (REQ-GF-001..009), acceptance.md §D (AC-GF-001..013).
 - `.claude/rules/moai/workflow/session-handoff.md` drift-mitigation sentinel (SSOT↔render contract).
 - `CLAUDE.local.md` §2 Template-First Rule + §25 Template Internal-Content Isolation.

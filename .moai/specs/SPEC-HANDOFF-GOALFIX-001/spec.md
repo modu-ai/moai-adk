@@ -1,7 +1,7 @@
 ---
 id: SPEC-HANDOFF-GOALFIX-001
 title: "Retire the inert in-block '# /goal' resume line — two-step post-paste /goal handoff"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-08
 updated: 2026-07-08
@@ -12,7 +12,6 @@ module: ".claude/rules/moai/workflow"
 lifecycle: spec-anchored
 tags: "handoff, goal-directive, defect-fix"
 tier: M
-related_specs: [SPEC-V3R6-HANDOFF-GOAL-BINDING-001, SPEC-HANDOFF-FANOUT-001]
 ---
 
 # SPEC-HANDOFF-GOALFIX-001 — Retire the inert in-block `# /goal` resume line; two-step post-paste `/goal` handoff
@@ -22,6 +21,7 @@ related_specs: [SPEC-V3R6-HANDOFF-GOAL-BINDING-001, SPEC-HANDOFF-FANOUT-001]
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-08 | GOOS행님 (via manager-spec) | Initial plan-phase draft — defect fix: the Block 1 `# /goal` line can never fire; replace with a two-step post-paste follow-up block + orchestrator reminder + paste-time activation matrix. |
+| 0.1.1 | 2026-07-08 | GOOS행님 (via manager-spec) | Plan-audit iter1 (PASS-WITH-DEBT 0.87) fixes: D2 REQ-GF-003 trigger re-grounded in auto-memory detection; D4 `related_specs` frontmatter field dropped (lineage remains in §A.4/§E body prose). User-approved scope addition: REQ-GF-009 goal-first bootstrap variant (documented alternative, NOT the default). |
 
 ## §A. Context and Motivation (WHY)
 
@@ -76,7 +76,7 @@ The paste-ready resume-message doctrine shall define the main cut-line-bounded r
 
 ### REQ-GF-003 — Resumed-session orchestrator `/goal` reminder obligation (Event-driven)
 
-**When** the resumed session's orchestrator detects that a pasted resume message references a `/goal` condition (i.e., the handoff included the post-paste follow-up block), the orchestrator shall remind the user — via natural-language status guidance, NOT `AskUserQuestion` (announcement, not a decision) — to send the `/goal` line as a standalone message at the recommended moment (after Implementation Kickoff Approval), because the model cannot set a goal on the user's behalf. This obligation shall be recorded in both `session-handoff.md` (within the Post-Paste /goal Follow-up Block section) and `goal-directive.md` § MoAI Integration Notes.
+**When** the resumed session's orchestrator detects a pending `/goal` condition for the resumed SPEC — detection mechanism: the **handoff memory entry** (the resume message AND its post-paste follow-up block are persisted verbatim to auto-memory per `session-handoff.md` § Auto-Memory Integration, so the resumed session reads the pending condition from memory, NOT from the pasted body), or, failing a memory hit, by **re-deriving the emission condition** (resumed SPEC is run-phase AND declares a machine-verifiable end-state) — the orchestrator shall remind the user — via natural-language status guidance, NOT `AskUserQuestion` (announcement, not a decision) — to send the `/goal` line as a standalone message at the recommended moment (after Implementation Kickoff Approval), because the model cannot set a goal on the user's behalf. Note: post-REQ-GF-001 the pasted main block itself carries NO `/goal` reference; the memory entry / condition re-derivation is the only detection path. This **reminder obligation** shall be recorded — carrying the literal grep-stable token `reminder obligation` — in both `session-handoff.md` (within the Post-Paste /goal Follow-up Block section) and `goal-directive.md` § MoAI Integration Notes.
 
 ### REQ-GF-004 — Paste-time activation matrix (Ubiquitous)
 
@@ -122,6 +122,16 @@ The follow-up block's cut-line marker text shall reuse the existing Cut-line top
 
 The `/goal` command token itself and the `<completion-condition>` content are **locale-verbatim** (never translated), consistent with the existing `mode:` / `fan out subagents` locale-verbatim protocol-token policy.
 
+### REQ-GF-009 — Goal-first bootstrap variant (documented alternative, NOT the default) (Ubiquitous)
+
+The `## Post-Paste /goal Follow-up Block` doctrine section (via a sibling subsection within it) shall document an explicit **goal-first bootstrap** alternative single-paste form: a standalone one-line `/goal <resume pointer + compact condition>` message (illustrative: `/goal SPEC-X run 재개: memory의 <handoff-file>와 progress.md를 읽고 이어서 진행. 완료 조건: <machine-verifiable end-state>, 또는 N턴 후 중단.`). Normative content:
+
+- **(a) Selection criterion**: the user wants one-paste + autonomous continuation; the two-step handoff (REQ-GF-002) remains the DEFAULT.
+- **(b) Caveats (stated verbatim-class)**: effort keywords (`ultrathink` / `ultracode`) inside a slash-command argument are NOT documented to fire — the session may run at default effort; precondition verification shifts from paste-time structure (Block 4 verifiable commands) to **model discretion** via the directive text.
+- **(c) Invariants preserved**: the condition must stay compact (official guidance: one measurable end state); Implementation Kickoff Approval unaffected; the `/goal` token locale-verbatim.
+
+Grounding: official goal doc — "Setting a goal starts a turn immediately, with the condition itself as the directive" (`https://code.claude.com/docs/en/goal`). Surfaces unchanged (same 6 + `make build`) — this is additional prose within the same new section, mirrored byte-identically per REQ-GF-007. The subsection shall carry the literal grep-stable tokens `goal-first bootstrap` and `model discretion` (both baseline 0, verified 2026-07-08 including case-insensitive `goal-first` / `bootstrap` sweeps).
+
 ## §C. Constraints
 
 - **[HARD] Re-measure before edit**: all line numbers in this SPEC are content-token anchors measured at HEAD `3d35cc18d`; parallel-session commits land frequently on these surfaces (FANOUT-001 closed today). Run-phase MUST re-grep every anchor before editing and MUST use content-token `Edit` old_strings, never line-number-derived paraphrases.
@@ -134,10 +144,10 @@ The `/goal` command token itself and the `<completion-condition>` content are **
 
 ## §D. Acceptance Criteria
 
-Canonical AC enumeration lives in `acceptance.md` (AC-GF-001..012, baseline-delta style: every negative-space check cites the measured non-zero baseline; every positive-space check has a 0 baseline). Summary of gate classes:
+Canonical AC enumeration lives in `acceptance.md` (AC-GF-001..013, baseline-delta style: every negative-space check cites the measured non-zero baseline; every positive-space check has a verified 0 baseline under a distinguishing multi-word token — single-word substring greps are prohibited after the plan-audit D1 `remind`⊂`reminder` false-baseline finding). Summary of gate classes:
 
-- Negative space: `# /goal` → 0 (baseline 6/6/1/1), `re-set` → 0 (baseline 4/4/1/1/3/3), goal-directive "Block 1 `/goal` line" phrase → 0 (baseline 2).
-- Positive space: `## Post-Paste /goal Follow-up Block` = 1, `## Paste-Time Activation Matrix` = 1, both official URLs present, FANOUT debt phrase = 1, Localization row = 1, reminder obligation present on 2 surfaces.
+- Negative space: `# /goal` → 0 (baseline 6/6/1/1), `re-set` → 0 (baseline 4/4/1/1/3/3), goal-directive "Block 1 `/goal` line" phrase → 0 (baseline 1 line / 2 in-line occurrences).
+- Positive space: `## Post-Paste /goal Follow-up Block` = 1, `## Paste-Time Activation Matrix` = 1, both official URLs present, FANOUT debt phrase = 1, Localization row = 1, `reminder obligation` token on 2 surfaces, `goal-first bootstrap` + `model discretion` tokens (REQ-GF-009).
 - Structural: 3× live↔template byte-identical diff, `make build` exit 0, template SPEC-ID neutrality grep = 0.
 
 ## §E. Cross-References
