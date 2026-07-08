@@ -1809,6 +1809,14 @@ func TestBuild_PRSegment_AbsenceHandling(t *testing.T) {
 func TestBuild_WritesContextUsageWithSessionID(t *testing.T) {
 	proj := t.TempDir()
 
+	// Isolate from ambient GLM env. Dev machines running `moai glm` export
+	// ANTHROPIC_DEFAULT_*_MODEL=glm-5.2, which resolveContextWindowOverride
+	// picks up and would override the synthetic 256K window below with 1M.
+	t.Setenv("MOAI_STATUSLINE_CONTEXT_SIZE", "")
+	t.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "")
+	t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "")
+	t.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", "")
+
 	in := StdinData{
 		SessionID: "sess-build-011",
 		Workspace: &WorkspaceInfo{CurrentDir: proj},
