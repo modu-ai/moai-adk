@@ -1,7 +1,7 @@
 ---
 id: SPEC-HANDOFF-FANOUT-001
 title: "Mode 4 (parallel-subagents) paste-time fan-out steering phrase — resume message directive coupling"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-08
 updated: 2026-07-08
@@ -21,6 +21,7 @@ tags: "handoff, orchestration, mode-seed, session-resume, doctrine"
 
 | Version | Date | Change |
 |---|---|---|
+| 0.1.1 | 2026-07-08 | Plan-audit 반영: D1(AC-HFO-004b vacuous → baseline-delta 규범 토큰, 004a/c 동일 클래스 경화) + D2(AC-HFO-011 locale-verbatim 기계 AC 추가) + D3(§B/§C 인용부호 의역 정정) + D4(AC-HFO-003 `-Flc` → `-Fl`). |
 | 0.1.0 | 2026-07-08 | Plan-phase 저작 (draft). Tier S, 2 body artifacts + progress.md. |
 
 ## §A. Context
@@ -57,7 +58,7 @@ The doctrine **shall** define `fan out subagents` as a **locale-verbatim protoco
 ### REQ-HFO-002 — invariant preservation (3 clauses)
 
 - **(a) SEED-not-permission**: The doctrine **shall** state that the fan-out steering phrase does NOT authorize autonomous run-phase entry — Implementation Kickoff Approval remains mandatory. 기존 `mode:` / bare `ultracode` / `/goal` 조항과 동일한 binding 문구 강도를 유지한다.
-- **(b) 3-5 concurrent ceiling**: The doctrine **shall** state that fan-out spawns respect the Anthropic 3-5 concurrent `Agent()` ceiling (`orchestration-mode-selection.md` §C.2; "The 3-5 ceiling applies equally to Mode 3 and Mode 4" 조항, 실측 L133).
+- **(b) 3-5 concurrent ceiling**: The doctrine **shall** state that fan-out spawns respect the Anthropic 3-5 concurrent `Agent()` ceiling (`orchestration-mode-selection.md` §C.2; ceiling이 Mode 3과 Mode 4에 동등 적용된다는 조항 — 의역이며 verbatim 인용 아님, 실측 L133. run-phase는 이 문자열을 grep 앵커로 사용하지 말 것).
 - **(c) Read-only scoping**: The fan-out phrase **shall** carry a read-only investigation scope qualifier. The doctrine **shall not** seed parallel WRITE fan-out via this phrase (consistent with `agent-common-protocol.md` § Background Agent Execution write restrictions).
 
 ### REQ-HFO-003 — disambiguation note (Mode 4, NOT Mode 3)
@@ -99,7 +100,7 @@ Line 번호는 drift 가능 — run-phase에서는 content-token 앵커를 우�
 | render moai.md §8 skeleton / compact mapping / pre-emit | L682 / L701 / L722: `Pre-emit self-check (11 items)` |
 | `grep -rc 'fan out subagents'` (4개 표면) | **0 matches** (baseline) |
 | Template mirrors | 양 파일 모두 live와 **byte-identical** (`diff -q` exit 0, 2026-07-08) — full mirror, subset 아님 |
-| 3-5 ceiling | orchestration-mode-selection.md §C.2 (L127) + L133 "applies equally to Mode 3 and Mode 4" |
+| 3-5 ceiling | orchestration-mode-selection.md §C.2 (L127) + L133 — ceiling의 Mode 3/Mode 4 동등 적용 조항 (의역 — grep 앵커로 사용 금지) |
 | Principle 4 | moai-constitution.md L50 "Fewer subagents spawned by default … instruct explicitly" |
 
 ## §D. Exclusions — Out of Scope
