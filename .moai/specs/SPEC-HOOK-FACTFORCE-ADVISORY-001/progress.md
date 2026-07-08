@@ -151,7 +151,7 @@ Input parameters: tier=S, scope≈7 files, domains=1 (hook scripts), language-mi
 
 - sync_status: complete (orchestrator-direct sync-phase — manager-docs 위임이 API "Prompt is too long" 실패로 orchestrator-direct fallback; shared-checkout 다중 세션 race 환경에서 pathspec commit으로 정밀 제어)
 - sync_complete_at: 2026-07-08
-- sync_commit_sha: (pending backfill — sync commit lands post; 확립된 convention per SPEC-BRAND-DIR-REMOVE-001 `2c637ece2` / SPEC-V3R6-AGENTIC-LOOP-CONFIG-001)
+- sync_commit_sha: da1fbb540 (sync commit `docs(SPEC-HOOK-FACTFORCE-ADVISORY-001): sync-phase artifacts + 3-phase close`; backfilled in this follow-up chore commit — SHA cannot be in its own commit, per SPEC-V3R6-AGENTIC-LOOP-CONFIG-001 `f71ddc44e` pattern)
 - changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Changed` — SPEC-HOOK-FACTFORCE-ADVISORY-001 entry (exit-2 → exit-0 advisory rewrite summary + 15/15 AC PASS citation per §E.2 headline)
 - frontmatter_status_transitions:
   - spec.md: in-progress → completed (이 sync commit에서 atomic 전환)
@@ -171,6 +171,6 @@ Input parameters: tier=S, scope≈7 files, domains=1 (hook scripts), language-mi
 - b12_self_test_c (file path verification): 4 implementation file paths verified — `internal/template/templates/.claude/hooks/moai/gateguard-fact-force.sh` (template hook) + `.claude/hooks/moai/gateguard-fact-force.sh` (local mirror, byte-identical) + `internal/template/templates/.claude/rules/moai/development/hook-independence.md` Mode G row + `.claude/rules/moai/development/hook-independence.md` (local mirror); 실제 hook 파일 Read로 exit-2 제거 + §11 advisory emit + jq-free(awk escape) 확인 (plan.md 의존 않음)
 - canary_compliance_check: N/A (advisory-only PreToolUse hook, no canary deployment surface)
 - l44_pre_commit_fetch: `origin/main` = `e62d52e2b` (병렬 세션 TOKEN-VERIFY-DIET-001 plan-phase + INTERNAL-SECURITY-001 sync 완료 후 적재; divergence `0 0`, ff-pushable, working tree FACTFORCE dir clean)
-- l44_post_push_fetch: (pending — orchestrator pushes post-sync)
+- l44_post_push_fetch: pushed `da1fbb540` → origin/main (post-push divergence `0 0` confirmed; 병렬 세션 HANDOFF-FANOUT-001 plan `3b3839665` 함께 ff-push — shared checkout benign, FACTFORCE scope 불겹침)
 - race_absorbed: shared-checkout 병렬 세션 race — manager-docs 위임 prompt-too-long 실패 중 병렬 세션 A(INTERNAL-SECURITY-001 sync f3193bac8~c0ac267b5, 별개 세션 f5a621d0) + 병렬 세션 B(TOKEN-VERIFY-DIET-001 plan-phase e62d52e2b) commit 적재; FACTFORCE 범위(SPEC dir + CHANGELOG.md FACTFORCE entry)와 불겹침 → pathspec commit으로 clean 흡수 (conflict 없음, feedback_shared_checkout_concurrent_commit_race 교훈 적용)
 - residual_debt: 없음 (run-phase 15/15 AC 전부 PASS; SHOULD AC-FA-006 <100ms soft-target만 5s hard timeout met으로 PASS-WITH-DEBT — §E.2에 이미 투명 기록)
