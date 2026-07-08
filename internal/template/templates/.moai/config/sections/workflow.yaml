@@ -27,7 +27,14 @@ workflow:
             min_files_for_team: 10
         default_model: sonnet
         delegate_mode: true
-        enabled: true
+        # enabled false (Sonnet 5 / Opus 4.8 re-design). The historical
+        # 200K-window baseline-refill breaker is resolved on the current default
+        # lineup (Sonnet 5 ships a single 1M variant; no 200K fallback target).
+        # team mode is opt-in only (explicit --team); Phase 0.95 defaults to
+        # subagent fanout (Mode 4) for multi-domain research/review and sequential
+        # sub-agent (Mode 5) for coding. See
+        # .claude/rules/moai/workflow/orchestration-mode-selection.md §C.1.
+        enabled: false
         max_teammates: 10
         # role_profile_keys: enumeration of allowed role types for the 5+1+1
         # Agent Teams composition documented in

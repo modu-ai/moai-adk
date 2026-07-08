@@ -60,13 +60,13 @@ From `.moai/config/sections/workflow.yaml` → `team.role_profiles`:
 | designer | acceptEdits | sonnet | worktree | UI/UX with MCP design tools |
 | reviewer | plan | haiku | none | Code review, quality validation |
 
-### ⚠️ Baseline-Refill Breaker Hazard (team sonnet)
+### Baseline-Refill Breaker Hazard (team sonnet — Sonnet 5 / Opus 4.8-resolved)
 
-[ZONE:Evolvable] [HARD] team-mode teammates default to `model: sonnet` (200K window). Under a heavy fixed baseline (CLAUDE.md + `.claude/rules/moai/**` system-reminder injection + agent definitions + delegation prompt), a 200K-window teammate can be near-saturated at spawn. A single autocompact then re-saturates the window within one turn (rapid-refill); repeated refills within a few turns trip the runtime circuit breaker, and the teammate produces **zero output**.
+[ZONE:Evolvable] **(Resolution: Sonnet 5 / Opus 4.8 era.)** The historical baseline-refill breaker required a team teammate to fall back to a **200K context variant** after the `[1m]` suffix was stripped on teammate spawn (Anthropic issues #36670 / #34421; mechanism still OPEN upstream). Under a heavy fixed baseline (CLAUDE.md + `.claude/rules/moai/**` system-reminder injection + agent definitions + delegation prompt), the 200K window would saturate at spawn, autocompact, rapid-refill within one turn, and repeated refills tripped the runtime circuit breaker → **zero output**.
 
-Switching the role to `model: inherit` does NOT reliably fix this in team mode: Team teammates do not inherit the leader's `[1m]` entitlement (Anthropic issue #36670, OPEN) — the teammate falls back to 200K and the same breaker can recur.
+**This breaker no longer triggers on the current default lineup.** Sonnet 5 ships a single 1M-token context window (1M is both default and maximum; no 200K variant exists — per platform.claude.com Sonnet 5 model docs), and Opus 4.8 likewise serves 1M by default. The #36670 suffix-strip mechanism is technically unfixed, but with no 200K variant to fall back to, a stripped-suffix teammate still resolves to 1M and the cascade cannot start. The `model: inherit` convention and the "single `manager-develop` + Milestone split for large SPECs" guidance are retained as defense-in-depth and remain valid for **legacy 200K-variant models** (Haiku 4.5 is still 200K).
 
-[HARD] Therefore, for **large SPECs** (30+ tasks, many files), prefer a **single `manager-develop` (`model: inherit`, 1M window) + Milestone split** (per `.claude/rules/moai/development/sprint-round-naming.md`) over team mode. Reserve team mode for **small SPECs** where the 200K window has headroom. See `.claude/rules/moai/development/model-policy.md` § Baseline-Refill Breaker for this failure mode vs the `[1m]` credit-fail mode.
+**Additionally**, team mode is now disabled by default per the Phase 0.95 re-design (`.claude/rules/moai/workflow/orchestration-mode-selection.md`); this workflow loads only on explicit `--team`. See `.claude/rules/moai/development/model-policy.md` § Baseline-Refill Breaker for the full mechanism vs the `[1m]` credit-fail mode.
 
 ## Mode Selection
 
@@ -343,7 +343,7 @@ Agent(subagent_type: "general-purpose", name: "frontend-dev", model: "sonnet", m
 Agent(subagent_type: "general-purpose", name: "tester", model: "sonnet", mode: "acceptEdits", isolation: "worktree", prompt: "Testing role. File ownership: test files exclusively. ...")
 ```
 
-[SHOULD] When spawning implementation teammates via `Agent(isolation: "worktree")`, Claude Code runtime decides whether to materialize an L1 worktree. MoAI orchestrator does NOT mandate isolation. Per user policy 2026-05-17 (`feedback_worktree_autonomous`), L2/L3 worktree usage is user opt-in. See `.claude/rules/moai/workflow/worktree-integration.md` § Terminology Glossary for L1/L2/L3 layer definitions.
+[SHOULD] When spawning implementation teammates via `Agent(isolation: "worktree")`, Claude Code runtime decides whether to materialize an L1 worktree. MoAI orchestrator does NOT mandate isolation. Per the worktree-autonomous user policy, L2/L3 worktree usage is user opt-in. See `.claude/rules/moai/workflow/worktree-integration.md` § Terminology Glossary for L1/L2/L3 layer definitions.
 
 ### Phase 3: Handle Idle Notifications
 
@@ -391,5 +391,3 @@ If team mode fails at any point:
 ---
 
 Version: 4.1.0 (Fix --team flag routing: empty team_mode defaults to Agent Teams)
-Last Updated: 2026-04-09
-Source: SPEC-TEAM-001

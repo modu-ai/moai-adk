@@ -50,20 +50,22 @@ Exceptions (do NOT migrate to inherit):
 - `model: haiku` agents (`manager-docs`, `manager-git`) — Haiku has no `[1m]` variant, so the bug does NOT apply. Speed-critical agents should remain on `haiku` for cost and latency.
 - Documentation/example YAML inside skill bodies (`.claude/skills/moai-foundation-cc/reference/**/*.md`) — these mirror official Claude Code documentation and MUST show all valid values (`sonnet`, `opus`, `haiku`, `inherit`) for educational purposes.
 
-## Baseline-Refill Breaker (team sonnet — second failure mode)
+## Baseline-Refill Breaker (team sonnet — second failure mode; Sonnet 5 / Opus 4.8-resolved)
 
-[ZONE:Evolvable] The `[1m]` entitlement bug in § Inherit-by-Default Convention is the *spawn-time* failure mode (a frontmatter `model: sonnet` pin → spawn fails with a 1M credit error). A **distinct second failure mode** affects team-mode teammates spawned via per-spawn `model: "sonnet"` override (`.claude/skills/moai/team/run.md`, `.moai/config/sections/workflow.yaml` role_profiles):
+[ZONE:Evolvable] The `[1m]` entitlement bug in § Inherit-by-Default Convention is the *spawn-time* failure mode (a frontmatter `model: sonnet` pin → spawn fails with a 1M credit error). A **distinct second failure mode** historically affected team-mode teammates spawned via per-spawn `model: "sonnet"` override:
 
 | failure mode | trigger | symptom | mitigation |
 |--------------|---------|---------|------------|
 | `[1m]` credit-fail | frontmatter `model: sonnet` pin | spawn fails immediately (`Usage credits required for 1M`) | use `model: inherit` |
-| baseline-refill breaker | per-spawn `model: "sonnet"` in team mode | spawn succeeds, but the 200K window saturates under the heavy baseline → autocompact → rapid-refill → runtime circuit breaker → zero output | avoid large SPECs in team mode (see below) |
+| baseline-refill breaker | per-spawn `model: "sonnet"` in team mode on a **200K-variant** model | spawn succeeds, but the 200K window saturates under the heavy baseline → autocompact → rapid-refill → runtime circuit breaker → zero output | historical only — see resolution below |
 
-The breaker mode is NOT reliably fixed by switching to `model: inherit`, because Team teammates do not inherit the leader's `[1m]` entitlement (Anthropic issue #36670, OPEN) — the teammate falls back to 200K and the breaker can recur. The robust mitigation is operational: for **large SPECs**, prefer a single `manager-develop` (`model: inherit`, 1M window) + Milestone split (`.claude/rules/moai/development/sprint-round-naming.md`) over team mode; reserve team mode for **small SPECs** where the 200K window has headroom. Cross-reference: `.claude/rules/moai/workflow/team-protocol.md` § Role Matrix Constraints; `.claude/skills/moai/team/run.md` § Baseline-Refill Breaker Hazard.
+**Resolution (Sonnet 5 / Opus 4.8 era):** the breaker required a teammate to fall back to a **200K context variant** after the `[1m]` suffix was stripped on teammate spawn (Anthropic issues #36670 / #34421; the suffix-strip mechanism is still OPEN upstream). The fallback target — a 200K context variant — **no longer exists in the current default lineup**: Sonnet 5 ships a single 1M-token context window (1M is both default and maximum; no smaller variant — per platform.claude.com Sonnet 5 model docs), and Opus 4.8 likewise serves the full 1M window by default. With no 200K variant to fall back to, a teammate spawned as `sonnet` / `opus` operates at 1M regardless of suffix stripping, and the rapid-refill → circuit-breaker → zero-output cascade cannot trigger. The mechanism (#36670) is technically still open but its observable impact on the current default lineup is zero.
 
-## `[1m]` Constraint Re-Verification (CC 2.1.178)
+The breaker therefore remains documented only as a **historical hazard for legacy 200K-variant models** (Sonnet 4.x, Opus 4.6, and Haiku 4.5 which is still 200K): on those models a teammate can still fall back to 200K. For the current default lineup the operational mitigation (single `manager-develop` + Milestone split over team mode) is no longer forced by the breaker — though team mode is additionally disabled by default per the Phase 0.95 re-design (`.claude/rules/moai/workflow/orchestration-mode-selection.md`), in favor of subagent fanout (Mode 4) for multi-domain research/review and sequential sub-agent (Mode 5) for coding. Cross-reference: `.claude/rules/moai/workflow/team-protocol.md` § Role Matrix Constraints; `.claude/skills/moai/team/run.md` § Baseline-Refill Breaker Hazard.
 
-The `[1m]` entitlement-inheritance constraint was re-verified against CC 2.1.178. **Verdict: STILL-ACTIVE (conservative).** Per-agent `model:` pins remain forbidden regardless of this verdict (the re-verification records per-agent pinning as out-of-scope).
+## `[1m]` Constraint Re-Verification (CC 2.1.178; Sonnet 5 / Opus 4.8 practical-impact update)
+
+The `[1m]` entitlement-inheritance constraint was re-verified against CC 2.1.178. **Verdict: STILL-ACTIVE mechanism, but ZERO PRACTICAL IMPACT on the current default lineup (Sonnet 5 / Opus 4.8).** Per-agent `model:` pins remain forbidden regardless (the re-verification records per-agent pinning as out-of-scope).
 
 Evidence fetched via the GitHub issue API + the canonical CC CHANGELOG:
 
@@ -72,7 +74,9 @@ Evidence fetched via the GitHub issue API + the canonical CC CHANGELOG:
 - Issue #36670 (Team teammates don't inherit `[1m]` from leader): **OPEN** — the Team-mode path is confirmed unfixed at CC 2.1.178.
 - CC 2.1.172 fixes ("1M context stuck session", "doubled `[1m]` suffix") address the *symptom* and *suffix normalization*, NOT the *spawn-time entitlement mismatch*. CC 2.1.173/2.1.174 are Fable-5-suffix and background-env-inheritance fixes — orthogonal.
 
-Because the Team-mode path (#36670) is open and no CHANGELOG resolves the single-spawn root cause, the constraint is treated as still-active. A follow-up SPEC (conditional) MAY re-enable per-agent pinning only when #36670 is closed-with-fixed AND a CHANGELOG confirms Team `[1m]` inheritance for explicit `model:` teammates.
+**Why STILL-ACTIVE mechanism ≠ practical impact (Sonnet 5 / Opus 4.8 era):** the #36670 mechanism strips the `[1m]` suffix on teammate spawn, which historically forced a fallback to a 200K variant. Sonnet 5 and Opus 4.8 have **no 200K variant** — their context window is 1M as both default and maximum (per platform.claude.com Sonnet 5 model docs; Opus 4.8 serves the full 1M window by default). The stripped-suffix teammate therefore still resolves to 1M; there is no smaller variant to degrade into. The mechanism is unfixed upstream, but on the current default lineup it has nothing to break. The `model: inherit` convention is retained as defense-in-depth and for legacy-200K-variant models (Haiku 4.5 still ships 200K).
+
+A follow-up SPEC (conditional) MAY re-enable per-agent pinning only when #36670 is closed-with-fixed AND a CHANGELOG confirms Team `[1m]` inheritance for explicit `model:` teammates — though for Sonnet 5 / Opus 4.8 the practical case for that re-enablement has dissolved.
 
 ## Default-Model Cost Lever (Default = sonnet, no allowlist enforcement)
 

@@ -27,7 +27,7 @@ The orchestrator selects exactly one of the following modes per Phase 0.95 invoc
 |---|------|-------------|---------------|----------------|
 | 1 | `trivial` | None — direct execution by the orchestrator, no sub-agent spawn | n/a | Typo fix, single-line formatting, no semantic change |
 | 2 | `background` | 1 concurrent sub-agent | `Agent(run_in_background: true, ...)` | Read-only analysis that can complete asynchronously without blocking the conversation |
-| 3 | `agent-team` | 3-5 dynamic teammates | `Agent(subagent_type: "general-purpose", name: ...)` × N (implicit team forms on first spawn — no setup step; `team_name` accepted but ignored per Claude Code v2.1.178) | Multi-domain (≥3 domains OR ≥10 files) research-heavy work AND all Agent Teams capability-gate prerequisites met |
+| 3 | `agent-team` | 3-5 dynamic teammates | `Agent(subagent_type: "general-purpose", name: ...)` × N (implicit team forms on first spawn — no setup step; `team_name` accepted but ignored per Claude Code v2.1.178) | **Disabled by default** (Sonnet 5 / Opus 4.8 re-design); opt-in only. Multi-domain (≥3 domains OR ≥10 files) research-heavy work AND all Agent Teams capability-gate prerequisites met (§C.1). The practical surface is covered by Mode 4 (fanout) + Mode 5 (sequential) at lower coordination/token cost |
 | 4 | `parallel` | 3-5 concurrent sub-agents (single message, multiple `Agent()` calls) | Multiple `Agent()` invocations in one assistant turn | Multi-domain research that does NOT meet Agent Teams prerequisites; or any case where Agent Teams session overhead exceeds benefit |
 | 5 | `sub-agent` | 1 sequential sub-agent per milestone | Sequential `Agent(...)` spawns, one milestone at a time | Coding-heavy work (per Anthropic's coding-task parallelism caveat), or any case where the simpler mode suffices |
 | 6 | `workflow` | Up to 16 concurrent workflow agents (1000-total per-run backstop, per `dynamic-workflows.md`) | Orchestrator-launched Workflow fan-out (a script the runtime executes to coordinate agents — NOT a subagent spawning subagents) | Genuinely-parallel, high-volume **mechanical** transformation (≥ ~30 files AND a single uniform transform rule AND no inter-file dependency) — call-site rename, import-path bulk change, signature-stable edits. Coding-heavy / multi-domain / new-code work stays Mode 5 (per Anthropic's coding-task parallelism caveat). |
@@ -54,6 +54,8 @@ START (Phase 0.95 Mode Selection)
   │   (all three required):
   │     • harness level is `thorough` (`.moai/config/sections/harness.yaml`)
   │     • `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml`
+  │       (DEFAULT IS `false` since the Sonnet 5 / Opus 4.8 re-design — this branch
+  │        is normally skipped; team is opt-in via explicit `--team` + config flip)
   │     • environment variable `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
   │   AND is the scope multi-domain (≥3 domains OR ≥10 files)?
   │   ├── YES → Mode 3: AGENT-TEAM (implicit team — dynamic teammate spawn via Agent(name=...))
@@ -117,8 +119,10 @@ Mode 3 is candidate only when all three conditions hold simultaneously. The orch
 | Condition | Where to check | Required value |
 |-----------|----------------|----------------|
 | harness level is `thorough` | `.moai/config/sections/harness.yaml` `harness.level` | `thorough` |
-| Agent Teams enabled in workflow | `.moai/config/sections/workflow.yaml` `workflow.team.enabled` | `true` |
+| Agent Teams enabled in workflow | `.moai/config/sections/workflow.yaml` `workflow.team.enabled` | `true` (NOT the default — `team.enabled` defaults to `false` since the Sonnet 5 / Opus 4.8 re-design; opt-in only) |
 | Experimental flag set in environment | env var `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | `1` |
+
+**Default-disabled rationale (Sonnet 5 / Opus 4.8 era):** team mode was historically burdened by the 200K-window baseline-refill breaker (`.claude/rules/moai/development/model-policy.md` § Baseline-Refill Breaker). That breaker is now resolved on the current default lineup — Sonnet 5 and Opus 4.8 ship a single 1M context variant with no 200K fallback target, so the Anthropic #36670 `[1m]` suffix-strip mechanism has zero observable impact. With the breaker no longer forcing team avoidance, team mode is nonetheless kept **disabled by default** because subagent fanout (Mode 4) and sequential sub-agent (Mode 5) cover the practical surface with lower coordination overhead and lower token cost than implicit-team spawns: multi-domain research/review routes to Mode 4, coding-heavy work routes to Mode 5 (Anthropic's coding-task parallelism caveat), and high-volume mechanical transformation routes to Mode 6 (workflow). Users who want implicit-team semantics may re-enable via `workflow.team.enabled: true` + the env var + explicit `--team`.
 
 When any condition fails, the orchestrator falls through to Mode 4 evaluation. If a user explicitly requested `--mode team` and the prereqs are not met, the orchestrator emits the canonical sentinel `MODE_TEAM_UNAVAILABLE` (per `.claude/rules/moai/workflow/spec-workflow.md` § Mode Dispatch) and continues with the fallback mode plus a `[mode-auto-downgrade]` info log.
 
