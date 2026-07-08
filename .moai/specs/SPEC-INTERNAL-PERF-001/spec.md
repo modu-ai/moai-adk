@@ -2,7 +2,7 @@
 id: SPEC-INTERNAL-PERF-001
 title: "internal/ 성능 개선 — audit-origin performance defects 6건 해소"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-07-08
 updated: 2026-07-08
 author: manager-spec
