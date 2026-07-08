@@ -111,7 +111,7 @@ sync_phase:
   residual_risk: "F1 debt recorded (goal-first bootstrap section coexistence of 'Implementation Kickoff Approval unaffected' with 'setting a goal starts a turn immediately' — coherent only under implicit assumption goal-first presumes run-phase resume already past Kickoff-Approval; future one-sentence clarification deferred, documented for audit trail; no functional impact to current doctrine)"
   changelog_entry_confirmed: true
   changelog_path: "CHANGELOG.md [Unreleased] / ### Added / SPEC-HANDOFF-GOALFIX-001 entry"
-  sync_commit_sha: pending backfill via follow-up chore(SPEC-HANDOFF-GOALFIX-001): record sync_commit_sha commit
+  sync_commit_sha: bf983aaf5
 ```
 
 ## §F Phase 0.95 Mode Selection
