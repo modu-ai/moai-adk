@@ -2,7 +2,7 @@
 id: SPEC-INTERNAL-SECURITY-001
 title: "internal/ 보안 하드닝 — audit-origin security gap 봉쇄 (web / template-update / hook)"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-07-08
 updated: 2026-07-08
 author: manager-spec
