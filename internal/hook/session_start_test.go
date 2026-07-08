@@ -16,6 +16,31 @@ import (
 // testFixedNow is a stable reference time for staleness tests.
 var testFixedNow = time.Date(2026, 4, 25, 12, 0, 0, 0, time.UTC)
 
+func TestMaybeSet1MAutoCompactWindow(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		env        map[string]string
+		wantWindow string // "" means expect the key unset
+	}{
+		{name: "glm-5.2 resolves to 1M, no window → sets 1M", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.2"}, wantWindow: "1000000"},
+		{name: "glm-4.5-air resolves to 128K (< 1M tier), no window → unset", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air"}, wantWindow: ""},
+		{name: "claude model → unset (ResolveGLMContextWindow returns 0 for claude-prefixed)", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8"}, wantWindow: ""},
+		{name: "window already set → preserved, not overwritten", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.2", config.EnvClaudeCodeAutoCompactWindow: "500000"}, wantWindow: "500000"},
+		{name: "empty opus model → unset", env: map[string]string{}, wantWindow: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			maybeSet1MAutoCompactWindow(tt.env)
+			if got := tt.env[config.EnvClaudeCodeAutoCompactWindow]; got != tt.wantWindow {
+				t.Errorf("CLAUDE_CODE_AUTO_COMPACT_WINDOW = %q, want %q", got, tt.wantWindow)
+			}
+		})
+	}
+}
+
 func TestSessionStartHandler_EventType(t *testing.T) {
 	t.Parallel()
 

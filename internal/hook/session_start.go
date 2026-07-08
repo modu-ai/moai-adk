@@ -19,6 +19,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/migration"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/spec"
+	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/telemetry"
 )
 
@@ -374,12 +375,11 @@ func ensureGLMCredentials(projectDir string) string {
 	if settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] == "" {
 		settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
 	}
-	// 1M context activation: when the High (Opus) slot model carries the [1m]
-	// suffix, scale the auto-compact window to the full 1M context.
-	if strings.Contains(strings.ToLower(settings.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"]), "[1m]") &&
-		settings.Env[config.EnvClaudeCodeAutoCompactWindow] == "" {
-		settings.Env[config.EnvClaudeCodeAutoCompactWindow] = strconv.Itoa(config.Default1MContextTokens)
-	}
+	// 1M context activation: scale the auto-compact window to the full 1M
+	// context when the High (Opus) slot resolves to the 1M tier (e.g. glm-5.2).
+	// Mirrors internal/cli/glm.go glmAutoCompactWindow; the retired [1m] suffix
+	// path (z.ai rejects suffixed ids) is replaced by resolved-window detection.
+	maybeSet1MAutoCompactWindow(settings.Env)
 
 	// Re-read original file to preserve all fields (not just env)
 	var raw map[string]json.RawMessage
@@ -409,6 +409,22 @@ func ensureGLMCredentials(projectDir string) string {
 	}
 
 	return fmt.Sprintf("auto-injected GLM credentials from ~/.moai/.env.glm into %s", settingsPath)
+}
+
+// maybeSet1MAutoCompactWindow sets CLAUDE_CODE_AUTO_COMPACT_WINDOW in env when
+// the High (Opus) slot model resolves to the 1M context tier (e.g. glm-5.2) and
+// no window is already configured. This is the SessionStart-hook analogue of
+// internal/cli/glm.go glmAutoCompactWindow: activation keys on the resolved
+// context window (via statusline.ResolveGLMContextWindow), NOT the [1m]
+// model-id suffix — the suffix was retired because z.ai rejects suffixed ids,
+// so the prior Contains(..., "[1m]") gate never fired and was dead code.
+func maybeSet1MAutoCompactWindow(env map[string]string) {
+	if env[config.EnvClaudeCodeAutoCompactWindow] != "" {
+		return
+	}
+	if statusline.ResolveGLMContextWindow(env["ANTHROPIC_DEFAULT_OPUS_MODEL"]) >= config.Default1MContextTokens {
+		env[config.EnvClaudeCodeAutoCompactWindow] = strconv.Itoa(config.Default1MContextTokens)
+	}
 }
 
 // isCGMode checks if the project is running in CG (Claude+GLM hybrid) mode
