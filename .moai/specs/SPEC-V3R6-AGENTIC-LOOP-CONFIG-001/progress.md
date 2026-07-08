@@ -176,3 +176,19 @@ sync_phase_coverage: internal/config 80.0% (-count=1 sync-phase 재실측)
 sync_phase_build: go build ./internal/config/... ./internal/settings/... exit 0
 sync_phase_lint: golangci-lint 0 NEW issues
 ```
+
+## §F Phase 0.95 Mode Selection
+
+> Backfill — run-phase executed in prior session (04771232); logged retroactively per `orchestration-mode-selection.md §D` logging contract (sync-auditor finding, LOW severity, non-blocking).
+
+**Input parameters**:
+- Tier: S
+- Scope: 4 production files (types.go + defaults.go + schema_sections.go + 1 test), 1 domain (internal/config)
+- File language: 100% Go
+- Concurrency benefit: LOW (coding-heavy, single-domain)
+
+**Decision**: Mode 5 (sub-agent, sequential) — Tier S default fallback.
+
+**Justification**: Tier S + single-domain (internal/config) + coding-heavy config-struct work. Per Anthropic coding-task parallelism caveat, Mode 5 sequential sub-agent is the safe default for coding tasks. No multi-domain research surface (Mode 4); no ≥30-file mechanical transform (Mode 6); Agent Teams prereqs not met (Mode 3). Mode 5 = single implementation agent (manager-develop TDD) + orchestrator verification batch.
+
+**Boundary case**: n/a — Tier S single-domain is unambiguous; no threshold ±1 ambiguity.
