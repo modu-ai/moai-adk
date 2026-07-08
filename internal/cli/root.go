@@ -2,7 +2,10 @@ package cli
 
 import (
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -30,13 +33,63 @@ Use 'moai cc', 'moai cg', or 'moai glm' to launch Claude Code.`,
 	},
 }
 
+// trivialCommands lists subcommands/flags that are handled entirely by cobra's
+// built-in machinery and do NOT access the `deps` global. These skip the full
+// InitDependencies() call (REQ-PERF-003-A — CLI lazy initialization).
+//
+// R3 nil-access mitigation: only commands verified to NOT touch `deps` are listed
+// here. Adding a command that accesses deps without InitDependencies would panic.
+var trivialCommands = map[string]bool{
+	"--version": true,
+	"version":   true,
+	"-v":        true,
+	"help":      true,
+	"--help":    true,
+	"-h":        true,
+	"completion": true, // cobra built-in
+}
+
 // @MX:ANCHOR: [AUTO] Execute is the main entry point for the moai CLI
 // @MX:REASON: [AUTO] fan_in=3, called from cmd/moai/main.go, root_test.go, integration_test.go
 // Execute initializes dependencies and runs the root command.
+//
+// REQ-PERF-003-A: trivial subcommands (--version, help, completion) skip the
+// full dependency graph initialization. Heavy components (hook registry, LSP,
+// security scanner, astgrep) are not initialized for these commands.
+// REQ-PERF-003-B: all other subcommands (hook, spec, update, etc.) receive
+// the full dependency graph via InitDependencies() — handler completeness preserved.
 func Execute() error {
 	initConsole()
-	InitDependencies()
+	if isTrivialCommand(os.Args[1:]) {
+		initLightDeps()
+	} else {
+		InitDependencies()
+	}
 	return rootCmd.Execute()
+}
+
+// isTrivialCommand checks whether the CLI args indicate a trivial subcommand
+// that does not require the full dependency graph.
+func isTrivialCommand(args []string) bool {
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") {
+			if trivialCommands[arg] {
+				return true
+			}
+			continue
+		}
+		// First non-flag arg is the subcommand
+		return trivialCommands[arg]
+	}
+	return false
+}
+
+// initLightDeps initializes only the lightweight logger for trivial subcommands.
+// This avoids the full InitDependencies() cost (hook registry, LSP config load,
+// security scanner creation, astgrep analyzer) for commands like --version.
+func initLightDeps() {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	slog.SetDefault(logger)
 }
 
 func init() {
