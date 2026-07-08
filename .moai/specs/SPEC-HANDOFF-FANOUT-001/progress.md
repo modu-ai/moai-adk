@@ -82,13 +82,13 @@ Run-phase 착수 시점(2026-07-08) 병렬 세션(SPEC-TOKEN-VERIFY-DIET-001)이
 phase: run
 signal: audit-ready
 run_complete_at: 2026-07-08
-run_commit_sha: "<pending — M1 commit carries this file; backfill at sync-phase>"
+run_commit_sha: "354855da3"
 run_status: complete
 ac_pass_count: 16
 ac_fail_count: 0
 preserve_list_post_run_count: "n/a — doctrine-text-only SPEC; 무접촉 확인: 타 mode coupling / Localization·Cut-line 표 / Go source / .moai/state 무변경"
 l44_pre_commit_fetch: "git fetch origin main + rev-list --left-right → 0 1 (local ahead by rebased plan commit only) — commit 직전 재확인"
-l44_post_push_fetch: "<pending — push 후 backfill>"
+l44_post_push_fetch: "git fetch origin main + rev-list --left-right → 0 0 (synced; origin/main = 354855da3)"
 new_warnings_or_lints_introduced: "none — doctrine markdown only; template neutrality/leak guard tests ok"
 cross_platform_build:
   make_build: "exit 0 (embed regen; catalog.yaml no delta)"
