@@ -1,7 +1,7 @@
 ---
 id: SPEC-INTERNAL-PERF-001
 title: "internal/ 성능 개선 — audit-origin performance defects 6건 해소"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-08
 updated: 2026-07-08
@@ -21,6 +21,7 @@ tier: M
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 0.1.0 | 2026-07-08 | manager-spec | 최초 작성 — 성능 감사(audit-origin)에서 검증된 6건 결함을 GEARS 요구사항으로 변환. plan-phase only. |
+| 0.1.1 | 2026-07-08 | manager-spec | Fixup — D1 catalog count baseline 재실측(431→441, ls 실측) + 파생 spawn 추정치 재산출(≈1,700+→≈1,764+, 4×N). D3 progress.md §E.1 plan_complete_at/plan_status 필드 추가. D2/D4/D5 MINOR 부채를 progress.md §J에 기록(plan-phase debt, run/sync-phase 가시화). status: draft 유지. |
 
 ## §A 배경과 목적 (WHY)
 
@@ -28,10 +29,10 @@ tier: M
 
 핵심 문제 요약:
 
-1. **P0 — spec-lint git subprocess storm**: `moai spec lint`가 catalog 크기(실측 431 SPEC 디렉터리)에 비례해 SPEC당 최대 4개의 비캐시 git subprocess를 스폰한다 (≈1,700+ spawns/run, 일부는 `git log -50 --follow -p` full patch dump). `internal/spec/CLAUDE.md`는 캐싱을 문서화하고 있으나 구현에는 캐시가 존재하지 않는다 (doc/code drift 동반).
+1. **P0 — spec-lint git subprocess storm**: `moai spec lint`가 catalog 크기(실측 441 SPEC 디렉터리)에 비례해 SPEC당 최대 4개의 비캐시 git subprocess를 스폰한다 (≈1,764+ spawns/run, 일부는 `git log -50 --follow -p` full patch dump). `internal/spec/CLAUDE.md`는 캐싱을 문서화하고 있으나 구현에는 캐시가 존재하지 않는다 (doc/code drift 동반).
 2. **P1 — mx fan-in scan O(n²)**: PostToolUse Write/Edit마다 `@MX:ANCHOR` 누락 exported 함수 각각에 대해 프로젝트 전체 `filepath.WalkDir` + `os.ReadFile`을 반복한다. O(exported_funcs × project_size)로 5s hook 예산을 포화시킬 수 있고, timeout이 함수 경계 사이에서만 검사되어 partial 결과를 낳는다.
 3. **P1 — CLI 무조건 composition-root**: `moai --version` 같은 trivial 커맨드도 cobra dispatch 이전에 lsp.yaml 로드/gopls bridge 연결 시도, security scanner 생성, astgrep analyzer 생성, resilience circuit breaker, 25+ hook handler 등록을 전부 수행한다.
-4. **P1 — hot path regex 재컴파일**: `internal/spec/era.go`·`status.go`의 함수 본문 내 `regexp.MustCompile`이 `moai spec audit` 1회당 수천 번 호출된다 (SPEC당 2-3회 × 431 SPEC). 동일 패키지의 다른 파일(lint.go/drift.go/transitions.go)은 package-level var 관례를 따르고 있어 일관성도 깨져 있다.
+4. **P1 — hot path regex 재컴파일**: `internal/spec/era.go`·`status.go`의 함수 본문 내 `regexp.MustCompile`이 `moai spec audit` 1회당 수천 번 호출된다 (SPEC당 2-3회 × 441 SPEC). 동일 패키지의 다른 파일(lint.go/drift.go/transitions.go)은 package-level var 관례를 따르고 있어 일관성도 깨져 있다.
 5. **P2 — merge O(m×n) LCS 무가드**: `moai update` 기본 병합 경로의 `DiffLines`가 크기 가드 없이 full DP 테이블을 시간·공간 O(m×n)으로 할당한다. ~5,000줄 파일이면 파일당 2회 호출(base→current, base→updated) × ~25M int (~200MB) 급 할당.
 6. **P2 — template 이중 렌더**: `moai init`/`moai update`마다 모든 `.tmpl`이 `ValidateAll`(출력 폐기)과 `Deploy`에서 2회씩 렌더된다 (2N parse+execute).
 

@@ -19,7 +19,7 @@ updated: 2026-07-08
 | 1 | `internal/spec/lint_ownership.go` `lookupOwnershipTransitionFromGit` (~L202-220) | ✓ `git rev-parse --git-dir` + `git log -N --follow ... -p -- <path>` 스폰, 캐시 없음 |
 | 1 | `internal/spec/drift.go` `getGitImpliedStatus` (~L178-192) | ✓ `git rev-parse --verify main` + `git log <branch> --grep=<specID>` 스폰, 캐시 없음 |
 | 1 | `internal/spec/CLAUDE.md:21` | ✓ "Cache results per-file within a single Check() call" 문서화, 구현 부재 (grep cache/Cache/sync.Map = 0 in lint_ownership.go/drift.go/lint.go) |
-| 1 | catalog 규모 | ✓ 431 SPEC 디렉터리 (`ls -d .moai/specs/SPEC-*/ | wc -l`) |
+| 1 | catalog 규모 | ✓ 441 SPEC 디렉터리 (`ls -d .moai/specs/SPEC-*/ | wc -l`) |
 | 2 | `internal/hook/mx/validator.go:138` `countFanIn` 호출 (exported 함수당) | ✓ |
 | 2 | `internal/hook/mx/validator.go:396-456` `scanProjectForIdentifier` full `filepath.WalkDir` + `os.ReadFile` | ✓ |
 | 2 | `internal/cli/deps.go:189` 500ms timeout wiring (`NewPostToolHandlerWithMxValidatorAndTimeout`) | ✓ — timeout은 함수 경계 `select ctx.Done()`에서만 검사 (validator.go ~L130) |
