@@ -152,7 +152,7 @@ tier: M
 
 - sync_status: complete (manager-docs sync-phase)
 - sync_complete_at: 2026-07-08
-- sync_commit_sha: (backfilled by `moai spec close` — self-referential, cannot be in its own commit)
+- sync_commit_sha: f3193bac8 (docs commit `docs(SPEC-INTERNAL-SECURITY-001): sync-phase artifacts + 3-phase close`; backfilled in follow-up chore commit — SHA cannot be in its own commit, per SPEC-V3R6-AGENTIC-LOOP-CONFIG-001 `f71ddc44e` pattern)
 - changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Fixed` — SPEC-INTERNAL-SECURITY-001 entry (M1-M3 hardening summary + 16/16 AC PASS citation per §E.3 headline)
 - frontmatter_status_transitions:
   - spec.md: draft → implemented (this sync commit) → completed (`moai spec close` atomic transition)
@@ -184,7 +184,7 @@ tier: M
 
 - mx_status: complete (@MX tag consistency validated)
 - mx_complete_at: 2026-07-08
-- mx_commit_sha: (backfilled by `moai spec close` — self-referential)
+- mx_commit_sha: c40f35687 (chore commit `chore(SPEC-INTERNAL-SECURITY-001): Mx-phase audit-ready signal + 4-phase close` — `moai spec close` atomic transition; backfilled in follow-up chore commit)
 - mx_scope: @MX tag consistency validation for run-phase code changes (M1 web + M2 template-update + M3 hook)
 - mx_verification_approach: grep-based @MX annotation audit against run-phase modified files (no new @MX annotations introduced; one existing @MX:REASON corrected)
 - ac_sec_006c_validation: PASS (already verified in §E.2 M2 AC Binary Matrix) — update.go:1283 `@MX:REASON` fan_in=3 claim matches actual grep callers:
