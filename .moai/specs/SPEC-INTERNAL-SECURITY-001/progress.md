@@ -131,7 +131,7 @@ tier: M
 - run_status: M3-complete (hook 그룹); M1 web + M2 template-update + M3 hook all done — 8/8 REQ complete
 - run_complete_at: 2026-07-08
 - run_commit_sha: M3 = 24482adf2; M1 = 5f33dfaa9; M2 = 85e280599
-- ac_pass_count: 16/16 (M1 6/6 AC-SEC-001..002 + M2 8/8 AC-SEC-003..006 + M3 5/5 AC-SEC-007..008)
+- ac_pass_count: 19/19 (M1 6/6 AC-SEC-001..002 + M2 8/8 AC-SEC-003..006 + M3 5/5 AC-SEC-007..008)
 - ac_fail_count: 0
 - preserve_list_post_run_count: 0 (M1 web/profile + M2 cli/template + file_changed.go + unrelated working-tree files untouched; diff confined to internal/hook/)
 - l44_pre_commit_fetch: origin/main = 85e280599 (M1+M2 base); worktree HEAD aligned, no parallel-session race
@@ -153,7 +153,7 @@ tier: M
 - sync_status: complete (manager-docs sync-phase)
 - sync_complete_at: 2026-07-08
 - sync_commit_sha: f3193bac8 (docs commit `docs(SPEC-INTERNAL-SECURITY-001): sync-phase artifacts + 3-phase close`; backfilled in follow-up chore commit — SHA cannot be in its own commit, per SPEC-V3R6-AGENTIC-LOOP-CONFIG-001 `f71ddc44e` pattern)
-- changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Fixed` — SPEC-INTERNAL-SECURITY-001 entry (M1-M3 hardening summary + 16/16 AC PASS citation per §E.3 headline)
+- changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Fixed` — SPEC-INTERNAL-SECURITY-001 entry (M1-M3 hardening summary + 19/19 AC PASS citation per §E.3 headline)
 - frontmatter_status_transitions:
   - spec.md: draft → implemented (this sync commit) → completed (`moai spec close` atomic transition)
   - plan.md: draft → implemented → completed (same)
@@ -170,10 +170,10 @@ tier: M
   - §E.2 M1 web evidence: commit `5f33dfaa9` — AC-SEC-001a..002c (6 AC PASS, `httptest` traversal/cross-site tests + grep IsValidProfileName L159/L292)
   - §E.2 M2 template-update evidence: commit `85e280599` — AC-SEC-003a..006c (8 AC PASS; AC-SEC-006b N/A per WIRE-branch design decision — `verifyNamespaceBackupCoverage` 배선 chosen over removal)
   - §E.2 M3 hook evidence: commit `24482adf2` — AC-SEC-007a..008b (5 AC PASS, `t.TempDir()` fixture tests for symlink/EvalSymlinks/Edit-scan)
-  - §E.3 run-phase signal: `ac_pass_count: 16/16`, `internal/hook` coverage 83.6%, cross-platform build darwin+windows exit 0, golangci-lint 0 issues
+  - §E.3 run-phase signal: `ac_pass_count: 19/19`, `internal/hook` coverage 83.6%, cross-platform build darwin+windows exit 0, golangci-lint 0 issues
   - §E.5 Mx-phase: @MX tag consistency validated (AC-SEC-006c PASS — update.go:1283 `@MX:REASON` fan_in=3 matches actual grep callers)
 - b12_self_test_a (pre-emission grep): `grep -c 'SPEC-INTERNAL-SECURITY-001' CHANGELOG.md` = 0 (pre-emission) → no duplicate entry, emission safe
-- b12_self_test_b (AC count match): acceptance.md SSOT = 20 AC rows (AC-SEC-001a..008b); §E.3 headline = 16/16 applicable AC (AC-SEC-006b excluded as WIRE-branch design N/A); CHANGELOG entry cites "16/16 AC PASS" matching §E.3 authoritative run-phase signal
+- b12_self_test_b (AC count match): acceptance.md SSOT = 20 AC rows (AC-SEC-001a..008b); §E.3 headline = 19/19 applicable AC (AC-SEC-006b excluded as WIRE-branch design N/A); CHANGELOG entry cites "19/19 AC PASS" matching §E.3 authoritative run-phase signal
 - b12_self_test_c (file path verification): all 8 implementation file paths claimed in §E.2 evidence verified to exist — `internal/web/handlers.go`, `internal/web/app.go`, `internal/profile/preferences.go`, `internal/profile/profile.go`, `internal/cli/update.go`, `internal/cli/update_namespace_protect.go`, `internal/template/templates/.gitignore`, `internal/hook/pre_tool.go`
 - canary_compliance_check: N/A (no canary deployment for `internal/` hardening — `moai web` is a local dev tool, not a deployed service)
 - l44_pre_commit_fetch: `origin/main` = `076b144ac` (fully synced, ff-pushable; working tree clean pre-edit; `stash@{0}` = non-security-wip preserved by orchestrator, untouched per scope constraint)
