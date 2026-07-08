@@ -86,7 +86,7 @@ run_phase:
   ac_fail_count: 0
   preserve_list_post_run_count: unchanged   # only the 6 declared doctrine surfaces + 3 SPEC frontmatter transitions touched in the worktree; no out-of-scope files modified
   l44_pre_commit_fetch: "git fetch origin main → origin/main 68bbcb2c4 at session start; worktree rebased onto shared f2f6b33bf (see §E.2 reconciliation note)"
-  l44_post_push_fetch: pending   # populated after push (see agent §E6 report)
+  l44_post_push_fetch: "0 0"   # git push origin HEAD:main → 68bbcb2c4..d10c1bed8; post-push git rev-list --count --left-right origin/main...HEAD = 0 0 (synced)
   new_warnings_or_lints_introduced: 0   # doctrine-text-only; no Go source changed; make build exit 0
   cross_platform_build:
     go_build_all: n/a   # no internal/**/*.go changed; make build (re-embed) exit 0 is the build gate for this SPEC
