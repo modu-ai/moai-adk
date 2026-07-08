@@ -72,7 +72,7 @@ m1_to_mN_commit_strategy: per-milestone independent commit (7 commits)
 
 - sync_status: sync-complete (manager-docs sync-phase, single sync commit 3-phase close per SPEC-V3R6-LIFECYCLE-REDESIGN-001 / Status Transition Ownership Matrix)
 - sync_complete_at: 2026-07-08
-- sync_commit_sha: <backfill pending — SHA cannot be in its own commit; populated in follow-up chore commit per established convention (SPEC-BRAND-DIR-REMOVE-001 `2c637ece2` / SPEC-INTERNAL-SECURITY-001 `f3193bac8` / SPEC-HANDOFF-GOALFIX-001 `bf983aaf5`)>
+- sync_commit_sha: 51d18d3fe (docs commit `docs(SPEC-INTERNAL-PERF-001): sync-phase artifacts + 3-phase close`; backfilled in this follow-up chore commit — SHA cannot be in its own commit, per SPEC-V3R6-AGENTIC-LOOP-CONFIG-001 `f71ddc44e` pattern)
 - changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Added` — SPEC-INTERNAL-PERF-001 entry (6 REQ / 17 AC sub-criteria; M1-M6 + lint cleanup)
 - frontmatter_status_transitions: spec.md `in-progress → completed` + plan.md/acceptance.md/progress.md `draft → completed` atomic on single sync commit; `updated: 2026-07-08` refreshed in all 4 frontmatter blocks
 - evidence_corrections:
