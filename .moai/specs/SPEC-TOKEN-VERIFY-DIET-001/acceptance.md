@@ -20,7 +20,7 @@ tags: "token-economy, verification, vci, doctrine, acceptance"
 - **AC count**: 8 (`AC-VD-001`..`AC-VD-008`).
 - **Tier**: M (standard) — see plan.md §A.4.
 - **Era**: V3R6 (3-phase close: plan→run→sync).
-- **Traceability**: Each AC binds to one or more of `REQ-001`..`REQ-007` (see §C AC Matrix).
+- **Traceability**: Each AC binds to one or more of `REQ-VD-001`..`REQ-VD-007` (see §C AC Matrix).
 - **Verification posture**: all ACs are mechanically verifiable via `grep` / `sed -n` / `git diff` against the edited files — no subjective judgment calls.
 
 ---
@@ -38,14 +38,14 @@ tags: "token-economy, verification, vci, doctrine, acceptance"
 
 | AC ID | Requirement | Milestone | Severity | Verifies |
 |-------|-------------|-----------|----------|----------|
-| AC-VD-001 | REQ-001, REQ-005 | M1 | MUST-PASS | File-redirect contract subsection exists in `agent-common-protocol.md`; contract terms stated (verbatim → file on disk; context → exit code + bounded tail) |
-| AC-VD-002 | REQ-002, REQ-003 | M1 | SHOULD-PASS | Bounded-tail ceiling stated as concrete value; redirect-on-exceed rule present |
-| AC-VD-003 | REQ-005 | M1 | MUST-PASS | Contract section explicitly names `verification-claim-integrity` and §1.1 surface 1+2 preservation; explicitly rejects the "drop the evidence" interpretation |
-| AC-VD-004 | REQ-001, REQ-004 | M2 | SHOULD-PASS | `moai.md` §8 Verification Matrix + Completion Report banner templates carry a file-path column or row-continuation field; verbatim content NOT embedded as inline row text |
-| AC-VD-005 | REQ-006 | M1, M2 | MUST-PASS | 7 verification keywords (`go test`, `coverprofile`, `grep`, `sentinel`, `cmd/moai`, `bench`, `lint`) still grep-able in `agent-common-protocol.md` § Parallel Execution (parallel-execution grep AC at line 339 still passes) |
-| AC-VD-006 | REQ-006 | M1, M2 | MUST-PASS | Parallel-execution HARD clause at `agent-common-protocol.md` line 272 preserved (single-turn multi-Bash obligation intact); file-redirect contract alters output representation only |
-| AC-VD-007 | REQ-005 | M1, M2 | MUST-PASS | 3-surface consistency: file-redirect contract (or cross-reference to SSOT) appears in all 3 surfaces (`agent-common-protocol.md`, `verification-batch-pattern.md`, `moai.md`) |
-| AC-VD-008 | REQ-007 | M2 | MUST-PASS | E1-E7 row structure of `manager-develop.md`'s §E self-verification matrix unchanged — only evidence-surfacing representation is touched |
+| AC-VD-001 | REQ-VD-001, REQ-VD-005 | M1 | MUST-PASS | File-redirect contract subsection exists in `agent-common-protocol.md`; contract terms stated (verbatim → file on disk; context → exit code + bounded tail) |
+| AC-VD-002 | REQ-VD-002, REQ-VD-003 | M1 | SHOULD-PASS | Bounded-tail ceiling stated as concrete value; redirect-on-exceed rule present |
+| AC-VD-003 | REQ-VD-005 | M1 | MUST-PASS | Contract section explicitly names `verification-claim-integrity` and §1.1 surface 1+2 preservation; explicitly rejects the "drop the evidence" interpretation |
+| AC-VD-004 | REQ-VD-001, REQ-VD-004 | M2 | SHOULD-PASS | `moai.md` §8 Verification Matrix + Completion Report banner templates carry a file-path column or row-continuation field; verbatim content NOT embedded as inline row text |
+| AC-VD-005 | REQ-VD-006 | M1, M2 | MUST-PASS | 7 verification keywords (`go test`, `coverprofile`, `grep`, `sentinel`, `cmd/moai`, `bench`, `lint`) still grep-able in `agent-common-protocol.md` § Parallel Execution (parallel-execution grep AC at line 339 still passes) |
+| AC-VD-006 | REQ-VD-006 | M1, M2 | MUST-PASS | Parallel-execution HARD clause at `agent-common-protocol.md` line 272 preserved (single-turn multi-Bash obligation intact); file-redirect contract alters output representation only |
+| AC-VD-007 | REQ-VD-005 | M1, M2 | MUST-PASS | 3-surface consistency: file-redirect contract (or cross-reference to SSOT) appears in all 3 surfaces (`agent-common-protocol.md`, `verification-batch-pattern.md`, `moai.md`) |
+| AC-VD-008 | REQ-VD-007 | M2 | MUST-PASS | E1-E7 row structure of `manager-develop.md`'s §E self-verification matrix unchanged — only evidence-surfacing representation is touched |
 
 ---
 
@@ -135,7 +135,7 @@ grep -lE "File-redirect contract|file-redirect contract" \
 
 ### AC-VD-008 — E1-E7 boundary (out-of-scope verification)
 
-**Given** the SPEC body (REQ-007) and the full run-phase changeset,
+**Given** the SPEC body (REQ-VD-007) and the full run-phase changeset,
 **When** an auditor diffs the run-phase commits against `.claude/agents/moai/manager-develop.md`,
 **Then** no commit modifies the E1-E7 row structure of the §E self-verification matrix section — no E1-E7 row additions or deletions in the diff. Only evidence-surfacing representation language (file-redirect + bounded tail phrasing) is touched, if at all.
 
@@ -149,7 +149,7 @@ git diff <run-phase-base>..HEAD -- .claude/agents/moai/manager-develop.md | grep
 
 ## §E Edge Cases
 
-- **EC-1 — Verbatim output below the ceiling**: If a verification command's verbatim output is BELOW the bounded-tail ceiling (e.g., `go run ./cmd/moai --version` produces 1 line), the contract PERMITS inline quotation. The file-redirect obligation triggers only on exceedance. REQ-003 `While` modifier captures this — no redirect required when the ceiling is not exceeded.
+- **EC-1 — Verbatim output below the ceiling**: If a verification command's verbatim output is BELOW the bounded-tail ceiling (e.g., `go run ./cmd/moai --version` produces 1 line), the contract PERMITS inline quotation. The file-redirect obligation triggers only on exceedance. REQ-VD-003 `While` modifier captures this — no redirect required when the ceiling is not exceeded.
 - **EC-2 — File path unreachable at audit time**: If the cited file path is in `/tmp/` and the auditor's session has been restarted (OS cleared tmp), the verbatim evidence is temporarily unreachable at audit time. This is a residual risk — the contract requires only that the file path be reachable AT THE TIME the banner is rendered, not indefinitely. Long-term persistence of verification evidence is D's domain (budget-stop handoff infrastructure).
 - **EC-3 — Multi-row Verification Matrix with 7+ file paths**: A Verification Matrix with 7 rows, each citing a different file path, adds 7 file-path references. moai.md §8 banner template MUST handle this without overflow (existing columnar layout at lines 408-411 should accommodate; if not, run-phase may switch to row-continuation form per plan.md §I.4).
 - **EC-4 — Legacy SPECs grandfathered**: Pre-V3R6 SPECs that authored inline-verbatim Verification Matrices are NOT regenerated. The contract applies to NEW Verification Matrices rendered after M2 lands. Sync-auditor's retrospective reach does not extend to rewriting historical banners.

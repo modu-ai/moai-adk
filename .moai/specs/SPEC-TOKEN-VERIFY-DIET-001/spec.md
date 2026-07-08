@@ -71,43 +71,43 @@ The aggregate defect is: **no MoAI surface currently standardizes a "verbatim ev
 
 > **Subject convention**: GEARS (current notation per `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format) generalizes the subject beyond "the system". The requirements below use "the orchestrator" / "the agent" / "the banner" / "the file-redirect contract" as appropriate generalized subjects. Each requirement is a discrete, testable assertion. No legacy `IF/THEN` modality is used.
 
-### REQ-001 — Ubiquitous (subject: orchestrator)
+### REQ-VD-001 — Ubiquitous (subject: orchestrator)
 
 The orchestrator SHALL cite a verifiable file path for every verbatim tool output it produces in a Verification Matrix or Completion Report banner, instead of re-quoting the verbatim content inline.
 
 > **Test (AC-VD-001)**: banner rows contain a file-path reference to an on-disk artifact; the verbatim content is NOT embedded as inline row text.
 
-### REQ-002 — Ubiquitous (subject: agent)
+### REQ-VD-002 — Ubiquitous (subject: agent)
 
 Where a verification command's verbatim output exceeds the bounded-tail ceiling, the agent SHALL redirect the verbatim output to a file on disk and surface only exit-code + bounded-tail summary in conversation context.
 
 > **Test (AC-VD-002)**: the agent's response turn carries exit code + tail summary; the verbatim output is reachable at the cited file path.
 
-### REQ-003 — State-driven (While)
+### REQ-VD-003 — State-driven (While)
 
 **While** a verification command's verbatim output exceeds the bounded-tail ceiling, the orchestrator SHALL redirect the verbatim output to a file on disk prior to rendering any Verification Matrix or Completion Report row that cites that command.
 
 > **Test (AC-VD-002)**: for every banner row whose underlying command exceeded the ceiling, a file path is present and resolves to a file containing the command + full verbatim output.
 
-### REQ-004 — Capability gate (Where)
+### REQ-VD-004 — Capability gate (Where)
 
 **Where** the Verification Matrix or Completion Report banner is rendered, the banner SHALL display a file-path column (or row field) referencing the redirected verbatim evidence rather than embedding verbatim content as inline row text.
 
 > **Test (AC-VD-004)**: banner template carries a file-path slot; rendered rows use it.
 
-### REQ-005 — Preservation (subject: file-redirect contract)
+### REQ-VD-005 — Preservation (subject: file-redirect contract)
 
 The file-redirect contract SHALL preserve `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 1 (orchestrator self-report) and surface 2 (manager §E self-verification) — every claim row in a Verification Matrix or §E self-verification block MUST remain attributable to a directly-observed command whose verbatim output is reachable at the cited file path. **The contract is "verbatim evidence lives on disk with a citable path; context carries the exit code + a bounded tail" — NOT "drop the evidence".**
 
 > **Test (AC-VD-003)**: the contract section explicitly names `verification-claim-integrity` and the §1.1 surface 1+2 preservation obligation, and explicitly rejects the "drop the evidence" interpretation.
 
-### REQ-006 — Anti-regression (When)
+### REQ-VD-006 — Anti-regression (When)
 
 **When** the file-redirect contract is applied to the canonical 7-item batch in `agent-common-protocol.md` § Parallel Execution, the orchestrator SHALL NOT weaken or remove the parallel-execution obligation — all 7 verification commands still issue in a single assistant turn. The contract alters output representation (redirect + tail vs inline verbatim), not the single-turn multi-Bash obligation.
 
 > **Test (AC-VD-005, AC-VD-006)**: the 7 verification keywords (`go test`, `coverprofile`, `grep`, `sentinel`, `cmd/moai`, `bench`, `lint`) remain grep-able in the section; the opening HARD clause at line 272 remains intact.
 
-### REQ-007 — Out-of-scope boundary (subject: file-redirect contract)
+### REQ-VD-007 — Out-of-scope boundary (subject: file-redirect contract)
 
 The file-redirect contract SHALL NOT alter the E1-E7 row structure of `manager-develop`'s §E self-verification matrix. The contract alters only the **evidence-surfacing representation** (file-redirect + bounded tail vs inline verbatim); the E1-E7 row semantics (test / coverage / boundary / sentinel / CLI / bench / lint) remain unchanged.
 
@@ -117,9 +117,9 @@ The file-redirect contract SHALL NOT alter the E1-E7 row structure of `manager-d
 
 ## Constraints
 
-1. **vci preservation (HARD)** — REQ-005. The diet MUST NOT weaken `verification-claim-integrity.md` §1.1 surface 1+2. The verbatim output must remain ACCESSIBLE (cited file path in the banner/report), just not DUPLICATED inline.
-2. **Parallel-execution non-regression (HARD)** — REQ-006. The single-turn multi-Bash obligation is preserved.
-3. **E1-E7 boundary (HARD)** — REQ-007. The manager-develop §E matrix STRUCTURAL rewrite is explicitly out of scope.
+1. **vci preservation (HARD)** — REQ-VD-005. The diet MUST NOT weaken `verification-claim-integrity.md` §1.1 surface 1+2. The verbatim output must remain ACCESSIBLE (cited file path in the banner/report), just not DUPLICATED inline.
+2. **Parallel-execution non-regression (HARD)** — REQ-VD-006. The single-turn multi-Bash obligation is preserved.
+3. **E1-E7 boundary (HARD)** — REQ-VD-007. The manager-develop §E matrix STRUCTURAL rewrite is explicitly out of scope.
 4. **Doctrine-primary** — This SPEC touches rule files only. No Go code in `internal/runtime/`, `internal/hook/`, or anywhere else. Run-phase edits are `.claude/rules/...` + `.claude/output-styles/...` only.
 5. **Template-First Rule** — The 3 edited files (`agent-common-protocol.md`, `verification-batch-pattern.md`, `moai.md`) live in BOTH LIVE and template trees (template-tree existence verified 2026-07-08: all 3 mirrors present under `internal/template/templates/`). Per CLAUDE.local.md §2 [HARD] Template-First Rule, run-phase MUST apply edits to template source first and rebuild via `make build`, OR identically in both trees.
 6. **GEARS notation** — Requirements use current GEARS notation. No legacy `IF/THEN` modality.
@@ -143,7 +143,7 @@ The gap is a **contract gap**, not a **mechanism gap**. No new Go code is needed
 
 ### Out of Scope — E1-E7 structural rewrite
 
-- `manager-develop`'s §E self-verification matrix row-structure rewrite (E1-E7 → any other shape). REQ-007 binds: only the evidence-surfacing representation changes.
+- `manager-develop`'s §E self-verification matrix row-structure rewrite (E1-E7 → any other shape). REQ-VD-007 binds: only the evidence-surfacing representation changes.
 - Adding or removing E-rows. The 7 rows (test / coverage / boundary / sentinel / CLI / bench / lint) remain the canonical set.
 
 ### Out of Scope — Token accounting measurement
@@ -164,7 +164,7 @@ The gap is a **contract gap**, not a **mechanism gap**. No new Go code is needed
 
 ## Cross-References
 
-- **Preserved invariant**: `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 1 (orchestrator self-report) + surface 2 (manager §E self-verification). REQ-005 binds this SPEC to preserve it.
+- **Preserved invariant**: `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 1 (orchestrator self-report) + surface 2 (manager §E self-verification). REQ-VD-005 binds this SPEC to preserve it.
 - **Primary change target**: `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution / Read-only verification batching / Canonical 7-item example (line 270+).
 - **Cross-ref adoption targets**: `.claude/rules/moai/workflow/verification-batch-pattern.md` (Re-sync sentinel at line 30); `.claude/output-styles/moai/moai.md` §8 (Verification Matrix at line 396, Completion Report at line 603).
 - **Epic context**: project memory `project_token_economy_epic_handoff.md` §C (gap definition + originating incident).

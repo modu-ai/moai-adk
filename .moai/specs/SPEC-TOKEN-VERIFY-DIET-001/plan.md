@@ -61,7 +61,7 @@ This is a doctrine-primary SPEC. The mechanism is documentation: standardize the
 
 - Touches 3 always-loaded / cross-referenced surfaces (`agent-common-protocol.md` is always-loaded per CLAUDE.md core-rule loading; `moai.md` loads at orchestrator launch; `verification-batch-pattern.md` is path-scoped but cross-referenced from the always-loaded file).
 - Cascading cross-ref updates — `verification-batch-pattern.md:30` Re-sync sentinel explicitly requires re-sync when the 7-item list changes; this SPEC's representation change triggers that obligation.
-- vci preservation obligation (REQ-005) — non-trivial invariant to preserve while changing evidence representation.
+- vci preservation obligation (REQ-VD-005) — non-trivial invariant to preserve while changing evidence representation.
 - NOT Tier S — 3 files touched (Tier S = isolated single-file edit).
 - NOT Tier L — no Go code, no runtime behavior change, no production-code paths touched, doctrine-only.
 
@@ -69,7 +69,7 @@ This is a doctrine-primary SPEC. The mechanism is documentation: standardize the
 
 ## §B Known Issues (measured)
 
-- **KI-1 — Parallel-execution grep AC**: The 7-item batch's bare-command form is load-bearing for the parallel-execution grep AC at `agent-common-protocol.md` line 339 (`grep -E "go test|coverprofile|grep|sentinel|cmd/moai|bench|lint"`). M1 MUST preserve all 7 keywords when adding file-redirect syntax. Failure = regression on a CI-verified sentinel.
+- **KI-1 — Parallel-execution keyword cross-reference**: The 7-item batch's bare-command form is load-bearing for the 7-keyword cross-reference at `agent-common-protocol.md` line 338-339 (verification target of the predecessor SPEC-V3R5-WORKFLOW-OPT-001 acceptance criterion). M1 MUST preserve all 7 keywords when adding file-redirect syntax. Failure = regression on a CI-verified sentinel.
 - **KI-2 — moai.md §8 Localization Contract**: moai.md §8 carries a Localization Contract (4 locales en/ko/ja/zh). Any new banner field (file-path column) MUST be considered for localization. File paths themselves are locale-verbatim protocol tokens per moai.md line 734 verbatim-preservation list, but the column HEADER translates per `conversation_language`.
 - **KI-3 — Re-sync sentinel scope**: `verification-batch-pattern.md` line 30 Re-sync sentinel currently fires only on 7-item list changes. M2 MUST extend the sentinel to also cover the file-redirect contract representation, or the contract drifts on the next 7-item edit.
 - **KI-4 — Template-First Rule**: All 3 edited files live in both LIVE and template trees (mirror existence verified §A.2). Run-phase MUST apply edits to template source first (`internal/template/templates/...`) and rebuild via `make build`, OR identically in both trees. CLAUDE.local.md §2 [HARD] Template-First Rule.
@@ -94,9 +94,9 @@ Per `feedback_defect_claim_verification`, all referenced devices were Read/Grep/
 
 ## §D Constraints (carried from spec.md)
 
-1. vci preservation (REQ-005) — HARD.
-2. Parallel-execution non-regression (REQ-006) — HARD.
-3. E1-E7 boundary (REQ-007) — HARD.
+1. vci preservation (REQ-VD-005) — HARD.
+2. Parallel-execution non-regression (REQ-VD-006) — HARD.
+3. E1-E7 boundary (REQ-VD-007) — HARD.
 4. Doctrine-primary — no Go code.
 5. Template-First Rule — edits in template source first OR identically in both trees.
 6. GEARS notation — no legacy `IF/THEN`.
@@ -173,10 +173,10 @@ git diff HEAD~N..HEAD -- .claude/agents/moai/manager-develop.md | grep -E "^[+-]
 
 ## §G Anti-Patterns (regression hazards)
 
-- **AP-VD-001 — Drop the evidence**: Interpreting "diet" as "skip the verbatim output entirely". REQ-005 explicitly forbids — the cited file path MUST resolve to a file containing the command + full verbatim output.
+- **AP-VD-001 — Drop the evidence**: Interpreting "diet" as "skip the verbatim output entirely". REQ-VD-005 explicitly forbids — the cited file path MUST resolve to a file containing the command + full verbatim output.
 - **AP-VD-002 — Inline verbatim preservation (triple-burn)**: Keeping the inline verbatim output AND adding a file path alongside (Bash inline + banner inline + file on disk). The contract REPLACES inline verbatim with file-path citation, not ADDS a file path alongside.
-- **AP-VD-003 — Parallel-execution regression**: Splitting the 7 commands across turns "because the output is now on disk anyway". REQ-006 forbids — single-turn multi-Bash obligation is preserved (HARD clause at line 272 remains).
-- **AP-VD-004 — E1-E7 scope creep**: Rewriting `manager-develop`'s §E matrix row structure while editing the evidence-surfacing column. REQ-007 forbids — AC-VD-008 verifies the diff is clean of E1-E7 row changes.
+- **AP-VD-003 — Parallel-execution regression**: Splitting the 7 commands across turns "because the output is now on disk anyway". REQ-VD-006 forbids — single-turn multi-Bash obligation is preserved (HARD clause at line 272 remains).
+- **AP-VD-004 — E1-E7 scope creep**: Rewriting `manager-develop`'s §E matrix row structure while editing the evidence-surfacing column. REQ-VD-007 forbids — AC-VD-008 verifies the diff is clean of E1-E7 row changes.
 - **AP-VD-005 — Template drift**: Editing only the LIVE `agent-common-protocol.md` without mirroring to `internal/template/templates/`. CLAUDE.local.md §2 [HARD] Template-First Rule violated; CI guard may flag.
 - **AP-VD-006 — Grep-keyword regression**: Rewriting the 7-item batch in a way that drops one of the 7 keywords. The parallel-execution grep AC at `agent-common-protocol.md` line 339 fails. M1 must preserve all 7.
 - **AP-VD-007 — moai.md §8 HARD-rule violation**: Adding the file-path column in a way that breaks any of the 5 HARD rules at moai.md lines 423-427 (e.g., introducing a non-`✓`/`✗` symbol, dropping the `📊 N/M PASS` line). M2 must preserve all 5.
@@ -198,7 +198,7 @@ git diff HEAD~N..HEAD -- .claude/agents/moai/manager-develop.md | grep -E "^[+-]
 
 These are design decisions the run-phase implementer (manager-develop) may tune within the contract's spirit. **None are blockers requiring orchestrator+user clarification** — they are within-contract tuning.
 
-1. **Bounded-tail ceiling exact value**: Plan proposes `≤50 lines OR ≤2KB` default. Run-phase may tune per-domain (test output may need more lines than lint output). The contract holds regardless of the exact number; REQ-002 / REQ-003 bind only on the *exceeds-ceiling* predicate.
+1. **Bounded-tail ceiling exact value**: Plan proposes `≤50 lines OR ≤2KB` default. Run-phase may tune per-domain (test output may need more lines than lint output). The contract holds regardless of the exact number; REQ-VD-002 / REQ-VD-003 bind only on the *exceeds-ceiling* predicate.
 2. **File path convention**: Plan proposes `/tmp/moai-verify/<session-id>/<N>.<cmd-slug>.log` (per-session, cleared on session end). Run-phase may choose `.moai/state/verify/<session>/` instead (persisted, gitignored). The contract requires only that the path be (a) cited in the banner and (b) reachable at render time — it does not prescribe the directory.
 3. **Localization of the file-path column header**: The column header (e.g., "Evidence" / "증거" / "証拠" / "证据") translates per `conversation_language`; file path values are locale-verbatim (moai.md line 734 already covers this category). Run-phase renders the header per the existing Localization Contract machinery.
-4. **Whether to add a moai.md §8 column or a row-continuation field**: The Verification Matrix banner currently uses 2-column layout (lines 408-411). Adding a 3rd column may crowd the layout; a row-continuation field (`   └─ evidence: /tmp/...`) may be cleaner. Run-phase decides based on visual fit; either satisfies REQ-004.
+4. **Whether to add a moai.md §8 column or a row-continuation field**: The Verification Matrix banner currently uses 2-column layout (lines 408-411). Adding a 3rd column may crowd the layout; a row-continuation field (`   └─ evidence: /tmp/...`) may be cleaner. Run-phase decides based on visual fit; either satisfies REQ-VD-004.
