@@ -17,11 +17,54 @@ plan_status: audit-ready
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### Commits (M1-M6, chronological)
+
+| Milestone | REQ | Commit SHA | Subject |
+|-----------|-----|------------|---------|
+| M2 | REQ-PERF-004 | 85cf27a08 | regex package-level promotion (era.go, status.go) |
+| M5 | REQ-PERF-005 | 34f5efbaf | merge diff size guard (differ.go) |
+| M6 | REQ-PERF-006 | d90a458f1 | template single render (deployer.go) |
+| M1 | REQ-PERF-001 | 96d624041 | spec-lint git-query cache (gitquery_cache.go, lint.go) |
+| M3 | REQ-PERF-002 | f2dfe4a8c | mx fan-in single-traversal index (validator.go) |
+| M4 | REQ-PERF-003 | a5981768a | CLI lazy initialization (root.go) |
+| lint | — | 43ea47ab0 | lint cleanup (differ_perf_test.go) |
+
+### Coverage (measured 2026-07-08, `go test -cover ./internal/{pkg}/`)
+
+| Package | Baseline | After | Status |
+|---------|----------|-------|--------|
+| internal/spec | 87.9% | 88.3% | >= baseline |
+| internal/merge | 87.1% | 87.4% | >= baseline |
+| internal/template | 85.8% | 86.0% | >= baseline |
+| internal/hook/mx | 87.5% | 88.5% | >= baseline |
+
+### Cross-platform build
+```
+$ go build ./...                           -> exit 0
+$ GOOS=windows GOARCH=amd64 go build ./... -> exit 0
+```
+
+### Lint
+```
+$ golangci-lint run --timeout=2m -> 0 issues
+```
+
+### Pre-existing FAIL (Out of Scope per acceptance.md D.4)
+- internal/cli: TestDoctor_Current_Light/Dark/NoColor, TestStatus_Current_Light/Dark/NoColor (statusline env flaky)
+- internal/template: TestOutputStylesTemplateLiveParity (moai-easy.md parity - parallel-session residue in PRESERVE list)
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_complete_at: 2026-07-08
+run_commit_sha: 43ea47ab0
+run_status: run-complete (6/6 REQ implemented, 0 NEW FAIL)
+ac_pass_count: 17 (AC-PERF-001a..006b - see E1 matrix in final report)
+ac_fail_count: 0
+new_warnings_or_lints_introduced: 0 (golangci-lint clean)
+cross_platform_build.darwin_arm64: PASS
+cross_platform_build.windows_amd64: PASS
+total_run_phase_files: 14 (8 production + 6 test/doc)
+m1_to_mN_commit_strategy: per-milestone independent commit (7 commits)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
