@@ -122,7 +122,7 @@ m1_to_mN_commit_strategy: per-milestone (M1 → M2), Route A main-direct, specif
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-07-08
-sync_commit_sha: <pending backfill>   # populated by follow-up chore commit (sync commit SHA recorded after the sync commit lands)
+sync_commit_sha: b83b76c7e6   # docs(SPEC-TOKEN-VERIFY-DIET-001): sync-phase artifacts + 3-phase close
 three_phase_close: "plan→run→sync (Route A main-direct, no PR)"
 sync_method: orchestrator-direct
 d1_d2_resolution: "resolved in commit 3d35cc18d — REQ-VD prefix (spec.md/acceptance.md) + KI-1 relabel (plan.md); the §E.2 'Open debt' note above is stale post-3d35cc18d (debt cleared, not carried into close)"
