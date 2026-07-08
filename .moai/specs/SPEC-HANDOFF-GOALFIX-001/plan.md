@@ -2,7 +2,7 @@
 id: SPEC-HANDOFF-GOALFIX-001
 title: "Implementation plan — retire inert '# /goal' line, two-step post-paste handoff"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-07-08
 updated: 2026-07-08
 author: GOOS행님

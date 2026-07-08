@@ -31,7 +31,6 @@ When NONE apply (single-turn, trivial task, read-only query), emit a brief compl
 
 ultrathink. <SPEC-ID> <phase> <entering verb>.
 mode: <value>   ← emit ONLY when the seeded orchestration mode ≠ solo-sequential; value ∈ {parallel-subagents | agent-team | dynamic-workflow} → Phase 0.95 Mode 4 / 3 / 6. OMIT for solo-sequential (default) → v1 byte-identical. When mode = dynamic-workflow, ALSO append bare `ultracode` to the opener line above (paste-time trigger keyword; the session-persistent `/effort ultracode` slash form is a separate variant — per Field-by-Field Spec, Block 1). When mode = agent-team, append `--team` to the Block 5 run command. When mode = parallel-subagents, append the fan-out steering phrase `fan out subagents (<read-only investigation scope>)` to the opener line above (paste-time steering phrase — per Field-by-Field Spec, Block 1).
-# /goal <completion-condition>   ← emit ONLY when the next SPEC is run-phase AND has a machine-verifiable end-state (e.g. the SPEC's test suite passes AND lint is clean, or stop after N turns); omit otherwise (per Field-by-Field Spec, Block 1). A /goal line does NOT authorize autonomous run-phase entry — Implementation Kickoff Approval still required.
 applied lessons: <memory-file-1>, <memory-file-2>, ...
 
 전제 검증:
@@ -68,6 +67,7 @@ The cut-line marker text AND the 6-block skeleton verbs/headers translate per `c
 | Block 5 Run header | `Run:` | `실행:` | `実行:` | `执行:` |
 | Block 6 After-merge header (PR workflow) | `After merge:` | `머지 후:` | `マージ後:` | `合并后:` |
 | Block 6 Follow-up header (trunk no-PR) | `Follow-up:` | `후속:` | `後続:` | `后续:` |
+| Post-paste /goal instruction line | Send the `/goal` line below as its own standalone message AFTER Implementation Kickoff Approval — slash commands parse only at input start, and setting a goal starts a turn immediately. | 아래 `/goal` 라인을 구현 착수 승인 후 **별도 메시지로 단독 전송** — 슬래시 커맨드는 입력 시작에서만 인식되며, goal 설정 즉시 턴이 시작됨. | 下記の `/goal` 行を実装着手承認後に**単独メッセージとして送信** — スラッシュコマンドは入力の先頭でのみ認識され、goal 設定と同時にターンが開始される。 | 在实现启动批准后，将下方 `/goal` 行**作为独立消息单独发送** — 斜杠命令仅在输入开头被识别，设定 goal 会立即开始一个回合。 |
 
 Read `conversation_language` from `.moai/config/sections/language.yaml` at render time; substitute the localized text between the `✂────` decorators (cut-line markers) while keeping `✂` and `─` characters verbatim, and substitute the locale rendering for each Block 1/3/5/6 placeholder when emitting the paste-ready message.
 
@@ -76,8 +76,8 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
 ### Field-by-Field Specification
 
 - **Block 1**: `ultrathink.` sets `effort: xhigh` on Opus 4.7+ (next session lacks accumulated reasoning). Adaptive Thinking is a DISTINCT axis — the thinking mode, explicitly enabled via `thinking: {type: "adaptive"}` — not something `ultrathink` toggles. `<phase>` ∈ `plan | run | sync | mx`.
-  - **Block 1 line-order invariant** [HARD]: the Block 1 lines emit in this fixed order — `ultrathink.` opener (with an optional appended bare `ultracode` keyword) → `mode:` line (when present) → `# /goal` line (when present) → `applied lessons:` → `source_session_id:`. Each conditional line is omitted when its condition does not hold; in the common solo-sequential case with no `/goal`, only the opener + `applied lessons:` remain, byte-identical to v1.
-  - **Purpose-conditional `mode:` orchestration-seed line** [HARD]: Block 1 carries a purpose-conditional `mode: <value>` line that **seeds** the next session's Phase 0.95 orchestration mode. It is emitted ONLY when the seeded mode is NOT `solo-sequential`; for `solo-sequential` (the default) the line is **omitted**, keeping the message byte-identical to v1 (zero-diff common case). The `mode:` line sits directly below the `ultrathink.` opener (before the `# /goal` line when both are present). Its value is a protocol token drawn from a fixed 4-enum that maps 1:1 onto the Phase 0.95 mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A):
+  - **Block 1 line-order invariant** [HARD]: the Block 1 lines emit in this fixed order — `ultrathink.` opener (with an optional appended bare `ultracode` keyword or fan-out steering phrase) → `mode:` line (when present) → `applied lessons:` → `source_session_id:`. Each conditional line is omitted when its condition does not hold; in the common solo-sequential case, only the opener + `applied lessons:` remain, byte-identical to v1. The main resume block carries NO `/goal` line — a mid-paste `#`-prefixed (or bare) slash line is inert plain text because official slash-command parsing recognizes a `/` command only at the input start of a standalone message; the `/goal` autonomous-continuation directive is delivered by the separate post-paste mechanism (see § Post-Paste /goal Follow-up Block), never inside this block.
+  - **Purpose-conditional `mode:` orchestration-seed line** [HARD]: Block 1 carries a purpose-conditional `mode: <value>` line that **seeds** the next session's Phase 0.95 orchestration mode. It is emitted ONLY when the seeded mode is NOT `solo-sequential`; for `solo-sequential` (the default) the line is **omitted**, keeping the message byte-identical to v1 (zero-diff common case). The `mode:` line sits directly below the `ultrathink.` opener. Its value is a protocol token drawn from a fixed 4-enum that maps 1:1 onto the Phase 0.95 mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A):
 
     | `mode:` value (seed) | Phase 0.95 catalog | Emission | Directive coupling |
     |----------------------|--------------------|----------|--------------------|
@@ -89,13 +89,13 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
     - **Excluded modes**: Mode 1 (trivial) and Mode 2 (background) are NOT handoff-relevant seeds — a handoff never resumes into a trivial or background mode as its primary re-entry mode, so neither is assigned a `mode:` token.
     - **Threshold reuse (no new threshold)**: the seed derives from Phase 0.95's existing auto-select thresholds (domains ≥ 3 / files ≥ 10 / score ≥ 7, per `orchestration-mode-selection.md` §B.1). The `mode:` seed introduces NO new threshold.
     - **SEED, not a permission grant** [HARD]: the `mode:` value is a SEED (a signal for the next session's orchestrator), NOT a permission grant. The Implementation Kickoff Approval (plan→run HUMAN GATE) remains mandatory regardless of the seeded mode — a seeded `dynamic-workflow` or `agent-team` does NOT authorize autonomous run-phase entry. The seed only pre-selects the orchestration shape the user is subsequently asked to approve.
-    - **Directive binding**: `ultrathink.` is emitted always (v1 invariant); bare `ultracode` is appended to the opener line ONLY when mode = `dynamic-workflow`; `# /goal` is emitted only for a run-phase next SPEC with a machine-verifiable end-state (unchanged v1 condition); `--team` is appended to the Block 5 run command only when mode = `agent-team`; the fan-out steering phrase `fan out subagents (<read-only investigation scope>)` is appended to the opener line ONLY when mode = `parallel-subagents` (see the fan-out steering phrase bullet below).
+    - **Directive binding**: `ultrathink.` is emitted always (v1 invariant); bare `ultracode` is appended to the opener line ONLY when mode = `dynamic-workflow`; the post-paste `/goal` follow-up block is emitted only for a run-phase next SPEC with a machine-verifiable end-state (unchanged condition, new placement — see § Post-Paste /goal Follow-up Block); `--team` is appended to the Block 5 run command only when mode = `agent-team`; the fan-out steering phrase `fan out subagents (<read-only investigation scope>)` is appended to the opener line ONLY when mode = `parallel-subagents` (see the fan-out steering phrase bullet below).
     - **solo-sequential emission policy (emit-discouraged + parse-accept)**: `solo-sequential` is the emit-discouraged default — its `mode:` line is not emitted (Block 1 omits it → v1 byte-identical). An explicit `mode: solo-sequential` line, should a producer choose to write one, is parse-accepted (forward-compatible) and read as Mode 5, merely redundant with the omitted default. The framing is single: prefer omission, accept an explicit value — the doctrine does not simultaneously discourage emission and forbid parsing.
     - **`mode:` is a locale-verbatim protocol token**: like the `plan | run | sync | mx` phase tokens, the `mode:` value is preserved verbatim across all locales and is NOT added as a row to any localization / cut-line / header translation table.
     - **JSON-twin forward-compat note**: there is no JSON twin currently (this doctrine is doctrine-only, no code). Where a JSON-twin representation of the resume message is later introduced, that twin shall set `schema_version: 2` and carry the `mode` field. This note records forward-compatibility only and triggers no code change now.
   - **Purpose-conditional fan-out steering phrase (mode = parallel-subagents)** [HARD]: when the seeded mode is `parallel-subagents`, the resume message appends the natural-language fan-out steering phrase — canonical form `fan out subagents (<read-only investigation scope>)` — after the opener text on the Block 1 opener line. The paste-ready message is **user-pasted**, so the phrase counts at the runtime layer as a user-authored explicit multi-agent opt-in — the same paste-time class as the `ultrathink` / bare `ultracode` keywords. Rationale: newer models spawn fewer subagents by default, and fan-out must be instructed explicitly (per `.claude/rules/moai/core/moai-constitution.md` § Opus 4.7+ Prompt Philosophy Principle 4); a resumed session parsing only the `mode:` metadata line silently under-spawns without this phrase. **Locale-verbatim phrase**: `fan out subagents` is a locale-verbatim protocol phrase — preserved in English across all locales, exactly like the `mode:` values, and NOT added as a row to any localization / cut-line / header translation table; only the parenthesized scope qualifier translates per `conversation_language` (e.g. ko: `fan out subagents (read-only 코드베이스 조사)`). **Invariants**: (a) SEED-not-permission — the phrase does NOT authorize autonomous run-phase entry; the Implementation Kickoff Approval (plan→run HUMAN GATE) remains mandatory, with the identical binding strength as the `mode:` / bare-`ultracode` / `/goal` clauses; (b) concurrency ceiling — the steered fan-out respects the 3-5 concurrent `Agent()` ceiling (`orchestration-mode-selection.md` §C.2, applied equally to Mode 3 and Mode 4); (c) read-only scoping — the phrase carries a read-only investigation scope qualifier and shall NOT seed parallel WRITE fan-out (write work stays foreground-sequential per `agent-common-protocol.md` § Background Agent Execution). **Disambiguation**: the Claude Code UI tip — "Say 'fan out subagents' and Claude sends a team" — maps to **Mode 4** (parallel subagents: single-turn multi-`Agent()` spawn), NOT Mode 3 (agent-team, which requires the Agent Teams env prerequisites and carries the `--team` coupling). Default on ambiguity: omit.
   - **`ultracode` re-integration — bare opener keyword vs `/effort ultracode` session-persistence variant** [HARD]: the default opener form appends a **bare `ultracode`** keyword to the `ultrathink.` opener line (e.g. `ultrathink. ultracode`), which fires at paste time (v2.1.160+, same class as the `ultrathink` keyword), and is emitted ONLY when the seeded mode is `dynamic-workflow` (per the directive-binding table above). The **`/effort ultracode` slash form** is retained as a SEPARATE "session-persistence" variant for when ultracode must persist across the whole session rather than fire once at paste time — a `#`-commented slash line cannot execute at paste time, so it is not the opener default. Per `.claude/rules/moai/workflow/dynamic-workflows.md`, ultracode is NOT restored by the `ultrathink.` opener — it must be explicitly re-issued after `/clear` when the resumed session needs auto-orchestration. When the next SPEC does NOT declare workflow fan-out, no ultracode form is emitted (the `ultrathink.` opener alone suffices). The bare `ultracode` rides the opener line, which sits immediately after `ultrathink.` (or after the `mode:` line when present) per the line-order invariant above. Default on ambiguity: omit.
-  - **Purpose-conditional `/goal` re-set line** [HARD]: Block 1 also carries a purpose-conditional `/goal <completion-condition>` re-set line, authored with the same conditional-emit mechanism as the `mode:` and bare-`ultracode` lines above. It is emitted ONLY when the next SPEC's phase is run-phase AND the next SPEC declares a mechanically verifiable completion condition (a machine-checkable end-state such as the SPEC's test suite passing, a lint-clean state, or a bounded `stop after N turns` clause). Per the Block 1 line-order invariant above, the `/goal` line sits after the `mode:` line when present (order: opener → `mode:` → `# /goal`), otherwise directly below the opener/`ultracode` line. Per `.claude/rules/moai/workflow/goal-directive.md`, a `/goal` is NOT restored by the `ultrathink.` opener — `/clear` removes an active goal, so it must be explicitly re-issued after `/clear` when the resumed session needs the autonomous-continuation loop. The renderer omits the `/goal` line for a plan-phase or sync-phase next SPEC, and for any next SPEC lacking a machine-verifiable end-state. Default on ambiguity: omit — the identical default binding the bare-`ultracode` line. **Implementation Kickoff Approval invariant**: a `/goal` line does NOT authorize autonomous run-phase entry; the Implementation Kickoff Approval human gate (orchestrator `AskUserQuestion` per `.claude/rules/moai/workflow/goal-directive.md` § MoAI Integration Notes) remains required before run-phase entry, independent of whether a `/goal` line is present. The `/goal` line is a continuation-loop convenience, never a run-phase pre-authorization.
+  - **Post-paste `/goal` follow-up (NOT a Block 1 line)** [HARD]: the `/goal` autonomous-continuation directive is NOT a Block 1 line and is NOT embedded anywhere in the main resume block — a mid-paste `#`-prefixed or bare slash line is inert (parsed as plain text; official slash-command recognition is input-start-only). When the emission condition holds (the next SPEC is run-phase AND declares a machine-verifiable end-state — condition UNCHANGED from the predecessor doctrine), the orchestrator emits a separate post-paste `/goal` follow-up block; the full two-step mechanism, the standalone-message requirement, the Implementation-Kickoff-Approval timing, and the resumed-session reminder obligation live in § Post-Paste /goal Follow-up Block. Per `.claude/rules/moai/workflow/goal-directive.md`, a `/goal` is NOT restored by the `ultrathink.` opener — `/clear` removes an active goal, so it must be re-issued as its own standalone user message when the resumed session needs the autonomous-continuation loop. Default on ambiguity: omit the follow-up block. **Implementation Kickoff Approval invariant**: a `/goal` follow-up block does NOT authorize autonomous run-phase entry; the Implementation Kickoff Approval human gate remains required before run-phase entry, independent of whether a follow-up block is emitted.
 - **Block 2**: `applied lessons:` — relevant memory files from `~/.claude/projects/{hash}/memory/`. MUST include the most recent relevant project memory + any relevant lessons. Block 2 MUST also include a `source_session_id: <UUID from moai session current>` line carrying the Claude Code session_id of the orchestrator turn that generated this resume message per the canonical multi-session coordination policy. The session_id is the same value emitted by `moai session list --json` and stored in `.moai/state/active-sessions.json` — readers can correlate the resume back to its originating session.
   - **Environment fallback** [HARD]: the primary UUID source is `moai session current`. If `moai session current` returns the canonical fallback (runtime did not expose session.id to the CLI subprocess), OR `moai session list --json` returns error (CLI not installed in PATH), OR `.moai/state/active-sessions.json` does not exist (the multi-session coordination layer not yet deployed in this project), the orchestrator MUST emit the recognized fallback pattern verbatim: `source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>`. This pattern is NOT an anti-pattern; it is the prescribed graceful degradation when the CLI/registry layer is absent or the runtime does not expose session.id. The next session, upon `/moai session register` activation, MAY backfill the UUID by appending a `[backfilled: <UUID>]` annotation to the memory file's Block 2 line.
 - **Block 3**: separator + `전제 검증:` (Korean) or `Preconditions:` (English).
@@ -114,7 +114,6 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
 ✂──── 여기부터 복사 ────✂
 
 ultrathink. SPEC-MYPROJ-001 implementation 진입.
-# /goal the SPEC's test suite passes AND lint is clean, or stop after 20 turns   ← run-phase + machine-verifiable; omit for plan/sync or non-verifiable.
 applied lessons: <lesson-id-1>, <lesson-id-2>.
 source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>
 
@@ -127,14 +126,84 @@ source_session_id: <not-available — environment-fallback, next session will ba
 머지 후: SPEC-MYPROJ-002 → SPEC-MYPROJ-003
 
 ✂──── 여기까지 복사 ────✂
+
+아래 /goal 라인을 구현 착수 승인 후 별도 메시지로 단독 전송 — 슬래시 커맨드는 입력 시작에서만 인식됨 (run-phase + machine-verifiable end-state일 때만 방출; 아니면 생략):
+
+✂──── 여기부터 복사 ────✂
+
+/goal the SPEC's test suite passes AND lint is clean, or stop after 20 turns
+
+✂──── 여기까지 복사 ────✂
 ```
+
+## Post-Paste /goal Follow-up Block
+
+[ZONE:Evolvable] [HARD] The `/goal` autonomous-continuation directive is delivered as a **two-step handoff**, NOT as a line inside the main resume block. The main cut-line-bounded resume block (§ Canonical Format) is `/goal`-free; a slash command pasted mid-body is inert plain text because official slash-command parsing recognizes a `/` command only at the **input start** of a standalone message (`https://code.claude.com/docs/en/interactive-mode` § Quick commands), and `/goal` is a user-only TUI command the model cannot invoke on the user's behalf (`https://code.claude.com/docs/en/goal`). The two-step form below is what actually arms the autonomous-continuation loop in the resumed session.
+
+### Emission condition (frozen — unchanged from the predecessor doctrine)
+
+The follow-up block is emitted ONLY when the next SPEC is run-phase AND declares a machine-verifiable end-state (a machine-checkable end-state such as the SPEC's test suite passing, a lint-clean state, or a bounded `stop after N turns` clause). When the condition does NOT hold (plan-phase / sync-phase next SPEC, or any next SPEC lacking a machine-verifiable end-state), NO follow-up block and NO instruction line are emitted — the output is byte-identical to the pre-existing no-`/goal` form.
+
+### Block anatomy (two parts)
+
+**Where** the emission condition holds, **When** the orchestrator emits a paste-ready resume message, it appends — OUTSIDE and AFTER the main cut-line block — the following two parts:
+
+1. A localized **instruction line** (prose, OUTSIDE the cut-line markers) stating the block below MUST be sent as its own standalone message (slash commands parse only at input start), RECOMMENDED after the resumed session's Implementation Kickoff Approval — setting a goal starts a turn immediately, so sending it before Kickoff Approval would begin run-phase work prematurely. The instruction line text translates per `conversation_language` (see the § Localization Table instruction-line row).
+2. A second cut-line-bounded fenced block (reusing the existing Cut-line top/bottom marker rows) containing EXACTLY one line — `/goal <completion-condition>` — with no `#` prefix and no additional lines.
+
+Skeleton (illustrative; the instruction line renders in `conversation_language`, the `/goal` token and `<completion-condition>` placeholder stay locale-verbatim):
+
+```text
+<instruction line — localized per § Localization Table>
+
+✂──── 여기부터 복사 ────✂
+
+/goal <completion-condition>
+
+✂──── 여기까지 복사 ────✂
+```
+
+### Resumed-session orchestrator reminder obligation
+
+[ZONE:Evolvable] [HARD] The resumed session's orchestrator carries a **reminder obligation**: because the model cannot set a `/goal` on the user's behalf (it is a user-only TUI command), the orchestrator MUST remind the user to send the `/goal` line as a standalone message at the recommended moment (after Implementation Kickoff Approval). The reminder is issued via **natural-language status guidance, NOT `AskUserQuestion`** (it is an announcement, not a decision). Detection path: post-retirement the pasted main block itself carries NO `/goal` reference, so the resumed orchestrator detects the pending `/goal` from the **handoff memory entry** (the resume message AND its post-paste follow-up block are persisted verbatim to auto-memory per § Auto-Memory Integration) OR, failing a memory hit, by **re-deriving the emission condition** (the resumed SPEC is run-phase AND declares a machine-verifiable end-state). This reminder obligation is also recorded in `goal-directive.md` § MoAI Integration Notes.
+
+### Implementation Kickoff Approval invariant (carry-over)
+
+A `/goal` follow-up block does NOT authorize autonomous run-phase entry. The Implementation Kickoff Approval human gate (orchestrator `AskUserQuestion` per `goal-directive.md` § MoAI Integration Notes) remains required before run-phase entry, independent of whether a follow-up block was emitted. The follow-up block is a continuation-loop convenience, never a run-phase pre-authorization.
+
+### Goal-first bootstrap variant (documented alternative — NOT the default)
+
+[ZONE:Evolvable] An explicit alternative single-paste form exists: the **goal-first bootstrap** — a standalone one-line `/goal` message whose condition text carries both a resume pointer and the compact completion condition. Illustrative:
+
+```text
+/goal SPEC-X run 재개: memory의 <handoff-file>와 progress.md를 읽고 이어서 진행. 완료 조건: <machine-verifiable end-state>, 또는 N턴 후 중단.
+```
+
+Grounding: official goal doc — "Setting a goal starts a turn immediately, with the condition itself as the directive" (`https://code.claude.com/docs/en/goal`). Normative content:
+
+- **(a) Selection criterion**: choose goal-first bootstrap when the user wants one-paste + autonomous continuation; the two-step handoff (§ Block anatomy) remains the DEFAULT.
+- **(b) Caveats**: effort keywords (`ultrathink` / `ultracode`) placed inside a slash-command argument are NOT documented to fire — the session may run at default effort; and precondition verification shifts from paste-time structure (the Block 4 verifiable commands) to **model discretion** via the directive text.
+- **(c) Invariants preserved**: the condition must stay compact (official guidance: one measurable end state); the Implementation Kickoff Approval gate is unaffected; the `/goal` token stays locale-verbatim (never translated).
+
+## Paste-Time Activation Matrix
+
+[ZONE:Evolvable] The following normative table classifies every handoff directive by its activation mechanism, so an author never places a directive where it cannot fire. Ground truth: `https://code.claude.com/docs/en/interactive-mode` (slash commands recognized only at input start) and `https://code.claude.com/docs/en/goal` (`/goal` is a user-typed TUI command, not model-invocable).
+
+| Class | Directives | Mechanism | Fires from pasted body? |
+|-------|-----------|-----------|------------------------|
+| (a) Paste-time keyword | `ultrathink`, bare `ultracode` | Runtime keyword, position-independent in message text | YES |
+| (b) Paste-time natural-language phrase | `fan out subagents (<scope>)` | Explicit multi-agent opt-in phrase — same opt-in class as (a) | YES |
+| (c) Orchestrator-interpreted text | `mode:` seed, Block 5 `실행: /moai <subcommand>` | The orchestrator reads the text and routes (`/moai` via the Skill tool); NOT auto-executed as a slash command | YES (via orchestrator interpretation) |
+| (d) User-only TUI command | `/goal`, `/effort`, `/clear` | Slash command parsed ONLY at input start; not model-invocable; cannot be set by pasted body text NOR by the model | NO — requires a standalone user message |
+
+Consequence: a `/goal` line belongs to class (d) — it MUST arrive as its own standalone user message (§ Post-Paste /goal Follow-up Block), never inside the pasted resume body where it would be inert class-(d) plain text.
 
 ## Auto-Memory Integration (Mandatory)
 
 [ZONE:Evolvable] [HARD] When generating a resume message, the orchestrator MUST also:
 
 1. Save the message to a memory project entry. Filename pattern: `project_<epic>_<spec>_<status>.md` (e.g., `project_epic8_wf002_complete.md`). The `<epic>` token reflects the multi-SPEC grouping per sprint-round-naming.md (the legacy `<sprint>/<wave>` tokens are retired).
-2. Include the resume message verbatim in that file under a `## 다음 세션 시작점 (paste-ready resume message)` heading.
+2. Include the resume message verbatim in that file under a `## 다음 세션 시작점 (paste-ready resume message)` heading. When a post-paste `/goal` follow-up block was emitted (per § Post-Paste /goal Follow-up Block), include its instruction line + cut-line-bounded `/goal` block verbatim in the same memory entry, so the resumed session can detect the pending `/goal` from memory (the pasted main block itself carries no `/goal` reference).
 3. Update `MEMORY.md` index with a one-line entry pointing to the new memory file.
 4. Mark superseded entries (if any) with `[SUPERSEDED by <new-file>]` prefix per Lessons Protocol in `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol.
 5. Annotate the MEMORY.md index entry with a `(session: <UUID-8-char-prefix>)` parenthetical when the SPEC was worked across multiple sessions (cross-references the `source_session_id` in Block 2 — enables readers to correlate the resume back to its originating session).
@@ -143,7 +212,7 @@ This ensures the message survives `/clear` and is discoverable at the start of t
 
 ## Output Surface (User-Facing)
 
-At session end, the orchestrator displays: (1) the message in a fenced ```text``` block **bounded by cut-line markers** (per § Cut-line Marker Specification — marker text translated per `conversation_language`, `✂`/`─` symbols preserved verbatim) for verbatim paste, (2) the memory file path, (3) a one-sentence summary of what next session continues.
+At session end, the orchestrator displays: (1) the main message in a fenced ```text``` block **bounded by cut-line markers** (per § Cut-line Marker Specification — marker text translated per `conversation_language`, `✂`/`─` symbols preserved verbatim) for verbatim paste, (2) **when the `/goal` emission condition holds** (next SPEC run-phase AND machine-verifiable end-state), the localized instruction line + the separate cut-line-bounded `/goal` follow-up block (per § Post-Paste /goal Follow-up Block) — omitted entirely otherwise, (3) the memory file path, (4) a one-sentence summary of what next session continues.
 
 ## Anti-Patterns
 
@@ -161,7 +230,8 @@ See the general-hygiene bullet list and the §Diet Constraints and §V0 Abort Ga
 - Cut-line markers absent — user cannot identify exact copy boundary in long terminal scrollback (see § Cut-line Marker Specification for the literal format).
 - Cut-line markers with translated `✂` symbol or `─` decorator — contrary to § Cut-line Marker Specification (only the marker text translates; the symbols are preserved verbatim).
 - Omitting the bare `ultracode` opener keyword (or the `/effort ultracode` session-persistence variant) when the next SPEC's plan declares workflow fan-out (dynamic Workflow or Agent Teams) — the resumed session silently drops to non-ultracode effort and loses auto-orchestration (ultracode is NOT restored by `ultrathink.` per `.claude/rules/moai/workflow/dynamic-workflows.md`).
-- Omitting the `/goal` re-set line when the next SPEC has a verifiable run-phase completion condition — the resumed session silently loses the autonomous-continuation loop (a `/goal` is NOT restored by `ultrathink.`; `/clear` removes an active goal, per `.claude/rules/moai/workflow/goal-directive.md`).
+- Omitting the post-paste `/goal` follow-up block when the next SPEC has a verifiable run-phase completion condition — the resumed session silently loses the autonomous-continuation loop (a `/goal` is NOT restored by `ultrathink.`; `/clear` removes an active goal, per `.claude/rules/moai/workflow/goal-directive.md`; the follow-up block + resumed-session reminder obligation is the two-step delivery mechanism, per § Post-Paste /goal Follow-up Block).
+- Embedding a `/goal` (or any slash command) line inside the main resume body — slash commands parse only at input start of a standalone message; a mid-paste slash line is inert plain text and never arms the goal loop (see § Paste-Time Activation Matrix). Deliver `/goal` via the separate post-paste follow-up block sent as its own standalone message.
 - Omitting the fan-out steering phrase (`fan out subagents (<read-only investigation scope>)`) when `mode: parallel-subagents` is seeded — the resumed session silently under-spawns: fewer subagents are spawned by default unless fan-out is explicitly instructed (per `.claude/rules/moai/core/moai-constitution.md` § Opus 4.7+ Prompt Philosophy Principle 4; the fan-out steering phrase is NOT restored by the `ultrathink.` opener).
 
 ## Worktree-Anchored Resume Pattern
@@ -291,7 +361,7 @@ applied lessons: <lesson-id-1>, <lesson-id-2>.
 - [ ] Block 6 ≤ 2 lines
 - [ ] Doctrine history not embedded → rule-file reference only
 - [ ] No ceremonial reminder
-- [ ] Block 1 `/goal` re-set line (if emitted) is a single conditional line, not a multi-line block
+- [ ] Post-paste `/goal` follow-up block (if emitted) is a separate cut-line-bounded block outside the main message, containing exactly one `/goal` line (never inside the main resume body)
 - [ ] Block 1 fan-out steering phrase (`fan out subagents (<read-only investigation scope>)`) present iff mode = parallel-subagents — phrase locale-verbatim (English preserved), scope qualifier translated
 
 ### Applicable scope
