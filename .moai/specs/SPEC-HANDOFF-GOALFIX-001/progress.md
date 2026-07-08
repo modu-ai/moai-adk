@@ -98,3 +98,18 @@ run_phase:
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 0.95 Mode Selection
+
+- tier: M / scope: 6 surfaces (3 live doctrine + 3 template mirrors) + make build / domain count: 1 (handoff doctrine) / language mix: 100% markdown / concurrency benefit: LOW (parity-coupled edits) / Agent Teams prereqs: not all met (harness standard)
+- Mode evaluation: trivial=no (multi-surface semantic doctrine) / background=no (Write) / agent-team=no (1 domain < thresholds) / parallel=no (SSOT→render→mirror parity dependency, edits not independent) / **sub-agent=SELECTED** / workflow=no (6 surfaces ≪ ~30, not mechanical-uniform)
+- Decision: sub-agent (Mode 5)
+- Justification: doc-editing-heavy with cross-surface parity dependency (session-handoff.md SSOT → moai.md §8 render → 3 mirrors must carry consistent text); Anthropic coding-task parallelism caveat applies. Single manager-develop delegation is the safe default for Tier M doctrine work.
+
+## §G IGGDA Kickoff Predicate
+
+- (a) intent clarity 100%: PASS — user confirmed scope (SPEC 정식 진행) + goal-first variant (Option A) + reaffirmed "필요한 경우 goal-first bootstrap 처리" (2026-07-08)
+- (b) plan-auditor PASS: PASS-WITH-DEBT 0.87 ≥ Tier M 0.80; D1-D4/D6 remediated + REQ-GF-009 added at f2f6b33bf
+- (c) Tier S or M: PASS — Tier M
+- (d) dangerous keywords / destructive scope: PASS — none matched; no --pr flag
+- Verdict: auto-proceed — Implementation Kickoff Approval AskUserQuestion STILL ISSUED (blocking); user selected "run-phase 진입 (권장)" (2026-07-08)
