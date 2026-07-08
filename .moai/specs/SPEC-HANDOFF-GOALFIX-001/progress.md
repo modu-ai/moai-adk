@@ -97,7 +97,22 @@ run_phase:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_phase:
+  sync_complete_at: 2026-07-08
+  sync_status: audit-ready
+  sync_auditor_verdict: PASS
+  sync_auditor_scores:
+    overall: 0.94
+    functionality: 0.96
+    security: 0.95
+    craft: 0.90
+    consistency: 0.92
+  residual_risk: "F1 debt recorded (goal-first bootstrap section coexistence of 'Implementation Kickoff Approval unaffected' with 'setting a goal starts a turn immediately' — coherent only under implicit assumption goal-first presumes run-phase resume already past Kickoff-Approval; future one-sentence clarification deferred, documented for audit trail; no functional impact to current doctrine)"
+  changelog_entry_confirmed: true
+  changelog_path: "CHANGELOG.md [Unreleased] / ### Added / SPEC-HANDOFF-GOALFIX-001 entry"
+  sync_commit_sha: pending backfill via follow-up chore(SPEC-HANDOFF-GOALFIX-001): record sync_commit_sha commit
+```
 
 ## §F Phase 0.95 Mode Selection
 

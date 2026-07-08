@@ -2,7 +2,7 @@
 id: SPEC-HANDOFF-GOALFIX-001
 title: "Retire the inert in-block '# /goal' resume line — two-step post-paste /goal handoff"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-07-08
 updated: 2026-07-08
 author: GOOS행님
