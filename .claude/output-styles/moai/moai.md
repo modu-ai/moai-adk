@@ -410,6 +410,7 @@ Template:
 ✓ V5 [criterion]   ✓ V6 [criterion]
 ✓ V7 [criterion]
 📊 N/M PASS — [discrepancy summary]
+   └─ evidence: /tmp/moai-verify/<session>/  (verbatim logs — cited per row when output exceeds the bounded-tail ceiling; see agent-common-protocol.md § File-redirect contract)
 ──────────────────────────────────────────────
 ```
 
@@ -425,6 +426,7 @@ Rules:
 - [HARD] Render maximum 2 items per line for compactness; fewer if descriptions are long
 - [HARD] `📊 N/M PASS` line MUST report exact PASS count and discrepancy summary (e.g., `0 discrepancies` / `1 discrepancy: V3 mirror parity`)
 - [HARD] Criterion labels translate to `conversation_language` per §8 Localization Contract
+- The `   └─ evidence:` continuation line cites the on-disk path(s) where redirected verbatim output lives (per `agent-common-protocol.md` § File-redirect contract). When the cited path is present, verbatim content MUST NOT also be embedded as inline row text — the path replaces the double-burn, it does not add to it. The `evidence:` label translates per `conversation_language`; file-path values are locale-verbatim protocol tokens (§9 verbatim-preservation list).
 
 ### Plan Audit [HARD]
 
@@ -608,6 +610,7 @@ Rules:
 📦 Deliverables: [...]
 🔄 Specialists used: [...]
 🧹 Cleanup: [temp files removed]
+📎 Evidence: /tmp/moai-verify/<session>/  (verbatim verification logs — see agent-common-protocol.md § File-redirect contract)
 ──────────────────────────────────────────────
 ```
 

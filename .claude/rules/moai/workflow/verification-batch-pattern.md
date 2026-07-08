@@ -27,7 +27,7 @@ When `manager-develop` reports completion, the orchestrator independently verifi
 
 All seven canonical batch items in agent-common-protocol §Parallel Execution are read-only batch-safe.
 
-> **Re-sync sentinel**: the verbatim 7-command batch lives in `agent-common-protocol.md` § Parallel Execution (the SSOT). If that 7-item list changes, re-sync this file's grouping rationale and the class taxonomy below to match. This file owns only the *why* (grouping rationale + class taxonomy + anti-patterns), not the *what* (the verbatim command list).
+> **Re-sync sentinel**: the verbatim 7-command batch AND the file-redirect contract (redirect + bounded-tail output representation) live in `agent-common-protocol.md` § Parallel Execution / § File-redirect contract (the SSOT). If either the 7-item list OR the file-redirect contract representation changes, re-sync this file's grouping rationale and the class taxonomy below to match. This file owns only the *why* (grouping rationale + class taxonomy + anti-patterns), not the *what* (the verbatim command list or its output representation).
 
 ## When NOT to Batch
 
