@@ -2,7 +2,7 @@
 id: SPEC-HOOK-FACTFORCE-ADVISORY-001
 title: "GateGuard Fact-Force Advisory PreToolUse Hook (exit-0 rewrite)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-08
 updated: 2026-07-08
 author: manager-spec

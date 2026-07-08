@@ -113,7 +113,7 @@ plan_supersedes: SPEC-HOOK-PREEDIT-INVESTIGATE-001
 ```yaml
 run_status: audit-ready
 run_complete_at: 2026-07-08T21:20:00Z
-run_commit_sha: (pending backfill — commit lands post-evidence)
+run_commit_sha: 3455b0ee8
 ac_pass_count: 15
 ac_fail_count: 0
 ac_should_pass_with_debt:
@@ -149,4 +149,28 @@ Input parameters: tier=S, scope≈7 files, domains=1 (hook scripts), language-mi
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_(pending sync-phase — manager-docs populates)_
+- sync_status: complete (orchestrator-direct sync-phase — manager-docs 위임이 API "Prompt is too long" 실패로 orchestrator-direct fallback; shared-checkout 다중 세션 race 환경에서 pathspec commit으로 정밀 제어)
+- sync_complete_at: 2026-07-08
+- sync_commit_sha: (pending backfill — sync commit lands post; 확립된 convention per SPEC-BRAND-DIR-REMOVE-001 `2c637ece2` / SPEC-V3R6-AGENTIC-LOOP-CONFIG-001)
+- changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Changed` — SPEC-HOOK-FACTFORCE-ADVISORY-001 entry (exit-2 → exit-0 advisory rewrite summary + 15/15 AC PASS citation per §E.2 headline)
+- frontmatter_status_transitions:
+  - spec.md: in-progress → completed (이 sync commit에서 atomic 전환)
+  - plan.md / acceptance.md / progress.md: YAML frontmatter 미보유 (`# Title` 직시작) → status field 없음, spec.md가 canonical frontmatter 소유자 per spec-frontmatter-schema.md (12 required fields는 spec.md 전용)
+- updated_field_refresh: 2026-07-08 (이미 run-phase에서 2026-07-08 — 변경 불필요)
+- sync_phase_deliverables:
+  1. progress.md §E.3 `run_commit_sha` backfill: `3455b0ee8` (run commit `feat(SPEC-HOOK-FACTFORCE-ADVISORY-001): M1 exit-2 block → exit-0 advisory systemMessage`, origin/main confirmed via `git log --oneline origin/main | grep 3455b0ee8`)
+  2. progress.md §E.4 (this section) filled with sync-phase audit-ready signal
+  3. spec.md frontmatter status: in-progress → completed (이 sync commit, atomic)
+  4. CHANGELOG.md `## [Unreleased]` > `### Changed` entry added
+- observed_evidence_cross_refs:
+  - §E.2 run-phase evidence: commit `3455b0ee8` — AC-FA-001..015 (15/15 AC PASS, `bash -n` clean both hook copies, template↔local byte-identical parity, `grep -c 'jq ' <hook>` = 0 jq-free)
+  - §E.3 run-phase signal: `ac_pass_count: 15`, `ac_fail_count: 0`, shell-only no Go changes (`git diff -- '*.go'` empty), cross-platform build N/A (shell + markdown only)
+  - orchestrator independent verification (7/7 PASS): V1 exit-2 제거 · V2 template==local parity · V3 jq-free comment only · V4 systemMessage + 4 substrings · V5 hook-independence Mode G row · V6 commit == origin/main · V7 spec lint clean
+- b12_self_test_a (pre-emission grep): `grep -c 'SPEC-HOOK-FACTFORCE-ADVISORY-001' CHANGELOG.md` = 0 (pre-emission) → no duplicate entry, emission safe
+- b12_self_test_b (AC count match): acceptance.md SSOT = 15 AC rows (AC-FA-001..015, §A AC Index); §E.2 headline = 15/15 AC PASS; CHANGELOG entry cites "15/15 AC PASS" matching acceptance.md authoritative count (NOT progress.md)
+- b12_self_test_c (file path verification): 4 implementation file paths verified — `internal/template/templates/.claude/hooks/moai/gateguard-fact-force.sh` (template hook) + `.claude/hooks/moai/gateguard-fact-force.sh` (local mirror, byte-identical) + `internal/template/templates/.claude/rules/moai/development/hook-independence.md` Mode G row + `.claude/rules/moai/development/hook-independence.md` (local mirror); 실제 hook 파일 Read로 exit-2 제거 + §11 advisory emit + jq-free(awk escape) 확인 (plan.md 의존 않음)
+- canary_compliance_check: N/A (advisory-only PreToolUse hook, no canary deployment surface)
+- l44_pre_commit_fetch: `origin/main` = `e62d52e2b` (병렬 세션 TOKEN-VERIFY-DIET-001 plan-phase + INTERNAL-SECURITY-001 sync 완료 후 적재; divergence `0 0`, ff-pushable, working tree FACTFORCE dir clean)
+- l44_post_push_fetch: (pending — orchestrator pushes post-sync)
+- race_absorbed: shared-checkout 병렬 세션 race — manager-docs 위임 prompt-too-long 실패 중 병렬 세션 A(INTERNAL-SECURITY-001 sync f3193bac8~c0ac267b5, 별개 세션 f5a621d0) + 병렬 세션 B(TOKEN-VERIFY-DIET-001 plan-phase e62d52e2b) commit 적재; FACTFORCE 범위(SPEC dir + CHANGELOG.md FACTFORCE entry)와 불겹침 → pathspec commit으로 clean 흡수 (conflict 없음, feedback_shared_checkout_concurrent_commit_race 교훈 적용)
+- residual_debt: 없음 (run-phase 15/15 AC 전부 PASS; SHOULD AC-FA-006 <100ms soft-target만 5s hard timeout met으로 PASS-WITH-DEBT — §E.2에 이미 투명 기록)
