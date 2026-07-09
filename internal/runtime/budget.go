@@ -183,6 +183,41 @@ func (t *Tracker) IncrementStallRetry(agentName string) string {
 	return ""
 }
 
+// CheckGracefulAbort checks whether the named agent has reached the
+// hard_clear_threshold. If so, it emits a WARN log and generates a paste-ready
+// resume message conforming to session-handoff.md § Canonical Format (6-block
+// structure + cut-line markers), then returns the message alongside
+// shouldAbort=true.
+//
+// When the agent has NOT reached the hard-limit, returns ("", false) — no
+// handoff is generated; the agent continues normally.
+//
+// This is a GRACEFUL abort (recommendation + handoff generation), NOT a hard-fail:
+//   - RecordCall continues to return no error (BC-V3R3-006 warning-first preserved).
+//   - /clear is NEVER auto-invoked (HARD constraint preserved — see budget.go:18).
+//
+// The caller checks shouldAbort and decides whether to terminate the turn. The
+// user pastes the resume message after a manual /clear.
+//
+// @MX:ANCHOR: [AUTO] Graceful-abort entry point — budget exhaustion triggers handoff generation
+// @MX:REASON: [AUTO] fan_in>=3 expected: orchestrator call site, runtime hook, tests; warning-first + /clear-prohibition contract must never be broken
+// @MX:SPEC: SPEC-TOKEN-BUDGET-STOP-001
+func (t *Tracker) CheckGracefulAbort(agentName, specID string) (handoff string, shouldAbort bool) {
+	if !t.IsAtHardLimit(agentName) {
+		return "", false
+	}
+
+	slog.Warn("token budget hard-limit reached — graceful-abort handoff generated",
+		"agent", agentName,
+		"spec_id", specID,
+		"spec", "SPEC-TOKEN-BUDGET-STOP-001",
+		"policy", "graceful-abort (BC-V3R3-006 warning-first); /clear NOT auto-invoked",
+	)
+
+	handoff = buildHandoffMessage(specID, agentName)
+	return handoff, true
+}
+
 // budgetFor returns the token budget for the named agent.
 // Falls back to the "default" budget if the agent is not listed.
 // Must be called with t.mu held (read or write).
