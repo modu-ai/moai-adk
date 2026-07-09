@@ -60,7 +60,7 @@ workflow:
             researcher:
                 mode: plan
                 effort: low
-                model: haiku
+                model: sonnet
                 isolation: none
                 description: "Read-only codebase exploration and analysis"
             analyst:
@@ -96,7 +96,7 @@ workflow:
             reviewer:
                 mode: plan
                 effort: high
-                model: haiku
+                model: sonnet
                 isolation: none
                 description: "Code review and quality validation"
         patterns:
@@ -125,7 +125,7 @@ workflow:
                     - tester
             investigation:
                 description: Competing hypothesis debugging
-                model: haiku
+                model: sonnet
                 roles:
                     - hypothesis-1
                     - hypothesis-2
@@ -172,7 +172,7 @@ workflow:
     # Values are validated against the closed sets: model in
     # {inherit, haiku, sonnet, opus}, effort in {low, medium, high, xhigh, max}.
     workflow_agents:
-        read-only-extract: { model: haiku, effort: low }
+        read-only-extract: { model: sonnet, effort: low }
         mechanical-transform: { model: sonnet, effort: medium }
         synthesize: { model: sonnet, effort: high }
         research: { model: sonnet, effort: high }
@@ -192,12 +192,12 @@ workflow:
     model_routing:
         S-plan: { model: sonnet, effort: medium }
         S-run: { model: sonnet, effort: high }
-        S-sync: { model: haiku, effort: low }
-        S-mx: { model: haiku, effort: low }
+        S-sync: { model: sonnet, effort: low }
+        S-mx: { model: sonnet, effort: low }
         M-plan: { model: sonnet, effort: medium }
         M-run: { model: sonnet, effort: xhigh }
         M-sync: { model: sonnet, effort: medium }
-        M-mx: { model: haiku, effort: low }
+        M-mx: { model: sonnet, effort: low }
         L-plan: { model: opus, effort: high }
         L-run: { model: opus, effort: xhigh }
         L-sync: { model: sonnet, effort: high }

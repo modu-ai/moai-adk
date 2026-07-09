@@ -16,16 +16,16 @@ llm:
   claude_models:
     high: "opus"             # Opus tier: adaptive thinking, reasoning agents
     medium: "sonnet"         # Balanced performance for most tasks
-    low: "haiku"             # Fast exploration, simple tasks
+    low: "sonnet"             # Fast exploration, simple tasks
 
   # GLM backend configuration
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
-      high: "glm-5.2"         # 1M context — all GLM slots unified to glm-5.2 (agent-spawn session sharing)
-      medium: "glm-5.2"       # 1M unified (1M + 200K models cannot share a session)
-      low: "glm-5.2"          # 1M unified (1M + 200K models cannot share a session)
-      fable: "glm-5.2"        # Fable tier (Claude Code ANTHROPIC_DEFAULT_FABLE_MODEL)
+      high: "glm-5.2"         # 1M context — Opus slot (main session + inherit agents)
+      medium: "glm-4.7"       # 202K context — Sonnet slot (balanced)
+      low: "glm-4.5-air"      # 128K context — Haiku slot (lightweight)
+      fable: "glm-5.2"        # 1M context — Fable tier (ANTHROPIC_DEFAULT_FABLE_MODEL)
 
     # Optional: override the statusline context window gauge per GLM model
     # (issue #653). Claude Code reports context_window_size based on the

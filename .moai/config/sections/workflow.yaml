@@ -28,7 +28,7 @@ workflow:
             min_complexity_score: 7
             min_domains_for_team: 3
             min_files_for_team: 10
-        default_model: opus[1m]
+        default_model: sonnet
         delegate_mode: true
         # enabled false (Sonnet 5 / Opus 4.8 re-design). The historical
         # 200K-window baseline-refill breaker is resolved on the current default
@@ -76,7 +76,7 @@ workflow:
                     - tester
             investigation:
                 description: Competing hypothesis debugging
-                model: haiku
+                model: sonnet
                 roles:
                     - hypothesis-1
                     - hypothesis-2
@@ -128,7 +128,7 @@ workflow:
                 effort: low
                 isolation: none
                 mode: plan
-                model: haiku
+                model: sonnet
             reviewer:
                 description: Code review and quality validation (context-aware analysis)
                 effort: high
@@ -151,7 +151,7 @@ workflow:
     # Values are validated against the closed sets: model in
     # {inherit, haiku, sonnet, opus}, effort in {low, medium, high, xhigh, max}.
     workflow_agents:
-        read-only-extract: { model: haiku, effort: low }
+        read-only-extract: { model: sonnet, effort: low }
         mechanical-transform: { model: sonnet, effort: medium }
         synthesize: { model: sonnet, effort: high }
         research: { model: sonnet, effort: high }
@@ -171,12 +171,12 @@ workflow:
     model_routing:
         S-plan: { model: sonnet, effort: medium }
         S-run: { model: sonnet, effort: high }
-        S-sync: { model: haiku, effort: low }
-        S-mx: { model: haiku, effort: low }
+        S-sync: { model: sonnet, effort: low }
+        S-mx: { model: sonnet, effort: low }
         M-plan: { model: sonnet, effort: medium }
         M-run: { model: sonnet, effort: xhigh }
         M-sync: { model: sonnet, effort: medium }
-        M-mx: { model: haiku, effort: low }
+        M-mx: { model: sonnet, effort: low }
         L-plan: { model: opus, effort: high }
         L-run: { model: opus, effort: xhigh }
         L-sync: { model: sonnet, effort: high }

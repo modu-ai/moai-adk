@@ -66,7 +66,7 @@ The `sync-phase-quality-gate.sh` row above describes the Stop hook in the sync-p
 This carve-out is **policy guidance** (a SHOULD recommendation), NOT a mechanically-enforced gate:
 
 - The current `sync-phase-quality-gate.sh` (Stop) and `status-transition-ownership.sh` (PostToolUse) hooks receive PostToolUse/Stop JSON but do not parse a recovery signal from `stopReason` or turn context; they therefore cannot mechanically distinguish a recovery turn from a normal turn.
-- Mechanical enforcement of this carve-out is deferred to a future runtime-layer SPEC (forward-link: future `SPEC-V3R6-HOOK-RECOVERY-SIGNAL-001`) that would add `stopReason` parsing.
+- Mechanical enforcement of this carve-out is deferred to a future runtime-layer SPEC that would add `stopReason` parsing.
 - The carve-out does NOT weaken the hooks' gate function on non-recovery turns — the gates still exit 2 (block) on genuine gate failures during normal turns. The carve-out only says recovery turns SHOULD defer to the recovery.
 
 Determining "is this a recovery turn?" is the mechanical step the current hooks cannot take. See the SSOT doctrine (`runtime-recovery-doctrine.md` §4) for the full scope binding, the named-hook list (`sync-phase-quality-gate.sh`, `status-transition-ownership.sh`), and the reason this is documentation-only at this layer.
@@ -101,16 +101,16 @@ The **ledger-closure invariant** (externally grounded in `github.com/wquguru/har
 
 [ZONE:Evolvable] [HARD] The orchestrator MUST close the ledger on any aborted delegation. Four clauses bind this obligation:
 
-- **(a) Synthetic result on aborted Agent() delegation (REQ-LEDGER-001).** When an `Agent()` delegation is aborted — user interrupt (Ctrl+C), parent-abort propagation (the orchestrator's own turn was aborted and the sub-agent was killed), or timeout (no return before a wall-clock or token-budget ceiling) — the orchestrator SHALL emit a **synthetic ledger-closing artifact** into its own context before issuing the next delegation. The artifact is a short prose summary (NOT a structured data record; no JSON schema, no `.moai/state/ledger.json`), naming what was delegated, that it did not return, and the abort reason if known. Its purpose is to close the open promise so the next turn does not proceed as if the delegation returned cleanly. This clause does NOT change the "Missing Inputs" blocker-report pattern above: a blocker report is a *return*, not an *abort*; REQ-LEDGER-001 covers only the case where no return is produced at all.
-- **(b) team-ac-verify.sh reject-path `ledger_note` field (REQ-LEDGER-002).** When `.claude/hooks/moai/team-ac-verify.sh` rejects a `TaskCompleted`, it signals the rejection via stdout JSON `{"decision":"block","reason":...,"ledger_note":...}` and exits 0 — per Claude Code hook semantics, stdout JSON is honored only on exit 0 (on exit 2 stdout is discarded and only stderr is surfaced), so the block decision and its `ledger_note` MUST ride the exit-0 stdout channel. The orchestrator injects this `ledger_note` as the ledger-closing artifact for that task. (The reject-path trigger itself is a minimal stub; full AC-verification logic is out of scope and deferred to a follow-up SPEC.)
-- **(c) TeammateIdle exit-2 task closure (REQ-LEDGER-003).** When the TeammateIdle hook rejects a task's completion via exit-2 ("keep working"), the rejected task's TaskList entry MUST NOT be left in an open state without a reassignment owner. The orchestrator re-assigns the task (spawn a new teammate, re-delegate to the same teammate with a refined prompt, or close it as obsolete with a synthetic closing note). This binds the orchestrator's TaskList hygiene, not the hook's exit-2 emission. The parent-abort propagation that book1 ch07 names — cleanup handlers registered to avoid orphan tasks — is the source for this clause.
-- **(d) Cross-references (REQ-LEDGER-006).** This subsection cross-references three sources:
+- **(a) Synthetic result on aborted Agent() delegation.** When an `Agent()` delegation is aborted — user interrupt (Ctrl+C), parent-abort propagation (the orchestrator's own turn was aborted and the sub-agent was killed), or timeout (no return before a wall-clock or token-budget ceiling) — the orchestrator SHALL emit a **synthetic ledger-closing artifact** into its own context before issuing the next delegation. The artifact is a short prose summary (NOT a structured data record; no JSON schema, no `.moai/state/ledger.json`), naming what was delegated, that it did not return, and the abort reason if known. Its purpose is to close the open promise so the next turn does not proceed as if the delegation returned cleanly. This clause does NOT change the "Missing Inputs" blocker-report pattern above: a blocker report is a *return*, not an *abort*; this clause covers only the case where no return is produced at all.
+- **(b) team-ac-verify.sh reject-path `ledger_note` field.** When `.claude/hooks/moai/team-ac-verify.sh` rejects a `TaskCompleted`, it signals the rejection via stdout JSON `{"decision":"block","reason":...,"ledger_note":...}` and exits 0 — per Claude Code hook semantics, stdout JSON is honored only on exit 0 (on exit 2 stdout is discarded and only stderr is surfaced), so the block decision and its `ledger_note` MUST ride the exit-0 stdout channel. The orchestrator injects this `ledger_note` as the ledger-closing artifact for that task. (The reject-path trigger itself is a minimal stub; full AC-verification logic is out of scope and deferred to a follow-up SPEC.)
+- **(c) TeammateIdle exit-2 task closure.** When the TeammateIdle hook rejects a task's completion via exit-2 ("keep working"), the rejected task's TaskList entry MUST NOT be left in an open state without a reassignment owner. The orchestrator re-assigns the task (spawn a new teammate, re-delegate to the same teammate with a refined prompt, or close it as obsolete with a synthetic closing note). This binds the orchestrator's TaskList hygiene, not the hook's exit-2 emission. The parent-abort propagation that book1 ch07 names — cleanup handlers registered to avoid orphan tasks — is the source for this clause.
+- **(d) Cross-references.** This subsection cross-references three sources:
   - **book1 ch04** (账本闭环 — the ledger-closure invariant named in the opening paragraph above).
   - **book1 ch07** (parent-abort propagates to forked children; agents are observable lifecycle objects via SubagentStart/SubagentStop hooks, exit-code-2 stderr feedback).
   - `.claude/rules/moai/workflow/session-handoff.md` Block 3-4 preconditions (the persistence-layer analogue of ledger closure across `/clear`).
   - The ledger-closing artifact's truthfulness is bound by `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 1 (orchestrator self-report) — the artifact MUST be a real summary, not a fabricated "success".
 
-**Scope-boundary note.** This Ledger Closure subsection is distinct from the Hook Invocation Surface subsection above (owned by the sibling `SPEC-V3R6-HARNESS-RUNTIME-RECOVERY-001` Recovery-Signal Carve-Out). The two are siblings under the User Interaction Boundary H2; Ledger Closure is NOT nested inside Hook Invocation Surface. See SPEC-V3R6-ORCH-INTERRUPT-LEDGER-001 REQ-LEDGER-005 / AC-LEDGER-006 for the collision-free placement contract.
+**Scope-boundary note.** This Ledger Closure subsection is distinct from the Hook Invocation Surface subsection above (owned by the sibling Recovery-Signal Carve-Out). The two are siblings under the User Interaction Boundary H2; Ledger Closure is NOT nested inside Hook Invocation Surface. See the orchestrator-interrupt-ledger placement contract for the collision-free placement.
 
 ## Language Handling
 
@@ -271,14 +271,14 @@ This refines step 3 above ("do not retry the identical call") along the side-eff
 
 When recovery via the 3-retry ceiling is insufficient OR a higher-reasoning consultation is warranted, the orchestrator escalates to the **super-advisor** agent (on-demand high-reasoning consultation). super-advisor returns **non-binding prescriptions** (diagnoses, options, recommendations); the orchestrator remains the decision owner. This is DISTINCT from auditor verdicts — `plan-auditor` / `sync-auditor` own binding PASS/FAIL judgment; super-advisor owns advisory consultation only. When the question is "should this PASS?", route to an auditor; when the question is "what should I do here?", route to super-advisor.
 
-Entry conditions (exhaustive per REQ-AA2-003 of SPEC-AGENT-ARCH-V2-001; expansion is M4 doctrine territory):
+Entry conditions (exhaustive per the super-advisor entry-conditions contract; expansion is M4 doctrine territory):
 
 | Trigger | Condition | Example |
 |---------|-----------|---------|
 | **E1 — bug-deadlock** | 3+ consecutive same-diagnostic failures | `manager-develop` retries the same failing test 3 times with the same root-cause hypothesis |
 | **E2 — architecture/design decision point** | A spec-body or plan-body decision with ≥2 viable options, neither obviously correct | "Should this cache layer be write-through or write-behind?" at L-plan boundary |
 | **E3 — second-opinion request** | Orchestrator uncertainty: < 80% confidence in the next delegation step | Ambiguous blocker-report from a worker; orchestrator deciding between re-spawn vs user-escalation |
-| **E4 — loop-deadlock** | `/moai loop` or `/moai fix` ceiling-exit per SPEC-LOOP-VERDICT-CONTRACT-001 | Auto-fix iteration count exhausted without green CI |
+| **E4 — loop-deadlock** | `/moai loop` or `/moai fix` ceiling-exit per the loop-verdict contract | Auto-fix iteration count exhausted without green CI |
 
 On trigger: the orchestrator spawns `Agent(general-purpose)` with the super-advisor role profile (Opus + xhigh at max/medium tier; Sonnet + xhigh at low tier — GLM-backed sessions fall back to the session model per the GLM carve-out), receives a non-binding prescription, then either re-seeds the executor with the prescription or escalates to the user via `AskUserQuestion`.
 
@@ -288,9 +288,10 @@ Design source: `.moai/reports/agent-architecture-redesign-v2-20260709.html` §01
 
 [ZONE:Evolvable] [HARD] The orchestrator MUST execute every read-only verification
 batch as a single-turn multi-Bash call. Serial verification across turns wastes
-wall-time and is the single largest source of run-phase latency (W3 meta-analysis:
-10 min serial verification ≈ 11% of total run-phase wall-time). This rule was
-added by SPEC-V3R5-WORKFLOW-OPT-001 Layer D in response to that finding.
+wall-time and is the single largest source of run-phase latency (a prior
+workflow-optimization meta-analysis: 10 min serial verification ≈ 11% of total
+run-phase wall-time). This rule was added by a prior workflow-optimization rule
+Layer D in response to that finding.
 
 ### Read-only verification batching
 
