@@ -130,6 +130,77 @@ Humanization removes AI tells; it must never become a rewrite that drifts from t
 
 ---
 
-## Source & License
+## Copy Layer (Chinese)
 
-This module's structure follows the **im-not-ai (Humanize KR)** open-source skill (https://github.com/epoko77-ai/im-not-ai, MIT License — Copyright (c) 2026 epoko77-ai). The Chinese tell patterns here were independently web-researched, not ported from the source. See NOTICE.md.
+Genre scope: 营销文案 — headlines, slogans, CTAs, 落地页 (landing pages), brand/founder storytelling, and slide titles. The copy layer continues the `CN-` letter scheme after CN-K (CN-L…CN-Q). Copy inverts the prose clustering logic: a headline or slogan is often a single line with no room to cluster, so several thresholds shift toward single-occurrence decisiveness at the headline slot. In copy mode the over-editing guard changes: the change-rate limit is replaced by the **fact-anchor preservation guard** (see the shared SKILL.md guardrails) — numbers, dates, prices, and proper nouns stay intact and the core promise/benefit keeps its meaning, while expression and sentence structure may be rewritten freely.
+
+A critical calibration governs this layer: 对偶 and 排比 are prized classical devices of Chinese rhetoric — the boundary is **content-first versus template-first, never occurrence count**. See the boundary analysis below; this is the highest-false-positive area of the whole catalogue.
+
+### Detection Categories (copy)
+
+| ID | Tell | Why it reads as AI | Severity |
+|----|------|--------------------|----------|
+| CN-L | 否定式煽情标题 — negation-contrast headline: 这不是……而是……／不仅是……更是…… as the whole message of a headline slot | In prose the frame can read as natural Chinese (prose CN-J is S3), but in a headline it IS the message — the genre lifts severity a step because the contrast is manufactured insight at the highest-visibility position | S2 (genre-elevated from prose CN-J) |
+| CN-M | 破折号对比标题 — the "X — Y" dash-contrast headline shape carrying a binary antithesis | Chinese 破折号 (the full-width double-em ——) conventionally marks explanation or topic shift, never binary contrast; the contrast use is an English import, so the shape reads doubly generated. Scoped to the binary-contrast headline shape only — never to every dash | S2 |
+| CN-N | 落地页万能公式标题 — slot-fill landing templates: 专为X打造的Y／开启X之旅／解锁全新Y | The universal formula accepts any product noun; interchangeable slots with no concrete claim are the generated-landing signature | S2 |
+| CN-O | 强行升华·口号式行动结尾 — forced elevation to grand significance: 让我们携手共创美好未来 | The unprompted uplifting moral summary at a copy ending mirrors prose CN-D; a single occurrence at a slogan/closing slot is decisive | S1 (matches prose CN-D) |
+| CN-P | 品牌/创业故事模板骨架 — the brand-story skeleton: 黄金圈 Why-How-What + 三幕式 + 反差构建 + origin myth | Any one beat can be legitimate craft; the co-occurring skeleton (2+ markers) is the template fingerprint | S2 (gate on ≥2 skeleton markers) |
+| CN-Q | 虚假具体性·可疑叙事数据 — forced sensory 多模态锚点 plus precise-but-unsourced business numbers | Precision theater simulates authenticity; unverifiable exact figures and stacked sensory detail are generated-narrative markers | S2 (escalates toward S1 when a suspect number is verifiable and material; never replace a fabricated stat with an invented one — delete or downgrade) |
+
+### Severity Rationale (copy)
+
+- CN-L is S2, not S3: the genre lifts it one step from prose CN-J, because a headline slot has no surrounding text to dilute the manufactured contrast.
+- CN-O is S1: it inherits the prose CN-D forced-elevation verdict — decisive on a single unprompted uplifting slogan.
+- CN-M, CN-N, CN-P, CN-Q are S2. CN-P convicts only on the co-occurrence of two or more skeleton markers. CN-Q escalates toward S1 when the suspect number is both verifiable and material to the claim; like CN-K, the fix is deletion or downgrade, never substitution with an invented figure.
+- **Clustering at the section level**: a generated landing section typically stacks CN-N template headline + CN-L contrast subhead + CN-O uplifting close. Resolve the S1 first, then re-score.
+
+### 对偶/排比 Boundary Analysis (critical)
+
+Parallelism is prized, classical, natively Chinese craft — 排比 (three or more clauses of similar structure, legitimately reusing words for momentum) and 对偶 (the stricter two-clause couplet of the 对联 tradition). A blanket count rule over-fires badly on copy. The operational boundary is **content-first versus template-first**:
+
+1. **Content-first (do NOT flag)**: each parallel member carries a distinct concrete fact. The classic crafted 排比 — 感谢冰峰，感谢风暴，感谢悬崖，感谢缺氧。— concentrates real referents into rhythm; this is skilled human copy.
+2. **Template-first (flag)**: the symmetry is assembled BEFORE the content (先套模板再填内容) — interchangeable filler orbits one abstract idea, and the balanced form dilutes 信息密度 (information density) instead of concentrating it (用对称句式稀释信息).
+3. **Novelty**: crafted parallelism is 不落窠臼 (unhackneyed); generated parallelism is predictable.
+4. **Count is a weak signal on copy** — a single crafted 对偶 couplet or one three-part 排比 slogan is expected native craft; occurrence count alone never decides. Stacked blocks of balanced rhetoric matter only when the content test above already indicates template-first assembly.
+
+### Dash-Contrast Applicability (narrow transfer)
+
+- The em-dash-overuse tell transfers to Chinese copy — practitioners treat dash abuse as a generated-text fingerprint — but the **binary-contrast headline shape is the actual tell**, not the dash character.
+- The Chinese 破折号 is the full-width double-em ——, and its sanctioned functions are 解释说明 (explanation), 话题转换 (topic shift), 声音延长, and 列举 — none of which is English's binary antithesis. An "X —— Y" contrast headline therefore reads doubly imported.
+- **False-positive guard**: a legitimate —— used for 解释说明 ("大会堂的枢纽——中央大厅") or 话题转换 must NOT be flagged. CN-M stays scoped to the binary-contrast headline shape.
+
+### Before/After Rewrite Examples (copy)
+
+- **AI:** 这不仅仅是一双跑鞋，而是对自律生活方式的承诺。
+  **人:** 这双跑鞋陪你跑完第一个五公里。
+  (CN-L: replace the manufactured contrast with the concrete promise it hid)
+- **AI:** 极速体验 —— 全新升级
+  **人:** 打开页面只要0.8秒，比上一版快了一半。
+  (CN-M: dissolve the dash-contrast headline into a verifiable claim)
+- **AI:** 专为现代团队打造的一站式协作平台，开启高效办公之旅。
+  **人:** 审批、评论、进度，一个页面全看到——不用再翻三个群。
+  (CN-N: swap the slot-fill formula for the actual differentiator; the —— here is legitimate 解释说明)
+- **AI:** 让我们携手共创美好未来。
+  **人:** 下个月的账单，先从这里省起。
+  (CN-O: cut the forced elevation; close on the concrete next step)
+- **AI:** 我们从一间车库起步，怀揣改变世界的梦想，历经三幕般的起伏，终于迎来了属于我们的时代。
+  **人:** 第一批货是在城中村的出租屋里打包的，胶带用完了三卷。
+  (CN-P: replace the story skeleton with one verifiable lived detail)
+- **AI:** 经过对2042条用户评价的深度分析，98.7%的用户感受到了指尖传来的温润触感。
+  **人:** 上个月的300条评价里，提到"手感"的有41条。
+  (CN-Q: replace precision theater with a checkable count)
+
+### High-False-Positive Signals (copy — do NOT flag standalone)
+
+- A single crafted 对偶 couplet or one three-part 排比 slogan — the 对联 tradition is living, prized craft; judge by the content-first test, not by count.
+- 破折号 —— used for 解释说明, 话题转换, or 声音延长 — sanctioned native functions.
+- Verb-first urgency CTA copy (立即购买／免费试用) — standard good practice, not a generated tell.
+- Precise numbers that ARE verifiable (a real survey n, real dates, a citable source).
+- Informational copy (FAQ, specs, prices, business-registration blocks) — legitimately third-person, no elevation expected.
+- Platform mis-flagging is rampant for Chinese; require a cluster before asserting machine authorship.
+
+---
+
+## Attribution
+
+The category-catalogue structure of this module is inspired by the **im-not-ai (Humanize KR)** project (https://github.com/epoko77-ai/im-not-ai). The Chinese tell patterns here — prose and copy layers alike — were independently researched and authored.
