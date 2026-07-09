@@ -16,10 +16,11 @@ Agent definition `model` field accepts only these values:
 
 Current model generation mapping:
 - opus = Opus 4.8 (default effort: high across all surfaces incl. Claude Code; set xhigh explicitly for coding/agentic work)
-- sonnet = Sonnet (current generation)
-- haiku = Haiku (current generation)
+- sonnet = Sonnet 5 (current generation; single 1M-token context window — no 200K variant)
+- fable = Fable (current generation; added to the model enum per CC v2.1.196 model-priority update)
+- haiku = Haiku (current generation; retired from MoAI agent routing per the No-Haiku policy — value remains valid for documentation/example YAML)
 
-Opus 4.8 serves the full 1M token context window by default (no beta header, no long-context premium). Fast mode (speed: "fast") is a research preview for higher output throughput.
+Opus 4.8 serves the full 1M token context window by default (no beta header, no long-context premium). Fast mode (speed: "fast") is a research preview for higher output throughput. Explore (Anthropic built-in) inherits the session model per CC v2.1.198 — no separate deployment or model pin needed.
 
 Invalid values (NEVER use):
 - glm: Not a model field value (GLM is configured via environment variables)
@@ -44,10 +45,9 @@ Upstream tracking (Anthropic claude-code repository):
 Workaround pattern (`model: inherit`):
 - The subagent fully inherits the parent's model + context entitlement, eliminating the mismatch.
 - Reference implementation: `.claude/agents/moai/plan-auditor.md` has used `model: inherit`.
-- All package agents under `.claude/agents/moai/` (7 MoAI-custom retained agents) declare `model: inherit`, except `manager-docs` and `manager-git` which use `model: haiku`.
+- All 9 MoAI-custom retained agents under `.claude/agents/moai/` declare `model: inherit` (per the 10-agent catalog: 9 MoAI-custom + 1 Anthropic built-in `Explore`, aligned with CLAUDE.md §4). The No-Haiku policy (SPEC-AGENT-ARCH-V2-001 §D) retired the former `model: haiku` exception — `manager-docs` and `manager-git` moved from `model: haiku` to `model: sonnet` with `effort: low` (cost reduction via effort tiering, not model-class substitution).
 
 Exceptions (do NOT migrate to inherit):
-- `model: haiku` agents (`manager-docs`, `manager-git`) — Haiku has no `[1m]` variant, so the bug does NOT apply. Speed-critical agents should remain on `haiku` for cost and latency.
 - Documentation/example YAML inside skill bodies (`.claude/skills/moai-foundation-cc/reference/**/*.md`) — these mirror official Claude Code documentation and MUST show all valid values (`sonnet`, `opus`, `haiku`, `inherit`) for educational purposes.
 
 ## Baseline-Refill Breaker (team sonnet — second failure mode; Sonnet 5 / Opus 4.8-resolved)
@@ -103,15 +103,17 @@ This supersedes the earlier approach of enumerating the GLM model ids in `availa
 
 Scope note: this is a **static template change** in `.claude/settings.json.tmpl` (removal of the `availableModels` + `enforceAvailableModels` keys). It touches no Go runtime code (`glm.go` / `launcher.go` / `settings.go` unchanged) and writes nothing to `settings.local.json` — so the solo `moai glm` "settings.local.json clean" design (no GLM env leak to subsequent plain-`claude` invocations) is preserved.
 
-## Model Policy Tiers
+## Model Policy Tiers (3-tier — max/medium/low)
 
-Model policy is set via `moai init --model-policy <tier>`. The tier columns reference **role profiles** (the `workflow.yaml` role_profile / domain-whitelist taxonomy), not static agent files. Under the 8-agent catalog consolidation, the retained MoAI-custom agents (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `sync-auditor`, `builder-harness`) all default to `model: inherit`; the tier governs which role_profile / domain scope is routed to Opus vs Sonnet vs Haiku when the orchestrator spawns `Agent(general-purpose)`.
+Model policy is set via `moai init --model-policy <tier>`. The 3-tier system (`max` / `medium` / `low`) replaces the legacy `high` / `medium` / `low` model-class tiers. Under the No-Haiku policy (SPEC-AGENT-ARCH-V2-001 §D), all workers are Sonnet 5 fixed across all tiers; the tier governs only two axes — (a) where Opus is deployed and (b) how aggressively Sonnet effort is lowered. The authoritative agent×tier matrix is the **§2-B table** (design.md §D.3); the Sonnet effort criteria is the **§2-C table** (design.md §D.4). The `model_routing_profiles.{max,medium,low}` matrices in `workflow.yaml` are the 3-tier config SSOT.
 
-| Tier | Description | Opus (deep reasoning) | Sonnet (implementation) | Haiku (mechanical / read-only) |
-|------|-------------|------------------------|--------------------------|--------------------------------|
-| high | Maximum quality | spec-planning, architecture, security-review | backend, frontend, ddd, tdd implementation | docs, git, read-only-investigation |
-| medium | Balanced (default) | spec-planning, architecture, security-review | backend, frontend, ddd, tdd implementation | docs, git, read-only-investigation |
-| low | Cost optimized | None | spec-planning, architecture, security-review | All other role profiles |
+| Tier | Philosophy | Opus deployment | Sonnet effort baseline |
+|------|------------|-----------------|------------------------|
+| `max` | Opus-centric reasoning + Sonnet workers — quality first | Orchestrator · super-advisor · manager-spec(plan) · plan/sync-auditor | Implementation xhigh; procedural tasks low/medium |
+| `medium` (default) | Sonnet-centric, minimal Opus — balanced | super-advisor + Tier L plan — 2 points only (on-demand) | Implementation high~xhigh; docs/procedural low~medium |
+| `low` | Sonnet single + effort tiering — cost minimum | None (Opus 0) — consultation also Sonnet xhigh | One tier down across the board: implementation high, docs/procedural low |
+
+The per-agent model+effort values for each cell are in the §2-B agent×tier matrix (design.md §D.3). Former haiku slots (docs sync, mx tagging, git procedures) are replaced by `sonnet / low` — cost reduction via effort tiering, not model-class substitution.
 
 ## CG Mode
 
@@ -128,14 +130,16 @@ Claude models support effort levels that control reasoning depth (Opus 4.8 calib
 - medium: cost-sensitive work that can trade off intelligence
 - low: short, scoped, latency-sensitive tasks
 
+The per-agent effort defaults across the 3-tier system (max/medium/low) are governed by the §2-B agent×tier matrix (design.md §D.3) and the §2-C Sonnet effort criteria (design.md §D.4). The `model_routing_profiles` cells in `workflow.yaml` carry the `{model, effort}` pair for each Tier-Phase × perfTier combination.
+
 Note: `ultrathink` is a Claude Code one-turn keyword that requests deeper reasoning for that prompt; MoAI standardizes it to `effort: xhigh` (the coding/agentic level above) for that turn.
 
 ## Rules
 
-- Agent `model` field must be one of: inherit, opus, sonnet, haiku
+- Agent `model` field must be one of: inherit, opus, sonnet, fable, haiku
 - [ZONE:Evolvable] [HARD] New agent definitions SHOULD use `model: inherit` (default); explicit `sonnet`/`opus` are deprecated due to Claude Code Issue #45847/#51060 (see Inherit-by-Default Convention)
-- `model: haiku` remains valid for speed-critical agents (immune to the [1m] entitlement bug)
+- `model: haiku` is retired from MoAI agent routing per the No-Haiku policy (SPEC-AGENT-ARCH-V2-001 §D); the HaikuResidualRule lint enforces 0 haiku references in agent frontmatter, claude_models, model_routing_profiles, workflow_agents, and role_profiles. Former haiku slots use `sonnet` with `effort: low`.
 - GLM is configured via env vars in settings.json, never via model field
-- Model policy tier is a CLI concern, not an agent definition concern
+- Model policy tier (max/medium/low) is a CLI concern, not an agent definition concern
 - CG Mode uses tmux session-level env isolation for model routing
 - Old model versions are auto-migrated: do not pin to specific version IDs

@@ -4,7 +4,7 @@ title: "MoAI Agent Architecture v2 — Progress"
 version: "0.1.0"
 status: in-progress
 created: 2026-07-09
-updated: 2026-07-09
+updated: 2026-07-10
 author: manager-spec
 priority: P1
 phase: "v3.0.0"
@@ -167,6 +167,26 @@ plan_phase_evidence_path: .moai/specs/SPEC-AGENT-ARCH-V2-001/
 
 **Residual-risk:** (a) AC-010 integration test (`moai init --model-policy max` end-to-end) not run — requires a full init in a temp dir; the flag registration + validation + ApplyPerformanceTier are individually verified but the end-to-end init→llm.yaml write path is not exercised in isolation; (b) HaikuResidualRule is a new cross-SPEC rule — it will scan ALL SPECs at lint time; no false-positive risk on closed SPECs because the rule scans the project tree (agents/config/code), not SPEC documents; (c) the `--medium-alias` flag name avoids collision with the existing `--mode` flag's potential `medium` value; the legacy alias `--medium` was not used because `--mode` already accepts a similar namespace.
 
+### M4 — doctrine refresh: model-policy §2-B + agent-authoring 10-agent + agent-patterns 4-loop (PASS)
+
+**AC matrix (vci 5-section):**
+- AC-AA2-014 doctrine refresh: PASS — (1) `grep -cE '2-B|2-C|3-tier|max/medium/low' model-policy.md` = 5 (LIVE) / 5 (TEMPLATE), both ≥3; (2) `grep -c 'except manager-docs and manager-git which use model: haiku' model-policy.md` = 0 (LIVE) / 0 (TEMPLATE); (3) `grep -cE '10-agent|10 retained|super-advisor|manager-design' agent-authoring.md` = 8 (LIVE) / 8 (TEMPLATE), both ≥1.
+- AC-AA2-015 template-first: PASS — model-policy.md live=template byte-identical (diff exit 0); agent-patterns.md live=template byte-identical (diff exit 0); agent-authoring.md has ONLY the pre-existing line 25/38 divergence (dev-only-commands `97-*/98-*` + dev-only-commands-isolation.md cross-ref — intentional local-only isolation per §21/§24, NOT caused by M4; M4 catalog-section edits are identical between live+template).
+
+**Evidence (LIVE, vci attribution — measured 2026-07-10 in worktree agent-a465b5496a9ef8b0c at HEAD 39c74d777):**
+- `go build ./...` → exit 0 (doctrine-only; template-embed unaffected).
+- `golangci-lint run --timeout=3m` → 0 issues.
+- `go test ./...` → 91 ok, 0 FAIL packages; 2 pre-existing test failures (NOT caused by M4): (a) `TestHookWrapper_TempFileCleanup` — temp-file-count race (12-file leak, hook wrapper; unrelated to markdown doctrine); (b) `TestOutputStylesTemplateLiveParity` — `moai-easy.md` parity drift (untracked file from a parallel SPEC per git status; M4 did not touch output-styles).
+- model-policy.md edits: (1) removed stale haiku-exception prose (lines 47-51 — `except manager-docs and manager-git which use model: haiku` + exceptions bullet); (2) replaced § Model Policy Tiers with §2-B agent×tier matrix reference + 3-tier `max/medium/low` table; (3) added fable enum to generation mapping + v2.1.196/v2.1.198 references (Explore session-model inheritance); (4) § Effort Levels cross-references §2-B/§2-C; (5) § Rules updated for No-Haiku policy.
+- agent-authoring.md edits: (1) catalog 8→10 (7→9 MoAI-custom); (2) Retained list adds super-advisor + manager-design; (3) Effort-Level Calibration Matrix updated to 10 agents (manager-docs high→medium, manager-git high→low per §2-B; super-advisor + manager-design added with xhigh FIXED); (4) retention ceiling 8-agent→10-agent (2 locations); (5) archived count 8 retained→10 retained.
+- agent-patterns.md edits: (1) per-spawn section "7 MoAI-custom retained agents"→"9 MoAI-custom retained agents" + adds manager-design + super-advisor; (2) new § Orchestrator 4-Loop Mechanism → Catalog Mapping (plan→decompose→direct→collect, 4-step table mapping to catalog roles); (3) new § 4 Rejected Alternatives (전면 동적화 / auditor 통합 / 정적 핀 / Time-루프 에이전트 — each with rejected-approach + why-rejected rationale per SSOT §06 M4).
+
+**Baseline-attribution:** HEAD 39c74d777 (M1-M3 complete, pushed to origin/main). M4 edits measured in worktree agent-a465b5496a9ef8b0c at this HEAD. All AC-014 grep commands run against both live + template trees in this run. No carry-over from prior unrelated measurements.
+
+**Gaps:** (a) 2 pre-existing test failures (TestHookWrapper_TempFileCleanup + TestOutputStylesTemplateLiveParity) — NOT caused by M4 (markdown-only changes); both documented as pre-existing in M3c §E.2 gaps already; (b) worktree isolation — M4 executed in L1 worktree agent-a465b5496a9ef8b0c; orchestrator owns push (7 active sessions on shared checkout per task B9); commit lands on worktree branch.
+
+**Residual-risk:** (a) agent-authoring.md pre-existing line 25/38 divergence (dev-only-commands) is NOT resolved by M4 — it is intentional local-only isolation per §21/§24 and out of M4 scope; AC-015 template-first is satisfied for the M4 catalog-section edits (identical live+template); the pre-existing divergence predates M4; (b) the 4-Loop mapping and 4 rejected alternatives are doctrine prose derived from the SSOT §03/§06 — no runtime code verifies the mapping; future agent-catalog revisions MUST re-verify the 4-Loop mapping + rejected-alternatives rationale before re-proposing any rejected approach.
+
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
@@ -175,7 +195,7 @@ plan_phase_evidence_path: .moai/specs/SPEC-AGENT-ARCH-V2-001/
 run_complete_at: 2026-07-10
 run_commit_sha: pending-backfill   # populated post-commit (self-reference avoided)
 run_status: audit-ready
-ac_pass_count: 7
+ac_pass_count: 8
 ac_fail_count: 0
 preserve_list_post_run_count: 0
 l44_pre_commit_fetch: n/a   # worktree isolation; no push (orchestrator owns push)
@@ -185,10 +205,10 @@ cross_platform_build:
   linux_darwin: pass   # go build ./... exit 0
   windows_amd64: pass  # GOOS=windows GOARCH=amd64 go build ./... exit 0
 total_run_phase_files: 14
-m1_to_mN_commit_strategy: M1+M2 (prior commits e44c66d5f + M2 commits); M3a (prior commit e44c66d5f); M3b+M3c (this delegation, single M3 commit planned)
+m1_to_mN_commit_strategy: M1+M2 (prior commits e44c66d5f + M2 commits); M3a (prior commit e44c66d5f); M3b+M3c (prior commit); M4 (this delegation, doctrine refresh)
 ```
 
-MUST-PASS ACs green: AC-AA2-008 (M3a), AC-AA2-009 (M3a code + M3b config), AC-AA2-010 (M3c), AC-AA2-011 (pre-existing), AC-AA2-012 (M3c HARD), AC-AA2-013 (M3b), AC-AA2-016 (M3c HARD closure). AC-AA2-015 template-first verified (workflow.yaml live+template byte-identical for model_routing_profiles; agent files live+template byte-identical). AC-AA2-014 (M4 doctrine refresh) is OUT OF SCOPE per delegation — SHOULD-PASS debt.
+MUST-PASS ACs green: AC-AA2-008 (M3a), AC-AA2-009 (M3a code + M3b config), AC-AA2-010 (M3c), AC-AA2-011 (pre-existing), AC-AA2-012 (M3c HARD), AC-AA2-013 (M3b), AC-AA2-016 (M3c HARD closure). SHOULD-PASS AC-AA2-014 (M4 doctrine refresh) PASS — model-policy §2-B + agent-authoring 10-agent + agent-patterns 4-loop mapping + 4 rejected alternatives. AC-AA2-015 template-first verified (model-policy + agent-patterns byte-identical; agent-authoring catalog-section identical, pre-existing line 25/38 dev-only divergence out of scope).
 
 ---
 

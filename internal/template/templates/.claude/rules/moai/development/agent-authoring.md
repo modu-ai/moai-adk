@@ -124,23 +124,25 @@ The `memory` field enables cross-session learning for agents. Three scope levels
 
 ## Agent Categories
 
-The MoAI agent catalog consists of exactly **8 retained agents** (7 MoAI-custom + 1 Anthropic built-in `Explore`). Previously-listed manager and expert agents beyond this set were archived during the catalog consolidation. Domain expertise formerly delivered by those static agents is now delivered through per-spawn `Agent(general-purpose)` parameter injection — see § Per-Spawn Domain Specialization below and `.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the full archived-name enumeration and migration table.
+The MoAI agent catalog consists of exactly **10 retained agents** (9 MoAI-custom + 1 Anthropic built-in `Explore`), aligned with CLAUDE.md §4. The v2 architecture (SPEC-AGENT-ARCH-V2-001) added `super-advisor` (on-demand high-reasoning consultation) and `manager-design` (Claude Design collaboration) to the former 8-agent catalog. Previously-listed manager and expert agents beyond this set were archived during the catalog consolidation. Domain expertise formerly delivered by those static agents is now delivered through per-spawn `Agent(general-purpose)` parameter injection — see § Per-Spawn Domain Specialization below and `.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the full archived-name enumeration and migration table.
 
-### Retained MoAI-custom Agents (7)
+### Retained MoAI-custom Agents (9)
 
-Coordinate the SPEC plan/run/sync/audit lifecycle:
+Coordinate the SPEC plan/design/run/sync/audit lifecycle:
 
 - manager-spec: Plan-phase SPEC artifact authoring (spec/plan/acceptance/research/design)
 - manager-develop: Run-phase implementation (cycle_type=ddd|tdd|autofix)
+- manager-design: Design-phase collaboration (Claude Design bidirectional sync, D1-D5 pipeline, UI-surfaced SPECs)
 - manager-docs: Sync-phase documentation (CHANGELOG, README, frontmatter transitions)
 - manager-git: PR creation per Tier-based routing + Late-Branch closure
 - plan-auditor: Independent plan-phase audit, bias prevention, GEARS compliance
 - sync-auditor: Independent sync-phase quality 4-dimension scoring
+- super-advisor: On-demand high-reasoning consultation (non-binding prescriptions, E1-E4 escalation entry)
 - builder-harness: Dynamic project-specific harness specialist generation (new agents, skills, plugins, commands, hooks, MCP/LSP servers)
 
 ### Anthropic Built-in (1)
 
-- Explore: Read-only codebase exploration (not a MoAI file — invoked directly; see `.claude/rules/moai/development/agent-patterns.md` § Read-only Investigation — Explore Canonical Agent)
+- Explore: Read-only codebase exploration (not a MoAI file — invoked directly; session-model inheritance per CC v2.1.198; see `.claude/rules/moai/development/agent-patterns.md` § Read-only Investigation — Explore Canonical Agent)
 
 ### Per-Spawn Domain Specialization (replaces archived expert-* agents)
 
@@ -277,7 +279,7 @@ START
   ├── Is this work recurring across SPEC sessions
   │   AND with substantially the same instructions each time?
   │   ├── YES → Author a static agent file under .claude/agents/moai/
-  │   │         (subject to the 8-agent retention ceiling per the
+  │   │         (subject to the 10-agent retention ceiling per the
   │   │         canonical agent catalog policy — exceeding the ceiling
   │   │         requires a dedicated revision SPEC)
   │   └── NO  → Use per-spawn Agent(general-purpose) injection
@@ -299,7 +301,7 @@ For the canonical per-spawn `Agent(general-purpose, ...)` spawn pattern with per
 - **Authoring a static agent file for one-off domain work** — if the spawn instructions vary substantially per invocation, the file is dead weight and trains the orchestrator to spawn an under-instructed agent
 - **Embedding domain knowledge in agent body** — domain knowledge belongs in the active conversation context (per-spawn prompt) where the orchestrator can tailor it to the current task; embedding it in agent body traps it behind explicit invocation
 - **Re-introducing archived agent files** — the 12 agents archived offline during the catalog consolidation MUST NOT be reintroduced under `.claude/agents/` without a dedicated revival SPEC justifying the recurrence criterion; see `.claude/rules/moai/workflow/archived-agent-rejection.md` § Anti-Patterns
-- **Adding a new MoAI-custom agent without a SPEC** — the 8-agent retention ceiling is an architectural invariant; new agent additions must justify the "keep spawning the same worker" criterion via a SPEC that documents recurrence evidence
+- **Adding a new MoAI-custom agent without a SPEC** — the 10-agent retention ceiling is an architectural invariant; new agent additions must justify the "keep spawning the same worker" criterion via a SPEC that documents recurrence evidence
 
 ## Extension-Mechanism Context-Cost Ladder
 
@@ -332,22 +334,26 @@ This mechanism→context-cost ladder is a *cross-mechanism* cost axis. It runs p
 
 Per-agent default effort levels for the Opus 4.7+ / 4.8 substrate. The `effort` frontmatter field overrides the session effort level and is scoped to a single agent run; `xhigh` and `max` require Opus 4.7 or later. For the substrate-level effort policy (defaults, when to raise/lower), see `.claude/rules/moai/core/moai-constitution.md` § Opus 4.7+ / 4.8 Prompt Philosophy.
 
-### Retained Agents (8 — active, spawnable)
+### Retained Agents (10 — active, spawnable)
 
 | Agent | Default effort | Rationale |
 |-------|----------------|-----------|
 | `manager-spec` | xhigh | plan-phase GEARS/EARS authoring, reasoning-heavy |
 | `manager-develop` | xhigh | run-phase implementation (coding/agentic) |
-| `manager-docs` | high | sync-phase documentation + frontmatter transitions |
-| `manager-git` | high | git operations, PR creation, Tier-L routing |
+| `manager-design` | xhigh (FIXED) | design pipeline — handoff fidelity, drift detection, annotation→requirement conversion are deep reasoning (frontmatter-fixed across all tiers per §2-B) |
+| `manager-docs` | medium | sync-phase documentation + frontmatter transitions (mechanical doc sync; was high pre-No-Haiku) |
+| `manager-git` | low | git operations, PR creation, Tier-L routing (fast bash execution; was high pre-No-Haiku) |
 | `plan-auditor` | xhigh | adversarial plan audit, bias prevention |
 | `sync-auditor` | xhigh | skeptical 4-dimension quality scoring |
+| `super-advisor` | xhigh (FIXED) | on-demand high-reasoning consultation — maximum reasoning (frontmatter-fixed across all tiers per §2-B) |
 | `builder-harness` | high | artifact scaffolding (agents/skills/plugins/hooks) |
-| `Explore` (Anthropic built-in) | medium | read-only codebase exploration |
+| `Explore` (Anthropic built-in) | medium | read-only codebase exploration (session-model inheritance per CC v2.1.198) |
+
+The per-tier model+effort variation (max/medium/low) for each agent is in the §2-B agent×tier matrix (SPEC-AGENT-ARCH-V2-001 design.md §D.3); the values above are the default-tier (medium) baselines.
 
 ### Archived Agents (legacy reference — MUST NOT be spawned)
 
-The following agents were retired during the catalog consolidation (8 retained + 12 archived — see `archived-agent-rejection.md` §C for the canonical 12-row migration table) and are listed here for historical traceability only. They MUST NOT be spawned; route their former work per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C migration table.
+The following agents were retired during the catalog consolidation (10 retained + 12 archived — see `archived-agent-rejection.md` §C for the canonical 12-row migration table) and are listed here for historical traceability only. They MUST NOT be spawned; route their former work per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C migration table.
 
 | Archived agent | Former role | Successor routing |
 |----------------|-------------|-------------------|
