@@ -110,7 +110,7 @@ m1_to_mN_commit_strategy: 2-commit grouping by file boundary — commit 1 (loop.
 
 **Run-phase self-verification**:
 - [x] All 13 ACs PASS with verbatim grep/diff evidence (§E.2 AC Matrix).
-- [x] Live/template byte-identity verified after every edit (`diff` exit 0 on all 4 file pairs).
+- [x] Live/template byte-identity verified after every edit (`diff` exit 0) on the 2 core doctrine pairs (`loop.md`, `moai.md`). NOTE: `ralph.yaml`/`workflow.yaml` carry pre-existing CLAUDE.local.md §22 dev-local divergence (NOT byte-identical, NOT a regression) — see §E.4 parity caveat. [corrected at sync-phase per sync-auditor D1]
 - [x] `make build` green; `go build ./...` and `GOOS=windows GOARCH=amd64 go build ./...` both exit 0.
 - [x] `go test ./internal/config/...` green (YAML comment-only changes do not break loaders).
 - [x] Template-neutrality guard clean (`grep -rn "SPEC-LOOP-VERDICT-CONTRACT" internal/template/templates/` → 0).
@@ -122,4 +122,37 @@ m1_to_mN_commit_strategy: 2-commit grouping by file boundary — commit 1 (loop.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs>_
+```
+sync_complete_at: 2026-07-09
+sync_commit_sha: <to be backfilled in follow-up chore commit>
+sync_status: audit-ready (3-phase close on single sync commit; completed transition rides this commit)
+changelog_entry_position: [Unreleased] > Added (SPEC-LOOP-VERDICT-CONTRACT-001, top of Added — latest sync, above RATCHET)
+frontmatter_status_transitions:
+  spec.md: in-progress -> completed (single sync commit, 3-phase close)
+  plan.md: in-progress -> completed (same sync commit, atomic)
+  acceptance.md: in-progress -> completed (same sync commit, atomic)
+  progress.md: n/a (no YAML frontmatter — "# " header; era.go parses §E.* headings + sync_commit_sha, not frontmatter)
+b12_self_test_a_pre_emission_grep: PASS (grep 'SPEC-LOOP-VERDICT-CONTRACT-001' CHANGELOG.md -> 0 pre-emit; inserted without duplicate)
+b12_self_test_b_ac_count_match: PASS (acceptance.md SSOT = 13 AC; CHANGELOG entry references 13/13)
+b12_self_test_c_file_path_verify: PASS (loop.md + template mirror + spec/plan/acceptance all exist)
+deployment_pattern: temp-worktree isolation at origin/main d99892883 (shared-checkout live-race avoidance — RATCHET sync just landed; per feedback_glm_orchestrator_direct_sync_mx + feedback_shared_checkout_concurrent_commit_race)
+```
+
+### Sync-phase verification (measured 2026-07-09 by orchestrator-direct, GLM backend)
+
+**SCOPING NOTE**: doctrine/skill-doc primary SPEC (plan.md §D — zero Go source modified in run-phase). Sync-phase verification is doc-scope: frontmatter transitions, era.go parser-load-bearing §E.* heading preservation, live↔template byte-parity of core doctrine file pairs, spec-lint, cross-platform build. Full `go test ./...` deferred to a race-free window (shared checkout dirty with parallel-session files — agent-arch-v2 + RATCHET residue + TEST-003 plan); out of scope for this doc-primary SPEC per progress.md §E.3 residual note.
+
+```
+V1 frontmatter status: 3/3 artifacts in-progress -> completed (spec.md, plan.md, acceptance.md)
+V2 era.go §E.* headings: 3 preserved (§E.2, §E.3, §E.4) — parser-load-bearing substrings intact
+V3 live↔template byte-parity:
+    loop.md          PARITY (core doctrine — Step 1 mechanical predicate + Step 1.5 independent pass + Step 9 verdict)
+    moai.md          PARITY (output-style cause-2 parity surface)
+    ralph.yaml       DIFFER (pre-existing dev-local config divergence — local carries full engine config (hooks/loop/completion); template is minimal skeleton (enabled/lsp/ast_grep). CLAUDE.local.md §22 intentional local!=template. NOT a LOOP-VERDICT regression.)
+    workflow.yaml    DIFFER (pre-existing dev-local config divergence — local execution_mode: auto / default_model: opus[1m] vs template execution_mode: team / default_model: sonnet + full role_profiles. CLAUDE.local.md §22. NOT a LOOP-VERDICT regression.)
+V4 CHANGELOG ordering: SPEC-LOOP-VERDICT-CONTRACT-001 at Added top (L16) above RATCHET (L17) — latest-sync-first convention
+V5 moai spec lint spec.md: No findings — all SPEC documents are valid
+V6 go build ./...: exit 0 (doc-only, sanity)
+```
+
+**parity caveat (transparent, per verification-claim-integrity §3.4 Gaps)**: progress.md §E.3 run-phase claim "byte-identical 4 file pairs" over-stated parity for ralph.yaml/workflow.yaml (these two config files were never at parity — pre-existing dev-local customization per CLAUDE.local.md §22). sync-auditor (PASS-WITH-DEBT 0.89) verified via 3 independent angles that the M3 comment-only edits landed symmetrically on BOTH live and template ralph.yaml/workflow.yaml (commit `083cf52cf` stat: live +4/+11, template +4/+11) — the DIFFER is structural (2-space skeleton vs 4-space full engine), NOT a regression. §E.3 row corrected at sync-phase (D1) to restrict parity to the 2 core doctrine pairs (loop.md, moai.md) that ARE byte-identical. No template-side config fix required — user-facing precedence semantics already on template.
