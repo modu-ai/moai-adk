@@ -173,7 +173,7 @@ Cross-cutting (no new IDs): copy amplifies JA-09 katakana overload; JA-04 and JA
 - Before: 業務の最適化を実現します。生産性の向上を可能にします。
   After: 請求書40件の処理が10分で終わります。
   (JA-13: swap the formulaic promise pair for one concrete, ownerless-no-more outcome)
-- Before: 幼い頃からものづくりに情熱を燃やし、幾多の困難を乗り越えて、私たちのブランドは生まれました。
+- Before: 情熱と挑戦を胸に、幾多の困難を乗り越えて、私たちのブランドは生まれました。
   After: 最初の試作品は3回連続で割れました。4回目の窯出しが、いまの定番です。
   (JA-14: replace the founder-myth arc with first-hand, verifiable detail)
 
