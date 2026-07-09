@@ -79,7 +79,7 @@ m1_to_mN_commit_strategy: "M별 pathspec 한정 분리 commit (M1..M5 + evidence
 
 ```yaml
 sync_complete_at: 2026-07-09
-sync_commit_sha: <backfill-after-commit>   # sync commit subject: "docs(SPEC-AUDIT-GATE-INTEGRITY-001): sync-phase artifacts + 3-phase close"; SHA recorded via follow-up backfill commit per repo convention
+sync_commit_sha: 61b7bcc0a   # "docs(SPEC-AUDIT-GATE-INTEGRITY-001): sync-phase artifacts + 3-phase close"; recorded via follow-up backfill commit per repo convention
 sync_status: audit-ready
 b12_self_test_a: "grep -c 'SPEC-AUDIT-GATE-INTEGRITY-001' CHANGELOG.md → 0 (pre-emission, no duplicate)"
 b12_self_test_b: "acceptance.md SSOT AC matrix rows = 25 (grep -cE '^\\| AC-AGI-[0-9]+[a-z]? \\|') — CHANGELOG entry claims 25/25, match"
