@@ -2,7 +2,7 @@
 id: SPEC-AUDIT-GATE-INTEGRITY-001
 title: "감사 게이트 무결성 P0 4결함 수정 — D7/D8 BLOCKING 배선, sync-auditor 채점모델 정합, 보고서 파일명 split-brain 해소, SPEC ID Bash 검증 전환"
 version: "0.1.2"
-status: in-progress
+status: completed
 created: 2026-07-09
 updated: 2026-07-09
 author: GOOS행님

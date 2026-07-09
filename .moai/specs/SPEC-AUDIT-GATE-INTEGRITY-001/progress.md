@@ -77,4 +77,19 @@ m1_to_mN_commit_strategy: "M별 pathspec 한정 분리 commit (M1..M5 + evidence
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-09
+sync_commit_sha: <backfill-after-commit>   # sync commit subject: "docs(SPEC-AUDIT-GATE-INTEGRITY-001): sync-phase artifacts + 3-phase close"; SHA recorded via follow-up backfill commit per repo convention
+sync_status: audit-ready
+b12_self_test_a: "grep -c 'SPEC-AUDIT-GATE-INTEGRITY-001' CHANGELOG.md → 0 (pre-emission, no duplicate)"
+b12_self_test_b: "acceptance.md SSOT AC matrix rows = 25 (grep -cE '^\\| AC-AGI-[0-9]+[a-z]? \\|') — CHANGELOG entry claims 25/25, match"
+b12_self_test_c: "ls 9/9 claimed paths exist (live 4 + mirror 4 + catalog.yaml)"
+changelog_entry_position: "[Unreleased] ### Fixed — 2nd bullet (after SPEC-MOAI-SKILL-DOCTRINE-FIX-001)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (merged 3-phase close on this single sync commit; updated: 2026-07-09 unchanged-correct)"
+  plan_md: "n/a — no YAML frontmatter (Tier M header-only artifact)"
+  acceptance_md: "n/a — no YAML frontmatter (Tier M header-only artifact)"
+3_phase_close: "plan(v0.1.0→v0.1.2, iter-1 FAIL 0.78 → iter-2 PASS-WITH-DEBT 0.87 → iter-3 PASS 0.90) → run(34523061b M1 / f228e1b31 M2 / 300bb4660 M3 / 6fb35b0aa M4 / 19b12c353 evidence / e353d94a6 M5 mirrors, pushed) → sync(this commit)"
+ac_total: "25/25 PASS (§E.2 matrix, verbatim logs .moai/state/verify/agi-run/)"
+neutrality: "AC-AGI-012e grep sum 0 — no internal-token leak into template tree"
+```
