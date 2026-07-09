@@ -82,7 +82,7 @@ evidence_dir: "/Users/goos/MoAI/moai-adk-go/.moai/state/verify/onepaste-run/"
 
 ```yaml
 sync_complete_at: 2026-07-09
-sync_commit_sha: pending-backfill  # populated by follow-up chore commit per established convention
+sync_commit_sha: 79de21b22
 sync_status: audit-ready
 epic: Handoff-v2 follow-on (AUTORESUME emission-side wiring — 1-paste flow live)
 ac_total: 17/17 PASS (9 MUST-PASS incl. AC-OP-017 byte-parity)
