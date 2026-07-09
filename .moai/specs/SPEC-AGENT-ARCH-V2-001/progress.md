@@ -1,0 +1,127 @@
+---
+id: SPEC-AGENT-ARCH-V2-001
+title: "MoAI Agent Architecture v2 — Progress"
+version: "0.1.0"
+status: draft
+created: 2026-07-09
+updated: 2026-07-09
+author: manager-spec
+priority: P1
+phase: "v3.0.0"
+module: ".claude/agents/moai + internal/config"
+lifecycle: spec-anchored
+era: V3R6
+tier: L
+tags: "agent-arch, super-advisor, manager-design, no-haiku, 3-tier, claude-design, token-policy, progress"
+---
+
+# SPEC-AGENT-ARCH-V2-001 — Progress
+
+> progress.md is the lifecycle tracker. Section letters below are allocated per the canonical progress.md Section Map in `.claude/rules/moai/development/spec-frontmatter-schema.md` (the SSOT). The `§E.*` namespace is parser-load-bearing — `internal/spec/era.go` `ClassifyEra` matches the literal `§E.2`/`§E.3`/`§E.4` heading tokens and the `sync_commit_sha` field; renaming any of these silently breaks era classification.
+>
+> Per the manager-spec artifact ownership policy, this agent populates **§E.1 only** (the plan-phase audit-ready signal). `§E.2`/`§E.3` belong to manager-develop (run-phase); `§E.4` belongs to manager-docs (sync-phase). §F / §H are placeholders that gain content during run-phase / Phase 0.95.
+
+---
+
+## §E.1 Plan-phase Audit-Ready Signal
+
+```yaml
+plan_status: audit-ready
+plan_complete_at: 2026-07-09
+plan_artifact_set: Tier-L-5
+plan_artifacts:
+  - spec.md         # WHAT/WHY SSOT — 17 REQs (REQ-AA2-001..017) in GEARS notation, 5 GAPs, 9 Constraints
+  - plan.md         # HOW skeleton — §A-§H (Context, Known Issues B1-B12, Pre-flight, Constraints, E1-E7, Milestones M1-M4, Anti-Patterns, Xref)
+  - acceptance.md   # AC Matrix — 17 ACs (AC-AA2-001..017) Given-When-Then + §D.1-§D.7 severity/traceability/closure-gate
+  - design.md       # Architecture — §A Target topology + catalog 9+1; §B super-advisor; §C manager-design D1-D5 + H1-H9 verbatim + DesignSync 11-method contract; §D No-Haiku 3-tier (2-A..2-D); §E Wiring
+  - research.md     # Codebase baselines — §A..§J (RouteModelFor, workflow.yaml, llm.yaml, CLAUDE.md §4, model-policy.md, ADVISOR-RUNG analysis, MODEL-ROUTING-WIRE analysis, DesignSync MCP Gap, haiku enumeration)
+  - progress.md     # this file — §E.1 populated; §E.2-§E.4 placeholder headings
+plan_supersede_targets:
+  - SPEC-ADVISOR-RUNG-001         # frontmatter flipped draft → superseded; superseded_by recorded
+  - SPEC-MODEL-ROUTING-WIRE-001   # frontmatter flipped draft → superseded; superseded_by recorded
+plan_design_authority: .moai/reports/agent-architecture-redesign-v2-20260709.html
+plan_design_authority_lines: 565
+plan_era: V3R6
+plan_lifecycle: spec-anchored
+plan_tier: L
+plan_open_decisions:
+  - D1: legacy single `model_routing` key kept as `medium` profile alias, OR removed (REQ-AA2-009 detail)
+  - D2: super-advisor tool whitelist — `WebFetch` retained or moved to skills layer (REQ-AA2-001 detail)
+  - D3: `HaikuResidualRule` severity — Warning (lint.skip-able) vs Error (HARD gate); spec binds HARD (REQ-AA2-012)
+plan_known_gaps:
+  - DesignSync MCP not registered in .mcp.json at plan-phase (research.md §H) — does not block plan-phase close; M2 run-phase verifies
+plan_phase_evidence_path: .moai/specs/SPEC-AGENT-ARCH-V2-001/
+```
+
+### Plan-phase evidence (vci §3.2 attribution)
+
+- **Plan-phase artifacts**: 6 files at `.moai/specs/SPEC-AGENT-ARCH-V2-001/` (spec.md, plan.md, acceptance.md, design.md, research.md, progress.md) — all authored 2026-07-09 by manager-spec.
+- **Frontmatter schema**: 12 canonical fields verified per file; `created: 2026-07-09`, `updated: 2026-07-09`, `tags: "..."` (string, not labels array); `era: V3R6`, `tier: L`, `lifecycle: spec-anchored`.
+- **Supersede footprint**: 2 targets flipped (`SPEC-ADVISOR-RUNG-001`, `SPEC-MODEL-ROUTING-WIRE-001`) — `status: draft → superseded`, `superseded_by: SPEC-AGENT-ARCH-V2-001`, `updated: 2026-07-09`. Inline supersede note in each target's Epic Context section.
+- **Design SSOT fidelity**: every spec.md REQ traces to a verbatim §NN section of `.moai/reports/agent-architecture-redesign-v2-20260709.html` (565 lines). No architecture re-derived or invented (CONSTRAINT #1).
+- **Live-tree baselines**: every baseline in research.md measured 2026-07-09 by this agent via Read/Bash/Grep (vci §2 attribution). RouteModelFor external call sites: zero production consumers (only 2 doc comments in types.go).
+- **Lint status**: see §E.2 placeholder below — manager-develop will populate run-phase evidence; plan-phase lint check is `moai spec lint .moai/specs/SPEC-AGENT-ARCH-V2-001/` (run by this agent before close — verbatim output in the completion report to the orchestrator).
+
+### Plan-phase verification claim (vci §3.1)
+
+**Claim**: all 6 plan-phase artifacts exist with the frontmatter schema compliant, every REQ in GEARS notation, every AC in Given-When-Then format, every design decision traces to the SSOT, every research baseline measured live 2026-07-09, and the two supersede targets carry the `superseded_by` field with `status: superseded`.
+
+**Evidence**: the file listing above (`plan_artifacts`) + the `plan_phase_evidence_path`. Each artifact's content is the load-bearing evidence; the path is the audit-time-reachable pointer.
+
+**Baseline-attribution**: HEAD `2fae7057a`, design SSOT at `.moai/reports/agent-architecture-redesign-v2-20260709.html` (565 lines, 2026-07-09). No carry-over from unrelated prior measurements.
+
+**Gaps**: DesignSync MCP not registered (research.md §H) — recorded as a known gap, not a blocker.
+
+**Residual-risk**: (a) plan-auditor may identify scope-reduction opportunity at iter1 — the M1-M4 split is conservative (separates Go code from doctrine), so the most likely scope-reduction is merging M3 + M4 if M3's lint rule already encompasses the doctrine refresh; (b) the 36-cell matrix in design.md §D.5 is a transcription of §2-D — if the SSOT is updated post-plan-phase, the matrix needs re-sync; (c) the HaikuResidualRule scope (6 trigger surfaces in REQ-AA2-012) may surface additional haiku references at run-phase that were not in research.md §I's enumeration.
+
+---
+
+## §E.2 Run-phase Evidence
+
+_<pending run-phase — manager-develop populates this section with per-milestone commit SHAs, test output, lint output, coverage measurements, and AC PASS/FAIL matrix per the canonical §E.2 contract. The literal `§E.2` heading is the era.go run-evidence START marker; do NOT rename or remove.>_
+
+---
+
+## §E.3 Run-phase Audit-Ready Signal
+
+_<pending run-phase — manager-develop populates this section when all MUST-PASS ACs are green and the implementation is ready for sync-phase entry.>_
+
+---
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+_<pending sync-phase — manager-docs populates this section with `sync_commit_sha` on the single sync commit that carries the `implemented → completed` transition.>_
+
+```yaml
+sync_commit_sha: ""   # populated by manager-docs at sync commit
+sync_completed_at: ""  # populated by manager-docs at sync close
+```
+
+---
+
+## §F Phase 0.95 Mode Selection
+
+_<pending Phase 0.95 — the orchestrator populates this section BEFORE the first run-phase Agent() spawn (after Implementation Kickoff Approval passes). The literal `Mode Selection` token is grep-verified; the orchestrator's mode decision (one of: trivial / background / agent-team / parallel / sub-agent / workflow) is recorded on a single line. Per the Tier L + multi-domain nature of this SPEC, the expected selection is `sub-agent` (Mode 5, sequential per milestone — coding-heavy per Anthropic's coding-task parallelism caveat), but the orchestrator makes the autonomous decision at Phase 0.95 entry.>_
+
+---
+
+## §H Recursive Self-Diagnosis Log
+
+_<pending run-phase — the bounded DIAGONSE-PATCH-VERIFY loop record (mechanical failures only, max 3 iterations per failure class). Manager-develop or orchestrator populates when a mechanical failure triggers the self-diagnosis path.>_
+
+---
+
+## Cross-References
+
+- **Plan-phase SSOT**: `spec.md` (17 REQs, 5 GAPs, 9 Constraints, Out of Scope).
+- **Design authority**: `.moai/reports/agent-architecture-redesign-v2-20260709.html` (§01-§08).
+- **Lifecycle schema**: `.claude/rules/moai/development/spec-frontmatter-schema.md` § progress.md Section Map (the canonical §E.1-§E.4 + §F/§H allocation).
+- **Era classification**: `.claude/rules/moai/workflow/lifecycle-sync-gate.md` § Era Classification Heuristic (the `era: V3R6` frontmatter override fires H-override; `§E.2`+`§E.4`+`sync_commit_sha` predicates are the H-4 fallback that confirms V3R6 era post-sync).
+
+---
+
+## History
+
+| Version | Date | Author | Change |
+|---------|------|--------|--------|
+| 0.1.0 | 2026-07-09 | manager-spec | Initial progress.md. §E.1 populated with plan-phase audit-ready signal (6 artifacts authored, 2 supersede targets flipped, design authority cited, 3 open decisions + 1 known gap recorded). §E.2-§E.4 + §F + §H placeholder headings emitted per the canonical progress.md Section Map. |
