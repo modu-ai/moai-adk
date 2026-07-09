@@ -468,6 +468,7 @@ Triggers:
 - After user-requested investigation (file diff audit, state drift check)
 - After `git status` / `git diff` audit
 - After memory pattern analysis
+- Before any decision `AskUserQuestion` whose options derive from investigation results (Report-Before-Ask Gate)
 
 Template:
 ```
@@ -494,6 +495,7 @@ Rules:
 - [HARD] `📊 Findings` MUST quantify (N items, N% match, classification breakdown)
 - [HARD] `⚠️ Drift` is optional; render only when state divergence detected (stale snapshot vs HEAD, parallel session interleave, etc.)
 - [HARD] `⏭️ Recommended action` MUST be a single-line actionable directive (concrete command, decision option, or AskUserQuestion handoff)
+- [HARD] **Report-Before-Ask binding**: when the turn's next action is a decision `AskUserQuestion` whose options derive from investigation results, the Discovery banner + per-source findings detail MUST precede the AskUserQuestion call in the same turn. A one-line completion claim followed immediately by the question, or findings carried only in option `preview` fields (preview-as-report substitution), violates the gate — every option codename must be explained in the preceding report. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Report-Before-Ask Gate
 
 ### Race Absorbed [HARD]
 

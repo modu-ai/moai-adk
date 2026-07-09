@@ -277,6 +277,40 @@ Note how each option's `preview` uses the same key set (`Tier`/`Scope`/`Files`/`
 
 ---
 
+## Report-Before-Ask Gate
+
+[ZONE:Evolvable] [HARD] A decision-type `AskUserQuestion` whose options derive from investigation results MUST be preceded — in the same turn's response body — by a substantive findings report. Investigation results include: `Agent()` fan-out returns (multi-lens analysis, audits, scans), verification batches, and any multi-source evidence gathering the orchestrator performed before composing the question. Asking the user to choose among options they were never given the evidence to evaluate is a gate violation, even when the AskUserQuestion call itself is structurally compliant (labels, descriptions, previews, `(권장)` placement).
+
+### Report Completeness Criteria (all mandatory)
+
+1. **Per-source coverage**: the report names each investigation source (agent, lens, audit dimension) and states its key findings with quantification (N findings, severity/classification breakdown). A single-line completion claim ("investigation complete", "전수조사 보고를 마쳤습니다") is NOT a report.
+2. **Option-to-report traceability**: every codename, identifier, or finding referenced in the question's option labels / descriptions / previews (e.g., `P1 <CODENAME>`, a SPEC ID, a lens name) MUST have been introduced and explained in the preceding report body. An option referencing an entity the report never introduced is a violation — the user cannot evaluate what was never explained.
+3. **Structured rendering**: render the report via the Discovery banner (`.claude/output-styles/moai/moai.md` §8 Discovery Report) or equivalent structured markdown with per-source subsections, scaled to the investigation's size.
+
+### Preview-as-Report Substitution (named anti-pattern)
+
+[HARD] Option `preview` / `description` fields MUST NOT be the sole carrier of investigation findings. The preview compresses a comparison; the report explains the evidence. Compressing all findings into an option preview table while the response body carries only a one-line completion claim is the named anti-pattern **preview-as-report substitution** — the user is forced to evaluate options inside a ≤12-line monospace box with no explanatory report behind it.
+
+### Report-Promise Fulfillment
+
+[HARD] When prior narration in the same task promised a consolidated report ("결과를 종합해 보고하겠습니다", "I will consolidate and report"), the report MUST be rendered before any subsequent decision AskUserQuestion. Claiming the report was delivered when none was rendered is an unobserved completion claim — see `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 1 (orchestrator self-report).
+
+### Exceptions (gate does not apply)
+
+1. Pure clarify rounds during Context-First Discovery — questions asked BEFORE any investigation exists
+2. Confirmation gates on already-reported context (e.g., Implementation Kickoff Approval after plan artifacts were presented in prose)
+3. Blocker re-delegation rounds where the subagent's blocker report was already surfaced
+4. Preference questions with no investigative basis (naming, formatting choices)
+
+### Pre-emit self-check (report-before-ask) — 4 items
+
+- [ ] Do this question's options derive from investigation results? If yes, does a substantive report precede this call in the same turn?
+- [ ] Is every codename / identifier appearing in the options explained in the preceding report?
+- [ ] Do the findings live in the response body (not only inside option previews)?
+- [ ] If a report was promised earlier in the task, has it actually been rendered?
+
+---
+
 ## Orchestrator–Subagent Boundary
 
 The `AskUserQuestion` interaction channel is **asymmetric** by design.
