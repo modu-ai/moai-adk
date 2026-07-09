@@ -108,6 +108,9 @@ harness:
   # Model Upgrade Review Process
   # When Claude model is upgraded, review harness components for simplification.
   # Reference: Anthropic "Harness Design for Long-Running Apps" (2025)
+  # DORMANT-in-practice: the model_upgrade_review consumer (emitModelUpgradeReminder)
+  # exists, but its CLAUDE_MODEL_PREVIOUS / CLAUDE_MODEL trigger env vars have no
+  # setter anywhere — the review never fires. Preserved for forward compatibility.
   model_upgrade_review:
     enabled: true
     # Checklist items to evaluate after model upgrade

@@ -36,11 +36,51 @@ spec_id_self_check: PASS (SPEC-OBSERVE-HYGIENE-001 → ^SPEC(-[A-Z][A-Z0-9]*)+-\
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — populated by manager-develop>_
+```
+spec_id: SPEC-OBSERVE-HYGIENE-001
+tier: S
+cycle_type: tdd
+mode: sub-agent (Mode 5, sequential)
+base: 280c9dd71 (race-absorbed — 2 parallel sessions landed scope-overlap-zero)
+commits:
+  M1: bcde87d24 feat(SPEC-OBSERVE-HYGIENE-001): M1 spec-audit log consumer (REQ-OBH-001)
+  M2: 5c11080bb feat(SPEC-OBSERVE-HYGIENE-001): M2 telemetry pruning (REQ-OBH-002)
+  M3: <this commit> feat(SPEC-OBSERVE-HYGIENE-001): M3 decisions + annotations + template sync (REQ-OBH-003..006)
+d3_decision: Promote (sync-gate go vet/go build → default-blocking; MOAI_SYNC_GATE_BLOCKING → opt-out)
+manager-develop: aborted mid-M3 (API 429 usage limit); orchestrator-direct M3 completion (user "이어서 계속 진행")
+```
+
+D1/D2/D3 decisions recorded:
+- D1: (a) spec-audit consumer (recommended) — M1 implemented (moai spec audit parses status-transition-audit.log, correlates against Ownership Matrix, INFO findings, graceful no-op on absent/corrupt)
+- D2: 30-day retention (DefaultTraceRetentionDays in internal/config/defaults.go); task-metrics.jsonl disposition = document write-only + age-out (writer path post_tool.go:~166; root-cause suspected upstream Agent/Task event shape change 2026-05-30; inconclusive → default document+age-out)
+- D3: Promote — M3 implemented (vet/build default-blocking; env var opt-out; tests/coverage advisory; stdout-JSON exit-0 + --skip-hook + §4 carve-out preserved)
+
+Per-sink disposition (6 groups, exactly one each):
+1. status-transition-audit.log → (a) consumer [M1]
+2. trace-*.jsonl zero-byte + age → (c) prune [M2, SessionEnd path, 30-day]
+3. task-metrics.jsonl → (b) documented write-only + age-out [M2, root-cause note]
+4. fact-force-skip.log → (b) documented write-only [M3, header line]
+5. sync-gate vet/build → D3 Promote [M3, default-blocking]
+6. loop-snapshots + sunset.yaml + harness.yaml model_upgrade_review → (b) dormancy annotations [M3]
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — populated by manager-develop>_
+```
+run_status: audit-ready (PASS-WITH-DEBT)
+run_complete_at: 2026-07-09
+ac_matrix:
+  AC-OBH-001: PASS — moai spec audit consumes status-transition-audit.log (fixture tests green; internal/spec coverage 88.3%)
+  AC-OBH-002: PASS — SessionEnd prunes zero-byte trace + 30-day age retention; task-metrics disposition recorded (internal/hook 83.5%)
+  AC-OBH-003: PASS — fact-force-skip.log write-only line in gateguard-fact-force.sh header (live + template mirror)
+  AC-OBH-004: PASS — D3=Promote; go vet/go build default-blocking; env var opt-out; stdout-JSON exit-0 + --skip-hook + §4 carve-out preserved (live + template mirror)
+  AC-OBH-005: PASS — loop.md best-effort marker on snapshot/resume sections (live + template mirror)
+  AC-OBH-006: PASS — sunset.yaml + harness.yaml model_upgrade_review dormancy comments (live + template mirror); config tests bit-identical green
+  AC-OBH-007: PASS-WITH-DEBT — cross-platform build green (linux+windows exit 0); make build green; new paths ≥85% (spec 88.3%); lint 0 issues; subagent-boundary grep 0; template-first mirrors synced; no .moai/logs/ committed.
+     DEBT (2 pre-existing FAIL, OBSERVE 유발 0건):
+       (1) internal/cli TestDoctor/Status 6 golden mismatch — TEST-003 AC-006 external debt (stale golden, ARCH-001 M0 소관)
+       (2) internal/template TestOutputStylesTemplateLiveParity moai-easy.md — 별도 chore (RATCHET-REWIRE memory; moai-easy.md template-only, live mirror + Doctor/Status golden update 미완료)
+evidence_dir: /tmp/moai-verify-obh/ (logs 1-9; persist to .moai/state/verify/ pre-sync)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

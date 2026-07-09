@@ -10,13 +10,20 @@
 # tools are skipped gracefully; projects with no recognized language marker pass
 # the gate silently.
 #
-# Behavior: advisory (non-blocking) by DEFAULT. A failing check emits only
-# {"systemMessage": ...} — a warning that does NOT block the turn. The blocking
-# path ({"decision":"block"} on stdout + exit 0) is dormant and enabled only when
-# MOAI_SYNC_GATE_BLOCKING=1 is explicitly set. This split matters because, per
-# Claude Code Stop-hook semantics, stdout JSON is honored only on exit 0 (on
+# Behavior: BLOCKING by DEFAULT for the vet/build deterministic checks
+# (SPEC-OBSERVE-HYGIENE-001 REQ-OBH-004, D3=Promote). A failing vet/build emits
+# {"decision":"block", ...} on stdout + exit 0 — which blocks the turn.
+# MOAI_SYNC_GATE_BLOCKING is the opt-OUT: set it to 0/off/false/advisory to
+# downgrade a failing check to a non-blocking {"systemMessage": ...} warning.
+# (The legacy opt-in semantics MOAI_SYNC_GATE_BLOCKING=1 are accepted but now
+# redundant — blocking is the default.) tests/coverage are NOT run by this gate
+# (advisory regardless — heavy checks belong in CI). This split matters because,
+# per Claude Code Stop-hook semantics, stdout JSON is honored only on exit 0 (on
 # exit 2 stdout is discarded and only stderr is surfaced) — the "decision" field
 # is the blocking channel, so an advisory run must never emit that field.
+# The runtime-recovery §4 carve-out (recovery turns SHOULD defer) is preserved:
+# this script does not parse stopReason, so the carve-out remains documentation-
+# only at this layer (per runtime-recovery-doctrine.md §4).
 #
 # Once-per-commit: a given sync commit is gated at most ONCE. The gated HEAD SHA is
 # recorded in .moai/state/sync-quality-gate.last and the hook short-circuits on any
@@ -24,11 +31,12 @@
 #
 # Manual smoke test:
 #   echo '{}' | bash .claude/hooks/moai/sync-phase-quality-gate.sh
-# Expected: empty stdout (silent pass) on skip/allow; on an advisory warning a Stop
-# JSON {"systemMessage":...}; on a blocking failure (MOAI_SYNC_GATE_BLOCKING=1) a
-# Stop JSON {"decision":"block","reason":...,"systemMessage":...}. The per-check
-# detail is written to .moai/logs/sync-quality-gate.log, not stdout (Stop JSON-schema
-# rejects unknown fields and non-{approve,block} decision values).
+# Expected: empty stdout (silent pass) on skip/allow; on a blocking vet/build
+# failure (DEFAULT) a Stop JSON {"decision":"block","reason":...,"systemMessage":...};
+# set MOAI_SYNC_GATE_BLOCKING=0 to downgrade to an advisory {"systemMessage":...}
+# warning. The per-check detail is written to .moai/logs/sync-quality-gate.log, not
+# stdout (Stop JSON-schema rejects unknown fields and non-{approve,block} decision
+# values).
 #
 # Unit-test the detector directly (bypasses the sync-phase git gate):
 #   source .claude/hooks/moai/sync-phase-quality-gate.sh && detect_language "$dir"
@@ -322,18 +330,26 @@ elif [ "$C2_EXIT" -ne 0 ]; then
 fi
 
 # Resolve the mode once (set -e safe) for both stdout and the audit log.
-if [ "${MOAI_SYNC_GATE_BLOCKING:-0}" = "1" ]; then MODE="blocking"; else MODE="advisory"; fi
+# D3=Promote (SPEC-OBSERVE-HYGIENE-001 REQ-OBH-004): vet/build block by DEFAULT.
+# MOAI_SYNC_GATE_BLOCKING is the opt-OUT — set to 0/off/false/advisory/no to
+# downgrade a failing vet/build to a non-blocking warning. Default (unset) and
+# the legacy =1 value both select blocking. tests/coverage are NOT run here.
+case "${MOAI_SYNC_GATE_BLOCKING:-1}" in
+    0|off|false|advisory|no) MODE="advisory" ;;
+    *) MODE="blocking" ;;
+esac
 
 # Emit a Stop-schema-compliant response.
 #
-# Advisory (default): a failing check emits ONLY {"systemMessage": ...} — a
-# non-blocking warning. The "decision":"block" stdout field is the blocking
-# channel (honored on exit 0), so the advisory path MUST NOT emit it.
+# Blocking (DEFAULT): a failing vet/build emits {"decision":"block", ...} on
+# stdout — this blocks the turn. The hook still exits 0: per Claude Code hook
+# semantics, stdout JSON is honored only on exit 0 (on exit 2 stdout is
+# discarded and only stderr is surfaced).
 #
-# Blocking (opt-in, MOAI_SYNC_GATE_BLOCKING=1): a failing check emits
-# {"decision":"block", ...} on stdout — this blocks the turn. The hook still
-# exits 0: per Claude Code hook semantics, stdout JSON is honored only on
-# exit 0 (on exit 2 stdout is discarded and only stderr is surfaced).
+# Advisory (opt-out, MOAI_SYNC_GATE_BLOCKING=0/off/false/advisory): a failing
+# check emits ONLY {"systemMessage": ...} — a non-blocking warning. The
+# "decision":"block" stdout field is the blocking channel (honored on exit 0),
+# so the advisory path MUST NOT emit it.
 #
 # On allow, stdout is intentionally empty (silent pass); the audit log records detail.
 if [ "$DECISION" = "block" ]; then

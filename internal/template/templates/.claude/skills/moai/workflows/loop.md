@@ -262,6 +262,8 @@ After each iteration, include MX_TAG_REPORT section:
 
 ## Snapshot Management
 
+> **Best-effort**: snapshot persistence and `--resume` re-entrancy are best-effort orchestrator behaviors — the `.moai/cache/loop-snapshots/` directory has no mechanical writer guarantee and may never materialize. Do not rely on it for persistent state.
+
 Snapshot location: $CLAUDE_PROJECT_DIR/.moai/cache/loop-snapshots/
 
 Files:

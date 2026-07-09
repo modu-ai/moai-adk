@@ -14,6 +14,11 @@
 # State: ${CLAUDE_PROJECT_DIR:-$PWD}/.moai/state/fact-force/<hash>
 # keyed by SHA-1(session_id + absolute_file_path), 0o600, single JSON line.
 # The hook MUST NOT invoke any user-prompting mechanism (subagent boundary, C-HRA-008).
+#
+# fact-force-skip.log (.moai/logs/): intentionally WRITE-ONLY — a local audit
+# trail of MOAI_FACT_FORCE=off opt-outs (timestamp, session, path), with no
+# mechanical consumer; pruned at the operator's discretion
+# (SPEC-OBSERVE-HYGIENE-001 REQ-OBH-003).
 
 # Fail-open wrapper: any unexpected error → exit 0 (allow). This hook NEVER
 # exits 2 — it is advisory-only (exit 0 on every path).

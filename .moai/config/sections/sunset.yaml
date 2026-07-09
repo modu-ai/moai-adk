@@ -1,3 +1,6 @@
+# DORMANT: this config is typed and loaded, but no runtime hot path enforces these
+# conditions yet. The Go loader emits a once-per-session DORMANT notice. Preserved for
+# forward compatibility; behavioral enforcement awaits an activation SPEC.
 sunset:
     conditions:
         - action: advisor

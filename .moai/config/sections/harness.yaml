@@ -74,6 +74,9 @@ harness:
         cg: thorough
         solo: auto
         team: auto
+    # DORMANT-in-practice: the model_upgrade_review consumer (emitModelUpgradeReminder)
+    # exists, but its CLAUDE_MODEL_PREVIOUS / CLAUDE_MODEL trigger env vars have no
+    # setter anywhere — the review never fires. Preserved for forward compatibility.
     model_upgrade_review:
         checklist:
             - action: If model handles longer coherent work, switch evaluator_mode from per-sprint to final-pass
