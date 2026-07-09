@@ -88,7 +88,24 @@ _<M1/M2/M3 evidence appended below as milestones complete>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — populated by manager-develop>_
+```
+run_complete_at: 2026-07-09
+run_commit_sha: 87471fb18 (coverage hardening, final run-phase commit)
+run_status: audit-ready
+ac_pass_count: 13
+ac_fail_count: 0
+preserve_list_post_run_count: 3 (applier.go, rubric.go, regression_gate.go — semantics untouched)
+l44_pre_commit_fetch: origin/main fetched pre-push; divergence 0 0 after push
+l44_post_push_fetch: origin/main == HEAD (0 0); 4 commits on origin/main
+new_warnings_or_lints_introduced: 0 (golangci-lint 0 issues vs clean baseline)
+cross_platform_build:
+  darwin_amd64: exit 0
+  windows_amd64: exit 0
+total_run_phase_files: 16 (6 Go source edited/new, 6 test files new, 2 doctrine files live+mirror, 4 SPEC frontmatter/evidence)
+m1_to_mN_commit_strategy: one feat commit per milestone (M1/M2/M3) + one test commit (coverage hardening); rebased onto a parallel-session divergence (origin gained 4 complementary commits mid-run) — rebase clean, no conflicts; pushed HEAD:main (Route A Hybrid Trunk)
+```
+
+Run-phase status: `in-progress` (draft→in-progress set on M1 commit by manager-develop). The `in-progress → implemented → completed` close is owned by manager-docs (sync-phase).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
