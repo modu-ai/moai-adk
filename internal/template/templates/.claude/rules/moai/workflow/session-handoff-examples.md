@@ -11,8 +11,8 @@ paths: "**/session-handoff.md"
 
 The cut-line marker text AND the 6-block skeleton verbs/headers translate per `conversation_language`. This table is the SSOT for the locale renderings (the canonical skeleton uses the `<entering verb>` / `<header>` placeholders; concrete locale renderings live here). Cross-verified for consistency with `.claude/output-styles/moai/moai.md §8` (the canonical render surface).
 
-| Element | English | Korean (canonical) | Japanese | Chinese |
-|---------|---------|--------------------|----------|---------|
+| Element | English | Korean | Japanese | Chinese |
+|---------|---------|--------|----------|---------|
 | Cut-line top text | `Copy from here` | `여기부터 복사` | `ここからコピー` | `从这里复制` |
 | Cut-line bottom text | `Copy to here` | `여기까지 복사` | `ここまでコピー` | `到这里复制` |
 | Block 1 entering verb | `entering` | `진입` | `開始` | `进入` |
@@ -20,6 +20,7 @@ The cut-line marker text AND the 6-block skeleton verbs/headers translate per `c
 | Block 5 Run header | `Run:` | `실행:` | `実行:` | `执行:` |
 | Block 6 After-merge header (PR workflow) | `After merge:` | `머지 후:` | `マージ後:` | `合并后:` |
 | Block 6 Follow-up header (trunk no-PR) | `Follow-up:` | `후속:` | `後続:` | `后续:` |
+| Memory heading | `## Next Session Entry Point` | `## 다음 세션 시작점` | `## 次セッション開始点` | `## 下一会话起点` |
 | Post-paste /goal instruction line | Send the `/goal` line below as its own standalone message AFTER Implementation Kickoff Approval — slash commands parse only at input start, and setting a goal starts a turn immediately. | 아래 `/goal` 라인을 구현 착수 승인 후 **별도 메시지로 단독 전송** — 슬래시 커맨드는 입력 시작에서만 인식되며, goal 설정 즉시 턴이 시작됨. | 下記の `/goal` 行を実装着手承認後に**単独メッセージとして送信** — スラッシュコマンドは入力の先頭でのみ認識され、goal 設定と同時にターンが開始される。 | 在实现启动批准后，将下方 `/goal` 行**作为独立消息单独发送** — 斜杠命令仅在输入开头被识别，设定 goal 会立即开始一个回合。 |
 
 Read `conversation_language` from `.moai/config/sections/language.yaml` at render time; substitute the localized text between the `✂────` decorators (cut-line markers) while keeping `✂` and `─` characters verbatim, and substitute the locale rendering for each Block 1/3/5/6 placeholder when emitting the paste-ready message.

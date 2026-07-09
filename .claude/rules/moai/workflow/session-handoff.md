@@ -41,14 +41,14 @@ ultrathink. <SPEC-ID> <phase> <entering verb>.
 mode: <value>   ← emit ONLY when the seeded orchestration mode ≠ solo-sequential; value ∈ {parallel-subagents | agent-team | dynamic-workflow} → Phase 0.95 Mode 4 / 3 / 6. OMIT for solo-sequential (default) → v1 byte-identical. When mode = dynamic-workflow, ALSO append bare `ultracode` to the opener line above (paste-time trigger keyword; the session-persistent `/effort ultracode` slash form is a separate variant — per Field-by-Field Spec, Block 1). When mode = agent-team, append `--team` to the Block 5 run command. When mode = parallel-subagents, append the fan-out steering phrase `fan out subagents (<read-only investigation scope>)` to the opener line above (paste-time steering phrase — per Field-by-Field Spec, Block 1).
 applied lessons: <memory-file-1>, <memory-file-2>, ...
 
-전제 검증:
+Preconditions:
 1) <verifiable precondition 1>
 2) <verifiable precondition 2>
 N) <verifiable precondition N>
 
-실행: <command-or-action>
+Run: <command-or-action>
 
-머지 후: <next-action-or-spec>
+After merge: <next-action-or-spec>
 
 ✂──── 여기까지 복사 ────✂
 ```
@@ -64,10 +64,10 @@ N) <verifiable precondition N>
 
 ### Localization Table
 
-The cut-line marker text AND the 6-block skeleton verbs/headers translate per `conversation_language`. This table carries the en / ko columns inline (the primary locales); the full 4-locale table (en / ko / ja / zh) lives in `session-handoff-examples.md` § Localization Table (Full 4-Locale). Cross-verified for consistency with `.claude/output-styles/moai/moai.md §8` (the canonical render surface).
+The cut-line marker text AND the 6-block skeleton verbs/headers translate per `conversation_language`. This table carries the en / ko columns inline (the inline locales); the full 4-locale table (en / ko / ja / zh) lives in `session-handoff-examples.md` § Localization Table (Full 4-Locale). Cross-verified for consistency with `.claude/output-styles/moai/moai.md §8` (the canonical render surface).
 
-| Element | English | Korean (canonical) |
-|---------|---------|--------------------|
+| Element | English | Korean |
+|---------|---------|--------|
 | Cut-line top text | `Copy from here` | `여기부터 복사` |
 | Cut-line bottom text | `Copy to here` | `여기까지 복사` |
 | Block 1 entering verb | `entering` | `진입` |
@@ -75,9 +75,10 @@ The cut-line marker text AND the 6-block skeleton verbs/headers translate per `c
 | Block 5 Run header | `Run:` | `실행:` |
 | Block 6 After-merge header (PR workflow) | `After merge:` | `머지 후:` |
 | Block 6 Follow-up header (trunk no-PR) | `Follow-up:` | `후속:` |
+| Memory heading | `## Next Session Entry Point` | `## 다음 세션 시작점` |
 | Post-paste /goal instruction line | Send the `/goal` line below as its own standalone message AFTER Implementation Kickoff Approval — slash commands parse only at input start, and setting a goal starts a turn immediately. | 아래 `/goal` 라인을 구현 착수 승인 후 **별도 메시지로 단독 전송** — 슬래시 커맨드는 입력 시작에서만 인식되며, goal 설정 즉시 턴이 시작됨. |
 
-Read `conversation_language` from `.moai/config/sections/language.yaml` at render time; substitute the localized text between the `✂────` decorators (cut-line markers) while keeping `✂` and `─` characters verbatim, and substitute the locale rendering for each Block 1/3/5/6 placeholder when emitting the paste-ready message.
+Read `conversation_language` from `.moai/config/sections/language.yaml` at render time; substitute the localized text between the `✂────` decorators (cut-line markers) while keeping `✂` and `─` characters verbatim, and substitute the locale rendering for each Block 1/3/5/6 placeholder and the memory heading (per § Auto-Memory Integration) when emitting the paste-ready message.
 
 **Fallback rule for locales not in the table.** The inline table above lists concrete renderings for en / ko only. When `conversation_language` is ja, zh, or any other ISO-639 code whose language column is NOT in the inline table (e.g. `fr`, `de`, `es`, `pt`, `vi`), consult the full 4-locale table in `session-handoff-examples.md` for ja / zh renderings; for all other locales, English is the canonical fallback skeleton and each label translates to that locale using the naturalization principle (idiomatic phrasing a native reader expects, never literal word-by-word transliteration). In other words: locales not in the inline table fall back to the English column for the structural skeleton, with the label text rendered in the configured ISO-639 language — ISO-639 not in the table ⇒ English-skeleton fallback, not English-output.
 
@@ -106,13 +107,13 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
   - **Post-paste `/goal` follow-up (NOT a Block 1 line)** [HARD]: the `/goal` autonomous-continuation directive is NOT a Block 1 line and is NOT embedded anywhere in the main resume block — a mid-paste `#`-prefixed or bare slash line is inert (parsed as plain text; official slash-command recognition is input-start-only). When the emission condition holds (the next SPEC is run-phase AND declares a machine-verifiable end-state — condition UNCHANGED from the predecessor doctrine), the orchestrator emits a separate post-paste `/goal` follow-up block; the full two-step mechanism, the standalone-message requirement, the Implementation-Kickoff-Approval timing, and the resumed-session reminder obligation live in § Post-Paste /goal Follow-up Block. Per `.claude/rules/moai/workflow/goal-directive.md`, a `/goal` is NOT restored by the `ultrathink.` opener — `/clear` removes an active goal, so it must be re-issued as its own standalone user message when the resumed session needs the autonomous-continuation loop. Default on ambiguity: omit the follow-up block. **Implementation Kickoff Approval invariant**: a `/goal` follow-up block does NOT authorize autonomous run-phase entry; the Implementation Kickoff Approval human gate remains required before run-phase entry, independent of whether a follow-up block is emitted.
 - **Block 2**: `applied lessons:` — relevant memory files from `~/.claude/projects/{hash}/memory/`. MUST include the most recent relevant project memory + any relevant lessons. Block 2 MUST also include a `source_session_id: <UUID from moai session current>` line carrying the Claude Code session_id of the orchestrator turn that generated this resume message per the canonical multi-session coordination policy. The session_id is the same value emitted by `moai session list --json` and stored in `.moai/state/active-sessions.json` — readers can correlate the resume back to its originating session.
   - **Environment fallback** [HARD]: the primary UUID source is `moai session current`. If `moai session current` returns the canonical fallback (runtime did not expose session.id to the CLI subprocess), OR `moai session list --json` returns error (CLI not installed in PATH), OR `.moai/state/active-sessions.json` does not exist (the multi-session coordination layer not yet deployed in this project), the orchestrator MUST emit the recognized fallback pattern verbatim: `source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>`. This pattern is NOT an anti-pattern; it is the prescribed graceful degradation when the CLI/registry layer is absent or the runtime does not expose session.id. The next session, upon `/moai session register` activation, MAY backfill the UUID by appending a `[backfilled: <UUID>]` annotation to the memory file's Block 2 line.
-- **Block 3**: separator + `전제 검증:` (Korean) or `Preconditions:` (English).
+- **Block 3**: separator + `Preconditions:` (English) or `전제 검증:` (Korean).
 - **Block 4**: numbered preconditions `<N>) <action> → <expected outcome>`. Each MUST be independently verifiable (git/gh command, file existence). Max 4 preconditions.
-- **Block 5**: separator + `실행: <command-or-action>` — single primary action (typically `/moai <subcommand>`).
+- **Block 5**: separator + `Run: <command-or-action>` (English) or `실행: <command-or-action>` (Korean) — single primary action (typically `/moai <subcommand>`).
 - **Block 6**: separator + `<workflow-context header>: <next-action-or-spec>` — RECOMMENDED for multi-SPEC Epics or follow-up; **omit entirely** for single-SPEC close with no further actions queued.
   - **Header selection (workflow-context conditional)**:
-    - **PR-based workflow** (feat/* → PR → merge): `머지 후:` (en `After merge:`)
-    - **Trunk-based no-PR** (e.g., 1-person OSS, all-tier direct-to-main push, no merge step): `후속:` (en `Follow-up:`)
+    - **PR-based workflow** (feat/* → PR → merge): `After merge:` (ko `머지 후:`)
+    - **Trunk-based no-PR** (e.g., 1-person OSS, all-tier direct-to-main push, no merge step): `Follow-up:` (ko `후속:`)
     - **Single-SPEC close** (no further SPEC/phase queued): omit Block 6 entirely
   - **Single action principle**: `<next-action-or-spec>` MUST be one concrete SPEC ID, one command, or one phase transition — avoid vague "cycle-repeat" / "iteration loop" phrasing that reads as infinite recursion.
 
@@ -160,8 +161,10 @@ A `/goal` follow-up block does NOT authorize autonomous run-phase entry. The Imp
 [ZONE:Evolvable] An explicit alternative single-paste form exists: the **goal-first bootstrap** — a standalone one-line `/goal` message whose condition text carries both a resume pointer and the compact completion condition. Illustrative:
 
 ```text
-/goal SPEC-X run 재개: memory의 <handoff-file>와 progress.md를 읽고 이어서 진행. 완료 조건: <machine-verifiable end-state>, 또는 N턴 후 중단.
+/goal resume SPEC-X run: read <handoff-file> from memory and progress.md, then continue. Completion: <machine-verifiable end-state>, or stop after N turns.
 ```
+
+(The condition text follows the user's `conversation_language`; shown above in English-canonical form. The `/goal` token itself is locale-verbatim.)
 
 Grounding: official goal doc — "Setting a goal starts a turn immediately, with the condition itself as the directive" (`https://code.claude.com/docs/en/goal`). Normative content:
 
@@ -222,11 +225,11 @@ The injected Block 4 preconditions MUST be verified at the start of the resumed 
 [ZONE:Evolvable] [HARD] When generating a resume message, the orchestrator MUST also:
 
 1. Save the message to a memory project entry. Filename pattern: `project_<epic>_<spec>_<status>.md` (e.g., `project_epic8_wf002_complete.md`). The `<epic>` token reflects the multi-SPEC grouping per sprint-round-naming.md (the legacy `<sprint>/<wave>` tokens are retired).
-2. Include the resume message verbatim in that file under a `## 다음 세션 시작점 (paste-ready resume message)` heading. When a post-paste `/goal` follow-up block was emitted (per § Post-Paste /goal Follow-up Block), include its instruction line + cut-line-bounded `/goal` block verbatim in the same memory entry, so the resumed session can detect the pending `/goal` from memory (the pasted main block itself carries no `/goal` reference).
+2. Include the resume message verbatim in that file under a `## Next Session Entry Point (paste-ready resume message)` heading (locale variant per the Localization Table memory-heading row; e.g. ko `## 다음 세션 시작점`). When a post-paste `/goal` follow-up block was emitted (per § Post-Paste /goal Follow-up Block), include its instruction line + cut-line-bounded `/goal` block verbatim in the same memory entry, so the resumed session can detect the pending `/goal` from memory (the pasted main block itself carries no `/goal` reference).
 3. Update `MEMORY.md` index with a one-line entry pointing to the new memory file.
 4. Mark superseded entries (if any) with `[SUPERSEDED by <new-file>]` prefix per Lessons Protocol in `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol.
 5. Annotate the MEMORY.md index entry with a `(session: <UUID-8-char-prefix>)` parenthetical when the SPEC was worked across multiple sessions (cross-references the `source_session_id` in Block 2 — enables readers to correlate the resume back to its originating session).
-6. **Close-time pruning (auto-resume era)**: on SPEC close, the consumed verbatim resume block inside the memory topic file (the `## 다음 세션 시작점` section) SHOULD be pruned to a one-line summary — once the record has been consumed, verbatim preservation is owned by the `.moai/state/handoff/consumed/` audit trail, not the memory file. The generation-time verbatim-persistence obligation above (items 1-2) is UNCHANGED: the resume message is still saved verbatim to memory when emitted; the pruning binds only later, at SPEC close (temporal separation). Forward-looking only — no retroactive rewrite of existing memory files is mandated. This stops double-storage growth and keeps the always-loaded memory index within the loader's line/byte cap.
+6. **Close-time pruning (auto-resume era)**: on SPEC close, the consumed verbatim resume block inside the memory topic file (the next-session-start-point section) SHOULD be pruned to a one-line summary — once the record has been consumed, verbatim preservation is owned by the `.moai/state/handoff/consumed/` audit trail, not the memory file. The generation-time verbatim-persistence obligation above (items 1-2) is UNCHANGED: the resume message is still saved verbatim to memory when emitted; the pruning binds only later, at SPEC close (temporal separation). Forward-looking only — no retroactive rewrite of existing memory files is mandated. This stops double-storage growth and keeps the always-loaded memory index within the loader's line/byte cap.
 
 This ensures the message survives `/clear` and is discoverable at the start of the next session's context.
 
