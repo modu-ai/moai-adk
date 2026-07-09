@@ -117,6 +117,19 @@ func resolveProjectRoot(input *HookInput) string {
 // The project root is resolved via resolveProjectRoot to prevent creating .moai/
 // directories in non-project locations.
 // All errors are best-effort: logged with slog.Warn, never returned.
+//
+// Finding note (SPEC-OBSERVE-HYGIENE-001 M2, REQ-OBH-002 bounded investigation):
+// Writes to task-metrics.jsonl stopped 2026-05-30. Code-path analysis: the Agent
+// tool (renamed from Task in Claude Code v2.1.63; the call site in post_tool.go
+// accepts both names) response no longer carries a `metrics` field, so
+// resp.Metrics is nil and this function returns early at the guard below. The
+// writer is intact but its input precondition is no longer satisfied by the
+// upstream event shape. This conclusion is code-path-derived, not verified
+// against a captured live Agent-tool payload. Disposition (D2 default,
+// inconclusive): documented write-only + included in the SessionEnd age-out
+// (PruneObservationLogs ages out task-metrics.jsonl past retention). If a future
+// upstream shape restores the `metrics` field, the writer resumes and the file
+// regenerates.
 func logTaskMetrics(input *HookInput) {
 	if len(input.ToolResponse) == 0 {
 		return

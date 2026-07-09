@@ -92,6 +92,13 @@ const (
 	// SPEC-V3R2-RT-004 REQ-022: overridable via the stale_seconds key in ralph.yaml.
 	DefaultStaleSeconds = 3600
 
+	// DefaultTraceRetentionDays is the age threshold (in days) past which
+	// non-empty trace-*.jsonl files under .moai/logs/ are pruned at SessionEnd
+	// (SPEC-OBSERVE-HYGIENE-001 REQ-OBH-002). Zero-byte traces are pruned
+	// unconditionally regardless of age; the current session's active trace is
+	// always preserved (EC-3).
+	DefaultTraceRetentionDays = 30
+
 	// Memory taxonomy defaults (SPEC-V3R2-EXT-001)
 	// @MX:NOTE: [AUTO] 메모리 감사 서브시스템의 실제 배선(wiring)은 아래 패키지 레벨 상수 +
 	// MOAI_MEMORY_AUDIT 환경변수 경로다. 과거 workflow.memory.* YAML 블록을 미러링하던
