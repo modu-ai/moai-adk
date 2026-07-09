@@ -82,4 +82,33 @@ m1_to_mN_commit_strategy: commit 1 = plan-phase artifacts (draft, as authored); 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs>_
+```
+sync_complete_at: 2026-07-09
+sync_commit_sha: <to be backfilled in follow-up chore commit>
+sync_status: audit-ready (3-phase close on single sync commit; completed transition rides this commit)
+changelog_entry_position: [Unreleased] > Added (SPEC-FIX-LOOPMAP-001, top of Added — latest sync, above LOOP-VERDICT)
+frontmatter_status_transitions:
+  spec.md: in-progress -> completed (single sync commit, 3-phase close)
+  plan.md: n/a (no YAML frontmatter — "# " header; Tier S 2-artifact plan-phase)
+  progress.md: n/a (no YAML frontmatter — "# " header; era.go parses §E.* headings + sync_commit_sha)
+  acceptance.md: n/a (absent — Tier S SPEC; acceptance criteria embedded in spec.md body)
+b12_self_test_a_pre_emission_grep: PASS (grep 'SPEC-FIX-LOOPMAP-001' CHANGELOG.md -> 0 pre-emit)
+b12_self_test_b_ac_count_match: PASS (progress.md §E.3 ac_pass_count: 10; CHANGELOG references 10/10)
+b12_self_test_c_file_path_verify: PASS (fix.md + template mirror + spec/plan/progress exist)
+deployment_pattern: temp-worktree isolation at origin/main c4bd0bbe7 (shared-checkout live-race avoidance; per feedback_glm_orchestrator_direct_sync_mx + feedback_shared_checkout_concurrent_commit_race)
+```
+
+### Sync-phase verification (measured 2026-07-09 by orchestrator-direct, GLM backend)
+
+**SCOPING NOTE**: doctrine/skill-doc primary SPEC (zero Go source, Tier S). Sync-phase verification is doc-scope: spec.md frontmatter transition, era.go parser-load-bearing §E.* heading preservation, live↔template byte-parity of fix.md + loop.md, spec-lint, cross-platform build. Full `go test ./...` deferred to race-free window (shared checkout diverged 2/5 — parallel-session commits; out of scope for doc-primary SPEC).
+
+```
+V1 spec.md frontmatter: status in-progress -> completed (single artifact with YAML frontmatter; plan/progress use "# " header, no frontmatter — 3-phase close scope = spec.md only)
+V2 era.go §E.* headings: 3 preserved (§E.2, §E.3, §E.4) — parser-load-bearing substrings intact
+V3 live↔template byte-parity: fix.md PARITY, loop.md PARITY (both core doctrine pairs at parity — run-phase claim faithful, unlike LOOP-VERDICT's config divergence)
+V4 CHANGELOG ordering: SPEC-FIX-LOOPMAP-001 at Added top (above LOOP-VERDICT) — latest-sync-first
+V5 moai spec lint spec.md: No findings — all SPEC documents are valid
+V6 go build ./...: exit 0 (doc-only, sanity)
+```
+
+**artifact-structure note**: this SPEC carries 3 artifacts (spec.md + plan.md + progress.md) — acceptance.md is absent (Tier S 2-artifact plan-phase convention; acceptance criteria embedded in spec.md body). plan.md and progress.md use `# ` markdown headers with no YAML frontmatter, so the 3-phase-close frontmatter flip applies to spec.md alone; era.go lifecycle classification reads spec.md frontmatter status + progress.md §E.* headings + sync_commit_sha.
