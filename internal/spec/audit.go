@@ -253,6 +253,13 @@ func Audit(opts AuditOptions) (*AuditResult, error) {
 		result.TokensSpent = singleSpecTokensSpent
 	}
 
+	// SPEC-OBSERVE-HYGIENE-001 M1 (REQ-OBH-001): consume the
+	// status-transition-audit.log as a write-site cross-check. The log records
+	// status values captured at Write/Edit time — a signal the per-SPEC git
+	// history scan above cannot see. Absent/corrupt log degrades to zero
+	// findings (graceful, never an error per EC-1).
+	result.DriftFindings = append(result.DriftFindings, crossCheckTransitionLog(baseDir, opts)...)
+
 	return result, nil
 }
 
