@@ -2,7 +2,7 @@
 id: SPEC-CADENCE-BRIDGE-001
 title: "AUTOMATE Bridge — Sanctioned Cadence Recipes — Implementation Plan"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-09
 updated: 2026-07-09
 author: manager-spec

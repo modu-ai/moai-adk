@@ -91,4 +91,33 @@ push_state: not pushed — orchestrator integrates per task instructions
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs>_
+```
+sync_complete_at: 2026-07-09
+sync_commit_sha: <to be backfilled in follow-up chore commit>
+sync_status: audit-ready (3-phase close on single sync commit; completed transition rides this commit)
+changelog_entry_position: [Unreleased] > Added (SPEC-CADENCE-BRIDGE-001, top of Added — latest sync, above FIX-LOOPMAP)
+frontmatter_status_transitions:
+  spec.md: in-progress -> completed (single sync commit, 3-phase close)
+  plan.md: in-progress -> completed (same sync commit, atomic)
+  acceptance.md: in-progress -> completed (same sync commit, atomic)
+  progress.md: n/a (no YAML frontmatter — "# " header; era.go parses §E.* headings + sync_commit_sha)
+b12_self_test_a_pre_emission_grep: PASS (grep 'SPEC-CADENCE-BRIDGE-001' CHANGELOG.md -> 0 pre-emit)
+b12_self_test_b_ac_count_match: PASS (progress.md §E.3 ac_pass_count: 6; CHANGELOG references 6/6)
+b12_self_test_c_file_path_verify: PASS (cadence-bridge.md + goal-directive.md + template mirrors + spec/plan/acceptance exist)
+deployment_pattern: temp-worktree isolation at origin/main d68b163a9 (shared-checkout live-race avoidance; per feedback_glm_orchestrator_direct_sync_mx + feedback_shared_checkout_concurrent_commit_race)
+```
+
+### Sync-phase verification (measured 2026-07-09 by orchestrator-direct, GLM backend)
+
+**SCOPING NOTE**: doctrine-text-only SPEC (zero Go source, Tier S). Sync-phase verification is doc-scope: spec/plan/acceptance frontmatter transition, era.go parser-load-bearing §E.* heading preservation, live↔template byte-parity of cadence-bridge.md + goal-directive.md, spec-lint, cross-platform build. Full `go test ./...` deferred to race-free window.
+
+```
+V1 frontmatter status: 3/3 artifacts in-progress -> completed (spec.md, plan.md, acceptance.md)
+V2 era.go §E.* headings: 3 preserved (§E.2, §E.3, §E.4)
+V3 live↔template byte-parity: cadence-bridge.md PARITY, goal-directive.md PARITY (both core doctrine pairs at parity — run-phase claim faithful)
+V4 CHANGELOG ordering: SPEC-CADENCE-BRIDGE-001 at Added top (above FIX-LOOPMAP) — latest-sync-first
+V5 moai spec lint spec.md: No findings
+V6 go build ./...: exit 0
+```
+
+**Epic close note**: this is the final SPEC of the fix·loop redesign 3-트랙 (LOOP-VERDICT + FIX-LOOPMAP + CADENCE-BRIDGE). All 3 syncs landed via temp-worktree isolation pattern under active shared-checkout race (3 parallel sessions + shared .git divergence), each independently sync-auditor verified (PASS-WITH-DEBT).
