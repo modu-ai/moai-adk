@@ -49,6 +49,13 @@ func (h *postToolUseFailureHandler) EventType() EventType {
 
 // Handle processes a PostToolUseFailure event. It classifies the error
 // and returns a system message with actionable guidance.
+//
+// SPEC-HARNESS-RATCHET-REWIRE-001 REQ-HRR-001: the handler also records a
+// tool_failure:<tool>:<category> event to usage-log.jsonl so the failure signal
+// enters the harness learning loop. The category (low-cardinality error-class
+// token) is the <signature>. Recording is fail-open (failure_observer.go logs
+// and swallows errors) — a learning-loop write failure never blocks the user's
+// session end.
 func (h *postToolUseFailureHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
 	category := h.classifyError(input)
 	message := h.formatMessage(category, input)
@@ -61,6 +68,12 @@ func (h *postToolUseFailureHandler) Handle(ctx context.Context, input *HookInput
 		"is_interrupt", input.IsInterrupt,
 		"category", category,
 	)
+
+	// REQ-HRR-001: feed the failure signal into the learning loop. The category
+	// is the low-cardinality <signature> token (D1 resolution). EC-1: an empty
+	// tool name is substituted with a non-empty placeholder inside the recorder
+	// so no degenerate tool_failure::<sig> key is emitted.
+	recordToolFailureEvent(input, category)
 
 	// REQ-CC2122-HOOK-001-006: PostToolUseFailure from/in/at outcome: includes "failure" field.
 	writeHookMetric(input, "handle-post-tool-failure", "failure")

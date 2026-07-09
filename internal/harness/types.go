@@ -61,6 +61,19 @@ const (
 	// carries the regression-gate verdict + project-health delta + proposal_id
 	// correlation key in the additive omitempty Outcome* fields below.
 	EventTypeApplyOutcome EventType = "apply_outcome"
+
+	// EventTypeToolFailure represents a tool-execution failure recorded by the
+	// PostToolUseFailure handler (SPEC-HARNESS-RATCHET-REWIRE-001 REQ-HRR-001).
+	// The Subject slot carries the tool name; the ContextHash slot carries the
+	// low-cardinality error-class token (the ErrorCategory). This feeds FAILURE
+	// signals into the learning loop so AggregatePatterns can pick them up.
+	EventTypeToolFailure EventType = "tool_failure"
+
+	// EventTypeTestFail represents a test-command failure detected by the
+	// evidence writer (SPEC-HARNESS-RATCHET-REWIRE-001 REQ-HRR-002). The Subject
+	// slot carries the derived package path; the ContextHash slot is empty by
+	// design (the package alone identifies the failure pattern).
+	EventTypeTestFail EventType = "test_fail"
 )
 
 // Event is the single JSONL line schema for usage-log.jsonl file.
@@ -264,6 +277,8 @@ func PatternBearingEventTypes() []EventType {
 		EventTypeSessionStop,
 		EventTypeSubagentStop,
 		EventTypeUserPrompt,
+		EventTypeToolFailure,
+		EventTypeTestFail,
 	}
 }
 

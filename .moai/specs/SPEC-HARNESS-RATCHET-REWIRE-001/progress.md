@@ -31,7 +31,31 @@ spec_id_self_check: PASS (SPEC-HARNESS-RATCHET-REWIRE-001 → ^SPEC(-[A-Z][A-Z0-
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — populated by manager-develop>_
+### Pre-flight baseline (measured 2026-07-09 by manager-develop)
+
+```
+git branch --show-current → worktree-agent-a949030202916a3bf (fast-forwarded from main)
+git rev-parse HEAD        → ab4f38def (== origin/main, divergence 0 0 after ff)
+go build ./...            → exit 0
+GOOS=windows GOARCH=amd64 go build ./... → exit 0
+golangci-lint run         → 0 issues (clean baseline)
+go test ./internal/harness/... ./internal/hook/... ./internal/cli/harness/... → all ok (exit 0)
+grep "classifyHarnessPatterns" internal/cli/hook.go → line 772 (Stop chain anchor)
+grep "Retired\|superseded" internal/harness internal/cli/harness → no output (B2 clean)
+```
+
+### Open decision resolutions (plan.md §D)
+
+- **D1 (failure signature)**: RESOLVED → low-cardinality error-class token. Reuse the existing `ErrorCategory` (TimeoutError/ExitError/etc. ~7 tokens) as the `<signature>` ContextHash. Avoids cardinality explosion.
+- **D2 (propose invocation seam)**: RESOLVED → extract a callable `generateProposals(root)` in cli/hook.go reusing `proposalgen.ReadPromotions`/`MapPromotions`/`WriteProposals`. No subprocess (within 5s budget).
+- **D3 (inbox stub schema)**: RESOLVED → append-only JSONL (ts / event_key / summary / source). Drain marking deferred to the orchestrator's Lessons Protocol (named by M3 doctrine cross-ref).
+- **D4 (eligibility predicate placement)**: RESOLVED → filter at classification time (in `classifyHarnessPatterns` loop, before `WritePromotion`).
+
+### D2-audit note (AC-HRR-012 grep refinement)
+
+acceptance.md §D.4 AC-HRR-012 grep matches 6 string-literal lines in the clean baseline (propose.go:48/50/59, execute.go:320, install.go:117, scaffolder.go:111). The E4 self-verification anchors on the call pattern `AskUserQuestion(` to avoid the false-positive FAIL.
+
+_<M1/M2/M3 evidence appended below as milestones complete>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
