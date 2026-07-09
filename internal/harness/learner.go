@@ -139,6 +139,37 @@ func ClassifyTier(p *Pattern, thresholds []int) Tier {
 	return TierObservation
 }
 
+// degenerateSubjectValues is the set of subject values that, combined with an
+// empty context hash, identify a degenerate lifecycle-noise pattern. "unknown"
+// is the fallback subject the SubagentStop handler assigns when the agent name
+// is absent; the empty string covers session_stop:: / user_prompt::.
+var degenerateSubjectValues = map[string]bool{
+	"":        true,
+	"unknown": true,
+}
+
+// IsEligibleForPromotion reports whether a Pattern carries enough signal to be
+// a meaningful promotion candidate (SPEC-HARNESS-RATCHET-REWIRE-001
+// REQ-HRR-003 / REQ-HRR-004). A pattern is INELIGIBLE when it carries an empty
+// context hash AND an empty-or-"unknown" subject — the degenerate
+// lifecycle-noise class (session_stop::, user_prompt::, subagent_stop:unknown:)
+// that every session emits and that previously crowded promotion history with
+// unlearnable patterns (the 2026-05-24 regression). A non-empty context hash is
+// always a meaningful signal regardless of subject; a meaningful (non-empty,
+// non-"unknown") subject is eligible even without a context hash.
+//
+// D4 resolution: filter at classification time so the key never becomes a
+// promotion candidate (the caller skips WritePromotion when this returns false).
+func IsEligibleForPromotion(p *Pattern) bool {
+	if p == nil {
+		return false
+	}
+	if p.ContextHash != "" {
+		return true // a real context hash is always a meaningful signal
+	}
+	return !degenerateSubjectValues[p.Subject]
+}
+
 // WritePromotion appends Promotion events to tier-promotions.jsonl.
 // REQ-HL-002: Records according to plan.md §4.2 schema.
 // Automatically creates parent directory if it does not exist.

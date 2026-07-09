@@ -57,6 +57,27 @@ acceptance.md §D.4 AC-HRR-012 grep matches 6 string-literal lines in the clean 
 
 _<M1/M2/M3 evidence appended below as milestones complete>_
 
+### M1 — failure-event recording (PASS)
+
+- AC-HRR-001: `tool_failure:Bash:ExitError` event recorded via harness.Observer (signature = ErrorCategory token, D1).
+- AC-HRR-002: `test_fail:internal/hook:` event recorded on test-fail detection (package from extractTestPackage).
+- EC-1: empty tool name → `unknown-tool` placeholder (non-degenerate key).
+- Tests: `go test -run "TestPostToolFailure_Records|TestPostToolFailure_EmptyToolName|TestEvidenceWriter_RecordsTestFail|TestExtractTestPackage" ./internal/hook/` → ok.
+- Files: types.go (EventTypeToolFailure/EventTypeTestFail + PatternBearing), post_tool_failure.go, evidence_writer.go, failure_observer.go (new), failure_event_test.go (new).
+- Commit: 8d49e286d. Frontmatter draft → in-progress (manager-develop M1 ownership).
+
+### M2 — classifier eligibility + propose auto-run (PASS)
+
+- AC-HRR-003: regression test proves `subagent_stop:unknown:` (41 obs) NO LONGER promoted; `session_stop::`, `user_prompt::` excluded.
+- AC-HRR-004: `IsEligibleForPromotion(p)` predicate — ineligible when empty context hash AND empty/unknown subject. Filter at classification time (D4).
+- AC-HRR-005: Stop path chains `generateProposals(root)` after classify when promoCount > 0 → proposal dirs land in `.moai/harness/proposals/`.
+- AC-HRR-006: propose chain fail-open — faulted path → stderr log, exit 0 (never blocks session end).
+- AC-HRR-007: no apply invocation on Stop chain (`grep "harness apply\|ApplyProposal\|\.Apply(" internal/cli/hook.go` → 0 matches); `auto_apply: false` unchanged (harness.yaml:116).
+- Decision recorded: propose-chain output dir = `.moai/harness/proposals/` (learning-loop home, per SPEC REQ-HRR-004 / AC-HRR-005 / AC-HRR-010; distinct from legacy manual-propose `.moai/proposals` default). Generation core (ReadPromotions/MapPromotions/WriteProposals) reused; only output-dir param differs.
+- Cascade fix: `seedUsageLog` helper updated to seed eligible events (non-empty context_hash) — the prior degenerate `user_prompt::` seed is now correctly excluded by the eligibility filter.
+- Tests: `go test -run "TestIsEligibleForPromotion|TestClassifyHarnessPatterns_ExcludesDegenerate|TestRunHarnessObserveStop_ProposeChain" ./internal/harness/ ./internal/cli/` → ok.
+- Pre-existing environmental note: 6 status/doctor golden tests (`TestStatus_*`, `TestDoctor_*`) fail in the worktree due to golden-snapshot/env mismatch — confirmed pre-existing on clean M1 state (git stash verified), NOT caused by SPEC changes. They test `moai status`/`moai doctor` rendering (no overlap with classify/propose/eligibility code).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — populated by manager-develop>_

@@ -18,6 +18,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/harness"
+	"github.com/modu-ai/moai-adk/internal/harness/proposalgen"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/hook/dbsync"
 )
@@ -773,6 +774,21 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: auto-classify failed (non-blocking): %v\n", classifyErr)
 	} else {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: auto-classify %d patterns → %d promotions\n", patternCount, promoCount)
+
+		// SPEC-HARNESS-RATCHET-REWIRE-001 REQ-HRR-004: auto-propose on the Stop
+		// path. Chains proposal generation after classify when promotions > 0 so
+		// that promoted patterns land in .moai/harness/proposals/ without a
+		// manual `moai harness propose` invocation. Fail-open (mirrors the
+		// classify chain's AP-3 discipline): propose errors are logged to stderr
+		// and NEVER block session end. Within the 5s hook budget (propose is a
+		// read-promotions + map + mkdir+write, O(promotions)).
+		if promoCount > 0 {
+			if n, pErr := generateProposals(root); pErr != nil {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: auto-propose failed (non-blocking): %v\n", pErr)
+			} else if n > 0 {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: auto-propose generated %d proposal(s)\n", n)
+			}
+		}
 	}
 
 	return nil
@@ -1164,6 +1180,14 @@ func classifyHarnessPatterns(root string) (patternCount, promoCount int, err err
 	learner := harness.NewLearner(promoPath)
 
 	for _, p := range patterns {
+		// REQ-HRR-003 / REQ-HRR-004 (D4: filter at classification time): skip
+		// degenerate lifecycle-noise keys (empty context hash AND empty/unknown
+		// subject) so they never become promotion candidates. This excludes the
+		// subagent_stop:unknown: / session_stop:: / user_prompt:: class that
+		// previously crowded promotion history with unlearnable patterns.
+		if !harness.IsEligibleForPromotion(p) {
+			continue
+		}
 		tier := harness.ClassifyTier(p, thresholds)
 		promo := harness.Promotion{
 			PatternKey:       p.Key,
@@ -1179,4 +1203,34 @@ func classifyHarnessPatterns(root string) (patternCount, promoCount int, err err
 	}
 
 	return len(patterns), promoCount, nil
+}
+
+// generateProposals is the callable propose-generation core reused by the
+// Stop-path auto-chain (SPEC-HARNESS-RATCHET-REWIRE-001 REQ-HRR-004, D2
+// resolution: extract a callable seam, no subprocess). It mirrors the
+// read→map→write pipeline of `moai harness propose` but targets the
+// learning-loop proposals directory (.moai/harness/proposals/) where the
+// learning subsystem's artifacts live. Returns the number of proposal
+// directories written.
+//
+// EC-2: zero actionable candidates → no-op (no empty-proposal churn). The
+// caller is responsible for fail-open handling (propose errors must never
+// block session end — REQ-HRR-004 / AC-HRR-006).
+func generateProposals(root string) (int, error) {
+	inputPath := filepath.Join(root, ".moai", "harness", "learning-history", "tier-promotions.jsonl")
+	outputDir := filepath.Join(root, ".moai", "harness", "proposals")
+
+	promotions, _, err := proposalgen.ReadPromotions(inputPath)
+	if err != nil {
+		return 0, fmt.Errorf("propose chain: read promotions: %w", err)
+	}
+	candidates := proposalgen.MapPromotions(promotions)
+	if len(candidates) == 0 {
+		return 0, nil // EC-2: no actionable candidates → skip (no empty-proposal churn)
+	}
+	written, err := proposalgen.WriteProposals(outputDir, candidates)
+	if err != nil {
+		return 0, fmt.Errorf("propose chain: write proposals: %w", err)
+	}
+	return len(written), nil
 }
