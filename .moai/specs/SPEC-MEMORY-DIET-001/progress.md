@@ -88,7 +88,7 @@ Per-file breakdown (orchestrator independent Trust-but-verify: wc + byte→token
 
 - sync_status: audit-ready
 - sync_complete_at: 2026-07-10
-- sync_commit_sha: pending-backfill
+- sync_commit_sha: d8299d64a00a66004bfcb09b595406b76b2062e6
 - ac_final_count: 17
 - ac_pass_count: 17
 - ac_fail_count: 0
@@ -99,7 +99,7 @@ Per-file breakdown (orchestrator independent Trust-but-verify: wc + byte→token
 - neutrality_ci: template-neutrality CI pass (REQ-1/REQ-2 template mirrors intact, no SPEC IDs leaked)
 - CHANGELOG_entry_position: [Unreleased] section populated
 - canary_compliance_check:
-    - status_git_consistency: pending-backfill (will verify after sync_commit_sha backfill)
+    - status_git_consistency: resolved (status=completed aligns with git-implied; verify via moai spec lint post-backfill)
     - mx_tags: N/A (no @MX tags added; out of scope for this SPEC)
     - era_classification: V3R6 (§E.2 + §E.3 + §E.4 present, sync_commit_sha populated)
 
