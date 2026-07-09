@@ -19,3 +19,10 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 0.95 Mode Selection
+
+- Inputs: tier=M, scope≈8 files (2 trees), domains=1 (skill content, markdown-only), language mix=100% markdown + catalog.yaml, concurrency benefit=LOW (M1→M2→M3 sequential dependency), Agent Teams prereqs=not met (team.enabled=false).
+- Mode evaluation: trivial NO (multi-file semantic) / background NO (writes) / agent-team NO (gate fail + single domain) / parallel NO (sequential milestones, coding/content-heavy) / workflow NO (<30 files, non-mechanical) / sub-agent YES.
+- Decision: sub-agent (sequential)
+- Justification: content-authoring work with strict milestone ordering (KO base → 4-language expansion → integration/parity); Anthropic coding-task parallelism caveat applies — single sequential manager-develop per milestone chain is the safe default.
