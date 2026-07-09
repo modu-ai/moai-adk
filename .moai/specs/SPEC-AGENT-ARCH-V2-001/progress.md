@@ -100,6 +100,26 @@ plan_phase_evidence_path: .moai/specs/SPEC-AGENT-ARCH-V2-001/
 
 **Residual-risk:** (a) orchestrator-direct plan-audit (confirmation bias — orchestrator authored manager-spec delegation AND verified); (b) M1 executed under GLM backend (user override of Opus recommendation) — agent-file authoring fidelity risk for M2 (manager-design H1-H9 verbatim).
 
+### M2 — manager-design agent file + design pipeline + role_profile absorption (PASS)
+
+**AC matrix (vci 5-section):**
+- AC-AA2-004 manager-design.md H1-H9 verbatim: PASS — manager-design.md (+template mirror) exists; `grep -cE '^H[1-9]'` = 9; frontmatter (tools=Read,Write,Edit,Grep,Glob,Bash,DesignSync; model=inherit; effort=xhigh; permissionMode=acceptEdits; isolation=worktree; memory=project; skills=[moai-domain-frontend]) matches §04 codeblock; DesignSync count=7; live+template byte-identical.
+- AC-AA2-005 design.md D1-D5 skill: PASS — `.claude/skills/moai/workflows/design.md` (+template mirror) exists; `grep -cE '^### D[1-5]'` = 5; methods (finalize_plan/write_files/report_validate) count=8.
+- AC-AA2-006 spec-workflow plan→design→run route: PASS — `grep -c 'design → run\|plan → design'` = 1; `grep -c 'UI-surfaced\|UI surface'` = 2; conditional route documented as additive (UI-surfaced SPECs only).
+- AC-AA2-007 designer role_profile + pencil MCP absorbed-by: PASS — `Absorbed by manager-design` annotation in team-protocol.md + settings-management.md (2 surfaces, ≥1).
+
+**Evidence (LIVE, vci attribution):**
+- AC grep matrix run against live tree 2026-07-10: H1-H9=9, `### D1-D5`=5, design route=1, UI-surfaced=2, Absorbed=2 surfaces, subagent-boundary AskUserQuestion=0, SPEC-ID neutrality=0 (4 files).
+- `go test ./internal/template/ -count=1` → catalog tier audit green: TestAllAgentsInCatalog=9 agents, TestLoadCatalog=37 entries, TestLoadEmbeddedCatalog=37, TestManifestHashFormat hash-stable post `make build` (manager-design hash e994cf…). expectedTotal 35→37 + expectedAgentCount 7→9 updated for the v2 catalog (super-advisor + manager-design).
+- template-first byte-parity: 4/5 IDENTICAL (manager-design.md, design.md skill, spec-workflow.md, team-protocol.md); settings-management.md DIFFERS pre-existing (rule_template_mirror 비대상; template neutral 유지).
+- spec-workflow.md REQ-WFL-001 neutrality fix (live SPEC-ID token → template neutral prose) resolved a pre-existing TestRuleTemplateMirrorDrift FAIL.
+
+**Baseline-attribution:** HEAD pre-M2 `5f2e5738c`; M2 edits are manager-design.md×2 (new), design.md skill×2 (new), spec-workflow.md×2 + team-protocol.md×2 + settings-management.md×2 (M2 annotations), catalog.yaml + 3 test files (catalog v2 count update) + this progress.md. No Go production code touched.
+
+**Gaps:** TestRuleProvenanceAudit pre-existing FAIL (12 internal REQ/AC/SPEC-V3R* tokens in agent-common-protocol.md template mirror — REQ-LEDGER-001..006, REQ-AA2-003, SPEC-V3R6-HOOK-RECOVERY-SIGNAL-001, SPEC-V3R6-HARNESS-RUNTIME-RECOVERY-001, SPEC-V3R6-ORCH-INTERRUPT-LEDGER-001, SPEC-V3R5-WORKFLOW-OPT-001, W3 meta-analysis) NOT resolved — M2 scope-out (M1 E1-E4 doctrine + prior LEDGER/WORKFLOW-OPT SPECs); SPEC-TEMPLATE-RULES-CLEANUP-001 owns remediation. This is the sole remaining whole-repo-green blocker.
+
+**Residual-risk:** (a) DesignSync MCP not registered in `.mcp.json` (research.md §H) — D2-D5 live execution gated on tool registration (separate user action); (b) M2 executed under GLM backend orchestrator-direct (M1 force-majeure continuity) — H1-H9 verbatim fidelity verified via grep + byte-parity, not independent semantic review; (c) TestRuleProvenanceAudit FAIL blocks whole-repo `go test ./...` green until the CLEANUP SPEC lands.
+
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal

@@ -68,6 +68,12 @@ The route governs the trigger vocabulary in § Phase Transitions below (commit/p
 
 Cross-reference: see `.claude/rules/moai/workflow/worktree-integration.md` § SPEC-to-Worktree Mapping for per-step L2 worktree applicability and decision tree.
 
+## Conditional Design Route (UI-surfaced SPECs)
+
+A SPEC that declares a UI surface routes `plan → design → run` instead of the standard `plan → run → sync`. The design phase — driven by the `manager-design` agent (`.claude/agents/moai/manager-design.md`) and the `.claude/skills/moai/workflows/design.md` D1-D5 pipeline — enters AFTER plan-audit PASS + Implementation Kickoff Approval and BEFORE run-phase M1 commit. The conditional route is **additive**: it does not change the `plan → run → sync` ordering for non-UI SPECs.
+
+UI-surface heuristic (either satisfies): explicit frontend-component / view / page deliverable in `acceptance.md`, OR `tier: L` + a frontend module (`module:` references a frontend package). Where neither holds, the route remains `plan → run → sync` — skip design entirely. Design is NOT a substitute for Implementation Kickoff Approval; it executes inside the already-approved run envelope, before the first implementation commit. See `.claude/skills/moai/workflows/design.md` for the D1-D5 pipeline and the H1-H9 handoff contract.
+
 ## Subcommand Classification (Pipeline vs Multi-Agent)
 
 *control-flow style* axis. The classification governs which agents are spawned,
@@ -394,7 +400,7 @@ Skip-eligibility inputs (normative, matching the Go implementation): (a) the "mo
 
 **Plan-artifact hash subject list (Go verbatim):** the 4-file hash subject set is `{spec.md, plan.md, acceptance.md, tasks.md}` — matching `internal/runtime/audit_cache.go` `planArtifactNames` verbatim. The `tasks.md` entry is a V3R4-era plan artifact name retained in the hash subject list for backward compatibility with grandfathered SPECs (V3R6 Tier L replaces it with design.md + research.md, which are NOT hash subjects). `design.md` and `research.md` are **manual-skip judgment inputs** — changes to them do NOT mechanically invalidate a cached skip verdict but MUST be considered by the orchestrator's manual skip decision alongside the 4-file hash.
 
-**Amendment as cache-invalidating event:** when a SPEC is amended in-place per REQ-WFL-001 (completed → in-progress, `## Amendments` HISTORY row added), the plan-artifact hash changes because `spec.md` is modified — this is a cache-invalidating event that invalidates any cached plan-auditor PASS verdict for the SPEC, forcing Phase 0.5 plan-audit re-execution on the next `/moai run`. During the amendment transition, the SPEC remains V3R6 modern era (subject to drift detection) because frontmatter status is `in-progress` (not `completed`), so the `internal/spec/audit.go` completed-no-drift predicate does not fire.
+**Amendment as cache-invalidating event:** when a SPEC is amended in-place per the `completed → in-progress (amendment)` transition (completed → in-progress, `## Amendments` HISTORY row added), the plan-artifact hash changes because `spec.md` is modified — this is a cache-invalidating event that invalidates any cached plan-auditor PASS verdict for the SPEC, forcing Phase 0.5 plan-audit re-execution on the next `/moai run`. During the amendment transition, the SPEC remains V3R6 modern era (subject to drift detection) because frontmatter status is `in-progress` (not `completed`), so the `internal/spec/audit.go` completed-no-drift predicate does not fire.
 
 Reports in both streams are local artifacts (gitignored).
 

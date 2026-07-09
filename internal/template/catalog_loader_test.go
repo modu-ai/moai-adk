@@ -52,7 +52,7 @@ func TestLoadCatalog(t *testing.T) {
 	// core skill), net +1 = 42.
 	// SPEC-SUBCOMMAND-RETIRE-001 (2026-07-01): retired 7 dependent skills of 5 /moai
 	// subcommands (2 core.skills + 5 optional-pack:design); agents unchanged, net -7 = 35.
-	const expectedTotal = 35
+	const expectedTotal = 37
 	if len(all) != expectedTotal {
 		t.Errorf("AllEntries() returned %d entries, want %d", len(all), expectedTotal)
 	}

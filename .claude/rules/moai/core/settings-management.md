@@ -38,7 +38,7 @@ The genuine Claude Code `/config` slash command (distinct from MoAI's `.moai`-pr
 Standard MCP servers in MoAI-ADK:
 
 - context7: Library documentation lookup
-- pencil: .pen file design editing. Used by a per-spawn `Agent(general-purpose)` frontend specialist (sub-agent mode) and the designer role_profile (team mode).
+- pencil: .pen file design editing. Used by a per-spawn `Agent(general-purpose)` frontend specialist (sub-agent mode) and the designer role_profile (team mode). Absorbed by manager-design as primary consumer — the `.pen` editor MCP remains registered; its design-phase orchestration now flows through the `manager-design` agent (D1-D5 Claude Design pipeline).
 - claude-in-chrome: Browser automation
 - z.ai MCP servers (optional, GLM backend): three separate servers registered via `moai glm tools enable [vision|websearch|webreader|all]` — `zai-mcp-server` (npx stdio, GLM-4.6V vision tools), `web_search_prime` (HTTP, `webSearchPrime`), `web_reader` (HTTP, `webReader`). Under `moai glm` / `moai cg` GLM panes these replace the built-in `WebSearch` / `WebFetch` / `Read`-on-image per `.claude/rules/moai/core/glm-web-tooling.md`.
 

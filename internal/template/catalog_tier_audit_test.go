@@ -228,7 +228,7 @@ func TestAllAgentsInCatalog(t *testing.T) {
 	// 7 retained MoAI-custom agents (4 core + 3 meta) + 1 Anthropic built-in Explore
 	// (no MoAI file). 12 phantom/domain-expert agents archived to
 	// .moai/backups/agent-archive-2026-05-25/.
-	const expectedAgentCount = 7
+	const expectedAgentCount = 9
 	if len(diskAgents) != expectedAgentCount {
 		t.Errorf("expected %d agent files on disk, found %d: %v", expectedAgentCount, len(diskAgents), diskAgents)
 	}
