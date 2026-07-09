@@ -8,7 +8,7 @@ plan_complete_at: 2026-07-09T06:33:35Z
 artifacts: [spec.md, plan.md, acceptance.md, research.md, design.md, progress.md]
 tier: L
 req_count: 28
-ac_count: 27
+ac_count: 33
 ```
 
 ## §E.2 Run-phase Evidence

@@ -4,7 +4,7 @@
 
 62개 템플릿 배포 rule 파일의 5개 finding 그룹(A 깨진 참조 / B 중립성 / C 백포트 / D retired 어휘 / E design 역드리프트)을 정리하고, 재발을 막는 CI 가드 4종을 확장한다. 감사 원천: session 98a5197a (2026-07-09), 본 plan-phase 세션에서 현재 트리 대비 전 anchor 재검증 완료 (research.md).
 
-Tier L / 5-artifact. 요구사항 28건 (REQ-TRC-001..066), AC 27건.
+Tier L / 5-artifact. 요구사항 28건 (REQ-TRC-001..066), AC 33건.
 
 ### A.1 파일별 트리-분류 매트릭스 (REQ-TRC-002 — 편집 전 필수 참조)
 
