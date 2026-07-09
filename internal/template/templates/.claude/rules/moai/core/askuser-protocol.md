@@ -174,7 +174,7 @@ AskUserQuestion의 `(권장)` 라벨은 **사용자가 통계적으로 다수 �
 - 통계적 다수 추천의 자율성 버퍼: 본 절 §3 + §5 (적응형 강도) + 회복 제어 토글 (요구사항 소관, 본 절 범위 외).
 - 전제조건 서술과 투명성: `verification-claim-integrity.md §1.1 surface 3` (관측되지 않은 추론 주장 금지).
 
-> 관측 증거: AC-ADM-005..017.
+> The recommendation placement principles above are evidence-based.
 
 ---
 
@@ -249,13 +249,13 @@ AskUserQuestion({
     options: [
       {
         label: "SPEC-V3R6-SPEC-ID-VALIDATION-001 (권장)",
-        description: "manager-spec body에 SPEC ID regex pre-write self-check 추가. Epic 7 TMC-001 plan-phase L51 도출 원천 해소.",
-        preview: "Tier:    S (minimal)\nScope:   manager-spec.md body + regex pre-write check\nFiles:   1-2 edit\nRisk:    Low — agent body 수정, 동작 변경 없음\nL51 origin: Epic 7 TMC-001 plan-phase 도출"
+        description: "manager-spec body에 SPEC ID regex pre-write self-check 추가. ",
+        preview: "Tier:    S (minimal)\nScope:   manager-spec.md body + regex pre-write check\nFiles:   1-2 edit\nRisk:    Low — agent body 수정, 동작 변경 없음\n"
       },
       {
         label: "SPEC-V3R6-CATALOG-FRONTMATTER-AUDIT-001",
-        description: "frontmatter schema audit + lint rule 확장. §24 namespace align 후속.",
-        preview: "Tier:    M (standard)\nScope:   internal/spec/lint.go + catalog.yaml\nFiles:   3-5 edit\nRisk:    Med — lint rule 확장은 cascade 가능\nOrigin:  §24 namespace align 후속"
+        description: "frontmatter schema audit + lint rule 확장. ",
+        preview: "Tier:    M (standard)\nScope:   internal/spec/lint.go + catalog.yaml\nFiles:   3-5 edit\nRisk:    Med — lint rule 확장은 cascade 가능\nOrigin:  frontmatter schema audit follow-up"
       },
       {
         label: "SPEC-V3R6-CLI-INTEGRATION-001",
@@ -267,7 +267,7 @@ AskUserQuestion({
 })
 ```
 
-Note how each option's `preview` uses the same key set (`Tier`/`Scope`/`Files`/`Risk`/`Origin`-or-`L51 origin`), allowing the user to scan deltas vertically when navigating the option list.
+Note how each option's `preview` uses the same key set (`Tier`/`Scope`/`Files`/`Risk`/`Origin`), allowing the user to scan deltas vertically when navigating the option list.
 
 ### Cross-references
 

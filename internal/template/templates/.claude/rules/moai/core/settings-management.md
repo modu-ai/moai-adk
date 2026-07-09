@@ -171,14 +171,14 @@ Loads the following 15 sections in fixed order. All return defaults on absent fi
 |---|---|---|---|
 | harness.yaml | `LoadHarnessConfig(path)` | `internal/config` | FROZEN validation (HRN-001); returns error on absent file (not defaults) |
 
-**MIG-003 new loaders** (`internal/config/loader_{constitution,context,interview,design}.go`):
+**New loaders** (`internal/config/loader_{constitution,context,interview,design}.go`):
 
 - `LoadConstitutionConfig(path)` — constitution.yaml; exposes `ForbiddenPatterns` (ForbiddenLibraries alias) policy enforcement.
 - `LoadContextConfig(path)` — context.yaml; provides `TokenBudget.MaxInjectionTokens` and `Search.DateRangeDays` for CLAUDE.md §16 Context Search.
 - `LoadInterviewConfig(path)` — interview.yaml; provides `ClarityThreshold`, `Plan.MaxRounds`, `SkipConditions`.
 - `LoadDesignConfig(path)` — design.yaml; provides `GanLoop.PassThreshold` (FROZEN floor 0.60), `GanLoop.SprintContract.Enabled`, `Adaptation.IterationLimits` for GAN loop runtime.
 
-**SunsetConfig** (`internal/config/types.go`): DORMANT — struct defined but no runtime hot path enforces sunset conditions. `LoadSunsetConfig` must NOT be added until an activation SPEC is filed (REQ-MIG003-006).
+**SunsetConfig** (`internal/config/types.go`): DORMANT — struct defined but no runtime hot path enforces sunset conditions. `LoadSunsetConfig` must NOT be added until an activation SPEC is filed.
 
 **CI Guards** (run on every `go test ./internal/config/...`):
 
@@ -341,7 +341,7 @@ When `outputStyle` is set in multiple places, the first match wins:
 { "outputStyle": "Einstein" }
 ```
 
-Result: **Einstein** loads (project wins over user, REQ-WF006-006).
+Result: **Einstein** loads (project wins over user.
 
 **Example 2 — user setting applies when project is absent:**
 
@@ -352,7 +352,7 @@ Result: **Einstein** loads (project wins over user, REQ-WF006-006).
 // .claude/settings.json (project) — outputStyle key not present
 ```
 
-Result: **Einstein** loads (user setting applies, REQ-WF006-015).
+Result: **Einstein** loads (user setting applies.
 
 **Example 3 — third-party style at project level:**
 
@@ -361,7 +361,7 @@ Result: **Einstein** loads (user setting applies, REQ-WF006-015).
 { "outputStyle": "ThirdStyle" }
 ```
 
-Result: **ThirdStyle** loads if the file `output-styles/moai/thirdstyle.md` exists (REQ-WF006-011).
+Result: **ThirdStyle** loads if the file `output-styles/moai/thirdstyle.md` exists.
 If the file does not exist, see Fallback Policy below.
 
 ### Fallback Policy

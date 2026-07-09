@@ -271,8 +271,8 @@ This refines step 3 above ("do not retry the identical call") along the side-eff
 
 [ZONE:Evolvable] [HARD] The orchestrator MUST execute every read-only verification
 batch as a single-turn multi-Bash call. Serial verification across turns wastes
-wall-time and is the single largest source of run-phase latency (W3 meta-analysis:
-10 min serial verification ≈ 11% of total run-phase wall-time). This rule was
+wall-time and is the single largest source of run-phase latency (empirical
+analysis showed 10 min serial verification ≈ 11% of total run-phase wall-time). This rule was
 added in response to that finding.
 
 ### Read-only verification batching

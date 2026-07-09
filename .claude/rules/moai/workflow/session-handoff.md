@@ -288,7 +288,7 @@ See the general-hygiene bullet list and the §Diet Constraints and §V0 Abort Ga
 
 ### Why Block 0 (L3 `--worktree` opt-in only)
 
-With L3 `--worktree`, SPEC artifacts and L1 isolation base live in a different cwd. Pasting resume into a main-cwd session causes: L1 base divergence (lessons #13), Bash commands targeting main project (lessons #12), build/test from the wrong tree. Block 0 forces a new terminal session **inside** the L2 worktree before any action.
+With L3 `--worktree`, SPEC artifacts and L1 isolation base live in a different cwd. Pasting resume into a main-cwd session causes: L1 base divergence per the worktree isolation guidance, Bash commands targeting main project per the worktree isolation guidance, build/test from the wrong tree. Block 0 forces a new terminal session **inside** the L2 worktree before any action.
 
 ### Block 0 Format
 
@@ -327,9 +327,9 @@ If verification 0) fails, stop and instruct the user to restart inside the workt
 
 ### Single-Session vs Multi-Session Decision
 
-Block 0 is REQUIRED only with L3 `--worktree`. For `--branch` (or no flag — 2026-05-17 default), standard 6-block suffices because main session cwd already follows the branch.
+Block 0 is REQUIRED only with L3 `--worktree`. For `--branch` (or no flag — the opt-in default), standard 6-block suffices because main session cwd already follows the branch.
 
-[ZONE:Evolvable] [HARD] If L3 `--worktree` was used and the user is NOT comfortable with multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See lessons #14 for the single-session vs multi-session decision rationale.
+[ZONE:Evolvable] [HARD] If L3 `--worktree` was used and the user is NOT comfortable with multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See the single-session vs multi-session decision rationale below.
 
 ### Example with Block 0 (Illustrative)
 

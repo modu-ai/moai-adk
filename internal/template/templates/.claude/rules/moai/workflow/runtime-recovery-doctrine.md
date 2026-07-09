@@ -5,7 +5,7 @@ paths: "**/runtime-recovery-doctrine.md"
 # Runtime Recovery Doctrine
 
 > **Single source of truth** for runtime-recovery policy when the loop itself fails mid-SPEC.
-> Cross-referenced by: `.claude/rules/moai/core/agent-common-protocol.md` § Hook Invocation Surface (render surface for the anti-death-spiral carve-out), `.claude/rules/moai/core/zone-registry.md` (anti-death-spiral constitution entry), `.claude/rules/moai/workflow/session-handoff.md` (recovery ladder rungs 2-3), `.claude/rules/moai/core/verification-claim-integrity.md` (narrative-consistency invariant 5).
+> Cross-referenced by: `.claude/rules/moai/core/agent-common-protocol.md` § Hook Invocation Surface (render surface for the anti-death-spiral carve-out), the constitution registry (anti-death-spiral entry), `.claude/rules/moai/workflow/session-handoff.md` (recovery ladder rungs 2-3), `.claude/rules/moai/core/verification-claim-integrity.md` (narrative-consistency invariant 5).
 >
 > **Policy-layer only.** This doctrine is normative guidance for MoAI agents and FUTURE hook authors. It does NOT reimplement any Claude Code TypeScript internal (`queryLoop`, `recoverFromError`, `truncateHeadForPTLRetry`, `hasAttemptedReactiveCompact`). MoAI is a harness ON TOP of Claude Code and cannot modify the native query loop. Grounding: book1 (internal reference: harness-books book1) ch03 "Query Loop is the heartbeat" + ch06 "Errors and recovery".
 
@@ -103,7 +103,7 @@ The carve-out does NOT weaken the hooks' gate function on non-recovery turns. Th
 - `.claude/rules/moai/workflow/session-handoff.md` — recovery ladder rungs 2 and 3 (paste-ready resume + `/clear`; worktree-anchored Block-0 restart). The session-handoff rule is the artifact that makes rungs 2-3 actionable.
 - `.claude/rules/moai/core/verification-claim-integrity.md` — the 5-Section Evidence-Bearing Report Format = circuit-breaker invariant 5 (narrative consistency across the compact/recovery boundary).
 - `.claude/rules/moai/core/agent-common-protocol.md` § Hook Invocation Surface — render surface for the §4 anti-death-spiral carve-out (the carve-out appears in BOTH this SSOT rule and that render surface).
-- `.claude/rules/moai/core/zone-registry.md` — the anti-death-spiral constitution entry exposes the anti-death-spiral invariant to `moai constitution list`.
+- the constitution registry — the anti-death-spiral entry exposes the anti-death-spiral invariant to `moai constitution list`.
 - book1 (internal reference: harness-books book1):
   - **ch03 "Query Loop is the heartbeat"** — input governance, withheld-recoverable errors (`{PTL, max_output_tokens, media_size}`), layered recovery BEFORE the model call. Source for §1.
   - **ch06 "Errors and recovery"** — "错误路径就是主路径" (the error path IS the main path); "恢复的目标是继续工作" (recovery's goal is to keep working, not to apologize); cheapest-first layered recovery; `hasAttemptedReactiveCompact` self-loop guard; autocompact circuit breaker `MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3`; the death-spiral hazard; narrative consistency. Source for §2, §3, §4.

@@ -24,16 +24,16 @@ Per the canonical agent catalog policy, the `manager-develop` agent operates in 
 Each iteration of the autofix loop executes the three-step DIAGNOSE-PATCH-VERIFY pattern:
 
 1. **DIAGNOSE**: Read the failing CI check output (provided by the orchestrator from `scripts/ci-watch/run.sh`). Identify the root cause — lint rule violation, build error, type error, missing dependency, etc.
-2. **PATCH**: Apply a minimal fix that addresses the root cause without expanding scope. The autofix loop MUST NOT modify `.env`, `.env.*`, credentials files, secrets, or `scripts/ci-watch/run.sh` or any Wave 2 infrastructure scripts (per CONST-V3R5-011 + CONST-V3R5-013).
-3. **VERIFY**: Re-run the failing check locally; if exit 0, push the patch as a new commit on the PR branch (force-push and `--amend` are prohibited per CONST-V3R5-007). If still failing, increment the iteration counter and repeat from DIAGNOSE.
+2. **PATCH**: Apply a minimal fix that addresses the root cause without expanding scope. The autofix loop MUST NOT modify `.env`, `.env.*`, credentials files, secrets, or `scripts/ci-watch/run.sh` or any Wave 2 infrastructure scripts.
+3. **VERIFY**: Re-run the failing check locally; if exit 0, push the patch as a new commit on the PR branch. If still failing, increment the iteration counter and repeat from DIAGNOSE.
 
 ### autofix escalation contract
 
-After 3 iterations without success, the loop MUST halt and the orchestrator MUST trigger an `AskUserQuestion` blocking call (no auto-resume timeout per CONST-V3R5-006) presenting the user with at least: (a) continue with manual investigation, (b) revert the offending change and re-plan, (c) abort with structured failure report. Semantic failures (data race, deadlock, panic, test assertion failure) MUST NOT be auto-patched without human approval per CONST-V3R5-010.
+After 3 iterations without success, the loop MUST halt and the orchestrator MUST trigger an `AskUserQuestion` blocking call presenting the user with at least: (a) continue with manual investigation, (b) revert the offending change and re-plan, (c) abort with structured failure report. Semantic failures (data race, deadlock, panic, test assertion failure) MUST NOT be auto-patched without human approval.
 
 ### Logged at
 
-Every autofix iteration MUST be logged to `.moai/logs/ci-autofix/` with timestamp, patch summary, and CI result per CONST-V3R5-012.
+Every autofix iteration MUST be logged to `.moai/logs/ci-autofix/` with timestamp, patch summary, and CI result.
 
 
 
@@ -68,7 +68,7 @@ Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` §
 [ZONE:Evolvable] [HARD] 다음 12 카테고리의 known issues는 위임 prompt에 자동 포함되어야 한다. 누락 = 재위임 위험.
 
 **B1. Cross-platform Build Tags**
-- syscall 패키지 사용 시 build tag 강제 (lessons #21 W0 fix 패턴)
+- syscall 패키지 사용 시 build tag 강제
 - 권장: `//go:build !windows` + `//go:build windows` 파일 분리
 - 검증: `GOOS=windows GOARCH=amd64 go build ./...` 통과 의무
 
@@ -88,7 +88,7 @@ Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` §
 
 **B5. CI 3-tier 인지**
 - spec-lint, golangci-lint, Test (per OS) 각각 별도 fail 가능
-- W1/W2 chicken-and-egg 패턴 vs NEW 결함 구분
+- pre-existing baseline vs NEW defect classification
 
 **B6. spec-lint Heading 규약**
 - `## Out of Scope` (h2) 만으로는 `MissingExclusions` ERROR
@@ -218,8 +218,8 @@ $ golangci-lint run --timeout=2m
 
 본 템플릿 미준수 케이스 — 재위임 위험 증가:
 
-- Section B 누락 → cross-platform build / cross-SPEC 충돌 사후 발견 (W3 케이스)
-- Section E 누락 → orchestrator가 직렬 검증 (W3에서 ~10분 추가 손실)
+- Section B 누락 → cross-platform build / cross-SPEC 충돌 사후 발견
+- Section E 누락 → orchestrator가 직렬 검증 (~10분 추가 손실)
 - "implement the SPEC" 같은 1-liner 위임 → manager-develop이 prompt 부족으로 가정 누락
 - PRESERVE 대상 enumeration 누락 → 의도치 않은 파일 수정
 

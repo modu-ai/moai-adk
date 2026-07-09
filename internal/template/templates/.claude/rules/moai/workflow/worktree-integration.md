@@ -41,9 +41,9 @@ This glossary is the canonical definition surface for the L1 / L2 / L3 worktree-
 
 | Layer | Name | What it is | Path / Trigger | Lifetime | Owner |
 |-------|------|-----------|----------------|----------|-------|
-| **L1** | Claude-native ephemeral worktree | Session-scoped isolation materialized by the Claude Code runtime for a subagent spawned with `Agent(isolation: "worktree")` (or `claude --worktree`). The runtime decides whether to materialize it. | `.claude/worktrees/<auto-name>/` | Ephemeral — auto-cleaned on session end | Claude Code runtime (autonomous; MoAI orchestrator does not mandate it per 2026-05-17 policy) |
+| **L1** | Claude-native ephemeral worktree | Session-scoped isolation materialized by the Claude Code runtime for a subagent spawned with `Agent(isolation: "worktree")` (or `claude --worktree`). The runtime decides whether to materialize it. | `.claude/worktrees/<auto-name>/` | Ephemeral — auto-cleaned on session end | Claude Code runtime (autonomous; MoAI orchestrator does not mandate it per the opt-in policy) |
 | **L2** | MoAI persistent SPEC worktree | A persistent, SPEC-scoped working directory created by `moai worktree new SPEC-XXX`. Used for multi-session SPEC development (run + sync phases reuse the same L2 worktree). | `~/.moai/worktrees/<project>/<SPEC>/` | Persistent — disposed only via `moai worktree done SPEC-XXX` after both run + sync PRs merge | MoAI (user-managed via `moai worktree` CLI) |
-| **L3** | Worktree launch action (opt-in) | The user opt-in launch step that creates an L2 worktree, e.g. `/moai plan --worktree`. L3 is the *action*; L2 is the *artifact* it produces. Per the 2026-05-17 policy, L3 is opt-in; the default flow runs all phases on a `feat/SPEC-XXX` branch in the main checkout. | `/moai plan --worktree` (or `moai worktree new --worktree`) | n/a (an action, not a directory) | User (explicit opt-in) |
+| **L3** | Worktree launch action (opt-in) | The user opt-in launch step that creates an L2 worktree, e.g. `/moai plan --worktree`. L3 is the *action*; L2 is the *artifact* it produces. Per the opt-in policy, L3 is opt-in; the default flow runs all phases on a `feat/SPEC-XXX` branch in the main checkout. | `/moai plan --worktree` (or `moai worktree new --worktree`) | n/a (an action, not a directory) | User (explicit opt-in) |
 
 Relationships:
 - An **L3** launch action (`--worktree`) creates an **L2** persistent SPEC worktree.
@@ -334,7 +334,7 @@ The `moai worktree new <SPEC-ID> --team` flag launches a Claude or GLM session i
 
 ### HARD Rules
 
-[ZONE:Frozen] [HARD] CLI launch decisions MUST NOT invoke `AskUserQuestion`. All four launch patterns (P1 tmux+CG → moai glm, P2 tmux+CC → moai cc, P3 no-tmux → syscall.Exec, P4 no-flag → handoff) are selected deterministically from observable state (tmux session presence, `teammateMode`, GLM env vars). This satisfies the Branch Origin Decision Protocol per CONST-V3R5-030 (see `.claude/rules/moai/development/branch-origin-protocol.md` § HARD Rules).
+[ZONE:Frozen] [HARD] CLI launch decisions MUST NOT invoke `AskUserQuestion`. All four launch patterns (P1 tmux+CG → moai glm, P2 tmux+CC → moai cc, P3 no-tmux → syscall.Exec, P4 no-flag → handoff) are selected deterministically from observable state (tmux session presence, `teammateMode`, GLM env vars). This satisfies the Branch Origin Decision Protocol (see `.claude/rules/moai/development/branch-origin-protocol.md` § HARD Rules).
 
 Static guard: `internal/cli/worktree/new_test.go` `TestNew_NoAskUserQuestion` scans all team-launch sources for `AskUserQuestion` / `mcp__askuser` references.
 
@@ -351,7 +351,7 @@ The 7-field schema (`spec_id`, `worktree_path`, `branch`, `pane_id`, `mode`, `cr
 - `.claude/skills/moai-workflow-worktree/SKILL.md` § `--team` Flag (P1-P4 matrix + examples)
 - `internal/cli/worktree/team_launch.go`, `team_launch_posix.go`, `team_launch_windows.go`, `swarm_registry.go`, `handoff_guidance.go`
 - The canonical worktree team-launch contract requirements
-- CONST-V3R5-030 — Branch Origin Decision Protocol (BODP)
+- Branch Origin Decision Protocol (BODP)
 
 ## Minimum Version Requirements
 
