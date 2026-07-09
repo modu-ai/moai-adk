@@ -2,7 +2,7 @@
 id: SPEC-INTERNAL-TEST-002
 title: "internal/ 사전 부채 3종 청소 — TEST-001 DEBT-TEST-001/002/003 후속 (ARCH-001 M0 prerequisite)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-09
 updated: 2026-07-09
 author: manager-spec

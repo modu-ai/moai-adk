@@ -1,7 +1,7 @@
 ---
 id: SPEC-INTERNAL-TEST-002
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-09
 updated: 2026-07-09
 ---
@@ -89,7 +89,36 @@ version_token_observed: "rc7 (worktree version.go at HEAD f3f348ff5; main-repo w
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs가 sync_commit_sha + 3-phase close 기록>_
+```yaml
+sync_complete_at: "2026-07-09"
+sync_commit_sha: "<pending — backfill via follow-up chore commit>"
+sync_status: "completed (3-phase close plan→run→sync; completed transition rides single sync commit per SPEC-V3R6-LIFECYCLE-REDESIGN-001 merged 3-phase close / Status Transition Ownership Matrix)"
+b12_self_test_a: "PASS — pre-emission grep -c 'SPEC-INTERNAL-TEST-002' CHANGELOG.md returned 1; context inspection (grep -B3 -A3) confirmed the single occurrence is an incidental forward-reference INSIDE the SPEC-INTERNAL-TEST-001 entry (line 58: '후속 SPEC-INTERNAL-TEST-002가 잔여 3종 부채 소유 예정'), NOT a duplicate entry from a parallel sync session. B12 halt condition (count≥1 from parallel BATCH-SYNC) does not apply — this is a cross-SPEC reference naming TEST-002 as future debt-owner, written when TEST-001 synced. No ### subsection entry for TEST-002 existed pre-emission."
+b12_self_test_b: "PASS — AC count 3 (AC-TEST-007/008/009) per acceptance.md §D AC Matrix (SSOT), matches CHANGELOG entry '3/3 AC PASS(AC-TEST-007/008/009)'"
+b12_self_test_c: "PASS — file paths verified via ls before commit: 6 goldens (internal/cli/testdata/{doctor,status}-{light,dark,nocolor}.golden all exist, all carry v3.0.0-rc7 token) + 2 new test files (internal/constitution/pipeline_test.go 15112B + human_oversight_test.go 3167B both exist)"
+changelog_entry_position: "[Unreleased] > ### Fixed (inserted after SPEC-INTERNAL-TEST-001 entry, before ## [v3.0.0-rc7] version header)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (sync commit)"
+  plan_md: "in-progress → completed (sync commit)"
+  acceptance_md: "in-progress → completed (sync commit)"
+  progress_md: "in-progress → completed (sync commit)"
+  updated_field_refreshed: "2026-07-09 (all 4 artifacts; date unchanged — run-phase and sync-phase both 2026-07-09)"
+canary_compliance_check:
+  preserve_list_violations: 0           # C-4: no PRESERVE files entered sync commit
+  pathspec_discipline: "PASS — git add .moai/specs/SPEC-INTERNAL-TEST-002/ CHANGELOG.md only (never -A/-.)"
+  era_classification: "V3R6 H-4 (§E.2 present + §E.4 present + sync_commit_sha non-empty; spec.md frontmatter era: V3R6 explicit override)"
+  body_content_untouched: true          # spec/plan/acceptance body sections unchanged (frontmatter status+updated only)
+  e2_e3_ownership_respected: true       # §E.2 + §E.3 owned by manager-develop — not modified by manager-docs
+  ac_count: 3                           # AC-TEST-007/008/009
+  ac_pass_count: 3
+  ac_fail_count: 0
+run_phase_commit_shas:
+  m1: "ffea91710"                       # 6 goldens rc6→rc7 + 4 SPEC draft→in-progress frontmatter (on origin/main)
+  m3: "65c23fbf2"                       # 2 new _test.go + progress.md §E.2/§E.3 (on origin/main)
+  m2_strategy: "verify-only, bundled with M3 commit (code change 0, commit 794bb4f84 already-resolved)"
+  note: "progress.md §E.3 m1_commit_sha records stale worktree SHA 0f1f07349 (rebased to ffea91710 on origin/main); §E.3 is manager-develop-owned — not corrected here"
+sync_phase_note: "3-phase close: plan(iter-2 PASS-WITH-DEBT 0.96) → run(M1 ffea91710 + M3 65c23fbf2, 3/3 AC PASS) → sync(this commit). era: V3R6. tier: M."
+```
 
 ## §F Phase 0.95 Mode Selection
 
