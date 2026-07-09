@@ -322,6 +322,12 @@ This contract governs *how* verification output is represented in context, NOT *
 
 The contract is **"verbatim evidence lives on disk with a citable path; context carries exit code + bounded tail"** — NOT **"drop the evidence"**. Inline quotation is PERMITTED when verbatim output is below the ceiling (the redirect obligation triggers only on exceedance); the diet removes the *double-burn* (Bash inline output + banner re-quote), not the evidence itself. The exact ceiling value and directory scheme are tunable per-domain; the contract holds regardless of the specific numbers.
 
+### Evidence persistence obligation
+
+The cited evidence path MUST remain reachable at audit time, including after `/tmp` directory clearance. `/tmp` is OS-cleared periodically (macOS reboot, Linux tmpfs re-mount, systemd-tmpfiles); a cited path that no longer resolves to a file violates `verification-claim-integrity.md` §1.1 surface 1 (orchestrator self-report) and surface 2 (manager-agent §E self-verification) — every claim row MUST remain attributable to a directly-observed command whose verbatim output is reachable at the cited file path.
+
+To satisfy this reachability obligation, evidence SHALL be persisted under `.moai/state/verify/<session>/` (gitignored runtime state, same directory family as `context-usage.json` and `active-sessions.json`). The exact persist mechanism — direct write to `.moai/state/verify/<session>/`, or `/tmp` write followed by a copy step — is a run-phase implementation detail; the contract states the OBLIGATION (evidence survives `/tmp` clearance), not the mechanism. **"Persist evidence" ≠ "drop evidence"**: the diet removes the *double-burn* (inline output + banner re-quote), NOT the evidence itself. The verbatim output MUST remain on disk at a citable, audit-time-reachable path.
+
 ### Anti-pattern: serial verification across turns
 
 ```

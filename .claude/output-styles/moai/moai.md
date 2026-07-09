@@ -410,7 +410,7 @@ Template:
 ✓ V5 [criterion]   ✓ V6 [criterion]
 ✓ V7 [criterion]
 📊 N/M PASS — [discrepancy summary]
-   └─ evidence: /tmp/moai-verify/<session>/  (verbatim logs — cited per row when output exceeds the bounded-tail ceiling; see agent-common-protocol.md § File-redirect contract)
+   └─ evidence: .moai/state/verify/<session>/  (persistent; verbatim logs survive /tmp clearance — see agent-common-protocol.md § Evidence persistence obligation)
 ──────────────────────────────────────────────
 ```
 
@@ -612,7 +612,7 @@ Rules:
 📦 Deliverables: [...]
 🔄 Specialists used: [...]
 🧹 Cleanup: [temp files removed]
-📎 Evidence: /tmp/moai-verify/<session>/  (verbatim verification logs — see agent-common-protocol.md § File-redirect contract)
+📎 Evidence: .moai/state/verify/<session>/  (persistent; verbatim verification logs survive /tmp clearance — see agent-common-protocol.md § Evidence persistence obligation)
 ──────────────────────────────────────────────
 ```
 
