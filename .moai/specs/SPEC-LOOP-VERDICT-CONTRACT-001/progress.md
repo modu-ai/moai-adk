@@ -124,7 +124,7 @@ m1_to_mN_commit_strategy: 2-commit grouping by file boundary — commit 1 (loop.
 
 ```
 sync_complete_at: 2026-07-09
-sync_commit_sha: <to be backfilled in follow-up chore commit>
+sync_commit_sha: 92cd5563f
 sync_status: audit-ready (3-phase close on single sync commit; completed transition rides this commit)
 changelog_entry_position: [Unreleased] > Added (SPEC-LOOP-VERDICT-CONTRACT-001, top of Added — latest sync, above RATCHET)
 frontmatter_status_transitions:
