@@ -22,6 +22,14 @@ Long workflows (multi-SPEC Epics, multi-milestone implementation) accumulate con
 
 When NONE apply (single-turn, trivial task, read-only query), emit a brief completion confirmation. The threshold in Trigger #1 reflects asymmetric stall risk: 1M models tolerate higher absolute load; 200K models hit the ceiling earlier. The `/clear` policy in `context-window-management.md` is co-anchored to the same threshold per model class.
 
+### Emission-Time Save Obligation (auto-resume wiring)
+
+[ZONE:Evolvable] [HARD] When the orchestrator emits a paste-ready resume message (any of the 5 triggers above), it MUST also persist the cut-line-bounded main block verbatim as the pending handoff record: pipe the block to `moai handoff save --stdin --spec <ID> --phase <phase> [--goal "<condition>"] [--ultrathink] [--ultracode] [--lang <conversation_language>] [--session <uuid>]` (body fed via stdin). `--goal` is recorded ONLY when the `/goal` emission condition holds (next SPEC is run-phase AND declares a machine-verifiable end-state — the same condition as § Post-Paste /goal Follow-up Block); `--lang` snapshots the current `conversation_language`; `--session` carries the same session id as Block 2's `source_session_id` when available.
+
+[ZONE:Evolvable] [HARD] **Fail-open invariant**: when the `moai` CLI is absent from PATH or `moai handoff save` exits non-zero, the orchestrator emits the paste-ready surface UNCHANGED — a save failure never blocks, delays, or alters handoff emission, and no retry loop is entered. The manual paste path is fully functional without the save; the save is an additive persistence step, never a gate.
+
+The saved record (`.moai/state/handoff/pending.json`) is consumed by the auto-injected flow when the project config sets `handoff.mode: auto` — see § Auto-Injected Resume Flow. Under the distributed default `handoff.mode: manual` the record is inert (the session-start injector never touches it, even when stale), and this save obligation still applies — flipping the mode later requires no doctrine change.
+
 ## Canonical Format (Verbatim Spec)
 
 [ZONE:Evolvable] [HARD] Resume message MUST follow this exact 6-block structure, **bounded by cut-line markers** (see § Cut-line Marker Specification below for the literal marker format, Unicode-preservation rules, and locale translation contract). Cut-line markers sit **inside** the fenced text block alongside the content so they are copied verbatim with the message; this provides the user an unambiguous copy boundary in long terminal scrollback:
@@ -140,6 +148,8 @@ source_session_id: <not-available — environment-fallback, next session will ba
 
 [ZONE:Evolvable] [HARD] The `/goal` autonomous-continuation directive is delivered as a **two-step handoff**, NOT as a line inside the main resume block. The main cut-line-bounded resume block (§ Canonical Format) is `/goal`-free; a slash command pasted mid-body is inert plain text because official slash-command parsing recognizes a `/` command only at the **input start** of a standalone message (`https://code.claude.com/docs/en/interactive-mode` § Quick commands), and `/goal` is a user-only TUI command the model cannot invoke on the user's behalf (`https://code.claude.com/docs/en/goal`). The two-step form below is what actually arms the autonomous-continuation loop in the resumed session.
 
+**Mode scope (mode=manual fallback path)**: this two-step follow-up mechanism is the delivery path for the distributed default `handoff.mode: manual`, and it remains fully functional whenever auto-injection is unavailable, disabled, or skipped. Where `handoff.mode: auto` is configured, the one-message goal-first variant in § Auto-Injected Resume Flow applies instead; nothing in this section is weakened by that flow.
+
 ### Emission condition (frozen — unchanged from the predecessor doctrine)
 
 The follow-up block is emitted ONLY when the next SPEC is run-phase AND declares a machine-verifiable end-state (a machine-checkable end-state such as the SPEC's test suite passing, a lint-clean state, or a bounded `stop after N turns` clause). When the condition does NOT hold (plan-phase / sync-phase next SPEC, or any next SPEC lacking a machine-verifiable end-state), NO follow-up block and NO instruction line are emitted — the output is byte-identical to the pre-existing no-`/goal` form.
@@ -198,6 +208,41 @@ Grounding: official goal doc — "Setting a goal starts a turn immediately, with
 
 Consequence: a `/goal` line belongs to class (d) — it MUST arrive as its own standalone user message (§ Post-Paste /goal Follow-up Block), never inside the pasted resume body where it would be inert class-(d) plain text.
 
+The same classification governs the auto-injected body (§ Auto-Injected Resume Flow): content delivered as session-start context injection is inert context — it cannot fire class (a)/(b) paste-time keywords on its own and cannot execute class (d) commands. That is why the auto flow's ONE user message carries the class (d) `/goal` line (goal-first variant) or the class (a) `ultrathink` keyword (approval variant) in the user's own message.
+
+## Auto-Injected Resume Flow (mode=auto)
+
+[ZONE:Evolvable] Where the project config `.moai/config/sections/handoff.yaml` sets `handoff.mode: auto`, the saved pending record (§ Emission-Time Save Obligation) is consumed automatically at the next `/clear` session start, collapsing the resume to **ONE** user message. This section is the SSOT for the flow; the render surface (`.claude/output-styles/moai/moai.md` §8) carries a compact emission clause + pointer only.
+
+### One-message flow
+
+1. The previous session emits the paste-ready resume AND persists it via `moai handoff save` (§ Emission-Time Save Obligation). The paste-ready surface is still displayed — the user can always fall back to the manual paste path.
+2. The user runs `/clear`.
+3. The session-start handler, in the single consume cell (session source is `clear` AND `handoff.mode: auto` AND a live pending record exists), **claim-renames** the pending record into a `consumed/` audit-trail copy FIRST, then injects the saved content as session-start additional context. The claim-then-inject atomic rename means exactly one of two racing sessions injects — the loser's rename fails and it skips injection fail-open. A record older than the stale TTL is cleaned up instead of injected.
+4. What the injection actually contains: a localized header; a disclaimer stating the injection only delivers context and does NOT automatically enable any extended-reasoning mode; restoration-guidance lines for the recorded directives (`ultrathink` / `/effort ultracode` / `/goal <condition>` — each rendered as manual-input guidance the user may type, never as an executed command); and the saved body **verbatim** (no re-localization — `--lang` snapshots the language at save time). The injected context cannot start a turn and cannot claim effort restoration; the platform caps session-start injected context at 10,000 characters, and the § Diet Constraints budget keeps the 6-block body far below that cap.
+5. The user sends **ONE** message:
+   - **Goal-first variant** — Where the next SPEC is run-phase AND declares a machine-verifiable end-state, the one message is the single standalone `/goal <condition>` line (slash commands parse only at input start, so a standalone message satisfies the class (d) activation constraint in § Paste-Time Activation Matrix).
+   - **Approval variant** — otherwise, the one message is a short approval/continue message. Keep recommending that the user include the `ultrathink` keyword in this first message: the injected context cannot restore effort, but a paste-time keyword in the user's own message can.
+   - **Effort caveat (goal-first)**: effort keywords placed inside a slash-command argument are NOT documented to fire — a `/goal ... ultrathink ...` line may leave the session at default effort. The doctrine does not claim the goal-first variant restores extended reasoning.
+
+### /clear-only injection boundary
+
+Injection happens ONLY when the session-start source is `clear`. All other session-start sources — `startup`, `resume`, `compact` — are **notice-only**: the pending record is never consumed there, and with the `handoff.guide` key at its default `false` the notice is silent (no visible output; when `guide: true`, a best-effort stderr hint mentions the waiting record). Consequences:
+
+- A terminal restart (new session process, source `startup`) does NOT auto-inject — the manual paste path applies.
+- An L3 worktree Block 0 resume (new terminal inside the worktree, source `startup`) falls OUTSIDE auto-inject — Block 0 + the manual paste path remain the mechanism (§ Worktree-Anchored Resume Pattern).
+- Only the in-place `/clear` boundary gets the one-message flow.
+
+### Precondition verification at resumed-turn start
+
+The injected Block 4 preconditions MUST be verified at the start of the resumed session's first working turn — injection delivers the TEXT of the preconditions, not their truth. This is most acute in the goal-first variant, where `/goal` starts a turn immediately: the orchestrator verifies the injected preconditions FIRST, before acting on the goal condition.
+
+### Invariants (both modes)
+
+- **Implementation Kickoff Approval unchanged**: neither auto-injection nor a set goal pre-authorizes run-phase entry. The Implementation Kickoff Approval human gate remains required before run-phase entry in both modes.
+- **Manual reversion is baseline-identical**: restoring `handoff.mode: manual` reverts runtime behavior to the pre-auto baseline — the injector's manual branch is a pure no-op that never touches the pending record, even a stale one — and the manual path documented in this file (6-block paste + § Post-Paste /goal Follow-up Block) is complete and self-sufficient without this section.
+- **Fail-open everywhere**: save failures never block emission (§ Emission-Time Save Obligation); injection failures never block session start; a missing, stale, or already-claimed record degrades silently to the manual paste path.
+
 ## Auto-Memory Integration (Mandatory)
 
 [ZONE:Evolvable] [HARD] When generating a resume message, the orchestrator MUST also:
@@ -207,6 +252,7 @@ Consequence: a `/goal` line belongs to class (d) — it MUST arrive as its own s
 3. Update `MEMORY.md` index with a one-line entry pointing to the new memory file.
 4. Mark superseded entries (if any) with `[SUPERSEDED by <new-file>]` prefix per Lessons Protocol in `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol.
 5. Annotate the MEMORY.md index entry with a `(session: <UUID-8-char-prefix>)` parenthetical when the SPEC was worked across multiple sessions (cross-references the `source_session_id` in Block 2 — enables readers to correlate the resume back to its originating session).
+6. **Close-time pruning (auto-resume era)**: on SPEC close, the consumed verbatim resume block inside the memory topic file (the `## 다음 세션 시작점` section) SHOULD be pruned to a one-line summary — once the record has been consumed, verbatim preservation is owned by the `.moai/state/handoff/consumed/` audit trail, not the memory file. The generation-time verbatim-persistence obligation above (items 1-2) is UNCHANGED: the resume message is still saved verbatim to memory when emitted; the pruning binds only later, at SPEC close (temporal separation). Forward-looking only — no retroactive rewrite of existing memory files is mandated. This stops double-storage growth and keeps the always-loaded memory index within the loader's line/byte cap.
 
 This ensures the message survives `/clear` and is discoverable at the start of the next session's context.
 
@@ -414,12 +460,14 @@ Cross-line provenance: retained in lesson memory; this section codifies the doct
 ## Cross-references
 
 <!-- self-check sentinel — references the render surface's structural invariant by content, not line number, so it survives line drift. This is mitigation + visibility (it surfaces drift to a reading editor), NOT mechanical prevention. A future editor who changes one surface without reading the other surface's sentinel produces silent drift; the only mechanical catch is a deferred Go lint rule (see the session-handoff SSOT-align doctrine §F.6 follow-up). -->
-**Drift-mitigation self-check sentinel (SSOT → render surface).** This file is the SSOT; `.claude/output-styles/moai/moai.md §8` is the render surface. Before committing any edit to the Localization Table, the 6-block skeleton, the cut-line marker spec, or the Pre-emit self-check labels in THIS file, verify the parity check against the render surface: the moai.md §8 Localization Contract must carry the same locale column count (en / ko / ja / zh — 4 columns) as this file's Localization Table, and the moai.md §8 Pre-emit self-check labels must use the same concern-name qualifiers (`paste-ready budget` / `localization render` / `session-handoff template completeness`) as this file. If the two surfaces have diverged, this is the canonical surface — update the render surface to match.
+**Drift-mitigation self-check sentinel (SSOT → render surface).** This file is the SSOT; `.claude/output-styles/moai/moai.md §8` is the render surface. Before committing any edit to the Localization Table, the 6-block skeleton, the cut-line marker spec, the Pre-emit self-check labels, § Emission-Time Save Obligation, or § Auto-Injected Resume Flow in THIS file, verify the parity check against the render surface: the moai.md §8 Localization Contract must carry the same locale column count (en / ko / ja / zh — 4 columns) as this file's Localization Table, the moai.md §8 Pre-emit self-check labels must use the same concern-name qualifiers (`paste-ready budget` / `localization render` / `session-handoff template completeness`) as this file, and the moai.md §8 emission clause (the `moai handoff save` save duty + auto-flow pointer) must remain a compact pointer consistent with § Emission-Time Save Obligation and § Auto-Injected Resume Flow here (pointer, NOT full duplication). If the two surfaces have diverged, this is the canonical surface — update the render surface to match.
 
 - `.claude/rules/moai/workflow/context-window-management.md` § Context Window Targets — the per-model-class threshold SSOT for `/clear` and Trigger #1 (this file carries no inline model-class numbers to avoid label drift).
 - `.claude/output-styles/moai/moai.md` §6 (Persistence & Context Awareness)
 - `.claude/output-styles/moai/moai.md` §8 (Response Templates → Session Handoff) — the canonical render surface for the 6-block template + pre-emit self-check; this file is the SSOT, moai.md §8 is the render surface (bidirectional link).
 - `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol — auto-memory + `[SUPERSEDED by ...]` convention
+- `.moai/config/sections/handoff.yaml` — `handoff.mode` (`manual`/`auto`) + `handoff.guide` config keys consumed by § Auto-Injected Resume Flow
+- `.claude/rules/moai/workflow/goal-directive.md` § MoAI Integration Notes — goal-first single-message cross-reference (auto-injected path)
 - CLAUDE.md §11 (Error Handling) — token-limit recovery
 - large-SPEC wave-split rationale
 - `--worktree` Block 0 + single/multi-session decision rationale

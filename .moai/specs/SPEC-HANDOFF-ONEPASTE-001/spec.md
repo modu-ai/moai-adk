@@ -2,7 +2,7 @@
 id: SPEC-HANDOFF-ONEPASTE-001
 title: "Session Handoff 1-Paste: auto-inject pipeline wiring + goal-first flow"
 version: "0.1.2"
-status: draft
+status: in-progress
 created: 2026-07-09
 updated: 2026-07-09
 author: manager-spec
