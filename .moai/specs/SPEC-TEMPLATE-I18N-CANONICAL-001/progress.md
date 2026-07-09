@@ -51,7 +51,7 @@ Milestone commits: M1 `9ef2117e4` (askuser, draft→in-progress) · M2 `27396332
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-07-10
-run_commit_sha: pending-backfill-m5 (self-referential — backfilled in a follow-up commit)
+run_commit_sha: 51483ee74
 run_status: PASS-WITH-DEBT
 ac_pass_count: 22
 ac_fail_count: 0
