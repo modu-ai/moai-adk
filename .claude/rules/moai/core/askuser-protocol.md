@@ -29,9 +29,9 @@ Applies to all orchestrator turns involving:
 **Anti-pattern (NEVER repeat)**:
 ```
 # Wrong — free-form prose question in response body
-다음 진행 방향을 알려주세요:
-- A: 지금 즉시 시작
-- B: PR ready + 세션 종료
+Please tell me the next direction:
+- A: Start immediately now
+- B: PR ready + end session
 ```
 
 **Correct pattern**: Always use `AskUserQuestion`. See §Free-form Circumvention Prohibition for the "Other" option mechanism.
@@ -126,55 +126,55 @@ Each option description MUST include:
 
 ## Recommendation Placement Principles
 
-> 본 규칙은 SPEC-V3R6-ASKUSER-DECISION-MEMORY-001에서 정의됨. recommendation 배치(발화 시점 / 질문 순서 / 추천 옵션 근거 / 전제조건 서술 / 적응형 강도)의 정책 SSOT.
+> Defined in SPEC-V3R6-ASKUSER-DECISION-MEMORY-001. Policy SSOT for recommendation placement (emission timing / question ordering / recommended-option rationale / precondition statement / adaptive strength).
 
-AskUserQuestion의 `(권장)` 라벨은 **사용자가 통계적으로 다수 선택한 합리적 기본값**(선호 메모리에서 관측)에 근거해야 하며, 단순히 시스템이 밀고 싶은 정책 기본값이어서는 안 된다. 본 절은 추천 배치 5원칙을 정의한다.
+The AskUserQuestion `(Recommended)` label (locale token `(권장)` in Korean) MUST be grounded in the **statistically-majority rational default the user has selected** (observed in preference memory), NOT merely a policy default the system wants to push. This section defines the five principles of recommendation placement.
 
-### 1. 발화 시점 — 정보이익 정렬 (Fisher 정보 I=p(1−p))
+### 1. Emission timing — information-gain alignment (Fisher information I=p(1−p))
 
-**Where** 오케스트레이터가 다가오는 결정에 대해 불확실성 p를 추정하고, **When** p ≈ 0.5 (Fisher 정보 I=p(1−p) 최대, 결정 경계)이면, 오케스트레이터는 해당 질문을 AskUserQuestion으로 발화해야 한다. **While** p가 0 또는 1에 가까우면(거의 확정), 오케스트레이터는 통계적 다수 옵션으로 자동 처리하고 질문을 생략한다.
+**Where** the orchestrator estimates uncertainty p for an upcoming decision, **When** p ≈ 0.5 (Fisher information I=p(1−p) is maximal — the decision boundary), the orchestrator MUST emit that question via AskUserQuestion. **While** p is close to 0 or 1 (nearly certain), the orchestrator auto-resolves to the statistical-majority option and omits the question.
 
-- p 추정(초기 휴리스틱): 동일 도메인의 관측된 다수 선택 비율. cold-start(관측 < N)는 p ≈ 0.5로 취급해 발화.
-- 근거: just-in-time 결정경계 질문 원칙 (Murphy "Probabilistic Machine Learning" Ch.3 — Fisher 정보 I=p(1−p)는 p=0.5에서 최대).
+- p estimation (initial heuristic): the observed majority-selection ratio in the same domain. Cold-start (observations < N) is treated as p ≈ 0.5 to trigger emission.
+- Rationale: the just-in-time decision-boundary question principle (Murphy "Probabilistic Machine Learning" Ch.3 — Fisher information I=p(1−p) is maximal at p=0.5).
 
-### 2. 질문 순서 — 정보이익 내림차순
+### 2. Question ordering — descending information gain
 
-**Where** 하나의 AskUserQuestion 호출에 여러 질문이 배치되면, 오케스트레이터는 각 질문의 추정 정보이익을 내림차순으로 정렬한다 (가장 높은 정보이익 질문이 첫 번째).
+**Where** multiple questions are placed in a single AskUserQuestion call, the orchestrator orders them by estimated information gain in descending order (the highest-information-gain question first).
 
-- 근거: 높은 정보이익 질문을 먼저 배치하면 사용자가 낮은 가치 질문을 만나기 전에 핵심 의사결정을 완료할 수 있다.
+- Rationale: placing higher-information-gain questions first lets the user complete the core decisions before encountering lower-value questions.
 
-### 3. 추천 옵션 — 통계적 다수 합리적 기본값 (cold-start 공개 의무)
+### 3. Recommended option — statistical-majority rational default (cold-start disclosure obligation)
 
-**The recommended option**(첫 옵션, `(권장)` 라벨)은 선호 메모리에서 관측된 **통계적 다수 합리적 기본값**이어야 한다. 시스템이 밀고 싶은 정책 기본값이 아니어야 한다.
+**The recommended option** (the first option, carrying the `(Recommended)` / `(권장)` label) MUST be the **statistical-majority rational default** observed in preference memory. It MUST NOT be a policy default the system wants to push.
 
-**Where** 충분한 관측이 존재하지 않으면(cold-start, 관측 < N), 오케스트레이터는 기존 정적 기본값으로 폴백하고 옵션 description에 **"based on static default, N observations needed for personalization"** (또는 동등한 `conversation_language` 자연어 표현)을 공개해야 한다.
+**Where** sufficient observations do not exist (cold-start, observations < N), the orchestrator MUST fall back to the existing static default and disclose in the option description **"based on static default, N observations needed for personalization"** (or the equivalent natural-language expression in `conversation_language`).
 
-- 근거: 기본값 효과(d≈0.55)는 합리적 기본값에서 성립; 시스템 밀어넣기는 자율성 침식 위험. cold-start 공개는 미관측 추천 금지(verification-claim-integrity §1.1 surface 3)를 만족한다.
+- Rationale: the default effect (d≈0.55) holds for rational defaults; system-pushing risks autonomy erosion. Cold-start disclosure satisfies the no-unobserved-recommendation rule (`verification-claim-integrity.md §1.1 surface 3`).
 
-### 4. 전제조건 서술 — 추천 성립 조건 명시
+### 4. Precondition statement — make the recommendation's holding conditions explicit
 
-**추천 옵션의 `description`**은 추천이 성립하는 전제조건을 서술해야 한다. 사용자가 전제 위반 시 추천을 즉시 거부할 수 있도록.
+**The recommended option's `description`** MUST state the preconditions under which the recommendation holds, so the user can immediately reject it when a precondition is violated.
 
-- 형식 권장: `"Recommended when <precondition>"` (en) 또는 동등한 `conversation_language` 표현 — 전제 위반 시 거부가 자명한(trivial) 형태.
-- 근거: 투명성 + 쉬운 opt-out 번들. 전제가 서술되지 않은 추천은 기형적 설계이다.
+- Recommended format: `"Recommended when <precondition>"` (en) or the equivalent `conversation_language` expression — a form where rejection on precondition violation is trivial.
+- Rationale: transparency + easy opt-out bundling. A recommendation whose preconditions are unstated is a malformed design.
 
-### 5. 적응형 추천 강도 — 숙련도 기반 자동 분기
+### 5. Adaptive recommendation strength — proficiency-based automatic branching
 
-**Where** 오케스트레이터가 고숙련도(전문가)를 추정하면(세션 카운트 ≥ 임계값 / 의사결정 일관성 / 명시적 자가 평가 중 ≥1), 오케스트레이터는 **약 추천 강도**(info-centric, 자율성 우선 — `(권장)` 라벨 override 없이 inferred preference를 공개만)를 적용한다.
+**Where** the orchestrator estimates high proficiency (expert) — session count ≥ threshold, OR decision consistency, OR explicit self-assessment (any one of the three) — the orchestrator applies **weak recommendation strength** (info-centric, autonomy-first — discloses the inferred preference WITHOUT overriding via the `(Recommended)` label).
 
-**Where** 저숙련도(일반 사용자)로 추정되면, 오케스트레이터는 **강 추천 강도**(기본값-like — `(권장)` 라벨 + 투명한 이유)를 적용한다.
+**Where** low proficiency (general user) is estimated, the orchestrator applies **strong recommendation strength** (default-like — `(Recommended)` label + transparent rationale).
 
-- cold-start 보호: 숙련도 추정이 불가능한 초기(세션 카운트 < 임계값)는 neutral 강도로 처리 (inferred preference 기반 `(권장)` 배치 없음).
-- 근거: 전문가에게 강 추천은 info-centric 작업에서 자율성 침식; 일반 사용자에게 약 추천은 결정 피로 가중. 자동 분기가 양쪽을 모두 만족한다.
-- 숙련도 추정 세부는 design.md §A.4.
+- Cold-start protection: when proficiency estimation is impossible (early, session count < threshold), apply neutral strength (no `(Recommended)` placement based on inferred preference).
+- Rationale: strong recommendation to an expert erodes autonomy in info-centric work; weak recommendation to a general user adds decision fatigue. Automatic branching satisfies both.
+- Proficiency-estimation detail: design.md §A.4.
 
 ### Cross-reference
 
-- 발화 시점/질문 순서의 정보이익 근거: design.md §B.2 (상충 증거 양면 문서화).
-- 통계적 다수 추천의 자율성 버퍼: 본 절 §3 + §5 (적응형 강도) + 회복 제어 토글 (요구사항 소관, 본 절 범위 외).
-- 전제조건 서술과 투명성: `verification-claim-integrity.md §1.1 surface 3` (관측되지 않은 추론 주장 금지).
+- Information-gain rationale for emission timing / question ordering: design.md §B.2 (documenting both sides of conflicting evidence).
+- Autonomy buffer of the statistical-majority recommendation: this section §3 + §5 (adaptive strength) + recovery-control toggle (requirements-owned, out of this section's scope).
+- Precondition statement and transparency: `verification-claim-integrity.md §1.1 surface 3` (no unobserved-inference claim).
 
-> 관측 증거: AC-ADM-005..017 (SPEC-V3R6-ASKUSER-DECISION-MEMORY-001).
+> Observed evidence: AC-ADM-005..017 (SPEC-V3R6-ASKUSER-DECISION-MEMORY-001).
 
 ---
 
@@ -243,24 +243,24 @@ The bias prevention rule from §Option Description Standards applies equally to 
 ToolSearch(query: "select:AskUserQuestion")
 AskUserQuestion({
   questions: [{
-    question: "Epic 8 entry SPEC를 선택해주세요.",
+    question: "Select the Epic 8 entry SPEC.",
     header: "Epic 8",
     multiSelect: false,
     options: [
       {
-        label: "SPEC-V3R6-SPEC-ID-VALIDATION-001 (권장)",
-        description: "manager-spec body에 SPEC ID regex pre-write self-check 추가. Epic 7 TMC-001 plan-phase L51 도출 원천 해소.",
-        preview: "Tier:    S (minimal)\nScope:   manager-spec.md body + regex pre-write check\nFiles:   1-2 edit\nRisk:    Low — agent body 수정, 동작 변경 없음\nL51 origin: Epic 7 TMC-001 plan-phase 도출"
+        label: "SPEC-V3R6-SPEC-ID-VALIDATION-001 (Recommended)",
+        description: "Add a SPEC ID regex pre-write self-check to the manager-spec body. Resolves the Epic 7 TMC-001 plan-phase L51 root cause.",
+        preview: "Tier:    S (minimal)\nScope:   manager-spec.md body + regex pre-write check\nFiles:   1-2 edit\nRisk:    Low — agent body edit, no behavior change\nL51 origin: Epic 7 TMC-001 plan-phase root cause\n"
       },
       {
         label: "SPEC-V3R6-CATALOG-FRONTMATTER-AUDIT-001",
-        description: "frontmatter schema audit + lint rule 확장. §24 namespace align 후속.",
-        preview: "Tier:    M (standard)\nScope:   internal/spec/lint.go + catalog.yaml\nFiles:   3-5 edit\nRisk:    Med — lint rule 확장은 cascade 가능\nOrigin:  §24 namespace align 후속"
+        description: "Frontmatter schema audit + lint rule extension. Follow-up to the §24 namespace align.",
+        preview: "Tier:    M (standard)\nScope:   internal/spec/lint.go + catalog.yaml\nFiles:   3-5 edit\nRisk:    Med — lint rule extension can cascade\nOrigin:  §24 namespace align follow-up"
       },
       {
         label: "SPEC-V3R6-CLI-INTEGRATION-001",
-        description: "CLI subcommand integration test 추가. moai cli regression 방지.",
-        preview: "Tier:    M (standard)\nScope:   cmd/moai + internal/cli integration tests\nFiles:   5-8 edit\nRisk:    Med — sandbox env 의존성 추가 가능\nOrigin:  CI 회귀 방지 SHOULD-FIX"
+        description: "Add CLI subcommand integration tests. Prevents moai CLI regressions.",
+        preview: "Tier:    M (standard)\nScope:   cmd/moai + internal/cli integration tests\nFiles:   5-8 edit\nRisk:    Med — may add sandbox env dependency\nOrigin:  CI regression prevention SHOULD-FIX"
       }
     ]
   }]
@@ -283,7 +283,7 @@ Note how each option's `preview` uses the same key set (`Tier`/`Scope`/`Files`/`
 
 ### Report Completeness Criteria (all mandatory)
 
-1. **Per-source coverage**: the report names each investigation source (agent, lens, audit dimension) and states its key findings with quantification (N findings, severity/classification breakdown). A single-line completion claim ("investigation complete", "전수조사 보고를 마쳤습니다") is NOT a report.
+1. **Per-source coverage**: the report names each investigation source (agent, lens, audit dimension) and states its key findings with quantification (N findings, severity/classification breakdown). A single-line completion claim ("investigation complete", or its equivalent in any locale) is NOT a report.
 2. **Option-to-report traceability**: every codename, identifier, or finding referenced in the question's option labels / descriptions / previews (e.g., `P1 <CODENAME>`, a SPEC ID, a lens name) MUST have been introduced and explained in the preceding report body. An option referencing an entity the report never introduced is a violation — the user cannot evaluate what was never explained.
 3. **Structured rendering**: render the report via the Discovery banner (`.claude/output-styles/moai/moai.md` §8 Discovery Report) or equivalent structured markdown with per-source subsections, scaled to the investigation's size.
 
@@ -293,7 +293,7 @@ Note how each option's `preview` uses the same key set (`Tier`/`Scope`/`Files`/`
 
 ### Report-Promise Fulfillment
 
-[HARD] When prior narration in the same task promised a consolidated report ("결과를 종합해 보고하겠습니다", "I will consolidate and report"), the report MUST be rendered before any subsequent decision AskUserQuestion. Claiming the report was delivered when none was rendered is an unobserved completion claim — see `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 1 (orchestrator self-report).
+[HARD] When prior narration in the same task promised a consolidated report ("I will consolidate and report", or its equivalent in any locale), the report MUST be rendered before any subsequent decision AskUserQuestion. Claiming the report was delivered when none was rendered is an unobserved completion claim — see `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 1 (orchestrator self-report).
 
 ### Exceptions (gate does not apply)
 
@@ -433,12 +433,12 @@ When the orchestrator constructs an `AskUserQuestion` round that does not exhaus
 ToolSearch(query: "select:AskUserQuestion")
 AskUserQuestion({
   questions: [{
-    question: "다음 단계를 선택하세요.",
-    header: "진행 방향",
+    question: "Select the next step.",
+    header: "Direction",
     options: [
-      { label: "PR 즉시 생성 (권장)", description: "현재 변경사항으로 PR을 생성합니다. CI가 자동 실행됩니다." },
-      { label: "검토 후 PR", description: "변경사항을 먼저 검토하고 PR을 생성합니다." },
-      { label: "중단", description: "현재 작업을 중단하고 상태를 보존합니다." }
+      { label: "Create PR immediately (Recommended)", description: "Creates a PR from the current changes. CI runs automatically." },
+      { label: "Review then PR", description: "Reviews the changes first, then creates the PR." },
+      { label: "Abort", description: "Aborts the current work and preserves state." }
     ]
   }]
 })

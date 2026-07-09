@@ -2,7 +2,7 @@
 id: SPEC-TEMPLATE-I18N-CANONICAL-001
 title: "Multilingual Canonical-Form Sweep for Always-Loaded Template Rule Files"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-07-10
 updated: 2026-07-10
 author: manager-spec
