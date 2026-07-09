@@ -4,8 +4,10 @@ workflow:
     # Precedence: CLI --mode flag > this field > harness auto.
     # @MX:WARN - Default mode field is utility-skill-only consumer. @MX:REASON - Field is read by run skill dispatcher; changing semantics without updating dispatcher breaks behavior contract.
     default_mode: ""
-    # agentic_loop: pipeline-level completion-loop iteration ceiling, prose-read
-    # by the orchestrator (documented key; no Go-side loader field yet).
+    # agentic_loop: pipeline-level completion-loop iteration ceiling, loaded by
+    # internal/config AgenticLoopConfig (types.go) with default from
+    # DefaultAgenticLoopMaxIterations (defaults.go); also prose-read by the
+    # orchestrator for the moai.md Agentic Completion Loop termination clause.
     # DISTINCT from loop_prevention.max_iterations (per-operation diagnostic
     # fix-loop bound) — separate blocks, separate semantics.
     agentic_loop:
@@ -16,6 +18,11 @@ workflow:
         enabled: true
         token_threshold: 150000
     execution_mode: team
+    # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations
+    # > workflow.yaml loop_prevention.max_iterations (this block — the lowest-
+    # precedence documented ceiling surface for the diagnostic fix-loop). The
+    # memory-safe 50-iteration checkpoint (loop workflow Step 2) is an orthogonal
+    # memory-pressure safeguard, not a fourth ceiling.
     loop_prevention:
         failure_pattern_detection: true
         max_iterations: 100

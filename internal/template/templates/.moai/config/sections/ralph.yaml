@@ -40,6 +40,10 @@ ralph:
     auto_fix: false
 
   # Loop Controller Configuration
+  # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations >
+  # workflow.yaml loop_prevention.max_iterations. The memory-safe 50-iteration
+  # checkpoint (loop workflow Step 2) is an orthogonal memory-pressure safeguard,
+  # not a fourth ceiling.
   loop:
     # Maximum number of feedback loop iterations (default: 10)
     max_iterations: 10

@@ -17,6 +17,10 @@ ralph:
             check_completion: true
             enabled: true
     lint_as_instruction: true
+    # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations
+    # > workflow.yaml loop_prevention.max_iterations. The memory-safe 50-iteration
+    # checkpoint (loop workflow Step 2) is an orthogonal memory-pressure safeguard,
+    # not a fourth ceiling.
     loop:
         auto_fix: false
         completion:
