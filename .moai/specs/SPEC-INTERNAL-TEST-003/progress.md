@@ -87,7 +87,7 @@ Run-phase complete. 5/6 AC in-scope PASS (AC-001~005). AC-006 is external debt (
 
 ```yaml
 sync_complete_at: 2026-07-09
-sync_commit_sha: "<backfilled by chore commit — see git log>"
+sync_commit_sha: "2e0b37885"
 sync_status: completed
 frontmatter_status_transitions:
   spec_md: "draft → completed (consolidated small-SPEC close; draft→in-progress skipped — run-phase artifacts were untracked until sync)"
