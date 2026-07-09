@@ -87,7 +87,7 @@ evidence_dir: /tmp/moai-verify-obh/ (logs 1-9; persist to .moai/state/verify/ pr
 ```
 sync_status: complete
 sync_complete_at: 2026-07-09
-sync_commit_sha: <pending — backfill via follow-up chore commit per established convention (SPEC-AUDIT-GATE-INTEGRITY-001 8cc3ed06e pattern; amend-free, force-push-free)>
+sync_commit_sha: 343b32287
 changelog_entry_position: CHANGELOG.md [Unreleased] > ### Fixed (top entry)
 frontmatter_status_transitions:
   spec.md: in-progress → completed (single sync commit, merged 3-phase close)
