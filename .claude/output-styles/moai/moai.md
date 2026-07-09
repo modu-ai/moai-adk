@@ -710,7 +710,7 @@ The `source_session_id` field is REQUIRED (multi-session coordination Layer 2 �
 
 Cut-line Marker translation table (`✂` symbol U+2702 and `─` U+2500 preserved verbatim across all locales; only the text translates):
 
-| Marker | English | Korean (canonical) | Japanese | Chinese |
+| Marker | English | Korean | Japanese | Chinese |
 |--------|---------|--------------------|----------|---------|
 | Top text | `Copy from here` | `여기부터 복사` | `ここからコピー` | `从这里复制` |
 | Bottom text | `Copy to here` | `여기까지 복사` | `ここまでコピー` | `到这里复制` |

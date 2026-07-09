@@ -191,9 +191,9 @@ The banners below use English labels as **documentation only**. At render time, 
 
 **Keep verbatim:** emoji (🌱 📝 🔧 🤔 ✅ ⚠️), box-drawing characters (─ │ └─ ▶ →), code literals, file paths, and technical identifiers (function names, command names, etc.).
 
-#### Localization table (ko canonical — same naturalization principle for any language)
+#### Localization table (ko equal-tier — same naturalization principle for any language)
 
-| Banner / label | English (skeleton) | Korean (canonical) |
+| Banner / label | English (skeleton) | Korean |
 |----------------|--------------------|--------------------|
 | Banner 1 | `Let's Begin` | `시작해 볼까요` |
 | Banner 2 | `Here's My Plan` | `이렇게 해볼 계획이에요` |

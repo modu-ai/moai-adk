@@ -11,6 +11,7 @@
 //	C5 CLAUDE.local.md maintainer-only local file reference  — binary FAIL
 //	C6 PR #N specific pull-request number reference          — binary FAIL
 //	C8 GOOS=<os> Go cross-compile env var (false positive)   — PRESERVE
+//	C9 natural-language canonical-form privilege marker      — binary FAIL
 //
 // [SCOPE — disjoint from internal_content_leak_test.go]
 // The date class (C3) and commit-hash class (C7) are DEFERRED to the sibling
@@ -166,6 +167,23 @@ var neutralityClasses = []neutralityClass{
 		name:      "C6-pr-number-ref",
 		severity:  neutralityBinary,
 		pattern:   regexp.MustCompile(`PR #[0-9]+`),
+		allowList: allowListSet(), // empty — binary FAIL on any hit
+	},
+	{
+		// C9-natural-language-canonical-form (SPEC-TEMPLATE-I18N-CANONICAL-001
+		// REQ-I18N-009): detects a natural-language canonical-form privilege
+		// marker — a markdown table column header that elevates one natural
+		// language over others via a "(canonical)" parenthetical (e.g.
+		// "| Korean (canonical) |"). The detector scopes to table-header cells
+		// (the `| <word> (canonical)` shape) so legitimate prose use of the
+		// word "canonical" (e.g. a section heading "V0 verification commands
+		// (canonical)") is NOT flagged. Post-sweep the template tree carries 0
+		// such privilege markers; any future reintroduction is a regression.
+		// Localized content inside localization-table data cells is legitimate
+		// and is NOT this class's concern (it does not flag Korean data cells).
+		name:      "C9-natural-language-canonical-form",
+		severity:  neutralityBinary,
+		pattern:   regexp.MustCompile(`\| *[A-Za-z]+ \(canonical\)`),
 		allowList: allowListSet(), // empty — binary FAIL on any hit
 	},
 }

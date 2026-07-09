@@ -98,3 +98,13 @@ predecessor cleanup history (`research.md` §B 참조: chore commits `20a66df85`
   - §24 — Harness namespace separation (`harness-*` user-owned vs `moai-harness-*` template-managed)
   - SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001 §B (Substitution Dictionary) — generic-prose 치환 패턴 SSOT
   - `internal/template/internal_content_leak_test.go` — automated regression guard (M3 deliverable)
+
+### §25.6 Natural-language canonical-form neutrality (SPEC-TEMPLATE-I18N-CANONICAL-001)
+
+A distinct governance dimension alongside the C1-C8 internal-trace classes: **natural-language canonical-form neutrality**. Where C1-C8 govern *internal-development traces* (SPEC IDs, REQ tokens, dates, commit SHAs, macOS paths), this dimension governs the *canonical-form choice* for natural languages in template-distributed content.
+
+- **Statement**: Template-distributed content declares English as the canonical framing default (matching the English-fallback rule in `session-handoff.md` § Localization Table); all other supported natural languages are equal-tier locale columns in localization tables. No natural language is privileged over another in distributed templates.
+- **Forbidden**: declaring any natural-language column "(canonical)" — i.e., a markdown localization-table column header carrying a `(canonical)` parenthetical privilege marker (e.g., `| Korean (canonical) |`). This elevation marker crosses from "happens to be language X" into "language X is declared canonical", which is indefensible under the template-genericity spirit that §25 opens with.
+- **Allowed**: concrete locale renderings inside localization-table data cells (the localization mechanism doing its job); the `(권장)` / `(Recommended)` locale-aware token (documented per-locale in the Localization Table); symbols (`✂`, `─`) preserved verbatim across locales; prose use of the word "canonical" outside privilege-marker context (e.g., a "canonical reference" section heading).
+- **CI enforcement**: the `C9-natural-language-canonical-form` class in `internal/template/template_neutrality_audit_test.go` (binary FAIL, empty allow-list) detects the `\| <word> (canonical)` table-header privilege marker tree-wide. Post-sweep the template tree carries 0 such markers; any future reintroduction is a regression.
+- **Scope limit**: this dimension does NOT alter the existing C1-C8 class definitions (internal-trace dimension). It adds a new dimension — natural-language canonical-form neutrality — alongside them, governed by its own C9 detector. The two dimensions are disjoint: C1-C8 own internal traces; C9 owns the natural-language privilege marker.
