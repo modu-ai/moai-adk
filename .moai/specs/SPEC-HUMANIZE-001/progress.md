@@ -112,7 +112,7 @@ m1_to_mN_commit_strategy: per-milestone commits M1..M6 + one M3 follow-up fix + 
 
 ```yaml
 sync_complete_at: 2026-07-09T15:43:52Z
-sync_commit_sha: "pending-backfill-sync"  # self-referential hazard — backfilled by follow-up chore commit per spec-frontmatter-schema.md D3 exemption
+sync_commit_sha: "3bb9ff026"  # backfilled by follow-up chore commit per spec-frontmatter-schema.md D3 exemption (self-referential hazard)
 sync_status: complete
 frontmatter_status_transitions:
   spec_md: "in-progress → completed (merged transition on single sync commit, 3-phase close); updated: 2026-07-10 already at sync date — no bump needed"
