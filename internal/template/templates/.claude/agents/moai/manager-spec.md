@@ -154,12 +154,19 @@ Keep the skeleton minimal: each section is a heading plus a one-line placeholder
 
 #### [HARD] SPEC ID Pre-Write Self-Check Protocol
 
-[HARD] Before invoking `Write` or `Edit` for any new SPEC document containing a SPEC ID in its YAML frontmatter, the agent MUST execute a regex match decomposition self-check and print the result to its response body. The canonical SPEC ID regex literal is `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$` (verbatim from `internal/spec/lint.go:573`). Run this self-check before every SPEC Write; skipping it has historically caused SPEC ID drift.
+[HARD] Before invoking `Write` or `Edit` for any new SPEC document containing a SPEC ID in its YAML frontmatter, the agent MUST execute a regex match decomposition self-check and print the result to its response body. The canonical SPEC ID regex literal is `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$` (the Go `specIDPattern` in `internal/spec/lint.go` — content-token anchor; line numbers drift). Run this self-check before every SPEC Write; skipping it has historically caused SPEC ID drift.
 
 Self-check protocol (4 steps, performed in the agent turn BEFORE any filesystem write):
 
 1. **Decompose** the candidate SPEC ID into segments by `-` delimiter. The first segment MUST be the literal `SPEC`; the last segment MUST be exactly 3 digits (`\d{3}`, NEVER `\d{3}[a-z]`); every middle segment MUST match `[A-Z][A-Z0-9]*` (first char uppercase letter, rest uppercase alphanumerics, length ≥ 1).
-2. **Apply the canonical regex** `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$` mentally. The `(-[A-Z][A-Z0-9]*)+` group matches ONE OR MORE domain segments. The `\d{3}$` digit-only end anchor rejects any trailing alpha suffix (e.g., `001a` is invalid for a SPEC ID).
+2. **Apply the canonical regex via an executed Bash one-liner** — mental-only regex application is prohibited as the sole basis of a PASS claim; the check MUST be an executed command whose **verbatim output** is the self-check evidence:
+
+   ```bash
+   ID="SPEC-{DOMAIN}-{NUM}"   # candidate SPEC ID under check
+   [[ "$ID" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]] && echo PASS || echo FAIL
+   ```
+
+   Bash ERE does not support `\d` — use `[0-9]`; `[0-9]{3}` is semantically identical to the `\d{3}` in the Go `specIDPattern`. The `(-[A-Z][A-Z0-9]*)+` group matches ONE OR MORE domain segments. The `[0-9]{3}$` digit-only end anchor rejects any trailing alpha suffix (e.g., `001a` is invalid for a SPEC ID). Cite the command's verbatim output (`PASS` or `FAIL`) in the response body as the evidence for this step.
 3. **Print the decomposition** to the response body using the literal prefix `decomposition:` (or alternatively `segment match trace:`), one segment-check per `|` separator, ending with the literal line-end marker `→ PASS` or `→ FAIL`. Example output for `SPEC-V3R6-SPEC-ID-VALIDATION-001`:
 
    ```
@@ -180,7 +187,7 @@ Acceptance criteria sub-IDs MAY use a trailing lowercase alphabetic suffix to de
 
 Confusion case (illustrative): `SPEC-RETIRED-DDD-001` is **VALID** per the canonical regex because `RETIRED` matches `[A-Z][A-Z0-9]*` and `DDD` matches `[A-Z][A-Z0-9]*` and `001` matches `\d{3}`. Multi-segment domain names with retired-marker prefixes remain canonical SPEC IDs.
 
-Rationale (informational footnote): historical SPEC-ID drift incidents (typos, sub-ID bleed-over, acronym ambiguity, doc-vs-lint regex drift, digit-alpha suffixes) collectively cost many reactive Edit/mv operations downstream. This self-check protocol short-circuits the failure mode at the earliest possible detection point — inside the agent turn that decides to Write.
+Provenance note: this protocol short-circuits a recurring SPEC-ID drift failure mode at the earliest detection point — inside the agent turn that decides to Write. The historical incident narrative that motivated it lives in project memory/lessons, not in this always-loaded agent body.
 
 #### [HARD] SPEC Frontmatter Canonical Schema
 

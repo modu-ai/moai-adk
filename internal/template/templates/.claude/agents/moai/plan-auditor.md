@@ -126,7 +126,7 @@ An unsubstantiated PASS verdict is automatically downgraded to UNVERIFIED, which
 
 ### M5: Must-Pass Firewall
 
-Four criteria cannot be compensated by high scores in other dimensions. ANY single must-pass failure = overall FAIL regardless of other scores.
+Six criteria cannot be compensated by high scores in other dimensions. ANY single must-pass failure = overall FAIL regardless of other scores.
 
 **(MP-1) REQ Number Consistency**: REQ numbers must be sequential (REQ-001, REQ-002, ... REQ-N) with no gaps, no duplicates, and consistent zero-padding. Even one gap or duplicate = FAIL.
 
@@ -135,6 +135,10 @@ Four criteria cannot be compensated by high scores in other dimensions. ANY sing
 **(MP-3) YAML Frontmatter Validity**: Required fields must all be present with correct types, matching the canonical 12-field schema in `.claude/rules/moai/development/spec-frontmatter-schema.md` (the SSOT). The 12 required fields are: `id` (string), `title` (string), `version` (quoted semver string), `status` (enum), `created` (ISO date `YYYY-MM-DD`), `updated` (ISO date `YYYY-MM-DD`), `author` (string), `priority` (enum `P0`|`P1`|`P2`|`P3` or `High`|`Medium`|`Low`|`Critical`), `phase` (string), `module` (string), `lifecycle` (enum `spec-anchored`|`spec-lite`|`exploratory`), `tags` (comma-separated string). The snake_case aliases `created_at`, `updated_at`, `labels`, and `spec_id` are REJECTED by the YAML decoder — the canonical names are `created`, `updated`, `tags`, and `id` respectively. A SPEC that uses a rejected alias produces an empty-value `FrontmatterInvalid` finding and FAILS MP-3. Any missing required field = FAIL. Type mismatch = FAIL.
 
 **(MP-4) Section 22 Language Neutrality** (applies when the SPEC targets template-bound or universal content): The SPEC must not hardcode language-specific tool names (e.g., "gopls", "pylsp", "rust-analyzer") unless all 16 supported languages (go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift) are enumerated with equal weight. If the SPEC covers multi-language tooling and enumerates some languages but not others, = FAIL. If the SPEC is clearly scoped to a single-language project, this criterion is N/A and auto-passes.
+
+**(MP-5) No unresolved D7 BLOCKING finding**: A BLOCKING finding emitted (unresolved) by Group 7 (D7 Cross-SPEC Reconciliation) is **must-pass-equivalent**: it forces `Verdict: FAIL` regardless of aggregate score, and the finding MUST be folded into `## Defects Found` at severity=critical. A D7 BLOCKING finding can never be silently absorbed into the aggregate score. If the D7 verification verb is not executable (e.g., target files absent), mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
+
+**(MP-6) No unresolved D8 BLOCKING finding**: A BLOCKING finding emitted (unresolved) by Group 8 (D8 Cross-Platform Discipline) is **must-pass-equivalent**: it forces `Verdict: FAIL` regardless of aggregate score, and the finding MUST be folded into `## Defects Found` at severity=critical. A D8 BLOCKING finding can never be silently absorbed into the aggregate score. If the D8 verification verb is not executable, mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
 
 ### M6: Chain-of-Verification
 
@@ -334,6 +338,8 @@ done
 Severity rubric: BLOCKING for unresolved retirement/supersession conflict;
 SHOULD for missing-but-recoverable references.
 
+A D7 BLOCKING finding emitted (unresolved) here feeds MP-5: it forces `Verdict: FAIL` via the M5 Must-Pass Firewall (see MP-5) — it is never absorbed into the aggregate score.
+
 ### Group 8: Cross-Platform Discipline (D8)
 
 * **D8**: Cross-Platform Discipline — verifies `syscall` introductions declare `//go:build` constraint
@@ -369,9 +375,13 @@ fi
 Severity rubric: BLOCKING if syscall is introduced without either a build-tag
 constraint or an EXCL clause; otherwise PASS.
 
+A D8 BLOCKING finding emitted (unresolved) here feeds MP-6: it forces `Verdict: FAIL` via the M5 Must-Pass Firewall (see MP-6) — it is never absorbed into the aggregate score.
+
 ## Output Format
 
 Write the audit report to `.moai/reports/plan-audit/{SPEC-ID}-review-{iteration}.md`.
+
+This report belongs to the **plan-phase review stream** (`{SPEC-ID}-review-{N}.md`, iteration-based) — deliberately distinct from the **run-gate stream** (`<SPEC-ID>-<YYYY-MM-DD>.md`, date-based) that the Phase 0.5 Plan Audit Gate writes into the same directory (see `.claude/rules/moai/workflow/spec-workflow.md` § Report Persistence for the two-stream contract). The review stream's final-iteration verdict is the input the run-gate consults for skip-eligibility; the run-gate's date-file is a verdict record surface only.
 
 ```
 # SPEC Review Report: {SPEC-ID}
@@ -384,6 +394,8 @@ Overall Score: {0.0-1.0}
 - [PASS/FAIL] MP-2 EARS format compliance: {evidence with line citations}
 - [PASS/FAIL] MP-3 YAML frontmatter validity: {evidence with line citations}
 - [PASS/FAIL/N/A] MP-4 Section 22 language neutrality: {evidence or "N/A: single-language SPEC"}
+- [PASS/FAIL/N/A] MP-5 D7 cross-SPEC reconciliation: {D7 verification evidence or "no BLOCKING finding"; N/A only when the D7 verb is not executable}
+- [PASS/FAIL/N/A] MP-6 D8 cross-platform discipline: {D8 verification evidence or "no BLOCKING finding"; N/A only when the D8 verb is not executable}
 
 ## Category Scores (0.0-1.0, rubric-anchored)
 | Dimension | Score | Rubric Band | Evidence |
