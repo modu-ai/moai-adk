@@ -2,7 +2,7 @@
 id: SPEC-WORKFLOW-LIFECYCLE-001
 title: "SPEC 워크플로 P1 개선 — delta-spec 수명주기(completed 재개정 전이), depends_on run-phase 집행(pre-flight 차단), Tier L 산출물 집합 + plan-auditor 입력 계약 확정"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-09
 updated: 2026-07-09
 author: GOOS행님
