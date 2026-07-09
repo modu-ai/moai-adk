@@ -353,5 +353,4 @@ Each split harness preserves the structural fidelity of its workflow body. Routi
 
 - `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy (this section — canonical skill namespace SSOT)
 - `.claude/skills/moai-meta-harness/SKILL.md` § Namespace Separation (canonical generator contract)
-- `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention (agent counterpart — includes `.claude/agents/local/` for the migrated 97/98 specialists)
-- `.moai/docs/dev-only-commands-isolation.md` (maintainer-local — dev-only 97/98/99 isolation policy)
+- `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention (agent counterpart — includes `.claude/agents/local/` for the migrated maintainer specialists)

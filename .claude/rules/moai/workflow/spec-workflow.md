@@ -22,7 +22,7 @@ Per the canonical agent catalog policy, the MoAI agent catalog consists of exact
 
 [ZONE:Frozen] [HARD] Every MoAI SPEC follows the three-phase lifecycle (plan → run → sync). How each phase transition is *triggered* depends on the **route** the SPEC takes. There are exactly TWO routes, and the route is determined by Tier (per § SPEC Complexity Tier) and the explicit `--pr` flag:
 
-- **Route A — Hybrid Trunk main-direct (default; Tier S / Tier M):** manager-develop commits and pushes directly to `main`; there is NO per-phase PR and NO per-phase branch. Phase transitions are triggered by commit / push events (Conventional-Commit subjects pushed to `main` + green CI), NOT by PR merges. This is the 1-person-OSS Hybrid Trunk policy (CLAUDE.md §5 + `manager-develop-prompt-template.md` §B9 + `.moai/docs/git-local-workflow-doctrine.md`).
+- **Route A — Hybrid Trunk main-direct (default; Tier S / Tier M):** manager-develop commits and pushes directly to `main`; there is NO per-phase PR and NO per-phase branch. Phase transitions are triggered by commit / push events (Conventional-Commit subjects pushed to `main` + green CI), NOT by PR merges. This is the 1-person-OSS Hybrid Trunk policy (CLAUDE.md §5 + `manager-develop-prompt-template.md` §B9).
 - **Route B — PR route (Tier L OR explicit `--pr`):** `manager-git` creates a feature branch and opens a PR per phase (`gh pr create`); phase transitions are triggered by PR merges into `main`. This is the route the Late-Branch closure pattern (below) applies to.
 
 The route governs the trigger vocabulary in § Phase Transitions below (commit/push event vs PR merge). Neither route changes the phase *ordering* (plan → run → sync) or the *artifact* set (per Tier).
@@ -121,7 +121,7 @@ See `spec.md` §1.2 (Non-Goals) — they are deferred to a future SPEC.
 
 - `--mode` flag matrix (defines `autopilot|loop|team|pipeline`).
 - Pipeline regression guard: `internal/template/agentless_audit_test.go`.
-- Pattern source: `.moai/design/v3-redesign/synthesis/pattern-library.md` §O-6 (Agentless).
+- Pattern source: the Agentless pipeline pattern (localize → repair → validate, no LLM dispatcher).
 - Research source: Xia et al. 2024.
 
 ## SPEC Complexity Tier (S/M/L)
