@@ -93,7 +93,7 @@ push_state: not pushed — orchestrator integrates per task instructions
 
 ```
 sync_complete_at: 2026-07-09
-sync_commit_sha: <to be backfilled in follow-up chore commit>
+sync_commit_sha: bf67f66dc
 sync_status: audit-ready (3-phase close on single sync commit; completed transition rides this commit)
 changelog_entry_position: [Unreleased] > Added (SPEC-CADENCE-BRIDGE-001, top of Added — latest sync, above FIX-LOOPMAP)
 frontmatter_status_transitions:
