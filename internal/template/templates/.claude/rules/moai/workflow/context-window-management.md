@@ -62,13 +62,13 @@ The orchestrator MUST proactively recognize the model-specific boundary and prep
 3. Emit a structured "resume message" the user can paste verbatim after `/clear`
 4. Recommend `/clear` via natural-language guidance (status announcement, not a question — `AskUserQuestion` not required)
 
-[ZONE:Evolvable] [HARD] Resume message format: include all of the following so the next session is self-sufficient:
+[ZONE:Evolvable] [HARD] Resume message format: include all of the following so the next session is self-sufficient (locale renderings per `session-handoff.md` § Localization Table — do not redefine a parallel format here):
 ```
-ultrathink. Epic <N> 이어서 진행. SPEC-<ID>부터 <approach 요약>.
+ultrathink. Resume Epic <N>. SPEC-<ID> — <approach summary>.
 applied lessons: <memory file names>.
-progress.md 경로: .moai/specs/SPEC-<ID>/progress.md
-다음 단계: <one-line command>.
-완료 후: <next SPEC or /moai sync>.
+progress.md path: .moai/specs/SPEC-<ID>/progress.md
+Run: <one-line command>.
+After merge: <next SPEC or /moai sync>.
 ```
 
 Paste-ready, no editing required.
