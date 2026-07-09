@@ -49,6 +49,16 @@ See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.m
 
 This skill is the Ralph engine — the specialized DIAGNOSTIC fix-loop (a per-iteration cycle over LSP / AST-grep / test / coverage diagnostics). It is distinct from the pipeline-level agentic completion loop (`workflows/moai.md` § Agentic Completion Loop), which iterates over PHASES (run → sync → verify) against a completion condition. The pipeline-level loop MAY invoke this engine during its verify step for mechanical convergence; the two loops are complementary, not competitors, and are NOT folded into one — the granularity differs (phases there, diagnostics here). The `/moai loop` ≡ `/moai run --mode loop` alias contract above is unchanged.
 
+## Loop Taxonomy Position
+
+`/moai loop` occupies the **goal-based** quadrant of the loop taxonomy: iterate until a mechanical completion predicate holds or the applied iteration ceiling is reached.
+
+- **How it starts**: a `/moai loop` (or `/moai run --mode loop`) invocation.
+- **How it ends**: success-exit via the mechanical predicate confirmed by the independent final pass (Step 1/1.5), or a ceiling exit that emits the 5-section verdict and persists residue per § Ceiling-Exit Verdict Contract.
+- **When it fits**: driving diagnostics to zero across many iterations — not a one-off sweep, not a schedule.
+
+Sibling quadrants: **turn-based** one-shot fixing is `.claude/skills/moai/workflows/fix.md` (its unresolved residue persists to the same verdict schema and recommends re-entry here); **time-based** cadence recipes are `.claude/rules/moai/workflow/cadence-bridge.md`; **proactive** CI-triggered watch is the `moai-workflow-ci-loop` skill.
+
 ## Supported Flags
 
 - --max N (alias --max-iterations): Maximum iteration count. When absent, the effective default is ralph.yaml `loop.max_iterations` (shipped 10) per the Iteration-Ceiling Precedence rule (see § Ceiling-Exit Verdict Contract) — not a freestanding 100 default.

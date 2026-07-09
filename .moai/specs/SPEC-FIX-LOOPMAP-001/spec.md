@@ -2,7 +2,7 @@
 id: SPEC-FIX-LOOPMAP-001
 title: "Fix Phase-4 Mechanical Verification, Regression Guard, and Loop Taxonomy Mapping"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-09
 updated: 2026-07-09
 author: manager-spec
