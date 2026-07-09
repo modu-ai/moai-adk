@@ -62,7 +62,7 @@ Quality gates: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./..
 
 ```yaml
 run_complete_at: 2026-07-09
-run_commit_sha: a915f88f4  # M2; M1 = 233422180; evidence commit follows (SPEC-dir-only, backfilled by sync if needed)
+run_commit_sha: 78a8aefb3  # M2 landed SHA; M1 landed = 5faab23a2, evidence landed = 303c41e94 (pre-landing L1-worktree originals: M1 233422180 / M2 a915f88f4 / evidence 67c1bf4ba — cherry-picked onto origin/main by the orchestrator)
 run_status: complete
 ac_pass_count: 17
 ac_fail_count: 0
@@ -91,7 +91,7 @@ spec_lint: 0 findings (StatusGitConsistency warning self-healed on draft→in-pr
 mirror_parity: diff -q ×3 identical + TestRuleTemplateMirrorDrift/TestTemplateNoInternalContentLeak ok
 cross_platform_build: darwin=0 windows=0
 constitution_validate: 77 findings byte-identical to base baseline (0 new)
-3_phase_close: plan(248c19bcb → f3f348ff5 → e1143f804) → run(5faab23a2 M1 + 78a8aefb3 M2 + 303c41e94 evidence, temp-worktree cherry-pick landing) → sync(this commit)
+3_phase_close: plan(248c19bcb → f3f348ff5 → 438386161 touch-up as landed; pre-rebase original e1143f804) → run(5faab23a2 M1 + 78a8aefb3 M2 + 303c41e94 evidence, temp-worktree cherry-pick landing) → sync(79de21b22)
 race_note: run-phase executed in runtime L1 worktree (fork base e1143f804); orchestrator landed via origin/main-based temp worktree cherry-pick + independent 5/5 verification, zero contact with the parallel session's dirty shared checkout; sync executed in the same landing pattern (onepaste-sync worktree from origin/main eb601d0b7)
 ```
 
