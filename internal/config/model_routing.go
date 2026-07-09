@@ -24,10 +24,14 @@ import (
 // SPEC-V3R6-WORKFLOW-EFFORT-MAP-001 REQ-WEM-006, so the two maps' effort
 // sets cannot drift apart (REQ-TR-007). The model set extends the live
 // workflow_agents values with "glm" for cost-routing purposes (REQ-TR-012).
+// The former low-cost model alias was removed from the routing closed set
+// under the No-Haiku 3-tier policy (SPEC-AGENT-ARCH-V2-001 M3c,
+// REQ-AA2-012 surface 4): former low-cost
+// slots now use sonnet with effort low. The alias remains valid in
+// model-policy.md's closed-set (X3 exempt) and the glm.models block (X2 exempt).
 var (
 	validRoutingModels = map[string]bool{
 		"inherit": true,
-		"haiku":   true,
 		"sonnet":  true,
 		"opus":    true,
 		"glm":     true,
@@ -191,7 +195,7 @@ func (c *Config) ValidateModelRoutingProfiles() error {
 			if !validRoutingModels[entry.Model] {
 				return &ValidationError{
 					Field:   fmt.Sprintf("model_routing_profiles.%s.%s.model", pt, k),
-					Message: fmt.Sprintf("model %q not in closed set {inherit, haiku, sonnet, opus, glm}", entry.Model),
+					Message: fmt.Sprintf("model %q not in closed set {inherit, sonnet, opus, glm}", entry.Model),
 					Value:   entry.Model,
 				}
 			}

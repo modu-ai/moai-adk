@@ -385,3 +385,53 @@ func ApplyModelPolicy(projectRoot string, policy ModelPolicy, mgr manifest.Manag
 
 	return nil
 }
+
+// performanceTierRegex matches the performance_tier: line in llm.yaml.
+var performanceTierRegex = regexp.MustCompile(`(?m)^(\s*)performance_tier:\s*["']?[\w-]*["']?`)
+
+// ValidPerformanceTiers returns the closed set of valid No-Haiku performance
+// tiers (SPEC-AGENT-ARCH-V2-001 M3c, design.md §D.2).
+func ValidPerformanceTiers() []string {
+	return []string{"max", "medium", "low"}
+}
+
+// IsValidPerformanceTier checks if the given string is a valid performance tier.
+func IsValidPerformanceTier(s string) bool {
+	for _, t := range ValidPerformanceTiers() {
+		if s == t {
+			return true
+		}
+	}
+	return false
+}
+
+// ApplyPerformanceTier patches the performance_tier field in llm.yaml under
+// the given project root (SPEC-AGENT-ARCH-V2-001 M3c, REQ-AA2-010). It reads
+// .moai/config/sections/llm.yaml, replaces the performance_tier: line with
+// the new tier value, and writes the file back. Returns nil if the file is
+// absent (graceful no-op). The tier MUST be validated by the caller.
+//
+// @MX:ANCHOR: [AUTO] ApplyPerformanceTier — performance_tier persistence entry point
+// @MX:REASON: fan_in >= 3 expected (init.go, update.go, tests)
+func ApplyPerformanceTier(projectRoot, tier string) error {
+	llmPath := filepath.Join(projectRoot, ".moai", "config", "sections", "llm.yaml")
+	content, err := os.ReadFile(llmPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read llm.yaml: %w", err)
+	}
+
+	replacement := "${1}performance_tier: " + tier
+	newContent := performanceTierRegex.ReplaceAll(content, []byte(replacement))
+
+	if string(newContent) == string(content) {
+		return nil
+	}
+
+	if err := os.WriteFile(llmPath, newContent, 0o644); err != nil {
+		return fmt.Errorf("write llm.yaml: %w", err)
+	}
+	return nil
+}

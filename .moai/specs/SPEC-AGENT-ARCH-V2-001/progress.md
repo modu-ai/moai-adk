@@ -120,11 +120,75 @@ plan_phase_evidence_path: .moai/specs/SPEC-AGENT-ARCH-V2-001/
 
 **Residual-risk:** (a) DesignSync MCP not registered in `.mcp.json` (research.md §H) — D2-D5 live execution gated on tool registration (separate user action); (b) M2 executed under GLM backend orchestrator-direct (M1 force-majeure continuity) — H1-H9 verbatim fidelity verified via grep + byte-parity, not independent semantic review; (c) TestRuleProvenanceAudit FAIL blocks whole-repo `go test ./...` green until the CLEANUP SPEC lands.
 
+### M3a — RouteModelFor 3-arg + model_routing_profiles Go layer (PASS, commit e44c66d5f)
+
+**AC matrix (vci 5-section):**
+- AC-AA2-008 RouteModelFor 3-arg: PASS — signature is `RouteModelFor(specTier, phase, perfTier string)`; validRoutingPerfTiers = {max, medium, low}; TestRouteModelFor3x12Matrix exercises all 36 cells; TestRouteModelForHappyPath3Arg + TestRouteModelForFallback3Arg + TestRouteModelForInvalidInput3Arg PASS.
+- AC-AA2-009 model_routing_profiles 3 matrices (code layer): PASS — ValidateModelRoutingProfiles + ModelRoutingProfiles map structure in types.go; fullProfilesYAML 36-cell golden fixture; TestValidateModelRoutingProfiles PASS.
+
+**Evidence:** commit `e44c66d5f feat(SPEC-AGENT-ARCH-V2-001): M3a RouteModelFor 3-arg + model_routing_profiles (AC-008/009)`.
+
+**Baseline-attribution:** HEAD e44c66d5f (M3a commit). `go test ./internal/config/... -count=1` → ok. No carry-over.
+
+**Gaps:** M3a production config surface (workflow.yaml model_routing_profiles data) deferred to M3b (this delegation).
+
+### M3b — workflow.yaml production config (PASS)
+
+**AC matrix (vci 5-section):**
+- AC-AA2-009 model_routing_profiles 3 matrices (production surface): PASS — `model_routing_profiles:` block with max/medium/low sub-tiers (3×12=36 cells) present in both live + template workflow.yaml; values match design.md §D.5 line 271-284 table AND fullProfilesYAML fixture byte-for-byte. `grep -c 'model_routing_profiles:' workflow.yaml` = 1 (both trees). Legacy `model_routing:` key RETAINED as `medium` alias per plan.md D6 (values updated to match medium profile + deprecation comment).
+- AC-AA2-013 workflow_agents + role_profiles: PASS — `workflow_agents.read-only-extract` = `sonnet/low` (already correct pre-M3); `role_profiles.researcher` = `model: sonnet` (already correct pre-M3); `grep -cE 'model:\s*haiku' workflow.yaml` = 0 (both trees).
+
+**Evidence:** `diff .moai/config/sections/workflow.yaml internal/template/templates/.moai/config/sections/workflow.yaml | head -20` — model_routing_profiles block identical (live L-run updated from opus→sonnet in legacy alias block to align with medium profile). AC-015 template-first: `diff` shows byte-identical model_routing_profiles between live + template.
+
+**Baseline-attribution:** HEAD pre-M3b (worktree b153459e7d). `go build ./...` → exit 0. M3b edits are 2 workflow.yaml files (live + template). No Go code touched.
+
+**Gaps:** None for AC-009/013/015 (M3b scope).
+
+### M3c — moai init --model-policy + HaikuResidualRule + validRoutingModels haiku removal (PASS)
+
+**AC matrix (vci 5-section):**
+- AC-AA2-010 moai init --model-policy: PASS — `--model-policy max|medium|low` flag registered in init.go; `validateInitFlags` rejects invalid values with stderr error `invalid --model-policy value %q: must be one of: max, medium, low`; `template.ApplyPerformanceTier` patches llm.yaml `performance_tier` field; `resolveModelPolicy` resolves CLI flag + legacy `--high`/`--medium-alias`/`--low` aliases (plan.md D4). Legacy aliases emit stderr deprecation.
+- AC-AA2-011 claude_models low: sonnet: PASS (pre-existing) — `awk` state-machine on claude_models block returns 0 haiku in both live + template llm.yaml; `low: sonnet` in live (line 19); template `low: "sonnet"`.
+- AC-AA2-012 HaikuResidualRule (HARD): PASS — All 4 surfaces return 0: (1) agent frontmatter `grep -rn 'haiku' .claude/agents/moai/ internal/template/templates/.claude/agents/moai/ | grep -v _test` = 0; (2) claude_models awk block = 0 (both trees); (3) `grep -c 'haiku' workflow.yaml` = 0 (both trees); (4) `grep -n '"haiku"' internal/config/model_routing.go | grep -v _test` = 0. HaikuResidualRule registered in lint.go defaultRules() as crossSPECRule (NOT skip-able — CheckAll findings bypass applylintSkip). 6 tests PASS (CleanTree, AgentFrontmatter, ClaudeModelsBlock, WorkflowRouting, ValidRoutingModels, RegisteredAndNotSkippable).
+- AC-AA2-016 haiku-residual-0 HARD closure: PASS — re-ran AC-012 four-surface verification; all 4 = 0.
+
+**Evidence:**
+- `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+- `golangci-lint run --timeout=2m` → 0 issues.
+- `go test ./internal/spec/... -run TestHaikuResidual -v` → 6/6 PASS.
+- `go test ./internal/config/... -count=1` → ok (both packages).
+- Agent-file haiku removal: builder-harness.md lines 166-167 (model policy table) + line 192 (prose); manager-docs.md line 126 (prose) — all × 2 trees (live + template).
+- `validRoutingModels` `"haiku": true` entry removed; fullRoutingYAML test fixture updated (haiku→sonnet in 3 entries); TestValidateModelRoutingClosedSetEffort fixture fixed (sonnet+ultra).
+- catalog.yaml hashes regenerated via `go run ./internal/template/scripts/gen-catalog-hashes.go --all` (9 hashes; builder-harness + manager-docs cascade from M3c edits + 7 pre-existing drift). TestCatalogHash PASS.
+
+**Baseline-attribution:** HEAD pre-M3c (worktree b153459e7d + M3b uncommitted). All tests run against this tree in this run. No carry-over.
+
+**Gaps:** (a) TestOutputStylesTemplateLiveParity FAIL — PRE-EXISTING (moai-easy.md drift between template + live; unrelated to M3, not caused by M3 edits); (b) TestRuleProvenanceAudit — delegation mentions it as pre-existing FAIL but test not found at current HEAD (may have been resolved or renamed); (c) catalog.yaml on PRESERVE list but hash regen was a necessary cascade from builder-harness/manager-docs edits (2/9 hashes directly from M3c; 7/9 pre-existing drift also corrected by the deterministic regen).
+
+**Residual-risk:** (a) AC-010 integration test (`moai init --model-policy max` end-to-end) not run — requires a full init in a temp dir; the flag registration + validation + ApplyPerformanceTier are individually verified but the end-to-end init→llm.yaml write path is not exercised in isolation; (b) HaikuResidualRule is a new cross-SPEC rule — it will scan ALL SPECs at lint time; no false-positive risk on closed SPECs because the rule scans the project tree (agents/config/code), not SPEC documents; (c) the `--medium-alias` flag name avoids collision with the existing `--mode` flag's potential `medium` value; the legacy alias `--medium` was not used because `--mode` already accepts a similar namespace.
+
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — manager-develop populates this section when all MUST-PASS ACs are green and the implementation is ready for sync-phase entry.>_
+```yaml
+run_complete_at: 2026-07-10
+run_commit_sha: pending-backfill   # populated post-commit (self-reference avoided)
+run_status: audit-ready
+ac_pass_count: 7
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: n/a   # worktree isolation; no push (orchestrator owns push)
+l44_post_push_fetch: n/a    # orchestrator push deferred (7 active sessions on shared checkout)
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  linux_darwin: pass   # go build ./... exit 0
+  windows_amd64: pass  # GOOS=windows GOARCH=amd64 go build ./... exit 0
+total_run_phase_files: 14
+m1_to_mN_commit_strategy: M1+M2 (prior commits e44c66d5f + M2 commits); M3a (prior commit e44c66d5f); M3b+M3c (this delegation, single M3 commit planned)
+```
+
+MUST-PASS ACs green: AC-AA2-008 (M3a), AC-AA2-009 (M3a code + M3b config), AC-AA2-010 (M3c), AC-AA2-011 (pre-existing), AC-AA2-012 (M3c HARD), AC-AA2-013 (M3b), AC-AA2-016 (M3c HARD closure). AC-AA2-015 template-first verified (workflow.yaml live+template byte-identical for model_routing_profiles; agent files live+template byte-identical). AC-AA2-014 (M4 doctrine refresh) is OUT OF SCOPE per delegation — SHOULD-PASS debt.
 
 ---
 

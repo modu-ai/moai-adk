@@ -111,6 +111,13 @@ func NewLinter(opts LinterOptions) *Linter {
 		// registry load failure is silent — skip DanglingRuleReference check
 	}
 
+	// HaikuResidualRule scans the project tree (not a SPEC document), so it
+	// needs the project root. Default to "." matching discoverSPECs behavior.
+	haikuBaseDir := opts.BaseDir
+	if haikuBaseDir == "" {
+		haikuBaseDir = "."
+	}
+
 	l.rules = []Rule{
 		&EARSModalityRule{},
 		&REQIDUniquenessRule{},
@@ -126,6 +133,9 @@ func NewLinter(opts LinterOptions) *Linter {
 		// cross-SPEC rules
 		&DependencyCycleRule{},
 		&DuplicateSPECIDRule{},
+		// HaikuResidualRule — cross-SPEC HARD gate (NOT skip-able; CheckAll
+		// findings bypass applylintSkip). SPEC-AGENT-ARCH-V2-001 M3c REQ-AA2-012.
+		&HaikuResidualRule{baseDir: haikuBaseDir},
 		// Registry required
 		&ZoneRegistryRule{registry: l.registry},
 	}

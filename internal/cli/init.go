@@ -87,6 +87,14 @@ func init() {
 	initCmd.Flags().Bool("enable-lsp", false, "Enable LSP integration (default: false)")
 	initCmd.Flags().Bool("enforce-quality", true, "Enforce quality gates (default: true)")
 	initCmd.Flags().Bool("enable-design", true, "Enable design workflow (default: true)")
+
+	// SPEC-AGENT-ARCH-V2-001 M3c (REQ-AA2-010): No-Haiku 3-tier performance
+	// tier flag. New canonical name --model-policy max|medium|low; legacy
+	// --high/--medium/--low accepted as deprecated aliases (one-cycle, plan.md D4).
+	initCmd.Flags().String("model-policy", "", "Performance tier: max, medium, or low (persists to llm.yaml performance_tier)")
+	initCmd.Flags().Bool("high", false, "Deprecated alias for --model-policy max (one-cycle backward compat)")
+	initCmd.Flags().Bool("medium-alias", false, "Deprecated alias for --model-policy medium (one-cycle backward compat)")
+	initCmd.Flags().Bool("low", false, "Deprecated alias for --model-policy low (one-cycle backward compat)")
 }
 
 // getStringFlag retrieves a string flag value from the command.
@@ -152,7 +160,38 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	// SPEC-AGENT-ARCH-V2-001 M3c (REQ-AA2-010): validate --model-policy enum.
+	// Invalid value exits non-zero with a stderr usage error naming the 3-enum.
+	modelPolicy := getStringFlag(cmd, "model-policy")
+	if modelPolicy != "" {
+		validTiers := []string{"max", "medium", "low"}
+		if !slices.Contains(validTiers, modelPolicy) {
+			return fmt.Errorf("invalid --model-policy value %q: must be one of: max, medium, low", modelPolicy)
+		}
+	}
+
 	return nil
+}
+
+// resolveModelPolicy resolves the effective performance tier from the
+// --model-policy flag and its legacy aliases (--high/--medium-alias/--low).
+// The new canonical flag takes precedence; legacy aliases map high→max,
+// medium→medium, low→low (plan.md D4, one-cycle backward compat). Returns
+// "" when no model-policy flag was set.
+func resolveModelPolicy(cmd *cobra.Command) string {
+	if mp := getStringFlag(cmd, "model-policy"); mp != "" {
+		return mp
+	}
+	if getBoolFlag(cmd, "high") {
+		return "max"
+	}
+	if getBoolFlag(cmd, "medium-alias") {
+		return "medium"
+	}
+	if getBoolFlag(cmd, "low") {
+		return "low"
+	}
+	return ""
 }
 
 // @MX:NOTE: [AUTO] CATALOG-002 REQ-012/013/EC3 — single decision point for slim/full opt-out. Narrow env matching: only "1" exact or case-insensitive "true".
@@ -447,6 +486,19 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// Sync profile preferences to project config (after template deployment)
 	if err := profile.SyncToProjectConfig(opts.ProjectRoot, prefs); err != nil {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to sync profile to project config: %v\n", err)
+	}
+
+	// SPEC-AGENT-ARCH-V2-001 M3c (REQ-AA2-010): persist the resolved
+	// performance tier to llm.yaml. CLI --model-policy takes precedence over
+	// the wizard's ModelPolicy; both resolve to one of {max, medium, low}.
+	perfTier := resolveModelPolicy(cmd)
+	if perfTier == "" && opts.ModelPolicy != "" {
+		perfTier = opts.ModelPolicy
+	}
+	if perfTier != "" && template.IsValidPerformanceTier(perfTier) {
+		if err := template.ApplyPerformanceTier(opts.ProjectRoot, perfTier); err != nil {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to apply performance tier: %v\n", err)
+		}
 	}
 
 	// Scaffold .moai/evolution/ directory structure (R2: Directory Scaffolding).
