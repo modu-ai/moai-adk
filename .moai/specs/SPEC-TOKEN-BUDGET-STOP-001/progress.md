@@ -84,7 +84,7 @@ m1_to_mN_commit_strategy: 2 commits (M1 Go + frontmatter draft->in-progress; M2 
 
 ```yaml
 sync_complete_at: 2026-07-09
-sync_commit_sha: <backfill post-push via follow-up chore commit>
+sync_commit_sha: 1b116e939f
 sync_status: audit-ready
 epic: Token-Economy (D 4/4 → 100% complete; A=ACCOUNTING + B=ROUTING + C=VERIFY-DIET + D=this)
 ac_total: 9/9 MUST-PASS PASS
