@@ -21,6 +21,8 @@ tags: "advisor-rung, escalation, moai-fix, moai-loop, glm-carve-out, cg-leader-r
 
 ## Epic Context
 
+> **SUPERSEDED by SPEC-AGENT-ARCH-V2-001** — concerns absorbed: the super-advisor agent (REQ-AA2-001) promotes this SPEC's per-spawn `Agent(general-purpose, model:opus)` concept to a named catalog agent — Opus injection at max/medium tiers + Sonnet xhigh at low tier; `effort: xhigh` FIXED in frontmatter; read-only tool whitelist; on-demand across all phases (E1-E4 escalation triggers); non-binding prescription (binding PASS/FAIL stays auditor-owned).
+
 **Epic**: Workflow-Reflex (6-SPEC epic derived from the 3-lens workflow audit: model-tier routing / Loop Engineering / Harness Engineering). This SPEC is **4 of 6**.
 
 - **Dependency notes**: **Depends on SPEC-MODEL-ROUTING-WIRE-001 (2 of 6)** — the per-spawn model/effort runtime-arg doctrine and the `moai route` mechanical value surface must land first; the advisor spawn rides that exact channel. Independent of SPEC 1 (HARNESS-RATCHET-REWIRE) and SPEC 3 (LOOP-VERDICT-CONTRACT), though SPEC 3 shares the loop.md edit surface (see Constraints #4).

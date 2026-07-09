@@ -238,7 +238,7 @@ The MoAI agent catalog consists of exactly **8 retained agents** (7 MoAI-custom 
     bug does NOT apply. Speed-critical agents should remain on `haiku` for cost and latency.
 ```
 
-Line 47 is the specific haiku-exception claim. M3 removes it (No-Haiku renders the exception obsolete); manager-docs and manager-git move to `model: sonnet` with `effort: low` (manager-git) and `effort: medium` (manager-docs at max/medium tier). The § Effort Calibration Matrix (currently in model-policy.md) is superseded by the §2-C table from the SSOT.
+Line 47 is the specific haiku-exception prose. **NOTE (plan-audit iter-2 D2 reframe):** this prose is STALE relative to the live tree — all 7 MoAI-custom agent files (`manager-docs` and `manager-git` included) ALREADY declare `model: inherit` (live-verified 2026-07-09: `grep -lE '^model:\s*haiku' .claude/agents/moai/*.md` → 0 matches). M3 therefore removes the STALE PROSE from model-policy.md (REQ-AA2-014 § Inherit-by-Default haiku-exception removal), NOT live haiku frontmatter — there is no live haiku frontmatter to clean up; the only live haiku references are in config (`claude_models` / `workflow_agents` / `role_profiles` / routing matrices) + the Go closed-set map, which M3 + HaikuResidualRule (REQ-AA2-012) handle. The § Effort Calibration Matrix (currently in model-policy.md) is superseded by the §2-B table from the SSOT (per SSOT §06 M4 verbatim: "Effort Calibration Matrix를 §2-B 표로 대체"; corrected in plan-audit iter-2 — the initial draft cited §2-C, but the SSOT says §2-B).
 
 ### §E.2 Baseline-refill breaker note (lines 53-55)
 
@@ -383,7 +383,10 @@ The GAP is recorded as CONSTRAINT #4 in spec.md and surfaced in plan.md §B Know
 
 | Line | Profile | Current model | M3 substitution |
 |------|---------|---------------|-----------------|
+| 79 | `investigation` (Competing hypothesis debugging) | `haiku` | `sonnet` |
 | 131 | `researcher` | `haiku` | `sonnet` |
+
+(2 entries — added in plan-audit iter-2 D3: line 79 `investigation` was missing from the initial enumeration; live `grep -nE 'model:\s*haiku' workflow.yaml` returns 6 total matches across §I.1 + §I.2 + §I.3.)
 
 Other role_profiles already non-haiku (verified):
 - `analyst`: sonnet (OK)

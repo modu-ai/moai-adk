@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-ARCH-V2-001
 title: "MoAI Agent Architecture v2 — Design"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-07-09
 updated: 2026-07-09
@@ -305,7 +305,7 @@ The matrix below is the source of truth for `workflow.yaml model_routing_profile
 
 ### §E.3 Doctrine layer
 
-- **`model-policy.md`** — § Model Policy Tiers replaced by §2-B agent×tier matrix; § Inherit-by-Default haiku-exception prose REMOVED (No-Haiku renders the exception obsolete — manager-docs and manager-git move from `model: haiku` to `model: sonnet` with `effort: low`); § Effort Calibration Matrix superseded by §2-C table.
+- **`model-policy.md`** — § Model Policy Tiers replaced by §2-B agent×tier matrix; § Inherit-by-Default haiku-exception prose REMOVED (No-Haiku renders the exception obsolete — manager-docs and manager-git move from `model: haiku` to `model: sonnet` with `effort: low`); § Effort Calibration Matrix superseded by §2-B table (per SSOT §06 M4 verbatim: "Effort Calibration Matrix를 §2-B 표로 대체"). fable enum · v2.1.196 모델 우선순위 · v2.1.198 Explore 상속 reflected in the model doctrine per SSOT §06 M4 sub-item (1).
 - **`agent-authoring.md`** — updated to reference the 10-agent catalog (was 7) and the super-advisor / manager-design patterns.
 - **`agent-patterns.md`** — updated with the 4-loop mapping (orchestrator 4-Loop mechanism → catalog) and the 4 explicitly rejected alternatives (전면 동적화 / auditor 통합 / 정적 핀 / Time-루프 에이전트) per §06 M4.
 
@@ -352,3 +352,4 @@ The matrix below is the source of truth for `workflow.yaml model_routing_profile
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-09 | manager-spec | Initial design artifact. v2 architecture reproduced verbatim from `.moai/reports/agent-architecture-redesign-v2-20260709.html` (§01-§08). 5 sections: §A Target topology + catalog verdict, §B super-advisor design, §C manager-design D1-D5 + H1-H9 verbatim + DesignSync tool contract, §D No-Haiku 3-tier policy (2-A through 2-D), §E Wiring (config + Go + doctrine layers). |
+| 0.2.0 | 2026-07-09 | manager-spec | plan-audit iter-2 revision. §E.3: Effort Calibration Matrix target aligned to SSOT §06 M4 verbatim (§2-C → §2-B). fable enum · v2.1.196 · v2.1.198 doctrine sub-item added per SSOT §06 M4 sub-item (1). |

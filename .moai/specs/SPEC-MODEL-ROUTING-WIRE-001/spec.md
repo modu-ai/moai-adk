@@ -21,6 +21,8 @@ tags: "model-routing, tier-phase-matrix, moai-route, spawn-wiring, model-policy,
 
 ## Epic Context
 
+> **SUPERSEDED by SPEC-AGENT-ARCH-V2-001** — concerns absorbed: the No-Haiku 3-tier policy (REQ-AA2-008..013) FLIPS this SPEC's haiku-inherit direction (haiku eliminated entirely, not inherited) + absorbs its `RouteModelFor` accessor extension (now 3-arg `RouteModelFor(specTier, phase, perfTier)`) + its pre-spawn consultation (now routed through the super-advisor at E2 architecture-decision escalation).
+
 **Epic**: Workflow-Reflex (6-SPEC epic derived from the 3-lens workflow audit: model-tier routing / Loop Engineering / Harness Engineering). This SPEC is **2 of 6**.
 
 - **Dependency notes**: SPEC 1 (SPEC-HARNESS-RATCHET-REWIRE-001) and this SPEC are independent of each other. SPEC 3 (SPEC-LOOP-VERDICT-CONTRACT-001) is independent. **Downstream SPEC-ADVISOR-RUNG-001 depends on THIS SPEC** — the `moai route` mechanical value surface and the pre-spawn consultation instruction are its prerequisites.

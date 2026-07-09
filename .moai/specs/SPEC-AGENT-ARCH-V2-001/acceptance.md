@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-ARCH-V2-001
 title: "MoAI Agent Architecture v2 — Acceptance Criteria"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-07-09
 updated: 2026-07-09
@@ -25,24 +25,31 @@ tags: "agent-arch, super-advisor, manager-design, no-haiku, 3-tier, claude-desig
 
 **Given** M1 has landed
 **When** the verifier runs `ls .claude/agents/moai/super-advisor.md internal/template/templates/.claude/agents/moai/super-advisor.md`
-**Then** both paths are files (exit 0) AND the frontmatter parses with `name: super-advisor`, `model: inherit`, `effort: xhigh`, `permissionMode: plan`, and `description:` contains the literal `NOT for:`.
+**Then** both paths are files (exit 0) AND the frontmatter parses with `name: super-advisor`, `model: inherit`, `effort: xhigh`, `permissionMode: plan`, and `description:` contains the literal `NOT for:` AND the `tools:` whitelist is read-only (contains `Read, Grep, Glob, Bash, WebFetch, Skill` per design.md §B.2 / SSOT §05) AND excludes `Write`/`Edit`/`NotebookEdit` (REQ-AA2-001c HARD read-only constraint; §07 risk 4 mitigation).
 
 Verification:
 ```bash
 ls .claude/agents/moai/super-advisor.md internal/template/templates/.claude/agents/moai/super-advisor.md
 grep -E '^(name|model|effort|permissionMode):' .claude/agents/moai/super-advisor.md
 grep -c 'NOT for:' .claude/agents/moai/super-advisor.md   # ≥ 1
+# Read-only tools whitelist verification (REQ-AA2-001c):
+grep -E '^tools:' .claude/agents/moai/super-advisor.md     # tools: line exists
+grep -E '^tools:' .claude/agents/moai/super-advisor.md | grep -E 'Write|Edit|NotebookEdit'   # 0 (no write tools)
+grep -E '^tools:' .claude/agents/moai/super-advisor.md | grep -cE 'Read.*Grep.*Glob.*Bash.*WebFetch.*Skill'   # ≥ 1 (read-only set present)
+# Mirror the same checks on the template copy
+grep -E '^tools:' internal/template/templates/.claude/agents/moai/super-advisor.md | grep -E 'Write|Edit|NotebookEdit'   # 0
 ```
 
 ### AC-AA2-002 — CLAUDE.md §4 ceiling 8 → 10 (MUST-PASS)
 
 **Given** M1 has landed
-**When** the verifier runs `grep -c "10 retained agents" CLAUDE.md internal/template/templates/CLAUDE.md`
-**Then** both return ≥ 1 AND the Retained Agents table contains rows for `super-advisor` AND `manager-design` AND the Selection Decision Tree contains entries 10 (super-advisor) and 11 (manager-design).
+**When** the verifier runs `grep -c "10 retained agents" CLAUDE.md internal/template/templates/CLAUDE.md` AND `grep -c "8 retained agents" CLAUDE.md internal/template/templates/CLAUDE.md`
+**Then** the "10 retained agents" count is ≥ 1 in both (live + template) AND the "8 retained agents" count is 0 in both (the ceiling flip is COMPLETE — 8→10 replacement, NOT additive; research.md §D.2 confirmed "8 retained agents" occurs at CLAUDE.md L79 + L112, both must flip) AND the Retained Agents table contains rows for `super-advisor` AND `manager-design` AND the Selection Decision Tree contains entries 10 (super-advisor) and 11 (manager-design).
 
 Verification:
 ```bash
-grep -c "10 retained agents" CLAUDE.md internal/template/templates/CLAUDE.md
+grep -c "10 retained agents" CLAUDE.md internal/template/templates/CLAUDE.md   # ≥ 1 each
+grep -c "8 retained agents" CLAUDE.md internal/template/templates/CLAUDE.md    # 0 each (ceiling flip COMPLETE)
 grep -E '^\| `super-advisor`' CLAUDE.md
 grep -E '^\| `manager-design`' CLAUDE.md
 grep -E '^1[01]\. ' CLAUDE.md   # entries 10 + 11 in the Selection Decision Tree
@@ -132,7 +139,9 @@ go test ./internal/config/... -run TestRouteModelFor   # 3-arg test PASSes
 Verification:
 ```bash
 grep -nE 'model_routing_profiles:' .moai/config/sections/workflow.yaml
-grep -cE '^(max|medium|low):' <(awk '/^model_routing_profiles:/,/^[a-z]/' .moai/config/sections/workflow.yaml)   # 3
+# max/medium/low are indented sub-keys under model_routing_profiles: — allow optional 4-space indent
+# (aligned with the When-clause grep above; the old flat-indent grep was wrong per plan-audit D6)
+grep -cE '^(    )?(max|medium|low):' <(awk '/^model_routing_profiles:/,/^[a-z]/' .moai/config/sections/workflow.yaml)   # 3
 go test ./internal/config/... -run TestRouteModelFor_3x12Matrix -v
 ```
 
@@ -164,13 +173,38 @@ grep -c 'haiku' .moai/config/sections/llm.yaml   # 0
 ### AC-AA2-012 — HaikuResidualRule lint gate (MUST-PASS, HARD)
 
 **Given** M3 has landed
-**When** the verifier runs `grep -rn 'haiku' .claude/agents/moai/ .moai/config/sections/{llm,workflow}.yaml .claude/rules/moai/ internal/config/model_routing.go internal/spec/` (excluding `_test.go` fixtures and `model-policy.md` historical references clearly marked as legacy)
-**Then** the count is 0 (HARD success metric per §08 row 1) AND the `HaikuResidualRule` is registered in `internal/spec/lint.go` AND is NOT skip-able via `lint.skip`.
+**When** the verifier runs the NARROWED haiku-residual grep scoped to the four REQ-AA2-012-enumerated surfaces only — (1) agent frontmatter, (2) `claude_models` block in llm.yaml, (3) `model_routing_profiles`/`workflow_agents`/`role_profiles` in workflow.yaml, (4) `validRoutingModels` Go map in model_routing.go — with the four explicit exemption surfaces carved out (see Verification below)
+**Then** the count is 0 across ALL four scoped surfaces (HARD success metric per §08 row 1; see spec.md Constraint #3 exemption enumeration) AND the `HaikuResidualRule` is registered in `internal/spec/lint.go` AND is NOT skip-able via `lint.skip`.
+
+> **Exemption surfaces (carry "haiku" but are NOT violations)** — per spec.md Constraint #3 + REQ-AA2-012 scope clause:
+> - **(X1)** `_test.go` fixtures — test fixtures may reference haiku for regression-test purposes.
+> - **(X2)** `glm.models.haiku` in llm.yaml (the `glm:` block) — Out of Scope per spec.md "Out of Scope — CG mode / GLM model tables"; the grep below scopes to the `claude_models:` block ONLY.
+> - **(X3)** `model-policy.md` Model Aliases definition (`inherit|opus|sonnet|haiku` closed-set + agent-schema rule line 135) — the alias remains lexically valid by design (research.md §E.1); model-policy.md is NOT in REQ-AA2-012's enumerated surfaces; its haiku-exception PROSE removal is verified by AC-AA2-014, not here.
+> - **(X4)** `internal/spec/` HaikuResidualRule own source file — the rule references "haiku" to detect it; internal/spec/ is NOT in REQ-AA2-012's enumerated surfaces (the rule LIVES there but CHECKS surfaces 1-4).
 
 Verification:
 ```bash
-grep -rn 'haiku' .claude/agents/moai/ .moai/config/sections/llm.yaml .moai/config/sections/workflow.yaml internal/config/model_routing.go 2>&1 | grep -v _test | grep -v '#.*legacy'
+# Surface 1: agent frontmatter (live + template) — exclude _test
+grep -rn 'haiku' .claude/agents/moai/ internal/template/templates/.claude/agents/moai/ 2>&1 | grep -v _test
 # Expected: 0 lines (HARD)
+
+# Surface 2: claude_models block in llm.yaml — scoped via awk state-machine (NOT glm.models block; X2 exempt).
+# The awk state-machine captures ONLY the claude_models sub-keys (high/medium/low), excluding the glm: sibling block.
+# Pre-M3 this returns 1 (low: haiku); post-M3 (REQ-AA2-011 flips low→sonnet) it returns 0.
+awk '/^    claude_models:/{f=1;next} /^    [a-z_]/{f=0} f' .moai/config/sections/llm.yaml | grep -c 'haiku'
+# Expected: 0 (post-M3)
+awk '/^    claude_models:/{f=1;next} /^    [a-z_]/{f=0} f' internal/template/templates/.moai/config/sections/llm.yaml | grep -c 'haiku'
+# Expected: 0 (post-M3)
+
+# Surface 3: workflow.yaml routing matrices (model_routing_profiles + workflow_agents + role_profiles)
+grep -n 'haiku' .moai/config/sections/workflow.yaml internal/template/templates/.moai/config/sections/workflow.yaml
+# Expected: 0 lines (HARD)
+
+# Surface 4: validRoutingModels Go map — exclude _test (X1 exempt)
+grep -n '"haiku"' internal/config/model_routing.go | grep -v _test
+# Expected: 0 lines (HARD; "haiku": true removed from validRoutingModels per REQ-AA2-012)
+
+# HaikuResidualRule registration + non-skip-able
 grep -c 'HaikuResidualRule' internal/spec/lint.go   # ≥ 1 (registered)
 grep -A 5 'HaikuResidualRule' internal/spec/lint.go | grep -i 'skip\|lint.skip'   # NOT skip-able
 ```
@@ -219,14 +253,19 @@ make build && go build ./...   # exit 0
 ### AC-AA2-016 — haiku-residual-0 HARD success metric closure (MUST-PASS, HARD)
 
 **Given** M3 has landed AND the SPEC is approaching sync-phase close
-**When** the verifier runs the AC-AA2-012 grep (the comprehensive haiku-residual scan)
-**Then** the count is 0 (co-equal closure gate with AC-AA2-012) AND the sync-auditor verdict records `haiku_residual: 0` as a MUST-PASS dimension.
+**When** the verifier re-runs the NARROWED AC-AA2-012 grep (the four-surface scoped scan with the four exemption surfaces carved out — see AC-AA2-012 verification block)
+**Then** the count is 0 across ALL four scoped surfaces (co-equal closure gate with AC-AA2-012; see spec.md Constraint #3 exemption enumeration) AND the sync-auditor verdict records `haiku_residual: 0` as a MUST-PASS dimension.
 
 Verification:
 ```bash
-# Re-run AC-AA2-012 verification at sync-phase close
-grep -rn 'haiku' .claude/agents/moai/ .moai/config/sections/ internal/config/model_routing.go 2>&1 | grep -v _test | grep -v '#.*legacy' | wc -l
-# Expected: 0
+# Re-run the NARROWED AC-AA2-012 four-surface verification at sync-phase close.
+# See AC-AA2-012 verification block for the exact 4-surface grep commands.
+# All four scoped surfaces MUST return 0; the four exemption surfaces (X1-X4) are carved out.
+
+# Surface 1 (agent frontmatter):     grep -rn 'haiku' .claude/agents/moai/ internal/template/templates/.claude/agents/moai/ | grep -v _test  → 0
+# Surface 2 (claude_models block):    awk '/^    claude_models:/,/^[a-z]/' llm.yaml | grep -c haiku  → 0  (both live + template)
+# Surface 3 (workflow routing):       grep -n haiku workflow.yaml  → 0  (both live + template)
+# Surface 4 (validRoutingModels map): grep -n '"haiku"' model_routing.go | grep -v _test  → 0
 ```
 
 ### AC-AA2-017 — supersede flips applied (MUST-PASS, plan-phase)
@@ -306,7 +345,7 @@ The SPEC is `completed` when ALL of the following hold:
 
 - **DesignSync MCP unavailable at M2 run-phase**: per Constraint #4 + B11, M2 authors the agent file + workflow skill against the §04 documented contract; D2-D5 live execution is gated on tool registration. The agent file + skill are valid deliverables even without the tool registered.
 - **moai init alias collision**: if a user has an existing `--high` script, the alias path emits a stderr warning but does not break (per D4).
-- **HaikuResidualRule false-positive on `_test.go` fixtures**: the rule MUST scope its grep to exclude `_test.go` (test fixtures may reference haiku for regression-test purposes) AND exclude clearly-marked historical/legacy prose references in `model-policy.md`.
+- **HaikuResidualRule false-positive on `_test.go` fixtures**: the rule MUST scope its grep to exclude the four exemption surfaces per Constraint #3 — (X1) `_test.go` fixtures (test fixtures may reference haiku for regression-test purposes); (X2) `glm.models.haiku` in llm.yaml `glm:` block (Out of Scope per CG mode); (X3) `model-policy.md` Model Aliases definition (closed-set `inherit|opus|sonnet|haiku` — alias stays lexically valid by design per research.md §E.1; haiku-exception PROSE removal is M4/AC-AA2-014); (X4) the HaikuResidualRule's own source file in `internal/spec/` (the rule references "haiku" to detect it). Without these exemptions the closure gate (AC-AA2-012 / AC-AA2-016) is mechanically unsatisfiable — it would grep surfaces the SPEC itself exempts.
 
 ## §D.7 Quality gate criteria
 

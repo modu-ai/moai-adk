@@ -45,9 +45,12 @@ plan_era: V3R6
 plan_lifecycle: spec-anchored
 plan_tier: L
 plan_open_decisions:
-  - D1: legacy single `model_routing` key kept as `medium` profile alias, OR removed (REQ-AA2-009 detail)
-  - D2: super-advisor tool whitelist — `WebFetch` retained or moved to skills layer (REQ-AA2-001 detail)
-  - D3: `HaikuResidualRule` severity — Warning (lint.skip-able) vs Error (HARD gate); spec binds HARD (REQ-AA2-012)
+  - plan.md §D D2 (manager-design effort xhigh FIXED): RECOMMENDED = frontmatter `effort: xhigh` literal
+  - plan.md §D D3 (HaikuResidualRule scope): RECOMMENDED = HARD gate, NOT skip-able (REQ-AA2-012 binds)
+  - plan.md §D D4 (moai init flag migration): RECOMMENDED = accept `--model-policy max|medium|low` + deprecated `--high/medium/low` aliases (one cycle)
+  - plan.md §D D6 (legacy `model_routing` key disposition, added iter-2): RECOMMENDED = retain as `medium` profile alias for one backward-compat cycle
+  - super-advisor tool whitelist `WebFetch` (REQ-AA2-001 detail): RECOMMENDED = retain WebFetch in read-only whitelist (super-advisor may fetch external docs during consultation)
+  # Note (iter-2 D4 numbering-unification): open-decision identifiers here now align to plan.md §D D-numbering. The legacy local D1/D2/D3 labels that previously collided with plan.md §D (D1=legacy key, D2=WebFetch, D3=severity) are retired — their content is folded into the plan.md §D D2/D3/D6 references above.
 plan_known_gaps:
   - DesignSync MCP not registered in .mcp.json at plan-phase (research.md §H) — does not block plan-phase close; M2 run-phase verifies
 plan_phase_evidence_path: .moai/specs/SPEC-AGENT-ARCH-V2-001/

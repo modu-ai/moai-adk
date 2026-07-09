@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-ARCH-V2-001
 title: "MoAI Agent Architecture v2 — Implementation Plan"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-07-09
 updated: 2026-07-09
@@ -50,7 +50,7 @@ Template mirrors verified present (2026-07-09): CLAUDE.md, agent files, spec-wor
 - **M1 — super-advisor agent file (P-High)**: author `.claude/agents/moai/super-advisor.md` (+ template mirror) with `model: inherit` / `effort: xhigh` FIXED / read-only tools / `permissionMode: plan` / `NOT for:` mutual-exclusion vs auditors; flip CLAUDE.md §4 ceiling 8→10 (live + template); embed E1-E4 escalation doctrine in `agent-common-protocol.md` § Error Recovery Pattern.
 - **M2 — manager-design agent file + design phase (P-High)**: author `.claude/agents/moai/manager-design.md` (+ template mirror) with the §04 frontmatter verbatim + H1-H9 contract embedded VERBATIM in body; author `.claude/skills/moai/workflows/design.md` with D1-D5 pipeline; add `plan → design → run` conditional route to `spec-workflow.md` (UI-surfaced SPECs only); annotate `role_profiles.designer` + pencil MCP as absorbed.
 - **M3 — No-Haiku 3-tier token policy (Go code, P-High)**: extend `RouteModelFor` 2-arg → 3-arg in `internal/config/model_routing.go`; add `model_routing_profiles.{max,medium,low}` (3 × 12-cell matrices per §2-D) to workflow.yaml + template; add `--model-policy max|medium|low` flag to `moai init`; flip `llm.yaml claude_models.low` haiku→sonnet; add `HaikuResidualRule` lint (HARD gate); substitute haiku→sonnet across `workflow_agents`, `role_profiles`, doctrine files.
-- **M4 — doctrine refresh (P-Med)**: refresh `model-policy.md` (§2-B/§2-C supersede § Model Policy Tiers / § Effort Calibration Matrix; § Inherit-by-Default haiku-exception removed), `agent-authoring.md` (10-agent catalog + new patterns), `agent-patterns.md` (4-loop mapping + 4 rejected alternatives per §06 M4).
+- **M4 — doctrine refresh (P-Med)**: refresh `model-policy.md` (§2-B supersede § Model Policy Tiers / § Effort Calibration Matrix per SSOT §06 M4 verbatim; fable enum · v2.1.196 · v2.1.198 reflected; § Inherit-by-Default haiku-exception removed), `agent-authoring.md` (10-agent catalog + new patterns), `agent-patterns.md` (4-loop mapping + 4 rejected alternatives per §06 M4).
 
 Cross-cutting: REQ-AA2-015 (template-first) applies to M1-M4; REQ-AA2-016 (haiku-residual-0 HARD success metric) is the M3 closure gate; REQ-AA2-017 (supersede 2 targets) is plan-phase (this SPEC's own authoring scope).
 
@@ -74,7 +74,7 @@ Cross-cutting: REQ-AA2-015 (template-first) applies to M1-M4; REQ-AA2-016 (haiku
 | `CLAUDE.md §4` Retained Agents table (8 agents) | EXTEND (ceiling 8→10; add super-advisor + manager-design rows + Selection Decision Tree entries 10/11) |
 | `.claude/rules/moai/core/agent-common-protocol.md` § Error Recovery | EXTEND (embed E1-E4 escalation doctrine + cross-reference super-advisor) |
 | `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline | EXTEND (add plan→design→run conditional route for UI-surfaced SPECs) |
-| `.claude/rules/moai/development/model-policy.md` | EXTEND (§2-B/§2-C supersede; § Inherit-by-Default haiku-exception prose removed) |
+| `.claude/rules/moai/development/model-policy.md` | EXTEND (§2-B supersede per SSOT §06 M4 verbatim — Effort Calibration Matrix를 §2-B 표로 대체; fable enum · v2.1.196 · v2.1.198 doctrine reflected; § Inherit-by-Default haiku-exception prose removed) |
 | `.claude/rules/moai/development/agent-authoring.md` | EXTEND (10-agent catalog + super-advisor/manager-design patterns) |
 | `.claude/rules/moai/workflow/team-protocol.md` + `team-pattern-cookbook.md` | EXTEND (researcher haiku→sonnet; designer role_profile absorbed-by annotation) |
 | `internal/spec/lint.go` + new lint rule file | EXTEND (add HaikuResidualRule — HARD gate) |
@@ -128,6 +128,8 @@ Constraints: see spec.md §Constraints (Design SSOT authority; `[1m]` workaround
 
 **D5 — DesignSync MCP server registration (M2 run-phase precondition).** The `.mcp.json` does NOT register DesignSync at plan-phase. RECOMMENDED: M2 run-phase begins by verifying DesignSync availability; if absent, the agent file + workflow skill are still authored (they describe the contract per §04), but D2-D5 live execution is gated on the tool. The user registers DesignSync separately (it requires Claude Code v2.1.181+ and a Pro+ Claude Design account per §07 Risk HIGH).
 
+**D6 — legacy `model_routing` key disposition (M3, added plan-audit iter-2 D4).** The legacy single `model_routing:` block (workflow.yaml, S/M/L × plan/run/sync/mx = 12 cells) is REPLACED by `model_routing_profiles.{max,medium,low}` (3 × 12 cells) per REQ-AA2-009. Open decision: is the flat `model_routing:` key RETAINED as a backward-compat alias or REMOVED? RECOMMENDED: RETAIN the legacy `model_routing:` block as a `medium` profile alias for one backward-compat cycle (with a deprecation note in workflow.yaml), because `model_routing_profiles.medium` is the default performance tier and existing user configs reference the flat `model_routing:` key. This resolves the progress.md §E.1 open-decision that previously collided with this section's D-numbering (iter-2 D4 numbering-unification fix).
+
 ## §E Self-Verification (run-phase deliverables)
 
 Per manager-develop-prompt-template.md §E (Tier L full form), vci 5-section format each:
@@ -147,7 +149,7 @@ Per manager-develop-prompt-template.md §E (Tier L full form), vci 5-section for
 | M1 — super-advisor agent file + ceiling + escalation doctrine | super-advisor.md ×2 trees; CLAUDE.md §4 ceiling 8→10 ×2; agent-common-protocol.md E1-E4 doctrine | REQ-AA2-001, 002, 003 | AC-AA2-001..003 PASS; ceiling grep returns "10 retained agents"; super-advisor agent file exists with correct frontmatter |
 | M2 — manager-design agent file + design phase + role_profile absorption | manager-design.md ×2 trees with H1-H9 verbatim; design.md workflow skill; spec-workflow.md plan→design→run; role_profiles.designer + pencil MCP absorption annotation | REQ-AA2-004, 005, 006, 007 | AC-AA2-004..007 PASS; manager-design agent file exists; H1-H9 verbatim in body; design.md skill exists |
 | M3 — No-Haiku 3-tier token policy (Go code) | RouteModelFor 3-arg; model_routing_profiles.{max,medium,low} 3 matrices; moai init --model-policy; llm.yaml claude_models.low haiku→sonnet; HaikuResidualRule lint; workflow_agents + role_profiles haiku→sonnet | REQ-AA2-008..013, 016 | AC-AA2-008..013 PASS; haiku grep returns 0 (HARD SUCCESS METRIC); 3×12 golden tests PASS; moai init --model-policy enum validation PASS |
-| M4 — doctrine refresh | model-policy.md (§2-B/§2-C supersede; Inherit-by-Default haiku-exception removed); agent-authoring.md (10-agent catalog); agent-patterns.md (4-loop mapping + 4 rejected alternatives) | REQ-AA2-014 | AC-AA2-014 PASS; doctrine files refreshed ×2 trees |
+| M4 — doctrine refresh | model-policy.md (§2-B supersede per SSOT §06 M4 verbatim; fable enum · v2.1.196 · v2.1.198 reflected; Inherit-by-Default haiku-exception removed); agent-authoring.md (10-agent catalog); agent-patterns.md (4-loop mapping + 4 rejected alternatives) | REQ-AA2-014 | AC-AA2-014 PASS; doctrine files refreshed ×2 trees |
 | Cross-cutting | template-first application (M1-M4); supersede flips (plan-phase, already done in this SPEC's scope) | REQ-AA2-015, 017 | AC-AA2-015, 017 PASS; both supersede targets carry status: superseded + superseded_by |
 
 Dependency note: M1 and M2 are independent of each other and may execute in parallel (different surfaces). M3 blocks on neither but is the largest single milestone (Go signature extension + 3 matrices + lint rule). M4 blocks on M1 + M3 (doctrine reflects the new catalog + the No-Haiku policy). The whole SPEC sequences post Implementation Kickoff Approval (Constraint #9).
