@@ -69,7 +69,7 @@ conditions are also documented in
 **On trigger**: the orchestrator spawns `Agent(general-purpose)` with the super-advisor
 role profile (Opus + xhigh at max/medium; Sonnet + xhigh at low), receives a non-binding
 prescription, then either re-seeds the executor with the prescription or escalates to the
-user via `AskUserQuestion`. The prescription is **advisory** — the orchestrator remains the
+user via the orchestrator's question channel. The prescription is **advisory** — the orchestrator remains the
 decision owner and may override it with justification.
 
 ## GLM Carve-out + CG Leader-Review Absorption
