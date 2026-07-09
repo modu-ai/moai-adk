@@ -43,9 +43,9 @@ cycle_type: tdd
 mode: sub-agent (Mode 5, sequential)
 base: 280c9dd71 (race-absorbed — 2 parallel sessions landed scope-overlap-zero)
 commits:
-  M1: bcde87d24 feat(SPEC-OBSERVE-HYGIENE-001): M1 spec-audit log consumer (REQ-OBH-001)
-  M2: 5c11080bb feat(SPEC-OBSERVE-HYGIENE-001): M2 telemetry pruning (REQ-OBH-002)
-  M3: <this commit> feat(SPEC-OBSERVE-HYGIENE-001): M3 decisions + annotations + template sync (REQ-OBH-003..006)
+  M1: 2a6238c63 feat(SPEC-OBSERVE-HYGIENE-001): M1 spec-audit log consumer (REQ-OBH-001)
+  M2: 507f72f2c feat(SPEC-OBSERVE-HYGIENE-001): M2 telemetry pruning (REQ-OBH-002)
+  M3: 85a2579ed feat(SPEC-OBSERVE-HYGIENE-001): M3 decisions + annotations + template sync (REQ-OBH-003..006)
 d3_decision: Promote (sync-gate go vet/go build → default-blocking; MOAI_SYNC_GATE_BLOCKING → opt-out)
 manager-develop: aborted mid-M3 (API 429 usage limit); orchestrator-direct M3 completion (user "이어서 계속 진행")
 ```
