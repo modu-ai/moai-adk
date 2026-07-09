@@ -313,7 +313,12 @@ Plan to Run:
     3. **Artifact-hash unchanged** since that verdict — no plan-phase artifact
        (spec.md / plan.md / acceptance.md / research.md / design.md) has been
        modified since the audit that produced the verdict (equivalently on
-       Route B: no plan-PR commit has landed since that verdict).
+       Route B: no plan-PR commit has landed since that verdict). Note: the
+       mechanical hash subject is the `ComputeHash` 4-file plan-artifact set
+       (spec.md / plan.md / acceptance.md / tasks.md — see § Report
+       Persistence); research.md / design.md changes are a conservative input
+       to the manual skip judgment, not part of the mechanical plan-artifact
+       hash.
     4. **Within 24h** — the verdict was produced no more than 24 hours ago.
   If ANY of the four fails, Phase 0.5 re-executes (the gate is never disabled by
   harness level; see Gate Entry Condition below). When the skip is taken, the
@@ -362,8 +367,14 @@ the implementation phase.
 
 ### Report Persistence
 
-Every gate call persists a record at `.moai/reports/plan-audit/<SPEC-ID>-<YYYY-MM-DD>.md`.
-Multiple calls on the same day append to the same file. Reports are local artifacts (gitignored).
+Two report streams coexist deliberately in `.moai/reports/plan-audit/`; they are distinct by design and mutually cross-referenced here and in `.claude/agents/moai/plan-auditor.md` § Output Format:
+
+- **plan-phase review stream** — `{SPEC-ID}-review-{N}.md`, iteration-based. Written by the plan-auditor during plan-phase adversarial review; iteration `N` follows the plan-auditor Retry Loop Contract (max 3). Consumed by the plan workflow's assembly/annotation cycle.
+- **run-gate stream** — `<SPEC-ID>-<YYYY-MM-DD>.md`, date-based. Written by the Phase 0.5 Plan Audit Gate (`internal/runtime/audit_report.go`). Every gate call persists a record here; multiple calls on the same day append to the same file. This date-file is the verdict **record surface** only — it is never the hash subject for skip-eligibility (see below).
+
+Skip-eligibility inputs (normative, matching the Go implementation): (a) the "most recent plan-auditor verdict" the run-gate consults is the plan-phase review stream's **final-iteration verdict**; (b) the artifact-hash check recomputes and compares the **plan-artifact hash** — `internal/runtime/audit_cache.go` `ComputeHash` hashes the SPEC directory's plan artifacts (spec.md / plan.md / acceptance.md / tasks.md) as whitespace-normalized SHA-256, with cache key = (specID, planArtifactHash); (c) the run-gate stream's date-file records the verdict but is not hashed.
+
+Reports in both streams are local artifacts (gitignored).
 
 ### Grace Window
 

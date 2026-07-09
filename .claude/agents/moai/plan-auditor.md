@@ -381,6 +381,8 @@ A D8 BLOCKING finding emitted (unresolved) here feeds MP-6: it forces `Verdict: 
 
 Write the audit report to `.moai/reports/plan-audit/{SPEC-ID}-review-{iteration}.md`.
 
+This report belongs to the **plan-phase review stream** (`{SPEC-ID}-review-{N}.md`, iteration-based) — deliberately distinct from the **run-gate stream** (`<SPEC-ID>-<YYYY-MM-DD>.md`, date-based) that the Phase 0.5 Plan Audit Gate writes into the same directory (see `.claude/rules/moai/workflow/spec-workflow.md` § Report Persistence for the two-stream contract). The review stream's final-iteration verdict is the input the run-gate consults for skip-eligibility; the run-gate's date-file is a verdict record surface only.
+
 ```
 # SPEC Review Report: {SPEC-ID}
 Iteration: {N}/3
