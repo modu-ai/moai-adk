@@ -154,6 +154,7 @@ Rules:
 - Lessons are additive: never overwrite a lesson, append corrections as updates
 - To supersede a lesson, add `[SUPERSEDED by #{new_lesson_number}]` prefix to the old entry
 - Session start: scan lessons for patterns matching current task domain
+- Repo-local lessons inbox (`.moai/lessons-inbox.jsonl`): tool failures and test failures append structured stubs (timestamp, event_key, summary, source) here as they occur. The orchestrator drains these stubs into auto-memory lesson entries as part of the Lessons Protocol, converting each stub's event_key + summary into a candidate lesson before human review. Drained stubs are marked (the drain-marking mechanism is an implementation detail)
 
 Auto-Capture Triggers:
 - When a fix/refactor commit completes, check if the change matches a known anti-pattern category

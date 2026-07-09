@@ -78,6 +78,14 @@ _<M1/M2/M3 evidence appended below as milestones complete>_
 - Tests: `go test -run "TestIsEligibleForPromotion|TestClassifyHarnessPatterns_ExcludesDegenerate|TestRunHarnessObserveStop_ProposeChain" ./internal/harness/ ./internal/cli/` → ok.
 - Pre-existing environmental note: 6 status/doctor golden tests (`TestStatus_*`, `TestDoctor_*`) fail in the worktree due to golden-snapshot/env mismatch — confirmed pre-existing on clean M1 state (git stash verified), NOT caused by SPEC changes. They test `moai status`/`moai doctor` rendering (no overlap with classify/propose/eligibility code).
 
+### M3 — lessons inbox + doctor + doctrine (PASS)
+
+- AC-HRR-008: failure handlers append structured stubs (ts/event_key/summary/source) to `.moai/lessons-inbox.jsonl` (D3: append-only JSONL, 0o600 perms). Both tool_failure and test_fail paths append; append-only semantics verified (3 stubs from 3 failures).
+- AC-HRR-009: moai-constitution.md § Lessons Protocol cross-references the inbox drain (live + template mirror, template-first per REQ-HRR-009/011). `grep -c lessons-inbox` → 1 in each.
+- AC-HRR-010: `moai harness doctor` emits dormancy warning when promotions ≥1 AND proposals dir absent; NOT emitted when proposals present or promotions absent.
+- Files: failure_observer.go (lessonsInboxStub + appendLessonsInboxStub + truncateSummary, wired into both recorders), doctor.go (checkPipelineDormancy + countPromotionLines), lessons_inbox_test.go (new), doctor_dormancy_test.go (new), moai-constitution.md (live + template mirror).
+- Tests: `go test -run "TestRecordToolFailureEvent_AppendsLessonsInbox|TestRecordTestFailEvent_AppendsLessonsInbox|TestLessonsInbox_AppendOnly|TestDoctor_Dormancy|TestDoctor_NoDormancy" ./internal/hook/ ./internal/cli/harness/` → ok.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — populated by manager-develop>_

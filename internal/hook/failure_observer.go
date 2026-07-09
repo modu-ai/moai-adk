@@ -17,8 +17,12 @@
 package hook
 
 import (
+	"encoding/json"
 	"log/slog"
+	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/harness"
 )
@@ -66,6 +70,11 @@ func recordToolFailureEvent(input *HookInput, category ErrorCategory) {
 			"error", err,
 		)
 	}
+
+	// REQ-HRR-006: append a structured lesson stub to the repo-local inbox so
+	// the orchestrator's Lessons Protocol can drain it into auto-memory.
+	eventKey := string(harness.EventTypeToolFailure) + ":" + tool + ":" + string(category)
+	appendLessonsInboxStub(root, eventKey, truncateSummary(input.Error, string(category)), "tool:"+tool)
 }
 
 // recordTestFailEvent records a test_fail:<package>: event to usage-log.jsonl
@@ -96,4 +105,67 @@ func recordTestFailEvent(input *HookInput, pkg string) {
 			"error", err,
 		)
 	}
+
+	// REQ-HRR-006: append a structured lesson stub for the test-failure path.
+	eventKey := string(harness.EventTypeTestFail) + ":" + pkg + ":"
+	appendLessonsInboxStub(root, eventKey, "test failure in package "+pkg, "test:"+pkg)
+}
+
+// lessonsInboxStub is the JSONL schema for .moai/lessons-inbox.jsonl entries
+// (REQ-HRR-006 / D3: append-only JSONL, minimum fields). The orchestrator's
+// Lessons Protocol drains these stubs into auto-memory lesson entries.
+type lessonsInboxStub struct {
+	Timestamp string `json:"timestamp"`
+	EventKey  string `json:"event_key"`
+	Summary   string `json:"summary"`
+	Source    string `json:"source"`
+}
+
+// appendLessonsInboxStub appends one structured stub to
+// .moai/lessons-inbox.jsonl (REQ-HRR-006). The file is append-only JSONL
+// (EC-4: concurrent Stop hooks tolerate interleaving; no read-modify-write).
+// Permissions 0o600 are consistent with sibling state files. Fail-open: errors
+// are logged and swallowed (a learning-loop write must never block the session).
+func appendLessonsInboxStub(root, eventKey, summary, source string) {
+	inboxPath := filepath.Join(root, ".moai", "lessons-inbox.jsonl")
+	stub := lessonsInboxStub{
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		EventKey:  eventKey,
+		Summary:   summary,
+		Source:    source,
+	}
+	data, err := json.Marshal(stub)
+	if err != nil {
+		slog.Warn("failure observer: marshal lessons-inbox stub", "error", err)
+		return
+	}
+	data = append(data, '\n')
+	// Auto-create parent directory (.moai/) if absent.
+	if dir := filepath.Dir(inboxPath); dir != "." && dir != "" {
+		_ = os.MkdirAll(dir, 0o755)
+	}
+	f, err := os.OpenFile(inboxPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		slog.Warn("failure observer: open lessons-inbox", "error", err)
+		return
+	}
+	defer func() { _ = f.Close() }()
+	if _, err := f.Write(data); err != nil {
+		slog.Warn("failure observer: write lessons-inbox", "error", err)
+	}
+}
+
+// truncateSummary produces a bounded human-readable failure summary for the
+// lessons-inbox stub. It prefers the error text (truncated to 200 chars on a
+// rune boundary) and falls back to the category token when the error is empty.
+func truncateSummary(errorText, fallback string) string {
+	errorText = strings.TrimSpace(errorText)
+	if errorText == "" {
+		return fallback
+	}
+	runes := []rune(errorText)
+	if len(runes) > 200 {
+		return string(runes[:200]) + "…"
+	}
+	return errorText
 }
