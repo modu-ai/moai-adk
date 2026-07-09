@@ -232,8 +232,54 @@ Cross-language note: the Korean rendering of the contrastive-negation headline (
 
 ---
 
+## Formula Dictionary — English
+
+Slot formulas for English marketing copy. Families already catalogued in `modules/english.md` are cross-referenced, never re-defined here: the aspirational-verb headline family ("Unleash your [X]", "Transform the way you [X]", "Supercharge [X]", "Empower your team to [X]", "Revolutionize [X]", "Reimagine your [X]") → ENC-1; the contrastive-negation headline ("No more [X]. Just [Y].", "It's not just [X] — it's [Y]") → ENC-2; the interchangeable-modifier trio ("Fast. Simple. Scalable.") → ENC-3; body-prose focal verbs ("leverage", "synergy") → the prose layer of `modules/english.md`. The entries below are net-new formula patterns.
+
+| ID | Formula pattern | Detection signal | Severity | Rewrite direction (example) |
+|----|-----------------|------------------|----------|------------------------------|
+| CR-EN-1 | Tech-base-as-benefit — "Powered by AI", "AI-powered [X]" as the lead claim | The technology base offered as the benefit itself, with no user-visible outcome attached | S2 | Name what the technology does, with a measure: "AI-powered analytics" → "Sorts [number] reviews a minute so you read only the outliers" |
+| CR-EN-2 | Futurity self-praise adjectives — "Next-generation [X]", "Cutting-edge [X]", "State-of-the-art [X]" | Futurity/novelty adjective directly modifying the product noun at a headline slot | S2 — escalates when two or more stack in one headline | State the concrete capability: "Next-generation deployment platform" → "Deploys on every merge, rolls back in one click" |
+| CR-EN-3 | Intersection formula — "Where [X] meets [Y]" | The meets-frame headline with two interchangeable abstract nouns | S1 at a headline or hero slot | Say what the combination actually does: "Where design meets automation" → "Design once — the layout rebuilds itself for every screen" |
+| CR-EN-4 | Future-declaration formula — "Built for the future of [X]", "The future of [X] is here" | Future-of frame carrying no present, checkable claim | S1 at a headline or hero slot | Make the claim present-tense and verifiable: "The future of invoicing is here" → "Invoices reconcile themselves the day they arrive" |
+| CR-EN-5 | Appositive tagline — "[X], simplified.", "[X], reimagined.", "[X], unleashed." | Noun + comma + past-participle tagline with an interchangeable product slot | S2 | Say what got simpler and by how much: "Expenses, simplified." → "Expense reports in [number] minutes, straight from your inbox" |
+| CR-EN-6 | Colon-payoff headline — "[Headline]: The [X] that finally [Y]" | Colon staging plus a "finally" payoff that adds no checkable content | S2 | Drop the staging; keep the claim: "Meet Flow: The tool that finally fixes meetings" → "Cuts your weekly meeting load by [number] hours" (the sentence-final/heading colon in Japanese copy is catalogued separately at japanese.md JA-11) |
+| CR-EN-7 | Unverifiable scale claim — "Trusted by thousands of [teams/customers]", "Loved by users worldwide" | Scale/trust claim with no number, name, or source | S2 | Use a checkable figure or placeholder: → "Trusted by [number] teams, including [named customer]" (narrative analogs: korean.md L-7, chinese.md CN-Q) |
+| CR-EN-8 | Superlative self-praise cluster — "Game-changing", "Best-in-class", "World-class" | Superlatives replacing evidence; convicts on density, not single use | S3 — density-gated | Replace with the comparison basis: "Best-in-class support" → "Median support reply under [number] minutes" |
+| CR-EN-9 | Polish-adverb cluster — "Seamlessly", "Effortlessly", "Intuitively" | Ease adverbs replacing evidence of ease; the same adverb can be routine in one industry's register and formulaic in another's | S3 — context-gated S2 via Stage 4 | Replace with a measurable ease claim: "Integrates seamlessly" → "Connects to [product] in one click — no setup steps" |
+
+---
+
+## Formula Dictionary — Japanese
+
+Entries in this dictionary are copy-slot formula instances of tells already catalogued in `modules/japanese.md`; the parent category is named per row, following the same parent-naming convention that module uses for its own copy layer. Structural tells stay owned by their catalogue entries and are cross-referenced, never re-defined: the noun-ending frequency gate → JA-10, the imported dash → JA-12, the bare formulaic promise endings 「〜を実現します」「〜を可能にします」 → JA-13, the brand-story arc → JA-14.
+
+| ID | Formula pattern | Detection signal | Severity | Parent | Rewrite direction (example) |
+|----|-----------------|------------------|----------|--------|------------------------------|
+| CR-JA-1 | コロン式見出し — 「[名詞]：[ベネフィット]」 ("業務効率化：チームのための新しいツール") | A heading colon splitting the headline into label + benefit — an imported heading shape | S1 on sight (inherits the parent's verdict) | JA-11 | Restructure natively without the colon: 「業務効率化：導入は簡単」 → 「導入は半日、翌週から定時で帰れます」 |
+| CR-JA-2 | 変革・格上げ約束公式 — 「あなたの[X]を変える」「[X]の常識を変える」「ワンランク上の[X]」 | Transformation/elevation promise with an interchangeable product slot and an abstract, ownerless benefit | S2 — allow one; flag when stacked or when the benefit stays abstract | JA-13 (formulaic-promise family) | Promise a concrete outcome: 「あなたの働き方を変えるツール」 → 「議事録の清書がなくなり、毎週2時間戻ってきます」 |
+| CR-JA-3 | カタカナ・バズワード群見出し — 「シームレスな[X]」「オールインワン[X]ソリューション」 | Loanword benefit-cluster at a headline slot where 和語/漢語 plus a concrete claim would carry more | S3 — context-gated S2 when two or more cluster in one headline | JA-09 (katakana overload, genre instance) | Replace the cluster with a concrete claim: 「シームレスな連携を実現」 → 「二つのアプリを自動でつなぎます。設定は3分です」 |
+| CR-JA-4 | 実績ぼかし公式 — 「多くの企業が導入」「数多くの実績」 | Adoption/scale claim with no number, name, or named case at a trust-signal slot | S2 | JA-06 (abstraction / no concrete detail) | Use a checkable figure or placeholder: 「多くの企業が導入しています」 → 「製造業を中心に[数]社が導入、継続率は[数]%です」 |
+
+---
+
+## Formula Dictionary — Chinese
+
+Entries in this dictionary are copy-slot formula instances of tells already catalogued in `modules/chinese.md`; the parent category is named per row. Structural tells stay owned by their catalogue entries and are cross-referenced, never re-defined: the negation-contrast headline → CN-L, the dash-contrast headline → CN-M, the slot-fill landing family (专为[X]打造的[Y] / 开启[X]之旅 / 解锁全新[Y]) → CN-N, the forced-elevation slogan close → CN-O, the brand-story skeleton → CN-P.
+
+| ID | Formula pattern | Detection signal | Severity | Parent | Rewrite direction (example) |
+|----|-----------------|------------------|----------|--------|------------------------------|
+| CR-ZH-1 | 重新定义公式 — 「重新定义[X]」 | The redefine-frame headline accepting any product noun, with no concrete claim | S2 — escalates to S1 when stacked with another slot formula in the same hero | CN-N (slot-fill landing family) | State the actual differentiator: 「重新定义团队协作」 → 「审批从三天缩到十分钟，进度一个页面全看到」 |
+| CR-ZH-2 | 赋能类黑话标题 — 「赋能[X]」「为[X]赋能」「构建[X]新生态」 | Image-less business jargon carried into a headline slot | S1 (inherits the parent's on-sight verdict) | CN-C (jargon / abstract nouns) | Say what it actually does: 「赋能中小企业增长」 → 「帮中小卖家把上架时间缩短一半」 |
+| CR-ZH-3 | 技术卖点公式 — 「AI驱动的[X]」「智能[X]新体验」 | The technology base offered as the benefit itself, with no user-visible outcome | S2 | CN-N family (tech-slot variant) | Name the capability with a number: 「AI驱动的客服平台」 → 「客服首次回复不超过30秒」 |
+| CR-ZH-4 | 时代宣言公式 — 「开启[X]新时代」「引领[X]新纪元」 | Era-declaration frame at a headline; grand significance with no checkable content | S2 at a headline slot; S1 at a closing slogan slot (there it matches CN-O) | CN-N (开启-family) + CN-D (forced elevation) | Close on the concrete next step: 「开启智能办公新时代」 → 「今天下午的报销单，十分钟批完」 |
+| CR-ZH-5 | 无数据规模宣称 — 「数千家企业的信赖之选」「众多用户的共同选择」 | Impressive-but-unnumbered scale claim — the mirror case of precise-but-unsourced numbers | S2 | CN-Q (fake specificity, mirror case) | Use a checkable count or placeholder: 「数千家企业的信赖之选」 → 「[数字]家企业在用，上季度续约率[数字]%」 |
+
+---
+
 ## Sources and Grounding
 
-- The review pipeline, the fix-proposal format, the report template, the repair-strategy playbook, and the Korean formula dictionary are adapted from the maintainer's own copy-QA pattern dictionaries and post-generation review guides (same authorship as this skill; direct reuse).
+- The review pipeline, the fix-proposal format, the report template, the repair-strategy playbook, and the Korean and English formula dictionaries are adapted from the maintainer's own copy-QA pattern dictionaries and post-generation review guides (same authorship as this skill; direct reuse).
+- The Japanese and Chinese dictionaries contain no independently asserted language claims: every CR-JA and CR-ZH entry is a copy-slot formula instance of a tell already catalogued and independently researched in `modules/japanese.md` or `modules/chinese.md`, with the parent category named in the entry's row. An entry that could not be parent-mapped would carry an explicit grounding note in this section instead; currently none is needed.
 - Dedup policy: any pattern already catalogued in a language module is cross-referenced by its category ID and never re-defined here. New entries are formula-level patterns the catalogues describe only generically, or do not carry.
 - Severity values follow the shared model in `SKILL.md`; the mapping rules from source confidence vocabularies are stated in the Severity Mapping section above.

@@ -77,6 +77,33 @@ Language-dependent parameters — length limits, ending-form conventions, script
 - **Exclamation (DCG-12)**: at most one per card set; prefer 마침표 or 물음표.
 - **Ending slide (DCG-10)**: the "도움이 되셨나요?" class closer is the formulaic reader-address to avoid.
 
+### English
+
+- **Cover economy (DCG-8)**: measured in words. Around 5-7 words is the ideal hook; keep covers under 12 words.
+- **Headline (DCG-1)**: 10 words or fewer, one benefit, outcome-first. Terse or verbless headlines are native English craft — do not import another language's fragment rules (see the partial-transfer notes in `modules/english.md`).
+- **Subheadline (DCG-2)**: 20 words or fewer. **Body (DCG-3)**: sentences of 20 words or fewer; paragraphs of 3 sentences or fewer. **CTA (DCG-4)**: verb-first, 7 words or fewer.
+- **Ending variation**: English has no sentence-ending morphology axis — the native lever is sentence-length variation and avoiding a uniform declarative rhythm (rhythm tells live in the `modules/english.md` prose layer).
+- **Numerals (DCG-11)**: numerals for data points and statistics.
+- **Exclamation (DCG-12)**: at most one per set; hype CTA labels are catalogued at english.md ENC-7.
+
+### Japanese
+
+- **Cover economy (DCG-8)**: measured in characters (文字). Around 13-15文字 is the classic short-headline economy; judge by the read-aloud rhythm (声に出して読む) rather than a hard cap.
+- **Headline (DCG-1)**: one benefit. 体言止め (the noun-ending close) is legitimate, prestigious craft — gate it by frequency per japanese.md JA-10, never by mere presence.
+- **Ending variation**: vary sentence endings; monotone です・ます runs are catalogued at JA-04 in `modules/japanese.md`.
+- **Punctuation**: no English-style heading colon (JA-11); no imported em-dash where native punctuation serves (JA-12).
+- **Numerals (DCG-11)**: half-width Arabic numerals (半角数字) for data.
+- **Exclamation (DCG-12)**: at most one per set.
+
+### Chinese
+
+- **Cover economy (DCG-8)**: measured in characters (字). Chinese packs roughly one morpheme per character, so covers run tighter — around 8-16字, judged by information density per character.
+- **Headline (DCG-1)**: one benefit. Parallel couplets (对偶/排比) are prized native craft — judge content-first versus template-first per the boundary analysis in `modules/chinese.md`, never by occurrence count.
+- **Dash use**: the full-width 破折号 (——) natively marks explanation or topic shift; the binary-contrast headline shape is catalogued at chinese.md CN-M.
+- **Ending slide (DCG-10)**: forced-elevation closers (让我们……共创 class) are catalogued at CN-O — end on a concrete next step instead.
+- **Numerals (DCG-11)**: Arabic numerals for data and statistics; avoid spelling data numbers in 汉字数字.
+- **Exclamation (DCG-12)**: at most one per set (！).
+
 ---
 
 ## Integration
@@ -91,4 +118,4 @@ Language-dependent parameters — length limits, ending-form conventions, script
 
 - The landing-page structure rules, the repair table, and the element checklist are adapted from the maintainer's own landing-copy rulebook (same authorship as this skill; direct reuse).
 - The Korean short-form card/slide rules are adapted from the maintainer's own Korean card-copy style guide, which draws on published research on detecting LLM-generated Korean text and on public AI-writing style guides.
-- Genre tells already catalogued in a language module are cross-referenced by ID and never re-defined here.
+- The English, Japanese, and Chinese adaptation blocks restate each language-dependent parameter in that language's own native measure (words for English; characters for Japanese and Chinese, each with its own budget and rationale). No Korean numeric limit is transferred verbatim; where a genre tell is already catalogued in a language module, the module ID is cross-referenced instead of re-defined.
