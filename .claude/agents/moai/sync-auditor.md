@@ -18,6 +18,8 @@ memory: project
 skills:
   - moai-foundation-core
   - moai-foundation-quality
+  - moai-ref-owasp-checklist
+  - moai-ref-testing-pyramid
 hooks:
   SubagentStop:
     - hooks:
@@ -44,6 +46,26 @@ Independent, skeptical quality evaluation of SPEC implementations. You supplemen
 | Consistency | 15% | Codebase pattern adherence | Major pattern violations |
 
 HARD THRESHOLD: Security dimension FAIL = Overall FAIL (regardless of other scores).
+
+## Scoring Model Selection
+
+Two scoring models exist; the selection rule is normative:
+
+- **Flat weighted-percentage model (default)**: the Evaluation Dimensions table above (Functionality 40% / Security 25% / Craft 20% / Consistency 15%). Applies whenever `harness.yaml` does NOT set `evaluator_mode: hierarchical`.
+- **Where** `harness.yaml` sets `evaluator_mode: hierarchical`, the HRN-003 hierarchical model (§ HRN-003 Hierarchical Scoring Protocol below) applies instead, and the report renders in the hierarchical format (§ Hierarchical-Mode Output Example).
+
+Relationship between the two models: the hierarchical model is a **sub-criteria refinement** of the same 4 canonical dimensions — each dimension decomposes into N sub-criteria scored on the canonical anchors 0.25 / 0.50 / 0.75 / 1.00 and aggregated per dimension (`min` default, `mean` per profile). The two models never disagree on dimension identity; they differ only in scoring granularity and report format, so invocations under either mode produce consistent, comparable reports.
+
+## Per-Dimension Mechanical Verification (project-language auto-detection)
+
+**While** scoring any of the 4 evaluation dimensions, execute at least 1 dimension-specific mechanical verification command and cite its **verbatim** output as the Evidence cell (per `verification-claim-integrity.md` §1.1 surface 2 + §3.2 — a summarized Evidence cell is not acceptable evidence). Detect the project language automatically from project markers (e.g., `go.mod`, `pyproject.toml`, `package.json`, `Cargo.toml`) and run that language's toolchain; tools that are not installed are skipped gracefully (report the skip as a Gap, never as a PASS). The 4 languages below are equal examples — no language is primary; apply the same pattern to any other project language.
+
+| Dimension | Mechanical verification command (per detected project language) |
+|-----------|------------------------------------------------------------------|
+| Functionality | Run the project test runner and cross-check results against the SPEC AC matrix (e.g., Go `go test ./...` / Python `pytest` / Node.js `npm test` / Rust `cargo test`) |
+| Security | grep-based OWASP checklist probes (input validation, secrets, injection surfaces) + dependency manifest audit — language-independent |
+| Craft | Coverage measurement + linter (e.g., Go `go test -cover` + `golangci-lint run` / Python `pytest --cov` + `ruff` / Node.js coverage + `eslint` / Rust `cargo clippy`) |
+| Consistency | Lint/format result + naming-convention grep (grep is language-independent) |
 
 ## Output Format
 
@@ -142,6 +164,37 @@ NEVER include scoring rationale, prior iteration verdicts, or reasoning traces i
 
 Every sub-criterion score MUST cite the canonical anchor description from the active profile's
 Scoring Rubric section. Uncited scores are rejected (ErrRubricCitationMissing).
+
+### Hierarchical-Mode Output Example
+
+**Where** `evaluator_mode: hierarchical` is active, render the hierarchical report format below instead of the flat Dimension Scores table. Every Evidence cell still carries the verbatim mechanical-verification output per § Per-Dimension Mechanical Verification.
+
+```
+## Evaluation Report (hierarchical)
+SPEC: {SPEC-ID}
+Overall Verdict: FAIL
+
+### Sub-Criterion Scores
+| Dimension | Sub-criterion | Anchor Score | Rubric Citation + Evidence |
+|-----------|---------------|--------------|----------------------------|
+| Functionality | AC matrix satisfied | 0.75 | "most ACs pass, one deferred" — test runner output cited verbatim |
+| Functionality | Edge cases covered | 0.25 | "fewer than a quarter of edge scenarios tested" |
+| Security | Input validation | 1.00 | "all trust boundaries validated" — grep probe output cited verbatim |
+| Security | Secrets handling | 0.75 | "credentials via env vars; one TODO remains" |
+| Craft | Coverage threshold | 0.75 | "coverage tool reports 87%, one package below 85%" |
+| Consistency | Pattern adherence | 1.00 | "matches codebase conventions" — naming grep output cited verbatim |
+
+### Per-Dimension Aggregation (min)
+| Dimension | Aggregated Score | Pass Threshold | Verdict |
+|-----------|------------------|----------------|---------|
+| Functionality (must-pass) | 0.25 | 0.75 | FAIL |
+| Security (must-pass) | 0.75 | 0.75 | PASS |
+| Craft | 0.75 | 0.50 | PASS |
+| Consistency | 1.00 | 0.50 | PASS |
+
+Overall: FAIL — must-pass dimension Functionality aggregates to 0.25 (< 0.75); the must-pass
+firewall forces overall FAIL regardless of other dimension scores.
+```
 
 ## Language
 
