@@ -1,19 +1,19 @@
 ---
-description: "Plan Phase 0.3.1/0.4/0.5/1.25/1B/DP1 — Deep interview loop, UltraThink activation, deep research, design direction, SPEC planning, and plan review annotation cycle"
+description: "Plan Phase 4/5/6/7/8/DP1 — Deep interview loop, UltraThink activation, deep research, design direction, SPEC planning, and plan review annotation cycle"
 user-invocable: false
 metadata:
   parent: moai-workflow-plan
-  phase: "Phase 0.3.1 through Decision Point 1: Clarity Interview, Research, and Plan Review"
+  phase: "Phase 4 through Decision Point 1: Clarity Interview, Research, and Plan Review"
 ---
 
 <!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 
-### Phase 0.3.1: Deep Interview Loop (Conditional)
+### Phase 4: Deep Interview Loop (Conditional)
 
 Purpose: Gather missing context through a structured, topic-focused interview before research begins. Each round presents curated options so the user can answer quickly.
 
-**Entry condition:** Clarity score 4-10 AND skip conditions not met (from Phase 0.3).
+**Entry condition:** Clarity score 4-10 AND skip conditions not met (from Phase 3).
 
 **Guard:** [HARD] During the interview loop, the agent MUST NOT write implementation code or start codebase exploration. The sole output is `.moai/specs/SPEC-{ID}/interview.md`.
 
@@ -47,11 +47,11 @@ For each round:
 ```
 # Interview: {SPEC Title}
 
-## Interview Phase 1: Scope
+## Interview Round 1: Scope
 Question: {question asked}
 Answer: {user's answer}
 
-## Interview Phase 2: Constraints
+## Interview Round 2: Constraints
 ...
 
 ## Clarity Score
@@ -60,13 +60,13 @@ Final: {N}/10
 Rounds completed: {N}
 ```
 
-**Context passing:** Pass `interview.md` to Phase 0.5 (Deep Research) and Phase 1B (SPEC Planning) as additional context. Both agents MUST read interview.md before proceeding.
+**Context passing:** Pass `interview.md` to Phase 6 (Deep Research) and Phase 8 (SPEC Planning) as additional context. Both agents MUST read interview.md before proceeding.
 
-### Phase 0.4: UltraThink Auto-Activation (Conditional)
+### Phase 5: UltraThink Auto-Activation (Conditional)
 
 Purpose: Automatically activate deep analysis mode for complex SPECs that benefit from structured reasoning.
 
-**Activation condition**: Evaluate task complexity from Phase 1A exploration results or user request:
+**Activation condition**: Evaluate task complexity from Phase 2 exploration results or user request:
 - Complexity score >= 7 (multi-domain, cross-cutting concerns)
 - Request involves architectural decisions (new module, system redesign, migration)
 - Request touches security-critical areas (auth, payment, data isolation)
@@ -77,14 +77,14 @@ Purpose: Automatically activate deep analysis mode for complex SPECs that benefi
 
 When UltraThink auto-activates:
 - Log: "UltraThink mode activated: [reason]"
-- Apply extended reasoning to Phase 0.5 research and Phase 1B SPEC creation
+- Apply extended reasoning to Phase 6 research and Phase 8 SPEC creation
 - Produce deeper analysis in research.md with trade-off comparisons and risk assessments
 - Consider alternative approaches and document rejection rationale
 - Optionally apply extended reasoning (ultrathink / Adaptive Thinking) for structured step-by-step decomposition; document each step in research.md when used
 
 **Skip condition**: Simple, well-scoped features (complexity < 5, single domain, clear requirements). Log: "UltraThink skipped: low complexity task."
 
-### Phase 0.5: Deep Research (Recommended)
+### Phase 6: Deep Research (Recommended)
 
 Agent: Explore subagent (deep codebase analysis)
 
@@ -118,7 +118,7 @@ Output: `.moai/specs/SPEC-{ID}/research.md` containing:
 - Risks, constraints, and implicit contracts identified
 - Recommendations for the implementation approach
 
-### Phase 1.25: Design Direction (Conditional)
+### Phase 7: Design Direction (Conditional)
 
 Purpose: Establish design intent and direction for UI/UX-related SPECs before SPEC planning begins. Based on the Intent-First design philosophy from the interface-design methodology.
 
@@ -150,15 +150,15 @@ Output: `.moai/specs/SPEC-{ID}/design-direction.md` containing:
 - Defaults to avoid
 - Reference to `.moai/design/system.md` if exists
 
-Design direction guard: [HARD] During Phase 1.25, the agent MUST NOT write implementation code. Focus exclusively on design exploration and direction definition.
+Design direction guard: [HARD] During Phase 7, the agent MUST NOT write implementation code. Focus exclusively on design exploration and direction definition.
 
-After Phase 1.25: Offer to persist design decisions to `.moai/design/system.md` if it was newly created or updated. Preload `ToolSearch(query: "select:AskUserQuestion")`, then use AskUserQuestion: "Save design direction to project-level design memory (.moai/design/system.md)?"
+After Phase 7: Offer to persist design decisions to `.moai/design/system.md` if it was newly created or updated. Preload `ToolSearch(query: "select:AskUserQuestion")`, then use AskUserQuestion: "Save design direction to project-level design memory (.moai/design/system.md)?"
 
-### Phase 1B: SPEC Planning (Required)
+### Phase 8: SPEC Planning (Required)
 
 Agent: manager-spec subagent
 
-Input: User request plus Phase 1A results (if executed), plus design-direction.md (if Phase 1.25 executed)
+Input: User request plus Phase 2 results (if executed), plus design-direction.md (if Phase 7 executed)
 
 Tasks for manager-spec:
 - Analyze project documents (product.md, structure.md, tech.md)
@@ -172,7 +172,7 @@ Tasks for manager-spec:
 
 Output: Implementation plan with SPEC candidates, GEARS-notation requirements (EARS legacy form accepted for pre-v3 SPECs until 2026-11-22), and technical constraints.
 
-Implementation guard: [HARD] During Phases 0.5, 1A, and 1B, all agent prompts MUST include the instruction: "DO NOT write implementation code. Focus exclusively on research, analysis, and planning." This separation of thinking and typing is the foundation of effective AI-assisted development.
+Implementation guard: [HARD] During Phases 6, 2, and 8, all agent prompts MUST include the instruction: "DO NOT write implementation code. Focus exclusively on research, analysis, and planning." This separation of thinking and typing is the foundation of effective AI-assisted development.
 
 ### Decision Point 1: Plan Review and Annotation Cycle
 
@@ -193,12 +193,12 @@ Preload: `ToolSearch(query: "select:AskUserQuestion")`.
 Tool: AskUserQuestion (at orchestrator level only)
 
 Options:
-- Proceed with SPEC Creation (Recommended): Plan is approved, continue to Phase 1.5 then Phase 2
+- Proceed with SPEC Creation (Recommended): Plan is approved, continue to Phase 9 then Phase 10
 - Annotate Plan: Add inline notes to plan.md for revision (starts annotation cycle)
 - Save as Draft: Save plan.md with status draft, create commit, print resume command, exit
 - Cancel: Discard plan, exit with no files created
 
-If "Proceed": Continue to Phase 1.5 then Phase 2.
+If "Proceed": Continue to Phase 9 then Phase 10.
 If "Annotate": Enter Annotation Cycle (see below).
 If "Draft": Save plan.md with status draft, create commit, print resume command, exit.
 If "Cancel": Discard plan, exit with no files created.
@@ -224,4 +224,4 @@ Guard rule: [HARD] During annotation cycles, the explicit instruction "DO NOT im
 
 ---
 
-**Next phase:** Read `workflows/plan/spec-assembly.md` to continue with Phase 1.5 Pre-Creation Validation Gate.
+**Next phase:** Read `workflows/plan/spec-assembly.md` to continue with Phase 9 Pre-Creation Validation Gate.

@@ -1,9 +1,9 @@
 ---
-description: "Plan Phase 0/1A/0.3 — Brain proposal detection, project exploration, and clarity evaluation before deep research begins"
+description: "Plan Phase 1/2/3 — Brain proposal detection, project exploration, and clarity evaluation before deep research begins"
 user-invocable: false
 metadata:
   parent: moai-workflow-plan
-  phase: "Phase Step 0 / Phase 1A / Phase 0.3: Context Discovery and Clarity Evaluation"
+  phase: "Phase 1 / Phase 2 / Phase 3: Context Discovery and Clarity Evaluation"
 ---
 
 <!-- TRACE PROBE: workflow-split baseline trace mechanism -->
@@ -16,7 +16,7 @@ metadata:
 
 When `/moai plan` is invoked (with or without arguments), perform this pre-execution check:
 
-### Step 0: Brain Proposal Detection
+### Phase 1: Brain Proposal Detection
 
 1. **Scan** for `.moai/brain/IDEA-*/proposal.md` files (Glob: `.moai/brain/IDEA-[0-9]*/proposal.md`).
 2. If any proposal.md files are found:
@@ -44,10 +44,10 @@ When `/moai plan` is invoked (with or without arguments), perform this pre-execu
        }]
      })
      ```
-   - User selection becomes the SPEC title for Phase 1B.
+   - User selection becomes the SPEC title for Phase 8.
    - [HARD] NEVER auto-create SPECs from candidates — user MUST select explicitly.
 
-4. If user provided a specific SPEC title OR selected "직접 입력": proceed normally to Phase 1A.
+4. If user provided a specific SPEC title OR selected "직접 입력": proceed normally to Phase 2.
 
 5. If no brain candidates found: skip this check, proceed normally.
 
@@ -62,7 +62,7 @@ When `/moai plan` is invoked (with or without arguments), perform this pre-execu
 
 ## Phase Sequence
 
-### Phase 1A: Project Exploration (Optional)
+### Phase 2: Project Exploration (Optional)
 
 Agent: Explore subagent (read-only codebase analysis)
 
@@ -84,9 +84,9 @@ Tasks for the Explore subagent:
 - Read target directories in depth — understand deeply how each module works, its intricacies and side effects
 - Study cross-module interactions in great detail — trace data flow through the system
 - Go through related test files to understand expected behavior and edge cases
-- Report comprehensive results for Phase 1B context
+- Report comprehensive results for Phase 8 context
 
-### Phase 0.3: Clarity Evaluation (Conditional)
+### Phase 3: Clarity Evaluation (Conditional)
 
 Purpose: Evaluate how clearly the user's request is specified before beginning deep research. A vague request produces a weaker SPEC; this phase detects vagueness early and gathers missing context through a structured interview.
 
@@ -120,4 +120,4 @@ If score is 1-3: Preload `ToolSearch(query: "select:AskUserQuestion")`, then use
 
 ---
 
-**Next phase:** Read `workflows/plan/clarity-interview.md` to continue with Phase 0.3.1 Deep Interview Loop.
+**Next phase:** Read `workflows/plan/clarity-interview.md` to continue with Phase 4 Deep Interview Loop.
