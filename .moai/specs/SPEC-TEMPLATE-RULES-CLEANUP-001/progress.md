@@ -60,7 +60,20 @@ ac_fail_count: 0
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-09T09:15:00Z
+sync_commit_sha: "0d90fa594"
+sync_status: complete
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (single sync commit, 3-phase close)"
+ac_pass_count: 33
+ac_fail_count: 0
+changelog_entry_position: "[Unreleased] > Changed"
+canary_compliance_check:
+  b12_self_test_a: "grep -c 'SPEC-TEMPLATE-RULES-CLEANUP-001' CHANGELOG.md == 1 (pre-emission 0, no duplicate)"
+  b12_self_test_b: "AC count 33 / REQ count 28 verified against acceptance.md + spec.md SSOT"
+  b12_self_test_c: "file paths in CHANGELOG verified via ls before commit"
+```
 
 ## §F Phase 0.95 Mode Selection
 
