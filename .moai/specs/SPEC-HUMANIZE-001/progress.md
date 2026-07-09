@@ -110,7 +110,24 @@ m1_to_mN_commit_strategy: per-milestone commits M1..M6 + one M3 follow-up fix + 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_complete_at: 2026-07-09T15:43:52Z
+sync_commit_sha: "pending-backfill-sync"  # self-referential hazard — backfilled by follow-up chore commit per spec-frontmatter-schema.md D3 exemption
+sync_status: complete
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (merged transition on single sync commit, 3-phase close); updated: 2026-07-10 already at sync date — no bump needed"
+  plan_md: "n/a — header-only artifact, no YAML frontmatter"
+  acceptance_md: "n/a — header-only artifact, no YAML frontmatter"
+  progress_md: "n/a — header-only artifact, no YAML frontmatter"
+ac_pass_count: 19   # of 19 checks (17 AC IDs incl. AC-HUM-006a/b/c) — acceptance.md SSOT
+ac_fail_count: 0
+changelog_entry_position: "[Unreleased] > Added (first entry)"
+b12_self_test_a: "pre-emission grep -c 'SPEC-HUMANIZE-001' CHANGELOG.md == 0 (no duplicate; post-emission == 1)"
+b12_self_test_b: "AC count 19 checks / 16 REQ verified against acceptance.md SSOT (grep -cE '^\\| AC-HUM-[0-9]+[a-c]? \\|' acceptance.md == 19)"
+b12_self_test_c: "CHANGELOG file paths verified via ls: template skill dir (SKILL.md + modules/{korean,english,japanese,chinese}.md) + local mirror + catalog.yaml humanize entry version 1.1.0 + hash 07c6509a4"
+mx_tag_validation: "n/a — markdown-only skill content in scope; MX tags bind source code, no .go/.sh files touched by this SPEC"
+readme_docs_sync: "no change — skill-internal change; no user-facing doc surface beyond CHANGELOG (README + adk.mo.ai.kr docs-site untouched per delegation)"
+```
 
 ## §F Phase 0.95 Mode Selection
 

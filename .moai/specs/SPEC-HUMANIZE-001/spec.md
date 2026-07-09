@@ -2,7 +2,7 @@
 id: SPEC-HUMANIZE-001
 title: "Copy-Genre AI-Tell Detection Layer for moai-domain-humanize"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-07-09
 updated: 2026-07-10
 author: manager-spec
