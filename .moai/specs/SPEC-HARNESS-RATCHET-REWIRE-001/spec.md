@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-RATCHET-REWIRE-001
 title: "Wire Failure Signals into the Harness Learning Loop (FAILURE→RATCHET Repair)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-09
 updated: 2026-07-09
 author: manager-spec
