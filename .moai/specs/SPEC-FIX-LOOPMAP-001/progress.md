@@ -84,7 +84,7 @@ m1_to_mN_commit_strategy: commit 1 = plan-phase artifacts (draft, as authored); 
 
 ```
 sync_complete_at: 2026-07-09
-sync_commit_sha: <to be backfilled in follow-up chore commit>
+sync_commit_sha: 3ea168294
 sync_status: audit-ready (3-phase close on single sync commit; completed transition rides this commit)
 changelog_entry_position: [Unreleased] > Added (SPEC-FIX-LOOPMAP-001, top of Added — latest sync, above LOOP-VERDICT)
 frontmatter_status_transitions:
