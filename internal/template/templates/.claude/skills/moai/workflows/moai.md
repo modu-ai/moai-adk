@@ -191,6 +191,7 @@ When the router recorded a completion condition (router Step 2.8) and the pipeli
 
 **Loop safety rules**:
 
+- **Iteration-ceiling verdict** (cause 2): when the ceiling is reached, halt and emit the same structured 5-section evidence report (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk, per `verification-claim-integrity.md` §3) that the Ralph engine emits at its own ceiling exit (`workflows/loop.md` § Ceiling-Exit Verdict Contract) — persist remaining issues to `.moai/state/loop-verdict-<id>.json` and propose a lesson-capture entry before ending the session. This closes the protocol gap relative to causes 3 (no-progress escalation) and 4 (context-threshold suspension), which already carry their own structured reports below.
 - **No-progress escalation**: when the same failure signature (identical failing check + same error class) is observed in two consecutive iterations, halt and escalate via a structured report; the orchestrator runs an AskUserQuestion round (continue with manual investigation / revert + re-plan / abort). Revert + re-plan re-crosses Implementation Kickoff Approval before any run-phase re-entry. No third identical iteration is attempted.
 - **Dark-flow guard**: every iteration surfaces a per-iteration visible report in the conversation (iteration #, phase executed, evidence delta, condition-evaluation result). Silent iterations are prohibited — the transcript evidence is also what keeps the `/goal` evaluator functional (transcript-measurability per goal-directive).
 - **Semantic-failure escalation**: on a semantic failure (data race, deadlock, panic, test assertion failure), clear the active completion condition and escalate immediately via AskUserQuestion — the loop never auto-fixes a semantic failure.
@@ -278,6 +279,6 @@ Mode selection:
 
 ---
 
-Version: 3.0.0
-Updated: 2026-07-07
-Source: SPEC-MOAI-001. Named pipeline gates + agentic completion loop + chaining policy (v3.0.0). Previous: --team/--solo flag Gate auto-skip (v2.9.0), Harness auto-detection (v2.8.0).
+Version: 3.0.1
+Updated: 2026-07-09
+Source: SPEC-MOAI-001. Named pipeline gates + agentic completion loop + chaining policy (v3.0.0). Added the iteration-ceiling verdict protocol for Agentic Completion Loop termination cause 2, closing its parity gap with causes 3/4 (v3.0.1). Previous: --team/--solo flag Gate auto-skip (v2.9.0), Harness auto-detection (v2.8.0).

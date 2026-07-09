@@ -51,7 +51,7 @@ This skill is the Ralph engine — the specialized DIAGNOSTIC fix-loop (a per-it
 
 ## Supported Flags
 
-- --max N (alias --max-iterations): Maximum iteration count (default 100)
+- --max N (alias --max-iterations): Maximum iteration count. When absent, the effective default is ralph.yaml `loop.max_iterations` (shipped 10) per the Iteration-Ceiling Precedence rule (see § Ceiling-Exit Verdict Contract) — not a freestanding 100 default.
 - --auto-fix: Enable auto-fix (default Level 1)
 - --sequential (alias --seq): Sequential diagnostics instead of parallel
 - --errors (alias --errors-only): Fix errors only, skip warnings
@@ -63,10 +63,19 @@ This skill is the Ralph engine — the specialized DIAGNOSTIC fix-loop (a per-it
 
 Each iteration executes the following steps in order:
 
-Step 1 - Completion Check:
-- Check whether the previous iteration's response declared loop completion in natural language
-- Completion sentence: "All loop completion conditions satisfied; exiting loop."
-- If the completion sentence is present: Exit loop with success
+Step 1 - Completion Predicate Check (mechanical, not sentinel-based):
+- Re-evaluate the previous iteration's PARSED Step-3 diagnostics (exit codes, error count, test pass/fail, coverage percentage — persisted with the Step 8 iteration snapshot) against ralph.yaml `loop.completion` (zero_errors, tests_pass, coverage_threshold, zero_warnings).
+- The completion sentence "All loop completion conditions satisfied; exiting loop." is DISPLAY-ONLY (emitted by Step 4 as a report string) — it carries no exit authority. Do NOT exit on detecting this sentence in the previous response; the mechanical predicate re-evaluation above is the only exit-eligible signal.
+- If the mechanical predicate holds (all loop.completion conditions satisfied on the previous iteration's parsed diagnostics): proceed to Step 1.5 (Independent Final Pass) before declaring success-exit.
+- If the predicate does not hold: continue the loop (Step 2 onward) as a normal iteration.
+
+Step 1.5 - Independent Final Pass (entered only when Step 1's predicate holds):
+- Execute an independent verification pass that is NOT the loop executor's own claim — a fresh-context re-run of the diagnostic gate, distinct from this loop's own Step 3 measurement.
+- Primary vehicle: re-run `/moai gate` (a fresh mechanical gate invocation, independent of this loop's iteration state).
+- Fallback vehicle (when `/moai gate` is unavailable in the environment): spawn a read-only verifier `Agent()` (no Write/Edit tools) to re-run the same diagnostic commands and report results. The verifier never prompts the user (subagent boundary — blocker reports only).
+- Divergence rule: if the independent pass's observed diagnostics (error count, test result, coverage) diverge from the builder-observed (Step 3) diagnostics, the loop does NOT exit with success — it continues to the next iteration, or escalates per the existing no-progress escalation rule if the same divergence repeats across consecutive checks.
+- Degradation (independent pass unavailable): do NOT silently claim full verification. Record the gap explicitly (Gaps section of the eventual exit report — see § Completion Conditions) and continue to the next iteration rather than exit with an unconfirmed success.
+- Only after the independent pass CONFIRMS the predicate: declare success-exit. Proceed to the pre-exit clean sweep and final report.
 
 Step 2 - Memory Pressure Check (if --memory-check enabled):
 - Calculate session duration from start time
@@ -99,8 +108,8 @@ Step 3 - Parallel Diagnostics:
 If --sequential flag: Run LSP, then AST-grep, then Tests, then Coverage sequentially.
 
 Step 4 - Completion Condition Check:
-- Conditions: Zero errors AND all tests passing AND coverage meets threshold
-- If all conditions met: Emit the completion sentence "All loop completion conditions satisfied; exiting loop." so Step 1 of the next iteration detects success-exit, or continue
+- Conditions: Zero errors AND all tests passing AND coverage meets threshold (ralph.yaml `loop.completion`)
+- If all conditions met: Persist the parsed diagnostics with the Step 8 iteration snapshot and display the completion sentence "All loop completion conditions satisfied; exiting loop." as a REPORT-ONLY string — it documents the result for the transcript but does NOT itself terminate the loop. Step 1 of the next iteration re-evaluates the persisted diagnostics mechanically (per Step 1) and, if satisfied, runs the independent final pass (Step 1.5) before any success-exit.
 - If only coverage below target (zero errors + tests passing): route coverage-gap handling through `go test -cover` gap analysis + `/moai gate` (the documented coverage replacement path) for intelligent gap analysis and test generation instead of blind looping. Identify P1-P4 priority gaps and generate targeted tests.
 
 Step 5 - Task Generation:
@@ -151,17 +160,65 @@ Step 8 - Snapshot Save:
 - Increment iteration counter
 
 Step 9 - Repeat or Exit:
-- If max iterations reached: Display remaining issues and options
+- If max iterations reached: emit the ceiling-exit 5-section verdict per § Ceiling-Exit Verdict Contract (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk), persist remaining issues to `.moai/state/loop-verdict-<id>.json` (or mirror into TaskList when a team task ledger is active), and propose a lesson-capture entry (per moai-constitution.md § Lessons Protocol) before ending the session.
 - Otherwise: Return to Step 1
 
 ## Completion Conditions
 
 The loop exits when any of these conditions are met:
-- Completion sentence "All loop completion conditions satisfied; exiting loop." detected in response
-- All conditions met: zero errors + tests passing + coverage threshold
-- Max iterations reached (displays remaining issues)
+- Mechanical predicate confirmed twice: the previous iteration's parsed diagnostics satisfy zero errors + tests passing + coverage threshold (Step 1) AND the independent final pass (Step 1.5) confirms the same result — this is the ONLY success-exit path. The completion sentence is a display-only report string and carries no exit authority on its own.
+- Max iterations reached: emits the ceiling-exit 5-section verdict (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk per verification-claim-integrity.md §3) and persists remaining issues (see § Ceiling-Exit Verdict Contract)
 - Memory pressure threshold exceeded (saves checkpoint)
 - User interruption (state auto-saved)
+
+## Ceiling-Exit Verdict Contract
+
+When the loop exits at the iteration ceiling (Step 9) — or exits with Level-4 manual items still outstanding — the loop workflow emits a structured 5-section evidence report per `verification-claim-integrity.md` §3, using the section names verbatim:
+
+- **Claim**: the loop did not reach the mechanical completion predicate within the applied ceiling.
+- **Evidence**: the final iteration's parsed diagnostics (error count, test result, coverage percentage) — verbatim Step-3 output, not a summary.
+- **Baseline-attribution**: the ceiling that was applied and its source (CLI `--max` flag / ralph.yaml `loop.max_iterations` / workflow.yaml `loop_prevention.max_iterations` — see § Iteration-Ceiling Precedence), plus the iteration count consumed.
+- **Gaps**: conditions not yet satisfied (e.g. "3 errors remaining", "coverage 78% < 85% threshold"), and any independent-pass degradation recorded during the run (per Step 1.5).
+- **Residual-risk**: unresolved Level-4 manual items, flaky-test risk, or environment-specific findings that could still be wrong.
+
+This same 5-section report applies to `workflows/moai.md` § Agentic Completion Loop termination cause 2 (iteration ceiling) — closing its protocol gap relative to causes 3 (escalation) and 4 (context-threshold suspension), which already carry structured protocols.
+
+### Remaining-Issue Persistence
+
+The loop workflow persists remaining issues to `.moai/state/loop-verdict-<id>.json` (`<id>` = session- or timestamp-derived identifier), or mirrors into TaskList when a team task ledger is active (TaskList mirroring is additive; the state file is the always-on floor). Transcript-only residue is prohibited — every ceiling exit MUST leave an auditable, resumable artifact on disk.
+
+Minimum JSON schema (doctrine-defined; orchestrator-written at exit time — no Go loader in this contract):
+
+```
+{
+  "spec_or_scope": "<SPEC-ID or free-form scope label>",
+  "exit_kind": "ceiling | manual-residue",
+  "iterations_used": <int>,
+  "ceiling_applied": <int>,
+  "ceiling_source": "flag | ralph | loop_prevention",
+  "conditions": {
+    "zero_errors": <bool>, "error_count": <int>,
+    "tests_pass": <bool>,
+    "coverage_threshold": <int>, "coverage_actual": <number>,
+    "zero_warnings": <bool>
+  },
+  "remaining_issues": [
+    {"severity": "P1|P2|P3|P4", "description": "...", "file": "path:line", "suggested_action": "..."}
+  ],
+  "vci_report_ref": "<pointer to the 5-section report in the transcript or a saved file>",
+  "created_at": "<ISO-8601 timestamp>"
+}
+```
+
+When `.moai/state/` is unwritable at exit, surface the verdict content in-conversation AND name the write failure explicitly in the Residual-risk section — the loop fails open on persistence, never on honesty.
+
+### Lesson-Capture Proposal (unsuccessful exit)
+
+When the loop exits unsuccessfully (ceiling reached with conditions unmet), propose a lesson-capture entry per `moai-constitution.md` § Lessons Protocol before session close — the failure pattern (which condition stalled, why) is offered for memory capture rather than silently dropped.
+
+## Iteration-Ceiling Precedence
+
+Iteration-ceiling precedence: CLI `--max` flag > ralph.yaml `loop.max_iterations` > workflow.yaml `loop_prevention.max_iterations`. The memory-safe 50-iteration checkpoint (Step 2) is an orthogonal memory-pressure safeguard, not a fourth ceiling.
 
 Pre-exit clean sweep (when exiting with success):
 - Before final report, run clean workflow (workflows/clean.md) scan on all modified files
@@ -257,11 +314,11 @@ All fixes within the loop follow CLAUDE.md Section 7 Safe Development Protocol:
 2. If --resume: Load state from specified snapshot and continue
 3. Detect project language from indicator files
 4. Initialize iteration counter and memory tracking (start time)
-5. Loop: Execute per-iteration cycle (Steps 1-9, including Step 5.5 MX Context Scan)
+5. Loop: Execute per-iteration cycle (Steps 1-9, including Step 1.5 Independent Final Pass and Step 5.5 MX Context Scan)
 6. On exit: Report final summary with evidence
 7. If memory checkpoint created: Display resume instructions
 
 ---
 
-Version: 2.2.0
-Updated: 2026-03-02. Expanded Language-Specific Commands to 16 languages with test runner, coverage tool, and indicator file for each.
+Version: 2.3.0
+Updated: 2026-07-09. Replaced the sentinel-string success-exit with a mechanical predicate + independent final pass (Step 1/1.5); added the ceiling-exit 5-section verdict contract with `.moai/state/loop-verdict-<id>.json` persistence; unified the iteration-ceiling precedence rule. Previous: Expanded Language-Specific Commands to 16 languages (2.2.0, 2026-03-02).

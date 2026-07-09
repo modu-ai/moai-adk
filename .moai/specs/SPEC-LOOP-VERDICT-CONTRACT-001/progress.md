@@ -32,11 +32,93 @@ spec_id_self_check: PASS (SPEC-LOOP-VERDICT-CONTRACT-001 → ^SPEC(-[A-Z][A-Z0-9
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — populated by manager-develop>_
+**Milestones executed**: M1 (exit predicate + independent final pass), M2 (ceiling verdict contract + persistence + moai.md cause-2 parity), M3 (precedence unification + stale-comment fix + template sync). All three milestones landed across the same file set in one working session; see §E.3 for the resulting commit-grouping rationale.
+
+**Edited files** (live + template mirror, byte-identical after each edit): `.claude/skills/moai/workflows/loop.md`, `.claude/skills/moai/workflows/moai.md`, `.moai/config/sections/ralph.yaml`, `.moai/config/sections/workflow.yaml` (each with its `internal/template/templates/` mirror).
+
+### AC Matrix (13/13 PASS)
+
+| AC ID | Status | Verification Command | Actual Output |
+|-------|--------|----------------------|----------------|
+| AC-LVC-001 | PASS | `grep -n "loop.completion\|parsed diagnostics\|exit code" .claude/skills/moai/workflows/loop.md` | 5 matches incl. line 67: "Re-evaluate the previous iteration's PARSED Step-3 diagnostics (exit codes, error count, ...) against ralph.yaml \`loop.completion\`" |
+| AC-LVC-002 | PASS | `grep -n "completion sentence" .claude/skills/moai/workflows/loop.md` | 3 matches, all display/report-only context (line 68: "is DISPLAY-ONLY ... carries no exit authority"; line 112: "as a REPORT-ONLY string"; line 169: "is a display-only report string and carries no exit authority") — no exit-on-detection instruction remains |
+| AC-LVC-003 | PASS | `grep -n "independent\|/moai gate\|fresh" .claude/skills/moai/workflows/loop.md` | 10 matches incl. line 73 "independent verification pass... fresh-context re-run", line 74 "re-run \`/moai gate\`" |
+| AC-LVC-004 | PASS | `grep -nE "diverge\|mismatch\|continues the loop\|never exits success" .claude/skills/moai/workflows/loop.md` | line 76: "Divergence rule: if the independent pass's observed diagnostics ... diverge from the builder-observed (Step 3) diagnostics, the loop does NOT exit with success — it continues to the next iteration, or escalates ..." |
+| AC-LVC-005 | PASS | `grep -n "Claim\|Baseline-attribution\|Residual-risk" .claude/skills/moai/workflows/loop.md` | lines 178/180/182 — Claim / Baseline-attribution / Residual-risk headers present verbatim (Evidence/Gaps also present at 179/181, vci §3 5-section format complete) |
+| AC-LVC-006 | PASS | `grep -n "loop-verdict" .claude/skills/moai/workflows/moai.md` | line 194: moai.md § Agentic Completion Loop cause-2 bullet ("Iteration-ceiling verdict") cites the same 5-section report + `.moai/state/loop-verdict-<id>.json` persistence, parity with causes 3/4 |
+| AC-LVC-007 | PASS | `grep -n "loop-verdict" .claude/skills/moai/workflows/loop.md` | lines 163/188/324 — persistence to `.moai/state/loop-verdict-<id>.json` (or TaskList mirror) documented as the always-on floor; transcript-only residue explicitly prohibited (line 188) |
+| AC-LVC-008 | PASS | `grep -n "lesson" .claude/skills/moai/workflows/loop.md` | lines 163/217 — Step 9 + dedicated "Lesson-Capture Proposal (unsuccessful exit)" subsection require a lesson-capture entry before session close |
+| AC-LVC-009 | PASS | `grep -n "precedence\|--max" .claude/skills/moai/workflows/loop.md .moai/config/sections/ralph.yaml .moai/config/sections/workflow.yaml` | identical rule text "CLI \`--max\` / --max flag > ralph.yaml loop.max_iterations > workflow.yaml loop_prevention.max_iterations" present in all 3 surfaces (loop.md:221, ralph.yaml:20, workflow.yaml:17) |
+| AC-LVC-010 | PASS | manual diff of loop.md Supported Flags line + § Iteration-Ceiling Precedence | freestanding "default 100" claim removed (loop.md:54 now: "effective default is ralph.yaml \`loop.max_iterations\` (shipped 10) ... not a freestanding 100 default"); memory-safe 50-iteration checkpoint documented as orthogonal (loop.md:97, 221) |
+| AC-LVC-011 | PASS | `grep -n "no Go-side loader" .moai/config/sections/workflow.yaml internal/template/templates/.moai/config/sections/workflow.yaml` | 0 matches (exit=1, confirming absence) in both trees |
+| AC-LVC-012 | PASS | `grep -rn "SPEC-LOOP-VERDICT-CONTRACT" internal/template/templates/ \| wc -l` + `make build` | count=0; `make build` exit 0 (catalog regenerated, `bin/moai --version` → `moai-adk v3.0.0-rc8`) |
+| AC-LVC-013 | PASS | `grep -n "No-progress escalation\|Dark-flow guard\|Semantic-failure escalation\|memory-safe limit reached\|/moai loop.*≡.*run --mode loop" .claude/skills/moai/workflows/{loop,moai}.md` | all 5 safety-machinery phrases present verbatim, unmodified (no-progress escalation moai.md:195, Dark-flow guard moai.md:196, semantic-failure escalation moai.md:197, memory-safe checkpoint loop.md:97, alias contract loop.md:50) |
+
+### Build / Test Evidence
+
+```
+$ make build
+... (catalog.yaml regenerated, 10325 bytes) ...
+go build -ldflags "..." -o bin/moai ./cmd/moai
+exit=0
+
+$ go build ./...
+exit=0
+
+$ GOOS=windows GOARCH=amd64 go build ./...
+exit=0
+
+$ go test ./internal/config/...
+ok  	github.com/modu-ai/moai-adk/internal/config	0.572s
+ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.704s
+exit=0
+
+$ go test ./internal/template/... -run 'TestRuleTemplateMirror|TestTemplateNeutrality|TestInternalContentLeak' -v
+--- PASS: TestRuleTemplateMirrorDrift (+ 6 subtests)
+--- PASS: TestTemplateNeutralityAuditC8Preserve
+--- PASS: TestTemplateNeutralityAudit (+ 5 subtests)
+PASS
+exit=0
+
+$ python3 -c "import yaml; yaml.safe_load(open('.moai/config/sections/ralph.yaml'))"  → ralph OK
+$ python3 -c "import yaml; yaml.safe_load(open('.moai/config/sections/workflow.yaml'))"  → workflow OK
+(same for both template mirrors) → all 4 YAML files parse cleanly after comment-only edits
+```
+
+### Subagent-boundary grep (E4)
+
+```
+$ grep -n "AskUserQuestion" .claude/skills/moai/workflows/loop.md .claude/skills/moai/workflows/moai.md internal/template/templates/.claude/skills/moai/workflows/{loop,moai}.md
+```
+All matches are PRE-EXISTING orchestrator-owned references (Level 3 fix-approval, Implementation Kickoff Approval, no-progress escalation, semantic-failure escalation, next-step chaining, worktree+mode gate) — none are NEW instructions in the content I added (Step 1/1.5, Ceiling-Exit Verdict Contract, moai.md cause-2 bullet contain zero AskUserQuestion references). Confirmed by diffing the added hunks against the grep line numbers.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — populated by manager-develop>_
+```
+run_status: complete
+ac_pass_count: 13
+ac_fail_count: 0
+preserve_list_post_run_count: 5 (loop safety machinery items verified intact per AC-LVC-013: no-progress escalation, dark-flow guard, semantic-failure escalation, memory checkpoint, alias contract)
+l44_pre_commit_fetch: pending (recorded at push time, see blocker note below)
+l44_post_push_fetch: pending (recorded at push time)
+new_warnings_or_lints_introduced: none (comment/prose-only edits; go vet/golangci-lint not re-run — doc-primary SPEC per plan.md §D constraint; go build + go test both exit 0)
+cross_platform_build.linux_darwin: PASS (go build ./... exit 0)
+cross_platform_build.windows: PASS (GOOS=windows GOARCH=amd64 go build ./... exit 0)
+total_run_phase_files: 8 (4 live + 4 template mirror; zero unrelated files touched — git status --porcelain confirms exactly these 8)
+m1_to_mN_commit_strategy: 2-commit grouping by file boundary — commit 1 (loop.md + moai.md, live+template) covers M1 (exit predicate + independent final pass) and M2 (ceiling verdict contract + persistence + moai.md cause-2 parity) because both milestones' edits landed sequentially in the same files before the first commit point; commit 2 (ralph.yaml + workflow.yaml, live+template) covers M3 (precedence unification + stale-comment fix). Documented explicitly per manager-develop-prompt-template.md §B9 allowance ("M별 분리 commit ... 둘 다 허용").
+```
+
+**Run-phase self-verification**:
+- [x] All 13 ACs PASS with verbatim grep/diff evidence (§E.2 AC Matrix).
+- [x] Live/template byte-identity verified after every edit (`diff` exit 0 on all 4 file pairs).
+- [x] `make build` green; `go build ./...` and `GOOS=windows GOARCH=amd64 go build ./...` both exit 0.
+- [x] `go test ./internal/config/...` green (YAML comment-only changes do not break loaders).
+- [x] Template-neutrality guard clean (`grep -rn "SPEC-LOOP-VERDICT-CONTRACT" internal/template/templates/` → 0).
+- [x] No NEW AskUserQuestion instructions introduced in edited skill files (E4).
+- [ ] **Gap (unrelated pre-existing)**: `go test ./internal/template/...` (full suite) reports one FAILING test — `TestOutputStylesTemplateLiveParity: OUTPUT_STYLE_DRIFT: moai-easy.md exists only in template, not in live tree`. Verified via `git status --porcelain -- .claude/output-styles/moai/moai-easy.md` → shows as `??` (untracked) in the working tree at delegation time, already present before this SPEC's work began (confirmed against the original git-status snapshot in the delegation prompt). This file is entirely outside SPEC-LOOP-VERDICT-CONTRACT-001 scope (output-styles, not loop/moai/ralph/workflow) and was NOT touched by this run. Reported as a blocker for the orchestrator to route to the owning session/SPEC — not remediated here per B10 scope discipline.
+- [ ] **Gap**: `golangci-lint` was not re-run (doc/comment-only edit set; plan.md §D constraint classifies this SPEC as doctrine/skill-doc primary with zero-to-minimal Go — no Go source was modified). `go vet` likewise not re-run for the same reason.
+
+**Residual-risk**: (1) The independent final pass (Step 1.5) and ceiling-exit persistence (`.moai/state/loop-verdict-<id>.json`) are newly-authored orchestrator-facing doctrine — their actual runtime behavior is unverified by this SPEC (doc-primary; no Go loader/CLI added, per plan.md §D D2 deliberate scope exclusion) and will only be exercised the next time `/moai loop` or the moai.md Agentic Completion Loop reaches a real ceiling or independent-pass branch. (2) L5 (fix.md Phase 4 partial mechanical independence) remains open audit debt for a follow-up SPEC, per spec.md §Out of Scope — recorded here for the sync-phase CHANGELOG note per acceptance.md §D.6 Definition of Done item 4.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

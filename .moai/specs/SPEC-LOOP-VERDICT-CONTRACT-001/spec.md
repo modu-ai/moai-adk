@@ -2,7 +2,7 @@
 id: SPEC-LOOP-VERDICT-CONTRACT-001
 title: "Mechanical Loop Termination Predicate and Ceiling-Exit Verdict Contract for Utility Loops"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-09
 updated: 2026-07-09
 author: manager-spec
