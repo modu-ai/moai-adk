@@ -123,7 +123,7 @@ Status values follow the canonical 8-value enum: draft, planned, in-progress, im
 
 ## SPEC Artifact Ownership
 
-This agent owns the following SPEC artifact boundaries per the canonical agent responsibility realignment policy. This agent's scope is constrained to CHANGELOG-only emission, avoiding any haiku-vs-spec-body-reasoning capability mismatch. The full schema-level transition matrix lives in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix.
+This agent owns the following SPEC artifact boundaries per the canonical agent responsibility realignment policy. This agent's scope is constrained to CHANGELOG-only emission, keeping the agent focused on documentation sync rather than spec-body reasoning. The full schema-level transition matrix lives in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix.
 
 ### Artifacts owned (authoring)
 

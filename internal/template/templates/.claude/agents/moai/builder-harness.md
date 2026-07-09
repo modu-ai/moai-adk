@@ -163,8 +163,8 @@ apply the canonical MoAI agent model policy per
 | Frontmatter field | Default value | Notes |
 |------------------|---------------|-------|
 | `model:` | `inherit` | Inherit-by-default — preserves parent's 1M context entitlement (avoids Anthropic Issues #45847/#51060/#36670) |
-| `model:` (speed-critical exception) | `haiku` | For mechanical agents (documentation sync, git operations, format-only edits). haiku has no 1M variant so the spawn-failure bug does NOT apply. |
-| `effort:` | `xhigh` (recommended) or per-agent appropriate | Uniform reasoning depth recommended across the catalog; lower values acceptable for haiku-tier mechanical agents |
+| `model:` (mechanical agents) | `sonnet` | For mechanical agents (documentation sync, git operations, format-only edits) — sonnet at the `low` performance tier covers cost-sensitive work under the No-Haiku 3-tier policy (SPEC-AGENT-ARCH-V2-001). |
+| `effort:` | `xhigh` (recommended) or per-agent appropriate | Uniform reasoning depth recommended across the catalog; lower values acceptable for low-tier mechanical agents |
 | `permissionMode:` | (depends on agent role — `default` for read-mostly, `bypassPermissions` for trusted write-agents) | |
 
 DO NOT generate agents with explicit `model: sonnet` or `model: opus` unless
@@ -189,6 +189,6 @@ model-policy rule rather than restating the escalation logic in every agent body
 
 Rationale: keep cost-optimization + escalation policy uniform across
 hand-authored retained agents and harness-generated specialists. The existing
-catalog (inherit-by-default + haiku exception) is ALREADY the cost-optimized
+catalog (inherit-by-default + No-Haiku 3-tier routing) is ALREADY the cost-optimized
 design — uniformity of this design across future harness output preserves the
 design contract AND the 1M-context-safety guarantee.
