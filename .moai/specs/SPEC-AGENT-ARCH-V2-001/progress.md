@@ -122,9 +122,67 @@ plan_phase_evidence_path: .moai/specs/SPEC-AGENT-ARCH-V2-001/
 
 ---
 
+### M3b — model_routing_profiles production config + moai init --model-policy (PASS)
+
+**AC matrix (vci 5-section):**
+- AC-AA2-009 model_routing_profiles 3 matrices: PASS — `model_routing_profiles.{max,medium,low}` (3×12 = 36 cells, verbatim from golden `fullProfilesYAML` fixture) added to workflow.yaml live+template; legacy flat `model_routing:` retained as deprecated `medium` alias (D6). `TestRouteModelFor_3x12Matrix` PASS (all 36 entries load + route correctly).
+- AC-AA2-010 moai init --model-policy flag: PASS — `--model-policy max|medium|low` registered + validated (`TestValidateInitFlags_{Valid,Invalid}ModelPolicy`); invalid value → error naming 3-enum; deprecated `--high/--medium/--low` aliases (D4 one-cycle, stderr warning); `applyPerformanceTier` writes `llm.yaml performance_tier` post-deploy.
+
+**Evidence:** commit `93d718646`. `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint` 0 issues; config tests PASS.
+
+**Note:** AC-AA2-009 grep `^(    )?(max|medium|low):` returns 0 because tier keys are at 8-space indent (valid YAML nesting under `workflow:` → `model_routing_profiles:`). The substantive AC — 3 tiers × 12 cells load + route — is verified by the passing golden test. The literal grep indent is a known AC imprecision (plan-audit D6 noted the flat-indent grep was wrong).
+
+### M3c — HaikuResidualRule lint HARD gate (PASS)
+
+**AC matrix (vci 5-section):**
+- AC-AA2-012 / AC-AA2-016 HaikuResidualRule + haiku-residual-0 HARD gate: PASS — `internal/spec/lint_haiku_residual.go` authored (crossSPECRule; scans 4 surfaces with 4 exemptions X1-X4; Error severity; registered in `l.rules`; NOT skip-able — findings bypass applylintSkip via the cross-SPEC loop). `TestHaikuResidual_{Detection,Exemptions,CleanRoot,NonSkippable}` all PASS. Surface 4: `"haiku": true` removed from `validRoutingModels`; `fullRoutingYAML` fixture haiku→sonnet (No-Haiku-aligned).
+
+**HARD gate closure — all 4 surfaces = 0:**
+- S1 (agent frontmatter, live+template): `grep -rn 'haiku' .claude/agents/moai/ internal/template/templates/.claude/agents/moai/ | grep -v _test` → **0**
+- S2 (claude_models block, live+template): `awk claude_models block | grep -c haiku` → **0** (glm.models.haiku exempt X2)
+- S3 (workflow.yaml routing, live+template): `grep -c haiku` → **0**
+- S4 (validRoutingModels Go map): `grep -n '"haiku"' model_routing.go | grep -v _test` → **0**
+
+**Evidence:** commit `cf34c476d`. `go test ./internal/spec/` PASS (incl. catalog_hash test after regen). Catalog hashes regenerated (pre-existing drift from 6d2e81dc6 agent refactor).
+
+### M4 — doctrine refresh (PASS, SHOULD-PASS)
+
+**AC-AA2-014:** PASS — `grep -cE '2-B|2-C|3-tier|max/medium/low' model-policy.md` ≥ 3 (§2-B/§2-C/§06-M4 refs + 3-tier + max/medium/low tier table); agent-authoring.md `grep -c '10 retained|super-advisor|manager-design'` ≥ 1 ("10 retained agents (9 MoAI-custom...)"); agent-hooks.md `SubagentStop`→`Stop` (official frontmatter event; agent files already use `Stop:` per refactor 6d2e81dc6). Commits `543683718` (M4 doctrine) + `fa2a9b105` (Extension agent-body No-Haiku cleanup) + `f1fe04214` (super-advisor prose boundary-grep fix).
+
+**Evidence:** `make build` exit 0; `go test ./internal/{config,cli,spec}/...` PASS; `golangci-lint` 0 issues; subagent-boundary grep (all agents) = 0.
+
+**Gaps (deferred to sync-phase or follow-up):** (a) AC-AA2-014 `agent-patterns.md` 4-loop mapping + 4 rejected alternatives not added (context-budget constraint; SHOULD-PASS, not MUST-PASS); (b) agent-authoring.md Retained Agents list not expanded with super-advisor/manager-design entries (count flipped 8→10 but the 7-item bullet list + Effort Matrix not expanded — SHOULD-PASS); (c) Extension description-structural-concision (all 9 agents) not done (beyond-SPEC-AC, context-budget constraint); (d) spec-lint CLI invocation needs file-not-dir arg (not a code defect).
+
+---
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — manager-develop populates this section when all MUST-PASS ACs are green and the implementation is ready for sync-phase entry.>_
+```yaml
+run_complete_at: 2026-07-10
+run_commit_sha: f1fe04214   # M-final (super-advisor prose fix); M3b=93d718646 M3c=cf34c476d M4=543683718 Ext=fa2a9b105
+run_status: audit-ready-pending-sync
+ac_pass_count: 13   # AC-008..013, 015 + 001..006 (M1/M2 prior) = green
+ac_fail_count: 0
+ac_pass_with_debt:
+  - AC-AA2-009   # 3×12 matrix loads + routes (golden test PASS); literal grep indent imprecision noted
+  - AC-AA2-014   # M4 core doctrine done; agent-patterns 4-loop + authoring list-expansion deferred (SHOULD-PASS)
+preserve_list_post_run_count: 0   # no PRESERVE-list files entered commits (specific-path commits only)
+l44_pre_commit_fetch: n/a (worktree branch; orchestrator owns main integration)
+l44_post_push_fetch: pending (push deferred to orchestrator — worktree branch based on origin/main HEAD)
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  go_build_all: exit_0
+  go_build_windows_amd64: exit_0
+  make_build: exit_0
+total_run_phase_files: 23   # 6 (M3b) + 7 (M3c) + 6 (M4) + 5 (Ext) + 3 (super-advisor prose) - overlaps
+m1_to_mN_commit_strategy: per-milestone specific-path commits (M3b/M3c/M4/Ext/super-advisor); never git add -A
+```
+
+**Run-phase summary:** M3b (model_routing_profiles + --model-policy), M3c (HaikuResidualRule HARD gate + validRoutingModels haiku removal), M4 (model-policy/agent-authoring/agent-hooks doctrine), Extension (agent-body No-Haiku cleanup). All 4 HaikuResidualRule surfaces = 0 (HARD gate PASS). Subagent boundary grep = 0. Tests/lint/cross-build green.
+
+**Gaps:** agent-patterns.md 4-loop mapping + agent-authoring full list expansion + Extension description-concision deferred (context-budget; all SHOULD-PASS or beyond-AC). Push to main deferred to orchestrator (worktree branch `worktree-agent-ada0603163d6379ce` based on origin/main HEAD b153459e7 — 5 commits directly fast-forwardable once orchestrator reconciles local main).
+
+**Residual-risk:** (a) Pre-existing test failures NOT caused by this run: `TestOutputStylesTemplateLiveParity` (moai-easy.md live-tree absence — untracked in main) + `TestHookWrapper_TempFileCleanup` (flaky under parallel load, passes in isolation); (b) config package coverage 80.7% (aggregate; my changes well-covered — below 85% package target is pre-existing); (c) orchestrator must reconcile local main (behind origin by 3 MEMORY-DIET commits) + fast-forward my 5 worktree commits.
 
 ---
 
