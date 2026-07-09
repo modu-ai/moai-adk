@@ -73,9 +73,12 @@ func TestRegistryDispatch_AllNewEventTypes(t *testing.T) {
 				SessionID:     "sess-e2e-4",
 				CWD:           "/tmp",
 				HookEventName: "UserPromptSubmit",
-				Prompt:        "Help me fix this bug",
+				Prompt:        "Help me run this task",
 			},
-			// UserPromptSubmit returns HookSpecificOutput with additionalContext
+			// UserPromptSubmit returns HookSpecificOutput because the prompt
+			// carries the "run" workflow keyword (additionalContext). The prior
+			// project/branch title fallback was removed, so a keyword-free,
+			// SPEC-free, transcript-free prompt now yields empty output (nil HSO).
 			wantNilHSO: false,
 		},
 		{
@@ -530,9 +533,12 @@ func TestRegistryDispatch_FullPipeline_JSONRoundTrip(t *testing.T) {
 				SessionID:     "sess-e2e-4",
 				CWD:           "/tmp",
 				HookEventName: "UserPromptSubmit",
-				Prompt:        "Help me fix this bug",
+				Prompt:        "Help me run this task",
 			},
-			// UserPromptSubmit returns HookSpecificOutput with additionalContext
+			// UserPromptSubmit returns HookSpecificOutput because the prompt
+			// carries the "run" workflow keyword (additionalContext). The prior
+			// project/branch title fallback was removed, so a keyword-free,
+			// SPEC-free, transcript-free prompt now yields empty output (nil HSO).
 			wantNilHSO:        false,
 			wantHookEventName: "UserPromptSubmit",
 		},
