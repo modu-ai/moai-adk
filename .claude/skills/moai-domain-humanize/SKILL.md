@@ -18,7 +18,7 @@ compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob
 user-invocable: false
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   category: "domain"
   status: "active"
   updated: "2026-07-10"
@@ -147,6 +147,17 @@ The Korean module is an original catalogue; the English, Japanese, and Chinese m
 
 For mixed-language text, detect the dominant language and route to its module; apply each module independently to its spans when the text is genuinely multilingual.
 
+### Genre-Module Routing
+
+Two genre modules stack ON TOP of the language routing above — they never replace the language module:
+
+| Surface / invocation | Additional module |
+|----------------------|-------------------|
+| Display-surface copy — landing page, slide/card deck, design-tool result copy | `modules/design-copy.md` (genre structure rules + per-language native measures), loaded in addition to the matching language module |
+| Post-generation QA-gate review — copy produced by another tool or workflow, reviewed before application | `modules/copy-review.md` (review-only mode: detect and propose, never auto-apply; six-stage pipeline + per-language formula dictionaries) |
+
+When both conditions hold (a QA-gate review of display-surface copy), load both genre modules alongside the language module. The Language Routing table above remains the language axis and is unchanged by this extension.
+
 ---
 
 ## Implementation Guide
@@ -183,4 +194,4 @@ Automated AI-text detectors are unreliable across these four languages (notably 
 
 Category-catalogue structure inspired by the im-not-ai (Humanize KR) project.
 
-Version: 1.1.0
+Version: 1.2.0

@@ -169,8 +169,8 @@ catalog:
                 - name: moai-domain-humanize
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-domain-humanize/
-                  hash: 07c6509a464d9423621c95e321a458d8c9a52047507cef0781d4185ea2dccdfb
-                  version: 1.1.0
+                  hash: d100f171cdb76a4395d905578cc9b79a45d79e6c30e75ade08ce429cf2cb4ae4
+                  version: 1.2.0
             agents: []
         devops:
             description: Security review, OWASP compliance, performance optimization, and infrastructure
