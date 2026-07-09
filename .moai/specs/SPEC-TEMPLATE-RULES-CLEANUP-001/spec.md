@@ -1,7 +1,7 @@
 ---
 id: SPEC-TEMPLATE-RULES-CLEANUP-001
 title: "Template-distributed rules cleanup: broken refs, neutrality, backports, retired vocab, design drift + CI guard expansion"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-09
 updated: 2026-07-09
@@ -21,6 +21,7 @@ tags: "template, rules, neutrality, ci-guard, cleanup, mirror-parity, backport"
 | Date | Version | Change | Author |
 |------|---------|--------|--------|
 | 2026-07-09 | 0.1.0 | 최초 작성 — 3-렌즈 감사(A~E finding) 반영, 사용자 결정 4건 고정 요구사항으로 인코딩 | GOOS행님 (manager-spec) |
+| 2026-07-09 | 0.1.1 | plan-audit iter-1 D1-D8 반영: NOTICE.md 명시 제외(D1), sanitized-pair 8-entry 정정(D2), 표 셀 `\|` 전개 주석(D3), W#/lessons 전수 실측 열거(D4), constitution 4-서브커맨드(D5), lint 대상 파일화(D6), E2b 구체화(D7), MoAI 14라인 실측(D8) | GOOS행님 (manager-spec) |
 
 ## §A 개요 및 배경
 
@@ -41,7 +42,7 @@ tags: "template, rules, neutrality, ci-guard, cleanup, mirror-parity, backport"
 ### Group P — 공통 프로세스 요구사항
 
 - **REQ-TRC-001** (Ubiquitous): The rewritten template rule files shall preserve their normative semantics — a rewrite drops only unshipped path citations and internal provenance, never normative content. The per-file `[HARD]` marker count shall remain unchanged for every edited template rule file, with two documented exceptions: (a) `design/constitution.md` retired-annotation of the Sprint Contract block (REQ-TRC-040), (b) removal of `zone-registry.md` itself (REQ-TRC-024).
-- **REQ-TRC-002** (While): **While** run-phase editing is in progress, every edit shall follow the per-file tree-classification treatment matrix (research.md §R7): (i) BYTE-PARITY ENROLLED files (`spec-workflow.md`, `session-handoff.md` — `rule_template_mirror_test.go` allowlist) receive identical dual-tree edits; (ii) SANITIZED PAIR files (`manager-develop-prompt-template.md`, `runtime-recovery-doctrine.md` — `sanitized_pair_parity_test.go` registry) receive template-side-only edits; (iii) UNENROLLED pairs receive identical dual-tree edits by default, with per-file exceptions where the local copy legitimately cites dev-only artifacts (decision recorded in progress.md). Template-First 순서(template 편집 → `make build` → local 반영)를 준수한다.
+- **REQ-TRC-002** (While): **While** run-phase editing is in progress, every edit shall follow the per-file tree-classification treatment matrix (research.md §R7): (i) BYTE-PARITY ENROLLED files (`spec-workflow.md`, `session-handoff.md` — `rule_template_mirror_test.go` allowlist) receive identical dual-tree edits; (ii) SANITIZED PAIR files — `sanitized_pair_parity_test.go` `sanitizedPairPaths` 실측 8-entry registry: `development/manager-develop-prompt-template.md`, `workflow/ci-watch-protocol.md`, `core/agent-common-protocol.md`, `workflow/verification-batch-pattern.md`, `.claude/agents/moai/plan-auditor.md`, `core/askuser-protocol.md`, `core/verification-claim-integrity.md`, `workflow/runtime-recovery-doctrine.md` — receive template-side sanitization edits (identical dual-edit는 normalized parity 보존 + `TestSanitizedPairParity` green 전제로 허용); (iii) UNENROLLED pairs receive identical dual-tree edits by default, with per-file exceptions where the local copy legitimately cites dev-only artifacts (decision recorded in progress.md). Template-First 순서(template 편집 → `make build` → local 반영)를 준수한다.
 - **REQ-TRC-003** (Ubiquitous): The pre-existing guard suite (`go test ./internal/template/ -count=1`) shall remain green at every push boundary — including `TestLeakClassNoDateShaInDefaultTier`, `TestSanitizedPairParity`, and `TestRuleTemplateMirrorDrift`.
 
 ### Group A — 깨진 cross-reference (5건)
@@ -54,17 +55,17 @@ tags: "template, rules, neutrality, ci-guard, cleanup, mirror-parity, backport"
 
 - **REQ-TRC-020** (Ubiquitous): The template rule tree shall contain zero non-allowlisted tokens matching `\b(REQ|AC)-[A-Z][A-Z0-9]*-[0-9]+\b`. 확인된 7건 — `askuser-protocol.md:177` (AC-ADM-005..017), `sprint-round-naming.md:23,94` (AC-LR-009), `settings-management.md:181,344,355,364` (REQ-MIG003-006, REQ-WF006-006/015/011) — 을 중립 프로즈로 치환한다. Pedagogical placeholder(`REQ-XXX-*`/`AC-XXX-*`, 예: `manager-develop-prompt-template.md:175`)는 allowlist 대상이다.
 - **REQ-TRC-021** (Ubiquitous): The template `core/askuser-protocol.md` Worked Example shall carry no internal provenance phrases (`Epic 7`, `TMC-001`, `L51`, `§24 namespace align`) — the pedagogical structure (preview key-set comparison example) shall be preserved with generic rationale text.
-- **REQ-TRC-022** (Ubiquitous): The template rule tree shall contain zero `lessons #N` references and zero incident-provenance `W#` tokens (`W3 meta-analysis`, `lessons #21 W0`, `W1/W2`, `W3 케이스` 등 — 감사 확인 11건: `manager-develop-prompt-template.md:71,91,132,221,222`, `agent-common-protocol.md:274,409-413`, `session-handoff.md:291,332`, `spec-workflow.md:51`). 치환은 교훈의 내용을 일반화 프로즈로 유지한다.
+- **REQ-TRC-022** (Ubiquitous): The template rule tree shall contain zero `lessons #N` references and zero incident-provenance `W#` tokens (전수 실측 기준 — plan-audit iter-1 D4: W#-토큰 5개 라인 = `agent-common-protocol.md:274` W3 meta-analysis, `manager-develop-prompt-template.md:71` lessons #21 W0 fix, `:91` W1/W2, `:221` W3 케이스, `:222` W3에서; lessons 4개 라인 = `manager-develop-prompt-template.md:71`, `session-handoff.md:291,332`, `spec-workflow.md:51`). 치환은 교훈의 내용을 일반화 프로즈로 유지한다.
 - **REQ-TRC-023** (Ubiquitous): The template rule tree shall contain zero internal work-date provenance strings. 확인 9건: `design/constitution.md:12-15,423-424` (HISTORY/footer 날짜), `worktree-integration.md:44,46` + `spec-workflow.md:175,269,416` + `session-handoff.md:330` (반복 "2026-05-17 policy"), `zone-registry.md:629-630` (제거로 소멸). 날짜가 실린 정책 문장은 날짜만 제거하고 정책 내용은 유지한다.
 - **REQ-TRC-024** (When): **When** `moai init` / `moai update` deploys the template tree, the deployed rule set shall not include `core/zone-registry.md` (내부 거버넌스 레지스트리 — 1,019줄 중 CONST-V3R* 121건). The local dev copy (`.claude/rules/moai/core/zone-registry.md`) shall be retained untouched.
 - **REQ-TRC-025** (Ubiquitous): The template tree (`internal/template/templates/` 전체) shall contain zero references to `zone-registry` after removal — 확인된 참조 7줄 / 2파일 (`design/constitution.md` 5곳, `workflow/runtime-recovery-doctrine.md` 2곳)을 파일명 비인용 프로즈로 재서술한다.
 - **REQ-TRC-026** (Ubiquitous): The template rule tree shall contain zero `CONST-V3R*` tokens (zone-registry 제거 후 잔여: `manager-develop-prompt-template.md` 4줄, `worktree-integration.md` 2곳) and zero standalone internal migration-ID headings (`settings-management.md:174` `MIG-003`).
-- **REQ-TRC-027** (When): **When** a deployed user project lacks `zone-registry.md`, the `moai constitution list`, `moai doctor`, and `moai spec lint` commands shall degrade gracefully (non-crash, informative message). 런타임 소비자 3곳 확인: `internal/cli/constitution.go:24`, `internal/cli/doctor.go:580` (이미 not-found 메시지 처리), `internal/cli/spec_lint.go:159` (`detectRegistryPath`가 빈 문자열 반환 — graceful). Run-phase에서 scratch 배포 프로젝트로 실측 검증하고, 비-graceful 동작이 발견되면 최소 Go 수정으로 graceful 처리를 추가한다.
+- **REQ-TRC-027** (When): **When** a deployed user project lacks `zone-registry.md`, the `moai constitution` subcommands (`list`/`guard`/`amend`/`validate` — `internal/cli/constitution.go:35-38` 실측 4종; `validate`는 registry-load 실패 시 abort 이력 보유), `moai doctor`, and `moai spec lint` shall degrade gracefully (non-crash, informative message; 인자-누락 usage 에러는 graceful로 간주한다). 런타임 소비자 3곳 확인: `internal/cli/constitution.go:24`, `internal/cli/doctor.go:580` (이미 not-found 메시지 처리), `internal/cli/spec_lint.go:159` (`detectRegistryPath`가 빈 문자열 반환 — graceful). Run-phase에서 scratch 배포 프로젝트로 실측 검증하고, 비-graceful 동작이 발견되면 최소 Go 수정으로 graceful 처리를 추가한다.
 
 ### Group C — 백포트 (local → template, 선별)
 
 - **REQ-TRC-030** (Ubiquitous): The template `development/spec-frontmatter-schema.md` shall include the `§I Token Accounting` progress.md section-map row present in the local version (내용 중립 — SPEC ID 없음).
-- **REQ-TRC-031** (Ubiquitous): The template `workflow/runtime-recovery-doctrine.md` shall carry the local tree's product-name terminology corrections (`MoAI` → `moai-adk`, 확인 ~8곳) and the local tree's more-neutral phrasings where they exist (예: "The sibling interrupt-ledger SPEC owns" → "The orchestrator-interrupt-ledger contract owns").
+- **REQ-TRC-031** (Ubiquitous): The template `workflow/runtime-recovery-doctrine.md` shall carry the local tree's product-name terminology corrections (`MoAI` → `moai-adk`, 실측 14개 매치 라인) and the local tree's more-neutral phrasings where they exist (예: "The sibling interrupt-ledger SPEC owns" → "The orchestrator-interrupt-ledger contract owns").
 - **REQ-TRC-032** (Ubiquitous, unwanted): The backport shall NOT copy sanitization-stripped elements into the template mirror: the `.moai/research/dive-into-claude-code-archive.md` cross-reference, the `Version:`/`Origin:` footer lines, and the `CONST-V3R6-001` token — 이들의 template 부재는 sanitized-pair 계약(`sanitized_pair_parity_test.go` + leak test)에 의한 의도적 결과다 (research.md §R2).
 
 ### Group D — retired 어휘
@@ -99,7 +100,8 @@ tags: "template, rules, neutrality, ci-guard, cleanup, mirror-parity, backport"
 
 ### Out of Scope — NOTICE.md import 날짜
 
-- NOTICE.md의 서드파티 import 날짜류는 감사에서 판단 유보된 항목으로, 본 SPEC의 date-provenance 정리(REQ-TRC-023) 및 가드(REQ-TRC-062) 스코프에서 제외한다 (가드 스코프는 `.claude/rules/`로 한정).
+- NOTICE.md의 서드파티 import 날짜류(`moai/NOTICE.md:18,91`의 `2026-04-26`)는 감사에서 판단 유보된 항목으로, 본 SPEC의 date-provenance 정리(REQ-TRC-023) 및 가드(REQ-TRC-062) 대상에서 제외한다.
+- 주의(plan-audit iter-1 D1): NOTICE.md는 rules 트리(`internal/template/templates/.claude/rules/moai/NOTICE.md`) **내부**에 위치한다 — "가드 스코프 밖"이 아니라 **명시적 제외**로 처리한다: AC-TRC-B4 grep의 `--exclude=NOTICE.md` + 가드 (c)의 pre-registered allowlist entry (design.md §4).
 
 ### Out of Scope — design-system 제거 재검토 (거부)
 

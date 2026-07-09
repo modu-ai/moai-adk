@@ -22,7 +22,7 @@
 
 - **패턴 (RE2 호환, 협패턴 우선)**:
   - `\blessons? #[0-9]+` — lessons 참조 (한국어 문장 내 "lessons #21 W0 fix 패턴" 포함 매치).
-  - `\bW[0-9] (meta-analysis|meta|fix)\b` + `\bW[0-9]/W[0-9]\b` + `\bW[0-9] 케이스` — 사건-W# 관용형 3종 (감사 실측 인스턴스가 전부 이 3형에 속함).
+  - `\bW[0-9] (meta-analysis|meta|fix)\b` + `\bW[0-9]/W[0-9]\b` + `\bW[0-9] 케이스` + `\bW[0-9]에서` — 사건-W# 관용형 4종 (전수 실측 5개 W-라인이 전부 이 4형에 속함; `manager-develop-prompt-template.md:222`의 "W3에서" 커버는 plan-audit iter-1 D4 반영).
 - **의도적 협패턴 선택 근거**: 광패턴 `\bW[0-9]\b`는 `SPEC-W3-*`류 미래 식별자·표 헤더 등에서 오탐 여지. RE2에 lookahead가 없어 문맥 배제 불가하므로, 관용형 열거 + allowlist가 유지비용이 낮다. 협패턴이 놓치는 신형 W# 표현은 recurrence 시 관용형 추가로 대응 (테스트 주석에 확장 절차 명기).
 - **allowlist**: 초기 0건 목표 (M3 정리로 전량 소거). `W3C`류는 협패턴상 애초에 비매치.
 - **배치**: 가드 (a)와 같은 rules-스코프 class 군 또는 신규 `rule_provenance_audit_test.go` — M1에서 파일 배치 확정 (사용자 결정 3의 "+2~3 test file changes" 범위 내).
@@ -33,7 +33,12 @@
 - **패턴**: `\b20[0-9]{2}-[0-9]{2}-[0-9]{2}\b` (ISO 날짜).
 - **오탐 완화 (라인-컨텍스트 제외 + allowlist 2단)**:
   1. 라인-컨텍스트 제외: 매치 라인이 다음 접두/포함 형태면 skip — `Last Updated:`, `Version:`, `Status:`, `Relocated:` (footer 메타데이터 관례). 단 **본 SPEC의 M3가 footer 내부 작업 날짜(design/constitution.md:423-424)도 제거**하므로, 제외 규칙은 "미래의 정당한 문서 메타데이터"를 위한 보험이지 현재 위반의 면죄부가 아님 — RED 시점에는 제외 규칙을 임시 비활성화한 카운트도 함께 기록해 판정 일관성을 확인.
-  2. 파일단위 allowlist: 정당 만료일(BC window 등)이 발견되면 `{File, Substring, Rationale}` entry로 등재. 초기 목표 0건.
+  2. 파일단위 allowlist — **pre-registered entries** (plan-audit iter-1 D1(b); 종전 "초기 목표 0건" 표현 철회): 라인-컨텍스트 제외 규칙이 커버하지 못하는 실측 정당 날짜 4건을 사전 등재한다.
+     - `moai/NOTICE.md` — **파일 전체 제외**: 서드파티 import provenance 날짜(`:18,:91`의 `2026-04-26`). spec.md Out of Scope(NOTICE.md import dates 이연)의 가드-레벨 반영 — rules 트리 **내부** 파일이므로 "스코프 밖"이 아닌 명시 제외 entry가 필요.
+     - `development/spec-frontmatter-schema.md:190-191` — pedagogical anti-example (`created_at: 2026-05-16   # WRONG — use created:`): 스키마 교육용 오답 예시. `created_at:` 접두는 기본 라인-컨텍스트 제외(`Last Updated:`/`Version:` 등)에 미포함.
+     - `development/skill-authoring.md:45,89` — frontmatter `updated:` 필드 형식 예시 날짜(`"2026-01-28"`).
+     - `workflow/archived-agent-rejection.md:7` — 예시 frontmatter의 `updated: "2026-05-25"`.
+     - 구현 자유도: 후자 3건은 `updated:`/`created:`/`created_at:` 라인-접두 컨텍스트 제외 확장으로 흡수 가능 — allowlist entry vs 컨텍스트 확장 중 택1하고 결정 근거를 테스트 주석에 기록. 신규 정당 날짜(만료일/BC window 등)는 `{File, Substring, Rationale}` entry 추가로 처리.
 - **리스크 잔존 인지**: 날짜 휴리스틱은 본질적으로 의미 판별 불가 (내부 작업 날짜 vs 정책 유효일). 가드의 역할은 "새 날짜 유입 시 사람의 명시 판정(allowlist 등재 or 제거)을 강제"하는 ratchet이지 자동 판별기가 아님 — 이 성격을 테스트 doc comment에 명기.
 
 ## §5 가드 (d) — CONST-V3R* / SPEC-V3R* rules 스코프 확장 (REQ-TRC-063)

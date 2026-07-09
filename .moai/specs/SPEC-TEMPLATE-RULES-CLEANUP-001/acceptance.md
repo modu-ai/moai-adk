@@ -2,6 +2,8 @@
 
 모든 AC는 기계 검증 명령을 갖는다. `TPL=internal/template/templates/.claude/rules` 약칭 사용 (실행 시 전개).
 
+> **표기 주의 (plan-audit iter-1 D3)**: 표 셀 안의 `\|`는 markdown 테이블 이스케이프다 — **실행 시 `|`(파이프)로 전개**해서 실행한다. verbatim 복사 실행 시 `\|` 리터럴 패턴이 되어 0-match 공허 GREEN이 된다 (특히 AC-TRC-B1/C2/C3의 ERE 교대 패턴). 파이프·프로세스치환이 많은 명령(AC-TRC-E2b)은 표 아래 fenced 블록 형태가 정본이다.
+
 ## §D AC 매트릭스
 
 ### 공통 (Group P)
@@ -29,19 +31,19 @@
 | AC-TRC-B2 | REQ-TRC-021 | `grep -n 'Epic 7\|TMC-001\|L51\|§24 namespace' $TPL/moai/core/askuser-protocol.md` | 0 hits |
 | AC-TRC-B2b | REQ-TRC-021 | `grep -c 'Worked Example' $TPL/moai/core/askuser-protocol.md` | ≥ 1 (교육 예시 구조 보존) |
 | AC-TRC-B3 | REQ-TRC-022 | `grep -rEn '\blessons? #[0-9]+' $TPL/` | 0 hits |
-| AC-TRC-B3b | REQ-TRC-022 | `grep -rn 'W3 meta-analysis\|W0 fix\|W1/W2\|W3 케이스' $TPL/` | 0 hits (감사 실명 인스턴스 소거) |
-| AC-TRC-B4 | REQ-TRC-023 | `grep -rn '2026-05-17\|2026-05-20\|2026-05-04\|2026-05-09\|2026-04-26\|2026-04-20' $TPL/` | 0 hits |
+| AC-TRC-B3b | REQ-TRC-022 | `grep -rn 'W3 meta-analysis\|W0 fix\|W1/W2\|W3 케이스\|W3에서' $TPL/` | 0 hits (실측 5개 W-라인 관용형 전부 소거 — D4) |
+| AC-TRC-B4 | REQ-TRC-023 | `grep -rn --exclude=NOTICE.md '2026-05-17\|2026-05-20\|2026-05-04\|2026-05-09\|2026-04-26\|2026-04-20' $TPL/` | 0 hits — `NOTICE.md`(:18,:91에 2026-04-26 보유)는 Out of Scope 이연에 따른 명시 제외 (D1; design.md §4 allowlist와 정합) |
 | AC-TRC-B5 | REQ-TRC-024 | `test ! -f $TPL/moai/core/zone-registry.md && test -f .claude/rules/moai/core/zone-registry.md && echo OK` | `OK` (template 제거 + local 보존) |
 | AC-TRC-B6 | REQ-TRC-025 | `grep -rn 'zone-registry' internal/template/templates/` | 0 hits |
 | AC-TRC-B7 | REQ-TRC-026 | `grep -rn 'CONST-V3R' $TPL/ ; grep -n 'MIG-003' $TPL/moai/core/settings-management.md` | 양쪽 0 hits |
-| AC-TRC-B8 | REQ-TRC-027 | scratch: `d=$(mktemp -d) && (cd $d && moai init t && cd t && moai constitution list; echo "cl-exit=$?"; moai doctor >/dev/null 2>&1; echo "dr-exit=$?")` | 두 명령 모두 crash 없음 — exit 0 또는 문서화된 informative degradation (verbatim 출력을 §E.2에 기록) |
+| AC-TRC-B8 | REQ-TRC-027 | scratch: `d=$(mktemp -d) && (cd $d && moai init t && cd t && for sub in list guard amend validate; do moai constitution $sub; echo "$sub-exit=$?"; done; moai doctor >/dev/null 2>&1; echo "dr-exit=$?")` | 5개 명령(constitution 4종 + doctor) 전부 crash 없음 — exit 0 또는 문서화된 informative degradation. 인자-누락 usage 에러(guard/amend가 인자 요구 시)는 graceful로 판정하되 registry-부재 abort와 구분해 기록; `validate`는 registry-load 실패 시 abort 이력 — 비-graceful 시 REQ-TRC-027 조건부 수정 발동 (D5). verbatim 출력을 §E.2에 기록 |
 
 ### Group C — 백포트
 
 | AC | 대응 REQ | 검증 명령 | 기대 결과 |
 |----|----------|-----------|-----------|
 | AC-TRC-C1 | REQ-TRC-030 | `grep -c '§I Token Accounting' $TPL/moai/development/spec-frontmatter-schema.md` | ≥ 1 |
-| AC-TRC-C2 | REQ-TRC-031 | `grep -nE 'MoAI (agent\|artifact\|policy projection\|projection\|is a harness\|CONSUMES)\|of MoAI.s reach\|MoAI-level policy' $TPL/moai/workflow/runtime-recovery-doctrine.md` | 0 hits (~8곳 moai-adk 전환 완료) |
+| AC-TRC-C2 | REQ-TRC-031 | `grep -cE '\bMoAI\b' $TPL/moai/workflow/runtime-recovery-doctrine.md` | 0 (실측 baseline 14개 매치 라인 → 전환 후 0 — D8) |
 | AC-TRC-C3 | REQ-TRC-032 | `grep -nE '\.moai/research/\|^Version:\|^Origin:\|CONST-V3R' $TPL/moai/workflow/runtime-recovery-doctrine.md` | 0 hits (sanitized 요소 미복사) |
 | AC-TRC-C4 | REQ-TRC-032 | `go test ./internal/template/ -run TestSanitizedPairParity -count=1` | PASS |
 
@@ -59,7 +61,15 @@
 |----|----------|-----------|-----------|
 | AC-TRC-E1 | REQ-TRC-050 | `diff .claude/rules/moai/design/constitution.md internal/template/templates/.claude/rules/moai/design/constitution.md; echo exit=$?` | `exit=0` (byte-identical) |
 | AC-TRC-E2 | REQ-TRC-051 | `grep -n 'design_docs' .moai/config/sections/design.yaml` | 0 hits |
-| AC-TRC-E2b | REQ-TRC-051 | local/template design.yaml의 `design:` 하위 top-level key 집합 비교 (예: `grep -E '^    [a-z_]+:' local` vs `grep -E '^  [a-z_]+:' template` 정렬 비교 — 들여쓰기 차 감안, run-phase에서 정확 명령 확정) + `go test ./internal/config/ -run Symmetry -count=1` | key-set 일치 + Symmetry PASS |
+| AC-TRC-E2b | REQ-TRC-051 | 아래 fenced 블록의 key-set diff 명령 (D7 구체화) + `go test ./internal/config/ -run Symmetry -count=1` | diff 빈 출력·exit 0 + Symmetry PASS |
+
+```bash
+# AC-TRC-E2b — design: 하위 top-level key-set 비교 (정본 명령 — D7 구체화)
+# local은 4-space, template은 2-space 들여쓰기이므로 정확-폭 grep으로 level-1 키만 추출한다.
+diff <(grep -E '^ {4}[a-z_]+:' .moai/config/sections/design.yaml | sed -E 's/^ +([a-z_]+):.*/\1/' | sort) \
+     <(grep -E '^ {2}[a-z_]+:' internal/template/templates/.moai/config/sections/design.yaml | sed -E 's/^ +([a-z_]+):.*/\1/' | sort)
+# 기대: 빈 출력 + exit 0. M6 완료 전에는 local 측 design_docs 행이 출력됨(의도된 RED 상태).
+```
 
 ### Group F — CI 가드
 
@@ -104,7 +114,7 @@
 
 - `go vet ./...` + `golangci-lint run` clean (M1/M3 Go 변경분)
 - `go test ./internal/template/ ./internal/config/ -count=1` 전체 PASS
-- `moai spec lint .moai/specs/SPEC-TEMPLATE-RULES-CLEANUP-001` clean
+- `moai spec lint .moai/specs/SPEC-TEMPLATE-RULES-CLEANUP-001/spec.md` clean (lint는 spec.md 파일 경로를 받는다 — 디렉터리 인자는 ParseFailure — D6)
 - coverage: 신규/수정 가드 테스트는 테스트 코드이므로 별도 커버리지 목표 없음; M3 조건부 Go 수정 발생 시 해당 패키지 기존 커버리지 비하락
 
 ## Definition of Done
