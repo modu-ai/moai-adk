@@ -27,6 +27,8 @@ Three approaches keep the session running between prompts. Pick by **what should
 
 > Note: the Claude Code native `/loop` (time-interval scheduler) and MoAI's `/moai loop` (diagnostic-driven Ralph Engine) are distinct commands — native `/loop` re-runs a prompt on a wall-clock interval, while `/moai loop` iterates on tooling-detected work. They are not interchangeable.
 
+> **Sanctioned composition surface**: `.claude/rules/moai/workflow/cadence-bridge.md` defines the read-only recipe catalog that composes native `/loop` with read-only `/moai` entry points on a schedule — it composes the two commands above without merging their semantics, under a HARD invariant that scheduled runs never commit, never push, and never enter run-phase.
+
 `/goal` and `/moai loop` are complementary, not competitors:
 
 - **`/moai loop`** is MoAI's deterministic, diagnostic-driven fix loop — it knows the project's quality tooling and the SPEC lifecycle. Use it for "fix everything the tooling flags".

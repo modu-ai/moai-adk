@@ -33,11 +33,61 @@ spec_id_self_check: PASS (SPEC-CADENCE-BRIDGE-001 → ^SPEC(-[A-Z][A-Z0-9]*)+-\d
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — populated by manager-develop>_
+**Milestones**: M1 (cadence-bridge rule, REQ-CDB-001..003) and M2 (cross-ref + template sync, REQ-CDB-004..005) were completed together in a single commit — the deliverable is small (1 new file + 1 cross-reference line, mirrored) and the two milestones share one atomic edit unit.
+
+### AC PASS/FAIL Matrix
+
+| AC ID | REQ trace | Status | Verification command | Actual output |
+|-------|-----------|--------|----------------------|----------------|
+| AC-CDB-001 | REQ-CDB-001 | PASS | `grep -n "loop 30m /moai gate\|review --lean\|loop-verdict" .claude/rules/moai/workflow/cadence-bridge.md` | 6 matches: the 3 named recipes (`/loop 30m /moai gate`, `nightly: /moai review --lean`, `periodic read: .moai/state/loop-verdict-*.json`) plus 3 prose references, each with interval guidance + read-only rationale in the surrounding paragraph |
+| AC-CDB-002 | REQ-CDB-002 | PASS | `grep -n "HARD" ...` → 2 matches (heading + invariant sentence); `grep -n "commit\|push\|run-phase\|Kickoff" ...` → 7 matches covering the catalog invariant, the "single governing sentence", and the Implementation Kickoff Approval clause | HARD invariant present at catalog level; "scheduled runs never commit, never push, never enter run-phase; Level-1 uncommitted working-tree edits are the sole permitted exception" verbatim; Implementation Kickoff Approval named "human-only and cadence-unsatisfiable" |
+| AC-CDB-003 | REQ-CDB-003 | PASS | `grep -n "TaskList\|never auto\|auto-execute" .claude/rules/moai/workflow/cadence-bridge.md` | 2 matches: Discovery-to-Queue Contract persists to TaskList (session ledger live) or `.moai/reports/cadence/<date>.md` backlog record (otherwise), surfaces at next interactive session, and "SHALL NOT auto-execute any remediation" |
+| AC-CDB-004 | REQ-CDB-004 | PASS | `grep -n "not interchangeable\|cadence-bridge" .claude/rules/moai/workflow/goal-directive.md` | 2 matches: pre-existing distinctness note unchanged ("They are not interchangeable.") + new cross-reference blockquote naming cadence-bridge.md as the sanctioned composition surface |
+| AC-CDB-005 | REQ-CDB-001 | PASS | `grep -n "moai run\|moai sync\|moai loop" .claude/rules/moai/workflow/cadence-bridge.md` | 3 matches, all either the "Not cadence-eligible" prohibition list (line 30: `/moai run`, `/moai sync`, `/moai loop` explicitly named as MUST-NOT-appear) or informational cross-references to the pre-existing native-`/loop`-vs-`/moai loop` distinctness note (lines 9, 77) — no write-capable subcommand appears as a sanctioned recipe or eligibility-table row |
+| AC-CDB-006 | REQ-CDB-005 | PASS | `ls .claude/rules/moai/workflow/cadence-bridge.md internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md` (both exist); `diff` (byte-identical); `grep -rn "SPEC-LOOP-VERDICT\|SPEC-CADENCE" internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md` (exit 1, 0 matches); `make build` (exit 0) | Both files exist and are byte-identical; zero internal SPEC-ID tokens in the template copy; `make build` completed with exit 0 (catalog.yaml unaffected — cadence-bridge.md is a rule, not a skill) |
+
+### Additional verification
+
+```
+$ go build ./...
+exit=0
+
+$ go test ./internal/template/... -run "TestTemplateNeutralityAudit|TestOutputStylesTemplateLiveParity"
+--- PASS: TestTemplateNeutralityAudit (incl. C5-claude-local-ref subtest)
+--- FAIL: TestOutputStylesTemplateLiveParity (pre-existing — moai-easy.md exists only in template, not in live tree; proven pre-existing via `git stash -u` + re-run against base commit b116a5223, same failure observed with zero SPEC changes applied; out of scope for this SPEC)
+```
+
+D1/D2/D3 decisions recorded (per acceptance.md §D.6 Definition of Done #2):
+- **D1 (placement)**: new file `.claude/rules/moai/workflow/cadence-bridge.md` created (the plan.md-recommended option), no `paths:` restriction — small size + cross-cutting applicability, loading-scope rationale stated inline per sibling-rule convention (session-handoff.md / askuser-protocol.md pattern).
+- **D2 (backlog record surface)**: `.moai/reports/cadence/<date>.md` (orchestrator-written local artifact, no Go loader) — the recommended option in plan.md, adopted as-is.
+- **D3 (Cron citation depth)**: Cron tools cited generically as "Cron tools (e.g. CronCreate / CronList / CronDelete, where appropriate)" at the level the spec/plan already established; no new signatures invented; WebFetch re-verification was not available in this agent's toolset, so this is recorded as a residual-risk gap (see below), not a fresh independent verification.
+
+### Gaps (vci §3.4)
+
+- Cron tool name verification (CronCreate/CronList/CronDelete) was NOT independently re-confirmed via WebFetch in this run — this agent's toolset did not include WebSearch/WebFetch. The names were carried forward from the plan-phase spec.md/plan.md text as already-established fact, not freshly verified against official docs in this session.
+- SPEC-LOOP-VERDICT-CONTRACT-001 landing state (landed vs pending) at close time was not independently re-checked in this run; the live cadence-bridge.md cites the schema generically via file path (`.moai/state/loop-verdict-*.json`, `.claude/skills/moai/workflows/loop.md`) rather than the sibling SPEC ID, so this SPEC has no direct coupling to that sibling's landing state (per the byte-identical live/template design decision — see §E.3 D-note).
+
+### Residual-risk (vci §3.5)
+
+- The catalog-level HARD invariant is documentation-only; no mechanical enforcement (e.g. a hook blocking a scheduled `/moai fix` beyond Level-1) exists. A user or a future automation could still paste an unsanctioned recipe; this doctrine relies on reviewer/orchestrator discipline, consistent with the SPEC's explicit Out-of-Scope (mechanical blocking deferred).
+- `TestOutputStylesTemplateLiveParity` remains FAIL in this worktree (pre-existing, unrelated to this SPEC's scope) — the orchestrator integrating this work should be aware this failure exists independent of this SPEC and should not attribute it to this change.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — populated by manager-develop>_
+```
+run_status: complete
+run_complete_at: 2026-07-09
+milestones_completed: M1, M2 (combined single commit)
+ac_pass_count: 6
+ac_fail_count: 0
+files_changed: 6 (cadence-bridge.md live + template; goal-directive.md live + template; spec.md/plan.md/acceptance.md frontmatter status only)
+template_neutrality: clean (0 internal SPEC-ID tokens; C5-claude-local-ref PASS after 1 remediation round)
+make_build: exit 0
+go_build: exit 0
+cross_platform_note: doctrine-only markdown change; no Go source touched; no per-OS build-tag concern
+new_warnings_or_lints_introduced: none (no Go/lint-relevant files touched)
+push_state: not pushed — orchestrator integrates per task instructions
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
