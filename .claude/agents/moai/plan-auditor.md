@@ -127,7 +127,7 @@ An unsubstantiated PASS verdict is automatically downgraded to UNVERIFIED, which
 
 ### M5: Must-Pass Firewall
 
-Six criteria cannot be compensated by high scores in other dimensions. ANY single must-pass failure = overall FAIL regardless of other scores.
+Seven criteria cannot be compensated by high scores in other dimensions. ANY single must-pass failure = overall FAIL regardless of other scores.
 
 **(MP-1) REQ Number Consistency**: REQ numbers must be sequential (REQ-001, REQ-002, ... REQ-N) with no gaps, no duplicates, and consistent zero-padding. Even one gap or duplicate = FAIL.
 
@@ -140,6 +140,8 @@ Six criteria cannot be compensated by high scores in other dimensions. ANY singl
 **(MP-5) No unresolved D7 BLOCKING finding**: A BLOCKING finding emitted (unresolved) by Group 7 (D7 Cross-SPEC Reconciliation) is **must-pass-equivalent**: it forces `Verdict: FAIL` regardless of aggregate score, and the finding MUST be folded into `## Defects Found` at severity=critical. A D7 BLOCKING finding can never be silently absorbed into the aggregate score. If the D7 verification verb is not executable (e.g., target files absent), mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
 
 **(MP-6) No unresolved D8 BLOCKING finding**: A BLOCKING finding emitted (unresolved) by Group 8 (D8 Cross-Platform Discipline) is **must-pass-equivalent**: it forces `Verdict: FAIL` regardless of aggregate score, and the finding MUST be folded into `## Defects Found` at severity=critical. A D8 BLOCKING finding can never be silently absorbed into the aggregate score. If the D8 verification verb is not executable, mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
+
+**(MP-7) No unresolved [NEEDS CLARIFICATION] markers**: The SPEC's `plan.md` and `research.md` MUST NOT contain unresolved `[NEEDS CLARIFICATION: <topic>]` markers at audit time (marker convention: `.claude/skills/moai-workflow-spec/SKILL.md` § [NEEDS CLARIFICATION] Marker Convention; plan.md § [NEEDS CLARIFICATION] Marker Usage). Verification: `grep -rn '\[NEEDS CLARIFICATION' plan.md research.md` — any match is a must-pass failure that MUST be folded into `## Defects Found` at severity=critical and flagged as a "clarification gate" finding in the report. The orchestrator MUST resolve each marked topic via `AskUserQuestion` (preload `ToolSearch(query: "select:AskUserQuestion")`) before Implementation Kickoff Approval (plan→run HUMAN GATE). This gate is score-independent: a high aggregate score never auto-resolves an open clarification marker. When neither `plan.md` nor `research.md` exists (e.g., Tier S without `research.md`), mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
 
 ### M6: Chain-of-Verification
 
@@ -397,6 +399,7 @@ Overall Score: {0.0-1.0}
 - [PASS/FAIL/N/A] MP-4 Section 22 language neutrality: {evidence or "N/A: single-language SPEC"}
 - [PASS/FAIL/N/A] MP-5 D7 cross-SPEC reconciliation: {D7 verification evidence or "no BLOCKING finding"; N/A only when the D7 verb is not executable}
 - [PASS/FAIL/N/A] MP-6 D8 cross-platform discipline: {D8 verification evidence or "no BLOCKING finding"; N/A only when the D8 verb is not executable}
+- [PASS/FAIL/N/A] MP-7 clarification gate: {`grep -rn '\[NEEDS CLARIFICATION' plan.md research.md` evidence or "no [NEEDS CLARIFICATION] markers"; N/A only when neither plan.md nor research.md exists}
 
 ## Category Scores (0.0-1.0, rubric-anchored)
 | Dimension | Score | Rubric Band | Evidence |

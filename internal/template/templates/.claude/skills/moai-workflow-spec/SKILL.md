@@ -168,6 +168,28 @@ See [EARS deep dive with examples per pattern](references/ears-deep-dive.md) for
 
 See [requirement clarification detailed workflow](references/requirement-clarification.md) for assumption documentation templates and Five Whys application.
 
+### [NEEDS CLARIFICATION] Marker Convention
+
+**[NEEDS CLARIFICATION: <topic>]** markers identify unresolved questions in plan.md and research.md that MUST be settled before Implementation Kickoff Approval (plan→run HUMAN GATE).
+
+**Placement**: ONLY in plan.md and research.md (NEVER in spec.md or acceptance.md).
+
+**Format**: 
+- `[NEEDS CLARIFICATION: <specific topic>]` — inline marker for open questions
+- Each marker MUST be addressable via orchestrator AskUserQuestion before run-phase entry
+- plan-auditor detects unclarified markers and flags as "clarification gate" finding
+
+**3-Layer Distinction**:
+- `[NEEDS CLARIFICATION: <topic>]` — plan/research artifact blocker (user Q required)
+- `TODO` — code-level implementation debt (no user Q needed)
+- `@MX:TODO` — code-level annotation for untested/incomplete code
+
+**Processing**:
+- plan-auditor scans for `[NEEDS CLARIFICATION]` markers during audit
+- If any remain, plan-auditor recommends resolution before Implementation Kickoff Approval
+- Orchestrator runs AskUserQuestion rounds to resolve each marked topic
+- Implementation Kickoff Approval (mandatory human gate) proceeds only after all clarifications are resolved
+
 ### Plan-Run-Sync Workflow Integration
 
 PLAN (/moai:1-plan): manager-spec analyzes input → EARS requirements → clarification → SPEC creation in `.moai/specs/` → optional `--branch` or `--worktree`.
