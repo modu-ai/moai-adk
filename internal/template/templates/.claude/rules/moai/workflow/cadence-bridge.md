@@ -1,8 +1,17 @@
+---
+description: "Sanctioned recipes composing native /loop and Cron with read-only /moai entry points for scheduled discovery work"
+paths: "**/cadence-bridge.md,**/workflows/loop.md,.claude/skills/moai-workflow-loop/**,.moai/state/loop-verdict-*.json,.moai/reports/cadence/**"
+---
+
 # Cadence Bridge — Sanctioned Recipes Composing Native `/loop` and Cron with Read-Only `/moai` Entry Points
 
 Sanctioned recipe catalog for scheduled ("cadence") discovery work. It composes Claude Code's native `/loop <interval>` scheduler (and Cron tools, e.g. CronCreate / CronList / CronDelete, where appropriate) with **strictly read-only or advisory** `/moai` entry points, so that drift, over-engineering creep, and leftover backlog items are found on a schedule without ever converting scheduled convenience into unattended write automation.
 
-> **Loading scope**: Intentionally always-loaded (no `paths:` restriction) given this file's small size and cross-cutting applicability — any session composing a scheduled `/loop` or Cron invocation around a `/moai` entry point should be able to reach the catalog-level invariant below without a path-match precondition.
+> **Loading scope**: Path-matched (loads only when a session touches a file matching the `paths:` glob above). This file was previously always-loaded; it is now scoped to reduce always-loaded context weight while preserving reachability whenever cadence work is active.
+>
+> **Trigger-condition list** (the rule loads when any of these files are touched): this rule file itself (`**/cadence-bridge.md` — self-referential maintenance); the `/loop` workflow file (`**/workflows/loop.md`); the loop skill tree (`.claude/skills/moai-workflow-loop/**`); loop-verdict state files (`.moai/state/loop-verdict-*.json` — read by Recipe 3); and the cadence backlog directory (`.moai/reports/cadence/**` — written by Recipes 1 and 2).
+>
+> **Honest-fallback clause**: `paths:` matches FILE GLOBS (a file-event mechanism) and therefore CANNOT mechanically catch a runtime `/loop` command typed into the session (a semantic event — a `/loop` invocation is not a file path). The path-match glob is a best-effort PRE-LOAD; when the orchestrator detects a `/loop` + `/moai` composition (recognizable from the `goal-directive.md` or loop-skill cross-reference), it MUST manually consult this rule regardless of path-match state. The manual-consult fallback is the GUARANTEE; the path-match pre-load is best-effort convenience.
 
 ## Why This Matters
 
