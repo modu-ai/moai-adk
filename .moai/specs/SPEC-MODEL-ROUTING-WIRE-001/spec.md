@@ -2,7 +2,8 @@
 id: SPEC-MODEL-ROUTING-WIRE-001
 title: "Wire the Tier×Phase Model Routing Matrix into Spawn Paths and Resolve Model-Policy Contradictions"
 version: "0.1.0"
-status: draft
+status: superseded
+superseded_by: SPEC-AGENT-ARCH-V2-001
 created: 2026-07-09
 updated: 2026-07-09
 author: manager-spec

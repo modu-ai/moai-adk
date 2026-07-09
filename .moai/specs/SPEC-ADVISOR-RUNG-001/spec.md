@@ -2,7 +2,8 @@
 id: SPEC-ADVISOR-RUNG-001
 title: "Executor-Advisor Escalation Rung for /moai fix and /moai loop + GLM Judgment Carve-Out"
 version: "0.1.0"
-status: draft
+status: superseded
+superseded_by: SPEC-AGENT-ARCH-V2-001
 created: 2026-07-09
 updated: 2026-07-09
 author: manager-spec
