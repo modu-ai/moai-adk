@@ -124,9 +124,9 @@ The `memory` field enables cross-session learning for agents. Three scope levels
 
 ## Agent Categories
 
-The MoAI agent catalog consists of exactly **8 retained agents** (7 MoAI-custom + 1 Anthropic built-in `Explore`). Previously-listed manager and expert agents beyond this set were archived during the catalog consolidation. Domain expertise formerly delivered by those static agents is now delivered through per-spawn `Agent(general-purpose)` parameter injection — see § Per-Spawn Domain Specialization below and `.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the full archived-name enumeration and migration table.
+The MoAI agent catalog consists of exactly **10 retained agents** (9 MoAI-custom + 1 Anthropic built-in `Explore`). Previously-listed manager and expert agents beyond this set were archived during the catalog consolidation. Domain expertise formerly delivered by those static agents is now delivered through per-spawn `Agent(general-purpose)` parameter injection — see § Per-Spawn Domain Specialization below and `.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the full archived-name enumeration and migration table.
 
-### Retained MoAI-custom Agents (7)
+### Retained MoAI-custom Agents (9)
 
 Coordinate the SPEC plan/run/sync/audit lifecycle:
 

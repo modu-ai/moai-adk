@@ -103,15 +103,15 @@ This supersedes the earlier approach of enumerating the GLM model ids in `availa
 
 Scope note: this is a **static template change** in `.claude/settings.json.tmpl` (removal of the `availableModels` + `enforceAvailableModels` keys). It touches no Go runtime code (`glm.go` / `launcher.go` / `settings.go` unchanged) and writes nothing to `settings.local.json` — so the solo `moai glm` "settings.local.json clean" design (no GLM env leak to subsequent plain-`claude` invocations) is preserved.
 
-## Model Policy Tiers
+## Model Policy Tiers (No-Haiku 3-tier — design SSOT §2-B / §2-C / §06 M4)
 
-Model policy is set via `moai init --model-policy <tier>`. The tier columns reference **role profiles** (the `workflow.yaml` role_profile / domain-whitelist taxonomy), not static agent files. Under the 8-agent catalog consolidation, the retained MoAI-custom agents (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `sync-auditor`, `builder-harness`) all default to `model: inherit`; the tier governs which role_profile / domain scope is routed to Opus vs Sonnet vs Haiku when the orchestrator spawns `Agent(general-purpose)`.
+Model policy is set via `moai init --model-policy <tier>` (3-tier enum: `max/medium/low`). The tier columns reference **role profiles** (the `workflow.yaml` role_profile / domain-whitelist taxonomy), not static agent files. Under the 10-agent catalog (9 MoAI-custom + Explore), the retained agents all default to `model: inherit`; the tier governs which role_profile / domain scope is routed to Opus vs Sonnet via `RouteModelFor(specTier, phase, perfTier)` (the No-Haiku 3-tier matrix in design §2-B). The Haiku column is removed under the No-Haiku policy (SPEC-AGENT-ARCH-V2-001) — mechanical/read-only work routes to Sonnet at the `low` tier.
 
-| Tier | Description | Opus (deep reasoning) | Sonnet (implementation) | Haiku (mechanical / read-only) |
-|------|-------------|------------------------|--------------------------|--------------------------------|
-| high | Maximum quality | spec-planning, architecture, security-review | backend, frontend, ddd, tdd implementation | docs, git, read-only-investigation |
-| medium | Balanced (default) | spec-planning, architecture, security-review | backend, frontend, ddd, tdd implementation | docs, git, read-only-investigation |
-| low | Cost optimized | None | spec-planning, architecture, security-review | All other role profiles |
+| Tier | Description | Opus (deep reasoning) | Sonnet (implementation + mechanical) |
+|------|-------------|------------------------|----------------------------------------|
+| max | Maximum quality | spec-planning, architecture, security-review | backend, frontend, ddd, tdd implementation |
+| medium | Balanced (default) | spec-planning, architecture, security-review | backend, frontend, ddd, tdd implementation |
+| low | Cost optimized | None | spec-planning, architecture, security-review + all mechanical/read-only |
 
 ## CG Mode
 

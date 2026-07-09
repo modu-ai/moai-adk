@@ -15,7 +15,7 @@ Hooks are defined in agent YAML frontmatter using these event types:
 - **SubagentStart**: Matched by the agent-type name; triggers when the subagent begins
 - **PreToolUse**: Matcher `Write|Edit|MultiEdit` for pre-change validation
 - **PostToolUse**: Matcher `Write|Edit|MultiEdit` for post-change verification
-- **SubagentStop**: No matcher, triggers on agent completion
+- **Stop**: No matcher, triggers on agent completion
 
 Configuration pattern per agent:
 
@@ -33,7 +33,7 @@ hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" {action}"
           timeout: 10
-  SubagentStop:
+  Stop:
     hooks:
       - type: command
         command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" {action}"
@@ -44,7 +44,7 @@ hooks:
 
 Actions follow the naming pattern `{agent}-{phase}`:
 
-| Agent | PreToolUse | PostToolUse | SubagentStop |
+| Agent | PreToolUse | PostToolUse | Stop |
 |-------|-----------|------------|-------------|
 | manager-develop | cycle-pre-transformation | cycle-post-transformation | cycle-completion |
 | manager-develop | develop-pre-implementation | develop-post-implementation | develop-completion |
@@ -71,7 +71,7 @@ stdin JSON structure:
 
 ```json
 {
-  "eventType": "SubagentStop",
+  "eventType": "Stop",
   "toolName": "",
   "toolInput": null,
   "toolOutput": null,
@@ -82,4 +82,4 @@ stdin JSON structure:
 
 ## Handler Architecture
 
-The `moai hook agent <action>` subcommand infers the hook `EventType` from the action suffix (`-validation` / `-pre-transformation` / `-pre-implementation` → `PreToolUse`; `-verification` / `-post-transformation` / `-post-implementation` → `PostToolUse`; `-completion` → `SubagentStop`; unknown suffix → `PreToolUse`) and dispatches through the generic `EventType`-keyed hook registry (`internal/hook/registry.go`). Handlers are registered by event type, not by per-agent identity — there is no per-agent handler factory.
+The `moai hook agent <action>` subcommand infers the hook `EventType` from the action suffix (`-validation` / `-pre-transformation` / `-pre-implementation` → `PreToolUse`; `-verification` / `-post-transformation` / `-post-implementation` → `PostToolUse`; `-completion` → `Stop`; unknown suffix → `PreToolUse`) and dispatches through the generic `EventType`-keyed hook registry (`internal/hook/registry.go`). Handlers are registered by event type, not by per-agent identity — there is no per-agent handler factory.
