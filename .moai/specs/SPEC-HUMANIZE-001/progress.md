@@ -19,11 +19,94 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — owned by manager-develop>_
+Run executed in the dedicated agent worktree (branch `worktree-agent-a205e7a01ec2e0f27`, base `92d955daa`), commits local-only per delegation (push owned by orchestrator). All mechanical AC commands below were run verbatim from `acceptance.md` §D.1 against the templates tree at the final run-phase commit.
+
+### AC PASS/FAIL Matrix (19 checks / 17 AC IDs)
+
+| AC | Method | Status | Verification Command (verbatim from acceptance.md) | Actual Output |
+|----|--------|--------|-----------------------------------------------------|---------------|
+| AC-HUM-001 | mechanical | PASS | §D.1 AC-HUM-001 block (category greps + no-port-claim negative) on korean.md | `CATEGORIES PASS` + `NO PORT CLAIM PASS` |
+| AC-HUM-002 | mechanical | PASS | grep ENC-1 + ENC-9 english.md | `PASS` |
+| AC-HUM-003 | mechanical | PASS | grep JA-10 + JA-14 japanese.md | `PASS` |
+| AC-HUM-004 | mechanical | PASS | grep CN-L + CN-Q chinese.md | `PASS` |
+| AC-HUM-005 | hybrid | PASS | grep fact.anchor + copy mode + prose SKILL.md; manual: two grading tables | `PASS`; manual confirm: "### Prose-Mode Grade Table" + "### Copy-Mode Grade Table" both present in the shared section |
+| AC-HUM-006a | mechanical | PASS | §D.1 AC-HUM-006a block (JA-10 row S2 + frequency framing, row not S1) | `PASS` (POS=1, NEG=0) |
+| AC-HUM-006b | mechanical | PASS | §D.1 AC-HUM-006b block (NEGPAT on ENC table rows + false-positive positive) | `PASS` (NEG=0, POS=1; ENC-7 "bland verbless: Get Started, Submit" phrasing kept intact per the authoring contract) |
+| AC-HUM-006c | hybrid | PASS | §D.1 AC-HUM-006c positive grep | `POS PASS`; manual negative confirm: the 对偶/排比 boundary subsection makes content-first vs template-first decisive, with "count is a weak signal on copy" demoting count explicitly |
+| AC-HUM-007 | mechanical | PASS | `diff -rq` templates vs local `.claude/` copy after make build + sync | `PASS IDENTICAL` |
+| AC-HUM-008 | mechanical | PASS | §D.1 6-class neutrality block (date body-scoped) + advisory leak-test tie | `NEUTRALITY PASS`; advisory: `humanize dir clean (unrelated pre-existing failures ignored)` |
+| AC-HUM-009 | manual | PASS | Inspection of all four modules' copy layers | Instruction prose is English in all four; before/after examples are Hangul (korean.md), kana/kanji (japanese.md), Simplified Han (chinese.md), English (english.md) |
+| AC-HUM-010 | mechanical | PASS | §D.1 preservation + version-bump greps on SKILL.md | `PRESERVE PASS` + `VERSION BUMP PASS` (im-not-ai token now matched by the courtesy credit) |
+| AC-HUM-011 | manual | PASS | Advisory ID listing + reviewer cross-check against research.md §6 / §5 | ID grep returned exactly ENC-1..9, JA-10..14, CN-L..Q (20 IDs); each traces to the research.md §2/§3/§4 catalogue tables (§6 verified sources; ENC-7 backstopped by fetched ENC-1 per §2 [†]); no §5 quarantined hypothesis promoted — the one borderline (childhood-origin beat in a JA-14 example) was removed in commit 6c2fa8aa6 |
+| AC-HUM-012 | mechanical | PASS | catalog version grep + hash recompute freshness | `VERSION PASS`; re-running `gen-catalog-hashes.go --all` after commit → `HASH FRESH (no dirty diff)` (skill hash covers root SKILL.md by generator design) |
+| AC-HUM-013 | manual (scenario) | PASS | 8-sample matrix per §D.2 (results below) | 8/8 graded, 0 meaning drift |
+| AC-HUM-014 | manual (scenario) | PASS | 3 false-positive guards per §D.3 (results below) | 3/3 NOT flagged |
+| AC-HUM-015 | mechanical | PASS | grep conservativ + 30%/50%/threshold SKILL.md | `PASS` (conservative-judgment-near-thresholds instruction + no-quantitative-layer limitation note in Over-Editing Guardrails) |
+| AC-HUM-016 | mechanical | PASS | §D.1 NOTICE.md + courtesy-credit block | `NOTICE REF PASS (0 matches)` + `NOTICE FILE PASS (absent)` + `CREDIT PASS` |
+| AC-HUM-017 | mechanical | PASS | §D.1 MIT-token + license-field block | `MIT TOKEN PASS (0 matches)` + `LICENSE UNCHANGED PASS` |
+
+### 8-Sample Verification Matrix (AC-HUM-013 — detect → rewrite → grade)
+
+| # | Sample | Tells detected | Rewrite outcome | Grade | Meaning drift |
+|---|--------|----------------|-----------------|-------|----------------|
+| 1 | KR prose (`~을 통해` + `~할 수 있을 것으로 보인다`) | A-2 (S1), G-1 (S2) | `고객 설문을 분석해 개선점을 찾는다` — calque and hedge removed, claim intact | A (prose: 0 S1, 0 S2 residual) | none |
+| 2 | KR copy `자동화는 24시간 굴러갑니다 — 복붙에서 위임으로` | A-20 (S1), M-1 (S1), M-3 (S1) | `복붙하던 일을 맡기면, 자동화가 24시간 알아서 돌아갑니다` — fact anchor `24시간` intact, promise preserved | A (copy: 0 S1, 0 anchor loss) | none |
+| 3 | EN prose (delve + tapestry + negative parallelism) | EN-A (S1 singletons ×2), EN-B (S1) | `This report examines how team workflows interact. The change saves time and reshapes how the team works.` — change rate estimated >30%, WARN discharged because every edit maps to a detected tell | A (0 S1, 0 S2 residual) | none |
+| 4 | EN copy hero (`In today's fast-paced digital world…` + `not just a tool — it's a movement` + `Fast. Simple. Scalable.`) | ENC-4 (S1), ENC-1 whole-phrase (S1-behaving), ENC-2 (S1), ENC-3 (S2) | S1s resolved first, then the tricolon: `One tool that replaces your busywork. Set up in minutes, and it scales with your team.` — no fact anchors present, none lost | A (copy) | none |
+| 5 | JA prose (`〜することができます` + `これにより`) | JA-01 (S2), JA-03 (S1) | `このツールが使えます。そのぶん、生産性が上がります。` — no invented specifics | A (0 S1, 0 S2 residual) | none |
+| 6 | JA copy (3 consecutive 体言止め + `見出し：` colon) | JA-10 fires on the ≥3-consecutive gate; JA-11 (S1) | endings varied (`…減り、…下がります。導入はかんたん。`), colon heading restructured natively; offer preserved | A (copy) | none |
+| 7 | ZH prose (首先…其次…综上所述 + 赋能/闭环) | CN-A (S1), CN-C (S1) | `先把目标定清楚，再帮团队把整个流程跑通——说到底，关键在执行。` — every edit tell-anchored (the —— is legitimate 解释说明) | A (0 S1 residual) | none |
+| 8 | ZH copy (`这不仅仅是一双跑鞋，而是…承诺` + `让我们携手共创美好未来`) | CN-L (S2, headline slot), CN-O (S1) | `这双跑鞋，陪你把晨跑坚持下去。` + elevation cut, concrete close; no spec numbers present, none invented or lost | A (copy) | none |
+
+### False-Positive Guard Results (AC-HUM-014 — must NOT flag)
+
+| Guard | Sample | Outcome |
+|-------|--------|---------|
+| 1 — EN human slide fragment | "Q1 Revenue" / "Our Approach" / "Why It Matters" | NOT flagged — English copy layer has no removable fragment category; terse headlines named a high-false-positive natural register; none is an ENC-1 buzzword noun phrase |
+| 2 — JA one strategic 体言止め | §D.3 concrete block (endings か / ます / ません / noun 近道) | NOT flagged — JA-10 frequency gate not tripped (1 non-consecutive 体言止め amid varied endings); `40件が10分で終わります` is a concrete claim, so JA-13 does not fire; no colon/dash artifacts |
+| 3 — ZH one crafted 排比 | 万科 「感谢冰峰，感谢风暴，感谢悬崖，感谢缺氧。」 | NOT flagged — content-first test passes (each member a distinct concrete referent, information concentrated, 不落窠臼); count is a weak signal and never decides alone |
+
+### Invariants
+
+| Invariant | Status | Evidence |
+|-----------|--------|----------|
+| Template-First order (templates → make build → local sync) | PASS | Edit sequence in commits d5df06b5f..89fbac7c6; local mirror synced only after `make build` (exit=0) |
+| EN/JA/ZH prose layers additive-only | PASS | `git diff 92d955daa..HEAD` removed-line count per module = 2 (the old `## Source & License` block only); prose category sections byte-untouched |
+| SKILL.md frontmatter preservation (user-invocable / allowed-tools / license) | PASS | AC-HUM-010 + AC-HUM-017 outputs above; only `metadata.version` → "1.1.0", `metadata.updated` → run date, `metadata.tags` +copy changed |
+| No Go source modified | PASS | `git diff --stat 92d955daa..HEAD` — 17 files: 5 template skill md + 5 mirror md + catalog.yaml + 6 SPEC artifacts; zero `.go` files |
+| No new test failures (NEW vs baseline) | PASS | `go test ./internal/template/` → 5 FAILs (TestTemplateNoInternalContentLeak, TestRuleProvenanceAudit, TestOutputStylesTemplateLiveParity, TestAllAgentsInCatalog, TestRuleTemplateMirrorDrift); identical 5 FAILs reproduced at base HEAD 92d955daa in a detached verification worktree — all pre-existing, none reference humanize files |
+| Cross-platform build | PASS | `go build ./...` exit=0; `GOOS=windows GOARCH=amd64 go build ./...` exit=0 |
+
+### Run-phase commits (worktree-local, not pushed)
+
+| Commit | Milestone |
+|--------|-----------|
+| d5df06b5f | M1 korean.md re-author + SPEC artifacts + draft→in-progress |
+| 0628d50f3 | M2 english copy layer |
+| 3dde735e4 | M3 japanese copy layer |
+| cd0d58793 | M4 chinese copy layer |
+| c7dec5517 | M5 SKILL.md shared sections + attribution cleanup |
+| 89fbac7c6 | M6 catalog 1.1.0 + hash regen + mirror sync (also carries 4 pre-existing stale agent-hash corrections from the mandated `gen-catalog-hashes --all` regen — mechanical cascade, no agent content change) |
+| 6c2fa8aa6 | M3 follow-up: quarantined childhood-origin beat removed from JA-14 example |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — owned by manager-develop>_
+```yaml
+run_complete_at: 2026-07-10
+run_commit_sha: 6c2fa8aa6  # last implementation commit; the §E evidence commit (M7) follows and cannot self-reference — orchestrator may backfill
+run_status: complete
+ac_pass_count: 19   # of 19 checks (17 AC IDs incl. 006a/b/c)
+ac_fail_count: 0
+preserve_list_post_run_count: 6  # 3 EN/JA/ZH prose layers verified additive-only + 3 preserved SKILL.md frontmatter fields (user-invocable, allowed-tools, license)
+l44_pre_commit_fetch: not-run  # isolated agent worktree, commits local-only per delegation; orchestrator owns the pre-merge fetch (main observed advanced to 911c338fd during the run — merge-time reconciliation is the orchestrator's step)
+l44_post_push_fetch: n/a  # no push performed (delegation: commit locally only)
+new_warnings_or_lints_introduced: none  # make build clean x3; internal/template test FAIL set identical to base HEAD (5 pre-existing, verified in detached worktree at 92d955daa)
+cross_platform_build:
+  darwin: exit 0 (go build ./...)
+  windows: exit 0 (GOOS=windows GOARCH=amd64 go build ./...)
+total_run_phase_files: 17  # 5 template skill md + 5 local mirror md + catalog.yaml + 6 SPEC artifacts
+m1_to_mN_commit_strategy: per-milestone commits M1..M6 + one M3 follow-up fix + M7 evidence commit; worktree-local (no push); status transition draft→in-progress rode M1 (d5df06b5f)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
