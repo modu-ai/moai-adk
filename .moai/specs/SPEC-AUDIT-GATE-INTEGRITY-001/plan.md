@@ -95,6 +95,7 @@ git fetch origin main && git rev-list --count --left-right origin/main...HEAD
 1. spec-workflow.md § Report Persistence: 두 스트림 명문화 — "plan-phase review stream" (`{SPEC-ID}-review-{N}.md`, plan-phase 적대적 리뷰, spec-assembly 소비) vs "run-gate stream" (`<SPEC-ID>-<YYYY-MM-DD>.md`, Phase 0.5 게이트, `audit_report.go` 구현). skip-eligibility 지정 (D4 교정 — Go 구현 정합): review 스트림의 final-iteration verdict가 run-gate 입력; artifact-hash 검사는 plan-artifact hash(`audit_cache.go` `ComputeHash` — plan artifacts whitespace-normalized SHA-256, cache key = specID+planArtifactHash) 재계산·대조; run-gate date-file은 verdict 기록 표면일 뿐 hash 대상 아님
 2. plan-auditor.md § Output Format: 자기 보고서가 "plan-phase review stream"임을 명시 + run-gate stream 상호 참조 1-2줄
 3. 두 파일 모두 상대 문서로의 mutual cross-reference 포함
+4. **인접 문장 조정 (iter-2 N2)**: spec-workflow.md § skip policy 조건 3의 artifact-hash 파일 열거가 5-파일(spec/plan/acceptance/**research/design**, tasks 제외)로 되어 있어 Go 구현 `planArtifactNames` 4-파일(acceptance/plan/spec/**tasks** — `audit_cache.go:63-68` 실측, iter-2 감사 확인)과 상충 — M3.1 편집 시 이 인접 문장을 함께 조정한다: 4-파일 목록으로 정정하거나, "기계 hash 대상은 ComputeHash 4-파일; research.md/design.md 변경은 수동 skip-판단의 보수적 고려 대상"으로 구분하는 각주를 단다 (기존 doctrine-vs-Go drift의 노출이며 본 SPEC이 유발한 것 아님 — 편집은 run-phase M3 소관)
 
 ### M4 — manager-spec Bash 검증 전환 (REQ-AGI-010, 011)
 

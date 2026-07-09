@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUDIT-GATE-INTEGRITY-001
 title: "감사 게이트 무결성 P0 4결함 수정 — D7/D8 BLOCKING 배선, sync-auditor 채점모델 정합, 보고서 파일명 split-brain 해소, SPEC ID Bash 검증 전환"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-07-09
 updated: 2026-07-09
@@ -22,6 +22,7 @@ tags: "audit-gate, plan-auditor, sync-auditor, manager-spec, verification-claim-
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-07-09 | GOOS행님 (via manager-spec) | 초안 — 3-agent 병렬 감사(2026-07-09) P0 4건 반영 |
 | 0.1.1 | 2026-07-09 | GOOS행님 (via manager-spec) | plan-audit iter-1 결함 수정 (D1-D11): 언어중립 재설계(D3/MP-4), ERE escaped-pipe AC 수정(D1/D2), REQ-AGI-009 hash 메커니즘 교정(D4), `tier: M` 추가(D5), stale lint.go 라인 갱신(D6), mirror 다중-토큰 AC 강화(D7), 다절 REQ 토큰 추가(D8), 취약 AC 강건화(D9), placeholder 제거(D10), 어휘/GEARS 스타일 정합(D11) |
+| 0.1.2 | 2026-07-09 | GOOS행님 (via manager-spec) | plan-audit iter-2 PASS-WITH-DEBT(0.87) debt 해소: N1 — AC-AGI-014를 SPEC-범위 ERROR-급 판정으로 재작성(리포 전역 exit code 기대 삭제 → 도구-존재 가드, StatusGitConsistency WARNING 명시 예외 E6); N2 — plan.md M3.4에 spec-workflow.md skip-policy 5-파일 열거 vs `planArtifactNames` 4-파일 인접 문장 조정 지시 추가 |
 
 ## §A Context
 

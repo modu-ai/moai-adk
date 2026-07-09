@@ -60,7 +60,7 @@
 | AC-AGI-012d | AGI-012 | `grep -c 'plan-phase review stream' T-WF && grep -c 'run-gate stream' T-WF && grep -c 'final-iteration verdict' T-WF && grep -c 'plan-artifact hash' T-WF` | 각각 `≥ 1` (mirror 다중-토큰, D7) |
 | AC-AGI-012e | AGI-012 | `grep -rc 'SPEC-AUDIT-GATE-INTEGRITY\|REQ-AGI' internal/template/templates/.claude/agents/moai/ internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md > /tmp/agi-neutrality.txt; awk -F: '{s+=$2} END {print s+0}' /tmp/agi-neutrality.txt` | `0` (Neutrality; D9 — `s+0`로 zero-match 빈 출력 방지) |
 | AC-AGI-013 | AGI-012 | `make build; echo "exit=$?"` | `exit=0` |
-| AC-AGI-014 | 전체 | `moai spec lint > /tmp/agi-lint.log 2>&1; echo "exit=$?"; grep -c 'SPEC-AUDIT-GATE-INTEGRITY-001' /tmp/agi-lint.log` | `exit=0` AND grep `0` (D9 — exit-code 가드로 도구 부재/실패 시 vacuous-0 차단; 정확한 CLI 플래그는 run-phase pre-flight에서 확인) |
+| AC-AGI-014 | 전체 | `command -v moai > /dev/null; echo "tool=$?"; moai spec lint > /tmp/agi-lint.log 2>&1; grep 'SPEC-AUDIT-GATE-INTEGRITY-001' /tmp/agi-lint.log > /tmp/agi-lint-self.txt; grep -c 'ERROR' /tmp/agi-lint-self.txt` | `tool=0` AND 최종 grep `0` (iter-2 N1 교정 — SPEC-범위 ERROR-급만 판정: `moai spec lint` exit code는 리포 전역이라 타 SPEC pre-existing ERROR로 exit=1이 정상이며 본 AC의 판정 입력이 아님; 본 SPEC의 WARNING은 비계수 — E6 참조) |
 
 ## §D.1 Edge Cases
 
@@ -69,6 +69,7 @@
 - **E3 (Must-Pass 표 서식 변형)**: plan-auditor 보고서 템플릿의 MP-5/6 행이 `[PASS/FAIL/N/A]` 3-상태를 갖는 경우 — D7/D8 검증 verb가 실행 불능(대상 파일 부재 등)일 때 N/A 허용 여부는 MP-4 선례(N/A auto-pass)를 따라 명문화
 - **E4 (make build 실패)**: template 편집 후 build 실패 시 mirror 편집을 revert하지 말고 원인(YAML frontmatter 손상 등) 진단 후 수정 — 커밋 전 build green 필수
 - **E5 (언어 편향 회귀)**: sync-auditor 차원-명령 표에서 특정 언어가 "PRIMARY"/"기본"으로 승격되거나 4개 언어 예시 중 일부가 누락되면 MP-4 회귀 — AC-AGI-006b의 4-토큰 동등 확인이 회귀 가드
+- **E6 (StatusGitConsistency WARNING — lifecycle-예정 상태, 명시 예외)**: 본 SPEC의 plan-phase 수정 커밋 이력으로 `moai spec lint`가 본 SPEC에 `StatusGitConsistency WARNING`('draft' vs git-implied)을 방출하는 것은 run-phase status 전이(`draft → in-progress → …`)가 진행되기 전까지 예상되는 정상 상태다 (iter-2 N1 실측: WARNING 1건). AC-AGI-014는 ERROR-급만 계수하므로 이 WARNING은 판정에 미포함 — 본 SPEC 명명 finding이 ERROR로 나타나는 경우에만 FAIL
 
 ## §D.2 Quality Gate
 
