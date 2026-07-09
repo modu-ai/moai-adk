@@ -51,11 +51,88 @@ plan_constraints_honored:
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — manager-develop 소관>_
+Path abbreviations: `L-SFS` = `.claude/rules/moai/development/spec-frontmatter-schema.md`, `L-WF` = `.claude/rules/moai/workflow/spec-workflow.md`, `L-PA` = `.claude/agents/moai/plan-auditor.md`, `L-MS` = `.claude/agents/moai/manager-spec.md`, `T-*` = template mirror.
+
+### R1 — delta-spec lifecycle
+
+| AC | REQ | Command | Output | Status |
+|----|-----|---------|--------|--------|
+| AC-WFL-001 | WFL-001 | `grep -c 'amendment_of' L-SFS` | `2` | PASS |
+| AC-WFL-002 | WFL-001 | `grep -c 'completed → in-progress' L-SFS` + `grep -c 'amendment' L-SFS` | `3`, `3` | PASS |
+| AC-WFL-003 | WFL-002 | `grep -c '## Amendments' L-MS` | `1` | PASS |
+| AC-WFL-004 | WFL-002 | `grep -c 'prior_completed' L-SFS` | `3` | PASS |
+| AC-WFL-005 | WFL-003 | `grep -c 'in-place amendment' L-SFS` | `3` | PASS |
+| AC-WFL-006 | WFL-004 | `grep -c 'amendment transition' L-WF` | `1` | PASS |
+
+### R2 — depends_on run-phase enforcement
+
+| AC | REQ | Command | Output | Status |
+|----|-----|---------|--------|--------|
+| AC-WFL-007 | WFL-005 | `grep -c 'Depends_on Pre-flight' L-WF` | `2` | PASS |
+| AC-WFL-008 | WFL-005 | `grep -c 'depends_on' L-WF` + `grep -c 'Phase 0.5' L-WF` | `4`, `9` | PASS |
+| AC-WFL-009 | WFL-006 | `grep -c 'fulfillment' L-WF` | `1` | PASS |
+| AC-WFL-010 | WFL-006 | `grep -c 'status: completed' L-WF` | `1` | PASS |
+| AC-WFL-011 | WFL-007 | `grep -c 'ignore-deps' L-WF` | `2` | PASS |
+| AC-WFL-012 | WFL-007 | `grep -c 'depends-on-override.log' L-WF` | `2` | PASS |
+
+### R3 — Tier L artifacts + plan-auditor input contract + hash alignment
+
+| AC | REQ | Command | Output | Status |
+|----|-----|---------|--------|--------|
+| AC-WFL-013 | WFL-008 | `grep -c 'design\.md' L-SFS` + `grep -c 'research\.md' L-SFS` | `1`, `1` | PASS |
+| AC-WFL-014 | WFL-008 | `grep -c 'Tier L' L-SFS` | `2` | PASS |
+| AC-WFL-015 | WFL-009 | `grep -c 'Tier-differentiated input contract' L-PA` | `2` | PASS |
+| AC-WFL-016 | WFL-009 | `grep -c 'Tier L: design.md + research.md are required inputs' L-PA` | `1` | PASS |
+| AC-WFL-017 | WFL-009 | `grep -c 'design\.md' L-PA` + `grep -c 'research\.md' L-PA` | `1`, `1` | PASS |
+| AC-WFL-018 | WFL-010 | `grep -c 'planArtifactNames' L-WF` | `1` | PASS |
+| AC-WFL-019 | WFL-010 | `grep -c 'tasks\.md' L-WF` | `3` | PASS |
+| AC-WFL-020 | WFL-010 | `grep -c 'manual-skip judgment inputs' L-WF` | `1` | PASS |
+| AC-WFL-021 | WFL-010 | `grep -c 'V3R4' L-WF` | `1` | PASS |
+| AC-WFL-022 | WFL-011 | `grep -c 'cache-invalidating event' L-WF` | `1` | PASS |
+
+### Cross-cutting — Template Mirror synchronization
+
+| AC | REQ | Command | Output | Status |
+|----|-----|---------|--------|--------|
+| AC-WFL-023 | WFL-012 | `grep -c 'Tier-differentiated input contract' T-PA` + `grep -c 'design\.md' T-PA` + `grep -c 'research\.md' T-PA` | `2`, `1`, `1` | PASS |
+| AC-WFL-024 | WFL-012 | `grep -c 'amendment_of' T-SFS` + `grep -c 'in-place amendment' T-SFS` | `2`, `3` | PASS |
+| AC-WFL-025 | WFL-012 | `grep -c 'Depends_on Pre-flight' T-WF` + `grep -c 'ignore-deps' T-WF` + `grep -c 'manual-skip judgment inputs' T-WF` + `grep -c 'cache-invalidating event' T-WF` | `2`, `2`, `1`, `1` | PASS |
+| AC-WFL-026 | WFL-012 | `grep -c 'amendment_of' T-MS` + `grep -c '## Amendments' T-MS` | `1`, `1` | PASS |
+| AC-WFL-027 | WFL-012 | `make build; echo "exit=$?"` | `exit=0` | PASS |
+| AC-WFL-028 | WFL-012 | `grep -rc 'SPEC-WORKFLOW-LIFECYCLE\|REQ-WFL' T-{agents,rules}/... \| awk sum` | `0` | PASS |
+| AC-WFL-029 | ALL | `command -v moai; moai spec lint; grep -c 'ERROR' (self)` | `tool=0`, `ERROR_count=0` | PASS |
+| AC-WFL-030 | WFL-012 | `git diff --name-only HEAD -- credentials.yml` + `git diff --cached --name-only -- credentials.yml` | `0`, `0` | PASS |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — manager-develop 소관>_
+```yaml
+run_complete_at: 2026-07-09T12:47:00Z
+run_commit_sha: pending-backfill-M5
+run_status: audit-ready
+ac_pass_count: 30
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: "0 0 (synced with origin/main at run start)"
+l44_post_push_fetch: "not pushed (worktree branch — orchestrator handles push)"
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  go_build_exit: 0
+  make_build_exit: 0
+total_run_phase_files: 8
+m1_to_mN_commit_strategy:
+  M1: "b00cc6380 — spec-frontmatter-schema.md + manager-spec.md + SPEC dir (draft→in-progress)"
+  M2: "bcb35f7d1 — spec-workflow.md (Depends_on Pre-flight Check)"
+  M3: "e558f1e0f — spec-frontmatter-schema.md + plan-auditor.md (Tier L + Tier-differentiated input contract)"
+  M4: "b3afb98bd — spec-workflow.md (hash subject list + cache-invalidating event)"
+  M5: "pending — mirror 4 files + make build + progress.md §E.2/§E.3"
+run_phase_scope:
+  live_files_edited: 4
+  mirror_files_edited: 4
+  go_code_changes: 0
+  doc_only: true
+  credentials_yml_touched: false
+  neutrality_violations: 0
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
