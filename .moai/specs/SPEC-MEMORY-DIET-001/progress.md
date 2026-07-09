@@ -36,6 +36,17 @@ Build baseline: `go build ./...` exit=0. Branch: worktree-agent-a0c59bd587cb9a9a
 - AC-MD-005 PASS: 8 H2 sections survive (body byte-preserved modulo Loading-scope prose rewrite)
 - Post-edit: 97 lines / 11,130 bytes each (local + template byte-identical)
 
+### M2 — REQ-2: session-handoff.md illustrative content extraction (AC-MD-006..011)
+
+- AC-MD-006 PASS: 0 `### Example` H3 headings remain; 4 pointers to session-handoff-examples.md present
+- AC-MD-007 PASS: en/ko columns retained inline; ja/zh pointer to examples file present (2 matches)
+- AC-MD-008 PASS: ✂=10 (≥4), ─=11 (≥8), Block headings=45, Pre-emit labels=5, core H2 sections=5
+- AC-MD-009 PASS: moai.md cross-references session-handoff (10 matches, baseline preserved)
+- AC-MD-010 PASS: session-handoff.md + examples file both byte-identical local↔template
+- AC-MD-011 PASS: examples file carries `paths: "**/session-handoff.md"` (NOT always-loaded)
+- session-handoff.md: 431 lines / 54,593 bytes (was 478 / 56,598 — saved ~2,005 bytes)
+- session-handoff-examples.md: 78 lines / 5,440 bytes (NEW, path-scoped)
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

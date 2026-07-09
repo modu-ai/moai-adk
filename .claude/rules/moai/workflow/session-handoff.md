@@ -64,22 +64,22 @@ N) <verifiable precondition N>
 
 ### Localization Table
 
-The cut-line marker text AND the 6-block skeleton verbs/headers translate per `conversation_language`. This table is the SSOT for the locale renderings (the canonical skeleton uses the `<entering verb>` / `<header>` placeholders; concrete locale renderings live here). Cross-verified for consistency with `.claude/output-styles/moai/moai.md §8` (the canonical render surface).
+The cut-line marker text AND the 6-block skeleton verbs/headers translate per `conversation_language`. This table carries the en / ko columns inline (the primary locales); the full 4-locale table (en / ko / ja / zh) lives in `session-handoff-examples.md` § Localization Table (Full 4-Locale). Cross-verified for consistency with `.claude/output-styles/moai/moai.md §8` (the canonical render surface).
 
-| Element | English | Korean (canonical) | Japanese | Chinese |
-|---------|---------|--------------------|----------|---------|
-| Cut-line top text | `Copy from here` | `여기부터 복사` | `ここからコピー` | `从这里复制` |
-| Cut-line bottom text | `Copy to here` | `여기까지 복사` | `ここまでコピー` | `到这里复制` |
-| Block 1 entering verb | `entering` | `진입` | `開始` | `进入` |
-| Block 3 Preconditions header | `Preconditions:` | `전제 검증:` | `前提条件:` | `前提条件:` |
-| Block 5 Run header | `Run:` | `실행:` | `実行:` | `执行:` |
-| Block 6 After-merge header (PR workflow) | `After merge:` | `머지 후:` | `マージ後:` | `合并后:` |
-| Block 6 Follow-up header (trunk no-PR) | `Follow-up:` | `후속:` | `後続:` | `后续:` |
-| Post-paste /goal instruction line | Send the `/goal` line below as its own standalone message AFTER Implementation Kickoff Approval — slash commands parse only at input start, and setting a goal starts a turn immediately. | 아래 `/goal` 라인을 구현 착수 승인 후 **별도 메시지로 단독 전송** — 슬래시 커맨드는 입력 시작에서만 인식되며, goal 설정 즉시 턴이 시작됨. | 下記の `/goal` 行を実装着手承認後に**単独メッセージとして送信** — スラッシュコマンドは入力の先頭でのみ認識され、goal 設定と同時にターンが開始される。 | 在实现启动批准后，将下方 `/goal` 行**作为独立消息单独发送** — 斜杠命令仅在输入开头被识别，设定 goal 会立即开始一个回合。 |
+| Element | English | Korean (canonical) |
+|---------|---------|--------------------|
+| Cut-line top text | `Copy from here` | `여기부터 복사` |
+| Cut-line bottom text | `Copy to here` | `여기까지 복사` |
+| Block 1 entering verb | `entering` | `진입` |
+| Block 3 Preconditions header | `Preconditions:` | `전제 검증:` |
+| Block 5 Run header | `Run:` | `실행:` |
+| Block 6 After-merge header (PR workflow) | `After merge:` | `머지 후:` |
+| Block 6 Follow-up header (trunk no-PR) | `Follow-up:` | `후속:` |
+| Post-paste /goal instruction line | Send the `/goal` line below as its own standalone message AFTER Implementation Kickoff Approval — slash commands parse only at input start, and setting a goal starts a turn immediately. | 아래 `/goal` 라인을 구현 착수 승인 후 **별도 메시지로 단독 전송** — 슬래시 커맨드는 입력 시작에서만 인식되며, goal 설정 즉시 턴이 시작됨. |
 
 Read `conversation_language` from `.moai/config/sections/language.yaml` at render time; substitute the localized text between the `✂────` decorators (cut-line markers) while keeping `✂` and `─` characters verbatim, and substitute the locale rendering for each Block 1/3/5/6 placeholder when emitting the paste-ready message.
 
-**Fallback rule for locales not in the table.** The table above lists concrete renderings for en / ko / ja / zh only. When `conversation_language` is an ISO-639 code whose language column is NOT in this table (e.g. `fr`, `de`, `es`, `pt`, `vi`), English is the canonical fallback skeleton and each label translates to that locale using the naturalization principle (idiomatic phrasing a native reader expects, never literal word-by-word transliteration). In other words: locales not in the table fall back to the English column for the structural skeleton, with the label text rendered in the configured ISO-639 language — ISO-639 not in the table ⇒ English-skeleton fallback, not English-output.
+**Fallback rule for locales not in the table.** The inline table above lists concrete renderings for en / ko only. When `conversation_language` is ja, zh, or any other ISO-639 code whose language column is NOT in the inline table (e.g. `fr`, `de`, `es`, `pt`, `vi`), consult the full 4-locale table in `session-handoff-examples.md` for ja / zh renderings; for all other locales, English is the canonical fallback skeleton and each label translates to that locale using the naturalization principle (idiomatic phrasing a native reader expects, never literal word-by-word transliteration). In other words: locales not in the inline table fall back to the English column for the structural skeleton, with the label text rendered in the configured ISO-639 language — ISO-639 not in the table ⇒ English-skeleton fallback, not English-output.
 
 ### Field-by-Field Specification
 
@@ -116,33 +116,7 @@ Read `conversation_language` from `.moai/config/sections/language.yaml` at rende
     - **Single-SPEC close** (no further SPEC/phase queued): omit Block 6 entirely
   - **Single action principle**: `<next-action-or-spec>` MUST be one concrete SPEC ID, one command, or one phase transition — avoid vague "cycle-repeat" / "iteration loop" phrasing that reads as infinite recursion.
 
-### Example (Illustrative; substitute project-specific values when adapting)
-
-```
-✂──── 여기부터 복사 ────✂
-
-ultrathink. SPEC-MYPROJ-001 implementation 진입.
-applied lessons: <lesson-id-1>, <lesson-id-2>.
-source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>
-
-전제 검증:
-1) git log --oneline -1 → <commit-sha> 확인
-2) ls .moai/specs/SPEC-MYPROJ-001/ → N files
-
-실행: /moai run SPEC-MYPROJ-001
-
-머지 후: SPEC-MYPROJ-002 → SPEC-MYPROJ-003
-
-✂──── 여기까지 복사 ────✂
-
-아래 /goal 라인을 구현 착수 승인 후 별도 메시지로 단독 전송 — 슬래시 커맨드는 입력 시작에서만 인식됨 (run-phase + machine-verifiable end-state일 때만 방출; 아니면 생략):
-
-✂──── 여기부터 복사 ────✂
-
-/goal the SPEC's test suite passes AND lint is clean, or stop after 20 turns
-
-✂──── 여기까지 복사 ────✂
-```
+> **Example**: see `session-handoff-examples.md` § Example (Illustrative; substitute project-specific values when adapting).
 
 ## Post-Paste /goal Follow-up Block
 
@@ -331,28 +305,7 @@ Block 0 is REQUIRED only with L3 `--worktree`. For `--branch` (or no flag — th
 
 [ZONE:Evolvable] [HARD] If L3 `--worktree` was used and the user is NOT comfortable with multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See the single-session vs multi-session decision rationale below.
 
-### Example with Block 0 (Illustrative)
-
-```
-✂──── 여기부터 복사 ────✂
-
-[New Terminal — START IN WORKTREE]
-$ cd ~/.moai/worktrees/<project>/SPEC-MYPROJ-001
-$ moai cc        # 또는 moai glm | claude (3가지 launcher 중 선택; 본 예시는 moai cc)
-
-ultrathink. SPEC-MYPROJ-001 Epic N 진입.
-applied lessons: <lesson-id-1>, <lesson-id-2>.
-
-전제 검증:
-0) git rev-parse --show-toplevel → ~/.moai/worktrees/<project>/SPEC-MYPROJ-001 (★ critical)
-1) gh pr view <PR-number> → MERGED
-
-실행: /moai run SPEC-MYPROJ-001 --team
-
-후속: Milestone M<N+1> (single-SPEC next step) 또는 Epic N+1 (multi-SPEC next grouping)
-
-✂──── 여기까지 복사 ────✂
-```
+> **Example with Block 0**: see `session-handoff-examples.md` § Example with Block 0 (Illustrative).
 
 ## Diet Constraints
 
@@ -460,7 +413,7 @@ Cross-line provenance: retained in lesson memory; this section codifies the doct
 ## Cross-references
 
 <!-- self-check sentinel — references the render surface's structural invariant by content, not line number, so it survives line drift. This is mitigation + visibility (it surfaces drift to a reading editor), NOT mechanical prevention. A future editor who changes one surface without reading the other surface's sentinel produces silent drift; the only mechanical catch is a deferred Go lint rule (see the session-handoff SSOT-align doctrine §F.6 follow-up). -->
-**Drift-mitigation self-check sentinel (SSOT → render surface).** This file is the SSOT; `.claude/output-styles/moai/moai.md §8` is the render surface. Before committing any edit to the Localization Table, the 6-block skeleton, the cut-line marker spec, the Pre-emit self-check labels, § Emission-Time Save Obligation, or § Auto-Injected Resume Flow in THIS file, verify the parity check against the render surface: the moai.md §8 Localization Contract must carry the same locale column count (en / ko / ja / zh — 4 columns) as this file's Localization Table, the moai.md §8 Pre-emit self-check labels must use the same concern-name qualifiers (`paste-ready budget` / `localization render` / `session-handoff template completeness`) as this file, and the moai.md §8 emission clause (the `moai handoff save` save duty + auto-flow pointer) must remain a compact pointer consistent with § Emission-Time Save Obligation and § Auto-Injected Resume Flow here (pointer, NOT full duplication). If the two surfaces have diverged, this is the canonical surface — update the render surface to match.
+**Drift-mitigation self-check sentinel (SSOT → render surface).** This file is the SSOT; `.claude/output-styles/moai/moai.md §8` is the render surface. Before committing any edit to the Localization Table, the 6-block skeleton, the cut-line marker spec, the Pre-emit self-check labels, § Emission-Time Save Obligation, or § Auto-Injected Resume Flow in THIS file, verify the parity check against the render surface: the moai.md §8 Localization Contract carries the full 4-locale table (en / ko / ja / zh); this file carries the en / ko subset inline with the ja / zh columns relocated to `session-handoff-examples.md`, the moai.md §8 Pre-emit self-check labels must use the same concern-name qualifiers (`paste-ready budget` / `localization render` / `session-handoff template completeness`) as this file, and the moai.md §8 emission clause (the `moai handoff save` save duty + auto-flow pointer) must remain a compact pointer consistent with § Emission-Time Save Obligation and § Auto-Injected Resume Flow here (pointer, NOT full duplication). If the two surfaces have diverged, this is the canonical surface — update the render surface to match.
 
 - `.claude/rules/moai/workflow/context-window-management.md` § Context Window Targets — the per-model-class threshold SSOT for `/clear` and Trigger #1 (this file carries no inline model-class numbers to avoid label drift).
 - `.claude/output-styles/moai/moai.md` §6 (Persistence & Context Awareness)
