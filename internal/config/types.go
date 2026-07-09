@@ -365,7 +365,22 @@ type WorkflowConfig struct {
 	// When the block is absent the map is nil and RouteModelFor falls back to
 	// the documented default entry with FallbackApplied=true.
 	ModelRouting map[string]ModelRoutingEntry `yaml:"model_routing"`
+
+	// ModelRoutingProfiles is the perfTier -> (Tier x Phase) -> {model, effort}
+	// 3-tier routing map read by RouteModelFor(specTier, phase, perfTier). The
+	// outer key is perfTier in {max, medium, low}; the inner key format is
+	// "<TIER>-<phase>" (e.g. "S-sync", "L-run"). This is the No-Haiku 3-tier
+	// cost axis (SPEC-AGENT-ARCH-V2-001 M3, design.md §D.5) — it supersedes the
+	// flat ModelRouting above for spawn-time routing. When the block is absent
+	// the map is nil and RouteModelFor falls back to the documented default
+	// entry with FallbackApplied=true.
+	ModelRoutingProfiles ModelRoutingProfiles `yaml:"model_routing_profiles"`
 }
+
+// ModelRoutingProfiles is perfTier -> (tier-phase) -> routing entry. perfTier
+// in {max, medium, low}; inner key "<TIER>-<phase>" (Tier in {S,M,L}, Phase in
+// {plan,run,sync,mx}). Loaded from workflow.yaml `model_routing_profiles`.
+type ModelRoutingProfiles map[string]map[string]ModelRoutingEntry
 
 // ModelRoutingEntry is a single Tier x Phase routing recommendation. It is a
 // NEW struct distinct from WorkflowAgentEntry because REQ-TR-002 mandates a

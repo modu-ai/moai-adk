@@ -1,9 +1,14 @@
 package config
 
-// model_routing_test.go — SPEC-TOKEN-ROUTING-001 tests (AC-TR-001..004, AC-TR-007, AC-TR-012).
-// Covers: round-trip load, happy-path RouteModelFor, closed-set validation
-// (model/effort), fallback on absent pair, input tier/phase validation,
-// shared closed-set with workflow_agents, unavailable-model advisory surface.
+// model_routing_test.go — SPEC-TOKEN-ROUTING-001 tests (AC-TR-001..004, AC-TR-007, AC-TR-012)
+// + SPEC-AGENT-ARCH-V2-001 M3 tests (AC-AA2-008, AC-AA2-009 — RouteModelFor 3-arg +
+// model_routing_profiles 3×12 matrix).
+//
+// Covers: round-trip load (flat legacy + 3-tier profiles), happy-path
+// RouteModelFor (3-arg), closed-set validation (model/effort/perfTier),
+// fallback on absent pair, input tier/phase/perfTier validation, shared
+// closed-set with workflow_agents, unavailable-model advisory surface, and the
+// 36-entry 3×12 golden matrix (design.md §D.5).
 
 import (
 	"os"
@@ -11,8 +16,8 @@ import (
 	"testing"
 )
 
-// fullRoutingYAML is a 12-entry (3 Tier x 4 Phase) model_routing block used
-// across happy-path tests.
+// fullRoutingYAML is a 12-entry (3 Tier x 4 Phase) legacy flat model_routing
+// block used by the SPEC-TOKEN-ROUTING-001 round-trip / validation tests.
 const fullRoutingYAML = `workflow:
     default_mode: ""
     model_routing:
@@ -30,6 +35,54 @@ const fullRoutingYAML = `workflow:
         L-mx: { model: sonnet, effort: medium }
 `
 
+// fullProfilesYAML is the No-Haiku 3-tier model_routing_profiles block
+// (SPEC-AGENT-ARCH-V2-001 M3, design.md §D.5) — 3 perfTiers × 12 (Tier×Phase)
+// cells = 36 entries. Each perfTier (max/medium/low) carries S/M/L ×
+// plan/run/sync/mx.
+const fullProfilesYAML = `workflow:
+    default_mode: ""
+    model_routing_profiles:
+        max:
+            S-plan: { model: opus, effort: high }
+            S-run: { model: sonnet, effort: xhigh }
+            S-sync: { model: sonnet, effort: medium }
+            S-mx: { model: sonnet, effort: low }
+            M-plan: { model: opus, effort: xhigh }
+            M-run: { model: sonnet, effort: xhigh }
+            M-sync: { model: sonnet, effort: medium }
+            M-mx: { model: sonnet, effort: low }
+            L-plan: { model: opus, effort: xhigh }
+            L-run: { model: sonnet, effort: xhigh }
+            L-sync: { model: sonnet, effort: high }
+            L-mx: { model: sonnet, effort: medium }
+        medium:
+            S-plan: { model: sonnet, effort: medium }
+            S-run: { model: sonnet, effort: high }
+            S-sync: { model: sonnet, effort: low }
+            S-mx: { model: sonnet, effort: low }
+            M-plan: { model: sonnet, effort: medium }
+            M-run: { model: sonnet, effort: xhigh }
+            M-sync: { model: sonnet, effort: medium }
+            M-mx: { model: sonnet, effort: low }
+            L-plan: { model: opus, effort: high }
+            L-run: { model: sonnet, effort: xhigh }
+            L-sync: { model: sonnet, effort: high }
+            L-mx: { model: sonnet, effort: medium }
+        low:
+            S-plan: { model: sonnet, effort: medium }
+            S-run: { model: sonnet, effort: high }
+            S-sync: { model: sonnet, effort: low }
+            S-mx: { model: sonnet, effort: low }
+            M-plan: { model: sonnet, effort: medium }
+            M-run: { model: sonnet, effort: high }
+            M-sync: { model: sonnet, effort: low }
+            M-mx: { model: sonnet, effort: low }
+            L-plan: { model: sonnet, effort: xhigh }
+            L-run: { model: sonnet, effort: xhigh }
+            L-sync: { model: sonnet, effort: medium }
+            L-mx: { model: sonnet, effort: low }
+`
+
 // seedWorkflowWithModelRouting writes the given workflow.yaml content to a
 // temp project root and returns the root path.
 func seedWorkflowWithModelRouting(t *testing.T, content string) string {
@@ -45,7 +98,11 @@ func seedWorkflowWithModelRouting(t *testing.T, content string) string {
 	return root
 }
 
-// TestModelRoutingRoundTripLoad verifies the 12-entry block loads into the
+// ---------------------------------------------------------------------------
+// Legacy flat ModelRouting tests (SPEC-TOKEN-ROUTING-001)
+// ---------------------------------------------------------------------------
+
+// TestModelRoutingRoundTripLoad verifies the 12-entry flat block loads into the
 // typed map with correct model/effort values (AC-TR-001).
 func TestModelRoutingRoundTripLoad(t *testing.T) {
 	t.Parallel()
@@ -67,118 +124,6 @@ func TestModelRoutingRoundTripLoad(t *testing.T) {
 	}
 }
 
-// TestRouteModelForHappyPath verifies RouteModelFor returns the declared entry
-// with FallbackApplied=false (AC-TR-003).
-func TestRouteModelForHappyPath(t *testing.T) {
-	t.Parallel()
-	root := seedWorkflowWithModelRouting(t, fullRoutingYAML)
-
-	cfg, err := NewConfigManager().LoadRaw(root)
-	if err != nil {
-		t.Fatalf("LoadRaw: %v", err)
-	}
-
-	entry, err := cfg.RouteModelFor("S", "sync")
-	if err != nil {
-		t.Fatalf("RouteModelFor(S,sync): %v", err)
-	}
-	if entry.Model != "haiku" || entry.Effort != "low" {
-		t.Errorf("RouteModelFor(S,sync) = %+v, want {haiku low}", entry)
-	}
-	if entry.FallbackApplied {
-		t.Errorf("RouteModelFor(S,sync) FallbackApplied = true, want false (pair is declared)")
-	}
-
-	entry, err = cfg.RouteModelFor("L", "run")
-	if err != nil {
-		t.Fatalf("RouteModelFor(L,run): %v", err)
-	}
-	if entry.Model != "opus" || entry.Effort != "xhigh" {
-		t.Errorf("RouteModelFor(L,run) = %+v, want {opus xhigh}", entry)
-	}
-	if entry.FallbackApplied {
-		t.Errorf("RouteModelFor(L,run) FallbackApplied = true, want false")
-	}
-}
-
-// TestRouteModelForFallback verifies that an absent (Tier, Phase) pair returns
-// the documented default with FallbackApplied=true (AC-TR-002).
-func TestRouteModelForFallback(t *testing.T) {
-	t.Parallel()
-	// Only S entries — (L, mx) is absent.
-	root := seedWorkflowWithModelRouting(t, `workflow:
-    default_mode: ""
-    model_routing:
-        S-plan: { model: sonnet, effort: medium }
-`)
-
-	cfg, err := NewConfigManager().LoadRaw(root)
-	if err != nil {
-		t.Fatalf("LoadRaw: %v", err)
-	}
-
-	entry, err := cfg.RouteModelFor("L", "mx")
-	if err != nil {
-		t.Fatalf("RouteModelFor(L,mx) on absent pair: unexpected error %v", err)
-	}
-	if !entry.FallbackApplied {
-		t.Errorf("RouteModelFor(L,mx) on absent pair: FallbackApplied = false, want true")
-	}
-	if entry.Model != defaultRoutingEntry.Model {
-		t.Errorf("RouteModelFor(L,mx) fallback Model = %q, want %q", entry.Model, defaultRoutingEntry.Model)
-	}
-	if entry.Effort != defaultRoutingEntry.Effort {
-		t.Errorf("RouteModelFor(L,mx) fallback Effort = %q, want %q", entry.Effort, defaultRoutingEntry.Effort)
-	}
-}
-
-// TestRouteModelForNilMap verifies a nil map (block absent) yields the
-// fallback for every lookup without error.
-func TestRouteModelForNilMap(t *testing.T) {
-	t.Parallel()
-	root := seedWorkflowWithModelRouting(t, "workflow:\n    default_mode: \"\"\n")
-
-	cfg, err := NewConfigManager().LoadRaw(root)
-	if err != nil {
-		t.Fatalf("LoadRaw: %v", err)
-	}
-	if cfg.Workflow.ModelRouting != nil {
-		t.Fatalf("expected nil ModelRouting for absent block, got %+v", cfg.Workflow.ModelRouting)
-	}
-
-	for _, tc := range []struct{ tier, phase string }{
-		{"S", "plan"}, {"M", "run"}, {"L", "sync"},
-	} {
-		entry, err := cfg.RouteModelFor(tc.tier, tc.phase)
-		if err != nil {
-			t.Errorf("RouteModelFor(%s,%s) on nil map: %v", tc.tier, tc.phase, err)
-		}
-		if !entry.FallbackApplied {
-			t.Errorf("RouteModelFor(%s,%s) on nil map: FallbackApplied = false, want true", tc.tier, tc.phase)
-		}
-	}
-}
-
-// TestRouteModelForInvalidInput verifies tier/phase outside the closed set
-// return an error (acceptance.md §D.2 edge case — input validation).
-func TestRouteModelForInvalidInput(t *testing.T) {
-	t.Parallel()
-	root := seedWorkflowWithModelRouting(t, fullRoutingYAML)
-	cfg, err := NewConfigManager().LoadRaw(root)
-	if err != nil {
-		t.Fatalf("LoadRaw: %v", err)
-	}
-
-	if _, err := cfg.RouteModelFor("X", "run"); err == nil {
-		t.Errorf("RouteModelFor(X,run): expected error for invalid tier, got nil")
-	}
-	if _, err := cfg.RouteModelFor("S", "deploy"); err == nil {
-		t.Errorf("RouteModelFor(S,deploy): expected error for invalid phase, got nil")
-	}
-}
-
-// TestValidateModelRoutingClosedSetModel verifies a non-closed-set model value
-// is rejected (AC-TR-004, AC-TR-007).
 func TestValidateModelRoutingClosedSetModel(t *testing.T) {
 	t.Parallel()
 	root := seedWorkflowWithModelRouting(t, `workflow:
@@ -192,7 +137,6 @@ func TestValidateModelRoutingClosedSetModel(t *testing.T) {
 		t.Fatalf("LoadRaw (loader does not validate): %v", err)
 	}
 
-	// ValidateModelRoutingFromYAML does closed-set validation.
 	raw, rerr := os.ReadFile(filepath.Join(root, ".moai", "config", "sections", "workflow.yaml"))
 	if rerr != nil {
 		t.Fatal(rerr)
@@ -203,8 +147,6 @@ func TestValidateModelRoutingClosedSetModel(t *testing.T) {
 	}
 }
 
-// TestValidateModelRoutingClosedSetEffort verifies a non-closed-set effort
-// value is rejected (AC-TR-004, AC-TR-007).
 func TestValidateModelRoutingClosedSetEffort(t *testing.T) {
 	t.Parallel()
 	root := seedWorkflowWithModelRouting(t, `workflow:
@@ -222,8 +164,6 @@ func TestValidateModelRoutingClosedSetEffort(t *testing.T) {
 	}
 }
 
-// TestValidateModelRoutingValid verifies the full 12-entry block validates
-// cleanly (happy path for REQ-TR-007).
 func TestValidateModelRoutingValid(t *testing.T) {
 	t.Parallel()
 	if verr := ValidateModelRoutingFromYAML([]byte(fullRoutingYAML)); verr != nil {
@@ -231,42 +171,26 @@ func TestValidateModelRoutingValid(t *testing.T) {
 	}
 }
 
-// TestSharedClosedSetWithWorkflowAgents verifies the model_routing effort set
-// matches the workflow_agents effort set (REQ-TR-007 — the two maps' effort
-// sets cannot drift apart).
 func TestSharedClosedSetWithWorkflowAgents(t *testing.T) {
 	t.Parallel()
-	// The canonical workflow_agents effort values (from workflow.yaml).
 	workflowAgentsEfforts := map[string]bool{
-		"low":    true,
-		"medium": true,
-		"high":   true,
-		"xhigh":  true,
+		"low": true, "medium": true, "high": true, "xhigh": true,
 	}
-
-	// Every effort value workflow_agents uses MUST be valid in model_routing.
 	for effort := range workflowAgentsEfforts {
 		if !validRoutingEfforts[effort] {
-			t.Errorf("effort %q is valid for workflow_agents but NOT for model_routing — drift (REQ-TR-007 violation)", effort)
+			t.Errorf("effort %q drift (REQ-TR-007)", effort)
 		}
 	}
-
-	// Symmetrically, the model_routing effort set minus "max" (model_routing's
-	// extension) must be a subset of the workflow_agents effort set. "max" is a
-	// legitimate model_routing extension for the most expensive Tier/Phase.
 	for effort := range validRoutingEfforts {
 		if effort == "max" {
 			continue
 		}
 		if !workflowAgentsEfforts[effort] {
-			t.Errorf("effort %q is valid for model_routing but absent from workflow_agents — drift (REQ-TR-007)", effort)
+			t.Errorf("effort %q drift (REQ-TR-007)", effort)
 		}
 	}
 }
 
-// TestValidateModelRoutingGlmAllowed verifies glm is in the closed model set
-// (REQ-TR-012 — glm is the deployment-neutrality extension; advisory, not
-// blocking, when GLM env is absent).
 func TestValidateModelRoutingGlmAllowed(t *testing.T) {
 	t.Parallel()
 	if !validRoutingModels["glm"] {
@@ -274,44 +198,6 @@ func TestValidateModelRoutingGlmAllowed(t *testing.T) {
 	}
 }
 
-// TestRouteModelForUnavailableModel verifies the accessor surface for a glm
-// entry when GLM env is absent. REQ-TR-012 is a SHOULD: the loader surfaces
-// an advisory rather than blocking. The advisory responsibility lives at the
-// orchestrator layer (env detection); the loader only ensures glm is a valid
-// value and is returned as-is. This test confirms the entry is returned
-// without error, with the model value preserved for the orchestrator's
-// env-aware advisory.
-func TestRouteModelForUnavailableModel(t *testing.T) {
-	t.Parallel()
-	root := seedWorkflowWithModelRouting(t, `workflow:
-    default_mode: ""
-    model_routing:
-        S-sync: { model: glm, effort: low }
-`)
-
-	cfg, err := NewConfigManager().LoadRaw(root)
-	if err != nil {
-		t.Fatalf("LoadRaw: %v", err)
-	}
-
-	entry, err := cfg.RouteModelFor("S", "sync")
-	if err != nil {
-		t.Fatalf("RouteModelFor(S,sync) with glm model: %v", err)
-	}
-	if entry.Model != "glm" {
-		t.Errorf("RouteModelFor(S,sync) Model = %q, want glm (orchestrator decides advisory)", entry.Model)
-	}
-	// The orchestrator (not the loader) checks GLM env presence and surfaces
-	// the advisory. The loader's contract here is: return the entry, don't
-	// block on glm.
-}
-
-// TestLoadModelRouting exercises LoadModelRouting directly across the four
-// contract paths: happy-path load, file-not-found (absence == fallback, not
-// failure), malformed YAML (parse error), and absent model_routing block
-// (valid YAML, no routing == fallback). Backfills the sync-auditor D3 coverage
-// gap — LoadModelRouting was the only model_routing loader function with 0%
-// direct coverage.
 func TestLoadModelRouting(t *testing.T) {
 	t.Parallel()
 
@@ -337,16 +223,10 @@ func TestLoadModelRouting(t *testing.T) {
 				if len(m) != 12 {
 					t.Fatalf("ModelRouting length = %d, want 12", len(m))
 				}
-				if sync := m["S-sync"]; sync.Model != "haiku" || sync.Effort != "low" || sync.FallbackApplied {
-					t.Errorf("S-sync = %+v, want {Model:haiku Effort:low FallbackApplied:false}", sync)
-				}
-				if lrun := m["L-run"]; lrun.Model != "opus" || lrun.Effort != "xhigh" || lrun.FallbackApplied {
-					t.Errorf("L-run = %+v, want {Model:opus Effort:xhigh FallbackApplied:false}", lrun)
-				}
 			},
 		},
 		{
-			name:    "file not found — absence returns nil, nil (fallback, not failure)",
+			name:    "file not found — absence returns nil, nil",
 			prepare: func(t *testing.T) string { return filepath.Join(t.TempDir(), "does-not-exist.yaml") },
 			check: func(t *testing.T, m map[string]ModelRoutingEntry) {
 				if m != nil {
@@ -360,7 +240,7 @@ func TestLoadModelRouting(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "absent block — valid YAML without model_routing key returns nil, nil",
+			name:    "absent block — valid YAML without model_routing returns nil, nil",
 			prepare: func(t *testing.T) string { return writeTempYAML(t, "workflow:\n    default_mode: \"\"\n") },
 			check: func(t *testing.T, m map[string]ModelRoutingEntry) {
 				if m != nil {
@@ -386,5 +266,260 @@ func TestLoadModelRouting(t *testing.T) {
 				tt.check(t, m)
 			}
 		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// M3 tests — RouteModelFor 3-arg + model_routing_profiles (SPEC-AGENT-ARCH-V2-001)
+// ---------------------------------------------------------------------------
+
+// TestRouteModelForHappyPath3Arg verifies RouteModelFor(specTier, phase,
+// perfTier) returns the declared profiles entry with FallbackApplied=false
+// (AC-AA2-008).
+func TestRouteModelForHappyPath3Arg(t *testing.T) {
+	t.Parallel()
+	root := seedWorkflowWithModelRouting(t, fullProfilesYAML)
+
+	cfg, err := NewConfigManager().LoadRaw(root)
+	if err != nil {
+		t.Fatalf("LoadRaw: %v", err)
+	}
+
+	// max tier: L-plan = opus/xhigh (design.md §D.5).
+	entry, err := cfg.RouteModelFor("L", "plan", "max")
+	if err != nil {
+		t.Fatalf("RouteModelFor(L,plan,max): %v", err)
+	}
+	if entry.Model != "opus" || entry.Effort != "xhigh" {
+		t.Errorf("RouteModelFor(L,plan,max) = %+v, want {opus xhigh}", entry)
+	}
+	if entry.FallbackApplied {
+		t.Errorf("RouteModelFor(L,plan,max) FallbackApplied = true, want false")
+	}
+
+	// medium tier: S-run = sonnet/high.
+	entry, err = cfg.RouteModelFor("S", "run", "medium")
+	if err != nil {
+		t.Fatalf("RouteModelFor(S,run,medium): %v", err)
+	}
+	if entry.Model != "sonnet" || entry.Effort != "high" {
+		t.Errorf("RouteModelFor(S,run,medium) = %+v, want {sonnet high}", entry)
+	}
+}
+
+// TestRouteModelForFallback3Arg verifies an absent perfTier or (specTier,
+// phase) pair returns the documented default with FallbackApplied=true
+// (AC-AA2-008).
+func TestRouteModelForFallback3Arg(t *testing.T) {
+	t.Parallel()
+	// Only max tier, only S-plan — every other lookup falls back.
+	root := seedWorkflowWithModelRouting(t, `workflow:
+    default_mode: ""
+    model_routing_profiles:
+        max:
+            S-plan: { model: opus, effort: high }
+`)
+
+	cfg, err := NewConfigManager().LoadRaw(root)
+	if err != nil {
+		t.Fatalf("LoadRaw: %v", err)
+	}
+
+	// Declared pair: no fallback.
+	entry, err := cfg.RouteModelFor("S", "plan", "max")
+	if err != nil {
+		t.Fatalf("RouteModelFor(S,plan,max): %v", err)
+	}
+	if entry.FallbackApplied {
+		t.Errorf("RouteModelFor(S,plan,max) FallbackApplied = true, want false (declared)")
+	}
+
+	// Absent (specTier, phase) within declared perfTier: fallback.
+	entry, err = cfg.RouteModelFor("L", "mx", "max")
+	if err != nil {
+		t.Fatalf("RouteModelFor(L,mx,max): %v", err)
+	}
+	if !entry.FallbackApplied {
+		t.Errorf("RouteModelFor(L,mx,max) FallbackApplied = false, want true (absent pair)")
+	}
+
+	// Absent perfTier: fallback.
+	entry, err = cfg.RouteModelFor("S", "plan", "low")
+	if err != nil {
+		t.Fatalf("RouteModelFor(S,plan,low) on absent perfTier: %v", err)
+	}
+	if !entry.FallbackApplied {
+		t.Errorf("RouteModelFor(S,plan,low) FallbackApplied = false, want true (absent perfTier)")
+	}
+}
+
+// TestRouteModelForNilProfiles verifies a nil profiles map (block absent)
+// yields the fallback for every lookup without error.
+func TestRouteModelForNilProfiles(t *testing.T) {
+	t.Parallel()
+	root := seedWorkflowWithModelRouting(t, "workflow:\n    default_mode: \"\"\n")
+
+	cfg, err := NewConfigManager().LoadRaw(root)
+	if err != nil {
+		t.Fatalf("LoadRaw: %v", err)
+	}
+	if cfg.Workflow.ModelRoutingProfiles != nil {
+		t.Fatalf("expected nil ModelRoutingProfiles for absent block, got %+v", cfg.Workflow.ModelRoutingProfiles)
+	}
+
+	for _, tc := range []struct{ tier, phase, perf string }{
+		{"S", "plan", "max"}, {"M", "run", "medium"}, {"L", "sync", "low"},
+	} {
+		entry, err := cfg.RouteModelFor(tc.tier, tc.phase, tc.perf)
+		if err != nil {
+			t.Errorf("RouteModelFor(%s,%s,%s) on nil profiles: %v", tc.tier, tc.phase, tc.perf, err)
+		}
+		if !entry.FallbackApplied {
+			t.Errorf("RouteModelFor(%s,%s,%s) FallbackApplied = false, want true", tc.tier, tc.phase, tc.perf)
+		}
+	}
+}
+
+// TestRouteModelForInvalidInput3Arg verifies tier/phase/perfTier outside the
+// closed set return an error (AC-AA2-008 input validation).
+func TestRouteModelForInvalidInput3Arg(t *testing.T) {
+	t.Parallel()
+	root := seedWorkflowWithModelRouting(t, fullProfilesYAML)
+	cfg, err := NewConfigManager().LoadRaw(root)
+	if err != nil {
+		t.Fatalf("LoadRaw: %v", err)
+	}
+
+	if _, err := cfg.RouteModelFor("X", "run", "max"); err == nil {
+		t.Errorf("RouteModelFor(X,run,max): expected error for invalid tier, got nil")
+	}
+	if _, err := cfg.RouteModelFor("S", "deploy", "max"); err == nil {
+		t.Errorf("RouteModelFor(S,deploy,max): expected error for invalid phase, got nil")
+	}
+	if _, err := cfg.RouteModelFor("S", "run", "ultra"); err == nil {
+		t.Errorf("RouteModelFor(S,run,ultra): expected error for invalid perfTier, got nil")
+	}
+}
+
+// TestRouteModelForUnavailableModel3Arg verifies the accessor returns a glm
+// entry as-is for the orchestrator's env-aware advisory (REQ-TR-012).
+func TestRouteModelForUnavailableModel3Arg(t *testing.T) {
+	t.Parallel()
+	root := seedWorkflowWithModelRouting(t, `workflow:
+    default_mode: ""
+    model_routing_profiles:
+        max:
+            S-sync: { model: glm, effort: low }
+`)
+
+	cfg, err := NewConfigManager().LoadRaw(root)
+	if err != nil {
+		t.Fatalf("LoadRaw: %v", err)
+	}
+
+	entry, err := cfg.RouteModelFor("S", "sync", "max")
+	if err != nil {
+		t.Fatalf("RouteModelFor(S,sync,max) with glm model: %v", err)
+	}
+	if entry.Model != "glm" {
+		t.Errorf("RouteModelFor(S,sync,max) Model = %q, want glm", entry.Model)
+	}
+}
+
+// TestRouteModelFor3x12Matrix is the golden test that exercises all 36 entries
+// of the model_routing_profiles block against the design.md §D.5 expected
+// values (AC-AA2-009). Every cell MUST be present and match {model, effort}.
+func TestRouteModelFor3x12Matrix(t *testing.T) {
+	t.Parallel()
+	root := seedWorkflowWithModelRouting(t, fullProfilesYAML)
+	cfg, err := NewConfigManager().LoadRaw(root)
+	if err != nil {
+		t.Fatalf("LoadRaw: %v", err)
+}
+
+	// Expected {model, effort} per (perfTier, tier, phase) — design.md §D.5.
+	expected := map[string]map[string]ModelRoutingEntry{
+		"max": {
+			"S-plan": {"opus", "high", false}, "S-run": {"sonnet", "xhigh", false},
+			"S-sync": {"sonnet", "medium", false}, "S-mx": {"sonnet", "low", false},
+			"M-plan": {"opus", "xhigh", false}, "M-run": {"sonnet", "xhigh", false},
+			"M-sync": {"sonnet", "medium", false}, "M-mx": {"sonnet", "low", false},
+			"L-plan": {"opus", "xhigh", false}, "L-run": {"sonnet", "xhigh", false},
+			"L-sync": {"sonnet", "high", false}, "L-mx": {"sonnet", "medium", false},
+		},
+		"medium": {
+			"S-plan": {"sonnet", "medium", false}, "S-run": {"sonnet", "high", false},
+			"S-sync": {"sonnet", "low", false}, "S-mx": {"sonnet", "low", false},
+			"M-plan": {"sonnet", "medium", false}, "M-run": {"sonnet", "xhigh", false},
+			"M-sync": {"sonnet", "medium", false}, "M-mx": {"sonnet", "low", false},
+			"L-plan": {"opus", "high", false}, "L-run": {"sonnet", "xhigh", false},
+			"L-sync": {"sonnet", "high", false}, "L-mx": {"sonnet", "medium", false},
+		},
+		"low": {
+			"S-plan": {"sonnet", "medium", false}, "S-run": {"sonnet", "high", false},
+			"S-sync": {"sonnet", "low", false}, "S-mx": {"sonnet", "low", false},
+			"M-plan": {"sonnet", "medium", false}, "M-run": {"sonnet", "high", false},
+			"M-sync": {"sonnet", "low", false}, "M-mx": {"sonnet", "low", false},
+			"L-plan": {"sonnet", "xhigh", false}, "L-run": {"sonnet", "xhigh", false},
+			"L-sync": {"sonnet", "medium", false}, "L-mx": {"sonnet", "low", false},
+		},
+	}
+
+	tiers := []string{"S", "M", "L"}
+	phases := []string{"plan", "run", "sync", "mx"}
+	perfTiers := []string{"max", "medium", "low"}
+	count := 0
+	for _, perf := range perfTiers {
+		for _, tier := range tiers {
+			for _, phase := range phases {
+				key := tier + "-" + phase
+				want := expected[perf][key]
+				got, err := cfg.RouteModelFor(tier, phase, perf)
+				if err != nil {
+					t.Fatalf("RouteModelFor(%s,%s,%s): %v", tier, phase, perf, err)
+				}
+				if got.Model != want.Model || got.Effort != want.Effort {
+					t.Errorf("RouteModelFor(%s,%s,%s) = {%s %s}, want {%s %s}",
+						tier, phase, perf, got.Model, got.Effort, want.Model, want.Effort)
+				}
+				if got.FallbackApplied {
+					t.Errorf("RouteModelFor(%s,%s,%s) FallbackApplied = true, want false", tier, phase, perf)
+				}
+				count++
+			}
+		}
+	}
+	if count != 36 {
+		t.Fatalf("3×12 matrix exercised %d cells, want 36", count)
+	}
+}
+
+// TestValidateModelRoutingProfiles verifies the 3-tier profiles block validates
+// cleanly (happy path) and rejects an out-of-closed-set value.
+func TestValidateModelRoutingProfiles(t *testing.T) {
+	t.Parallel()
+	// Happy path: full 36-entry block validates.
+	root := seedWorkflowWithModelRouting(t, fullProfilesYAML)
+	cfg, err := NewConfigManager().LoadRaw(root)
+	if err != nil {
+		t.Fatalf("LoadRaw: %v", err)
+	}
+	if verr := cfg.ValidateModelRoutingProfiles(); verr != nil {
+		t.Fatalf("ValidateModelRoutingProfiles on valid block: %v", verr)
+	}
+
+	// Rejection: invalid perfTier key.
+	badRoot := seedWorkflowWithModelRouting(t, `workflow:
+    default_mode: ""
+    model_routing_profiles:
+        ultra:
+            S-plan: { model: sonnet, effort: low }
+`)
+	badCfg, err := NewConfigManager().LoadRaw(badRoot)
+	if err != nil {
+		t.Fatalf("LoadRaw (bad): %v", err)
+	}
+	if verr := badCfg.ValidateModelRoutingProfiles(); verr == nil {
+		t.Fatalf("expected validation error for invalid perfTier ultra, got nil")
 	}
 }

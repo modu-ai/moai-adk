@@ -50,6 +50,13 @@ var (
 		"sync": true,
 		"mx":   true,
 	}
+	// validRoutingPerfTiers is the closed set of performance tiers for the
+	// No-Haiku 3-tier policy (SPEC-AGENT-ARCH-V2-001 M3, design.md §D.2).
+	validRoutingPerfTiers = map[string]bool{
+		"max":    true,
+		"medium": true,
+		"low":    true,
+	}
 )
 
 // defaultRoutingEntry is the documented fallback returned when a (Tier, Phase)
@@ -86,12 +93,21 @@ func routingKey(tier, phase string) string {
 //
 // @MX:ANCHOR: [AUTO] RouteModelFor is the spawn-time cost-routing accessor
 // @MX:REASON: fan_in >= 3 expected (orchestrator spawn call-site, tests, Epic C/D consumers)
-func (c *Config) RouteModelFor(tier, phase string) (ModelRoutingEntry, error) {
-	if !validRoutingTiers[tier] {
+//
+// RouteModelFor returns the routing entry for the given (specTier, phase,
+// perfTier) triple, reading from Workflow.ModelRoutingProfiles (the No-Haiku
+// 3-tier map, SPEC-AGENT-ARCH-V2-001 M3, design.md §D.5). Behaviors mirror the
+// flat-map accessor: happy path returns the entry with FallbackApplied=false;
+// an absent perfTier or (specTier, phase) pair returns the documented default
+// entry with FallbackApplied=true; invalid specTier/phase/perfTier INPUT
+// returns an error. Closed-set VALIDATION of loaded model/effort values
+// happens at ValidateModelRoutingProfiles time (loader), NOT here.
+func (c *Config) RouteModelFor(specTier, phase, perfTier string) (ModelRoutingEntry, error) {
+	if !validRoutingTiers[specTier] {
 		return ModelRoutingEntry{}, &ValidationError{
 			Field:   "tier",
-			Message: fmt.Sprintf("tier %q not in closed set {S, M, L}", tier),
-			Value:   tier,
+			Message: fmt.Sprintf("tier %q not in closed set {S, M, L}", specTier),
+			Value:   specTier,
 		}
 	}
 	if !validRoutingPhases[phase] {
@@ -101,12 +117,24 @@ func (c *Config) RouteModelFor(tier, phase string) (ModelRoutingEntry, error) {
 			Value:   phase,
 		}
 	}
+	if !validRoutingPerfTiers[perfTier] {
+		return ModelRoutingEntry{}, &ValidationError{
+			Field:   "perfTier",
+			Message: fmt.Sprintf("perfTier %q not in closed set {max, medium, low}", perfTier),
+			Value:   perfTier,
+		}
+	}
 
-	if c == nil || c.Workflow.ModelRouting == nil {
+	if c == nil || c.Workflow.ModelRoutingProfiles == nil {
 		return defaultRoutingEntry, nil
 	}
 
-	entry, ok := c.Workflow.ModelRouting[routingKey(tier, phase)]
+	tierPhaseMap, ok := c.Workflow.ModelRoutingProfiles[perfTier]
+	if !ok {
+		return defaultRoutingEntry, nil
+	}
+
+	entry, ok := tierPhaseMap[routingKey(specTier, phase)]
 	if !ok {
 		return defaultRoutingEntry, nil
 	}
@@ -115,6 +143,68 @@ func (c *Config) RouteModelFor(tier, phase string) (ModelRoutingEntry, error) {
 	// YAML may have carried so the indicator reflects the runtime decision.
 	entry.FallbackApplied = false
 	return entry, nil
+}
+
+// ValidateModelRoutingProfiles checks every entry in the
+// Workflow.ModelRoutingProfiles map against the closed sets (perfTier, key
+// structure, model, effort). Returns a ValidationError naming the first
+// offending location. A nil/empty map is valid (every lookup will fall back).
+func (c *Config) ValidateModelRoutingProfiles() error {
+	if c == nil || len(c.Workflow.ModelRoutingProfiles) == 0 {
+		return nil
+	}
+
+	perfTiers := make([]string, 0, len(c.Workflow.ModelRoutingProfiles))
+	for pt := range c.Workflow.ModelRoutingProfiles {
+		perfTiers = append(perfTiers, pt)
+	}
+	sort.Strings(perfTiers)
+
+	for _, pt := range perfTiers {
+		if !validRoutingPerfTiers[pt] {
+			return &ValidationError{
+				Field:   fmt.Sprintf("model_routing_profiles.%s", pt),
+				Message: fmt.Sprintf("perfTier %q not in closed set {max, medium, low}", pt),
+				Value:   pt,
+			}
+		}
+		tierPhaseMap := c.Workflow.ModelRoutingProfiles[pt]
+
+		keys := make([]string, 0, len(tierPhaseMap))
+		for k := range tierPhaseMap {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
+		for _, k := range keys {
+			entry := tierPhaseMap[k]
+
+			parts := strings.SplitN(k, "-", 2)
+			if len(parts) != 2 || !validRoutingTiers[parts[0]] || !validRoutingPhases[parts[1]] {
+				return &ValidationError{
+					Field:   fmt.Sprintf("model_routing_profiles.%s.%s", pt, k),
+					Message: "key is not <TIER>-<phase> with Tier in {S,M,L} and Phase in {plan,run,sync,mx}",
+					Value:   k,
+				}
+			}
+
+			if !validRoutingModels[entry.Model] {
+				return &ValidationError{
+					Field:   fmt.Sprintf("model_routing_profiles.%s.%s.model", pt, k),
+					Message: fmt.Sprintf("model %q not in closed set {inherit, haiku, sonnet, opus, glm}", entry.Model),
+					Value:   entry.Model,
+				}
+			}
+			if !validRoutingEfforts[entry.Effort] {
+				return &ValidationError{
+					Field:   fmt.Sprintf("model_routing_profiles.%s.%s.effort", pt, k),
+					Message: fmt.Sprintf("effort %q not in closed set {low, medium, high, xhigh, max}", entry.Effort),
+					Value:   entry.Effort,
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // ValidateModelRouting checks every entry in the Workflow.ModelRouting map
