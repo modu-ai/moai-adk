@@ -49,11 +49,43 @@ authoring_session_id: pending
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — manager-develop이 AC-TEST-007/008/009 evidence + commit SHA 기록>_
+**Baseline**: HEAD `f3f348ff5` (synced origin/main, divergence 0 0). Run-phase executed in worktree `agent-aed48595b57db9c20` (pristine checkout of HEAD). **Worktree `version.go = v3.0.0-rc7`** (the HEAD committed value); the main-repo working tree carries an uncommitted `rc8` (release-process-owned, PRESERVE). Per the delegation prompt's anti-hardcode directive ("goldens follow version.go"), the observed worktree value `rc7` was used for M1 regen — this produces HEAD consistency (version.go=rc7 + goldens=rc7 → 6 tests PASS at HEAD), which is the correct outcome for unblocking ARCH-001's M0 gate.
+
+| AC | Status | Verification Command | Actual Output (this run) |
+|----|--------|---------------------|--------------------------|
+| AC-TEST-007 (M1) | **PASS** | `UPDATE_GOLDEN=1 go test ./internal/cli/ -run 'TestDoctor_Current_Light\|TestDoctor_Current_Dark\|TestDoctor_NoColor\|TestStatus_Current_Light\|TestStatus_Current_Dark\|TestStatus_NoColor' -count=1` | regen exit=0; `git diff --stat internal/cli/testdata/` = 6 files, 6 insertions(+), 6 deletions(-); byte-level diff = only `rc6→rc7` (2 line patterns, no layout/emoji change → C-1 renderer untouched); `grep -l "v3.0.0-rc7" …{doctor,status}-{light,dark,nocolor}.golden \| wc -l` → **6**; re-run WITHOUT UPDATE_GOLDEN → `ok github.com/modu-ai/moai-adk/internal/cli 0.416s` (exit 0, 6/6 PASS) |
+| AC-TEST-008 (M2) | **PASS** (verify-only) | `go test -run TestBuild_WritesContextUsageWithSessionID -count=10 ./internal/statusline/` + GLM-env `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL=glm-5.2 … -count=3` | 10x consecutive → `ok … 0.393s` (exit 0); GLM-env 3x → `ok … 0.236s` (exit 0). Zero code change (commit `794bb4f84` already-resolved — C-2 respected). |
+| AC-TEST-009 (M3) | **PASS** | `go test -coverprofile=cover.out ./internal/constitution/` + `go tool cover -func` | coverage: **85.1%** (≥85% floor, up from 67.5%); all 10 named functions escaped 0%: NewPipeline 100%, Execute 82.2%, createLogEntry 100%, applyAmendment 35.7% (capped by documented `updateSourceFile` stub — unreachable lines after the stub error cannot be covered without modifying production, C-3), acquireLock 76.9%, releaseLock 100%, updateSourceFile 100%, updateRegistryClause 100%, Approve 85.7%, printDiff 100%. Production code (pipeline.go / human_oversight.go) UNCHANGED — C-3 verified via empty `git diff`. |
+
+### E-deliverables (this run)
+
+- **E2 Cross-platform build**: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+- **E3 Coverage**: internal/constitution **85.1%**; internal/cli + internal/statusline PASS (no coverage regression from M1/M2).
+- **E4 Subagent boundary**: N/A (no harness/hook code touched — SPEC scope).
+- **E5 Lint**: `golangci-lint run --timeout=2m` → `0 issues.` (0 NEW vs pre-flight baseline 0).
+- **E6 Push**: see §E.3 (`l44_post_push_fetch`).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — manager-develop이 run_status + AC PASS/FAIL matrix 기록>_
+```yaml
+run_complete_at: "2026-07-09"
+run_start_commit_sha: "f3f348ff5"        # HEAD before M1 (synced origin/main, divergence 0 0)
+m1_commit_sha: "0f1f07349"               # M1: 6 goldens (rc6→rc7) + 4 SPEC draft→in-progress
+run_commit_sha: "<pending backfill — M3 commit SHA recorded post-commit>"
+run_status: "PASS (3/3 AC: AC-TEST-007/008/009 all PASS)"
+ac_pass_count: 3
+ac_fail_count: 0
+preserve_list_post_run_count: 0          # C-4/C-6: no PRESERVE files entered any commit
+l44_pre_commit_fetch: "origin/main == f3f348ff5 (divergence 0 0 before run-phase)"
+l44_post_push_fetch: "<pending push — orchestrator-side>"
+new_warnings_or_lints_introduced: 0      # golangci-lint 0 issues (baseline 0)
+cross_platform_build:
+  darwin_amd64: "exit 0"
+  windows_amd64: "exit 0"
+total_run_phase_files: 13                # 6 goldens + 4 SPEC frontmatter (M1) + 2 new _test.go + progress.md §E.2/§E.3 (M3)
+m1_to_mN_commit_strategy: "2 commits — M1 (goldens + draft→in-progress frontmatter), then M2+M3 bundled (constitution integration tests + M2 verify-only evidence + progress.md §E.2/§E.3)"
+version_token_observed: "rc7 (worktree version.go at HEAD f3f348ff5; main-repo working tree has uncommitted rc8, PRESERVE)"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
