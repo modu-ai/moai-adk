@@ -61,6 +61,8 @@ Valid values: `draft`, `planned`, `in-progress`, `implemented`, `completed`, `su
 
 > **`planned` is legacy-optional — NOT part of the active V3R6 flow.** The modern flow transitions `draft → in-progress` directly (manager-develop, on the first run-phase commit). `planned` is retained in the enum for backward compatibility with pre-V3R6 SPECs that recorded it, but it has **no active-flow owner** — no agent authors a `draft → planned` transition in the current lifecycle, and the Status Transition Ownership Matrix below deliberately omits a `draft → planned` row. Do NOT invent a new owner for it, and do NOT remove it from the enum (removal would break parsing of grandfathered SPECs that carry `status: planned`).
 
+> **`completed → in-progress (amendment)` transition** — a SPEC with `status: completed` MAY transition back to `status: in-progress` for an in-place amendment. This reuses the existing `in-progress` status (NO new `amended` enum value is added). The amendment is declared via the `amendment_of:` optional frontmatter field (self-referential for in-place, or parent SPEC ID for successor) plus a HISTORY `## Amendments` sub-section recording the prior completed version, prior_completed_sha, rationale, and scope. See the `completed → in-progress (amendment)` row in the matrix below. During amendment, the `internal/spec/audit.go` completed-no-drift predicate does NOT fire (frontmatter is `in-progress`, not `completed`), so normal drift detection resumes — no Go change required.
+
 ## Status Transition Ownership Matrix
 
 Per the canonical agent-responsibility realignment policy (DRI ownership at agent-artifact granularity per Anthropic Best Practice #7) and the agent catalog consolidation policy (8 retained agents). This matrix is the **schema-level SSOT** for which agent performs each canonical status transition. Owner columns reference only the 7 MoAI-custom retained agents (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `sync-auditor`, `builder-harness`) plus orchestrator-direct entries; archived agent names (`manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, and the 6 `expert-*` agents) MUST NOT appear as owners — see `.claude/rules/moai/workflow/archived-agent-rejection.md` for migration guidance. Cross-referenced by the `## SPEC Artifact Ownership` body sections in `.claude/agents/moai/manager-{spec,develop,docs}.md`.
@@ -73,6 +75,7 @@ Per the canonical agent-responsibility realignment policy (DRI ownership at agen
 | `* → superseded` | manager-spec (when authoring the new superseding SPEC) | `feat(SPEC-{NEW-ID}): supersedes SPEC-{OLD-ID}` |
 | `* → archived` | manager-docs (administrative cleanup) | `chore(specs): archive SPEC-{ID}` |
 | `* → rejected` | orchestrator decision, recorded by manager-docs | `chore(SPEC-{ID}): rejected per <rationale>` |
+| `completed → in-progress (amendment)` | manager-spec (re-delegation per D-NEW-1 inline-fix pattern) | `feat(SPEC-{ID}): in-place amendment <rationale-summary>` — distinct from `(none) → draft` and `* → superseded`; the SPEC's HISTORY `## Amendments` sub-section MUST record the prior completed version + prior_completed_sha + rationale + scope |
 
 > **3-phase close (plan→run→sync)** — the MoAI lifecycle is exactly three phases (`plan`, `run`, `sync`); MX Tag is a cross-cutting concern validated during sync, NOT a separate fourth phase. The `completed` status transition rides the sync commit (manager-docs owns it); there is no separate "Mx chore commit". The progress.md §E structure is 4 sections (§E.1 Plan / §E.2 Run Evidence / §E.3 Run Audit-Ready / §E.4 Sync Audit-Ready) — the former `§E.5 Mx-phase` section is retired (folded into §E.4).
 
@@ -120,6 +123,7 @@ These fields may be included when needed but are NOT required by `FrontmatterSch
 | `depends_on` | list | SPEC IDs this SPEC depends on. Used by BODP signal A. |
 | `lint.skip` | list | Lint rule codes to skip. Use only for documented debt. |
 | `bc_id` | string | Backward-compatibility tracking ID. |
+| `amendment_of` | string | SPEC ID declaring this SPEC is an in-place amendment of a prior completed SPEC. Self-referential (value = own ID) for in-place amendment; parent SPEC ID for successor amendment. Paired with a HISTORY `## Amendments` sub-section recording prior completed version, prior_completed_sha, rationale, and scope. See Status Transition Ownership Matrix `completed → in-progress (amendment)` row. |
 
 ## Rejected Snake_Case Aliases
 
