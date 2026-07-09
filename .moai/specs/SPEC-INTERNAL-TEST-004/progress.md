@@ -176,7 +176,7 @@ verification_basis: |
 ```yaml
 sync_status: completed
 sync_complete_at: 2026-07-09
-sync_commit_sha: "<populated-post-commit>"   # single close commit; value folded in via amend before push
+sync_commit_sha: "4faeb55a9"   # close commit SHA; backfilled in follow-up chore commit per established convention (TEST-002 / SPEC-TEMPLATE-RULES-CLEANUP-001 pattern — single-commit self-SHA is mathematically impossible: the SHA depends on the tree which contains the SHA)
 sync_commit_subject: "chore(SPEC-INTERNAL-TEST-004): sync-phase artifacts + 3-phase close"
 frontmatter_status_transitions:
   spec_md: draft → completed        # manager-docs owns the merged 3-phase close on the single sync commit
