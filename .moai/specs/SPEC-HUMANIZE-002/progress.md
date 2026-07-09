@@ -57,7 +57,7 @@ Shell variables used below: `T=internal/template/templates/.claude/skills/moai-d
 
 ```yaml
 run_complete_at: 2026-07-10T04:40:00Z
-run_commit_sha: pending-backfill-M3
+run_commit_sha: 199c5c1a8570bac1da3a1cdd15f87856800c0d80
 run_status: audit-ready
 ac_pass_count: 24
 ac_fail_count: 0
