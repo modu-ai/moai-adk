@@ -24,7 +24,7 @@ tags: "cadence, automate, read-only, workflow-reflex, acceptance"
 | AC ID | REQ trace | Finding | Severity | Description |
 |-------|-----------|---------|----------|-------------|
 | AC-CDB-001 | REQ-CDB-001 | L1 | MUST-PASS | The cadence-bridge rule exists (placement per D1) and defines ≥3 named recipes including all three mandated ones: `/loop 30m /moai gate` drift watcher, nightly `/moai review --lean`, loop-verdict backlog re-discovery |
-| AC-CDB-002 | REQ-CDB-002 | L1 | MUST-PASS | Catalog-level HARD invariant present: no scheduled write/commit/push; at most Level-1-no-commit fixes; no scheduled run-phase entry; Implementation Kickoff Approval named as human-only and cadence-unsatisfiable |
+| AC-CDB-002 | REQ-CDB-002 | L1 | MUST-PASS | Catalog-level HARD invariant present: no scheduled commit or push (Level-1 uncommitted working-tree edits are the sole permitted exception); no scheduled run-phase entry; Implementation Kickoff Approval named as human-only and cadence-unsatisfiable |
 | AC-CDB-003 | REQ-CDB-003 | L1 | MUST-PASS | Discovery-to-queue contract present: found work persists to TaskList or the D2 backlog record, surfaces at next interactive session, never auto-executes remediation |
 | AC-CDB-004 | REQ-CDB-004 | L1 | MUST-PASS | goal-directive.md distinctness note intact in meaning ("not interchangeable" preserved) + cross-reference to the cadence-bridge rule added |
 | AC-CDB-005 | REQ-CDB-001 | L1 | MUST-PASS | Every recipe/eligibility-table entry point is verifiably read-only or advisory (gate = validation-only; review --lean = "applies no fixes, modifies no files"; backlog re-discovery = prose reader) — no write-capable subcommand appears |

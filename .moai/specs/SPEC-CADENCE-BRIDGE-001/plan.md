@@ -107,7 +107,7 @@ Per manager-develop-prompt-template.md §E (Tier S minimal form), vci 5-section 
 | M1 — cadence-bridge rule | new rule file (template-first): recipes + HARD invariant + queue contract + eligibility table | REQ-CDB-001..003 | AC-CDB-001..003, AC-CDB-005 PASS |
 | M2 — cross-ref + template sync | goal-directive.md cross-reference; mirrors; make build | REQ-CDB-004..005 | AC-CDB-004, AC-CDB-006 PASS |
 
-Dependency note: none blocking. Landing SHOULD follow SPEC-LOOP-VERDICT-CONTRACT-001 so recipe 3 references a landed schema; if it lands first, recipe 3 cites the schema as pending with a forward link.
+Dependency note: none blocking. SPEC-LOOP-VERDICT-CONTRACT-001's verdict-file schema has already landed on main (commits e0298c230, 083cf52cf); recipe 3 cites the schema as landed at `.moai/state/loop-verdict-<id>.json`.
 
 ## §G Anti-Patterns (do NOT)
 

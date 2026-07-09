@@ -37,7 +37,7 @@ tags: "cadence, automate, native-loop, cron, read-only, drift-watcher, backlog-r
 ## User Story
 
 **As a** user who wants drift, over-engineering, and leftover backlog items surfaced without remembering to ask,
-**I want** a sanctioned set of cadence recipes that compose Claude Code's native `/loop <interval>` scheduler (and Cron tools where appropriate) with strictly read-only `/moai` entry points — with a hard contract that scheduled runs never write, never commit, and never enter run-phase,
+**I want** a sanctioned set of cadence recipes that compose Claude Code's native `/loop <interval>` scheduler (and Cron tools where appropriate) with strictly read-only `/moai` entry points — with a hard contract that scheduled runs never commit, never push, and never enter run-phase (Level-1, uncommitted working-tree edits are the sole permitted exception),
 **so that** the harness gains the AUTOMATE element (cadence finds work; humans decide what to do with it) without ever converting scheduled convenience into unattended write automation.
 
 ---
