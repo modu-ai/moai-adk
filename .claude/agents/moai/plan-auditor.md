@@ -305,7 +305,7 @@ Verify against the canonical 12-field schema in `.claude/rules/moai/development/
 
 * **D7**: Cross-SPEC Reconciliation — verifies referenced SPEC IDs against `.moai/specs/` status
 
-D7 is a new dimension introduced by SPEC-V3R5-WORKFLOW-OPT-001 Layer G. It
+D7 is a new dimension introduced by the workflow-optimization rule layer (Layer G). It
 verifies that every SPEC ID referenced in the body has its current status
 documented in `.moai/specs/<ID>/spec.md` frontmatter. If a referenced SPEC has
 status `retired`, `superseded`, or `archived` without an explicit reconciliation
@@ -347,7 +347,7 @@ A D7 BLOCKING finding emitted (unresolved) here feeds MP-5: it forces `Verdict: 
 
 * **D8**: Cross-Platform Discipline — verifies `syscall` introductions declare `//go:build` constraint
 
-D8 is a new dimension introduced by SPEC-V3R5-WORKFLOW-OPT-001 Layer G. It
+D8 is a new dimension introduced by the workflow-optimization rule layer (Layer G). It
 verifies that SPECs introducing `syscall` package imports declare a
 `//go:build` build-tag constraint in the SPEC body OR explicitly justify a
 cross-platform exemption. This dimension prevents the W3 lesson #21 incident
@@ -439,7 +439,7 @@ If iteration 3 results in FAIL, the agent produces a final escalation report wit
 
 Stagnation detection: If a defect appears in all three iterations unchanged, flag it as "blocking defect — manager-spec made no progress". This indicates a misunderstanding, not just a missed fix.
 
-### LEAN Workflow Additions (SPEC-V3R5-WORKFLOW-LEAN-001)
+### LEAN Workflow Additions
 
 The following three clauses extend the retry loop contract to fix the score-regression pattern (0.78 → 0.81 → 0.77) observed in LANG-COMPLIANCE-001 plan-phase abandonment (2026-05-20).
 
