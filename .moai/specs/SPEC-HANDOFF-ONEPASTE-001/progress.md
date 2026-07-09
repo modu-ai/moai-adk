@@ -80,7 +80,20 @@ evidence_dir: "/Users/goos/MoAI/moai-adk-go/.moai/state/verify/onepaste-run/"
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-09
+sync_commit_sha: pending-backfill  # populated by follow-up chore commit per established convention
+sync_status: audit-ready
+epic: Handoff-v2 follow-on (AUTORESUME emission-side wiring — 1-paste flow live)
+ac_total: 17/17 PASS (9 MUST-PASS incl. AC-OP-017 byte-parity)
+plan_audit: iter-1 FAIL 0.78 → iter-2 PASS-WITH-DEBT 0.89 (Tier M 0.80; R1-R3 debt cleared pre-run)
+spec_lint: 0 findings (StatusGitConsistency warning self-healed on draft→in-progress)
+mirror_parity: diff -q ×3 identical + TestRuleTemplateMirrorDrift/TestTemplateNoInternalContentLeak ok
+cross_platform_build: darwin=0 windows=0
+constitution_validate: 77 findings byte-identical to base baseline (0 new)
+3_phase_close: plan(248c19bcb → f3f348ff5 → e1143f804) → run(5faab23a2 M1 + 78a8aefb3 M2 + 303c41e94 evidence, temp-worktree cherry-pick landing) → sync(this commit)
+race_note: run-phase executed in runtime L1 worktree (fork base e1143f804); orchestrator landed via origin/main-based temp worktree cherry-pick + independent 5/5 verification, zero contact with the parallel session's dirty shared checkout; sync executed in the same landing pattern (onepaste-sync worktree from origin/main eb601d0b7)
+```
 
 ## §F Phase 0.95 Mode Selection
 
