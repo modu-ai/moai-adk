@@ -267,6 +267,23 @@ When a tool call fails:
 
 This refines step 3 above ("do not retry the identical call") along the side-effect axis: for a side-effecting call, "try an alternative approach" begins with observing whether the effect already occurred.
 
+### Super-Advisor Escalation (E1-E4)
+
+When recovery via the 3-retry ceiling is insufficient OR a higher-reasoning consultation is warranted, the orchestrator escalates to the **super-advisor** agent (on-demand high-reasoning consultation). super-advisor returns **non-binding prescriptions** (diagnoses, options, recommendations); the orchestrator remains the decision owner. This is DISTINCT from auditor verdicts — `plan-auditor` / `sync-auditor` own binding PASS/FAIL judgment; super-advisor owns advisory consultation only. When the question is "should this PASS?", route to an auditor; when the question is "what should I do here?", route to super-advisor.
+
+Entry conditions (exhaustive per REQ-AA2-003 of SPEC-AGENT-ARCH-V2-001; expansion is M4 doctrine territory):
+
+| Trigger | Condition | Example |
+|---------|-----------|---------|
+| **E1 — bug-deadlock** | 3+ consecutive same-diagnostic failures | `manager-develop` retries the same failing test 3 times with the same root-cause hypothesis |
+| **E2 — architecture/design decision point** | A spec-body or plan-body decision with ≥2 viable options, neither obviously correct | "Should this cache layer be write-through or write-behind?" at L-plan boundary |
+| **E3 — second-opinion request** | Orchestrator uncertainty: < 80% confidence in the next delegation step | Ambiguous blocker-report from a worker; orchestrator deciding between re-spawn vs user-escalation |
+| **E4 — loop-deadlock** | `/moai loop` or `/moai fix` ceiling-exit per SPEC-LOOP-VERDICT-CONTRACT-001 | Auto-fix iteration count exhausted without green CI |
+
+On trigger: the orchestrator spawns `Agent(general-purpose)` with the super-advisor role profile (Opus + xhigh at max/medium tier; Sonnet + xhigh at low tier — GLM-backed sessions fall back to the session model per the GLM carve-out), receives a non-binding prescription, then either re-seeds the executor with the prescription or escalates to the user via `AskUserQuestion`.
+
+Design source: `.moai/reports/agent-architecture-redesign-v2-20260709.html` §01 change ② + §05; agent file: `.claude/agents/moai/super-advisor.md`.
+
 ## Parallel Execution
 
 [ZONE:Evolvable] [HARD] The orchestrator MUST execute every read-only verification

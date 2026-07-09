@@ -45,3 +45,29 @@ _<pending run-phase — populated by manager-develop>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase — populated by manager-docs>_
+
+---
+
+## §F Phase 0.95 Mode Selection
+
+```
+tier: S
+scope_files: ~7 logical surfaces (Go source internal/spec + internal/hook; 2 hook scripts; 2 config blocks; loop.md; template mirrors; _test.go)
+domain_count: 2 (Go internal/{spec,hook} code + hook/config/doc markdown surfaces)
+file_language_mix: Go + bash + YAML + markdown
+concurrency_benefit: LOW (coding-heavy; milestone dependency — M3 gates depend on D3 decision)
+agent_teams_prereqs: NOT MET (workflow.team.enabled default false since Sonnet 5 re-design)
+```
+
+| Mode | Selected? | Rationale |
+|------|-----------|-----------|
+| 1 trivial | no | 6 REQ / 7 AC / 3 milestones — non-trivial implementation |
+| 2 background | no | write-heavy (Go code + commits + template mirrors); not read-only |
+| 3 agent-team | no | team.enabled default false; all three prereqs unmet |
+| 4 parallel | no | coding-heavy — Anthropic coding-task parallelism caveat; M1→M2→M3 sequential dependency |
+| 5 sub-agent | YES | Tier S coding-heavy work; sequential per-milestone delegation; M3 depends on D3 decision (Promote) |
+| 6 workflow | no | not mechanical-uniform transform; new code + semantic edits; <30 files |
+
+Decision: sub-agent
+
+Justification: Tier S coding-heavy SPEC (Go TDD across internal/spec audit consumer + internal/hook SessionEnd pruning, ~200-280 LOC) with sequential milestone dependency (M3's gate promotion blocks on the D3 user decision = Promote, already captured at Implementation Kickoff Approval). Anthropic's coding-task parallelism caveat ("most coding tasks involve fewer truly parallelizable tasks than research") routes coding-heavy work to the sequential sub-agent path (Mode 5), not parallel fan-out (Mode 4) nor workflow (Mode 6 — admits only genuinely-parallel high-volume mechanical transforms). A single manager-develop delegation (cycle_type=tdd) covers M1→M2→M3 in dependency order. Implementation Kickoff Approval: PASSED (user confirmed run-phase entry + D3=Promote). All preferences collected. plan-audit iter-1 PASS 0.96 skip-eligible.

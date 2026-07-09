@@ -2,7 +2,7 @@
 id: SPEC-AGENT-ARCH-V2-001
 title: "MoAI Agent Architecture v2 — Progress"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-09
 updated: 2026-07-09
 author: manager-spec
@@ -81,7 +81,24 @@ plan_phase_evidence_path: .moai/specs/SPEC-AGENT-ARCH-V2-001/
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — manager-develop populates this section with per-milestone commit SHAs, test output, lint output, coverage measurements, and AC PASS/FAIL matrix per the canonical §E.2 contract. The literal `§E.2` heading is the era.go run-evidence START marker; do NOT rename or remove.>_
+### M1 — super-advisor agent file + ceiling 8->10 + E1-E4 doctrine (PASS)
+
+**AC matrix (vci 5-section):**
+- AC-AA2-001 super-advisor.md frontmatter: PASS — name=super-advisor, model=inherit, effort=xhigh, permissionMode=plan; NOT for: count=4; tools=Read,Grep,Glob,Bash,WebFetch,Skill (write-tools leak=0); live+template byte-identical (6352 bytes).
+- AC-AA2-002 CLAUDE.md ceiling: PASS — "10 retained agents" count=2 (live+template); "8 retained agents" count=0 (complete flip); super-advisor+manager-design rows present; Selection Decision Tree entries 10+11 present.
+- AC-AA2-003 E1-E4 doctrine: PASS — agent-common-protocol.md E1-E4 count=5 (>=4); super-advisor cross-ref count=3 (>=1).
+
+**Evidence (LIVE, vci attribution):**
+- `go build ./...` -> exit 0
+- `golangci-lint run --timeout=2m` -> 0 issues
+- template-first: super-advisor.md IDENTICAL; CLAUDE.md section-4 IDENTICAL; agent-common-protocol.md IDENTICAL (cp synced).
+- `moai spec lint spec.md` -> 1 warning (StatusGitConsistency: draft vs git-implied; resolves when status flips to in-progress).
+
+**Baseline-attribution:** HEAD pre-M1 8cc3ed06e; M1 edits are the 6 files (super-advisor.md x2, CLAUDE.md x2, agent-common-protocol.md x2) + this progress.md. No Go code touched.
+
+**Gaps:** M1 commit SHA populated post-commit (self-reference avoided per sync_commit_sha pitfall). plan-auditor iteration-2 independent verdict deferred (API 429); orchestrator-direct verdict ~0.84 PASS-WITH-DEBT recorded.
+
+**Residual-risk:** (a) orchestrator-direct plan-audit (confirmation bias — orchestrator authored manager-spec delegation AND verified); (b) M1 executed under GLM backend (user override of Opus recommendation) — agent-file authoring fidelity risk for M2 (manager-design H1-H9 verbatim).
 
 ---
 
@@ -104,7 +121,15 @@ sync_completed_at: ""  # populated by manager-docs at sync close
 
 ## §F Phase 0.95 Mode Selection
 
-_<pending Phase 0.95 — the orchestrator populates this section BEFORE the first run-phase Agent() spawn (after Implementation Kickoff Approval passes). The literal `Mode Selection` token is grep-verified; the orchestrator's mode decision (one of: trivial / background / agent-team / parallel / sub-agent / workflow) is recorded on a single line. Per the Tier L + multi-domain nature of this SPEC, the expected selection is `sub-agent` (Mode 5, sequential per milestone — coding-heavy per Anthropic's coding-task parallelism caveat), but the orchestrator makes the autonomous decision at Phase 0.95 entry.>_
+Decision: sub-agent (Mode 5)
+
+Input parameters: tier=L, scope=~25-35 files, domains >=5 (agents/workflow-skills/rules/Go-config/template-mirrors), language mix=markdown+Go+yaml, concurrency benefit=LOW (coding-heavy), Agent Teams prereqs=team.enabled false (Mode 3 unavailable).
+
+Mode evaluation: Mode 1 trivial NO (Tier L semantic); Mode 2 background NO (write-heavy); Mode 3 agent-team NO (team.enabled=false default); Mode 4 parallel NO (coding-heavy — Anthropic caveat); Mode 6 workflow NO (multi-rule semantic, not uniform mechanical); Mode 5 sub-agent YES (Tier L coding-heavy sequential default).
+
+Justification: Tier L + coding-heavy (Go signature extension + agent file authoring + doctrine refresh) -> Mode 5 per Anthropic coding-task parallelism caveat. M1->M2->M3->M4 sequential (M4 depends on M1+M3).
+
+Force-majeure note (API 429): plan-auditor iteration-2 spawn hit API 429 (5-hour GLM usage limit, resets 20:11:06). Orchestrator executes M1-M4 DIRECTLY (not via manager-develop spawn) as a force-majeure exception — user explicitly directed continue. Phase 0.5 iter-2 verdict produced by orchestrator-direct LIVE verification (PASS-WITH-DEBT ~0.84; D1-D6 resolved, 0 new BLOCKING). Independent plan-auditor + sync-auditor confirmation deferred to API reset / sync-phase. Residual-risk: confirmation bias (orchestrator authored the manager-spec delegation AND verified it).
 
 ---
 

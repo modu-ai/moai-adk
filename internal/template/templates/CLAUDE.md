@@ -76,9 +76,9 @@ Default (natural language): Routes to autonomous workflow (plan -> run -> sync p
 
 ## 4. Agent Catalog
 
-The MoAI agent catalog consists of exactly **8 retained agents** (7 MoAI-custom + 1 Anthropic built-in `Explore`). The catalog is aligned with Anthropic's published best practices: "Subagents cannot spawn other subagents" (claude.com/docs/en/sub-agents — historical default; see the Watch note below for the v2.1.172 nesting update), "Start with 3-5 teammates for most workflows" (claude.com/docs/en/agent-teams), and "Define a custom subagent when you keep spawning the same kind of worker" (claude.com/docs/en/best-practices).
+The MoAI agent catalog consists of exactly **10 retained agents** (9 MoAI-custom + 1 Anthropic built-in `Explore`). The catalog is aligned with Anthropic's published best practices: "Subagents cannot spawn other subagents" (claude.com/docs/en/sub-agents — historical default; see the Watch note below for the v2.1.172 nesting update), "Start with 3-5 teammates for most workflows" (claude.com/docs/en/agent-teams), and "Define a custom subagent when you keep spawning the same kind of worker" (claude.com/docs/en/best-practices).
 
-> **Watch (Claude Code 2.1.172)**: As of Claude Code v2.1.172 a subagent can spawn its own nested subagents. This is gated by the `Agent` tool being present in the subagent's `tools` list — the `Agent(agent_type)` parenthesized allowlist is a main-thread (`claude --agent`) feature, and inside a subagent definition the parenthesized type list is ignored. Nesting depth is fixed and not configurable: a subagent at depth five does not receive the `Agent` tool and cannot spawn further. To prevent a subagent from spawning others, omit `Agent` from its `tools` list (or add it to `disallowedTools`). The MoAI retained agents do not list `Agent` in their `tools`, so MoAI subagents do not nest — the flat-hierarchy 8-agent consolidation rationale stands by configuration. See `code.claude.com/docs/en/sub-agents` § Spawn nested subagents.
+> **Watch (Claude Code 2.1.172)**: As of Claude Code v2.1.172 a subagent can spawn its own nested subagents. This is gated by the `Agent` tool being present in the subagent's `tools` list — the `Agent(agent_type)` parenthesized allowlist is a main-thread (`claude --agent`) feature, and inside a subagent definition the parenthesized type list is ignored. Nesting depth is fixed and not configurable: a subagent at depth five does not receive the `Agent` tool and cannot spawn further. To prevent a subagent from spawning others, omit `Agent` from its `tools` list (or add it to `disallowedTools`). The MoAI retained agents do not list `Agent` in their `tools`, so MoAI subagents do not nest — the flat-hierarchy 10-agent consolidation rationale stands by configuration. See `code.claude.com/docs/en/sub-agents` § Spawn nested subagents.
 
 ### Selection Decision Tree
 
@@ -91,8 +91,10 @@ The MoAI agent catalog consists of exactly **8 retained agents** (7 MoAI-custom 
 7. Plan-phase independent audit (bias prevention)? Use the `plan-auditor` subagent
 8. Sync-phase quality 4-dimension scoring? Use the `sync-auditor` subagent
 9. Dynamic specialist generation (project-specific harness)? Use the `builder-harness` subagent
+10. On-demand high-reasoning consultation / second opinion (E1-E4 escalation)? Use the `super-advisor` subagent
+11. Design-phase collaboration (Claude Design bidirectional sync, UI-surfaced SPECs)? Use the `manager-design` subagent
 
-### Retained Agents (8 total)
+### Retained Agents (10 total)
 
 | Agent | Class | Phase scope | Reference |
 |-------|-------|-------------|-----------|
@@ -103,13 +105,15 @@ The MoAI agent catalog consists of exactly **8 retained agents** (7 MoAI-custom 
 | `plan-auditor` | meta/evaluator | Independent plan-phase audit, bias prevention, GEARS compliance | `.claude/agents/moai/plan-auditor.md` |
 | `sync-auditor` | meta/evaluator | Independent skeptical quality assessment, 4-dimension scoring | `.claude/agents/moai/sync-auditor.md` |
 | `builder-harness` | builder | Dynamic project-specific harness specialist generation | `.claude/agents/moai/builder-harness.md` |
+| `super-advisor` | meta/advisor | On-demand high-reasoning consultation (non-binding prescriptions, E1-E4 escalation) | `.claude/agents/moai/super-advisor.md` |
+| `manager-design` | core/manager | Design-phase collaboration (Claude Design bidirectional sync, D1-D5 pipeline) | `.claude/agents/moai/manager-design.md` |
 | `Explore` | Anthropic built-in | Read-only codebase exploration (no MoAI file — invoked directly) | claude.com/docs/en/sub-agents |
 
 ### Archived Agents (legacy references rejected at spawn)
 
 The following agent names are **archived** and MUST NOT be spawned: `manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, `expert-backend`, `expert-frontend`, `expert-security`, `expert-devops`, `expert-performance`, `expert-refactoring`.
 
-When a paste-ready resume message or `Agent()` invocation references one of these archived agents, the orchestrator MUST reject the spawn and consult the migration table at `.claude/rules/moai/workflow/archived-agent-rejection.md`. The retained-agent replacement pattern (per-spawn `Agent(general-purpose)` with domain-specific instructions, or routing to one of the 8 retained agents above) is documented there. For migration of references to the 12 archived agents, see `.claude/rules/moai/workflow/archived-agent-rejection.md`.
+When a paste-ready resume message or `Agent()` invocation references one of these archived agents, the orchestrator MUST reject the spawn and consult the migration table at `.claude/rules/moai/workflow/archived-agent-rejection.md`. The retained-agent replacement pattern (per-spawn `Agent(general-purpose)` with domain-specific instructions, or routing to one of the 10 retained agents above) is documented there. For migration of references to the 12 archived agents, see `.claude/rules/moai/workflow/archived-agent-rejection.md`.
 
 Note on `claude-code-guide`: the archived entry refers to the former MoAI-custom agent file of that name. It is distinct from the official Claude Code built-in helper agent that is also named `claude-code-guide` and ships with the runtime — that built-in is a separate, valid agent and invoking it does NOT trigger archived-agent rejection. The rejection binds only the MoAI-custom file.
 
