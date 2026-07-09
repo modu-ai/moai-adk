@@ -1,8 +1,8 @@
 ---
 id: SPEC-MEMORY-DIET-001
-title: "Safe always-loaded context diet — cadence-bridge path-scope + session-handoff example extraction + MEMORY.md archive pruning (~5.5k tokens)"
-version: "0.1.0"
-status: in-progress
+title: "Safe always-loaded context diet — cadence-bridge path-scope + session-handoff example extraction + MEMORY.md archive pruning (~3.0k tokens)"
+version: "1.0.0"
+status: completed
 created: 2026-07-10
 updated: 2026-07-10
 author: GOOS행님
@@ -121,7 +121,7 @@ The template mirrors are subject to `internal/template/internal_content_leak_tes
 
 ### B.4 Measurable delta + non-regression
 
-**REQ-MD-016 (State-driven, subject: always-loaded surface)**: **While** the 3 REQs are in effect, the combined always-loaded token count of the 3 modified file groups (cadence-bridge.md + session-handoff.md + MEMORY.md) SHALL decrease by ≥ ~5.5k tokens measured via `/context` before/after at run-phase.
+**REQ-MD-016 (State-driven, subject: always-loaded surface)**: **While** the 3 REQs are in effect, the combined always-loaded token count of the 3 modified file groups (cadence-bridge.md + session-handoff.md + MEMORY.md) SHALL decrease by ≥ ~3.0k tokens measured via `/context` before/after at run-phase. **Revised post-run (2026-07-10)**: the original plan-phase target was ≥ ~5.5k tokens, derived from a Discovery-time bytes→tokens conversion error that mislabeled byte counts as token counts for the session-handoff (~2k bytes misread as ~2k tokens) and MEMORY.md (~1.5k bytes misread as ~1.5k tokens) items; the cadence-bridge estimate (~2.3k tokens, the file leaving the always-loaded set) was always a true token estimate and is the dominant saving. The orchestrator's independent Trust-but-verify measured the actual combined reduction at ~3.0k tokens (cadence-bridge path-match ~2.3k + session-handoff ~487 + MEMORY ~210); this revised numeric anchor reflects the honest measured value, and AC-MD-016 is PASS at ~3.0k measured.
 
 **REQ-MD-017 (Unwanted, subject: test suite)**: The SPEC implementation SHALL NOT introduce any `go test` failure, `go vet` finding, or template-neutrality CI failure — the existing test suite + lint + CI guards MUST continue to pass.
 

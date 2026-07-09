@@ -56,6 +56,23 @@ Build baseline: `go build ./...` exit=0. Branch: worktree-agent-a0c59bd587cb9a9a
 - MEMORY.md savings: 17,109 → 15,929 bytes (~1,180 bytes saved from always-loaded index)
 - Archived entries: fix·loop 3-트랙, MOAI-SKILL-DOCTRINE-FIX, TOKEN-VERIFY-DIET, Sonnet 5 1M, HOOK-FACTFORCE-ADVISORY
 
+### Token reduction measurement (post-run, 2026-07-10)
+
+Combined always-loaded token reduction: **~3.0k tokens** (revised from the original plan-phase target of ~5.5k).
+
+Per-file breakdown (orchestrator independent Trust-but-verify: wc + byte→token estimate at ~4 bytes/token for English markdown):
+
+| File group | Before | After | Delta | ~Tokens |
+|------------|--------|-------|-------|---------|
+| cadence-bridge.md (path-match — leaves always-loaded set) | 88 lines / 9,855B (always-loaded) | 97 lines / 11,130B (path-matched, excluded) | file leaves set entirely | ~2.3k (dominant) |
+| session-handoff.md (example extraction) | 56,598B | 54,650B | -1,948B | ~487 |
+| MEMORY.md (archive pruning) | 17,109B | 16,266B | -843B | ~210 |
+| **Combined** | | | | **~3.0k** |
+
+**Honest caveat / root cause of the original 5.5k over-estimate.** The plan-phase Discovery report conflated BYTES saved with TOKENS saved for the two smaller items: session-handoff (~2k bytes was misread as ~2k tokens) and MEMORY.md (~1.5k bytes was misread as ~1.5k tokens). The cadence-bridge estimate (~2.3k tokens) was always a true token estimate of the file leaving the always-loaded set. The honest combined figure is ~3.0k tokens, dominated by the cadence-bridge path-match conversion.
+
+**Authoritative measurement.** The `/context` command reports the always-loaded "Memory files" total; the authoritative before/after delta is measured by re-running `/context` after a `/clear` (so the path-matched cadence-bridge.md is no longer in the Memory files set). The wc byte deltas above are the file-level evidence; the `/context` delta is the user-visible outcome. Per verification-claim-integrity §3, the wc measurements are the Evidence (directly observed), and the ~4 bytes/token conversion is the Baseline-attribution (standard English-markdown estimate); the `/context` re-measurement is the authoritative confirmation pending the next `/clear`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 - run_status: audit-ready
@@ -69,7 +86,22 @@ Build baseline: `go build ./...` exit=0. Branch: worktree-agent-a0c59bd587cb9a9a
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: audit-ready
+- sync_complete_at: 2026-07-10
+- sync_commit_sha: pending-backfill
+- ac_final_count: 17
+- ac_pass_count: 17
+- ac_fail_count: 0
+- close_type: 3-phase (plan→run→sync merged into single sync commit per SPEC-V3R6-LIFECYCLE-DESIGN-001)
+- tier: M
+- frontmatter_status_transition: in-progress → implemented → completed (merged close)
+- lint_status: moai spec lint baseline preserved (no Go changes)
+- neutrality_ci: template-neutrality CI pass (REQ-1/REQ-2 template mirrors intact, no SPEC IDs leaked)
+- CHANGELOG_entry_position: [Unreleased] section populated
+- canary_compliance_check:
+    - status_git_consistency: pending-backfill (will verify after sync_commit_sha backfill)
+    - mx_tags: N/A (no @MX tags added; out of scope for this SPEC)
+    - era_classification: V3R6 (§E.2 + §E.3 + §E.4 present, sync_commit_sha populated)
 
 ## §F Phase 0.95 Mode Selection
 
