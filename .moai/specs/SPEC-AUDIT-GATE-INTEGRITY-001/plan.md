@@ -23,7 +23,7 @@ Mirror 존재는 2026-07-09 `ls` 실측으로 확인됨 (Template 트리는 live
 |---|--------|--------|
 | B1 | 라인 번호 drift — spec.md §A.3의 실측 앵커(L127-137 등)는 병렬 세션 커밋으로 이동할 수 있다 | run-phase 진입 시 content-token 앵커(`### M5: Must-Pass Firewall`, `## HRN-003`, `mentally` 등)로 재탐색. 라인 번호는 참고용 |
 | B2 | Template Neutrality 위반 — mirror에 SPEC ID/REQ 토큰 유입 시 CI guard(`template-neutrality-check.yaml`) FAIL | M5에서 mirror별 neutrality grep을 검증 배치에 포함 (AC-AGI-012) |
-| B3 | `mentally` 토큰이 manager-spec.md의 다른 섹션에도 존재할 가능성 (baseline 미실측) | M4 진입 시 `grep -n 'mentally'` baseline 실측 후 self-check 섹션 범위만 편집. AC-AGI-010의 기대값은 baseline-delta로 해석 |
+| B3 | `mentally` 토큰 잔존 — iter-1 plan-audit 실측으로 live 1건(self-check 섹션 단독) + template mirror 1건 확인 | M4에서 live 제거 + M5에서 mirror 제거 (AC-AGI-010b/012c). 편집 직전 `grep -n 'mentally'` 재실측으로 신규 출현 여부 확인 |
 | B4 | 공유 checkout 병렬 세션 race — working tree에 무관한 미커밋 변경 다수 존재 | pathspec 한정 커밋 (`git add <경로> && git commit -- <경로>`)만 사용. `git add -A` 절대 금지 |
 | B5 | plan-auditor.md 자체가 본 SPEC의 감사자다 — M1 편집 후 plan-auditor 재실행 시 자기 정의가 바뀌어 있음 | plan-audit는 SPEC 아티팩트를 심사할 뿐 자기 정의 파일과 무관. 순서 영향 없음. 단 run-phase에서 M1을 먼저 실행하면 이후 감사가 신규 MP-5/6 기준으로 동작함을 인지 |
 
@@ -36,7 +36,13 @@ run-phase 첫 턴에 단일 병렬 배치로 실행:
 grep -c '(MP-5)' .claude/agents/moai/plan-auditor.md                      # 기대: 0
 grep -c '### Hierarchical-Mode Output Example' .claude/agents/moai/sync-auditor.md  # 기대: 0
 grep -c 'run-gate stream' .claude/rules/moai/workflow/spec-workflow.md    # 기대: 0
-grep -c 'mentally' .claude/agents/moai/manager-spec.md                    # 기대: ≥1 (baseline 기록)
+grep -c 'mentally' .claude/agents/moai/manager-spec.md                    # 기대: 1 (iter-1 실측 baseline)
+# 1b. 신규 토큰 baseline (전부 0이어야 RED 상태 유지 — 2026-07-09 실측 완료: 전부 0)
+grep -c 'severity=critical' .claude/agents/moai/plan-auditor.md           # 기대: 0
+grep -c 'sub-criteria refinement' .claude/agents/moai/sync-auditor.md     # 기대: 0
+grep -c 'project-language auto-detection' .claude/agents/moai/sync-auditor.md  # 기대: 0
+grep -c 'plan-artifact hash' .claude/rules/moai/workflow/spec-workflow.md # 기대: 0
+grep -c 'mentally' internal/template/templates/.claude/agents/moai/manager-spec.md  # 기대: 1 (mirror baseline)
 # 2. mirror 존재 재확인
 ls internal/template/templates/.claude/agents/moai/{plan-auditor,sync-auditor,manager-spec}.md
 ls internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
@@ -78,15 +84,15 @@ git fetch origin main && git rev-list --count --left-right origin/main...HEAD
 우선순위: High. 대상: `.claude/agents/moai/sync-auditor.md`
 
 1. frontmatter `skills:`에 `moai-ref-owasp-checklist`, `moai-ref-testing-pyramid` 추가 (YAML array 형식 유지)
-2. § Evaluation Dimensions 직후에 모델 선택 규칙 명문화: flat = default, `Where evaluator_mode: hierarchical` → HRN-003. 두 모델의 관계(동일 4차원, 계층은 sub-criteria refinement) 서술
-3. 차원별 기계 검증 명령 표 추가 — 각 차원 최소 1 명령 + "verbatim 출력을 Evidence 셀에 인용" 의무 (vci §1.1 surface 2 cross-ref)
+2. § Evaluation Dimensions 직후에 모델 선택 규칙 명문화: flat = default, `Where evaluator_mode: hierarchical` → HRN-003. 두 모델의 관계는 `sub-criteria refinement` 리터럴 토큰으로 서술 (동일 4차원의 하위 세분화)
+3. 차원별 기계 검증 명령 표 추가 — **project-language auto-detection 형식** (리터럴 토큰 포함, 자체 완결 표): 프로젝트 언어 자동감지 + 미설치 도구 graceful skip + 4개 언어 동등 예시(Go/Python/Node.js/Rust — 어떤 언어도 PRIMARY 승격 금지). 각 차원 최소 1 명령 + "verbatim 출력을 Evidence 셀에 인용" 의무 (vci §1.1 surface 2 cross-ref). 이 형식으로 live/mirror 편집 내용이 동일 (D3/MP-4 해소)
 4. § HRN-003 하위에 `### Hierarchical-Mode Output Example` worked example 추가 (sub-criterion 행, anchor 점수, min aggregation, must-pass verdict 포함 — 리터럴 heading 유지)
 
 ### M3 — 보고서 파일명 split-brain 문서화 (REQ-AGI-008, 009)
 
 우선순위: High. 대상: `.claude/rules/moai/workflow/spec-workflow.md` + `.claude/agents/moai/plan-auditor.md`
 
-1. spec-workflow.md § Report Persistence: 두 스트림 명문화 — "plan-phase review stream" (`{SPEC-ID}-review-{N}.md`, plan-phase 적대적 리뷰, spec-assembly 소비) vs "run-gate stream" (`<SPEC-ID>-<YYYY-MM-DD>.md`, Phase 0.5 게이트, `audit_report.go` 구현). skip-eligibility 지정: review 스트림의 final-iteration verdict가 run-gate 입력, run-gate date-file이 artifact-hash 대상
+1. spec-workflow.md § Report Persistence: 두 스트림 명문화 — "plan-phase review stream" (`{SPEC-ID}-review-{N}.md`, plan-phase 적대적 리뷰, spec-assembly 소비) vs "run-gate stream" (`<SPEC-ID>-<YYYY-MM-DD>.md`, Phase 0.5 게이트, `audit_report.go` 구현). skip-eligibility 지정 (D4 교정 — Go 구현 정합): review 스트림의 final-iteration verdict가 run-gate 입력; artifact-hash 검사는 plan-artifact hash(`audit_cache.go` `ComputeHash` — plan artifacts whitespace-normalized SHA-256, cache key = specID+planArtifactHash) 재계산·대조; run-gate date-file은 verdict 기록 표면일 뿐 hash 대상 아님
 2. plan-auditor.md § Output Format: 자기 보고서가 "plan-phase review stream"임을 명시 + run-gate stream 상호 참조 1-2줄
 3. 두 파일 모두 상대 문서로의 mutual cross-reference 포함
 
@@ -97,6 +103,7 @@ git fetch origin main && git rev-list --count --left-right origin/main...HEAD
 1. § SPEC ID Pre-Write Self-Check Protocol의 Step 2 "mentally" 제거 → 실행형 Bash one-liner로 대체: `[[ "$ID" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]] && echo PASS || echo FAIL` (verbatim 출력 = 증거; `\d` 미지원 각주 포함)
 2. 4-step decomposition 지침 + regex 리터럴 + worked example 1건 유지
 3. 역사 서사 압축: L32 chain context 문단 + 5-incident 열거 제거 (~30줄 → 핵심만). 제거분은 run-phase에서 memory/lessons로 이관 노트 남김
+4. 동일 섹션의 stale 라인 인용 교정 (D6): `lint.go:573` → `lint.go` `specIDPattern` (실측 L649; content-token 앵커 우선, B1 방침과 일관)
 
 ### M5 — Template mirror 4건 + make build + 전체 검증 배치 (REQ-AGI-012)
 
@@ -121,7 +128,7 @@ git fetch origin main && git rev-list --count --left-right origin/main...HEAD
 - `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surfaces 1-2, §3.2 (Evidence = verbatim output)
 - `.claude/rules/moai/development/spec-frontmatter-schema.md` (12-field SSOT)
 - `.claude/rules/moai/workflow/spec-workflow.md` § Phase 0.5 Plan Audit Gate / § Report Persistence
-- `internal/runtime/audit_report.go` (run-gate stream 구현 — 무변경 참조 대상)
-- `internal/spec/lint.go:573` (canonical SPEC ID regex — 무변경 참조 대상)
+- `internal/runtime/audit_report.go` + `audit_gate.go` (L221-232) + `audit_cache.go` (L30-58 `ComputeHash`) — run-gate stream · plan-artifact hash 구현, 무변경 참조 대상
+- `internal/spec/lint.go` `specIDPattern` (실측 L649 — canonical SPEC ID regex, 무변경 참조 대상)
 - `CLAUDE.local.md` §2.1 Template Content Neutrality + `.moai/docs/template-internal-isolation-doctrine.md` §25.1
 - 감사 provenance: 3-agent 병렬 감사 2026-07-09 (agent-definitions / workflow-doctrine / SDD 웹 리서치)
