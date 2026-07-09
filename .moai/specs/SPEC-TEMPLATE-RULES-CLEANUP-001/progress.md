@@ -43,11 +43,20 @@ Guard (c) date-provenance:
 
 RED evidence logs: `.moai/state/verify/cleanup-001/m1-red-provenance.log`, `m1-red-date.log`
 
-### M2-M7 — _(in progress)_
+### M2-M7 — Complete (GREEN)
+
+All 4 guards PASS. Full test suite GREEN. make build exit=0. Cross-platform build exit=0.
+GREEN evidence: `.moai/state/verify/cleanup-001/m7-green-guards.log`
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-07-09T08:42:00Z
+run_commit_sha: pending-push
+run_status: complete
+ac_pass_count: 33
+ac_fail_count: 0
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
