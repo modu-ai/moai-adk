@@ -91,7 +91,7 @@ version_token_observed: "rc7 (worktree version.go at HEAD f3f348ff5; main-repo w
 
 ```yaml
 sync_complete_at: "2026-07-09"
-sync_commit_sha: "e8eebacd5"
+sync_commit_sha: "6248d8851"
 sync_status: "completed (3-phase close plan→run→sync; completed transition rides single sync commit per SPEC-V3R6-LIFECYCLE-REDESIGN-001 merged 3-phase close / Status Transition Ownership Matrix)"
 b12_self_test_a: "PASS — pre-emission grep -c 'SPEC-INTERNAL-TEST-002' CHANGELOG.md returned 1; context inspection (grep -B3 -A3) confirmed the single occurrence is an incidental forward-reference INSIDE the SPEC-INTERNAL-TEST-001 entry (line 58: '후속 SPEC-INTERNAL-TEST-002가 잔여 3종 부채 소유 예정'), NOT a duplicate entry from a parallel sync session. B12 halt condition (count≥1 from parallel BATCH-SYNC) does not apply — this is a cross-SPEC reference naming TEST-002 as future debt-owner, written when TEST-001 synced. No ### subsection entry for TEST-002 existed pre-emission."
 b12_self_test_b: "PASS — AC count 3 (AC-TEST-007/008/009) per acceptance.md §D AC Matrix (SSOT), matches CHANGELOG entry '3/3 AC PASS(AC-TEST-007/008/009)'"
