@@ -1,7 +1,7 @@
 ---
 id: SPEC-HANDOFF-ONEPASTE-001
 title: "Session Handoff 1-Paste: auto-inject pipeline wiring + goal-first flow"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-09
 updated: 2026-07-09
@@ -10,6 +10,7 @@ priority: P1
 phase: "v3.0.0"
 module: ".claude/rules/moai/workflow + .moai/config/sections"
 lifecycle: spec-anchored
+tier: M
 tags: "handoff, session, auto-resume, doctrine, config, goal-first"
 related_specs: [SPEC-HANDOFF-AUTORESUME-001, SPEC-HANDOFF-GOALFIX-001, SPEC-HANDOFF-MSGMODE-001]
 ---
@@ -20,6 +21,7 @@ related_specs: [SPEC-HANDOFF-AUTORESUME-001, SPEC-HANDOFF-GOALFIX-001, SPEC-HAND
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.1.1 | 2026-07-09 | manager-spec | Plan-audit iter-2 remediation (D1-D11): byte-parity mirror-CI constraint (REQ-OP-011 rewrite + §B.2 env fact), flow-section /clear-only boundary + precondition clauses (REQ-OP-003), CONST-V3R2-152 temporal separation (REQ-OP-006), `tier: M` frontmatter, measurement anecdote softened |
 | 0.1.0 | 2026-07-09 | manager-spec | Initial draft — Tier M plan-phase artifacts (doctrine + config, zero Go) |
 
 ## §A Context & Problem
@@ -52,6 +54,7 @@ This SPEC is **100% doctrine + config**: it wires emission to consumption at the
 - Config keys `handoff.mode` (`manual`/`auto`) and `handoff.guide` already exist in `.moai/config/sections/handoff.yaml` — **no new config keys are needed**.
 - `mode: manual` is a verified pure no-op in the injector (REQ-AUTORESUME-009): the manual branch never touches `pending.json`, even when stale. Reverting the config flip restores runtime baseline byte-identically.
 - The claim-then-inject rename order (rename success before injection) prevents duplicate injection across two racing sessions (REQ-AUTORESUME-012/013); stale records are TTL-cleaned in auto mode (REQ-AUTORESUME-019).
+- `session-handoff.md` is enrolled in **byte-parity mirror CI**: `internal/template/rule_template_mirror_test.go` `workflowOptMirroredPaths` (entry at line 51; sentinel `RULE_TEMPLATE_MIRROR_DRIFT`) requires the live file and its template mirror to be byte-identical, with both files staged in the same commit (the test failure message itself instructs staging both before commit). Verified at plan-phase: all three doctrine surfaces (session-handoff.md, goal-directive.md, moai.md) are currently byte-identical across trees; only session-handoff.md is CI-enrolled.
 
 ### B.3 Assumptions
 
@@ -69,7 +72,7 @@ This SPEC is **100% doctrine + config**: it wires emission to consumption at the
 
 ### C.2 mode=auto user-flow documentation
 
-**REQ-OP-003** — The session-handoff.md SSOT **shall** carry a new section documenting the mode=auto flow: user runs `/clear` → the SessionStart handler injects the saved body plus directive-restoration guidance as `additionalContext` (claim-then-inject, consumed/ audit copy) → the user sends **ONE** message. **Where** the next SPEC is run-phase with a machine-verifiable end-state, that one message is the single `/goal <condition>` line (goal-first); otherwise it is a short approval message.
+**REQ-OP-003** — The session-handoff.md SSOT **shall** carry a new section documenting the mode=auto flow: user runs `/clear` → the SessionStart handler injects the saved body plus directive-restoration guidance as `additionalContext` (claim-then-inject, consumed/ audit copy) → the user sends **ONE** message. **Where** the next SPEC is run-phase with a machine-verifiable end-state, that one message is the single `/goal <condition>` line (goal-first); otherwise it is a short approval message. The flow section **shall** also state: (a) the **/clear-only injection boundary** — startup/resume/compact session starts are notice-only (never consume; with `guide` default `false` the notice is silent), so a terminal restart or an L3 worktree Block 0 resume (new terminal ⇒ `source=startup`) falls OUTSIDE auto-inject and follows the manual paste path; and (b) the **precondition-verification obligation** — the injected Block 4 preconditions are verified at resumed-turn start, most acutely in the goal-first variant where `/goal` starts the turn immediately.
 
 **REQ-OP-004** — **While** the injected `additionalContext` cannot claim effort/xhigh (E2), the mode=auto flow documentation **shall** keep recommending that the user include the `ultrathink` keyword in their first message, and **shall** state the A2 caveat for the goal-first variant (effort keywords inside a slash-command argument are not documented to fire).
 
@@ -77,7 +80,7 @@ This SPEC is **100% doctrine + config**: it wires emission to consumption at the
 
 ### C.3 Auto-Memory Integration revision
 
-**REQ-OP-006** — The session-handoff.md § Auto-Memory Integration **shall** direct that, on SPEC close, the consumed verbatim resume block inside the memory topic file (the `## 다음 세션 시작점` section) SHOULD be pruned to a one-line summary — verbatim preservation is owned by the `.moai/state/handoff/consumed/` audit trail. This stops double-storage growth (measured: MEMORY.md hit 82% of the 25KB/200-line official load cap before the 2026-07-09 diet). Forward-looking only; no retroactive rewrite of existing memory files is mandated.
+**REQ-OP-006** — The session-handoff.md § Auto-Memory Integration **shall** direct that, on SPEC close, the consumed verbatim resume block inside the memory topic file (the `## 다음 세션 시작점` section) SHOULD be pruned to a one-line summary — verbatim preservation is owned by the `.moai/state/handoff/consumed/` audit trail. This stops double-storage growth (motivation: the auto-memory MEMORY.md index previously approached the official 25KB/200-line load cap and required an index diet). **Temporal separation (unchanged constitution obligation)**: generation-time verbatim persistence per CONST-V3R2-152 is UNTOUCHED — the resume message is still saved verbatim to memory when emitted; the pruning binds only later, at SPEC close. Forward-looking only; no retroactive rewrite of existing memory files is mandated.
 
 ### C.4 Render-surface parity
 
@@ -95,7 +98,7 @@ This SPEC is **100% doctrine + config**: it wires emission to consumption at the
 
 ### C.7 Template mirror neutrality
 
-**REQ-OP-011** — **Where** a template mirror exists for an edited doctrine surface (session-handoff.md, moai.md, goal-directive.md), the run-phase **shall** mirror the same normative rules to `internal/template/templates/` expressed neutrally: the mirrors **shall not** carry internal SPEC IDs, internal work dates, or memory-measurement anecdotes (per `.moai/docs/template-internal-isolation-doctrine.md` §25.1 content classes).
+**REQ-OP-011** — **While** `session-handoff.md` is enrolled in byte-parity mirror CI (§B.2), the run-phase **shall** author its doctrine text **neutrally ONCE** and keep the live file and its template mirror **byte-identical, staged in the same commit** — the doctrine text itself (in BOTH trees) **shall not** carry internal SPEC IDs, internal work dates, or memory-measurement anecdotes (per `.moai/docs/template-internal-isolation-doctrine.md` §25.1 content classes; motivation prose belongs in this spec.md, never in the doctrine text). goal-directive.md and moai.md are NOT CI-enrolled but are currently byte-identical across trees — the run-phase **shall** keep them byte-identical under the same neutral-once authoring guidance.
 
 ### C.8 Invariants
 
@@ -121,8 +124,8 @@ This SPEC is **100% doctrine + config**: it wires emission to consumption at the
 | REQ-OP-008 | goal-directive.md | AC-OP-010 |
 | REQ-OP-009 | handoff.yaml (local) | AC-OP-003 |
 | REQ-OP-010 | handoff.yaml (template) | AC-OP-004 |
-| REQ-OP-011 | template mirrors ×3 | AC-OP-005 |
-| REQ-OP-012 | all doctrine surfaces | AC-OP-007 |
+| REQ-OP-011 | template mirrors ×3 (session-handoff.md byte-parity CI-enrolled) | AC-OP-005, AC-OP-017 |
+| REQ-OP-012 | session-handoff.md (SSOT) | AC-OP-007 |
 | REQ-OP-013 | session-handoff.md + handoff.yaml | AC-OP-016 (scenario) |
 | REQ-OP-014 | session-handoff.md | AC-OP-013 |
 | REQ-OP-015 | repo-wide | AC-OP-011 |

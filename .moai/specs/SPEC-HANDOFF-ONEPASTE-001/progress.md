@@ -5,10 +5,12 @@
 ```yaml
 plan_status: audit-ready
 plan_complete_at: 2026-07-09
+plan_audit_iter: 2
+plan_audit_remediation: "iter-1 FAIL 0.78 → D1-D11 applied (v0.1.1) → iter-2 resubmission"
 tier: M
 artifacts: [spec.md, plan.md, acceptance.md, progress.md]
 req_count: 15
-ac_count: 16
+ac_count: 17
 ```
 
 ## §E.2 Run-phase Evidence
