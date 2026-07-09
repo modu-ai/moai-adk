@@ -107,12 +107,12 @@ catalog:
             - name: manager-docs
               tier: core
               path: templates/.claude/agents/moai/manager-docs.md
-              hash: be3e91b89b446fc4091d11ca6f3cbbe33a38e6f488e0d33c78631c5f49eff772
+              hash: 5daffc3e50efb48ef7d740745435709c5988ab6a35d3d6a7434fe9f8631bd11d
               version: 1.0.0
             - name: manager-git
               tier: core
               path: templates/.claude/agents/moai/manager-git.md
-              hash: 00006431b4cd61bc137fa7b9a0fd0c5afcc62efd7cf54bf61335232d20aad0f9
+              hash: 2c318a441da54da24f924ca14c5a23148f7befbca7601e468790853da0d4cace
               version: 1.0.0
             - name: manager-spec
               tier: core
@@ -169,8 +169,8 @@ catalog:
                 - name: moai-domain-humanize
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-domain-humanize/
-                  hash: 6a6ff53422f5db5cd84d226fcfecddf80df7b499c765930a8de529d895568f13
-                  version: 1.0.0
+                  hash: 07c6509a464d9423621c95e321a458d8c9a52047507cef0781d4185ea2dccdfb
+                  version: 1.1.0
             agents: []
         devops:
             description: Security review, OWASP compliance, performance optimization, and infrastructure

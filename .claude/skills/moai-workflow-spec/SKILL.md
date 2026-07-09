@@ -41,7 +41,7 @@ Lint behavior canonicalized per the GEARS migration policy.
 Core Capabilities:
 
 - GEARS-Format Specifications (current): Five requirement patterns with the unified compound clause `[Where ...][While ...][When ...] The <subject> shall <behavior>` and a generalized `<subject>` (any noun, not only "the system")
-- EARS Legacy Reference: All EARS patterns preserved for 6 months from v3.0.0 release to keep the 88 pre-v3 SPECs readable
+- EARS Legacy Reference: All EARS patterns preserved per the lint engine's backward-compatibility policy to keep pre-v3 SPECs (those authored before GEARS became canonical) readable
 - Requirement Clarification: Four-step systematic process with assumption analysis
 - SPEC Document Templates: Standardized 3-file structure (spec.md / plan.md / acceptance.md)
 - Plan-Run-Sync Integration: Seamless workflow connection
@@ -70,7 +70,7 @@ Generalized subject substitution: GEARS replaces the hardcoded "the system" subj
 - "The agent shall return a blocker report instead of prompting the user." (Ubiquitous, `<subject>` = agent)
 - "**When** a SPEC author opens the file, the component shall display the deprecation banner." (Event-driven, `<subject>` = component)
 
-The 88 existing SPECs keep "The system" as the default subject for readability; existing readers do not need to relearn the canonical phrase.
+Pre-v3 SPECs (those authored before GEARS became canonical) keep "The system" as the default subject for readability; existing readers do not need to relearn the canonical phrase.
 
 EARS Five Patterns (legacy — 6-month backward-compatibility window):
 
@@ -151,7 +151,7 @@ This example chains all three GEARS modifiers (`Where`, `While`, `When`) and use
 
 ### EARS Format (legacy — 6-month backward-compatibility window)
 
-Five patterns cover all requirement types. Each pattern has a specific use case and test strategy. The 88 existing SPECs continue to use EARS notation and are valid for 6 months from the v3.0.0 release per the lint engine's backward-compatibility policy.
+Five patterns cover all requirement types. Each pattern has a specific use case and test strategy. Pre-v3 SPECs (those authored before GEARS became canonical) continue to use EARS notation and remain valid per the lint engine's backward-compatibility policy.
 
 See [EARS deep dive with examples per pattern](references/ears-deep-dive.md) for use cases, examples, and test strategies for Ubiquitous, Event-Driven, State-Driven, Unwanted, and Optional requirements.
 
@@ -202,7 +202,7 @@ State files: `.moai/state/last-session-state.json`. Generated docs: `.moai/docs/
 
 Canonical 12 required fields (enforced by the SPEC frontmatter lint rule): id, title, version, status, created, updated, author, priority, phase, module, lifecycle, tags.
 
-Status enum (8 values): draft → planned → in-progress → implemented → completed | superseded | archived | rejected.
+Status enum (8 values): draft → in-progress → implemented → completed | superseded | archived | rejected. (`planned` is retained in the enum as legacy-optional — NOT in the active flow; no agent authors a `draft → planned` transition. See `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Enum.)
 
 Optional fields: issue_number, depends_on, lint.skip, bc_id, tier (S/M/L LEAN tier).
 

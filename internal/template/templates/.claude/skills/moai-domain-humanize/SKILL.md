@@ -18,11 +18,11 @@ compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob
 user-invocable: false
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   category: "domain"
   status: "active"
-  updated: "2026-06-15"
-  tags: "humanize, ai-tell, 윤문, post-edit, naturalness, multilingual"
+  updated: "2026-07-10"
+  tags: "humanize, ai-tell, 윤문, post-edit, naturalness, multilingual, copy"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -33,7 +33,7 @@ progressive_disclosure:
 
 # moai-domain-humanize
 
-Post-editing specialist that removes "AI tells" from generated text and rewrites it to read as human-authored, while preserving meaning. This is the **editing** counterpart to text generation: it does not write new content, it refines how existing content is said. Covers Korean, English, Japanese, and Chinese.
+Post-editing specialist that removes "AI tells" from generated text and rewrites it to read as human-authored, while preserving meaning. This is the **editing** counterpart to text generation: it does not write new content, it refines how existing content is said. Covers Korean, English, Japanese, and Chinese, across two genre surfaces: **prose** (columns, reports, blog posts, formal documents) and **marketing copy** (headlines, CTAs, landing pages, brand storytelling, slide titles). Each language module carries a prose catalogue and a copy-layer catalogue; the shared machinery below (severity model, dual grading, mode-specific guardrails) applies uniformly.
 
 ---
 
@@ -41,12 +41,21 @@ Post-editing specialist that removes "AI tells" from generated text and rewrites
 
 ### Operating Principles (4)
 
-1. **Meaning preservation is the top rule.** Facts, numbers, statistics, named entities, quotations, citations, and the author's stance/certainty stay intact. Any meaning drift forces a rollback.
+1. **Meaning preservation is the top rule.** Facts, numbers, statistics, named entities, quotations, citations, and the author's stance/certainty stay intact. Any meaning drift forces a rollback. In copy mode, "meaning" is defined by the fact anchors plus the core promise/benefit — see the copy-mode guard below.
 2. **Evidence-based edits only.** Every change must trace to a detected tell on a specific span. Stylistic "improvements" unconnected to a catalogued tell are themselves an over-editing signal and are forbidden.
-3. **Genre and register preservation.** Humanize *within* the source register — academic stays academic, casual stays casual. Never push formal text into slang or vice versa.
-4. **Over-editing prevention.** Flag at >30% change (WARN), halt at >50% change (forced stop / human review). Above 50% you are regenerating, not humanizing.
+3. **Genre and register preservation.** Humanize *within* the source register — academic stays academic, casual stays casual. Never push formal text into slang or vice versa. Copy and slide genres apply their own structural rules (noun-phrase title boundaries, appeal-vs-informational voice) defined in each module's copy layer.
+4. **Over-editing prevention.** In prose mode, flag at >30% change (WARN) and halt at >50% change (forced stop / human review) — above 50% you are regenerating, not humanizing. In copy mode, the change-rate guard is REPLACED by the fact-anchor preservation guard (see Over-Editing Guardrails below).
 
-### Mode Selection
+### Genre Mode Selection (Prose vs Copy)
+
+Two operating genres select which guardrail and grading table apply. Default from the text's genre; an explicit user instruction overrides.
+
+| Mode | Genres | Over-editing guard | Grading table |
+|------|--------|--------------------|---------------|
+| **Prose mode** (default) | column, report, blog, formal/official document | Change-rate guard (WARN >30%, HALT >50%) | Prose-mode grades |
+| **Copy mode** | marketing copy, headline, CTA, landing page, brand story, slides | Fact-anchor preservation guard | Copy-mode grades |
+
+### Processing Mode Selection (Fast / Strict)
 
 - **Fast mode** (default, up to ~5,000 chars): a single pass — detect, rewrite, self-verify against the meaning-preservation checklist.
 - **Strict mode** (long or high-stakes text, or when requested): separate stages — detect → surgical rewrite → content-fidelity audit (facts/figures/stance unchanged) → naturalness review. Re-run a second pass when the result lands at Grade C.
@@ -56,7 +65,7 @@ Post-editing specialist that removes "AI tells" from generated text and rewrites
 Return two things:
 
 1. **The humanized text.**
-2. **A short change report**: categories hit (with counts), the final quality grade (A/B/C/D), and the percent changed (character-level edit distance ÷ source length). When a guardrail fires, state it explicitly (WARN at >30%, HALT at >50%).
+2. **A short change report**: categories hit (with counts), the final quality grade (A/B/C/D), and — in prose mode — the estimated percent changed. When a guardrail fires, state it explicitly (prose mode: WARN at >30%, HALT at >50%; copy mode: any fact-anchor loss).
 
 ---
 
@@ -70,9 +79,13 @@ Each tell carries one severity tier. Detectors gate by occurrence count and over
 | **S2** | Strong | Acceptable at 1–2 instances → remove at 3 or more. |
 | **S3** | Weak | Problematic only when overlapping other tells → downgrade-only contributor. |
 
-## Common Quality Grades (shared by all 4 languages)
+## Common Quality Grades (shared by all 4 languages — dual tables)
 
-Graded **after** the rewrite, on the residual S1/S2 counts plus improvement % (= proportion of detected tells removed without introducing new ones).
+Graded **after** the rewrite. The genre mode selects the table: prose mode grades on residual tells plus change rate; copy mode grades on residual S1 plus fact-anchor integrity, with NO change-rate band.
+
+### Prose-Mode Grade Table
+
+Residual S1/S2 counts plus improvement % (= proportion of detected tells removed without introducing new ones).
 
 | Grade | Criteria | Action |
 |-------|----------|--------|
@@ -81,14 +94,32 @@ Graded **after** the rewrite, on the residual S1/S2 counts plus improvement % (=
 | **C** | 1–2 residual S1, OR <50% improvement, OR over-edit WARN (>30%) | Trigger a second pass |
 | **D** | ≥3 residual S1, OR over-edit HALT (>50%), OR meaning drift detected | Request human review; do not auto-ship |
 
-Hard rule: any residual S1 caps the grade at C; any meaning-distortion flag forces D. S3 tells affect the grade only when ≥3 of them overlap and reinforce an S1/S2 finding.
+### Copy-Mode Grade Table
+
+Residual S1 (including the module's copy-layer S1 tells), fact-anchor integrity, and self-verification — no change-rate band, because a legitimate headline rewrite routinely changes most of its characters while preserving every anchor.
+
+| Grade | Criteria | Action |
+|-------|----------|--------|
+| **A** | 0 residual S1, 0 fact-anchor loss, self-verification passed | Pass — ships as human copy |
+| **B** | 0 residual S1, ≤1 conservative fact-anchor concern | Pass with an explicit note |
+| **C** | 1 residual S1, OR self-verification partially failed | Trigger a second pass |
+| **D** | 2+ residual S1, OR 2+ fact-anchor losses | Request human review; do not auto-ship |
+
+Hard rule (both modes): any residual S1 caps the grade at C; any meaning-distortion flag forces D. S3 tells affect the grade only when ≥3 of them overlap and reinforce an S1/S2 finding.
 
 ### Over-Editing Guardrails (shared)
 
-Change rate = character-level edit distance ÷ source length; target band ~5–30%.
+**Prose mode — change-rate guard.** Change rate = the proportion of the text altered; target band ~5–30%.
 
 - **>30% changed → WARN.** Surface a caution and cap at Grade C until each edit is justified by a detected tell. Note: padding-removal legitimately shrinks text, so a length drop alone is not a violation — flag when meaning-bearing spans are altered.
 - **>50% changed → HALT.** Stop and require human confirmation; revert to the last safe state.
+- **Conservative judgment near the thresholds.** This skill carries no quantitative measurement layer, so the change rate is an LLM estimate, not a reproducible metric. Treat a borderline estimate as OVER the threshold: near ~30%, issue the WARN; near ~50%, HALT. Bias toward caution so an over-edit never slips through on an optimistic estimate. (Known limitation: without a computed metric, before/after improvement percentages are estimates as well — report them as such.)
+
+**Copy mode — fact-anchor preservation guard (REPLACES the change-rate guard).** In copy mode, meaning invariance is anchored differently: numbers, dates, prices, proper nouns, and legal notation are preserved 100% character-intact, AND the core promise/benefit of the copy keeps its meaning — while expression and sentence structure MAY be rewritten freely. The change-rate guard does not apply, because copy humanization legitimately rewrites most of a headline; the guard that replaces it is absolute on anchors:
+
+- **Any altered number, date, price, proper noun, or legal notation → rollback** of that edit.
+- **Core promise/benefit drift → rollback.** The rewritten copy must promise the same thing to the same audience.
+- **No invented specifics.** Replacing vague copy with concrete claims is only allowed when the concrete facts exist in the source or are supplied by the author.
 
 ### Meaning-Preservation Checklist (shared, all must hold)
 
@@ -107,12 +138,12 @@ Each target language has its own tell catalogue (categories, before/after exampl
 
 | Language | Module | Source basis |
 |----------|--------|--------------|
-| Korean (한국어) | `modules/korean.md` | Faithful port of the im-not-ai (Humanize KR) taxonomy (10 categories A–J, 100+ subcategories) |
-| English | `modules/english.md` | Web-researched catalogue (10 categories EN-A … EN-J) |
-| Japanese (日本語) | `modules/japanese.md` | Web-researched catalogue (9 categories JA-01 … JA-09) |
-| Chinese (中文) | `modules/chinese.md` | Web-researched catalogue (11 categories CN-A … CN-K) |
+| Korean (한국어) | `modules/korean.md` | Original catalogue — prose (10 categories A–J) + copy layer (A-20…A-25, L-1…L-8, M-1…M-3) |
+| English | `modules/english.md` | Web-researched catalogue — prose (EN-A…EN-J) + copy layer (ENC-1…ENC-9) |
+| Japanese (日本語) | `modules/japanese.md` | Web-researched catalogue — prose (JA-01…JA-09) + copy layer (JA-10…JA-14) |
+| Chinese (中文) | `modules/chinese.md` | Web-researched catalogue — prose (CN-A…CN-K) + copy layer (CN-L…CN-Q) |
 
-The Korean module is a faithful port of the open-source im-not-ai taxonomy; the English, Japanese, and Chinese modules are independently web-researched catalogues modeled on the same architecture. The common severity model and quality grades above apply uniformly to every module — the modules add only the language-specific tell categories, severities, and example rewrites.
+The Korean module is an original catalogue; the English, Japanese, and Chinese modules are independently web-researched catalogues built on the same architecture. Each module's copy layer is language-native — copy tells do NOT transfer mechanically between languages (English headlines are natively terse; Japanese 体言止め is prestigious craft gated by frequency, not presence; Chinese 对偶/排比 is judged content-first, not by count) — so never apply one language's copy rules to another. The common severity model and quality grades above apply uniformly to every module — the modules add only the language-specific tell categories, severities, and example rewrites.
 
 For mixed-language text, detect the dominant language and route to its module; apply each module independently to its spans when the text is genuinely multilingual.
 
@@ -122,11 +153,11 @@ For mixed-language text, detect the dominant language and route to its module; a
 
 ### Workflow (per text)
 
-1. **Identify language and mode.** Pick the module by dominant language; pick Fast vs Strict by length / stakes.
-2. **Anchor facts.** Record the numbers, names, dates, quotations, and stance that must not change (meaning-preservation checklist item 1).
-3. **Detect tells.** Scan against the module's catalogue. Record each hit with its category ID, span, and severity. Count occurrences (S2/S3 gate on repetition).
+1. **Identify language, genre mode, and processing mode.** Pick the module by dominant language; pick prose vs copy mode by genre (see Genre Mode Selection); pick Fast vs Strict by length / stakes.
+2. **Anchor facts.** Record the numbers, names, dates, quotations, and stance that must not change (meaning-preservation checklist item 1). In copy mode these anchors are the guard itself.
+3. **Detect tells.** Scan against the module's catalogue — the prose categories in prose mode, plus the module's Copy Layer categories in copy mode. Record each hit with its category ID, span, and severity. Count occurrences (S2/S3 gate on repetition).
 4. **Rewrite surgically.** Edit only flagged spans. Replace each tell with a natural rendering in the same register. Do not touch unflagged text.
-5. **Measure change rate.** Compute character-level edit distance ÷ source length. Apply guardrails (WARN >30%, HALT >50%).
+5. **Apply the mode's guardrail.** Prose mode: estimate the change rate and apply the change-rate guard (WARN >30%, HALT >50%, conservative near the thresholds). Copy mode: verify every fact anchor and the core promise/benefit instead.
 6. **Self-verify (Fast) or audit + review (Strict).** Re-run the meaning-preservation checklist. In Strict mode, run the content-fidelity audit and naturalness review as separate stages.
 7. **Grade.** Count residual S1/S2 and improvement %; assign A/B/C/D. Second pass on C; human review on D.
 8. **Emit** the humanized text + change report.
@@ -150,6 +181,6 @@ Automated AI-text detectors are unreliable across these four languages (notably 
 
 ---
 
-Korean patterns adapted from the im-not-ai (Humanize KR) open-source skill — see NOTICE.md.
+Category-catalogue structure inspired by the im-not-ai (Humanize KR) project.
 
-Version: 1.0.0
+Version: 1.1.0
