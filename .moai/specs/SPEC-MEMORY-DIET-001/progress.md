@@ -47,9 +47,25 @@ Build baseline: `go build ./...` exit=0. Branch: worktree-agent-a0c59bd587cb9a9a
 - session-handoff.md: 431 lines / 54,593 bytes (was 478 / 56,598 — saved ~2,005 bytes)
 - session-handoff-examples.md: 78 lines / 5,440 bytes (NEW, path-scoped)
 
+### M3 — REQ-3: MEMORY.md archive pruning (AC-MD-012..015)
+
+- AC-MD-012 PASS: ✅ count decreased 30→25 (5 stable entries moved to archive); MEMORY.md 91→86 lines
+- AC-MD-013 PASS: active-marker count unchanged at 18 (all preserved)
+- AC-MD-014 PASS: load-bearing ✅ count unchanged at 16 (all preserved)
+- AC-MD-015 PASS: MEMORY.md 86 lines / 15,929 bytes (≤200 lines, ≤25,600 bytes); archive grew 974→986 lines
+- MEMORY.md savings: 17,109 → 15,929 bytes (~1,180 bytes saved from always-loaded index)
+- Archived entries: fix·loop 3-트랙, MOAI-SKILL-DOCTRINE-FIX, TOKEN-VERIFY-DIET, Sonnet 5 1M, HOOK-FACTFORCE-ADVISORY
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- run_status: audit-ready
+- run_complete_at: 2026-07-10
+- ac_pass_count: 17
+- ac_fail_count: 0
+- preserve_list_post_run_count: 0
+- cross_platform_build: go build ./... exit 0 (no Go source changes)
+- lint_status: moai spec lint + golangci-lint baseline preserved (no Go changes)
+- neutrality_ci: go test ./internal/template/... pass (template-neutrality guards intact)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
