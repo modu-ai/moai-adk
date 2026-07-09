@@ -13,6 +13,7 @@ description: |
 tools: Read, Grep, Glob, Bash
 model: inherit
 effort: xhigh
+color: red
 permissionMode: plan
 memory: project
 skills:
@@ -21,7 +22,7 @@ skills:
   - moai-ref-owasp-checklist
   - moai-ref-testing-pyramid
 hooks:
-  SubagentStop:
+  Stop:
     - hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" evaluator-completion"

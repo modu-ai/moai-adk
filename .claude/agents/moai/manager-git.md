@@ -12,6 +12,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: sonnet
 effort: low
+color: orange
 permissionMode: bypassPermissions
 memory: project
 skills:

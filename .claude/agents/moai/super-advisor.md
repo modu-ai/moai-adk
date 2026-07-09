@@ -17,8 +17,8 @@ description: |
 tools: Read, Grep, Glob, Bash, WebFetch, Skill
 model: inherit
 effort: xhigh
+color: yellow
 permissionMode: plan
-isolation: none
 memory: project
 skills:
   - moai-foundation-core
@@ -64,7 +64,7 @@ conditions are also documented in
 | **E1 — bug-deadlock** | 3+ consecutive same-diagnostic failures | `manager-develop` retries the same failing test 3 times with the same root-cause hypothesis |
 | **E2 — architecture/design decision point** | A spec-body or plan-body decision with ≥2 viable options, neither obviously correct | "Should this cache layer be write-through or write-behind?" at L-plan boundary |
 | **E3 — second-opinion request** | Orchestrator uncertainty: < 80% confidence in the next delegation step | Ambiguous blocker-report from a worker; orchestrator deciding between re-spawn vs user-escalation |
-| **E4 — loop-deadlock** | `/moai loop` or `/moai fix` ceiling-exit per SPEC-LOOP-VERDICT-CONTRACT-001 | Auto-fix iteration count exhausted without green CI |
+| **E4 — loop-deadlock** | `/moai loop` or `/moai fix` ceiling-exit per the loop ceiling-exit verdict contract | Auto-fix iteration count exhausted without green CI |
 
 **On trigger**: the orchestrator spawns `Agent(general-purpose)` with the super-advisor
 role profile (Opus + xhigh at max/medium; Sonnet + xhigh at low), receives a non-binding
@@ -74,14 +74,14 @@ decision owner and may override it with justification.
 
 ## GLM Carve-out + CG Leader-Review Absorption
 
-super-advisor natively captures two concerns from the superseded SPEC-ADVISOR-RUNG-001:
+super-advisor natively captures two concerns from the superseded advisor-rung design:
 
-- **GLM carve-out** (REQ-ADV-004): under `moai glm` / `moai cg` GLM panes, super-advisor's
+- **GLM carve-out**: under `moai glm` / `moai cg` GLM panes, super-advisor's
   Opus injection does NOT apply (the session runs on GLM models). The spawn falls back to
   the session's effective GLM reasoning model (glm-5.2) with `effort: xhigh` preserved.
   This is the natural consequence of `model: inherit` — the runtime resolves the session
   model.
-- **CG leader-review-as-advisor** (REQ-ADV-005): the CG-mode leader (Claude orchestrator)
+- **CG leader-review-as-advisor**: the CG-mode leader (Claude orchestrator)
   consults super-advisor as a peer reviewer when a GLM teammate's output is suspect. The
   consultation surface is identical; only the model backing changes.
 
@@ -100,7 +100,6 @@ resulting decision.
 ## Cross-References
 
 - Design authority (architecture SSOT): `.moai/reports/agent-architecture-redesign-v2-20260709.html` (§01 change ② + §05).
-- SPEC: `.moai/specs/SPEC-AGENT-ARCH-V2-001/` (REQ-AA2-001, 002, 003).
 - Advisor/Evaluator separation: `.claude/agents/moai/{plan-auditor,sync-auditor}.md` (`NOT for: consultation`).
 - Entry conditions (E1-E4) doctrine home: `.claude/rules/moai/core/agent-common-protocol.md` § Super-Advisor Escalation (E1-E4).
 - Per-spawn `Agent(general-purpose)` pattern basis: `.claude/rules/moai/workflow/archived-agent-rejection.md` §C.

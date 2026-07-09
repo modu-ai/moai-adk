@@ -8,9 +8,10 @@ description: |
   JA: エージェント作成, 新エージェント, エージェントブループリント, サブエージェント, スキル作成, 新スキル, スキル最適化, YAMLフロントマター, プラグイン作成, プラグイン, プラグイン検証, マーケットプレイス, MCPサーバー, LSPサーバー
   ZH: 创建代理, 新代理, 代理蓝图, 子代理, 创建技能, 新技能, 技能优化, YAML前置信息, 创建插件, 插件, 插件验证, 市场, MCP服务器, LSP服务器
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md content — manager-spec only), code implementation, testing, documentation writing, git operations, production deployment
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__context7
 model: inherit
 effort: high
+color: purple
 permissionMode: bypassPermissions
 memory: user
 skills:
@@ -128,8 +129,8 @@ OUT OF SCOPE:
 **Agents**:
 - Frontmatter fields: name (required), description (required, "MUST INVOKE" trigger keywords), tools (CSV), model, permissionMode, memory, skills (array)
 - Tool permissions follow least-privilege principle
-- Sub-agents cannot spawn other sub-agents
-- Background sub-agents auto-deny non-pre-approved permissions
+- Sub-agents cannot spawn other sub-agents unless `Agent` is listed in their `tools` (nested spawning supported as of Claude Code v2.1.172, depth-limited); MoAI agents intentionally omit `Agent`, so they do not nest
+- Background sub-agents surface permission prompts in the main session (as of Claude Code v2.1.186); keep write-capable agents in the foreground as a conservative default
 
 **Skills**:
 - All frontmatter metadata values must be quoted strings

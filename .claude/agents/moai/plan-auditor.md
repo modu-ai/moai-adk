@@ -11,6 +11,7 @@ description: |
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: inherit
 effort: xhigh
+color: red
 permissionMode: default
 memory: project
 ---

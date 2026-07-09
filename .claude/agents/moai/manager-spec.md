@@ -10,9 +10,10 @@ description: |
   JA: SPEC, 要件, 仕様書, EARS, GEARS, 受入基準, ユーザーストーリー, アーキテクチャ, システム設計
   ZH: SPEC, 需求, 规格书, EARS, GEARS, 验收标准, 用户故事, 架构, 系统设计
   NOT for: run-phase code implementation (manager-develop), testing execution, deployment, code review, documentation sync (manager-docs)
-tools: Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate, TaskList, TaskGet, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate, TaskList, TaskGet, WebFetch, mcp__context7
 model: inherit
 effort: xhigh
+color: blue
 permissionMode: bypassPermissions
 memory: project
 skills:
@@ -26,7 +27,7 @@ skills:
   - moai-workflow-spec
   - moai-workflow-worktree
 hooks:
-  SubagentStop:
+  Stop:
     - hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" spec-completion"

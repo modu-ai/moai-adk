@@ -8,6 +8,7 @@ description: |
 tools: Read, Write, Edit, Grep, Glob, Bash, DesignSync
 model: inherit
 effort: xhigh
+color: pink
 permissionMode: acceptEdits
 isolation: worktree
 memory: project

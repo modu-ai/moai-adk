@@ -18,9 +18,10 @@ description: |
   ZH (TDD): TDD, 测试驱动开发, 红绿重构, 测试优先, 新功能, 规格测试, 绿地项目
   ZH (autofix): 自动修复, 自动修补, lint修复, 错误修复, 流水线修复
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md / design.md / research.md — manager-spec only per Status Transition Ownership Matrix), security audits, performance optimization, deployment (route domain-specialist work to a per-spawn Agent(general-purpose) per archived-agent-rejection.md §C)
-tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__context7
 model: inherit
 effort: xhigh
+color: green
 permissionMode: bypassPermissions
 isolation: worktree
 memory: project
@@ -47,7 +48,7 @@ hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" develop-post-implementation"
           timeout: 10
-  SubagentStop:
+  Stop:
     - hooks:
         - type: command
           command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" develop-completion"
