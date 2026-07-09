@@ -1,7 +1,7 @@
 ---
 id: SPEC-HANDOFF-ONEPASTE-001
 title: "Session Handoff 1-Paste — implementation plan"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-07-09
 updated: 2026-07-09
@@ -59,7 +59,7 @@ Execute as a single-turn read-only batch before the first M1 edit:
 
 ## §E Self-Verification
 
-Run-phase completion is gated by acceptance.md §D (AC-OP-001..016). The canonical verification batch (single-turn multi-Bash):
+Run-phase completion is gated by acceptance.md §D (AC-OP-001..017). The canonical verification batch (single-turn multi-Bash):
 
 1. All grep ACs (AC-OP-001..005, 007..010, 012..015) — see acceptance.md §D.3 for exact commands
 2. `moai spec lint .moai/specs/SPEC-HANDOFF-ONEPASTE-001/spec.md` → "No findings"
@@ -76,7 +76,7 @@ Run-phase completion is gated by acceptance.md §D (AC-OP-001..016). The canonic
 
 | # | File | Change |
 |---|------|--------|
-| 1 | `.claude/rules/moai/workflow/session-handoff.md` | (a) NEW [HARD] emission-obligation clause (REQ-OP-001/002) placed adjacent to § When To Generate; (b) NEW § Auto-Injected Resume Flow (mode=auto) section (REQ-OP-003/004/012 — one-message flow, goal-first variant, ultrathink guidance + A2 caveat, Kickoff-gate invariant, fail-open/manual-reversion note per REQ-OP-013, **the /clear-only injection boundary: startup/resume/compact are notice-only with `guide` default false → silent non-injection on terminal restart; L3 worktree Block 0 resumes (new terminal ⇒ source=startup) fall outside auto-inject** (D8), **injected Block 4 preconditions verified at resumed-turn start — most acute in goal-first where /goal starts the turn immediately** (D9)); (c) § Auto-Memory Integration pruning revision (REQ-OP-006) — **plus one sentence: CONST-V3R2-152 generation-time verbatim persistence is UNCHANGED; pruning binds only at SPEC close (temporal separation)** (D10); (d) § Post-Paste /goal Follow-up Block re-labeled as the mode=manual fallback path (retained verbatim otherwise, REQ-OP-005); (e) Paste-Time Activation Matrix accuracy check (REQ-OP-005 — additive note only if needed); (f) SSOT-side drift sentinel updated (REQ-OP-007). Doctrine text authored NEUTRALLY (REQ-OP-011 — no SPEC IDs / dates / measurements) |
+| 1 | `.claude/rules/moai/workflow/session-handoff.md` | (a) NEW [HARD] emission-obligation clause (REQ-OP-001/002) placed adjacent to § When To Generate; (b) NEW § Auto-Injected Resume Flow (mode=auto) section (REQ-OP-003/004/012 — one-message flow, goal-first variant, ultrathink guidance + A2 caveat, Kickoff-gate invariant, fail-open/manual-reversion note per REQ-OP-013, **the /clear-only injection boundary: startup/resume/compact are notice-only with `guide` default false → silent non-injection on terminal restart; L3 worktree Block 0 resumes (new terminal ⇒ source=startup) fall outside auto-inject** (D8), **injected Block 4 preconditions verified at resumed-turn start — most acute in goal-first where /goal starts the turn immediately** (D9)); (c) § Auto-Memory Integration pruning revision (REQ-OP-006) — **plus one sentence: the generation-time verbatim-persistence obligation is unchanged; pruning binds only at SPEC close (temporal separation)** — the doctrine sentence names the obligation WITHOUT the constitution registry ID (R1: the `CONST-V3R[0-9]-[0-9]+` token is an internal-content leak class per `internal_content_leak_test.go:199`, and session-handoff.md is byte-parity mirrored; the CONST-V3R2-152 citation lives only in spec.md/plan.md prose, which are not mirrored) (D10); (d) § Post-Paste /goal Follow-up Block re-labeled as the mode=manual fallback path (retained verbatim otherwise, REQ-OP-005); (e) Paste-Time Activation Matrix accuracy check (REQ-OP-005 — additive note only if needed); (f) SSOT-side drift sentinel updated (REQ-OP-007). Doctrine text authored NEUTRALLY (REQ-OP-011 — no SPEC IDs / dates / measurements) |
 | 2 | `internal/template/templates/.claude/rules/moai/workflow/session-handoff.md` | **Byte-identical copy of row 1 — SAME COMMIT** (byte-parity mirror CI `workflowOptMirroredPaths`; stage both files before commit) |
 | 3 | `.claude/output-styles/moai/moai.md` | §8 Session Handoff block: compact emission-obligation + auto-flow pointer at SSOT parity (plan-audit Q2 resolution: pointer, NOT full duplication); render-side drift sentinel updated (REQ-OP-007) |
 | 4 | `internal/template/templates/.claude/output-styles/moai/moai.md` | Byte-identical copy of row 3 (not CI-enrolled; kept identical per REQ-OP-011 guidance) |

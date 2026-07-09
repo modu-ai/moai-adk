@@ -1,7 +1,7 @@
 ---
 id: SPEC-HANDOFF-ONEPASTE-001
 title: "Session Handoff 1-Paste: auto-inject pipeline wiring + goal-first flow"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-07-09
 updated: 2026-07-09
@@ -21,6 +21,7 @@ related_specs: [SPEC-HANDOFF-AUTORESUME-001, SPEC-HANDOFF-GOALFIX-001, SPEC-HAND
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.1.2 | 2026-07-09 | manager-spec | Pre-run touch-up (auditor-sanctioned): R1 — doctrine sentence names the verbatim-persistence obligation WITHOUT the constitution registry ID (mirror leak-class; citation stays in spec/plan prose) + REQ-OP-011 forbidden classes extended with `CONST-*`; R2 — plan §E AC range 016→017 |
 | 0.1.1 | 2026-07-09 | manager-spec | Plan-audit iter-2 remediation (D1-D11): byte-parity mirror-CI constraint (REQ-OP-011 rewrite + §B.2 env fact), flow-section /clear-only boundary + precondition clauses (REQ-OP-003), CONST-V3R2-152 temporal separation (REQ-OP-006), `tier: M` frontmatter, measurement anecdote softened |
 | 0.1.0 | 2026-07-09 | manager-spec | Initial draft — Tier M plan-phase artifacts (doctrine + config, zero Go) |
 
@@ -80,7 +81,7 @@ This SPEC is **100% doctrine + config**: it wires emission to consumption at the
 
 ### C.3 Auto-Memory Integration revision
 
-**REQ-OP-006** — The session-handoff.md § Auto-Memory Integration **shall** direct that, on SPEC close, the consumed verbatim resume block inside the memory topic file (the `## 다음 세션 시작점` section) SHOULD be pruned to a one-line summary — verbatim preservation is owned by the `.moai/state/handoff/consumed/` audit trail. This stops double-storage growth (motivation: the auto-memory MEMORY.md index previously approached the official 25KB/200-line load cap and required an index diet). **Temporal separation (unchanged constitution obligation)**: generation-time verbatim persistence per CONST-V3R2-152 is UNTOUCHED — the resume message is still saved verbatim to memory when emitted; the pruning binds only later, at SPEC close. Forward-looking only; no retroactive rewrite of existing memory files is mandated.
+**REQ-OP-006** — The session-handoff.md § Auto-Memory Integration **shall** direct that, on SPEC close, the consumed verbatim resume block inside the memory topic file (the `## 다음 세션 시작점` section) SHOULD be pruned to a one-line summary — verbatim preservation is owned by the `.moai/state/handoff/consumed/` audit trail. This stops double-storage growth (motivation: the auto-memory MEMORY.md index previously approached the official 25KB/200-line load cap and required an index diet). **Temporal separation (unchanged constitution obligation)**: generation-time verbatim persistence per CONST-V3R2-152 is UNTOUCHED — the resume message is still saved verbatim to memory when emitted; the pruning binds only later, at SPEC close. (The doctrine sentence authored at run-phase names this obligation WITHOUT the registry ID — see REQ-OP-011.) Forward-looking only; no retroactive rewrite of existing memory files is mandated.
 
 ### C.4 Render-surface parity
 
@@ -98,7 +99,7 @@ This SPEC is **100% doctrine + config**: it wires emission to consumption at the
 
 ### C.7 Template mirror neutrality
 
-**REQ-OP-011** — **While** `session-handoff.md` is enrolled in byte-parity mirror CI (§B.2), the run-phase **shall** author its doctrine text **neutrally ONCE** and keep the live file and its template mirror **byte-identical, staged in the same commit** — the doctrine text itself (in BOTH trees) **shall not** carry internal SPEC IDs, internal work dates, or memory-measurement anecdotes (per `.moai/docs/template-internal-isolation-doctrine.md` §25.1 content classes; motivation prose belongs in this spec.md, never in the doctrine text). goal-directive.md and moai.md are NOT CI-enrolled but are currently byte-identical across trees — the run-phase **shall** keep them byte-identical under the same neutral-once authoring guidance.
+**REQ-OP-011** — **While** `session-handoff.md` is enrolled in byte-parity mirror CI (§B.2), the run-phase **shall** author its doctrine text **neutrally ONCE** and keep the live file and its template mirror **byte-identical, staged in the same commit** — the doctrine text itself (in BOTH trees) **shall not** carry internal SPEC IDs, internal work dates, memory-measurement anecdotes, or constitution registry IDs (`CONST-*` — internal-content leak class per `internal_content_leak_test.go`) (per `.moai/docs/template-internal-isolation-doctrine.md` §25.1 content classes; motivation prose belongs in this spec.md, never in the doctrine text). goal-directive.md and moai.md are NOT CI-enrolled but are currently byte-identical across trees — the run-phase **shall** keep them byte-identical under the same neutral-once authoring guidance.
 
 ### C.8 Invariants
 
