@@ -170,7 +170,7 @@ workflow:
     # DEFAULTS. This block is the SSOT for workflow agent() model/effort
     # defaults; per-script literals in .claude/workflows/*.js override it.
     # Values are validated against the closed sets: model in
-    # {inherit, haiku, sonnet, opus}, effort in {low, medium, high, xhigh, max}.
+    # {inherit, sonnet, opus}, effort in {low, medium, high, xhigh, max}.
     workflow_agents:
         read-only-extract: { model: sonnet, effort: low }
         mechanical-transform: { model: sonnet, effort: medium }
@@ -179,16 +179,12 @@ workflow:
         verify-judge: { model: sonnet, effort: xhigh }
         implement: { model: sonnet, effort: xhigh }
         design-architecture: { model: opus, effort: xhigh }
-    # model_routing: Tier x Phase -> {model, effort} routing defaults.
-    # This block is the SSOT for per-spawn cost routing; the orchestrator
-    # consults RouteModelFor(tier, phase) at spawn time and applies the
-    # returned {model, effort} as a per-spawn override UNLESS the caller
-    # supplied an explicit override (matrix yields to explicit user override).
-    # Key format: <TIER>-<phase> where Tier in {S, M, L} and Phase in
-    # {plan, run, sync, mx}. Closed sets: model in
-    # {inherit, haiku, sonnet, opus, glm}, effort in {low, medium, high, xhigh, max}.
-    # An absent (Tier, Phase) pair falls back to a documented default with
-    # fallback_applied: true on the returned entry.
+    # model_routing: DEPRECATED legacy flat block (SPEC-AGENT-ARCH-V2-001 D6).
+    # Retained for one backward-compat cycle as an alias for the `medium`
+    # performance tier. New code MUST use model_routing_profiles below; the
+    # 3-arg RouteModelFor(specTier, phase, perfTier) reads
+    # model_routing_profiles and ignores this flat block. Closed sets: model
+    # in {inherit, sonnet, opus, glm}, effort in {low, medium, high, xhigh, max}.
     model_routing:
         S-plan: { model: sonnet, effort: medium }
         S-run: { model: sonnet, effort: high }
@@ -202,3 +198,50 @@ workflow:
         L-run: { model: opus, effort: xhigh }
         L-sync: { model: sonnet, effort: high }
         L-mx: { model: sonnet, effort: medium }
+    # model_routing_profiles: No-Haiku 3-tier routing matrices
+    # (SPEC-AGENT-ARCH-V2-001 M3, design.md §D.5). 3 performance tiers
+    # (max/medium/low) × 12 cells (S/M/L × plan/run/sync/mx) = 36 entries.
+    # RouteModelFor(specTier, phase, perfTier) reads this block; the perfTier
+    # comes from llm.yaml performance_tier (set by `moai init --model-policy`).
+    # Default performance tier = medium. Closed sets: model in
+    # {inherit, sonnet, opus, glm}, effort in {low, medium, high, xhigh, max}.
+    model_routing_profiles:
+        max:
+            S-plan: { model: opus, effort: high }
+            S-run: { model: sonnet, effort: xhigh }
+            S-sync: { model: sonnet, effort: medium }
+            S-mx: { model: sonnet, effort: low }
+            M-plan: { model: opus, effort: xhigh }
+            M-run: { model: sonnet, effort: xhigh }
+            M-sync: { model: sonnet, effort: medium }
+            M-mx: { model: sonnet, effort: low }
+            L-plan: { model: opus, effort: xhigh }
+            L-run: { model: sonnet, effort: xhigh }
+            L-sync: { model: sonnet, effort: high }
+            L-mx: { model: sonnet, effort: medium }
+        medium:
+            S-plan: { model: sonnet, effort: medium }
+            S-run: { model: sonnet, effort: high }
+            S-sync: { model: sonnet, effort: low }
+            S-mx: { model: sonnet, effort: low }
+            M-plan: { model: sonnet, effort: medium }
+            M-run: { model: sonnet, effort: xhigh }
+            M-sync: { model: sonnet, effort: medium }
+            M-mx: { model: sonnet, effort: low }
+            L-plan: { model: opus, effort: high }
+            L-run: { model: sonnet, effort: xhigh }
+            L-sync: { model: sonnet, effort: high }
+            L-mx: { model: sonnet, effort: medium }
+        low:
+            S-plan: { model: sonnet, effort: medium }
+            S-run: { model: sonnet, effort: high }
+            S-sync: { model: sonnet, effort: low }
+            S-mx: { model: sonnet, effort: low }
+            M-plan: { model: sonnet, effort: medium }
+            M-run: { model: sonnet, effort: high }
+            M-sync: { model: sonnet, effort: low }
+            M-mx: { model: sonnet, effort: low }
+            L-plan: { model: sonnet, effort: xhigh }
+            L-run: { model: sonnet, effort: xhigh }
+            L-sync: { model: sonnet, effort: medium }
+            L-mx: { model: sonnet, effort: low }

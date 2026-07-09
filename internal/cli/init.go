@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -87,6 +88,17 @@ func init() {
 	initCmd.Flags().Bool("enable-lsp", false, "Enable LSP integration (default: false)")
 	initCmd.Flags().Bool("enforce-quality", true, "Enforce quality gates (default: true)")
 	initCmd.Flags().Bool("enable-design", true, "Enable design workflow (default: true)")
+
+	// Model policy flag (SPEC-AGENT-ARCH-V2-001 M3, REQ-AA2-010). The 3-enum
+	// {max, medium, low} is the No-Haiku performance-tier axis consumed by
+	// RouteModelFor(specTier, phase, perfTier). Persisted to llm.yaml
+	// performance_tier. Default tier = medium.
+	initCmd.Flags().String("model-policy", "", "Performance tier: max, medium, or low (default: medium)")
+	// Deprecated legacy aliases (one-cycle backward compat per plan.md D4).
+	// --high maps to the renamed "max" tier; --medium/--low pass through.
+	initCmd.Flags().Bool("high", false, "Deprecated alias for --model-policy=max")
+	initCmd.Flags().Bool("medium", false, "Deprecated alias for --model-policy=medium")
+	initCmd.Flags().Bool("low", false, "Deprecated alias for --model-policy=low")
 }
 
 // getStringFlag retrieves a string flag value from the command.
@@ -152,7 +164,65 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	// Validate model policy (SPEC-AGENT-ARCH-V2-001 M3, REQ-AA2-010).
+	// Invalid value exits non-zero with a stderr usage error naming the 3-enum.
+	modelPolicy := getStringFlag(cmd, "model-policy")
+	if modelPolicy != "" {
+		validPolicies := []string{"max", "medium", "low"}
+		if !slices.Contains(validPolicies, modelPolicy) {
+			return fmt.Errorf("invalid --model-policy value %q: must be one of: max, medium, low", modelPolicy)
+		}
+	}
+
 	return nil
+}
+
+// resolvePerformanceTier resolves the performance tier from the --model-policy
+// flag or the deprecated --high/--medium/--low aliases (SPEC-AGENT-ARCH-V2-001
+// M3, REQ-AA2-010). Returns "" when no model-policy flag was supplied (caller
+// leaves llm.yaml performance_tier at its default). Deprecated aliases emit a
+// one-cycle stderr warning per plan.md D4. --high maps to the renamed "max"
+// tier.
+func resolvePerformanceTier(cmd *cobra.Command) string {
+	if mp := getStringFlag(cmd, "model-policy"); mp != "" {
+		return mp
+	}
+	out := cmd.OutOrStderr()
+	switch {
+	case getBoolFlag(cmd, "high"):
+		_, _ = fmt.Fprintln(out, "Warning: --high is deprecated; use --model-policy=max. (one-cycle alias per SPEC-AGENT-ARCH-V2-001 D4)")
+		return "max"
+	case getBoolFlag(cmd, "medium"):
+		_, _ = fmt.Fprintln(out, "Warning: --medium is deprecated; use --model-policy=medium. (one-cycle alias per SPEC-AGENT-ARCH-V2-001 D4)")
+		return "medium"
+	case getBoolFlag(cmd, "low"):
+		_, _ = fmt.Fprintln(out, "Warning: --low is deprecated; use --model-policy=low. (one-cycle alias per SPEC-AGENT-ARCH-V2-001 D4)")
+		return "low"
+	}
+	return ""
+}
+
+// performanceTierLineRegex matches the performance_tier: line in llm.yaml.
+var performanceTierLineRegex = regexp.MustCompile(`(?m)^(\s*performance_tier:\s*).*$`)
+
+// applyPerformanceTier writes the resolved performance tier into the deployed
+// llm.yaml performance_tier field. Non-fatal: a missing/malformed file is
+// logged as a warning and skipped (the template default already carries the
+// field). SPEC-AGENT-ARCH-V2-001 M3.
+func applyPerformanceTier(projectRoot, tier string) error {
+	if tier == "" {
+		return nil // no flag supplied — leave template default
+	}
+	llmPath := filepath.Join(projectRoot, ".moai", "config", "sections", "llm.yaml")
+	data, err := os.ReadFile(llmPath)
+	if err != nil {
+		return fmt.Errorf("read llm.yaml: %w", err)
+	}
+	replaced := performanceTierLineRegex.ReplaceAll(data, []byte("${1}"+tier))
+	if string(replaced) == string(data) {
+		return fmt.Errorf("performance_tier line not found in llm.yaml")
+	}
+	return os.WriteFile(llmPath, replaced, 0o644)
 }
 
 // @MX:NOTE: [AUTO] CATALOG-002 REQ-012/013/EC3 — single decision point for slim/full opt-out. Narrow env matching: only "1" exact or case-insensitive "true".
@@ -429,6 +499,16 @@ func runInit(cmd *cobra.Command, args []string) error {
 	result, err := executor.Execute(ctx, opts)
 	if err != nil {
 		return fmt.Errorf("initialization failed: %w", err)
+	}
+
+	// Apply --model-policy to llm.yaml performance_tier (SPEC-AGENT-ARCH-V2-001
+	// M3, REQ-AA2-010). Non-fatal; the field already exists in the deployed
+	// template, this just populates the user-selected tier.
+	perfTier := resolvePerformanceTier(cmd)
+	if perfTier != "" {
+		if perr := applyPerformanceTier(opts.ProjectRoot, perfTier); perr != nil {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to set performance_tier: %v\n", perr)
+		}
 	}
 
 	// Display success message

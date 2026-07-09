@@ -240,9 +240,11 @@ type LLMConfig struct {
 	TeamMode string `yaml:"team_mode"`
 	// Environment variable name for GLM API key
 	GLMEnvVar string `yaml:"glm_env_var"`
-	// Performance tier: "high", "medium", "low"
-	// Controls model selection for all sub-agents and team agents
-	PerformanceTier string `yaml:"performance_tier" validate:"omitempty,oneof=high medium low"`
+	// Performance tier: "max", "medium", "low" (SPEC-AGENT-ARCH-V2-001 M3).
+	// The perfTier axis consumed by RouteModelFor(specTier, phase, perfTier).
+	// Set by `moai init --model-policy`; legacy "high" accepted as a deprecated
+	// alias for "max" (one-cycle backward compat).
+	PerformanceTier string `yaml:"performance_tier" validate:"omitempty,oneof=max medium low"`
 	// Claude model mapping by tier
 	ClaudeModels ClaudeTierModels `yaml:"claude_models"`
 	// GLM API configuration

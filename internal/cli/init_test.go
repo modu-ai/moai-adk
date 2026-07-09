@@ -263,6 +263,45 @@ func TestValidateInitFlags_InvalidMode(t *testing.T) {
 	}
 }
 
+// TestValidateInitFlags_ValidModelPolicy verifies the 3-enum {max, medium,
+// low} is accepted (SPEC-AGENT-ARCH-V2-001 M3, AC-AA2-010).
+func TestValidateInitFlags_ValidModelPolicy(t *testing.T) {
+	validTiers := []string{"max", "medium", "low"}
+
+	for _, tier := range validTiers {
+		t.Run(tier, func(t *testing.T) {
+			if err := initCmd.Flags().Set("model-policy", tier); err != nil {
+				t.Fatal(err)
+			}
+			if err := validateInitFlags(initCmd, []string{}); err != nil {
+				t.Errorf("validateInitFlags with model-policy=%q should not error, got: %v", tier, err)
+			}
+		})
+	}
+}
+
+// TestValidateInitFlags_InvalidModelPolicy verifies an invalid value exits
+// with a stderr-destined usage error naming the 3-enum (AC-AA2-010).
+func TestValidateInitFlags_InvalidModelPolicy(t *testing.T) {
+	invalidTiers := []string{"high", "ultra", "max-low", "unknown"}
+
+	for _, tier := range invalidTiers {
+		t.Run(tier, func(t *testing.T) {
+			if err := initCmd.Flags().Set("model-policy", tier); err != nil {
+				t.Fatal(err)
+			}
+			err := validateInitFlags(initCmd, []string{})
+			if err == nil {
+				t.Errorf("validateInitFlags with model-policy=%q should error, got nil", tier)
+			}
+			// Error must name the 3-enum so cobra surfaces it in usage output.
+			if !strings.Contains(err.Error(), "max, medium, low") {
+				t.Errorf("error should name the 3-enum 'max, medium, low', got: %v", err)
+			}
+		})
+	}
+}
+
 func TestValidateInitFlags_ValidGitMode(t *testing.T) {
 	validGitModes := []string{"manual", "personal", "team"}
 
