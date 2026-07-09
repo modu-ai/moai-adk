@@ -89,6 +89,7 @@ Per the canonical agent-responsibility realignment policy (DRI ownership at agen
 | `## §E.5 Mx-phase` (RETIRED) | Legacy Mx-phase marker; folded into §E.4. era.go still matches it for the H-4-legacy migration-window dual predicate (§E.5 + `mx_commit_sha`) so pre-redesign SPECs classify as V3R6 | **YES** — literal `§E.5` heading + `mx_commit_sha` field (legacy only) | (retired — do NOT author new §E.5 sections; retained in the parser for backward-compat classification of legacy SPECs) |
 | `## §F Phase 0.95 Mode Selection` | Orchestrator's Phase 0.95 mode-selection log (must preserve the `Mode Selection` token for the grep AC) | No | orchestrator (before first run-phase `Agent()` spawn) |
 | `## §H Recursive Self-Diagnosis Log` | Phase 2 bounded recursive self-diagnosis loop record (DIAGNOSE-PATCH-VERIFY, mechanical failures) | No | manager-develop / orchestrator (run-phase) |
+| `## §I Token Accounting` | Token-accounting baseline — sync-close per-SPEC token spend measurement (`tokens_spent` + attribution confidence qualifier) | No (only `§E.*` headings + the two SHA fields are matched) | token-accounting mechanism at sync-close (manager-docs invokes the writer) |
 
 **Section-letter allocation rule.** New progress.md concerns MUST claim a fresh top-level letter (`§F`, `§G`, `§H`, `§I`, ...) — they MUST NOT overload `§E` or any `§E.N` sub-heading, because the `§E.*` namespace is reserved for the era.go-parsed lifecycle-phase structure. A concern that reuses `## §E — <something else>` collides with the parser's heading match and is prohibited.
 
