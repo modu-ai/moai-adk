@@ -263,13 +263,25 @@ func TestValidateInitFlags_InvalidMode(t *testing.T) {
 	}
 }
 
+// resetInitValidateFlags clears all flags consumed by validateInitFlags so each
+// test starts from a clean state. The validate tests share the package-global
+// initCmd; without reset, stale invalid values (e.g. model-policy=unknown)
+// pollute subsequent tests.
+func resetInitValidateFlags() {
+	for _, f := range []string{"mode", "git-mode", "git-provider", "model-policy"} {
+		_ = initCmd.Flags().Set(f, "")
+	}
+}
+
 // TestValidateInitFlags_ValidModelPolicy verifies the 3-enum {max, medium,
 // low} is accepted (SPEC-AGENT-ARCH-V2-001 M3, AC-AA2-010).
 func TestValidateInitFlags_ValidModelPolicy(t *testing.T) {
+	t.Cleanup(resetInitValidateFlags)
 	validTiers := []string{"max", "medium", "low"}
 
 	for _, tier := range validTiers {
 		t.Run(tier, func(t *testing.T) {
+			resetInitValidateFlags()
 			if err := initCmd.Flags().Set("model-policy", tier); err != nil {
 				t.Fatal(err)
 			}
@@ -283,10 +295,12 @@ func TestValidateInitFlags_ValidModelPolicy(t *testing.T) {
 // TestValidateInitFlags_InvalidModelPolicy verifies an invalid value exits
 // with a stderr-destined usage error naming the 3-enum (AC-AA2-010).
 func TestValidateInitFlags_InvalidModelPolicy(t *testing.T) {
+	t.Cleanup(resetInitValidateFlags)
 	invalidTiers := []string{"high", "ultra", "max-low", "unknown"}
 
 	for _, tier := range invalidTiers {
 		t.Run(tier, func(t *testing.T) {
+			resetInitValidateFlags()
 			if err := initCmd.Flags().Set("model-policy", tier); err != nil {
 				t.Fatal(err)
 			}

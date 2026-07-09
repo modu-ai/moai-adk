@@ -126,6 +126,10 @@ func NewLinter(opts LinterOptions) *Linter {
 		// cross-SPEC rules
 		&DependencyCycleRule{},
 		&DuplicateSPECIDRule{},
+		// HaikuResidualRule — HARD gate, NOT skip-able via lint.skip (it is a
+		// crossSPECRule whose findings bypass applylintSkip; SPEC-AGENT-ARCH-
+		// V2-001 M3 AC-AA2-012/016). Scans the 4 No-Haiku surfaces repo-wide.
+		&HaikuResidualRule{},
 		// Registry required
 		&ZoneRegistryRule{registry: l.registry},
 	}

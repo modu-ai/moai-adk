@@ -27,7 +27,6 @@ import (
 var (
 	validRoutingModels = map[string]bool{
 		"inherit": true,
-		"haiku":   true,
 		"sonnet":  true,
 		"opus":    true,
 		"glm":     true,
@@ -191,7 +190,7 @@ func (c *Config) ValidateModelRoutingProfiles() error {
 			if !validRoutingModels[entry.Model] {
 				return &ValidationError{
 					Field:   fmt.Sprintf("model_routing_profiles.%s.%s.model", pt, k),
-					Message: fmt.Sprintf("model %q not in closed set {inherit, haiku, sonnet, opus, glm}", entry.Model),
+					Message: fmt.Sprintf("model %q not in closed set {inherit, sonnet, opus, glm}", entry.Model),
 					Value:   entry.Model,
 				}
 			}
@@ -239,7 +238,7 @@ func (c *Config) ValidateModelRouting() error {
 		if !validRoutingModels[entry.Model] {
 			return &ValidationError{
 				Field:   fmt.Sprintf("model_routing.%s.model", k),
-				Message: fmt.Sprintf("model %q not in closed set {inherit, haiku, sonnet, opus, glm}", entry.Model),
+				Message: fmt.Sprintf("model %q not in closed set {inherit, sonnet, opus, glm}", entry.Model),
 				Value:   entry.Model,
 			}
 		}

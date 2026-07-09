@@ -23,12 +23,12 @@ const fullRoutingYAML = `workflow:
     model_routing:
         S-plan: { model: sonnet, effort: medium }
         S-run: { model: sonnet, effort: high }
-        S-sync: { model: haiku, effort: low }
-        S-mx: { model: haiku, effort: low }
+        S-sync: { model: sonnet, effort: low }
+        S-mx: { model: sonnet, effort: low }
         M-plan: { model: sonnet, effort: medium }
         M-run: { model: sonnet, effort: xhigh }
         M-sync: { model: sonnet, effort: medium }
-        M-mx: { model: haiku, effort: low }
+        M-mx: { model: sonnet, effort: low }
         L-plan: { model: opus, effort: high }
         L-run: { model: opus, effort: xhigh }
         L-sync: { model: sonnet, effort: high }
@@ -116,8 +116,8 @@ func TestModelRoutingRoundTripLoad(t *testing.T) {
 	if len(mr) != 12 {
 		t.Fatalf("ModelRouting length = %d, want 12", len(mr))
 	}
-	if got := mr["S-sync"]; got.Model != "haiku" || got.Effort != "low" {
-		t.Errorf("S-sync = %+v, want {haiku low}", got)
+	if got := mr["S-sync"]; got.Model != "sonnet" || got.Effort != "low" {
+		t.Errorf("S-sync = %+v, want {sonnet low}", got)
 	}
 	if got := mr["L-run"]; got.Model != "opus" || got.Effort != "xhigh" {
 		t.Errorf("L-run = %+v, want {opus xhigh}", got)
@@ -152,7 +152,7 @@ func TestValidateModelRoutingClosedSetEffort(t *testing.T) {
 	root := seedWorkflowWithModelRouting(t, `workflow:
     default_mode: ""
     model_routing:
-        S-plan: { model: haiku, effort: ultra }
+        S-plan: { model: sonnet, effort: ultra }
 `)
 
 	raw, err := os.ReadFile(filepath.Join(root, ".moai", "config", "sections", "workflow.yaml"))
