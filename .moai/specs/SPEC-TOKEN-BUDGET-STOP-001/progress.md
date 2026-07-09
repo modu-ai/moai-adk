@@ -63,7 +63,7 @@ spec_id_self_check: PASS (SPEC-TOKEN-BUDGET-STOP-001 → ^SPEC(-[A-Z][A-Z0-9]*)+
 
 ```yaml
 run_complete_at: 2026-07-09
-run_commit_sha: <placeholder — backfill post-push; M1+M2 commits pushed to origin/main>
+run_commit_sha: 032eb9733 (M1) + 841843a9b (M2)
 run_status: audit-ready
 ac_pass_count: 9
 ac_fail_count: 0
@@ -82,13 +82,29 @@ m1_to_mN_commit_strategy: 2 commits (M1 Go + frontmatter draft->in-progress; M2 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-09
+sync_commit_sha: <backfill post-push via follow-up chore commit>
+sync_status: audit-ready
+epic: Token-Economy (D 4/4 → 100% complete; A=ACCOUNTING + B=ROUTING + C=VERIFY-DIET + D=this)
+ac_total: 9/9 MUST-PASS PASS
+coverage_internal_runtime: 90.5% of statements (>=85% target)
+lint_internal_runtime: 0 issues
+cross_platform_build: darwin=0 windows=0
+spec_lint_gate3: 0 errors (StatusGitConsistency warning resolved by in-progress→completed transition)
+3_phase_close: plan(93c38003b) → run(032eb9733 M1 + 841843a9b M2) → sync(this commit)
+race_note: shared-checkout parallel session completed M1+M2 first; this orchestrator-direct session independently verified AC 9/9 on HEAD (go test/cover/lint/vet + AC grep), discarded its duplicate impl, performed stash-drop-accident recovery (git stash apply 131aaa339 exit 0, 0 file loss — 11 parallel-session files + moai-easy.md restored)
+```
 
 ---
 
 ## §F Phase 0.95 Mode Selection
 
-_<pending run-phase — orchestrator logs mode selection before first Agent() spawn>_
+Orchestrator mode selection logged (run-phase executed by parallel session as Mode 5; this orchestrator-direct sync session records the classification retroactively).
+
+### Decision: sub-agent (Mode 5)
+
+Tier M + coding-heavy → Mode 5 (sub-agent sequential) per Anthropic's coding-task parallelism caveat. M1 (Go graceful-abort via TDD RED-GREEN-REFACTOR) and M2 (doctrine persistence extension) carry a sequential dependency — M2's file-redirect contract states the persistence obligation M1's Go layer fulfills. A single `manager-develop` delegation (cycle_type=tdd) handled both milestones. Implementation Kickoff Approval: PASS (user-approved run-phase entry).
 
 ---
 

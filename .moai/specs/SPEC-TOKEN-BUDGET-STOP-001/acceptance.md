@@ -2,7 +2,7 @@
 id: SPEC-TOKEN-BUDGET-STOP-001
 title: "Token Budget Graceful-Abort + /tmp Evidence Persistence — Acceptance Criteria"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-09
 updated: 2026-07-09
 author: manager-spec
