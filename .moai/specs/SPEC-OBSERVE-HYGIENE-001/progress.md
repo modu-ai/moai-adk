@@ -84,7 +84,26 @@ evidence_dir: /tmp/moai-verify-obh/ (logs 1-9; persist to .moai/state/verify/ pr
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs>_
+```
+sync_status: complete
+sync_complete_at: 2026-07-09
+sync_commit_sha: <pending — backfill via follow-up chore commit per established convention (SPEC-AUDIT-GATE-INTEGRITY-001 8cc3ed06e pattern; amend-free, force-push-free)>
+changelog_entry_position: CHANGELOG.md [Unreleased] > ### Fixed (top entry)
+frontmatter_status_transitions:
+  spec.md: in-progress → completed (single sync commit, merged 3-phase close)
+  plan.md: in-progress → completed (single sync commit)
+  acceptance.md: in-progress → completed (single sync commit)
+  progress.md: §E.4 populated (this block); §E.1-§E.3 preserved verbatim (era.go parse-load-bearing)
+b12_self_test_a: PASS — grep -c 'OBSERVE-HYGIENE-001' CHANGELOG.md = 0 pre-emission (no duplicate from parallel BATCH-SYNC)
+b12_self_test_b: PASS — AC count 7 matches acceptance.md §D SSOT (grep -cE '^\| AC-OBH-[0-9]+' acceptance.md = 7; NOT progress.md)
+b12_self_test_c: PASS — all cited file paths verified via ls: internal/spec/audit.go, internal/cli/spec_audit.go, internal/hook/post_tool.go, internal/config/defaults.go, .claude/hooks/moai/gateguard-fact-force.sh, .claude/hooks/moai/sync-phase-quality-gate.sh, .moai/config/sections/sunset.yaml, .moai/config/sections/harness.yaml, .claude/skills/moai/workflows/loop.md
+canary_compliance_check: N/A (SPEC does not define a forward-looking policy that its own sync tests)
+route: A (Hybrid Trunk main-direct, Tier S — no PR, no worktree)
+ac_matrix_summary: AC-OBH-001..006 PASS, AC-OBH-007 PASS-WITH-DEBT (2 pre-existing FAIL unrelated to OBSERVE — cli Doctor/Status golden TEST-003 AC-006 external debt + template moai-easy.md parity chore)
+d3_decision: Promote (sync-gate go vet/go build → default-blocking; MOAI_SYNC_GATE_BLOCKING → opt-out)
+push_state: origin/main (sync commit + follow-up backfill chore commit)
+note: sync_commit_sha backfill is a separate amend-free chore commit per SPEC-V3R6-LIFECYCLE-REDESIGN-001 merged 3-phase close convention (close-subject full-ID mandate: SPEC-OBSERVE-HYGIENE-001)
+```
 
 ---
 
