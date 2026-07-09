@@ -111,7 +111,7 @@ Run-phase status: `in-progress` (draft→in-progress set on M1 commit by manager
 
 ```
 sync_complete_at: 2026-07-09
-sync_commit_sha: <pending — backfill via follow-up chore commit per established convention>
+sync_commit_sha: 3169f06d0
 sync_status: audit-ready (3-phase close on single sync commit; completed transition rides this commit)
 changelog_entry_position: [Unreleased] > Added (SPEC-HARNESS-RATCHET-REWIRE-001)
 frontmatter_status_transitions:
