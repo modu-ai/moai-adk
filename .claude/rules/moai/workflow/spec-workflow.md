@@ -356,6 +356,24 @@ the implementation phase.
 - Applies in both solo mode (workflows/run.md) and team mode (team/run.md)
 - Cannot be skipped by harness level — gate is never disabled, not even on `minimal`
 
+### Depends_on Pre-flight Check
+
+The Depends_on Pre-flight Check is the first sub-step of Phase 0.5, executed BEFORE the plan-auditor subagent invocation. It is NOT a separate Phase 0.6 — it extends Phase 0.5 as sub-step 0 (no phase inflation).
+
+**Procedure:**
+1. Load the SPEC's frontmatter `depends_on:` list (Optional field per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Optional Fields).
+2. Where `depends_on` is absent or empty, the pre-flight trivially PASSes and proceeds to the plan-auditor step.
+3. Where `depends_on` lists one or more SPEC IDs, resolve each dependency's current `status:` frontmatter field by reading `.moai/specs/<dep-ID>/spec.md`.
+
+**Fulfillment definition (strict):** dependency fulfillment is defined as the dependency SPEC's `status: completed` — all other 7 status values (draft, planned, in-progress, implemented, superseded, archived, rejected) are considered unfulfilled. The evaluation is deterministic per-status: no partial credit, no "near-completed" interpretation, no score-based bypass.
+
+**Blocker on unfulfilled dependency (3-option):** When one or more `depends_on` entries are unfulfilled, the pre-flight SHALL NOT proceed to the plan-auditor step. The orchestrator SHALL surface a structured blocker via `AskUserQuestion` with three options:
+- **wait** — abort run; re-invoke after deps complete
+- **override** — proceed with `--ignore-deps` flag; logged to `.moai/logs/depends-on-override.log` (the override path MUST record the unfulfilled dependency IDs + override rationale in the log; a bare `--ignore-deps` without the logged rationale is prohibited)
+- **abort** — cancel run
+
+The `--ignore-deps` flag and `.moai/logs/depends-on-override.log` path are literal tokens. The pre-flight is orchestrator-side doctrine; Go implementation is deferred to a follow-up SPEC.
+
 ### Verdicts
 
 | Verdict | Meaning | Action |
@@ -373,6 +391,10 @@ Two report streams coexist deliberately in `.moai/reports/plan-audit/`; they are
 - **run-gate stream** — `<SPEC-ID>-<YYYY-MM-DD>.md`, date-based. Written by the Phase 0.5 Plan Audit Gate (`internal/runtime/audit_report.go`). Every gate call persists a record here; multiple calls on the same day append to the same file. This date-file is the verdict **record surface** only — it is never the hash subject for skip-eligibility (see below).
 
 Skip-eligibility inputs (normative, matching the Go implementation): (a) the "most recent plan-auditor verdict" the run-gate consults is the plan-phase review stream's **final-iteration verdict**; (b) the artifact-hash check recomputes and compares the **plan-artifact hash** — `internal/runtime/audit_cache.go` `ComputeHash` hashes the SPEC directory's plan artifacts (spec.md / plan.md / acceptance.md / tasks.md) as whitespace-normalized SHA-256, with cache key = (specID, planArtifactHash); (c) the run-gate stream's date-file records the verdict but is not hashed.
+
+**Plan-artifact hash subject list (Go verbatim):** the 4-file hash subject set is `{spec.md, plan.md, acceptance.md, tasks.md}` — matching `internal/runtime/audit_cache.go` `planArtifactNames` verbatim. The `tasks.md` entry is a V3R4-era plan artifact name retained in the hash subject list for backward compatibility with grandfathered SPECs (V3R6 Tier L replaces it with design.md + research.md, which are NOT hash subjects). `design.md` and `research.md` are **manual-skip judgment inputs** — changes to them do NOT mechanically invalidate a cached skip verdict but MUST be considered by the orchestrator's manual skip decision alongside the 4-file hash.
+
+**Amendment as cache-invalidating event:** when a SPEC is amended in-place per REQ-WFL-001 (completed → in-progress, `## Amendments` HISTORY row added), the plan-artifact hash changes because `spec.md` is modified — this is a cache-invalidating event that invalidates any cached plan-auditor PASS verdict for the SPEC, forcing Phase 0.5 plan-audit re-execution on the next `/moai run`. During the amendment transition, the SPEC remains V3R6 modern era (subject to drift detection) because frontmatter status is `in-progress` (not `completed`), so the `internal/spec/audit.go` completed-no-drift predicate does not fire.
 
 Reports in both streams are local artifacts (gitignored).
 

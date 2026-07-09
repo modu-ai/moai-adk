@@ -469,7 +469,13 @@ This prevents the unbounded-iteration anti-pattern documented in `agent-patterns
 
 This agent receives one input: the absolute path to the SPEC directory (e.g., `.moai/specs/SPEC-AUTH-001/`).
 
-The agent reads `spec.md` as the primary input. It may also read `acceptance.md` and `plan.md` for cross-reference.
+The agent uses a **Tier-differentiated input contract**: the artifact set it reads depends on the SPEC's `tier:` frontmatter field.
+
+- **Tier L** (or tier absent — defaulting to Tier L for backward compat): the plan-auditor reads all 5 artifacts — `spec.md` (primary) + `plan.md` + `acceptance.md` + `design.md` + `research.md`. **Tier L: design.md + research.md are required inputs** — the auditor MUST read them; failure to read design.md or research.md during a Tier L audit is a gap, not a pass.
+- **Tier M**: the plan-auditor reads the primary trio — `spec.md` + `plan.md` + `acceptance.md`.
+- **Tier S**: the plan-auditor reads `spec.md` + `plan.md` (AC inline in spec.md).
+
+This Tier-differentiated input contract does NOT conflict with M1 Context Isolation: "context" in M1 refers to author reasoning / conversation history / draft scratch (which the auditor MUST ignore), NOT to SPEC artifact files (which the auditor MUST read per the Tier above). Artifact files are the audit's input surface; reasoning context is the audit's excluded surface.
 
 If the caller passes additional context (author reasoning, prior conversation), the agent MUST ignore it and state: "Reasoning context ignored per M1 Context Isolation."
 

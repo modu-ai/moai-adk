@@ -221,6 +221,7 @@ Optional fields (include when applicable):
 - `merged_pr: [N, M]` — Post-merge provenance.
 - `merged_commit: <hash>` — Post-merge provenance.
 - `tier: S|M|L` — Optional SPEC complexity Tier classification.
+- `amendment_of: SPEC-X-001` — Declares this SPEC is an in-place amendment of a prior completed SPEC. Self-referential (value = own ID) for in-place amendment; parent SPEC ID for successor amendment. When set, the SPEC's HISTORY section MUST carry a `## Amendments` sub-section recording: (a) prior completed version string, (b) prior_completed_sha (or `unknown` if pre-git), (c) amendment rationale (one paragraph), (d) amendment scope (list of affected §B REQ IDs). The `## Amendments` sub-section is additive — original HISTORY rows are preserved verbatim, and amendment rows append below them with monotonically increasing version.
 
 [HARD] Snake_case aliases REJECTED (silently dropped by the YAML decoder in `internal/spec/lint.go`, producing empty-value `FrontmatterInvalid` findings):
 - `created_at` → must be `created`
