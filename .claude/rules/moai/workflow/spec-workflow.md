@@ -356,6 +356,24 @@ the implementation phase.
 - Applies in both solo mode (workflows/run.md) and team mode (team/run.md)
 - Cannot be skipped by harness level — gate is never disabled, not even on `minimal`
 
+### Depends_on Pre-flight Check
+
+The Depends_on Pre-flight Check is the first sub-step of Phase 0.5, executed BEFORE the plan-auditor subagent invocation. It is NOT a separate Phase 0.6 — it extends Phase 0.5 as sub-step 0 (no phase inflation).
+
+**Procedure:**
+1. Load the SPEC's frontmatter `depends_on:` list (Optional field per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Optional Fields).
+2. Where `depends_on` is absent or empty, the pre-flight trivially PASSes and proceeds to the plan-auditor step.
+3. Where `depends_on` lists one or more SPEC IDs, resolve each dependency's current `status:` frontmatter field by reading `.moai/specs/<dep-ID>/spec.md`.
+
+**Fulfillment definition (strict):** dependency fulfillment is defined as the dependency SPEC's `status: completed` — all other 7 status values (draft, planned, in-progress, implemented, superseded, archived, rejected) are considered unfulfilled. The evaluation is deterministic per-status: no partial credit, no "near-completed" interpretation, no score-based bypass.
+
+**Blocker on unfulfilled dependency (3-option):** When one or more `depends_on` entries are unfulfilled, the pre-flight SHALL NOT proceed to the plan-auditor step. The orchestrator SHALL surface a structured blocker via `AskUserQuestion` with three options:
+- **wait** — abort run; re-invoke after deps complete
+- **override** — proceed with `--ignore-deps` flag; logged to `.moai/logs/depends-on-override.log` (the override path MUST record the unfulfilled dependency IDs + override rationale in the log; a bare `--ignore-deps` without the logged rationale is prohibited)
+- **abort** — cancel run
+
+The `--ignore-deps` flag and `.moai/logs/depends-on-override.log` path are literal tokens. The pre-flight is orchestrator-side doctrine; Go implementation is deferred to a follow-up SPEC.
+
 ### Verdicts
 
 | Verdict | Meaning | Action |
