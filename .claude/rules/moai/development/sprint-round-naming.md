@@ -158,7 +158,7 @@ When updating documents or memory entries that use a legacy alias:
 
 - `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier — Milestone definitions
 - `.claude/rules/moai/workflow/session-handoff.md` — paste-ready resume format
-- `.claude/output-styles/moai/moai.md` § Banner Localization — `Epic [N]` token rendering across locales
+- `.claude/output-styles/moai/moai.md` §8 Localization Contract — `Epic [N]` protocol-token rendering across locales (preserved verbatim; header translation table governs locale render)
 - `.moai/specs/SPEC-V3R6-LIFECYCLE-REDESIGN-001/design.md` §C — Epic taxonomy design decision and migration mapping
 
 ---

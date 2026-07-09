@@ -5,7 +5,7 @@ paths: "**/sprint-round-naming.md"
 # Epic Naming Taxonomy — SSOT
 
 > **Single Source of Truth** for the Epic-based naming taxonomy. Defines exactly four canonical terms (`Epic`, `SPEC`, `Milestone`, `Constitution`) and documents the retired legacy aliases (`Sprint`, `cohort`, `Round`, `Wave`).
-> Cross-referenced by: `.claude/rules/moai/workflow/spec-workflow.md`, all SPEC plan-phase templates, `.claude/output-styles/moai/moai.md` § Banner Localization.
+> Cross-referenced by: `.claude/rules/moai/workflow/spec-workflow.md`, all SPEC plan-phase templates, `.claude/output-styles/moai/moai.md` §8 Localization Contract.
 
 ---
 
@@ -158,7 +158,7 @@ When updating documents or memory entries that use a legacy alias:
 
 - `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier — Milestone definitions
 - `.claude/rules/moai/workflow/session-handoff.md` — paste-ready resume format
-- `.claude/output-styles/moai/moai.md` § Banner Localization — `Epic [N]` token rendering across locales
+- `.claude/output-styles/moai/moai.md` §8 Localization Contract — `Epic [N]` protocol-token rendering across locales (preserved verbatim; header translation table governs locale render)
 - the lifecycle-redesign design notes §C — Epic taxonomy design decision and migration mapping
 
 ---
