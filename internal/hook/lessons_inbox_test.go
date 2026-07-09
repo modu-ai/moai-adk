@@ -152,3 +152,27 @@ func TestLessonsInbox_AppendOnly(t *testing.T) {
 		t.Errorf("expected 3 appended stubs (append-only), got %d", len(stubs))
 	}
 }
+
+// TestTruncateSummary covers the failure-summary helper's edge cases: empty
+// error text falls back to the category token, and long text is truncated on a
+// rune boundary with an ellipsis.
+func TestTruncateSummary(t *testing.T) {
+	cases := []struct {
+		name      string
+		errorText string
+		fallback  string
+		want      string
+	}{
+		{"empty falls back to category", "  ", "ExitError", "ExitError"},
+		{"short text passes through", "exit status 1", "ExitError", "exit status 1"},
+		{"long text truncated", string(make([]rune, 300)), "X", string(make([]rune, 200)) + "…"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := truncateSummary(c.errorText, c.fallback)
+			if got != c.want {
+				t.Errorf("truncateSummary() = %q, want %q", got, c.want)
+			}
+		})
+	}
+}

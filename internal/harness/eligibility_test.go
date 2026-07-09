@@ -60,3 +60,10 @@ func TestIsEligibleForPromotion(t *testing.T) {
 		})
 	}
 }
+
+// TestIsEligibleForPromotion_Nil covers the nil-pattern defensive branch.
+func TestIsEligibleForPromotion_Nil(t *testing.T) {
+	if IsEligibleForPromotion(nil) {
+		t.Error("IsEligibleForPromotion(nil) = true, want false")
+	}
+}
