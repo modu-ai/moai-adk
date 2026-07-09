@@ -138,7 +138,7 @@ run_phase_scope:
 
 ```yaml
 sync_complete_at: 2026-07-09
-sync_commit_sha: pending-backfill-sync   # orchestrator backfills real SHA in a separate follow-up commit (amend FORBIDDEN — self-referential hazard avoided per repo convention)
+sync_commit_sha: 5f2e5738c   # backfilled from pending-backfill-sync placeholder in follow-up commit (amend FORBIDDEN — self-referential hazard avoided per repo convention); sync commit subject: docs(SPEC-WORKFLOW-LIFECYCLE-001): sync-phase artifacts + 3-phase close
 sync_status: audit-ready
 b12_self_test_a: "grep -c 'SPEC-WORKFLOW-LIFECYCLE-001' CHANGELOG.md → 0 (pre-emission, no duplicate — PASS)"
 b12_self_test_b: "acceptance.md SSOT AC matrix rows = 30 (grep -cE '^\\| AC-WFL-[0-9]+ \\|') — CHANGELOG entry claims 30/30, match — PASS"
