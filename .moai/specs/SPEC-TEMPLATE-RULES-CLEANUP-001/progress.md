@@ -62,7 +62,7 @@ ac_fail_count: 0
 
 ```yaml
 sync_complete_at: 2026-07-09T09:15:00Z
-sync_commit_sha: "0d90fa594"
+sync_commit_sha: "bd97306af"
 sync_status: complete
 frontmatter_status_transitions:
   spec_md: "in-progress → completed (single sync commit, 3-phase close)"
