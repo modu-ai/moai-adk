@@ -13,7 +13,37 @@ ac_count: 33
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — CI Guards (TDD RED baseline)
+
+M1 completed: 2 new guard files authored, 4 guard classes active.
+
+**Guard files:**
+- `internal/template/rule_provenance_audit_test.go` (guards a+b+d)
+- `internal/template/rule_date_provenance_audit_test.go` (guard c)
+
+**RED evidence (pre-cleanup, captured M1):**
+
+Guard (a) REQ/AC-token + (b) lessons/W# + (d) governance-token:
+`go test ./internal/template/ -run TestRuleProvenanceAudit$ -count=1` → **FAIL** (145 occurrences)
+- REQ/AC: AC-ADM-005 (askuser-protocol.md:177), REQ-MIG003-006/REQ-WF006-006/015/011 (settings-management.md), AC-LR-009 (sprint-round-naming.md:23,94)
+- lessons/W#: W3 meta-analysis (agent-common-protocol.md:274), lessons #21 W0 fix / W1/W2 / W3 케이스 / W3에서 (manager-develop-prompt-template.md), lessons #13/#12/#14 (session-handoff.md, spec-workflow.md)
+- governance: 127 CONST-V3R* (zone-registry.md 121+, manager-develop-prompt-template.md 4, worktree-integration.md 2) + MIG-003 (settings-management.md:174)
+
+Guard (c) date-provenance:
+`go test ./internal/template/ -run TestRuleDateProvenance$ -count=1` → **FAIL** (12 occurrences)
+- zone-registry.md:629,630 (removed in M3), constitution.md:12-15 (HISTORY dates), session-handoff.md:330, spec-workflow.md:175,269,427, worktree-integration.md:44,46 (2026-05-17 policy)
+
+**Sentinel output format:** `path | sentinel=SENTINEL | class=NAME | line=N | match=TOKEN`
+- RULE_REQ_AC_TOKEN_LEAK, RULE_PROVENANCE_LEAK, RULE_GOVERNANCE_TOKEN_LEAK, RULE_DATE_PROVENANCE_LEAK
+
+**Recurrence backstop self-tests:** all PASS (TestRuleProvenanceRecurrenceBackstop, TestRuleDateProvenanceRecurrenceBackstop)
+**Tier-ownership contract:** TestRuleDateProvenanceNotInDefaultTier PASS (date NOT in default-tier leakClasses)
+**3 contract tests:** TestRuleTemplateMirrorDrift, TestSanitizedPairParity, TestLeakClassNoDateShaInDefaultTier — all PASS
+**Cross-platform build:** `go build ./...` exit=0, `GOOS=windows GOARCH=amd64 go build ./...` exit=0
+
+RED evidence logs: `.moai/state/verify/cleanup-001/m1-red-provenance.log`, `m1-red-date.log`
+
+### M2-M7 — _(in progress)_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -25,4 +55,6 @@ _<pending sync-phase>_
 
 ## §F Phase 0.95 Mode Selection
 
-_<pending — orchestrator가 첫 run-phase Agent() spawn 전에 Mode Selection 기록>_
+Decision: sub-agent (Mode 5, sequential)
+
+Tier L, coding-heavy Go guard authoring (M1) + sequential milestone dependencies (M1→M2-M5→M6→M7). Per Anthropic coding-task parallelism caveat, sequential sub-agent is the correct default. Agent Teams unavailable (team.enabled default false).

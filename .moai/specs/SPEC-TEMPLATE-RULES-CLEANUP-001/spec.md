@@ -2,7 +2,7 @@
 id: SPEC-TEMPLATE-RULES-CLEANUP-001
 title: "Template-distributed rules cleanup: broken refs, neutrality, backports, retired vocab, design drift + CI guard expansion"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-07-09
 updated: 2026-07-09
 author: GOOS행님
