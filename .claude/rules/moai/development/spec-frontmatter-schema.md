@@ -124,6 +124,7 @@ These fields may be included when needed but are NOT required by `FrontmatterSch
 | `lint.skip` | list | Lint rule codes to skip. Use only for documented debt. |
 | `bc_id` | string | Backward-compatibility tracking ID. |
 | `amendment_of` | string | SPEC ID declaring this SPEC is an in-place amendment of a prior completed SPEC. Self-referential (value = own ID) for in-place amendment; parent SPEC ID for successor amendment. Paired with a HISTORY `## Amendments` sub-section recording prior completed version, prior_completed_sha, rationale, and scope. See Status Transition Ownership Matrix `completed → in-progress (amendment)` row. |
+| `tier` | enum (S\|M\|L) | SPEC complexity Tier classification. Tier S = 2 files (spec.md + plan.md); Tier M = 3 files (spec.md + plan.md + acceptance.md); Tier L = 5 files (spec.md + plan.md + acceptance.md + design.md + research.md). When `tier:` is absent, the SPEC is treated as Tier L for backward compat. See `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier. |
 
 ## Rejected Snake_Case Aliases
 
