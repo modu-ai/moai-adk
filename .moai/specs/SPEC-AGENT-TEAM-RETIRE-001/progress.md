@@ -61,3 +61,11 @@ _<pending run-phase — populated by manager-develop>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase — populated by manager-docs>_
+
+## Plan Audit Gate (Phase 0.5 input)
+
+- plan_complete_at: 2026-07-11T00:00:00+09:00
+- plan_status: audit-ready
+- plan_audit: iter-2 PASS 0.89 (iter-1 FAIL 0.86 → D1-D8 fixed in v0.1.2, commit 254c695e5)
+- skip_eligible: no (< 0.90)
+- run-phase carry-over cautions: R1 (schema_sections.go:412 RawViewBlocks workflow.team.patterns), R2 (spec-workflow.md:107 Mode Dispatch row + CLAUDE.md §4/§15 manual sweep), R3 (delivery.md — only :393 "## Team Mode" is Agent-Teams scope; :285-338 are preserved GitStrategy team-profile prose)
