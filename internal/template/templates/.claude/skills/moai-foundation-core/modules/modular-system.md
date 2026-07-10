@@ -642,17 +642,16 @@ for result in results:
 ## Works Well With
 
 Skills:
-- moai-foundation-progressive-disclosure - Content structuring
-- moai-cc-skill-factory - Skill creation with modular structure
-- moai-foundation-token-optimization - File loading efficiency
+- [moai-foundation-core](../SKILL.md) - Parent skill (see [progressive-disclosure.md](progressive-disclosure.md) and [token-optimization.md](token-optimization.md))
+- [moai-foundation-cc](../../moai-foundation-cc/SKILL.md) - Skill authoring with modular structure (Claude Code authoring kit)
 
 Agents:
-- skill-factory - Create skills with standard file structure
-- docs-manager - Generate documentation following modular pattern
+- builder-harness - Create skills / harness specialists with standard file structure
+- manager-docs - Generate documentation following modular pattern
 
 Commands:
-- /moai:1-plan - SPEC generation with modular docs
-- /moai:3-sync - Documentation sync to modular structure
+- /moai plan - SPEC generation with modular docs
+- /moai sync - Documentation sync to modular structure
 
 Memory:
 - .claude/skills/ - Standard skill location

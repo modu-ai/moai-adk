@@ -18,7 +18,7 @@ metadata:
   version: "1.1.0"
   category: "workflow"
   status: "active"
-  updated: "2026-01-08"
+  updated: "2026-07-10"
   modularized: "true"
   tags: "git, worktree, parallel, development, spec, isolation"
 
@@ -44,7 +44,7 @@ Key Features:
 - Isolated Workspaces: Each SPEC gets its own worktree with independent Git state
 - Automatic Registration: Worktree registry tracks all active workspaces
 - Parallel Development: Multiple SPECs can be developed simultaneously
-- Seamless Integration: Works with /moai:1-plan, /moai:2-run, /moai:3-sync workflow
+- Seamless Integration: Works with /moai plan, /moai run, /moai sync workflow
 - Smart Synchronization: Automatic sync with base branch when needed
 - Cleanup Automation: Automatic cleanup of merged worktrees
 
@@ -120,11 +120,11 @@ Purpose: Enable true parallel development without context switching.
 
 Workflow Integration:
 
-During the Plan Phase using /moai:1-plan, the SPEC is created and the worktree new command sets up automatic worktree isolation.
+During the Plan Phase using /moai plan, the SPEC is created and the worktree new command sets up automatic worktree isolation.
 
 During the Development Phase, the isolated worktree environment provides independent Git state with zero context switching overhead.
 
-During the Sync Phase using /moai:3-sync, the worktree sync command ensures clean integration with conflict resolution support.
+During the Sync Phase using /moai sync, the worktree sync command ensures clean integration with conflict resolution support.
 
 During the Cleanup Phase, the worktree clean command provides automatic cleanup with registry maintenance.
 
@@ -138,7 +138,7 @@ Parallel Development Benefits:
 
 Example Workflow:
 
-First, create a worktree for SPEC-001 with a description like "User Authentication" and switch to that directory. Then run /moai:2-run SPEC-001 to develop in isolation. Next, navigate back to the main repository and create another worktree for SPEC-002 with description "Payment Integration". Switch to that worktree and run /moai:2-run SPEC-002 for parallel development. When needed, switch between worktrees and continue development. Finally, sync both worktrees when ready for integration.
+First, create a worktree for SPEC-001 with a description like "User Authentication" and switch to that directory. Then run /moai run SPEC-001 to develop in isolation. Next, navigate back to the main repository and create another worktree for SPEC-002 with description "Payment Integration". Switch to that worktree and run /moai run SPEC-002 for parallel development. When needed, switch between worktrees and continue development. Finally, sync both worktrees when ready for integration.
 
 Detailed Reference: Refer to Parallel Development Module at modules/parallel-development.md
 
@@ -150,11 +150,11 @@ Purpose: Seamless integration with MoAI-ADK Plan-Run-Sync workflow.
 
 Integration Points:
 
-During Plan Phase Integration with /moai:1-plan, after SPEC creation, create the worktree using the new command with the SPEC ID. The output provides guidance for switching to the worktree using either the switch command or the shell eval pattern with the go command.
+During Plan Phase Integration with /moai plan, after SPEC creation, create the worktree using the new command with the SPEC ID. The output provides guidance for switching to the worktree using either the switch command or the shell eval pattern with the go command.
 
-During Development Phase with /moai:2-run, worktree isolation provides a clean development environment with independent Git state preventing conflicts and automatic registry tracking.
+During Development Phase with /moai run, worktree isolation provides a clean development environment with independent Git state preventing conflicts and automatic registry tracking.
 
-During Sync Phase with /moai:3-sync, before PR creation run the sync command for the SPEC. After PR merge, run the clean command with the merged-only flag to remove completed worktrees.
+During Sync Phase with /moai sync, before PR creation run the sync command for the SPEC. After PR merge, run the clean command with the merged-only flag to remove completed worktrees.
 
 Auto-Detection Patterns:
 
@@ -269,16 +269,16 @@ For faster worktree creation, use the shallow flag with a depth value for shallo
 ## Works Well With
 
 Commands:
-- moai:1-plan - SPEC creation with automatic worktree setup
-- moai:2-run - Development in isolated worktree environment
-- moai:3-sync - Integration with automatic worktree sync
-- moai:9-feedback - Worktree workflow improvements
+- /moai plan - SPEC creation with automatic worktree setup
+- /moai run - Development in isolated worktree environment
+- /moai sync - Integration with automatic worktree sync
+- /moai feedback - Worktree workflow improvements
 
 Skills:
 - moai-foundation-core - Parallel development patterns
 - moai-workflow-project - Project management integration
 - moai-workflow-spec - SPEC-driven development
-- moai-git-strategy - Git workflow optimization
+- moai-ref-git-workflow - Git workflow optimization
 
 Tools:
 - Git worktree - Native Git worktree functionality
@@ -289,7 +289,7 @@ Tools:
 
 ## Quick Decision Guide
 
-For new SPEC development, use the worktree isolation pattern with auto-setup. The primary approach is worktree isolation and the supporting pattern is integration with /moai:1-plan.
+For new SPEC development, use the worktree isolation pattern with auto-setup. The primary approach is worktree isolation and the supporting pattern is integration with /moai plan.
 
 For parallel development across multiple SPECs, use multiple worktrees with shell integration. The primary approach is maintaining multiple worktrees and the supporting pattern is fast switching between them.
 

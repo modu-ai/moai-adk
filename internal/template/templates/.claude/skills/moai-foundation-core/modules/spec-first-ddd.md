@@ -11,15 +11,15 @@ Last Updated: 2026-01-17
 
 SPEC-First DDD is MoAI-ADK's development methodology combining:
 
-1. SPEC Generation - GEARS format requirements (current; EARS as legacy reference) (/moai:1-plan)
-2. Domain-Driven Development - ANALYZE-PRESERVE-IMPROVE (/moai:2-run)
-3. Documentation Sync - Auto-generated docs (/moai:3-sync)
+1. SPEC Generation - GEARS format requirements (current; EARS as legacy reference) (/moai plan)
+2. Domain-Driven Development - ANALYZE-PRESERVE-IMPROVE (/moai run)
+3. Documentation Sync - Auto-generated docs (/moai sync)
 
 Three-Phase Workflow:
 ```
-Phase 1: SPEC → spec-builder → .moai/specs/SPEC-XXX/spec.md
-Phase 2: DDD  → ddd-implementer → Code + Tests (≥85% coverage)
-Phase 3: Docs → docs-manager → API docs + diagrams
+Phase 1: SPEC → manager-spec → .moai/specs/SPEC-XXX/spec.md
+Phase 2: DDD  → manager-develop (cycle_type=ddd) → Code + Tests (≥85% coverage)
+Phase 3: Docs → manager-docs → API docs + diagrams
 ```
 
 Token Budget: SPEC 30K | DDD 180K | Docs 40K | Total 250K
@@ -58,9 +58,9 @@ Purpose: Define clear, testable requirements in GEARS format (current; EARS lega
 Workflow:
 ```bash
 # 1. Generate SPEC
-/moai:1-plan "Implement user authentication with JWT tokens"
+/moai plan "Implement user authentication with JWT tokens"
 
-# 2. spec-builder creates:
+# 2. manager-spec creates:
 .moai/specs/SPEC-001/
     spec.md           # GEARS format requirements (current; EARS for legacy SPECs)
     acceptance.md     # Acceptance criteria
@@ -143,9 +143,9 @@ pytest tests/auth/test_registration.py --cov=src/auth/registration --cov-report=
 Workflow:
 ```bash
 # 1. Generate documentation
-/moai:3-sync SPEC-001
+/moai sync SPEC-001
 
-# 2. docs-manager creates:
+# 2. manager-docs creates:
 .moai/specs/SPEC-001/
     docs/
         api.md           # API reference
@@ -169,18 +169,18 @@ For comprehensive implementation patterns including MFA examples, iterative SPEC
 ## Works Well With
 
 Agents:
-- spec-builder - GEARS format SPEC generation (current; EARS as legacy reference)
-- ddd-implementer - ANALYZE-PRESERVE-IMPROVE execution
-- quality-gate - TRUST 5 validation
-- docs-manager - Documentation generation
+- manager-spec - GEARS format SPEC generation (current; EARS as legacy reference)
+- manager-develop - ANALYZE-PRESERVE-IMPROVE execution (cycle_type=ddd)
+- sync-auditor - TRUST 5 validation
+- manager-docs - Documentation generation
 
 Skills:
 - moai-workflow-testing - Test frameworks
 
 Commands:
-- /moai:1-plan - SPEC generation (Phase 1)
-- /moai:2-run - DDD implementation (Phase 2)
-- /moai:3-sync - Documentation sync (Phase 3)
+- /moai plan - SPEC generation (Phase 1)
+- /moai run - DDD implementation (Phase 2)
+- /moai sync - Documentation sync (Phase 3)
 - /clear - Token optimization between phases
 
 ---

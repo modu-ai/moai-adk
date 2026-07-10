@@ -18,7 +18,7 @@ Parallel Development Benefits:
 
 Core Workflow:
 
-To set up parallel development, create worktrees for each SPEC using moai-worktree new with the SPEC ID and description. For parallel execution, navigate to each worktree using moai-worktree go and run /moai:2-run in separate terminals or background processes. For integration, use moai-worktree sync --all to synchronize all worktrees, then clean up merged worktrees with moai-worktree clean --merged-only.
+To set up parallel development, create worktrees for each SPEC using moai-worktree new with the SPEC ID and description. For parallel execution, navigate to each worktree using moai-worktree go and run /moai run in separate terminals or background processes. For integration, use moai-worktree sync --all to synchronize all worktrees, then clean up merged worktrees with moai-worktree clean --merged-only.
 
 ---
 

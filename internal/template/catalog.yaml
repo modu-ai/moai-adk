@@ -16,12 +16,12 @@ catalog:
             - name: moai-foundation-core
               tier: core
               path: templates/.claude/skills/moai-foundation-core/
-              hash: 6f74da2d52e8e8d5165ef5a05bae33c622d74d4884cb804102dddfae2a3dc015
+              hash: 227f929e572466756c5ddffcd400b8fc0ce114b7b435707196d0e2997759aaaa
               version: 1.0.0
             - name: moai-foundation-quality
               tier: core
               path: templates/.claude/skills/moai-foundation-quality/
-              hash: 16244e07cf28c108bb486b99090f3e4829cf8f2a2e63ae3b0d65f188af68cb59
+              hash: 1305b005152acd1515605b3308809f0b72debf0d5dde4838309964e359b3f85a
               version: 1.0.0
             - name: moai-foundation-thinking
               tier: core
@@ -61,7 +61,7 @@ catalog:
             - name: moai-workflow-loop
               tier: core
               path: templates/.claude/skills/moai-workflow-loop/
-              hash: 660b25c261a05d8e8d5f5273585e044fb16d1792fae8df5743359e1b008a7e49
+              hash: 50002433e0833f114c691a52a898d7069c5112927ee24537032e94104139fd9d
               version: 1.0.0
             - name: moai-workflow-project
               tier: core
@@ -71,7 +71,7 @@ catalog:
             - name: moai-workflow-spec
               tier: core
               path: templates/.claude/skills/moai-workflow-spec/
-              hash: d20641aae2d6d8e586f88390e19cc8fec078c1f4898a4f27e243b64e184b6812
+              hash: e1269902caaf0df910cffcd041dbfe36edc31a9e4c445dc23f6cd9e3f34c6f79
               version: 1.0.0
             - name: moai-workflow-tdd
               tier: core
@@ -81,12 +81,12 @@ catalog:
             - name: moai-workflow-testing
               tier: core
               path: templates/.claude/skills/moai-workflow-testing/
-              hash: 26d90aeea14cc14eeb26d2e6ce63397adee941d1856389702d66351230a4846d
+              hash: 400d5eed54c3831fcf85b50add528374465983235d5591d423da24db15fcb5a9
               version: 1.0.0
             - name: moai-workflow-worktree
               tier: core
               path: templates/.claude/skills/moai-workflow-worktree/
-              hash: 4fccb160bec48762850401c9cc4a1bb66da2623499d08b3af351571d15660658
+              hash: 4489c28d1e30a3c1a512c0ca1887cc5e8964931c78db30e6bfa1f62d9eb39a77
               version: 1.0.0
             - name: moai-domain-html-report
               tier: core
@@ -107,7 +107,7 @@ catalog:
             - name: manager-docs
               tier: core
               path: templates/.claude/agents/moai/manager-docs.md
-              hash: 8f7a0ffe3b7e875a5dda03a782dd35e51ba67a9101a7509142686875e2ddcdd0
+              hash: a18f2093c390be4271c8bb80c2fd66a68dc935226bd11e559403db00cc5fa51b
               version: 1.0.0
             - name: manager-git
               tier: core

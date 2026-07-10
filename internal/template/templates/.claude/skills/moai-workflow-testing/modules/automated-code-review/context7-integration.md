@@ -4,7 +4,7 @@
 > Parent: [Automated Code Review](../automated-code-review.md)
 > Complexity: Advanced
 > Time: 20+ minutes
-> Dependencies: Python 3.8+, Context7 MCP client
+> Dependencies: Context7 MCP client
 
 ## Quick Reference
 
@@ -13,69 +13,36 @@
 Context7 MCP provides real-time access to:
 - OWASP Top 10 security vulnerability patterns
 - Semgrep security detection rules
-- SonarQube code quality standards
+- SonarQube / Sonar code quality standards
 - Performance optimization libraries
 - TRUST 5 validation frameworks
 
 ### Core Integration Pattern
 
-```python
+```text
 class Context7CodeAnalyzer:
-    """Integration with Context7 for code analysis patterns."""
+    context7
+    analysis_patterns    = {}
+    security_patterns    = {}
+    performance_patterns = {}
 
-    def __init__(self, context7_client=None):
-        self.context7 = context7_client
-        self.analysis_patterns = {}
-        self.security_patterns = {}
-        self.performance_patterns = {}
-
-    async def load_analysis_patterns(self, language: str = "python") -> Dict[str, Any]:
-        """Load code analysis patterns from Context7."""
-
-        if not self.context7:
-            return self._get_default_analysis_patterns()
-
+    load_analysis_patterns(language = "python"):
+        if context7 is none: return default_analysis_patterns()
         try:
-            # Load security analysis patterns
-            security_patterns = await self.context7.get_library_docs(
-                context7_library_id="/security/semgrep",
-                topic="security vulnerability detection patterns 2025",
-                tokens=4000
-            )
-            self.security_patterns = security_patterns
-
-            # Load performance analysis patterns
-            performance_patterns = await self.context7.get_library_docs(
-                context7_library_id="/performance/python-profiling",
-                topic="performance anti-patterns code analysis 2025",
-                tokens=3000
-            )
-            self.performance_patterns = performance_patterns
-
-            # Load code quality patterns
-            quality_patterns = await self.context7.get_library_docs(
-                context7_library_id="/code-quality/sonarqube",
-                topic="code quality best practices smells detection 2025",
-                tokens=4000
-            )
-
-            # Load TRUST 5 validation patterns
-            trust_patterns = await self.context7.get_library_docs(
-                context7_library_id="/code-review/trust-framework",
-                topic="TRUST 5 code validation framework patterns 2025",
-                tokens=3000
-            )
-
-            return {
-                'security': security_patterns,
-                'performance': performance_patterns,
-                'quality': quality_patterns,
-                'trust': trust_patterns
-            }
-
-        except Exception as e:
-            print(f"Failed to load Context7 patterns: {e}")
-            return self._get_default_analysis_patterns()
+            security    = context7.get_library_docs("<security/semgrep>",
+                            topic="security vulnerability detection patterns", tokens=4000)
+            performance = context7.get_library_docs("<performance/profiling>",
+                            topic="performance anti-patterns code analysis", tokens=3000)
+            quality     = context7.get_library_docs("<code-quality/sonarqube>",
+                            topic="code quality best practices smells detection", tokens=4000)
+            trust       = context7.get_library_docs("<code-review/trust-framework>",
+                            topic="TRUST 5 code validation framework patterns", tokens=3000)
+            security_patterns    = security
+            performance_patterns = performance
+            return { security, performance, quality, trust }
+        except e:
+            log("Failed to load Context7 patterns: " + e)
+            return default_analysis_patterns()
 ```
 
 ---
@@ -84,48 +51,37 @@ class Context7CodeAnalyzer:
 
 ### OWASP Top 10 Patterns
 
-```python
-async def load_owasp_patterns(self) -> Dict[str, Any]:
-    """Load OWASP Top 10 vulnerability patterns."""
-
-    owasp_patterns = await self.context7.get_library_docs(
-        context7_library_id="/security/owasp",
-        topic="OWASP Top 10 2021 vulnerability detection patterns",
-        tokens=5000
-    )
-
+```text
+load_owasp_patterns():
+    owasp = context7.get_library_docs("<security/owasp>",
+                topic="OWASP Top 10 vulnerability detection patterns", tokens=5000)
     return {
-        'a01_injection': owasp_patterns.get('injection', []),
-        'a02_broken_auth': owasp_patterns.get('authentication', []),
-        'a03_injection_data': owasp_patterns.get('data_injection', []),
-        'a04_xss': owasp_patterns.get('xss', []),
-        'a05_security_misconfig': owasp_patterns.get('misconfiguration', []),
-        'a06_old_components': owasp_patterns.get('outdated', []),
-        'a07_auth_failures': owasp_patterns.get('auth_failure', []),
-        'a08_data_failures': owasp_patterns.get('data_failure', []),
-        'a09_security_logging': owasp_patterns.get('logging', []),
-        'a10_ssrf': owasp_patterns.get('ssrf', [])
+        a01_injection:        owasp.injection default [],
+        a02_broken_auth:      owasp.authentication default [],
+        a03_injection_data:   owasp.data_injection default [],
+        a04_xss:              owasp.xss default [],
+        a05_security_misconfig: owasp.misconfiguration default [],
+        a06_old_components:   owasp.outdated default [],
+        a07_auth_failures:    owasp.auth_failure default [],
+        a08_data_failures:    owasp.data_failure default [],
+        a09_security_logging: owasp.logging default [],
+        a10_ssrf:             owasp.ssrf default []
     }
 ```
 
 ### Semgrep Rule Integration
 
-```python
-async def load_semgrep_rules(self) -> Dict[str, Any]:
-    """Load Semgrep security rules."""
-
-    semgrep_rules = await self.context7.get_library_docs(
-        context7_library_id="/security/semgrep",
-        topic="Semgrep Python security rules 2025",
-        tokens=6000
-    )
-
+```text
+load_semgrep_rules():
+    # Semgrep rules are language-aware; select the ruleset for the host language.
+    semgrep = context7.get_library_docs("<security/semgrep>",
+                topic="Semgrep security rules for <language>", tokens=6000)
     return {
-        'injection_rules': semgrep_rules.get('injection', []),
-        'crypto_rules': semgrep_rules.get('crypto', []),
-        'authentication_rules': semgrep_rules.get('auth', []),
-        'resource_rules': semgrep_rules.get('resource', []),
-        'serialization_rules': semgrep_rules.get('serialization', [])
+        injection_rules:     semgrep.injection default [],
+        crypto_rules:        semgrep.crypto default [],
+        authentication_rules:semgrep.auth default [],
+        resource_rules:      semgrep.resource default [],
+        serialization_rules: semgrep.serialization default []
     }
 ```
 
@@ -133,24 +89,18 @@ async def load_semgrep_rules(self) -> Dict[str, Any]:
 
 ## Quality Pattern Integration
 
-### SonarQube Quality Rules
+### SonarQube / Sonar Quality Rules
 
-```python
-async def load_sonarqube_rules(self) -> Dict[str, Any]:
-    """Load SonarQube code quality rules."""
-
-    sonarqube_rules = await self.context7.get_library_docs(
-        context7_library_id="/code-quality/sonarqube",
-        topic="SonarQube Python quality rules code smells 2025",
-        tokens=5000
-    )
-
+```text
+load_sonarqube_rules():
+    rules = context7.get_library_docs("<code-quality/sonarqube>",
+                topic="SonarQube quality rules code smells for <language>", tokens=5000)
     return {
-        'complexity_rules': sonarqube_rules.get('complexity', []),
-        'maintainability_rules': sonarqube_rules.get('maintainability', []),
-        'reliability_rules': sonarqube_rules.get('reliability', []),
-        'security_rules': sonarqube_rules.get('security', []),
-        'style_rules': sonarqube_rules.get('style', [])
+        complexity_rules:      rules.complexity default [],
+        maintainability_rules: rules.maintainability default [],
+        reliability_rules:     rules.reliability default [],
+        security_rules:        rules.security default [],
+        style_rules:           rules.style default []
     }
 ```
 
@@ -160,21 +110,15 @@ async def load_sonarqube_rules(self) -> Dict[str, Any]:
 
 ### Profiling Best Practices
 
-```python
-async def load_performance_patterns(self) -> Dict[str, Any]:
-    """Load performance optimization patterns."""
-
-    performance_patterns = await self.context7.get_library_docs(
-        context7_library_id="/performance/python-profiling",
-        topic="Python performance profiling optimization patterns 2025",
-        tokens=5000
-    )
-
+```text
+load_performance_patterns():
+    perf = context7.get_library_docs("<performance/profiling>",
+                topic="<language> performance profiling optimization patterns", tokens=5000)
     return {
-        'anti_patterns': performance_patterns.get('anti_patterns', []),
-        'optimization_techniques': performance_patterns.get('optimizations', []),
-        'profiling_strategies': performance_patterns.get('profiling', []),
-        'benchmarking_methods': performance_patterns.get('benchmarking', [])
+        anti_patterns:           perf.anti_patterns default [],
+        optimization_techniques: perf.optimizations default [],
+        profiling_strategies:    perf.profiling default [],
+        benchmarking_methods:    perf.benchmarking default []
     }
 ```
 
@@ -182,42 +126,25 @@ async def load_performance_patterns(self) -> Dict[str, Any]:
 
 ## Error Handling and Fallbacks
 
-```python
-def _get_default_analysis_patterns(self) -> Dict[str, Any]:
-    """Get default analysis patterns when Context7 is unavailable."""
+Default patterns when Context7 is unavailable. The regexes below are illustrative shapes; populate per-language patterns that match the host language's idioms.
 
+```text
+default_analysis_patterns():
     return {
-        'security': {
-            'sql_injection': [
-                r"execute\([^)]*\+[^)]*\)",
-                r"format\s*\(",
-                r"%\s*[^,]*s"
-            ],
-            'command_injection': [
-                r"os\.system\(",
-                r"subprocess\.call\(",
-                r"eval\("
-            ],
-            'path_traversal': [
-                r"open\([^)]*\+[^)]*\)",
-                r"\.\.\/"
-            ]
-        },
-        'performance': {
-            'inefficient_loops': [
-                r"for.*in.*range\(len\(",
-                r"while.*len\("
-            ],
-            'memory_leaks': [
-                r"global\s+",
-                r"\.append\(.*\)\s*\.append\("
-            ]
-        },
-        'quality': {
-            'long_functions': {'max_lines': 50},
-            'complex_conditionals': {'max_complexity': 10},
-            'deep_nesting': {'max_depth': 4}
-        }
+      security: {
+        sql_injection:    ["query-execute with string concatenation", "format() inside execute"],
+        command_injection:["shell-exec call", "subprocess call", "eval call"],
+        path_traversal:   ["file-open with concatenation", "../ reference"]
+      },
+      performance: {
+        inefficient_loops: ["index-iterated loop where a for-each suffices", "while on length"],
+        memory_leaks:      ["unbounded growth", "global accumulation"]
+      },
+      quality: {
+        long_functions:       { max_lines: 50 },
+        complex_conditionals: { max_complexity: 10 },
+        deep_nesting:         { max_depth: 4 }
+      }
     }
 ```
 
@@ -225,36 +152,20 @@ def _get_default_analysis_patterns(self) -> Dict[str, Any]:
 
 ## Caching Strategy
 
-```python
-class CachedContext7Analyzer(Context7CodeAnalyzer):
-    """Context7 analyzer with pattern caching."""
+```text
+class CachedContext7Analyzer(Context7CodeAnalyzer, cache_duration_hours = 24):
+    cache_duration = cache_duration_hours * 3600
+    pattern_cache  = {}
 
-    def __init__(self, context7_client=None, cache_duration_hours=24):
-        super().__init__(context7_client)
-        self.cache_duration = cache_duration_hours * 3600
-        self.pattern_cache = {}
-
-    async def load_analysis_patterns(self, language: str = "python") -> Dict[str, Any]:
-        """Load patterns with caching."""
-
-        cache_key = f"{language}_patterns"
-        cached_data = self.pattern_cache.get(cache_key)
-
-        # Check if cache is valid
-        if cached_data:
-            cache_age = time.time() - cached_data['timestamp']
-            if cache_age < self.cache_duration:
-                return cached_data['patterns']
-
+    load_analysis_patterns(language = "python"):
+        cache_key = language + "_patterns"
+        cached = pattern_cache.get(cache_key)
+        # Check cache validity
+        if cached and (now() - cached.timestamp) < cache_duration:
+            return cached.patterns
         # Load fresh patterns
-        patterns = await super().load_analysis_patterns(language)
-
-        # Cache the patterns
-        self.pattern_cache[cache_key] = {
-            'patterns': patterns,
-            'timestamp': time.time()
-        }
-
+        patterns = super().load_analysis_patterns(language)
+        pattern_cache[cache_key] = { patterns, timestamp: now() }
         return patterns
 ```
 

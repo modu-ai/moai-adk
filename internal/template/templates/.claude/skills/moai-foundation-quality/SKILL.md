@@ -1,25 +1,26 @@
 ---
 name: moai-foundation-quality
 description: >
-  Code quality orchestrator enforcing TRUST 5 validation, proactive code analysis,
-  linting standards, and automated best practices. Use for code review, quality
-  gate checks, or TRUST 5 compliance.
+  TRUST 5 quality principles and how MoAI enforces them through agents,
+  the 3-level harness, /moai gate, and sync-auditor scoring. Use for code
+  review, quality gate checks, coverage targets, or TRUST 5 compliance.
 
 when_to_use: >
-  Use for code-quality orchestration: TRUST 5 validation, proactive code
-  analysis, linting standards, coverage targets, pytest, security checks,
-  CI/CD quality gates, code-smell detection, and technical-debt
-  refactoring.
+  Use for code-quality guidance: TRUST 5 principles (Tested, Readable,
+  Unified, Secured, Trackable), the 3-level harness (minimal/standard/
+  thorough), /moai gate (lint+format+type+test), coverage targets,
+  security checks, language-aware toolchains, code-smell detection, and
+  technical-debt triage.
 
 license: Apache-2.0
 compatibility: Designed for Claude Code
 allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 user-invocable: false
 metadata:
-  version: "2.2.0"
+  version: "3.0.0"
   category: "foundation"
   status: "active"
-  updated: "2026-01-11"
+  updated: "2026-07-10"
   modularized: "true"
   tags: "foundation, quality, testing, validation, trust-5, best-practices, code-review"
   aliases: "moai-foundation-quality"
@@ -31,167 +32,180 @@ progressive_disclosure:
   level2_tokens: 5000
 ---
 
-# Enterprise Code Quality Orchestrator
+# TRUST 5 Quality Principles and Enforcement
 
-Enterprise-grade code quality management system that combines systematic code review, proactive improvement suggestions, and automated best practices enforcement. Provides comprehensive quality assurance through TRUST 5 framework validation with Context7 integration for real-time best practices.
+This skill provides background knowledge on MoAI's quality model: the five
+TRUST 5 principles, how agents enforce them, the 3-level harness, and the
+language-aware toolchains that `/moai gate` runs. MoAI does NOT ship a
+quality-validation library — quality is enforced through agents
+(`manager-develop`, `sync-auditor`), slash commands (`/moai gate`,
+`/moai review`), and the harness (minimal/standard/thorough).
 
-## Quick Reference (30 seconds)
+## Quick Reference
 
-Core Capabilities:
+**TRUST 5 Principles** (Tested, Readable, Unified, Secured, Trackable) are
+quality dimensions, not code objects. Every code change is evaluated against
+all five.
 
-- TRUST 5 Validation: Testable, Readable, Unified, Secured, Trackable quality gates
-- Proactive Analysis: Automated issue detection and improvement suggestions
-- Best Practices Enforcement: Context7-powered real-time standards validation
-- Multi-Language Support: 25+ programming languages with specialized rules
-- Enterprise Integration: CI/CD pipelines, quality metrics, reporting
+**Quality Mechanisms** (the real enforcement layer):
 
-Key Patterns:
+- `/moai gate` — runs lint + format + type-check + test in parallel as a
+  pre-commit quality gate (<30s). Auto-detects the project language and runs
+  the appropriate toolchain.
+- `manager-develop` (run-phase) — implements via `cycle_type` ∈ {tdd, ddd,
+  autofix}; the chosen cycle shapes how tests and behavior are produced.
+- `sync-auditor` — independent skeptical quality assessment with 4-dimension
+  scoring (Functionality, Security, Craft, Consistency), scored as the
+  harmonic mean of dimensions, not the average.
+- 3-level harness — minimal (fast validation), standard (default checks),
+  thorough (full sync-auditor + TRUST 5). Auto-determined by the Complexity
+  Estimator based on SPEC scope.
+- LSP quality gates — phase-specific thresholds (run: zero errors/type-errors/
+  lint-errors; sync: zero errors, max 10 warnings, clean LSP).
 
-- Quality Gate Pipeline: Automated validation with configurable thresholds
-- Proactive Scanner: Continuous analysis with improvement recommendations
-- Best Practices Engine: Context7-driven standards enforcement
-- Quality Metrics Dashboard: Comprehensive reporting and trend analysis
+## The MoAI Quality Model
 
-When to Use:
+MoAI does not provide a Python SDK or any library for quality validation.
+Quality is enforced through the workflow, the agents, and the gate commands.
+This skill documents how those pieces fit together so a Claude invocation
+can reason about quality correctly.
 
-- Code review automation and quality gate enforcement
-- Proactive code quality improvement and technical debt reduction
-- Enterprise coding standards enforcement and compliance validation
-- CI/CD pipeline integration with automated quality checks
+### How TRUST 5 is enforced per phase
 
-Quick Access:
+| Phase | Quality check | Owner |
+|-------|--------------|-------|
+| plan | Capture LSP baseline; identify quality risks in the plan | manager-spec |
+| run | Zero errors/type-errors/lint-errors; tests pass; coverage met | manager-develop (cycle_type shapes the approach) |
+| sync | Lint clean (≤10 warnings); docs updated; TRUST 5 re-affirmed | manager-docs, then sync-auditor scores |
+| audit | Independent 4-dimension scoring (Functionality/Security/Craft/Consistency) | sync-auditor |
 
-- TRUST 5 Framework: See [trust5-validation.md](modules/trust5-validation.md)
-- Proactive Analysis: See [proactive-analysis.md](modules/proactive-analysis.md)
-- Best Practices: See [best-practices.md](modules/best-practices.md)
-- Integration Patterns: See [integration-patterns.md](modules/integration-patterns.md)
+### cycle_type and quality (manager-develop)
 
-## Implementation Guide
+The run-phase `cycle_type` selects how quality is built in:
 
-### Getting Started
+- **tdd** — Test-Driven Development (RED-GREEN-REFACTOR). Behavior is
+  specified by a failing test first, then implemented. Best for new features.
+- **ddd** — Domain-Driven refactoring (ANALYZE-PRESERVE-IMPROVE).
+  Behavior-preserving transformation of existing code. Best for refactoring
+  and debt reduction.
+- **autofix** — diagnostic-driven fixing (LSP / lint / type errors). Best for
+  `/moai fix` and regression recovery.
 
-Basic Quality Validation: Initialize QualityOrchestrator with trust5_enabled, proactive_analysis, best_practices_enforcement, and context7_integration all set to True. Call analyze_codebase method with path parameter set to source directory, languages list including python, javascript, and typescript, and quality_threshold of 0.85. The method returns comprehensive quality results.
+See Skill("moai-workflow-tdd"), Skill("moai-workflow-ddd"), and
+Skill("moai-workflow-loop") for the per-cycle mechanics.
 
-For quality gate validation with TRUST 5, create QualityGate instance and call validate_trust5 with codebase_path, test_coverage_threshold of 0.90, and complexity_threshold of 10.
+## TRUST 5 Principles
 
-Proactive Quality Analysis: Initialize ProactiveQualityScanner with context7_client and BestPracticesEngine rule_engine. Call scan_codebase with path and scan_types list including security, performance, maintainability, and testing. Generate recommendations by calling generate_recommendations with issues, priority set to high, and auto_fix enabled.
+TRUST 5 is a mnemonic for five quality dimensions. Treat each as a question
+to ask of any change, not a score to compute.
 
-### Core Components
+- **T — Tested**: Does the change have tests? Are they green? Is coverage at
+  or above the project threshold (85%+ by default)? For existing untested
+  code, are characterization tests capturing current behavior?
+- **R — Readable**: Is naming clear? Are comments in English (or the
+  configured code-comments language)? Could a new contributor follow the
+  logic without a walkthrough?
+- **U — Unified**: Does the change match the file's existing conventions
+  (naming, error handling, imports)? Is it formatted with the project's
+  formatter? Consistency within a file beats personal preference.
+- **S — Secured**: Are all external inputs validated? Does it follow OWASP
+  guidance for web security? Are credentials kept out of version control
+  (environment variables instead)? See moai-ref-owasp-checklist.
+- **T — Trackable**: Does the commit follow Conventional Commits? Does it
+  reference the SPEC / issue it implements? Can the change be traced back to
+  a requirement?
 
-#### Quality Orchestration Engine
+For the per-principle assessment checklist and the "not applicable" guard,
+see [TRUST 5 Principles](modules/trust5-validation.md).
 
-The QualityOrchestrator class provides enterprise quality orchestration with TRUST 5 framework. Initialize with QualityConfig and create instances of TRUST5Validator, ProactiveScanner, BestPracticesEngine, Context7Client, and QualityMetricsCollector.
+## Quality Gates and the 3-Level Harness
 
-The analyze_codebase method performs comprehensive analysis in four phases. Phase 1 runs TRUST 5 validation on the codebase with specified thresholds. Phase 2 performs proactive analysis scanning focus areas. Phase 3 checks best practices for specified languages with Context7 docs enabled. Phase 4 collects comprehensive metrics from all analysis results.
+The harness level controls how deep quality validation goes. It is
+auto-determined by the Complexity Estimator based on SPEC scope.
 
-The method returns QualityResult containing trust5_validation, proactive_analysis, best_practices, metrics, and overall_score calculated from all results.
+| Level | What runs | When |
+|-------|-----------|------|
+| minimal | Fast validation only (lint + type + test) | Small SPECs, low risk |
+| standard | Default checks (lint + type + test + format) | Most SPECs |
+| thorough | Full sync-auditor + 4-dimension TRUST 5 scoring | Large SPECs, high risk |
 
-Detailed implementations available in modules:
+`/moai gate` is the lightweight pre-commit entry point: it runs lint +
+format + type-check + test in parallel and applies no fixes. It is the
+fastest way to get a quality signal. For deeper review use `/moai review`.
 
-- TRUST 5 Validator Implementation in [trust5-validation.md](modules/trust5-validation.md)
-- Proactive Scanner Implementation in [proactive-analysis.md](modules/proactive-analysis.md)
-- Best Practices Engine Implementation in [best-practices.md](modules/best-practices.md)
+## Language-Aware Toolchains
 
-### Configuration and Customization
+The quality gate auto-detects the project language and runs the appropriate
+toolchain. Tools that are not installed are skipped gracefully; projects
+with no recognized language marker pass the gate silently. This skill is
+language-neutral — the 16 supported languages are treated equally.
 
-Quality Configuration: Create quality-config.yaml with quality_orchestration section.
+| Language | Lint | Format | Test |
+|----------|------|--------|------|
+| Go | go vet → golangci-lint | gofmt | go test |
+| Python | ruff | black | pytest |
+| TypeScript / JavaScript | eslint | prettier | jest / mocha |
+| Rust | cargo clippy | rustfmt | cargo test |
+| Java / Kotlin | (per project linter) | (per project) | junit |
+| Ruby | rubocop | rubocop | rspec |
+| PHP | phpstan / phpcs | php-cs-fixer | pest / phpunit |
+| ... | (16 languages supported; auto-detected) | | |
 
-Under trust5_framework, set enabled to true with thresholds for overall (0.85), testable (0.90), readable (0.80), unified (0.85), secured (0.90), and trackable (0.80).
-
-Under proactive_analysis, set enabled true, scan_frequency to daily, and focus_areas list including performance, security, maintainability, and technical_debt.
-
-Under auto_fix, set enabled true, severity_threshold to medium, and confirmation_required to true.
-
-Under best_practices, set enabled true, context7_integration true, auto_update_standards true, and compliance_target to 0.85.
-
-Under language_rules, configure python with pep8 style_guide, black formatter, ruff linter, and mypy type_checker. Configure javascript with airbnb style_guide, prettier formatter, and eslint linter. Configure typescript with google style_guide, prettier formatter, and eslint linter.
-
-Under reporting, set enabled true, metrics_retention_days to 90, trend_analysis true, and executive_dashboard true.
-
-Under notifications, enable quality_degradation, security_vulnerabilities, and technical_debt_increase.
-
-Integration Examples: See [Integration Patterns](modules/integration-patterns.md) for CI/CD Pipeline Integration, GitHub Actions Integration, Quality-as-Service REST API, and Cross-Project Benchmarking.
-
-## Advanced Patterns
-
-### Custom Quality Rules
-
-Create CustomQualityRule class with name, validator callable, and severity defaulting to medium. The validate async method executes the validator on codebase, wrapping in try-except. On success, return RuleResult with rule_name, passed status, severity, details, and recommendations. On exception, return RuleResult with passed false, severity error, error details, and fix recommendation.
-
-See [Best Practices - Custom Rules](modules/best-practices.md#custom-quality-rules) for complete examples.
-
-### Machine Learning Quality Prediction
-
-ML-powered quality issue prediction using code feature extraction and predictive models. See [Proactive Analysis - ML Prediction](modules/proactive-analysis.md#machine-learning-quality-prediction) for implementation details.
-
-### Real-time Quality Monitoring
-
-Continuous quality monitoring with automated alerting for quality degradation and security vulnerabilities. See [Proactive Analysis - Real-time Monitoring](modules/proactive-analysis.md#real-time-quality-monitoring) for implementation details.
-
-### Cross-Project Quality Benchmarking
-
-Compare project quality metrics against similar projects in your industry. See [Integration Patterns - Benchmarking](modules/integration-patterns.md#cross-project-quality-benchmarking) for implementation details.
+For the full toolchain mapping and how `/moai gate` detects the language,
+see [Language-Aware Toolchains](references/reference.md#language-aware-toolkchains).
 
 ## Module Reference
 
-### Core Modules
+Each module is loaded on demand. Load the one relevant to the current task.
 
-- [TRUST 5 Validation](modules/trust5-validation.md) - Comprehensive quality framework validation
-- [Proactive Analysis](modules/proactive-analysis.md) - Automated issue detection and improvements
-- [Best Practices](modules/best-practices.md) - Context7-powered standards enforcement
-- [Integration Patterns](modules/integration-patterns.md) - CI/CD and enterprise integrations
+- [TRUST 5 Principles](modules/trust5-validation.md) — the five dimensions as
+  assessment questions, per-principle checklists, and the "not applicable"
+  guard.
+- [Proactive Analysis](modules/proactive-analysis.md) — how `/moai gate`,
+  `/moai review`, and `/moai loop` surface quality issues proactively, and
+  how to triage findings.
+- [Best Practices](modules/best-practices.md) — using Context7 MCP for
+  up-to-date framework/library best practices, and validating against them.
+- [Integration Patterns](modules/integration-patterns.md) — how quality fits
+  into the SPEC workflow phases (plan/run/sync) and the harness levels.
 
-### Key Components by Module
+## Reference Files
 
-TRUST 5 Validation: TRUST5Validator for five-pillar quality validation, TestableValidator for test coverage and quality, SecuredValidator for security and OWASP compliance, and quality gate pipeline integration.
-
-Proactive Analysis: ProactiveQualityScanner for automated issue detection, QualityPredictionEngine for ML-powered predictions, RealTimeQualityMonitor for continuous monitoring, and performance and maintainability analysis.
-
-Best Practices: BestPracticesEngine for standards validation, Context7 integration for latest docs, custom quality rules, and language-specific validators.
-
-Integration Patterns: CI/CD pipeline integration, GitHub Actions workflows, Quality-as-Service REST API, and cross-project benchmarking.
-
-## Context7 Library Mappings
-
-Essential library mappings for quality analysis tools and frameworks. See [Best Practices - Library Mappings](modules/best-practices.md#context7-library-mappings) for complete list.
+- [examples.md](references/examples.md) — worked TRUST 5 assessment examples
+  and gate/review triage walkthroughs. Load when applying TRUST 5 to a
+  concrete change.
+- [reference.md](references/reference.md) — the quality-mechanism reference:
+  harness level detail, language toolchain table, agent roles, and the
+  sync-auditor scoring model. Load when you need the authoritative mapping.
 
 ## Works Well With
 
-Agents:
+Agents (see CLAUDE.md §4 for the 10-agent catalog):
 
-- core-planner - Quality requirements planning
-- workflow-ddd - DDD implementation validation
-- security-expert - Security vulnerability analysis
-- code-backend - Backend code quality
-- code-frontend - Frontend code quality
+- `manager-develop` — run-phase implementation; owns the Tested and Unified
+  principles through cycle_type.
+- `sync-auditor` — independent 4-dimension quality scoring (Functionality /
+  Security / Craft / Consistency).
+- `Explore` (Anthropic built-in) — read-only codebase exploration before
+  assessing quality.
 
 Skills:
 
-- moai-foundation-core - TRUST 5 framework reference
-- moai-workflow-ddd - DDD workflow validation
-- moai-security-owasp - Security compliance
-- moai-context7-integration - Context7 best practices
-- moai-performance-optimization - Performance analysis
+- `moai-foundation-core` — TRUST 5 framework cross-reference and SPEC
+  workflow foundations.
+- `moai-ref-testing-pyramid` — test-pyramid strategy, coverage targets, and
+  test patterns.
+- `moai-ref-owasp-checklist` — OWASP Top 10 security checklist for the
+  Secured principle.
+- `moai-workflow-tdd` / `moai-workflow-ddd` / `moai-workflow-loop` — the
+  cycle_type workflows that manager-develop uses.
 
 Commands:
 
-- /moai:2-run - DDD validation integration
-- /moai:3-sync - Documentation quality checks
-- /moai:9-feedback - Quality improvement feedback
-
-## Quick Reference Summary
-
-Core Capabilities: TRUST 5 validation, proactive scanning, Context7-powered best practices, multi-language support, enterprise integration
-
-Key Classes: QualityOrchestrator, TRUST5Validator, ProactiveQualityScanner, BestPracticesEngine, QualityMetricsCollector
-
-Essential Methods: analyze_codebase(), validate_trust5(), scan_for_issues(), validate_best_practices(), generate_quality_report()
-
-Integration Ready: CI/CD pipelines, GitHub Actions, REST APIs, real-time monitoring, cross-project benchmarking
-
-Enterprise Features: Custom rules, ML prediction, real-time monitoring, benchmarking, comprehensive reporting
-
-Quality Standards: OWASP compliance, TRUST 5 framework, Context7 integration, automated improvement recommendations
+- `/moai gate` — pre-commit quality gate (lint + format + type + test).
+- `/moai review` — code review with security and MX-tag compliance.
+- `/moai fix` — auto-detect and fix LSP/lint/type errors.
+- `/moai loop` — iterative fix loop until resolved or max iterations.
 
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations
@@ -224,11 +238,11 @@ Quality Standards: OWASP compliance, TRUST 5 framework, Context7 integration, au
 <!-- moai:evolvable-start id="verification" -->
 ## Verification
 
-- [ ] Linter runs clean or remaining warnings have inline suppression comments with reasons
+- [ ] Linter runs clean or remaining warnings have inline suppression comments with reasons (show the command output)
 - [ ] OWASP checklist reviewed for security-relevant changes (show checklist references)
 - [ ] Coverage report generated and threshold met (show tool output)
 - [ ] All five TRUST 5 dimensions assessed (show assessment for each)
-- [ ] Quality report issues triaged with resolution plan for each finding
+- [ ] Quality findings triaged with a resolution plan for each
 - [ ] No global rule disabling in linter configuration
 
 <!-- moai:evolvable-end -->

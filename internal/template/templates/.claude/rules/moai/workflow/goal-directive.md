@@ -1,12 +1,8 @@
----
-paths: "**/goal-directive.md"
----
-
 # Goal Directive (`/goal`) — Autonomous Continuation
 
 Guidance for the Claude Code `/goal` command — a session-scoped completion condition that keeps Claude working across turns until a fast model confirms the condition holds.
 
-> **Loading scope**: orchestration-level guidance. Read when a user sets a `/goal`, or when deciding between `/goal`, `/moai loop`, and a Stop hook for autonomous work.
+> **Loading scope**: intentionally always-loaded (no `paths:` restriction) — the proactive triggers fire during active work (run-phase / migration / TDD), so this rule must be reachable in those contexts just like `askuser-protocol.md` / `session-handoff.md`. Read when a user sets a `/goal`, when deciding between `/goal`, `/moai loop`, and a Stop hook, or when the orchestrator recognizes a Proactive Recommendation Trigger (§ below).
 
 ## What It Is
 
@@ -43,6 +39,34 @@ The evaluator judges the condition against Claude's own output, so write somethi
 - **Constraints that matter**: what must not change on the way (`"no other test file is modified"`).
 
 To bound the run, include a turn or time clause (`"or stop after 20 turns"`). The condition can be up to 4,000 characters. Check status with bare `/goal` — which reports the active condition along with the turns and tokens spent so far. While a goal is active a `◎ /goal active` indicator is shown, and after each turn the evaluator surfaces its reason for continuing or stopping. Clear early with `/goal clear` (aliases: `stop`, `off`, `reset`, `none`, `cancel`). Running `/clear` also removes an active goal. A goal active at session end is restored on `--resume`/`--continue` (turn/timer/token baselines reset).
+
+## Proactive Recommendation Triggers
+
+The preceding sections describe `/goal` semantics and condition authoring. This section adds the **proactive layer**: when the orchestrator, mid-workflow, recognizes a situation where `/goal` is the right continuation primitive, it surfaces a recommendation so the user can set one. This closes the gap between the two contexts where `/goal` is already wired (the user setting one unprompted, and the session-handoff resume flow) and the active-workflow context, where previously nothing prompted the orchestrator to recommend `/goal`.
+
+### Hard preconditions for every recommendation
+
+- **`/goal` is user-only (HUMAN-ONLY)**: `/goal` is a TUI command the model cannot invoke or set on the user's behalf (`.claude/rules/moai/workflow/native-invocation-model.md`). The orchestrator **recommends and supplies a copy-able condition template**; the user types the `/goal` line. The delivery model is this file's reminder-obligation pattern — natural-language status guidance, NOT `AskUserQuestion` and NOT a mid-paste slash line. (A `/goal`-turn agent's inability to surface `AskUserQuestion` mid-run is a property of MoAI's run-phase delegation model, NOT of `/goal` itself — `/goal` only removes per-turn STOP prompts; see § MoAI Integration Notes.)
+- **Implementation Kickoff Approval comes first**: any run-phase `/goal` recommendation is downstream of the Implementation Kickoff Approval human gate (`AskUserQuestion`, plan→run) and never substitutes for or bypasses it. `run.md` § Run-phase Autonomy #1 owns the preferences-drained rationale (all user preferences are collected at that gate before any autonomy begins).
+- **Safety boundary unchanged** (see § MoAI Integration Notes for the full statement).
+- **`run.md` "set" shorthand reconciliation**: `run.md` § Run-phase Autonomy uses the shorthand "the orchestrator MAY set the `ac_converge` `/goal`". Per the user-only Hard precondition above, read this as "the orchestrator recommends the condition and the user types the `/goal` line" — the model cannot set `/goal` (HUMAN-ONLY). T1/T3 below defer to `run.md`'s condition under this reading; they do not authorize the model to set `/goal`.
+
+### Triggers and condition templates
+
+T1-T3 carry a copy-able `/goal <condition>` template the user may paste; T4 is a decision-route trigger with no template (it routes between `/goal` and `/moai loop`, then the user authors the condition per § Writing an Effective Condition). Every condition follows the 3-part shape where applicable (one measurable end state + a stated check + constraints that matter — § Writing an Effective Condition frames these as "usually") and carries a turn/time bound.
+
+- **T1 — Long run-phase / multi-milestone (Tier M/L)**. After Implementation Kickoff Approval and before the first implementation `Agent()` spawn, for a SPEC whose run-phase spans multiple milestones. The run-phase autonomy wiring in `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy (`/goal ac_converge`) owns this case; the user-pastable condition IS the `ac_converge` block there — surface that block verbatim from `run.md`, do not compress or re-author it (compression yields a weaker condition and creates a drift surface).
+- **T2 — Migration / refactoring across many call sites**. When the work is a sweeping migration or behavior-preserving refactor whose completion is "every call site compiles and tests pass" — the canonical `/goal` use case from the official docs. Recommend `/goal` once the call-site inventory is enumerated and transcript-visible.
+  - Template shape: `/goal every call site compiles && go test ./... exits 0 && git status is clean, or stop after 20 turns`
+- **T3 — TDD cycle / SPEC AC convergence**. During a RED-GREEN-REFACTOR loop or while driving toward all acceptance criteria holding. For SPEC-scoped work this overlaps T1 and the `run.md` `/goal ac_converge` wiring is the SSOT; for non-SPEC TDD work recommend `/goal` with a test-suite-shaped condition.
+  - Template shape: `/goal the target test suite is green && lint is clean, or stop after 15 turns`
+- **T4 — `/moai loop` alternative, made explicit**. When about to enter `/moai loop` for work better expressed as a verifiable end-state than as "fix what the tooling flags", surface the § Comparing Autonomous-Continuation Approaches table and recommend `/goal`. The decision axis is what should start the next turn: a tooling diagnostic (`/moai loop`) vs a model-evaluated condition (`/goal`). This routes a decision but does NOT route it through `AskUserQuestion`: `/goal` is HUMAN-ONLY, so the model cannot execute either choice — it recommends in natural language and the user decides by typing or declining (status guidance, per the Channel Monopoly status-statement exception).
+
+### Guardrails (dedup against sibling doctrine)
+
+- **`run.md` owns the run-phase `ac_converge` wiring**; this section is the higher-level recommendation guide, not a re-statement of the inline condition. Do not duplicate the hard-coded `ac_converge` condition here.
+- **`session-handoff.md` owns the resume-context `/goal`** (Post-Paste `/goal` Follow-up Block, Auto-Injected Resume Flow); this section governs the **in-session active-work** recommendation context. The two are distinct: handoff = crossing a `/clear` boundary; proactive = within an active session before any boundary.
+- **Graceful degradation**: per `run.md` § Autonomy invariants — when `/goal` is unavailable (runtime < v2.1.139, hooks disabled via `disableAllHooks`/`allowManagedHooksOnly`, or workspace trust dialog not accepted), the workflow degrades to the standard manual per-turn flow. The full enumeration lives in `run.md` and § MoAI Integration Notes; not restated here.
 
 ## MoAI Integration Notes
 

@@ -13,7 +13,7 @@ This modules directory contains detailed implementation modules for the moai-wor
 ### Root Level Modules
 
 #### [AI-Powered Debugging](./ai-debugging.md)
-Complexity: Advanced | Time: 20+ minutes | Dependencies: Python 3.8+, Context7 MCP
+Complexity: Advanced | Time: 20+ minutes | Dependencies: Context7 MCP (optional)
 
 - Intelligent error classification with Context7 patterns
 - AI-driven solution generation with confidence scoring
@@ -27,7 +27,7 @@ Key Features:
 - Performance-aware debugging with minimal overhead
 
 ### [Smart Refactoring](./smart-refactoring.md)
-Complexity: Advanced | Time: 25+ minutes | Dependencies: Python 3.8+, Rope, AST, Context7 MCP
+Complexity: Advanced | Time: 25+ minutes | Dependencies: AST/refactoring tool for your language, Context7 MCP
 
 - Technical debt analysis with comprehensive code scanning
 - Safe automated refactoring with risk assessment
@@ -41,7 +41,7 @@ Key Features:
 - Project-aware refactoring with convention detection
 
 ### [Performance Optimization](./performance-optimization.md)
-Complexity: Advanced | Time: 30+ minutes | Dependencies: Python 3.8+, cProfile, memory_profiler, psutil
+Complexity: Advanced | Time: 30+ minutes | Dependencies: CPU/memory profiler for your language
 
 - Real-time performance monitoring with configurable sampling
 - Bottleneck detection with AI-powered analysis
@@ -55,7 +55,7 @@ Key Features:
 - Performance regression detection and prevention
 
 ### [DDD with Context7](./ddd-context7.md)
-Complexity: Advanced | Time: 25+ minutes | Dependencies: Python 3.8+, pytest, Context7 MCP
+Complexity: Advanced | Time: 25+ minutes | Dependencies: test runner for your language, Context7 MCP
 
 - ANALYZE-PRESERVE-IMPROVE cycle automation with AI assistance
 - Context7-enhanced test generation and pattern matching
@@ -69,7 +69,7 @@ Key Features:
 - Automated test execution with quality validation
 
 ### [Automated Code Review](./automated-code-review.md)
-Complexity: Advanced | Time: 35+ minutes | Dependencies: Python 3.8+, pylint, flake8, bandit, mypy
+Complexity: Advanced | Time: 35+ minutes | Dependencies: static analyzers for your language
 
 - TRUST 5 framework validation with AI analysis
 - Multi-tool static analysis integration and aggregation
@@ -131,49 +131,42 @@ Core DDD documentation.
 
 ## Module Integration
 
+These modules are conceptual references, not an importable SDK. Apply each
+module's workflow steps directly with your project's own testing, linting, and
+profiling toolchain. Per-language tool inventories live in
+[../references/multi-language-support.md](../references/multi-language-support.md).
+
 ### Using Individual Modules
 
-Each module can be used independently or as part of the unified workflow system:
+Each module describes a self-contained workflow (debug, refactor, optimize,
+review, DDD test). Run the relevant one against your codebase using the
+language-appropriate toolchain:
 
-```python
-# Import specific module components
-from moai_workflow_testing.modules.ai_debugging import AIDebugger
-from moai_workflow_testing.modules.performance_optimization import PerformanceProfiler
-
-# Use modules independently
-debugger = AIDebugger(context7_client=context7)
-profiler = PerformanceProfiler(context7_client=context7)
-```
+- AI-Powered Debugging: capture error + context, classify, propose fix candidates
+- Performance Optimization: profile (CPU/memory/IO), detect bottlenecks, plan optimization
+- Smart Refactoring: scan technical debt, plan safe transforms, verify with tests
+- Automated Code Review: run static analysis, score against TRUST 5, prioritize issues
+- DDD with Context7: ANALYZE-PRESERVE-IMPROVE, characterization tests first
 
 ### Unified Workflow Integration
 
-All modules are designed to work together seamlessly:
-
-```python
-from moai_workflow_testing import DevelopmentWorkflow
-
-# Complete workflow with all modules
-workflow = DevelopmentWorkflow(
- project_path="/project/src",
- context7_client=context7,
- enable_all_modules=True
-)
-
-results = await workflow.execute_complete_workflow()
-```
+The modules compose into a single development cycle. Drive them in sequence
+using your own tooling — debug, then refactor, then optimize, then review, then
+test — and validate each stage against TRUST 5 before proceeding. There is no
+SDK to import; each stage maps to commands in your language's ecosystem (see the
+multi-language reference linked above).
 
 ## Module Dependencies
 
 ### Core Dependencies
-- Python 3.8+: Base runtime environment
-- Context7 MCP: For pattern integration and AI assistance
-- asyncio: Asynchronous execution support
+- Context7 MCP: For pattern integration and AI assistance (optional; modules degrade gracefully without it)
+- The project's own test runner, linter, and profiler (language-dependent — see multi-language reference)
 
-### Module-Specific Dependencies
-- Performance Optimization: cProfile, memory_profiler, psutil, line_profiler
-- Smart Refactoring: Rope, AST, Context7 patterns
-- Automated Code Review: pylint, flake8, bandit, mypy
-- DDD: pytest, unittest, coverage, Context7 testing patterns
+### Module-Specific Tools (examples per language)
+- Performance Optimization: a CPU/memory profiler for your language (cProfile/memory_profiler for Python, pprof for Go, flamegraph for Rust, Chrome DevTools for JS/TS)
+- Smart Refactoring: a refactoring/AST tool for your language (Rope for Python, gopls for Go, rust-analyzer for Rust)
+- Automated Code Review: static analyzers for your language (pylint/flake8/bandit/mypy for Python, staticcheck/gosec for Go, clippy for Rust, ESLint for JS/TS)
+- DDD: the project's test runner + coverage tool (pytest/coverage for Python, go test -cover for Go, cargo test for Rust, Jest for JS/TS)
 
 ## Best Practices
 

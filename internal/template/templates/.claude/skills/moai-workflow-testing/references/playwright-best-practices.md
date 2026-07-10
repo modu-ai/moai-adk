@@ -2,8 +2,8 @@
 
 ## Official Documentation
 - Playwright Official: https://playwright.dev/
-- Python Documentation: https://playwright.dev/python/
-- API Reference: https://playwright.dev/python/docs/api/class-playwright
+- Language Bindings: Python (https://playwright.dev/python/), Node.js, Java, .NET
+- API Reference: https://playwright.dev/docs/api/class-playwright
 
 ## Context7 MCP Integration
 - Latest Patterns: Access via `/microsoft/playwright` library ID

@@ -156,8 +156,8 @@ Agents:
 
 Commands:
 
-- /moai:2-run: DDD implementation
-- /moai:3-sync: Documentation sync
+- /moai run: DDD implementation
+- /moai sync: Documentation sync
 
 ## Reference
 

@@ -4,7 +4,7 @@
 > Parent: [TRUST 5 Framework](./trust5-framework.md)
 > Complexity: Advanced
 > Time: 10+ minutes
-> Dependencies: Python 3.8+
+> Dependencies: none (conceptual scoring reference)
 
 ## Overview
 
@@ -14,55 +14,34 @@ TRUST 5 scoring uses weighted category calculations (25%, 20%, 25%, 20%, 10%) wi
 
 ### Comprehensive Score Calculation
 
-```python
-def calculate_advanced_trust_scores(
-    self, issues: List[CodeIssue], metrics: Dict[str, Any]
-) -> Dict[str, Any]:
-    """Calculate advanced TRUST 5 scores with weighted factors."""
-
+```text
+calculate_advanced_trust_scores(issues, metrics):
     category_scores = {}
     category_weights = {
-        TrustCategory.TRUTHFULNESS: 0.25,
-        TrustCategory.RELEVANCE: 0.20,
-        TrustCategory.USABILITY: 0.25,
-        TrustCategory.SAFETY: 0.20,
-        TrustCategory.TIMELINESS: 0.10
+        TRUTHFULNESS: 0.25, RELEVANCE: 0.20, USABILITY: 0.25,
+        SAFETY: 0.20, TIMELINESS: 0.10
     }
 
-    # Calculate scores for each category
     for category in TrustCategory:
         category_issues = [i for i in issues if i.category == category]
 
-        # Base penalty calculation
+        # Base penalty: sum of severity_weight * confidence * impact per issue
         penalty = 0.0
         for issue in category_issues:
-            severity_weight = self._get_severity_weight(issue.severity)
-            confidence_factor = issue.confidence
-            impact_factor = self._get_impact_factor(issue, metrics)
-            penalty += severity_weight * confidence_factor * impact_factor
+            penalty += severity_weight(issue.severity) * issue.confidence * impact_factor(issue, metrics)
 
-        # Apply complexity adjustment
-        complexity_penalty = self._calculate_complexity_penalty(category, metrics)
+        # Adjustments
+        complexity_penalty = calculate_complexity_penalty(category, metrics)
+        trend_factor       = calculate_trend_factor(category, category_issues)
 
-        # Apply trend factor (historical data)
-        trend_factor = self._calculate_trend_factor(category, category_issues)
+        total_penalty    = penalty + complexity_penalty
+        trended_penalty  = total_penalty * trend_factor
+        category_scores[category] = max(0.0, 1.0 - min(trended_penalty, 1.0))
 
-        # Calculate final score
-        total_penalty = penalty + complexity_penalty
-        trended_penalty = total_penalty * trend_factor
-        score = max(0.0, 1.0 - min(trended_penalty, 1.0))
-        category_scores[category] = score
-
-    # Calculate overall score
-    overall_score = sum(
-        category_scores[cat] * category_weights[cat]
-        for cat in TrustCategory
-    )
-
+    overall = sum(category_scores[c] * category_weights[c] for c in TrustCategory)
     return {
-        'overall': overall_score,
-        'categories': category_scores,
-        'trend_factors': {cat: self._calculate_trend_factor(cat, [i for i in issues if i.category == cat]) for cat in TrustCategory}
+        overall, categories: category_scores,
+        trend_factors: { c: calculate_trend_factor(c, [i for i in issues if i.category == c]) for c in TrustCategory }
     }
 ```
 
@@ -70,17 +49,10 @@ def calculate_advanced_trust_scores(
 
 ### Severity Weighting
 
-```python
-def _get_severity_weight(self, severity: str) -> float:
-    """Get severity weight for penalty calculation."""
-
-    weights = {
-        'critical': 0.8,
-        'high': 0.6,
-        'medium': 0.4,
-        'low': 0.2
-    }
-    return weights.get(severity.lower(), 0.3)
+```text
+severity_weight(severity):
+    weights = { critical: 0.8, high: 0.6, medium: 0.4, low: 0.2 }
+    return weights[lowercase(severity)] default 0.3
 ```
 
 ### Confidence Factor
@@ -92,75 +64,42 @@ Confidence factor (0.0-1.0) from detection algorithm:
 
 ### Impact Factor
 
-```python
-def _get_impact_factor(
-    self, issue: CodeIssue, metrics: Dict[str, Any]
-) -> float:
-    """Calculate impact factor based on issue context."""
-
-    # Base impact
+```text
+impact_factor(issue, metrics):
     impact = 1.0
-
-    # Adjust for code complexity
-    if metrics.get('cyclomatic_complexity', 0) > 20:
-        impact *= 1.2
-
-    # Adjust for file size
-    if metrics.get('line_count', 0) > 500:
-        impact *= 1.1
-
-    return min(impact, 2.0)  # Cap at 2x
+    # Higher-complexity code amplifies the impact
+    if metrics.cyclomatic_complexity default 0 > 20: impact *= 1.2
+    # Larger files amplify the impact
+    if metrics.line_count default 0 > 500: impact *= 1.1
+    return min(impact, 2.0)   # cap at 2x
 ```
 
 ## Advanced Adjustments
 
 ### Complexity Penalty
 
-```python
-def _calculate_complexity_penalty(
-    self, category: TrustCategory, metrics: Dict[str, Any]
-) -> float:
-    """Calculate complexity adjustment for category."""
-
+```text
+calculate_complexity_penalty(category, metrics):
     base_penalty = 0.0
-
-    # High complexity increases penalty
-    if category == TrustCategory.USABILITY:
-        complexity = metrics.get('cyclomatic_complexity', 0)
-        if complexity > 15:
-            base_penalty += 0.1
-        if complexity > 25:
-            base_penalty += 0.1
-
+    # High complexity increases the USABILITY penalty
+    if category == USABILITY:
+        complexity = metrics.cyclomatic_complexity default 0
+        if complexity > 15: base_penalty += 0.1
+        if complexity > 25: base_penalty += 0.1
     return base_penalty
 ```
 
 ### Trend Factor
 
-```python
-def _calculate_trend_factor(
-    self, category: TrustCategory, issues: List[CodeIssue]
-) -> float:
-    """Calculate trend factor based on historical data."""
-
-    # Get historical issues for this category
-    historical = self._get_historical_issues(category)
-
-    if not historical:
-        return 1.0  # No trend data
-
-    current_count = len(issues)
+```text
+calculate_trend_factor(category, issues):
+    historical = get_historical_issues(category)
+    if historical is empty: return 1.0      # no trend data
+    current_count    = len(issues)
     historical_count = len(historical)
-
-    # Improving trend (fewer issues)
-    if current_count < historical_count:
-        return 0.95  # Boost score
-
-    # Declining trend (more issues)
-    elif current_count > historical_count:
-        return 1.05  # Penalty
-
-    return 1.0  # Stable
+    if current_count < historical_count: return 0.95   # improving — boost
+    if current_count > historical_count: return 1.05   # declining — penalty
+    return 1.0                                          # stable
 ```
 
 ## Score Interpretation

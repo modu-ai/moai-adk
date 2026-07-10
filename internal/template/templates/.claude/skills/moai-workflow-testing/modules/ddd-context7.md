@@ -3,7 +3,7 @@
 > Module: ANALYZE-PRESERVE-IMPROVE DDD cycle with Context7 patterns and AI-powered testing
 > Complexity: Advanced
 > Time: 25+ minutes
-> Dependencies: Python 3.8+, pytest, Context7 MCP, unittest, asyncio
+> Dependencies: test runner for your language, Context7 MCP (optional)
 
 ## Overview
 
@@ -21,43 +21,41 @@ DDD Context7 integration provides a comprehensive domain-driven development work
 
 ### Basic DDD Cycle
 
-```python
-from moai_workflow_testing import DDDManager, TestSpecification, TestType
+This module describes a workflow, not an importable library. Drive the
+ANALYZE-PRESERVE-IMPROVE cycle yourself using your project's own test runner.
+A characterization-test specification is a plain description of the behavior
+to preserve — express it as a test in your language's framework.
 
-# Initialize DDD Manager
-ddd_manager = DDDManager(
-    project_path="/path/to/project",
-    context7_client=context7
-)
-
-# Start DDD session
-session = await ddd_manager.start_ddd_session("user_authentication_refactor")
-
-# Create test specification
-test_spec = TestSpecification(
-    name="test_user_login_behavior_preservation",
-    description="Preserve existing login behavior during refactoring",
-    test_type=TestType.CHARACTERIZATION,
-    requirements=[
+```
+# Conceptual characterization-test specification (language-neutral)
+spec = {
+    name: "test_user_login_behavior_preservation",
+    description: "Preserve existing login behavior during refactoring",
+    test_type: CHARACTERIZATION,            # capture current behavior, not aspirational
+    requirements: [
         "Existing login flow must continue to work",
         "Error messages should remain consistent"
     ],
-    acceptance_criteria=[
+    acceptance_criteria: [
         "Valid credentials return user token (existing behavior)",
         "Invalid credentials raise same error messages"
     ],
-    edge_cases=[
-        "Test with empty email (existing behavior)",
-        "Test with empty password (existing behavior)"
+    edge_cases: [
+        "Empty email (existing behavior)",
+        "Empty password (existing behavior)"
     ]
-)
+}
 
-# Run complete DDD cycle
-cycle_results = await ddd_manager.run_full_ddd_cycle(
-    specification=test_spec,
-    target_function="authenticate_user"
-)
+# Drive the cycle with your own toolchain:
+#   ANALYZE   — read authenticate_user, map current behavior + dependencies
+#   PRESERVE  — write characterization tests from `spec` (must PASS on current code)
+#   IMPROVE   — refactor authenticate_user incrementally, keep tests green
+#   REVIEW    — verify all characterization tests still pass, commit
 ```
+
+If Context7 MCP is available, load up-to-date characterization-testing patterns
+for your language/framework (e.g. `/pytest` , `/jest`, `/gotest`) to refine the
+specification before writing the test.
 
 ## Core Components
 
@@ -127,48 +125,51 @@ The DDD Context7 integration provides:
 
 ## Common Use Cases
 
+Each use case below is a characterization-test specification expressed as a
+language-neutral description. Translate it into a concrete test in your
+project's framework (pytest, Jest, go test, cargo test, JUnit, etc.).
+
 ### Behavior Preservation
 
-```python
+```
 # Characterization test specification
-char_spec = TestSpecification(
-    name="test_calculate_sum_existing_behavior",
-    description="Preserve existing sum calculation behavior",
-    test_type=TestType.CHARACTERIZATION,
-    requirements=["Function should sum two numbers (existing behavior)"],
-    acceptance_criteria=["Returns correct sum as currently implemented"],
-    edge_cases=["Zero values", "Negative numbers", "Large numbers"]
-)
-
-test_code = await test_generator.generate_test_case(char_spec)
+char_spec = {
+    name: "test_calculate_sum_existing_behavior",
+    description: "Preserve existing sum calculation behavior",
+    test_type: CHARACTERIZATION,
+    requirements: ["Function should sum two numbers (existing behavior)"],
+    acceptance_criteria: ["Returns correct sum as currently implemented"],
+    edge_cases: ["Zero values", "Negative numbers", "Large numbers"]
+}
+# Author the test from char_spec; it MUST pass against the current implementation.
 ```
 
 ### Refactoring with Tests
 
-```python
+```
 # Integration test specification for refactoring
-refactor_spec = TestSpecification(
-    name="test_database_integration_refactor",
-    description="Preserve database behavior during refactoring",
-    test_type=TestType.INTEGRATION,
-    requirements=["Database connection", "Query execution"],
-    acceptance_criteria=["Connection succeeds as before", "Query returns same data"],
-    edge_cases=["Connection failure handling", "Empty results", "Large datasets"]
-)
+refactor_spec = {
+    name: "test_database_integration_refactor",
+    description: "Preserve database behavior during refactoring",
+    test_type: INTEGRATION,
+    requirements: ["Database connection", "Query execution"],
+    acceptance_criteria: ["Connection succeeds as before", "Query returns same data"],
+    edge_cases: ["Connection failure handling", "Empty results", "Large datasets"]
+}
 ```
 
 ### Exception Behavior Preservation
 
-```python
+```
 # Exception test specification
-exception_spec = TestSpecification(
-    name="test_divide_by_zero_existing_behavior",
-    description="Preserve division by zero exception handling",
-    test_type=TestType.CHARACTERIZATION,
-    requirements=["Division function", "Error handling"],
-    acceptance_criteria=["Raises same ZeroDivisionError as before"],
-    edge_cases=["Divisor is zero", "Dividend is zero"]
-)
+exception_spec = {
+    name: "test_divide_by_zero_existing_behavior",
+    description: "Preserve division by zero exception handling",
+    test_type: CHARACTERIZATION,
+    requirements: ["Division function", "Error handling"],
+    acceptance_criteria: ["Raises the same error/exception type as before"],
+    edge_cases: ["Divisor is zero", "Dividend is zero"]
+}
 ```
 
 ## Best Practices

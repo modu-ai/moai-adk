@@ -3,7 +3,7 @@
 > Module: AI-powered automated code review with TRUST 5 validation framework and comprehensive quality analysis
 > Complexity: Advanced
 > Time: 35+ minutes
-> Dependencies: Python 3.8+, Context7 MCP, ast, pylint, flake8, bandit, mypy
+> Dependencies: static analyzers for your language, Context7 MCP (optional)
 
 ## Quick Reference
 
@@ -18,11 +18,10 @@ TRUST 5 Framework:
 - Safety: Security vulnerability and error handling detection
 - Timeliness: Performance standards and modern practices verification
 
-Static Analysis Integration:
-- pylint: Code quality and style checking
-- flake8: Style guide enforcement
-- bandit: Security vulnerability scanning
-- mypy: Type checking and validation
+Static Analysis Integration (per-language; see references/multi-language-support.md):
+- Code quality / style linters for your language
+- Security vulnerability scanners for your language
+- Type checkers where the language is statically typed
 
 Context7-Enhanced Analysis:
 - Up-to-date security patterns from OWASP and Semgrep
@@ -32,39 +31,24 @@ Context7-Enhanced Analysis:
 
 ### Key Components
 
-```python
-from moai_workflow_testing.automated_code_review import (
-    AutomatedCodeReviewer,
-    CodeReviewReport,
-    TrustCategory,
-    Severity,
-    IssueType
-)
+This module describes a review workflow, not an importable SDK. Drive the review
+with your language's own analyzers and aggregate the findings against the TRUST 5
+rubric. Per-language tool inventories (Python pylint/flake8/bandit/mypy,
+Go staticcheck/gosec, Rust clippy, JS/TS ESLint, etc.) live in
+[../references/multi-language-support.md](../references/multi-language-support.md).
 
-# Initialize automated code reviewer
-reviewer = AutomatedCodeReviewer(context7_client=context7)
-
-# Review entire codebase
-report = await reviewer.review_codebase(
-    project_path="/path/to/project",
-    include_patterns=["/*.py"],
-    exclude_patterns=["/tests/", "/__pycache__/"]
-)
-
-print(f"Overall TRUST Score: {report.overall_trust_score:.2f}")
-print(f"Files Reviewed: {report.summary_metrics['files_reviewed']}")
-print(f"Total Issues: {report.summary_metrics['total_issues']}")
-print(f"Critical Issues: {report.summary_metrics['critical_issues']}")
+```
+# Conceptual review workflow (language-neutral):
+#   1. discover source files (include/exclude globs for your project)
+#   2. run each language-appropriate analyzer over the file set
+#   3. normalize findings into a common issue shape:
+#        { category, severity, type, title, description,
+#          file_path, line_number, suggested_fix, confidence }
+#   4. score each TRUST 5 category (0.0-1.0) with severity-weighted penalties
+#   5. compute the weighted overall score and emit a prioritized report
 ```
 
 ### TRUST 5 Scores
-
-The review system calculates scores for each TRUST category:
-
-```python
-for category, score in report.overall_category_scores.items():
-    print(f"{category.value}: {score:.2f}")
-```
 
 Category Score Calculation:
 - Scores range from 0.0 to 1.0
@@ -102,53 +86,23 @@ Step 3: Analyze the generated report which includes:
 
 ### Single File Review
 
-For reviewing individual files:
-
-```python
-file_result = await reviewer.review_single_file("/path/to/file.py")
-print(f"File Trust Score: {file_result.trust_score:.2f}")
-print(f"Issues found: {len(file_result.issues)}")
-print(f"Lines of code: {file_result.lines_of_code}")
-```
+For reviewing individual files, run the language-appropriate analyzer on one
+file and map its findings into the common issue shape above. Per-file trust is
+the same severity-weighted score computed over that file's issues only.
 
 ### Understanding Code Issues
 
-Each issue detected includes:
-
-```python
-for issue in file_result.issues:
-    print(f"Category: {issue.category.value}")
-    print(f"Severity: {issue.severity.value}")
-    print(f"Type: {issue.issue_type.value}")
-    print(f"Title: {issue.title}")
-    print(f"Description: {issue.description}")
-    print(f"Location: {issue.file_path}:{issue.line_number}")
-    print(f"Code snippet: {issue.code_snippet}")
-    print(f"Suggested fix: {issue.suggested_fix}")
-    print(f"Confidence: {issue.confidence:.2f}")
-    if issue.rule_violated:
-        print(f"Rule violated: {issue.rule_violated}")
-    if issue.external_reference:
-        print(f"Reference: {issue.external_reference}")
-```
+Each detected issue carries these fields (the normalized shape every analyzer's
+output is mapped into): category, severity, type, title, description,
+file_path, line_number, code_snippet, suggested_fix, confidence, optional
+rule_violated, optional external_reference.
 
 ### Customizing Analysis Patterns
 
-Configure analysis patterns to match project standards:
-
-```python
-# Access analysis patterns
-patterns = await reviewer.context7_analyzer.load_analysis_patterns()
-
-# Customize quality thresholds
-patterns['quality']['long_functions']['max_lines'] = 100
-patterns['quality']['complex_conditionals']['max_complexity'] = 15
-patterns['quality']['deep_nesting']['max_depth'] = 5
-
-# Run review with custom patterns
-reviewer.analysis_patterns = patterns
-report = await reviewer.review_codebase(project_path)
-```
+Configure thresholds to match project standards. Tune these per project
+(common dimensions: long-function max lines, max cyclomatic complexity, max
+nesting depth) and re-run the analyzers with the adjusted configuration.
+Quality-threshold tuning is project-specific; there is no SDK call to make.
 
 ---
 
