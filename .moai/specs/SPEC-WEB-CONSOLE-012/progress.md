@@ -91,7 +91,7 @@ evidence_dir: /Users/goos/MoAI/moai-adk-go/.moai/state/verify/e07c0351/
 
 ```yaml
 sync_complete_at: 2026-07-10
-sync_commit_sha: pending-backfill (this progress.md commit cannot self-reference; backfilled in a follow-up chore commit per spec-frontmatter-schema.md § SHA placeholder backfill exemption)
+sync_commit_sha: 333203c32
 sync_status: audit-ready
 changelog_entry_position: CHANGELOG.md [Unreleased] § Changed, first entry (prepended above SPEC-MEMORY-DIET-001)
 frontmatter_status_transitions:
