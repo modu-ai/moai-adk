@@ -317,8 +317,11 @@ func ClaimTask(stateDir, teamID, teammateID, taskID string) error {
 	teamDir := filepath.Join(stateDir, "team", teamID)
 	tasklistPath := filepath.Join(teamDir, "tasklist.md")
 
-	// Open file with lock
-	f, err := os.OpenFile(tasklistPath, os.O_RDWR, 0644)
+	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-002: open with O_APPEND|O_WRONLY so
+	// the CLAIMED row lands at the ledger tail and the append-only head is never
+	// overwritten. The lock is acquired on this fd; the content read uses a
+	// separate os.ReadFile handle (lock is still valid — flock works on any fd).
+	f, err := os.OpenFile(tasklistPath, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("open tasklist: %w", err)
 	}

@@ -8,7 +8,6 @@ package cli
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -526,44 +525,27 @@ func persistTeamMode(projectRoot, mode string) error {
 // CG mode requires tmux, so we force tmux display to prevent inline fallback
 // which would cause teammates to lose GLM env var inheritance (see #468).
 func ensureSettingsLocalJSON(settingsPath string) error {
-	var settings SettingsLocal
-
-	// Read existing settings if file exists (skip empty files)
-	if data, err := os.ReadFile(settingsPath); err == nil && len(data) > 0 {
-		if err := json.Unmarshal(data, &settings); err != nil {
-			return fmt.Errorf("parse settings.local.json: %w", err)
-		}
+	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trip as map[string]any so
+	// unknown top-level keys (hooks, outputStyle, model, ...) survive the write.
+	m, err := readSettingsMap(settingsPath)
+	if err != nil {
+		return err
 	}
 
-	if settings.Env == nil {
-		settings.Env = make(map[string]string)
-	}
+	env := settingsEnvMap(m)
 
 	// Force tmux display mode: CG mode requires tmux for pane-level env isolation.
 	// "auto" can fall back to inline mode, causing teammates to lose GLM env vars (#468).
 	// Single source of truth: teammateMode native settings key in settings.local.json.
-	settings.TeammateMode = "tmux"
+	m["teammateMode"] = "tmux"
 	// Clean up legacy env var if present (superseded by native key).
-	delete(settings.Env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
+	delete(env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
 
-	if len(settings.Env) == 0 {
-		settings.Env = nil
+	if len(env) == 0 {
+		delete(m, "env")
 	}
 
-	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
-		return fmt.Errorf("create directory: %w", err)
-	}
-
-	data, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal settings: %w", err)
-	}
-
-	if err := os.WriteFile(settingsPath, data, 0o600); err != nil {
-		return fmt.Errorf("write settings.local.json: %w", err)
-	}
-
-	return nil
+	return writeSettingsMap(settingsPath, m)
 }
 
 // loadLLMSectionOnly loads only the LLM section from llm.yaml.
@@ -603,72 +585,57 @@ func disableTeamMode(projectRoot string) error {
 // MOAI_BACKUP_AUTH_TOKEN before being overwritten. removeGLMEnv restores it.
 // Note: Claude OAuth tokens live in ~/.claude/, not here, so OAuth is unaffected.
 func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiKey string) error {
-	var settings SettingsLocal
-
-	// Read existing settings if file exists (skip empty files)
-	if data, err := os.ReadFile(settingsPath); err == nil && len(data) > 0 {
-		if err := json.Unmarshal(data, &settings); err != nil {
-			return fmt.Errorf("parse settings.local.json: %w", err)
-		}
+	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trip as map[string]any so
+	// unknown top-level keys survive the write.
+	m, err := readSettingsMap(settingsPath)
+	if err != nil {
+		return err
 	}
-
-	if settings.Env == nil {
-		settings.Env = make(map[string]string)
-	}
+	env := settingsEnvMap(m)
 
 	// Back up any existing ANTHROPIC_AUTH_TOKEN that is not the GLM key itself.
 	// This preserves a Claude OAuth token so that removeGLMEnv can restore it.
-	if existing := settings.Env["ANTHROPIC_AUTH_TOKEN"]; existing != "" && existing != apiKey {
-		settings.Env["MOAI_BACKUP_AUTH_TOKEN"] = existing
+	if existing, ok := env["ANTHROPIC_AUTH_TOKEN"].(string); ok && existing != "" && existing != apiKey {
+		env["MOAI_BACKUP_AUTH_TOKEN"] = existing
 	}
 
 	// Inject GLM environment variables for teammates
-	settings.Env["ANTHROPIC_AUTH_TOKEN"] = apiKey
-	settings.Env["ANTHROPIC_BASE_URL"] = glmConfig.BaseURL
-	settings.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
-	settings.Env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
-	settings.Env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
-	settings.Env["ANTHROPIC_DEFAULT_FABLE_MODEL"] = glmConfig.Models.Fable
+	env["ANTHROPIC_AUTH_TOKEN"] = apiKey
+	env["ANTHROPIC_BASE_URL"] = glmConfig.BaseURL
+	env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
+	env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
+	env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
+	env["ANTHROPIC_DEFAULT_FABLE_MODEL"] = glmConfig.Models.Fable
 	// Z.AI proxy compatibility: strip Anthropic beta headers
-	settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
-	settings.Env["API_TIMEOUT_MS"] = "3000000"
+	env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
+	env["API_TIMEOUT_MS"] = "3000000"
 	// Issue #742: pre-compute statusline context size from the High slot
 	// (Opus equivalent) so SessionStart hook propagates it via tmux env.
 	if size := statusline.ResolveGLMContextWindow(glmConfig.Models.High); size > 0 {
-		settings.Env[config.EnvStatuslineContextSize] = strconv.Itoa(size)
+		env[config.EnvStatuslineContextSize] = strconv.Itoa(size)
 	} else {
 		// Clean up stale value from a prior session that resolved a known model.
-		delete(settings.Env, config.EnvStatuslineContextSize)
+		delete(env, config.EnvStatuslineContextSize)
 	}
 	// 1M context activation: scale auto-compact window when the High slot model
 	// resolves to the 1M context tier; otherwise clean up any stale value.
 	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
-		settings.Env[config.EnvClaudeCodeAutoCompactWindow] = window
+		env[config.EnvClaudeCodeAutoCompactWindow] = window
 	} else {
-		delete(settings.Env, config.EnvClaudeCodeAutoCompactWindow)
+		delete(env, config.EnvClaudeCodeAutoCompactWindow)
 	}
 
 	// Force tmux display mode: GLM team mode uses tmux for env var inheritance.
 	// "auto" can fall back to inline mode, causing teammates to lose GLM env vars (#468).
 	// Single source of truth: teammateMode native settings key in settings.local.json.
-	settings.TeammateMode = "tmux"
+	m["teammateMode"] = "tmux"
 	// Clean up legacy env var if present (superseded by native key).
-	delete(settings.Env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
-
-	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
-		return fmt.Errorf("create directory: %w", err)
+	delete(env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
+	if len(env) == 0 {
+		delete(m, "env")
 	}
 
-	data, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal settings: %w", err)
-	}
-
-	if err := os.WriteFile(settingsPath, data, 0o600); err != nil {
-		return fmt.Errorf("write settings.local.json: %w", err)
-	}
-
-	return nil
+	return writeSettingsMap(settingsPath, m)
 }
 
 // saveLLMSection saves only the LLM section to llm.yaml.
@@ -966,57 +933,42 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 		return fmt.Errorf("GLM API key not found. Run 'moai glm setup <api-key>' to save your key, or set %s environment variable", glmConfig.EnvVar)
 	}
 
-	var settings SettingsLocal
-
-	// Read existing settings if file exists (skip empty files)
-	if data, err := os.ReadFile(settingsPath); err == nil && len(data) > 0 {
-		if err := json.Unmarshal(data, &settings); err != nil {
-			return fmt.Errorf("parse settings.local.json: %w", err)
-		}
+	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trip as map[string]any so
+	// unknown top-level keys survive the write.
+	m, err := readSettingsMap(settingsPath)
+	if err != nil {
+		return err
 	}
-
-	if settings.Env == nil {
-		settings.Env = make(map[string]string)
-	}
+	env := settingsEnvMap(m)
 
 	// Back up any existing ANTHROPIC_AUTH_TOKEN that is not the GLM key itself.
 	// This preserves a Claude OAuth token so that removeGLMEnv can restore it.
-	if existing := settings.Env["ANTHROPIC_AUTH_TOKEN"]; existing != "" && existing != apiKey {
-		settings.Env["MOAI_BACKUP_AUTH_TOKEN"] = existing
+	if existing, ok := env["ANTHROPIC_AUTH_TOKEN"].(string); ok && existing != "" && existing != apiKey {
+		env["MOAI_BACKUP_AUTH_TOKEN"] = existing
 	}
 
 	// Inject GLM environment variables with actual API key value
-	settings.Env["ANTHROPIC_AUTH_TOKEN"] = apiKey
-	settings.Env["ANTHROPIC_BASE_URL"] = glmConfig.BaseURL
-	settings.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
-	settings.Env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
-	settings.Env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
-	settings.Env["ANTHROPIC_DEFAULT_FABLE_MODEL"] = glmConfig.Models.Fable
+	env["ANTHROPIC_AUTH_TOKEN"] = apiKey
+	env["ANTHROPIC_BASE_URL"] = glmConfig.BaseURL
+	env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
+	env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
+	env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
+	env["ANTHROPIC_DEFAULT_FABLE_MODEL"] = glmConfig.Models.Fable
 	// Z.AI proxy compatibility: strip Anthropic beta headers
-	settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
-	settings.Env["API_TIMEOUT_MS"] = "3000000"
+	env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
+	env["API_TIMEOUT_MS"] = "3000000"
 	// 1M context activation: scale auto-compact window when the High slot model
 	// resolves to the 1M context tier; otherwise clean up any stale value.
 	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
-		settings.Env[config.EnvClaudeCodeAutoCompactWindow] = window
+		env[config.EnvClaudeCodeAutoCompactWindow] = window
 	} else {
-		delete(settings.Env, config.EnvClaudeCodeAutoCompactWindow)
+		delete(env, config.EnvClaudeCodeAutoCompactWindow)
+	}
+	if len(env) == 0 {
+		delete(m, "env")
 	}
 
-	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
-		return fmt.Errorf("create directory: %w", err)
-	}
-
-	data, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal settings: %w", err)
-	}
-
-	if err := os.WriteFile(settingsPath, data, 0o600); err != nil {
-		return fmt.Errorf("write settings.local.json: %w", err)
-	}
-
-	return nil
+	return writeSettingsMap(settingsPath, m)
 }
 
 // isTestEnvironment detects if we're running in a test environment.

@@ -222,11 +222,8 @@ func TestSettingsLocal_ConcurrentAtomicWrite(t *testing.T) {
 	for i := 0; i < writers; i++ {
 		go func(n int) {
 			defer wg.Done()
-			_ = mutateSettingsLocal(settingsPath, func(s *SettingsLocal) {
-				if s.Env == nil {
-					s.Env = map[string]string{}
-				}
-				s.TeammateMode = "tmux"
+			_ = mutateSettingsLocal(settingsPath, func(m map[string]any) {
+				m["teammateMode"] = "tmux"
 			})
 		}(i)
 	}

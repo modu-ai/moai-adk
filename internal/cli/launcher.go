@@ -238,66 +238,54 @@ func applyCGMode(root, profileName string) error {
 // --- Mode Helpers (moved from cc.go) ---
 
 // removeGLMEnv removes GLM environment variables from settings.local.json.
+//
+// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trips as map[string]any so
+// unknown top-level keys survive the write.
 func removeGLMEnv(settingsPath string) error {
-	data, err := os.ReadFile(settingsPath)
+	m, err := readSettingsMap(settingsPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return fmt.Errorf("read settings.local.json: %w", err)
+		return err
 	}
-
-	if len(data) == 0 {
+	if len(m) == 0 {
+		// Empty or absent file — nothing to clean.
 		return nil
-	}
-
-	var settings SettingsLocal
-	if err := json.Unmarshal(data, &settings); err != nil {
-		return fmt.Errorf("parse settings.local.json: %w", err)
 	}
 
 	// Clear teammateMode override so settings.json default ("auto") applies.
 	// CG/GLM modes set this to "tmux"; CC mode should restore the default.
-	settings.TeammateMode = ""
+	// delete (rather than m["teammateMode"] = "") so the key is omitted entirely,
+	// matching the original struct's omitempty behavior for "".
+	delete(m, "teammateMode")
 
-	if settings.Env != nil {
+	if env, ok := m["env"].(map[string]any); ok {
 		// Restore backed-up OAuth token before removing GLM vars
-		if backup, ok := settings.Env["MOAI_BACKUP_AUTH_TOKEN"]; ok && backup != "" {
-			settings.Env["ANTHROPIC_AUTH_TOKEN"] = backup
-			delete(settings.Env, "MOAI_BACKUP_AUTH_TOKEN")
+		if backup, bok := env["MOAI_BACKUP_AUTH_TOKEN"].(string); bok && backup != "" {
+			env["ANTHROPIC_AUTH_TOKEN"] = backup
+			delete(env, "MOAI_BACKUP_AUTH_TOKEN")
 		} else {
-			delete(settings.Env, "ANTHROPIC_AUTH_TOKEN")
+			delete(env, "ANTHROPIC_AUTH_TOKEN")
 		}
-		delete(settings.Env, "ANTHROPIC_BASE_URL")
-		delete(settings.Env, "ANTHROPIC_DEFAULT_HAIKU_MODEL")
-		delete(settings.Env, "ANTHROPIC_DEFAULT_SONNET_MODEL")
-		delete(settings.Env, "ANTHROPIC_DEFAULT_OPUS_MODEL")
-		delete(settings.Env, "ANTHROPIC_DEFAULT_FABLE_MODEL")
+		delete(env, "ANTHROPIC_BASE_URL")
+		delete(env, "ANTHROPIC_DEFAULT_HAIKU_MODEL")
+		delete(env, "ANTHROPIC_DEFAULT_SONNET_MODEL")
+		delete(env, "ANTHROPIC_DEFAULT_OPUS_MODEL")
+		delete(env, "ANTHROPIC_DEFAULT_FABLE_MODEL")
 		// Remove Z.AI proxy compatibility flags (set by moai glm/cg)
-		delete(settings.Env, "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
-		delete(settings.Env, "API_TIMEOUT_MS")
-		delete(settings.Env, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
+		delete(env, "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
+		delete(env, "API_TIMEOUT_MS")
+		delete(env, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
 		// Remove teammate display env var override (CG/GLM set this)
-		delete(settings.Env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
+		delete(env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
 		// Issue #742: drop GLM context-size hint when leaving GLM mode so the
 		// statusline reverts to the Claude slot's nominal size.
-		delete(settings.Env, "MOAI_STATUSLINE_CONTEXT_SIZE")
+		delete(env, "MOAI_STATUSLINE_CONTEXT_SIZE")
 
-		if len(settings.Env) == 0 {
-			settings.Env = nil
+		if len(env) == 0 {
+			delete(m, "env")
 		}
 	}
 
-	data, err = json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal settings: %w", err)
-	}
-
-	if err := os.WriteFile(settingsPath, data, 0o600); err != nil {
-		return fmt.Errorf("write settings.local.json: %w", err)
-	}
-
-	return nil
+	return writeSettingsMap(settingsPath, m)
 }
 
 // resetTeamModeForCC disables team_mode when switching to CC.
@@ -662,51 +650,39 @@ func readSettingsLocalForLaunch() map[string]string {
 // a silent no-op. See profile_setup.go runProfileSetup normalization block
 // (REQ-CCI-006 / REQ-CCI-007 — the normalization is intentional, and it is
 // disclosed to the user via the wizard confirmation, not silently applied).
+// syncPermissionModeToSettingsLocal persists the profile permission mode
+// preference to .claude/settings.local.json so that permissions.defaultMode
+// survives across sessions regardless of how Claude Code is launched.
+//
+// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trips as map[string]any so
+// unknown top-level keys survive the write.
 func syncPermissionModeToSettingsLocal(settingsPath string, permissionMode string) error {
-	var settings SettingsLocal
-
-	data, err := os.ReadFile(settingsPath)
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("read settings.local.json: %w", err)
-	}
-	if err == nil && len(data) > 0 {
-		if err := json.Unmarshal(data, &settings); err != nil {
-			return fmt.Errorf("parse settings.local.json: %w", err)
-		}
+	m, err := readSettingsMap(settingsPath)
+	if err != nil {
+		return err
 	}
 
 	// Only write an override when the mode differs from the project default.
 	// The project settings.json default is "acceptEdits", so we skip writing
 	// for empty string and "acceptEdits" to avoid unnecessary overrides.
 	if permissionMode != "" && permissionMode != "acceptEdits" {
-		if settings.Permissions == nil {
-			settings.Permissions = make(map[string]any)
+		perms, _ := m["permissions"].(map[string]any)
+		if perms == nil {
+			perms = make(map[string]any)
 		}
-		settings.Permissions["defaultMode"] = permissionMode
+		perms["defaultMode"] = permissionMode
+		m["permissions"] = perms
 	} else {
 		// Remove the override so settings.json default applies
-		if settings.Permissions != nil {
-			delete(settings.Permissions, "defaultMode")
-			if len(settings.Permissions) == 0 {
-				settings.Permissions = nil
+		if perms, ok := m["permissions"].(map[string]any); ok {
+			delete(perms, "defaultMode")
+			if len(perms) == 0 {
+				delete(m, "permissions")
 			}
 		}
 	}
 
-	out, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal settings: %w", err)
-	}
-
-	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
-		return fmt.Errorf("create directory: %w", err)
-	}
-
-	if err := os.WriteFile(settingsPath, out, 0o600); err != nil {
-		return fmt.Errorf("write settings.local.json: %w", err)
-	}
-
-	return nil
+	return writeSettingsMap(settingsPath, m)
 }
 
 // expandModelString normalizes moai-specific model strings into valid Claude
