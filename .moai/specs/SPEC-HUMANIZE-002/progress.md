@@ -81,7 +81,7 @@ Residual-risk: (1) the pre-existing `TestOutputStylesTemplateLiveParity` failure
 
 ```yaml
 sync_complete_at: 2026-07-10T12:20:00Z
-sync_commit_sha: pending-backfill-2026-07-10
+sync_commit_sha: 5a29c654e
 sync_status: audit-ready
 ```
 
