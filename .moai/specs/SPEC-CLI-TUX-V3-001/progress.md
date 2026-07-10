@@ -217,3 +217,26 @@ b12_self_test_a: "grep -c 'SPEC-CLI-TUX-V3-001' CHANGELOG.md (pre-emission) = 0 
 b12_self_test_b: "acceptance.md AC-CTX-NNN row count = 26 (grep -noE 'AC-CTX-[0-9]+' | sort -u); CHANGELOG entry states 26/26 AC PASS -- matches SSOT"
 b12_self_test_c: "file paths verified via ls: internal/cli/printer/printer.go, internal/cli/fang.go, internal/cli/reporter.go, internal/merge/confirm.go, go.mod -- all exist and were Read before CHANGELOG authoring"
 ```
+
+### Sync-audit verdict (sync-auditor, independent, 2026-07-10)
+
+```yaml
+verdict: PASS-WITH-DEBT
+score: 0.89                       # weighted harmonic mean, Tier L threshold 0.85
+dimensions:
+  functionality: 0.88             # 22/26 AC reproduced at HEAD; 4 (016/019/020/025) reproduced at close commit 4c0a2c64e
+  security: 0.95                  # output-layer refactor; no auth/injection/secret surface; 0 Critical/High
+  craft: 0.84                     # printer coverage 97.3% re-verified; uncovered 2.7% = real-TTY branches only
+  consistency: 0.90               # internal/cli/CLAUDE.md output-stream convention now mechanically enforced
+transient_blocking_resolved: "auditor observed a mid-window compile break (internal/cli/exitcode_boundary_test.go:11 `exitCoder` redeclared vs fang.go:100), introduced by the parallel SPEC-CLIFIX-CONTRACT-001 commit 6027424d4 AFTER this SPEC closed. That session self-healed at 40981be7c. Orchestrator re-verified: `go vet ./internal/cli/` exit 0, `go test ./internal/cli/...` 10 pkg ok, `go build ./...` exit 0, TestFangExitCoderCharacterization ok. Not attributable to this SPEC."
+```
+
+### Debt register (follow-up SPECs)
+
+| Item | Owner | Anchor |
+|------|-------|--------|
+| bubbletea/v2 + bubbles/v2 direct deps (AC-CTX-001 residual — deferred: no M1 consumer, `go mod tidy` strips unused direct deps) | SPEC-CLI-TUX-V3-003 (M3, not yet created) | REQ-CTX-001 vs REQ-CTX-023 authoring tension |
+| confirm.go bubbletea v1 → bubbles v2 list promotion (@MX:DEBT discharge) | SPEC-CLI-TUX-V3-003 | internal/merge/confirm.go:871-873 |
+| `exitCoder` interface sharing between fang.go and cmd/moai/main.go (namespace-collision prevention) | follow-up hygiene | internal/cli/fang.go:100 |
+| tui `sync.Once` colour-profile cache + dual detection path (`Profile()` env-only vs `downsample()` stdout+env) | follow-up tui hygiene | internal/tui/profile.go:97-106 |
+| `runFang` snapshot/restore covers 4 cobra fields only; concurrency-unsafe on the shared global rootCmd | follow-up hygiene | internal/cli/fang.go:32-44 |
