@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -148,4 +149,60 @@ func TestAstgrepExitCode(t *testing.T) {
 			assertExitCode(t, err, 1)
 		})
 	}
+}
+
+// TestHelpExitContract verifies REQ-CONT-001-008: for each changed command, the
+// exit code DECLARED in the help text matches the exit code PRODUCED. This ties
+// the documentation to the implementation so declaration drift is caught.
+func TestHelpExitContract(t *testing.T) {
+	t.Run("SpecLint", func(t *testing.T) {
+		cmd := newSpecLintCmd()
+		// Help declares "3 = invalid arguments".
+		if !strings.Contains(cmd.Long, "3 = invalid arguments") {
+			t.Fatalf("spec lint help must declare '3 = invalid arguments'; Long=\n%s", cmd.Long)
+		}
+		// Produced: --json + --sarif → exit 3.
+		lint := newSpecLintCmd()
+		_ = lint.Flags().Set("json", "true")
+		_ = lint.Flags().Set("sarif", "true")
+		lint.SetOut(&bytes.Buffer{})
+		lint.SetErr(&bytes.Buffer{})
+		assertExitCode(t, lint.RunE(lint, []string{}), 3)
+	})
+
+	t.Run("SpecAudit", func(t *testing.T) {
+		cmd := newSpecAuditCmd()
+		// Help declares "2 = strict mode + MUST-FIX".
+		if !strings.Contains(cmd.Long, "2 = strict mode + MUST-FIX") {
+			t.Fatalf("spec audit help must declare '2 = strict mode + MUST-FIX'; Long=\n%s", cmd.Long)
+		}
+		// Produced: MUST-FIX finding + strict → exit 2.
+		result := &spec.AuditResult{
+			DriftFindings: []spec.DriftFinding{
+				{SpecID: "SPEC-TEST-001", Severity: "MUST-FIX"},
+			},
+		}
+		c := &cobra.Command{}
+		c.SetOut(&bytes.Buffer{})
+		c.SetErr(&bytes.Buffer{})
+		assertExitCode(t, renderAuditResult(c, result, false, true), 2)
+	})
+
+	t.Run("Constitution", func(t *testing.T) {
+		cmd := newConstitutionValidateCmd()
+		// Help declares "2=fatal (missing source file)".
+		if !strings.Contains(cmd.Long, "2=fatal") && !strings.Contains(cmd.Long, "2 = fatal") {
+			t.Fatalf("constitution validate help must declare exit 2 for missing source; Long=\n%s", cmd.Long)
+		}
+		// Produced: missing source file → exit 2.
+		dir := t.TempDir()
+		regBody := "- id: CONST-V3R2-001\n  zone: Frozen\n  zone_class: frozen-canonical\n  file: nonexistent.md\n  anchor: \"#r\"\n  clause: \"r.\"\n  canary_gate: true\n"
+		regContent := "# Registry\n\n```yaml\n" + regBody + "\n```\n"
+		regPath := filepath.Join(dir, "zone-registry.md")
+		if err := os.WriteFile(regPath, []byte(regContent), 0o644); err != nil {
+			t.Fatalf("write registry: %v", err)
+		}
+		var out, errBuf bytes.Buffer
+		assertExitCode(t, runConstitutionValidate(&out, &errBuf, dir, regPath, constitution.ValidateOptions{}, "text"), 2)
+	})
 }
