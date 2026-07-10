@@ -1,8 +1,6 @@
 package web
 
 import (
-	"errors"
-
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
@@ -10,9 +8,12 @@ import (
 	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
-// errDictKey is returned by the template "dict" helper when a non-string key is
-// supplied. Defined here so assets.go stays focused on embedding.
-var errDictKey = errors.New("web: dict key must be a string")
+// NOTE: the error sentinel of the retired html/template "dict" FuncMap helper
+// (and its assets.go keep-alive blank reference) was removed by
+// SPEC-WEB-CONSOLE-012 M4 (REQ-WC12-030). The historical REQ-WC6-004
+// "validate.go BYTE-UNCHANGED" constraint was a closed SPEC's point-in-time
+// assertion; the run-phase Where-gate confirmed no standing byte-content
+// guard exists on this file.
 
 // Canonical value lists — SINGLE-SOURCED from the settings schema.
 //

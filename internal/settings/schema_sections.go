@@ -55,16 +55,10 @@ func RoleProfileNames() []string {
 	return []string{"analyst", "architect", "designer", "implementer", "researcher", "reviewer", "tester"}
 }
 
-// WorkflowAgentPurposes는 dynamic-workflows.md 7-purpose taxonomy 슬러그다
-// ("Purpose-driven model+effort selection" 표 실측 — REQ-WC11-070). M5-a B1 이후
-// 웹 렌더에서는 사용하지 않지만(숨김), canonical taxonomy 참조로 유지한다 —
-// config.Workflow.WorkflowAgents 맵의 키 집합과 일치한다.
-func WorkflowAgentPurposes() []string {
-	return []string{
-		"read-only-extract", "mechanical-transform", "synthesize",
-		"research", "verify-judge", "implement", "design-architecture",
-	}
-}
+// NOTE: 7-purpose taxonomy 슬러그를 반환하던 zero-caller 접근자는
+// SPEC-WEB-CONSOLE-012 M4(REQ-WC12-032)에서 제거되었다 — 전 리포 호출자 0 실측.
+// taxonomy의 canonical SSOT는 dynamic-workflows.md 표 +
+// config.Workflow.WorkflowAgents 맵 키다.
 
 // ─── 컴팩트 생성자 ───────────────────────────────────────────────────────────
 

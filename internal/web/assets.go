@@ -24,15 +24,6 @@ import (
 //go:embed assets/console.css assets/app.js assets/i18n.js assets/htmx.min.js assets/fonts
 var assetsFS embed.FS
 
-// errDictKey was the error sentinel for the retired html/template "dict" FuncMap
-// helper. It is declared in validate.go, which SPEC-WEB-CONSOLE-006 keeps
-// BYTE-UNCHANGED (REQ-WC6-004 / AC-WC6-004) — so the now-unused sentinel cannot be
-// deleted from there. This blank reference keeps it live (the `unused` linter would
-// otherwise flag it) without modifying the byte-unchanged validator file. The
-// sentinel itself is dead with the dict helper; the reference is the minimal
-// keep-alive that honors the byte-unchanged constraint.
-var _ = errDictKey
-
 // staticFS exposes the CSS/JS/font assets under their bare paths so the
 // /static/ handler can serve assets/console.css as /static/console.css and
 // assets/fonts/Pretendard-Regular.subset.woff2 as
