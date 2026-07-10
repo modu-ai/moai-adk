@@ -1,5 +1,7 @@
 # SPEC-CLIFIX-CONTRACT-001 — Implementation Plan
 
+> **Frontmatter Status Note**: This file's frontmatter is read-only for sync-phase. The authoritative status lives in `spec.md` frontmatter.
+
 ## §A Context
 
 P1 row of the CLI audit roadmap: contract drift. The `ExitCoder` infrastructure already exists at the main.go boundary — this SPEC is adoption work, not new design (audit §4: "이미 인프라 존재, 채택만 필요").
@@ -40,7 +42,7 @@ P1 row of the CLI audit roadmap: contract drift. The `ExitCoder` infrastructure 
 
 ## §F Milestones (priority order)
 
-- M1 — ExitCoder adoption: replace the 8 os.Exit sites with ExitCoder returns; extend main.go mapping if a code is unmapped. Repro-first: a test per command asserting defer execution + exit code via command runner.
+- M1 — ExitCoder adoption: replace the 11 os.Exit sites across 8 files with ExitCoder returns; extend main.go mapping if a code is unmapped. Repro-first: a test per command asserting defer execution + exit code via command runner.
 - M2 — Exit-code contracts: astgrep format-independent HasErrors; constitution exit 2; spec_lint exit 3; spec_audit exit 2.
 - M3 — Flags + streams: github --dry-run wiring; spec_status --confirm/--yes + non-TTY abort + `git -C`; pre-push stderr routing.
 - M4 — Test enablement + closure: rename team_spawn_lock_unix_test.go, prove the flock test runs and can fail; contract test suite (REQ-CONT-001-008); §E self-verification.

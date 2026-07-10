@@ -64,7 +64,18 @@ m1_to_mN_commit_strategy: "per-milestone Conventional Commits (M1 ExitCoder adop
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: "2026-07-11"
+sync_commit_sha: "pending-backfill"  # populated by follow-up commit (D3 self-referential-hazard exemption)
+sync_status: "complete"
+ac_pass_count: 8
+ac_fail_count: 0
+changelog_entry_added: true
+n1_fixed: true  # spec.md §D AC-CONT-001-003 --confirm → --yes
+n2_fixed: true  # plan.md §F M1 "8 os.Exit sites" → "11 os.Exit sites across 8 files"
+frontmatter_status_completed: true  # spec.md frontmatter status: in-progress → implemented → completed (3-phase close)
+breaking_change_documented: true  # REQ-CONT-001-005: moai spec audit MUST-FIX drift exit 1→2 (CI pipeline impact)
+```
 
 ## §F Phase 0.95 Mode Selection
 

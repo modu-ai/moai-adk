@@ -2,9 +2,9 @@
 id: SPEC-CLIFIX-CONTRACT-001
 title: "CLI Contract Remediation — ExitCoder adoption, dead flags, exit-code/stream contracts (P1)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-10
-updated: 2026-07-10
+updated: 2026-07-11
 author: manager-spec
 priority: P1
 phase: "v3.0.0 target"
@@ -63,7 +63,7 @@ Findings SSOT: audit §3 clusters 3/4/5 (contract rows) + §4 rows "RunE 내 os.
 
 - AC-CONT-001-001: Given the internal/cli tree after implementation, When grepping RunE/PostRunE bodies for os.Exit, Then zero call sites remain outside main.go boundary mapping and cmd wiring approved exceptions (maps REQ-CONT-001-001)
 - AC-CONT-001-002: Given a registry-mutating github subcommand invoked with --dry-run, When it completes, Then the registry file is byte-identical and the planned mutation is printed (maps REQ-CONT-001-002)
-- AC-CONT-001-003: Given a non-TTY invocation of spec status --sync-git without --confirm, When it runs, Then it aborts with a diagnostic and performs no git mutation (maps REQ-CONT-001-003)
+- AC-CONT-001-003: Given a non-TTY invocation of spec status --sync-git without --yes, When it runs, Then it aborts with a diagnostic and performs no git mutation (maps REQ-CONT-001-003)
 - AC-CONT-001-004: Given an astgrep scan whose findings include errors, When run with --json and with --sarif, Then both invocations exit 1 (maps REQ-CONT-001-004)
 - AC-CONT-001-005: Given a failing constitution check, an invalid spec lint argument set, and a MUST-FIX spec audit drift fixture, When each command runs, Then exit codes are 2, 3, and 2 respectively (maps REQ-CONT-001-005)
 - AC-CONT-001-006: Given a pre-push violation, When the hook blocks with exit 2, Then the violation detail text appears on stderr and not solely on stdout (maps REQ-CONT-001-006)
