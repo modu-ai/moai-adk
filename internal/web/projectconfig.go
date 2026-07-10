@@ -156,11 +156,12 @@ func parseProjectNestedForm(r *http.Request) projectNestedForm {
 // @MX:REASON: [AUTO] 이 함수 쌍의 영속화는 반드시 config.NewConfigManager()/LoadRaw/SetSection/Save 를 통해서만
 // 수행하며, 그 scope는 quality(development_mode) + git_convention(convention) 두 섹션으로 한정된다. 웹 레이어에서
 // YAML을 직접 marshal/os.WriteFile 하는 것은 금지된 안티패턴(REQ-WC3-008). 구 REQ-WC3-007의 "workflow/harness/
-// git-strategy/llm 절대 금지" 조항은 SPEC-WEB-CONSOLE-011 REQ-WC11-001이 공식 SUPERSEDE했다 — 이제 10개
-// user-facing 섹션(git-strategy, llm, workflow, harness, ralph, research, feedback, observability, security, db)이
-// 편집 가능하되 라우팅 SSOT는 settings.RouteForSection이다: git-strategy/llm은 typed 경로, Save() 경로가 없는
-// 8개 섹션은 yamlpatch seam 전용(REQ-WC11-017)이며 workflow.yaml의 typed re-marshal은 금지(REQ-WC11-005).
-// 제외군(state/system/project/cache/sunset/tool-policy/lsp/mx/미지명)은 REQ-WC11-018로 계속 쓰기 금지.
+// git-strategy/llm 절대 금지" 조항은 SPEC-WEB-CONSOLE-011 REQ-WC11-001이 공식 SUPERSEDE했고 SPEC-WEB-CONSOLE-012
+// (REQ-WC12-040)가 최종 계약으로 좁혔다 — 편집 가능 표면은 typed 2종(git-strategy, llm) + seam 전용 6종
+// (workflow, harness, ralph, feedback, observability, security)이며 라우팅 SSOT는 settings.RouteForSection이다.
+// Save() 경로가 없는 6개 seam 섹션은 yamlpatch seam 전용(REQ-WC11-017)이고 workflow.yaml의 typed re-marshal은
+// 금지(REQ-WC11-005). 제외군(state/system/project/cache/sunset/tool-policy/lsp/mx/미지명)과 폐선 섹션
+// db(settings SSOT)·research(SPEC-WEB-CONSOLE-012 REQ-WC12-010 유령 seam 경로 제거)는 REQ-WC11-018로 계속 쓰기 금지.
 // 비어있는 제출값은 기존 영속값을 덮어쓰지 않는다(empty = "keep existing", EC-1).
 
 // readProjectConfig is the real read seam (REQ-WC3-004). It loads the project
