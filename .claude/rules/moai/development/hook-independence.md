@@ -85,7 +85,7 @@ dependency. The key reading is **row (a)** (the positive signal) and **row (d)**
 | (d) `jq` dependency | YES (graceful degrade) | **NO** (git/grep/awk only) | YES (graceful degrade) |
 | (e) `${CLAUDE_PROJECT_DIR:-$PWD}` root-fallback | YES | YES | YES |
 | (f) `set -e` convention | YES | YES | YES |
-| (g) configured timeout | 5s (PostToolUse) | 10s (Stop) | 10s (TaskCompleted) — **dormant / not wired** |
+| (g) configured timeout | 5s (PostToolUse) | 60s (Stop) | 10s (TaskCompleted) — **dormant / not wired** |
 
 > **Row (g) caveat — `team-ac-verify.sh` is dormant.** The TaskCompleted gate is
 > not registered in the live hook configuration: `grep -c 'team-ac-verify'

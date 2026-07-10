@@ -17,20 +17,20 @@ Active settings.json keys: 20. RETIRE-OBS-ONLY (Go-only): 4.
 | Event | Matcher | Can Block | Description |
 |-------|---------|-----------|-------------|
 | SessionStart | Source | No | Runs when a new session begins. Matchers: startup, resume, clear, compact |
-| SessionEnd | Reason | No | Runs when session terminates. Matchers: clear, resume, logout, prompt_input_exit |
+| SessionEnd | Reason | No | Runs when session terminates. Matchers: clear, resume, logout, prompt_input_exit, bypass_permissions_disabled, other |
 | PostSession | No | No | Runs after a session ends (self-hosted runner lifecycle event, CC 2.1.169+). Fires once the session is fully torn down, later than SessionEnd. MoAI-ADK does not wire this hook today; documented as an available option for self-hosted deployments that need post-session cleanup/telemetry. |
 | PreToolUse | Tool name | Yes | Runs before a tool executes |
 | PostToolUse | Tool name | No | Runs after a tool completes successfully |
 | PostToolUseFailure | Tool name | No | Runs after a tool execution fails |
 | PostToolBatch | No | No | Runs after a batch of parallel tool calls resolves (v2.1.89+) |
 | UserPromptExpansion | Slash command name | Yes | Runs when slash command expands into prompt (v2.1.90+) |
-| PreCompact | Trigger | No | Runs before context compaction. Matchers: manual, auto |
+| PreCompact | Trigger | Yes | Runs before context compaction. Matchers: manual, auto |
 | PostCompact | Trigger | No | Runs after context compaction completes (v2.1.76+). Matchers: manual, auto |
 | Stop | No | Yes | Runs when Claude finishes responding |
-| StopFailure | Error type | No | Runs when a turn ends due to API error (v2.1.78+). Matchers: rate_limit, authentication_failed, billing_error, max_output_tokens |
+| StopFailure | Error type | No | Runs when a turn ends due to API error (v2.1.78+). Matchers: rate_limit, overloaded, authentication_failed, oauth_org_not_allowed, billing_error, invalid_request, model_not_found, server_error, max_output_tokens, unknown |
 | SubagentStart | Agent type | No | Runs when a subagent spawns |
 | SubagentStop | Agent type | Yes | Runs when a subagent terminates |
-| Notification | Type | No | Runs when notifications sent. Matchers: permission_prompt, idle_prompt, auth_success, elicitation_dialog. **Go-only observability tap (see sub-table below).** |
+| Notification | Type | No | Runs when notifications sent. Matchers: permission_prompt, idle_prompt, auth_success, elicitation_dialog, elicitation_complete, elicitation_response, agent_needs_input, agent_completed. **Go-only observability tap (see sub-table below).** |
 | UserPromptSubmit | No | Yes | Runs when user submits a prompt, before processing |
 | PermissionRequest | Tool name | Yes | Runs when permission dialog appears |
 | PermissionDenied | Tool name | No | Runs after auto mode denies a tool call. Return {retry: true} to retry (v2.1.89+) |
@@ -41,10 +41,10 @@ Active settings.json keys: 20. RETIRE-OBS-ONLY (Go-only): 4.
 | WorktreeRemove | No | No | Runs when a worktree is removed after agent terminates (v2.1.49+). Observer role; no output required. **Not registered by MoAI default** — see worktree-integration.md. |
 | ConfigChange | Config source | Yes | Runs when config files change (v2.1.49+). Matchers: user_settings, project_settings, local_settings, policy_settings, skills |
 | CwdChanged | No | No | Runs when working directory changes (v2.1.83+). Receives CLAUDE_ENV_FILE |
-| FileChanged | Filename | No | Runs when a file is changed externally (v2.1.83+). Receives CLAUDE_ENV_FILE |
+| FileChanged | Filename | No | Runs when a file is changed externally (v2.1.83+). The matcher takes **literal filenames** (NOT regex/glob) — the value is split on `|` and each segment is registered as a literal filename in the working directory. Receives CLAUDE_ENV_FILE |
 | InstructionsLoaded | Load reason | No | Runs when CLAUDE.md or rules loaded (v2.1.69+). Matchers: session_start, nested_traversal, path_glob_match, include, compact |
-| Elicitation | MCP server | Yes | Runs when MCP server requests user input (v2.1.76+). **Go-only observability tap (see sub-table below).** |
-| ElicitationResult | MCP server | Yes | Runs after user responds to MCP elicitation (v2.1.76+). **Go-only observability tap (see sub-table below).** |
+| Elicitation | MCP server | Yes | Runs when MCP server requests user input (v2.1.76+). Handler types: command+http+mcp_tool only (prompt/agent silently discarded). **Go-only observability tap (see sub-table below).** |
+| ElicitationResult | MCP server | Yes | Runs after user responds to MCP elicitation (v2.1.76+). Handler types: command+http+mcp_tool only (prompt/agent silently discarded). **Go-only observability tap (see sub-table below).** |
 
 **RETIRE-OBS-ONLY events (Go-only, not in settings.json — enable via system.yaml hook.observability_events):**
 
@@ -87,11 +87,11 @@ The following Claude Code hook event exists upstream but MoAI does not register 
 
 | Event | stdin | stdout | Notes |
 |-------|-------|--------|-------|
-| UserPromptSubmit | `prompt` | `additionalContext`, `reason` | Exit 2 blocks prompt |
-| PermissionRequest | `toolName`, `toolInput` | `reason` | Exit 0 = allow, exit 2 = deny |
+| UserPromptSubmit | `prompt` | `additionalContext`, `reason`, `decision:{block,reason}`, `sessionTitle`, `suppressOriginalPrompt` | Exit 2 blocks prompt; JSON `decision:"block"` also available |
+| PermissionRequest | `toolName`, `toolInput` | `reason`, `decision.behavior`, `updatedInput`, `updatedPermissions` | Exit 0 = allow, exit 2 = deny; JSON `decision.behavior` (allow/deny/ask) also available |
 | PermissionDenied | `toolName`, `toolInput` | `{retry: true}` | Return retry to allow model to retry (v2.1.89+) |
 | PostToolUseFailure | `toolName`, `toolInput`, `error`, `is_interrupt` | `systemMessage` | Non-blocking |
-| Notification | `type`, `message` | - | Types: permission_prompt, idle_prompt, auth_success, elicitation_dialog |
+| Notification | `type`, `message` | - | Types: permission_prompt, idle_prompt, auth_success, elicitation_dialog, elicitation_complete, elicitation_response, agent_needs_input, agent_completed |
 | Setup | `trigger` | `systemMessage` | trigger: init, init-only, or maintenance (v2.1.10+) |
 | InstructionsLoaded | `files`, `source` | - | Lists loaded instruction files (v2.1.69+) |
 | SubagentStart | `agentType`, `agentName`, `agent_id` | `additionalContext` | Inject context into subagent. `agent_id` added in v2.1.69 |
@@ -100,7 +100,7 @@ The following Claude Code hook event exists upstream but MoAI does not register 
 | SessionStart | `source` | `hookSpecificOutput`: `additionalContext`, `reloadSkills`, `sessionTitle` | `reloadSkills` (bool): when `true`, re-scans skill/command directories after SessionStart hooks complete, so skills the hook installed are available in the same session. `sessionTitle`: sets the session title (same effect as `/rename`); applies on `startup`/`resume` only, ignored on `clear`/`compact` (v2.1.152+) |
 | SessionEnd | `reason`, `sessionId` | - | Reasons: clear, logout, prompt_input_exit, bypass_permissions_disabled, other |
 | Stop | `last_assistant_message` | `systemMessage` | Includes last assistant message (v2.1.49+) |
-| SubagentStop | `agentType`, `agentName`, `last_assistant_message`, `agent_id`, `agent_transcript_path` | `systemMessage` | `agent_id` and `agent_transcript_path` added in v2.1.42/v2.1.69 |
+| SubagentStop | `agentType`, `agentName`, `last_assistant_message`, `agent_id`, `agent_transcript_path` | `systemMessage`, or JSON `decision:block+reason` / `additionalContext` | `agent_id` and `agent_transcript_path` added in v2.1.42/v2.1.69 |
 | ConfigChange | `configPath`, `changes` | - | Triggered on settings.json modification (v2.1.49+) |
 | StopFailure | `error_type`, `error_message` | `systemMessage` | Error types: rate_limit, authentication_failed, billing_error, max_output_tokens (v2.1.78+) |
 | CwdChanged | `old_cwd`, `new_cwd` | - | Receives CLAUDE_ENV_FILE env var for environment persistence |
@@ -179,6 +179,7 @@ Run command hooks in the background without blocking the conversation.
 - Configuration: Add `async: true` to any command hook definition
 - Results are delivered on the next conversation turn via `systemMessage`
 - Useful for long-running validations (linting, test execution, deployments)
+- Async PostToolUse can only deliver `additionalContext` — it cannot control `decision` or `updatedToolOutput` (those require synchronous PostToolUse). The shipped PostToolUse harness-observe tap is async, so it observes only; it never blocks.
 
 ### Single-Fire Hooks (once: true)
 
@@ -361,7 +362,7 @@ The **5s default applies to synchronous blocking hooks** (PreCompact, PreToolUse
 - Use proper path quoting to handle spaces in project paths
 - Prompt and agent hooks return JSON with `ok` and `reason` fields
 - Async hooks deliver results via `systemMessage` on the next turn
-- Exit code 2 is the universal "block/reject" signal for blocking events
+- Exit code 2 is the "block/reject" signal — honored ONLY by blocking events (PreToolUse, PostToolUse, Stop, SubagentStop, UserPromptSubmit, PermissionRequest, TeammateIdle, TaskCompleted, ConfigChange, PreCompact, PostToolBatch, UserPromptExpansion, WorktreeCreate, Elicitation, ElicitationResult); it is IGNORED by non-blocking observer events (PermissionDenied, Notification, SessionStart, SessionEnd, Setup, CwdChanged, FileChanged, PostCompact, SubagentStart, InstructionsLoaded, StopFailure, MessageDisplay)
 - Stop and SubagentStop hooks receive `last_assistant_message` field (v2.1.49+)
 
 ## Error Handling
