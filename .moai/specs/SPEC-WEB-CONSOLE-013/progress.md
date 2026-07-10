@@ -63,7 +63,7 @@ Per-package totals: settings 88.7%, config 80.7% (whole-package — legacy untes
 
 ```yaml
 run_complete_at: 2026-07-10
-run_commit_sha: pending-backfill-M4   # this progress.md rides the M4 commit; backfilled after M4 lands
+run_commit_sha: 7fd617cec   # M4 run-completion commit (worktree branch; backfilled per spec-frontmatter-schema.md D3 exemption)
 run_status: PASS
 ac_pass_count: 29        # AC-WC13-001..032 including a/b sub-letters (25 AC IDs)
 ac_fail_count: 0
