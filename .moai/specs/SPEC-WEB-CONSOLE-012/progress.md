@@ -9,8 +9,8 @@ artifacts: spec.md, plan.md, acceptance.md, progress.md (4)
 ## §E.2 Run-phase Evidence
 
 Run-phase 2026-07-10, cycle_type=tdd. Base: `90f394685` (worktree fast-forwarded
-to main HEAD). Milestone commits: M1 `cc1edd0ca`, M2 `1807197b1`,
-M3 (NO-TOUCH gate — no diff by design), M4 `6e7f88cef`, M5 `4fba896db`.
+to main HEAD). Milestone commits: M1 `28e199b89`, M2 `ebece333a`,
+M3 (NO-TOUCH gate — no diff by design), M4 `67929244e`, M5 `3143d2293`.
 Evidence logs (verbatim outputs, persisted to survive worktree disposal):
 `/Users/goos/MoAI/moai-adk-go/.moai/state/verify/e07c0351/` (preflight-build,
 preflight-lint-baseline, m1/m2/m4-fulltest, final-vet/lint/coverage/fulltest/makebuild).
@@ -65,7 +65,7 @@ Re-executed 2026-07-10 (run-phase), identical classification to acceptance.md §
 
 ```yaml
 run_complete_at: 2026-07-10
-run_commit_sha: pending-backfill (last code commit: 4fba896db; M1 cc1edd0ca / M2 1807197b1 / M4 6e7f88cef / M5 4fba896db — this progress.md commit cannot self-reference)
+run_commit_sha: pending-backfill (last code commit: 3143d2293; M1 28e199b89 / M2 ebece333a / M4 67929244e / M5 3143d2293 — this progress.md commit cannot self-reference)
 run_status: audit-ready
 ac_pass_count: 20   # 19 PASS + 1 PASS-WITH-DEBT (AC-WC12-020 — pre-existing internal/hook flake outside scope)
 ac_fail_count: 0
