@@ -56,11 +56,11 @@ REQ-CTX-017 ratchet: 이 명령·이 수치가 기준. M1 종료 시 46 미만�
 
 ### C.3 hex 리터럴 잔존 (검증됨)
 
-`internal/core/project/reporter.go:43-45` — `lipgloss.AdaptiveColor{Light: "#059669", ...}` 등 hex 6쌍(3 스타일). AC-CLI-TUI-013 계약(hex는 internal/tui에만)의 미커버 표면 — Printer 배선 시 제거 (REQ-CTX-008). 참고: internal/cli 쪽은 uikit/wizard 모두 hex-free 주석 확인.
+`internal/core/project/reporter.go:43-45` — `lipgloss.AdaptiveColor{Light: "#059669", ...}` 등 hex 6쌍(3 스타일). AC-CLI-TUI-013 계약(hex는 internal/tui에만)의 미커버 표면 — Printer 배선 시 제거 (REQ-CTX-008). 참고: internal/cli 쪽 uikit/wizard는 **코드 레벨** hex-free — 단 wizard/styles.go:17,20 **주석**에 금지-색상 문서화용 hex 문자열 잔존(`#DA7756 / #C45A3C`, `#7C3AED / #5B21B6`; wizard 무수정 유지, REQ-CTX-010). 따라서 AC-CTX-008 grep은 comment-line 제외 필터(`grep -vE ':[0-9]+:[[:space:]]*//'`)가 필수이고, 테스트 파일 필터는 파일명 위치 고정형 `_test\.go:`을 써야 함 — 17행은 내용에 "wizard_test.go" 문자열이 있어 naive `grep -v '_test.go'`가 콘텐츠 매칭으로 우연히 삼켰던 라인(2026-07-10 실측: 전체 hex 라인 5 = reporter 3 + wizard 주석 2, comment 제외 baseline 3).
 
 ### C.4 internal/tui 규모 (검증됨)
 
-비테스트 15파일, **1,744 LOC** (계획 보고서의 "~1,824"는 근사치 — 실측이 우선). 파일: theme.go(185) · detect.go · status.go · progress_line.go(275) · box.go · table.go · pill.go · form.go · prompt.go · help.go · i18n.go · profile.go · catppuccin.go · term.go · doc.go. testdata 디렉터리 109 엔트리 + golden 디렉터리 — characterization 앵커.
+비테스트 15파일, **1,744 LOC** (계획 보고서의 "~1,824"는 근사치 — 실측이 우선). 파일: theme.go(185) · detect.go · status.go · progress_line.go(275) · box.go · table.go · pill.go · form.go · prompt.go · help.go · i18n.go · profile.go · catppuccin.go · term.go · doc.go. testdata 디렉터리 ≈108 엔트리(2026-07-10 `find` 실측: 총 108 · 파일 107; 종전 109는 `.`/`..` 포함 계열 카운트 오차 — run-phase 재실측 의무) + golden 디렉터리 — characterization 앵커.
 
 ### C.5 환경변수 시맨틱 (검증됨)
 

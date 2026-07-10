@@ -4,7 +4,7 @@
 
 CLI TUX 현대화 4-마일스톤 중 M1(기반 교체). Tier L — Charm v2 의존성 도입 + `internal/tui` 커널 포팅(1,744 LOC 실측) + 신규 printer 패키지 + fang root 교체가 걸린 constitutional-급 기반 작업. 방법론: `quality.yaml development_mode: tdd` — 단, 표면별로 분화한다:
 
-- **M1a (tui v2 포팅)**: brownfield TDD의 pre-RED 분석 확장 = **characterization-first** (DDD ANALYZE-PRESERVE-IMPROVE 자세). 기존 tui 테스트 스위트 + `internal/tui/testdata/`(109 엔트리) + golden 디렉터리가 회귀 앵커.
+- **M1a (tui v2 포팅)**: brownfield TDD의 pre-RED 분석 확장 = **characterization-first** (DDD ANALYZE-PRESERVE-IMPROVE 자세). 기존 tui 테스트 스위트 + `internal/tui/testdata/`(≈108 엔트리, run-phase 재실측 — research.md §C.4) + golden 디렉터리가 회귀 앵커.
 - **M1b (printer 신규)**: 순수 TDD RED-GREEN-REFACTOR. 신규 패키지이므로 spec test가 계약을 먼저 정의.
 - **M1c (fang + 회귀 매트릭스)**: 통합 지점 — 기존 root 테스트를 characterization으로 보존 후 fang 배선.
 
@@ -21,7 +21,7 @@ CLI TUX 현대화 4-마일스톤 중 M1(기반 교체). Tier L — Charm v2 의�
 | 5 | root.go:42 trivialCommands + Execute():61 | fang 래핑 시 lazy-init(REQ-PERF-003-A) 우회 위험 | fang.Execute 앞단에 isTrivialCommand 분기 보존 |
 | 6 | cmd/moai/main.go ExitCoder | fang이 에러 체인을 가공하면 worktree verify 0/1/2/3 exit code 깨질 위험 | exit-code characterization test 선행 |
 | 7 | internal/statusline/* (working tree 수정 중 — 병렬 세션) | 접촉 시 병렬 작업 충돌 | PRESERVE — 절대 무접촉 (§D) |
-| 8 | tui golden/testdata 109 엔트리 | lipgloss v2 렌더러 변경으로 골든 대량 변동 가능 | 변동 골든은 개별 사유 문서화 (REQ-CTX-009); blind 재생성 금지 |
+| 8 | tui golden/testdata ≈108 엔트리 (재실측 의무) | lipgloss v2 렌더러 변경으로 골든 대량 변동 가능 | 변동 골든은 개별 사유 문서화 (REQ-CTX-009); blind 재생성 금지 |
 | 9 | bubbletea/bubbles/fang v2 API 상세 미실측 | v2 시그니처는 본 세션에서 미검증 (research.md §F) | run-phase 착수 시 Context7/godoc으로 API 확정 후 착수 |
 | 10 | uikit/banner.go 12곳 fmt.Print* | ratchet 베이스라인의 최대 기여자이나 배너 경량화는 M4 소관 | M1에서 무접촉 — ratchet 수치만 관리 |
 
@@ -93,7 +93,7 @@ go list -m -versions charm.land/fang/v2 | tr ' ' '\n' | tail -1
 
 ### M1c — Fang 통합 + confirm.go 결정 기록 + 회귀 매트릭스
 
-1. exit-code + trivial fast-path characterization test 선행 (Known Issue #5/#6).
+1. exit-code + trivial fast-path characterization test 선행 (Known Issue #5/#6; exit-code 테스트명은 `TestFangExitCoderCharacterization`으로 고정 — AC-CTX-020 실존 grep과 일치 의무).
 2. `fang.Execute(ctx, rootCmd)` 배선 — initConsole/lazy-init 분기 보존, 테마는 tui 토큰 주입 (REQ-CTX-018/019/022).
 3. `internal/merge/confirm.go`에 @MX:DEBT(+CEILING/UPGRADE) 주석 — design.md §D 결정 반영 (REQ-CTX-023).
 4. 회귀 매트릭스: non-TTY(`| cat` 파이프) × `NO_COLOR=1` × `GOOS=windows` 빌드 × exit code — AC-CTX-018~023.
@@ -108,7 +108,7 @@ GOOS=windows GOARCH=amd64 go build ./... > /tmp/moai-verify/3-win.log 2>&1; echo
 golangci-lint run --timeout=5m > /tmp/moai-verify/4-lint.log 2>&1; echo "exit=$?"; tail -10 /tmp/moai-verify/4-lint.log
 grep -rn 'fmt\.Printf\|fmt\.Println\|fmt\.Print(' internal/cli --include='*.go' | grep -v '_test.go' | wc -l
 NO_COLOR=1 go run ./cmd/moai --help 2>&1 | grep -c $'\x1b'; echo "expect 0"
-grep -rn '#[0-9A-Fa-f]\{6\}' internal/core/project internal/cli --include='*.go' | grep -v '_test.go' | wc -l; echo "expect 0"
+grep -rn '#[0-9A-Fa-f]\{6\}' internal/core/project internal/cli --include='*.go' | grep -v '_test\.go:' | grep -vE ':[0-9]+:[[:space:]]*//' | wc -l; echo "expect 0 (comment-line 제외 — AC-CTX-008과 동일 형식)"
 ```
 
 ## §G Anti-Patterns and Risks
