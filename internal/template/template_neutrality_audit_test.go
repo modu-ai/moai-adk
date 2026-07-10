@@ -241,10 +241,7 @@ func scanC2BareNarrative(root string) (map[string]struct{}, error) {
 			start := loc[0]
 			// Pass 2a: drop ID-embedded hits (SPEC-V3R, CONST-V3R, REQ-V3R, ...).
 			// Inspect a small left window for an ID-prefix form ending at start.
-			windowStart := start - 16
-			if windowStart < 0 {
-				windowStart = 0
-			}
+			windowStart := max(start-16, 0)
 			window := text[windowStart : loc[1]]
 			if c2IDEmbeddedRe.MatchString(window) {
 				continue
@@ -342,7 +339,6 @@ func TestTemplateNeutralityAudit(t *testing.T) {
 	root := findNeutralityRoot(t)
 
 	for _, class := range neutralityClasses {
-		class := class
 		t.Run(class.name, func(t *testing.T) {
 			t.Parallel()
 

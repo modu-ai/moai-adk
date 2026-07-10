@@ -41,7 +41,7 @@ Run-phase cycle_type: ddd (behavior-preserving doc/template refactor — ANALYZE
 | AC-I18N-017 | PASS | 2 clean baseline files byte-frozen (git diff 39c74d777..HEAD on 4 paths = empty) |
 | AC-I18N-018 | PASS | clean baseline files 0-Hangul (agent-common-protocol 0, goal-directive 0) |
 | AC-I18N-019 | PASS | sweep-induced delta byte-identical; askuser divergence = exactly §25-intentional provenance (5 hunks); session-handoff/context-window/examples identical |
-| AC-I18N-020 | PASS-WITH-DEBT | go build exit 0; TestTemplateNeutrality exit 0 (C9 PASS, C1-C8 no regression). PRE-EXISTING debt: TestOutputStylesTemplateLiveParity fails on moai-easy.md (exists in template at baseline 39c74d777, absent from live tree — deployment gap, NOT introduced by this SPEC; my commits never touched live moai-easy.md). |
+| AC-I18N-020 | PASS | go build exit 0; TestTemplateNeutrality exit 0 (C9 PASS, C1-C8 no regression). PRE-EXISTING debt resolved by parallel session commit 1243094f6 restoring moai-easy.md to live tree; NOT introduced by this SPEC. |
 | AC-I18N-021 | PASS (manual) | askuser policy section 5 principles parseable in English by non-Korean session |
 | AC-I18N-022 | PASS (manual) | ko-locale render path preserved (loc-table Korean column + render-time substitution intact) |
 | AC-I18N-023 | PASS (manual) | en-locale render path is default skeleton (English-first headers, consistent with fallback) |
