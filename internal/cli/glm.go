@@ -527,25 +527,22 @@ func persistTeamMode(projectRoot, mode string) error {
 func ensureSettingsLocalJSON(settingsPath string) error {
 	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trip as map[string]any so
 	// unknown top-level keys (hooks, outputStyle, model, ...) survive the write.
-	m, err := readSettingsMap(settingsPath)
-	if err != nil {
-		return err
-	}
+	// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
+	// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
+	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
+		env := settingsEnvMap(m)
 
-	env := settingsEnvMap(m)
+		// Force tmux display mode: CG mode requires tmux for pane-level env isolation.
+		// "auto" can fall back to inline mode, causing teammates to lose GLM env vars (#468).
+		// Single source of truth: teammateMode native settings key in settings.local.json.
+		m["teammateMode"] = "tmux"
+		// Clean up legacy env var if present (superseded by native key).
+		delete(env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
 
-	// Force tmux display mode: CG mode requires tmux for pane-level env isolation.
-	// "auto" can fall back to inline mode, causing teammates to lose GLM env vars (#468).
-	// Single source of truth: teammateMode native settings key in settings.local.json.
-	m["teammateMode"] = "tmux"
-	// Clean up legacy env var if present (superseded by native key).
-	delete(env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
-
-	if len(env) == 0 {
-		delete(m, "env")
-	}
-
-	return writeSettingsMap(settingsPath, m)
+		if len(env) == 0 {
+			delete(m, "env")
+		}
+	})
 }
 
 // loadLLMSectionOnly loads only the LLM section from llm.yaml.
@@ -587,55 +584,53 @@ func disableTeamMode(projectRoot string) error {
 func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiKey string) error {
 	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trip as map[string]any so
 	// unknown top-level keys survive the write.
-	m, err := readSettingsMap(settingsPath)
-	if err != nil {
-		return err
-	}
-	env := settingsEnvMap(m)
+	// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
+	// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
+	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
+		env := settingsEnvMap(m)
 
-	// Back up any existing ANTHROPIC_AUTH_TOKEN that is not the GLM key itself.
-	// This preserves a Claude OAuth token so that removeGLMEnv can restore it.
-	if existing, ok := env["ANTHROPIC_AUTH_TOKEN"].(string); ok && existing != "" && existing != apiKey {
-		env["MOAI_BACKUP_AUTH_TOKEN"] = existing
-	}
+		// Back up any existing ANTHROPIC_AUTH_TOKEN that is not the GLM key itself.
+		// This preserves a Claude OAuth token so that removeGLMEnv can restore it.
+		if existing, ok := env["ANTHROPIC_AUTH_TOKEN"].(string); ok && existing != "" && existing != apiKey {
+			env["MOAI_BACKUP_AUTH_TOKEN"] = existing
+		}
 
-	// Inject GLM environment variables for teammates
-	env["ANTHROPIC_AUTH_TOKEN"] = apiKey
-	env["ANTHROPIC_BASE_URL"] = glmConfig.BaseURL
-	env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
-	env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
-	env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
-	env["ANTHROPIC_DEFAULT_FABLE_MODEL"] = glmConfig.Models.Fable
-	// Z.AI proxy compatibility: strip Anthropic beta headers
-	env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
-	env["API_TIMEOUT_MS"] = "3000000"
-	// Issue #742: pre-compute statusline context size from the High slot
-	// (Opus equivalent) so SessionStart hook propagates it via tmux env.
-	if size := statusline.ResolveGLMContextWindow(glmConfig.Models.High); size > 0 {
-		env[config.EnvStatuslineContextSize] = strconv.Itoa(size)
-	} else {
-		// Clean up stale value from a prior session that resolved a known model.
-		delete(env, config.EnvStatuslineContextSize)
-	}
-	// 1M context activation: scale auto-compact window when the High slot model
-	// resolves to the 1M context tier; otherwise clean up any stale value.
-	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
-		env[config.EnvClaudeCodeAutoCompactWindow] = window
-	} else {
-		delete(env, config.EnvClaudeCodeAutoCompactWindow)
-	}
+		// Inject GLM environment variables for teammates
+		env["ANTHROPIC_AUTH_TOKEN"] = apiKey
+		env["ANTHROPIC_BASE_URL"] = glmConfig.BaseURL
+		env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
+		env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
+		env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
+		env["ANTHROPIC_DEFAULT_FABLE_MODEL"] = glmConfig.Models.Fable
+		// Z.AI proxy compatibility: strip Anthropic beta headers
+		env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
+		env["API_TIMEOUT_MS"] = "3000000"
+		// Issue #742: pre-compute statusline context size from the High slot
+		// (Opus equivalent) so SessionStart hook propagates it via tmux env.
+		if size := statusline.ResolveGLMContextWindow(glmConfig.Models.High); size > 0 {
+			env[config.EnvStatuslineContextSize] = strconv.Itoa(size)
+		} else {
+			// Clean up stale value from a prior session that resolved a known model.
+			delete(env, config.EnvStatuslineContextSize)
+		}
+		// 1M context activation: scale auto-compact window when the High slot model
+		// resolves to the 1M context tier; otherwise clean up any stale value.
+		if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
+			env[config.EnvClaudeCodeAutoCompactWindow] = window
+		} else {
+			delete(env, config.EnvClaudeCodeAutoCompactWindow)
+		}
 
-	// Force tmux display mode: GLM team mode uses tmux for env var inheritance.
-	// "auto" can fall back to inline mode, causing teammates to lose GLM env vars (#468).
-	// Single source of truth: teammateMode native settings key in settings.local.json.
-	m["teammateMode"] = "tmux"
-	// Clean up legacy env var if present (superseded by native key).
-	delete(env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
-	if len(env) == 0 {
-		delete(m, "env")
-	}
-
-	return writeSettingsMap(settingsPath, m)
+		// Force tmux display mode: GLM team mode uses tmux for env var inheritance.
+		// "auto" can fall back to inline mode, causing teammates to lose GLM env vars (#468).
+		// Single source of truth: teammateMode native settings key in settings.local.json.
+		m["teammateMode"] = "tmux"
+		// Clean up legacy env var if present (superseded by native key).
+		delete(env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
+		if len(env) == 0 {
+			delete(m, "env")
+		}
+	})
 }
 
 // saveLLMSection saves only the LLM section to llm.yaml.
@@ -935,40 +930,38 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 
 	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trip as map[string]any so
 	// unknown top-level keys survive the write.
-	m, err := readSettingsMap(settingsPath)
-	if err != nil {
-		return err
-	}
-	env := settingsEnvMap(m)
+	// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
+	// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
+	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
+		env := settingsEnvMap(m)
 
-	// Back up any existing ANTHROPIC_AUTH_TOKEN that is not the GLM key itself.
-	// This preserves a Claude OAuth token so that removeGLMEnv can restore it.
-	if existing, ok := env["ANTHROPIC_AUTH_TOKEN"].(string); ok && existing != "" && existing != apiKey {
-		env["MOAI_BACKUP_AUTH_TOKEN"] = existing
-	}
+		// Back up any existing ANTHROPIC_AUTH_TOKEN that is not the GLM key itself.
+		// This preserves a Claude OAuth token so that removeGLMEnv can restore it.
+		if existing, ok := env["ANTHROPIC_AUTH_TOKEN"].(string); ok && existing != "" && existing != apiKey {
+			env["MOAI_BACKUP_AUTH_TOKEN"] = existing
+		}
 
-	// Inject GLM environment variables with actual API key value
-	env["ANTHROPIC_AUTH_TOKEN"] = apiKey
-	env["ANTHROPIC_BASE_URL"] = glmConfig.BaseURL
-	env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
-	env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
-	env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
-	env["ANTHROPIC_DEFAULT_FABLE_MODEL"] = glmConfig.Models.Fable
-	// Z.AI proxy compatibility: strip Anthropic beta headers
-	env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
-	env["API_TIMEOUT_MS"] = "3000000"
-	// 1M context activation: scale auto-compact window when the High slot model
-	// resolves to the 1M context tier; otherwise clean up any stale value.
-	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
-		env[config.EnvClaudeCodeAutoCompactWindow] = window
-	} else {
-		delete(env, config.EnvClaudeCodeAutoCompactWindow)
-	}
-	if len(env) == 0 {
-		delete(m, "env")
-	}
-
-	return writeSettingsMap(settingsPath, m)
+		// Inject GLM environment variables with actual API key value
+		env["ANTHROPIC_AUTH_TOKEN"] = apiKey
+		env["ANTHROPIC_BASE_URL"] = glmConfig.BaseURL
+		env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
+		env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
+		env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
+		env["ANTHROPIC_DEFAULT_FABLE_MODEL"] = glmConfig.Models.Fable
+		// Z.AI proxy compatibility: strip Anthropic beta headers
+		env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
+		env["API_TIMEOUT_MS"] = "3000000"
+		// 1M context activation: scale auto-compact window when the High slot model
+		// resolves to the 1M context tier; otherwise clean up any stale value.
+		if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
+			env[config.EnvClaudeCodeAutoCompactWindow] = window
+		} else {
+			delete(env, config.EnvClaudeCodeAutoCompactWindow)
+		}
+		if len(env) == 0 {
+			delete(m, "env")
+		}
+	})
 }
 
 // isTestEnvironment detects if we're running in a test environment.

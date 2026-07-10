@@ -242,50 +242,60 @@ func applyCGMode(root, profileName string) error {
 // SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trips as map[string]any so
 // unknown top-level keys survive the write.
 func removeGLMEnv(settingsPath string) error {
-	m, err := readSettingsMap(settingsPath)
+	// Non-locked pre-check: if the file is absent or empty, there are no GLM env
+	// keys to clean. Preserves the original no-op-on-empty behavior.
+	preRead, err := readSettingsMap(settingsPath)
 	if err != nil {
 		return err
 	}
-	if len(m) == 0 {
-		// Empty or absent file — nothing to clean.
+	if len(preRead) == 0 {
 		return nil
 	}
 
-	// Clear teammateMode override so settings.json default ("auto") applies.
-	// CG/GLM modes set this to "tmux"; CC mode should restore the default.
-	// delete (rather than m["teammateMode"] = "") so the key is omitted entirely,
-	// matching the original struct's omitempty behavior for "".
-	delete(m, "teammateMode")
-
-	if env, ok := m["env"].(map[string]any); ok {
-		// Restore backed-up OAuth token before removing GLM vars
-		if backup, bok := env["MOAI_BACKUP_AUTH_TOKEN"].(string); bok && backup != "" {
-			env["ANTHROPIC_AUTH_TOKEN"] = backup
-			delete(env, "MOAI_BACKUP_AUTH_TOKEN")
-		} else {
-			delete(env, "ANTHROPIC_AUTH_TOKEN")
+	// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
+	// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
+	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
+		if len(m) == 0 {
+			return
 		}
-		delete(env, "ANTHROPIC_BASE_URL")
-		delete(env, "ANTHROPIC_DEFAULT_HAIKU_MODEL")
-		delete(env, "ANTHROPIC_DEFAULT_SONNET_MODEL")
-		delete(env, "ANTHROPIC_DEFAULT_OPUS_MODEL")
-		delete(env, "ANTHROPIC_DEFAULT_FABLE_MODEL")
-		// Remove Z.AI proxy compatibility flags (set by moai glm/cg)
-		delete(env, "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
-		delete(env, "API_TIMEOUT_MS")
-		delete(env, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
-		// Remove teammate display env var override (CG/GLM set this)
-		delete(env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
-		// Issue #742: drop GLM context-size hint when leaving GLM mode so the
-		// statusline reverts to the Claude slot's nominal size.
-		delete(env, "MOAI_STATUSLINE_CONTEXT_SIZE")
 
-		if len(env) == 0 {
-			delete(m, "env")
+		// Clear teammateMode override so settings.json default ("auto") applies.
+		// CG/GLM modes set this to "tmux"; CC mode should restore the default.
+		// delete (rather than m["teammateMode"] = "") so the key is omitted entirely,
+		// matching the original struct's omitempty behavior for "".
+		delete(m, "teammateMode")
+
+		if env, ok := m["env"].(map[string]any); ok {
+			// Restore backed-up OAuth token before removing GLM vars
+			if backup, bok := env["MOAI_BACKUP_AUTH_TOKEN"].(string); bok && backup != "" {
+				env["ANTHROPIC_AUTH_TOKEN"] = backup
+				delete(env, "MOAI_BACKUP_AUTH_TOKEN")
+			} else {
+				delete(env, "ANTHROPIC_AUTH_TOKEN")
+			}
+			delete(env, "ANTHROPIC_BASE_URL")
+			delete(env, "ANTHROPIC_DEFAULT_HAIKU_MODEL")
+			delete(env, "ANTHROPIC_DEFAULT_SONNET_MODEL")
+			delete(env, "ANTHROPIC_DEFAULT_OPUS_MODEL")
+			delete(env, "ANTHROPIC_DEFAULT_FABLE_MODEL")
+			// Remove Z.AI proxy compatibility flags (set by moai glm/cg)
+			delete(env, "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
+			delete(env, "API_TIMEOUT_MS")
+			delete(env, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
+			// Remove teammate display env var override (CG/GLM set this)
+			delete(env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
+			// Issue #742: drop GLM context-size hint when leaving GLM mode so the
+			// statusline reverts to the Claude slot's nominal size.
+			delete(env, "MOAI_STATUSLINE_CONTEXT_SIZE")
+			// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-002: drop the 1M auto-compact
+			// window so it does not persist into subsequent moai cc sessions.
+			delete(env, config.EnvClaudeCodeAutoCompactWindow)
+
+			if len(env) == 0 {
+				delete(m, "env")
+			}
 		}
-	}
-
-	return writeSettingsMap(settingsPath, m)
+	})
 }
 
 // resetTeamModeForCC disables team_mode when switching to CC.
@@ -657,32 +667,29 @@ func readSettingsLocalForLaunch() map[string]string {
 // SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trips as map[string]any so
 // unknown top-level keys survive the write.
 func syncPermissionModeToSettingsLocal(settingsPath string, permissionMode string) error {
-	m, err := readSettingsMap(settingsPath)
-	if err != nil {
-		return err
-	}
-
-	// Only write an override when the mode differs from the project default.
-	// The project settings.json default is "acceptEdits", so we skip writing
-	// for empty string and "acceptEdits" to avoid unnecessary overrides.
-	if permissionMode != "" && permissionMode != "acceptEdits" {
-		perms, _ := m["permissions"].(map[string]any)
-		if perms == nil {
-			perms = make(map[string]any)
-		}
-		perms["defaultMode"] = permissionMode
-		m["permissions"] = perms
-	} else {
-		// Remove the override so settings.json default applies
-		if perms, ok := m["permissions"].(map[string]any); ok {
-			delete(perms, "defaultMode")
-			if len(perms) == 0 {
-				delete(m, "permissions")
+	// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
+	// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
+	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
+		// Only write an override when the mode differs from the project default.
+		// The project settings.json default is "acceptEdits", so we skip writing
+		// for empty string and "acceptEdits" to avoid unnecessary overrides.
+		if permissionMode != "" && permissionMode != "acceptEdits" {
+			perms, _ := m["permissions"].(map[string]any)
+			if perms == nil {
+				perms = make(map[string]any)
+			}
+			perms["defaultMode"] = permissionMode
+			m["permissions"] = perms
+		} else {
+			// Remove the override so settings.json default applies
+			if perms, ok := m["permissions"].(map[string]any); ok {
+				delete(perms, "defaultMode")
+				if len(perms) == 0 {
+					delete(m, "permissions")
+				}
 			}
 		}
-	}
-
-	return writeSettingsMap(settingsPath, m)
+	})
 }
 
 // expandModelString normalizes moai-specific model strings into valid Claude

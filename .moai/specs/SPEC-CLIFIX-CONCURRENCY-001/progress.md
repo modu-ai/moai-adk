@@ -8,7 +8,29 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — Re-route writers + removeGLMEnv key-set (REQ-CONC-001-001 + REQ-CONC-001-002)
+
+**AC PASS/FAIL matrix (M1 scope = AC-001 + AC-002):**
+
+| AC | Status | Verification command | Actual output |
+|---|---|---|---|
+| AC-CONC-001-001 | PASS | `go test -race ./internal/cli/ -run 'SettingsLocalConcurrent' -count=1 -v` | `PASS — TestSettingsLocalConcurrentWrites (0.12s)`; grep: 0 `writeSettingsMap` callers outside settings.go (all 5 re-routed) |
+| AC-CONC-001-002 | PASS | `go test ./internal/cli/ -run 'RemoveGLMEnvComplete' -count=1 -v` && `grep -n 'EnvClaudeCodeAutoCompactWindow' internal/cli/launcher.go` | `PASS — TestRemoveGLMEnvComplete`; `launcher.go:292: delete(env, config.EnvClaudeCodeAutoCompactWindow)` |
+
+**RED evidence (SPEC §D.5 — tests must fail on pre-fix commit):**
+- `TestSettingsLocalConcurrentWrites` FAILED pre-M1: `parse settings.local.json: invalid character 'P' after top-level value` — concurrent `writeSettingsMap` (plain os.WriteFile) truncated the file mid-read by another goroutine.
+- `TestRemoveGLMEnvComplete` FAILED pre-M1: `CLAUDE_CODE_AUTO_COMPACT_WINDOW was NOT removed by removeGLMEnv` — key missing from the delete set at launcher.go:268-281.
+
+**Changes applied (GREEN):**
+1. `internal/cli/glm.go`: 3 callers re-routed through `mutateSettingsLocal` — `ensureSettingsLocalJSON`, `injectGLMEnvForTeam`, `injectGLMEnv`.
+2. `internal/cli/launcher.go`: 2 callers re-routed through `mutateSettingsLocal` — `removeGLMEnv`, `syncPermissionModeToSettingsLocal`; `removeGLMEnv` delete-set gains `config.EnvClaudeCodeAutoCompactWindow`.
+3. `internal/cli/settings.go`: deleted dead `writeSettingsMap` (golangci-lint `unused` after all 5 callers re-routed).
+4. `internal/cli/clifix_concurrency_repro_test.go`: new RED→GREEN reproduction tests.
+
+**Cross-platform build:** `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+**Lint:** `golangci-lint run --timeout=2m` → 0 issues (pre-flight baseline was also 0; the transient `writeSettingsMap unused` finding was resolved by deleting the dead function).
+**Coverage:** `go test -cover ./internal/cli/` → 72.7% of statements (package-level).
+**Race suite:** `go test -race ./internal/cli/... ./internal/cli/preference/... -count=1` → all 10 packages PASS.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

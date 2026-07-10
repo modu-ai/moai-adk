@@ -2,7 +2,7 @@
 id: SPEC-CLIFIX-CONCURRENCY-001
 title: "CLI Concurrency Remediation — re-route writers through locked seam, ~/.claude.json RMW guard, preference store hardening (P2)"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-07-10
 updated: 2026-07-11
 author: manager-spec

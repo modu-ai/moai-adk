@@ -31,23 +31,6 @@ func readSettingsMap(path string) (map[string]any, error) {
 	return m, nil
 }
 
-// writeSettingsMap marshals m and writes it to path via plain os.WriteFile.
-// Callers that need atomic semantics use mutateSettingsLocal (which wraps the
-// read-modify-write with a lock + writeFileAtomic).
-func writeSettingsMap(path string, m map[string]any) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("create directory: %w", err)
-	}
-	data, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal settings: %w", err)
-	}
-	if err := os.WriteFile(path, data, 0o600); err != nil {
-		return fmt.Errorf("write settings.local.json: %w", err)
-	}
-	return nil
-}
-
 // settingsEnvMap returns the env sub-map from m, creating it if absent. The env
 // values are stored as any (strings at runtime); callers type-assert when reading.
 func settingsEnvMap(m map[string]any) map[string]any {
