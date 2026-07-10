@@ -79,7 +79,13 @@ Residual-risk: (1) the pre-existing `TestOutputStylesTemplateLiveParity` failure
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-10T12:20:00Z
+sync_commit_sha: pending-backfill-2026-07-10
+sync_status: audit-ready
+```
+
+Sync summary: single sync commit carries the 3-phase close (`in-progress → implemented → completed`, merged transition) atomically across spec.md/plan.md/acceptance.md/progress.md frontmatter (`updated: 2026-07-10`). CHANGELOG.md `[Unreleased] § Added` entry appended (moai-domain-humanize v1.1.0 → v1.2.0, copy-review.md + design-copy.md, 24/24 AC referenced). Orchestrator independent verification prior to sync: parity PASS (`diff -rq` template vs local IDENTICAL), byte-freeze PASS (8 language-module files 0-diff), neutrality PASS (7-class grep + `TestTemplateNoInternalContentLeak`), version PASS (SKILL.md + catalog.yaml both 1.2.0). `sync_commit_sha` populated via follow-up backfill chore commit (self-referential-hazard workaround per spec-frontmatter-schema.md § SHA placeholder backfill exemption).
 
 ## §F Phase 0.95 Mode Selection
 

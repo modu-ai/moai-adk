@@ -2,7 +2,7 @@
 id: SPEC-HUMANIZE-002
 title: "Port claude.mo.ai.kr slop-review skill knowledge into moai-domain-humanize v1.2.0 modules with 4-language expansion"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-10
 updated: 2026-07-10
 author: GOOS행님
