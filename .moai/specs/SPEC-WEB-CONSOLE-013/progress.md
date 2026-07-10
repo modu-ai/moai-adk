@@ -85,7 +85,7 @@ known_debt:
 
 ```yaml
 sync_complete_at: 2026-07-10
-sync_commit_sha: pending-backfill-013   # placeholder — this commit cannot cite its own SHA; backfilled in the immediate follow-up commit
+sync_commit_sha: a22f6cade   # backfilled — the sync commit that carried this §E.4 signal + CHANGELOG entry + frontmatter transition
 sync_status: PASS
 changelog_entry_position: "Unreleased > Changed (new section, top of file, immediately after '## [Unreleased]')"
 frontmatter_status_transitions:
