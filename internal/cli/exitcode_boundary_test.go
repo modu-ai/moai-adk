@@ -5,12 +5,8 @@ import (
 	"testing"
 )
 
-// exitCoder mirrors the structural interface defined in cmd/moai/main.go. Any
-// error whose type implements ExitCode() int is mapped to that exit code at the
-// main.go boundary instead of cobra's default exit-1-on-any-error.
-type exitCoder interface {
-	ExitCode() int
-}
+// exitCoder is defined in fang.go (SPEC-CLI-TUX-V3-001 M1b) and reused here —
+// it mirrors the cmd/moai/main.go ExitCoder interface.
 
 // TestExitCodeErrorSatisfiesExitCoder proves the cli-root exitCodeError type
 // (shared by astgrep/hook/hook_pre_push/spec_lint/spec_drift/migrate_agency/
