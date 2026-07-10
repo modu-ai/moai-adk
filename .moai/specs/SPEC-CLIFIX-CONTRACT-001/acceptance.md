@@ -10,7 +10,7 @@
 
 | AC | REQ | Verification command | Expected outcome |
 |---|---|---|---|
-| AC-CONT-001-001 | REQ-CONT-001-001 | `grep -rn 'os\.Exit' internal/cli internal/cli/harness internal/cli/agentlint --include='*.go' \| grep -v '_test.go'` | Only the main.go/root boundary mapping site(s) remain; zero matches inside RunE/PostRunE bodies of the 8 listed files |
+| AC-CONT-001-001 | REQ-CONT-001-001 | `grep -rn 'os\.Exit' internal/cli internal/cli/harness internal/cli/agentlint --include='*.go' \| grep -v '_test.go'` | Only the approved-exception sites remain: cmd/moai/main.go ExitCoder boundary mapping + launch_exec_windows.go exec-mirror (documented process-replacement semantics); zero matches inside RunE/PostRunE bodies of the 8 listed files |
 | AC-CONT-001-002 | REQ-CONT-001-002 | `go test ./internal/cli/ -run 'GithubDryRun' -count=1 -v` | PASS — registry file byte-identical after --dry-run; planned mutation printed |
 | AC-CONT-001-003 | REQ-CONT-001-003 | `go test ./internal/cli/ -run 'SpecStatusConfirm' -count=1 -v` | PASS — non-TTY without --confirm aborts (no hang, no git mutation); with --confirm proceeds using `git -C <projectRoot>` |
 | AC-CONT-001-004 | REQ-CONT-001-004 | `go test ./internal/cli/ -run 'AstgrepExitCode' -count=1 -v` | PASS — error findings produce exit 1 under text, json, and sarif formats alike |

@@ -13,7 +13,7 @@ lifecycle: spec-anchored
 tags: "cli, audit-remediation, refactoring, dead-code, hardcoding, i18n, p4"
 era: V3R6
 tier: L
-dependencies: [SPEC-CLIFIX-CRITICAL-001, SPEC-CLIFIX-CONTRACT-001, SPEC-CLIFIX-CONCURRENCY-001, SPEC-CLIFIX-LINTER-STALE-001]
+depends_on: [SPEC-CLIFIX-CRITICAL-001, SPEC-CLIFIX-CONTRACT-001, SPEC-CLIFIX-CONCURRENCY-001, SPEC-CLIFIX-LINTER-STALE-001]
 ---
 
 # SPEC-CLIFIX-HYGIENE-001 — CLI Structure and Hygiene Remediation (P4)
@@ -38,7 +38,7 @@ This is a behavior-preserving DDD SPEC except where the defect IS the behavior (
 - REQ-HYG-001-004: The CLI shall extract inline thresholds and limits (tier thresholds duplicated twice, dispatcher timeouts, size caps, retry/circuit literals) into defaults.go single-source constants referenced by all users.
 - REQ-HYG-001-005: The CLI shall present English user-facing strings in doctor.go, migration.go, clean.go, and web_port* per the `error_messages: en` language policy, removing the Korean hardcoded strings.
 - REQ-HYG-001-006: The CLI shall provide a single rune-boundary truncate helper and use it at the four byte-slicing truncation sites (constitution, tool_policy, github.go, and the remaining audited site), so multi-byte content is never split mid-rune.
-- REQ-HYG-001-007: When deepMerge3Way merges user configuration with a new template (update.go:2396-2452), keys present only in the old user configuration shall be preserved in the merge result instead of being silently dropped.
+- REQ-HYG-001-007: When deepMerge3Way merges user configuration with a new template (update.go:2396-2452), the CLI shall distinguish user-added keys from template-retired keys using the base map: keys absent from base AND absent from the new template (user-added) shall be preserved in the merge result; keys present in base and old but absent from the new template (template-retired) shall remain droppable — the current behavior of dropping ALL old-only keys is corrected only for the user-added class, preserving intentional template key retirement.
 - REQ-HYG-001-008: When update persists github_token or gitlab_token into user.yaml (update.go:2641-2651), the CLI shall write the file with 0600 permissions.
 - REQ-HYG-001-009: The setup wizard shall mask PAT input using password echo mode (wizard/questions.go:119-154) and shall compute the stepper total dynamically from the actually-displayed questions (wizard/wizard.go:99,126).
 - REQ-HYG-001-010: The worktree package shall parse workflow configuration via yaml.v3 instead of strings.Contains line matching (worktree/tmux_integration.go:160, worktree/new.go:481) so commented-out lines cannot activate CG mode, and shall quote worktree paths inserted into tmux initial commands (tmux_integration.go:114,124) so paths with spaces or metacharacters survive.
@@ -73,7 +73,7 @@ This is a behavior-preserving DDD SPEC except where the defect IS the behavior (
 - AC-HYG-001-004: Given the audited threshold literals, When grepping the CLI tree, Then tier thresholds, dispatcher timeouts, and size caps exist once in defaults.go and inline duplicates are gone (maps REQ-HYG-001-004)
 - AC-HYG-001-005: Given the six audited files, When scanning for Hangul characters in user-facing strings, Then zero remain (maps REQ-HYG-001-005)
 - AC-HYG-001-006: Given a CJK string longer than each truncation limit, When each of the four sites truncates it, Then output is valid UTF-8 with no broken rune (maps REQ-HYG-001-006)
-- AC-HYG-001-007: Given a user config with keys absent from the new template, When deepMerge3Way merges, Then the old-only keys are present in the result (maps REQ-HYG-001-007)
+- AC-HYG-001-007: Given a user config carrying (i) a user-added key absent from base and new template, and (ii) a template-retired key present in base and old but absent from new, When deepMerge3Way merges, Then the user-added key is preserved and the template-retired key is dropped (maps REQ-HYG-001-007)
 - AC-HYG-001-008: Given an update that writes tokens to user.yaml, When file permissions are inspected, Then the mode is 0600 (maps REQ-HYG-001-008)
 - AC-HYG-001-009: Given the wizard PAT question and a variable question count, When the wizard renders, Then PAT input is masked and the stepper shows N/N with dynamic totals never exceeding 100% (maps REQ-HYG-001-009)
 - AC-HYG-001-010: Given a workflow.yaml where team_mode lines exist only as comments and a worktree path containing spaces, When worktree CG detection and tmux spawn run, Then CG mode is not activated by the comment and the tmux command receives the quoted path intact (maps REQ-HYG-001-010)

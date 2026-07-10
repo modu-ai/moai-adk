@@ -13,7 +13,7 @@ lifecycle: spec-anchored
 tags: "cli, audit-remediation, data-loss, critical, p0"
 era: V3R6
 tier: M
-dependencies: []
+depends_on: []
 ---
 
 # SPEC-CLIFIX-CRITICAL-001 — CLI Critical Remediation (P0)
@@ -32,7 +32,7 @@ Findings SSOT: audit §1 Critical table. All file:line coordinates below were ve
 
 ## §B Requirements (GEARS)
 
-- REQ-CRIT-001-001: When `moai cc` or `moai glm` performs a read-modify-write of `.claude/settings.local.json` (glm.go:98, launcher.go:241), the CLI shall preserve every top-level key not being mutated, by round-tripping through `map[string]any` or the existing `mutateSettingsLocal` seam instead of the 6-key closed `SettingsLocal` struct.
+- REQ-CRIT-001-001: When `moai cc` or `moai glm` performs a read-modify-write of `.claude/settings.local.json` (glm.go:98, launcher.go:241), the CLI shall preserve every top-level key not being mutated, by representing the file as `map[string]any` on every write-back path — including the `mutateSettingsLocal` seam itself (settings.go:28), whose current `mutate func(*SettingsLocal)` signature round-trips the 6-key closed struct and therefore cannot satisfy this requirement unchanged. The seam's internal representation shall be opened to `map[string]any` (the closed struct may remain for read-only convenience).
 - REQ-CRIT-001-002: When `ClaimTask` writes a claim line to the team tasklist ledger (team_spawn.go:316-384), the CLI shall open the ledger with `O_APPEND|O_WRONLY` so the write lands at the ledger tail and the append-only ledger head is never overwritten.
 - REQ-CRIT-001-003: When `saveWorkflowMuteConfig` persists a mute change (harness_mute.go:198-228), the CLI shall mutate only the target keys of `workflow.yaml` via the yaml.v3 Node API (reusing the harness.go:363 pattern) so all sibling keys (agentic_loop, team, ...) survive the round-trip.
 - REQ-CRIT-001-004: When `RemoveHarness` or `EditHarness` resolves harness artifacts by name (harness/v4lifecycle.go:257,285), the matcher shall use a `prefix+"-"` boundary (or exact-name equality) so operating on harness `release` never touches artifacts of harness `release-update`.
@@ -46,7 +46,7 @@ Findings SSOT: audit §1 Critical table. All file:line coordinates below were ve
 
 ### In Scope
 
-- The 8 Critical fix sites listed in §B (glm.go, launcher.go, team_spawn.go, harness_mute.go, harness/v4lifecycle.go, update.go + update_cleanup.go lock wiring, migrate_agency.go, hook.go).
+- The 8 Critical fix sites listed in §B (glm.go, launcher.go, settings.go — the `mutateSettingsLocal` seam representation per REQ-CRIT-001-001, team_spawn.go, harness_mute.go, harness/v4lifecycle.go, update.go + update_cleanup.go lock wiring, migrate_agency.go, hook.go).
 - One reproduction test per defect plus regression coverage for the fixed behavior.
 
 ### Out of Scope — Broader concurrency hardening

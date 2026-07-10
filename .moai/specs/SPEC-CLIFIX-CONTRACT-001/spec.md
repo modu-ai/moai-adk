@@ -13,7 +13,7 @@ lifecycle: spec-anchored
 tags: "cli, audit-remediation, exit-codes, contract-drift, p1"
 era: V3R6
 tier: M
-dependencies: [SPEC-CLIFIX-CRITICAL-001]
+depends_on: [SPEC-CLIFIX-CRITICAL-001]
 ---
 
 # SPEC-CLIFIX-CONTRACT-001 — CLI Contract Remediation (P1)
@@ -32,7 +32,7 @@ Findings SSOT: audit §3 clusters 3/4/5 (contract rows) + §4 rows "RunE 내 os.
 
 ## §B Requirements (GEARS)
 
-- REQ-CONT-001-001: The CLI shall produce all non-zero exit codes through the existing `ExitCoder` mechanism mapped at the main.go boundary, and RunE/PostRunE bodies shall not call `os.Exit` — removing the calls in hook.go, hook_pre_push.go, astgrep.go, spec_lint.go, spec_drift.go, migrate_agency.go (:590), harness/execute.go (:327), and agentlint/workflow_lint.go (:159).
+- REQ-CONT-001-001: The CLI shall produce all non-zero exit codes through the existing `ExitCoder` mechanism mapped at the main.go boundary, and RunE/PostRunE bodies shall not call `os.Exit` — removing the calls in hook.go, hook_pre_push.go, astgrep.go, spec_lint.go, spec_drift.go, migrate_agency.go (:594), harness/execute.go (:327), and agentlint/workflow_lint.go (:159).
 - REQ-CONT-001-002: When a `moai github` subcommand runs with `--dry-run` (github.go:97,103), the CLI shall perform no registry writes and shall print the planned mutations instead.
 - REQ-CONT-001-003: When `moai spec status --sync-git` would mutate git state (spec_status.go:205-235), the CLI shall gate the mutation on the `--confirm` (or `--yes`) flag and shall abort with a diagnostic in a non-TTY context instead of blocking on `fmt.Scanln`.
 - REQ-CONT-001-004: When `moai astgrep` emits `--json` or `--sarif` output and the result set contains errors (astgrep.go:107-122), the process shall exit 1 exactly as in text format, with the HasErrors decision evaluated independently of the output-format branch.

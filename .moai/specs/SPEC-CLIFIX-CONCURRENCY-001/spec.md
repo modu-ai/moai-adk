@@ -13,7 +13,7 @@ lifecycle: spec-anchored
 tags: "cli, audit-remediation, concurrency, atomic-write, p2"
 era: V3R6
 tier: M
-dependencies: [SPEC-CLIFIX-CRITICAL-001, SPEC-CLIFIX-CONTRACT-001]
+depends_on: [SPEC-CLIFIX-CRITICAL-001, SPEC-CLIFIX-CONTRACT-001]
 ---
 
 # SPEC-CLIFIX-CONCURRENCY-001 — CLI Concurrency Remediation (P2)
@@ -26,7 +26,7 @@ dependencies: [SPEC-CLIFIX-CRITICAL-001, SPEC-CLIFIX-CONTRACT-001]
 
 ## §A Context
 
-Multi-session operation on a shared checkout is this repository's real usage pattern (audit §5 P2: "다중 세션(이 저장소의 실사용 패턴) 안정화"). The audit found 8 unlocked/non-atomic read-modify-write sites over shared JSON state: five `settings.local.json` writers, the `~/.claude.json` RMW racing a live Claude Code process, and preference-store TOCTOU windows — plus three duplicate atomic-writer helpers that fragment the write discipline. SPEC-CLIFIX-CRITICAL-001 stopped the closed-struct data loss at two sites; this SPEC completes the concurrency hardening.
+Multi-session operation on a shared checkout is this repository's real usage pattern (audit §5 P2: "다중 세션(이 저장소의 실사용 패턴) 안정화"). The audit found 8 unlocked/non-atomic read-modify-write sites over shared JSON state: five `settings.local.json` writers, the `~/.claude.json` RMW racing a live Claude Code process, and preference-store TOCTOU windows — plus four named atomic-writer helpers (and at least one inline tmp+rename) that fragment the write discipline. SPEC-CLIFIX-CRITICAL-001 stopped the closed-struct data loss at two sites; this SPEC completes the concurrency hardening.
 
 Findings SSOT: audit §3 cluster 2 (Major rows 1, 2, 4) and cluster 5 (preference rows), §4 cross-cutting row 5. Re-verify all anchors against the live tree at run time.
 
@@ -35,7 +35,7 @@ Findings SSOT: audit §3 cluster 2 (Major rows 1, 2, 4) and cluster 5 (preferenc
 - REQ-CONC-001-001: The CLI shall route all five `settings.local.json` write sites (glm.go:562,667,1015; launcher.go:296,705) through a single locked and atomic `mutateSettingsLocal` seam (read-modify-write under a file lock, temp-file+rename publication), so concurrent sessions cannot lose updates or truncate the file.
 - REQ-CONC-001-002: When `removeGLMEnv` restores Claude-mode settings (launcher.go:241-301), it shall remove `CLAUDE_CODE_AUTO_COMPACT_WINDOW` together with the other GLM-injected env keys, so a 1M auto-compact window does not persist into subsequent `moai cc` sessions.
 - REQ-CONC-001-003: When glm_tools performs a read-modify-write of `~/.claude.json` (glm_tools.go:496-615), the CLI shall guard the RMW with flock or an mtime compare-and-retry loop, so concurrent writes from a live Claude Code process are not lost.
-- REQ-CONC-001-004: The CLI shall consolidate the three duplicate atomic-writer helpers into one shared helper, and all former callers shall use the consolidated helper.
+- REQ-CONC-001-004: The CLI shall consolidate the duplicate atomic-writer helpers — the verified inventory: `writeFileAtomic` (settings.go:79), `atomicWriteJSON` (update_noise.go), `writeClaudeJSONAtomic` (glm_tools.go:437), plus the inline tmp+rename in harness_mute.go — into one shared helper, and all former callers shall use the consolidated helper.
 - REQ-CONC-001-005: When preference `Upsert` transitions an entry between tiers (preference/filestore.go:78-113), it shall remove the stale copy from the previous tier file in the same operation, so the core-first read cascade never returns the outdated value.
 - REQ-CONC-001-006: While concurrent scans and toggles operate on the preference store, the store shall remain crash-consistent and TOCTOU-hardened: `DecayScan` archival and recall writes shall be transactional or reconciled at load (preference/decay.go:142-189), and the `ScanDue`/`MarkScanned` and toggle read-then-flip windows shall be closed via locking or single-file atomic swap.
 - REQ-CONC-001-007: The run-phase implementation shall verify every concurrency fix with a reproduction test that fails on the pre-fix code, and the affected packages shall pass `go test -race`.

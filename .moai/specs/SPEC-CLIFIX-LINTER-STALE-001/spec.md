@@ -13,7 +13,7 @@ lifecycle: spec-anchored
 tags: "cli, audit-remediation, agentlint, doctor, staleness, p3"
 era: V3R6
 tier: M
-dependencies: [SPEC-CLIFIX-CRITICAL-001, SPEC-CLIFIX-CONTRACT-001, SPEC-CLIFIX-CONCURRENCY-001]
+depends_on: [SPEC-CLIFIX-CRITICAL-001, SPEC-CLIFIX-CONTRACT-001, SPEC-CLIFIX-CONCURRENCY-001]
 ---
 
 # SPEC-CLIFIX-LINTER-STALE-001 — CLI Linter/Doctor Staleness Remediation (P3)
@@ -26,7 +26,7 @@ dependencies: [SPEC-CLIFIX-CRITICAL-001, SPEC-CLIFIX-CONTRACT-001, SPEC-CLIFIX-C
 
 ## §A Context
 
-The quality gates themselves have gone stale against the live system (audit §5 P3: "품질 게이트가 실제 시스템을 다시 감사하게 됨"). agentlint's hand-rolled frontmatter parser never populates Hooks/Skills/Sandbox, permanently disabling rule LR-04; its effort matrix references the retired 17-agent roster so none of the current 10 agents is covered; live+template-mirror double-scan makes LR-07 structurally false-positive; the doctor skills allowlist is hand-maintained and badly stale (live skills WARN, retired skills PASS); root help advertises the nonexistent `moai brain`; and ClaimTask reports success for nonexistent/completed tasks.
+The quality gates themselves have gone stale against the live system (audit §5 P3: "품질 게이트가 실제 시스템을 다시 감사하게 됨"). agentlint's hand-rolled frontmatter parser never populates Hooks/Skills/Sandbox, permanently disabling rule LR-04; its effort matrix references the retired 17-agent roster, covering only 5 of the current 10 agents (missing manager-develop, manager-design, builder-harness, super-advisor); live+template-mirror double-scan makes LR-07 structurally false-positive; the doctor skills allowlist is hand-maintained and badly stale (live skills WARN, retired skills PASS); root help advertises the nonexistent `moai brain`; and ClaimTask reports success for nonexistent/completed tasks.
 
 Findings SSOT: audit §3 cluster 4 Major rows (help.go, doctor_skills.go) + cluster 5 Major rows (agentlint ×3) + cluster 2 Major row (ClaimTask validation). Re-verify anchors at run time.
 

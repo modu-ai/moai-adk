@@ -13,7 +13,7 @@ Each AC lists the verification command(s) and expected outcome. Test names are c
 | AC | REQ | Verification command | Expected outcome |
 |---|---|---|---|
 | AC-CRIT-001-001 | REQ-CRIT-001-001 | `go test ./internal/cli/ -run 'SettingsLocalPreserve' -count=1 -v` | PASS — fixture with extra top-level keys (hooks/outputStyle/permissions) survives glm+cc round-trip |
-| AC-CRIT-001-001b | REQ-CRIT-001-001 | `grep -n 'SettingsLocal' internal/cli/glm.go internal/cli/launcher.go` | No write-back path marshals the closed struct back to disk (struct may remain for read-only convenience) |
+| AC-CRIT-001-001b | REQ-CRIT-001-001 | `grep -n 'SettingsLocal' internal/cli/glm.go internal/cli/launcher.go internal/cli/settings.go` | No write-back path (including the `mutateSettingsLocal` seam in settings.go) marshals the closed struct back to disk (struct may remain for read-only convenience) |
 | AC-CRIT-001-002 | REQ-CRIT-001-002 | `go test ./internal/cli/ -run 'ClaimTaskAppend' -count=1 -v` | PASS — ledger head bytes unchanged after claim; claim line at tail |
 | AC-CRIT-001-002b | REQ-CRIT-001-002 | `grep -n 'O_APPEND' internal/cli/team_spawn.go` | ≥1 match at the ClaimTask open; no `O_RDWR` remains on the claim write path |
 | AC-CRIT-001-003 | REQ-CRIT-001-003 | `go test ./internal/cli/ -run 'HarnessMutePreserve' -count=1 -v` | PASS — workflow.yaml fixture with agentic_loop/team keys retains them after mute save |
@@ -32,6 +32,7 @@ Each AC lists the verification command(s) and expected outcome. Test names are c
 - (d) harness names that are themselves prefixes of each other in both directions (`a`, `a-b`, `a-b-c`).
 - (e) stale lock file left by a crashed update — lock acquisition must detect staleness (PID/liveness or age policy) rather than deadlock forever.
 - (f) rollback when the snapshot itself is partially written — rollback must not destroy the snapshot before restore completes.
+- (g) archive walk encountering a symlink chain (symlink → symlink → out-of-tree target) — the Lstat guard must skip at the first link without following the chain.
 - (h) legacy tier-promotions.jsonl that already contains historical duplicates — reader must tolerate them; high-water mark derives from latest state.
 
 ## §D.5 Quality Gate / Definition of Done

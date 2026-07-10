@@ -14,7 +14,7 @@
 | AC-LINT-001-002 | REQ-LINT-001-002 | `go test ./internal/cli/agentlint/ -run 'EffortMatrixRoster' -count=1 -v` | PASS — all 10 retained agents covered; test fails if a retired name (e.g. manager-quality, expert-backend) remains in the matrix |
 | AC-LINT-001-003 | REQ-LINT-001-003 | `go test ./internal/cli/agentlint/ -run 'LR07Dedupe' -count=1 -v` | PASS — live+mirror pair → 0 duplicate findings; genuine same-name duplicate fixture → 1 finding |
 | AC-LINT-001-004 | REQ-LINT-001-004 | `go test ./internal/cli/ -run 'DoctorSkillsCatalog' -count=1 -v` && `grep -c 'moai-' internal/cli/doctor_skills.go` | PASS — allowlist built from catalog at runtime; static skill-name literals reduced to zero (or a documented bootstrap minimum); retired-skill fixture WARNs, catalog-live skill PASSes |
-| AC-LINT-001-005 | REQ-LINT-001-005 | `go run ./cmd/moai --help 2>&1 \| grep -c 'brain'` | Returns 0; help-entry gate test asserts every advertised command is registered |
+| AC-LINT-001-005 | REQ-LINT-001-005 | `! go run ./cmd/moai --help 2>&1 \| grep -q 'brain'` (negated grep — exit 0 when zero matches, safe for `&&` chaining) | Command succeeds (no `brain` entry); help-entry gate test asserts every advertised command is registered |
 | AC-LINT-001-006 | REQ-LINT-001-006 | `go test ./internal/cli/ -run 'ClaimTaskValidate' -count=1 -v` | PASS — nonexistent ID → error, completed task → error, pending task → success; ledger line count unchanged on failures |
 | AC-LINT-001-007 | REQ-LINT-001-007 | `go test ./internal/cli/agentlint/... ./internal/cli/ -run 'LR04\|EffortMatrixRoster\|LR07Dedupe\|DoctorSkillsCatalog' -count=1` | PASS — each gate has both a firing (positive) and non-firing (negative) case |
 
