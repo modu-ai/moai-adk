@@ -2,7 +2,7 @@
 id: SPEC-CLIFIX-CRITICAL-001
 title: "CLI Critical Remediation — data loss, ledger corruption, cross-harness deletion (P0)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-10
 updated: 2026-07-10
 author: manager-spec

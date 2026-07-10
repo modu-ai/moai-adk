@@ -93,4 +93,52 @@ m1_to_mN_commit_strategy: "M-separated (5703512c8 M1, daba6b7ab M2, 0bace43be M3
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: "2026-07-10"
+sync_commit_sha: "pending-backfill"   # D3 SHA placeholder — backfilled in follow-up commit
+run_commit_sha: "a1c38328e"           # M4 closure (substantive final run commit)
+sync_status: complete
+ac_count_verified: 11                 # 9 numbered ACs verified via 11 matrix rows (incl. 001b/002b grep)
+ac_fail_count: 0
+close_subject_full_id: "SPEC-CLIFIX-CRITICAL-001"
+three_phase_close_infix: "3-phase close"
+orchestrator_direct_sync: true        # manager-docs delegation aborted at context-window limit during B12 impl-file read; orchestrator-direct per CLAUDE.local.md §13 GLM orchestrator-direct sync/Mx fallback
+changelog_dup_check_pre: "grep -c SPEC-CLIFIX-CRITICAL-001 CHANGELOG.md = 0"
+mx_tag_scan: "0 unresolved @MX:TODO (all [AUTO] annotation tags are pre-existing, not added by this SPEC)"
+ownership_note: "frontmatter in-progress→completed performed orchestrator-direct. OwnershipTransitionRule MAY emit an advisory finding (canonical owner = manager-docs); documented here as the context-limit fallback."
+cross_platform_build:
+  darwin_amd64: pass
+  windows_amd64: pass
+race_check: "go test -race ./internal/cli/ -run 'ClaimTask|UpdateLock' -count=1 → exit 0"
+lint_baseline_preserved: true         # golangci-lint 0 issues pre and post
+```
+
+- S1 Frontmatter transition: spec.md `status: in-progress → completed` (this sync commit).
+- S2 §E.4 sync_commit_sha: populated via D3 backfill pattern (placeholder in this commit; real SHA in the follow-up backfill commit).
+- S3 CHANGELOG: [Unreleased] Fixed entry added; `grep -c` was 0 pre-sync; AC count derived from acceptance.md SSOT (11 verification rows).
+- S4 MX tag scan: 0 unresolved `@MX:TODO` in the 11 run-phase files (repro tests carry `SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-00X` annotations; all `[AUTO]` tags pre-existing).
+- S5 close-subject full-ID: `chore(SPEC-CLIFIX-CRITICAL-001): sync-phase artifacts + 3-phase close` (full individual SPEC-ID + `3-phase close` infix).
+- S6 push state: see backfill commit (sync + backfill pushed together).
+
+## §F Phase 0.95 Mode Selection
+
+- 2026-07-10: Phase 0.5 plan-audit verdict — PASS 0.88 (Tier M threshold 0.80 met; skip-eligible 0.90 not met). Report: `.moai/reports/plan-audit/SPEC-CLIFIX-CRITICAL-001-review-1.md`. 8 anchors re-verified CONFIRMED against live tree. Defects D1 (SHOULD-FIX, plan prose undercount of defect-(a) write-back surface) + D2 (MINOR, BDD ACs) — non-BLOCKING. Implementation Kickoff Approval: OBTAINED (user selected "PASS 수용, run 진입"; D1 5-paths enumeration injected into manager-develop delegation prompt to zero out under-scope risk).
+
+- Input parameters:
+  - tier: M
+  - scope: ~10-15 files (8 source anchors + repro tests; defect (a) spans settings.go + glm.go + launcher.go)
+  - domain count: 1 (internal/cli, single Go domain)
+  - language mix: 100% Go
+  - concurrency benefit: LOW (coding-heavy)
+  - Agent Teams prereqs: not satisfied (team.enabled default false + coding-heavy)
+
+- Mode evaluation:
+  - Mode 1 trivial: not selected (8 multi-file defects)
+  - Mode 2 background: not selected (write work, synchronous verification required)
+  - Mode 3 agent-team: not selected (team prereqs unmet; coding-heavy → Mode 4/5 preferred)
+  - Mode 4 parallel: not selected (single domain, coding-heavy — Anthropic coding-task parallelism caveat)
+  - Mode 5 sub-agent: **selected** (default fallback; sequential per-milestone delegation)
+  - Mode 6 workflow: not selected (8 defects each require a distinct fix mechanism — not a single uniform mechanical transform)
+
+- Decision: Mode 5 (sub-agent, sequential)
+- Justification: 8 Critical defects concentrated in a single Go domain (internal/cli) each requiring a distinct fix mechanism (map round-trip / O_APPEND / yaml Node API / prefix boundary / lock wiring / snapshot-restore / Lstat / high-water mark). Per Anthropic's coding-task parallelism caveat, sequential sub-agent delegation is the safe default for coding-heavy work. Mode 6 (workflow) is excluded — it admits only a single uniform mechanical transform with no inter-file dependency, which the 8 distinct fix mechanisms do not satisfy.
