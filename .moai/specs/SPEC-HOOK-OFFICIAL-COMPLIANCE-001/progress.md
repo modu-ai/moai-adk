@@ -252,7 +252,7 @@ evidence:
   docs_site_impact: "none (no hook documentation updates needed — existing docs already compliant)"
   frontmatter_transition: "4 artifacts (spec.md + progress.md frontmatter status: in-progress → completed; plan.md/acceptance.md have no frontmatter)"
 verification:
-  go_test: "go test ./... exit 0 (whole-repo green, baseline preserved)"
+  go_test: "go test ./... exit 1 on full run — 1 pre-existing flaky failure (TestHookWrapper_TempFileCleanup, internal/hook; temp-file cleanup timing-sensitive); isolated rerun PASS 2/2 (3.478s, 1.718s). Sync commit 3e5667f1f touched docs-only (progress.md/spec.md frontmatter/CHANGELOG), no causal path to internal/hook code. Substantive green; flaky = pre-existing debt (queued separately)."
   go_build: "go build ./... exit 0; GOOS=windows GOARCH=amd64 go build ./... exit 0"
   golangci_lint: "0 issues (clean baseline preserved)"
   template_mirror: "TestRuleTemplateMirror PASS (live<->template byte-identical)"
