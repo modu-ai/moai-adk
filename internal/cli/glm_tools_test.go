@@ -1067,19 +1067,22 @@ func TestMaskPartial_Long(t *testing.T) {
 	}
 }
 
-// ─── writeClaudeJSONAtomic error paths ────────────────────────────────────
+// ─── writeClaudeJSONBytes error paths (M3: writeClaudeJSONAtomic deleted) ──
 
-// TestWriteClaudeJSONAtomic_BadDir — error when the directory is not writable.
-func TestWriteClaudeJSONAtomic_BadDir(t *testing.T) {
+// TestWriteClaudeJSONBytes_BadDir — error when the directory is not writable.
+// M3 consolidation: writeClaudeJSONAtomic was deleted; writeClaudeJSONBytes
+// delegates to the consolidated writeFileAtomic helper, so this error-path
+// test exercises the consolidated path.
+func TestWriteClaudeJSONBytes_BadDir(t *testing.T) {
 	if os.Getuid() == 0 {
 		t.Skip("root 권한에서는 권한 테스트 불가")
 	}
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows에서는 /nonexistent-dir 경로가 드라이브 루트로 해석됨")
 	}
-	// Attempt to write to a nonexistent path (temp-file creation is expected to fail)
+	// Attempt to write to a nonexistent path (MkdirAll + temp-file creation is expected to fail)
 	badPath := filepath.Join("/nonexistent-dir-xyz", ".claude.json")
-	err := writeClaudeJSONAtomic(badPath, map[string]any{})
+	err := writeClaudeJSONBytes(badPath, []byte(`{}`))
 	if err == nil {
 		t.Error("잘못된 경로에 쓰기가 성공함 (에러 기대)")
 	}

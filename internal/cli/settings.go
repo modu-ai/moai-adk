@@ -100,9 +100,27 @@ func mutateSettingsLocal(path string, mutate func(map[string]any)) error {
 // writeFileAtomic writes data to path atomically via a temp file in the same
 // directory followed by os.Rename. os.Rename within a single filesystem is
 // atomic, so a concurrent reader observes either the old or the new file —
-// never a partial write (mirrors the saveLLMSection pattern in glm.go).
+// never a partial write.
+//
+// SPEC-CLIFIX-CONCURRENCY-001 M3: this is the single consolidated atomic-writer
+// helper for internal/cli. All former atomic-write sites (atomicWriteJSON in
+// update_noise.go, writeClaudeJSONAtomic + writeClaudeJSONBytes in glm_tools.go,
+// the inline tmp+rename blocks in harness_mute.go and glm.go saveLLMSection)
+// route through this helper. The perm parameter + tmp.Chmod preserve the
+// per-caller file-mode contract (0600 for credential-bearing files like
+// settings.local.json / ~/.claude.json; 0644 for non-credential config like
+// workflow.yaml). os.MkdirAll is a safe superset added during consolidation
+// (writeClaudeJSONBytes and preference/atomicWrite already had it). No fsync —
+// none of the former callers relied on crash-durability beyond rename atomicity.
+//
+// @MX:ANCHOR: [AUTO] consolidated atomic-writer helper (internal/cli)
+// @MX:REASON: union-of-guarantees contract — single temp+rename+Chmod mechanism shared by 5 former atomic-write sites; perm param preserves per-caller file-mode (0600 credential vs 0644 config)
+// @MX:SPEC: SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-004 (M3 consolidation)
 func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
 	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("mkdir for atomic write: %w", err)
+	}
 	tmp, err := os.CreateTemp(dir, ".settings-local-*.tmp")
 	if err != nil {
 		return fmt.Errorf("create temp file: %w", err)

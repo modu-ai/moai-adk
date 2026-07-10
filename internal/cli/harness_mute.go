@@ -243,15 +243,7 @@ func saveWorkflowMuteConfig(path string, cfg workflowMuteConfig) error {
 	if err != nil {
 		return fmt.Errorf("marshal workflow config: %w", err)
 	}
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("mkdirall %s: %w", dir, err)
-	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, out, 0o644); err != nil {
-		return fmt.Errorf("write tmp: %w", err)
-	}
-	return os.Rename(tmp, path)
+	return writeFileAtomic(path, out, 0o644)
 }
 
 // ensureRootMapping guarantees that root is a DocumentNode wrapping a MappingNode,

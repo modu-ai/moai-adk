@@ -451,49 +451,17 @@ func readClaudeJSON(configPath string) (map[string]any, error) {
 	return root, nil
 }
 
-// writeClaudeJSONAtomic performs an atomic JSON write to configPath (REQ-GMC-005, R7)
-// Atomic write: temp file → os.Rename (POSIX atomicity guarantee)
-func writeClaudeJSONAtomic(configPath string, root map[string]any) error {
-	jsonBytes, err := json.MarshalIndent(root, "", "  ")
-	if err != nil {
-		return fmt.Errorf("JSON 직렬화 실패: %w", err)
-	}
-	return writeClaudeJSONBytes(configPath, jsonBytes)
-}
-
-// writeClaudeJSONBytes writes data to configPath atomically via temp-file + rename
-// (POSIX atomicity guarantee within a single filesystem). It is the bytes-level
-// publication step shared by writeClaudeJSONAtomic (map-level) and the guarded RMW
-// (mutateClaudeJSONAtomic), so the guard can write pre-marshaled bytes inside the
-// lock without re-running the marshal under the lock.
+// writeClaudeJSONBytes writes pre-marshaled bytes to configPath atomically via the
+// consolidated writeFileAtomic helper (SPEC-CLIFIX-CONCURRENCY-001 M3). It is the
+// bytes-level publication step used by the guarded RMW (mutateClaudeJSONAtomic),
+// so the guard can write pre-marshaled bytes inside the lock without re-running
+// the marshal under the lock. The 0600 perm preserves the credential-bearing
+// file-mode contract for ~/.claude.json.
 //
-// @MX:NOTE: [AUTO] Extracted as a bytes-level helper so mutateClaudeJSONAtomic keeps the marshal OUTSIDE the lock (acceptance.md §C large-file constraint). writeClaudeJSONAtomic delegates here unchanged in behavior.
+// @MX:NOTE: [AUTO] M3 consolidation — writeClaudeJSONAtomic deleted (sole caller inlined the marshal); this bytes-level seam delegates to writeFileAtomic so mutateClaudeJSONAtomic keeps the marshal OUTSIDE the lock (acceptance.md §C large-file constraint).
+// @MX:SPEC: SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-004
 func writeClaudeJSONBytes(configPath string, data []byte) error {
-	dir := filepath.Dir(configPath)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("디렉토리 생성 실패: %w", err)
-	}
-
-	tmp, err := os.CreateTemp(dir, ".claude-json-*.tmp")
-	if err != nil {
-		return fmt.Errorf("임시 파일 생성 실패: %w", err)
-	}
-	tmpName := tmp.Name()
-	defer func() { _ = os.Remove(tmpName) }() // Clean up the temp file on failure
-
-	if _, err := tmp.Write(data); err != nil {
-		_ = tmp.Close()
-		return fmt.Errorf("임시 파일 쓰기 실패: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("임시 파일 닫기 실패: %w", err)
-	}
-
-	// Atomic rename
-	if err := os.Rename(tmpName, configPath); err != nil {
-		return fmt.Errorf("파일 교체 실패: %w", err)
-	}
-	return nil
+	return writeFileAtomic(configPath, data, 0o600)
 }
 
 // readClaudeJSONRaw reads configPath and returns the raw bytes alongside the
@@ -902,7 +870,11 @@ func disableMCPServerForTool(configPath, toolName string) (bool, error) {
 	}
 	root["mcpServers"] = mcpServers
 
-	return true, writeClaudeJSONAtomic(configPath, root)
+	jsonBytes, err := json.MarshalIndent(root, "", "  ")
+	if err != nil {
+		return true, fmt.Errorf("JSON 직렬화 실패: %w", err)
+	}
+	return true, writeClaudeJSONBytes(configPath, jsonBytes)
 }
 
 // mcpEntryEqual는 두 MCP 엔트리가 의미상 동일한지 판정한다 (idempotency 검사용).

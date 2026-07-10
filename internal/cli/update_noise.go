@@ -5,14 +5,13 @@ package cli
 // @MX:SPEC: SPEC-V3R6-UPDATE-NOISE-001
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
 // updateVerboseMode carries the `--verbose` flag through the update execution
@@ -59,43 +58,19 @@ func loadMergeHistoryLedger(projectRoot string) map[string]mergeHistoryEntry {
 	return ledger
 }
 
-// saveMergeHistoryLedger persists the merge-history ledger atomically.
+// saveMergeHistoryLedger persists the merge-history ledger atomically via the
+// consolidated writeFileAtomic helper (SPEC-CLIFIX-CONCURRENCY-001 M3). Uses
+// json.Encoder to preserve the trailing-newline convention established by the
+// former atomicWriteJSON helper.
 func saveMergeHistoryLedger(projectRoot string, ledger map[string]mergeHistoryEntry) error {
-	dir := filepath.Join(projectRoot, ".moai", "cache")
-	if err := os.MkdirAll(dir, defs.DirPerm); err != nil {
-		return fmt.Errorf("mkdir cache dir: %w", err)
-	}
-	return atomicWriteJSON(filepath.Join(dir, "merge-history.json"), ledger)
-}
-
-// atomicWriteJSON writes the JSON-encoded value to targetPath atomically via
-// a temp file + rename pattern. The temp file lives in the same directory as
-// the target so the rename stays on the same filesystem.
-func atomicWriteJSON(targetPath string, value any) error {
-	dir := filepath.Dir(targetPath)
-	tmp, err := os.CreateTemp(dir, ".tmp-*.json")
-	if err != nil {
-		return fmt.Errorf("create temp file: %w", err)
-	}
-	tmpName := tmp.Name()
-	cleanup := func() { _ = os.Remove(tmpName) }
-
-	enc := json.NewEncoder(tmp)
+	targetPath := filepath.Join(projectRoot, ".moai", "cache", "merge-history.json")
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
 	enc.SetIndent("", "  ")
-	if encErr := enc.Encode(value); encErr != nil {
-		_ = tmp.Close()
-		cleanup()
-		return fmt.Errorf("encode JSON: %w", encErr)
+	if err := enc.Encode(ledger); err != nil {
+		return fmt.Errorf("encode merge-history JSON: %w", err)
 	}
-	if closeErr := tmp.Close(); closeErr != nil {
-		cleanup()
-		return fmt.Errorf("close temp file: %w", closeErr)
-	}
-	if renameErr := os.Rename(tmpName, targetPath); renameErr != nil {
-		cleanup()
-		return fmt.Errorf("rename to target: %w", renameErr)
-	}
-	return nil
+	return writeFileAtomic(targetPath, buf.Bytes(), 0o600)
 }
 
 // recordMergeFallback updates the merge-history ledger for relPath and, when

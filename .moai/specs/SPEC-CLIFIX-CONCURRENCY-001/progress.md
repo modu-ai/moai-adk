@@ -60,6 +60,48 @@
 **Vet:** `go vet ./internal/cli/` exit 0; `gofmt` clean.
 **Race suite (full, on worktree at main HEAD):** `go test -race ./internal/cli/... ./internal/cli/preference/... -count=1` → all 10 packages PASS. NOTE: an initial full-suite run surfaced a data race on the package-global `claudeJSONGuardPreLockHook` (the deterministic test wrote it while concurrent tests read it — both were `t.Parallel()`). Fixed by making `TestClaudeJSONGuard_ExternalWriteDetectedByCompareRetry` serial (NOT `t.Parallel()`) so it completes before any parallel test reads the hook. The cascade of other test failures in that initial run was collateral (race-detector tainting), not separate races — confirmed by the clean full-suite re-run.
 
+### M3 — Atomic-writer consolidation (REQ-CONC-001-004 / AC-CONC-001-004)
+
+**AC PASS/FAIL matrix (M3 scope = AC-004):**
+
+| AC | Status | Verification command | Actual output |
+|---|---|---|---|
+| AC-CONC-001-004 | PASS | `grep -rn 'func writeFileAtomic\|func atomicWriteJSON\|func writeClaudeJSONAtomic\|func atomicWrite' internal/cli --include='*.go' \| grep -v _test.go` | Exactly 2 matches: `internal/cli/settings.go:119:func writeFileAtomic` (consolidated) + `internal/cli/preference/filestore.go:473:func atomicWrite` (option (b) exception) |
+
+**Union-of-guarantees characterization contract (DDD PRESERVE):**
+
+| Former site | fsync? | Perm | MkdirAll? | Chmod? | Rename? |
+|---|---|---|---|---|---|
+| `writeFileAtomic` (settings.go) | NO | param (0600) | NO → gained | YES | YES |
+| `atomicWriteJSON` (update_noise.go) | NO | CreateTemp default (0600) | NO → gained | NO → gained via perm param | YES |
+| `writeClaudeJSONAtomic` (glm_tools.go) | NO | CreateTemp default (0600) | YES | NO → gained via perm param | YES |
+| `writeClaudeJSONBytes` (glm_tools.go, M2 seam) | NO | CreateTemp default (0600) | YES | NO → gained via perm param | YES |
+| inline harness_mute.go | NO | 0o644 (os.WriteFile) | YES | NO → gained via perm param | YES |
+| inline glm.go saveLLMSection | NO | CreateTemp default (0600) | NO → gained | NO → gained via perm param | YES |
+
+Union contract: perm param + `tmp.Chmod(perm)` (supports both 0600 credential and 0644 config), `os.MkdirAll(dir, 0o755)` (safe superset), `os.Rename` atomicity, NO fsync (none of the former callers relied on it). The consolidated `writeFileAtomic` takes the UNION of all guarantees.
+
+**Characterization evidence (RED-anchored baseline → GREEN post-consolidation):**
+
+8 characterization tests in `internal/cli/clifix_concurrency_m3_test.go`:
+- Pre-consolidation (2e4513f90): 7 PASS + 1 FAIL (`TestCharacterize_WriteFileAtomic_CreatesParentDir` — MkdirAll absent pre-consolidation, confirming RED for the one superset behavior).
+- Post-consolidation: all 8 PASS (GREEN = behavior preserved + superset added).
+
+**Changes applied (GREEN):**
+1. `internal/cli/settings.go` — `writeFileAtomic` enhanced with `os.MkdirAll(dir, 0o755)` (safe superset — matches writeClaudeJSONBytes + preference/atomicWrite). Added `@MX:ANCHOR` tag (consolidated helper, high fan_in).
+2. `internal/cli/glm_tools.go` — `writeClaudeJSONAtomic` DELETED (sole caller `disableMCPServerForTool` inlines the marshal + calls `writeClaudeJSONBytes`); `writeClaudeJSONBytes` becomes a thin delegating wrapper to `writeFileAtomic(configPath, data, 0o600)` (M2 seam PRESERVED per task constraint).
+3. `internal/cli/update_noise.go` — `atomicWriteJSON` DELETED (sole caller `saveMergeHistoryLedger` inlines the JSON encode via `bytes.Buffer` + `json.Encoder` to preserve trailing-newline convention + calls `writeFileAtomic(path, bytes, 0o600)`). Removed `defs` import (no longer needed).
+4. `internal/cli/harness_mute.go` — inline tmp+rename block replaced with `writeFileAtomic(path, out, 0o644)` (perm 0644 preserved for non-credential config).
+5. `internal/cli/glm.go` — `saveLLMSection` inline tmp+rename block replaced with `writeFileAtomic(path, data, 0o600)`.
+6. `internal/cli/glm_tools_test.go` — `TestWriteClaudeJSONAtomic_BadDir` renamed to `TestWriteClaudeJSONBytes_BadDir` (function deleted; test now exercises the consolidated path via writeClaudeJSONBytes).
+7. `internal/cli/target_coverage_test.go` — `TestSaveLLMSection_NonexistentDirFails` updated: error-message assertion loosened (failure point shifted from CreateTemp to MkdirAll; behavior contract — "fails for unwritable path" — preserved).
+
+**Cross-platform build:** `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (consolidated helper uses stdlib os.CreateTemp/os.Rename, no new syscall).
+**Lint:** `golangci-lint run --timeout=3m` → 0 issues (baseline was also 0).
+**Coverage:** `go test -cover ./internal/cli/` → 72.9% of statements (M2 was 72.8%; slight increase from new characterization tests + MkdirAll coverage).
+**Vet:** `go vet ./internal/cli/...` exit 0; `gofmt` clean.
+**Race suite (full):** `go test -race ./internal/cli/... ./internal/cli/preference/... -count=1` → all 10 packages PASS.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

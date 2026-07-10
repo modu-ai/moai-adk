@@ -680,23 +680,7 @@ func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
 	}
 
 	path := filepath.Join(sectionsDir, "llm.yaml")
-
-	tmp, err := os.CreateTemp(sectionsDir, ".llm-config-*.tmp")
-	if err != nil {
-		return fmt.Errorf("create temp file: %w", err)
-	}
-	tmpName := tmp.Name()
-	defer func() { _ = os.Remove(tmpName) }()
-
-	if _, err := tmp.Write(data); err != nil {
-		_ = tmp.Close()
-		return fmt.Errorf("write temp file: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("close temp file: %w", err)
-	}
-
-	return os.Rename(tmpName, path)
+	return writeFileAtomic(path, data, 0o600)
 }
 
 // GLMConfigFromYAML represents the GLM settings from llm.yaml.

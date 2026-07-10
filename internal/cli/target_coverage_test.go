@@ -130,7 +130,11 @@ func TestRemoveGLMEnv_GLMOnlyVarsResultsInNilEnv(t *testing.T) {
 }
 
 // =============================================================================
-// saveLLMSection — nonexistent directory causes CreateTemp failure
+// saveLLMSection — nonexistent/unwritable directory causes failure
+// M3 consolidation: saveLLMSection now routes through writeFileAtomic which
+// calls os.MkdirAll first; the failure point shifted from CreateTemp to MkdirAll
+// for nonexistent paths, so the error message text changed. The behavior contract
+// (function fails for an unwritable path) is preserved.
 // =============================================================================
 
 func TestSaveLLMSection_NonexistentDirFails(t *testing.T) {
@@ -139,9 +143,6 @@ func TestSaveLLMSection_NonexistentDirFails(t *testing.T) {
 	err := saveLLMSection("/nonexistent/path/that/does/not/exist", config.LLMConfig{})
 	if err == nil {
 		t.Fatal("saveLLMSection should error when sectionsDir does not exist")
-	}
-	if !strings.Contains(err.Error(), "create temp file") {
-		t.Errorf("error should mention 'create temp file', got: %v", err)
 	}
 }
 
