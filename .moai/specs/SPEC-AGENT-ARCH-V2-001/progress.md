@@ -217,7 +217,7 @@ MUST-PASS ACs green: AC-AA2-008 (M3a), AC-AA2-009 (M3a code + M3b config), AC-AA
 _<populated by manager-docs at sync close — 3-phase complete (plan→run→sync).>_
 
 ```yaml
-sync_commit_sha: "pending-backfill-SYNC"   # populated by manager-docs at sync commit
+sync_commit_sha: "69aa9e5f0"   # populated by manager-docs at sync commit
 sync_completed_at: 2026-07-10  # populated by manager-docs at sync close
 ```
 
