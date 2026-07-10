@@ -59,16 +59,27 @@ $ grep -rn '\.AutoDetection\.' --include='*.go' internal/ cmd/ pkg/ | grep -v '_
 (no output)   ← trailing-dot 패턴은 whole-struct bind를 매치 불가 (false negative)
 ```
 
-iter-2 bare-symbol 재실측 (분류 확정 근거):
+iter-2 bare-symbol 재실측 (분류 확정 근거 — 2026-07-10 실제 실행 verbatim). 좁은 패턴(`AutoDetection` 단독, 동일 경로) 실행 결과는 정확히 2줄(hook_pre_push.go:234 whole-struct bind + manager.go:14 주석)이며, 소비 체인 전체를 드러내기 위해 `AutoDetectOptions`를 포함한 확장 패턴의 실행 출력을 기록한다:
 
 ```
-$ grep -rn 'AutoDetection' --include='*.go' internal/cli/hook_pre_push.go internal/git/convention/
-internal/cli/hook_pre_push.go:223: func resolveAutoDetectOptions() (convention.AutoDetectOptions, int) {
-internal/cli/hook_pre_push.go:237:   ad := cfg.GitConvention.AutoDetection
-internal/git/convention/manager.go:46: func (m *Manager) LoadConvention(name string, opts AutoDetectOptions) error {
+$ grep -rn 'AutoDetection\|AutoDetectOptions' --include='*.go' internal/cli/hook_pre_push.go internal/git/convention/ | grep -v '_test.go'
+internal/cli/hook_pre_push.go:146:	opts, maxLength := resolveAutoDetectOptions()
+internal/cli/hook_pre_push.go:218:// resolveAutoDetectOptions builds the convention.AutoDetectOptions (Fix A) and the
+internal/cli/hook_pre_push.go:223:func resolveAutoDetectOptions() (convention.AutoDetectOptions, int) {
+internal/cli/hook_pre_push.go:224:	opts := convention.AutoDetectOptions{
+internal/cli/hook_pre_push.go:234:			ad := cfg.GitConvention.AutoDetection
+internal/cli/hook_pre_push.go:235:			opts = convention.AutoDetectOptions{
+internal/git/convention/manager.go:6:// AutoDetectOptions carries a non-positive SampleSize.
+internal/git/convention/manager.go:10:// is configured in AutoDetectOptions.
+internal/git/convention/manager.go:13:// AutoDetectOptions carries the auto-detection knobs forwarded into
+internal/git/convention/manager.go:14:// LoadConvention. It mirrors the live levers of models.AutoDetectionConfig
+internal/git/convention/manager.go:19:type AutoDetectOptions struct {
+internal/git/convention/manager.go:41:// AutoDetectOptions (Fix A): the enabled flag gates whether detection runs, the
+internal/git/convention/manager.go:46:func (m *Manager) LoadConvention(name string, opts AutoDetectOptions) error {
+internal/git/convention/manager.go:67:func (m *Manager) resolveAuto(opts AutoDetectOptions) (*Convention, error) {
 ```
 
-live 소비 체인: `hook_pre_push.go:146` `opts, maxLength := resolveAutoDetectOptions()` → `:237` whole-struct bind → `ad.Enabled`/`ad.SampleSize`/`ad.ConfidenceThreshold`/`ad.Fallback` 4필드 읽기 → `mgr.LoadConvention(convName, opts)` — detection gate/표본 수/수용 임계값으로 동작 결정. 배선 출처: SPEC-WEB-CONSOLE-009 (completed). → 3필드 전부 **USED**, 노출 잔류 (REQ-WC12-020).
+live 소비 체인: `hook_pre_push.go:146` `opts, maxLength := resolveAutoDetectOptions()` → `:234` whole-struct bind → `ad.Enabled`/`ad.SampleSize`/`ad.ConfidenceThreshold`/`ad.Fallback` 4필드 읽기(:235 options struct literal) → `mgr.LoadConvention(convName, opts)`(manager.go:46) — detection gate/표본 수/수용 임계값으로 동작 결정. 배선 출처: SPEC-WEB-CONSOLE-009 (completed). → 3필드 전부 **USED**, 노출 잔류 (REQ-WC12-020).
 
 ## §D.3 Given-When-Then Scenarios
 

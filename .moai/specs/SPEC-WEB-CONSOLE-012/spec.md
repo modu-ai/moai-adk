@@ -1,7 +1,7 @@
 ---
 id: SPEC-WEB-CONSOLE-012
 title: "moai web Stale/Dead Config Surface Cleanup (Track 1)"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-07-10
 updated: 2026-07-10
@@ -20,6 +20,7 @@ related_specs: [SPEC-WEB-CONSOLE-010, SPEC-WEB-CONSOLE-011]
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.2.1 | 2026-07-10 | manager-spec | plan-audit iter-2 PASS-WITH-DEBT(0.88) N1/N2 해소. N1(major): acceptance.md §D.2 iter-2 증거 블록이 hand-composed였음(vci §3.2 위반 — 좁은 패턴이 매치할 수 없는 `AutoDetectOptions` 라인을 verbatim인 것처럼 수록) — 명령을 실제 실행하여 real observed 출력으로 교체(확장 패턴 `AutoDetection\|AutoDetectOptions` 14줄 기록 + 좁은 패턴 단독은 2줄이라는 사실 병기), whole-struct bind 라인 :237→:234 실측 정정. N2(minor): plan §F M2 REQ 매핑 001-005→001-006 (REQ-WC12-006 편입). |
 | 0.2.0 | 2026-07-10 | manager-spec | plan-audit iter-1 FAIL(0.78) D1-D8 정정. D1(CRITICAL): A5 auto_detection 3필드 DEAD→**USED 재분류** — iter-1의 trailing-dot grep(`\.AutoDetection\.`)이 whole-struct bind(`ad := cfg.GitConvention.AutoDetection`)를 구조적으로 매치 불가; live 소비자 = hook_pre_push.go:146→resolveAutoDetectOptions(:223-246)→convention.LoadConvention(manager.go:46), 배선 출처 = SPEC-WEB-CONSOLE-009(**completed** — iter-1의 "미작성" 기재는 stale memory 오류). M3 제거 철회→잔류 확인 반전(REQ-WC12-020 inverted; REQ-WC12-022 withdrawn→A1 보존은 신설 REQ-WC12-006). D2: A1 근거 정정 — GLMModels legacy 필드는 resolveGLMModels(glm.go:720-750, 호출 :794)가 empty-fallback으로 읽음(reader 有); 제거 결정 유지(보존되는 fallback 체인이 곧 하위호환 메커니즘); backfill 인용 :697-704→:663-672 정정. D3: M1 RED-turning 테스트 3건 인벤토리 추가(plan §A.1). D4: AC-WC12-009 `&&` 단락 결함 수정. D5: AC-WC12-017 projectconfig.go 기계 검증 추가. D6: pre-flight §C-5 주석/기계 단언 구분 지침. D7: §D AC 범위 001..020 정합. D8: A5 증거 프로토콜 강화 — field-dot grep + bare-symbol grep 쌍 의무(whole-struct bind/미러 struct 회피 방지). |
 | 0.1.0 | 2026-07-10 | manager-spec | 최초 draft. 2026-07-10 orchestrator 감사(Track 1: stale/dead config surface) 5개 발견(A1-A5)을 plan-phase 실측 재검증 후 요구사항화. A4c(bindForm statusline residual)는 실측 no-op 판정 — Out of Scope로 격하. A5 5개 필드는 도구 증거로 USED 2 / DEAD 3 분류 완료 (acceptance.md §D.2). |
 

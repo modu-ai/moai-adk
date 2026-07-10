@@ -85,7 +85,7 @@ manager-develop 완료 보고는 manager-develop-prompt-template.md §E (E1 AC �
 | M | 내용 | REQ | Priority |
 |---|------|-----|----------|
 | M1 | A2 research seam 폐선 (sectionroute/sectionwrite/schema.go + 주석) + 거부 회귀 테스트 | 010-012 | High |
-| M2 | A1 llm ghost 제거 + fable 노출 (schema_sections/sectionapply/i18n.js/schemaform) + 양표면 테스트 | 001-005, 050 | High |
+| M2 | A1 llm ghost 제거 + fable 노출 (schema_sections/sectionapply/i18n.js/schemaform) + 양표면 테스트 | 001-006, 050 | High |
 | M3 | A5 잔류 확인 게이트 (0.2.0 반전 — 코드 무접촉): §D.2 강화 프로토콜 분류 명령 재실행 + AC-WC12-011/012/014 확인만 | 020, 021, 023 | Low |
 | M4 | A4 dead code (errDictKey Where-gate, WorkflowAgentPurposes) | 030-032 | Medium |
 | M5 | A3 doc comment 최종 재작성 (M1/M3 결과 반영 — 마지막 순서 고정) | 040 | Medium |
