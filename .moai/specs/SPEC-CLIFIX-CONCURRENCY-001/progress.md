@@ -148,7 +148,7 @@ cross_platform_build:
   darwin_arm64: pass
   windows_amd64: pass
 total_run_phase_files: 5 (decay.go, toggle.go, m4_crash_repro_test.go, m4_toggle_race_test.go, progress.md)
-m1_to_mN_commit_strategy: per-milestone (M1 c31db9e2b-precursor, M2, M3 already landed; M4 this commit)
+m1_to_mN_commit_strategy: per-milestone (M1 37b535820, M2 2e4513f90, M3 3260d0839 already landed; M4 83e139bb0 this commit)
 ```
 
 **Milestone closure:** M1 (5 writers re-routed + removeGLMEnv key) ✅, M2 (~/.claude.json RMW guard) ✅, M3 (atomic-writer consolidation, 2 helpers remain per option-b) ✅, M4 (preference crash-consistency + TOCTOU) ✅. All 4 milestones landed; run-phase is complete. Orchestrator proceeds to sync-phase.
@@ -177,8 +177,8 @@ b12_self_tests:
   - file_path_verification: 4 test files verified via ls (all exist)
 frontmatter_status_transitions:
   spec.md: status in-progress → completed, version 0.2.1 → 1.0.0, updated 2026-07-11
-  plan.md: status in-progress → implemented → completed (atomic with sync commit)
-  acceptance.md: status in-progress → implemented → completed (atomic with sync commit)
+  plan.md: no frontmatter (plain markdown) — no status transition applies
+  acceptance.md: no frontmatter (plain markdown) — no status transition applies
   progress.md: §E.4 populated (sync_commit_sha placeholder to be backfilled)
 canary_compliance_check:
   - mode-5 sequential delegation: observed per progress.md §F (Mode Selection)

@@ -168,6 +168,7 @@ secret-*.*
 # Claude Code Configuration
 # ===========================================
 .claude/settings.local.json
+.claude/settings.local.json.lock
 .claude/settings.local.*.json
 .claude/.env.local*
 .claude/local/
@@ -191,6 +192,10 @@ secret-*.*
 .moai/memory/
 .moai/worktrees/
 .moai/branches/
+# Runtime state — never tracked (CLAUDE.local.md §2 / Constitution Lessons Protocol).
+# Nested SPEC-local .moai/state/ (e.g. .moai/specs/SPEC-*/​.moai/state/) is caught by the ** glob.
+.moai/lessons-inbox.jsonl
+**/.moai/state/
 
 # ===========================================
 # Plan Audit Reports (local artifacts)
