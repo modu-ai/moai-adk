@@ -66,7 +66,7 @@ m1_to_mN_commit_strategy: "per-milestone Conventional Commits (M1 ExitCoder adop
 
 ```yaml
 sync_complete_at: "2026-07-11"
-sync_commit_sha: "pending-backfill"  # populated by follow-up commit (D3 self-referential-hazard exemption)
+sync_commit_sha: "3cd2fe32499c5bac44d15d0d935feef750d31f64"  # backfilled from sync commit 3cd2fe324 (D3 self-referential-hazard exemption)
 sync_status: "complete"
 ac_pass_count: 8
 ac_fail_count: 0
