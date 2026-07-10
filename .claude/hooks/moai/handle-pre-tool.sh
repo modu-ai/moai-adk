@@ -46,21 +46,26 @@ fi
 # --- end Bash Risk-Amplifier warn signal ---
 
 # Try moai command in PATH
+# Exit-code passthrough: propagate moai's exit code so an exit-2 PreToolUse
+# reject reaches Claude Code (REQ-HOC-003). Stderr is NOT redirected to the log
+# here — it is the Claude-feedback channel for the reject reason (REQ-HOC-004);
+# the Go handler emits deny via stdout JSON permissionDecision, but stderr must
+# remain free for the exit-2 reject-reason path should the handler ever use it.
 if command -v moai &> /dev/null; then
-    printf '%s' "$payload" | moai hook pre-tool 2>>"$MOAI_HOOK_STDERR_LOG"
-    exit 0
+    printf '%s' "$payload" | moai hook pre-tool
+    exit $?
 fi
 
 # Try default ~/go/bin/moai
 if [ -f "$HOME/go/bin/moai" ]; then
-    printf '%s' "$payload" | "$HOME/go/bin/moai" hook pre-tool 2>>"$MOAI_HOOK_STDERR_LOG"
-    exit 0
+    printf '%s' "$payload" | "$HOME/go/bin/moai" hook pre-tool
+    exit $?
 fi
 
 # Try ~/.local/bin/moai (Linux install location)
 if [ -f "$HOME/.local/bin/moai" ]; then
-    printf '%s' "$payload" | "$HOME/.local/bin/moai" hook pre-tool 2>>"$MOAI_HOOK_STDERR_LOG"
-    exit 0
+    printf '%s' "$payload" | "$HOME/.local/bin/moai" hook pre-tool
+    exit $?
 fi
 
 # Not found - exit silently (Claude Code handles missing hooks gracefully)

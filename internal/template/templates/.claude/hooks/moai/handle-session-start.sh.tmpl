@@ -40,8 +40,9 @@ if [ "${MOAI_HOOK_PROBE_SILENCE:-}" != "1" ]; then
         *)
             # startup OR source absent/malformed — emit surfaced warning (REQ-HOOK-002, §D.7 edge case)
             probe_warn="moai binary not found in PATH, \$HOME/go/bin, or \$HOME/.local/bin — all 31 wrappers (handle-*.sh) are silently no-op (non-blocking, advisory). Reinstall moai or restore PATH (e.g. make build, then go install ./cmd/moai)."
-            # Primary channel: stdout JSON hookSpecificOutput.additionalContext (model-context surfacing)
-            printf '{"hookSpecificOutput":{"additionalContext":"%s"}}\n' "$probe_warn" 2>/dev/null || true
+            # Primary channel: stdout JSON hookSpecificOutput.additionalContext (model-context surfacing).
+            # hookEventName:"SessionStart" is mandatory so stricter runtimes do not silently drop the additionalContext (REQ-HOC-004).
+            printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$probe_warn" 2>/dev/null || true
             # Secondary channel: stderr audit log at $MOAI_HOOK_STDERR_LOG (after-the-fact, greppable)
             printf '[sessionstart-probe] %s\n' "$probe_warn" >>"$MOAI_HOOK_STDERR_LOG" 2>/dev/null || true
             ;;

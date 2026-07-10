@@ -341,20 +341,23 @@ esac
 
 # Emit a Stop-schema-compliant response.
 #
-# Blocking (DEFAULT): a failing vet/build emits {"decision":"block", ...} on
-# stdout — this blocks the turn. The hook still exits 0: per Claude Code hook
-# semantics, stdout JSON is honored only on exit 0 (on exit 2 stdout is
-# discarded and only stderr is surfaced).
+# Blocking (DEFAULT): a failing vet/build emits {"hookSpecificOutput":
+# {"hookEventName":"Stop","decision":"block","reason":"..."},"systemMessage":"..."}
+# on stdout — this blocks the turn. The decision/reason ride inside a
+# hookSpecificOutput object carrying hookEventName:"Stop" per the official Stop
+# hook contract (a bare top-level "decision" field is non-compliant for Stop).
+# The hook still exits 0: per Claude Code hook semantics, stdout JSON is honored
+# only on exit 0 (on exit 2 stdout is discarded and only stderr is surfaced).
 #
 # Advisory (opt-out, MOAI_SYNC_GATE_BLOCKING=0/off/false/advisory): a failing
 # check emits ONLY {"systemMessage": ...} — a non-blocking warning. The
-# "decision":"block" stdout field is the blocking channel (honored on exit 0),
-# so the advisory path MUST NOT emit it.
+# nested "decision":"block" stdout field is the blocking channel (honored on
+# exit 0), so the advisory path MUST NOT emit it.
 #
 # On allow, stdout is intentionally empty (silent pass); the audit log records detail.
 if [ "$DECISION" = "block" ]; then
     if [ "$MODE" = "blocking" ]; then
-        printf '{"decision":"block","reason":"%s","systemMessage":"sync-phase quality gate BLOCKED: %s (%s=%s %s=%s deps_modified=%s). Detail: .moai/logs/sync-quality-gate.log"}\n' \
+        printf '{"hookSpecificOutput":{"hookEventName":"Stop","decision":"block","reason":"%s"},"systemMessage":"sync-phase quality gate BLOCKED: %s (%s=%s %s=%s deps_modified=%s). Detail: .moai/logs/sync-quality-gate.log"}\n' \
             "$BLOCKED_REASON" "$BLOCKED_REASON" "$C1_LABEL" "$C1_EXIT" "$C2_LABEL" "$C2_EXIT" "$DEPS_MODIFIED"
     else
         printf '{"systemMessage":"sync-phase quality gate WARNING (advisory, not blocking): %s (%s=%s %s=%s deps_modified=%s). Heavy lint/tests run in CI. Detail: .moai/logs/sync-quality-gate.log"}\n' \
