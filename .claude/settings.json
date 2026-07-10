@@ -19,7 +19,7 @@
         "hooks": [
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
-            "timeout": 5,
+            "timeout": 30,
             "type": "command"
           }
         ]
@@ -73,7 +73,7 @@
             "type": "command"
           }
         ],
-        "matcher": "Write|Edit"
+        "matcher": "Write|Edit|MultiEdit"
       },
       {
         "hooks": [
@@ -102,7 +102,8 @@
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-stop.sh\"",
             "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           }
         ]
       }
@@ -118,7 +119,8 @@
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-subagent-stop.sh\"",
             "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           }
         ]
       }
@@ -156,7 +158,8 @@
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-user-prompt-submit.sh\"",
             "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           }
         ]
       }
@@ -166,7 +169,7 @@
         "hooks": [
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-teammate-idle.sh\"",
-            "timeout": 5,
+            "timeout": 60,
             "type": "command"
           }
         ]
@@ -177,7 +180,7 @@
         "hooks": [
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-completed.sh\"",
-            "timeout": 5,
+            "timeout": 60,
             "type": "command"
           }
         ]
@@ -225,7 +228,8 @@
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-instructions-loaded.sh\"",
             "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           }
         ]
       }

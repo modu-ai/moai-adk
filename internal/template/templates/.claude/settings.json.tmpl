@@ -27,7 +27,7 @@
 {{- else}}
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
 {{- end}}
-            "timeout": 5,
+            "timeout": 30,
             "type": "command"
           }
         ]
@@ -101,7 +101,7 @@
             "type": "command"
           }
         ],
-        "matcher": "Write|Edit"
+        "matcher": "Write|Edit|MultiEdit"
       }{{ if .HookOptIn.Enabled }},
       {
         "hooks": [
@@ -146,7 +146,8 @@
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-stop.sh\"",
 {{- end}}
             "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           }{{ end }}
         ]
       }
@@ -170,7 +171,8 @@
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-subagent-stop.sh\"",
 {{- end}}
             "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           }{{ end }}
         ]
       }
@@ -224,7 +226,8 @@
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-user-prompt-submit.sh\"",
 {{- end}}
             "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           }{{ end }}
         ]
       }
@@ -238,7 +241,7 @@
 {{- else}}
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-teammate-idle.sh\"",
 {{- end}}
-            "timeout": 5,
+            "timeout": 60,
             "type": "command"
           }
         ]
@@ -253,7 +256,7 @@
 {{- else}}
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-completed.sh\"",
 {{- end}}
-            "timeout": 5,
+            "timeout": 60,
             "type": "command"
           }
         ]
@@ -317,7 +320,8 @@
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-instructions-loaded.sh\"",
 {{- end}}
             "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           }
         ]
       }
