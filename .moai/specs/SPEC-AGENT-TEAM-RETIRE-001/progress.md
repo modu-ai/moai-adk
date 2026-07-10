@@ -155,6 +155,83 @@ AC-ATR-019  build trio exit 0 (partial — full re-verify due at M4); grep workf
 Baselines recorded at pre-flight (for M2+ delta discipline): `f.workflow.team.` = 264
 (removal target, untouched in M0/M1); `f.git_strategy.team.` = 16 (PRESERVE, unchanged).
 
+### M2 — Phase 3 web console team removal (REQ-ATR-008/009)
+
+Commit: `feat(SPEC-AGENT-TEAM-RETIRE-001): M2 — remove Agent Teams web console surfaces`
+(SHA in git log — a commit cannot reference its own hash). Phase 4 (agentlint
+repurpose) was folded into M1 (AC-ATR-014 PASS); M2 covers the web console team
+surfaces only.
+
+Scope note: this milestone ran in an L1 worktree (`worktree-agent-a81cea6d62369b9b4`,
+base `ea6117c2c`) autonomously materialized by the Claude Code runtime — the
+orchestrator integrates the branch to main. The unrelated origin/main +3 commits
+(SPEC-CLIFIX-CONCURRENCY-001 sync-phase) touch no M2 file (verified: empty
+`git diff --stat HEAD..origin/main -- <M2 files>`); origin/main i18n still carried
+264 `f.workflow.team` keys pre-M2 (no parallel-session duplication).
+
+Removed (Go, `internal/settings` + `internal/web`):
+- `schema_sections.go`: 5 `workflow.team` seam FieldDef rows (enabled / delegate_mode /
+  max_teammates / default_model / require_plan_approval); `agentSettingsFields()`
+  (구 surface (b) team.role_profiles — 7 profiles × {model,effort,isolation,mode});
+  `RoleProfileNames()` + its only caller; `v4IsolationValues()` (dead after
+  agentSettingsFields removal); the `workflow.team.patterns` RawViewBlocks entry
+  (R1 auditor finding — the `:412` surface).
+- `schema.go`: `SectionAgentSettings` const + its `AllSections()` entry.
+- `schemaform.go`: `agent_settings` consoleTab + `SectionAgentSettings` schemaSectionMetas
+  entry; `sec.workflow.desc` baseline reworded to drop "team".
+- `schema_label.go`: the dead `role_profiles.<role>.<field>` label-expansion branch
+  (REQ-ATR-008 named `schema.go` + `schema_label.go` consumers, both swept).
+- `internal/web/assets/i18n.js`: all 66 `f.workflow.team.*` keys × 4 locales = 264
+  lines removed; `sec.workflow.desc` reworded ×4 (team / 팀 / チーム / 团队 dropped).
+
+Preserved (verified STILL-EXISTS): `f.git_strategy.team.*` (16) +
+`f.git_strategy.mode.opt.team` (4) — GitStrategy namesake, unchanged; sub-agent
+frontmatter surface (`agentfm.*`, `internal/web/agentfm.go`) untouched.
+
+Test reconciliation: `TestRoleProfileEditRoutesThroughSeam` + `TestAgentSettingsEnumReject`
+deleted (their subject surfaces removed); `TestAgentSettingsFourSurfacesRendered`
+surface-(b) role_profiles assertions removed (surfaces a/c/d retained); NEW
+`TestNoTeamRoleProfileRender` (absolute-absence guard, REQ-ATR-008); 5 seam-routing /
+render tests re-targeted `workflow.team.max_teammates` / `workflow.team.patterns` →
+surviving `workflow.token_budget.plan` / `harness.levels`. `agentfm` enum-reject
+coverage retained by `TestAgentFMValidationAndAbsent`.
+
+templ: NO regeneration — `fieldsets.templ` has no team fieldset (schema-driven since
+WEB-CONSOLE-011 M2b; the 2 residual `SectionAgentSettings` refs are stale comments,
+not executable); `git diff --stat --exit-code fieldsets_templ.go` clean.
+
+Exit-gate evidence (verbatim tails):
+
+```
+$ go build ./... ; GOOS=windows GOARCH=amd64 go build ./... ; go vet ./...
+build exit=0 / winbuild exit=0 / vet exit=0
+$ go test ./...
+exit=0   (0 FAIL, all packages ok; full log: /tmp/atr-m2/fulltest.log)
+$ golangci-lint run --timeout=3m ./internal/settings/... ./internal/web/...
+0 issues.   (baseline: 0 issues at pre-flight — no NEW lint)
+$ node --check internal/web/assets/i18n.js
+JS_OK (valid JS after 264-line removal; trailing comma before `}` is valid ES)
+```
+
+AC evidence (M2-scope, post-M2 tree):
+
+```
+AC-ATR-012  grep -c '"f\.git_strategy\.team\.' i18n.js → 16 (== pre-flight baseline);
+            '"f\.git_strategy\.mode\.opt\.team"' → 4 (≥1)                              PASS (preserved)
+AC-ATR-013  grep -c '"f\.workflow\.team\.' i18n.js → 0;
+            grep -c '"workflow", "team"' schema_sections.go → 0;
+            grep -rn "RoleProfileNames" internal/ --include="*.go" | wc -l → 0;
+            templ conditional N/A (0 team markup in .templ; fieldsets_templ.go clean)  PASS
+AC-ATR-019  build trio exit 0 + full go test ./... exit 0 (0 FAIL)                     PASS (partial — full re-verify at M4)
+```
+
+NEW-test ran (vacuous-green guard): `=== RUN TestNoTeamRoleProfileRender / --- PASS`.
+
+Residual (for M3+ delta discipline): `sec.agent_settings.*` (×4) + `f.v4.*.opt.*`
+i18n keys are now orphaned (no render reference after the section removal) — LEFT
+in-place as harmless dead keys (minimal-scope choice; keeps `TestAgentFMWarnI18nParity`
+green with zero test churn). A follow-up i18n cleanup or the sync phase MAY prune them.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — populated by manager-develop>_

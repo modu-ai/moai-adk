@@ -106,7 +106,9 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 		"git_strategy.mode",
 		"llm.glm.models.high",
 		"quality.ddd_settings.characterization_tests",
-		"workflow.team.max_teammates",
+		// 구 workflow.team.max_teammates 대표 필드는 Agent Teams 정적 레이어와 함께
+		// 제거되었다 (SPEC-AGENT-TEAM-RETIRE-001 M2) — 잔존 workflow seam 필드로 교체.
+		"workflow.token_budget.plan",
 		"harness.default_profile",
 		"ralph.lint_as_instruction",
 		"feedback.repository",
@@ -138,7 +140,9 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 	}
 
 	// raw view 블록 (AC-WC11-063): rawview 렌더 + 내부 input 컨트롤 0.
-	for _, marker := range []string{"workflow.team.patterns", "harness.levels"} {
+	// 구 workflow.team.patterns raw block은 Agent Teams 정적 레이어와 함께 제거되었다
+	// (SPEC-AGENT-TEAM-RETIRE-001 M2) — harness.levels로 검증한다.
+	for _, marker := range []string{"harness.levels"} {
 		if !strings.Contains(body, marker) {
 			t.Errorf("raw view block %q not rendered", marker)
 		}
@@ -163,12 +167,16 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 
 // TestSaveWorkflowRoutesThroughSeam은 AC-WC11-004의 행동 완결이다: POST /save의
 // workflow 스칼라 편집이 yamlpatch seam으로만 라우팅되어 대상 라인만 변경되고
-// 주석/미모델링 키(team.patterns)가 보존된다 (REQ-WC11-005/017).
+// 주석/미모델링 키가 보존된다 (REQ-WC11-005/017). 구 workflow.team.max_teammates
+// 편집 필드는 Agent Teams 정적 레이어와 함께 제거되어(SPEC-AGENT-TEAM-RETIRE-001
+// M2) workflow.token_budget.plan으로 교체했다. 미모델링 team.patterns 블록 보존
+// 검증은 유지된다 — 이제 team 블록 전체가 미모델링이므로 seam이 이를 무손상
+// 보존함을 확인한다.
 func TestSaveWorkflowRoutesThroughSeam(t *testing.T) {
 	a, root := newSchemaTestApp(t)
 	before := readSectionFile(t, root, "workflow")
 
-	rec := postSave(t, a, url.Values{"workflow.team.max_teammates": {"7"}})
+	rec := postSave(t, a, url.Values{"workflow.token_budget.plan": {"31000"}})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("POST /save status = %d, want 200 (body: %.300s)", rec.Code, rec.Body.String())
 	}
@@ -183,7 +191,7 @@ func TestSaveWorkflowRoutesThroughSeam(t *testing.T) {
 	for i := range beforeLines {
 		if beforeLines[i] != afterLines[i] {
 			changed++
-			if !strings.Contains(afterLines[i], "max_teammates: 7") {
+			if !strings.Contains(afterLines[i], "plan: 31000") {
 				t.Errorf("unexpected changed line: %q", afterLines[i])
 			}
 		}

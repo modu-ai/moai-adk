@@ -75,14 +75,16 @@ func TestApplySchemaEditsSeamRoundTrip(t *testing.T) {
 	root := t.TempDir()
 	before := seedSectionFixture(t, root, "workflow")
 
+	// 구 workflow.team.max_teammates seam 필드는 Agent Teams 정적 레이어와 함께
+	// 제거되었다 (SPEC-AGENT-TEAM-RETIRE-001 M2) — 잔존 workflow seam 필드로 교체.
 	err := ApplySchemaEdits(root, map[string]string{
-		"workflow.team.max_teammates": "7",
+		"workflow.token_budget.plan": "31000",
 	})
 	if err != nil {
 		t.Fatalf("ApplySchemaEdits: %v", err)
 	}
 	after := readSection(t, root, "workflow")
-	if !strings.Contains(after, "max_teammates: 7") {
+	if !strings.Contains(after, "plan: 31000") {
 		t.Errorf("seam edit not persisted:\n%s", after)
 	}
 	if got, want := sectionCommentLines(after), sectionCommentLines(before); strings.Join(got, "\n") != strings.Join(want, "\n") {
@@ -347,7 +349,9 @@ func TestSchemaCurrentValuesReadsAllSections(t *testing.T) {
 	}
 
 	cases := map[string]string{
-		"workflow.team.max_teammates":                  "10",
+		// 구 workflow.team.max_teammates(10)는 Agent Teams 정적 레이어와 함께 제거됨
+		// (SPEC-AGENT-TEAM-RETIRE-001 M2) — 잔존 workflow seam 필드로 교체.
+		"workflow.token_budget.plan":                   "30000",
 		"harness.default_profile":                      "default",
 		"learning.enabled":                             "true",
 		"ralph.lint_as_instruction":                    "true",
@@ -380,7 +384,7 @@ func TestSchemaCurrentValuesMissingFilesAreEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SchemaCurrentValues(empty root): %v", err)
 	}
-	if got := values["workflow.team.max_teammates"]; got != "" {
+	if got := values["workflow.token_budget.plan"]; got != "" {
 		t.Errorf("missing file should read empty, got %q", got)
 	}
 }
@@ -396,9 +400,8 @@ func TestRawBlockValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RawBlockValues: %v", err)
 	}
-	if !strings.Contains(blocks["workflow.team.patterns"], "design_implementation:") {
-		t.Errorf("workflow.team.patterns raw block missing content: %q", blocks["workflow.team.patterns"])
-	}
+	// 구 workflow.team.patterns raw block은 Agent Teams 정적 레이어와 함께 제거됨
+	// (SPEC-AGENT-TEAM-RETIRE-001 M2). 잔존 raw block들로 검증한다.
 	if !strings.Contains(blocks["harness.levels"], "thorough:") {
 		t.Errorf("harness.levels raw block missing content: %q", blocks["harness.levels"])
 	}

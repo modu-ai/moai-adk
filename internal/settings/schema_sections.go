@@ -41,21 +41,14 @@ func v4ModelValues() []string {
 	}
 }
 
-// v4IsolationValues는 v4manifest의 2-isolation closed set이다.
-func v4IsolationValues() []string {
-	return []string{v4manifest.IsolationNone, v4manifest.IsolationWorktree}
-}
-
 // V4EffortValues / V4ModelValues는 웹 계층(agent frontmatter 편집 검증,
 // REQ-WC11-029)이 소비하는 공개 접근자다.
 func V4EffortValues() []string { return v4EffortValues() }
 func V4ModelValues() []string  { return v4ModelValues() }
 
-// RoleProfileNames는 workflow.yaml team.role_profiles의 7개 profile 키다
-// (실측 — workflow.yaml role_profiles map).
-func RoleProfileNames() []string {
-	return []string{"analyst", "architect", "designer", "implementer", "researcher", "reviewer", "tester"}
-}
+// NOTE: workflow.yaml team.role_profiles 키 목록을 반환하던 접근자와 그 isolation
+// closed-set 헬퍼는 Agent Teams 정적 레이어와 함께 제거되었다 — 웹 콘솔은 더 이상
+// Agent Teams 설정을 렌더하지 않는다 (SPEC-AGENT-TEAM-RETIRE-001).
 
 // NOTE: 7-purpose taxonomy 슬러그를 반환하던 zero-caller 접근자는
 // SPEC-WEB-CONSOLE-012 M4(REQ-WC12-032)에서 제거되었다 — 전 리포 호출자 0 실측.
@@ -209,11 +202,8 @@ func seamSectionFields() []FieldDef {
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "loop_prevention", "failure_pattern_detection"),
 		s(SectionWorkflow, "workflow", TypeInt, "workflow", "loop_prevention", "max_iterations"),
 		s(SectionWorkflow, "workflow", TypeInt, "workflow", "loop_prevention", "max_retries_per_operation"),
-		s(SectionWorkflow, "workflow", TypeBool, "workflow", "team", "enabled"),
-		s(SectionWorkflow, "workflow", TypeBool, "workflow", "team", "delegate_mode"),
-		s(SectionWorkflow, "workflow", TypeInt, "workflow", "team", "max_teammates"),
-		s(SectionWorkflow, "workflow", TypeText, "workflow", "team", "default_model"),
-		s(SectionWorkflow, "workflow", TypeBool, "workflow", "team", "require_plan_approval"),
+		// workflow.team.* 편집 필드는 Agent Teams 정적 레이어와 함께 제거되었다
+		// (SPEC-AGENT-TEAM-RETIRE-001). workflow.yaml team 블록은 M3에서 제거된다.
 		s(SectionWorkflow, "workflow", TypeInt, "workflow", "token_budget", "plan"),
 		s(SectionWorkflow, "workflow", TypeInt, "workflow", "token_budget", "run"),
 		s(SectionWorkflow, "workflow", TypeInt, "workflow", "token_budget", "sync"),
@@ -301,51 +291,11 @@ func cacheFields() []FieldDef {
 	}
 }
 
-// ─── M3: agent-settings 필드 (REQ-WC11-020..024, 070..073) ───────────────────
-
-// agentSettingsFields는 agent-settings의 웹 렌더 표면을 반환한다:
-// (b) team.role_profiles — 7 profiles × {model, effort, isolation, mode}.
-//
-//	effort는 seam이 opaque node로 패치한다 — RoleProfileEntry에 Effort 필드를
-//	추가하지 않는다 (REQ-WC11-022/023, REQ-WEM-006 유지). effort는 Go 런타임이
-//	행동적으로 바인딩하지 않는 선언적 힌트다 (M5-a B5 — "(Go 미독)").
-//	mode는 permission_mode 옵션 집합을 재사용한다 (M5-a B4 — 자유 텍스트에서
-//	검증 select로 승격; 새 mode 값 발명 금지).
-//
-// (d) workflow_agents — 웹 렌더에서 숨김 (M5-a B1). struct 필드와 yaml 키는
-//	유지된다 (config.Workflow.WorkflowAgents, types.go 참조). 웹 폼을 통한
-//	읽기/쓰기는 더 이상 발생하지 않는다 — dynamic-workflow JS 스크립트가
-//	yaml 파일을 직접 읽는다 (dynamic-workflows.md §Config surface).
-//
-// 옵션은 v4manifest closed sets에서 파생한다 (REQ-WC11-024/072 — 재선언 금지).
-func agentSettingsFields() []FieldDef {
-	modelSel := func(f FieldDef) FieldDef {
-		return withSelect(f, "f.v4.model.opt.", v4ModelValues(), "", "")
-	}
-	effortSel := func(f FieldDef) FieldDef {
-		return withSelect(f, "f.v4.effort.opt.", v4EffortValues(), "", "")
-	}
-	// modeSel은 role_profiles.mode를 permission_mode 옵션 집합으로 검증한다
-	// (M5-a B4). permissionModeOptions() 재사용 — 새 mode 값 발명 금지.
-	modeSel := func(f FieldDef) FieldDef {
-		f.Type = TypeSelect
-		f.Options = permissionModeOptions()
-		return f
-	}
-
-	var fields []FieldDef
-	for _, p := range RoleProfileNames() {
-		base := []string{"workflow", "team", "role_profiles", p}
-		fields = append(fields,
-			modelSel(seamField(SectionAgentSettings, "workflow", TypeSelect, append(base, "model")...)),
-			effortSel(seamField(SectionAgentSettings, "workflow", TypeSelect, append(base, "effort")...)),
-			withSelect(seamField(SectionAgentSettings, "workflow", TypeSelect, append(base, "isolation")...),
-				"f.v4.isolation.opt.", v4IsolationValues(), "", ""),
-			modeSel(seamField(SectionAgentSettings, "workflow", TypeSelect, append(base, "mode")...)),
-		)
-	}
-	return fields
-}
+// NOTE: agent-settings 웹 렌더 표면(team.role_profiles — 7 profiles ×
+// {model, effort, isolation, mode})은 Agent Teams 정적 레이어와 함께 제거되었다
+// (SPEC-AGENT-TEAM-RETIRE-001). 웹 콘솔은 더 이상 Agent Teams 설정을 렌더하지
+// 않는다. sub-agent frontmatter 편집(agentfm.*)은 별도 표면(agentfm.go)으로
+// 유지된다 — Agent Teams와 무관하다.
 
 // sectionExtraFields는 M2b/M3 확장 필드 전체를 렌더 순서(AllSections 순서와
 // 일치)로 반환한다.
@@ -357,7 +307,6 @@ func sectionExtraFields() []FieldDef {
 	fields = append(fields, seamSectionFields()...)
 	fields = append(fields, handoffFields()...) // SPEC-WEB-CONSOLE-013 M2
 	fields = append(fields, cacheFields()...)    // SPEC-WEB-CONSOLE-013 M2
-	fields = append(fields, agentSettingsFields()...)
 	return fields
 }
 
@@ -409,7 +358,8 @@ type RawBlockRef struct {
 // learning(M2) + security.sandbox(M4) + mx(M4) 리스트 키가 추가되었다.
 func RawViewBlocks() []RawBlockRef {
 	return []RawBlockRef{
-		{SectionWorkflow, "workflow", "workflow.team.patterns", []string{"workflow", "team", "patterns"}, ""},
+		// workflow.team.patterns raw view는 Agent Teams 정적 레이어와 함께 제거되었다
+		// (SPEC-AGENT-TEAM-RETIRE-001).
 		{SectionHarness, "harness", "harness.levels", []string{"harness", "levels"}, ""},
 		{SectionSecurity, "security", "security.extra_dangerous_bash_patterns", []string{"security", "extra_dangerous_bash_patterns"}, ""},
 		// SPEC-WEB-CONSOLE-014 M2 — learning list 키 (REQ-WC14-002/003).
@@ -447,6 +397,5 @@ func SchemaSectionIDs() []SectionID {
 		SectionSecurity,
 		SectionHandoff,
 		SectionCache,
-		SectionAgentSettings,
 	}
 }

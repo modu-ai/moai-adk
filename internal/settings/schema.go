@@ -50,13 +50,11 @@ const (
 	// 필드 ≥1 불변식 위반 방지), 웹의 schemaSectionMetas()가 raw-only 섹션으로
 	// 렌더한다. RawBlockRef.Section 그룹핑 태그로만 사용된다.
 	SectionMx SectionID = "mx"
-
-	// SPEC-WEB-CONSOLE-011 M3: agent-settings 표면 (REQ-WC11-020..024, 070..073).
-	// workflow.yaml team.role_profiles(7 profiles — effort는 opaque node,
-	// REQ-WEM-006 유지). M5-a B1부터 workflow_agents(7 purposes)는 웹 렌더에서
-	// 숨김 — struct/yaml 키는 유지되지만 웹 폼이 이 블록을 다루지 않는다.
-	SectionAgentSettings SectionID = "agent_settings"
 )
+
+// NOTE: agent-settings 섹션(workflow.yaml team.role_profiles 렌더 표면)은 Agent
+// Teams 정적 레이어와 함께 제거되었다 (SPEC-AGENT-TEAM-RETIRE-001). sub-agent
+// frontmatter 편집(agentfm)은 별도 표면(agentfm.go)으로 유지된다.
 
 // AllSections는 정규 섹션을 렌더 순서대로 반환한다.
 func AllSections() []SectionID {
@@ -78,7 +76,6 @@ func AllSections() []SectionID {
 		SectionSecurity,
 		SectionHandoff,
 		SectionCache,
-		SectionAgentSettings,
 	}
 }
 

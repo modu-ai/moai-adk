@@ -1,12 +1,13 @@
 package web
 
-// SPEC-WEB-CONSOLE-011 M3 agent-settings AC 바인딩 테스트:
-// AC-WC11-020(4표면 렌더), 022(role_profile seam diff),
-// 024/071(enum reject 4xx + 파일 불변), 025(frontmatter round-trip),
-// 026(workflow_agents 반영 + taxonomy 참조), 028(지속 경고 + i18n ×4),
-// 029(검증/부재 보존), 072(workflow_agents upsert golden).
-// (구 AC-WC11-023 컴파일 계층 테스트는 SPEC-AGENT-TEAM-RETIRE-001 M1에서
-// 제거 — assertion 대상 struct가 Agent Teams static layer와 함께 retired.)
+// SPEC-WEB-CONSOLE-011 M3 sub-agent frontmatter AC 바인딩 테스트:
+// AC-WC11-020(잔존 표면 렌더), 025(frontmatter round-trip),
+// 026(workflow_agents 숨김 + taxonomy 참조), 028(지속 경고 + i18n ×4),
+// 029(검증/부재 보존).
+// (구 AC-WC11-023 컴파일 계층 테스트는 SPEC-AGENT-TEAM-RETIRE-001 M1에서 제거.
+// team.role_profiles 웹 렌더 표면(구 surface (b), AC-WC11-022/024/071)은
+// SPEC-AGENT-TEAM-RETIRE-001 M2에서 제거 — 웹 콘솔은 더 이상 Agent Teams 설정을
+// 렌더하지 않는다. sub-agent frontmatter 편집(agentfm)은 무관하게 유지된다.)
 
 import (
 	"net/http"
@@ -68,10 +69,12 @@ func getIndex(t *testing.T, a *app) string {
 }
 
 // TestAgentSettingsFourSurfacesRendered는 AC-WC11-020을 검증한다: 단일 뷰에
-// 4표면 전부 렌더 — (a) llm tiers, (b) role_profiles(7), (c) sub-agent
-// frontmatter, (d) workflow_agents. M5-a B1부터 (d) workflow_agents는 웹 렌더에서
-// 숨김 — 폼 컨트롤이 렌더되지 않는다 (struct/yaml 키는 유지). AC-WC11-026의
-// taxonomy 참조와 AC-WC11-028의 지속 경고 렌더도 함께 고정한다.
+// 잔존 표면 렌더 — (a) llm tiers, (c) sub-agent frontmatter, (d) workflow_agents.
+// 구 surface (b) team.role_profiles(7)는 SPEC-AGENT-TEAM-RETIRE-001 M2에서 제거
+// (웹 콘솔은 더 이상 Agent Teams 설정을 렌더하지 않는다). M5-a B1부터 (d)
+// workflow_agents는 웹 렌더에서 숨김 — 폼 컨트롤이 렌더되지 않는다 (struct/yaml
+// 키는 유지). AC-WC11-026의 taxonomy 참조와 AC-WC11-028의 지속 경고 렌더도 함께
+// 고정한다.
 func TestAgentSettingsFourSurfacesRendered(t *testing.T) {
 	a, _ := newAgentTestApp(t)
 	body := getIndex(t, a)
@@ -82,15 +85,9 @@ func TestAgentSettingsFourSurfacesRendered(t *testing.T) {
 			t.Errorf("surface (a) marker missing: %s", marker)
 		}
 	}
-	// (b) role_profiles — 7 profiles × model/effort/isolation/mode.
-	for _, p := range []string{"analyst", "architect", "designer", "implementer", "researcher", "reviewer", "tester"} {
-		if !strings.Contains(body, `name="workflow.team.role_profiles.`+p+`.model"`) {
-			t.Errorf("surface (b) profile %q model control missing", p)
-		}
-		if !strings.Contains(body, `name="workflow.team.role_profiles.`+p+`.effort"`) {
-			t.Errorf("surface (b) profile %q effort control missing", p)
-		}
-	}
+	// 구 surface (b) team.role_profiles 렌더 검증은 Agent Teams 정적 레이어와 함께
+	// 제거되었다 (SPEC-AGENT-TEAM-RETIRE-001 M2 — workflow.team.role_profiles.* 폼
+	// 컨트롤은 더 이상 렌더되지 않는다). 잔존 확인은 아래 TestNoTeamRoleProfileRender.
 	// (c) sub-agent frontmatter rows.
 	for _, marker := range []string{`name="agentfm.dev-a.model"`, `name="agentfm.docs-b.effort"`} {
 		if !strings.Contains(body, marker) {
@@ -116,9 +113,30 @@ func TestAgentSettingsFourSurfacesRendered(t *testing.T) {
 	if !strings.Contains(body, `data-i18n="agentfm.warn"`) {
 		t.Error("persistent moai-update warning missing")
 	}
-	// M5-a B5: effort 필드 "(Go 미독)" 배지 렌더 (role_profiles.effort + agentfm effort).
+	// M5-a B5: effort 필드 "(Go 미독)" 배지 렌더 (agentfm effort — 구 role_profiles.effort
+	// 표면은 SPEC-AGENT-TEAM-RETIRE-001 M2에서 제거, 배지는 agentfm이 계속 렌더).
 	if !strings.Contains(body, `data-i18n="hint.effort.go_unbound"`) {
 		t.Error("effort (Go 미독) hint badge missing")
+	}
+}
+
+// TestNoTeamRoleProfileRender는 SPEC-AGENT-TEAM-RETIRE-001 M2의 절대-부재를
+// 검증한다: 웹 콘솔은 더 이상 Agent Teams team.role_profiles 폼 컨트롤을 렌더하지
+// 않는다 (REQ-ATR-008 — "shall not render Agent Teams configuration").
+func TestNoTeamRoleProfileRender(t *testing.T) {
+	a, _ := newAgentTestApp(t)
+	body := getIndex(t, a)
+	for _, p := range []string{"analyst", "architect", "designer", "implementer", "researcher", "reviewer", "tester"} {
+		for _, field := range []string{"model", "effort", "isolation", "mode"} {
+			marker := `name="workflow.team.role_profiles.` + p + `.` + field + `"`
+			if strings.Contains(body, marker) {
+				t.Errorf("Agent Teams role_profile control still rendered: %s", marker)
+			}
+		}
+	}
+	// team.max_teammates 등 team seam 필드도 렌더되지 않는다.
+	if strings.Contains(body, `name="workflow.team.max_teammates"`) {
+		t.Error("Agent Teams workflow.team.max_teammates control still rendered")
 	}
 }
 
@@ -138,61 +156,12 @@ func TestAgentFMWarnI18nParity(t *testing.T) {
 	}
 }
 
-// TestRoleProfileEditRoutesThroughSeam은 AC-WC11-022를 검증한다: role_profile
-// model 편집이 seam 경유로 대상 스칼라 1라인만 변경하고 주석/`team.patterns`를
-// 보존한다 (GWT-2).
-func TestRoleProfileEditRoutesThroughSeam(t *testing.T) {
-	a, root := newAgentTestApp(t)
-	before := readSectionFile(t, root, "workflow")
-
-	rec := postSave(t, a, url.Values{"workflow.team.role_profiles.implementer.model": {"opus"}})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("POST /save status = %d, want 200 (body: %.300s)", rec.Code, rec.Body.String())
-	}
-	after := readSectionFile(t, root, "workflow")
-
-	beforeLines := strings.Split(before, "\n")
-	afterLines := strings.Split(after, "\n")
-	if len(beforeLines) != len(afterLines) {
-		t.Fatalf("workflow.yaml line count drifted: %d → %d", len(beforeLines), len(afterLines))
-	}
-	changed := 0
-	for i := range beforeLines {
-		if beforeLines[i] != afterLines[i] {
-			changed++
-			if !strings.Contains(afterLines[i], "model: opus") {
-				t.Errorf("unexpected changed line: %q", afterLines[i])
-			}
-		}
-	}
-	if changed != 1 {
-		t.Errorf("changed lines = %d, want exactly 1", changed)
-	}
-	for _, keep := range []string{"patterns:", "design_implementation:", "# effort: declarative metadata"} {
-		if !strings.Contains(after, keep) {
-			t.Errorf("preserved content %q lost", keep)
-		}
-	}
-}
-
-// TestAgentSettingsEnumReject는 AC-WC11-024 + AC-WC11-071을 검증한다:
-// v4manifest closed set 밖 값 제출 → 4xx + 파일 불변.
-func TestAgentSettingsEnumReject(t *testing.T) {
-	a, root := newAgentTestApp(t)
-	before := readSectionFile(t, root, "workflow")
-
-	rec := postSave(t, a, url.Values{
-		"workflow.team.role_profiles.implementer.effort": {"superhigh"},
-		"workflow.workflow_agents.implement.model":       {"gpt5"},
-		"workflow.workflow_agents.implement.effort":      {"ultra"},
-	})
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("out-of-set submission status = %d, want 400", rec.Code)
-	}
-	if got := readSectionFile(t, root, "workflow"); got != before {
-		t.Error("workflow.yaml changed despite enum reject (atomic reject violated)")
-	}
-}
+// NOTE: TestRoleProfileEditRoutesThroughSeam (구 AC-WC11-022 role_profile seam
+// diff)와 TestAgentSettingsEnumReject (구 AC-WC11-024/071 role_profiles +
+// workflow_agents enum reject)는 SPEC-AGENT-TEAM-RETIRE-001 M2에서 제거되었다 —
+// 두 테스트의 대상 표면(workflow.team.role_profiles 편집)이 Agent Teams 정적
+// 레이어와 함께 retired. agentfm enum reject 커버리지는
+// TestAgentFMValidationAndAbsent가 유지한다.
 
 // TestAgentFMEditRoundTrip은 AC-WC11-025 + GWT-6을 검증한다: frontmatter 편집이
 // 파일에 반영되고 body는 byte-identical이며 재렌더에 현재 값이 반영된다.

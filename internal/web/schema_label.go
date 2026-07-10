@@ -22,7 +22,6 @@ import (
 
 // schemaFieldTitle 은 FieldDef 의 마지막 path segment 를 humanized 한 영문
 // baseline title 이다 (예: "token_threshold" → "Token threshold").
-// role_profiles.<role>.<field> 패턴은 role 이름을 앞에 배치한다.
 func schemaFieldTitle(f settings.FieldDef) string {
 	return humanizeLastSegment(f.Name)
 }
@@ -35,17 +34,11 @@ func schemaFieldDesc(f settings.FieldDef) string {
 
 // humanizeLastSegment 는 dot-path 의 마지막 segment 를 사람이 읽기 쉬운 형태로
 // 변환한다 (예: "auto_clear.token_threshold" → "Token threshold").
-// role_profiles 패턴은 "<Role> <field>" 형태로 확장한다.
+// NOTE: role_profiles.<role>.<field> 확장 분기는 Agent Teams 정적 레이어 렌더
+// 표면과 함께 제거되었다 (SPEC-AGENT-TEAM-RETIRE-001).
 func humanizeLastSegment(name string) string {
 	parts := strings.Split(name, ".")
 	last := parts[len(parts)-1]
-	// role_profiles.<role>.<field> 패턴 감지.
-	for i, p := range parts {
-		if p == "role_profiles" && i+1 < len(parts) {
-			role := parts[i+1]
-			return humanizeIdent(role) + " " + humanizeIdent(last)
-		}
-	}
 	return humanizeIdent(last)
 }
 

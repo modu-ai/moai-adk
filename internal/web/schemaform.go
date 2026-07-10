@@ -49,7 +49,8 @@ func consoleTabs() []consoleTab {
 		// SPEC-WEB-CONSOLE-013 M2 신규 섹션 (SchemaSectionIDs 순서와 일치).
 		{ID: "handoff", LabelKey: "sec.handoff.title", Baseline: "Handoff"},
 		{ID: "cache", LabelKey: "sec.cache.title", Baseline: "Prompt Cache"},
-		{ID: "agent_settings", LabelKey: "sec.agent_settings.title", Baseline: "Agent Settings"},
+		// agent_settings 탭(Agent Teams team.role_profiles)은 Agent Teams 정적
+		// 레이어와 함께 제거되었다 (SPEC-AGENT-TEAM-RETIRE-001). agentfm 탭은 유지.
 		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Sub-agent Frontmatter"},
 	}
 }
@@ -72,7 +73,7 @@ func schemaSectionMetas() []schemaSectionMeta {
 		{settings.SectionQualityExtras, "check-circle", "Quality (advanced)", "DDD gate toggles — characterization tests, behavior snapshots, preserve-before-improve."},
 		{settings.SectionGitStrategy, "folder-git", "Git Strategy", "Git workflow mode and per-mode pre-push hook action (skip/warn/enforce)."},
 		{settings.SectionLLM, "rocket", "LLM", "GLM backend model tier mappings (high/medium/low/fable)."},
-		{settings.SectionWorkflow, "panel-bottom", "Workflow", "Workflow execution, auto-clear, team, token budget, and worktree settings."},
+		{settings.SectionWorkflow, "panel-bottom", "Workflow", "Workflow execution, auto-clear, token budget, and worktree settings."},
 		{settings.SectionHarness, "check-circle", "Harness", "Quality harness levels, escalation, and learning subsystem."},
 		{settings.SectionRalph, "rocket", "MoAI-Loop", "MoAI-Loop instruction injection — lint and warning severity as systemMessage."},
 		{settings.SectionFeedback, "alert-circle", "Feedback", "Feedback workflow target repository."},
@@ -84,7 +85,8 @@ func schemaSectionMetas() []schemaSectionMeta {
 		{settings.SectionMx, "alert-circle", "MX Annotations", "MX code-annotation policy — danger categories and test-path exclusions (read-only)."},
 		{settings.SectionHandoff, "power", "Handoff", "Auto-resume handoff at session boundaries — mode (manual/auto) and startup hint."},
 		{settings.SectionCache, "rocket", "Prompt Cache", "Anthropic prompt caching — enable cache_control injection and session breakpoint TTL."},
-		{settings.SectionAgentSettings, "user-round", "Agent Settings", "Team role profiles and workflow-agent purpose defaults (workflow.yaml — comment-preserving writes)."},
+		// SectionAgentSettings(Agent Teams team.role_profiles)는 Agent Teams 정적
+		// 레이어와 함께 제거되었다 (SPEC-AGENT-TEAM-RETIRE-001).
 	}
 }
 
