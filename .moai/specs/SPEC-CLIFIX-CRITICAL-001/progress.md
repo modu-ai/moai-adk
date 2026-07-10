@@ -68,19 +68,19 @@ and `m4-windows-build.log`.
 
 ```yaml
 run_complete_at: "2026-07-10"
-run_commit_sha: "pending-backfill-m4"
+run_commit_sha: "a1c38328e"
 run_status: complete
 ac_pass_count: 11
 ac_fail_count: 0
 preserve_list_post_run_count: 0
 l44_pre_commit_fetch: true
-l44_post_push_fetch: pending
+l44_post_push_fetch: true
 new_warnings_or_lints_introduced: 0
 cross_platform_build:
   darwin_amd64: pass
   windows_amd64: pass
 total_run_phase_files: 11
-m1_to_mN_commit_strategy: "M-separated (138ae33cc M1, 9e229b81d M2, 60cd78157 M3, <this> M4)"
+m1_to_mN_commit_strategy: "M-separated (5703512c8 M1, daba6b7ab M2, 0bace43be M3, a1c38328e M4) — rebased onto origin/main 713a36909 then fast-forward pushed"
 ```
 
 - E1 AC matrix: 11/11 PASS (see §E.2 table above).
