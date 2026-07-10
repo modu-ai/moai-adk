@@ -37,7 +37,6 @@ const (
 	SectionWorkflow      SectionID = "workflow"       // seam 전용
 	SectionHarness       SectionID = "harness"        // seam 전용 (learning 최상위 키 포함)
 	SectionRalph         SectionID = "ralph"          // seam 전용
-	SectionResearch      SectionID = "research"       // seam 전용
 	SectionFeedback      SectionID = "feedback"       // seam 전용
 	SectionObservability SectionID = "observability"  // seam 전용
 	SectionSecurity      SectionID = "security"       // seam 전용 (스칼라만; 리스트는 raw view)
@@ -64,7 +63,6 @@ func AllSections() []SectionID {
 		SectionWorkflow,
 		SectionHarness,
 		SectionRalph,
-		SectionResearch,
 		SectionFeedback,
 		SectionObservability,
 		SectionSecurity,

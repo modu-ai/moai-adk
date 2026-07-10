@@ -14,11 +14,12 @@ import (
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
-// TestScopeContractNineSections는 9개 user-facing 섹션(git-strategy, llm,
-// workflow, harness, ralph, research, feedback, observability, security)이
+// TestScopeContractEditableSections는 8개 user-facing 섹션(git-strategy, llm,
+// workflow, harness, ralph, feedback, observability, security)이
 // 전부 편집 가능 경로로 라우팅되고, 그 경로 분류가 design.md §A.3 표와 일치함을
-// 검증한다 (AC-WC11-002 허용 케이스).
-func TestScopeContractNineSections(t *testing.T) {
+// 검증한다 (AC-WC11-002 허용 케이스; research는 SPEC-WEB-CONSOLE-012 M1에서
+// 폐선 — REQ-WC12-010, 제외군 테스트로 이동).
+func TestScopeContractEditableSections(t *testing.T) {
 	t.Parallel()
 
 	// typed 경로 2종: git-strategy(dirty-flag Save), llm(typed oneof 검증).
@@ -28,10 +29,10 @@ func TestScopeContractNineSections(t *testing.T) {
 		}
 	}
 
-	// seam 전용 7종: typed Save() 경로 부재 — yamlpatch seam이 유일한 쓰기 경로
+	// seam 전용 6종: typed Save() 경로 부재 — yamlpatch seam이 유일한 쓰기 경로
 	// (REQ-WC11-017; workflow.yaml typed re-marshal 금지 REQ-WC11-005).
 	for _, name := range []string{
-		"workflow", "harness", "ralph", "research",
+		"workflow", "harness", "ralph",
 		"feedback", "observability", "security",
 	} {
 		if got := settings.RouteForSection(name); got != settings.RouteSeam {
@@ -54,9 +55,9 @@ func TestScopeContractNineSections(t *testing.T) {
 
 // TestScopeContractExclusions는 제외군 — machine/state 섹션(state, system,
 // project, cache, sunset), 대형 정책 파일(tool-policy, lsp, mx), 미지명 섹션
-// (constitution, context, design, interview) 및 임의 미등재 이름 — 이 전부
-// 편집 불가(RouteExcluded)로 거부됨을 검증한다 (AC-WC11-002 거부 케이스,
-// REQ-WC11-018).
+// (constitution, context, design, interview), 폐선 섹션(db, research) 및 임의
+// 미등재 이름 — 이 전부 편집 불가(RouteExcluded)로 거부됨을 검증한다
+// (AC-WC11-002 거부 케이스, REQ-WC11-018; research 폐선은 REQ-WC12-010/012).
 func TestScopeContractExclusions(t *testing.T) {
 	t.Parallel()
 
@@ -64,6 +65,9 @@ func TestScopeContractExclusions(t *testing.T) {
 		"state", "system", "project", "cache", "sunset",
 		"tool-policy", "lsp", "mx",
 		"constitution", "context", "design", "interview",
+		// 콘솔 표면에서 폐선된 섹션 (db: settings SSOT / research:
+		// SPEC-WEB-CONSOLE-012 M1 — 미등재 → RouteExcluded).
+		"db", "research",
 	}
 	for _, name := range excluded {
 		if got := settings.RouteForSection(name); got != settings.RouteExcluded {

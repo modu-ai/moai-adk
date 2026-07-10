@@ -15,20 +15,22 @@ func TestRouteForSectionTable(t *testing.T) {
 		"git-convention": RouteTypedSave,
 		"git-strategy":   RouteTypedSave,
 		"llm":            RouteTypedSave,
-		// seam ×7.
+		// seam ×6 (research는 SPEC-WEB-CONSOLE-012 M1에서 폐선 — FieldDef 0개
+		// + 콘솔 탭 미등재의 유령 쓰기 경로였다, REQ-WC12-010).
 		"workflow":      RouteSeam,
 		"harness":       RouteSeam,
 		"ralph":         RouteSeam,
-		"research":      RouteSeam,
 		"feedback":      RouteSeam,
 		"observability": RouteSeam,
 		"security":      RouteSeam,
 		// 기존 전용 경로.
 		"statusline": RouteStatusline,
-		// 제외군 + 미등재.
+		// 제외군 + 미등재 (research/db는 미등재 → RouteExcluded, 동일 선례).
 		"state":       RouteExcluded,
 		"tool-policy": RouteExcluded,
 		"interview":   RouteExcluded,
+		"research":    RouteExcluded,
+		"db":          RouteExcluded,
 		"no-such":     RouteExcluded,
 	}
 	for name, want := range cases {
@@ -43,12 +45,15 @@ func TestRouteForSectionTable(t *testing.T) {
 func TestSeamSectionsMatchesRoutes(t *testing.T) {
 	t.Parallel()
 	seam := SeamSections()
-	if len(seam) != 7 {
-		t.Fatalf("SeamSections() length = %d, want 7", len(seam))
+	if len(seam) != 6 {
+		t.Fatalf("SeamSections() length = %d, want 6", len(seam))
 	}
 	for _, name := range seam {
 		if got := RouteForSection(name); got != RouteSeam {
 			t.Errorf("seam section %q routes to %d, want RouteSeam", name, got)
+		}
+		if name == "research" {
+			t.Error("research must not be enumerated as a seam section (REQ-WC12-010)")
 		}
 	}
 }

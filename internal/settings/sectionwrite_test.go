@@ -107,10 +107,11 @@ func nonBlankLines(lines []string) []string {
 	return out
 }
 
-// TestYAMLPatchGoldenSections는 8개 seam 섹션 각각의 실제 파일 사본(golden
+// TestYAMLPatchGoldenSections는 6개 seam 섹션 각각의 실제 파일 사본(golden
 // fixture)에 스칼라 1개를 seam으로 기록하고 (i) diff가 편집 라인 1개에
 // 국한되며 (ii) 주석 전량 (iii) 키 순서가 보존됨을 검증한다 (AC-WC11-017,
-// REQ-WC11-017 — design.md §A.4 golden round-trip).
+// REQ-WC11-017 — design.md §A.4 golden round-trip; research는
+// SPEC-WEB-CONSOLE-012 M1에서 폐선되어 케이스에서 제거).
 //
 // 공백-only 정규화 고정 (design.md §A.4 사전 승인 경로, run-phase 실측):
 // yaml.v3 재인코딩은 매핑 항목 사이의 빈 줄을 제거한다. 8개 섹션 중 항목-사이
@@ -132,7 +133,6 @@ func TestYAMLPatchGoldenSections(t *testing.T) {
 		{"workflow", yamlpatch.KeyEdit{Path: []string{"workflow", "team", "default_model"}, Value: "sonnet"}, "default_model: sonnet", false},
 		{"harness", yamlpatch.KeyEdit{Path: []string{"harness", "default_profile"}, Value: "strict"}, "default_profile: strict", false},
 		{"ralph", yamlpatch.KeyEdit{Path: []string{"ralph", "loop", "max_iterations"}, Value: "20"}, "max_iterations: 20", false},
-		{"research", yamlpatch.KeyEdit{Path: []string{"research", "enabled"}, Value: "true"}, "enabled: true", false},
 		{"feedback", yamlpatch.KeyEdit{Path: []string{"feedback", "repository"}, Value: "example-org/fork"}, "repository: example-org/fork", false},
 		{"observability", yamlpatch.KeyEdit{Path: []string{"observability", "retention_days"}, Value: "60"}, "retention_days: 60", false},
 		{"security", yamlpatch.KeyEdit{Path: []string{"security", "permission", "strict_mode"}, Value: "true"}, "strict_mode: true", true},
@@ -230,6 +230,9 @@ func TestWriteSectionViaSeamRejectsNonSeamSections(t *testing.T) {
 		"state", "system", "project", "cache", "sunset",
 		"tool-policy", "lsp", "mx",
 		"constitution", "context", "design", "interview",
+		// research는 SPEC-WEB-CONSOLE-012 M1에서 폐선 (db 선례와 동일 —
+		// 미등재 → RouteExcluded, REQ-WC12-012).
+		"research", "db",
 		"nonexistent",
 	} {
 		err := WriteSectionViaSeam(root, section, []yamlpatch.KeyEdit{
@@ -243,6 +246,26 @@ func TestWriteSectionViaSeamRejectsNonSeamSections(t *testing.T) {
 	// 거부 경로는 파일을 일절 만들지 않는다.
 	if entries, err := os.ReadDir(root); err != nil || len(entries) != 0 {
 		t.Errorf("rejected writes must not touch the filesystem: entries=%v err=%v", entries, err)
+	}
+}
+
+// TestWriteSectionViaSeamRejectsResearchPreservesFile은 폐선된 research 섹션에
+// 대한 seam 쓰기가 not-seam-writable 오류로 거부되고, 디스크의 research.yaml이
+// 바이트 단위로 무변경임을 검증한다 (SPEC-WEB-CONSOLE-012 REQ-WC12-012,
+// AC-WC12-010 — acceptance.md §D.3 S2 시나리오).
+func TestWriteSectionViaSeamRejectsResearchPreservesFile(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	before := seedSectionFixture(t, root, "research")
+
+	err := WriteSectionViaSeam(root, "research", []yamlpatch.KeyEdit{
+		{Path: []string{"research", "enabled"}, Value: "false"},
+	})
+	if err == nil {
+		t.Fatal("want not-seam-writable rejection for research, got nil")
+	}
+	if got := readSection(t, root, "research"); got != before {
+		t.Error("rejected research write mutated research.yaml (must be byte-unchanged)")
 	}
 }
 

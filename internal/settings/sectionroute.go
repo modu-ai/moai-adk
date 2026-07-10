@@ -5,9 +5,10 @@ package settings
 //
 // 구 scope contract(REQ-WC-012 + REQ-WC3-007)의 "workflow/harness/git-strategy/llm
 // 절대 금지" 조항은 SPEC-WEB-CONSOLE-011 REQ-WC11-001이 공식 SUPERSEDE했다. 이제
-// 9개 user-facing 섹션이 편집 가능하며, 각 섹션의 영속화 경로는 아래 라우팅
+// 8개 user-facing 섹션이 편집 가능하며, 각 섹션의 영속화 경로는 아래 라우팅
 // 테이블이 단일 진실 공급원이다. machine/state 섹션·대형 정책 파일·미지명 섹션
-// (db 포함 — 콘솔 표면에서 제거됨, settings SSOT)은 계속 쓰기 금지다 (REQ-WC11-018).
+// (db, research 포함 — 콘솔 표면에서 제거됨; db는 settings SSOT, research는
+// SPEC-WEB-CONSOLE-012 REQ-WC12-010 폐선)은 계속 쓰기 금지다 (REQ-WC11-018).
 
 // SectionRoute는 config 섹션 파일(.moai/config/sections/<name>.yaml)의 웹 콘솔
 // 영속화 경로 분류다.
@@ -29,7 +30,7 @@ const (
 	RouteTypedSave
 
 	// RouteSeam — yamlpatch seam(internal/settings/yamlpatch) 전용으로 영속화한다.
-	// typed Save() 경로가 없는 7개 섹션: workflow, harness, ralph, research,
+	// typed Save() 경로가 없는 6개 섹션: workflow, harness, ralph,
 	// feedback, observability, security (REQ-WC11-017). 특히 workflow.yaml은
 	// typed re-marshal이 금지된다 (REQ-WC11-005 — team.patterns 미모델링 +
 	// role-profile effort Go-invisible).
@@ -54,12 +55,13 @@ var sectionRoutes = map[string]SectionRoute{
 	"git-strategy": RouteTypedSave,
 	"llm":          RouteTypedSave,
 
-	// 10섹션 계약 중 seam 전용 7섹션 (REQ-WC11-017). db는 콘솔 표면에서 제거되어
-	// (settings SSOT) 더 이상 seam-writable이 아니다 — 미등재 → RouteExcluded.
+	// seam 전용 6섹션 (REQ-WC11-017). db(settings SSOT)와 research(FieldDef
+	// 0개 + 콘솔 탭 미등재의 유령 쓰기 경로였다 — SPEC-WEB-CONSOLE-012
+	// REQ-WC12-010)는 콘솔 표면에서 제거되어 더 이상 seam-writable이 아니다 —
+	// 미등재 → RouteExcluded.
 	"workflow":      RouteSeam,
 	"harness":       RouteSeam,
 	"ralph":         RouteSeam,
-	"research":      RouteSeam,
 	"feedback":      RouteSeam,
 	"observability": RouteSeam,
 	"security":      RouteSeam,
@@ -74,11 +76,12 @@ func RouteForSection(name string) SectionRoute {
 	return sectionRoutes[name]
 }
 
-// SeamSections는 yamlpatch seam이 유일한 쓰기 경로인 7개 섹션을 반환한다
+// SeamSections는 yamlpatch seam이 유일한 쓰기 경로인 6개 섹션을 반환한다
 // (REQ-WC11-017). 순서는 spec.md §1.1 결정 3의 열거 순서를 따른다 (db는 콘솔
-// 표면에서 제거됨 — settings SSOT).
+// 표면에서 제거됨 — settings SSOT; research는 SPEC-WEB-CONSOLE-012
+// REQ-WC12-010에서 폐선).
 func SeamSections() []string {
-	return []string{"workflow", "harness", "ralph", "research", "feedback", "observability", "security"}
+	return []string{"workflow", "harness", "ralph", "feedback", "observability", "security"}
 }
 
 // ExcludedSections는 명시적 제외군(REQ-WC11-018)을 반환한다: machine/state 섹션 +
