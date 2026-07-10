@@ -129,7 +129,7 @@ _<pending run-phase>_
 
 ```yaml
 sync_complete_at: 2026-07-11
-sync_commit_sha: pending-backfill-014   # this commit cannot cite its own SHA; backfilled in the follow-up commit
+sync_commit_sha: dd93dc8fa
 sync_status: PASS
 changelog_entry_position: "### Changed section, immediately after SPEC-WEB-CONSOLE-013 entry"
 frontmatter_status_transitions:
