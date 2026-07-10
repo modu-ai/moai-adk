@@ -30,7 +30,7 @@ Plan-phase (draft). Artifacts: spec.md + plan.md + acceptance.md + progress.md (
 | M3 | Async observation taps (UserPromptSubmit/Stop/SubagentStop) | Medium | done (AC-017/018) landed 7e641d959 |
 | M4 | Timeout headroom (TeammateIdle/TaskCompleted/PreCompact) | Medium | done (AC-019/020) landed 7e641d959 |
 | M5 | Matcher resolution + Go verification (FileChanged/ConfigChange) | Medium | done (AC-021/022) — Go inspection: no settings.json/wrapper change needed |
-| M6 | Fail-open semantics correction (WorktreeCreate/PermissionRequest) | Medium | not-started |
+| M6 | Fail-open semantics correction (WorktreeCreate/PermissionRequest) | Medium | done (AC-023/024) |
 | M7 | Input hardening (MOAI_HOOK_STDERR_LOG + gateguard escaping) | Low | not-started |
 | M8 | Coverage holes + defects (MultiEdit/csharp/exec-form/compact) | Low | M8a done (AC-027 MultiEdit) landed 7e641d959; M8b-d (AC-028..030) remain |
 
@@ -134,6 +134,25 @@ Orchestrator-verified prior to this delegation (per task §A): settings.json.tmp
 **E1 — AC PASS:** AC-021 satisfied via doctrine documentation (AC-011 literal note in M2) + Go inspection (file_changed.go downstream-consumer confirmation). AC-022 satisfied via Go inspection (config_change.go never-blocks confirmation). Both ACs' verification blocks in acceptance.md call for "Go inspection evidence recorded in run-phase E7 report" — recorded above.
 **E2 — Build:** N/A (no file change in M5; inspection only).
 **E6 — Commits:** M5 evidence recorded in this progress.md update (no separate code commit needed — M5 is inspection-only; the M2 doctrine note already reconciles AC-021 with the shipping runtime).
+
+### M6 (MEDIUM) — Fail-open semantics correction (WorktreeCreate/PermissionRequest) — DONE
+
+Header-comment guard added to `handle-worktree-create.sh` + `handle-permission-request.sh` (.tmpl + .sh mirrors) stating the wrapper MUST NOT be registered unless moai is guaranteed resolvable, and the misleading "Claude Code handles missing hooks gracefully" comment corrected to name the fail-open hazard for active-creator (WorktreeCreate: empty stdout + exit 0 ABORTS creation) and security-gate (PermissionRequest: exit 0 = ALLOW neutralizes the permission gate) events. SessionStart probe (`handle-session-start.sh`) gained a PermissionRequest-priority dimension flagging the security-negative silent-allow over the observer-event degradation.
+
+**E1 — AC PASS/FAIL matrix:**
+
+| AC | Status | Evidence (command → observed) |
+|----|--------|-------------------------------|
+| AC-023 | PASS | `head -20 handle-worktree-create.sh.tmpl \| grep -iE 'MUST NOT.*register\|guaranteed.*resolvable'` → 2 matches ("MUST NOT be registered", "guaranteed resolvable"); same for `handle-permission-request.sh.tmpl` |
+| AC-024 | PASS | `grep -iE 'PermissionRequest\|permission.*allow\|security.*negative' .claude/hooks/moai/handle-session-start.sh` → 3 matches (PermissionRequest-priority dimension comment + PRIORITY HAZARD line + security-negative silent-allow text) |
+
+**E2 — Cross-platform build:** `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+**E3 — Coverage:** N/A (no Go source changed; shell + comment edits only).
+**E4 — Subagent boundary:** N/A (hook scripts, not Go subagent domain — and 0 NEW AskUserQuestion refs introduced).
+**E5 — Lint:** `golangci-lint run --timeout=3m` → 0 issues.
+**E5b — Mirror parity + neutrality:** `go test ./internal/template/... -run 'TestRuleTemplateMirror|TestHookOfficialCompliance|TestInternalContentLeak'` → `ok 0.393s`.
+**Gaps:** acceptance.md AC-023 verification uses `head -20` windowed grep — confirmed the guard lands within lines 5-13 (well inside the 20-line window). AC greps reference `development/hooks-system.md` (stale path defect — pre-existing, for manager-spec follow-up).
+**Residual-risk:** the header guard is advisory documentation (the plan-preferred lighter touch over loud-abort); it does not mechanically prevent registration. A future runtime that tightens this could enforce it, but that is out of M6 scope.
 
 ### Path-discrepancy finding (acceptance.md staleness — for manager-spec follow-up)
 

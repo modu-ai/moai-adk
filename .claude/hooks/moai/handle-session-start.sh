@@ -39,7 +39,10 @@ if [ "${MOAI_HOOK_PROBE_SILENCE:-}" != "1" ]; then
             ;;
         *)
             # startup OR source absent/malformed — emit surfaced warning (REQ-HOOK-002, §D.7 edge case)
-            probe_warn="moai binary not found in PATH, \$HOME/go/bin, or \$HOME/.local/bin — all 31 wrappers (handle-*.sh) are silently no-op (non-blocking, advisory). Reinstall moai or restore PATH (e.g. make build, then go install ./cmd/moai)."
+            # PermissionRequest-priority dimension: exit 0 on a missing binary = ALLOW for
+            # PermissionRequest, which is a security-negative silent-allow that neutralizes the
+            # permission gate. This hazard ranks ABOVE the observer-event silent degradation.
+            probe_warn="moai binary not found in PATH, \$HOME/go/bin, or \$HOME/.local/bin — all 31 wrappers (handle-*.sh) are silently no-op. PRIORITY HAZARD (security-negative silent-allow): handle-permission-request.sh exits 0 on missing binary, and for PermissionRequest exit 0 = ALLOW, so the binary's absence silently ALLOWS every permission request and neutralizes the permission gate. Secondary (observer degradation): UserPromptSubmit/Stop/SubagentStop observer taps silently degrade (non-blocking, advisory). Reinstall moai or restore PATH (e.g. make build, then go install ./cmd/moai)."
             # Primary channel: stdout JSON hookSpecificOutput.additionalContext (model-context surfacing).
             # hookEventName:"SessionStart" is mandatory so stricter runtimes do not silently drop the additionalContext (REQ-HOC-004).
             printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$probe_warn" 2>/dev/null || true
