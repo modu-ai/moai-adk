@@ -32,6 +32,34 @@
 **Coverage:** `go test -cover ./internal/cli/` → 72.7% of statements (package-level).
 **Race suite:** `go test -race ./internal/cli/... ./internal/cli/preference/... -count=1` → all 10 packages PASS.
 
+### M2 — `~/.claude.json` RMW guard (REQ-CONC-001-003 / AC-CONC-001-003)
+
+**AC PASS/FAIL matrix (M2 scope = AC-003):**
+
+| AC | Status | Verification command | Actual output |
+|---|---|---|---|
+| AC-CONC-001-003 | PASS | `go test -race ./internal/cli/ -run 'ClaudeJSONGuard' -count=1 -v` | `PASS` — 3 tests green: `TestClaudeJSONGuard_ConcurrentForceNoLostUpdate` (6.9s), `TestClaudeJSONGuard_ConcurrentIdempotentNoLostUpdate` (7.0s), `TestClaudeJSONGuard_ExternalWriteDetectedByCompareRetry` (0.02s) |
+
+**RED evidence (SPEC §D.5 — tests must fail on pre-fix commit):**
+- `TestClaudeJSONGuard_ConcurrentForceNoLostUpdate` FAILED pre-M2: `iter 0: MCP server "zai-mcp-server" lost (concurrent RMW lost update)` — three goroutines (vision/websearch/webreader) read the same empty state and the later `os.Rename` overwrote the earlier writer's entries.
+- `TestClaudeJSONGuard_ConcurrentIdempotentNoLostUpdate` FAILED pre-M2: identical root cause via the idempotent path.
+- Confirmed at HEAD `37b535820` (before the M2 edit): both tests fail on iter 0.
+
+**Changes applied (GREEN):**
+1. `internal/cli/glm_tools.go` — new `mutateClaudeJSONAtomic(configPath, apply)` seam: a guarded RMW that combines (a) advisory flock on a sibling `.lock` file (reuses the existing `lockFile`/`unlockFile` family — same convention as `mutateSettingsLocal`, no second lock convention) to serialize cooperating writers, and (b) a content compare-and-retry inside the lock to detect non-cooperating writers (e.g., a live Claude Code process that does not respect the `.lock` file). Marshal stays OUTSIDE the lock (prep phase); inside the lock the guard only re-reads, compares, conditionally re-applies, and publishes via temp+rename. Fail-open with stderr warning on unsupported FS or exhausted retries (claudeJSONGuardMaxRetries = 3). Bounded critical section so a large `~/.claude.json` does not block a live CC process.
+2. `internal/cli/glm_tools.go` — extracted `writeClaudeJSONBytes(configPath, data)` (bytes-level temp+rename) from `writeClaudeJSONAtomic`; the guard writes pre-marshaled bytes inside the lock without re-running the marshal. `writeClaudeJSONAtomic` delegates here (behavior-preserving — its signature is unchanged; still used by `disableMCPServerForTool` which is NOT in M2 scope).
+3. `internal/cli/glm_tools.go` — `runEnableMCPServerForTool` and `enableMCPServerIdempotentForTool` re-routed through `mutateClaudeJSONAtomic`. The apply closures are re-callable: token-mismatch check + idempotency check + mcpServers mutation are re-evaluated against the fresh in-lock state on each retry. The idempotent `skipped` flag reflects the LAST apply invocation so it stays correct even when a concurrent writer achieves the desired state mid-guard.
+4. `internal/cli/glm_tools.go` — `readClaudeJSONRaw` + `parseClaudeJSON` helpers (raw bytes for the compare; parsed root for the apply). `claudeJSONGuardPreLockHook` test injection point (nil in production).
+5. `internal/cli/clifix_concurrency_m2_test.go` — 3 RED→GREEN tests (2 concurrent stress + 1 deterministic compare-retry).
+
+**Design choice (M3-forward note):** the guard is implemented as a `mutateClaudeJSONAtomic(path, apply)` seam mirroring `mutateSettingsLocal`, NOT by mutating `writeClaudeJSONAtomic`'s signature. M3's atomic-writer consolidation can build on the extracted `writeClaudeJSONBytes`. `disableMCPServerForTool` is NOT routed through the guard in M2 (SPEC REQ-CONC-001-003 names only the two enable sites); it remains a known gap that could use the same seam in a follow-up.
+
+**Cross-platform build:** `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (lockFile/unlockFile already build-tagged unix/windows by CRITICAL-001).
+**Lint:** `golangci-lint run --timeout=3m` → 0 issues (baseline was also 0).
+**Coverage:** `go test -cover ./internal/cli/` → 72.8% of statements (package-level; consistent with the pre-M2 baseline — the new guard code is exercised by 3 new tests + 50+ existing glm_tools tests that now route through the guard).
+**Vet:** `go vet ./internal/cli/` exit 0; `gofmt` clean.
+**Race suite (full, on worktree at main HEAD):** `go test -race ./internal/cli/... ./internal/cli/preference/... -count=1` → all 10 packages PASS. NOTE: an initial full-suite run surfaced a data race on the package-global `claudeJSONGuardPreLockHook` (the deterministic test wrote it while concurrent tests read it — both were `t.Parallel()`). Fixed by making `TestClaudeJSONGuard_ExternalWriteDetectedByCompareRetry` serial (NOT `t.Parallel()`) so it completes before any parallel test reads the hook. The cascade of other test failures in that initial run was collateral (race-detector tainting), not separate races — confirmed by the clean full-suite re-run.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
