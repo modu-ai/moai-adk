@@ -2,7 +2,7 @@
 id: SPEC-CLIFIX-CONTRACT-001
 title: "CLI Contract Remediation — ExitCoder adoption, dead flags, exit-code/stream contracts (P1)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-10
 updated: 2026-07-10
 author: manager-spec

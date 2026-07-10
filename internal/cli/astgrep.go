@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -114,9 +113,10 @@ func runAstGrep(cmd *cobra.Command, flags *astGrepFlags, path string) error {
 		outputText(cmd, findings)
 	}
 
-	// exit code 1 when error-severity findings are found (AC4)
+	// exit code 1 when error-severity findings are found (AC4). Returned as an
+	// ExitCoder so main.go maps exit 1 and defers run (SPEC-CLIFIX-CONTRACT-001 M1).
 	if astgrep.HasErrors(findings) {
-		os.Exit(1)
+		return &exitCodeError{code: 1, msg: "ast-grep: error-severity findings detected"}
 	}
 
 	return nil

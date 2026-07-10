@@ -189,11 +189,13 @@ func runPrePush(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Thin boundary: translate the pure decision into the process exit code.
+	// Thin boundary: translate the pure decision into an ExitCoder return.
 	// warn → exit 0 (non-blocking); enforce + violations → exit 2 (deny per
-	// Claude Code protocol). This is the ONLY os.Exit site.
+	// Claude Code protocol). The return lets main.go map the code and lets
+	// defers run (SPEC-CLIFIX-CONTRACT-001 M1; REQ-CONT-001-006 stderr routing
+	// is applied in M3).
 	if decideExit(action, violations) == 2 {
-		os.Exit(2)
+		return &exitCodeError{code: 2, msg: fmt.Sprintf("pre-push: %d commit(s) violated %s convention", violations, conv.Name)}
 	}
 	return nil
 }

@@ -228,6 +228,22 @@ type userError struct {
 
 func (e *userError) Error() string { return e.msg }
 
+// exitCodeError carries a structured exit code so cmd/moai/main.go maps a
+// non-default code via the ExitCoder boundary instead of cobra's default exit 1.
+// SPEC-CLIFIX-CONTRACT-001 M1 (the harness package cannot import the cli root
+// package without a cycle, so it owns a local type that satisfies the same
+// structural ExitCoder interface in cmd/moai/main.go).
+type exitCodeError struct {
+	code int
+}
+
+func (e *exitCodeError) Error() string {
+	return fmt.Sprintf("harness execute: exit code %d", e.code)
+}
+
+// ExitCode satisfies the ExitCoder interface in cmd/moai/main.go.
+func (e *exitCodeError) ExitCode() int { return e.code }
+
 // ExitCodeForError는 Apply 반환 에러를 exit code로 분류한다 (design.md §E).
 //
 // 분기 순서 (errors.As 타입 분기 — errjoin walk 가능):
@@ -330,7 +346,7 @@ Examples:
 				// exit code 분류 + 진단 메시지는 runExecuteCommand가 이미 stderr로 emit.
 				cmd.SilenceUsage = true
 				cmd.SilenceErrors = true
-				os.Exit(ExitCodeForError(err))
+				return &exitCodeError{code: ExitCodeForError(err)}
 			}
 			return nil
 		},

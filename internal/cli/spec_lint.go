@@ -67,7 +67,7 @@ Exit codes:
 			report, lintErr := linter.Lint(args)
 			if lintErr != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "linter error: %v\n", lintErr)
-				os.Exit(2)
+				return &exitCodeError{code: 2, msg: fmt.Sprintf("spec lint: linter error: %v", lintErr)}
 			}
 
 			// select output format
@@ -93,7 +93,7 @@ Exit codes:
 			}
 
 			if report.HasErrors() {
-				os.Exit(1)
+				return &exitCodeError{code: 1, msg: "spec lint: error-severity findings detected"}
 			}
 
 			return nil

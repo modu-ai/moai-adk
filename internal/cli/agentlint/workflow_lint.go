@@ -127,6 +127,26 @@ func validateRoleProfiles(cfg *config.WorkflowConfig) []WorkflowLintViolation {
 
 // runWorkflowLint validates .moai/config/sections/workflow.yaml.
 // Returns errLintViolations (cobra-friendly) when violations are found.
+// exitCodeError carries a structured exit code so cmd/moai/main.go maps a
+// non-default code via the ExitCoder boundary instead of cobra's default exit 1.
+// SPEC-CLIFIX-CONTRACT-001 M1 (the agentlint package cannot import the cli root
+// package without a cycle, so it owns a local type satisfying the same structural
+// ExitCoder interface in cmd/moai/main.go).
+type exitCodeError struct {
+	code int
+	msg  string
+}
+
+func (e *exitCodeError) Error() string {
+	if e.msg != "" {
+		return e.msg
+	}
+	return fmt.Sprintf("workflow lint: exit code %d", e.code)
+}
+
+// ExitCode satisfies the ExitCoder interface in cmd/moai/main.go.
+func (e *exitCodeError) ExitCode() int { return e.code }
+
 func runWorkflowLint(cmd *cobra.Command, _ []string) error {
 	format := getStringFlag(cmd, "format")
 
@@ -153,9 +173,10 @@ func runWorkflowLint(cmd *cobra.Command, _ []string) error {
 			// Exit 3: IO error (file not found)
 			return fmt.Errorf("workflow.yaml not found at %s: %w", workflowPath, err)
 		}
-		// Exit 2: Malformed YAML
+		// Exit 2: Malformed YAML. Returned as an ExitCoder so main.go maps
+		// exit 2 and defers run (SPEC-CLIFIX-CONTRACT-001 M1).
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "error: malformed workflow.yaml: %v\n", err)
-		os.Exit(2)
+		return &exitCodeError{code: 2, msg: fmt.Sprintf("malformed workflow.yaml: %v", err)}
 	}
 
 	violations := validateRoleProfiles(cfg)
