@@ -132,7 +132,14 @@ AC-ATR-027 (grep token `CG Mode (Claude + GLM`, 0-count baseline verified).
   prefer KEEP to minimize diff; record either way), `AppendTask`, `ClaimTask`,
   `TaskClaimer`, `NewTaskClaimer`. `@MX:ANCHOR` +
   `@MX:SPEC: SPEC-CLIFIX-CRITICAL-001` on `ClaimTask`.
-- **Deletion blast-radius (verified)**: 0 non-test callers of every deleted
+- **Deletion blast-radius (corrected per auditor D3)**: the 0-non-test-caller
+  claim holds for the team_spawn.go SYMBOL family only. The CONFIG TYPE
+  family has non-test consumers: `workflow_accessors.go`
+  `WorkflowTeamAutoSelection()` (deleted in M1), `workflow_lint.go`
+  `validateRoleProfiles` (removed in M1, replaced in M2), and the
+  settings/web surfaces (M2). "Confined to tests" is false for the type
+  family — the corrected enumeration below governs.
+- **Deletion blast-radius (team_spawn symbols)**: 0 non-test callers of every deleted
   symbol; compile-coupled edits confined to `internal/config` tests +
   `internal/cli/agentlint/workflow_lint.go` + `internal/settings` +
   `internal/web` (Phase 3 surfaces).

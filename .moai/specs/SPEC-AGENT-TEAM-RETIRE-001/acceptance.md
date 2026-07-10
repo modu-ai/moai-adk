@@ -1,6 +1,6 @@
 # Acceptance Criteria — SPEC-AGENT-TEAM-RETIRE-001
 
-> SSOT for the AC matrix. 28 ACs covering all 22 REQs (100% AC→REQ coverage).
+> SSOT for the AC matrix. 29 ACs covering all 22 REQs (100% AC→REQ coverage).
 > Verification conventions: (1) every removal check is **anchored** (prefix or
 > word boundary) — bare `team` substring greps are invalid evidence;
 > (2) preservation ACs assert STILL-EXISTS, never absence; (3) counts follow the
@@ -78,6 +78,7 @@
 | AC-ATR-026 | REQ-ATR-021 | House style + determinism both scripts |
 | AC-ATR-027 | REQ-ATR-022 | CG Mode guidance migrated before glm.md deletion |
 | AC-ATR-028 | REQ-ATR-010 | No dangling workflow.yaml auto_selection pointer (prose-only SSOT) |
+| AC-ATR-029 | REQ-ATR-010 | Key-token sweep: workflow.team.enabled + AGENT_TEAMS env var |
 
 ## §C. Verification Commands (per AC)
 
@@ -186,9 +187,14 @@ grep -c '"f\.git_strategy\.mode\.opt\.team"' internal/web/assets/i18n.js   # exp
 ```bash
 grep -c '"f\.workflow\.team\.' internal/web/assets/i18n.js       # expect 0
 grep -rn "RoleProfileNames" internal/ --include="*.go" | wc -l   # expect 0
-grep -in "team" internal/web/fieldsets.templ | wc -l             # expect 0 team fieldset markup (manual review of any survivor)
-git diff --stat --exit-code internal/web/fieldsets_templ.go && echo REGEN-CLEAN   # after templ generate: no drift
+grep -c '"workflow", "team"' internal/settings/schema_sections.go   # expect 0 (5 FieldDef rows removed; baseline 5 at plan-time — auditor D2 re-target)
 ```
+
+Conditional (only if run-phase re-measure found team markup in
+`fieldsets.templ` — plan-time baseline is 0 hits): after `templ generate`,
+`git diff --stat --exit-code internal/web/fieldsets_templ.go` shows no
+uncommitted drift. When the baseline holds (0 hits), the templ surface is
+untouched and this conditional does not apply.
 
 ### AC-ATR-014 (REQ-ATR-009)
 
@@ -206,9 +212,24 @@ for t in .claude internal/template/templates/.claude; do
     [ -e "$t/$f" ] && echo "RESIDUE: $t/$f"
   done
 done   # expect: no RESIDUE lines (per-tree independent check)
-grep -c -i "retire" .claude/rules/moai/workflow/orchestration-mode-selection.md   # expect >= 1 (Mode 3 tombstone)
-grep -rn -E "team-protocol\.md|team-pattern-cookbook\.md|skills/moai/team/" .claude/ internal/template/templates/.claude/ --include="*.md" | wc -l   # expect 0 dangling refs (this SPEC's own artifacts exempt)
+grep -c "Mode 3 — RETIRED" .claude/rules/moai/workflow/orchestration-mode-selection.md   # expect >= 1 (Mode-3-specific tombstone literal; baseline 0 at plan-time — the generic `-i retire` token was baseline-1 via the Version footer and thus vacuous, auditor D5)
+grep -rn -E "team-protocol\.md|team-pattern-cookbook\.md|skills/moai/team/" \
+  .claude/rules/ .claude/skills/ .claude/agents/ .claude/commands/ .claude/output-styles/ \
+  internal/template/templates/.claude/ --include="*.md" | wc -l
+# expect 0 dangling refs. Sweep is rooted at the FIVE authored .claude subtrees + the
+# template tree EXPLICITLY (auditor D1): a bare `.claude/` root would pull in
+# `.claude/worktrees/agent-*/` (thousands of files) and `.claude/agent-memory/_archive/`,
+# both protected by spec §E (Historical artifacts) — mechanically unsatisfiable.
+# Equivalent alternative: root at .claude/ with --exclude-dir=worktrees --exclude-dir=agent-memory.
+# This SPEC's own .moai/specs/ artifacts are outside the sweep roots by construction.
 ```
+
+Plus the D1 extra sweep files (×2 trees, re-anchored by content token at
+run-phase): `model-policy.md` (~:65), `NOTICE.md` (~:23),
+`spec-frontmatter-schema.md` (~:11), `worktree-integration.md` (~:401, ~:405)
+carry team-file references that must be rewritten or tombstoned — covered by
+the sweep above; enumerated here so the run-phase does not treat them as
+false positives.
 
 ### AC-ATR-016 (REQ-ATR-011)
 
@@ -216,7 +237,9 @@ grep -rn -E "team-protocol\.md|team-pattern-cookbook\.md|skills/moai/team/" .cla
 for t in .claude internal/template/templates/.claude; do
   [ -d "$t/skills/moai/team" ] && echo "RESIDUE: $t/skills/moai/team"
 done   # expect: no RESIDUE lines
-grep -c "team/run.md" .claude/skills/moai/workflows/run.md   # expect 0 (repeat per workflows file with anchored patterns measured at pre-flight)
+grep -c "Agent Teams 모드" .claude/skills/moai/workflows/run.md   # expect 0 (measured baseline 1 at run.md ~:77 — replaces the vacuous `team/run.md` grep whose baseline was already 0, auditor D5)
+grep -c -i "## Team Mode" .claude/skills/moai/workflows/sync/delivery.md 2>/dev/null   # expect 0 (baseline 1 at ~:393 — case-insensitive, capital-T survivor class, auditor D4)
+grep -rn -c -i "team mode" .claude/skills/moai/workflows/ | grep -v ":0" | wc -l   # expect 0 files (case-insensitive submodule sweep; run-phase re-measures and documents any intentional survivor, e.g. dispatch-axis sentinel docs, as named exceptions)
 ```
 
 ### AC-ATR-017 (REQ-ATR-012)
@@ -255,7 +278,7 @@ node --check .claude/workflows/sync-audit-4dim.js ; echo "exit=$?"   # expect 0
 grep -c "title:" .claude/workflows/sync-audit-4dim.js                # expect 3 (meta.phases: Context/Judge/Verdict)
 grep -c -E "Functionality|Security|Craft|Consistency" .claude/workflows/sync-audit-4dim.js   # expect >= 4
 grep -n "0.85" .claude/workflows/sync-audit-4dim.js | wc -l          # expect >= 1 (args threshold default)
-grep -c "1 /" .claude/workflows/sync-audit-4dim.js                   # expect >= 1 (in-script reciprocal sum — harmonic mean)
+grep -c -E "1[[:space:]]*/" .claude/workflows/sync-audit-4dim.js     # expect >= 1 (in-script reciprocal sum — whitespace-tolerant, aligns with design §C `a + 1/s` sketch; auditor D8)
 ```
 
 Plus structural review: the harmonic mean and threshold comparison appear in
@@ -267,12 +290,14 @@ guard branch; no agent call sits between judge collection and verdict return.
 ```bash
 grep -c "INCOMPLETE" .claude/workflows/sync-audit-4dim.js   # expect >= 1
 grep -c -i "meta-judge" .claude/workflows/sync-audit-4dim.js  # expect >= 1 (anti-pattern named in header, no meta-judge agent call)
-grep -c "agentType: 'Explore'" .claude/workflows/sync-audit-4dim.js   # expect >= 1 (read-only enforcement noted for judges per design.md §C)
+grep -c "agentType: 'Explore'" .claude/workflows/sync-audit-4dim.js   # expect >= 5 (1 Context + 4 Judge agent calls, ALL read-only — a count of 1 would be satisfiable by the Context agent alone, auditor D8; if judges share one parameterized agent() call site, expect >= 2 AND verify by structural review that the judge call site carries the read-only agentType)
+grep -c "label: 'judge:" .claude/workflows/sync-audit-4dim.js   # expect >= 1 (judge-scoped label evidence — pins the read-only opts to the JUDGE call site specifically)
 ```
 
 Plus structural review: the null-judge branch returns INCOMPLETE naming the
-missing dimension(s) BEFORE any mean computation; judge agent options carry no
-write-capable agentType.
+missing dimension(s) BEFORE any mean computation; the judge agent() options
+(not merely the Context agent's) carry the read-only agentType and no
+write-capable grant.
 
 ### AC-ATR-022 (REQ-ATR-017)
 
@@ -303,7 +328,7 @@ grep -c -E ">= 2|>=2" .claude/workflows/plan-research-fanout.js            # exp
 
 ```bash
 grep -c "slice(0, 4)" .claude/workflows/plan-research-fanout.js   # expect >= 1 (lens cap; or equivalent length guard — record the actual guard)
-grep -c "xhigh" .claude/workflows/plan-research-fanout.js         # expect 0 on agent() opts (any hit must be a prose prohibition in the header, verified by context)
+grep -c "effort: 'xhigh'" .claude/workflows/plan-research-fanout.js   # expect 0 — context-scoped to the agent() opts form (auditor D8: a bare `xhigh` grep would false-fail on the header prose prohibition, which is allowed and expected)
 grep -c -i "research.md is written" .claude/workflows/plan-research-fanout.js   # expect >= 1 (no in-workflow writes doctrine in header)
 ```
 
@@ -342,6 +367,26 @@ is removed by the REQ-ATR-010 team-section cleanup and verified by the
 AC-ATR-015 dangling-ref sweep; this AC binds the orchestration-mode-selection.md
 surface specifically.
 
+### AC-ATR-029 (REQ-ATR-010, auditor D6)
+
+```bash
+grep -rn -E "workflow\.team\.enabled|CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS" \
+  .claude/rules/moai/core/settings-management.md \
+  .claude/rules/moai/development/agent-authoring.md \
+  .claude/skills/moai/workflows/run/mode-orchestration.md \
+  .claude/skills/moai/workflows/run/context-loading.md \
+  .claude/skills/moai/workflows/moai.md \
+  .claude/skills/moai/workflows/fix.md \
+  .claude/skills/moai/workflows/plan.md \
+  .claude/skills/moai/workflows/mx.md \
+  .claude/skills/moai/workflows/review.md | wc -l
+# expect 0 (retained-surface enumeration; measured non-zero baseline at plan-time).
+# Repeat for the template-tree mirrors of the same paths.
+# Allowed survivor (sole exception): the Mode 3 retirement tombstone in
+# orchestration-mode-selection.md MAY carry the tokens as historical context;
+# CLAUDE.md §15 is covered by the M3 mirror edit and verified by AC-ATR-015's sweep.
+```
+
 ## §D. Edge Cases
 
 - **E1 Windows lock semantics**: `internal/lockfile` Windows variant is
@@ -374,7 +419,7 @@ surface specifically.
 
 ## §F. Definition of Done
 
-1. All 28 ACs PASS with verbatim command output recorded in progress.md §E.2
+1. All 29 ACs PASS with verbatim command output recorded in progress.md §E.2
    (PASS-WITH-DEBT permitted only with named debt + follow-up owner).
 2. Preservation ACs (009-012) confirmed AFTER the final removal commit.
 3. Both workflow scripts pass `node --check` and structural review.

@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-TEAM-RETIRE-001
 title: "Agent Teams retirement + replacement dynamic-workflow pair"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-07-11
 updated: 2026-07-11
@@ -24,6 +24,7 @@ related_specs: [SPEC-V3R6-AGENT-TEAM-REBUILD-001, SPEC-CLIFIX-CRITICAL-001, SPEC
 |------|---------|--------|--------|
 | 2026-07-11 | 0.1.0 | Initial plan-phase draft. Scope A: remove MoAI's STATIC Agent Teams layer (role_profiles config + team_spawn coordination primitives + team rules/skills) while preserving the Claude Code NATIVE teammate runtime. Scope B: two replacement dynamic workflows (`sync-audit-4dim.js`, `plan-research-fanout.js`). Tier L. All tree anchors verified against HEAD at authoring time. | manager-spec |
 | 2026-07-11 | 0.1.1 | Both plan-phase clarifications resolved by user decision (orchestrator-relayed): (1) team/glm.md = migrate-essentials-then-delete → new REQ-ATR-022 + AC-ATR-027 (grep token `CG Mode (Claude + GLM`, verified 0-count in target at plan time); (2) auto-select thresholds = prose-only SSOT (design.md D8 adopted) → REQ-ATR-010 extended + AC-ATR-028. [NEEDS CLARIFICATION] markers removed from plan.md. 22 REQ / 28 AC. | manager-spec |
+| 2026-07-11 | 0.1.2 | plan-auditor iter-1 FAIL 0.86 fixes (D1-D8, all auditor findings re-verified with live greps): D1 AC-ATR-015 dangling-ref sweep re-rooted (explicit roots; `.claude/worktrees/` + `agent-memory/` excluded) + 4 extra sweep files; D2 fieldsets.templ has NO team fieldset (schema-driven UI) → REQ-ATR-008/AC-ATR-013 re-targeted to schema_sections.go workflow.team FieldDef rows; D3 `WorkflowTeamAutoSelection()` accessor + types_test.go blocks added to removal enumeration (REQ-ATR-005); D4 REQ-ATR-011 expanded to workflows/** submodules (case-insensitive — `## Team Mode` capital-T survivor class); D5 vacuous AC tokens replaced (tombstone `Mode 3 — RETIRED` baseline-0, run.md `Agent Teams 모드` baseline-1); D6 +AC-ATR-029 key-token sweep; D7 15 funcs; D8 AC-ATR-020/021/025 grep hardening. 22 REQ / 29 AC. | manager-spec |
 
 ## §A. Context and Intent
 
@@ -115,9 +116,11 @@ invariants.
   live in their migrated packages per REQ-ATR-001/002).
 - **REQ-ATR-005** (Ubiquitous): `internal/config` shall not contain the
   `TeamConfig`, `RoleProfileEntry`, or `TeamAutoSelectionConfig` type
-  declarations, the `WorkflowConfig` `Team` field (`yaml:"team"`), or the
+  declarations, the `WorkflowConfig` `Team` field (`yaml:"team"`), the
   `Team:` defaults block in `defaults.go` (auto-selection thresholds,
-  role-profile keys and entries).
+  role-profile keys and entries), or the `WorkflowTeamAutoSelection()`
+  accessor in `workflow_accessors.go` (the type family's non-test source
+  consumer).
 
 ### C.3 Preservation invariants (Phase 9 — native runtime untouched)
 
@@ -145,9 +148,15 @@ invariants.
   `sec.workflow.desc` re-worded); `RoleProfileNames()` and the team form-field
   definitions shall be removed from `internal/settings/schema_sections.go` and
   their consumers (`internal/settings/schema.go`,
-  `internal/web/schema_label.go`); the team fieldset shall be removed from
-  `internal/web/fieldsets.templ` with `fieldsets_templ.go` regenerated from
-  the `.templ` source (the generated file shall not be hand-edited alone).
+  `internal/web/schema_label.go`); the five `workflow.team` FieldDef rows
+  (enabled / delegate_mode / max_teammates / default_model /
+  require_plan_approval — content-token anchor `"workflow", "team"`) shall be
+  removed from `internal/settings/schema_sections.go`. NOTE (auditor D2,
+  verified): `internal/web/fieldsets.templ` carries NO team fieldset at plan
+  time (schema-driven UI since the web-console redesign) — templ regeneration
+  applies ONLY if run-phase re-measure finds team markup in the `.templ`
+  source; when it does, edit the `.templ` and regenerate (never hand-edit the
+  generated file alone).
 
 ### C.5 agentlint repurpose (Phase 4)
 
@@ -170,12 +179,26 @@ invariants.
   (domains≥3 / files≥10 / score≥7) become the sole SSOT (user-adopted
   design.md D8); `spec-workflow.md` shall not contain the Agent Teams
   variant methodology sections; no retained rule, skill, or agent file shall
-  carry a dangling reference to a deleted team file.
+  carry a dangling reference to a deleted team file, nor a residual
+  Agent-Teams config-key token (`workflow.team.enabled`,
+  `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) outside the Mode 3 retirement
+  tombstone — sweep scope is the retained-surface enumeration in plan.md M3
+  (dangling-ref checks are rooted at the authored trees only;
+  `.claude/worktrees/` and `.claude/agent-memory/` are protected historical
+  artifacts per §E and are excluded from every sweep).
 - **REQ-ATR-011** (Ubiquitous): The skills tree shall not contain the
   `.claude/skills/moai/team/` directory (6 files: plan / run / sync / debug /
-  review / glm); team-mode routing references shall be removed from
-  `.claude/skills/moai/workflows/{plan,run,fix,review,mx}.md` (re-measured at
-  run-phase; `sync.md` carried no team reference at plan-time).
+  review / glm); team-mode routing references shall be removed from the
+  `.claude/skills/moai/workflows/` tree — top-level files AND submodules —
+  with a CASE-INSENSITIVE run-phase re-measure (the plan-time lowercase grep
+  missed the capital-T `Team Mode` survivor class). Plan-time enumeration
+  (auditor D4, verified): `workflows/{plan,run,fix,review,mx,moai}.md`,
+  `workflows/sync.md` (loading-table row), `workflows/sync/delivery.md`
+  (frontmatter + `## Team Mode` section),
+  `run/{mode-orchestration,task-decomposition,context-loading,phase-execution}.md`,
+  `plan/spec-assembly.md`. The run.md `--mode` dispatch axis (`team` value,
+  `MODE_TEAM_UNAVAILABLE` sentinel, CI sentinel audit) is handled per plan.md
+  M3 with the sentinel-audit caution.
 - **REQ-ATR-022** (State-driven, migrate-then-delete): While the essential
   CG Mode (GLM teammate) guidance from `.claude/skills/moai/team/glm.md`
   (LLM mode detection, prerequisites, tmux environment variables, error
@@ -265,7 +288,7 @@ invariants.
 
 ## §D. Acceptance Criteria
 
-The full machine-verifiable AC matrix (AC-ATR-001 … AC-ATR-028) lives in
+The full machine-verifiable AC matrix (AC-ATR-001 … AC-ATR-029) lives in
 `acceptance.md` (SSOT). Every REQ above maps to at least one AC; preservation
 REQs map to STILL-EXISTS assertions, not absence checks.
 

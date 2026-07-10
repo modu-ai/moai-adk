@@ -17,8 +17,23 @@
 - Artifacts emitted (Tier L set + progress): spec.md, plan.md, acceptance.md,
   design.md, research.md, progress.md.
 - Requirements: 22 REQ (GEARS — Ubiquitous / When / While / Where / shall-not
-  all exercised); AC: 28 (100% AC→REQ coverage; 4 preservation STILL-EXISTS
+  all exercised); AC: 29 (100% AC→REQ coverage; 4 preservation STILL-EXISTS
   ACs; 4 GWT scenarios). v0.1.1: +REQ-ATR-022, +AC-ATR-027/028.
+  v0.1.2: +AC-ATR-029 (D6 key-token sweep).
+- plan-auditor iteration-1 (FAIL 0.86, blocking D1) corrections applied at
+  v0.1.2 — all findings re-verified with live greps before editing:
+  D1 AC-ATR-015 sweep re-rooted to explicit subtrees (bare `.claude/` root
+  pulled in protected `worktrees/` + `agent-memory/` — mechanically
+  unsatisfiable) + 4 extra dangling-ref files enumerated in M3;
+  D2 fieldsets.templ 0-team-hit correction → schema_sections.go FieldDef rows
+  (REQ-ATR-008 / AC-ATR-013 / research.md A.3 retraction);
+  D3 `WorkflowTeamAutoSelection()` + types_test.go blocks added to M1
+  (design.md §B blast-radius sentence corrected — "confined to tests" false);
+  D4 REQ-ATR-011 expanded to workflows/** submodules, case-insensitive
+  (research.md §E delta (4) retracted);
+  D5 vacuous tokens replaced (`Mode 3 — RETIRED` baseline-0 tombstone;
+  `Agent Teams 모드` baseline-1 run.md token);
+  D6 AC-ATR-029 added; D7 15 funcs; D8 AC-ATR-020/021/025 grep hardening.
 - Anchor verification: every removal/preservation target verified by executed
   command (research.md §A/§E); 6 deltas vs the task brief recorded in
   research.md §E (i18n key-family split, TeamAutoSelectionConfig extension,
@@ -28,8 +43,11 @@
   (1) team/glm.md → migrate-essentials-then-delete (REQ-ATR-022 / AC-ATR-027 /
   design.md D9); (2) auto-select thresholds → prose-only SSOT, D8 adopted
   (REQ-ATR-010 extended / AC-ATR-028). Markers removed from plan.md §A.
-- Status: plan-phase artifacts authored (status: draft); NOT committed
-  (per delegation instruction); `moai spec lint` result recorded in the
+- Status: plan-phase artifacts authored (status: draft). Commits (by the
+  orchestrator): `8f7234a76` v0.1.0 (`docs(` prefix — StatusGitConsistency
+  warning standing per the plan-commit feat( prefix lesson), `5ebed9241`
+  v0.1.1 (`feat(` prefix). v0.1.2 audit-fix edits uncommitted at handback
+  (agent instructed not to commit); `moai spec lint` result recorded in the
   plan-phase completion report.
 
 ## §E.2 Run-phase Evidence

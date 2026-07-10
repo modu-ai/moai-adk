@@ -12,7 +12,7 @@
   assume the plan-time SHA).
 - **SPEC artifacts**: `.moai/specs/SPEC-AGENT-TEAM-RETIRE-001/{spec,plan,acceptance,design,research,progress}.md`.
 - **Verified inventory** (plan-time, full evidence in research.md §B):
-  - `internal/cli/team_spawn.go` 15,888 B; 16 funcs; **0 non-test callers**.
+  - `internal/cli/team_spawn.go` 15,888 B; 15 funcs; **0 non-test callers**.
   - `internal/cli/team_spawn_test.go` 20,379 B (13+ tests incl. `TestClaimTask`,
     `TestClaimTaskConcurrent`).
   - Lock pair: `team_spawn_lock_unix.go` (377 B, `lockFile`/`unlockFile` via
@@ -24,11 +24,16 @@
     field) + GitStrategy `Team ModeProfile` (~:153).
   - `internal/config/defaults.go`: `Team: TeamConfig{...}` block (~:457-513);
     PRESERVE `Team: ModeProfile{...}` (~:353).
+  - `internal/config/workflow_accessors.go` ~:35 `WorkflowTeamAutoSelection()`
+    (non-test source consumer — auditor D3) + `internal/config/types_test.go`
+    (~:349-429 `TestTeamConfigStructShape`, ~:511-521 accessor tests) — REMOVE.
   - Web: `internal/web/assets/i18n.js` (`f.workflow.team.*` family REMOVE /
     `f.git_strategy.team.*` + `f.git_strategy.mode.opt.team` PRESERVE);
     `internal/settings/schema_sections.go` `RoleProfileNames()` (~:54-56, consumed
-    ~:337 + `schema.go` + `internal/web/schema_label.go`);
-    `internal/web/fieldsets.templ` + generated `fieldsets_templ.go`.
+    ~:337 + `schema.go` + `internal/web/schema_label.go`) + five `workflow.team`
+    FieldDef rows (~:212-216). `internal/web/fieldsets.templ`: **0 team hits at
+    plan-time** (schema-driven UI — auditor D2 verified); templ regen conditional
+    on run-phase re-measure only.
   - agentlint: `internal/cli/agentlint/workflow_lint.go` `validateRoleProfiles`
     (~:70-86); repurpose target `internal/config/model_routing.go`
     `ValidateModelRoutingProfiles`.
@@ -165,11 +170,15 @@ E6 commit SHAs + push state, E7 blocker reports (never AskUserQuestion).
 
 1. Delete the five `internal/cli/team_spawn*` files.
 2. Remove `TeamConfig` / `RoleProfileEntry` / `TeamAutoSelectionConfig` types,
-   `WorkflowConfig.Team` field, `defaults.go` `Team:` block.
+   `WorkflowConfig.Team` field, `defaults.go` `Team:` block, AND the
+   `WorkflowTeamAutoSelection()` accessor in `workflow_accessors.go`
+   (non-test source — auditor D3).
 3. Compile-coupled test reconciliation lands HERE by necessity:
    `defaults_test.go` TeamConfig rows (GitStrategy Team rows untouched),
    `workflow_nested_test.go` team assertions, `workflow_role_profiles_test.go`
-   (delete — its subject type is gone). Also `workflow_lint.go` compile break
+   (delete — its subject type is gone), `types_test.go`
+   `TestTeamConfigStructShape` (~:349-429) + accessor tests (~:511-521).
+   Also `workflow_lint.go` compile break
    is deferred by stubbing? NO — M1 and M2's agentlint change must land in the
    same commit if `validateRoleProfiles` references `cfg.Team` (it does);
    sequence M1 → immediately M2 step 1, or fold the agentlint edit into M1.
@@ -181,10 +190,14 @@ E6 commit SHAs + push state, E7 blocker reports (never AskUserQuestion).
 
 1. i18n: remove `f.workflow.team.*` keys (all 4 locale blocks if the file is
    locale-partitioned — verify shape first); re-word `sec.workflow.desc`.
-2. `schema_sections.go`: remove `RoleProfileNames()` + team fields; sweep
-   consumers (`schema.go`, `schema_label.go`, `agent_settings_test.go`).
-3. `fieldsets.templ`: remove team fieldset; regenerate `fieldsets_templ.go`
-   (`templ generate` or the project's make target); verify no diff drift.
+2. `schema_sections.go`: remove `RoleProfileNames()` + the five `workflow.team`
+   FieldDef rows (~:212-216: enabled / delegate_mode / max_teammates /
+   default_model / require_plan_approval); sweep consumers (`schema.go`,
+   `schema_label.go`, `agent_settings_test.go`).
+3. `fieldsets.templ`: re-measure for team markup (plan-time: **0 hits** —
+   schema-driven UI, auditor D2). Only if the re-measure finds markup: edit
+   the `.templ`, regenerate `fieldsets_templ.go`, verify no drift. Otherwise
+   NO templ change in this SPEC.
 4. agentlint: implement model_routing_profiles closed-set validation reusing
    `ValidateModelRoutingProfiles`; keep the `moai workflow lint` cobra `Use`
    and exit-code contract (non-zero on violation, 0 on clean).
@@ -202,14 +215,34 @@ E6 commit SHAs + push state, E7 blocker reports (never AskUserQuestion).
    `CG Mode (Claude + GLM` token lands (AC-ATR-027).
 1. Delete `team-protocol.md` + `team-pattern-cookbook.md` (both trees).
 2. Shrink `orchestration-mode-selection.md` Mode 3 (catalog row → retirement
-   tombstone; remove §C.1 gate detail; keep §G axis-warning intact); remove
-   the §B.1 "machine-readable source is workflow.yaml auto_selection" pointer
-   sentence — §B.1 prose thresholds become sole SSOT (D8 adopted,
-   AC-ATR-028); clean `spec-workflow.md` Agent Teams variant sections; sweep
-   dangling refs (dynamic-workflows.md cross-ref list, CLAUDE.md §15 pointer
-   targets — CLAUDE.md itself is template-managed: mirror edit).
+   tombstone carrying the literal marker `Mode 3 — RETIRED` — the AC-ATR-015
+   tombstone token, baseline 0 at plan-time; remove §C.1 gate detail; keep §G
+   axis-warning intact); remove the §B.1 "machine-readable source is
+   workflow.yaml auto_selection" pointer sentence — §B.1 prose thresholds
+   become sole SSOT (D8 adopted, AC-ATR-028); clean `spec-workflow.md` Agent
+   Teams variant sections; sweep dangling refs across (×2 trees each):
+   dynamic-workflows.md cross-ref list, CLAUDE.md §15 pointer targets
+   (template-managed: mirror edit), `model-policy.md` (~:65), `NOTICE.md`
+   (~:23), `spec-frontmatter-schema.md` (~:11), `worktree-integration.md`
+   (~:401, ~:405) — auditor D1 additions; PLUS the D6 key-token sweep
+   (`workflow.team.enabled`, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) over the
+   retained surfaces: `settings-management.md`, `agent-authoring.md`,
+   `run/{mode-orchestration,context-loading}.md`,
+   `workflows/{moai,fix,plan,mx,review}.md` (AC-ATR-029; the Mode 3 tombstone
+   in orchestration-mode-selection.md MAY retain the tokens as historical
+   context — it is the sole allowed survivor).
 3. Delete `.claude/skills/moai/team/` (both trees); remove team routing refs
-   from `workflows/{plan,run,fix,review,mx}.md` (both trees).
+   from the `workflows/**` tree — top-level `{plan,run,fix,review,mx,moai}.md`
+   + `sync.md` loading-table row + `sync/delivery.md` (frontmatter +
+   `## Team Mode` section ~:285/:338/:393) +
+   `run/{mode-orchestration,task-decomposition,context-loading,phase-execution}.md`
+   + `plan/spec-assembly.md` (both trees; CASE-INSENSITIVE re-measure —
+   auditor D4). CAUTION: run.md carries the `--mode` dispatch axis (`team`
+   value, `MODE_TEAM_UNAVAILABLE` sentinel) and a CI sentinel audit pins
+   `MODE_UNKNOWN` literals — reconcile the dispatch table + sentinel docs
+   without breaking the sentinel CI audit (adjust the valid-mode set and
+   sentinel docs together; the CI audit constraint is a blocker-report topic
+   if the sentinel contract is ambiguous at run-time).
 4. Remove `team:` block from template + local `workflow.yaml`.
 5. `make build`; run neutrality + leak tests; both-tree absence loops
    (per-tree `[ -e ]` independent checks — the SUBCOMMAND-RETIRE-001 D7
@@ -227,7 +260,7 @@ E6 commit SHAs + push state, E7 blocker reports (never AskUserQuestion).
    `### confidence_and_gaps`, ≥2-null abort, no in-workflow writes).
 4. `node --check` both scripts; structural greps per acceptance.md;
    optional dry-run smoke (Workflow launch is orchestrator-side, post-merge).
-5. Exit: all 28 ACs PASS or documented PASS-WITH-DEBT.
+5. Exit: all 29 ACs PASS or documented PASS-WITH-DEBT.
 
 ## §G. Anti-Patterns (this SPEC)
 

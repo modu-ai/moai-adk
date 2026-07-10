@@ -50,6 +50,8 @@ per-path `sync.Mutex` map with a documented cross-process limitation comment
 | types.go ~:447 | `type RoleProfileEntry struct` (Description/Isolation/Mode/Model) | DELETE |
 | types.go ~:505 | `type TeamAutoSelectionConfig struct` (MinDomainsForTeam 3 / MinFilesForTeam 10 / MinComplexityScore) | DELETE (nested in TeamConfig; orphaned otherwise) — see design.md D8 threshold-home decision |
 | defaults.go ~:457 | `Team: TeamConfig{...}` incl. RoleProfileKeys implementer/tester/reviewer + RoleProfiles map | DELETE |
+| workflow_accessors.go ~:35 | `func (c *Config) WorkflowTeamAutoSelection()` | DELETE (non-test source consumer of the type family — auditor D3) |
+| types_test.go ~:349-429, ~:511-521 | `TestTeamConfigStructShape` + accessor tests | DELETE (compile-coupled, M1) |
 | types.go ~:474 | `type RoleProfile struct { Sandbox string }` @MX:SPEC SPEC-V3R2-RT-003 | **PRESERVE** |
 | types.go ~:153 | GitStrategy `Manual/Personal/Team ModeProfile` | **PRESERVE** |
 | defaults.go ~:353 | GitStrategy `Team: ModeProfile{...}` | **PRESERVE** |
@@ -71,7 +73,14 @@ becomes dead on TeamConfig removal — included in scope (REQ-ATR-005).
   `internal/settings/schema.go`, `internal/web/schema_label.go`,
   `internal/web/agent_settings_test.go`.
 - `internal/web/fieldsets.templ` (SOURCE) + `fieldsets_templ.go` (GENERATED) —
-  team fieldset removal edits the `.templ` and regenerates.
+  **CORRECTED (auditor D2, re-verified live)**: `fieldsets.templ` carries **0
+  team hits** — the web console is schema-driven since the web-console
+  redesign; the real removal surface is the five `workflow.team` FieldDef rows
+  in `internal/settings/schema_sections.go` (~:212-216: enabled /
+  delegate_mode / max_teammates / default_model / require_plan_approval).
+  templ regen applies only if run-phase re-measure finds team markup (my
+  original claim that a team fieldset exists in the `.templ` was wrong — the
+  plan-time verification greped the wrong directory and never confirmed it).
 
 ### A.4 agentlint (`internal/cli/agentlint/workflow_lint.go`)
 
@@ -87,9 +96,13 @@ validates `Workflow.ModelRoutingProfiles` against closed sets (perfTier, keys).
   `team-pattern-cookbook.md` (14,757 B) — present in BOTH trees (verified).
 - `.claude/skills/moai/team/{plan,run,sync,debug,review,glm}.md` (6 files) —
   present in BOTH trees (verified).
-- Team routing references: `workflows/{plan,run,fix,review,mx}.md` matched
-  `team` at plan-time; **`workflows/sync.md` did NOT match** — Phase 6 scope is
-  5 files unless run-phase re-measure differs.
+- Team routing references — **CORRECTED (auditor D4)**: the plan-time
+  lowercase `grep -ln "team"` was case-sensitive and missed the capital-T
+  `Team Mode` survivor class. Corrected enumeration (case-insensitive):
+  `workflows/{plan,run,fix,review,mx,moai}.md`, `workflows/sync.md` (~:50
+  loading-table row), `workflows/sync/delivery.md` (frontmatter + `## Team
+  Mode` ~:393, verified live), `run/{mode-orchestration,task-decomposition,context-loading,phase-execution}.md`,
+  `plan/spec-assembly.md`. Run-phase re-measures case-insensitively.
 - `internal/template/templates/.moai/config/sections/workflow.yaml` `team:`
   block (~:30, auto_selection thresholds); local
   `.moai/config/sections/workflow.yaml` `role_profiles:` (~:101).
@@ -195,7 +208,8 @@ Deltas found against the brief: (1) i18n key family split (`f.workflow.team.*`
 vs `f.git_strategy.team.*`) — brief's "~264 team.* keys" is a mixed count;
 (2) `TeamAutoSelectionConfig` extends the brief's types.go range; (3) i18n
 lives at `internal/web/assets/i18n.js` (brief implied web console pkg);
-(4) `workflows/sync.md` carries no team reference (brief listed it);
+(4) [RETRACTED at v0.1.2 — auditor D4: the claim rested on a case-sensitive
+grep; `sync.md` + `sync/delivery.md` DO carry capital-T Team Mode content];
 (5) team_launch lives at `internal/cli/worktree/` (brief cited
 `worktree/team_launch*.go`); (6) `internal/lockfile` and
 `internal/cli/taskledger` do not exist yet — Phase 0 creates them.
