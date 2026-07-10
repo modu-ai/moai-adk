@@ -200,7 +200,7 @@ m1_to_mN_commit_strategy: "M1a(b9df38f5b) + M1b(5824c812c) + M1c(1 commit) — �
 
 ```yaml
 sync_complete_at: 2026-07-10
-sync_commit_sha: pending-backfill-SPEC-CLI-TUX-V3-001  # self-referential hazard — this commit does not know its own SHA; backfilled in a follow-up commit per spec-frontmatter-schema.md § SHA placeholder backfill exemption (D3)
+sync_commit_sha: 4c0a2c64e  # backfilled — SHA of the sync commit itself (self-referential hazard resolved per spec-frontmatter-schema.md § SHA placeholder backfill exemption (D3))
 sync_status: audit-ready
 changelog_entry_position: "[Unreleased] > ### Added > SPEC-CLI-TUX-V3-001 (first entry, inserted before SPEC-WEB-CONSOLE-013)"
 frontmatter_status_transitions:
