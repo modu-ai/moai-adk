@@ -285,7 +285,6 @@
     "command": "$CLAUDE_PROJECT_DIR/.moai/status_line.sh",
     "refreshInterval": 10
   },
-  "outputStyle": "MoAI",
   "skillListingBudgetFraction": 0.02,
   "cleanupPeriodDays": 30,
   "env": {
