@@ -289,9 +289,91 @@ AC-ATR-029  key-token sweep (workflow.team.enabled|CLAUDE_CODE_EXPERIMENTAL_AGEN
 
 Baselines recorded at pre-flight (delta discipline): CG token both trees = 0 (→ 1 after migration); `Mode 3 — RETIRED` = 0 (→ 2 after tombstone); `auto_selection` orchestration-mode-selection = 1 (→ 0 after D8 removal).
 
+### M4 — Phase 8 final sweep + Scope B workflows (REQ-ATR-014..021)
+
+Commit: `feat(SPEC-AGENT-TEAM-RETIRE-001): M4 — Scope B workflows (sync-audit-4dim + plan-research-fanout) + final sweep` (SHA in git log — a commit cannot reference its own hash). Ran in the L1 worktree `worktree-agent-a480091fd6e27c4e2`, base `0303e8c75` (== origin/main, 0/0 divergence verified pre-flight); orchestrator coordinates integration to main. FINAL milestone.
+
+**Template-mirror decision: DO NOT MIRROR** (verified). `.claude/workflows/` is user-owned and NOT template-managed — `internal/template/templates/.claude/workflows/` does not exist and the template tree carries no `*.js` workflow files (the reference `codemaps-extract.js` is itself local-only, not mirrored). Aligns with design.md D7, spec §E "Out of Scope — Template-shipping the Scope B workflows", plan.md §D Forbidden, and dynamic-workflows.md § MoAI Integration Notes (user-owned `.claude/workflows/`). AC-018 fresh-init confirmed `.claude/workflows/` is NOT deployed by `moai init`. The template tree was NOT touched in M4, so the template-neutrality CI guard is not triggered.
+
+Files (LOCAL tree only): NEW `.claude/workflows/sync-audit-4dim.js` (Context → 4 parallel read-only Judges → in-script harmonic-mean Verdict; INCOMPLETE-on-null-judge + zero-score guard; Tier M/L gate via args.tier; anti-patterns codified in header: no meta-judge / no LLM arithmetic / no Write-Edit judges); NEW `.claude/workflows/plan-research-fanout.js` (3-4 read-only lens Explorers, fixed-heading markdown + mandatory `### confidence_and_gaps`; Synthesizer marks cross-lens contradictions; `>= 2` null-lens abort → `insufficient_coverage`; lens hard-cap `slice(0, 4)`; no in-workflow writes — research.md written OUTSIDE by manager-spec/orchestrator). Both follow the `codemaps-extract.js` house style: `export const meta` + `phase()` markers + `agent()`/`parallel()` + `args` defaults + `.filter(Boolean)` null-filtering + determinism (no wall-clock / no random CALLS).
+
+Whole-repo verification batch (verbatim tails; logs under `.moai/state/verify/atr-m4/`):
+
+```
+$ go build ./... ; GOOS=windows GOARCH=amd64 go build ./... ; go vet ./...
+build exit=0 / winbuild exit=0 / vet exit=0
+$ go test ./...
+go test exit=0   (0 FAIL lines; scripts/i18n-validator ok last)
+$ golangci-lint run --timeout=3m
+0 issues.   (baseline: 0 issues at pre-flight — no NEW lint)
+$ go test -cover ./internal/lockfile/ ./internal/cli/taskledger/
+ok  internal/lockfile      coverage: 100.0% of statements
+ok  internal/cli/taskledger coverage: 92.7% of statements
+```
+
+Node syntax checks (both Scope B scripts): `node --check .claude/workflows/sync-audit-4dim.js → exit 0`; `node --check .claude/workflows/plan-research-fanout.js → exit 0` (node v22.14.0).
+
+Full M0-M4 AC matrix (all re-verified against the post-M4 tree this milestone unless marked carry-over):
+
+```
+AC-ATR-001  lockfile pkg (unix+windows+test); go:build !windows + windows tags; cross-process comment preserved   PASS (re-verified M4)
+AC-ATR-002  GOOS=windows GOARCH=amd64 go build ./... → exit 0                                                       PASS (re-verified M4)
+AC-ATR-003  go test -run TestClaimTaskAppend_Repro ./internal/cli/ → ok (migrated repro green)                       PASS (re-verified M4)
+AC-ATR-004  go test -v -run TestClaimTask ./internal/cli/taskledger/ | grep -c -- '--- PASS' → 4 (≥2)                PASS (re-verified M4)
+AC-ATR-005  git log --grep → M0 279d2f688 precedes M1 aff4a2537 (migration-before-deletion ordering)                 PASS (re-verified M4)
+AC-ATR-006  ls internal/cli/team_spawn* → no matches                                                                  PASS (re-verified M4)
+AC-ATR-007  grep TeamConfig|RoleProfileEntry|TeamAutoSelectionConfig internal/config/ → 0                             PASS (re-verified M4)
+AC-ATR-008  yaml:"team" types.go → 1 (GitStrategy survivor, disambiguated); Team: TeamConfig defaults.go → 0         PASS (re-verified M4)
+AC-ATR-009  type RoleProfile struct → 1; Sandbox string → 1 (PRESERVED)                                               PASS (re-verified M4)
+AC-ATR-010  Team ModeProfile → 1; go test -run Defaults ./internal/config/ → ok; Team.Automation.AutoPush → 2       PASS (re-verified M4)
+AC-ATR-011  MergeTeamCheckpoints → 1; worktree team_launch/swarm_registry/handoff_guidance present; teammateMode → 12  PASS (re-verified M4)
+AC-ATR-012  f.git_strategy.team.* → 16 (== baseline, unchanged); f.git_strategy.mode.opt.team → 4 (PRESERVED)        PASS (re-verified M4)
+AC-ATR-013  f.workflow.team.* → 0; RoleProfileNames → 0; "workflow","team" FieldDef → 0                              PASS (re-verified M4)
+AC-ATR-014  role_profiles workflow_lint.go → 0; ModelRouting → 8; agentlint tests ok                                 PASS (re-verified M4)
+AC-ATR-015  team rules absent (per-tree [ -e ]); Mode 3 — RETIRED tombstone → 2; dangling-ref sweep (5 subtrees + template) → 0   PASS (re-verified M4)
+AC-ATR-016  team skills dir absent (per-tree); "Agent Teams 모드" run.md → 0; "## Team Mode" delivery.md → 0          PASS (re-verified M4)
+AC-ATR-017  make build exit 0 (M3); go test ./internal/template/... ok; template workflow.yaml team: → 0            PASS-WITH-DEBT (deployed template clean per AC-018; local .moai/config/sections/workflow.yaml role_profiles left untouched per §22 dev-local exempt — M3 documented deviation, not a new M4 defect)
+AC-ATR-018  bin/moai init sandbox → no team-protocol / no team skills dir / workflow.yaml team: 0 / CG token 1; .claude/workflows/ NOT deployed (user-owned)   PASS (re-verified M4 — fresh build+init)
+AC-ATR-019  go build ./... exit 0 + GOOS=windows build exit 0 + go test ./... exit 0 (0 FAIL); workflow_role_profiles_test → 0   PASS (FULL re-verify at M4, closing the M1/M2 partial)
+AC-ATR-020  node --check exit 0; title: → 3; Functionality|Security|Craft|Consistency → 12 (≥4); 0.85 → 2; 1[space]*/ → 3   PASS (M4)
+AC-ATR-021  INCOMPLETE → 3; meta-judge → 2; agentType: 'Explore' → 5 (1 Context + 4 Judges, all read-only); label: 'judge: → 4   PASS (M4)
+AC-ATR-022  args.tier → 3; "Tier S" (case-insensitive header gate) → 2                                               PASS (M4)
+AC-ATR-023  node --check exit 0; lens tokens → 6 (≥4); confidence_and_gaps → 3; effort:'high' → 1; effort:'medium' → 1; "NONE found" → 7   PASS (M4)
+AC-ATR-024  insufficient_coverage → 3; ">= 2" abort threshold → 3                                                    PASS (M4)
+AC-ATR-025  slice(0, 4) → 2; effort:'xhigh' → 0; "research.md is written" → 1                                        PASS (M4)
+AC-ATR-026  export const meta → 1 each; Date.now(/Math.random( CALLS → 0 both; label:  → 5 (sync-audit) / 2 (plan-research)   PASS (M4)
+AC-ATR-027  CG Mode token glm-web-tooling.md both trees → 1,1; team/glm.md deleted (migrate-then-delete)             PASS (re-verified M4)
+AC-ATR-028  auto_selection orchestration-mode-selection.md both trees → 0,0; "≥ 3 domains" prose → 1 (sole SSOT)     PASS (re-verified M4)
+AC-ATR-029  key-token sweep (workflow.team.enabled|CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS) across 9 enumerated files both trees → 0   PASS (re-verified M4)
+```
+
+29/29 AC PASS (AC-017 PASS-WITH-DEBT — deployed-clean, local-tree deviation is a §22 dev-local exemption documented at M3, not a new M4 regression). No Go source, template, rule, or skill files were modified in M4 (only 2 new local `.claude/workflows/*.js` + progress.md), so the M0-M3 ACs are structurally guaranteed unchanged and were additionally re-verified above.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — populated by manager-develop>_
+```yaml
+run_complete_at: 2026-07-11T00:00:00+09:00
+run_commit_sha: pending-backfill-M4   # progress.md is IN the M4 commit; a commit cannot reference its own hash — orchestrator/next-commit backfills the real M4 SHA (D3 SHA-placeholder exemption, spec-frontmatter-schema.md)
+run_status: complete
+ac_pass_count: 29        # 28 clean PASS + AC-ATR-017 PASS-WITH-DEBT (deployed template clean; local-tree role_profiles §22 dev-local exemption)
+ac_fail_count: 0
+preserve_list_post_run_count: 7   # STILL-EXISTS at exit: config RoleProfile(Sandbox) / GitStrategy Team ModeProfile+tests / session MergeTeamCheckpoints / worktree team_launch+swarm+handoff / teammateMode glm.go+launcher.go / f.git_strategy.team.* (16) + mode.opt.team (4) / glm-web-tooling CG Mode
+l44_pre_commit_fetch: worktree HEAD 0303e8c75 == origin/main (git rev-list --count --left-right → 0 0, verified pre-flight)
+l44_post_push_fetch: n/a — agent does not push (orchestrator coordinates worktree→main integration per delegation instruction)
+new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues (== pre-flight baseline); go vet exit 0
+cross_platform_build:
+  darwin_amd64: exit 0
+  windows_amd64: exit 0   # GOOS=windows GOARCH=amd64 go build ./...
+total_run_phase_files:
+  m4_new: 2               # .claude/workflows/{sync-audit-4dim.js, plan-research-fanout.js} — LOCAL only, NOT template-mirrored
+  m4_progress: 1          # this progress.md §E.2/§E.3 update
+  m0_to_m4_cumulative: 116  # git diff --stat 8f7234a76..HEAD -- internal/ .claude/rules/ .claude/skills/ internal/template/ (2587 ins / 6786 del)
+m1_to_mN_commit_strategy: per-milestone separate commits (M0 279d2f688 → M1 aff4a2537 → M2 → M3 0303e8c75 → M4 this) with specific-path git add (never git add -A/-u); no --amend, no force-push; agent commits in the L1 worktree, orchestrator coordinates integration to main
+scope_b_workflows:
+  sync_audit_4dim: node --check exit 0; 3 phases (Context/Judge/Verdict); 5 read-only Explore agents (1+4); in-script harmonic mean n/Σ(1/sᵢ) with zero-score guard + INCOMPLETE branch; Tier M/L gate
+  plan_research_fanout: node --check exit 0; 2 phases (Explore/Synthesize); 3-4 read-only lens Explorers (effort medium) + 1 Synthesizer (effort high); >=2 null-lens abort; lens cap slice(0,4); no in-workflow writes
+template_mirror_decision: DO-NOT-MIRROR (.claude/workflows/ user-owned, not template-managed; template tree untouched; neutrality CI guard not triggered)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
