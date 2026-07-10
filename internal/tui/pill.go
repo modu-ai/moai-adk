@@ -2,7 +2,7 @@
 package tui
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // PillKind identifies the semantic variant of a Pill.
@@ -120,5 +120,5 @@ func Pill(opts PillOpts) string {
 			PaddingRight(1)
 	}
 
-	return style.Render(opts.Label)
+	return downsample(style.Render(opts.Label))
 }

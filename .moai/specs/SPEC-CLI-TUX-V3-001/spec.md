@@ -2,7 +2,7 @@
 id: SPEC-CLI-TUX-V3-001
 title: "Charm v2 Migration + Unified CLI Printer (MoAI Terminal Design Language v3 — M1)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-10
 updated: 2026-07-10
 author: manager-spec

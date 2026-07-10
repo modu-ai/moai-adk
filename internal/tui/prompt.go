@@ -2,7 +2,7 @@
 package tui
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // Prompt renders a shell-style prompt line using design tokens.
@@ -57,7 +57,7 @@ func Prompt(host, path, branch string, dirty bool, cmd string, th *Theme) string
 		result += " " + cmdStyle.Render(cmd)
 	}
 
-	return result
+	return downsample(result)
 }
 
 // Cursor renders a block cursor character styled with Theme.Cursor colour.
@@ -73,5 +73,5 @@ func Cursor(th *Theme) string {
 		Foreground(lipgloss.Color(t.Cursor)).
 		Bold(true)
 
-	return style.Render("█")
+	return downsample(style.Render("█"))
 }

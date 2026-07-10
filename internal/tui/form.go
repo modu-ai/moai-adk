@@ -4,7 +4,7 @@ package tui
 import (
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // RadioOption represents a single radio button option.
@@ -56,7 +56,7 @@ func RadioRow(opts []RadioOption, th *Theme) string {
 		lines = append(lines, row)
 	}
 
-	return strings.Join(lines, "\n")
+	return downsample(strings.Join(lines, "\n"))
 }
 
 // CheckOption represents a single checkbox option.
@@ -106,5 +106,5 @@ func CheckRow(opts []CheckOption, th *Theme) string {
 		lines = append(lines, row)
 	}
 
-	return strings.Join(lines, "\n")
+	return downsample(strings.Join(lines, "\n"))
 }

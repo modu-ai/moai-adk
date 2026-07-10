@@ -4,7 +4,7 @@ package tui
 import (
 	"os"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // TermOpts configures a Term render call.
@@ -76,10 +76,12 @@ func Term(title string, width int, body string, opts TermOpts) string {
 		Foreground(lipgloss.Color(t.Fg))
 
 	if width > 0 {
-		innerW := max(width-2-4, 1)
+		// lipgloss v2 Style.Width includes the border columns (v1 excluded
+		// them); add back the 2 border columns to preserve v1 geometry.
+		innerW := max(width-2-4, 1) + 2
 		frameStyle = frameStyle.Width(innerW)
 	}
 
 	content := titleBar + "\n\n" + body
-	return frameStyle.Render(content)
+	return downsample(frameStyle.Render(content))
 }

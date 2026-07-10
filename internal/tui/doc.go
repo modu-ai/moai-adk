@@ -34,7 +34,12 @@
 //
 // # lipgloss Usage Convention
 //
-// All ANSI styling is produced through the charmbracelet/lipgloss library.
+// All ANSI styling is produced through the charm.land/lipgloss/v2 library
+// (Charm v2 migration; lipgloss is an internal implementation detail — the
+// public contract of this package is plain string tokens and rendered
+// strings, never lipgloss types). Rendered output is re-encoded for the
+// detected terminal colour profile (see profile.go downsample), preserving
+// the lipgloss v1 auto-degradation behaviour on non-TTY output.
 // The canonical pattern for applying a token colour is:
 //
 //	th := tui.LightTheme()
