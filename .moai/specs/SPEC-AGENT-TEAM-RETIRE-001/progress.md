@@ -84,7 +84,8 @@ REQ-ATR-003 gate satisfied: whole-repo green BEFORE any deletion milestone.
 
 ### M1 — Phases 1-2 Go removal (REQ-ATR-004/005 + compile-coupled test edits)
 
-M0 commit SHA: `d296f11cc` (precedes this M1 commit — AC-ATR-005 ordering evidence).
+M0 commit SHA: `d296f11cc`; M1 commit SHA: `995948330` (backfilled — a commit
+cannot reference its own hash; AC-ATR-005 ordering: M0 precedes M1 in git log).
 
 Removed: `internal/cli/team_spawn.go` + `team_spawn_test.go` (with the M0 lock-file
 moves, all five `team_spawn*` files are now gone — AC-ATR-006);
