@@ -16,14 +16,14 @@
 | 2 | `internal/settings/sectionapply.go` | `applyLLMKey` case `glm.models.{opus,sonnet,haiku}` 삭제, `glm.models.fable` case 추가 | `func applyLLMKey` |
 | 3 | `internal/settings/sectionroute.go` | `"research": RouteSeam` 삭제; `SeamSections()`에서 research 제거; 주석 "7개 섹션" 정정 | `sectionRoutes`, `func SeamSections` |
 | 4 | `internal/settings/sectionwrite.go` | `sectionRootKeys`에서 `"research"` 삭제; 파일 doc comment 정정 | `sectionRootKeys` |
-| 5 | `internal/settings/schema.go` | `SectionResearch` const + `AllSections()` 항목 삭제; `git_convention.auto_detection.{enabled,confidence_threshold,sample_size}` FieldDef 3블록 삭제(:440-458); `SectionGitConvention` 주석 "convention + 4 nested (5)" 재계산 | `SectionResearch`, `auto_detection.enabled` FieldDef |
-| 6 | `internal/web/assets/i18n.js` | `f.llm.glm.models.{opus,sonnet,haiku}.*` + `f.git_convention.auto_detection.*` 키 제거 (전 locale 블록); `f.llm.glm.models.fable.{title,desc}` 추가 (high와 동수 locale) | `f.llm.glm.models.` |
+| 5 | `internal/settings/schema.go` | `SectionResearch` const + `AllSections()` 항목 삭제만. (0.2.0: auto_detection FieldDef 3블록은 USED 재분류로 **무접촉 잔류** — REQ-WC12-020) | `SectionResearch` |
+| 6 | `internal/web/assets/i18n.js` | `f.llm.glm.models.{opus,sonnet,haiku}.*` 키 제거 (전 locale 블록); `f.llm.glm.models.fable.{title,desc}` 추가 (high와 동수 locale). (0.2.0: `f.git_convention.auto_detection.*` 키는 무접촉 잔류) | `f.llm.glm.models.` |
 | 7 | `internal/web/schemaform.go` | `schemaSectionMetas` LLM desc "(high/medium/low/opus/sonnet/haiku)" → "(high/medium/low/fable)" | `SectionLLM, "rocket"` |
 | 8 | `internal/web/server.go` | 패키지 doc scope-boundary 문단 재작성 (10섹션 열거 → 최종 계약; db/research 제외군 명기) | `Scope boundary` |
 | 9 | `internal/web/projectconfig.go` | @MX:REASON 블록 동일 재작성 | `@MX:REASON` |
 | 10 | `internal/web/assets.go` + `internal/web/validate.go` | Where-gate 통과 시 `errDictKey` sentinel + keep-alive 삭제 (REQ-WC12-030/031) | `errDictKey` |
-| 11 | 테스트 | `internal/settings/{schema_test,schema_sections_test,accessors_test}.go`, `internal/web/{schema_sections_test,schema_label_test,agent_settings_test}.go`, `internal/cli/schema_bridge_test.go` — 필드셋 변화 반영 (양표면 동시, REQ-WC12-050) | — |
-| 12 | `internal/cli/schema_bridge.go` (조건부) | 제거 필드의 orphan TUI label 항목 정리 / fable 항목 필요 여부는 persist-kind로 결정 (PersistTypedSection → web-only key-chip, TUI bridge 불요 — run-phase 실측) | `f.git_convention.auto_detection` |
+| 11 | 테스트 | `internal/settings/{schema_test,schema_sections_test,accessors_test}.go`, `internal/web/{schema_sections_test,schema_label_test,agent_settings_test}.go`, `internal/cli/schema_bridge_test.go` — 필드셋 변화 반영 (양표면 동시, REQ-WC12-050). **M1 RED-turning 3건 (0.2.0 D3 추가)**: `internal/settings/sectionroute_test.go:22`(research→RouteSeam 기대), `internal/settings/sectionwrite_test.go:135`(research seam-write 성공 케이스), `internal/web/scope_contract_test.go:34`(seam 7종 루프에 research 포함) — M1에서 research 폐선 시 RED로 전환되므로 M1 커밋에 신규 기대(RouteExcluded + 거부)로 동시 갱신 | `sectionroute_test`, `sectionwrite_test`, `scope_contract_test` |
+| 12 | `internal/cli/schema_bridge.go` (조건부) | fable TUI label 항목 필요 여부는 llm 필드의 persist-kind로 결정 (PersistTypedSection → web-only key-chip, TUI bridge 불요 — run-phase 실측). (0.2.0: auto_detection orphan 정리 항목은 무접촉 반전으로 소멸) | `func llmFields` persist-kind |
 
 ## §B Known Issues (위험 주입)
 
@@ -31,7 +31,8 @@
 - **B2 — i18n 4-locale 파리티**: i18n.js는 locale 블록별 동일 키셋. fable 추가/ghost 제거는 전 locale 블록 동시 적용. AC는 hard-pin 대신 sibling-key 동수 파생 단언 (011 파생-assertion 선례; 근사 카운트 금지 교훈).
 - **B3 — `-run` 무매치 exit-0 함정 (011 D4 교훈)**: AC 검증은 실존 테스트 함수명 명시 + full-package `go test` 병행.
 - **B4 — validate.go byte-guard 불확실성**: i18n_test.go:23 주석은 "asserted by a sibling diff in M4"(시점 검증) — 상시 guard 실존 여부는 미확정. REQ-WC12-030 Where-gate가 pre-flight에서 판정 (§C-5). 발견 시 REQ-WC12-031 fallback (문서화-잔류, blocker 아님).
-- **B5 — auto_detection 네임스페이스 충돌**: `harness.auto_detection.enabled`(schema_sections.go:215)는 별개의 live 필드. blind grep-replace 금지 — `git_convention.` prefix 한정 (REQ-WC12-023).
+- **B5 — auto_detection 무접촉 (0.2.0 반전)**: A5 전원 USED 재분류로 `git_convention.auto_detection.*`은 스키마/i18n/bridge 전부 무접촉. `harness.auto_detection.enabled`(schema_sections.go:215)도 별개 live 필드로 무접촉 (REQ-WC12-023 방어 guard 잔류, AC-WC12-014).
+- **B9 — dead 분류 grep 프로토콜 (0.2.0 D1/D8 교훈)**: field-dot 패턴(`\.Field\.` / `\.Struct\.`) 단독 grep은 whole-struct bind(`x := cfg.A.B` 후 `x.Field`)와 미러 struct 복사를 구조적으로 놓친다 — iter-1이 이 결함으로 live 필드 3개를 DEAD 오분류(CRITICAL). 모든 dead 판정은 field-dot grep + bare-symbol grep(`AutoDetection` 등 타입/필드 심볼 단독) 쌍으로 수행하고, bare-symbol의 추가 매치 전부를 설명해야 분류 확정 (acceptance.md §D.2 preamble).
 - **B6 — 병렬 세션 race**: `internal/statusline/*` 무접촉; commit은 specific-path `git add`만 (shared-checkout 교훈). Pre-Spawn Sync Check (git fetch + rev-list) 준수.
 - **B7 — WorkflowAgentPurposes Chesterton's fence**: 함수 주석이 의도적 유지를 주장 — spec §A(A4)에 검토-후-기각 근거 기록됨. 삭제 직전 re-grep 0-caller 재확인 (REQ-WC12-032).
 - **B8 — 라이브 llm.yaml ghost 키**: 라이브 파일에 `models.{opus,sonnet,haiku}` 키가 값과 함께 실존. struct legacy 필드 보존으로 typed re-marshal이 이를 파괴하지 않음을 저장-roundtrip 테스트로 확인 (acceptance.md EC-2).
@@ -59,9 +60,13 @@ grep -rn 'WorkflowAgentPurposes' --include='*.go' internal/ cmd/ pkg/   # 기대
 # 5. REQ-WC12-030 Where-gate: validate.go 상시 byte-guard 탐색
 grep -rn 'validate\.go' internal/web/*_test.go internal/template/*_test.go
 grep -rln 'sha256\|byte' internal/web/*_test.go | xargs grep -ln 'validate' 2>/dev/null || echo "no standing byte guard"
+# (0.2.0 D6 지침) 매치 판정 시 주석-전용 언급과 기계적 단언을 구분할 것:
+#   i18n_test.go:23의 "AC-WC5-010a: validate.go is byte-unchanged"는 //-주석 서술(역사 기록)이며
+#   guard가 아니다. "상시 guard 존재" 판정은 validate.go의 바이트/해시/구조를 실제로 단언하는
+#   테스트 코드 라인(비주석)이 있을 때만 성립 — 매치 각각을 열어 assertion 여부를 확인한다.
 
-# 6. persist-kind 실측 (bridge/label 갱신 범위 결정)
-grep -n -A3 'auto_detection.enabled' internal/settings/schema.go   # Persist.Kind 확인
+# 6. persist-kind 실측 (fable TUI bridge 항목 필요 여부 결정 — §A.1 row 12)
+grep -n -B2 -A8 'func llmFields' internal/settings/schema_sections.go   # typedField persist-kind 확인
 ```
 
 ## §D Constraints (DO NOT VIOLATE)
@@ -81,7 +86,7 @@ manager-develop 완료 보고는 manager-develop-prompt-template.md §E (E1 AC �
 |---|------|-----|----------|
 | M1 | A2 research seam 폐선 (sectionroute/sectionwrite/schema.go + 주석) + 거부 회귀 테스트 | 010-012 | High |
 | M2 | A1 llm ghost 제거 + fable 노출 (schema_sections/sectionapply/i18n.js/schemaform) + 양표면 테스트 | 001-005, 050 | High |
-| M3 | A5 DEAD 3필드 제거 + USED 2필드 잔류 확인 (schema.go/i18n.js/bridge orphan) + 양표면 테스트 | 020-023, 050 | Medium |
+| M3 | A5 잔류 확인 게이트 (0.2.0 반전 — 코드 무접촉): §D.2 강화 프로토콜 분류 명령 재실행 + AC-WC12-011/012/014 확인만 | 020, 021, 023 | Low |
 | M4 | A4 dead code (errDictKey Where-gate, WorkflowAgentPurposes) | 030-032 | Medium |
 | M5 | A3 doc comment 최종 재작성 (M1/M3 결과 반영 — 마지막 순서 고정) | 040 | Medium |
 
@@ -90,7 +95,8 @@ M1/M2는 독립이나 순차 실행 (동일 파일 schema_sections.go 접촉). M
 ## §G Anti-Patterns
 
 - 웹 파리티만 갱신하고 TUI bridge 테스트 방치 (B1).
-- `auto_detection` blind 치환으로 harness 필드 오삭제 (B5).
+- field-dot grep 단독을 dead 분류의 유일 근거로 삼기 — whole-struct bind/미러 struct를 놓쳐 live 필드를 오삭제 (B9, iter-1 D1 실증).
+- `auto_detection` 계열 필드 접촉 — A5는 전원 USED 잔류, harness 필드 포함 무접촉 (B5).
 - i18n 키 수 hard-pin (locale 수 가정) — sibling 파생 단언 사용 (B2).
 - 완결 SPEC의 역사적 AC(BYTE-UNCHANGED)를 상시 제약으로 오독해 A4a를 무근거 skip — Where-gate 판정 의무.
 - 라이브 llm.yaml ghost 키를 "정리" — 런타임 config 무접촉 (Out of Scope).
@@ -99,5 +105,5 @@ M1/M2는 독립이나 순차 실행 (동일 파일 schema_sections.go 접촉). M
 
 - SPEC-WEB-CONSOLE-011 (M4 다이어트 선례: FieldDef 제거 + struct/yaml 보존 패턴; M2b 양표면 회귀 교훈)
 - SPEC-WEB-CONSOLE-010 (스키마 SSOT 확립), SPEC-WEB-CONSOLE-006 (validate.go byte-unchanged 시점 제약 출처)
-- SPEC-WEB-CONSOLE-009 (미작성 — git_convention 엔진 배선 영역, 본 SPEC과 경계)
+- SPEC-WEB-CONSOLE-009 (**completed** — git_convention honest hybrid: auto-detection + max_length 배선. A5 USED 분류의 배선 출처. iter-1의 "미작성" 기재는 stale memory 오류 — 0.2.0 정정)
 - `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 3 (A5 분류 프로토콜)

@@ -1,7 +1,7 @@
 ---
 id: SPEC-WEB-CONSOLE-012
 title: "moai web Stale/Dead Config Surface Cleanup (Track 1)"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-07-10
 updated: 2026-07-10
@@ -20,6 +20,7 @@ related_specs: [SPEC-WEB-CONSOLE-010, SPEC-WEB-CONSOLE-011]
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.2.0 | 2026-07-10 | manager-spec | plan-audit iter-1 FAIL(0.78) D1-D8 정정. D1(CRITICAL): A5 auto_detection 3필드 DEAD→**USED 재분류** — iter-1의 trailing-dot grep(`\.AutoDetection\.`)이 whole-struct bind(`ad := cfg.GitConvention.AutoDetection`)를 구조적으로 매치 불가; live 소비자 = hook_pre_push.go:146→resolveAutoDetectOptions(:223-246)→convention.LoadConvention(manager.go:46), 배선 출처 = SPEC-WEB-CONSOLE-009(**completed** — iter-1의 "미작성" 기재는 stale memory 오류). M3 제거 철회→잔류 확인 반전(REQ-WC12-020 inverted; REQ-WC12-022 withdrawn→A1 보존은 신설 REQ-WC12-006). D2: A1 근거 정정 — GLMModels legacy 필드는 resolveGLMModels(glm.go:720-750, 호출 :794)가 empty-fallback으로 읽음(reader 有); 제거 결정 유지(보존되는 fallback 체인이 곧 하위호환 메커니즘); backfill 인용 :697-704→:663-672 정정. D3: M1 RED-turning 테스트 3건 인벤토리 추가(plan §A.1). D4: AC-WC12-009 `&&` 단락 결함 수정. D5: AC-WC12-017 projectconfig.go 기계 검증 추가. D6: pre-flight §C-5 주석/기계 단언 구분 지침. D7: §D AC 범위 001..020 정합. D8: A5 증거 프로토콜 강화 — field-dot grep + bare-symbol grep 쌍 의무(whole-struct bind/미러 struct 회피 방지). |
 | 0.1.0 | 2026-07-10 | manager-spec | 최초 draft. 2026-07-10 orchestrator 감사(Track 1: stale/dead config surface) 5개 발견(A1-A5)을 plan-phase 실측 재검증 후 요구사항화. A4c(bindForm statusline residual)는 실측 no-op 판정 — Out of Scope로 격하. A5 5개 필드는 도구 증거로 USED 2 / DEAD 3 분류 완료 (acceptance.md §D.2). |
 
 ---
@@ -28,7 +29,7 @@ related_specs: [SPEC-WEB-CONSOLE-010, SPEC-WEB-CONSOLE-011]
 
 `moai web` 콘솔의 설정 스키마 SSOT(`internal/settings/schema.go` + `schema_sections.go`)와 그 주변 라우팅/문서 표면에 2026-07-10 orchestrator 감사가 5개 stale/dead 결함을 확인했다. 본 SPEC은 그 Track 1 정리분이다. 모든 파일:라인 앵커는 2026-07-10 plan-phase에서 실측 재검증되었다 (plan.md §C에 검증 명령 기록; 라인 번호는 드리프트 가능 — run-phase는 content-token 기준 재확인).
 
-**A1 — Ghost GLM tier 필드.** `internal/settings/schema_sections.go` `llmFields()`가 `glm.models.{high, medium, low, opus, sonnet, haiku}` 6개 tier를 노출한다. 그러나 런타임 소비자(`internal/cli/glm.go` `setGLMEnv`, :196-199)는 `Models.{High, Medium, Low, Fable}`만 읽는다 — `ANTHROPIC_DEFAULT_OPUS_MODEL`조차 `Models.High`에서 온다. struct의 `Opus/Sonnet/Haiku` 필드(`internal/config/types.go` GLMModels)는 "Legacy fields for backward compatibility" 주석의 yaml 하위호환 전용이며 행동 reader가 없다(실측: 쓰기 지점만 존재 — `sectionapply.go:203-207` 웹 apply, `glm.go:697-704` defaults backfill). 반면 실제 소비되는 `glm.models.fable`(`ANTHROPIC_DEFAULT_FABLE_MODEL`)은 노출되지 않는다. → ghost 3필드 제거 + fable 노출.
+**A1 — Ghost GLM tier 필드 (0.2.0 근거 정정).** `internal/settings/schema_sections.go` `llmFields()`가 `glm.models.{high, medium, low, opus, sonnet, haiku}` 6개 tier를 노출한다. 환경변수 소비자(`internal/cli/glm.go` `setGLMEnv`, :196-199)는 `Models.{High, Medium, Low, Fable}`을 읽으며 `ANTHROPIC_DEFAULT_OPUS_MODEL`조차 `Models.High`에서 온다. struct의 legacy `Opus/Sonnet/Haiku` 필드(`internal/config/types.go` GLMModels — "Legacy fields for backward compatibility")에는 **reader가 존재한다** (iter-1의 "reader 없음" 기술은 오류): `resolveGLMModels`(glm.go:720-750, live `moai glm` 경로에서 :794 호출)가 high/medium/low 빈 값의 empty-fallback으로 세 필드를 읽고, defaults backfill(glm.go:663-672 — iter-1 인용 :697-704는 라인 드리프트)이 빈 값을 채운다. 그럼에도 **웹 노출 제거 결정은 유지된다**: fallback 체인·struct 멤버·backfill은 전부 무접촉 보존되므로(REQ-WC12-006) legacy yaml만 가진 사용자의 런타임 동작은 불변이고, 웹 콘솔이 같은 유효 슬롯(high/medium/low)의 두 번째 이름(opus/sonnet/haiku)을 편집면으로 병렬 노출하는 것은 잉여·혼동 유발이다(canonical 키만 노출). 반면 실제 소비되는 `glm.models.fable`(`ANTHROPIC_DEFAULT_FABLE_MODEL`)은 노출되지 않는다. → legacy alias 3필드 노출 제거 + fable 노출.
 
 **A2 — Dead `research` seam 쓰기 경로.** `research`는 `SectionResearch`(schema.go:40)로 선언되고 `AllSections()`(schema.go:67)에 등재되며, `RouteSeam` 매핑(sectionroute.go:62) + `SeamSections()`(sectionroute.go:81) + seam 쓰기 whitelist(sectionwrite.go:32)에 배선되어 있다. 그러나 FieldDef 0개, 콘솔 탭(`schemaSectionMetas`, web/schemaform.go:65) 미등재 — 렌더도 편집도 불가능한 유령 쓰기 경로다. `internal/research` 패키지는 삭제됨(실측: 디렉터리 부재; 선행 감사에서 research config 12/12 dead 판정). → research를 seam 라우팅/whitelist/섹션 enum에서 전면 제거 (미등재 → `RouteExcluded`, db 선례와 동일 패턴).
 
@@ -36,17 +37,17 @@ related_specs: [SPEC-WEB-CONSOLE-010, SPEC-WEB-CONSOLE-011]
 
 **A4 — Dead code 잔재.** (a) `internal/web/assets.go:27-34`의 `errDictKey` keep-alive sentinel — retired html/template `dict` helper의 오류 sentinel(`validate.go:13-15`)을 `unused` linter로부터 지키는 blank reference. 당시 근거였던 "validate.go BYTE-UNCHANGED"(REQ-WC6-004/AC-WC5-010a)는 완결된 선행 SPEC의 시점 제약이며, 상시 byte-guard 테스트 실존 여부는 run-phase 검증 게이트로 둔다(§B.4 Where-gate). (b) `schema_sections.go:62` `WorkflowAgentPurposes()` — 전 리포(테스트 포함) 호출자 0 실측. 함수 주석은 "canonical taxonomy 참조로 유지"를 주장하나(Chesterton's fence 검토됨), taxonomy의 canonical SSOT는 dynamic-workflows.md 표 + `config.Workflow.WorkflowAgents` 맵 키이지 zero-caller Go 함수가 아니다. → 제거.
 
-**A5 — 의심-dead 노출 필드 (도구 증거로 분류 완료).** verification-claim-integrity.md §1.1 surface 3에 따라 5개 필드 각각의 런타임 reader를 grep 실측했다 (증거 verbatim: acceptance.md §D.2):
+**A5 — 의심-dead 노출 필드 (0.2.0 재분류: 전원 USED — 제거 대상 0).** verification-claim-integrity.md §1.1 surface 3에 따라 5개 필드의 런타임 reader를 실측했다 (증거 verbatim: acceptance.md §D.2). iter-1은 trailing-dot 패턴(`\.AutoDetection\.`) 단독 grep으로 auto_detection 3필드를 DEAD로 오분류했다 — 이 패턴은 whole-struct bind(`ad := cfg.GitConvention.AutoDetection` 후 로컬 변수로 필드 접근)를 구조적으로 매치할 수 없다(plan-audit iter-1 D1이 반증). 강화 프로토콜(field-dot grep + bare-symbol grep 쌍 — §D.2 preamble)로 재실측한 최종 분류:
 
 | 필드 | 분류 | 근거 (non-test, non-web 행동 reader) |
 |------|------|--------------------------------------|
 | `quality.tdd_settings.min_coverage_per_commit` | **USED** | `internal/core/quality/trust.go:788` `g.config.TDDSettings.MinCoveragePerCommit` |
 | `git_convention.validation.enforce_on_push` | **USED** | `internal/cli/hook_pre_push.go:251-258` (env override 후 config 필드 읽기) — 선행 감사의 dead 반증과 일치 |
-| `git_convention.auto_detection.enabled` | **DEAD** | 행동 reader 0 (config 인프라의 validation/defaults/loader-key 인식만 존재) |
-| `git_convention.auto_detection.confidence_threshold` | **DEAD** | 상동 |
-| `git_convention.auto_detection.sample_size` | **DEAD** | 상동 |
+| `git_convention.auto_detection.enabled` | **USED** | `hook_pre_push.go:146` → `resolveAutoDetectOptions`(:223-246) whole-struct bind 후 `ad.Enabled` → `convention.LoadConvention`(internal/git/convention/manager.go:46)의 detection gate. 배선 출처 = SPEC-WEB-CONSOLE-009 (completed) |
+| `git_convention.auto_detection.confidence_threshold` | **USED** | 상동 — `ad.ConfidenceThreshold` → 감지 수용 임계값으로 전달 |
+| `git_convention.auto_detection.sample_size` | **USED** | 상동 — `ad.SampleSize` → Detect 표본 수로 전달 |
 
-→ DEAD 3필드만 웹 스키마(FieldDef, schema.go:440-458)에서 제거; USED 2필드는 잔류. struct/yaml 로드/defaults/validation은 전부 보존(011 M4 다이어트 선례 패턴).
+→ **제거 대상 0**. M3는 잔류 확인 게이트로 반전(REQ-WC12-020/021): 5필드 전부 노출 유지, A5 관련 스키마/i18n/bridge 무접촉.
 
 ---
 
@@ -56,7 +57,9 @@ related_specs: [SPEC-WEB-CONSOLE-010, SPEC-WEB-CONSOLE-011]
 
 **REQ-WC12-001 (Ubiquitous):** The web settings schema (`llmFields()`) shall expose exactly the four GLM model tiers `glm.models.{high, medium, low, fable}` as editable fields.
 
-**REQ-WC12-002 (Ubiquitous — shall not):** The web settings schema shall not expose `glm.models.{opus, sonnet, haiku}` — legacy backward-compat struct aliases with zero runtime behavior readers.
+**REQ-WC12-002 (Ubiquitous — shall not, 0.2.0 rationale 정정):** The web settings schema shall not expose `glm.models.{opus, sonnet, haiku}` — legacy backward-compat aliases whose only runtime reads are the `resolveGLMModels` empty-fallback normalization (glm.go:720-750) and the defaults backfill (glm.go:663-672). Because that fallback chain is preserved untouched (REQ-WC12-006), removing the web exposure changes no runtime behavior; it removes only the redundant second editing surface for the same effective high/medium/low slots.
+
+**REQ-WC12-006 (Ubiquitous — 0.2.0 신설):** The A1 removal shall be schema-surface-only: the `GLMModels` legacy struct members (`Opus`/`Sonnet`/`Haiku`), the `resolveGLMModels` empty-fallback chain, and the legacy defaults backfill shall be preserved unmodified, so that a legacy yaml carrying only `opus`/`sonnet`/`haiku` keys resolves to identical effective models before and after this SPEC.
 
 **REQ-WC12-003 (When):** When a console save submits `llm.glm.models.fable`, the typed apply path (`applyLLMKey`) shall persist the value to `LLMConfig.GLM.Models.Fable`, and shall no longer carry apply branches for the three removed ghost keys.
 
@@ -72,15 +75,15 @@ related_specs: [SPEC-WEB-CONSOLE-010, SPEC-WEB-CONSOLE-011]
 
 **REQ-WC12-012 (When):** When a write to section `research` is attempted via `WriteSectionViaSeam`, the seam shall reject it with the not-seam-writable error and shall not touch `research.yaml` — the same guard behavior already exercised for `db` and other unregistered sections.
 
-### §B.3 M3 — A5: dead 노출 필드 제거 (USED 필드 잔류)
+### §B.3 M3 — A5: 재분류 결과 전원 USED — 잔류 확인 게이트 (0.2.0 반전)
 
-**REQ-WC12-020 (Ubiquitous — shall not):** The web settings schema shall not expose `git_convention.auto_detection.{enabled, confidence_threshold, sample_size}` (FieldDefs at schema.go:440-458) — classified DEAD by the per-field runtime-reader evidence in acceptance.md §D.2.
+**REQ-WC12-020 (Ubiquitous — 0.2.0 inverted):** The web settings schema shall retain the three `git_convention.auto_detection.{enabled, confidence_threshold, sample_size}` FieldDefs (schema.go:440-458) unchanged — reclassified USED per the acceptance.md §D.2 evidence (live consumer: `resolveAutoDetectOptions` → `convention.LoadConvention`, wired by completed SPEC-WEB-CONSOLE-009). No FieldDef, i18n key, or bridge entry for these fields shall be removed or altered.
 
 **REQ-WC12-021 (Ubiquitous):** The web settings schema shall retain `quality.tdd_settings.min_coverage_per_commit` and `git_convention.validation.enforce_on_push` — classified USED by the same evidence protocol.
 
-**REQ-WC12-022 (Ubiquitous):** The removal shall be schema-surface-only: `AutoDetectionConfig` struct members, yaml load, `internal/config/defaults.go` defaults, and `internal/config/validation.go` range checks shall be preserved (backward compat — the SPEC-WEB-CONSOLE-011 M4 diet precedent pattern).
+**REQ-WC12-022 — WITHDRAWN (0.2.0):** iter-1의 A5 제거 전제(schema-surface-only removal + struct 보존)가 D1 재분류로 소멸. A1의 struct/fallback 보존 의무는 신설 REQ-WC12-006이 승계. (ID는 재사용하지 않고 철회 기록으로 보존.)
 
-**REQ-WC12-023 (Ubiquitous — shall not):** The cleanup shall not touch the distinct `harness.auto_detection.enabled` field (schema_sections.go:215) — a live harness-section field that shares only the key substring.
+**REQ-WC12-023 (Ubiquitous — shall not):** The cleanup shall not touch the distinct `harness.auto_detection.enabled` field (schema_sections.go:215) — a live harness-section field that shares only the key substring. (0.2.0 note: A5 무접촉 반전으로 이 guard는 방어적 잔류.)
 
 ### §B.4 M4 — A4: dead code 잔재 제거
 
@@ -108,16 +111,16 @@ The following are explicitly out of scope for this SPEC.
 
 ### Out of Scope — struct/yaml 하위호환 표면
 
-- `GLMModels`의 legacy `Opus/Sonnet/Haiku` struct 필드, `glm.go:697-704` defaults backfill, `AutoDetectionConfig` struct/defaults/validation — 전부 보존 (yaml 하위호환; REQ-WC12-022).
+- `GLMModels`의 legacy `Opus/Sonnet/Haiku` struct 필드, `resolveGLMModels` fallback 체인(glm.go:720-750), defaults backfill(glm.go:663-672), `AutoDetectionConfig` struct/defaults/validation — 전부 보존 (yaml 하위호환; REQ-WC12-006 + REQ-WC12-020).
 - 라이브 `.moai/config/sections/llm.yaml`에 이미 기록된 ghost 키 값 정리 — 런타임 config 파일 무접촉 (struct가 legacy 필드를 유지하므로 typed re-marshal이 기존 키를 파괴하지 않음).
 
 ### Out of Scope — A4c bindForm statusline residual
 
 - plan-phase 실측 결과 no-op: `internal/web/handlers.go` `bindForm`(:449-471) 본문에 statusline 바인딩 분기가 이미 존재하지 않으며, doc comment도 정확하다(M3 redesign 반영). `ProfilePreferences`의 statusline struct 필드는 TUI/CLI + statusline.yaml sync 소비자가 있어 무접촉.
 
-### Out of Scope — git_convention 엔진 배선
+### Out of Scope — git_convention auto-detection 동작 변경
 
-- `auto_detection` 필드의 미래 엔진 배선(SPEC-WEB-CONSOLE-009 후보 영역, GCR-5 maintainer 결정 종속)은 본 SPEC 소관이 아니다. 본 SPEC은 웹 스키마 노출만 제거하며 struct/yaml이 보존되므로 미래 배선을 차단하지 않는다.
+- auto_detection 엔진은 **completed** SPEC-WEB-CONSOLE-009가 이미 배선한 **live 경로**다 (`hook_pre_push.go:146` → `resolveAutoDetectOptions` → `convention.LoadConvention`). 본 SPEC은 이 동작 경로도, 그 노출 필드도 일절 변경하지 않는다 (REQ-WC12-020 잔류; iter-1의 "미래 배선" 기술은 stale memory 오류로 0.2.0에서 정정됨).
 
 ### Out of Scope — 병렬 세션 소유 파일 및 템플릿 미러
 
@@ -128,4 +131,4 @@ The following are explicitly out of scope for this SPEC.
 
 ## §D Acceptance Criteria
 
-정식 AC 매트릭스(기계 검증 명령 + 기대 출력 + A5 per-field 증거 verbatim)는 `acceptance.md`가 SSOT다. 요약: AC-WC12-001..017, Given-When-Then 시나리오 3건, edge case 3건.
+정식 AC 매트릭스(기계 검증 명령 + 기대 출력 + A5 per-field 증거 verbatim)는 `acceptance.md`가 SSOT다. 요약: AC-WC12-001..020, Given-When-Then 시나리오 3건, edge case 3건.

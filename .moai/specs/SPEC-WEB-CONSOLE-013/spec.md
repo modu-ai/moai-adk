@@ -1,7 +1,7 @@
 ---
 id: SPEC-WEB-CONSOLE-013
 title: "moai web New Config Domain Exposure — Model Policy / Handoff / Cache (Track 2)"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-10
 updated: 2026-07-10
@@ -21,6 +21,7 @@ related_specs: [SPEC-WEB-CONSOLE-011, SPEC-HANDOFF-AUTORESUME-001, SPEC-V3R6-PRO
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.1 | 2026-07-10 | manager-spec | plan-audit iter-1 (PASS 0.91, skip-eligible) SHOULD-FIX D1-D7 반영: D1 db 귀속 정정(REQ-WC11-019 계보 + 콘솔 표면 제거 — REQ-WC11-018 잔여군 아님; spec/acceptance 양쪽), D2 AC-WC13-015 함수 스코프 awk + 주석 제외로 재작성(서술 주석 false-fail 제거), D3 ApplyPerformanceTier 앵커 :416 정정, D4 012 상태 갱신(authored draft Tier S — completed까지 게이트 유지), D5 AC-WC13-002 셀 깨진 프래그먼트 정리, D6 plan.md M1 주석 스윕 목록 확장(sectionroute.go "7개 섹션" 리터럴 + cache 열거 주석), D7 REQ-WC13-024 EmptyLabelKey 표현 정밀화(FieldDef-less 뷰 설계와 정합). |
 | 0.1.0 | 2026-07-10 | manager-spec | 최초 draft. v2.14.0 이후 신설 config 도메인 3종(Model Policy / handoff / cache)의 웹 콘솔 노출. 2026-07-10 orchestrator 검증 findings 기반 + plan-phase 실측 정정 4건 반영 (§1.1). Track 1(SPEC-WEB-CONSOLE-012) 선행 의존. |
 
 ---
@@ -40,7 +41,7 @@ related_specs: [SPEC-WEB-CONSOLE-011, SPEC-HANDOFF-AUTORESUME-001, SPEC-V3R6-PRO
 | # | 브리프 주장 | 실측 결과 | 본 SPEC 반영 |
 |---|------------|----------|--------------|
 | 1 | "14 workflow_agents 필드가 agent-settings 섹션에 존재" | **STALE** — M5-a B1이 workflow_agents를 웹 렌더에서 제거함 (`internal/settings/schema_sections.go:262`; struct/yaml 키는 보존, dynamic-workflow JS가 yaml 직접 읽음). 현 agent-settings는 role_profiles 7×4=28 필드만 | workflow_agents는 hidden 유지 (REQ-WC13-023) — M5-a B1 결정 존중, 재노출은 별도 사용자 결정 |
-| 2 | "`MOAI_MODEL_POLICY` env가 profile 선택" | **미실존** — `internal/config/envkeys.go`에 MODEL_POLICY 항목 없음. 선택자는 `moai init --model-policy max\|medium\|low` 플래그 → `template.ApplyPerformanceTier`가 `llm.yaml performance_tier`에 영속 (`internal/cli/init.go:94`, `internal/template/model_policy.go:388-410`) | 활성 perfTier 표시는 `llm.performance_tier` READ-ONLY 표시로 설계 (REQ-WC13-020) |
+| 2 | "`MOAI_MODEL_POLICY` env가 profile 선택" | **미실존** — `internal/config/envkeys.go`에 MODEL_POLICY 항목 없음. 선택자는 `moai init --model-policy max\|medium\|low` 플래그 → `template.ApplyPerformanceTier`가 `llm.yaml performance_tier`에 영속 (`internal/cli/init.go:94`, `internal/template/model_policy.go:416` ApplyPerformanceTier) | 활성 perfTier 표시는 `llm.performance_tier` READ-ONLY 표시로 설계 (REQ-WC13-020) |
 | 3 | "model_routing_profiles는 model_routing.go + resolver.go가 backing" | resolver.go에 perfTier/model_routing_profiles 참조 0건 — backing은 model_routing.go + types.go + loader | 문서 앵커 정정 |
 | 4 | "cache.yaml — enabled + session_ttl 2키" | 파일에는 4키 존재 (`spec_ttl`, `min_cacheable_tokens` 추가) | 노출 스코프는 브리프대로 2키; 나머지 2키는 seam unmodeled-key 보존으로 무손상 (REQ-WC13-006/015) |
 
@@ -64,7 +65,7 @@ related_specs: [SPEC-WEB-CONSOLE-011, SPEC-HANDOFF-AUTORESUME-001, SPEC-V3R6-PRO
 
 ### §2.1 M1 — 라우팅 기반 (scope 부분 supersede + seam 라우팅)
 
-**REQ-WC13-001 (Ubiquitous):** This SPEC shall partially supersede REQ-WC11-018 (SPEC-WEB-CONSOLE-011) for the `cache` section ONLY — reclassifying cache from the machine/state exclusion group to a user-facing seam-writable section with a 2-key exposure scope. The remaining REQ-WC11-018 exclusions (state, system, project, sunset; tool-policy, lsp, mx; constitution, context, design, interview; db) shall remain intact.
+**REQ-WC13-001 (Ubiquitous):** This SPEC shall partially supersede REQ-WC11-018 (SPEC-WEB-CONSOLE-011) for the `cache` section ONLY — reclassifying cache from the machine/state exclusion group to a user-facing seam-writable section with a 2-key exposure scope. The remaining REQ-WC11-018 exclusions (state, system, project, sunset; tool-policy, lsp, mx; constitution, context, design, interview) shall remain intact; `db` shall likewise remain non-writable — 단 db의 제외 근거는 REQ-WC11-018 잔여군이 아니라 REQ-WC11-019(3-key editable carve-out) 이후의 콘솔 표면 제거(settings SSOT)다.
 
 **REQ-WC13-002 (Ubiquitous):** The section-routing SSOT (`internal/settings/sectionroute.go`) shall register `"handoff"` and `"cache"` as `RouteSeam`; `ExcludedSections()` shall no longer list `"cache"`; `SeamSections()` shall include both new sections.
 
@@ -104,7 +105,7 @@ related_specs: [SPEC-WEB-CONSOLE-011, SPEC-HANDOFF-AUTORESUME-001, SPEC-V3R6-PRO
 
 **REQ-WC13-023 (Ubiquitous):** `workflow.workflow_agents` shall remain hidden from web render per the prior M5-a B1 decision (struct fields and yaml keys preserved; dynamic-workflow scripts read the yaml directly); the Model Policy view MAY reference the 7-purpose taxonomy in prose but shall not re-add workflow_agents FieldDefs.
 
-**REQ-WC13-024 (Where):** Where `llm.performance_tier` is the empty string (현 로컬 상태), the Model Policy view shall render the "(runtime default: medium)" empty-value semantics reusing the existing `EmptyLabelKey` pattern (`internal/settings/schema.go`).
+**REQ-WC13-024 (Where):** Where `llm.performance_tier` is the empty string (현 로컬 상태), the Model Policy view shall render the "(runtime default: medium)" empty-value label — following the `EmptyLabelKey` display convention (`internal/settings/schema.go`) as an i18n-label precedent ONLY, without creating any FieldDef binding (뷰는 FieldDef-less — plan.md §A.4-2와 정합).
 
 **REQ-WC13-025 (When):** When the Model Policy view lands, i18n keys for all 4 locales shall be added in the same milestone, including a disambiguation note distinguishing `model_policy` (launch 섹션 기존 필드 — init-time agent frontmatter 정책, high|medium|low) from `performance_tier` (routing profile 선택자, max|medium|low).
 
@@ -155,7 +156,7 @@ related_specs: [SPEC-WEB-CONSOLE-011, SPEC-HANDOFF-AUTORESUME-001, SPEC-V3R6-PRO
 
 ## §4 Traceability
 
-- 선행(blocking): **SPEC-WEB-CONSOLE-012** (Track 1 cleanup — `internal/settings/schema_sections.go` + `sectionroute.go` 동일 파일 접촉; 선행 착지 후 본 SPEC run 진입). 2026-07-10 현재 012 디렉터리 미작성 — plan.md §C pre-flight가 게이트한다.
+- 선행(blocking): **SPEC-WEB-CONSOLE-012** (Track 1 cleanup — `internal/settings/schema_sections.go` + `sectionroute.go` 동일 파일 접촉; 선행 착지 후 본 SPEC run 진입). 2026-07-10 현재 012는 authored 상태(`status: draft`, Tier S) — depends_on 게이트는 012가 `completed`가 될 때까지 run 진입을 차단하며(정상 동작), plan.md §C pre-flight가 이를 기계 확인한다.
 - 부분 supersede: SPEC-WEB-CONSOLE-011 REQ-WC11-018 (cache 한정, REQ-WC13-001).
 - 도메인 원천: SPEC-HANDOFF-AUTORESUME-001 (handoff.yaml), SPEC-V3R6-PROMPT-CACHE-001 (cache.yaml), SPEC-TOKEN-ROUTING-001 + SPEC-AGENT-ARCH-V2-001 M3 (model_routing_profiles / performance_tier).
 - 본 문서의 모든 파일:라인 앵커는 2026-07-10 plan-phase grep 실측값이다. run-phase 착수 시 content-token 기준 재검증 의무 (plan.md §C).

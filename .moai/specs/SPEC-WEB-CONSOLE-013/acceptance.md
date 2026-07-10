@@ -10,10 +10,10 @@
 | AC | REQ | 검증 명령 | 기대 결과 |
 |----|-----|-----------|----------|
 | AC-WC13-001 | 001/002 | `grep -n '"handoff"\|"cache"' internal/settings/sectionroute.go` | 두 이름 모두 `RouteSeam` 매핑 행 존재 |
-| AC-WC13-002 | 002 | `grep -c '"cache"' <(go run 없이) — ExcludedSections 함수 본문 grep: awk '/func ExcludedSections/,/^}/' internal/settings/sectionroute.go \| grep -c '"cache"'` | `0` (cache가 제외군 열거에서 제거) |
+| AC-WC13-002 | 002 | `awk '/func ExcludedSections/,/^}/' internal/settings/sectionroute.go \| grep -c '"cache"'` | `0` (cache가 제외군 열거에서 제거) |
 | AC-WC13-003 | 002 | `awk '/func SeamSections/,/^}/' internal/settings/sectionroute.go \| grep -c 'handoff\|cache'` | ≥ 1행 (양 섹션 포함; 정확 목록은 테스트가 검증) |
 | AC-WC13-004 | 003 | `awk '/sectionRootKeys = map/,/^}/' internal/settings/sectionwrite.go \| grep -c '"handoff"\|"cache"'` | `2` |
-| AC-WC13-005 | 004 | `go test ./internal/settings/ -run 'TestRouteForSection\|TestSeamSections\|TestExcludedSections\|TestWriteSectionViaSeam' -v` | PASS — 신규 스코프 accept + 잔여 제외군(state/system/project/sunset/tool-policy/lsp/mx/constitution/context/design/interview/db) reject 케이스 포함 |
+| AC-WC13-005 | 004 | `go test ./internal/settings/ -run 'TestRouteForSection\|TestSeamSections\|TestExcludedSections\|TestWriteSectionViaSeam' -v` | PASS — 신규 스코프 accept + REQ-WC11-018 잔여 제외군(state/system/project/sunset/tool-policy/lsp/mx/constitution/context/design/interview) reject + db reject(REQ-WC11-019 계보 + 콘솔 표면 제거분 — 018 잔여군 아님) 케이스 포함 |
 | AC-WC13-006 | 005 | `grep -rn 'ConfigManager\|\.Save(' internal/settings/sectionwrite.go internal/settings/sectionvalues.go \| grep -iv 'seam\|comment\|//'` | 무매치 (typed re-marshal 미도입) |
 | AC-WC13-007 | 006 | seam 쓰기 characterization 테스트: cache.yaml fixture에 `enabled` 편집 후 `spec_ttl`/`min_cacheable_tokens`/주석 원문 보존 assert (`go test ./internal/settings/ -run TestCacheSeamPreservesUnexposedKeys -v`) | PASS |
 
@@ -27,7 +27,7 @@
 | AC-WC13-013 | 013 | `go test ./internal/settings/ -run TestSessionTTLClosedSetSymmetry -v` — settings측 옵션 집합 ≡ config측 validSessionTTLs {1h,5m,off} | PASS (export 재사용 또는 미러+대칭 가드) |
 | AC-WC13-014a | 014 | `for k in sec.handoff sec.cache; do grep -c "\"$k\." internal/web/assets/i18n.js; done` | 각 키가 4 locale 블록 전부에 존재 (`go test ./internal/web/ -run TestI18n` PASS로 4-locale 파리티 검증) |
 | AC-WC13-014b | 014 | `go test ./internal/web/ -run TestI18n -v` | PASS — 신규 키 4-locale 완전성 |
-| AC-WC13-015 | 015 | `grep -c 'spec_ttl\|min_cacheable_tokens' internal/settings/schema_sections.go` | `0` (FieldDef 미생성) |
+| AC-WC13-015 | 015 | `awk '/func cacheFields/,/^}/' internal/settings/schema_sections.go \| grep -v '^[[:space:]]*//' \| grep -c 'spec_ttl\|min_cacheable_tokens'` | `0` (cacheFields 함수 본문 비주석 라인 한정 — FieldDef 미생성; 파일 다른 위치의 서술 주석은 false-fail 대상 아님. house 선례: sectionapply.go:189의 performance_tier 주석) |
 | AC-WC13-016 | 016 | `go test ./internal/cli/ -run TestSchemaBridge -v` — **schema_bridge_test.go 무변경 상태에서** 실행 | PASS (신규 필드가 PersistSeam 제외 술어(line 33 앵커: `f.Persist.Kind == settings.PersistSeam`)를 그대로 탐 — TUI측 변경 0) |
 | AC-WC13-017 | 017 | `git diff --stat <M1-base>..HEAD -- internal/web/ \| grep -c 'handoff\|cache'` 전용 신규 templ 부재 확인 + generic fieldset 경로 렌더 테스트 | 신규 전용 템플릿 파일 0건 (Model Policy 뷰 제외) |
 

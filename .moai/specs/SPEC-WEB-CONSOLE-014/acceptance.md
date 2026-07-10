@@ -5,7 +5,7 @@ created: 2026-07-10
 updated: 2026-07-10
 ---
 
-# Acceptance — SPEC-WEB-CONSOLE-014 (v0.1.0)
+# Acceptance — SPEC-WEB-CONSOLE-014 (v0.2.0)
 
 > 검증 SSOT. 모든 AC는 기계 검증(go test 타깃 / grep assertion). 파일:라인 앵커는 run-phase에서 content-token 기준 재확인 후 사용.
 > Severity: **[B]** = blocking (DoD 필수), **[N]** = non-blocking (권장).
@@ -78,7 +78,7 @@ internal/config/types.go:502:	EnvScrubExtra []string `yaml:"env_scrub_extra"`
 internal/sandbox/docker.go:68:	allHosts := append(DefaultNetworkAllowlist, opts.NetworkAllowlist...)
 internal/sandbox/env.go:29:// security.yaml sandbox.env_scrub_extra (additive).
 ```
-→ 행동적 소비(sandbox 실행 계층) → raw read-only view 정당.
+→ **iter-2 정정(D1)**: 위 매치는 Options 필드 소비이며 config→Options 브리지는 미배선(E-13) — F6은 config-미배선 scaffold로 재분류, raw view + F2-style 정직 라벨.
 
 **E-6 permission scaffold 키 바인딩 부재** — `grep -n "pre_allowlist\|PreAllowlist\|session_rules\|SessionRules" internal/config/types.go`:
 ```
@@ -102,7 +102,7 @@ internal/cli/mx_query.go:118:	fanInCounter := mx.NewTextualFanInCounterWithTestP
 s(SectionObservability, "observability", TypeText, "observability", "hook_metrics", "output_path"),
 s(SectionObservability, "observability", TypeInt, "observability", "hook_metrics", "slow_hook_threshold_ms"),
 ```
-→ 브리프 항목 5 검증 완료: **no-op** (회귀 핀 AC-040만 추가).
+→ **iter-2 정정(D2)**: "이미 노출" 자체는 사실이나 `output_path`는 non-schema reader 0건 dead config(E-14) — F9 분할: `slow_hook_threshold_ms` editable 핀(AC-040a) / `output_path` read-only 강등 + 쓰기 거부(AC-040b).
 
 **E-9 dormant 확인** — `.moai/config/sections/sunset.yaml` 헤더 verbatim:
 ```
@@ -117,13 +117,41 @@ s(SectionObservability, "observability", TypeInt, "observability", "hook_metrics
 
 **E-12 i18n 구조** — `internal/web/assets/i18n.js`: `window.MOAI_I18N = { en:(L20) ko:(L368) ja:(L716) zh:(L1064) }` 4-locale, `"f.` 키 1032건 실측.
 
+**E-13 (iter-2 D1) sandbox config→Options 브리지 부재** — `grep -rn "Security.Sandbox\|Sandbox\.NetworkAllowlist\|Sandbox\.EnvScrubExtra" internal/ --include="*.go" | grep -v "_test.go" | grep -v "internal/config/types.go"`:
+```
+(출력 없음 — 공집합)
+```
+`grep -n "EnvScrubExtra" internal/sandbox/*.go`:
+```
+(출력 없음 — sandbox Options에 EnvScrubExtra 필드 부재)
+```
+`grep -n "func ScrubEnv" internal/sandbox/env.go`:
+```
+49:func ScrubEnv(parent []string, passthrough []string) []string {
+```
+→ config 값은 로드만 되고 sandbox 실행 계층으로 미배선. Options.NetworkAllowlist의 유일 populator는 `internal/cli/doctor_sandbox.go`의 `NetworkAllowlist: sandbox.DefaultNetworkAllowlist`(내장 Default — config 아님). `env.go:29` 주석("security.yaml sandbox.env_scrub_extra (additive)")은 미구현 약속. **F6 재분류의 결정 증거**.
+
+**E-14 (iter-2 D2) output_path dead config** — `grep -rn "output_path\|OutputPath\|hookMetricsRelPath" internal/ --include="*.go" | grep -v "_test.go"` (발췌):
+```
+internal/settings/schema_sections.go:241:  (스키마 등록 자신)
+internal/hook/post_tool_duration.go:19:const hookMetricsRelPath = ".moai/observability/hook-metrics.jsonl"
+internal/hook/post_tool_duration.go:137:	metricsPath := filepath.Join(projectRoot, hookMetricsRelPath)
+```
+→ `output_path`의 non-schema reader 0건; 실제 기록 경로는 상수 고정. `slow_hook_threshold_ms`는 post_tool_duration.go 로컬 struct가 디코드(유일 config 소비 키). **F9 분할의 결정 증거**.
+
+**E-15 (iter-2 D3/D5)** — `ls .moai/specs/ | grep WEB-CONSOLE-013` →
+```
+SPEC-WEB-CONSOLE-013
+```
+(frontmatter: `status: draft`, created 2026-07-10). `grep -c merge_method internal/template/templates/.moai/config/sections/git-strategy.yaml.tmpl` → `3`; `grep -c merge_method .moai/config/sections/git-strategy.yaml` → `0` → live absent-key 초기 표시 처리 필요 (REQ-010 보강 + AC-010c).
+
 ### 미검증 (Gaps)
 
 - `learning.rate_limit` 값의 harness 파이프라인 내 간접 소비 가능성 — grep 범위는 internal/ 전체였으나 PipelineConfig 조립 전 경로 전수 추적은 미수행 → pre-flight C-3가 재확인 (반증 발견 시 blocker).
-- SPEC-WEB-CONSOLE-013 산출물 내용 — 미작성 상태라 필드 네임스페이스 충돌 여부 검증 불가 → pre-flight C-1b.
+- SPEC-WEB-CONSOLE-013 산출물의 필드 네임스페이스 상세 — 013 실존은 확인(E-15)했으나 013 spec 본문과 `workflow.model_routing` flat prefix의 충돌 여부 표면 비교는 미수행 → pre-flight C-1b.
 - raw-only(편집 필드 0) 섹션의 렌더 파이프라인 지원 여부 — 미실측 → pre-flight C-4.
 
-## §C AC Matrix (21 AC)
+## §C AC Matrix (23 AC)
 
 | AC | Sev | REQ | 검증 명령 (run-phase) | 기대 결과 |
 |----|-----|-----|----------------------|-----------|
@@ -132,16 +160,18 @@ s(SectionObservability, "observability", TypeInt, "observability", "hook_metrics
 | AC-WC14-001b | [B] | 001 | `go test ./internal/settings/ -run TestApplySchemaEditsRejectsUnknownAndReadOnly -v` (learning.auto_apply 거부 케이스 확장 포함) + `grep -n "auto_apply" internal/settings/schema_sections.go`에서 ReadOnly 등록부 내 1건 이상, seam 편집 생성부 0건 | test PASS + grep 조건 충족 |
 | AC-WC14-002 | [B] | 002 | `grep -c "tier_thresholds" internal/settings/schema_sections.go` ≥1 + `go test ./internal/settings/ -run TestRawBlockValues -v` | grep ≥1 + PASS |
 | AC-WC14-003 | [B] | 003 | `grep -c "rate_limit" internal/settings/schema_sections.go` ≥1 (RawViewBlocks 등록) + `go test ./internal/settings/ -run TestRawBlockValues -v` | grep ≥1 + PASS |
-| AC-WC14-010a | [B] | 010 | `grep -c "merge_method" internal/settings/schema_sections.go` ≥1 + AllFields에 `git_strategy.{manual,personal,team}.merge_method` 3건 존재 단언 테스트(func-grep 선행) | grep ≥1 + test PASS |
+| AC-WC14-010a | [B] | 010 | `grep -c "merge_method" internal/settings/schema_sections.go` ≥1 + `grep -n "func TestMergeMethodFieldsExposed" internal/settings/*_test.go` ≥1건 후 `go test ./internal/settings/ -run TestMergeMethodFieldsExposed -v` (AllFields에 `git_strategy.{manual,personal,team}.merge_method` 정확 3건 단언 — iter-2 D6 테스트명 바인딩) | grep 매치 + test PASS |
 | AC-WC14-010b | [B] | 010 | `go test ./internal/settings/ -run TestApplySchemaEditsGitStrategyTyped -v` (merge_method 라운드트립 확장: 저장 후 git-strategy.yaml에 값 반영 + 주석 보존) | PASS |
+| AC-WC14-010c | [B] | 010 | absent-key 초기 표시(iter-2 D5): `grep -n "func TestMergeMethodAbsentKeyDisplay" internal/settings/*_test.go` ≥1건 후 `go test ./internal/settings/ -run TestMergeMethodAbsentKeyDisplay -v` — merge_method 키가 없는 git-strategy.yaml 픽스처에서 현재값 읽기가 검증 실패 없이 성공하고(빈 값 허용 읽기), 빈 문자열 값의 **저장**은 enum 비멤버로 거부됨(empty NOT a member) | grep 매치 + PASS |
 | AC-WC14-011 | [B] | 011 | `grep -n "ValidMergeMethods\|IsValidMergeMethod" internal/settings/schema_sections.go` ≥1 + enum 밖 값 거부 테스트 PASS + `grep -c '"squash"' internal/settings/schema_sections.go` = 0 (리터럴 재선언 금지) | 모두 충족 |
 | AC-WC14-012 | [B] | 012 | 가드 denylist에 4개 정확명(`git_strategy.team.branch_creation.prompt_always`/`.auto_enabled`/`git_strategy.team.automation.auto_branch`/`.auto_pr` — manual/personal 변형 포함 prefix 매칭 허용) + 가드 test PASS | PASS |
-| AC-WC14-020 | [B] | 020 | `grep -c "network_allowlist" internal/settings/schema_sections.go` ≥1 + `grep -c "env_scrub_extra"` ≥1 + `go test ./internal/settings/ -run TestRawBlockValues -v` | grep 각 ≥1 + PASS |
+| AC-WC14-020 | [B] | 020 | `grep -c "network_allowlist" internal/settings/schema_sections.go` ≥1 + `grep -c "env_scrub_extra"` ≥1 + `go test ./internal/settings/ -run TestRawBlockValues -v` + F2-style 정직 라벨 i18n 키가 AC-060 신규 키 목록에 포함(iter-2 D1) | grep 각 ≥1 + PASS |
 | AC-WC14-021 | [B] | 021 | `grep -c "pre_allowlist\|session_rules" internal/settings/schema_sections.go` = 0 + 가드 denylist 항목 포함 + 가드 test PASS | 모두 충족 |
 | AC-WC14-030a | [B] | 030 | `grep -c "danger_categories" internal/settings/schema_sections.go` ≥1 + `grep -c "test_paths"` ≥1 (RawViewBlocks) + TestRawBlockValues PASS | 충족 |
 | AC-WC14-030b | [B] | 030 | `grep -n "func TestMXRawViewRendered" internal/web/*_test.go` ≥1건 후 `go test ./internal/web/ -run TestMXRawViewRendered -v` (GET / 응답에 mx raw view 컨테이너 존재) | grep 매치 + PASS |
 | AC-WC14-031 | [B] | 031 | `go test ./internal/settings/ -run TestExcludedSectionsAllRejected -v` PASS + 가드 denylist `mx.` prefix 포함 | PASS |
-| AC-WC14-040 | [B] | 040 | AllFields에 `observability.hook_metrics.output_path` + `observability.hook_metrics.slow_hook_threshold_ms` 존재 단언(가드 테스트의 allowlist 핀 케이스, func-grep 선행) | PASS |
+| AC-WC14-040a | [B] | 040 | AllFields에 `observability.hook_metrics.slow_hook_threshold_ms` 존재 단언(가드 테스트의 allowlist 핀 케이스, func-grep 선행 — TestDormantConfigNeverEditable 내 핀 케이스 또는 전용 단언) | PASS |
+| AC-WC14-040b | [B] | 040 | `observability.hook_metrics.output_path` 편집 철거(iter-2 D2): AllFields에 부재 + read-only 표시 등록 ≥1 (`grep -n "output_path" internal/settings/schema_sections.go`에서 seam 편집 생성부 0건·ReadOnly/라벨 등록부 ≥1) + 쓰기 거부 케이스(`go test ./internal/settings/ -run TestApplySchemaEditsRejectsUnknownAndReadOnly -v`) PASS + 가드 denylist 항목 포함 | 모두 충족 |
 | AC-WC14-050 | [B] | 050 | `grep -n "func TestDormantConfigNeverEditable" internal/settings/*_test.go` ≥1건 후 `go test ./internal/settings/ -run TestDormantConfigNeverEditable -v` — denylist: `sunset.`/`model_upgrade_review`/`workflow.model_routing`/`mx.`/`tool_policy`/`tool-policy` prefix + §B.6 정확명 전부 | grep 매치 + PASS |
 | AC-WC14-051 | [B] | 051 | `go test ./internal/settings/ -run TestExcludedSectionsAllRejected -v` + sectionroute_test.go에 sunset/tool-policy/mx 명시 핀 존재 (`grep -n "sunset\|tool-policy\|\"mx\"" internal/settings/sectionroute_test.go` ≥3) | PASS + grep ≥3 |
 | AC-WC14-060 | [B] | 060 | 본 SPEC 신규 i18n 키 목록(run-phase에서 확정)에 대해 4-locale 각 존재: per-locale 구간 grep (en/ko/ja/zh 오브젝트 경계 내 키별 ≥1) + `go test ./internal/web/ -run 'TestDataI18nKeysSubsetOfDictionary|TestI18nDictionaryEmbedded' -v` | 키별 4/4 + PASS |
@@ -151,8 +181,8 @@ s(SectionObservability, "observability", TypeInt, "observability", "hook_metrics
 
 ## §D Quality Gates / Definition of Done
 
-1. [B] AC 20건 전부 PASS (AC-063은 [N]).
-2. 가드 테스트(M1)가 **현행 코드 기준 즉시 GREEN**으로 도입됨 — RED 발생 시 blocker report (plan.md §D).
+1. [B] AC 22건 전부 PASS (AC-063은 [N]; 총 23 AC).
+2. 가드 테스트(M1)가 **현행 코드 기준 즉시 GREEN**으로 도입됨 — RED 발생 시 blocker report (plan.md §D). 단 B14: `learning.auto_apply`/`observability.hook_metrics.output_path` denylist 항목은 M2 강등과 함께 추가되는 TDD RED→GREEN 쌍.
 3. plan.md §C pre-flight 7항 수행 기록이 progress.md §E.2에 남음.
-4. 브리프 정정 2건(B1/B2)의 반증 재탐색(C-3) 결과가 §E.2에 기록됨.
+4. 실측 정정 4건(B1/B2/B11/B12)의 반증 재탐색(C-3) 결과가 §E.2에 기록됨.
 5. frontmatter 전이는 소유권 매트릭스 준수 (draft→in-progress: manager-develop / →completed: manager-docs).

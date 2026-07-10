@@ -13,7 +13,7 @@
 
 ### §A.2 선행 의존 (depends_on 게이트)
 
-- `depends_on: [SPEC-WEB-CONSOLE-012]` — Track 1 cleanup이 `internal/settings/schema_sections.go` + `sectionroute.go`를 먼저 접촉한다. **2026-07-10 현재 `.moai/specs/SPEC-WEB-CONSOLE-012/` 디렉터리 미작성** — run-phase Depends_on Pre-flight Check가 `status: completed` 미충족으로 차단하는 것이 의도된 동작이다 (wait/override/abort 3-option은 orchestrator 소관).
+- `depends_on: [SPEC-WEB-CONSOLE-012]` — Track 1 cleanup이 `internal/settings/schema_sections.go` + `sectionroute.go`를 먼저 접촉한다. **2026-07-10 현재 012는 authored 상태 (`status: draft`, Tier S)** — run-phase Depends_on Pre-flight Check가 `status: completed` 미충족으로 차단하는 것이 의도된 동작이다 (wait/override/abort 3-option은 orchestrator 소관).
 
 ### §A.3 파일 접촉 인벤토리 (예상; run-phase pre-flight에서 재확정)
 
@@ -103,6 +103,7 @@ manager-develop 완료 보고는 vci 5-section 형식(Claim/Evidence/Baseline/Ga
 
 ### M1 — 라우팅 기반 (REQ-WC13-001..006)
 - sectionroute.go: handoff/cache RouteSeam + ExcludedSections cache 제거 + SeamSections 확장 + REQ-WC11-018 부분 supersede 주석 갱신.
+- sectionroute.go 주석 스윕 (D6): `RouteExcluded` const 주석의 cache 열거(:17-18) 제거, `SeamSections` doc 주석의 "7개 섹션" 리터럴(:77) → 9 갱신, `RouteSeam` const 주석의 "7개 섹션"(:32-33) 동반 갱신 — 앵커는 content-token 기준 재확인. sectionwrite.go 파일 헤더의 "7개 섹션" 리터럴도 스윕 대상.
 - sectionwrite.go: sectionRootKeys 2건.
 - 가드 테스트 갱신 (accept 신규 스코프 + reject 잔여 제외군 + cache.yaml 미노출 키 보존 characterization).
 - 커밋: `feat(SPEC-WEB-CONSOLE-013): M1 routing foundation — handoff/cache seam routes`
