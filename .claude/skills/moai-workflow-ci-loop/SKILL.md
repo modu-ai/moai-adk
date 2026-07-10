@@ -132,7 +132,7 @@ failed CI log + PR diff, mode directive (mechanical → propose unified-diff pat
 semantic/unknown → return diagnosis only, no patch). HARD: no AskUserQuestion call from
 the subagent — return Markdown only.
 
-**Audit log**: `.moai/reports/ci-autofix/<PR-NNN>-<YYYY-MM-DD>.md`. Append-only. Each
+**Audit log**: `.moai/logs/ci-autofix/<PR-NNN>-<YYYY-MM-DD>.md`. Append-only. Each
 iteration records classification, sub_class, action, patch_sha, escalation_reason.
 
 ### Protected Files (never auto-modified)
@@ -194,6 +194,6 @@ fallback); `scripts/ci-autofix/log-fetch.sh` (failure log + PR diff);
 - [ ] `EmitReadyToMergeReport` first option carries `(권장)`
 - [ ] CLI does NOT call AskUserQuestion
 - [ ] `grep -r 'push -f\|push --force' scripts/ci-autofix/ scripts/ci-watch/` returns no matches
-- [ ] Audit log `.moai/reports/ci-autofix/<PR>-<DATE>.md` contains every iteration
+- [ ] Audit log `.moai/logs/ci-autofix/<PR>-<DATE>.md` contains every iteration
 
 <!-- absorbed from moai-workflow-ci-watch + moai-workflow-ci-autofix per the skill consolidation policy -->

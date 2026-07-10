@@ -4,11 +4,7 @@ paths: "**/*.scala,**/*.sc,**/build.sbt"
 
 # Scala Development Guide
 
-
----
-
-
-# Scala 3.5+ Development Specialist
+## Scala 3.5+ Development Specialist
 
 Functional programming, effect systems, and big data processing for JVM applications.
 
@@ -118,8 +114,7 @@ Effect System Issues:
 - ZIO: Verify layer composition with ZIO.serviceWith and ZIO.serviceWithZIO
 - Akka (or Apache Pekko): Review actor hierarchy and supervision strategies
 
----
-
+## Related Resources
 
 - `.claude/rules/moai/languages/java.md` - JVM interoperability, Spring Boot integration
 - moai-domain-backend - REST API, GraphQL, microservices patterns

@@ -4,10 +4,6 @@ paths: "**/*.ex,**/*.exs,**/mix.exs"
 
 # Elixir Development Guide
 
-
----
-
-
 Elixir 1.18+ Development Specialist - Phoenix 1.8, LiveView, Ecto, OTP patterns, and functional programming.
 
 

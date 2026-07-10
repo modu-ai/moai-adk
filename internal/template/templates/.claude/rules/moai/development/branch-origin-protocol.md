@@ -1,9 +1,5 @@
 ---
-paths:
-  - "internal/cli/worktree/**/*.go"
-  - "internal/cli/status.go"
-  - "internal/bodp/**/*.go"
-  - ".claude/skills/moai/workflows/plan.md"
+paths: "internal/cli/worktree/**/*.go,internal/cli/status.go,internal/bodp/**/*.go,.claude/skills/moai/workflows/plan.md"
 ---
 
 # Branch Origin Decision Protocol (BODP)

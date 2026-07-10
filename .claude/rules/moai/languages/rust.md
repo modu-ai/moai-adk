@@ -4,10 +4,6 @@ paths: "**/*.rs,**/Cargo.toml,**/Cargo.lock"
 
 # Rust Development Guide
 
-
----
-
-
 Rust 1.88+ Development Specialist with deep patterns for high-performance, memory-safe applications.
 
 
@@ -114,8 +110,7 @@ Library Documentation Access:
 - `/dtolnay/thiserror` - Error derive
 - `/clap-rs/clap` - CLI parser
 
----
-
+## Related Resources
 
 - `.claude/rules/moai/languages/go.md` - Go systems programming patterns
 - `moai-domain-backend` - REST API architecture and microservices patterns

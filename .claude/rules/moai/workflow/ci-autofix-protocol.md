@@ -1,7 +1,6 @@
 ---
 description: CI auto-fix loop protocol — HARD invocation contract for moai-workflow-ci-loop skill (auto-fix phase). Auto-loaded when the ci-loop skill is active.
-paths:
-  - ".claude/skills/moai-workflow-ci-loop/SKILL.md"
+paths: ".claude/skills/moai-workflow-ci-loop/SKILL.md"
 ---
 
 # CI Auto-Fix Protocol Rule
@@ -134,7 +133,7 @@ reject the patch and escalate to the user.
 
 [ZONE:Frozen] [HARD] Every auto-fix iteration MUST be logged to:
 ```
-.moai/reports/ci-autofix/<PR-NNN>-<YYYY-MM-DD>.md
+.moai/logs/ci-autofix/<PR-NNN>-<YYYY-MM-DD>.md
 ```
 
 Each log entry MUST include:
@@ -145,7 +144,7 @@ Each log entry MUST include:
 - escalation reason (if escalated)
 
 The log file is append-only. The first iteration creates the file with a header.
-The log file is a local artifact (gitignored via `.moai/reports/` pattern).
+The log file is a local artifact (gitignored via `.moai/logs/` pattern).
 
 ---
 

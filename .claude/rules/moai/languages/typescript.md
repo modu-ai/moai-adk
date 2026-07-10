@@ -4,10 +4,6 @@ paths: "**/*.ts,**/*.tsx,**/tsconfig.json"
 
 # TypeScript Development Guide
 
-
----
-
-
 TypeScript 5.9+ Development Specialist - Modern TypeScript with React 19, Next.js 16, and type-safe API patterns.
 
 
@@ -112,8 +108,7 @@ For comprehensive coverage including advanced TypeScript patterns, performance o
 
 For TypeScript documentation, use microsoft/TypeScript with decorators satisfies topics. For React 19, use facebook/react with server-components use-hook. For Next.js 16, use vercel/next.js with app-router server-actions. For tRPC, use trpc/trpc with procedures middleware. For Zod, use colinhacks/zod with schema validation.
 
----
-
+## Related Resources
 
 - moai-domain-frontend for UI components and styling patterns
 - moai-domain-backend for API design and database integration

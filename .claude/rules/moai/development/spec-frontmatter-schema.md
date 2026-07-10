@@ -1,6 +1,6 @@
 ---
 description: "SPEC 파일 frontmatter canonical 12-field 스키마 — Single Source of Truth (SSOT)"
-paths: "**/*.md,.moai/specs/**/*.md"
+paths: "**/.moai/specs/**,internal/spec/**"
 ---
 
 # SPEC Frontmatter Schema — SSOT

@@ -81,22 +81,6 @@ MCP rules:
 - Prefer MCP tools over manual alternatives
 - Authenticated URLs require specialized MCP tools
 
-Example `.mcp.json` configuration:
-
-```json
-{
-  "mcpServers": {
-    "context7": {
-      "alwaysLoad": true,
-      "command": "npx",
-      "args": ["-y", "@context7/mcp"]
-    }
-  }
-}
-```
-
-**MCP `alwaysLoad` field** (introduced v2.1.119; the v2.1.121 change below is the separate `updatedToolOutput` extension, NOT a second introduction): Setting `alwaysLoad: true` on a server entry forces its tool schemas to load at session start, bypassing tool-search auto-mode deferral. MoAI-ADK sets this for `context7` to ensure Context7 documentation lookup is available immediately without ToolSearch preload.
-
 **Claude Code v2.1.119-121 Hook Changes**:
 
 | Version | Change | Impact |
@@ -121,7 +105,7 @@ Reference: https://code.claude.com/docs/en/settings.
 **Context7 Usage** - For up-to-date library documentation:
 
 1. resolve-library-id: Find library identifier
-2. get-library-docs: Retrieve documentation
+2. query-docs: Retrieve documentation
 
 **Adaptive Thinking Usage** - For complex analysis requiring deeper reasoning:
 

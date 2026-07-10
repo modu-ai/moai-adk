@@ -23,8 +23,6 @@ Core principles governing the MoAI design production system. These rules define 
 
 ---
 
----
-
 ## 1. Identity and Purpose
 
 The MoAI design production system is a creative production capability built on top of MoAI-ADK. It orchestrates a pipeline of specialized skills and agents (`moai-domain-copywriting`, `moai-domain-brand-design`, `moai-workflow-design`, `moai-workflow-gan-loop`, `expert-frontend`, `sync-auditor`) to produce high-quality web experiences from natural language briefs.

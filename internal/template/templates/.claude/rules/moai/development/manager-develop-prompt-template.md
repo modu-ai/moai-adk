@@ -1,9 +1,9 @@
 ---
-description: "manager-develop 위임 Prompt Template — Tier M/L SPEC run-phase 5-section 표준. SPEC 위임 작성 시에만 로드."
+description: "manager-develop delegation Prompt Template — Tier M/L SPEC run-phase 5-section standard. Load only when authoring a SPEC delegation."
 paths: ".moai/specs/**,.claude/agents/moai/manager-develop.md,.claude/skills/moai/workflows/run.md"
 ---
 
-# manager-develop 위임 Prompt Template
+# manager-develop Delegation Prompt Template
 
 ## Applicability
 
@@ -48,81 +48,81 @@ When the SPEC tier is M or L, the full Section A-E template SHOULD be applied; S
 
 Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier (S/M/L).
 
-> [ZONE:Evolvable] [HARD] 모든 Tier M/L의 `manager-develop` subagent 위임 prompt는 본 템플릿의 5개 섹션 (Context / Known Issues / Pre-flight / Constraints / Self-Verification Deliverables)을 포함해야 한다. Tier S는 위 Applicability 절의 minimal form을 사용해도 무방. 누락 시 (Tier M/L에서) 재위임 반복 위험 증가.
+> [ZONE:Evolvable] [HARD] Every Tier M/L `manager-develop` subagent delegation prompt MUST include the 5 sections of this template (Context / Known Issues / Pre-flight / Constraints / Self-Verification Deliverables). Tier S MAY use the minimal form from the Applicability section above. Omission (at Tier M/L) increases the risk of repeated re-delegation.
 
-본 rule은 메타-분석 결과에서 도출된 위임 품질 개선 사항을 표준화한다. 1-pass 위임으로 결함 사전 차단 목표.
+This rule standardizes the delegation-quality improvements derived from a meta-analysis. Goal: pre-empt defects via 1-pass delegation.
 
-## 1. 표준 위임 Prompt 5-Section 구조
+## 1. Standard Delegation Prompt 5-Section Structure
 
-### Section A — Context (위치 + 분기 + SPEC 산출물 경로)
+### Section A — Context (location + branch + SPEC artifact paths)
 
-명시 의무:
-- 작업 위치 (project root absolute path)
-- 현재 branch + HEAD SHA (manager가 추가 commit을 어디에 쌓을지 명확화)
-- SPEC 산출물 경로 (`.moai/specs/SPEC-XXX/{spec,plan,acceptance,progress}.md`) + 라인 카운트
-- plan-auditor verdict (PASS score + 재실행 권장 여부)
-- 기존 인프라 (PRESERVE 대상 + EXTEND 대상)
+Mandatory to state:
+- Work location (project root absolute path)
+- Current branch + HEAD SHA (clarify where the manager stacks additional commits)
+- SPEC artifact paths (`.moai/specs/SPEC-XXX/{spec,plan,acceptance,progress}.md`) + line count
+- plan-auditor verdict (PASS score + whether a re-run is recommended)
+- Existing infrastructure (PRESERVE targets + EXTEND targets)
 
-### Section B — Known Issues 자동 주입 (가장 중요)
+### Section B — Known Issues Auto-Injection (most important)
 
-[ZONE:Evolvable] [HARD] 다음 12 카테고리의 known issues는 위임 prompt에 자동 포함되어야 한다. 누락 = 재위임 위험.
+[ZONE:Evolvable] [HARD] The following 12 categories of known issues MUST be auto-included in the delegation prompt. Omission = re-delegation risk.
 
 **B1. Cross-platform Build Tags**
-- syscall 패키지 사용 시 build tag 강제
-- 권장: `//go:build !windows` + `//go:build windows` 파일 분리
-- 검증: `GOOS=windows GOARCH=amd64 go build ./...` 통과 의무
+- Force build tags when using the syscall package
+- Recommended: separate files with `//go:build !windows` + `//go:build windows`
+- Verification: `GOOS=windows GOARCH=amd64 go build ./...` MUST pass
 
-**B2. Cross-SPEC 정책 충돌 사전 스캔**
-- 영향 받는 패키지의 retired/superseded SPEC 확인 (예: 이전 harness retirement)
-- `grep -r "Retired\|TestHarnessRetirement\|deprecation-marker" internal/<pkg>` 실행
-- 충돌 발견 시: SPEC 본문에서 reversal 명시 또는 새 SPEC scope 정의
+**B2. Cross-SPEC Policy Conflict Pre-Scan**
+- Check the affected package's retired/superseded SPECs (e.g., a prior harness retirement)
+- Run `grep -r "Retired\|TestHarnessRetirement\|deprecation-marker" internal/<pkg>`
+- On conflict: state the reversal in the SPEC body or define a new SPEC scope
 
 **B3. C-HRA-008 / Subagent Boundary Discipline**
-- `internal/harness/`, `internal/hook/` 등 subagent 도메인 코드에 AskUserQuestion 호출 금지
-- 검증: `grep -rn 'AskUserQuestion\|mcp__askuser' <pkg> | grep -v "_test.go" | grep -v "// "` 가 0 매치
-- CI guard test 의무: `<pkg>/subagent_boundary_test.go`
+- No AskUserQuestion calls in subagent-domain code such as `internal/harness/`, `internal/hook/`
+- Verification: `grep -rn 'AskUserQuestion\|mcp__askuser' <pkg> | grep -v "_test.go" | grep -v "// "` yields 0 matches
+- CI guard test required: `<pkg>/subagent_boundary_test.go`
 
 **B4. Frontmatter Canonical Schema**
-- `created:`/`updated:`/`tags:` 사용 (snake_case alias 금지)
-- 참조: `.claude/rules/moai/development/spec-frontmatter-schema.md`
+- Use `created:`/`updated:`/`tags:` (snake_case aliases prohibited)
+- Reference: `.claude/rules/moai/development/spec-frontmatter-schema.md`
 
-**B5. CI 3-tier 인지**
-- spec-lint, golangci-lint, Test (per OS) 각각 별도 fail 가능
+**B5. CI 3-tier Awareness**
+- spec-lint, golangci-lint, Test (per OS) can each fail separately
 - pre-existing baseline vs NEW defect classification
 
-**B6. spec-lint Heading 규약**
-- `## Out of Scope` (h2) 만으로는 `MissingExclusions` ERROR
-- `### <X.Y> Out of Scope` (h3) sub-section 필요
+**B6. spec-lint Heading Convention**
+- `## Out of Scope` (h2) alone triggers a `MissingExclusions` ERROR
+- A `### <X.Y> Out of Scope` (h3) sub-section is required
 
 **B7. observer.go / capture path resolution**
-- `input.CWD` empty → `os.Getwd()` fallback 시 working dir 누수 (`internal/hook/.moai/` anomaly 원인)
-- 권장: `$CLAUDE_PROJECT_DIR` 우선 사용
+- `input.CWD` empty → `os.Getwd()` fallback leaks the working dir (cause of the `internal/hook/.moai/` anomaly)
+- Recommended: prefer `$CLAUDE_PROJECT_DIR`
 
 **B8. Working Tree Hygiene**
-- runtime-managed files (`.moai/harness/usage-log.jsonl`, `.moai/state/`) 변경 금지
-- session_end의 `cleanupBogusRootDir` 의존 (`{}/`  literal directory는 cleanup 대상)
-- 무관 untracked files은 commit 포함 금지 (`git add` specific path만)
+- Do NOT modify runtime-managed files (`.moai/harness/usage-log.jsonl`, `.moai/state/`)
+- Relies on session_end's `cleanupBogusRootDir` (the `{}/`  literal directory is a cleanup target)
+- Do NOT include unrelated untracked files in commits (`git add` specific paths only)
 
-**B9. Git Commit + Push 자체 수행 (Hybrid Trunk 1-person OSS)**
-- manager-develop은 본 SPEC scope 내 commit + push 자체 수행 권장 (main 직진 — Hybrid Trunk 1-person OSS policy, Tier S/M)
-- Conventional Commits format 의무 (`feat(SPEC-...): M{N} <subject>`)
-- M별 분리 commit + 마지막 push 또는 M별 push 둘 다 허용
-- `--no-verify` 사용 절대 금지 (pre-commit hook warn-only는 정상)
-- 예외: (a) parallel session race 발생 시 orchestrator가 push 수행, (b) AC PASS-WITH-DEBT 상태에서 사용자 확인 필요 시 orchestrator 위임, (c) explicit blocker report 시
-- 본 rule이 manager-docs에는 적용 **안 됨** — manager-docs는 /moai sync workflow에서 commit + push가 deliverable 자체
+**B9. Git Commit + Push Performed Directly (Hybrid Trunk 1-person OSS)**
+- manager-develop is recommended to perform commit + push directly within this SPEC scope (direct-to-main — Hybrid Trunk 1-person OSS policy, Tier S/M)
+- Conventional Commits format required (`feat(SPEC-...): M{N} <subject>`)
+- Both per-M separate commits + final push, or per-M push, are allowed
+- Never use `--no-verify` (a warn-only pre-commit hook is normal)
+- Exceptions: (a) the orchestrator performs the push on a parallel-session race, (b) the orchestrator handles it when user confirmation is needed in an AC PASS-WITH-DEBT state, (c) on an explicit blocker report
+- This rule does **NOT** apply to manager-docs — for manager-docs, commit + push in the /moai sync workflow is the deliverable itself
 
 **B10. Untouched Paths PRESERVE (Scope Discipline)**
-- 본 SPEC plan.md §A.5 PRESERVE list 외 working tree 변경 절대 금지
-- parallel manager-develop instance 진행 중일 때 특히 주의 (다른 디렉토리 scope 손대지 말 것)
-- runtime-managed files (`.moai/harness/*`, `.moai/state/*`, `.moai/cache/*`) 손대지 말 것
-- 무관 SPEC 디렉토리 (다른 SPEC plan-phase artifacts) 손대지 말 것
-- parallel session research/audit 산출물 (`.moai/research/*`) 손대지 말 것
+- Never modify the working tree beyond this SPEC's plan.md §A.5 PRESERVE list
+- Take extra care while a parallel manager-develop instance is running (do not touch other directories' scope)
+- Do not touch runtime-managed files (`.moai/harness/*`, `.moai/state/*`, `.moai/cache/*`)
+- Do not touch unrelated SPEC directories (other SPECs' plan-phase artifacts)
+- Do not touch parallel-session research/audit artifacts (`.moai/research/*`)
 
-**B11. AskUserQuestion 금지 (Subagent Boundary)**
-- subagent는 사용자와 직접 상호작용 금지 (CLAUDE.md §8 + askuser-protocol.md §Orchestrator–Subagent Boundary)
-- Blocker 발견 시 structured blocker report 반환 (orchestrator가 AskUserQuestion 수행 + re-delegate)
-- Blocker report format: 4-옵션 + 각 옵션의 변경/영향/위험/ETA 명시
-- free-form prose 질문 절대 금지 (response body에 "? 어떻게 진행할까요?" 패턴 금지)
+**B11. AskUserQuestion Prohibited (Subagent Boundary)**
+- Subagents must not interact with the user directly (CLAUDE.md §8 + askuser-protocol.md §Orchestrator–Subagent Boundary)
+- On finding a blocker, return a structured blocker report (the orchestrator runs AskUserQuestion + re-delegates)
+- Blocker report format: 4 options + each option's change/impact/risk/ETA stated
+- Never ask free-form prose questions (no "? how should we proceed?" pattern in the response body)
 
 **B12. Sync-phase CHANGELOG emission discipline (manager-docs only)**
 - Before drafting CHANGELOG entries, `Read` every implementation file referenced in the SPEC plan.md (do NOT rely on plan.md description alone — plan-phase placeholders may diverge from final implementation).
@@ -131,37 +131,37 @@ Tier classification reference: `.claude/rules/moai/workflow/spec-workflow.md` §
 - Verify AC count in CHANGELOG matches `acceptance.md` (SSOT) — NOT `progress.md` (which may include deferred AC).
 - Origin: an earlier CHANGELOG cleanup root cause analysis (BATCH-SYNC line hallucination incident).
 
-### Section C — Pre-flight Check List (착수 전 의무 검증)
+### Section C — Pre-flight Check List (mandatory verification before starting)
 
-위임 받은 manager-develop가 코드 변경 전 실행:
+Run by the delegated manager-develop before any code change:
 
 ```bash
-# 1. 현재 branch + baseline 확인
+# 1. Check current branch + baseline
 git branch --show-current
 git rev-parse HEAD
 
-# 2. Cross-platform build 가능성 사전 확인
+# 2. Pre-check cross-platform build feasibility
 go build ./...
 GOOS=windows GOARCH=amd64 go build ./...
 
-# 3. 기존 lint baseline 측정 (NEW vs pre-existing 구분 위해)
+# 3. Measure the existing lint baseline (to distinguish NEW vs pre-existing)
 golangci-lint run --timeout=2m 2>&1 | tail -5
 
-# 4. PRESERVE 대상 파일 list 출력
+# 4. Print the list of PRESERVE target files
 ls <PRESERVE_GLOB>
 
-# 5. 영향 패키지 retired/superseded SPEC 확인
+# 5. Check retired/superseded SPECs of affected packages
 grep -r "Retired\|TestHarnessRetirement\|superseded" internal/<target_pkg> || echo "no conflicts"
 ```
 
 ### Section D — Constraints (DO NOT VIOLATE)
 
-각 위임 prompt에 explicit list:
-- PRESERVE 대상 파일 enumeration (Brownfield strategy 적용 시)
-- 무관 untracked/modified 파일 list (변경 금지)
-- 금지 명령 (`--no-verify`, `--amend`, force-push to main, …)
-- 사용 의무 명령 (Conventional Commits, `🗿 MoAI` trailer, …)
-- C-HRA-008 같은 binary constraint (grep 0 매치)
+Explicit list in each delegation prompt:
+- Enumeration of PRESERVE target files (when applying the Brownfield strategy)
+- List of unrelated untracked/modified files (do not modify)
+- Forbidden commands (`--no-verify`, `--amend`, force-push to main, …)
+- Required commands (Conventional Commits, `🗿 MoAI` trailer, …)
+- Binary constraints such as C-HRA-008 (grep 0 matches)
 
 ### Section E — Self-Verification Deliverables
 
@@ -204,33 +204,33 @@ $ golangci-lint run --timeout=2m
 **E7. Blocker Report (if any)**
 - When the delegation prompt did not specify a needed user decision, report it as a structured blocker (NEVER call AskUserQuestion)
 
-## 2. 위임 Prompt 작성 Workflow (오케스트레이터 입장)
+## 2. Delegation Prompt Authoring Workflow (from the orchestrator's perspective)
 
 ```
-1. Section A 구성 (SPEC 산출물 경로 + 현재 git 상태)
-2. Section B 자동 주입 (lessons memory에서 keyword 매칭으로 12 카테고리 select)
-3. Section C 표준 pre-flight checks (위 그대로 복사)
-4. Section D constraints (SPEC + PRESERVE list + working tree 상태에서 추출)
-5. Section E deliverables (위 그대로 복사)
+1. Compose Section A (SPEC artifact paths + current git state)
+2. Auto-inject Section B (select the 12 categories via keyword matching from lessons memory)
+3. Section C standard pre-flight checks (copy verbatim from above)
+4. Section D constraints (extract from SPEC + PRESERVE list + working tree state)
+5. Section E deliverables (copy verbatim from above)
 ```
 
 ## 3. Anti-Patterns
 
-본 템플릿 미준수 케이스 — 재위임 위험 증가:
+Cases of non-compliance with this template — increased re-delegation risk:
 
-- Section B 누락 → cross-platform build / cross-SPEC 충돌 사후 발견
-- Section E 누락 → orchestrator가 직렬 검증 (~10분 추가 손실)
-- "implement the SPEC" 같은 1-liner 위임 → manager-develop이 prompt 부족으로 가정 누락
-- PRESERVE 대상 enumeration 누락 → 의도치 않은 파일 수정
+- Missing Section B → cross-platform build / cross-SPEC conflicts discovered after the fact
+- Missing Section E → the orchestrator verifies serially (~10 min extra loss)
+- 1-liner delegation like "implement the SPEC" → manager-develop makes silent assumptions due to an insufficient prompt
+- Missing PRESERVE enumeration → unintended file modifications
 
-## 4. 관련 Layer (메타-분석 §3)
+## 4. Related Layers (meta-analysis §3)
 
-본 rule은 Layer A (위임 Prompt 품질 향상)의 표준화. 후속 Layer:
+This rule standardizes Layer A (delegation prompt quality improvement). Subsequent layers:
 
-- Layer B (병렬 위임 — Agent Teams): 별도 rule 필요
-- Layer C (Background CI watch): `gh pr checks --watch` 패턴 표준화
-- Layer D (검증 병렬화): orchestrator self-discipline
-- Layer F (lessons 자동 capture): SubagentStop hook 확장
+- Layer B (parallel delegation — Agent Teams): a separate rule is needed
+- Layer C (Background CI watch): standardize the `gh pr checks --watch` pattern
+- Layer D (verification parallelization): orchestrator self-discipline
+- Layer F (automatic lessons capture): SubagentStop hook extension
 
 ## 5. Verification (this rule applied to itself)
 

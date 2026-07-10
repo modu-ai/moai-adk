@@ -80,7 +80,7 @@ Library mappings for latest documentation:
 - `/jetbrains/compose-multiplatform` - Compose Multiplatform
 - `/arrow-kt/arrow` - Arrow functional programming
 
-Usage: Call mcp__context7__get_library_docs with context7CompatibleLibraryID, topic string for specific areas, and tokens parameter for response size.
+Usage: Call mcp__context7__resolve-library-id to obtain the library ID, then mcp__context7__query-docs with that ID, a topic string for specific areas, and a tokens parameter for response size.
 
 ---
 
@@ -112,7 +112,7 @@ Consider Alternatives When:
 
 ## Troubleshooting
 
-K2 Compiler: Add kotlin.experimental.tryK2=true to gradle.properties. Clear .gradle directory for full rebuild.
+K2 Compiler: K2 is the default compiler in Kotlin 2.x — no opt-in flag is required (the legacy kotlin.experimental.tryK2 flag is obsolete). If the build still resolves to the old compiler, verify the Kotlin Gradle plugin version aligns with the Kotlin language version (2.2+). Clear the .gradle directory for a full rebuild.
 
 Coroutines: Avoid runBlocking in suspend contexts. Use Dispatchers.IO for blocking operations.
 

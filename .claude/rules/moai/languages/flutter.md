@@ -4,10 +4,6 @@ paths: "**/*.dart,**/pubspec.yaml,**/pubspec.lock"
 
 # Flutter/Dart Development Guide
 
-
----
-
-
 Flutter/Dart Development Expert - Dart 3.5+, Flutter 3.24+ with modern patterns.
 
 

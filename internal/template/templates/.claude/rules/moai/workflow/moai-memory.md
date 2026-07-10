@@ -1,5 +1,5 @@
 ---
-paths: "**/.moai/specs/**"
+paths: "**/.moai/specs/**,**/.claude/agent-memory/**"
 ---
 
 # MoAI Memory and Context

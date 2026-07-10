@@ -1,5 +1,5 @@
 ---
-paths: "**/native-invocation-model.md"
+paths: "**/.claude/commands/**,**/.claude/skills/moai/**,**/native-invocation-model.md"
 ---
 
 # Native Invocation-Model Alignment

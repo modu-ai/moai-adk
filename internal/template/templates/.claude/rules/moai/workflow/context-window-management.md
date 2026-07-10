@@ -150,7 +150,7 @@ All MoAI workflows: `/moai plan|run|sync`, multi-SPEC Epics, iterative loops (`/
 ## Cross-references
 
 - `.claude/rules/moai/workflow/session-handoff.md` — paste-ready resume format + auto-memory integration. Trigger #1 consumes the model-specific threshold table from this file (1M = 50%, 200K = 90%); `/clear` recommendation and paste-ready emission both fire at the same boundary.
-- large-SPEC wave-split mitigation
+- large-SPEC split mitigation
 - `.claude/skills/moai/references/file-reading-optimization.md` — token budget per file read
 - `output-styles/moai/moai.md` §6 (Persistence & Context Awareness)
 - CLAUDE.md §11 (Error Handling) — token-limit recovery flow

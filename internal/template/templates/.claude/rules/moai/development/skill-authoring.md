@@ -77,7 +77,7 @@ description: >
   Use YAML folded scalar (>) for multi-line descriptions.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__query-docs
 user-invocable: false
 effort: low
 shell: bash
@@ -320,13 +320,13 @@ per-language guidance, and `.claude/rules/moai/development/coding-standards.md`
 
 ## Skills Namespace Policy
 
-[ZONE:Evolvable] [HARD] Skill namespace는 "범용 배포" vs "사용자 생성" 으로 분리되며, prefix가 namespace를 결정한다.
+[ZONE:Evolvable] [HARD] The skill namespace is split into "general distribution" vs "user-generated", and the prefix determines the namespace.
 
-| Prefix | 범위 | Source of Truth | `moai update` 동작 |
-|--------|------|-----------------|---------------------|
-| `moai-foundation-*` / `moai-workflow-*` / `moai-domain-*` / `moai-ref-*` / `moai-meta-*` | 핵심 framework + workflow + 도메인 + reference | template | **삭제 후 신규 설치** (overwrite) |
-| `moai-harness-*` | **하네스 builder/lifecycle** (현재 `moai-meta-harness` + `moai-harness-learner`만 해당) | template | **삭제 후 신규 설치** (overwrite) |
-| **`harness-*`** | **사용자 생성** — `moai-meta-harness`가 `/moai project` Phase 5+ 인터뷰 후 generate | user project | **절대 삭제/modify 금지 + 백업 보존** (Go enforcement `harness-*` 인식 + `my-harness-*` legacy dual-recognition) |
+| Prefix | Scope | Source of Truth | `moai update` behavior |
+|--------|-------|-----------------|------------------------|
+| `moai-foundation-*` / `moai-workflow-*` / `moai-domain-*` / `moai-ref-*` / `moai-meta-*` | core framework + workflow + domain + reference | template | **delete then reinstall** (overwrite) |
+| `moai-harness-*` | **harness builder/lifecycle** (currently only `moai-harness-learner`; `moai-meta-harness` is a deprecated legacy-redirect) | template | **delete then reinstall** (overwrite) |
+| **`harness-*`** | **user-generated** — created by the v4 harness Builder (`builder-harness` agent via `/moai harness`) | user project | **NEVER delete/modify + preserve backup** (Go enforcement recognizes `harness-*` + `my-harness-*` legacy dual-recognition) |
 
 ### Deprecated Skill Slots (split into three independent harnesses)
 
@@ -342,12 +342,12 @@ Each split harness preserves the structural fidelity of its workflow body. Routi
 
 ### Rules
 
-- [HARD] `moai-*` namespace (모든 prefix 포함)는 template-distributed. 사용자가 직접 수정 시 다음 `moai update`로 overwrite — 사용자 customization은 손실됨.
-- [HARD] `harness-*` namespace는 user-owned. `moai update`가 본 namespace의 skill을 **삭제, modify, sync 금지**. 백업 의무.
-- [HARD] `moai-meta-harness`가 emit하는 사용자 프로젝트별 domain skill은 **`harness-*` prefix만** 허용. `moai-harness-*` 또는 다른 `moai-*` prefix로 emit하면 contract 위반.
-- [HARD] `moai-harness-*` namespace를 사용자 프로젝트별 artifact로 오인 금지 — 본 namespace는 framework builder 전용이며 현재 `moai-harness-learner`, `moai-meta-harness`만 해당한다.
-- [HARD] `harness-*` (user-owned) vs `moai-harness-*` (template builder) substring 구분: prefix 매칭은 정확한 startsWith 비교를 사용하고, `*harness-*` substring 패턴은 false positive 위험이 있으므로 금지.
-- [HARD] CI guard: `internal/template/templates/.claude/skills/harness-*` 누출 시 lint 실패해야 한다 (`TestNamespaceLeakHarnessSkills` sentinel이 `harness-` 패턴 감지).
+- [HARD] The `moai-*` namespace (all prefixes) is template-distributed. If the user modifies it directly, the next `moai update` overwrites it — user customizations are lost.
+- [HARD] The `harness-*` namespace is user-owned. `moai update` MUST NOT delete, modify, or sync skills in this namespace. Backup is mandatory.
+- [HARD] Per-project domain skills emitted by the v4 harness Builder (`builder-harness` agent via `/moai harness`) MUST use the **`harness-*` prefix only**. Emitting under `moai-harness-*` or any other `moai-*` prefix violates the contract. (The legacy `moai-meta-harness` skill is deprecated and only redirects to the v4 Builder.)
+- [HARD] Do NOT mistake the `moai-harness-*` namespace for per-project artifacts — this namespace is framework-builder-only and currently comprises `moai-harness-learner` (with the deprecated legacy-redirect `moai-meta-harness`).
+- [HARD] Distinguish `harness-*` (user-owned) vs `moai-harness-*` (template builder) as substrings: prefix matching MUST use an exact startsWith comparison; the `*harness-*` substring pattern is prohibited due to false-positive risk.
+- [HARD] CI guard: a leak of `internal/template/templates/.claude/skills/harness-*` MUST fail lint (the `TestNamespaceLeakHarnessSkills` sentinel detects the `harness-` pattern).
 
 ### Cross-References
 

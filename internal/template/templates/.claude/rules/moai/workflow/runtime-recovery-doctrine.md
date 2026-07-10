@@ -1,5 +1,5 @@
 ---
-paths: "**/runtime-recovery-doctrine.md"
+paths: "**/.moai/specs/**,**/runtime-recovery-doctrine.md"
 ---
 
 # Runtime Recovery Doctrine

@@ -15,7 +15,7 @@ Core Stack:
 
 - ES2024+: Set methods, Promise.withResolvers, immutable arrays, import attributes
 - Node.js 24 LTS: Native TypeScript, built-in WebSocket, stable watch mode
-- Runtimes: Node.js 20 and 22 LTS, Deno 2.x, Bun 1.x
+- Runtimes: Node.js 22 and 24 LTS, Deno 2.x, Bun 1.x
 - Testing: Vitest, Jest, Node.js test runner
 - Linting: ESLint 9 flat config, Biome
 - Bundlers: Vite, esbuild, Rollup

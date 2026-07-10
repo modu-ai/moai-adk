@@ -1,7 +1,3 @@
----
-paths: "**/verification-batch-pattern.md"
----
-
 # Verification Batch Pattern
 
 Canonical pattern for orchestrator-side read-only verification batching during run-phase completion. Motivation: reduces serial-verification round-trip latency at run-phase completion.

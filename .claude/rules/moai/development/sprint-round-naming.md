@@ -1,5 +1,5 @@
 ---
-paths: "**/sprint-round-naming.md"
+paths: "**/.moai/specs/**,**/sprint-round-naming.md"
 ---
 
 # Epic Naming Taxonomy — SSOT

@@ -8,7 +8,7 @@ Claude Code hooks for extending functionality with custom scripts.
 
 ## Hook Events
 
-29 events documented below: 20 registered in settings.json + 4 RETIRE-OBS-ONLY (Go-only observability taps, opt-in via system.yaml) + 5 upstream events MoAI does not register by default (PostSession, PostToolBatch, UserPromptExpansion, WorktreeCreate, WorktreeRemove); plus 1 retired event (Setup).
+30 events documented below: 20 registered in settings.json + 4 RETIRE-OBS-ONLY (Go-only observability taps, opt-in via system.yaml) + 6 upstream events MoAI does not register by default (PostSession, PostToolBatch, UserPromptExpansion, WorktreeCreate, WorktreeRemove, MessageDisplay); plus 1 retired event (Setup).
 **Note**: The moai-adk Go `EventSetup` constant is retired (orphan, no handler implementation); the upstream Claude Code `Setup` event remains a current, usable event.
 Active settings.json keys: 20. RETIRE-OBS-ONLY (Go-only): 4.
 
@@ -320,7 +320,9 @@ Wrapper scripts are located at:
 - `.claude/hooks/moai/handle-pre-tool.sh`
 - `.claude/hooks/moai/handle-post-tool.sh`
 - `.claude/hooks/moai/handle-stop.sh`
-- `.claude/hooks/moai/handle-agent-hook.sh`: TeammateIdle, TaskCompleted events (team mode)
+- `.claude/hooks/moai/handle-agent-hook.sh`: agent frontmatter lifecycle hooks (PreToolUse/PostToolUse/SubagentStop — see agent-hooks.md)
+- `.claude/hooks/moai/handle-teammate-idle.sh`: TeammateIdle event (team mode)
+- `.claude/hooks/moai/handle-task-completed.sh`: TaskCompleted event (team mode)
 
 ## Smart Hook Behaviors (v2.10.1)
 

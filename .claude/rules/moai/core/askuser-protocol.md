@@ -334,29 +334,11 @@ Subagents invoked via `Agent()` operate in isolated, stateless contexts and CANN
 
 ### Blocker Report Format
 
-When a subagent requires user input that was not provided in the spawn prompt, it MUST return a structured blocker report instead of attempting to interact with the user:
-
-```markdown
-## Missing Inputs
-
-The following parameters are required but were not provided:
-
-| Parameter | Type | Expected Values | Rationale |
-|-----------|------|-----------------|-----------|
-| [name]    | [type] | [values]      | [why needed] |
-
-**Blocker**: Cannot proceed without the above inputs. Please re-delegate with these values injected into the prompt.
-```
+When a subagent requires user input not provided in the spawn prompt, it MUST return a structured blocker report instead of attempting to interact with the user. The canonical `## Missing Inputs` table format is owned by `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format — see there.
 
 ### Re-delegation Procedure
 
-```
-[Orchestrator receives blocker report]
-Step 1: ToolSearch(query: "select:AskUserQuestion")
-Step 2: AskUserQuestion — ask user for the missing inputs
-Step 3: Construct fresh subagent prompt with user's answers injected
-Step 4: Re-delegate to subagent
-```
+The 4-step orchestrator re-delegation flow (ToolSearch preload → AskUserQuestion round → fresh prompt construction → re-delegate) is owned by `.claude/rules/moai/core/agent-common-protocol.md` § Re-delegation Procedure — see there.
 
 ---
 

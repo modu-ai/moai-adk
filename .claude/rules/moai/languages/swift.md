@@ -4,11 +4,7 @@ paths: "**/*.swift,**/Package.swift,**/*.xcodeproj/**"
 
 # Swift Development Guide
 
-
----
-
-
-# Swift 6+ Development Specialist
+## Swift 6+ Development Specialist
 
 Swift 6.0+ development expert for iOS/macOS with SwiftUI, Combine, and Swift Concurrency.
 

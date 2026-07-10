@@ -1,5 +1,5 @@
 ---
-paths: "**/dynamic-workflows.md"
+paths: "**/.claude/workflows/**,**/.moai/config/sections/workflow.yaml,**/dynamic-workflows.md"
 ---
 
 # Dynamic Workflows (Claude Code Orchestration Primitive)

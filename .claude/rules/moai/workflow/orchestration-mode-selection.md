@@ -180,7 +180,7 @@ The orchestrator's mode logging is verified by the canonical grep acceptance cri
 
 ```bash
 grep -A 5 "Mode Selection" .moai/specs/SPEC-{ID}/progress.md \
-  | grep -c -i "sequential\|parallel\|agent-team\|sub-agent\|trivial\|background"
+  | grep -c -i "trivial\|background\|agent-team\|parallel\|sub-agent\|workflow"
 ```
 
 The grep count MUST be ≥ 1. In practice, naming the chosen mode anywhere within 5 lines of the `Mode Selection` heading satisfies this; the structured `Decision: <mode>` line accomplishes this directly.

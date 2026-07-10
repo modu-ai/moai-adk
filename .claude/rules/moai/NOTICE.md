@@ -98,4 +98,4 @@ The im-not-ai skill is shared publicly under the MIT License. MoAI-ADK has porte
 
 ## Anthropic 2026 Alignment
 
-Anthropic Claude Code documentation — fair-use academic attribution. The agent catalog was realigned to Anthropic 2026 best practices (8 retained agents). Realignment details: the agent-catalog realignment SPEC.
+Anthropic Claude Code documentation — fair-use academic attribution. The agent catalog was realigned to Anthropic 2026 best practices (8 retained agents at consolidation time; now 10 per CLAUDE.md §4). Realignment details: the agent-catalog realignment SPEC.

@@ -115,7 +115,7 @@ Before committing a skill, verify:
 - [ ] `name` matches actual skill capability
 - [ ] `description` is a concise trigger summary within the 1,536-char cap (combined `description` + `when_to_use`)
 - [ ] `paths` is CSV string (not YAML array)
-- [ ] `domains` accurately reflect skill scope
+- [ ] `description` trigger keywords accurately reflect skill scope
 - [ ] `allowed-tools` matches actual tool usage in body
 - [ ] No tool used without being listed in frontmatter
 - [ ] Body follows progressive disclosure (Quick/Implementation/Advanced if >500 lines)

@@ -1,12 +1,12 @@
 ---
-description: "Zone Registry — MoAI-ADK HARD 조항 SSOT. rules/agents 디렉토리 수정 시에만 로드 (registry는 moai constitution CLI가 직접 읽으므로 SPEC authoring turn에는 컨텍스트 로드 불필요)."
-paths: ".claude/rules/**,.claude/agents/**"
+description: "Constitution zone registry — CONST-* clause records consumed by moai constitution CLI and zone audits"
+paths: "**/.claude/rules/**,**/.moai/config/sections/constitution.yaml"
 ---
 
 # Zone Registry
 
-MoAI-ADK 규칙 트리의 모든 HARD 조항을 열거하는 단일 진실 공급원(single source of truth).
-각 엔트리에는 고유 ID, Zone 분류, 소스 파일, 앵커, verbatim clause, canary_gate 필드가 포함된다.
+Single source of truth enumerating every HARD clause in the MoAI-ADK rules tree.
+Each entry carries a unique ID, Zone classification, source file, anchor, verbatim clause, and canary_gate field.
 
 ## HISTORY
 
@@ -17,38 +17,38 @@ MoAI-ADK 규칙 트리의 모든 HARD 조항을 열거하는 단일 진실 공�
 
 ## ID Allocation Policy
 
-ID 형식: `CONST-V3R2-NNN` (초기 namespace) 또는 `CONST-V3R5-NNN` (parallel namespace)
+ID format: `CONST-V3R2-NNN` (initial namespace) or `CONST-V3R5-NNN` (parallel namespace)
 
-할당 규칙:
-- 파일 순서 고정: `CLAUDE.md` → `.claude/rules/moai/core/moai-constitution.md` → `.claude/rules/moai/core/agent-common-protocol.md` → `.claude/rules/moai/design/constitution.md`
-- 각 파일 내에서 `(anchor_line_number)` 오름차순으로 ID 할당
-- 001-050: pre-existing 조항 (위 4개 파일에서 발견된 HARD 조항)
-- 051-099: design constitution 미러 엔트리 (§2 + §3.1/§3.2/§3.3 [FROZEN] 조항)
-- 100-149: design mirror overflow (auto-extend, doctor warning 발행)
-- 150+: 향후 신규 추가용 (V3R2 namespace)
+Allocation rules:
+- Fixed file order: `CLAUDE.md` → `.claude/rules/moai/core/moai-constitution.md` → `.claude/rules/moai/core/agent-common-protocol.md` → `.claude/rules/moai/design/constitution.md`
+- Within each file, assign IDs in ascending `(anchor_line_number)` order
+- 001-050: pre-existing clauses (HARD clauses found in the 4 files above)
+- 051-099: design constitution mirror entries (§2 + §3.1/§3.2/§3.3 [FROZEN] clauses)
+- 100-149: design mirror overflow (auto-extend, emits doctor warning)
+- 150+: reserved for future additions (V3R2 namespace)
 
-V3R5 namespace 정책:
-- 신규 entries 는 `CONST-V3R5-001` 부터 시작하는 parallel namespace 사용
-- V3R2 의 3 internal gaps (047/048/050) 은 fill 하지 않고 역사적 기록으로 보존
-- `zone_class` 필드 (4-enum): `frozen-canonical` | `frozen-safety` | `evolvable-tuning` | `evolvable-experimental`
+V3R5 namespace policy:
+- New entries use the parallel namespace starting at `CONST-V3R5-001`
+- The 3 internal V3R2 gaps (047/048/050) are NOT filled — preserved as historical record
+- `zone_class` field (4-enum): `frozen-canonical` | `frozen-safety` | `evolvable-tuning` | `evolvable-experimental`
 
-CanaryGate 기본값 (plan.md §7 OQ6 결정):
+CanaryGate defaults (plan.md §7 OQ6 decision):
 - Frozen → `canary_gate: true`
 - Evolvable → `canary_gate: false`
 
 ## Usage Guide
 
 ```bash
-# 전체 registry 조회
+# List the entire registry
 moai constitution list
 
-# Frozen zone 필터
+# Filter by Frozen zone
 moai constitution list --zone frozen
 
-# 특정 파일의 조항만 조회
+# List clauses from a specific file only
 moai constitution list --file .claude/rules/moai/core/moai-constitution.md
 
-# JSON 형식 출력
+# JSON-format output
 moai constitution list --format json
 ```
 
@@ -56,7 +56,7 @@ moai constitution list --format json
 
 ```yaml
 # ============================================================
-# 001-010: CLAUDE.md HARD 조항 (§1 Hard Rules)
+# 001-010: CLAUDE.md HARD clauses (§1 Hard Rules)
 # ============================================================
 - id: CONST-V3R2-001
   zone: Frozen
@@ -115,7 +115,7 @@ moai constitution list --format json
   canary_gate: true
 
 # ============================================================
-# 008-020: CLAUDE.md HARD 조항 (§1 Hard Rules — 오케스트레이터 동작)
+# 008-020: CLAUDE.md HARD clauses (§1 Hard Rules — orchestrator behavior)
 # ============================================================
 - id: CONST-V3R2-008
   zone: Evolvable
@@ -229,7 +229,7 @@ moai constitution list --format json
   zone_class: evolvable-experimental
   file: CLAUDE.md
   anchor: "#14-parallel-execution-safeguards"
-  clause: "Implementation teammates in team mode (role_profiles: implementer, tester, designer) MUST use isolation: worktree when spawned via Agent()"
+  clause: "[SUPERSEDED by worktree-opt-in policy — see CLAUDE.md §14 + worktree-integration.md § Terminology Glossary] Implementation teammates in team mode (role_profiles: implementer, tester, designer) MUST use isolation: worktree when spawned via Agent()"
   canary_gate: false
 
 - id: CONST-V3R2-022
@@ -237,7 +237,7 @@ moai constitution list --format json
   zone_class: evolvable-experimental
   file: CLAUDE.md
   anchor: "#14-parallel-execution-safeguards"
-  clause: "Read-only teammates (role_profiles: researcher, analyst, reviewer) MUST NOT use isolation: worktree"
+  clause: "[SUPERSEDED by worktree-opt-in policy — see CLAUDE.md §14 + worktree-integration.md § Terminology Glossary] Read-only teammates (role_profiles: researcher, analyst, reviewer) MUST NOT use isolation: worktree"
   canary_gate: false
 
 - id: CONST-V3R2-023
@@ -245,7 +245,7 @@ moai constitution list --format json
   zone_class: evolvable-experimental
   file: CLAUDE.md
   anchor: "#14-parallel-execution-safeguards"
-  clause: "One-shot sub-agents making cross-file changes SHOULD use isolation: worktree"
+  clause: "[SUPERSEDED by worktree-opt-in policy — see CLAUDE.md §14 + worktree-integration.md § Terminology Glossary] One-shot sub-agents making cross-file changes SHOULD use isolation: worktree"
   canary_gate: false
 
 - id: CONST-V3R2-024
@@ -253,11 +253,11 @@ moai constitution list --format json
   zone_class: evolvable-experimental
   file: CLAUDE.md
   anchor: "#14-parallel-execution-safeguards"
-  clause: "GitHub workflow fixer agents MUST use isolation: worktree for branch isolation"
+  clause: "[SUPERSEDED by worktree-opt-in policy — see CLAUDE.md §14 + worktree-integration.md § Terminology Glossary] GitHub workflow fixer agents MUST use isolation: worktree for branch isolation"
   canary_gate: false
 
 # ============================================================
-# 025-035: moai-constitution.md HARD 조항
+# 025-035: moai-constitution.md HARD clauses
 # ============================================================
 - id: CONST-V3R2-025
   zone: Frozen
@@ -348,7 +348,7 @@ moai constitution list --format json
   canary_gate: false
 
 # ============================================================
-# 036-045: agent-common-protocol.md HARD 조항
+# 036-045: agent-common-protocol.md HARD clauses
 # ============================================================
 - id: CONST-V3R2-036
   zone: Frozen
@@ -447,7 +447,7 @@ moai constitution list --format json
   canary_gate: false
 
 # ============================================================
-# 051-099: design/constitution.md [FROZEN] 미러 엔트리 (§2 + §3.1/§3.2/§3.3)
+# 051-099: design/constitution.md [FROZEN] mirror entries (§2 + §3.1/§3.2/§3.3)
 # ============================================================
 - id: CONST-V3R2-051
   zone: Frozen
@@ -626,7 +626,7 @@ moai constitution list --format json
   canary_gate: true
 
 # ============================================================
-# 150-159: session-handoff.md HARD 조항 (신규 워크플로우 규칙, 2026-05-04;
+# 150-159: session-handoff.md HARD clauses (new workflow rules, 2026-05-04;
 #          2026-05-09 model-specific threshold revision:
 #          Trigger #1 = 1M context 50% / 200K context 90%; 5 triggers retained)
 # ============================================================
@@ -663,8 +663,8 @@ moai constitution list --format json
   canary_gate: false
 
 # ============================================================
-# CONST-V3R5-001..041: 신규 parallel namespace
-# 미매핑 [HARD] 규칙 coverage 완성 — 11개 소스 파일 신규 등록
+# CONST-V3R5-001..041: new parallel namespace
+# Completes coverage of unmapped [HARD] rules — 11 source files newly registered
 # ============================================================
 - id: CONST-V3R5-001
   zone: Frozen
@@ -842,7 +842,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/context-window-management.md
   anchor: "#context-window-targets"
-  clause: "Operational threshold is model-specific: 1M context (Opus 4.8 / Fable 5) = 50%, 200K context (Sonnet/Opus/Haiku) = 90%"
+  clause: "Operational threshold is model-specific: 1M context (Opus 4.8 / GLM-5.2) = 50%, 256K context (Opus/Fable) = 90%, 200K context (Sonnet/Haiku) = 90%"
   canary_gate: false
 
 - id: CONST-V3R5-023

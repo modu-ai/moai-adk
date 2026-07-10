@@ -116,7 +116,7 @@ For comprehensive coverage including advanced concurrency patterns (thread pools
 - spf13/viper - Viper configuration
 - stretchr/testify - Test assertion library
 
----
+## Related Resources
 
 - `.claude/rules/moai/languages/rust.md` - Systems programming comparison
 - `moai-domain-backend` - Backend service architecture

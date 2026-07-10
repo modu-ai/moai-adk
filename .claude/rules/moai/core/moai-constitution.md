@@ -1,7 +1,3 @@
----
-paths: "**/.claude/**"
----
-
 # MoAI Constitution
 
 Core principles that MUST always be followed. These are HARD rules.
@@ -79,7 +75,7 @@ All code changes must pass TRUST 5 validation.
 Rules:
 - Tested: 85%+ coverage, characterization tests for existing code
 - Readable: Clear naming, English comments
-- Unified: Consistent style, ruff/black formatting
+- Unified: Consistent style via the project language's formatter (gofmt, ruff/black, prettier, rustfmt, ...)
 - Secured: OWASP compliance, input validation
 - Trackable: Conventional commits, issue references
 - Team mode quality: TeammateIdle hook validates work before idle acceptance

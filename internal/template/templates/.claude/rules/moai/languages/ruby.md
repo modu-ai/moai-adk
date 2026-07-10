@@ -4,10 +4,6 @@ paths: "**/*.rb,**/Gemfile,**/Gemfile.lock,**/*.gemspec"
 
 # Ruby Development Guide
 
-
----
-
-
 Ruby 3.4 Development Specialist - Rails 8.1, ActiveRecord, Hotwire/Turbo, RSpec, and modern Ruby patterns.
 
 
@@ -119,8 +115,7 @@ Apply the Quick Patterns and framework sections above together with the Context7
 - rubocop/rubocop for Ruby style guide enforcement
 - thoughtbot/factory_bot for test data factories
 
----
-
+## Related Resources
 
 - moai-domain-backend for REST API and web application architecture
 - moai-domain-database for SQL patterns and ActiveRecord optimization

@@ -4,10 +4,6 @@ paths: "**/*.cpp,**/*.hpp,**/*.h,**/*.cc,**/CMakeLists.txt"
 
 # C++ Development Guide
 
-
----
-
-
 Modern C++ (C++23/C++20) Development Specialist - RAII, smart pointers, concepts, ranges, modules, and CMake.
 
 
@@ -92,8 +88,7 @@ Apply the Quick Patterns and feature sections above together with the Context7 I
 - /nlohmann/json - JSON for Modern C++
 - /gabime/spdlog - Fast logging library
 
----
-
+## Related Resources
 
 - `.claude/rules/moai/languages/rust.md` - Systems programming comparison and interop
 - `moai-domain-backend` - Backend service architecture

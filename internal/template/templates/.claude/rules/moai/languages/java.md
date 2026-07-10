@@ -4,10 +4,6 @@ paths: "**/*.java,**/pom.xml,**/build.gradle,**/build.gradle.kts"
 
 # Java Development Guide
 
-
----
-
-
 Java 25 LTS Expert - Enterprise development with Spring Boot 3.5, Virtual Threads, and modern Java features.
 
 
@@ -111,8 +107,7 @@ Library mappings for latest documentation:
 - hibernate/hibernate-orm for Hibernate 7 ORM patterns
 - junit-team/junit5 for JUnit 5 testing framework
 
----
-
+## Related Resources
 
 - `.claude/rules/moai/languages/kotlin.md` for Kotlin interoperability and Spring Kotlin extensions
 - moai-domain-backend for REST API, GraphQL, and microservices architecture
