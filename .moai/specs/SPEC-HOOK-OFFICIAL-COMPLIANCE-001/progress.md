@@ -214,7 +214,27 @@ manager-develop ran in an auto-materialized worktree (`worktree-agent-af45e51ce8
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-07-10
+all_milestones_done: [M1, M2, M3, M4, M5, M6, M7, M8]
+ac_matrix: "36/36 PASS"
+run_commit_range: 820cf2d12..3d74559aa   # M1(820cf2d12) M3/M4/M8a(7e641d959) M2/M5(c6ee34184) test-fix(1e5be72f5) M6(dde73b0f7) M8bcd(5a845a5e2) M7(3a5ff6a78+3d74559aa)
+verification:
+  go_test: "go test ./... exit 0, 0 FAIL (whole-repo green)"
+  go_build: "go build ./... exit 0; GOOS=windows GOARCH=amd64 exit 0"
+  golangci_lint: "0 issues (clean baseline preserved)"
+  template_mirror: "TestRuleTemplateMirror PASS (live<->template byte-identical)"
+  template_neutrality: "TestInternalContentLeak PASS (no SPEC IDs/REQ/SHAs leaked)"
+  hook_compliance: "TestHookOfficialCompliance PASS"
+  spec_lint: "0 errors; 1 WARNING StatusGitConsistency (in-progress vs git-implied implemented — expected run->sync boundary; resolves at sync commit)"
+ac_caveats:
+  AC-033: "exact grep 32 matches all pre-existing internal/cli/harness*.go doc/string literals; 0 NEW (HOOK-OFFICIAL commits do not touch internal/cli/*.go) — baseline preserved"
+  AC-029: "7 handle-agent-hook invocations carry explicitly-quoted action tokens; acceptance.md {action}-literal grep drift (real tokens, not placeholder) — substantive PASS"
+  AC-030: "comment names handle-compact.sh (correct); line shifted 7->14 by M7 allowlist insertion — acceptance window drift, substantive PASS"
+evidence_dir: .moai/state/verify/hook-official-final/   # build/lint/whole-repo-test logs (worktree agent-a136695216faf3021)
+next_phase: "sync (manager-docs) — in-progress->implemented->completed rides the single sync commit; acceptance.md path/grep drift (core/hooks-system.md canonical path; AC-029/030 windows) queued for manager-spec sync-phase fix"
+```
 
 ---
 
