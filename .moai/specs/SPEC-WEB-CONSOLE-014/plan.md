@@ -1,8 +1,8 @@
 ---
 id: SPEC-WEB-CONSOLE-014
-status: draft
+status: in-progress
 created: 2026-07-10
-updated: 2026-07-10
+updated: 2026-07-11
 ---
 
 # Plan — SPEC-WEB-CONSOLE-014 (v0.2.0)

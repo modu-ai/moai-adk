@@ -30,8 +30,11 @@ func TestRouteForSectionTable(t *testing.T) {
 		// 기존 전용 경로.
 		"statusline": RouteStatusline,
 		// 제외군 + 미등재 (research/db는 미등재 → RouteExcluded, 동일 선례).
+		// SPEC-WEB-CONSOLE-014 AC-WC14-051: sunset/tool-policy/mx 명시 RouteExcluded 핀.
 		"state":       RouteExcluded,
+		"sunset":      RouteExcluded,
 		"tool-policy": RouteExcluded,
+		"mx":          RouteExcluded,
 		"interview":   RouteExcluded,
 		"research":    RouteExcluded,
 		"db":          RouteExcluded,

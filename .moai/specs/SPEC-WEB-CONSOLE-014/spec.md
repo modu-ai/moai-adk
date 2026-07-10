@@ -2,9 +2,9 @@
 id: SPEC-WEB-CONSOLE-014
 title: "Web Console — Existing-Section Key Augmentation + Dormant-Config Exposure Guards (Track 3)"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-07-10
-updated: 2026-07-10
+updated: 2026-07-11
 author: manager-spec
 priority: P2
 phase: "v3.0.0"
