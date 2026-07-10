@@ -98,13 +98,16 @@ if [ -f "$state_file" ]; then
     exit 0
 fi
 
-# --- 10. First edit: write state file (0o600, single JSON line), then block ---
+# --- 10. First edit: write state file (0o600, key=value lines — no JSON interpolation) ---
 mkdir -p "$state_dir" 2>/dev/null || exit 0
 ts=$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo '')
 # umask 077 → created file is 0o600 regardless of touch/cat path (REQ-FF-012).
 # `via` records whether the state was seeded by a Read (pre-populate) or a
 # blocked Edit (the original first-edit gate path).
-( umask 077; printf '{"session_id":"%s","path":"%s","first_seen":"%s","via":"%s"}\n' "$session_id" "$file_path" "$ts" "$tool_name" > "$state_file" ) 2>/dev/null || exit 0
+# State file uses plain key=value lines (NOT JSON) so a `"` or `\` in
+# session_id / path / tool_name cannot break the record (the gate only checks
+# file existence via [ -f "$state_file" ], never parses the content).
+( umask 077; printf 'session_id=%s\npath=%s\nfirst_seen=%s\nvia=%s\n' "$session_id" "$file_path" "$ts" "$tool_name" > "$state_file" ) 2>/dev/null || exit 0
 
 # Read mode: fact state pre-populated; allow the read with no block. The next
 # Edit/Write/MultiEdit on this path will skip the gate because the state file

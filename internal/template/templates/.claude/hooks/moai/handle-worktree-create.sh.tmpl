@@ -1,6 +1,13 @@
 #!/bin/bash
 
 MOAI_HOOK_STDERR_LOG="${MOAI_HOOK_STDERR_LOG:-$HOME/.moai/logs/hook-stderr.log}"
+# Allowlist: if MOAI_HOOK_STDERR_LOG is set but does not start with an allowed
+# prefix ($HOME/.moai/logs or $CLAUDE_PROJECT_DIR/.moai/logs), reset to default.
+case "$MOAI_HOOK_STDERR_LOG" in
+    "$HOME/.moai/logs/"*|"${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs/"*) ;;
+    *) MOAI_HOOK_STDERR_LOG="$HOME/.moai/logs/hook-stderr.log" ;;
+esac
+
 mkdir -p "$(dirname "$MOAI_HOOK_STDERR_LOG")" 2>/dev/null || true
 # FAILOPN GUARD - WorktreeCreate is an active-creator event: if the moai binary
 # is unresolvable this wrapper silently exits 0, and per Claude Code's

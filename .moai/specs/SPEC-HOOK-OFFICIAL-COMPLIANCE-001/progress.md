@@ -31,7 +31,7 @@ Plan-phase (draft). Artifacts: spec.md + plan.md + acceptance.md + progress.md (
 | M4 | Timeout headroom (TeammateIdle/TaskCompleted/PreCompact) | Medium | done (AC-019/020) landed 7e641d959 |
 | M5 | Matcher resolution + Go verification (FileChanged/ConfigChange) | Medium | done (AC-021/022) — Go inspection: no settings.json/wrapper change needed |
 | M6 | Fail-open semantics correction (WorktreeCreate/PermissionRequest) | Medium | done (AC-023/024) |
-| M7 | Input hardening (MOAI_HOOK_STDERR_LOG + gateguard escaping) | Low | not-started |
+| M7 | Input hardening (MOAI_HOOK_STDERR_LOG + gateguard escaping) | Low | done (AC-025/026) |
 | M8 | Coverage holes + defects (MultiEdit/csharp/exec-form/compact) | Low | M8a done (AC-027 MultiEdit) landed 7e641d959; M8b-d done (AC-028..030) |
 
 ---
@@ -177,6 +177,28 @@ Three defect fixes (template + live mirrors):
 **E5b — Mirror parity + neutrality:** `go test ./internal/template/... -run 'TestRuleTemplateMirror|TestHookOfficialCompliance|TestInternalContentLeak'` → `ok 0.392s`.
 **Gaps:** AC-029 acceptance grep (`args=|"\{action\}"`) targets the literal placeholder `{action}` (which appears only in the doctrine `agent-hooks.md` pattern, not in concrete agent files that carry real tokens like `develop-pre-implementation`). The grep as-written returns 0 against the 4 concrete agent files; the substantive AC requirement (action token explicitly quoted OR exec form) IS met — verified via the alternative grep `grep -cE '\\"[a-z-]+\\"'` returning 7. Live↔template agent-file body drift is pre-existing and intentional (live carries internal SPEC IDs per dogfood; template is §25-neutrality-scrubbed) — unrelated to this AC; the handle-agent-hook lines themselves are byte-identical between live and template.
 **Residual-risk:** the `grep -q .` refinement on the csharp `find` (added for boolean correctness — bare `find -print -quit` always exits 0) is a behavior fix beyond the literal AC text; it corrects a latent false-positive (csharp detected even when no csproj exists) the original second dead-glob branch would have introduced had its `find` ever been reached. The compact comment fix is comment-only (file not renamed) — the stale `compact.sh` reference in any external docs that mirror this comment is out of scope.
+
+### M7 (LOW) — Input hardening (MOAI_HOOK_STDERR_LOG allowlist + gateguard escaping) — DONE
+
+Two input-hardening fixes:
+
+- **AC-025** — MOAI_HOOK_STDERR_LOG allowlist: all 31 wrapper templates + 31 live mirrors (62 files) now carry a 6-line allowlist `case` block immediately after the default-assignment line and BEFORE the `mkdir -p` that consumes the value. If `MOAI_HOOK_STDERR_LOG` is set but does NOT start with an allowed prefix (`$HOME/.moai/logs/` or `${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs/``), it is reset to the default. This closes the unvalidated-path hazard where a malicious/typo'd value flowed directly into `mkdir -p "$(dirname ...)"`, `mv -f`, and `2>>` redirects. Chose the inline-block option (lower-risk than a sourced common fragment — no new file dependency, no `source` path resolution) and applied identically to all 62 wrappers via an idempotent bulk insert.
+- **AC-026** — `gateguard-fact-force.sh` state-file escaping: the first-edit state-file write (line ~107) switched from raw `%s` interpolation into a `printf '{"session_id":"%s",...}'` JSON template (which a `"` or `\` in session_id/path/tool_name would break) to plain `key=value` lines (`session_id=%s\npath=%s\n...`). The gate's only state-file consumer is `[ -f "$state_file" ]` (existence check) — content is never parsed — so the key=value form is functionally equivalent and removes the escaping hazard entirely. The surrounding comment was updated from "single JSON line" to "key=value lines (no JSON interpolation)".
+
+**E1 — AC PASS/FAIL matrix:**
+
+| AC | Status | Evidence (command → observed) |
+|----|--------|-------------------------------|
+| AC-025 | PASS | `grep -rn 'MOAI_HOOK_STDERR_LOG' internal/template/templates/.claude/hooks/moai/ \| grep -iE 'allowlist\|prefix\|case.*in\|default.*fallback' \| wc -l` → 62 (allowlist `case` block present in all 31 .tmpl + 31 .sh mirrors); 62/62 wrappers `bash -n` clean |
+| AC-026 | PASS | `sed -n '100,115p' gateguard-fact-force.sh` → `printf 'session_id=%s\npath=%s\nfirst_seen=%s\nvia=%s\n'` (key=value form, NOT raw `%s` into `printf '{...}'`); `grep "printf '{.*}\"%s\""` → no match (raw JSON interpolation removed) |
+
+**E2 — Cross-platform build:** `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+**E3 — Coverage:** N/A (no Go source changed; shell edits only).
+**E4 — Subagent boundary:** N/A (hook scripts, not Go subagent domain).
+**E5 — Lint:** `golangci-lint run --timeout=3m` → 0 issues.
+**E5b — Mirror parity + neutrality:** `go test ./internal/template/... -run 'TestRuleTemplateMirror|TestHookOfficialCompliance|TestInternalContentLeak'` → `ok 0.400s`. Live ↔ template parity: handle-stop sample byte-identical (and the bulk insert was applied uniformly to both sides).
+**Gaps:** none — all 62 wrappers + 2 gateguard copies verified by `bash -n` + acceptance greps.
+**Residual-risk:** the allowlist prefix set is `{$HOME/.moai/logs, $CLAUDE_PROJECT_DIR/.moai/logs}` — a user who legitimately sets `MOAI_HOOK_STDERR_LOG` to a path outside these prefixes (e.g. a custom centralized log) will have it silently reset to default. This is the intended trade-off (security over flexibility); such users can `export MOAI_HOOK_STDERR_LOG` from a path under one of the allowed prefixes, or the prefix set can be widened in a follow-up if a real use case emerges.
 
 ### Path-discrepancy finding (acceptance.md staleness — for manager-spec follow-up)
 
