@@ -43,9 +43,10 @@ Exit codes:
 3 = invalid arguments`,
 		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// validate arguments
+			// validate arguments. Invalid argument combination exits 3 per
+			// REQ-CONT-001-005 (SPEC-CLIFIX-CONTRACT-001 M2).
 			if jsonOutput && sarifOutput {
-				return fmt.Errorf("cannot use --json and --sarif together")
+				return &exitCodeError{code: 3, msg: "cannot use --json and --sarif together"}
 			}
 
 			// Determine BaseDir: prioritize .moai/specs/ in current working directory

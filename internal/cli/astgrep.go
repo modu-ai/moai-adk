@@ -103,18 +103,25 @@ func runAstGrep(cmd *cobra.Command, flags *astGrepFlags, path string) error {
 		findings = filterBySeverity(findings, flags.severity)
 	}
 
-	// Output results in the selected format.
+	// Output results in the selected format. None of the branches early-returns
+	// so the HasErrors exit-code check below runs for every format.
 	switch strings.ToLower(flags.format) {
 	case "json":
-		return outputJSON(cmd, findings)
+		if err := outputJSON(cmd, findings); err != nil {
+			return err
+		}
 	case "sarif":
-		return outputSARIF(cmd, findings)
+		if err := outputSARIF(cmd, findings); err != nil {
+			return err
+		}
 	default: // "text"
 		outputText(cmd, findings)
 	}
 
-	// exit code 1 when error-severity findings are found (AC4). Returned as an
-	// ExitCoder so main.go maps exit 1 and defers run (SPEC-CLIFIX-CONTRACT-001 M1).
+	// exit code 1 when error-severity findings are found (AC4). Evaluated
+	// independently of the output-format branch so json/sarif also exit 1
+	// (SPEC-CLIFIX-CONTRACT-001 M2 / REQ-CONT-001-004). Returned as an ExitCoder
+	// so main.go maps exit 1 and defers run.
 	if astgrep.HasErrors(findings) {
 		return &exitCodeError{code: 1, msg: "ast-grep: error-severity findings detected"}
 	}

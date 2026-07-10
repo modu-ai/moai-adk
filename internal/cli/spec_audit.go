@@ -94,8 +94,8 @@ JSON output schema (--json):
 
 Exit codes:
   0 = success (audit completed; findings emitted)
-  1 = strict mode + MUST-FIX drift findings detected
-  2 = audit engine error (invalid spec directory, IO failure)`,
+  2 = strict mode + MUST-FIX drift findings detected (system-error class)
+  1 = audit engine error (invalid spec directory, IO failure)`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts := spec.AuditOptions{
 				BaseDir:              baseDir,
@@ -124,7 +124,7 @@ Exit codes:
 	cmd.Flags().BoolVar(&includeGrandfathered, "include-grandfathered", false,
 		"Surface pre-V3R6 SPECs as INFO findings (otherwise excluded)")
 	cmd.Flags().BoolVar(&strict, "strict", false,
-		"Exit code 1 when any MUST-FIX drift finding exists")
+		"Exit code 2 when any MUST-FIX drift finding exists")
 	cmd.Flags().StringVar(&baseDir, "base-dir", "",
 		"Project root directory (default: current working directory)")
 
@@ -149,12 +149,15 @@ func renderAuditResult(cmd *cobra.Command, result *spec.AuditResult, jsonOutput,
 		renderAuditHuman(out, result)
 	}
 
-	// Strict mode: exit 1 if any MUST-FIX drift finding is present.
+	// Strict mode: exit 2 if any MUST-FIX drift finding is present.
+	// REQ-CONT-001-005 (SPEC-CLIFIX-CONTRACT-001 M2) — MUST-FIX drift is a
+	// system-error-class verdict (exit 2), distinct from user-actionable exit 1.
 	if strict {
 		for _, f := range result.DriftFindings {
 			if f.Severity == "MUST-FIX" {
-				return fmt.Errorf("strict mode: %d MUST-FIX drift finding(s) detected",
-					countMustFix(result.DriftFindings))
+				return &exitCodeError{code: 2, msg: fmt.Sprintf(
+					"strict mode: %d MUST-FIX drift finding(s) detected",
+					countMustFix(result.DriftFindings))}
 			}
 		}
 	}
