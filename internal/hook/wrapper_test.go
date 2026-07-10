@@ -368,20 +368,56 @@ exit 0
 	}
 }
 
-// TestHookWrapper_TempFileCleanup verifies temp files are cleaned up.
+// TestHookWrapper_TempFileCleanup verifies the wrapper's EXIT trap removes the
+// temp file it creates via mktemp. It uses a test-owned sandbox directory so the
+// assertion is deterministic: only this wrapper can write into the sandbox, so
+// any leftover tmp.* file after a single invocation is a genuine leak.
+//
+// This replaces the prior approach of sampling the global system temp dir, which
+// was unsound on this host (~850k stale tmp.* files made the glob stall 6-7s) and
+// racy under parallel sibling load (sibling wrapper tests' not-yet-trapped mktemp
+// files landed in the same global dir and were counted in the after-snapshot,
+// crossing the old "diff <= 10" threshold ~1/3 of runs).
 func TestHookWrapper_TempFileCleanup(t *testing.T) {
 	skipOnWindows(t)
 	t.Parallel()
 
 	tempDir := t.TempDir()
 	wrapperPath := filepath.Join(tempDir, "test-hook.sh")
-	createTestWrapper(t, wrapperPath)
 
-	// Count temp files before execution
-	tempFilePattern := filepath.Join(os.TempDir(), "tmp.*")
-	beforeFiles, err := filepath.Glob(tempFilePattern)
-	if err != nil {
-		t.Fatalf("failed to list temp files before: %v", err)
+	// Test-owned sandbox: empty, auto-cleaned by the test framework. Only this
+	// wrapper can write into it, so the leftover count is a deterministic signal.
+	sandbox := t.TempDir()
+
+	// Inline the wrapper script (mirroring createTestWrapper) but root the mktemp
+	// template at the sandbox. macOS mktemp ignores TMPDIR (it uses confstr
+	// _CS_DARWIN_USER_TEMP_DIR), so an explicit absolute-path template is required
+	// to direct the file into the sandbox rather than the global temp dir.
+	wrapperScript := `#!/bin/bash
+temp_file=$(mktemp "` + filepath.ToSlash(sandbox) + `/tmp.XXXXXX")
+trap 'rm -f "$temp_file"' EXIT
+
+MAX_SIZE=1048576
+head -c "$MAX_SIZE" > "$temp_file"
+
+if [ ! -s "$temp_file" ]; then
+    exit 0
+fi
+
+# Try PATH moai
+if command -v moai &> /dev/null; then
+    exec moai hook config-change < "$temp_file" 2>/dev/null
+fi
+
+# Try fallback
+if [ -f "$HOME/go/bin/moai" ]; then
+    exec "$HOME/go/bin/moai" hook config-change < "$temp_file" 2>/dev/null
+fi
+
+exit 0
+`
+	if err := os.WriteFile(wrapperPath, []byte(wrapperScript), 0o755); err != nil {
+		t.Fatalf("failed to create test wrapper: %v", err)
 	}
 
 	validInput := `{"session_id":"test-cleanup","hook_event_name":"SessionStart"}`
@@ -392,31 +428,44 @@ func TestHookWrapper_TempFileCleanup(t *testing.T) {
 	cmd := exec.CommandContext(ctx, "bash", wrapperPath)
 	cmd.Dir = tempDir
 
+	// Control the environment so the wrapper takes its `exit 0` cleanup path
+	// rather than the `exec moai` path. A bash EXIT trap fires on plain exit
+	// (verified) but is bypassed by `exec` (the shell is replaced, so the trap
+	// never runs). The wrapper reaches `exec moai` whenever moai is discoverable
+	// — via PATH (`command -v moai`) or the `$HOME/go/bin/moai` fallback — which
+	// on a dev machine with `~/go/bin/moai` installed would deterministically
+	// leak the temp file. Routing PATH away from the go bin dir and pointing
+	// HOME at tempDir (no go/bin/moai there) makes the wrapper fall through to
+	// `exit 0`, exercising the EXIT trap — which is the cleanup mechanism under
+	// test. This is test-side only; the wrapper script semantics are unchanged.
+	cmd.Env = []string{
+		"PATH=/usr/bin:/bin",
+		"HOME=" + tempDir,
+	}
+
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
 	cmd.Stdin = bytes.NewReader([]byte(validInput))
 
+	// cmd.Run waits for the synchronous EXIT trap, so the temp file is removed
+	// before Run returns — no fixed sleep is needed (the wrapper's cleanup is
+	// event-synchronous, not async).
 	if err := cmd.Run(); err != nil {
 		t.Logf("cleanup test exited: %v", err)
 	}
 
-	// Count temp files after execution (with small delay for async cleanup)
-	time.Sleep(100 * time.Millisecond)
-	afterFiles, err := filepath.Glob(tempFilePattern)
+	// Deterministic assertion: exactly 0 leftover files in the sandbox. This is
+	// strictly stronger than the prior "diff <= 10" threshold — it catches a
+	// single leak — and has no time dependency.
+	leftover, err := filepath.Glob(filepath.Join(sandbox, "tmp.*"))
 	if err != nil {
-		t.Fatalf("failed to list temp files after: %v", err)
+		t.Fatalf("failed to list sandbox: %v", err)
 	}
-
-	// Temp file count should not increase dramatically
-	// Allow up to 10 new temp files (system processes create temp files too)
-	diff := len(afterFiles) - len(beforeFiles)
-	if diff > 10 {
-		t.Errorf("potential temp file leak detected: %d more temp files after execution", diff)
+	if len(leftover) != 0 {
+		t.Errorf("temp file leak: wrapper left %d file(s): %v", len(leftover), leftover)
 	}
-
-	t.Logf("temp file change: %d before, %d after (diff: %d)", len(beforeFiles), len(afterFiles), diff)
 }
 
 // TestHookWrapper_SignalHandling verifies wrapper handles signals gracefully.
