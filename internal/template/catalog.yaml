@@ -97,17 +97,17 @@ catalog:
             - name: sync-auditor
               tier: core
               path: templates/.claude/agents/moai/sync-auditor.md
-              hash: 5b9b61703042716d1860403b06445d663cfb2720551d2d593cdd78c7add25ad8
+              hash: 3afc62b180b6777bb039087ca5917641a5e676e0c99f98fa88d95557caf5cd8c
               version: 1.0.0
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/moai/manager-develop.md
-              hash: e3b77d235f7926f17fc20d2d6862e92afc529b8affe445af10662bf9f457ec04
+              hash: 5a7e05435c65d1c78c093556f4da6eafe007ad5c39029f3523d3a331db34385a
               version: 1.0.0
             - name: manager-docs
               tier: core
               path: templates/.claude/agents/moai/manager-docs.md
-              hash: a18f2093c390be4271c8bb80c2fd66a68dc935226bd11e559403db00cc5fa51b
+              hash: b41bb61bcf7471bc5cc0432d36664aee163fadb4d0c72af823cd5dd547fab64c
               version: 1.0.0
             - name: manager-git
               tier: core
@@ -117,7 +117,7 @@ catalog:
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/moai/manager-spec.md
-              hash: a29e86f1278a85f39139b19f7b47861bb5838ca0c0af4ea93e079f244377ab56
+              hash: b25756151e45a9899f4ad75f1d561afceaac16bad7a775ad60cc3ce5690afea5
               version: 1.0.0
             - name: plan-auditor
               tier: core
