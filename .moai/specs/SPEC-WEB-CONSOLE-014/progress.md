@@ -127,4 +127,19 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-11
+sync_commit_sha: pending-backfill-014   # this commit cannot cite its own SHA; backfilled in the follow-up commit
+sync_status: PASS
+changelog_entry_position: "### Changed section, immediately after SPEC-WEB-CONSOLE-013 entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  plan_md: "in-progress -> completed"
+  acceptance_md: "in-progress -> completed"
+readme_check: "grep -i 'web console' README.md -> 0 matches; no update required (consistent with 012/013 precedent)"
+out_of_scope_debt_confirmed:
+  - "scripts/i18n-validator TestBudget_FullRepoScanWithin35Sec (load-sensitive, 30.5s isolated vs 35s budget; not touched by this SPEC)"
+  - "internal/hook TestHookWrapper_TempFileCleanup (load-sensitive; not touched by this SPEC)"
+  - "internal/web package coverage 70.8% — pre-existing render-path baseline, not a regression"
+lint_status: "golangci-lint 0 issues; go vet clean; touched-package tests green"
+```
