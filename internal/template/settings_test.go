@@ -451,13 +451,23 @@ func TestSettingsTemplateNewHookStructure(t *testing.T) {
 				t.Errorf("%q: command %q does not contain expected script name %q", ne.event, command, ne.scriptName)
 			}
 
-			// Verify timeout is 5 (number)
+			// Verify timeout. SPEC-HOOK-OFFICIAL-COMPLIANCE-001 M4 (REQ-HOC-010)
+			// raised TeammateIdle/TaskCompleted from 5s to 60s toward the sync-gate
+			// 60s precedent; the remaining events stay at the 5s default.
+			expectedTimeout := map[string]float64{
+				"TeammateIdle":  60,
+				"TaskCompleted": 60,
+			}
+			want, hasCustom := expectedTimeout[ne.event]
+			if !hasCustom {
+				want = 5
+			}
 			timeout, ok := hookEntry["timeout"]
 			if !ok {
 				t.Fatalf("%q: missing 'timeout' field", ne.event)
 			}
-			if timeout != float64(5) {
-				t.Errorf("%q: timeout = %v, want 5", ne.event, timeout)
+			if timeout != float64(want) {
+				t.Errorf("%q: timeout = %v, want %v", ne.event, timeout, want)
 			}
 
 			// Verify type is "command"
