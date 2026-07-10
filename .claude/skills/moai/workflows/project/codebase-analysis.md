@@ -45,7 +45,26 @@ Purpose: After codebase analysis, gather user intent and context that cannot be 
 [HARD] All questions MUST use AskUserQuestion in user's conversation_language.
 [HARD] During the interview, the agent MUST NOT generate documentation or write files. The sole output is `.moai/project/interview.md`.
 
-**Interview Rounds (3 rounds maximum, configured in `.moai/config/sections/interview.yaml`):**
+**Adaptive Clarity-Scored Interview (mirrors `plan/clarity-interview.md`):**
+
+The interview is clarity-driven, NOT fixed-length. It scores accumulated answer
+clarity on a 0-10 scale and adapts the round count, reusing the adaptive mechanism
+defined in `.claude/skills/moai/workflows/plan/clarity-interview.md` (the SAME 0-10
+scale semantics — do NOT invent a divergent rubric):
+
+- **Entry floor**: `clarity_threshold` (4, from `.moai/config/sections/interview.yaml`)
+  is the interview ENTRY floor — the clarity band at/above which the interview runs.
+  It is NOT the early-exit target.
+- **Additional rounds**: while the accumulated clarity score is below the sufficiency
+  target (≥ 8) and above the abandon floor (≤ 3), run one or more additional rounds,
+  up to `project.max_rounds` (3, from `interview.yaml`).
+- **Early exit (sufficiency)**: when the accumulated clarity score reaches the
+  sufficiency target (≥ 8) before `max_rounds` rounds have run, terminate the
+  interview early (skip the remaining rounds) and proceed to documentation generation.
+- **Abandon**: if the accumulated clarity score drops to ≤ 3 (the answers add no
+  useful information), end the loop early and proceed with the best-available answers.
+- Re-evaluate the clarity score after each round and display the round counter:
+  "Interview round {N}/{max_rounds}".
 
 **Round 1: Ownership and Purpose**
 
@@ -77,6 +96,15 @@ Present via AskUserQuestion with exactly 4 options:
 - Option 3: Core business logic and data flow: Prioritize documenting what the system does and how data moves through it.
 - Option 4: Type your own answer: Specify what should be documented with highest fidelity.
 
+**Round 4: Verification, Surfaces, and Sharing (extended axes)**
+
+Topic: How is the project verified, what does it surface, what does it integrate with, and who runs it? Elicit these four axes (later recorded into `harness-spec.yaml` — see `doc-generation.md`). For existing projects, PRE-FILL each axis from the Phase 1 codebase analysis where it can be inferred (e.g., detected test command → `verification`; a detected web framework → `has-ui`; detected DB/API dependencies → `external_systems`); an axis confidently inferred from analysis counts as answered and is NOT re-asked. Present each remaining (un-inferred or ambiguous) axis as a separate AskUserQuestion with up to 4 options:
+
+- **Verification method** — the test / e2e command or verification method (e.g., `go test ./...`, `pytest`, an e2e suite, or "manual verification"). Recorded as the `verification` field.
+- **UI surface** — whether the project has a user-facing UI or is headless: `has-ui` (web / desktop / mobile front-end) vs `headless` (CLI / API / library / service). Recorded as the `ui_surface` field.
+- **External systems** — the databases, APIs, or services the project integrates with (e.g., PostgreSQL, Redis, a payment API, an external microservice), or "none". Recorded as the `external_systems` field.
+- **Team-sharing intent** — whether the project is `solo` (single maintainer) or `team-shared` (multiple contributors). Recorded as the `team_sharing` field.
+
 **Output:** Write all answers to `.moai/project/interview.md` with this structure:
 
 ```
@@ -93,6 +121,12 @@ Answer: {user's answer}
 ## Round 3: Documentation Priority
 Question: {question asked}
 Answer: {user's answer}
+
+## Round 4: Verification, Surfaces, and Sharing
+Verification: {verification method / test command}
+UI surface: {has-ui | headless}
+External systems: {list, or none}
+Team sharing: {solo | team-shared}
 ```
 
 Pass `interview.md` to Phase 2 (User Confirmation) and Phase 3 (Documentation Generation) as additional context. Documentation agents MUST read interview.md before generating files.

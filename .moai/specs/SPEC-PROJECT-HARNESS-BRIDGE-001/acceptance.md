@@ -170,14 +170,22 @@ pre-satisfy / re-ask-only-absent language (REQ-PHB-009 no-duplicate).
 ### AC-PHB-010 (REQ-PHB-010) — NO-SPEC scope guard
 
 ```bash
-grep -rn "\.moai/specs/" .claude/skills/moai/workflows/project/mode-detection.md \
+# (a) NO-SPEC guard prose PRESERVED (must still exist — do NOT delete to satisfy a grep)
+grep -cE "MUST NOT.*\.moai/specs|Never write to.*\.moai/specs" \
+  .claude/skills/moai/workflows/project/mode-detection.md   # expect >= 1 (guard prose intact)
+# (b) no NEW write path targeting .moai/specs/ (exclude the guard prose itself)
+grep -rnE "\.moai/specs/" \
+  .claude/skills/moai/workflows/project/mode-detection.md \
   .claude/skills/moai/workflows/project/codebase-analysis.md \
-  .claude/skills/moai/workflows/project/doc-generation.md | wc -l   # expect 0 (no specs write path in interview/harness-spec sections)
-grep -c "\.moai/project/" .claude/skills/moai/workflows/project/doc-generation.md   # expect >= 1 (harness-spec.yaml lives under project/)
+  .claude/skills/moai/workflows/project/doc-generation.md \
+  | grep -viE "MUST NOT|Never write|forbidden|guard|scope guard|NO-SPEC" | wc -l   # expect 0 (no new .moai/specs write path)
+# (c) harness-spec.yaml lives under .moai/project/
+grep -c "\.moai/project/" .claude/skills/moai/workflows/project/doc-generation.md   # expect >= 1
 ```
 
-Expected: 0 `.moai/specs/` references in the interview + harness-spec sections;
-the artifact path is `.moai/project/`.
+Expected: the NO-SPEC guard prose is PRESERVED (>= 1 — the guard is never
+deleted to satisfy a grep); no NEW `.moai/specs/` write path is introduced
+(0 after excluding the guard prose itself); the artifact path is `.moai/project/`.
 
 ### AC-PHB-011 (REQ-PHB-011) — template↔local byte-parity
 

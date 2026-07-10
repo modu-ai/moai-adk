@@ -65,6 +65,8 @@ Apply CLAUDE.md §7 Rule 5 (Context-First Discovery). The orchestrator extracts 
 
 Emit the preliminary profile as a structured block BEFORE the Socratic round so the user can see what was extracted and correct it.
 
+**Consume `harness-spec.yaml` when present (pre-satisfaction).** When this workflow was reached via `/moai project` Phase 5.1 — or whenever `.moai/project/harness-spec.yaml` exists — the orchestrator FIRST loads that machine-readable artifact (written by `project/doc-generation.md` Phase 3.2) and uses its recorded fields to PRE-SATISFY the domain / goal / constraints / scope profile above. A field carrying a single concrete value in `harness-spec.yaml` is already-answered and MUST NOT be re-asked. Context-First Discovery re-asks ONLY fields that are absent or ambiguous in `harness-spec.yaml` (empty, null, a placeholder token such as `<string>` / `TODO` / `TBD`, or multi-valued without a single resolution) — it does not re-interview an already-answered field. The four extended axes recorded in `harness-spec.yaml` (`verification` / `external_systems` / `ui_surface` / `team_sharing`) likewise carry forward as additional pre-satisfied context.
+
 ### Phase 1.5: AskUserQuestion Socratic Rounds (when clarity < 100%)
 
 If the extracted profile has ANY ambiguous field (domain too vague, goal unstated, constraints unenumerated, scope unclear), conduct AskUserQuestion Socratic rounds per `.claude/rules/moai/core/askuser-protocol.md`:

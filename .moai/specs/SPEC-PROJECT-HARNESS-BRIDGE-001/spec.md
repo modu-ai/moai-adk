@@ -2,7 +2,7 @@
 id: SPEC-PROJECT-HARNESS-BRIDGE-001
 title: "Project interview clarity-scoring + harness-spec.yaml bridge to harness generation"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-07-11
 updated: 2026-07-11
 author: manager-spec

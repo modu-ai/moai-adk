@@ -7,6 +7,20 @@ interview:
   project:
     max_rounds: 3
     questions_per_round: 3
+    # Extended interview axes for the project flow (Phase 0.3 / Phase 1.5).
+    # Recorded into .moai/project/harness-spec.yaml by doc-generation.md and
+    # consumed by harness generation (meta-harness.md, harness-build-entry.md).
+    additional_axes:
+      - name: verification
+        description: "Test / e2e command or verification method"
+      - name: ui_surface
+        description: "UI surface (has-ui | headless)"
+        values: [has-ui, headless]
+      - name: external_systems
+        description: "Databases / APIs / services the project integrates with"
+      - name: team_sharing
+        description: "Team-sharing intent (solo | team-shared)"
+        values: [solo, team-shared]
   skip_conditions:
     - resume_spec_id_present
     - skip_interview_flag

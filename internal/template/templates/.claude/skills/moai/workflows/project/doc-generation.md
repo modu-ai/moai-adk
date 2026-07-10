@@ -81,6 +81,36 @@ On FAIL:
 
 ---
 
+## Phase 3.2: harness-spec.yaml Emission
+
+Purpose: Emit a machine-readable `.moai/project/harness-spec.yaml` artifact that carries the interview's structured answers forward into harness generation, so `project/meta-harness.md` Phase 5.1 and `harness-build-entry.md` Phase 1 consume the recorded intent instead of re-eliciting it.
+
+[HARD] This phase runs automatically after Phase 3 documentation generation, without user interaction. It READS the answers recorded in `.moai/project/interview.md` (written by the Phase 0.3 / Phase 1.5 interview) and maps them onto the 8-field schema below — it does NOT re-interview the user.
+
+[HARD] Write the artifact to the project directory `.moai/project/harness-spec.yaml`. Re-run semantics: OVERWRITE — a second `/moai project` invocation regenerates it from the latest interview answers, matching the existing `interview.md` regeneration behavior (no merge / skip-if-present).
+
+[HARD] The artifact MUST NOT be written anywhere under `.moai/specs/` — the `/moai project` NO-SPEC scope guard applies to this artifact too.
+
+Schema (8 fields — populated from `.moai/project/interview.md` answers):
+
+```yaml
+# .moai/project/harness-spec.yaml — machine-readable harness generation input
+domain: <string>              # primary problem domain (from the vision / domain answer)
+goal: <string>                # one-line project goal / success condition (from the vision / goal answer)
+constraints: [<string>, ...]  # hard constraints (from the constraints / non-goals answer)
+scope: <string>               # in-scope / out-of-scope boundary summary (from the scope answer)
+verification: <string>        # test / e2e command or verification method (from the Round 4 verification axis)
+external_systems: [<string>, ...]  # DB / APIs / services (from the Round 4 external-systems axis)
+ui_surface: <enum>            # has-ui | headless (from the Round 4 UI-surface axis)
+team_sharing: <enum>          # solo | team-shared (from the Round 4 team-sharing axis)
+```
+
+Field mapping from `interview.md`: the vision / goal answer → `goal`; the domain / problem answer → `domain`; the scope answer → `scope`; the constraints answer → `constraints`; and the four Round 4 axes → `verification` / `external_systems` / `ui_surface` / `team_sharing` respectively. A field the interview did not resolve is written as an explicit empty / null value (or omitted) so downstream consumers treat it as ABSENT (eligible for re-ask).
+
+The existing `.moai/project/interview.md` human-readable output is preserved unchanged; `harness-spec.yaml` is an additive machine-readable sibling, not a replacement.
+
+---
+
 ## Phase 3.3: Codemaps Generation
 
 Purpose: Generate architecture documentation in `.moai/project/codemaps/` directory based on codebase analysis results from Phase 1.
@@ -340,6 +370,7 @@ When `detected_db` is false, present the original three options plus the harness
 - Phase 1: Explore subagent (codebase analysis)
 - Phase 3: manager-docs subagent (documentation generation)
 - Phase 3.1: plan-auditor subagent (independent document audit, conditional)
+- Phase 3.2: MoAI orchestrator (harness-spec.yaml emission from interview.md answers, no user interaction)
 - Phase 3.3: Explore + manager-docs subagents (codemaps generation via codemaps workflow)
 - Phase 3.5: per-spawn `Agent(general-purpose)` devops specialist (optional LSP installation)
 - Phase 3.7: MoAI orchestrator (automatic development_mode configuration, no user interaction)

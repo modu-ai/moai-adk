@@ -17,7 +17,7 @@ Purpose: when the completion flow (Phase 4.2) offers project-specific harness ge
 
 ### 5.1 Entry — Hand off to the v4 Builder entry workflow
 
-Compose a natural-language harness-creation request from the completed project documentation (`product.md` / `structure.md` / `tech.md`) plus the user's stated intent from Phase 4.2, then hand off to `${CLAUDE_SKILL_DIR}/workflows/harness-build-entry.md` (the same entry point the `/moai:harness <request>` invocation uses). That workflow runs its own Context-First Discovery, harness `<name>` derivation, and orchestrator-issued approval gate — none of which are duplicated here.
+Compose a natural-language harness-creation request from `.moai/project/harness-spec.yaml` (the machine-readable interview output written by `project/doc-generation.md` Phase 3.2) together with the completed project documentation (`product.md` / `structure.md` / `tech.md`) and the user's stated intent from Phase 4.2, then hand off to `${CLAUDE_SKILL_DIR}/workflows/harness-build-entry.md` (the same entry point the `/moai:harness <request>` invocation uses). Carrying `harness-spec.yaml` forward means the interview data is no longer discarded — its recorded `domain` / `goal` / `constraints` / `scope` (plus the extended `verification` / `external_systems` / `ui_surface` / `team_sharing` axes) reach harness generation as pre-satisfied context. That workflow runs its own Context-First Discovery, harness `<name>` derivation, and orchestrator-issued approval gate — none of which are duplicated here.
 
 ### 5.2 Generation — Orchestrator-direct Builder
 

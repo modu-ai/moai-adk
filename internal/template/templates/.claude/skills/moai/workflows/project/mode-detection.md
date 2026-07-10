@@ -93,7 +93,26 @@ Purpose: Replace the static four-question sequence with a structured deep interv
 [HARD] All questions MUST use AskUserQuestion in user's conversation_language.
 [HARD] During the interview, the agent MUST NOT write implementation code or generate documentation. The sole output is `.moai/project/interview.md`.
 
-**Interview Rounds (3 rounds maximum, configured in `.moai/config/sections/interview.yaml`):**
+**Adaptive Clarity-Scored Interview (mirrors `plan/clarity-interview.md`):**
+
+The interview is clarity-driven, NOT fixed-length. It scores accumulated answer
+clarity on a 0-10 scale and adapts the round count, reusing the adaptive mechanism
+defined in `.claude/skills/moai/workflows/plan/clarity-interview.md` (the SAME 0-10
+scale semantics — do NOT invent a divergent rubric):
+
+- **Entry floor**: `clarity_threshold` (4, from `.moai/config/sections/interview.yaml`)
+  is the interview ENTRY floor — the clarity band at/above which the interview runs.
+  It is NOT the early-exit target.
+- **Additional rounds**: while the accumulated clarity score is below the sufficiency
+  target (≥ 8) and above the abandon floor (≤ 3), run one or more additional rounds,
+  up to `project.max_rounds` (3, from `interview.yaml`).
+- **Early exit (sufficiency)**: when the accumulated clarity score reaches the
+  sufficiency target (≥ 8) before `max_rounds` rounds have run, terminate the
+  interview early (skip the remaining rounds) and proceed to documentation generation.
+- **Abandon**: if the accumulated clarity score drops to ≤ 3 (the answers add no
+  useful information), end the loop early and proceed with the best-available answers.
+- Re-evaluate the clarity score after each round and display the round counter:
+  "Interview round {N}/{max_rounds}".
 
 **Round 1: Vision**
 
@@ -125,6 +144,15 @@ Present via AskUserQuestion with exactly 4 options based on the vision and techn
 - Option 3: Real-time collaboration features: WebSocket or SSE for live updates, shared state.
 - Option 4: Type your own answer: Describe the exact features and what is explicitly out of scope.
 
+**Round 4: Verification, Surfaces, and Sharing (extended axes)**
+
+Topic: How is the project verified, what does it surface, what does it integrate with, and who runs it? Elicit these four axes (later recorded into `harness-spec.yaml` — see `doc-generation.md`). Present each as a separate AskUserQuestion with up to 4 options:
+
+- **Verification method** — the test / e2e command or verification method (e.g., `go test ./...`, `pytest`, an e2e suite, or "manual verification"). Recorded as the `verification` field.
+- **UI surface** — whether the project has a user-facing UI or is headless: `has-ui` (web / desktop / mobile front-end) vs `headless` (CLI / API / library / service). Recorded as the `ui_surface` field.
+- **External systems** — the databases, APIs, or services the project integrates with (e.g., PostgreSQL, Redis, a payment API, an external microservice), or "none". Recorded as the `external_systems` field.
+- **Team-sharing intent** — whether the project is `solo` (single maintainer) or `team-shared` (multiple contributors). Recorded as the `team_sharing` field.
+
 **Output:** Write all answers to `.moai/project/interview.md` with this structure:
 
 ```
@@ -141,6 +169,12 @@ Answer: {user's answer}
 ## Round 3: Scope
 Question: {question asked}
 Answer: {user's answer}
+
+## Round 4: Verification, Surfaces, and Sharing
+Verification: {verification method / test command}
+UI surface: {has-ui | headless}
+External systems: {list, or none}
+Team sharing: {solo | team-shared}
 ```
 
 After the interview, use the gathered information to generate documentation and proceed to Phase 3 (skip Phase 1 and Phase 2 since there is no existing code to analyze). Pass `interview.md` to Phase 3 as the primary input for documentation generation.
