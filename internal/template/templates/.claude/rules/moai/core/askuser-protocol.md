@@ -281,6 +281,14 @@ Note how each option's `preview` uses the same key set (`Tier`/`Scope`/`Files`/`
 
 [ZONE:Evolvable] [HARD] A decision-type `AskUserQuestion` whose options derive from investigation results MUST be preceded — in the same turn's response body — by a substantive findings report. Investigation results include: `Agent()` fan-out returns (multi-lens analysis, audits, scans), verification batches, and any multi-source evidence gathering the orchestrator performed before composing the question. Asking the user to choose among options they were never given the evidence to evaluate is a gate violation, even when the AskUserQuestion call itself is structurally compliant (labels, descriptions, previews, `(권장)` placement).
 
+### Requested-Deliverable Primacy (user requirement analysis first)
+
+[ZONE:Evolvable] [HARD] When the user's latest message explicitly requests a report, analysis, or explanation ("report on X", "explain why", "analyze this first"), that requested deliverable IS the turn's terminal output: the orchestrator MUST complete the report as a standalone response and end the turn WITHOUT appending a decision-type `AskUserQuestion` to the same turn. Pipeline-stage needs (clarification resolution, scope selection, audit-gate unblocking, next-step routing) NEVER override or preempt the user's stated information request — a pipeline question is the orchestrator's concern, not the user's, and it waits until the user has read the report and given direction.
+
+- **Requirement analysis before question composition**: before composing any `AskUserQuestion`, re-read the user's latest message and identify the requested deliverable. If the message asks for information, deliver the information and stop; ask only when the message asks for — or clearly requires — a decision.
+- **No question-as-epilogue**: appending a scope / next-step question to the end of a requested report demotes the report to a preamble and pressures an immediate decision. Deliver the report; let the user respond.
+- **Deferred pipeline questions**: pending workflow questions (unresolved clarification markers, scope choices) are surfaced in a LATER turn — after the user reacts to the report, or when the user explicitly says to proceed.
+
 ### Report Completeness Criteria (all mandatory)
 
 1. **Per-source coverage**: the report names each investigation source (agent, lens, audit dimension) and states its key findings with quantification (N findings, severity/classification breakdown). A single-line completion claim ("investigation complete", or its equivalent in any locale) is NOT a report.
@@ -302,8 +310,9 @@ Note how each option's `preview` uses the same key set (`Tier`/`Scope`/`Files`/`
 3. Blocker re-delegation rounds where the subagent's blocker report was already surfaced
 4. Preference questions with no investigative basis (naming, formatting choices)
 
-### Pre-emit self-check (report-before-ask) — 4 items
+### Pre-emit self-check (report-before-ask) — 5 items
 
+- [ ] Does the user's latest message request a report / analysis / explanation rather than a decision? If yes, this turn ends with the report — defer this AskUserQuestion to a later turn.
 - [ ] Do this question's options derive from investigation results? If yes, does a substantive report precede this call in the same turn?
 - [ ] Is every codename / identifier appearing in the options explained in the preceding report?
 - [ ] Do the findings live in the response body (not only inside option previews)?
