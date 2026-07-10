@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/modu-ai/moai-adk/internal/lockfile"
 )
 
 // readSettingsMap reads .claude/settings.local.json as a generic map, preserving
@@ -73,10 +75,10 @@ func mutateSettingsLocal(path string, mutate func(map[string]any)) error {
 	}
 	defer func() { _ = lockF.Close() }()
 
-	if err := lockFile(lockF); err != nil {
+	if err := lockfile.Lock(lockF); err != nil {
 		return fmt.Errorf("acquire settings lock: %w", err)
 	}
-	defer func() { _ = unlockFile(lockF) }()
+	defer func() { _ = lockfile.Unlock(lockF) }()
 
 	m, err := readSettingsMap(path)
 	if err != nil {

@@ -18,6 +18,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/taskledger"
 )
 
 // --- helpers ---
@@ -101,7 +103,9 @@ func TestClaimTaskAppend_Repro(t *testing.T) {
 	original := header + taskLine
 	mustWriteFile(t, tasklistPath, original)
 
-	if err := ClaimTask(tmp, teamID, "teammate-1", "TASK-001"); err != nil {
+	// Re-pointed to the migrated home (SPEC-AGENT-TEAM-RETIRE-001 REQ-ATR-002):
+	// the P0 O_APPEND regression guard now binds internal/cli/taskledger.ClaimTask.
+	if err := taskledger.ClaimTask(tmp, teamID, "teammate-1", "TASK-001"); err != nil {
 		t.Fatalf("ClaimTask: %v", err)
 	}
 

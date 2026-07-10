@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/cli/taskledger"
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
@@ -42,15 +42,10 @@ type MailboxMessage struct {
 	Payload   map[string]any `yaml:"payload"`    // optional structured payload
 }
 
-// TeamTaskEntry represents a single task in the team task ledger.
-type TeamTaskEntry struct {
-	TaskID    string `yaml:"task_id"`
-	Subject   string `yaml:"subject"`
-	Status    string `yaml:"status"` // pending|claimed|completed|blocked
-	ClaimedBy string `yaml:"claimed_by"`
-	BlockedBy string `yaml:"blocked_by,omitempty"`
-	Timestamp string `yaml:"timestamp"`
-}
+// TeamTaskEntry is a thin alias for the migrated taskledger.TeamTaskEntry
+// (SPEC-AGENT-TEAM-RETIRE-001 M0 — kept so M0 lands green without deletion;
+// removed with this file in M1).
+type TeamTaskEntry = taskledger.TeamTaskEntry
 
 // RoleProfile represents a validated role profile from workflow.yaml.
 type RoleProfile struct {
@@ -282,109 +277,17 @@ Format:
 	return nil
 }
 
-// AppendTask appends a task entry to tasklist.md (REQ-003).
-// Enforces append-only: no modifications or deletes allowed (REQ-013).
+// AppendTask delegates to the migrated taskledger.AppendTask
+// (SPEC-AGENT-TEAM-RETIRE-001 M0 thin alias).
 func AppendTask(stateDir, teamID string, entry TeamTaskEntry) error {
-	teamDir := filepath.Join(stateDir, "team", teamID)
-	tasklistPath := filepath.Join(teamDir, "tasklist.md")
-
-	// Open file in append mode
-	f, err := os.OpenFile(tasklistPath, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("open tasklist: %w", err)
-	}
-	defer func() { _ = f.Close() }()
-
-	// Format entry as markdown
-	blockedBy := ""
-	if entry.BlockedBy != "" {
-		blockedBy = fmt.Sprintf(" - Blocked by: %s", entry.BlockedBy)
-	}
-	line := fmt.Sprintf("- **%s** %s - %s - Status: %s - Claimed by: %s%s\n",
-		entry.Timestamp, entry.TaskID, entry.Subject, entry.Status, entry.ClaimedBy, blockedBy)
-
-	if _, err := f.WriteString(line); err != nil {
-		return fmt.Errorf("write task entry: %w", err)
-	}
-
-	return nil
+	return taskledger.AppendTask(stateDir, teamID, entry)
 }
 
-// ClaimTask atomically claims a task by appending a CLAIMED row (REQ-009).
-// Uses filesystem lock (flock) on tasklist.md for concurrency safety.
-// Claims the lowest-ID unblocked task if taskID is empty.
+// ClaimTask delegates to the migrated taskledger.ClaimTask
+// (SPEC-AGENT-TEAM-RETIRE-001 M0 thin alias; the SPEC-CLIFIX-CRITICAL-001
+// O_APPEND fix lives in internal/cli/taskledger).
 func ClaimTask(stateDir, teamID, teammateID, taskID string) error {
-	teamDir := filepath.Join(stateDir, "team", teamID)
-	tasklistPath := filepath.Join(teamDir, "tasklist.md")
-
-	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-002: open with O_APPEND|O_WRONLY so
-	// the CLAIMED row lands at the ledger tail and the append-only head is never
-	// overwritten. The lock is acquired on this fd; the content read uses a
-	// separate os.ReadFile handle (lock is still valid — flock works on any fd).
-	f, err := os.OpenFile(tasklistPath, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("open tasklist: %w", err)
-	}
-	defer func() { _ = f.Close() }()
-
-	// Acquire exclusive lock (platform-specific implementation in team_spawn_lock_*.go)
-	if err := lockFile(f); err != nil {
-		return fmt.Errorf("acquire lock: %w", err)
-	}
-	defer func() {
-		_ = unlockFile(f)
-	}()
-
-	// Read current content to find task
-	content, err := os.ReadFile(tasklistPath)
-	if err != nil {
-		return fmt.Errorf("read tasklist: %w", err)
-	}
-
-	// Parse tasks to find the target
-	lines := strings.Split(string(content), "\n")
-	var targetTaskID string
-
-	if taskID != "" {
-		// Claim specific task
-		targetTaskID = taskID
-		for _, line := range lines {
-			if strings.Contains(line, taskID) && strings.Contains(line, "Status: pending") {
-				break
-			}
-		}
-	} else {
-		// Find lowest-ID unblocked pending task
-		for _, line := range lines {
-			if strings.Contains(line, "Status: pending") && !strings.Contains(line, "Blocked by:") {
-				// Extract task ID
-				parts := strings.Fields(line)
-				for _, part := range parts {
-					if strings.HasPrefix(part, "SPEC-") || strings.HasPrefix(part, "TASK-") {
-						targetTaskID = part
-						break
-					}
-				}
-				if targetTaskID != "" {
-					break
-				}
-			}
-		}
-	}
-
-	if targetTaskID == "" {
-		return fmt.Errorf("no claimable task found")
-	}
-
-	// Append CLAIMED row
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	claimLine := fmt.Sprintf("- **%s** CLAIMED - %s claimed by %s\n", timestamp, targetTaskID, teammateID)
-
-	if _, err := f.WriteString(claimLine); err != nil {
-		return fmt.Errorf("write claim: %w", err)
-	}
-
-	return nil
+	return taskledger.ClaimTask(stateDir, teamID, teammateID, taskID)
 }
 
 // ArchiveTeamState archives team state to team-archive/ with timestamp (REQ-010).
@@ -459,21 +362,11 @@ func buildWriteHeavySet() map[string]bool {
 	return writeHeavySet
 }
 
-// claimTaskWithRetry wraps ClaimTask with retry logic for concurrent access.
-// Uses mutex for in-process synchronization.
-type TaskClaimer struct {
-	mu sync.Mutex
-}
+// TaskClaimer is a thin alias for the migrated taskledger.TaskClaimer
+// (SPEC-AGENT-TEAM-RETIRE-001 M0).
+type TaskClaimer = taskledger.TaskClaimer
 
-// NewTaskClaimer creates a new task claimer with synchronized access.
+// NewTaskClaimer delegates to the migrated taskledger.NewTaskClaimer.
 func NewTaskClaimer() *TaskClaimer {
-	return &TaskClaimer{}
-}
-
-// Claim attempts to claim a task with automatic retry on concurrent access.
-func (tc *TaskClaimer) Claim(stateDir, teamID, teammateID, taskID string) error {
-	tc.mu.Lock()
-	defer tc.mu.Unlock()
-
-	return ClaimTask(stateDir, teamID, teammateID, taskID)
+	return taskledger.NewTaskClaimer()
 }

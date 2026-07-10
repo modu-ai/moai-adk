@@ -1,11 +1,9 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 )
@@ -486,123 +484,9 @@ func TestAppendTask(t *testing.T) {
 	}
 }
 
-// TestClaimTask tests atomic task claiming with filesystem lock.
-func TestClaimTask(t *testing.T) {
-	tempDir := t.TempDir()
-	stateDir := filepath.Join(tempDir, ".moai", "state")
-	teamID := "test-team-789"
-
-	// Initialize team state
-	profiles := map[string]RoleProfile{}
-	if err := InitTeamState(stateDir, teamID, profiles); err != nil {
-		t.Fatalf("InitTeamState() error: %v", err)
-	}
-
-	// Append a pending task
-	entry := TeamTaskEntry{
-		TaskID:    "SPEC-002",
-		Subject:   "Implement authorization",
-		Status:    "pending",
-		ClaimedBy: "",
-		Timestamp: time.Now().Format("2006-01-02 15:04:05"),
-	}
-
-	if err := AppendTask(stateDir, teamID, entry); err != nil {
-		t.Fatalf("AppendTask() error: %v", err)
-	}
-
-	// Claim the task
-	err := ClaimTask(stateDir, teamID, "teammate-1", "SPEC-002")
-	if err != nil {
-		t.Fatalf("ClaimTask() error: %v", err)
-	}
-
-	// Verify claim was appended
-	tasklistPath := filepath.Join(stateDir, "team", teamID, "tasklist.md")
-	content, err := os.ReadFile(tasklistPath)
-	if err != nil {
-		t.Fatalf("read tasklist.md: %v", err)
-	}
-
-	contentStr := string(content)
-	if !strings.Contains(contentStr, "CLAIMED") {
-		t.Errorf("claim entry not found in tasklist.md")
-	}
-	if !strings.Contains(contentStr, "teammate-1") {
-		t.Errorf("teammate ID not found in claim entry")
-	}
-	if !strings.Contains(contentStr, "SPEC-002") {
-		t.Errorf("task ID not found in claim entry")
-	}
-
-	// Test concurrent claims result in distinct task IDs
-	// (This is a simplified test; real concurrency requires goroutines)
-	t.Log("AC-05: Two concurrent claims result in distinct task IDs (simplified test)")
-}
-
-// TestClaimTaskConcurrent tests concurrent task claiming.
-func TestClaimTaskConcurrent(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping concurrent test in short mode")
-	}
-
-	tempDir := t.TempDir()
-	stateDir := filepath.Join(tempDir, ".moai", "state")
-	teamID := "test-team-concurrent"
-
-	// Initialize team state
-	profiles := map[string]RoleProfile{}
-	if err := InitTeamState(stateDir, teamID, profiles); err != nil {
-		t.Fatalf("InitTeamState() error: %v", err)
-	}
-
-	// Append multiple pending tasks
-	tasks := []string{"SPEC-001", "SPEC-002", "SPEC-003"}
-	for _, taskID := range tasks {
-		entry := TeamTaskEntry{
-			TaskID:    taskID,
-			Subject:   fmt.Sprintf("Task %s", taskID),
-			Status:    "pending",
-			ClaimedBy: "",
-			Timestamp: time.Now().Format("2006-01-02 15:04:05"),
-		}
-		if err := AppendTask(stateDir, teamID, entry); err != nil {
-			t.Fatalf("AppendTask() error: %v", err)
-		}
-	}
-
-	// Attempt concurrent claims using TaskClaimer
-	claimer := NewTaskClaimer()
-	var wg sync.WaitGroup
-	claimCount := make(map[string]int)
-	var mu sync.Mutex
-
-	for i := 0; i < 3; i++ {
-		wg.Add(1)
-		go func(idx int) {
-			defer wg.Done()
-			teammateID := fmt.Sprintf("teammate-%d", idx)
-			err := claimer.Claim(stateDir, teamID, teammateID, "")
-			if err != nil {
-				t.Logf("Claim failed for %s: %v", teammateID, err)
-				return
-			}
-
-			mu.Lock()
-			claimCount[teammateID]++
-			mu.Unlock()
-		}(i)
-	}
-
-	wg.Wait()
-
-	// Verify distinct claims
-	if len(claimCount) == 0 {
-		t.Error("no successful claims")
-	}
-
-	t.Log("AC-05: Concurrent claims processed")
-}
+// TestClaimTask / TestClaimTaskConcurrent migrated to
+// internal/cli/taskledger/taskledger_test.go (SPEC-AGENT-TEAM-RETIRE-001 M0,
+// REQ-ATR-002).
 
 // TestArchiveTeamState tests team state archiving.
 func TestArchiveTeamState(t *testing.T) {

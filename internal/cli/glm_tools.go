@@ -25,6 +25,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/modu-ai/moai-adk/internal/lockfile"
 )
 
 // ─── Constants ─────────────────────────────────────────────────────────────
@@ -506,8 +508,8 @@ func parseClaudeJSON(data []byte) (map[string]any, error) {
 // moai invocation) by combining two layers:
 //
 //  1. An advisory flock on a sibling .lock file — serializes cooperating
-//     (moai-vs-moai) writers. Reuses the same lockFile/unlockFile family as
-//     mutateSettingsLocal (no second lock convention).
+//     (moai-vs-moai) writers. Reuses the same internal/lockfile Lock/Unlock
+//     family as mutateSettingsLocal (no second lock convention).
 //  2. A content compare-and-retry inside the lock — detects non-cooperating
 //     writers (e.g., Claude Code, which does not respect the .lock file) and
 //     re-applies the mutation to the fresh state so their changes are not lost.
@@ -631,12 +633,12 @@ func withClaudeJSONLock(configPath string, fn func(locked bool) error) error {
 	}
 	defer func() { _ = lockF.Close() }()
 
-	if err := lockFile(lockF); err != nil {
+	if err := lockfile.Lock(lockF); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr,
 			"Warning: could not lock %s (%v); proceeding without cross-process guard\n", configPath, err)
 		return fn(false)
 	}
-	defer func() { _ = unlockFile(lockF) }()
+	defer func() { _ = lockfile.Unlock(lockF) }()
 	return fn(true)
 }
 

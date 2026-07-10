@@ -52,7 +52,35 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — populated by manager-develop>_
+### M0 — Phase 0 de-risk migration (REQ-ATR-001/002/003)
+
+Commit: `feat(SPEC-AGENT-TEAM-RETIRE-001): M0 — migrate lockfile + taskledger` (SHA recorded at M1 entry below).
+
+Files: NEW `internal/lockfile/{lockfile_unix.go,lockfile_windows.go,lockfile_unix_test.go}` (build-tag pair `//go:build !windows` / `//go:build windows` preserved; Windows cross-process limitation comment preserved verbatim); NEW `internal/cli/taskledger/{taskledger.go,taskledger_test.go}` (TeamTaskEntry / AppendTask / ClaimTask / TaskClaimer migrated; TestClaimTask + TestClaimTaskConcurrent migrated + 4 added error-path/round-trip tests); `internal/cli/team_spawn.go` thinned to delegating aliases; `internal/cli/{settings.go,glm_tools.go}` re-pointed `lockFile`/`unlockFile` → `lockfile.Lock`/`lockfile.Unlock` (2 additional non-test lock callers discovered at run-phase — not in the plan-time inventory, which only enumerated team_spawn symbols); `internal/cli/clifix_critical_repro_test.go` re-pointed to `taskledger.ClaimTask`; 3 lock files deleted from `internal/cli`.
+
+MX tags: `@MX:ANCHOR` + `@MX:REASON` on `lockfile.Lock/Unlock` (fan_in 3: taskledger + settings.go + glm_tools.go); `@MX:ANCHOR` + `@MX:REASON` + `@MX:SPEC: SPEC-CLIFIX-CRITICAL-001` on `taskledger.ClaimTask`; `@MX:NOTE` on the Windows in-process-mutex limitation.
+
+Exit-gate evidence (verbatim tails):
+
+```
+$ go build ./... ; GOOS=windows GOARCH=amd64 go build ./... ; go vet ./...
+build exit=0 / winbuild exit=0 / vet exit=0
+$ go test ./...
+exit=0   (96 packages ok; full log: .moai/state/verify/atr-run/m0-test.log)
+$ go test -cover ./internal/lockfile/ ./internal/cli/taskledger/
+ok  github.com/modu-ai/moai-adk/internal/lockfile      0.524s  coverage: 100.0% of statements
+ok  github.com/modu-ai/moai-adk/internal/cli/taskledger 0.990s  coverage: 92.7% of statements
+$ go test -v -run 'TestClaimTaskAppend_Repro' ./internal/cli/
+=== RUN   TestClaimTaskAppend_Repro
+--- PASS: TestClaimTaskAppend_Repro (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.503s
+$ go test -v -run 'TestClaimTask' ./internal/cli/taskledger/ | grep -c -- '--- PASS'
+4
+$ golangci-lint run --timeout=3m
+0 issues.   (baseline: 0 issues — no NEW lint)
+```
+
+REQ-ATR-003 gate satisfied: whole-repo green BEFORE any deletion milestone.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

@@ -1,6 +1,6 @@
 //go:build windows
 
-package cli
+package lockfile
 
 import (
 	"os"
@@ -10,6 +10,11 @@ import (
 // fileLocksMu guards concurrent access to the fileLocks map.
 var fileLocksMu sync.Mutex
 
+// @MX:NOTE: [AUTO] Windows in-process-mutex limitation preserved verbatim from the
+// pre-migration internal/cli/team_spawn_lock_windows.go (SPEC-AGENT-TEAM-RETIRE-001
+// REQ-ATR-001 — behavior preservation is the contract; do NOT silently "upgrade"
+// this to LockFileEx).
+//
 // fileLocks holds in-process mutexes keyed by absolute file path.
 // Windows lacks portable advisory file locks (no fcntl/flock equivalent in stdlib),
 // so we fall back to process-local mutexes. This means:
@@ -20,9 +25,9 @@ var fileLocksMu sync.Mutex
 //     workflows, which are macOS/Linux-only; Windows users run solo mode)
 var fileLocks = map[string]*sync.Mutex{}
 
-// lockFile acquires a process-local mutex for the given file on Windows.
+// Lock acquires a process-local mutex for the given file on Windows.
 // Multi-process locking is not supported; see package comment above.
-func lockFile(f *os.File) error {
+func Lock(f *os.File) error {
 	fileLocksMu.Lock()
 	path := f.Name()
 	mu, ok := fileLocks[path]
@@ -35,8 +40,8 @@ func lockFile(f *os.File) error {
 	return nil
 }
 
-// unlockFile releases the process-local mutex for the given file on Windows.
-func unlockFile(f *os.File) error {
+// Unlock releases the process-local mutex for the given file on Windows.
+func Unlock(f *os.File) error {
 	fileLocksMu.Lock()
 	mu, ok := fileLocks[f.Name()]
 	fileLocksMu.Unlock()

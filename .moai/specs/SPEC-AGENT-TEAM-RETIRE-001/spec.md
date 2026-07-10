@@ -2,7 +2,7 @@
 id: SPEC-AGENT-TEAM-RETIRE-001
 title: "Agent Teams retirement + replacement dynamic-workflow pair"
 version: "0.1.2"
-status: draft
+status: in-progress
 created: 2026-07-11
 updated: 2026-07-11
 author: manager-spec
