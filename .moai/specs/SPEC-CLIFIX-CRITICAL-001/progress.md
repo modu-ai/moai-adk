@@ -95,7 +95,7 @@ m1_to_mN_commit_strategy: "M-separated (5703512c8 M1, daba6b7ab M2, 0bace43be M3
 
 ```yaml
 sync_complete_at: "2026-07-10"
-sync_commit_sha: "pending-backfill"   # D3 SHA placeholder — backfilled in follow-up commit
+sync_commit_sha: "9b3d1f7d2"          # D3 backfilled (self-referential-hazard exemption)
 run_commit_sha: "a1c38328e"           # M4 closure (substantive final run commit)
 sync_status: complete
 ac_count_verified: 11                 # 9 numbered ACs verified via 11 matrix rows (incl. 001b/002b grep)
