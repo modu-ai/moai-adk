@@ -2,7 +2,7 @@
 id: SPEC-WEB-CONSOLE-012
 title: "moai web Stale/Dead Config Surface Cleanup (Track 1)"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-07-10
 updated: 2026-07-10
 author: manager-spec

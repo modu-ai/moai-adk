@@ -89,4 +89,17 @@ evidence_dir: /Users/goos/MoAI/moai-adk-go/.moai/state/verify/e07c0351/
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-10
+sync_commit_sha: pending-backfill (this progress.md commit cannot self-reference; backfilled in a follow-up chore commit per spec-frontmatter-schema.md § SHA placeholder backfill exemption)
+sync_status: audit-ready
+changelog_entry_position: CHANGELOG.md [Unreleased] § Changed, first entry (prepended above SPEC-MEMORY-DIET-001)
+frontmatter_status_transitions:
+  spec.md: "in-progress -> completed (updated: 2026-07-10, unchanged date — same-day plan/run/sync)"
+  plan.md: "no frontmatter (Tier S convention — no status field present)"
+  acceptance.md: "no frontmatter (Tier S convention — no status field present)"
+readme_check: "no user-visible mention of moai web console research-seam / llm.glm tier config sections found in README.md — grep -n 'moai web console\\|research section\\|settings.*section' returned no matches; README left unchanged"
+b12_self_test_a: "grep -c SPEC-WEB-CONSOLE-012 CHANGELOG.md (pre-emission) = 0 -> proceeded with emission"
+b12_self_test_b: "acceptance.md AC row count = 20 (grep -cE '^\\| AC-WC12-[0-9]+ \\|') matches CHANGELOG claim 19 PASS + 1 PASS-WITH-DEBT = 20 total"
+b12_self_test_c: "file paths cited in CHANGELOG entry verified via ls: internal/settings/{schema_sections,sectionapply,sectionroute,sectionwrite,schema}.go, internal/web/{assets/i18n.js,schemaform.go} — all exist"
+```
