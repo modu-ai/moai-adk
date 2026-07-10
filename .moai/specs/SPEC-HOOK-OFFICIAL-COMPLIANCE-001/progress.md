@@ -115,7 +115,7 @@ Orchestrator-verified prior to this delegation (per task §A): settings.json.tmp
 **E2 — Build:** `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
 **E5 — Lint:** `golangci-lint run --timeout=3m` 0 issues (clean baseline preserved).
 **E5b — Mirror parity:** `TestRuleTemplateMirrorDrift` PASS (hooks-system.md mirror byte-identical).
-**E5c — Neutrality:** `TestInternalContentLeak` PASS (no SPEC IDs/REQ tokens/SHAs leaked into templates).
+**E5c — Neutrality:** `TestTemplateNoInternalContentLeak` PASS (no SPEC IDs/REQ tokens/SHAs leaked into templates).
 **E6 — Push:** `773fddb1a` pushed to `origin main` (b3f66a69b..773fddb1a); post-push `git rev-list --left-right origin/main...HEAD` = `0 0`.
 **Gaps:** acceptance.md AC greps reference `development/hooks-system.md` (stale path — file lives at `core/hooks-system.md`, cross-referenced by hook-independence.md §8). Substantive content correct; flagged for manager-spec path fix in a follow-up. StopFailure 10 values + Notification 8 values sourced from the audit report's official-doc enumeration (code.claude.com/docs/en/hooks, 2026-07-10 fetch); the moai-adk Go `stop_failure.go` only special-cases 4 (rate_limit/authentication_failed/billing_error/max_output_tokens) — the other 6 fall through to a default systemMessage path.
 
@@ -150,7 +150,7 @@ Header-comment guard added to `handle-worktree-create.sh` + `handle-permission-r
 **E3 — Coverage:** N/A (no Go source changed; shell + comment edits only).
 **E4 — Subagent boundary:** N/A (hook scripts, not Go subagent domain — and 0 NEW AskUserQuestion refs introduced).
 **E5 — Lint:** `golangci-lint run --timeout=3m` → 0 issues.
-**E5b — Mirror parity + neutrality:** `go test ./internal/template/... -run 'TestRuleTemplateMirror|TestHookOfficialCompliance|TestInternalContentLeak'` → `ok 0.393s`.
+**E5b — Mirror parity + neutrality:** `go test ./internal/template/... -run 'TestRuleTemplateMirror|TestHookOfficialCompliance|TestTemplateNoInternalContentLeak'` → `ok 0.393s`.
 **Gaps:** acceptance.md AC-023 verification uses `head -20` windowed grep — confirmed the guard lands within lines 5-13 (well inside the 20-line window). AC greps reference `development/hooks-system.md` (stale path defect — pre-existing, for manager-spec follow-up).
 **Residual-risk:** the header guard is advisory documentation (the plan-preferred lighter touch over loud-abort); it does not mechanically prevent registration. A future runtime that tightens this could enforce it, but that is out of M6 scope.
 
@@ -174,7 +174,7 @@ Three defect fixes (template + live mirrors):
 **E3 — Coverage:** N/A (no Go source changed; shell + agent-frontmatter edits only).
 **E4 — Subagent boundary:** N/A (agent frontmatter + hook scripts, not Go subagent domain).
 **E5 — Lint:** `golangci-lint run --timeout=3m` → 0 issues.
-**E5b — Mirror parity + neutrality:** `go test ./internal/template/... -run 'TestRuleTemplateMirror|TestHookOfficialCompliance|TestInternalContentLeak'` → `ok 0.392s`.
+**E5b — Mirror parity + neutrality:** `go test ./internal/template/... -run 'TestRuleTemplateMirror|TestHookOfficialCompliance|TestTemplateNoInternalContentLeak'` → `ok 0.392s`.
 **Gaps:** AC-029 acceptance grep (`args=|"\{action\}"`) targets the literal placeholder `{action}` (which appears only in the doctrine `agent-hooks.md` pattern, not in concrete agent files that carry real tokens like `develop-pre-implementation`). The grep as-written returns 0 against the 4 concrete agent files; the substantive AC requirement (action token explicitly quoted OR exec form) IS met — verified via the alternative grep `grep -cE '\\"[a-z-]+\\"'` returning 7. Live↔template agent-file body drift is pre-existing and intentional (live carries internal SPEC IDs per dogfood; template is §25-neutrality-scrubbed) — unrelated to this AC; the handle-agent-hook lines themselves are byte-identical between live and template.
 **Residual-risk:** the `grep -q .` refinement on the csharp `find` (added for boolean correctness — bare `find -print -quit` always exits 0) is a behavior fix beyond the literal AC text; it corrects a latent false-positive (csharp detected even when no csproj exists) the original second dead-glob branch would have introduced had its `find` ever been reached. The compact comment fix is comment-only (file not renamed) — the stale `compact.sh` reference in any external docs that mirror this comment is out of scope.
 
@@ -196,7 +196,7 @@ Two input-hardening fixes:
 **E3 — Coverage:** N/A (no Go source changed; shell edits only).
 **E4 — Subagent boundary:** N/A (hook scripts, not Go subagent domain).
 **E5 — Lint:** `golangci-lint run --timeout=3m` → 0 issues.
-**E5b — Mirror parity + neutrality:** `go test ./internal/template/... -run 'TestRuleTemplateMirror|TestHookOfficialCompliance|TestInternalContentLeak'` → `ok 0.400s`. Live ↔ template parity: handle-stop sample byte-identical (and the bulk insert was applied uniformly to both sides).
+**E5b — Mirror parity + neutrality:** `go test ./internal/template/... -run 'TestRuleTemplateMirror|TestHookOfficialCompliance|TestTemplateNoInternalContentLeak'` → `ok 0.400s`. Live ↔ template parity: handle-stop sample byte-identical (and the bulk insert was applied uniformly to both sides).
 **Gaps:** none — all 62 wrappers + 2 gateguard copies verified by `bash -n` + acceptance greps.
 **Residual-risk:** the allowlist prefix set is `{$HOME/.moai/logs, $CLAUDE_PROJECT_DIR/.moai/logs, /dev/null}` — a user who legitimately sets `MOAI_HOOK_STDERR_LOG` to a path outside these prefixes (e.g. a custom centralized log) will have it silently reset to default. This is the intended trade-off (security over flexibility); such users can `export MOAI_HOOK_STDERR_LOG` from a path under one of the allowed prefixes, or the prefix set can be widened in a follow-up if a real use case emerges. `/dev/null` is explicitly allowed as the operator opt-out sink (preserves the `MOAI_HOOK_STDERR_LOG=/dev/null` log-suppression contract verified by `TestHookWrapper_OptOutStderrLog`).
 
@@ -225,7 +225,7 @@ verification:
   go_build: "go build ./... exit 0; GOOS=windows GOARCH=amd64 exit 0"
   golangci_lint: "0 issues (clean baseline preserved)"
   template_mirror: "TestRuleTemplateMirror PASS (live<->template byte-identical)"
-  template_neutrality: "TestInternalContentLeak PASS (no SPEC IDs/REQ/SHAs leaked)"
+  template_neutrality: "TestTemplateNoInternalContentLeak PASS (no SPEC IDs/REQ/SHAs leaked)"
   hook_compliance: "TestHookOfficialCompliance PASS"
   spec_lint: "0 errors; 1 WARNING StatusGitConsistency (in-progress vs git-implied implemented — expected run->sync boundary; resolves at sync commit)"
 ac_caveats:
@@ -256,7 +256,7 @@ verification:
   go_build: "go build ./... exit 0; GOOS=windows GOARCH=amd64 go build ./... exit 0"
   golangci_lint: "0 issues (clean baseline preserved)"
   template_mirror: "TestRuleTemplateMirror PASS (live<->template byte-identical)"
-  template_neutrality: "TestInternalContentLeak PASS (no SPEC IDs/REQ/SHAs leaked)"
+  template_neutrality: "TestTemplateNoInternalContentLeak PASS (no SPEC IDs/REQ/SHAs leaked)"
   hook_compliance: "TestHookOfficialCompliance PASS (32 gaps addressed)"
 ```
 
