@@ -379,7 +379,7 @@ template_mirror_decision: DO-NOT-MIRROR (.claude/workflows/ user-owned, not temp
 
 ```yaml
 sync_complete_at: 2026-07-11T00:00:00+09:00
-sync_commit_sha: pending-backfill-sync   # this progress.md update is IN the sync commit; a commit cannot reference its own hash — backfilled in a follow-up chore(SPEC-AGENT-TEAM-RETIRE-001) commit (D3 SHA-placeholder exemption, spec-frontmatter-schema.md)
+sync_commit_sha: 4eacfd7b2   # backfilled (D3 SHA-placeholder exemption, spec-frontmatter-schema.md) — the sync commit itself: docs(SPEC-AGENT-TEAM-RETIRE-001): sync-phase close
 sync_status: complete
 frontmatter_status_transitions:
   spec.md: "in-progress -> completed (status + updated fields; body untouched)"
