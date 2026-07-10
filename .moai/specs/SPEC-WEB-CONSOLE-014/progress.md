@@ -91,7 +91,7 @@ Worktree: `.claude/worktrees/agent-a4322e53cb6b13381` (branch `worktree-agent-a4
 
 ```yaml
 run_complete_at: 2026-07-11
-run_commit_sha: f1ef29e1c27f3e4ef09128f0f0c0db9c3aa99395   # M6 worktree SHA; orchestrator rebase 후 correction 예상
+run_commit_sha: 36894621e   # M6 worktree SHA; orchestrator rebase 후 correction 예상
 run_status: PASS
 ac_pass_count: 23
 ac_fail_count: 0
@@ -110,12 +110,12 @@ coverage:
 templ_drift: none                      # templ generate 재실행 no-op (CI guard green)
 make_build: pass                       # bin/moai 재컴파일 exit 0, working tree clean
 worktree_shas:
-  M1: 76ececa733b4920d714a82d3a45aa93cda54a0fb   # test: dormant guards + draft→in-progress
-  M2: b3eeabfeb49319b0250ee3f97af6ab7d709a8394   # feat: learning/observability honesty
-  M3: 5d5297a8c28c4d233975e9e35eed0635c2703a34   # feat: merge_method select
-  M4: faa808d88a0512a5dc2ead25aeadbacaeff54fea   # feat: raw views security+mx
-  M5: 898c8df5a38466cd1bd0c12cb2373d8e4e5f5c4b   # test: i18n 4-locale parity guard
-  M6: f1ef29e1c27f3e4ef09128f0f0c0db9c3aa99395   # docs: AC matrix + run-phase audit signal
+  M1: a807ca062   # test: dormant guards + draft→in-progress
+  M2: 9aa99c0f3   # feat: learning/observability honesty
+  M3: 109499908   # feat: merge_method select
+  M4: ee3e1afe2   # feat: raw views security+mx
+  M5: 02294ef85   # test: i18n 4-locale parity guard
+  M6: 36894621e   # docs: AC matrix + run-phase audit signal
 out_of_scope_debt:
   - internal/hook TestHookWrapper_TempFileCleanup (load-sensitive flake, isolation PASS; do-not-chase)
   - internal/web package coverage 70.8% < 85% (pre-existing render-path baseline, not introduced here)
