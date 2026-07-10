@@ -272,9 +272,12 @@ func runAgentLint(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Set exit code
-	if len(allViolations) > 0 {
-		// Return exit code 1 for violations found
+	// Set exit code: errors block (exit 1), warnings do not. This follows the
+	// standard lint convention (golangci-lint et al.) where warnings surface for
+	// visibility but do not fail the gate — only SeverityError violations fail.
+	// Without this, any LR-08 skill-preload-drift warning leaves CI red even at
+	// zero errors. (--strict promotes warnings to errors separately.)
+	if errors > 0 {
 		return errLintViolations
 	}
 
