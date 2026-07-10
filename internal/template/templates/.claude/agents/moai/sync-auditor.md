@@ -25,7 +25,7 @@ hooks:
   Stop:
     - hooks:
         - type: command
-          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" evaluator-completion"
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" \"evaluator-completion\""
           timeout: 10
 ---
 

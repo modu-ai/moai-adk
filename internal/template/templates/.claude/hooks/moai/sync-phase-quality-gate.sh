@@ -77,9 +77,7 @@ detect_language() {
         echo "flutter"
     elif [ -f "$root/Package.swift" ]; then
         echo "swift"
-    elif [ -f "$root/*.csproj" ] 2>/dev/null || [ -d "$root/.vs" ]; then
-        echo "csharp"
-    elif [ -f "$root/*.csproj" ] 2>/dev/null || find "$root" -maxdepth 1 -name '*.csproj' -print -quit 2>/dev/null; then
+    elif [ -d "$root/.vs" ] || find "$root" -maxdepth 1 -name '*.csproj' -print -quit 2>/dev/null | grep -q .; then
         echo "csharp"
     else
         echo ""

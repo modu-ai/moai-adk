@@ -32,7 +32,7 @@ Plan-phase (draft). Artifacts: spec.md + plan.md + acceptance.md + progress.md (
 | M5 | Matcher resolution + Go verification (FileChanged/ConfigChange) | Medium | done (AC-021/022) — Go inspection: no settings.json/wrapper change needed |
 | M6 | Fail-open semantics correction (WorktreeCreate/PermissionRequest) | Medium | done (AC-023/024) |
 | M7 | Input hardening (MOAI_HOOK_STDERR_LOG + gateguard escaping) | Low | not-started |
-| M8 | Coverage holes + defects (MultiEdit/csharp/exec-form/compact) | Low | M8a done (AC-027 MultiEdit) landed 7e641d959; M8b-d (AC-028..030) remain |
+| M8 | Coverage holes + defects (MultiEdit/csharp/exec-form/compact) | Low | M8a done (AC-027 MultiEdit) landed 7e641d959; M8b-d done (AC-028..030) |
 
 ---
 
@@ -153,6 +153,30 @@ Header-comment guard added to `handle-worktree-create.sh` + `handle-permission-r
 **E5b — Mirror parity + neutrality:** `go test ./internal/template/... -run 'TestRuleTemplateMirror|TestHookOfficialCompliance|TestInternalContentLeak'` → `ok 0.393s`.
 **Gaps:** acceptance.md AC-023 verification uses `head -20` windowed grep — confirmed the guard lands within lines 5-13 (well inside the 20-line window). AC greps reference `development/hooks-system.md` (stale path defect — pre-existing, for manager-spec follow-up).
 **Residual-risk:** the header guard is advisory documentation (the plan-preferred lighter touch over loud-abort); it does not mechanically prevent registration. A future runtime that tightens this could enforce it, but that is out of M6 scope.
+
+### M8bcd (LOW) — Coverage holes + defects (csharp glob / agent exec form / compact naming) — DONE
+
+Three defect fixes (template + live mirrors):
+
+- **AC-028** — `sync-phase-quality-gate.sh` `detect_language` csharp branch: the two adjacent dead-glob branches (`[ -f "$root/*.csproj" ]` — glob does not expand inside `[ -f ]`, always false) consolidated into one branch using `find "$root" -maxdepth 1 -name '*.csproj' -print -quit | grep -q .` (the `grep -q .` pipe corrects the bare-`find` always-exits-0 boolean defect the second original branch also carried).
+- **AC-029** — agent exec form: all 7 `handle-agent-hook.sh {action}` invocations across 4 agent files (manager-develop ×3, manager-docs ×2, manager-spec ×1, sync-auditor ×1) now carry the action token explicitly quoted (`\"develop-pre-implementation\"` etc.) — applied to both live and template copies (14 replacements total). Lighter-touch than exec-form `args:` restructuring; same anti-word-splitting guarantee.
+- **AC-030** — `handle-compact.sh.tmpl` line-7 stale comment `compact.sh` corrected to `handle-compact.sh` (the deployed filename). File NOT renamed (atomic settings.json.tmpl + moai hook subcommand mapping update is the heavier alternative the AC explicitly permits skipping).
+
+**E1 — AC PASS/FAIL matrix:**
+
+| AC | Status | Evidence (command → observed) |
+|----|--------|-------------------------------|
+| AC-028 | PASS | `grep -n 'csproj' sync-phase-quality-gate.sh` → line 80 `find "$root" -maxdepth 1 -name '*.csproj' -print -quit \| grep -q .` (find form, dead `[ -f .../*.csproj ]` glob removed); line 298 is the unrelated DEPS_MANIFESTS pattern |
+| AC-029 | PASS | `grep -rn 'handle-agent-hook' .claude/agents/moai/*.md \| grep -cE '\\"[a-z-]+\\"'` → 7 (all 7 invocations carry the explicitly-quoted action token). Acceptance grep `args=\|"\{action\}"` returns 0 — see Gaps |
+| AC-030 | PASS | `sed -n '5,10p' handle-compact.sh.tmpl` → line 7 `# Project-local hook: .claude/hooks/moai/handle-compact.sh` (was `compact.sh`) |
+
+**E2 — Cross-platform build:** `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+**E3 — Coverage:** N/A (no Go source changed; shell + agent-frontmatter edits only).
+**E4 — Subagent boundary:** N/A (agent frontmatter + hook scripts, not Go subagent domain).
+**E5 — Lint:** `golangci-lint run --timeout=3m` → 0 issues.
+**E5b — Mirror parity + neutrality:** `go test ./internal/template/... -run 'TestRuleTemplateMirror|TestHookOfficialCompliance|TestInternalContentLeak'` → `ok 0.392s`.
+**Gaps:** AC-029 acceptance grep (`args=|"\{action\}"`) targets the literal placeholder `{action}` (which appears only in the doctrine `agent-hooks.md` pattern, not in concrete agent files that carry real tokens like `develop-pre-implementation`). The grep as-written returns 0 against the 4 concrete agent files; the substantive AC requirement (action token explicitly quoted OR exec form) IS met — verified via the alternative grep `grep -cE '\\"[a-z-]+\\"'` returning 7. Live↔template agent-file body drift is pre-existing and intentional (live carries internal SPEC IDs per dogfood; template is §25-neutrality-scrubbed) — unrelated to this AC; the handle-agent-hook lines themselves are byte-identical between live and template.
+**Residual-risk:** the `grep -q .` refinement on the csharp `find` (added for boolean correctness — bare `find -print -quit` always exits 0) is a behavior fix beyond the literal AC text; it corrects a latent false-positive (csharp detected even when no csproj exists) the original second dead-glob branch would have introduced had its `find` ever been reached. The compact comment fix is comment-only (file not renamed) — the stale `compact.sh` reference in any external docs that mirror this comment is out of scope.
 
 ### Path-discrepancy finding (acceptance.md staleness — for manager-spec follow-up)
 
