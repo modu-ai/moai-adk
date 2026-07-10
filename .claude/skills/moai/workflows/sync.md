@@ -47,7 +47,7 @@ Sync-phase quality gate (per the canonical sync-phase quality gate policy) is en
 | Phase 0: Pre-Sync Context + Deployment Readiness | `Read workflows/sync/quality-gates-context.md` | Purpose/Scope/Input/Mode/Flags/Context Loading, Phase 0 HUMAN GATE 1, Phase 0.08 DB Check, Phase 0.1 Deployment Readiness |
 | Phase 0.5~0.7: Quality Verification | `Read workflows/sync/quality-gates-quality.md` | Phase 0.5 Quality Check, Phase 0.55 Security Scan, Phase 0.6 MX Tag Validation, Phase 0.7 Coverage Analysis |
 | Phase 1~2: Analysis + Doc Sync | `Read workflows/sync/doc-execution.md` | Phase 1 Analysis, HUMAN GATE 2 Documentation Scope, Phase 2 Execute Doc Synchronization |
-| Phase 3~4: Git Delivery + Completion | `Read workflows/sync/delivery.md` | Phase 3 Git Operations, Phase 4 Completion, Team Mode, Graceful Exit, Test Scenarios |
+| Phase 3~4: Git Delivery + Completion | `Read workflows/sync/delivery.md` | Phase 3 Git Operations, Phase 4 Completion, GitStrategy PR-ready transition, Graceful Exit, Test Scenarios |
 
 ## HUMAN GATE Map
 

@@ -28,7 +28,7 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 
 - $ARGUMENTS: SPEC-ID to implement (e.g., SPEC-AUTH-001)
 - Resume: Re-running /moai run SPEC-XXX resumes from last successful phase checkpoint
-- --team: Enable team-based implementation (see ${CLAUDE_SKILL_DIR}/team/run.md for parallel implementation team)
+- --team: RETIRED — emits `MODE_TEAM_UNAVAILABLE` and falls back to autopilot (Agent Teams static layer retired)
 
 ## Mode Dispatch (Multi-Mode Router)
 
@@ -42,7 +42,7 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 
 - **`autopilot` (default for harness `minimal` / `standard`)**: Single-lead orchestration via Phase 0.95 Scale-Based Mode Selection (Fix / Focused / Standard / Full Pipeline) → Phase 2A/2B per `quality.yaml development_mode`. Behaves as today's default `/moai run` invocation.
 - **`loop`**: Delegate to `Skill("moai-workflow-loop")` with the SPEC-ID and remaining args. Bypasses Phase 2A/2B and enters the Ralph engine per-iteration cycle (see `loop.md` Steps 1-9). `/moai loop SPEC-XXX` is an alias resolving to `/moai run --mode loop SPEC-XXX` with identical behavior.
-- **`team` (default for harness `thorough` AND prerequisites met)**: Routes to existing Team Mode Routing (Phase 0.95 row 5 + the Team Mode Routing section). Requires `workflow.team.enabled: true` AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env var.
+- **`team` (RETIRED)**: The `--mode team` dispatch value is retired (Agent Teams static layer — Mode 3 `agent-team` retired). A forced `--mode team` emits `MODE_TEAM_UNAVAILABLE` and the orchestrator falls back to `autopilot`.
 - **`pipeline`**: REJECTED on `/moai run`. Pipeline mode is reserved for utility subcommands (`fix`, `coverage`, `mx`, `codemaps`, `clean`). Passing `--mode pipeline` here triggers `MODE_PIPELINE_ONLY_UTILITY` (the same error key the utility subcommands share).
 
 ### Mode Resolver
@@ -62,29 +62,28 @@ if mode not in {autopilot, loop, team, pipeline}:
     emit MODE_UNKNOWN listing 4 valid values; abort
 if mode == pipeline:
     emit MODE_PIPELINE_ONLY_UTILITY pointing to {fix, coverage, mx, codemaps, clean}; abort
-if mode == team and not (workflow.team.enabled and CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS):
+if mode == team:                                   # RETIRED — Agent Teams static layer
     if cli_mode_flag == team:                      # explicit request
         emit MODE_TEAM_UNAVAILABLE suggesting --mode autopilot; abort
-    else:                                          # harness auto-selected team
-        log [mode-auto-downgrade] info; mode = autopilot  # silent downgrade per the relevant requirement
+    else:                                          # config/harness selected team
+        log [mode-auto-downgrade] info; mode = autopilot  # silent downgrade
 dispatch(mode)
 ```
 
 ### Harness-Based Default Selection
 
-| Harness level | Team prerequisites | Default mode |
-|---------------|--------------------|--------------|
-| `minimal` | (any) | `autopilot` |
-| `standard` | (any) | `autopilot` |
-| `thorough` | satisfied | `team` |
-| `thorough` | not satisfied | `autopilot` (downgraded with `[mode-auto-downgrade]` info log) |
+| Harness level | Default mode |
+|---------------|--------------|
+| `minimal` | `autopilot` |
+| `standard` | `autopilot` |
+| `thorough` | `autopilot` (the former `team` default is retired — Agent Teams static layer) |
 
 ### Sentinel Error Keys
 
 This skill emits the following sentinel error keys when mode dispatch fails. A CI audit verifies each literal sentinel remains present in this skill body.
 
 - **`MODE_UNKNOWN`**: Emitted when `--mode <value>` is supplied but `<value>` is not in the 4-value valid set `{autopilot, loop, team, pipeline}`. The error message MUST enumerate the 4 valid values to guide the user.
-- **`MODE_TEAM_UNAVAILABLE`**: Emitted when an EXPLICIT `--mode team` request cannot be honored because either `workflow.team.enabled: false` in workflow.yaml OR the `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` env var is unset. The error message MUST suggest `--mode autopilot` as the supported fallback. Note: when `team` is auto-selected by harness (not explicit CLI), the system silently downgrades to `autopilot` with an info log instead of raising this error.
+- **`MODE_TEAM_UNAVAILABLE`**: Emitted when an EXPLICIT `--mode team` request is made — the `team` dispatch value is RETIRED (Agent Teams static layer), so it can never be honored. The error message MUST suggest `--mode autopilot` as the supported fallback. Note: when `team` is auto-selected by config/harness (not explicit CLI), the system silently downgrades to `autopilot` with an info log instead of raising this error.
 - **`MODE_PIPELINE_ONLY_UTILITY`**: Preserved from the utility-subcommand baseline. Emitted when `--mode pipeline` is passed to this multi-agent subcommand. The error message MUST point the user to the utility subcommand set `{fix, coverage, mx, codemaps, clean}`.
 
 See [Subcommand Classification matrix](../../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent) for the cross-skill mode dispatch contract.
@@ -171,7 +170,7 @@ Before Phase 1, check if `.moai/specs/SPEC-{ID}/progress.md` exists:
 
 ## Worktree Path Rules [HARD] (All Modes)
 
-When delegating to ANY agent with `isolation: "worktree"` (sub-agent mode or team mode):
+When delegating to ANY agent with `isolation: "worktree"` (any execution mode):
 
 - [HARD] Reference all write-target files by project-root-relative paths (e.g., `src/auth/handler.go`)
 - [HARD] Do NOT include absolute paths (e.g., `$HOME/project/src/auth/handler.go`) in agent prompts

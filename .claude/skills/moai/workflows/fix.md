@@ -40,7 +40,6 @@ Flow: Parallel Scan -> Classify -> Fix -> Verify -> Report
 - --security (alias --include-security): Include security issues in scan
 - --no-fmt (alias --no-format): Skip formatting fixes
 - --resume [ID] (alias --resume-from): Resume from snapshot (latest if no ID)
-- --team: Enable team-based debugging (see team/debug.md for competing hypothesis investigation)
 
 ## Pipeline Contract (Agentless Classification)
 
@@ -302,21 +301,6 @@ Snapshot contents:
 Resume commands:
 - /moai:fix --resume (uses latest snapshot)
 - /moai:fix --resume fix-20260119-143052 (uses specific snapshot)
-
-## Team Mode
-
-When --team flag is provided, fix delegates to a team-based debugging workflow using competing hypotheses.
-
-Team composition: 3 hypothesis agents (haiku) exploring different root causes in parallel.
-
-For detailed team orchestration steps, see ${CLAUDE_SKILL_DIR}/team/debug.md.
-
-Fallback: If team mode is unavailable, standard single-agent fix workflow continues.
-
-Team Prerequisites:
-- workflow.team.enabled: true in .moai/config/sections/workflow.yaml
-- CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in environment
-- If prerequisites not met: Falls back to standard single-agent fix workflow
 
 ## Execution Summary
 

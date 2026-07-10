@@ -223,18 +223,18 @@ Mode Selection Rules:
 | Single endpoint / function | SPEC scope ≤ 5 files, single domain | **Focused Mode** (Mode 5 envelope) | manager-develop (domain context injected per archived-agent-rejection.md §C) |
 | Feature across 1 domain | SPEC scope 5-10 files, single domain | **Standard Mode** (Mode 5 envelope) | manager-spec (planning) + manager-develop + sync-auditor |
 | Multi-domain feature | SPEC scope ≥ 10 files OR ≥ 3 domains | **Full Pipeline** (Mode 5 full envelope) | manager-spec → manager-develop (per-spawn `Agent(general-purpose)` domain specialists) → sync-auditor → manager-docs |
-| Large cross-cutting change | complexity score at/above the auto-select threshold (`orchestration-mode-selection.md` §B.1) | **Team Mode** (Mode 3 via the §C.1 capability gate) | 3-5 parallel teammates |
+| Large cross-cutting change | complexity score at/above the auto-select threshold (`orchestration-mode-selection.md` §B.1) | **Parallel research → Sub-agent implement** (Mode 4 fanout + Mode 5) | 3-5 concurrent read-only `Agent()` for research; sequential manager-develop for implementation. (Mode 3 agent-team retired.) |
 
-Team-row gate note: the Team Mode row resolves through the SAME §C.1 capability gate on BOTH paths — the flag-free auto-select path and a forced `--team` flag both pass the gate; the flag never substitutes for the gate, and the gate never requires the flag.
+Large-change note: Mode 3 (agent-team) is retired with the Agent Teams static layer. Multi-domain research fans out via Mode 4 (3-5 concurrent read-only `Agent()` in one turn); coding-heavy implementation stays Mode 5 (sequential sub-agent) per the Anthropic coding-task parallelism caveat.
 
 Detection Steps:
 1. Count files referenced in SPEC requirements and plan
 2. Identify domains touched (backend, frontend, database, infra, docs)
 3. Assess complexity from SPEC priority and acceptance criteria count
 4. Select mode based on the table above
-5. Write the `progress.md` § Phase 0.95 Mode Selection log entry per `orchestration-mode-selection.md` §D HARD logging contract BEFORE spawning the first run-phase `Agent()` call — the Input parameters block (tier, scope, domain count, file language mix, concurrency benefit, Agent Teams prereqs status), the mode evaluation table across all 6 catalog modes, a single-line Decision (e.g. "Scale-based mode: {mode} (files: {N}, domains: {N})"), a short Justification paragraph, and — when the selection resolves to the Team Mode row (Mode 3) — the Implementation Kickoff Approval-passed + preferences-collected confirmation
+5. Write the `progress.md` § Phase 0.95 Mode Selection log entry per `orchestration-mode-selection.md` §D HARD logging contract BEFORE spawning the first run-phase `Agent()` call — the Input parameters block (tier, scope, domain count, file language mix, concurrency benefit), the mode evaluation table across all 6 catalog modes, a single-line Decision (e.g. "Scale-based mode: {mode} (files: {N}, domains: {N})"), a short Justification paragraph, and — when the selection resolves to Mode 6 (workflow) — the Implementation Kickoff Approval-passed + preferences-collected confirmation
 
-This phase auto-selects and does NOT require user approval. The user can override with --team or --solo flags.
+This phase auto-selects and does NOT require user approval. The user can override with the --solo flag (a forced --team is retired → emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode).
 
 ## Phase 1: Analysis and Planning
 
@@ -419,7 +419,6 @@ Steps:
 
 Mode-specific deployment:
 - Sub-agent mode: Agent(subagent_type="sync-auditor")
-- Team mode: SendMessage to reviewer teammate
 - CG mode: Leader performs contract negotiation inline
 
 **Output**: `.moai/specs/SPEC-{ID}/contract.md`

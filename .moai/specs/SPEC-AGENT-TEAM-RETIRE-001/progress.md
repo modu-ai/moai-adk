@@ -232,6 +232,63 @@ i18n keys are now orphaned (no render reference after the section removal) — L
 in-place as harmless dead keys (minimal-scope choice; keeps `TestAgentFMWarnI18nParity`
 green with zero test churn). A follow-up i18n cleanup or the sync phase MAY prune them.
 
+### M3 — Phases 5-6-7 rules + skills + template mirror (REQ-ATR-010/011/012/013/022)
+
+Commit: `feat(SPEC-AGENT-TEAM-RETIRE-001): M3 — remove team rules + skills, migrate glm.md, template mirror` (SHA in git log — a commit cannot reference its own hash). Ran in an L1 worktree (`worktree-agent-a4d53193547131922`, base `db4c08aa7`); orchestrator integrates to main.
+
+Migrate-then-delete (REQ-ATR-022, ordering: migrate FIRST, delete in same commit): NEW `## CG Mode (Claude + GLM teammates)` section (mechanism/LLM-mode-detection/prereqs/tmux-env/error-recovery/cleanup) added to `.claude/rules/moai/core/glm-web-tooling.md` (both trees) — Agent-Teams orchestration prose NOT migrated. Then deleted all 6 `.claude/skills/moai/team/{plan,run,sync,debug,review,glm}.md` (both trees).
+
+Deleted (both trees): `.claude/rules/moai/workflow/{team-protocol.md,team-pattern-cookbook.md}` (2 rules) + `.claude/skills/moai/team/` (6 skills) = 4+12 `git rm`.
+
+Rule reframes (both trees): `orchestration-mode-selection.md` (Mode 3 catalog row + §B decision-tree branch + §C.1 gate + §C.2 + §E anti-pattern + §G.1 crosswalk → `Mode 3 — RETIRED` tombstone; §B.1 `auto_selection` pointer removed → prose-only SSOT, D8); `spec-workflow.md` (:107 Mode Dispatch auto-select row + `### Team Mode Methodology` + Phase 0.5 gate-entry team/run.md ref + entire `## Agent Teams Variant` section → RETIRED tombstone); `settings-management.md` (`## Agent Teams Settings` → RETIRED); `agent-authoring.md` (role-profile `Requires:` env line → retirement note); `model-policy.md` (:65 team-protocol/team/run.md cross-ref removed); `NOTICE.md` (team-examples cookbook attribution row de-referenced); `spec-frontmatter-schema.md` (:11 team/plan.md cross-ref removed); `worktree-integration.md` (`## Team Protocol` section removed + Version footer); `dynamic-workflows.md` (:136 team-protocol/cookbook cross-ref → orchestration-mode-selection §C.1). CLAUDE.md §4 (Dynamic Team Generation → RETIRED) + §15 (Agent Teams → RETIRED + CG Mode preserved), both trees.
+
+Skill reframes (both trees, `.claude/skills/moai/workflows/`): removed all `--team` routing to deleted `team/*.md` + `## Team Mode` sections + `workflow.team.enabled` / `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` prereq refs across `run.md`, `moai.md`, `fix.md`, `mx.md`, `plan.md`, `review.md`, `sync.md`, `plan/spec-assembly.md`, `run/{mode-orchestration,context-loading,task-decomposition,phase-execution}.md`, `sync/delivery.md`. run.md `--mode` dispatch axis retained the `MODE_UNKNOWN` + `MODE_TEAM_UNAVAILABLE` sentinels (CI audit `agentless_audit_test.go`) while reframing `--mode team` as retired → emits `MODE_TEAM_UNAVAILABLE` → falls back to autopilot.
+
+R3 CRITICAL (delivery.md): ONLY the `:393 ## Team Mode` Agent-Teams section (+ its `team/sync.md` ref) was deleted. The `:285-338` GitStrategy team ModeProfile prose (PR Ready Transition / draft→ready / approvals — defaults_test.go `Team.DraftPR` / `Team.RequiredReviews` preservation invariant) was PRESERVED. delivery.md is the sole documented GitStrategy `team mode` named-exception survivor in the workflows tree.
+
+Template (Phase 7): removed `team:` block (auto_selection + role_profiles + patterns) from `internal/template/templates/.moai/config/sections/workflow.yaml`. `make build` regenerated the go:embed FS (catalog.yaml byte-identical → no hash cascade). Removal-coupled Go test reconciliation (necessary consequence of the deletions, NOT new logic): `skills_audit_test.go` team/run.md AC-WAG-05 case removed; `template_neutrality_audit_test.go` stale `team/run.md` allowlist entry removed.
+
+Exit-gate evidence (verbatim tails):
+
+```
+$ go build ./... ; GOOS=windows GOARCH=amd64 go build ./... ; go vet ./...
+build exit=0 / winbuild exit=0 / vet exit=0
+$ go test ./...
+exit=0   (all packages ok, 0 FAIL; full log: .moai/state/verify/atr-m3/1-gotest.log)
+$ golangci-lint run --timeout=3m
+0 issues.   (baseline: 0 issues at pre-flight — no NEW lint)
+$ go test ./internal/template/...
+ok  github.com/modu-ai/moai-adk/internal/template  (neutrality + leak + mirror-parity + split-namespace guards PASS)
+```
+
+AC evidence (M3-scope, post-M3 tree, both trees unless noted):
+
+```
+AC-ATR-015  team rules absent (per-tree [ -e ] loop → no RESIDUE); grep "Mode 3 — RETIRED"
+            orchestration-mode-selection.md → 2 (>=1); dangling-ref sweep (5 .claude subtrees +
+            template, --include=*.md, excl /team/) → 0                                      PASS
+AC-ATR-016  team skills dir absent (per-tree [ -d ] → no RESIDUE); grep "Agent Teams 모드"
+            run.md → 0; grep -i "## Team Mode" delivery.md → 0; case-insensitive "team mode"
+            workflows/ sweep → only delivery.md (GitStrategy named exception, R3-preserved)  PASS
+AC-ATR-017  make build exit 0; go test ./internal/template/... ok (neutrality/leak/mirror/split);
+            grep "^    team:" template workflow.yaml → 0                                     PASS
+            NOTE (deviation): local .moai/config/sections/workflow.yaml role_profiles/team block
+            LEFT UNTOUCHED per the delegation instruction (§22 dev-local exempt) — AC-ATR-017's
+            "role_profiles: local tree too → 0" sub-check is a documented deviation, not a defect;
+            the DEPLOYED template (what users receive) has 0 role_profiles/team (verified by AC-ATR-018)
+AC-ATR-018  bin/moai init sandbox → no team-protocol.md / no team-pattern-cookbook.md /
+            no team skills dir / workflow.yaml team: block = 0 / CG token deployed = 1       PASS (resurrection-negative)
+AC-ATR-027  grep "CG Mode (Claude + GLM" glm-web-tooling.md both trees → 1,1 (baseline 0 — non-vacuous);
+            [ -e team/glm.md ] → removed (migrate-then-delete ordering: migration + deletion in same M3 commit)  PASS
+AC-ATR-028  grep "auto_selection" orchestration-mode-selection.md both trees → 0,0;
+            grep "≥ 3 domains" → 1,1 (prose threshold RETAINED as sole SSOT)                PASS
+AC-ATR-029  key-token sweep (workflow.team.enabled|CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS) across the
+            9 enumerated files both trees → 0; CLAUDE.md both trees → 0 (Mode 3 tombstone in
+            orchestration-mode-selection.md is the sole allowed survivor, and it too carries 0)  PASS
+```
+
+Baselines recorded at pre-flight (delta discipline): CG token both trees = 0 (→ 1 after migration); `Mode 3 — RETIRED` = 0 (→ 2 after tombstone); `auto_selection` orchestration-mode-selection = 1 (→ 0 after D8 removal).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — populated by manager-develop>_

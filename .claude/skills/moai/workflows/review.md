@@ -2,7 +2,6 @@
 description: >
   Multi-perspective code review with security, performance, quality, and UX analysis.
   Supports staged changes, branch comparison, and security-focused review.
-  Team mode available for parallel multi-perspective review.
   Use when performing code review, security audit, or quality assessment.
 user-invocable: false
 metadata:
@@ -39,7 +38,6 @@ Flow: Identify Changes -> Analyze Perspectives -> Consolidate -> Report
 - --file PATH: Review specific file(s) only
 - --design: Extract design patterns from UI code and create/update `.moai/design/system.md`
 - --critique: Post-build craft review focusing on subtle layering, surface elevation, token architecture, and typography hierarchy
-- --team: Use parallel multi-perspective review team (see ${CLAUDE_SKILL_DIR}/team/review.md)
 - --lean: Over-engineering-ONLY lean audit mode. Short-circuits the comprehensive 4-perspective analysis (Security / Performance / Quality / UX) and runs ONLY the over-engineering scan with the 5-tag finding format + net-reduction summary. Read-only and advisory: applies no fixes, modifies no files, renders no PASS/FAIL verdict. See the "--lean Mode" section below.
 - --repo: Repo-wide scope. With --lean, sweeps the WHOLE tree instead of the diff-scope default. Ignored without --lean.
 
@@ -63,9 +61,7 @@ If --lean flag: SHORT-CIRCUIT this phase entirely. Skip the comprehensive 4-pers
 
 [HARD] Delegate review to the sync-auditor subagent with all perspectives (independent skeptical quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2).
 
-If --team flag: Route to ${CLAUDE_SKILL_DIR}/team/review.md for parallel multi-perspective review with 4 dedicated reviewers.
-
-If no --team flag (default single-agent mode): Delegate to the sync-auditor subagent with instructions to review from all 4 perspectives sequentially.
+Delegate to the sync-auditor subagent with instructions to review from all 4 perspectives sequentially. (The `--team` parallel-review mode is retired with the Agent Teams static layer.)
 
 At the finding stage, report every issue you find, including ones you are uncertain about or consider low-severity, each with a confidence level and an estimated severity. Do not filter for importance or confidence while finding — the verdict stage (must-pass thresholds + harmonic scoring) does the filtering downstream. The goal at this stage is coverage: surfacing a finding that later gets filtered out is preferable to silently dropping a real bug.
 
@@ -272,21 +268,6 @@ The --lean mode is read-only and advisory. It applies NO fixes, modifies NO file
 - Warnings grouped by file as aggregate tasks
 - Suggestions listed in report but not tracked as tasks
 
-## Team Mode
-
-When --team flag is provided, review delegates to the team-based multi-perspective review workflow.
-
-Team composition: 4 review agents (security, performance, quality, UX) analyzing in parallel.
-
-For detailed team orchestration steps, see ${CLAUDE_SKILL_DIR}/team/review.md.
-
-Fallback: If team mode is unavailable, standard single-agent sequential review continues.
-
-Team Prerequisites:
-- workflow.team.enabled: true in .moai/config/sections/workflow.yaml
-- CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in environment
-- If prerequisites not met: Falls back to single-agent review
-
 ## Phase 4.5: Design Review (Conditional)
 
 When to run: --design or --critique flag is present, OR changed files include UI components (tsx, jsx, vue, svelte, css, scss)
@@ -330,8 +311,8 @@ Output: Craft critique report with severity-ranked findings and rebuild suggesti
 
 ## Execution Summary
 
-1. Parse arguments (extract flags: --staged, --branch, --security, --file, --design, --critique, --team)
-2. If --team: Route to ${CLAUDE_SKILL_DIR}/team/review.md workflow
+1. Parse arguments (extract flags: --staged, --branch, --security, --file, --design, --critique)
+2. (The `--team` review fan-out is retired — always delegate to the sync-auditor subagent)
 3. Identify code changes (git diff based on flags)
 4. Delegate multi-perspective review to the sync-auditor subagent
 5. Check @MX tag compliance for changed files

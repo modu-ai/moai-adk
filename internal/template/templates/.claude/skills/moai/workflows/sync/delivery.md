@@ -1,5 +1,5 @@
 ---
-description: "Sync Phase 3~4 — Git Operations and Delivery (CI mirror, push/PR, auto-merge), Completion, Team Mode, Graceful Exit, Test Scenarios, and Custom Harness."
+description: "Sync Phase 3~4 — Git Operations and Delivery (CI mirror, push/PR, auto-merge), Completion, Graceful Exit, Test Scenarios, and Custom Harness."
 user-invocable: false
 metadata:
   parent: moai-workflow-sync
@@ -387,14 +387,6 @@ Tool: AskUserQuestion with options tailored to delivery result:
 - Review PR in Browser
 - Return to Main Directory
 - Remove This Worktree
-
----
-
-## Team Mode
-
-The sync phase always uses sub-agent mode (manager-docs), even when --team is active for other phases. Documentation synchronization requires sequential consistency and a single authoritative view of project state.
-
-For rationale and details, see ${CLAUDE_SKILL_DIR}/../team/sync.md.
 
 ---
 

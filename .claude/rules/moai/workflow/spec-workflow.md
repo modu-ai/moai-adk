@@ -104,8 +104,7 @@ Mode precedence (hard-coded):
 Auto-selection rules:
 
 - Harness `minimal` or `standard` → default mode = `autopilot`
-- Harness `thorough` AND `workflow.team.enabled: true` AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` → default mode = `team`
-- Otherwise (thorough but team prereqs missing) → fallback to `autopilot` with `[mode-auto-downgrade]` info log.
+- Harness `thorough` → default mode = `autopilot` (the former `team` auto-select is retired with the Agent Teams static layer; a forced `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to `autopilot` with a `[mode-auto-downgrade]` info log).
 
 See `.claude/skills/moai/workflows/run.md` § Mode Dispatch for the per-skill dispatch rules.
 
@@ -225,9 +224,9 @@ Before marking implementation complete: review full diff against SPEC acceptance
 
 After each methodology cycle, compare planned files against actual modifications. Warns at <= 30% drift. Triggers re-planning (Phase 2.7) above 30%.
 
-### Team Mode Methodology
+### Methodology delegation (team mode retired)
 
-Each teammate applies the methodology within its file ownership scope. Teammates are spawned dynamically via `Agent(subagent_type: "general-purpose")` with `role_profile` overrides — the reviewer role_profile validates compliance; the tester role_profile exclusively owns test files.
+The Agent Teams static layer is retired; the run-phase methodology (DDD/TDD) is applied by a single `manager-develop` sub-agent (Mode 5), with multi-domain research fanned out via Mode 4 (parallel read-only `Agent()`) where warranted. See § Agent Teams Variant — RETIRED. The native `moai cg` teammate runtime is unaffected.
 
 ### MX Tag Integration
 
@@ -359,7 +358,7 @@ the implementation phase.
 ### Gate Entry Condition
 
 - Triggered on every `/moai run <SPEC-ID>` invocation
-- Applies in both solo mode (workflows/run.md) and team mode (team/run.md)
+- Applies to every `/moai run` invocation (workflows/run.md)
 - Cannot be skipped by harness level — gate is never disabled, not even on `minimal`
 
 ### Depends_on Pre-flight Check
@@ -425,93 +424,21 @@ Sync to Cleanup (Route B only):
 - Action (only if L2 worktree was created): `moai worktree done SPEC-XXX` (executed from host checkout, not from inside the worktree)
 - See § SPEC Phase Discipline (Step 4). Route A has no PR and no worktree cleanup step.
 
-## Agent Teams Variant
+## Agent Teams Variant — RETIRED
 
-When team mode is enabled (workflow.team.enabled and AGENT_TEAMS env), phases can execute with Agent Teams instead of sub-agents.
+The MoAI Agent Teams static-orchestration layer is RETIRED. Mode 3 (`agent-team`)
+of the Phase 0.95 catalog is a tombstone (`.claude/rules/moai/workflow/orchestration-mode-selection.md`
+§C.1), and the `--team` / `--mode team` dispatch value emits `MODE_TEAM_UNAVAILABLE`
+and falls back to sub-agent mode. The former team-mode plan/run/fix/review skill
+files and the `workflow.yaml` team-config block were removed.
 
-### Team Mode Phase Overview
+The practical multi-agent surface is covered without the static team layer:
+- Multi-domain research/review → Mode 4 (parallel fan-out: 3-5 concurrent read-only `Agent()` in one turn).
+- Coding-heavy implementation → Mode 5 (sequential sub-agent) per Anthropic's coding-task parallelism caveat.
+- High-volume mechanical transformation → Mode 6 (workflow / dynamic-workflow fan-out).
 
-| Phase | Sub-agent Mode | Team Mode | Condition |
-|-------|---------------|-----------|-----------|
-| Plan | manager-spec (single) | Dynamic teammates: researcher + analyst + architect (parallel, general-purpose) | Complexity >= threshold |
-| Run | manager-develop (sequential) | Dynamic teammates: implementer + tester + reviewer role_profiles (parallel, spawned as general-purpose) | Domains >= 3 or files >= 10 |
-| Sync | manager-docs (single) | manager-docs (always sub-agent) | N/A |
-
-All teammates are spawned dynamically via `Agent(subagent_type: "general-purpose")` with runtime overrides from `workflow.yaml` role profiles. No static team agent definitions are used. See `.claude/skills/moai/team/run.md` for complete orchestration.
-
-### Team Mode Plan Phase
-- Spawn the parallel research teammates directly via Agent(name=...) — the team forms implicitly on first spawn (one team per session, no setup step)
-- Spawn general-purpose teammates with mode: "plan" (read-only)
-- researcher teammate produces research.md with deep codebase analysis
-- analyst teammate validates requirements against research findings
-- architect teammate designs solution using reference implementations found in research
-- MoAI runs annotation cycle with user for plan refinement (1-6 iterations)
-- MoAI synthesizes into SPEC document
-- Shutdown team, /clear before Run phase
-
-### Team Mode Run Phase
-- Spawn the implementation teammates directly via Agent(name=...) — the team forms implicitly on first spawn (one team per session, no setup step)
-- Task decomposition with file ownership boundaries
-- [SHOULD] Implementation teammates (role_profiles: implementer, tester) may use L1 `isolation: "worktree"` for parallel file safety; Claude Code runtime decides per-call. Per the opt-in policy, MoAI orchestrator does not mandate L1 isolation.
-- [SHOULD] Read-only teammates (role_profiles: reviewer) typically do not need L1 `isolation: "worktree"` — `mode: "plan"` is sufficient.
-- Teammates self-claim tasks from shared list
-- Quality validation after all implementation completes
-- L1 worktree cleanup via `git worktree prune` after team shutdown (if L1 worktrees were materialized by runtime)
-- Shutdown team
-
-### Token Cost Awareness
-
-Agent teams use significantly more tokens than a single session. Each teammate has its own independent context window, so token usage scales linearly with the number of active teammates.
-
-Estimated token multipliers by team pattern:
-- plan_research (3 teammates): ~3x plan phase tokens
-- implementation (3 teammates): ~3x run phase tokens
-- design_implementation (4 teammates): ~4x run phase tokens
-- investigation (3 teammates): ~2x (haiku model reduces cost)
-- review (3 teammates): ~2x (read-only, shorter sessions)
-
-When to prefer team mode over sub-agent mode:
-- Research and review tasks where parallel exploration adds real value
-- Cross-layer features (frontend + backend + tests)
-- Complex debugging with multiple potential root causes
-- Tasks where teammates need to communicate and coordinate
-
-When to prefer sub-agent mode:
-- Sequential tasks with heavy dependencies
-- Same-file edits or tightly coupled changes
-- Routine tasks with clear single-domain scope
-- Token budget is a concern
-
-### Team Workflow References
-
-Detailed team orchestration steps are defined in dedicated workflow files:
-
-- Plan phase: .claude/skills/moai/team/plan.md
-- Run phase: .claude/skills/moai/team/run.md
-- Fix phase: .claude/skills/moai/team/debug.md
-- Review: .claude/skills/moai/team/review.md
-
-### Known Limitations
-
-For complete limitations list, see CLAUDE.md Section 15.
-
-### Prerequisites
-
-Both conditions must be met:
-- `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
-- `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml`
-
-See @CLAUDE.md Section 15 for details.
-
-### Mode Selection
-- --team flag: Force team mode
-- --solo flag: Force sub-agent mode
-- No flag (default): Complexity-based selection
-- See workflow.yaml team.auto_selection for thresholds
-
-### Fallback
-If team mode fails or prerequisites are not met:
-- Graceful fallback to sub-agent mode
-- Continue from last completed task
-- No data loss or state corruption
-- Trigger conditions: AGENT_TEAMS env not set, workflow.team.enabled false, first teammate spawn failure (the implicit team forms on first spawn — there is no separate team-creation step to fail), subsequent teammate spawn failure
+The native Claude Code teammate runtime is UNAFFECTED: `moai cg` GLM teammate
+panes, `worktree --team` P1-P4 launch, the `~/.claude/teams/` registry, and
+`teammateMode` launcher handling remain supported (see
+`.claude/rules/moai/core/glm-web-tooling.md` § CG Mode). Only MoAI's static
+team-orchestration layer built on top of that runtime is retired.

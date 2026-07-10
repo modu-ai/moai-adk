@@ -154,7 +154,6 @@ var neutralityClasses = []neutralityClass{
 			".claude/rules/moai/workflow/spec-workflow.md",
 			".claude/rules/moai/workflow/worktree-state-guard.md",
 			".claude/rules/moai/workflow/verification-batch-pattern.md",
-			".claude/skills/moai/team/run.md",
 		),
 	},
 	{

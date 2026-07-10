@@ -7,8 +7,7 @@ paths: "**/.moai/specs/**,internal/spec/**"
 
 > **Single Source of Truth** for the canonical SPEC frontmatter schema.
 > Enforcement: `internal/spec/lint.go` `FrontmatterSchemaRule`.
-> Cross-referenced by: `.claude/skills/moai/workflows/plan.md` § Pre-Write Frontmatter Checklist,
-> `.claude/skills/moai/team/plan.md` § Pre-Write Frontmatter Checklist.
+> Cross-referenced by: `.claude/skills/moai/workflows/plan.md` § Pre-Write Frontmatter Checklist.
 
 ## Canonical 12 Required Fields
 

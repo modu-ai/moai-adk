@@ -55,7 +55,6 @@ For tag types, lifecycle rules, mandatory fields, and per-file limits, see: .cla
 | `--lang go,py,ts` | Scan only specified languages (default: auto-detect) |
 | `--threshold N` | Override fan_in threshold (default: 3) |
 | `--no-discovery` | Skip Phase 0 codebase discovery |
-| `--team` | Parallel scan by language (Agent Teams mode) |
 
 ## Pipeline Contract (Agentless Classification)
 
@@ -242,18 +241,6 @@ During DDD ANALYZE phase:
 - Pass 2: a per-spawn `Agent(general-purpose)` agent with backend scope (selective deep read, tag description generation)
 - Pass 3: a per-spawn `Agent(general-purpose)` agent with backend scope (batch edit, tag insertion)
 
-## Team Mode
-
-When `--team` flag is provided, the scan parallelizes by language: each teammate scans and tags a distinct language subset concurrently.
-
-Team composition: one teammate per detected language, up to the Anthropic-recommended 3-5 concurrent ceiling, spawned via `Agent(subagent_type: "general-purpose")` with backend scope.
-
-Fallback: If team mode is unavailable, the standard sequential 3-Pass scan continues.
-
-Team Prerequisites:
-- workflow.team.enabled: true in .moai/config/sections/workflow.yaml
-- CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in environment
-- If prerequisites not met: Falls back to standard sequential 3-Pass scan
 
 ---
 

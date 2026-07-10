@@ -186,7 +186,6 @@ Steps:
 
 Mode-specific deployment:
 - Sub-agent mode: Agent(subagent_type="sync-auditor")
-- Team mode: SendMessage to reviewer teammate
 - CG mode: Leader performs evaluation inline
 
 Output: evaluation_report with per-dimension PASS/FAIL/UNVERIFIED verdicts and findings list.

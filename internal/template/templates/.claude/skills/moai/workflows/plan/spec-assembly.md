@@ -382,7 +382,7 @@ Agent: manager-git subagent
 - Create branch: feature/SPEC-{ID}-{description} from `<chosenBase>`.
 - Set tracking upstream if remote exists.
 - Switch to new branch.
-- Team mode: Create draft PR via manager-git subagent.
+- GitStrategy team profile (draft-PR enabled): Create draft PR via manager-git subagent.
 
 #### Current Branch Path (no flag or user choice)
 
@@ -484,12 +484,10 @@ When tmux IS available: AskUserQuestion with 3 options (descriptions adapt to ac
   - CC: "Create MoAI worktree with tmux session. All agents use Claude. Highest quality."
   - GLM: "Create MoAI worktree with tmux session. All agents use GLM. Cost optimized."
   - CG: "Create MoAI worktree with tmux session. Leader=Claude, Workers=GLM. Balanced quality-cost."
-- Option 2: Team Mode (in-process): Use Agent Teams for parallel implementation within current session. Best for multi-domain features.
-- Option 3: Sub-agent Mode (sequential): Use sequential sub-agents. Best for simple, single-domain tasks.
+- Option 2: Sub-agent Mode (sequential): Use sequential sub-agents. Best for simple, single-domain tasks. (Agent Teams in-process mode retired.)
 
-When tmux is NOT available: AskUserQuestion with 2 options:
-- Option 1 (Recommended): Sub-agent Mode: Use sequential sub-agents for implementation. Tmux is not available for session isolation.
-- Option 2: Team Mode (in-process): Use Agent Teams for parallel implementation within current session.
+When tmux is NOT available: AskUserQuestion with 1 option:
+- Option 1 (Recommended): Sub-agent Mode: Use sequential sub-agents for implementation. Tmux is not available for session isolation. (Agent Teams in-process mode retired.)
 
 **Step 4: Execute selected mode**
 - **Worktree mode**: Execute `moai worktree new SPEC-{ID} --tmux` to create worktree with tmux session. The tmux session will:
@@ -497,7 +495,6 @@ When tmux is NOT available: AskUserQuestion with 2 options:
   - GLM mode: Create session, inject GLM env, cd to worktree, run `/moai run SPEC-{ID}`
   - CG mode: Create session, inject GLM env to session, clear GLM from settings.local.json, cd to worktree, run `/moai run SPEC-{ID}`
   - Display: "Implementation started in tmux session: moai-{ProjectName}-{SPEC-ID}"
-- **Team mode**: Proceed to `/moai run SPEC-{ID} --team`
 - **Sub-agent mode**: Proceed to `/moai run SPEC-{ID} --solo`
 
 **Step 5: Gate result passing**

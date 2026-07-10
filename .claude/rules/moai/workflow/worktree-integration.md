@@ -396,10 +396,6 @@ The 7-field schema (`spec_id`, `worktree_path`, `branch`, `pane_id`, `mode`, `cr
 
 [ZONE:Frozen] [HARD] Disposal contract: `moai worktree done SPEC-XXX` MUST run only after BOTH run PR AND sync PR are merged. Premature disposal between Step 2 merge and Step 3 merge breaks Sync.
 
-## Team Protocol
-
-> Canonical: the shared Agent Teams teammate protocol (team discovery, communication, task management, error recovery, shutdown handling, idle states, context isolation) lives in `.claude/rules/moai/workflow/team-protocol.md`. This file cross-references it for worktree-isolation context only; it does not restate the teammate protocol mechanics.
-
 ---
 
-Version: 4.0.0 (Team Protocol merged from team-protocol.md)
+Version: 4.1.0 (Team Protocol section removed — Agent Teams static layer retired)

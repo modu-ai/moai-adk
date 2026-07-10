@@ -176,7 +176,7 @@ Role profiles are defined in `.moai/config/sections/workflow.yaml` under `team.r
 | designer | sonnet | acceptEdits | worktree | UI/UX design with MCP tools |
 | reviewer | haiku | plan (read-only) | none | Code review, quality validation |
 
-Requires: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json env
+The Agent Teams static layer that consumed these role profiles is RETIRED; a forced `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode. The native `moai cg` teammate runtime is unaffected (see `.claude/rules/moai/core/glm-web-tooling.md` § CG Mode).
 
 ## Frontmatter Format Rules
 

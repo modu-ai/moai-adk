@@ -108,7 +108,7 @@ Constraints: 10k concurrent users, 100ms read latency target
 ## Invocation Flow
 
 ```
-/moai plan [description] [--worktree|--branch] [--team] [--no-issue]
+/moai plan [description] [--worktree|--branch] [--no-issue]
   └─ context-discovery.md
        ├─ Phase 1: Brain proposal scan
        ├─ Phase 2: Explore (optional)
@@ -154,19 +154,6 @@ On successful plan completion (all SPEC files created, user approved), append to
 
 This signal marks the plan artifacts as finalized and enables the Plan Audit Gate at `/moai run` Phase 0.5.
 
----
-
-## Team Mode Routing
-
-When --team flag is provided or auto-selected, the plan phase MUST switch to team orchestration:
-
-1. Verify prerequisites: workflow.team.enabled == true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var is set
-2. If prerequisites met: Read ${CLAUDE_SKILL_DIR}/team/plan.md and execute the team workflow (spawn researcher + analyst + architect via Agent(name=...) — the team forms implicitly on first spawn)
-3. If prerequisites NOT met: Warn user then fallback to standard sub-agent mode (manager-spec)
-
-Team composition: researcher (haiku) + analyst (inherit) + architect (inherit)
-
-For detailed team orchestration steps, see ${CLAUDE_SKILL_DIR}/team/plan.md.
 
 ---
 

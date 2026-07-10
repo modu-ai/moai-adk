@@ -47,7 +47,7 @@ Phase 0.95 Mode Selection: orchestrator autonomous decision over the 6-mode cata
 | Phase 0: Context Loading | `Read workflows/run/context-loading.md` | Mode dispatch, UltraThink, harness level, context loading, worktree path rules |
 | Phase 0.5~1.8: Phase Execution | `Read workflows/run/phase-execution.md` | Plan Audit Gate, environment assessment, JIT language detection, scale-based mode, analysis/planning, task decomposition, development mode routing |
 | Phase 2~4: Implementation | `Read workflows/run/task-decomposition.md` | DDD/TDD cycles, quality validation (Phase 2.5/2.8), git operations (Phase 3), completion guidance (Phase 4) |
-| Mode Routing + Completion | `Read workflows/run/mode-orchestration.md` | Execution mode gate, team mode routing, context propagation, completion criteria, test scenarios |
+| Mode Routing + Completion | `Read workflows/run/mode-orchestration.md` | Execution mode gate, mode dispatch routing, context propagation, completion criteria, test scenarios |
 
 ## Invocation Flow
 
@@ -60,7 +60,7 @@ Phase 0.95 Mode Selection: orchestrator autonomous decision over the 6-mode cata
   ├── [trace] /moai run Phase 2 enter
   │   Read workflows/run/task-decomposition.md → Implementation + quality + git
   └── [trace] /moai run Mode enter
-      Read workflows/run/mode-orchestration.md → Team mode + completion criteria
+      Read workflows/run/mode-orchestration.md → Mode dispatch + completion criteria
 ```
 
 ## Quick Reference
@@ -74,7 +74,7 @@ Phase 0.95 Mode Selection: orchestrator autonomous decision over the 6-mode cata
 **Mode dispatch** (`--mode` flag):
 - `autopilot` (기본): Phase 0.95 scale-based 선택 후 Phase 2A/2B 실행
 - `loop`: Ralph engine 위임 (see `loop.md`)
-- `team`: Agent Teams 모드 (requires prerequisites)
+- `team`: RETIRED — `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to `autopilot` (Agent Teams static layer retired)
 - `pipeline`: REJECTED — `MODE_PIPELINE_ONLY_UTILITY` 오류 반환
 
 **Harness levels**: `minimal` → skip optional phases | `standard` → all phases | `thorough` → GAN-loop Sprint Contract Protocol + sync-auditor
@@ -105,7 +105,7 @@ Read .claude/skills/moai/workflows/run/phase-execution.md
 # Phase 2 (Implementation) 진입 시
 Read .claude/skills/moai/workflows/run/task-decomposition.md
 
-# Team mode 또는 completion criteria 확인 시
+# Mode dispatch 또는 completion criteria 확인 시
 Read .claude/skills/moai/workflows/run/mode-orchestration.md
 ```
 

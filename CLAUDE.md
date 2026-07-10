@@ -117,11 +117,9 @@ When a paste-ready resume message or `Agent()` invocation references one of thes
 
 Note on `claude-code-guide`: the archived entry refers to the former MoAI-custom agent file of that name. It is distinct from the official Claude Code built-in helper agent that is also named `claude-code-guide` and ships with the runtime — that built-in is a separate, valid agent and invoking it does NOT trigger archived-agent rejection. The rejection binds only the MoAI-custom file.
 
-### Dynamic Team Generation (Experimental)
+### Dynamic Team Generation (RETIRED)
 
-Agent Teams teammates are spawned dynamically using `Agent(subagent_type: "general-purpose")` with runtime parameter overrides from `workflow.yaml` role profiles. No static team agent definitions are used.
-
-Role profiles (in `workflow.yaml`): researcher, analyst, architect, implementer, tester, designer, reviewer. Each profile specifies mode, model, and isolation. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env var AND `workflow.team.enabled: true` in workflow.yaml.
+The MoAI Agent Teams static-orchestration layer is RETIRED. Mode 3 (`agent-team`) is a Phase 0.95 tombstone; a forced `--team` / `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode (Mode 5). The former `workflow.yaml` team role-profile config and env-var gate were removed. The native Claude Code teammate runtime (`moai cg` GLM panes, `worktree --team`, `~/.claude/teams/`) is unaffected — see `.claude/rules/moai/core/glm-web-tooling.md` § CG Mode.
 
 For agent creation guidelines, use the `builder-harness` subagent or see `.claude/rules/moai/development/agent-authoring.md`.
 
@@ -261,9 +259,9 @@ Per the worktree-opt-in policy, L2/L3 worktree usage is user opt-in; L1 `Agent(i
 
 ---
 
-## 15. Agent Teams (Experimental)
+## 15. Agent Teams (RETIRED) + CG Mode
 
-MoAI supports optional Agent Teams mode for parallel phase execution (Claude Code v2.1.32+, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, `workflow.team.enabled: true`). Mode selection: `--team`/`--solo`/no flag (auto-select: domains ≥ 3, files ≥ 10, or score ≥ 7). Teams are implicit (`Agent(name=...)`, team forms on first spawn; cleanup automatic on exit). For complete documentation (team API, role profiles, file ownership, hooks), see `.claude/rules/moai/workflow/spec-workflow.md`.
+The MoAI Agent Teams static-orchestration layer is RETIRED. Mode 3 (`agent-team`) is a Phase 0.95 tombstone; a forced `--team` / `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode. The former team role-profile config and env-var gate were removed. The practical multi-agent surface is covered by Mode 4 (parallel fan-out) for research/review and Mode 5 (sequential sub-agent) for coding. See `.claude/rules/moai/workflow/spec-workflow.md` § Agent Teams Variant — RETIRED. The native Claude Code teammate runtime (`moai cg` GLM panes, `worktree --team`) is unaffected — the CG Mode subsection below is preserved.
 
 ### CG Mode (Claude + GLM Cost Optimization)
 

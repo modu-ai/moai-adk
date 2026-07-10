@@ -1,9 +1,9 @@
 ---
-description: "Run Mode Routing — Execution mode gate integration, team mode routing, context propagation, completion criteria, test scenarios, and custom harness extension"
+description: "Run Mode Routing — Execution mode gate integration, mode dispatch routing, context propagation, completion criteria, test scenarios, and custom harness extension"
 user-invocable: false
 metadata:
   parent: moai-workflow-run
-  phase: "Mode Routing: Execution Mode Gate, Team Mode, Completion, and Scenarios"
+  phase: "Mode Routing: Execution Mode Gate, Mode Dispatch, Completion, and Scenarios"
 ---
 
 # Execution Mode Gate Integration
@@ -19,37 +19,35 @@ Proceed with standard sub-agent run phase in the current environment.
 No additional routing needed — CC/GLM/CG env is already configured by the Gate.
 
 **If execution_mode == "team":**
-Apply Team Mode Routing below. The active_mode determines worker model selection:
-- CC: All teammates use Claude (default behavior)
-- GLM: All teammates inherit GLM env from tmux session
-- CG: Leader=Claude (clean session), Workers=GLM (tmux env injected)
+The `team` execution mode is RETIRED (Agent Teams static layer). Emit the
+canonical sentinel `MODE_TEAM_UNAVAILABLE` and fall back to the standard
+sub-agent run phase (Phase 1 Strategy). The `active_mode` (cc / glm / cg) still
+selects the backend for the native `moai cg` teammate runtime, which is
+unaffected by this retirement.
 
 **If execution_mode == "sub-agent":**
-Skip Team Mode Routing. Proceed directly to Phase 1 (Strategy).
+Proceed directly to Phase 1 (Strategy).
 
 **If no execution_mode provided (direct `/moai run` invocation):**
-Apply existing --team/--solo flag logic in Team Mode Routing below.
+Standard sub-agent run phase. A forced `--mode team` emits
+`MODE_TEAM_UNAVAILABLE` and falls back to `autopilot`; `--solo` is the explicit
+sub-agent selector.
 
 ---
 
-# Team Mode Routing
+# Mode Dispatch (team dispatch retired)
 
-When --team flag is provided or auto-selected — Mode 3 (`agent-team`) of the Phase 0.95 catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A), resolved through the §C.1 capability gate on both paths — the run phase MUST switch to team orchestration:
+The `--mode team` dispatch value is RETIRED: Mode 3 (`agent-team`) of the Phase
+0.95 catalog was retired with the Agent Teams static layer
+(`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.1). A forced
+`--mode team` emits the canonical sentinel `MODE_TEAM_UNAVAILABLE` (per
+`.claude/rules/moai/workflow/spec-workflow.md` § Mode Dispatch) and the
+orchestrator falls back to `autopilot` with a `[mode-auto-downgrade]` info log.
+The native Claude Code teammate runtime (`moai cg` GLM panes, `worktree --team`
+launch) is unaffected — only MoAI's static team-orchestration layer is retired.
 
-1. Verify prerequisites: workflow.team.enabled == true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var is set
-2. If prerequisites met: Read ${CLAUDE_SKILL_DIR}/team/run.md and execute the team workflow (spawn implementer + tester + reviewer via Agent(name=...) — the team forms implicitly on first spawn)
-3. If prerequisites NOT met: Warn user then fallback to standard sub-agent mode
-
-Team composition: implementer (inherit) + tester (inherit) + reviewer (inherit, read-only)
-
-## Worktree Isolation [HARD]
-
-- [SHOULD] When spawning implementation teammates (implementer, tester) via `Agent(isolation: "worktree")`, Claude Code runtime decides whether to materialize an L1 worktree. MoAI orchestrator does NOT mandate isolation (per the worktree-autonomous user policy).
-- [SHOULD] Read-only teammates (reviewer) typically do not benefit from `isolation: "worktree"`; omit the flag unless a specific reason applies. `permissionMode: plan` is sufficient.
-- [HARD] All worktree path rules from context-loading.md "Worktree Path Rules [HARD] (All Modes)" section apply to team mode as well
-- After team shutdown, run `git worktree prune` to clean up stale worktree references
-
-For detailed team orchestration steps, see ${CLAUDE_SKILL_DIR}/team/run.md.
+All worktree path rules from context-loading.md "Worktree Path Rules [HARD] (All
+Modes)" continue to apply to every execution mode.
 
 ---
 

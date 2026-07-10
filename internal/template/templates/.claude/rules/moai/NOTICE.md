@@ -20,7 +20,7 @@ The following reference documents from `revfactory/harness` (imported 2026-04-26
 1. `agent-design-patterns.md` → `.claude/rules/moai/development/agent-patterns.md`
 2. `qa-agent-guide.md` → `.claude/rules/moai/quality/boundary-verification.md`
 3. `skill-testing-guide.md` → `.claude/rules/moai/development/skill-ab-testing.md`
-4. `team-examples.md` → `.claude/rules/moai/workflow/team-pattern-cookbook.md`
+4. `team-examples.md` → (retired — the derived team-pattern cookbook rule was removed in the Agent Teams static-layer retirement; no longer distributed)
 5. `orchestrator-template.md` → `.claude/rules/moai/development/orchestrator-templates.md`
 6. `skill-writing-guide.md` → `.claude/rules/moai/development/skill-writing-craft.md`
 

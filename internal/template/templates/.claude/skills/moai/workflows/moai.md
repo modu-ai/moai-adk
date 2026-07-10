@@ -39,7 +39,7 @@ For phase overview, token budgets, and phase transitions, see: .claude/rules/moa
 - --branch: Auto-create feature branch
 - --pr: Auto-create pull request after completion
 - --resume SPEC-XXX: Resume previous work from existing SPEC
-- --team: Force Agent Teams mode for plan and run phases
+- --team: RETIRED — Agent Teams static layer retired; emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode
 - --solo: Force sub-agent mode (single agent per phase)
 - --sequential: Run Phase 0 exploration agents sequentially instead of in parallel
 - --issue: Opt-in GitHub Issue creation after SPEC generation (plan phase); absence skips Issue creation per the late-branch opt-in policy
@@ -205,53 +205,45 @@ When the router recorded a completion condition (router Step 2.8) and the pipeli
 - `single-phase` contract (explicit `run`/`sync` invocation): phase completion surfaces the chain as the "(Recommended)" first option of the existing next-step AskUserQuestion — the chain never fires silently.
 - Failing gates halt the chain: when the sync-audit gate returns FAIL/INCONCLUSIVE or the sync-phase quality gate blocks, the chain halts and escalates — the loop never auto-completes past a failing gate.
 
-## Team Mode
+## Mode Selection (team dispatch retired)
 
-When --team flag is provided or auto-selected (based on complexity thresholds in workflow.yaml):
-
-- Phase 0 exploration: Parallel research team (researcher + analyst + architect)
-- Phase 2 implementation: Parallel implementation team (implementer + tester + reviewer)
-- Phase 3 sync: Always sub-agent mode (manager-docs)
-
-For team orchestration details:
-- Plan phase: See ${CLAUDE_SKILL_DIR}/team/plan.md
-- Run phase: See ${CLAUDE_SKILL_DIR}/team/run.md
-- Sync rationale: See ${CLAUDE_SKILL_DIR}/team/sync.md
+The `--team` flag and Mode 3 (`agent-team`) are RETIRED with the Agent Teams
+static layer. A forced `--team` emits `MODE_TEAM_UNAVAILABLE` and falls back to
+sub-agent mode; the native `moai cg` GLM teammate runtime is unaffected.
 
 Mode selection:
-- --team: Force Mode 3 (agent-team) of the Phase 0.95 catalog for all applicable phases (the §C.1 capability gate still applies)
-- --solo: Force Mode 5 (sub-agent)
-- No flag (default): Auto-select per the Phase 0.95 6-mode catalog; thresholds stated once in `orchestration-mode-selection.md` §B.1 (machine source: workflow.yaml auto_selection)
+- `--team`: RETIRED — emits `MODE_TEAM_UNAVAILABLE`, falls back to Mode 5 (sub-agent).
+- `--solo`: Force Mode 5 (sub-agent).
+- No flag (default): Auto-select per the Phase 0.95 6-mode catalog; thresholds stated once in `orchestration-mode-selection.md` §B.1.
 
 ## Execution Summary
 
 1. Parse arguments (extract flags: --loop, --max, --sequential, --branch, --pr, --resume, --team, --solo, --issue)
 2. If --resume with SPEC ID: Load existing SPEC and continue from last state
 3. Detect development_mode from quality.yaml (ddd/tdd)
-4. **Team mode decision**: Read workflow.yaml team settings and determine execution mode
-   - If `--team` flag: Force team mode (requires workflow.team.enabled: true AND CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 env var)
-   - If `--solo` flag: Force sub-agent mode (skip team mode entirely)
-   - If no flag (default): Auto-select per the Phase 0.95 6-mode catalog (thresholds per `orchestration-mode-selection.md` §B.1; machine source: workflow.yaml auto_selection)
-   - If team mode selected but prerequisites not met: Warn user and fallback to sub-agent mode
+4. **Mode decision**: determine execution mode
+   - If `--team` flag: RETIRED — emit `MODE_TEAM_UNAVAILABLE` and fall back to sub-agent mode (Agent Teams static layer retired)
+   - If `--solo` flag: Force sub-agent mode
+   - If no flag (default): Auto-select per the Phase 0.95 6-mode catalog (thresholds per `orchestration-mode-selection.md` §B.1)
 5. Execute Phase 0 (parallel or sequential exploration)
 6. Routing decision (single-domain direct delegation vs full workflow)
 7. TaskCreate for discovered tasks
 8. User confirmation via AskUserQuestion
 9. **Phase 0.5 (Research)**: Save research.md from Phase 0 Explore findings to SPEC directory
-10. **Phase 1 (Plan)**: If team mode -> Read ${CLAUDE_SKILL_DIR}/team/plan.md and follow team orchestration. Else -> manager-spec sub-agent
+10. **Phase 1 (Plan)**: manager-spec sub-agent (team orchestration retired)
 10.5. **Phase 1.2 (Issue)**: Create GitHub Issue linked to SPEC (only when the `--issue` opt-in flag is set; default skips per the late-branch opt-in policy). See plan.md Phase 2.5.
 11. **Phase 1.5 (Annotate)**: Run annotation cycle (1-6 iterations) until user approves plan
 11.2. **Plan-audit gate**: plan-auditor independent audit of the plan artifacts (Pipeline Gates #1); FAIL/INCONCLUSIVE halts
 11.3. **Implementation Kickoff Approval**: plan→run HUMAN GATE — exactly once per pipeline entry, score-independent (Pipeline Gates #2)
 11.5. **Execution Mode Selection Gate**: After Phase 1.5 approval, before Phase 2 — shape preferences collected here feed Phase 0.95 mode selection (6-mode catalog, Pipeline Gates #3)
-   - If `--team` flag: Skip Gate, auto-select execution_mode="team" (no user prompt needed)
+   - If `--team` flag: RETIRED — emit `MODE_TEAM_UNAVAILABLE`, fall back to execution_mode="sub-agent"
    - If `--solo` flag: Skip Gate, auto-select execution_mode="sub-agent"
    - Otherwise (no flag):
      - Read .moai/config/sections/llm.yaml → team_mode ("" = cc, "glm" = glm, "cg" = cg)
      - Bash: test -n "$TMUX" && echo "tmux" || echo "no-tmux"
-     - AskUserQuestion: worktree+{mode} (Recommended if tmux available) | team | sub-agent
+     - AskUserQuestion: worktree+{mode} (Recommended if tmux available) | sub-agent
    - Worktree selected: Launch new tmux session in worktree dir, terminate current pipeline
-   - Team/Sub-agent selected: Pass execution_mode + active_mode to Phase 2
+   - Sub-agent selected: Pass execution_mode + active_mode to Phase 2
    - See plan.md Decision Point 3.5 for full option details
 12. **Phase 1.9 (Harness Level Auto-Detection)**: Determine pipeline depth before Run
    - Load `.moai/config/sections/harness.yaml` (if not found, default to standard)
@@ -270,10 +262,9 @@ Mode selection:
    - Pass harness level to Run phase
 13. **Phase 2 (Run)**: Route based on Gate result (execution_mode parameter)
    - worktree: Already running in isolated tmux+worktree session (Gate handled transition)
-   - team: Read ${CLAUDE_SKILL_DIR}/team/run.md and follow team orchestration
    - sub-agent: manager-develop (cycle_type=ddd or tdd, per quality.yaml development_mode)
    - Harness level determines phase skipping and evaluator involvement
-14. **Phase 3 (Sync)**: Always manager-docs sub-agent (sync phase never uses team mode) — entered via auto-chain on a `full-pipeline` contract, or via the "(Recommended)" next-step option on a `single-phase` contract
+14. **Phase 3 (Sync)**: Always manager-docs sub-agent (sync phase is always sub-agent) — entered via auto-chain on a `full-pipeline` contract, or via the "(Recommended)" next-step option on a `single-phase` contract
 14.5. **Sync-audit gate**: sync-auditor independent 4-dimension scoring (Pipeline Gates #4); FAIL/INCONCLUSIVE halts the chain
 15. Terminate with the Completion Report completion signal (or continue the Agentic Completion Loop while the completion condition is unmet)
 

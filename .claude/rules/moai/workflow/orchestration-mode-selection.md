@@ -25,7 +25,7 @@ The orchestrator selects exactly one of the following modes per Phase 0.95 invoc
 |---|------|-------------|---------------|----------------|
 | 1 | `trivial` | None — direct execution by the orchestrator, no sub-agent spawn | n/a | Typo fix, single-line formatting, no semantic change |
 | 2 | `background` | 1 concurrent sub-agent | `Agent(run_in_background: true, ...)` | Read-only analysis that can complete asynchronously without blocking the conversation |
-| 3 | `agent-team` | 3-5 dynamic teammates | `Agent(subagent_type: "general-purpose", name: ...)` × N (implicit team forms on first spawn — no setup step; `team_name` accepted but ignored per Claude Code v2.1.178) | **Disabled by default** (Sonnet 5 / Opus 4.8 re-design); opt-in only. Multi-domain (≥3 domains OR ≥10 files) research-heavy work AND all Agent Teams capability-gate prerequisites met (§C.1). The practical surface is covered by Mode 4 (fanout) + Mode 5 (sequential) at lower coordination/token cost |
+| 3 | `agent-team` — **RETIRED** | n/a | n/a | **Mode 3 — RETIRED** (Agent Teams static layer retired). Never selected by the decision tree. Multi-domain research routes to Mode 4 (fanout); coding-heavy work to Mode 5 (sequential); high-volume mechanical work to Mode 6 (workflow). The native Claude Code teammate runtime (`moai cg` GLM panes, `worktree --team`) is unaffected — only MoAI's static team-orchestration layer is retired |
 | 4 | `parallel` | 3-5 concurrent sub-agents (single message, multiple `Agent()` calls) | Multiple `Agent()` invocations in one assistant turn | Multi-domain research that does NOT meet Agent Teams prerequisites; or any case where Agent Teams session overhead exceeds benefit |
 | 5 | `sub-agent` | 1 sequential sub-agent per milestone | Sequential `Agent(...)` spawns, one milestone at a time | Coding-heavy work (per Anthropic's coding-task parallelism caveat), or any case where the simpler mode suffices |
 | 6 | `workflow` | Up to 16 concurrent workflow agents (1000-total per-run backstop, per `dynamic-workflows.md`) | Orchestrator-launched Workflow fan-out (a script the runtime executes to coordinate agents — NOT a subagent spawning subagents) | Genuinely-parallel, high-volume **mechanical** transformation (≥ ~30 files AND a single uniform transform rule AND no inter-file dependency) — call-site rename, import-path bulk change, signature-stable edits. Coding-heavy / multi-domain / new-code work stays Mode 5 (per Anthropic's coding-task parallelism caveat). |
@@ -48,16 +48,9 @@ START (Phase 0.95 Mode Selection)
   │   ├── YES → Mode 2: BACKGROUND (Agent run_in_background: true)
   │   └── NO  → continue
   │
-  ├── Does the task meet ALL Agent Teams capability-gate conditions?
-  │   (all three required):
-  │     • harness level is `thorough` (`.moai/config/sections/harness.yaml`)
-  │     • `workflow.team.enabled: true` in `.moai/config/sections/workflow.yaml`
-  │       (DEFAULT IS `false` since the Sonnet 5 / Opus 4.8 re-design — this branch
-  │        is normally skipped; team is opt-in via explicit `--team` + config flip)
-  │     • environment variable `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
-  │   AND is the scope multi-domain (≥3 domains OR ≥10 files)?
-  │   ├── YES → Mode 3: AGENT-TEAM (implicit team — dynamic teammate spawn via Agent(name=...))
-  │   └── NO  → continue
+  ├── (Mode 3: AGENT-TEAM — RETIRED. The Agent Teams static layer is retired;
+  │    the orchestrator never selects Mode 3. Multi-domain work falls through to
+  │    the Mode 4 check below. This branch is a no-op tombstone.)
   │
   ├── Is the task multi-domain (≥3 domains) AND research-heavy
   │   (NOT coding-heavy per Anthropic's coding-task parallelism caveat)?
@@ -85,9 +78,8 @@ The orchestrator collects the following signals before traversing the decision t
 - **domain count**: number of distinct domains touched (agents, workflow skills, rules, hook scripts, template mirrors, Go source code, SPEC artifacts, etc.)
 - **file language mix**: e.g., 100% markdown vs Go source vs shell vs mixed
 - **concurrency benefit**: HIGH for research-heavy work (parallel reads, independent perspectives); LOW for coding-heavy work (Anthropic's coding-task parallelism caveat — most coding tasks involve fewer truly parallelizable tasks than research)
-- **Agent Teams prereqs status**: each of the three Agent Teams capability-gate conditions individually verified
 
-The numeric auto-select thresholds — **≥ 3 domains, ≥ 10 files, or complexity score ≥ 7** — are stated here as the single prose SSOT; the machine-readable source is `.moai/config/sections/workflow.yaml` `auto_selection` (`min_domains_for_team`, `min_files_for_team`, `min_complexity_score`). Dispatch and skill surfaces cross-reference this section instead of restating the numbers inline.
+The numeric auto-select thresholds — **≥ 3 domains, ≥ 10 files, or complexity score ≥ 7** — are the single **prose SSOT** for Mode 4 auto-selection (the former machine-readable `workflow.yaml` team-config block was removed with the Agent Teams static layer). Dispatch and skill surfaces cross-reference this section instead of restating the numbers inline.
 
 ### §B.1b Auto-mode pre-launch classifier (CC 2.1.178+)
 
@@ -110,29 +102,19 @@ Phase 0.95 boundary cases (scope at threshold ±1, ambiguous domain count, etc.)
 
 ## §C — Capability Gates
 
-### §C.1 Mode 3 (Agent Teams) capability gate
+### §C.1 Mode 3 (Agent Teams) — RETIRED
 
-Mode 3 is candidate only when all three conditions hold simultaneously. The orchestrator inspects the runtime environment + project config:
+**Mode 3 — RETIRED.** The Agent Teams static orchestration layer is retired; the Phase 0.95 decision tree never selects Mode 3. Multi-domain research-heavy work routes to Mode 4 (parallel fanout); coding-heavy work routes to Mode 5 (sequential sub-agent); high-volume mechanical transformation routes to Mode 6 (workflow).
 
-| Condition | Where to check | Required value |
-|-----------|----------------|----------------|
-| harness level is `thorough` | `.moai/config/sections/harness.yaml` `harness.level` | `thorough` |
-| Agent Teams enabled in workflow | `.moai/config/sections/workflow.yaml` `workflow.team.enabled` | `true` (NOT the default — `team.enabled` defaults to `false` since the Sonnet 5 / Opus 4.8 re-design; opt-in only) |
-| Experimental flag set in environment | env var `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | `1` |
-
-**Default-disabled rationale (Sonnet 5 / Opus 4.8 era):** team mode was historically burdened by the 200K-window baseline-refill breaker (`.claude/rules/moai/development/model-policy.md` § Baseline-Refill Breaker). That breaker is now resolved on the current default lineup — Sonnet 5 and Opus 4.8 ship a single 1M context variant with no 200K fallback target, so the Anthropic #36670 `[1m]` suffix-strip mechanism has zero observable impact. With the breaker no longer forcing team avoidance, team mode is nonetheless kept **disabled by default** because subagent fanout (Mode 4) and sequential sub-agent (Mode 5) cover the practical surface with lower coordination overhead and lower token cost than implicit-team spawns: multi-domain research/review routes to Mode 4, coding-heavy work routes to Mode 5 (Anthropic's coding-task parallelism caveat), and high-volume mechanical transformation routes to Mode 6 (workflow). Users who want implicit-team semantics may re-enable via `workflow.team.enabled: true` + the env var + explicit `--team`.
-
-When any condition fails, the orchestrator falls through to Mode 4 evaluation. If a user explicitly requested `--mode team` and the prereqs are not met, the orchestrator emits the canonical sentinel `MODE_TEAM_UNAVAILABLE` (per `.claude/rules/moai/workflow/spec-workflow.md` § Mode Dispatch) and continues with the fallback mode plus a `[mode-auto-downgrade]` info log.
-
-Anthropic Agent Teams documentation verbatim guidance applies: *"Start with 3-5 teammates for most workflows. This balances parallel work with manageable coordination."* The orchestrator MUST NOT spawn fewer than 3 nor more than 5 teammates in agent-team mode.
+A forced `--mode team` request still resolves through the dispatch axis: it emits the canonical sentinel `MODE_TEAM_UNAVAILABLE` (per `.claude/rules/moai/workflow/spec-workflow.md` § Mode Dispatch) and the orchestrator continues with the fallback mode plus a `[mode-auto-downgrade]` info log. The native Claude Code teammate runtime (`moai cg` GLM teammate panes, `worktree --team` P1-P4 launch, `~/.claude/teams/` registry) is unaffected — only MoAI's static team-orchestration layer is retired.
 
 ### §C.2 Mode 4 (Parallel) Compound preference
 
 Mode 4 is preferred via the unified compound clause:
 
-> `[Where the harness level is standard or thorough] [While the task scope is multi-domain (≥3 domains OR ≥10 files)] [When the orchestrator selects an execution mode in Phase 0.95]`, the orchestrator shall prefer Agent Teams mode if all Agent Teams capability-gate prerequisites are met; otherwise the orchestrator shall fall back to parallel multi-spawn of retained agents (maximum 3-5 concurrent `Agent()` calls in a single message per Anthropic verbatim "Start with 3-5 teammates").
+> `[Where the harness level is standard or thorough] [While the task scope is multi-domain (≥3 domains OR ≥10 files)] [When the orchestrator selects an execution mode in Phase 0.95]`, the orchestrator shall use parallel multi-spawn of retained agents (maximum 3-5 concurrent `Agent()` calls in a single message per Anthropic verbatim "Start with 3-5 teammates"). With Mode 3 (Agent Teams) retired, Mode 4 is the sole multi-domain parallel mode.
 
-The 3-5 ceiling applies equally to Mode 3 (agent-team teammates) and Mode 4 (concurrent `Agent()` spawn calls). Exceeding the ceiling regresses to coordination overhead and contradicts Anthropic's published guidance.
+The 3-5 ceiling applies to Mode 4 (concurrent `Agent()` spawn calls). Exceeding the ceiling regresses to coordination overhead and contradicts Anthropic's published guidance.
 
 ### §C.3 Mode 6 (Workflow) capability gate
 
@@ -195,8 +177,8 @@ When the decision tree hit a boundary (e.g., scope = exactly 10 files, exactly 3
 
 The following patterns violate the orchestration mode selection contract:
 
-- **Spawning Mode 3 (Agent Teams) when prereqs not met** — produces runtime `MODE_TEAM_UNAVAILABLE` sentinel; orchestrator MUST verify all three capability-gate conditions in §C.1 before selecting Mode 3
-- **Spawning > 5 concurrent agents in Mode 3 or Mode 4** — exceeds Anthropic-recommended 3-5 ceiling and incurs coordination overhead
+- **Selecting Mode 3 (Agent Teams)** — Mode 3 is RETIRED; the orchestrator MUST NOT select it. A forced `--mode team` resolves to `MODE_TEAM_UNAVAILABLE` and falls back per the dispatch axis (§C.1)
+- **Spawning > 5 concurrent agents in Mode 4** — exceeds Anthropic-recommended 3-5 ceiling and incurs coordination overhead
 - **Selecting Mode 4 (Parallel) for coding-heavy work** — violates Anthropic's coding-task parallelism caveat; Mode 5 (Sub-Agent sequential) is the correct default for coding tasks
 - **Selecting Mode 6 (Workflow) for coding-heavy / multi-domain / new-code work** — violates Anthropic's coding-task parallelism caveat; Mode 6 admits ONLY genuinely-parallel high-volume mechanical work (one uniform transform rule, no inter-file dependency). Coding-heavy work belongs to Mode 5
 - **Launching a Mode 6 Workflow before Implementation Kickoff Approval has passed** — violates the Implementation Kickoff Approval mandatory-restoration policy; the orchestrator MUST NOT launch the Workflow before Implementation Kickoff Approval user approval and MUST return control to the Implementation Kickoff Approval `AskUserQuestion` gate. Mode 6 is strictly downstream of Implementation Kickoff Approval
@@ -245,7 +227,7 @@ The following patterns violate the orchestration mode selection contract:
 |----------------|------------------------------|-------|
 | `autopilot` | Mode 5 (`sub-agent`) | Default single-lead orchestration; the Phase 0.95 scale-based selection chooses the envelope (see scale-label rows below). |
 | `loop` | Mode 5 (`sub-agent`) | Ralph-engine diagnostic fix-loop variant — sequential per-iteration delegation. The granularity differs (diagnostics, not phases) but the spawn shape is the Mode 5 sequential sub-agent. |
-| `team` | Mode 3 (`agent-team`) | Resolves through the §C.1 capability gate; when the gate fails, an explicit `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back per the Mode Resolver. |
+| `team` | Mode 3 (`agent-team`) — RETIRED | Mode 3 is retired; a forced `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back per the Mode Resolver. The dispatch value is retained for backward-compat + the CI sentinel audit; it no longer resolves to a live team mode. |
 | `pipeline` | Mode 5 (`sub-agent`) — utility subcommands only | Rejected on multi-agent subcommands (`MODE_PIPELINE_ONLY_UTILITY`); the utility subcommands are intrinsically pipeline-class, so `pipeline` names their fixed sequential direct / sub-agent execution shape — the `--mode pipeline` flag itself is ignored there (`MODE_FLAG_IGNORED_FOR_UTILITY`), not honored. |
 
 ### Phase 0.95 scale-table labels → catalog modes
@@ -256,7 +238,7 @@ The following patterns violate the orchestration mode selection contract:
 | Focused | Mode 5 (`sub-agent`) | Focused envelope — single implementation agent with domain context injected. |
 | Standard | Mode 5 (`sub-agent`) | Standard envelope — planning + implementation + audit, sequential. |
 | Full Pipeline | Mode 5 (`sub-agent`) | Full envelope — full sequential agent chain (plan → implement → audit → docs). |
-| Team | Mode 3 (`agent-team`) | Resolves through the SAME §C.1 capability gate as auto-select — a forced `--team` flag and the flag-free auto-select path both pass the gate; the flag never bypasses it. |
+| Team | Mode 3 (`agent-team`) — RETIRED | Mode 3 is retired; a forced `--team` flag emits `MODE_TEAM_UNAVAILABLE` and falls back per §C.1. The scale label is retained for backward-compat; it no longer resolves to a live team mode. |
 
 Every `--mode` value and every scale label corresponds to exactly one catalog mode. Mode 1 (trivial), Mode 2 (background), Mode 4 (parallel), and Mode 6 (workflow) have NO dispatch-axis or scale-label counterpart — they are selectable only via the Phase 0.95 decision tree (§B). This asymmetry is expected and is further evidence the two axes are distinct.
 

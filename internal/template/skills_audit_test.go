@@ -6,8 +6,10 @@ import (
 	"testing"
 )
 
-// TestSkillsContainPlanAuditGateMarkers verifies that the 4 workflow skill files
+// TestSkillsContainPlanAuditGateMarkers verifies that the workflow skill files
 // modified by SPEC-WF-AUDIT-GATE-001 contain the required Plan Audit Gate markers.
+// (The team run.md case was removed when the Agent Teams static-layer skills were
+// retired by SPEC-AGENT-TEAM-RETIRE-001.)
 //
 // Required patterns per tasks.md T-06:
 // (a) "Phase 0.5: Plan Audit Gate" header
@@ -38,18 +40,6 @@ func TestSkillsContainPlanAuditGateMarkers(t *testing.T) {
 			// AC-WAG-02, 03, 04, 06, 07, 08, 09: gate body must document full verdict routing.
 			name:     "solo run/phase-execution.md — plan audit gate markers",
 			filePath: ".claude/skills/moai/workflows/run/phase-execution.md",
-			requiredPatterns: []string{
-				"Phase 0.5: Plan Audit Gate",
-				"plan-auditor",
-				"--skip-audit",
-				"INCONCLUSIVE",
-				".moai/reports/plan-audit/",
-			},
-		},
-		{
-			// AC-WAG-05: team run.md must have equivalent gate before TeamCreate.
-			name:     "team run.md — plan audit gate markers",
-			filePath: ".claude/skills/moai/team/run.md",
 			requiredPatterns: []string{
 				"Phase 0.5: Plan Audit Gate",
 				"plan-auditor",

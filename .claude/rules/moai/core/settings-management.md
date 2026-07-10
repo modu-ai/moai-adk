@@ -260,45 +260,19 @@ Language preferences in language.yaml:
 - agent_prompt_language: Internal communication
 - code_comments: Code comment language
 
-## Agent Teams Settings
+## Agent Teams Settings — RETIRED
 
-Agent Teams require both an environment variable and workflow configuration.
+The MoAI Agent Teams static-orchestration layer is RETIRED. The former Teams-API
+experimental env-var gate, the `workflow.team` config block, and the team
+auto-selection thresholds were removed with it. A forced `--mode team` emits
+`MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode. The Phase 0.95
+auto-select thresholds (≥ 3 domains / ≥ 10 files / score ≥ 7) now live as
+prose-only SSOT in
+`.claude/rules/moai/workflow/orchestration-mode-selection.md` §B.1.
 
-### Environment Variable
-
-Enable in `.claude/settings.json`:
-
-```json
-{
-  "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
-  }
-}
-```
-
-This env var must be set for Claude Code to expose the Teams API.
-
-### Workflow Configuration
-
-Team behavior is controlled by the `workflow.team` section in `.moai/config/sections/workflow.yaml`:
-
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| team.enabled | boolean | true | Master switch for team mode |
-| team.max_teammates | integer | 10 | Maximum teammates per team (2-10 recommended) |
-| team.default_model | string | inherit | Default model for teammates (inherit/haiku/sonnet/opus) |
-| team.require_plan_approval | boolean | true | Require plan approval before implementing |
-| team.delegate_mode | boolean | true | Team lead coordination-only mode (no direct implementation) |
-
-### Auto-Selection Thresholds
-
-When `workflow.execution_mode` is `auto`, these thresholds determine when team mode activates:
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| team.auto_selection.min_domains_for_team | 3 | Minimum distinct domains to trigger team mode |
-| team.auto_selection.min_files_for_team | 10 | Minimum affected files to trigger team mode |
-| team.auto_selection.min_complexity_score | 7 | Minimum complexity score (1-10) to trigger team mode |
+The native Claude Code teammate runtime (`moai cg` GLM teammate panes,
+`worktree --team` launch) is unaffected — see
+`.claude/rules/moai/core/glm-web-tooling.md` § CG Mode.
 
 ## Output Style Configuration
 
