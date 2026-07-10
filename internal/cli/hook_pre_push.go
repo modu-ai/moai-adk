@@ -177,23 +177,25 @@ func runPrePush(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	// Print violations (both warn and enforce print; only enforce blocks).
-	_, _ = fmt.Fprintf(out, "%d of %d commit(s) violate %s convention:\n\n",
+	// Print violations to stderr (both warn and enforce print; only enforce
+	// blocks). stderr so git + Claude Code surface the reason on exit 2
+	// (REQ-CONT-001-006 / SPEC-CLIFIX-CONTRACT-001 M3).
+	errOut := cmd.ErrOrStderr()
+	_, _ = fmt.Fprintf(errOut, "%d of %d commit(s) violate %s convention:\n\n",
 		violations, len(input), conv.Name)
 
 	for _, r := range results {
 		if !r.Valid {
 			errMsg := convention.FormatError(r, conv)
-			_, _ = fmt.Fprint(out, errMsg)
-			_, _ = fmt.Fprintln(out)
+			_, _ = fmt.Fprint(errOut, errMsg)
+			_, _ = fmt.Fprintln(errOut)
 		}
 	}
 
 	// Thin boundary: translate the pure decision into an ExitCoder return.
 	// warn → exit 0 (non-blocking); enforce + violations → exit 2 (deny per
 	// Claude Code protocol). The return lets main.go map the code and lets
-	// defers run (SPEC-CLIFIX-CONTRACT-001 M1; REQ-CONT-001-006 stderr routing
-	// is applied in M3).
+	// defers run.
 	if decideExit(action, violations) == 2 {
 		return &exitCodeError{code: 2, msg: fmt.Sprintf("pre-push: %d commit(s) violated %s convention", violations, conv.Name)}
 	}

@@ -212,6 +212,14 @@ func runLinkSpec(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// --dry-run: print the planned mutation without touching the registry
+	// (REQ-CONT-001-002 / SPEC-CLIFIX-CONTRACT-001 M3).
+	if dryRun {
+		_, _ = fmt.Fprintf(out, "Would link Issue #%d to %s\n", issueNum, specID)
+		_, _ = fmt.Fprintf(out, "Registry: .moai/%s (no mutation performed — --dry-run)\n", github.RegistryFileName)
+		return nil
+	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get working directory: %w", err)
