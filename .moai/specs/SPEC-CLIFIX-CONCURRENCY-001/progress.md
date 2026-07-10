@@ -102,13 +102,69 @@ Union contract: perm param + `tmp.Chmod(perm)` (supports both 0600 credential an
 **Vet:** `go vet ./internal/cli/...` exit 0; `gofmt` clean.
 **Race suite (full):** `go test -race ./internal/cli/... ./internal/cli/preference/... -count=1` → all 10 packages PASS.
 
+### M4 — Preference store crash-consistency + TOCTOU hardening (REQ-CONC-001-005 + REQ-CONC-001-006 / AC-005 + AC-006)
+
+**AC PASS/FAIL matrix (M4 scope = AC-005 + AC-006):**
+
+| AC | Status | Verification command | Actual output |
+|---|---|---|---|
+| AC-CONC-001-005 | PASS | `go test -race ./internal/cli/preference/ -run 'DecayCrash\|ScanDueRace\|ToggleRace' -count=1 -v` | PASS — 3 tests green: `TestDecayCrash_ReconcilesDuplicateAfterInterruptedScan` (0.00s), `TestScanDueRace_ConcurrentMarkScannedStaysValid` (0.50s), `TestToggleRace_ConcurrentFlipsPreserveParity` (0.09s, even+odd subtests) |
+| AC-CONC-001-006 | PASS | `go test -race ./internal/cli/... ./internal/cli/preference/... -count=1` | PASS — all 10 packages green (internal/cli 29.3s, preference 2.5s, + 8 others) |
+
+**RED evidence (SPEC §D.5 — tests must fail on pre-fix commit c31db9e2b):**
+- `TestDecayCrash_ReconcilesDuplicateAfterInterruptedScan` FAILED pre-M4 (runtime): `stale recall duplicate survived scan: entry test-domain/crash-key still in recall (post=[...]); archival also holds it → on-disk duplicate persists`. Pre-M4 DecayScan has no reconcile step, so a crash-induced recall+archival duplicate survives the scan.
+- `TestToggleRace_ConcurrentFlipsPreserveParity` FAILED pre-M4 (compile): `undefined: TogglePersonalization`. The locked flip seam did not exist pre-M4; the read-then-flip TOCTOU was unhardened.
+- `TestScanDueRace_ConcurrentMarkScannedStaysValid` PASSED pre-M4 (os.WriteFile small-write atomicity held at this concurrency level) — the atomic-write fix is still the correct hardening (closes the truncate-then-write window a concurrent reader could observe), but it is not a deterministic RED.
+
+**Changes applied (GREEN):**
+
+1. `internal/cli/preference/decay.go` — **DecayScan crash reconciliation (option b reconcile-at-scan-start).** New `reconcileRecallArchival(recall)` helper called at the top of DecayScan (after loadRecall, before the processing loop): drops any recall entry whose `(domain, decisionKey)` already exists in archival. A prior scan that crashed between `writeArchivalEntry` (decay.go:169) and `writeRecall` (decay.go:185) leaves an entry in BOTH tiers; the normal decay path only removes EXPIRED entries, so a non-expired stale recall copy would survive indefinitely. The reconcile step makes the store self-heal on every scan. Design choice (option b) over option (a transactional): a cross-file WAL/2PC is heavy for a preference store; reconcile-at-scan is idempotent and runs at the natural daily-maintenance boundary. Read paths (Query `seen`-map at filestore.go:147, Get cascade) already dedupe in-memory between scans.
+2. `internal/cli/preference/decay.go` — **MarkScanned atomic write.** `MarkScanned` switched from `os.WriteFile` (O_TRUNC-then-write — a concurrent ScanDue reader could observe a 0-byte file mid-write) to the existing package-level `atomicWrite` helper (filestore.go:473, temp-in-same-dir + os.Rename). The stamp is now never observed in a half-written state. (Perm side-effect: 0644 → 0600 via CreateTemp; tightening, acceptable for a non-credential state file.)
+3. `internal/cli/preference/toggle.go` — **Toggle TOCTOU hardening via O_EXCL sidecar lock.** New `TogglePersonalization(projectRoot, now) (bool, error)` seam: acquires an exclusive O_EXCL sidecar lock (`<root>/.moai/state/session-preference-disabled.toggle-lock`), reads `IsPersonalizationDisabled`, flips (Enable/Disable), releases. Lock primitive choice (SPEC option (a) "stdlib flock-equivalent directly in preference"): `os.OpenFile` with `O_CREATE|O_EXCL` is portable stdlib — no `syscall.Flock` (which would need `//go:build` build tags), no import of `internal/cli`'s `lockFile`/`unlockFile` (cli→preference←cli import cycle), no new build-tagged files. Stale-lock recovery: a lock older than `toggleLockStaleTimeout` (10s) is removed best-effort so a crashed holder does not permanently block toggles. `runToggle` re-routed through `TogglePersonalization` (the inline read-then-flip removed).
+4. `internal/cli/preference/m4_crash_repro_test.go` — new: `TestDecayCrash_*` (runtime RED pre-M4) + `TestScanDueRace_*`.
+5. `internal/cli/preference/m4_toggle_race_test.go` — new: `TestToggleRace_*` (compile RED pre-M4 — references `TogglePersonalization`).
+
+**Cross-platform build:** `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (reconcile uses only stdlib map/slice; MarkScanned delegates to existing atomicWrite; toggle lock uses portable os.OpenFile O_EXCL — no new syscall, no build tags).
+**Lint:** `golangci-lint run --timeout=3m` → 0 issues (baseline was also 0; two transient staticcheck findings in the test file — unused `due` var + empty `if` branch — fixed before commit).
+**Coverage:** `go test -cover ./internal/cli/preference/` → 85.8% of statements (baseline was 86.0%; the 0.2% dip is from the new TogglePersonalization + acquireToggleLock + reconcileRecallArchival code exercised by the new tests, with lock backoff/retry edges uncovered — above the 85% threshold).
+**Vet:** `go vet ./internal/cli/preference/...` exit 0; `gofmt` clean.
+**Subagent boundary (C-HRA-008):** `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/ | grep -v _test.go | grep -v '^[^:]*:[0-9]*:[ \t]*//'` → 0 actual calls (all matches are comments/docstrings/testdata/agentlint detector); preference package: 0 matches.
+**Race suite (full, on main checkout HEAD):** `go test -race ./internal/cli/... ./internal/cli/preference/... -count=1` → all 10 packages PASS.
+**Full repo test suite:** `go test ./...` → exit 0, 0 FAIL (no cascading failures per CLAUDE.local.md §6 HARD rule).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-07-11
+run_commit_sha: pending-backfill-m4
+run_status: complete
+ac_pass_count: 6
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: "0 0 (origin/main...HEAD synced at pre-flight)"
+l44_post_push_fetch: pending-push
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin_arm64: pass
+  windows_amd64: pass
+total_run_phase_files: 5 (decay.go, toggle.go, m4_crash_repro_test.go, m4_toggle_race_test.go, progress.md)
+m1_to_mN_commit_strategy: per-milestone (M1 c31db9e2b-precursor, M2, M3 already landed; M4 this commit)
+```
+
+**Milestone closure:** M1 (5 writers re-routed + removeGLMEnv key) ✅, M2 (~/.claude.json RMW guard) ✅, M3 (atomic-writer consolidation, 2 helpers remain per option-b) ✅, M4 (preference crash-consistency + TOCTOU) ✅. All 4 milestones landed; run-phase is complete. Orchestrator proceeds to sync-phase.
+
+**AC coverage (run-phase, all 6 AC):**
+- AC-001 (M1): PASS — `TestSettingsLocalConcurrentWrites`; 0 `writeSettingsMap` callers outside settings.go.
+- AC-002 (M1): PASS — `TestRemoveGLMEnvComplete`; `launcher.go` delete-set includes `EnvClaudeCodeAutoCompactWindow`.
+- AC-003 (M2): PASS — 3 `TestClaudeJSONGuard_*` tests green.
+- AC-004 (M3): PASS — exactly 2 atomic-writer helpers remain (consolidated `writeFileAtomic` + option-b `atomicWrite`).
+- AC-005 (M4): PASS — `TestDecayCrash_*` + `TestScanDueRace_*` + `TestToggleRace_*` green under `-race`.
+- AC-006 (M4): PASS — full `go test -race ./internal/cli/... ./internal/cli/preference/...` green.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
 
 ## §F Phase 0.95 Mode Selection
 
