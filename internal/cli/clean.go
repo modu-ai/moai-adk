@@ -11,6 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
+
+	"github.com/modu-ai/moai-adk/internal/cli/printer"
 )
 
 // newCleanCmd creates the clean subcommand.
@@ -26,7 +28,10 @@ Default: dry-run mode (no actual deletion). Use --force to actually delete.
 retention_days is read from .moai/config/sections/state.yaml.`,
 		GroupID: "tools",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runClean(force)
+			// Status output routes through the Printer to stderr
+			// (SPEC-CLI-TUX-V3-001 REQ-CTX-012/017 ratchet migration).
+			p := printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr()))
+			return runClean(p, force)
 		},
 	}
 
@@ -43,7 +48,7 @@ type stateYAMLWrapper struct {
 }
 
 // runClean cleans up old runs/ directories based on retention_days.
-func runClean(force bool) error {
+func runClean(p printer.Printer, force bool) error {
 	// Locate state directory
 	stateDir, err := findStateDir()
 	if err != nil {
@@ -57,7 +62,7 @@ func runClean(force bool) error {
 	}
 
 	if retentionDays <= 0 {
-		fmt.Println("retention_days not configured or 0; nothing to clean")
+		p.Info("retention_days not configured or 0; nothing to clean")
 		return nil
 	}
 
@@ -66,7 +71,7 @@ func runClean(force bool) error {
 	entries, err := os.ReadDir(runsDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			fmt.Printf("runs/ directory not found at %s; nothing to clean\n", runsDir)
+			p.Info("runs/ directory not found at %s; nothing to clean", runsDir)
 			return nil
 		}
 		return fmt.Errorf("read runs dir: %w", err)
@@ -89,7 +94,7 @@ func runClean(force bool) error {
 	}
 
 	if len(toDelete) == 0 {
-		fmt.Printf("No runs older than %d days found\n", retentionDays)
+		p.Info("No runs older than %d days found", retentionDays)
 		return nil
 	}
 
@@ -97,17 +102,17 @@ func runClean(force bool) error {
 	for _, path := range toDelete {
 		if force {
 			if err := os.RemoveAll(path); err != nil {
-				fmt.Fprintf(os.Stderr, "WARN: failed to remove %s: %v\n", path, err)
+				p.Warn("failed to remove %s: %v", path, err)
 			} else {
-				fmt.Printf("Deleted: %s\n", path)
+				p.Info("Deleted: %s", path)
 			}
 		} else {
-			fmt.Printf("[dry-run] Would delete: %s\n", path)
+			p.Info("[dry-run] Would delete: %s", path)
 		}
 	}
 
 	if !force {
-		fmt.Printf("\n%d runs eligible for deletion. Run with --force to actually delete.\n", len(toDelete))
+		p.Info("%d runs eligible for deletion. Run with --force to actually delete.", len(toDelete))
 	}
 
 	return nil

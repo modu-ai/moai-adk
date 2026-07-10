@@ -20,6 +20,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/mattn/go-isatty"
+	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -939,8 +940,10 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) (skipped bool, err error) {
 	autoConfirm := getBoolFlag(cmd, "yes")
 	forceUpdate := getBoolFlag(cmd, "force")
 
-	// Use simple console output for progress reporting
-	consoleReporter := project.NewConsoleReporter()
+	// Use printer-backed console output for progress reporting
+	// (REQ-CTX-015: routes step events through the Printer to stderr).
+	consoleReporter := newPrinterReporter(
+		printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr())))
 
 	// Check for version match before proceeding
 	packageVersion := version.GetVersion()

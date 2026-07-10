@@ -183,21 +183,10 @@ func TestNoOpReporter(t *testing.T) {
 	r.StepError(nil)
 }
 
-func TestConsoleReporter(t *testing.T) {
-	r := NewConsoleReporter()
-
-	if r == nil {
-		t.Fatal("NewConsoleReporter() returned nil")
-	}
-
-	// Redirect stdout is complex, so just verify no panic
-	r.StepStart("Detection", "analyzing project")
-	r.StepStart("Detection", "")
-	r.StepUpdate("progress")
-	r.StepComplete("done")
-	r.StepComplete("")
-	r.StepError(os.ErrNotExist)
-}
+// NOTE: TestConsoleReporter was removed with project.ConsoleReporter itself
+// (SPEC-CLI-TUX-V3-001 REQ-CTX-015): the console implementation now lives on
+// the CLI side as internal/cli printerReporter, tested in
+// internal/cli/reporter_test.go.
 
 func TestPhaseExecutor_SetReporter(t *testing.T) {
 	pe := newTestPhaseExecutor()

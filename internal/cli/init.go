@@ -15,6 +15,7 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/core/project"
@@ -216,15 +217,19 @@ func shouldDistributeAll(cmd *cobra.Command) bool {
 // runInit executes the project initialization workflow.
 // It first checks for a binary update so the latest templates are used.
 func runInit(cmd *cobra.Command, args []string) error {
+	// Unified output gateway: warnings and progress go to stderr, data to
+	// stdout (SPEC-CLI-TUX-V3-001 REQ-CTX-012/016).
+	p := printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr()))
+
 	// Binary update step (non-fatal)
 	if !shouldSkipBinaryUpdate(cmd) {
 		updated, err := runBinaryUpdateStep(cmd)
 		if err != nil {
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: binary update check failed: %v\n", err)
+			p.Warn("binary update check failed: %v", err)
 		}
 		if updated {
 			if err := reexecNewBinary(); err != nil {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: failed to re-exec new binary: %v\n", err)
+				p.Warn("failed to re-exec new binary: %v", err)
 			}
 			// reexecNewBinary replaces the process on success; only
 			// reach here if it failed.
@@ -233,8 +238,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	// Git availability check (non-fatal warning)
 	if _, err := exec.LookPath("git"); err != nil {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(),
-			"Warning: git is not installed. Some features (plan/run/sync workflows, branch management) will be limited.\n  %s\n",
+		p.Warn("git is not installed. Some features (plan/run/sync workflows, branch management) will be limited.\n  %s",
 			GitInstallHint())
 	}
 
@@ -324,14 +328,14 @@ func runInit(cmd *cobra.Command, args []string) error {
 			Value(&wantSetup)
 		if err := confirm.Run(); err == nil && wantSetup {
 			if err := runProfileSetup(cmd, nil); err != nil {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: profile setup failed: %v\n", err)
+				p.Warn("profile setup failed: %v", err)
 			}
 		}
 	}
 
 	prefs, err := profile.ReadPreferences(profileName)
 	if err != nil {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: failed to read profile preferences: %v\n", err)
+		p.Warn("failed to read profile preferences: %v", err)
 	} else {
 		if prefs.UserName != "" {
 			opts.UserName = prefs.UserName
@@ -459,18 +463,21 @@ func runInit(cmd *cobra.Command, args []string) error {
 		ctx = context.Background()
 	}
 
-	// Use simple console output for progress reporting
-	consoleReporter := project.NewConsoleReporter()
-	executor.SetReporter(consoleReporter)
+	// Use printer-backed console output for progress reporting
+	// (REQ-CTX-015: ProgressReporter events route through the Printer to
+	// stderr; the former project.ConsoleReporter wrote to stdout).
+	executor.SetReporter(newPrinterReporter(p))
 
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Initializing MoAI project...") //nolint:errcheck
+	p.Info("Initializing MoAI project...")
 
 	result, err := executor.Execute(ctx, opts)
 	if err != nil {
 		return fmt.Errorf("initialization failed: %w", err)
 	}
 
-	// Display success message
+	// Display success card. Human-facing status belongs on stderr
+	// (internal/cli/CLAUDE.md Output streams; REQ-CTX-012); the card
+	// rendering itself stays on uikit.
 	details := []string{
 		uikit.RenderKeyValueLines([]uikit.KVPair{
 			{Key: "Directories", Value: fmt.Sprintf("%d created", len(result.CreatedDirs))},
@@ -480,12 +487,12 @@ func runInit(cmd *cobra.Command, args []string) error {
 	for _, w := range result.Warnings {
 		details = append(details, uikit.WarnStyle.Render("Warning: "+w))
 	}
-	_, _ = fmt.Fprintln(cmd.OutOrStdout())
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), uikit.RenderSuccessCard("MoAI project initialized", details...))
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr())
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), uikit.RenderSuccessCard("MoAI project initialized", details...))
 
 	// Sync profile preferences to project config (after template deployment)
 	if err := profile.SyncToProjectConfig(opts.ProjectRoot, prefs); err != nil {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to sync profile to project config: %v\n", err)
+		p.Warn("Failed to sync profile to project config: %v", err)
 	}
 
 	// SPEC-AGENT-ARCH-V2-001 M3c (REQ-AA2-010): persist the resolved
@@ -497,7 +504,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 	if perfTier != "" && template.IsValidPerformanceTier(perfTier) {
 		if err := template.ApplyPerformanceTier(opts.ProjectRoot, perfTier); err != nil {
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to apply performance tier: %v\n", err)
+			p.Warn("Failed to apply performance tier: %v", err)
 		}
 	}
 
@@ -506,19 +513,20 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// all required subdirectories and placeholder files are present even when the
 	// template fs doesn't track empty directories.
 	if err := scaffoldEvolutionDir(opts.ProjectRoot); err != nil {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to scaffold evolution directory: %v\n", err)
+		p.Warn("Failed to scaffold evolution directory: %v", err)
 	}
 
 	// Ensure global settings.json has required env variables
 	if err := ensureGlobalSettingsEnv(); err != nil {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to update global settings env: %v\n", err)
+		p.Warn("Failed to update global settings env: %v", err)
 	}
 
 	// Install pre-push hook (REQ-CIAUT-002). Non-fatal; --no-hooks opts out.
-	installPrePushHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.OutOrStdout())
+	// Status/warning lines are human-facing -> stderr (REQ-CTX-016).
+	installPrePushHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr())
 
 	// Install pre-commit hook (REQ-PC-001). Fast-subset commit tier; --no-hooks opts out.
-	installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.OutOrStdout())
+	installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr())
 
 	return nil
 }
