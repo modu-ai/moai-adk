@@ -179,7 +179,7 @@ lipgloss v2 requires stdin/stdout handles for the background query. Decision: ke
 
 ```yaml
 run_complete_at: 2026-07-10
-run_commit_sha: pending-backfill  # M1c 워크트리 브랜치 worktree-agent-aa94a5fda6793778b HEAD; orchestrator가 main cherry-pick 후 실 SHA 백필 (D3 SHA-placeholder-backfill exemption)
+run_commit_sha: 3be403dc4  # M1a b9df38f5b → M1b 5824c812c → M1c 3be403dc4 (main cherry-pick 완료; orchestrator 백필)
 run_status: audit-ready
 ac_pass_count: 24                  # 26 AC 중 24 full PASS + 2 PASS-WITH-DEBT
 ac_fail_count: 0
