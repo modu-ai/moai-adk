@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -1164,6 +1166,35 @@ func runHarnessClassify(cmd *cobra.Command, _ []string) error {
 // @MX:REASON: [AUTO] fan_in >= 2 growing to 3: runHarnessClassify,
 // runHarnessObserveStop, hook_harness_classify(_chain)_test.go — the canonical
 // classifier entry the learning loop depends on.
+// readPromotionHighWater reads tier-promotions.jsonl and returns a map of
+// PatternKey → latest ToTier (the per-pattern high-water mark). The LAST entry
+// for each key wins, so historical duplicates are tolerated and the map reflects
+// the latest recorded state (SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-008).
+// Unparseable lines are silently skipped (tolerant of legacy entries).
+func readPromotionHighWater(path string) map[string]string {
+	highWater := make(map[string]string)
+	f, err := os.Open(path)
+	if err != nil {
+		return highWater // absent file → empty map → all promotions are new
+	}
+	defer func() { _ = f.Close() }()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		var p harness.Promotion
+		if err := json.Unmarshal([]byte(line), &p); err != nil {
+			continue
+		}
+		if p.PatternKey != "" {
+			highWater[p.PatternKey] = p.ToTier
+		}
+	}
+	return highWater
+}
+
 func classifyHarnessPatterns(root string) (patternCount, promoCount int, err error) {
 	logPath := filepath.Join(root, ".moai", "harness", "usage-log.jsonl")
 	promoPath := filepath.Join(root, ".moai", "harness", "learning-history", "tier-promotions.jsonl")
@@ -1179,6 +1210,11 @@ func classifyHarnessPatterns(root string) (patternCount, promoCount int, err err
 	thresholds := readTierThresholds(root)
 	learner := harness.NewLearner(promoPath)
 
+	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-008: build the per-pattern high-water
+	// mark from existing promotions so a promotion record is appended ONLY when
+	// the tier actually changes, not on every classify run.
+	highWater := readPromotionHighWater(promoPath)
+
 	for _, p := range patterns {
 		// REQ-HRR-003 / REQ-HRR-004 (D4: filter at classification time): skip
 		// degenerate lifecycle-noise keys (empty context hash AND empty/unknown
@@ -1189,6 +1225,13 @@ func classifyHarnessPatterns(root string) (patternCount, promoCount int, err err
 			continue
 		}
 		tier := harness.ClassifyTier(p, thresholds)
+
+		// High-water mark: skip if the tier is unchanged since the last recorded
+		// promotion for this pattern (REQ-CRIT-001-008).
+		if prev, ok := highWater[p.Key]; ok && prev == tier.String() {
+			continue
+		}
+
 		promo := harness.Promotion{
 			PatternKey:       p.Key,
 			FromTier:         "",
