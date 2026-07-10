@@ -66,7 +66,7 @@ func schemaSectionMetas() []schemaSectionMeta {
 	return []schemaSectionMeta{
 		{settings.SectionQualityExtras, "check-circle", "Quality (advanced)", "DDD gate toggles — characterization tests, behavior snapshots, preserve-before-improve."},
 		{settings.SectionGitStrategy, "folder-git", "Git Strategy", "Git workflow mode and per-mode pre-push hook action (skip/warn/enforce)."},
-		{settings.SectionLLM, "rocket", "LLM", "GLM backend model tier mappings (high/medium/low/opus/sonnet/haiku)."},
+		{settings.SectionLLM, "rocket", "LLM", "GLM backend model tier mappings (high/medium/low/fable)."},
 		{settings.SectionWorkflow, "panel-bottom", "Workflow", "Workflow execution, auto-clear, team, token budget, and worktree settings."},
 		{settings.SectionHarness, "check-circle", "Harness", "Quality harness levels, escalation, and learning subsystem."},
 		{settings.SectionRalph, "rocket", "MoAI-Loop", "MoAI-Loop instruction injection — lint and warning severity as systemMessage."},

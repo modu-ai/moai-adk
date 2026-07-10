@@ -188,7 +188,10 @@ func applyGitStrategyKey(gs *config.GitStrategyConfig, key, v string) error {
 // mode/team_mode는 read-only — 스키마에 편집 필드가 없어 여기 도달 불가하며,
 // 도달 시 명시적으로 거부한다, REQ-WC11-013). M4 다이어트로 performance_tier와
 // claude_models.* 편집 FieldDef가 제거되어 이 분기들은 도달 불가하다 — struct
-// 멤버는 보존되어 yaml 로드가 backward-compat를 유지한다.
+// 멤버는 보존되어 yaml 로드가 backward-compat를 유지한다. legacy alias
+// glm.models.{opus,sonnet,haiku} apply 분기는 SPEC-WEB-CONSOLE-012
+// REQ-WC12-003에서 제거되었다 (GLMModels legacy 멤버 자체는 REQ-WC12-006 보존 —
+// yaml 로드/re-marshal이 기존 키를 파괴하지 않는다).
 func applyLLMKey(l *config.LLMConfig, key, v string) error {
 	switch key {
 	case "mode", "team_mode":
@@ -199,12 +202,8 @@ func applyLLMKey(l *config.LLMConfig, key, v string) error {
 		l.GLM.Models.Medium = v
 	case "glm.models.low":
 		l.GLM.Models.Low = v
-	case "glm.models.opus":
-		l.GLM.Models.Opus = v
-	case "glm.models.sonnet":
-		l.GLM.Models.Sonnet = v
-	case "glm.models.haiku":
-		l.GLM.Models.Haiku = v
+	case "glm.models.fable":
+		l.GLM.Models.Fable = v
 	default:
 		return fmt.Errorf("settings: unknown llm key %q", key)
 	}

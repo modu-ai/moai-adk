@@ -125,12 +125,17 @@ func gitStrategyFields() []FieldDef {
 
 // ─── llm 안전 키 (REQ-WC11-012/013/014 — typed 경로) ─────────────────────────
 
-// llmFields는 M4 다이어트 후 GLM tier 매핑만 반환한다 (glm.go:195-197 런타임
-// 소비자 — ANTHROPIC_DEFAULT_*_MODEL 환경변수). performance_tier와
-// claude_models.*는 런타임 reader 없이 제거되었다 (struct 멤버와 yaml 로드 보존).
+// llmFields는 실소비 GLM tier 매핑 4종(high/medium/low/fable)만 반환한다
+// (glm.go setGLMEnv 런타임 소비자 — ANTHROPIC_DEFAULT_*_MODEL 환경변수;
+// ANTHROPIC_DEFAULT_OPUS_MODEL조차 Models.High에서 온다). legacy alias
+// opus/sonnet/haiku는 SPEC-WEB-CONSOLE-012 REQ-WC12-002에서 웹 편집면에서
+// 제거되었다 — resolveGLMModels empty-fallback 체인과 GLMModels legacy struct
+// 멤버는 무접촉 보존되어 legacy yaml 로드가 backward-compat를 유지한다
+// (REQ-WC12-006). performance_tier와 claude_models.*는 M4 다이어트에서 제거
+// (struct 멤버와 yaml 로드 보존).
 func llmFields() []FieldDef {
 	var fields []FieldDef
-	for _, tier := range []string{"high", "medium", "low", "opus", "sonnet", "haiku"} {
+	for _, tier := range []string{"high", "medium", "low", "fable"} {
 		fields = append(fields, typedField(SectionLLM, "llm", "glm.models."+tier, TypeText))
 	}
 	return fields

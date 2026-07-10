@@ -397,6 +397,90 @@ func TestRemovedFieldsLoadWithoutError(t *testing.T) {
 	}
 }
 
+// TestLLMFieldsTierSet은 llm 섹션 FieldDef가 실소비 tier 4종
+// {high, medium, low, fable}만 노출함을 검증한다 (SPEC-WEB-CONSOLE-012
+// REQ-WC12-001/002 — glm.go setGLMEnv가 읽는 canonical 키만; legacy alias
+// opus/sonnet/haiku는 웹 편집면에서 제거, struct/fallback은 REQ-WC12-006 보존).
+func TestLLMFieldsTierSet(t *testing.T) {
+	t.Parallel()
+
+	want := map[string]bool{
+		"llm.glm.models.high":   true,
+		"llm.glm.models.medium": true,
+		"llm.glm.models.low":    true,
+		"llm.glm.models.fable":  true,
+	}
+	got := map[string]bool{}
+	for _, f := range SectionFields(SectionLLM) {
+		got[f.Name] = true
+	}
+	for name := range want {
+		if !got[name] {
+			t.Errorf("llm FieldDef %q missing (want exactly the 4 real tiers)", name)
+		}
+	}
+	for name := range got {
+		if !want[name] {
+			t.Errorf("llm FieldDef %q must not be exposed (ghost tier)", name)
+		}
+	}
+}
+
+// TestApplyLLMKeyFableAndGhostRejection은 (i) fable 편집이 typed 경로로
+// 영속화되고 (ii) 폐기된 ghost 키 편집이 거부됨을 검증한다
+// (SPEC-WEB-CONSOLE-012 REQ-WC12-003).
+func TestApplyLLMKeyFableAndGhostRejection(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	seedTypedFixtures(t, root, "git-strategy", "llm", "quality")
+
+	if err := ApplySchemaEdits(root, map[string]string{"llm.glm.models.fable": "glm-fable-test"}); err != nil {
+		t.Fatalf("ApplySchemaEdits(llm.glm.models.fable): %v", err)
+	}
+	llmAfter, err := os.ReadFile(filepath.Join(root, ".moai", "config", "sections", "llm.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(llmAfter), "fable: glm-fable-test") {
+		t.Errorf("llm.glm.models.fable not persisted:\n%s", llmAfter)
+	}
+
+	for _, ghost := range []string{"llm.glm.models.opus", "llm.glm.models.sonnet", "llm.glm.models.haiku"} {
+		if err := ApplySchemaEdits(root, map[string]string{ghost: "x"}); err == nil {
+			t.Errorf("edit %q: want rejection (ghost tier removed), got nil", ghost)
+		}
+	}
+}
+
+// TestLLMTypedSavePreservesLegacyGhostKeys는 EC-2를 검증한다: 라이브 llm.yaml에
+// legacy opus/sonnet/haiku 키가 값과 함께 잔존하는 상태에서 콘솔 저장(typed
+// re-marshal)이 그 키·값을 파괴하지 않는다 (SPEC-WEB-CONSOLE-012 REQ-WC12-006 —
+// GLMModels legacy struct 멤버 보존이 곧 하위호환 메커니즘).
+func TestLLMTypedSavePreservesLegacyGhostKeys(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	seedTypedFixtures(t, root, "git-strategy", "llm", "quality")
+	// fixture는 opus/sonnet/haiku 키를 값과 함께 포함한다 (실파일 사본).
+
+	if err := ApplySchemaEdits(root, map[string]string{"llm.glm.models.fable": "glm-roundtrip"}); err != nil {
+		t.Fatalf("ApplySchemaEdits(llm): %v", err)
+	}
+
+	after, err := os.ReadFile(filepath.Join(root, ".moai", "config", "sections", "llm.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for key, val := range map[string]string{
+		"opus":   "glm-5.2",
+		"sonnet": "glm-4.7",
+		"haiku":  "glm-4.5-air",
+	} {
+		if !strings.Contains(string(after), key+": "+val) {
+			t.Errorf("legacy key %s: %s destroyed by typed re-marshal (EC-2):\n%s", key, val, after)
+		}
+	}
+}
+
 // collectScalarLeaves는 매핑 트리의 스칼라 leaf dot-path를 수집한다 (시퀀스는
 // form 대상이 아니므로 진입하지 않는다).
 func collectScalarLeaves(node *yaml.Node, prefix string, out *[]string) {
