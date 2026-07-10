@@ -27,6 +27,11 @@ func TestRemoveHarnessBoundary_Repro(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(cmdDir, "release.md"), []byte("# release\n"), 0o644); err != nil {
 		t.Fatalf("write release.md: %v", err)
 	}
+	// release-update is a SIBLING harness — it must have its own command file so
+	// listHarnessCommandNames can disambiguate "release" from "release-update".
+	if err := os.WriteFile(filepath.Join(cmdDir, "release-update.md"), []byte("# release-update\n"), 0o644); err != nil {
+		t.Fatalf("write release-update.md: %v", err)
+	}
 	m := v4manifest.Manifest{RunnerWorkflow: "harness-release-run.js"}
 	mb, _ := json.Marshal(&m)
 	if err := os.WriteFile(filepath.Join(cmdDir, "release", "manifest.json"), mb, 0o644); err != nil {

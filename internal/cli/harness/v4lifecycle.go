@@ -45,6 +45,57 @@ const v4AgentsDir = ".claude/agents/harness"
 // (.claude/skills/harness-<name>-*/).
 const v4SkillsDir = ".claude/skills"
 
+// listHarnessCommandNames scans the v4CommandsDir for *.md command files and
+// returns the set of known harness names (the file stems). It is the
+// disambiguation source for harnessArtifactBelongsTo: without the full name set,
+// a bare prefix match cannot distinguish harness "release" from "release-update"
+// (SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-004).
+func listHarnessCommandNames(projectRoot string) []string {
+	commandsDir := filepath.Join(projectRoot, v4CommandsDir)
+	entries, err := os.ReadDir(commandsDir)
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if strings.HasSuffix(e.Name(), ".md") {
+			names = append(names, strings.TrimSuffix(e.Name(), ".md"))
+		}
+	}
+	return names
+}
+
+// harnessArtifactBelongsTo reports whether the artifact entryName (a file or dir
+// name in the harness-<name> namespace) belongs to the harness with the given
+// name, using the set of all known harness names to disambiguate prefix
+// collisions via longest-match (SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-004).
+//
+// "harness-release-auditor-specialist.md" belongs to "release" (not
+// "release-update") because the longest matching name is "release".
+// "harness-release-update-auditor-specialist.md" belongs to "release-update"
+// because "release-update" is a longer match than "release".
+func harnessArtifactBelongsTo(entryName, name string, allNames []string) bool {
+	bestMatch := ""
+	for _, n := range allNames {
+		art := "harness-" + n
+		if entryName == art || strings.HasPrefix(entryName, art+"-") {
+			if len(n) > len(bestMatch) {
+				bestMatch = n
+			}
+		}
+	}
+	// Fall back to the bare name when allNames is empty (no command files found)
+	// so the helper degrades to a prefix+"-" or exact match against name alone.
+	if bestMatch == "" {
+		art := "harness-" + name
+		return entryName == art || strings.HasPrefix(entryName, art+"-")
+	}
+	return bestMatch == name
+}
+
 // HarnessEntry is a single harness enumerated by ListHarnesses.
 type HarnessEntry struct {
 	// Name is the harness name (derived from the command filename stem).
@@ -166,15 +217,18 @@ func EditHarness(projectRoot, name string) (HarnessEditPaths, error) {
 		ManifestPath: manifestPath,
 	}
 
+	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-004: disambiguate via known harness
+	// names so "release" never collects "release-update" artifacts.
+	allNames := listHarnessCommandNames(projectRoot)
+
 	// Specialist agent files: .claude/agents/harness/harness-<name>*-specialist.md
 	agentsDir := filepath.Join(projectRoot, v4AgentsDir)
 	if entries, err := os.ReadDir(agentsDir); err == nil {
-		prefix := "harness-" + name
 		for _, e := range entries {
 			if e.IsDir() {
 				continue
 			}
-			if strings.HasPrefix(e.Name(), prefix) && strings.HasSuffix(e.Name(), "-specialist.md") {
+			if harnessArtifactBelongsTo(e.Name(), name, allNames) && strings.HasSuffix(e.Name(), "-specialist.md") {
 				paths.SpecialistPaths = append(paths.SpecialistPaths, filepath.Join(agentsDir, e.Name()))
 			}
 		}
@@ -184,12 +238,11 @@ func EditHarness(projectRoot, name string) (HarnessEditPaths, error) {
 	// Companion skill directory: .claude/skills/harness-<name>*/
 	skillsDir := filepath.Join(projectRoot, v4SkillsDir)
 	if entries, err := os.ReadDir(skillsDir); err == nil {
-		prefix := "harness-" + name
 		for _, e := range entries {
 			if !e.IsDir() {
 				continue
 			}
-			if strings.HasPrefix(e.Name(), prefix) {
+			if harnessArtifactBelongsTo(e.Name(), name, allNames) {
 				paths.SkillPaths = append(paths.SkillPaths, filepath.Join(skillsDir, e.Name()))
 			}
 		}
@@ -247,15 +300,18 @@ func RemoveHarness(projectRoot, name string) error {
 		return fmt.Errorf("v4lifecycle: remove: stat runner: %w", err)
 	}
 
+	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-004: disambiguate via known harness
+	// names so "release" never collects "release-update" artifacts.
+	allNames := listHarnessCommandNames(projectRoot)
+
 	// Specialist agent files: glob .claude/agents/harness/harness-<name>*-specialist.md
 	// (matches both harness-<name>-auditor-specialist.md and any future
 	// harness-<name>-<role>-specialist.md variants).
 	agentsDir := filepath.Join(projectRoot, v4AgentsDir)
 	var specialistPaths []string
 	if entries, dErr := os.ReadDir(agentsDir); dErr == nil {
-		prefix := "harness-" + name
 		for _, e := range entries {
-			if !e.IsDir() && strings.HasPrefix(e.Name(), prefix) && strings.HasSuffix(e.Name(), "-specialist.md") {
+			if !e.IsDir() && harnessArtifactBelongsTo(e.Name(), name, allNames) && strings.HasSuffix(e.Name(), "-specialist.md") {
 				specialistPaths = append(specialistPaths, filepath.Join(agentsDir, e.Name()))
 			}
 		}
@@ -280,9 +336,8 @@ func RemoveHarness(projectRoot, name string) error {
 	skillsDir := filepath.Join(projectRoot, v4SkillsDir)
 	var skillPaths []string
 	if entries, dErr := os.ReadDir(skillsDir); dErr == nil {
-		prefix := "harness-" + name
 		for _, e := range entries {
-			if e.IsDir() && strings.HasPrefix(e.Name(), prefix) {
+			if e.IsDir() && harnessArtifactBelongsTo(e.Name(), name, allNames) {
 				skillPaths = append(skillPaths, filepath.Join(skillsDir, e.Name()))
 			}
 		}

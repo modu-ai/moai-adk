@@ -197,6 +197,21 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
+	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-005: acquire update lock before any
+	// destructive step so a concurrent moai update fails fast with a diagnostic
+	// instead of interleaving destructive deploy/clean/restore operations.
+	lockRoot, _ := findProjectRoot()
+	if lockRoot == "" {
+		lockRoot, _ = os.Getwd()
+	}
+	if lockRoot != "" {
+		releaseLock, lockErr := acquireUpdateLock(lockRoot)
+		if lockErr != nil {
+			return lockErr
+		}
+		defer releaseLock()
+	}
+
 	// Step 1: Binary update (unless skipped)
 	if !shouldSkipBinaryUpdate(cmd) {
 		updated, err := runBinaryUpdateStep(cmd)

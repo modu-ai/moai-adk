@@ -73,6 +73,16 @@ type migrationCheckpoint struct {
 type transactionLog struct {
 	createdDirs  []string
 	createdFiles []string
+	// restoredFiles maps a dst path to the original content+mode of a pre-existing
+	// file that the migration overwrote. Rollback restores these instead of
+	// deleting them (SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-006).
+	restoredFiles map[string]fileSnapshot
+}
+
+// fileSnapshot captures a pre-existing file's content and mode for rollback restore.
+type fileSnapshot struct {
+	content []byte
+	mode    os.FileMode
 }
 
 func (tx *transactionLog) recordDir(path string) {
@@ -83,12 +93,38 @@ func (tx *transactionLog) recordFile(path string) {
 	tx.createdFiles = append(tx.createdFiles, path)
 }
 
-// rollback removes all files/dirs created during the transaction.
+// snapshotIfExists reads path if it exists and records it for rollback restore.
+// Returns whether the file pre-existed. A newly-created file is NOT snapshotted
+// — it is recorded via recordFile for removal instead.
+func (tx *transactionLog) snapshotIfExists(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false // does not exist — newly created
+	}
+	orig, err := os.ReadFile(path)
+	if err != nil {
+		return false // unreadable — treat as newly created (best effort)
+	}
+	if tx.restoredFiles == nil {
+		tx.restoredFiles = make(map[string]fileSnapshot)
+	}
+	tx.restoredFiles[path] = fileSnapshot{content: orig, mode: info.Mode().Perm()}
+	return true
+}
+
+// rollback removes all newly-created files/dirs and restores overwritten
+// pre-existing files (SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-006).
 func (tx *transactionLog) rollback() {
-	// Remove files first, then dirs (deepest first)
+	// Remove newly-created files first.
 	for i := len(tx.createdFiles) - 1; i >= 0; i-- {
 		_ = os.Remove(tx.createdFiles[i])
 	}
+	// Restore overwritten pre-existing files.
+	for path, snap := range tx.restoredFiles {
+		_ = os.WriteFile(path, snap.content, snap.mode)
+	}
+	// Remove newly-created dirs (deepest first). Pre-existing dirs are NOT in
+	// this list (copyDir checks existence before recording).
 	for i := len(tx.createdDirs) - 1; i >= 0; i-- {
 		_ = os.RemoveAll(tx.createdDirs[i])
 	}
@@ -442,10 +478,16 @@ func (r *migrateAgencyRunner) convertConfig(src, dst string, tx *transactionLog)
 
 // copyFile copies a single file, preserving permissions on POSIX systems.
 // Platform-specific permission logic is in migrate_agency_posix.go / migrate_agency_windows.go.
+//
+// SPEC-CLIFIX-CRITICAL-001:
+// - REQ-CRIT-001-007: uses os.Lstat (not os.Stat) so symlinks are detected and
+//   skipped — os.Stat follows the link, making the ModeSymlink guard dead code.
+// - REQ-CRIT-001-006: snapshots a pre-existing dst so rollback restores it
+//   instead of deleting it; only newly-created files are recorded for removal.
 func (r *migrateAgencyRunner) copyFile(src, dst string, tx *transactionLog) error {
-	info, err := os.Stat(src)
+	info, err := os.Lstat(src)
 	if err != nil {
-		return fmt.Errorf("stat %s: %w", src, err)
+		return fmt.Errorf("lstat %s: %w", src, err)
 	}
 	if info.Mode()&os.ModeSymlink != 0 {
 		r.errorf("warn: skipping symlink %s", src)
@@ -461,10 +503,16 @@ func (r *migrateAgencyRunner) copyFile(src, dst string, tx *transactionLog) erro
 		return fmt.Errorf("mkdirall for %s: %w", dst, err)
 	}
 
+	// Snapshot pre-existing dst for rollback restore; only record newly-created
+	// files for removal.
+	preExisted := tx.snapshotIfExists(dst)
+
 	if err := os.WriteFile(dst, data, info.Mode().Perm()); err != nil {
 		return fmt.Errorf("write %s: %w", dst, err)
 	}
-	tx.recordFile(dst)
+	if !preExisted {
+		tx.recordFile(dst)
+	}
 
 	// Apply platform-specific permission handling.
 	applyPermissions(src, dst, info, r.getStderr())
@@ -473,11 +521,19 @@ func (r *migrateAgencyRunner) copyFile(src, dst string, tx *transactionLog) erro
 }
 
 // copyDir recursively copies src to dst, recording all created paths in tx.
+//
+// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-006: only records dst for rollback
+// removal when it did NOT pre-exist, so a pre-existing user directory (and its
+// contents) survives rollback.
 func (r *migrateAgencyRunner) copyDir(src, dst string, tx *transactionLog) error {
+	_, statErr := os.Stat(dst)
+	preExisted := statErr == nil
 	if err := os.MkdirAll(dst, 0o755); err != nil {
 		return fmt.Errorf("mkdirall %s: %w", dst, err)
 	}
-	tx.recordDir(dst)
+	if !preExisted {
+		tx.recordDir(dst)
+	}
 
 	entries, err := os.ReadDir(src)
 	if err != nil {
