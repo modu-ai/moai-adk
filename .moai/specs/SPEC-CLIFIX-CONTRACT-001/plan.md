@@ -8,9 +8,9 @@ P1 row of the CLI audit roadmap: contract drift. The `ExitCoder` infrastructure 
 
 | # | File anchor (re-verify before edit) | Defect | Fix direction |
 |---|---|---|---|
-| 1 | hook.go, hook_pre_push.go, astgrep.go, spec_lint.go, spec_drift.go, migrate_agency.go:590, harness/execute.go:327, agentlint/workflow_lint.go:159 | os.Exit inside RunE/PostRunE (defers skipped, untestable) | return ExitCoder error; map at main.go |
+| 1 | 11 os.Exit sites across 8 files (grep-verified, comment lines excluded): astgrep.go:119; hook.go:231+:362; spec_drift.go:74; harness/execute.go:333; hook_pre_push.go:196; spec_lint.go:70+:96; migrate_agency.go:650+:652; agentlint/workflow_lint.go:158 | os.Exit inside RunE/PostRunE (defers skipped, untestable) | return ExitCoder error; map at main.go. hook_pre_push.go:196 is a removal TARGET (not exception) — the inline comment at :194 ("ONLY os.Exit site") and :102-103 (decideExit is pure) describe the current state, not an approval; the boundary mapping must become an ExitCoder return with REQ-CONT-001-006 stderr routing applied before the return. Approved exceptions OUTSIDE the 8-file removal scope: launch_exec_windows.go:37,41 + update.go:487 (Windows process-replacement — syscall.Exec unavailable on Windows, os.Exit after child re-exec is the standard boundary) |
 | 2 | github.go:97,103 | --dry-run registered, never read → link-spec writes registry anyway | wire flag into all mutating subcommands |
-| 3 | spec_status.go:205-235 | --confirm dead flag; fmt.Scanln hangs non-TTY; git runs in cwd not specs root | gate on --confirm/--yes; `git -C projectRoot` |
+| 3 | spec_status.go:205-235 | `--confirm` (syncConfirm) dead flag — registered at :63 but never read (only syncYes wired at :40 as autoConfirm, gated at :205); fmt.Scanln hangs non-TTY; git runs in cwd not specs root | gate on `--yes` (canonical non-interactive flag, wired to autoConfirm at :40); remove `--confirm`; `git -C projectRoot` |
 | 4 | astgrep.go:107-122 | HasErrors→exit 1 only in text format; json/sarif exit 0 | evaluate HasErrors after format branch |
 | 5 | constitution.go:296-319 | exitCodeError{2} never interpreted | map at Execute boundary |
 | 6 | spec_lint.go / spec_audit | documented exit 3 (invalid args) / exit 2 (MUST-FIX) not produced | implement via ExitCoder |
@@ -29,6 +29,7 @@ P1 row of the CLI audit roadmap: contract drift. The `ExitCoder` infrastructure 
 - Exit codes observed by external callers (CI scripts, git hooks) MUST remain numerically identical where already correct; this SPEC only adds missing codes and reroutes streams.
 - No behavior change to what is detected — only verdict communication.
 - The renamed lock test must be verified to actually FAIL if the flock logic regresses (guard against a vacuously-green rename).
+- Approved os.Exit exceptions (NOT removal targets): `cmd/moai/main.go` ExitCoder boundary mapping (out of internal/cli grep scope, verified separately by AC-CONT-001-008); `internal/cli/launch_exec_windows.go:37,41` (Windows process-replacement — direct exec semantics); `internal/cli/update.go:487` (Windows re-exec boundary — the child-process re-exec block at update.go:480-488 runs only on Windows because `syscall.Exec` is unavailable there, and `os.Exit(0)` after a successful child re-exec is the standard process-replacement boundary, parallel to launch_exec_windows.go). These three sites share the Windows-process-replacement / boundary-mapping rationale and are excluded from REQ-CONT-001-001 removal.
 
 ## §E Self-Verification
 
@@ -49,6 +50,7 @@ P1 row of the CLI audit roadmap: contract drift. The `ExitCoder` infrastructure 
 - Execution order: P0→P1→P2→P3→P4. Shared-file overlap: hook.go/hook_pre_push.go (with CRITICAL-001 h; with HYGIENE-001 timeout constants), migrate_agency.go (CRITICAL-001 f/g), team_spawn* (CRITICAL-001 b, LINTER-STALE-001 claim validation). This SPEC starts only after CRITICAL-001 is merged.
 - Anti-pattern: swallowing errors to avoid os.Exit — the ExitCoder return must carry the original diagnostic.
 - Risk: spec_lint exit-code change could affect CI pipelines that treat exit 1 as the only failure signal — document the 0/1/2/3 contract in the command Long text (already declared; implementation aligns to it).
+- Risk: `moai spec audit` MUST-FIX drift currently exits 1 (via `fmt.Errorf`); REQ-CONT-001-005 changes it to exit 2. CI pipelines or scripts that gate on `spec audit` exit code == 1 as the failure signal would break — same shape as the spec_lint risk above. Document the exit-2 contract in the audit command help text and release-note the change.
 - Risk: pre-push stderr rerouting may change golden outputs in existing tests — update goldens deliberately, never loosen assertions.
 
 ## §H Cross-References
