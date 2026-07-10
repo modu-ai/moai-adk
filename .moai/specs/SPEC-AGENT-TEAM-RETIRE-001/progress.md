@@ -353,7 +353,7 @@ AC-ATR-029  key-token sweep (workflow.team.enabled|CLAUDE_CODE_EXPERIMENTAL_AGEN
 
 ```yaml
 run_complete_at: 2026-07-11T00:00:00+09:00
-run_commit_sha: pending-backfill-M4   # progress.md is IN the M4 commit; a commit cannot reference its own hash — orchestrator/next-commit backfills the real M4 SHA (D3 SHA-placeholder exemption, spec-frontmatter-schema.md)
+run_commit_sha: 604dbf04a   # backfilled at sync-phase (D3 SHA-placeholder exemption, spec-frontmatter-schema.md) — the M4 commit that carried this progress.md §E.2/§E.3 update; verified via `git log --oneline | grep 'M4 — Scope B'`
 run_status: complete
 ac_pass_count: 29        # 28 clean PASS + AC-ATR-017 PASS-WITH-DEBT (deployed template clean; local-tree role_profiles §22 dev-local exemption)
 ac_fail_count: 0
@@ -377,7 +377,33 @@ template_mirror_decision: DO-NOT-MIRROR (.claude/workflows/ user-owned, not temp
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs>_
+```yaml
+sync_complete_at: 2026-07-11T00:00:00+09:00
+sync_commit_sha: pending-backfill-sync   # this progress.md update is IN the sync commit; a commit cannot reference its own hash — backfilled in a follow-up chore(SPEC-AGENT-TEAM-RETIRE-001) commit (D3 SHA-placeholder exemption, spec-frontmatter-schema.md)
+sync_status: complete
+frontmatter_status_transitions:
+  spec.md: "in-progress -> completed (status + updated fields; body untouched)"
+  plan.md: "n/a — no YAML frontmatter block in this repo's Tier L artifact convention (header-only '# Plan — SPEC-...'); no status field to transition"
+  acceptance.md: "n/a — no YAML frontmatter block (header-only '# Acceptance Criteria — SPEC-...'); no status field to transition"
+  progress.md: "no top-level frontmatter; §E.3 run_commit_sha backfilled 604dbf04a, §E.4 populated this commit"
+changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Removed (new section inserted at top of [Unreleased], first bullet)"
+ac_count_verified: 29   # grep -cE '^\| AC-ATR-[0-9]' acceptance.md == 29, matches progress.md §E.2 M4 claim
+duplicate_guard: 0   # grep -c 'SPEC-AGENT-TEAM-RETIRE-001' CHANGELOG.md before emission == 0
+readme_review: "README.md + README.ko.md reference Agent Teams extensively ('Dual Execution Modes' section, --team/--solo flags, auto-select table) — NOT updated in this sync. The section interleaves now-retired static routing (--team/--solo flags, complexity-based auto-selection table) with still-valid CG Mode content (moai cg/glm/cc, tmux teammate panes, which this SPEC explicitly PRESERVES). A partial edit risked leaving the section internally inconsistent; flagged as a dedicated follow-up SPEC rather than a same-sync partial rewrite."
+known_residual_docs_drift:
+  - path: .claude/rules/moai/development/orchestrator-templates.md
+    note: "still describes team-orchestrator patterns — out of this SPEC's REQ scope (module list does not include this file); flagged for a follow-up SPEC, not fixed here"
+  - path: README.md, README.ko.md
+    note: "see readme_review above"
+environmental_flake_documented:
+  test: TestBudget_FullRepoScanWithin35Sec (scripts/i18n-validator)
+  observed_this_sync: "ok 34.792s (< 35s budget; isolated rerun passed)"
+  root_cause: "~59 leftover .claude/worktrees/agent-* directories from prior sessions inflate the full-repo scan under load; unrelated to this SPEC (net Go-file deletion + 2 new local JS files reduce scan load)"
+  fix_owner: "separate worktree-prune task, not this SPEC"
+b12_self_test_a: "grep -c 'SPEC-AGENT-TEAM-RETIRE-001' CHANGELOG.md (pre-emission) -> 0 -> PASS, no duplicate"
+b12_self_test_b: "grep -cE '^\\| AC-ATR-[0-9]' acceptance.md -> 29 == progress.md §E.2/§E.3 ac_pass_count 29 -> PASS"
+b12_self_test_c: "ls internal/lockfile/ internal/cli/taskledger/ .claude/workflows/sync-audit-4dim.js .claude/workflows/plan-research-fanout.js .claude/rules/moai/core/glm-web-tooling.md .claude/rules/moai/workflow/orchestration-mode-selection.md .claude/skills/moai/workflows/sync/delivery.md -> all exist (path corrected from 'workflows/delivery.md' to 'workflows/sync/delivery.md' after ls failure) -> PASS"
+```
 
 ## Plan Audit Gate (Phase 0.5 input)
 
