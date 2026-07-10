@@ -9,7 +9,7 @@
 
 ## §E.2 Run-phase Evidence
 
-Run-phase executed on worktree branch `worktree-agent-abd265494e4c263d7` (base main HEAD `99ad0a898`; L2/L3 opt-in NOT used — isolated agent worktree). Milestone commits are **worktree-branch SHAs** (NOT pushed per delegation constraint): M1 `844b260c4`, M2 `297a24a6d`, M3 `6fec401fe`, M4 (this commit).
+Run-phase executed on worktree branch `worktree-agent-abd265494e4c263d7` (base main HEAD `99ad0a898`; L2/L3 opt-in NOT used — isolated agent worktree). Milestone commits are **worktree-branch SHAs** (rebased onto main and landed; SHAs below are main SHAs): M1 `83b72e036`, M2 `31e44513a`, M3 `c6a19dbc1`, M4 (this commit).
 
 ### AC Matrix (AC-WC13-001..032)
 
@@ -63,7 +63,7 @@ Per-package totals: settings 88.7%, config 80.7% (whole-package — legacy untes
 
 ```yaml
 run_complete_at: 2026-07-10
-run_commit_sha: 7fd617cec   # M4 run-completion commit (worktree branch; backfilled per spec-frontmatter-schema.md D3 exemption)
+run_commit_sha: 819532241   # M4 run-completion commit (worktree branch; backfilled per spec-frontmatter-schema.md D3 exemption)
 run_status: PASS
 ac_pass_count: 29        # AC-WC13-001..032 including a/b sub-letters (25 AC IDs)
 ac_fail_count: 0
@@ -75,7 +75,7 @@ cross_platform_build:
   darwin: exit-0
   windows: exit-0   # GOOS=windows GOARCH=amd64
 total_run_phase_files: 21   # git diff --stat 99ad0a898..HEAD name-only
-m1_to_mN_commit_strategy: per-milestone (M1 844b260c4 / M2 297a24a6d / M3 6fec401fe / M4 this)
+m1_to_mN_commit_strategy: per-milestone (M1 83b72e036 / M2 31e44513a / M3 c6a19dbc1 / M4 this)
 known_debt:
   - internal/hook TestHookWrapper_TempFileCleanup — pre-existing intermittent flake (passes in isolation; out-of-scope per delegation)
   - B-1 (plan §B): internal/config/types.go PerformanceTier validator oneof=high|medium|low vs template ValidPerformanceTiers {max,medium,low} mismatch — pre-existing, NOT modified (Model Policy view shows raw value, did not block display); resolution out of scope
