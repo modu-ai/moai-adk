@@ -390,7 +390,7 @@ func TestSchemaCurrentValuesMissingFilesAreEmpty(t *testing.T) {
 func TestRawBlockValues(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedTypedFixtures(t, root, "workflow", "harness", "security")
+	seedTypedFixtures(t, root, "workflow", "harness", "security", "mx")
 
 	blocks, err := RawBlockValues(root)
 	if err != nil {
@@ -408,6 +408,19 @@ func TestRawBlockValues(t *testing.T) {
 	}
 	if !strings.Contains(blocks["learning.rate_limit"], "max_per_week:") {
 		t.Errorf("learning.rate_limit raw block missing content: %q", blocks["learning.rate_limit"])
+	}
+	// SPEC-WEB-CONSOLE-014 M4: security.sandbox list 키 raw view (REQ-WC14-020).
+	for _, name := range []string{"security.sandbox.network_allowlist", "security.sandbox.env_scrub_extra"} {
+		if _, ok := blocks[name]; !ok {
+			t.Errorf("%s raw block missing (REQ-WC14-020)", name)
+		}
+	}
+	// SPEC-WEB-CONSOLE-014 M4: mx list 키 raw view (REQ-WC14-030).
+	if !strings.Contains(blocks["mx.danger_categories"], "concurrency:") {
+		t.Errorf("mx.danger_categories raw block missing content: %q", blocks["mx.danger_categories"])
+	}
+	if !strings.Contains(blocks["mx.test_paths"], "_test.go") {
+		t.Errorf("mx.test_paths raw block missing content: %q", blocks["mx.test_paths"])
 	}
 }
 

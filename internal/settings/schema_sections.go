@@ -405,8 +405,8 @@ type RawBlockRef struct {
 	NoteKey string
 }
 
-// RawViewBlocks는 raw view 대상 서브블록을 반환한다. SPEC-WEB-CONSOLE-014 M2로
-// learning 리스트 키가 추가되었다 (M4에서 security.sandbox + mx 추가).
+// RawViewBlocks는 raw view 대상 서브블록을 반환한다. SPEC-WEB-CONSOLE-014로
+// learning(M2) + security.sandbox(M4) + mx(M4) 리스트 키가 추가되었다.
 func RawViewBlocks() []RawBlockRef {
 	return []RawBlockRef{
 		{SectionWorkflow, "workflow", "workflow.team.patterns", []string{"workflow", "team", "patterns"}, ""},
@@ -417,6 +417,16 @@ func RawViewBlocks() []RawBlockRef {
 		{SectionHarness, "harness", "learning.tier_thresholds", []string{"learning", "tier_thresholds"}, ""},
 		// rate_limit: 표시 전용 — enforcement는 컴파일 상수 → 정보성 정직 라벨.
 		{SectionHarness, "harness", "learning.rate_limit", []string{"learning", "rate_limit"}, "raw.note.informational"},
+		// SPEC-WEB-CONSOLE-014 M4 — security.sandbox list 키 (REQ-WC14-020, F6
+		// config-미배선 scaffold — config는 로드되나 sandbox 실행 계층으로의
+		// 브리지가 미배선 → F2-style 정보성 정직 라벨. 배선은 별도 SPEC).
+		{SectionSecurity, "security", "security.sandbox.network_allowlist", []string{"security", "sandbox", "network_allowlist"}, "raw.note.informational"},
+		{SectionSecurity, "security", "security.sandbox.env_scrub_extra", []string{"security", "sandbox", "env_scrub_extra"}, "raw.note.informational"},
+		// SPEC-WEB-CONSOLE-014 M4 — mx list 키 (REQ-WC14-030, 행동적 reader 실존:
+		// LoadDangerConfig / mx query fan-in·danger 분류가 소비 → 제네릭 라벨).
+		// mx는 RouteExcluded 유지 — raw view는 표시 전용, 쓰기 경로 없음.
+		{SectionMx, "mx", "mx.danger_categories", []string{"mx", "danger_categories"}, ""},
+		{SectionMx, "mx", "mx.test_paths", []string{"mx", "test_paths"}, ""},
 	}
 }
 

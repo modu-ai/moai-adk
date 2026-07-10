@@ -45,6 +45,12 @@ const (
 	SectionHandoff SectionID = "handoff" // seam 전용 (mode select / guide bool)
 	SectionCache   SectionID = "cache"   // seam 전용 (cacheStrategy.enabled/session_ttl)
 
+	// SPEC-WEB-CONSOLE-014 M4: mx는 편집 필드 0개의 raw-only 렌더 그룹이다 (mx는
+	// RouteExcluded — 쓰기 경로 없음). SchemaSectionIDs()에는 포함되지 않으며(편집
+	// 필드 ≥1 불변식 위반 방지), 웹의 schemaSectionMetas()가 raw-only 섹션으로
+	// 렌더한다. RawBlockRef.Section 그룹핑 태그로만 사용된다.
+	SectionMx SectionID = "mx"
+
 	// SPEC-WEB-CONSOLE-011 M3: agent-settings 표면 (REQ-WC11-020..024, 070..073).
 	// workflow.yaml team.role_profiles(7 profiles — effort는 opaque node,
 	// REQ-WEM-006 유지). M5-a B1부터 workflow_agents(7 purposes)는 웹 렌더에서
