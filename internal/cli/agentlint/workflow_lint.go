@@ -1,8 +1,9 @@
 package agentlint
 
 // @MX:NOTE: [AUTO] WorkflowLintIntent — moai workflow lint validates .moai/config/sections/workflow.yaml
-// role_profiles to ensure write-heavy team roles (implementer/tester/designer) declare
-// isolation:worktree. Static CI gate for REQ-ORC-004-008 (SPEC-V3R2-ORC-004).
+// model_routing_profiles entries against the closed sets (perfTier / key structure /
+// model / effort) by reusing config.ValidateModelRoutingProfiles. Repurposed from the
+// retired Agent Teams role-profiles isolation check (SPEC-AGENT-TEAM-RETIRE-001 REQ-ATR-009).
 
 import (
 	"encoding/json"
@@ -19,9 +20,9 @@ import (
 
 // WorkflowLintViolation represents a workflow.yaml lint rule violation.
 type WorkflowLintViolation struct {
-	Rule     string `json:"rule"`     // e.g. "ORC_WORKTREE_REQUIRED"
+	Rule     string `json:"rule"`     // e.g. "MODEL_ROUTING_INVALID"
 	Severity string `json:"severity"` // "error" | "warning"
-	Path     string `json:"path"`     // YAML path, e.g. "workflow.team.role_profiles.implementer.isolation"
+	Path     string `json:"path"`     // YAML path, e.g. "workflow.model_routing_profiles.max.S-run.model"
 	Expected string `json:"expected"` // expected value
 	Actual   string `json:"actual"`   // actual value
 	Message  string `json:"message"`
@@ -42,14 +43,11 @@ type WorkflowLintSummary struct {
 
 // workflowLintWrapper unmarshals only the workflow: section into the canonical
 // config.WorkflowConfig type. The lint reads the file literally (no default
-// seeding) so that a missing or misconfigured role_profiles entry surfaces as a
+// seeding) so that a misconfigured model_routing_profiles entry surfaces as a
 // violation rather than being masked by construction-time defaults.
 type workflowLintWrapper struct {
 	Workflow config.WorkflowConfig `yaml:"workflow"`
 }
-
-// writeHeavyRoles enumerates the team-mode role profiles that MUST use isolation:worktree.
-var writeHeavyRoles = []string{"implementer", "tester", "designer"}
 
 // loadWorkflowYAML reads and parses workflow.yaml into the canonical
 // config.WorkflowConfig type. Returns exit code 2 error on malformed YAML.
@@ -67,62 +65,38 @@ func loadWorkflowYAML(path string) (*config.WorkflowConfig, error) {
 	return &wrapper.Workflow, nil
 }
 
-// validateRoleProfiles checks that role_profiles.{implementer,tester,designer}.isolation == "worktree".
-// Returns a slice of WorkflowLintViolation (one per offending role).
-func validateRoleProfiles(cfg *config.WorkflowConfig) []WorkflowLintViolation {
-	var violations []WorkflowLintViolation
-
+// validateModelRoutingProfiles checks every workflow.model_routing_profiles
+// entry against the closed sets (perfTier {max,medium,low}; key <TIER>-<phase>;
+// model {inherit,sonnet,opus,glm}; effort {low,medium,high,xhigh,max}) by
+// reusing the canonical config.(*Config).ValidateModelRoutingProfiles
+// (SPEC-AGENT-TEAM-RETIRE-001 REQ-ATR-009 — replaces the retired Agent Teams
+// role-profiles isolation check). An absent or empty block is valid (every
+// lookup falls back). Returns at most one violation: the canonical validator
+// reports the first offending location.
+func validateModelRoutingProfiles(cfg *config.WorkflowConfig) []WorkflowLintViolation {
 	if cfg == nil {
-		return violations
+		return nil
 	}
 
-	profiles := cfg.Team.RoleProfiles
-	if profiles == nil {
-		// No role_profiles defined — each write-heavy role is missing
-		for _, role := range writeHeavyRoles {
-			violations = append(violations, WorkflowLintViolation{
-				Rule:     SentinelWorktreeRequired,
-				Severity: string(SeverityError),
-				Path:     fmt.Sprintf("workflow.team.role_profiles.%s.isolation", role),
-				Expected: "worktree",
-				Actual:   "(missing)",
-				Message:  fmt.Sprintf("role_profiles.%s.isolation must be 'worktree' (got '(missing)') (SPEC-V3R2-ORC-004 %s)", role, SentinelWorktreeRequired),
-			})
-		}
-		return violations
+	full := &config.Config{Workflow: *cfg}
+	err := full.ValidateModelRoutingProfiles()
+	if err == nil {
+		return nil
 	}
 
-	for _, role := range writeHeavyRoles {
-		profile, exists := profiles[role]
-		if !exists {
-			// Role not defined — flag as missing
-			violations = append(violations, WorkflowLintViolation{
-				Rule:     SentinelWorktreeRequired,
-				Severity: string(SeverityError),
-				Path:     fmt.Sprintf("workflow.team.role_profiles.%s.isolation", role),
-				Expected: "worktree",
-				Actual:   "(not defined)",
-				Message:  fmt.Sprintf("role_profiles.%s is not defined; write-heavy roles MUST declare isolation:worktree (SPEC-V3R2-ORC-004 %s)", role, SentinelWorktreeRequired),
-			})
-			continue
-		}
-		if profile.Isolation != "worktree" {
-			actual := profile.Isolation
-			if actual == "" {
-				actual = "(empty)"
-			}
-			violations = append(violations, WorkflowLintViolation{
-				Rule:     SentinelWorktreeRequired,
-				Severity: string(SeverityError),
-				Path:     fmt.Sprintf("workflow.team.role_profiles.%s.isolation", role),
-				Expected: "worktree",
-				Actual:   actual,
-				Message:  fmt.Sprintf("role_profiles.%s.isolation must be 'worktree' (got '%s') (SPEC-V3R2-ORC-004 %s)", role, actual, SentinelWorktreeRequired),
-			})
-		}
+	violation := WorkflowLintViolation{
+		Rule:     SentinelModelRoutingInvalid,
+		Severity: string(SeverityError),
+		Path:     "workflow.model_routing_profiles",
+		Expected: "perfTier {max,medium,low}; key <TIER>-<phase>; model {inherit,sonnet,opus,glm}; effort {low,medium,high,xhigh,max}",
+		Message:  fmt.Sprintf("model_routing_profiles validation failed: %v (SPEC-AGENT-TEAM-RETIRE-001 %s)", err, SentinelModelRoutingInvalid),
 	}
-
-	return violations
+	var ve *config.ValidationError
+	if errors.As(err, &ve) {
+		violation.Path = "workflow." + ve.Field
+		violation.Actual = fmt.Sprintf("%v", ve.Value)
+	}
+	return []WorkflowLintViolation{violation}
 }
 
 // runWorkflowLint validates .moai/config/sections/workflow.yaml.
@@ -179,7 +153,7 @@ func runWorkflowLint(cmd *cobra.Command, _ []string) error {
 		return &exitCodeError{code: 2, msg: fmt.Sprintf("malformed workflow.yaml: %v", err)}
 	}
 
-	violations := validateRoleProfiles(cfg)
+	violations := validateModelRoutingProfiles(cfg)
 
 	errorCount := 0
 	for _, v := range violations {
@@ -237,9 +211,12 @@ func init() {
 	workflowLintCmd := &cobra.Command{
 		Use:   "lint",
 		Short: "Lint workflow configuration",
-		Long: `Validate .moai/config/sections/workflow.yaml against SPEC-V3R2-ORC-004 rules.
+		Long: `Validate .moai/config/sections/workflow.yaml model_routing_profiles entries.
 
-  ORC_WORKTREE_REQUIRED: role_profiles.{implementer,tester,designer}.isolation must be 'worktree'
+  MODEL_ROUTING_INVALID: model_routing_profiles entries must satisfy the closed
+  sets — perfTier {max,medium,low}; key <TIER>-<phase> with Tier in {S,M,L} and
+  Phase in {plan,run,sync,mx}; model {inherit,sonnet,opus,glm}; effort
+  {low,medium,high,xhigh,max} (SPEC-AGENT-TEAM-RETIRE-001 REQ-ATR-009)
 
 Exit Codes:
   0: No violations found

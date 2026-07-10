@@ -454,63 +454,6 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			MaxIterations:           100,
 			MaxRetriesPerOperation:  3,
 		},
-		Team: TeamConfig{
-			AutoSelection: TeamAutoSelectionConfig{
-				MinDomainsForTeam:  3,
-				MinFilesForTeam:    10,
-				MinComplexityScore: 7,
-			},
-			Enabled:             true,
-			MaxTeammates:        10,
-			DefaultModel:        "sonnet",
-			DelegateMode:        true,
-			RequirePlanApproval: true,
-			RoleProfileKeys:     []string{"implementer", "tester", "reviewer"},
-			RoleProfiles: map[string]RoleProfileEntry{
-				"researcher": {
-					Mode:        "plan",
-					Model:       "haiku",
-					Isolation:   "none",
-					Description: "Read-only codebase exploration and analysis",
-				},
-				"analyst": {
-					Mode:        "plan",
-					Model:       "sonnet",
-					Isolation:   "none",
-					Description: "Requirements analysis and validation",
-				},
-				"architect": {
-					Mode:        "plan",
-					Model:       "sonnet",
-					Isolation:   "none",
-					Description: "Solution design and architecture decisions",
-				},
-				"implementer": {
-					Mode:        "acceptEdits",
-					Model:       "sonnet",
-					Isolation:   "worktree",
-					Description: "Code implementation (backend, frontend, full-stack)",
-				},
-				"tester": {
-					Mode:        "acceptEdits",
-					Model:       "sonnet",
-					Isolation:   "worktree",
-					Description: "Test creation and coverage validation",
-				},
-				"designer": {
-					Mode:        "acceptEdits",
-					Model:       "sonnet",
-					Isolation:   "worktree",
-					Description: "UI/UX design with MCP design tools",
-				},
-				"reviewer": {
-					Mode:        "plan",
-					Model:       "haiku",
-					Isolation:   "none",
-					Description: "Code review and quality validation",
-				},
-			},
-		},
 		TokenBudget: TokenBudgetConfig{
 			Plan: DefaultPlanTokens,
 			Run:  DefaultRunTokens,

@@ -82,6 +82,78 @@ $ golangci-lint run --timeout=3m
 
 REQ-ATR-003 gate satisfied: whole-repo green BEFORE any deletion milestone.
 
+### M1 — Phases 1-2 Go removal (REQ-ATR-004/005 + compile-coupled test edits)
+
+M0 commit SHA: `d296f11cc` (precedes this M1 commit — AC-ATR-005 ordering evidence).
+
+Removed: `internal/cli/team_spawn.go` + `team_spawn_test.go` (with the M0 lock-file
+moves, all five `team_spawn*` files are now gone — AC-ATR-006);
+`internal/config` `TeamConfig` / `RoleProfileEntry` / `TeamAutoSelectionConfig`
+type decls, `WorkflowConfig.Team` field, `AutoSelectionLegacy` field
+(compile-coupled — typed `TeamAutoSelectionConfig`), `defaults.go` `Team:` block
+(GitStrategy `Team: ModeProfile` at defaults.go PRESERVED),
+`workflow_accessors.go` `WorkflowTeamAutoSelection()`;
+`internal/config/workflow_role_profiles_test.go` (file deleted);
+`types_test.go` `TestTeamConfigStructShape` + `AutoSelectionLegacy` assertions +
+`TeamAutoSelection` accessor case; `defaults_test.go` workflow-Team rows
+(GitStrategy AC-GSS-005 rows untouched); `workflow_nested_test.go` team
+assertions removed / partial-yaml fixture re-targeted to worktree keys /
+`TestWorkflowConfigInconsistentRoleProfileKeys` deleted;
+`internal/web/agent_settings_test.go` `TestRoleProfileEntryHasNoEffortField`
+deleted (compile-coupled — referenced `config.RoleProfileEntry`; run-phase
+discovery, not in the plan-time M1 enumeration).
+
+agentlint repurpose (folded into M1 per plan.md §F M1 step 3 compile-necessity
+decision): `workflow_lint.go` `validateRoleProfiles` + `writeHeavyRoles` removed;
+NEW `validateModelRoutingProfiles` reusing `config.(*Config).ValidateModelRoutingProfiles`
+(REQ-ATR-009); sentinel `ORC_WORKTREE_REQUIRED` → `MODEL_ROUTING_INVALID` in
+`sentinels.go`; `workflow_lint_test.go` rewritten (6 tests: valid / absent-block /
+invalid-model / invalid-perfTier / invalid-key + RunE violation-path asserting
+`errLintViolations` + RunE clean-path). Exit-code contract (0/1/2/3) preserved.
+
+Exit-gate evidence (verbatim tails):
+
+```
+$ go build ./... ; GOOS=windows GOARCH=amd64 go build ./... ; go vet ./...
+build exit=0 / winbuild exit=0 / vet exit=0
+$ go test ./...
+exit=0   (96 packages ok, 0 FAIL; full log: .moai/state/verify/atr-run/m1-test.log)
+$ golangci-lint run --timeout=3m
+0 issues.   (baseline: 0 issues — no NEW lint)
+```
+
+AC evidence (M0/M1-scope ACs, run against the post-M1 tree):
+
+```
+AC-ATR-001  ls internal/lockfile/ → lockfile_unix.go lockfile_windows.go lockfile_unix_test.go
+            grep -l 'go:build !windows' → lockfile_unix.go(+test); 'go:build windows' → lockfile_windows.go
+            grep -rn "cross-process" internal/lockfile/ → lockfile_unix.go:7 (limitation comment preserved
+            verbatim in lockfile_windows.go body)                                          PASS
+AC-ATR-002  GOOS=windows GOARCH=amd64 go build ./... → exit=0                              PASS
+AC-ATR-003  === RUN TestClaimTaskAppend_Repro / --- PASS / ok internal/cli 0.528s          PASS
+AC-ATR-004  grep -c '--- PASS' (go test -v -run TestClaimTask ./internal/cli/taskledger/) → 4 (≥2)  PASS
+AC-ATR-005  M0 d296f11cc precedes M1 commit (this commit); §E.2 M0 records go test exit 0  PASS
+AC-ATR-006  ls internal/cli/team_spawn* → no matches, exit=1                               PASS
+AC-ATR-007  grep -rn -E "TeamConfig|RoleProfileEntry|TeamAutoSelectionConfig" internal/config/ --include="*.go" | wc -l → 0   PASS
+AC-ATR-008  grep -n 'yaml:"team"' internal/config/types.go → 1 hit at :153 — DISAMBIGUATION:
+            survivor is GitStrategyConfig `Team ModeProfile` (PRESERVE per E2 edge case);
+            grep -n 'Team: TeamConfig' internal/config/defaults.go | wc -l → 0             PASS
+AC-ATR-009  grep -c "type RoleProfile struct" types.go → 1; "Sandbox string" → 1           PASS (preserved)
+AC-ATR-010  grep -n "Team     ModeProfile" types.go | wc -l → 1; go test -run 'Defaults'
+            ./internal/config/ → ok; grep -c "Team.Automation.AutoPush" defaults_test.go → 2  PASS (preserved)
+AC-ATR-011  MergeTeamCheckpoints → 1; worktree team_launch/swarm_registry/handoff_guidance
+            files present; teammateMode in glm.go/launcher.go → 12                         PASS (preserved)
+AC-ATR-012  f.git_strategy.team.* count → 16 (== pre-flight baseline 16, unchanged);
+            f.git_strategy.mode.opt.team → 4 (≥1)                                          PASS (preserved)
+AC-ATR-014  grep -c "role_profiles" workflow_lint.go → 0; grep -c -i "ModelRouting" → 8;
+            go test ./internal/cli/agentlint/... → ok (88.3% cover), incl. RunE
+            violation-path test asserting errLintViolations                                PASS
+AC-ATR-019  build trio exit 0 (partial — full re-verify due at M4); grep workflow_role_profiles_test → 0   PASS (partial)
+```
+
+Baselines recorded at pre-flight (for M2+ delta discipline): `f.workflow.team.` = 264
+(removal target, untouched in M0/M1); `f.git_strategy.team.` = 16 (PRESERVE, unchanged).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — populated by manager-develop>_

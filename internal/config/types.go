@@ -309,7 +309,7 @@ type RalphConfig struct {
 // WorkflowConfig represents the workflow configuration section.
 //
 // The nested fields below mirror the rich workflow.yaml structure (auto_clear /
-// completion / default_mode / execution_mode / loop_prevention / memory / team /
+// completion / default_mode / execution_mode / loop_prevention / memory /
 // token_budget / worktree). The trailing FLAT fields are retained for
 // backward-compat via the Option (c) accessor pattern. FLAT fields carry
 // yaml:"-" tags so yaml.Unmarshal never binds to them, eliminating the
@@ -325,7 +325,6 @@ type WorkflowConfig struct {
 	// bound) per SPEC-V3R6-AGENTIC-LOOP-CONFIG-001 §A.4 — the two MUST NOT be aliased.
 	AgenticLoop    AgenticLoopConfig      `yaml:"agentic_loop"`
 	LoopPrevention LoopPreventionConfig   `yaml:"loop_prevention"`
-	Team           TeamConfig             `yaml:"team"`
 	TokenBudget    TokenBudgetConfig      `yaml:"token_budget"`
 	Worktree       WorkflowWorktreeConfig `yaml:"worktree"`
 
@@ -341,9 +340,6 @@ type WorkflowConfig struct {
 	RunTokens int `yaml:"-"`
 	// Deprecated: use TokenBudget.Sync.
 	SyncTokens int `yaml:"-"`
-	// Deprecated: use Team.AutoSelection — the legacy field used a broken yaml
-	// path (workflow.auto_selection) that never matched team.auto_selection.
-	AutoSelectionLegacy TeamAutoSelectionConfig `yaml:"-"`
 
 	// WorkflowAgents는 dynamic-workflow purpose 분류(7종) → {model, effort} 기본값
 	// 맵이다 (SPEC-WEB-CONSOLE-011 REQ-WC11-070/071). config 블록이 기본값의
@@ -393,10 +389,10 @@ type ModelRoutingEntry struct {
 }
 
 // WorkflowAgentEntry는 dynamic-workflow purpose별 model/effort 기본값이다
-// (REQ-WC11-071 — design.md §C.2). RoleProfileEntry와 달리 Effort 필드를
-// 가진다: role-profile effort는 Go-invisible opaque node 결정(REQ-WEM-006)이
-// 유지되지만, workflow_agents는 신설 typed 표면이라 그 결정의 적용 대상이
-// 아니다.
+// (REQ-WC11-071 — design.md §C.2). retired된 team role-profile entry와 달리
+// Effort 필드를 가진다: role-profile effort는 Go-invisible opaque node
+// 결정(REQ-WEM-006)이었고, workflow_agents는 신설 typed 표면이라 그 결정의
+// 적용 대상이 아니다.
 type WorkflowAgentEntry struct {
 	Model  string `yaml:"model"`
 	Effort string `yaml:"effort"`
@@ -429,27 +425,9 @@ type LoopPreventionConfig struct {
 	MaxRetriesPerOperation  int  `yaml:"max_retries_per_operation"`
 }
 
-// TeamConfig mirrors workflow.team.* — Agent Teams configuration.
-// Note: workflow.team.patterns.* is intentionally NOT modeled (EXCL-WSE-004);
-// pattern dispatch is a skill-body responsibility, not a Go responsibility.
-type TeamConfig struct {
-	AutoSelection       TeamAutoSelectionConfig     `yaml:"auto_selection"`
-	Enabled             bool                        `yaml:"enabled"`
-	MaxTeammates        int                         `yaml:"max_teammates"`
-	DefaultModel        string                      `yaml:"default_model"`
-	DelegateMode        bool                        `yaml:"delegate_mode"`
-	RequirePlanApproval bool                        `yaml:"require_plan_approval"`
-	RoleProfileKeys     []string                    `yaml:"role_profile_keys"`
-	RoleProfiles        map[string]RoleProfileEntry `yaml:"role_profiles"`
-}
-
-// RoleProfileEntry mirrors a single workflow.team.role_profiles.<name> entry.
-type RoleProfileEntry struct {
-	Description string `yaml:"description"`
-	Isolation   string `yaml:"isolation"`
-	Mode        string `yaml:"mode"`
-	Model       string `yaml:"model"`
-}
+// NOTE: the workflow.team.* Agent Teams config family (SPEC-AGENT-TEAM-RETIRE-001
+// REQ-ATR-005) was removed here — the static team layer is retired; the Claude
+// Code NATIVE teammate runtime is unaffected.
 
 // TokenBudgetConfig mirrors workflow.token_budget.* — per-phase token budgets.
 type TokenBudgetConfig struct {
@@ -504,18 +482,6 @@ type SecuritySandbox struct {
 	// DockerImage is the default Docker image for the docker backend.
 	// Default: "alpine:latest" (production image pending SPEC-V3R2-EXT-004).
 	DockerImage string `yaml:"docker_image"`
-}
-
-// TeamAutoSelectionConfig holds thresholds for automatic team vs solo mode selection.
-// These values are evaluated by the orchestrator to determine execution mode
-// when no explicit --team or --solo flag is provided.
-type TeamAutoSelectionConfig struct {
-	// MinDomainsForTeam is the minimum number of distinct domains to trigger team mode.
-	MinDomainsForTeam int `yaml:"min_domains_for_team"`
-	// MinFilesForTeam is the minimum number of affected files to trigger team mode.
-	MinFilesForTeam int `yaml:"min_files_for_team"`
-	// MinComplexityScore is the minimum complexity score (1-10) to trigger team mode.
-	MinComplexityScore int `yaml:"min_complexity_score"`
 }
 
 // StateConfig represents the project state storage configuration.

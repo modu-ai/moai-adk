@@ -1,10 +1,12 @@
 package web
 
 // SPEC-WEB-CONSOLE-011 M3 agent-settings AC 바인딩 테스트:
-// AC-WC11-020(4표면 렌더), 022(role_profile seam diff), 023(RoleProfileEntry
-// Effort 부재), 024/071(enum reject 4xx + 파일 불변), 025(frontmatter round-trip),
+// AC-WC11-020(4표면 렌더), 022(role_profile seam diff),
+// 024/071(enum reject 4xx + 파일 불변), 025(frontmatter round-trip),
 // 026(workflow_agents 반영 + taxonomy 참조), 028(지속 경고 + i18n ×4),
 // 029(검증/부재 보존), 072(workflow_agents upsert golden).
+// (구 AC-WC11-023 컴파일 계층 테스트는 SPEC-AGENT-TEAM-RETIRE-001 M1에서
+// 제거 — assertion 대상 struct가 Agent Teams static layer와 함께 retired.)
 
 import (
 	"net/http"
@@ -12,11 +14,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // 테스트용 agent 파일 2종: effort 보유 + effort 부재 (manager-docs 선례, EC-7).
@@ -172,19 +171,6 @@ func TestRoleProfileEditRoutesThroughSeam(t *testing.T) {
 	for _, keep := range []string{"patterns:", "design_implementation:", "# effort: declarative metadata"} {
 		if !strings.Contains(after, keep) {
 			t.Errorf("preserved content %q lost", keep)
-		}
-	}
-}
-
-// TestRoleProfileEntryHasNoEffortField는 AC-WC11-023의 컴파일 계층 증거다:
-// RoleProfileEntry struct 블록에 Effort 필드가 없다 (REQ-WEM-006 유지 — 신설
-// WorkflowAgentEntry.Effort는 본 assertion 범위 밖).
-func TestRoleProfileEntryHasNoEffortField(t *testing.T) {
-	t.Parallel()
-	typ := reflect.TypeOf(config.RoleProfileEntry{})
-	for i := 0; i < typ.NumField(); i++ {
-		if typ.Field(i).Name == "Effort" {
-			t.Error("RoleProfileEntry gained an Effort field — REQ-WEM-006 reversal prohibited (REQ-WC11-023)")
 		}
 	}
 }

@@ -278,8 +278,9 @@ func TestRalphConfigFields(t *testing.T) {
 
 // TestWorkflowConfigFields verifies the deprecated FLAT fields remain
 // constructible for SPEC-CONFIG-001 backward-compat after the Option (c) rename
-// (AutoClear bool → AutoClearLegacy; AutoSelection → AutoSelectionLegacy;
-// PlanTokens/RunTokens/SyncTokens retained).
+// (AutoClear bool → AutoClearLegacy; PlanTokens/RunTokens/SyncTokens retained;
+// the team auto-selection legacy field was removed with the Agent Teams static
+// layer per SPEC-AGENT-TEAM-RETIRE-001).
 func TestWorkflowConfigFields(t *testing.T) {
 	t.Parallel()
 
@@ -346,65 +347,11 @@ func TestWorkflowConfigNestedFieldReachability(t *testing.T) {
 	}
 }
 
-// TestTeamConfigStructShape asserts TeamConfig and RoleProfileEntry have exactly
-// the expected exported field sets and that Patterns is absent (REQ-WSE-002,
-// EXCL-WSE-004).
-func TestTeamConfigStructShape(t *testing.T) {
-	t.Parallel()
-
-	wantTeamFields := map[string]bool{
-		"AutoSelection":       true,
-		"Enabled":             true,
-		"MaxTeammates":        true,
-		"DefaultModel":        true,
-		"DelegateMode":        true,
-		"RequirePlanApproval": true,
-		"RoleProfileKeys":     true,
-		"RoleProfiles":        true,
-	}
-	gotTeamFields := map[string]bool{}
-	for _, f := range reflect.VisibleFields(reflect.TypeOf(TeamConfig{})) {
-		gotTeamFields[f.Name] = true
-	}
-	if gotTeamFields["Patterns"] {
-		t.Error("TeamConfig must NOT contain a Patterns field (EXCL-WSE-004)")
-	}
-	for name := range wantTeamFields {
-		if !gotTeamFields[name] {
-			t.Errorf("TeamConfig missing expected field %q", name)
-		}
-	}
-	for name := range gotTeamFields {
-		if !wantTeamFields[name] {
-			t.Errorf("TeamConfig has unexpected field %q", name)
-		}
-	}
-
-	wantEntryFields := map[string]bool{
-		"Description": true,
-		"Isolation":   true,
-		"Mode":        true,
-		"Model":       true,
-	}
-	gotEntryFields := map[string]bool{}
-	for _, f := range reflect.VisibleFields(reflect.TypeOf(RoleProfileEntry{})) {
-		gotEntryFields[f.Name] = true
-	}
-	for name := range wantEntryFields {
-		if !gotEntryFields[name] {
-			t.Errorf("RoleProfileEntry missing expected field %q", name)
-		}
-	}
-	for name := range gotEntryFields {
-		if !wantEntryFields[name] {
-			t.Errorf("RoleProfileEntry has unexpected field %q", name)
-		}
-	}
-}
-
 // TestWorkflowConfigLegacyFieldsRenamed verifies the FLAT-field rename +
-// deprecation pattern (REQ-WSE-004): AutoClearLegacy / AutoSelectionLegacy exist
-// with the correct types, and the legacy scalar AutoClear bool no longer exists.
+// deprecation pattern (REQ-WSE-004): AutoClearLegacy exists with the correct
+// type, and the legacy scalar AutoClear bool no longer exists. (The team
+// auto-selection legacy field was removed with the Agent Teams static layer
+// per SPEC-AGENT-TEAM-RETIRE-001.)
 func TestWorkflowConfigLegacyFieldsRenamed(t *testing.T) {
 	t.Parallel()
 
@@ -419,14 +366,6 @@ func TestWorkflowConfigLegacyFieldsRenamed(t *testing.T) {
 	}
 	if tag := acl.Tag.Get("yaml"); tag != "-" {
 		t.Errorf("AutoClearLegacy yaml tag: got %q, want %q", tag, "-")
-	}
-
-	asl, ok := wfType.FieldByName("AutoSelectionLegacy")
-	if !ok {
-		t.Fatal("AutoSelectionLegacy field missing")
-	}
-	if asl.Type != reflect.TypeOf(TeamAutoSelectionConfig{}) {
-		t.Errorf("AutoSelectionLegacy: got type %s, want TeamAutoSelectionConfig", asl.Type)
 	}
 
 	// AutoClear is now a nested struct, NOT a bool.
@@ -502,23 +441,6 @@ func TestWorkflowAccessorMethods(t *testing.T) {
 			assert: func(t *testing.T, c *Config) {
 				if got := c.WorkflowSyncTokens(); got != 24680 {
 					t.Errorf("WorkflowSyncTokens(): got %d, want 24680", got)
-				}
-			},
-		},
-		{
-			name: "TeamAutoSelection",
-			setup: func(c *Config) {
-				c.Workflow.Team.AutoSelection = TeamAutoSelectionConfig{
-					MinDomainsForTeam:  4,
-					MinFilesForTeam:    11,
-					MinComplexityScore: 8,
-				}
-			},
-			assert: func(t *testing.T, c *Config) {
-				got := c.WorkflowTeamAutoSelection()
-				want := TeamAutoSelectionConfig{MinDomainsForTeam: 4, MinFilesForTeam: 11, MinComplexityScore: 8}
-				if got != want {
-					t.Errorf("WorkflowTeamAutoSelection(): got %+v, want %+v", got, want)
 				}
 			},
 		},
