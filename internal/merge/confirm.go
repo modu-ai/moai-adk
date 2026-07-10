@@ -868,6 +868,9 @@ func ConfirmMerge(analysis MergeAnalysis) (bool, error) {
 			"rerun with --yes to auto-confirm in a non-TTY environment")
 	}
 
+	// @MX:DEBT: bubbletea v1 program retained during Charm v2 migration (M1 deferral)
+	// @MX:CEILING: valid while huh v1 keeps lipgloss/bubbletea v1 in the module graph
+	// @MX:UPGRADE: SPEC-CLI-TUX-V3-003 promotes this UI to a charm.land/bubbles/v2 list component
 	p := tea.NewProgram(m)
 	finalModel, err := p.Run()
 	if err != nil {

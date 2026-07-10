@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
@@ -65,7 +66,17 @@ func Execute() error {
 	} else {
 		InitDependencies()
 	}
-	return rootCmd.Execute()
+	return executeRoot(context.Background(), rootCmd)
+}
+
+// executeRoot is the single root-execution seam. M1a/M1b ran the raw cobra path;
+// SPEC-CLI-TUX-V3-001 M1c routes it through charm.land/fang/v2 (styled help,
+// errors, --version, completions) while preserving the ExitCoder error chain
+// consumed by cmd/moai/main.go and the trivial fast-path lazy-init in Execute().
+// See fang.go for the fang wiring and TestFangExitCoderCharacterization for the
+// exit-code characterization that must hold across the swap.
+func executeRoot(ctx context.Context, cmd *cobra.Command) error {
+	return runFang(ctx, cmd)
 }
 
 // isTrivialCommand checks whether the CLI args indicate a trivial subcommand
