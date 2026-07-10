@@ -121,7 +121,7 @@ func TestPrePushStderr(t *testing.T) {
 	if _, err := w.Write([]byte("bad message no type\n")); err != nil {
 		t.Fatalf("write stdin: %v", err)
 	}
-	w.Close()
+	_ = w.Close()
 	os.Stdin = r
 
 	var outBuf, errBuf bytes.Buffer
