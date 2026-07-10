@@ -102,7 +102,7 @@ go test ./internal/template/... -run TestRuleTemplateMirror -v 2>&1 | grep -E 'P
 **Then** "Can Block" **shall** be `Yes` (was `No`).
 
 ```bash
-grep -i 'PreCompact' .claude/rules/moai/development/hooks-system.md | grep -i 'yes\|block'
+grep -i 'PreCompact' .claude/rules/moai/core/hooks-system.md | grep -i 'yes\|block'
 # Expected: the PreCompact row shows Can Block: Yes
 ```
 
@@ -113,7 +113,7 @@ grep -i 'PreCompact' .claude/rules/moai/development/hooks-system.md | grep -i 'y
 **Then** it **shall** list `decision:block+reason | additionalContext` alongside `systemMessage`.
 
 ```bash
-grep -i 'SubagentStop' .claude/rules/moai/development/hooks-system.md | grep -iE 'decision.*block|additionalContext'
+grep -i 'SubagentStop' .claude/rules/moai/core/hooks-system.md | grep -iE 'decision.*block|additionalContext'
 # Expected: 1+ match
 ```
 
@@ -124,7 +124,7 @@ grep -i 'SubagentStop' .claude/rules/moai/development/hooks-system.md | grep -iE
 **Then** it **shall** list all 8 official matcher values (the 4 current + elicitation_complete, elicitation_response, agent_needs_input, agent_completed). SessionEnd row = 6 values; StopFailure row = 10 values.
 
 ```bash
-grep -iE 'Notification|SessionEnd|StopFailure' .claude/rules/moai/development/hooks-system.md | head -10
+grep -iE 'Notification|SessionEnd|StopFailure' .claude/rules/moai/core/hooks-system.md | head -10
 # Expected: matcher counts match official (8 / 6 / 10)
 ```
 
@@ -135,7 +135,7 @@ grep -iE 'Notification|SessionEnd|StopFailure' .claude/rules/moai/development/ho
 **Then** it **shall** state "literal filenames, NOT regex/glob".
 
 ```bash
-grep -i 'FileChanged' .claude/rules/moai/development/hooks-system.md | grep -iE 'literal|not.*regex|not.*glob'
+grep -i 'FileChanged' .claude/rules/moai/core/hooks-system.md | grep -iE 'literal|not.*regex|not.*glob'
 # Expected: 1+ match
 ```
 
@@ -146,7 +146,7 @@ grep -i 'FileChanged' .claude/rules/moai/development/hooks-system.md | grep -iE 
 **Then** it **shall** include `decision:{block,reason}`, `sessionTitle`, `suppressOriginalPrompt`. PermissionRequest row **shall** include `decision.behavior`, `updatedInput`, `updatedPermissions`.
 
 ```bash
-grep -iE 'UserPromptSubmit|PermissionRequest' .claude/rules/moai/development/hooks-system.md | grep -iE 'sessionTitle|suppressOriginal|updatedInput|updatedPermissions|behavior'
+grep -iE 'UserPromptSubmit|PermissionRequest' .claude/rules/moai/core/hooks-system.md | grep -iE 'sessionTitle|suppressOriginal|updatedInput|updatedPermissions|behavior'
 # Expected: 1+ match per event row
 ```
 
@@ -157,7 +157,7 @@ grep -iE 'UserPromptSubmit|PermissionRequest' .claude/rules/moai/development/hoo
 **Then** Elicitation/ElicitationResult **shall** show "command+http+mcp_tool only (prompt/agent silently discarded)".
 
 ```bash
-grep -iE 'Elicitation' .claude/rules/moai/development/hooks-system.md | grep -iE 'command.*http.*mcp_tool|prompt.*agent.*discard'
+grep -iE 'Elicitation' .claude/rules/moai/core/hooks-system.md | grep -iE 'command.*http.*mcp_tool|prompt.*agent.*discard'
 # Expected: 1+ match
 ```
 
@@ -168,7 +168,7 @@ grep -iE 'Elicitation' .claude/rules/moai/development/hooks-system.md | grep -iE
 **Then** it **shall not** say "universal"; it **shall** enumerate which events honor exit 2 and which ignore it (PermissionDenied, Notification, SessionStart, SessionEnd, Setup, CwdChanged, FileChanged, PostCompact, SubagentStart, InstructionsLoaded, StopFailure, MessageDisplay ignore exit 2).
 
 ```bash
-grep -i 'exit.*2.*universal\|exit.*2.*block' .claude/rules/moai/development/hooks-system.md
+grep -i 'exit.*2.*universal\|exit.*2.*block' .claude/rules/moai/core/hooks-system.md
 # Expected: NO "universal" framing; replaced by per-event enum
 ```
 
@@ -179,7 +179,7 @@ grep -i 'exit.*2.*universal\|exit.*2.*block' .claude/rules/moai/development/hook
 **Then** the doctrine **shall** state that async PostToolUse can only deliver `additionalContext` (cannot control `decision` or `updatedToolOutput`).
 
 ```bash
-grep -i 'PostToolUse' .claude/rules/moai/development/hooks-system.md | grep -iE 'async.*additionalContext|async.*cannot.*block'
+grep -i 'PostToolUse' .claude/rules/moai/core/hooks-system.md | grep -iE 'async.*additionalContext|async.*cannot.*block'
 # Expected: 1+ match
 ```
 
@@ -356,18 +356,21 @@ grep -n 'csproj' internal/template/templates/.claude/hooks/moai/sync-phase-quali
 **Then** the `{action}` token **shall** be quoted (`"{action}"`) or the invocation **shall** use exec form (`args=["{action}"]`).
 
 ```bash
-grep -rn 'handle-agent-hook' .claude/agents/moai/*.md | grep -iE 'args=|"\{action\}"'
-# Expected: 4 matches (one per agent file) showing quoted {action} or exec form
+grep -rn 'handle-agent-hook' .claude/agents/moai/*.md | grep -cE '\\"[a-z-]+\\"'
+# Expected: 7 — all 7 invocations across the 4 agent files carry an explicitly
+#           quoted action token (e.g. \"docs-verification\", \"develop-completion\").
+#           The tokens are YAML-escaped (backslash-quote) in the frontmatter
+#           command strings, hence the \\" anchor in the grep pattern.
 ```
 
 #### AC-HOC-030 (REQ-HOC-021, GAP-LC-02) — compact naming/comment fix
 
-**Given** the `handle-compact.sh.tmpl` line-7 comment,
+**Given** the `handle-compact.sh.tmpl` comment naming the deployed hook,
 **When** the comment is read,
 **Then** it **shall** name the deployed `handle-compact.sh` (NOT the stale `compact.sh`). If renamed to `handle-pre-compact.sh.tmpl`, the settings.json.tmpl + moai hook subcommand mapping **shall** be updated atomically.
 
 ```bash
-sed -n '5,10p' internal/template/templates/.claude/hooks/moai/handle-compact.sh.tmpl
+sed -n '12,16p' internal/template/templates/.claude/hooks/moai/handle-compact.sh.tmpl
 # Expected: comment names handle-compact.sh (or the file is renamed to handle-pre-compact.sh.tmpl with atomic settings.json.tmpl update)
 ```
 
@@ -392,7 +395,7 @@ go test ./internal/template/... -run TestRuleTemplateMirror -v 2>&1 | tail -5
 
 ```bash
 # CI guard: .github/workflows/template-neutrality-check.yaml
-go test ./internal/template/... -run TestInternalContentLeak -v 2>&1 | tail -5
+go test ./internal/template/... -run TestTemplateNoInternalContentLeak -v 2>&1 | tail -5
 # Expected: PASS
 ```
 
