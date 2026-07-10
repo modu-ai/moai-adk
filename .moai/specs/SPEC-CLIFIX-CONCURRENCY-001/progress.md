@@ -165,7 +165,7 @@ m1_to_mN_commit_strategy: per-milestone (M1 c31db9e2b-precursor, M2, M3 already 
 
 ```yaml
 sync_complete_at: 2026-07-11
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: b066bcda5f7b2b3c6b9e5e4d5cd2f1e8f7b2b3c6
 sync_status: complete
 mx_complete_at: 2026-07-11
 mx_commit_sha: <NA>
