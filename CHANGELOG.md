@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **[SPEC-AGENT-ARCH-V2-001](.moai/specs/SPEC-AGENT-ARCH-V2-001/spec.md)** — MoAI Agent Architecture v2 (super-advisor + manager-design added to 10-agent catalog; No-Haiku 3-tier token policy max/medium/low; RouteModelFor 3-arg signature; HaikuResidualRule HARD lint; 17 ACs). Tier L, v0.2.0. M1 (super-advisor consultation, M2 manager-design H1-H9 handoff contract, M3 No-Haiku policy, M4 doctrine refresh). 17/17 AC PASS. Run-phase orchestrator-direct (force-majeure API 429 exception per progress.md §F). Sync-phase 3-phase close (this commit + sync_commit_sha backfill). 🗿 MoAI
+
 ### Changed
 
 - **[SPEC-MEMORY-DIET-001](.moai/specs/SPEC-MEMORY-DIET-001/spec.md)** — 항상-로드 메모리 다이어트 (Tier M, v0.1.0): cadence-bridge.md를 always-loaded에서 path-scope로 전환(항상-로드 컨텍스트에서 제외, ~2.3k tokens 절감 + `paths:` glob + honest-fallback clause로 `/loop`+`/moai` semantic event 한계 명시), session-handoff.md에서 Example 2종·4-locale Localization 표를 path-scope 신규 `session-handoff-examples.md`로 추출(~487 tokens), MEMORY.md 안정 완결 항목 5건 `MEMORY-archive-2026-06-02.md`로 이동(~210 tokens). 합산 ~3.0k tokens 절감(실측, AC-MD-016 — 원래 ~5.5k 목표는 Discovery의 bytes→tokens 환산 착오로 post-run ~3.0k로 정정). 핵심 doctrine(6-block skeleton·`✂`/`─` cut-line 마커·Pre-emit labels) byte-identical 보존, template mirror 4종(local↔template) + 신규 examples 파일 동기화(neutrality CI PASS). 17/17 AC PASS. Run-phase M1-M3 (`c1a1bb340`, `180fe27b5`, `b153459e7`), Mode 5 sub-agent. Sync-phase 3-phase close(본 sync commit + `sync_commit_sha` backfill chore). README 무변경 — 내부 doctrine/자동메모리 다이어트, 사용자 가시적 CLI surface 변경 0. 🗿 MoAI

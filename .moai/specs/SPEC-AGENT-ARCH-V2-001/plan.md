@@ -2,9 +2,9 @@
 id: SPEC-AGENT-ARCH-V2-001
 title: "MoAI Agent Architecture v2 — Implementation Plan"
 version: "0.2.0"
-status: draft
+status: completed
 created: 2026-07-09
-updated: 2026-07-09
+updated: 2026-07-10
 author: manager-spec
 priority: P1
 phase: "v3.0.0"

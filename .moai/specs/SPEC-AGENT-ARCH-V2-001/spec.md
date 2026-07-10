@@ -2,9 +2,9 @@
 id: SPEC-AGENT-ARCH-V2-001
 title: "MoAI Agent Architecture v2 — super-advisor + manager-design + No-Haiku 3-Tier Token Policy"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-07-09
-updated: 2026-07-09
+updated: 2026-07-10
 author: manager-spec
 priority: P1
 phase: "v3.0.0"

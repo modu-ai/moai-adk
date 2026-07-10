@@ -2,7 +2,7 @@
 id: SPEC-AGENT-ARCH-V2-001
 title: "MoAI Agent Architecture v2 — Progress"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-09
 updated: 2026-07-10
 author: manager-spec
@@ -214,11 +214,11 @@ MUST-PASS ACs green: AC-AA2-008 (M3a), AC-AA2-009 (M3a code + M3b config), AC-AA
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs populates this section with `sync_commit_sha` on the single sync commit that carries the `implemented → completed` transition.>_
+_<populated by manager-docs at sync close — 3-phase complete (plan→run→sync).>_
 
 ```yaml
-sync_commit_sha: ""   # populated by manager-docs at sync commit
-sync_completed_at: ""  # populated by manager-docs at sync close
+sync_commit_sha: "pending-backfill-SYNC"   # populated by manager-docs at sync commit
+sync_completed_at: 2026-07-10  # populated by manager-docs at sync close
 ```
 
 ---
