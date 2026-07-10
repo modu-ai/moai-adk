@@ -136,7 +136,7 @@ Union contract: perm param + `tmp.Chmod(perm)` (supports both 0600 credential an
 
 ```yaml
 run_complete_at: 2026-07-11
-run_commit_sha: pending-backfill-m4
+run_commit_sha: 83e139bb0f53bc7fc92e9ca3f163cf4c36acd42e
 run_status: complete
 ac_pass_count: 6
 ac_fail_count: 0
