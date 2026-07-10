@@ -83,4 +83,22 @@ known_debt:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-10
+sync_commit_sha: pending-backfill-013   # placeholder — this commit cannot cite its own SHA; backfilled in the immediate follow-up commit
+sync_status: PASS
+changelog_entry_position: "Unreleased > Changed (new section, top of file, immediately after '## [Unreleased]')"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  plan_md: "no frontmatter (body-only status marker untouched per body-content ownership boundary)"
+  acceptance_md: "no frontmatter (untouched per body-content ownership boundary)"
+  progress_md: "n/a (progress.md carries no status: field)"
+readme_check: "grep -n -i 'moai web|web console' README.md -> no matches; README documents no web-console config sections (consistent with SPEC-WEB-CONSOLE-012 precedent) -> no README edit required"
+known_debt_recorded_in_changelog:
+  - "internal/hook TestHookWrapper_TempFileCleanup — pre-existing intermittent flake under load, passes in isolation, out-of-scope"
+  - "scripts/i18n-validator TestBudget_FullRepoScanWithin35Sec — 53.66s vs 35s budget under parallel load, package never touched by this SPEC"
+lint_status: "golangci-lint run --timeout=2m -> 0 issues"
+touched_package_tests: "all green (internal/settings, internal/web, internal/cli, internal/config)"
+```
+
+Sync commit lands on `main` (Route A — Hybrid Trunk main-direct, Tier M). CHANGELOG entry added under a new `### Changed` section at the top of `[Unreleased]` (per the repeated-header pattern already established in this file). spec.md frontmatter `status: in-progress -> completed` (+ `updated: 2026-07-10`, unchanged date since same-day close). plan.md/acceptance.md carry no YAML frontmatter (matching the SPEC-WEB-CONSOLE-012 precedent) — no frontmatter edit possible or made; body content untouched per the manager-docs body-content ownership boundary.

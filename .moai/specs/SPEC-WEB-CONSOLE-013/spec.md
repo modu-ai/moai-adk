@@ -2,7 +2,7 @@
 id: SPEC-WEB-CONSOLE-013
 title: "moai web New Config Domain Exposure — Model Policy / Handoff / Cache (Track 2)"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-07-10
 updated: 2026-07-10
 author: manager-spec
