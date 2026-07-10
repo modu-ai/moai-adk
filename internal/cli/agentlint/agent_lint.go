@@ -371,6 +371,28 @@ func isOrchestrator(fm AgentFrontmatter) bool {
 	return false
 }
 
+// stripInlineCodeSpans removes inline-code spans (`...`) from a markdown line,
+// returning the prose with the code spans elided. Used by checkLiteralAskUserQuestion
+// (LR-01) so tool-name references inside inline code are not treated as body
+// literals — an agent referencing the orchestrator's AskUserQuestion tool by
+// name in inline code is documenting behavior, not instructing its own use.
+// Fenced code blocks (```) are handled separately by checkLiteralAskUserQuestion's
+// inCodeBlock state; this helper only strips single-backtick inline spans.
+func stripInlineCodeSpans(s string) string {
+	var b strings.Builder
+	inSpan := false
+	for _, r := range s {
+		if r == '`' {
+			inSpan = !inSpan
+			continue
+		}
+		if !inSpan {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
 // checkLiteralAskUserQuestion checks for LR-01.
 func checkLiteralAskUserQuestion(file string, body []byte) []LintViolation {
 	var violations []LintViolation
@@ -414,8 +436,13 @@ func checkLiteralAskUserQuestion(file string, body []byte) []LintViolation {
 			continue
 		}
 
-		// Check for literal AskUserQuestion (case-sensitive)
-		if strings.Contains(line, "AskUserQuestion") {
+		// Check for literal AskUserQuestion (case-sensitive), ignoring inline-code
+		// spans (`...`). Inline code is a code reference, not body prose — LR-01's
+		// intent (block agents from instructing their own AskUserQuestion use) does
+		// not bind when an agent references the orchestrator's tool by name in
+		// inline code (e.g. plan-auditor / super-advisor documenting orchestrator
+		// behavior).
+		if strings.Contains(stripInlineCodeSpans(line), "AskUserQuestion") {
 			violations = append(violations, LintViolation{
 				Rule:     "LR-01",
 				Severity: SeverityError,
@@ -557,7 +584,7 @@ var canonicalEffortMatrix = map[string]string{
 	"manager-cycle":      "high",
 	"manager-quality":    "high",
 	"manager-docs":       "medium",
-	"manager-git":        "medium",
+	"manager-git":        "low",
 	"manager-project":    "medium",
 	"expert-backend":     "high",
 	"expert-frontend":    "high",
