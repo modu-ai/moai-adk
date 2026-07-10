@@ -43,8 +43,8 @@ Active settings.json keys: 20. RETIRE-OBS-ONLY (Go-only): 4.
 | CwdChanged | No | No | Runs when working directory changes (v2.1.83+). Receives CLAUDE_ENV_FILE |
 | FileChanged | Filename | No | Runs when a file is changed externally (v2.1.83+). The matcher takes **literal filenames** (NOT regex/glob) — the value is split on `|` and each segment is registered as a literal filename in the working directory. Receives CLAUDE_ENV_FILE |
 | InstructionsLoaded | Load reason | No | Runs when CLAUDE.md or rules loaded (v2.1.69+). Matchers: session_start, nested_traversal, path_glob_match, include, compact |
-| Elicitation | MCP server | Yes | Runs when MCP server requests user input (v2.1.76+). Handler types: command+http+mcp_tool only (prompt/agent silently discarded). **Go-only observability tap (see sub-table below).** |
-| ElicitationResult | MCP server | Yes | Runs after user responds to MCP elicitation (v2.1.76+). Handler types: command+http+mcp_tool only (prompt/agent silently discarded). **Go-only observability tap (see sub-table below).** |
+| Elicitation | MCP server | Yes | Runs when MCP server requests user input (v2.1.76+). Handler types: command+http+mcp_tool only (prompt/agent not supported per handler-type matrix). **Go-only observability tap (see sub-table below).** |
+| ElicitationResult | MCP server | Yes | Runs after user responds to MCP elicitation (v2.1.76+). Handler types: command+http+mcp_tool only (prompt/agent not supported per handler-type matrix). **Go-only observability tap (see sub-table below).** |
 
 **RETIRE-OBS-ONLY events (Go-only, not in settings.json — enable via system.yaml hook.observability_events):**
 
@@ -98,11 +98,11 @@ The following Claude Code hook event exists upstream but MoAI does not register 
 | TeammateIdle | `agentType`, `agentName`, `tasksSummary`, `agent_id` | `systemMessage` or JSON | Exit 2 = keep working. Also accepts JSON: `{"continue": false, "stopReason": "..."}` to stop teammate (v2.1.69+) |
 | TaskCompleted | `taskId`, `taskSummary`, `agentName`, `agent_id` | `reason` or JSON | Exit 2 = reject completion. Also accepts JSON: `{"continue": false, "stopReason": "..."}` to reject (v2.1.69+) |
 | SessionStart | `source` | `hookSpecificOutput`: `additionalContext`, `reloadSkills`, `sessionTitle` | `reloadSkills` (bool): when `true`, re-scans skill/command directories after SessionStart hooks complete, so skills the hook installed are available in the same session. `sessionTitle`: sets the session title (same effect as `/rename`); applies on `startup`/`resume` only, ignored on `clear`/`compact` (v2.1.152+) |
-| SessionEnd | `reason`, `sessionId` | - | Reasons: clear, logout, prompt_input_exit, bypass_permissions_disabled, other |
+| SessionEnd | `reason`, `sessionId` | - | Reasons: clear, resume, logout, prompt_input_exit, bypass_permissions_disabled, other |
 | Stop | `last_assistant_message` | `systemMessage` | Includes last assistant message (v2.1.49+) |
-| SubagentStop | `agentType`, `agentName`, `last_assistant_message`, `agent_id`, `agent_transcript_path` | `systemMessage`, or JSON `decision:block+reason` / `additionalContext` | `agent_id` and `agent_transcript_path` added in v2.1.42/v2.1.69 |
-| ConfigChange | `configPath`, `changes` | - | Triggered on settings.json modification (v2.1.49+) |
-| StopFailure | `error_type`, `error_message` | `systemMessage` | Error types: rate_limit, authentication_failed, billing_error, max_output_tokens (v2.1.78+) |
+| SubagentStop | `agentType`, `agentName`, `last_assistant_message`, `agent_id`, `agent_transcript_path` | `decision:{block,reason}`, `additionalContext`, `systemMessage` | `agent_id` and `agent_transcript_path` added in v2.1.42/v2.1.69. Also accepts `hookSpecificOutput.additionalContext` for non-error feedback that continues the conversation |
+| ConfigChange | `configPath`, `changes` | - | Triggered on settings.json modification (v2.1.49+). The MoAI runtime handler is continue-only — reload failures surface via slog observability logs, NOT via stdout JSON or exit 2 (the handler unconditionally returns empty output) |
+| StopFailure | `error_type`, `error_message` | `systemMessage` | Error types: rate_limit, overloaded, authentication_failed, oauth_org_not_allowed, billing_error, invalid_request, model_not_found, server_error, max_output_tokens, unknown (v2.1.78+) |
 | CwdChanged | `old_cwd`, `new_cwd` | - | Receives CLAUDE_ENV_FILE env var for environment persistence |
 | FileChanged | `file_path`, `change_type` | - | change_type: modified, created, deleted. Receives CLAUDE_ENV_FILE |
 | Elicitation | `mcp_server_name`, `mcp_tool_name`, `elicitation_request` | `action`, `content` | action: accept, decline, cancel |
@@ -125,7 +125,7 @@ Default hook type. Executes a shell command, communicates via stdin/stdout JSON.
 - Configuration: `type`, `command`, `timeout`
 - stdin: JSON with event data
 - stdout: JSON with response (optional `systemMessage`, `additionalContext`, `reason`)
-- Exit codes: 0 = success, 1 = error (shown to user), 2 = block/reject (for blocking events)
+- Exit codes: 0 = success, 1 = error (shown to user), 2 = block/reject (honored only by events marked "Can Block: Yes" in the event reference above)
 - PreToolUse permission decisions: `allow`, `deny`, `ask`, `defer` (defer pauses headless sessions for --resume, v2.1.89+)
 - Hook stdout over 50K characters is saved to disk; only a file path + preview is injected into context (v2.1.89+)
 - Exec form (shell-bypass): supply `"args": []` alongside `"command"` to run the program directly without a shell, avoiding shell-quoting and word-splitting issues. When a hook script DOES depend on a shell and must not run under a non-interactive invocation, guard the shell-only branch with an interactive-shell check — `if [[ $- == *i* ]]; then ... fi` — so the body is skipped when the script is sourced non-interactively by the hook runner.
@@ -177,7 +177,7 @@ Run command hooks in the background without blocking the conversation.
 
 - Only available for `type: "command"` hooks
 - Configuration: Add `async: true` to any command hook definition
-- Results are delivered on the next conversation turn via `systemMessage`
+- Results are delivered on the next conversation turn via `additionalContext` only (async hooks cannot control `decision` or `updatedToolOutput` — the sole async-deliverable stdout field is `additionalContext`)
 - Useful for long-running validations (linting, test execution, deployments)
 - Async PostToolUse can only deliver `additionalContext` — it cannot control `decision` or `updatedToolOutput` (those require synchronous PostToolUse). The shipped PostToolUse harness-observe tap is async, so it observes only; it never blocks.
 
@@ -361,8 +361,8 @@ The **5s default applies to synchronous blocking hooks** (PreCompact, PreToolUse
 - Keep hooks lightweight for performance
 - Use proper path quoting to handle spaces in project paths
 - Prompt and agent hooks return JSON with `ok` and `reason` fields
-- Async hooks deliver results via `systemMessage` on the next turn
-- Exit code 2 is the "block/reject" signal — honored ONLY by blocking events (PreToolUse, PostToolUse, Stop, SubagentStop, UserPromptSubmit, PermissionRequest, TeammateIdle, TaskCompleted, ConfigChange, PreCompact, PostToolBatch, UserPromptExpansion, WorktreeCreate, Elicitation, ElicitationResult); it is IGNORED by non-blocking observer events (PermissionDenied, Notification, SessionStart, SessionEnd, Setup, CwdChanged, FileChanged, PostCompact, SubagentStart, InstructionsLoaded, StopFailure, MessageDisplay)
+- Async hooks deliver results via `additionalContext` on the next turn (the only async-deliverable field; `systemMessage`, `decision`, and `updatedToolOutput` are NOT delivered for async hooks)
+- Exit code 2 blocks on events marked "Can Block: Yes" (PreToolUse, PermissionRequest, UserPromptSubmit, UserPromptExpansion, Stop, SubagentStop, TeammateIdle, TaskCreated, TaskCompleted, ConfigChange, PostToolBatch, PreCompact, Elicitation, ElicitationResult, WorktreeCreate); events marked "No" ignore it (StopFailure, PostToolUse, PostToolUseFailure, PermissionDenied, Notification, SubagentStart, SessionStart, Setup, SessionEnd, CwdChanged, FileChanged, PostCompact, WorktreeRemove, InstructionsLoaded, MessageDisplay). Some events also support JSON `decision:"block"` (PostToolUse, PostToolBatch, SubagentStop, ConfigChange, PreCompact, UserPromptSubmit, UserPromptExpansion) or `continue:false` (TeammateIdle, TaskCreated, TaskCompleted) as alternative block mechanisms — exit 2 is NOT universal
 - Stop and SubagentStop hooks receive `last_assistant_message` field (v2.1.49+)
 
 ## Error Handling
