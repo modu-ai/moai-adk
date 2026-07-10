@@ -245,7 +245,7 @@ sync_status: audit-ready
 sync_complete_at: 2026-07-10
 sync_artifacts: [spec.md, plan.md, acceptance.md, progress.md]
 tier: L
-sync_commit_sha: <pending backfill>
+sync_commit_sha: 3e5667f1fd10422cb2f5527545172fde7b478c54
 evidence:
   changelog_entry_added: "CHANGELOG.md bilingual entry added (EN+KO) documenting 32 gaps closed across 8 milestones M1-M8"
   readme_impact: "none (internal hook compliance fixes, no user-facing CLI surface changes)"
