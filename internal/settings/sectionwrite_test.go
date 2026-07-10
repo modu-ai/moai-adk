@@ -107,11 +107,12 @@ func nonBlankLines(lines []string) []string {
 	return out
 }
 
-// TestYAMLPatchGoldenSections는 6개 seam 섹션 각각의 실제 파일 사본(golden
+// TestYAMLPatchGoldenSections는 8개 seam 섹션 각각의 실제 파일 사본(golden
 // fixture)에 스칼라 1개를 seam으로 기록하고 (i) diff가 편집 라인 1개에
 // 국한되며 (ii) 주석 전량 (iii) 키 순서가 보존됨을 검증한다 (AC-WC11-017,
 // REQ-WC11-017 — design.md §A.4 golden round-trip; research는
-// SPEC-WEB-CONSOLE-012 M1에서 폐선되어 케이스에서 제거).
+// SPEC-WEB-CONSOLE-012 M1에서 폐선되어 케이스에서 제거; handoff/cache는
+// SPEC-WEB-CONSOLE-013 M1에서 신규 등재 — REQ-WC13-002).
 //
 // 공백-only 정규화 고정 (design.md §A.4 사전 승인 경로, run-phase 실측):
 // yaml.v3 재인코딩은 매핑 항목 사이의 빈 줄을 제거한다. 8개 섹션 중 항목-사이
@@ -136,6 +137,11 @@ func TestYAMLPatchGoldenSections(t *testing.T) {
 		{"feedback", yamlpatch.KeyEdit{Path: []string{"feedback", "repository"}, Value: "example-org/fork"}, "repository: example-org/fork", false},
 		{"observability", yamlpatch.KeyEdit{Path: []string{"observability", "retention_days"}, Value: "60"}, "retention_days: 60", false},
 		{"security", yamlpatch.KeyEdit{Path: []string{"security", "permission", "strict_mode"}, Value: "true"}, "strict_mode: true", true},
+		// SPEC-WEB-CONSOLE-013 M1 (REQ-WC13-002/006): handoff/cache 신규 seam 등재.
+		// handoff.yaml은 mode/guide 블록 사이 빈 줄이 있어 blankNormalized 범위
+		// (security.yaml과 동일한 yaml.v3 빈 줄 정규화).
+		{"handoff", yamlpatch.KeyEdit{Path: []string{"handoff", "mode"}, Value: "auto"}, "mode: auto", true},
+		{"cache", yamlpatch.KeyEdit{Path: []string{"cacheStrategy", "enabled"}, Value: "true"}, "enabled: true", false},
 	}
 
 	for _, tc := range cases {
@@ -216,6 +222,43 @@ func TestYAMLPatchGoldenHarnessLearningRoot(t *testing.T) {
 	}
 }
 
+// TestCacheSeamPreservesUnexposedKeys는 cache.yaml의 미노출 키(spec_ttl,
+// min_cacheable_tokens)와 주석 전량이 노출 키(enabled) seam 편집 후에도 원문
+// 그대로 보존됨을 검증한다 (SPEC-WEB-CONSOLE-013 REQ-WC13-006/015,
+// AC-WC13-007 — yamlpatch unmodeled-key/comment preservation invariant).
+func TestCacheSeamPreservesUnexposedKeys(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	before := seedSectionFixture(t, root, "cache")
+
+	err := WriteSectionViaSeam(root, "cache", []yamlpatch.KeyEdit{
+		{Path: []string{"cacheStrategy", "enabled"}, Value: "true"},
+	})
+	if err != nil {
+		t.Fatalf("WriteSectionViaSeam(cache): %v", err)
+	}
+	after := readSection(t, root, "cache")
+
+	// 미노출 키의 원문 라인 보존 (REQ-WC13-006 — 노출 스코프 2키 밖 무손상).
+	for _, keep := range []string{`spec_ttl: "5m"`, "min_cacheable_tokens: 2048", `session_ttl: "1h"`} {
+		if !strings.Contains(after, keep) {
+			t.Errorf("unexposed/untouched key line %q lost after seam edit:\n%s", keep, after)
+		}
+	}
+	// 편집 대상 스칼라만 변경.
+	changed, beforeOnly, afterOnly := sectionChangedLines(before, after)
+	if len(beforeOnly) > 0 || len(afterOnly) > 0 || len(changed) != 1 {
+		t.Fatalf("cache edit not line-scoped: changed=%v beforeOnly=%q afterOnly=%q", changed, beforeOnly, afterOnly)
+	}
+	if !strings.Contains(changed[0][1], "enabled: true") {
+		t.Errorf("changed line = %q, want enabled: true", changed[0][1])
+	}
+	// 주석 전량 원문 보존.
+	if got, want := sectionCommentLines(after), sectionCommentLines(before); strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Error("cache.yaml comments not preserved verbatim")
+	}
+}
+
 // TestWriteSectionViaSeamRejectsNonSeamSections는 seam 대상이 아닌 섹션 —
 // typed 경로(llm, git-strategy, quality), statusline, 제외군(state, tool-policy),
 // 미지명 — 이 전부 오류로 거부되고 어떤 파일도 생성/변경되지 않음을 검증한다
@@ -224,10 +267,13 @@ func TestWriteSectionViaSeamRejectsNonSeamSections(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 
+	// cache는 SPEC-WEB-CONSOLE-013 M1에서 seam-writable로 재분류되어 (REQ-WC13-001
+	// — REQ-WC11-018 부분 supersede) 이 거부 목록에서 제거되었다. 잔여 제외군은
+	// 전원 유지된다.
 	for _, section := range []string{
 		"llm", "git-strategy", "quality", "user", "language", "git-convention",
 		"statusline",
-		"state", "system", "project", "cache", "sunset",
+		"state", "system", "project", "sunset",
 		"tool-policy", "lsp", "mx",
 		"constitution", "context", "design", "interview",
 		// research는 SPEC-WEB-CONSOLE-012 M1에서 폐선 (db 선례와 동일 —

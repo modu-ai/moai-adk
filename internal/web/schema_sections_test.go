@@ -116,8 +116,10 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 		}
 	}
 
-	// 제외군 섹션 폼 컨트롤 0 (AC-WC11-018 렌더 half).
-	for _, prefix := range []string{"state.", "system.", "cache.", "sunset.", "tool-policy.", "lsp.", "mx.", "constitution.", "context.", "interview."} {
+	// 제외군 섹션 폼 컨트롤 0 (AC-WC11-018 렌더 half). cache 섹션은
+	// SPEC-WEB-CONSOLE-013에서 seam-writable로 재분류되었고 그 필드는
+	// cacheStrategy.* 이름을 쓴다 — "cache." prefix는 잔여 제외군 가드에서 제거.
+	for _, prefix := range []string{"state.", "system.", "sunset.", "tool-policy.", "lsp.", "mx.", "constitution.", "context.", "interview."} {
 		if strings.Contains(body, `name="`+prefix) {
 			t.Errorf("excluded section control rendered: name=%q...", prefix)
 		}

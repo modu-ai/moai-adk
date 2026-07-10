@@ -15,14 +15,18 @@ func TestRouteForSectionTable(t *testing.T) {
 		"git-convention": RouteTypedSave,
 		"git-strategy":   RouteTypedSave,
 		"llm":            RouteTypedSave,
-		// seam ×6 (research는 SPEC-WEB-CONSOLE-012 M1에서 폐선 — FieldDef 0개
-		// + 콘솔 탭 미등재의 유령 쓰기 경로였다, REQ-WC12-010).
+		// seam ×8 (research는 SPEC-WEB-CONSOLE-012 M1에서 폐선 — FieldDef 0개
+		// + 콘솔 탭 미등재의 유령 쓰기 경로였다, REQ-WC12-010; handoff/cache는
+		// SPEC-WEB-CONSOLE-013 M1에서 신규 등재 — REQ-WC13-002, cache는
+		// REQ-WC11-018 제외군에서 부분 supersede, REQ-WC13-001).
 		"workflow":      RouteSeam,
 		"harness":       RouteSeam,
 		"ralph":         RouteSeam,
 		"feedback":      RouteSeam,
 		"observability": RouteSeam,
 		"security":      RouteSeam,
+		"handoff":       RouteSeam,
+		"cache":         RouteSeam,
 		// 기존 전용 경로.
 		"statusline": RouteStatusline,
 		// 제외군 + 미등재 (research/db는 미등재 → RouteExcluded, 동일 선례).
@@ -45,8 +49,17 @@ func TestRouteForSectionTable(t *testing.T) {
 func TestSeamSectionsMatchesRoutes(t *testing.T) {
 	t.Parallel()
 	seam := SeamSections()
-	if len(seam) != 6 {
-		t.Fatalf("SeamSections() length = %d, want 6", len(seam))
+	if len(seam) != 8 {
+		t.Fatalf("SeamSections() length = %d, want 8 (handoff/cache added — REQ-WC13-002)", len(seam))
+	}
+	present := map[string]bool{}
+	for _, name := range seam {
+		present[name] = true
+	}
+	for _, want := range []string{"handoff", "cache"} {
+		if !present[want] {
+			t.Errorf("SeamSections() missing %q (REQ-WC13-002)", want)
+		}
 	}
 	for _, name := range seam {
 		if got := RouteForSection(name); got != RouteSeam {
@@ -63,12 +76,15 @@ func TestSeamSectionsMatchesRoutes(t *testing.T) {
 func TestExcludedSectionsAllRejected(t *testing.T) {
 	t.Parallel()
 	excluded := ExcludedSections()
-	if len(excluded) != 12 {
-		t.Fatalf("ExcludedSections() length = %d, want 12", len(excluded))
+	if len(excluded) != 11 {
+		t.Fatalf("ExcludedSections() length = %d, want 11 (cache reclassified seam-writable — REQ-WC13-001)", len(excluded))
 	}
 	for _, name := range excluded {
 		if got := RouteForSection(name); got != RouteExcluded {
 			t.Errorf("excluded section %q routes to %d, want RouteExcluded", name, got)
+		}
+		if name == "cache" {
+			t.Error("cache must not be enumerated in ExcludedSections (REQ-WC13-001 partial supersede of REQ-WC11-018)")
 		}
 	}
 }

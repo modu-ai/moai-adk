@@ -29,11 +29,13 @@ func TestScopeContractEditableSections(t *testing.T) {
 		}
 	}
 
-	// seam 전용 6종: typed Save() 경로 부재 — yamlpatch seam이 유일한 쓰기 경로
-	// (REQ-WC11-017; workflow.yaml typed re-marshal 금지 REQ-WC11-005).
+	// seam 전용 8종: typed Save() 경로 부재 — yamlpatch seam이 유일한 쓰기 경로
+	// (REQ-WC11-017; workflow.yaml typed re-marshal 금지 REQ-WC11-005;
+	// handoff/cache는 SPEC-WEB-CONSOLE-013 M1 신규 등재 — REQ-WC13-002/005).
 	for _, name := range []string{
 		"workflow", "harness", "ralph",
 		"feedback", "observability", "security",
+		"handoff", "cache",
 	} {
 		if got := settings.RouteForSection(name); got != settings.RouteSeam {
 			t.Errorf("section %q: route = %d, want RouteSeam", name, got)
@@ -61,11 +63,14 @@ func TestScopeContractEditableSections(t *testing.T) {
 func TestScopeContractExclusions(t *testing.T) {
 	t.Parallel()
 
+	// cache는 SPEC-WEB-CONSOLE-013 M1에서 seam-writable로 재분류 (REQ-WC13-001 —
+	// REQ-WC11-018의 cache 한정 부분 supersede). 잔여 제외군은 전원 유지.
 	excluded := []string{
-		"state", "system", "project", "cache", "sunset",
+		"state", "system", "project", "sunset",
 		"tool-policy", "lsp", "mx",
 		"constitution", "context", "design", "interview",
-		// 콘솔 표면에서 폐선된 섹션 (db: settings SSOT / research:
+		// 콘솔 표면에서 폐선된 섹션 (db: REQ-WC11-019 계보 + 콘솔 표면 제거,
+		// settings SSOT — REQ-WC11-018 잔여군 아님 / research:
 		// SPEC-WEB-CONSOLE-012 M1 — 미등재 → RouteExcluded).
 		"db", "research",
 	}
