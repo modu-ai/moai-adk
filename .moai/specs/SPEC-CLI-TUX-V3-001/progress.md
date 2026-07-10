@@ -198,4 +198,22 @@ m1_to_mN_commit_strategy: "M1a(b9df38f5b) + M1b(5824c812c) + M1c(1 commit) — �
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-10
+sync_commit_sha: pending-backfill-SPEC-CLI-TUX-V3-001  # self-referential hazard — this commit does not know its own SHA; backfilled in a follow-up commit per spec-frontmatter-schema.md § SHA placeholder backfill exemption (D3)
+sync_status: audit-ready
+changelog_entry_position: "[Unreleased] > ### Added > SPEC-CLI-TUX-V3-001 (first entry, inserted before SPEC-WEB-CONSOLE-013)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (updated: 2026-07-10)"
+  plan_md: "no frontmatter block (Tier L artifact convention for this SPEC — status lives in spec.md only)"
+  acceptance_md: "no frontmatter block (same as plan.md)"
+  design_md: "no frontmatter block (same as plan.md)"
+  research_md: "no frontmatter block (same as plan.md)"
+mx_tag_validation:
+  confirm_go_debt_ceiling_upgrade: "3/3 present (lines 871-873, verified pre-existing from M1c run-phase)"
+  printer_go_new_annotations: "none added — package-level doc comment (lines 1-30) already documents channel discipline + render modes; no NOTE/WARN/ANCHOR trigger condition met (no magic constant, no >100-line undocumented export, no fan_in>=3 caller, no goroutine/channel without context)"
+  fang_go_new_annotations: "none added — no MX trigger condition met (functions are short, documented via doc comments, no danger zone/invariant contract beyond what's already narrated in comments)"
+b12_self_test_a: "grep -c 'SPEC-CLI-TUX-V3-001' CHANGELOG.md (pre-emission) = 0 -> emission proceeded"
+b12_self_test_b: "acceptance.md AC-CTX-NNN row count = 26 (grep -noE 'AC-CTX-[0-9]+' | sort -u); CHANGELOG entry states 26/26 AC PASS -- matches SSOT"
+b12_self_test_c: "file paths verified via ls: internal/cli/printer/printer.go, internal/cli/fang.go, internal/cli/reporter.go, internal/merge/confirm.go, go.mod -- all exist and were Read before CHANGELOG authoring"
+```
