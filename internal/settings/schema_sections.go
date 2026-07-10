@@ -15,6 +15,7 @@ package settings
 // map/list 서브블록(REQ-WC11-062)은 RawViewBlocks()가 제공.
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -102,18 +103,32 @@ func withSelect(f FieldDef, keyPrefix string, values []string, emptyLabel, empty
 
 // ─── git-strategy (REQ-WC11-010 — typed dirty-flag Save) ────────────────────
 
-// gitStrategyFields는 M4 다이어트 후 웹 편집 노출 대상 git-strategy 필드만
-// 반환한다: mode (ActiveModeProfile 선택키) + 3개 profile의 hooks.pre_push
-// (hook_pre_push.go:72 런타임 소비자 — skip/warn/enforce). 나머지 ~53개 검증
-// 전용 키는 M4에서 제거되었다 (struct 멤버와 yaml 로드는 보존 — backward compat).
+// gitStrategyFields는 웹 편집 노출 대상 git-strategy 필드를 반환한다: mode
+// (ActiveModeProfile 선택키) + 3개 profile의 hooks.pre_push(hook_pre_push.go:72
+// 런타임 소비자 — skip/warn/enforce) + 3개 profile의 merge_method
+// (SPEC-WEB-CONSOLE-014 M3 — SPEC-MERGE-METHOD-CONFIG-001 REQ-MMC-007 agent-prose
+// consumer: sync delivery/manager-git가 active mode의 값으로 gh pr merge 플래그
+// 선택). 나머지 ~53개 검증 전용 키는 M4 다이어트에서 제거되었다 (struct 멤버와
+// yaml 로드는 보존 — backward compat).
 func gitStrategyFields() []FieldDef {
 	fields := []FieldDef{
 		withSelect(typedField(SectionGitStrategy, "git_strategy", "mode", TypeSelect),
 			"f.git_strategy.mode.opt.", []string{"manual", "personal", "team"}, "", ""),
 	}
-	// hooks.pre_push 만 profile별 노출 — 런타임 reader (hook_pre_push.go:72).
+	// merge_method 옵션은 config.ValidMergeMethods() SSOT에서 정렬 파생한다
+	// (REQ-WC14-011 — 리터럴 재선언 금지; B3 — map-range 비결정성 제거를 위해 정렬
+	// 후 사용. 정렬은 파생이지 재선언이 아님). 3개 profile 공유.
+	mergeMethods := append([]string{}, config.ValidMergeMethods()...)
+	sort.Strings(mergeMethods)
 	for _, profile := range []string{"manual", "personal", "team"} {
+		// hooks.pre_push (기존) — 런타임 reader (hook_pre_push.go:72).
 		fields = append(fields, typedField(SectionGitStrategy, "git_strategy", profile+".hooks.pre_push", TypeText))
+		// merge_method (M3) — 닫힌 enum select. 빈 문자열은 enum 비멤버이므로 저장은
+		// 항상 명시적 enum 값을 기록한다. absent-key 초기 표시는 "(project default)"
+		// 빈 옵션으로 유효 컴파일 기본값을 나타낸다 (REQ-WC14-010, AC-WC14-010c).
+		fields = append(fields, withSelect(
+			typedField(SectionGitStrategy, "git_strategy", profile+".merge_method", TypeSelect),
+			"f.git_strategy.merge_method.opt.", mergeMethods, emptyLabelProjectDefault, "opt.project_default"))
 	}
 	return fields
 }

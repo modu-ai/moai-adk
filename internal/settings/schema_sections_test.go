@@ -3,6 +3,8 @@ package settings
 import (
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -100,6 +102,9 @@ func TestApplySchemaEditsGitStrategyTyped(t *testing.T) {
 		"git_strategy.mode":                  "personal",
 		"git_strategy.team.hooks.pre_push":   "enforce",
 		"git_strategy.manual.hooks.pre_push": "skip",
+		// SPEC-WEB-CONSOLE-014 M3 (AC-WC14-010b): merge_method 라운드트립 확장.
+		"git_strategy.team.merge_method":     "rebase",
+		"git_strategy.personal.merge_method": "merge",
 	})
 	if err != nil {
 		t.Fatalf("ApplySchemaEdits(git_strategy): %v", err)
@@ -111,12 +116,16 @@ func TestApplySchemaEditsGitStrategyTyped(t *testing.T) {
 	}
 	var doc struct {
 		GS struct {
-			Mode   string `yaml:"mode"`
-			Team   struct {
-				Hooks struct {
+			Mode string `yaml:"mode"`
+			Team struct {
+				MergeMethod string `yaml:"merge_method"`
+				Hooks       struct {
 					PrePush string `yaml:"pre_push"`
 				} `yaml:"hooks"`
 			} `yaml:"team"`
+			Personal struct {
+				MergeMethod string `yaml:"merge_method"`
+			} `yaml:"personal"`
 			Manual struct {
 				Hooks struct {
 					PrePush string `yaml:"pre_push"`
@@ -136,6 +145,98 @@ func TestApplySchemaEditsGitStrategyTyped(t *testing.T) {
 	if doc.GS.Manual.Hooks.PrePush != "skip" {
 		t.Errorf("manual.hooks.pre_push = %q, want skip", doc.GS.Manual.Hooks.PrePush)
 	}
+	if doc.GS.Team.MergeMethod != "rebase" {
+		t.Errorf("team.merge_method = %q, want rebase", doc.GS.Team.MergeMethod)
+	}
+	if doc.GS.Personal.MergeMethod != "merge" {
+		t.Errorf("personal.merge_method = %q, want merge", doc.GS.Personal.MergeMethod)
+	}
+}
+
+// TestMergeMethodFieldsExposed는 SPEC-WEB-CONSOLE-014 M3을 검증한다: AllFields에
+// git_strategy.{manual,personal,team}.merge_method 정확 3건이 닫힌 enum select로
+// 노출되고, 옵션은 config.ValidMergeMethods() SSOT에서 정렬 파생(리터럴 재선언
+// 금지)되며, 빈 문자열과 enum 밖 값이 검증에서 거부됨 (REQ-WC14-010/011).
+func TestMergeMethodFieldsExposed(t *testing.T) {
+	t.Parallel()
+
+	want := map[string]bool{
+		"git_strategy.manual.merge_method":   true,
+		"git_strategy.personal.merge_method": true,
+		"git_strategy.team.merge_method":     true,
+	}
+	got := map[string]FieldDef{}
+	for _, f := range AllFields() {
+		if strings.HasSuffix(f.Name, ".merge_method") {
+			got[f.Name] = f
+		}
+	}
+	if len(got) != 3 {
+		t.Fatalf("merge_method field count = %d, want 3 (manual/personal/team)", len(got))
+	}
+	wantOpts := append([]string{}, config.ValidMergeMethods()...)
+	sort.Strings(wantOpts) // 정렬 파생 (B3 — map-range 비결정성 제거).
+	for name := range want {
+		f, ok := got[name]
+		if !ok {
+			t.Errorf("merge_method field %q missing", name)
+			continue
+		}
+		if f.Type != TypeSelect {
+			t.Errorf("%q type = %q, want select", name, f.Type)
+		}
+		if gotOpts := f.SelectOptions(); !reflect.DeepEqual(gotOpts, wantOpts) {
+			t.Errorf("%q options = %v, want sorted-from-SSOT %v", name, gotOpts, wantOpts)
+		}
+		if f.Validate == nil {
+			t.Fatalf("%q has no validator (closed-set membership)", name)
+		}
+		if f.Validate("") {
+			t.Errorf("%q validator accepted empty (empty NOT a member — REQ-WC14-010)", name)
+		}
+		if f.Validate("fast-forward") {
+			t.Errorf("%q validator accepted out-of-enum value (REQ-WC14-011)", name)
+		}
+	}
+}
+
+// TestMergeMethodAbsentKeyDisplay는 iter-2 D5 absent-key 초기 표시를 검증한다:
+// merge_method 키가 없는 git-strategy.yaml 픽스처에서 (i) 현재값 읽기가 검증 실패
+// 없이 빈 값을 반환하고, (ii) 빈 문자열 값의 저장은 enum 비멤버로 거부되며,
+// (iii) 명시적 enum 값 저장은 반영됨 (REQ-WC14-010, AC-WC14-010c).
+func TestMergeMethodAbsentKeyDisplay(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	seedTypedFixtures(t, root, "git-strategy", "llm", "quality")
+	// 실측: fixture git-strategy.yaml에 merge_method 키 부재 (live absent-key 상태).
+
+	values, err := SchemaCurrentValues(root)
+	if err != nil {
+		t.Fatalf("SchemaCurrentValues (absent merge_method): %v", err)
+	}
+	for _, name := range []string{"git_strategy.manual.merge_method", "git_strategy.team.merge_method"} {
+		if v := values[name]; v != "" {
+			t.Errorf("absent %q should read empty (no validation failure), got %q", name, v)
+		}
+	}
+	// 빈 문자열 저장은 enum 비멤버로 거부 (empty NOT a member).
+	if err := ApplySchemaEdits(root, map[string]string{"git_strategy.team.merge_method": ""}); err == nil {
+		t.Error("saving empty merge_method should be rejected (empty NOT a member — AC-WC14-010c)")
+	}
+	// 명시적 enum 값 저장은 반영 + 주석 보존.
+	before, _ := os.ReadFile(filepath.Join(root, ".moai", "config", "sections", "git-strategy.yaml"))
+	if err := ApplySchemaEdits(root, map[string]string{"git_strategy.team.merge_method": "rebase"}); err != nil {
+		t.Fatalf("ApplySchemaEdits(merge_method=rebase): %v", err)
+	}
+	after, _ := os.ReadFile(filepath.Join(root, ".moai", "config", "sections", "git-strategy.yaml"))
+	if !strings.Contains(string(after), "merge_method: rebase") {
+		t.Errorf("merge_method not persisted:\n%s", after)
+	}
+	// enum 밖 값 저장은 거부.
+	if err := ApplySchemaEdits(root, map[string]string{"git_strategy.manual.merge_method": "fast-forward"}); err == nil {
+		t.Error("saving out-of-enum merge_method should be rejected (REQ-WC14-011)")
+	}
+	_ = before
 }
 
 // TestApplySchemaEditsGitStrategyDirtyFlagIsolation은 git-strategy를 건드리지

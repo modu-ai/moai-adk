@@ -149,9 +149,10 @@ func parseBoolValue(key, v string) (bool, error) {
 }
 
 // applyGitStrategyKey는 git_strategy.<key> 편집을 typed struct에 적용한다
-// (REQ-WC11-010 — typed, Save dirty-flag 경로). M4 다이어트로 mode와 profile별
-// hooks.pre_push만 잔류한다 (hook_pre_push.go:72 런타임 reader). 나머지 ~53개
-// 검증 전용 키의 편집 FieldDef가 제거되어 도달 불가하다 — struct 멤버는 보존.
+// (REQ-WC11-010 — typed, Save dirty-flag 경로). mode + profile별 hooks.pre_push
+// (hook_pre_push.go:72 런타임 reader) + profile별 merge_method(SPEC-WEB-CONSOLE-014
+// M3 — agent-prose consumer). 나머지 검증 전용 키의 편집 FieldDef는 제거되어
+// 도달 불가하다 — struct 멤버는 보존.
 func applyGitStrategyKey(gs *config.GitStrategyConfig, key, v string) error {
 	switch key {
 	case "mode":
@@ -178,6 +179,13 @@ func applyGitStrategyKey(gs *config.GitStrategyConfig, key, v string) error {
 	switch rest {
 	case "hooks.pre_push":
 		p.Hooks.PrePush = v
+	case "merge_method":
+		// enum 멤버십 검증 (REQ-WC14-011). 빈 문자열은 enum 비멤버이므로 거부된다
+		// (empty NOT a member — AC-WC14-010c). enum SSOT는 config.IsValidMergeMethod.
+		if !config.IsValidMergeMethod(v) {
+			return fmt.Errorf("settings: git_strategy.%s.merge_method: %q is not a valid merge method", profileName, v)
+		}
+		p.MergeMethod = v
 	default:
 		return fmt.Errorf("settings: unknown git_strategy key %q", key)
 	}
