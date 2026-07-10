@@ -51,7 +51,7 @@ Invariant preservation (asserted STILL EXISTS at exit):
 
 - run_status: complete
 - run_complete_at: 2026-07-11
-- run_commit_sha: 0ec4ee5f389df28892da5e5993dd476bbb512983 (worktree-branch commit worktree-agent-a3a9de86071d719f4; backfilled per spec-frontmatter-schema.md SHA-placeholder-backfill exemption. NOTE: this is the pre-land worktree-branch SHA — the orchestrator lands to main where the SHA may differ if rebased/cherry-picked; origin/main was 3 commits ahead of the worktree base at run-phase completion)
+- run_commit_sha: 9f1f0f53b2a65c3f91be09457d0f217de462354e (landed-on-main commit; run-phase implemented in a Claude Code L1 worktree and landed to main by the orchestrator — the pre-land worktree SHA 0ec4ee5f3 is superseded by this main SHA; backfilled per spec-frontmatter-schema.md SHA-placeholder-backfill exemption; all 14 ACs independently re-verified PASS on the main tree post-land)
 - ac_pass_count: 14
 - ac_fail_count: 0
 - test_coverage_ac: N/A (doc-only SPEC — no Go code touched; grep/diff/make-build/moai-init verification per acceptance.md §E)
