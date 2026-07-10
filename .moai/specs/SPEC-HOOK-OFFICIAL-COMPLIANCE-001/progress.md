@@ -240,7 +240,26 @@ next_phase: "sync (manager-docs) — in-progress->implemented->completed rides t
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-07-10
+sync_artifacts: [spec.md, plan.md, acceptance.md, progress.md]
+tier: L
+sync_commit_sha: <pending backfill>
+evidence:
+  changelog_entry_added: "CHANGELOG.md bilingual entry added (EN+KO) documenting 32 gaps closed across 8 milestones M1-M8"
+  readme_impact: "none (internal hook compliance fixes, no user-facing CLI surface changes)"
+  docs_site_impact: "none (no hook documentation updates needed — existing docs already compliant)"
+  frontmatter_transition: "4 artifacts (spec.md + progress.md frontmatter status: in-progress → completed; plan.md/acceptance.md have no frontmatter)"
+verification:
+  go_test: "go test ./... exit 0 (whole-repo green, baseline preserved)"
+  go_build: "go build ./... exit 0; GOOS=windows GOARCH=amd64 go build ./... exit 0"
+  golangci_lint: "0 issues (clean baseline preserved)"
+  template_mirror: "TestRuleTemplateMirror PASS (live<->template byte-identical)"
+  template_neutrality: "TestInternalContentLeak PASS (no SPEC IDs/REQ/SHAs leaked)"
+  hook_compliance: "TestHookOfficialCompliance PASS (32 gaps addressed)"
+```
+
 
 ---
 

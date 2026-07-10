@@ -2,7 +2,7 @@
 id: SPEC-HOOK-OFFICIAL-COMPLIANCE-001
 title: "Template Hooks Official-Doc Compliance (32 gaps, 8 Recs)"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-07-10
 updated: 2026-07-10
 author: manager-spec
