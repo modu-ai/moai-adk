@@ -1,6 +1,6 @@
 # Acceptance Criteria — SPEC-HARNESS-VERIFY-PROMOTE-001
 
-> SSOT for the AC matrix. 11 ACs covering all 9 REQs (100% AC→REQ coverage).
+> SSOT for the AC matrix. 12 ACs covering all 9 REQs (100% AC→REQ coverage).
 > Verification conventions: (1) every grep is anchored to a content token, not a
 > line number; (2) preservation / NO-WRITE ACs assert absence explicitly;
 > (3) template↔local parity is a byte `diff` check on each touched file; (4) this
@@ -10,14 +10,15 @@
 
 ## §A. Given-When-Then Scenarios
 
-### GWT-1 — Harness offer promoted to interview final question, Phase 4.2 fallback retained
+### GWT-1 — Harness offer promoted to post-confirmation proposal, Phase 4.2 fallback retained
 
 - **Given** a `/moai project` run whose adaptive interview
   (`SPEC-PROJECT-HARNESS-BRIDGE-001`) has confirmed the project type,
-- **When** the interview reaches its final question,
+- **When** control reaches the `meta-harness.md` Phase 5.1 handoff module,
 - **Then** the harness-generation proposal ("이 프로젝트에 <type> 개발 하네스를
-  생성할까요?") is surfaced as that final question, AND the Phase 4.2 next-step
-  "Generate harness" menu option remains reachable as a fallback.
+  생성할까요?") is surfaced as a post-project-type-confirmation proposal in
+  `meta-harness.md`, AND the Phase 4.2 next-step "Generate harness" menu option
+  (in `project/doc-generation.md`) remains reachable as a fallback.
 
 ### GWT-2 — Every generated harness ships a runnable verify skill + disciplined specialists
 
@@ -48,9 +49,9 @@
 
 | AC | REQ | Title |
 |----|-----|-------|
-| AC-HVP-001 | REQ-HVP-001 | promoted-offer language present in meta-harness.md (final question) |
-| AC-HVP-002 | REQ-HVP-001 | Phase 4.2 "Generate harness" fallback menu retained in meta-harness.md |
-| AC-HVP-003 | REQ-HVP-002 | harness-build-entry.md carries the interview final-round offer |
+| AC-HVP-001 | REQ-HVP-001 | promoted-offer language present in meta-harness.md (post-confirmation proposal) |
+| AC-HVP-002 | REQ-HVP-001 | meta-harness.md carries the NEW post-confirmation proposal (discriminating token); Phase 4.2 fallback host is doc-generation.md (read-only) |
+| AC-HVP-003 | REQ-HVP-002 | harness-build-entry.md carries the entry-interview final-round offer (baseline-0 guarded) |
 | AC-HVP-004 | REQ-HVP-003 | harness-builder.md mandatory `harness-<name>-verify` skill clause present |
 | AC-HVP-005 | REQ-HVP-004 | tool-priority decision-tree rule block present in harness-builder.md |
 | AC-HVP-006 | REQ-HVP-005 | Skill-First execution rule block present in harness-builder.md |
@@ -59,37 +60,55 @@
 | AC-HVP-009 | REQ-HVP-008 | NO-SPEC guard: 0 `.moai/specs/` write path in the project-flow files |
 | AC-HVP-010 | REQ-HVP-009 | template↔local byte-parity on every touched file |
 | AC-HVP-011 | REQ-HVP-009 | template neutrality + internal-content-leak guard green |
+| AC-HVP-012 | REQ-HVP-005 | injected specialist rule blocks bounded (≤8 lines each, verbatim §D.2 shape) |
 
 ## §C. Verification Commands (per AC)
 
 ### AC-HVP-001 (REQ-HVP-001) — promoted offer
 
 ```bash
-grep -c -i "생성할까요\|generate.*harness.*for this project\|final question\|promoted offer" \
+grep -c -i "생성할까요\|generate.*harness.*for this project\|post-project-type-confirmation\|promoted offer" \
   .claude/skills/moai/workflows/project/meta-harness.md   # expect >= 1
 ```
 
-Expected: the harness-generation proposal is surfaced as the interview's final
-question (promoted from the buried Phase 4.2 menu).
+Expected: the harness-generation proposal is surfaced as a
+post-project-type-confirmation proposal in `meta-harness.md` (the Phase 5.1 handoff
+module; promoted from the buried Phase 4.2 menu that lives in `doc-generation.md`).
 
-### AC-HVP-002 (REQ-HVP-001) — Phase 4.2 fallback retained
+### AC-HVP-002 (REQ-HVP-001) — NEW post-confirmation proposal present (discriminating token)
 
 ```bash
-grep -c -i "Phase 4.2\|Generate harness" .claude/skills/moai/workflows/project/meta-harness.md   # expect >= 1 (menu option retained)
+# (a) Assert the NEW post-confirmation proposal was inserted into meta-harness.md,
+#     using a token that discriminates the NEW insertion from pre-existing prose.
+grep -c -i "post-project-type-confirmation\|하네스를 생성할까요" \
+  .claude/skills/moai/workflows/project/meta-harness.md   # expect >= 1 (NEW insert)
 ```
 
-Expected: the Phase 4.2 next-step "Generate harness" menu option is RETAINED (both
-entry points reachable).
+Expected: `meta-harness.md` carries the NEW post-project-type-confirmation harness
+proposal, discriminated from any pre-existing prose by the insert token.
+
+Note on the Phase 4.2 fallback: the "Generate harness" fallback menu lives in
+`project/doc-generation.md`, which is **read-only for THIS SPEC** (BRIDGE-adjacent).
+It is RETAINED by non-modification — this SPEC does not touch `doc-generation.md` — so
+this AC deliberately asserts ONLY the `meta-harness.md` addition and does NOT grep the
+pre-existing `doc-generation.md` menu (a `Phase 4.2\|Generate harness` grep there would
+pass vacuously at baseline and prove nothing about this SPEC's change).
 
 ### AC-HVP-003 (REQ-HVP-002) — harness-build-entry final-round offer
 
 ```bash
+# Baseline check FIRST (avoid a vacuous-preserve trap): the discriminating insert
+# token MUST be 0 in harness-build-entry.md at HEAD, BEFORE the M1 insert.
+git show HEAD:.claude/skills/moai/workflows/harness-build-entry.md \
+  | grep -c -i "final.round.*harness proposal\|하네스를 생성할까요"   # expect 0 at baseline
+# After the insert:
 grep -c -i "final.round\|final question\|생성할까요\|harness.*proposal" \
   .claude/skills/moai/workflows/harness-build-entry.md   # expect >= 1
 ```
 
 Expected: `harness-build-entry.md` surfaces the harness-generation proposal as its
-interview final-round offer.
+entry-interview final-round offer. The baseline-0 check confirms the >= 1 post-insert
+count reflects the NEW insertion, not pre-existing prose (vacuous-preserve guard).
 
 ### AC-HVP-004 (REQ-HVP-003) — mandatory verify skill
 
@@ -177,18 +196,38 @@ grep -rn "SPEC-HARNESS-VERIFY-PROMOTE-001" internal/template/templates/ | wc -l 
 Expected: `make build` clean; template guards green; no internal SPEC ID / date /
 SHA in the template tree.
 
+### AC-HVP-012 (REQ-HVP-005) — injected specialist rule blocks stay bounded (anti-bloat)
+
+```bash
+# Each injected block must match the bounded §D.2 verbatim shape and stay short:
+# tool-priority block = "## Tool Priority" heading + 4 numbered lines (5 lines);
+# Skill-First block = "## Skill-First Execution" heading + 1 directive line (2 lines).
+# Assert each injected block body (heading → next blank line) is <= 8 non-empty lines.
+sed -n '/^## Tool Priority/,/^$/p' .claude/skills/moai/workflows/harness-builder.md \
+  | grep -c '.'   # expect >= 1 and <= 8 (tool-priority block bounded)
+sed -n '/^## Skill-First Execution/,/^$/p' .claude/skills/moai/workflows/harness-builder.md \
+  | grep -c '.'   # expect >= 1 and <= 8 (Skill-First block bounded)
+```
+
+Expected: the tool-priority decision-tree block (heading + 4 numbered lines) and the
+Skill-First execution block (heading + 1 line) each match the bounded §D.2 verbatim
+shape and stay <= 8 lines — so every generated specialist agent carries the discipline
+without bloat (satisfies REQ-HVP-005 "each injected block shall stay short").
+
 ## §D. Edge Cases
 
 - **E1 no discoverable recipe**: when the project has no discoverable build /
   launch / test recipe, the mandatory `harness-<name>-verify` skill is STILL
   emitted — as a stub documenting "no recipe found" — rather than omitted (per the
-  the plan.md verify-skill enforcement-surface default resolution).
-- **E2 user declines the promoted offer**: a user who declines the interview's
-  final-question harness offer must still reach the RETAINED Phase 4.2 "Generate
-  harness" menu option later (both entry points reachable — AC-HVP-002).
+  resolved verify-skill enforcement surface: ALWAYS mandatory, stub-if-no-recipe).
+- **E2 user declines the promoted offer**: a user who declines the
+  post-project-type-confirmation harness offer must still reach the RETAINED Phase 4.2
+  "Generate harness" menu option (in `project/doc-generation.md`) later (both entry
+  points reachable — AC-HVP-002).
 - **E3 `<type>` token source**: the `<type>` in the promoted offer resolves from
-  `harness-spec.yaml` `domain` (SPEC-1) when present; when `harness-spec.yaml` is
-  absent, it falls back to the mode-detection confirmed project type.
+  `harness-spec.yaml` `domain` (`SPEC-PROJECT-HARNESS-BRIDGE-001`) when present; when
+  `harness-spec.yaml` is absent, it falls back to the mode-detection confirmed project
+  type.
 - **E4 specialist count at boundary**: exactly 3 or exactly 7 specialists is WITHIN
   the guardrail; ≤2 or ≥8 triggers the justify-or-emit-skill path (AC-HVP-007).
 - **E5 template mirror drift**: a touched local file whose template mirror was not
@@ -213,11 +252,12 @@ SHA in the template tree.
 
 ## §F. Definition of Done
 
-1. All 11 ACs PASS (or documented N/A / PASS-WITH-DEBT with rationale) with
+1. All 12 ACs PASS (or documented N/A / PASS-WITH-DEBT with rationale) with
    verbatim command output recorded in progress.md §E.2.
-2. The harness-generation offer is promoted to the interview's final question in
-   both `meta-harness.md` and `harness-build-entry.md`, with the Phase 4.2 menu
-   RETAINED as a fallback.
+2. The harness-generation offer is promoted to a post-project-type-confirmation
+   proposal in `meta-harness.md` (Phase 5.1 handoff module) and to the final-round
+   offer in `harness-build-entry.md`, with the Phase 4.2 menu (in
+   `project/doc-generation.md`) RETAINED as a fallback.
 3. `harness-builder.md` GENERATE mandates the `harness-<name>-verify` skill (6th
    artifact) + injects the two short specialist rule blocks + states the 3-7 PLAN
    guardrail.

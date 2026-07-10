@@ -13,8 +13,9 @@
 - artifacts: spec.md + plan.md + acceptance.md (+ progress.md skeleton)
 - REQ count: 12 (REQ-PHB-001 … REQ-PHB-012)
 - AC count: 14 (AC-PHB-001 … AC-PHB-014)
-- open_clarifications: 2 ([NEEDS CLARIFICATION] interview.yaml schema surface +
-  harness-spec.yaml re-run semantics — resolve before Implementation Kickoff Approval)
+- open_clarifications: 0 (both resolved: interview.yaml additional_axes
+  config-declared → AC-PHB-013 applies; harness-spec.yaml OVERWRITE re-run
+  semantics)
 - depends_on: (none — foundation SPEC of the Project-Harness Pipeline Epic)
 
 ## §E.2 Run-phase Evidence

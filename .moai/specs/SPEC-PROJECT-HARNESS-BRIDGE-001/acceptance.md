@@ -11,11 +11,14 @@
 
 ### GWT-1 — Adaptive interview exits early on clear answers
 
-- **Given** a `/moai project` run whose Phase 0.3 (or 1.5) interview answers
-  reach `interview.yaml` `clarity_threshold` (4) after round 1,
+- **Given** a `/moai project` run whose Phase 0.3 (mode-detection.md) or
+  Phase 1.5 (codebase-analysis.md) interview answers reach the sufficiency target
+  (clarity ≥ 8 on the 0-10 scale, mirroring `plan/clarity-interview.md`) after
+  round 1,
 - **When** the interview loop evaluates clarity at the end of round 1,
 - **Then** the interview terminates early (does NOT run the remaining static
-  rounds), and the workflow proceeds to doc generation.
+  rounds), and the workflow proceeds to doc generation. (`clarity_threshold` (4)
+  is the interview ENTRY floor, NOT this early-exit target.)
 
 ### GWT-2 — Interview data survives into harness generation
 
@@ -45,7 +48,7 @@
 
 | AC | REQ | Title |
 |----|-----|-------|
-| AC-PHB-001 | REQ-PHB-001/002 | clarity_threshold consumed in mode-detection.md (both phases) |
+| AC-PHB-001 | REQ-PHB-001/002 | clarity_threshold consumed in both interview hosts (mode-detection.md Phase 0.3 + codebase-analysis.md Phase 1.5) |
 | AC-PHB-002 | REQ-PHB-001/002 | adaptive round logic present (early-exit + additional-round) |
 | AC-PHB-003 | REQ-PHB-003 | clarity-interview.md mechanism referenced/mirrored |
 | AC-PHB-004 | REQ-PHB-004 | four new axes present in interview question set |
@@ -57,7 +60,7 @@
 | AC-PHB-010 | REQ-PHB-010 | NO-SPEC guard: no .moai/specs/ write path in project flow |
 | AC-PHB-011 | REQ-PHB-011 | template↔local byte-parity on every touched file |
 | AC-PHB-012 | REQ-PHB-011 | template neutrality + internal-content-leak guard green |
-| AC-PHB-013 | REQ-PHB-004 | interview.yaml extended axes present (if config-declared) |
+| AC-PHB-013 | REQ-PHB-004 | interview.yaml extended axes present (config-declared per Decision 1) |
 | AC-PHB-014 | REQ-PHB-012 | moai init deploys adaptive interview + harness-spec.yaml path |
 
 ## §C. Verification Commands (per AC)
@@ -65,42 +68,55 @@
 ### AC-PHB-001 (REQ-PHB-001/002)
 
 ```bash
+# Phase 0.3 (new-project) interview host = mode-detection.md
 grep -c "clarity_threshold" .claude/skills/moai/workflows/project/mode-detection.md   # expect >= 1
-# both interview phases reference the threshold (Phase 0.3 + Phase 1.5):
-grep -n -i "Phase 0.3\|Phase 1.5" .claude/skills/moai/workflows/project/mode-detection.md | wc -l   # expect >= 2
+grep -c -i "Phase 0.3" .claude/skills/moai/workflows/project/mode-detection.md        # expect >= 1
+# Phase 1.5 (existing-project) interview host = codebase-analysis.md (NOT mode-detection.md)
+grep -c "clarity_threshold" .claude/skills/moai/workflows/project/codebase-analysis.md   # expect >= 1
+grep -c -i "Phase 1.5" .claude/skills/moai/workflows/project/codebase-analysis.md        # expect >= 1
 ```
 
-Expected: `clarity_threshold` consumed; both phase anchors present.
+Expected: `clarity_threshold` consumed in BOTH interview hosts; the Phase 0.3
+anchor lives in mode-detection.md and the Phase 1.5 anchor in codebase-analysis.md.
 
 ### AC-PHB-002 (REQ-PHB-001/002)
 
 ```bash
-grep -c -i "clarity\|max_rounds" .claude/skills/moai/workflows/project/mode-detection.md   # expect >= 1
-grep -c -i "early\|exit\|until\|additional round\|below threshold" .claude/skills/moai/workflows/project/mode-detection.md   # expect >= 1 (adaptive-loop language, not fixed-3)
+# adaptive-loop + reconciled 0-10 scale language present in BOTH interview hosts:
+for f in project/mode-detection.md project/codebase-analysis.md; do
+  grep -c -i "clarity\|max_rounds" ".claude/skills/moai/workflows/$f"   # expect >= 1
+  grep -c -i "sufficiency\|early.exit\|additional round\|abandon\|entry floor" ".claude/skills/moai/workflows/$f"   # expect >= 1 (reconciled scale language)
+done
 ```
 
-Expected: adaptive-loop language present (early-exit + additional-round), NOT a
-hardcoded 3-round statement.
+Expected: reconciled 0-10 scale adaptive-loop language present in both files
+(sufficiency target ≥ 8 + entry floor + additional-round), NOT a hardcoded
+3-round statement and NOT treating `clarity_threshold` (4) as the exit target.
 
 ### AC-PHB-003 (REQ-PHB-003)
 
 ```bash
-grep -c "clarity-interview" .claude/skills/moai/workflows/project/mode-detection.md   # expect >= 1 (references the reference mechanism)
+for f in project/mode-detection.md project/codebase-analysis.md; do
+  grep -c "clarity-interview" ".claude/skills/moai/workflows/$f"   # expect >= 1 (references the reference mechanism)
+done
 ```
 
-Expected: `mode-detection.md` cross-references / mirrors the
+Expected: BOTH interview hosts cross-reference / mirror the
 `plan/clarity-interview.md` mechanism (not a divergent reinvention).
 
 ### AC-PHB-004 (REQ-PHB-004)
 
 ```bash
-grep -c -i "verification\|test command\|e2e" .claude/skills/moai/workflows/project/mode-detection.md      # expect >= 1
-grep -c -i "ui.surface\|has-ui\|headless" .claude/skills/moai/workflows/project/mode-detection.md         # expect >= 1
-grep -c -i "external.system\|database\|apis\|services" .claude/skills/moai/workflows/project/mode-detection.md   # expect >= 1
-grep -c -i "team.shar\|team-shared\|solo" .claude/skills/moai/workflows/project/mode-detection.md          # expect >= 1
+# all four new axes elicited in BOTH interview hosts:
+for f in project/mode-detection.md project/codebase-analysis.md; do
+  grep -c -i "verification\|test command\|e2e" ".claude/skills/moai/workflows/$f"      # expect >= 1
+  grep -c -i "ui.surface\|has-ui\|headless" ".claude/skills/moai/workflows/$f"         # expect >= 1
+  grep -c -i "external.system\|database\|apis\|services" ".claude/skills/moai/workflows/$f"   # expect >= 1
+  grep -c -i "team.shar\|team-shared\|solo" ".claude/skills/moai/workflows/$f"          # expect >= 1
+done
 ```
 
-Expected: all four new axes elicited in the interview question set.
+Expected: all four new axes elicited in the interview question set of both files.
 
 ### AC-PHB-005 (REQ-PHB-005)
 
@@ -155,6 +171,7 @@ pre-satisfy / re-ask-only-absent language (REQ-PHB-009 no-duplicate).
 
 ```bash
 grep -rn "\.moai/specs/" .claude/skills/moai/workflows/project/mode-detection.md \
+  .claude/skills/moai/workflows/project/codebase-analysis.md \
   .claude/skills/moai/workflows/project/doc-generation.md | wc -l   # expect 0 (no specs write path in interview/harness-spec sections)
 grep -c "\.moai/project/" .claude/skills/moai/workflows/project/doc-generation.md   # expect >= 1 (harness-spec.yaml lives under project/)
 ```
@@ -165,16 +182,21 @@ the artifact path is `.moai/project/`.
 ### AC-PHB-011 (REQ-PHB-011) — template↔local byte-parity
 
 ```bash
-for f in project/mode-detection.md project/doc-generation.md project/meta-harness.md harness-build-entry.md; do
+for f in project/mode-detection.md project/codebase-analysis.md project/doc-generation.md project/meta-harness.md harness-build-entry.md; do
   diff -q ".claude/skills/moai/workflows/$f" "internal/template/templates/.claude/skills/moai/workflows/$f" \
     && echo "PARITY OK: $f" || echo "DRIFT: $f"
 done
+# interview.yaml is ALSO touched (config-declared additional_axes) and is
+# pre-existing byte-divergent — the fix is a wholesale template->local overwrite:
+diff -q .moai/config/sections/interview.yaml \
+  internal/template/templates/.moai/config/sections/interview.yaml \
+  && echo "PARITY OK: interview.yaml" || echo "DRIFT: interview.yaml"
 # expect: PARITY OK for every touched file (byte-identical mirror)
 ```
 
 Expected: every touched file is byte-identical between the local and template
-trees. (If `interview.yaml` is touched per the M1 clarification, add it to the
-diff loop.)
+trees, including codebase-analysis.md and interview.yaml (the latter achieved by
+wholesale template->local overwrite, per plan.md B-INTERVIEW-YAML-DRIFT).
 
 ### AC-PHB-012 (REQ-PHB-011) — neutrality guard
 
@@ -187,20 +209,19 @@ grep -rn "SPEC-PROJECT-HARNESS-BRIDGE-001" internal/template/templates/ | wc -l 
 Expected: `make build` clean; template guards green; no internal SPEC ID / date /
 SHA in the template tree.
 
-### AC-PHB-013 (REQ-PHB-004) — interview.yaml axes (conditional on M1 clarification)
+### AC-PHB-013 (REQ-PHB-004) — interview.yaml axes (config-declared per resolved Decision 1)
 
 ```bash
-# Applies ONLY if the four new axes are config-declared in interview.yaml (per the
-# M1 [NEEDS CLARIFICATION: interview.yaml schema surface] resolution). If the axes
-# are prose-only in mode-detection.md, this AC is documented N/A with rationale.
+# AC-PHB-013 APPLIES: the four new axes are config-declared in interview.yaml
+# per resolved Decision 1 (additional_axes: block added to both trees).
 grep -c -i "verification\|ui_surface\|external_systems\|team_sharing\|additional_axes" \
-  .moai/config/sections/interview.yaml   # expect >= 1 (when config-declared)
+  .moai/config/sections/interview.yaml   # expect >= 1
 diff -q .moai/config/sections/interview.yaml \
-  internal/template/templates/.moai/config/sections/interview.yaml   # byte-parity when touched
+  internal/template/templates/.moai/config/sections/interview.yaml   # byte-parity
 ```
 
-Expected: when the axes are config-declared, `interview.yaml` carries them and
-the mirror is byte-identical. Otherwise mark N/A with the clarification rationale.
+Expected: `interview.yaml` carries the four config-declared axes and the mirror
+is byte-identical.
 
 ### AC-PHB-014 (REQ-PHB-012) — moai init resurrection-positive
 
@@ -227,9 +248,9 @@ consumed) AND the harness-spec.yaml write path.
   (existing-project) may auto-populate some axes from codebase analysis; those
   count as answered and must NOT be re-asked. Phase 0.3 (new-project) elicits all
   axes interactively.
-- **E4 interview.yaml surface undecided at run-time**: if the M1 clarification is
-  unresolved, apply the plan.md default (config-declared `additional_axes:`) and
-  record the decision in progress.md §E.2; do NOT silently pick a divergent path.
+- **E4 interview.yaml surface resolved at run-time**: the M1 clarification is
+  resolved — config-declared `additional_axes:` block added per Decision 1;
+  AC-PHB-013 applies. Do NOT silently pick a divergent path.
 - **E5 template mirror drift**: a touched local file whose template mirror was
   not updated fails AC-PHB-011; the fix is to mirror, not to exempt the file.
 
@@ -254,6 +275,7 @@ consumed) AND the harness-spec.yaml write path.
    duplicate re-ask).
 4. Every touched file byte-identical between local and template trees;
    `make build` + neutrality guards green; `moai init` resurrection-positive.
-5. The two `[NEEDS CLARIFICATION]` markers resolved (interview.yaml surface +
-   re-run semantics) before Implementation Kickoff Approval.
+5. The two clarifications resolved before Implementation Kickoff Approval:
+   (1) interview.yaml `additional_axes:` block added (config-declared) —
+   AC-PHB-013 applies; (2) OVERWRITE re-run semantics confirmed.
 6. Sync-phase close by manager-docs per the Status Transition Ownership Matrix.

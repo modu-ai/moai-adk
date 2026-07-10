@@ -20,13 +20,18 @@
     `project/{mode-detection,codebase-analysis,doc-generation,meta-harness}.md`,
     each with a byte-identical mirror under
     `internal/template/templates/.claude/skills/moai/workflows/...`.
-  - Interview: Phase 0.3 (new project) + Phase 1.5 (existing project) in
-    `project/mode-detection.md` are STATIC 3-round × 3-question interviews.
-    `.moai/config/sections/interview.yaml` defines `clarity_threshold: 4` and
+  - Interview: Phase 0.3 (new project) in `project/mode-detection.md` +
+    Phase 1.5 (existing project) in `project/codebase-analysis.md` are STATIC
+    3-round × 3-question interviews. `.moai/config/sections/interview.yaml`
+    defines `clarity_threshold: 4` (the interview ENTRY floor) and
     `project.max_rounds: 3`, but the project flow does NOT consume
-    `clarity_threshold` (always runs exactly 3 rounds).
+    `clarity_threshold` (always runs exactly 3 rounds, never adapting to answer
+    clarity).
   - The plan flow's `.claude/skills/moai/workflows/plan/clarity-interview.md`
-    DOES use clarity scoring — the reference mechanism to mirror.
+    DOES use clarity scoring on a 0-10 scale (sufficiency exit ≥ 8, abandon
+    ≤ 3, entry floor 4) — the reference mechanism to mirror. Note:
+    `clarity_threshold` (4) is the ENTRY floor, NOT the early-exit target (the
+    exit target is the sufficiency bar, clarity ≥ 8).
   - Interview output `.moai/project/interview.md` is currently NOT passed into
     harness generation. `project/meta-harness.md` Phase 5.1 composes the
     harness-creation request from `product.md` / `structure.md` / `tech.md`
@@ -35,25 +40,23 @@
   - Anthropic verified pattern: "Let Claude interview you" (AskUserQuestion
     interview → machine-readable spec artifact → execute).
 
-### Open clarifications (resolve before Implementation Kickoff Approval)
+### Resolved decisions (D2 — clarifications settled at plan-phase fix pass)
 
-- **[NEEDS CLARIFICATION: interview.yaml schema surface]** — Do the four new
-  elicitation fields (verification / ui_surface / external_systems /
-  team_sharing) require a new question-axis schema block ADDED to
-  `interview.yaml` (both trees), or are they added purely as interview prose in
-  `project/mode-detection.md`? This determines whether REQ-PHB-004 touches
-  `interview.yaml` + its mirror (→ AC-PHB-013 applies) or only
-  `mode-detection.md`. Default assumption if unresolved: add a minimal
-  `additional_axes:` list to `interview.yaml` so the axes are config-declared
-  (config-as-SSOT, consistent with the existing `clarity_threshold` /
-  `max_rounds` living in `interview.yaml`).
-- **[NEEDS CLARIFICATION: harness-spec.yaml re-run semantics]** — On a second
-  `/moai project` invocation, does `doc-generation.md` overwrite
-  `harness-spec.yaml`, merge with the prior file, or skip-if-present? Default
-  assumption if unresolved: OVERWRITE (regenerate from the latest interview),
-  matching the existing `interview.md` regeneration behavior. This is a
-  low-blast-radius default; confirm only if the Epic's downstream SPECs need
-  merge semantics.
+Both plan-phase clarifications are RESOLVED (decision log recorded in
+`progress.md` §E.2); no open clarification markers remain.
+
+- **interview.yaml schema surface → CONFIG-DECLARED.** The four new elicitation
+  fields (verification / ui_surface / external_systems / team_sharing) are
+  declared in an `additional_axes:` block in
+  `.moai/config/sections/interview.yaml` (both trees), NOT prose-only.
+  Consequence: REQ-PHB-004 touches `interview.yaml` + its mirror, so AC-PHB-013
+  APPLIES (unconditional — no longer N/A). Rationale: config-as-SSOT, consistent
+  with the existing `clarity_threshold` / `max_rounds` living in `interview.yaml`.
+- **harness-spec.yaml re-run semantics → OVERWRITE.** On a second `/moai project`
+  invocation, `doc-generation.md` OVERWRITES `harness-spec.yaml` (regenerates
+  from the latest interview answers), matching the existing `interview.md`
+  regeneration behavior. Downstream Epic SPECs consume the fresh state — no merge
+  / skip-if-present semantics.
 
 ## §B. Known Issues (filtered, Tier M — doc-only)
 
@@ -75,13 +78,26 @@
   against its template mirror; they must be byte-identical (AC-PHB-011). The
   ONLY intentional divergence class is neutrality stripping — but these files
   carry no internal-content tokens, so the mirror should be a clean byte copy.
+- **B-INTERVIEW-YAML-DRIFT (pre-existing)**: `.moai/config/sections/interview.yaml`
+  is ALREADY byte-divergent between the local tree (4-space indent + different
+  key order) and the template tree. Do NOT incremental-edit both copies to
+  convergence — instead edit the TEMPLATE `interview.yaml` (add the
+  `additional_axes:` block), then OVERWRITE the local `interview.yaml` WHOLESALE
+  from the edited template (copy template→local). This is the correct
+  Template-First re-mirror and the only way AC-PHB-013 byte-parity passes despite
+  the pre-existing drift (interview.yaml is template-managed config, not
+  runtime-managed `settings.local.json`).
 - **B-REFERENCE-READ**: the adaptive mechanism source `plan/clarity-interview.md`
-  was NOT read at plan-authoring (token discipline). Run-phase MUST read it and
-  mirror its clarity-scoring loop faithfully into the project interview rather
-  than inventing a divergent scoring rubric.
-- **B-DUAL-PHASE**: the interview lives in TWO phases (0.3 new-project + 1.5
-  existing-project). Both must receive the adaptive loop AND the extended axes
-  (REQ-PHB-003). A single-phase edit is an incomplete implementation.
+  was NOT read in full at plan-authoring (token discipline; only its scoring
+  header L14-45 was confirmed at the fix pass). Run-phase MUST read it and mirror
+  its clarity-scoring loop faithfully (0-10 scale, sufficiency exit ≥ 8, abandon
+  ≤ 3, entry floor 4) into BOTH project interviews rather than inventing a
+  divergent scoring rubric.
+- **B-DUAL-PHASE**: the interview lives in TWO phases across TWO files — Phase
+  0.3 (new-project) in `project/mode-detection.md` and Phase 1.5
+  (existing-project) in `project/codebase-analysis.md`. Both must receive the
+  adaptive loop AND the extended axes (REQ-PHB-003). Editing only one file (only
+  Phase 0.3 or only Phase 1.5) is an incomplete implementation.
 
 ## §C. Pre-flight Checklist (run before any change)
 
@@ -89,9 +105,11 @@
 # 1. Baseline
 git branch --show-current && git rev-parse HEAD
 
-# 2. Locate the interview host + confirm the static-3-round shape
+# 2. Locate BOTH interview hosts + confirm the static-3-round shape
+#    (Phase 0.3 -> mode-detection.md; Phase 1.5 -> codebase-analysis.md)
 grep -n "max_rounds\|clarity_threshold" .moai/config/sections/interview.yaml
 grep -rn -i "round\|clarity" .claude/skills/moai/workflows/project/mode-detection.md | head
+grep -rn -i "round\|clarity\|Phase 1.5" .claude/skills/moai/workflows/project/codebase-analysis.md | head
 
 # 3. Locate the reference adaptive mechanism (READ this at run-phase)
 ls .claude/skills/moai/workflows/plan/clarity-interview.md
@@ -101,7 +119,7 @@ grep -n -i "product.md\|structure.md\|tech.md\|interview.md" .claude/skills/moai
 grep -n -i "Context-First\|Discovery\|domain\|goal" .claude/skills/moai/workflows/harness-build-entry.md | head
 
 # 5. Confirm both trees exist for every target file (Template-First)
-for f in project/mode-detection.md project/doc-generation.md project/meta-harness.md harness-build-entry.md; do
+for f in project/mode-detection.md project/codebase-analysis.md project/doc-generation.md project/meta-harness.md harness-build-entry.md; do
   ls ".claude/skills/moai/workflows/$f" "internal/template/templates/.claude/skills/moai/workflows/$f"
 done
 ls .moai/config/sections/interview.yaml internal/template/templates/.moai/config/sections/interview.yaml
@@ -151,18 +169,27 @@ than fabricating output.
 ### M1 — Adaptive clarity-scored interview + extended axes (REQ-PHB-001/002/003/004)
 
 1. READ `plan/clarity-interview.md` to extract the exact clarity-scoring loop
-   (scoring rubric, early-exit condition, additional-round trigger).
-2. In `project/mode-detection.md` Phase 0.3 (new-project) AND Phase 1.5
-   (existing-project), replace the static 3-round loop with the adaptive loop:
-   consume `interview.yaml` `clarity_threshold` (4); early-exit when clarity ≥
-   threshold; run additional rounds up to `project.max_rounds` (3).
-3. Extend the interview question set (both phases) to elicit the four new fields:
+   (0-10 scale, sufficiency-exit at clarity ≥ 8, abandon at ≤ 3, entry floor 4;
+   additional-round trigger).
+2. Replace the static 3-round loop with the adaptive loop in BOTH interview
+   hosts — Phase 0.3 (new-project) in `project/mode-detection.md` AND Phase 1.5
+   (existing-project) in `project/codebase-analysis.md`: consume `interview.yaml`
+   `clarity_threshold` (4) as the ENTRY floor; early-exit when clarity reaches the
+   sufficiency target (≥ 8); abandon on a drop to ≤ 3; run additional rounds up
+   to `project.max_rounds` (3). Use the SAME 0-10 scale semantics as
+   `plan/clarity-interview.md` — do NOT treat `clarity_threshold` (4) as the exit
+   target.
+3. Extend the interview question set (both files) to elicit the four new fields:
    verification method, UI surface, external systems, team-sharing intent.
-4. Resolve `[NEEDS CLARIFICATION: interview.yaml schema surface]` — if the axes
-   are config-declared, add the minimal axis block to `interview.yaml`.
-5. Mirror every edit to the template tree; `make build`.
-6. Exit: AC-PHB-001..004 (+ AC-PHB-013 if interview.yaml touched) grep-green on
-   both trees; byte-parity diff clean.
+4. Add the config-declared `additional_axes:` block to `interview.yaml` (D2
+   resolution): edit the TEMPLATE `interview.yaml`, then OVERWRITE the local
+   `interview.yaml` WHOLESALE from the edited template (per B-INTERVIEW-YAML-DRIFT
+   — the two trees are pre-existing byte-divergent; incremental-editing both
+   would not converge).
+5. Mirror every other edit (mode-detection.md, codebase-analysis.md) to the
+   template tree; `make build`.
+6. Exit: AC-PHB-001..004 + AC-PHB-013 grep-green on both trees; byte-parity diff
+   clean (including interview.yaml + codebase-analysis.md).
 
 ### M2 — harness-spec.yaml write (REQ-PHB-005/006)
 
@@ -205,8 +232,9 @@ than fabricating output.
 
 ## §G. Anti-Patterns (this SPEC)
 
-- Editing only Phase 0.3 (or only Phase 1.5) — the adaptive loop + extended axes
-  must land in BOTH interview phases (REQ-PHB-003).
+- Editing only Phase 0.3 (`mode-detection.md`) or only Phase 1.5
+  (`codebase-analysis.md`) — the adaptive loop + extended axes must land in BOTH
+  interview files (REQ-PHB-003).
 - Inventing a new clarity-scoring rubric instead of mirroring
   `plan/clarity-interview.md` — creates two divergent scoring mechanisms.
 - Writing `harness-spec.yaml` under `.moai/specs/` — violates the NO-SPEC scope

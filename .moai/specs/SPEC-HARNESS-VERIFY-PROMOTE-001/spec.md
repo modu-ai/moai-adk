@@ -1,7 +1,7 @@
 ---
 id: SPEC-HARNESS-VERIFY-PROMOTE-001
 title: "Harness-generation offer promotion + mandatory verify skill + specialist-agent template rules"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-11
 updated: 2026-07-11
@@ -23,6 +23,7 @@ depends_on: [SPEC-PROJECT-HARNESS-BRIDGE-001]
 | Date | Version | Change | Author |
 |------|---------|--------|--------|
 | 2026-07-11 | 0.1.0 | Initial plan-phase draft (Tier S, 9 REQ / 11 AC). Third SPEC of the 3-SPEC "Project-Harness Pipeline" Epic; `depends_on: [SPEC-PROJECT-HARNESS-BRIDGE-001]` (the foundation SPEC that introduced `.moai/project/harness-spec.yaml` + the adaptive interview). Three changes: (1) PROMOTE the harness-generation offer from a buried Phase 4.2 menu option to the project interview's final question (retaining the Phase 4.2 menu as a fallback); (2) make `harness-builder.md` GENERATE ship a mandatory `harness-<name>-verify` companion skill (mirroring the official `/run-skill-generator` runnable-verification pattern) as a 6th artifact; (3) inject two short mandatory rule blocks (tool-priority decision tree + Skill-First execution) into every generated specialist agent, and state a 3-7-specialists PLAN guardrail. Doc-only (markdown); no Go code. All Template-First. 2 open clarifications tracked in plan.md. | manager-spec |
+| 2026-07-11 | 0.1.1 | Plan-audit fix (D1-D6). D1: resolved both plan-phase clarifications — the promoted offer is a **post-project-type-confirmation proposal** in `meta-harness.md` (the Phase 5.1 handoff module, NOT the interview's final question); the verify skill is ALWAYS mandatory with a stub-if-no-recipe fallback; the clarification markers are struck from plan.md (resolutions recorded in progress.md §E.1). D2: Epic artifact order fixed — verify skill = artifact 6 (mandatory, THIS SPEC), MCP fragment = artifact 7 (optional, owned by `SPEC-HARNESS-MCP-PROVISION-001`, NOT `SPEC-PROJECT-HARNESS-BRIDGE-001`); removed the self-contradictory artifact-6 collision language. D3: rewrote REQ-HVP-001 + AC-HVP-002 — the Phase 4.2 "Generate harness" fallback menu lives in `doc-generation.md`, not `meta-harness.md`; AC-HVP-002 now asserts the meta-harness.md addition via a discriminating token. D4: added AC-HVP-012 measuring the injected specialist blocks stay bounded (≤8 lines / verbatim §D.2 shape). D5/D6: informal short-form Epic-SPEC refs replaced with formal IDs; AC-HVP-003 gains a baseline-0 note (vacuous-preserve guard). Now 9 REQ / 12 AC. | manager-spec |
 
 ## §A. Context and Intent
 
@@ -34,14 +35,17 @@ of that generated harness:
 1. **The harness-generation offer is buried.** Today the offer surfaces only at
    the project workflow's Phase 4.2 — as ONE next-step menu option among ~5
    choices (DB-sync / Create SPEC / Review / Generate harness / Done), AFTER all
-   docs are already generated. `project/meta-harness.md` handles the redirect to
-   `harness-build-entry.md` → `harness-builder.md`. A user who wants a harness has
-   to reach the tail of the flow and pick it out of a list. Now that the
-   foundation SPEC makes the interview confirm the project type up front, the
-   harness-generation proposal SHOULD be surfaced as the interview's **final
-   question** ("이 프로젝트에 <type> 개발 하네스를 생성할까요?" — "Generate a
-   <type> development harness for this project?"), while the Phase 4.2 menu option
-   is RETAINED as a fallback (both entry points reachable).
+   docs are already generated. That Phase 4.2 next-step menu lives in
+   `project/doc-generation.md`; `project/meta-harness.md` is the Phase 5.1 handoff
+   module that redirects to `harness-build-entry.md` → `harness-builder.md`. A user
+   who wants a harness has to reach the tail of the flow and pick it out of a list.
+   Now that the foundation SPEC makes the interview confirm the project type up
+   front, the harness-generation proposal SHOULD be surfaced as a
+   **post-project-type-confirmation proposal** in `meta-harness.md` ("이 프로젝트에
+   <type> 개발 하네스를 생성할까요?" — "Generate a <type> development harness for
+   this project?"), fired after the adaptive interview confirms the project type,
+   while the Phase 4.2 menu option (in `doc-generation.md`) is RETAINED as a
+   fallback (both entry points reachable).
 
 2. **Generated harnesses ship no runnable verification loop.** `harness-builder.md`
    GENERATE emits 5 artifact types (thin command / Runner JS / specialist agents /
@@ -76,11 +80,12 @@ or the artifact. It changes only the harness-generation surface
 ## §B. Scope Summary
 
 **In scope**:
-- PROMOTE the harness-generation offer to the interview's final question in
-  `project/meta-harness.md`, and RETAIN the Phase 4.2 next-step menu option as a
+- PROMOTE the harness-generation offer to a post-project-type-confirmation harness
+  proposal in `project/meta-harness.md` (the Phase 5.1 handoff module), and RETAIN
+  the Phase 4.2 next-step menu option — hosted in `project/doc-generation.md` — as a
   fallback (both entry points reachable).
-- Surface the same harness-generation proposal as the interview's final-round
-  offer in `harness-build-entry.md`.
+- Surface the same harness-generation proposal as the harness-entry interview's
+  final-round offer in `harness-build-entry.md`.
 - Make `harness-builder.md` GENERATE mandate a `harness-<name>-verify` companion
   skill (mirroring `/run-skill-generator`) as a 6th artifact of every generated
   harness set.
@@ -112,10 +117,12 @@ or the artifact. It changes only the harness-generation surface
 - **REQ-HVP-001** (Event-driven, with preservation clause): When the adaptive
   project interview (`SPEC-PROJECT-HARNESS-BRIDGE-001`) confirms the project type,
   the workflow shall surface the harness-generation proposal — "이 프로젝트에
-  <type> 개발 하네스를 생성할까요?" — as the interview's **final question** in
-  `project/meta-harness.md`, promoting it from the buried Phase 4.2 menu; AND the
-  Phase 4.2 next-step menu option ("Generate harness") shall be RETAINED as a
-  fallback entry point (both entry points reachable).
+  <type> 개발 하네스를 생성할까요?" — as a **post-project-type-confirmation harness
+  proposal** in `project/meta-harness.md` (the Phase 5.1 handoff module, NOT the
+  interview itself); AND the Phase 4.2 next-step menu option ("Generate harness") —
+  which lives in `project/doc-generation.md` — shall be RETAINED as a fallback entry
+  point (both entry points reachable). `doc-generation.md` is read-only for this
+  SPEC; the fallback is retained by non-modification.
 - **REQ-HVP-002** (Event-driven): When `harness-build-entry.md` runs its interview,
   the workflow shall surface the same harness-generation proposal as the
   interview's **final-round offer**.
@@ -125,9 +132,15 @@ or the artifact. It changes only the harness-generation surface
 - **REQ-HVP-003** (Ubiquitous): Every generated harness shall include a run / verify
   companion skill named `harness-<name>-verify` (under the `harness-*` namespace)
   that discovers and codifies the project's build / launch / test recipe from a
-  clean environment — mirroring the official `/run-skill-generator` pattern. This
-  is a mandatory **6th artifact** of the generated harness set, distinct from
-  `SPEC-PROJECT-HARNESS-BRIDGE-001`'s / SPEC-2's optional MCP fragment.
+  clean environment — mirroring the official `/run-skill-generator` pattern. The
+  verify skill is ALWAYS mandatory for every generated harness; when no build /
+  launch / test recipe is discoverable, it is STILL emitted as a documented stub
+  ("no recipe found") rather than omitted. This verify skill is the mandatory
+  **artifact 6** of the generated harness set. The optional MCP fragment — the
+  **artifact 7**, owned by `SPEC-HARNESS-MCP-PROVISION-001` — is a separate, distinct
+  artifact (6 = mandatory verify skill; 7 = optional MCP fragment). The MCP fragment
+  is NOT owned by `SPEC-PROJECT-HARNESS-BRIDGE-001`, whose §D deliverable is the
+  `harness-spec.yaml` schema, not an MCP fragment.
 
 ### C.3 Specialist-agent template rule blocks
 
@@ -166,10 +179,12 @@ or the artifact. It changes only the harness-generation surface
 
 ## §D. Reference — generated-harness artifact set + specialist rule blocks (SSOT)
 
-### D.1 Generated-harness artifact set (6 artifacts)
+### D.1 Generated-harness artifact set (6 mandatory + 1 optional)
 
-`harness-builder.md` GENERATE emits the following. The 6th (verify skill) is added
-by REQ-HVP-003; the first five are unchanged.
+`harness-builder.md` GENERATE emits artifacts 1-6. Artifact 6 (verify skill) is added
+by REQ-HVP-003; the first five are unchanged. Artifact 7 (optional MCP fragment) is
+owned by a sibling Epic SPEC and is OUT OF SCOPE for THIS SPEC — it is listed only to
+fix the Epic's canonical 6/7 order.
 
 | # | Artifact | Namespace / path shape | Change |
 |---|----------|------------------------|--------|
@@ -178,7 +193,8 @@ by REQ-HVP-003; the first five are unchanged.
 | 3 | Specialist agents (3-7) | `.claude/agents/harness/harness-<name>-*.md` | +2 injected rule blocks (D.2) |
 | 4 | Companion skills | `.claude/skills/harness-<name>-*/SKILL.md` | unchanged |
 | 5 | manifest.json | `.claude/commands/harness/<name>/manifest.json` | unchanged |
-| 6 | **Verify skill (NEW)** | `.claude/skills/harness-<name>-verify/SKILL.md` | mandatory; codifies build / launch / test recipe (`/run-skill-generator` pattern) |
+| 6 | **Verify skill (NEW — mandatory, THIS SPEC)** | `.claude/skills/harness-<name>-verify/SKILL.md` | mandatory; codifies build / launch / test recipe (`/run-skill-generator` pattern); stub-if-no-recipe |
+| 7 | MCP fragment (optional) | (owned by `SPEC-HARNESS-MCP-PROVISION-001`) | OUT OF SCOPE for THIS SPEC — optional artifact 7, distinct from the mandatory verify skill (artifact 6) |
 
 ### D.2 Mandatory specialist-agent rule blocks (short — inject verbatim shape)
 
@@ -198,23 +214,27 @@ Before any file/code work, read the relevant companion SKILL.md.
 These blocks are the absorbed reusable patterns; the remainder of the reviewed
 claude.ai leak is consumer-app-specific and out of scope (§E).
 
-The full machine-verifiable AC matrix (AC-HVP-001 … AC-HVP-011) lives in
+The full machine-verifiable AC matrix (AC-HVP-001 … AC-HVP-012) lives in
 `acceptance.md` (SSOT). Every REQ maps to at least one AC; preservation REQs
-(REQ-HVP-007/008) map to a namespace-intact / NO-WRITE absence assertion.
+(REQ-HVP-007/008) map to a namespace-intact / NO-WRITE absence assertion; the
+anti-bloat clause of REQ-HVP-005 maps to AC-HVP-012.
 
 ## §E. Exclusions
 
 The following are explicitly out of scope for this SPEC.
 
-### Out of Scope — SPEC-1 / SPEC-2 Epic territory
+### Out of Scope — SPEC-PROJECT-HARNESS-BRIDGE-001 / SPEC-HARNESS-MCP-PROVISION-001 Epic territory
 
 - The adaptive clarity-scored interview, the extended interview axes, and the
   `.moai/project/harness-spec.yaml` artifact are owned by
   `SPEC-PROJECT-HARNESS-BRIDGE-001` (the foundation SPEC). This SPEC CONSUMES the
-  confirmed project type + `harness-spec.yaml`; it does NOT re-author them.
-- The optional MCP fragment (a separate Epic SPEC's deliverable) is a distinct
-  artifact from this SPEC's mandatory `harness-<name>-verify` skill; they are not
-  the same 6th artifact.
+  confirmed project type + `harness-spec.yaml`; it does NOT re-author them. The
+  `project/mode-detection.md` / `project/codebase-analysis.md` interview hosts are
+  BRIDGE-001 scope and are NOT edited by this SPEC.
+- The optional MCP fragment — **artifact 7**, owned by `SPEC-HARNESS-MCP-PROVISION-001`
+  — is a distinct artifact from this SPEC's mandatory `harness-<name>-verify` skill
+  (**artifact 6**). The Epic's canonical order is: artifact 6 = mandatory verify skill
+  (THIS SPEC), artifact 7 = optional MCP fragment (`SPEC-HARNESS-MCP-PROVISION-001`).
 
 ### Out of Scope — builder-harness specialist-generation internals
 
@@ -244,8 +264,12 @@ The following are explicitly out of scope for this SPEC.
 
 ## §F. Cross-References
 
-- `.claude/skills/moai/workflows/project/meta-harness.md` — Phase 4.2 menu +
-  redirect host (promote-offer target; Phase 4.2 fallback retained here).
+- `.claude/skills/moai/workflows/project/meta-harness.md` — Phase 5.1 handoff /
+  redirect host (promote-offer target; the post-project-type-confirmation proposal
+  lands here).
+- `.claude/skills/moai/workflows/project/doc-generation.md` — Phase 4.2 next-step
+  menu host (the "Generate harness" fallback lives here; read-only for THIS SPEC —
+  retained by non-modification).
 - `.claude/skills/moai/workflows/harness-build-entry.md` — harness entry interview
   (final-round offer target).
 - `.claude/skills/moai/workflows/harness-builder.md` — GENERATE contract (mandatory

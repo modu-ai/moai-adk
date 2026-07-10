@@ -1,7 +1,7 @@
 ---
 id: SPEC-PROJECT-HARNESS-BRIDGE-001
 title: "Project interview clarity-scoring + harness-spec.yaml bridge to harness generation"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-11
 updated: 2026-07-11
@@ -21,7 +21,8 @@ tier: M
 
 | Date | Version | Change | Author |
 |------|---------|--------|--------|
-| 2026-07-11 | 0.1.0 | Initial plan-phase draft (Tier M, 12 REQ / 14 AC). Foundation SPEC of the 3-SPEC "Project-Harness Pipeline" Epic (NO depends_on; the other two Epic SPECs depend_on this one). Two changes: (1) convert the STATIC 3-round Phase 0.3 / Phase 1.5 project interviews to clarity-scored ADAPTIVE interviews reusing the `plan/clarity-interview.md` mechanism; (2) emit a machine-readable `.moai/project/harness-spec.yaml` artifact and wire it into harness generation so `meta-harness.md` Phase 5.1 and `harness-build-entry.md` Phase 1 stop discarding / re-eliciting the interview data. Doc-only (markdown/yaml); no Go code. All Template-First. 2 `[NEEDS CLARIFICATION]` markers in plan.md. | manager-spec |
+| 2026-07-11 | 0.1.0 | Initial plan-phase draft (Tier M, 12 REQ / 14 AC). Foundation SPEC of the 3-SPEC "Project-Harness Pipeline" Epic (NO depends_on; the other two Epic SPECs depend_on this one). Two changes: (1) convert the STATIC 3-round Phase 0.3 / Phase 1.5 project interviews to clarity-scored ADAPTIVE interviews reusing the `plan/clarity-interview.md` mechanism; (2) emit a machine-readable `.moai/project/harness-spec.yaml` artifact and wire it into harness generation so `meta-harness.md` Phase 5.1 and `harness-build-entry.md` Phase 1 stop discarding / re-eliciting the interview data. Doc-only (markdown/yaml); no Go code. All Template-First. 2 open clarifications recorded in plan.md. | manager-spec |
+| 2026-07-11 | 0.1.1 | Plan-phase targeted fix pass (D1-D6). D1 (factual): the Phase 1.5 (existing-project) interview lives in `project/codebase-analysis.md`, NOT `project/mode-detection.md` (which hosts Phase 0.3 only) — corrected throughout spec/plan/acceptance. D2: 2 clarifications resolved — interview.yaml schema surface = config-declared `additional_axes:` block; harness-spec.yaml re-run = OVERWRITE (matching interview.md regeneration). D3: clarity-scoring reconciled to `plan/clarity-interview.md` semantics (0-10 scale, sufficiency exit ≥ 8, abandon ≤ 3, entry floor 4 = `clarity_threshold`). D4: interview.yaml mirror achieved by wholesale template→local overwrite (pre-existing byte-drift). D5: "ambiguous" defined operationally (REQ-PHB-008); REQ-PHB-006 reworded (interview.md written by the interview phases, not doc-generation.md). Open-clarification markers removed from plan.md. | manager-spec |
 
 ## §A. Context and Intent
 
@@ -30,14 +31,18 @@ generates a project-specific harness. Two structural gaps make that flow leak
 information:
 
 1. **The interview is fixed-length, not clarity-driven.** Phase 0.3 (new
-   project) and Phase 1.5 (existing project) in `project/mode-detection.md` run
-   a STATIC 3-round × 3-question interview. `.moai/config/sections/interview.yaml`
-   already defines `clarity_threshold: 4` and `project.max_rounds: 3`, but the
-   project flow does NOT consume `clarity_threshold` — it always runs exactly 3
-   rounds regardless of how clear (or unclear) the answers are. The **plan** flow
-   already solves this: `plan/clarity-interview.md` scores answer clarity and
-   adapts round count. This SPEC mirrors that adaptive mechanism into the project
-   interview.
+   project) in `project/mode-detection.md` and Phase 1.5 (existing project) in
+   `project/codebase-analysis.md` run a STATIC 3-round × 3-question interview.
+   `.moai/config/sections/interview.yaml` already defines `clarity_threshold: 4`
+   (the interview ENTRY floor — the clarity band at/above which the interview
+   runs) and `project.max_rounds: 3`, but the project flow does NOT consume
+   `clarity_threshold` at all and never adapts round count to answer clarity — it
+   always runs exactly 3 rounds regardless of how clear (or unclear) the answers
+   are. The **plan** flow already solves this: `plan/clarity-interview.md` scores
+   answer clarity on a 0-10 scale and adapts round count — it exits early at the
+   sufficiency target (clarity ≥ 8), abandons on a drop to ≤ 3, and treats 4 as
+   the entry floor. This SPEC mirrors that adaptive mechanism (the SAME 0-10
+   scale semantics) into both project interviews.
 
 2. **The interview output is discarded before harness generation.** The
    interview writes `.moai/project/interview.md`, but that file is NOT passed
@@ -64,11 +69,12 @@ SPEC has NO `depends_on`.
 ## §B. Scope Summary
 
 **In scope**:
-- Convert Phase 0.3 (new-project) and Phase 1.5 (existing-project) interviews in
-  `project/mode-detection.md` from static 3-round to clarity-scored adaptive
-  (consume `interview.yaml` `clarity_threshold`; early-exit at threshold;
-  additional rounds up to `project.max_rounds`) — mirroring
-  `plan/clarity-interview.md`.
+- Convert the Phase 0.3 (new-project) interview in `project/mode-detection.md`
+  AND the Phase 1.5 (existing-project) interview in `project/codebase-analysis.md`
+  from static 3-round to clarity-scored adaptive on a 0-10 scale: consume
+  `interview.yaml` `clarity_threshold` (4) as the ENTRY floor; early-exit at the
+  sufficiency target (clarity ≥ 8); abandon on a drop to ≤ 3; additional rounds
+  up to `project.max_rounds` (3) — mirroring `plan/clarity-interview.md`.
 - Extend the interview question set to elicit four new fields: verification
   method, UI surface, external systems, team-sharing intent.
 - Emit `.moai/project/harness-spec.yaml` (8-field machine-readable artifact)
@@ -94,25 +100,34 @@ SPEC has NO `depends_on`.
 ### C.1 Adaptive clarity-scored interview
 
 - **REQ-PHB-001** (State-driven): While the project interview's accumulated
-  clarity score is below the `interview.yaml` `clarity_threshold` (4), the
+  clarity score (0-10 scale) is below the sufficiency target (clarity ≥ 8,
+  mirroring `plan/clarity-interview.md`) and above the abandon floor (≤ 3), the
   project workflow shall run one or more additional interview rounds, up to
-  `project.max_rounds` (3).
-- **REQ-PHB-002** (Event-driven): When the accumulated clarity score reaches
-  `clarity_threshold` before `max_rounds` rounds have run, the project workflow
-  shall terminate the interview early (skip the remaining rounds), replacing the
-  current always-exactly-3-rounds behavior.
+  `project.max_rounds` (3). (`interview.yaml` `clarity_threshold` (4) is the
+  interview ENTRY floor — NOT the early-exit target.)
+- **REQ-PHB-002** (Event-driven): When the accumulated clarity score reaches the
+  configured sufficiency target (clarity ≥ 8 on the 0-10 scale — the SAME bar as
+  `plan/clarity-interview.md`) before `max_rounds` rounds have run, the project
+  workflow shall terminate the interview early (skip the remaining rounds),
+  replacing the current always-exactly-3-rounds behavior.
 - **REQ-PHB-003** (Ubiquitous): The clarity-scoring loop shall be applied to
-  BOTH Phase 0.3 (new-project) and Phase 1.5 (existing-project) interviews in
-  `project/mode-detection.md`, reusing the adaptive mechanism defined in
-  `plan/clarity-interview.md` (the plan flow's clarity scoring is the reference
-  implementation the run-phase reads and mirrors).
+  BOTH the Phase 0.3 (new-project) interview in `project/mode-detection.md` AND
+  the Phase 1.5 (existing-project) interview in `project/codebase-analysis.md`,
+  reusing the adaptive mechanism defined in `plan/clarity-interview.md` (the plan
+  flow's clarity scoring is the reference implementation the run-phase reads and
+  mirrors).
 
 ### C.2 Extended question axes
 
-- **REQ-PHB-004** (Ubiquitous): The project interview question set shall elicit
-  four new fields beyond the existing vision / technology / scope axes —
-  verification method (test / e2e command), UI surface (has-UI / headless),
-  external systems (DB / APIs / services), and team-sharing intent.
+- **REQ-PHB-004** (Ubiquitous): The project interview question set — in BOTH the
+  Phase 0.3 host `project/mode-detection.md` and the Phase 1.5 host
+  `project/codebase-analysis.md` — shall elicit four new fields beyond the
+  existing vision / technology / scope axes: verification method (test / e2e
+  command), UI surface (has-UI / headless), external systems (DB / APIs /
+  services), and team-sharing intent. These four axes shall be config-declared in
+  an `additional_axes:` block in `.moai/config/sections/interview.yaml` (both
+  trees), consistent with the existing config-as-SSOT placement of
+  `clarity_threshold` / `max_rounds`.
 
 ### C.3 Machine-readable harness-spec.yaml artifact
 
@@ -121,8 +136,11 @@ SPEC has NO `depends_on`.
   the fields `domain`, `goal`, `constraints`, `scope`, `verification`,
   `external_systems`, `ui_surface`, `team_sharing`; the schema is stated in §D.
 - **REQ-PHB-006** (Event-driven): When the `project/doc-generation.md` phase
-  runs, it shall write `harness-spec.yaml` alongside `.moai/project/interview.md`,
-  populated from the interview answers.
+  runs, it shall write `.moai/project/harness-spec.yaml`, populated from the
+  interview answers recorded in `.moai/project/interview.md`. (`interview.md`
+  itself is written by the interview phases — Phase 0.3 / Phase 1.5 — NOT by
+  `doc-generation.md`; `doc-generation.md` READS those recorded answers to
+  populate the harness-spec.yaml fields.)
 
 ### C.4 Harness generation consumes harness-spec.yaml
 
@@ -132,7 +150,11 @@ SPEC has NO `depends_on`.
 - **REQ-PHB-008** (Event-driven): When `harness-build-entry.md` Phase 1
   (Context-First Discovery) runs, it shall consume `harness-spec.yaml` to
   PRE-SATISFY the domain / goal / constraints / scope fields, and shall re-ask
-  ONLY fields that are absent or ambiguous in `harness-spec.yaml`.
+  ONLY fields that are absent or ambiguous in `harness-spec.yaml`. A field is
+  **ambiguous** (eligible for re-ask) when its value is empty, null, a
+  placeholder token (e.g. `<string>` / `TODO` / `TBD`), or multi-valued in a way
+  that does not resolve to a single answer; a field carrying a single concrete
+  value is PRE-SATISFIED and MUST NOT be re-asked.
 - **REQ-PHB-009** (Unwanted behavior): The `harness-build-entry.md` Phase 1
   Discovery shall not re-ask a question for any field already answered in
   `harness-spec.yaml` (no duplicate interview of an already-elicited field).
@@ -173,6 +195,12 @@ external_systems: [<string>, ...]  # DB / APIs / services the project integrates
 ui_surface: <enum>            # has-ui | headless
 team_sharing: <enum>          # solo | team-shared
 ```
+
+Field population: `doc-generation.md` maps the prose answers recorded in
+`.moai/project/interview.md` onto these 8 fields — the vision / goal answer →
+`goal`, the domain / problem answer → `domain`, the scope answer → `scope`, the
+constraints answer → `constraints`, and the four new interview axes →
+`verification` / `external_systems` / `ui_surface` / `team_sharing` respectively.
 
 The full machine-verifiable AC matrix (AC-PHB-001 … AC-PHB-014) lives in
 `acceptance.md` (SSOT). Every REQ above maps to at least one AC; preservation
@@ -218,8 +246,10 @@ The following are explicitly out of scope for this SPEC.
 
 ## §F. Cross-References
 
-- `.claude/skills/moai/workflows/project/mode-detection.md` — Phase 0.3 / 1.5
-  interview host (adaptive conversion target).
+- `.claude/skills/moai/workflows/project/mode-detection.md` — Phase 0.3
+  (new-project) interview host (adaptive conversion target).
+- `.claude/skills/moai/workflows/project/codebase-analysis.md` — Phase 1.5
+  (existing-project) interview host (adaptive conversion target).
 - `.claude/skills/moai/workflows/project/doc-generation.md` — harness-spec.yaml
   write site.
 - `.claude/skills/moai/workflows/project/meta-harness.md` — Phase 5.1 compose

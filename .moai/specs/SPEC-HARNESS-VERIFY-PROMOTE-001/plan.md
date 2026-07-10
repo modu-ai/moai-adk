@@ -46,29 +46,26 @@
     rejects writes to `.claude/agents/moai/`, `.claude/skills/moai-*/`,
     `.claude/rules/moai/`. Template-First + neutrality preserved.
 
-### Open clarifications (resolve before Implementation Kickoff Approval)
+### Resolved clarifications (settled before Implementation Kickoff Approval)
 
-- **[NEEDS CLARIFICATION: promoted-offer placement seam]** — The promoted "final
-  question" offer is instructed to land in `project/meta-harness.md` (promote) +
-  `harness-build-entry.md` (final-round offer), NOT in `project/mode-detection.md`
-  (which `SPEC-PROJECT-HARNESS-BRIDGE-001` owns as the interview host). Should the
-  promoted offer be co-located in `mode-detection.md`'s interview terminal round
-  (a scope overlap with the foundation SPEC), or stay strictly in `meta-harness.md`
-  as a post-project-type-confirmation proposal that RETAINS the Phase 4.2 menu?
-  Default assumption if unresolved: place the promoted offer in `meta-harness.md`
-  (surfaced right after project-type confirmation, before the buried Phase 4.2
-  menu, which is RETAINED as fallback) + `harness-build-entry.md`; do NOT edit
-  `mode-detection.md` (that file is the foundation SPEC's scope). Also determines
-  the `<type>` token source: default = `harness-spec.yaml` `domain` field when
-  present, else the mode-detection confirmed project type.
-- **[NEEDS CLARIFICATION: verify-skill enforcement surface]** — Is the mandatory
-  `harness-<name>-verify` skill required for EVERY generated harness (including a
-  trivial single-agent harness), or only when the `harness-spec.yaml` `verification`
-  field (SPEC-1) is non-empty? Default assumption if unresolved: ALWAYS mandatory
-  (mirror `/run-skill-generator`'s "always ship a runnable check" theme); when no
-  build / launch / test recipe is discoverable, still emit the verify skill as a
-  stub documenting "no recipe found" rather than omitting it (edge E1). Confirm
-  only if the Epic wants the verify skill gated on `harness-spec.yaml.verification`.
+Both plan-phase clarifications are RESOLVED (also recorded in progress.md §E.1). No
+open markers remain.
+
+- **Promoted-offer placement seam — RESOLVED.** The promoted offer lands in
+  `project/meta-harness.md` as a **post-project-type-confirmation harness proposal**
+  (meta-harness.md is the Phase 5.1 handoff module, NOT the interview's final
+  question) + in `harness-build-entry.md` as that entry's final-round offer. Scope is
+  NOT extended into `project/mode-detection.md` or `project/codebase-analysis.md`
+  (those files are `SPEC-PROJECT-HARNESS-BRIDGE-001`'s scope). The Phase 4.2 next-step
+  "Generate harness" menu — which lives in `project/doc-generation.md` (read-only for
+  THIS SPEC) — is RETAINED as a fallback (both entry points reachable). The `<type>`
+  token source: `harness-spec.yaml` `domain` field (`SPEC-PROJECT-HARNESS-BRIDGE-001`)
+  when present, else the mode-detection confirmed project type.
+- **Verify-skill enforcement surface — RESOLVED.** The `harness-<name>-verify` skill
+  is ALWAYS mandatory for EVERY generated harness (mirroring `/run-skill-generator`'s
+  "always ship a runnable check" theme) — it is NOT gated on any `harness-spec.yaml`
+  field. When no build / launch / test recipe is discoverable, the verify skill is
+  STILL emitted as a documented stub ("no recipe found") rather than omitted (edge E1).
 
 ## §B. Known Issues (filtered, Tier S — doc-only)
 
@@ -150,9 +147,9 @@ grep -rn "\.moai/specs/" .claude/skills/moai/workflows/project/meta-harness.md \
 - Weakening or removing the FROZEN namespace guard.
 - Removing the Phase 4.2 menu option (it is RETAINED, not replaced).
 - Importing any of the claude.ai leak beyond the two absorbed patterns.
-- Editing `project/mode-detection.md` (foundation SPEC scope) unless the
-  `[NEEDS CLARIFICATION: promoted-offer placement seam]` resolution explicitly
-  extends scope there.
+- Editing `project/mode-detection.md` or `project/codebase-analysis.md` (foundation
+  SPEC scope). The promoted-offer placement seam is RESOLVED to stay in
+  `meta-harness.md` + `harness-build-entry.md`; scope is NOT extended into those files.
 - Expanding the two injected specialist rule blocks into long prose (agent bloat).
 
 **Required**: Conventional Commits (`feat(SPEC-HARNESS-VERIFY-PROMOTE-001): M{N} …`
@@ -174,12 +171,14 @@ reports (never AskUserQuestion). E3 coverage and E4 subagent-boundary grep are N
 ### M1 — Promote the harness-generation offer (REQ-HVP-001/002)
 
 1. In `project/meta-harness.md`: surface the harness-generation proposal ("이
-   프로젝트에 <type> 개발 하네스를 생성할까요?") as the interview's final question
-   AFTER project-type confirmation, and RETAIN the Phase 4.2 next-step "Generate
-   harness" menu option as a fallback (both entry points reachable). Resolve
-   `[NEEDS CLARIFICATION: promoted-offer placement seam]` (default: stay in
-   `meta-harness.md`, do NOT edit `mode-detection.md`; `<type>` from
-   `harness-spec.yaml` `domain`, else confirmed project type).
+   프로젝트에 <type> 개발 하네스를 생성할까요?") as a post-project-type-confirmation
+   harness proposal (meta-harness.md is the Phase 5.1 handoff module, NOT the
+   interview) AFTER project-type confirmation. The Phase 4.2 next-step "Generate
+   harness" menu option — hosted in `project/doc-generation.md` (read-only for THIS
+   SPEC; retained by non-modification) — remains reachable as a fallback (both entry
+   points reachable). Per the resolved placement seam: stay in `meta-harness.md`, do
+   NOT edit `mode-detection.md` / `codebase-analysis.md`; `<type>` from
+   `harness-spec.yaml` `domain`, else confirmed project type.
 2. In `harness-build-entry.md`: surface the same proposal as the interview's
    final-round offer.
 3. Mirror every edit to the template tree; `make build`.
@@ -188,17 +187,20 @@ reports (never AskUserQuestion). E3 coverage and E4 subagent-boundary grep are N
 ### M2 — harness-builder GENERATE: verify skill + specialist rule blocks + guardrail (REQ-HVP-003/004/005/006)
 
 1. In `harness-builder.md` GENERATE: add the mandatory `harness-<name>-verify`
-   companion skill as a 6th artifact (mirroring `/run-skill-generator`: discover +
-   codify build / launch / test recipe from a clean environment). Resolve
-   `[NEEDS CLARIFICATION: verify-skill enforcement surface]` (default: always
-   mandatory; stub-if-no-recipe per edge E1).
+   companion skill as **artifact 6** (mirroring `/run-skill-generator`: discover +
+   codify build / launch / test recipe from a clean environment). Per the resolved
+   enforcement surface: ALWAYS mandatory for every generated harness (not gated on
+   any `harness-spec.yaml` field); emit a documented stub ("no recipe found") when no
+   recipe is discoverable (edge E1). (The optional MCP fragment is artifact 7, owned
+   by `SPEC-HARNESS-MCP-PROVISION-001` — OUT OF SCOPE for THIS SPEC.)
 2. In the specialist-agent generation template: inject the two short mandatory rule
    blocks (§D.2 of spec.md) — tool-priority decision tree + Skill-First execution —
    into every generated specialist agent body. Keep each block short.
 3. In the PLAN section: state the 3-7-specialists-maximum guardrail + the
    justify-each-specialist-or-emit-skill rule.
 4. Mirror to the template tree; `make build`.
-5. Exit: AC-HVP-004/005/006/007 grep-green on both trees.
+5. Exit: AC-HVP-004/005/006/007/012 grep-green on both trees (AC-HVP-012 asserts the
+   two injected specialist blocks stay bounded — ≤8 lines / verbatim §D.2 shape).
 
 ### M3 — Invariants + parity + neutrality + init smoke (REQ-HVP-007/008/009)
 
@@ -214,7 +216,7 @@ reports (never AskUserQuestion). E3 coverage and E4 subagent-boundary grep are N
    + mandatory verify-skill clause (non-regression resurrection check).
 5. Whole-repo non-regression: `go build ./...` + `go test ./...` exit 0 (no Go code
    changed).
-6. Exit: all 11 ACs PASS or documented PASS-WITH-DEBT.
+6. Exit: all 12 ACs PASS or documented PASS-WITH-DEBT.
 
 ## §G. Anti-Patterns (this SPEC)
 

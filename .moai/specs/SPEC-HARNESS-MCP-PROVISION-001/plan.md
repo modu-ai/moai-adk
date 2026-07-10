@@ -1,7 +1,7 @@
 # Plan — SPEC-HARNESS-MCP-PROVISION-001
 
 > Implementation plan for the `/moai project` Phase 3.6 MCP-provisioning insertion
-> + the harness GENERATE optional artifact 6. Tier M (3 artifacts). Doc / config-only
+> + the harness GENERATE optional artifact 7. Tier M (3 artifacts). Doc / config-only
 > (markdown + yaml) — no Go code. Every touched skill/config file has a byte-identical
 > template mirror; Template-First discipline governs every edit. Line-number citations
 > are drift-prone — re-anchor by content token at run-phase.
@@ -27,9 +27,12 @@
   - `builder-harness` (`.claude/agents/moai/builder-harness.md`) ALREADY supports
     `artifact_type=mcp-server` → scaffolds `.mcp.json` entries (stdio / http / sse).
     This capability is NOT wired into harness generation.
-  - The v4 harness Builder GENERATE phase (`harness-builder.md`) emits exactly 5
-    artifact types (thin command / Runner JS / specialist agents / companion skills /
-    manifest.json) — NO MCP.
+  - The v4 harness Builder GENERATE phase (`harness-builder.md`) documents **5 base
+    artifact types** (thin command / Runner JS / specialist agents / companion skills /
+    manifest.json) — NO MCP. Per the Epic canonical artifact order the contract grows
+    to 5 base + verify skill (artifact 6, mandatory — SPEC-HARNESS-VERIFY-PROMOTE-001)
+    + optional MCP fragment (artifact 7, this SPEC); this SPEC reconciles the
+    "exactly 5" prose so the bare count is not left uncontextualized (AC-HMP-015).
   - **doctor / manifest verified this session (do NOT re-investigate)**: the v4
     manifest is decoded with plain `json.Unmarshal` at `internal/harness/applier.go:630`
     and `internal/cli/harness/doctor.go:130` — NEITHER uses `DisallowUnknownFields`.
@@ -39,7 +42,7 @@
     (silently ignored) — `moai harness doctor` stays exit-0 with NO Go change.** Active
     validation of the `mcp` block would require adding `MCP *MCPBlock json:"mcp,omitempty"`
     to `internal/harness/v4manifest/types.go` + a `Validate()` branch — described here,
-    NOT implemented (see clarification below).
+    NOT implemented (TOLERATE-ONLY decision; see Resolved clarifications below).
   - Anthropic-verified MCP guidance: `.mcp.json` at repo root (checked in, per-user
     approval prompt), project scope; 3-5 servers max; vendor-maintained preferred
     (2026 CVE surge); `${VAR}` env-var expansion for secrets. Per-project-type matrix:
@@ -47,27 +50,29 @@
     mobile = Maestro (then Appium); backend/DB = read-only Postgres + Context7;
     universal starter = GitHub + Context7 + Playwright.
 
-### Open clarifications (resolve before Implementation Kickoff Approval)
+### Resolved clarifications (both settled at plan-phase — no open markers remain)
 
-- **[NEEDS CLARIFICATION: mcp-matrix config surface]** — Is
-  `.moai/config/sections/mcp-matrix.yaml` a **new config SECTION merged into the Go
-  config manager** (which would require a Go struct field + loader wiring, breaching
-  the doc/config-only scope), OR a **standalone data resource** read directly by
-  `project/doc-generation.md` as prose-context (no typed Go loader)? Default
-  assumption if unresolved: **standalone data resource** — read directly by the
-  workflow skill as prose-context, mirroring how BRIDGE-001 treats `harness-spec.yaml`
-  ("consumers read it as prose-context via the workflow skills, not via a typed
-  loader"). This keeps the SPEC doc/config-only. Confirm only if the matrix must be
-  machine-validated by a Go loader.
-- **[NEEDS CLARIFICATION: doctor manifest-mcp validate-vs-tolerate]** — Should
-  `moai harness doctor` merely TOLERATE the optional manifest `mcp` block (current
-  lenient `json.Unmarshal` already does this — zero Go change, AC-HMP-010 passes as a
-  documented-tolerance check), OR ACTIVELY VALIDATE it (add
-  `MCP *MCPBlock json:"mcp,omitempty"` to `internal/harness/v4manifest/types.go` +
-  a `Validate()` branch — a small Go change, out of this SPEC's doc-only scope)?
-  Default assumption if unresolved: **tolerate only** (no Go change); active
-  validation is deferred to a follow-up Go SPEC. If active validation is desired,
-  this SPEC's tier / scope changes (it becomes non-doc-only) — surface to the user.
+Both plan-phase clarifications are RESOLVED with the values below; the resolution is
+recorded in progress.md §E.1. No unresolved markers remain (a re-audit MP-7 marker
+grep on plan.md returns 0).
+
+- **mcp-matrix config surface → RESOLVED: standalone DATA RESOURCE.**
+  `.moai/config/sections/mcp-matrix.yaml` is a standalone template data resource
+  (authored at `internal/template/templates/.moai/config/sections/mcp-matrix.yaml`,
+  mirrored to the local copy) read by `project/doc-generation.md` as prose-context —
+  NOT a new config SECTION merged into the Go config manager, and it adds NO Go struct
+  field or typed loader. This mirrors how BRIDGE-001 treats `harness-spec.yaml`
+  (consumed as prose-context via the workflow skills, not via a typed loader) and keeps
+  this SPEC doc/config-only.
+- **doctor manifest-mcp validate-vs-tolerate → RESOLVED: TOLERATE-ONLY (zero Go
+  change).** The manifest decoders use plain `json.Unmarshal` with no
+  `DisallowUnknownFields` (`internal/cli/harness/doctor.go`,
+  `internal/harness/applier.go`) and `internal/harness/v4manifest/validate.go` checks
+  only the required fields, so an optional `mcp` block is silently tolerated with no Go
+  change. AC-HMP-010 encodes this as a documented-tolerance grep + the regression guard
+  `grep -c "DisallowUnknownFields" internal/harness/v4manifest/*.go  # expect 0`. Active
+  validation (adding `MCP *MCPBlock` to `v4manifest/types.go` + a `Validate()` branch)
+  is explicitly OUT OF SCOPE, deferred to a follow-up Go SPEC.
 
 ## §B. Known Issues (filtered, Tier M — doc/config-only)
 
@@ -87,13 +92,13 @@
   `.moai/specs/**`. `.mcp.json` lives at the repo root; `mcp-matrix.yaml` under
   `.moai/config/sections/`. Do NOT introduce any `.moai/specs/` write path
   (AC-HMP-012).
-- **B-SUBAGENT-BOUNDARY**: any delegated `builder-harness` step (artifact 6 scaffold)
+- **B-SUBAGENT-BOUNDARY**: any delegated `builder-harness` step (artifact 7 scaffold)
   MUST NOT call AskUserQuestion — the per-server credential approval (REQ-HMP-006) and
   the overall approval (REQ-HMP-002) are ORCHESTRATOR-held. A subagent returns a
   blocker report; the orchestrator runs AskUserQuestion.
 - **B-CREDENTIAL (no literal secrets)**: no written `.mcp.json` entry may inline a
   literal credential / token — env-var `${VAR}` form only (REQ-HMP-007). This binds
-  BOTH the Phase 3.6 write path AND the artifact-6 fragment example.
+  BOTH the Phase 3.6 write path AND the artifact-7 fragment example.
 - **B-ADDITIVE (no clobber)**: the `.mcp.json` write MUST merge into an existing file,
   never overwrite it. A pre-existing user `.mcp.json` (with unrelated servers) must
   survive the write (REQ-HMP-007).
@@ -101,8 +106,9 @@
   template mirror — byte-identical required (AC-HMP-011). These files carry no
   internal-content tokens, so the mirror should be a clean byte copy.
 - **B-BYTE-IDENTICAL-OMISSION**: when the harness PLAN declares no MCP need, the
-  GENERATE output MUST be byte-identical to the current 5-artifact set (REQ-HMP-009).
-  The artifact-6 extension is a CONDITIONAL branch, not an unconditional 6th write.
+  GENERATE output MUST be byte-identical to the without-artifact-7 baseline
+  (REQ-HMP-009). The artifact-7 extension is a CONDITIONAL branch, not an
+  unconditional additional write.
 - **B-DOCTOR-TOLERANCE**: do NOT add `DisallowUnknownFields` anywhere; the doctor
   tolerance relies on the current lenient decoder. Adding strictness would break
   AC-HMP-010 and every grandfathered manifest.
@@ -119,7 +125,7 @@ grep -n "^status:" .moai/specs/SPEC-PROJECT-HARNESS-BRIDGE-001/spec.md   # expec
 # 3. Locate the Phase 3.5 / 3.7 anchors + confirm no existing 3.6 / MCP step
 grep -n -i "Phase 3.5\|Phase 3.7\|LSP\|dev-mode\|mcp" .claude/skills/moai/workflows/project/doc-generation.md | head
 
-# 4. Confirm the harness GENERATE 5-artifact contract + the mcp-server capability
+# 4. Confirm the harness GENERATE base-artifact contract (5 base + verify skill 6) + the mcp-server capability
 grep -n -i "GENERATE\|artifact\|manifest.json\|Runner\|companion skill" .claude/skills/moai/workflows/harness-builder.md | head
 grep -n -i "mcp-server\|artifact_type\|.mcp.json\|transport" .claude/agents/moai/builder-harness.md | head
 
@@ -140,8 +146,8 @@ grep -rn "\.moai/specs/" .claude/skills/moai/workflows/project/ || echo "no .moa
 
 **PRESERVE list (assert STILL EXISTS at exit)**:
 - The `/moai project` NO-SPEC scope guard — no `.moai/specs/**` write path.
-- The current 5-artifact harness GENERATE output when no MCP need is declared
-  (byte-identical omission).
+- The pre-MCP harness GENERATE output when no MCP need is declared — artifact 7
+  omitted, byte-identical to the without-artifact-7 baseline.
 - The `builder-harness` `artifact_type=mcp-server` internals (reused, unchanged).
 - The `harness-spec.yaml` schema + adaptive interview (owned by BRIDGE-001; consumed,
   not modified).
@@ -155,7 +161,7 @@ grep -rn "\.moai/specs/" .claude/skills/moai/workflows/project/ || echo "no .moa
 - Clobbering an existing `.mcp.json` (must merge additively).
 - A subagent (`builder-harness`) calling AskUserQuestion — approval is
   orchestrator-held.
-- An unconditional 6th artifact write (artifact 6 is CONDITIONAL on declared MCP need).
+- An unconditional artifact-7 write (artifact 7 is CONDITIONAL on declared MCP need).
 - Adding `DisallowUnknownFields` or a Go `MCP` struct field (out of doc-only scope;
   deferred per the clarification).
 - Hardcoding the matrix rows in skill prose beyond a fallback pointer (REQ-HMP-004).
@@ -170,8 +176,9 @@ Per the manager-develop prompt template §E (E1-E7), each milestone completion r
 carries: E1 AC PASS/FAIL matrix (verbatim command output), E2 build result
 (`make build` exit 0 — doc/config-only SPEC, so the cross-platform Go build is a
 non-regression check, not a feature check), E5 lint / neutrality
-(template-neutrality guard + internal-content-leak test green; `moai harness doctor`
-exit-0 tolerance check), E6 commit SHAs + push state, E7 blocker reports (never
+(template-neutrality guard + internal-content-leak test green; doctor tolerance =
+documented-tolerance grep + `DisallowUnknownFields == 0` regression guard, NOT a live
+repo-wide doctor smoke), E6 commit SHAs + push state, E7 blocker reports (never
 AskUserQuestion). E3 coverage and E4 subagent-boundary grep are N/A (no Go code
 touched); state them as N/A rather than fabricating output.
 
@@ -179,8 +186,8 @@ touched); state them as N/A rather than fabricating output.
 
 ### M1 — MCP matrix externalized to config (REQ-HMP-004)
 
-1. Resolve `[NEEDS CLARIFICATION: mcp-matrix config surface]`; default = standalone
-   data resource.
+1. Apply the resolved decision (see §A Resolved clarifications): `mcp-matrix.yaml` is a
+   standalone data resource read as prose-context — NO Go config section / loader.
 2. Create `internal/template/templates/.moai/config/sections/mcp-matrix.yaml` with the
    §D.1 schema (web-frontend / mobile / backend-db rows + universal_starter fallback;
    per-server `name` / `transport` / `install` / `vendor_maintained` /
@@ -206,23 +213,28 @@ touched); state them as N/A rather than fabricating output.
    AC-HMP-002 (stack-detect + matrix reference), AC-HMP-003 (orchestrator approval +
    subagent-no-prompt), AC-HMP-005 (3-5 cap + vendor-maintained), AC-HMP-006
    (credential per-server approval + never-auto-write), AC-HMP-007 (additive-merge +
-   `${VAR}` + no-literal-token) grep-green on both trees; AC-HMP-012 NO-SPEC clean.
+   `${VAR}` + no-literal-token), AC-HMP-014 (write-on-approval at project scope —
+   REQ-HMP-003) grep-green on both trees; AC-HMP-012 NO-SPEC clean.
 
-### M3 — harness GENERATE optional artifact 6 (REQ-HMP-008/009/010)
+### M3 — harness GENERATE optional artifact 7 (REQ-HMP-008/009/010)
 
-1. In `harness-builder.md`, extend the GENERATE contract with an OPTIONAL **artifact 6**
-   (`.mcp.json` fragment via `builder-harness` `artifact_type=mcp-server`).
-2. Add the explicit conditional-emission clause: emit artifact 6 ONLY when the harness
+1. In `harness-builder.md`, extend the GENERATE contract with an OPTIONAL **artifact 7**
+   (`.mcp.json` fragment via `builder-harness` `artifact_type=mcp-server`). Reconcile
+   the "exactly 5 artifact types" prose to the canonical order (5 base + verify skill
+   artifact 6 + optional MCP fragment artifact 7) so the bare count is not left
+   uncontextualized.
+2. Add the explicit conditional-emission clause: emit artifact 7 ONLY when the harness
    PLAN declares MCP needs (derived from `harness-spec.yaml` `external_systems` /
-   `verification`); when no MCP need is declared, artifact 6 is OMITTED and GENERATE
-   stays byte-identical to the current 5-artifact set.
-3. Document the optional manifest `mcp` block (§D.3) as doctor-tolerant (lenient
-   decoder; no Go change). Resolve `[NEEDS CLARIFICATION: doctor manifest-mcp
-   validate-vs-tolerate]`; default = tolerate-only.
+   `verification`); when no MCP need is declared, artifact 7 is OMITTED and GENERATE
+   stays byte-identical to the without-artifact-7 baseline.
+3. Document the optional manifest `mcp` block (§D.3) as doctor-tolerant. Apply the
+   resolved decision (see §A Resolved clarifications): TOLERATE-ONLY, no Go change
+   (lenient decoder); no `DisallowUnknownFields` and no Go `MCP` struct field is added.
 4. Mirror to the template tree; `make build`.
-5. Exit: AC-HMP-008 (artifact-6 section present), AC-HMP-009 (conditional-emission +
-   byte-identical omission clause), AC-HMP-010 (`moai harness doctor` exit-0 with
-   optional mcp block / documented tolerance) grep-green on both trees.
+5. Exit: AC-HMP-008 (artifact-7 section present), AC-HMP-009 (conditional-emission +
+   byte-identical omission clause), AC-HMP-010 (documented-tolerance grep +
+   `DisallowUnknownFields == 0` regression guard), AC-HMP-015 ("exactly 5" prose
+   reconciled) grep-green on both trees.
 
 ### M4 — Template mirror parity + neutrality + doctor smoke (REQ-HMP-011)
 
@@ -230,11 +242,13 @@ touched); state them as N/A rather than fabricating output.
    mirror — all byte-identical (AC-HMP-011).
 2. `make build`; run the template-neutrality guard + internal-content-leak test
    (`go test ./internal/template/...`) — green (AC-HMP-013).
-3. `moai harness doctor` smoke on a manifest carrying the optional `mcp` block —
-   exit 0 (AC-HMP-010).
+3. Doctor tolerance (AC-HMP-010): documented-tolerance grep in `harness-builder.md`
+   + `grep -c "DisallowUnknownFields" internal/harness/v4manifest/*.go` == 0 (and the
+   decode sites `internal/harness/applier.go` / `internal/cli/harness/doctor.go` == 0)
+   — deterministic grep+guard, no live repo-wide doctor run.
 4. Whole-repo non-regression: `go build ./...` + `go test ./...` exit 0 (no Go code
    changed).
-5. Exit: all 13 ACs PASS or documented PASS-WITH-DEBT.
+5. Exit: all 15 ACs PASS or documented PASS-WITH-DEBT.
 
 ## §G. Anti-Patterns (this SPEC)
 
@@ -244,8 +258,8 @@ touched); state them as N/A rather than fabricating output.
 - Auto-writing a credentialed server without the per-server approval (REQ-HMP-006).
 - Inlining a literal token into `.mcp.json` instead of `${VAR}` (REQ-HMP-007).
 - Clobbering an existing `.mcp.json` instead of merging additively (REQ-HMP-007).
-- Emitting artifact 6 unconditionally (must be conditional on declared MCP need;
-  no-MCP output must stay byte-identical to the 5-artifact set — REQ-HMP-009).
+- Emitting artifact 7 unconditionally (must be conditional on declared MCP need;
+  no-MCP output must stay byte-identical to the without-artifact-7 baseline — REQ-HMP-009).
 - A `builder-harness` subagent calling AskUserQuestion for approval — approval is
   orchestrator-held (REQ-HMP-002).
 - Adding `DisallowUnknownFields` / a Go `MCP` struct field (out of doc-only scope;
@@ -261,7 +275,7 @@ touched); state them as N/A rather than fabricating output.
 - `.moai/specs/SPEC-PROJECT-HARNESS-BRIDGE-001/spec.md` §D — the `harness-spec.yaml`
   schema this SPEC consumes (`external_systems` / `ui_surface` / `verification`).
 - `.claude/agents/moai/builder-harness.md` — the `artifact_type=mcp-server` capability
-  reused by artifact 6 (READ at run-phase M3).
+  reused by artifact 7 (READ at run-phase M3).
 - `internal/harness/v4manifest/{types,validate}.go` + `internal/cli/harness/doctor.go`
   — the manifest schema + doctor smoke gate; the lenient `json.Unmarshal` that
   tolerates the optional `mcp` block (no Go change).
