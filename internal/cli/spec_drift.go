@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/spec"
@@ -71,7 +70,7 @@ Examples:
 				}
 
 				if count > 0 {
-					os.Exit(1)
+					return &exitCodeError{code: 1, msg: "spec drift: drift detected (--exit-code-on-drift)"}
 				}
 			}
 			return nil

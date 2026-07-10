@@ -10,10 +10,19 @@ import (
 	"time"
 )
 
-// TestFilesystemLock tests filesystem lock behavior for concurrent access.
-// This test is Unix-only because it validates flock(2) kernel semantics
-// which are not available on Windows (where lockFile is a no-op by design).
-func TestFilesystemLock(t *testing.T) {
+// TestFlock tests filesystem lock behavior for concurrent access. It is the
+// renamed form of the previously-misnamed TestFilesystemLock (the file was
+// team_spawn_lock_test_unix.go — NOT _test.go-suffixed — so the test never
+// compiled into the test binary and the testing package leaked into the
+// production dependency graph). SPEC-CLIFIX-CONTRACT-001 M4 / REQ-CONT-001-007.
+//
+// Non-vacuous guard: this test has TWO load-bearing t.Error paths — (1) the
+// goroutine acquires the lock while it is held (flock regression), and (2) the
+// 2s timeout fires (the non-blocking attempt hung). A no-op lockFile would
+// trigger path (1), so the test genuinely fails if flock semantics regress.
+// This is Unix-only because it validates flock(2) kernel semantics which are
+// not available on Windows (where lockFile is a no-op by design).
+func TestFlock(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping lock test in short mode")
 	}

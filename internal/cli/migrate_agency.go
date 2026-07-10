@@ -647,9 +647,9 @@ func runMigrateAgency(cmd *cobra.Command, _ []string) error {
 		if me, ok := err.(*MigrateError); ok {
 			switch me.Code {
 			case ErrMigrateNoSource:
-				os.Exit(2)
+				return &exitCodeError{code: 2, msg: fmt.Sprintf("migrate agency: %s", err)}
 			default:
-				os.Exit(1)
+				return &exitCodeError{code: 1, msg: fmt.Sprintf("migrate agency: %s", err)}
 			}
 		}
 		return err

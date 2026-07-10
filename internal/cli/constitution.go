@@ -310,13 +310,20 @@ func runConstitutionValidate(w, wWarn io.Writer, projectDir, registryPath string
 	return nil
 }
 
-// exitCodeError is an error type that requests a specific exit code.
+// exitCodeError is an error type that requests a specific exit code. It is the
+// shared ExitCoder vehicle for every cli-root RunE/PostRunE that used to call
+// os.Exit directly (astgrep, hook, hook_pre_push, spec_lint, spec_drift,
+// migrate_agency, constitution). ExitCode lets cmd/moai/main.go map the process
+// exit code via errors.As instead of cobra's default exit-1-on-any-error.
 type exitCodeError struct {
 	code int
 	msg  string
 }
 
 func (e *exitCodeError) Error() string { return e.msg }
+
+// ExitCode satisfies the ExitCoder interface in cmd/moai/main.go. SPEC-CLIFIX-CONTRACT-001.
+func (e *exitCodeError) ExitCode() int { return e.code }
 
 // renderValidateJSON emits the validate result in JSON format.
 func renderValidateJSON(w io.Writer, result constitution.ValidationResult) error {

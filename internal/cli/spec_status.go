@@ -21,7 +21,6 @@ func newSpecStatusCmd() *cobra.Command {
 	var dryRun bool
 	var listAll bool
 	var syncGit bool
-	var syncConfirm bool
 	var syncYes bool
 
 	cmd := &cobra.Command{
@@ -60,7 +59,6 @@ Examples:
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview change without writing")
 	cmd.Flags().BoolVar(&listAll, "list", false, "List all SPECs and their status")
 	cmd.Flags().BoolVar(&syncGit, "sync-git", false, "Sync SPEC statuses from git log on main")
-	cmd.Flags().BoolVar(&syncConfirm, "confirm", false, "Confirm sync-git changes interactively")
 	cmd.Flags().BoolVar(&syncYes, "yes", false, "Non-interactive mode for sync-git (auto-confirm)")
 
 	return cmd
@@ -165,7 +163,7 @@ func syncGitSpecStatuses(cmd *cobra.Command, autoConfirm bool) error {
 		return fmt.Errorf("failed to find project root: %w", err)
 	}
 
-	specIDsFromGit, err := getSPECIDsFromGitLog()
+	specIDsFromGit, err := getSPECIDsFromGitLog(projectRoot)
 	if err != nil {
 		return fmt.Errorf("failed to scan git log: %w", err)
 	}
@@ -203,6 +201,12 @@ func syncGitSpecStatuses(cmd *cobra.Command, autoConfirm bool) error {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  %s: %s → implemented\n", specID, currentStatus)
 
 		if !autoConfirm {
+			// Non-interactive abort: in a non-TTY context (CI, piping), the
+			// fmt.Scanln prompt would hang forever. Abort with a diagnostic
+			// instead. Use --yes to auto-confirm (REQ-CONT-001-003).
+			if !stdinIsTerminalFn() {
+				return fmt.Errorf("spec status --sync-git: interactive confirmation unavailable in non-TTY context; pass --yes to auto-confirm")
+			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "    Apply? [y/N]: ")
 			var response string
 			_, _ = fmt.Scanln(&response)
@@ -224,14 +228,16 @@ func syncGitSpecStatuses(cmd *cobra.Command, autoConfirm bool) error {
 	return nil
 }
 
-// getSPECIDsFromGitLog scans git log on main for SPEC-XXX patterns.
-func getSPECIDsFromGitLog() ([]string, error) {
+// getSPECIDsFromGitLog scans git log on main for SPEC-XXX patterns. Git runs
+// against projectRoot (git -C) so the command works regardless of cwd
+// (REQ-CONT-001-003 / SPEC-CLIFIX-CONTRACT-001 M3).
+func getSPECIDsFromGitLog(projectRoot string) ([]string, error) {
 	branch := "main"
-	if _, err := exec.Command("git", "rev-parse", "--verify", "main").Output(); err != nil {
+	if _, err := exec.Command("git", "-C", projectRoot, "rev-parse", "--verify", "main").Output(); err != nil {
 		branch = "master"
 	}
 
-	out, err := exec.Command("git", "log", branch, "--oneline", "--no-merges").Output()
+	out, err := exec.Command("git", "-C", projectRoot, "log", branch, "--oneline", "--no-merges").Output()
 	if err != nil {
 		return nil, fmt.Errorf("git log failed: %w", err)
 	}
@@ -249,3 +255,19 @@ func getSPECIDsFromGitLog() ([]string, error) {
 
 	return result, nil
 }
+
+// stdinIsTerminal reports whether stdin is a terminal (TTY). Uses the
+// os.ModeCharDevice check (dependency-free). In a non-TTY context (CI, piping)
+// an interactive fmt.Scanln prompt would hang; callers gate on this to abort.
+func stdinIsTerminal() bool {
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return (fi.Mode() & os.ModeCharDevice) != 0
+}
+
+// stdinIsTerminalFn is the overridable TTY-detection hook (tests inject a
+// fixed value so the non-TTY abort path is deterministic regardless of how the
+// test runner's stdin is wired).
+var stdinIsTerminalFn = stdinIsTerminal

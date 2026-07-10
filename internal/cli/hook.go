@@ -226,9 +226,10 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 	}
 
 	// Exit code 2 for explicit exit code requests (generic plumbing for any
-	// handler that sets ExitCode; nothing in-tree sets it today).
+	// handler that sets ExitCode; nothing in-tree sets it today). Returned as an
+	// ExitCoder so main.go maps exit 2 and defers run (SPEC-CLIFIX-CONTRACT-001 M1).
 	if output != nil && output.ExitCode == 2 {
-		os.Exit(2)
+		return &exitCodeError{code: 2, msg: "hook: explicit exit code 2 requested"}
 	}
 
 	// NOTE: there is intentionally NO exit-2 branch for deny decisions. A JSON
@@ -358,8 +359,9 @@ func runAgentHook(cmd *cobra.Command, args []string) error {
 
 	// Exit code 2 for explicit exit code requests (generic plumbing; see
 	// runHookEvent). A JSON deny exits 0 by design — no Decision==deny branch.
+	// Returned as an ExitCoder so main.go maps exit 2 and defers run.
 	if output != nil && output.ExitCode == 2 {
-		os.Exit(2)
+		return &exitCodeError{code: 2, msg: "hook agent: explicit exit code 2 requested"}
 	}
 
 	return nil
