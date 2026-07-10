@@ -68,4 +68,9 @@ m1_to_mN_commit_strategy: specific-path commits per milestone (5 commits M1-M5);
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_commit_sha: e2c85e16e
+sync_status: completed
+sync_conventional_commit: docs(SPEC-TEMPLATE-I18N-CANONICAL-001)
+ac_final_matrix: 23/0/0 (all PASS)
+v8_diagnostics_cleanup: template_neutrality_audit_test.go Go 1.26+ modernizations (max built-in + loop-var per-iteration)
+ac_i18n_020_resolved: moai-easy.md restored by parallel session commit 1243094f6
