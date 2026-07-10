@@ -115,6 +115,11 @@ func (a *app) routes() http.Handler {
 	// (REQ-WC11-044/045/046). hostCheckMiddleware 는 GET 을 게이트하지 않으므로
 	// 보드 읽기는 다른 읽기 라우트와 동일하게 통과한다.
 	mux.HandleFunc("/specs", a.handleBoard)
+	// SPEC-WEB-CONSOLE-013 M3: /model-policy 는 READ-ONLY Model Policy 뷰다.
+	// handleModelPolicy 가 GET 이외 메서드를 405 로 거부하며 쓰기 경로·FieldDef·
+	// status 전이가 전혀 없다 (REQ-WC13-020/021). hostCheckMiddleware 는 GET 을
+	// 게이트하지 않으므로 보드와 동일하게 읽기 통과한다.
+	mux.HandleFunc("/model-policy", a.handleModelPolicy)
 	// SPEC-WEB-CONSOLE-011 M4: profile CRUD (create / delete) — POST-only,
 	// loopback-gated by hostCheckMiddleware. Switch reuses the existing
 	// GET /?profile=<name> load path (no dedicated route needed).

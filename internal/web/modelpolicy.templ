@@ -1,0 +1,85 @@
+package web
+
+// SPEC-WEB-CONSOLE-013 M3 — READ-ONLY Model Policy Templ component.
+//
+// modelPolicyPage renders the standalone Model Policy dashboard (GET
+// /model-policy). It reuses the settings/board page chrome (foucHeadScript,
+// @icon, @boardAppbar) but is a SEPARATE read-only page: it carries no form, no
+// text input, and no dropdown control (the interface-language picker lives
+// inside @boardAppbar, in board.templ — not this file), and no htmx post
+// affordance. The routing profiles render as plain table markup
+// (REQ-WC13-020/021). The legacy flat workflow.model_routing block and
+// workflow.workflow_agents are never rendered (REQ-WC13-022/023).
+
+templ modelPolicyPage(view modelPolicyView) {
+	<!DOCTYPE html>
+	<html lang="en" data-theme="light">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>MoAI Web Console — Model Policy</title>
+			<link rel="stylesheet" href="/static/console.css"/>
+			@templ.Raw(foucHeadScript)
+		</head>
+		<body>
+			@boardAppbar(boardView{BindAddr: view.BindAddr})
+			<main class="page">
+				<div class="pagehead">
+					<h1>Model <span class="accent" data-i18n="mp.title">Policy</span></h1>
+					<p class="pagehead__sub" data-i18n="mp.subtitle">Read-only model routing policy (loopback only — local machine)</p>
+				</div>
+				if view.Banner != "" {
+					@boardBanner(boardView{Banner: view.Banner})
+				}
+				<section class="board-section" aria-labelledby="mp-tier-h">
+					<h2 id="mp-tier-h" data-i18n="mp.tier.title">Active performance tier</h2>
+					<p class="board-section__desc" data-i18n="mp.tier.desc">llm.performance_tier — the routing-profile selector (max/medium/low). Distinct from the Launch section's model_policy (init-time agent frontmatter policy, high/medium/low).</p>
+					if view.PerfTierIsEmpty {
+						<p class="mp-tier-value"><span class="mp-ro" data-i18n="mp.tier.empty">(runtime default: medium)</span></p>
+					} else {
+						<p class="mp-tier-value"><code class="mp-tier-code">{ view.PerfTier }</code></p>
+					}
+				</section>
+				<section class="board-section" aria-labelledby="mp-table-h">
+					<h2 id="mp-table-h" data-i18n="mp.table.title">Routing profiles (3 tiers × 12 cells)</h2>
+					<p class="board-section__desc" data-i18n="mp.table.desc">workflow.model_routing_profiles — model and effort per (performance tier × SPEC tier × phase). Read-only.</p>
+					if view.BlockAbsent {
+						<p class="board-empty" data-i18n="mp.table.absent">model_routing_profiles is absent from workflow.yaml — every lookup falls back to inherit / medium (defaultRoutingEntry).</p>
+					}
+					for _, prof := range view.Profiles {
+						<div class="mp-profile">
+							<h3 class="mp-profile__tier"><span data-i18n="mp.profile.label">Performance tier</span>: <code>{ prof.PerfTier }</code></h3>
+							<table class="mp-table">
+								<thead>
+									<tr>
+										<th data-i18n="mp.col.tier">Tier</th>
+										<th data-i18n="mp.col.phase">Phase</th>
+										<th data-i18n="mp.col.model">Model</th>
+										<th data-i18n="mp.col.effort">Effort</th>
+									</tr>
+								</thead>
+								<tbody>
+									for _, c := range prof.Cells {
+										<tr>
+											<td><code>{ c.Tier }</code></td>
+											<td><code>{ c.Phase }</code></td>
+											<td><code>{ c.Model }</code></td>
+											<td>
+												<code>{ c.Effort }</code>
+												if c.Fallback {
+													<span class="mp-fallback" data-i18n="mp.fallback">(fallback)</span>
+												}
+											</td>
+										</tr>
+									}
+								</tbody>
+							</table>
+						</div>
+					}
+				</section>
+			</main>
+			<script src="/static/i18n.js"></script>
+			<script src="/static/app.js"></script>
+		</body>
+	</html>
+}
