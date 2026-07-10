@@ -41,6 +41,10 @@ const (
 	SectionObservability SectionID = "observability"  // seam 전용
 	SectionSecurity      SectionID = "security"       // seam 전용 (스칼라만; 리스트는 raw view)
 
+	// SPEC-WEB-CONSOLE-013 M2: v2.14.0 이후 신설 config 도메인 2종 (seam 전용).
+	SectionHandoff SectionID = "handoff" // seam 전용 (mode select / guide bool)
+	SectionCache   SectionID = "cache"   // seam 전용 (cacheStrategy.enabled/session_ttl)
+
 	// SPEC-WEB-CONSOLE-011 M3: agent-settings 표면 (REQ-WC11-020..024, 070..073).
 	// workflow.yaml team.role_profiles(7 profiles — effort는 opaque node,
 	// REQ-WEM-006 유지). M5-a B1부터 workflow_agents(7 purposes)는 웹 렌더에서
@@ -66,6 +70,8 @@ func AllSections() []SectionID {
 		SectionFeedback,
 		SectionObservability,
 		SectionSecurity,
+		SectionHandoff,
+		SectionCache,
 		SectionAgentSettings,
 	}
 }

@@ -17,6 +17,7 @@ package settings
 import (
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/harness/v4manifest"
 )
 
@@ -247,6 +248,37 @@ func seamSectionFields() []FieldDef {
 	}
 }
 
+// ─── SPEC-WEB-CONSOLE-013 M2: handoff / cache 섹션 (seam 전용) ────────────────
+
+// handoffModeValues는 handoff.mode의 닫힌 집합 {manual, auto}이다 —
+// handoff_inject.go가 SessionStart마다 문자 그대로 소비하는 값과 일치한다
+// (REQ-WC13-011). 대소문자 정규화는 도입하지 않는다 (acceptance.md §D.3 edge).
+var handoffModeValues = []string{"manual", "auto"}
+
+// handoffFields는 handoff 섹션의 편집 FieldDef를 반환한다: mode(select) +
+// guide(bool). 두 필드 모두 PersistSeam(handoff.yaml) — REQ-WC13-010.
+func handoffFields() []FieldDef {
+	return []FieldDef{
+		withSelect(seamField(SectionHandoff, "handoff", TypeSelect, "handoff", "mode"),
+			"f.handoff.mode.opt.", handoffModeValues, "", ""),
+		seamField(SectionHandoff, "handoff", TypeBool, "handoff", "guide"),
+	}
+}
+
+// cacheFields는 cache 섹션의 편집 FieldDef를 반환한다: cacheStrategy.enabled(bool)
+// + cacheStrategy.session_ttl(select). session_ttl 옵션 집합은 config.
+// ValidSessionTTLs()를 그대로 소비한다 — 재선언 금지, 드리프트 구조적 차단
+// (REQ-WC13-012/013). spec_ttl / min_cacheable_tokens는 신설 FieldDef 대상에서
+// 제외한다 (REQ-WC13-015); seam의 미모델링 키 보존이 파일 값을 무손상 유지한다
+// (REQ-WC13-006).
+func cacheFields() []FieldDef {
+	return []FieldDef{
+		seamField(SectionCache, "cache", TypeBool, "cacheStrategy", "enabled"),
+		withSelect(seamField(SectionCache, "cache", TypeSelect, "cacheStrategy", "session_ttl"),
+			"f.cacheStrategy.session_ttl.opt.", config.ValidSessionTTLs(), "", ""),
+	}
+}
+
 // ─── M3: agent-settings 필드 (REQ-WC11-020..024, 070..073) ───────────────────
 
 // agentSettingsFields는 agent-settings의 웹 렌더 표면을 반환한다:
@@ -301,6 +333,8 @@ func sectionExtraFields() []FieldDef {
 	fields = append(fields, gitStrategyFields()...)
 	fields = append(fields, llmFields()...)
 	fields = append(fields, seamSectionFields()...)
+	fields = append(fields, handoffFields()...) // SPEC-WEB-CONSOLE-013 M2
+	fields = append(fields, cacheFields()...)    // SPEC-WEB-CONSOLE-013 M2
 	fields = append(fields, agentSettingsFields()...)
 	return fields
 }
@@ -358,6 +392,8 @@ func SchemaSectionIDs() []SectionID {
 		SectionFeedback,
 		SectionObservability,
 		SectionSecurity,
+		SectionHandoff,
+		SectionCache,
 		SectionAgentSettings,
 	}
 }

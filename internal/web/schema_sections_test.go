@@ -19,11 +19,13 @@ import (
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
-// allSectionFixtures는 10개 섹션 fixture 이름이다 (settings testdata 재사용 —
-// fixture 중복 없이 실제 파일 사본으로 테스트).
+// allSectionFixtures는 섹션 fixture 이름이다 (settings testdata 재사용 —
+// fixture 중복 없이 실제 파일 사본으로 테스트). SPEC-WEB-CONSOLE-013 M2에서
+// handoff/cache 2종이 추가되었다.
 var allSectionFixtures = []string{
 	"git-strategy", "llm", "quality",
 	"workflow", "harness", "ralph", "research", "feedback", "observability", "security",
+	"handoff", "cache",
 }
 
 // seedWebSections는 internal/settings/testdata/sections의 실제 섹션 fixture를
@@ -308,6 +310,78 @@ func TestSaveSchemaSmokeAllSections(t *testing.T) {
 	} {
 		if got := values[name]; got != want {
 			t.Errorf("persisted %q = %q, want %q", name, got, want)
+		}
+	}
+}
+
+// TestHandoffModeValidation은 AC-WC13-012를 검증한다: handoff.mode 닫힌 집합
+// {manual, auto} 밖의 값 제출은 4xx atomic reject되고 handoff.yaml이 바이트
+// 무변경이며(EC-2), 유효 값(auto)은 seam으로 반영되고 미노출/주석이 보존된다.
+func TestHandoffModeValidation(t *testing.T) {
+	a, root := newSchemaTestApp(t)
+	before := readSectionFile(t, root, "handoff")
+
+	// (1) 닫힌 집합 밖 값 → 4xx + 파일 무변경.
+	rec := postSave(t, a, url.Values{"handoff.mode": {"bogus"}})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("POST handoff.mode=bogus status = %d, want 400 (body: %.300s)", rec.Code, rec.Body.String())
+	}
+	if got := readSectionFile(t, root, "handoff"); got != before {
+		t.Error("handoff.yaml changed despite validation reject (atomic reject violated)")
+	}
+
+	// (2) 유효 값 auto → 200 + seam 반영 + guide/주석 보존.
+	rec2 := postSave(t, a, url.Values{"handoff.mode": {"auto"}})
+	if rec2.Code != http.StatusOK {
+		t.Fatalf("POST handoff.mode=auto status = %d, want 200 (body: %.300s)", rec2.Code, rec2.Body.String())
+	}
+	after := readSectionFile(t, root, "handoff")
+	if !strings.Contains(after, "mode: auto") {
+		t.Errorf("handoff.mode=auto not persisted:\n%s", after)
+	}
+	if !strings.Contains(after, "guide: false") {
+		t.Errorf("handoff.guide clobbered by mode edit — seam line-scope violated:\n%s", after)
+	}
+	if !strings.Contains(after, "# guide:") {
+		t.Error("handoff.yaml comments not preserved by seam write")
+	}
+}
+
+// TestCacheSessionTTLValidation은 AC-WC13-013 웹 계층을 검증한다:
+// cacheStrategy.session_ttl 닫힌 집합 {1h,5m,off} 밖의 값 제출은 4xx atomic
+// reject되고 cache.yaml이 무변경이며, 미노출 키(spec_ttl/min_cacheable_tokens)가
+// 보존된다 (REQ-WC13-006/013 — acceptance.md §D.2 시나리오 2).
+func TestCacheSessionTTLValidation(t *testing.T) {
+	a, root := newSchemaTestApp(t)
+	before := readSectionFile(t, root, "cache")
+
+	rec := postSave(t, a, url.Values{"cacheStrategy.session_ttl": {"2h"}})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("POST session_ttl=2h status = %d, want 400 (body: %.300s)", rec.Code, rec.Body.String())
+	}
+	if got := readSectionFile(t, root, "cache"); got != before {
+		t.Error("cache.yaml changed despite closed-set reject (atomic reject violated)")
+	}
+
+	// 유효 값 off + enabled 토글 → 반영 + 미노출 키 보존.
+	rec2 := postSave(t, a, url.Values{
+		"cacheStrategy.session_ttl":      {"off"},
+		"cacheStrategy.enabled__present": {"1"},
+		"cacheStrategy.enabled":          {"on"},
+	})
+	if rec2.Code != http.StatusOK {
+		t.Fatalf("POST session_ttl=off status = %d, want 200 (body: %.300s)", rec2.Code, rec2.Body.String())
+	}
+	after := readSectionFile(t, root, "cache")
+	if !strings.Contains(after, "session_ttl: off") && !strings.Contains(after, "session_ttl: \"off\"") {
+		t.Errorf("session_ttl=off not persisted:\n%s", after)
+	}
+	if !strings.Contains(after, "enabled: true") {
+		t.Errorf("cacheStrategy.enabled not persisted:\n%s", after)
+	}
+	for _, keep := range []string{"spec_ttl", "min_cacheable_tokens"} {
+		if !strings.Contains(after, keep) {
+			t.Errorf("unexposed key %q lost after seam edit (REQ-WC13-006):\n%s", keep, after)
 		}
 	}
 }

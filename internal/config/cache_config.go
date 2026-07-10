@@ -46,11 +46,34 @@ type cacheFileWrapper struct {
 	CacheStrategy CacheConfig `yaml:"cacheStrategy"`
 }
 
+// sessionTTLValues is the ordered closed set of accepted session_ttl enum
+// values — the single source for both the map-based validator below and the
+// exported ValidSessionTTLs accessor, so the two cannot drift apart.
+var sessionTTLValues = []string{"1h", "5m", "off"}
+
 // validSessionTTLs and validSpecTTLs enumerate the accepted enum values.
+// validSessionTTLs is DERIVED from sessionTTLValues (no independent literal).
 var (
-	validSessionTTLs = map[string]bool{"1h": true, "5m": true, "off": true}
+	validSessionTTLs = stringSet(sessionTTLValues)
 	validSpecTTLs    = map[string]bool{"5m": true, "off": true}
 )
+
+// ValidSessionTTLs returns the ordered closed set of accepted cacheStrategy
+// session_ttl values ("1h" | "5m" | "off"). The moai web console cache section
+// consumes this as the single source of the session_ttl select options
+// (SPEC-WEB-CONSOLE-013 REQ-WC13-013) — no divergent re-declaration is allowed.
+func ValidSessionTTLs() []string {
+	return append([]string(nil), sessionTTLValues...)
+}
+
+// stringSet builds a membership set from an ordered slice.
+func stringSet(values []string) map[string]bool {
+	m := make(map[string]bool, len(values))
+	for _, v := range values {
+		m[v] = true
+	}
+	return m
+}
 
 // DefaultCacheConfig returns the built-in defaults. Caching ships disabled until
 // the user explicitly opts in, but the TTL and threshold defaults are populated

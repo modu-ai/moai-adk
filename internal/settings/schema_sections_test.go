@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"gopkg.in/yaml.v3"
 )
 
@@ -326,7 +327,8 @@ func TestApplySchemaEditsAllFieldsRoundTrip(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	seedTypedFixtures(t, root, "git-strategy", "llm", "quality",
-		"workflow", "harness", "ralph", "research", "feedback", "observability", "security")
+		"workflow", "harness", "ralph", "research", "feedback", "observability", "security",
+		"handoff", "cache") // SPEC-WEB-CONSOLE-013 M2 신규 seam 섹션
 
 	edits := map[string]string{}
 	for _, f := range AllFields() {
@@ -478,6 +480,112 @@ func TestLLMTypedSavePreservesLegacyGhostKeys(t *testing.T) {
 		if !strings.Contains(string(after), key+": "+val) {
 			t.Errorf("legacy key %s: %s destroyed by typed re-marshal (EC-2):\n%s", key, val, after)
 		}
+	}
+}
+
+// TestHandoffCacheFields는 SPEC-WEB-CONSOLE-013 M2 신규 섹션의 FieldDef 구성을
+// 파생 방식으로 검증한다 (AC-WC13-011 — 총수 하드코딩 금지). handoff 2필드
+// (mode select, guide bool) + cache 2필드(enabled bool, session_ttl select),
+// 전부 PersistSeam kind이고 올바른 섹션 파일로 라우팅된다.
+func TestHandoffCacheFields(t *testing.T) {
+	t.Parallel()
+
+	type want struct {
+		typ     FieldType
+		file    string
+		isSelopt bool
+	}
+	cases := map[string]want{
+		"handoff.mode":              {TypeSelect, "handoff", true},
+		"handoff.guide":             {TypeBool, "handoff", false},
+		"cacheStrategy.enabled":     {TypeBool, "cache", false},
+		"cacheStrategy.session_ttl": {TypeSelect, "cache", true},
+	}
+
+	got := map[string]FieldDef{}
+	for _, f := range SectionFields(SectionHandoff) {
+		got[f.Name] = f
+	}
+	for _, f := range SectionFields(SectionCache) {
+		got[f.Name] = f
+	}
+
+	// handoff 섹션은 정확히 2필드, cache 섹션은 정확히 2필드 (파생 카운트).
+	if n := len(SectionFields(SectionHandoff)); n != 2 {
+		t.Errorf("SectionHandoff field count = %d, want 2", n)
+	}
+	if n := len(SectionFields(SectionCache)); n != 2 {
+		t.Errorf("SectionCache field count = %d, want 2", n)
+	}
+
+	for name, w := range cases {
+		f, ok := got[name]
+		if !ok {
+			t.Errorf("field %q missing", name)
+			continue
+		}
+		if f.Type != w.typ {
+			t.Errorf("field %q type = %q, want %q", name, f.Type, w.typ)
+		}
+		if f.Persist.Kind != PersistSeam {
+			t.Errorf("field %q persist kind = %q, want PersistSeam", name, f.Persist.Kind)
+		}
+		if f.Persist.Section != w.file {
+			t.Errorf("field %q seam section = %q, want %q", name, f.Persist.Section, w.file)
+		}
+		if w.isSelopt {
+			if len(f.Options) == 0 {
+				t.Errorf("select field %q has no options", name)
+			}
+			if f.Validate == nil {
+				t.Errorf("select field %q has no validator (closed-set membership)", name)
+			}
+		}
+	}
+}
+
+// TestSessionTTLClosedSetSymmetry는 settings측 cacheStrategy.session_ttl select
+// 옵션 집합이 config측 validSessionTTLs {1h,5m,off}와 정확히 일치함을 검증한다
+// (AC-WC13-013 — export 재사용으로 드리프트 구조적 차단). 옵션은 config.
+// ValidSessionTTLs()에서 직접 파생되므로 이 대칭은 구조적으로 보장되나, 명시
+// 가드로 회귀를 고정한다.
+func TestSessionTTLClosedSetSymmetry(t *testing.T) {
+	t.Parallel()
+
+	var sttl *FieldDef
+	for _, f := range SectionFields(SectionCache) {
+		if f.Name == "cacheStrategy.session_ttl" {
+			ff := f
+			sttl = &ff
+			break
+		}
+	}
+	if sttl == nil {
+		t.Fatal("cacheStrategy.session_ttl field not found in SectionCache")
+	}
+
+	gotOpts := map[string]bool{}
+	for _, o := range sttl.Options {
+		gotOpts[o.Value] = true
+	}
+	wantSet := config.ValidSessionTTLs()
+	if len(gotOpts) != len(wantSet) {
+		t.Fatalf("session_ttl option count = %d, want %d (config.ValidSessionTTLs)", len(gotOpts), len(wantSet))
+	}
+	for _, v := range wantSet {
+		if !gotOpts[v] {
+			t.Errorf("session_ttl option %q missing (config.ValidSessionTTLs symmetry)", v)
+		}
+	}
+	// 리터럴 고정: 닫힌 집합은 정확히 {1h, 5m, off}.
+	for _, v := range []string{"1h", "5m", "off"} {
+		if !gotOpts[v] {
+			t.Errorf("session_ttl closed set missing literal %q", v)
+		}
+	}
+	// 검증기가 집합 밖 값을 거부한다.
+	if sttl.Validate != nil && sttl.Validate("2h") {
+		t.Error("session_ttl validator accepted out-of-set value 2h")
 	}
 }
 

@@ -44,6 +44,9 @@ func consoleTabs() []consoleTab {
 		{ID: "feedback", LabelKey: "sec.feedback.title", Baseline: "Feedback"},
 		{ID: "observability", LabelKey: "sec.observability.title", Baseline: "Observability"},
 		{ID: "security", LabelKey: "sec.security.title", Baseline: "Security"},
+		// SPEC-WEB-CONSOLE-013 M2 신규 섹션 (SchemaSectionIDs 순서와 일치).
+		{ID: "handoff", LabelKey: "sec.handoff.title", Baseline: "Handoff"},
+		{ID: "cache", LabelKey: "sec.cache.title", Baseline: "Prompt Cache"},
 		{ID: "agent_settings", LabelKey: "sec.agent_settings.title", Baseline: "Agent Settings"},
 		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Sub-agent Frontmatter"},
 	}
@@ -73,6 +76,8 @@ func schemaSectionMetas() []schemaSectionMeta {
 		{settings.SectionFeedback, "alert-circle", "Feedback", "Feedback workflow target repository."},
 		{settings.SectionObservability, "panel-bottom", "Observability", "Trace, report, and hook metrics settings."},
 		{settings.SectionSecurity, "check-circle", "Security", "Permission strictness and sandbox settings (pattern lists are read-only)."},
+		{settings.SectionHandoff, "power", "Handoff", "Auto-resume handoff at session boundaries — mode (manual/auto) and startup hint."},
+		{settings.SectionCache, "rocket", "Prompt Cache", "Anthropic prompt caching — enable cache_control injection and session breakpoint TTL."},
 		{settings.SectionAgentSettings, "user-round", "Agent Settings", "Team role profiles and workflow-agent purpose defaults (workflow.yaml — comment-preserving writes)."},
 	}
 }
