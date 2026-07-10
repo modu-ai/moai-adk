@@ -103,9 +103,9 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Summary pill row.
-	pPass := tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: fmt.Sprintf("통과 %d", okCount), Theme: &th})
-	pWarn := tui.Pill(tui.PillOpts{Kind: tui.PillWarn, Solid: false, Label: fmt.Sprintf("주의 %d", warnCount), Theme: &th})
-	pErr := tui.Pill(tui.PillOpts{Kind: tui.PillErr, Solid: false, Label: fmt.Sprintf("실패 %d", failCount), Theme: &th})
+	pPass := tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: fmt.Sprintf("Pass %d", okCount), Theme: &th})
+	pWarn := tui.Pill(tui.PillOpts{Kind: tui.PillWarn, Solid: false, Label: fmt.Sprintf("Warn %d", warnCount), Theme: &th})
+	pErr := tui.Pill(tui.PillOpts{Kind: tui.PillErr, Solid: false, Label: fmt.Sprintf("Fail %d", failCount), Theme: &th})
 	summaryPills := pPass + "  " + pWarn + "  " + pErr
 
 	bodyLines = append(bodyLines, summaryPills)
@@ -798,8 +798,8 @@ func checkGlamourCache(_ bool) DiagnosticCheck {
 	return DiagnosticCheck{
 		Name:    "Glamour Cache",
 		Status:  uikit.CheckWarn,
-		Message: "glamour 미도입",
-		Detail:  "후속 SPEC에서 실제 검사로 교체 예정",
+		Message: "glamour not integrated",
+		Detail:  "to be replaced with a real check in a follow-up SPEC",
 	}
 }
 
@@ -812,19 +812,19 @@ func checkMigration(projectDir string, verbose bool) DiagnosticCheck {
 	current, pending, lastApplied, err := runner.Status()
 	if err != nil {
 		check.Status = uikit.CheckFail
-		check.Message = "마이그레이션 상태 조회 실패"
+		check.Message = "failed to query migration status"
 		check.Detail = err.Error()
 		return check
 	}
 
 	check.Status = uikit.CheckOK
-	check.Message = fmt.Sprintf("현재 버전 %d", current)
+	check.Message = fmt.Sprintf("current version %d", current)
 
 	if len(pending) > 0 {
 		check.Status = uikit.CheckWarn
-		check.Message = fmt.Sprintf("%d개 pending 마이그레이션", len(pending))
+		check.Message = fmt.Sprintf("%d pending migration(s)", len(pending))
 		if verbose {
-			check.Detail = fmt.Sprintf("Pending 버전: %v", pending)
+			check.Detail = fmt.Sprintf("pending versions: %v", pending)
 		}
 	}
 
@@ -832,7 +832,7 @@ func checkMigration(projectDir string, verbose bool) DiagnosticCheck {
 		if check.Detail != "" {
 			check.Detail += "\n"
 		}
-		check.Detail += fmt.Sprintf("최근 적용: %s (버전 %d)", lastApplied.Name, lastApplied.Version)
+		check.Detail += fmt.Sprintf("last applied: %s (version %d)", lastApplied.Name, lastApplied.Version)
 	}
 
 	return check

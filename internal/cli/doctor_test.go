@@ -80,9 +80,9 @@ func TestDoctorCmd_Execution(t *testing.T) {
 	if !strings.Contains(output, "System Diagnostics") {
 		t.Errorf("doctor output should contain 'System Diagnostics', got %q", output)
 	}
-	// After the tui migration, the summary uses the Pill format with the Korean "passed" label.
-	if !strings.Contains(output, "통과") {
-		t.Errorf("doctor output should contain '통과' in summary, got %q", output)
+	// After the tui migration, the summary uses the Pill format with the "Pass" label.
+	if !strings.Contains(output, "Pass") {
+		t.Errorf("doctor output should contain 'Pass' in summary, got %q", output)
 	}
 }
 

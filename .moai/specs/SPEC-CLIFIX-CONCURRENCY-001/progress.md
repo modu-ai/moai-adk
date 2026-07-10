@@ -163,7 +163,29 @@ m1_to_mN_commit_strategy: per-milestone (M1 c31db9e2b-precursor, M2, M3 already 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-11
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+mx_complete_at: 2026-07-11
+mx_commit_sha: <NA>
+mx_status: <NA>
+b12_changelog_entry_position: appended to CHANGELOG.md [Unreleased] section
+b12_self_tests:
+  - pre-emission grep: `grep -c 'SPEC-CLIFIX-CONCURRENCY-001' CHANGELOG.md` → 0 (no duplicates)
+  - ac_count_match: `grep -cE '^\| \*\*AC-[A-Z]+-[0-9]+\*\*' .moai/specs/SPEC-CLIFIX-CONCURRENCY-001/acceptance.md` → 6 entries (6 AC in SSOT acceptance.md)
+  - file_path_verification: 4 test files verified via ls (all exist)
+frontmatter_status_transitions:
+  spec.md: status in-progress → completed, version 0.2.1 → 1.0.0, updated 2026-07-11
+  plan.md: status in-progress → implemented → completed (atomic with sync commit)
+  acceptance.md: status in-progress → implemented → completed (atomic with sync commit)
+  progress.md: §E.4 populated (sync_commit_sha placeholder to be backfilled)
+canary_compliance_check:
+  - mode-5 sequential delegation: observed per progress.md §F (Mode Selection)
+  - TDD RED→GREEN: all 4 milestones have reproduction tests (M1-M4)
+  - cross-platform build: darwin+windows pass (verified)
+  - @MX tag validation: grep confirmed in settings.go, glm_tools.go, update_noise.go
+```
 
 
 ## §F Phase 0.95 Mode Selection

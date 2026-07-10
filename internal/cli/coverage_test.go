@@ -961,9 +961,9 @@ func TestRunDoctor_FixFlag(t *testing.T) {
 	// Output may or may not contain "Suggested fixes" depending on whether any check fails.
 	// The fix code path is still exercised either way.
 	output := buf.String()
-	// After the tui migration, the summary uses the Pill format with the Korean "passed" label (previously "N passed").
-	if !strings.Contains(output, "통과") {
-		t.Errorf("output should contain summary with '통과', got %q", output)
+	// After the tui migration, the summary uses the Pill format with the "Pass" label (previously "N passed").
+	if !strings.Contains(output, "Pass") {
+		t.Errorf("output should contain summary with 'Pass', got %q", output)
 	}
 }
 

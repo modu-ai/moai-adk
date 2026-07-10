@@ -170,8 +170,8 @@ func TestDoctor_GlamourCachePlaceholder(t *testing.T) {
 	if !strings.Contains(got, "Glamour Cache") {
 		t.Errorf("doctor output should contain 'Glamour Cache' D8 placeholder")
 	}
-	if !strings.Contains(got, "glamour 미도입") {
-		t.Errorf("doctor output should contain 'glamour 미도입' placeholder message")
+	if !strings.Contains(got, "glamour not integrated") {
+		t.Errorf("doctor output should contain 'glamour not integrated' placeholder message")
 	}
 }
 
@@ -187,8 +187,8 @@ func TestDoctor_SummaryPillsPresent(t *testing.T) {
 
 	got := captureDoctorCmd(t)
 	// At least one of the passed / warning / failed Pills must be present in the output.
-	if !strings.Contains(got, "통과") {
-		t.Errorf("doctor output should contain '통과' pill in summary")
+	if !strings.Contains(got, "Pass") {
+		t.Errorf("doctor output should contain 'Pass' pill in summary")
 	}
 }
 
