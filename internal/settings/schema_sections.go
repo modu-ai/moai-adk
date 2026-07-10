@@ -220,7 +220,10 @@ func seamSectionFields() []FieldDef {
 		s(SectionHarness, "harness", TypeText, "harness", "mode_defaults", "solo"),
 		s(SectionHarness, "harness", TypeText, "harness", "mode_defaults", "team"),
 		s(SectionHarness, "harness", TypeBool, "learning", "enabled"),
-		s(SectionHarness, "harness", TypeBool, "learning", "auto_apply"),
+		// SPEC-WEB-CONSOLE-014 M2 (REQ-WC14-001): learning.auto_apply 편집 필드 철거 →
+		// ReadOnlyDisplayFields로 강등. 파이프라인 in-memory AutoApply:true는 디스크 값
+		// (auto_apply:false)을 절대 변경하지 않는 FROZEN 불변식(governance)이라 편집
+		// 노출은 오해를 유발한다 (spec.md F3).
 		s(SectionHarness, "harness", TypeInt, "learning", "log_retention_days"),
 
 		// ralph — M4 다이어트: 런타임 reader가 있는 2개만 잔류
@@ -238,7 +241,11 @@ func seamSectionFields() []FieldDef {
 		s(SectionObservability, "observability", TypeText, "observability", "report_dir"),
 		s(SectionObservability, "observability", TypeInt, "observability", "retention_days"),
 		s(SectionObservability, "observability", TypeText, "observability", "trace_dir"),
-		s(SectionObservability, "observability", TypeText, "observability", "hook_metrics", "output_path"),
+		// SPEC-WEB-CONSOLE-014 M2 (REQ-WC14-040): hook_metrics.output_path 편집 필드
+		// 철거 → ReadOnlyDisplayFields로 강등. dead config — non-schema reader 0건이고
+		// 실제 기록 경로는 hookMetricsRelPath 상수 고정(post_tool_duration.go)이라 편집
+		// 노출은 오해를 유발한다 (spec.md F9). slow_hook_threshold_ms는 reader
+		// 실존(post_tool_duration.go 로컬 struct 디코드)이라 editable 잔류(회귀 핀).
 		s(SectionObservability, "observability", TypeInt, "observability", "hook_metrics", "slow_hook_threshold_ms"),
 
 		// security (스칼라만 — 패턴 리스트는 raw view, REQ-WC11-062).
@@ -348,14 +355,24 @@ type ReadOnlyField struct {
 	File    string    // 섹션 파일 base name
 	Name    string    // 표시 식별자 (dot-path)
 	Path    []string  // yaml 경로
+	// NoteKey는 read-only 표시의 설명 라벨 i18n 키다. 빈 값이면 제네릭 "ro.note"
+	// (runtime-managed)를 렌더한다. SPEC-WEB-CONSOLE-014 M2: governance FROZEN /
+	// dead-config 강등 키에 정직한 설명 라벨을 부여한다 (REQ-WC14-001/040).
+	NoteKey string
 }
 
 // ReadOnlyDisplayFields는 read-only 표시 키를 반환한다: llm.mode / llm.team_mode
-// (runtime-managed 레이스, REQ-WC11-013).
+// (runtime-managed 레이스, REQ-WC11-013) + SPEC-WEB-CONSOLE-014 강등 키 2종
+// (learning.auto_apply governance FROZEN, observability.hook_metrics.output_path
+// dead config — REQ-WC14-001/040).
 func ReadOnlyDisplayFields() []ReadOnlyField {
 	return []ReadOnlyField{
-		{SectionLLM, "llm", "llm.mode", []string{"llm", "mode"}},
-		{SectionLLM, "llm", "llm.team_mode", []string{"llm", "team_mode"}},
+		{SectionLLM, "llm", "llm.mode", []string{"llm", "mode"}, ""},
+		{SectionLLM, "llm", "llm.team_mode", []string{"llm", "team_mode"}, ""},
+		// SPEC-WEB-CONSOLE-014 M2 (REQ-WC14-001): governance FROZEN false.
+		{SectionHarness, "harness", "learning.auto_apply", []string{"learning", "auto_apply"}, "ro.note.governance"},
+		// SPEC-WEB-CONSOLE-014 M2 (REQ-WC14-040): dead config (기록 경로 상수 고정).
+		{SectionObservability, "observability", "observability.hook_metrics.output_path", []string{"observability", "hook_metrics", "output_path"}, "ro.note.dead_config"},
 	}
 }
 
@@ -366,14 +383,25 @@ type RawBlockRef struct {
 	File    string
 	Name    string // 표시 식별자
 	Path    []string
+	// NoteKey는 raw view 요약 라벨 i18n 키다. 빈 값이면 제네릭 "raw.note"
+	// (structured block, read-only)를 렌더한다. SPEC-WEB-CONSOLE-014: 정보성
+	// 표시(런타임 미배선/컴파일 상수 enforcement) 키에 정직한 라벨을 부여한다
+	// (REQ-WC14-003/020 — F2-style honest label).
+	NoteKey string
 }
 
-// RawViewBlocks는 raw view 대상 서브블록을 반환한다.
+// RawViewBlocks는 raw view 대상 서브블록을 반환한다. SPEC-WEB-CONSOLE-014 M2로
+// learning 리스트 키가 추가되었다 (M4에서 security.sandbox + mx 추가).
 func RawViewBlocks() []RawBlockRef {
 	return []RawBlockRef{
-		{SectionWorkflow, "workflow", "workflow.team.patterns", []string{"workflow", "team", "patterns"}},
-		{SectionHarness, "harness", "harness.levels", []string{"harness", "levels"}},
-		{SectionSecurity, "security", "security.extra_dangerous_bash_patterns", []string{"security", "extra_dangerous_bash_patterns"}},
+		{SectionWorkflow, "workflow", "workflow.team.patterns", []string{"workflow", "team", "patterns"}, ""},
+		{SectionHarness, "harness", "harness.levels", []string{"harness", "levels"}, ""},
+		{SectionSecurity, "security", "security.extra_dangerous_bash_patterns", []string{"security", "extra_dangerous_bash_patterns"}, ""},
+		// SPEC-WEB-CONSOLE-014 M2 — learning list 키 (REQ-WC14-002/003).
+		// tier_thresholds: 행동적 reader 실존(hook tier 분류) → 제네릭 라벨.
+		{SectionHarness, "harness", "learning.tier_thresholds", []string{"learning", "tier_thresholds"}, ""},
+		// rate_limit: 표시 전용 — enforcement는 컴파일 상수 → 정보성 정직 라벨.
+		{SectionHarness, "harness", "learning.rate_limit", []string{"learning", "rate_limit"}, "raw.note.informational"},
 	}
 }
 

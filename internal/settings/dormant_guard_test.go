@@ -57,6 +57,11 @@ func dormantDenylist() []denyRule {
 		{"branch_creation.auto_enabled", denySubstr, "F5 forward-compat scaffold (no reader)"},
 		{"automation.auto_branch", denySubstr, "F5 forward-compat scaffold (no reader)"},
 		{"automation.auto_pr", denySubstr, "F5 forward-compat scaffold (no reader)"},
+		// F3/F9 (iter-2 B14) — M2 강등과 함께 추가되는 TDD RED→GREEN 쌍.
+		// learning.auto_apply: governance FROZEN false (편집 철거 → read-only).
+		// observability.hook_metrics.output_path: dead config (편집 철거 → read-only).
+		{"learning.auto_apply", denyExact, "F3 governance FROZEN false (read-only display)"},
+		{"observability.hook_metrics.output_path", denyExact, "F9 dead config (read-only display)"},
 	}
 }
 

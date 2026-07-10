@@ -212,13 +212,13 @@ templ fieldsetSchemaSection(view pageView, meta schemaSectionMeta) {
 				}
 				for _, ro := range settings.ReadOnlyDisplayFields() {
 					if ro.Section == meta.ID {
-						@schemaReadOnlyRow(ro.Name, view.SchemaValues[ro.Name])
+						@schemaReadOnlyRow(ro.Name, view.SchemaValues[ro.Name], ro.NoteKey)
 					}
 				}
 			</div>
 			for _, rb := range settings.RawViewBlocks() {
 				if rb.Section == meta.ID {
-					@schemaRawBlock(rb.Name, view.RawBlocks[rb.Name])
+					@schemaRawBlock(rb.Name, view.RawBlocks[rb.Name], rb.NoteKey)
 				}
 			}
 		</div>
@@ -328,18 +328,22 @@ templ schemaSelectRow(f settings.FieldDef, value string, errs map[string]string)
 
 // schemaReadOnlyRow — read-only 표시 키 (REQ-WC11-013/019). form 컨트롤을 일절
 // 렌더하지 않으므로 제출 자체가 불가능하다 — 파일 값 불변이 구조적으로 보장.
-templ schemaReadOnlyRow(name, value string) {
+// noteKey가 비어 있으면 제네릭 "ro.note"를, 아니면 정직한 설명 라벨 키를 방출한다
+// (SPEC-WEB-CONSOLE-014 M2 — governance FROZEN / dead-config 강등, REQ-WC14-001/040).
+templ schemaReadOnlyRow(name, value, noteKey string) {
 	<div class="field field--readonly">
-		<span class="field__label"><code class="field__key">{ name }</code><span class="field__ro" data-i18n="ro.note">read-only (runtime-managed)</span></span>
+		<span class="field__label"><code class="field__key">{ name }</code><span class="field__ro" data-i18n={ roNoteKey(noteKey) }>{ roNoteBaseline(noteKey) }</span></span>
 		<span class="input input--ro">{ value }</span>
 	</div>
 }
 
 // schemaRawBlock — form UI에 맞지 않는 map/list 서브블록의 collapsed raw view
-// (REQ-WC11-062). input 컨트롤 0 — <pre> 텍스트 표시만.
-templ schemaRawBlock(name, content string) {
+// (REQ-WC11-062). input 컨트롤 0 — <pre> 텍스트 표시만. noteKey가 비어 있으면
+// 제네릭 "raw.note"를, 아니면 정보성 정직 라벨 키를 방출한다 (SPEC-WEB-CONSOLE-014
+// — enforcement 컴파일 상수 / config-미배선 scaffold, REQ-WC14-003/020).
+templ schemaRawBlock(name, content, noteKey string) {
 	<details class="rawview">
-		<summary><code class="field__key">{ name }</code> <span data-i18n="raw.note">structured block (read-only)</span></summary>
+		<summary><code class="field__key">{ name }</code> <span data-i18n={ rawNoteKey(noteKey) }>{ rawNoteBaseline(noteKey) }</span></summary>
 		<pre class="rawview__pre">{ content }</pre>
 	</details>
 }

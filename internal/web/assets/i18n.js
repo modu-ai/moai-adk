@@ -33,7 +33,10 @@ window.MOAI_I18N = {
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "field(s)",
     "ro.note": "read-only (runtime-managed)",
+    "ro.note.governance": "read-only — governance FROZEN (auto_apply stays false)",
+    "ro.note.dead_config": "read-only — path fixed by the runtime (informational)",
     "raw.note": "structured block (read-only)",
+    "raw.note.informational": "informational — not wired to runtime enforcement",
     "sec.quality_extras.title": "Quality (advanced)",
     "sec.quality_extras.desc": "Remaining quality.yaml keys — DDD/TDD settings, exemptions, and test quality.",
     "sec.git_strategy.title": "Git Strategy",
@@ -408,7 +411,10 @@ window.MOAI_I18N = {
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "개 필드",
     "ro.note": "읽기 전용 (런타임 관리)",
+    "ro.note.governance": "읽기 전용 — 거버넌스 FROZEN (auto_apply는 false 고정)",
+    "ro.note.dead_config": "읽기 전용 — 경로는 런타임이 고정 (정보성 표시)",
     "raw.note": "구조화 블록 (읽기 전용)",
+    "raw.note.informational": "정보성 — 런타임 enforcement에 미배선된 표시값",
     "sec.quality_extras.title": "품질 (고급)",
     "sec.quality_extras.desc": "quality.yaml 잔여 키 — DDD/TDD 설정, 커버리지 면제, 테스트 품질.",
     "sec.git_strategy.title": "Git 전략",
@@ -783,7 +789,10 @@ window.MOAI_I18N = {
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "項目",
     "ro.note": "読み取り専用（ランタイム管理）",
+    "ro.note.governance": "読み取り専用 — ガバナンス FROZEN（auto_apply は false 固定）",
+    "ro.note.dead_config": "読み取り専用 — パスはランタイムが固定（情報表示）",
     "raw.note": "構造化ブロック（読み取り専用）",
+    "raw.note.informational": "情報表示 — ランタイム実施に未接続の表示値",
     "sec.quality_extras.title": "品質（詳細）",
     "sec.quality_extras.desc": "quality.yaml の残りのキー — DDD/TDD 設定、カバレッジ免除、テスト品質。",
     "sec.git_strategy.title": "Git 戦略",
@@ -1158,7 +1167,10 @@ window.MOAI_I18N = {
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "个字段",
     "ro.note": "只读（运行时管理）",
+    "ro.note.governance": "只读 — 治理 FROZEN（auto_apply 固定为 false）",
+    "ro.note.dead_config": "只读 — 路径由运行时固定（仅供参考）",
     "raw.note": "结构化块（只读）",
+    "raw.note.informational": "仅供参考 — 显示值未接入运行时强制执行",
     "sec.quality_extras.title": "质量（高级）",
     "sec.quality_extras.desc": "quality.yaml 其余键 — DDD/TDD 设置、覆盖率豁免与测试质量。",
     "sec.git_strategy.title": "Git 策略",

@@ -183,9 +183,51 @@ func TestApplySchemaEditsRejectsUnknownAndReadOnly(t *testing.T) {
 		"llm.performance_tier", "git_strategy.team.required_reviews",
 		"quality.coverage_threshold", "ralph.loop.max_iterations",
 		"research.enabled",
+		// SPEC-WEB-CONSOLE-014 M2: 편집 철거 → read-only 강등 키 (쓰기 거부).
+		// learning.auto_apply(F3 governance FROZEN), output_path(F9 dead config).
+		"learning.auto_apply", "observability.hook_metrics.output_path",
 	} {
 		if err := ApplySchemaEdits(root, map[string]string{name: "x"}); err == nil {
 			t.Errorf("edit %q: want rejection, got nil", name)
+		}
+	}
+}
+
+// TestHonestDemotionReadOnlyAndRaw는 SPEC-WEB-CONSOLE-014 M2 정직화를 검증한다:
+// (i) learning.auto_apply / observability.hook_metrics.output_path는 편집 필드에서
+// 철거되고 read-only 표시 키로 등록됨 (REQ-WC14-001/040), (ii) learning.tier_thresholds /
+// learning.rate_limit는 raw view 블록으로 등록됨 (REQ-WC14-002/003).
+func TestHonestDemotionReadOnlyAndRaw(t *testing.T) {
+	t.Parallel()
+
+	editable := map[string]bool{}
+	for _, f := range AllFields() {
+		editable[f.Name] = true
+	}
+	// (i) 강등 키는 편집 가능 집합에 없어야 한다.
+	for _, name := range []string{"learning.auto_apply", "observability.hook_metrics.output_path"} {
+		if editable[name] {
+			t.Errorf("demoted key %q must NOT be an editable field (REQ-WC14-001/040)", name)
+		}
+	}
+	// (i) 강등 키는 read-only 표시 집합에 있어야 한다.
+	ro := map[string]bool{}
+	for _, r := range ReadOnlyDisplayFields() {
+		ro[r.Name] = true
+	}
+	for _, name := range []string{"learning.auto_apply", "observability.hook_metrics.output_path"} {
+		if !ro[name] {
+			t.Errorf("demoted key %q must be a read-only display field (REQ-WC14-001/040)", name)
+		}
+	}
+	// (ii) learning list 키는 raw view 블록에 있어야 한다.
+	raw := map[string]bool{}
+	for _, rb := range RawViewBlocks() {
+		raw[rb.Name] = true
+	}
+	for _, name := range []string{"learning.tier_thresholds", "learning.rate_limit"} {
+		if !raw[name] {
+			t.Errorf("list key %q must be a raw view block (REQ-WC14-002/003)", name)
 		}
 	}
 }
@@ -258,6 +300,13 @@ func TestRawBlockValues(t *testing.T) {
 	}
 	if !strings.Contains(blocks["harness.levels"], "thorough:") {
 		t.Errorf("harness.levels raw block missing content: %q", blocks["harness.levels"])
+	}
+	// SPEC-WEB-CONSOLE-014 M2: learning list 키 raw view (REQ-WC14-002/003).
+	if _, ok := blocks["learning.tier_thresholds"]; !ok {
+		t.Error("learning.tier_thresholds raw block missing (REQ-WC14-002)")
+	}
+	if !strings.Contains(blocks["learning.rate_limit"], "max_per_week:") {
+		t.Errorf("learning.rate_limit raw block missing content: %q", blocks["learning.rate_limit"])
 	}
 }
 

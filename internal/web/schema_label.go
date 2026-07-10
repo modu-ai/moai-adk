@@ -81,3 +81,47 @@ func lastSegment(name string) string {
 	parts := strings.Split(name, ".")
 	return parts[len(parts)-1]
 }
+
+// ─── SPEC-WEB-CONSOLE-014 M2/M4: read-only / raw view note-key 해석 ──────────
+//
+// ReadOnlyField.NoteKey / RawBlockRef.NoteKey 가 비어 있으면 제네릭 라벨 키를,
+// 아니면 정직한 설명 라벨 키를 반환한다. baseline 텍스트는 applyI18n 실행 전
+// fallback 이며 4-locale 번역은 i18n.js 사전이 담당한다.
+
+// roNoteKey 는 read-only 설명 라벨의 data-i18n 키를 반환한다.
+func roNoteKey(noteKey string) string {
+	if noteKey == "" {
+		return "ro.note"
+	}
+	return noteKey
+}
+
+// roNoteBaseline 은 read-only 설명 라벨의 영문 baseline 텍스트를 반환한다.
+func roNoteBaseline(noteKey string) string {
+	switch noteKey {
+	case "ro.note.governance":
+		return "read-only — governance FROZEN (auto_apply stays false)"
+	case "ro.note.dead_config":
+		return "read-only — path fixed by the runtime (informational)"
+	default:
+		return "read-only (runtime-managed)"
+	}
+}
+
+// rawNoteKey 는 raw view 요약 라벨의 data-i18n 키를 반환한다.
+func rawNoteKey(noteKey string) string {
+	if noteKey == "" {
+		return "raw.note"
+	}
+	return noteKey
+}
+
+// rawNoteBaseline 은 raw view 요약 라벨의 영문 baseline 텍스트를 반환한다.
+func rawNoteBaseline(noteKey string) string {
+	switch noteKey {
+	case "raw.note.informational":
+		return "informational — displayed value is not wired to runtime enforcement"
+	default:
+		return "structured block (read-only)"
+	}
+}
