@@ -147,8 +147,8 @@ validates `Workflow.ModelRoutingProfiles` against closed sets (perfTier, keys).
 | Substring-collision deletion ("team" token) | HIGH | Anchored greps only; REQ-ATR-007 preservation AC; per-family i18n counts |
 | P0 repro test lost in migration gap | HIGH | M0-before-M1 gate (REQ-ATR-003); repro re-point verified by AC-ATR-003 vacuous-green guard |
 | Windows build break (build-tag pair) | MED | AC-ATR-002 cross-build; B1 known-issue injection |
-| `moai cg` doc routing loss (team/glm.md) | MED | [NEEDS CLARIFICATION] in plan.md §A — resolve pre-kickoff |
-| Auto-select threshold SSOT dangling | LOW | design.md D8 + [NEEDS CLARIFICATION] in plan.md §A |
+| `moai cg` doc routing loss (team/glm.md) | MED | RESOLVED (user, 2026-07-11): migrate-essentials-then-delete — REQ-ATR-022 + AC-ATR-027 + design.md D9 |
+| Auto-select threshold SSOT dangling | LOW | RESOLVED (user, 2026-07-11): prose-only SSOT — design.md D8 adopted; REQ-ATR-010 extended + AC-ATR-028 |
 | templ regen version drift | MED | Edge case E6; pin regen tool; diff-scope review |
 | Template CI guard trip (neutrality) | LOW | M3 runs guards locally before push |
 | Workflow scripts drift from house style | LOW | AC-ATR-026 structural greps; codemaps exemplar |

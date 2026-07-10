@@ -38,18 +38,20 @@
   - Template config: `internal/template/templates/.moai/config/sections/workflow.yaml`
     `team:` block (~:30); local `.moai/config/sections/workflow.yaml`
     `role_profiles:` (~:101).
-- **Open clarifications** (must resolve before Implementation Kickoff Approval):
-  - [NEEDS CLARIFICATION: team/glm.md deletion vs `moai cg` documentation
-    routing — CG Mode (CLAUDE.md §15) keeps GLM tmux teammates; confirm no doc
-    surface remains routed to `.claude/skills/moai/team/glm.md` after deletion,
-    or whether its GLM-pane guidance should be relocated (e.g. into
-    `glm-web-tooling.md` or `workflows/run.md`) rather than deleted outright]
-  - [NEEDS CLARIFICATION: post-removal home of the Phase 0.95 auto-select
-    thresholds (domains≥3 / files≥10 / score≥7) —
-    `orchestration-mode-selection.md` §B.1 names `workflow.yaml auto_selection`
-    as the machine-readable SSOT; with `TeamAutoSelectionConfig` removed,
-    confirm the thresholds become prose-only SSOT in the rule (recommended in
-    design.md D8) or remain in workflow.yaml under a non-team key]
+- **Resolved decisions** (user, 2026-07-11, orchestrator-relayed — no open
+  clarifications remain):
+  - **team/glm.md → migrate-essentials-then-delete**: glm.md stays in the
+    Phase 6 deletion set; M3 gains a preceding migration step moving the
+    essential CG Mode (GLM teammate) guidance (LLM mode detection,
+    prerequisites, tmux env vars, error recovery) into
+    `.claude/rules/moai/core/glm-web-tooling.md` (both trees) BEFORE deletion.
+    Encoded as REQ-ATR-022 + AC-ATR-027 (grep token `CG Mode (Claude + GLM`,
+    verified 0-count in the target at plan time).
+  - **Auto-select thresholds → prose-only SSOT**: design.md D8 adopted.
+    `orchestration-mode-selection.md` §B.1 prose becomes the sole SSOT; the
+    "machine-readable source is workflow.yaml auto_selection" pointer sentence
+    is removed with `TeamAutoSelectionConfig`. Encoded in REQ-ATR-010
+    (extended) + AC-ATR-028.
 
 ## §B. Known Issues (filtered, Tier L)
 
@@ -189,14 +191,23 @@ E6 commit SHAs + push state, E7 blocker reports (never AskUserQuestion).
 5. Exit: web tests + settings tests green; `moai workflow lint` smoke on the
    local config exits 0.
 
-### M3 — Phases 5-6-7: rules + skills + template mirror (REQ-ATR-010/011/012/013)
+### M3 — Phases 5-6-7: rules + skills + template mirror (REQ-ATR-010/011/012/013/022)
 
+0. **Migrate-before-delete (REQ-ATR-022, precedes step 3)**: extract the
+   essential CG Mode guidance from `.claude/skills/moai/team/glm.md` (LLM mode
+   detection, prerequisites, tmux env vars, error recovery — NOT the Agent
+   Teams orchestration prose) into a new
+   `## CG Mode (Claude + GLM teammates)` section of
+   `.claude/rules/moai/core/glm-web-tooling.md`, both trees; verify the
+   `CG Mode (Claude + GLM` token lands (AC-ATR-027).
 1. Delete `team-protocol.md` + `team-pattern-cookbook.md` (both trees).
 2. Shrink `orchestration-mode-selection.md` Mode 3 (catalog row → retirement
-   tombstone; remove §C.1 gate detail; keep §G axis-warning intact); clean
-   `spec-workflow.md` Agent Teams variant sections; sweep dangling refs
-   (dynamic-workflows.md cross-ref list, CLAUDE.md §15 pointer targets —
-   CLAUDE.md itself is template-managed: mirror edit).
+   tombstone; remove §C.1 gate detail; keep §G axis-warning intact); remove
+   the §B.1 "machine-readable source is workflow.yaml auto_selection" pointer
+   sentence — §B.1 prose thresholds become sole SSOT (D8 adopted,
+   AC-ATR-028); clean `spec-workflow.md` Agent Teams variant sections; sweep
+   dangling refs (dynamic-workflows.md cross-ref list, CLAUDE.md §15 pointer
+   targets — CLAUDE.md itself is template-managed: mirror edit).
 3. Delete `.claude/skills/moai/team/` (both trees); remove team routing refs
    from `workflows/{plan,run,fix,review,mx}.md` (both trees).
 4. Remove `team:` block from template + local `workflow.yaml`.
@@ -216,7 +227,7 @@ E6 commit SHAs + push state, E7 blocker reports (never AskUserQuestion).
    `### confidence_and_gaps`, ≥2-null abort, no in-workflow writes).
 4. `node --check` both scripts; structural greps per acceptance.md;
    optional dry-run smoke (Workflow launch is orchestrator-side, post-merge).
-5. Exit: all 26 ACs PASS or documented PASS-WITH-DEBT.
+5. Exit: all 28 ACs PASS or documented PASS-WITH-DEBT.
 
 ## §G. Anti-Patterns (this SPEC)
 
@@ -232,9 +243,9 @@ E6 commit SHAs + push state, E7 blocker reports (never AskUserQuestion).
 
 ## §H. Cross-References
 
-- design.md — decision record D1-D8 (boundary, ordering, repurpose-vs-delete,
+- design.md — decision record D1-D9 (boundary, ordering, repurpose-vs-delete,
   script-side arithmetic, markdown-vs-schema, INCOMPLETE semantics, mirror
-  strategy, auto-select threshold home).
+  strategy, auto-select threshold home [adopted], glm.md migrate-then-delete).
 - research.md — verified inventory + external rationale sources.
 - acceptance.md — AC matrix (SSOT), GWT scenarios, quality gates, DoD.
 - `.claude/rules/moai/development/manager-develop-prompt-template.md` — Tier L

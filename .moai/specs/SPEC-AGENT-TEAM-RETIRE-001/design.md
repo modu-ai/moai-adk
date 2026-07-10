@@ -102,7 +102,23 @@ heuristics in doctrine. Recommendation: `orchestration-mode-selection.md` §B.1
 becomes the sole (prose) SSOT and drops its "machine-readable source is
 workflow.yaml auto_selection" pointer — no Go code reads the struct outside
 the deleted tests, so the machine-readable claim is already vestigial.
-[Pending the plan.md §A clarification with the user before kickoff.]
+**ADOPTED** (user decision 2026-07-11, orchestrator-relayed): prose-only SSOT
+confirmed; encoded in REQ-ATR-010 (extended) + AC-ATR-028.
+
+### D9 — team/glm.md: migrate essentials, then delete (user decision)
+
+The user resolved the glm.md question as **migrate-essentials-then-delete**:
+the file stays in the Phase 6 deletion set, but M3 step 0 first relocates the
+essential CG Mode (GLM teammate) guidance — LLM mode detection, prerequisites,
+tmux environment variables, error recovery — into a new
+`## CG Mode (Claude + GLM teammates)` section of
+`.claude/rules/moai/core/glm-web-tooling.md` (both trees; the rule has a
+template mirror). The Agent Teams orchestration prose in glm.md (team spawn
+patterns, role assignments) is NOT migrated — it is the retired static layer.
+Rationale: `moai cg` (GLM cost-optimization mode) remains an active, preserved
+CLI surface (REQ-ATR-006e); deleting its only teammate-guidance doc would
+orphan the feature. Encoded as REQ-ATR-022 (While migrate-then-delete gate) +
+AC-ATR-027 (grep token `CG Mode (Claude + GLM`, 0-count baseline verified).
 
 ## §B. Scope A Structural Notes
 

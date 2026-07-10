@@ -1,6 +1,6 @@
 # Acceptance Criteria — SPEC-AGENT-TEAM-RETIRE-001
 
-> SSOT for the AC matrix. 26 ACs covering all 21 REQs (100% AC→REQ coverage).
+> SSOT for the AC matrix. 28 ACs covering all 22 REQs (100% AC→REQ coverage).
 > Verification conventions: (1) every removal check is **anchored** (prefix or
 > word boundary) — bare `team` substring greps are invalid evidence;
 > (2) preservation ACs assert STILL-EXISTS, never absence; (3) counts follow the
@@ -76,6 +76,8 @@
 | AC-ATR-024 | REQ-ATR-019 | plan-research insufficient_coverage abort |
 | AC-ATR-025 | REQ-ATR-020 | plan-research prohibitions (≤4, no xhigh, no writes) |
 | AC-ATR-026 | REQ-ATR-021 | House style + determinism both scripts |
+| AC-ATR-027 | REQ-ATR-022 | CG Mode guidance migrated before glm.md deletion |
+| AC-ATR-028 | REQ-ATR-010 | No dangling workflow.yaml auto_selection pointer (prose-only SSOT) |
 
 ## §C. Verification Commands (per AC)
 
@@ -314,6 +316,32 @@ grep -c "label: " .claude/workflows/sync-audit-4dim.js    # expect >= 2 ('<stage
 grep -c "label: " .claude/workflows/plan-research-fanout.js  # expect >= 2
 ```
 
+### AC-ATR-027 (REQ-ATR-022)
+
+```bash
+grep -c "CG Mode (Claude + GLM" .claude/rules/moai/core/glm-web-tooling.md   # expect >= 1 (baseline 0 at plan time — non-vacuous)
+grep -c "CG Mode (Claude + GLM" internal/template/templates/.claude/rules/moai/core/glm-web-tooling.md   # expect >= 1 (mirror parity)
+[ -e .claude/skills/moai/team/glm.md ] && echo RESIDUE   # expect: no RESIDUE (deleted AFTER migration)
+```
+
+Plus ordering evidence: the migration edit lands in the same M3 commit as (or an
+earlier commit than) the team-skills deletion — recorded in progress.md §E.2
+(migrate-then-delete per REQ-ATR-022; deleting first is a FAIL even if the
+content is re-added later).
+
+### AC-ATR-028 (REQ-ATR-010, D8 adopted)
+
+```bash
+grep -c "auto_selection" .claude/rules/moai/workflow/orchestration-mode-selection.md   # expect 0 (machine-readable pointer sentence removed)
+grep -c "auto_selection" internal/template/templates/.claude/rules/moai/workflow/orchestration-mode-selection.md   # expect 0 (mirror parity)
+grep -c "≥ 3 domains" .claude/rules/moai/workflow/orchestration-mode-selection.md   # expect >= 1 (§B.1 prose thresholds RETAINED as sole SSOT)
+```
+
+Note: the `spec-workflow.md` "See workflow.yaml team.auto_selection" reference
+is removed by the REQ-ATR-010 team-section cleanup and verified by the
+AC-ATR-015 dangling-ref sweep; this AC binds the orchestration-mode-selection.md
+surface specifically.
+
 ## §D. Edge Cases
 
 - **E1 Windows lock semantics**: `internal/lockfile` Windows variant is
@@ -346,7 +374,7 @@ grep -c "label: " .claude/workflows/plan-research-fanout.js  # expect >= 2
 
 ## §F. Definition of Done
 
-1. All 26 ACs PASS with verbatim command output recorded in progress.md §E.2
+1. All 28 ACs PASS with verbatim command output recorded in progress.md §E.2
    (PASS-WITH-DEBT permitted only with named debt + follow-up owner).
 2. Preservation ACs (009-012) confirmed AFTER the final removal commit.
 3. Both workflow scripts pass `node --check` and structural review.

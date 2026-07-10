@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-TEAM-RETIRE-001
 title: "Agent Teams retirement + replacement dynamic-workflow pair"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-11
 updated: 2026-07-11
@@ -23,6 +23,7 @@ related_specs: [SPEC-V3R6-AGENT-TEAM-REBUILD-001, SPEC-CLIFIX-CRITICAL-001, SPEC
 | Date | Version | Change | Author |
 |------|---------|--------|--------|
 | 2026-07-11 | 0.1.0 | Initial plan-phase draft. Scope A: remove MoAI's STATIC Agent Teams layer (role_profiles config + team_spawn coordination primitives + team rules/skills) while preserving the Claude Code NATIVE teammate runtime. Scope B: two replacement dynamic workflows (`sync-audit-4dim.js`, `plan-research-fanout.js`). Tier L. All tree anchors verified against HEAD at authoring time. | manager-spec |
+| 2026-07-11 | 0.1.1 | Both plan-phase clarifications resolved by user decision (orchestrator-relayed): (1) team/glm.md = migrate-essentials-then-delete → new REQ-ATR-022 + AC-ATR-027 (grep token `CG Mode (Claude + GLM`, verified 0-count in target at plan time); (2) auto-select thresholds = prose-only SSOT (design.md D8 adopted) → REQ-ATR-010 extended + AC-ATR-028. [NEEDS CLARIFICATION] markers removed from plan.md. 22 REQ / 28 AC. | manager-spec |
 
 ## §A. Context and Intent
 
@@ -164,7 +165,10 @@ invariants.
   `.claude/rules/moai/workflow/team-protocol.md` or
   `team-pattern-cookbook.md`; `orchestration-mode-selection.md` shall shrink
   Mode 3 to a retirement note (catalog-row tombstone; §C.1 capability-gate
-  detail removed); `spec-workflow.md` shall not contain the Agent Teams
+  detail removed) and shall not retain the machine-readable-source pointer to
+  `workflow.yaml auto_selection` in §B.1 — the §B.1 prose thresholds
+  (domains≥3 / files≥10 / score≥7) become the sole SSOT (user-adopted
+  design.md D8); `spec-workflow.md` shall not contain the Agent Teams
   variant methodology sections; no retained rule, skill, or agent file shall
   carry a dangling reference to a deleted team file.
 - **REQ-ATR-011** (Ubiquitous): The skills tree shall not contain the
@@ -172,6 +176,16 @@ invariants.
   review / glm); team-mode routing references shall be removed from
   `.claude/skills/moai/workflows/{plan,run,fix,review,mx}.md` (re-measured at
   run-phase; `sync.md` carried no team reference at plan-time).
+- **REQ-ATR-022** (State-driven, migrate-then-delete): While the essential
+  CG Mode (GLM teammate) guidance from `.claude/skills/moai/team/glm.md`
+  (LLM mode detection, prerequisites, tmux environment variables, error
+  recovery) has not been migrated into
+  `.claude/rules/moai/core/glm-web-tooling.md` (both trees — the rule has a
+  template mirror), the team-skills deletion of REQ-ATR-011 shall not
+  proceed; after the deletion, the migrated guidance shall remain present in
+  the target rule, carrying the distinctive heading token
+  `CG Mode (Claude + GLM` (verified 0-count in the target at plan time —
+  non-vacuous anchor).
 
 ### C.7 Template mirror (Phase 7)
 
@@ -251,7 +265,7 @@ invariants.
 
 ## §D. Acceptance Criteria
 
-The full machine-verifiable AC matrix (AC-ATR-001 … AC-ATR-026) lives in
+The full machine-verifiable AC matrix (AC-ATR-001 … AC-ATR-028) lives in
 `acceptance.md` (SSOT). Every REQ above maps to at least one AC; preservation
 REQs map to STILL-EXISTS assertions, not absence checks.
 
