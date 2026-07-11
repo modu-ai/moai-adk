@@ -412,13 +412,18 @@ func TestBudget_FullRepoScanWithin35Sec(t *testing.T) {
 		t.Fatalf("full repo scan visited 0 .go files under %s — the oracle did no work", repoRoot)
 	}
 
-	// (2) Scaled throughput budget (self-adjusting, generous). Asserts per-file
-	// throughput rather than a raw fixed ceiling, so it holds whether the corpus
-	// is 1.5k or 90k files.
+	// (2) Scaled throughput budget (self-adjusting) — ADVISORY ONLY. Per-file
+	// wall-clock throughput is machine- and load-dependent, so hard-gating the
+	// default `go test ./...` path on it is inherently flaky (a fast CI runner
+	// and a loaded dev laptop legitimately differ 3-5x). Hard-gating a
+	// latency-sensitive path on raw wall-clock also violates the Advisory-Check
+	// Discipline codified in coding-standards.md § Advisory-Check Discipline. The
+	// deterministic gates are (1) work-done above and (3) the absolute ceiling
+	// below; throughput is logged for visibility, never asserted.
 	scaledBudget := budgetScanOverhead + time.Duration(numFiles)*budgetPerFileScan
 	if elapsed > scaledBudget {
-		t.Errorf("full-repo scan of %d files took %v, want <= %v (%v/file + %v overhead)",
-			numFiles, elapsed, scaledBudget, budgetPerFileScan, budgetScanOverhead)
+		t.Logf("NOTE (advisory): full-repo scan of %d files took %v, over the soft throughput budget %v (%v/file + %v overhead) — not a failure; the hard gate is the %v absolute ceiling below",
+			numFiles, elapsed, scaledBudget, budgetPerFileScan, budgetScanOverhead, budgetHardCeiling)
 	}
 
 	// (3) Absolute outer ceiling (honours the historical 35s contract).
