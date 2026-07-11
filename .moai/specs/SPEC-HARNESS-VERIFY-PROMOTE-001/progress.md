@@ -92,3 +92,26 @@ m1_to_mN_commit_strategy: "3 milestones, Route A Hybrid Trunk direct-to-main. M1
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase — owned by manager-docs>_
+
+## §F Phase 0.95 Mode Selection
+
+Input parameters:
+- tier: S (doc-only, 2-artifact LEAN — here 4 files incl. acceptance.md + progress.md)
+- scope (file count): 3 touched files (meta-harness.md, harness-build-entry.md, harness-builder.md) + template mirrors
+- domain count: 1 (workflow-skill markdown edits only)
+- file language mix: 100% markdown (no Go / shell)
+- concurrency benefit: LOW (sequential doc edits with a Template-First mirror step + make build between)
+
+Mode evaluation:
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| 1 trivial | no | multi-file, multi-milestone semantic doc insertion — not a single-line change |
+| 2 background | no | writes tracked files (background write restriction) |
+| 3 agent-team | no | RETIRED |
+| 4 parallel | no | single domain, not research-heavy; parallel writes to shared workflow tree risk conflict |
+| 5 sub-agent | YES | coding/doc-heavy single-domain sequential work — default fallback fits |
+| 6 workflow | no | <30 files, not a uniform mechanical transform |
+
+Decision: sub-agent
+
+Justification: Tier S doc-only single-domain work with a Template-First mirror + make build cadence between milestones is inherently sequential; Mode 5 (single manager-develop, sequential M1→M2→M3) is the correct default per Anthropic's coding-task parallelism caveat. No fan-out benefit.
