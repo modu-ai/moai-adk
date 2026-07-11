@@ -1,0 +1,24 @@
+# .moai/config/sections/mcp-matrix.yaml — per-project-type MCP recommendation matrix
+# Each row: project-type -> ordered list of recommended servers.
+# Per-server keys: name, transport (stdio|http|sse), install, vendor_maintained (bool),
+#                  requires_credentials (bool).  3-5 servers max per row.
+#
+# The matrix is keyed by project TYPE (web-frontend / mobile / backend-db), never by
+# a privileged language, so all supported languages are treated equally. Consumed by
+# the /moai project Phase 3.6 MCP-provisioning step as prose-context (it is a data
+# resource, NOT a typed config section).
+matrix:
+  web-frontend:
+    - { name: playwright,      transport: stdio, install: "npx @playwright/mcp",      vendor_maintained: true,  requires_credentials: false }
+    - { name: chrome-devtools, transport: stdio, install: "npx chrome-devtools-mcp",  vendor_maintained: true,  requires_credentials: false }
+    - { name: figma-dev-mode,  transport: sse,   install: "figma dev-mode mcp",       vendor_maintained: true,  requires_credentials: true  }  # design->code, optional
+  mobile:
+    - { name: maestro,         transport: stdio, install: "maestro mcp",              vendor_maintained: true,  requires_credentials: false }
+    # appium is a secondary option once Maestro coverage is insufficient
+  backend-db:
+    - { name: postgres,        transport: stdio, install: "postgres mcp (read-only)", vendor_maintained: true,  requires_credentials: true  }
+    - { name: context7,        transport: http,  install: "context7 mcp",             vendor_maintained: true,  requires_credentials: false }
+universal_starter:            # fallback when the stack is ambiguous
+  - { name: github,           transport: http,  install: "github mcp",                vendor_maintained: true,  requires_credentials: true  }
+  - { name: context7,         transport: http,  install: "context7 mcp",              vendor_maintained: true,  requires_credentials: false }
+  - { name: playwright,       transport: stdio, install: "npx @playwright/mcp",       vendor_maintained: true,  requires_credentials: false }
