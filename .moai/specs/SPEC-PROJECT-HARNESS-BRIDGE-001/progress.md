@@ -67,7 +67,13 @@ Invariant preservation (asserted STILL EXISTS at exit):
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+- sync_status: complete
+- sync_complete_at: 2026-07-11
+- sync_commit_sha: pending-backfill (this commit cannot know its own hash; backfilled in a follow-up commit per spec-frontmatter-schema.md SHA-placeholder-backfill exemption)
+- doc_sync_summary: CHANGELOG.md `[Unreleased]` § Added entry appended (verified `grep -c "PROJECT-HARNESS-BRIDGE-001" CHANGELOG.md` == 0 before emission); README.md and docs-site 4-locale sync explicitly OUT OF SCOPE per spec.md § Out of Scope — CHANGELOG / README / docs-site (deferred follow-up, no user-facing CLI surface change)
+- mx_tag_validation: N/A — doc-only SPEC (markdown/yaml), no Go code touched; no @MX annotation targets
+- frontmatter_transition: spec.md `status: in-progress → completed` (single sync commit, 3-phase close); `updated: 2026-07-11` (unchanged — plan-phase and sync-phase land same day); plan.md/acceptance.md have no `status:` frontmatter field (untouched)
+- close_confirmation: SPEC-PROJECT-HARNESS-BRIDGE-001 sync-phase complete; foundation SPEC of the 3-SPEC Project-Harness Pipeline Epic — downstream SPEC-HARNESS-MCP-PROVISION-001 and SPEC-HARNESS-VERIFY-PROMOTE-001 (both `depends_on` this SPEC) may now proceed
 
 ## §F Phase 0.95 Mode Selection
 
