@@ -47,6 +47,51 @@ Invariant preservation (asserted STILL EXISTS at exit):
 - builder-harness specialist-generation internals — UNCHANGED (not touched).
 - D3 "+ Phase 4.2 intent" clause in meta-harness §5.1 — PRESERVED (ADD, not replace).
 
+### M5 (v0.2.0 amendment) — two-stage interview / Round 4 reachability
+
+Delivered M5.1-M5.7. All 20 ACs re-verified on the post-M5 tree: AC-PHB-001 … AC-PHB-014
+(v0.1.1 regression guard) STILL PASS, and AC-PHB-015 … AC-PHB-020 (the REACHABILITY ACs,
+the amendment's exit criteria) newly PASS.
+
+| AC | Status | Verification command (acceptance.md §C) | Actual output (post-M5) |
+|----|--------|------------------------------------------|-------------------------|
+| AC-PHB-001 | PASS | `clarity_threshold` + `Phase 0.3` (mode-detection); `clarity_threshold` + `Phase 1.5` (codebase-analysis) | 2 / 1 ; 2 / 1 (all ≥ 1) |
+| AC-PHB-002 | PASS | `clarity\|max_rounds` + `sufficiency\|early.exit\|additional round\|abandon\|entry floor`, both hosts | mode-detection 23 / 16; codebase-analysis 23 / 16 |
+| AC-PHB-003 | PASS | `grep -c clarity-interview`, both hosts | 2 ; 2 |
+| AC-PHB-004 | PASS | four-axis greps, both hosts | mode-detection 5/2/7/2; codebase-analysis 6/3/4/2 (all ≥ 1) |
+| AC-PHB-005 | PASS | 8 schema-field grep in doc-generation.md (≥ 8) | 16 |
+| AC-PHB-006 | PASS | 8-field schema + `harness-spec.yaml` in spec.md §D | 40 ; 33 |
+| AC-PHB-007 | PASS | `.moai/project/harness-spec.yaml` ≥ 1 AND `.moai/specs/.*harness-spec` == 0 | 3 and 0 |
+| AC-PHB-008 | PASS | `grep -c harness-spec.yaml meta-harness.md` (≥ 1) | 1 (untouched by M5 — v0.1.x wiring stands) |
+| AC-PHB-009 | PASS | `harness-spec.yaml` ≥ 1 AND pre-satisfy language ≥ 1 in harness-build-entry.md | 1 and 1 (untouched by M5) |
+| AC-PHB-010 | PASS | guard prose ≥ 1; NEW `.moai/specs/` write path (excl. guard) == 0; `.moai/project/` ≥ 1 | 2 ; 0 ; 29 |
+| AC-PHB-011 | PASS | `diff -q` all 7 file-pairs (incl. the new `project.md` pair + interview.yaml) | PARITY OK ×7 (all byte-identical) |
+| AC-PHB-012 | PASS | `make build` exit 0; `go test ./internal/template/...`; SPEC-ID leak grep == 0 | make build exit 0; `ok internal/template 1.320s`; leak grep = 0 |
+| AC-PHB-013 | PASS | axes grep ≥ 1 in interview.yaml + byte-parity | 7 ; PARITY OK |
+| AC-PHB-014 | PASS | `moai init` sandbox → clarity_threshold ≥ 1; harness-spec.yaml ≥ 1 | init exit 0; clarity_threshold=2; harness-spec.yaml=6; (M5 extras: Stage A/B=33 & 35; interview.yaml Stage A=4; `3-round`=0) |
+| **AC-PHB-015** | **PASS** | (a) exemption contract; (b) anchored to Round 4 / Stage B (`grep -A 12`); (c) `Stage A\|Stage B` ≥ 2 — both hosts | mode-detection 5 / 7 / 33; codebase-analysis 5 / 7 / 35 |
+| **AC-PHB-016** | **PASS** | (a) required-base-fields precondition in early-exit prose (`grep -A 6`); (b) exit scoped to Stage A — both hosts | mode-detection 3 / 15; codebase-analysis 3 / 15 |
+| **AC-PHB-017** | **PASS** | (a) Stage-A scoping in interview.yaml; (b) exempt round named within `grep -A 4 max_rounds`; (c) byte-parity | 5 ; 4 ; PARITY OK |
+| **AC-PHB-018** | **PASS** | (a) explicit base-field coverage mapping; (b) mapping names all four fields (`grep -A 10`, ≥ 4) — both hosts | mode-detection 3 / 6; codebase-analysis 3 / 4 |
+| **AC-PHB-019** | **PASS** | (a) `REQUIRED\|EXTENDED` in spec.md ≥ 2; (b) partition + extended fields in doc-generation.md ≥ 1 | 20 ; 14 and 6 |
+| **AC-PHB-020** | **PASS** | `grep -rn "3-round"` across both trees `\| wc -l` == 0 (baseline 6) | 0 (case-insensitive sweep incl. `3-Round` also 0) |
+
+M5 defect closed: the extended-axes Round 4 was UNREACHABLE on both interview paths
+(`project.max_rounds: 3` capped the interview AND the clarity early-exit skipped "the
+remaining rounds"). Both hosts are now restructured into Stage A (clarity-scored,
+`max_rounds`-capped) + Stage B (mandatory Round 4, EXEMPT from the cap, the early-exit
+skip, the abandon path, and clarity scoring). The exemption prose — not the mere presence
+of a Round 4 heading — is the reachability contract, and AC-PHB-015(b) anchors the grep to
+that section.
+
+M5 invariant preservation (re-asserted post-M5):
+- NO-SPEC guard prose in mode-detection.md — PRESERVED (guard grep = 2; NEW `.moai/specs/` write paths = 0).
+- `.moai/project/interview.md` human-readable output — PRESERVED (Stage A/B section names updated; the artifact is not replaced).
+- `interview.yaml` `clarity_threshold: 4` + `project.max_rounds: 3` VALUES — PRESERVED (only in-place documentation added; `max_rounds` was NOT raised to 4).
+- The v0.1.1 early exit — AMENDED (gated on required base fields + rescoped to Stage A), never removed (AC-PHB-002 still PASS).
+- builder-harness internals, meta-harness.md, harness-build-entry.md — UNTOUCHED by M5.
+- D3 "+ Phase 4.2 intent" clause in meta-harness §5.1 — PRESERVED (file not modified).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 - run_status: complete
@@ -64,6 +109,29 @@ Invariant preservation (asserted STILL EXISTS at exit):
 - total_run_phase_files: 12 (6 local skill/config + 6 template mirrors; all byte-identical)
 - catalog_cascade: none (catalog.yaml regenerated by make build but byte-identical — the `moai` unified skill catalog hash does not track workflow sub-files)
 - m1_to_mN_commit_strategy: consolidated single run-phase commit covering M1-M4 (doc-only, interdependent mirror-parity edits) + one SHA-backfill follow-up commit
+
+### M5 (v0.2.0 amendment) run-phase audit-ready signal
+
+- run_status: complete (M5 — two-stage interview / Round 4 reachability)
+- run_complete_at: 2026-07-11
+- run_commit_sha: pending-backfill-m5 (backfilled in a follow-up commit per spec-frontmatter-schema.md SHA-placeholder-backfill exemption — a commit cannot reference its own hash)
+- ac_pass_count: 20 (AC-PHB-001 … AC-PHB-020)
+- ac_fail_count: 0
+- ac_regression_guard: AC-PHB-001 … AC-PHB-014 re-verified PASS on the post-M5 tree (v0.1.1 behavior not weakened)
+- ac_amendment_exit_criteria: AC-PHB-015 … AC-PHB-020 (REACHABILITY) newly PASS
+- test_coverage_ac: N/A (doc-only SPEC — markdown/yaml only, zero Go; verification is grep / diff / `make build` / `moai init` per acceptance.md §E)
+- subagent_boundary_grep: N/A (no Go code touched; no `internal/` package in the changeset)
+- preserve_list_post_run_count: 6 preserved invariants verified (NO-SPEC guard, interview.md, clarity_threshold/max_rounds VALUES, the v0.1.1 early exit amended-not-removed, builder/meta-harness/harness-build-entry untouched, Phase 4.2 intent clause)
+- new_warnings_or_lints_introduced: 0 (doc-only; template neutrality + internal-content-leak guards green)
+- cross_platform_build: native `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0
+- whole_repo_test: `go test ./...` exit 0 — FULLY GREEN this run (zero FAIL lines). Note: a PRE-EXISTING wall-clock flake exists at `TestBudget_FullRepoScanWithin35Sec` (scripts/i18n-validator, 35s budget) which can fail under parallel contention; it did NOT trigger in this run (`ok scripts/i18n-validator 3.992s`). This corrects the v0.1.1 §E.3 entry, which mis-attributed the flake to `TestDoctorPermission_NoMatchTrace`.
+- template_guards: `go test ./internal/template/...` → `ok internal/template 1.320s`
+- neutrality_grep: `grep -rn SPEC-PROJECT-HARNESS-BRIDGE-001 internal/template/templates/` = 0
+- total_run_phase_files: 10 (5 local skill/config + 5 template mirrors; all byte-identical) + progress.md
+- file_pair_set: 7 pairs total; M5 touched 5 (mode-detection, codebase-analysis, doc-generation, project.md [NEW 7th pair], interview.yaml); meta-harness.md + harness-build-entry.md untouched (v0.1.x wiring stands)
+- catalog_cascade: none (catalog.yaml regenerated by `make build` but byte-identical — workflow sub-files are not catalog-hash subjects)
+- m1_to_mN_commit_strategy: single consolidated M5 commit (doc-only, interdependent mirror-parity edits across 5 file-pairs) + one SHA-backfill follow-up commit
+- plan_artifact_note: plan.md §F M5 (M5.1-M5.7) was authored at plan-phase but left uncommitted in the working tree by the v0.2.0 amendment commit (a2b66c01c); persisted verbatim in commit 09e83b1e4 before M5 run-phase began. No body content authored or altered by manager-develop.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

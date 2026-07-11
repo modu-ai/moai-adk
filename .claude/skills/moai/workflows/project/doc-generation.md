@@ -95,17 +95,32 @@ Schema (8 fields — populated from `.moai/project/interview.md` answers):
 
 ```yaml
 # .moai/project/harness-spec.yaml — machine-readable harness generation input
+
+# --- REQUIRED base fields (collected in interview Stage A: the clarity-scored
+#     discovery rounds, capped by project.max_rounds). These four gate the Stage A
+#     early exit — Stage A does not exit early until all four are answered.
 domain: <string>              # primary problem domain (from the vision / domain answer)
 goal: <string>                # one-line project goal / success condition (from the vision / goal answer)
 constraints: [<string>, ...]  # hard constraints (from the constraints / non-goals answer)
 scope: <string>               # in-scope / out-of-scope boundary summary (from the scope answer)
-verification: <string>        # test / e2e command or verification method (from the Round 4 verification axis)
-external_systems: [<string>, ...]  # DB / APIs / services (from the Round 4 external-systems axis)
-ui_surface: <enum>            # has-ui | headless (from the Round 4 UI-surface axis)
-team_sharing: <enum>          # solo | team-shared (from the Round 4 team-sharing axis)
+
+# --- EXTENDED fields (collected in the mandatory interview Stage B round — Round 4 —
+#     which ALWAYS runs after Stage A terminates and is EXEMPT from project.max_rounds,
+#     from the Stage A early-exit skip, and from clarity scoring).
+verification: <string>        # test / e2e command or verification method (from the Stage B verification axis)
+external_systems: [<string>, ...]  # DB / APIs / services (from the Stage B external-systems axis)
+ui_surface: <enum>            # has-ui | headless (from the Stage B UI-surface axis)
+team_sharing: <enum>          # solo | team-shared (from the Stage B team-sharing axis)
 ```
 
-Field mapping from `interview.md`: the vision / goal answer → `goal`; the domain / problem answer → `domain`; the scope answer → `scope`; the constraints answer → `constraints`; and the four Round 4 axes → `verification` / `external_systems` / `ui_surface` / `team_sharing` respectively. A field the interview did not resolve is written as an explicit empty / null value (or omitted) so downstream consumers treat it as ABSENT (eligible for re-ask).
+**Field classes.** The 8 fields are partitioned by *how they are collected*, not by whether they may be empty:
+
+| Class | Fields | Collected in | Gates the Stage A early exit? |
+|-------|--------|--------------|-------------------------------|
+| REQUIRED (base) | `domain`, `goal`, `constraints`, `scope` | Stage A — the clarity-scored discovery rounds (capped by `project.max_rounds`) | YES — Stage A cannot exit early while any is unanswered |
+| EXTENDED | `verification`, `ui_surface`, `external_systems`, `team_sharing` | **Stage B — the mandatory Round 4**, which always runs | N/A — Stage B is exempt from the cap, the early exit, and clarity scoring |
+
+Field mapping from `interview.md`: the vision / goal answer → `goal`; the domain / problem answer → `domain` (in the existing-project host this may be auto-populated from the Phase 1 codebase analysis); the scope answer → `scope`; the constraints answer → `constraints` (all four from Stage A, per each host's base-field coverage mapping); and the four Stage B extended axes → `verification` / `external_systems` / `ui_surface` / `team_sharing` respectively. A field the interview did not resolve is written as an explicit empty / null value (or omitted) so downstream consumers treat it as ABSENT (eligible for re-ask).
 
 The existing `.moai/project/interview.md` human-readable output is preserved unchanged; `harness-spec.yaml` is an additive machine-readable sibling, not a replacement.
 

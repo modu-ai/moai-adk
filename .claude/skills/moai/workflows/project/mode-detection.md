@@ -93,30 +93,65 @@ Purpose: Replace the static four-question sequence with a structured deep interv
 [HARD] All questions MUST use AskUserQuestion in user's conversation_language.
 [HARD] During the interview, the agent MUST NOT write implementation code or generate documentation. The sole output is `.moai/project/interview.md`.
 
-**Adaptive Clarity-Scored Interview (mirrors `plan/clarity-interview.md`):**
+### Two-Stage Interview Structure
 
-The interview is clarity-driven, NOT fixed-length. It scores accumulated answer
-clarity on a 0-10 scale and adapts the round count, reusing the adaptive mechanism
-defined in `.claude/skills/moai/workflows/plan/clarity-interview.md` (the SAME 0-10
-scale semantics — do NOT invent a divergent rubric):
+The interview is a **two-stage** procedure. The two stages are governed by DIFFERENT
+rules and must never be conflated — conflating them is what leaves the extended-axes
+round uncollected:
+
+| Stage | Rounds | Governed by | Terminates when |
+|-------|--------|-------------|-----------------|
+| **Stage A** — clarity-scored adaptive discovery | Round 1 … `project.max_rounds` (3) | `clarity_threshold` (4, entry floor), sufficiency exit (≥ 8), abandon floor (≤ 3), `project.max_rounds` cap | early exit, abandon, OR the cap is reached |
+| **Stage B** — mandatory extended-axes round | Round 4 (exactly one) | nothing — Stage B is EXEMPT from clarity scoring, from the Stage A early-exit skip, from the abandon path, and from `project.max_rounds` | after its four axes are collected |
+
+**Stage B always runs**, on every Stage A exit route, before documentation generation.
+`project.max_rounds` caps **Stage A only** — it is NOT a cap on the interview as a whole.
+
+### Stage A: Adaptive Clarity-Scored Discovery (mirrors `plan/clarity-interview.md`)
+
+Stage A is clarity-driven, NOT fixed-length. It scores accumulated answer clarity on a
+0-10 scale and adapts the round count, reusing the adaptive mechanism defined in
+`.claude/skills/moai/workflows/plan/clarity-interview.md` (the SAME 0-10 scale
+semantics — do NOT invent a divergent rubric):
 
 - **Entry floor**: `clarity_threshold` (4, from `.moai/config/sections/interview.yaml`)
   is the interview ENTRY floor — the clarity band at/above which the interview runs.
   It is NOT the early-exit target.
 - **Additional rounds**: while the accumulated clarity score is below the sufficiency
-  target (≥ 8) and above the abandon floor (≤ 3), run one or more additional rounds,
-  up to `project.max_rounds` (3, from `interview.yaml`).
-- **Early exit (sufficiency)**: when the accumulated clarity score reaches the
-  sufficiency target (≥ 8) before `max_rounds` rounds have run, terminate the
-  interview early (skip the remaining rounds) and proceed to documentation generation.
+  target (≥ 8) and above the abandon floor (≤ 3), run one or more additional Stage A
+  rounds, up to `project.max_rounds` (3, from `interview.yaml`).
+- **Early exit (sufficiency)**: the Stage A early exit fires ONLY when BOTH of the
+  following hold — (i) the accumulated clarity score reaches the sufficiency target
+  (≥ 8), AND (ii) all four **required base fields** (`domain`, `goal`, `constraints`,
+  `scope`) have been answered. When both hold before `max_rounds` rounds have run,
+  terminate **Stage A** early (skip the remaining **Stage A** rounds) and proceed to
+  the mandatory **Stage B** round. The early exit terminates Stage A ONLY — it NEVER
+  skips Stage B.
+- **Required-field gate**: while any required base field is still unanswered, Stage A
+  continues (up to `project.max_rounds`) regardless of the accumulated clarity score.
+  A high clarity score alone never satisfies the early exit.
 - **Abandon**: if the accumulated clarity score drops to ≤ 3 (the answers add no
-  useful information), end the loop early and proceed with the best-available answers.
-- Re-evaluate the clarity score after each round and display the round counter:
+  useful information), end **Stage A** early and proceed to **Stage B** with the
+  best-available answers.
+- **Cap is a hard stop**: on reaching `project.max_rounds` with a required base field
+  still unanswered, record that field as absent and proceed to **Stage B**. Do NOT
+  loop Stage A.
+- Re-evaluate the clarity score after each Stage A round and display the round counter:
   "Interview round {N}/{max_rounds}".
 
-**Round 1: Vision**
+**Stage A base-field coverage mapping** — Stage A's rounds, between them, elicit all
+four **required base fields** (`domain`, `goal`, `constraints`, `scope`):
 
-Topic: What does this project do and who is it for?
+| Required base field | Elicited by | Recorded as |
+|---|---|---|
+| `domain` | Stage A Round 1 (Vision and Domain) | primary problem domain (e.g. cli-tooling, web-api) |
+| `goal` | Stage A Round 1 (Vision and Domain) | one-line project goal / success condition |
+| `constraints` | Stage A Round 2 (Technology and Constraints) | hard constraints (performance, security, compatibility) |
+| `scope` | Stage A Round 3 (Scope and Boundaries) | in-scope / out-of-scope boundary summary |
+
+**Round 1: Vision and Domain** — elicits `domain` + `goal`
+
+Topic: What does this project do, who is it for, and what problem domain does it sit in?
 
 Present via AskUserQuestion with exactly 4 options tailored to common project patterns. Example:
 - Option 1 (Recommended): Web application for end users: A frontend + backend system serving a web-based user interface. Best for dashboards, tools, and customer-facing products.
@@ -124,9 +159,11 @@ Present via AskUserQuestion with exactly 4 options tailored to common project pa
 - Option 3: CLI tool or automation script: A command-line utility run by developers or operators. Best for build tools, deployment scripts, and developer utilities.
 - Option 4: Type your own answer: Enter a custom response if none of the above match your vision.
 
-**Round 2: Technology**
+Capture BOTH the problem domain (a short slug such as cli-tooling or web-api, recorded as the `domain` field) and the one-line project goal / success condition (recorded as the `goal` field).
 
-Topic: What is the primary technology stack?
+**Round 2: Technology and Constraints** — elicits `constraints`
+
+Topic: What is the primary technology stack, and what hard constraints must the project respect?
 
 Present via AskUserQuestion with exactly 4 options based on Round 1 answer context:
 - Option 1 (Recommended): TypeScript/JavaScript: Full-stack or frontend-heavy projects. Largest ecosystem. Works for React frontends, Node.js backends, Bun runtimes.
@@ -134,9 +171,11 @@ Present via AskUserQuestion with exactly 4 options based on Round 1 answer conte
 - Option 3: Go: High-performance microservices, CLI tools, cloud-native binaries. Simple deployment.
 - Option 4: Type your own answer: Enter a custom response to specify Rust, Java, Kotlin, Ruby, Swift, C#, or another stack.
 
-**Round 3: Scope**
+Then elicit the hard constraints — performance targets, security or compliance rules, compatibility requirements, technology limits, or "none known" — recorded as the `constraints` field.
 
-Topic: What are the key features and explicit boundaries?
+**Round 3: Scope and Boundaries** — elicits `scope`
+
+Topic: What are the key features and the explicit in-scope / out-of-scope boundary?
 
 Present via AskUserQuestion with exactly 4 options based on the vision and technology selected. Example for a web app:
 - Option 1 (Recommended): Authentication + CRUD data layer + REST API: Core features for most web apps. User login, database persistence, and API endpoints.
@@ -144,7 +183,26 @@ Present via AskUserQuestion with exactly 4 options based on the vision and techn
 - Option 3: Real-time collaboration features: WebSocket or SSE for live updates, shared state.
 - Option 4: Type your own answer: Describe the exact features and what is explicitly out of scope.
 
+Capture the in-scope / out-of-scope boundary summary, recorded as the `scope` field.
+
+### Stage B: Mandatory Extended-Axes Round
+
 **Round 4: Verification, Surfaces, and Sharing (extended axes)**
+
+[HARD] **Stage B always runs.** It executes unconditionally after Stage A terminates —
+by early exit, by abandon (clarity ≤ 3), OR by reaching the `project.max_rounds` cap —
+and before documentation generation. Stage B is:
+
+- **EXEMPT from `project.max_rounds`** — Round 4 is not counted against the cap.
+- **EXEMPT from the Stage A early-exit skip** — the early exit skips the remaining
+  Stage A rounds only, never this round.
+- **EXEMPT from the Stage A abandon path** — an abandoned Stage A still proceeds here.
+- **EXEMPT from clarity scoring** — Round 4 runs regardless of clarity score.
+
+Why: the four extended axes are clarity-independent **factual collection**, not
+ambiguity resolution. There is nothing to "score" about whether the project has a UI
+or which test command it runs — so subjecting them to the Stage A clarity loop, or to
+its round cap, would be a category error and would leave them uncollected.
 
 Topic: How is the project verified, what does it surface, what does it integrate with, and who runs it? Elicit these four axes (later recorded into `harness-spec.yaml` — see `doc-generation.md`). Present each as a separate AskUserQuestion with up to 4 options:
 
@@ -153,28 +211,36 @@ Topic: How is the project verified, what does it surface, what does it integrate
 - **External systems** — the databases, APIs, or services the project integrates with (e.g., PostgreSQL, Redis, a payment API, an external microservice), or "none". Recorded as the `external_systems` field.
 - **Team-sharing intent** — whether the project is `solo` (single maintainer) or `team-shared` (multiple contributors). Recorded as the `team_sharing` field.
 
+An axis the user declines or cannot answer is recorded as an explicit empty value. The round still RAN, which is what makes that value a legitimate empty rather than an uncollected one.
+
 **Output:** Write all answers to `.moai/project/interview.md` with this structure:
 
 ```
 # Project Interview
 
-## Round 1: Vision
+## Stage A Round 1: Vision and Domain
 Question: {question asked}
 Answer: {user's answer}
+Domain: {domain slug}
+Goal: {one-line goal}
 
-## Round 2: Technology
+## Stage A Round 2: Technology and Constraints
 Question: {question asked}
 Answer: {user's answer}
+Constraints: {list, or none known}
 
-## Round 3: Scope
+## Stage A Round 3: Scope and Boundaries
 Question: {question asked}
 Answer: {user's answer}
+Scope: {in-scope / out-of-scope summary}
 
-## Round 4: Verification, Surfaces, and Sharing
+## Stage B Round 4: Verification, Surfaces, and Sharing
 Verification: {verification method / test command}
 UI surface: {has-ui | headless}
 External systems: {list, or none}
 Team sharing: {solo | team-shared}
 ```
+
+A Stage A round that did not run (because Stage A exited early or abandoned) records its base field as absent rather than omitting the section.
 
 After the interview, use the gathered information to generate documentation and proceed to Phase 3 (skip Phase 1 and Phase 2 since there is no existing code to analyze). Pass `interview.md` to Phase 3 as the primary input for documentation generation.

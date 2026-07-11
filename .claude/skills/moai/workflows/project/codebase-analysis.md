@@ -1,5 +1,5 @@
 ---
-description: "Project Phase 1/1.5/2 — Codebase analysis via Explore subagent, 3-round deep interview for existing projects, and user confirmation"
+description: "Project Phase 1/1.5/2 — Codebase analysis via Explore subagent, two-stage deep interview for existing projects (clarity-scored Stage A + mandatory extended-axes Stage B), and user confirmation"
 user-invocable: false
 metadata:
   parent: moai-workflow-project
@@ -45,30 +45,70 @@ Purpose: After codebase analysis, gather user intent and context that cannot be 
 [HARD] All questions MUST use AskUserQuestion in user's conversation_language.
 [HARD] During the interview, the agent MUST NOT generate documentation or write files. The sole output is `.moai/project/interview.md`.
 
-**Adaptive Clarity-Scored Interview (mirrors `plan/clarity-interview.md`):**
+### Two-Stage Interview Structure
 
-The interview is clarity-driven, NOT fixed-length. It scores accumulated answer
-clarity on a 0-10 scale and adapts the round count, reusing the adaptive mechanism
-defined in `.claude/skills/moai/workflows/plan/clarity-interview.md` (the SAME 0-10
-scale semantics — do NOT invent a divergent rubric):
+The interview is a **two-stage** procedure. The two stages are governed by DIFFERENT
+rules and must never be conflated — conflating them is what leaves the extended-axes
+round uncollected:
+
+| Stage | Rounds | Governed by | Terminates when |
+|-------|--------|-------------|-----------------|
+| **Stage A** — clarity-scored adaptive discovery | Round 1 … `project.max_rounds` (3) | `clarity_threshold` (4, entry floor), sufficiency exit (≥ 8), abandon floor (≤ 3), `project.max_rounds` cap | early exit, abandon, OR the cap is reached |
+| **Stage B** — mandatory extended-axes round | Round 4 (exactly one) | nothing — Stage B is EXEMPT from clarity scoring, from the Stage A early-exit skip, from the abandon path, and from `project.max_rounds` | after its four axes are collected |
+
+**Stage B always runs**, on every Stage A exit route, before documentation generation.
+`project.max_rounds` caps **Stage A only** — it is NOT a cap on the interview as a whole.
+
+### Stage A: Adaptive Clarity-Scored Discovery (mirrors `plan/clarity-interview.md`)
+
+Stage A is clarity-driven, NOT fixed-length. It scores accumulated answer clarity on a
+0-10 scale and adapts the round count, reusing the adaptive mechanism defined in
+`.claude/skills/moai/workflows/plan/clarity-interview.md` (the SAME 0-10 scale
+semantics — do NOT invent a divergent rubric):
 
 - **Entry floor**: `clarity_threshold` (4, from `.moai/config/sections/interview.yaml`)
   is the interview ENTRY floor — the clarity band at/above which the interview runs.
   It is NOT the early-exit target.
 - **Additional rounds**: while the accumulated clarity score is below the sufficiency
-  target (≥ 8) and above the abandon floor (≤ 3), run one or more additional rounds,
-  up to `project.max_rounds` (3, from `interview.yaml`).
-- **Early exit (sufficiency)**: when the accumulated clarity score reaches the
-  sufficiency target (≥ 8) before `max_rounds` rounds have run, terminate the
-  interview early (skip the remaining rounds) and proceed to documentation generation.
+  target (≥ 8) and above the abandon floor (≤ 3), run one or more additional Stage A
+  rounds, up to `project.max_rounds` (3, from `interview.yaml`).
+- **Early exit (sufficiency)**: the Stage A early exit fires ONLY when BOTH of the
+  following hold — (i) the accumulated clarity score reaches the sufficiency target
+  (≥ 8), AND (ii) all four **required base fields** (`domain`, `goal`, `constraints`,
+  `scope`) have been answered — where a field auto-populated from the Phase 1 codebase
+  analysis counts as answered. When both hold before `max_rounds` rounds have run,
+  terminate **Stage A** early (skip the remaining **Stage A** rounds) and proceed to
+  the mandatory **Stage B** round. The early exit terminates Stage A ONLY — it NEVER
+  skips Stage B.
+- **Required-field gate**: while any required base field is still unanswered (neither
+  elicited nor confidently auto-populated), Stage A continues (up to
+  `project.max_rounds`) regardless of the accumulated clarity score. A high clarity
+  score alone never satisfies the early exit.
 - **Abandon**: if the accumulated clarity score drops to ≤ 3 (the answers add no
-  useful information), end the loop early and proceed with the best-available answers.
-- Re-evaluate the clarity score after each round and display the round counter:
+  useful information), end **Stage A** early and proceed to **Stage B** with the
+  best-available answers.
+- **Cap is a hard stop**: on reaching `project.max_rounds` with a required base field
+  still unanswered, record that field as absent and proceed to **Stage B**. Do NOT
+  loop Stage A.
+- Re-evaluate the clarity score after each Stage A round and display the round counter:
   "Interview round {N}/{max_rounds}".
 
-**Round 1: Ownership and Purpose**
+**Stage A base-field coverage mapping** — Stage A's rounds, between them, elicit all
+four **required base fields** (`domain`, `goal`, `constraints`, `scope`). For this
+existing-project host, a field confidently inferred from the Phase 1 codebase analysis
+is AUTO-POPULATED: it counts as answered, is NOT re-asked, and is marked as
+auto-populated below:
 
-Topic: Who maintains this project and what is the primary goal going forward?
+| Required base field | Elicited by | Auto-populated? |
+|---|---|---|
+| `domain` | AUTO-POPULATED from the Phase 1 codebase analysis (detected stack, architecture, entry points); asked in Stage A Round 1 ONLY when it cannot be confidently inferred | yes (when inferable) |
+| `goal` | Stage A Round 1 (Ownership, Purpose, and Goal) | no — always elicited |
+| `constraints` | Stage A Round 2 (Constraints and Non-Goals) | no — always elicited |
+| `scope` | Stage A Round 3 (Scope, Boundaries, and Documentation Priority) | no — always elicited |
+
+**Round 1: Ownership, Purpose, and Goal** — elicits `goal` (confirms auto-populated `domain`)
+
+Topic: Who maintains this project, what problem domain does it sit in, and what is the primary goal going forward?
 
 Present via AskUserQuestion with exactly 4 options based on Phase 1 detected project type:
 - Option 1 (Recommended): Active product being developed further: This codebase is actively developed and the documentation should reflect its current trajectory and roadmap.
@@ -76,7 +116,9 @@ Present via AskUserQuestion with exactly 4 options based on Phase 1 detected pro
 - Option 3: System being refactored or migrated: Major structural changes are planned and documentation should reflect the target state.
 - Option 4: Type your own answer: Enter a custom response to describe the ownership context.
 
-**Round 2: Constraints and Non-Goals**
+Capture the one-line project goal / success condition, recorded as the `goal` field. The `domain` field is auto-populated from the Phase 1 analysis (a short slug such as cli-tooling or web-api); ask for it here ONLY when the analysis could not confidently infer it.
+
+**Round 2: Constraints and Non-Goals** — elicits `constraints`
 
 Topic: What are the known constraints, technical debts, or things this project intentionally does NOT do?
 
@@ -86,17 +128,38 @@ Present via AskUserQuestion with exactly 4 options informed by Phase 1 analysis 
 - Option 3: Security or compliance constraints exist: Specific security requirements or compliance rules affect the architecture.
 - Option 4: Type your own answer: Describe the specific constraints or non-goals for this project.
 
-**Round 3: Documentation Priority**
+Capture the hard constraints (performance, security, compatibility, technology limits, or "none known"), recorded as the `constraints` field.
 
-Topic: What is the most important aspect to capture accurately in the documentation?
+**Round 3: Scope, Boundaries, and Documentation Priority** — elicits `scope`
+
+Topic: What is in scope versus explicitly out of scope for this project, and which aspect must the documentation capture most accurately?
 
 Present via AskUserQuestion with exactly 4 options:
 - Option 1 (Recommended): Architecture and module boundaries: Prioritize documenting how the system is structured and how modules interact.
 - Option 2: Technology stack and dependencies: Prioritize the frameworks, libraries, and their versions for onboarding.
 - Option 3: Core business logic and data flow: Prioritize documenting what the system does and how data moves through it.
-- Option 4: Type your own answer: Specify what should be documented with highest fidelity.
+- Option 4: Type your own answer: Specify what is in scope, what is explicitly out of scope, and what should be documented with highest fidelity.
+
+Capture the in-scope / out-of-scope boundary summary, recorded as the `scope` field. The documentation-priority answer is retained as additional context for Phase 3.
+
+### Stage B: Mandatory Extended-Axes Round
 
 **Round 4: Verification, Surfaces, and Sharing (extended axes)**
+
+[HARD] **Stage B always runs.** It executes unconditionally after Stage A terminates —
+by early exit, by abandon (clarity ≤ 3), OR by reaching the `project.max_rounds` cap —
+and before documentation generation. Stage B is:
+
+- **EXEMPT from `project.max_rounds`** — Round 4 is not counted against the cap.
+- **EXEMPT from the Stage A early-exit skip** — the early exit skips the remaining
+  Stage A rounds only, never this round.
+- **EXEMPT from the Stage A abandon path** — an abandoned Stage A still proceeds here.
+- **EXEMPT from clarity scoring** — Round 4 runs regardless of clarity score.
+
+Why: the four extended axes are clarity-independent **factual collection**, not
+ambiguity resolution. There is nothing to "score" about whether the project has a UI
+or which test command it runs — so subjecting them to the Stage A clarity loop, or to
+its round cap, would be a category error and would leave them uncollected.
 
 Topic: How is the project verified, what does it surface, what does it integrate with, and who runs it? Elicit these four axes (later recorded into `harness-spec.yaml` — see `doc-generation.md`). For existing projects, PRE-FILL each axis from the Phase 1 codebase analysis where it can be inferred (e.g., detected test command → `verification`; a detected web framework → `has-ui`; detected DB/API dependencies → `external_systems`); an axis confidently inferred from analysis counts as answered and is NOT re-asked. Present each remaining (un-inferred or ambiguous) axis as a separate AskUserQuestion with up to 4 options:
 
@@ -105,29 +168,37 @@ Topic: How is the project verified, what does it surface, what does it integrate
 - **External systems** — the databases, APIs, or services the project integrates with (e.g., PostgreSQL, Redis, a payment API, an external microservice), or "none". Recorded as the `external_systems` field.
 - **Team-sharing intent** — whether the project is `solo` (single maintainer) or `team-shared` (multiple contributors). Recorded as the `team_sharing` field.
 
+Stage B still RUNS even when every axis is auto-populated — it confirms the inferred values rather than skipping. An axis the user declines or cannot answer is recorded as an explicit empty value; the round having RUN is what makes that a legitimate empty rather than an uncollected one.
+
 **Output:** Write all answers to `.moai/project/interview.md` with this structure:
 
 ```
 # Project Interview
 
-## Round 1: Ownership and Purpose
+## Stage A Round 1: Ownership, Purpose, and Goal
 Question: {question asked}
 Answer: {user's answer}
+Domain: {domain slug — mark "(auto-populated from codebase analysis)" when inferred}
+Goal: {one-line goal}
 
-## Round 2: Constraints and Non-Goals
+## Stage A Round 2: Constraints and Non-Goals
 Question: {question asked}
 Answer: {user's answer}
+Constraints: {list, or none known}
 
-## Round 3: Documentation Priority
+## Stage A Round 3: Scope, Boundaries, and Documentation Priority
 Question: {question asked}
 Answer: {user's answer}
+Scope: {in-scope / out-of-scope summary}
 
-## Round 4: Verification, Surfaces, and Sharing
+## Stage B Round 4: Verification, Surfaces, and Sharing
 Verification: {verification method / test command}
 UI surface: {has-ui | headless}
 External systems: {list, or none}
 Team sharing: {solo | team-shared}
 ```
+
+A Stage A round that did not run (because Stage A exited early or abandoned) records its base field as absent rather than omitting the section.
 
 Pass `interview.md` to Phase 2 (User Confirmation) and Phase 3 (Documentation Generation) as additional context. Documentation agents MUST read interview.md before generating files.
 
