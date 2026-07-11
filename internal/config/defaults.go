@@ -119,6 +119,18 @@ const (
 	// "manual" (pure no-op), preserving the unchanged baseline UX.
 	DefaultHandoffMode = "manual"
 
+	// DefaultArchiveGraceDays is the compiled default for ArchiveConfig.GraceDays
+	// — how long a terminal SPEC stays under .moai/specs/ after its last activity
+	// before `moai spec archive` considers it eligible.
+	//
+	// SPEC-SESSIONSTART-PERF-001 REQ-SSP-009 / REQ-SSP-018: this is the single
+	// source of truth for the literal 90; it mirrors the template-shipped
+	// archive.yaml and backs the `--grace-days` flag default. It is the fallback
+	// when archive.yaml is absent, and the zero-value guard in
+	// Config.ArchiveGraceDays() — an unset grace window must never degrade into
+	// "archive every terminal SPEC immediately".
+	DefaultArchiveGraceDays = 90
+
 	// SPEC-HANDOFF-THRESHOLD-001 (Handoff-v2 M4): handoff-guide band boundaries.
 	// Named constants so renderer.go carries no inline band literals (§14
 	// hardcoding-prevention). These boundaries are compiled-in and NOT
@@ -167,6 +179,7 @@ func NewDefaultConfig() *Config {
 		Research:      NewDefaultResearchConfig(),
 		Feedback:      NewDefaultFeedbackConfig(),
 		Handoff:       NewDefaultHandoffConfig(),
+		Archive:       NewDefaultArchiveConfig(),
 		Session:       NewDefaultSessionConfig(),
 		// MIG-003: 4 new section defaults (REQ-MIG003-004)
 		Constitution:  defaultConstitutionConfig(),
@@ -228,6 +241,15 @@ func NewDefaultHandoffConfig() HandoffConfig {
 	return HandoffConfig{
 		Mode:  DefaultHandoffMode,
 		Guide: false,
+	}
+}
+
+// NewDefaultArchiveConfig returns an ArchiveConfig with safe defaults.
+// SPEC-SESSIONSTART-PERF-001 REQ-SSP-012: an absent archive.yaml still resolves
+// to the 90-day grace window.
+func NewDefaultArchiveConfig() ArchiveConfig {
+	return ArchiveConfig{
+		GraceDays: DefaultArchiveGraceDays,
 	}
 }
 

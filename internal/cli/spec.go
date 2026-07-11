@@ -27,6 +27,8 @@ func newSpecCmd() *cobra.Command {
 	// SPEC-V3R6-LIFECYCLE-SYNC-GATE-001 M2 — atomic close + audit subcommands
 	specCmd.AddCommand(newSpecCloseCmd())
 	specCmd.AddCommand(newSpecAuditCmd())
+	// SPEC-SESSIONSTART-PERF-001 M2 — SPEC auto-archive (bounds the active scan set)
+	specCmd.AddCommand(newSpecArchiveCmd())
 
 	return specCmd
 }

@@ -38,6 +38,7 @@ var yamlToStructRegistry = map[string]string{
 	"sunset":         "SunsetConfig",
 	"research":       "ResearchConfig",
 	"handoff":        "HandoffConfig", // SPEC-HANDOFF-AUTORESUME-001: auto-resume config
+	"archive":        "ArchiveConfig", // SPEC-SESSIONSTART-PERF-001: SPEC auto-archive grace window
 	// Additional sections with partial/specialized loaders:
 	"lsp":      "LSPQualityGates",
 	"mx":       "MXConfig",

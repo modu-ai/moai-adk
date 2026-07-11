@@ -31,6 +31,7 @@ type Config struct {
 	Research      ResearchConfig             `yaml:"research"`
 	Feedback      FeedbackConfig             `yaml:"feedback"` // SPEC-INVOCATION-MODEL-001: /moai feedback target repo
 	Handoff       HandoffConfig              `yaml:"handoff"`  // SPEC-HANDOFF-AUTORESUME-001: auto-resume 핸드오프 설정
+	Archive       ArchiveConfig              `yaml:"archive"`  // SPEC-SESSIONSTART-PERF-001: SPEC auto-archive grace window
 	Session       SessionConfig              `yaml:"session"`  // SPEC-V3R2-RT-004 REQ-022: STALE_SECONDS
 	// MIG-003: 4 new sections loaded by Loader.Load() (REQ-MIG003-001)
 	Constitution  ConstitutionConfig `yaml:"constitution"`
@@ -624,6 +625,18 @@ type HandoffConfig struct {
 	Guide bool   `yaml:"guide"` // true → notice-only 셀에서 stderr 힌트 방출
 }
 
+// ArchiveConfig represents the SPEC auto-archive section (archive.yaml).
+//
+// SPEC-SESSIONSTART-PERF-001 REQ-SSP-012 / REQ-SSP-018: the grace window is a
+// tunable threshold, so it lives in config rather than as an inline literal.
+// Read it through Config.ArchiveGraceDays(), which applies the zero-value
+// fallback — a zero here means "unset", never "no grace at all".
+type ArchiveConfig struct {
+	// GraceDays is how long a terminal SPEC stays under .moai/specs/ after its
+	// last activity before it becomes archive-eligible.
+	GraceDays int `yaml:"grace_days"`
+}
+
 // ResearchConfig represents the Self-Research System configuration section.
 type ResearchConfig struct {
 	Enabled   bool                    `yaml:"enabled"`
@@ -1163,6 +1176,11 @@ type feedbackFileWrapper struct {
 // handoffFileWrapper handles the handoff.yaml section file.
 type handoffFileWrapper struct {
 	Handoff HandoffConfig `yaml:"handoff"`
+}
+
+// archiveFileWrapper handles the archive.yaml section file.
+type archiveFileWrapper struct {
+	Archive ArchiveConfig `yaml:"archive"`
 }
 
 // ralphFileWrapper handles the ralph.yaml section file.

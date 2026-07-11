@@ -82,6 +82,9 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load handoff section (SPEC-HANDOFF-AUTORESUME-001: auto-resume config)
 	l.loadHandoffSection(sectionsDir, cfg)
 
+	// Load archive section (SPEC-SESSIONSTART-PERF-001: SPEC auto-archive grace window)
+	l.loadArchiveSection(sectionsDir, cfg)
+
 	// Load constitution section (REQ-MIG003-001/002)
 	l.loadConstitutionSection(sectionsDir, cfg)
 
