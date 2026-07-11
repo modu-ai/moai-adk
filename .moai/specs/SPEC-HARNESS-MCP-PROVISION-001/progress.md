@@ -159,3 +159,26 @@ scope_note: "M4 touched one Go test file (audit_loader_completeness_test.go allo
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase — owned by manager-docs; carries sync_commit_sha>_
+
+## §F Phase 0.95 Mode Selection
+
+Input parameters:
+- tier: M
+- scope (file count): 4 source files (`doc-generation.md`, `project.md`, `harness-builder.md`, new `mcp-matrix.yaml`) + 4 template mirrors = 8 files
+- domain count: 1 (workflow-skill / config markdown+yaml; no Go feature code)
+- file language mix: 100% markdown + yaml
+- concurrency benefit: LOW — M1 authors `mcp-matrix.yaml` which M2 references; M2 edits the skills M3/M4 depend on for parity. Inter-file dependency + Template-First mirror ordering make this sequential.
+
+Mode evaluation:
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| 1 trivial | no | Multi-file semantic insertion (Phase 3.6 + router registration + artifact 7), not a typo |
+| 2 background | no | Write work; background writes raise main-session permission prompts |
+| 3 agent-team | no | RETIRED |
+| 4 parallel | no | Single domain, inter-file dependency (matrix→doc, doc→parity); not research-heavy |
+| 5 sub-agent | **YES** | Coding-adjacent doc/config work with milestone ordering M1→M4; default fallback fits |
+| 6 workflow | no | < 30 files, not a uniform mechanical transform |
+
+Decision: sub-agent
+
+Justification: Single-domain doc/config change with strict Template-First milestone ordering (M1 matrix → M2 doc+router → M3 harness → M4 parity). Each milestone consumes the prior milestone's output, so parallel fan-out offers no benefit; per Anthropic's coding-task parallelism caveat sequential sub-agent execution is the safe default. One `manager-develop` sub-agent (cycle_type=ddd) executed the milestones sequentially.
