@@ -2,7 +2,7 @@
 id: SPEC-SESSIONSTART-PERF-001
 title: "Session-Start Performance Durability — Research"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-07-11
 updated: 2026-07-11
 author: manager-spec

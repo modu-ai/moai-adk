@@ -2,7 +2,7 @@
 id: SPEC-SESSIONSTART-PERF-001
 title: "Session-Start Performance Durability — Progress"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-11
 updated: 2026-07-11
 author: manager-spec
@@ -170,7 +170,7 @@ milestones_complete: M1 (algorithmic hardening — REQ-SSP-001..006, REQ-SSP-006
 milestones_pending: (none — run-phase complete)
 m1_commit_sha: f376ee7d25bea4721b0f6d9bd9e1f9ea92419f44
 m2_commit_sha: a814656c5b159a6bd12e5b456a9aa969037aad5d
-m3_commit_sha: pending-backfill-m3 (this progress.md edit rides the M3 commit; the real SHA is backfilled in a follow-up commit — self-referential-hazard workaround per spec-frontmatter-schema.md § SHA placeholder backfill)
+m3_commit_sha: ab4ea7d7498faba491f50d29b4b0f99d8722a00d (backfilled during sync-phase; verified via `git rev-parse ab4ea7d74` and `git show --stat ab4ea7d74`)
 m3_base_note: M3 branch `spec-sessionstart-perf-001-m3` was cut from `main` @ `02ba30bbe` (the M2-merged base, as delegated). `main` advanced to `82b758d43` via parallel sessions during authoring; `02ba30bbe` IS an ancestor of `82b758d43`, so the maintainer can rebase M3 onto current `main` cleanly (or ff-merge after rebase). M3 touched only files verified identical between the worktree base and current `main` (drift.go, drift_index.go, session_start.go, defaults.go, i18n validator, coding-standards.md), so no merge conflict is expected.
 ac_pass_count: 29 (M1: 13; M2: 11; M3: AC-SSP-014, 015, 016, 017, 018 = 5) + AC-SSP-024 cross-cutting quality gate
 ac_fail_count: 0
@@ -189,4 +189,13 @@ residual_risk: (1) AC-SSP-008b narrowing (M2 — unchanged). (2) M2 yields 0 eli
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: sync-complete (3-phase close — `in-progress → implemented → completed` merged into this single sync commit)
+sync_complete_at: 2026-07-11
+sync_commit_sha: pending-backfill-sync (this progress.md edit rides the sync commit; the real SHA is backfilled in a follow-up commit — self-referential-hazard workaround per spec-frontmatter-schema.md § SHA placeholder backfill)
+frontmatter_status_transitions: spec.md (in-progress → completed), plan.md (in-progress → completed), acceptance.md (in-progress → completed), design.md (draft → completed), research.md (draft → completed), progress.md (in-progress → completed) — all 6 SPEC artifacts updated atomically on this commit; `updated:` refreshed to 2026-07-11 in all 6 frontmatter blocks
+changelog_entry_position: CHANGELOG.md `[Unreleased]` § Fixed (session-start latency fix is user-facing behavior-change framing; see also § Added for the new `moai spec archive` command and § Changed for the codified Advisory-Check Discipline rule)
+b12_self_test_a: `grep -c 'SPEC-SESSIONSTART-PERF-001' CHANGELOG.md` returned 0 before this edit (no prior entry — no duplicate-emission risk from parallel BATCH-SYNC sessions)
+b12_self_test_b: AC count cross-check — `grep -oE '^### AC-SSP-[0-9]+' acceptance.md \| sort -u \| wc -l` = 24 unique top-level AC IDs (AC-SSP-001..024); CHANGELOG entry cites this count, not the 29-row §E.2 breakdown (which includes lettered sub-criteria a/b/c counted separately)
+b12_self_test_c: file-path verification — every file path cited in the CHANGELOG entry was confirmed present via `ls`/`git show --stat` against the m1/m2/m3 commits before the entry was drafted (see Deliverables below for the verified SHA list)
+new_command_docs: `moai spec archive` is a new user-facing CLI command. README.md `## CLI Commands` (line 697) and README.ko.md carry NO existing `moai spec *` subcommand entries (no `moai spec drift`, `moai spec lint`, `moai spec audit`, etc. are documented there either) — so there is no established convention/location to extend. No README edit made; flagged as a pre-existing documentation gap for `moai spec` subcommands generally, out of this SPEC's scope to invent a new README section.
+scoped_commit_verified: `git status --short` confirmed 3 pre-existing unrelated modifications (`.mcp.json`, `.moai/config/sections/handoff.yaml`, `CLAUDE.local.md`) present in the working tree BEFORE this sync commit; these were excluded from `git add` (specific-path staging only, no `git add -A`)
