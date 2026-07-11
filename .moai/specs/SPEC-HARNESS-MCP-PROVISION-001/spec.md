@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-MCP-PROVISION-001
 title: "Per-project-type MCP server provisioning in /moai project + harness generation"
 version: "0.1.3"
-status: in-progress
+status: completed
 created: 2026-07-11
 updated: 2026-07-11
 author: manager-spec
