@@ -44,9 +44,9 @@ This workflow is also triggered automatically when project documentation does no
 |---|---|---|
 | Mode flag / Scope boundary | `project/mode-detection.md` | --mode compatibility, NO SPEC Generation rule |
 | Phase 0: Project Type Detection | `project/mode-detection.md` | Auto-detect existing vs. new project |
-| Phase 0.3: Deep Interview (New) | `project/mode-detection.md` | 3-round Vision/Technology/Scope interview |
+| Phase 0.3: Deep Interview (New) | `project/mode-detection.md` | Two-stage interview: clarity-scored Stage A (Vision-Domain / Technology-Constraints / Scope, variable length up to `project.max_rounds`) + mandatory Stage B extended-axes round |
 | Phase 1: Codebase Analysis | `project/codebase-analysis.md` | Explore subagent analysis (existing projects) |
-| Phase 1.5: Deep Interview (Existing) | `project/codebase-analysis.md` | 3-round Ownership/Constraints/Priority interview |
+| Phase 1.5: Deep Interview (Existing) | `project/codebase-analysis.md` | Two-stage interview: clarity-scored Stage A (Ownership-Goal / Constraints / Scope-Priority, variable length up to `project.max_rounds`) + mandatory Stage B extended-axes round |
 | Phase 2: User Confirmation | `project/codebase-analysis.md` | Present analysis summary, get proceed/cancel |
 | Phase 3: Documentation Generation | `project/doc-generation.md` | manager-docs for product.md/structure.md/tech.md |
 | Phase 3.1: Independent Audit | `project/doc-generation.md` | plan-auditor conditional audit + retry loop |
@@ -68,7 +68,7 @@ This workflow is also triggered automatically when project documentation does no
        ├─ New Project → Phase 0.3 interview → Phase 3 (skip Phase 1/2)
        └─ Existing Project → Phase 1 analysis
                               └─ codebase-analysis.md
-                                   ├─ Phase 1.5: 3-Round interview
+                                   ├─ Phase 1.5: Two-stage interview (Stage A + Stage B)
                                    └─ Phase 2: User Confirmation
                                         └─ doc-generation.md
                                              ├─ Phase 3: Doc generation

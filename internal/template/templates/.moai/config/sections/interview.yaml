@@ -6,8 +6,16 @@ interview:
     questions_per_round: 3
   project:
     max_rounds: 3
+    # Stage-A-scoped: `project.max_rounds` caps ONLY the Stage A clarity-scored
+    # discovery rounds — it does NOT cap the project interview as a whole.
+    # The mandatory extended-axes round (Stage B / Round 4, whose axes are declared
+    # in `additional_axes` below) is EXEMPT from this cap: it always runs after
+    # Stage A terminates, on every Stage A exit route (early exit, abandon, or cap).
+    # So the project interview is variable-length Stage A + exactly one Stage B round.
     questions_per_round: 3
     # Extended interview axes for the project flow (Phase 0.3 / Phase 1.5).
+    # Collected in the mandatory Stage B round (Round 4), NOT in the Stage A
+    # clarity loop — they are clarity-independent factual collection.
     # Recorded into .moai/project/harness-spec.yaml by doc-generation.md and
     # consumed by harness generation (meta-harness.md, harness-build-entry.md).
     additional_axes:
