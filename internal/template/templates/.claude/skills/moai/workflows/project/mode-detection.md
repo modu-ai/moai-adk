@@ -130,6 +130,15 @@ semantics — do NOT invent a divergent rubric):
 - **Required-field gate**: while any required base field is still unanswered, Stage A
   continues (up to `project.max_rounds`) regardless of the accumulated clarity score.
   A high clarity score alone never satisfies the early exit.
+- **Volunteered-field credit (this is what makes the early exit reachable)**: a required
+  base field VOLUNTEERED in an EARLIER Stage A round — e.g. the user names their hard
+  constraints and their scope boundary while answering the Round 1 vision question —
+  COUNTS as answered and MUST NOT be re-asked in its designated round. Without this
+  credit the four required fields could only ever complete at the LAST Stage A round
+  (which IS `max_rounds`), so the early exit's "before `max_rounds` rounds have run"
+  condition could never hold, and Stage A would silently degrade back into a
+  fixed-length interview pinned at `max_rounds` — the very defect the adaptive loop
+  exists to remove.
 - **Abandon**: if the accumulated clarity score drops to ≤ 3 (the answers add no
   useful information), end **Stage A** early and proceed to **Stage B** with the
   best-available answers.

@@ -84,6 +84,15 @@ semantics — do NOT invent a divergent rubric):
   elicited nor confidently auto-populated), Stage A continues (up to
   `project.max_rounds`) regardless of the accumulated clarity score. A high clarity
   score alone never satisfies the early exit.
+- **Volunteered-field credit (this is what makes the early exit reachable)**: a required
+  base field VOLUNTEERED in an EARLIER Stage A round — e.g. the user names their hard
+  constraints and their scope boundary while answering the Round 1 ownership/purpose
+  question — COUNTS as answered and MUST NOT be re-asked in its designated round (the
+  same credit the Phase 1 auto-population already carries). Without this credit the four
+  required fields could only ever complete at the LAST Stage A round (which IS
+  `max_rounds`), so the early exit's "before `max_rounds` rounds have run" condition
+  could never hold, and Stage A would silently degrade back into a fixed-length
+  interview pinned at `max_rounds` — the very defect the adaptive loop exists to remove.
 - **Abandon**: if the accumulated clarity score drops to ≤ 3 (the answers add no
   useful information), end **Stage A** early and proceed to **Stage B** with the
   best-available answers.
@@ -140,7 +149,7 @@ Present via AskUserQuestion with exactly 4 options:
 - Option 3: Core business logic and data flow: Prioritize documenting what the system does and how data moves through it.
 - Option 4: Type your own answer: Specify what is in scope, what is explicitly out of scope, and what should be documented with highest fidelity.
 
-Capture the in-scope / out-of-scope boundary summary, recorded as the `scope` field. The documentation-priority answer is retained as additional context for Phase 3.
+[HARD] The 4 options above resolve the DOCUMENTATION-PRIORITY answer only — they do NOT by themselves yield the scope boundary (only the free-form Option 4 would, and it is not the recommended option). **Then elicit the in-scope / out-of-scope boundary as a SEPARATE AskUserQuestion** (`project.questions_per_round: 3` allows a second question in this round): ask what is explicitly IN scope and what is explicitly OUT of scope for this project. Record that boundary summary as the `scope` field — `scope` MUST be elicited, and MUST NOT be inferred from the documentation-priority option. Skipping this second question leaves `scope` ABSENT, which propagates an empty `scope` into `harness-spec.yaml` and forces `harness-build-entry.md` Phase 1 to re-ask it — reopening the exact information leak this workflow exists to close. The documentation-priority answer is retained as additional context for Phase 3.
 
 ### Stage B: Mandatory Extended-Axes Round
 
