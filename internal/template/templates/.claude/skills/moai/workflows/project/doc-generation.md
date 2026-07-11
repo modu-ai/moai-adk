@@ -189,6 +189,70 @@ If LSP server is NOT installed, present AskUserQuestion:
 
 ---
 
+## Phase 3.6: MCP Server Provisioning
+
+Goal: Provision the per-project-type MCP (Model Context Protocol) servers that make the
+downstream development loop productive (browser automation for a web frontend, a read-only
+DB server for a backend, etc.) by writing project-scope `.mcp.json` entries. This phase runs
+AFTER Phase 3.5 (LSP detection) and BEFORE Phase 3.7 (dev-mode config).
+
+### Step 3.6.1: Detect the project stack
+
+Reuse the existing language / framework detection from Phase 0 / Phase 1 PLUS the
+machine-readable stack signals recorded in `.moai/project/harness-spec.yaml` (emitted by
+Phase 3.2): the `external_systems` field (DB / APIs / services) and the `ui_surface` field
+(`has-ui` | `headless`). A `has-ui` project maps to the web-frontend row; an
+`external_systems` list naming a database maps to the backend-db row; a mobile marker maps
+to the mobile row.
+
+### Step 3.6.2: Select recommended servers from the matrix
+
+Read the externalized recommendation matrix at `.moai/config/sections/mcp-matrix.yaml` (the
+SSOT — the matrix rows are NOT duplicated in this skill; only this fallback pointer is
+carried here). Select the row matching the detected stack. When the stack cannot be
+classified into web-frontend / mobile / backend-db, fall back to the `universal_starter` row
+rather than skipping provisioning silently.
+
+[HARD] Cap the recommendation at 3-5 servers maximum, and prefer vendor-maintained servers
+over community-maintained equivalents (2026 MCP CVE surge). The matrix marks each server
+`vendor-maintained` and `requires_credentials`.
+
+### Step 3.6.3: Obtain orchestrator approval (subagent never prompts)
+
+[HARD] Surface the selected servers to the user through the ORCHESTRATOR's AskUserQuestion
+channel. A subagent-executed step (e.g. a delegated `builder-harness` scaffold) MUST NOT
+prompt the user directly — the subagent returns the recommendation or a blocker report for
+the orchestrator to surface. The boundary is asymmetric: only the orchestrator holds
+AskUserQuestion.
+
+[HARD] Where a recommended MCP server requires credentials or tokens
+(`requires_credentials: true`), require an EXPLICIT per-server AskUserQuestion approval
+before writing that server. Never auto-write a credentialed server without that explicit
+per-server approval.
+
+### Step 3.6.4: Write `.mcp.json` at project scope (on approval)
+
+On approval, write the selected servers into the repo-root `.mcp.json` at project scope (the
+checked-in, per-user-approved MCP config). The write target is the repo-root `.mcp.json`
+(NOT `.moai/specs/` — the `/moai project` NO-SPEC scope guard applies here too).
+
+[HARD] The write MUST be additive / idempotent — MERGE the selected servers into any existing
+`.mcp.json` rather than clobber it. A pre-existing user server with a different key survives;
+a server with the same key is kept as-is (no duplicate, no clobber).
+
+[HARD] Any secret in a written server entry MUST be expressed in `${VAR}` env-var expansion
+form (e.g. `"env": { "DATABASE_URL": "${DATABASE_URL}" }`) — never inline a literal
+credential / token value. When the required `${VAR}` is not set in the environment, still
+write the `${VAR}` placeholder (config-time); actual credential resolution is a runtime
+concern.
+
+### Step 3.6.5: Declined recommendation is not an error
+
+When the user rejects the recommendation entirely via AskUserQuestion, Phase 3.6 writes NO
+`.mcp.json` entry and proceeds to Phase 3.7 — a declined recommendation is not an error.
+
+---
+
 ## Phase 3.7: Development Methodology Auto-Configuration
 
 Goal: Automatically set the `development_mode` in `.moai/config/sections/quality.yaml` based on the project analysis results from Phase 0 and Phase 1.
@@ -388,5 +452,6 @@ When `detected_db` is false, present the original three options plus the harness
 - Phase 3.2: MoAI orchestrator (harness-spec.yaml emission from interview.md answers, no user interaction)
 - Phase 3.3: Explore + manager-docs subagents (codemaps generation via codemaps workflow)
 - Phase 3.5: per-spawn `Agent(general-purpose)` devops specialist (optional LSP installation)
+- Phase 3.6: MoAI orchestrator (MCP server provisioning — matrix select + AskUserQuestion approval + additive `.mcp.json` write at project scope; subagent never prompts)
 - Phase 3.7: MoAI orchestrator (automatic development_mode configuration, no user interaction)
 - Phase 4.1a: MoAI orchestrator (automatic DB detection via Grep/Glob, no user interaction)

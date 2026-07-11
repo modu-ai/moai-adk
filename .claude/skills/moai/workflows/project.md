@@ -50,8 +50,10 @@ This workflow is also triggered automatically when project documentation does no
 | Phase 2: User Confirmation | `project/codebase-analysis.md` | Present analysis summary, get proceed/cancel |
 | Phase 3: Documentation Generation | `project/doc-generation.md` | manager-docs for product.md/structure.md/tech.md |
 | Phase 3.1: Independent Audit | `project/doc-generation.md` | plan-auditor conditional audit + retry loop |
+| Phase 3.2: harness-spec.yaml Emission | `project/doc-generation.md` | Emit `.moai/project/harness-spec.yaml` from `interview.md` answers (8-field schema, no user interaction, overwrite) |
 | Phase 3.3: Codemaps Generation | `project/doc-generation.md` | Explore + manager-docs for codemaps/ |
 | Phase 3.5: Dev Environment Check | `project/doc-generation.md` | LSP server detection + optional install |
+| Phase 3.6: MCP Server Provisioning | `project/doc-generation.md` | Detect stack, select MCP servers from `mcp-matrix.yaml`, orchestrator approval, additive `.mcp.json` write |
 | Phase 3.7: Dev Methodology Config | `project/doc-generation.md` | Auto-set development_mode in quality.yaml |
 | Phase 4.1a: DB Detection | `project/doc-generation.md` | Grep/Glob DB keyword detection, db-detection.json |
 | Phase 4: Completion | `project/doc-generation.md` | Summary report + 3-branch next-steps AskUserQuestion |
@@ -73,8 +75,10 @@ This workflow is also triggered automatically when project documentation does no
                                         └─ doc-generation.md
                                              ├─ Phase 3: Doc generation
                                              ├─ Phase 3.1: Audit (conditional)
+                                             ├─ Phase 3.2: harness-spec.yaml emission
                                              ├─ Phase 3.3: Codemaps
                                              ├─ Phase 3.5: LSP check
+                                             ├─ Phase 3.6: MCP provisioning
                                              ├─ Phase 3.7: Dev mode config
                                              ├─ Phase 4.1a: DB detection
                                              └─ Phase 4: Completion
