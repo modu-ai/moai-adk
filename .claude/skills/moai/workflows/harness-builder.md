@@ -108,6 +108,8 @@ One opus-xhigh sub-agent reasons over the ANALYZE aggregate (domain profile + ta
 6. **Drafts the Sprint Contract** — the graded dimensions + thresholds the harness's evaluator (if invoked) will score against.
 7. **Emits a draft manifest** — the 8 top-level fields populated, ready for validation against the canonical schema.
 
+**Specialist-count guardrail (3-7 maximum).** PLAN MUST cap the specialist roster at a **3-7-specialists-maximum** — generate FEW trigger-rich specialists, because over-generation degrades Claude's automatic sub-agent delegation. PLAN MUST justify each specialist as a **recurring same-instruction** worker (a role the harness will dispatch repeatedly with the same instruction shape); when a candidate specialist is a one-off or does not recur, PLAN MUST **emit a companion skill instead** of an agent. Exactly 3 or exactly 7 specialists is within the guardrail; ≤2 or ≥8 triggers this justify-each-or-emit-skill path. This guardrail is a HARD cap, not an unbounded suggestion.
+
 **User approval gate (AskUserQuestion) — first-class.** BEFORE GENERATE, the orchestrator surfaces the draft manifest + planned specialists + Sprint Contract to the user via `AskUserQuestion`. The orchestrator (NOT the PLAN sub-agent) holds this boundary. This is the self-contradiction resolution: the gate could NOT fire if the Builder were a dynamic-workflow script (scripts cannot call `AskUserQuestion` mid-run), but the orchestrator-direct Builder makes it reachable.
 
 The gate presents, at minimum:
@@ -208,9 +210,9 @@ NO mandatory top-level worktree wraps the Builder or Runner. `Agent(isolation:"w
 
 **L1 worktree cleanup is runtime-autonomous.** The Runner emits a cleanup directive at end-of-run; the actual `git worktree prune` is handled by the Claude Code runtime, not by the harness logic.
 
-## GENERATE Output Contract (5 base artifact types + optional artifact 7)
+## GENERATE Output Contract (5 base artifact types + mandatory verify skill + optional artifact 7)
 
-The GENERATE phase emits 5 base artifact types, plus a mandatory verify skill (artifact 6, owned by a sibling Epic SPEC) and an OPTIONAL MCP fragment (artifact 7, § Artifact 7 below) emitted only when the harness PLAN declares an MCP need. This contract is the handoff spec M3 (manifest + Runner engine) and M4 (command generation + lifecycle) consume. Each artifact has a fixed location and a content contract.
+The GENERATE phase emits 5 base artifact types PLUS a **mandatory** `harness-<name>-verify` companion skill (artifact 6, § Artifact 6 below), plus an OPTIONAL MCP fragment (artifact 7, § Artifact 7 below) emitted only when the harness PLAN declares an MCP need. This contract is the handoff spec M3 (manifest + Runner engine) and M4 (command generation + lifecycle) consume. Each artifact has a fixed location and a content contract.
 
 ### Artifact 1 — Thin-wrapper entry command
 
@@ -243,6 +245,18 @@ The GENERATE phase emits 5 base artifact types, plus a mandatory verify skill (a
 - YAML frontmatter: `name`, `description`, `tools` (the tools the specialist needs).
 - Body: the specialist's responsibility, its inputs/outputs, its quality bar, and any domain-specific guidance.
 - The specialist's `effort` / `model` / `isolation` / `primitive` live in the manifest (NOT duplicated in the agent frontmatter) — the manifest is the SSOT for dispatch, the agent file is the SSOT for the specialist's reasoning.
+- **Mandatory injected rule blocks**: every generated specialist agent body carries the two short rule blocks below, injected verbatim — a tool-priority decision tree + a Skill-First execution rule. Each block stays short by contract (≤ 8 lines) so generated agents are not bloated:
+
+```markdown
+## Tool Priority (category fit, not style preference)
+1. Category-fit MCP tool — when the task IS the tool's category.
+2. Search (Grep/Glob) — locate content/files.
+3. File tools (Read/Edit/Write) — inspect/modify.
+4. Inline response — when no tool is the category fit.
+
+## Skill-First Execution
+Before any file/code work, read the relevant companion SKILL.md.
+```
 
 ### Artifact 4 — Companion Progressive-Disclosure skills
 
@@ -270,6 +284,19 @@ The GENERATE phase emits 5 base artifact types, plus a mandatory verify skill (a
 - `runner_workflow` — the `harness-<name>-run.js` filename.
 
 The manifest is validated against the canonical schema before GENERATE completes. A manifest failing validation regresses to PLAN for correction.
+
+### Artifact 6 — Verify skill (mandatory — `harness-<name>-verify`)
+
+**Path**: `.claude/skills/harness-<name>-verify/SKILL.md`
+**Purpose**: give the generated harness a runnable check it can execute — the strongest Anthropic theme for generated harnesses ("give Claude a check it can run"). This skill mirrors the official `/run-skill-generator` bundled skill: it discovers the project's build / launch / test recipe ONCE from a clean environment and codifies it, so every subsequent run has a deterministic runnable verification loop instead of re-discovering how to build and test each time.
+**Mandatory — ALWAYS emitted**: unlike the optional artifact 7 (MCP fragment), the verify skill is a mandatory artifact of EVERY generated harness set. It is NOT gated on any `harness-spec.yaml` field.
+**Content contract**:
+
+- YAML frontmatter per the skill-authoring schema (description, paths, metadata, triggers), under the `harness-<name>-verify` name (user-owned `harness-*` namespace).
+- Body: the discovered build / launch / test recipe — the exact commands to build the project, launch it, and run its test suite from a clean checkout — plus the runnable check the harness invokes to confirm the project is in a working state.
+- The recipe is discovered ONCE (the `/run-skill-generator` pattern) and committed; the harness reuses it rather than re-deriving the recipe on each run.
+
+**Stub-if-no-recipe (edge E1)**: when the project has NO discoverable build / launch / test recipe, the verify skill is STILL emitted — as a documented stub whose body records "no recipe found" and the discovery attempt — rather than omitted. The verify skill is never skipped; a stub is emitted so every harness carries the mandatory artifact-6 slot.
 
 ### Artifact 7 — Optional `.mcp.json` fragment (conditional)
 
