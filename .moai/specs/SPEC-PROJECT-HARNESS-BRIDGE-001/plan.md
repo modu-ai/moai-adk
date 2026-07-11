@@ -5,6 +5,11 @@
 > (3 artifacts). Doc-only (markdown / yaml) — no Go code. Every touched file has
 > a byte-identical template mirror; Template-First discipline governs every edit.
 > Line-number citations are drift-prone — re-anchor by content token at run-phase.
+>
+> **v0.2.0 amendment in force.** M1-M4 are CLOSED (delivered at the v0.1.1 close,
+> sync `0c9871b46`). The active work is **M5** (§F) — the two-stage interview that
+> makes the extended-axes Round 4 REACHABLE. Read spec.md §C.7 + `## Amendments`
+> before starting M5.
 
 ## §A. Context
 
@@ -14,6 +19,39 @@
 - **Epic position**: FOUNDATION SPEC of the 3-SPEC "Project-Harness Pipeline"
   Epic. NO `depends_on`. The two downstream SPECs `depend_on` this one (they
   consume the `harness-spec.yaml` contract §D).
+
+### Amendment v0.2.0 state (READ FIRST)
+
+- **Prior close**: run `9f1f0f53b`, sync `0c9871b46` (`prior_completed_sha:
+  0c9871b46b6719325427dc0126e4eb65d7b0f2d8`), version `0.1.1`, `status: completed`.
+- **Now**: `status: in-progress`, version `0.2.0`, `amendment_of:` self-referential
+  (in-place amendment per `.claude/rules/moai/development/spec-frontmatter-schema.md`
+  § Status Transition Ownership Matrix, `completed → in-progress (amendment)` row).
+- **AC state**:
+  - **AC-PHB-001 … AC-PHB-014 — PASS** as of the v0.1.1 close (`0c9871b46`).
+    These are NOT re-litigated by M5; they must remain PASS (regression guard).
+  - **AC-PHB-015 … AC-PHB-020 — OUTSTANDING**. These are the amendment scope
+    (the REACHABILITY ACs). They are the M5 exit criteria.
+- **Why the amendment exists**: a sync-auditor MUST-FIX found the extended-axes
+  Round 4 UNREACHABLE on BOTH interview paths — `project.max_rounds: 3` caps the
+  interview at 3 rounds AND the clarity early-exit "skips the remaining rounds",
+  so the four axes were never collected, `harness-spec.yaml` wrote them
+  always-empty, and `harness-build-entry.md` re-asked everything. The SPEC's
+  headline feature was inert while all 14 ACs passed (AC-PHB-004 greps for axis
+  TOKEN PRESENCE, never REACHABILITY).
+- **Amendment file-pair set — 7 pairs** (the v0.1.x set of 6, plus `project.md`):
+  1. `project/mode-detection.md` + template mirror
+  2. `project/codebase-analysis.md` + template mirror
+  3. `project/doc-generation.md` + template mirror
+  4. `project/meta-harness.md` + template mirror (untouched by M5 — v0.1.x wiring stands)
+  5. `harness-build-entry.md` + template mirror (untouched by M5 — v0.1.x wiring stands)
+  6. `.moai/config/sections/interview.yaml` + template mirror
+  7. **`project.md` + template mirror — NEW 7th pair (scope delta)**: the `/moai project`
+     router's routing table carries two stale `3-round` claims ("3-round
+     Vision/Technology/Scope interview", "3-round Ownership/Constraints/Priority
+     interview"). Combined with the `codebase-analysis.md` frontmatter claim, the
+     baseline is **6** `3-round` matches across both trees (3 per tree × 2 trees).
+     AC-PHB-020 requires 0. This pair was NOT in the v0.1.x touch set.
 - **Verified inventory** (research input — NOT to be re-investigated at plan
   authoring; re-verify by content token at run-phase):
   - `/moai project` router: `.claude/skills/moai/workflows/project.md` +
@@ -98,6 +136,34 @@ Both plan-phase clarifications are RESOLVED (decision log recorded in
   (existing-project) in `project/codebase-analysis.md`. Both must receive the
   adaptive loop AND the extended axes (REQ-PHB-003). Editing only one file (only
   Phase 0.3 or only Phase 1.5) is an incomplete implementation.
+- **B-STAGE-EXEMPTION (v0.2.0 — the amendment's central hazard)**: **a Round 4
+  heading that merely EXISTS, without the explicit cap / early-exit exemption
+  language, is the v0.1.x defect restated — the exemption prose IS the
+  reachability contract.** Both hosts ALREADY have a `**Round 4: Verification,
+  Surfaces, and Sharing (extended axes)**` heading today, and the feature is still
+  inert, because nothing in either host says the round survives
+  `project.max_rounds: 3` or the early-exit "skip the remaining rounds" clause.
+  M5 is NOT "add a Round 4" (it is already there) — M5 is "state, in prose, that
+  Round 4 is Stage B: it ALWAYS runs, it is EXEMPT from `max_rounds`, EXEMPT from
+  the Stage A early-exit skip, EXEMPT from the abandon path, and EXEMPT from
+  clarity scoring." AC-PHB-015 greps for exactly that exemption language, anchored
+  to the Round 4 / Stage B section (REQ-PHB-014). An M5 that restructures the
+  rounds but omits the exemption prose passes no AC and fixes nothing.
+- **B-ASYMMETRIC-ROUNDS (v0.2.0)**: the two hosts' Stage A round topics are
+  asymmetric and NEITHER covers all four REQUIRED base fields —
+  `mode-detection.md` runs Vision / Technology / Scope (no constraints round, no
+  domain round); `codebase-analysis.md` runs Ownership-Purpose / Constraints /
+  Documentation-Priority (no scope round, no domain round). `doc-generation.md`'s
+  field mapping assumes a uniform interview shape that does not exist. M5.3 must
+  realign the round topics AND add an explicit base-field coverage mapping to each
+  host (REQ-PHB-018 / AC-PHB-018) — do NOT just sprinkle the field names into
+  existing prose.
+- **B-STAGE-A-EARLY-EXIT (v0.2.0)**: the early-exit prose in both hosts currently
+  says clarity ≥ 8 "terminate the interview early (skip the remaining rounds)".
+  Two edits are required, not one: (a) gate the exit on all four REQUIRED base
+  fields being answered (REQ-PHB-002 amended / REQ-PHB-017), and (b) rescope the
+  exit to **Stage A** — it must not read as skipping "the interview" (which would
+  swallow Stage B). AC-PHB-016 greps for BOTH.
 
 ## §C. Pre-flight Checklist (run before any change)
 
