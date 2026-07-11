@@ -26,14 +26,104 @@ type DriftReport struct {
 	Count   int
 }
 
-// DetectDrift scans all SPECs and compares frontmatter status against git log
-// Returns a report with all drift records and the total drift count
+// driftDeps is the injectable dependency seam for the drift computation.
+//
+// It exists so tests can COUNT git-log invocations directly: the central claim of
+// the single-pass design — "a constant number of git subprocesses, independent of
+// the SPEC count" — is only verifiable through an observable seam, not by
+// inspection.
+//
+// logAll is the counted operation. headSHA and branch sit deliberately OUTSIDE it:
+// both are O(1), and a cache hit must be answerable without any git-log work at all.
+//
+// @MX:ANCHOR: [AUTO] driftDeps — the drift-path git seam.
+// @MX:REASON: SPEC-SESSIONSTART-PERF-001 REQ-SSP-001 / AC-SSP-001 / AC-SSP-004 —
+//
+//	the O(1)-subprocess guarantee is a load-bearing contract of the session-start
+//	critical path; removing this seam removes the only mechanical proof of it.
+type driftDeps struct {
+	// useCache gates the HEAD-SHA cache READ. False means "always recompute" —
+	// the `moai spec drift --no-cache` authoritative path (REQ-SSP-006a).
+	useCache bool
+
+	// headSHA resolves the current HEAD commit SHA (the cache key).
+	headSHA func() (string, error)
+
+	// branch resolves the default branch name ("main", falling back to "master").
+	branch func() string
+
+	// logAll performs THE single git log pass: exactly one invocation per cache
+	// miss, zero per cache hit — regardless of how many SPECs exist.
+	logAll func(branch string) ([]commitRecord, error)
+}
+
+// realDriftDeps wires the production git implementations.
+func realDriftDeps(useCache bool) driftDeps {
+	return driftDeps{
+		useCache: useCache,
+		headSHA:  gitHeadSHA,
+		branch:   cachedMainBranch,
+		logAll:   gitLogAllFullMessage,
+	}
+}
+
+// activeSpec is a SPEC that survived the cheap pre-filter and therefore still
+// requires git classification.
+type activeSpec struct {
+	specID string
+	status string
+}
+
+// DetectDrift scans all SPECs and compares frontmatter status against git log.
+// Returns a report with all drift records and the total drift count.
+//
+// While HEAD is unchanged the result is served from the HEAD-SHA cache. Use
+// DetectDriftFresh to force a recompute.
+//
+// @MX:ANCHOR: [AUTO] DetectDrift — public drift entry point (session-start critical path).
+// @MX:REASON: fan_in >= 3 (moai spec drift, its --exit-code-on-drift post-run, and
+//
+//	session-start via DriftCount). It runs synchronously inside the SessionStart hook,
+//	so its cost is charged directly to every Claude Code session launch.
 func DetectDrift(baseDir string) (*DriftReport, error) {
+	return detectDrift(baseDir, realDriftDeps(true))
+}
+
+// DetectDriftFresh recomputes drift while ignoring the HEAD-SHA cache.
+//
+// This is the authoritative on-demand path (REQ-SSP-006a): the cache is keyed only
+// on HEAD, so an uncommitted frontmatter edit leaves a stale-cache window, and this
+// is how an operator escapes it.
+func DetectDriftFresh(baseDir string) (*DriftReport, error) {
+	return detectDrift(baseDir, realDriftDeps(false))
+}
+
+// detectDrift is the seam-injectable core of drift detection.
+//
+// Control flow (SPEC-SESSIONSTART-PERF-001 design.md §M1.2):
+//
+//	(A) HEAD-SHA cache short-circuit — zero git-log work while HEAD is unchanged
+//	(B) cheap pre-filter            — terminal + grandfather SPECs resolved with NO git work
+//	(C) ONE git log pass            — a single subprocess, whatever N is
+//	(D) per-SPEC in-memory walk     — the original two-stage semantics, verbatim
+func detectDrift(baseDir string, deps driftDeps) (*DriftReport, error) {
 	specsDir := filepath.Join(baseDir, ".moai", "specs")
 
 	// Check if specs directory exists
 	if _, err := os.Stat(specsDir); os.IsNotExist(err) {
 		return &DriftReport{Records: []DriftRecord{}, Count: 0}, nil
+	}
+
+	// (A) HEAD-SHA cache short-circuit. A hit returns without touching deps.logAll.
+	// A non-git checkout yields an empty head, which simply disables the cache.
+	head, headErr := deps.headSHA()
+	if headErr != nil {
+		head = ""
+	}
+	if deps.useCache {
+		if cached, ok := loadDriftCache(baseDir, head); ok {
+			return cached, nil
+		}
 	}
 
 	// Read all SPEC directories
@@ -43,8 +133,12 @@ func DetectDrift(baseDir string) (*DriftReport, error) {
 	}
 
 	var records []DriftRecord
+	var active []activeSpec
 	driftCount := 0
 
+	// (B) Cheap pre-filter — terminal-status and grandfather-era SPECs are resolved
+	// from frontmatter alone and never enter the git-checked working set. On the real
+	// corpus this removes the majority of SPECs before a single subprocess runs.
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
@@ -97,44 +191,63 @@ func DetectDrift(baseDir string) (*DriftReport, error) {
 			}
 		}
 
-		// Get git-implied status
-		gitStatus, err := getGitImpliedStatus(specID)
+		// Survives the pre-filter: this SPEC needs git classification.
+		active = append(active, activeSpec{specID: specID, status: frontmatterStatus})
+	}
+
+	// (C) THE single git log pass — one subprocess, independent of len(active).
+	//
+	// A failure here (no repository, no commits on the branch) leaves commits nil, so
+	// every active SPEC exhausts its in-memory walk and is skipped. That reproduces
+	// the previous per-SPEC `git log` failure path exactly: getGitImpliedStatus
+	// returned an error and DetectDrift dropped the record.
+	var commits []commitRecord
+	if len(active) > 0 {
+		if fetched, logErr := deps.logAll(deps.branch()); logErr == nil {
+			commits = fetched
+		}
+	}
+
+	// (D) Per-SPEC in-memory walk over the shared index.
+	for _, a := range active {
+		gitStatus, err := inMemImpliedStatus(commits, a.specID)
 		if err != nil {
-			// If git history is empty or unavailable, skip
+			// No git history, or no classifiable commit in the window — skip.
 			continue
 		}
 
-		// (①) combined-scope secondary prefix-grep fallback (FALLBACK-ONLY) — primary walk가
+		// (①) combined-scope secondary prefix lookup (FALLBACK-ONLY) — primary walk가
 		// `completed`를 못 찾았는데 frontmatter가 `completed`라면, 이 SPEC은 scope-prefix를
 		// 명명하는 combined-scope close commit으로 닫혔을 수 있다 (예: cf7d78a9c
 		// "chore(SPEC-CCSYNC): ... 4-phase close (CLAUDEMD + TOOLCAT)"). 이런 close는
-		// per-SPEC `git log --grep=<full-specID>` 윈도우에 절대 안 잡히므로 (full-ID가 아닌
-		// scope-prefix만 명명), secondary `git log --grep=<scope-prefix>`로만 도달 가능하다.
+		// per-SPEC full-ID 윈도우에 절대 안 잡히므로 (full-ID가 아닌 scope-prefix만 명명),
+		// scope-prefix 조회로만 도달 가능하다.
 		// 3-gate(FALLBACK-ONLY + closeInfixMatch + distinguishing-segment word-boundary)로
 		// LSGF-001 보존: 명명되지 않은 sibling은 over-attribute하지 않는다 (AP-5).
-		// @MX:NOTE: [AUTO] combined-scope secondary prefix-grep fallback (D1 design).
+		// @MX:NOTE: [AUTO] combined-scope prefix fallback — 이제 shared index를 조회한다
+		//
+		//	(이전에는 per-SPEC secondary `git log --grep=<prefix>` 서브프로세스였다).
+		//
 		// @MX:REASON: SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001 mechanism ① (M3) — combined-scope
 		//
-		//	close는 per-SPEC window에 없으므로 (full-ID 미명명) secondary scope-prefix grep만이
-		//	도달 가능. additive-only: exact-token primary walk는 불변, fallback은 primary가
+		//	close는 per-SPEC window에 없으므로 (full-ID 미명명) scope-prefix 조회만이 도달 가능.
+		//	additive-only: exact-token primary walk는 불변, fallback은 primary가
 		//	completed/terminal을 못 줄 때만 fire (genuine-⑤ 보호).
-		if frontmatterStatus == "completed" && gitStatus != "completed" && !isTerminalStatus(gitStatus) {
-			if resolveCombinedScopeClose(specID) {
+		if a.status == "completed" && gitStatus != "completed" && !isTerminalStatus(gitStatus) {
+			if inMemCombinedScopeClose(commits, a.specID) {
 				gitStatus = "completed"
 			}
 		}
 
 		// Check for drift
-		drifted := frontmatterStatus != gitStatus
+		drifted := a.status != gitStatus
 
-		record := DriftRecord{
-			SPECID:            specID,
-			FrontmatterStatus: frontmatterStatus,
+		records = append(records, DriftRecord{
+			SPECID:            a.specID,
+			FrontmatterStatus: a.status,
 			GitImpliedStatus:  gitStatus,
 			Drifted:           drifted,
-		}
-
-		records = append(records, record)
+		})
 
 		if drifted {
 			driftCount++
@@ -146,10 +259,16 @@ func DetectDrift(baseDir string) (*DriftReport, error) {
 		return records[i].SPECID < records[j].SPECID
 	})
 
-	return &DriftReport{
+	report := &DriftReport{
 		Records: records,
 		Count:   driftCount,
-	}, nil
+	}
+
+	// Persist keyed on the HEAD we computed against, so an unchanged HEAD is served
+	// from cache next time. Best-effort — a write failure only costs a recompute.
+	saveDriftCache(baseDir, head, report)
+
+	return report, nil
 }
 
 // gitLogWindowSize determines the maximum number of commits getGitImpliedStatus inspects from git log.
@@ -440,56 +559,26 @@ func distinguishingSegment(specID, prefix string) string {
 	return rest
 }
 
-// resolveCombinedScopeClose는 secondary scope-prefix grep을 실행하여 specID를 close하는
-// combined-scope close commit이 존재하는지 검사한다 (mechanism ① M3 fallback).
-//
-// per-SPEC primary walk가 completed를 못 찾은 경우에만 DetectDrift에서 호출된다
-// (FALLBACK-ONLY). scope-prefix가 `SPEC` 같이 너무 broad하면 (single-domain ID) grep을
-// 건너뛴다 (collision 방지). combinedScopeCloseMatches 3-gate를 통과하는 후보가 있으면 true.
-//
-// @MX:NOTE: [AUTO] secondary scope-prefix git grep — combined-scope close 도달.
-// @MX:REASON: SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001 mechanism ① (M3) — read-only git log
-//
-//	exec (observation-only discipline 준수, write primitive 없음). primary walk와 분리된
-//	NEW grep이며 broad-prefix 시 skip하여 unrelated SPEC family collision 방지 (AP-4).
-func resolveCombinedScopeClose(specID string) bool {
-	prefix := deriveScopePrefix(specID)
+// The former resolveCombinedScopeClose ran a SECOND `git log --grep=<scope-prefix>`
+// subprocess per completed-but-unclosed SPEC. It is superseded by
+// inMemCombinedScopeClose (drift_index.go), which answers the identical question
+// against the shared single-pass index — same candidate window, same 3-gate matcher,
+// zero extra subprocesses.
 
-	// broad-prefix guard: scope-prefix가 `SPEC` 또는 `SPEC-`만으로 축약되면 (single-domain ID,
-	// 예: SPEC-FOO-001 → SPEC) 모든 SPEC을 잡으므로 fallback을 건너뛴다 (combined-scope close는
-	// 최소 2-segment family에서만 발생한다).
-	if prefix == "SPEC" || prefix == "" || !strings.HasPrefix(prefix, "SPEC-") {
-		return false
-	}
-
-	// REQ-PERF-001-A: uses per-run cache for branch detection.
-	branch := cachedMainBranch()
-
-	cmd := exec.Command("git", "log", branch, "--oneline", "--no-merges",
-		"--grep="+prefix, fmt.Sprintf("-%d", gitLogWindowSize))
-	output, err := cmd.Output()
-	if err != nil || len(output) == 0 {
-		return false
-	}
-
-	scanner := bufio.NewScanner(strings.NewReader(string(output)))
-	for scanner.Scan() {
-		line := scanner.Text()
-		parts := strings.SplitN(line, " ", 2)
-		if len(parts) < 2 {
-			continue
-		}
-		subject := parts[1]
-		if combinedScopeCloseMatches(subject, specID) {
-			return true
-		}
-	}
-	return false
-}
-
-// DriftCount is a convenience function that returns only the drift count
+// DriftCount is a convenience function that returns only the drift count.
+// Served from the HEAD-SHA cache while HEAD is unchanged.
 func DriftCount(baseDir string) (int, error) {
 	report, err := DetectDrift(baseDir)
+	if err != nil {
+		return 0, err
+	}
+	return report.Count, nil
+}
+
+// DriftCountFresh returns the drift count while ignoring the HEAD-SHA cache
+// (REQ-SSP-006a — the `moai spec drift --count --no-cache` path).
+func DriftCountFresh(baseDir string) (int, error) {
+	report, err := DetectDriftFresh(baseDir)
 	if err != nil {
 		return 0, err
 	}
