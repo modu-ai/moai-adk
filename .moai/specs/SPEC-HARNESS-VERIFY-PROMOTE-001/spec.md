@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-VERIFY-PROMOTE-001
 title: "Harness-generation offer promotion + mandatory verify skill + specialist-agent template rules"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-07-11
 updated: 2026-07-11
 author: manager-spec

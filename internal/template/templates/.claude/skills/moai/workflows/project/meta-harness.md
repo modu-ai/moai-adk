@@ -15,6 +15,21 @@ Purpose: when the completion flow (Phase 4.2) offers project-specific harness ge
 
 [HARD] Do NOT invoke the deprecated `moai-meta-harness` skill or reproduce its static question set here. Route to the v4 flow instead.
 
+### 5.0 Promoted Offer — Post-Project-Type-Confirmation Harness Proposal
+
+Purpose: surface the harness-generation offer WHERE the user is already engaged — immediately after the adaptive project interview confirms the project type — instead of leaving it buried as one option in the tail-end Phase 4.2 next-step menu. This **promoted offer** is a **post-project-type-confirmation** proposal: once the interview has confirmed the project type, the orchestrator surfaces the harness-generation proposal
+
+> "이 프로젝트에 `<type>` 개발 하네스를 생성할까요?"
+> ("Generate a `<type>` development harness for this project?")
+
+via `AskUserQuestion`, BEFORE the completion flow reaches the Phase 4.2 next-step menu. This is a live flow step: it fires as the project-type confirmation lands, not as a documented aside.
+
+`<type>` resolves from the `.moai/project/harness-spec.yaml` `domain` field (written by `project/doc-generation.md` Phase 3.2) when present; otherwise it falls back to the mode-detection confirmed project type. State both sources so the prompt always renders a concrete `<type>`.
+
+[HARD] The Phase 4.2 next-step "Generate harness" menu option — hosted in `project/doc-generation.md` (read-only for this promotion, retained by non-modification) — is RETAINED as a fallback. Both entry points remain reachable: a user who declines this post-project-type-confirmation proposal still reaches the Phase 4.2 menu later. Promoting the offer does NOT remove the fallback.
+
+On acceptance, proceed to § 5.1 (Entry — hand off to the v4 Builder entry workflow). On decline, continue the completion flow with the Phase 4.2 fallback still available.
+
 ### 5.1 Entry — Hand off to the v4 Builder entry workflow
 
 Compose a natural-language harness-creation request from `.moai/project/harness-spec.yaml` (the machine-readable interview output written by `project/doc-generation.md` Phase 3.2) together with the completed project documentation (`product.md` / `structure.md` / `tech.md`) and the user's stated intent from Phase 4.2, then hand off to `${CLAUDE_SKILL_DIR}/workflows/harness-build-entry.md` (the same entry point the `/moai:harness <request>` invocation uses). Carrying `harness-spec.yaml` forward means the interview data is no longer discarded — its recorded `domain` / `goal` / `constraints` / `scope` (plus the extended `verification` / `external_systems` / `ui_surface` / `team_sharing` axes) reach harness generation as pre-satisfied context. That workflow runs its own Context-First Discovery, harness `<name>` derivation, and orchestrator-issued approval gate — none of which are duplicated here.

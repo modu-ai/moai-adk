@@ -79,6 +79,15 @@ If the extracted profile has ANY ambiguous field (domain too vague, goal unstate
 
 [HARD] Do NOT skip the Socratic rounds when clarity is below 100%. The name derivation (Phase 2) and approval gate (Phase 3) both depend on a fully-resolved profile.
 
+### Phase 1.6: Final-Round Harness-Generation Offer
+
+As the closing question of the Context-First Discovery interview — the **final-round** offer, once the profile has reached 100% clarity — the orchestrator surfaces the harness-generation proposal:
+
+> "이 프로젝트에 `<type>` 개발 하네스를 생성할까요?"
+> ("Generate a `<type>` development harness for this project?")
+
+where `<type>` is the confirmed domain (from `.moai/project/harness-spec.yaml` `domain` when present, else the discovery-confirmed domain). This final-round harness proposal mirrors the post-project-type-confirmation proposal surfaced by `project/meta-harness.md` § 5.0 — both entry points converge on the same Builder handoff. This offer is a live interview step, not a documented aside: it is the last question the interview asks before name derivation. On acceptance, proceed to Phase 2 (name derivation) → Phase 3 (approval gate). On decline, halt without building.
+
 ## Phase 2: Harness `<name>` Derivation
 
 Derive the harness `<name>` from the confirmed profile (Phase 1 + 1.5). The name is NOT statically supplied by the user — the orchestrator derives it. Naming rules:
