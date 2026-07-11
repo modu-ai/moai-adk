@@ -1,7 +1,8 @@
 # Acceptance Criteria — SPEC-HARNESS-MCP-PROVISION-001
 
-> SSOT for the AC matrix. 15 ACs covering all 11 REQs (100% AC→REQ coverage —
-> every REQ-HMP-001..011 has at least one AC; REQ-HMP-003 → AC-HMP-014).
+> SSOT for the AC matrix. 16 ACs covering all 11 REQs (100% AC→REQ coverage —
+> every REQ-HMP-001..011 has at least one AC; REQ-HMP-003 → AC-HMP-014;
+> REQ-HMP-001 router registration → AC-HMP-016).
 >
 > **Verification conventions** (v0.1.2 — §C hardened for discrimination):
 > 1. **Every AC discriminates.** Each AC carries at least one POSITIVE check that
@@ -86,6 +87,7 @@
 | AC-HMP-013 | REQ-HMP-011 | template neutrality + internal-content-leak guard green + 16-lang neutral matrix |
 | AC-HMP-014 | REQ-HMP-003 | on user approval, `.mcp.json` written at project scope (repo root) |
 | AC-HMP-015 | REQ-HMP-008 | harness-builder.md "exactly 5" prose reconciled to reflect the added artifacts |
+| AC-HMP-016 | REQ-HMP-001 | `/moai project` ROUTER registers Phase 3.6 (routing table row + flow-diagram line), ordered between 3.5 and 3.7; Phase 3.2 backfilled |
 
 ## §C. Verification Commands (per AC)
 
@@ -97,6 +99,7 @@ the shell before running any AC command.
 ```bash
 DG=".claude/skills/moai/workflows/project/doc-generation.md"
 HB=".claude/skills/moai/workflows/harness-builder.md"
+PJ=".claude/skills/moai/workflows/project.md"          # the /moai project ROUTER (AC-HMP-016)
 MX=".moai/config/sections/mcp-matrix.yaml"
 MXT="internal/template/templates/.moai/config/sections/mcp-matrix.yaml"
 
@@ -197,11 +200,14 @@ install prompt). Any file-anchored `AskUserQuestion` grep is therefore vacuous h
 test -f "$MX"  && echo MX_LOCAL_OK || echo MX_LOCAL_MISSING   # baseline: MX_LOCAL_MISSING | expect: MX_LOCAL_OK
 test -f "$MXT" && echo MX_TPL_OK   || echo MX_TPL_MISSING     # baseline: MX_TPL_MISSING   | expect: MX_TPL_OK
 
-# One grep PER required row (never a single alternation standing in for four rows):
-grep -c -E "^[[:space:]]*web-frontend:"      "$MX"   # baseline: 0 | expect: 1
-grep -c -E "^[[:space:]]*mobile:"            "$MX"   # baseline: 0 | expect: 1
-grep -c -E "^[[:space:]]*backend-db:"        "$MX"   # baseline: 0 | expect: 1
-grep -c -E "^[[:space:]]*universal_starter:" "$MX"   # baseline: 0 | expect: 1
+# One grep PER required row (never a single alternation standing in for four rows).
+# NOTE: `grep -c` on a MISSING file emits NOTHING on stdout and exits 2 — not a scalar.
+# The `2>/dev/null || echo 0` guard forces a real 0 so the comparison is evaluable
+# (same non-evaluable-command class fixed in AC-HMP-010).
+grep -c -E "^[[:space:]]*web-frontend:"      "$MX" 2>/dev/null || echo 0   # baseline: 0 | expect: 1
+grep -c -E "^[[:space:]]*mobile:"            "$MX" 2>/dev/null || echo 0   # baseline: 0 | expect: 1
+grep -c -E "^[[:space:]]*backend-db:"        "$MX" 2>/dev/null || echo 0   # baseline: 0 | expect: 1
+grep -c -E "^[[:space:]]*universal_starter:" "$MX" 2>/dev/null || echo 0   # baseline: 0 | expect: 1
 
 # The skill POINTS to the matrix (pointer, not a copy):
 p36 | grep -c -F "mcp-matrix.yaml"                   # baseline: 0 | expect: 1
@@ -255,7 +261,7 @@ p36 | grep -c -F ".mcp.json"      # baseline: 0 | expect: 1   (the write target)
 p36 | grep -c -F '${'             # baseline: 0 | expect: 1   (env-var expansion form)
 p36 | grep -c -i -F "literal"     # baseline: 0 | expect: 1   (never inline a literal token)
 # [absence guard] no .mcp.json write target under .moai/specs/ (prohibition-aware — see AC-012):
-grep -E "\.moai/specs/[^ ]*mcp" "$DG" | grep -v -i -E "MUST NOT|never|not be written|NO-SPEC" | wc -l
+grep -E "\.moai/specs/[^ ]*mcp" "$DG" | grep -v -i -E "MUST NOT|never|not be written|NO-SPEC|NOT " | wc -l
                                   # baseline: 0 | expect: 0
 ```
 
@@ -343,18 +349,22 @@ Hardening note — TWO defects fixed:
 for pair in \
   ".moai/config/sections/mcp-matrix.yaml|internal/template/templates/.moai/config/sections/mcp-matrix.yaml" \
   ".claude/skills/moai/workflows/project/doc-generation.md|internal/template/templates/.claude/skills/moai/workflows/project/doc-generation.md" \
-  ".claude/skills/moai/workflows/harness-builder.md|internal/template/templates/.claude/skills/moai/workflows/harness-builder.md"
+  ".claude/skills/moai/workflows/harness-builder.md|internal/template/templates/.claude/skills/moai/workflows/harness-builder.md" \
+  ".claude/skills/moai/workflows/project.md|internal/template/templates/.claude/skills/moai/workflows/project.md"
 do
   L="${pair%%|*}"; T="${pair##*|}"
   if   [ ! -f "$L" ] || [ ! -f "$T" ]; then echo "MISSING: $L"
   elif diff -q "$L" "$T" >/dev/null;   then echo "PARITY OK: $L"
   else                                      echo "DRIFT: $L"; fi
 done
-# baseline: MISSING (mcp-matrix.yaml) + PARITY OK x2
-# expect:   PARITY OK x3 — zero MISSING, zero DRIFT
+# baseline: MISSING (mcp-matrix.yaml) + PARITY OK x3
+# expect:   PARITY OK x4 — zero MISSING, zero DRIFT
 ```
 
-Expected: every touched file exists in BOTH trees and is byte-identical between them.
+Expected: every touched file — INCLUDING the `/moai project` router (`project.md`, added
+at v0.1.3 per AC-HMP-016) — exists in BOTH trees and is byte-identical between them. The
+router is a touched file at M2, so omitting it from the parity sweep would let a
+local-only router edit ship unmirrored.
 
 Hardening note: existence is now checked BEFORE parity. The prior form ran
 `diff -q A B && echo OK || echo DRIFT` directly — parity between two files that are both
@@ -366,8 +376,11 @@ failure had occurred.
 ```bash
 # [absence guard] no .moai/specs/ WRITE PATH. A prohibition statement that NAMES the
 # path in order to forbid it is PERMITTED and filtered out — the guard targets write
-# targets, not mentions.
-grep -F ".moai/specs/" "$DG" | grep -v -i -E "MUST NOT|never|not be written|NO-SPEC" | wc -l
+# targets, not mentions. The `NOT ` alternative covers the parenthetical-negation form
+# (`... the repo-root .mcp.json (NOT .moai/specs/)`), which is the exact phrasing
+# plan.md §F M2 step 2 prescribes — without it, an implementer who copies plan.md's own
+# wording would false-FAIL this AC.
+grep -F ".moai/specs/" "$DG" | grep -v -i -E "MUST NOT|never|not be written|NO-SPEC|NOT " | wc -l
                                    # baseline: 0 | expect: 0
 # [positive, discriminating] the artifact target IS the repo-root .mcp.json:
 p36 | grep -c -F ".mcp.json"       # baseline: 0 | expect: 1
@@ -376,6 +389,11 @@ p36 | grep -c -F ".mcp.json"       # baseline: 0 | expect: 1
 Expected: `doc-generation.md` contains no `.moai/specs/` WRITE path (prohibition
 statements naming the path are permitted); the Phase 3.6 write target is the repo-root
 `.mcp.json`.
+
+Filter-control evidence (all three verified by execution at v0.1.3):
+- the existing `doc-generation.md` NO-SPEC guard line (`MUST NOT`) → filtered, count 0 (PASS)
+- plan.md's prescribed `(NOT \`.moai/specs/\`)` phrasing → filtered, count 0 (PASS — the D2 false-FAIL is closed)
+- an injected real write path (`Write the entry to .moai/specs/SPEC-X/mcp.json`) → survives, count 1 (correctly FAILS)
 
 Hardening note — this AC was BROKEN, not merely vacuous. The prior form was
 `grep -rn "\.moai/specs/" "$DG" | wc -l  # expect 0`, which measures **1** on the
@@ -397,12 +415,14 @@ go test ./internal/template/... 2>&1 | tail -2    # baseline: ok     | expect: o
 grep -r "SPEC-HARNESS-MCP-PROVISION-001" internal/template/templates/ | wc -l   # baseline: 0 | expect: 0
 
 # [positive, discriminating] the TEMPLATE matrix exists and is project-TYPE-keyed
-# (one grep per row — never one alternation standing in for three):
-grep -c -E "^[[:space:]]*web-frontend:" "$MXT"    # baseline: 0 | expect: 1
-grep -c -E "^[[:space:]]*mobile:"       "$MXT"    # baseline: 0 | expect: 1
-grep -c -E "^[[:space:]]*backend-db:"   "$MXT"    # baseline: 0 | expect: 1
+# (one grep per row — never one alternation standing in for three).
+# `2>/dev/null || echo 0` forces a scalar when the file is absent (see AC-HMP-004 note).
+grep -c -E "^[[:space:]]*web-frontend:" "$MXT" 2>/dev/null || echo 0   # baseline: 0 | expect: 1
+grep -c -E "^[[:space:]]*mobile:"       "$MXT" 2>/dev/null || echo 0   # baseline: 0 | expect: 1
+grep -c -E "^[[:space:]]*backend-db:"   "$MXT" 2>/dev/null || echo 0   # baseline: 0 | expect: 1
 # [absence guard] no privileged language in the matrix (16-language neutrality):
-grep -c -i -E "primary[ _-]?language|primary: (go|python|typescript)" "$MXT"    # baseline: 0 | expect: 0
+grep -c -i -E "primary[ _-]?language|primary: (go|python|typescript)" "$MXT" 2>/dev/null || echo 0
+                                                                       # baseline: 0 | expect: 0
 ```
 
 Expected: `make build` clean; template guards green; no internal SPEC ID in the template
@@ -436,28 +456,83 @@ scope, and the target into a single `>= 1`).
 ### AC-HMP-015 (REQ-HMP-008) — "exactly 5" prose reconciled
 
 ```bash
-# [reverse delta — DISCRIMINATING] the bare uncontextualized claim must be gone:
-grep -c -F "exactly 5 artifact types" "$HB"   # baseline: 1 | expect: 0
+# [reverse delta — DISCRIMINATING] the bare uncontextualized body claim must be gone:
+grep -c -F "exactly 5 artifact types" "$HB"      # baseline: 1 | expect: 0
+# [reverse delta — DISCRIMINATING] the H2 HEADING must be reconciled too:
+grep -c -F "(the 5 artifact types)" "$HB"        # baseline: 1 | expect: 0
 # [positive] the GENERATE Output Contract names the optional artifact 7:
-goc | grep -c -i "artifact 7"                 # baseline: 0 | expect: 1
-goc | grep -c -i -F "optional"                # baseline: 0 | expect: 1
+goc | grep -c -i "artifact 7"                    # baseline: 0 | expect: 1
+goc | grep -c -i -F "optional"                   # baseline: 0 | expect: 1
 ```
 
-Expected: the bare `emits exactly 5 artifact types` sentence no longer stands
-uncontextualized against the added artifacts, and the GENERATE Output Contract section
-names the optional artifact 7 (per SPEC-HARNESS-VERIFY-PROMOTE-001, the mandatory verify
-skill is artifact 6).
+Expected: the bare `emits exactly 5 artifact types` sentence AND the
+`## GENERATE Output Contract (the 5 artifact types)` H2 heading are both reconciled, and
+the GENERATE Output Contract section names the optional artifact 7 (per
+SPEC-HARNESS-VERIFY-PROMOTE-001, the mandatory verify skill is artifact 6).
 
 Note: a reconciliation that reads "exactly 5 **base** artifact types" does NOT match the
 literal `exactly 5 artifact types` and therefore correctly PASSES the first check — the
 guard targets the uncontextualized count, not the number 5.
 
-Hardening note: this AC is the only one in §C whose primary check is a REVERSE delta
-(baseline 1 → expect 0). The prior form
-(`grep -c -i "artifact 7\|optional.*mcp\|…\|5 base\|base artifact\|verify skill"`)
-measured 0 today and so appeared to discriminate, but it verified only that SOME new
-prose was added SOMEWHERE in the file — it never verified that the offending "exactly 5"
-sentence was actually reconciled, which is the entire point of the AC.
+Note (extractor safety, verified): reconciling the H2 heading does NOT break the `goc()`
+extractor in §C.0, which prefix-matches `^## GENERATE Output Contract` and is therefore
+insensitive to the parenthetical suffix.
+
+Hardening note (v0.1.3 — heading gap closed): the v0.1.2 form checked ONLY the L213 body
+literal. But the stale count appears at **six** sites in `harness-builder.md` — the
+frontmatter description, the Phase-3 GENERATE heading, the Primitive line, the fan-out
+line, the H2 contract heading, and the body sentence. An implementation that satisfied
+only the v0.1.2 check would leave the H2 heading announcing "the 5 artifact types"
+directly above a section listing seven — REQ-HMP-008's stated intent unmet while the AC
+PASSED. That is the token-presence-vs-semantic-completeness gap surviving *inside* the AC
+written to close it. The heading is now pinned by its own reverse delta; the remaining
+four sites are named in plan.md §F M3 step 1 so the implementer reconciles all six.
+
+Hardening note (v0.1.2): this AC's primary check is a REVERSE delta (baseline 1 → expect
+0). The pre-v0.1.2 form measured 0 and so appeared to discriminate, but it verified only
+that SOME new prose was added SOMEWHERE — never that the offending sentence was actually
+reconciled, which is the entire point of the AC.
+
+### AC-HMP-016 (REQ-HMP-001) — `/moai project` ROUTER registers Phase 3.6
+
+The router (`project.md`) declares the canonical phase sequence in TWO surfaces: a **Phase
+Routing Table** (one `| Phase N: … |` row per phase) and an **Invocation Flow diagram**
+(one `├─ Phase N: …` line per phase). Phase 3.6 must be registered in BOTH, else the
+router still documents `3.5 → 3.7` with Phase 3.6 nowhere in it.
+
+```bash
+# 1. Phase 3.6 registered in BOTH surfaces (routing-table row + diagram line):
+grep -c -F "Phase 3.6" "$PJ"                     # baseline: 0 | expect: >= 2
+
+# 2. Ordering asserted MECHANICALLY inside the routing table (3.5 row < 3.6 row < 3.7 row):
+R35=$(grep -n -F "| Phase 3.5" "$PJ" | head -1 | cut -d: -f1)
+R36=$(grep -n -F "| Phase 3.6" "$PJ" | head -1 | cut -d: -f1)
+R37=$(grep -n -F "| Phase 3.7" "$PJ" | head -1 | cut -d: -f1)
+{ [ -n "$R36" ] && [ "$R35" -lt "$R36" ] && [ "$R36" -lt "$R37" ]; } \
+  && echo ROUTER_ORDER_OK || echo ROUTER_ORDER_FAIL   # baseline: ROUTER_ORDER_FAIL | expect: ROUTER_ORDER_OK
+
+# 3. Phase 3.2 BACKFILL (the pre-existing router drift this SPEC also closes):
+grep -c -F "Phase 3.2" "$PJ"                     # baseline: 0 | expect: >= 2
+
+# 4. The router points Phase 3.6 at the sub-skill that implements it:
+grep -F "Phase 3.6" "$PJ" | grep -c -F "doc-generation.md"   # baseline: 0 | expect: >= 1
+```
+
+Expected: the router registers Phase 3.6 in both the routing table and the flow diagram,
+ordered between Phase 3.5 and Phase 3.7, pointing at `project/doc-generation.md`; and the
+missing Phase 3.2 row + diagram line are backfilled.
+
+Why this AC exists (measured scope hole, v0.1.3). `project.md` appeared **0 times** in
+spec.md, **0 times** in acceptance.md, and **0 times** inside plan.md §F milestones (only
+once in the plan.md §A inventory line). An implementation passing all 15 prior ACs would
+therefore leave the ROUTER still documenting `Phase 3.5 → Phase 3.7` — the exact
+cross-file reachability gap this SPEC exists to close, reproduced one file over.
+
+Corroborating precedent (measured, not inferred): `grep -c -F "Phase 3.2" project.md` → **0**.
+Phase 3.2 (`harness-spec.yaml` emission) was added to `doc-generation.md` by the sibling
+SPEC-PROJECT-HARNESS-BRIDGE-001 and **never registered in the router**. Same file pair,
+same drift, already shipped once. Check 3 backfills it so the router stops accumulating
+unregistered phases.
 
 ## §D. Edge Cases
 
@@ -490,12 +565,16 @@ sentence was actually reconciled, which is the entire point of the AC.
 
 ## §E. Quality Gates
 
-- TRUST 5: Tested (doc/config-only SPEC — verification is grep / diff / `make build` /
-  `moai harness doctor`, not unit tests; state test ACs as N/A honestly); Readable
-  (workflow prose stays consistent with surrounding sections); Unified (byte-identical
-  template mirror); Secured (no literal secrets — `${VAR}` only; credentialed servers
-  gated on explicit approval; NO-SPEC guard preserved); Trackable (Conventional Commits
-  per milestone, `🗿 MoAI` trailer).
+- TRUST 5: Tested (doc/config-only SPEC — verification is grep / diff / `make build`,
+  not unit tests; state test ACs as N/A honestly). NOTE (v0.1.3): `moai harness doctor`
+  was struck from this list — the live repo-wide doctor smoke was DROPPED at v0.1.1
+  (it took no manifest argument and constructed no `mcp`-block fixture, so it verified
+  nothing about `mcp` tolerance) and replaced by the deterministic grep + guard in
+  AC-HMP-010. Leaving it named here contradicted both AC-HMP-010 and this section's own
+  "Doctor tolerance" bullet below. Readable (workflow prose stays consistent with
+  surrounding sections); Unified (byte-identical template mirror); Secured (no literal
+  secrets — `${VAR}` only; credentialed servers gated on explicit approval; NO-SPEC guard
+  preserved); Trackable (Conventional Commits per milestone, `🗿 MoAI` trailer).
 - Neutrality: `template-neutrality-check.yaml` + `internal_content_leak_test.go` green
   on the final push; matrix is project-type-keyed (16-language neutral).
 - Doctor tolerance: documented-tolerance clause present in `harness-builder.md` +

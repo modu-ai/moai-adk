@@ -13,17 +13,32 @@
 - **SPEC artifacts**: `.moai/specs/SPEC-HARNESS-MCP-PROVISION-001/{spec,plan,acceptance,progress}.md`.
 - **Epic position**: SPEC 2 of the 3-SPEC "Project-Harness Pipeline" Epic.
   `depends_on: [SPEC-PROJECT-HARNESS-BRIDGE-001]` (Depends_on Pre-flight per Phase
-  0.5 requires BRIDGE-001 `status: completed` before run-phase entry; BRIDGE-001 is
-  currently `draft`, so this gate WILL block until BRIDGE-001 closes — expected).
+  0.5 requires BRIDGE-001 `status: completed` before run-phase entry).
+  **Observed state (measured 2026-07-11 at v0.1.3):**
+  `grep -n "^status:" .moai/specs/SPEC-PROJECT-HARNESS-BRIDGE-001/spec.md` → `status: completed`.
+  The gate is therefore **SATISFIED — it does NOT block run-phase entry.**
+  (This CORRECTS the v0.1.0-v0.1.2 claim that BRIDGE-001 was "currently `draft`, so this
+  gate WILL block until BRIDGE-001 closes". That was an **unobserved state claim** — the
+  dependency had already closed. Per `verification-claim-integrity.md` §1.1, re-verify by
+  execution at run-phase pre-flight rather than trusting this line.)
 - **Verified inventory** (research input — NOT to be re-investigated at plan
   authoring; re-verify by content token at run-phase):
-  - `/moai project` router: `.claude/skills/moai/workflows/project.md` +
+  - `/moai project` **ROUTER**: `.claude/skills/moai/workflows/project.md` +
     `project/{mode-detection,codebase-analysis,doc-generation,meta-harness}.md`,
     each byte-mirrored under `internal/template/templates/.claude/skills/moai/workflows/...`.
+    The router declares the canonical phase sequence in TWO surfaces — a **Phase Routing
+    Table** (one `| Phase N: … | \`project/<sub-skill>.md\` | <description> |` row per
+    phase) and an **Invocation Flow diagram** (one `├─ Phase N: …` line per phase).
+    **The router is an M2 EDIT TARGET** (AC-HMP-016) — see §F M2.
+  - **Measured router drift (2026-07-11)**: `grep -c -F "Phase 3.2" project.md` → **0**.
+    Phase 3.2 (`harness-spec.yaml` emission) was added to `doc-generation.md` by
+    SPEC-PROJECT-HARNESS-BRIDGE-001 and **never registered in the router**. The same
+    file-pair drift this SPEC must avoid has already shipped once — M2 backfills it.
   - Today there is NO MCP provisioning in the flow. The only tool-provisioning step
     is **Phase 3.5 (LSP detection / install)**. Phases run:
     `3.5 LSP → 3.7 auto dev-mode → 4.1a DB detection → 4 completion`. Phase 3.6 is
-    the insertion slot (between 3.5 and 3.7) inside `project/doc-generation.md`.
+    the insertion slot (between 3.5 and 3.7) inside `project/doc-generation.md`, AND
+    must be registered in BOTH router surfaces above.
   - `builder-harness` (`.claude/agents/moai/builder-harness.md`) ALREADY supports
     `artifact_type=mcp-server` → scaffolds `.mcp.json` entries (stdio / http / sse).
     This capability is NOT wired into harness generation.
@@ -196,33 +211,94 @@ touched); state them as N/A rather than fabricating output.
 4. Exit: AC-HMP-004 grep-green (matrix file exists with web / mobile / backend rows);
    AC-HMP-011 byte-parity clean; AC-HMP-013 neutrality green.
 
-### M2 — /moai project Phase 3.6 insertion (REQ-HMP-001/002/003/005/006/007)
+### M2 — /moai project Phase 3.6 insertion + ROUTER registration (REQ-HMP-001/002/003/005/006/007)
 
-1. In `project/doc-generation.md`, insert a **Phase 3.6** section BETWEEN Phase 3.5
-   (LSP) and Phase 3.7 (dev-mode): (a) detect stack (reuse existing language /
-   framework detection + `harness-spec.yaml` `external_systems` / `ui_surface`);
-   (b) select recommended servers from `mcp-matrix.yaml` (fallback pointer, not a
-   hardcoded copy); (c) cap at 3-5 servers + prefer vendor-maintained; (d) surface
-   the selection via the ORCHESTRATOR AskUserQuestion (subagent never prompts);
-   (e) require an EXPLICIT per-server AskUserQuestion for any credentialed server;
-   (f) on approval, write `.mcp.json` at project scope — additively / idempotently
-   (merge), with secrets in `${VAR}` env-var form (never a literal token).
+**Edit targets (4 files — 2 logical files × 2 trees; ALL must be mirrored):**
+- `.claude/skills/moai/workflows/project/doc-generation.md` (the sub-skill that IMPLEMENTS Phase 3.6)
+- `internal/template/templates/.claude/skills/moai/workflows/project/doc-generation.md`
+- `.claude/skills/moai/workflows/project.md` (**the ROUTER that DECLARES Phase 3.6**)
+- `internal/template/templates/.claude/skills/moai/workflows/project.md`
+
+**M2a — implement Phase 3.6 in the sub-skill (`project/doc-generation.md`)**
+
+1. Insert a **Phase 3.6** section BETWEEN Phase 3.5 (LSP) and Phase 3.7 (dev-mode):
+   (a) detect stack (reuse existing language / framework detection + `harness-spec.yaml`
+   `external_systems` / `ui_surface`); (b) select recommended servers from
+   `mcp-matrix.yaml` (fallback pointer, not a hardcoded copy); (c) cap at 3-5 servers +
+   prefer vendor-maintained; (d) surface the selection via the ORCHESTRATOR
+   AskUserQuestion (subagent never prompts — it returns a blocker report);
+   (e) require an EXPLICIT per-server AskUserQuestion for any credentialed server, and
+   never auto-write one; (f) on approval, write `.mcp.json` at project scope —
+   additively / idempotently (merge, never clobber), with secrets in `${VAR}` env-var
+   form (never a literal token).
 2. Confirm the write target is the repo-root `.mcp.json` (NOT `.moai/specs/`).
-3. Mirror to the template tree; `make build`.
-4. Exit: AC-HMP-001 (Phase 3.6 heading ordered between 3.5 and 3.7),
+   (AC-HMP-012's NO-SPEC guard is prohibition-aware and explicitly permits this
+   `(NOT \`.moai/specs/\`)` phrasing — it filters prohibitions, not write paths.)
+
+**M2b — register Phase 3.6 in the ROUTER (`project.md`) — REQ-HMP-001 / AC-HMP-016**
+
+3. The router declares the canonical phase sequence in TWO surfaces. Phase 3.6 MUST be
+   added to BOTH, or the router keeps documenting `3.5 → 3.7` with Phase 3.6 nowhere in
+   it (the reachability gap this SPEC exists to close, reproduced one file over):
+   - **Phase Routing Table** — add a row AFTER the `| Phase 3.5: Dev Environment Check |`
+     row and BEFORE the `| Phase 3.7: Dev Methodology Config |` row, matching the
+     existing 3-column shape:
+     `| Phase 3.6: MCP Server Provisioning | \`project/doc-generation.md\` | <one-line description> |`
+   - **Invocation Flow diagram** — add a line AFTER `├─ Phase 3.5: LSP check` and BEFORE
+     `├─ Phase 3.7: Dev mode config`, matching the existing tree-branch shape:
+     `├─ Phase 3.6: MCP provisioning`
+4. **Phase 3.2 BACKFILL (user-approved scope addition).** `grep -c -F "Phase 3.2" project.md`
+   measures **0** — Phase 3.2 (`harness-spec.yaml` emission) was added to
+   `doc-generation.md` by SPEC-PROJECT-HARNESS-BRIDGE-001 and never registered in the
+   router. In the SAME edit, backfill it: a routing-table row after the Phase 3.1 row and
+   before the Phase 3.3 row, plus a diagram line after `├─ Phase 3.1: Audit (conditional)`
+   and before `├─ Phase 3.3: Codemaps`.
+   [HARD] **READ `project/doc-generation.md` § "Phase 3.2: harness-spec.yaml Emission"
+   before writing its row — describe what it ACTUALLY does; do NOT invent a description.**
+   Verified behavior (2026-07-11): it emits the machine-readable
+   `.moai/project/harness-spec.yaml` artifact by READING the answers already recorded in
+   `.moai/project/interview.md` and mapping them onto an 8-field schema; it runs
+   automatically after Phase 3 with NO user interaction and does NOT re-interview;
+   re-run semantics are OVERWRITE.
+5. Mirror BOTH files to the template tree; `make build`.
+6. Exit: AC-HMP-001 (Phase 3.6 heading ordered between 3.5 and 3.7),
    AC-HMP-002 (stack-detect + matrix reference), AC-HMP-003 (orchestrator approval +
    subagent-no-prompt), AC-HMP-005 (3-5 cap + vendor-maintained), AC-HMP-006
    (credential per-server approval + never-auto-write), AC-HMP-007 (additive-merge +
    `${VAR}` + no-literal-token), AC-HMP-014 (write-on-approval at project scope —
-   REQ-HMP-003) grep-green on both trees; AC-HMP-012 NO-SPEC clean.
+   REQ-HMP-003), **AC-HMP-016 (router: Phase 3.6 in routing table + flow diagram, ordered
+   3.5 < 3.6 < 3.7, pointing at `doc-generation.md`; Phase 3.2 backfilled)** grep-green on
+   both trees; AC-HMP-012 NO-SPEC clean.
 
 ### M3 — harness GENERATE optional artifact 7 (REQ-HMP-008/009/010)
 
 1. In `harness-builder.md`, extend the GENERATE contract with an OPTIONAL **artifact 7**
-   (`.mcp.json` fragment via `builder-harness` `artifact_type=mcp-server`). Reconcile
-   the "exactly 5 artifact types" prose to the canonical order (5 base + verify skill
-   artifact 6 + optional MCP fragment artifact 7) so the bare count is not left
-   uncontextualized.
+   (`.mcp.json` fragment via `builder-harness` `artifact_type=mcp-server`) as a new
+   `### Artifact 7 — ...` section under `## GENERATE Output Contract`.
+
+   **Reconcile the stale artifact-count prose at ALL SIX sites** (measured 2026-07-11 via
+   `grep -n -E "5 artifacts?|the 5 artifact" harness-builder.md`). Reconciling only the
+   body sentence would leave the H2 heading announcing "the 5 artifact types" directly
+   above a section listing seven — REQ-HMP-008's intent unmet:
+
+   | # | Site (content-token anchor — line numbers drift) | Current text |
+   |---|--------------------------------------------------|--------------|
+   | 1 | frontmatter `description:` block | "contract (the 5 artifact types M3/M4 consume)" |
+   | 2 | `### Phase 3 — GENERATE [...]` heading | "orchestrator fan-out emits 5 artifact types" |
+   | 3 | `**Primitive**:` line under Phase 3 | "emit the 5 artifact types in § GENERATE Output Contract" |
+   | 4 | "On Proceed, the orchestrator fans out..." line | "emit the **5 artifacts**" (note: no "types") |
+   | 5 | `## GENERATE Output Contract (the 5 artifact types)` H2 heading | "(the 5 artifact types)" |
+   | 6 | first body sentence of that section | "The GENERATE phase emits **exactly 5 artifact types**." |
+
+   Canonical reconciled order: **5 base + verify skill (artifact 6, mandatory — owned by
+   SPEC-HARNESS-VERIFY-PROMOTE-001) + optional MCP fragment (artifact 7, this SPEC)**.
+   Sites 5 and 6 are pinned by AC-HMP-015 reverse deltas (`(the 5 artifact types)` → 0
+   and `exactly 5 artifact types` → 0). Sites 1-4 are not individually AC-pinned but are
+   in scope for REQ-HMP-008 — reconcile them in the same edit.
+
+   [HARD] Do NOT rename the `## GENERATE Output Contract` H2 prefix — only its
+   parenthetical suffix. The AC-HMP-015 `goc()` extractor prefix-matches
+   `^## GENERATE Output Contract`; changing the prefix would break it.
 2. Add the explicit conditional-emission clause: emit artifact 7 ONLY when the harness
    PLAN declares MCP needs (derived from `harness-spec.yaml` `external_systems` /
    `verification`); when no MCP need is declared, artifact 7 is OMITTED and GENERATE
@@ -239,7 +315,10 @@ touched); state them as N/A rather than fabricating output.
 ### M4 — Template mirror parity + neutrality + doctor smoke (REQ-HMP-011)
 
 1. Full byte-parity sweep: `diff` every touched local file against its template
-   mirror — all byte-identical (AC-HMP-011).
+   mirror — all byte-identical (AC-HMP-011). **Four logical files** at v0.1.3:
+   `mcp-matrix.yaml`, `project/doc-generation.md`, `harness-builder.md`, and
+   **`project.md` (the router — added at v0.1.3 per AC-HMP-016)**. Existence is checked
+   BEFORE `diff` (parity between two absent files is vacuous).
 2. `make build`; run the template-neutrality guard + internal-content-leak test
    (`go test ./internal/template/...`) — green (AC-HMP-013).
 3. Doctor tolerance (AC-HMP-010): documented-tolerance grep in `harness-builder.md`
