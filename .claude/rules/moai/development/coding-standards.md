@@ -134,3 +134,18 @@ The `handle-pre-tool.sh` PreToolUse hook, on detecting a Bash command whose subc
 ### (5) Additive-only — no regression to CLAUDE.md safeguards
 
 This doctrine is **strictly additive**. It layers a Bash-specific risk tier on top of the existing uniform PreToolUse hook behavior. It does NOT contradict, weaken, or supersede `CLAUDE.md §7 Safe Development Protocol` or `CLAUDE.md §14 Parallel Execution Safeguards`. Both sections remain the authoritative compatibility targets; this doctrine only adds a Bash-specific risk-amplifier lens that was previously absent.
+
+## Advisory-Check Discipline
+
+[HARD] Session-start and Stop advisory checks MUST be cached, asynchronous, or on-demand — never unbounded-blocking.
+
+An **advisory check** is an observational computation run on a latency-sensitive lifecycle path (session start, a Stop hook, a per-turn observer) whose result is informational — a warning, a hint, a status line — and NOT a gate on the user's action. Because its result is advisory, it MUST NOT be allowed to delay the path it runs on for an unbounded amount of time. The natural failure mode is a synchronous scan that is fast on a small project and unboundedly slow on a large one, charged to every session launch.
+
+Rules:
+
+- **Time-box every advisory computation on the critical path.** Wrap it in a deadline (a `context` timeout in Go, or the equivalent in the project language). On deadline exceed, skip the abandoned computation and degrade to an advisory message rather than block. The computation being observational, a missed result costs at most a stale hint — never a stalled session.
+- **Prefer cached or on-demand over synchronous recompute.** When an advisory result can be keyed on a cheap invariant (a commit SHA, a file mtime, a content hash), serve it from a cache and recompute only on change. When it is expensive and rarely needed, make it on-demand (an explicit command) rather than an always-on cost.
+- **Keep the cost independent of corpus size.** An advisory scan whose cost grows linearly with the number of files, records, or specs will silently degrade every session as the project grows. Bound it to a constant number of subprocesses or passes, or move it off the critical path.
+- **Never let an advisory failure block the path.** Errors in an advisory check (a missing tool, an unreadable directory, a timeout) are swallowed silently or surfaced as a non-blocking notice — they never fail the session-start or Stop path.
+
+The time-box is the safety net; caching / on-demand / constant-cost design is the durable fix. A regression guard SHOULD assert the constant-cost property mechanically (e.g. counting subprocess invocations at scale) so the linear-cost pattern cannot silently return.

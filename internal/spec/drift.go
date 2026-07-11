@@ -2,6 +2,7 @@ package spec
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -583,4 +584,53 @@ func DriftCountFresh(baseDir string) (int, error) {
 		return 0, err
 	}
 	return report.Count, nil
+}
+
+// driftWorkFn is the seam DriftCountCtx runs under a deadline. Production points
+// it at DriftCount; a test overrides it to prove the time-box abandons a slow,
+// context-IGNORING worker. It is a package var (not a parameter) so the public
+// DriftCountCtx signature stays a drop-in ctx-aware sibling of DriftCount.
+var driftWorkFn = DriftCount
+
+// DriftCountCtx computes the drift count under a caller-supplied deadline
+// (SPEC-SESSIONSTART-PERF-001 REQ-SSP-015). The drift computation itself is a
+// bounded, synchronous git + in-memory pass with no context awareness, so the
+// time-box cannot be enforced cooperatively — it is enforced HERE by running the
+// work in a goroutine and racing it against ctx.Done(). On deadline exceed the
+// caller receives ctx.Err() immediately while the abandoned goroutine finishes
+// into the buffered channel (never blocking on send → no leak).
+//
+// This is the safety net that guarantees the session-start advisory check can
+// never block the critical path unboundedly, even on a pathological repository.
+//
+// @MX:WARN: [AUTO] launches a goroutine whose result is discarded on timeout.
+// @MX:REASON: SPEC-SESSIONSTART-PERF-001 REQ-SSP-015 — the buffered (cap-1)
+//
+//	channel is load-bearing: an unbuffered channel would leak the worker
+//	goroutine on every timeout, since the abandoned send would block forever.
+func DriftCountCtx(ctx context.Context, baseDir string) (int, error) {
+	type result struct {
+		count int
+		err   error
+	}
+
+	// Capture the seam ONCE, synchronously on the caller's goroutine, so the
+	// spawned goroutine closes over a local copy. On a timeout the worker
+	// goroutine is deliberately abandoned (still running); reading the mutable
+	// driftWorkFn package var from inside it would race with a test's cleanup
+	// reassignment. The local capture removes that shared access entirely.
+	work := driftWorkFn
+
+	ch := make(chan result, 1) // buffered: the worker never blocks on send.
+	go func() {
+		c, e := work(baseDir)
+		ch <- result{count: c, err: e}
+	}()
+
+	select {
+	case r := <-ch:
+		return r.count, r.err
+	case <-ctx.Done():
+		return 0, ctx.Err()
+	}
 }

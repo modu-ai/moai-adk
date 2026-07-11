@@ -84,12 +84,20 @@ var defaultCallers = map[string]struct{}{
 
 // corpusExclusions はスキャン対象から除外するディレクトリパスのリストです。
 // corpusExclusions is the list of directory paths excluded from corpus scanning.
+//
+// `.claude/worktrees/` holds gitignored, ephemeral per-agent worktree checkouts —
+// each a full copy of the repo. They are NOT project source (0 tracked files),
+// yet a full-repo scan from the main checkout would walk every one of them,
+// inflating the corpus by dozens of times as worktrees accumulate. Excluding
+// them keeps the scan scoped to the project's own tree and prevents the corpus
+// (and thus scan wall-clock) from ballooning with leftover agent worktrees.
 var corpusExclusions = []string{
 	"vendor/",
 	"node_modules/",
 	".git/",
 	"testdata/",
 	".moai/",
+	".claude/worktrees/",
 }
 
 // LockedLiteral はテストファイルが依存する string リテラルを記録します。
@@ -465,11 +473,29 @@ func findRepoRoot() (string, error) {
 }
 
 // isExcluded はパスが除外リストに含まれるか確認します。
-// isExcluded checks whether a path matches any corpus exclusion pattern.
-// Path is normalized to forward-slash separators so Windows backslash paths match
-// the canonical "vendor/", "node_modules/", ".git/", "testdata/", ".moai/" patterns.
-func isExcluded(path string) bool {
-	normalized := filepath.ToSlash(path)
+// isExcluded reports whether path (under root) matches a corpus exclusion.
+//
+// Matching is performed on the ROOT-RELATIVE path, not the absolute path: an
+// exclusion like ".claude/worktrees/" or ".moai/" means "a directory NESTED
+// under the scan root", not "the scan root itself happens to live inside such a
+// directory". Absolute-path matching broke when the scan ran from within a
+// worktree (e.g. .../.claude/worktrees/agent-xyz/): the root path itself
+// contained the excluded substring, so every file was excluded and the scan
+// silently visited 0 files. Relative matching is strictly more correct — for a
+// dir genuinely nested under root the relative and absolute paths both contain
+// the pattern, so the behaviour is unchanged for the ordinary case.
+//
+// Paths are normalized to forward-slash separators so Windows backslash paths
+// match the canonical "vendor/", "node_modules/", ".git/", "testdata/",
+// ".moai/", ".claude/worktrees/" patterns.
+func isExcluded(root, path string) bool {
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		// Different volumes (Windows) or other Rel failure — fall back to the
+		// absolute path so a genuine exclusion is still honoured.
+		rel = path
+	}
+	normalized := filepath.ToSlash(rel)
 	for _, excl := range corpusExclusions {
 		if strings.Contains(normalized, excl) {
 			return true

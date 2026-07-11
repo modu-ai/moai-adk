@@ -356,7 +356,35 @@ func TestTranslatable(t *testing.T) {
 
 // --- W6-T07: Budget tests ---
 
+// Budget constants for the full-repo scan throughput guard. A raw fixed
+// wall-clock ceiling flaked because the maintainer's checkout accumulates
+// gitignored, ephemeral agent worktrees under `.claude/worktrees/` (now
+// excluded from the corpus — see corpusExclusions), and the corpus otherwise
+// grows over time. A budget SCALED to the number of files actually scanned is
+// self-adjusting and deterministic across corpus sizes, whereas a fixed ceiling
+// is not.
+const (
+	// budgetPerFileScan is the generous per-file wall-clock allowance. Measured
+	// throughput is well under 1ms/file; 5ms/file is a ~15-30x margin, so machine
+	// load never trips it while a genuine order-of-magnitude throughput regression
+	// (e.g. re-introduced O(n^2) parsing) still does.
+	budgetPerFileScan = 5 * time.Millisecond
+	// budgetScanOverhead is the fixed per-run overhead (process start, the
+	// git rev-parse, allocation) added to the scaled budget.
+	budgetScanOverhead = 3 * time.Second
+	// budgetHardCeiling is the absolute outer bound the scan must never exceed
+	// regardless of corpus size. Named for the historical 35s contract; with the
+	// worktree exclusion + scaled budget it is trivially met.
+	budgetHardCeiling = 35 * time.Second
+)
+
 // TestBudget_FullRepoScanWithin35Sec は実際の repo で35秒以内に完了することを検証します。
+//
+// The guard is robust rather than a raw fixed ceiling: it asserts (1) the scan
+// visited a non-empty corpus (work-done — a zero-file scan is a silent no-op a
+// wall-clock ceiling never catches), and (2) elapsed time is within a budget
+// SCALED to the files actually scanned (self-adjusting, generous margin), and
+// (3) an absolute 35s outer ceiling honouring the historical contract.
 func TestBudget_FullRepoScanWithin35Sec(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping full repo scan in short mode")
@@ -369,12 +397,94 @@ func TestBudget_FullRepoScanWithin35Sec(t *testing.T) {
 		t.Skipf("cannot determine repo root: %v", err)
 	}
 
+	// Build the lockset directly so the scanned-file count (len(Corpus)) is
+	// observable — runAllFilesOracle discards it. The scan work is identical.
+	builder := newLocksetBuilder()
 	start := time.Now()
-	_ = runAllFilesOracle(repoRoot)
+	ls := builder.build(repoRoot)
 	elapsed := time.Since(start)
+	numFiles := len(ls.Corpus)
 
-	if elapsed > 35*time.Second {
-		t.Errorf("full repo scan took %v, want <= 35s", elapsed)
+	// (1) Work-done guard (deterministic): the scan must visit a non-empty corpus.
+	// A zero-file scan means the oracle silently no-op'd (broken root, or an
+	// over-broad exclusion) — a regression a raw wall-clock ceiling never catches.
+	if numFiles == 0 {
+		t.Fatalf("full repo scan visited 0 .go files under %s — the oracle did no work", repoRoot)
+	}
+
+	// (2) Scaled throughput budget (self-adjusting, generous). Asserts per-file
+	// throughput rather than a raw fixed ceiling, so it holds whether the corpus
+	// is 1.5k or 90k files.
+	scaledBudget := budgetScanOverhead + time.Duration(numFiles)*budgetPerFileScan
+	if elapsed > scaledBudget {
+		t.Errorf("full-repo scan of %d files took %v, want <= %v (%v/file + %v overhead)",
+			numFiles, elapsed, scaledBudget, budgetPerFileScan, budgetScanOverhead)
+	}
+
+	// (3) Absolute outer ceiling (honours the historical 35s contract).
+	if elapsed > budgetHardCeiling {
+		t.Errorf("full repo scan took %v, want <= %v", elapsed, budgetHardCeiling)
+	}
+}
+
+// TestIsExcluded_MatchesRootRelativePath pins the exclusion semantics: patterns
+// match a directory NESTED under the scan root, not "the root itself lives
+// inside such a directory". This guards the fix for the case where the scan runs
+// from within an ephemeral agent worktree whose own path contains
+// ".claude/worktrees/": absolute-path matching excluded every file (0-file
+// silent no-op); root-relative matching is correct.
+func TestIsExcluded_MatchesRootRelativePath(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		root string
+		path string
+		want bool
+	}{
+		{
+			// A nested worktree (or vendor/.moai) dir under the scan root IS excluded.
+			name: "nested worktree dir excluded",
+			root: "/proj",
+			path: "/proj/.claude/worktrees/agent-xyz/internal/spec/drift.go",
+			want: true,
+		},
+		{
+			name: "nested .moai dir excluded",
+			root: "/proj",
+			path: "/proj/.moai/specs/SPEC-X/spec.go",
+			want: true,
+		},
+		{
+			// The scan root itself living inside a .claude/worktrees/ path must NOT
+			// exclude its own project files — the regression this fix addresses.
+			name: "scan from within a worktree does not exclude own files",
+			root: "/proj/.claude/worktrees/agent-xyz",
+			path: "/proj/.claude/worktrees/agent-xyz/internal/spec/drift.go",
+			want: false,
+		},
+		{
+			// A worktree nested INSIDE a worktree-rooted scan is still excluded
+			// (relative path carries the pattern).
+			name: "nested worktree under a worktree root still excluded",
+			root: "/proj/.claude/worktrees/agent-xyz",
+			path: "/proj/.claude/worktrees/agent-xyz/.claude/worktrees/agent-abc/foo.go",
+			want: true,
+		},
+		{
+			name: "ordinary project file not excluded",
+			root: "/proj",
+			path: "/proj/internal/spec/drift.go",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isExcluded(tt.root, tt.path); got != tt.want {
+				t.Errorf("isExcluded(%q, %q) = %v, want %v", tt.root, tt.path, got, tt.want)
+			}
+		})
 	}
 }
 

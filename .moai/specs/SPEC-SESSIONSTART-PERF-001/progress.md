@@ -127,30 +127,65 @@ RED→GREEN: the archive tests were written first and confirmed failing to compi
 | `internal/template/templates/.moai/config/sections/archive.yaml` + local mirror | NEW — Template-First grace-window config (content-neutral). |
 | `internal/hook/session_start_archive_guard_test.go` | NEW — static guard: archive is unreachable from the session-start critical path. |
 
-### M3 — Regression guard — NOT STARTED (out of this delegation's scope)
+### M3 — Regression guard (cycle_type=tdd) — COMPLETE
+
+Baseline attribution: worktree branch `spec-sessionstart-perf-001-m3` created from `main` at `02ba30bbe` (the M2-merged base). `main` is an ancestor of this branch (ff-mergeable at the time of authoring; `main` had since advanced to `82b758d43` via parallel sessions — see §E.3 m3_base_note). All M3 measurements were taken on this tree.
+
+RED→GREEN: the time-box tests were written first and confirmed failing to compile (`undefined: driftWorkFn`, `undefined: DriftCountCtx`, `undefined: driftCountFn`, `undefined: driftWarningThreshold`) before any implementation existed. The perf-budget guard passes on the correct O(1) code; its RED is demonstrated by the guard-catches-regression proof below (a real, reverted O(n) injection).
+
+**Run-phase AC matrix (M3 scope):**
+
+| AC | Status | Verification command | Actual output |
+|----|--------|----------------------|---------------|
+| AC-SSP-014 (perf-budget regression test) [HARD] | PASS | `go test -run TestDetectDrift_PerfBudget ./internal/spec/` | PASS — 2 sub-tests. PRIMARY (deterministic): at N=`config.DefaultDriftPerfFixtureSpecs`=500, the `driftDeps` counting seam reads `git log` invocations = **1** (independent of N). SECONDARY (real timed run): `DetectDriftFresh` on a REAL 500-SPEC git fixture completes in ~0.25s ≪ `DefaultDriftPerfBudget` (2s). Guard-catches-regression PROVEN: injecting `deps.logAll` into the per-SPEC loop made the count read **501** and the guard FAILED (`git log invocations = 501 at N=500, want EXACTLY 1`); reverted → PASS. |
+| AC-SSP-015 (session-start time-box) [HARD] | PASS | `go test -run 'TestDetectStatusDrift\|TestDriftCountCtx' ./internal/hook/ ./internal/spec/` | PASS — `detectStatusDrift` wraps the drift call in `context.WithTimeout(DefaultSessionStartDriftTimeout)`; on `DeadlineExceeded` it skips and returns the advisory `⚠ SPEC status drift check timed out. Run 'moai spec drift' for details.` instead of blocking. `TestDetectStatusDrift_TimeBoxEmitsAdvisory` injects a slow drift fn + 50ms deadline → returns promptly (< 2s) with the advisory. `TestDriftCountCtx_TimeoutAbandonsSlowWorker` proves `DriftCountCtx` abandons a context-IGNORING 5s worker in ~50ms via its select. |
+| AC-SSP-016 (principle codified) | PASS | `grep -l 'cached, asynchronous, or on-demand — never unbounded-blocking' <template> <local>` | PASS — the `## Advisory-Check Discipline` [HARD] section states the principle verbatim in BOTH `internal/template/templates/.claude/rules/moai/development/coding-standards.md` AND the local mirror. |
+| AC-SSP-017 (rule codification Template-First) | PASS | Template-First order + `go test ./internal/template/...` | PASS — the section was authored in the TEMPLATE first, `make build` exit 0, then mirrored to local (identical text). Both present. Template neutrality guard (`TestTemplateNoInternalContentLeak`, default/narrow tier) GREEN — the new section contributes 0 leak-class matches (0 in strict tier too). |
+| AC-SSP-018 (no hardcoded thresholds) | PASS | `grep -n 'DefaultDriftPerfBudget\|DefaultSessionStartDriftTimeout\|DefaultDriftPerfFixtureSpecs' internal/config/defaults.go` | PASS — all three M3 thresholds (`2s` perf budget, `2s` time-box deadline, `500` fixture size) are `const` in `config/defaults.go` and referenced by symbol; no inline literal in business logic or tests. |
+| AC-SSP-024 (quality gate + coverage) | PASS | `go test ./...` / `golangci-lint run` / `go vet ./...` / `go tool cover` | PASS — full suite **96 ok / 0 FAIL** (3× `-count=1` deterministic); golangci-lint **0 issues**; `go vet` exit 0; cross-platform darwin/windows/linux builds exit 0. `internal/spec` coverage **88.9%** (≥85%); the touched-file functions `detectStatusDrift` (hook) and `DriftCountCtx` (spec) are **100%** covered. `-race` on all M3-touched packages GREEN (3× 0 races). |
+
+**Determinism proof (the item-4 flaky-test fix):** `TestBudget_FullRepoScanWithin35Sec` in `scripts/i18n-validator` passed **3/3** in the deterministic full-suite runs and in isolation. Root cause found + fixed: the validator walked 64 gitignored, ephemeral `.claude/worktrees/agent-*` checkouts (corpus 1,539 → 93,531 files, ~60× inflation), so a raw 35s wall-clock ceiling flaked under load. Fix = (a) exclude `.claude/worktrees/` from `corpusExclusions`, (b) match exclusions on the ROOT-RELATIVE path (an absolute-path match wrongly excluded EVERY file when the scan itself runs from within a worktree — the 0-file silent no-op the new work-done guard caught), (c) rework the budget assertion from a fixed ceiling to work-done (corpus non-empty) + a scaled per-file budget with generous margin + the 35s outer ceiling honouring the historical contract. The function name + `35秒以内` godoc are PRESERVED (locked by the closed SPEC-V3R6-I18N-VALIDATOR-BUDGET-001 acceptance). New `TestIsExcluded_MatchesRootRelativePath` pins the relative-match semantics.
+
+**Race caught + fixed by `-race` before commit:** the initial `DriftCountCtx` read the mutable `driftWorkFn` package var from inside its worker goroutine; when the timeout test deliberately abandons that goroutine, its delayed read raced the test's `Cleanup` reassignment. Fixed by capturing the seam into a local (`work := driftWorkFn`) synchronously before spawn. Post-fix: 3× `-race` on touched packages, 0 races.
+
+**Files changed (M3):**
+
+| File | Change |
+|------|--------|
+| `internal/config/defaults.go` | Added `DefaultDriftPerfBudget` (2s), `DefaultSessionStartDriftTimeout` (2s), `DefaultDriftPerfFixtureSpecs` (500) consts (REQ-SSP-018). |
+| `internal/spec/drift.go` | Added `DriftCountCtx(ctx, baseDir)` (goroutine + select time-box, seam captured to a local) + `driftWorkFn` seam. `detectDrift` algorithm UNCHANGED (additive-only diff, 0 deletions). |
+| `internal/spec/drift_timebox_test.go` | NEW — `DriftCountCtx` timeout/completion/error tests via the `driftWorkFn` seam. |
+| `internal/spec/drift_perf_test.go` | NEW — AC-SSP-014 perf-budget guard: N=500 constant-subprocess (primary, deterministic) + real-repo timed run (secondary). |
+| `internal/hook/session_start.go` | `detectStatusDrift` rewritten with a `context.WithTimeout` time-box + `driftCountFn`/`sessionStartDriftTimeout` seams + `driftWarningThreshold`/`driftTimeoutAdvisory` consts (REQ-SSP-015). |
+| `internal/hook/session_start_timebox_test.go` | NEW — advisory-on-timeout + count/below-threshold/non-timeout-error branch tests. |
+| `internal/template/templates/.claude/rules/moai/development/coding-standards.md` + local mirror | NEW `## Advisory-Check Discipline` [HARD] section (Template-First; neutral prose) — REQ-SSP-016/017. |
+| `scripts/i18n-validator/main.go` | Added `.claude/worktrees/` to `corpusExclusions`; `isExcluded` now matches the ROOT-RELATIVE path (fixes the scan-from-within-a-worktree 0-file no-op). |
+| `scripts/i18n-validator/lockset.go` | Both `isExcluded` call sites pass `root` for relative matching. |
+| `scripts/i18n-validator/main_test.go` | Reworked `TestBudget_FullRepoScanWithin35Sec` (name + godoc preserved) to work-done + scaled-budget robustness; NEW `TestIsExcluded_MatchesRootRelativePath`. |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-run_status: in-progress
-milestones_complete: M1 (algorithmic hardening — REQ-SSP-001..006, REQ-SSP-006a), M2 (SPEC auto-archive — REQ-SSP-007..013, REQ-SSP-018)
-milestones_pending: M3 (regression guard — REQ-SSP-014..017)
+run_status: run-complete (all run-phase milestones M1-M3 done; awaiting sync-phase close)
+milestones_complete: M1 (algorithmic hardening — REQ-SSP-001..006, REQ-SSP-006a), M2 (SPEC auto-archive — REQ-SSP-007..013, REQ-SSP-018), M3 (regression guard — REQ-SSP-014..018)
+milestones_pending: (none — run-phase complete)
 m1_commit_sha: f376ee7d25bea4721b0f6d9bd9e1f9ea92419f44
 m2_commit_sha: a814656c5b159a6bd12e5b456a9aa969037aad5d
-m2_base_sha: d815fe34e (main; M2 was authored on a02cfd0da and rebased onto d815fe34e after a parallel session advanced main — main is an ancestor of the M2 HEAD, so the branch is ff-mergeable. Full suite / vet / lint / cross-build re-verified GREEN on the rebased tree.)
-ac_pass_count: 24 (M1: AC-SSP-001..006a, 019..022 = 13; M2: AC-SSP-007, 008a, 008b, 009a, 009b, 010, 011, 012, 013, 018, 023 = 11) + AC-SSP-024 quality gate
+m3_commit_sha: pending-backfill-m3 (this progress.md edit rides the M3 commit; the real SHA is backfilled in a follow-up commit — self-referential-hazard workaround per spec-frontmatter-schema.md § SHA placeholder backfill)
+m3_base_note: M3 branch `spec-sessionstart-perf-001-m3` was cut from `main` @ `02ba30bbe` (the M2-merged base, as delegated). `main` advanced to `82b758d43` via parallel sessions during authoring; `02ba30bbe` IS an ancestor of `82b758d43`, so the maintainer can rebase M3 onto current `main` cleanly (or ff-merge after rebase). M3 touched only files verified identical between the worktree base and current `main` (drift.go, drift_index.go, session_start.go, defaults.go, i18n validator, coding-standards.md), so no merge conflict is expected.
+ac_pass_count: 29 (M1: 13; M2: 11; M3: AC-SSP-014, 015, 016, 017, 018 = 5) + AC-SSP-024 cross-cutting quality gate
 ac_fail_count: 0
 ac_narrowed_count: 1 (AC-SSP-008b — a `--yes` confirmation gate narrows "bare invocation moves" to "bare invocation reports then refuses"; safety narrowing, disclosed for user acceptance)
-ac_deferred_count: 4 (AC-SSP-014..017 — M3 scope)
-preserve_list_post_run_count: 0 violations (M2 touched zero drift / session-start code — `git diff main -- internal/spec/drift*.go internal/cli/spec_drift.go internal/hook/session_start.go` is EMPTY; no SPEC body content modified)
-drift_non_regression_verified: `moai spec drift --no-cache` → 475 records / 79 drifted, matching the M1 baseline exactly
-grandfather_protection_verified: real corpus at grace=30d (142 eligible, 128 era-final) — 0 grandfather SPECs swept in without independently satisfying terminal+grace; 0 non-terminal candidates; 0 candidates inside the window
-real_corpus_dry_run: 477 SPECs scanned, 0 eligible at the default 90-day window (correct — the oldest last-touch in the corpus is 2026-05-12, 60 days ago, verified by an independent per-SPEC raw-git cross-check). NOTHING was archived in this run.
+ac_deferred_count: 0 (all 24 ACs now addressed across M1-M3)
+preserve_list_post_run_count: 0 violations (M3 left the M1 drift algorithm untouched — `git diff` on internal/spec/drift.go is additive-only, +43/-0, the `DriftCountCtx` + context import; `detectDrift` body unchanged. M2 archive logic untouched. No spec/plan/acceptance body content modified.)
+drift_non_regression_verified: `moai spec drift --no-cache` → **475 records / 78 drifted** at HEAD 02ba30bbe (matches the delegated expected baseline exactly). `moai spec drift --count --no-cache` → 78.
+archive_non_regression_verified: `moai spec archive --dry-run` → 477 SPECs scanned, **0 eligible at the default 90-day window** (cutoff 2026-04-12) — unchanged from M2.
 new_warnings_or_lints_introduced: 0 (golangci-lint 0 issues; go vet exit 0)
 cross_platform_build: darwin PASS, windows PASS, linux PASS
-coverage_internal_spec: 87.8% (threshold 85%); new-file entry points (PlanArchive / ExecuteArchive / gitLastActivity) at 100%
-coverage_internal_cli: 72.7% package-wide (pre-existing baseline, unchanged by M2); the NEW `spec_archive.go` is 89.3% / 80.0% / 100.0% per function
-full_suite: go test ./... — 96 ok / 0 FAIL
-residual_risk: (1) AC-SSP-008b narrowing — a bare `moai spec archive` refuses without `--yes`. This is stricter than the AC text and was chosen deliberately against the bulk-relocation hazard; if the user prefers the literal AC semantics, removing the gate is a one-line change. (2) The archive capability yields 0 eligible SPECs at the default 90-day grace on today's corpus, because a bulk sweep re-touched the whole `.moai/specs/` tree ~60 days ago — so M2 does not shrink the dataset today; it becomes effective as the sweep recedes past the window, or immediately at a shorter `--grace-days`. (3) Last-activity is "last commit touching the SPEC dir", not "terminal-transition date"; a cosmetic re-touch (lint sweep, frontmatter migration) resets the clock. This is the conservative direction — it never archives something recently touched — and is the mechanism behind (2). (4) M3's session-start time-box remains unimplemented.
+coverage_internal_spec: 88.9% (threshold 85%); DriftCountCtx 100.0%
+coverage_internal_hook_touched: detectStatusDrift 100.0% (touched-file function; package-wide internal/hook 83.8% is a pre-existing baseline dominated by other untested session_start.go handler code, unchanged by M3)
+full_suite: go test ./... — 96 ok / 0 FAIL, **3× -count=1 deterministic**; -race on all M3-touched packages GREEN (3× 0 races)
+guard_catches_regression: PROVEN — injecting a per-SPEC `deps.logAll` into `detectDrift`'s active loop made `TestDetectDrift_PerfBudget_ConstantSubprocessAtScale` read `git log invocations = 501 at N=500, want EXACTLY 1` (FAIL); the M1 seam guard `TestDetectDrift_ConstantGitLogInvocations` also FAILed. Reverted → both PASS.
+residual_risk: (1) AC-SSP-008b narrowing (M2 — unchanged). (2) M2 yields 0 eligible SPECs at the default 90-day grace on today's corpus (M2 — unchanged). (3) M2 last-activity = "last commit touching the SPEC dir", conservative direction (M2 — unchanged). (4) **NEW (M3, pre-existing + out-of-scope):** `internal/hook/dbsync` `TestCheckDebounceConcurrency` is a load-sensitive race test (asserts exactly-one-winner of a 50ms-window debounce race). It PASSED 12/12 in isolation and in all 3 clean full-suite runs, but flaked ONCE during an earlier heavy-load 3× sequential sweep (`results = [false false], want multiset {false, true}`). M3 touched 0 lines of `dbsync` (git diff --stat empty) — this is a PRE-EXISTING test-quality defect, NOT an M3 regression, and out of the item-4 scope (which was the i18n budget test). Flagged for a possible follow-up debounce-test hardening SPEC; NOT fixed here per scope discipline.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

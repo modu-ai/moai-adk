@@ -136,7 +136,7 @@ func (b *locksetBuilder) buildWithProgress(root string) *Lockset {
 		if d.IsDir() {
 			return nil
 		}
-		if isExcluded(path) {
+		if isExcluded(root, path) {
 			return nil
 		}
 		if !strings.HasSuffix(path, ".go") {
@@ -168,7 +168,7 @@ func (b *locksetBuilder) buildWithProgress(root string) *Lockset {
 		if err != nil {
 			return nil
 		}
-		if d.IsDir() || isExcluded(path) {
+		if d.IsDir() || isExcluded(root, path) {
 			return nil
 		}
 		if !strings.HasSuffix(path, "_test.go") {

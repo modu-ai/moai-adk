@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -929,18 +930,49 @@ func (h *sessionStartHandler) runMultiSessionProtocol(input *HookInput, data map
 	}
 }
 
+// driftWarningThreshold is the number of drifted SPECs at or above which
+// session-start surfaces the advisory (pre-existing behavior; named here so the
+// time-boxed rewrite carries no inline magic number).
+const driftWarningThreshold = 5
+
+// driftTimeoutAdvisory is surfaced when the drift check exceeds its time-box: it
+// preserves the "Run 'moai spec drift' for details." advisory so the user still
+// learns drift may exist, WITHOUT the check having blocked session start.
+const driftTimeoutAdvisory = "⚠ SPEC status drift check timed out. Run 'moai spec drift' for details."
+
+// Session-start drift seams — overridable in tests to inject a slow computation
+// (or a short deadline) and prove the time-box fires without waiting the full
+// production deadline. Production points them at the real ctx-aware entry point
+// and the compiled default timeout.
+var (
+	driftCountFn             = spec.DriftCountCtx
+	sessionStartDriftTimeout = config.DefaultSessionStartDriftTimeout
+)
+
 // detectStatusDrift checks for SPEC status drift and returns a warning message
-// if >= 5 SPECs have drifted. Returns empty string otherwise.
-// Non-blocking: errors are silently ignored.
+// if >= driftWarningThreshold SPECs have drifted. Returns empty string otherwise.
+//
+// The check is time-boxed (SPEC-SESSIONSTART-PERF-001 REQ-SSP-015): an advisory
+// computation on the session-start critical path must never block unboundedly.
+// On deadline exceed the handler skips the (abandoned) computation and emits the
+// advisory instead of blocking. All other errors (git absent, no specs
+// directory) are silently ignored, as before — the check is best-effort and
+// non-blocking.
 func detectStatusDrift(projectDir string) string {
-	// Import spec package for drift detection
-	count, err := spec.DriftCount(projectDir)
+	ctx, cancel := context.WithTimeout(context.Background(), sessionStartDriftTimeout)
+	defer cancel()
+
+	count, err := driftCountFn(ctx, projectDir)
 	if err != nil {
-		// Silently ignore errors (e.g., git not available, no specs directory)
+		if errors.Is(err, context.DeadlineExceeded) {
+			// Time-box exceeded — emit the advisory rather than block session start.
+			return driftTimeoutAdvisory
+		}
+		// git unavailable, no specs directory, etc. — stay silent (non-blocking).
 		return ""
 	}
 
-	if count >= 5 {
+	if count >= driftWarningThreshold {
 		return fmt.Sprintf("⚠ %d SPECs have status drift. Run 'moai spec drift' for details.", count)
 	}
 

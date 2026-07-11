@@ -131,6 +131,27 @@ const (
 	// "archive every terminal SPEC immediately".
 	DefaultArchiveGraceDays = 90
 
+	// SPEC-SESSIONSTART-PERF-001 M3 (REQ-SSP-014 / REQ-SSP-015 / REQ-SSP-018):
+	// the three M3 regression-guard thresholds, extracted here so no literal
+	// 2s / 500 lives inline in business logic or tests (CLAUDE.local.md §14).
+
+	// DefaultDriftPerfBudget is the wall-clock budget the drift-detection
+	// perf-regression test asserts against (REQ-SSP-014). The single-pass design
+	// completes far under this at the current corpus; a budget breach signals the
+	// O(n)-subprocess pattern has regressed.
+	DefaultDriftPerfBudget = 2 * time.Second
+
+	// DefaultSessionStartDriftTimeout time-boxes the session-start drift advisory
+	// check (REQ-SSP-015). On deadline exceed the handler skips the (abandoned)
+	// computation and emits the advisory instead of blocking session start
+	// unboundedly — an advisory computation on the critical path must never block.
+	DefaultSessionStartDriftTimeout = 2 * time.Second
+
+	// DefaultDriftPerfFixtureSpecs is the synthetic SPEC-directory count the
+	// perf-regression fixture builds (REQ-SSP-014, N=500). It is the SSOT for the
+	// literal 500 so the fixture size is not an inline magic number.
+	DefaultDriftPerfFixtureSpecs = 500
+
 	// SPEC-HANDOFF-THRESHOLD-001 (Handoff-v2 M4): handoff-guide band boundaries.
 	// Named constants so renderer.go carries no inline band literals (§14
 	// hardcoding-prevention). These boundaries are compiled-in and NOT
@@ -668,7 +689,7 @@ func defaultDesignConfig() DesignConfig {
 			SupportedBundleVersions: []string{"1.0"},
 		},
 		DefaultFramework: "next.js",
-		Enabled: true,
+		Enabled:          true,
 		Evaluator: DesignEvaluator{
 			MemoryScope: "per_iteration",
 		},
