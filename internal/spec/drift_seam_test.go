@@ -2,6 +2,7 @@ package spec
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -320,22 +321,10 @@ func TestParseCommitRecords(t *testing.T) {
 	if records[0].subject != "feat(SPEC-A-001): first" {
 		t.Errorf("records[0].subject = %q", records[0].subject)
 	}
-	if !contains(records[0].fullMsg, "body line 2") {
+	if !strings.Contains(records[0].fullMsg, "body line 2") {
 		t.Errorf("records[0].fullMsg lost its multi-line body: %q", records[0].fullMsg)
 	}
 	if records[1].subject != "chore(SPEC-B-001): second" {
 		t.Errorf("records[1].subject = %q", records[1].subject)
 	}
-}
-
-// contains is a tiny local helper to keep the parser assertions readable.
-func contains(haystack, needle string) bool {
-	return len(haystack) >= len(needle) && func() bool {
-		for i := 0; i+len(needle) <= len(haystack); i++ {
-			if haystack[i:i+len(needle)] == needle {
-				return true
-			}
-		}
-		return false
-	}()
 }
