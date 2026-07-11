@@ -135,8 +135,8 @@ run_status: in-progress
 milestones_complete: M1 (algorithmic hardening — REQ-SSP-001..006, REQ-SSP-006a), M2 (SPEC auto-archive — REQ-SSP-007..013, REQ-SSP-018)
 milestones_pending: M3 (regression guard — REQ-SSP-014..017)
 m1_commit_sha: f376ee7d25bea4721b0f6d9bd9e1f9ea92419f44
-m2_commit_sha: pending-backfill-m2
-m2_base_sha: a02cfd0da (main, M1 merged; main confirmed an ancestor of the M2 worktree HEAD)
+m2_commit_sha: a814656c5b159a6bd12e5b456a9aa969037aad5d
+m2_base_sha: d815fe34e (main; M2 was authored on a02cfd0da and rebased onto d815fe34e after a parallel session advanced main — main is an ancestor of the M2 HEAD, so the branch is ff-mergeable. Full suite / vet / lint / cross-build re-verified GREEN on the rebased tree.)
 ac_pass_count: 24 (M1: AC-SSP-001..006a, 019..022 = 13; M2: AC-SSP-007, 008a, 008b, 009a, 009b, 010, 011, 012, 013, 018, 023 = 11) + AC-SSP-024 quality gate
 ac_fail_count: 0
 ac_narrowed_count: 1 (AC-SSP-008b — a `--yes` confirmation gate narrows "bare invocation moves" to "bare invocation reports then refuses"; safety narrowing, disclosed for user acceptance)
