@@ -10,7 +10,7 @@
 ```yaml
 plan_status: audit-ready
 plan_complete_at: 2026-07-11
-plan_version: 0.1.1
+plan_version: 0.1.2
 tier: M
 artifacts: [spec.md, plan.md, acceptance.md, progress.md]
 req_count: 11
@@ -32,6 +32,16 @@ notes: >
   numbering corrected (MCP fragment = artifact 7 OPTIONAL; verify skill = artifact 6
   mandatory, SPEC-HARNESS-VERIFY-PROMOTE-001); AC-HMP-015 added for the harness-builder
   "exactly 5" prose reconciliation.
+  v0.1.2: acceptance.md §C hardened against the token-presence-vs-reachability failure
+  mode — 7 sub-checks were measurably vacuous (passing at baseline with ZERO
+  implementation: AC-002=6, AC-003=7, AC-005=2, AC-007 additive=2 / env-var=1,
+  AC-009=8 (headline conditional-emission!), AC-010=1); every AC now carries a positive
+  check that FAILS on the unmodified tree, compound-alternation-as-sole-evidence is
+  eliminated (one grep per clause), positional clauses are verified inside
+  heading-delimited section ranges (§C.0 extractors), and two broken commands are fixed
+  (multi-file `grep -c` printed file:count pairs, never a scalar; parity `diff` ran
+  without an existence precondition). REQ set, AC↔REQ mapping, GWT scenarios, and scope
+  are UNCHANGED (11 REQ / 15 AC) — only HOW each AC is verified changed.
 ```
 
 ## §E.2 Run-phase Evidence

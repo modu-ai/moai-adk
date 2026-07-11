@@ -1,7 +1,7 @@
 ---
 id: SPEC-HARNESS-MCP-PROVISION-001
 title: "Per-project-type MCP server provisioning in /moai project + harness generation"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-07-11
 updated: 2026-07-11
@@ -24,6 +24,7 @@ depends_on: [SPEC-PROJECT-HARNESS-BRIDGE-001]
 |------|---------|--------|--------|
 | 2026-07-11 | 0.1.0 | Initial plan-phase draft (Tier M, 11 REQ / 13 AC). SPEC 2 of the 3-SPEC "Project-Harness Pipeline" Epic; `depends_on: [SPEC-PROJECT-HARNESS-BRIDGE-001]` (reuses the `harness-spec.yaml` `external_systems` / `ui_surface` / `verification` fields introduced there). Two changes: (1) insert a new `/moai project` **Phase 3.6** between LSP detection (3.5) and auto dev-mode (3.7) that detects the stack, selects recommended MCP servers from an externalized matrix, obtains orchestrator-held AskUserQuestion approval, and writes project-scope `.mcp.json` entries additively; (2) extend the `harness-builder.md` GENERATE contract with an OPTIONAL artifact (a `.mcp.json` fragment via the existing `builder-harness` `artifact_type=mcp-server` capability), emitted ONLY when the harness PLAN declares MCP needs. Doc/config-only (markdown + yaml); no Go code. All Template-First. 2 clarification markers in plan.md (mcp-matrix config surface + doctor manifest-mcp validate-vs-tolerate). | manager-spec |
 | 2026-07-11 | 0.1.1 | Plan-audit fixes applied (11 REQ / 15 AC). (D1) Both clarifications RESOLVED and marker literals struck from plan.md: mcp-matrix = standalone template DATA RESOURCE (`internal/template/templates/.moai/config/sections/mcp-matrix.yaml`, read as prose-context; NOT a Go config section); doctor manifest-mcp = TOLERATE-ONLY (zero Go change — lenient `json.Unmarshal`; regression-guarded by `DisallowUnknownFields == 0`). (D2) Added AC-HMP-014 covering the previously-uncovered REQ-HMP-003 (write-on-approval at project scope) → coverage claim now accurate. (D3) Replaced the vacuous repo-wide `moai harness doctor` smoke in AC-HMP-010 with a deterministic documented-tolerance grep + `DisallowUnknownFields == 0` regression guard. (D4/D5) Epic canonical numbering: MCP fragment renumbered from artifact 6 → **artifact 7 (OPTIONAL)** (verify skill from SPEC-HARNESS-VERIFY-PROMOTE-001 is the mandatory artifact 6); GENERATE contract reframed as "5 base + verify skill (6) + optional MCP fragment (7)"; added AC-HMP-015 asserting the `harness-builder.md` "exactly 5" wording is reconciled. Manifest `mcp` remains the 9th top-level field. | manager-spec |
+| 2026-07-11 | 0.1.2 | AC verification hardening — §C rewritten so every AC discriminates (baseline-0 → post-change ≥1); 7 vacuous compound-alternation greps replaced. No REQ / AC-mapping / scope change. | manager-spec |
 
 ## §A. Context and Intent
 
