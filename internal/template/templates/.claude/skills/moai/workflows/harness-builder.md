@@ -6,7 +6,7 @@ description: >
   subagent). Intermediate results are held in the orchestrator's session
   context. Documents the 6-pattern catalog, the per-specialist primitive
   mapping, the conditional worktree-isolation policy, and the GENERATE output
-  contract (the 5 artifact types M3/M4 consume).
+  contract (the 5 base artifact types M3/M4 consume, plus the optional artifact 7).
 user-invocable: false
 metadata:
   version: "1.0.0"
@@ -120,12 +120,12 @@ The gate presents, at minimum:
 
 `ToolSearch(query: "select:AskUserQuestion")` preload is mandatory immediately before the gate call (deferred-tool prerequisite per `.claude/rules/moai/core/askuser-protocol.md`).
 
-### Phase 3 — GENERATE [orchestrator fan-out emits 5 artifact types; conditional Agent(isolation:"worktree")]
+### Phase 3 — GENERATE [orchestrator fan-out emits the 5 base artifact types (+ optional artifact 7); conditional Agent(isolation:"worktree")]
 
-**Primitive**: orchestrator-direct fan-out — the orchestrator spawns specialist `Agent()` calls (parallel where independent, sequential where dependent) that emit the 5 artifact types in § GENERATE Output Contract below.
+**Primitive**: orchestrator-direct fan-out — the orchestrator spawns specialist `Agent()` calls (parallel where independent, sequential where dependent) that emit the 5 base artifact types (+ optional artifact 7) in § GENERATE Output Contract below.
 **Isolation**: conditional per-specialist — `worktree` for conflict-prone parallel generation, `none` otherwise.
 
-On Proceed, the orchestrator fans out specialist agents that emit the 5 artifacts. The spawn form is decided per-specialist by consulting each specialist's `isolation` field in the manifest (the field the PLAN phase populated via the isolation-decision helper):
+On Proceed, the orchestrator fans out specialist agents that emit the 5 base artifacts (plus the optional artifact 7 when the harness PLAN declares an MCP need). The spawn form is decided per-specialist by consulting each specialist's `isolation` field in the manifest (the field the PLAN phase populated via the isolation-decision helper):
 
 - **`isolation: "worktree"`** → the orchestrator spawns `Agent(role, isolation:"worktree", ...)` for that specialist. This is the conflict-prone case: ≥2 specialists targeting overlapping paths, OR a specialist making a risky change (shared-infrastructure touch). The worktree isolates the blast radius so parallel writes do not collide.
 - **`isolation: "none"`** → the orchestrator spawns a plain `Agent(role, ...)` (main-tree). This is the read-only or sequential case: no write conflict is possible, so no worktree is created.
@@ -208,9 +208,9 @@ NO mandatory top-level worktree wraps the Builder or Runner. `Agent(isolation:"w
 
 **L1 worktree cleanup is runtime-autonomous.** The Runner emits a cleanup directive at end-of-run; the actual `git worktree prune` is handled by the Claude Code runtime, not by the harness logic.
 
-## GENERATE Output Contract (the 5 artifact types)
+## GENERATE Output Contract (5 base artifact types + optional artifact 7)
 
-The GENERATE phase emits exactly 5 artifact types. This contract is the handoff spec M3 (manifest + Runner engine) and M4 (command generation + lifecycle) consume. Each artifact has a fixed location and a content contract.
+The GENERATE phase emits 5 base artifact types, plus a mandatory verify skill (artifact 6, owned by a sibling Epic SPEC) and an OPTIONAL MCP fragment (artifact 7, § Artifact 7 below) emitted only when the harness PLAN declares an MCP need. This contract is the handoff spec M3 (manifest + Runner engine) and M4 (command generation + lifecycle) consume. Each artifact has a fixed location and a content contract.
 
 ### Artifact 1 — Thin-wrapper entry command
 
@@ -270,6 +270,22 @@ The GENERATE phase emits exactly 5 artifact types. This contract is the handoff 
 - `runner_workflow` — the `harness-<name>-run.js` filename.
 
 The manifest is validated against the canonical schema before GENERATE completes. A manifest failing validation regresses to PLAN for correction.
+
+### Artifact 7 — Optional `.mcp.json` fragment (conditional)
+
+**Path**: `.mcp.json` (repo root, project scope) — merged additively.
+**Purpose**: provision the MCP servers the harness needs, reusing the existing `builder-harness` `artifact_type=mcp-server` capability (which scaffolds `.mcp.json` entries with stdio / http / sse transports). This is the OPTIONAL artifact 7 in the canonical order (5 base + verify skill artifact 6 + optional MCP fragment artifact 7).
+**Conditional emission**:
+
+- Artifact 7 is emitted ONLY when the harness PLAN declares MCP needs — derived from the `harness-spec.yaml` `external_systems` / `verification` fields. When the PLAN declares an `external_systems` list (a DB / API / service the harness must reach), GENERATE emits artifact 7.
+- When the PLAN declares NO MCP need, artifact 7 is OMITTED and the GENERATE output stays byte-identical to the without-artifact-7 baseline (a no-MCP harness is unchanged from today). The extension is a CONDITIONAL branch, never an unconditional additional write.
+
+**Content contract**:
+
+- The fragment reuses the `builder-harness` `artifact_type=mcp-server` scaffolder verbatim — this SPEC wires the existing capability into GENERATE; it does not reimplement the scaffolder.
+- Any secret in a written server entry uses `${VAR}` env-var expansion form (never an inlined literal token), matching the `/moai project` Phase 3.6 write discipline.
+
+**Optional manifest `mcp` block (doctor-tolerant)**: when artifact 7 is emitted, the harness MAY record an OPTIONAL `mcp` block in `manifest.json` (e.g. `"mcp": { "servers": [ { "name": "playwright", "transport": "stdio" } ] }`). This block is TOLERATE-ONLY: the `moai harness doctor` reference-integrity gate tolerates it with zero code change, because the manifest decoder ignores unknown fields (no strict unknown-field rejection), so an unknown `mcp` block produces no doctor ERROR finding. Active schema validation of the `mcp` block is out of scope here, deferred to a follow-up code SPEC.
 
 ## AskUserQuestion Boundary (orchestrator-side)
 
