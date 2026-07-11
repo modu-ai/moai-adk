@@ -78,7 +78,7 @@ Baseline attribution: worktree at HEAD `378613ba8481ab6944c6976b6ea09b9a4cbe4ef4
 run_status: in-progress
 milestones_complete: M1 (algorithmic hardening — REQ-SSP-001..006, REQ-SSP-006a)
 milestones_pending: M2 (SPEC auto-archive — REQ-SSP-007..013), M3 (regression guard — REQ-SSP-014..018)
-m1_commit_sha: pending-backfill-m1
+m1_commit_sha: f376ee7d25bea4721b0f6d9bd9e1f9ea92419f44
 ac_pass_count: 13 (AC-SSP-001, 002, 003, 004, 005a, 005b, 005c, 006, 006a, 019, 020, 021, 022 + AC-SSP-024 quality gate)
 ac_fail_count: 0
 ac_deferred_count: 11 (AC-SSP-007..018, 023 — M2 + M3 scope)
