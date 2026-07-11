@@ -161,7 +161,7 @@ scope_note: "M4 touched one Go test file (audit_loader_completeness_test.go allo
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-07-11
-sync_commit_sha: pending-backfill-HARNESS-MCP-PROVISION-001   # self-reference hazard — backfilled in a follow-up commit per spec-frontmatter-schema.md D3
+sync_commit_sha: b1aa48b5dda6d54db143c4d444cce9c78a67a472
 ac_pass_count: 16
 ac_fail_count: 0
 ac_total: 16
