@@ -135,6 +135,19 @@ M5 invariant preservation (re-asserted post-M5):
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
+### v0.2.0 amendment close (supersedes the v0.1.1 §E.4 record below)
+
+- sync_status: complete
+- sync_complete_at: 2026-07-11
+- sync_commit_sha: pending-backfill-v0.2.0-amendment-close (self-referential hazard — a commit cannot reference its own hash; backfilled with the real full SHA in an immediate follow-up commit per spec-frontmatter-schema.md SHA-placeholder-backfill exemption; verify via `git show --stat <sha>`)
+- ac_pass_count: 22 (AC-PHB-001 … AC-PHB-022; verified `grep -cE '^### AC-PHB-[0-9]{3}' acceptance.md` == 22 before emission)
+- doc_sync_summary: CHANGELOG.md `[Unreleased]` § Added entry for SPEC-PROJECT-HARNESS-BRIDGE-001 was **REWRITTEN IN PLACE**, NOT appended. Rationale: the existing CHANGELOG.md:12 entry (from the prior v0.1.1 close, sync commit `0c9871b46b6719325427dc0126e4eb65d7b0f2d8`) described the pre-amendment BROKEN semantics as if they were shipped-and-working — it claimed a delivered "new Round 4" and "14/14 AC PASS", when in fact Round 4 (the four extended axes) was UNREACHABLE on both interview paths (the `project.max_rounds: 3` cap AND the REQ-PHB-002 early-exit "skip remaining rounds" both blocked it). Because v0.1.1 and this v0.2.0 amendment land in the SAME `[Unreleased]` cycle (nothing has shipped to users yet), the entry now describes the FINAL two-stage-interview behavior (Stage A adaptive discovery + Stage B mandatory extended-axes round, exempt from the cap/early-exit/scoring) and the corrected **22/22 AC PASS** count, rather than carrying a broken-then-fixed narrative forward. The true historical framing that this SPEC replaces the prior STATIC fixed-3-round interview was preserved (that statement remains accurate); only the description of the BROKEN Round-4-unreachable semantics and the stale AC count were corrected. README.md and docs-site 4-locale sync remain explicitly OUT OF SCOPE per spec.md § Out of Scope — deferred follow-up, no user-facing CLI surface change.
+- mx_tag_validation: N/A — doc-only SPEC (markdown/yaml), no Go code touched; no @MX annotation targets
+- frontmatter_transition: spec.md `status: in-progress → completed` (single sync commit carries the v0.2.0 amendment's 3-phase close); `updated: 2026-07-11` (unchanged — plan-phase, run-phase (M5), and sync-phase all land same day); plan.md/acceptance.md have no `status:` frontmatter field (untouched)
+- amendment_close_confirmation: the v0.2.0 in-place amendment (`completed → in-progress → completed`) is closed. F-1 (Round 4 unreachable — cap + early-exit double-block), F-2 (early exit could strand REQUIRED base fields), F-3 (asymmetric Round-topic coverage across the two hosts), F-3r (residual asymmetry re-check), and F-5 (stale `3-round` fixed-interview claim in codebase-analysis.md frontmatter) are all closed per AC-PHB-015 … AC-PHB-022. Foundation SPEC of the 3-SPEC Project-Harness Pipeline Epic — downstream SPEC-HARNESS-MCP-PROVISION-001 and SPEC-HARNESS-VERIFY-PROMOTE-001 (both `depends_on` this SPEC) may now build on the `harness-spec.yaml` contract as amended.
+
+### v0.1.1 close (superseded — retained for audit trail only; see amendment note above)
+
 - sync_status: complete
 - sync_complete_at: 2026-07-11
 - sync_commit_sha: 0c9871b46b6719325427dc0126e4eb65d7b0f2d8 (backfilled per spec-frontmatter-schema.md SHA-placeholder-backfill exemption)
@@ -142,6 +155,7 @@ M5 invariant preservation (re-asserted post-M5):
 - mx_tag_validation: N/A — doc-only SPEC (markdown/yaml), no Go code touched; no @MX annotation targets
 - frontmatter_transition: spec.md `status: in-progress → completed` (single sync commit, 3-phase close); `updated: 2026-07-11` (unchanged — plan-phase and sync-phase land same day); plan.md/acceptance.md have no `status:` frontmatter field (untouched)
 - close_confirmation: SPEC-PROJECT-HARNESS-BRIDGE-001 sync-phase complete; foundation SPEC of the 3-SPEC Project-Harness Pipeline Epic — downstream SPEC-HARNESS-MCP-PROVISION-001 and SPEC-HARNESS-VERIFY-PROMOTE-001 (both `depends_on` this SPEC) may now proceed
+- **NOTE (added at v0.2.0 amendment close)**: this v0.1.1 close was subsequently found by an adversarial sync-audit to have shipped a BROKEN headline feature (Round 4 / extended axes unreachable). The SPEC was reopened as the v0.2.0 in-place amendment above. This record is retained verbatim for audit-trail purposes; it is NOT the current close signal.
 
 ## §F Phase 0.95 Mode Selection
 
