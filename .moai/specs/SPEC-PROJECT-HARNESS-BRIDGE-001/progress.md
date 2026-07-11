@@ -114,7 +114,7 @@ M5 invariant preservation (re-asserted post-M5):
 
 - run_status: complete (M5 — two-stage interview / Round 4 reachability)
 - run_complete_at: 2026-07-11
-- run_commit_sha: pending-backfill-m5 (backfilled in a follow-up commit per spec-frontmatter-schema.md SHA-placeholder-backfill exemption — a commit cannot reference its own hash)
+- run_commit_sha: 3af01567fdd56dae3afb485fcf0b1f735fcd22e6 (backfilled per spec-frontmatter-schema.md SHA-placeholder-backfill exemption — a commit cannot reference its own hash; all 20 ACs verified on this tree)
 - ac_pass_count: 20 (AC-PHB-001 … AC-PHB-020)
 - ac_fail_count: 0
 - ac_regression_guard: AC-PHB-001 … AC-PHB-014 re-verified PASS on the post-M5 tree (v0.1.1 behavior not weakened)
