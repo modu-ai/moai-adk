@@ -142,14 +142,14 @@ func TestSettingsTemplateOutputStyle(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
-	// outputStyle is a personal preference resolved as: project settings.json > user settings.json
-	// > hardcoded default (per .claude/rules/moai/core/settings-management.md § Output Style
-	// Precedence). The shared project template must NOT pin it — pinning forced MoAI on every
-	// project and shadowed each user's own choice (settings.local.json is not consulted by the
-	// resolver). With the pin removed, each user's preference (e.g. MoAI-Easy at user level)
-	// applies.
-	if strings.Contains(output, `"outputStyle"`) {
-		t.Error("settings template must NOT pin outputStyle (personal preference; resolves to user-level setting or hardcoded default)")
+	// outputStyle resolution precedence (per .claude/rules/moai/core/settings-management.md
+	// § Output Style Precedence): local settings.local.json > project settings.json > user
+	// settings.json > hardcoded default. The shared project template pins MoAI-Easy as the
+	// PRODUCT DEFAULT so fresh `moai init` projects start beginner-friendly. A user's own
+	// choice via `/config` writes to settings.local.json, which outranks this project pin,
+	// so pinning the default here never traps a user on MoAI-Easy.
+	if !strings.Contains(output, `"outputStyle": "MoAI-Easy"`) {
+		t.Error("settings template must pin outputStyle to MoAI-Easy (product default; user /config choice in settings.local.json outranks it)")
 	}
 }
 

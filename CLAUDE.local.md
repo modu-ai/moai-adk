@@ -793,16 +793,24 @@ Workflow audit 2026-05-16 finding M2 후속. 로컬 `.claude/settings.json`의 �
 
 ### §22.4 env.PATH
 
-- **로컬값**: `/Users/goos/...` 절대경로 (2026-06-03 재정정 — 아래 실측 근거). 직전 2026-05-17 F-009/M5 정정은 `$HOME` 패턴을 권고했으나, **Claude Code가 env.PATH 값의 `$HOME`을 expand하지 않음**이 실측 확인되어 뒤집힘 (Bash 서브프로세스에 리터럴 `$HOME/go/bin`이 그대로 전달 → `command -v moai` 실패 → moai-lsp MCP가 PATH로 moai 미해석). 따라서 dev-local은 절대경로 사용.
-- **Template 기본값**: `settings.json.tmpl`의 PATH 키는 `{{jsonEscape .SmartPATH}}` 로 렌더 (BuildSmartPATH가 issue #467 대응으로 well-known 절대경로 PATH 생성 — `$HOME` 미사용). 사용자 프로젝트는 `moai init`/`moai update`가 절대 SmartPATH로 새로 렌더하므로 fork/clone과 무관.
-- **의도**: dev-local 절대경로는 이 머신 전용이며 `.claude/settings.json`은 git-tracked이므로 **커밋 금지** (fork/clone 사용자에게 깨짐). 추후 machine-specific PATH는 `settings.local.json`(§2 분리, gitignored)으로 이관 고려.
+- **위치 (2026-07-12 이관)**: machine-specific 절대경로 PATH는 이제 `settings.local.json`(gitignored)에만 둔다. `.claude/settings.json`(git-tracked)의 `env`에서 `PATH` 키를 **제거**했다 — git-tracked 파일에 `/Users/goos/...` 절대경로를 두면 fork/clone 사용자에게 깨지기 때문(§2 settings.local.json Separation 적용). settings.json의 `env`에는 machine-independent 키(`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, `ENABLE_TOOL_SEARCH`, `MOAI_CONFIG_SOURCE`)만 남긴다.
+- **왜 절대경로인가 (settings.local.json 안에서)**: **Claude Code가 env.PATH 값의 `$HOME`을 expand하지 않음**이 실측 확인됨 (Bash 서브프로세스에 리터럴 `$HOME/go/bin`이 그대로 전달 → `command -v moai` 실패 → moai-lsp MCP가 PATH로 moai 미해석). 따라서 settings.local.json의 PATH는 절대경로를 쓴다 (직전 2026-05-17 F-009/M5의 `$HOME` 권고는 이 실측으로 뒤집힘).
+- **Template 기본값**: `settings.json.tmpl`의 PATH 키는 `{{jsonEscape .SmartPATH}}` 로 렌더 (BuildSmartPATH가 issue #467 대응으로 well-known 절대경로 PATH 생성 — `$HOME` 미사용). 사용자 프로젝트는 `moai init`/`moai update`가 절대 SmartPATH로 새로 렌더하므로 fork/clone과 무관. **주의**: `settings_test.go:requiredKeys`가 템플릿 env에 `PATH`/`ENABLE_TOOL_SEARCH`/`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` 존재를 강제하므로 템플릿에서 이 키들을 제거하면 CI FAIL — 로컬 settings.json에서만 PATH를 뺀다(템플릿은 그대로).
 - **주의 (2026-06-24 정정)**: `StatusLine` command는 Claude Code 내장 토큰 `$CLAUDE_PROJECT_DIR`을 런타임 환경변수로 받는다 (공식 문서 code.claude.com/docs/en/statusline — "runs with the same environment variables as hooks, including `CLAUDE_PROJECT_DIR`"). 종전 "StatusLine은 env var를 expand하지 않는다"는 GitHub Issue #7925를 오독한 것이며, 해당 이슈는 일반 shell 보간/`env` 블록 값에 대한 것이지 내장 토큰이 아니다. 단, **`env.PATH`의 `$HOME` expand 불가는 별개 사실로 여전히 유효**하며 본 절의 핵심 근거는 이쪽으로 한정한다.
+
+### §22.6 outputStyle — 제품 기본값 MoAI-Easy (2026-07-12 채택)
+
+- **템플릿 기본값 (제품 결정)**: `settings.json.tmpl` + 로컬 `.claude/settings.json` 모두 `"outputStyle": "MoAI-Easy"` 고정. 모든 배포 사용자가 기본 MoAI-Easy로 시작한다. 과거 `699e59631`의 "personal preference라 unpin" 결정을 제품 기본값 채택으로 되돌린 것 — CI 가드 `TestSettingsTemplateOutputStyle`도 "MoAI-Easy 필수"로 반전.
+- **우선순위 (공식 검증)**: Claude Code outputStyle 해석 순위는 `settings.local.json`(local, 최고) > `settings.json`(project) > `~/.claude/settings.json`(user) > 하드코딩 기본값. 종전 MoAI 내부 문서(settings-management.md)가 **local 스코프를 누락**했었고(2026-07-12 정정), 이 누락이 "outputStyle이 계속 리셋된다"는 오진의 근원이었다.
+- **`/config` 저장 위치 (공식)**: `/config` → Output style은 `settings.local.json`에 저장(공식 문서 code.claude.com/docs/en/output-styles). local이 최고 우선순위라 사용자의 `/config` 선택은 항상 템플릿 project 핀을 이긴다 → 제품 기본값 고정이 사용자를 가두지 않는다.
+- **적용 시점**: outputStyle은 세션 시작 시 1회만 읽힘 → 변경은 `/clear` 또는 새 세션부터 반영. 이것이 "리셋처럼 보이는" 현상의 실제 원인(버그 아님).
+- **코드 보존**: `settings.local.json` writer(`glm.go`/`settings.go`)는 `map[string]any` round-trip으로 outputStyle 등 unknown top-level 키를 보존(SPEC-CLIFIX-CRITICAL-001) → `moai glm`/`cg`/`cc`가 파일을 건드려도 outputStyle 유지.
 
 ### §22.5 운영 원칙
 
 - [HARD] 메인테이너 머신에서 위 키들을 변경할 때 template 자동 동기화 금지 (§2 settings.local.json Separation 적용)
-- [HARD] 위 4개 키의 의도가 변경되면 본 §22를 즉시 갱신
-- [HARD] 사용자 프로젝트에 위 키들이 누락된 것이 정상 — 누락은 결함이 아니라 의도된 격리
+- [HARD] 위 키들(defaultMode/enableAllProjectMcpServers/teammateMode/env.PATH/outputStyle)의 의도가 변경되면 본 §22를 즉시 갱신
+- [HARD] 사용자 프로젝트에 machine-specific 키(env.PATH 등)가 누락된 것이 정상 — 누락은 결함이 아니라 의도된 격리. 단 outputStyle은 예외: 템플릿에 MoAI-Easy로 고정되므로 배포 사용자에게도 존재한다.
 
 ---
 
@@ -827,3 +835,57 @@ See: `.moai/docs/harness-namespace-doctrine.md`
 [HARD] `internal/template/templates/` 산출물은 외부 사용자에게 배포되는 범용 자산이며 moai-adk 내부 개발 흔적을 포함하면 안 된다. 금지 클래스: 내부 SPEC ID, REQ/AC 토큰, audit 인용("Audit N Finding AX"), 내부 작업 날짜, commit SHA, archive/memory 경로. 허용: generic prose, 메커니즘 설명, 공개 자료 인용, 영구 규칙 인용, MoAI-ADK 시스템 식별자. CI guard: `internal/template/internal_content_leak_test.go` + `.github/workflows/template-neutrality-check.yaml`. 5-item pre-commit self-check + Allowed/Forbidden content-class catalogue + anti-pattern catalogue(AP-25.1~25.3)가 포함된다. §15(언어 중립성)·§21(dev-only commands)·§24(harness namespace)와 동일 isolation doctrine 계열.
 
 See: `.moai/docs/template-internal-isolation-doctrine.md`
+
+---
+
+## 26. Linear 연동 (개인/로컬 전용)
+
+> [ZONE:Local-Only] 본 섹션은 GOOS 개인 개발 전용이며 로컬 전용이다. `internal/template/templates/`에 절대 미러 금지 (§25 isolation + §14 하드코딩 허용 영역). **범용 배포/제품화 계획 없음** — Linear 연동은 개인 개발 워크플로우로만 사용한다(배포용 스킬/MCP 프로비저닝 제품화는 하지 않기로 결정, 2026-07-12). CLAUDE.local.md는 gitignored라 애초에 공유되지 않는다.
+
+### §26.1 워크스페이스 매핑
+
+- **Linear 워크스페이스**: `모두의AI` (`linear.app/goos`)
+- **Team**: `모두의AI` · **이슈 접두사**: `MOAI-`
+- **Project ↔ 리포 매핑** (동시 진행 7개):
+
+| Linear Project | 리포 | 진행중 이슈 |
+|---|---|---|
+| moai-adk-go | /Users/goos/MoAI/moai-adk-go | MOAI-13/14/15 (Project-Harness Epic, plan) |
+| claude.mo.ai.kr | claude.mo.ai.kr | — |
+| mo.ai.kr | mo.ai.kr | MOAI-10 결제 오류 (Bug/High) |
+| MINK | MINK | MOAI-11 harness:mink-e2e |
+| copythat | copythat | — |
+| moai-stock | moai-stock | — |
+| academy | academy | MOAI-12 feat/design-system |
+
+- **SSOT 문서**: Linear 팀 문서 "SPEC ↔ Linear 브리지 규칙" (`linear.app/goos/document/spec-linear-브리지-규칙-fed04d006656`)
+
+### §26.2 운영 규칙 (2계층 모델)
+
+- **Linear 계층 (제품/기획)**: 무엇을/언제. 아이디어 저수지 + 우선순위 + 크로스 프로젝트 조율.
+- **SPEC 계층 (기술 SSOT)**: 정확히 어떻게. 각 리포 `.moai/specs/`. SPEC 저작은 **항상 리포 파일에서만** — Linear로 옮기지 않는다 (git·에이전트 파이프라인·frontmatter 결합).
+
+흐름:
+1. 아이디어·버그 → Linear 이슈로 캡처 (`Idea` 라벨 → Triage). 아직 SPEC 아님.
+2. 착수 결정 → 해당 리포에서 `/moai plan`으로 SPEC 승격 + frontmatter `linear_issue: MOAI-N`.
+3. `/moai run` → `/moai sync`로 구현·클로즈 → Linear 이슈 Done + PR/커밋 링크.
+
+상태 매핑 (느슨한 결합 — 정밀 상태의 진실은 SPEC frontmatter):
+
+| Linear 상태 | SPEC status |
+|---|---|
+| Backlog / Todo | draft |
+| In Progress | in-progress |
+| Done | implemented / completed |
+
+### §26.3 오케스트레이터 지침
+
+- 세션에서 Linear 작업 시 `mcp__claude_ai_Linear__*` 도구 사용 (deferred → ToolSearch preload 필요).
+- 팀/사이클 생성·rename은 MCP 미지원 → Linear UI 전용.
+- `linear_issue` frontmatter 필드는 아직 SPEC 스키마 정식 필드 아님 (도입은 SPEC-HARNESS-MCP-PROVISION-001 소관). 현재는 서술적 참조로만 사용.
+
+### §26.4 아이디어 기록 방법
+
+- **A. 자연어 지시**: "아이디어 Linear에 기록해줘: <제목> — <설명>" → 이 프로젝트(moai-adk-go)의 Linear Project에 `Idea` 라벨 + Backlog(Triage) 이슈 생성. 어느 Project인지는 §26.1 매핑으로 자동 인식.
+- **B. 빠른 트리거**: 사용자 메시지가 `아이디어:` 또는 `💡`로 시작하면, 나머지 내용을 이 Project의 Linear 이슈로 **즉시 기록**한다 (Team `모두의AI`, 라벨 `Idea`, 상태 Backlog/Triage). 확인 질문 없이 기록 후 생성된 `MOAI-N` 이슈 URL을 보고. SPEC 승격은 하지 않음(아이디어 저수지 단계 — 착수 결정 시 `/moai plan`으로 승격).
+- 전제: 세션에 Linear MCP가 로드/인증돼 있어야 실제 기록됨(미인증 시 `/mcp`로 Linear 인증 후 재시도).

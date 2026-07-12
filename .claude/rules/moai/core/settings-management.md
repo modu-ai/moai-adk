@@ -285,9 +285,12 @@ When `outputStyle` is set in multiple places, the first match wins:
 
 | Priority | Source | Key | Example |
 |----------|--------|-----|---------|
-| 1 (highest) | `.claude/settings.json` (project) | `outputStyle` | `"outputStyle": "Einstein"` |
-| 2 | `~/.claude/settings.json` (user) | `outputStyle` | `"outputStyle": "MoAI"` |
-| 3 (lowest) | Hardcoded default | — | `"MoAI"` |
+| 1 (highest) | `.claude/settings.local.json` (local, gitignored) | `outputStyle` | `"outputStyle": "Einstein"` |
+| 2 | `.claude/settings.json` (project) | `outputStyle` | `"outputStyle": "MoAI-Easy"` |
+| 3 | `~/.claude/settings.json` (user) | `outputStyle` | `"outputStyle": "MoAI"` |
+| 4 (lowest) | Hardcoded default | — | `"MoAI"` |
+
+The **local** scope (`.claude/settings.local.json`) is the highest-priority resolver source and is where the Claude Code `/config` → Output style menu writes a user's selection (official docs: code.claude.com/docs/en/output-styles — "Your selection is saved to `.claude/settings.local.json`"). This is why the project template (scope 2) pinning `outputStyle: MoAI-Easy` as the PRODUCT DEFAULT never traps a user: any `/config` choice lands in scope 1, which outranks the project pin. The setting is read once at session start — a change takes effect after `/clear` or a new session.
 
 **Example 1 — project overrides user:**
 
