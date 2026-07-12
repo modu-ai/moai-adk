@@ -1066,3 +1066,69 @@ func anyViolationHasClass(violations []string, class string) bool {
 	}
 	return false
 }
+
+// TestTemplateLearnedWorkflowBlockNeutral pins the MOAI:LEARNED-WORKFLOW managed
+// block shipped in templates/CLAUDE.md (the Template-First empty marker). The
+// block ships to every user project on `moai init` / `moai update`, so it MUST:
+//
+//   (a) be PRESENT — the heading + start/end markers exist in the template;
+//   (b) ship EMPTY — zero bullets between the markers (a populated block in the
+//       template would leak internal learning data — the AP-HEV2-006 anti-pattern);
+//   (c) be NEUTRAL — no forbidden-class content (internal SPEC IDs / REQ-AC
+//       tokens / internal dates / short-shas) in the block region.
+//
+// This EXTENDS the leak-scan coverage for the new block: the whole-tree
+// TestTemplateNoInternalContentLeak already walks templates/CLAUDE.md, but this
+// test pins the new managed block explicitly with a targeted default+strict
+// forbidden-class scan over the block region, plus presence + emptiness guards.
+// A future edit that plants an internal token (or a bullet) in the template
+// block fails here.
+func TestTemplateLearnedWorkflowBlockNeutral(t *testing.T) {
+	t.Parallel()
+
+	const (
+		heading     = "## MOAI:LEARNED-WORKFLOW"
+		startMarker = "<!-- moai:learned-start -->"
+		endMarker   = "<!-- moai:learned-end -->"
+	)
+
+	rel := filepath.Join(templatesRoot, "CLAUDE.md")
+	data, err := os.ReadFile(rel)
+	if err != nil {
+		t.Fatalf("read %s: %v", rel, err)
+	}
+	content := string(data)
+
+	// (a) Presence: heading + start + end markers all ship in the template.
+	for _, marker := range []string{heading, startMarker, endMarker} {
+		if !strings.Contains(content, marker) {
+			t.Errorf("templates/CLAUDE.md missing MOAI:LEARNED-WORKFLOW marker %q", marker)
+		}
+	}
+
+	headingIdx := strings.Index(content, heading)
+	start := strings.Index(content, startMarker)
+	end := strings.Index(content, endMarker)
+	if headingIdx < 0 || start < 0 || end < 0 || end < start {
+		t.Fatalf("MOAI:LEARNED-WORKFLOW markers malformed (heading=%d start=%d end=%d)",
+			headingIdx, start, end)
+	}
+
+	// (b) Emptiness: the block ships with ZERO bullets — the body strictly
+	// between the start and end markers is whitespace-only.
+	body := content[start+len(startMarker) : end]
+	if strings.TrimSpace(body) != "" {
+		t.Errorf("MOAI:LEARNED-WORKFLOW template block must ship EMPTY (zero bullets); body=%q", body)
+	}
+
+	// (c) Neutrality: the block region (heading through end marker) carries no
+	// forbidden-class content across the default + strict tiers. An empty block
+	// trivially passes; a planted internal SPEC ID / REQ token / date / SHA fails.
+	region := content[headingIdx : end+len(endMarker)]
+	classes := make([]leakClass, 0, len(leakClasses)+len(strictLeakClasses))
+	classes = append(classes, leakClasses...)
+	classes = append(classes, strictLeakClasses...)
+	if v := collectLeakViolations(rel, "CLAUDE.md", region, classes); len(v) != 0 {
+		t.Errorf("MOAI:LEARNED-WORKFLOW template block leaked forbidden content: %v", v)
+	}
+}

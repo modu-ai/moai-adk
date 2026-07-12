@@ -302,3 +302,9 @@ When MoAI workflows behave unexpectedly, use Claude Code's built-in debug tools 
 
 Version: 14.3.0 | Language: English | Core Rule: MoAI is an orchestrator; direct implementation is prohibited
 For detailed patterns (plugins, sandboxing, headless mode, version management), see Skill("moai-foundation-cc").
+
+---
+
+## MOAI:LEARNED-WORKFLOW
+<!-- moai:learned-start -->
+<!-- moai:learned-end -->
