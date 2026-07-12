@@ -153,7 +153,7 @@ pkgs ok / 0 FAIL confirms no regression).
 ### Amendment 0.3.0 (M8) run-phase audit-ready signal
 
 - run_complete_at: 2026-07-12
-- run_commit_sha: pending-backfill-m8 (single amendment run-phase commit; SHA backfilled post-land per the §E.3/§E.4 SHA-placeholder exemption)
+- run_commit_sha: 3f68742d4 (amendment run-phase commit; cherry-picked from worktree b136ae0d8 onto current main by orchestrator per the stale-worktree cherry-pick pattern; SHA backfilled post-land)
 - run_status: audit-ready (39/39 AC PASS — AC-GLE-035..039 NEW + AC-GLE-001..034 preserved)
 - ac_pass_count: 5 (amendment-new; 34 prior preserved)
 - ac_fail_count: 0
