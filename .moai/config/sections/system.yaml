@@ -12,7 +12,7 @@ hook:
   # NOTE: This key is INDEPENDENT of `observability.enabled` in observability.yaml
   # (REQ-OBS-005 trace-logging master toggle). See SPEC §A.3 cohabitation contract.
   opt_in:
-    enabled: false
+    enabled: true
 
 document_management:
     block_root_pollution: true

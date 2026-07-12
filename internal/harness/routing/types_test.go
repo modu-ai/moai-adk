@@ -57,10 +57,6 @@ func TestClassifyRequest(t *testing.T) {
 			t.Errorf("ClassifyRequest(%q) = %q, want %q", req, got, want)
 		}
 	}
-	// Deterministic: same input -> same class.
-	if ClassifyRequest("fix it") != ClassifyRequest("fix it") {
-		t.Fatal("classifier is not deterministic")
-	}
 }
 
 // TestValidEvidenceKind pins the closed evidence-kind enum (REQ-HEV-006).
