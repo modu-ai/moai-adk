@@ -6,9 +6,9 @@ handoff:
     #                      The unchanged baseline UX; auto-resume is opt-in.
     #   auto            — on /clear, the saved handoff is injected as session
     #                      context, then cleared (moved to an audit-trail copy).
-    # Local dev checkout opt-in: this project sets auto (1-paste resume flow).
-    # The distributed template default stays manual — auto-resume is per-project opt-in.
-    mode: auto
+    # Local dev checkout: auto → manual (reverted). auto is unsafe under multi-session
+    # same-checkout operation — single-consume pending.json race loses handoffs.
+    mode: manual
 
     # guide: when true, emit a best-effort stderr hint on non-/clear session
     #        starts (startup / resume / compact) that a saved handoff is waiting.
