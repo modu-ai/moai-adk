@@ -319,7 +319,17 @@ m1_to_mN_commit_strategy: per-milestone
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_commit_sha: pending-backfill-evolve002-sync
+sync_complete_at: 2026-07-12
+# M1-M7 delivered: typed writer (curator/writer.go), LEARNED-WORKFLOW digest block
+# (budget/cap/ledger_key/anti-fabrication), CLAUDE.local.md append-only section,
+# mergeSectionBased preservation, snapshot/rollback/lineage extension, Template-First
+# empty marker shipping, integration verification. 53/53 AC PASS, coverage 92.4%,
+# cross-platform build green, lint clean. CHANGELOG.md entry added. Frontmatter
+# status → completed for spec.md/plan.md/acceptance.md (3-phase close).
+```
 
 ## §F Phase 0.95 Mode Selection
 
