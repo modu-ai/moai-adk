@@ -67,8 +67,21 @@ this session on Claude Code runtime **v2.1.207** (`CLAUDE_CODE_EXECPATH` version
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- run_status: landed-on-main
+- run_commit_sha: `3d4addc2f` (feat — dual-channel agent progress reporting + background-default realignment; integrated from worktree `32cfaa7a0` via orchestrator cherry-pick `2c086db6d`, then rebased onto the restored main as `3d4addc2f`; target files verified byte-identical to the shared-checkout baseline before integration per `feedback_stale_worktree_orchestrator_cherry_pick`)
+- run_artifact_commit_sha: `af2484d8a` (docs — plan+run artifacts, draft→in-progress)
+- ac_reverification_on_main: orchestrator-independently re-verified on the main integration tree — SendMessage in `tools:` 9/9 × 2 trees, `Task*` added to 4 agents (`manager-design`/`plan-auditor`/`super-advisor`/`sync-auditor`) × 2 trees, AC-APP-026/026b background-write-restriction literal 0/0 (live+tmpl), AC-APP-009a `AskUserQuestion(` in agent bodies 0 (boundary preserved), AC-APP-029b `moai constitution guard` exit 0, `make build` exit 0 (catalog.yaml regen no-diff), `go test ./internal/template/...` exit 0
+- runtime_measured: Claude Code **v2.1.207** — `SendMessage({to:"main"})` delivery observed from BOTH background and foreground subagents (AC-APP-037b measured, not inferred); the runtime schema's "background subagents only" annotation is NOT enforced at the tool-call layer
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: audit-ready
+- sync_complete_at: 2026-07-13
+- sync_commit_sha: pending-backfill-sync (placeholder — orchestrator backfills the real SHA in a follow-up commit per the D3 self-referential-hazard exemption; a commit cannot reference its own hash)
+- changelog_entry_added: true (standalone AGENT-PROGRESS-PUSH-001 bullet under `### Added`, immediately after the EVOLVE-003 bullet)
+- frontmatter_transition: in-progress → completed (single sync commit carries the merged in-progress → implemented → completed transition per the 3-phase close convention; spec.md is the ONLY artifact with a `status:` frontmatter field — acceptance.md/plan.md/progress.md carry no frontmatter block in this SPEC, so the transition is a one-file edit)
+- readme_changed: false (dual-channel progress-reporting user-facing narrative deferred to the pending v3.0 README redesign — `project_readme_v3_rc11_redesign_draft` memory; CHANGELOG carries user visibility in the meantime)
+- docs_site_changed: false (same rationale; `agent-teams.md` SendMessage references are team-mode context, unchanged)
+- ac_reverification_at_sync: orchestrator independently re-ran the §E.2 verification batch on the main integration tree BEFORE the sync commit (SendMessage 9/9 × 2 trees, `Task*` × 4 agents × 2 trees, AC-APP-026/026b/009a/029b, `moai spec audit` MUST-FIX 0)
+- llm_yaml_excluded: the working-tree `team_mode: "" → glm` modification in `.moai/config/sections/llm.yaml` is GLM-backend runtime state (CLAUDE.local.md §22.3), NOT a SPEC artifact — excluded from the sync commit per scope discipline (`feedback_manager_docs_sync_phase_discipline`: no `git add -A` kitchen-sink)
+- manager_docs_delegation: orchestrator-direct (GLM backend + EVOLVE-003 manager-docs autocompact-thrash precedent; sync scope is mechanical CHANGELOG + frontmatter + §E.3/§E.4 — orchestrator-allowed direct-execution territory per CLAUDE.md §4 "git operations / result synthesis")
