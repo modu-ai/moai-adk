@@ -144,6 +144,11 @@ satisfies AC-HRA-009 (6+ verb surface).`,
 	// learning-loop 5-layer check.
 	cmd.AddCommand(harnesscli.NewHarnessDoctorCmd())
 
+	// SPEC-HARNESS-EVOLVE-001: routing observation ledger (Loop 0) — the
+	// `moai harness ledger record|evidence|list` recording surface. A separate
+	// observation subject from the usage-log observer (REQ-HEV-009).
+	cmd.AddCommand(newHarnessLedgerCmd())
+
 	return cmd
 }
 

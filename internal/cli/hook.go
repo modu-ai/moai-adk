@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -21,6 +22,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/harness"
 	"github.com/modu-ai/moai-adk/internal/harness/proposalgen"
+	"github.com/modu-ai/moai-adk/internal/harness/routing"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/hook/dbsync"
 )
@@ -795,7 +797,32 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	// SPEC-HARNESS-EVOLVE-001 REQ-HEV-012: additive, self-gated, fail-open routing
+	// finalizer. Downstream of the EXISTING HOI (gate 0) + learning (gate 1) gates
+	// already applied above. Finalizes a pending routing row into the ledger only
+	// when its machine evidence derives a terminal outcome; no-op otherwise.
+	finalizeRoutingLedgerOnStop(root, hookInput.SessionID, cmd.ErrOrStderr())
+
 	return nil
+}
+
+// finalizeRoutingLedgerOnStop is the additive routing-ledger Stop finalizer
+// (SPEC-HARNESS-EVOLVE-001, plan §A.4). It inherits BOTH harness-observe family
+// gates in their existing order/asymmetry — gate 0 isHookOptInEnabled
+// (fail-CLOSED, default OFF) then gate 1 isHarnessLearningEnabled (fail-open,
+// default true) — and then runs the self-gated, fail-open routing finalize
+// (REQ-HEV-012/015/016). Re-checking the gates here keeps this helper
+// independently testable (TestHarnessObserveStop_RoutingLedgerGated) and is two
+// cheap config reads, well within the 5s hook budget. Errors are written to
+// errSink and swallowed — the finalizer NEVER blocks session end.
+func finalizeRoutingLedgerOnStop(root, sessionID string, errSink io.Writer) {
+	if !isHookOptInEnabled(root) { // gate 0 (HOI, fail-CLOSED, default OFF)
+		return
+	}
+	if !isHarnessLearningEnabled(root) { // gate 1 (learning, fail-open, default true)
+		return
+	}
+	_ = routing.NewStore(filepath.Join(root, ".moai", "state")).FinalizeOnStop(sessionID, errSink)
 }
 
 // assistantMessageFields computes
