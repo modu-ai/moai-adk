@@ -113,7 +113,7 @@ plan_audit_final_iter: 2
 
 ```yaml
 run_complete_at:
-run_commit_sha: pending-backfill-m2
+run_commit_sha: 57782f6f0
 run_status: m2-complete-m3-m7-pending
 # M1 (Typed Managed-Block Writer foundation) + M2 (LEARNED digest block +
 # budget/cap enforcement) are complete. M1-scoped ACs PASS (AC-HEV2-001..006,
