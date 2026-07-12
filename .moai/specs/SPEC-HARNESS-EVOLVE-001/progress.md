@@ -129,7 +129,7 @@ ahead of `origin/main` (other SPECs) — origin push is the orchestrator's call.
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-07-12
-sync_commit_sha: pending-backfill-sync   # single sync commit cannot know its own SHA; backfilled in a follow-up commit
+sync_commit_sha: f12ebc7eae51f17674301fa711a87234d5744a58
 changelog_entry_position: Added (top of [Unreleased])
 frontmatter_status_transitions:
   spec_md: "in-progress -> completed"
