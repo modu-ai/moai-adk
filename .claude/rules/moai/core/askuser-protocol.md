@@ -435,6 +435,29 @@ AskUserQuestion({
 })
 ```
 
+### Completion-Report Next-Step Discipline
+
+[ZONE:Evolvable] [HARD] A completion report (a "done" / "All Done" summary) MUST NOT end with a free-form prose next-step question. The recurring anti-pattern is closing a finished report with an open prose prompt — "What would you like to do next?", "무엇을 도와드릴까요? (예: A / B / C)", or the same idea in any `conversation_language` — optionally trailed by parenthetical or dashed option examples. This is a Channel Monopoly violation even when the report body itself is correct.
+
+A completion report has exactly TWO valid closes:
+
+1. **Route a genuine next-step decision through `AskUserQuestion`** — when the next step truly requires the user to choose, preload (`ToolSearch(query: "select:AskUserQuestion")`) and ask via `AskUserQuestion`, so the user selects-and-enters instead of typing. The recommended option carries the `(Recommended)` / `(권장)` label.
+2. **Close with NO question** — a clean completion statement (what was done, the evidence, the current state). When no decision is actually required, do NOT manufacture a next-step question; an unneeded prompt is noise.
+
+"Ask through `AskUserQuestion`, or do not ask" — there is no third "ask in prose" option. The convenience rationalization "a short trailing next-step question on a finished report can be plain prose" is the exact failure mode this clause forbids.
+
+**Anti-pattern (NEVER repeat)**:
+```
+✅ All Done — [summary + evidence]
+
+What would you like to do next? (e.g. A: push / B: start docs / C: other)   ← PROHIBITED trailing prose question
+```
+
+**Pre-emit self-check (completion report)** — before sending any "done" report:
+- [ ] Does the report end with a `?`-bearing prose next-step prompt? If yes → convert to `AskUserQuestion`, or drop the prompt entirely.
+- [ ] If a next-step decision is genuinely needed, is it routed through `AskUserQuestion` (not prose, not a markdown option list)?
+- [ ] If no decision is needed, does the report close cleanly with no manufactured question?
+
 ## Non-ASCII Tool-Call Encoding
 
 The `AskUserQuestion` payload — `question`, `header`, and every option `label` / `description` / `preview` — routinely carries text in the user's `conversation_language`. For Korean, Japanese, Chinese, and other multi-byte scripts, this text MUST be written as **native UTF-8 directly** in the tool-call JSON. Hand-authored `\uXXXX` escape sequences are **PROHIBITED**.
