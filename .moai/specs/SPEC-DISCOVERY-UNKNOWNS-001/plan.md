@@ -39,7 +39,7 @@ The milestone ordering below is itself ordered by decision-reversibility (T2) �
 - **B6. spec-lint heading convention**: spec.md exclusions use `### Out of Scope — <topic>` H3 sub-headings (not a bare `## Out of Scope` H2), each with `-` bullets, to satisfy `OutOfScopeRule` (`MissingExclusions`). Verified in spec.md §E.
 - **B10. Untouched paths PRESERVE (CRITICAL)**: the shared checkout has ~52 uncommitted files from a PARALLEL session (SPEC-WEB-CONSOLE-011 / SPEC-HANDOFF-CTXGUIDE-001). Run-phase MUST touch ONLY the 4 target surfaces + their 4 template mirrors + this SPEC directory. NO `git add -A` / `git add .`; use pathspec-restricted staging only. Do NOT touch, stage, or modify any file outside the enumerated edit set.
 - **B11. AskUserQuestion boundary**: run-phase is subagent-executed; if the exact insertion wording needs a user decision, return a structured blocker report — never prompt the user.
-- **Template divergence (this SPEC)**: `askuser-protocol.md` diverges local-vs-template by ~1 hunk and `manager-spec.md` by ~5 hunks / 10 lines (all §25-neutrality strips of internal dates / SPEC-IDs / REQ tokens — verified via live diff). Neither divergence touches this SPEC's T1/T2 edit anchors (the manager-spec `Step 4` / `**plan.md**` T2 anchor is confirmed untouched); the paired edit targets identical anchors in each surface. `make build` re-embeds the mirror edits.
+- **Template divergence + CI parity regime (this SPEC, audit D2)**: `askuser-protocol.md` diverges local-vs-template by ~1 hunk and `manager-spec.md` by ~5 hunks / 10 lines (all §25-neutrality strips of internal dates / SPEC-IDs / REQ tokens — verified via live diff). Neither divergence touches this SPEC's T1/T2 edit anchors (the manager-spec `Step 4` / `**plan.md**` T2 anchor is confirmed untouched); the paired edit targets identical anchors in each surface. `make build` re-embeds the mirror edits. **Per-file parity regime (SSOT = spec.md §A.4 table)**: `spec-workflow.md` = BYTE-IDENTICAL mirror (`TestRuleTemplateMirrorDrift` / `workflowOptMirroredPaths`) — local↔mirror MUST be byte-for-byte; `askuser-protocol.md` = sanitized-pair (`TestSanitizedPairParity` / `sanitizedPairPaths`) — the T1 Blind Spot Pass + T3 lens doctrine MUST propagate to BOTH trees; `manager-spec.md` (sanitized mirror) + `CLAUDE.md` are in NEITHER parity registry (grep-token parity only). E7 / AC-DU-017 runs both parity tests after the mirror edits — a whitespace-only or partial-propagation drift passes grep-token but reds main.
 
 ## §C. Pre-flight Check List (run-phase, before any edit)
 
@@ -75,12 +75,13 @@ make build
 ## §E. Self-Verification (deliverables for run-phase completion)
 
 Run-phase (manager-develop) MUST report:
-- **E1. AC PASS/FAIL matrix** — all 15 ACs (AC-DU-001..015) with the exact grep/build command + observed output per acceptance.md § D.
+- **E1. AC PASS/FAIL matrix** — all 17 ACs (AC-DU-001..017) with the exact grep/build command + observed output per acceptance.md § D.
 - **E2. make build result** — `make build` exit 0 (templates re-embedded).
 - **E3. Template parity** — for each of the 4 files, the new phrase/section present in BOTH local and mirror (grep both).
 - **E4. §25 neutrality grep** — `grep -rn 'SPEC-DISCOVERY-UNKNOWNS' internal/template/templates/` returns zero matches.
 - **E5. No-Go-change assertion** — `git status --porcelain` shows no `.go` file in this SPEC's change set.
 - **E6. Commit/push state** — Conventional Commit subjects (Route A main-direct), pathspec-restricted; new commit SHAs listed.
+- **E7. CI parity guards (audit D2 fix)** — `go test ./internal/template/... -run 'TestRuleTemplateMirrorDrift|TestSanitizedPairParity'` exit 0 (AC-DU-017). Catches a byte-identical mirror drift on `spec-workflow.md` (`workflowOptMirroredPaths`, sentinel `RULE_TEMPLATE_MIRROR_DRIFT`) or a doctrine-propagation drift on `askuser-protocol.md` (`sanitizedPairPaths`, sentinel `SANITIZED_PAIR_PARITY_DRIFT`) that the `make build` (E2) + grep-token (E3) checks do NOT detect. `manager-spec.md` + `CLAUDE.md` are in neither parity registry (grep-token only).
 
 ## §F. Milestones (decision-reversibility ordered — dogfoods T2)
 
@@ -97,7 +98,7 @@ The core new user-facing Discovery rule text — most subject to annotation revi
 
 Behavior-shaping wording decisions. Paired edits:
 - `manager-spec.md`: amend the plan.md authoring guidance (§ Step 4 `**plan.md**` line + the plan.md section-structure guidance) to instruct that plan.md milestones/sections lead with the decisions most likely to change (data-model changes, new type interfaces, user-facing/UX flows) and defer mechanical/refactoring steps to the bottom.
-- `CLAUDE.md` §7 Rule 1 (Approach-First): add one line instructing that Approach-First reports present the highest change-likelihood decisions first.
+- `CLAUDE.md` §7 Rule 1 (Approach-First): add the change-likelihood instruction as a NEW line immediately AFTER the `- **Rule 1 — Approach-First Development**:` heading line (a sub-bullet or continuation line that lands within the `grep -A2` window), NOT inline on the heading line — AC-DU-007 strips the heading via `tail -n +2`, so inline-on-heading content would not be detected. The line instructs that Approach-First reports present the highest change-likelihood decisions first; use one of the AC-DU-007 tokens verbatim ("most likely to change" / "highest change-likelihood" / "change-likelihood"). Respect the CLAUDE.md diet (one added line).
 - Covers: REQ-DU-007, REQ-DU-008, REQ-DU-009.
 
 ### M3 — Entry-point wires (spec-workflow.md Plan Phase + CLAUDE.md §7 Rule 5) — LOW change-likelihood (mechanical)
@@ -127,7 +128,7 @@ Single-line references into the entry points. Paired edits:
 ## §H. Cross-References
 
 - spec.md §A.4 — the 4-surface paired-edit table (local ↔ mirror).
-- acceptance.md § D — the AC-DU-001..015 matrix (verification SSOT).
+- acceptance.md § D — the AC-DU-001..017 matrix (verification SSOT).
 - `.claude/rules/moai/development/manager-develop-prompt-template.md` § B (B4/B6/B10/B11) — known-issue categories applied above.
 - `CLAUDE.local.md` §2 (Template-First) + §25 (neutrality) — the paired-edit + neutrality doctrine.
 - `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline (Route A) — main-direct, no PR/worktree for Tier M.

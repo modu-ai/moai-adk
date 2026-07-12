@@ -34,7 +34,7 @@ The article contributes three items moai-adk's Discovery system currently lacks.
 
 All three gaps were grep-verified against the current working tree before authoring:
 
-1. **No Blind Spot Pass technique.** `grep -rniE 'blind ?spot|unknown[ -]unknown' .claude/rules .claude/agents` returns exactly one incidental match — `.claude/agents/moai/manager-git.md:85` `"(only when known test blind spots)"`, which is PR test-scenario phrasing, NOT a Discovery technique. There is no pre-plan "help me find my unknown-unknowns" capability anywhere in the rule/agent surface.
+1. **No Blind Spot Pass technique.** `grep -rniE 'blind ?spot|unknown[ -]unknown' .claude/rules .claude/agents` returns exactly one incidental match — `.claude/agents/moai/manager-git.md:79` `"(only when known test blind spots)"`, which is PR test-scenario phrasing, NOT a Discovery technique. There is no pre-plan "help me find my unknown-unknowns" capability anywhere in the rule/agent surface.
 2. **No unknowns taxonomy in Discovery.** `grep -niE 'unknown|blind' .claude/rules/moai/core/askuser-protocol.md` returns zero matches. The SSOT for Context-First Discovery frames ambiguity by *detection signal* (pronouns, multi-interpretable verbs, unclear boundaries, state conflict) — never by *user blind spot*.
 3. **Plans ordered by execution, not by decision-reversibility.** `grep -rniE 'reversib|most likely to change|change[ -]likelihood|decision.*first' .claude/agents/moai/manager-spec.md` returns zero matches. Neither `manager-spec.md` nor the plan.md section skeleton leads with the decisions most likely to change. The article's insight: lead with data-model / type-interface / UX-flow decisions (highest change-likelihood) and bury mechanical refactoring at the bottom, so human review focuses on what actually matters.
 
@@ -54,12 +54,14 @@ The article names four unknown-reduction activities: **Interviews**, **Reference
 
 Every surface below is template-mirrored under `internal/template/templates/`. Per CLAUDE.local.md §2 (Template-First), each content edit is applied to BOTH the local file AND its mirror, followed by `make build`. Baseline parity checked at plan-time: `CLAUDE.md` and `spec-workflow.md` are local==template identical; `askuser-protocol.md` diverges by ~1 hunk and `manager-spec.md` by ~5 hunks / 10 lines (all §25-neutrality strips of internal dates / SPEC-IDs / REQ tokens — verified via live diff). Neither divergence touches this SPEC's T1/T2 edit anchors (the manager-spec `Step 4` / `**plan.md**` T2 anchor is confirmed untouched), so the paired edits target identical anchors in each surface.
 
-| # | Surface (local) | Template mirror | Enhancement(s) |
-|---|-----------------|-----------------|----------------|
-| 1 | `.claude/rules/moai/core/askuser-protocol.md` | `internal/template/templates/.claude/rules/moai/core/askuser-protocol.md` | T1 (new Blind Spot Pass subsection) + T3 (4-quadrant lens in § Ambiguity Triggers) |
-| 2 | `.claude/agents/moai/manager-spec.md` | `internal/template/templates/.claude/agents/moai/manager-spec.md` | T2 (plan.md decision-reversibility ordering guidance) |
-| 3 | `CLAUDE.md` (§7 Rule 1 + §7 Rule 5) | `internal/template/templates/CLAUDE.md` | T1 wire (Rule 5) + T2 (Rule 1) + T3 one-line lens framing (Rule 5) |
-| 4 | `.claude/rules/moai/workflow/spec-workflow.md` (Plan Phase) | `internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md` | T1 wire (plan-phase entry reference) |
+| # | Surface (local) | Template mirror | Enhancement(s) | Parity regime (CI-enforced) |
+|---|-----------------|-----------------|----------------|------------------------------|
+| 1 | `.claude/rules/moai/core/askuser-protocol.md` | `internal/template/templates/.claude/rules/moai/core/askuser-protocol.md` | T1 (new Blind Spot Pass subsection) + T3 (4-quadrant lens in § Ambiguity Triggers) | **sanitized-pair** — `TestSanitizedPairParity` (`sanitizedPairPaths`, sentinel `SANITIZED_PAIR_PARITY_DRIFT`); T1+T3 doctrine MUST propagate to BOTH trees |
+| 2 | `.claude/agents/moai/manager-spec.md` | `internal/template/templates/.claude/agents/moai/manager-spec.md` | T2 (plan.md decision-reversibility ordering guidance) | sanitized mirror, **NOT in any parity registry** — grep-token parity only (AC-DU-012) + `TestTemplateNoInternalContentLeak` cleanliness |
+| 3 | `CLAUDE.md` (§7 Rule 1 + §7 Rule 5) | `internal/template/templates/CLAUDE.md` | T1 wire (Rule 5) + T2 (Rule 1) + T3 one-line lens framing (Rule 5) | **none** — grep-token parity only (AC-DU-012) |
+| 4 | `.claude/rules/moai/workflow/spec-workflow.md` (Plan Phase) | `internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md` | T1 wire (plan-phase entry reference) | **byte-identical** — `TestRuleTemplateMirrorDrift` (`workflowOptMirroredPaths`, sentinel `RULE_TEMPLATE_MIRROR_DRIFT`); local↔mirror MUST be byte-for-byte identical |
+
+> **Parity-regime note (audit D2)**: surfaces 1 (sanitized-pair) and 4 (byte-identical) are enrolled in ENFORCED CI parity tests that this SPEC's `make build` + grep-token checks do NOT run. A whitespace-only mirror drift (surface 4) or a partial/absent doctrine propagation (surface 1) passes the grep-token / `make build` ACs but REDS main on the Route A push. AC-DU-017 runs `TestRuleTemplateMirrorDrift` + `TestSanitizedPairParity` after the mirror edits to catch exactly this. Surfaces 2-3 have no enforced parity test — their mirror parity is grep-token only (AC-DU-012).
 
 ## §B. Goals (in-scope) — exactly three Tier-1 enhancements
 
@@ -98,7 +100,7 @@ Every surface below is template-mirrored under `internal/template/templates/`. P
 
 ## §D. Acceptance Criteria (summary)
 
-The canonical AC enumeration is the SSOT in `acceptance.md` (AC-DU-001 .. AC-DU-016 — 16 ACs). Mapping to the 15 REQs: REQ-DU-002 is covered by AC-DU-016 (its unfamiliar-domain trigger + before-plan-phase-entry timing); REQ-DU-009 and REQ-DU-013 share the no-machinery / no-Go-change checks AC-DU-008 + AC-DU-015; all other REQs map 1:1 to a single AC. Each AC is independently testable via grep-verifiable section presence, template-mirror parity check, `make build` exit-0, or a no-Go-change assertion. See `acceptance.md` § D AC Matrix + § Given-When-Then scenarios.
+The canonical AC enumeration is the SSOT in `acceptance.md` (AC-DU-001 .. AC-DU-017 — 17 ACs). Mapping to the 15 REQs: REQ-DU-002 is covered by AC-DU-016 (its unfamiliar-domain trigger + before-plan-phase-entry timing); REQ-DU-009 and REQ-DU-013 share the no-machinery / no-Go-change checks AC-DU-008 + AC-DU-015; REQ-DU-014 is covered by AC-DU-012 (per-file mirror token) + AC-DU-013 (`make build` exit-0) + AC-DU-017 (the enforced CI parity guards `TestRuleTemplateMirrorDrift` + `TestSanitizedPairParity`); all other REQs map 1:1 to a single AC. Each AC is independently testable via grep-verifiable section presence, template-mirror parity check, `make build` exit-0, an enforced parity `go test` (exit-0), or a no-Go-change assertion. See `acceptance.md` § D AC Matrix + § Given-When-Then scenarios.
 
 ## §E. Out of Scope (exclusions)
 
